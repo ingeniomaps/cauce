@@ -1,0 +1,131 @@
+name: Agent learning proposals
+
+# Consolida el ciclo mensual de aprendizaje de todos los agentes. La lista sale del árbol
+# `agents/<tipo>/<slug>/SKILL.md`, así que agregar un agente no toca este archivo.
+
+on:
+  schedule:
+    - cron: "17 13 1 * *"
+  workflow_dispatch:
+    inputs:
+      agent:
+        description: "Slug de un agente. Vacío corre todos."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      agents: ${{ steps.list.outputs.agents }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: List agents
+        id: list
+        env:
+          ONLY: ${{ inputs.agent }}
+        run: |
+          node -e '
+            const fs = require("fs")
+            const path = require("path")
+            const only = (process.env.ONLY || "").trim()
+            const slugs = []
+            for (const type of fs.readdirSync("agents", { withFileTypes: true })) {
+              if (!type.isDirectory()) continue
+              const dir = path.join("agents", type.name)
+              for (const agent of fs.readdirSync(dir, { withFileTypes: true })) {
+                if (!agent.isDirectory()) continue
+                if (fs.existsSync(path.join(dir, agent.name, "SKILL.md"))) slugs.push(agent.name)
+              }
+            }
+            // El input es texto libre: sólo sobrevive si coincide exacto con un slug real.
+            const list = only ? slugs.filter((slug) => slug === only) : slugs.sort()
+            if (!list.length) {
+              console.error(only ? `No existe el agente "${only}".` : "No se encontró ningún agente.")
+              process.exit(1)
+            }
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `agents=${JSON.stringify(list)}\n`)
+          '
+
+  propose:
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        agent: ${{ fromJSON(needs.discover.outputs.agents) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      # El CLI vive en `tools/ops.js` dentro de un proyecto generado y en `engine/cli/ops.js`
+      # dentro del repositorio del toolkit.
+      - name: Resolve CLI
+        id: cli
+        run: |
+          for candidate in tools/ops.js .ops/engine/cli/ops.js engine/cli/ops.js; do
+            if [ -f "$candidate" ]; then
+              echo "path=$candidate" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "No se encontró el CLI de Project Ops." >&2
+          exit 1
+
+      - name: Validate current agent
+        env:
+          AGENT: ${{ matrix.agent }}
+          OPS: ${{ steps.cli.outputs.path }}
+        run: node "$OPS" evaluate "$AGENT"
+
+      - name: Build monthly proposal from weekly reports
+        env:
+          AGENT: ${{ matrix.agent }}
+          OPS: ${{ steps.cli.outputs.path }}
+        run: node "$OPS" learn "$AGENT" --proposal
+
+      - name: Validate proposal
+        env:
+          AGENT: ${{ matrix.agent }}
+          OPS: ${{ steps.cli.outputs.path }}
+        run: node "$OPS" evaluate "$AGENT"
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open proposal pull request
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          AGENT: ${{ matrix.agent }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          period="$(date -u +%Y-%m)"
+          branch="automation/$AGENT-$period"
+          proposal="$(git diff --name-only -- "agents/*/$AGENT/learning/proposals/$period.md")"
+          if [ -z "$proposal" ]; then
+            echo "El agente cambió archivos fuera de su propuesta; no se abre PR." >&2
+            git diff --name-only >&2
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add "$proposal"
+          git commit -m "docs($AGENT): propose $period learning review"
+          git push origin "$branch"
+          gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
+            --title "$AGENT learning proposal — $period" \
+            --body "Propuesta automática construida desde los informes semanales. No modifica SKILL.md y requiere evaluación y aprobación humana."
