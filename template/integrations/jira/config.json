@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "baseUrl": "https://your-domain.atlassian.net",
+  "jql": "project = KEY AND resolution = Unresolved ORDER BY priority DESC, created ASC",
+  "pageSize": 100,
+  "timeoutMs": 30000,
+  "maxPages": 100,
+  "auth": {
+    "type": "basic",
+    "emailEnv": "JIRA_EMAIL",
+    "tokenEnv": "JIRA_API_TOKEN"
+  },
+  "serviceFrom": "component",
+  "candidateAssigneeEnv": "",
+  "acceptanceHeading": "Criterios de aceptación",
+  "writeBack": false
+}

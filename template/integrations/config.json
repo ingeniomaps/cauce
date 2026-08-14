@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "providers": {
+    "jira": {
+      "adapter": "jira",
+      "enabled": false,
+      "config": "jira/config.json"
+    }
+  }
+}

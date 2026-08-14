@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "runner": "manual",
+  "protocol": "planning/PROTOCOL.md",
+  "gates": {
+    "destructiveCommands": true,
+    "secrets": true,
+    "integrationSnapshots": true,
+    "verifyBeforeCommit": true,
+    "validateOnStop": true,
+    "humanCheckpointBetweenMilestones": true
+  }
+}
