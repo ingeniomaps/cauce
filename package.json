@@ -1,11 +1,20 @@
 {
   "name": "cauce",
-  "version": "1.1.0",
+  "version": "0.1.0",
   "description": "Sistema portable de planificación y ejecución verificable para cualquier proyecto",
   "type": "commonjs",
   "bin": {
     "cauce": "engine/cli/ops.js"
   },
+  "files": [
+    "engine/",
+    "template/",
+    "agents/",
+    "teams/",
+    "automatization/",
+    ".github/workflows/",
+    "LICENSE"
+  ],
   "scripts": {
     "ops": "node engine/cli/ops.js",
     "check": "node engine/cli/ops.js check template/planning",
