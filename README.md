@@ -132,6 +132,21 @@ Después de inicializar:
 `organization/` describe el negocio; `planning/` describe intención y estado; los repos de código siguen
 siendo dueños de sus comandos, convenciones y commits.
 
+### La frontera `system/`
+
+Cada colección adaptable separa lo que actualiza el toolkit de lo que escribe el proyecto:
+
+| Directorio | `system/` | Junto a `system/` |
+|---|---|---|
+| `planning/business-rules/` | `BR-OPS-NNN` | las reglas de la empresa |
+| `planning/adr/` | `OPS-NNN` | las decisiones de la empresa |
+| `planning/rules/` | proceso, forma del cambio, commits | las convenciones propias |
+| `teams/` | composiciones que vienen con Cauce | los equipos propios |
+
+Un archivo propio con el mismo nombre o ID que uno de `system/` lo reemplaza: el del proyecto manda y
+`check` lo reporta como override explícito. Así una mejora del proceso no obliga a forkear el archivo,
+y actualizar no exige resolver conflictos: se reemplaza `system/` entero y nada más se toca.
+
 ## Integraciones
 
 Cada proveedor implementa únicamente autenticación, lectura paginada y normalización. El núcleo comparte el

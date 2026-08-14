@@ -25,6 +25,22 @@ Por defecto, todo sistema externo se considera real y de solo lectura. Sin aprob
 
 Documentar excepciones concretas aquí. Un entorno de desarrollo o sandbox debe nombrarse explícitamente.
 
+## Qué se puede editar y qué no
+
+Todo directorio `system/` pertenece a Cauce y se reemplaza completo al actualizar. **Nunca editar nada
+dentro de `system/`**: el cambio se pierde en la siguiente actualización y, mientras tanto, ese archivo
+deja de recibir mejoras.
+
+Para cambiar algo del sistema hay dos operaciones, las dos junto a `system/`, nunca dentro:
+
+- **Anexar**: un archivo nuevo con nombre o ID propio. Convive con los del sistema.
+- **Reemplazar**: un archivo con el mismo nombre o ID que uno de `system/`. El del proyecto manda y
+  `check` lo reporta como override explícito en vez de fallar.
+
+Aplica a `planning/business-rules/`, `planning/adr/`, `planning/rules/` y `teams/`. El resto de
+`planning/` —roadmap, backlog, WIP, done, inbox y acciones humanas— es del proyecto y no se toca al
+actualizar.
+
 ## Cómo leer el estado
 
 Antes de abrir un archivo de `planning/`, preguntarle al CLI: es determinista, no gasta contexto y no
