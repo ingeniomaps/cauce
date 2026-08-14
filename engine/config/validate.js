@@ -1,0 +1,70 @@
+'use strict'
+
+const MODES = ['embedded', 'sidecar', 'toolkit']
+
+function validateOpsConfig(config) {
+  const errors = []
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    return ['ops.config.json: debe ser un objeto']
+  }
+  const allowed = new Set(['$schema', 'project', 'mode', 'planningDir', 'workspaceRoots', 'runner'])
+  for (const key of Object.keys(config)) {
+    if (!allowed.has(key)) errors.push(`ops.config.json: propiedad desconocida ${key}`)
+  }
+  if (typeof config.project !== 'string' || !config.project.trim()) {
+    errors.push('ops.config.json: project debe ser un string no vacío')
+  }
+  if (!MODES.includes(config.mode)) errors.push('ops.config.json: mode inválido')
+  if (typeof config.planningDir !== 'string' || !config.planningDir.trim()) {
+    errors.push('ops.config.json: planningDir debe ser un string no vacío')
+  }
+  validateWorkspaces(config.workspaceRoots, errors)
+  validateRunner(config.runner, errors)
+  return errors
+}
+
+function validateWorkspaces(workspaces, errors) {
+  if (!Array.isArray(workspaces) || !workspaces.length) {
+    errors.push('ops.config.json: workspaceRoots debe contener al menos una raíz')
+    return
+  }
+  for (const [index, workspace] of workspaces.entries()) {
+    if (!workspace || typeof workspace !== 'object' || Array.isArray(workspace)) {
+      errors.push(`ops.config.json: workspaceRoots[${index}] debe ser un objeto`)
+      continue
+    }
+    for (const key of Object.keys(workspace)) {
+      if (!['name', 'path'].includes(key)) {
+        errors.push(`ops.config.json: workspaceRoots[${index}].${key} no está permitido`)
+      }
+    }
+    if (typeof workspace.name !== 'string' || !workspace.name.trim()) {
+      errors.push(`ops.config.json: workspaceRoots[${index}].name es obligatorio`)
+    }
+    if (typeof workspace.path !== 'string' || !workspace.path.trim()) {
+      errors.push(`ops.config.json: workspaceRoots[${index}].path es obligatorio`)
+    }
+  }
+}
+
+function validateRunner(runner, errors) {
+  if (!runner || typeof runner !== 'object' || Array.isArray(runner)) {
+    errors.push('ops.config.json: runner debe ser un objeto')
+    return
+  }
+  const booleans = ['humanCheckpointBetweenMilestones', 'commitPerTask', 'allowPush']
+  const allowed = new Set(['maxTaskHours', ...booleans])
+  for (const key of Object.keys(runner)) {
+    if (!allowed.has(key)) errors.push(`ops.config.json: runner.${key} no está permitido`)
+  }
+  if (typeof runner.maxTaskHours !== 'number' || runner.maxTaskHours <= 0) {
+    errors.push('ops.config.json: runner.maxTaskHours debe ser mayor que cero')
+  }
+  for (const key of booleans) {
+    if (typeof runner[key] !== 'boolean') {
+      errors.push(`ops.config.json: runner.${key} debe ser boolean`)
+    }
+  }
+}
+
+module.exports = { MODES, validateOpsConfig }
