@@ -1,3 +1,10 @@
 node_modules/
 *.tgz
 .DS_Store
+
+# Credenciales e identidad de git de esta máquina. El repositorio es público:
+# nada de esto puede entrar nunca a la historia.
+.env
+.env.*
+!.env.example
+.gitconfig
