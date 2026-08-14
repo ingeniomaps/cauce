@@ -1,8 +1,8 @@
 # Ops — sistema operativo reusable para proyectos
 
 Este repositorio convierte planificación escrita en un flujo verificable y recuperable para humanos y
-agentes. Está extraído de los sistemas usados en Roax, Venotal, Conorbi y Gouduet, pero no contiene reglas de
-negocio de ninguno de ellos.
+agentes. Está extraído de sistemas en producción, pero no contiene reglas de negocio de ninguno de ellos:
+el contexto de cada empresa vive en su propia instancia.
 
 ## Qué resuelve
 

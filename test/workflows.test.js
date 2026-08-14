@@ -15,9 +15,13 @@ test('autobuild implementa el protocolo completo sin rutas de proyectos fuente',
   for (const phase of phases) {
     assert.match(workflow, new RegExp(`phase\\('${phase}'\\)`))
   }
-  for (const leaked of ['/home/manuel/Code/conorbi', '/home/manuel/Code/gouduet', 'venotal-ops', 'roax-ops']) {
-    assert.equal(workflow.includes(leaked), false, `ruta específica filtrada: ${leaked}`)
+  // El workflow viaja a cualquier instancia: toda ruta sale de ROOT y P, nunca de una máquina
+  // ni de un proyecto concreto. La comprobación es genérica a propósito, para que también
+  // atrape la próxima filtración y no sólo las que ya conocemos.
+  for (const absolute of [/\/home\//, /\/Users\//, /\b[A-Za-z]:\\/]) {
+    assert.equal(absolute.test(workflow), false, `ruta absoluta filtrada: ${absolute}`)
   }
+  assert.equal(/['"`][^'"`\n]*-ops\//.test(workflow), false, 'directorio de proyecto hardcodeado')
   assert.match(workflow, /workspaceRoots/)
   assert.match(workflow, /AWAITING_REVIEW/)
   assert.match(workflow, /HUMAN_ACTIONS/)
@@ -51,7 +55,9 @@ test('workflows de integración usan el registro general y no escriben remoto', 
     assert.match(source, /OPS_INTEGRATION_PROVIDER/)
     assert.match(source, /integration check/)
     assert.match(source, /Nunca|never|Never/)
-    assert.equal(source.includes('/home/manuel/Code/'), false)
+    for (const absolute of [/\/home\//, /\/Users\//, /\b[A-Za-z]:\\/]) {
+      assert.equal(absolute.test(source), false, `${name}: ruta absoluta filtrada`)
+    }
   }
 })
 
