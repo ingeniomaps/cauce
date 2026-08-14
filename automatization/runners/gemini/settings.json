@@ -1,0 +1,9 @@
+{
+  "general": {
+    "checkpointing": { "enabled": true }
+  },
+  "context": {
+    "fileName": ["AGENTS.md", "GEMINI.md"],
+    "loadFromIncludeDirectories": true
+  }
+}

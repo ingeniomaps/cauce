@@ -1,0 +1,6 @@
+description = "Sincroniza un proveedor externo hacia staging sin escribir remoto"
+prompt = """
+Lee integrations/README.md y planning/PROTOCOL.md. Resuelve el proveedor solicitado en {{args}}; si está
+vacío, continúa solo si existe exactamente uno habilitado. Ejecuta integration check, integration sync y el
+check final mediante tools/ops.js. Nunca promociones como efecto del sync ni edites snapshots a mano.
+"""

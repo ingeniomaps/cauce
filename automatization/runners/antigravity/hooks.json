@@ -1,0 +1,21 @@
+{
+  "project-ops": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          { "type": "command", "command": "node .agents/plugins/project-ops/hook.js pre-shell", "timeout": 120 }
+        ]
+      },
+      {
+        "matcher": "write_to_file|replace_file_content|multi_replace_file_content",
+        "hooks": [
+          { "type": "command", "command": "node .agents/plugins/project-ops/hook.js pre-files", "timeout": 30 }
+        ]
+      }
+    ],
+    "Stop": [
+      { "type": "command", "command": "node .agents/plugins/project-ops/hook.js stop", "timeout": 120 }
+    ]
+  }
+}

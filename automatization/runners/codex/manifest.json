@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "name": "codex",
+  "command": "codex",
+  "config": { "source": "hooks.json", "target": ".codex/hooks/hooks.json" },
+  "instructions": [],
+  "artifacts": [],
+  "capabilities": { "nativeHooks": true, "nativeWorkflows": false, "projectInstructions": true, "checkpointing": false }
+}

@@ -1,0 +1,7 @@
+description = "Ejecuta el siguiente hito aprobado siguiendo Project Ops"
+prompt = """
+Lee AGENTS.md y planning/PROTOCOL.md completos. Ejecuta el ciclo de autobuild fase por fase sobre la primera
+tarea aprobada, respetando AWAITING_REVIEW y WIP como mutex. Antes de cada operación peligrosa invoca el
+guard correspondiente de automatization/hooks/ con el JSON de herramienta esperado. No hagas push ni deploy.
+Detente en el checkpoint entre hitos y deja evidencia real en DONE.
+"""

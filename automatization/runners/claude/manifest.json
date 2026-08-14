@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "name": "claude",
+  "command": "claude",
+  "config": { "source": "settings.json", "target": ".claude/settings.json" },
+  "instructions": [{ "source": "CLAUDE.md", "target": "CLAUDE.md" }],
+  "artifacts": [
+    { "source": "../../workflows/autobuild.js", "target": ".claude/workflows/autobuild.js" },
+    { "source": "../../workflows/integrations/sync.js", "target": ".claude/workflows/integration-sync.js" },
+    { "source": "../../workflows/integrations/promote.js", "target": ".claude/workflows/integration-promote.js" }
+  ],
+  "capabilities": { "nativeHooks": true, "nativeWorkflows": true, "projectInstructions": true, "checkpointing": false }
+}
