@@ -1,0 +1,46 @@
+{
+  "issues": [
+    {
+      "id": "10001",
+      "key": "DEMO-42",
+      "fields": {
+        "summary": "Mostrar el estado de sincronización",
+        "description": {
+          "type": "doc",
+          "version": 1,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [{ "type": "text", "text": "El operador necesita ver el último sync." }]
+            },
+            {
+              "type": "heading",
+              "attrs": { "level": 2 },
+              "content": [{ "type": "text", "text": "Criterios de aceptación" }]
+            },
+            {
+              "type": "bulletList",
+              "content": [
+                {
+                  "type": "listItem",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [{ "type": "text", "text": "La fecha del último sync es visible." }]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "issuetype": { "name": "Story" },
+        "status": { "name": "To Do" },
+        "assignee": { "accountId": "abc", "displayName": "Ada" },
+        "components": [{ "name": "app" }],
+        "labels": ["lane:full"],
+        "updated": "2026-08-14T12:00:00.000+0000"
+      }
+    }
+  ]
+}
