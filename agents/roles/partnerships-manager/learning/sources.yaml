@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_status_and_jurisdiction: true
+  require_company_and_relationship_fit: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - name: Company strategy policies contracts product GTM and partner records
+    url: local://partnerships-context
+    tier: company-primary
+    topics: [strategy, product, gtm, contracts, partners, authority]
+  - name: ISO 44001 collaborative business relationships
+    url: https://www.iso.org/standard/72798.html
+    tier: standards-primary
+    topics: [collaboration, relationships, governance, lifecycle]
+  - name: OECD due diligence for responsible business conduct
+    url: https://www.oecd.org/en/publications/oecd-due-diligence-guidance-for-responsible-business-conduct_15f5f4b3-en.html
+    tier: intergovernmental-primary
+    topics: [due-diligence, human-rights, environment, bribery, consumers]
+  - name: NIST CSF 2.0 cybersecurity supply chain risk management
+    url: https://csrc.nist.gov/pubs/sp/1305/final
+    tier: government-primary
+    topics: [supply-chain, cybersecurity, requirements, roles]
+  - name: NIST cybersecurity supply chain due diligence assessment
+    url: https://csrc.nist.gov/pubs/sp/1326/final
+    tier: government-primary
+    topics: [due-diligence, assessment, suppliers, evidence]

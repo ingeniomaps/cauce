@@ -1,0 +1,4 @@
+interface:
+  display_name: "Business Strategist"
+  short_description: "Convierte contexto en elecciones estratégicas"
+  default_prompt: "Usa $business-strategist para analizar esta decisión y proponer una estrategia verificable."

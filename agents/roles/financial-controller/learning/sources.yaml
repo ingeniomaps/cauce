@@ -1,0 +1,33 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: Company entities policies ledger contracts controls and approvals
+    url: local://financial-control-context
+    tier: company-primary
+    topics: [entities, policies, ledger, contracts, controls, approvals]
+  - name: Applicable accounting tax regulatory and audit authorities
+    url: local://finance-official-sources
+    tier: legal-primary
+    topics: [accounting, tax, regulatory, audit, effective-dates]
+  - name: IFRS Accounting Standards
+    url: https://www.ifrs.org/issued-standards/list-of-standards/
+    tier: primary-standard
+    topics: [accounting, reporting, presentation, disclosure]
+  - name: COSO Internal Control
+    url: https://www.coso.org/guidance-on-ic
+    tier: primary-framework
+    topics: [internal-control, risk, control-activities, monitoring]
+  - name: ISO 31000
+    url: https://www.iso.org/iso-31000-risk-management.html
+    tier: primary-standard
+    topics: [risk-management, governance, decisions]
+  - name: IAASB Standards and resources
+    url: https://www.iaasb.org/publications-resources
+    tier: primary-standard-setter
+    topics: [audit, evidence, estimates, professional-skepticism]

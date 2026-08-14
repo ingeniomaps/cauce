@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cloud Architect"
+  short_description: "Diseña plataformas cloud resilientes y eficientes"
+  default_prompt: "Usa $cloud-architect para diseñar, comparar o revisar esta arquitectura, migración, landing zone o decisión cloud."

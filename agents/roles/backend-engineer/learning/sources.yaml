@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: Project manifests and official stack docs
+    url: local://service-manifest
+    tier: project-primary
+    topics: [runtime, framework, database, migrations]
+  - name: RFC Editor HTTP
+    url: https://www.rfc-editor.org/rfc/rfc9110.html
+    tier: primary-standard
+    topics: [http, semantics, idempotency, caching]
+  - name: OpenAPI Specification
+    url: https://spec.openapis.org/oas/latest.html
+    tier: primary-standard
+    topics: [api-contracts]
+  - name: OWASP API Security
+    url: https://owasp.org/API-Security/
+    tier: primary-security
+    topics: [authorization, authentication, resources, ssrf]
+  - name: OpenTelemetry
+    url: https://opentelemetry.io/docs/
+    tier: primary-project
+    topics: [traces, metrics, logs, instrumentation]

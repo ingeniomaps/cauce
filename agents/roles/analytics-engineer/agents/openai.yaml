@@ -1,0 +1,4 @@
+interface:
+  display_name: "Analytics Engineer"
+  short_description: "Construye métricas y modelos analíticos confiables"
+  default_prompt: "Usa $analytics-engineer para diseñar, revisar o validar este modelo analítico, métrica, capa semántica o transformación."

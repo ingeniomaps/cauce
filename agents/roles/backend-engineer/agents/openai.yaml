@@ -1,0 +1,4 @@
+interface:
+  display_name: "Backend Engineer"
+  short_description: "Construye servicios seguros, confiables y observables"
+  default_prompt: "Usa $backend-engineer para implementar o revisar este servicio backend."

@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: Project manifests pipelines policies and runbooks
+    url: local://delivery-context
+    tier: project-primary
+    topics: [runtime, infrastructure, cicd, environments, recovery]
+  - name: DORA Capabilities
+    url: https://dora.dev/capabilities/
+    tier: primary-research
+    topics: [continuous-delivery, deployment-automation, feedback]
+  - name: SLSA Specification
+    url: https://slsa.dev/spec/
+    tier: primary-standard
+    topics: [provenance, build-integrity, supply-chain]
+  - name: OpenTofu Documentation
+    url: https://opentofu.org/docs/
+    tier: primary-project
+    topics: [iac, plans, state, modules]
+  - name: GitHub Actions security hardening
+    url: https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions
+    tier: platform-primary
+    topics: [workflow-security, permissions, oidc]

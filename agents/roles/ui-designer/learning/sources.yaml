@@ -1,0 +1,24 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: W3C Web Accessibility Initiative
+    url: https://www.w3.org/WAI/
+    tier: primary-standard
+    topics: [contrast, focus, targets, responsive, accessibility]
+  - name: Apple Human Interface Guidelines
+    url: https://developer.apple.com/design/human-interface-guidelines/
+    tier: primary-platform
+    topics: [layout, typography, color, components, accessibility]
+  - name: Material Design
+    url: https://m3.material.io/
+    tier: primary-design-system
+    topics: [tokens, components, color, typography, motion]
+  - name: GOV.UK Design System
+    url: https://design-system.service.gov.uk/
+    tier: public-design-system
+    topics: [styles, components, patterns, accessibility]

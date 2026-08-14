@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sales Representative"
+  short_description: "Califica oportunidades con venta responsable"
+  default_prompt: "Usa $sales-representative para investigar, calificar o preparar esta oportunidad comercial."

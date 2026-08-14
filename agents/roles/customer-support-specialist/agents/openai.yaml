@@ -1,0 +1,4 @@
+interface:
+  display_name: "Customer Support Specialist"
+  short_description: "Resuelve solicitudes con claridad y evidencia"
+  default_prompt: "Usa $customer-support-specialist para diagnosticar o redactar la respuesta a este caso."

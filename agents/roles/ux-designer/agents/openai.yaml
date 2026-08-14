@@ -1,0 +1,4 @@
+interface:
+  display_name: "UX Designer"
+  short_description: "Diseña experiencias claras, útiles y accesibles"
+  default_prompt: "Usa $ux-designer para diseñar o revisar este flujo de experiencia."

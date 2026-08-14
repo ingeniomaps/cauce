@@ -1,0 +1,4 @@
+interface:
+  display_name: "Security Engineer"
+  short_description: "Reduce riesgos con controles verificables"
+  default_prompt: "Usa $security-engineer para modelar amenazas o revisar la seguridad de este cambio."

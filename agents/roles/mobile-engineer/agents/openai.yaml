@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mobile Engineer"
+  short_description: "Construye apps móviles accesibles, seguras y resilientes"
+  default_prompt: "Usa $mobile-engineer para implementar o revisar esta funcionalidad móvil."

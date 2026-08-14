@@ -1,0 +1,33 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: Company brand product claims research analytics and content inventory
+    url: local://content-context
+    tier: company-primary
+    topics: [brand, product, claims, audience, performance, inventory]
+  - name: Applicable official accessibility advertising and sector sources
+    url: local://content-official-sources
+    tier: legal-primary
+    topics: [accessibility, advertising, disclosures, sector]
+  - name: W3C Writing for Web Accessibility
+    url: https://www.w3.org/WAI/tips/writing/
+    tier: primary-standard
+    topics: [accessibility, headings, links, alternatives, clarity]
+  - name: Google Search helpful content
+    url: https://developers.google.com/search/docs/fundamentals/creating-helpful-content
+    tier: platform-primary
+    topics: [seo, people-first, quality, transparency]
+  - name: Federal Plain Language Guidelines
+    url: https://www.plainlanguage.gov/guidelines/
+    tier: government-primary
+    topics: [plain-language, audience, structure, words]
+  - name: FTC Native Advertising Guide
+    url: https://www.ftc.gov/business-guidance/resources/native-advertising-guide-businesses
+    tier: government-primary
+    topics: [advertising, disclosure, transparency]

@@ -1,0 +1,33 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: Company product research sales support brand claims and performance
+    url: local://product-marketing-context
+    tier: company-primary
+    topics: [product, customers, positioning, claims, launches, metrics]
+  - name: Applicable advertising consumer and sector authorities
+    url: local://marketing-official-sources
+    tier: legal-primary
+    topics: [advertising, claims, endorsements, privacy, sector]
+  - name: Product Marketing Alliance
+    url: https://www.productmarketingalliance.com/
+    tier: professional-primary
+    topics: [positioning, messaging, gtm, launches, enablement]
+  - name: ICC Advertising Code
+    url: https://iccwbo.org/business-solutions/the-icc-advertising-and-marketing-communications-code/
+    tier: primary-code
+    topics: [responsible-marketing, substantiation, transparency]
+  - name: FTC Advertising and Marketing
+    url: https://www.ftc.gov/business-guidance/advertising-marketing
+    tier: government-primary
+    topics: [claims, endorsements, disclosures]
+  - name: Strategyzer Value Proposition Canvas
+    url: https://www.strategyzer.com/library/the-value-proposition-canvas
+    tier: primary-method
+    topics: [customer-needs, value-proposition]

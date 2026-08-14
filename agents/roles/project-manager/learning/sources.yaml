@@ -1,0 +1,28 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - name: Company strategy roadmap governance project records and delivery evidence
+    url: local://project-management-context
+    tier: company-primary
+    topics: [strategy, projects, governance, delivery, finance, risks, benefits]
+  - name: ISO 21502 project management guidance
+    url: https://committee.iso.org/sites/tc258/home/projects/published/iso-21502.html
+    tier: standards-primary
+    topics: [project-management, governance, delivery-approaches, lifecycle]
+  - name: PMI PMBOK Guide
+    url: https://www.pmi.org/standards/pmbok
+    tier: professional-primary
+    topics: [value, governance, scope, schedule, finance, stakeholders, risk]
+  - name: Official Scrum Guide
+    url: https://scrumguides.org/download.html
+    tier: framework-primary
+    topics: [scrum, empirical, iterative, product-delivery]
+  - name: Government Functional Standard GovS 002
+    url: https://projectdelivery.gov.uk/govs-002-project-delivery-functional-standard/
+    tier: government-primary-uk
+    topics: [governance, assurance, planning, control, benefits, change]

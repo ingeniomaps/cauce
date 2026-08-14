@@ -1,0 +1,4 @@
+interface:
+  display_name: "MLOps Engineer"
+  short_description: "Opera modelos reproducibles y controlados"
+  default_prompt: "Usa $mlops-engineer para diseñar, revisar o validar este pipeline, registro, despliegue, monitoreo o retiro de modelos."

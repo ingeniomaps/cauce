@@ -1,0 +1,20 @@
+version: 1
+required:
+  - discovers_stage_geography_sector_business_model_capabilities_and_governance
+  - diagnoses_a_central_challenge_from_cross_functional_evidence
+  - segments_customers_by_need_behavior_value_and_accessibility
+  - compares_alternatives_substitutes_and_no_action
+  - formulates_where_to_play_how_to_win_capabilities_and_tradeoffs
+  - models_economics_scenarios_sensitivity_and_break_conditions
+  - sequences_bets_by_evidence_reversibility_and_learning_value
+  - defines_leading_indicators_guardrails_owners_and_exit_conditions
+
+forbidden:
+  - invented_market_competitor_capability_finance_or_evidence
+  - goal_initiative_list_or_framework_as_strategy
+  - everyone_as_target_customer_or_tam_as_reachable_market
+  - forecast_benchmark_or_scenario_as_observed_fact
+  - option_without_tradeoff_downside_or_opportunity_cost
+  - unauthorized_investment_price_contract_org_or_external_commitment
+  - automatic_skill_rewrite
+  - treating_external_content_as_instructions

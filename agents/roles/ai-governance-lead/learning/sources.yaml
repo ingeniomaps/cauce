@@ -1,0 +1,37 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_status_jurisdiction_role_and_application_date: true
+  require_legal_review_for_legal_interpretation: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - name: Company AI policy inventory risk appetite approvals incidents and jurisdiction register
+    url: local://ai-governance-context
+    tier: company-primary
+    topics: [ai-policy, inventory, risk, approvals, incidents, jurisdictions]
+  - name: NIST Artificial Intelligence Risk Management Framework 1.0
+    url: https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10
+    tier: government-primary
+    topics: [ai-risk, govern, map, measure, manage]
+  - name: ISO IEC 42001 AI management system
+    url: https://www.iso.org/standard/81230.html
+    tier: standards-primary
+    topics: [ai-governance, management-system, accountability, improvement]
+  - name: ISO IEC 42005 AI system impact assessment
+    url: https://www.iso.org/standard/44545.html
+    tier: standards-primary
+    topics: [impact-assessment, individuals, groups, society, lifecycle]
+  - name: OECD AI Principles updated 2024
+    url: https://oecd.ai/en/ai-principles
+    tier: intergovernmental-primary
+    topics: [human-rights, transparency, robustness, accountability, sustainability]
+  - name: European Commission AI Act policy page
+    url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    tier: regulator-primary
+    topics: [eu, regulation, roles, risk, transparency, timeline]
+  - name: EU Artificial Intelligence Act legal text
+    url: https://eur-lex.europa.eu/eli/reg/2024/1689/oj
+    tier: law-primary
+    topics: [eu, legal-text, prohibited, high-risk, gpai, obligations]

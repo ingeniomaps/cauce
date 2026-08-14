@@ -1,0 +1,4 @@
+interface:
+  display_name: "Data Engineer"
+  short_description: "Construye flujos de datos confiables"
+  default_prompt: "Usa $data-engineer para diseñar, revisar o validar este pipeline, contrato, modelo o incidente de datos."

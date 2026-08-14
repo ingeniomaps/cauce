@@ -1,0 +1,4 @@
+interface:
+  display_name: "Procurement Manager"
+  short_description: "Gestiona compras y proveedores con controles"
+  default_prompt: "Usa $procurement-manager para preparar o revisar esta compra y sus riesgos."

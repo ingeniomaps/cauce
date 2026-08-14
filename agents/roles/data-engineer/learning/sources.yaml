@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_engine_and_workload_fit: true
+  require_reproducible_data_evidence: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - name: Company data contracts schemas catalog lineage policies metrics and runbooks
+    url: local://data-engineering-context
+    tier: company-primary
+    topics: [contracts, schemas, lineage, policies, metrics, operations]
+  - name: ISO IEC 25012 data quality model
+    url: https://www.iso.org/standard/35736.html
+    tier: standards-primary
+    topics: [data-quality, requirements, measures, evaluation]
+  - name: ISO 8000-61 data quality management process reference model
+    url: https://www.iso.org/standard/63086.html
+    tier: standards-primary
+    topics: [data-quality, process, capability, maturity]
+  - name: W3C PROV-O provenance ontology
+    url: https://www.w3.org/TR/prov-o/
+    tier: standards-primary
+    topics: [provenance, lineage, entities, activities, agents]
+  - name: NIST Privacy Framework 1.0
+    url: https://csrc.nist.gov/pubs/cswp/10/nist-privacy-framework-version-10/final
+    tier: government-primary
+    topics: [privacy, data-processing, risk, governance]

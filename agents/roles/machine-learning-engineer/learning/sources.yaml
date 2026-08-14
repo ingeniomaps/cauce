@@ -1,0 +1,33 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_model_use_case_and_jurisdiction_fit: true
+  require_reproducible_contextual_evidence: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - name: Company AI data product risk policies models evaluations and incident context
+    url: local://machine-learning-context
+    tier: company-primary
+    topics: [ai, data, product, risk, models, evaluations, incidents]
+  - name: NIST Artificial Intelligence Risk Management Framework 1.0
+    url: https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10
+    tier: government-primary
+    topics: [ai-risk, govern, map, measure, manage]
+  - name: NIST Generative AI Profile AI 600-1
+    url: https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence
+    tier: government-primary
+    topics: [generative-ai, risks, evaluation, governance]
+  - name: ISO IEC 23894 AI risk management
+    url: https://www.iso.org/standard/77304.html
+    tier: standards-primary
+    topics: [ai, risk, lifecycle, integration]
+  - name: ISO IEC 42001 AI management system
+    url: https://www.iso.org/standard/81230.html
+    tier: standards-primary
+    topics: [ai-governance, management-system, accountability, improvement]
+  - name: ISO IEC 42005 AI system impact assessment
+    url: https://www.iso.org/standard/44545.html
+    tier: standards-primary
+    topics: [ai-impact, people, society, lifecycle, assessment]

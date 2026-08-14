@@ -1,0 +1,15 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_model_provider_version_date_status_and_use_case_fit: true
+  require_reproducible_evidence_and_affected_user_input: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - {name: Company strategy research AI inventory policies incidents contracts and approved metrics, url: "local://ai-product-context", tier: company-primary, topics: [strategy, research, inventory, policies, incidents, metrics]}
+  - {name: Approved model and provider official documentation terms and change notices, url: "local://approved-ai-provider-documentation", tier: vendor-primary, topics: [model, provider, terms, versions, changes]}
+  - {name: NIST AI RMF 1.0 and status, url: "https://www.nist.gov/itl/ai-risk-management-framework", tier: government-primary, topics: [ai-risk, lifecycle, status, monitoring]}
+  - {name: NIST Generative AI Profile AI 600-1, url: "https://www.nist.gov/itl/ai-risk-management-framework/ai-risk-management-framework-resources", tier: government-primary, topics: [generative-ai, risk, evaluation]}
+  - {name: ISO IEC 42001 AI management systems, url: "https://www.iso.org/standard/42001", tier: standards-primary, topics: [ai-management, governance, improvement]}
+  - {name: OECD AI Principles, url: "https://www.oecd.org/en/topics/ai-principles.html", tier: intergovernmental-primary, topics: [rights, transparency, robustness, accountability, sustainability]}

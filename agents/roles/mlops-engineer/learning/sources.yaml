@@ -1,0 +1,15 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_platform_model_framework_version_and_status: true
+  require_reproducible_evidence_and_context_fit: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - {name: Company AI inventory model cards data contracts SLO policies incidents and approved telemetry, url: "local://mlops-context", tier: company-primary, topics: [inventory, models, data, slo, policies, incidents]}
+  - {name: Approved platform framework and model official documentation, url: "local://approved-ml-platform-documentation", tier: vendor-primary, topics: [platform, framework, model, version, operations]}
+  - {name: NIST AI RMF 1.0, url: "https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10", tier: government-primary, topics: [ai-risk, lifecycle, monitoring, governance]}
+  - {name: NIST SP 800-218A, url: "https://csrc.nist.gov/pubs/sp/800/218/a/final", tier: government-primary, topics: [secure-development, ai-models, supply-chain]}
+  - {name: ISO IEC 42001 AI management systems, url: "https://www.iso.org/standard/42001", tier: standards-primary, topics: [ai-management, governance, improvement]}
+  - {name: ISO IEC 23894 AI risk management, url: "https://www.iso.org/standard/77304.html", tier: standards-primary, topics: [ai-risk, integration, lifecycle]}

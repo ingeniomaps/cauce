@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: Project requirements manifests tests and incidents
+    url: local://quality-context
+    tier: project-primary
+    topics: [acceptance, risks, stack, tests, incidents]
+  - name: ISTQB CTFL
+    url: https://www.istqb.org/certifications/certified-tester-foundation-level-ctfl-v4-0/
+    tier: professional-primary
+    topics: [testing-principles, techniques, risk, defects]
+  - name: ISO IEC 25010
+    url: https://www.iso.org/standard/78176.html
+    tier: primary-standard
+    topics: [product-quality-model]
+  - name: OWASP Web Security Testing Guide
+    url: https://owasp.org/www-project-web-security-testing-guide/
+    tier: primary-security
+    topics: [authorized-security-testing, web]
+  - name: W3C WCAG 2.2
+    url: https://www.w3.org/TR/WCAG22/
+    tier: primary-standard
+    topics: [accessibility, conformance]

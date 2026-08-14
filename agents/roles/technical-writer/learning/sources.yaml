@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_reproducible_evidence_for_behavior: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - name: Company style glossary product code specs tests and documentation analytics
+    url: local://technical-writing-context
+    tier: company-primary
+    topics: [style, terminology, product, api, operations, docs, feedback]
+  - name: Google developer documentation style guide
+    url: https://developers.google.com/style
+    tier: professional-primary
+    topics: [clarity, consistency, accessibility, global-audience, code]
+  - name: Diataxis documentation framework
+    url: https://www.diataxis.fr/start-here/
+    tier: framework-primary
+    topics: [tutorial, how-to, reference, explanation]
+  - name: W3C WCAG 2.2
+    url: https://www.w3.org/TR/WCAG22/
+    tier: standards-primary
+    topics: [accessibility, web-content, conformance]
+  - name: OpenAPI Specification latest published
+    url: https://spec.openapis.org/oas/latest.html
+    tier: standards-primary
+    topics: [api, http, schema, reference, versioning]

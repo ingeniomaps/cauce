@@ -1,0 +1,14 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_standard_version_status_and_context_fit: true
+  require_outcome_evidence_and_owner_validation: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - {name: Company strategy programs architecture roadmaps decisions policies and approved metrics, url: "local://technical-program-context", tier: company-primary, topics: [strategy, programs, architecture, decisions, metrics]}
+  - {name: ISO 21503 programme management, url: "https://www.iso.org/cms/%20render/live/en/sites/isoorg/contents/data/standard/08/28/82868.html", tier: standards-primary, topics: [programme, roles, responsibilities, practices]}
+  - {name: ISO 21502 project management, url: "https://committee.iso.org/sites/tc258/home/projects/published/iso-21502.html", tier: standards-primary, topics: [project, adaptive, predictive, hybrid]}
+  - {name: ISO 31000 risk management, url: "https://www.iso.org/standard/65694.html", tier: standards-primary, topics: [risk, principles, process]}
+  - {name: PMI standards and Program Management Fifth Edition, url: "https://www.pmi.org/standards/", tier: professional-primary, topics: [program, benefits, collaboration, principles]}

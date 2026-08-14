@@ -1,0 +1,4 @@
+interface:
+  display_name: "Data Scientist"
+  short_description: "Convierte preguntas en evidencia rigurosa"
+  default_prompt: "Usa $data-scientist para formular, analizar o validar esta hipótesis, experimento, estimación causal o modelo exploratorio."

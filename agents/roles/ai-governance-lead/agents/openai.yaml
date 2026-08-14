@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Governance Lead"
+  short_description: "Gobierna el ciclo de vida de la IA"
+  default_prompt: "Usa $ai-governance-lead para inventariar, clasificar, evaluar o gobernar este sistema o caso de uso de IA."

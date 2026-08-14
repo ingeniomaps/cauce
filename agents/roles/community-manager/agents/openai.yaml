@@ -1,0 +1,4 @@
+interface:
+  display_name: "Community Manager"
+  short_description: "Construye comunidades sanas y medibles"
+  default_prompt: "Usa $community-manager para diseñar, revisar o medir esta comunidad, programa, evento o situación de moderación."

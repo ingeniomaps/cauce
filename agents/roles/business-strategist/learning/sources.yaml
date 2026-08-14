@@ -1,0 +1,33 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: Company strategy customer product sales finance and operations
+    url: local://business-strategy-context
+    tier: company-primary
+    topics: [goals, customers, capabilities, economics, decisions]
+  - name: Official market and sector sources
+    url: local://market-primary-sources
+    tier: market-primary
+    topics: [market, regulation, competitors, benchmarks]
+  - name: OECD Strategic Foresight
+    url: https://www.oecd.org/strategic-foresight/
+    tier: primary-practice
+    topics: [uncertainty, scenarios, foresight]
+  - name: UK Government Green Book
+    url: https://www.gov.uk/government/publications/the-green-book-appraisal-and-evaluation-in-central-government
+    tier: government-primary
+    topics: [options, appraisal, costs, benefits, risk]
+  - name: ISO 56002
+    url: https://www.iso.org/standard/68221.html
+    tier: primary-standard
+    topics: [innovation, opportunities, learning]
+  - name: Strategyzer Business Model Canvas
+    url: https://www.strategyzer.com/library/the-business-model-canvas
+    tier: primary-method
+    topics: [business-model, value-proposition, activities, economics]

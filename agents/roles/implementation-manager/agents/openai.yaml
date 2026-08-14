@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implementation Manager"
+  short_description: "Orquesta implementaciones verificables y seguras"
+  default_prompt: "Usa $implementation-manager para planear, gobernar o validar esta implementación, migración o salida a producción."

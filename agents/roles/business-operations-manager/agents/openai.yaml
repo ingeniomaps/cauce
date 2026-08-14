@@ -1,0 +1,4 @@
+interface:
+  display_name: "Business Operations Manager"
+  short_description: "Convierte estrategia en operación medible"
+  default_prompt: "Usa $business-operations-manager para diseñar o revisar este sistema operativo con owners, métricas y controles."

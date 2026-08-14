@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: Project dependencies and official framework docs
+    url: local://package-manifest
+    tier: project-primary
+    topics: [framework, runtime, tooling, migrations]
+  - name: MDN Web Docs
+    url: https://developer.mozilla.org/
+    tier: primary-reference
+    topics: [html, css, javascript, browser-apis, compatibility]
+  - name: W3C WAI
+    url: https://www.w3.org/WAI/
+    tier: primary-standard
+    topics: [wcag, aria, accessibility]
+  - name: OWASP Cheat Sheet Series
+    url: https://cheatsheetseries.owasp.org/
+    tier: primary-security
+    topics: [xss, csp, browser-security, session]
+  - name: web.dev
+    url: https://web.dev/
+    tier: primary-platform-practitioner
+    topics: [performance, web-vitals, responsive, testing]

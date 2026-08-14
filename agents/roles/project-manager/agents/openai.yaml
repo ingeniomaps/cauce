@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Manager"
+  short_description: "Coordina proyectos con evidencia y control"
+  default_prompt: "Usa $project-manager para planear o recuperar este proyecto con alcance, dependencias y riesgos claros."

@@ -1,0 +1,37 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_jurisdiction: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - name: Company people policies agreements roles and approved aggregate data
+    url: local://people-operations-context
+    tier: company-primary
+    topics: [policies, agreements, roles, authority, lifecycle, aggregate-metrics]
+  - name: ILO Fundamental Principles and Rights at Work
+    url: https://www.ilo.org/topics-and-sectors/fundamental-principles-and-rights-work
+    tier: international-primary
+    topics: [rights, discrimination, collective-bargaining, safety]
+  - name: ISO 30405 recruitment guidelines
+    url: https://www.iso.org/standard/79488.html
+    tier: standards-primary
+    topics: [recruitment, assessment, candidate-experience, learning]
+  - name: ISO 30414 human capital reporting and disclosure
+    url: https://www.iso.org/standard/30414
+    tier: standards-primary
+    topics: [reporting, governance, workforce, wellbeing, development]
+  - name: EEOC artificial intelligence publications
+    url: https://www.eeoc.gov/eeoc-publications
+    tier: regulator-primary-us
+    topics: [employment-ai, discrimination, accessibility, adverse-impact]
+  - name: ICO employment information
+    url: https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/employment/
+    tier: regulator-primary-uk
+    topics: [employment-data, records, health, monitoring, automated-decisions]
+  - name: NIST AI Risk Management Framework
+    url: https://www.nist.gov/itl/ai-risk-management-framework
+    tier: government-primary
+    topics: [ai-governance, risk, measurement, oversight]

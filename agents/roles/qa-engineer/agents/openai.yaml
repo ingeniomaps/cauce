@@ -1,0 +1,4 @@
+interface:
+  display_name: "QA Engineer"
+  short_description: "Verifica calidad con evidencia y riesgo"
+  default_prompt: "Usa $qa-engineer para diseñar, ejecutar o revisar la estrategia de calidad de este cambio."

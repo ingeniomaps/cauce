@@ -1,0 +1,33 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: Company product docs status incidents support policies SLA and knowledge
+    url: local://customer-support-context
+    tier: company-primary
+    topics: [product, support, sla, incidents, troubleshooting, knowledge]
+  - name: Applicable customer consumer accessibility and sector authorities
+    url: local://support-official-sources
+    tier: legal-primary
+    topics: [customers, complaints, accessibility, privacy, sector]
+  - name: ISO 10002
+    url: https://www.iso.org/standard/71580.html
+    tier: primary-standard
+    topics: [complaints, accessibility, confidentiality, improvement]
+  - name: ISO 18295-1
+    url: https://www.iso.org/standard/64739.html
+    tier: primary-standard
+    topics: [contact-centres, customer-experience, operations]
+  - name: ITIL
+    url: https://www.peoplecert.org/browse-certifications/it-governance-and-service-management/ITIL-1
+    tier: primary-framework
+    topics: [incident-management, service-desk, knowledge]
+  - name: W3C Writing for Accessibility
+    url: https://www.w3.org/WAI/tips/writing/
+    tier: primary-standard
+    topics: [clear-instructions, headings, links, accessibility]

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Legal Counsel"
+  short_description: "Analiza riesgos jurídicos con trazabilidad"
+  default_prompt: "Usa $legal-counsel para analizar este asunto jurídico y preparar opciones para revisión profesional."

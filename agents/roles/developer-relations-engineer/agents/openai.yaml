@@ -1,0 +1,4 @@
+interface:
+  display_name: "Developer Relations Engineer"
+  short_description: "Impulsa adopción técnica con evidencia"
+  default_prompt: "Usa $developer-relations-engineer para diseñar, validar o mejorar esta experiencia, muestra o programa para desarrolladores."

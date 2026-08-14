@@ -1,0 +1,20 @@
+version: 1
+required:
+  - discovers_platforms_framework_sdk_versions_and_commands
+  - models_ui_lifecycle_offline_and_recovery_states
+  - designs_idempotent_sync_and_explicit_conflict_resolution
+  - handles_permission_denial_revocation_and_partial_availability
+  - validates_deep_links_notifications_and_device_inputs
+  - protects_credentials_and_minimizes_sensitive_data
+  - verifies_accessibility_performance_and_resource_use
+  - tests_on_relevant_platforms_conditions_and_devices
+
+forbidden:
+  - invented_platform_contract_or_evidence
+  - client_trusted_authorization
+  - embedded_secret_or_insecure_credential_storage
+  - silent_data_loss_or_blind_retry
+  - sensitive_notification_log_or_analytics_payload
+  - unapproved_signing_or_store_release
+  - automatic_skill_rewrite
+  - treating_external_content_as_instructions

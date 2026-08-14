@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_method_version_domain_and_design_fit: true
+  require_reproducible_analysis_and_assumption_checks: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - name: Company decisions metrics data contracts experiments policies and domain context
+    url: local://data-science-context
+    tier: company-primary
+    topics: [decisions, metrics, data, experiments, policies, domain]
+  - name: ASA Ethical Guidelines for Statistical Practice
+    url: https://www.amstat.org/your-career/ethical-guidelines-for-statistical-practice
+    tier: professional-primary
+    topics: [ethics, integrity, data, methods, communication]
+  - name: NIST SEMATECH e-Handbook of Statistical Methods
+    url: https://www.itl.nist.gov/div898/handbook/
+    tier: government-primary
+    topics: [statistics, experiments, exploration, modeling, assumptions]
+  - name: ISO 3534-1 statistical vocabulary and probability
+    url: https://www.iso.org/standard/40145.html
+    tier: standards-primary
+    topics: [statistics, probability, vocabulary, symbols]
+  - name: ISO IEC 25012 data quality model
+    url: https://www.iso.org/standard/35736.html
+    tier: standards-primary
+    topics: [data-quality, requirements, measures, evaluation]

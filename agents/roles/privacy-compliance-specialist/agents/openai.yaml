@@ -1,0 +1,4 @@
+interface:
+  display_name: "Privacy & Compliance Specialist"
+  short_description: "Traduce obligaciones en controles verificables"
+  default_prompt: "Usa $privacy-compliance-specialist para revisar la privacidad y el cumplimiento de este cambio."

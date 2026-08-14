@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend Engineer"
+  short_description: "Implementa interfaces accesibles, seguras y mantenibles"
+  default_prompt: "Usa $frontend-engineer para implementar o revisar esta funcionalidad frontend."

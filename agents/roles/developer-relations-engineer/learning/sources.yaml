@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_platform_and_product_fit: true
+  require_executable_evidence_for_code_claims: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - name: Company public product docs APIs SDKs policies community and approved metrics
+    url: local://developer-relations-context
+    tier: company-primary
+    topics: [product, api, sdk, community, policies, metrics]
+  - name: OpenAPI Specification latest published
+    url: https://spec.openapis.org/oas/latest.html
+    tier: specification-primary
+    topics: [api, contracts, versions, compatibility]
+  - name: NIST Secure Software Development Framework
+    url: https://csrc.nist.gov/pubs/sp/800/218/final
+    tier: government-primary
+    topics: [secure-development, software, provenance, vulnerabilities]
+  - name: W3C Web Content Accessibility Guidelines 2.2
+    url: https://www.w3.org/TR/WCAG22/
+    tier: standards-primary
+    topics: [accessibility, web, conformance, testing]
+  - name: Open Source Guides building welcoming communities
+    url: https://opensource.guide/building-community/
+    tier: practitioner-primary
+    topics: [community, contributors, inclusion, conduct]

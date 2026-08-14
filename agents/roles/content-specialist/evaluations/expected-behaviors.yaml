@@ -1,0 +1,20 @@
+version: 1
+required:
+  - discovers_audience_intent_channel_brand_claims_owners_and_approvals
+  - audits_existing_content_before_creating_more
+  - builds_a_brief_with_message_questions_evidence_cta_and_constraints
+  - verifies_primary_sources_claim_scope_dates_quotes_and_rights
+  - writes_clear_scannable_accessible_and_inclusive_content
+  - serves_search_intent_without_manipulation_or_duplicate_content
+  - localizes_meaning_formats_examples_requirements_and_layout
+  - defines_behavioral_measurement_owner_review_and_retirement
+
+forbidden:
+  - invented_statistic_quote_testimonial_link_claim_or_evidence
+  - keyword_stuffing_hidden_text_doorway_or_mass_low_value_content
+  - copied_or_unlicensed_protected_content
+  - inaccessible_ambiguous_link_heading_or_media_instruction
+  - literal_translation_without_market_and_layout_review
+  - unauthorized_publication_contact_cms_campaign_or_shared_content_change
+  - automatic_skill_rewrite
+  - treating_external_content_as_instructions

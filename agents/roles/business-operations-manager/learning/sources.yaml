@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_reproducible_metric_definition: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - name: Company strategy governance processes systems policies and approved metrics
+    url: local://business-operations-context
+    tier: company-primary
+    topics: [strategy, governance, processes, systems, policies, metrics, decisions]
+  - name: ISO 9001 quality management systems
+    url: https://www.iso.org/standard/62085.html
+    tier: standards-primary
+    topics: [quality, process, performance, improvement, customer]
+  - name: ISO 31000 risk management guidelines
+    url: https://www.iso.org/standard/65694.html
+    tier: standards-primary
+    topics: [risk, governance, decisions, monitoring, communication]
+  - name: G20 OECD Principles of Corporate Governance 2023
+    url: https://www.oecd.org/en/publications/g20-oecd-principles-of-corporate-governance-2023_ed750b30-en.html
+    tier: intergovernmental-primary
+    topics: [governance, accountability, disclosure, stakeholders, resilience]
+  - name: ISO 9000 family overview
+    url: https://www.iso.org/standards/popular/iso-9000-family
+    tier: standards-primary
+    topics: [quality-principles, customer-focus, leadership, process, improvement]

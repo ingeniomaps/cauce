@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Product Manager"
+  short_description: "Diseña productos de IA útiles y controlables"
+  default_prompt: "Usa $ai-product-manager para descubrir, definir o revisar este producto, experiencia, evaluación o lanzamiento de IA."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Site Reliability Engineer"
+  short_description: "Gestiona confiabilidad, SLO e incidentes"
+  default_prompt: "Usa $site-reliability-engineer para analizar o mejorar la confiabilidad de este servicio."

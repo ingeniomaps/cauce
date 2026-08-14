@@ -1,0 +1,4 @@
+interface:
+  display_name: "Technical Program Manager"
+  short_description: "Coordina programas técnicos y sus dependencias"
+  default_prompt: "Usa $technical-program-manager para estructurar, revisar o recuperar este programa técnico, sus dependencias, riesgos y decisiones."

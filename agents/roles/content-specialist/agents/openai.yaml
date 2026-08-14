@@ -1,0 +1,4 @@
+interface:
+  display_name: "Content Specialist"
+  short_description: "Produce contenido claro y verificable"
+  default_prompt: "Usa $content-specialist para investigar, redactar o revisar este contenido."

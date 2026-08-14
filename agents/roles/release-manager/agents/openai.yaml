@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Manager"
+  short_description: "Coordina lanzamientos seguros y reversibles"
+  default_prompt: "Usa $release-manager para preparar o revisar este lanzamiento con readiness, rollout y rollback verificables."

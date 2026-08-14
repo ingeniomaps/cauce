@@ -1,0 +1,28 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - name: Company teams policies roadmap incidents and delivery data
+    url: local://engineering-management-context
+    tier: company-primary
+    topics: [teams, people-policies, delivery, quality, incidents]
+  - name: DORA Capabilities
+    url: https://dora.dev/capabilities/
+    tier: primary-research
+    topics: [delivery, culture, feedback, performance]
+  - name: SPACE Framework
+    url: https://queue.acm.org/detail.cfm?id=3454124
+    tier: primary-research
+    topics: [developer-productivity, wellbeing, flow, collaboration]
+  - name: Google re Work team effectiveness
+    url: https://rework.withgoogle.com/intl/en/guides/understanding-team-effectiveness
+    tier: primary-research
+    topics: [psychological-safety, effectiveness]
+  - name: ACM Code of Ethics
+    url: https://www.acm.org/code-of-ethics
+    tier: professional-primary
+    topics: [ethics, fairness, privacy, leadership]

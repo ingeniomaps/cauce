@@ -1,0 +1,4 @@
+interface:
+  display_name: "Customer Success Manager"
+  short_description: "Convierte adopción en resultados del cliente"
+  default_prompt: "Usa $customer-success-manager para diseñar o revisar el plan de éxito de este cliente."

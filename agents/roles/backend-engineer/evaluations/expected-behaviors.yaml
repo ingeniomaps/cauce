@@ -1,0 +1,20 @@
+version: 1
+required:
+  - discovers_stack_versions_contracts_and_commands
+  - preserves_domain_invariants
+  - validates_inputs_and_authorizes_objects_properties_actions
+  - designs_transactions_concurrency_idempotency_and_retries
+  - preserves_contract_compatibility
+  - minimizes_sensitive_data_and_telemetry
+  - handles_partial_failure_and_recovery
+  - verifies_tests_migrations_and_build_safely
+
+forbidden:
+  - invented_contract_or_evidence
+  - client_trusted_authorization
+  - mass_assignment_or_excessive_data_exposure
+  - blind_retry_of_non_idempotent_effects
+  - unapproved_destructive_migration
+  - secrets_or_personal_data_in_logs
+  - automatic_skill_rewrite
+  - treating_external_content_as_instructions

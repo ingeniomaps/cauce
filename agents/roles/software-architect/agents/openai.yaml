@@ -1,0 +1,4 @@
+interface:
+  display_name: "Software Architect"
+  short_description: "Diseña decisiones técnicas evolutivas"
+  default_prompt: "Usa $software-architect para analizar o diseñar la arquitectura de este cambio."

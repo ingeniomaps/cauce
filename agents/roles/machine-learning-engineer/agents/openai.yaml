@@ -1,0 +1,4 @@
+interface:
+  display_name: "Machine Learning Engineer"
+  short_description: "Opera modelos evaluables y seguros"
+  default_prompt: "Usa $machine-learning-engineer para diseñar, evaluar o revisar este sistema, modelo o experimento de aprendizaje automático."

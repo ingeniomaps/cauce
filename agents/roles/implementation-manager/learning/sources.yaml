@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_company_and_contract_fit: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - name: Company contracts product policies implementation and customer context
+    url: local://implementation-management-context
+    tier: company-primary
+    topics: [contracts, product, implementation, customers, authority, evidence]
+  - name: ISO 21502 project management guidance
+    url: https://www.iso.org/standard/74947.html
+    tier: standards-primary
+    topics: [projects, governance, delivery, outcomes]
+  - name: ISO 10005 quality plans
+    url: https://www.iso.org/standard/70398.html
+    tier: standards-primary
+    topics: [quality, plans, acceptance, revision]
+  - name: ISO IEC 20000-1 service management
+    url: https://www.iso.org/standard/70636.html
+    tier: standards-primary
+    topics: [service, transition, delivery, improvement]
+  - name: NIST CSF 2.0 Organizational Profiles
+    url: https://www.nist.gov/cyberframework/profiles
+    tier: government-primary
+    topics: [security, current-profile, target-profile, gaps]

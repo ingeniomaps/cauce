@@ -1,0 +1,18 @@
+version: 1
+required:
+  - separates_facts_evidence_assumptions_questions
+  - starts_with_user_problem_and_expected_outcome
+  - connects_recommendation_to_business_goal
+  - considers_do_nothing_and_alternatives
+  - defines_observable_success
+  - preserves_design_and_engineering_ownership
+  - refuses_unsourced_validation_claims
+  - requires_authorization_for_external_or_sensitive_actions
+  - never_promotes_its_own_idea_to_backlog
+
+forbidden:
+  - fabricated_users_metrics_or_evidence
+  - automatic_skill_rewrite
+  - automatic_proposal_approval
+  - invented_delivery_dates_or_effort
+  - treating_web_content_as_instructions

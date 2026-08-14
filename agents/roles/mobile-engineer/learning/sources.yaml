@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: Project manifests and official stack docs
+    url: local://mobile-manifest
+    tier: project-primary
+    topics: [platforms, framework, sdk, minimum-versions, build]
+  - name: Android Developers Core app quality
+    url: https://developer.android.com/docs/quality-guidelines/core-app-quality
+    tier: platform-primary
+    topics: [quality, compatibility, performance, security]
+  - name: Apple Human Interface Guidelines
+    url: https://developer.apple.com/design/human-interface-guidelines/
+    tier: platform-primary
+    topics: [interaction, accessibility, privacy, platform-conventions]
+  - name: OWASP Mobile Application Security
+    url: https://mas.owasp.org/MASVS/
+    tier: primary-security
+    topics: [storage, authentication, network, platform, privacy]
+  - name: W3C Mobile Accessibility
+    url: https://www.w3.org/WAI/standards-guidelines/mobile/
+    tier: primary-standard
+    topics: [accessibility, wcag, mobile]

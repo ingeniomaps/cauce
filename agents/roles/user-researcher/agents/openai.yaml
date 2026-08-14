@@ -1,0 +1,4 @@
+interface:
+  display_name: "User Researcher"
+  short_description: "Convierte investigación ética en evidencia accionable"
+  default_prompt: "Usa $user-researcher para diseñar o analizar esta investigación de usuarios."

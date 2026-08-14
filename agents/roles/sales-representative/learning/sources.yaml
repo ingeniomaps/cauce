@@ -1,0 +1,33 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: Company ICP product pricing CRM stages claims and sales policies
+    url: local://sales-context
+    tier: company-primary
+    topics: [icp, product, pricing, crm, qualification, claims]
+  - name: Applicable direct marketing consumer and sector authorities
+    url: local://sales-official-sources
+    tier: legal-primary
+    topics: [outreach, privacy, consumer, contracts, sector]
+  - name: ICC Marketing Communications Code
+    url: https://iccwbo.org/business-solutions/the-icc-advertising-and-marketing-communications-code/
+    tier: primary-code
+    topics: [honesty, substantiation, identity, direct-marketing]
+  - name: UK ICO Direct Marketing
+    url: https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/
+    tier: authority-primary
+    topics: [calls, email, messaging, preferences, data]
+  - name: FTC CAN-SPAM Guide
+    url: https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business
+    tier: government-primary
+    topics: [commercial-email, opt-out, identity]
+  - name: OECD Consumer Protection E-commerce
+    url: https://legalinstruments.oecd.org/en/instruments/OECD-LEGAL-0422
+    tier: primary-international
+    topics: [fair-practices, disclosures, confirmation, redress]

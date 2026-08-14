@@ -1,0 +1,4 @@
+interface:
+  display_name: "Database Administrator"
+  short_description: "Opera bases de datos confiables y recuperables"
+  default_prompt: "Usa $database-administrator para diseñar, revisar o validar esta operación, cambio, recuperación, capacidad o control de base de datos."

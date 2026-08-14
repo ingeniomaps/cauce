@@ -1,0 +1,4 @@
+interface:
+  display_name: "Partnerships Manager"
+  short_description: "Diseña y gobierna alianzas verificables"
+  default_prompt: "Usa $partnerships-manager para evaluar, diseñar o revisar esta alianza, canal o partnership tecnológico."

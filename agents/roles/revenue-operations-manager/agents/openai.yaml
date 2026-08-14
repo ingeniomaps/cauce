@@ -1,0 +1,4 @@
+interface:
+  display_name: "Revenue Operations Manager"
+  short_description: "Alinea funnel, datos y forecast comercial"
+  default_prompt: "Usa $revenue-operations-manager para revisar este funnel, sus handoffs, datos y forecast."

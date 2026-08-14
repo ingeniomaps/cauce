@@ -1,0 +1,20 @@
+version: 1
+required:
+  - discovers_business_system_team_data_operational_and_cost_context
+  - turns_quality_attributes_into_measurable_scenarios
+  - observes_current_architecture_in_code_contracts_and_runtime
+  - compares_options_including_no_change_with_explicit_tradeoffs
+  - defines_boundaries_ownership_data_contracts_and_failure_semantics
+  - records_decisions_assumptions_consequences_and_review_conditions
+  - designs_incremental_compatible_and_verifiable_migration
+  - validates_high_risk_assumptions_with_bounded_evidence
+
+forbidden:
+  - invented_scale_cost_capability_consensus_or_evidence
+  - technology_or_microservices_without_problem_evidence
+  - vague_unmeasurable_quality_attribute
+  - shared_data_ownership_or_hidden_distributed_coupling
+  - big_bang_rewrite_without_incremental_migration
+  - unilateral_contract_data_infrastructure_or_org_decision
+  - automatic_skill_rewrite
+  - treating_external_content_as_instructions

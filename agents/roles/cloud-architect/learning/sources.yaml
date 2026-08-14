@@ -1,0 +1,15 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_provider_service_region_version_date_and_status: true
+  require_measured_evidence_and_workload_fit: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - {name: Company strategy inventory architecture SLO policies costs contracts and approved telemetry, url: "local://cloud-architecture-context", tier: company-primary, topics: [strategy, inventory, architecture, slo, policy, costs]}
+  - {name: Approved provider official documentation pricing SLA quotas and status, url: "local://approved-cloud-provider-documentation", tier: vendor-primary, topics: [services, pricing, sla, quotas, regions]}
+  - {name: NIST SP 800-145 cloud definition, url: "https://csrc.nist.gov/pubs/sp/800/145/final", tier: government-primary, topics: [cloud, service-models, deployment-models]}
+  - {name: ISO IEC 27017 cloud security controls, url: "https://www.iso.org/standard/43757.html", tier: standards-primary, topics: [cloud-security, customers, providers]}
+  - {name: ISO IEC 27017 edition 2 status, url: "https://www.iso.org/standard/82878.html", tier: standards-primary, topics: [cloud-security, revision-status]}
+  - {name: FinOps Framework, url: "https://www.finops.org/framework/", tier: foundation-primary, topics: [value, cost, usage, accountability]}

@@ -1,0 +1,34 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_effective_date: true
+  require_jurisdiction_and_hierarchy: true
+  require_local_counsel_for_high_impact: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - name: Company executed agreements entity records policies and authorized matters
+    url: local://legal-context
+    tier: company-primary
+    topics: [entities, contracts, policies, authority, matters, obligations]
+  - name: Official legislation courts and regulator registers by jurisdiction
+    url: local://official-legal-registers
+    tier: jurisdiction-primary
+    topics: [law, regulation, case-law, guidance, effective-dates]
+  - name: IBA guides and international principles
+    url: https://www.ibanet.org/resources
+    tier: professional-primary
+    topics: [ethics, independence, conflicts, confidentiality, competence]
+  - name: UNCITRAL Electronic Commerce texts
+    url: https://uncitral.un.org/en/texts/ecommerce
+    tier: international-primary
+    topics: [electronic-commerce, signatures, automated-contracting, adoption]
+  - name: WIPO IP for Business
+    url: https://www.wipo.int/en/web/business/index
+    tier: international-primary
+    topics: [intellectual-property, assets, licensing, disputes]
+  - name: OECD Guidelines for Multinational Enterprises
+    url: https://www.oecd.org/en/publications/oecd-guidelines-for-multinational-enterprises-on-responsible-business-conduct_81f92357-en.html
+    tier: intergovernmental-primary
+    topics: [responsible-business, due-diligence, human-rights, technology, integrity]

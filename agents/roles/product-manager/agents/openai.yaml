@@ -1,0 +1,4 @@
+interface:
+  display_name: "Product Manager"
+  short_description: "Convierte problemas de cliente en decisiones de producto"
+  default_prompt: "Usa $product-manager para analizar esta oportunidad y proponer el siguiente resultado de producto."

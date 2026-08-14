@@ -1,0 +1,30 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_reproducible_metric_definition: true
+  require_finance_approval_for_accounting: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - name: Company go to market policies systems contracts and approved metrics
+    url: local://revenue-operations-context
+    tier: company-primary
+    topics: [gtm, lifecycle, crm, contracts, billing, finance, metrics]
+  - name: ISO 8000-61 data quality management
+    url: https://www.iso.org/standard/63086.html
+    tier: standards-primary
+    topics: [data-quality, process, capability, maturity]
+  - name: IFRS 15 revenue from contracts with customers
+    url: https://www.ifrs.org/issued-standards/list-of-standards/ifrs-15-revenue-from-contracts-with-customers/
+    tier: accounting-primary
+    topics: [contracts, performance-obligations, transaction-price, revenue]
+  - name: ISO 9000 quality management family
+    url: https://www.iso.org/standards/popular/iso-9000-family
+    tier: standards-primary
+    topics: [customer-focus, process, measurement, improvement]
+  - name: OECD consumer protection in electronic commerce
+    url: https://www.oecd.org/en/publications/guidelines-for-consumer-protection-in-the-context-of-electronic-commerce_9789264081109-en-fr.html
+    tier: intergovernmental-primary
+    topics: [marketing, transactions, payments, privacy, redress]

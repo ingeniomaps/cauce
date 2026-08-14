@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_platform_jurisdiction_and_community_fit: true
+  require_consent_and_deidentification_for_member_evidence: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - name: Company community policies channels product members and approved metrics
+    url: local://community-management-context
+    tier: company-primary
+    topics: [community, policies, channels, product, members, metrics]
+  - name: Contributor Covenant 3.0
+    url: https://www.contributor-covenant.org/version/3/0/code_of_conduct/
+    tier: practitioner-primary
+    topics: [conduct, safety, reporting, enforcement]
+  - name: GitHub community management and moderation
+    url: https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/about-community-management-and-moderation
+    tier: platform-primary
+    topics: [community, moderation, platform, tools]
+  - name: W3C Web Content Accessibility Guidelines 2.2
+    url: https://www.w3.org/TR/WCAG22/
+    tier: standards-primary
+    topics: [accessibility, inclusion, web, conformance]
+  - name: OECD privacy principles
+    url: https://www.oecd.org/en/topics/privacy-principles.html
+    tier: intergovernmental-primary
+    topics: [privacy, collection, purpose, use, accountability]

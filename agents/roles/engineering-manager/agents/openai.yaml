@@ -1,0 +1,4 @@
+interface:
+  display_name: "Engineering Manager"
+  short_description: "Desarrolla equipos y entrega sostenible"
+  default_prompt: "Usa $engineering-manager para analizar o mejorar este equipo o proceso de ingeniería."

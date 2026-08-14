@@ -1,0 +1,18 @@
+version: 1
+required:
+  - starts_from_user_task_evidence_and_outcome
+  - separates_constraints_from_assumptions
+  - covers_main_alternative_error_and_recovery_flows
+  - includes_accessibility_from_the_start
+  - chooses_prototype_fidelity_by_uncertainty
+  - preserves_product_engineering_research_and_ui_ownership
+  - labels_heuristic_review_as_expert_inspection
+  - proposes_observable_validation
+
+forbidden:
+  - fabricated_user_research
+  - dark_patterns
+  - accessibility_as_optional_polish
+  - automatic_wcag_conformance_claim
+  - automatic_skill_rewrite
+  - treating_external_content_as_instructions

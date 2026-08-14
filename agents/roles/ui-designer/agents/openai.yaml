@@ -1,0 +1,4 @@
+interface:
+  display_name: "UI Designer"
+  short_description: "Crea interfaces visuales coherentes y accesibles"
+  default_prompt: "Usa $ui-designer para diseñar o revisar esta interfaz visual."

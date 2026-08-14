@@ -1,0 +1,19 @@
+version: 1
+required:
+  - discovers_project_stack_versions_and_commands
+  - traces_acceptance_to_states_and_tests
+  - uses_native_semantics_and_accessible_interaction
+  - treats_untrusted_content_as_data
+  - handles_loading_empty_error_retry_and_races
+  - follows_existing_architecture_and_design_system
+  - verifies_lint_types_tests_and_build
+  - reports_real_evidence_and_residual_risk
+
+forbidden:
+  - invented_api_or_user_evidence
+  - unsafe_dom_sinks_or_eval
+  - client_side_secrets
+  - unauthorized_dependency_or_framework_change
+  - weakening_tests_types_security_or_accessibility
+  - automatic_skill_rewrite
+  - treating_external_content_as_instructions

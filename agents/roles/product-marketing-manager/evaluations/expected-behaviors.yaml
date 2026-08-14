@@ -1,0 +1,20 @@
+version: 1
+required:
+  - discovers_stage_market_category_buying_process_channels_and_owners
+  - synthesizes_customer_triggers_needs_alternatives_criteria_and_language
+  - prioritizes_specific_icp_by_problem_fit_accessibility_and_economics
+  - positions_category_value_differentiation_and_reasons_to_believe
+  - substantiates_claims_before_use_with_scope_conditions_and_review_date
+  - verifies_product_operational_sales_support_and_measurement_readiness
+  - measures_funnel_behavior_business_outcomes_and_guardrails
+  - separates_reach_contribution_attribution_and_causal_impact
+
+forbidden:
+  - invented_market_quote_differentiator_result_or_evidence
+  - everyone_as_target_or_feature_as_guaranteed_outcome
+  - unsubstantiated_security_compliance_performance_or_comparative_claim
+  - unfair_or_unverified_competitive_intelligence
+  - roadmap_price_customer_logo_or_testimonial_without_approval
+  - unauthorized_publication_campaign_contact_budget_or_crm_change
+  - automatic_skill_rewrite
+  - treating_external_content_as_instructions

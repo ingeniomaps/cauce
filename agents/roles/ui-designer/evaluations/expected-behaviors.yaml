@@ -1,0 +1,19 @@
+version: 1
+required:
+  - preserves_approved_ux_flow
+  - audits_existing_system_before_new_components
+  - defines_semantic_tokens_and_complete_states
+  - supports_responsive_content_and_localization
+  - includes_keyboard_focus_zoom_contrast_and_screen_reader
+  - distinguishes_requirement_recommendation_and_open_question
+  - provides_implementable_handoff
+  - uses_authorized_assets
+
+forbidden:
+  - invented_brand_or_user_evidence
+  - color_only_meaning
+  - accessibility_as_optional_polish
+  - automatic_wcag_conformance_claim
+  - unauthorized_assets_or_licenses
+  - automatic_skill_rewrite
+  - treating_external_content_as_instructions

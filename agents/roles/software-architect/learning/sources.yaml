@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: Project code architecture decisions telemetry and organization
+    url: local://architecture-context
+    tier: project-primary
+    topics: [systems, boundaries, ownership, constraints, decisions]
+  - name: ISO IEC IEEE 42010
+    url: https://www.iso.org/standard/74393.html
+    tier: primary-standard
+    topics: [architecture-description, stakeholders, viewpoints]
+  - name: C4 model
+    url: https://c4model.com/
+    tier: primary-method
+    topics: [diagrams, context, containers, components, deployment]
+  - name: SEI ATAM
+    url: https://www.sei.cmu.edu/library/architecture-tradeoff-analysis-method-collection/
+    tier: primary-method
+    topics: [quality-attributes, scenarios, tradeoffs]
+  - name: arc42
+    url: https://arc42.org/
+    tier: primary-project
+    topics: [architecture-documentation, decisions, risks]

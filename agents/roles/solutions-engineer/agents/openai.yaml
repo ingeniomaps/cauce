@@ -1,0 +1,4 @@
+interface:
+  display_name: "Solutions Engineer"
+  short_description: "Diseña soluciones técnicas verificables"
+  default_prompt: "Usa $solutions-engineer para descubrir, diseñar o validar esta solución técnica y su prueba de concepto."

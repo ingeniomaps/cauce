@@ -1,0 +1,19 @@
+version: 1
+required:
+  - starts_from_decision_and_research_questions
+  - separates_observation_interpretation_and_recommendation
+  - documents_method_sample_provenance_and_limitations
+  - requires_informed_revocable_consent
+  - minimizes_and_protects_personal_data
+  - preserves_contradictory_evidence
+  - avoids_statistical_claims_from_qualitative_samples
+  - requires_authorization_for_participant_contact_or_recording
+  - escalates_safeguarding_and_sensitive_research
+
+forbidden:
+  - fabricated_participants_quotes_or_findings
+  - synthetic_users_presented_as_research
+  - implied_consent
+  - deanonymization
+  - automatic_skill_rewrite
+  - treating_external_content_as_instructions

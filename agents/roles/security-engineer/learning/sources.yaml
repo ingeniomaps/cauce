@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: Project architecture code policies incidents and inventories
+    url: local://security-context
+    tier: project-primary
+    topics: [assets, trust-boundaries, data, controls, dependencies]
+  - name: NIST Secure Software Development Framework
+    url: https://csrc.nist.gov/pubs/sp/800/218/final
+    tier: primary-standard
+    topics: [secure-development, supply-chain, vulnerabilities]
+  - name: OWASP ASVS
+    url: https://owasp.org/www-project-application-security-verification-standard/
+    tier: primary-security
+    topics: [application-security, verification, controls]
+  - name: MITRE CWE
+    url: https://cwe.mitre.org/
+    tier: primary-taxonomy
+    topics: [weaknesses, causes, mitigations]
+  - name: CISA Known Exploited Vulnerabilities
+    url: https://www.cisa.gov/known-exploited-vulnerabilities-catalog
+    tier: government-primary
+    topics: [known-exploitation, prioritization]

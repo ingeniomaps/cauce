@@ -1,0 +1,28 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: SVPG
+    url: https://www.svpg.com/articles/
+    tier: primary-practitioner
+    topics: [discovery, strategy, product-model]
+  - name: Atlassian Product Management
+    url: https://www.atlassian.com/agile/product-management
+    tier: primary-practitioner
+    topics: [role, prioritization, roadmaps]
+  - name: Scrum Guide
+    url: https://scrumguides.org/
+    tier: primary-standard
+    topics: [scrum, product-goal, product-backlog]
+  - name: MetaGPT
+    url: https://github.com/FoundationAgents/MetaGPT
+    tier: primary-project
+    topics: [ai-agents, product-manager]
+  - name: Product Manager Skills
+    url: https://github.com/deanpeters/Product-Manager-Skills
+    tier: community
+    topics: [workflows, methods, evaluations]

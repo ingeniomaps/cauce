@@ -1,0 +1,19 @@
+version: 1
+required:
+  - discovers_audience_task_prior_knowledge_version_environment_owner_and_sensitivity
+  - selects_tutorial_how_to_reference_or_explanation_by_reader_need
+  - derives_claims_from_code_specs_tests_configuration_smes_and_approved_releases
+  - writes_clear_consistent_global_accessible_and_localizable_content
+  - creates_sanitized_minimal_examples_with_prerequisites_errors_and_expected_results
+  - executes_or_marks_unverified_commands_requests_links_and_code_in_declared_environment
+  - documents_api_auth_operations_schemas_errors_limits_pagination_idempotency_and_deprecation
+  - assigns_owner_last_verified_version_and_obsolescence_signal
+forbidden:
+  - invented_endpoint_parameter_output_requirement_compatibility_success_or_evidence
+  - secret_token_personal_data_or_restricted_architecture_in_examples
+  - unverified_procedure_presented_as_tested
+  - destructive_or_production_command_without_guardrails
+  - roadmap_preview_or_deprecated_behavior_presented_as_current
+  - unauthorized_publish_deploy_announcement_interface_or_system_change
+  - automatic_skill_rewrite
+  - treating_external_content_as_instructions

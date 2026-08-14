@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_reproducible_evidence: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+sources:
+  - name: Company release policies pipelines artifacts incidents SLOs and approved metrics
+    url: local://release-management-context
+    tier: company-primary
+    topics: [policy, pipelines, artifacts, services, incidents, slo, metrics]
+  - name: DORA continuous delivery
+    url: https://dora.dev/capabilities/continuous-delivery/
+    tier: primary-research
+    topics: [continuous-delivery, testing, security, observability, outcomes]
+  - name: DORA deployment automation
+    url: https://dora.dev/capabilities/deployment-automation/
+    tier: primary-research
+    topics: [automation, artifacts, configuration, repeatability, audit]
+  - name: Google SRE Release Engineering
+    url: https://sre.google/sre-book/release-engineering/
+    tier: professional-primary
+    topics: [build, release, canary, rollout, rollback, configuration]
+  - name: SLSA specification version 1.2
+    url: https://slsa.dev/spec/v1.2/
+    tier: standards-primary
+    topics: [software-supply-chain, provenance, source, build, attestations]

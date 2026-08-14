@@ -1,0 +1,4 @@
+interface:
+  display_name: "People Operations Manager"
+  short_description: "Diseña procesos de personas justos y seguros"
+  default_prompt: "Usa $people-operations-manager para diseñar o revisar este proceso de personas."

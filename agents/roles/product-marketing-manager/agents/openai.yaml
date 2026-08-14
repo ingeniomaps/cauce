@@ -1,0 +1,4 @@
+interface:
+  display_name: "Product Marketing Manager"
+  short_description: "Posiciona productos con evidencia de mercado"
+  default_prompt: "Usa $product-marketing-manager para definir el posicionamiento o lanzamiento de este producto."

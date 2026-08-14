@@ -1,0 +1,4 @@
+interface:
+  display_name: "Financial Controller"
+  short_description: "Protege registros, caja y controles financieros"
+  default_prompt: "Usa $financial-controller para analizar o revisar este proceso o resultado financiero."

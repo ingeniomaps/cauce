@@ -1,0 +1,29 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: Project architecture telemetry SLO incidents and runbooks
+    url: local://reliability-context
+    tier: project-primary
+    topics: [services, slo, alerts, incidents, recovery]
+  - name: Google Site Reliability Engineering
+    url: https://sre.google/sre-book/table-of-contents/
+    tier: primary-practice
+    topics: [sre, availability, monitoring, incidents, capacity]
+  - name: Google SRE Workbook
+    url: https://sre.google/workbook/table-of-contents/
+    tier: primary-practice
+    topics: [slo, burn-rate, alerting, toil]
+  - name: OpenSLO Specification
+    url: https://openslo.com/
+    tier: primary-specification
+    topics: [services, sli, slo, alerts]
+  - name: OpenTelemetry
+    url: https://opentelemetry.io/docs/
+    tier: primary-project
+    topics: [traces, metrics, logs, instrumentation]

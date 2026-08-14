@@ -1,0 +1,4 @@
+interface:
+  display_name: "Technical Writer"
+  short_description: "Documenta productos y sistemas con evidencia"
+  default_prompt: "Usa $technical-writer para crear o revisar esta documentación técnica para su audiencia real."

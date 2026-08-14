@@ -1,0 +1,4 @@
+interface:
+  display_name: "DevOps Engineer"
+  short_description: "Automatiza entregas e infraestructura seguras"
+  default_prompt: "Usa $devops-engineer para diseñar, implementar o revisar esta entrega o infraestructura."
