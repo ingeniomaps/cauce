@@ -8,7 +8,7 @@ runner="$ops_root/.ops/engine/hooks/run.js"
 [ -f "$runner" ] || runner="$ops_root/engine/hooks/run.js"
 
 if [ ! -f "$runner" ]; then
-  echo "BLOQUEADO [$hook_name]: no se encontró el motor de hooks de Project Ops." >&2
+  echo "BLOQUEADO [$hook_name]: no se encontró el motor de hooks de Cauce." >&2
   echo "  Buscado en: $ops_root/.ops/engine/hooks/run.js" >&2
   echo "           y: $ops_root/engine/hooks/run.js" >&2
   exit 2

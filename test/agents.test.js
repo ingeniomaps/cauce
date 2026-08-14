@@ -29,7 +29,7 @@ function run(args, cwd = path.dirname(CLI)) {
 }
 
 function installedProject(name) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'project-ops-agents-'))
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-agents-'))
   const target = path.join(root, 'demo-ops')
   const result = run(['init', target, '--name', name, '--mode', 'sidecar'])
   assert.equal(result.status, 0, result.stderr)

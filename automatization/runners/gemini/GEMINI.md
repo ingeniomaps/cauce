@@ -1,4 +1,4 @@
-# Project Ops para Gemini CLI
+# Cauce para Gemini CLI
 
 @AGENTS.md
 @planning/PROTOCOL.md

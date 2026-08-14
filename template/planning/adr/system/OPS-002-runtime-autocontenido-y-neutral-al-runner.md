@@ -3,7 +3,7 @@
 **Estado:** Aceptado
 **Fecha:** 2026-08-14
 
-> Decide cómo se instala y ejecuta Project Ops; no elige qué runner debe usar cada proyecto.
+> Decide cómo se instala y ejecuta Cauce; no elige qué runner debe usar cada proyecto.
 
 ## Contexto
 

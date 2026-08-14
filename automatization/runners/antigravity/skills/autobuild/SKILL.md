@@ -1,6 +1,6 @@
 ---
 name: autobuild
-description: Ejecuta el siguiente hito aprobado siguiendo el protocolo Project Ops.
+description: Ejecuta el siguiente hito aprobado siguiendo el protocolo Cauce.
 ---
 
 Lee completos `AGENTS.md`, `planning/PROTOCOL.md` y `planning/WIP.md`. Si existe

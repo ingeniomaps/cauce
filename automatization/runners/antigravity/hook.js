@@ -25,7 +25,7 @@ function findRoot(input) {
       current = parent
     }
   }
-  throw new Error('No se encontró una raíz Project Ops desde el workspace de Antigravity.')
+  throw new Error('No se encontró una raíz Cauce desde el workspace de Antigravity.')
 }
 
 function runtimeAt(root) {
@@ -64,8 +64,8 @@ function evaluate(event, input) {
     hooks.executeAll([event], normalized)
     return event === 'stop' ? { decision: 'stop' } : { decision: 'allow' }
   } catch (error) {
-    if (event === 'stop') return { decision: 'continue', reason: `Project Ops: ${error.message}` }
-    return { decision: 'deny', reason: `Project Ops: ${error.message}` }
+    if (event === 'stop') return { decision: 'continue', reason: `Cauce: ${error.message}` }
+    return { decision: 'deny', reason: `Cauce: ${error.message}` }
   }
 }
 

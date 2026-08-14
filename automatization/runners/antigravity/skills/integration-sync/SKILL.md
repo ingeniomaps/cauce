@@ -1,6 +1,6 @@
 ---
 name: integration-sync
-description: Sincroniza en modo lectura un proveedor externo hacia el staging local de Project Ops.
+description: Sincroniza en modo lectura un proveedor externo hacia el staging local de Cauce.
 ---
 
 Lee `AGENTS.md`, `planning/PROTOCOL.md` e `integrations/README.md`. Confirma que el proveedor esté habilitado

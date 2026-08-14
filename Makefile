@@ -42,7 +42,7 @@ install-codex: ## Instala hooks para Codex en este proyecto
 install-gemini: ## Instala contexto, comandos y configuración para Gemini
 	@node engine/cli/ops.js automation install . gemini
 
-install-antigravity: ## Instala el plugin Project Ops para Antigravity CLI
+install-antigravity: ## Instala el plugin Cauce para Antigravity CLI
 	@node engine/cli/ops.js automation install . antigravity
 
 doctor-claude: ## Diagnostica la instalación de Claude

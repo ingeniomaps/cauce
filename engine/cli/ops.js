@@ -316,7 +316,7 @@ function tree(dir) {
   const { epics, milestones, done, wip, inbox, queued } = state
   const color = process.stdout.isTTY && !process.argv.includes('--no-color')
   const paint = (code, text) => color ? `\x1b[${code}m${text}\x1b[0m` : text
-  console.log(`\n${paint('1', 'PROJECT OPS')}\n`)
+  console.log(`\n${paint('1', 'CAUCE')}\n`)
   console.log(paint('1', 'ROADMAP'))
   if (!epics.length) console.log('  (sin épicas)')
   for (const epic of epics) {

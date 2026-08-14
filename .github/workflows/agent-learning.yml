@@ -76,7 +76,7 @@ jobs:
               exit 0
             fi
           done
-          echo "No se encontró el CLI de Project Ops." >&2
+          echo "No se encontró el CLI de Cauce." >&2
           exit 1
 
       - name: Validate current agent

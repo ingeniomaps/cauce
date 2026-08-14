@@ -314,7 +314,7 @@ function planningDrift(input) {
   if (!fs.existsSync(cli)) return
   const result = run(process.execPath, [cli, 'check', path.join(root, 'planning')], root)
   const session = String(input.session_id || input.sessionId || 'nosession').replace(/[^a-zA-Z0-9_-]/g, '_')
-  const marker = path.join(os.tmpdir(), `project-ops-drift-${session}`)
+  const marker = path.join(os.tmpdir(), `cauce-drift-${session}`)
   if (result.ok) {
     try { fs.unlinkSync(marker) } catch { /* already clean */ }
     return

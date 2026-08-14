@@ -1,4 +1,4 @@
-# Project Ops
+# Cauce
 
 Lee y cumple `AGENTS.md` y `planning/PROTOCOL.md` antes de ejecutar trabajo. `planning/WIP.md` es el mutex de
 ejecución y `planning/AWAITING_REVIEW.md` bloquea una corrida nueva. No promociones ideas desde INBOX, no

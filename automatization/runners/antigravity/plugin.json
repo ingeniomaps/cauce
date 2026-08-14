@@ -1,5 +1,5 @@
 {
   "$schema": "https://antigravity.google/schemas/v1/plugin.json",
-  "name": "project-ops",
-  "description": "Guards y workflows portables de Project Ops para Antigravity CLI."
+  "name": "cauce",
+  "description": "Guards y workflows portables de Cauce para Antigravity CLI."
 }

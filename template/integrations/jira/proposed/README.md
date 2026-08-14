@@ -19,4 +19,4 @@ estimateHours: 2
 Comportamiento que debe entregar el item.
 ```
 
-Estados: `draft`, `approved`, `published`. Project Ops valida y muestra el plan; nunca publica propuestas.
+Estados: `draft`, `approved`, `published`. Cauce valida y muestra el plan; nunca publica propuestas.

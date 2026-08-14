@@ -1,6 +1,6 @@
 ---
 name: integration-promote
-description: Promueve un borrador remoto ya revisado al roadmap local de Project Ops.
+description: Promueve un borrador remoto ya revisado al roadmap local de Cauce.
 ---
 
 Lee `AGENTS.md`, `planning/PROTOCOL.md` e `integrations/README.md`. Verifica que el draft solicitado exista y

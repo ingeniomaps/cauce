@@ -6,7 +6,7 @@ como conjunto o que cruzan sus límites.
 
 ## Namespaces
 
-- `system/OPS-NNN-*`: decisiones heredadas de Project Ops. Explican el protocolo instalado y no se renumeran.
+- `system/OPS-NNN-*`: decisiones heredadas de Cauce. Explican el protocolo instalado y no se renumeran.
 - `NNN-*`: decisiones propias del proyecto, numeradas correlativamente desde `001`.
 - `000-template.md`: molde para una decisión nueva; no representa una decisión vigente.
 

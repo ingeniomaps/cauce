@@ -38,7 +38,7 @@ test('automation list-hooks explica los guards disponibles', () => {
 })
 
 test('init produce una instancia autocontenida y no sobrescribe', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'project-ops-'))
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-'))
   const target = path.join(base, 'demo-ops')
   const created = run(['init', target, '--name', 'Demo', '--mode', 'sidecar'])
   assert.equal(created.status, 0, created.stderr)
@@ -103,7 +103,7 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.equal(fs.existsSync(path.join(target, '.gemini', 'commands', 'ops', 'autobuild.toml')), true)
   assert.equal(run(['automation', 'doctor', target, 'gemini']).status, 0)
   assert.equal(run(['automation', 'install', target, 'antigravity']).status, 0)
-  assert.equal(fs.existsSync(path.join(target, '.agents', 'plugins', 'project-ops', 'plugin.json')), true)
+  assert.equal(fs.existsSync(path.join(target, '.agents', 'plugins', 'cauce', 'plugin.json')), true)
   assert.equal(run(['automation', 'doctor', target, 'antigravity']).status, 0)
   assert.equal(fs.existsSync(path.join(target, 'organization', 'company.md')), true)
   assert.equal(fs.existsSync(path.join(target, 'agents', 'roles', 'product-manager', 'SKILL.md')), true)
@@ -138,7 +138,7 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
 })
 
 test('init rechaza destinos atravesados por symlinks', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'project-ops-symlink-'))
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-symlink-'))
   const target = path.join(base, 'project')
   const outside = path.join(base, 'outside')
   fs.mkdirSync(target)
@@ -150,7 +150,7 @@ test('init rechaza destinos atravesados por symlinks', () => {
 })
 
 test('check rechaza una tarea sin aceptación', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'project-ops-invalid-'))
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-invalid-'))
   const target = path.join(base, 'project')
   assert.equal(run(['init', target, '--name', 'Invalid', '--mode', 'embedded']).status, 0)
   const invalidBacklog = '# Backlog\n\n## Hito demo — Demo\n\n'
@@ -161,7 +161,7 @@ test('check rechaza una tarea sin aceptación', () => {
 })
 
 test('install reemplaza el wiring por guard suelto y conserva lo que no es suyo', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'project-ops-migrate-'))
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-migrate-'))
   const target = path.join(base, 'project')
   assert.equal(run(['init', target, '--name', 'Migrate', '--mode', 'sidecar']).status, 0)
   const settings = path.join(target, '.claude', 'settings.json')
@@ -210,7 +210,7 @@ test('check --json entrega estado consumible y conserva el exit code', () => {
   assert.deepEqual(report.errors, [])
   for (const field of ['epics', 'queued', 'done']) assert.equal(typeof report[field], 'number')
 
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'project-ops-json-'))
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-json-'))
   const target = path.join(base, 'project')
   assert.equal(run(['init', target, '--name', 'Json', '--mode', 'embedded']).status, 0)
   fs.writeFileSync(
@@ -240,7 +240,7 @@ test('tree --json refleja el mismo estado que la salida de texto', () => {
 })
 
 test('context entrega el contexto mínimo y respeta la precedencia del protocolo', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'project-ops-context-'))
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-context-'))
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Context', '--mode', 'sidecar']).status, 0)
   const planning = path.join(target, 'planning')
@@ -345,7 +345,7 @@ test('tree no muta archivos de estado', () => {
 })
 
 test('valida y archiva el ciclo completo de una épica', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'project-ops-cycle-'))
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-cycle-'))
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Cycle', '--mode', 'sidecar']).status, 0)
   const planning = path.join(target, 'planning')
@@ -409,7 +409,7 @@ service: app
 })
 
 test('Jira sincroniza ADF, preserva curación y promueve sin escribir remoto', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'project-ops-jira-'))
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-jira-'))
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Jira demo', '--mode', 'sidecar']).status, 0)
   fs.mkdirSync(path.join(base, 'app'))

@@ -1,10 +1,10 @@
 {
-  "name": "project-ops-system",
+  "name": "cauce",
   "version": "1.1.0",
   "description": "Sistema portable de planificación y ejecución verificable para cualquier proyecto",
   "type": "commonjs",
   "bin": {
-    "project-ops": "engine/cli/ops.js"
+    "cauce": "engine/cli/ops.js"
   },
   "scripts": {
     "ops": "node engine/cli/ops.js",

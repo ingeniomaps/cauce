@@ -1,4 +1,4 @@
-# Project Ops para Claude Code
+# Cauce para Claude Code
 
 @AGENTS.md
 @planning/PROTOCOL.md

@@ -1,4 +1,4 @@
-# Ops — sistema operativo reusable para proyectos
+# Cauce — sistema operativo reusable para proyectos
 
 Este repositorio convierte planificación escrita en un flujo verificable y recuperable para humanos y
 agentes. Está extraído de sistemas en producción, pero no contiene reglas de negocio de ninguno de ellos:
@@ -36,7 +36,7 @@ El destino debe estar vacío o no existir. En modo embebido normalmente ya es un
 completar archivos faltantes, pero nunca sobrescribe archivos existentes.
 
 Dentro de un proyecto generado, el CLI autocontenido se invoca con `node tools/ops.js`. En la tabla siguiente,
-`ops` representa cualquiera de esas dos formas según el contexto. El binario `project-ops` también queda
+`ops` representa cualquiera de esas dos formas según el contexto. El binario `cauce` también queda
 disponible si este paquete se enlaza o instala mediante npm.
 
 ## Flujo
@@ -205,4 +205,4 @@ sola excepción: reemplaza los guards que el propio toolkit había registrado su
 ahora los cubre, y lista cuáles quitó. Sin esa poda un proyecto ya instalado ejecutaría cada guard dos
 veces por herramienta —con `verify` eso significa correr la suite de tests dos veces en cada commit—.
 Nada que no haya escrito el toolkit se toca. En Antigravity materializa un plugin nativo de workspace
-bajo `.agents/plugins/project-ops/`.
+bajo `.agents/plugins/cauce/`.
