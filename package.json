@@ -1,7 +1,6 @@
 {
   "name": "project-ops-system",
   "version": "1.1.0",
-  "private": true,
   "description": "Sistema portable de planificación y ejecución verificable para cualquier proyecto",
   "type": "commonjs",
   "bin": {
@@ -21,5 +20,9 @@
     "node": ">=24"
   },
   "packageManager": "npm@11.16.0",
-  "license": "UNLICENSED"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ingeniomaps/cauce.git"
+  },
+  "license": "MIT"
 }
