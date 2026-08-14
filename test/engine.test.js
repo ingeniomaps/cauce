@@ -373,3 +373,57 @@ test('roadmap valida trazabilidad, cierre y estructura de épicas grandes', () =
   assert.ok(structure.some((error) => error.includes('falta spec.md')))
   assert.ok(structure.some((error) => error.includes('draft.md: archivo auxiliar no permitido')))
 })
+
+test('la frontera system/ separa lo del toolkit de lo del proyecto', () => {
+  const O = require('../engine/core/ownership')
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-ownership-'))
+  const rules = path.join(root, 'planning', 'rules')
+  fs.mkdirSync(path.join(rules, 'system'), { recursive: true })
+  fs.writeFileSync(path.join(rules, 'system', 'commits.md'), '# sistema\n')
+  fs.writeFileSync(path.join(rules, 'system', 'process.md'), '# sistema\n')
+
+  assert.deepEqual(O.overrides(root), [], 'sin archivos propios no hay override')
+
+  // Una regla propia con otro nombre convive; con el mismo nombre, reemplaza.
+  fs.writeFileSync(path.join(rules, 'acme-naming.md'), '# propia\n')
+  assert.deepEqual(O.overrides(root), [], 'anexar no es sobrescribir')
+  fs.writeFileSync(path.join(rules, 'commits.md'), '# propia\n')
+  assert.deepEqual(
+    O.overrides(root).map((entry) => [entry.collection, entry.id]),
+    [['planning/rules', 'commits']],
+  )
+
+  // Las reglas de negocio se identifican por ID, no por nombre de archivo.
+  const business = path.join(root, 'planning', 'business-rules')
+  fs.mkdirSync(path.join(business, 'system'), { recursive: true })
+  fs.writeFileSync(path.join(business, 'system', 'BR-OPS-002-propuestas.md'), '# sistema\n')
+  fs.writeFileSync(path.join(business, 'BR-OPS-002-version-propia.md'), '# propia\n')
+  assert.ok(
+    O.overrides(root).some((entry) => entry.id === 'BR-OPS-002'),
+    'un archivo con otro nombre pero el mismo ID sigue siendo un override',
+  )
+
+  // `upgrade` sólo puede tocar esto.
+  const paths = O.systemPaths(root)
+  assert.ok(paths.includes('planning/rules/system'))
+  assert.ok(paths.includes('planning/business-rules/system'))
+  assert.equal(paths.some((entry) => entry.includes('acme-naming')), false, 'nada propio es reemplazable')
+})
+
+test('un team propio reemplaza al del sistema sin duplicarlo en la lista', () => {
+  const T = require('../engine/teams/registry')
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-teams-'))
+  const write = (dir, name) => {
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, 'team.json'), JSON.stringify({ slug: 'demo', name }))
+    fs.writeFileSync(path.join(dir, 'WORKFLOW.md'), '# workflow\n')
+  }
+  write(path.join(root, 'teams', 'system', 'demo'), 'Del sistema')
+
+  assert.deepEqual(T.list(root), ['demo'])
+  assert.equal(T.read(root, 'demo').manifest.name, 'Del sistema')
+
+  write(path.join(root, 'teams', 'demo'), 'Del proyecto')
+  assert.deepEqual(T.list(root), ['demo'], 'el slug no aparece dos veces')
+  assert.equal(T.read(root, 'demo').manifest.name, 'Del proyecto', 'el del proyecto manda')
+})

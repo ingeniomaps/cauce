@@ -5,9 +5,13 @@ const path = require('path')
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
+// El proyecto manda sobre el sistema: un team propio con el mismo slug reemplaza al de `system/`,
+// que se sigue actualizando debajo sin que nadie tenga que forkearlo.
 function teamFile(root, slug) {
   if (!SLUG.test(slug || '')) throw new Error(`team inválido: ${slug || '(vacío)'}`)
-  return path.join(root, 'teams', slug, 'team.json')
+  const own = path.join(root, 'teams', slug, 'team.json')
+  if (fs.existsSync(own)) return own
+  return path.join(root, 'teams', 'system', slug, 'team.json')
 }
 
 function agentMatches(root, slug) {
@@ -66,20 +70,26 @@ function validate(root, slug) {
       if (matches.length > 1) errors.push(`agente ambiguo: ${agent}`)
     }
   }
-  const workflow = path.join(root, 'teams', slug, 'WORKFLOW.md')
+  // Junto al team.json que ganó la resolución, no en una ruta fija: el team puede venir de system/.
+  const workflow = path.join(path.dirname(teamFile(root, slug)), 'WORKFLOW.md')
   if (!fs.existsSync(workflow)) errors.push('falta WORKFLOW.md')
   return { errors, stages: (manifest.stages || []).length, agents: agents.size, manifest }
 }
 
+function slugsIn(dir) {
+  try {
+    return fs.readdirSync(dir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && entry.name !== 'system')
+      .filter((entry) => fs.existsSync(path.join(dir, entry.name, 'team.json')))
+      .map((entry) => entry.name)
+  } catch { return [] }
+}
+
+// Un slug aparece una sola vez aunque exista en los dos niveles: el del proyecto ya ganó.
 function list(root) {
   const catalog = path.join(root, 'teams')
-  try {
-    return fs.readdirSync(catalog, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .filter((entry) => fs.existsSync(path.join(catalog, entry.name, 'team.json')))
-      .map((entry) => entry.name)
-      .sort()
-  } catch { return [] }
+  const slugs = new Set([...slugsIn(catalog), ...slugsIn(path.join(catalog, 'system'))])
+  return [...slugs].sort()
 }
 
 module.exports = { list, read, validate }

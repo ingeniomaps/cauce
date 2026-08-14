@@ -1,0 +1,83 @@
+'use strict'
+
+// Frontera entre lo que actualiza el toolkit y lo que pertenece al proyecto.
+// Es la fuente única: `check` reporta overrides contra esto y `upgrade` decide qué reemplaza.
+//
+// La regla es una carpeta, no un diff: nada fuera de esta declaración se toca jamás.
+
+const fs = require('node:fs')
+const path = require('node:path')
+
+// Archivos de los que el toolkit es único autor. Un proyecto que necesite cambiarlos no los
+// edita: agrega una regla propia junto a las de `system/`, que sí sobrevive al upgrade.
+const SYSTEM_FILES = [
+  'planning/PROTOCOL.md',
+  'planning/FLOW.md',
+  'planning/METHODOLOGY.md',
+  'planning/README.md',
+  'planning/adr/000-template.md',
+  'planning/adr/README.md',
+  'planning/business-rules/000-template.md',
+  'planning/business-rules/README.md',
+  'planning/rules/README.md',
+  'planning/roadmap/README.md',
+  'planning/roadmap/epic-000-template.md',
+]
+
+// Colecciones mixtas: el toolkit posee `<dir>/system/`, el proyecto todo lo demás del directorio.
+const SYSTEM_COLLECTIONS = [
+  'planning/adr',
+  'planning/business-rules',
+  'planning/rules',
+  'teams',
+]
+
+// Identidad de una entrada dentro de una colección, para detectar que el proyecto sobrescribe
+// algo del sistema. Las reglas y decisiones se identifican por su ID; el resto, por su nombre.
+const ID_PATTERN = /^(?:BR-)?[A-Z][A-Z0-9]*-\d{3}/
+
+function identity(name) {
+  const base = name.replace(/\.md$/, '')
+  const id = base.match(ID_PATTERN)
+  return id ? id[0] : base
+}
+
+function entries(dir) {
+  try {
+    return fs.readdirSync(dir, { withFileTypes: true })
+      .filter((entry) => entry.name !== 'README.md' && !entry.name.startsWith('.'))
+      .map((entry) => entry.name)
+  } catch { return [] }
+}
+
+// Entradas del proyecto que reemplazan a una del sistema con la misma identidad.
+function overrides(root) {
+  const found = []
+  for (const collection of SYSTEM_COLLECTIONS) {
+    const dir = path.join(root, collection)
+    const system = new Map()
+    for (const name of entries(path.join(dir, 'system'))) system.set(identity(name), name)
+    if (!system.size) continue
+    for (const name of entries(dir)) {
+      if (name === 'system' || name === '000-template.md') continue
+      const key = identity(name)
+      if (system.has(key)) found.push({ collection, id: key, project: name, system: system.get(key) })
+    }
+  }
+  return found
+}
+
+// Rutas que `upgrade` reemplaza. Todo lo que no aparezca acá pertenece al proyecto.
+function systemPaths(root) {
+  const paths = []
+  for (const file of SYSTEM_FILES) {
+    if (fs.existsSync(path.join(root, file))) paths.push(file)
+  }
+  for (const collection of SYSTEM_COLLECTIONS) {
+    const dir = path.join(root, collection, 'system')
+    if (fs.existsSync(dir)) paths.push(`${collection}/system`)
+  }
+  return paths
+}
+
+module.exports = { SYSTEM_COLLECTIONS, SYSTEM_FILES, identity, overrides, systemPaths }

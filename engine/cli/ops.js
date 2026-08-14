@@ -10,6 +10,7 @@ const I = require('../integrations/registry')
 const L = require('../agents/learning')
 const A = require('../automation')
 const F = require('../core/files')
+const O = require('../core/ownership')
 const C = require('../config/validate')
 const T = require('../teams/registry')
 
@@ -253,6 +254,12 @@ function check(dir) {
   const integration = I.validate(path.resolve(root, '..'))
   errors.push(...integration.errors)
   warnings.push(...integration.warnings)
+
+  // Sobrescribir una entrada de system/ es legítimo y esperado; lo que no puede pasar es que
+  // ocurra en silencio, porque esa entrada deja de recibir las mejoras del toolkit.
+  for (const override of O.overrides(path.resolve(root, '..'))) {
+    warnings.push(`${override.collection}/${override.project} sobrescribe ${override.system} (override explícito)`)
+  }
 
   if (process.argv.includes('--json')) {
     console.log(JSON.stringify({
