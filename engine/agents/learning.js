@@ -4,6 +4,7 @@
 
 const fs = require('fs')
 const path = require('path')
+const catalog = require('./catalog')
 
 const REQUIRED_SECTIONS = [
   'Hallazgos',
@@ -15,22 +16,7 @@ const REQUIRED_SECTIONS = [
 ]
 
 function agentRoot(root, agent) {
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(agent || '')) throw new Error(`agente inválido: ${agent || '(vacío)'}`)
-  const catalog = path.join(root, 'agents')
-  let types = []
-  try {
-    types = fs.readdirSync(catalog, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-  } catch { /* catálogo ausente */ }
-  const matches = types
-    .map((type) => path.join(catalog, type, agent))
-    .filter((target) => fs.existsSync(path.join(target, 'SKILL.md')))
-  if (!matches.length) throw new Error(`no existe agents/<tipo>/${agent}/SKILL.md`)
-  if (matches.length > 1) {
-    throw new Error(`agente ambiguo ${agent}: ${matches.map((target) => path.relative(root, target)).join(', ')}`)
-  }
-  return matches[0]
+  return catalog.resolve(root, agent)
 }
 
 function isoDate(now = new Date()) { return now.toISOString().slice(0, 10) }

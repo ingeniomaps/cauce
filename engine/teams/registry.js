@@ -2,6 +2,7 @@
 
 const fs = require('fs')
 const path = require('path')
+const catalog = require('../agents/catalog')
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
@@ -14,15 +15,11 @@ function teamFile(root, slug) {
   return path.join(root, 'teams', 'system', slug, 'team.json')
 }
 
-function agentMatches(root, slug) {
-  const catalog = path.join(root, 'agents')
-  let types = []
-  try {
-    types = fs.readdirSync(catalog, { withFileTypes: true }).filter((entry) => entry.isDirectory())
-  } catch { return [] }
-  return types
-    .map((entry) => path.join(catalog, entry.name, slug, 'SKILL.md'))
-    .filter((file) => fs.existsSync(file))
+// Devuelve el motivo real: "no existe" y "ambiguo" piden acciones distintas de quien lo lea.
+function agentProblem(root, slug) {
+  try { catalog.resolve(root, slug); return '' } catch (error) {
+    return /ambiguo/.test(error.message) ? `agente ambiguo: ${slug}` : `agente inexistente: ${slug}`
+  }
 }
 
 function read(root, slug) {
@@ -65,9 +62,8 @@ function validate(root, slug) {
   for (const agent of agents) {
     if (!SLUG.test(agent || '')) errors.push(`slug de agente inválido: ${agent || '(vacío)'}`)
     else {
-      const matches = agentMatches(root, agent)
-      if (!matches.length) errors.push(`agente inexistente: ${agent}`)
-      if (matches.length > 1) errors.push(`agente ambiguo: ${agent}`)
+      const problem = agentProblem(root, agent)
+      if (problem) errors.push(problem)
     }
   }
   // Junto al team.json que ganó la resolución, no en una ruta fija: el team puede venir de system/.
@@ -87,8 +83,8 @@ function slugsIn(dir) {
 
 // Un slug aparece una sola vez aunque exista en los dos niveles: el del proyecto ya ganó.
 function list(root) {
-  const catalog = path.join(root, 'teams')
-  const slugs = new Set([...slugsIn(catalog), ...slugsIn(path.join(catalog, 'system'))])
+  const teams = path.join(root, 'teams')
+  const slugs = new Set([...slugsIn(teams), ...slugsIn(path.join(teams, 'system'))])
   return [...slugs].sort()
 }
 

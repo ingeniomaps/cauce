@@ -6,6 +6,7 @@ const { spawnSync } = require('node:child_process')
 const F = require('../core/files')
 const H = require('../hooks/run')
 const P = require('../planning/parser')
+const catalog = require('../agents/catalog')
 
 const RUNNER_NAMES = ['claude', 'codex', 'gemini', 'antigravity']
 
@@ -84,23 +85,12 @@ function resolveItem(paths, root, name, item) {
 
 // Cargos del catálogo, con el frontmatter que el runner indexa para elegir a quién invocar.
 function roleCatalog(root) {
-  const catalog = path.join(root, 'agents')
-  const roles = []
-  let types = []
-  try { types = fs.readdirSync(catalog, { withFileTypes: true }) } catch { return roles }
-  for (const type of types.filter((entry) => entry.isDirectory())) {
-    let agents = []
-    try { agents = fs.readdirSync(path.join(catalog, type.name), { withFileTypes: true }) } catch { continue }
-    for (const agent of agents.filter((entry) => entry.isDirectory())) {
-      const skill = path.join(catalog, type.name, agent.name, 'SKILL.md')
-      if (!fs.existsSync(skill)) continue
-      const field = P.frontmatter(fs.readFileSync(skill, 'utf8'))
-      const description = field('description')
-      if (!description) continue
-      roles.push({ slug: agent.name, type: type.name, description })
-    }
-  }
-  return roles.sort((left, right) => left.slug.localeCompare(right.slug))
+  return catalog.list(root)
+    .map((role) => {
+      const field = P.frontmatter(fs.readFileSync(path.join(role.dir, 'SKILL.md'), 'utf8'))
+      return { ...role, reference: path.relative(root, role.dir), description: field('description') }
+    })
+    .filter((role) => role.description)
 }
 
 // Puntero fino: conserva nombre y descripción —lo único que el runner lee hasta invocar— y remite
@@ -113,9 +103,9 @@ description: ${role.description}
 
 # ${role.slug}
 
-Leé \`agents/${role.type}/${role.slug}/SKILL.md\` para el contrato completo del cargo: cuándo actuar,
+Leé \`${role.reference}/SKILL.md\` para el contrato completo del cargo: cuándo actuar,
 qué decide, qué no le corresponde y cuál es su entrega mínima. Sus métodos y formatos de salida están
-en \`agents/${role.type}/${role.slug}/references/\`.
+en \`${role.reference}/references/\`.
 
 Respetá los límites de ese contrato y las reglas de \`AGENTS.md\`. Generado por
 \`cauce automation install\`: no lo edites acá.

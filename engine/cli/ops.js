@@ -13,6 +13,7 @@ const F = require('../core/files')
 const O = require('../core/ownership')
 const C = require('../config/validate')
 const T = require('../teams/registry')
+const AG = require('../agents/catalog')
 
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..')
 
@@ -44,6 +45,7 @@ function usage() {
   ops automation install <ops-root> claude|codex|gemini|antigravity
   ops learn <agent> [--proposal]
   ops evaluate <agent>
+  ops agents list [ops-root] [--json]
   ops team list
   ops team check <team>
   ops team show <team>`)
@@ -524,6 +526,20 @@ function upgrade(dir) {
   console.log('  planning, organization y todo lo propio quedaron intactos')
 }
 
+// Lista los cargos visibles resolviendo la precedencia; evita que cada consumidor —CI incluido—
+// reimplemente el recorrido del catálogo.
+function agents(action, dir) {
+  if (action !== 'list') fail(`Acción de agents desconocida: ${action || '(vacía)'}`, 2)
+  const root = path.resolve(dir || '.')
+  const roles = AG.list(root)
+  if (process.argv.includes('--json')) {
+    return console.log(JSON.stringify(roles.map((role) => ({
+      slug: role.slug, type: role.type, system: role.system,
+    }))))
+  }
+  for (const role of roles) console.log(`${role.slug}${role.system ? '' : '  (propio)'}`)
+}
+
 function archive(dir, rawNum) {
   const root = path.resolve(dir || '.')
   const num = String(rawNum || '').padStart(3, '0')
@@ -699,6 +715,7 @@ async function main() {
   else if (command === 'tree') tree(process.argv[3])
   else if (command === 'context') context(process.argv[3])
   else if (command === 'upgrade') upgrade(process.argv[3])
+  else if (command === 'agents') agents(process.argv[3], process.argv[4])
   else if (command === 'archive') archive(process.argv[3], process.argv[4])
   else if (command === 'integration') {
     await integration(process.argv[3], process.argv[4], process.argv[5], process.argv[6])
