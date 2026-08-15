@@ -506,8 +506,11 @@ function upgrade(dir) {
   if (changed.length && !force) {
     for (const file of changed) console.error(`✗ ${file}`)
     fail(
-      `\n${changed.length} archivo(s) del runtime fueron editados y se perderían.\n` +
-      'Movelos junto a system/ como regla propia, o repetí con --force para descartarlos.',
+      `\n${changed.length} archivo(s) del runtime fueron editados y se perderían.\n\n` +
+      'El runtime es del toolkit: en vez de editarlo, agregá lo tuyo al lado con otro nombre —un\n' +
+      'guard propio sobrevive a cada actualización— y registralo en la configuración de tu runner,\n' +
+      'que sí es del proyecto. Para desactivar un guard alcanza con quitarlo de esa configuración.\n' +
+      'Si el cambio ya no te sirve, repetí con --force para descartarlo.',
     )
   }
 
@@ -532,6 +535,9 @@ function upgrade(dir) {
   F.atomicWriteJson(path.join(root, 'ops.config.json'), config)
 
   console.log(`✓ Cauce ${from || '(previa)'} → ${to}`)
+  // Descartar con --force es legítimo; hacerlo sin dejar rastro no. Queda en la salida del comando,
+  // que es la evidencia que el protocolo pide para cualquier cambio.
+  for (const file of changed) console.log(`− descartado tu cambio en ${file}`)
   printChangelog(from, to)
   console.log(`  ${system.length} ruta(s) del sistema y ${O.RUNTIME_PATHS.length} del runtime actualizadas`)
   for (const override of overrides) {

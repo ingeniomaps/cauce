@@ -558,3 +558,28 @@ test('el shim falla con instrucciones cuando no encuentra el motor', () => {
   assert.match(orphan.stderr, /No se encontró el motor/)
   assert.match(orphan.stderr, /npm install/)
 })
+
+test('upgrade explica cómo personalizar el runtime sin editarlo, y deja rastro al descartar', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-runtime-'))
+  const target = path.join(base, 'acme')
+  assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
+
+  // Un guard propio no necesita ningún mecanismo extra: el toolkit no lo conoce y no lo toca.
+  const own = path.join(target, 'automatization', 'hooks', 'guard-acme.sh')
+  fs.writeFileSync(own, '#!/usr/bin/env bash\necho propio\n')
+  assert.equal(run(['upgrade', target]).status, 0)
+  assert.equal(fs.existsSync(own), true)
+
+  // Editar uno del toolkit sí se detiene, y la salida tiene que decir algo que realmente funcione.
+  const guard = path.join(target, 'automatization', 'hooks', 'guard-verify.sh')
+  fs.writeFileSync(guard, '#!/usr/bin/env bash\n# editado\n')
+  const refused = run(['upgrade', target])
+  assert.notEqual(refused.status, 0)
+  assert.match(refused.stderr, /agregá lo tuyo al lado con otro nombre/)
+  assert.equal(/junto a system\//.test(refused.stderr), false, 'hooks no tiene system/: no puede sugerirlo')
+
+  // Descartar es legítimo; hacerlo en silencio no.
+  const forced = run(['upgrade', target, '--force'])
+  assert.equal(forced.status, 0, forced.stderr)
+  assert.match(forced.stdout, /descartado tu cambio en automatization\/hooks\/guard-verify\.sh/)
+})
