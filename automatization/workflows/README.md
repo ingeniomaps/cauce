@@ -28,8 +28,8 @@ para revisión humana. `integrations/promote.js` exige proveedor, clave y un dra
 el sistema remoto; Jira es actualmente el primer adaptador del contrato general.
 
 ```bash
-OPS_INTEGRATION_PROVIDER=jira /integration-sync
-OPS_INTEGRATION_PROVIDER=jira OPS_INTEGRATION_KEY=KEY-123 /integration-promote
+/integration-sync jira
+/integration-promote jira KEY-123
 ```
 
 ## Aprendizaje de agentes

@@ -52,7 +52,7 @@ test('workflows de integración usan el registro general y no escriben remoto', 
   for (const name of ['sync.js', 'promote.js']) {
     const file = path.resolve(__dirname, '..', 'automatization', 'workflows', 'integrations', name)
     const source = fs.readFileSync(file, 'utf8')
-    assert.match(source, /OPS_INTEGRATION_PROVIDER/)
+    assert.match(source, /provider/)
     assert.match(source, /integration check/)
     assert.match(source, /Nunca|never|Never/)
     for (const absolute of [/\/home\//, /\/Users\//, /\b[A-Za-z]:\\/]) {
@@ -171,4 +171,29 @@ test('autobuild ejecuta cada fase bajo el contrato del cargo que la posee', () =
 
   // El reparto queda como evidencia auditable, no sólo en la cabeza del runner.
   assert.match(workflow, /auditar quién revisó qué/)
+})
+
+// El runtime de workflows es un sandbox: no expone `process`, ni `require`, ni el reloj. Un workflow
+// que los use no falla en una rama rara — revienta en su primera línea y no llega a ejecutar nada.
+// Los demás tests leen estos archivos como texto, así que esto se sostuvo sin que nadie lo notara.
+const WF = path.resolve(__dirname, '..', 'automatization', 'workflows')
+
+function workflowFiles() {
+  const found = []
+  for (const entry of fs.readdirSync(WF, { withFileTypes: true, recursive: true })) {
+    if (entry.isFile() && entry.name.endsWith('.js')) found.push(path.join(entry.parentPath, entry.name))
+  }
+  return found
+}
+
+test('un workflow sólo usa lo que el runtime le da', () => {
+  const prohibidas = /\b(process\.|require\(|Date\.now|new Date\(|Math\.random|__dirname|__filename)/g
+  const encontradas = []
+  for (const file of workflowFiles()) {
+    const source = fs.readFileSync(file, 'utf8')
+    for (const hit of source.matchAll(prohibidas)) {
+      encontradas.push(`${path.relative(WF, file)} → ${hit[1]}`)
+    }
+  }
+  assert.deepEqual(encontradas, [])
 })

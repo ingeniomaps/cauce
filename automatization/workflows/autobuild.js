@@ -10,10 +10,10 @@ export const meta = {
   ].map((title) => ({ title, detail: `Fase ${title} del protocolo agnóstico` })),
 }
 
-// El prefijo lo completa `automation install`: en modo sidecar la herramienta se abre en la carpeta
-// de la compañía y la raíz ops es uno de sus hijos, no la carpeta misma.
-const ROOT = (process.env.OPS_ROOT
-  || `${process.env.CLAUDE_PROJECT_DIR || '.'}/{{OPS_DIR}}`).replace(/\/+$/, '')
+// El prefijo lo completa `automation install`. No puede venir del entorno: el runtime de workflows no
+// expone `process`, así que leerlo de ahí reventaba el archivo entero en su primera línea. Viaja
+// escrito, relativo a la carpeta donde se abre la herramienta, que es el cwd de los agentes.
+const ROOT = '{{OPS_DIR}}'.replace(/\/+$/, '') || '.'
 const CONFIG = `${ROOT}/ops.config.json`
 const P = `${ROOT}/planning`
 const BACKLOG = `${P}/BACKLOG.md`

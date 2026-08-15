@@ -10,11 +10,13 @@ export const meta = {
   ],
 }
 
-// El prefijo lo completa `automation install`: en modo sidecar la herramienta se abre en la carpeta
-// de la compañía y la raíz ops es uno de sus hijos, no la carpeta misma.
-const ROOT = (process.env.OPS_ROOT
-  || `${process.env.CLAUDE_PROJECT_DIR || '.'}/{{OPS_DIR}}`).replace(/\/+$/, '')
-const REQUESTED = process.env.OPS_INTEGRATION_PROVIDER || ''
+// El prefijo lo completa `automation install`. No puede venir del entorno: el runtime de workflows no
+// expone `process`, así que leerlo de ahí reventaba el archivo entero en su primera línea. Viaja
+// escrito, relativo a la carpeta donde se abre la herramienta, que es el cwd de los agentes.
+const ROOT = '{{OPS_DIR}}'.replace(/\/+$/, '') || '.'
+// `/integration-sync jira` o `{"provider": "jira"}`: sin entorno, el argumento es la única entrada.
+const input = typeof args === 'string' ? { provider: args } : (args || {})
+const REQUESTED = String(input.provider || '').trim()
 const RESULT = {
   type: 'object', additionalProperties: false, required: ['passed', 'provider', 'details'],
   properties: {
@@ -26,7 +28,7 @@ const RESULT = {
 phase('Preflight')
 const result = await agent(
   `Read ${ROOT}/integrations/README.md, ${ROOT}/integrations/config.json and ${ROOT}/planning/PROTOCOL.md. ` +
-  `Resolve provider from OPS_INTEGRATION_PROVIDER=${JSON.stringify(REQUESTED)}; if empty, continue only when exactly ` +
+  `The requested provider is ${JSON.stringify(REQUESTED)}; if empty, continue only when exactly ` +
   `one provider is enabled. Run "node tools/ops.js integration check ${ROOT} <provider>" and read its exit code. ` +
   `Do not edit config and do not call a remote write operation.\n\n` +
   `If green, enter Sync and run "node tools/ops.js integration sync ${ROOT} <provider>". The registered adapter owns ` +

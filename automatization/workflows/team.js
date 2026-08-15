@@ -15,10 +15,10 @@ export const meta = {
   ],
 }
 
-// El prefijo lo completa `automation install`: en modo sidecar la herramienta se abre en la carpeta
-// de la compañía y la raíz ops es uno de sus hijos, no la carpeta misma.
-const ROOT = (process.env.OPS_ROOT
-  || `${process.env.CLAUDE_PROJECT_DIR || '.'}/{{OPS_DIR}}`).replace(/\/+$/, '')
+// El prefijo lo completa `automation install`. No puede venir del entorno: el runtime de workflows no
+// expone `process`, así que leerlo de ahí reventaba el archivo entero en su primera línea. Viaja
+// escrito, relativo a la carpeta donde se abre la herramienta, que es el cwd de los agentes.
+const ROOT = '{{OPS_DIR}}'.replace(/\/+$/, '') || '.'
 const P = `${ROOT}/planning`
 const ROADMAP = `${P}/roadmap`
 const HUMAN = `${P}/HUMAN_ACTIONS.md`
@@ -34,9 +34,9 @@ const REPORTS = `${P}/reports`
 // El prefijo se toma como candidato y se confirma más abajo contra los equipos que existen: si no es
 // uno, el texto completo era la intención y nadie tuvo que aprenderse una sintaxis.
 const input = typeof args === 'string' ? { intent: args } : (args || {})
-const raw = String(input.intent || process.env.OPS_INTENT || '').trim()
+const raw = String(input.intent || '').trim()
 const prefix = raw.match(/^([a-z][a-z0-9-]*)\s*:\s*(.+)$/s)
-const CANDIDATE = String(input.team || process.env.OPS_TEAM || (prefix ? prefix[1] : '') || 'product-development')
+const CANDIDATE = String(input.team || (prefix ? prefix[1] : '') || 'product-development')
 const INTENT = (input.team || !prefix ? raw : prefix[2]).trim()
 
 const MANIFEST = {
@@ -100,7 +100,7 @@ const resolved = await agent(
   } }, label: 'team-resolve' },
 )
 if (!resolved) return stop('teams-unavailable', 'no se pudo listar los equipos')
-if (!resolved.exists && (input.team || process.env.OPS_TEAM)) {
+if (!resolved.exists && input.team) {
   return stop('equipo-inexistente', `${CANDIDATE} no existe. Disponibles: ${resolved.teams.join(', ')}`)
 }
 // El prefijo era parte de la intención, no un equipo: se recompone y sigue con el equipo por defecto.

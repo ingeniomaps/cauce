@@ -10,12 +10,15 @@ export const meta = {
   ],
 }
 
-// El prefijo lo completa `automation install`: en modo sidecar la herramienta se abre en la carpeta
-// de la compañía y la raíz ops es uno de sus hijos, no la carpeta misma.
-const ROOT = (process.env.OPS_ROOT
-  || `${process.env.CLAUDE_PROJECT_DIR || '.'}/{{OPS_DIR}}`).replace(/\/+$/, '')
-const PROVIDER = process.env.OPS_INTEGRATION_PROVIDER || ''
-const KEY = process.env.OPS_INTEGRATION_KEY || ''
+// El prefijo lo completa `automation install`. No puede venir del entorno: el runtime de workflows no
+// expone `process`, así que leerlo de ahí reventaba el archivo entero en su primera línea. Viaja
+// escrito, relativo a la carpeta donde se abre la herramienta, que es el cwd de los agentes.
+const ROOT = '{{OPS_DIR}}'.replace(/\/+$/, '') || '.'
+// `/integration-promote jira KEY-123` o `{"provider": "jira", "key": "KEY-123"}`.
+const parts = typeof args === 'string' ? args.trim().split(/\s+/) : []
+const input = typeof args === 'string' ? { provider: parts[0], key: parts[1] } : (args || {})
+const PROVIDER = String(input.provider || '').trim()
+const KEY = String(input.key || '').trim()
 const RESULT = {
   type: 'object', additionalProperties: false, required: ['passed', 'provider', 'key', 'details'],
   properties: { passed: { type: 'boolean' }, provider: { type: 'string' }, key: { type: 'string' }, details: { type: 'string' }, kind: { type: 'string' } },
@@ -24,7 +27,7 @@ const RESULT = {
 phase('Preflight')
 const result = await agent(
   `Read ${ROOT}/integrations/README.md, integrations config, the provider contract and planning/PROTOCOL.md. ` +
-  `Require OPS_INTEGRATION_PROVIDER=${JSON.stringify(PROVIDER)} and OPS_INTEGRATION_KEY=${JSON.stringify(KEY)}. ` +
+  `The provider is ${JSON.stringify(PROVIDER)} and the remote key ${JSON.stringify(KEY)}; both are required. ` +
   `Run integration check. Inspect only that candidate's draft and snapshot; stop unless draft state is ready and ` +
   `acceptance, hierarchy and service mapping are concrete. Never call or write the remote provider.\n\n` +
   `If valid, enter Promote and run "node tools/ops.js integration promote ${ROOT} ${PROVIDER} ${KEY}" exactly once. ` +
