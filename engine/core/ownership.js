@@ -30,6 +30,11 @@ const SYSTEM_FILES = [
   'integrations/README.md',
   'integrations/AGENTS.md',
   'organization/README.md',
+  // Las reglas que un agente obedece y los atajos que envuelven al CLI. Ninguno tiene una línea de la
+  // empresa, y envejecidos mienten: el `AGENTS.md` de una instancia seguía describiendo carpetas que
+  // `upgrade` había retirado, y el Makefile llama 16 veces a comandos que cambian.
+  'AGENTS.md',
+  'Makefile',
   // El shim no tiene una línea de la empresa —dice él mismo que no se edita— y es por donde entra
   // cada comando. Sin declararlo, envejecía para siempre en la instancia.
   'tools/ops.js',
@@ -65,7 +70,12 @@ const TEMPLATE_PREFIXES = [
   'tools/',
 ]
 
+// Archivos que la instancia recibe en su raíz y que el paquete tiene por duplicado: el propio del
+// toolkit y el de la plantilla. Gana el de la plantilla, que es el que le habla a la instancia.
+const TEMPLATE_FILES = new Set(['AGENTS.md', 'Makefile'])
+
 function sourceOf(relative) {
+  if (TEMPLATE_FILES.has(relative)) return path.join('template', relative)
   // `.ops/` es el paquete vendorizado: cada ruta de ahí adentro se llama igual en el origen.
   if (relative.startsWith('.ops/')) return relative.slice('.ops/'.length)
   // El runtime sale de la raíz del paquete aunque su prefijo sea de plantilla: `automatization/`

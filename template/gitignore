@@ -1,0 +1,9 @@
+node_modules/
+
+# Credenciales. Un repo de planning es de los que más se comparte: nada de esto entra a la historia.
+.env
+.env.*
+!.env.example
+
+*.tgz
+.DS_Store

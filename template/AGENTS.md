@@ -1,4 +1,4 @@
-# {{PROJECT_NAME}} — reglas de construcción
+# Reglas de construcción
 
 Este archivo gobierna el qué y el cuándo. `planning/PROTOCOL.md` gobierna el flujo y
 `planning/rules/` el cómo.

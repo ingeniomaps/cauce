@@ -83,7 +83,9 @@ function copyTemplate(source, target, replacements, force, skip = []) {
   for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
     if (skip.includes(entry.name)) continue
     const from = path.join(source, entry.name)
-    const to = path.join(target, entry.name)
+    // npm no incluye un `.gitignore` dentro de un tarball, así que viaja sin punto y se restituye
+    // acá. Sin esto el archivo existe en el repo del toolkit y desaparece para todo consumidor real.
+    const to = path.join(target, entry.name === 'gitignore' ? '.gitignore' : entry.name)
     if (entry.isDirectory()) copyTemplate(from, to, replacements, force, skip)
     else {
       if (fs.existsSync(to)) {

@@ -48,6 +48,11 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   const created = cauce(consumer, ['init', consumer, '--name', 'Acme', '--mode', 'sidecar', '--force'])
   assert.equal(created.status, 0, created.stderr)
   assert.equal(fs.existsSync(path.join(consumer, '.ops', 'engine')), false, 'no duplica el motor')
+  // npm no mete un `.gitignore` en el tarball: sin restituirlo, cada instancia commitearía el
+  // paquete entero dentro del repo de la empresa. Sólo se ve corriendo contra el tarball.
+  const ignore = fs.readFileSync(path.join(consumer, '.gitignore'), 'utf8')
+  assert.match(ignore, /node_modules\//, 'la dependencia no entra a la historia de la empresa')
+  assert.match(ignore, /\.env/, 'ni sus credenciales')
   const version = () => JSON.parse(fs.readFileSync(path.join(consumer, 'ops.config.json'), 'utf8')).cauceVersion
   const born = version()
   assert.ok(born, 'la instancia recuerda de qué versión salió')
