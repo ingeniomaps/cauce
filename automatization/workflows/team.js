@@ -38,6 +38,7 @@ const MANIFEST = {
     } } },
     stages: { type: 'array', items: { type: 'object', additionalProperties: false, properties: {
       id: { type: 'string' }, agent: { type: 'string' }, exitGate: { type: 'string' },
+      phase: { type: 'string', enum: ['discovery', 'delivery'] },
       produces: { type: 'array', items: { type: 'string' } },
     } } },
   },
@@ -80,8 +81,8 @@ const BASE = `Nunca inventes clientes, métricas, restricciones ni decisiones. N
 
 const contract = await agent(
   `${BASE}\n\nRun "node tools/ops.js team show ${TEAM} --json" from ${ROOT} and report only what it ` +
-  `printed: name, purpose, entryAgent, facilitator, guardrails, the stages with id, agent, produces ` +
-  `and exitGate, and decisionOwners flattened into owners as domain/agent pairs. Then read ` +
+  `printed: name, purpose, entryAgent, facilitator, guardrails, the stages with id, phase, agent, ` +
+  `produces and exitGate, and decisionOwners flattened into owners as domain/agent pairs. Then read ` +
   `${ROOT}/organization/ and report nothing from it: it is context for later stages, not output.`,
   { schema: MANIFEST, label: 'team-contract' },
 )
@@ -97,7 +98,11 @@ phase('Stages')
 
 const handoffs = []
 const blocked = []
-for (const stage of contract.stages) {
+// Sólo descubrimiento: este recorrido propone trabajo, no lo ejecuta. Las etapas de entrega las
+// corre `autobuild`, y sólo después de que una persona promueva la épica al BACKLOG.
+const discovery = contract.stages.filter((stage) => stage.phase === 'discovery')
+if (!discovery.length) return stop('sin-descubrimiento', `${TEAM} no declara etapas de discovery`)
+for (const stage of discovery) {
   const previous = handoffs.length
     ? `Handoffs previos:\n${handoffs.map((entry) => `- ${entry.id}: ${entry.findings}`).join('\n')}`
     : 'Sos la primera etapa: no hay handoff previo.'

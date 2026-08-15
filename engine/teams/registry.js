@@ -5,6 +5,7 @@ const path = require('path')
 const catalog = require('../agents/catalog')
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+const PHASES = ['discovery', 'delivery']
 
 // El proyecto manda sobre el sistema: un team propio con el mismo slug reemplaza al de `system/`,
 // que se sigue actualizando debajo sin que nadie tenga que forkearlo.
@@ -58,6 +59,9 @@ function validate(root, slug) {
     agents.add(stage.agent)
     if (!Array.isArray(stage.produces) || !stage.produces.length) errors.push(`${stage.id}: falta produces`)
     if (typeof stage.exitGate !== 'string' || !stage.exitGate.trim()) errors.push(`${stage.id}: falta exitGate`)
+    // Descubrimiento propone, entrega ejecuta. Sin la distinción, un recorrido de descubrimiento
+    // terminaría construyendo antes de que exista la épica y antes de la promoción humana.
+    if (!PHASES.includes(stage.phase)) errors.push(`${stage.id}: phase debe ser ${PHASES.join(' o ')}`)
   }
   for (const agent of agents) {
     if (!SLUG.test(agent || '')) errors.push(`slug de agente inválido: ${agent || '(vacío)'}`)
@@ -65,6 +69,9 @@ function validate(root, slug) {
       const problem = agentProblem(root, agent)
       if (problem) errors.push(problem)
     }
+  }
+  if (!(manifest.stages || []).some((stage) => stage.phase === 'discovery')) {
+    errors.push('falta al menos una etapa de discovery: un equipo sin descubrimiento no propone nada')
   }
   // Junto al team.json que ganó la resolución, no en una ruta fija: el team puede venir de system/.
   const workflow = path.join(path.dirname(teamFile(root, slug)), 'WORKFLOW.md')
