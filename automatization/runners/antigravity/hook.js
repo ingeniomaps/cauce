@@ -11,7 +11,22 @@ function readInput() {
   } catch { return {} }
 }
 
+// Dónde quedó la raíz ops respecto de la carpeta que Antigravity abre. Lo completa
+// `automation install`, que es el único momento en que se sabe: en modo sidecar la raíz ops es un
+// hermano de los repos de producto, y ninguna búsqueda hacia arriba la encuentra. Sin esto el bridge
+// no hallaba `ops.config.json` y, como falla cerrado, negaba cada llamada a herramienta.
+const OPS_DIR = '{{OPS_DIR}}'
+
+function declaredRoot() {
+  // El plugin vive en <raíz-de-instalación>/.agents/plugins/cauce/.
+  const installed = path.resolve(__dirname, '..', '..', '..')
+  const root = OPS_DIR.startsWith('{{') ? installed : path.join(installed, OPS_DIR)
+  return fs.existsSync(path.join(root, 'ops.config.json')) ? root : ''
+}
+
 function findRoot(input) {
+  const declared = declaredRoot()
+  if (declared) return declared
   const args = input.toolCall && input.toolCall.args || {}
   const starts = [args.Cwd, process.cwd(), ...(input.workspacePaths || [])].filter(Boolean)
   for (const start of starts) {

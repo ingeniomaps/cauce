@@ -182,6 +182,15 @@ function installRoleSkills(root, runner, output) {
   return roles.length
 }
 
+// Runners que además de los archivos necesitan un registro propio para que el wiring cuente. Copiar
+// y quedarse ahí deja un plugin inerte: los archivos están, `doctor` da verde y nada se ejecuta.
+function activated(runner) {
+  if (!runner.activation) return true
+  const result = spawnSync(runner.command, runner.activation.verify, { encoding: 'utf8' })
+  if (result.status !== 0) return null
+  return `${result.stdout || ''}`.includes(runner.activation.expect)
+}
+
 function hasHooks(config) {
   if (config.hooks && Object.keys(config.hooks).length) return true
   const events = [
@@ -423,6 +432,10 @@ function doctor(root, name, output = console) {
     ['-c', 'command -v "$1" >/dev/null 2>&1', 'runner-doctor', runner.command],
   )
   if (executable.status !== 0) warnings.push(`${runner.command}: CLI no encontrado en PATH`)
+  else if (activated(runner) === false) {
+    warnings.push(`el plugin está copiado pero no registrado, así que no se ejecuta. `
+      + `Corré desde ${paths.install}: ${runner.activation.hint}`)
+  }
   for (const warning of warnings) output.warn(`⚠ ${name}: ${warning}`)
   for (const error of errors) output.error(`✗ ${name}: ${error}`)
   return { runner, errors, warnings }
@@ -516,6 +529,10 @@ function install(root, name, output = console, options = {}) {
     }
   }
   installRoleSkills(root, runner, output)
+  if (runner.activation && activated(runner) !== true) {
+    output.log(`  ${name}: falta registrarlo para que corra. Desde ${paths.install}:`)
+    output.log(`    ${runner.activation.hint}`)
+  }
   M.write(root, undefined, entregado)
   return runner
 }

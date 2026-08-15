@@ -48,5 +48,13 @@
     "checkpointing": false,
     "nativeSkills": true
   },
-  "roleSkills": ".agents/plugins/cauce/skills"
+  "roleSkills": ".agents/plugins/cauce/skills",
+  "activation": {
+    "hint": "agy plugin install .agents/plugins/cauce",
+    "verify": [
+      "plugin",
+      "list"
+    ],
+    "expect": "cauce"
+  }
 }
