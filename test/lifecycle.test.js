@@ -76,6 +76,20 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   assert.match(guard('/tmp/fuera-de-todo.txt').stderr, /BLOQUEADO/, 'lo de afuera no pasa')
   assert.equal(guard(path.join(workspace, 'service-a', 'main.go')).stderr, '', 'lo de adentro sí')
 
+  // Codex lee `AGENTS.md` de la raíz —no existe un `CODEX.md`— y sin él sólo recibiría guards: podría
+  // ser detenido, pero no sabría que hay un protocolo, ni un catálogo, ni equipos.
+  assert.equal(cauce(consumer, ['automation', 'install', consumer, 'codex']).status, 0)
+  const codexRules = fs.readFileSync(path.join(workspace, 'AGENTS.md'), 'utf8')
+  assert.match(codexRules, /acme-ops\/planning\/PROTOCOL\.md/, 'y sus rutas apuntan al repo ops')
+  assert.equal(codexRules.includes('{{OPS_DIR}}'), false, 'sin marcadores sin resolver')
+  // Los comandos que ese archivo indica tienen que correr desde donde el dev abre la herramienta.
+  const fromWorkspace = (args) => spawnSync(
+    process.execPath, [path.join(consumer, 'tools', 'ops.js'), ...args],
+    { cwd: workspace, encoding: 'utf8' },
+  )
+  assert.ok(fromWorkspace(['agents', 'list']).stdout.split('\n').filter(Boolean).length >= 40)
+  assert.match(fromWorkspace(['team', 'list']).stdout, /product-development/)
+
   // 4. La empresa trabaja: contexto propio, regla propia, override y un cargo suyo.
   const planning = path.join(consumer, 'planning')
   fs.writeFileSync(path.join(consumer, 'organization', 'company.md'), '# Acme S.A.\n')

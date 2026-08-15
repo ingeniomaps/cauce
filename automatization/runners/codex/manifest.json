@@ -6,7 +6,12 @@
     "source": "hooks.json",
     "target": ".codex/hooks/hooks.json"
   },
-  "instructions": [],
+  "instructions": [
+    {
+      "source": "AGENTS.md",
+      "target": "AGENTS.md"
+    }
+  ],
   "artifacts": [],
   "capabilities": {
     "nativeHooks": true,
