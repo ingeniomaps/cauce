@@ -33,6 +33,7 @@ function usage() {
   ops upgrade <ops-root> [--check] [--force]
   ops archive <planning-dir> <NNN>
   ops integration list <ops-root>
+  ops integration enable <ops-root> <provider>
   ops integration check <ops-root> [provider]
   ops integration sync <ops-root> <provider> [--fixture <json>]
   ops integration promote <ops-root> <provider> <remote-key>
@@ -127,6 +128,16 @@ function declareEngine(manifest, version) {
   F.atomicWriteJson(manifest, pkg)
 }
 
+// Proveedores que el toolkit conoce. El andamiaje de cada uno —configuración, staging/, proposed/—
+// no se materializa hasta que alguien lo habilite: hoy una instancia recibe 32 KB de un proveedor
+// apagado que quizá no use nunca, y que nadie actualiza después.
+function providerNames() {
+  try {
+    const file = path.join(PROJECT_ROOT, 'template', 'integrations', 'config.json')
+    return Object.keys(JSON.parse(fs.readFileSync(file, 'utf8')).providers || {})
+  } catch { return [] }
+}
+
 function init(target) {
   if (!target) fail('Falta <destino>.', 2)
   const mode = option('--mode', 'embedded')
@@ -142,7 +153,7 @@ function init(target) {
     '{{MODE}}': mode,
     '{{PLANNING_DIR}}': 'planning',
     '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
-  }, process.argv.includes('--force'))
+  }, process.argv.includes('--force'), providerNames())
   // `ci.yml` valida el toolkit con `npm run ci`; una instancia no tiene ese script ni sus pruebas.
   copyTemplate(path.join(PROJECT_ROOT, '.github', 'workflows'), path.join(root, '.github', 'workflows'), {
     '{{PROJECT_NAME}}': name,
@@ -671,6 +682,22 @@ async function integration(action, rootArg, provider, key) {
     for (const [name, entry] of Object.entries(registry.providers || {})) {
       console.log(`${entry.enabled ? '●' : '○'} ${name} [${entry.adapter}]`)
     }
+    return
+  }
+  if (action === 'enable') {
+    if (!provider) fail('Falta <provider>.', 2)
+    const source = path.join(PROJECT_ROOT, 'template', 'integrations', provider)
+    if (!fs.existsSync(source)) fail(`Cauce no trae un adaptador para ${provider}.`, 2)
+    const registry = path.join(root, 'integrations', 'config.json')
+    let config
+    try { config = JSON.parse(fs.readFileSync(registry, 'utf8')) } catch (error) {
+      fail(`integrations/config.json ilegible: ${error.message}`)
+    }
+    if (!config.providers || !config.providers[provider]) fail(`${provider} no está en integrations/config.json.`)
+    copyTemplate(source, path.join(root, 'integrations', provider), {}, process.argv.includes('--force'))
+    config.providers[provider].enabled = true
+    F.atomicWriteJson(registry, config)
+    console.log(`✓ ${provider}: habilitado. Completá integrations/${provider}/config.json antes de sincronizar.`)
     return
   }
   if (action === 'check') {

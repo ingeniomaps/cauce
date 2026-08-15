@@ -68,7 +68,11 @@ function validate(root, onlyProvider = '') {
   const warnings = []
   let registry
   try { registry = readJson(registryFile) } catch (error) { return { errors: [error.message], warnings } }
-  const providers = Object.entries(registry.providers || {}).filter(([name]) => !onlyProvider || name === onlyProvider)
+  // Sólo los habilitados: un proveedor registrado y apagado no tiene andamiaje —se materializa al
+  // habilitarlo— y exigirle configuración sería pedirle a la empresa que mantenga lo que no usa.
+  // Nombrarlo explícitamente sí lo valida, que es como se comprueba antes de encenderlo.
+  const providers = Object.entries(registry.providers || {})
+    .filter(([name, entry]) => (onlyProvider ? name === onlyProvider : entry && entry.enabled))
   let workspaces = []
   try {
     const ops = readJson(path.join(root, 'ops.config.json'))
@@ -81,6 +85,10 @@ function validate(root, onlyProvider = '') {
   }
   if (!providers.length && onlyProvider) errors.push(`Proveedor no registrado: ${onlyProvider}`)
   for (const [name, entry] of providers) {
+    if (!fs.existsSync(path.join(root, 'integrations', name))) {
+      errors.push(`${name}: no está materializado. Corré "ops integration enable <raíz> ${name}"`)
+      continue
+    }
     if (!entry.adapter) errors.push(`${name}: falta adapter`)
     let loaded
     try { loaded = providerConfig(root, name) } catch (error) { errors.push(error.message); continue }

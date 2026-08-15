@@ -1,4 +1,4 @@
-# Integraciones de {{PROJECT_NAME}}
+# Integraciones
 
 Los proveedores se registran en `config.json`. Todos siguen el ciclo:
 

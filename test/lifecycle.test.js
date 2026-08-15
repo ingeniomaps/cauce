@@ -105,6 +105,11 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   const legacy = path.join(consumer, 'automatization', 'workflows')
   fs.mkdirSync(legacy, { recursive: true })
   fs.writeFileSync(path.join(legacy, 'autobuild.js'), '// copia vieja\n')
+  // Un proveedor apagado no trae andamiaje y no se valida: se materializa el día que se habilita.
+  assert.equal(fs.existsSync(path.join(consumer, 'integrations', 'jira')), false)
+  assert.equal(cauce(consumer, ['integration', 'check', consumer, 'jira']).status, 1, 'nombrarlo lo exige')
+  assert.equal(cauce(consumer, ['integration', 'enable', consumer, 'jira']).status, 0)
+  assert.equal(cauce(consumer, ['integration', 'check', consumer, 'jira']).status, 0, 'y habilitado, valida')
   assert.equal(cauce(consumer, ['check', planning]).status, 0, 'la instancia sigue válida')
 
   // El runner debe seguir al cargo del proyecto, no al del sistema.

@@ -67,6 +67,9 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.equal(fs.existsSync(path.join(target, 'automatization', 'config.json')), true)
   assert.equal(fs.existsSync(path.join(target, '.ops', 'engine', 'integrations', 'providers', 'jira.js')), true)
   assert.equal(run(['automation', 'check', target]).status, 0)
+  // El andamiaje de un proveedor no viene puesto: se trae al habilitarlo.
+  assert.equal(fs.existsSync(path.join(target, 'integrations', 'jira')), false)
+  assert.equal(run(['integration', 'enable', target, 'jira']).status, 0)
   assert.equal(run(['integration', 'check', target, 'jira']).status, 0)
   const templateToken = /\{\{(?:PROJECT_NAME|MODE|PLANNING_DIR|WORKSPACE_PATH)\}\}/
   const unresolved = filesBelow(target)
@@ -443,6 +446,7 @@ test('Jira sincroniza ADF, preserva curación y promueve sin escribir remoto', (
   const registry = JSON.parse(fs.readFileSync(registryFile, 'utf8'))
   registry.providers.jira.enabled = true
   fs.writeFileSync(registryFile, `${JSON.stringify(registry, null, 2)}\n`)
+  assert.equal(run(['integration', 'enable', target, 'jira']).status, 0)
   const jiraFile = path.join(target, 'integrations', 'jira', 'config.json')
   const jira = JSON.parse(fs.readFileSync(jiraFile, 'utf8'))
   jira.enabled = true

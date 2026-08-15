@@ -27,6 +27,9 @@ const SYSTEM_FILES = [
   'teams/README.md',
   'automatization/README.md',
   'automatization/AGENTS.md',
+  'integrations/README.md',
+  'integrations/AGENTS.md',
+  'organization/README.md',
   // El shim no tiene una línea de la empresa —dice él mismo que no se edita— y es por donde entra
   // cada comando. Sin declararlo, envejecía para siempre en la instancia.
   'tools/ops.js',
