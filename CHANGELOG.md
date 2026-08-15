@@ -8,6 +8,18 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.5.2] - 2026-08-15
+
+### Corregido
+
+- **`upgrade` registraba mal lo que entregaba, y eso trababa el siguiente.** El registro se anotaba
+  ruta por ruta releyendo el manifiesto del disco en cada una, así que la última anulaba a todas las
+  anteriores: tras un `upgrade` casi todos los digests quedaban viejos y la actualización siguiente
+  los leía como ediciones de la empresa. Un callejón sin salida sin que nadie hubiera tocado nada.
+
+  Una instancia que ya quedó con digests viejos se destraba con `cauce upgrade --force`: el contenido
+  en disco y el del paquete son el mismo, así que no se descarta nada real.
+
 ## [0.5.1] - 2026-08-15
 
 ### Agregado
