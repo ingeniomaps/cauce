@@ -17,6 +17,10 @@ node tools/ops.js automation check .
 node tools/ops.js automation install . claude
 ```
 
+**Dónde aterriza**: en modo `embedded`, acá mismo. En modo `sidecar` el runner se instala en la carpeta
+de la compañía —la que contiene este repo y los de producto—, porque es donde el dev abre la
+herramienta y la única desde la que ve el código. El comando dice la ruta exacta al terminar.
+
 Hay adaptadores para Claude, Codex, Antigravity y Gemini. Antigravity (`agy`) es la opción Google
 recomendada para cuentas individuales y proyectos nuevos; Gemini se conserva para Enterprise, Google
 Cloud y API keys. La instalación conserva la configuración existente, y `doctor` comprueba archivos y

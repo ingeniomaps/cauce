@@ -54,9 +54,27 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
 
   // 3. Conectar un runner y comprobar que el catálogo queda invocable.
   assert.equal(cauce(consumer, ['automation', 'install', consumer, 'claude']).status, 0)
-  const skills = fs.readdirSync(path.join(consumer, '.claude', 'skills'))
+  // En sidecar el runner aterriza en la carpeta de la compañía, no dentro del repo ops: es la
+  // única que contiene además el código, y es donde el dev abre la herramienta.
+  const workspace = base
+  assert.equal(fs.existsSync(path.join(consumer, '.claude')), false, 'no queda encerrado en el sidecar')
+  const skills = fs.readdirSync(path.join(workspace, '.claude', 'skills'))
   assert.ok(skills.length >= 40, 'los cargos llegan como skills del runner')
   assert.equal(cauce(consumer, ['automation', 'doctor', consumer, 'claude']).status, 0)
+  // Y los guards se nombran desde ahí, no desde la raíz ops.
+  const wiring = fs.readFileSync(path.join(workspace, '.claude', 'settings.json'), 'utf8')
+  assert.match(wiring, /\$CLAUDE_PROJECT_DIR\/acme-ops\/automatization\/hooks\/guard-shell\.sh/)
+
+  // El guard tiene que morder desde ahí. La raíz ops es un hermano de los repos de producto, y
+  // ninguna búsqueda hacia arriba la encuentra: si el guard no la resuelve por su cuenta, no
+  // bloquea nada y el silencio se lee como permiso.
+  const guard = (file) => spawnSync(
+    path.join(consumer, 'automatization', 'hooks', 'guard-files.sh'),
+    { cwd: workspace, encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: workspace },
+      input: JSON.stringify({ tool_input: { file_path: file }, cwd: workspace }) },
+  )
+  assert.match(guard('/tmp/fuera-de-todo.txt').stderr, /BLOQUEADO/, 'lo de afuera no pasa')
+  assert.equal(guard(path.join(workspace, 'service-a', 'main.go')).stderr, '', 'lo de adentro sí')
 
   // 4. La empresa trabaja: contexto propio, regla propia, override y un cargo suyo.
   const planning = path.join(consumer, 'planning')
@@ -77,9 +95,9 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
 
   // El runner debe seguir al cargo del proyecto, no al del sistema.
   assert.equal(cauce(consumer, ['automation', 'install', consumer, 'claude']).status, 0)
-  const installed = fs.readFileSync(path.join(consumer, '.claude', 'skills', 'product-manager', 'SKILL.md'), 'utf8')
+  const installed = fs.readFileSync(path.join(workspace, '.claude', 'skills', 'product-manager', 'SKILL.md'), 'utf8')
   assert.match(installed, /PM de Acme/)
-  assert.match(installed, /agents\/roles\/product-manager\/SKILL\.md/)
+  assert.match(installed, /acme-ops\/agents\/roles\/product-manager\/SKILL\.md/)
 
   // 5. Sale una versión nueva del toolkit, con un cambio en system/ y su entrada de changelog.
   const upstream = path.join(base, 'upstream')

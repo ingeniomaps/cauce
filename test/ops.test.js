@@ -74,20 +74,23 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
     .filter((file) => templateToken.test(fs.readFileSync(file, 'utf8')))
   assert.deepEqual(unresolved, [])
 
-  fs.mkdirSync(path.join(target, '.claude'), { recursive: true })
-  fs.writeFileSync(path.join(target, '.claude', 'settings.json'), '{"custom":true}\n')
+  // En sidecar el runner se instala donde el dev abre la herramienta: la carpeta de la compañía,
+  // que es la que además contiene los repos de producto. El repo ops es sólo uno de sus hijos.
+  const workspace = base
+  fs.mkdirSync(path.join(workspace, '.claude'), { recursive: true })
+  fs.writeFileSync(path.join(workspace, '.claude', 'settings.json'), '{"custom":true}\n')
   assert.equal(run(['automation', 'install', target, 'claude']).status, 0)
-  const claude = JSON.parse(fs.readFileSync(path.join(target, '.claude', 'settings.json'), 'utf8'))
+  const claude = JSON.parse(fs.readFileSync(path.join(workspace, '.claude', 'settings.json'), 'utf8'))
   assert.equal(claude.custom, true)
   assert.ok(claude.hooks.PreToolUse.length)
-  assert.equal(fs.existsSync(path.join(target, 'CLAUDE.md')), true)
+  assert.equal(fs.existsSync(path.join(workspace, 'CLAUDE.md')), true)
   assert.equal(run(['automation', 'doctor', target, 'claude']).status, 0)
   for (const workflow of [
     { source: 'autobuild.js', target: 'autobuild.js' },
     { source: path.join('integrations', 'sync.js'), target: 'integration-sync.js' },
     { source: path.join('integrations', 'promote.js'), target: 'integration-promote.js' },
   ]) {
-    const installedWorkflow = path.join(target, '.claude', 'workflows', workflow.target)
+    const installedWorkflow = path.join(workspace, '.claude', 'workflows', workflow.target)
     // Sin npm los workflows viajan con el motor; con npm salen de la dependencia. Nunca del proyecto.
     const sourceWorkflow = path.join(target, '.ops', 'automatization', 'workflows', workflow.source)
     assert.equal(fs.existsSync(installedWorkflow), true)
@@ -98,17 +101,17 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   // Los hooks sí: la configuración del runner los nombra por ruta literal del proyecto.
   assert.equal(fs.existsSync(path.join(target, 'automatization', 'hooks', 'guard-shell.sh')), true)
   assert.equal(run(['automation', 'install', target, 'codex']).status, 0)
-  const codexHooks = JSON.parse(fs.readFileSync(path.join(target, '.codex', 'hooks', 'hooks.json'), 'utf8'))
+  const codexHooks = JSON.parse(fs.readFileSync(path.join(workspace, '.codex', 'hooks', 'hooks.json'), 'utf8'))
   assert.ok(codexHooks.hooks.PreToolUse.length)
   assert.equal(run(['automation', 'doctor', target, 'codex']).status, 0)
   assert.equal(run(['automation', 'install', target, 'gemini']).status, 0)
-  const gemini = JSON.parse(fs.readFileSync(path.join(target, '.gemini', 'settings.json'), 'utf8'))
+  const gemini = JSON.parse(fs.readFileSync(path.join(workspace, '.gemini', 'settings.json'), 'utf8'))
   assert.equal(gemini.general.checkpointing.enabled, true)
-  assert.equal(fs.existsSync(path.join(target, 'GEMINI.md')), true)
-  assert.equal(fs.existsSync(path.join(target, '.gemini', 'commands', 'ops', 'autobuild.toml')), true)
+  assert.equal(fs.existsSync(path.join(workspace, 'GEMINI.md')), true)
+  assert.equal(fs.existsSync(path.join(workspace, '.gemini', 'commands', 'ops', 'autobuild.toml')), true)
   assert.equal(run(['automation', 'doctor', target, 'gemini']).status, 0)
   assert.equal(run(['automation', 'install', target, 'antigravity']).status, 0)
-  assert.equal(fs.existsSync(path.join(target, '.agents', 'plugins', 'cauce', 'plugin.json')), true)
+  assert.equal(fs.existsSync(path.join(workspace, '.agents', 'plugins', 'cauce', 'plugin.json')), true)
   assert.equal(run(['automation', 'doctor', target, 'antigravity']).status, 0)
   assert.equal(fs.existsSync(path.join(target, 'organization', 'company.md')), true)
   // El catálogo del sistema no se copia: se resuelve desde el paquete o desde .ops en modo copia.
@@ -183,7 +186,8 @@ test('install reemplaza el wiring por guard suelto y conserva lo que no es suyo'
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-migrate-'))
   const target = path.join(base, 'project')
   assert.equal(run(['init', target, '--name', 'Migrate', '--mode', 'sidecar']).status, 0)
-  const settings = path.join(target, '.claude', 'settings.json')
+  const workspace = base
+  const settings = path.join(workspace, '.claude', 'settings.json')
   const guard = (name) => `$CLAUDE_PROJECT_DIR/automatization/hooks/guard-${name}.sh`
   fs.mkdirSync(path.dirname(settings), { recursive: true })
   fs.writeFileSync(settings, JSON.stringify({

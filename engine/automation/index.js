@@ -72,20 +72,38 @@ function includesConfig(actual, expected) {
   return actual === expected
 }
 
+// Dónde abre el dev su herramienta, que no siempre es la raíz ops. En modo sidecar el repo ops es
+// un hermano de los repos de producto: `aparatejo-ops/` coordina, `aparatejo/` es lo que se abre.
+// Instalar dentro del sidecar dejaría al runner sin ver una sola línea de código.
+function installRoot(root) {
+  try {
+    const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
+    if (config.mode === 'sidecar') return path.resolve(root, '..')
+  } catch { /* sin configuración legible, instalar donde está */ }
+  return root
+}
+
+// Cómo se nombra la raíz ops desde ahí: `aparatejo-ops/` en sidecar, vacío cuando coinciden.
+function opsPrefix(root) {
+  const relative = path.relative(installRoot(root), root)
+  return relative ? `${relative.split(path.sep).join('/')}/` : ''
+}
+
 function runnerPaths(root, name, runner) {
   const automationRoot = packagedAutomation(root)
   const sourceDir = path.join(automationRoot, 'runners', name)
+  const install = installRoot(root)
   const configSource = F.assertWithin(
     sourceDir,
     path.resolve(sourceDir, runner.config.source),
     `${name}: config.source`,
   )
   const configTarget = F.assertWithin(
-    root,
-    path.resolve(root, runner.config.target),
+    install,
+    path.resolve(install, runner.config.target),
     `${name}: config.target`,
   )
-  return { automationRoot, sourceDir, configSource, configTarget }
+  return { automationRoot, sourceDir, configSource, configTarget, install }
 }
 
 function resolveItem(paths, root, name, item) {
@@ -95,8 +113,21 @@ function resolveItem(paths, root, name, item) {
       path.resolve(paths.sourceDir, item.source),
       `${name}: source`,
     ),
-    target: F.assertWithin(root, path.resolve(root, item.target), `${name}: target`),
+    target: F.assertWithin(
+      paths.install,
+      path.resolve(paths.install, item.target),
+      `${name}: target`,
+    ),
   }
+}
+
+// La configuración del runner nombra cada guard por ruta relativa a donde se abre la herramienta.
+// Si eso ya no es la raíz ops, hay que reescribir el prefijo o el runner buscaría los guards en la
+// carpeta equivocada. Se hace en un solo lugar: `install` lo escribe y `doctor` compara contra esto.
+function runnerConfig(paths, root) {
+  const raw = fs.readFileSync(paths.configSource, 'utf8')
+  const prefix = opsPrefix(root)
+  return JSON.parse(prefix ? raw.split('automatization/hooks/').join(`${prefix}automatization/hooks/`) : raw)
 }
 
 // Cargos del catálogo, con el frontmatter que el runner indexa para elegir a quién invocar.
@@ -104,7 +135,8 @@ function roleCatalog(root) {
   return catalog.list(root)
     .map((role) => {
       const field = P.frontmatter(fs.readFileSync(path.join(role.dir, 'SKILL.md'), 'utf8'))
-      return { ...role, reference: path.relative(root, role.dir), description: field('description') }
+      const reference = path.relative(installRoot(root), role.dir).split(path.sep).join('/')
+      return { ...role, reference, description: field('description') }
     })
     .filter((role) => role.description)
 }
@@ -130,11 +162,12 @@ Respetá los límites de ese contrato y las reglas de \`AGENTS.md\`. Generado po
 
 function installRoleSkills(root, runner, output) {
   if (!runner.capabilities.nativeSkills || !runner.roleSkills) return 0
-  const base = F.assertWithin(root, path.resolve(root, runner.roleSkills), `${runner.name}: roleSkills`)
+  const install = installRoot(root)
+  const base = F.assertWithin(install, path.resolve(install, runner.roleSkills), `${runner.name}: roleSkills`)
   const roles = roleCatalog(root)
   for (const role of roles) {
     const file = path.join(base, role.slug, 'SKILL.md')
-    F.assertNoSymlinkPath(root, file)
+    F.assertNoSymlinkPath(install, file)
     F.atomicWrite(file, roleSkill(role))
   }
   if (roles.length) output.log(`✓ ${runner.name}: ${roles.length} cargo(s) disponibles en ${runner.roleSkills}`)
@@ -210,7 +243,7 @@ function validateRunner(root, name, errors) {
       return
     }
     const paths = runnerPaths(root, name, runner)
-    const config = JSON.parse(fs.readFileSync(paths.configSource, 'utf8'))
+    const config = runnerConfig(paths, root)
     if (runner.capabilities.nativeHooks && !hasHooks(config)) {
       errors.push(`${name}: declara hooks nativos pero no los configura`)
     }
@@ -288,7 +321,7 @@ function doctor(root, name, output = console) {
   const errors = []
   const warnings = []
   try {
-    const expected = JSON.parse(fs.readFileSync(paths.configSource, 'utf8'))
+    const expected = runnerConfig(paths, root)
     const actual = JSON.parse(fs.readFileSync(paths.configTarget, 'utf8'))
     if (!includesConfig(actual, expected)) {
       errors.push(`${runner.config.target}: configuración instalada incompleta o divergente`)
@@ -322,7 +355,7 @@ function doctor(root, name, output = console) {
     const missing = []
     const stale = []
     for (const role of roleCatalog(root)) {
-      const file = path.join(root, runner.roleSkills, role.slug, 'SKILL.md')
+      const file = path.join(paths.install, runner.roleSkills, role.slug, 'SKILL.md')
       if (!fs.existsSync(file)) missing.push(role.slug)
       else if (fs.readFileSync(file, 'utf8') !== roleSkill(role)) stale.push(role.slug)
     }
@@ -348,7 +381,7 @@ function install(root, name, output = console) {
   const errors = check(root)
   if (errors.length) throw new Error(`La automatización no es instalable:\n- ${errors.join('\n- ')}`)
   const paths = runnerPaths(root, name, runner)
-  const incoming = JSON.parse(fs.readFileSync(paths.configSource, 'utf8'))
+  const incoming = runnerConfig(paths, root)
   let current = {}
   if (fs.existsSync(paths.configTarget)) {
     try { current = JSON.parse(fs.readFileSync(paths.configTarget, 'utf8')) } catch (error) {
@@ -357,9 +390,9 @@ function install(root, name, output = console) {
   }
   const items = [...(runner.instructions || []), ...(runner.artifacts || [])]
   const resolvedItems = items.map((item) => ({ item, ...resolveItem(paths, root, name, item) }))
-  F.assertNoSymlinkPath(root, paths.configTarget)
+  F.assertNoSymlinkPath(paths.install, paths.configTarget)
   for (const resolved of resolvedItems) {
-    F.assertNoSymlinkPath(root, resolved.target)
+    F.assertNoSymlinkPath(paths.install, resolved.target)
     if (fs.existsSync(resolved.target)
       && !runner.instructions.includes(resolved.item)
       && fs.readFileSync(resolved.target, 'utf8') !== fs.readFileSync(resolved.source, 'utf8')) {
@@ -370,6 +403,11 @@ function install(root, name, output = console) {
   F.atomicWriteJson(paths.configTarget, merged.config)
   for (const { wrapper, files } of merged.replaced) {
     output.log(`− ${name}: reemplazado ${[...new Set(files)].join(', ')} por ${wrapper}`)
+  }
+  // Dónde aterrizó, no sólo qué archivo: en sidecar el destino no es el repo desde el que se corrió
+  // el comando, y descubrirlo por sorpresa es la diferencia entre confiar y adivinar.
+  if (paths.install !== root) {
+    output.log(`  ${name}: el runner se abre en ${paths.install} — ahí quedan .claude/ y CLAUDE.md`)
   }
   output.log(`✓ ${name}: configuración instalada en ${runner.config.target}`)
   for (const resolved of resolvedItems) {

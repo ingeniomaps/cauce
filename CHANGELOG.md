@@ -24,8 +24,17 @@ minor aunque no toque una sola línea de código.
   configuración de cada runner nombra cada guard por ruta literal y no sabe resolver en cascada. Ahí
   es también donde una empresa agrega el suyo.
 
+- **En modo `sidecar`, `automation install` instala en la carpeta de la compañía, no dentro del repo
+  ops.** El repo ops coordina varios repos de producto y es hermano de ellos, así que instalar el
+  runner adentro lo dejaba sin ver una sola línea de código: el dev que abría su herramienta donde
+  está el código no tenía guards, ni cargos, ni workflows. Las rutas de guards y los punteros de cada
+  cargo se reescriben con el prefijo del repo ops al instalar.
+
 ### Corregido
 
+- Los guards resuelven la raíz ops por su cuenta. `findOpsRoot` sólo sube por el árbol, y en sidecar
+  la raíz ops es un *hermano* de los repos de producto: desde ahí no la encontraba, devolvía vacío y
+  el guard permitía todo **en silencio**. `run-hook.sh` ya sabía dónde vive; ahora lo exporta.
 - `automatization/README.md` y `automatization/AGENTS.md` se actualizan con el toolkit. Los escribe
   Cauce y envejecían en cada instancia: después de retirar `runners/` y `workflows/`, el README de la
   empresa seguía explicando cómo usar dos carpetas que ya no existían.
