@@ -118,7 +118,9 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   fs.writeFileSync(path.join(extra, 'SKILL.md'), '---\nname: probe\ndescription: x\n---\n')
   assert.ok(catalog.list(target).some((role) => role.type === 'specialists'), 'un tipo nuevo se reconoce solo')
   fs.rmSync(path.join(target, 'agents', 'specialists'), { recursive: true, force: true })
-  assert.equal(fs.existsSync(path.join(target, 'teams')), true)
+  // Los equipos, como los cargos, son definiciones que consume el motor: viajan con el paquete.
+  assert.equal(fs.existsSync(path.join(target, 'teams', 'system')), false)
+  assert.ok(require('../engine/teams/registry').list(target).length >= 2, 'y aun así se resuelven')
   // Ningún workflow del toolkit se distribuye. El CI valida el toolkit, y el ciclo de aprendizaje
   // investiga la profesión: repetirlo en cada empresa produciría la misma investigación N veces.
   const workflows = path.join(target, '.github', 'workflows')
@@ -660,4 +662,36 @@ test('upgrade no vendoriza el paquete en una instancia que usa la dependencia', 
   fs.writeFileSync(skill, 'viejo\n')
   assert.equal(run(['upgrade', copia, '--force']).status, 0)
   assert.match(fs.readFileSync(skill, 'utf8'), /No usar/, 'el catálogo vendorizado se refresca')
+})
+
+test('upgrade distingue una edición local de una mejora del toolkit', () => {
+  const M = require('../engine/core/manifest')
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-manifiesto-'))
+  const target = path.join(base, 'acme')
+  assert.equal(run(['init', target, '--name', 'A', '--mode', 'sidecar']).status, 0)
+
+  const guard = path.join(target, 'automatization', 'hooks', 'guard-verify.sh')
+  const regla = path.join(target, 'planning', 'business-rules', 'system', 'BR-OPS-001-una-sola-tarea-activa.md')
+  const registro = M.read(target)
+  assert.ok(Object.keys(registro).length > 10, 'init deja constancia de lo entregado')
+  assert.ok(registro['automatization/hooks/guard-verify.sh'], 'incluye el runtime')
+  assert.ok(registro['planning/business-rules/system/BR-OPS-001-una-sola-tarea-activa.md'], 'y las reglas')
+
+  // Nada editado: el upgrade pasa aunque el paquete traiga cambios.
+  assert.equal(run(['upgrade', target]).status, 0)
+
+  // Editado por la empresa: se detiene, y distingue de qué naturaleza es cada cosa.
+  fs.appendFileSync(guard, '# mío\n')
+  fs.appendFileSync(regla, '\nmía\n')
+  const refused = run(['upgrade', target])
+  assert.notEqual(refused.status, 0)
+  assert.match(refused.stderr, /guard-verify\.sh/)
+  assert.match(refused.stderr, /BR-OPS-001/)
+  assert.match(refused.stderr, /mismo ID/, 'la guía para una regla es el override')
+  assert.match(refused.stderr, /guard propio sobrevive/, 'y para el runtime, agregar al lado')
+
+  // Con --force se reemplazan y el registro vuelve a reflejar lo entregado.
+  assert.equal(run(['upgrade', target, '--force']).status, 0)
+  assert.equal(/# mío/.test(fs.readFileSync(guard, 'utf8')), false)
+  assert.deepEqual(require('../engine/core/ownership').localChanges(target), [], 'sin ediciones pendientes')
 })

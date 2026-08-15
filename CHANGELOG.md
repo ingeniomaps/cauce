@@ -12,6 +12,10 @@ minor aunque no toque una sola línea de código.
 
 ### Cambiado
 
+- **Ni el catálogo de cargos ni los equipos se copian al proyecto.** Son definiciones que consume el
+  motor: se resuelven desde la dependencia npm, o desde `.ops/` cuando el repo no usa npm. Las reglas
+  y decisiones de `planning/*/system/` sí siguen materializadas, porque la empresa las lee y las cita
+  en su propio repositorio.
 - **El catálogo de cargos ya no se copia al proyecto.** Se resuelve desde la dependencia npm, o desde
   `.ops/agents/` cuando el repo no usa npm. Una instancia pasa de ~950 KB a ~480 KB y su `git diff`
   muestra sólo lo que la empresa escribió.
