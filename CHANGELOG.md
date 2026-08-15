@@ -8,6 +8,26 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.5.1] - 2026-08-15
+
+### Agregado
+
+- **Codex recibe su `AGENTS.md`.** Era el único runner sin archivo de instrucciones: se llevaba los
+  guards y nada más, así que podía ser detenido pero no sabía que existía un protocolo, un catálogo de
+  cargos ni equipos. No existe un `CODEX.md`: `AGENTS.md` es el nombre que Codex lee, compartido entre
+  herramientas, y por eso en modo embedded no se instala —el de la empresa ya está ahí y manda—.
+
+### Corregido
+
+- **Las rutas de los adaptadores se resuelven contra la carpeta donde se abre la herramienta.** Al
+  mover la instalación a la raíz de la compañía quedaron apuntando al lugar equivocado: `@AGENTS.md`
+  y `@planning/PROTOCOL.md` no resolvían, y los workflows buscaban `planning/` donde no estaba. Ahora
+  cada fuente marca el lugar con `{{OPS_DIR}}` y `install` lo completa; `doctor` compara contra lo
+  mismo que `install` escribe.
+- `tools/ops.js` exporta la raíz ops, que ya calculaba y no usaba. Invocado desde la carpeta de la
+  compañía —`node <empresa>-ops/tools/ops.js team list`—, `agents list` y `team list` resolvían contra
+  el cwd y devolvían **vacío en vez de fallar**. `team` además no aceptaba una raíz de ningún modo.
+
 ## [0.5.0] - 2026-08-15
 
 ### Cambiado
