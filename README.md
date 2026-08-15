@@ -35,6 +35,12 @@ node engine/cli/ops.js team show product-development
 El destino debe estar vacío o no existir. En modo embebido normalmente ya es un repo: `--force` permite
 completar archivos faltantes, pero nunca sobrescribe archivos existentes.
 
+El motor llega de dos formas y `init` elige sola: si el destino tiene `package.json`, lo declara como
+dependencia y el lockfile fija la versión; si no —un repo Go, Python o Rust—, copia el runtime en
+`.ops/engine`, porque exigir npm para leer un planning sería imponer un stack. `--engine copy|dependency`
+fuerza cualquiera de las dos. En ambos casos el proyecto invoca `node tools/ops.js`, que resuelve el motor
+donde esté.
+
 Dentro de un proyecto generado, el CLI autocontenido se invoca con `node tools/ops.js`. En la tabla siguiente,
 `ops` representa cualquiera de esas dos formas según el contexto. El binario `cauce` también queda
 disponible si este paquete se enlaza o instala mediante npm.
