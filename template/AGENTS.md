@@ -58,6 +58,17 @@ Aplica a `planning/business-rules/`, `planning/adr/`, `planning/rules/`, `teams/
 `planning/` —roadmap, backlog, WIP, done, inbox y acciones humanas— es del proyecto y no se toca al
 actualizar.
 
+`automatization/hooks/` y `automatization/runners/` son runtime del toolkit y se reemplazan enteros. No
+tienen `system/` porque no hace falta: lo que un proyecto necesita ya funciona sin editarlos.
+
+- **Agregar un guard propio**: creá `automatization/hooks/guard-<nombre>.sh` y registralo en la
+  configuración de tu runner. Sobrevive a cada actualización, porque el toolkit no lo conoce.
+- **Desactivar un guard**: quitalo de esa configuración, que es del proyecto. El archivo sigue ahí.
+- **Cambiar un comportamiento**: agregá el tuyo, no edites el del toolkit.
+
+Un guard existente **no se edita**: `upgrade` detecta el cambio y se detiene antes de pisarlo, y con
+`--force` deja registrado qué descartó.
+
 ## Cómo leer el estado
 
 Antes de abrir un archivo de `planning/`, preguntarle al CLI: es determinista, no gasta contexto y no

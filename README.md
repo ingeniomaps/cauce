@@ -157,6 +157,11 @@ Cada colección adaptable separa lo que actualiza el toolkit de lo que escribe e
 | `teams/` | composiciones que vienen con Cauce | los equipos propios |
 | `agents/<tipo>/` | los cargos que trae Cauce | los cargos propios |
 
+`automatization/hooks/` y `automatization/runners/` no tienen `system/`: son runtime que se reemplaza
+entero. No hace falta, porque lo que un proyecto necesita ya funciona sin editarlos — un guard propio
+convive y sobrevive, y desactivar uno del toolkit es quitarlo de la configuración del runner, que es del
+proyecto. Editar uno existente detiene el `upgrade` antes de pisarlo.
+
 Un archivo propio con el mismo nombre o ID que uno de `system/` lo reemplaza: el del proyecto manda y
 `check` lo reporta como override explícito. Así una mejora del proceso no obliga a forkear el archivo,
 y actualizar no exige resolver conflictos: se reemplaza `system/` entero y nada más se toca.

@@ -8,6 +8,15 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [No publicado]
+
+### Corregido
+
+- `upgrade` sugería mover un guard editado "junto a `system/`", un mecanismo que no existe en
+  `automatization/hooks/`. Ahora explica las tres vías que sí funcionan: agregar un guard propio,
+  quitarlo de la configuración del runner para desactivarlo, o descartar el cambio con `--force`.
+- `upgrade --force` descartaba ediciones locales sin dejar rastro; ahora las lista.
+
 ## [0.2.0] - 2026-08-14
 
 ### Añadido
