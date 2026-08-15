@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "slug": "feasibility-review",
+  "name": "Feasibility Review",
+  "purpose": "Decidir si una intención vale el esfuerzo, con la evidencia que ya existe, antes de abrir un descubrimiento completo.",
+  "entryAgent": "product-manager",
+  "facilitator": "project-manager",
+  "decisionOwners": {
+    "value_and_priority": "product-manager",
+    "technical_design": "software-architect",
+    "capacity_and_assignment": "engineering-manager"
+  },
+  "conditionalAgents": [
+    "user-researcher",
+    "security-engineer",
+    "privacy-compliance-specialist",
+    "finops-engineer",
+    "legal-counsel"
+  ],
+  "stages": [
+    {
+      "id": "frame",
+      "phase": "discovery",
+      "agent": "product-manager",
+      "dependsOn": [],
+      "produces": ["problem-and-outcome", "evidence-already-available"],
+      "exitGate": "Problema, usuario, outcome y qué evidencia ya existe están explícitos; lo que falta averiguar queda listado, no supuesto."
+    },
+    {
+      "id": "assess",
+      "phase": "discovery",
+      "agent": "software-architect",
+      "dependsOn": ["frame"],
+      "produces": ["feasibility-and-options", "risks-and-unknowns"],
+      "exitGate": "Hay al menos una opción viable con su costo grueso y sus riesgos, o la razón técnica concreta por la que no la hay."
+    },
+    {
+      "id": "decide",
+      "phase": "discovery",
+      "agent": "engineering-manager",
+      "dependsOn": ["assess"],
+      "produces": ["recommendation", "what-would-change-the-answer"],
+      "exitGate": "La recomendación es hacer, no hacer o investigar, con el esfuerzo estimado y qué evidencia cambiaría la respuesta."
+    }
+  ],
+  "guardrails": [
+    "Cada agente conserva los límites y autorizaciones de su SKILL.md.",
+    "Este recorrido usa la evidencia que ya existe; no la produce ni la reemplaza por supuestos.",
+    "Recomendar investigar es un resultado legítimo, no una falla del recorrido.",
+    "Los agentes condicionales se incorporan por riesgo, plataforma y alcance, no por rutina.",
+    "Ningún handoff convierte una recomendación en aprobación ni en ejecución."
+  ],
+  "completion": [
+    "La recomendación distingue lo que se sabe de lo que se supone.",
+    "El esfuerzo estimado tiene rango y supuestos visibles, no un número solo.",
+    "Queda escrito qué evidencia cambiaría la decisión.",
+    "Si el resultado es investigar, la acción concreta queda registrada para una persona."
+  ]
+}

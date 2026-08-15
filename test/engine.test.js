@@ -468,3 +468,57 @@ test('el changelog del paquete cubre la versión que se publica', () => {
     `la versión ${version} no está documentada en CHANGELOG.md`,
   )
 })
+
+test('un equipo debe separar descubrimiento de entrega', () => {
+  const T = require('../engine/teams/registry')
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-fases-'))
+  const dir = path.join(root, 'teams', 'demo')
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, 'WORKFLOW.md'), '# demo\n')
+  const skill = path.join(root, 'agents', 'roles', 'product-manager')
+  fs.mkdirSync(skill, { recursive: true })
+  fs.writeFileSync(path.join(skill, 'SKILL.md'), '---\nname: product-manager\ndescription: x\n---\n')
+
+  const manifest = (stages) => {
+    fs.writeFileSync(path.join(dir, 'team.json'), JSON.stringify({
+      schemaVersion: 1, slug: 'demo', name: 'Demo', purpose: 'p',
+      entryAgent: 'product-manager', facilitator: 'product-manager',
+      guardrails: ['g'], completion: ['c'], stages,
+    }))
+    return T.validate(root, 'demo').errors
+  }
+  const stage = (id, phase) => ({
+    id, phase, agent: 'product-manager', dependsOn: [], produces: ['x'], exitGate: 'y',
+  })
+
+  // Sin phase no se puede saber qué corre /team y qué corre autobuild.
+  const sinFase = manifest([{ id: 'frame', agent: 'product-manager', dependsOn: [], produces: ['x'], exitGate: 'y' }])
+  assert.ok(sinFase.some((error) => /phase debe ser/.test(error)))
+
+  // Un equipo que sólo entrega no propone nada: no hay recorrido que correr.
+  const soloEntrega = manifest([stage('build', 'delivery')])
+  assert.ok(soloEntrega.some((error) => /al menos una etapa de discovery/.test(error)))
+
+  assert.deepEqual(manifest([stage('frame', 'discovery'), stage('build', 'delivery')]), [])
+})
+
+test('los equipos del sistema declaran sus fases y no construyen en descubrimiento', () => {
+  const T = require('../engine/teams/registry')
+  const repoRoot = path.resolve(__dirname, '..')
+  const teams = T.list(repoRoot)
+  assert.ok(teams.length >= 2, 'se distribuye más de una forma de recorrido')
+
+  for (const slug of teams) {
+    const result = T.validate(repoRoot, slug)
+    assert.deepEqual(result.errors, [], `${slug}: ${result.errors.join(', ')}`)
+    const discovery = result.manifest.stages.filter((stage) => stage.phase === 'discovery')
+    assert.ok(discovery.length, `${slug}: no propone nada`)
+    // Construir es entrega: hacerlo en descubrimiento sería escribir código antes de la aprobación.
+    for (const stage of discovery) {
+      assert.equal(
+        /working-increment|release-readiness/.test((stage.produces || []).join(' ')), false,
+        `${slug}/${stage.id}: produce un artefacto de entrega en una etapa de descubrimiento`,
+      )
+    }
+  }
+})
