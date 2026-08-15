@@ -12,6 +12,15 @@ minor aunque no toque una sola línea de código.
 
 ### Corregido
 
+- `tools/ops.js` se actualiza con el toolkit. Es el shim por donde entra cada comando, no tiene una
+  línea de la empresa —dice él mismo que no se edita— y sin declararlo envejecía para siempre: una
+  instancia creada antes seguía sin exportar la raíz ops, así que `agents list` y `team list`
+  devolvían vacío al invocarse desde la carpeta de la compañía.
+
+## [0.5.2] - 2026-08-15
+
+### Corregido
+
 - **`upgrade` registraba mal lo que entregaba, y eso trababa el siguiente.** El registro se anotaba
   ruta por ruta releyendo el manifiesto del disco en cada una, así que la última anulaba a todas las
   anteriores: tras un `upgrade` casi todos los digests quedaban viejos y la actualización siguiente
@@ -19,10 +28,6 @@ minor aunque no toque una sola línea de código.
 
   Una instancia que ya quedó con digests viejos se destraba con `cauce upgrade --force`: el contenido
   en disco y el del paquete son el mismo, así que no se descarta nada real.
-- `tools/ops.js` se actualiza con el toolkit. Es el shim por donde entra cada comando, no tiene una
-  línea de la empresa —dice él mismo que no se edita— y sin declararlo envejecía para siempre: una
-  instancia creada antes seguía sin exportar la raíz ops, así que `agents list` y `team list`
-  devolvían vacío al invocarse desde la carpeta de la compañía.
 
 ## [0.5.1] - 2026-08-15
 
