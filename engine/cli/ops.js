@@ -534,6 +534,15 @@ function upgrade(dir) {
     }
   }
 
+  // El catálogo en dos pasadas: la primera refresca los contratos sin tocar `learning/`; la segunda
+  // repone sólo lo que falte, para que un cargo recién llegado traiga su andamiaje de aprendizaje.
+  const catalog = path.join(PROJECT_ROOT, O.CATALOG)
+  if (fs.existsSync(catalog)) {
+    const target = path.join(root, O.CATALOG)
+    copyRuntime(catalog, target, false, root, O.CATALOG_PRESERVED)
+    copyRuntime(catalog, target, true, root)
+  }
+
   const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
   config.cauceVersion = to
   F.atomicWriteJson(path.join(root, 'ops.config.json'), config)

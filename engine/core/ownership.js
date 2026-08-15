@@ -42,6 +42,12 @@ const RUNTIME_PATHS = [
   'automatization/workflows',
 ]
 
+// El catálogo se actualiza como el resto del sistema, con una excepción precisa: dentro de cada
+// cargo, `learning/` es del proyecto. Los informes y propuestas acumulados son lo único que no se
+// puede reponer desde el paquete, porque los produjo esta empresa y no otra.
+const CATALOG = 'agents'
+const CATALOG_PRESERVED = ['learning']
+
 // Rutas que el paquete tiene por duplicado: una versión para el proyecto en `template/` y otra
 // interna del toolkit. Gana la del template, que es la que le habla a quien usa la instancia.
 const TEMPLATE_OWNED = ['automatization/runners/README.md']
@@ -153,6 +159,8 @@ function localChanges(root, packageRoot) {
 }
 
 module.exports = {
+  CATALOG,
+  CATALOG_PRESERVED,
   RUNTIME_PATHS,
   engineAt,
   engineCandidates,

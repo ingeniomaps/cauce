@@ -12,6 +12,11 @@ minor aunque no toque una sola línea de código.
 
 ### Corregido
 
+- `upgrade` no actualizaba el catálogo de cargos, o sea el 75% del paquete: un cargo nuevo o mejorado
+  nunca llegaba a un proyecto ya inicializado. Ahora se refresca como el resto del sistema, con una
+  excepción precisa: `learning/` dentro de cada cargo es del proyecto y no se toca, porque los
+  informes acumulados son lo único que no se puede reponer desde el paquete.
+
 - El `$schema` de `ops.config.json` apuntaba siempre a `.ops/engine/`, una ruta que no existe cuando el
   motor viene como dependencia. Ahora se escribe según dónde quedó el motor.
 

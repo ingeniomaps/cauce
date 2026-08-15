@@ -606,3 +606,45 @@ test('el $schema de la instancia apunta a donde quedó el motor', () => {
   assert.match(schemaOf(dep), /node_modules\/@ingeniomaps\/cauce/)
   assert.equal(fs.existsSync(path.join(dep, '.ops')), false)
 })
+
+test('upgrade actualiza el catálogo pero no borra el aprendizaje acumulado', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-catalogo-'))
+  const target = path.join(base, 'acme')
+  assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
+  const roles = () => run(['agents', 'list', target]).stdout.trim().split('\n').filter(Boolean)
+  const total = roles().length
+  assert.ok(total >= 40)
+
+  // Lo que la empresa acumuló: un informe y una entrada de historial dentro de un cargo del sistema.
+  const learning = path.join(target, 'agents', 'roles', 'system', 'qa-engineer', 'learning')
+  fs.writeFileSync(path.join(learning, 'reports', '2026-08-01.md'), '# lo que aprendimos acá\n')
+  fs.writeFileSync(path.join(learning, 'HISTORY.md'), '# historial propio de Acme\n')
+
+  // Y lo que el proyecto sobrescribió o agregó por su cuenta.
+  const own = path.join(target, 'agents', 'roles', 'product-manager')
+  fs.mkdirSync(own, { recursive: true })
+  fs.writeFileSync(path.join(own, 'SKILL.md'), '---\nname: product-manager\ndescription: PM propio.\n---\n')
+
+  // Un cargo del sistema se pierde o queda viejo.
+  fs.rmSync(path.join(target, 'agents', 'roles', 'system', 'finops-engineer'), { recursive: true, force: true })
+  const skill = path.join(target, 'agents', 'roles', 'system', 'qa-engineer', 'SKILL.md')
+  fs.writeFileSync(skill, '---\nname: qa-engineer\ndescription: viejo\n---\n')
+
+  assert.equal(run(['upgrade', target]).status, 0)
+
+  assert.equal(roles().length, total, 'el cargo faltante vuelve')
+  assert.match(fs.readFileSync(skill, 'utf8'), /No usar/, 'el contrato viejo se reemplaza')
+  assert.equal(
+    fs.readFileSync(path.join(learning, 'reports', '2026-08-01.md'), 'utf8'), '# lo que aprendimos acá\n',
+    'el informe acumulado es lo único que no se puede reponer desde el paquete',
+  )
+  assert.equal(fs.readFileSync(path.join(learning, 'HISTORY.md'), 'utf8'), '# historial propio de Acme\n')
+  assert.match(fs.readFileSync(path.join(own, 'SKILL.md'), 'utf8'), /PM propio/, 'el cargo propio no se toca')
+
+  // Un cargo que llega nuevo trae su andamiaje de aprendizaje, o `evaluate` lo rechazaría.
+  const nuevo = path.join(target, 'agents', 'roles', 'system', 'finops-engineer', 'learning')
+  for (const file of ['HISTORY.md', 'sources.yaml', 'CODEX_AUTOMATION.md']) {
+    assert.equal(fs.existsSync(path.join(nuevo, file)), true, `el cargo repuesto necesita ${file}`)
+  }
+  assert.equal(run(['evaluate', 'finops-engineer'], target).status, 0)
+})
