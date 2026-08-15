@@ -187,6 +187,12 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
     'y no se instala wiring sobre un guard muerto')
   assert.equal(cauce(consumer, ['upgrade', consumer]).status, 0)
   assert.equal(cauce(consumer, ['automation', 'check', consumer]).status, 0, 'upgrade lo repone')
+  // Y lo repuesto queda registrado. Anotar cada ruta releyendo el manifiesto del disco hacía que la
+  // última anulara a las anteriores: casi todos los digests quedaban viejos y el upgrade siguiente
+  // los leía como ediciones de la empresa, sin que nadie hubiera tocado nada.
+  fs.appendFileSync(shippedHook, '\n# y otra mejora\n')
+  const again = cauce(consumer, ['upgrade', consumer])
+  assert.equal(again.status, 0, `un upgrade consecutivo no se traba:\n${again.stderr}`)
 
   // Lo que la empresa escribió en ese mismo archivo, en cambio, detiene la instalación antes de
   // pisarlo. Es del toolkit: se agrega al lado, no se edita.

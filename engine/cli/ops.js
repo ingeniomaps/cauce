@@ -167,7 +167,7 @@ function init(target) {
   let entregado = {}
   for (const relative of O.trackedPaths()) {
     const dir = path.join(root, relative)
-    if (fs.existsSync(dir)) entregado = { ...entregado, ...M.record(root, relative, O.treeFiles(dir)) }
+    if (fs.existsSync(dir)) entregado = M.record(root, relative, O.treeFiles(dir), entregado)
   }
   M.write(root, entregado)
   // La instancia recuerda de qué versión salió: sin esto no hay actualización posible.
@@ -563,7 +563,7 @@ function upgrade(dir) {
   let registro = M.read(root)
   for (const relative of O.trackedPaths()) {
     const dir = path.join(root, relative)
-    if (fs.existsSync(dir)) registro = { ...registro, ...M.record(root, relative, O.treeFiles(dir)) }
+    if (fs.existsSync(dir)) registro = M.record(root, relative, O.treeFiles(dir), registro)
   }
   M.write(root, M.prune(root, registro))
 

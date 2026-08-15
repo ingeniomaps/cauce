@@ -55,9 +55,12 @@ function write(root, files, runners) {
   fs.writeFileSync(target, `${JSON.stringify(data, null, 2)}\n`)
 }
 
-// Registra lo entregado en una ruta, relativo a la raíz de la instancia.
-function record(root, relative, files) {
-  const current = read(root)
+// Registra lo entregado en una ruta, relativo a la raíz de la instancia. Acumula sobre lo que recibe
+// y no vuelve al disco: releerlo en cada ruta hacía que la última anulara a todas las anteriores,
+// así que tras un `upgrade` casi todos los digests quedaban viejos y la actualización siguiente los
+// leía como ediciones de la empresa. Un callejón sin salida sin que nadie hubiera tocado nada.
+function record(root, relative, files, into = {}) {
+  const current = { ...into }
   for (const file of files) current[`${relative}/${file}`] = digest(path.join(root, relative, file))
   return current
 }
