@@ -8,6 +8,18 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.7.5] - 2026-08-15
+
+### Corregido
+
+- `learn` y `evaluate` resuelven la raíz ops como el resto de los comandos. Quedaron con `cwd` cuando
+  los demás pasaron a usarla: invocados desde la carpeta de la compañía —lo normal en sidecar— no
+  encontraban ningún cargo.
+- **`evaluate` le exigía a una empresa un archivo del toolkit.** `learning/CODEX_AUTOMATION.md`
+  documenta cómo corre nuestra automatización de aprendizaje; pedírselo a quien escribe un cargo
+  propio era pedirle contabilidad interna nuestra. Ahora sólo se exige a los cargos del sistema: el
+  cargo de una empresa necesita contrato, fuentes e historia, no nuestro andamiaje.
+
 ## [0.7.4] - 2026-08-15
 
 ### Corregido
