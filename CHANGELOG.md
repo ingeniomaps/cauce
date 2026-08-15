@@ -8,6 +8,16 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.5.5] - 2026-08-15
+
+### Corregido
+
+- Los comandos de Gemini y las skills de Antigravity también resuelven sus rutas contra la carpeta
+  donde se abre la herramienta. Quedaron afuera al marcar el resto: los `.toml` mandaban a leer
+  `planning/PROTOCOL.md` y las skills `AGENTS.md`, que desde la raíz de la compañía no existen.
+- Un test recorre todo lo que un adaptador copia y falla si una ruta da por sentado dónde se instala.
+  Revisando archivo por archivo se escapó tres veces; ahora cubre también lo que se agregue después.
+
 ## [0.5.4] - 2026-08-15
 
 ### Corregido
