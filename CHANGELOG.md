@@ -24,6 +24,12 @@ minor aunque no toque una sola línea de código.
   configuración de cada runner nombra cada guard por ruta literal y no sabe resolver en cascada. Ahí
   es también donde una empresa agrega el suyo.
 
+### Corregido
+
+- `automatization/README.md` y `automatization/AGENTS.md` se actualizan con el toolkit. Los escribe
+  Cauce y envejecían en cada instancia: después de retirar `runners/` y `workflows/`, el README de la
+  empresa seguía explicando cómo usar dos carpetas que ya no existían.
+
 ## [0.4.1] - 2026-08-15
 
 ### Corregido

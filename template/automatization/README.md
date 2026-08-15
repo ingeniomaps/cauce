@@ -1,4 +1,4 @@
-# Automatización de {{PROJECT_NAME}}
+# Automatización
 
 Wiring local entre `planning/PROTOCOL.md` y el runner elegido. El proyecto empieza en modo manual y seguro;
 ningún runner se activa solo.

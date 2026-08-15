@@ -89,6 +89,9 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   fs.writeFileSync(path.join(upstream, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`)
   const systemRule = path.join(upstream, 'template', 'planning', 'rules', 'system', 'process.md')
   fs.appendFileSync(systemRule, '\n- Regla incorporada río arriba.\n')
+  // La prosa que el toolkit escribe también envejece: si no se refresca, la instancia termina
+  // describiendo carpetas que el propio upgrade acaba de retirar.
+  fs.appendFileSync(path.join(upstream, 'template', 'automatization', 'README.md'), '\n- Nota nueva.\n')
   fs.writeFileSync(
     path.join(upstream, 'CHANGELOG.md'),
     '# Changelog\n\n## [99.0.0] - hoy\n\n- Una regla nueva del sistema.\n',
@@ -118,6 +121,8 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   assert.equal(fs.existsSync(ownGuard), true, 'el guard propio sobrevive al refresco del runtime')
   assert.equal(fs.existsSync(legacy), false, 'la copia vieja de workflows se retira')
   assert.match(upgraded.stdout, /retirado automatization\/workflows/)
+  const automationReadme = path.join(consumer, 'automatization', 'README.md')
+  assert.match(fs.readFileSync(automationReadme, 'utf8'), /Nota nueva/, 'y la prosa se pone al día')
 
   // 8. Y la instancia sigue siendo válida y operable después de todo.
   assert.equal(cauce(consumer, ['check', planning]).status, 0)

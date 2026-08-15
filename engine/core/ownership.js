@@ -25,6 +25,8 @@ const SYSTEM_FILES = [
   'organization/roles/README.md',
   'teams/000-template.md',
   'teams/README.md',
+  'automatization/README.md',
+  'automatization/AGENTS.md',
 ]
 
 // Colecciones mixtas: el toolkit posee `<dir>/system/`, el proyecto todo lo demás del directorio.
@@ -48,11 +50,20 @@ const RUNTIME_PATHS = [
 
 // Dentro del paquete, lo que una instancia recibe en su raíz vive bajo `template/`; el catálogo,
 // los equipos y la automatización están en la raíz del paquete, y el motor en `engine/`.
-const TEMPLATE_PREFIXES = ['planning/', 'organization/', 'integrations/', 'teams/']
+const TEMPLATE_PREFIXES = [
+  'planning/',
+  'organization/',
+  'integrations/',
+  'teams/',
+  'automatization/',
+]
 
 function sourceOf(relative) {
   // `.ops/` es el paquete vendorizado: cada ruta de ahí adentro se llama igual en el origen.
   if (relative.startsWith('.ops/')) return relative.slice('.ops/'.length)
+  // El runtime sale de la raíz del paquete aunque su prefijo sea de plantilla: `automatization/`
+  // le entrega documentos a la instancia, pero los guards que ejecuta son los del toolkit.
+  if (RUNTIME_PATHS.includes(relative)) return relative
   if (TEMPLATE_PREFIXES.some((prefix) => relative.startsWith(prefix))) {
     return path.join('template', relative)
   }
