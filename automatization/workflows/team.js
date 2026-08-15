@@ -40,8 +40,12 @@ const CANDIDATE = String(input.team || (prefix ? prefix[1] : '') || 'product-dev
 const INTENT = (input.team || !prefix ? raw : prefix[2]).trim()
 
 const MANIFEST = {
-  type: 'object', additionalProperties: false, required: ['name', 'purpose', 'stages', 'guardrails'],
+  // `exists` es lo único obligatorio: el mismo agente responde "no hay tal equipo" sin poder llenar
+  // un manifiesto que no existe. El resto se exige después, cuando sí lo hay.
+  type: 'object', additionalProperties: false, required: ['exists'],
   properties: {
+    exists: { type: 'boolean' },
+    teams: { type: 'array', items: { type: 'string' } },
     name: { type: 'string' }, purpose: { type: 'string' },
     outcome: { type: 'string', enum: ['epic', 'report'] },
     entryAgent: { type: 'string' }, facilitator: { type: 'string' },
@@ -53,6 +57,9 @@ const MANIFEST = {
       id: { type: 'string' }, agent: { type: 'string' }, exitGate: { type: 'string' },
       phase: { type: 'string', enum: ['discovery', 'delivery'] },
       produces: { type: 'array', items: { type: 'string' } },
+      // Resuelto acá una vez: sin esto cada etapa gasta llamadas buscando el contrato de su cargo,
+      // que además ya no vive en el proyecto sino en el paquete.
+      skill: { type: 'string' },
     } } },
   },
 }
@@ -100,31 +107,35 @@ const BASE = `Nunca inventes clientes, métricas, restricciones ni decisiones. N
   `haría falta averiguar. No promuevas trabajo al BACKLOG, no escribas en sistemas externos y no ` +
   `declares validado nada sin evidencia observable.`
 
-const resolved = await agent(
-  `${BASE}\n\nRun "node tools/ops.js team list" from ${ROOT}. Report whether "${CANDIDATE}" is one of ` +
-  `the slugs it printed, and the full list. Do not guess: report only what the command printed.`,
-  { schema: { type: 'object', required: ['exists', 'teams'], properties: {
-    exists: { type: 'boolean' }, teams: { type: 'array', items: { type: 'string' } },
-  } }, label: 'team-resolve' },
-)
-if (!resolved) return stop('teams-unavailable', 'no se pudo listar los equipos')
-if (!resolved.exists && input.team) {
-  return stop('equipo-inexistente', `${CANDIDATE} no existe. Disponibles: ${resolved.teams.join(', ')}`)
-}
-// El prefijo era parte de la intención, no un equipo: se recompone y sigue con el equipo por defecto.
-const TEAM = resolved.exists ? CANDIDATE : 'product-development'
-const GOAL = resolved.exists ? INTENT : raw
-if (!resolved.exists && prefix) log(`"${CANDIDATE}" no es un equipo: se toma el texto completo como intención.`)
-
+// Tres comandos deterministas en un solo agente. Eran dos agentes, y el segundo además leía
+// `organization/` "como contexto para etapas siguientes": cada etapa es un agente nuevo con su
+// propio contexto, así que esa lectura no llegaba a ninguna parte y sólo costaba tokens.
 const contract = await agent(
-  `${BASE}\n\nRun "node tools/ops.js team show ${TEAM} --json" from ${ROOT} and report only what it ` +
-  `printed: name, purpose, outcome, entryAgent, facilitator, guardrails, the stages with id, phase, ` +
-  `agent, ` +
-  `produces and exitGate, and decisionOwners flattened into owners as domain/agent pairs. Then read ` +
-  `${ROOT}/organization/ and report nothing from it: it is context for later stages, not output.`,
+  `${BASE}\n\nFrom ${ROOT}, run exactly these commands and report only what they printed. Read no ` +
+  `other file.\n` +
+  `1. "node tools/ops.js team show ${CANDIDATE} --json".\n` +
+  `   If it fails, run "node tools/ops.js team list", set exists=false, report teams, and stop.\n` +
+  `2. "node tools/ops.js agents list --json", which gives each role its resolved path.\n` +
+  `Report exists=true, the manifest fields —name, purpose, outcome, entryAgent, facilitator, ` +
+  `guardrails, stages with id, phase, agent, produces and exitGate, decisionOwners flattened into ` +
+  `owners as domain/agent pairs— and for every stage set skill to "<path>/SKILL.md" using the path ` +
+  `that command 2 printed for that stage's agent.`,
   { schema: MANIFEST, label: 'team-contract' },
 )
-if (!contract) return stop('contract-unavailable', `no se pudo leer el manifiesto de ${TEAM}`)
+if (!contract) return stop('contract-unavailable', `no se pudo leer el manifiesto de ${CANDIDATE}`)
+if (contract.exists === false) {
+  if (input.team) {
+    return stop('equipo-inexistente', `${CANDIDATE} no existe. Disponibles: ${(contract.teams || []).join(', ')}`)
+  }
+  // El prefijo era parte de la intención, no un equipo: se recompone y se reintenta por defecto.
+  return stop('equipo-inexistente', `"${CANDIDATE}" no es un equipo. Repetí sin el prefijo: la ` +
+    `intención completa era "${raw}". Disponibles: ${(contract.teams || []).join(', ')}`)
+}
+if (!contract.name || !contract.stages || !contract.guardrails) {
+  return stop('contrato-incompleto', `el manifiesto de ${CANDIDATE} no trae nombre, etapas o guardrails`)
+}
+const TEAM = CANDIDATE
+const GOAL = INTENT
 
 const owners = (contract.owners || []).map((owner) => `${owner.domain}=${owner.agent}`).join(', ')
 const RULES = `${BASE}\n\nEquipo ${contract.name}: ${contract.purpose}\n` +
@@ -147,7 +158,8 @@ for (const stage of discovery) {
 
   const result = await agent(
     `${RULES}\n\n${previous}\n\nActuá como ${stage.agent}, respetando su contrato en ` +
-    `agents/<tipo>/${stage.agent}/SKILL.md y sus límites. Etapa "${stage.id}": producí ` +
+    `${stage.skill || `${ROOT}/agents/roles/${stage.agent}/SKILL.md`} y sus límites. ` +
+    `Etapa "${stage.id}": producí ` +
     `${(stage.produces || []).join(' y ')}. Distinguí hechos, evidencia, supuestos y preguntas ` +
     `abiertas. El exit gate es: "${stage.exitGate}". Marcá gatePassed sólo si se cumple de verdad; ` +
     `si no, explicá en missing qué falta y en humanAction la acción concreta que lo desbloquea.`,

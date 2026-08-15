@@ -88,7 +88,11 @@ const teamWorkflow = fs.readFileSync(
 
 test('team recorre las etapas del manifiesto y exige cada exit gate', () => {
   // El recorrido sale del CLI, no de un modelo leyendo el JSON a ojo.
-  assert.match(teamWorkflow, /team show \$\{TEAM\} --json/)
+  assert.match(teamWorkflow, /team show \$\{CANDIDATE\} --json/)
+  // El contrato sale de un solo agente: dos llamadas para transcribir salida determinista de CLI
+  // costaban un cuarto del recorrido.
+  assert.equal(teamWorkflow.split("label: 'team-").length - 1, 1, 'un solo agente de contrato')
+  assert.match(teamWorkflow, /agents list --json/, 'y resuelve dónde vive cada cargo')
   assert.match(teamWorkflow, /exitGate/, 'cada etapa tiene su gate')
   assert.match(teamWorkflow, /gatePassed/, 'y el resultado lo declara explícitamente')
   // Un gate no cumplido corta el recorrido en vez de seguir con evidencia floja.
@@ -148,6 +152,9 @@ test('team declara qué deja cada recorrido y ramifica según eso', () => {
   assert.match(teamWorkflow, /REPORTS/)
   assert.match(teamWorkflow, /sin promoverlo/, 'los seguimientos no se promueven solos')
   assert.match(teamWorkflow, /team list/, 'el equipo se confirma contra los que existen')
+  // Leer `organization/` para "etapas siguientes" no llegaba a ninguna parte: cada etapa es un
+  // agente nuevo con su propio contexto.
+  assert.equal(/report nothing from it/.test(teamWorkflow), false, 'nada se lee para descartarlo')
   assert.match(teamWorkflow, /equipo-inexistente/)
 })
 
