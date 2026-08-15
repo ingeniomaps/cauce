@@ -29,15 +29,20 @@ test('las capacidades declaradas coinciden con los artefactos reales', () => {
   assert.equal(claude.capabilities.nativeHooks, true)
   assert.equal(claude.capabilities.nativeWorkflows, true)
   assert.equal(codex.capabilities.nativeHooks, true)
-  assert.equal(gemini.capabilities.nativeHooks, false)
+  // Gemini CLI ganó hooks y skills nativas; el adaptador dejó de tratarlo como si no los tuviera.
+  assert.equal(gemini.capabilities.nativeHooks, true)
   assert.equal(gemini.capabilities.checkpointing, true)
+  assert.equal(gemini.roleSkills, '.gemini/skills')
   assert.equal(antigravity.command, 'agy')
   assert.equal(antigravity.capabilities.nativeHooks, true)
   assert.equal(antigravity.capabilities.nativeWorkflows, true)
   assert.equal(antigravity.lifecycle.recommendedForNewProjects, true)
   const geminiSettings = JSON.parse(fs.readFileSync(path.join(root, 'gemini', 'settings.json'), 'utf8'))
-  assert.equal('hooks' in geminiSettings, false)
   assert.equal(geminiSettings.general.checkpointing.enabled, true)
+  // Sus eventos y su variable de entorno son propios: reusar los de Claude no engancharía nada.
+  assert.ok(geminiSettings.hooks.BeforeTool.length)
+  assert.ok(geminiSettings.hooks.AfterAgent.length)
+  assert.match(JSON.stringify(geminiSettings.hooks), /\$GEMINI_PROJECT_DIR/)
 })
 
 test('el bridge de Antigravity traduce decisiones al protocolo nativo', () => {
@@ -86,12 +91,12 @@ test('los runners con skills nativas exponen el catálogo completo de cargos', (
   const slugs = require('../engine/agents/catalog').list(repoRoot).map((role) => role.slug)
   assert.ok(slugs.length >= 40, 'el catálogo debería tener decenas de cargos')
 
-  for (const name of ['claude', 'antigravity']) {
+  for (const name of ['claude', 'antigravity', 'gemini']) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, name, 'manifest.json'), 'utf8'))
     assert.equal(manifest.capabilities.nativeSkills, true, `${name}: declara skills nativas`)
     assert.ok(manifest.roleSkills, `${name}: declara dónde instalarlas`)
   }
-  for (const name of ['codex', 'gemini']) {
+  for (const name of ['codex']) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, name, 'manifest.json'), 'utf8'))
     assert.equal(manifest.capabilities.nativeSkills, false, `${name}: no tiene mecanismo de skills`)
   }

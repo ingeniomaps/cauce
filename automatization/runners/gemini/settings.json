@@ -1,9 +1,43 @@
 {
   "general": {
-    "checkpointing": { "enabled": true }
+    "checkpointing": {
+      "enabled": true
+    }
   },
   "context": {
     "fileName": ["AGENTS.md", "GEMINI.md"],
     "loadFromIncludeDirectories": true
+  },
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "run_shell_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$GEMINI_PROJECT_DIR/{{OPS_DIR}}automatization/hooks/guard-shell.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "replace|write_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$GEMINI_PROJECT_DIR/{{OPS_DIR}}automatization/hooks/guard-files.sh"
+          }
+        ]
+      }
+    ],
+    "AfterAgent": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$GEMINI_PROJECT_DIR/{{OPS_DIR}}automatization/hooks/guard-planning-drift.sh"
+          }
+        ]
+      }
+    ]
   }
 }

@@ -31,10 +31,11 @@
     }
   ],
   "capabilities": {
-    "nativeHooks": false,
+    "nativeHooks": true,
     "nativeWorkflows": false,
     "projectInstructions": true,
     "checkpointing": true,
-    "nativeSkills": false
-  }
+    "nativeSkills": true
+  },
+  "roleSkills": ".gemini/skills"
 }
