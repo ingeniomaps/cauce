@@ -8,6 +8,20 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.9.1] - 2026-08-15
+
+### Corregido
+
+- **Una instancia no recibía `.gitignore`.** En modo dependencia eso significa commitear
+  `node_modules/` —el paquete entero— dentro del repo de la empresa, y sus credenciales con él. El
+  archivo viaja sin punto y se restituye al copiar: npm **excluye** cualquier `.gitignore` de un
+  tarball, así que puesto con punto habría existido en el repo del toolkit y desaparecido para todo
+  consumidor real.
+- **`AGENTS.md` y `Makefile` se actualizan con el toolkit.** Son las reglas que un agente obedece y
+  los atajos que envuelven al CLI; ninguno tiene una línea de la empresa. Envejecidos mienten: el
+  `AGENTS.md` de una instancia seguía describiendo `automatization/runners/` como runtime del
+  proyecto cuatro versiones después de que `upgrade` lo retirara.
+
 ## [0.9.0] - 2026-08-15
 
 ### Añadido
