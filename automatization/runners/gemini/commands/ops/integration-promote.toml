@@ -1,6 +1,6 @@
 description = "Promueve localmente un candidato de integración revisado"
 prompt = """
-Lee integrations/README.md y planning/PROTOCOL.md. Interpreta {{args}} como '<provider> <remote-key>'. Exige
-un draft ready, ejecuta integration check, promote y el check final mediante tools/ops.js. Nunca escribas en
+Lee {{OPS_DIR}}integrations/README.md y {{OPS_DIR}}planning/PROTOCOL.md. Interpreta {{args}} como '<provider> <remote-key>'. Exige
+un draft ready, ejecuta integration check, promote y el check final mediante {{OPS_DIR}}tools/ops.js. Nunca escribas en
 el proveedor remoto ni modifiques BACKLOG, WIP o DONE.
 """

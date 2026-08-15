@@ -115,3 +115,31 @@ test('el puntero de un cargo conserva su frontmatter y no duplica el contrato', 
   const original = fs.readFileSync(path.join(repoRoot, 'agents', 'roles', 'system', 'product-manager', 'SKILL.md'), 'utf8')
   assert.ok(generated.length < original.length / 2, 'un puntero pesa mucho menos que el contrato')
 })
+
+// Cada archivo que un adaptador copia se lee desde donde se abre la herramienta, que en modo sidecar
+// no es la raíz ops. Una ruta sin `{{OPS_DIR}}` apunta a un lugar que no existe, y el modelo que la
+// sigue no encuentra el protocolo ni el catálogo. Se escapó tres veces revisando de a un archivo:
+// esto lo declara de una vez para todo lo instalable, incluido lo que se agregue después.
+test('ninguna ruta de un adaptador da por sentado dónde se instala', () => {
+  const REPO = path.resolve(__dirname, '..')
+  const A = require('../engine/automation')
+  const raiz = /(?<!\{\{OPS_DIR\}\}|\.|\/)\b(planning\/|organization\/|integrations\/|teams\/|automatization\/|tools\/ops\.js|ops\.config\.json)/g
+  const sueltas = []
+  for (const name of A.RUNNER_NAMES) {
+    const runner = A.runnerManifest(REPO, name)
+    const dir = path.join(REPO, 'automatization', 'runners', name)
+    const copiados = [
+      runner.config.source,
+      ...(runner.instructions || []).map((item) => item.source),
+      ...(runner.artifacts || []).map((item) => item.source),
+    ]
+    for (const relative of copiados) {
+      const file = path.resolve(dir, relative)
+      if (!fs.existsSync(file) || file.endsWith('.js')) continue
+      for (const hit of fs.readFileSync(file, 'utf8').matchAll(raiz)) {
+        sueltas.push(`${name}:${relative} → ${hit[1]}`)
+      }
+    }
+  }
+  assert.deepEqual(sueltas, [])
+})
