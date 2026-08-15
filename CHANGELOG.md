@@ -8,7 +8,7 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
-## [0.7.0] - 2026-08-15
+## [0.7.1] - 2026-08-15
 
 ### Corregido
 
@@ -19,6 +19,10 @@ minor aunque no toque una sola línea de código.
 
   La raíz ahora viaja escrita en el archivo, que es lo que `automation install` ya sabía completar, y
   es relativa a donde se abre la herramienta.
+- **Y al arreglar eso, `team` y `autobuild` morían en la línea de cierre**: llamaban a un `finish()`
+  que el runtime tampoco trae. Peor que el anterior, porque ocurría *después* de gastar cada etapa.
+- Dos tests recorren los workflows: uno prohíbe lo que el sandbox no expone, otro falla si se llama a
+  algo que ni el runtime da ni el archivo define.
 
 ### Cambiado
 
