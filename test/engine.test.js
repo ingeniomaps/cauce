@@ -427,3 +427,44 @@ test('un team propio reemplaza al del sistema sin duplicarlo en la lista', () =>
   assert.deepEqual(T.list(root), ['demo'], 'el slug no aparece dos veces')
   assert.equal(T.read(root, 'demo').manifest.name, 'Del proyecto', 'el del proyecto manda')
 })
+
+test('el changelog dice qué trae una versión antes de reemplazar system/', () => {
+  const CL = require('../engine/core/changelog')
+  const text = [
+    '# Changelog', '',
+    '## [0.3.0] - No publicado', '- lo que viene', '',
+    '## [0.2.0] - 2026-08-14', '- cambió el protocolo', '',
+    '## [0.1.0] - 2026-08-01', '- primera versión', '',
+  ].join('\n')
+
+  // Sólo lo estrictamente posterior a lo instalado y hasta la versión que se recibe: repetir lo ya
+  // aplicado es ruido, y anunciar lo que el paquete todavía no trae sería mentir.
+  assert.deepEqual(CL.between(text, '0.1.0', '0.2.0').map((entry) => entry.version), ['0.2.0'])
+  assert.equal(CL.between(text, '0.1.0', '0.2.0')[0].body, '- cambió el protocolo')
+  assert.deepEqual(CL.between(text, '0.2.0', '0.3.0').map((entry) => entry.version), ['0.3.0'])
+  assert.deepEqual(CL.between(text, '0.3.0', '0.3.0'), [], 'al día no imprime nada')
+  assert.deepEqual(
+    CL.between(text, '', '0.2.0').map((entry) => entry.version), ['0.2.0', '0.1.0'],
+    'sin versión previa se muestra todo lo que llega',
+  )
+
+  // Un encabezado sin número, como [Unreleased], no se puede ordenar: se muestra siempre.
+  const unreleased = ['## [Unreleased]', '- en curso', '', '## [0.1.0] - 2026-08-01', '- vieja'].join('\n')
+  assert.deepEqual(CL.between(unreleased, '0.1.0', '0.2.0').map((entry) => entry.version), ['Unreleased'])
+
+  assert.ok(CL.compare('0.10.0', '0.9.0') > 0, 'compara por número, no por texto')
+  assert.equal(CL.compare('1.2.3', '1.2.3'), 0)
+})
+
+test('el changelog del paquete cubre la versión que se publica', () => {
+  const CL = require('../engine/core/changelog')
+  const repoRoot = path.resolve(__dirname, '..')
+  const version = require(path.join(repoRoot, 'package.json')).version
+  const versions = CL.entries(CL.read(repoRoot)).map((entry) => entry.version)
+
+  assert.ok(versions.length, 'el paquete lleva su changelog')
+  assert.ok(
+    versions.some((entry) => entry.startsWith(version)),
+    `la versión ${version} no está documentada en CHANGELOG.md`,
+  )
+})

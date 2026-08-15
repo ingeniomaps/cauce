@@ -13,7 +13,8 @@
     "teams/",
     "automatization/",
     ".github/workflows/",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "ops": "node engine/cli/ops.js",

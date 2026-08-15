@@ -11,6 +11,7 @@ const L = require('../agents/learning')
 const A = require('../automation')
 const F = require('../core/files')
 const O = require('../core/ownership')
+const CL = require('../core/changelog')
 const C = require('../config/validate')
 const T = require('../teams/registry')
 const AG = require('../agents/catalog')
@@ -455,6 +456,17 @@ function context(dir) {
   for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
 }
 
+// Qué trae la versión nueva, leído del paquete: sin esto el reemplazo de system/ es a ciegas.
+function printChangelog(from, to) {
+  const notes = CL.between(CL.read(PROJECT_ROOT), from, to)
+  if (!notes.length) return
+  for (const note of notes) {
+    console.log(`\n  ── ${note.version} ──`)
+    for (const line of note.body.split('\n')) if (line.trim()) console.log(`  ${line}`)
+  }
+  console.log('')
+}
+
 function instanceVersion(root) {
   try {
     return JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')).cauceVersion || ''
@@ -486,6 +498,7 @@ function upgrade(dir) {
   if (dry) {
     if (from === to) return console.log(`= ${to}: la instancia está al día`)
     console.log(`⚠ hay una versión más nueva: ${to} (la instancia tiene ${from || 'una previa'})`)
+    printChangelog(from, to)
     for (const file of changed) console.log(`  editado localmente: ${file}`)
     process.exit(1)
   }
@@ -519,6 +532,7 @@ function upgrade(dir) {
   F.atomicWriteJson(path.join(root, 'ops.config.json'), config)
 
   console.log(`✓ Cauce ${from || '(previa)'} → ${to}`)
+  printChangelog(from, to)
   console.log(`  ${system.length} ruta(s) del sistema y ${O.RUNTIME_PATHS.length} del runtime actualizadas`)
   for (const override of overrides) {
     console.log(`= conservado ${override.collection}/${override.project}: sobrescribe ${override.system}`)
