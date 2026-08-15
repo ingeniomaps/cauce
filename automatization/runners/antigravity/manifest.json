@@ -35,6 +35,10 @@
     {
       "source": "skills/integration-promote/SKILL.md",
       "target": ".agents/plugins/cauce/skills/integration-promote/SKILL.md"
+    },
+    {
+      "source": "skills/team/SKILL.md",
+      "target": ".agents/plugins/cauce/skills/team/SKILL.md"
     }
   ],
   "capabilities": {

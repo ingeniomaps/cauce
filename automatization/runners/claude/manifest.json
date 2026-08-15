@@ -24,6 +24,10 @@
     {
       "source": "../../workflows/integrations/promote.js",
       "target": ".claude/workflows/integration-promote.js"
+    },
+    {
+      "source": "../../workflows/team.js",
+      "target": ".claude/workflows/team.js"
     }
   ],
   "capabilities": {

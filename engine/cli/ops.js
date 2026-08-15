@@ -710,6 +710,8 @@ function team(action, slug) {
     for (const error of result.errors) console.error(`✗ ${error}`)
     if (result.errors.length) fail(`${slug}: ${result.errors.length} error(es)`, 1)
     if (action === 'show') {
+      // El manifiesto entero, para que un workflow ejecute las etapas sin que un modelo lo parsee.
+      if (process.argv.includes('--json')) return console.log(JSON.stringify(result.manifest))
       console.log(`${result.manifest.name} (${slug})`)
       console.log(result.manifest.purpose)
       for (const stage of result.manifest.stages) {

@@ -174,7 +174,7 @@ function check(root) {
   if (!fs.existsSync(installedRuntime) && !fs.existsSync(sourceRuntime)) {
     errors.push('falta engine/hooks/run.js')
   }
-  const workflows = ['autobuild.js', path.join('integrations', 'sync.js')]
+  const workflows = ['autobuild.js', 'team.js', path.join('integrations', 'sync.js')]
   workflows.push(path.join('integrations', 'promote.js'))
   for (const name of workflows) {
     if (!fs.existsSync(path.join(root, 'automatization', 'workflows', name))) {
