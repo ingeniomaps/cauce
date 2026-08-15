@@ -29,7 +29,12 @@ function findRoot(input) {
 }
 
 function runtimeAt(root) {
-  const candidates = [path.join(root, '.ops', 'engine', 'hooks', 'run.js'), path.join(root, 'engine', 'hooks', 'run.js')]
+  // Mismo orden que tools/ops.js: dependencia npm, copia local, repositorio del toolkit.
+  const candidates = [
+    path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine', 'hooks', 'run.js'),
+    path.join(root, '.ops', 'engine', 'hooks', 'run.js'),
+    path.join(root, 'engine', 'hooks', 'run.js'),
+  ]
   const runtime = candidates.find(fs.existsSync)
   if (!runtime) throw new Error('No se encontró el runtime engine/hooks/run.js.')
   return require(runtime)

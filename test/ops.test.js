@@ -514,3 +514,47 @@ test('upgrade se niega a pisar una edición del runtime sin --force', () => {
   assert.equal(forced.status, 0, forced.stderr)
   assert.equal(/lo edité a mano/.test(fs.readFileSync(guard, 'utf8')), false, '--force sí lo reemplaza')
 })
+
+test('el motor viene de la dependencia cuando el repo usa npm, y de la copia cuando no', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-engine-'))
+
+  // Un repo sin npm no puede recibir una dependencia: se lleva la copia.
+  const plain = path.join(base, 'sin-npm')
+  assert.equal(run(['init', plain, '--name', 'Plain', '--mode', 'sidecar']).status, 0)
+  assert.equal(fs.existsSync(path.join(plain, '.ops', 'engine', 'cli', 'ops.js')), true)
+  assert.equal(fs.existsSync(path.join(plain, 'package.json')), false, 'no se le impone un stack')
+
+  // Un repo con package.json declara la dependencia y no duplica el motor.
+  const npm = path.join(base, 'con-npm')
+  fs.mkdirSync(npm, { recursive: true })
+  fs.writeFileSync(path.join(npm, 'package.json'), JSON.stringify({ name: 'host', version: '1.0.0' }))
+  assert.equal(run(['init', npm, '--name', 'Npm', '--mode', 'embedded', '--force']).status, 0)
+  assert.equal(fs.existsSync(path.join(npm, '.ops', 'engine')), false, 'el motor no se copia')
+  const manifest = JSON.parse(fs.readFileSync(path.join(npm, 'package.json'), 'utf8'))
+  assert.equal(manifest.name, 'host', 'el manifiesto del repo anfitrión se conserva')
+  assert.ok(manifest.devDependencies['@ingeniomaps/cauce'], 'la versión queda fijada por el lockfile')
+
+  // upgrade no debe resucitar la copia en una instancia que usa la dependencia.
+  assert.equal(run(['upgrade', npm]).status, 0)
+  assert.equal(fs.existsSync(path.join(npm, '.ops', 'engine')), false)
+
+  // El modo se puede forzar en cualquier dirección.
+  const forced = path.join(base, 'forzado')
+  assert.equal(run(['init', forced, '--name', 'F', '--mode', 'sidecar', '--engine', 'dependency']).status, 0)
+  assert.equal(fs.existsSync(path.join(forced, '.ops', 'engine')), false)
+  assert.ok(JSON.parse(fs.readFileSync(path.join(forced, 'package.json'), 'utf8')).devDependencies)
+})
+
+test('el shim falla con instrucciones cuando no encuentra el motor', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-shim-'))
+  const target = path.join(base, 'huerfano')
+  assert.equal(run(['init', target, '--name', 'H', '--mode', 'sidecar']).status, 0)
+  fs.rmSync(path.join(target, '.ops'), { recursive: true, force: true })
+
+  const orphan = spawnSync(process.execPath, [path.join(target, 'tools', 'ops.js'), 'check'], {
+    cwd: target, encoding: 'utf8',
+  })
+  assert.equal(orphan.status, 2, 'no puede continuar sin motor')
+  assert.match(orphan.stderr, /No se encontró el motor/)
+  assert.match(orphan.stderr, /npm install/)
+})

@@ -23,7 +23,7 @@ function fail(message, code = 1) {
 
 function usage() {
   console.log(`Uso:
-  ops init <destino> [--name <nombre>] [--mode embedded|sidecar] [--force]
+  ops init <destino> [--name <nombre>] [--mode embedded|sidecar] [--engine copy|dependency] [--force]
   ops check <planning-dir> [--json]
   ops tree <planning-dir> [--no-color] [--json]
   ops context <planning-dir> [--json]
@@ -77,19 +77,33 @@ function copyTemplate(source, target, replacements, force, skip = []) {
   }
 }
 
-function copyRuntime(source, target, preserve = false, boundary = target) {
+function copyRuntime(source, target, preserve = false, boundary = target, skip = []) {
   F.assertNoSymlinkPath(boundary, target)
   fs.mkdirSync(target, { recursive: true })
   for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
+    if (skip.includes(entry.name)) continue
     const from = path.join(source, entry.name)
     const to = path.join(target, entry.name)
-    if (entry.isDirectory()) copyRuntime(from, to, preserve, boundary)
+    if (entry.isDirectory()) copyRuntime(from, to, preserve, boundary, skip)
     else if (preserve && fs.existsSync(to)) console.log(`= conservado ${to}`)
     else {
       F.assertNoSymlinkPath(boundary, to)
       fs.copyFileSync(from, to)
     }
   }
+}
+
+// Declara el motor como dependencia exacta: el lockfile decide qué versión corre, no una copia.
+// Conserva el manifiesto existente porque el repo anfitrión puede tener el suyo.
+function declareEngine(manifest, version) {
+  let pkg = { name: path.basename(path.dirname(manifest)), private: true, version: '0.0.0' }
+  if (fs.existsSync(manifest)) {
+    try { pkg = JSON.parse(fs.readFileSync(manifest, 'utf8')) } catch (error) {
+      fail(`package.json inválido en ${manifest}: ${error.message}`)
+    }
+  }
+  pkg.devDependencies = { ...pkg.devDependencies, '@ingeniomaps/cauce': version }
+  F.atomicWriteJson(manifest, pkg)
 }
 
 function init(target) {
@@ -139,6 +153,8 @@ function init(target) {
     path.join(root, 'automatization', 'runners'),
     preserve,
     root,
+    // El README de runners lo provee el template: le habla al proyecto, no a quien desarrolla Cauce.
+    O.TEMPLATE_OWNED.filter((owned) => owned.startsWith('automatization/runners/')).map((owned) => path.basename(owned)),
   )
   copyRuntime(
     path.join(PROJECT_ROOT, 'automatization', 'workflows'),
@@ -146,15 +162,25 @@ function init(target) {
     preserve,
     root,
   )
-  const engine = path.join(root, '.ops', 'engine')
-  copyRuntime(path.join(PROJECT_ROOT, 'engine'), engine, preserve, root)
-  fs.chmodSync(path.join(engine, 'cli', 'ops.js'), 0o755)
+  const version = require(path.join(PROJECT_ROOT, 'package.json')).version
+  // Un repo con npm recibe el motor como dependencia versionada; uno de Go, Python o Rust recibe
+  // la copia, porque exigirle un package.json para correr su planning sería imponerle un stack.
+  const manifest = path.join(root, 'package.json')
+  const engineMode = option('--engine', fs.existsSync(manifest) ? 'dependency' : 'copy')
+  if (!['copy', 'dependency'].includes(engineMode)) fail('--engine debe ser copy o dependency.', 2)
+  if (engineMode === 'dependency') declareEngine(manifest, version)
+  else {
+    const engine = path.join(root, '.ops', 'engine')
+    copyRuntime(path.join(PROJECT_ROOT, 'engine'), engine, preserve, root)
+    fs.chmodSync(path.join(engine, 'cli', 'ops.js'), 0o755)
+  }
   // La instancia recuerda de qué versión salió: sin esto no hay actualización posible.
   const configFile = path.join(root, 'ops.config.json')
   const config = JSON.parse(fs.readFileSync(configFile, 'utf8'))
-  config.cauceVersion = require(path.join(PROJECT_ROOT, 'package.json')).version
+  config.cauceVersion = version
   F.atomicWriteJson(configFile, config)
   console.log(`\n✓ ${name}: sistema ops creado en ${root}`)
+  if (engineMode === 'dependency') console.log('  siguiente: npm install (el motor viene de la dependencia)')
   console.log(`  siguiente: node ${path.join(root, 'tools', 'ops.js')} check ${path.join(root, 'planning')}`)
 }
 
@@ -435,9 +461,9 @@ function instanceVersion(root) {
 
 // Sobrescribe lo que trae el paquete y deja intacto lo demás: un guard propio de la empresa,
 // o un adaptador de runner que el toolkit no conoce, sobreviven a la actualización.
-function overlayTree(from, to, root) {
+function overlayTree(from, to, root, skip = []) {
   F.assertNoSymlinkPath(root, to)
-  copyRuntime(from, to, false, root)
+  copyRuntime(from, to, false, root, skip)
 }
 
 // Actualiza sólo lo que el toolkit declara suyo. Todo lo demás —planning, organization, reglas
@@ -474,7 +500,12 @@ function upgrade(dir) {
     const origin = path.join(PROJECT_ROOT, O.sourceOf(relative))
     if (!fs.existsSync(origin)) continue
     const target = path.join(root, relative)
-    if (fs.statSync(origin).isDirectory()) overlayTree(origin, target, root)
+    // Una instancia que toma el motor de npm no debe recuperar la copia: la actualiza el lockfile.
+    if (relative === '.ops/engine' && !fs.existsSync(target)) continue
+    const skip = O.TEMPLATE_OWNED
+      .filter((owned) => owned.startsWith(`${relative}/`))
+      .map((owned) => path.basename(owned))
+    if (fs.statSync(origin).isDirectory()) overlayTree(origin, target, root, skip)
     else {
       F.assertNoSymlinkPath(root, target)
       F.atomicWrite(target, fs.readFileSync(origin, 'utf8'))

@@ -42,6 +42,10 @@ const RUNTIME_PATHS = [
   'automatization/workflows',
 ]
 
+// Rutas que el paquete tiene por duplicado: una versión para el proyecto en `template/` y otra
+// interna del toolkit. Gana la del template, que es la que le habla a quien usa la instancia.
+const TEMPLATE_OWNED = ['automatization/runners/README.md']
+
 // Dentro del paquete, lo que una instancia recibe en su raíz vive bajo `template/`; el catálogo,
 // los equipos y la automatización están en la raíz del paquete, y el motor en `engine/`.
 function sourceOf(relative) {
@@ -120,6 +124,7 @@ function localChanges(root, packageRoot) {
     const to = path.join(root, target)
     if (!fs.existsSync(to) || !fs.existsSync(from)) continue
     for (const file of treeFiles(from)) {
+      if (TEMPLATE_OWNED.includes(`${target}/${file}`)) continue
       const mine = path.join(to, file)
       if (!fs.existsSync(mine)) continue
       if (fs.readFileSync(mine, 'utf8') !== fs.readFileSync(path.join(from, file), 'utf8')) {
@@ -132,6 +137,7 @@ function localChanges(root, packageRoot) {
 
 module.exports = {
   RUNTIME_PATHS,
+  TEMPLATE_OWNED,
   SYSTEM_COLLECTIONS,
   SYSTEM_FILES,
   identity,
