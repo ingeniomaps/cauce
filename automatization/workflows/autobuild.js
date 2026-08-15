@@ -2,10 +2,10 @@
 // Descubre proyecto, servicios y límites desde ops.config.json; no codifica rutas ni proveedores.
 export const meta = {
   name: 'autobuild',
-  description: 'Triage → Pick → Ready → Plan → Build → Review → Verify → QA → Commit → Done',
+  description: 'Triage → Pick → Cast → Ready → Plan → Build → Review → Verify → QA → Commit → Done',
   whenToUse: 'Ejecutar un hito aprobado con recuperación por WIP y checkpoint humano entre hitos.',
   phases: [
-    'Triage', 'Pick', 'Ready', 'Decompose', 'Plan', 'Critique', 'Build', 'Review',
+    'Triage', 'Pick', 'Cast', 'Ready', 'Decompose', 'Plan', 'Critique', 'Build', 'Review',
     'Verify', 'QA', 'Commit', 'Done', 'Closing',
   ].map((title) => ({ title, detail: `Fase ${title} del protocolo agnóstico` })),
 }
@@ -81,6 +81,31 @@ const COMMIT = {
     branch: { type: 'string' }, leftovers: { type: 'array', items: { type: 'string' } }, reason: { type: 'string' },
   },
 }
+// Dueño por defecto de cada fase. Es determinista: no hace falta preguntarle a un modelo quién
+// revisa la arquitectura o quién decide si la evidencia de calidad alcanza.
+const OWNERS = {
+  ready: 'product-manager',
+  plan: 'software-architect',
+  review: 'software-architect',
+  verify: 'qa-engineer',
+  qa: 'qa-engineer',
+  commit: 'release-manager',
+}
+
+const CAST_RULES = 'Elegís quién trabaja, no qué se hace. No inventes slugs: usá sólo los que ' +
+  'devuelve el CLI. Un cargo se suma por riesgo, plataforma o alcance, nunca por rutina.'
+
+const CAST = {
+  type: 'object', additionalProperties: false, required: ['build'],
+  properties: {
+    build: { type: 'string' },
+    review: { type: 'array', items: { type: 'string' } },
+    verify: { type: 'array', items: { type: 'string' } },
+    qa: { type: 'array', items: { type: 'string' } },
+    reason: { type: 'string' },
+  },
+}
+
 const CONTRACT = {
   type: 'object', additionalProperties: false,
   required: ['project', 'workspaceRoots', 'maxTaskHours', 'commitPerTask', 'humanCheckpoint', 'contracts'],
@@ -164,11 +189,41 @@ while (safety++ < 50) {
   const direct = planning.lane === 'directo'
   const lite = planning.lane === 'lite'
 
+  // Quién ejecuta cada fase. Los dueños por defecto son fijos y no gastan una llamada; los
+  // condicionales entran por riesgo, plataforma y alcance —nunca por rutina—, que es la misma
+  // regla que ya usa el team. En `directo` no hay condicionales: el lane baja ceremonia.
+  const cast = { ...OWNERS, build: '' }
+  if (!direct) {
+    phase('Cast')
+    const chosen = await read(
+      `${CAST_RULES}\n\nTarea ${task.id} en ${task.service}. Aceptación: ${task.acceptance}.\n` +
+      `Run "node tools/ops.js agents list ${ROOT} --json" and choose only from the slugs it lists.\n` +
+      `Elegí el cargo que implementa según la plataforma del servicio${lite ? '.' : ', y los cargos ' +
+      'condicionales que la superficie realmente justifica: seguridad si toca autenticación, permisos, ' +
+      'criptografía o datos sensibles; privacidad si toca datos personales; sre si toca disponibilidad, ' +
+      'límites o despliegue; ux si cambia una superficie que usa una persona; y el que corresponda a ' +
+      'datos o modelos si los toca. Dejá vacío lo que no aplique: sumar un cargo que no aporta es ruido ' +
+      'que diluye la revisión.'}`,
+      { schema: CAST, label: 'cast' },
+    )
+    if (chosen) {
+      cast.build = chosen.build || ''
+      for (const key of ['review', 'verify', 'qa']) {
+        cast[key] = [OWNERS[key], ...(lite ? [] : chosen[key] || [])].filter(Boolean).join(', ')
+      }
+      log(`Cargos: build=${cast.build || '(sin asignar)'} · review=${cast.review} · qa=${cast.qa}`)
+    }
+  }
+  const asRole = (slugs) => (slugs
+    ? `Actuá como ${slugs}, respetando el contrato de cada uno en su SKILL.md bajo agents/ y sus ` +
+      `límites: un cargo que no puede decidir solo, no decide solo.\n\n`
+    : '')
+
   if (!planning.wipActive) {
     phase('Ready')
     const ready = await read(
-      `As product manager, check concrete acceptance, dependencies and unresolved decisions for ${task.id}: ${task.acceptance}. ` +
-      `Clarify wording only; never expand scope.`, { schema: READY },
+      `${asRole(OWNERS.ready)}Check concrete acceptance, dependencies and unresolved decisions for ${task.id}: ` +
+      `${task.acceptance}. Clarify wording only; never expand scope.`, { schema: READY },
     )
     if (!ready.ready) {
       await write(`Register ${task.id} in ${HUMAN} with reason and an exact human action: ${ready.reason}.`)
@@ -192,7 +247,8 @@ while (safety++ < 50) {
 
     phase('Plan')
     let plan = await run(
-      `Inspect real code, repository instructions, neighbouring conventions, epic context and git status for ${task.id}. ` +
+      `${asRole(OWNERS.plan)}Inspect real code, repository instructions, neighbouring conventions, epic context ` +
+      `and git status for ${task.id}. ` +
       `Produce the smallest plan satisfying ${task.acceptance}. Planning files cannot be implementation files.`, { schema: PLAN },
     )
     if (!direct && !lite) {
@@ -209,13 +265,16 @@ while (safety++ < 50) {
     }
     await write(
       `Persist active WIP before code: task=${task.id}, hito=${JSON.stringify(task.hito)}, phase=Build, service=${task.service}, ` +
-      `acceptance=${JSON.stringify(task.acceptance)}, unchecked steps=${JSON.stringify(plan.steps)}. Follow the WIP contract exactly.`,
+      `acceptance=${JSON.stringify(task.acceptance)}, unchecked steps=${JSON.stringify(plan.steps)}. ` +
+      `Registrá además el reparto de cargos ${JSON.stringify(cast)} en las decisiones del WIP, para que ` +
+      `después se pueda auditar quién revisó qué. Follow the WIP contract exactly.`,
     )
   }
 
   phase('Build')
   const build = await run(
-    `Implement only ${task.id} inside ${task.service}. Resume at the first pending WIP step; verify completed steps on disk ` +
+    `${asRole(cast.build)}Implement only ${task.id} inside ${task.service}. Resume at the first pending WIP ` +
+    `step; verify completed steps on disk ` +
     `and tick each successful step. Use RED/GREEN for behavior. Acceptance: ${task.acceptance}.`, {
       schema: { type: 'object', required: ['completed', 'summary'], properties: {
         completed: { type: 'boolean' }, summary: { type: 'string' }, blockers: { type: 'array', items: { type: 'string' } },
@@ -227,7 +286,8 @@ while (safety++ < 50) {
   if (!direct) {
     phase('Review')
     let review = await run(
-      `Review the actual diff for acceptance, regressions, security, architecture, generated code, migrations and accidental scope.`,
+      `${asRole(cast.review)}Review the actual diff for acceptance, regressions, security, architecture, ` +
+      `generated code, migrations and accidental scope. Cada cargo revisa su dominio, no el ajeno.`,
       { schema: DECISION },
     )
     if (!review.approved) {
@@ -239,14 +299,15 @@ while (safety++ < 50) {
 
   phase('Verify')
   const verified = await run(
-    `Discover and run the real gates for ${task.service}: repository instructions first, then applicable test, lint, ` +
+    `${asRole(cast.verify)}Discover and run the real gates for ${task.service}: repository instructions first, ` +
+    `then applicable test, lint, ` +
     `typecheck and build. Read actual exit codes. passed=true needs commands and no task-caused regression.`, { schema: VERIFY },
   )
   if (!verified.passed || !verified.commands.length) return stop('verify-failed', verified.details)
 
   phase('QA')
   const qa = await run(
-    `${direct || lite ? 'Perform the cheapest real acceptance check' : 'Exercise real consumer-visible behavior'} for ` +
+    `${asRole(cast.qa)}${direct || lite ? 'Perform the cheapest real acceptance check' : 'Exercise real consumer-visible behavior'} for ` +
     `${task.id}. Unit tests alone are not QA. Start only minimum runtime and tear it down. Acceptance: ${task.acceptance}.`,
     { schema: QA },
   )
@@ -254,7 +315,8 @@ while (safety++ < 50) {
 
   phase('Commit')
   const commit = contract.commitPerTask ? await run(
-    `Find the git repo owning ${task.service}, inspect status/diff, stage explicit task files, create one Conventional ` +
+    `${asRole(OWNERS.commit)}Find the git repo owning ${task.service}, inspect status/diff, stage explicit task ` +
+    `files, create one Conventional ` +
     `Commit with footer "Task: ${task.id}", then verify log/status. Never amend or push; report unrelated leftovers.`,
     { schema: COMMIT },
   ) : { committed: true, reason: 'runner.commitPerTask is disabled' }

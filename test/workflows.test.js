@@ -135,3 +135,25 @@ test('team acepta la intención como texto suelto o como argumento estructurado'
   })
   assert.equal(resolve(undefined).INTENT, '', 'sin intención no arranca')
 })
+
+test('autobuild ejecuta cada fase bajo el contrato del cargo que la posee', () => {
+  // Los dueños por defecto son deterministas: no se le pregunta a un modelo quién revisa arquitectura.
+  for (const owner of ['product-manager', 'software-architect', 'qa-engineer', 'release-manager']) {
+    assert.ok(workflow.includes(owner), `falta el dueño por defecto ${owner}`)
+  }
+  assert.match(workflow, /asRole\(/, 'las fases adoptan un contrato en vez de improvisar criterio')
+  assert.match(workflow, /agents list \$\{ROOT\} --json/, 'los slugs salen del CLI, no de la memoria')
+  assert.match(workflow, /No inventes slugs/)
+
+  // Un cargo se suma por riesgo, plataforma o alcance; nunca por rutina.
+  assert.match(workflow, /nunca por rutina/)
+  assert.match(workflow, /phase\('Cast'\)/)
+  assert.ok(workflow.includes("'Cast'"), 'la fase está declarada en meta')
+
+  // El lane baja ceremonia: directo no elige reparto, lite se queda con los dueños por defecto.
+  assert.match(workflow, /if \(!direct\) \{\s*\n\s*phase\('Cast'\)/)
+  assert.match(workflow, /lite \? \[\] :/, 'lite no incorpora condicionales')
+
+  // El reparto queda como evidencia auditable, no sólo en la cabeza del runner.
+  assert.match(workflow, /auditar quién revisó qué/)
+})

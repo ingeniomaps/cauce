@@ -553,8 +553,10 @@ function agents(action, dir) {
   const root = path.resolve(dir || '.')
   const roles = AG.list(root)
   if (process.argv.includes('--json')) {
+    // `path` viene resuelto: quien consuma esto no debería reconstruir dónde ganó la precedencia.
     return console.log(JSON.stringify(roles.map((role) => ({
       slug: role.slug, type: role.type, system: role.system,
+      path: path.relative(root, role.dir).split(path.sep).join('/'),
     }))))
   }
   for (const role of roles) console.log(`${role.slug}${role.system ? '' : '  (propio)'}`)
