@@ -12,6 +12,11 @@ minor aunque no toque una sola línea de código.
 
 ### Corregido
 
+- **`integration list` mostraba encendido un proveedor que se habría negado a sincronizar.** Hay dos
+  interruptores y `sync` exige los dos: el del registro dice que el proveedor está conectado al
+  proyecto, el suyo propio que su configuración está terminada. La lista leía sólo el primero, así
+  que después de `enable` decía `● jira` y `sync` contestaba `jira está deshabilitado`. Ahora
+  distingue los tres estados y `enable` no promete más de lo que hizo.
 - `integration enable` no falla si el andamiaje ya está. Habilitar no es inicializar: una instancia
   que lo arrastra de una versión anterior —o que ya tiene snapshots— sólo quiere el interruptor, y
   recibía un error pidiéndole un directorio vacío. Ahora repone lo que falte, conserva lo que haya y

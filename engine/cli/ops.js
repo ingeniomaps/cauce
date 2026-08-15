@@ -679,8 +679,17 @@ async function integration(action, rootArg, provider, key) {
   const root = path.resolve(rootArg || '.')
   if (action === 'list') {
     const registry = JSON.parse(fs.readFileSync(path.join(root, 'integrations', 'config.json'), 'utf8'))
+    // Hay dos interruptores y `sync` exige los dos: el del registro dice que el proveedor está
+    // conectado al proyecto, el suyo propio que su configuración está terminada. Mostrar sólo el
+    // primero daba encendido a un proveedor que se habría negado a sincronizar.
     for (const [name, entry] of Object.entries(registry.providers || {})) {
-      console.log(`${entry.enabled ? '●' : '○'} ${name} [${entry.adapter}]`)
+      let listo = false
+      try {
+        listo = JSON.parse(fs.readFileSync(path.join(root, 'integrations', name, 'config.json'), 'utf8')).enabled === true
+      } catch { /* sin materializar */ }
+      const estado = !entry.enabled ? '○' : (listo ? '●' : '◐')
+      const nota = estado === '◐' ? `  — falta completar integrations/${name}/config.json y poner enabled: true` : ''
+      console.log(`${estado} ${name} [${entry.adapter}]${nota}`)
     }
     return
   }
@@ -699,7 +708,9 @@ async function integration(action, rootArg, provider, key) {
     copyTemplate(source, path.join(root, 'integrations', provider), {}, true)
     config.providers[provider].enabled = true
     F.atomicWriteJson(registry, config)
-    console.log(`✓ ${provider}: habilitado. Completá integrations/${provider}/config.json antes de sincronizar.`)
+    console.log(`✓ ${provider}: conectado al proyecto y andamiaje en integrations/${provider}/.`)
+    console.log(`  Falta lo tuyo: completá integrations/${provider}/config.json y poné enabled: true ahí.`)
+    console.log(`  Hasta entonces "integration sync" se niega, que es lo correcto: no hay a dónde apuntar.`)
     return
   }
   if (action === 'check') {
