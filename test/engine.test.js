@@ -481,7 +481,7 @@ test('un equipo debe separar descubrimiento de entrega', () => {
 
   const manifest = (stages) => {
     fs.writeFileSync(path.join(dir, 'team.json'), JSON.stringify({
-      schemaVersion: 1, slug: 'demo', name: 'Demo', purpose: 'p',
+      schemaVersion: 1, slug: 'demo', name: 'Demo', purpose: 'p', outcome: 'epic',
       entryAgent: 'product-manager', facilitator: 'product-manager',
       guardrails: ['g'], completion: ['c'], stages,
     }))
@@ -521,4 +521,46 @@ test('los equipos del sistema declaran sus fases y no construyen en descubrimien
       )
     }
   }
+})
+
+test('un equipo declara qué deja, y el de incidentes no propone trabajo', () => {
+  const T = require('../engine/teams/registry')
+  const repoRoot = path.resolve(__dirname, '..')
+
+  const outcomes = {}
+  for (const slug of T.list(repoRoot)) {
+    const { manifest } = T.read(repoRoot, slug)
+    outcomes[slug] = manifest.outcome
+  }
+  assert.equal(outcomes['incident-review'], 'report', 'una revisión registra, no propone')
+  assert.equal(outcomes['product-development'], 'epic')
+  assert.equal(outcomes['feasibility-review'], 'epic')
+
+  // Un outcome desconocido no valida: el workflow sólo sabe terminar de las formas declaradas.
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-outcome-'))
+  const dir = path.join(root, 'teams', 'demo')
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, 'WORKFLOW.md'), '# demo\n')
+  const skill = path.join(root, 'agents', 'roles', 'product-manager')
+  fs.mkdirSync(skill, { recursive: true })
+  fs.writeFileSync(path.join(skill, 'SKILL.md'), '---\nname: product-manager\ndescription: x\n---\n')
+  fs.writeFileSync(path.join(dir, 'team.json'), JSON.stringify({
+    schemaVersion: 1, slug: 'demo', name: 'D', purpose: 'p', outcome: 'inventado',
+    entryAgent: 'product-manager', facilitator: 'product-manager',
+    guardrails: ['g'], completion: ['c'],
+    stages: [{ id: 'frame', phase: 'discovery', agent: 'product-manager', dependsOn: [], produces: ['x'], exitGate: 'y' }],
+  }))
+  assert.ok(T.validate(root, 'demo').errors.some((error) => /outcome debe ser/.test(error)))
+})
+
+test('la revisión de incidentes no se presenta como respuesta en vivo', () => {
+  const doc = fs.readFileSync(
+    path.resolve(__dirname, '..', 'teams', 'system', 'incident-review', 'WORKFLOW.md'), 'utf8',
+  )
+  // Prometer respuesta a incidentes sería peligroso: no hay guardia, ni acceso, ni decisión bajo presión.
+  const flat = doc.replace(/\s+/g, ' ')
+  assert.match(flat, /No responde incidentes en vivo/)
+  assert.match(flat, /ya contenido/)
+  assert.match(flat, /no es un incident commander/)
+  assert.match(flat, /atribuye responsabilidad a personas/)
 })

@@ -122,18 +122,33 @@ test('team no deja pasar una opinión del modelo como evidencia', () => {
   }
 })
 
-test('team acepta la intención como texto suelto o como argumento estructurado', () => {
-  // Como slash command la intención llega en crudo; con un equipo distinto, estructurada.
+test('team acepta la intención suelta, con prefijo de equipo o estructurada', () => {
   const block = teamWorkflow.match(/const input = [\s\S]*?const INTENT = [^\n]*\n/)[0].replace(/\bconst /g, 'var ')
-  const resolve = new Function('args', `${block} return { TEAM, INTENT }`)
+  const resolve = new Function('args', `${block} return { CANDIDATE, INTENT, raw }`)
 
+  // Sin prefijo, todo el texto es la intención.
   assert.deepEqual(resolve('quiero cobrar con tarjeta'), {
-    TEAM: 'product-development', INTENT: 'quiero cobrar con tarjeta',
+    CANDIDATE: 'product-development', INTENT: 'quiero cobrar con tarjeta', raw: 'quiero cobrar con tarjeta',
   })
-  assert.deepEqual(resolve({ intent: 'lo mismo', team: 'acme-soporte' }), {
-    TEAM: 'acme-soporte', INTENT: 'lo mismo',
-  })
+  // Con prefijo, el candidato se separa; se confirma después contra los equipos que existen.
+  const conPrefijo = resolve('incident-review: se cayó el checkout')
+  assert.equal(conPrefijo.CANDIDATE, 'incident-review')
+  assert.equal(conPrefijo.INTENT, 'se cayó el checkout')
+  // El texto crudo se conserva para poder recomponerlo si el prefijo no era un equipo.
+  assert.equal(conPrefijo.raw, 'incident-review: se cayó el checkout')
+  // Estructurado, el prefijo no se interpreta: el equipo vino explícito.
+  const estructurado = resolve({ intent: 'algo: con dos puntos', team: 'acme-soporte' })
+  assert.equal(estructurado.CANDIDATE, 'acme-soporte')
+  assert.equal(estructurado.INTENT, 'algo: con dos puntos')
   assert.equal(resolve(undefined).INTENT, '', 'sin intención no arranca')
+})
+
+test('team declara qué deja cada recorrido y ramifica según eso', () => {
+  assert.match(teamWorkflow, /outcome === 'report'/, 'un informe no propone trabajo')
+  assert.match(teamWorkflow, /REPORTS/)
+  assert.match(teamWorkflow, /sin promoverlo/, 'los seguimientos no se promueven solos')
+  assert.match(teamWorkflow, /team list/, 'el equipo se confirma contra los que existen')
+  assert.match(teamWorkflow, /equipo-inexistente/)
 })
 
 test('autobuild ejecuta cada fase bajo el contrato del cargo que la posee', () => {

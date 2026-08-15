@@ -6,12 +6,13 @@ lo es— sin que un solo agente decida por todos.
 
 ## Los que trae Cauce
 
-| Equipo | Descubrimiento | Para qué |
-|---|---|---|
-| `system/feasibility-review` | 3 etapas | ¿vale el esfuerzo? Con la evidencia que ya existe. |
-| `system/product-development` | 5 etapas | ¿qué construimos y cómo? Produce evidencia nueva. |
+| Equipo | Descubrimiento | Deja | Para qué |
+|---|---|---|---|
+| `system/feasibility-review` | 3 etapas | épica | ¿vale el esfuerzo? Con la evidencia que ya existe. |
+| `system/product-development` | 5 etapas | épica | ¿qué construimos y cómo? Produce evidencia nueva. |
+| `system/incident-review` | 4 etapas | informe | ¿qué pasó y qué aprendemos? Después de contener. |
 
-Son dos **formas**, no dos dominios. Un equipo de seguridad o uno de crecimiento tienen la misma forma
+Son tres **formas**, no tres dominios. Un equipo de seguridad o uno de crecimiento tienen la misma forma
 con otros cargos: eso lo escribe cada empresa, porque cómo decide es suyo.
 
 ## Escribir uno propio
@@ -28,11 +29,20 @@ node tools/ops.js team show <slug>
 Un equipo propio con el mismo slug que uno de `system/` lo reemplaza; con otro slug, convive. **Nunca
 editar dentro de `system/`**: se reemplaza completo en cada actualización.
 
-Para correrlo:
+## Invocar un equipo
+
+Tres formas, de la más simple a la más explícita:
 
 ```text
-/team {"team": "<slug>", "intent": "qué se quiere evaluar"}
+/team quiero cobrar con tarjeta guardada
+/team incident-review: se cayó el checkout el martes a las 14:00
+/team {"team": "acme-soporte", "intent": "qué se quiere evaluar"}
 ```
+
+Sin prefijo corre `product-development`. El prefijo se confirma contra los equipos que existen: si no
+es uno, el texto completo se toma como intención, así que escribir `nota: revisar esto` no dispara un
+equipo llamado `nota`. Con el equipo pasado explícitamente, un slug inexistente falla en vez de caer al
+por defecto en silencio.
 
 ## Corto o largo
 

@@ -16,6 +16,7 @@ Validar siempre con `node tools/ops.js team check <slug>` antes de usarlo.
   "slug": "acme-soporte",
   "name": "Soporte de Acme",
   "purpose": "Una frase: qué convierte este equipo, de qué entrada a qué salida.",
+  "outcome": "report",
 
   "entryAgent": "customer-support-specialist",
   "facilitator": "project-manager",
@@ -63,6 +64,7 @@ Validar siempre con `node tools/ops.js team check <slug>` antes de usarlo.
 | `schemaVersion` | debe ser `1` |
 | `slug` | igual al nombre del directorio, en kebab-case |
 | `name`, `purpose`, `entryAgent`, `facilitator` | string no vacío |
+| `outcome` | `epic` o `report` |
 | `stages` | al menos una, con `id` único en kebab-case |
 | `stages[].phase` | `discovery` o `delivery`, y al menos una `discovery` |
 | `stages[].dependsOn` | sólo etapas **anteriores**; no se permiten ciclos ni adelantos |
@@ -71,6 +73,17 @@ Validar siempre con `node tools/ops.js team check <slug>` antes de usarlo.
 | agentes citados | deben existir en `agents/` y no ser ambiguos |
 | `guardrails`, `completion` | al menos un elemento cada uno |
 | `WORKFLOW.md` | debe existir junto al `team.json` |
+
+## `outcome`: qué deja el recorrido
+
+- **`epic`** — propone trabajo. Escribe una épica candidata en `planning/roadmap/` con criterios
+  observables, y para. Es lo que corresponde cuando la pregunta es *qué construimos*.
+- **`report`** — registra lo aprendido. Escribe un informe en `planning/reports/<fecha>-<slug>.md`,
+  deja los seguimientos en la sección Lecciones de `planning/INBOX.md` **sin promover** y las acciones
+  que requieren una persona en `planning/HUMAN_ACTIONS.md`. Es lo que corresponde a una revisión.
+
+Ninguno de los dos promueve al BACKLOG. La diferencia no es cuánta autoridad tienen —ninguno tiene—,
+sino qué artefacto dejan para que una persona decida.
 
 ## `discovery` y `delivery`
 
