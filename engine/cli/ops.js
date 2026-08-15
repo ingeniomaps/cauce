@@ -125,12 +125,6 @@ function init(target) {
     '{{PLANNING_DIR}}': 'planning',
     '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
   }, process.argv.includes('--force'))
-  copyTemplate(path.join(PROJECT_ROOT, 'agents'), path.join(root, 'agents'), {
-    '{{PROJECT_NAME}}': name,
-    '{{MODE}}': mode,
-    '{{PLANNING_DIR}}': 'planning',
-    '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
-  }, process.argv.includes('--force'))
   copyTemplate(path.join(PROJECT_ROOT, 'teams'), path.join(root, 'teams'), {
     '{{PROJECT_NAME}}': name,
     '{{MODE}}': mode,
@@ -143,7 +137,7 @@ function init(target) {
     '{{MODE}}': mode,
     '{{PLANNING_DIR}}': 'planning',
     '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
-  }, process.argv.includes('--force'), ['ci.yml'])
+  }, process.argv.includes('--force'), ['ci.yml', 'agent-learning.yml'])
   const preserve = process.argv.includes('--force')
   copyRuntime(
     path.join(PROJECT_ROOT, 'automatization', 'hooks'),
@@ -176,6 +170,8 @@ function init(target) {
     const engine = path.join(root, '.ops', 'engine')
     copyRuntime(path.join(PROJECT_ROOT, 'engine'), engine, preserve, root)
     fs.chmodSync(path.join(engine, 'cli', 'ops.js'), 0o755)
+    // Sin npm no hay de dónde leer el catálogo en tiempo de ejecución: viaja junto al motor.
+    copyRuntime(path.join(PROJECT_ROOT, 'agents'), path.join(root, '.ops', 'agents'), preserve, root)
   }
   // La instancia recuerda de qué versión salió: sin esto no hay actualización posible.
   const configFile = path.join(root, 'ops.config.json')
@@ -532,15 +528,6 @@ function upgrade(dir) {
       F.assertNoSymlinkPath(root, target)
       F.atomicWrite(target, fs.readFileSync(origin, 'utf8'))
     }
-  }
-
-  // El catálogo en dos pasadas: la primera refresca los contratos sin tocar `learning/`; la segunda
-  // repone sólo lo que falte, para que un cargo recién llegado traiga su andamiaje de aprendizaje.
-  const catalog = path.join(PROJECT_ROOT, O.CATALOG)
-  if (fs.existsSync(catalog)) {
-    const target = path.join(root, O.CATALOG)
-    copyRuntime(catalog, target, false, root, O.CATALOG_PRESERVED)
-    copyRuntime(catalog, target, true, root)
   }
 
   const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))

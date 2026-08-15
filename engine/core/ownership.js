@@ -37,16 +37,11 @@ const SYSTEM_COLLECTIONS = [
 // se reporta antes de pisarla, nunca después.
 const RUNTIME_PATHS = [
   '.ops/engine',
+  '.ops/agents',
   'automatization/hooks',
   'automatization/runners',
   'automatization/workflows',
 ]
-
-// El catálogo se actualiza como el resto del sistema, con una excepción precisa: dentro de cada
-// cargo, `learning/` es del proyecto. Los informes y propuestas acumulados son lo único que no se
-// puede reponer desde el paquete, porque los produjo esta empresa y no otra.
-const CATALOG = 'agents'
-const CATALOG_PRESERVED = ['learning']
 
 // Rutas que el paquete tiene por duplicado: una versión para el proyecto en `template/` y otra
 // interna del toolkit. Gana la del template, que es la que le habla a quien usa la instancia.
@@ -56,6 +51,7 @@ const TEMPLATE_OWNED = ['automatization/runners/README.md']
 // los equipos y la automatización están en la raíz del paquete, y el motor en `engine/`.
 function sourceOf(relative) {
   if (relative === '.ops/engine') return 'engine'
+  if (relative === '.ops/agents') return 'agents'
   if (relative.startsWith('planning/')) return path.join('template', relative)
   return relative
 }
@@ -159,8 +155,6 @@ function localChanges(root, packageRoot) {
 }
 
 module.exports = {
-  CATALOG,
-  CATALOG_PRESERVED,
   RUNTIME_PATHS,
   engineAt,
   engineCandidates,

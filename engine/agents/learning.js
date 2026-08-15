@@ -19,11 +19,28 @@ function agentRoot(root, agent) {
   return catalog.resolve(root, agent)
 }
 
+// Un cargo del sistema vive dentro del paquete: escribir ahí perdería el informe en el próximo
+// `npm ci`, y además duplicaría en cada empresa una investigación sobre la profesión que se hace
+// mejor una sola vez. Lo que sí es de esta empresa es su contexto, y ese tiene otro lugar.
+function assertWritable(root, agent) {
+  const found = catalog.find(root, agent)
+  // Lo que decide no es si el cargo es del sistema, sino si vive dentro de este repositorio. En el
+  // toolkit los cargos del sistema son propios y se aprenden acá; en una instancia vienen del
+  // paquete, y escribir ahí se pierde en el próximo `npm ci` o en el próximo upgrade.
+  const own = path.resolve(catalog.projectCatalog(root))
+  if (path.resolve(found.dir).startsWith(`${own}${path.sep}`)) return found.dir
+  throw new Error(
+    `${agent} es un cargo que trae Cauce y su aprendizaje se hace en el toolkit, no acá.\n` +
+    `  Lo que este cargo debe saber de esta empresa va en organization/roles/${agent}.md.\n` +
+    `  Para tener una versión propia del cargo, escribila en agents/roles/${agent}/.`,
+  )
+}
+
 function isoDate(now = new Date()) { return now.toISOString().slice(0, 10) }
 function month(now = new Date()) { return now.toISOString().slice(0, 7) }
 
 function prepareReport(root, agent, now = new Date()) {
-  const reports = path.join(agentRoot(root, agent), 'learning', 'reports')
+  const reports = path.join(assertWritable(root, agent), 'learning', 'reports')
   const file = path.join(reports, `${isoDate(now)}.md`)
   fs.mkdirSync(reports, { recursive: true })
   if (fs.existsSync(file)) return { file, created: false }
@@ -51,7 +68,7 @@ status: draft
 }
 
 function prepareProposal(root, agent, now = new Date()) {
-  const target = agentRoot(root, agent)
+  const target = assertWritable(root, agent)
   const proposalDir = path.join(target, 'learning', 'proposals')
   const file = path.join(proposalDir, `${month(now)}.md`)
   fs.mkdirSync(proposalDir, { recursive: true })
