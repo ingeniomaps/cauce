@@ -8,6 +8,7 @@ const H = require('../hooks/run')
 const P = require('../planning/parser')
 const catalog = require('../agents/catalog')
 const O = require('../core/ownership')
+const M = require('../core/manifest')
 
 const RUNNER_NAMES = ['claude', 'codex', 'gemini', 'antigravity']
 
@@ -335,18 +336,27 @@ function doctor(root, name, output = console) {
     errors.push(`${runner.config.target}: ${error.message}`)
   }
   for (const item of runner.instructions || []) {
-    const resolved = resolveItem(paths, root, name, item)
+    const resolved = { item, ...resolveItem(paths, root, name, item) }
     if (!fs.existsSync(resolved.target)) errors.push(`falta ${item.target}`)
     else if (!fs.readFileSync(resolved.target, 'utf8').includes('AGENTS.md')) {
       warnings.push(`${item.target}: no referencia AGENTS.md; verifica las reglas globales`)
     }
+    if (deliveryState(M.readRunners(root), name, resolved) === 'desactualizado') {
+      warnings.push(`${item.target}: Cauce trae una versión más nueva y vos no lo tocaste; reinstalá`)
+    }
   }
+  // Divergir no es un error: puede ser una mejora río arriba esperando reinstalación. Reportarlo
+  // como error dejaba a la empresa sin salida, porque `install` tampoco lo actualizaba.
+  const recorded = M.readRunners(root)
   for (const item of runner.artifacts || []) {
-    const resolved = resolveItem(paths, root, name, item)
-    if (!fs.existsSync(resolved.target)) errors.push(`falta ${item.target}`)
-    else if (fs.readFileSync(resolved.source, 'utf8')
-      !== fs.readFileSync(resolved.target, 'utf8')) {
-      errors.push(`${item.target}: difiere de la fuente canónica`)
+    const resolved = { item, ...resolveItem(paths, root, name, item) }
+    const situacion = deliveryState(recorded, name, resolved)
+    if (situacion === 'nuevo') errors.push(`falta ${item.target}`)
+    else if (situacion === 'desactualizado') {
+      warnings.push(`${item.target}: hay una versión más nueva en Cauce; reinstalá el adaptador`)
+    } else if (situacion === 'ajeno') {
+      warnings.push(`${item.target}: lo editaste y es del toolkit; `
+        + 'agregá lo tuyo al lado o reinstalá con --force para volver a la versión de Cauce')
     }
   }
   // Un cargo que quedó fuera, o cuya descripción cambió en el catálogo, deja al runner eligiendo
@@ -376,7 +386,30 @@ function doctor(root, name, output = console) {
   return { runner, errors, warnings }
 }
 
-function install(root, name, output = console) {
+// Clave de entrega de un archivo del adaptador. Va en su propia sección del manifiesto porque puede
+// caer fuera de la instancia: en sidecar el wiring vive en la carpeta de la compañía.
+function deliveryKey(name, target) {
+  return `${name}/${target.split(path.sep).join('/')}`
+}
+
+// En qué estado quedó un archivo que este adaptador entregó alguna vez.
+//
+//   nuevo          no existe todavía
+//   al día         idéntico a lo que trae Cauce
+//   desactualizado la empresa no lo tocó, pero río arriba cambió
+//   ajeno          difiere de lo entregado: alguien lo editó acá
+//
+// Sin el registro de entrega, `desactualizado` y `ajeno` se ven igual. `install` resolvía esa duda
+// conservando siempre, así que ninguna mejora del toolkit llegaba nunca a un runner ya instalado.
+function deliveryState(recorded, name, resolved) {
+  if (!fs.existsSync(resolved.target)) return 'nuevo'
+  const current = M.digest(resolved.target)
+  if (current === M.digest(resolved.source)) return 'al día'
+  const delivered = recorded[deliveryKey(name, resolved.item.target)]
+  return delivered && delivered === current ? 'desactualizado' : 'ajeno'
+}
+
+function install(root, name, output = console, options = {}) {
   const runner = runnerManifest(root, name)
   const errors = check(root)
   if (errors.length) throw new Error(`La automatización no es instalable:\n- ${errors.join('\n- ')}`)
@@ -391,13 +424,22 @@ function install(root, name, output = console) {
   const items = [...(runner.instructions || []), ...(runner.artifacts || [])]
   const resolvedItems = items.map((item) => ({ item, ...resolveItem(paths, root, name, item) }))
   F.assertNoSymlinkPath(paths.install, paths.configTarget)
-  for (const resolved of resolvedItems) {
-    F.assertNoSymlinkPath(paths.install, resolved.target)
-    if (fs.existsSync(resolved.target)
-      && !runner.instructions.includes(resolved.item)
-      && fs.readFileSync(resolved.target, 'utf8') !== fs.readFileSync(resolved.source, 'utf8')) {
-      throw new Error(`${resolved.item.target} existe y difiere de la fuente canónica`)
-    }
+  for (const resolved of resolvedItems) F.assertNoSymlinkPath(paths.install, resolved.target)
+
+  const recorded = M.readRunners(root)
+  const state = new Map(resolvedItems.map((resolved) => [resolved, deliveryState(recorded, name, resolved)]))
+  // Un archivo de instrucciones es del proyecto y se conserva; uno ejecutable es del toolkit y se
+  // reemplaza. Editarlo detiene la instalación antes de pisarlo, igual que hace `upgrade`.
+  const editados = resolvedItems.filter((resolved) => {
+    return state.get(resolved) === 'ajeno' && !runner.instructions.includes(resolved.item)
+  })
+  if (editados.length && !options.force) {
+    throw new Error(
+      `${editados.length} archivo(s) que mantiene Cauce fueron editados y se perderían:\n`
+      + `${editados.map((resolved) => `- ${resolved.item.target}`).join('\n')}\n\n`
+      + 'Son del toolkit: en vez de editarlos, agregá lo tuyo al lado y registralo en la\n'
+      + 'configuración de tu runner. Si el cambio ya no te sirve, repetí con --force.',
+    )
   }
   const merged = pruneSupersededHooks(mergeConfig(current, incoming))
   F.atomicWriteJson(paths.configTarget, merged.config)
@@ -410,16 +452,28 @@ function install(root, name, output = console) {
     output.log(`  ${name}: el runner se abre en ${paths.install} — ahí quedan .claude/ y CLAUDE.md`)
   }
   output.log(`✓ ${name}: configuración instalada en ${runner.config.target}`)
+  const entregado = { ...recorded }
   for (const resolved of resolvedItems) {
-    if (fs.existsSync(resolved.target)) {
-      output.log(`= ${name}: conservado ${resolved.item.target}`)
+    const situacion = state.get(resolved)
+    const propio = runner.instructions.includes(resolved.item)
+    if (situacion === 'ajeno' && propio) {
+      output.log(`= ${name}: conservado ${resolved.item.target} (tiene cambios tuyos)`)
+    } else if (situacion === 'al día') {
+      output.log(`= ${name}: ${resolved.item.target} ya está al día`)
     } else {
       fs.mkdirSync(path.dirname(resolved.target), { recursive: true })
       fs.copyFileSync(resolved.source, resolved.target)
-      output.log(`✓ ${name}: instalado ${resolved.item.target}`)
+      const verbo = situacion === 'nuevo' ? 'instalado' : 'actualizado'
+      output.log(`✓ ${name}: ${verbo} ${resolved.item.target}`)
+    }
+    // Sólo se anota lo que Cauce puso: un archivo conservado con cambios de la empresa no es una
+    // entrega, y registrarlo lo volvería indistinguible de uno intacto en la próxima instalación.
+    if (!(situacion === 'ajeno' && propio)) {
+      entregado[deliveryKey(name, resolved.item.target)] = M.digest(resolved.target)
     }
   }
   installRoleSkills(root, runner, output)
+  M.write(root, undefined, entregado)
   return runner
 }
 

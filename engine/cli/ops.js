@@ -582,6 +582,14 @@ function upgrade(dir) {
     console.log(`= conservado ${override.collection}/${override.project}: sobrescribe ${override.system}`)
   }
   console.log('  planning, organization y todo lo propio quedaron intactos')
+  // El wiring del runner no se actualiza solo: vive fuera de la instancia y lo escribe otro comando.
+  // Sin este recordatorio, una mejora en un workflow o en el catálogo se queda en el paquete.
+  const runners = Object.keys(M.readRunners(root))
+    .map((key) => key.split('/')[0])
+    .filter((name, index, all) => all.indexOf(name) === index)
+  for (const name of runners) {
+    console.log(`  reinstalá tu runner para que el wiring quede al día: make install-${name}`)
+  }
 }
 
 // Lista los cargos visibles resolviendo la precedencia; evita que cada consumidor —CI incluido—
@@ -709,7 +717,8 @@ function automation(action, rootArg, runnerName) {
   }
   if (action === 'install') {
     let runner
-    try { runner = A.install(root, runnerName) } catch (error) { fail(error.message, 2) }
+    const force = process.argv.includes('--force')
+    try { runner = A.install(root, runnerName, console, { force }) } catch (error) { fail(error.message, 2) }
     if (runnerName === 'codex') {
       console.log('  Codex pedirá revisar y confiar en hooks nuevos al iniciar sesión.')
     }

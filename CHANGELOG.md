@@ -32,6 +32,14 @@ minor aunque no toque una sola línea de código.
 
 ### Corregido
 
+- **Una mejora del toolkit en el wiring ahora llega a un runner ya instalado.** `install` conservaba
+  cualquier archivo existente, así que un workflow o un `CLAUDE.md` mejorado río arriba no llegaba
+  nunca. Peor: si el archivo difería, `install` fallaba —`existe y difiere de la fuente canónica`— y
+  `doctor` lo reportaba como error, dejando a la empresa sin salida salvo borrar a mano. Ahora el
+  registro de entrega distingue las dos cosas que antes se veían iguales: lo que la empresa editó se
+  conserva o detiene la instalación, y lo que sólo cambió río arriba se actualiza.
+- `upgrade` recuerda reinstalar los runners: el wiring vive fuera de la instancia y lo escribe otro
+  comando, así que sin el aviso una mejora se quedaba en el paquete.
 - Los guards resuelven la raíz ops por su cuenta. `findOpsRoot` sólo sube por el árbol, y en sidecar
   la raíz ops es un *hermano* de los repos de producto: desde ahí no la encontraba, devolvía vacío y
   el guard permitía todo **en silencio**. `run-hook.sh` ya sabía dónde vive; ahora lo exporta.

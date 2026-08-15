@@ -19,18 +19,38 @@ function digest(file) {
   } catch { return '' }
 }
 
-function read(root) {
+// Dos secciones porque son dos entregas distintas: `files` es lo que se materializó dentro de la
+// instancia y `runners` lo que un adaptador dejó fuera de ella —en modo sidecar el wiring vive en
+// la carpeta de la compañía—. El registro se queda igual acá, que es el repo que la empresa versiona.
+function readAll(root) {
   try {
-    const data = JSON.parse(fs.readFileSync(path.join(root, FILE), 'utf8'))
-    return data && typeof data.files === 'object' ? data.files : {}
-  } catch { return {} }
+    const data = JSON.parse(fs.readFileSync(path.join(root, FILE), 'utf8')) || {}
+    return {
+      files: typeof data.files === 'object' && data.files ? data.files : {},
+      runners: typeof data.runners === 'object' && data.runners ? data.runners : {},
+    }
+  } catch { return { files: {}, runners: {} } }
 }
 
-function write(root, files) {
+function read(root) { return readAll(root).files }
+
+function readRunners(root) { return readAll(root).runners }
+
+// Cada sección que no se pasa se conserva: `upgrade` no sabe del wiring y `install` no sabe de la
+// instancia, y ninguno de los dos debería borrar lo que el otro anotó.
+function write(root, files, runners) {
+  const current = readAll(root)
   const target = path.join(root, FILE)
   fs.mkdirSync(path.dirname(target), { recursive: true })
-  const ordered = Object.fromEntries(Object.entries(files).sort(([left], [right]) => left.localeCompare(right)))
-  fs.writeFileSync(target, `${JSON.stringify({ version: 1, files: ordered }, null, 2)}\n`)
+  const ordered = (map) => Object.fromEntries(
+    Object.entries(map).sort(([left], [right]) => left.localeCompare(right)),
+  )
+  const data = {
+    version: 1,
+    files: ordered(files || current.files),
+    runners: ordered(runners || current.runners),
+  }
+  fs.writeFileSync(target, `${JSON.stringify(data, null, 2)}\n`)
 }
 
 // Registra lo entregado en una ruta, relativo a la raíz de la instancia.
@@ -60,4 +80,4 @@ function edited(root, relative, files) {
   })
 }
 
-module.exports = { FILE, digest, edited, prune, read, record, write }
+module.exports = { FILE, digest, edited, prune, read, readRunners, record, write }

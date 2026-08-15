@@ -150,4 +150,30 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   assert.equal(cauce(consumer, ['check', planning]).status, 0)
   assert.equal(cauce(consumer, ['automation', 'check', consumer]).status, 0)
   assert.match(cauce(consumer, ['context', planning]).stdout, /TASK/)
+
+  // 9. Una mejora del toolkit en el wiring tiene que llegar al runner ya instalado. Es la mitad de
+  // la cadena que nadie recorre hasta que hace falta: `npm install` trae el archivo nuevo, pero
+  // quien lo copia a `.claude/` es otro comando, y antes conservaba siempre y no llegaba nunca.
+  const packaged = path.join(consumer, 'node_modules', '@ingeniomaps', 'cauce', 'automatization')
+  fs.appendFileSync(path.join(packaged, 'workflows', 'team.js'), '\n// mejora río arriba\n')
+  const stale = cauce(consumer, ['automation', 'doctor', consumer, 'claude'])
+  assert.match(stale.stderr, /hay una versión más nueva en Cauce/, 'doctor lo dice antes')
+  assert.equal(cauce(consumer, ['automation', 'install', consumer, 'claude']).status, 0)
+  const refreshed = fs.readFileSync(path.join(workspace, '.claude', 'workflows', 'team.js'), 'utf8')
+  assert.match(refreshed, /mejora río arriba/, 'y reinstalar la trae')
+
+  // Lo que la empresa escribió en ese mismo archivo, en cambio, detiene la instalación antes de
+  // pisarlo. Es del toolkit: se agrega al lado, no se edita.
+  fs.appendFileSync(path.join(workspace, '.claude', 'workflows', 'team.js'), '\n// hack propio\n')
+  const blocked = cauce(consumer, ['automation', 'install', consumer, 'claude'])
+  assert.notEqual(blocked.status, 0)
+  assert.match(blocked.stderr, /fueron editados y se perderían/)
+  assert.equal(cauce(consumer, ['automation', 'install', consumer, 'claude', '--force']).status, 0)
+
+  // El CLAUDE.md sí es del proyecto: se conserva aunque el toolkit traiga otro.
+  const instructions = path.join(workspace, 'CLAUDE.md')
+  fs.appendFileSync(instructions, '\n- Regla propia de Acme.\n')
+  fs.appendFileSync(path.join(packaged, 'runners', 'claude', 'CLAUDE.md'), '\n- Regla del toolkit.\n')
+  assert.equal(cauce(consumer, ['automation', 'install', consumer, 'claude']).status, 0)
+  assert.match(fs.readFileSync(instructions, 'utf8'), /Regla propia de Acme/, 'lo tuyo no se pierde')
 })
