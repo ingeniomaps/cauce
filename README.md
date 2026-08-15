@@ -159,6 +159,13 @@ Un archivo propio con el mismo nombre o ID que uno de `system/` lo reemplaza: el
 `check` lo reporta como override explícito. Así una mejora del proceso no obliga a forkear el archivo,
 y actualizar no exige resolver conflictos: se reemplaza `system/` entero y nada más se toca.
 
+### Versionado
+
+Como `upgrade` reemplaza `system/` sin pedir confirmación, un cambio en el protocolo, en una regla del
+sistema o en un guard es visible para el usuario y sube minor aunque no toque código. `upgrade` y
+`upgrade --check` imprimen las entradas de [CHANGELOG.md](CHANGELOG.md) que hay entre la versión
+instalada y la que se recibe, para que la actualización se lea antes de aplicarse.
+
 ## Integraciones
 
 Cada proveedor implementa únicamente autenticación, lectura paginada y normalización. El núcleo comparte el
