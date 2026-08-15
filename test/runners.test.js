@@ -79,3 +79,41 @@ test('doctor advierte cuando sobrevive el wiring por guard suelto', () => {
   ] }], Stop: [{ hooks: [{ type: 'command', command: 'automatization/hooks/guard-planning-drift.sh' }] }] } }
   assert.deepEqual(A.legacyGuardWiring(grouped), [], 'el guard suelto de Stop no es wiring heredado')
 })
+
+test('los runners con skills nativas exponen el catálogo completo de cargos', () => {
+  const A = require('../engine/automation')
+  const repoRoot = path.resolve(__dirname, '..')
+  const slugs = fs.readdirSync(path.join(repoRoot, 'agents', 'roles'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+  assert.ok(slugs.length >= 40, 'el catálogo debería tener decenas de cargos')
+
+  for (const name of ['claude', 'antigravity']) {
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, name, 'manifest.json'), 'utf8'))
+    assert.equal(manifest.capabilities.nativeSkills, true, `${name}: declara skills nativas`)
+    assert.ok(manifest.roleSkills, `${name}: declara dónde instalarlas`)
+  }
+  for (const name of ['codex', 'gemini']) {
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, name, 'manifest.json'), 'utf8'))
+    assert.equal(manifest.capabilities.nativeSkills, false, `${name}: no tiene mecanismo de skills`)
+  }
+})
+
+test('el puntero de un cargo conserva su frontmatter y no duplica el contrato', () => {
+  const A = require('../engine/automation')
+  const repoRoot = path.resolve(__dirname, '..')
+  const roles = A.roleCatalog(repoRoot)
+  assert.ok(roles.length >= 40)
+
+  const pm = roles.find((role) => role.slug === 'product-manager')
+  assert.ok(pm, 'el catálogo resuelve por slug sin exigir el tipo')
+  const generated = A.roleSkill(pm)
+
+  // El runner elige por nombre y descripción: los dos tienen que sobrevivir intactos.
+  assert.match(generated, /^---\nname: product-manager\n/)
+  assert.ok(generated.includes(pm.description), 'la descripción llega verbatim')
+  // Y el cuerpo remite, no copia.
+  assert.match(generated, /agents\/roles\/product-manager\/SKILL\.md/)
+  const original = fs.readFileSync(path.join(repoRoot, 'agents', 'roles', 'product-manager', 'SKILL.md'), 'utf8')
+  assert.ok(generated.length < original.length / 2, 'un puntero pesa mucho menos que el contrato')
+})

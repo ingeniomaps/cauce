@@ -5,6 +5,7 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const F = require('../core/files')
 const H = require('../hooks/run')
+const P = require('../planning/parser')
 
 const RUNNER_NAMES = ['claude', 'codex', 'gemini', 'antigravity']
 
@@ -79,6 +80,59 @@ function resolveItem(paths, root, name, item) {
     ),
     target: F.assertWithin(root, path.resolve(root, item.target), `${name}: target`),
   }
+}
+
+// Cargos del catálogo, con el frontmatter que el runner indexa para elegir a quién invocar.
+function roleCatalog(root) {
+  const catalog = path.join(root, 'agents')
+  const roles = []
+  let types = []
+  try { types = fs.readdirSync(catalog, { withFileTypes: true }) } catch { return roles }
+  for (const type of types.filter((entry) => entry.isDirectory())) {
+    let agents = []
+    try { agents = fs.readdirSync(path.join(catalog, type.name), { withFileTypes: true }) } catch { continue }
+    for (const agent of agents.filter((entry) => entry.isDirectory())) {
+      const skill = path.join(catalog, type.name, agent.name, 'SKILL.md')
+      if (!fs.existsSync(skill)) continue
+      const field = P.frontmatter(fs.readFileSync(skill, 'utf8'))
+      const description = field('description')
+      if (!description) continue
+      roles.push({ slug: agent.name, type: type.name, description })
+    }
+  }
+  return roles.sort((left, right) => left.slug.localeCompare(right.slug))
+}
+
+// Puntero fino: conserva nombre y descripción —lo único que el runner lee hasta invocar— y remite
+// al contrato completo. Evita duplicar el catálogo entero dentro de la configuración del runner.
+function roleSkill(role) {
+  return `---
+name: ${role.slug}
+description: ${role.description}
+---
+
+# ${role.slug}
+
+Leé \`agents/${role.type}/${role.slug}/SKILL.md\` para el contrato completo del cargo: cuándo actuar,
+qué decide, qué no le corresponde y cuál es su entrega mínima. Sus métodos y formatos de salida están
+en \`agents/${role.type}/${role.slug}/references/\`.
+
+Respetá los límites de ese contrato y las reglas de \`AGENTS.md\`. Generado por
+\`cauce automation install\`: no lo edites acá.
+`
+}
+
+function installRoleSkills(root, runner, output) {
+  if (!runner.capabilities.nativeSkills || !runner.roleSkills) return 0
+  const base = F.assertWithin(root, path.resolve(root, runner.roleSkills), `${runner.name}: roleSkills`)
+  const roles = roleCatalog(root)
+  for (const role of roles) {
+    const file = path.join(base, role.slug, 'SKILL.md')
+    F.assertNoSymlinkPath(root, file)
+    F.atomicWrite(file, roleSkill(role))
+  }
+  if (roles.length) output.log(`✓ ${runner.name}: ${roles.length} cargo(s) disponibles en ${runner.roleSkills}`)
+  return roles.length
 }
 
 function hasHooks(config) {
@@ -256,6 +310,23 @@ function doctor(root, name, output = console) {
       errors.push(`${item.target}: difiere de la fuente canónica`)
     }
   }
+  // Un cargo que quedó fuera, o cuya descripción cambió en el catálogo, deja al runner eligiendo
+  // con información vieja. Se reinstala, no se repara a mano.
+  if (runner.capabilities.nativeSkills && runner.roleSkills) {
+    const missing = []
+    const stale = []
+    for (const role of roleCatalog(root)) {
+      const file = path.join(root, runner.roleSkills, role.slug, 'SKILL.md')
+      if (!fs.existsSync(file)) missing.push(role.slug)
+      else if (fs.readFileSync(file, 'utf8') !== roleSkill(role)) stale.push(role.slug)
+    }
+    if (missing.length) {
+      warnings.push(`${missing.length} cargo(s) sin instalar en ${runner.roleSkills}: reinstalá el adaptador`)
+    }
+    if (stale.length) {
+      warnings.push(`${stale.length} cargo(s) desactualizados en ${runner.roleSkills}: reinstalá el adaptador`)
+    }
+  }
   const executable = spawnSync(
     'sh',
     ['-c', 'command -v "$1" >/dev/null 2>&1', 'runner-doctor', runner.command],
@@ -304,6 +375,7 @@ function install(root, name, output = console) {
       output.log(`✓ ${name}: instalado ${resolved.item.target}`)
     }
   }
+  installRoleSkills(root, runner, output)
   return runner
 }
 
@@ -323,6 +395,8 @@ module.exports = {
   install,
   legacyGuardWiring,
   pruneSupersededHooks,
+  roleCatalog,
+  roleSkill,
   listHooks,
   mergeConfig,
   runnerManifest,

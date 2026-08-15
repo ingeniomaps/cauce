@@ -2,13 +2,39 @@
   "schemaVersion": 1,
   "name": "gemini",
   "command": "gemini",
-  "lifecycle": { "recommendedForNewProjects": false, "audience": "enterprise-cloud-api-key" },
-  "config": { "source": "settings.json", "target": ".gemini/settings.json" },
-  "instructions": [{ "source": "GEMINI.md", "target": "GEMINI.md" }],
-  "artifacts": [
-    { "source": "commands/ops/autobuild.toml", "target": ".gemini/commands/ops/autobuild.toml" },
-    { "source": "commands/ops/integration-sync.toml", "target": ".gemini/commands/ops/integration-sync.toml" },
-    { "source": "commands/ops/integration-promote.toml", "target": ".gemini/commands/ops/integration-promote.toml" }
+  "lifecycle": {
+    "recommendedForNewProjects": false,
+    "audience": "enterprise-cloud-api-key"
+  },
+  "config": {
+    "source": "settings.json",
+    "target": ".gemini/settings.json"
+  },
+  "instructions": [
+    {
+      "source": "GEMINI.md",
+      "target": "GEMINI.md"
+    }
   ],
-  "capabilities": { "nativeHooks": false, "nativeWorkflows": false, "projectInstructions": true, "checkpointing": true }
+  "artifacts": [
+    {
+      "source": "commands/ops/autobuild.toml",
+      "target": ".gemini/commands/ops/autobuild.toml"
+    },
+    {
+      "source": "commands/ops/integration-sync.toml",
+      "target": ".gemini/commands/ops/integration-sync.toml"
+    },
+    {
+      "source": "commands/ops/integration-promote.toml",
+      "target": ".gemini/commands/ops/integration-promote.toml"
+    }
+  ],
+  "capabilities": {
+    "nativeHooks": false,
+    "nativeWorkflows": false,
+    "projectInstructions": true,
+    "checkpointing": true,
+    "nativeSkills": false
+  }
 }

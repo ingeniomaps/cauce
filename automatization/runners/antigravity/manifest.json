@@ -2,16 +2,47 @@
   "schemaVersion": 1,
   "name": "antigravity",
   "command": "agy",
-  "lifecycle": { "recommendedForNewProjects": true, "audience": "individual-and-new-google-projects" },
-  "config": { "source": "hooks.json", "target": ".agents/plugins/cauce/hooks.json" },
+  "lifecycle": {
+    "recommendedForNewProjects": true,
+    "audience": "individual-and-new-google-projects"
+  },
+  "config": {
+    "source": "hooks.json",
+    "target": ".agents/plugins/cauce/hooks.json"
+  },
   "instructions": [],
   "artifacts": [
-    { "source": "plugin.json", "target": ".agents/plugins/cauce/plugin.json" },
-    { "source": "hook.js", "target": ".agents/plugins/cauce/hook.js" },
-    { "source": "rules/cauce.md", "target": ".agents/plugins/cauce/rules/cauce.md" },
-    { "source": "skills/autobuild/SKILL.md", "target": ".agents/plugins/cauce/skills/autobuild/SKILL.md" },
-    { "source": "skills/integration-sync/SKILL.md", "target": ".agents/plugins/cauce/skills/integration-sync/SKILL.md" },
-    { "source": "skills/integration-promote/SKILL.md", "target": ".agents/plugins/cauce/skills/integration-promote/SKILL.md" }
+    {
+      "source": "plugin.json",
+      "target": ".agents/plugins/cauce/plugin.json"
+    },
+    {
+      "source": "hook.js",
+      "target": ".agents/plugins/cauce/hook.js"
+    },
+    {
+      "source": "rules/cauce.md",
+      "target": ".agents/plugins/cauce/rules/cauce.md"
+    },
+    {
+      "source": "skills/autobuild/SKILL.md",
+      "target": ".agents/plugins/cauce/skills/autobuild/SKILL.md"
+    },
+    {
+      "source": "skills/integration-sync/SKILL.md",
+      "target": ".agents/plugins/cauce/skills/integration-sync/SKILL.md"
+    },
+    {
+      "source": "skills/integration-promote/SKILL.md",
+      "target": ".agents/plugins/cauce/skills/integration-promote/SKILL.md"
+    }
   ],
-  "capabilities": { "nativeHooks": true, "nativeWorkflows": true, "projectInstructions": true, "checkpointing": false }
+  "capabilities": {
+    "nativeHooks": true,
+    "nativeWorkflows": true,
+    "projectInstructions": true,
+    "checkpointing": false,
+    "nativeSkills": true
+  },
+  "roleSkills": ".agents/plugins/cauce/skills"
 }
