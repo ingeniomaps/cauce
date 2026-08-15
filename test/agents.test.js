@@ -10,17 +10,9 @@ const learning = require('../engine/agents/learning')
 
 const CLI = path.resolve(__dirname, '..', 'engine', 'cli', 'ops.js')
 const AGENTS_ROOT = path.resolve(__dirname, '..', 'agents')
-const AGENT_TYPES = fs.readdirSync(AGENTS_ROOT, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory())
-  .map((entry) => entry.name)
-const AGENTS = AGENT_TYPES.flatMap((type) =>
-  fs.readdirSync(path.join(AGENTS_ROOT, type), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .filter((entry) => fs.existsSync(path.join(AGENTS_ROOT, type, entry.name, 'SKILL.md')))
-    .map((entry) => ({ type, slug: entry.name })),
-)
-  .sort((left, right) => left.slug.localeCompare(right.slug))
-  .sort()
+const catalog = require('../engine/agents/catalog')
+const AGENTS = catalog.list(path.dirname(AGENTS_ROOT))
+  .map((role) => ({ type: role.type, slug: role.slug, dir: role.dir }))
 
 function run(args, cwd = path.dirname(CLI)) {
   const env = { ...process.env, LANG: process.env.LANG || 'C.UTF-8' }
@@ -38,7 +30,7 @@ function installedProject(name) {
 
 test('learning prepara informes y propuestas sin modificar el agente', () => {
   const target = installedProject('Learning')
-  const skill = path.join(target, 'agents', 'roles', 'product-manager', 'SKILL.md')
+  const skill = path.join(target, 'agents', 'roles', 'system', 'product-manager', 'SKILL.md')
   const before = fs.readFileSync(skill, 'utf8')
   assert.equal(run(['learn', 'product-manager'], target).status, 0)
   assert.equal(run(['learn', 'product-manager', '--proposal'], target).status, 0)
@@ -51,7 +43,7 @@ test('todos los agentes se distribuyen y superan sus controles estructurales', a
   const target = installedProject('Agents')
   for (const agent of AGENTS) {
     await context.test(`${agent.type}/${agent.slug}`, () => {
-      const skill = path.join(target, 'agents', agent.type, agent.slug, 'SKILL.md')
+      const skill = path.join(target, path.relative(path.dirname(AGENTS_ROOT), agent.dir), 'SKILL.md')
       assert.equal(fs.existsSync(skill), true)
       const evaluated = run(['evaluate', agent.slug], target)
       assert.equal(evaluated.status, 0, evaluated.stderr || evaluated.stdout)
@@ -114,4 +106,44 @@ test('los comandos make citados por los agentes existen en ambos Makefiles', () 
       assert.match(source, new RegExp(`^${target}:`, 'm'), `${makefile} no define ${target}`)
     }
   }
+})
+
+test('un cargo propio reemplaza al del sistema y el runner apunta al que gana', () => {
+  const A = require('../engine/automation')
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-precedencia-'))
+  const write = (dir, description) => {
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, 'SKILL.md'), `---\nname: demo\ndescription: ${description}\n---\n\n# demo\n`)
+  }
+  const system = path.join(root, 'agents', 'roles', 'system', 'demo')
+  const own = path.join(root, 'agents', 'roles', 'demo')
+
+  write(system, 'La versión que trae Cauce.')
+  assert.equal(catalog.resolve(root, 'demo'), system)
+  assert.deepEqual(catalog.list(root).map((role) => role.system), [true])
+
+  write(own, 'La versión del proyecto.')
+  assert.equal(catalog.resolve(root, 'demo'), own, 'el del proyecto manda')
+  const listed = catalog.list(root)
+  assert.equal(listed.length, 1, 'el slug no aparece dos veces')
+  assert.equal(listed[0].system, false)
+
+  // El puntero que lee el runner debe describir al que ganó, no al que quedó debajo.
+  const generated = A.roleSkill(A.roleCatalog(root)[0])
+  assert.ok(generated.includes('La versión del proyecto.'))
+  assert.match(generated, /agents\/roles\/demo\/SKILL\.md/)
+
+  fs.rmSync(own, { recursive: true, force: true })
+  assert.equal(catalog.resolve(root, 'demo'), system, 'al quitarlo vuelve el del sistema')
+})
+
+test('un slug repetido entre tipos distintos sigue siendo ambiguo', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-ambiguo-'))
+  for (const type of ['roles', 'specialists']) {
+    const dir = path.join(root, 'agents', type, 'demo')
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, 'SKILL.md'), '---\nname: demo\ndescription: x\n---\n')
+  }
+  // Entre tipos no hay regla de precedencia, y elegir en silencio sería peor que fallar.
+  assert.throws(() => catalog.resolve(root, 'demo'), /agente ambiguo demo/)
 })

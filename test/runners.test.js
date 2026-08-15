@@ -83,9 +83,7 @@ test('doctor advierte cuando sobrevive el wiring por guard suelto', () => {
 test('los runners con skills nativas exponen el catálogo completo de cargos', () => {
   const A = require('../engine/automation')
   const repoRoot = path.resolve(__dirname, '..')
-  const slugs = fs.readdirSync(path.join(repoRoot, 'agents', 'roles'), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
+  const slugs = require('../engine/agents/catalog').list(repoRoot).map((role) => role.slug)
   assert.ok(slugs.length >= 40, 'el catálogo debería tener decenas de cargos')
 
   for (const name of ['claude', 'antigravity']) {
@@ -113,7 +111,7 @@ test('el puntero de un cargo conserva su frontmatter y no duplica el contrato', 
   assert.match(generated, /^---\nname: product-manager\n/)
   assert.ok(generated.includes(pm.description), 'la descripción llega verbatim')
   // Y el cuerpo remite, no copia.
-  assert.match(generated, /agents\/roles\/product-manager\/SKILL\.md/)
-  const original = fs.readFileSync(path.join(repoRoot, 'agents', 'roles', 'product-manager', 'SKILL.md'), 'utf8')
+  assert.match(generated, /agents\/roles\/system\/product-manager\/SKILL\.md/, 'apunta a donde el cargo vive de verdad')
+  const original = fs.readFileSync(path.join(repoRoot, 'agents', 'roles', 'system', 'product-manager', 'SKILL.md'), 'utf8')
   assert.ok(generated.length < original.length / 2, 'un puntero pesa mucho menos que el contrato')
 })
