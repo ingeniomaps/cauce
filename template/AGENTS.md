@@ -25,6 +25,22 @@ Por defecto, todo sistema externo se considera real y de solo lectura. Sin aprob
 
 Documentar excepciones concretas aquí. Un entorno de desarrollo o sandbox debe nombrarse explícitamente.
 
+## Cargos disponibles
+
+`agents/` es un catálogo de cargos reutilizables. Cada uno declara en su `SKILL.md` cuándo actuar, qué
+decide, qué no le corresponde y cuál es su entrega mínima; sus métodos viven en `references/`.
+
+Antes de resolver algo que cae claramente en un cargo —una decisión de producto, un diseño de
+arquitectura, una estrategia de pruebas—, adoptá ese contrato en vez de improvisar el criterio. Los
+límites del cargo no son sugerencias: un cargo que no puede decidir solo, no decide solo.
+
+En Claude y Antigravity los cargos aparecen como skills invocables por nombre. En Codex y Gemini no hay
+mecanismo nativo: leé directamente `agents/roles/<slug>/SKILL.md`. Para ver los slugs disponibles,
+listá los directorios de `agents/roles/`.
+
+`teams/` compone varios cargos en etapas con gates de salida y un dueño por dominio de decisión;
+`node tools/ops.js team show <slug>` muestra el recorrido.
+
 ## Qué se puede editar y qué no
 
 Todo directorio `system/` pertenece a Cauce y se reemplaza completo al actualizar. **Nunca editar nada
