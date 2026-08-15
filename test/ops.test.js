@@ -462,3 +462,55 @@ test('Jira sincroniza ADF, preserva curación y promueve sin escribir remoto', (
   assert.equal(matchingEpics.length, 1)
   assert.match(fs.readFileSync(draftFile, 'utf8'), /state: promoted/)
 })
+
+test('upgrade reemplaza lo del sistema y no toca nada del proyecto', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-upgrade-'))
+  const target = path.join(base, 'acme')
+  assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
+
+  const version = () => JSON.parse(fs.readFileSync(path.join(target, 'ops.config.json'), 'utf8')).cauceVersion
+  assert.ok(version(), 'init registra de qué versión salió la instancia')
+
+  // El proyecto trabaja: agrega lo suyo, sobrescribe una regla y suma un guard propio.
+  const rules = path.join(target, 'planning', 'rules')
+  fs.writeFileSync(path.join(rules, 'acme-naming.md'), '# convención propia\n')
+  fs.writeFileSync(path.join(rules, 'commits.md'), '# el override de acme\n')
+  fs.writeFileSync(path.join(target, 'organization', 'company.md'), '# Acme S.A.\n')
+  const ownGuard = path.join(target, 'automatization', 'hooks', 'guard-acme.sh')
+  fs.writeFileSync(ownGuard, '#!/usr/bin/env bash\necho propio\n')
+
+  // Nada que actualizar mientras la versión coincida.
+  const current = run(['upgrade', target, '--check'])
+  assert.equal(current.status, 0)
+  assert.match(current.stdout, /está al día/)
+
+  const upgraded = run(['upgrade', target])
+  assert.equal(upgraded.status, 0, upgraded.stderr)
+  assert.match(upgraded.stdout, /conservado planning\/rules\/commits\.md/, 'el override se reporta')
+
+  assert.equal(fs.readFileSync(path.join(rules, 'acme-naming.md'), 'utf8'), '# convención propia\n')
+  assert.equal(fs.readFileSync(path.join(rules, 'commits.md'), 'utf8'), '# el override de acme\n')
+  assert.equal(fs.readFileSync(path.join(target, 'organization', 'company.md'), 'utf8'), '# Acme S.A.\n')
+  assert.equal(fs.existsSync(ownGuard), true, 'un guard propio no se borra al refrescar el runtime')
+  assert.ok(fs.existsSync(path.join(rules, 'system', 'commits.md')), 'system/ sigue completo')
+  assert.equal(run(['check', path.join(target, 'planning')]).status, 0)
+})
+
+test('upgrade se niega a pisar una edición del runtime sin --force', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-upgrade-edit-'))
+  const target = path.join(base, 'acme')
+  assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
+
+  const guard = path.join(target, 'automatization', 'hooks', 'guard-verify.sh')
+  fs.writeFileSync(guard, '#!/usr/bin/env bash\n# lo edité a mano\n')
+
+  const refused = run(['upgrade', target])
+  assert.notEqual(refused.status, 0, 'no puede perder el cambio en silencio')
+  assert.match(refused.stderr, /guard-verify\.sh/)
+  assert.match(refused.stderr, /--force/)
+  assert.match(fs.readFileSync(guard, 'utf8'), /lo edité a mano/, 'el archivo sigue intacto')
+
+  const forced = run(['upgrade', target, '--force'])
+  assert.equal(forced.status, 0, forced.stderr)
+  assert.equal(/lo edité a mano/.test(fs.readFileSync(guard, 'utf8')), false, '--force sí lo reemplaza')
+})

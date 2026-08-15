@@ -32,6 +32,24 @@ const SYSTEM_COLLECTIONS = [
   'teams',
 ]
 
+// Copias del runtime: el proyecto las recibe para poder ejecutar sin red, pero no las escribe.
+// Se reemplazan enteras. Mientras no tengan su propio `system/`, una edición local se detecta y
+// se reporta antes de pisarla, nunca después.
+const RUNTIME_PATHS = [
+  '.ops/engine',
+  'automatization/hooks',
+  'automatization/runners',
+  'automatization/workflows',
+]
+
+// Dentro del paquete, lo que una instancia recibe en su raíz vive bajo `template/`; el catálogo,
+// los equipos y la automatización están en la raíz del paquete, y el motor en `engine/`.
+function sourceOf(relative) {
+  if (relative === '.ops/engine') return 'engine'
+  if (relative.startsWith('planning/')) return path.join('template', relative)
+  return relative
+}
+
 // Identidad de una entrada dentro de una colección, para detectar que el proyecto sobrescribe
 // algo del sistema. Las reglas y decisiones se identifican por su ID; el resto, por su nombre.
 const ID_PATTERN = /^(?:BR-)?[A-Z][A-Z0-9]*-\d{3}/
@@ -80,4 +98,46 @@ function systemPaths(root) {
   return paths
 }
 
-module.exports = { SYSTEM_COLLECTIONS, SYSTEM_FILES, identity, overrides, systemPaths }
+// Archivos de un árbol, relativos a él, para comparar instancia contra paquete.
+function treeFiles(dir, prefix = '') {
+  const found = []
+  let list = []
+  try { list = fs.readdirSync(dir, { withFileTypes: true }) } catch { return found }
+  for (const entry of list) {
+    const relative = prefix ? `${prefix}/${entry.name}` : entry.name
+    if (entry.isDirectory()) found.push(...treeFiles(path.join(dir, entry.name), relative))
+    else found.push(relative)
+  }
+  return found.sort()
+}
+
+// Archivos del runtime que el proyecto editó: existen en las dos partes y difieren. Un archivo
+// que sólo existe en la instancia es un agregado propio, no una edición, y sobrevive intacto.
+function localChanges(root, packageRoot) {
+  const changed = []
+  for (const target of RUNTIME_PATHS) {
+    const from = path.join(packageRoot, sourceOf(target))
+    const to = path.join(root, target)
+    if (!fs.existsSync(to) || !fs.existsSync(from)) continue
+    for (const file of treeFiles(from)) {
+      const mine = path.join(to, file)
+      if (!fs.existsSync(mine)) continue
+      if (fs.readFileSync(mine, 'utf8') !== fs.readFileSync(path.join(from, file), 'utf8')) {
+        changed.push(`${target}/${file}`)
+      }
+    }
+  }
+  return changed
+}
+
+module.exports = {
+  RUNTIME_PATHS,
+  SYSTEM_COLLECTIONS,
+  SYSTEM_FILES,
+  identity,
+  localChanges,
+  overrides,
+  sourceOf,
+  systemPaths,
+  treeFiles,
+}

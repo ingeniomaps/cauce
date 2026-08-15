@@ -27,6 +27,7 @@ function usage() {
   ops check <planning-dir> [--json]
   ops tree <planning-dir> [--no-color] [--json]
   ops context <planning-dir> [--json]
+  ops upgrade <ops-root> [--check] [--force]
   ops archive <planning-dir> <NNN>
   ops integration list <ops-root>
   ops integration check <ops-root> [provider]
@@ -148,6 +149,11 @@ function init(target) {
   const engine = path.join(root, '.ops', 'engine')
   copyRuntime(path.join(PROJECT_ROOT, 'engine'), engine, preserve, root)
   fs.chmodSync(path.join(engine, 'cli', 'ops.js'), 0o755)
+  // La instancia recuerda de qué versión salió: sin esto no hay actualización posible.
+  const configFile = path.join(root, 'ops.config.json')
+  const config = JSON.parse(fs.readFileSync(configFile, 'utf8'))
+  config.cauceVersion = require(path.join(PROJECT_ROOT, 'package.json')).version
+  F.atomicWriteJson(configFile, config)
   console.log(`\n✓ ${name}: sistema ops creado en ${root}`)
   console.log(`  siguiente: node ${path.join(root, 'tools', 'ops.js')} check ${path.join(root, 'planning')}`)
 }
@@ -421,6 +427,72 @@ function context(dir) {
   for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
 }
 
+function instanceVersion(root) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')).cauceVersion || ''
+  } catch { return '' }
+}
+
+// Sobrescribe lo que trae el paquete y deja intacto lo demás: un guard propio de la empresa,
+// o un adaptador de runner que el toolkit no conoce, sobreviven a la actualización.
+function overlayTree(from, to, root) {
+  F.assertNoSymlinkPath(root, to)
+  copyRuntime(from, to, false, root)
+}
+
+// Actualiza sólo lo que el toolkit declara suyo. Todo lo demás —planning, organization, reglas
+// propias, agentes editados— queda intacto por construcción, no por comparación.
+function upgrade(dir) {
+  const root = path.resolve(dir || '.')
+  if (!fs.existsSync(path.join(root, 'ops.config.json'))) {
+    fail(`${root} no es una instancia de Cauce: falta ops.config.json.`, 2)
+  }
+  const dry = process.argv.includes('--check')
+  const force = process.argv.includes('--force')
+  const from = instanceVersion(root)
+  const to = require(path.join(PROJECT_ROOT, 'package.json')).version
+  const system = O.systemPaths(root)
+  const changed = O.localChanges(root, PROJECT_ROOT)
+  const overrides = O.overrides(root)
+
+  if (dry) {
+    if (from === to) return console.log(`= ${to}: la instancia está al día`)
+    console.log(`⚠ hay una versión más nueva: ${to} (la instancia tiene ${from || 'una previa'})`)
+    for (const file of changed) console.log(`  editado localmente: ${file}`)
+    process.exit(1)
+  }
+
+  if (changed.length && !force) {
+    for (const file of changed) console.error(`✗ ${file}`)
+    fail(
+      `\n${changed.length} archivo(s) del runtime fueron editados y se perderían.\n` +
+      'Movelos junto a system/ como regla propia, o repetí con --force para descartarlos.',
+    )
+  }
+
+  for (const relative of [...system, ...O.RUNTIME_PATHS]) {
+    const origin = path.join(PROJECT_ROOT, O.sourceOf(relative))
+    if (!fs.existsSync(origin)) continue
+    const target = path.join(root, relative)
+    if (fs.statSync(origin).isDirectory()) overlayTree(origin, target, root)
+    else {
+      F.assertNoSymlinkPath(root, target)
+      F.atomicWrite(target, fs.readFileSync(origin, 'utf8'))
+    }
+  }
+
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
+  config.cauceVersion = to
+  F.atomicWriteJson(path.join(root, 'ops.config.json'), config)
+
+  console.log(`✓ Cauce ${from || '(previa)'} → ${to}`)
+  console.log(`  ${system.length} ruta(s) del sistema y ${O.RUNTIME_PATHS.length} del runtime actualizadas`)
+  for (const override of overrides) {
+    console.log(`= conservado ${override.collection}/${override.project}: sobrescribe ${override.system}`)
+  }
+  console.log('  planning, organization y todo lo propio quedaron intactos')
+}
+
 function archive(dir, rawNum) {
   const root = path.resolve(dir || '.')
   const num = String(rawNum || '').padStart(3, '0')
@@ -595,6 +667,7 @@ async function main() {
   else if (command === 'check') check(process.argv[3])
   else if (command === 'tree') tree(process.argv[3])
   else if (command === 'context') context(process.argv[3])
+  else if (command === 'upgrade') upgrade(process.argv[3])
   else if (command === 'archive') archive(process.argv[3], process.argv[4])
   else if (command === 'integration') {
     await integration(process.argv[3], process.argv[4], process.argv[5], process.argv[6])

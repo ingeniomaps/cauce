@@ -7,7 +7,10 @@ function validateOpsConfig(config) {
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
     return ['ops.config.json: debe ser un objeto']
   }
-  const allowed = new Set(['$schema', 'project', 'mode', 'planningDir', 'workspaceRoots', 'runner'])
+  // `cauceVersion` la escribe el toolkit, no la persona: registra de qué versión salió la instancia.
+  const allowed = new Set([
+    '$schema', 'cauceVersion', 'project', 'mode', 'planningDir', 'workspaceRoots', 'runner',
+  ])
   for (const key of Object.keys(config)) {
     if (!allowed.has(key)) errors.push(`ops.config.json: propiedad desconocida ${key}`)
   }
