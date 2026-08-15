@@ -639,3 +639,25 @@ test('el catálogo llega con la dependencia y el proyecto sólo lleva lo suyo', 
   assert.equal(catalog.list(target).length, total, 'el cargo faltante vuelve del paquete')
   assert.match(fs.readFileSync(path.join(own, 'SKILL.md'), 'utf8'), /PM propio/)
 })
+
+test('upgrade no vendoriza el paquete en una instancia que usa la dependencia', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-vendor-'))
+  const target = path.join(base, 'acme')
+  fs.mkdirSync(target, { recursive: true })
+  fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({ name: 'acme', version: '1.0.0' }))
+  assert.equal(run(['init', target, '--name', 'A', '--mode', 'sidecar', '--force']).status, 0)
+  assert.equal(fs.existsSync(path.join(target, '.ops')), false, 'init no copia nada a .ops')
+
+  assert.equal(run(['upgrade', target]).status, 0)
+  // Crear .ops duplicaría lo que el lockfile ya versiona, y encima quedaría desactualizado.
+  assert.equal(fs.existsSync(path.join(target, '.ops')), false, 'upgrade tampoco lo crea')
+
+  // En modo copia sí existe, y ahí upgrade tiene que refrescarlo.
+  const copia = path.join(base, 'sin-npm')
+  assert.equal(run(['init', copia, '--name', 'B', '--mode', 'sidecar']).status, 0)
+  const skill = path.join(copia, '.ops', 'agents', 'roles', 'system', 'qa-engineer', 'SKILL.md')
+  assert.equal(fs.existsSync(skill), true)
+  fs.writeFileSync(skill, 'viejo\n')
+  assert.equal(run(['upgrade', copia, '--force']).status, 0)
+  assert.match(fs.readFileSync(skill, 'utf8'), /No usar/, 'el catálogo vendorizado se refresca')
+})

@@ -564,3 +564,23 @@ test('la revisión de incidentes no se presenta como respuesta en vivo', () => {
   assert.match(flat, /no es un incident commander/)
   assert.match(flat, /atribuye responsabilidad a personas/)
 })
+
+test('toda ruta declarada del sistema existe en el paquete', () => {
+  const O = require('../engine/core/ownership')
+  const repoRoot = path.resolve(__dirname, '..')
+
+  // Un archivo del sistema que el mapeo no sabe encontrar nunca llega, y falla en silencio:
+  // upgrade lo saltea con un `continue` y nadie se entera.
+  const perdidos = O.SYSTEM_FILES
+    .map((file) => ({ file, origen: O.sourceOf(file) }))
+    .filter(({ origen }) => !fs.existsSync(path.join(repoRoot, origen)))
+  assert.deepEqual(perdidos, [], 'hay rutas del sistema que no resuelven contra el paquete')
+
+  for (const relative of O.RUNTIME_PATHS.concat(O.SYSTEM_COLLECTIONS)) {
+    const origen = O.sourceOf(relative)
+    // `.ops/*` sólo existe en una instancia en modo copia; en el paquete es su origen real.
+    if (relative.startsWith('.ops/')) {
+      assert.equal(fs.existsSync(path.join(repoRoot, origen)), true, `${relative} → ${origen}`)
+    }
+  }
+})

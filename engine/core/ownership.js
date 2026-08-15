@@ -50,10 +50,14 @@ const TEMPLATE_OWNED = ['automatization/runners/README.md']
 
 // Dentro del paquete, lo que una instancia recibe en su raíz vive bajo `template/`; el catálogo,
 // los equipos y la automatización están en la raíz del paquete, y el motor en `engine/`.
+const TEMPLATE_PREFIXES = ['planning/', 'organization/', 'integrations/']
+
 function sourceOf(relative) {
   if (relative === '.ops/engine') return 'engine'
   if (relative === '.ops/agents') return 'agents'
-  if (relative.startsWith('planning/')) return path.join('template', relative)
+  if (TEMPLATE_PREFIXES.some((prefix) => relative.startsWith(prefix))) {
+    return path.join('template', relative)
+  }
   return relative
 }
 

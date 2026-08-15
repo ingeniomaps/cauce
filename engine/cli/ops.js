@@ -528,8 +528,9 @@ function upgrade(dir) {
     const origin = path.join(PROJECT_ROOT, O.sourceOf(relative))
     if (!fs.existsSync(origin)) continue
     const target = path.join(root, relative)
-    // Una instancia que toma el motor de npm no debe recuperar la copia: la actualiza el lockfile.
-    if (relative === '.ops/engine' && !fs.existsSync(target)) continue
+    // `.ops/` es el paquete vendorizado de una instancia sin npm. Si no existe, esta instancia lo
+    // toma de la dependencia y crearlo sería duplicar lo que el lockfile ya versiona.
+    if (relative.startsWith('.ops/') && !fs.existsSync(target)) continue
     const skip = O.TEMPLATE_OWNED
       .filter((owned) => owned.startsWith(`${relative}/`))
       .map((owned) => path.basename(owned))
