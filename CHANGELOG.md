@@ -8,6 +8,15 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.8.1] - 2026-08-15
+
+### Corregido
+
+- `integration enable` no falla si el andamiaje ya está. Habilitar no es inicializar: una instancia
+  que lo arrastra de una versión anterior —o que ya tiene snapshots— sólo quiere el interruptor, y
+  recibía un error pidiéndole un directorio vacío. Ahora repone lo que falte, conserva lo que haya y
+  enciende el registro.
+
 ## [0.8.0] - 2026-08-15
 
 ### Cambiado

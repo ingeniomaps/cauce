@@ -694,7 +694,9 @@ async function integration(action, rootArg, provider, key) {
       fail(`integrations/config.json ilegible: ${error.message}`)
     }
     if (!config.providers || !config.providers[provider]) fail(`${provider} no está en integrations/config.json.`)
-    copyTemplate(source, path.join(root, 'integrations', provider), {}, process.argv.includes('--force'))
+    // Habilitar no es inicializar: repone lo que falte y conserva lo que ya esté. Una instancia que
+    // trae el andamiaje de una versión anterior —o que ya tiene snapshots— sólo quiere el interruptor.
+    copyTemplate(source, path.join(root, 'integrations', provider), {}, true)
     config.providers[provider].enabled = true
     F.atomicWriteJson(registry, config)
     console.log(`✓ ${provider}: habilitado. Completá integrations/${provider}/config.json antes de sincronizar.`)
