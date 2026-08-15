@@ -106,7 +106,9 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.equal(fs.existsSync(path.join(target, '.agents', 'plugins', 'cauce', 'plugin.json')), true)
   assert.equal(run(['automation', 'doctor', target, 'antigravity']).status, 0)
   assert.equal(fs.existsSync(path.join(target, 'organization', 'company.md')), true)
-  assert.equal(fs.existsSync(path.join(target, 'agents', 'roles', 'system', 'product-manager', 'SKILL.md')), true)
+  // El catálogo del sistema no se copia: se resuelve desde el paquete o desde .ops en modo copia.
+  assert.equal(fs.existsSync(path.join(target, 'agents', 'roles', 'system')), false)
+  assert.ok(require('../engine/agents/catalog').list(target).length >= 40, 'y aun así se resuelve')
   // La taxonomía es extensible por convención, no por directorios vacíos: un tipo nuevo se
   // reconoce el día que tiene contenido.
   const catalog = require('../engine/agents/catalog')
@@ -117,9 +119,12 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.ok(catalog.list(target).some((role) => role.type === 'specialists'), 'un tipo nuevo se reconoce solo')
   fs.rmSync(path.join(target, 'agents', 'specialists'), { recursive: true, force: true })
   assert.equal(fs.existsSync(path.join(target, 'teams')), true)
+  // Ningún workflow del toolkit se distribuye. El CI valida el toolkit, y el ciclo de aprendizaje
+  // investiga la profesión: repetirlo en cada empresa produciría la misma investigación N veces.
   const workflows = path.join(target, '.github', 'workflows')
-  assert.equal(fs.existsSync(path.join(workflows, 'agent-learning.yml')), true)
-  assert.equal(fs.existsSync(path.join(workflows, 'ci.yml')), false, 'el CI del toolkit no se distribuye')
+  for (const propio of ['ci.yml', 'agent-learning.yml']) {
+    assert.equal(fs.existsSync(path.join(workflows, propio)), false, `${propio} no se distribuye`)
+  }
 
   const env = { ...process.env, LANG: process.env.LANG || 'C.UTF-8' }
   delete env.NODE_TEST_CONTEXT
@@ -130,7 +135,8 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.equal(local.status, 0, local.stderr)
 
   fs.writeFileSync(path.join(target, 'README.md'), 'propiedad del usuario\n')
-  fs.writeFileSync(path.join(target, 'agents', 'roles', 'system', 'product-manager', 'SKILL.md'), 'personalizado\n')
+  fs.mkdirSync(path.join(target, 'agents', 'roles', 'product-manager'), { recursive: true })
+  fs.writeFileSync(path.join(target, 'agents', 'roles', 'product-manager', 'SKILL.md'), 'personalizado\n')
   const runnerReadme = path.join(target, 'automatization', 'runners', 'codex', 'README.md')
   const runtimeParser = path.join(target, '.ops', 'engine', 'planning', 'parser.js')
   fs.writeFileSync(runnerReadme, 'runner personalizado\n')
@@ -138,7 +144,7 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   const forced = run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--force'])
   assert.equal(forced.status, 0, forced.stderr)
   assert.equal(fs.readFileSync(path.join(target, 'README.md'), 'utf8'), 'propiedad del usuario\n')
-  assert.equal(fs.readFileSync(path.join(target, 'agents', 'roles', 'system', 'product-manager', 'SKILL.md'), 'utf8'), 'personalizado\n')
+  assert.equal(fs.readFileSync(path.join(target, 'agents', 'roles', 'product-manager', 'SKILL.md'), 'utf8'), 'personalizado\n')
   assert.equal(fs.readFileSync(runnerReadme, 'utf8'), 'runner personalizado\n')
   assert.equal(fs.readFileSync(runtimeParser, 'utf8'), 'runtime personalizado\n')
 })
@@ -607,44 +613,29 @@ test('el $schema de la instancia apunta a donde quedó el motor', () => {
   assert.equal(fs.existsSync(path.join(dep, '.ops')), false)
 })
 
-test('upgrade actualiza el catálogo pero no borra el aprendizaje acumulado', () => {
+test('el catálogo llega con la dependencia y el proyecto sólo lleva lo suyo', () => {
+  const catalog = require('../engine/agents/catalog')
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-catalogo-'))
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
-  const roles = () => run(['agents', 'list', target]).stdout.trim().split('\n').filter(Boolean)
-  const total = roles().length
+  const total = catalog.list(target).length
   assert.ok(total >= 40)
 
-  // Lo que la empresa acumuló: un informe y una entrada de historial dentro de un cargo del sistema.
-  const learning = path.join(target, 'agents', 'roles', 'system', 'qa-engineer', 'learning')
-  fs.writeFileSync(path.join(learning, 'reports', '2026-08-01.md'), '# lo que aprendimos acá\n')
-  fs.writeFileSync(path.join(learning, 'HISTORY.md'), '# historial propio de Acme\n')
+  // En modo copia el catálogo viaja junto al motor, no dentro de agents/.
+  assert.equal(fs.existsSync(path.join(target, 'agents', 'roles', 'system')), false)
+  assert.equal(fs.existsSync(path.join(target, '.ops', 'agents', 'roles', 'system')), true)
 
-  // Y lo que el proyecto sobrescribió o agregó por su cuenta.
+  // Un cargo propio convive y gana sobre el del sistema con el mismo slug.
   const own = path.join(target, 'agents', 'roles', 'product-manager')
   fs.mkdirSync(own, { recursive: true })
   fs.writeFileSync(path.join(own, 'SKILL.md'), '---\nname: product-manager\ndescription: PM propio.\n---\n')
+  assert.equal(catalog.list(target).length, total, 'sobrescribir no duplica el slug')
+  assert.equal(catalog.resolve(target, 'product-manager'), own)
 
-  // Un cargo del sistema se pierde o queda viejo.
-  fs.rmSync(path.join(target, 'agents', 'roles', 'system', 'finops-engineer'), { recursive: true, force: true })
-  const skill = path.join(target, 'agents', 'roles', 'system', 'qa-engineer', 'SKILL.md')
-  fs.writeFileSync(skill, '---\nname: qa-engineer\ndescription: viejo\n---\n')
-
+  // Y upgrade refresca el catálogo vendorizado sin tocar lo del proyecto.
+  fs.rmSync(path.join(target, '.ops', 'agents', 'roles', 'system', 'finops-engineer'), { recursive: true, force: true })
+  assert.equal(catalog.list(target).length, total - 1)
   assert.equal(run(['upgrade', target]).status, 0)
-
-  assert.equal(roles().length, total, 'el cargo faltante vuelve')
-  assert.match(fs.readFileSync(skill, 'utf8'), /No usar/, 'el contrato viejo se reemplaza')
-  assert.equal(
-    fs.readFileSync(path.join(learning, 'reports', '2026-08-01.md'), 'utf8'), '# lo que aprendimos acá\n',
-    'el informe acumulado es lo único que no se puede reponer desde el paquete',
-  )
-  assert.equal(fs.readFileSync(path.join(learning, 'HISTORY.md'), 'utf8'), '# historial propio de Acme\n')
-  assert.match(fs.readFileSync(path.join(own, 'SKILL.md'), 'utf8'), /PM propio/, 'el cargo propio no se toca')
-
-  // Un cargo que llega nuevo trae su andamiaje de aprendizaje, o `evaluate` lo rechazaría.
-  const nuevo = path.join(target, 'agents', 'roles', 'system', 'finops-engineer', 'learning')
-  for (const file of ['HISTORY.md', 'sources.yaml', 'CODEX_AUTOMATION.md']) {
-    assert.equal(fs.existsSync(path.join(nuevo, file)), true, `el cargo repuesto necesita ${file}`)
-  }
-  assert.equal(run(['evaluate', 'finops-engineer'], target).status, 0)
+  assert.equal(catalog.list(target).length, total, 'el cargo faltante vuelve del paquete')
+  assert.match(fs.readFileSync(path.join(own, 'SKILL.md'), 'utf8'), /PM propio/)
 })

@@ -10,6 +10,20 @@ minor aunque no toque una sola línea de código.
 
 ## [No publicado]
 
+### Cambiado
+
+- **El catálogo de cargos ya no se copia al proyecto.** Se resuelve desde la dependencia npm, o desde
+  `.ops/agents/` cuando el repo no usa npm. Una instancia pasa de ~950 KB a ~480 KB y su `git diff`
+  muestra sólo lo que la empresa escribió.
+- El ciclo mensual de aprendizaje dejó de distribuirse: investiga cómo evoluciona una profesión, y eso
+  es igual para todas las empresas. Corriéndolo en cada instalación, cuatro empresas producían cuatro
+  investigaciones casi idénticas del mismo tema, cada una peor que una hecha bien. Ahora vive sólo en
+  el repositorio del toolkit y llega actualizando la dependencia.
+- `learn` y `learn --proposal` fallan con explicación si se corren sobre un cargo del catálogo dentro
+  de una instancia: escribirían en el paquete y se perderían en el próximo `npm ci`.
+- Las fuentes `local://` salieron de los 47 cargos. Lo que un cargo debe saber de una empresa vive
+  ahora en `organization/roles/<slug>.md`, y los 47 lo citan.
+
 ### Corregido
 
 - `upgrade` no actualizaba el catálogo de cargos, o sea el 75% del paquete: un cargo nuevo o mejorado

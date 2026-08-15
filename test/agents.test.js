@@ -28,23 +28,52 @@ function installedProject(name) {
   return target
 }
 
-test('learning prepara informes y propuestas sin modificar el agente', () => {
-  const target = installedProject('Learning')
-  const skill = path.join(target, 'agents', 'roles', 'system', 'product-manager', 'SKILL.md')
+test('el aprendizaje de la profesión se hace en el toolkit, no en cada empresa', () => {
+  const repoRoot = path.resolve(__dirname, '..')
+
+  // Acá, en el repositorio del toolkit, el cargo es escribible y el ciclo corre.
+  const skill = path.join(repoRoot, 'agents', 'roles', 'system', 'product-manager', 'SKILL.md')
   const before = fs.readFileSync(skill, 'utf8')
-  assert.equal(run(['learn', 'product-manager'], target).status, 0)
-  assert.equal(run(['learn', 'product-manager', '--proposal'], target).status, 0)
-  const evaluated = run(['evaluate', 'product-manager'], target)
-  assert.equal(evaluated.status, 0, evaluated.stderr)
-  assert.equal(fs.readFileSync(skill, 'utf8'), before)
+  const reports = path.join(repoRoot, 'agents', 'roles', 'system', 'product-manager', 'learning', 'reports')
+  const nuevos = () => fs.readdirSync(reports).filter((name) => /^\d{4}-\d{2}-\d{2}\.md$/.test(name))
+  const previos = nuevos()
+  try {
+    assert.equal(run(['learn', 'product-manager'], repoRoot).status, 0)
+    assert.equal(fs.readFileSync(skill, 'utf8'), before, 'investigar no reescribe el cargo')
+  } finally {
+    for (const name of nuevos()) {
+      if (!previos.includes(name)) fs.rmSync(path.join(reports, name))
+    }
+  }
 })
 
-test('todos los agentes se distribuyen y superan sus controles estructurales', async (context) => {
+test('una empresa no puede investigar la profesión dentro del paquete', () => {
+  const target = installedProject('Learning')
+
+  // El cargo del sistema vive en la dependencia: escribir ahí se perdería en el próximo npm ci,
+  // y repetiría en cada empresa una investigación que se hace mejor una sola vez.
+  const blocked = run(['learn', 'product-manager'], target)
+  assert.notEqual(blocked.status, 0)
+  assert.match(blocked.stderr, /se hace en el toolkit/)
+  assert.match(blocked.stderr, /organization\/roles\/product-manager\.md/)
+  // Pero leerlo sí puede: evaluate es de sólo lectura.
+  assert.equal(run(['evaluate', 'product-manager'], target).status, 0)
+
+  // Un cargo propio de la empresa sí acumula su aprendizaje, porque es suyo.
+  const own = path.join(target, 'agents', 'roles', 'qa-acme')
+  fs.mkdirSync(own, { recursive: true })
+  fs.writeFileSync(path.join(own, 'SKILL.md'), '---\nname: qa-acme\ndescription: QA de Acme. No usar afuera.\n---\n\nNo inventar. Requiere autorización. Exige evidencia observable.\n')
+  assert.equal(run(['learn', 'qa-acme'], target).status, 0)
+  assert.equal(fs.existsSync(path.join(own, 'learning', 'reports')), true)
+})
+
+test('todos los agentes se resuelven desde el paquete y pasan sus controles', async (context) => {
   const target = installedProject('Agents')
+  // El catálogo no se copia: la instancia no tiene por qué llevar 700 archivos que no escribió.
+  assert.equal(fs.existsSync(path.join(target, 'agents', 'roles', 'system')), false)
+
   for (const agent of AGENTS) {
     await context.test(`${agent.type}/${agent.slug}`, () => {
-      const skill = path.join(target, path.relative(path.dirname(AGENTS_ROOT), agent.dir), 'SKILL.md')
-      assert.equal(fs.existsSync(skill), true)
       const evaluated = run(['evaluate', agent.slug], target)
       assert.equal(evaluated.status, 0, evaluated.stderr || evaluated.stdout)
     })

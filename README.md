@@ -155,7 +155,7 @@ Cada colección adaptable separa lo que actualiza el toolkit de lo que escribe e
 | `planning/adr/` | `OPS-NNN` | las decisiones de la empresa |
 | `planning/rules/` | proceso, forma del cambio, commits | las convenciones propias |
 | `teams/` | composiciones que vienen con Cauce | los equipos propios |
-| `agents/<tipo>/` | los cargos que trae Cauce | los cargos propios |
+| `agents/<tipo>/` | *(en el paquete, no se copia)* | los cargos propios |
 
 `automatization/hooks/` y `automatization/runners/` no tienen `system/`: son runtime que se reemplaza
 entero. No hace falta, porque lo que un proyecto necesita ya funciona sin editarlos — un guard propio
@@ -165,6 +165,21 @@ proyecto. Editar uno existente detiene el `upgrade` antes de pisarlo.
 Un archivo propio con el mismo nombre o ID que uno de `system/` lo reemplaza: el del proyecto manda y
 `check` lo reporta como override explícito. Así una mejora del proceso no obliga a forkear el archivo,
 y actualizar no exige resolver conflictos: se reemplaza `system/` entero y nada más se toca.
+
+### Dónde vive cada cosa del catálogo
+
+Los cargos que trae Cauce **no se copian al proyecto**: se resuelven desde la dependencia, o desde
+`.ops/agents/` cuando el repo no usa npm. Evolucionan como profesión, y esa evolución es la misma para
+todas las empresas: investigarla una vez y bien es mejor que repetirla en cada instalación.
+
+| Qué | Dónde | Quién lo mantiene |
+|---|---|---|
+| El cargo como profesión | el paquete | el toolkit, con `agent-learn` en **este** repositorio |
+| Lo que el cargo debe saber de tu empresa | `organization/roles/<slug>.md` | la empresa |
+| Un cargo propio, o una versión propia de uno del catálogo | `agents/roles/<slug>/` | la empresa |
+
+Por eso `learn` falla si lo corrés sobre un cargo del catálogo dentro de una instancia: escribiría en
+el paquete y se perdería. El ciclo mensual de aprendizaje tampoco se distribuye — vive sólo acá.
 
 ### Versionado
 
