@@ -7,15 +7,9 @@ rules:
   require_corroboration_for_major_change: true
   reject_unsourced_claims: true
   automatic_apply: false
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/legal-counsel.md dentro de cada instalación.
 sources:
-  - name: Company executed agreements entity records policies and authorized matters
-    url: local://legal-context
-    tier: company-primary
-    topics: [entities, contracts, policies, authority, matters, obligations]
-  - name: Official legislation courts and regulator registers by jurisdiction
-    url: local://official-legal-registers
-    tier: jurisdiction-primary
-    topics: [law, regulation, case-law, guidance, effective-dates]
   - name: IBA guides and international principles
     url: https://www.ibanet.org/resources
     tier: professional-primary

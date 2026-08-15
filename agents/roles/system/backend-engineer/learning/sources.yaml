@@ -6,11 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/backend-engineer.md dentro de cada instalación.
 sources:
-  - name: Project manifests and official stack docs
-    url: local://service-manifest
-    tier: project-primary
-    topics: [runtime, framework, database, migrations]
   - name: RFC Editor HTTP
     url: https://www.rfc-editor.org/rfc/rfc9110.html
     tier: primary-standard

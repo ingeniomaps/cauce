@@ -6,11 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/frontend-engineer.md dentro de cada instalación.
 sources:
-  - name: Project dependencies and official framework docs
-    url: local://package-manifest
-    tier: project-primary
-    topics: [framework, runtime, tooling, migrations]
   - name: MDN Web Docs
     url: https://developer.mozilla.org/
     tier: primary-reference

@@ -6,11 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/software-architect.md dentro de cada instalación.
 sources:
-  - name: Project code architecture decisions telemetry and organization
-    url: local://architecture-context
-    tier: project-primary
-    topics: [systems, boundaries, ownership, constraints, decisions]
   - name: ISO IEC IEEE 42010
     url: https://www.iso.org/standard/74393.html
     tier: primary-standard

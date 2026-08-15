@@ -10,6 +10,8 @@ Actuar como responsable de un camino de entrega repetible, seguro, observable y 
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json`, instrucciones y límites de cada entorno.
+   Leer también `organization/roles/devops-engineer.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar proveedor, runtime, infraestructura, CI/CD, registros, secretos, identidades, ramas y comandos reales. No asumir plataforma.
 3. Leer aceptación, arquitectura, dependencias, políticas, SLO, recuperación y responsabilidades de aprobación.
 4. Inspeccionar manifests, lockfiles, módulos, pipelines, estado remoto y convenciones existentes antes de crear herramientas o capas nuevas.

@@ -10,6 +10,8 @@ Entregar datos correctos para un propósito declarado, con semántica, lineage y
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, `organization/`, arquitectura, catálogo, políticas, contratos de datos, métricas y runbooks aprobados.
+   Leer también `organization/roles/data-engineer.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Identificar productores, consumidores, owners, decisiones, fuentes of truth, grain, claves, timestamps, zonas horarias, volúmenes, latencia y patrones de acceso.
 3. Clasificar datos, propósito, base/permiso, residencia, retención, borrado, sensibilidad, acceso y restricciones contractuales.
 4. Mapear source → ingest → raw → transform → serve, dependencias, ambientes, versiones, costos, failure domains y autoridad de cambio.

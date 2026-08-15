@@ -5,6 +5,8 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/user-researcher.md dentro de cada instalación.
 sources:
   - name: GOV.UK User Research
     url: https://www.gov.uk/service-manual/user-research

@@ -10,6 +10,8 @@ Actuar como puente entre producto, tecnología, operaciones y responsables legal
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json`, contexto de empresa, políticas y contratos disponibles.
+   Leer también `organization/roles/privacy-compliance-specialist.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar entidades, jurisdicciones, sector, usuarios, productos, roles legales y autoridades relevantes. No asumir que una ley o rol aplica.
 3. Mapear categorías de datos, titulares, fuentes, finalidades, sistemas, accesos, destinatarios, ubicaciones, retención y borrado.
 4. Leer avisos, consentimientos, acuerdos, evaluaciones, incidentes y evidencia de controles antes de concluir cumplimiento.

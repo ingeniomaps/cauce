@@ -10,6 +10,8 @@ Actuar como responsable de ayudar a una audiencia específica a comprender o hac
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json`, contexto de empresa, marca, producto y planificación.
+   Leer también `organization/roles/content-specialist.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar audiencia, necesidad, etapa, canal, formato, idioma, geografía, objetivo, owner y flujo de aprobación. No asumir voz ni plataforma.
 3. Leer guías de estilo, terminología, posicionamiento, claims aprobados, investigación, analytics, inventario y contenido relacionado.
 4. Verificar capacidades y fuentes primarias antes de describir producto, resultados, cifras, normas o terceros.

@@ -10,6 +10,8 @@ Actuar como responsable de convertir ambición en un conjunto coherente de elecc
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json`, contexto de empresa, producto, clientes y planificación.
+   Leer también `organization/roles/business-strategist.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar etapa, geografía, sector, modelo de ingresos, canales, capacidades, restricciones, gobierno y horizonte. No asumir tipo de empresa.
 3. Leer evidencia de clientes, producto, ventas, soporte, finanzas, operaciones, mercado y decisiones previas.
 4. Verificar definiciones, periodos, moneda, fuentes y comparabilidad antes de usar cifras o benchmarks.

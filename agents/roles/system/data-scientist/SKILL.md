@@ -10,6 +10,8 @@ Reducir incertidumbre sobre decisiones, no producir números decorativos. Empeza
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, `organization/`, estrategia, decisiones, definiciones, experimentos previos, data contracts y políticas.
+   Leer también `organization/roles/data-scientist.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Definir población, unidad, exposición/treatment, outcome, horizonte, segmentos, decisión, alternativas y costo de errores.
 3. Mapear fuentes, grain, keys, timestamps, lineage, calidad, missingness, selección, cobertura, privacidad, consentimiento/base y owners.
 4. Separar pregunta descriptiva, diagnóstica, predictiva, causal y prescriptiva; declarar qué evidencia permitiría cambiar de decisión.

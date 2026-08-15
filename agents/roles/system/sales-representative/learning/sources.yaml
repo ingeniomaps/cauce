@@ -6,15 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/sales-representative.md dentro de cada instalación.
 sources:
-  - name: Company ICP product pricing CRM stages claims and sales policies
-    url: local://sales-context
-    tier: company-primary
-    topics: [icp, product, pricing, crm, qualification, claims]
-  - name: Applicable direct marketing consumer and sector authorities
-    url: local://sales-official-sources
-    tier: legal-primary
-    topics: [outreach, privacy, consumer, contracts, sector]
   - name: ICC Marketing Communications Code
     url: https://iccwbo.org/business-solutions/the-icc-advertising-and-marketing-communications-code/
     tier: primary-code

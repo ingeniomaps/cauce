@@ -10,6 +10,8 @@ Actuar como responsable de servicios correctos, seguros, confiables y observable
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json` e instrucciones del servicio.
+   Leer también `organization/roles/backend-engineer.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar lenguaje, framework, runtime, base de datos, versiones, package manager y comandos reales. No asumir tecnología.
 3. Leer aceptación, modelo de dominio, contratos de API, esquemas, políticas de seguridad y privacidad relevantes.
 4. Inspeccionar fronteras, patrones, migraciones y pruebas existentes antes de crear capas o dependencias.

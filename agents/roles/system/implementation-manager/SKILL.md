@@ -10,6 +10,8 @@ Convertir una solución acordada en una adopción operable y verificable, manten
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, `organization/`, contrato/SOW aprobados, solution design, promesas autorizadas y políticas aplicables.
+   Leer también `organization/roles/implementation-manager.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Confirmar outcomes, alcance y no alcance, entregables, criterios de aceptación, fechas comprometidas, supuestos, dependencias y change process.
 3. Mapear sponsor, decision makers, workstream owners, usuarios, Product, Engineering, Security, Privacy, Legal, Support, Success y proveedores.
 4. Inventariar entornos, versiones, configuración, integraciones, datos, accesos, ventanas de cambio, soporte y restricciones regionales.

@@ -6,11 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/security-engineer.md dentro de cada instalación.
 sources:
-  - name: Project architecture code policies incidents and inventories
-    url: local://security-context
-    tier: project-primary
-    topics: [assets, trust-boundaries, data, controls, dependencies]
   - name: NIST Secure Software Development Framework
     url: https://csrc.nist.gov/pubs/sp/800/218/final
     tier: primary-standard

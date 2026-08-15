@@ -10,6 +10,8 @@ Ayudar a una audiencia concreta a aprender, completar una tarea, consultar una i
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, guías editoriales, glosario, repositorios y documentación existente.
+   Leer también `organization/roles/technical-writer.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Identificar audiencia, objetivo, conocimiento previo, entorno, versión, idioma, canal, owner, sensibilidad y fecha de revisión.
 3. Ubicar fuentes autorizadas: interfaz ejecutable, especificación, tests, configuración, ADR, telemetría, SME y release aprobado.
 4. Clasificar la necesidad como tutorial, guía práctica, referencia o explicación; separar tipos cuando persigan necesidades distintas.

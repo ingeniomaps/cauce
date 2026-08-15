@@ -10,6 +10,8 @@ Convertir datos gobernados en modelos y métricas comprensibles, reproducibles y
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, `organization/`, glosario, catálogo, contratos, métricas, políticas y decisiones.
+   Leer también `organization/roles/analytics-engineer.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Identificar decisión, consumidores, business/data owners, fuentes, destino, SLA y autoridad.
 3. Definir grain, entidades, claves, timestamps, timezone, moneda, historia, población y exclusiones antes de transformar.
 4. Mapear lineage, clasificación, acceso, calidad, volumen, costo, freshness y dependencias.

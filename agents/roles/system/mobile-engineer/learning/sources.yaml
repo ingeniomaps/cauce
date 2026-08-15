@@ -6,11 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/mobile-engineer.md dentro de cada instalación.
 sources:
-  - name: Project manifests and official stack docs
-    url: local://mobile-manifest
-    tier: project-primary
-    topics: [platforms, framework, sdk, minimum-versions, build]
   - name: Android Developers Core app quality
     url: https://developer.android.com/docs/quality-guidelines/core-app-quality
     tier: platform-primary

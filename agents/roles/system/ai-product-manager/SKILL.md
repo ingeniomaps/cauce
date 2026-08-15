@@ -10,6 +10,8 @@ Resolver problemas reales con el nivel mínimo de IA necesario. Diseñar el prod
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, `organization/`, estrategia, investigación, métricas, AI inventory, políticas, incidentes, contratos y decisiones.
+   Leer también `organization/roles/ai-product-manager.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Definir usuario afectado, job/problem, alternativa actual, outcome, business model, owners, autoridad, jurisdicciones y stakes.
 3. Mapear datos, contenido, providers, modelos, tools/actions, personas, feedback, decisiones downstream y lifecycle completo.
 4. Identificar grupos y contextos de uso/no uso, errores previsibles, severidad, reversibilidad, detectabilidad, abuso y afectados indirectos.

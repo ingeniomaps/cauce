@@ -5,6 +5,8 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/product-manager.md dentro de cada instalación.
 sources:
   - name: SVPG
     url: https://www.svpg.com/articles/

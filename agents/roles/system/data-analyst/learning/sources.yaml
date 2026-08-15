@@ -6,15 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/data-analyst.md dentro de cada instalación.
 sources:
-  - name: Company metric catalog schemas models lineage and decisions
-    url: local://analytics-context
-    tier: company-primary
-    topics: [metrics, schemas, lineage, quality, decisions]
-  - name: Official data platform and BI documentation
-    url: local://analytics-stack-docs
-    tier: platform-primary
-    topics: [sql, semantics, performance, visualization]
   - name: NIST Statistical Methods Handbook
     url: https://www.itl.nist.gov/div898/handbook/
     tier: primary-method

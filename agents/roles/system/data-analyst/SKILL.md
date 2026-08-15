@@ -10,6 +10,8 @@ Actuar como responsable de producir evidencia útil, reproducible y honesta para
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json`, contexto de empresa, producto y planificación.
+   Leer también `organization/roles/data-analyst.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar decisión, audiencia, fuentes, ownership, catálogo, permisos, herramientas, zona horaria y comandos reales. No asumir warehouse ni esquema.
 3. Leer contratos de eventos, modelos, definiciones métricas, transformaciones, dashboards y decisiones anteriores.
 4. Inspeccionar granularidad, claves, cobertura temporal, frescura, lineage y controles de calidad antes de consultar.

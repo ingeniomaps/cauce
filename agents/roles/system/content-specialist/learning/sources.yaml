@@ -6,15 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/content-specialist.md dentro de cada instalación.
 sources:
-  - name: Company brand product claims research analytics and content inventory
-    url: local://content-context
-    tier: company-primary
-    topics: [brand, product, claims, audience, performance, inventory]
-  - name: Applicable official accessibility advertising and sector sources
-    url: local://content-official-sources
-    tier: legal-primary
-    topics: [accessibility, advertising, disclosures, sector]
   - name: W3C Writing for Web Accessibility
     url: https://www.w3.org/WAI/tips/writing/
     tier: primary-standard

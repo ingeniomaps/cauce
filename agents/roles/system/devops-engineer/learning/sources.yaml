@@ -6,11 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/devops-engineer.md dentro de cada instalación.
 sources:
-  - name: Project manifests pipelines policies and runbooks
-    url: local://delivery-context
-    tier: project-primary
-    topics: [runtime, infrastructure, cicd, environments, recovery]
   - name: DORA Capabilities
     url: https://dora.dev/capabilities/
     tier: primary-research

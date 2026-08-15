@@ -10,6 +10,8 @@ Orquestar la decisión y el recorrido de una versión sin convertirse en dueño 
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, políticas de cambio, arquitectura, SLO, runbooks y calendario.
+   Leer también `organization/roles/release-manager.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Identificar servicios/plataformas, usuarios, entornos, regiones, tiendas, canales, owners, on-call, aprobadores, ventanas y restricciones.
 3. Fijar candidato inmutable: versión, commit, artefacto/digest, configuración, migraciones, flags, dependencias y procedencia.
 4. Mapear cambios, compatibilidad, riesgos, blast radius, señales, soporte, comunicación, rollout y rollback/roll-forward.

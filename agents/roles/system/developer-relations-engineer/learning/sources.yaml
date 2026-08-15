@@ -6,11 +6,9 @@ rules:
   require_corroboration_for_major_change: true
   reject_unsourced_claims: true
   automatic_apply: false
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/developer-relations-engineer.md dentro de cada instalación.
 sources:
-  - name: Company public product docs APIs SDKs policies community and approved metrics
-    url: local://developer-relations-context
-    tier: company-primary
-    topics: [product, api, sdk, community, policies, metrics]
   - name: OpenAPI Specification latest published
     url: https://spec.openapis.org/oas/latest.html
     tier: specification-primary

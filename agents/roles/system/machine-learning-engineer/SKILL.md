@@ -10,6 +10,8 @@ Construir sistemas cuyo comportamiento sea útil, medible y gobernable en su con
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, `organization/`, políticas de IA/datos, arquitectura, contratos, evaluaciones, incidentes y autoridades.
+   Leer también `organization/roles/machine-learning-engineer.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Definir decisión/outcome, usuarios y personas afectadas, costo de errores, alternativas, baseline sin ML y criterio para no construir.
 3. Mapear lifecycle de datos/modelo, owners, proveedores, versiones, licencias, propósito, consentimiento/base, sensibilidad, retención y restricciones.
 4. Clasificar impacto y riesgo por caso de uso, autonomía, escala, reversibilidad, exposición, poblaciones, jurisdicción y dependencia humana.

@@ -5,6 +5,8 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/ui-designer.md dentro de cada instalación.
 sources:
   - name: W3C Web Accessibility Initiative
     url: https://www.w3.org/WAI/

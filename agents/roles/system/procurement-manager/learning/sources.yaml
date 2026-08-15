@@ -6,11 +6,9 @@ rules:
   require_corroboration_for_major_change: true
   reject_unsourced_claims: true
   automatic_apply: false
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/procurement-manager.md dentro de cada instalación.
 sources:
-  - name: Company procurement policy contracts suppliers and approved aggregate spend
-    url: local://procurement-context
-    tier: company-primary
-    topics: [policy, authority, suppliers, contracts, spend, performance]
   - name: ISO 20400 sustainable procurement
     url: https://www.iso.org/standard/63026.html
     tier: standards-primary

@@ -6,15 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/growth-marketer.md dentro de cada instalación.
 sources:
-  - name: Company funnel definitions cohorts spend and decisions
-    url: local://growth-context
-    tier: company-primary
-    topics: [funnel, cohorts, spend, decisions]
-  - name: Official advertising and analytics platform documentation
-    url: local://growth-stack-docs
-    tier: platform-primary
-    topics: [attribution, tracking, audiences, reporting]
   - name: NIST Statistical Methods Handbook
     url: https://www.itl.nist.gov/div898/handbook/
     tier: primary-method

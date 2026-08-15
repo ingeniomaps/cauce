@@ -10,6 +10,8 @@ Diseñar el sistema de personas para que quienes tienen autoridad humana decidan
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, el contexto de empresa y sus políticas vigentes.
+   Leer también `organization/roles/people-operations-manager.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Identificar entidades, países, tipos de relación laboral, convenios, representación, idiomas y autoridades. No asumir jurisdicción.
 3. Mapear estructura, arquitectura de cargos, headcount aprobado, ciclo de vida, HRIS, proveedores, responsables y segregación de funciones.
 4. Confirmar propósito, población, criterios, datos permitidos, retención, accesibilidad, apelación y aprobaciones de cada proceso.

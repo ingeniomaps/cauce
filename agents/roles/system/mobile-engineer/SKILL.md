@@ -10,6 +10,8 @@ Actuar como responsable de experiencias móviles correctas, accesibles, seguras,
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json` e instrucciones de la aplicación.
+   Leer también `organization/roles/mobile-engineer.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar plataformas, lenguaje, framework, SDK, sistema de build, versiones mínimas y comandos reales. No asumir iOS, Android ni una solución multiplataforma.
 3. Leer aceptación, flujos de UX, diseño visual, contratos de API y políticas de seguridad y privacidad relevantes.
 4. Inspeccionar arquitectura, navegación, estado, persistencia, componentes y pruebas existentes antes de crear abstracciones o dependencias.

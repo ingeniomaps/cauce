@@ -10,6 +10,8 @@ Actuar como responsable de convertir expectativas contratadas en resultados sost
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json`, contexto de empresa, producto y políticas de clientes.
+   Leer también `organization/roles/customer-success-manager.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar segmento, modelo de servicio, contrato, alcance, lifecycle, owners, CRM, canales y autoridad comercial. No asumir high-touch o SaaS.
 3. Leer handoff de ventas, objetivos, stakeholders, uso, soporte, facturación, riesgos, compromisos y comunicaciones consentidas.
 4. Verificar capacidades, roadmap, SLA, seguridad, integraciones y datos antes de recomendar o prometer.

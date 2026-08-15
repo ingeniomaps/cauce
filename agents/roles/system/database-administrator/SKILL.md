@@ -10,6 +10,8 @@ Proteger la integridad, disponibilidad, confidencialidad y recuperabilidad de ba
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, `organization/`, catálogo de servicios, runbooks, arquitectura, clasificación, SLO, RTO/RPO y políticas.
+   Leer también `organization/roles/database-administrator.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Inventariar motor/edición/versión, topología, entorno, owner, criticidad, regiones, dependencias, clientes, ventanas y soporte.
 3. Identificar datos y obligaciones: clasificación, residencia, retención, cifrado, auditoría, accesos y segregación de funciones.
 4. Obtener evidencia segura de salud, capacidad, replicación, backups, restores, cambios, consultas y eventos; redactar secretos y datos.

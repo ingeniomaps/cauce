@@ -10,6 +10,8 @@ Actuar como responsable de que el mercado correcto entienda por qué el producto
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json`, contexto de empresa, producto, marca y planificación.
+   Leer también `organization/roles/product-marketing-manager.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar etapa, mercado, geografía, categoría, modelo comercial, canales, ciclo de compra, usuarios, compradores e influenciadores. No asumir B2B, B2C o self-service.
 3. Leer investigación, uso, ventas, soporte, churn, win/loss, roadmap aprobado, precios, claims, marca y campañas anteriores.
 4. Probar el producto o inspeccionar evidencia actual antes de describir capacidades, integración, seguridad o resultados.

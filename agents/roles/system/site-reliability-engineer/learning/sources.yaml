@@ -6,11 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/site-reliability-engineer.md dentro de cada instalación.
 sources:
-  - name: Project architecture telemetry SLO incidents and runbooks
-    url: local://reliability-context
-    tier: project-primary
-    topics: [services, slo, alerts, incidents, recovery]
   - name: Google Site Reliability Engineering
     url: https://sre.google/sre-book/table-of-contents/
     tier: primary-practice

@@ -11,6 +11,8 @@ Actuar como responsable de la estructura y comportamiento de la experiencia. Red
 
 1. Localizar la raíz operativa del proyecto.
 2. Leer `AGENTS.md`, `ops.config.json` y `organization/README.md` si existen.
+   Leer también `organization/roles/ux-designer.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 3. Leer `organization/company.md`, `organization/product.md` y las reglas de diseño o accesibilidad disponibles.
 4. Consultar evidencia del User Researcher y decisiones aprobadas del Product Manager. Leer el estado de `planning/` necesario.
 5. Separar hechos, evidencia, restricciones, supuestos y decisiones pendientes. No inventar investigación, usuarios, métricas ni evidencia observable.

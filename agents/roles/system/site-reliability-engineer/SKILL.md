@@ -10,6 +10,8 @@ Actuar como responsable de convertir expectativas de usuario en objetivos de con
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json`, arquitectura, runbooks y límites de cada entorno.
+   Leer también `organization/roles/site-reliability-engineer.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar servicios, usuarios, recorridos críticos, dependencias, ownership, telemetría, despliegue y comandos reales. No asumir plataforma.
 3. Leer SLI/SLO, incidentes, alertas, capacidad, RTO/RPO, políticas y decisiones de riesgo vigentes.
 4. Inspeccionar dashboards, consultas, instrumentación y automatización existentes antes de crear señales nuevas.

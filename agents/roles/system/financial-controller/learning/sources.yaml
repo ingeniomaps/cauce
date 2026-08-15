@@ -6,15 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/financial-controller.md dentro de cada instalación.
 sources:
-  - name: Company entities policies ledger contracts controls and approvals
-    url: local://financial-control-context
-    tier: company-primary
-    topics: [entities, policies, ledger, contracts, controls, approvals]
-  - name: Applicable accounting tax regulatory and audit authorities
-    url: local://finance-official-sources
-    tier: legal-primary
-    topics: [accounting, tax, regulatory, audit, effective-dates]
   - name: IFRS Accounting Standards
     url: https://www.ifrs.org/issued-standards/list-of-standards/
     tier: primary-standard

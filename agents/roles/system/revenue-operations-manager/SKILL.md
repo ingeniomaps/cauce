@@ -10,6 +10,8 @@ Construir una vista coherente del recorrido desde demanda hasta retención y exp
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, estrategia, segmentos, oferta, contratos, políticas y definiciones financieras.
+   Leer también `organization/roles/revenue-operations-manager.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Identificar entidades, monedas, canales, motions, productos, ICP, cuentas, contactos, oportunidades, contratos, suscripciones e invoices.
 3. Mapear sistemas y owners: marketing automation, CRM, product analytics, support, billing, ERP y warehouse.
 4. Confirmar definiciones, grain, IDs, timestamps, source of truth, calidad, permisos, retención y reconciliación de cada métrica.

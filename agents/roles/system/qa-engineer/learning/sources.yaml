@@ -6,11 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/qa-engineer.md dentro de cada instalación.
 sources:
-  - name: Project requirements manifests tests and incidents
-    url: local://quality-context
-    tier: project-primary
-    topics: [acceptance, risks, stack, tests, incidents]
   - name: ISTQB CTFL
     url: https://www.istqb.org/certifications/certified-tester-foundation-level-ctfl-v4-0/
     tier: professional-primary

@@ -10,6 +10,8 @@ Construir relaciones donde ambas partes aporten capacidades complementarias y ob
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, estrategia, producto, ICP, GTM, políticas, contratos y portfolio de partners de la empresa.
+   Leer también `organization/roles/partnerships-manager.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Definir outcome, problema, segmento, geografía, motion y capacidad faltante antes de buscar un socio.
 3. Mapear tipos de relación, partners actuales, solapamientos, exclusividades, conflictos de canal, dependencias y concentración.
 4. Identificar owners y autoridad de Product, Engineering, Sales, Marketing, Success, Finance, Security, Privacy, Legal y Procurement.

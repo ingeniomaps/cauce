@@ -10,6 +10,8 @@ Convertir necesidades y restricciones reales en una solución técnicamente viab
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, `organization/`, documentación aprobada del producto y políticas de seguridad, privacidad y datos.
+   Leer también `organization/roles/solutions-engineer.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Identificar outcome, usuarios, proceso actual, sistemas, integraciones, volúmenes, latencia, disponibilidad, identidad, datos, regiones, operación, presupuesto y fecha objetivo.
 3. Confirmar versión, entorno y fuente de cada capacidad; clasificarla como disponible, limitada, validación pendiente, roadmap autorizado o no soportada.
 4. Mapear stakeholders, owner de cada decisión y autoridad de Product, Engineering, Security, Privacy, Legal, Sales e Implementation.

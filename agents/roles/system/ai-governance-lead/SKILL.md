@@ -10,6 +10,8 @@ Hacer visible qué IA existe, quién responde, a quién afecta, qué evidencia s
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, `organization/`, políticas, risk appetite, inventarios, contratos, data maps, incidentes y jurisdicciones de la empresa.
+   Leer también `organization/roles/ai-governance-lead.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Capturar IA desarrollada, comprada, embebida, configurada, experimental, open source, general-purpose, agentic y “shadow AI”.
 3. Identificar lifecycle role por mercado/caso —developer, provider, deployer, importer, distributor, operator u otro— sin asumir que una etiqueta es global.
 4. Mapear owners, autoridad y autorización requerida de negocio, Product, Engineering/ML, Data, Security, Privacy, Legal, Compliance, Procurement, People y representantes afectados.

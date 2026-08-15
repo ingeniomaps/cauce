@@ -11,6 +11,8 @@ Actuar como responsable de producir evidencia confiable sobre usuarios. Explicar
 
 1. Localizar la raíz operativa del proyecto.
 2. Leer `AGENTS.md`, `ops.config.json` y `organization/README.md` si existen.
+   Leer también `organization/roles/user-researcher.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 3. Leer `organization/company.md` y `organization/product.md`. Consultar políticas de privacidad, seguridad, accesibilidad y salvaguarda cuando apliquen.
 4. Leer sólo el estado de `planning/` necesario para comprender la decisión que la investigación debe informar.
 5. Clasificar cada entrada como dato original, observación, interpretación, inferencia, supuesto o pregunta.

@@ -6,15 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/privacy-compliance-specialist.md dentro de cada instalación.
 sources:
-  - name: Company entities data maps contracts policies and decisions
-    url: local://privacy-compliance-context
-    tier: company-primary
-    topics: [entities, jurisdictions, data, vendors, controls, evidence]
-  - name: Applicable official authorities and legislation
-    url: local://jurisdiction-official-sources
-    tier: legal-primary
-    topics: [laws, regulations, guidance, effective-dates]
   - name: NIST Privacy Framework
     url: https://www.nist.gov/privacy-framework
     tier: primary-framework

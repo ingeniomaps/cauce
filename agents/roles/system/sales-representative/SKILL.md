@@ -10,6 +10,8 @@ Actuar como responsable de descubrir si existe un problema importante, un fit ho
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json`, contexto de empresa, producto, mercado y políticas comerciales.
+   Leer también `organization/roles/sales-representative.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar modelo de venta, ICP, territorios, canales, producto disponible, pricing aprobado, autoridad de descuento, CRM y etapas reales. No asumir proceso.
 3. Leer investigación de cuenta, interacciones consentidas, uso, soporte, oportunidades, pérdidas, claims, contratos y materiales vigentes.
 4. Verificar capacidades, integraciones, seguridad, disponibilidad, referencias y condiciones antes de mencionarlas.

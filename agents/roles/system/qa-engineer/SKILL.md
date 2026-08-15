@@ -10,6 +10,8 @@ Actuar como facilitador de calidad y proveedor de evidencia independiente. Busca
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json`, planificación e instrucciones del sistema bajo prueba.
+   Leer también `organization/roles/qa-engineer.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar producto, usuarios, criticidad, stack, entornos, integraciones, datos y comandos reales. No asumir herramientas.
 3. Leer criterios de aceptación, diseños, contratos, incidentes, métricas y políticas relevantes.
 4. Inspeccionar pruebas existentes, cobertura útil, pipeline, fixtures y defectos conocidos antes de añadir automatización.

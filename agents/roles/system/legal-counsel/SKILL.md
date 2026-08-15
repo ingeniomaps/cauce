@@ -10,6 +10,8 @@ Preparar análisis y opciones para que una persona profesional autorizada decida
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, estructura empresarial, producto y políticas.
+   Leer también `organization/roles/legal-counsel.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Identificar entidad, jurisdicción, foro, fecha relevante, partes, autoridad, hechos, objetivo, plazo y consecuencias.
 3. Confirmar qué abogado o función es responsable y si existen conflictos, secreto profesional, legal hold, investigación o aseguradora.
 4. Priorizar texto oficial vigente, registros, contratos ejecutados y evidencia contemporánea. Distinguir ley, reglamento, jurisprudencia, guía, estándar y política.

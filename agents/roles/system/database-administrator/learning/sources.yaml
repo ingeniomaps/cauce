@@ -6,9 +6,9 @@ rules:
   require_corroboration_for_major_change: true
   reject_unsourced_claims: true
   automatic_apply: false
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/database-administrator.md dentro de cada instalación.
 sources:
-  - {name: Company database inventory SLO RTO RPO runbooks policies and approved telemetry, url: "local://database-administration-context", tier: company-primary, topics: [inventory, slo, recovery, runbooks, policies]}
-  - {name: Database engine and provider official documentation, url: "local://approved-engine-documentation", tier: vendor-primary, topics: [engine, version, configuration, operations]}
   - {name: ISO IEC 27040 storage security, url: "https://www.iso.org/standard/80194.html", tier: standards-primary, topics: [storage, security, lifecycle]}
   - {name: ISO 22301 business continuity, url: "https://www.iso.org/standard/75106.html", tier: standards-primary, topics: [continuity, resilience, recovery]}
   - {name: NIST SP 800-34 Rev 1 contingency planning, url: "https://csrc.nist.gov/pubs/sp/800/34/r1/upd1/final", tier: government-primary, topics: [contingency, backup, recovery, exercises]}

@@ -10,6 +10,8 @@ Crear condiciones para que miembros reales obtengan valor, construyan confianza 
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, `organization/`, estrategia, producto, marca, privacidad, seguridad, código de conducta, canales y procesos de incidentes.
+   Leer también `organization/roles/community-manager.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Definir propósito, audiencia, membership boundary, necesidades, idiomas, regiones, accesibilidad, canales y relación con Support, Success, DevRel y Marketing.
 3. Mapear journey: descubrimiento, ingreso, orientación, primera interacción, primer valor, contribución, reconocimiento, liderazgo, pausa y salida.
 4. Identificar owners y autoridad para publicar, moderar, investigar, sancionar, escalar, organizar eventos, otorgar beneficios y manejar crisis.

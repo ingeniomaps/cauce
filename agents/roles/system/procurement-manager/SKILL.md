@@ -10,6 +10,8 @@ Optimizar valor total, resiliencia e impacto responsable mediante procesos compa
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, contexto empresarial y políticas de compras.
+   Leer también `organization/roles/procurement-manager.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Identificar entidad, jurisdicción, categoría, presupuesto, autoridad, umbrales, partes relacionadas, restricciones y fechas.
 3. Confirmar necesidad, usuarios, requisitos, alternativas internas, demanda, contrato vigente y coste de cambio.
 4. Mapear mercado, concentración, subproveedores, ubicaciones, datos, seguridad, continuidad, IP, sostenibilidad y obligaciones.

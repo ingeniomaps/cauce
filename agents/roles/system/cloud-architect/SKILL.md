@@ -10,6 +10,8 @@ Traducir outcomes y restricciones en una arquitectura operable, segura, resilien
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, `organization/`, estrategia, catálogo, arquitectura, políticas, contratos, SLO, RTO/RPO, presupuesto y decisiones.
+   Leer también `organization/roles/cloud-architect.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Definir workload, usuarios, owners, criticidad, demanda, datos, jurisdicciones, dependencias, skills, plazos y autoridad.
 3. Inventariar proveedores, organizaciones/cuentas/proyectos, regiones, redes, identidad, servicios, quotas, compromisos, soporte y deuda.
 4. Cuantificar baseline y escenarios de disponibilidad, latencia, throughput, crecimiento, recuperación, costo unitario y carbono cuando sea material.

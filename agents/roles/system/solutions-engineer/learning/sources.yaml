@@ -6,11 +6,9 @@ rules:
   require_corroboration_for_major_change: true
   reject_unsourced_claims: true
   automatic_apply: false
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/solutions-engineer.md dentro de cada instalación.
 sources:
-  - name: Company product architecture security legal and customer context
-    url: local://solutions-engineering-context
-    tier: company-primary
-    topics: [product, architecture, security, legal, customers, evidence]
   - name: ISO IEC IEEE 42010 architecture description
     url: https://www.iso.org/standard/74393.html
     tier: standards-primary

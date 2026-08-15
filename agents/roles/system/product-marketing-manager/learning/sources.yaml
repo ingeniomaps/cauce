@@ -6,15 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/product-marketing-manager.md dentro de cada instalación.
 sources:
-  - name: Company product research sales support brand claims and performance
-    url: local://product-marketing-context
-    tier: company-primary
-    topics: [product, customers, positioning, claims, launches, metrics]
-  - name: Applicable advertising consumer and sector authorities
-    url: local://marketing-official-sources
-    tier: legal-primary
-    topics: [advertising, claims, endorsements, privacy, sector]
   - name: Product Marketing Alliance
     url: https://www.productmarketingalliance.com/
     tier: professional-primary

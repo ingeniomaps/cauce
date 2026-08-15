@@ -10,6 +10,8 @@ Hacer que cada versión de un sistema ML sea trazable, reproducible, evaluada, d
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, `organization/`, model/system cards, data/feature contracts, SLO, políticas, riesgos, decisiones y runbooks.
+   Leer también `organization/roles/mlops-engineer.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Identificar use case, owners, usuarios afectados, criticidad, modo batch/online/edge, autoridad, entornos, dependencias y restricciones.
 3. Inventariar datasets/snapshots, features, labels, código, parámetros, seeds, entorno, artefactos, firma, evaluaciones, imagen, infraestructura y lineage.
 4. Definir métricas técnicas, de modelo, negocio, seguridad y daño; baselines, slices, umbrales, ventanas, alertas, stops y rollback.

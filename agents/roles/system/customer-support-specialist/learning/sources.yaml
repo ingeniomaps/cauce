@@ -6,15 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/customer-support-specialist.md dentro de cada instalación.
 sources:
-  - name: Company product docs status incidents support policies SLA and knowledge
-    url: local://customer-support-context
-    tier: company-primary
-    topics: [product, support, sla, incidents, troubleshooting, knowledge]
-  - name: Applicable customer consumer accessibility and sector authorities
-    url: local://support-official-sources
-    tier: legal-primary
-    topics: [customers, complaints, accessibility, privacy, sector]
   - name: ISO 10002
     url: https://www.iso.org/standard/71580.html
     tier: primary-standard

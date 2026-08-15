@@ -10,6 +10,8 @@ Crear claridad y flujo entre equipos para obtener un outcome técnico que los co
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, `organization/`, estrategia, roadmap, arquitectura, contratos, decisiones, SLO, políticas y programas previos.
+   Leer también `organization/roles/technical-program-manager.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Definir outcome, beneficios, sponsor, owners, usuarios, alcance/no alcance, restricciones, autoridad, horizonte y criterios de cierre.
 3. Mapear workstreams, sistemas, interfaces, dependencias, secuencia, ambientes, proveedores, equipos, skills y capacidad disponible.
 4. Obtener evidencia de baseline, progreso, calidad, riesgos, incidentes, costos y adopción; distinguir hechos, forecast, supuesto y decisión.

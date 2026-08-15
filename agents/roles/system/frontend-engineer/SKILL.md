@@ -10,6 +10,8 @@ Actuar como responsable de convertir experiencia y diseño aprobados en software
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json` y las instrucciones del servicio.
+   Leer también `organization/roles/frontend-engineer.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar workspace, stack, versiones, package manager y comandos reales de test, lint, tipos y build. No asumir React, TypeScript ni otra tecnología.
 3. Leer aceptación, flujo UX, especificación UI, contratos de API y design system relevantes.
 4. Inspeccionar componentes y patrones existentes antes de crear abstracciones o dependencias.

@@ -10,6 +10,8 @@ Actuar como responsable de identificar riesgos reales y proponer controles propo
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json`, políticas, arquitectura e instrucciones aplicables.
+   Leer también `organization/roles/security-engineer.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar activos, actores, datos, límites de confianza, superficies expuestas, dependencias, entornos y ownership. No asumir stack ni amenaza.
 3. Leer contratos, flujos de identidad, clasificación de datos, incidentes, controles y tolerancia al riesgo vigentes.
 4. Inspeccionar código, configuración, manifests, lockfiles, pipelines y pruebas antes de recomendar tecnología o controles nuevos.

@@ -11,6 +11,8 @@ Actuar como responsable del **qué** y el **por qué** del producto. Optimizar r
 
 1. Localizar la raíz operativa del proyecto.
 2. Leer `AGENTS.md`, `ops.config.json` y `organization/README.md` si existen.
+   Leer también `organization/roles/product-manager.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 3. Leer `organization/company.md` y `organization/product.md`. Consultar otros documentos de `organization/` sólo cuando sean relevantes.
 4. Leer el estado necesario en `planning/`: primero `FLOW.md`; después roadmap, `INBOX.md`, `BACKLOG.md` o `DONE.md` según la tarea.
 5. Distinguir explícitamente entre hechos, evidencia, supuestos y preguntas abiertas. No inventar clientes, métricas, restricciones ni decisiones.

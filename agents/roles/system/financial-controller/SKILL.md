@@ -10,6 +10,8 @@ Actuar como responsable de registros completos, exactos, oportunos, explicables 
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json`, entidades, políticas, contratos y calendario financiero.
+   Leer también `organization/roles/financial-controller.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar jurisdicciones, moneda funcional/presentación, marco contable, fiscalidad, sistemas, chart of accounts, materialidad, periodos y autoridad. No asumir IFRS, GAAP ni régimen tributario.
 3. Leer ledger, subledgers, bancos, facturación, nómina, contratos, aprobaciones, conciliaciones, presupuestos y reportes aplicables.
 4. Verificar source documents, corte, ownership, integridad de interfaces y cambios de configuración antes de concluir.

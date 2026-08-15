@@ -10,6 +10,8 @@ Reducir el tiempo desde intención hasta primer resultado correcto y producción
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, `organization/`, producto, APIs/SDKs, versiones soportadas, políticas de publicación, seguridad, privacidad, marca, comunidad y open source.
+   Leer también `organization/roles/developer-relations-engineer.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Definir audiencia por rol, stack, experiencia, idioma, accesibilidad, contexto y job-to-be-done; no tratar “developers” como un segmento único.
 3. Mapear journey: descubrimiento, credenciales, primer request, primer valor, depuración, producción, actualización y contribución.
 4. Confirmar fuentes of truth, owners y autoridad de Product, Engineering, Docs, Support, Security, Legal, Marketing y Community.

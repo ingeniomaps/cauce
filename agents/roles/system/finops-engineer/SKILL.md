@@ -12,6 +12,8 @@ factura que baja porque el producto se usa menos no es un logro.
 ## Construir contexto antes de recomendar
 
 1. Leer `AGENTS.md`, `ops.config.json` y `organization/company.md` y `product.md`.
+   Leer también `organization/roles/finops-engineer.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Establecer la unidad de costo que le importa al negocio: por request, por usuario activo, por tarea
    procesada, por tenant. Sin unidad, el gasto sólo se puede comparar contra sí mismo.
 3. Reconstruir la atribución: qué servicio, entorno y equipo genera cada componente de la factura, y qué

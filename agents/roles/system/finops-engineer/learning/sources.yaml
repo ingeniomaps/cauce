@@ -6,15 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/finops-engineer.md dentro de cada instalación.
 sources:
-  - name: Company billing tags budgets commitments and decisions
-    url: local://finops-context
-    tier: company-primary
-    topics: [billing, attribution, budgets, commitments]
-  - name: Official provider pricing and billing documentation
-    url: local://provider-pricing-docs
-    tier: platform-primary
-    topics: [pricing, regions, commitments, metering]
   - name: FinOps Foundation Framework
     url: https://www.finops.org/framework/
     tier: professional-primary

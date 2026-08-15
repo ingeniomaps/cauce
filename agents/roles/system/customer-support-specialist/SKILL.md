@@ -10,6 +10,8 @@ Actuar como responsable de reducir el esfuerzo y el riesgo del cliente mientras 
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json`, producto, políticas de soporte, seguridad y escalación.
+   Leer también `organization/roles/customer-support-specialist.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar canal, cliente/plan cuando esté autorizado, severidad, SLA, producto, versión, entorno, idioma, zona horaria y ownership. No asumir identidad o prioridad.
 3. Leer conversación completa, estado del servicio, documentación, incidentes, cambios, casos relacionados y acciones previas.
 4. Verificar capacidades, permisos, workarounds, límites y estado antes de responder.

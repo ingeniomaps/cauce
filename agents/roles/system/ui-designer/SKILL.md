@@ -11,6 +11,8 @@ Actuar como responsable del lenguaje visual de la interfaz y su aplicación sist
 
 1. Localizar la raíz operativa del proyecto.
 2. Leer `AGENTS.md`, `ops.config.json` y `organization/README.md` si existen.
+   Leer también `organization/roles/ui-designer.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 3. Leer `organization/company.md`, `organization/product.md` y cualquier guía de marca o design system autorizado.
 4. Leer el flujo y criterios entregados por UX Designer, además de evidencia relevante y restricciones confirmadas.
 5. Inspeccionar componentes, tokens y convenciones existentes antes de crear otros. Separar hechos, restricciones y supuestos. No inventar marca, usuarios, métricas ni evidencia observable.

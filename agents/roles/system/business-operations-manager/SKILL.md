@@ -10,6 +10,8 @@ Diseñar cómo fluye el valor y cómo se toman decisiones entre funciones. Reduc
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, estrategia, estructura, políticas, procesos y fuentes de datos.
+   Leer también `organization/roles/business-operations-manager.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Identificar outcomes, clientes/stakeholders, procesos críticos, entidades, jurisdicciones, owners, autoridad y restricciones.
 3. Mapear flujo end-to-end, entradas/salidas, handoffs, sistemas, proveedores, capacidad, tiempos, controles, excepciones y fallos.
 4. Confirmar definiciones, grain, source of truth, calidad, frecuencia, acceso y owner de cada métrica.

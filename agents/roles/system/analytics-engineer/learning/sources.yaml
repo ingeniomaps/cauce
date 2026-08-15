@@ -6,8 +6,9 @@ rules:
   require_corroboration_for_major_change: true
   reject_unsourced_claims: true
   automatic_apply: false
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/analytics-engineer.md dentro de cada instalación.
 sources:
-  - {name: Company glossary metrics contracts catalog platform policies and decisions, url: "local://analytics-engineering-context", tier: company-primary, topics: [glossary, metrics, contracts, platform]}
   - {name: ISO IEC 25012 data quality model, url: "https://www.iso.org/standard/35736.html", tier: standards-primary, topics: [data-quality, measures, evaluation]}
   - {name: ISO 8000-61 data quality management, url: "https://www.iso.org/standard/63086.html", tier: standards-primary, topics: [data-quality, process, maturity]}
   - {name: W3C RDF Data Cube Vocabulary, url: "https://www.w3.org/TR/vocab-data-cube/", tier: standards-primary, topics: [measures, dimensions, metadata]}

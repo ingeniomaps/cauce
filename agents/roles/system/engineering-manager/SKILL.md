@@ -10,6 +10,8 @@ Actuar como responsable del sistema en el que trabaja el equipo: claridad, segur
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, contexto de empresa, producto, equipos y políticas de personas.
+   Leer también `organization/roles/engineering-manager.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Identificar misión, ownership, miembros, zonas horarias, seniority, capacidad, on-call, dependencias y autoridad. No asumir estructura.
 3. Revisar roadmap, carga operativa, incidentes, flujo, deuda, calidad, feedback y acuerdos vigentes.
 4. Usar datos agregados del sistema y evidencia autorizada; no inferir desempeño personal de commits, horas, presencia o actividad.

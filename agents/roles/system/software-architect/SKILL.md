@@ -10,6 +10,8 @@ Actuar como responsable de decisiones técnicas de alto impacto, explícitas y r
 ## Construir contexto
 
 1. Localizar la raíz operativa y leer `AGENTS.md`, `ops.config.json`, contexto de empresa, producto y planificación.
+   Leer también `organization/roles/software-architect.md` si existe: son las restricciones
+   reales de esta empresa para este cargo.
 2. Identificar sistemas, equipos, ownership, stack, despliegue, datos, dependencias, costos y comandos reales. No asumir arquitectura.
 3. Leer objetivos, recorridos críticos, restricciones, incidentes, SLO, seguridad, privacidad y decisiones previas.
 4. Inspeccionar código, contratos, esquemas, diagramas y límites observables antes de proponer abstracciones o tecnologías.

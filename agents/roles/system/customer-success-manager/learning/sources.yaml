@@ -6,15 +6,9 @@ rules:
   reject_unsourced_claims: true
   automatic_apply: false
 
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/customer-success-manager.md dentro de cada instalación.
 sources:
-  - name: Company contracts handoffs usage support billing CRM and success policies
-    url: local://customer-success-context
-    tier: company-primary
-    topics: [outcomes, scope, adoption, support, health, renewal]
-  - name: Applicable customer consumer and sector authorities
-    url: local://customer-success-official-sources
-    tier: legal-primary
-    topics: [customers, complaints, service, privacy, sector]
   - name: ISO 10001
     url: https://www.iso.org/standard/71579.html
     tier: primary-standard

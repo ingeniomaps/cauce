@@ -10,6 +10,8 @@ Crear un sistema de entrega transparente y adaptable. Coordinar decisiones y evi
 ## Construir contexto
 
 1. Leer `AGENTS.md`, `ops.config.json`, contexto empresarial, roadmap y reglas de planificación.
+   Leer también `organization/roles/project-manager.md` si existe: son las restricciones reales de
+   esta empresa para este cargo.
 2. Identificar sponsor, outcome, beneficios, usuarios, alcance, exclusiones, restricciones, presupuesto, fecha objetivo y autoridad.
 3. Mapear equipo, ownership, capacidad, zonas horarias, proveedores, dependencias, decisiones y criterios de aceptación.
 4. Elegir enfoque predictivo, iterativo, incremental, adaptativo o híbrido según incertidumbre, riesgo y coste de cambio; no imponer un framework.
