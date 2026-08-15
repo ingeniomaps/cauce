@@ -53,6 +53,23 @@ function usage() {
   ops team show <team>`)
 }
 
+// Banderas que consumen el argumento siguiente: su valor no es un posicional.
+const VALUED_FLAGS = new Set(['--name', '--mode', '--engine', '--fixture'])
+
+// Los posicionales del comando, salteando banderas y sus valores. Leer `process.argv` crudo hacía
+// que `agents list --json` tomara `--json` como la raíz: el catálogo salía vacío, sin error, y quien
+// lo consumía —un agente, por ejemplo— no tenía cómo notar que le habían contestado con nada.
+function positionals() {
+  const found = []
+  const argv = process.argv.slice(2)
+  for (let index = 0; index < argv.length; index += 1) {
+    const value = argv[index]
+    if (!value.startsWith('--')) { found.push(value); continue }
+    if (VALUED_FLAGS.has(value)) index += 1
+  }
+  return found
+}
+
 function option(name, fallback = '') {
   const index = process.argv.indexOf(name)
   return index >= 0 ? process.argv[index + 1] || fallback : fallback
@@ -790,20 +807,21 @@ function team(action, slug) {
 async function main() {
   const command = process.argv[2]
   if (!command || ['help', '--help', '-h'].includes(command)) return usage()
-  if (command === 'init') init(process.argv[3])
-  else if (command === 'check') check(process.argv[3])
-  else if (command === 'tree') tree(process.argv[3])
-  else if (command === 'context') context(process.argv[3])
-  else if (command === 'upgrade') upgrade(process.argv[3])
-  else if (command === 'agents') agents(process.argv[3], process.argv[4])
-  else if (command === 'archive') archive(process.argv[3], process.argv[4])
+  const arg = positionals()
+  if (command === 'init') init(arg[1])
+  else if (command === 'check') check(arg[1])
+  else if (command === 'tree') tree(arg[1])
+  else if (command === 'context') context(arg[1])
+  else if (command === 'upgrade') upgrade(arg[1])
+  else if (command === 'agents') agents(arg[1], arg[2])
+  else if (command === 'archive') archive(arg[1], arg[2])
   else if (command === 'integration') {
-    await integration(process.argv[3], process.argv[4], process.argv[5], process.argv[6])
+    await integration(arg[1], arg[2], arg[3], arg[4])
   }
-  else if (command === 'automation') automation(process.argv[3], process.argv[4], process.argv[5])
-  else if (command === 'learn') learn(process.argv[3])
-  else if (command === 'evaluate') evaluate(process.argv[3])
-  else if (command === 'team') team(process.argv[3], process.argv[4])
+  else if (command === 'automation') automation(arg[1], arg[2], arg[3])
+  else if (command === 'learn') learn(arg[1])
+  else if (command === 'evaluate') evaluate(arg[1])
+  else if (command === 'team') team(arg[1], arg[2])
   else { usage(); fail(`Comando desconocido: ${command}`, 2) }
 }
 

@@ -53,7 +53,11 @@ const MANIFEST = {
     owners: { type: 'array', items: { type: 'object', additionalProperties: false, properties: {
       domain: { type: 'string' }, agent: { type: 'string' },
     } } },
-    stages: { type: 'array', items: { type: 'object', additionalProperties: false, properties: {
+    stages: { type: 'array', items: { type: 'object', additionalProperties: false,
+      // `skill` es obligatorio a propósito: siendo opcional el agente lo omitía, la etapa caía al
+      // camino de respaldo y salía a buscar el contrato igual. Un dato que se puede resolver una vez
+      // no debería depender de que alguien se acuerde de resolverlo.
+      required: ['id', 'agent', 'phase', 'skill'], properties: {
       id: { type: 'string' }, agent: { type: 'string' }, exitGate: { type: 'string' },
       phase: { type: 'string', enum: ['discovery', 'delivery'] },
       produces: { type: 'array', items: { type: 'string' } },

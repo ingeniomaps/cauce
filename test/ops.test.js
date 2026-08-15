@@ -728,3 +728,15 @@ test('la instancia recibe cómo escribir lo que sí es suyo', () => {
   assert.equal(fs.existsSync(path.join(target, 'teams', 'system')), false)
   assert.equal(fs.existsSync(path.join(target, 'agents')), false)
 })
+
+// Una bandera antes del último posicional se comía su lugar: `agents list --json` tomaba `--json`
+// como la raíz y devolvía `[]` sin error. Quien lo consumía —un agente, en el caso que lo destapó—
+// no tenía forma de distinguir "no hay cargos" de "me contestaste con nada".
+test('una bandera no ocupa el lugar de un argumento', () => {
+  const repo = path.resolve(__dirname, '..')
+  const conRaiz = run(['agents', 'list', repo, '--json'])
+  const sinRaiz = run(['agents', 'list', '--json'], repo)
+  assert.equal(conRaiz.status, 0, conRaiz.stderr)
+  assert.ok(JSON.parse(conRaiz.stdout).length >= 40, 'con raíz explícita antes de la bandera')
+  assert.ok(JSON.parse(sinRaiz.stdout).length >= 40, 'y con la bandera sola')
+})
