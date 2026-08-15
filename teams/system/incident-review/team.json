@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "slug": "incident-review",
+  "name": "Incident Review",
+  "purpose": "Entender un incidente ya contenido y convertirlo en aprendizaje verificable, sin buscar culpables ni cerrar con una causa cómoda.",
+  "outcome": "report",
+  "entryAgent": "site-reliability-engineer",
+  "facilitator": "engineering-manager",
+  "decisionOwners": {
+    "impact_and_scope": "site-reliability-engineer",
+    "technical_cause": "software-architect",
+    "customer_communication": "customer-support-specialist",
+    "security_assessment": "security-engineer"
+  },
+  "conditionalAgents": [
+    "database-administrator",
+    "devops-engineer",
+    "privacy-compliance-specialist",
+    "legal-counsel",
+    "qa-engineer",
+    "finops-engineer"
+  ],
+  "stages": [
+    {
+      "id": "scope",
+      "phase": "discovery",
+      "agent": "site-reliability-engineer",
+      "dependsOn": [],
+      "produces": ["timeline", "impact-and-blast-radius"],
+      "exitGate": "Qué falló, desde cuándo hasta cuándo, a quiénes afectó y cómo se detectó están establecidos con evidencia, no con recuerdos."
+    },
+    {
+      "id": "diagnose",
+      "phase": "discovery",
+      "agent": "software-architect",
+      "dependsOn": ["scope"],
+      "produces": ["contributing-factors", "why-it-was-not-caught"],
+      "exitGate": "Los factores que contribuyeron están sostenidos por evidencia y se distingue causa de síntoma; si la causa no se determinó, se dice y se explica qué haría falta."
+    },
+    {
+      "id": "exposure",
+      "phase": "discovery",
+      "agent": "security-engineer",
+      "dependsOn": ["scope"],
+      "produces": ["data-and-security-exposure"],
+      "exitGate": "Está determinado si hubo acceso, pérdida o exposición de datos, o queda explícito que no se pudo determinar y qué evidencia falta."
+    },
+    {
+      "id": "learn",
+      "phase": "discovery",
+      "agent": "engineering-manager",
+      "dependsOn": ["diagnose", "exposure"],
+      "produces": ["follow-ups", "detection-and-prevention-gaps"],
+      "exitGate": "Cada seguimiento es una acción concreta con dueño propuesto, y se distingue lo que evita la repetición de lo que sólo la detecta antes."
+    }
+  ],
+  "guardrails": [
+    "Cada agente conserva los límites y autorizaciones de su SKILL.md.",
+    "El incidente ya está contenido: este recorrido no opera producción ni ejecuta remediaciones.",
+    "No se atribuye responsabilidad a personas; se analizan condiciones, no culpables.",
+    "Una causa sin evidencia se declara como hipótesis, aunque cerrar el informe sea más cómodo.",
+    "Ninguna comunicación a clientes ni notificación regulatoria sale de este recorrido: se propone y la decide una persona.",
+    "Los seguimientos quedan en el INBOX sin promover; convertirlos en trabajo es una decisión humana."
+  ],
+  "completion": [
+    "La línea de tiempo está sostenida por registros, no por reconstrucción de memoria.",
+    "Se distingue lo que se sabe de lo que se supone, y las hipótesis están marcadas como tales.",
+    "La exposición de datos está determinada o declarada como indeterminada con su motivo.",
+    "Cada seguimiento indica si previene la repetición o sólo acelera la detección.",
+    "Las obligaciones de comunicación o notificación quedan registradas como acción humana."
+  ]
+}
