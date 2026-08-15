@@ -8,10 +8,22 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
-## [No publicado]
+## [0.3.0] - 2026-08-15
 
 ### Añadido
 
+- Equipo `feasibility-review`: tres etapas para decidir si una intención vale el esfuerzo con la
+  evidencia que ya existe. Recomendar investigar es un resultado legítimo, no una falla.
+- Equipo `incident-review`: revisión posterior de un incidente ya contenido. **No responde incidentes
+  en vivo** y su documentación lo dice: un recorrido de agentes no está de guardia, no accede a
+  producción y no decide bajo presión con información parcial.
+- Los equipos declaran su salida en `outcome`: `epic` deja una épica candidata en `roadmap/`;
+  `report` deja un informe en `planning/reports/` y sus seguimientos en el INBOX, sin promover.
+  Ninguno de los dos promueve al BACKLOG.
+- `/team` acepta el equipo por prefijo —`/team incident-review: se cayó el checkout`— confirmándolo
+  contra los que existen, así que un texto con dos puntos no dispara un equipo inventado.
+- `teams/000-template.md` y `teams/README.md`: era la única colección que se distribuía sin plantilla,
+  lo que obligaba a copiar un manifiesto de nueve etapas y adivinar el esquema.
 - `autobuild` ejecuta cada fase bajo el contrato del cargo que la posee, en vez de pedirle criterio
   genérico a un agente sin rol. Los dueños por defecto son deterministas; los condicionales
   —seguridad, privacidad, sre, ux— entran por riesgo, plataforma y alcance, nunca por rutina, y el
@@ -26,6 +38,8 @@ minor aunque no toque una sola línea de código.
 
 ### Cambiado
 
+- Las etapas de un equipo declaran si son de `discovery` o de `delivery`. `/team` recorre sólo las de
+  descubrimiento y propone; `autobuild` ejecuta la entrega, y sólo después de la promoción humana.
 - `agents/coordinators/`, `agents/specialists/` y `agents/workflows/` se eliminaron: eran directorios
   vacíos que prometían una taxonomía sin contenido, y `workflows` además colisionaba en nombre con
   `automatization/workflows/`. El mecanismo no cambia: cualquier directorio bajo `agents/` sigue
@@ -33,6 +47,11 @@ minor aunque no toque una sola línea de código.
 
 ### Corregido
 
+- `/team` recorría todas las etapas del manifiesto, incluida la de construcción: un recorrido de
+  descubrimiento llegaba a pedir un incremento funcionando, o sea código escrito antes de que la
+  épica existiera y antes de que nadie la aprobara.
+- Invocado como slash command, `/team` recibía la intención como texto y buscaba `args.intent`, así
+  que se detenía antes de su primera etapa en la forma más obvia de llamarlo.
 - `upgrade` sugería mover un guard editado "junto a `system/`", un mecanismo que no existe en
   `automatization/hooks/`. Ahora explica las tres vías que sí funcionan: agregar un guard propio,
   quitarlo de la configuración del runner para desactivarlo, o descartar el cambio con `--force`.
