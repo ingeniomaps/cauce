@@ -3,6 +3,7 @@
   "slug": "feasibility-review",
   "name": "Feasibility Review",
   "purpose": "Decidir si una intención vale el esfuerzo, con la evidencia que ya existe, antes de abrir un descubrimiento completo.",
+  "outcome": "epic",
   "entryAgent": "product-manager",
   "facilitator": "project-manager",
   "decisionOwners": {
@@ -23,23 +24,36 @@
       "phase": "discovery",
       "agent": "product-manager",
       "dependsOn": [],
-      "produces": ["problem-and-outcome", "evidence-already-available"],
+      "produces": [
+        "problem-and-outcome",
+        "evidence-already-available"
+      ],
       "exitGate": "Problema, usuario, outcome y qué evidencia ya existe están explícitos; lo que falta averiguar queda listado, no supuesto."
     },
     {
       "id": "assess",
       "phase": "discovery",
       "agent": "software-architect",
-      "dependsOn": ["frame"],
-      "produces": ["feasibility-and-options", "risks-and-unknowns"],
+      "dependsOn": [
+        "frame"
+      ],
+      "produces": [
+        "feasibility-and-options",
+        "risks-and-unknowns"
+      ],
       "exitGate": "Hay al menos una opción viable con su costo grueso y sus riesgos, o la razón técnica concreta por la que no la hay."
     },
     {
       "id": "decide",
       "phase": "discovery",
       "agent": "engineering-manager",
-      "dependsOn": ["assess"],
-      "produces": ["recommendation", "what-would-change-the-answer"],
+      "dependsOn": [
+        "assess"
+      ],
+      "produces": [
+        "recommendation",
+        "what-would-change-the-answer"
+      ],
       "exitGate": "La recomendación es hacer, no hacer o investigar, con el esfuerzo estimado y qué evidencia cambiaría la respuesta."
     }
   ],

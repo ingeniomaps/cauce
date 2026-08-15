@@ -6,6 +6,9 @@ const catalog = require('../agents/catalog')
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const PHASES = ['discovery', 'delivery']
+// Qué deja el recorrido: una épica candidata que alguien puede promover, o un informe que registra
+// lo aprendido. Sin declararlo, el workflow sólo sabría terminar de una forma.
+const OUTCOMES = ['epic', 'report']
 
 // El proyecto manda sobre el sistema: un team propio con el mismo slug reemplaza al de `system/`,
 // que se sigue actualizando debajo sin que nadie tenga que forkearlo.
@@ -41,6 +44,7 @@ function validate(root, slug) {
   for (const field of ['name', 'purpose', 'entryAgent', 'facilitator']) {
     if (typeof manifest[field] !== 'string' || !manifest[field].trim()) errors.push(`falta ${field}`)
   }
+  if (!OUTCOMES.includes(manifest.outcome)) errors.push(`outcome debe ser ${OUTCOMES.join(' o ')}`)
   if (!Array.isArray(manifest.stages) || !manifest.stages.length) errors.push('stages debe contener etapas')
   if (!Array.isArray(manifest.guardrails) || !manifest.guardrails.length) errors.push('guardrails debe contener controles')
   if (!Array.isArray(manifest.completion) || !manifest.completion.length) errors.push('completion debe contener criterios')

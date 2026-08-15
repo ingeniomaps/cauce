@@ -3,6 +3,7 @@
   "slug": "product-development",
   "name": "Product Development Team",
   "purpose": "Convertir un problema validado de usuario en una entrega segura, usable, operable y medible.",
+  "outcome": "epic",
   "entryAgent": "product-manager",
   "facilitator": "project-manager",
   "decisionOwners": {

@@ -20,17 +20,27 @@ const P = `${ROOT}/planning`
 const ROADMAP = `${P}/roadmap`
 const HUMAN = `${P}/HUMAN_ACTIONS.md`
 const INBOX = `${P}/INBOX.md`
+const REPORTS = `${P}/reports`
 
-// Se invoca de dos formas y las dos tienen que andar: como slash command, donde la intención llega
-// como texto suelto, o con argumentos estructurados cuando se elige un equipo distinto.
+// Tres formas de invocarlo, porque escribir JSON en un slash command no es razonable:
+//
+//   /team quiero cobrar con tarjeta                    equipo por defecto
+//   /team feasibility-review: quiero cobrar con tarjeta   equipo elegido por prefijo
+//   /team {"team": "acme-soporte", "intent": "..."}    argumentos estructurados
+//
+// El prefijo se toma como candidato y se confirma más abajo contra los equipos que existen: si no es
+// uno, el texto completo era la intención y nadie tuvo que aprenderse una sintaxis.
 const input = typeof args === 'string' ? { intent: args } : (args || {})
-const TEAM = String(input.team || process.env.OPS_TEAM || 'product-development')
-const INTENT = String(input.intent || process.env.OPS_INTENT || '').trim()
+const raw = String(input.intent || process.env.OPS_INTENT || '').trim()
+const prefix = raw.match(/^([a-z][a-z0-9-]*)\s*:\s*(.+)$/s)
+const CANDIDATE = String(input.team || process.env.OPS_TEAM || (prefix ? prefix[1] : '') || 'product-development')
+const INTENT = (input.team || !prefix ? raw : prefix[2]).trim()
 
 const MANIFEST = {
   type: 'object', additionalProperties: false, required: ['name', 'purpose', 'stages', 'guardrails'],
   properties: {
     name: { type: 'string' }, purpose: { type: 'string' },
+    outcome: { type: 'string', enum: ['epic', 'report'] },
     entryAgent: { type: 'string' }, facilitator: { type: 'string' },
     guardrails: { type: 'array', items: { type: 'string' } },
     owners: { type: 'array', items: { type: 'object', additionalProperties: false, properties: {
@@ -79,9 +89,26 @@ const BASE = `Nunca inventes clientes, métricas, restricciones ni decisiones. N
   `haría falta averiguar. No promuevas trabajo al BACKLOG, no escribas en sistemas externos y no ` +
   `declares validado nada sin evidencia observable.`
 
+const resolved = await agent(
+  `${BASE}\n\nRun "node tools/ops.js team list" from ${ROOT}. Report whether "${CANDIDATE}" is one of ` +
+  `the slugs it printed, and the full list. Do not guess: report only what the command printed.`,
+  { schema: { type: 'object', required: ['exists', 'teams'], properties: {
+    exists: { type: 'boolean' }, teams: { type: 'array', items: { type: 'string' } },
+  } }, label: 'team-resolve' },
+)
+if (!resolved) return stop('teams-unavailable', 'no se pudo listar los equipos')
+if (!resolved.exists && (input.team || process.env.OPS_TEAM)) {
+  return stop('equipo-inexistente', `${CANDIDATE} no existe. Disponibles: ${resolved.teams.join(', ')}`)
+}
+// El prefijo era parte de la intención, no un equipo: se recompone y sigue con el equipo por defecto.
+const TEAM = resolved.exists ? CANDIDATE : 'product-development'
+const GOAL = resolved.exists ? INTENT : raw
+if (!resolved.exists && prefix) log(`"${CANDIDATE}" no es un equipo: se toma el texto completo como intención.`)
+
 const contract = await agent(
   `${BASE}\n\nRun "node tools/ops.js team show ${TEAM} --json" from ${ROOT} and report only what it ` +
-  `printed: name, purpose, entryAgent, facilitator, guardrails, the stages with id, phase, agent, ` +
+  `printed: name, purpose, outcome, entryAgent, facilitator, guardrails, the stages with id, phase, ` +
+  `agent, ` +
   `produces and exitGate, and decisionOwners flattened into owners as domain/agent pairs. Then read ` +
   `${ROOT}/organization/ and report nothing from it: it is context for later stages, not output.`,
   { schema: MANIFEST, label: 'team-contract' },
@@ -92,7 +119,7 @@ const owners = (contract.owners || []).map((owner) => `${owner.domain}=${owner.a
 const RULES = `${BASE}\n\nEquipo ${contract.name}: ${contract.purpose}\n` +
   `Guardrails: ${contract.guardrails.join(' ')}\n` +
   `${owners ? `Dueños de decisión: ${owners}. Ningún otro cargo resuelve en su dominio.\n` : ''}` +
-  `Contexto de la empresa en ${ROOT}/organization/. Intención a evaluar: ${INTENT}`
+  `Contexto de la empresa en ${ROOT}/organization/. Intención a evaluar: ${GOAL}`
 
 phase('Stages')
 
@@ -136,6 +163,24 @@ if (blocked.length) {
 }
 
 phase('Draft')
+
+// Un recorrido que registra lo aprendido no propone trabajo: deja el informe y las tareas de
+// seguimiento en el INBOX, donde una persona decide si alguna merece convertirse en épica.
+if (contract.outcome === 'report') {
+  const report = await agent(
+    `${RULES}\n\nHandoffs completos:\n${JSON.stringify(handoffs)}\n\nEscribí el informe en ${REPORTS} como ` +
+    `<AAAA-MM-DD>-<slug>.md: qué pasó, qué se sabe con evidencia, qué se supone, qué se decidió y qué ` +
+    `queda abierto. Separá causa de síntoma y no atribuyas responsabilidad a personas. Registrá cada ` +
+    `seguimiento en la sección Lecciones de ${INBOX}, sin promoverlo, y toda acción que requiera una ` +
+    `persona en ${HUMAN}.`,
+    { schema: { type: 'object', required: ['file', 'followUps'], properties: {
+      file: { type: 'string' }, followUps: { type: 'integer' }, summary: { type: 'string' },
+    } }, label: 'report-write' },
+  )
+  if (!report) return stop('report-unavailable', 'el informe no devolvió resultado')
+  log(`Informe en ${report.file}. ${report.followUps} seguimiento(s) en el INBOX, sin promover.`)
+  return finish({ team: TEAM, stages: handoffs.length, report: report.file, promoted: false })
+}
 
 const epic = await agent(
   `${RULES}\n\nHandoffs completos:\n${JSON.stringify(handoffs)}\n\nComo product-manager, decidí si la ` +
