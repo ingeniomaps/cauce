@@ -10,6 +10,27 @@ minor aunque no toque una sola línea de código.
 
 ## [No publicado]
 
+### Añadido
+
+- `autobuild` ejecuta cada fase bajo el contrato del cargo que la posee, en vez de pedirle criterio
+  genérico a un agente sin rol. Los dueños por defecto son deterministas; los condicionales
+  —seguridad, privacidad, sre, ux— entran por riesgo, plataforma y alcance, nunca por rutina, y el
+  reparto queda registrado en el WIP para poder auditar quién revisó qué.
+- Cargo `growth-marketer`: adquisición y activación con economía unitaria explícita. Cubre la
+  decisión que no tenía dueño —dónde invertir para adquirir y si funcionó—, entre posicionamiento
+  (`product-marketing-manager`) y proceso de ingresos (`revenue-operations-manager`).
+- Cargo `finops-engineer`: costo de operar visible y atribuido, incluido el gasto en modelos de IA,
+  que escala con el contexto arrastrado y no con la cantidad de usuarios.
+- `agents list --json` incluye la ruta resuelta de cada cargo, para que quien lo consuma no
+  reconstruya dónde ganó la precedencia.
+
+### Cambiado
+
+- `agents/coordinators/`, `agents/specialists/` y `agents/workflows/` se eliminaron: eran directorios
+  vacíos que prometían una taxonomía sin contenido, y `workflows` además colisionaba en nombre con
+  `automatization/workflows/`. El mecanismo no cambia: cualquier directorio bajo `agents/` sigue
+  siendo un tipo válido y se reconoce cuando tiene contenido.
+
 ### Corregido
 
 - `upgrade` sugería mover un guard editado "junto a `system/`", un mecanismo que no existe en
