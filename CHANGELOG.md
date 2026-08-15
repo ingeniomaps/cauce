@@ -8,7 +8,7 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
-## [0.7.3] - 2026-08-15
+## [0.7.4] - 2026-08-15
 
 ### Corregido
 
@@ -18,6 +18,8 @@ minor aunque no toque una sola línea de código.
   dónde vive cada cargo y se quedaba sin dato.
 - La ruta del contrato de cada cargo es obligatoria en el manifiesto que arma `team`. Siendo opcional
   el agente la omitía, la etapa caía al camino de respaldo y salía a buscar el archivo igual.
+  Y lleva el prefijo de la raíz ops: `agents list` las imprime relativas a ella y las etapas corren
+  desde otro lado, así que sin prefijo la ruta tampoco resolvía.
 
 ## [0.7.2] - 2026-08-15
 

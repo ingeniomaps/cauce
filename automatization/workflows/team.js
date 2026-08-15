@@ -122,8 +122,9 @@ const contract = await agent(
   `2. "node tools/ops.js agents list --json", which gives each role its resolved path.\n` +
   `Report exists=true, the manifest fields —name, purpose, outcome, entryAgent, facilitator, ` +
   `guardrails, stages with id, phase, agent, produces and exitGate, decisionOwners flattened into ` +
-  `owners as domain/agent pairs— and for every stage set skill to "<path>/SKILL.md" using the path ` +
-  `that command 2 printed for that stage's agent.`,
+  `owners as domain/agent pairs— and for every stage set skill to "${ROOT}/<path>/SKILL.md", where ` +
+  `<path> is what command 2 printed for that stage's agent. That command prints paths relative to ` +
+  `${ROOT}, and the stages run from elsewhere, so the prefix is not optional.`,
   { schema: MANIFEST, label: 'team-contract' },
 )
 if (!contract) return stop('contract-unavailable', `no se pudo leer el manifiesto de ${CANDIDATE}`)
