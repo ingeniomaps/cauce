@@ -35,6 +35,8 @@ function runtimeAt(root) {
     path.join(root, '.ops', 'engine', 'hooks', 'run.js'),
     path.join(root, 'engine', 'hooks', 'run.js'),
   ]
+  // El bridge corre antes de poder cargar el motor, así que repite la cascada de
+  // engine/core/ownership.js en vez de requerirla. Si cambia una, cambian las dos.
   const runtime = candidates.find(fs.existsSync)
   if (!runtime) throw new Error('No se encontró el runtime engine/hooks/run.js.')
   return require(runtime)

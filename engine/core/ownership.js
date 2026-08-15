@@ -54,6 +54,23 @@ function sourceOf(relative) {
   return relative
 }
 
+// Dónde puede estar el motor, en orden de preferencia. Lo mismo que resuelven `tools/ops.js`,
+// el wrapper de hooks y el bridge de Antigravity: declararlo una vez evita que un consumidor
+// quede afuera cuando aparece una forma nueva de instalarlo.
+function engineCandidates(root) {
+  return [
+    path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine'),
+    path.join(root, '.ops', 'engine'),
+    path.join(root, 'engine'),
+  ]
+}
+
+function engineAt(root, relative = '') {
+  return engineCandidates(root)
+    .map((dir) => (relative ? path.join(dir, relative) : dir))
+    .find((candidate) => fs.existsSync(candidate)) || ''
+}
+
 // Identidad de una entrada dentro de una colección, para detectar que el proyecto sobrescribe
 // algo del sistema. Las reglas y decisiones se identifican por su ID; el resto, por su nombre.
 const ID_PATTERN = /^(?:BR-)?[A-Z][A-Z0-9]*-\d{3}/
@@ -137,6 +154,8 @@ function localChanges(root, packageRoot) {
 
 module.exports = {
   RUNTIME_PATHS,
+  engineAt,
+  engineCandidates,
   TEMPLATE_OWNED,
   SYSTEM_COLLECTIONS,
   SYSTEM_FILES,

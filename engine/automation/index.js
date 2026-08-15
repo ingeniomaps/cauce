@@ -7,6 +7,7 @@ const F = require('../core/files')
 const H = require('../hooks/run')
 const P = require('../planning/parser')
 const catalog = require('../agents/catalog')
+const O = require('../core/ownership')
 
 const RUNNER_NAMES = ['claude', 'codex', 'gemini', 'antigravity']
 
@@ -169,10 +170,9 @@ function check(root) {
       errors.push(`automatization/hooks/${name} no es ejecutable`)
     }
   }
-  const installedRuntime = path.join(root, '.ops', 'engine', 'hooks', 'run.js')
-  const sourceRuntime = path.join(root, 'engine', 'hooks', 'run.js')
-  if (!fs.existsSync(installedRuntime) && !fs.existsSync(sourceRuntime)) {
-    errors.push('falta engine/hooks/run.js')
+  // El motor puede venir de la dependencia npm, de la copia local o del propio repositorio.
+  if (!O.engineAt(root, path.join('hooks', 'run.js'))) {
+    errors.push('falta engine/hooks/run.js: instalá la dependencia o restaurá .ops/engine')
   }
   const workflows = ['autobuild.js', 'team.js', path.join('integrations', 'sync.js')]
   workflows.push(path.join('integrations', 'promote.js'))
