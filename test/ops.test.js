@@ -107,9 +107,15 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.equal(run(['automation', 'doctor', target, 'antigravity']).status, 0)
   assert.equal(fs.existsSync(path.join(target, 'organization', 'company.md')), true)
   assert.equal(fs.existsSync(path.join(target, 'agents', 'roles', 'system', 'product-manager', 'SKILL.md')), true)
-  assert.equal(fs.existsSync(path.join(target, 'agents', 'workflows')), true)
-  assert.equal(fs.existsSync(path.join(target, 'agents', 'coordinators')), true)
-  assert.equal(fs.existsSync(path.join(target, 'agents', 'specialists')), true)
+  // La taxonomía es extensible por convención, no por directorios vacíos: un tipo nuevo se
+  // reconoce el día que tiene contenido.
+  const catalog = require('../engine/agents/catalog')
+  assert.ok(catalog.list(target).length >= 40, 'el catálogo llega completo')
+  const extra = path.join(target, 'agents', 'specialists', 'probe')
+  fs.mkdirSync(extra, { recursive: true })
+  fs.writeFileSync(path.join(extra, 'SKILL.md'), '---\nname: probe\ndescription: x\n---\n')
+  assert.ok(catalog.list(target).some((role) => role.type === 'specialists'), 'un tipo nuevo se reconoce solo')
+  fs.rmSync(path.join(target, 'agents', 'specialists'), { recursive: true, force: true })
   assert.equal(fs.existsSync(path.join(target, 'teams')), true)
   const workflows = path.join(target, '.github', 'workflows')
   assert.equal(fs.existsSync(path.join(workflows, 'agent-learning.yml')), true)

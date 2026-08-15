@@ -207,8 +207,10 @@ promoción y validación no se reimplementan. Consulta [integrations/README.md](
 - `agents/`: catálogo fuente de agentes, organizado por tipo.
   - `agents/roles/`: cargos empresariales persistentes y sus evaluaciones.
   - `agents/workflows/`: futuros agentes orientados a una tarea o flujo concreto.
-  - `agents/coordinators/`: futuros agentes que enrutan o coordinan otros agentes.
-  - `agents/specialists/`: futuros expertos acotados que no representan un cargo completo.
+  La taxonomía es extensible: cualquier directorio bajo `agents/` es un tipo válido y se reconoce
+  cuando tiene contenido, sin registrarlo en ningún lado. `agents/roles/` es el único que viene con
+  cargos; un coordinador que enrute agentes o un especialista acotado sólo necesitan su directorio
+  el día que existan.
 - `teams/`: composiciones de agentes, con orden, handoffs y responsabilidades compartidas.
 - `teams/product-development/`: primera composición end-to-end desde discovery hasta aprendizaje posterior al release.
 
