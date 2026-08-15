@@ -40,6 +40,8 @@ minor aunque no toque una sola línea de código.
 
 ### Corregido
 
+- `automation install` funcionaba sólo si el motor estaba copiado: en modo dependencia fallaba con
+  "falta engine/hooks/run.js". Los tres puntos de entrada resuelven ahora la misma cascada.
 - `upgrade` ya no borra archivos que el proyecto agregó al runtime, como un guard propio.
 - El README de `automatization/runners/` que recibe un proyecto es el que le habla al proyecto, no el
   que documenta el contrato de adaptadores; antes llegaba uno u otro según se usara `--force`.
