@@ -127,9 +127,12 @@ function evaluate(root, agent) {
   const requiredFiles = [
     'learning/sources.yaml',
     'learning/HISTORY.md',
-    'learning/CODEX_AUTOMATION.md',
     'evaluations/expected-behaviors.yaml',
   ]
+  // `CODEX_AUTOMATION.md` documenta cómo corre la automatización de aprendizaje del toolkit. Exigírselo
+  // a una empresa que escribe un cargo propio era pedirle contabilidad interna nuestra: su cargo debe
+  // tener contrato, fuentes e historia, no nuestro andamiaje.
+  if (require('./catalog').find(root, agent).system) requiredFiles.push('learning/CODEX_AUTOMATION.md')
   for (const relative of requiredFiles) {
     if (!fs.existsSync(path.join(target, relative))) errors.push(`falta ${relative}`)
   }

@@ -761,16 +761,16 @@ function automation(action, rootArg, runnerName) {
 function learn(agent) {
   try {
     const result = process.argv.includes('--proposal')
-      ? L.prepareProposal(process.cwd(), agent)
-      : L.prepareReport(process.cwd(), agent)
-    console.log(`${result.created ? '+' : '='} ${path.relative(process.cwd(), result.file)}`)
+      ? L.prepareProposal(opsRoot(), agent)
+      : L.prepareReport(opsRoot(), agent)
+    console.log(`${result.created ? '+' : '='} ${path.relative(opsRoot(), result.file)}`)
     if (typeof result.reports === 'number') console.log(`  ${result.reports} informe(s) semanal(es) incluidos`)
   } catch (error) { fail(error.message, 2) }
 }
 
 function evaluate(agent) {
   try {
-    const result = L.evaluate(process.cwd(), agent)
+    const result = L.evaluate(opsRoot(), agent)
     for (const error of result.errors) console.error(`✗ ${error}`)
     if (result.errors.length) fail(`\n${result.errors.length} error(es)`, 1)
     console.log(
