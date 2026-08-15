@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help check tree context automation-check
+.PHONY: help check tree context upgrade automation-check
 .PHONY: require-agent agent-learn agent-propose agent-evaluate
 .PHONY: install-claude install-codex install-gemini install-antigravity
 .PHONY: doctor-claude doctor-codex doctor-gemini doctor-antigravity
@@ -17,6 +17,9 @@ tree: ## Muestra roadmap, backlog, WIP y Done
 
 context: ## Muestra el contexto mínimo de la tarea vigente
 	@node tools/ops.js context planning
+
+upgrade: ## Actualiza Cauce sin tocar lo del proyecto
+	@node tools/ops.js upgrade .
 
 automation-check: ## Comprueba hooks, workflows y adaptadores
 	@node tools/ops.js automation check .

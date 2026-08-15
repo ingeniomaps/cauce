@@ -64,6 +64,7 @@ Lee [template/planning/PROTOCOL.md](template/planning/PROTOCOL.md) para el contr
 | `ops check <planning>` | Valida contratos, unicidad, trazabilidad y estados. |
 | `ops tree <planning>` | Muestra roadmap, backlog, WIP, inbox y done sin mutar nada. |
 | `ops context <planning>` | Emite el contexto mínimo de la tarea vigente para un runner. |
+| `ops upgrade <ops-root>` | Actualiza `system/` y el runtime sin tocar lo del proyecto. |
 | `ops archive <planning> <NNN>` | Archiva el DONE de una épica cerrada de forma idempotente. |
 | `ops learn <agent>` | Prepara el informe semanal que completa la automatización de Codex. |
 | `ops learn <agent> --proposal` | Consolida informes mensuales en una propuesta sin aplicar cambios. |
