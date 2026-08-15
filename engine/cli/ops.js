@@ -565,7 +565,7 @@ function upgrade(dir) {
     const dir = path.join(root, relative)
     if (fs.existsSync(dir)) registro = { ...registro, ...M.record(root, relative, O.treeFiles(dir)) }
   }
-  M.write(root, registro)
+  M.write(root, M.prune(root, registro))
 
   const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
   config.cauceVersion = to

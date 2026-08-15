@@ -29,6 +29,9 @@ minor aunque no toque una sola línea de código.
 - `automatization/README.md` y `automatization/AGENTS.md` se actualizan con el toolkit. Los escribe
   Cauce y envejecían en cada instancia: después de retirar `runners/` y `workflows/`, el README de la
   empresa seguía explicando cómo usar dos carpetas que ya no existían.
+- El registro de entrega olvida lo que ya no está en disco. Sólo crecía: al retirar una ruta dejaba
+  su digest para siempre, y el día que un nombre se reutilizara la entrega nueva se habría leído como
+  una edición local y detenido la actualización.
 
 ## [0.4.1] - 2026-08-15
 

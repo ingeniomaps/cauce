@@ -40,6 +40,15 @@ function record(root, relative, files) {
   return current
 }
 
+// Olvida lo que ya no está en disco. Sin esto el registro sólo crece: una ruta retirada deja su
+// digest para siempre, y el día que un nombre se reutilice la entrega nueva se leería como una
+// edición local y detendría la actualización.
+function prune(root, files) {
+  return Object.fromEntries(
+    Object.entries(files).filter(([file]) => fs.existsSync(path.join(root, file))),
+  )
+}
+
 // Archivos que la empresa modificó después de recibirlos. Un archivo sin registro previo no
 // cuenta: llegó con una versión anterior a este mecanismo, o lo agregó el proyecto.
 function edited(root, relative, files) {
@@ -51,4 +60,4 @@ function edited(root, relative, files) {
   })
 }
 
-module.exports = { FILE, digest, edited, read, record, write }
+module.exports = { FILE, digest, edited, prune, read, record, write }

@@ -123,6 +123,10 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   assert.match(upgraded.stdout, /retirado automatization\/workflows/)
   const automationReadme = path.join(consumer, 'automatization', 'README.md')
   assert.match(fs.readFileSync(automationReadme, 'utf8'), /Nota nueva/, 'y la prosa se pone al día')
+  // El registro de entrega olvida lo retirado en vez de acumularlo.
+  const registro = JSON.parse(fs.readFileSync(path.join(consumer, '.cauce', 'manifest.json'), 'utf8'))
+  const huerfanas = Object.keys(registro.files).filter((file) => !fs.existsSync(path.join(consumer, file)))
+  assert.deepEqual(huerfanas, [], 'ninguna entrada apunta a un archivo que ya no está')
 
   // 8. Y la instancia sigue siendo válida y operable después de todo.
   assert.equal(cauce(consumer, ['check', planning]).status, 0)
