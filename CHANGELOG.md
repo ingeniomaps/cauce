@@ -8,6 +8,19 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.6.0] - 2026-08-15
+
+### Cambiado
+
+- **Gemini deja de ser el runner sin guards.** Gemini CLI ganó hooks y skills nativas, y el adaptador
+  seguía tratándolo como si no los tuviera: los guards se pedían como prechecks manuales —o sea,
+  nadie lo detenía— y los 47 cargos no llegaban. Ahora recibe hooks reales en `.gemini/settings.json`
+  con sus propios eventos (`BeforeTool`, `AfterAgent`) y variable (`$GEMINI_PROJECT_DIR`), y el
+  catálogo completo en `.gemini/skills/`.
+- `GEMINI.md` avisa de dos cosas que sólo se ven usándolo: Gemini **desactiva los hooks si la carpeta
+  no es de confianza**, y `gemini hooks migrate --from-claude` reescribe `settings.json` entero y se
+  lleva puesta el resto de la configuración.
+
 ## [0.5.5] - 2026-08-15
 
 ### Corregido
