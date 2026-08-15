@@ -545,6 +545,9 @@ function upgrade(dir) {
     else {
       F.assertNoSymlinkPath(root, target)
       F.atomicWrite(target, fs.readFileSync(origin, 'utf8'))
+      // El modo también viene del paquete: `tools/ops.js` tiene shebang y sin esto cada upgrade lo
+      // dejaba sin permiso de ejecución, con el cambio de modo apareciendo en el diff de la empresa.
+      fs.chmodSync(target, fs.statSync(origin).mode & 0o777)
     }
   }
 

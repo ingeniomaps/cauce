@@ -152,6 +152,8 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   assert.match(fs.readFileSync(path.join(ownRole, 'SKILL.md'), 'utf8'), /PM de Acme/)
   assert.equal(fs.existsSync(ownGuard), true, 'el guard propio sobrevive al refresco del runtime')
   assert.equal(fs.existsSync(legacy), false, 'la copia vieja de workflows se retira')
+  // El shim tiene shebang: el upgrade no puede dejarlo sin permiso de ejecución.
+  assert.ok(fs.statSync(path.join(consumer, 'tools', 'ops.js')).mode & 0o111, 'el shim sigue ejecutable')
   assert.match(upgraded.stdout, /retirado automatization\/workflows/)
   const automationReadme = path.join(consumer, 'automatization', 'README.md')
   assert.match(fs.readFileSync(automationReadme, 'utf8'), /Nota nueva/, 'y la prosa se pone al día')
