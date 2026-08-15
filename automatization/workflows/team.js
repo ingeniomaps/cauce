@@ -21,8 +21,11 @@ const ROADMAP = `${P}/roadmap`
 const HUMAN = `${P}/HUMAN_ACTIONS.md`
 const INBOX = `${P}/INBOX.md`
 
-const TEAM = String(args && args.team || process.env.OPS_TEAM || 'product-development')
-const INTENT = String(args && args.intent || process.env.OPS_INTENT || '').trim()
+// Se invoca de dos formas y las dos tienen que andar: como slash command, donde la intención llega
+// como texto suelto, o con argumentos estructurados cuando se elige un equipo distinto.
+const input = typeof args === 'string' ? { intent: args } : (args || {})
+const TEAM = String(input.team || process.env.OPS_TEAM || 'product-development')
+const INTENT = String(input.intent || process.env.OPS_INTENT || '').trim()
 
 const MANIFEST = {
   type: 'object', additionalProperties: false, required: ['name', 'purpose', 'stages', 'guardrails'],

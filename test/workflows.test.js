@@ -121,3 +121,17 @@ test('team no deja pasar una opinión del modelo como evidencia', () => {
     assert.equal(leak.test(teamWorkflow), false, 'sin rutas absolutas')
   }
 })
+
+test('team acepta la intención como texto suelto o como argumento estructurado', () => {
+  // Como slash command la intención llega en crudo; con un equipo distinto, estructurada.
+  const block = teamWorkflow.match(/const input = [\s\S]*?const INTENT = [^\n]*\n/)[0].replace(/\bconst /g, 'var ')
+  const resolve = new Function('args', `${block} return { TEAM, INTENT }`)
+
+  assert.deepEqual(resolve('quiero cobrar con tarjeta'), {
+    TEAM: 'product-development', INTENT: 'quiero cobrar con tarjeta',
+  })
+  assert.deepEqual(resolve({ intent: 'lo mismo', team: 'acme-soporte' }), {
+    TEAM: 'acme-soporte', INTENT: 'lo mismo',
+  })
+  assert.equal(resolve(undefined).INTENT, '', 'sin intención no arranca')
+})
