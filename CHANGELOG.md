@@ -8,6 +8,13 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [No publicado]
+
+### Corregido
+
+- El `$schema` de `ops.config.json` apuntaba siempre a `.ops/engine/`, una ruta que no existe cuando el
+  motor viene como dependencia. Ahora se escribe según dónde quedó el motor.
+
 ## [0.3.0] - 2026-08-15
 
 ### Añadido

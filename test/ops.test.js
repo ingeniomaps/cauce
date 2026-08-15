@@ -589,3 +589,20 @@ test('upgrade explica cómo personalizar el runtime sin editarlo, y deja rastro 
   assert.equal(forced.status, 0, forced.stderr)
   assert.match(forced.stdout, /descartado tu cambio en automatization\/hooks\/guard-verify\.sh/)
 })
+
+test('el $schema de la instancia apunta a donde quedó el motor', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-schema-'))
+  const schemaOf = (target) => JSON.parse(fs.readFileSync(path.join(target, 'ops.config.json'), 'utf8')).$schema
+
+  // Con el motor copiado, el esquema vive en .ops/engine.
+  const copia = path.join(base, 'copia')
+  assert.equal(run(['init', copia, '--name', 'C', '--mode', 'sidecar']).status, 0)
+  assert.equal(schemaOf(copia), '.ops/engine/schemas/ops-config.schema.json')
+  assert.equal(fs.existsSync(path.join(copia, schemaOf(copia))), true, 'la ruta resuelve de verdad')
+
+  // Con el motor como dependencia, apuntar a .ops/engine sería una ruta muerta.
+  const dep = path.join(base, 'dep')
+  assert.equal(run(['init', dep, '--name', 'D', '--mode', 'sidecar', '--engine', 'dependency']).status, 0)
+  assert.match(schemaOf(dep), /node_modules\/@ingeniomaps\/cauce/)
+  assert.equal(fs.existsSync(path.join(dep, '.ops')), false)
+})

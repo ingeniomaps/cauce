@@ -181,6 +181,10 @@ function init(target) {
   const configFile = path.join(root, 'ops.config.json')
   const config = JSON.parse(fs.readFileSync(configFile, 'utf8'))
   config.cauceVersion = version
+  // El esquema vive donde quedó el motor; la plantilla no puede saberlo de antemano.
+  config.$schema = engineMode === 'dependency'
+    ? 'node_modules/@ingeniomaps/cauce/engine/schemas/ops-config.schema.json'
+    : '.ops/engine/schemas/ops-config.schema.json'
   F.atomicWriteJson(configFile, config)
   console.log(`\n✓ ${name}: sistema ops creado en ${root}`)
   if (engineMode === 'dependency') console.log('  siguiente: npm install (el motor viene de la dependencia)')
