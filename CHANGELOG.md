@@ -8,6 +8,22 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.5.0] - 2026-08-15
+
+### Cambiado
+
+- **Los adaptadores de runner y los workflows tampoco se copian al proyecto.** Cierran el mismo
+  criterio que ya rige para cargos y equipos: los lee el motor, no la empresa. `automation install`,
+  `check` y `doctor` los resuelven desde la dependencia npm, o desde `.ops/` cuando el repo no usa
+  npm. Nadie los editaba —la lista de runners es cerrada, así que una empresa ni siquiera podía
+  agregar el suyo— y `automatization/workflows/` estaba además duplicado dentro de cada instancia,
+  idéntico a lo que `automation install` deja en `.claude/workflows/`.
+- `upgrade` retira `automatization/runners/` y `automatization/workflows/` de las instancias que los
+  arrastran de una versión anterior. Un guard propio en `automatization/hooks/` no se toca.
+- `automatization/hooks/` se queda en el proyecto, y esto no es una excepción arbitraria: la
+  configuración de cada runner nombra cada guard por ruta literal y no sabe resolver en cascada. Ahí
+  es también donde una empresa agrega el suyo.
+
 ## [0.4.1] - 2026-08-15
 
 ### Corregido
