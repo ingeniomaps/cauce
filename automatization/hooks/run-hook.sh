@@ -4,6 +4,10 @@ set -u
 hook_name=${1:-}
 hook_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 ops_root=$(CDPATH= cd -- "$hook_dir/../.." && pwd)
+# El guard sabe dónde vive; quien lo invoca, no necesariamente. En modo sidecar la herramienta se
+# abre en la carpeta de la compañía y la raíz ops es un hermano, que ninguna búsqueda hacia arriba
+# encuentra: sin esto el guard no halla `ops.config.json` y deja pasar todo en silencio.
+export OPS_ROOT="$ops_root"
 # Mismo orden que tools/ops.js: primero la dependencia npm, después la copia local, y por último
 # el propio repositorio del toolkit. Un guard que no encuentra su motor bloquea, nunca permite.
 runner=""
