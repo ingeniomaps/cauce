@@ -34,6 +34,7 @@ function usage() {
   ops archive <planning-dir> <NNN>
   ops integration list <ops-root>
   ops integration enable <ops-root> <provider>
+  ops integration disable <ops-root> <provider>
   ops integration check <ops-root> [provider]
   ops integration sync <ops-root> <provider> [--fixture <json>]
   ops integration promote <ops-root> <provider> <remote-key>
@@ -709,8 +710,38 @@ async function integration(action, rootArg, provider, key) {
     config.providers[provider].enabled = true
     F.atomicWriteJson(registry, config)
     console.log(`✓ ${provider}: conectado al proyecto y andamiaje en integrations/${provider}/.`)
-    console.log(`  Falta lo tuyo: completá integrations/${provider}/config.json y poné enabled: true ahí.`)
-    console.log(`  Hasta entonces "integration sync" se niega, que es lo correcto: no hay a dónde apuntar.`)
+    // Sólo se pide lo que falta: reencender un proveedor ya configurado no debería mandar a
+    // completar un archivo que la empresa terminó hace meses.
+    let listo = false
+    try {
+      const suyo = path.join(root, 'integrations', provider, 'config.json')
+      listo = JSON.parse(fs.readFileSync(suyo, 'utf8')).enabled === true
+    } catch { /* sin configurar */ }
+    if (listo) console.log(`  Su configuración ya estaba completa: "integration sync" puede correr.`)
+    else {
+      console.log(`  Falta lo tuyo: completá integrations/${provider}/config.json y poné enabled: true ahí.`)
+      console.log(`  Hasta entonces "integration sync" se niega, que es lo correcto: no hay a dónde apuntar.`)
+    }
+    return
+  }
+  // Apagar no desinstala: `integrations/<proveedor>/` puede tener snapshots y borradores de la
+  // empresa, y borrarlos para desconectar una integración sería perder trabajo suyo. El andamiaje
+  // queda, callado, y volver a encenderlo no pierde nada.
+  if (action === 'disable') {
+    if (!provider) fail('Falta <provider>.', 2)
+    const registry = path.join(root, 'integrations', 'config.json')
+    let config
+    try { config = JSON.parse(fs.readFileSync(registry, 'utf8')) } catch (error) {
+      fail(`integrations/config.json ilegible: ${error.message}`)
+    }
+    if (!config.providers || !config.providers[provider]) fail(`${provider} no está en integrations/config.json.`)
+    config.providers[provider].enabled = false
+    F.atomicWriteJson(registry, config)
+    console.log(`✓ ${provider}: desconectado del proyecto. "integration sync" deja de correrlo.`)
+    const dir = path.join(root, 'integrations', provider)
+    if (fs.existsSync(dir)) {
+      console.log(`  integrations/${provider}/ queda como está: ahí pueden vivir snapshots y borradores tuyos.`)
+    }
     return
   }
   if (action === 'check') {

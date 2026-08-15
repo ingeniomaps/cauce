@@ -110,6 +110,14 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   assert.equal(cauce(consumer, ['integration', 'check', consumer, 'jira']).status, 1, 'nombrarlo lo exige')
   assert.equal(cauce(consumer, ['integration', 'enable', consumer, 'jira']).status, 0)
   assert.equal(cauce(consumer, ['integration', 'check', consumer, 'jira']).status, 0, 'y habilitado, valida')
+  // Apagar no desinstala: lo que la empresa escribió adentro sobrevive y volver a encender lo respeta.
+  const suyo = path.join(consumer, 'integrations', 'jira', 'NOTAS.md')
+  fs.writeFileSync(suyo, '# Cómo mapeamos componentes a servicios\n')
+  assert.equal(cauce(consumer, ['integration', 'disable', consumer, 'jira']).status, 0)
+  assert.match(cauce(consumer, ['integration', 'list', consumer]).stdout, /○ jira/)
+  assert.equal(fs.existsSync(suyo), true, 'lo que la empresa escribió adentro sobrevive')
+  assert.equal(cauce(consumer, ['integration', 'enable', consumer, 'jira']).status, 0)
+  assert.equal(fs.existsSync(suyo), true, 'y reencender tampoco lo toca')
   assert.equal(cauce(consumer, ['check', planning]).status, 0, 'la instancia sigue válida')
 
   // El runner debe seguir al cargo del proyecto, no al del sistema.
