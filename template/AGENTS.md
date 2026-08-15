@@ -58,8 +58,9 @@ Aplica a `planning/business-rules/`, `planning/adr/`, `planning/rules/`, `teams/
 `planning/` —roadmap, backlog, WIP, done, inbox y acciones humanas— es del proyecto y no se toca al
 actualizar.
 
-`automatization/hooks/` y `automatization/runners/` son runtime del toolkit y se reemplazan enteros. No
-tienen `system/` porque no hace falta: lo que un proyecto necesita ya funciona sin editarlos.
+`automatization/hooks/` es runtime del toolkit y se reemplaza entero. No tiene `system/` porque no hace
+falta: lo que un proyecto necesita ya funciona sin editarlo. Los adaptadores de runner y los workflows ni
+siquiera están acá — los lee el motor desde el paquete.
 
 - **Agregar un guard propio**: creá `automatization/hooks/guard-<nombre>.sh` y registralo en la
   configuración de tu runner. Sobrevive a cada actualización, porque el toolkit no lo conoce.

@@ -157,10 +157,11 @@ Cada colección adaptable separa lo que actualiza el toolkit de lo que escribe e
 | `teams/` | composiciones que vienen con Cauce | los equipos propios |
 | `agents/<tipo>/` | *(en el paquete, no se copia)* | los cargos propios |
 
-`automatization/hooks/` y `automatization/runners/` no tienen `system/`: son runtime que se reemplaza
-entero. No hace falta, porque lo que un proyecto necesita ya funciona sin editarlos — un guard propio
-convive y sobrevive, y desactivar uno del toolkit es quitarlo de la configuración del runner, que es del
-proyecto. Editar uno existente detiene el `upgrade` antes de pisarlo.
+`automatization/hooks/` no tiene `system/`: es runtime que se reemplaza entero. No hace falta, porque lo
+que un proyecto necesita ya funciona sin editarlo — un guard propio convive y sobrevive, y desactivar uno
+del toolkit es quitarlo de la configuración del runner, que es del proyecto. Editar uno existente detiene
+el `upgrade` antes de pisarlo. Los hooks se quedan en el proyecto porque esa configuración los nombra por
+ruta literal; los adaptadores de runner y los workflows, que sólo lee el motor, viajan en el paquete.
 
 Un archivo propio con el mismo nombre o ID que uno de `system/` lo reemplaza: el del proyecto manda y
 `check` lo reporta como override explícito. Así una mejora del proceso no obliga a forkear el archivo,
