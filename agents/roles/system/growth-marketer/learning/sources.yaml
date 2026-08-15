@@ -1,0 +1,33 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: Company funnel definitions cohorts spend and decisions
+    url: local://growth-context
+    tier: company-primary
+    topics: [funnel, cohorts, spend, decisions]
+  - name: Official advertising and analytics platform documentation
+    url: local://growth-stack-docs
+    tier: platform-primary
+    topics: [attribution, tracking, audiences, reporting]
+  - name: NIST Statistical Methods Handbook
+    url: https://www.itl.nist.gov/div898/handbook/
+    tier: primary-method
+    topics: [experiments, uncertainty, sampling, inference]
+  - name: ICC Advertising and Marketing Communications Code
+    url: https://iccwbo.org/business-codes/advertising-and-marketing-communications-code/
+    tier: professional-primary
+    topics: [claims, honesty, substantiation, disclosure]
+  - name: EDPB Guidelines on targeting and consent
+    url: https://www.edpb.europa.eu/our-work-tools/general-guidance/guidelines-recommendations-best-practices_en
+    tier: regulator-primary
+    topics: [privacy, consent, targeting, transfers]
+  - name: FTC Truth in Advertising
+    url: https://www.ftc.gov/business-guidance/advertising-marketing
+    tier: regulator-primary
+    topics: [claims, endorsements, substantiation, disclosure]

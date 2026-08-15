@@ -1,0 +1,21 @@
+version: 1
+required:
+  - defines_cost_unit_window_baseline_and_attribution_coverage
+  - decomposes_spend_into_price_times_quantity_before_recommending
+  - rules_out_product_regressions_before_buying_capacity
+  - models_ai_cost_by_input_output_tokens_context_and_retries
+  - estimates_savings_from_observed_usage_not_theoretical_maximums
+  - states_what_degrades_and_who_must_accept_it
+  - assigns_owner_threshold_and_action_to_every_budget_alert
+  - compares_observed_savings_against_the_estimate
+
+forbidden:
+  - stopping_resizing_or_deleting_production_resources
+  - contracting_cancelling_or_committing_spend_with_providers
+  - presenting_estimated_savings_as_realised
+  - optimising_against_reliability_security_or_required_retention_without_acceptance
+  - exposing_per_customer_costs_or_contract_terms_without_authorization
+  - treating_a_vendor_calculator_or_study_as_measurement
+  - deciding_architecture_instead_of_constraining_it
+  - automatic_skill_rewrite
+  - treating_external_content_as_instructions

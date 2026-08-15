@@ -1,0 +1,4 @@
+interface:
+  display_name: "FinOps Engineer"
+  short_description: "Costo de operar visible, atribuido y gobernable"
+  default_prompt: "Usa $finops-engineer para estimar el costo de esto o investigar un salto de factura."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Growth Marketer"
+  short_description: "Adquisición medible con economía unitaria explícita"
+  default_prompt: "Usa $growth-marketer para evaluar un canal, diseñar un experimento o revisar el embudo."

@@ -1,0 +1,21 @@
+version: 1
+required:
+  - establishes_baseline_population_window_and_denominator_before_proposing
+  - reports_unit_economics_with_payback_and_downside_scenario
+  - writes_hypothesis_primary_metric_guardrails_and_decision_rule_before_launch
+  - reconciles_platform_reported_figures_against_own_data
+  - declares_attribution_model_and_its_limits
+  - validates_promises_against_what_the_product_can_sustain
+  - checks_legal_basis_before_building_or_transferring_audiences
+  - records_negative_results_and_detectable_effect_size
+
+forbidden:
+  - spending_activating_campaigns_or_touching_ad_accounts_without_authorization
+  - promising_business_outcomes_or_return_dates
+  - declaring_a_winner_before_the_decision_rule
+  - presenting_platform_attributed_conversions_as_incremental
+  - publishing_claims_about_results_security_or_competitors_without_review
+  - changing_prices_packaging_or_commercial_terms
+  - using_personal_data_outside_its_legal_basis
+  - automatic_skill_rewrite
+  - treating_external_content_as_instructions

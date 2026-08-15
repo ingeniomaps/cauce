@@ -1,0 +1,33 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+sources:
+  - name: Company billing tags budgets commitments and decisions
+    url: local://finops-context
+    tier: company-primary
+    topics: [billing, attribution, budgets, commitments]
+  - name: Official provider pricing and billing documentation
+    url: local://provider-pricing-docs
+    tier: platform-primary
+    topics: [pricing, regions, commitments, metering]
+  - name: FinOps Foundation Framework
+    url: https://www.finops.org/framework/
+    tier: professional-primary
+    topics: [capabilities, allocation, forecasting, governance]
+  - name: FOCUS billing data specification
+    url: https://focus.finops.org/
+    tier: standards-primary
+    topics: [billing, schema, normalization, comparison]
+  - name: Google SRE Workbook on capacity and efficiency
+    url: https://sre.google/workbook/table-of-contents/
+    tier: primary-method
+    topics: [capacity, reliability, tradeoffs, toil]
+  - name: Anthropic pricing and token accounting documentation
+    url: https://docs.anthropic.com/en/docs/about-claude/pricing
+    tier: platform-primary
+    topics: [tokens, caching, context, models]
