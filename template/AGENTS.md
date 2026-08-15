@@ -35,8 +35,9 @@ arquitectura, una estrategia de pruebas—, adoptá ese contrato en vez de impro
 límites del cargo no son sugerencias: un cargo que no puede decidir solo, no decide solo.
 
 En Claude y Antigravity los cargos aparecen como skills invocables por nombre. En Codex y Gemini no hay
-mecanismo nativo: leé directamente `agents/roles/<slug>/SKILL.md`. Para ver los slugs disponibles,
-listá los directorios de `agents/roles/`.
+mecanismo nativo: leé directamente el `SKILL.md` del cargo. Los que trae
+Cauce están en `agents/roles/system/`; los propios del proyecto, en `agents/roles/`, donde un mismo
+slug reemplaza al del sistema.
 
 `teams/` compone varios cargos en etapas con gates de salida y un dueño por dominio de decisión;
 `node tools/ops.js team show <slug>` muestra el recorrido.
@@ -53,7 +54,7 @@ Para cambiar algo del sistema hay dos operaciones, las dos junto a `system/`, nu
 - **Reemplazar**: un archivo con el mismo nombre o ID que uno de `system/`. El del proyecto manda y
   `check` lo reporta como override explícito en vez de fallar.
 
-Aplica a `planning/business-rules/`, `planning/adr/`, `planning/rules/` y `teams/`. El resto de
+Aplica a `planning/business-rules/`, `planning/adr/`, `planning/rules/`, `teams/` y `agents/`. El resto de
 `planning/` —roadmap, backlog, WIP, done, inbox y acciones humanas— es del proyecto y no se toca al
 actualizar.
 

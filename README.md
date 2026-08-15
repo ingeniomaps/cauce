@@ -70,6 +70,7 @@ Lee [template/planning/PROTOCOL.md](template/planning/PROTOCOL.md) para el contr
 | `ops check <planning>` | Valida contratos, unicidad, trazabilidad y estados. |
 | `ops tree <planning>` | Muestra roadmap, backlog, WIP, inbox y done sin mutar nada. |
 | `ops context <planning>` | Emite el contexto mínimo de la tarea vigente para un runner. |
+| `ops agents list <ops-root>` | Lista los cargos visibles resolviendo la precedencia. |
 | `ops upgrade <ops-root>` | Actualiza `system/` y el runtime sin tocar lo del proyecto. |
 | `ops archive <planning> <NNN>` | Archiva el DONE de una épica cerrada de forma idempotente. |
 | `ops learn <agent>` | Prepara el informe semanal que completa la automatización de Codex. |
@@ -113,11 +114,14 @@ También puedes usar el CLI mediante npm:
 npm run ops -- evaluate product-manager
 ```
 
-Los comandos resuelven agentes por slug sin exigir su tipo. Los cargos disponibles son los directorios bajo
-`agents/roles/`. Por ejemplo:
+Los comandos resuelven agentes por slug sin exigir su tipo. Los cargos que trae Cauce viven en
+`agents/roles/system/`; un cargo propio del proyecto va en `agents/roles/` y, con el mismo slug,
+reemplaza al del sistema. Por ejemplo:
 
 ```bash
-for skill in agents/roles/*/SKILL.md; do basename "$(dirname "$skill")"; done | sort
+for skill in agents/roles/*/SKILL.md agents/roles/system/*/SKILL.md; do
+  basename "$(dirname "$skill")"
+done | sort -u
 ```
 
 Un slug debe ser único entre todas las categorías. Si dos tipos contienen el mismo slug, el CLI falla por
@@ -149,6 +153,7 @@ Cada colección adaptable separa lo que actualiza el toolkit de lo que escribe e
 | `planning/adr/` | `OPS-NNN` | las decisiones de la empresa |
 | `planning/rules/` | proceso, forma del cambio, commits | las convenciones propias |
 | `teams/` | composiciones que vienen con Cauce | los equipos propios |
+| `agents/<tipo>/` | los cargos que trae Cauce | los cargos propios |
 
 Un archivo propio con el mismo nombre o ID que uno de `system/` lo reemplaza: el del proyecto manda y
 `check` lo reporta como override explícito. Así una mejora del proceso no obliga a forkear el archivo,
