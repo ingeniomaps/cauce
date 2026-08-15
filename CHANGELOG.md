@@ -8,6 +8,25 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.8.0] - 2026-08-15
+
+### Cambiado
+
+- **El andamiaje de una integración se materializa al habilitarla, no antes.** Una instancia recibía
+  32 KB de Jira —configuración, `staging/`, `proposed/`, tres READMEs— para un proveedor con
+  `enabled: false` que quizá no use nunca, y que además nadie actualizaba después. Ahora llega con
+  `ops integration enable <raíz> <proveedor>`, que copia el andamiaje y enciende el registro.
+- `check` valida sólo los proveedores habilitados. Un proveedor registrado y apagado no tiene
+  andamiaje, y exigirle configuración era pedirle a la empresa que mantenga lo que no usa.
+  Nombrarlo explícitamente sí lo valida, que es como se comprueba antes de encenderlo.
+- Una instancia existente conserva lo suyo: `integrations/<proveedor>/` puede tener snapshots y
+  borradores de la empresa, así que no se retira nada.
+
+### Corregido
+
+- `integrations/README.md`, `integrations/AGENTS.md` y `organization/README.md` se actualizan con el
+  toolkit. Los escribe Cauce y envejecían para siempre en cada instancia.
+
 ## [0.7.5] - 2026-08-15
 
 ### Corregido
