@@ -8,6 +8,19 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.6.1] - 2026-08-15
+
+### Corregido
+
+- **El bridge de Antigravity negaba cada llamada a herramienta.** Resolvía la raíz ops subiendo por el
+  árbol, y en sidecar es un *hermano* de los repos de producto: no la encontraba y, como falla cerrado,
+  bloqueaba todo. Ahora `automation install` le deja escrito dónde quedó, con el recorrido hacia arriba
+  como respaldo.
+- **`automation install antigravity` copiaba el plugin y lo dejaba inerte.** Antigravity exige un
+  registro explícito —`agy plugin install`—, así que los archivos quedaban en su lugar, `doctor` daba
+  verde y no se ejecutaba nada. `install` ahora dice el comando exacto y `doctor` avisa si falta, sin
+  tocar por su cuenta la configuración global del usuario.
+
 ## [0.6.0] - 2026-08-15
 
 ### Cambiado
