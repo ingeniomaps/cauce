@@ -94,7 +94,9 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
     // Sin npm los workflows viajan con el motor; con npm salen de la dependencia. Nunca del proyecto.
     const sourceWorkflow = path.join(target, '.ops', 'automatization', 'workflows', workflow.source)
     assert.equal(fs.existsSync(installedWorkflow), true)
-    assert.equal(fs.readFileSync(installedWorkflow, 'utf8'), fs.readFileSync(sourceWorkflow, 'utf8'))
+    // El instalado no es una copia literal: lleva resuelto dónde quedó la raíz ops.
+    const rendered = fs.readFileSync(sourceWorkflow, 'utf8').split('{{OPS_DIR}}').join('demo-ops/')
+    assert.equal(fs.readFileSync(installedWorkflow, 'utf8'), rendered)
   }
   assert.equal(fs.existsSync(path.join(target, 'automatization', 'workflows')), false)
   assert.equal(fs.existsSync(path.join(target, 'automatization', 'runners')), false)

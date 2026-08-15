@@ -4,20 +4,20 @@
       {
         "matcher": "shell|unified_exec",
         "hooks": [
-          { "type": "command", "command": "automatization/hooks/guard-shell.sh" }
+          { "type": "command", "command": "{{OPS_DIR}}automatization/hooks/guard-shell.sh" }
         ]
       },
       {
         "matcher": "apply_patch|files",
         "hooks": [
-          { "type": "command", "command": "automatization/hooks/guard-files.sh" }
+          { "type": "command", "command": "{{OPS_DIR}}automatization/hooks/guard-files.sh" }
         ]
       }
     ],
     "SessionEnd": [
       {
         "hooks": [
-          { "type": "command", "command": "automatization/hooks/guard-planning-drift.sh" }
+          { "type": "command", "command": "{{OPS_DIR}}automatization/hooks/guard-planning-drift.sh" }
         ]
       }
     ]

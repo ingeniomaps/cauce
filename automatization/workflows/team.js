@@ -15,7 +15,10 @@ export const meta = {
   ],
 }
 
-const ROOT = process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || '.'
+// El prefijo lo completa `automation install`: en modo sidecar la herramienta se abre en la carpeta
+// de la compañía y la raíz ops es uno de sus hijos, no la carpeta misma.
+const ROOT = (process.env.OPS_ROOT
+  || `${process.env.CLAUDE_PROJECT_DIR || '.'}/{{OPS_DIR}}`).replace(/\/+$/, '')
 const P = `${ROOT}/planning`
 const ROADMAP = `${P}/roadmap`
 const HUMAN = `${P}/HUMAN_ACTIONS.md`

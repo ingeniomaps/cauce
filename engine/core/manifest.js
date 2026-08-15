@@ -13,10 +13,12 @@ const path = require('node:path')
 
 const FILE = path.join('.cauce', 'manifest.json')
 
+function digestText(content) {
+  return crypto.createHash('sha256').update(content).digest('hex').slice(0, 16)
+}
+
 function digest(file) {
-  try {
-    return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 16)
-  } catch { return '' }
+  try { return digestText(fs.readFileSync(file)) } catch { return '' }
 }
 
 // Dos secciones porque son dos entregas distintas: `files` es lo que se materializó dentro de la
@@ -80,4 +82,4 @@ function edited(root, relative, files) {
   })
 }
 
-module.exports = { FILE, digest, edited, prune, read, readRunners, record, write }
+module.exports = { FILE, digest, digestText, edited, prune, read, readRunners, record, write }

@@ -122,13 +122,20 @@ function resolveItem(paths, root, name, item) {
   }
 }
 
-// La configuración del runner nombra cada guard por ruta relativa a donde se abre la herramienta.
-// Si eso ya no es la raíz ops, hay que reescribir el prefijo o el runner buscaría los guards en la
-// carpeta equivocada. Se hace en un solo lugar: `install` lo escribe y `doctor` compara contra esto.
+// Todo lo que un adaptador copia —configuración, instrucciones, workflows— nombra rutas relativas a
+// la carpeta donde se abre la herramienta. Cuando la raíz ops no es esa carpeta, cada una necesita el
+// prefijo. El marcador es explícito en la fuente en vez de adivinarse con reemplazos de texto:
+// `{{OPS_DIR}}` significa "acá va la raíz ops, o nada si coinciden".
+//
+// Un solo render, y `install` escribe exactamente lo que `doctor` compara.
+const OPS_DIR = '{{OPS_DIR}}'
+
+function render(file, prefix) {
+  return fs.readFileSync(file, 'utf8').split(OPS_DIR).join(prefix)
+}
+
 function runnerConfig(paths, root) {
-  const raw = fs.readFileSync(paths.configSource, 'utf8')
-  const prefix = opsPrefix(root)
-  return JSON.parse(prefix ? raw.split('automatization/hooks/').join(`${prefix}automatization/hooks/`) : raw)
+  return JSON.parse(render(paths.configSource, opsPrefix(root)))
 }
 
 // Cargos del catálogo, con el frontmatter que el runner indexa para elegir a quién invocar.
@@ -368,11 +375,15 @@ function doctor(root, name, output = console) {
   }
   for (const item of runner.instructions || []) {
     const resolved = { item, ...resolveItem(paths, root, name, item) }
+    // `AGENTS.md` es un nombre compartido entre herramientas y la instancia ya tiene el suyo: en
+    // modo embedded el archivo del runner y el de la empresa son el mismo, y pedirle que se
+    // referencie a sí mismo no significa nada.
+    const propio = path.basename(resolved.target) === 'AGENTS.md'
     if (!fs.existsSync(resolved.target)) errors.push(`falta ${item.target}`)
-    else if (!fs.readFileSync(resolved.target, 'utf8').includes('AGENTS.md')) {
+    else if (!propio && !fs.readFileSync(resolved.target, 'utf8').includes('AGENTS.md')) {
       warnings.push(`${item.target}: no referencia AGENTS.md; verifica las reglas globales`)
     }
-    if (deliveryState(M.readRunners(root), name, resolved) === 'desactualizado') {
+    if (deliveryState(M.readRunners(root), name, resolved, opsPrefix(root)) === 'desactualizado') {
       warnings.push(`${item.target}: Cauce trae una versión más nueva y vos no lo tocaste; reinstalá`)
     }
   }
@@ -381,7 +392,7 @@ function doctor(root, name, output = console) {
   const recorded = M.readRunners(root)
   for (const item of runner.artifacts || []) {
     const resolved = { item, ...resolveItem(paths, root, name, item) }
-    const situacion = deliveryState(recorded, name, resolved)
+    const situacion = deliveryState(recorded, name, resolved, opsPrefix(root))
     if (situacion === 'nuevo') errors.push(`falta ${item.target}`)
     else if (situacion === 'desactualizado') {
       warnings.push(`${item.target}: hay una versión más nueva en Cauce; reinstalá el adaptador`)
@@ -432,10 +443,10 @@ function deliveryKey(name, target) {
 //
 // Sin el registro de entrega, `desactualizado` y `ajeno` se ven igual. `install` resolvía esa duda
 // conservando siempre, así que ninguna mejora del toolkit llegaba nunca a un runner ya instalado.
-function deliveryState(recorded, name, resolved) {
+function deliveryState(recorded, name, resolved, prefix = '') {
   if (!fs.existsSync(resolved.target)) return 'nuevo'
   const current = M.digest(resolved.target)
-  if (current === M.digest(resolved.source)) return 'al día'
+  if (current === M.digestText(render(resolved.source, prefix))) return 'al día'
   const delivered = recorded[deliveryKey(name, resolved.item.target)]
   return delivered && delivered === current ? 'desactualizado' : 'ajeno'
 }
@@ -458,7 +469,8 @@ function install(root, name, output = console, options = {}) {
   for (const resolved of resolvedItems) F.assertNoSymlinkPath(paths.install, resolved.target)
 
   const recorded = M.readRunners(root)
-  const state = new Map(resolvedItems.map((resolved) => [resolved, deliveryState(recorded, name, resolved)]))
+  const prefix = opsPrefix(root)
+  const state = new Map(resolvedItems.map((r) => [r, deliveryState(recorded, name, r, prefix)]))
   // Un archivo de instrucciones es del proyecto y se conserva; uno ejecutable es del toolkit y se
   // reemplaza. Editarlo detiene la instalación antes de pisarlo, igual que hace `upgrade`.
   const editados = resolvedItems.filter((resolved) => {
@@ -480,7 +492,7 @@ function install(root, name, output = console, options = {}) {
   // Dónde aterrizó, no sólo qué archivo: en sidecar el destino no es el repo desde el que se corrió
   // el comando, y descubrirlo por sorpresa es la diferencia entre confiar y adivinar.
   if (paths.install !== root) {
-    output.log(`  ${name}: el runner se abre en ${paths.install} — ahí quedan .claude/ y CLAUDE.md`)
+    output.log(`  ${name}: el runner se abre en ${paths.install} — ahí queda su configuración`)
   }
   output.log(`✓ ${name}: configuración instalada en ${runner.config.target}`)
   const entregado = { ...recorded }
@@ -493,7 +505,7 @@ function install(root, name, output = console, options = {}) {
       output.log(`= ${name}: ${resolved.item.target} ya está al día`)
     } else {
       fs.mkdirSync(path.dirname(resolved.target), { recursive: true })
-      fs.copyFileSync(resolved.source, resolved.target)
+      F.atomicWrite(resolved.target, render(resolved.source, opsPrefix(root)))
       const verbo = situacion === 'nuevo' ? 'instalado' : 'actualizado'
       output.log(`✓ ${name}: ${verbo} ${resolved.item.target}`)
     }

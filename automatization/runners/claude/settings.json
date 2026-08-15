@@ -4,20 +4,20 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/automatization/hooks/guard-shell.sh" }
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/{{OPS_DIR}}automatization/hooks/guard-shell.sh" }
         ]
       },
       {
         "matcher": "Edit|Write",
         "hooks": [
-          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/automatization/hooks/guard-files.sh" }
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/{{OPS_DIR}}automatization/hooks/guard-files.sh" }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/automatization/hooks/guard-planning-drift.sh" }
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/{{OPS_DIR}}automatization/hooks/guard-planning-drift.sh" }
         ]
       }
     ]
