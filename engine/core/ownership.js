@@ -22,6 +22,7 @@ const SYSTEM_FILES = [
   'planning/rules/README.md',
   'planning/roadmap/README.md',
   'planning/roadmap/epic-000-template.md',
+  'organization/roles/README.md',
 ]
 
 // Colecciones mixtas: el toolkit posee `<dir>/system/`, el proyecto todo lo demás del directorio.
@@ -108,12 +109,34 @@ function overrides(root) {
   return found
 }
 
-// Rutas que `upgrade` reemplaza. Todo lo que no aparezca acá pertenece al proyecto.
-function systemPaths(root) {
-  const paths = []
-  for (const file of SYSTEM_FILES) {
-    if (fs.existsSync(path.join(root, file))) paths.push(file)
+// Rutas que el toolkit dejó de materializar. Sin esto una instancia arrastra para siempre lo que
+// alguna versión suya copió: `upgrade` agrega y reemplaza, pero nunca quitaba nada.
+const RETIRED = [
+  'agents/roles/system',
+  '.github/workflows/agent-learning.yml',
+]
+
+// Aprendizaje que quedó dentro de una ruta retirada. Es lo único ahí que no se puede reponer, así
+// que se detecta antes de borrar nada: perderlo en silencio sería peor que dejar el directorio.
+function retiredWithLearning(root) {
+  const found = []
+  for (const relative of RETIRED) {
+    const dir = path.join(root, relative)
+    if (!fs.existsSync(dir)) continue
+    for (const file of treeFiles(dir)) {
+      if (!/(^|\/)learning\/(reports|proposals)\//.test(file)) continue
+      if (path.basename(file).startsWith('_')) continue
+      found.push(`${relative}/${file}`)
+    }
   }
+  return found
+}
+
+// Rutas que `upgrade` reemplaza. Todo lo que no aparezca acá pertenece al proyecto.
+// Se listan aunque todavía no existan en la instancia: así un archivo nuevo del sistema llega en
+// vez de esperar a que alguien lo cree a mano.
+function systemPaths(root) {
+  const paths = [...SYSTEM_FILES]
   for (const collection of SYSTEM_COLLECTIONS) {
     const dir = path.join(root, collection, 'system')
     if (fs.existsSync(dir)) paths.push(`${collection}/system`)
@@ -155,7 +178,9 @@ function localChanges(root, packageRoot) {
 }
 
 module.exports = {
+  RETIRED,
   RUNTIME_PATHS,
+  retiredWithLearning,
   engineAt,
   engineCandidates,
   TEMPLATE_OWNED,

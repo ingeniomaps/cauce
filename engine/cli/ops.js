@@ -503,6 +503,16 @@ function upgrade(dir) {
     process.exit(1)
   }
 
+  // Antes de retirar nada, comprobar que no se lleve puesto aprendizaje acumulado.
+  const rescatar = O.retiredWithLearning(root)
+  if (rescatar.length && !force) {
+    for (const file of rescatar) console.error(`✗ ${file}`)
+    fail(
+      `\n${rescatar.length} archivo(s) de aprendizaje quedaron en una ruta que Cauce ya no mantiene.\n\n` +
+      'Movelos a un cargo propio en agents/roles/<slug>/learning/ y repetí, o descartalos con --force.',
+    )
+  }
+
   if (changed.length && !force) {
     for (const file of changed) console.error(`✗ ${file}`)
     fail(
@@ -530,6 +540,16 @@ function upgrade(dir) {
     }
   }
 
+  // Retirar lo que el toolkit ya no distribuye, después de haber actualizado lo que sí.
+  const retirado = []
+  for (const relative of O.RETIRED) {
+    const target = path.join(root, relative)
+    if (!fs.existsSync(target)) continue
+    F.assertNoSymlinkPath(root, target)
+    fs.rmSync(target, { recursive: true, force: true })
+    retirado.push(relative)
+  }
+
   const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
   config.cauceVersion = to
   F.atomicWriteJson(path.join(root, 'ops.config.json'), config)
@@ -538,6 +558,7 @@ function upgrade(dir) {
   // Descartar con --force es legítimo; hacerlo sin dejar rastro no. Queda en la salida del comando,
   // que es la evidencia que el protocolo pide para cualquier cambio.
   for (const file of changed) console.log(`− descartado tu cambio en ${file}`)
+  for (const relative of retirado) console.log(`− retirado ${relative}: Cauce ya no lo distribuye`)
   printChangelog(from, to)
   console.log(`  ${system.length} ruta(s) del sistema y ${O.RUNTIME_PATHS.length} del runtime actualizadas`)
   for (const override of overrides) {
