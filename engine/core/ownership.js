@@ -41,23 +41,18 @@ const RUNTIME_PATHS = [
   '.ops/engine',
   '.ops/agents',
   '.ops/teams',
+  '.ops/automatization/runners',
+  '.ops/automatization/workflows',
   'automatization/hooks',
-  'automatization/runners',
-  'automatization/workflows',
 ]
-
-// Rutas que el paquete tiene por duplicado: una versión para el proyecto en `template/` y otra
-// interna del toolkit. Gana la del template, que es la que le habla a quien usa la instancia.
-const TEMPLATE_OWNED = ['automatization/runners/README.md']
 
 // Dentro del paquete, lo que una instancia recibe en su raíz vive bajo `template/`; el catálogo,
 // los equipos y la automatización están en la raíz del paquete, y el motor en `engine/`.
 const TEMPLATE_PREFIXES = ['planning/', 'organization/', 'integrations/', 'teams/']
 
 function sourceOf(relative) {
-  if (relative === '.ops/engine') return 'engine'
-  if (relative === '.ops/agents') return 'agents'
-  if (relative === '.ops/teams') return 'teams'
+  // `.ops/` es el paquete vendorizado: cada ruta de ahí adentro se llama igual en el origen.
+  if (relative.startsWith('.ops/')) return relative.slice('.ops/'.length)
   if (TEMPLATE_PREFIXES.some((prefix) => relative.startsWith(prefix))) {
     return path.join('template', relative)
   }
@@ -79,6 +74,17 @@ function engineAt(root, relative = '') {
   return engineCandidates(root)
     .map((dir) => (relative ? path.join(dir, relative) : dir))
     .find((candidate) => fs.existsSync(candidate)) || ''
+}
+
+// Una ruta cualquiera del paquete, en el mismo orden de preferencia que el motor. La usan los
+// adaptadores de runner y los workflows: el motor los consume, el proyecto no los materializa.
+function packagePath(root, relative) {
+  const candidates = [
+    path.join(root, 'node_modules', '@ingeniomaps', 'cauce', relative),
+    path.join(root, '.ops', relative),
+    path.join(root, relative),
+  ]
+  return candidates.find((candidate) => fs.existsSync(candidate)) || ''
 }
 
 // Definiciones que consume el motor —cargos y equipos— y que por eso viajan con el paquete en vez
@@ -135,6 +141,8 @@ const RETIRED = [
   'agents/roles/system',
   'teams/system',
   '.github/workflows/agent-learning.yml',
+  'automatization/runners',
+  'automatization/workflows',
 ]
 
 // Aprendizaje que quedó dentro de una ruta retirada. Es lo único ahí que no se puede reponer, así
@@ -205,7 +213,7 @@ module.exports = {
   retiredWithLearning,
   engineAt,
   engineCandidates,
-  TEMPLATE_OWNED,
+  packagePath,
   SYSTEM_COLLECTIONS,
   SYSTEM_FILES,
   identity,

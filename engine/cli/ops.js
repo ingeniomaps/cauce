@@ -140,20 +140,6 @@ function init(target) {
     preserve,
     root,
   )
-  copyRuntime(
-    path.join(PROJECT_ROOT, 'automatization', 'runners'),
-    path.join(root, 'automatization', 'runners'),
-    preserve,
-    root,
-    // El README de runners lo provee el template: le habla al proyecto, no a quien desarrolla Cauce.
-    O.TEMPLATE_OWNED.filter((owned) => owned.startsWith('automatization/runners/')).map((owned) => path.basename(owned)),
-  )
-  copyRuntime(
-    path.join(PROJECT_ROOT, 'automatization', 'workflows'),
-    path.join(root, 'automatization', 'workflows'),
-    preserve,
-    root,
-  )
   const version = require(path.join(PROJECT_ROOT, 'package.json')).version
   // Un repo con npm recibe el motor como dependencia versionada; uno de Go, Python o Rust recibe
   // la copia, porque exigirle un package.json para correr su planning sería imponerle un stack.
@@ -165,9 +151,18 @@ function init(target) {
     const engine = path.join(root, '.ops', 'engine')
     copyRuntime(path.join(PROJECT_ROOT, 'engine'), engine, preserve, root)
     fs.chmodSync(path.join(engine, 'cli', 'ops.js'), 0o755)
-    // Sin npm no hay de dónde leer el catálogo en tiempo de ejecución: viaja junto al motor.
+    // Sin npm no hay de dónde leer el catálogo en tiempo de ejecución: viaja junto al motor, igual
+    // que los adaptadores de runner y los workflows que instala `automation install`.
     copyRuntime(path.join(PROJECT_ROOT, 'agents'), path.join(root, '.ops', 'agents'), preserve, root)
     copyRuntime(path.join(PROJECT_ROOT, 'teams'), path.join(root, '.ops', 'teams'), preserve, root)
+    for (const name of ['runners', 'workflows']) {
+      copyRuntime(
+        path.join(PROJECT_ROOT, 'automatization', name),
+        path.join(root, '.ops', 'automatization', name),
+        preserve,
+        root,
+      )
+    }
   }
   let entregado = {}
   for (const relative of O.trackedPaths()) {
@@ -546,10 +541,7 @@ function upgrade(dir) {
     // `.ops/` es el paquete vendorizado de una instancia sin npm. Si no existe, esta instancia lo
     // toma de la dependencia y crearlo sería duplicar lo que el lockfile ya versiona.
     if (relative.startsWith('.ops/') && !fs.existsSync(target)) continue
-    const skip = O.TEMPLATE_OWNED
-      .filter((owned) => owned.startsWith(`${relative}/`))
-      .map((owned) => path.basename(owned))
-    if (fs.statSync(origin).isDirectory()) overlayTree(origin, target, root, skip)
+    if (fs.statSync(origin).isDirectory()) overlayTree(origin, target, root)
     else {
       F.assertNoSymlinkPath(root, target)
       F.atomicWrite(target, fs.readFileSync(origin, 'utf8'))

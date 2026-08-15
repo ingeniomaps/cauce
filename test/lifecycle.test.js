@@ -69,6 +69,10 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   fs.writeFileSync(path.join(ownRole, 'SKILL.md'), '---\nname: product-manager\ndescription: PM de Acme.\n---\n')
   const ownGuard = path.join(consumer, 'automatization', 'hooks', 'guard-acme.sh')
   fs.writeFileSync(ownGuard, '#!/usr/bin/env bash\necho propio\n')
+  // Y arrastra lo que una versión anterior sí materializaba: adaptadores y workflows copiados.
+  const legacy = path.join(consumer, 'automatization', 'workflows')
+  fs.mkdirSync(legacy, { recursive: true })
+  fs.writeFileSync(path.join(legacy, 'autobuild.js'), '// copia vieja\n')
   assert.equal(cauce(consumer, ['check', planning]).status, 0, 'la instancia sigue válida')
 
   // El runner debe seguir al cargo del proyecto, no al del sistema.
@@ -112,6 +116,8 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   assert.match(fs.readFileSync(path.join(planning, 'INBOX.md'), 'utf8'), /propia/)
   assert.match(fs.readFileSync(path.join(ownRole, 'SKILL.md'), 'utf8'), /PM de Acme/)
   assert.equal(fs.existsSync(ownGuard), true, 'el guard propio sobrevive al refresco del runtime')
+  assert.equal(fs.existsSync(legacy), false, 'la copia vieja de workflows se retira')
+  assert.match(upgraded.stdout, /retirado automatization\/workflows/)
 
   // 8. Y la instancia sigue siendo válida y operable después de todo.
   assert.equal(cauce(consumer, ['check', planning]).status, 0)

@@ -88,10 +88,15 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
     { source: path.join('integrations', 'promote.js'), target: 'integration-promote.js' },
   ]) {
     const installedWorkflow = path.join(target, '.claude', 'workflows', workflow.target)
-    const sourceWorkflow = path.join(target, 'automatization', 'workflows', workflow.source)
+    // Sin npm los workflows viajan con el motor; con npm salen de la dependencia. Nunca del proyecto.
+    const sourceWorkflow = path.join(target, '.ops', 'automatization', 'workflows', workflow.source)
     assert.equal(fs.existsSync(installedWorkflow), true)
     assert.equal(fs.readFileSync(installedWorkflow, 'utf8'), fs.readFileSync(sourceWorkflow, 'utf8'))
   }
+  assert.equal(fs.existsSync(path.join(target, 'automatization', 'workflows')), false)
+  assert.equal(fs.existsSync(path.join(target, 'automatization', 'runners')), false)
+  // Los hooks sí: la configuración del runner los nombra por ruta literal del proyecto.
+  assert.equal(fs.existsSync(path.join(target, 'automatization', 'hooks', 'guard-shell.sh')), true)
   assert.equal(run(['automation', 'install', target, 'codex']).status, 0)
   const codexHooks = JSON.parse(fs.readFileSync(path.join(target, '.codex', 'hooks', 'hooks.json'), 'utf8'))
   assert.ok(codexHooks.hooks.PreToolUse.length)
@@ -139,15 +144,15 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   fs.writeFileSync(path.join(target, 'README.md'), 'propiedad del usuario\n')
   fs.mkdirSync(path.join(target, 'agents', 'roles', 'product-manager'), { recursive: true })
   fs.writeFileSync(path.join(target, 'agents', 'roles', 'product-manager', 'SKILL.md'), 'personalizado\n')
-  const runnerReadme = path.join(target, 'automatization', 'runners', 'codex', 'README.md')
+  const ownGuard = path.join(target, 'automatization', 'hooks', 'guard-demo.sh')
   const runtimeParser = path.join(target, '.ops', 'engine', 'planning', 'parser.js')
-  fs.writeFileSync(runnerReadme, 'runner personalizado\n')
+  fs.writeFileSync(ownGuard, 'guard propio de la empresa\n')
   fs.writeFileSync(runtimeParser, 'runtime personalizado\n')
   const forced = run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--force'])
   assert.equal(forced.status, 0, forced.stderr)
   assert.equal(fs.readFileSync(path.join(target, 'README.md'), 'utf8'), 'propiedad del usuario\n')
   assert.equal(fs.readFileSync(path.join(target, 'agents', 'roles', 'product-manager', 'SKILL.md'), 'utf8'), 'personalizado\n')
-  assert.equal(fs.readFileSync(runnerReadme, 'utf8'), 'runner personalizado\n')
+  assert.equal(fs.readFileSync(ownGuard, 'utf8'), 'guard propio de la empresa\n')
   assert.equal(fs.readFileSync(runtimeParser, 'utf8'), 'runtime personalizado\n')
 })
 

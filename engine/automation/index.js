@@ -11,11 +11,26 @@ const O = require('../core/ownership')
 
 const RUNNER_NAMES = ['claude', 'codex', 'gemini', 'antigravity']
 
+// Adaptadores y workflows viven en el paquete, no en la instancia: son definiciones que el motor
+// consume y que ninguna empresa edita —`RUNNER_NAMES` es cerrado, así que ni siquiera puede agregar
+// uno propio—. Los hooks sí se quedan en el proyecto: la configuración del runner los nombra por
+// ruta literal y no sabe resolver en cascada.
+// Se busca por `runners/` y no por `automatization/`: toda instancia tiene el segundo —ahí viven sus
+// hooks— y encontrarlo daría por buena una dependencia sin instalar.
+function packagedAutomation(root) {
+  const runners = O.packagePath(root, path.join('automatization', 'runners'))
+  return runners ? path.dirname(runners) : ''
+}
+
 function runnerManifest(root, name) {
   if (!RUNNER_NAMES.includes(name)) {
     throw new Error(`runner debe ser ${RUNNER_NAMES.join(', ')}`)
   }
-  const file = path.join(root, 'automatization', 'runners', name, 'manifest.json')
+  const packaged = packagedAutomation(root)
+  if (!packaged) {
+    throw new Error('no encuentro automatization/: instalá la dependencia o restaurá .ops/')
+  }
+  const file = path.join(packaged, 'runners', name, 'manifest.json')
   try { return JSON.parse(fs.readFileSync(file, 'utf8')) } catch (error) {
     throw new Error(`${name}: manifest inválido (${error.message})`)
   }
@@ -58,8 +73,8 @@ function includesConfig(actual, expected) {
 }
 
 function runnerPaths(root, name, runner) {
-  const automationRoot = path.join(root, 'automatization')
-  const sourceDir = path.join(root, 'automatization', 'runners', name)
+  const automationRoot = packagedAutomation(root)
+  const sourceDir = path.join(automationRoot, 'runners', name)
   const configSource = F.assertWithin(
     sourceDir,
     path.resolve(sourceDir, runner.config.source),
@@ -176,9 +191,10 @@ function check(root) {
   }
   const workflows = ['autobuild.js', 'team.js', path.join('integrations', 'sync.js')]
   workflows.push(path.join('integrations', 'promote.js'))
+  const packaged = packagedAutomation(root)
   for (const name of workflows) {
-    if (!fs.existsSync(path.join(root, 'automatization', 'workflows', name))) {
-      errors.push(`falta automatization/workflows/${name}`)
+    if (!packaged || !fs.existsSync(path.join(packaged, 'workflows', name))) {
+      errors.push(`falta automatization/workflows/${name}: instalá la dependencia o restaurá .ops/`)
     }
   }
   for (const name of RUNNER_NAMES) validateRunner(root, name, errors)
