@@ -197,3 +197,36 @@ test('un workflow sólo usa lo que el runtime le da', () => {
   }
   assert.deepEqual(encontradas, [])
 })
+
+// Un identificador que el runtime no da y el archivo no define revienta el workflow, y lo hace en el
+// momento en que se lo llama: `finish` estaba en la línea de cierre, así que el recorrido gastaba
+// cada etapa y moría al final. Leer estos archivos como texto no alcanza para verlo.
+test('un workflow no llama a nada que no exista', () => {
+  // Lo que el runtime inyecta, más los built-ins del lenguaje.
+  const runtime = new Set(['agent', 'parallel', 'pipeline', 'log', 'phase', 'workflow'])
+  const builtins = new Set([
+    'String', 'Number', 'Boolean', 'Array', 'Object', 'JSON', 'Math', 'Promise', 'Set', 'Map',
+    'RegExp', 'Error', 'parseInt', 'parseFloat', 'isNaN', 'encodeURIComponent', 'decodeURIComponent',
+  ])
+  const keywords = new Set([
+    'if', 'for', 'while', 'switch', 'catch', 'return', 'typeof', 'function', 'await', 'new', 'do',
+  ])
+  const faltantes = []
+  for (const file of workflowFiles()) {
+    // Sin comentarios ni literales: adentro hay prosa en castellano que parece una llamada.
+    const source = fs.readFileSync(file, 'utf8')
+      .replace(/\/\/[^\n]*/g, '')
+      .replace(/`(?:\\[\s\S]|[^`\\])*`/g, '``')
+      .replace(/'(?:\\[\s\S]|[^'\\])*'/g, "''")
+      .replace(/"(?:\\[\s\S]|[^"\\])*"/g, '""')
+    const declared = new Set(
+      [...source.matchAll(/(?:function|const|let|var)\s+([A-Za-z_$][\w$]*)/g)].map((hit) => hit[1]),
+    )
+    for (const hit of source.matchAll(/(?:^|[^.\w$])([a-zA-Z_$][\w$]*)\s*\(/gm)) {
+      const name = hit[1]
+      if (runtime.has(name) || builtins.has(name) || keywords.has(name) || declared.has(name)) continue
+      faltantes.push(`${path.relative(WF, file)} → ${name}`)
+    }
+  }
+  assert.deepEqual([...new Set(faltantes)], [])
+})
