@@ -27,6 +27,9 @@ const SYSTEM_FILES = [
   'teams/README.md',
   'automatization/README.md',
   'automatization/AGENTS.md',
+  // El shim no tiene una línea de la empresa —dice él mismo que no se edita— y es por donde entra
+  // cada comando. Sin declararlo, envejecía para siempre en la instancia.
+  'tools/ops.js',
 ]
 
 // Colecciones mixtas: el toolkit posee `<dir>/system/`, el proyecto todo lo demás del directorio.
@@ -56,6 +59,7 @@ const TEMPLATE_PREFIXES = [
   'integrations/',
   'teams/',
   'automatization/',
+  'tools/',
 ]
 
 function sourceOf(relative) {
