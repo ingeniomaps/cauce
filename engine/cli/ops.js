@@ -594,9 +594,15 @@ function upgrade(dir) {
 
 // Lista los cargos visibles resolviendo la precedencia; evita que cada consumidor —CI incluido—
 // reimplemente el recorrido del catálogo.
+// La raíz ops de un comando que no la recibe. El shim `tools/ops.js` la exporta porque sabe dónde
+// vive: sin eso, invocarlo desde otra carpeta —lo normal en sidecar— la resolvía contra el cwd.
+function opsRoot(dir) {
+  return path.resolve(dir || process.env.OPS_ROOT || '.')
+}
+
 function agents(action, dir) {
   if (action !== 'list') fail(`Acción de agents desconocida: ${action || '(vacía)'}`, 2)
-  const root = path.resolve(dir || '.')
+  const root = opsRoot(dir)
   const roles = AG.list(root)
   if (process.argv.includes('--json')) {
     // `path` viene resuelto: quien consuma esto no debería reconstruir dónde ganó la precedencia.
@@ -685,7 +691,7 @@ async function integration(action, rootArg, provider, key) {
 }
 
 function automation(action, rootArg, runnerName) {
-  const root = path.resolve(rootArg || '.')
+  const root = opsRoot(rootArg)
   if (action === 'list-hooks') return A.listHooks()
   if (action === 'list') {
     for (const name of A.RUNNER_NAMES) {
@@ -756,12 +762,12 @@ function evaluate(agent) {
 
 function team(action, slug) {
   if (action === 'list') {
-    for (const name of T.list(process.cwd())) console.log(name)
+    for (const name of T.list(opsRoot())) console.log(name)
     return
   }
   if (!['check', 'show'].includes(action)) fail(`Acción de team desconocida: ${action || '(vacía)'}`, 2)
   try {
-    const result = T.validate(process.cwd(), slug)
+    const result = T.validate(opsRoot(), slug)
     for (const error of result.errors) console.error(`✗ ${error}`)
     if (result.errors.length) fail(`${slug}: ${result.errors.length} error(es)`, 1)
     if (action === 'show') {

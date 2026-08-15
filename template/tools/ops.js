@@ -8,6 +8,12 @@
 const path = require('path')
 
 const root = path.join(__dirname, '..')
+
+// El shim sabe dónde vive; quien lo invoca, no. En modo sidecar se lo llama desde la carpeta de la
+// compañía —`node <empresa>-ops/tools/ops.js …`— y sin esto cada comando resolvería su raíz contra
+// el cwd: `agents list` y `team list` devolvían vacío en vez de fallar.
+process.env.OPS_ROOT = process.env.OPS_ROOT || root
+
 const candidates = [
   () => require.resolve('@ingeniomaps/cauce/engine/cli/ops.js', { paths: [root] }),
   () => require.resolve(path.join(root, '.ops', 'engine', 'cli', 'ops.js')),
