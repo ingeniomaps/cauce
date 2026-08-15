@@ -8,6 +8,13 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.5.4] - 2026-08-15
+
+### Corregido
+
+- `upgrade` conserva el modo de los archivos que entrega. `tools/ops.js` tiene shebang y quedaba sin
+  permiso de ejecución, con el cambio de modo apareciendo en el diff de cada empresa.
+
 ## [0.5.3] - 2026-08-15
 
 ### Corregido
