@@ -8,6 +8,17 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.9.0] - 2026-08-15
+
+### Añadido
+
+- `ops integration disable <raíz> <proveedor>`: el par que faltaba. Apagar **no desinstala** —
+  `integrations/<proveedor>/` puede tener snapshots y borradores de la empresa, y borrarlos para
+  desconectar una integración sería perder trabajo suyo. El andamiaje queda y volver a encender no
+  pierde nada.
+- `integration enable` sólo pide lo que falta: reencender un proveedor ya configurado no manda a
+  completar un archivo que la empresa terminó hace meses.
+
 ## [0.8.2] - 2026-08-15
 
 ### Corregido
