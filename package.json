@@ -1,6 +1,6 @@
 {
   "name": "@ingeniomaps/cauce",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "Sistema portable de planificación y ejecución verificable para cualquier proyecto",
   "type": "commonjs",
   "bin": {
