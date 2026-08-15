@@ -8,6 +8,14 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.4.1] - 2026-08-15
+
+### Corregido
+
+- Al mover los equipos al paquete se fue con ellos su documentación, así que una instancia nueva se
+  quedaba sin `teams/README.md` ni la plantilla: sabía que podía escribir equipos propios, pero no
+  con qué contrato. Lo que le habla a la empresa viaja con la instancia aunque la colección no.
+
 ## [0.4.0] - 2026-08-15
 
 ### Cambiado

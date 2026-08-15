@@ -695,3 +695,25 @@ test('upgrade distingue una edición local de una mejora del toolkit', () => {
   assert.equal(/# mío/.test(fs.readFileSync(guard, 'utf8')), false)
   assert.deepEqual(require('../engine/core/ownership').localChanges(target), [], 'sin ediciones pendientes')
 })
+
+test('la instancia recibe cómo escribir lo que sí es suyo', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-plantillas-'))
+  const target = path.join(base, 'acme')
+  assert.equal(run(['init', target, '--name', 'A', '--mode', 'sidecar']).status, 0)
+
+  // Mover una colección al paquete no puede llevarse la documentación que le habla a la empresa:
+  // sin ella no tiene cómo saber qué escribir ni con qué contrato.
+  for (const guia of [
+    ['teams', '000-template.md'],
+    ['teams', 'README.md'],
+    ['organization', 'roles', 'README.md'],
+    ['planning', 'business-rules', '000-template.md'],
+    ['planning', 'adr', '000-template.md'],
+    ['planning', 'roadmap', 'epic-000-template.md'],
+  ]) {
+    assert.equal(fs.existsSync(path.join(target, ...guia)), true, `falta ${guia.join('/')}`)
+  }
+  // Y las definiciones que consume el motor siguen sin copiarse.
+  assert.equal(fs.existsSync(path.join(target, 'teams', 'system')), false)
+  assert.equal(fs.existsSync(path.join(target, 'agents')), false)
+})

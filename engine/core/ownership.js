@@ -23,6 +23,8 @@ const SYSTEM_FILES = [
   'planning/roadmap/README.md',
   'planning/roadmap/epic-000-template.md',
   'organization/roles/README.md',
+  'teams/000-template.md',
+  'teams/README.md',
 ]
 
 // Colecciones mixtas: el toolkit posee `<dir>/system/`, el proyecto todo lo demás del directorio.
@@ -50,7 +52,7 @@ const TEMPLATE_OWNED = ['automatization/runners/README.md']
 
 // Dentro del paquete, lo que una instancia recibe en su raíz vive bajo `template/`; el catálogo,
 // los equipos y la automatización están en la raíz del paquete, y el motor en `engine/`.
-const TEMPLATE_PREFIXES = ['planning/', 'organization/', 'integrations/']
+const TEMPLATE_PREFIXES = ['planning/', 'organization/', 'integrations/', 'teams/']
 
 function sourceOf(relative) {
   if (relative === '.ops/engine') return 'engine'
