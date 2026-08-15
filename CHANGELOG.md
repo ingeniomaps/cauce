@@ -8,6 +8,25 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.7.0] - 2026-08-15
+
+### Corregido
+
+- **Los cuatro workflows reventaban en su primera línea y nunca habían corrido.** Resolvían su raíz
+  con `process.env`, y el runtime de workflows es un sandbox que no expone `process`: `ReferenceError`
+  antes de ejecutar nada. `/team` y `/autobuild` —el centro del producto— estaban muertos, y los tests
+  no lo veían porque leían los archivos como texto en vez de ejecutarlos.
+
+  La raíz ahora viaja escrita en el archivo, que es lo que `automation install` ya sabía completar, y
+  es relativa a donde se abre la herramienta.
+
+### Cambiado
+
+- Los workflows de integración se invocan con argumentos en vez de variables de entorno, que tampoco
+  existen ahí: `/integration-sync jira` y `/integration-promote jira KEY-123`.
+- Un test comprueba que ningún workflow use `process`, `require`, `Date.now` ni `Math.random`. El
+  sandbox los prohíbe, y usarlos no falla en una rama rara: impide que el archivo arranque.
+
 ## [0.6.1] - 2026-08-15
 
 ### Corregido
