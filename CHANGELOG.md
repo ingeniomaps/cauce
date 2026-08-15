@@ -8,6 +8,18 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.7.2] - 2026-08-15
+
+### Cambiado
+
+- **`team` gastaba un cuarto del recorrido en transcribir salida determinista de un CLI.** Dos agentes
+  resolvían el equipo y leían su manifiesto; ahora es uno. El segundo además leía `organization/`
+  "como contexto para etapas siguientes", y cada etapa es un agente nuevo con su propio contexto: esa
+  lectura no llegaba a ninguna parte y sólo costaba tokens.
+- Cada etapa recibe la ruta exacta del contrato de su cargo. Antes le pasaban
+  `agents/<tipo>/<slug>/SKILL.md` —con el `<tipo>` literal— y desde 0.4.0 el catálogo ni siquiera está
+  en el proyecto, así que el agente salía a buscarlo antes de poder empezar.
+
 ## [0.7.1] - 2026-08-15
 
 ### Corregido
