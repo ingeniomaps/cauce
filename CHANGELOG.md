@@ -38,6 +38,11 @@ minor aunque no toque una sola línea de código.
   `doctor` lo reportaba como error, dejando a la empresa sin salida salvo borrar a mano. Ahora el
   registro de entrega distingue las dos cosas que antes se veían iguales: lo que la empresa editó se
   conserva o detiene la instalación, y lo que sólo cambió río arriba se actualiza.
+- `automation check` compara los guards de la instancia contra los del paquete. Existir y ser
+  ejecutable no alcanzaba: un guard viejo no falla, **deja de proteger en silencio**, y `check`,
+  `doctor` y `upgrade` daban verde igual porque sólo miraban el número de versión. Ahora bloquea la
+  instalación del runner y dice qué correr; distingue además el guard que la empresa editó del que
+  simplemente quedó atrás.
 - `upgrade` recuerda reinstalar los runners: el wiring vive fuera de la instancia y lo escribe otro
   comando, así que sin el aviso una mejora se quedaba en el paquete.
 - Los guards resuelven la raíz ops por su cuenta. `findOpsRoot` sólo sube por el árbol, y en sidecar

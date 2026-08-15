@@ -190,6 +190,30 @@ function hasHooks(config) {
   })
 }
 
+// Guards de la instancia que ya no coinciden con los del paquete. Existir y ser ejecutable no
+// alcanza: un guard viejo no falla, deja de proteger sin decir nada. La instancia declaraba una
+// versión y nadie comprobaba que su runtime fuera realmente esa.
+function staleHooks(root) {
+  const packaged = packagedAutomation(root)
+  if (!packaged) return []
+  const shipped = path.join(packaged, 'hooks')
+  const mine = path.join(root, 'automatization', 'hooks')
+  const recorded = M.read(root)
+  const stale = []
+  let names = []
+  try { names = fs.readdirSync(shipped) } catch { return [] }
+  for (const file of names) {
+    const local = path.join(mine, file)
+    // Los que faltan ya los reporta el chequeo de arriba; acá sólo interesa el que quedó atrás.
+    if (!fs.existsSync(local)) continue
+    const current = M.digest(local)
+    if (current === M.digest(path.join(shipped, file))) continue
+    const delivered = recorded[`automatization/hooks/${file}`]
+    stale.push({ file, edited: Boolean(delivered) && delivered !== current })
+  }
+  return stale
+}
+
 function check(root) {
   const errors = []
   const hookDir = path.join(root, 'automatization', 'hooks')
@@ -230,6 +254,13 @@ function check(root) {
     if (!packaged || !fs.existsSync(path.join(packaged, 'workflows', name))) {
       errors.push(`falta automatization/workflows/${name}: instalá la dependencia o restaurá .ops/`)
     }
+  }
+  for (const { file, edited } of staleHooks(root)) {
+    errors.push(edited
+      ? `automatization/hooks/${file}: lo editaste y es del toolkit; agregá un guard propio al lado `
+        + 'o descartá tu cambio con `cauce upgrade --force`'
+      : `automatization/hooks/${file}: quedó atrás del paquete y ya no protege lo que dice; `
+        + 'corré `cauce upgrade` antes de instalar el runner')
   }
   for (const name of RUNNER_NAMES) validateRunner(root, name, errors)
   return errors

@@ -162,6 +162,18 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   const refreshed = fs.readFileSync(path.join(workspace, '.claude', 'workflows', 'team.js'), 'utf8')
   assert.match(refreshed, /mejora río arriba/, 'y reinstalar la trae')
 
+  // Un guard que quedó atrás del paquete no falla: deja de proteger en silencio, y hasta acá
+  // `check`, `doctor` y `upgrade` daban verde igual porque sólo miraban el número de versión.
+  const shippedHook = path.join(packaged, 'hooks', 'run-hook.sh')
+  fs.appendFileSync(shippedHook, '\n# guard mejorado río arriba\n')
+  const stalled = cauce(consumer, ['automation', 'check', consumer])
+  assert.notEqual(stalled.status, 0, 'un guard viejo no pasa por bueno')
+  assert.match(stalled.stderr, /run-hook\.sh: quedó atrás del paquete/)
+  assert.notEqual(cauce(consumer, ['automation', 'install', consumer, 'claude']).status, 0,
+    'y no se instala wiring sobre un guard muerto')
+  assert.equal(cauce(consumer, ['upgrade', consumer]).status, 0)
+  assert.equal(cauce(consumer, ['automation', 'check', consumer]).status, 0, 'upgrade lo repone')
+
   // Lo que la empresa escribió en ese mismo archivo, en cambio, detiene la instalación antes de
   // pisarlo. Es del toolkit: se agrega al lado, no se edita.
   fs.appendFileSync(path.join(workspace, '.claude', 'workflows', 'team.js'), '\n// hack propio\n')
