@@ -8,6 +8,14 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.9.2] - 2026-08-15
+
+### Corregido
+
+- Una instancia ya no recibe un `.github/workflows/` vacío. `init` lo copiaba salteando los dos
+  únicos archivos que existen —`ci.yml` valida el toolkit y el ciclo de aprendizaje dejó de
+  distribuirse en 0.4.0—, así que creaba dos directorios y no ponía nada adentro.
+
 ## [0.9.1] - 2026-08-15
 
 ### Corregido

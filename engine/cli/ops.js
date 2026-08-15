@@ -157,13 +157,9 @@ function init(target) {
     '{{PLANNING_DIR}}': 'planning',
     '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
   }, process.argv.includes('--force'), providerNames())
-  // `ci.yml` valida el toolkit con `npm run ci`; una instancia no tiene ese script ni sus pruebas.
-  copyTemplate(path.join(PROJECT_ROOT, '.github', 'workflows'), path.join(root, '.github', 'workflows'), {
-    '{{PROJECT_NAME}}': name,
-    '{{MODE}}': mode,
-    '{{PLANNING_DIR}}': 'planning',
-    '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
-  }, process.argv.includes('--force'), ['ci.yml', 'agent-learning.yml'])
+  // No se copia `.github/`: `ci.yml` valida el toolkit con `npm run ci` —que una instancia no tiene— y
+  // el ciclo de aprendizaje dejó de distribuirse en 0.4.0. Copiar salteando los dos únicos archivos
+  // que existen dejaba `.github/workflows/` vacío en cada instancia.
   const preserve = process.argv.includes('--force')
   copyRuntime(
     path.join(PROJECT_ROOT, 'automatization', 'hooks'),
