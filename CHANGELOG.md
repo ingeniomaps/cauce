@@ -22,6 +22,10 @@ minor aunque no toque una sola línea de código.
 - `cauce agents list` resuelve la precedencia del catálogo y marca cuáles son propios del proyecto.
 - El motor se declara como dependencia npm cuando el repo ya usa npm, y se copia sólo cuando no.
 - Las instancias registran `cauceVersion` en `ops.config.json`.
+- Workflow `/team`: recorre las etapas de un equipo exigiendo cada exit gate y deja una épica
+  candidata en `roadmap/`. Es el espejo de `/autobuild`, que ejecuta trabajo ya aprobado. Nunca
+  promueve al BACKLOG: esa firma sigue siendo humana.
+- `team show --json` expone el manifiesto completo para que un workflow lo ejecute sin parsearlo.
 
 ### Cambiado
 

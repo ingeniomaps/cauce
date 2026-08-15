@@ -53,7 +53,9 @@ idea → INBOX → roadmap → BACKLOG → WIP → DONE → done/epic-NNN.md
 ```
 
 1. Captura ideas, deuda o lecciones en `INBOX.md`.
-2. Especifica el resultado de producto en una épica de `roadmap/`.
+2. Especifica el resultado de producto en una épica de `roadmap/`. El workflow `/team` puede recorrer
+   un equipo —una etapa por dueño de decisión, con su exit gate— y dejar la épica candidata escrita;
+   si falta evidencia o autoridad, para y registra la acción humana en vez de suponer.
 3. Promueve historias listas a un `## Hito` de `BACKLOG.md`.
 4. Un runner toma una sola tarea y persiste su plan en `WIP.md`.
 5. Tras Build, Review, Verify y QA, mueve la entrada a `DONE.md` con evidencia.
@@ -78,7 +80,7 @@ Lee [template/planning/PROTOCOL.md](template/planning/PROTOCOL.md) para el contr
 | `ops evaluate <agent>` | Valida controles, casos y propuestas del agente. |
 | `ops team list` | Lista equipos disponibles. |
 | `ops team check <team>` | Valida manifiesto, agentes, dependencias y gates del equipo. |
-| `ops team show <team>` | Muestra el recorrido y artefactos del equipo. |
+| `ops team show <team>` | Muestra el recorrido y artefactos del equipo; `--json` para consumirlo. |
 | `ops integration list <ops-root>` | Lista proveedores registrados. |
 | `ops integration check <ops-root>` | Valida configuración y staging sin conectarse. |
 | `ops integration sync <ops-root> jira` | Lee Jira y actualiza staging. |
