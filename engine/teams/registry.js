@@ -12,11 +12,16 @@ const OUTCOMES = ['epic', 'report']
 
 // El proyecto manda sobre el sistema: un team propio con el mismo slug reemplaza al de `system/`,
 // que se sigue actualizando debajo sin que nadie tenga que forkearlo.
+function systemTeams(root) {
+  return require('../core/ownership').packageDir(root, 'teams')
+}
+
 function teamFile(root, slug) {
   if (!SLUG.test(slug || '')) throw new Error(`team inválido: ${slug || '(vacío)'}`)
   const own = path.join(root, 'teams', slug, 'team.json')
   if (fs.existsSync(own)) return own
-  return path.join(root, 'teams', 'system', slug, 'team.json')
+  const system = systemTeams(root)
+  return system ? path.join(system, 'system', slug, 'team.json') : own
 }
 
 // Devuelve el motivo real: "no existe" y "ambiguo" piden acciones distintas de quien lo lea.
@@ -93,9 +98,13 @@ function slugsIn(dir) {
 }
 
 // Un slug aparece una sola vez aunque exista en los dos niveles: el del proyecto ya ganó.
+// Los propios de la empresa y los que trae Cauce, sin duplicar un slug que ya ganó el proyecto.
 function list(root) {
-  const teams = path.join(root, 'teams')
-  const slugs = new Set([...slugsIn(teams), ...slugsIn(path.join(teams, 'system'))])
+  const system = systemTeams(root)
+  const slugs = new Set([
+    ...slugsIn(path.join(root, 'teams')),
+    ...(system ? slugsIn(path.join(system, 'system')) : []),
+  ])
   return [...slugs].sort()
 }
 

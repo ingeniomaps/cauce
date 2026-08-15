@@ -30,7 +30,6 @@ const SYSTEM_COLLECTIONS = [
   'planning/adr',
   'planning/business-rules',
   'planning/rules',
-  'teams',
 ]
 
 // Copias del runtime: el proyecto las recibe para poder ejecutar sin red, pero no las escribe.
@@ -39,6 +38,7 @@ const SYSTEM_COLLECTIONS = [
 const RUNTIME_PATHS = [
   '.ops/engine',
   '.ops/agents',
+  '.ops/teams',
   'automatization/hooks',
   'automatization/runners',
   'automatization/workflows',
@@ -55,6 +55,7 @@ const TEMPLATE_PREFIXES = ['planning/', 'organization/', 'integrations/']
 function sourceOf(relative) {
   if (relative === '.ops/engine') return 'engine'
   if (relative === '.ops/agents') return 'agents'
+  if (relative === '.ops/teams') return 'teams'
   if (TEMPLATE_PREFIXES.some((prefix) => relative.startsWith(prefix))) {
     return path.join('template', relative)
   }
@@ -76,6 +77,19 @@ function engineAt(root, relative = '') {
   return engineCandidates(root)
     .map((dir) => (relative ? path.join(dir, relative) : dir))
     .find((candidate) => fs.existsSync(candidate)) || ''
+}
+
+// Definiciones que consume el motor —cargos y equipos— y que por eso viajan con el paquete en vez
+// de copiarse. Se reconocen por contener `system/`, que es el espacio del toolkit y no algo que un
+// proyecto deba crear. Una sola implementación para las dos, o divergen.
+function packageDir(root, name) {
+  const candidates = [
+    path.join(root, 'node_modules', '@ingeniomaps', 'cauce', name),
+    path.join(root, '.ops', name),
+    path.join(root, name),
+  ]
+  return candidates.find((dir) => fs.existsSync(path.join(dir, 'system'))
+    || fs.existsSync(path.join(dir, 'roles', 'system'))) || ''
 }
 
 // Identidad de una entrada dentro de una colección, para detectar que el proyecto sobrescribe
@@ -117,6 +131,7 @@ function overrides(root) {
 // alguna versión suya copió: `upgrade` agrega y reemplaza, pero nunca quitaba nada.
 const RETIRED = [
   'agents/roles/system',
+  'teams/system',
   '.github/workflows/agent-learning.yml',
 ]
 
@@ -161,28 +176,29 @@ function treeFiles(dir, prefix = '') {
   return found.sort()
 }
 
-// Archivos del runtime que el proyecto editó: existen en las dos partes y difieren. Un archivo
-// que sólo existe en la instancia es un agregado propio, no una edición, y sobrevive intacto.
-function localChanges(root, packageRoot) {
+// Rutas que Cauce mantiene y que por eso conviene registrar y vigilar.
+function trackedPaths() {
+  return [...RUNTIME_PATHS, ...SYSTEM_COLLECTIONS.map((collection) => `${collection}/system`)]
+}
+
+// Archivos que la empresa editó después de recibirlos. Se compara contra lo que Cauce entregó,
+// no contra el paquete: si se comparara contra el paquete, cualquier mejora del toolkit se vería
+// idéntica a una edición local y bloquearía la actualización.
+function localChanges(root) {
+  const manifest = require('./manifest')
   const changed = []
-  for (const target of RUNTIME_PATHS) {
-    const from = path.join(packageRoot, sourceOf(target))
-    const to = path.join(root, target)
-    if (!fs.existsSync(to) || !fs.existsSync(from)) continue
-    for (const file of treeFiles(from)) {
-      if (TEMPLATE_OWNED.includes(`${target}/${file}`)) continue
-      const mine = path.join(to, file)
-      if (!fs.existsSync(mine)) continue
-      if (fs.readFileSync(mine, 'utf8') !== fs.readFileSync(path.join(from, file), 'utf8')) {
-        changed.push(`${target}/${file}`)
-      }
-    }
+  for (const target of trackedPaths()) {
+    const dir = path.join(root, target)
+    if (!fs.existsSync(dir)) continue
+    for (const file of manifest.edited(root, target, treeFiles(dir))) changed.push(`${target}/${file}`)
   }
   return changed
 }
 
 module.exports = {
   RETIRED,
+  trackedPaths,
+  packageDir,
   RUNTIME_PATHS,
   retiredWithLearning,
   engineAt,

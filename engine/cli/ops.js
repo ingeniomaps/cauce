@@ -12,6 +12,7 @@ const A = require('../automation')
 const F = require('../core/files')
 const O = require('../core/ownership')
 const CL = require('../core/changelog')
+const M = require('../core/manifest')
 const C = require('../config/validate')
 const T = require('../teams/registry')
 const AG = require('../agents/catalog')
@@ -125,12 +126,6 @@ function init(target) {
     '{{PLANNING_DIR}}': 'planning',
     '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
   }, process.argv.includes('--force'))
-  copyTemplate(path.join(PROJECT_ROOT, 'teams'), path.join(root, 'teams'), {
-    '{{PROJECT_NAME}}': name,
-    '{{MODE}}': mode,
-    '{{PLANNING_DIR}}': 'planning',
-    '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
-  }, process.argv.includes('--force'))
   // `ci.yml` valida el toolkit con `npm run ci`; una instancia no tiene ese script ni sus pruebas.
   copyTemplate(path.join(PROJECT_ROOT, '.github', 'workflows'), path.join(root, '.github', 'workflows'), {
     '{{PROJECT_NAME}}': name,
@@ -172,7 +167,14 @@ function init(target) {
     fs.chmodSync(path.join(engine, 'cli', 'ops.js'), 0o755)
     // Sin npm no hay de dónde leer el catálogo en tiempo de ejecución: viaja junto al motor.
     copyRuntime(path.join(PROJECT_ROOT, 'agents'), path.join(root, '.ops', 'agents'), preserve, root)
+    copyRuntime(path.join(PROJECT_ROOT, 'teams'), path.join(root, '.ops', 'teams'), preserve, root)
   }
+  let entregado = {}
+  for (const relative of O.trackedPaths()) {
+    const dir = path.join(root, relative)
+    if (fs.existsSync(dir)) entregado = { ...entregado, ...M.record(root, relative, O.treeFiles(dir)) }
+  }
+  M.write(root, entregado)
   // La instancia recuerda de qué versión salió: sin esto no hay actualización posible.
   const configFile = path.join(root, 'ops.config.json')
   const config = JSON.parse(fs.readFileSync(configFile, 'utf8'))
@@ -492,7 +494,7 @@ function upgrade(dir) {
   const from = instanceVersion(root)
   const to = require(path.join(PROJECT_ROOT, 'package.json')).version
   const system = O.systemPaths(root)
-  const changed = O.localChanges(root, PROJECT_ROOT)
+  const changed = O.localChanges(root)
   const overrides = O.overrides(root)
 
   if (dry) {
@@ -515,12 +517,25 @@ function upgrade(dir) {
 
   if (changed.length && !force) {
     for (const file of changed) console.error(`✗ ${file}`)
+    const reglas = changed.filter((file) => file.includes('/system/'))
+    const runtime = changed.filter((file) => !file.includes('/system/'))
+    const guia = []
+    if (reglas.length) {
+      guia.push(
+        'Las reglas y decisiones bajo system/ son del toolkit. Para cambiar una, escribí la tuya al\n'
+        + 'lado con el mismo ID: el proyecto manda y `check` lo reporta como override explícito.',
+      )
+    }
+    if (runtime.length) {
+      guia.push(
+        'El runtime es del toolkit: en vez de editarlo, agregá lo tuyo al lado con otro nombre —un\n'
+        + 'guard propio sobrevive a cada actualización— y registralo en la configuración de tu runner,\n'
+        + 'que sí es del proyecto. Para desactivar un guard alcanza con quitarlo de esa configuración.',
+      )
+    }
     fail(
-      `\n${changed.length} archivo(s) del runtime fueron editados y se perderían.\n\n` +
-      'El runtime es del toolkit: en vez de editarlo, agregá lo tuyo al lado con otro nombre —un\n' +
-      'guard propio sobrevive a cada actualización— y registralo en la configuración de tu runner,\n' +
-      'que sí es del proyecto. Para desactivar un guard alcanza con quitarlo de esa configuración.\n' +
-      'Si el cambio ya no te sirve, repetí con --force para descartarlo.',
+      `\n${changed.length} archivo(s) que mantiene Cauce fueron editados y se perderían.\n\n` +
+      `${guia.join('\n\n')}\n\nSi el cambio ya no te sirve, repetí con --force para descartarlo.`,
     )
   }
 
@@ -550,6 +565,15 @@ function upgrade(dir) {
     fs.rmSync(target, { recursive: true, force: true })
     retirado.push(relative)
   }
+
+  // Dejar registrado lo que se entregó, para poder distinguir después una edición local de una
+  // mejora del toolkit.
+  let registro = M.read(root)
+  for (const relative of O.trackedPaths()) {
+    const dir = path.join(root, relative)
+    if (fs.existsSync(dir)) registro = { ...registro, ...M.record(root, relative, O.treeFiles(dir)) }
+  }
+  M.write(root, registro)
 
   const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
   config.cauceVersion = to

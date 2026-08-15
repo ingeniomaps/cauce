@@ -30,12 +30,7 @@ function directories(dir) {
 // Dónde está el catálogo que trae Cauce. Se reconoce por tener `roles/system/`, que es el espacio
 // del sistema y no algo que un proyecto deba crear.
 function systemCatalog(root) {
-  const candidates = [
-    path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'agents'),
-    path.join(root, '.ops', 'agents'),
-    path.join(root, 'agents'),
-  ]
-  return candidates.find((dir) => fs.existsSync(path.join(dir, 'roles', 'system'))) || ''
+  return require('../core/ownership').packageDir(root, 'agents')
 }
 
 function projectCatalog(root) {
