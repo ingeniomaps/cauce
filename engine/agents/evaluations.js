@@ -65,24 +65,25 @@ function latest(root, agent) {
   }
 }
 
-// Coherencia entre lo que hay y lo que se corrió: un resultado que no cubre todos los casos vigentes
-// da una confianza que no tiene, y es peor que no tener ninguno.
+// Coherencia entre lo que hay y lo que se corrió. Todo sale como advertencia y ninguno afecta el
+// código de salida, y no es blandura: correr los casos exige un modelo, y CI no lo tiene. Un `evaluate`
+// que fallara por un resultado viejo obligaría a pagar una corrida para poder integrar, y volvería a
+// fallar cada vez que el contrato cambie. Quien falla fuerte es el recorrido que sí los ejecuta.
 function validate(root, agent) {
-  const errors = []
   const warnings = []
   const total = list(root, agent).length
   const last = latest(root, agent)
   if (!last) {
     warnings.push(`sin resultados de casos: corré el recorrido de evaluación para los ${total} casos`)
-    return { errors, warnings, cases: total, last: null }
+    return { warnings, cases: total, last: null }
   }
   if (last.total !== total) {
-    errors.push(`${path.basename(last.file)} cubre ${last.total} de ${total} caso(s): el resultado no vale`)
+    warnings.push(`${path.basename(last.file)} cubre ${last.total} de ${total} caso(s): el resultado no vale`)
   }
   if (last.passed < last.total) {
-    errors.push(`${last.total - last.passed} caso(s) no pasaron en ${last.date}`)
+    warnings.push(`${last.total - last.passed} caso(s) no pasaron en ${last.date}: volvé a correrlos`)
   }
-  return { errors, warnings, cases: total, last }
+  return { warnings, cases: total, last }
 }
 
 module.exports = { list, latest, parseCase, validate, resultsDir }

@@ -243,8 +243,11 @@ test('un resultado que no cubre todos los casos vigentes no vale', () => {
       + '### 01-x\n\n- Veredicto: pasa\n\n### 02-y\n\n- Veredicto: no pasa\n')
     const parcial = EV.validate(repo, 'qa-engineer')
     assert.equal(parcial.last.total, 2)
-    assert.ok(parcial.errors.some((error) => /cubre 2 de/.test(error)), 'se reporta la cobertura')
-    assert.ok(parcial.errors.some((error) => /no pasaron/.test(error)), 'y el caso que falló')
+    assert.ok(parcial.warnings.some((one) => /cubre 2 de/.test(one)), 'se reporta la cobertura')
+    assert.ok(parcial.warnings.some((one) => /no pasaron/.test(one)), 'y el caso que falló')
+    // Advertencia y no error: correr los casos exige un modelo y CI no lo tiene. Gatear la integración
+    // con un resultado viejo obligaría a pagar una corrida para poder integrar.
+    assert.equal(parcial.errors, undefined)
   } finally {
     fs.rmSync(file, { force: true })
   }

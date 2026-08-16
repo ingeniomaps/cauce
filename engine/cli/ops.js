@@ -838,10 +838,8 @@ function evaluate(agent) {
     const result = L.evaluate(root, agent)
     const runs = EV.validate(root, agent)
     for (const warning of runs.warnings) console.warn(`⚠ ${warning}`)
-    for (const error of [...result.errors, ...runs.errors]) console.error(`✗ ${error}`)
-    if (result.errors.length + runs.errors.length) {
-      fail(`\n${result.errors.length + runs.errors.length} error(es)`, 1)
-    }
+    for (const error of result.errors) console.error(`✗ ${error}`)
+    if (result.errors.length) fail(`\n${result.errors.length} error(es)`, 1)
     const corrida = runs.last ? `${runs.last.passed}/${runs.last.total} pasan (${runs.last.date})` : 'sin correr'
     console.log(
       `✓ ${agent}: ${result.cases} caso(s) — ${corrida}, ${result.proposals} propuesta(s), ` +

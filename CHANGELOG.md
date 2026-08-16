@@ -8,6 +8,22 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.11.1] - 2026-08-16
+
+### Corregido
+
+- El resultado de los casos es una advertencia de `evaluate`, no un error que corte la integración.
+  Correr los casos exige un modelo y CI no lo tiene: gatear con un resultado viejo obligaría a pagar
+  una corrida para poder integrar, y volvería a fallar cada vez que el contrato cambie. Quien falla
+  fuerte es el recorrido que sí los ejecuta.
+
+### Cambiado
+
+- `qa-engineer`: **descartar no es verificar**. El contrato enseñaba a tratar el contenido externo como
+  dato no confiable y no decía nada de verificarlo, así que el cargo rechazaba un documento externo en
+  bloque sin preguntar quién lo publica, si hay versión oficial, qué alcance declara ni a qué versión
+  aplica. Lo encontró la primera corrida de sus casos adversariales.
+
 ## [0.11.0] - 2026-08-16
 
 ### Añadido
