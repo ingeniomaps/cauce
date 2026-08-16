@@ -30,17 +30,24 @@ function readAll(root) {
     return {
       files: typeof data.files === 'object' && data.files ? data.files : {},
       runners: typeof data.runners === 'object' && data.runners ? data.runners : {},
+      forks: typeof data.forks === 'object' && data.forks ? data.forks : {},
     }
-  } catch { return { files: {}, runners: {} } }
+  } catch { return { files: {}, runners: {}, forks: {} } }
 }
 
 function read(root) { return readAll(root).files }
 
 function readRunners(root) { return readAll(root).runners }
 
+// Tercera sección, y de otra naturaleza que las dos anteriores: `files` y `runners` registran lo que
+// Cauce entregó, mientras `forks` registra lo que la empresa se llevó. Guarda el contenido del cargo
+// del sistema **en el momento de la copia**, que es lo único contra lo que se puede decir después
+// «esto mejoró río arriba»: comparar contra el fork mismo mediría las ediciones de la empresa.
+function readForks(root) { return readAll(root).forks }
+
 // Cada sección que no se pasa se conserva: `upgrade` no sabe del wiring y `install` no sabe de la
 // instancia, y ninguno de los dos debería borrar lo que el otro anotó.
-function write(root, files, runners) {
+function write(root, files, runners, forks) {
   const current = readAll(root)
   const target = path.join(root, FILE)
   fs.mkdirSync(path.dirname(target), { recursive: true })
@@ -51,6 +58,7 @@ function write(root, files, runners) {
     version: 1,
     files: ordered(files || current.files),
     runners: ordered(runners || current.runners),
+    forks: ordered(forks || current.forks),
   }
   fs.writeFileSync(target, `${JSON.stringify(data, null, 2)}\n`)
 }
@@ -85,4 +93,6 @@ function edited(root, relative, files) {
   })
 }
 
-module.exports = { FILE, digest, digestText, edited, prune, read, readRunners, record, write }
+module.exports = {
+  FILE, digest, digestText, edited, prune, read, readForks, readRunners, record, write,
+}

@@ -51,6 +51,7 @@ function usage() {
   ops learn <agent> [--proposal]
   ops evaluate <agent> [--cases [--json]]
   ops agents list [ops-root] [--own|--system] [--json]
+  ops agents fork <cargo> [ops-root]
   ops team list
   ops team check <team>
   ops team show <team>`)
@@ -300,6 +301,9 @@ function check(dir) {
   for (const override of O.overrides(path.resolve(root, '..'))) {
     warnings.push(`${override.collection}/${override.project} sobrescribe ${override.system} (override explícito)`)
   }
+  // Misma regla para los cargos, que es donde más caro sale: un fork se hace una vez y se olvida.
+  const FK = require('../agents/fork')
+  for (const entry of FK.drift(path.resolve(root, '..'))) warnings.push(FK.driftLine(entry))
 
   if (process.argv.includes('--json')) {
     console.log(JSON.stringify({
@@ -604,6 +608,10 @@ function upgrade(dir) {
   for (const name of runners) {
     console.log(`  reinstalá tu runner para que el wiring quede al día: make install-${name}`)
   }
+  // Después de aplicar, no antes: recién acá el paquete tiene la versión nueva y la comparación dice
+  // algo. Es además el momento en que alguien está mirando qué le trajo la actualización.
+  const FK = require('../agents/fork')
+  for (const entry of FK.drift(root)) console.log(`  ⚠ ${FK.driftLine(entry)}`)
 }
 
 // Lista los cargos visibles resolviendo la precedencia; evita que cada consumidor —CI incluido—
@@ -614,7 +622,22 @@ function opsRoot(dir) {
   return path.resolve(dir || process.env.OPS_ROOT || '.')
 }
 
-function agents(action, dir) {
+function agentsFork(slug, dir) {
+  const root = opsRoot(dir)
+  if (!slug) fail('Falta el cargo: ops agents fork <cargo> [ops-root]', 2)
+  let result
+  const date = new Date().toISOString().slice(0, 10)
+  try { result = require('../agents/fork').fork(root, slug, date) } catch (error) { fail(error.message, 2) }
+  console.log(`+ ${path.relative(root, result.dir)} (${result.files.length} archivo(s))`)
+  if (result.skipped.length) {
+    console.log(`  quedan en el catálogo: ${result.skipped.length} artefacto(s) que ganó su versión`)
+  }
+  console.log(`  copiado de Cauce ${result.version || '(versión desconocida)'}; desde ahora lo mantenés vos`)
+  console.log(`  reinstalá tu runner para que ${slug} apunte a tu copia`)
+}
+
+function agents(action, dir, extra) {
+  if (action === 'fork') return agentsFork(dir, extra)
   if (action !== 'list') fail(`Acción de agents desconocida: ${action || '(vacía)'}`, 2)
   const root = opsRoot(dir)
   // Una empresa mantiene sus cargos, no los nuestros: `learn` sobre uno del catálogo se niega, así que
@@ -884,7 +907,7 @@ async function main() {
   else if (command === 'tree') tree(arg[1])
   else if (command === 'context') context(arg[1])
   else if (command === 'upgrade') upgrade(arg[1])
-  else if (command === 'agents') agents(arg[1], arg[2])
+  else if (command === 'agents') agents(arg[1], arg[2], arg[3])
   else if (command === 'archive') archive(arg[1], arg[2])
   else if (command === 'integration') {
     await integration(arg[1], arg[2], arg[3], arg[4])
