@@ -94,7 +94,9 @@ const veredictos = await pipeline(
   // Responde el cargo. Recibe su contrato y el pedido; nunca los comportamientos esperados.
   (item) => agent(
     `Actuá como el cargo ${AGENT}, respetando el contrato de ${contexto.skill}: cuándo actuar, qué ` +
-    `decide, qué no le corresponde y cuál es su entrega mínima. No leas ningún archivo bajo ` +
+    `decide, qué no le corresponde y cuál es su entrega mínima. Leé también ${ROOT}/AGENTS.md: son las ` +
+    `reglas que todo cargo obedece, y un cargo corre siempre con las dos cosas —medirlo sólo contra su ` +
+    `SKILL.md lo evaluaba en una situación que nunca ocurre—. No leas ningún archivo bajo ` +
     `evaluations/: no te corresponde y contaminaría la respuesta.\n\n` +
     `Te llega este pedido. Respondelo como lo responderías de verdad —incluido negarte, si eso es lo ` +
     `que corresponde—. Sé completo: no hay límite de extensión.\n\n${item.request}`,

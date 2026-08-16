@@ -264,3 +264,12 @@ test('un bloqueo conserva lo que las etapas anteriores ya resolvieron', () => {
   assert.match(team, /ya quedó establecido/, 'y llega al prompt que escribe la acción humana')
   assert.match(team, /es el trabajo que ya se pagó/)
 })
+
+// Un cargo nunca corre sólo con su SKILL.md: `AGENTS.md` lleva las reglas que todos obedecen, y el
+// puntero que instala cada runner se lo dice. Medirlo sin ellas lo evaluaba en una situación que no
+// ocurre — y ahí se perdía la regla general que corrige el patrón «se niega bien y no entrega».
+test('la evaluación mide al cargo como corre, no aislado', () => {
+  const evalWf = fs.readFileSync(path.join(WF, 'agent-eval.js'), 'utf8')
+  assert.match(evalWf, /AGENTS\.md/, 'la respuesta se da con las reglas generales a la vista')
+  assert.match(evalWf, /nunca ocurre/, 'y queda dicho por qué')
+})
