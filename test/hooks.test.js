@@ -91,6 +91,25 @@ test('guard-workspace-boundary limita escrituras a las raíces declaradas', () =
   blocked('workspace-boundary', { cwd: root, tool_input: { file_path: '../outside.txt' } })
 })
 
+test('guard-engine protege el motor instalado y deja trabajar al toolkit', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-engine-'))
+  const pkg = path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine')
+  fs.mkdirSync(pkg, { recursive: true })
+  fs.mkdirSync(path.join(root, 'agents'))
+  fs.mkdirSync(path.join(root, 'planning'))
+
+  // En una empresa el motor es de sólo lectura: llega por npm y se arregla arriba.
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
+  blocked('engine', { cwd: root, tool_input: { file_path: 'node_modules/@ingeniomaps/cauce/engine/cli/ops.js' } })
+  // Lo que sí es suyo sigue abierto: el guard no puede volverse un candado general.
+  assert.doesNotThrow(() => execute('engine', { cwd: root, tool_input: { file_path: 'agents/roles/mio.md' } }))
+
+  // En el toolkit el motor es el producto: acá editarlo es el trabajo, no una infracción.
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'toolkit' }))
+  const own = { file_path: 'node_modules/@ingeniomaps/cauce/engine/cli/ops.js' }
+  assert.doesNotThrow(() => execute('engine', { cwd: root, tool_input: own }))
+})
+
 test('guard-migrations protege historial y SQL destructivo', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-migrations-'))
   fs.mkdirSync(path.join(root, 'migrations'))

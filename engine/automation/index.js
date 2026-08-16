@@ -245,6 +245,7 @@ function check(root) {
     'guard-secrets.sh',
     'guard-generated.sh',
     'guard-workspace-boundary.sh',
+    'guard-engine.sh',
     'guard-migrations.sh',
     'guard-dependencies.sh',
     'guard-governance.sh',

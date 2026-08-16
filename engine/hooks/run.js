@@ -324,16 +324,44 @@ function planningDrift(input) {
   block(`Planning o integraciones quedaron desalineados:\n${result.output}`)
 }
 
+// El motor llega por npm y se actualiza por npm. `workspace-boundary` no lo cubre: en una instalación
+// `node_modules/` cae dentro de la raíz declarada, así que editar el motor le parece legítimo.
+//
+// Editarlo desde la empresa rompe dos veces. El próximo `npm install` borra el cambio sin avisar, así
+// que el arreglo se pierde justo cuando alguien creyó haberlo hecho; y hasta entonces la empresa corre
+// un motor que no coincide con la versión que declara, que es la clase de diferencia que aparece como
+// un bug irreproducible. Un problema del motor se reporta y se arregla arriba, no acá.
+//
+// El toolkit se exceptúa, y esa distinción ya estaba escrita: en su `ops.config.json` el modo es
+// `toolkit`. Ahí el motor es el producto y editarlo es exactamente el trabajo.
+function engineWrites(input) {
+  const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
+  if (!root) return
+  let config
+  try { config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')) } catch { return }
+  if (config.mode === 'toolkit') return
+  const pkg = path.join(root, 'node_modules', '@ingeniomaps', 'cauce')
+  for (const raw of filesOf(input)) {
+    const file = path.resolve(cwdOf(input), raw)
+    if (file !== pkg && !file.startsWith(`${pkg}${path.sep}`)) continue
+    block(`${raw} pertenece al motor de Cauce, que se actualiza con npm.\n` +
+      'Un cambio acá lo borra el próximo install y mientras tanto corrés un motor que no coincide ' +
+      'con la versión que declarás. Actualizá con "npm update @ingeniomaps/cauce" y reportá el ' +
+      'problema arriba; lo que sí es tuyo son tus cargos, equipos e integraciones.')
+  }
+}
+
 const guards = {
   destructive, 'git-add': gitAdd, secrets, generated, 'workspace-boundary': workspaceBoundary,
   migrations, dependencies, governance, verify, 'planning-drift': planningDrift,
-  'integration-snapshot': integrationSnapshot,
+  'integration-snapshot': integrationSnapshot, engine: engineWrites,
 }
 
 // Grupos por evento: un runner corre el grupo entero en un solo proceso en lugar de un guard por hook.
 const hookGroups = {
   'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'verify'],
-  'pre-files': ['secrets', 'generated', 'workspace-boundary', 'migrations', 'integration-snapshot'],
+  'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
+    'integration-snapshot'],
   stop: ['planning-drift'],
 }
 
@@ -358,6 +386,11 @@ const hookMetadata = [
   { name: 'secrets', event: 'PreToolUse · files', purpose: 'Bloquea escritura de secretos y credenciales.' },
   { name: 'generated', event: 'PreToolUse · files', purpose: 'Impide editar código generado manualmente.' },
   { name: 'workspace-boundary', event: 'PreToolUse · files', purpose: 'Limita escrituras a las raíces declaradas.' },
+  {
+    name: 'engine',
+    event: 'PreToolUse · files',
+    purpose: 'Impide editar el motor instalado: se actualiza con npm.',
+  },
   { name: 'migrations', event: 'PreToolUse · files', purpose: 'Protege migraciones existentes y SQL destructivo.' },
   {
     name: 'integration-snapshot',

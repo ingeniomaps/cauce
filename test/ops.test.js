@@ -40,7 +40,8 @@ test('automation list-hooks explica los guards disponibles', () => {
   assert.ok(hookMetadata.some((hook) => hook.name === 'workspace-boundary'))
   assert.ok(hookMetadata.some((hook) => hook.name === 'migrations'))
   assert.ok(hookMetadata.some((hook) => hook.name === 'planning-drift'))
-  assert.equal(hookMetadata.length, 11)
+  assert.ok(hookMetadata.some((hook) => hook.name === 'engine'))
+  assert.equal(hookMetadata.length, 12)
 })
 
 test('init produce una instancia autocontenida y no sobrescribe', () => {
