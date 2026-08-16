@@ -8,6 +8,25 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.14.0] - 2026-08-16
+
+### Cambiado
+
+- **`learning/CODEX_AUTOMATION.md` pasa a llamarse `learning/AUTOMATION.md`.** El nombre venía de
+  cuando Codex era el runner asumido; hoy son cuatro, el prompt es agnóstico y el cron semanal lo
+  ejecuta con Claude. Un archivo que dice a qué agente pertenece un ciclo que no pertenece a ninguno
+  invita a atarlo a ese agente. Ninguna instancia lo arrastra: los cargos del sistema viven en el
+  paquete y uno propio nunca lo tuvo obligatorio.
+
+### Añadido
+
+- `ops agents list --own` y `--system`. Una empresa mantiene sus cargos, no los del catálogo: sin
+  poder acotar la lista, su ciclo tendría que recorrer 48 para encontrar el suyo y chocar 47 veces
+  con la negativa de `learn`.
+- `AGENTS.md` de una instancia explica el ciclo de sus propios cargos: por comando, sin cron
+  —activarlo en su repositorio es decisión suya— y con `learning/AUTOMATION.md` propio si su profesión
+  no existe fuera de la empresa.
+
 ## [0.13.0] - 2026-08-16
 
 ### Añadido
