@@ -129,6 +129,51 @@ test('guard-engine indica un camino de actualización que funciona', () => {
   assert.ok(!message.includes('npm update'), 'npm update no mueve un pin exacto')
 })
 
+// `agent-promote` se niega si «Aprobación humana» no está firmada, pero lo único que impedía que la
+// escribiera un agente era una frase en un prompt. Alrededor de la firma van las otras piezas del
+// mismo acto: el contrato que la propuesta cambia y el denominador con que se lo juzga.
+test('guard-governance protege el contrato de un cargo, su medición y su firma', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-gov-'))
+  git(['init'], root)
+  git(['config', 'user.email', 'x@y.z'], root)
+  git(['config', 'user.name', 'x'], root)
+  const write = (relative) => {
+    const file = path.join(root, relative)
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, 'contenido\n')
+    git(['add', relative], root)
+    return relative
+  }
+  const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
+
+  for (const gobernado of [
+    'agents/roles/system/qa-engineer/learning/proposals/2026-08.md',
+    'agents/roles/curador/learning/proposals/2026-08.md',
+    'agents/roles/system/qa-engineer/SKILL.md',
+    'agents/roles/system/qa-engineer/evaluations/cases/01-caso.md',
+    'agents/roles/system/qa-engineer/evaluations/expected-behaviors.yaml',
+    'agents/roles/system/qa-engineer/references/operating-model.md',
+  ]) {
+    write(gobernado)
+    blocked('governance', commit)
+    git(['reset'], root)
+  }
+
+  // Las dos clases de evidencia quedan libres: registran lo que pasó un día en vez de decidir algo, y
+  // un veredicto se escribe en cada corrida —gobernarlo pediría un override por evaluación—.
+  write('agents/roles/system/qa-engineer/learning/reports/2026-08-16.md')
+  write('agents/roles/system/qa-engineer/evaluations/results/2026-08-16.md')
+  write('agents/roles/system/qa-engineer/learning/HISTORY.md')
+  assert.doesNotThrow(() => execute('governance', commit))
+
+  // Y el override sigue siendo la única salida, explícita.
+  write('agents/roles/system/qa-engineer/SKILL.md')
+  process.env.OPS_GOVERNANCE_OVERRIDE = '1'
+  try { assert.doesNotThrow(() => execute('governance', commit)) } finally {
+    delete process.env.OPS_GOVERNANCE_OVERRIDE
+  }
+})
+
 test('guard-migrations protege historial y SQL destructivo', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-migrations-'))
   fs.mkdirSync(path.join(root, 'migrations'))

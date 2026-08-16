@@ -219,9 +219,27 @@ function governance(input) {
   const command = commandOf(input)
   if (!isCommit(command)) return
   const dir = gitDirectory(command, cwdOf(input))
+  // El contrato de un cargo y lo que lo mide son gobernanza, igual que un ADR o una regla.
+  //
+  // Lo puntual es la firma: `agent-promote` se niega si «Aprobación humana» no está firmada, pero lo
+  // único que impedía que la escribiera un agente era una frase en un prompt. Una instrucción, no un
+  // candado — y el archivo no estaba protegido por nada.
+  //
+  // Alrededor de la firma van las otras tres piezas del mismo acto. `SKILL.md` y `references/` son lo
+  // que la propuesta cambia: sin ellos, editar el contrato directo saltea el ciclo entero. Y
+  // `evaluations/` es el denominador con que se juzga —el propio recorrido de propuesta dice que
+  // cambiarlo «es parte de lo que se aprueba»—, así que moverlo en silencio ablanda toda medición
+  // pasada sin tocar una sola regla.
+  //
+  // Quedan afuera las dos clases de evidencia, y por la misma razón: registran lo que pasó un día en
+  // vez de decidir algo. `learning/reports/` es lo investigado esa semana, y `evaluations/results/` la
+  // transcripción de una corrida —que se escribe en cada evaluación, así que gobernarla pediría un
+  // override por corrida—. Por eso `evaluations/` se nombra por partes en vez de entero.
   const governedPattern = new RegExp(
     String.raw`^(?:(?:template\/)?planning\/(?:rules\/|adr\/|PROTOCOL\.md|` +
-      String.raw`METHODOLOGY\.md|FLOW\.md)|automatization\/|engine\/)`,
+      String.raw`METHODOLOGY\.md|FLOW\.md)|automatization\/|engine\/` +
+      String.raw`|agents\/[a-z0-9-]+\/(?:system\/)?[a-z0-9-]+\/(?:SKILL\.md|references\/` +
+      String.raw`|evaluations\/(?:cases\/|expected-behaviors\.yaml)|learning\/proposals\/))`,
   )
   const governed = stagedFiles(dir).filter((file) => governedPattern.test(file))
   if (governed.length) {
