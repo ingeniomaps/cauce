@@ -8,6 +8,20 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.15.1] - 2026-08-16
+
+### Corregido
+
+- **El recorrido de evaluación debe correrse sobre una instancia, no sobre el toolkit**, y ahora lo dice
+  con su razón. Un cargo cuyo trabajo es producir artefactos de planning necesita un `planning/` donde
+  escribir sea legítimo; dentro del repositorio del toolkit ese directorio es `template/planning`, que se
+  distribuye a cada instalación. El cargo se niega —con razón— y el caso lo contaba como fallo.
+
+  La correlación es exacta: `product-manager` falla los **dos** casos que piden escribir en `planning/` y
+  ninguno de los otros tres; `security-engineer` y `legal-counsel`, con cero casos de ese tipo, dan 6/6
+  en las dos corridas. Es el tercer hueco de fidelidad del arnés, y el que más engaña: hace parecer roto
+  a un cargo que está acertando.
+
 ## [0.15.0] - 2026-08-16
 
 ### Cambiado
