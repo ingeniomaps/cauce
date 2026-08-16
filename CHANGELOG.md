@@ -8,6 +8,26 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.10.0] - 2026-08-15
+
+### Cambiado
+
+- **El motor llega siempre como dependencia. Se retiró el modo copia.** `--engine copy|dependency` ya
+  no existe: `init` declara `@ingeniomaps/cauce` en el `package.json` del repo ops, creándolo si hace
+  falta.
+
+  La copia en `.ops/` existía para no exigirle npm a un repo de Go, Python o Rust. Dejó de tener
+  sentido cuando el repo ops pasó a ser un **sidecar**, hermano de los repos de producto: declarar npm
+  ahí no le impone un stack a ninguno. Y Node hace falta igual —el motor, los guards y los workflows
+  son JavaScript—, así que la copia sólo ahorraba un `package.json` de seis líneas a cambio de 5 MB y
+  763 archivos en la historia de la empresa, y de no tener cómo enterarse de que salió una versión
+  nueva: sin npm no hay `npm outdated`.
+- Los tres resolutores en cascada —`tools/ops.js`, `run-hook.sh` y el motor— pasan de tres caminos a
+  dos. Menos superficie donde esconder un caso raro.
+- Una instancia que arrastra `.ops/` **no se toca**: `upgrade` avisa que Cauce ya no lo distribuye y
+  dice qué correr. Borrarlo por su cuenta la dejaría sin motor.
+- El `$schema` de `ops.config.json` ya no depende del modo.
+
 ## [0.9.2] - 2026-08-15
 
 ### Corregido
