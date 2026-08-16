@@ -2,7 +2,6 @@
   "$schema": "node_modules/@ingeniomaps/cauce/engine/schemas/ops-config.schema.json",
   "project": "{{PROJECT_NAME}}",
   "mode": "{{MODE}}",
-  "planningDir": "{{PLANNING_DIR}}",
   "workspaceRoots": [
     { "name": "main", "path": "{{WORKSPACE_PATH}}" }
   ],

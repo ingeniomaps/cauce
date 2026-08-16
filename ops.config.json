@@ -2,7 +2,6 @@
   "$schema": "./engine/schemas/ops-config.schema.json",
   "project": "Ops toolkit",
   "mode": "toolkit",
-  "planningDir": "template/planning",
   "workspaceRoots": [
     { "name": "toolkit", "path": "." }
   ],

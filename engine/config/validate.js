@@ -2,6 +2,20 @@
 
 const MODES = ['embedded', 'sidecar', 'toolkit']
 
+// Campos que existieron y se retiraron. Se nombran en vez de caer en «propiedad desconocida» porque
+// quien actualiza merece saber qué hacer con la línea, no sólo que sobra.
+//
+// `planningDir` era obligatorio y nadie lo honraba: el renderizador de la plantilla lo resolvía
+// siempre a `planning`, y `findOpsRoot` y el registro de integraciones lo tienen escrito a mano. Un
+// campo así no configura, promete. En el propio toolkit decía `template/planning` —el molde que se
+// distribuye—, y un cargo que lo leyó concluyó que ahí vivía la planificación del proyecto.
+//
+// Se retira en vez de honrarse porque la ubicación no es opinable: `findOpsRoot` reconoce un
+// repositorio de operaciones justamente por tener `planning/` en la raíz.
+const RETIRED = {
+  planningDir: 'el motor siempre busca planning/ en la raíz del repositorio. Borrá la línea',
+}
+
 function validateOpsConfig(config) {
   const errors = []
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
@@ -9,18 +23,16 @@ function validateOpsConfig(config) {
   }
   // `cauceVersion` la escribe el toolkit, no la persona: registra de qué versión salió la instancia.
   const allowed = new Set([
-    '$schema', 'cauceVersion', 'project', 'mode', 'planningDir', 'workspaceRoots', 'runner',
+    '$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoots', 'runner',
   ])
   for (const key of Object.keys(config)) {
-    if (!allowed.has(key)) errors.push(`ops.config.json: propiedad desconocida ${key}`)
+    if (RETIRED[key]) errors.push(`ops.config.json: ${key} ya no se usa: ${RETIRED[key]}`)
+    else if (!allowed.has(key)) errors.push(`ops.config.json: propiedad desconocida ${key}`)
   }
   if (typeof config.project !== 'string' || !config.project.trim()) {
     errors.push('ops.config.json: project debe ser un string no vacío')
   }
   if (!MODES.includes(config.mode)) errors.push('ops.config.json: mode inválido')
-  if (typeof config.planningDir !== 'string' || !config.planningDir.trim()) {
-    errors.push('ops.config.json: planningDir debe ser un string no vacío')
-  }
   validateWorkspaces(config.workspaceRoots, errors)
   validateRunner(config.runner, errors)
   return errors

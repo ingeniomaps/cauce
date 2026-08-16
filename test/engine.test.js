@@ -19,7 +19,6 @@ function validConfig() {
     $schema: '.ops/engine/schemas/ops-config.schema.json',
     project: 'Demo',
     mode: 'embedded',
-    planningDir: 'planning',
     workspaceRoots: [{ name: 'main', path: '.' }],
     runner: {
       maxTaskHours: 4,
@@ -100,6 +99,20 @@ test('valida el contrato completo de ops.config.json', () => {
   const errors = validateOpsConfig(invalid)
   assert.ok(errors.some((error) => error.includes('propiedad desconocida extra')))
   assert.ok(errors.some((error) => error.includes('allowPush debe ser boolean')))
+})
+
+// Toda instancia creada antes de 0.16 lleva `planningDir`, y el campo nunca hizo nada. Al actualizar
+// tiene que llegar la instrucción —«borrá la línea»— y no un «propiedad desconocida» que deja a la
+// persona averiguando si perdió una función.
+test('un campo retirado se nombra en vez de caer en propiedad desconocida', () => {
+  const viejo = validConfig()
+  viejo.planningDir = 'planning'
+  const errors = validateOpsConfig(viejo)
+  assert.equal(errors.length, 1, 'un solo error, no dos por la misma línea')
+  assert.match(errors[0], /planningDir ya no se usa/)
+  assert.match(errors[0], /planning\/ en la raíz/, 'dice dónde busca el motor de verdad')
+  assert.match(errors[0], /Borrá la línea/, 'y qué hacer con ella')
+  assert.ok(!errors[0].includes('propiedad desconocida'))
 })
 
 test('las rutas de proveedores no pueden escapar de integrations', () => {

@@ -155,7 +155,6 @@ function init(target) {
   copyTemplate(path.join(PROJECT_ROOT, 'template'), root, {
     '{{PROJECT_NAME}}': name,
     '{{MODE}}': mode,
-    '{{PLANNING_DIR}}': 'planning',
     '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
   }, process.argv.includes('--force'), providerNames())
   // No se copia `.github/`: `ci.yml` valida el toolkit con `npm run ci` —que una instancia no tiene— y
