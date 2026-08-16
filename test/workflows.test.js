@@ -277,8 +277,13 @@ test('la evaluación mide al cargo como corre, no aislado', () => {
 // El arnés medía a los cargos dentro del toolkit, donde `planning/` es `template/planning` y se
 // distribuye a cada instalación. Un cargo que se niega a escribir ahí acierta, y el caso lo contaba
 // como fallo: `product-manager` fallaba exactamente los dos casos que piden escribir, y ninguno más.
-test('la evaluación declara que debe correrse sobre una instancia', () => {
+//
+// Primero se documentó en un comentario, y no alcanzó —un comentario no impide nada—. Lo que se fija
+// acá es el chequeo: el recorrido lee `mode` y se detiene solo.
+test('la evaluación se niega a correr dentro del toolkit', () => {
   const evalWf = fs.readFileSync(path.join(WF, 'agent-eval.js'), 'utf8')
-  assert.match(evalWf, /sobre una instancia, no sobre el toolkit/)
-  assert.match(evalWf, /template\/planning/, 'con la razón concreta, no una recomendación suelta')
+  assert.match(evalWf, /ops\.config\.json.*mode/s, 'lee el modo del proyecto')
+  assert.match(evalWf, /mode === 'toolkit'/, 'y corta sin gastar agentes')
+  assert.match(evalWf, /en-el-toolkit/, 'con un motivo nombrado, no un fallo genérico')
+  assert.match(evalWf, /template\/planning|plantilla que\n.*se distribuye/s, 'y la razón concreta')
 })

@@ -13,8 +13,9 @@
 // niega, con razón, y su caso lo cuenta como fallo. Medido así, `product-manager` falla exactamente los
 // dos casos que piden escribir, y ninguno de los otros tres.
 //
-// Corré este recorrido sobre una instancia, no sobre el toolkit. Evaluar los cargos que Cauce
-// distribuye exige crear una instancia de trabajo para eso.
+// Por eso el recorrido se niega cuando `mode` es `toolkit`. Dejarlo escrito en este comentario no
+// alcanzaba: un comentario no impide nada, y la primera vez que pasó fue justamente porque estaba
+// documentado y nadie lo leyó a tiempo. Evaluar los cargos que Cauce distribuye exige una instancia.
 //
 // La respuesta no lleva tope de extensión, y eso se probó: con un tope de doce líneas, dos casos que
 // pasan fallaban. Un comportamiento esperado puede exigir seis elementos —«versión, entorno, datos,
@@ -50,6 +51,7 @@ const CASES = {
       },
     } },
     skill: { type: 'string' },
+    mode: { type: 'string' },
   },
 }
 
@@ -89,11 +91,18 @@ const contexto = await agent(
   `1. "node tools/ops.js evaluate ${AGENT} --cases --json" — the cases, verbatim.\n` +
   `2. "node tools/ops.js agents list --json" — set skill to "${ROOT}/<path>/SKILL.md" using the path it ` +
   `printed for ${AGENT}. That command prints paths relative to ${ROOT} and the next agents run from ` +
-  `elsewhere, so the prefix is not optional.`,
+  `elsewhere, so the prefix is not optional.\n` +
+  `Then read ${ROOT}/ops.config.json and set mode to its "mode" field, verbatim.`,
   { schema: CASES, label: 'cases' },
 )
 if (!contexto || !contexto.items || !contexto.items.length) {
   return stop('sin-casos', `${AGENT} no tiene casos, o no se pudieron leer`)
+}
+if (contexto.mode === 'toolkit') {
+  return stop('en-el-toolkit',
+    'este recorrido mide cargos trabajando, y acá no pueden: `planningDir` apunta a la plantilla que ' +
+    'se distribuye, así que un cargo que deba escribir en planning se niega —con razón— y su caso lo ' +
+    'cuenta como fallo. Medido así el resultado no dice nada del cargo. Corrélo desde una instancia.')
 }
 log(`${contexto.items.length} caso(s) de ${AGENT}`)
 
