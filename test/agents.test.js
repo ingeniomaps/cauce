@@ -341,6 +341,22 @@ test('el fork trae el cargo entero y deja atrás lo que ganó nuestra versión',
 
 // En el toolkit el fork creaba un duplicado en `agents/roles/` que tapaba al original: el trabajo
 // siguiente se hacía sobre la copia mientras la versión que se publica quedaba quieta.
+// Lo encontró la corrida de validación, no un test: el `AUTOMATION.md` del catálogo dice «mantené
+// agents/<tipo>/system/<slug>», y en una empresa ese directorio es el paquete. Copiado tal cual, el
+// aprendizaje del cargo adoptado apuntaba a un lugar que el guard bloquea y que npm borra.
+test('el fork reescribe las rutas del catálogo por las de la empresa', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-fork-paths-'))
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
+  fakePackage(root, 'demo-role', {
+    'learning/AUTOMATION.md': 'Mantené agents/roles/system/demo-role leyendo su SKILL.md.\n',
+  })
+  const result = require('../engine/agents/fork').fork(root, 'demo-role', '2026-08-16')
+  const automation = fs.readFileSync(path.join(result.dir, 'learning', 'AUTOMATION.md'), 'utf8')
+  assert.match(automation, /agents\/roles\/demo-role/, 'apunta a la copia de la empresa')
+  assert.equal(/agents\/roles\/system\/demo-role/.test(automation), false, 'y ya no al paquete')
+})
+
 test('en el toolkit no se forkea: el catálogo se edita acá', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-fork-toolkit-'))
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })

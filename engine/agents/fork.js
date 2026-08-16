@@ -30,6 +30,8 @@ function inherited(relative) {
   return true
 }
 
+const TEXT = /\.(md|ya?ml|json|txt)$/i
+
 function tree(dir, prefix = '') {
   const found = []
   let list = []
@@ -87,13 +89,20 @@ function fork(root, slug, date) {
 
   // El digest sale del origen, no de la copia. Es lo que el catálogo tenía al momento del fork, y es
   // contra eso que después se responde «esto mejoró río arriba»; medirlo sobre la copia lo ataría a
-  // cualquier cosa que le hagamos acá —empezando por la fila de historial que se escribe abajo—.
+  // cualquier cosa que le hagamos acá —la reescritura de rutas incluida—.
+  //
+  // Y esa reescritura no es cosmética: el `AUTOMATION.md` del catálogo dice «mantené
+  // `agents/<tipo>/system/<slug>`», que en una empresa es el paquete. Copiado tal cual, el aprendizaje
+  // del fork apuntaría a un directorio que el guard bloquea y que npm borra en el próximo install.
+  const desde = `agents/${type}/system/${slug}`
+  const hacia = `agents/${type}/${slug}`
   const digests = {}
   for (const relative of files) {
     const from = path.join(found.dir, relative)
     const to = path.join(target, relative)
     fs.mkdirSync(path.dirname(to), { recursive: true })
-    fs.copyFileSync(from, to)
+    if (TEXT.test(relative)) fs.writeFileSync(to, fs.readFileSync(from, 'utf8').split(desde).join(hacia))
+    else fs.copyFileSync(from, to)
     digests[relative] = manifest.digest(from)
   }
 

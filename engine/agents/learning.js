@@ -32,7 +32,7 @@ function assertWritable(root, agent) {
   throw new Error(
     `${agent} es un cargo que trae Cauce y su aprendizaje se hace en el toolkit, no acá.\n` +
     `  Lo que este cargo debe saber de esta empresa va en organization/roles/${agent}.md.\n` +
-    `  Para tener una versión propia del cargo, escribila en agents/roles/${agent}/.`,
+    `  Para tener una versión propia del cargo, adoptalo: ops agents fork ${agent}.`,
   )
 }
 
