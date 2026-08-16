@@ -74,6 +74,7 @@ Lee [template/planning/PROTOCOL.md](template/planning/PROTOCOL.md) para el contr
 | `ops tree <planning>` | Muestra roadmap, backlog, WIP, inbox y done sin mutar nada. |
 | `ops context <planning>` | Emite el contexto mínimo de la tarea vigente para un runner. |
 | `ops agents list <ops-root>` | Lista los cargos visibles resolviendo la precedencia. |
+| `ops agents fork <cargo>` | Copia un cargo del catálogo a la empresa, que pasa a mantenerlo. |
 | `ops upgrade <ops-root>` | Actualiza `system/` y el runtime sin tocar lo del proyecto. |
 | `ops archive <planning> <NNN>` | Archiva el DONE de una épica cerrada de forma idempotente. |
 | `ops learn <agent>` | Prepara el informe semanal que completa la automatización de Codex. |
@@ -182,6 +183,25 @@ todas las empresas: investigarla una vez y bien es mejor que repetirla en cada i
 
 Por eso `learn` falla si lo corrés sobre un cargo del catálogo dentro de una instancia: escribiría en
 el paquete y se perdería. El ciclo mensual de aprendizaje tampoco se distribuye — vive sólo acá.
+
+#### Quedarse con una versión propia de un cargo del catálogo
+
+```bash
+npm run ops -- agents fork product-manager
+```
+
+Copia el cargo entero a `agents/roles/<slug>/` y desde ahí lo mantenés vos: `learn`, `evaluate` y el
+puntero que instala el runner pasan a resolver contra tu copia. **Copiarlo a mano no es equivalente**
+—se agarra el `SKILL.md`, que es lo que se ve, y quedan atrás los casos, las fuentes y el modelo
+operativo: el cargo responde igual y ya no se puede evaluar—.
+
+Lo que no viaja son los informes de aprendizaje, las propuestas y los veredictos de evaluación. Un
+veredicto pertenece al contrato que lo ganó, y el fork nace para dejar de ser ese contrato.
+
+A partir de ahí tu copia deja de recibir las mejoras del catálogo, que es lo que elegiste, pero no en
+silencio: `check` y `upgrade` avisan cuando el original cambia río arriba. Editar tu propia copia no
+dispara nada — se compara contra lo que el catálogo tenía el día del fork, no contra lo que vos
+escribiste después.
 
 ### Versionado
 
