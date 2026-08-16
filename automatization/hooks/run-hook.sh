@@ -8,12 +8,11 @@ ops_root=$(CDPATH= cd -- "$hook_dir/../.." && pwd)
 # abre en la carpeta de la compañía y la raíz ops es un hermano, que ninguna búsqueda hacia arriba
 # encuentra: sin esto el guard no halla `ops.config.json` y deja pasar todo en silencio.
 export OPS_ROOT="$ops_root"
-# Mismo orden que tools/ops.js: primero la dependencia npm, después la copia local, y por último
-# el propio repositorio del toolkit. Un guard que no encuentra su motor bloquea, nunca permite.
+# Mismo orden que tools/ops.js: la dependencia npm y, por último, el propio repositorio del toolkit.
+# Un guard que no encuentra su motor bloquea, nunca permite.
 runner=""
 for candidate in \
   "$ops_root/node_modules/@ingeniomaps/cauce/engine/hooks/run.js" \
-  "$ops_root/.ops/engine/hooks/run.js" \
   "$ops_root/engine/hooks/run.js"
 do
   if [ -f "$candidate" ]; then runner="$candidate"; break; fi
@@ -21,7 +20,7 @@ done
 
 if [ -z "$runner" ]; then
   echo "BLOQUEADO [$hook_name]: no se encontró el motor de hooks de Cauce." >&2
-  echo "  Buscado en node_modules/@ingeniomaps/cauce, .ops/engine y engine/ bajo $ops_root" >&2
+  echo "  Buscado en node_modules/@ingeniomaps/cauce y engine/ bajo $ops_root" >&2
   exit 2
 fi
 

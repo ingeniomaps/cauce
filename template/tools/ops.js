@@ -2,8 +2,7 @@
 'use strict'
 
 // Punto de entrada estable del proyecto: nadie —ni una persona ni un agente— necesita saber de
-// dónde sale el motor. Se prefiere la dependencia npm, que se actualiza con el lockfile; si el
-// repositorio no usa npm (Go, Python, Rust), se usa la copia de `.ops/engine`.
+// dónde sale el motor. Viene de la dependencia npm, que el lockfile versiona.
 
 const path = require('path')
 
@@ -16,7 +15,6 @@ process.env.OPS_ROOT = process.env.OPS_ROOT || root
 
 const candidates = [
   () => require.resolve('@ingeniomaps/cauce/engine/cli/ops.js', { paths: [root] }),
-  () => require.resolve(path.join(root, '.ops', 'engine', 'cli', 'ops.js')),
 ]
 
 let engine = ''
@@ -26,7 +24,7 @@ for (const candidate of candidates) {
 
 if (!engine) {
   console.error('No se encontró el motor de Cauce.')
-  console.error('  Instalá la dependencia con "npm install" o restaurá .ops/engine con "cauce upgrade".')
+  console.error('  Instalá la dependencia con "npm install" desde la raíz del repo ops.')
   process.exit(2)
 }
 

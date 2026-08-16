@@ -20,12 +20,22 @@ function run(args, cwd = path.dirname(CLI)) {
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', env })
 }
 
+// El motor y el catálogo llegan siempre por npm. Acá se enlaza el repositorio en vez de instalar el
+// tarball: es la misma resolución —`node_modules/@ingeniomaps/cauce`— sin pagar un `npm install` por
+// test. El recorrido contra el paquete publicado lo cubre `lifecycle.test.js`.
 function installedProject(name) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-agents-'))
   const target = path.join(root, 'demo-ops')
   const result = run(['init', target, '--name', name, '--mode', 'sidecar'])
   assert.equal(result.status, 0, result.stderr)
+  linkEngine(target)
   return target
+}
+
+function linkEngine(target) {
+  const scope = path.join(target, 'node_modules', '@ingeniomaps')
+  fs.mkdirSync(scope, { recursive: true })
+  fs.symlinkSync(path.resolve(__dirname, '..'), path.join(scope, 'cauce'), 'dir')
 }
 
 test('el aprendizaje de la profesión se hace en el toolkit, no en cada empresa', () => {

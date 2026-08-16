@@ -22,7 +22,7 @@ make coverage
 ```
 
 `make coverage` mide únicamente `engine/**/*.js` y `automatization/**/*.js`. Excluye las copias de
-`.ops/engine` creadas en proyectos temporales y exige como mínimo 75% de líneas, 75% de funciones y 45% de
+instancias creadas en proyectos temporales y exige como mínimo 75% de líneas, 75% de funciones y 45% de
 ramas.
 
 Las pruebas no deben autenticar cuentas, escribir en proveedores externos ni depender de red. Cada caso que

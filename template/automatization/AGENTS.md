@@ -8,7 +8,7 @@ implementa y conecta ese proceso con runners concretos: no redefine producto, pr
 
 | Ruta | Responsabilidad |
 |---|---|
-| `hooks/` | Entradas estables; la lógica vive en `.ops/engine/hooks/run.js`. |
+| `hooks/` | Entradas estables; la lógica vive en el motor, que llega con la dependencia. |
 | `workflows/` | Recorridos portables; las fases pertenecen a `planning/PROTOCOL.md`. |
 | `runners/` | Adaptadores que declaran su contrato en `manifest.json`. |
 

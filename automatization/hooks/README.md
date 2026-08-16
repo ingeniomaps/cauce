@@ -25,7 +25,7 @@ o automatization/hooks/guard-<nombre>.sh               (guard suelto)
         ↓ nombre del grupo o del guard
 automatization/hooks/run-hook.sh
         ↓ localiza el runtime
-.ops/engine/hooks/run.js (proyecto instalado)
+node_modules/@ingeniomaps/cauce/engine/hooks/run.js (instancia)
 o engine/hooks/run.js (repositorio del toolkit)
 ```
 

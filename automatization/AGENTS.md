@@ -8,7 +8,7 @@ implementa y conecta ese proceso con runners concretos: no redefine producto, pr
 
 | Ruta | Responsabilidad | Fuente canónica |
 |---|---|---|
-| `hooks/` | Entradas ejecutables estables para los guards. | La lógica vive una sola vez en `../.ops/engine/hooks/run.js` en una instancia o `../engine/hooks/run.js` en el toolkit. |
+| `hooks/` | Entradas ejecutables estables para los guards. | La lógica vive una sola vez en `engine/hooks/run.js`, que llega con la dependencia. |
 | `workflows/` | Recorridos portables de build e integraciones. | Las fases y gates pertenecen a `../planning/PROTOCOL.md`. |
 | `runners/` | Wiring, capacidades e instalación por herramienta. | Cada adaptador declara su contrato en `manifest.json`. |
 

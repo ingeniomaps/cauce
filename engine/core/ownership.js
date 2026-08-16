@@ -51,11 +51,6 @@ const SYSTEM_COLLECTIONS = [
 // Se reemplazan enteras. Mientras no tengan su propio `system/`, una edición local se detecta y
 // se reporta antes de pisarla, nunca después.
 const RUNTIME_PATHS = [
-  '.ops/engine',
-  '.ops/agents',
-  '.ops/teams',
-  '.ops/automatization/runners',
-  '.ops/automatization/workflows',
   'automatization/hooks',
 ]
 
@@ -76,8 +71,6 @@ const TEMPLATE_FILES = new Set(['AGENTS.md', 'Makefile'])
 
 function sourceOf(relative) {
   if (TEMPLATE_FILES.has(relative)) return path.join('template', relative)
-  // `.ops/` es el paquete vendorizado: cada ruta de ahí adentro se llama igual en el origen.
-  if (relative.startsWith('.ops/')) return relative.slice('.ops/'.length)
   // El runtime sale de la raíz del paquete aunque su prefijo sea de plantilla: `automatization/`
   // le entrega documentos a la instancia, pero los guards que ejecuta son los del toolkit.
   if (RUNTIME_PATHS.includes(relative)) return relative
@@ -87,13 +80,16 @@ function sourceOf(relative) {
   return relative
 }
 
-// Dónde puede estar el motor, en orden de preferencia. Lo mismo que resuelven `tools/ops.js`,
-// el wrapper de hooks y el bridge de Antigravity: declararlo una vez evita que un consumidor
-// quede afuera cuando aparece una forma nueva de instalarlo.
+// Dónde puede estar el motor. Lo mismo que resuelven `tools/ops.js`, el wrapper de hooks y el bridge
+// de Antigravity: declararlo una vez evita que un consumidor quede afuera.
+//
+// Dos caminos, no tres: el motor llega por npm, y la tercera entrada es el propio repositorio del
+// toolkit corriendo sobre sí mismo. La copia vendorizada en `.ops/` se retiró en 0.10.0 — ahorraba un
+// `package.json` a cambio de 5 MB en la historia de la empresa y de no poder enterarse de una versión
+// nueva, y Node hace falta igual en los dos casos.
 function engineCandidates(root) {
   return [
     path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine'),
-    path.join(root, '.ops', 'engine'),
     path.join(root, 'engine'),
   ]
 }
@@ -109,7 +105,6 @@ function engineAt(root, relative = '') {
 function packagePath(root, relative) {
   const candidates = [
     path.join(root, 'node_modules', '@ingeniomaps', 'cauce', relative),
-    path.join(root, '.ops', relative),
     path.join(root, relative),
   ]
   return candidates.find((candidate) => fs.existsSync(candidate)) || ''
@@ -121,7 +116,6 @@ function packagePath(root, relative) {
 function packageDir(root, name) {
   const candidates = [
     path.join(root, 'node_modules', '@ingeniomaps', 'cauce', name),
-    path.join(root, '.ops', name),
     path.join(root, name),
   ]
   return candidates.find((dir) => fs.existsSync(path.join(dir, 'system'))

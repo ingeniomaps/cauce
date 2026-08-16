@@ -29,7 +29,7 @@ function runnerManifest(root, name) {
   }
   const packaged = packagedAutomation(root)
   if (!packaged) {
-    throw new Error('no encuentro automatization/: instalá la dependencia o restaurá .ops/')
+    throw new Error('no encuentro automatization/: corré "npm install" en la raíz del repo ops')
   }
   const file = path.join(packaged, 'runners', name, 'manifest.json')
   try { return JSON.parse(fs.readFileSync(file, 'utf8')) } catch (error) {
@@ -261,14 +261,14 @@ function check(root) {
   }
   // El motor puede venir de la dependencia npm, de la copia local o del propio repositorio.
   if (!O.engineAt(root, path.join('hooks', 'run.js'))) {
-    errors.push('falta engine/hooks/run.js: instalá la dependencia o restaurá .ops/engine')
+    errors.push('falta engine/hooks/run.js: corré "npm install" en la raíz del repo ops')
   }
   const workflows = ['autobuild.js', 'team.js', path.join('integrations', 'sync.js')]
   workflows.push(path.join('integrations', 'promote.js'))
   const packaged = packagedAutomation(root)
   for (const name of workflows) {
     if (!packaged || !fs.existsSync(path.join(packaged, 'workflows', name))) {
-      errors.push(`falta automatization/workflows/${name}: instalá la dependencia o restaurá .ops/`)
+      errors.push(`falta automatization/workflows/${name}: corré "npm install" en la raíz del repo ops`)
     }
   }
   for (const { file, edited } of staleHooks(root)) {

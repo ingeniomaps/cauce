@@ -16,6 +16,12 @@ function run(args, cwd = path.dirname(CLI)) {
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', env })
 }
 
+function linkEngine(target) {
+  const scope = path.join(target, 'node_modules', '@ingeniomaps')
+  fs.mkdirSync(scope, { recursive: true })
+  fs.symlinkSync(path.resolve(__dirname, '..'), path.join(scope, 'cauce'), 'dir')
+}
+
 function filesBelow(root) {
   return fs.readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
     const current = path.join(root, entry.name)
@@ -42,7 +48,8 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   const target = path.join(base, 'demo-ops')
   const created = run(['init', target, '--name', 'Demo', '--mode', 'sidecar'])
   assert.equal(created.status, 0, created.stderr)
-  assert.equal(fs.existsSync(path.join(target, '.ops', 'engine', 'cli', 'ops.js')), true)
+  linkEngine(target)
+  assert.equal(fs.existsSync(path.join(target, '.ops')), false, 'nada se vendoriza')
   assert.equal(fs.existsSync(path.join(target, 'planning', 'PROTOCOL.md')), true)
   const systemAdr = path.join(
     target,
@@ -65,7 +72,6 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.match(fs.readFileSync(deliveryProfile, 'utf8'), /Demo/)
   assert.equal(fs.existsSync(path.join(target, 'Makefile')), true)
   assert.equal(fs.existsSync(path.join(target, 'automatization', 'config.json')), true)
-  assert.equal(fs.existsSync(path.join(target, '.ops', 'engine', 'integrations', 'providers', 'jira.js')), true)
   assert.equal(run(['automation', 'check', target]).status, 0)
   // El andamiaje de un proveedor no viene puesto: se trae al habilitarlo.
   assert.equal(fs.existsSync(path.join(target, 'integrations', 'jira')), false)
@@ -73,7 +79,7 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.equal(run(['integration', 'check', target, 'jira']).status, 0)
   const templateToken = /\{\{(?:PROJECT_NAME|MODE|PLANNING_DIR|WORKSPACE_PATH)\}\}/
   const unresolved = filesBelow(target)
-    .filter((file) => !file.includes(`${path.sep}.ops${path.sep}engine${path.sep}`))
+    .filter((file) => !file.includes(`${path.sep}node_modules${path.sep}`))
     .filter((file) => templateToken.test(fs.readFileSync(file, 'utf8')))
   assert.deepEqual(unresolved, [])
 
@@ -95,7 +101,9 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   ]) {
     const installedWorkflow = path.join(workspace, '.claude', 'workflows', workflow.target)
     // Sin npm los workflows viajan con el motor; con npm salen de la dependencia. Nunca del proyecto.
-    const sourceWorkflow = path.join(target, '.ops', 'automatization', 'workflows', workflow.source)
+    const sourceWorkflow = path.join(
+      target, 'node_modules', '@ingeniomaps', 'cauce', 'automatization', 'workflows', workflow.source,
+    )
     assert.equal(fs.existsSync(installedWorkflow), true)
     // El instalado no es una copia literal: lleva resuelto dónde quedó la raíz ops.
     const rendered = fs.readFileSync(sourceWorkflow, 'utf8').split('{{OPS_DIR}}').join('demo-ops/')
@@ -153,15 +161,12 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   fs.mkdirSync(path.join(target, 'agents', 'roles', 'product-manager'), { recursive: true })
   fs.writeFileSync(path.join(target, 'agents', 'roles', 'product-manager', 'SKILL.md'), 'personalizado\n')
   const ownGuard = path.join(target, 'automatization', 'hooks', 'guard-demo.sh')
-  const runtimeParser = path.join(target, '.ops', 'engine', 'planning', 'parser.js')
   fs.writeFileSync(ownGuard, 'guard propio de la empresa\n')
-  fs.writeFileSync(runtimeParser, 'runtime personalizado\n')
   const forced = run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--force'])
   assert.equal(forced.status, 0, forced.stderr)
   assert.equal(fs.readFileSync(path.join(target, 'README.md'), 'utf8'), 'propiedad del usuario\n')
   assert.equal(fs.readFileSync(path.join(target, 'agents', 'roles', 'product-manager', 'SKILL.md'), 'utf8'), 'personalizado\n')
   assert.equal(fs.readFileSync(ownGuard, 'utf8'), 'guard propio de la empresa\n')
-  assert.equal(fs.readFileSync(runtimeParser, 'utf8'), 'runtime personalizado\n')
 })
 
 test('init rechaza destinos atravesados por symlinks', () => {
@@ -191,6 +196,7 @@ test('install reemplaza el wiring por guard suelto y conserva lo que no es suyo'
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-migrate-'))
   const target = path.join(base, 'project')
   assert.equal(run(['init', target, '--name', 'Migrate', '--mode', 'sidecar']).status, 0)
+  linkEngine(target)
   const workspace = base
   const settings = path.join(workspace, '.claude', 'settings.json')
   const guard = (name) => `$CLAUDE_PROJECT_DIR/automatization/hooks/guard-${name}.sh`
@@ -544,34 +550,26 @@ test('upgrade se niega a pisar una edición del runtime sin --force', () => {
   assert.equal(/lo edité a mano/.test(fs.readFileSync(guard, 'utf8')), false, '--force sí lo reemplaza')
 })
 
-test('el motor viene de la dependencia cuando el repo usa npm, y de la copia cuando no', () => {
+test('el motor llega siempre como dependencia, haya o no package.json', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-engine-'))
 
-  // Un repo sin npm no puede recibir una dependencia: se lleva la copia.
+  // Un repo sin package.json recibe uno mínimo: el repo ops es un sidecar, así que declarar npm acá
+  // no le impone un stack al servicio que está al lado.
   const plain = path.join(base, 'sin-npm')
   assert.equal(run(['init', plain, '--name', 'Plain', '--mode', 'sidecar']).status, 0)
-  assert.equal(fs.existsSync(path.join(plain, '.ops', 'engine', 'cli', 'ops.js')), true)
-  assert.equal(fs.existsSync(path.join(plain, 'package.json')), false, 'no se le impone un stack')
+  assert.equal(fs.existsSync(path.join(plain, '.ops')), false, 'nada se vendoriza')
+  assert.ok(JSON.parse(fs.readFileSync(path.join(plain, 'package.json'), 'utf8')).devDependencies)
 
-  // Un repo con package.json declara la dependencia y no duplica el motor.
+  // Y uno que ya lo tiene conserva su manifiesto.
   const npm = path.join(base, 'con-npm')
   fs.mkdirSync(npm, { recursive: true })
   fs.writeFileSync(path.join(npm, 'package.json'), JSON.stringify({ name: 'host', version: '1.0.0' }))
   assert.equal(run(['init', npm, '--name', 'Npm', '--mode', 'embedded', '--force']).status, 0)
-  assert.equal(fs.existsSync(path.join(npm, '.ops', 'engine')), false, 'el motor no se copia')
   const manifest = JSON.parse(fs.readFileSync(path.join(npm, 'package.json'), 'utf8'))
   assert.equal(manifest.name, 'host', 'el manifiesto del repo anfitrión se conserva')
   assert.ok(manifest.devDependencies['@ingeniomaps/cauce'], 'la versión queda fijada por el lockfile')
-
-  // upgrade no debe resucitar la copia en una instancia que usa la dependencia.
   assert.equal(run(['upgrade', npm]).status, 0)
-  assert.equal(fs.existsSync(path.join(npm, '.ops', 'engine')), false)
-
-  // El modo se puede forzar en cualquier dirección.
-  const forced = path.join(base, 'forzado')
-  assert.equal(run(['init', forced, '--name', 'F', '--mode', 'sidecar', '--engine', 'dependency']).status, 0)
-  assert.equal(fs.existsSync(path.join(forced, '.ops', 'engine')), false)
-  assert.ok(JSON.parse(fs.readFileSync(path.join(forced, 'package.json'), 'utf8')).devDependencies)
+  assert.equal(fs.existsSync(path.join(npm, '.ops')), false)
 })
 
 test('el shim falla con instrucciones cuando no encuentra el motor', () => {
@@ -613,21 +611,14 @@ test('upgrade explica cómo personalizar el runtime sin editarlo, y deja rastro 
   assert.match(forced.stdout, /descartado tu cambio en automatization\/hooks\/guard-verify\.sh/)
 })
 
-test('el $schema de la instancia apunta a donde quedó el motor', () => {
+test('el $schema de la instancia apunta al motor de la dependencia', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-schema-'))
-  const schemaOf = (target) => JSON.parse(fs.readFileSync(path.join(target, 'ops.config.json'), 'utf8')).$schema
-
-  // Con el motor copiado, el esquema vive en .ops/engine.
-  const copia = path.join(base, 'copia')
-  assert.equal(run(['init', copia, '--name', 'C', '--mode', 'sidecar']).status, 0)
-  assert.equal(schemaOf(copia), '.ops/engine/schemas/ops-config.schema.json')
-  assert.equal(fs.existsSync(path.join(copia, schemaOf(copia))), true, 'la ruta resuelve de verdad')
-
-  // Con el motor como dependencia, apuntar a .ops/engine sería una ruta muerta.
-  const dep = path.join(base, 'dep')
-  assert.equal(run(['init', dep, '--name', 'D', '--mode', 'sidecar', '--engine', 'dependency']).status, 0)
-  assert.match(schemaOf(dep), /node_modules\/@ingeniomaps\/cauce/)
-  assert.equal(fs.existsSync(path.join(dep, '.ops')), false)
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'D', '--mode', 'sidecar']).status, 0)
+  const schema = JSON.parse(fs.readFileSync(path.join(target, 'ops.config.json'), 'utf8')).$schema
+  assert.match(schema, /node_modules\/@ingeniomaps\/cauce/)
+  linkEngine(target)
+  assert.equal(fs.existsSync(path.join(target, schema)), true, 'la ruta resuelve de verdad')
 })
 
 test('el catálogo llega con la dependencia y el proyecto sólo lleva lo suyo', () => {
@@ -635,12 +626,12 @@ test('el catálogo llega con la dependencia y el proyecto sólo lleva lo suyo', 
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-catalogo-'))
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
+  linkEngine(target)
   const total = catalog.list(target).length
   assert.ok(total >= 40)
 
-  // En modo copia el catálogo viaja junto al motor, no dentro de agents/.
+  // El catálogo se resuelve desde la dependencia: el proyecto no lleva una copia.
   assert.equal(fs.existsSync(path.join(target, 'agents', 'roles', 'system')), false)
-  assert.equal(fs.existsSync(path.join(target, '.ops', 'agents', 'roles', 'system')), true)
 
   // Un cargo propio convive y gana sobre el del sistema con el mismo slug.
   const own = path.join(target, 'agents', 'roles', 'product-manager')
@@ -649,34 +640,30 @@ test('el catálogo llega con la dependencia y el proyecto sólo lleva lo suyo', 
   assert.equal(catalog.list(target).length, total, 'sobrescribir no duplica el slug')
   assert.equal(catalog.resolve(target, 'product-manager'), own)
 
-  // Y upgrade refresca el catálogo vendorizado sin tocar lo del proyecto.
-  fs.rmSync(path.join(target, '.ops', 'agents', 'roles', 'system', 'finops-engineer'), { recursive: true, force: true })
-  assert.equal(catalog.list(target).length, total - 1)
+  // Y actualizar no toca lo del proyecto: el catálogo del sistema ni siquiera está acá para tocarlo.
   assert.equal(run(['upgrade', target]).status, 0)
-  assert.equal(catalog.list(target).length, total, 'el cargo faltante vuelve del paquete')
+  assert.equal(catalog.list(target).length, total)
   assert.match(fs.readFileSync(path.join(own, 'SKILL.md'), 'utf8'), /PM propio/)
 })
 
-test('upgrade no vendoriza el paquete en una instancia que usa la dependencia', () => {
+test('nada se vendoriza, ni al crear ni al actualizar', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-vendor-'))
   const target = path.join(base, 'acme')
   fs.mkdirSync(target, { recursive: true })
   fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({ name: 'acme', version: '1.0.0' }))
   assert.equal(run(['init', target, '--name', 'A', '--mode', 'sidecar', '--force']).status, 0)
   assert.equal(fs.existsSync(path.join(target, '.ops')), false, 'init no copia nada a .ops')
-
   assert.equal(run(['upgrade', target]).status, 0)
-  // Crear .ops duplicaría lo que el lockfile ya versiona, y encima quedaría desactualizado.
+  // Duplicar el paquete adentro del repo de la empresa sería versionar dos veces lo mismo, y la copia
+  // quedaría vieja sin que nadie se entere.
   assert.equal(fs.existsSync(path.join(target, '.ops')), false, 'upgrade tampoco lo crea')
 
-  // En modo copia sí existe, y ahí upgrade tiene que refrescarlo.
-  const copia = path.join(base, 'sin-npm')
-  assert.equal(run(['init', copia, '--name', 'B', '--mode', 'sidecar']).status, 0)
-  const skill = path.join(copia, '.ops', 'agents', 'roles', 'system', 'qa-engineer', 'SKILL.md')
-  assert.equal(fs.existsSync(skill), true)
-  fs.writeFileSync(skill, 'viejo\n')
-  assert.equal(run(['upgrade', copia, '--force']).status, 0)
-  assert.match(fs.readFileSync(skill, 'utf8'), /No usar/, 'el catálogo vendorizado se refresca')
+  // Una instancia que arrastra la copia de una versión anterior no se rompe en silencio: se le dice.
+  fs.mkdirSync(path.join(target, '.ops', 'engine'), { recursive: true })
+  const avisado = run(['upgrade', target])
+  assert.equal(avisado.status, 0)
+  assert.match(avisado.stdout, /\.ops\/, que Cauce ya no distribuye/)
+  assert.equal(fs.existsSync(path.join(target, '.ops')), true, 'y no se lo borra por su cuenta')
 })
 
 test('upgrade distingue una edición local de una mejora del toolkit', () => {

@@ -1,7 +1,7 @@
 # integrations/ — reglas para sistemas externos
 
 `config.json` registra proveedores y cada subcarpeta contiene configuración no secreta, staging y
-propuestas. La conexión y normalización viven en `.ops/engine/integrations/`; no implementes clientes de API
+propuestas. La conexión y normalización viven en el motor; no implementes clientes de API
 dentro de esta carpeta.
 
 Toda integración se considera de solo lectura. `writeback-plan` solo calcula intención y nunca autoriza ni

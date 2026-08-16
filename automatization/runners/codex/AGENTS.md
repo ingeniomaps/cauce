@@ -17,8 +17,7 @@ Antes de cerrar, corré `node {{OPS_DIR}}tools/ops.js check {{OPS_DIR}}planning`
 
 ## Los cargos
 
-El catálogo está en `{{OPS_DIR}}node_modules/@ingeniomaps/cauce/agents/` —o en
-`{{OPS_DIR}}.ops/agents/` si este repo no usa npm— y los propios de la empresa en
+El catálogo está en `{{OPS_DIR}}node_modules/@ingeniomaps/cauce/agents/` y los propios de la empresa en
 `{{OPS_DIR}}agents/`, que mandan sobre los del sistema con el mismo nombre.
 
 Cada cargo tiene un `SKILL.md` con su contrato: cuándo actúa, qué decide, qué no le corresponde y cuál es

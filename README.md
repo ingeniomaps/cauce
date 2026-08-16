@@ -35,11 +35,12 @@ node engine/cli/ops.js team show product-development
 El destino debe estar vacío o no existir. En modo embebido normalmente ya es un repo: `--force` permite
 completar archivos faltantes, pero nunca sobrescribe archivos existentes.
 
-El motor llega de dos formas y `init` elige sola: si el destino tiene `package.json`, lo declara como
-dependencia y el lockfile fija la versión; si no —un repo Go, Python o Rust—, copia el runtime en
-`.ops/engine`, porque exigir npm para leer un planning sería imponer un stack. `--engine copy|dependency`
-fuerza cualquiera de las dos. En ambos casos el proyecto invoca `node tools/ops.js`, que resuelve el motor
-donde esté.
+El motor llega como dependencia y el lockfile fija la versión. `init` declara `@ingeniomaps/cauce` en el
+`package.json` del repo ops —creándolo si no existe— y el proyecto invoca `node tools/ops.js`, que resuelve
+el motor sin que nadie tenga que saber dónde está.
+
+Declarar npm ahí no le impone un stack a nadie: el repo ops es un sidecar, hermano de los repos de
+producto, y Node hace falta igual —el motor, los guards y los workflows son JavaScript—.
 
 Dentro de un proyecto generado, el CLI autocontenido se invoca con `node tools/ops.js`. En la tabla siguiente,
 `ops` representa cualquiera de esas dos formas según el contexto. El binario `cauce` también queda
@@ -169,8 +170,8 @@ y actualizar no exige resolver conflictos: se reemplaza `system/` entero y nada 
 
 ### Dónde vive cada cosa del catálogo
 
-Los cargos que trae Cauce **no se copian al proyecto**: se resuelven desde la dependencia, o desde
-`.ops/agents/` cuando el repo no usa npm. Evolucionan como profesión, y esa evolución es la misma para
+Los cargos que trae Cauce **no se copian al proyecto**: se resuelven desde la dependencia. Evolucionan
+como profesión, y esa evolución es la misma para
 todas las empresas: investigarla una vez y bien es mejor que repetirla en cada instalación.
 
 | Qué | Dónde | Quién lo mantiene |
@@ -232,7 +233,7 @@ promoción y validación no se reimplementan. Consulta [integrations/README.md](
 
 El toolkit no guarda contexto real de ninguna empresa. `template/organization/` es el molde que cada proyecto
 recibe como `organization/`. De igual forma, `planning/` pertenece a la instancia generada: conserva su
-intención, estado y evidencia, mientras el motor reusable permanece en `.ops/engine/`.
+intención, estado y evidencia, mientras el motor reusable permanece en la dependencia.
 
 ## Hooks y runners
 

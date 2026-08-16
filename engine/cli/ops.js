@@ -26,7 +26,7 @@ function fail(message, code = 1) {
 
 function usage() {
   console.log(`Uso:
-  ops init <destino> [--name <nombre>] [--mode embedded|sidecar] [--engine copy|dependency] [--force]
+  ops init <destino> [--name <nombre>] [--mode embedded|sidecar] [--force]
   ops check <planning-dir> [--json]
   ops tree <planning-dir> [--no-color] [--json]
   ops context <planning-dir> [--json]
@@ -56,7 +56,7 @@ function usage() {
 }
 
 // Banderas que consumen el argumento siguiente: su valor no es un posicional.
-const VALUED_FLAGS = new Set(['--name', '--mode', '--engine', '--fixture'])
+const VALUED_FLAGS = new Set(['--name', '--mode', '--fixture'])
 
 // Los posicionales del comando, salteando banderas y sus valores. Leer `process.argv` crudo hacía
 // que `agents list --json` tomara `--json` como la raíz: el catálogo salía vacío, sin error, y quien
@@ -168,29 +168,13 @@ function init(target) {
     root,
   )
   const version = require(path.join(PROJECT_ROOT, 'package.json')).version
-  // Un repo con npm recibe el motor como dependencia versionada; uno de Go, Python o Rust recibe
-  // la copia, porque exigirle un package.json para correr su planning sería imponerle un stack.
-  const manifest = path.join(root, 'package.json')
-  const engineMode = option('--engine', fs.existsSync(manifest) ? 'dependency' : 'copy')
-  if (!['copy', 'dependency'].includes(engineMode)) fail('--engine debe ser copy o dependency.', 2)
-  if (engineMode === 'dependency') declareEngine(manifest, version)
-  else {
-    const engine = path.join(root, '.ops', 'engine')
-    copyRuntime(path.join(PROJECT_ROOT, 'engine'), engine, preserve, root)
-    fs.chmodSync(path.join(engine, 'cli', 'ops.js'), 0o755)
-    // Sin npm no hay de dónde leer el catálogo en tiempo de ejecución: viaja junto al motor, igual
-    // que los adaptadores de runner y los workflows que instala `automation install`.
-    copyRuntime(path.join(PROJECT_ROOT, 'agents'), path.join(root, '.ops', 'agents'), preserve, root)
-    copyRuntime(path.join(PROJECT_ROOT, 'teams'), path.join(root, '.ops', 'teams'), preserve, root)
-    for (const name of ['runners', 'workflows']) {
-      copyRuntime(
-        path.join(PROJECT_ROOT, 'automatization', name),
-        path.join(root, '.ops', 'automatization', name),
-        preserve,
-        root,
-      )
-    }
-  }
+  // El motor siempre llega como dependencia. La alternativa era vendorizarlo en `.ops/`, y no valía:
+  // Node hace falta igual en los dos casos —el motor, los guards y los workflows son JavaScript—, así
+  // que la copia sólo ahorraba este `package.json` de seis líneas a cambio de 5 MB en la historia de
+  // la empresa y de no tener cómo enterarse de que salió una versión nueva.
+  //
+  // El repo ops es un sidecar: declarar npm acá no convierte en Node al servicio de Go de al lado.
+  declareEngine(path.join(root, 'package.json'), version)
   let entregado = {}
   for (const relative of O.trackedPaths()) {
     const dir = path.join(root, relative)
@@ -201,13 +185,10 @@ function init(target) {
   const configFile = path.join(root, 'ops.config.json')
   const config = JSON.parse(fs.readFileSync(configFile, 'utf8'))
   config.cauceVersion = version
-  // El esquema vive donde quedó el motor; la plantilla no puede saberlo de antemano.
-  config.$schema = engineMode === 'dependency'
-    ? 'node_modules/@ingeniomaps/cauce/engine/schemas/ops-config.schema.json'
-    : '.ops/engine/schemas/ops-config.schema.json'
+  config.$schema = 'node_modules/@ingeniomaps/cauce/engine/schemas/ops-config.schema.json'
   F.atomicWriteJson(configFile, config)
   console.log(`\n✓ ${name}: sistema ops creado en ${root}`)
-  if (engineMode === 'dependency') console.log('  siguiente: npm install (el motor viene de la dependencia)')
+  console.log('  siguiente: npm install (el motor viene de la dependencia)')
   console.log(`  siguiente: node ${path.join(root, 'tools', 'ops.js')} check ${path.join(root, 'planning')}`)
 }
 
@@ -565,9 +546,6 @@ function upgrade(dir) {
     const origin = path.join(PROJECT_ROOT, O.sourceOf(relative))
     if (!fs.existsSync(origin)) continue
     const target = path.join(root, relative)
-    // `.ops/` es el paquete vendorizado de una instancia sin npm. Si no existe, esta instancia lo
-    // toma de la dependencia y crearlo sería duplicar lo que el lockfile ya versiona.
-    if (relative.startsWith('.ops/') && !fs.existsSync(target)) continue
     if (fs.statSync(origin).isDirectory()) overlayTree(origin, target, root)
     else {
       F.assertNoSymlinkPath(root, target)
@@ -612,6 +590,12 @@ function upgrade(dir) {
     console.log(`= conservado ${override.collection}/${override.project}: sobrescribe ${override.system}`)
   }
   console.log('  planning, organization y todo lo propio quedaron intactos')
+  // No se borra: sin la dependencia declarada, quitarle `.ops/` la dejaría sin motor. Se avisa y
+  // decide una persona.
+  if (fs.existsSync(path.join(root, '.ops', 'engine'))) {
+    console.log('\n⚠ esta instancia tiene el motor vendorizado en .ops/, que Cauce ya no distribuye.')
+    console.log('  Corré "npm install" para tenerlo como dependencia y después borrá .ops/ a mano.')
+  }
   // El wiring del runner no se actualiza solo: vive fuera de la instancia y lo escribe otro comando.
   // Sin este recordatorio, una mejora en un workflow o en el catálogo se queda en el paquete.
   const runners = Object.keys(M.readRunners(root))

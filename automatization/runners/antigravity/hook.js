@@ -44,10 +44,9 @@ function findRoot(input) {
 }
 
 function runtimeAt(root) {
-  // Mismo orden que tools/ops.js: dependencia npm, copia local, repositorio del toolkit.
+  // Mismo orden que tools/ops.js: dependencia npm y, por último, el repositorio del toolkit.
   const candidates = [
     path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine', 'hooks', 'run.js'),
-    path.join(root, '.ops', 'engine', 'hooks', 'run.js'),
     path.join(root, 'engine', 'hooks', 'run.js'),
   ]
   // El bridge corre antes de poder cargar el motor, así que repite la cascada de
