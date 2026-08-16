@@ -8,6 +8,32 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.13.0] - 2026-08-16
+
+### Añadido
+
+- **El ciclo de aprendizaje se cierra solo hasta la firma, y sigue solo después de ella.** Faltaban
+  las dos mitades entre «recomendación» y «contrato actualizado`»:
+  - `/agent-propose <cargo>` escribe el cambio concreto —el texto exacto, archivo por archivo— y lo
+    contrasta contra los casos vigentes. Antes la propuesta llegaba con «Cambio propuesto: por
+    definir», y nadie firma una intención.
+  - `/agent-promote <cargo>` aplica una propuesta **ya firmada**, registra en `HISTORY.md` y manda a
+    correr los casos. Dos candados: se niega si «Aprobación humana» no tiene responsable —un agente no
+    se autoriza a sí mismo— y exige verificar, porque aplicar sin correr los casos deja un contrato
+    cambiado sin saber si se sostiene.
+- Aplica **prosa, no un parche**, a propósito: un parche envejece si alguien toca el archivo mientras
+  la propuesta espera firma. El costo es que aplicar exige criterio, y por eso toda desviación se
+  escribe en la propia propuesta: quien firmó tiene derecho a saber qué se aplicó de lo que firmó.
+- Investigación **semanal** en el cron, además de la consolidación mensual. Corre sólo si el
+  repositorio declara `ANTHROPIC_API_KEY`; sin ella se saltea entero en vez de abrir un PR por cargo
+  con un informe vacío. El prompt no vive en el cron: lo declara cada cargo en su
+  `learning/CODEX_AUTOMATION.md`, así que un cargo nuevo trae su investigación sin tocar el workflow.
+
+### Nota
+
+El cron es de Cauce, no de las instancias: una empresa no lo recibe. Su ciclo de aprendizaje es por
+comando, y activarlo en su propio repositorio es decisión suya.
+
 ## [0.12.0] - 2026-08-16
 
 ### Cambiado
