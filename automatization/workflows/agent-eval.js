@@ -7,15 +7,18 @@
 // Si los viera, el caso mediría su capacidad de repetirlos. Y quien juzga no es quien respondió, por
 // la misma razón por la que nadie corrige su propio examen.
 //
-// **Dónde se corre importa.** Un cargo cuyo trabajo es producir artefactos de planning —una épica, una
-// entrada de INBOX— necesita un `planning/` donde escribir sea legítimo. Corrido dentro del repositorio
-// del toolkit, ese directorio es `template/planning`, que se distribuye a cada instalación: el cargo se
-// niega, con razón, y su caso lo cuenta como fallo. Medido así, `product-manager` falla exactamente los
-// dos casos que piden escribir, y ninguno de los otros tres.
+// **Un cargo necesita un lugar donde trabajar.** Su entrega puede ser una épica o una entrada de
+// INBOX, y para eso hace falta un `planning/` donde escribir sea legítimo. El toolkit no lo tiene ni
+// puede tenerlo: el único `planning/` que vive acá es `template/planning`, el molde que se distribuye.
+// Medido así, `product-manager` fallaba exactamente los dos casos que piden escribir y ninguno de los
+// otros tres — el número no hablaba del cargo sino del lugar.
 //
-// Por eso el recorrido se niega cuando `mode` es `toolkit`. Dejarlo escrito en este comentario no
-// alcanzaba: un comentario no impide nada, y la primera vez que pasó fue justamente porque estaba
-// documentado y nadie lo leyó a tiempo. Evaluar los cargos que Cauce distribuye exige una instancia.
+// Por eso en el toolkit se le arma un banco desechable —`evaluate <cargo> --bench`— y el cargo trabaja
+// ahí. El veredicto, en cambio, se escribe junto al cargo: el banco se borra, el contrato queda.
+//
+// En una empresa no hay banco ni hace falta: su instancia ya es el lugar. Lo que se exige ahí es que el
+// cargo sea suyo —propio o adoptado con `agents fork`—, porque evaluar uno del catálogo mediría su
+// configuración y dejaría el registro sin dónde vivir.
 //
 // La respuesta no lleva tope de extensión, y eso se probó: con un tope de doce líneas, dos casos que
 // pasan fallaban. Un comportamiento esperado puede exigir seis elementos —«versión, entorno, datos,
@@ -52,7 +55,13 @@ const CASES = {
     } },
     skill: { type: 'string' },
     mode: { type: 'string' },
+    system: { type: 'boolean' },
   },
+}
+
+const BENCH = {
+  type: 'object', additionalProperties: false, required: ['path'],
+  properties: { path: { type: 'string' } },
 }
 
 const ANSWER = {
@@ -92,17 +101,31 @@ const contexto = await agent(
   `2. "node tools/ops.js agents list --json" — set skill to "${ROOT}/<path>/SKILL.md" using the path it ` +
   `printed for ${AGENT}. That command prints paths relative to ${ROOT} and the next agents run from ` +
   `elsewhere, so the prefix is not optional.\n` +
-  `Then read ${ROOT}/ops.config.json and set mode to its "mode" field, verbatim.`,
+  `Then read ${ROOT}/ops.config.json and set mode to its "mode" field, verbatim, and set system ` +
+  `to what "agents list --json" reported for ${AGENT} in its "system" field.`,
   { schema: CASES, label: 'cases' },
 )
 if (!contexto || !contexto.items || !contexto.items.length) {
   return stop('sin-casos', `${AGENT} no tiene casos, o no se pudieron leer`)
 }
+// Dónde trabaja el cargo mientras responde. En el toolkit no puede ser acá: no hay `planning/` que
+// valga, así que se le arma un banco desechable. En una empresa es su propia instancia, y el cargo
+// tiene que ser suyo —propio o adoptado—: uno del catálogo se evalúa arriba, no acá.
+let WORK = ROOT
 if (contexto.mode === 'toolkit') {
-  return stop('en-el-toolkit',
-    'este recorrido mide cargos trabajando, y acá no pueden: `planningDir` apunta a la plantilla que ' +
-    'se distribuye, así que un cargo que deba escribir en planning se niega —con razón— y su caso lo ' +
-    'cuenta como fallo. Medido así el resultado no dice nada del cargo. Corrélo desde una instancia.')
+  const banco = await agent(
+    `From ${ROOT}, run "node tools/ops.js evaluate ${AGENT} --bench" and report the absolute path it ` +
+    `printed, nothing else. It recreates a disposable instance where writing to planning/ is legitimate.`,
+    { schema: BENCH, label: 'banco' },
+  )
+  if (!banco || !banco.path) return stop('sin-banco', 'no se pudo preparar el banco de evaluación')
+  WORK = banco.path
+  log(`Banco: ${WORK}`)
+} else if (contexto.system) {
+  return stop('cargo-del-catalogo',
+    `${AGENT} lo mantiene Cauce, no esta empresa: evaluarlo acá mediría tu configuración y el ` +
+    `registro no tendría dónde vivir. Si querés una versión tuya, adoptalo con ` +
+    `"node tools/ops.js agents fork ${AGENT}" y evaluá esa.`)
 }
 log(`${contexto.items.length} caso(s) de ${AGENT}`)
 
@@ -111,8 +134,10 @@ const veredictos = await pipeline(
 
   // Responde el cargo. Recibe su contrato y el pedido; nunca los comportamientos esperados.
   (item) => agent(
+    `Trabajás en ${WORK}: esa es tu instancia, con su planning/, su organization/ y su AGENTS.md. ` +
+    `Todo lo que escribas va ahí.\n\n` +
     `Actuá como el cargo ${AGENT}, respetando el contrato de ${contexto.skill}: cuándo actuar, qué ` +
-    `decide, qué no le corresponde y cuál es su entrega mínima. Leé también ${ROOT}/AGENTS.md: son las ` +
+    `decide, qué no le corresponde y cuál es su entrega mínima. Leé también ${WORK}/AGENTS.md: son las ` +
     `reglas que todo cargo obedece, y un cargo corre siempre con las dos cosas —medirlo sólo contra su ` +
     `SKILL.md lo evaluaba en una situación que nunca ocurre—. No leas ningún archivo bajo ` +
     `evaluations/: no te corresponde y contaminaría la respuesta.\n\n` +
@@ -149,10 +174,11 @@ const filas = hechos.map((one) => {
 }).join('\n\n')
 
 await agent(
-  `Escribí ${ROOT}/agents/roles/${AGENT}/evaluations/results/<fecha>.md, o la ruta equivalente si el ` +
-  `cargo vive en el paquete —usá el directorio del cargo que ya conocés por ${contexto.skill}, ` +
-  `reemplazando SKILL.md por evaluations/results/—. La fecha es la de hoy en formato AAAA-MM-DD; ` +
-  `obtenela con "date +%F". Creá el directorio si no existe.\n\n` +
+  `Escribí el registro junto al cargo: tomá ${contexto.skill} y reemplazá SKILL.md por ` +
+  `evaluations/results/<fecha>.md. Creá el directorio si no existe.\n\n` +
+  `Ahí y no en el banco de trabajo. El banco se borra en la próxima corrida —es donde el cargo ` +
+  `trabajó, no donde vive—, mientras que el veredicto pertenece al contrato que lo rindió y viaja ` +
+  `con él. La fecha es la de hoy en formato AAAA-MM-DD; obtenela con "date +%F".\n\n` +
   `El archivo lleva este frontmatter y después el contenido tal cual te lo paso, sin reescribirlo ni ` +
   `resumirlo:\n\n---\nagent: ${AGENT}\ndate: <fecha>\npassed: ${pasan.length}\ntotal: ${hechos.length}\n---\n\n` +
   `# Casos adversariales — <fecha>\n\n${filas}\n\n` +

@@ -278,12 +278,20 @@ test('la evaluación mide al cargo como corre, no aislado', () => {
 // distribuye a cada instalación. Un cargo que se niega a escribir ahí acierta, y el caso lo contaba
 // como fallo: `product-manager` fallaba exactamente los dos casos que piden escribir, y ninguno más.
 //
-// Primero se documentó en un comentario, y no alcanzó —un comentario no impide nada—. Lo que se fija
-// acá es el chequeo: el recorrido lee `mode` y se detiene solo.
-test('la evaluación se niega a correr dentro del toolkit', () => {
+// Primero se documentó en un comentario, y no alcanzó. Después se cortó la corrida, y tampoco: negarse
+// dejaba el catálogo sin forma de medirse. Lo que se fija acá es la salida — un banco donde trabajar.
+test('la evaluación le arma al cargo un lugar donde trabajar', () => {
   const evalWf = fs.readFileSync(path.join(WF, 'agent-eval.js'), 'utf8')
   assert.match(evalWf, /ops\.config\.json.*mode/s, 'lee el modo del proyecto')
-  assert.match(evalWf, /mode === 'toolkit'/, 'y corta sin gastar agentes')
-  assert.match(evalWf, /en-el-toolkit/, 'con un motivo nombrado, no un fallo genérico')
-  assert.match(evalWf, /template\/planning|plantilla que\n.*se distribuye/s, 'y la razón concreta')
+  assert.match(evalWf, /mode === 'toolkit'/, 'y distingue el toolkit de una instancia')
+  assert.match(evalWf, /--bench/, 'en el toolkit le arma un banco desechable')
+  assert.match(evalWf, /Trabajás en \$\{WORK\}/, 'y el cargo trabaja ahí, no en la raíz')
+
+  // El veredicto pertenece al contrato que lo rindió, y el banco se borra en la próxima corrida.
+  assert.match(evalWf, /contexto\.skill.*evaluations\/results/s, 'el registro va junto al cargo')
+  assert.match(evalWf, /no en el banco/, 'dicho explícitamente, que es donde se equivocaría')
+
+  // En una empresa el banco no existe: su instancia ya es el lugar, y el cargo tiene que ser suyo.
+  assert.match(evalWf, /cargo-del-catalogo/, 'y un cargo del catálogo se rechaza ahí')
+  assert.match(evalWf, /agents fork/, 'nombrando la salida, no sólo el rechazo')
 })
