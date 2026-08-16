@@ -8,6 +8,17 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.10.1] - 2026-08-16
+
+### Corregido
+
+- **La propuesta mensual consolidaba una sola línea de cada recomendación.** Es su única razón de
+  existir: juntar lo que recomendaron los informes de la semana. Con la bandera `m` el `$` casa fin de
+  *línea*, así que la búsqueda no ávida cortaba en el primer salto y una recomendación de diez líneas
+  llegaba como una. El ciclo corría verde entregando casi nada.
+- La comprobación de citas en las pruebas cortaba las rutas en el punto, así que verificaba la
+  existencia de un archivo sin su `.md` y nunca lo detectó.
+
 ## [0.10.0] - 2026-08-15
 
 ### Cambiado
