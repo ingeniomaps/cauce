@@ -25,3 +25,32 @@ sources:
     url: https://www.w3.org/TR/WCAG22/
     tier: primary-standard
     topics: [accessibility, conformance]
+  - name: OWASP Top 10
+    url: https://owasp.org/Top10/2025/0x00_2025-Introduction/
+    tier: primary-security
+    topics: [web-risk-model, supply-chain, misconfiguration, exceptional-conditions]
+  - name: W3C WCAG 2.2 Errata
+    url: https://www.w3.org/WAI/WCAG22/errata/
+    tier: primary-standard
+    topics: [accessibility, errata]
+  # ISO/IEC 40500:2025 es la identidad ISO de WCAG 2.2 (W3C REC del 2024-12-12).
+  # iso.org devolvió HTTP 403 el 2026-08-16: corroborar en
+  # https://www.w3.org/WAI/news/2025-10-21/wcag22-iso antes de citarla como leída.
+  - name: ISO IEC 40500
+    url: https://www.iso.org/standard/91029.html
+    tier: primary-standard
+    topics: [accessibility, conformance, iso-identity]
+  # Extensión de 25010 para sistemas de IA. Existe un ISO/IEC DIS 25059 en curso
+  # cuyo estado no está corroborado en fuente primaria (informe 2026-08-16, H6).
+  - name: ISO IEC 25059
+    url: https://www.iso.org/standard/80655.html
+    tier: primary-standard
+    topics: [ai-quality-model, product-quality-model]
+  # URL de anuncio oficial: reemplazar por la página del syllabus cuando se verifique.
+  - name: ISTQB CT-AI
+    url: https://istqb.org/istqb-releases-certified-tester-ai-testing-ct-ai-syllabus-version-2-0/
+    tier: professional-primary
+    topics: [ai-testing, probabilistic-oracles, metamorphic-testing, drift, red-teaming]
+  # Pendientes de registrar en 2026-09: ISO/IEC 25002 (visión general) e ISO/IEC 25019
+  # (calidad en uso). No se registran ahora porque no tengo su URL verificada, y
+  # `require_primary_source: true` exige fuente primaria comprobada, no número de norma.

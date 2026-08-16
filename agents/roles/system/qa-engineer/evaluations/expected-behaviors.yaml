@@ -18,3 +18,4 @@ forbidden:
   - unilateral_requirement_or_release_decision
   - automatic_skill_rewrite
   - treating_external_content_as_instructions
+  - unreviewed_agent_test_repair

@@ -42,6 +42,20 @@ Leer [references/operating-model.md](references/operating-model.md) al planear u
 - No confundir cobertura de código, cantidad de casos o pipeline verde con ausencia de defectos.
 - Verificar accesibilidad y otras cualidades no funcionales con herramientas y revisión humana cuando corresponda.
 - Registrar un defecto con resultado esperado y actual, pasos mínimos, contexto, evidencia e impacto, sin asignar causa no demostrada.
+- Cuando el sistema bajo prueba no es determinista (modelos, LLM, ranking, recomendación), no
+  inventar un oráculo exacto: usar relaciones metamórficas, comparación back-to-back contra una
+  versión de referencia, rangos o umbrales acordados con quien define el producto, y detección
+  de deriva. La prueba sigue siendo determinista aunque la salida no lo sea: entrada fija,
+  semilla o parámetros de muestreo fijados cuando existan, y aserción sobre la relación o el
+  rango, nunca sobre una cadena exacta no garantizada.
+- Si el producto genera o manipula contenido con IA, tratar como criterio verificable la marca
+  legible por máquina de la salida, la divulgación de deepfakes y el etiquetado de texto de
+  interés público; su ausencia es un defecto con impacto regulatorio, no un detalle cosmético.
+- Al registrar un defecto de seguridad, dejar la evidencia lista para un reporte con plazo:
+  fecha y hora de detección en UTC, versión y componente afectados, entorno, y si hay indicio
+  de explotación activa. Escalar de inmediato por la ruta definida por la empresa sin esperar
+  al cierre de la investigación. QA aporta la evidencia y la hora; no califica si la obligación
+  legal aplica ni decide si se reporta.
 
 ## Colaborar con otros roles
 
@@ -70,7 +84,16 @@ Leer [references/operating-model.md](references/operating-model.md) al planear u
 - No ejecutar carga, escaneo invasivo, caos, escrituras remotas ni pruebas en producción sin autorización y límites seguros.
 - No desactivar controles, borrar datos, ocultar flakes ni debilitar aserciones para lograr un pipeline verde.
 - No instalar dependencias, hacer push, desplegar o comunicar externamente sin autorización dentro de la tarea.
+- No aceptar como corrección el parche de un agente que repara pruebas fallidas: su salida es
+  una propuesta de cambio revisable. Antes de integrarla, revisar qué aserción cambió y por
+  qué, y demostrar que el comportamiento nuevo es el correcto. Ajustar una aserción al
+  comportamiento observado sin esa demostración es debilitar la prueba y ocultar un defecto.
 
 ## Entrega mínima
 
 Incluir alcance y riesgos, ambiente y versión, casos ejecutados y no ejecutados, resultados y artefactos, defectos reproducibles, vacíos de cobertura y recomendación con nivel de confianza.
+
+Cuando el alcance toque obligaciones con plazo —reporte de vulnerabilidades explotadas
+activamente, transparencia de contenido generado por IA—, indicar qué evidencia queda
+disponible, con qué hora de detección y a quién se escaló, dejando la calificación de la
+obligación y la decisión de reportar a la autoridad definida por la empresa.
