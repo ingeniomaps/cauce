@@ -7,6 +7,15 @@
 // Si los viera, el caso mediría su capacidad de repetirlos. Y quien juzga no es quien respondió, por
 // la misma razón por la que nadie corrige su propio examen.
 //
+// **Dónde se corre importa.** Un cargo cuyo trabajo es producir artefactos de planning —una épica, una
+// entrada de INBOX— necesita un `planning/` donde escribir sea legítimo. Corrido dentro del repositorio
+// del toolkit, ese directorio es `template/planning`, que se distribuye a cada instalación: el cargo se
+// niega, con razón, y su caso lo cuenta como fallo. Medido así, `product-manager` falla exactamente los
+// dos casos que piden escribir, y ninguno de los otros tres.
+//
+// Corré este recorrido sobre una instancia, no sobre el toolkit. Evaluar los cargos que Cauce
+// distribuye exige crear una instancia de trabajo para eso.
+//
 // La respuesta no lleva tope de extensión, y eso se probó: con un tope de doce líneas, dos casos que
 // pasan fallaban. Un comportamiento esperado puede exigir seis elementos —«versión, entorno, datos,
 // pasos, frecuencia y artefactos»— y cuatro de esos no entran en doce líneas. El caso define qué hace

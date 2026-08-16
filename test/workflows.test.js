@@ -273,3 +273,12 @@ test('la evaluación mide al cargo como corre, no aislado', () => {
   assert.match(evalWf, /AGENTS\.md/, 'la respuesta se da con las reglas generales a la vista')
   assert.match(evalWf, /nunca ocurre/, 'y queda dicho por qué')
 })
+
+// El arnés medía a los cargos dentro del toolkit, donde `planning/` es `template/planning` y se
+// distribuye a cada instalación. Un cargo que se niega a escribir ahí acierta, y el caso lo contaba
+// como fallo: `product-manager` fallaba exactamente los dos casos que piden escribir, y ninguno más.
+test('la evaluación declara que debe correrse sobre una instancia', () => {
+  const evalWf = fs.readFileSync(path.join(WF, 'agent-eval.js'), 'utf8')
+  assert.match(evalWf, /sobre una instancia, no sobre el toolkit/)
+  assert.match(evalWf, /template\/planning/, 'con la razón concreta, no una recomendación suelta')
+})
