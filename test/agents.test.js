@@ -107,8 +107,10 @@ test('la documentación de agentes no cita rutas del toolkit ni rutas inexistent
   const walk = (dir) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const file = path.join(dir, entry.name)
-      if (entry.isDirectory()) walk(file)
-      else if (entry.name.endsWith('.md')) docs.push(file)
+      // `evaluations/results/` no es documentación: es la transcripción de una corrida. Contiene lo
+      // que el cargo respondió, incluidos comandos que propuso, y exigirle las reglas de un documento
+      // que alguien sigue es un error de categoría — corregirlo falsearía la evidencia.
+      if (entry.isDirectory()) { if (entry.name !== 'results') walk(file) } else if (entry.name.endsWith('.md')) docs.push(file)
     }
   }
   walk(AGENTS_ROOT)
@@ -133,8 +135,8 @@ test('los comandos make citados por los agentes existen en ambos Makefiles', () 
   const walk = (dir) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const file = path.join(dir, entry.name)
-      if (entry.isDirectory()) walk(file)
-      else if (entry.name.endsWith('.md')) {
+      // Misma razón: una transcripción no es un documento que alguien siga.
+      if (entry.isDirectory()) { if (entry.name !== 'results') walk(file) } else if (entry.name.endsWith('.md')) {
         for (const match of fs.readFileSync(file, 'utf8').matchAll(/`make ([a-z-]+)/g)) targets.add(match[1])
       }
     }
