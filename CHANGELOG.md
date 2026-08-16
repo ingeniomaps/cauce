@@ -8,6 +8,33 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.17.0] - 2026-08-16
+
+### Agregado
+
+- **`ops agents fork <cargo>`: una empresa se lleva un cargo del catálogo y lo mantiene desde su
+  carpeta.** El tercer camino ya resolvía —un cargo propio con el mismo slug tapa al del sistema, en el
+  listado, en `learn` y en el puntero que instala el runner—, pero llegar hasta ahí era copiar a mano, y
+  eso sale mal de una forma que no se nota: se agarra el `SKILL.md`, que es lo que se ve, y quedan atrás
+  los casos adversariales, las fuentes y el modelo operativo. El cargo responde igual y ya no se puede
+  evaluar, sin ningún aviso.
+
+  No se heredan los informes de aprendizaje, las propuestas ni los veredictos de evaluación. Un veredicto
+  pertenece al contrato que lo ganó, y el fork nace para dejar de ser ese contrato; una propuesta
+  pendiente arrastraría a la empresa a firmar una decisión que era nuestra.
+
+  En el toolkit se niega: acá el catálogo se edita, no se lo copia. Dejarlo pasar creaba un duplicado que
+  tapaba al original, y el trabajo siguiente se hacía sobre la copia mientras la versión que se publica
+  quedaba quieta.
+
+- **`check` y `upgrade` avisan cuando el cargo que forkeaste mejoró río arriba.** El mecanismo ya existía
+  para ADRs y reglas —«sobrescribir es legítimo; lo que no puede pasar es que ocurra en silencio»— pero
+  no cubría los cargos, que es donde más caro sale: un fork se hace una vez y se olvida.
+
+  Se compara contra los digests guardados al forkear, nunca contra la copia: la copia está editada a
+  propósito, así que medir contra ella devolvería «todo cambió» desde el primer ajuste. Editar lo propio
+  no dispara nada, y esa mitad es la que decide si el aviso se lee o se ignora.
+
 ## [0.16.1] - 2026-08-16
 
 ### Corregido
