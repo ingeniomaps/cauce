@@ -8,6 +8,22 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.11.0] - 2026-08-16
+
+### Añadido
+
+- **Los 281 casos adversariales se ejecutan.** Existían desde el principio y nadie los corría:
+  `evaluate` los contaba. Era una suite que sólo comprobaba que los archivos `.test.js` existieran.
+  - `ops evaluate <cargo> --cases [--json]` los expone.
+  - El recorrido `/agent-eval <cargo>` los corre: **quien responde nunca ve los comportamientos
+    esperados** —si los viera, el caso mediría su capacidad de repetirlos, no su criterio— y quien
+    juzga no es quien respondió.
+  - El veredicto queda en `evaluations/results/<fecha>.md`, con la respuesta del cargo y la cita que
+    sostiene cada comportamiento observado.
+- `evaluate` informa si el cargo se corrió alguna vez y cómo le fue. No tenerlo es una advertencia, no
+  un error: ejecutar cuesta y exigirlo en CI sería exigir red y credenciales. Un resultado que cubre
+  menos casos de los vigentes **sí** es error: da una confianza que no tiene.
+
 ## [0.10.1] - 2026-08-16
 
 ### Corregido
