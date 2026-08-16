@@ -119,6 +119,11 @@ test('el puntero de un cargo conserva su frontmatter y no duplica el contrato', 
   assert.match(generated, /agents\/roles\/system\/product-manager\/SKILL\.md/, 'apunta a donde el cargo vive de verdad')
   const original = fs.readFileSync(path.join(repoRoot, 'agents', 'roles', 'system', 'product-manager', 'SKILL.md'), 'utf8')
   assert.ok(generated.length < original.length / 2, 'un puntero pesa mucho menos que el contrato')
+
+  // La ruta es relativa y no decía a qué se ancla. Dos agentes que resolvieron un cargo parados en el
+  // repo ops la construyeron doblada —`<empresa>-ops/<empresa>-ops/...`— y tuvieron que deducir la
+  // raíz. En sidecar el wiring vive en la carpeta de la compañía y el repo ops es uno de sus hijos.
+  assert.match(generated, /se resuelven desde este directorio raíz/, 'el puntero declara su ancla')
 })
 
 // Cada archivo que un adaptador copia se lee desde donde se abre la herramienta, que en modo sidecar
