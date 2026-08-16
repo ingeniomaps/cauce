@@ -1,0 +1,30 @@
+{
+  "$comment": [
+    "Escrito a mano, no por `automation install`. Ese comando arma la superficie de consumo de una",
+    "empresa —48 punteros de cargo, un CLAUDE.md generado y una segunda copia de los workflows— y acá",
+    "no consumimos el toolkit: lo fabricamos. Los punteros apuntarían a los cargos que escribimos en",
+    "este mismo repo, y la copia de los workflows podría divergir de la original.",
+    "",
+    "Tampoco van los doce guards. `destructive` bloquea `git push`, que acá hacemos a propósito en cada",
+    "release, y `planning-drift` corre `check planning`, un directorio que el toolkit no tiene ni puede",
+    "tener. Instalarlos completos sería ruido garantizado.",
+    "",
+    "Queda `verify`, que corre los gates reales antes de un commit con código. Es el único que se ganó",
+    "el lugar con evidencia: la suite se venía corriendo a mano antes de cada commit, que funciona",
+    "mientras uno se acuerde. Sólo dispara si hay código staged; un commit de documentación no paga",
+    "los siete segundos. Para saltarlo con intención: OPS_SKIP_VERIFY=1."
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/automatization/hooks/guard-verify.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
