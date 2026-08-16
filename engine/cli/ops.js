@@ -50,7 +50,7 @@ function usage() {
   ops automation install <ops-root> claude|codex|gemini|antigravity
   ops learn <agent> [--proposal]
   ops evaluate <agent> [--cases [--json]]
-  ops agents list [ops-root] [--json]
+  ops agents list [ops-root] [--own|--system] [--json]
   ops team list
   ops team check <team>
   ops team show <team>`)
@@ -618,7 +618,11 @@ function opsRoot(dir) {
 function agents(action, dir) {
   if (action !== 'list') fail(`Acción de agents desconocida: ${action || '(vacía)'}`, 2)
   const root = opsRoot(dir)
-  const roles = AG.list(root)
+  // Una empresa mantiene sus cargos, no los nuestros: `learn` sobre uno del catálogo se niega, así que
+  // recorrer los 48 para encontrar el suyo es ruido. `--own` es lo que hace ejecutable ese recorrido.
+  const own = process.argv.includes('--own')
+  const system = process.argv.includes('--system')
+  const roles = AG.list(root).filter((role) => (own ? !role.system : true) && (system ? role.system : true))
   if (process.argv.includes('--json')) {
     // `path` viene resuelto: quien consuma esto no debería reconstruir dónde ganó la precedencia.
     return console.log(JSON.stringify(roles.map((role) => ({

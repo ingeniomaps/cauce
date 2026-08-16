@@ -254,3 +254,24 @@ test('un resultado que no cubre todos los casos vigentes no vale', () => {
     fs.rmSync(file, { force: true })
   }
 })
+
+// Una empresa mantiene sus cargos, no los del catálogo. Sin poder acotar la lista, su ciclo de
+// aprendizaje tendría que recorrer 48 cargos para encontrar el suyo y chocar 47 veces con la negativa.
+test('una empresa puede acotar el catálogo a lo que sí mantiene', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-own-'))
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar']).status, 0)
+  linkEngine(target)
+  const propio = path.join(target, 'agents', 'roles', 'curador')
+  fs.mkdirSync(propio, { recursive: true })
+  fs.writeFileSync(path.join(propio, 'SKILL.md'), '---\nname: curador\ndescription: Cargo propio.\n---\n')
+
+  const own = JSON.parse(run(['agents', 'list', target, '--own', '--json']).stdout)
+  assert.deepEqual(own.map((role) => role.slug), ['curador'])
+  const system = JSON.parse(run(['agents', 'list', target, '--system', '--json']).stdout)
+  assert.ok(system.length >= 40)
+  assert.equal(system.some((role) => role.slug === 'curador'), false)
+  // Y el ciclo corre sobre el suyo, mientras uno del catálogo sigue rechazado con explicación.
+  assert.equal(run(['learn', 'curador'], target).status, 0)
+  assert.match(run(['learn', 'qa-engineer'], target).stderr, /se hace en el toolkit/)
+})

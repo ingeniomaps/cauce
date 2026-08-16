@@ -111,7 +111,7 @@ jobs:
           OPS: ${{ steps.cli.outputs.path }}
         run: node "$OPS" learn "$AGENT"
       # El prompt no lo escribe este archivo: lo declara el propio cargo en su
-      # `learning/CODEX_AUTOMATION.md`. Así un cargo nuevo trae su investigación sin tocar el cron.
+      # `learning/AUTOMATION.md`. Así un cargo nuevo trae su investigación sin tocar el cron.
       - name: Research
         if: steps.creds.outputs.ready == 'true'
         env:
@@ -119,7 +119,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           npm install -g @anthropic-ai/claude-code
-          claude -p "Leé el learning/CODEX_AUTOMATION.md del cargo $AGENT y ejecutá exactamente lo que declara. El informe de esta semana ya está creado y vacío: completalo. Cada afirmación necesita enlace, fecha y versión; lo que no puedas corroborar va a Preguntas abiertas en vez de afirmarse. El único archivo que escribís es ese informe."
+          claude -p "Leé el learning/AUTOMATION.md del cargo $AGENT y ejecutá exactamente lo que declara. El informe de esta semana ya está creado y vacío: completalo. Cada afirmación necesita enlace, fecha y versión; lo que no puedas corroborar va a Preguntas abiertas en vez de afirmarse. El único archivo que escribís es ese informe."
       - name: Detect changes
         if: steps.creds.outputs.ready == 'true'
         id: changes

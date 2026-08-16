@@ -42,6 +42,28 @@ slug reemplaza al del sistema.
 `teams/` compone varios cargos en etapas con gates de salida y un dueño por dominio de decisión;
 `node tools/ops.js team show <slug>` muestra el recorrido.
 
+### El aprendizaje de tus cargos
+
+Los cargos que trae Cauce se investigan en el toolkit: la profesión evoluciona igual para todas las
+empresas, y repetir esa investigación en cada instalación produciría la misma conclusión N veces, cada
+una peor. `learn` sobre uno de ellos falla y te dice dónde va lo que sí es tuyo.
+
+Los cargos **propios** son otra cosa: nadie más los va a investigar. Su ciclo es el mismo y corre por
+comando, sin cron —activarlo en tu repositorio es decisión tuya—:
+
+```bash
+node tools/ops.js agents list --own          # sólo los tuyos, sin los 47 del catálogo
+node tools/ops.js learn <slug>               # arma el informe de la semana
+/agent-propose <slug>                        # escribe el cambio concreto sobre esos informes
+#   ↑ firmá «Aprobación humana» en la propuesta antes de seguir
+/agent-promote <slug>                        # lo aplica, registra y manda a verificar
+/agent-eval <slug>                           # corre sus casos adversariales contra el contrato nuevo
+```
+
+Un cargo propio puede declarar en `learning/AUTOMATION.md` qué debe investigar y con qué frecuencia.
+Si su profesión no existe fuera de tu empresa, sus fuentes son internas: lo que aprende sale de sus
+propias decisiones, no de un estándar de afuera.
+
 ## Qué se puede editar y qué no
 
 Todo directorio `system/` pertenece a Cauce y se reemplaza completo al actualizar. **Nunca editar nada
