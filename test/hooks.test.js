@@ -110,6 +110,25 @@ test('guard-engine protege el motor instalado y deja trabajar al toolkit', () =>
   assert.doesNotThrow(() => execute('engine', { cwd: root, tool_input: own }))
 })
 
+// El mensaje es la única guía que recibe quien se choca con el guard, así que el comando tiene que
+// funcionar de verdad. `npm update` no sirve: `declareEngine` clava la versión exacta y npm no mueve
+// un pin exacto —dice «up to date» y no hace nada—. Y `install @latest` a secas escribe `^`, que
+// rompe esa disciplina; de ahí `--save-exact`. Traer el motor tampoco alcanza: las rutas del sistema
+// de la instancia se refrescan con `upgrade`, que es el segundo paso.
+test('guard-engine indica un camino de actualización que funciona', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-engine-msg-'))
+  fs.mkdirSync(path.join(root, 'node_modules', '@ingeniomaps', 'cauce'), { recursive: true })
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
+  const input = { cwd: root, tool_input: { file_path: 'node_modules/@ingeniomaps/cauce/x.js' } }
+  let message = ''
+  try { execute('engine', input) } catch (error) { message = error.message }
+  assert.ok(message, 'el guard tiene que haber bloqueado')
+  assert.match(message, /npm install --save-dev --save-exact @ingeniomaps\/cauce@latest/)
+  assert.match(message, /ops\.js upgrade/, 'y el segundo paso, o la instancia queda a medias')
+  assert.ok(!message.includes('npm update'), 'npm update no mueve un pin exacto')
+})
+
 test('guard-migrations protege historial y SQL destructivo', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-migrations-'))
   fs.mkdirSync(path.join(root, 'migrations'))

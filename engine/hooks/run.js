@@ -344,10 +344,13 @@ function engineWrites(input) {
   for (const raw of filesOf(input)) {
     const file = path.resolve(cwdOf(input), raw)
     if (file !== pkg && !file.startsWith(`${pkg}${path.sep}`)) continue
-    block(`${raw} pertenece al motor de Cauce, que se actualiza con npm.\n` +
+    block(`${raw} pertenece al motor de Cauce, que llega por npm.\n` +
       'Un cambio acá lo borra el próximo install y mientras tanto corrés un motor que no coincide ' +
-      'con la versión que declarás. Actualizá con "npm update @ingeniomaps/cauce" y reportá el ' +
-      'problema arriba; lo que sí es tuyo son tus cargos, equipos e integraciones.')
+      'con la versión que declarás. Para traer una versión nueva son dos pasos —el motor y después ' +
+      'las rutas del sistema de tu instancia—:\n' +
+      '  npm install --save-dev --save-exact @ingeniomaps/cauce@latest\n' +
+      '  node tools/ops.js upgrade\n' +
+      'Y reportá el problema arriba. Lo que sí es tuyo son tus cargos, equipos e integraciones.')
   }
 }
 
