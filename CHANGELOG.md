@@ -8,6 +8,34 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.18.0] - 2026-08-16
+
+### Agregado
+
+- **`ops evaluate <cargo> --bench`: un banco desechable donde un cargo del catálogo puede realmente
+  trabajar.** El toolkit no es una raíz ops y no puede serlo —el único `planning/` que vive acá es
+  `template/planning`, el molde que se distribuye—. Un cargo cuya entrega es una épica o una entrada de
+  INBOX no tenía dónde escribir, se negaba con razón, y su caso lo contaba como fallo: el número
+  describía el lugar, no al cargo.
+
+  El banco es una instancia de verdad: `check` pasa, el catálogo resuelve desde adentro y `planning/`
+  está vacío y escribible. Se recrea entero en cada corrida —reutilizarlo dejaría que lo que un cargo
+  escribió el lunes sea contexto del que responde el martes— y queda en disco al terminar, gitignorado,
+  porque después de un veredicto raro lo primero que uno quiere es mirar qué escribió el cargo.
+
+### Cambiado
+
+- **La evaluación corre sobre el banco en vez de negarse.** La 0.16.0 detuvo el recorrido dentro del
+  toolkit: acertó el diagnóstico y erró el remedio, porque negarse dejó al catálogo sin ninguna forma
+  de medirse, y el catálogo es nuestro y nos toca medirlo.
+
+  El veredicto se escribe junto al cargo, no en el banco: el banco se borra en la corrida siguiente
+  —es donde el cargo trabajó, no donde vive— y el veredicto pertenece al contrato que lo rindió.
+
+  En una empresa no hay banco ni hace falta: su instancia ya es el lugar. Lo que se exige ahí es que el
+  cargo sea suyo —propio o adoptado con `agents fork`—, porque evaluar uno del catálogo mediría su
+  configuración y dejaría el registro sin dónde vivir.
+
 ## [0.17.0] - 2026-08-16
 
 ### Agregado
