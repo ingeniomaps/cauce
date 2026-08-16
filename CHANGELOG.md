@@ -8,6 +8,15 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.14.2] - 2026-08-16
+
+### Corregido
+
+- **Un comportamiento esperado partido en varias líneas contaba como varios.** El parser de casos leía
+  líneas en vez de viñetas, así que un caso con cuatro comportamientos declaraba siete — y ese número
+  es el denominador de toda la evaluación: ninguno podía pasar. No se veía en el catálogo del sistema,
+  donde todas las viñetas entran en una línea; apareció en el primer caso escrito por una empresa.
+
 ## [0.14.1] - 2026-08-16
 
 ### Corregido
