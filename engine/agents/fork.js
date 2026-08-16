@@ -131,6 +131,10 @@ function drift(root) {
   const found = []
   for (const [slug, record] of Object.entries(forks)) {
     if (!record || !record.files) continue
+    // Sin copia no hay deriva. Devolver a un cargo al catálogo es tan legítimo como adoptarlo, y el
+    // registro sobrevive a esa vuelta: sin este corte, `check` avisaba «tu copia no recibe mejoras»
+    // sobre una copia que ya no existe, y mandaba a mirar un directorio borrado.
+    if (!fs.existsSync(path.join(root, 'agents', record.type || 'roles', slug))) continue
     const source = catalogDir ? path.join(catalogDir, record.type || 'roles', 'system', slug) : ''
     if (!source || !fs.existsSync(source)) continue
     const current = tree(source).filter(inherited)

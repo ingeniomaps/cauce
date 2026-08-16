@@ -361,6 +361,26 @@ test('el fork reescribe las rutas del catálogo por las de la empresa', () => {
   assert.equal(/agents\/roles\/system\/demo-role/.test(automation), false, 'y ya no al paquete')
 })
 
+// Devolver un cargo al catálogo es tan legítimo como adoptarlo, y el registro sobrevive a esa vuelta.
+// Sin este corte, `check` avisaba «tu copia no recibe mejoras del catálogo» sobre una copia borrada y
+// mandaba a mirar un directorio que no está.
+test('un cargo devuelto al catálogo no deja avisos sobre una copia que no existe', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-unfork-'))
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
+  const source = fakePackage(root, 'demo-role')
+  const F = require('../engine/agents/fork')
+  const forked = F.fork(root, 'demo-role', '2026-08-16')
+
+  // Con la copia puesta y el catálogo movido, avisa: eso es lo que tiene que seguir pasando.
+  fs.appendFileSync(path.join(source, 'SKILL.md'), '\nMejora del catálogo.\n')
+  assert.equal(F.drift(root).length, 1)
+
+  // Devuelta al catálogo, el registro queda pero ya no describe nada.
+  fs.rmSync(forked.dir, { recursive: true })
+  assert.deepEqual(F.drift(root), [], 'sin copia no hay deriva')
+})
+
 test('en el toolkit no se forkea: el catálogo se edita acá', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-fork-toolkit-'))
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })

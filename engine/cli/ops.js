@@ -608,7 +608,12 @@ function upgrade(dir) {
     const dir = path.join(root, relative)
     if (fs.existsSync(dir)) registro = M.record(root, relative, O.treeFiles(dir), registro)
   }
-  M.write(root, M.prune(root, registro))
+  // El registro de forks se poda igual que el de archivos: un cargo devuelto al catálogo deja su
+  // entrada, y una entrada sin copia sólo puede producir avisos sobre algo que no está.
+  const vivos = Object.fromEntries(Object.entries(M.readForks(root)).filter(
+    ([slug, record]) => fs.existsSync(path.join(root, 'agents', (record || {}).type || 'roles', slug)),
+  ))
+  M.write(root, M.prune(root, registro), null, vivos)
 
   const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
   config.cauceVersion = to
