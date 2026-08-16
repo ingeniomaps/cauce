@@ -32,6 +32,14 @@
     {
       "source": "../../workflows/agent-eval.js",
       "target": ".claude/workflows/agent-eval.js"
+    },
+    {
+      "source": "../../workflows/agent-propose.js",
+      "target": ".claude/workflows/agent-propose.js"
+    },
+    {
+      "source": "../../workflows/agent-promote.js",
+      "target": ".claude/workflows/agent-promote.js"
     }
   ],
   "capabilities": {

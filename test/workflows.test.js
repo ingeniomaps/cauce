@@ -237,3 +237,21 @@ test('un workflow no llama a nada que no exista', () => {
   }
   assert.deepEqual([...new Set(faltantes)], [])
 })
+
+// El único recorrido que modifica un cargo. Sus dos candados no son estilo: sin el primero un agente
+// se autorizaría a sí mismo, y sin el segundo quedaría un contrato cambiado sin que nadie sepa si
+// todavía se sostiene.
+test('promover un cargo exige firma humana y verificación posterior', () => {
+  const promote = fs.readFileSync(path.join(WF, 'agent-promote.js'), 'utf8')
+  assert.match(promote, /sin-firma/, 'se detiene si no está aprobada')
+  assert.match(promote, /nadie se autoriza a sí mismo/)
+  assert.match(promote, /propuesta-vacia/, 'y si el cambio todavía es "por definir"')
+  assert.match(promote, /agent-eval/, 'y manda a correr los casos contra el contrato nuevo')
+  // Nunca aplica lo que no está firmado: la lectura de la firma ocurre antes que cualquier escritura.
+  assert.ok(promote.indexOf("label: 'firma'") < promote.indexOf('aplica:'), 'la firma se lee primero')
+
+  // El que propone jamás toca el cargo: si lo hiciera, la firma llegaría tarde.
+  const propose = fs.readFileSync(path.join(WF, 'agent-propose.js'), 'utf8')
+  assert.match(propose, /No toques «Aprobación humana»/)
+  assert.match(propose, /no su aplicación/, 'propone, no aplica')
+})
