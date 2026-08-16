@@ -732,3 +732,47 @@ test('una bandera no ocupa el lugar de un argumento', () => {
   assert.ok(JSON.parse(conRaiz.stdout).length >= 40, 'con raíz explícita antes de la bandera')
   assert.ok(JSON.parse(sinRaiz.stdout).length >= 40, 'y con la bandera sola')
 })
+
+// El toolkit no es una raíz ops y no puede serlo: el único `planning/` que vive acá es
+// `template/planning`, el molde que se distribuye. Un cargo cuya entrega es una épica no tenía dónde
+// escribir, se negaba —con razón— y su caso lo contaba como fallo: el número hablaba del lugar, no
+// del cargo. El banco es ese lugar.
+test('el banco de evaluación es una instancia de verdad, no un directorio vacío', () => {
+  const toolkit = path.resolve(__dirname, '..')
+  const bench = run(['evaluate', 'product-manager', '--bench'], toolkit)
+  assert.equal(bench.status, 0, bench.stderr)
+  const dir = bench.stdout.trim()
+  assert.ok(fs.existsSync(path.join(dir, 'ops.config.json')), 'con su configuración')
+  assert.ok(fs.existsSync(path.join(dir, 'planning', 'INBOX.md')), 'y un planning donde escribir')
+
+  // `findOpsRoot` reconoce una raíz ops por tener planning/: sin esto los guards no la ven siquiera.
+  const valid = run(['check', path.join(dir, 'planning')], toolkit)
+  assert.equal(valid.status, 0, valid.stdout + valid.stderr)
+
+  // Y el catálogo resuelve desde adentro, que es lo que hace del banco un lugar de trabajo.
+  const roles = JSON.parse(run(['agents', 'list', dir, '--json'], toolkit).stdout)
+  assert.ok(roles.length >= 40, `el banco ve el catálogo (${roles.length})`)
+})
+
+// Reutilizarlo dejaría que lo que un cargo escribió el lunes sea contexto del que responde el martes,
+// y dos corridas del mismo caso dejarían de ser comparables.
+test('el banco se recrea entero en cada corrida', () => {
+  const toolkit = path.resolve(__dirname, '..')
+  const dir = run(['evaluate', 'product-manager', '--bench'], toolkit).stdout.trim()
+  const rastro = path.join(dir, 'planning', 'rastro-de-la-corrida-anterior.md')
+  fs.writeFileSync(rastro, 'lo que escribió el cargo la vez pasada\n')
+  run(['evaluate', 'product-manager', '--bench'], toolkit)
+  assert.equal(fs.existsSync(rastro), false, 'la corrida anterior no contamina la siguiente')
+})
+
+// En una empresa el banco no hace falta —su instancia ya es el lugar— y ofrecerlo confundiría: el
+// cargo que se evalúa ahí tiene que ser suyo.
+test('el banco es del toolkit; una instancia recibe la salida que le corresponde', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-bench-'))
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar']).status, 0)
+  const result = run(['evaluate', 'product-manager', '--bench'], target)
+  assert.equal(result.status, 2)
+  assert.match(result.stderr, /--bench es del toolkit/)
+  assert.match(result.stderr, /agents fork product-manager/, 'y nombra la salida real')
+})

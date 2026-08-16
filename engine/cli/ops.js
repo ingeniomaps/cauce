@@ -49,7 +49,7 @@ function usage() {
   ops automation doctor <ops-root> claude|codex|gemini|antigravity
   ops automation install <ops-root> claude|codex|gemini|antigravity
   ops learn <agent> [--proposal]
-  ops evaluate <agent> [--cases [--json]]
+  ops evaluate <agent> [--cases [--json]] [--bench]
   ops agents list [ops-root] [--own|--system] [--json]
   ops agents fork <cargo> [ops-root]
   ops team list
@@ -79,7 +79,7 @@ function option(name, fallback = '') {
   return index >= 0 ? process.argv[index + 1] || fallback : fallback
 }
 
-function copyTemplate(source, target, replacements, force, skip = []) {
+function copyTemplate(source, target, replacements, force, skip = [], quiet = false) {
   F.assertNoSymlinkPath(path.dirname(target), target)
   fs.mkdirSync(target, { recursive: true })
   for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
@@ -88,18 +88,18 @@ function copyTemplate(source, target, replacements, force, skip = []) {
     // npm no incluye un `.gitignore` dentro de un tarball, así que viaja sin punto y se restituye
     // acá. Sin esto el archivo existe en el repo del toolkit y desaparece para todo consumidor real.
     const to = path.join(target, entry.name === 'gitignore' ? '.gitignore' : entry.name)
-    if (entry.isDirectory()) copyTemplate(from, to, replacements, force, skip)
+    if (entry.isDirectory()) copyTemplate(from, to, replacements, force, skip, quiet)
     else {
       if (fs.existsSync(to)) {
         if (!force) fail(`El destino contiene ${to}. Usa un directorio vacío o --force.`)
-        console.log(`= conservado ${to}`)
+        if (!quiet) console.log(`= conservado ${to}`)
         continue
       }
       let content = fs.readFileSync(from, 'utf8')
       for (const [key, value] of Object.entries(replacements)) content = content.replaceAll(key, value)
       F.atomicWrite(to, content)
       if (entry.name.endsWith('.js')) fs.chmodSync(to, 0o755)
-      console.log(`+ ${to}`)
+      if (!quiet) console.log(`+ ${to}`)
     }
   }
 }
@@ -143,29 +143,22 @@ function providerNames() {
   } catch { return [] }
 }
 
-function init(target) {
-  if (!target) fail('Falta <destino>.', 2)
-  const mode = option('--mode', 'embedded')
-  if (!['embedded', 'sidecar'].includes(mode)) fail('--mode debe ser embedded o sidecar.', 2)
-  const name = option('--name', path.basename(path.resolve(target)).replace(/-ops$/, ''))
-  const root = path.resolve(target)
-  const existing = fs.existsSync(root) ? fs.readdirSync(root) : []
-  if (existing.length && !process.argv.includes('--force')) {
-    fail(`El destino no está vacío: ${root}. Usa --force para agregar solo archivos faltantes.`)
-  }
+// El andamiaje de una instancia, sin leer argv. `init` es la cáscara que traduce banderas a esto, y
+// el banco de evaluación lo llama directo: crear una instancia programáticamente no puede depender de
+// cómo venga escrita la línea de comandos.
+function scaffold(root, { name, mode, force = false, quiet = false }) {
   copyTemplate(path.join(PROJECT_ROOT, 'template'), root, {
     '{{PROJECT_NAME}}': name,
     '{{MODE}}': mode,
     '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
-  }, process.argv.includes('--force'), providerNames())
+  }, force, providerNames(), quiet)
   // No se copia `.github/`: `ci.yml` valida el toolkit con `npm run ci` —que una instancia no tiene— y
   // el ciclo de aprendizaje dejó de distribuirse en 0.4.0. Copiar salteando los dos únicos archivos
   // que existen dejaba `.github/workflows/` vacío en cada instancia.
-  const preserve = process.argv.includes('--force')
   copyRuntime(
     path.join(PROJECT_ROOT, 'automatization', 'hooks'),
     path.join(root, 'automatization', 'hooks'),
-    preserve,
+    force,
     root,
   )
   const version = require(path.join(PROJECT_ROOT, 'package.json')).version
@@ -188,6 +181,44 @@ function init(target) {
   config.cauceVersion = version
   config.$schema = 'node_modules/@ingeniomaps/cauce/engine/schemas/ops-config.schema.json'
   F.atomicWriteJson(configFile, config)
+  return root
+}
+
+// Un banco de trabajo desechable donde un cargo del catálogo puede realmente trabajar.
+//
+// Hace falta porque el toolkit no es una raíz ops: no tiene `planning/`, y no puede tenerlo —el único
+// `planning/` que vive acá es `template/planning`, el molde que se distribuye—. Un cargo cuya entrega
+// es una épica o una entrada de INBOX no tiene dónde escribir, así que se niega. Con razón, y su caso
+// lo cuenta como fallo: eso midió una configuración, no al cargo.
+//
+// Se recrea entero en cada corrida. Reutilizarlo dejaría que lo que un cargo escribió el lunes sea
+// contexto del que responde el martes, y dos corridas del mismo caso dejarían de ser comparables.
+// Queda en disco al terminar, gitignorado, porque después de un veredicto raro lo primero que uno
+// quiere es mirar qué escribió el cargo.
+function evaluationBench(root) {
+  const dir = path.join(root, '.cauce-eval')
+  fs.rmSync(dir, { recursive: true, force: true })
+  scaffold(dir, { name: 'Banco de evaluación', mode: 'sidecar', quiet: true })
+  // El motor por symlink: la misma resolución que en una instancia real —`node_modules/@ingeniomaps`—
+  // sin pagar un `npm install` por corrida. El cargo llega a un banco donde el CLI funciona.
+  const scope = path.join(dir, 'node_modules', '@ingeniomaps')
+  fs.mkdirSync(scope, { recursive: true })
+  fs.symlinkSync(PROJECT_ROOT, path.join(scope, 'cauce'), 'dir')
+  return dir
+}
+
+function init(target) {
+  if (!target) fail('Falta <destino>.', 2)
+  const mode = option('--mode', 'embedded')
+  if (!['embedded', 'sidecar'].includes(mode)) fail('--mode debe ser embedded o sidecar.', 2)
+  const name = option('--name', path.basename(path.resolve(target)).replace(/-ops$/, ''))
+  const root = path.resolve(target)
+  const force = process.argv.includes('--force')
+  const existing = fs.existsSync(root) ? fs.readdirSync(root) : []
+  if (existing.length && !force) {
+    fail(`El destino no está vacío: ${root}. Usa --force para agregar solo archivos faltantes.`)
+  }
+  scaffold(root, { name, mode, force })
   console.log(`\n✓ ${name}: sistema ops creado en ${root}`)
   console.log('  siguiente: npm install (el motor viene de la dependencia)')
   console.log(`  siguiente: node ${path.join(root, 'tools', 'ops.js')} check ${path.join(root, 'planning')}`)
@@ -850,6 +881,17 @@ function learn(agent) {
 
 function evaluate(agent) {
   const root = opsRoot()
+  // El banco sólo tiene sentido acá: en una empresa el cargo que se evalúa es suyo —propio o
+  // adoptado— y su `planning/` ya es el lugar legítimo donde trabajar.
+  if (process.argv.includes('--bench')) {
+    let mode = ''
+    try { mode = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')).mode } catch { /* sin config */ }
+    if (mode !== 'toolkit') {
+      fail('--bench es del toolkit. En una instancia, el cargo trabaja sobre tu planning/: si es del '
+        + `catálogo, adoptalo primero con "ops agents fork ${agent}".`, 2)
+    }
+    return console.log(evaluationBench(root))
+  }
   try {
     // Los casos, para que un recorrido los ejecute. Sin `--json` no tiene sentido: es entrada de
     // máquina, no de persona.
