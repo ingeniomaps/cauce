@@ -119,7 +119,9 @@ test('la documentación de agentes no cita rutas del toolkit ni rutas inexistent
     const at = path.relative(repoRoot, file)
     // `engine/cli/ops.js` sólo existe en el toolkit; estos documentos viajan a cada instancia.
     assert.equal(text.includes('engine/cli/ops.js'), false, `${at} cita el CLI del toolkit`)
-    for (const match of text.matchAll(/agents\/[a-z0-9/-]+/g)) {
+    // La extensión es parte de la ruta: sin ella el patrón cortaba en el punto y comprobaba la
+    // existencia de un archivo sin `.md`, que nunca existe.
+    for (const match of text.matchAll(/agents\/[a-z0-9/-]+(?:\.(?:md|ya?ml|json|js))?/g)) {
       assert.equal(fs.existsSync(path.join(repoRoot, match[0])), true, `${at} cita ${match[0]}, que no existe`)
     }
   }
@@ -185,4 +187,30 @@ test('un slug repetido entre tipos distintos sigue siendo ambiguo', () => {
   }
   // Entre tipos no hay regla de precedencia, y elegir en silencio sería peor que fallar.
   assert.throws(() => catalog.resolve(root, 'demo'), /agente ambiguo demo/)
+})
+
+// La propuesta mensual existe para consolidar lo que recomendaron los informes de la semana. Con la
+// bandera `m` el `$` casa fin de *línea*, así que la búsqueda no ávida cortaba en el primer salto y
+// una recomendación de diez líneas llegaba como una. El ciclo corría verde entregando casi nada.
+test('la propuesta mensual consolida la recomendación entera, no su primera línea', () => {
+  const L = require('../engine/agents/learning')
+  const repo = path.resolve(__dirname, '..')
+  const reports = path.join(repo, 'agents', 'roles', 'system', 'qa-engineer', 'learning', 'reports')
+  const stamp = '2099-01-07'
+  const report = path.join(reports, `${stamp}.md`)
+  const proposal = path.join(repo, 'agents', 'roles', 'system', 'qa-engineer', 'learning', 'proposals', '2099-01.md')
+  fs.writeFileSync(report, `---\nagent: qa-engineer\ndate: ${stamp}\nstatus: draft\n---\n\n`
+    + '## Recomendación\n\nPrimera línea.\nSegunda línea.\nTercera línea.\n\n## Preguntas abiertas\n\nNinguna.\n')
+  try {
+    const result = L.prepareProposal(repo, 'qa-engineer', new Date('2099-01-31T00:00:00Z'))
+    assert.equal(result.reports, 1)
+    const text = fs.readFileSync(result.file, 'utf8')
+    assert.match(text, /Primera línea/)
+    assert.match(text, /Segunda línea/, 'la recomendación no se corta en el primer salto')
+    assert.match(text, /Tercera línea/)
+    assert.equal(text.includes('Preguntas abiertas'), false, 'y no se lleva la sección siguiente')
+  } finally {
+    fs.rmSync(report, { force: true })
+    fs.rmSync(proposal, { force: true })
+  }
 })

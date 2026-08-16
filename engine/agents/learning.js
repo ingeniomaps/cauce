@@ -79,7 +79,9 @@ function prepareProposal(root, agent, now = new Date()) {
   const summaries = reports.map((name) => {
     const report = path.join(target, 'learning', 'reports', name)
     const text = fs.readFileSync(report, 'utf8')
-    const match = text.match(/^## Recomendación\s*\n([\s\S]*?)(?=\n## |$)/m) || []
+    // Sin `m`: con esa bandera el `$` casa fin de *línea*, así que la búsqueda no ávida cortaba en el
+    // primer salto y la propuesta consolidaba una sola línea de una recomendación de diez.
+    const match = text.match(/\n## Recomendación\s*\n([\s\S]*?)(?=\n## |$)/) || []
     const recommendation = (match[1] || 'Sin recomendación registrada.').trim()
     return `### ${name.slice(0, -3)}\n\nFuente interna: \`${path.relative(root, report)}\`\n\n${recommendation}`
   })
