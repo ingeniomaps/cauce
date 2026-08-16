@@ -8,6 +8,50 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.16.0] - 2026-08-16
+
+### Agregado
+
+- **`guard-engine` impide editar el motor instalado.** `workspace-boundary` no lo cubría: en una
+  instalación `node_modules/` cae dentro de la raíz declarada, así que editar el motor le parecía
+  legítimo y nada estructural sostenía la regla.
+
+  El daño de esa edición es silencioso por partida doble. El próximo `npm install` la borra, de modo
+  que el arreglo se pierde justo cuando alguien creyó haberlo hecho; y hasta entonces la empresa corre
+  un motor que no coincide con la versión que declara, que es la forma habitual de un bug
+  irreproducible. **Un problema del motor se reporta y se arregla arriba.**
+
+  El toolkit queda exento por `mode: toolkit`, donde el motor es el producto y editarlo es el trabajo.
+  Lo de cada empresa —cargos, equipos, integraciones, planificación— sigue abierto.
+
+### Cambiado
+
+- **`planningDir` se retira: era obligatorio y nadie lo honraba.** El renderizador de la plantilla lo
+  resolvía siempre a `planning`, mientras `findOpsRoot` y el registro de integraciones tienen esa ruta
+  escrita a mano. Cambiarlo no cambiaba nada: no configuraba, prometía. Una instancia con
+  `planningDir: "roadmap"` seguía corriendo sobre `planning/` sin aviso.
+
+  Se retira en vez de honrarse porque la ubicación no es opinable: `findOpsRoot` reconoce un
+  repositorio de operaciones justamente por tener `planning/` en la raíz.
+
+  **Al actualizar: borrá la línea `planningDir` de `ops.config.json`.** La validación nombra el campo y
+  dice qué hacer con él, en vez de caer en «propiedad desconocida».
+
+- **El recorrido de evaluación se detiene si `mode` es `toolkit`.** La 0.15.1 lo documentó en un
+  comentario y no alcanzó: la corrida siguiente ocurrió otra vez dentro del toolkit y su resultado se
+  leyó como defecto del cargo. Un comentario no impide nada. Ahora corta antes de gastar un agente.
+
+### Corregido
+
+- **La 0.15.1 atribuyó a `legal-counsel` cero casos de escritura en `planning/`, y no es cierto**: su
+  respuesta declina uno citando el modo toolkit, y el juez aceptó la justificación —de ahí el 6/6—. El
+  único registro limpio de la muestra es el de `security-engineer`.
+
+  El registro de `product-manager` se descarta. Sus dos fallos son los dos casos que escriben, y la
+  negativa citaba `planningDir` apuntando a la plantilla distribuida: un campo inerte: el motor habría
+  escrito en `planning/` de la raíz, que el toolkit no tiene. Ese 3/5 no mide al cargo ni al entorno,
+  sino una configuración que mentía. Se vuelve a ganar sobre una instancia.
+
 ## [0.15.1] - 2026-08-16
 
 ### Corregido
