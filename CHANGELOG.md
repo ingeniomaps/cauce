@@ -8,6 +8,20 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.12.0] - 2026-08-16
+
+### Cambiado
+
+- **`qa-engineer` incorporó su primera propuesta aprobada.** Aditiva en cuatro archivos: cinco fuentes
+  nuevas, oráculos probabilísticos para sistemas de IA, transparencia de contenido generado y plazos
+  regulatorios en el contrato, sus métodos en el modelo operativo, y la conducta prohibida
+  `unreviewed_agent_test_repair` con el caso `07-agent-test-repair.md` que la pone a prueba. **7 de 7
+  casos pasan** contra el contrato nuevo.
+- El recorrido de evaluación ya no le pone tope de extensión a la respuesta que mide. Un tope de doce
+  líneas hacía fallar dos casos que pasan: un comportamiento esperado puede exigir seis elementos
+  —«versión, entorno, datos, pasos, frecuencia y artefactos»— y cuatro de esos no entran. El caso define
+  qué hace falta; el arnés no puede maniatar la respuesta y después contar lo que falta.
+
 ## [0.11.1] - 2026-08-16
 
 ### Corregido
