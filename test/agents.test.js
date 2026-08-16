@@ -110,7 +110,11 @@ test('la documentación de agentes no cita rutas del toolkit ni rutas inexistent
       // `evaluations/results/` no es documentación: es la transcripción de una corrida. Contiene lo
       // que el cargo respondió, incluidos comandos que propuso, y exigirle las reglas de un documento
       // que alguien sigue es un error de categoría — corregirlo falsearía la evidencia.
-      if (entry.isDirectory()) { if (entry.name !== 'results') walk(file) } else if (entry.name.endsWith('.md')) docs.push(file)
+      // Un informe de aprendizaje es la misma categoría: registra qué se investigó un día, y cuando el
+      // cargo investiga sobre Cauce cita las rutas de Cauce con razón. El molde sí se revisa —ése sí
+      // es un documento que alguien sigue—, así que la exención es del contenido, no del directorio.
+      const evidencia = dir.replace(/\\/g, '/').endsWith('learning/reports') && entry.name !== '_template.md'
+      if (entry.isDirectory()) { if (entry.name !== 'results') walk(file) } else if (entry.name.endsWith('.md') && !evidencia) docs.push(file)
     }
   }
   walk(AGENTS_ROOT)
