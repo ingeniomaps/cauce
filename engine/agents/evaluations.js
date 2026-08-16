@@ -1,0 +1,88 @@
+'use strict'
+
+// Los casos adversariales de un cargo, ejecutables.
+//
+// Cada caso es una tentación escrita: un pedido razonable en la superficie que cruza una línea del
+// contrato, más los comportamientos que el cargo debería exhibir. Hasta acá existían y nadie los
+// corría —`evaluate` los contaba—, que es como tener una suite que sólo comprueba que los archivos
+// `.test.js` existan.
+//
+// Ejecutarlos exige un modelo, y eso no puede vivir dentro de un CLI determinista que corre en CI sin
+// red ni credenciales. Así que el reparto es el mismo que en el ciclo de aprendizaje: el CLI expone
+// los casos y valida el resultado; quien los ejecuta es un agente, y el veredicto queda escrito.
+//
+// El cargo que responde nunca ve los comportamientos esperados: si los viera, el caso mediría su
+// capacidad de repetirlos y no su criterio.
+
+const fs = require('node:fs')
+const path = require('node:path')
+const catalog = require('./catalog')
+
+const RESULTS = ['evaluations', 'results']
+
+function caseFiles(dir) {
+  try {
+    return fs.readdirSync(dir).filter((name) => name.endsWith('.md')).sort()
+  } catch { return [] }
+}
+
+// Un caso, partido en lo que ve quien responde y lo que ve quien juzga.
+function parseCase(text) {
+  const request = (text.match(/#\s*Solicitud\s*\n([\s\S]*?)(?=\n#\s|$)/) || [])[1] || ''
+  const block = (text.match(/#\s*Comportamientos esperados\s*\n([\s\S]*?)(?=\n#\s|$)/) || [])[1] || ''
+  const expected = block.split('\n')
+    .map((line) => line.replace(/^\s*-\s*/, '').trim())
+    .filter(Boolean)
+  return { request: request.trim(), expected }
+}
+
+function list(root, agent) {
+  const dir = path.join(catalog.resolve(root, agent), 'evaluations', 'cases')
+  return caseFiles(dir).map((name) => ({
+    id: name.replace(/\.md$/, ''),
+    ...parseCase(fs.readFileSync(path.join(dir, name), 'utf8')),
+  }))
+}
+
+function resultsDir(root, agent) {
+  return path.join(catalog.resolve(root, agent), ...RESULTS)
+}
+
+// El último resultado registrado, para que `evaluate` pueda decir si el cargo se corrió alguna vez y
+// cómo le fue. No es un error no tenerlo: correrlo cuesta, y exigirlo en CI sería exigir red.
+function latest(root, agent) {
+  const dir = resultsDir(root, agent)
+  const names = caseFiles(dir).filter((name) => /^\d{4}-\d{2}-\d{2}\.md$/.test(name)).sort()
+  if (!names.length) return null
+  const file = path.join(dir, names[names.length - 1])
+  const text = fs.readFileSync(file, 'utf8')
+  const verdicts = [...text.matchAll(/^-\s*Veredicto:\s*(pasa|no pasa)\s*$/gim)].map((hit) => hit[1].toLowerCase())
+  return {
+    file,
+    date: names[names.length - 1].replace(/\.md$/, ''),
+    total: verdicts.length,
+    passed: verdicts.filter((verdict) => verdict === 'pasa').length,
+  }
+}
+
+// Coherencia entre lo que hay y lo que se corrió: un resultado que no cubre todos los casos vigentes
+// da una confianza que no tiene, y es peor que no tener ninguno.
+function validate(root, agent) {
+  const errors = []
+  const warnings = []
+  const total = list(root, agent).length
+  const last = latest(root, agent)
+  if (!last) {
+    warnings.push(`sin resultados de casos: corré el recorrido de evaluación para los ${total} casos`)
+    return { errors, warnings, cases: total, last: null }
+  }
+  if (last.total !== total) {
+    errors.push(`${path.basename(last.file)} cubre ${last.total} de ${total} caso(s): el resultado no vale`)
+  }
+  if (last.passed < last.total) {
+    errors.push(`${last.total - last.passed} caso(s) no pasaron en ${last.date}`)
+  }
+  return { errors, warnings, cases: total, last }
+}
+
+module.exports = { list, latest, parseCase, validate, resultsDir }

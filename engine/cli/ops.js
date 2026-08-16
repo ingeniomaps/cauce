@@ -16,6 +16,7 @@ const M = require('../core/manifest')
 const C = require('../config/validate')
 const T = require('../teams/registry')
 const AG = require('../agents/catalog')
+const EV = require('../agents/evaluations')
 
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..')
 
@@ -48,7 +49,7 @@ function usage() {
   ops automation doctor <ops-root> claude|codex|gemini|antigravity
   ops automation install <ops-root> claude|codex|gemini|antigravity
   ops learn <agent> [--proposal]
-  ops evaluate <agent>
+  ops evaluate <agent> [--cases [--json]]
   ops agents list [ops-root] [--json]
   ops team list
   ops team check <team>
@@ -822,12 +823,28 @@ function learn(agent) {
 }
 
 function evaluate(agent) {
+  const root = opsRoot()
   try {
-    const result = L.evaluate(opsRoot(), agent)
-    for (const error of result.errors) console.error(`✗ ${error}`)
-    if (result.errors.length) fail(`\n${result.errors.length} error(es)`, 1)
+    // Los casos, para que un recorrido los ejecute. Sin `--json` no tiene sentido: es entrada de
+    // máquina, no de persona.
+    if (process.argv.includes('--cases')) {
+      const cases = EV.list(root, agent)
+      if (!process.argv.includes('--json')) {
+        for (const item of cases) console.log(`${item.id}  ${item.expected.length} comportamiento(s)`)
+        return
+      }
+      return console.log(JSON.stringify(cases))
+    }
+    const result = L.evaluate(root, agent)
+    const runs = EV.validate(root, agent)
+    for (const warning of runs.warnings) console.warn(`⚠ ${warning}`)
+    for (const error of [...result.errors, ...runs.errors]) console.error(`✗ ${error}`)
+    if (result.errors.length + runs.errors.length) {
+      fail(`\n${result.errors.length + runs.errors.length} error(es)`, 1)
+    }
+    const corrida = runs.last ? `${runs.last.passed}/${runs.last.total} pasan (${runs.last.date})` : 'sin correr'
     console.log(
-      `✓ ${agent}: ${result.cases} caso(s), ${result.proposals} propuesta(s), ` +
+      `✓ ${agent}: ${result.cases} caso(s) — ${corrida}, ${result.proposals} propuesta(s), ` +
         'controles estructurales válidos',
     )
   } catch (error) { fail(error.message, 2) }

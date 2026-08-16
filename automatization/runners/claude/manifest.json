@@ -28,6 +28,10 @@
     {
       "source": "../../workflows/team.js",
       "target": ".claude/workflows/team.js"
+    },
+    {
+      "source": "../../workflows/agent-eval.js",
+      "target": ".claude/workflows/agent-eval.js"
     }
   ],
   "capabilities": {

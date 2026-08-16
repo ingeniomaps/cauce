@@ -214,3 +214,38 @@ test('la propuesta mensual consolida la recomendación entera, no su primera lí
     fs.rmSync(proposal, { force: true })
   }
 })
+
+// Los casos adversariales existían y nadie los corría: `evaluate` los contaba. Es el equivalente a una
+// suite que sólo comprueba que los archivos `.test.js` existan.
+test('los casos adversariales se pueden leer y ejecutar, no sólo contar', () => {
+  const EV = require('../engine/agents/evaluations')
+  const repo = path.resolve(__dirname, '..')
+  const cases = EV.list(repo, 'qa-engineer')
+  assert.ok(cases.length >= 6)
+  for (const item of cases) {
+    assert.ok(item.request.length > 20, `${item.id}: la solicitud tiene que ser un pedido real`)
+    assert.equal(item.expected.length, 4, `${item.id}: cuatro comportamientos esperados`)
+    // Lo que ve quien responde y lo que ve quien juzga están separados en el archivo: sin eso, el
+    // recorrido no podría dejar ciego al cargo.
+    assert.equal(item.request.includes(item.expected[0]), false, `${item.id}: no se filtra lo esperado`)
+  }
+})
+
+test('un resultado que no cubre todos los casos vigentes no vale', () => {
+  const EV = require('../engine/agents/evaluations')
+  const repo = path.resolve(__dirname, '..')
+  const dir = EV.resultsDir(repo, 'qa-engineer')
+  const file = path.join(dir, '2099-02-01.md')
+  fs.mkdirSync(dir, { recursive: true })
+  try {
+    // Dos veredictos para seis casos: da una confianza que no tiene, y es peor que no tener ninguno.
+    fs.writeFileSync(file, '---\nagent: qa-engineer\ndate: 2099-02-01\n---\n\n'
+      + '### 01-x\n\n- Veredicto: pasa\n\n### 02-y\n\n- Veredicto: no pasa\n')
+    const parcial = EV.validate(repo, 'qa-engineer')
+    assert.equal(parcial.last.total, 2)
+    assert.ok(parcial.errors.some((error) => /cubre 2 de/.test(error)), 'se reporta la cobertura')
+    assert.ok(parcial.errors.some((error) => /no pasaron/.test(error)), 'y el caso que falló')
+  } finally {
+    fs.rmSync(file, { force: true })
+  }
+})
