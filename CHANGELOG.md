@@ -8,6 +8,50 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.19.0] - 2026-08-16
+
+Los cuatro arreglos de abajo salieron de correr los tres caminos de punta a punta —un cargo que
+aprende en el toolkit, uno propio de una empresa, y uno del catálogo adoptado y aprendiendo—, no de
+un test. Son cosas que se veían correctas hasta que algo las siguió de verdad.
+
+### Agregado
+
+- **`guard-governance` cubre el contrato de un cargo, su medición y su firma.** `agent-promote` se
+  niega si «Aprobación humana» no está firmada, pero lo único que impedía que la escribiera un agente
+  era una frase en un prompt: una instrucción, no un candado, y el archivo no estaba protegido por
+  nada.
+
+  Alrededor de la firma van las otras piezas del mismo acto. `SKILL.md` y `references/` son lo que la
+  propuesta cambia: sin ellos, editar el contrato directo saltea el ciclo entero. Y
+  `evaluations/cases/` con `expected-behaviors.yaml` son el denominador con que se juzga —el propio
+  recorrido de propuesta ya dice que cambiarlo «es parte de lo que se aprueba»—, así que moverlo en
+  silencio ablanda toda medición pasada sin tocar una regla.
+
+  **Para una empresa esto significa** que tocar su propio cargo pide `OPS_GOVERNANCE_OVERRIDE=1`, la
+  misma puerta explícita que ya rige para `planning/adr/` y `planning/rules/`. Las dos clases de
+  evidencia quedan afuera: `learning/reports/` y `evaluations/results/` registran lo que pasó un día
+  en vez de decidir algo, y un veredicto se escribe en cada corrida.
+
+### Corregido
+
+- **La automatización de un cargo adoptado apuntaba al catálogo.** El `AUTOMATION.md` del sistema dice
+  «mantené `agents/<tipo>/system/<slug>`», que dentro de una empresa es el paquete. Copiado tal cual,
+  el ciclo semanal del cargo adoptado escribía en un directorio que el guard bloquea y que npm borra
+  —y reportaba éxito—. `agents fork` ahora reescribe esas rutas a las de la empresa.
+
+- **Devolver un cargo al catálogo dejaba avisos sobre una copia que no existe.** Borrar un fork
+  resuelve bien —el cargo vuelve a salir del paquete— pero el manifiesto conservaba su registro, así
+  que `check` decía «tu copia no recibe mejoras del catálogo» y mandaba a mirar un directorio
+  borrado. Devolver es tan legítimo como adoptar: ahora la deriva exige que la copia exista antes de
+  comparar, y `upgrade` poda el registro huérfano igual que ya poda los archivos.
+
+- **El puntero que instala el runner no decía a qué se ancla.** Dos agentes que resolvieron un cargo
+  parados en el repo ops construyeron la ruta doblada —`<empresa>-ops/<empresa>-ops/...`— y tuvieron
+  que deducir la raíz. En sidecar el wiring vive en la carpeta de la compañía y el repo ops es uno de
+  sus hijos; ahora el puntero lo dice.
+
+- **`learn` sugería copiar un cargo a mano** en vez de nombrar `agents fork`, que ya existe.
+
 ## [0.18.0] - 2026-08-16
 
 ### Agregado
