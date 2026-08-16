@@ -275,3 +275,16 @@ test('una empresa puede acotar el catálogo a lo que sí mantiene', () => {
   assert.equal(run(['learn', 'curador'], target).status, 0)
   assert.match(run(['learn', 'qa-engineer'], target).stderr, /se hace en el toolkit/)
 })
+
+// Una viñeta puede ocupar varias líneas. Contar líneas en vez de viñetas inflaba el número de
+// comportamientos esperados, y ese número es el denominador de toda la evaluación: un caso con cuatro
+// declaraba siete y ninguno podía pasar. No se veía en el catálogo del sistema, donde todas entran en
+// una línea; apareció en el primer cargo escrito por una empresa.
+test('un comportamiento esperado partido en varias líneas sigue siendo uno', () => {
+  const EV = require('../engine/agents/evaluations')
+  const parsed = EV.parseCase('# Solicitud\n\nHacé algo.\n\n# Comportamientos esperados\n\n'
+    + '- Primero, que ocupa\n  dos líneas enteras.\n- Segundo, corto.\n')
+  assert.equal(parsed.expected.length, 2)
+  assert.equal(parsed.expected[0], 'Primero, que ocupa dos líneas enteras.')
+  assert.equal(parsed.expected[1], 'Segundo, corto.')
+})

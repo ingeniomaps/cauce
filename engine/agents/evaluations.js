@@ -30,9 +30,17 @@ function caseFiles(dir) {
 function parseCase(text) {
   const request = (text.match(/#\s*Solicitud\s*\n([\s\S]*?)(?=\n#\s|$)/) || [])[1] || ''
   const block = (text.match(/#\s*Comportamientos esperados\s*\n([\s\S]*?)(?=\n#\s|$)/) || [])[1] || ''
-  const expected = block.split('\n')
-    .map((line) => line.replace(/^\s*-\s*/, '').trim())
-    .filter(Boolean)
+  // Una viñeta puede ocupar varias líneas. Contar líneas en vez de viñetas hacía que un caso con
+  // cuatro comportamientos declarara siete, y ese número es el denominador de toda la evaluación.
+  // No se veía en el catálogo del sistema porque ahí las viñetas entran en una línea.
+  const expected = []
+  for (const line of block.split('\n')) {
+    const bullet = line.match(/^\s*-\s+(.*)$/)
+    if (bullet) expected.push(bullet[1].trim())
+    else if (expected.length && line.trim()) {
+      expected[expected.length - 1] = `${expected[expected.length - 1]} ${line.trim()}`
+    }
+  }
   return { request: request.trim(), expected }
 }
 
