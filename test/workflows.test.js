@@ -255,3 +255,12 @@ test('promover un cargo exige firma humana y verificación posterior', () => {
   assert.match(propose, /No toques «Aprobación humana»/)
   assert.match(propose, /no su aplicación/, 'propone, no aplica')
 })
+
+// Un recorrido que frena en la etapa 3 tiraba el trabajo de las dos primeras: los handoffs vivían sólo
+// en memoria. Lo notó el ciclo de aprendizaje de un cargo, que no encontraba sus propios veredictos.
+test('un bloqueo conserva lo que las etapas anteriores ya resolvieron', () => {
+  const team = fs.readFileSync(path.join(WF, 'team.js'), 'utf8')
+  assert.match(team, /handoffs\.filter\(\(entry\) => entry\.gatePassed\)/, 'lo cerrado se recupera')
+  assert.match(team, /ya quedó establecido/, 'y llega al prompt que escribe la acción humana')
+  assert.match(team, /es el trabajo que ya se pagó/)
+})

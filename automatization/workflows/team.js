@@ -181,10 +181,20 @@ for (const stage of discovery) {
 }
 
 if (blocked.length) {
+  // Lo que las etapas anteriores sí resolvieron viaja con el bloqueo. Sin esto se perdía: un recorrido
+  // que frena en la etapa 3 tiraba el trabajo de las dos primeras, que vivía sólo en memoria. Quien lea
+  // la acción humana necesita saber qué quedó establecido para no volver a discutirlo, y el cargo que
+  // aprende de sus propias decisiones no tiene de dónde leerlas si nunca se escribieron.
+  const cerradas = handoffs.filter((entry) => entry.gatePassed)
+  const previo = cerradas.length
+    ? `Lo que ya quedó establecido y no hay que volver a discutir:\n${cerradas
+      .map((entry) => `- ${entry.id} (${entry.agent}): ${entry.findings}`).join('\n')}`
+    : 'Ninguna etapa anterior cerró: el bloqueo es de la primera.'
   await agent(
     `${RULES}\n\nRegistrá en ${HUMAN} una fila por cada bloqueo, con la tarea, el estado pendiente, el ` +
     `origen (etapa ${blocked[0].stage}) y la acción humana exacta que lo desbloquea. No inventes ` +
-    `responsables ni fechas. Bloqueos: ${JSON.stringify(blocked)}`,
+    `responsables ni fechas. Bloqueos: ${JSON.stringify(blocked)}\n\n${previo}\n\nIncluí en la fila un ` +
+    `resumen de lo establecido, con la etapa y el cargo que lo decidió: es el trabajo que ya se pagó.`,
     { label: 'human-actions' },
   )
   return stop('gate-no-cumplido', `${blocked[0].stage}: ${blocked[0].missing}`)
