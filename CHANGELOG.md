@@ -8,6 +8,18 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.14.1] - 2026-08-16
+
+### Corregido
+
+- **Un recorrido de equipo que frena en una etapa tiraba el trabajo de las anteriores.** Los handoffs
+  vivían sólo en memoria: si la etapa 3 no cerraba su gate, lo que las dos primeras habían establecido
+  —con su evidencia y su cita— desaparecía. Ahora viaja con el bloqueo, para que quien lea la acción
+  humana no vuelva a discutir lo ya resuelto.
+
+  Lo encontró el ciclo de aprendizaje de un cargo propio de una empresa: buscaba sus propios veredictos
+  para aprender de ellos y no existían en ninguna parte, porque nunca se habían escrito.
+
 ## [0.14.0] - 2026-08-16
 
 ### Cambiado
