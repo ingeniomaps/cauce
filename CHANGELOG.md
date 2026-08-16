@@ -8,6 +8,30 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.15.0] - 2026-08-16
+
+### Cambiado
+
+- **`AGENTS.md` incorpora «Negarse no es entregar».** Correr los casos adversariales sobre cinco cargos
+  mostró el mismo defecto en tres: el cargo es fuerte para negarse y se queda corto en la acción
+  positiva, **incluso cuando su propio contrato la autoriza**. El `product-manager` citaba su vía de
+  escape sin tomarla; el `data-analyst` enumeraba seis definiciones y pedía elegir; el `qa-engineer`
+  rechazaba una guía externa sin verificarla.
+
+  No son tres defectos sino uno repetido, y es de redacción: los límites van en sección propia y en
+  lista, las obligaciones positivas van de pasada dentro de un párrafo. Bajo presión, pesa la
+  prohibición. Por eso el arreglo es una regla general en `AGENTS.md` —donde todo puntero de cargo ya
+  mandaba a mirar— y no 47 ediciones. Verificado: los tres casos pasan.
+
+  No afloja ningún límite: no promover, no prometer fechas, no inventar evidencia y no exceder la
+  autoridad siguen absolutos. Se cierra la salida de cumplirlos sin entregar.
+
+### Corregido
+
+- El recorrido de evaluación le daba al cargo **sólo su `SKILL.md`**, cuando el puntero que instala cada
+  runner dice «respetá ese contrato **y las reglas de `AGENTS.md`**». Lo medía en una situación que
+  nunca ocurre, y ahí se perdía toda regla general.
+
 ## [0.14.2] - 2026-08-16
 
 ### Corregido
