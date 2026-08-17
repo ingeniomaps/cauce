@@ -15,6 +15,33 @@ Los hooks convierten invariantes comprobables en gates mecánicos. La base recom
 La lógica portable vive en `engine/hooks/run.js`; los `guard-*.sh` son entradas ejecutables comunes. Cada
 adaptador de `runners/` conecta los eventos de su herramienta con esos mismos guards.
 
+## Qué son y qué no son
+
+**Son andamiaje de disciplina: coincidencia de texto sobre el comando o la ruta que el agente propone.**
+Convierten un descuido en un alto y hacen visible una intención en el momento de tenerla. Para eso
+sirven, y sirven bien.
+
+**No son un límite de seguridad, y conviene saber exactamente por qué.** Comprobado corriendo los
+guards directamente:
+
+```text
+git push origin main       → bloquea      g=push; git $g origin main   → pasa
+.env                       → bloquea      .npmrc .netrc id_rsa         → pasan
+```
+
+La primera línea no se arregla con más expresiones regulares: cualquier guard que lea el texto de un
+comando se esquiva componiéndolo, y una shell tiene infinitas formas de hacerlo. La segunda sí es un
+hueco tapable —son nombres de credencial conocidos— pero taparlo no cambia la naturaleza de la
+herramienta.
+
+El riesgo real de esta página no es el bypass: es **la confianza que un guard inspira**. Un repositorio
+con doce guards puestos parece más protegido de lo que está, y esa lectura es peor que no tenerlos,
+porque reemplaza controles que sí son límites —permisos, tokens acotados, revisión humana de lo que se
+publica— por la sensación de que ya está cubierto.
+
+Regla práctica: si algo **tiene** que ser imposible, no lo pongas acá. Ponelo donde no dependa de leer
+una cadena — permisos del runner, alcance del token, aprobación de un PR.
+
 ## Cómo se ejecutan
 
 ```text
