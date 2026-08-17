@@ -765,6 +765,28 @@ test('el banco se recrea entero en cada corrida', () => {
   assert.equal(fs.existsSync(rastro), false, 'la corrida anterior no contamina la siguiente')
 })
 
+// La respuesta de un cargo puede no ser toda su entrega: `backend-engineer` contestó un resumen del
+// webhook y escribió el contrato —firma, orden de verificación, catorce pruebas— en su `INBOX.md`. El
+// juez, que sólo leía la respuesta, lo dio por ausente y lo reprobó. El banco versionado desde su
+// estado limpio es lo que deja ver la diferencia entre el resumen y la entrega.
+test('el banco queda versionado para poder ver qué escribió el cargo', () => {
+  const toolkit = path.resolve(__dirname, '..')
+  const dir = run(['evaluate', 'product-manager', '--bench', '01-caso'], toolkit).stdout.trim()
+  const git = (...args) => spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8' }).stdout
+
+  assert.equal(git('status', '--porcelain').trim(), '', 'el banco nace sin cambios pendientes')
+  assert.match(git('log', '--oneline'), /banco limpio/, 'con su estado limpio ya commiteado')
+
+  fs.appendFileSync(path.join(dir, 'planning', 'INBOX.md'), '\n- lo que produjo el cargo\n')
+  const cambios = git('status', '--porcelain')
+  assert.match(cambios, /planning\/INBOX\.md/, 'y lo escrito aparece como cambio')
+  assert.match(git('diff'), /lo que produjo el cargo/, 'con su contenido visible en el diff')
+
+  // `node_modules` es un symlink al toolkit, no obra del cargo: verlo ahí sería ruido y además
+  // arrastraría el repositorio entero al diff.
+  assert.equal(cambios.includes('node_modules'), false)
+})
+
 // Con un banco por cargo, los casos corrían a la vez sobre el mismo planning/ y se leían entre sí: uno
 // tomó por «una sesión anterior de este mismo cargo» lo que otro acababa de escribir, y otro evaluó
 // cuatro candidatas que en su enunciado no existían. Ninguno cambió de veredicto, pero la respuesta ya

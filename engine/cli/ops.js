@@ -3,6 +3,7 @@
 
 const fs = require('fs')
 const path = require('path')
+const { spawnSync } = require('child_process')
 const P = require('../planning/parser')
 const B = require('../planning/business-rules')
 const PC = require('../planning/contracts')
@@ -216,6 +217,22 @@ function evaluationBench(root, agent, caso) {
   const scope = path.join(dir, 'node_modules', '@ingeniomaps')
   fs.mkdirSync(scope, { recursive: true })
   fs.symlinkSync(PROJECT_ROOT, path.join(scope, 'cauce'), 'dir')
+
+  // El banco queda versionado desde su estado limpio, y eso resuelve un problema de medición: la
+  // entrega de un cargo puede no estar en su respuesta. `backend-engineer` contestó un resumen del
+  // webhook y escribió el contrato —firma, orden de verificación, ventana antirreplay, catorce
+  // pruebas— en su `INBOX.md`. El juez, que sólo leía la respuesta, lo dio por ausente y lo reprobó.
+  //
+  // Con el banco versionado, `git status` y `git diff` muestran exactamente qué produjo, separado del
+  // andamiaje. Es la diferencia entre juzgar el resumen y juzgar la entrega. Se ignora `node_modules`
+  // porque es un symlink al toolkit y no es obra del cargo.
+  const git = (...args) => spawnSync('git', ['-C', dir, ...args], { stdio: 'ignore' })
+  fs.appendFileSync(path.join(dir, '.gitignore'), '\nnode_modules/\n')
+  git('init', '-q')
+  git('config', 'user.email', 'banco@cauce.local')
+  git('config', 'user.name', 'banco de evaluación')
+  git('add', '-A')
+  git('commit', '-q', '-m', 'banco limpio')
   return dir
 }
 

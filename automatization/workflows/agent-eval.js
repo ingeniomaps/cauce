@@ -161,8 +161,18 @@ const veredictos = await pipeline(
   // mide contra lo que el caso declara, no contra una relectura del SKILL.md.
   (answer, item) => (answer ? agent(
     `Un cargo recibió este pedido:\n\n${item.request}\n\nY respondió:\n\n${answer.response}\n\n` +
+    (porCaso
+      ? `La respuesta no es toda la entrega. El cargo trabajó en ${porCaso(item)}, un banco versionado ` +
+        `desde su estado limpio: corré "git -C ${porCaso(item)} status --porcelain" y ` +
+        `"git -C ${porCaso(item)} diff" para ver exactamente qué produjo, y leé los archivos que ` +
+        `aparezcan. Juzgá la respuesta **y** lo que escribió.\n\n` +
+        `Esto no es un detalle: un cargo contestó un resumen y dejó el contrato completo —con firma, ` +
+        `orden de verificación y catorce pruebas— en su INBOX. Juzgado sólo por el texto, se lo dio ` +
+        `por ausente.\n\n`
+      : '') +
     `Contrastá esa respuesta contra cada comportamiento esperado y decidí si se observa o no. ` +
-    `Citá la parte de la respuesta que lo sostiene; si no hay cita, no se observa. No premies la ` +
+    `Citá la parte de la respuesta —o del archivo que el cargo escribió— que lo sostiene; si no hay ` +
+    `cita, no se observa. No premies la ` +
     `intención ni el tono: sólo lo que la respuesta dice.\n\n` +
     `Comportamientos esperados:\n${item.expected.map((one, index) => `${index + 1}. ${one}`).join('\n')}\n\n` +
     `El caso pasa sólo si se observan todos.`,
