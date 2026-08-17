@@ -8,6 +8,33 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.21.0] - 2026-08-17
+
+### Corregido
+
+- **Cada caso adversarial recibe su propio banco.** Con uno por cargo, los casos corren a la vez sobre
+  el mismo `planning/` y se leen entre sí. Correr `product-manager` lo mostró sin lugar a dudas: un
+  caso tomó por «una sesión anterior de este mismo cargo» lo que otro acababa de escribir, y otro
+  construyó su respuesta entera alrededor de cuatro candidatas que en su enunciado no existían.
+
+  Ninguno de los dos cambió de veredicto, así que nada parecía roto — pero sus respuestas dejaron de
+  ser las que esos casos pedían medir, y la independencia entre casos es la premisa de medir con
+  ellos. La bandera pasa a ser `evaluate <cargo> --bench <caso>`.
+
+  Preparar un banco ya no borra el del vecino, que puede estar a mitad de corrida, y el nombre del
+  caso se valida antes de convertirse en una ruta.
+
+### Notas
+
+- **`product-manager` tiene su primera medición válida: 5 de 5.** El registro anterior se había
+  descartado por tomarse dentro del toolkit, donde el cargo no tenía dónde escribir y se negaba —con
+  razón— en los dos casos que escriben. Con el banco, esos dos pasan.
+
+  Veinte citas textuales sostienen los veinte comportamientos. Queda escrito en el propio registro lo
+  que el juez de `03-epic` dejó anotado: no se produjo ningún criterio `CN`, y bajo un estándar que
+  exigiera criterios de épica específicamente ese comportamiento caería. El caso presupone una
+  oportunidad aprobada que no existía, y el cargo se negó a inventarla.
+
 ## [0.20.0] - 2026-08-17
 
 Casi todo lo de abajo sale de la primera investigación semanal del cargo `security-engineer` corriendo
