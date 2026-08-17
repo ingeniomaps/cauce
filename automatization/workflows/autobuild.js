@@ -256,7 +256,8 @@ while (safety++ < 50) {
         { schema: ESTIMATE },
       )
       if (estimate.needsSplit) {
-        await write(`Replace only ${task.id} in ${BACKLOG} with ordered, independently verifiable subtasks: ${JSON.stringify(estimate.subtasks)}.`)
+        await write(`Replace only ${task.id} in ${BACKLOG} with ordered, ` +
+          `independently verifiable subtasks: ${JSON.stringify(estimate.subtasks)}.`)
         planning = await readContext()
         if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
         continue
@@ -267,22 +268,31 @@ while (safety++ < 50) {
     let plan = await run(
       `${asRole(OWNERS.plan)}Inspect real code, repository instructions, neighbouring conventions, epic context ` +
       `and git status for ${task.id}. ` +
-      `Produce the smallest plan satisfying ${task.acceptance}. Planning files cannot be implementation files.`, { schema: PLAN },
+      `Produce the smallest plan satisfying ${task.acceptance}. Planning files cannot be implementation files.`,
+      { schema: PLAN },
     )
     if (!direct && !lite) {
       phase('Critique')
       let critique = await read(
-        `Attack this plan for correctness, scope, security, tests and conflicts with existing code: ${JSON.stringify(plan)}`,
+        `Attack this plan for correctness, scope, security, tests and conflicts with existing ` +
+        `code: ${JSON.stringify(plan)}`,
         { schema: DECISION },
       )
       if (!critique.approved) {
-        plan = await read(`Revise the plan once for: ${critique.concerns.join('; ')}. Plan: ${JSON.stringify(plan)}`, { schema: PLAN })
-        critique = await read(`Re-critique the revised plan against ${task.acceptance}: ${JSON.stringify(plan)}`, { schema: DECISION })
+        plan = await read(
+          `Revise the plan once for: ${critique.concerns.join('; ')}. Plan: ${JSON.stringify(plan)}`,
+          { schema: PLAN },
+        )
+        critique = await read(
+          `Re-critique the revised plan against ${task.acceptance}: ${JSON.stringify(plan)}`,
+          { schema: DECISION },
+        )
         if (!critique.approved) return stop('plan-rejected', critique.concerns.join('; '))
       }
     }
     await write(
-      `Persist active WIP before code: task=${task.id}, hito=${JSON.stringify(task.hito)}, phase=Build, service=${task.service}, ` +
+      `Persist active WIP before code: task=${task.id}, hito=${JSON.stringify(task.hito)}, ` +
+      `phase=Build, service=${task.service}, ` +
       `acceptance=${JSON.stringify(task.acceptance)}, unchecked steps=${JSON.stringify(plan.steps)}. ` +
       `Registrá además el reparto de cargos ${JSON.stringify(cast)} en las decisiones del WIP, para que ` +
       `después se pueda auditar quién revisó qué. Follow the WIP contract exactly.`,
@@ -320,14 +330,18 @@ while (safety++ < 50) {
   const verified = await run(
     `${asRole(cast.verify)}Discover and run the real gates for ${task.service}: repository instructions first, ` +
     `then applicable test, lint, ` +
-    `typecheck and build. Read actual exit codes. passed=true needs commands and no task-caused regression.`, { schema: VERIFY },
+    `typecheck and build. Read actual exit codes. passed=true needs commands and no task-caused regression.`,
+    { schema: VERIFY },
   )
   if (!verified.passed || !verified.commands.length) return stop('verify-failed', verified.details)
 
   phase('QA')
   const qa = await run(
-    `${asRole(cast.qa)}${direct || lite ? 'Perform the cheapest real acceptance check' : 'Exercise real consumer-visible behavior'} for ` +
-    `${task.id}. Unit tests alone are not QA. Start only minimum runtime and tear it down. Acceptance: ${task.acceptance}.`,
+    `${asRole(cast.qa)}${direct || lite
+      ? 'Perform the cheapest real acceptance check'
+      : 'Exercise real consumer-visible behavior'} for ` +
+    `${task.id}. Unit tests alone are not QA. Start only minimum runtime and tear it down. ` +
+    `Acceptance: ${task.acceptance}.`,
     { schema: QA },
   )
   if (!qa.passed) return stop('qa-failed', qa.evidence)
@@ -343,8 +357,10 @@ while (safety++ < 50) {
 
   phase('Done')
   await write(
-    `Atomically close ${task.id}: append it under its hito in ${DONE} with acept, done, qa, tests and commit evidence; ` +
-    `remove it and its indented notes from ${BACKLOG}; close its epic only if no tagged task remains; reset ${WIP} to ` +
+    `Atomically close ${task.id}: append it under its hito in ${DONE} with acept, done, qa, ` +
+    `tests and commit evidence; ` +
+    `remove it and its indented notes from ${BACKLOG}; close its epic only if no tagged task remains; ` +
+    `reset ${WIP} to ` +
     `status IDLE. Facts: build=${build.summary}; verify=${JSON.stringify(verified.commands)}; qa=${qa.evidence}; ` +
     `commit=${commit.hash || commit.reason}.`,
   )
