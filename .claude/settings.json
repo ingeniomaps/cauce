@@ -1,18 +1,13 @@
 {
   "$comment": [
-    "Escrito a mano, no por `automation install`. Ese comando arma la superficie de consumo de una",
-    "empresa —48 punteros de cargo, un CLAUDE.md generado y una segunda copia de los workflows— y acá",
-    "no consumimos el toolkit: lo fabricamos. Los punteros apuntarían a los cargos que escribimos en",
-    "este mismo repo, y la copia de los workflows podría divergir de la original.",
+    "Un guard de los doce. No correr `automation install` para completar el resto: lo que ese comando",
+    "agrega —punteros de cargo, una copia de los workflows, `destructive` contra el `git push` de cada",
+    "release, `planning-drift` sobre un `planning/` que no existe— es ruido acá. El argumento está en",
+    "AGENTS.md, «Acá no se instala nada».",
     "",
-    "Tampoco van los doce guards. `destructive` bloquea `git push`, que acá hacemos a propósito en cada",
-    "release, y `planning-drift` corre `check planning`, un directorio que el toolkit no tiene ni puede",
-    "tener. Instalarlos completos sería ruido garantizado.",
-    "",
-    "Queda `verify`, que corre los gates reales antes de un commit con código. Es el único que se ganó",
-    "el lugar con evidencia: la suite se venía corriendo a mano antes de cada commit, que funciona",
-    "mientras uno se acuerde. Sólo dispara si hay código staged; un commit de documentación no paga",
-    "los siete segundos. Para saltarlo con intención: OPS_SKIP_VERIFY=1."
+    "`verify` corre la suite (`npm test`, no `npm run ci`: quedan afuera check, automatización,",
+    "integraciones y cobertura) y sólo si hay código staged, así que un commit de documentación no paga",
+    "los ocho segundos. Para saltarlo con intención: OPS_SKIP_VERIFY=1."
   ],
   "hooks": {
     "PreToolUse": [
