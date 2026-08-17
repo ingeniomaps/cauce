@@ -1,19 +1,24 @@
 {
   "$comment": [
-    "Un guard de los doce. No correr `automation install` para completar el resto: lo que ese comando",
+    "Dos de los doce guards. No correr `automation install` para completar el resto: lo que ese comando",
     "agrega —punteros de cargo, una copia de los workflows, `destructive` contra el `git push` de cada",
     "release, `planning-drift` sobre un `planning/` que no existe— es ruido acá. El argumento está en",
     "AGENTS.md, «Acá no se instala nada».",
     "",
-    "`verify` corre la suite (`npm test`, no `npm run ci`: quedan afuera check, automatización,",
-    "integraciones y cobertura) y sólo si hay código staged, así que un commit de documentación no paga",
-    "los ocho segundos. Para saltarlo con intención: OPS_SKIP_VERIFY=1."
+    "`git-add` es una regex sobre el comando y no cuesta nada. `verify` corre la suite (`npm test`, no",
+    "`npm run ci`: quedan afuera check, automatización, integraciones y cobertura) y sólo si hay código",
+    "staged, así que un commit de documentación no paga los ocho segundos. Para saltarlo con intención:",
+    "OPS_SKIP_VERIFY=1."
   ],
   "hooks": {
     "PreToolUse": [
       {
         "matcher": "Bash",
         "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/automatization/hooks/guard-git-add.sh"
+          },
           {
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/automatization/hooks/guard-verify.sh"

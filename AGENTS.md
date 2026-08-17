@@ -20,8 +20,8 @@ esos comandos producen acá es daño concreto:
 - `init` o un `planning/` en la raíz duplicarían `template/planning`, que ya es el nuestro, y el
   molde dejaría de ser el que se distribuye.
 
-El wiring de acá es a mano: `.claude/settings.json` activa un solo guard y explica por qué en su
-`$comment`. Que `automation doctor` reporte faltantes es correcto y no hay que "arreglarlo": mide si
+El wiring de acá es a mano: `.claude/settings.json` activa `git-add` y `verify`, los dos que se ganaron
+el lugar. Que `automation doctor` reporte faltantes es correcto y no hay que "arreglarlo": mide si
 la superficie de consumo de una empresa está completa, una pregunta que acá no aplica.
 
 ## La inversión de `system/`

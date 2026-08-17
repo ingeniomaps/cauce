@@ -35,7 +35,7 @@
     "functions": 100
   },
   "engine/cli/ops.js": {
-    "lines": 85,
+    "lines": 86,
     "branches": 43,
     "functions": 88
   },
@@ -85,13 +85,13 @@
     "functions": 95
   },
   "engine/integrations/state.js": {
-    "lines": 96,
-    "branches": 61,
-    "functions": 88
+    "lines": 98,
+    "branches": 67,
+    "functions": 92
   },
   "engine/integrations/writeback.js": {
-    "lines": 86,
-    "branches": 68,
+    "lines": 90,
+    "branches": 78,
     "functions": 100
   },
   "engine/planning/business-rules.js": {
@@ -106,7 +106,7 @@
   },
   "engine/planning/parser.js": {
     "lines": 100,
-    "branches": 73,
+    "branches": 74,
     "functions": 100
   },
   "engine/teams/registry.js": {

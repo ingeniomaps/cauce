@@ -515,6 +515,20 @@ test('Jira sincroniza ADF, preserva curación y promueve sin escribir remoto', (
     })
   assert.equal(matchingEpics.length, 1)
   assert.match(fs.readFileSync(draftFile, 'utf8'), /state: promoted/)
+
+  // Las tres reconciliaciones y el plan de escritura comparten este staging y no tenían prueba por
+  // CLI: el despachador las declara en una tabla, y una entrada mal escrita ahí no se nota hasta que
+  // alguien la usa. `reset` va último porque reescribe el draft desde el snapshot.
+  const plan = run(['integration', 'writeback-plan', target, 'jira'])
+  assert.equal(plan.status, 0, plan.stderr)
+  assert.equal(JSON.parse(plan.stdout).writeBack, false, 'no hay ejecutor remoto aprobado')
+
+  for (const operacion of ['reconcile', 'rebase', 'reset']) {
+    const result = run(['integration', operacion, target, 'jira', 'DEMO-42'])
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stdout, new RegExp(`${operacion} aplicado a DEMO-42`))
+  }
+  assert.notEqual(run(['integration', 'reset', target, 'jira', 'NO-EXISTE']).status, 0)
 })
 
 test('upgrade reemplaza lo del sistema y no toca nada del proyecto', () => {
