@@ -51,6 +51,7 @@ Leer [references/operating-model.md](references/operating-model.md) al definir S
 - Coordinar entrega, capacidad e infraestructura con DevOps Engineer.
 - Revisar incidentes y controles con Security, Privacy y soporte según impacto.
 - Compartir escenarios, evidencias y pruebas de recuperación con QA Engineer.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

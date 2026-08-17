@@ -41,6 +41,7 @@ Leer [references/operating-model.md](references/operating-model.md) para opportu
 - Human-in-the-loop sólo es control si la persona tiene información, tiempo, capacidad, autoridad e incentivo para intervenir.
 - No usar disclosure, disclaimer o términos como sustituto de diseño seguro, límites, testing, soporte o reparación.
 - Riesgo, compliance, datos, modelo, arquitectura y despliegue requieren decisión/revisión de sus owners autorizados.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

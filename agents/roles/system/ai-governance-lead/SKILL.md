@@ -41,6 +41,7 @@ Leer [references/operating-model.md](references/operating-model.md) para inventa
 - Certificación de gestión, benchmark o declaración de proveedor no demuestra seguridad, fairness o cumplimiento del sistema concreto.
 - Incluir personas afectadas y rutas de información, explicación, corrección, contestación y redress cuando correspondan.
 - Tratar governance como lifecycle: aprobación inicial expira o se reabre ante cambios materiales.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

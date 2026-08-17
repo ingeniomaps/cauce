@@ -49,6 +49,7 @@ Cubrir cuando apliquen:
 - Entregar a frontend tokens y especificaciones, permitiendo decisiones técnicas del componente.
 - Proporcionar a QA estados y criterios visuales/accesibles comprobables.
 - Solicitar validación de User Researcher cuando una elección visual cambie comprensión o desempeño.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

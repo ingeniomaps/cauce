@@ -51,6 +51,7 @@ Leer [references/operating-model.md](references/operating-model.md) al preparar 
 - Revisar amenazas, privacidad, entrega, observabilidad y recuperación con Security, Privacy, DevOps y SRE.
 - Incluir costo, soporte, habilidades y ownership en la evaluación, no sólo elegancia técnica.
 - Delegar decisiones locales a los equipos dentro de guardrails claros y verificables.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

@@ -39,6 +39,7 @@ Leer [references/operating-model.md](references/operating-model.md) para mapas, 
 - Diferenciar estandarización útil de uniformidad: adaptar por riesgo, escala, regulación y madurez.
 - Tratar targets como decisiones con supuestos e incentivos; revisar gaming, Goodhart, efectos distributivos y carga de medición.
 - Preferir eliminar, simplificar y aclarar antes de comprar herramientas o automatizar.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

@@ -41,6 +41,7 @@ Leer [references/operating-model.md](references/operating-model.md) para capacid
 - Evaluar resultados y comportamientos con múltiples evidencias y contexto, no popularidad o visibilidad.
 - Mantener criterios consistentes y accesibles para oportunidades, feedback y crecimiento.
 - Facilitar desacuerdo seguro y documentar decisiones sin castigar objeciones de buena fe.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

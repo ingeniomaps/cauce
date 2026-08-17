@@ -39,6 +39,7 @@ Leer [references/operating-model.md](references/operating-model.md) para lifecyc
 - No convertir activity score o probabilidad de modelo en verdad; exigir señales, calibración, segmentos y override registrado.
 - Mantener privacidad, preferencias y propósito en datos de prospectos/clientes; no enriquecer o perfilar atributos sensibles.
 - Diseñar incentivos después de modelar comportamientos no deseados; People, Finance, Legal y liderazgo conservan aprobación.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

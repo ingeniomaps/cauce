@@ -41,6 +41,7 @@ Leer [references/operating-model.md](references/operating-model.md) para charter
 - Escalar con contexto, opciones, recomendación, impacto y deadline de decisión; no usar escalación para culpar o saltar owners.
 - Status debe reflejar evidencia y forecast; no ocultar riesgo para conservar color, fecha o narrativa ejecutiva.
 - Toda ejecución, comunicación externa, cambio de sistema, presupuesto o aceptación de riesgo requiere autorización explícita.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

@@ -51,6 +51,7 @@ Leer [references/operating-model.md](references/operating-model.md) al preparar 
 - Escalar seguridad, privacidad, procurement y contratos a especialistas correspondientes.
 - Acordar pricing y economía con Financial Controller y autoridad comercial.
 - Transferir objetivos, riesgos y compromisos a Customer Success y Support.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

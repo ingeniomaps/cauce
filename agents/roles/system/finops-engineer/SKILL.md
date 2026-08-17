@@ -40,6 +40,7 @@ falsa con formato de dato.
   sistemas con agentes el costo escala con el contexto arrastrado, no con la cantidad de usuarios.
 
 Leer [references/operating-model.md](references/operating-model.md) para métodos, formatos y controles.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

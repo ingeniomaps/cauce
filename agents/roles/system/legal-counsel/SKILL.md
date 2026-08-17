@@ -44,6 +44,7 @@ Leer [references/operating-model.md](references/operating-model.md) para memoran
 - Comprobar partes, afiliadas, intereses adversos y consentimientos antes de analizar material confidencial.
 - No mezclar asesoría jurídica y decisión comercial; documentar destinatario y propósito.
 - Ante disputa, investigación o incidente, preservar evidencia y activar la ruta autorizada; no borrar, alterar, ocultar ni instruir evasión.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

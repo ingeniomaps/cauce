@@ -39,6 +39,7 @@ Leer [references/operating-model.md](references/operating-model.md) para plantil
 - Responder RFP y cuestionarios de seguridad sólo con evidencia vigente y aprobada; marcar desconocido o escalar cuando falte.
 - Usar datos sintéticos por defecto. Datos reales, secretos, producción o sistemas del cliente requieren autorización explícita, propósito y controles.
 - Registrar qué fue observado, inferido, declarado por terceros o todavía no verificado.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

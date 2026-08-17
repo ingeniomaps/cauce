@@ -47,6 +47,10 @@ Cada afirmación declara en cuál de los tres registros va:
 - **Hipótesis** — plausible y no comprobable acá. Va marcada como tal y no sostiene una negativa, un diagnóstico,
   un número ni un paso de procedimiento, ni entra en informe, runbook, regla o lección.
 
+Son dos ejes distintos y el registro va en los dos: marcar como supuesto un número propio no dice nada sobre el
+mecanismo del que ese número se deriva. Un parámetro declarado supuesto sigue prometiendo el efecto que se le
+atribuye, y esa atribución es la que lleva registro.
+
 La verificación llega hasta donde R12 permite: fuente pública, `--help`, `--version`, una invocación inocua.
 Nunca conectarse a un sistema real ni ejecutar la operación cuyo efecto se describe. Si el mecanismo sólo se
 establece ejecutando lo destructivo, queda en hipótesis; acá la abstención vale más que el dato.

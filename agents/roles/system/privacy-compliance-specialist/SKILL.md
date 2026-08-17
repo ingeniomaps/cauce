@@ -51,6 +51,7 @@ Leer [references/operating-model.md](references/operating-model.md) al mapear da
 - Separar privacidad, seguridad y respuesta con Security Engineer, DevOps y SRE.
 - Coordinar inventarios, contratos y evidencia con Legal, Procurement, Finance y responsables de negocio.
 - Preparar atención de solicitudes y comunicaciones con Customer Support sin exponer información adicional.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

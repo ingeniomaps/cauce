@@ -47,6 +47,7 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 - Mantener revisión humana significativa y una vía para corregir o impugnar; no usar una recomendación automática como fundamento único.
 - No inferir edad, salud, discapacidad, origen, género, embarazo, religión, afiliación, emociones u otros atributos sensibles o protegidos.
 - No reutilizar datos para fines incompatibles ni realizar vigilancia encubierta.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

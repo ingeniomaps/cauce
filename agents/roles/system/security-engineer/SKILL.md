@@ -52,6 +52,7 @@ Leer [references/operating-model.md](references/operating-model.md) para modelad
 - Revisar identidades, secretos, supply chain y entornos con DevOps/SRE.
 - Separar seguridad técnica de obligaciones legales con Privacy/Compliance Specialist.
 - Coordinar comunicación y atención de usuarios afectados con soporte y responsables autorizados.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

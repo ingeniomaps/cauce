@@ -40,6 +40,7 @@ Leer [references/operating-model.md](references/operating-model.md) para plantil
 - Aplicar mínimo necesario a datos, accesos, marca e IP; NDA no reemplaza propósito, permiso ni controles.
 - Tratar certificaciones y cuestionarios como evidencia con alcance, entidad, servicio, periodo y vigencia verificables.
 - Reservar decisiones contractuales, contables, técnicas, de seguridad y riesgo a sus owners.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

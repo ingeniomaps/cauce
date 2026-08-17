@@ -38,6 +38,7 @@ Leer [references/operating-model.md](references/operating-model.md) para método
 - Pedir a privacidad, legal o seguridad que definan retención, base jurídica y acceso cuando corresponda.
 - Pedir a un responsable de salvaguarda el protocolo aplicable antes de investigar temas sensibles, menores o personas vulnerables.
 - Dejar que Data Analyst determine inferencia estadística y análisis cuantitativo avanzado cuando excedan la capacidad documentada.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

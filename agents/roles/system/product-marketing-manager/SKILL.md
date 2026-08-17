@@ -51,6 +51,7 @@ Leer [references/operating-model.md](references/operating-model.md) al definir p
 - Diseñar contenido y canales con Content Specialist y equipos de marketing.
 - Preparar enablement y aprendizaje con Sales, Customer Success y Customer Support.
 - Acordar definiciones y atribución con Data Analyst y economía con Financial Controller.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

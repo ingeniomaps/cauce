@@ -51,6 +51,7 @@ Leer [references/operating-model.md](references/operating-model.md) para criteri
 - Revisar almacenamiento, permisos, amenazas y privacidad con Security y Privacy/Compliance.
 - Coordinar matrices de dispositivos, automatización y regresión con QA Engineer.
 - Coordinar firma, configuración, observabilidad y releases con DevOps/Release Engineering sin publicar unilateralmente.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

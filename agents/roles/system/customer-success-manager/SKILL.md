@@ -51,6 +51,7 @@ Leer [references/operating-model.md](references/operating-model.md) al crear suc
 - Coordinar defectos e incidentes con Support, QA, Engineering y SRE.
 - Validar mensajes, educación y enablement con Product Marketing y Content.
 - Escalar términos, privacidad, seguridad, facturación y créditos a responsables especializados.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

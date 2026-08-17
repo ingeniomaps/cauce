@@ -65,6 +65,7 @@ Leer [references/operating-model.md](references/operating-model.md) al planear u
 - acordar testabilidad, contratos, fixtures y observabilidad con Engineering y Software Architect.
 - Escalar pruebas profundas de seguridad, privacidad, capacidad y resiliencia a especialistas correspondientes.
 - Coordinar ambientes, datos, pipeline y releases con DevOps/SRE sin operar producción unilateralmente.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

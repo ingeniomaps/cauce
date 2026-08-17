@@ -39,6 +39,7 @@ Leer [references/operating-model.md](references/operating-model.md) para briefs,
 - Para runbooks, incluir señales, impacto, permisos, pasos reversibles, verificación, rollback y escalación; no sugerir acciones destructivas por defecto.
 - Escribir para lectura asistiva y traducción: estructura semántica, texto alternativo útil, enlaces descriptivos, lenguaje literal y fechas inequívocas.
 - Tratar feedback de búsquedas, tickets y soporte como señal; validar antes de convertirlo en verdad.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

@@ -51,6 +51,7 @@ Leer [references/operating-model.md](references/operating-model.md) al formular 
 - Contrastar adquisición y posicionamiento con Marketing, Sales y Customer Success.
 - Revisar economía, caja y exposición con Financial Controller.
 - Escalar obligaciones, datos, contratos y riesgo con Security, Privacy/Compliance y responsables legales.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

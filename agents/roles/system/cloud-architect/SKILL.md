@@ -41,6 +41,7 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 - SLA del proveedor no equivale al SLO end-to-end ni garantiza créditos, continuidad o integridad de datos.
 - Optimizar valor y costo unitario, no sólo factura; incluir egress, soporte, licencias, compromisos, operación y migración/salida.
 - Toda modificación real de cloud requiere autorización explícita, alcance resuelto, plan revisado y rollback.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 

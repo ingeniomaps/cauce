@@ -41,6 +41,7 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 - No tratar UAT como garantía de seguridad, rendimiento o disponibilidad; conservar pruebas y owners distintos.
 - Usar mínimo privilegio, datos no productivos y entornos aislados por defecto; secretos y datos reales requieren autorización explícita.
 - Un go-live es una decisión de los owners autorizados basada en gates y riesgo residual visible, no del agente.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
 
 ## Aprender sin reescribirse
 
