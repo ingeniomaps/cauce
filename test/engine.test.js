@@ -8,6 +8,7 @@ const path = require('node:path')
 const { validateOpsConfig } = require('../engine/config/validate')
 const I = require('../engine/integrations/registry')
 const S = require('../engine/integrations/state')
+const PR = require('../engine/integrations/proposals')
 const B = require('../engine/planning/business-rules')
 const PC = require('../engine/planning/contracts')
 const P = require('../engine/planning/parser')
@@ -645,3 +646,56 @@ test('la configuración de Jira se rechaza campo por campo', () => {
   assert.deepEqual(errores({ timeoutMs: 1000, maxPages: 1, candidateAssigneeEnv: 'JIRA_ME' }), [])
 })
 
+// Los once rechazos de una propuesta tampoco tenían aserción, y son los que sostienen que nada llegue
+// a Jira sin destino, sin estimación o colgando de un padre inventado. Cada caso escribe una propuesta
+// válida con un solo campo cambiado.
+test('una propuesta se rechaza campo por campo', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-proposals-'))
+  const proposed = path.join(root, 'integrations', 'jira', 'proposed')
+  fs.mkdirSync(proposed, { recursive: true })
+  fs.mkdirSync(path.join(root, 'integrations', 'jira', 'staging', 'epics', 'DEMO-1'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'integrations', 'jira', 'staging', 'epics', 'DEMO-1', 'remote.json'), '{}')
+  fs.mkdirSync(path.join(root, 'app'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ runner: { maxTaskHours: 4 } }))
+
+  const errores = (campos = {}) => {
+    const f = { provider: 'jira', state: 'draft', type: 'Epic', summary: 'Un título', desc: 'Un texto', ...campos }
+    const frontmatter = ['provider', 'state', 'type', 'parent', 'service', 'estimateHours', 'remote', 'justification']
+      .filter((key) => f[key] !== undefined)
+      .map((key) => `${key}: ${f[key]}`)
+      .join('\n')
+    const md = `---\n${frontmatter}\n---\n\n# ${f.summary}\n\n## Descripción\n\n${f.desc}\n`
+    fs.writeFileSync(path.join(proposed, '01.md'), md)
+    return PR.validate(root, 'jira', [{ resolved: root }])
+  }
+
+  assert.deepEqual(errores(), [], 'la base no dispara ningún rechazo')
+
+  const casos = [
+    [{ provider: 'otro' }, /provider debe ser jira/],
+    [{ state: 'raro' }, /state inválido/],
+    [{ type: 'Raro' }, /type inválido/],
+    [{ summary: '' }, /falta título/],
+    [{ desc: '' }, /falta Descripción/],
+    [{ parent: 'no valido' }, /parent no es una clave remota válida/],
+    [{ type: 'Story' }, /Story exige parent/],
+    [{ type: 'Story', parent: 'DEMO-99' }, /DEMO-99 no está presente en staging/],
+    [{ state: 'approved' }, /approved exige service/],
+    [{ state: 'approved', service: 'no-existe' }, /service no existe/],
+    [{ state: 'approved', service: 'app' }, /approved exige estimateHours mayor que cero/],
+    [{ state: 'approved', service: 'app', estimateHours: 8 }, /supera 4h; debe dividirse/],
+    [{ state: 'published' }, /published exige remote/],
+  ]
+  for (const [campos, esperado] of casos) {
+    const found = errores(campos)
+    assert.ok(
+      found.some((error) => esperado.test(error)),
+      `${JSON.stringify(campos)} no fue rechazado; salió: ${JSON.stringify(found)}`,
+    )
+  }
+
+  // Y una propuesta aprobada completa pasa: el rechazo mira el campo, no el estado.
+  assert.deepEqual(errores({ state: 'approved', service: 'app', estimateHours: 3 }), [])
+  assert.deepEqual(errores({ state: 'approved', service: 'app', estimateHours: 8, justification: 'x' }), [])
+  assert.deepEqual(errores({ type: 'Story', parent: 'DEMO-1' }), [])
+})

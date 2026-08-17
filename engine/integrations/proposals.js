@@ -17,7 +17,9 @@ function read(root, provider) {
     const content = fs.readFileSync(path.join(dir, file), 'utf8')
     const fields = S.frontmatter(content)
     const body = content.replace(/^---[\s\S]*?---\s*/, '')
-    const summary = ((body.match(/^#\s+(.+)$/m) || [])[1] || '').trim()
+    // `[ \t]` y no `\s`: `\s` casa el salto de línea, así que un `#` vacío se comía la siguiente
+    // línea no vacía y devolvía «## Descripción» como título. Con eso, «falta título» no saltaba nunca.
+    const summary = ((body.match(/^#[ \t]+(.+)$/m) || [])[1] || '').trim()
     const description = ((body.match(
       /^##\s+Descripción\s*\n([\s\S]*?)(?=^##\s+|(?![\s\S]))/im,
     ) || [])[1] || '').trim()

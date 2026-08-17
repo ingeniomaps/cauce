@@ -45,7 +45,7 @@ function replaceField(text, name, value) {
 
 function sections(text) {
   const body = String(text).replace(/^---[\s\S]*?---\s*/, '')
-  const title = ((body.match(/^#\s+(.+)$/m) || [])[1] || '').trim()
+  const title = ((body.match(/^#[ \t]+(.+)$/m) || [])[1] || '').trim()
   const result = { title }
   const names = ['Descripción', 'Aceptación', 'Comentarios', 'Decisiones', 'Problemas de preparación']
   for (const [index, name] of names.entries()) {
