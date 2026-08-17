@@ -1,7 +1,6 @@
 .DEFAULT_GOAL := help
 
-# Los gates delegan en los scripts de `package.json`: ese nombre lo tienen fijo `ci.yml`, el guard
-# `verify` y `prepublishOnly`. Escribir el comando de los dos lados ya derivó una vez.
+# Los gates delegan en `package.json`: ese nombre lo tienen fijo `ci.yml`, `verify` y `prepublishOnly`.
 .PHONY: help check tree context test coverage coverage-update ci automation-check integration-check
 .PHONY: require-agent agent-learn agent-propose agent-evaluate require-team team-check team-show
 

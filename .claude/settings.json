@@ -2,9 +2,8 @@
   "$comment": [
     "Dos guards, no todos. El resto queda afuera por lo que dice AGENTS.md, «Acá no se instala nada».",
     "",
-    "`git-add` es una regex sobre el comando y no cuesta nada. `verify` corre la suite (`npm test`, no",
-    "`npm run ci`: quedan afuera check, automatización, integraciones y cobertura) y sólo si hay código",
-    "staged, así que un commit de documentación no paga los ocho segundos. Para saltarlo con intención:",
+    "`verify` corre la suite (`npm test`, no `npm run ci`: quedan afuera check, automatización,",
+    "integraciones y cobertura), y sólo si hay código staged. Para saltarlo con intención:",
     "OPS_SKIP_VERIFY=1."
   ],
   "hooks": {

@@ -16,13 +16,11 @@ on:
         required: false
         default: ""
 
-# Mínimo arriba: cada job eleva sólo lo que necesita. El que corre el agente se queda en `read` —
-# ingiere contenido web que no controlamos y no tiene por qué poder escribir el repositorio.
+# El default, para que un job nuevo nazca sin poder escribir hasta que alguien lo decida.
 permissions:
   contents: read
 
-# Un solo CLI posible: este workflow ya no viaja a las instancias —`upgrade` lo retira— así que corre
-# siempre en el repositorio del toolkit.
+# Este workflow ya no viaja a las instancias —`upgrade` lo retira—, así que sólo hay un CLI posible.
 env:
   OPS: engine/cli/ops.js
 
@@ -57,9 +55,8 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `agents=${JSON.stringify(list)}\n`)
           ' "$all"
 
-  # La investigación necesita un modelo, así que este job sólo corre si el repositorio declara una
-  # credencial. Sin ella se saltea entero en vez de abrir un PR por cargo con un informe vacío, que
-  # es ruido con forma de trabajo. `learn` solo arma el andamiaje; llenarlo es lo que hace un agente.
+  # Sin credencial se saltea entero en vez de abrir un PR por cargo con un informe vacío: `learn` sólo
+  # arma el andamiaje, y llenarlo es lo que hace el modelo.
   research:
     if: github.event.schedule != '17 13 1 * *'
     needs: discover
@@ -136,9 +133,8 @@ jobs:
           path: ${{ steps.collect.outputs.path }}
           retention-days: 7
 
-  # Segundo job y no un paso más: acá vive la credencial de escritura, y para llegar hasta acá el
-  # informe tuvo que pasar por un artifact. Este job no habla con ningún modelo ni lee la web —
-  # recibe un archivo, comprueba que caiga donde debe, y lo commitea.
+  # Segundo job y no un paso más: acá vive la credencial de escritura, y este no habla con ningún
+  # modelo ni lee la web. Lo que el agente escribió llega por artifact, no por sesión compartida.
   research-pr:
     needs: [discover, research]
     if: needs.research.result == 'success'
@@ -168,10 +164,9 @@ jobs:
         run: |
           stamp="$(date -u +%Y-%m-%d)"
           branch="automation/$AGENT-research-$stamp"
-          # El artifact trae contenido, no destino: `upload-artifact` aplana la ruta de un archivo
-          # suelto, así que llega como `<fecha>.md` a la raíz. Dónde va se resuelve **acá**, con el
-          # mismo CLI que resolvió el catálogo antes, y eso además es la garantía: nada de lo que
-          # venga en el artifact puede redirigir dónde aterriza el archivo.
+          # `upload-artifact` aplana la ruta de un archivo suelto, así que el informe llega como
+          # `<fecha>.md` a la raíz: el artifact trae contenido y no destino. Resolverlo acá con el CLI
+          # es además la garantía de que nada de lo que venga adentro redirija dónde aterriza.
           dir="$(node "$OPS" agents list --json | node -e '
             let s = ""
             process.stdin.on("data", (d) => { s += d }).on("end", () => {
