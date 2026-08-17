@@ -939,3 +939,31 @@ test('el CLI rechaza una bandera que no existe en vez de ignorarla', () => {
 
   assert.equal(run(['inventado']).status, 2, 'un comando desconocido sigue fallando')
 })
+
+// La línea de comandos se leía de `process.argv` en veinticinco puntos, así que nada de esto se podía
+// comprobar sin levantar un proceso y `evaluationBench` sacaba `--force` de una variable global en vez
+// de recibirlo. Ahora se parsea una vez al entrar y esto es una función pura.
+test('la línea de comandos se parsea una vez y se puede probar sin proceso', () => {
+  const { parse } = require('../engine/cli/args')
+
+  const simple = parse(['check', 'planning', '--json'])
+  assert.deepEqual(simple.positional, ['check', 'planning'])
+  assert.equal(simple.has('--json'), true)
+  assert.equal(simple.has('--force'), false)
+
+  // Una bandera con valor se lleva el argumento siguiente: no es un posicional.
+  const conValor = parse(['init', 'destino', '--name', 'Demo', '--mode', 'sidecar'])
+  assert.deepEqual(conValor.positional, ['init', 'destino'], 'el valor no se cuela como posicional')
+  assert.equal(conValor.value('--name'), 'Demo')
+  assert.equal(conValor.value('--mode'), 'sidecar')
+  assert.equal(conValor.value('--fixture', 'por defecto'), 'por defecto', 'ausente cae al fallback')
+
+  // Y una sin valor declarado no se lleva nada: el caso de `--bench` queda de posicional.
+  const bench = parse(['evaluate', 'qa-engineer', '--bench', '01-caso'])
+  assert.deepEqual(bench.positional, ['evaluate', 'qa-engineer', '01-caso'])
+  assert.equal(bench.has('--bench'), true)
+
+  assert.deepEqual(parse(['check', '--jsonn']).unknown('check'), ['--jsonn'])
+  assert.deepEqual(parse(['check', '--json']).unknown('check'), [])
+  assert.deepEqual(parse(['archive', 'planning', '001']).unknown('archive'), [])
+})

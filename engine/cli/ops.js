@@ -18,6 +18,7 @@ const C = require('../config/validate')
 const T = require('../teams/registry')
 const AG = require('../agents/catalog')
 const EV = require('../agents/evaluations')
+const { FLAGS, parse } = require('./args')
 
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..')
 
@@ -56,59 +57,6 @@ function usage() {
   ops team list
   ops team check <team>
   ops team show <team>`)
-}
-
-// Banderas que consumen el argumento siguiente: su valor no es un posicional.
-const VALUED_FLAGS = new Set(['--name', '--mode', '--fixture', '--period'])
-
-// Qué acepta cada comando, y a la vez qué comandos existen. Una bandera desconocida se rechaza en vez
-// de ignorarse: `check --jsonn` imprimía la salida humana con código 0, así que quien esperaba JSON
-// —un agente, típicamente— recibía texto sin ninguna señal de que su bandera no existía.
-const FLAGS = {
-  init: ['--name', '--mode', '--force'],
-  check: ['--json'],
-  tree: ['--json', '--no-color'],
-  context: ['--json'],
-  upgrade: ['--check', '--force'],
-  archive: [],
-  agents: ['--json', '--own', '--system'],
-  integration: ['--fixture'],
-  automation: ['--force'],
-  learn: ['--proposal', '--applied', '--period'],
-  evaluate: ['--cases', '--json', '--bench', '--force'],
-  team: ['--json'],
-}
-
-function unknownFlags(command) {
-  const known = FLAGS[command]
-  const argv = process.argv.slice(3)
-  const found = []
-  for (let index = 0; index < argv.length; index += 1) {
-    const value = argv[index]
-    if (!value.startsWith('--')) continue
-    if (!known.includes(value)) { found.push(value); continue }
-    if (VALUED_FLAGS.has(value)) index += 1
-  }
-  return found
-}
-
-// Los posicionales del comando, salteando banderas y sus valores. Leer `process.argv` crudo hacía
-// que `agents list --json` tomara `--json` como la raíz: el catálogo salía vacío, sin error, y quien
-// lo consumía —un agente, por ejemplo— no tenía cómo notar que le habían contestado con nada.
-function positionals() {
-  const found = []
-  const argv = process.argv.slice(2)
-  for (let index = 0; index < argv.length; index += 1) {
-    const value = argv[index]
-    if (!value.startsWith('--')) { found.push(value); continue }
-    if (VALUED_FLAGS.has(value)) index += 1
-  }
-  return found
-}
-
-function option(name, fallback = '') {
-  const index = process.argv.indexOf(name)
-  return index >= 0 ? process.argv[index + 1] || fallback : fallback
 }
 
 function copyTemplate(source, target, replacements, force, skip = [], quiet = false) {
@@ -228,7 +176,7 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
 //
 // Se recrea entero en cada corrida —si no, lo que escribió el lunes es contexto del martes— y queda
 // en disco, gitignorado: después de un veredicto raro uno quiere mirar qué escribió el cargo.
-function evaluationBench(root, agent, caso) {
+function evaluationBench(root, agent, caso, force) {
   const safe = (value) => {
     if (!/^[a-z0-9_][a-z0-9._-]*$/i.test(value) || value.includes('..')) {
       fail(`nombre inválido para el banco: ${value}`, 2)
@@ -242,7 +190,7 @@ function evaluationBench(root, agent, caso) {
   // respuesta afirmaba algo inexistente. Con el banco versionado, «acá se trabajó» es una pregunta que
   // git contesta exacto.
   const sucio = spawnSync('git', ['-C', dir, 'status', '--porcelain'], { encoding: 'utf8' })
-  if ((sucio.stdout || '').trim() && !process.argv.includes('--force')) {
+  if ((sucio.stdout || '').trim() && !force) {
     fail(`${dir} tiene trabajo sin recoger. Guardá el registro de esa corrida antes de rehacerlo, `
       + 'o usá --force si ya lo tenés.', 2)
   }
@@ -276,13 +224,13 @@ function evaluationBench(root, agent, caso) {
   return dir
 }
 
-function init(target) {
+function init(target, cli) {
   if (!target) fail('Falta <destino>.', 2)
-  const mode = option('--mode', 'embedded')
+  const mode = cli.value('--mode', 'embedded')
   if (!['embedded', 'sidecar'].includes(mode)) fail('--mode debe ser embedded o sidecar.', 2)
-  const name = option('--name', path.basename(path.resolve(target)).replace(/-ops$/, ''))
+  const name = cli.value('--name', path.basename(path.resolve(target)).replace(/-ops$/, ''))
   const root = path.resolve(target)
-  const force = process.argv.includes('--force')
+  const force = cli.has('--force')
   const existing = fs.existsSync(root) ? fs.readdirSync(root) : []
   if (existing.length && !force) {
     fail(`El destino no está vacío: ${root}. Usa --force para agregar solo archivos faltantes.`)
@@ -293,7 +241,7 @@ function init(target) {
   console.log(`  siguiente: node ${path.join(root, 'tools', 'ops.js')} check ${path.join(root, 'planning')}`)
 }
 
-function check(dir) {
+function check(dir, cli) {
   const root = path.resolve(dir || '.')
   const errors = []
   const warnings = []
@@ -405,7 +353,7 @@ function check(dir) {
   const FK = require('../agents/fork')
   for (const entry of FK.drift(path.resolve(root, '..'))) warnings.push(FK.driftLine(entry))
 
-  if (process.argv.includes('--json')) {
+  if (cli.has('--json')) {
     console.log(JSON.stringify({
       ok: !errors.length,
       epics: epics.length,
@@ -460,12 +408,12 @@ function treeJson({ epics, milestones, done, wip, inbox, queued }) {
   }))
 }
 
-function tree(dir) {
+function tree(dir, cli) {
   const root = path.resolve(dir || '.')
   const state = snapshot(root)
-  if (process.argv.includes('--json')) return treeJson(state)
+  if (cli.has('--json')) return treeJson(state)
   const { epics, milestones, done, wip, inbox, queued } = state
-  const color = process.stdout.isTTY && !process.argv.includes('--no-color')
+  const color = process.stdout.isTTY && !cli.has('--no-color')
   const paint = (code, text) => color ? `\x1b[${code}m${text}\x1b[0m` : text
   console.log(`\n${paint('1', 'CAUCE')}\n`)
   console.log(paint('1', 'ROADMAP'))
@@ -524,7 +472,7 @@ function currentTask({ milestones, done, wip }, blockers = []) {
 }
 
 // Contexto mínimo suficiente para ejecutar una tarea, en lugar de releer roadmap, BACKLOG y WIP enteros.
-function context(dir) {
+function context(dir, cli) {
   const root = path.resolve(dir || '.')
   const state = snapshot(root)
   const gate = path.join(root, 'AWAITING_REVIEW.md')
@@ -547,7 +495,7 @@ function context(dir) {
     blockedTasks: skipped,
     humanActions,
   }
-  if (process.argv.includes('--json')) return console.log(JSON.stringify(report))
+  if (cli.has('--json')) return console.log(JSON.stringify(report))
 
   if (report.blocked) {
     const first = P.read(gate).split('\n').find((line) => line.trim() && !line.startsWith('#')) || ''
@@ -585,7 +533,7 @@ function instanceVersion(root) {
 
 // Actualiza sólo lo que el toolkit declara suyo. Todo lo demás —planning, organization, reglas
 // propias, agentes editados— queda intacto por construcción, no por comparación.
-function upgrade(dir) {
+function upgrade(dir, cli) {
   const root = path.resolve(dir || '.')
   if (!fs.existsSync(path.join(root, 'ops.config.json'))) {
     fail(`${root} no es una instancia de Cauce: falta ops.config.json.`, 2)
@@ -595,8 +543,8 @@ function upgrade(dir) {
   if (O.mode(root) === 'toolkit') {
     fail(`${root} es el toolkit: acá se edita Cauce, no se lo actualiza.`, 2)
   }
-  const dry = process.argv.includes('--check')
-  const force = process.argv.includes('--force')
+  const dry = cli.has('--check')
+  const force = cli.has('--force')
   const from = instanceVersion(root)
   const to = require(path.join(PROJECT_ROOT, 'package.json')).version
   const system = O.systemPaths(root)
@@ -742,16 +690,16 @@ function agentsFork(slug, dir) {
 
 // Lista los cargos visibles resolviendo la precedencia; evita que cada consumidor —CI incluido—
 // reimplemente el recorrido del catálogo.
-function agents(action, dir, extra) {
+function agents(action, dir, extra, cli) {
   if (action === 'fork') return agentsFork(dir, extra)
   if (action !== 'list') fail(`Acción de agents desconocida: ${action || '(vacía)'}`, 2)
   const root = opsRoot(dir)
   // Una empresa mantiene sus cargos, no los nuestros: `learn` sobre uno del catálogo se niega, así que
   // recorrer los 48 para encontrar el suyo es ruido. `--own` es lo que hace ejecutable ese recorrido.
-  const own = process.argv.includes('--own')
-  const system = process.argv.includes('--system')
+  const own = cli.has('--own')
+  const system = cli.has('--system')
   const roles = AG.list(root).filter((role) => (own ? !role.system : true) && (system ? role.system : true))
-  if (process.argv.includes('--json')) {
+  if (cli.has('--json')) {
     // `path` viene resuelto: quien consuma esto no debería reconstruir dónde ganó la precedencia.
     return console.log(JSON.stringify(roles.map((role) => ({
       slug: role.slug, type: role.type, system: role.system,
@@ -791,7 +739,7 @@ function archive(dir, rawNum) {
   console.log(`✓ epic-${num}: ${entries.length} entrada(s) archivadas`)
 }
 
-async function integration(action, rootArg, provider, key) {
+async function integration(action, rootArg, provider, key, cli) {
   const root = path.resolve(rootArg || '.')
   if (action === 'list') {
     const registry = JSON.parse(fs.readFileSync(path.join(root, 'integrations', 'config.json'), 'utf8'))
@@ -872,7 +820,7 @@ async function integration(action, rootArg, provider, key) {
   }
   if (action === 'sync') {
     if (!provider) fail('sync exige <provider>', 2)
-    const result = await I.sync(root, provider, { fixture: option('--fixture') })
+    const result = await I.sync(root, provider, { fixture: cli.value('--fixture') })
     console.log(
       `✓ ${provider}: ${result.total} items · ${result.created} nuevos · ` +
         `${result.refreshed} refrescados · ${result.preserved} curados preservados`,
@@ -899,7 +847,7 @@ async function integration(action, rootArg, provider, key) {
   fail(`Acción de integración desconocida: ${action || '(vacía)'}`, 2)
 }
 
-function automation(action, rootArg, runnerName) {
+function automation(action, rootArg, runnerName, cli) {
   const root = opsRoot(rootArg)
   if (action === 'list-hooks') return A.listHooks()
   if (action === 'list') {
@@ -934,7 +882,7 @@ function automation(action, rootArg, runnerName) {
   }
   if (action === 'install') {
     let runner
-    const force = process.argv.includes('--force')
+    const force = cli.has('--force')
     try { runner = A.install(root, runnerName, console, { force }) } catch (error) { fail(error.message, 2) }
     if (runnerName === 'codex') {
       console.log('  Codex pedirá revisar y confiar en hooks nuevos al iniciar sesión.')
@@ -949,18 +897,18 @@ function automation(action, rootArg, runnerName) {
   }
   fail(`Acción de automatización desconocida: ${action || '(vacía)'}`, 2)
 }
-function learn(agent) {
+function learn(agent, cli) {
   try {
     // Sellar es determinista y por eso vive acá y no en el recorrido: marcar una propuesta como
     // aplicada editando frontmatter a mano es justo el paso que un agente hace mal en silencio.
-    if (process.argv.includes('--applied')) {
-      const result = L.seal(opsRoot(), agent, option('--period'))
+    if (cli.has('--applied')) {
+      const result = L.seal(opsRoot(), agent, cli.value('--period'))
       const relative = path.relative(opsRoot(), result.file)
       return console.log(result.already
         ? `= ${relative} ya estaba aplicada`
         : `✓ ${relative} queda aplicada: no se vuelve a aplicar`)
     }
-    const result = process.argv.includes('--proposal')
+    const result = cli.has('--proposal')
       ? L.prepareProposal(opsRoot(), agent)
       : L.prepareReport(opsRoot(), agent)
     console.log(`${result.created ? '+' : '='} ${path.relative(opsRoot(), result.file)}`)
@@ -968,27 +916,25 @@ function learn(agent) {
   } catch (error) { fail(error.message, 2) }
 }
 
-function evaluate(agent) {
+function evaluate(agent, caso, cli) {
   const root = opsRoot()
   // El banco sólo tiene sentido acá: en una empresa el cargo que se evalúa es suyo —propio o
   // adoptado— y su `planning/` ya es el lugar legítimo donde trabajar.
-  if (process.argv.includes('--bench')) {
+  if (cli.has('--bench')) {
     if (O.mode(root) !== 'toolkit') {
       fail('--bench es del toolkit. En una instancia, el cargo trabaja sobre tu planning/: si es del '
         + `catálogo, adoptalo primero con "ops agents fork ${agent}".`, 2)
     }
-    // El caso viene detrás de la bandera: `evaluate <cargo> --bench <caso>`. Sin él se arma un banco
-    // suelto, para mirarlo a mano; una corrida real pide uno por caso.
-    const flag = process.argv.indexOf('--bench')
-    const caso = (process.argv[flag + 1] || '').startsWith('--') ? '' : process.argv[flag + 1]
-    return console.log(evaluationBench(root, agent, caso))
+    // El caso es el posicional que sigue al cargo: `evaluate <cargo> --bench <caso>`. Sin él se arma
+    // un banco suelto, para mirarlo a mano; una corrida real pide uno por caso.
+    return console.log(evaluationBench(root, agent, caso, cli.has('--force')))
   }
   try {
     // Los casos, para que un recorrido los ejecute. Sin `--json` no tiene sentido: es entrada de
     // máquina, no de persona.
-    if (process.argv.includes('--cases')) {
+    if (cli.has('--cases')) {
       const cases = EV.list(root, agent)
-      if (!process.argv.includes('--json')) {
+      if (!cli.has('--json')) {
         for (const item of cases) console.log(`${item.id}  ${item.expected.length} comportamiento(s)`)
         return
       }
@@ -1009,7 +955,7 @@ function evaluate(agent) {
   } catch (error) { fail(error.message, 2) }
 }
 
-function team(action, slug) {
+function team(action, slug, cli) {
   if (action === 'list') {
     for (const name of T.list(opsRoot())) console.log(name)
     return
@@ -1021,7 +967,7 @@ function team(action, slug) {
     if (result.errors.length) fail(`${slug}: ${result.errors.length} error(es)`, 1)
     if (action === 'show') {
       // El manifiesto entero, para que un workflow ejecute las etapas sin que un modelo lo parsee.
-      if (process.argv.includes('--json')) return console.log(JSON.stringify(result.manifest))
+      if (cli.has('--json')) return console.log(JSON.stringify(result.manifest))
       console.log(`${result.manifest.name} (${slug})`)
       console.log(result.manifest.purpose)
       for (const stage of result.manifest.stages) {
@@ -1033,33 +979,33 @@ function team(action, slug) {
   } catch (error) { fail(error.message, 2) }
 }
 
-async function main() {
-  const command = process.argv[2]
+async function run(cli) {
+  const [command] = cli.positional
   if (!command || ['help', '--help', '-h'].includes(command)) return usage()
   if (!FLAGS[command]) { usage(); fail(`Comando desconocido: ${command}`, 2) }
   // `--help` valía sólo como primer argumento: `check --help` corría `check` contra el directorio
   // actual en vez de explicarse.
-  if (process.argv.includes('--help') || process.argv.includes('-h')) return usage()
-  const sobran = unknownFlags(command)
+  if (cli.has('--help') || cli.has('-h')) return usage()
+  const sobran = cli.unknown(command)
   if (sobran.length) {
     const acepta = FLAGS[command].length ? `Acepta: ${FLAGS[command].join(', ')}.` : 'No acepta banderas.'
     fail(`${command}: bandera desconocida ${sobran.join(', ')}. ${acepta}`, 2)
   }
-  const arg = positionals()
-  if (command === 'init') init(arg[1])
-  else if (command === 'check') check(arg[1])
-  else if (command === 'tree') tree(arg[1])
-  else if (command === 'context') context(arg[1])
-  else if (command === 'upgrade') upgrade(arg[1])
-  else if (command === 'agents') agents(arg[1], arg[2], arg[3])
+  const arg = cli.positional
+  if (command === 'init') init(arg[1], cli)
+  else if (command === 'check') check(arg[1], cli)
+  else if (command === 'tree') tree(arg[1], cli)
+  else if (command === 'context') context(arg[1], cli)
+  else if (command === 'upgrade') upgrade(arg[1], cli)
+  else if (command === 'agents') agents(arg[1], arg[2], arg[3], cli)
   else if (command === 'archive') archive(arg[1], arg[2])
   else if (command === 'integration') {
-    await integration(arg[1], arg[2], arg[3], arg[4])
+    await integration(arg[1], arg[2], arg[3], arg[4], cli)
   }
-  else if (command === 'automation') automation(arg[1], arg[2], arg[3])
-  else if (command === 'learn') learn(arg[1])
-  else if (command === 'evaluate') evaluate(arg[1])
-  else if (command === 'team') team(arg[1], arg[2])
+  else if (command === 'automation') automation(arg[1], arg[2], arg[3], cli)
+  else if (command === 'learn') learn(arg[1], cli)
+  else if (command === 'evaluate') evaluate(arg[1], arg[2], cli)
+  else if (command === 'team') team(arg[1], arg[2], cli)
 }
 
-main().catch((error) => fail(error.message))
+run(parse(process.argv.slice(2))).catch((error) => fail(error.message))
