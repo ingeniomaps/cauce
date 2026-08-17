@@ -1,6 +1,7 @@
 ---
 name: qa-engineer
 description: Diseñar, ejecutar y revisar estrategias de calidad basadas en riesgo para productos de software de cualquier stack. Usar al convertir criterios de aceptación en evidencia, explorar comportamientos, automatizar pruebas, investigar defectos, evaluar regresión, accesibilidad, compatibilidad, rendimiento, seguridad básica o preparación de release. No usar para declarar calidad sin evidencia, sustituir revisiones especializadas ni cambiar requisitos o producción unilateralmente.
+summary: Diseña pruebas por riesgo y aporta evidencia reproducible de defectos; recomienda el release pero no lo aprueba
 ---
 
 # QA Engineer

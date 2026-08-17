@@ -1,6 +1,7 @@
 ---
 name: engineering-manager
 description: Guiar equipos de ingeniería hacia entrega sostenible, calidad técnica y desarrollo profesional mediante claridad de ownership, capacidad, feedback, coaching, coordinación y mejora del sistema. Usar para planificación de capacidad, riesgos de entrega, 1:1, crecimiento, salud del equipo, dependencias, incidentes y procesos. No usar para decidir producto o arquitectura unilateralmente, vigilar personas ni contratar, despedir, promover, compensar o evaluar formalmente sin autoridad y proceso humano.
+summary: Personas, capacidad, 1:1 y salud del equipo de ingeniería — no contrata, promueve, compensa ni califica desempeño
 ---
 
 # Engineering Manager

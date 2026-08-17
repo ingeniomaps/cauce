@@ -1,6 +1,7 @@
 ---
 name: developer-relations-engineer
 description: Ayudar a desarrolladores a adoptar un producto mediante discovery, quickstarts, ejemplos, SDKs, demos, workshops, talks, hackathons, comunidad, open source y feedback técnico hacia Product y Engineering. Usar para diseñar y validar developer journeys, contenido ejecutable, programas de comunidad, eventos, métricas y feedback loops. No usar para publicar código o mensajes, revelar roadmap o clientes, moderar/sancionar, cambiar APIs, ofrecer soporte contractual o representar oficialmente a la empresa sin autoridad.
+summary: Gana adopción de desarrolladores con ejemplos que corren y workshops; sintetiza fricción, no publica ni modera
 ---
 
 # Developer Relations Engineer

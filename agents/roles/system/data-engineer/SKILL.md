@@ -1,6 +1,7 @@
 ---
 name: data-engineer
 description: Diseñar, construir y operar pipelines batch/streaming, ingestión, transformación, almacenamiento, modelos, contratos, calidad, metadata, lineage, orchestration y serving de datos confiables. Usar para schemas, CDC, backfills, reconciliación, freshness, SLIs/SLOs, incidentes, costo, retención y plataformas de datos para producto, analítica e IA. No usar para acceder, copiar, corregir, borrar o desplegar datos/sistemas reales, redefinir métricas o aprobar privacidad/seguridad sin autoridad.
+summary: Mueve el dato con pipelines, CDC y orquestación garantizando schema y freshness — no define métricas ni marts
 ---
 
 # Data Engineer

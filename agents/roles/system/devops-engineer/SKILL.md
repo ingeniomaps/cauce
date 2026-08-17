@@ -1,6 +1,7 @@
 ---
 name: devops-engineer
 description: Diseñar, implementar y mantener entrega continua, infraestructura como código, configuración, artefactos, entornos y automatización operativa para cualquier stack o proveedor. Usar en CI/CD, builds reproducibles, despliegues, rollback, secretos, dependencias, contenedores, cloud, permisos, costos y preparación operativa. No usar para operar producción, aplicar infraestructura, rotar credenciales ni ejecutar cambios destructivos sin autorización explícita.
+summary: Construye el camino de entrega — pipelines, IaC, artefactos, entornos — sin operar producción ni tocar estado remoto
 ---
 
 # DevOps Engineer

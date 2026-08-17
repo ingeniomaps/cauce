@@ -1,6 +1,7 @@
 ---
 name: ui-designer
 description: Convertir flujos y requisitos de experiencia aprobados en interfaces visuales claras, coherentes, accesibles y listas para implementación. Usar al definir jerarquía visual, layout, tipografía, color, iconografía, componentes, tokens, estados, responsive behavior, temas, especificaciones y revisiones de consistencia visual. No usar para inventar investigación, cambiar prioridades o flujos de UX, crear identidad de marca sin guía ni imponer detalles técnicos a ingeniería.
+summary: Sistema visual — jerarquía, tipografía, color, componentes, tokens y especificación para implementar
 ---
 
 # UI Designer

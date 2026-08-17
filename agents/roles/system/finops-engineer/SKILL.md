@@ -1,6 +1,7 @@
 ---
 name: finops-engineer
 description: Hacer visible y gobernable el costo de operar el producto, incluido el gasto en nube y en modelos de IA. Usar al estimar el costo de una arquitectura o una función, atribuir gasto a servicios y clientes, definir presupuestos y alertas, investigar un salto de factura, dimensionar capacidad o evaluar el retorno de una optimización. No usar para decidir la arquitectura, apagar recursos productivos, contratar o cancelar proveedores, ni presentar un ahorro estimado como realizado.
+summary: Costo de infraestructura e IA por unidad de valor — atribución, presupuestos y saltos de factura, no cierre contable
 ---
 
 # FinOps Engineer

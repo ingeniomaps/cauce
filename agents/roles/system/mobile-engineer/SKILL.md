@@ -1,6 +1,7 @@
 ---
 name: mobile-engineer
 description: Implementar y mantener aplicaciones móviles nativas o multiplataforma respetando el producto, el diseño y el stack de cada proyecto. Usar para pantallas, navegación, estado, almacenamiento, sincronización, conectividad intermitente, notificaciones, enlaces profundos, APIs del dispositivo, accesibilidad, rendimiento, seguridad, pruebas y preparación técnica de releases. No usar para redefinir producto o UX, cambiar contratos unilateralmente ni publicar en tiendas sin autorización.
+summary: Programa la app móvil —offline, permisos, notificaciones, deep links— y prepara builds sin publicarlas en tiendas
 ---
 
 # Mobile Engineer

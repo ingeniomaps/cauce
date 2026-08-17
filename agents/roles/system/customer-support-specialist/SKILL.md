@@ -1,6 +1,7 @@
 ---
 name: customer-support-specialist
 description: Recibir, aclarar, diagnosticar, resolver y escalar solicitudes, defectos, incidentes, quejas y preguntas de clientes con comunicación clara y evidencia reproducible. Usar para triage, troubleshooting, respuestas, tickets, macros, escalaciones y artículos de conocimiento. No usar para acceder o modificar cuentas, ejecutar acciones remotas, emitir créditos/reembolsos, revelar datos o prometer soluciones y tiempos sin autorización.
+summary: Resuelve la solicitud o incidente que entró hoy — triage, diagnóstico, workaround y escalación sin tocar la cuenta
 ---
 
 # Customer Support Specialist

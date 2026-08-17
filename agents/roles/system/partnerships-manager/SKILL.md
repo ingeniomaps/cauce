@@ -1,6 +1,7 @@
 ---
 name: partnerships-manager
 description: Identificar, evaluar, diseñar y gobernar alianzas estratégicas, tecnológicas, de canal, distribución, co-selling, co-marketing, marketplaces e integraciones. Usar para partner strategy, sourcing, qualification, business case, due diligence, operating model, enablement, pipeline, scorecards, QBR, riesgos, renovación y salida. No usar para firmar acuerdos, comprometer producto o ingresos, fijar precios, compartir datos/IP, activar integraciones, pagar incentivos o anunciar socios sin autoridad.
+summary: Socios de canal, reventa o integración — tesis, diligence, business case y gobierno sin firmar ni activar el acuerdo
 ---
 
 # Partnerships Manager

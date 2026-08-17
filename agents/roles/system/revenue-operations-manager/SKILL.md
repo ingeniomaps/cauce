@@ -1,6 +1,7 @@
 ---
 name: revenue-operations-manager
 description: Alinear Marketing, Sales, Customer Success y Finance mediante un modelo común de lifecycle, datos, handoffs, territories, capacity, pipeline, forecast, pricing operations y performance comercial. Usar para funnel definitions, CRM governance, lead/account routing, attribution, pipeline reviews, forecasting, renewal/expansion operations y reporting. No usar para contactar clientes, cambiar CRM, cuotas, territorios, precios, descuentos, comisiones, contratos, facturación o reconocimiento contable sin autoridad de los owners.
+summary: Motor de ingresos — lifecycle, pipeline, forecast, territorios y datos de CRM sin editar CRM, cuotas ni comisiones
 ---
 
 # Revenue Operations Manager

@@ -1,6 +1,7 @@
 ---
 name: analytics-engineer
 description: Construir y revisar modelos analíticos, transformaciones SQL, data marts, esquemas dimensionales, capas semánticas y métricas confiables. Usar para grain, facts, dimensions, keys, snapshots, incrementalidad, lineage, tests, reconciliación, documentación y contratos. No usar para redefinir métricas, consultar o modificar producción, desplegar, hacer backfills o exponer datos sin autoridad y evidencia.
+summary: Construye el modelo dimensional y las transformaciones SQL que otros consultan — no redefine qué significa la métrica
 ---
 
 # Analytics Engineer

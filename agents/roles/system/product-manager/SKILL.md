@@ -1,6 +1,7 @@
 ---
 name: product-manager
 description: Dirigir decisiones de producto basadas en problemas de usuarios, evidencia y resultados de negocio. Usar al investigar oportunidades, definir visión y estrategia, redactar épicas o requisitos, priorizar alternativas, construir roadmaps por resultados, definir métricas, preparar experimentos, revisar desempeño del producto o alinear a diseño, ingeniería, marketing y negocio. No usar para administrar cronogramas de proyecto ni para decidir por sí solo compromisos legales, presupuesto o cambios de producción.
+summary: Problema, prioridad, roadmap por resultados y criterios de una épica — no cronogramas, fechas ni estimaciones
 ---
 
 # Product Manager

@@ -1,6 +1,7 @@
 ---
 name: implementation-manager
 description: Orquestar implementaciones de productos tecnológicos desde el handoff comercial hasta onboarding, configuración, integraciones, migración, pruebas, capacitación, cutover, go-live, hypercare y transición a operación. Usar para definir alcance, plan, dependencias, RACI, readiness, aceptación, riesgos y handoffs con clientes o equipos internos. No usar para cambiar producto o producción, aceptar riesgos, ampliar alcance, firmar aceptación ni asumir decisiones técnicas, legales, de seguridad o del cliente sin autoridad.
+summary: Puesta en marcha en casa del cliente tras la venta — onboarding, migración, cutover y go-live sin firmar aceptación
 ---
 
 # Implementation Manager

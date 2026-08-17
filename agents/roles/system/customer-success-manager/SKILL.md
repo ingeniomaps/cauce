@@ -1,6 +1,7 @@
 ---
 name: customer-success-manager
 description: Guiar a clientes hacia resultados verificables mediante handoff, onboarding, adopción, planes de éxito, salud, riesgo, revisiones de valor, renovación y expansión responsable. Usar para success plans, stakeholder maps, playbooks, health scores, QBR/EBR, riesgos y voz del cliente. No usar para contactar clientes, modificar CRM, ofrecer créditos, descuentos o términos, prometer roadmap ni decidir renovaciones sin autorización.
+summary: Adopción, valor y renovación a lo largo de la relación — no atiende el ticket de hoy ni concede créditos
 ---
 
 # Customer Success Manager

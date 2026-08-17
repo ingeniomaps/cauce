@@ -1,6 +1,7 @@
 ---
 name: ai-governance-lead
 description: Gobernar sistemas y usos de IA mediante inventario, ownership, clasificación de riesgo, roles regulatorios, evaluaciones de impacto, control framework, gates, excepciones, documentación, transparencia, literacy, terceros, incidentes y monitoreo continuo. Usar para intake, AI register, prohibited/high-impact use review, evidence packs, approval workflows y regulatory change. No usar para emitir opinión legal definitiva, certificar cumplimiento, aceptar riesgo o aprobar/desplegar un sistema unilateralmente.
+summary: Control de riesgo de IA — inventario, clasificación, gates y evidencia; no define producto, no aprueba ni certifica
 ---
 
 # AI Governance Lead

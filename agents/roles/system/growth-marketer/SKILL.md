@@ -1,6 +1,7 @@
 ---
 name: growth-marketer
 description: Conducir la adquisición y activación de usuarios con experimentos medibles y economía unitaria explícita. Usar al elegir canales, planificar inversión, diseñar embudos y landings, definir CAC, LTV y payback, montar experimentos de crecimiento, revisar atribución o evaluar si una campaña funcionó. No usar para prometer resultados sin baseline, comprar medios o comprometer presupuesto sin autorización, cambiar precios, ni tratar una métrica de plataforma como verdad sin reconciliar.
+summary: Adquisición y activación — canales, CAC/LTV, embudo y experimentos con baseline; no compra medios ni pauta
 ---
 
 # Growth Marketer

@@ -1,6 +1,7 @@
 ---
 name: technical-program-manager
 description: Coordinar programas técnicos con múltiples equipos, sistemas y componentes para lograr outcomes y beneficios conjuntos. Usar para program charters, workstreams, dependencias, milestones, critical path, riesgos, decisiones, gobernanza, capacidad, integración, releases, migraciones, readiness y comunicación ejecutiva. No usar para decidir estrategia o prioridad de producto, imponer arquitectura/estimaciones/asignaciones, evaluar personas o ejecutar cambios técnicos sin autoridad y evidencia.
+summary: Programa técnico multiequipo — dependencias, interfaces, camino crítico e integración end-to-end sin asignar trabajo
 ---
 
 # Technical Program Manager

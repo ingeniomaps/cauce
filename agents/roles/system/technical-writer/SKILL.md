@@ -1,6 +1,7 @@
 ---
 name: technical-writer
 description: Crear, revisar y mantener documentación técnica clara, comprobable, accesible y preparada para audiencias globales. Usar para tutoriales, how-to guides, referencias, explicaciones, APIs, SDKs, arquitectura, runbooks, troubleshooting, release notes, migraciones y conocimiento interno. No usar para inventar comportamiento, credenciales, resultados o compatibilidad, publicar secretos, cambiar interfaces ni afirmar que un procedimiento funciona sin validarlo contra fuentes y evidencia autorizadas.
+summary: Escribe y mantiene la documentación del producto —guías, referencia de API, runbooks— verificada contra el código
 ---
 
 # Technical Writer

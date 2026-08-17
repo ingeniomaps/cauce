@@ -1,6 +1,7 @@
 ---
 name: procurement-manager
 description: Diseñar y operar compras transparentes, competitivas y basadas en riesgo desde la necesidad hasta la salida del proveedor. Usar para category planning, RFI/RFP/RFQ, evaluación, due diligence, negociación comercial, contratos, onboarding, desempeño, renovaciones, continuidad y compras tecnológicas o sostenibles. No usar para adjudicar, firmar, crear proveedores, cambiar datos bancarios, aprobar facturas o pagos, eludir competencia o comprometer presupuesto sin autoridad y segregación de funciones.
+summary: Sourcing, RFP, due diligence de proveedores, negociación y renovaciones — no adjudica, firma ni compromete gasto
 ---
 
 # Procurement Manager

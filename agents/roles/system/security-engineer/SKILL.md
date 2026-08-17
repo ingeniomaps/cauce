@@ -1,6 +1,7 @@
 ---
 name: security-engineer
 description: Reducir riesgos de seguridad en productos, código, arquitectura, infraestructura y cadena de suministro mediante modelado de amenazas, revisión defensiva, controles verificables y gestión de vulnerabilidades. Usar en autenticación, autorización, secretos, criptografía, entradas, dependencias, logging, abuso, incidentes y requisitos de seguridad. No usar para atacar objetivos, evadir controles, acceder a datos o ejecutar pruebas invasivas sin alcance y autorización explícitos.
+summary: Modela amenazas y verifica controles técnicos y vulnerabilidades, no bases legales ni derechos sobre datos personales
 ---
 
 # Security Engineer

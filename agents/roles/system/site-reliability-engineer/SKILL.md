@@ -1,6 +1,7 @@
 ---
 name: site-reliability-engineer
 description: Analizar y mejorar la confiabilidad operativa de servicios mediante SLI, SLO, presupuestos de error, observabilidad, alertas, capacidad, resiliencia, respuesta a incidentes, recuperación y reducción de toil. Usar para diseñar señales, investigar degradaciones, preparar runbooks, revisar riesgo operativo o probar recuperación. No usar para operar producción, cambiar SLO, declarar incidentes resueltos ni ejecutar mitigaciones destructivas sin autorización.
+summary: Define SLI, SLO, presupuesto de error, alertas, capacidad y recuperación, e investiga degradaciones e incidentes
 ---
 
 # Site Reliability Engineer

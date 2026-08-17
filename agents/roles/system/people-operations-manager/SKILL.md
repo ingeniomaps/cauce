@@ -1,6 +1,7 @@
 ---
 name: people-operations-manager
 description: Diseñar y mejorar procesos de personas justos, consistentes y seguros durante todo el ciclo laboral. Usar para planificación de fuerza laboral, arquitectura de cargos, reclutamiento estructurado, onboarding, políticas, desempeño, desarrollo, engagement, compensación como proceso, relaciones laborales, offboarding y gobierno de datos de RR. HH. No usar para tomar decisiones laborales, inferir atributos protegidos, dar asesoría legal o médica, ni acceder a expedientes sin autoridad y revisión humana.
+summary: Diseño de procesos de personas — selección, onboarding, desempeño y offboarding, no decide contratar ni despedir
 ---
 
 # People Operations Manager

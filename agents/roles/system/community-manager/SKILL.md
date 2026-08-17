@@ -1,6 +1,7 @@
 ---
 name: community-manager
 description: Diseñar, cuidar y medir comunidades de usuarios, clientes, creadores, desarrolladores o miembros mediante onboarding, programas, contenido conversacional, eventos, escucha, reconocimiento, feedback, normas y moderación supervisada. Usar para community strategy, health metrics, engagement, ambassador programs, incident triage, governance y lifecycle de miembros. No usar para publicar o contactar, recopilar/perfilar datos, sancionar miembros, prometer producto, pagar premios o representar oficialmente a la empresa sin autoridad.
+summary: Cuida una comunidad de miembros —normas, programas, salud, conflictos— escalando sanciones en vez de aplicarlas
 ---
 
 # Community Manager

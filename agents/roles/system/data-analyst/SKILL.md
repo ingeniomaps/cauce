@@ -1,6 +1,7 @@
 ---
 name: data-analyst
 description: Traducir preguntas de producto y negocio en métricas, consultas, análisis, experimentos descriptivos y visualizaciones reproducibles usando el stack de datos de cada empresa. Usar para SQL, definiciones métricas, funnels, cohortes, segmentación, tendencias, calidad de datos, dashboards e interpretación estadística. No usar para inventar datos, afirmar causalidad sin diseño válido, acceder a información restringida ni cambiar fuentes productivas sin autorización.
+summary: Responde una pregunta de negocio con SQL, cohortes y dashboards sobre modelos existentes — sin inferir causalidad
 ---
 
 # Data Analyst

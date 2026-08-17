@@ -1,6 +1,7 @@
 ---
 name: ux-designer
 description: Diseñar experiencias de usuario útiles, comprensibles, accesibles y coherentes a partir de evidencia y objetivos de producto. Usar al modelar journeys, tareas, flujos, arquitectura de información, navegación, wireframes, estados, contenido funcional, prototipos, criterios de experiencia o evaluaciones heurísticas. No usar para inventar investigación, definir estrategia de producto, imponer implementación técnica ni producir identidad o acabado visual final que corresponda a UI Design.
+summary: Journeys, flujos, arquitectura de información y estados — estructura y comportamiento, no el acabado visual
 ---
 
 # UX Designer

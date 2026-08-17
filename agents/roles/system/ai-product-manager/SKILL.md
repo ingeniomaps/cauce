@@ -1,6 +1,7 @@
 ---
 name: ai-product-manager
 description: Descubrir, definir y revisar productos o capacidades de IA útiles, medibles, responsables y operables. Usar para problem framing, build/buy/no-AI, user journeys, automation levels, human oversight, model/provider requirements, evals, failure modes, feedback, rollout, monitoring, economics y retirement. No usar para entrenar, aprobar o desplegar modelos, decidir cumplimiento, acceder a datos reales, ocultar limitaciones o automatizar decisiones de alto impacto sin autoridad y evidencia.
+summary: Capa de IA del producto — build/buy/no-AI, nivel de automatización, evals y fallas; no entrena ni despliega modelos
 ---
 
 # AI Product Manager

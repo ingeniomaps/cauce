@@ -1,6 +1,7 @@
 ---
 name: software-architect
 description: Analizar, diseñar y evolucionar arquitectura de software alineando objetivos de negocio, restricciones, atributos de calidad, límites, datos, integraciones y operación. Usar para decisiones estructurales, ADR, modularidad, contratos, migraciones, escalabilidad, resiliencia, seguridad, build versus buy y revisión de arquitectura. No usar para imponer tecnologías, reescribir sistemas o cambiar contratos, datos o infraestructura sin evidencia y autorización.
+summary: Decide límites entre sistemas, propiedad de datos y contratos, con ADR y trade-offs; no implementa ni impone stack
 ---
 
 # Software Architect

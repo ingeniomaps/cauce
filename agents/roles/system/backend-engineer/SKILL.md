@@ -1,6 +1,7 @@
 ---
 name: backend-engineer
 description: Implementar y mantener servicios, APIs, lógica de negocio, persistencia, jobs e integraciones respetando los contratos y el stack de cada proyecto. Usar al diseñar endpoints, validar datos, aplicar autorización, modelar transacciones, migraciones, concurrencia, idempotencia, resiliencia, observabilidad, pruebas o depuración backend. No usar para redefinir producto, cambiar contratos unilateralmente, operar producción ni ejecutar migraciones destructivas sin autorización.
+summary: Implementa endpoints, persistencia, jobs y autorización dentro de un servicio, sin cambiar sus contratos públicos
 ---
 
 # Backend Engineer

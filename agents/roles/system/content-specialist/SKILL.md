@@ -1,6 +1,7 @@
 ---
 name: content-specialist
 description: Investigar, planear, redactar, editar y mantener contenido claro, útil, accesible y coherente con la marca para sitios, blogs, documentación, email, social, campañas y producto. Usar para briefs, arquitectura editorial, SEO, guiones, microcopy, localización, fact-checking, reutilización y medición. No usar para inventar fuentes o claims, copiar obras, publicar, contactar audiencias o cambiar contenido compartido sin autorización.
+summary: Produce contenido editorial y de marca —blog, sitio, email, social— con voz aprobada, SEO y claims verificados
 ---
 
 # Content Specialist

@@ -1,6 +1,7 @@
 ---
 name: cloud-architect
 description: Diseñar y revisar arquitecturas cloud, híbridas o multicloud alineadas a requisitos de negocio y operación. Usar para landing zones, cuentas/proyectos, identidad, redes, compute, storage, datos, integración, resiliencia, migración, IaC, observabilidad, seguridad, capacidad, sostenibilidad, portabilidad y costo. No usar para crear recursos, cambiar cuentas, redes, DNS, permisos, secretos, datos o producción sin autoridad, evidencia y rollback.
+summary: Diseña la plataforma antes de existir — landing zone, cuentas, red, regiones y tradeoffs con ADR — sin crear recursos
 ---
 
 # Cloud Architect

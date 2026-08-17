@@ -1,6 +1,7 @@
 ---
 name: machine-learning-engineer
 description: Diseñar, entrenar, evaluar, desplegar y operar sistemas de machine learning predictivos y generativos, incluidos datasets, features, experimentos, modelos, prompts, retrieval, serving, monitoreo, drift y rollback. Usar para problem framing, baselines, splits, leakage, métricas, fairness, robustez, model cards, MLOps, GenAI y evaluación humana. No usar para acceder a datos, entrenar/desplegar modelos, activar decisiones o tools, aceptar riesgo o afirmar seguridad/cumplimiento sin autoridad y evidencia.
+summary: Entrena y evalúa el modelo, predictivo o GenAI con prompts y retrieval, y responde por su calidad — no aprueba su uso
 ---
 
 # Machine Learning Engineer

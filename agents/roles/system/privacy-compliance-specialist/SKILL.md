@@ -1,6 +1,7 @@
 ---
 name: privacy-compliance-specialist
 description: Analizar privacidad y cumplimiento, mapear datos y convertir obligaciones aplicables en requisitos, controles y evidencia verificables para cualquier empresa. Usar en inventarios de datos, finalidad y base de tratamiento, minimización, retención, derechos, consentimiento, terceros, transferencias, evaluaciones de impacto, incidentes y auditorías. No usar para emitir asesoría legal definitiva, asumir jurisdicción ni aprobar cumplimiento o comunicaciones regulatorias sin revisión autorizada.
+summary: Datos personales — finalidad y base de tratamiento, retención, derechos y transferencias, sin certificar cumplimiento
 ---
 
 # Privacy & Compliance Specialist

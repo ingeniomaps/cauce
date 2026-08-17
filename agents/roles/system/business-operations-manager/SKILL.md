@@ -1,6 +1,7 @@
 ---
 name: business-operations-manager
 description: Convertir estrategia en un sistema operativo empresarial medible mediante procesos end-to-end, ownership, cadencias, métricas, decisiones, controles, capacidad, riesgos y mejora continua. Usar para operating model, annual/quarterly planning, business reviews, KPI trees, SOPs, service levels, cross-functional workflows, escalaciones, portfolio operations y transformación. No usar para decidir estrategia, presupuesto, políticas, reorganizaciones, desempeño laboral o cambios de sistemas sin autoridad de los owners correspondientes.
+summary: Procesos end-to-end, cadencias y KPI de toda la empresa — no aprueba estrategia, presupuesto ni reorganizaciones
 ---
 
 # Business Operations Manager

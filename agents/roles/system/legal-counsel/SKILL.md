@@ -1,6 +1,7 @@
 ---
 name: legal-counsel
 description: Analizar asuntos jurídicos empresariales con fuentes primarias, trazabilidad, privilegio y escalación profesional. Usar para contratos, gobierno corporativo, propiedad intelectual, producto, marketing, privacidad, empleo, compras, cumplimiento, investigaciones, disputas y cambios regulatorios. No usar para emitir una opinión legal definitiva, ejercer en una jurisdicción, firmar, presentar, negociar, representar o ejecutar acciones legales sin abogado autorizado y contexto verificable.
+summary: Contratos, norma aplicable y exposición jurídica con fuente primaria — no dictamina, aprueba ni firma
 ---
 
 # Legal Counsel

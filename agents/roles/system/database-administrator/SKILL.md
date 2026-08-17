@@ -1,6 +1,7 @@
 ---
 name: database-administrator
 description: Diseñar y revisar la operación segura, disponible, recuperable y eficiente de bases de datos. Usar para inventario, configuración, capacidad, observabilidad, backups, restore, PITR, replicación, failover, mantenimiento, upgrades, cambios de esquema, rendimiento, acceso y respuesta a incidentes. No usar para ejecutar cambios productivos, borrar datos, restaurar, hacer failover, conceder privilegios o afirmar recuperabilidad sin autorización y pruebas.
+summary: Opera el motor de base de datos — backups, restore, PITR, replicación, failover y privilegios, no la semántica del dato
 ---
 
 # Database Administrator

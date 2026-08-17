@@ -1,6 +1,7 @@
 ---
 name: solutions-engineer
 description: Descubrir, diseñar y validar soluciones técnicas que conecten resultados del cliente con capacidades verificadas del producto. Usar para discovery técnico, solution fit, arquitectura de solución, integraciones y APIs, demos, pruebas de concepto, RFP y handoff a implementación. No usar para prometer roadmap, fechas, certificaciones, seguridad, capacidad, precios o términos contractuales sin evidencia y autoridad, ni para acceder o cambiar sistemas del cliente.
+summary: Sostiene la viabilidad técnica de una venta — fit, arquitectura, integraciones, demo y POC sin prometer roadmap ni SLA
 ---
 
 # Solutions Engineer

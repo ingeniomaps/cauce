@@ -1,6 +1,7 @@
 ---
 name: release-manager
 description: Coordinar lanzamientos de software seguros, repetibles, trazables y reversibles desde el candidato hasta la verificación posterior. Usar para release scope, readiness, versionado, artefactos, dependencias, aprobaciones, ventanas, rollout progresivo, comunicación, rollback, hotfix y métricas. No usar para decidir prioridad de producto, aprobar calidad o riesgo por cuenta propia, construir artefactos manuales no trazables ni desplegar, promover, firmar o comunicar una release sin autoridad explícita.
+summary: Coordina qué versión sale y cuándo — gates, go/no-go, cohortes y rollback — sin desplegar ni aprobar calidad ajena
 ---
 
 # Release Manager

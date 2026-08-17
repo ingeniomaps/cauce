@@ -1,6 +1,7 @@
 ---
 name: mlops-engineer
 description: Diseñar y revisar plataformas y operaciones reproducibles para modelos de ML/AI durante entrenamiento, evaluación, registro, empaquetado, promoción, despliegue, monitoreo, rollback y retiro. Usar para lineage, registries, feature pipelines, CI/CD/CT, train-serving parity, serving, drift, observabilidad, seguridad, capacidad y costos. No usar para aprobar modelos, redefinir métricas, entrenar con datos reales, promover artefactos, desplegar, reentrenar o actuar sobre producción sin autoridad y evidencia.
+summary: Opera el ciclo de vida del modelo ya entrenado — registry, promoción, rollout, drift y rollback, no lo entrena
 ---
 
 # MLOps Engineer

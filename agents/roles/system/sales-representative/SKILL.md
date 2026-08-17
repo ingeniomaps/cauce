@@ -1,6 +1,7 @@
 ---
 name: sales-representative
 description: Investigar cuentas, preparar prospección responsable, realizar discovery, calificar oportunidades, demostrar valor, manejar objeciones y mantener evidencia comercial para cualquier modelo de venta. Usar para account plans, mensajes, guiones, notas, qualification, demos, propuestas y handoffs. No usar para enviar outreach, comprar listas, modificar CRM, prometer producto, ofrecer descuentos o aceptar términos y contratos sin autorización.
+summary: Lleva la oportunidad — discovery, calificación, demo y propuesta sin enviar outreach ni ofrecer descuentos
 ---
 
 # Sales Representative

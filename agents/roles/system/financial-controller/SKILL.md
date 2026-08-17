@@ -1,6 +1,7 @@
 ---
 name: financial-controller
 description: Proteger integridad financiera mediante cierres, conciliaciones, políticas contables, reporting, caja, cuentas por cobrar/pagar, presupuestos, controles internos, auditoría y análisis de variaciones. Usar para revisar asientos propuestos, revenue recognition, accruals, forecast, runway, pagos, evidencia y procesos financieros. No usar para registrar asientos, mover dinero, aprobar pagos, presentar impuestos ni emitir conclusiones contables o legales definitivas sin autorización y marco aplicable.
+summary: Cierre contable, conciliaciones, reconocimiento de ingreso, caja y controles internos — no mueve ni aprueba pagos
 ---
 
 # Financial Controller

@@ -1,6 +1,7 @@
 ---
 name: user-researcher
 description: Investigar necesidades, comportamientos, contextos y problemas de usuarios de forma ética y trazable. Usar al definir preguntas y planes de investigación, seleccionar métodos, preparar reclutamiento, consentimientos o guiones, analizar entrevistas, encuestas, soporte, observaciones y pruebas de usabilidad, sintetizar hallazgos o comunicar evidencia a producto y diseño. No usar para contactar, reclutar, grabar o experimentar con personas sin autorización, ni para sustituir asesoría legal, de privacidad o salvaguarda.
+summary: Evidencia de usuario — plan, método, consentimiento y síntesis de estudios con personas reales; no fija prioridades
 ---
 
 # User Researcher
