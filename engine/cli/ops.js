@@ -61,6 +61,37 @@ function usage() {
 // Banderas que consumen el argumento siguiente: su valor no es un posicional.
 const VALUED_FLAGS = new Set(['--name', '--mode', '--fixture', '--period'])
 
+// Qué acepta cada comando, y a la vez qué comandos existen. Una bandera desconocida se rechaza en vez
+// de ignorarse: `check --jsonn` imprimía la salida humana con código 0, así que quien esperaba JSON
+// —un agente, típicamente— recibía texto sin ninguna señal de que su bandera no existía.
+const FLAGS = {
+  init: ['--name', '--mode', '--force'],
+  check: ['--json'],
+  tree: ['--json', '--no-color'],
+  context: ['--json'],
+  upgrade: ['--check', '--force'],
+  archive: [],
+  agents: ['--json', '--own', '--system'],
+  integration: ['--fixture'],
+  automation: ['--force'],
+  learn: ['--proposal', '--applied', '--period'],
+  evaluate: ['--cases', '--json', '--bench', '--force'],
+  team: ['--json'],
+}
+
+function unknownFlags(command) {
+  const known = FLAGS[command]
+  const argv = process.argv.slice(3)
+  const found = []
+  for (let index = 0; index < argv.length; index += 1) {
+    const value = argv[index]
+    if (!value.startsWith('--')) continue
+    if (!known.includes(value)) { found.push(value); continue }
+    if (VALUED_FLAGS.has(value)) index += 1
+  }
+  return found
+}
+
 // Los posicionales del comando, salteando banderas y sus valores. Leer `process.argv` crudo hacía
 // que `agents list --json` tomara `--json` como la raíz: el catálogo salía vacío, sin error, y quien
 // lo consumía —un agente, por ejemplo— no tenía cómo notar que le habían contestado con nada.
@@ -1005,6 +1036,15 @@ function team(action, slug) {
 async function main() {
   const command = process.argv[2]
   if (!command || ['help', '--help', '-h'].includes(command)) return usage()
+  if (!FLAGS[command]) { usage(); fail(`Comando desconocido: ${command}`, 2) }
+  // `--help` valía sólo como primer argumento: `check --help` corría `check` contra el directorio
+  // actual en vez de explicarse.
+  if (process.argv.includes('--help') || process.argv.includes('-h')) return usage()
+  const sobran = unknownFlags(command)
+  if (sobran.length) {
+    const acepta = FLAGS[command].length ? `Acepta: ${FLAGS[command].join(', ')}.` : 'No acepta banderas.'
+    fail(`${command}: bandera desconocida ${sobran.join(', ')}. ${acepta}`, 2)
+  }
   const arg = positionals()
   if (command === 'init') init(arg[1])
   else if (command === 'check') check(arg[1])
@@ -1020,7 +1060,6 @@ async function main() {
   else if (command === 'learn') learn(arg[1])
   else if (command === 'evaluate') evaluate(arg[1])
   else if (command === 'team') team(arg[1], arg[2])
-  else { usage(); fail(`Comando desconocido: ${command}`, 2) }
 }
 
 main().catch((error) => fail(error.message))

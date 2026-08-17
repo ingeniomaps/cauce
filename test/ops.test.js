@@ -911,3 +911,31 @@ test('una configuración ilegible detiene el comando en vez de pasar por descono
   fs.rmSync(config)
   assert.match(run(['upgrade', root]).stderr, /falta ops\.config\.json/, 'ausente no es ilegible')
 })
+
+// Una bandera con un typo se ignoraba: `check --jsonn` imprimía la salida humana con código 0, así
+// que quien esperaba JSON recibía texto sin señal de nada. Es la misma familia que el bug ya
+// documentado en `positionals()` —`--json` tomado como raíz—: ahí se arreglaron los posicionales y no
+// las banderas. Y `--help` sólo valía como primer argumento.
+test('el CLI rechaza una bandera que no existe en vez de ignorarla', () => {
+  const planning = path.resolve(__dirname, '..', 'template', 'planning')
+
+  const typo = run(['check', planning, '--jsonn'])
+  assert.equal(typo.status, 2)
+  assert.match(typo.stderr, /bandera desconocida --jsonn/)
+  assert.match(typo.stderr, /Acepta: --json/, 'y dice cuáles sí valen')
+
+  // Una bandera real pero de otro comando tampoco pasa.
+  assert.equal(run(['check', planning, '--force']).status, 2)
+  assert.match(run(['archive', planning, '001', '--json']).stderr, /No acepta banderas/)
+
+  // Lo que sí existe sigue funcionando, incluidas las banderas que consumen su valor.
+  assert.equal(run(['check', planning, '--json']).status, 0)
+  assert.equal(run(['tree', planning, '--json', '--no-color']).status, 0)
+
+  // Y `--help` explica el comando en vez de ejecutarlo contra el directorio actual.
+  const ayuda = run(['check', '--help'])
+  assert.equal(ayuda.status, 0)
+  assert.match(ayuda.stdout, /^Uso:/)
+
+  assert.equal(run(['inventado']).status, 2, 'un comando desconocido sigue fallando')
+})
