@@ -8,6 +8,12 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+Cada entrada la imprime `upgrade` a quien está por aplicarla, y un salto de varias versiones las
+imprime todas seguidas. Dice qué cambia en lo que recibe y qué tiene que hacer; lo que sólo se observa
+desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuando una entrada pasa de
+unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
+diseño — eso vive en el commit y en el código.
+
 ## [0.23.0] - 2026-08-17
 
 ### Agregado
