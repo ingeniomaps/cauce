@@ -1,8 +1,7 @@
 .DEFAULT_GOAL := help
 
-# Instalar y diagnosticar runners, y `upgrade`, viven en `template/Makefile`: son operaciones de una
-# instancia y acá fallan por `mode: toolkit`. Los gates delegan en los scripts de `package.json`,
-# porque el nombre npm es el que tienen fijo `ci.yml`, el guard `verify` y `prepublishOnly`.
+# Los gates delegan en los scripts de `package.json`: ese nombre lo tienen fijo `ci.yml`, el guard
+# `verify` y `prepublishOnly`. Escribir el comando de los dos lados ya derivó una vez.
 .PHONY: help check tree context test coverage coverage-update ci automation-check integration-check
 .PHONY: require-agent agent-learn agent-propose agent-evaluate require-team team-check team-show
 
