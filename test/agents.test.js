@@ -44,8 +44,13 @@ test('el aprendizaje de la profesión se hace en el toolkit, no en cada empresa'
   // Acá, en el repositorio del toolkit, el cargo es escribible y el ciclo corre.
   const skill = path.join(repoRoot, 'agents', 'roles', 'system', 'product-manager', 'SKILL.md')
   const before = fs.readFileSync(skill, 'utf8')
+  // El directorio puede no existir: sólo se versiona cuando tiene un informe real, y al retirar los
+  // moldes muertos dejó de existir en cuarenta y cinco de los cuarenta y siete cargos. `learn` lo crea
+  // cuando hace falta, así que darlo por presente medía el disco de quien corre la prueba.
   const reports = path.join(repoRoot, 'agents', 'roles', 'system', 'product-manager', 'learning', 'reports')
-  const nuevos = () => fs.readdirSync(reports).filter((name) => /^\d{4}-\d{2}-\d{2}\.md$/.test(name))
+  const nuevos = () => {
+    try { return fs.readdirSync(reports).filter((name) => /^\d{4}-\d{2}-\d{2}\.md$/.test(name)) } catch { return [] }
+  }
   const previos = nuevos()
   try {
     assert.equal(run(['learn', 'product-manager'], repoRoot).status, 0)
