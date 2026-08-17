@@ -24,6 +24,7 @@
     "integration:check": "node engine/cli/ops.js integration check template jira",
     "test": "bash test/hooks-smoke.sh && node --test test/*.test.js",
     "coverage": "bash test/coverage.sh",
+    "coverage:update": "bash test/coverage.sh --update",
     "ci": "npm run check && npm run automation:check && npm run integration:check && npm run coverage"
   },
   "engines": {

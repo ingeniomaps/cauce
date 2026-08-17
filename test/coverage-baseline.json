@@ -1,0 +1,117 @@
+{
+  "automatization/runners/antigravity/hook.js": {
+    "lines": 77,
+    "branches": 33,
+    "functions": 62
+  },
+  "engine/agents/catalog.js": {
+    "lines": 100,
+    "branches": 82,
+    "functions": 100
+  },
+  "engine/agents/evaluations.js": {
+    "lines": 100,
+    "branches": 81,
+    "functions": 93
+  },
+  "engine/agents/fork.js": {
+    "lines": 99,
+    "branches": 67,
+    "functions": 88
+  },
+  "engine/agents/learning.js": {
+    "lines": 98,
+    "branches": 59,
+    "functions": 100
+  },
+  "engine/automation/index.js": {
+    "lines": 89,
+    "branches": 66,
+    "functions": 97
+  },
+  "engine/cli/args.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
+  "engine/cli/ops.js": {
+    "lines": 85,
+    "branches": 43,
+    "functions": 88
+  },
+  "engine/config/validate.js": {
+    "lines": 73,
+    "branches": 52,
+    "functions": 100
+  },
+  "engine/core/changelog.js": {
+    "lines": 100,
+    "branches": 88,
+    "functions": 100
+  },
+  "engine/core/files.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
+  "engine/core/manifest.js": {
+    "lines": 100,
+    "branches": 83,
+    "functions": 100
+  },
+  "engine/core/ownership.js": {
+    "lines": 97,
+    "branches": 86,
+    "functions": 100
+  },
+  "engine/hooks/run.js": {
+    "lines": 91,
+    "branches": 85,
+    "functions": 97
+  },
+  "engine/integrations/proposals.js": {
+    "lines": 100,
+    "branches": 89,
+    "functions": 100
+  },
+  "engine/integrations/providers/jira.js": {
+    "lines": 96,
+    "branches": 53,
+    "functions": 83
+  },
+  "engine/integrations/registry.js": {
+    "lines": 79,
+    "branches": 49,
+    "functions": 95
+  },
+  "engine/integrations/state.js": {
+    "lines": 96,
+    "branches": 61,
+    "functions": 88
+  },
+  "engine/integrations/writeback.js": {
+    "lines": 86,
+    "branches": 68,
+    "functions": 100
+  },
+  "engine/planning/business-rules.js": {
+    "lines": 95,
+    "branches": 73,
+    "functions": 100
+  },
+  "engine/planning/contracts.js": {
+    "lines": 95,
+    "branches": 79,
+    "functions": 100
+  },
+  "engine/planning/parser.js": {
+    "lines": 100,
+    "branches": 73,
+    "functions": 100
+  },
+  "engine/teams/registry.js": {
+    "lines": 94,
+    "branches": 54,
+    "functions": 100
+  }
+}
