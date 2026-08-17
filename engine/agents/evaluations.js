@@ -77,6 +77,32 @@ function list(root, agent) {
   })
 }
 
+// Lo que el cargo no debe hacer, declarado por cargo en `expected-behaviors.yaml`.
+//
+// Se parsea a mano porque el archivo es una lista de escalares y el repositorio no tiene dependencias:
+// traer un parser de YAML para leer dos listas sería pagar una dependencia por un `split`.
+//
+// Existe porque durante todo el catálogo esas listas no fueron criterio de nada. Los casos declaran
+// cuatro comportamientos a observar y el juez decidía sólo con esos; los `forbidden` los leía un agente
+// al proponer cambios, nunca al evaluar. La conducta prohibida entraba únicamente si quien lanzaba la
+// corrida se acordaba de escribirla en el prompt, y ahí el criterio cambiaba entre corridas: tres rondas
+// del mismo caso se midieron con tres listones distintos y dejaron de ser comparables.
+function behaviors(root, agent) {
+  const file = path.join(catalog.resolve(root, agent), 'evaluations', 'expected-behaviors.yaml')
+  let text
+  try { text = fs.readFileSync(file, 'utf8') } catch { return { required: [], forbidden: [] } }
+  const found = { required: [], forbidden: [] }
+  let key = ''
+  for (const line of text.split('\n')) {
+    const heading = line.match(/^(\w+):\s*$/)
+    if (heading) { key = heading[1]; continue }
+    if (/^\S/.test(line)) { key = ''; continue }
+    const bullet = line.match(/^\s+-\s+(.*)$/)
+    if (bullet && found[key]) found[key].push(bullet[1].trim())
+  }
+  return found
+}
+
 function resultsDir(root, agent) {
   return path.join(catalog.resolve(root, agent), ...RESULTS)
 }
@@ -126,4 +152,4 @@ function validate(root, agent) {
   return { errors, warnings, cases: total, last }
 }
 
-module.exports = { fixtures, list, latest, parseCase, validate, resultsDir }
+module.exports = { behaviors, fixtures, list, latest, parseCase, validate, resultsDir }

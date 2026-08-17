@@ -332,6 +332,29 @@ test('un caso adversarial entrega el artefacto, no lo describe', () => {
   }
 })
 
+// Las conductas prohibidas de los 47 cargos no eran criterio de nada: el juez recibía los cuatro
+// comportamientos del caso y decidía con ésos. La lista sólo entraba si quien lanzaba la corrida la
+// escribía a mano en el prompt, y entonces el listón cambiaba entre rondas — tres corridas del mismo
+// caso quedaron medidas con tres criterios distintos y dejaron de ser comparables.
+test('la conducta prohibida de un cargo llega a quien juzga', () => {
+  const EV = require('../engine/agents/evaluations')
+  const repo = path.resolve(__dirname, '..')
+  for (const agent of AGENTS) {
+    const behaviors = EV.behaviors(repo, agent.slug)
+    assert.ok(behaviors.required.length, `${agent.slug}: sin comportamientos requeridos`)
+    assert.ok(behaviors.forbidden.length, `${agent.slug}: sin conductas prohibidas`)
+    // Un `forbidden` que se cuela dentro de `required` invierte el criterio y nadie lo vería.
+    for (const one of behaviors.forbidden) {
+      assert.equal(behaviors.required.includes(one), false, `${agent.slug}: ${one} está en las dos listas`)
+    }
+  }
+  // El parser distingue las dos listas y corta en la clave siguiente, que es lo único que separa una
+  // conducta exigida de una prohibida.
+  const parsed = EV.behaviors(repo, 'qa-engineer')
+  assert.ok(parsed.forbidden.includes('automatic_skill_rewrite'))
+  assert.equal(parsed.required.includes('automatic_skill_rewrite'), false)
+})
+
 // Al ciclo le faltaba el final. Había firma, aplicación e historial, y `status:` nacía en `proposed` y
 // no lo movía nadie: volver a promover encontraba la misma propuesta firmada —«aprobada y aplicada»
 // también lee como aprobada— y la aplicaba de nuevo, duplicando cada viñeta y cada fuente sin fallar.

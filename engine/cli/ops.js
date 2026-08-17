@@ -978,11 +978,16 @@ function evaluate(agent, caso, cli) {
     // máquina, no de persona.
     if (cli.has('--cases')) {
       const cases = EV.list(root, agent)
+      const prohibido = EV.behaviors(root, agent).forbidden
+      // La salida legible no lleva la conducta prohibida: `agent-propose` cuenta sus líneas para saber
+      // cuántos casos hay, y una línea de más se contaría como un caso.
       if (!cli.has('--json')) {
         for (const item of cases) console.log(`${item.id}  ${item.expected.length} comportamiento(s)`)
         return
       }
-      return console.log(JSON.stringify(cases))
+      // La conducta prohibida viaja junto a los casos y no dentro de cada uno: rige para los seis, y
+      // repetirla por caso invitaría a que alguien la editara en uno solo.
+      return console.log(JSON.stringify({ cases, forbidden: prohibido }))
     }
     const result = L.evaluate(root, agent)
     const runs = EV.validate(root, agent)

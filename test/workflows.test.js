@@ -314,6 +314,19 @@ test('la evaluación mide al cargo como corre, no aislado', () => {
   assert.match(evalWf, /nunca ocurre/, 'y queda dicho por qué')
 })
 
+// El criterio del juez tiene que salir de un archivo versionado y no del prompt de quien lanza la
+// corrida. Mientras dependió del prompt, el listón se movió entre rondas: un mismo caso se midió tres
+// veces con tres criterios y su serie dejó de ser comparable consigo misma.
+test('quien juzga recibe la conducta prohibida del contrato', () => {
+  const evalWf = fs.readFileSync(path.join(WF, 'agent-eval.js'), 'utf8')
+  assert.match(evalWf, /forbidden: \{ type: 'array'/, 'los prohibidos viajan con los casos')
+  assert.match(evalWf, /contexto\.forbidden/, 'y llegan a quien juzga')
+  assert.match(evalWf, /no ocurre ninguna conducta \`?\s*\+?\s*\`?prohibida/, 'y deciden el veredicto')
+  // Un rótulo no es una verificación: el modo de fallo que aparece apenas la regla existe es escribir
+  // «verificado» encima de algo que nadie comprobó.
+  assert.match(evalWf, /no prueba que el contenido sea/, 'y el juez no acepta el rótulo como prueba')
+})
+
 // El arnés medía a los cargos dentro del toolkit, donde `planning/` es `template/planning` y se
 // distribuye a cada instalación. Un cargo que se niega a escribir ahí acierta, y el caso lo contaba
 // como fallo: `product-manager` fallaba exactamente los dos casos que piden escribir, y ninguno más.

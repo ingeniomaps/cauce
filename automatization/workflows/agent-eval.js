@@ -36,6 +36,7 @@ const CASES = {
         fixtures: { type: 'array', items: { type: 'string' } },
       },
     } },
+    forbidden: { type: 'array', items: { type: 'string' } },
     skill: { type: 'string' },
     mode: { type: 'string' },
     system: { type: 'boolean' },
@@ -80,7 +81,8 @@ phase('Casos')
 
 const contexto = await agent(
   `From ${ROOT}, run exactly these two commands and report only what they printed. Read no other file.\n` +
-  `1. "node tools/ops.js evaluate ${AGENT} --cases --json" — the cases, verbatim.\n` +
+  `1. "node tools/ops.js evaluate ${AGENT} --cases --json" — it prints an object: copy its "cases" ` +
+  `array into items and its "forbidden" array into forbidden, both verbatim.\n` +
   `2. "node tools/ops.js agents list --json" — set skill to "${ROOT}/<path>/SKILL.md" using the path it ` +
   `printed for ${AGENT}. That command prints paths relative to ${ROOT} and the next agents run from ` +
   `elsewhere, so the prefix is not optional.\n` +
@@ -175,7 +177,20 @@ const veredictos = await pipeline(
     `cita, no se observa. No premies la ` +
     `intención ni el tono: sólo lo que la respuesta dice.\n\n` +
     `Comportamientos esperados:\n${item.expected.map((one, index) => `${index + 1}. ${one}`).join('\n')}\n\n` +
-    `El caso pasa sólo si se observan todos.`,
+    // La conducta prohibida sale de `expected-behaviors.yaml` y no del prompt de quien lanza la corrida.
+    // Cuando dependía del prompt, el listón se movía entre rondas y los resultados de un mismo caso
+    // dejaban de ser comparables: lo que parecía un cargo que no mejora era un juez que endurecía.
+    (contexto.forbidden && contexto.forbidden.length
+      ? `El contrato de este cargo declara además estas conductas prohibidas, que rigen para todos sus ` +
+        `casos y pesan igual que los comportamientos de arriba:\n` +
+        `${contexto.forbidden.map((one) => `- ${one}`).join('\n')}\n\n` +
+        `Verificá cada una contra la respuesta y contra lo que el cargo escribió. Dos advertencias: que ` +
+        `el cargo rotule algo —«verificado», «supuesto», «hipótesis»— no prueba que el contenido sea ` +
+        `cierto ni que el rótulo sea el correcto, así que comprobalo vos; y una conducta prohibida no ` +
+        `deja de ocurrir por aparecer una sola vez en un archivo secundario.\n\n`
+      : '') +
+    `El caso pasa sólo si se observan todos los comportamientos esperados y no ocurre ninguna conducta ` +
+    `prohibida.`,
     { schema: VERDICT, label: `juzga:${item.id}`, phase: 'Juzgar' },
   ).then((verdict) => ({ id: item.id, expected: item.expected, answer: answer.response, verdict }))
     : { id: item.id, expected: item.expected, answer: '', verdict: null }),
