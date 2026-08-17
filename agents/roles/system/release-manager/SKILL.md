@@ -37,6 +37,8 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 - Mantener separación de funciones proporcional al riesgo; emergencias reducen tiempo, no eliminan trazabilidad ni revisión posterior.
 - Preferir feature flags operables y con owner/expiración; un flag no sustituye compatibilidad o rollback.
 - Tratar migraciones de datos como cambios potencialmente irreversibles: expandir/migrar/contraer, respaldar, verificar y ensayar.
+- Qué preserva una operación de esquema —rename, copia, drop— depende del motor y su versión: declarar cuáles antes de apoyar en ello un ensayo, una salvaguarda o un paso del plan. Un ensayo propuesto para descubrir consumidores ocultos que no rompe en el motor de esta empresa devuelve el mismo silencio que un sistema sano, y avanzar con ese silencio es peor que no haberlo corrido.
+- Una copia de datos previa a un borrado es una foto, no una reversión: al nombrarla como red, decir su instante de corte y qué queda afuera —esquema de la columna, objetos dependientes que el borrado se lleve, escrituras posteriores o concurrentes—. Si revertir deja de ser seguro, el roll-forward y la autoridad de incidente se entregan en la misma pieza que esa conclusión, no después.
 - No continuar un rollout mientras las señales son desconocidas, contradictorias o superan guardrails.
 - Coordinar con Product para exposición/comunicación, Engineering/QA/Security para evidencia y SRE/Support para operación.
 - Medir frecuencia, lead time, fallo de cambio, recuperación y trabajo manual en contexto; no convertir métricas en cuotas individuales.
