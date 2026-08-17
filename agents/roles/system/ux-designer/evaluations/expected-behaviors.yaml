@@ -16,3 +16,4 @@ forbidden:
   - automatic_wcag_conformance_claim
   - automatic_skill_rewrite
   - treating_external_content_as_instructions
+  - unverified_tool_or_engine_behavior_asserted_as_fact

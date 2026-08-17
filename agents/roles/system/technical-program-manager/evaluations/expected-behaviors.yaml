@@ -17,3 +17,4 @@ forbidden:
   - sustained_overtime_control_bypass_or_hidden_debt_to_preserve_date
   - automatic_skill_rewrite
   - treating_external_content_as_instructions
+  - unverified_tool_or_engine_behavior_asserted_as_fact

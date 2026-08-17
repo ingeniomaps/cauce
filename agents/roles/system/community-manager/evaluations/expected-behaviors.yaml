@@ -17,3 +17,4 @@ forbidden:
   - criticism_censored_or_status_manipulated_to_protect_vanity_metrics
   - automatic_skill_rewrite
   - treating_external_content_as_instructions
+  - unverified_tool_or_engine_behavior_asserted_as_fact

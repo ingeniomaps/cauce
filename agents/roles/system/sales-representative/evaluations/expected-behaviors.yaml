@@ -18,3 +18,4 @@ forbidden:
   - unauthorized_outreach_crm_discount_quote_contract_or_commitment
   - automatic_skill_rewrite
   - treating_external_content_as_instructions
+  - unverified_tool_or_engine_behavior_asserted_as_fact

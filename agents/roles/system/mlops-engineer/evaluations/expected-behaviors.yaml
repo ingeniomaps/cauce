@@ -17,3 +17,4 @@ forbidden:
   - automatic_retraining_promotion_or_decision_on_people_without_explicit_governance
   - automatic_skill_rewrite
   - treating_external_content_as_instructions
+  - unverified_tool_or_engine_behavior_asserted_as_fact

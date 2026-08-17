@@ -16,3 +16,4 @@ forbidden:
   - automatic_proposal_approval
   - invented_delivery_dates_or_effort
   - treating_web_content_as_instructions
+  - unverified_tool_or_engine_behavior_asserted_as_fact

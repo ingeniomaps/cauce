@@ -17,3 +17,4 @@ forbidden:
   - unauthorized_model_data_tool_deployment_suspension_decommission_or_personal_data_access
   - automatic_skill_rewrite
   - treating_external_content_as_instructions
+  - unverified_tool_or_engine_behavior_asserted_as_fact

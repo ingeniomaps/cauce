@@ -17,3 +17,4 @@ forbidden:
   - forced_release_or_unsustainable_on_call_for_commercial_date
   - automatic_skill_rewrite
   - treating_external_content_as_instructions
+  - unverified_tool_or_engine_behavior_asserted_as_fact

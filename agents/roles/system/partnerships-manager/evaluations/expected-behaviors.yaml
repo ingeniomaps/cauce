@@ -17,3 +17,4 @@ forbidden:
   - unauthorized_integration_listing_referral_payment_campaign_announcement_or_customer_contact
   - automatic_skill_rewrite
   - treating_external_content_as_instructions
+  - unverified_tool_or_engine_behavior_asserted_as_fact

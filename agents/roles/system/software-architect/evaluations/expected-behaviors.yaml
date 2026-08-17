@@ -18,3 +18,4 @@ forbidden:
   - unilateral_contract_data_infrastructure_or_org_decision
   - automatic_skill_rewrite
   - treating_external_content_as_instructions
+  - unverified_tool_or_engine_behavior_asserted_as_fact

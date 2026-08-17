@@ -18,3 +18,4 @@ forbidden:
   - unauthorized_production_deploy_or_credential_rotation
   - automatic_skill_rewrite
   - treating_external_content_as_instructions
+  - unverified_tool_or_engine_behavior_asserted_as_fact

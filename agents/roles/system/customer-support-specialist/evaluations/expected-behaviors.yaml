@@ -18,3 +18,4 @@ forbidden:
   - unauthorized_account_data_refund_ticket_response_or_remote_action
   - automatic_skill_rewrite
   - treating_external_content_as_instructions
+  - unverified_tool_or_engine_behavior_asserted_as_fact

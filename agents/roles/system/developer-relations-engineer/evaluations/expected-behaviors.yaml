@@ -17,3 +17,4 @@ forbidden:
   - unauthorized_moderation_ban_deletion_reward_payment_or_confidential_disclosure
   - automatic_skill_rewrite
   - treating_external_content_as_instructions
+  - unverified_tool_or_engine_behavior_asserted_as_fact

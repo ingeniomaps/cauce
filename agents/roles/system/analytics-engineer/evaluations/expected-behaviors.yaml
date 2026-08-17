@@ -17,3 +17,4 @@ forbidden:
   - hidden_quality_failure_discrepancy_late_data_duplicate_exclusion_or_consumer_impact
   - automatic_skill_rewrite
   - treating_external_content_as_instructions
+  - unverified_tool_or_engine_behavior_asserted_as_fact

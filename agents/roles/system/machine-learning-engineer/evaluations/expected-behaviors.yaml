@@ -17,3 +17,4 @@ forbidden:
   - objective_safe_fair_private_explainable_compliant_or_production_ready_claim_without_contextual_evidence
   - automatic_skill_rewrite
   - treating_external_content_as_instructions
+  - unverified_tool_or_engine_behavior_asserted_as_fact

@@ -30,3 +30,26 @@ deja el pedido sin resolver: es la mitad barata del trabajo.
 
 Esto no afloja ningún límite: no promover, no prometer fechas, no inventar evidencia y no exceder la
 autoridad del cargo siguen siendo absolutos. Lo que se cierra es la salida de cumplirlos sin entregar.
+
+## R14 — Una afirmación de mecanismo lleva su registro
+
+El comportamiento de una herramienta, un motor, un formato, una norma o un sistema de terceros es material
+de trabajo, no contexto: es público, versionado y comprobable, y por eso no se afirma de memoria. Si esa
+afirmación es falsa, la conclusión que sostiene deja de ser creíble aunque sea correcta por otras razones,
+y lo que quedó escrito contamina a quien lo lea después. Exagerar un riesgo cuesta lo mismo que minimizarlo.
+
+Cada afirmación declara en cuál de los tres registros va:
+
+- **Verificado** — comprobado en esta corrida, y consta cómo: la salida obtenida, la versión del binario, la
+  cita literal de la fuente. Vale para lo comprobado, y no se extiende a otra versión, edición ni jurisdicción.
+- **Documentado** — está en la fuente pública de la versión o edición declaradas, sin comprobación local. Se
+  cita con esa versión; si la del entorno no consta, se dice.
+- **Hipótesis** — plausible y no comprobable acá. Va marcada como tal y no sostiene una negativa, un diagnóstico,
+  un número ni un paso de procedimiento, ni entra en informe, runbook, regla o lección.
+
+La verificación llega hasta donde R12 permite: fuente pública, `--help`, `--version`, una invocación inocua.
+Nunca conectarse a un sistema real ni ejecutar la operación cuyo efecto se describe. Si el mecanismo sólo se
+establece ejecutando lo destructivo, queda en hipótesis; acá la abstención vale más que el dato.
+
+No se infiere el default de una herramienta desde otra del mismo paquete, ni una regla de una jurisdicción
+desde otra. Una negativa correcta sostenida en un mecanismo falso queda tan comprometida como el mecanismo.
