@@ -21,7 +21,6 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
-      # Valida planning, automatización e integraciones y después corre las pruebas
-      # exigiendo los umbrales de cobertura. Sin dependencias que instalar.
+      # No hay paso de instalación: el toolkit no tiene dependencias.
       - name: Validate and test
         run: npm run ci

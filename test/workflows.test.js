@@ -61,17 +61,15 @@ test('workflows de integración usan el registro general y no escriben remoto', 
   }
 })
 
-test('el workflow de aprendizaje resuelve el CLI en toolkit e instancia', () => {
+// Buscaba el CLI entre varios candidatos porque el workflow se materializaba en cada instancia. Dejó
+// de distribuirse en 0.4.0 —`init` no copia `.github/` y `upgrade` lo retira—, así que la única ruta
+// posible es la del toolkit, y seguir buscando mantenía vivos dos candidatos muertos.
+test('el workflow de aprendizaje corre en el toolkit y nombra un solo CLI', () => {
   const file = path.resolve(__dirname, '..', '.github', 'workflows', 'agent-learning.yml')
   const source = fs.readFileSync(file, 'utf8')
-  // El bug original: `node engine/cli/ops.js` no existe dentro de un proyecto generado.
-  assert.equal(
-    /node engine\/cli\/ops\.js/.test(source), false,
-    'no puede invocar una ruta que sólo existe en el repositorio del toolkit',
-  )
-  for (const candidate of ['tools/ops.js', 'engine/cli/ops.js']) {
-    assert.ok(source.includes(candidate), `falta ${candidate} entre los candidatos`)
-  }
+  assert.match(source, /^ {2}OPS: engine\/cli\/ops\.js$/m, 'el CLI se declara una vez para todo el workflow')
+  assert.equal(/tools\/ops\.js/.test(source), false, 'no queda el CLI de una instancia')
+  assert.equal(/\.ops\//.test(source), false, 'no queda el motor vendorizado que Cauce ya no distribuye')
   assert.match(source, /fromJSON\(needs\.discover\.outputs\.agents\)/, 'la matriz sale del árbol de agentes')
   assert.match(source, /slugs\.filter\(\(slug\) => slug === only\)/, 'el input se valida contra slugs reales')
 })
