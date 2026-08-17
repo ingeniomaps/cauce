@@ -19,9 +19,9 @@ const BASELINE = path.join(__dirname, 'coverage-baseline.json')
 // Los workflows no se requieren nunca: los ejecuta el runtime del runner y los tests los leen como
 // texto, así que no aparecen en el lcov. Excluirlos es declarar eso, no perdonarlos.
 const SIN_COBERTURA = 'automatization/workflows/'
-// Un punto de holgura, medido y no supuesto: en cuatro corridas seguidas `integrations/registry.js`
-// alterna entre 48 y 49 de ramas, y `planning/parser.js` entre 72 y 73. Sin esto el piso falla solo,
-// y un gate que falla al azar se termina apagando. La causa del vaivén merece mirarse aparte.
+// Un punto de holgura, medido y no supuesto: en cinco corridas seguidas el único número que se mueve
+// es el de ramas de `integrations/registry.js`, que alterna entre 48 y 49. Sin esto el piso falla
+// solo, y un gate que falla al azar se termina apagando. Por qué se mueve merece mirarse aparte.
 const HOLGURA = 1
 
 function medido(lcov) {
