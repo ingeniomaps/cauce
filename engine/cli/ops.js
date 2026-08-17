@@ -751,112 +751,133 @@ function archive(dir, rawNum) {
   console.log(`✓ epic-${num}: ${entries.length} entrada(s) archivadas`)
 }
 
-async function integration(action, rootArg, provider, key, cli) {
-  const root = path.resolve(rootArg || '.')
-  if (action === 'list') {
-    const registry = JSON.parse(fs.readFileSync(path.join(root, 'integrations', 'config.json'), 'utf8'))
-    // Hay dos interruptores y `sync` exige los dos: el del registro dice que el proveedor está
-    // conectado al proyecto, el suyo propio que su configuración está terminada. Mostrar sólo el
-    // primero daba encendido a un proveedor que se habría negado a sincronizar.
-    for (const [name, entry] of Object.entries(registry.providers || {})) {
-      let listo = false
-      try {
-        const suyo = path.join(root, 'integrations', name, 'config.json')
-        listo = JSON.parse(fs.readFileSync(suyo, 'utf8')).enabled === true
-      } catch { /* sin materializar */ }
-      const estado = !entry.enabled ? '○' : (listo ? '●' : '◐')
-      const nota = estado === '◐'
-        ? `  — falta completar integrations/${name}/config.json y poner enabled: true`
-        : ''
-      console.log(`${estado} ${name} [${entry.adapter}]${nota}`)
-    }
-    return
+// El registro de proveedores, leído igual por todos los que lo tocan. `list` lo parseaba suelto y un
+// archivo roto salía como un error de JSON sin contexto.
+function providerRegistry(root) {
+  const file = path.join(root, 'integrations', 'config.json')
+  try { return { file, config: JSON.parse(fs.readFileSync(file, 'utf8')) } } catch (error) {
+    return fail(`integrations/config.json ilegible: ${error.message}`)
   }
-  if (action === 'enable') {
-    if (!provider) fail('Falta <provider>.', 2)
-    const source = path.join(PROJECT_ROOT, 'template', 'integrations', provider)
-    if (!fs.existsSync(source)) fail(`Cauce no trae un adaptador para ${provider}.`, 2)
-    const registry = path.join(root, 'integrations', 'config.json')
-    let config
-    try { config = JSON.parse(fs.readFileSync(registry, 'utf8')) } catch (error) {
-      fail(`integrations/config.json ilegible: ${error.message}`)
-    }
-    if (!config.providers || !config.providers[provider]) fail(`${provider} no está en integrations/config.json.`)
-    // Habilitar no es inicializar: repone lo que falte y conserva lo que ya esté. Una instancia que
-    // trae el andamiaje de una versión anterior —o que ya tiene snapshots— sólo quiere el interruptor.
-    copyTemplate(source, path.join(root, 'integrations', provider), {}, true)
-    config.providers[provider].enabled = true
-    F.atomicWriteJson(registry, config)
-    console.log(`✓ ${provider}: conectado al proyecto y andamiaje en integrations/${provider}/.`)
-    // Sólo se pide lo que falta: reencender un proveedor ya configurado no debería mandar a
-    // completar un archivo que la empresa terminó hace meses.
-    let listo = false
-    try {
-      const suyo = path.join(root, 'integrations', provider, 'config.json')
-      listo = JSON.parse(fs.readFileSync(suyo, 'utf8')).enabled === true
-    } catch { /* sin configurar */ }
-    if (listo) console.log(`  Su configuración ya estaba completa: "integration sync" puede correr.`)
-    else {
+}
+
+// Si el proveedor terminó su propia configuración. Son dos interruptores y `sync` exige los dos: el
+// del registro dice que está conectado al proyecto, éste que hay a dónde apuntar.
+function providerReady(root, name) {
+  try {
+    const suyo = path.join(root, 'integrations', name, 'config.json')
+    return JSON.parse(fs.readFileSync(suyo, 'utf8')).enabled === true
+  } catch { return false }
+}
+
+function switchProvider(root, provider, enabled) {
+  const { file, config } = providerRegistry(root)
+  if (!config.providers || !config.providers[provider]) {
+    fail(`${provider} no está en integrations/config.json.`)
+  }
+  config.providers[provider].enabled = enabled
+  F.atomicWriteJson(file, config)
+}
+
+// Una entrada por acción, con lo que exige antes de correr. Eran nueve `if` seguidos, cada uno
+// repitiendo su propia validación de argumentos; acá el despachador la hace una vez y lee de la tabla.
+const INTEGRATION = {
+  list: {
+    run: (root) => {
+      for (const [name, entry] of Object.entries(providerRegistry(root).config.providers || {})) {
+        const listo = providerReady(root, name)
+        const estado = !entry.enabled ? '○' : (listo ? '●' : '◐')
+        const nota = estado === '◐'
+          ? `  — falta completar integrations/${name}/config.json y poner enabled: true`
+          : ''
+        console.log(`${estado} ${name} [${entry.adapter}]${nota}`)
+      }
+    },
+  },
+  enable: {
+    falta: 'Falta <provider>.',
+    run: (root, provider) => {
+      const source = path.join(PROJECT_ROOT, 'template', 'integrations', provider)
+      if (!fs.existsSync(source)) fail(`Cauce no trae un adaptador para ${provider}.`, 2)
+      // Habilitar no es inicializar: repone lo que falte y conserva lo que ya esté. Una instancia que
+      // trae el andamiaje de una versión anterior —o que ya tiene snapshots— sólo quiere el interruptor.
+      providerRegistry(root)
+      copyTemplate(source, path.join(root, 'integrations', provider), {}, true)
+      switchProvider(root, provider, true)
+      console.log(`✓ ${provider}: conectado al proyecto y andamiaje en integrations/${provider}/.`)
+      // Sólo se pide lo que falta: reencender un proveedor ya configurado no debería mandar a
+      // completar un archivo que la empresa terminó hace meses.
+      if (providerReady(root, provider)) {
+        console.log(`  Su configuración ya estaba completa: "integration sync" puede correr.`)
+        return
+      }
       console.log(`  Falta lo tuyo: completá integrations/${provider}/config.json y poné enabled: true ahí.`)
       console.log(`  Hasta entonces "integration sync" se niega, que es lo correcto: no hay a dónde apuntar.`)
-    }
-    return
-  }
+    },
+  },
   // Apagar no desinstala: `integrations/<proveedor>/` puede tener snapshots y borradores de la
   // empresa, y borrarlos para desconectar una integración sería perder trabajo suyo. El andamiaje
   // queda, callado, y volver a encenderlo no pierde nada.
-  if (action === 'disable') {
-    if (!provider) fail('Falta <provider>.', 2)
-    const registry = path.join(root, 'integrations', 'config.json')
-    let config
-    try { config = JSON.parse(fs.readFileSync(registry, 'utf8')) } catch (error) {
-      fail(`integrations/config.json ilegible: ${error.message}`)
-    }
-    if (!config.providers || !config.providers[provider]) fail(`${provider} no está en integrations/config.json.`)
-    config.providers[provider].enabled = false
-    F.atomicWriteJson(registry, config)
-    console.log(`✓ ${provider}: desconectado del proyecto. "integration sync" deja de correrlo.`)
-    const dir = path.join(root, 'integrations', provider)
-    if (fs.existsSync(dir)) {
-      console.log(`  integrations/${provider}/ queda como está: ahí pueden vivir snapshots y borradores tuyos.`)
-    }
-    return
+  disable: {
+    falta: 'Falta <provider>.',
+    run: (root, provider) => {
+      switchProvider(root, provider, false)
+      console.log(`✓ ${provider}: desconectado del proyecto. "integration sync" deja de correrlo.`)
+      if (fs.existsSync(path.join(root, 'integrations', provider))) {
+        console.log(`  integrations/${provider}/ queda como está: ahí pueden vivir snapshots y borradores tuyos.`)
+      }
+    },
+  },
+  check: {
+    run: (root, provider) => {
+      const result = I.validate(root, provider || '')
+      for (const warning of result.warnings) console.warn(`⚠ ${warning}`)
+      for (const error of result.errors) console.error(`✗ ${error}`)
+      if (result.errors.length) fail(`${result.errors.length} error(es) de integración`)
+      console.log(`✓ integraciones válidas${provider ? `: ${provider}` : ''}`)
+    },
+  },
+  sync: {
+    falta: 'sync exige <provider>',
+    run: async (root, provider, key, cli) => {
+      const result = await I.sync(root, provider, { fixture: cli.value('--fixture') })
+      console.log(
+        `✓ ${provider}: ${result.total} items · ${result.created} nuevos · ` +
+          `${result.refreshed} refrescados · ${result.preserved} curados preservados`,
+      )
+    },
+  },
+  promote: {
+    falta: 'promote exige <provider> <remote-key>',
+    exigeKey: true,
+    run: (root, provider, key) => {
+      const result = I.promote(root, provider, key)
+      console.log(`✓ ${provider}:${result.key} promovido como ${result.kind}`)
+    },
+  },
+  'writeback-plan': {
+    falta: 'writeback-plan exige <provider>',
+    run: (root, provider) => console.log(JSON.stringify(I.writebackPlan(root, provider), null, 2)),
+  },
+}
+
+// Las tres reconciliaciones son el mismo comando con otra operación: se declaran en el mismo lugar
+// para que agregar una cuarta no pida tocar el despachador.
+for (const operacion of ['reset', 'rebase', 'reconcile']) {
+  INTEGRATION[operacion] = {
+    falta: `${operacion} exige <provider> <remote-key>`,
+    exigeKey: true,
+    run: (root, provider, key) => {
+      const changed = I.reconcile(root, provider, operacion, [key])
+      console.log(`✓ ${provider}: ${operacion} aplicado a ${changed.join(', ')}`)
+    },
   }
-  if (action === 'check') {
-    const result = I.validate(root, provider || '')
-    for (const warning of result.warnings) console.warn(`⚠ ${warning}`)
-    for (const error of result.errors) console.error(`✗ ${error}`)
-    if (result.errors.length) fail(`${result.errors.length} error(es) de integración`)
-    console.log(`✓ integraciones válidas${provider ? `: ${provider}` : ''}`)
-    return
-  }
-  if (action === 'sync') {
-    if (!provider) fail('sync exige <provider>', 2)
-    const result = await I.sync(root, provider, { fixture: cli.value('--fixture') })
-    console.log(
-      `✓ ${provider}: ${result.total} items · ${result.created} nuevos · ` +
-        `${result.refreshed} refrescados · ${result.preserved} curados preservados`,
-    )
-    return
-  }
-  if (action === 'promote') {
-    if (!provider || !key) fail('promote exige <provider> <remote-key>', 2)
-    const result = I.promote(root, provider, key)
-    console.log(`✓ ${provider}:${result.key} promovido como ${result.kind}`)
-    return
-  }
-  if (['reset', 'rebase', 'reconcile'].includes(action)) {
-    if (!provider || !key) fail(`${action} exige <provider> <remote-key>`, 2)
-    const changed = I.reconcile(root, provider, action, [key])
-    console.log(`✓ ${provider}: ${action} aplicado a ${changed.join(', ')}`)
-    return
-  }
-  if (action === 'writeback-plan') {
-    if (!provider) fail('writeback-plan exige <provider>', 2)
-    console.log(JSON.stringify(I.writebackPlan(root, provider), null, 2))
-    return
-  }
-  fail(`Acción de integración desconocida: ${action || '(vacía)'}`, 2)
+}
+
+async function integration(action, rootArg, provider, key, cli) {
+  const paso = INTEGRATION[action]
+  if (!paso) fail(`Acción de integración desconocida: ${action || '(vacía)'}`, 2)
+  if (paso.falta && (!provider || (paso.exigeKey && !key))) fail(paso.falta, 2)
+  await paso.run(path.resolve(rootArg || '.'), provider, key, cli)
 }
 
 function automation(action, rootArg, runnerName, cli) {
