@@ -210,6 +210,16 @@ function evaluationBench(root, agent, caso) {
     return value
   }
   const dir = path.join(root, '.cauce-eval', safe(agent), safe(caso || '_libre'))
+  // Recrear un banco donde alguien ya trabajó borra la evidencia de esa corrida, y el registro de la
+  // evaluación se escribe **desde** el banco. Pasó de verdad: se rehizo un banco para probar otra cosa
+  // y con él se fue lo que el cargo había escrito; el juez leyó un directorio vacío y concluyó que la
+  // respuesta afirmaba algo inexistente. Con el banco versionado, «acá se trabajó» es una pregunta que
+  // git contesta exacto.
+  const sucio = spawnSync('git', ['-C', dir, 'status', '--porcelain'], { encoding: 'utf8' })
+  if ((sucio.stdout || '').trim() && !process.argv.includes('--force')) {
+    fail(`${dir} tiene trabajo sin recoger. Guardá el registro de esa corrida antes de rehacerlo, `
+      + 'o usá --force si ya lo tenés.', 2)
+  }
   fs.rmSync(dir, { recursive: true, force: true })
   scaffold(dir, { name: 'Banco de evaluación', mode: 'sidecar', quiet: true })
   // El motor por symlink: la misma resolución que en una instancia real —`node_modules/@ingeniomaps`—
