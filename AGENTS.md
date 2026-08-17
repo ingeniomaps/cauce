@@ -51,7 +51,8 @@ Este repo no tiene `planning/` propio: `ops.config.json` declara `mode: toolkit`
 - **Cero dependencias**, de runtime y de desarrollo: Node >= 24 y nada más. Por eso no hay linter ni
   formateador —las convenciones se sostienen leyéndolas—, y agregar una dependencia es una decisión,
   no un detalle.
-- **120 caracteres por línea.**
+- **120 caracteres por línea en archivos de código** —`.js` y `.sh`—. El markdown y los `.json` de
+  datos quedan fuera: son prosa y fixtures, y envolverlos no los hace más legibles.
 - **Comentarios y documentación en español; mensajes de commit en inglés**, Conventional Commits.
 - Las pruebas corren con `node --test`. La puerta real es `npm run ci`: `check`, automatización,
   integraciones y cobertura.
