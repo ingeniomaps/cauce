@@ -312,6 +312,20 @@ test('business rules exige contrato y detecta IDs duplicados', () => {
   const errors = B.validate(root)
 
   assert.ok(errors.some((error) => error.includes('BR-DEMO-001 duplicado')))
+
+  // El estado decide si la regla rige o espera aprobación, así que sale del conjunto cerrado y no de
+  // texto libre. Aceptar cualquier valor, con la plantilla trayendo `vigente` cableado, hizo que tres
+  // cargos publicaran reglas vigentes derivadas de un ADR que ellos mismos dejaron en propuesto.
+  fs.writeFileSync(path.join(root, 'second.md'), `# Segunda\n\n${metadata}${sections}`
+    .replace('BR-DEMO-001', 'BR-DEMO-002').replace('Estado:** vigente', 'Estado:** casi-vigente'))
+  const invalido = B.validate(root)
+  assert.ok(invalido.some((error) => /Estado «casi-vigente» no es propuesta, vigente, derogada/.test(error)))
+
+  for (const estado of ['propuesta', 'vigente', 'derogada']) {
+    fs.writeFileSync(path.join(root, 'second.md'), `# Segunda\n\n${metadata}${sections}`
+      .replace('BR-DEMO-001', 'BR-DEMO-002').replace('Estado:** vigente', `Estado:** ${estado}`))
+    assert.equal(B.validate(root).some((error) => error.includes('Estado')), false, estado)
+  }
 })
 
 test('contratos de evidencia rastrean pruebas y decisiones duraderas', () => {

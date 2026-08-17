@@ -1,6 +1,6 @@
 # Tema
 
-> **Dominio:** nombre | **Estado:** vigente | **Actualizado:** YYYY-MM-DD
+> **Dominio:** nombre | **Estado:** propuesta | vigente | derogada | **Actualizado:** YYYY-MM-DD
 
 Describir brevemente el comportamiento de negocio compartido y el riesgo que controla. Las fuentes no obvias
 se citan como `[fuente: ruta#sección|ADR-NNN|URL]`; lo desconocido se marca `[supuesto: explicación]`.
