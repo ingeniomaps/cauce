@@ -344,4 +344,9 @@ test('la evaluación le arma al cargo un lugar donde trabajar', () => {
   assert.match(evalWf, /Leelos antes de contestar/, 'y le dice al cargo que lo lea')
   assert.match(evalWf, /no es obra suya/, 'y al juez, que vino con el banco')
   assert.match(evalWf, /precisión de procedencia/, 'exigiéndole que verifique lo que se le atribuye')
+
+  // El banco enlaza al repositorio vivo, así que una edición concurrente del toolkit se ve desde
+  // adentro. Tres jueces la descartaron bien por su cuenta; decirlo de entrada les ahorra el trabajo.
+  assert.match(evalWf, /symlink al repositorio/, 'el juez sabe que el banco no está aislado')
+  assert.match(evalWf, /trabajo concurrente ajeno/, 'y qué significa encontrar algo modificado ahí')
 })

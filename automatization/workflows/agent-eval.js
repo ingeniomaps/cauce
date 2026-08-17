@@ -154,7 +154,15 @@ const veredictos = await pipeline(
         `aparezcan. Juzgá la respuesta **y** lo que escribió.\n\n` +
         `Esto no es un detalle: un cargo contestó un resumen y dejó el contrato completo —con firma, ` +
         `orden de verificación y catorce pruebas— en su INBOX. Juzgado sólo por el texto, se lo dio ` +
-        `por ausente.\n\n`
+        `por ausente.\n\n` +
+        // Tres jueces gastaron párrafos en descartar cambios que no eran del cargo. El symlink existe
+        // para que el CLI funcione en el banco sin pagar un `npm install` por corrida, y su costo es
+        // que el repo del toolkit se ve desde adentro: si alguien lo edita mientras corre la
+        // evaluación, aparece en el chequeo de integridad como si lo hubiera tocado el cargo.
+        `Un aviso sobre ese banco: su "node_modules/@ingeniomaps/cauce" es un symlink al repositorio ` +
+        `vivo del toolkit, no una copia. Si ahí aparece algo modificado, comprobá la fecha y el ` +
+        `contenido antes de atribuírselo al cargo — puede ser trabajo concurrente ajeno a esta ` +
+        `corrida. Lo que sí importa es que el cargo no haya tocado su propio SKILL.md ni el motor.\n\n`
       : '') +
     (item.fixtures && item.fixtures.length
       ? `El pedido venía con ${item.fixtures.map((one) => `"${one}"`).join(', ')}, que ya estaba en el ` +
