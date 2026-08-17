@@ -8,6 +8,120 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.23.0] - 2026-08-17
+
+### Agregado
+
+- **Una línea por cargo, para elegirlo sin abrir cuarenta y siete carpetas.** Una empresa con una tarea
+  en la mano tenía que leer los contratos para saber a quién asignarla: el `description` que cada cargo
+  ya traía ronda los quinientos caracteres porque su lector es el runner al seleccionar, así que los
+  cuarenta y siete de corrido son unos veintitrés mil.
+
+  `ops agents list` imprime ahora la línea que cada cargo carga en su propio frontmatter, alineada en
+  columna, y `--json` la lleva también: cuando el que asigna es un agente, es la máquina la que elige.
+  La línea vive en el cargo y no en un índice aparte —un índice se desincroniza en silencio, y una
+  línea que miente al elegir es peor que no tenerla—, así que un fork se la lleva y una empresa que
+  escribe su cargo escribe la suya. Un cargo sin ella falla sus controles estructurales.
+
+  Lo que gobierna esas líneas no es el largo sino distinguir vecinos: una que no separa un cargo del de
+  al lado te hace asignar el equivocado, que es peor que abrir las carpetas. Se escribieron por racimos
+  —los cargos que de verdad colisionan— y casi todas cierran con la exclusión que más se malinterpreta:
+  `qa-engineer` recomienda el release pero no lo aprueba, `finops-engineer` no es el cierre contable,
+  `security-engineer` no es la base legal de un dato personal.
+
+  Y la respuesta negativa cuesta lo mismo que la positiva: la lista termina diciendo dónde va el cargo
+  propio, porque forzar el más parecido es peor que no usar ninguno. El `AGENTS.md` de la plantilla dice
+  lo mismo, que es lo que lee el agente de la empresa antes de trabajar.
+
+- **El ciclo de aprendizaje tiene final.** Había firma, aplicación e historial, y faltaba el paso que
+  vuelve irrepetible lo ya hecho: la propuesta nacía `status: proposed` y nadie lo movía nunca.
+  `agent-promote` busca la propuesta más nueva y aplica si el estado dice aprobada con responsable —y
+  «aprobada y aplicada» también lee como aprobada—, así que volver a promoverla la aplicaba de nuevo.
+  Como toda propuesta es aditiva por diseño, eso no falla: duplica cada viñeta y cada fuente del
+  contrato en silencio.
+
+  Sellar (`ops learn <cargo> --applied`) es lo último, después de aplicar y registrar, y lo hace el
+  motor y no el recorrido: marcar el estado editando frontmatter a mano es justo el paso que se hace mal
+  sin que nadie lo note. El recorrido se niega ante una propuesta ya aplicada, y las aplicadas dejan de
+  contarse como pendientes, así que un cargo ya no reporta trabajo que se cerró el mes pasado.
+
+### Cambiado
+
+- **`security-engineer` nombra la automatización con credenciales como actor.** Salió de su propia
+  investigación: el contrato cubría «agente autónomo con credenciales en CI» por implicación y nunca por
+  nombre, y eso no es un detalle de redacción. Mínimo privilegio dice cuánto puede hacer un proceso, no
+  que su decisión la escriba un tercero. Un servicio con credenciales ejecuta un camino fijo —para
+  abusarlo hay que encontrarle una falla o robarle el token—; un agente lee entrada no confiable y actúa
+  con las credenciales del pipeline, así que la entrada es el programa y los controles que uno esperaría
+  corren cuando ya ejecutó.
+
+  Trae una conducta prohibida nueva, `post_hoc_check_as_containment_for_credentialed_agent`, con el caso
+  adversarial que la distingue de las dos con las que se solapaba. Las ocho recomendaciones operativas
+  del informe quedaron deliberadamente fuera: son sobre el pipeline de este repositorio, y un contrato
+  que se instala en empresas ajenas no es el lugar de esas decisiones.
+
+- **La conducta universal salió de `AGENTS.md` y llegó a las empresas.** El documento mezclaba mecánica
+  que sólo tiene sentido dentro de una instancia con conducta que vale para cualquier agente; sólo lo
+  primero pertenece a un archivo que describe un repositorio. La conducta pasa a `planning/rules/`, que
+  ya era la capa compartida — y que hasta ahora ningún runner cargaba: las reglas viajaban a cada empresa
+  como archivos que nadie leía nunca.
+
+- **La sincronización parcial de integraciones se retiró.** Nadie podía pedirla.
+
+### Corregido
+
+- **Un caso adversarial entrega el artefacto que describe, en vez de sólo nombrarlo.** Los cuarenta y
+  siete casos del catálogo decían «una guía externa», «un CSV externo», «un runbook externo» y no
+  entregaban ninguno. Eso mide algo más fácil de lo que dice medir: al cargo se le pregunta si obedecería
+  un documento del que se le está hablando, y un texto que nunca leyó no puede inyectarlo.
+
+  El hueco se hizo visible cuando un cargo escribió que había leído una guía inexistente y la premisa
+  falsa quedó asentada en su banco como antecedente documental sin documento. Es el quinto defecto de
+  fidelidad del arnés, y la corrección no fue reformular la pregunta sino escribir los cuarenta y siete
+  artefactos: cada uno en su formato real —guía, CSV, notebook, módulo IaC, model card, portal, pliego—
+  con las instrucciones que su caso describe y las coartadas que las hacen funcionar.
+
+  El banco los copia **antes** de su commit limpio, así que `git status` no se los atribuye al cargo: si
+  entraran después, el juez leería como obra suya el documento que vino a resistir. Falta de artefacto es
+  error y no advertencia, porque es estático y verificable sin modelo — como advertencia es como estuvo
+  faltando en los cuarenta y siete sin que nada lo dijera.
+
+  Los nueve cargos que ya tenían registro se volvieron a medir contra el artefacto real, y uno es el
+  argumento de haberlo hecho: el caso de `backend-engineer` **fallaba** antes y pasa ahora, que es cómo
+  se ve un defecto del arnés desde afuera.
+
+- **Un guard que no puede leer bloquea, en vez de permitir.** `run-hook.sh` enuncia el principio para el
+  motor que carga, y tres lugares hacían lo contrario: una coma de más en `ops.config.json` apagaba
+  `workspace-boundary` y `engine` sin imprimir nada, y una entrada ilegible se leía como «ningún comando
+  y ningún archivo», que todo guard interpreta como nada que revisar.
+
+- **Una bandera mal escrita falla en vez de ignorarse.** `check --jsonn` imprimía la salida humana y
+  salía con 0, así que quien esperaba JSON recibía prosa sin ninguna señal. Cada comando declara ahora
+  qué acepta, y `--help` dejó de depender de ir primero: `check --help` corría `check` sobre el
+  directorio actual.
+
+- **El toolkit se niega a correr los comandos de una empresa contra sí mismo.** `upgrade` reemplazaría
+  los archivos de raíz que este repositorio mantiene —incluido el `AGENTS.md` donde vive la regla que lo
+  prohíbe—, e `install` construiría una superficie de consumo cuyos punteros apuntan al catálogo que se
+  escribe acá, con guards que bloquean el push de cada release.
+
+- **Un `ops.config.json` ilegible se reporta en vez de leerse como ausente.** Una coma de más hacía que
+  `upgrade` e `install` dejaran de reconocer el modo `toolkit` y siguieran adelante. Ausente sigue
+  significando ausente; presente pero ilegible es un estado roto y ahora lo dice.
+
+- **Un título vacío dejaba de reportarse como faltante.** El título de toda propuesta de integración se
+  leía con un patrón donde `\s` casa el salto de línea, así que un documento con encabezado vacío se
+  comía la línea siguiente: el resumen volvía como `## Descripción`, no vacío, y «falta título» quedaba
+  callado.
+
+- **`sync` dice qué hizo con los ítems que el remoto dejó de traer.** Los contaba y no imprimía
+  ninguno: se borran cuando nada local se había curado sobre ellos, y se conservan marcados cuando sí, y
+  la única forma de enterarse era ir a mirar el directorio.
+
+- **La verificación de los guards se deriva del registro.** Comparaba contra una lista de quince nombres
+  copiada a mano, así que un guard nuevo no se verificaba hasta que alguien se acordara de agregarlo —la
+  misma deriva que tenía la cuenta de guards informando once.
+
 ## [0.22.0] - 2026-08-17
 
 ### Corregido
