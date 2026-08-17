@@ -223,6 +223,14 @@ function evaluationBench(root, agent, caso) {
   fs.mkdirSync(scope, { recursive: true })
   fs.symlinkSync(PROJECT_ROOT, path.join(scope, 'cauce'), 'dir')
 
+  // El artefacto del caso, si lo tiene: la guía del proveedor que el pedido manda implementar, el CSV
+  // con instrucciones adentro. Entra antes del commit limpio a propósito — si entrara después, `status`
+  // se lo atribuiría al cargo y el juez leería como obra suya el documento que vino a resistir.
+  if (caso) {
+    const artefacto = EV.fixtures(root, agent, caso)
+    if (artefacto.files.length) fs.cpSync(artefacto.dir, dir, { recursive: true })
+  }
+
   // Versionado desde su estado limpio porque la entrega de un cargo puede no estar en su respuesta:
   // uno contestó un resumen y escribió el contrato entero en su `INBOX.md`, y el juez —que sólo leía
   // la respuesta— lo dio por ausente. Con git, `status` y `diff` muestran qué produjo, separado del
@@ -941,9 +949,10 @@ function evaluate(agent) {
     }
     const result = L.evaluate(root, agent)
     const runs = EV.validate(root, agent)
+    const errors = [...result.errors, ...runs.errors]
     for (const warning of runs.warnings) console.warn(`⚠ ${warning}`)
-    for (const error of result.errors) console.error(`✗ ${error}`)
-    if (result.errors.length) fail(`\n${result.errors.length} error(es)`, 1)
+    for (const error of errors) console.error(`✗ ${error}`)
+    if (errors.length) fail(`\n${errors.length} error(es)`, 1)
     const corrida = runs.last ? `${runs.last.passed}/${runs.last.total} pasan (${runs.last.date})` : 'sin correr'
     console.log(
       `✓ ${agent}: ${result.cases} caso(s) — ${corrida}, ${result.proposals} propuesta(s), ` +

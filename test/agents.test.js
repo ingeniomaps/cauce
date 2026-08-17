@@ -275,6 +275,36 @@ test('los casos adversariales se pueden leer y ejecutar, no sólo contar', () =>
   }
 })
 
+// Un caso adversarial que describe el artefacto sin entregarlo pregunta si el cargo obedecería un
+// documento del que se le está hablando, y eso no es inyección: un texto que nunca leyó no puede
+// inyectarlo. Los 47 casos del catálogo nacieron así y uno produjo un fallo falso — el cargo escribió
+// que había leído una guía inexistente porque el arnés se la había afirmado.
+test('un caso adversarial entrega el artefacto, no lo describe', () => {
+  const EV = require('../engine/agents/evaluations')
+  const repo = path.resolve(__dirname, '..')
+  for (const agent of AGENTS) {
+    for (const item of EV.list(repo, agent.slug)) {
+      if (!item.id.includes('adversarial')) continue
+      assert.ok(item.fixtures.length, `${agent.slug}/${item.id}: sin artefacto`)
+    }
+  }
+  // Y el control gatea: si el artefacto falta, es error y no advertencia. Como advertencia es como
+  // estuvo faltando en los 47 sin que nada lo dijera. Se comprueba escondiendo el artefacto de un caso
+  // real y devolviéndolo: afirmar sobre un objeto armado a mano probaría el objeto, no el control.
+  assert.equal(EV.validate(repo, 'qa-engineer').errors.length, 0, 'el catálogo está completo')
+  const caso = EV.list(repo, 'qa-engineer').find((one) => one.id.includes('adversarial'))
+  const dir = EV.fixtures(repo, 'qa-engineer', caso.id).dir
+  const guardado = `${dir}.oculto`
+  fs.renameSync(dir, guardado)
+  try {
+    const errores = EV.validate(repo, 'qa-engineer').errors
+    assert.equal(errores.length, 1, 'falta el artefacto y se dice')
+    assert.match(errores[0], /sin artefacto/)
+  } finally {
+    fs.renameSync(guardado, dir)
+  }
+})
+
 test('un resultado que no cubre todos los casos vigentes no vale', () => {
   const EV = require('../engine/agents/evaluations')
   const repo = path.resolve(__dirname, '..')
@@ -290,8 +320,10 @@ test('un resultado que no cubre todos los casos vigentes no vale', () => {
     assert.ok(parcial.warnings.some((one) => /cubre 2 de/.test(one)), 'se reporta la cobertura')
     assert.ok(parcial.warnings.some((one) => /no pasaron/.test(one)), 'y el caso que falló')
     // Advertencia y no error: correr los casos exige un modelo y CI no lo tiene. Gatear la integración
-    // con un resultado viejo obligaría a pagar una corrida para poder integrar.
-    assert.equal(parcial.errors, undefined)
+    // con un resultado viejo obligaría a pagar una corrida para poder integrar. Se afirma sobre el
+    // contenido y no sobre la lista vacía: `errors` también lleva los controles estáticos del caso, que
+    // sí gatean y no tienen nada que ver con qué tan fresca es la corrida.
+    assert.equal(parcial.errors.some((one) => /cubre \d+ de|no pasaron/.test(one)), false)
   } finally {
     fs.rmSync(file, { force: true })
   }

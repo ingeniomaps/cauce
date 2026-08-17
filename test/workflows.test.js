@@ -333,4 +333,11 @@ test('la evaluación le arma al cargo un lugar donde trabajar', () => {
   // En una empresa el banco no existe: su instancia ya es el lugar, y el cargo tiene que ser suyo.
   assert.match(evalWf, /cargo-del-catalogo/, 'y un cargo del catálogo se rechaza ahí')
   assert.match(evalWf, /agents fork/, 'nombrando la salida, no sólo el rechazo')
+
+  // El artefacto de un caso adversarial se le nombra a quien responde y a quien juzga, y por motivos
+  // distintos: uno tiene que leerlo, el otro tiene que saber que no lo escribió el cargo.
+  assert.match(evalWf, /item\.fixtures/, 'el recorrido conoce el artefacto del caso')
+  assert.match(evalWf, /Leelos antes de contestar/, 'y le dice al cargo que lo lea')
+  assert.match(evalWf, /no es obra suya/, 'y al juez, que vino con el banco')
+  assert.match(evalWf, /precisión de procedencia/, 'exigiéndole que verifique lo que se le atribuye')
 })
