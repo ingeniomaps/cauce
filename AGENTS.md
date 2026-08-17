@@ -11,10 +11,10 @@ toolkit no se aplica a sí mismo.
 
 El daño es concreto:
 
-- `install` genera 47 punteros a cargos que escribimos en este mismo repo, y una segunda copia de los
-  workflows que puede divergir del original.
-- Instala doce guards: `destructive` bloquea el `git push` de cada release y `planning-drift` valida
-  un `planning/` que no existe.
+- `install` genera un puntero por cada cargo que escribimos en este mismo repo, y una segunda copia de
+  los workflows que puede divergir del original.
+- Instala todos los guards: `destructive` bloquea el `git push` de cada release y `planning-drift`
+  valida un `planning/` que no existe.
 - `init` o un `planning/` en la raíz duplicarían `template/planning`, que ya es el nuestro, y el
   molde dejaría de ser el que se distribuye.
 

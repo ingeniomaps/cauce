@@ -34,7 +34,7 @@ contraparte es R13: el que se niega bien y no deja nada tampoco cumplió.
 Para saber cuál es, una línea por cargo:
 
 ```bash
-node tools/ops.js agents list                # 47 líneas: quién hace qué y qué NO le corresponde
+node tools/ops.js agents list                # quién hace qué y qué NO le corresponde
 ```
 
 Se elige leyendo esa lista, no abriendo carpetas. Si ninguna línea encaja, el cargo no existe y el
@@ -60,7 +60,7 @@ Los cargos **propios** son otra cosa: nadie más los va a investigar. Su ciclo e
 comando, sin cron —activarlo en tu repositorio es decisión tuya—:
 
 ```bash
-node tools/ops.js agents list --own          # sólo los tuyos, sin los 47 del catálogo
+node tools/ops.js agents list --own          # sólo los tuyos, sin los del catálogo
 node tools/ops.js learn <slug>               # arma el informe de la semana
 /agent-propose <slug>                        # escribe el cambio concreto sobre esos informes
 #   ↑ firmá «Aprobación humana» en la propuesta antes de seguir

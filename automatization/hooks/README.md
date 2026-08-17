@@ -35,7 +35,7 @@ hueco tapable —son nombres de credencial conocidos— pero taparlo no cambia l
 herramienta.
 
 El riesgo real de esta página no es el bypass: es **la confianza que un guard inspira**. Un repositorio
-con doce guards puestos parece más protegido de lo que está, y esa lectura es peor que no tenerlos,
+con los guards puestos parece más protegido de lo que está, y esa lectura es peor que no tenerlos,
 porque reemplaza controles que sí son límites —permisos, tokens acotados, revisión humana de lo que se
 publica— por la sensación de que ya está cubierto.
 
