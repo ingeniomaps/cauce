@@ -4,7 +4,7 @@
 // Punto de entrada estable del proyecto: nadie —ni una persona ni un agente— necesita saber de
 // dónde sale el motor. Viene de la dependencia npm, que el lockfile versiona.
 
-const path = require('path')
+const path = require('node:path')
 
 const root = path.join(__dirname, '..')
 

@@ -1,7 +1,7 @@
 'use strict'
 
-const fs = require('fs')
-const path = require('path')
+const fs = require('node:fs')
+const path = require('node:path')
 const catalog = require('../agents/catalog')
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/

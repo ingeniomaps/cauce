@@ -2,8 +2,8 @@
 
 // Contratos deterministas de planning; no contiene estado de proyecto.
 
-const fs = require('fs')
-const path = require('path')
+const fs = require('node:fs')
+const path = require('node:path')
 
 const EPIC_STATES = ['open', 'active', 'closed']
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 'use strict'
 
-const fs = require('fs')
-const os = require('os')
-const path = require('path')
-const { spawnSync } = require('child_process')
+const fs = require('node:fs')
+const os = require('node:os')
+const path = require('node:path')
+const { spawnSync } = require('node:child_process')
 
 // Sin stdin no hay nada que leer y los guards caen a las variables de entorno; con stdin ilegible sí
 // hay algo y no se entiende, que es otra cosa. Devolver `{}` ahí dejaba a cada guard sin comando ni

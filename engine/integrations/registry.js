@@ -2,8 +2,8 @@
 
 // Registro y ciclo común de proveedores externos.
 
-const fs = require('fs')
-const path = require('path')
+const fs = require('node:fs')
+const path = require('node:path')
 const F = require('../core/files')
 const S = require('./state')
 const P = require('./proposals')

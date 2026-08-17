@@ -967,3 +967,34 @@ test('la línea de comandos se parsea una vez y se puede probar sin proceso', ()
   assert.deepEqual(parse(['check', '--json']).unknown('check'), [])
   assert.deepEqual(parse(['archive', 'planning', '001']).unknown('archive'), [])
 })
+
+// Sin linter —el toolkit no tiene dependencias, ni siquiera de desarrollo— una convención sólo existe
+// si algo la comprueba. El prefijo no es cosmético: `require('fs')` lo puede secuestrar un paquete
+// llamado `fs`, y `require('node:fs')` no. Estaba en 31 de 46 lugares, que es la peor de las mezclas.
+test('los módulos de Node se importan con el prefijo node:', () => {
+  const raiz = path.resolve(__dirname, '..')
+  const archivos = []
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue
+      const current = path.join(dir, entry.name)
+      if (entry.isDirectory()) walk(current)
+      else if (entry.name.endsWith('.js')) archivos.push(current)
+    }
+  }
+  for (const dir of ['engine', 'automatization', 'template', 'test']) walk(path.join(raiz, dir))
+
+  const sueltos = []
+  for (const file of archivos) {
+    // Sin los comentarios: este mismo test nombra `require('fs')` para explicar por qué no va.
+    const source = fs.readFileSync(file, 'utf8').split('\n')
+      .filter((line) => !line.trim().startsWith('//')).join('\n')
+    for (const match of source.matchAll(/require\('([a-z_]+)'\)/g)) {
+      if (require('node:module').builtinModules.includes(match[1])) {
+        sueltos.push(`${path.relative(raiz, file)}: require('${match[1]}')`)
+      }
+    }
+  }
+  assert.deepEqual(sueltos, [], 'usan `node:` delante')
+  assert.ok(archivos.length > 30, `el recorrido encontró ${archivos.length} archivos`)
+})
