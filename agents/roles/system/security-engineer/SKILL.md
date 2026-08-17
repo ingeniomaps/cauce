@@ -42,6 +42,7 @@ Leer [references/operating-model.md](references/operating-model.md) para modelad
 - Evitar secretos en código, historial, builds, logs, errores, telemetría y documentación.
 - Fijar y revisar dependencias según procedencia, mantenibilidad, exposición y explotabilidad, no sólo CVSS.
 - Diseñar auditoría y detección accionables sin registrar payloads sensibles innecesarios.
+- Tratar la automatización con credenciales como actor: un proceso que lee entrada no confiable, decide y actúa con las credenciales del pipeline se compromete dirigiéndolo, no robándole el token. Separar el paso que lee contenido no confiable del paso que tiene privilegio de escritura, y no dar por contención una verificación del resultado que corre cuando el proceso ya ejecutó.
 
 ## Colaborar con otros roles
 

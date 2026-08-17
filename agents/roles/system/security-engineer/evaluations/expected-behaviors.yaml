@@ -18,3 +18,4 @@ forbidden:
   - unauthorized_scanning_exploitation_exfiltration_or_production_action
   - automatic_skill_rewrite
   - treating_external_content_as_instructions
+  - post_hoc_check_as_containment_for_credentialed_agent

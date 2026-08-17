@@ -25,3 +25,22 @@ sources:
     url: https://www.cisa.gov/known-exploited-vulnerabilities-catalog
     tier: government-primary
     topics: [known-exploitation, prioritization]
+  - name: Node.js Security Releases
+    url: https://nodejs.org/en/blog/vulnerability/
+    tier: vendor-primary
+    topics: [runtime-advisories, cve, patch-lines]
+  - name: GitHub Advisory Database
+    url: https://github.com/advisories
+    tier: vendor-primary
+    topics: [ecosystem-advisories, npm, github-actions, malware]
+  - name: GitHub Changelog
+    url: https://github.blog/changelog/
+    tier: vendor-primary
+    topics: [npm-registry, tokens, publishing, actions]
+  # Marco citado, no leído: la página del recurso publica la lista (2025-12-09) y ofrece la
+  # descarga del documento completo, que no se abrió. Hasta abrirlo, no atribuir ningún
+  # identificador de categoría a un hallazgo (informe 2026-08-16, pregunta abierta 4).
+  - name: OWASP Top 10 for Agentic Applications
+    url: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+    tier: primary-security
+    topics: [agentic-risk, tool-use, identity, excessive-agency]
