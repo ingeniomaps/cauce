@@ -14,6 +14,57 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.25.0] - 2026-08-17
+
+### Añadido
+
+- **R14 — una afirmación de mecanismo lleva su registro.** Regla nueva en
+  `planning/rules/system/conduct.md`, así que rige para todo cargo, para uno propio que hayas escrito y
+  para el runner trabajando sin cargo. El comportamiento de una herramienta, un motor, un formato, una
+  norma o un sistema de terceros es material de trabajo: público, versionado y comprobable. Por eso cada
+  afirmación declara en cuál de tres registros va —**verificado**, **documentado** o **hipótesis**—, la
+  verificación llega hasta donde R12 permite (fuente pública, `--help`, `--version`, invocación inocua;
+  nunca conectarse ni ejecutar la operación que se describe), y una hipótesis no sostiene una negativa,
+  un diagnóstico, un número ni un paso de procedimiento, ni entra en informe, runbook, regla o lección.
+
+  Lo que vas a notar: los cargos empiezan a decir «esto lo comprobé así» o «esto es plausible y no lo
+  verifiqué» donde antes afirmaban de corrido, y a negarse a apoyar una decisión en lo segundo. Eso es
+  lo que la regla busca. No tenés que instalar nada: `upgrade` reemplaza `planning/rules/system/`
+  completo.
+
+### Cambiado
+
+- **Los 46 contratos del catálogo apuntan a R14.** Cada uno gana un renglón en sus reglas operativas que
+  nombra los tres registros y remite a la regla, en vez de repetirla. `database-administrator` conserva
+  su propia redacción, más específica, y no recibe el puntero.
+
+- **`agent-eval` juzga contra las conductas prohibidas del cargo.** Hasta ahora quien juzgaba recibía
+  sólo los comportamientos esperados del caso, y la lista `forbidden` de `evaluations/expected-behaviors.yaml`
+  no la leía ningún código: entraba a un veredicto únicamente si quien lanzaba la corrida se acordaba de
+  escribirla en el prompt. Ahora viaja junto a los casos, con redacción fija.
+
+  Consecuencia para vos: si tenés cargos propios con su `expected-behaviors.yaml`, sus prohibiciones
+  pasan a pesar tanto como los comportamientos esperados, y un caso pasa sólo si se observan todos y no
+  ocurre ninguna. Un resultado anterior midió menos criterios que uno de ahora, así que no son
+  comparables — conviene volver a correr los casos de los cargos que te importen.
+
+### Corregido
+
+- **`upgrade` ya no reemplaza en silencio un archivo del sistema editado.** El manifiesto registraba el
+  runtime y el `system/` de cada colección, pero no los archivos sueltos que el toolkit mantiene, así que
+  `AGENTS.md`, el `Makefile` y los README del sistema se reemplazaban sin comparar nada: una edición ahí
+  desaparecía sin aviso, mientras la misma edición bajo una ruta registrada frenaba el upgrade y nombraba
+  el archivo. Ahora los compara igual que al resto.
+
+  Si editaste alguno de esos archivos, el próximo `upgrade` te lo va a decir en vez de pisarlo. Lo que
+  corresponde es mover ese cambio a un archivo del proyecto: `system/` se reemplaza entero por diseño.
+
+- **El README de ADR ya no pide mantener un índice.** Su paso 4 mandaba actualizar una tabla de
+  decisiones del proyecto que vive dentro de un archivo que mantiene Cauce, así que cada fila agregada se
+  perdía en el `upgrade` siguiente — y con el arreglo de arriba habría pasado a bloquearlo. Las decisiones
+  del proyecto son los archivos `NNN-*.md` del directorio y su estado vive en cada uno, sin nada que
+  sincronizar. Si tenías filas en ese índice, la información ya está en las ADR; no hay que migrarla.
+
 ## [0.24.0] - 2026-08-17
 
 ### Cambiado
