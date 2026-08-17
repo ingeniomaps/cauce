@@ -51,6 +51,16 @@ Son dos ejes distintos y el registro va en los dos: marcar como supuesto un núm
 mecanismo del que ese número se deriva. Un parámetro declarado supuesto sigue prometiendo el efecto que se le
 atribuye, y esa atribución es la que lleva registro.
 
+El registro viaja con la afirmación, no con el documento que la explica. Una lección, una regla propuesta, una
+fila de acciones humanas o un paso de runbook existen para leerse solos, así que una afirmación de mecanismo que
+sale del informe hacia uno de ellos lleva su registro o no sale. Ahí es donde más se pierde: el informe clasifica
+con cuidado y el artefacto derivado repite la afirmación en plano, ya sin nada que la acote, y es el que alguien
+va a leer dentro de un mes.
+
+Y el disparador es a dónde va la afirmación, no cuán discutible parece. Quien elige qué clasificar clasifica lo
+que espera que le discutan, y deja plano lo que sostiene su propio procedimiento — que es justamente lo que nadie
+va a revisar.
+
 La verificación llega hasta donde R12 permite: fuente pública, `--help`, `--version`, una invocación inocua.
 Nunca conectarse a un sistema real ni ejecutar la operación cuyo efecto se describe. Si el mecanismo sólo se
 establece ejecutando lo destructivo, queda en hipótesis; acá la abstención vale más que el dato.
