@@ -82,6 +82,31 @@ function prune(root, files) {
   )
 }
 
+// Los archivos que el toolkit posee de a uno —`AGENTS.md`, `Makefile`, los README del sistema— se
+// registran por su ruta exacta y no por directorio: no son una colección, y agruparlos por carpeta
+// produciría claves como `./AGENTS.md` que después no casan con nada.
+//
+// Sin este registro, `upgrade` los reemplazaba sin comparar: una edición local desaparecía sin que
+// nada lo dijera. Comparar contra el paquete no era alternativa —es lo que este mecanismo existe para
+// evitar—, porque ahí toda mejora del toolkit se ve idéntica a una edición de la empresa.
+function recordPaths(root, paths, into = {}) {
+  const record = { ...into }
+  for (const relative of paths) {
+    const file = path.join(root, relative)
+    if (fs.existsSync(file)) record[relative] = digest(file)
+  }
+  return record
+}
+
+function editedPaths(root, paths) {
+  const recorded = read(root)
+  return paths.filter((relative) => {
+    const file = path.join(root, relative)
+    if (!recorded[relative] || !fs.existsSync(file)) return false
+    return recorded[relative] !== digest(file)
+  })
+}
+
 // Archivos que la empresa modificó después de recibirlos. Un archivo sin registro previo no
 // cuenta: llegó con una versión anterior a este mecanismo, o lo agregó el proyecto.
 function edited(root, relative, files) {
@@ -94,5 +119,6 @@ function edited(root, relative, files) {
 }
 
 module.exports = {
-  digest, digestText, edited, prune, read, readForks, readRunners, record, write,
+  digest, digestText, edited, editedPaths, prune, read, readForks, readRunners,
+  record, recordPaths, write,
 }

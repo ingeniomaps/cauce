@@ -778,6 +778,29 @@ test('upgrade distingue una edición local de una mejora del toolkit', () => {
   assert.equal(run(['upgrade', target, '--force']).status, 0)
   assert.equal(/# mío/.test(fs.readFileSync(guard, 'utf8')), false)
   assert.deepEqual(require('../engine/core/ownership').localChanges(target), [], 'sin ediciones pendientes')
+
+  // Los archivos que el toolkit posee de a uno entran por la misma puerta. Quedaban afuera del
+  // registro, así que `upgrade` los reemplazaba sin comparar y la edición se perdía sin aviso: un
+  // cargo escribió el índice de ADR que el propio README le pedía actualizar, comprobó que
+  // desaparecería, y prefirió no dejar una entrada condenada a irse en silencio.
+  const contrato = path.join(target, 'AGENTS.md')
+  assert.ok(M.read(target)['AGENTS.md'], 'el archivo suelto queda registrado')
+  fs.appendFileSync(contrato, '\nlínea de la empresa\n')
+  const frenado = run(['upgrade', target])
+  assert.notEqual(frenado.status, 0, 'editar un archivo del sistema detiene la actualización')
+  assert.match(frenado.stderr, /AGENTS\.md/)
+  assert.equal(run(['upgrade', target, '--force']).status, 0)
+  assert.equal(/línea de la empresa/.test(fs.readFileSync(contrato, 'utf8')), false)
+})
+
+// El README de ADR pedía actualizar un índice del proyecto dentro de un archivo que Cauce mantiene:
+// seguir el paso garantizaba perder la fila, y con el registro nuevo además dejaría la instancia sin
+// poder actualizarse. Las decisiones del proyecto son los archivos del directorio.
+test('ningún archivo del sistema pide que el proyecto lo edite', () => {
+  const adr = fs.readFileSync(path.resolve(__dirname, '..', 'template', 'planning', 'adr', 'README.md'), 'utf8')
+  assert.equal(/Decisiones del proyecto/.test(adr), false, 'sin tabla que el proyecto deba mantener')
+  assert.equal(/Actualizar el índice/.test(adr), false, 'ni paso que lo mande a editar')
+  assert.match(adr, /No hay índice que mantener/, 'y dice por qué no lo hay')
 })
 
 test('la instancia recibe cómo escribir lo que sí es suyo', () => {

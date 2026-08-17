@@ -228,6 +228,10 @@ function localChanges(root) {
     if (!fs.existsSync(dir)) continue
     for (const file of manifest.edited(root, target, treeFiles(dir))) changed.push(`${target}/${file}`)
   }
+  // Los archivos sueltos del sistema entran por la misma puerta. Quedaban afuera, así que `upgrade`
+  // los reemplazaba en silencio: un cargo escribió el índice de ADR que el propio README le pedía
+  // actualizar, comprobó que se perdería, y prefirió no dejar una entrada condenada a desaparecer.
+  changed.push(...manifest.editedPaths(root, SYSTEM_FILES))
   return changed
 }
 

@@ -154,6 +154,7 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
     const dir = path.join(root, relative)
     if (fs.existsSync(dir)) entregado = M.record(root, relative, O.treeFiles(dir), entregado)
   }
+  entregado = M.recordPaths(root, O.SYSTEM_FILES, entregado)
   M.write(root, entregado)
   // La instancia recuerda de qué versión salió: sin esto no hay actualización posible.
   const configFile = path.join(root, 'ops.config.json')
@@ -628,6 +629,7 @@ function upgrade(dir, cli) {
     const dir = path.join(root, relative)
     if (fs.existsSync(dir)) registro = M.record(root, relative, O.treeFiles(dir), registro)
   }
+  registro = M.recordPaths(root, O.SYSTEM_FILES, registro)
   // El registro de forks se poda igual que el de archivos: un cargo devuelto al catálogo deja su
   // entrada, y una entrada sin copia sólo puede producir avisos sobre algo que no está.
   const vivos = Object.fromEntries(Object.entries(M.readForks(root)).filter(

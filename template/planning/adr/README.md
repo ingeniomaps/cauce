@@ -25,8 +25,11 @@ de una, crea una ADR propia que documente la excepción; no modifica silenciosam
 1. Copiar `000-template.md` como `NNN-slug-corto.md`.
 2. Documentar contexto, fuentes, supuestos, decisión, alternativas y costos.
 3. Declarar por separado lo construido y lo pendiente.
-4. Actualizar el índice siguiente.
-5. Al reemplazarla, enlazar la nueva ADR sin borrar el historial.
+4. Al reemplazarla, enlazar la nueva ADR sin borrar el historial.
+
+No hay índice que mantener: las decisiones del proyecto son los archivos `NNN-*.md` de este
+directorio, y su estado vive en cada uno. Una tabla que los repitiera envejecería aparte —y este
+archivo lo mantiene Cauce, así que una fila agregada acá se perdería en el próximo `upgrade`.
 
 ## Decisiones del sistema
 
@@ -34,9 +37,3 @@ de una, crea una ADR propia que documente la excepción; no modifica silenciosam
 - [OPS-002](system/OPS-002-runtime-autocontenido-y-neutral-al-runner.md): runtime portable y neutral.
 - [OPS-003](system/OPS-003-integraciones-seguras-por-staging.md): integraciones mediante staging seguro.
 - [OPS-004](system/OPS-004-promocion-humana-y-evidencia-verificable.md): promoción controlada y verificable.
-
-## Decisiones del proyecto
-
-| ADR | Decisión | Fecha | Estado |
-|---|---|---|---|
-| _(ninguna todavía)_ | | | |
