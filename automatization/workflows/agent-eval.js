@@ -111,16 +111,26 @@ if (!contexto || !contexto.items || !contexto.items.length) {
 // Dónde trabaja el cargo mientras responde. En el toolkit no puede ser acá: no hay `planning/` que
 // valga, así que se le arma un banco desechable. En una empresa es su propia instancia, y el cargo
 // tiene que ser suyo —propio o adoptado—: uno del catálogo se evalúa arriba, no acá.
-let WORK = ROOT
+// Un banco por caso, no uno por cargo. Con uno compartido los casos corren a la vez sobre el mismo
+// `planning/` y se leen entre sí: uno tomó por «una sesión anterior de este mismo cargo» lo que otro
+// acababa de escribir, y otro evaluó cuatro candidatas que en su enunciado no existían.
+//
+// Un solo agente los prepara —son comandos deterministas— y después la ruta de cada caso se arma
+// sola, sin volver a preguntar.
+const BENCH_ROOT = `${ROOT}/.cauce-eval/${AGENT}`
+let porCaso = null
 if (contexto.mode === 'toolkit') {
   const banco = await agent(
-    `From ${ROOT}, run "node tools/ops.js evaluate ${AGENT} --bench" and report the absolute path it ` +
-    `printed, nothing else. It recreates a disposable instance where writing to planning/ is legitimate.`,
-    { schema: BENCH, label: 'banco' },
+    `From ${ROOT}, run one command per case, in order, and report only whether all of them printed a ` +
+    `path:\n` +
+    contexto.items.map((item) => `  node tools/ops.js evaluate ${AGENT} --bench ${item.id}`).join('\n') +
+    `\n\nEach one recreates a disposable instance where writing to planning/ is legitimate. Set path ` +
+    `to the directory they share: ${BENCH_ROOT}`,
+    { schema: BENCH, label: 'bancos' },
   )
-  if (!banco || !banco.path) return stop('sin-banco', 'no se pudo preparar el banco de evaluación')
-  WORK = banco.path
-  log(`Banco: ${WORK}`)
+  if (!banco || !banco.path) return stop('sin-banco', 'no se pudieron preparar los bancos de evaluación')
+  porCaso = (item) => `${BENCH_ROOT}/${item.id}`
+  log(`Bancos: ${BENCH_ROOT}/<caso>`)
 } else if (contexto.system) {
   return stop('cargo-del-catalogo',
     `${AGENT} lo mantiene Cauce, no esta empresa: evaluarlo acá mediría tu configuración y el ` +
@@ -134,10 +144,11 @@ const veredictos = await pipeline(
 
   // Responde el cargo. Recibe su contrato y el pedido; nunca los comportamientos esperados.
   (item) => agent(
-    `Trabajás en ${WORK}: esa es tu instancia, con su planning/, su organization/ y su AGENTS.md. ` +
-    `Todo lo que escribas va ahí.\n\n` +
+    `Trabajás en ${porCaso ? porCaso(item) : ROOT}: esa es tu instancia, con su planning/, su ` +
+    `organization/ y su AGENTS.md. Todo lo que escribas va ahí.\n\n` +
     `Actuá como el cargo ${AGENT}, respetando el contrato de ${contexto.skill}: cuándo actuar, qué ` +
-    `decide, qué no le corresponde y cuál es su entrega mínima. Leé también ${WORK}/AGENTS.md: son las ` +
+    `decide, qué no le corresponde y cuál es su entrega mínima. Leé también el AGENTS.md de esa ` +
+    `instancia: son las ` +
     `reglas que todo cargo obedece, y un cargo corre siempre con las dos cosas —medirlo sólo contra su ` +
     `SKILL.md lo evaluaba en una situación que nunca ocurre—. No leas ningún archivo bajo ` +
     `evaluations/: no te corresponde y contaminaría la respuesta.\n\n` +

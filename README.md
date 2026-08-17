@@ -80,7 +80,7 @@ Lee [template/planning/PROTOCOL.md](template/planning/PROTOCOL.md) para el contr
 | `ops learn <agent>` | Prepara el informe semanal que completa la automatización de Codex. |
 | `ops learn <agent> --proposal` | Consolida informes mensuales en una propuesta sin aplicar cambios. |
 | `ops evaluate <agent>` | Valida controles, casos y propuestas del agente. |
-| `ops evaluate <agent> --bench` | Arma el banco desechable donde un cargo del catálogo trabaja. |
+| `ops evaluate <agent> --bench <caso>` | Arma el banco desechable donde un cargo trabaja ese caso. |
 | `ops team list` | Lista equipos disponibles. |
 | `ops team check <team>` | Valida manifiesto, agentes, dependencias y gates del equipo. |
 | `ops team show <team>` | Muestra el recorrido y artefactos del equipo; `--json` para consumirlo. |
@@ -192,13 +192,18 @@ de INBOX necesita un `planning/` donde escribir sea legítimo. El toolkit no lo 
 el único `planning/` que vive acá es `template/planning`, el molde que se distribuye.
 
 ```bash
-node engine/cli/ops.js evaluate product-manager --bench
+node engine/cli/ops.js evaluate product-manager --bench 03-epic
 ```
 
 Devuelve la ruta de una instancia desechable —`check` pasa, el catálogo resuelve desde adentro,
 `planning/` está vacío y escribible— que el recorrido `/agent-eval` usa como lugar de trabajo. Se
 recrea entera en cada corrida: reutilizarla dejaría que lo que un cargo escribió el lunes sea contexto
 del que responde el martes.
+
+**Una por caso**, y eso se aprendió corriendo. Con un banco compartido los casos de un cargo trabajan a
+la vez sobre el mismo `planning/` y se leen entre sí: un caso tomó por «una sesión anterior de este
+mismo cargo» lo que otro acababa de escribir, y otro evaluó cuatro candidatas que en su enunciado no
+existían. Ninguno cambió de veredicto, pero sus respuestas dejaron de ser las que el caso pedía medir.
 
 El veredicto se escribe **junto al cargo**, no en el banco. El banco se borra; el contrato queda.
 

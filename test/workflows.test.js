@@ -321,7 +321,10 @@ test('la evaluación le arma al cargo un lugar donde trabajar', () => {
   assert.match(evalWf, /ops\.config\.json.*mode/s, 'lee el modo del proyecto')
   assert.match(evalWf, /mode === 'toolkit'/, 'y distingue el toolkit de una instancia')
   assert.match(evalWf, /--bench/, 'en el toolkit le arma un banco desechable')
-  assert.match(evalWf, /Trabajás en \$\{WORK\}/, 'y el cargo trabaja ahí, no en la raíz')
+  assert.match(evalWf, /Trabajás en \$\{porCaso/, 'y el cargo trabaja ahí, no en la raíz')
+  // Uno por caso: con un banco compartido los casos se leían entre sí y dejaban de medir lo suyo.
+  assert.match(evalWf, /--bench \$\{item\.id\}/, 'un banco por caso, nombrado por el caso')
+  assert.match(evalWf, /porCaso = \(item\)/, 'y cada caso resuelve el suyo')
 
   // El veredicto pertenece al contrato que lo rindió, y el banco se borra en la próxima corrida.
   assert.match(evalWf, /contexto\.skill.*evaluations\/results/s, 'el registro va junto al cargo')

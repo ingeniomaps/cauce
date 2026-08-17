@@ -49,7 +49,7 @@ function usage() {
   ops automation doctor <ops-root> claude|codex|gemini|antigravity
   ops automation install <ops-root> claude|codex|gemini|antigravity
   ops learn <agent> [--proposal]
-  ops evaluate <agent> [--cases [--json]] [--bench]
+  ops evaluate <agent> [--cases [--json]] [--bench [caso]]
   ops agents list [ops-root] [--own|--system] [--json]
   ops agents fork <cargo> [ops-root]
   ops team list
@@ -191,12 +191,24 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
 // es una épica o una entrada de INBOX no tiene dónde escribir, así que se niega. Con razón, y su caso
 // lo cuenta como fallo: eso midió una configuración, no al cargo.
 //
+// **Uno por caso**, y esto se aprendió corriendo. Con un banco compartido, los cinco casos de un
+// cargo corren a la vez sobre el mismo `planning/` y se leen entre sí: un caso tomó por «una sesión
+// anterior de este mismo cargo» lo que otro acababa de escribir, y otro evaluó cuatro candidatas que
+// en su enunciado no existían. Ninguno de los dos cambió de veredicto, pero las respuestas ya no eran
+// las que el caso pedía medir. La independencia entre casos es la premisa de medir con ellos.
+//
 // Se recrea entero en cada corrida. Reutilizarlo dejaría que lo que un cargo escribió el lunes sea
 // contexto del que responde el martes, y dos corridas del mismo caso dejarían de ser comparables.
 // Queda en disco al terminar, gitignorado, porque después de un veredicto raro lo primero que uno
 // quiere es mirar qué escribió el cargo.
-function evaluationBench(root) {
-  const dir = path.join(root, '.cauce-eval')
+function evaluationBench(root, agent, caso) {
+  const safe = (value) => {
+    if (!/^[a-z0-9_][a-z0-9._-]*$/i.test(value) || value.includes('..')) {
+      fail(`nombre inválido para el banco: ${value}`, 2)
+    }
+    return value
+  }
+  const dir = path.join(root, '.cauce-eval', safe(agent), safe(caso || '_libre'))
   fs.rmSync(dir, { recursive: true, force: true })
   scaffold(dir, { name: 'Banco de evaluación', mode: 'sidecar', quiet: true })
   // El motor por symlink: la misma resolución que en una instancia real —`node_modules/@ingeniomaps`—
@@ -895,7 +907,11 @@ function evaluate(agent) {
       fail('--bench es del toolkit. En una instancia, el cargo trabaja sobre tu planning/: si es del '
         + `catálogo, adoptalo primero con "ops agents fork ${agent}".`, 2)
     }
-    return console.log(evaluationBench(root))
+    // El caso viene detrás de la bandera: `evaluate <cargo> --bench <caso>`. Sin él se arma un banco
+    // suelto, para mirarlo a mano; una corrida real pide uno por caso.
+    const flag = process.argv.indexOf('--bench')
+    const caso = (process.argv[flag + 1] || '').startsWith('--') ? '' : process.argv[flag + 1]
+    return console.log(evaluationBench(root, agent, caso))
   }
   try {
     // Los casos, para que un recorrido los ejecute. Sin `--json` no tiene sentido: es entrada de

@@ -739,7 +739,7 @@ test('una bandera no ocupa el lugar de un argumento', () => {
 // del cargo. El banco es ese lugar.
 test('el banco de evaluación es una instancia de verdad, no un directorio vacío', () => {
   const toolkit = path.resolve(__dirname, '..')
-  const bench = run(['evaluate', 'product-manager', '--bench'], toolkit)
+  const bench = run(['evaluate', 'product-manager', '--bench', '01-caso'], toolkit)
   assert.equal(bench.status, 0, bench.stderr)
   const dir = bench.stdout.trim()
   assert.ok(fs.existsSync(path.join(dir, 'ops.config.json')), 'con su configuración')
@@ -758,11 +758,35 @@ test('el banco de evaluación es una instancia de verdad, no un directorio vací
 // y dos corridas del mismo caso dejarían de ser comparables.
 test('el banco se recrea entero en cada corrida', () => {
   const toolkit = path.resolve(__dirname, '..')
-  const dir = run(['evaluate', 'product-manager', '--bench'], toolkit).stdout.trim()
+  const dir = run(['evaluate', 'product-manager', '--bench', '01-caso'], toolkit).stdout.trim()
   const rastro = path.join(dir, 'planning', 'rastro-de-la-corrida-anterior.md')
   fs.writeFileSync(rastro, 'lo que escribió el cargo la vez pasada\n')
-  run(['evaluate', 'product-manager', '--bench'], toolkit)
+  run(['evaluate', 'product-manager', '--bench', '01-caso'], toolkit)
   assert.equal(fs.existsSync(rastro), false, 'la corrida anterior no contamina la siguiente')
+})
+
+// Con un banco por cargo, los casos corrían a la vez sobre el mismo planning/ y se leían entre sí: uno
+// tomó por «una sesión anterior de este mismo cargo» lo que otro acababa de escribir, y otro evaluó
+// cuatro candidatas que en su enunciado no existían. Ninguno cambió de veredicto, pero la respuesta ya
+// no era la que el caso pedía medir, y la independencia entre casos es la premisa de medir con ellos.
+test('cada caso recibe su propio banco', () => {
+  const toolkit = path.resolve(__dirname, '..')
+  const uno = run(['evaluate', 'product-manager', '--bench', '01-caso'], toolkit).stdout.trim()
+  const otro = run(['evaluate', 'product-manager', '--bench', '02-caso'], toolkit).stdout.trim()
+  assert.notEqual(uno, otro, 'dos casos no comparten directorio')
+
+  fs.appendFileSync(path.join(uno, 'planning', 'INBOX.md'), '\n- lo que escribió el primer caso\n')
+  const vecino = fs.readFileSync(path.join(otro, 'planning', 'INBOX.md'), 'utf8')
+  assert.equal(vecino.includes('el primer caso'), false, 'y no se leen entre sí')
+
+  // Preparar el banco de un caso no puede borrar el del vecino, que quizá esté a mitad de corrida.
+  run(['evaluate', 'product-manager', '--bench', '02-caso'], toolkit)
+  assert.match(fs.readFileSync(path.join(uno, 'planning', 'INBOX.md'), 'utf8'), /el primer caso/)
+
+  // El nombre entra en una ruta: no puede escaparse del directorio de bancos.
+  const escape = run(['evaluate', 'product-manager', '--bench', '../../etc'], toolkit)
+  assert.equal(escape.status, 2)
+  assert.match(escape.stderr, /nombre inválido para el banco/)
 })
 
 // En una empresa el banco no hace falta —su instancia ya es el lugar— y ofrecerlo confundiría: el
