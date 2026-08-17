@@ -14,6 +14,90 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.24.0] - 2026-08-17
+
+### Cambiado
+
+- **`database-administrator` nombra el registro con el que emite una afirmación de mecanismo.** Es el
+  primer cambio de contrato del catálogo que nace de un **fallo medido** y no de investigación semanal.
+  El cargo rechazó bien un `DROP DATABASE`, atacó bien la premisa, y afirmó en negrita —como «modo de
+  falla real, no hipotético»— que `dropdb` con la variable vacía elimina la base por defecto. Eso es el
+  comportamiento de `createdb`. Lo dejó escrito además como lección permanente en su banco.
+
+  Es hueco de cobertura y no de ejecución, y el propio veredicto lo prueba: el mismo juicio que reprueba
+  certifica que no inventó **ningún** hecho de la instancia. Los nueve objetos que el contrato ya
+  enumeraba —topología, configuración, capacidad, backup, restore, RPO/RTO, privilegio, causa,
+  evidencia— son todos hechos del sistema administrado; el comportamiento público y verificable de una
+  herramienta no está entre ellos, y para este cargo *es* la materia de trabajo.
+
+  Lo que se agrega no es «no inventar» otra vez —eso sería paráfrasis, y una paráfrasis en un contrato
+  es deuda—. Es el **registro** con que se emite la afirmación (verificado, documentado, hipótesis), el
+  **límite** de con qué se verifica —documentación de la versión e invocación inocua, nunca
+  conectándose ni ejecutando la operación descrita— y la **consecuencia**: sin verificar no sostiene una
+  negativa ni entra a un artefacto durable. Más la conducta prohibida
+  `unverified_tool_or_engine_behavior_asserted_as_fact` y su caso adversarial.
+
+  Volver a medir los siete casos mostró que la regla cambia el comportamiento **en casos para los que no
+  se escribió**: ninguno de los siete menciona `dropdb`, y aparecen un cargo declarando que los binarios
+  que verificó son de su máquina «no del entorno», otro que no nombra ningún comando porque el motor no
+  consta, otro que desactiva por nombre su única hipótesis no documentada, y otro que se niega a inferir
+  el flag de una herramienta desde otra de nombre parecido. Y dos fallos nuevos que antes no se veían:
+  soltar el hedge al resumir conservándolo en el informe, y fechar mal una fuente bajo la etiqueta
+  inventada para garantizar que ninguna afirmación exceda la suya.
+
+- **El paquete deja de llevar `.github/workflows/` a cada instalación.** `init` no los copia,
+  `agent-learning.yml` está en la lista de retirados que `upgrade` borra, y `ci.yml` corre `npm run ci`,
+  que una instancia no tiene. Publicar dejó de ser manual sin nada que lo revisara: `prepublishOnly`
+  corre el mismo gate que CI.
+
+- **La salida generada no arrastra deber de atribución.** MIT pide que el aviso viaje con porciones
+  sustanciales, e `init` copia porciones sustanciales al repositorio de una empresa sin ningún aviso.
+  Nadie atribuye archivos andamiados; ahora está escrito que no hace falta. El copyright además queda a
+  nombre de quien puede tenerlo: un handle de GitHub no es una persona jurídica.
+
+### Agregado
+
+- **`make` alcanza integraciones y equipos desde una instancia**, que es el único lugar donde las
+  integraciones corren. La plantilla mandaba a escribir el CLI a mano mientras la automatización ya
+  tenía atajo. `sync` toma `PROVIDER`, así que un segundo proveedor no necesita un target nuevo.
+
+### Corregido
+
+- **`runner.allowPush` se validaba y no se leía.** El guard bloqueaba el push sin condición, así que un
+  proyecto podía declararlo y no cambiaba nada. Lo encontró la evaluación de un cargo, que lo leyó y
+  concluyó que existía un control técnico inexistente. Falla cerrado: sin raíz legible, no hay permiso.
+
+- **Una historia envuelta en dos líneas perdía su criterio y su servicio.** El cuerpo se matchea
+  multilínea, pero el lookahead terminaba en `$` con la bandera `m`, que casa fin de *línea*: cortaba en
+  el primer salto, y `check` respondía «no declara `(service: <ruta>)`» sobre una historia que sí lo
+  declara. Dos cargos lo encontraron reescribiendo su historia hasta que entrara en un renglón.
+
+- **Un ítem de inbox sin nombre en negrita desaparecía en silencio.** La plantilla traía cuatro
+  encabezados vacíos y ningún ejemplo, así que doce viñetas se leían como un inbox vacío. La convención
+  se conserva —ese nombre es con el que se cita el ítem después—; ahora `tree` dice cuántas quedaron
+  afuera y la plantilla muestra la forma.
+
+- **El estado de una regla de negocio se valida contra un conjunto cerrado.** La plantilla traía
+  `vigente` cableado mientras la de ADR presentaba el menú, y el validador sólo comprobaba que la línea
+  tuviera la forma. Tres cargos distintos publicaron reglas declarándose vigentes derivadas de un ADR
+  que ellos mismos habían dejado en propuesto: cada uno hizo lo que su plantilla le pedía. Ahora la
+  afirmación débil es la que no cuesta nada.
+
+- **El README servía a dos lectores a la vez** y todo lo desactualizado estaba del lado del mantenedor,
+  porque quien lo notaría lee `AGENTS.md`. Decía once guards donde hay doce, pisos de cobertura que no
+  eran los que `coverage.sh` exige, y una ruta de equipos que se había movido.
+
+### Al actualizar
+
+Dos controles nuevos **gatean** y pueden hacer fallar `check` o `evaluate` en una instancia que ya
+existía. Hoy no hay ninguna empresa consumiendo Cauce fuera del proyecto de prueba, así que esto es
+para quien actualice más adelante:
+
+- Una regla de negocio cuyo `Estado:` no sea `propuesta`, `vigente` o `derogada` falla `check`. El
+  arreglo es una línea por archivo.
+- Un cargo propio sin `summary:` en el frontmatter de su `SKILL.md` falla `evaluate` (introducido en
+  0.23.0). El arreglo es la línea con la que se elige ese cargo, de 120 caracteres o menos.
+
 ## [0.23.0] - 2026-08-17
 
 ### Agregado
