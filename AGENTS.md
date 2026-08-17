@@ -1,8 +1,12 @@
 # Cauce — reglas de este repositorio
 
-Acá se **fabrica** el toolkit; no se lo consume. Las reglas que Cauce distribuye
-—`template/AGENTS.md` y `template/planning/rules/`— también rigen este repo, con una inversión que
-hay que tener presente antes de tocar nada.
+Acá se **fabrica** el toolkit; no se lo consume. Éstas son las reglas de este repositorio, y son las
+únicas: `template/AGENTS.md` no rige acá. Es el `AGENTS.md` de raíz de una empresa —el mismo casillero
+que este archivo, para otro repo—, así que habla de un `planning/`, un `tools/ops.js` y un `system/`
+intocable que acá no existen o significan lo contrario.
+
+Lo que sí compartimos es `template/planning/rules/`: sus reglas están escritas sin depender de esa
+mecánica, rigen los dos repos igual y este repo las importa desde `CLAUDE.md`.
 
 ## Acá no se instala nada
 
@@ -24,15 +28,17 @@ El wiring de acá es a mano: `.claude/settings.json` activa `git-add` y `verify`
 el lugar. Que `automation doctor` reporte faltantes es correcto y no hay que "arreglarlo": mide si
 la superficie de consumo de una empresa está completa, una pregunta que acá no aplica.
 
-## La inversión de `system/`
+## `system/` es el producto
 
-`template/AGENTS.md` dice «nunca editar nada dentro de `system/`». En una empresa es correcto: ese
-directorio lo reemplaza el próximo `upgrade`. Acá es al revés —`agents/roles/system/`,
-`template/planning/rules/system/` y los ADR del sistema son el producto, y mantenerlos es el trabajo.
+En una empresa, todo `system/` lo reemplaza el próximo `upgrade` y no se toca. Acá es al revés:
+`agents/roles/system/`, `template/planning/rules/system/` y los ADR del sistema son lo que se fabrica,
+y mantenerlos es el trabajo. El motor ya lo sabe —`mode: toolkit` en `ops.config.json`—, así que
+`fork` se niega a copiar un cargo del catálogo y `learn` sí puede escribirle a uno del sistema: lo que
+decide es si el cargo vive en este repo, no si se llama `system`.
 
-Lo que sí se hereda es la consecuencia: **editar `template/` cambia lo que recibe cada empresa en su
-próximo `upgrade`**. Una regla nueva en `template/planning/rules/system/` baja a todos los
-consumidores; no es una decisión de estilo.
+La contracara: **editar `template/` cambia lo que recibe cada empresa en su próximo `upgrade`**. Una
+regla nueva en `template/planning/rules/system/` baja a todos los consumidores; no es una decisión de
+estilo.
 
 ## Dónde vive cada cosa
 
