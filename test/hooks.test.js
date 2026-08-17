@@ -245,3 +245,55 @@ test('un guard suelto sigue siendo invocable por nombre', () => {
     (error) => error.blocked === true,
   )
 })
+
+// `run-hook.sh` lo dice de su propio motor: «un guard que no encuentra su motor bloquea, nunca
+// permite». No valía para la configuración: `workspace-boundary` y `engine` hacían `catch { return }`
+// al parsearla, así que una coma de más los apagaba a los dos sin imprimir nada. Y `findOpsRoot` sólo
+// devuelve una raíz cuando `ops.config.json` existe, o sea que ese catch nunca fue «no aplica».
+test('un guard que no puede leer la configuración bloquea, no permite', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-failopen-'))
+  fs.mkdirSync(path.join(root, 'planning'))
+  const config = path.join(root, 'ops.config.json')
+  const afuera = { cwd: root, tool_input: { file_path: '/etc/passwd' } }
+  const motor = {
+    cwd: root,
+    tool_input: { file_path: path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine', 'x.js') },
+  }
+
+  fs.writeFileSync(config, JSON.stringify({
+    project: 'x', mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }], runner: {},
+  }))
+  blocked('workspace-boundary', afuera)
+  blocked('engine', motor)
+
+  fs.writeFileSync(config, '{"project":"x",,"mode":"embedded"}')
+  for (const guard of ['workspace-boundary', 'engine']) {
+    assert.throws(
+      () => execute(guard, afuera),
+      (error) => error.blocked === true && /no se puede leer/.test(error.message),
+      `${guard} permitió con la configuración rota`,
+    )
+  }
+})
+
+// La misma regla, un paso antes: si la entrada del hook no se puede parsear, cada guard veía `{}`
+// —sin comando y sin archivos— y dejaba pasar todo. Sin stdin sí es «no hay nada que leer», y ahí los
+// guards caen a las variables de entorno; se comprueban las dos ramas para no cerrar la buena.
+test('una entrada de hook ilegible bloquea; la ausencia de entrada no', () => {
+  const runtime = path.resolve(__dirname, '..', 'engine', 'hooks', 'run.js')
+  const invoke = (payload, env = {}) => spawnSync(
+    process.execPath,
+    [runtime, 'destructive'],
+    { input: payload, encoding: 'utf8', env: { ...process.env, ...env } },
+  )
+
+  const roto = invoke('{"tool_input": esto no es json')
+  assert.equal(roto.status, 2)
+  assert.match(roto.stderr, /no es JSON válido/)
+
+  assert.equal(invoke('').status, 0, 'sin entrada no hay nada que decidir')
+  assert.equal(
+    invoke('', { OPS_HOOK_COMMAND: 'git push origin main' }).status, 2,
+    'y sin entrada el guard sigue leyendo el entorno',
+  )
+})
