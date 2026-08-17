@@ -16,9 +16,10 @@ on:
         required: false
         default: ""
 
+# Mínimo arriba: cada job eleva sólo lo que necesita. El que corre el agente se queda en `read` —
+# ingiere contenido web que no controlamos y no tiene por qué poder escribir el repositorio.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   discover:
@@ -26,8 +27,8 @@ jobs:
     outputs:
       agents: ${{ steps.list.outputs.agents }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
 
@@ -71,14 +72,16 @@ jobs:
     if: github.event.schedule != '17 13 1 * *'
     needs: discover
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       max-parallel: 3
       matrix:
         agent: ${{ fromJSON(needs.discover.outputs.agents) }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
       - name: Check credential
@@ -118,7 +121,7 @@ jobs:
           AGENT: ${{ matrix.agent }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          npm install -g @anthropic-ai/claude-code
+          npm install -g @anthropic-ai/claude-code@2.1.233
           claude -p "Leé el learning/AUTOMATION.md del cargo $AGENT y ejecutá exactamente lo que declara. El informe de esta semana ya está creado y vacío: completalo. Cada afirmación necesita enlace, fecha y versión; lo que no puedas corroborar va a Preguntas abiertas en vez de afirmarse. El único archivo que escribís es ese informe."
       - name: Detect changes
         if: steps.creds.outputs.ready == 'true'
@@ -129,20 +132,102 @@ jobs:
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Open research pull request
+      # El informe sale de acá como artifact, no como commit. Lo que el agente escribió fuera de su
+      # informe se queda en este runner y muere con él: no hay credencial con que sacarlo.
+      - name: Collect report
         if: steps.creds.outputs.ready == 'true' && steps.changes.outputs.changed == 'true'
+        id: collect
         env:
           AGENT: ${{ matrix.agent }}
+        run: |
+          stamp="$(date -u +%Y-%m-%d)"
+          report="$(git diff --name-only -- "agents/*/$AGENT/learning/reports/$stamp.md")"
+          if [ -z "$report" ]; then
+            echo "El agente no escribió su informe; lo que haya tocado no sale de acá." >&2
+            git diff --name-only >&2
+            exit 1
+          fi
+          echo "path=$report" >> "$GITHUB_OUTPUT"
+          echo "stamp=$stamp" >> "$GITHUB_OUTPUT"
+      - name: Upload report
+        if: steps.collect.outputs.path != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: research-${{ matrix.agent }}
+          path: ${{ steps.collect.outputs.path }}
+          retention-days: 7
+
+  # Segundo job y no un paso más: acá vive la credencial de escritura, y para llegar hasta acá el
+  # informe tuvo que pasar por un artifact. Este job no habla con ningún modelo ni lee la web —
+  # recibe un archivo, comprueba que caiga donde debe, y lo commitea.
+  research-pr:
+    needs: [discover, research]
+    if: needs.research.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        agent: ${{ fromJSON(needs.discover.outputs.agents) }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Download report
+        id: fetch
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: research-${{ matrix.agent }}
+          path: ${{ github.workspace }}
+      - name: Resolve CLI
+        if: steps.fetch.outcome == 'success'
+        id: cli
+        run: |
+          for candidate in tools/ops.js engine/cli/ops.js; do
+            if [ -f "$candidate" ]; then
+              echo "path=$candidate" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "No se encontró el CLI de Cauce." >&2
+          exit 1
+      - name: Open research pull request
+        if: steps.fetch.outcome == 'success'
+        env:
+          AGENT: ${{ matrix.agent }}
+          OPS: ${{ steps.cli.outputs.path }}
           GH_TOKEN: ${{ github.token }}
         run: |
           stamp="$(date -u +%Y-%m-%d)"
           branch="automation/$AGENT-research-$stamp"
+          # El artifact trae contenido, no destino: `upload-artifact` aplana la ruta de un archivo
+          # suelto, así que llega como `<fecha>.md` a la raíz. Dónde va se resuelve **acá**, con el
+          # mismo CLI que resolvió el catálogo antes, y eso además es la garantía: nada de lo que
+          # venga en el artifact puede redirigir dónde aterriza el archivo.
+          dir="$(node "$OPS" agents list --json | node -e '
+            let s = ""
+            process.stdin.on("data", (d) => { s += d }).on("end", () => {
+              const found = JSON.parse(s).find((role) => role.slug === process.env.AGENT)
+              if (!found) { console.error("agente desconocido"); process.exit(1) }
+              console.log(found.path)
+            })')"
+          dest="$dir/learning/reports/$stamp.md"
+          mkdir -p "$(dirname "$dest")"
+          mv "$stamp.md" "$dest"
           report="$(git diff --name-only -- "agents/*/$AGENT/learning/reports/$stamp.md")"
-          if [ -z "$report" ]; then
-            echo "El agente cambió archivos fuera de su informe; no se abre PR." >&2
-            git diff --name-only >&2
+          otros="$(git status --porcelain | awk '{print $2}' | grep -v -F "$dest" || true)"
+          if [ -z "$report" ] && [ ! -f "$dest" ]; then
+            echo "No llegó el informe de $AGENT." >&2
             exit 1
           fi
+          if [ -n "$otros" ]; then
+            echo "Se esperaba exactamente el informe de $AGENT y nada más." >&2
+            git status --porcelain >&2
+            exit 1
+          fi
+          report="$dest"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
@@ -153,18 +238,23 @@ jobs:
             --title "$AGENT weekly research — $stamp" \
             --body "Investigación semanal de la profesión. No modifica SKILL.md ni propone cambios: alimenta la propuesta mensual."
 
+  # Este job no habla con ningún modelo: consolida informes ya commiteados con el CLI y abre el PR.
+  # Por eso puede escribir sin la separación que exige `research`.
   propose:
     if: github.event.schedule == '17 13 1 * *' || github.event_name == 'workflow_dispatch'
     needs: discover
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     strategy:
       fail-fast: false
       max-parallel: 5
       matrix:
         agent: ${{ fromJSON(needs.discover.outputs.agents) }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
 
