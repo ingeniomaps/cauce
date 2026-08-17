@@ -552,13 +552,6 @@ function instanceVersion(root) {
   } catch { return '' }
 }
 
-// Sobrescribe lo que trae el paquete y deja intacto lo demás: un guard propio de la empresa,
-// o un adaptador de runner que el toolkit no conoce, sobreviven a la actualización.
-function overlayTree(from, to, root, skip = []) {
-  F.assertNoSymlinkPath(root, to)
-  copyRuntime(from, to, false, root, skip)
-}
-
 // Actualiza sólo lo que el toolkit declara suyo. Todo lo demás —planning, organization, reglas
 // propias, agentes editados— queda intacto por construcción, no por comparación.
 function upgrade(dir) {
@@ -620,7 +613,9 @@ function upgrade(dir) {
     const origin = path.join(PROJECT_ROOT, O.sourceOf(relative))
     if (!fs.existsSync(origin)) continue
     const target = path.join(root, relative)
-    if (fs.statSync(origin).isDirectory()) overlayTree(origin, target, root)
+    // Sobrescribe lo que trae el paquete y deja intacto lo demás: un guard propio de la empresa,
+    // o un adaptador de runner que el toolkit no conoce, sobreviven a la actualización.
+    if (fs.statSync(origin).isDirectory()) copyRuntime(origin, target, false, root)
     else {
       F.assertNoSymlinkPath(root, target)
       F.atomicWrite(target, fs.readFileSync(origin, 'utf8'))
@@ -689,8 +684,6 @@ function upgrade(dir) {
   for (const entry of FK.drift(root)) console.log(`  ⚠ ${FK.driftLine(entry)}`)
 }
 
-// Lista los cargos visibles resolviendo la precedencia; evita que cada consumidor —CI incluido—
-// reimplemente el recorrido del catálogo.
 // La raíz ops de un comando que no la recibe. El shim `tools/ops.js` la exporta porque sabe dónde
 // vive: sin eso, invocarlo desde otra carpeta —lo normal en sidecar— la resolvía contra el cwd.
 function opsRoot(dir) {
@@ -711,6 +704,8 @@ function agentsFork(slug, dir) {
   console.log(`  reinstalá tu runner para que ${slug} apunte a tu copia`)
 }
 
+// Lista los cargos visibles resolviendo la precedencia; evita que cada consumidor —CI incluido—
+// reimplemente el recorrido del catálogo.
 function agents(action, dir, extra) {
   if (action === 'fork') return agentsFork(dir, extra)
   if (action !== 'list') fail(`Acción de agents desconocida: ${action || '(vacía)'}`, 2)

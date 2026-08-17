@@ -172,7 +172,7 @@ Respetá los límites de ese contrato y las reglas de \`AGENTS.md\`. Generado po
 }
 
 function installRoleSkills(root, runner, output) {
-  if (!runner.capabilities.nativeSkills || !runner.roleSkills) return 0
+  if (!runner.capabilities.nativeSkills || !runner.roleSkills) return
   const install = installRoot(root)
   const base = F.assertWithin(install, path.resolve(install, runner.roleSkills), `${runner.name}: roleSkills`)
   const roles = roleCatalog(root)
@@ -182,7 +182,6 @@ function installRoleSkills(root, runner, output) {
     F.atomicWrite(file, roleSkill(role))
   }
   if (roles.length) output.log(`✓ ${runner.name}: ${roles.length} cargo(s) disponibles en ${runner.roleSkills}`)
-  return roles.length
 }
 
 // Runners que además de los archivos necesitan un registro propio para que el wiring cuente. Copiar
@@ -267,8 +266,12 @@ function check(root) {
   if (!O.engineAt(root, path.join('hooks', 'run.js'))) {
     errors.push('falta engine/hooks/run.js: corré "npm install" en la raíz del repo ops')
   }
-  const workflows = ['autobuild.js', 'team.js', path.join('integrations', 'sync.js')]
-  workflows.push(path.join('integrations', 'promote.js'))
+  const workflows = [
+    'autobuild.js',
+    'team.js',
+    path.join('integrations', 'sync.js'),
+    path.join('integrations', 'promote.js'),
+  ]
   const packaged = packagedAutomation(root)
   for (const name of workflows) {
     if (!packaged || !fs.existsSync(path.join(packaged, 'workflows', name))) {
@@ -553,13 +556,10 @@ module.exports = {
   RUNNER_NAMES,
   check,
   doctor,
-  includesConfig,
   install,
   legacyGuardWiring,
-  pruneSupersededHooks,
   roleCatalog,
   roleSkill,
   listHooks,
-  mergeConfig,
   runnerManifest,
 }

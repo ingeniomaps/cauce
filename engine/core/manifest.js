@@ -94,5 +94,5 @@ function edited(root, relative, files) {
 }
 
 module.exports = {
-  FILE, digest, digestText, edited, prune, read, readForks, readRunners, record, write,
+  digest, digestText, edited, prune, read, readForks, readRunners, record, write,
 }

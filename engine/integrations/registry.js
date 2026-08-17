@@ -18,10 +18,6 @@ function readJson(file) {
   }
 }
 
-function writeJson(file, value) {
-  F.atomicWriteJson(file, value)
-}
-
 function safeSegment(value, label) {
   const segment = String(value || '')
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(segment) || segment === '.' || segment === '..') {
@@ -95,7 +91,7 @@ function validate(root, onlyProvider = '') {
     const secret = sensitivePath(loaded.config)
     if (secret) errors.push(`${name}: ${secret} no puede contener secretos; usa una variable de entorno`)
     try {
-      adapter(name).validateConfig(loaded.config, errors, warnings)
+      adapter(name).validateConfig(loaded.config, errors)
     } catch (error) {
       errors.push(`${name}: ${error.message}`)
     }
@@ -254,11 +250,11 @@ async function sync(root, name, options = {}) {
     }
     fs.mkdirSync(desiredDir, { recursive: true })
     F.atomicWrite(draftFile, draft)
-    writeJson(snapshotFile, snapshot)
+    F.atomicWriteJson(snapshotFile, snapshot)
   }
   const complete = options.complete !== false
   if (complete) cleanupMissing(root, name, seen, result)
-  writeJson(path.join(staging, 'sync-state.json'), {
+  F.atomicWriteJson(path.join(staging, 'sync-state.json'), {
     schemaVersion: 2,
     provider: name,
     complete,
@@ -284,7 +280,7 @@ function cleanupMissing(root, name, seen, result) {
       continue
     }
     snapshot.sync.missingFromRemote = true
-    writeJson(snapshotFile, snapshot)
+    F.atomicWriteJson(snapshotFile, snapshot)
     result.missing++
   }
 }
@@ -364,7 +360,7 @@ function promote(root, name, key) {
   draft = replaceField(draft, 'promotedAt', `"${new Date().toISOString()}"`)
   F.atomicWrite(draftFile, draft)
   snapshot.sync.draftChanged = true
-  writeJson(path.join(dir, 'remote.json'), snapshot)
+  F.atomicWriteJson(path.join(dir, 'remote.json'), snapshot)
   return { key, kind: fields.promotionKind }
 }
 
@@ -385,13 +381,11 @@ const oneLine = (value) => String(value).replace(/\s+/g, ' ').trim()
 module.exports = {
   STATES,
   adapter,
-  draftSections,
   frontmatter,
   promote,
   providerConfig,
   reconcile,
   safeSegment,
-  stagingItems,
   sync,
   validate,
   writebackPlan,

@@ -79,9 +79,6 @@ function validateRoadmapStructure(dir) {
 }
 
 module.exports = {
-  DECISION_TRACE,
-  EPIC_AUXILIARY_FILES,
-  TEST_TRACE,
   validDecisionTrace,
   validTestTrace,
   validateDoneEntry,

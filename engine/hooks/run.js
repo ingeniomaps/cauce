@@ -459,5 +459,5 @@ if (require.main === module) {
 }
 
 module.exports = {
-  commandOf, execute, executeAll, fileOf, filesOf, findOpsRoot, guards, hookGroups, hookMetadata,
+  execute, executeAll, findOpsRoot, guards, hookGroups, hookMetadata,
 }

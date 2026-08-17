@@ -6,7 +6,6 @@ const fs = require('fs')
 const path = require('path')
 
 const EPIC_STATES = ['open', 'active', 'closed']
-const TIERS = ['directo', 'lite', 'full']
 
 function read(file) {
   try { return fs.readFileSync(file, 'utf8') } catch { return '' }
@@ -62,7 +61,7 @@ function criteriaRefs(text) {
   return [...new Set(refs)]
 }
 
-function readEpics(dir, { includeTemplates = false } = {}) {
+function readEpics(dir) {
   return epicFiles(dir).map(({ name, file }) => {
     const text = read(file)
     const field = frontmatter(text)
@@ -76,7 +75,6 @@ function readEpics(dir, { includeTemplates = false } = {}) {
     const stories = [...section(text, /Historias/i).matchAll(storyPattern)]
       .map((match) => ({
         slug: match[1].trim(),
-        text: match[2].replace(/\s+/g, ' ').trim(),
         criteria: criteriaRefs(match[2]),
         service: ((match[2].match(/\(service:\s*([^)]+)\)/) || [])[1] || '').trim(),
       }))
@@ -86,12 +84,11 @@ function readEpics(dir, { includeTemplates = false } = {}) {
       num: field('epic'),
       title: field('title'),
       status: field('status'),
-      service: field('service'),
       criteria,
       stories,
       hasContext: /^##\s+Contexto relevante/im.test(text),
     }
-  }).filter((epic) => includeTemplates || epic.status !== 'template' && epic.num !== '000')
+  }).filter((epic) => epic.status !== 'template' && epic.num !== '000')
 }
 
 function readBacklog(dir) {
@@ -110,7 +107,7 @@ function readBacklog(dir) {
     if (!task || !current) continue
     const rest = task[3]
     current.tasks.push({
-      slug: task[1].trim(), tier: task[2] || '', text: rest,
+      slug: task[1].trim(), tier: task[2] || '',
       epic: ((rest.match(/\(epic:\s*(\d{3})\)/) || [])[1] || ''),
       service: ((rest.match(/\(service:\s*([^)]+)\)/) || [])[1] || '').trim(),
       acceptance: ((rest.match(/_Aceptaci[oó]n:\s*([^_]+)_/i) || [])[1] || '').trim(),
@@ -180,5 +177,5 @@ function readInbox(dir) {
 }
 
 module.exports = {
-  EPIC_STATES, TIERS, read, frontmatter, readEpics, readBacklog, readDone, readWip, readInbox,
+  EPIC_STATES, read, frontmatter, readEpics, readBacklog, readDone, readWip, readInbox,
 }

@@ -220,7 +220,6 @@ function reconcile(root, provider, operation, keys = []) {
 }
 
 module.exports = {
-  CRITICAL_FIELDS,
   STATES,
   categoryOf,
   derive,

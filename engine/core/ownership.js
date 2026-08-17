@@ -80,34 +80,27 @@ function sourceOf(relative) {
   return relative
 }
 
-// Dónde puede estar el motor. Lo mismo que resuelven `tools/ops.js`, el wrapper de hooks y el bridge
-// de Antigravity: declararlo una vez evita que un consumidor quede afuera.
+// Una ruta cualquiera del paquete: primero la dependencia npm, después el propio repositorio del
+// toolkit corriendo sobre sí mismo. La usan los adaptadores de runner, los workflows y el motor
+// mismo: el motor los consume, el proyecto no los materializa.
 //
-// Dos caminos, no tres: el motor llega por npm, y la tercera entrada es el propio repositorio del
-// toolkit corriendo sobre sí mismo. La copia vendorizada en `.ops/` se retiró en 0.10.0 — ahorraba un
+// Dos caminos, no tres. La copia vendorizada en `.ops/` se retiró en 0.10.0 — ahorraba un
 // `package.json` a cambio de 5 MB en la historia de la empresa y de no poder enterarse de una versión
 // nueva, y Node hace falta igual en los dos casos.
-function engineCandidates(root) {
-  return [
-    path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine'),
-    path.join(root, 'engine'),
-  ]
-}
-
-function engineAt(root, relative = '') {
-  return engineCandidates(root)
-    .map((dir) => (relative ? path.join(dir, relative) : dir))
-    .find((candidate) => fs.existsSync(candidate)) || ''
-}
-
-// Una ruta cualquiera del paquete, en el mismo orden de preferencia que el motor. La usan los
-// adaptadores de runner y los workflows: el motor los consume, el proyecto no los materializa.
 function packagePath(root, relative) {
   const candidates = [
     path.join(root, 'node_modules', '@ingeniomaps', 'cauce', relative),
     path.join(root, relative),
   ]
   return candidates.find((candidate) => fs.existsSync(candidate)) || ''
+}
+
+// Dónde quedó el motor. Es `packagePath` bajo `engine/`, y no una cascada propia: había dos copias de
+// la misma lista de candidatos en este archivo, una al lado de la otra, y nada obligaba a que
+// siguieran diciendo lo mismo. La tercera copia vive en el bridge de Antigravity, que corre antes de
+// poder cargar este módulo y por eso la repite a propósito.
+function engineAt(root, relative = '') {
+  return packagePath(root, relative ? path.join('engine', relative) : 'engine')
 }
 
 // Definiciones que consume el motor —cargos y equipos— y que por eso viajan con el paquete en vez
@@ -234,11 +227,9 @@ module.exports = {
   RUNTIME_PATHS,
   retiredWithLearning,
   engineAt,
-  engineCandidates,
   packagePath,
   SYSTEM_COLLECTIONS,
   SYSTEM_FILES,
-  identity,
   localChanges,
   overrides,
   sourceOf,

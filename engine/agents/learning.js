@@ -15,10 +15,6 @@ const REQUIRED_SECTIONS = [
   'Aprobación humana',
 ]
 
-function agentRoot(root, agent) {
-  return catalog.resolve(root, agent)
-}
-
 // Un cargo del sistema vive dentro del paquete: escribir ahí perdería el informe en el próximo
 // `npm ci`, y además duplicaría en cada empresa una investigación sobre la profesión que se hace
 // mejor una sola vez. Lo que sí es de esta empresa es su contexto, y ese tiene otro lugar.
@@ -136,7 +132,7 @@ Pendiente.
 }
 
 function evaluate(root, agent) {
-  const target = agentRoot(root, agent)
+  const target = catalog.resolve(root, agent)
   const errors = []
   const requiredFiles = [
     'learning/sources.yaml',
@@ -146,7 +142,7 @@ function evaluate(root, agent) {
   // `AUTOMATION.md` documenta cómo corre la automatización de aprendizaje del toolkit. Exigírselo
   // a una empresa que escribe un cargo propio era pedirle contabilidad interna nuestra: su cargo debe
   // tener contrato, fuentes e historia, no nuestro andamiaje.
-  if (require('./catalog').find(root, agent).system) requiredFiles.push('learning/AUTOMATION.md')
+  if (catalog.find(root, agent).system) requiredFiles.push('learning/AUTOMATION.md')
   for (const relative of requiredFiles) {
     if (!fs.existsSync(path.join(target, relative))) errors.push(`falta ${relative}`)
   }

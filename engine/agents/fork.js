@@ -37,17 +37,9 @@ function inherited(relative) {
 
 const TEXT = /\.(md|ya?ml|json|txt)$/i
 
-function tree(dir, prefix = '') {
-  const found = []
-  let list = []
-  try { list = fs.readdirSync(dir, { withFileTypes: true }) } catch { return found }
-  for (const entry of list) {
-    const relative = prefix ? `${prefix}/${entry.name}` : entry.name
-    if (entry.isDirectory()) found.push(...tree(path.join(dir, entry.name), relative))
-    else found.push(relative)
-  }
-  return found.sort()
-}
+// El mismo recorrido que usa `upgrade` para comparar instancia contra paquete: un cargo es un árbol
+// de archivos como cualquier otro, y tener dos implementaciones sólo daba dos formas de ordenarlos.
+const tree = ownership.treeFiles
 
 // La misma resolución que usa todo lo demás —paquete primero, toolkit después— en vez de deducirla
 // del directorio del motor: la versión que interesa es la del catálogo del que sale la copia.
@@ -89,7 +81,8 @@ function fork(root, slug, date) {
   const target = path.join(root, 'agents', type, slug)
   if (fs.existsSync(target)) throw new Error(`${path.relative(root, target)} ya existe`)
 
-  const files = tree(found.dir).filter(inherited)
+  const todo = tree(found.dir)
+  const files = todo.filter(inherited)
   if (!files.includes('SKILL.md')) throw new Error(`${slug} no tiene SKILL.md: no hay contrato que copiar`)
 
   // El digest sale del origen, no de la copia. Es lo que el catálogo tenía al momento del fork, y es
@@ -118,7 +111,7 @@ function fork(root, slug, date) {
   forks[slug] = { type, version, files: digests }
   manifest.write(root, null, null, forks)
 
-  return { slug, type, dir: target, files, version, skipped: tree(found.dir).filter((one) => !inherited(one)) }
+  return { slug, type, dir: target, files, version, skipped: todo.filter((one) => !inherited(one)) }
 }
 
 // Qué cambió en el catálogo desde que la empresa se llevó su copia.

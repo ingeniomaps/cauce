@@ -51,5 +51,4 @@ module.exports = {
   assertWithin,
   atomicWrite,
   atomicWriteJson,
-  isWithin,
 }
