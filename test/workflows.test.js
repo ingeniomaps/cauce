@@ -344,8 +344,11 @@ test('la evaluación le arma al cargo un lugar donde trabajar', () => {
   assert.match(evalWf, /porCaso = \(item\)/, 'y cada caso resuelve el suyo')
 
   // El veredicto pertenece al contrato que lo rindió, y el banco se borra en la próxima corrida.
-  assert.match(evalWf, /contexto\.skill.*evaluations\/results/s, 'el registro va junto al cargo')
+  assert.match(evalWf, /evaluate \$\{AGENT\} --record/, 'el registro va donde el motor dice')
   assert.match(evalWf, /no en el banco/, 'dicho explícitamente, que es donde se equivocaría')
+  // La ruta la resuelve el motor y no el prompt. Componerla acá desde la fecha hacía que una segunda
+  // corrida del mismo día —la que sigue a aplicar una propuesta— escribiera encima de la línea base.
+  assert.doesNotMatch(evalWf, /results\/<fecha>/, 'sin componer el nombre desde la fecha')
 
   // En una empresa el banco no existe: su instancia ya es el lugar, y el cargo tiene que ser suyo.
   assert.match(evalWf, /cargo-del-catalogo/, 'y un cargo del catálogo se rechaza ahí')

@@ -107,18 +107,56 @@ function resultsDir(root, agent) {
   return path.join(catalog.resolve(root, agent), ...RESULTS)
 }
 
+// Un registro por corrida, y puede haber más de una en el mismo día: aplicar una propuesta cambia el
+// contrato, y el recorrido que la aplica pide volver a correr los casos ahí mismo. Con sólo
+// `AAAA-MM-DD.md` la segunda corrida escribía encima de la primera sin avisar, y la primera es
+// justamente la línea base que la propuesta cita como evidencia: se perdía el término de comparación
+// en el momento exacto en que empezaba a hacer falta.
+const RESULT_NAME = /^(\d{4}-\d{2}-\d{2})(?:-(\d+))?\.md$/
+
+// Ordena por fecha y después por corrida, con el nombre sin sufijo como la primera. No alcanza con
+// ordenar los nombres: `-` va antes que `.` en ASCII, así que `2026-08-17-2.md` quedaría *delante* de
+// `2026-08-17.md` y la más nueva se leería como la más vieja.
+function resultOrder(name) {
+  const [, date, run] = name.match(RESULT_NAME)
+  return `${date}-${String(Number(run || 1)).padStart(4, '0')}`
+}
+
+function resultNames(dir) {
+  return caseFiles(dir)
+    .filter((name) => RESULT_NAME.test(name))
+    .sort((one, other) => resultOrder(one).localeCompare(resultOrder(other)))
+}
+
+// El nombre que le toca a la corrida de hoy: el primero libre. Lo decide el motor y no el prompt del
+// recorrido, porque «escribí en <fecha>.md» es una instrucción que no puede saber qué ya existe.
+function nextResult(root, agent, date) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(`fecha inválida: ${date}`)
+  const dir = resultsDir(root, agent)
+  const taken = new Set(resultNames(dir))
+  if (!taken.has(`${date}.md`)) return `${date}.md`
+  let run = 2
+  while (taken.has(`${date}-${run}.md`)) run += 1
+  return `${date}-${run}.md`
+}
+
 // El último resultado registrado, para que `evaluate` pueda decir si el cargo se corrió alguna vez y
 // cómo le fue. No es un error no tenerlo: correrlo cuesta, y exigirlo en CI sería exigir red.
 function latest(root, agent) {
   const dir = resultsDir(root, agent)
-  const names = caseFiles(dir).filter((name) => /^\d{4}-\d{2}-\d{2}\.md$/.test(name)).sort()
+  const names = resultNames(dir)
   if (!names.length) return null
-  const file = path.join(dir, names[names.length - 1])
+  const name = names[names.length - 1]
+  const file = path.join(dir, name)
   const text = fs.readFileSync(file, 'utf8')
   const verdicts = [...text.matchAll(/^-\s*Veredicto:\s*(pasa|no pasa)\s*$/gim)].map((hit) => hit[1].toLowerCase())
+  const [, date, run] = name.match(RESULT_NAME)
   return {
     file,
-    date: names[names.length - 1].replace(/\.md$/, ''),
+    // La fecha es la del día, sin el sufijo de corrida: quien lee «no pasaron en 2026-08-17» busca un
+    // día, no un nombre de archivo. Cuál de las corridas fue va aparte, y sólo cuando hubo más de una.
+    date,
+    run: Number(run || 1),
     total: verdicts.length,
     passed: verdicts.filter((verdict) => verdict === 'pasa').length,
   }
@@ -152,4 +190,4 @@ function validate(root, agent) {
   return { errors, warnings, cases: total, last }
 }
 
-module.exports = { behaviors, fixtures, list, latest, parseCase, validate, resultsDir }
+module.exports = { behaviors, fixtures, list, latest, nextResult, parseCase, validate, resultsDir }

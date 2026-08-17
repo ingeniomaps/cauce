@@ -403,6 +403,41 @@ test('un resultado que no cubre todos los casos vigentes no vale', () => {
   }
 })
 
+// Aplicar una propuesta cambia el contrato y el mismo recorrido pide volver a correr los casos ahí
+// mismo. Con el nombre saliendo sólo de la fecha, esa segunda corrida borraba a la primera —la línea
+// base que la propuesta cita como evidencia— y no quedaba contra qué comparar.
+test('dos corridas el mismo día conviven y la segunda es la vigente', () => {
+  const EV = require('../engine/agents/evaluations')
+  const repo = path.resolve(__dirname, '..')
+  const dir = EV.resultsDir(repo, 'qa-engineer')
+  const primera = path.join(dir, '2099-03-01.md')
+  const segunda = path.join(dir, '2099-03-01-2.md')
+  fs.mkdirSync(dir, { recursive: true })
+  try {
+    assert.equal(EV.nextResult(repo, 'qa-engineer', '2099-03-01'), '2099-03-01.md', 'la primera no lleva sufijo')
+    fs.writeFileSync(primera, '---\nagent: qa-engineer\n---\n\n### 01-x\n\n- Veredicto: no pasa\n')
+    assert.equal(EV.nextResult(repo, 'qa-engineer', '2099-03-01'), '2099-03-01-2.md', 'la segunda no la pisa')
+
+    fs.writeFileSync(segunda, '---\nagent: qa-engineer\n---\n\n### 01-x\n\n- Veredicto: pasa\n')
+    assert.equal(EV.nextResult(repo, 'qa-engineer', '2099-03-01'), '2099-03-01-3.md')
+
+    // El orden no puede salir de comparar nombres: `-` va antes que `.` en ASCII, así que
+    // `2099-03-01-2.md` quedaría delante de `2099-03-01.md` y la corrida nueva se leería como la vieja.
+    // Sin esto el arreglo pasa las demás pruebas y devuelve el veredicto equivocado.
+    const vigente = EV.latest(repo, 'qa-engineer')
+    assert.equal(vigente.file, segunda, 'la vigente es la última corrida, no la primera del día')
+    assert.equal(vigente.passed, 1, 'y con sus veredictos, no los de la anterior')
+    // La fecha sigue siendo el día: quien lee «no pasaron en 2099-03-01» busca una fecha, no un archivo.
+    assert.equal(vigente.date, '2099-03-01')
+    assert.equal(vigente.run, 2)
+
+    assert.throws(() => EV.nextResult(repo, 'qa-engineer', 'ayer'), /fecha inválida/)
+  } finally {
+    fs.rmSync(primera, { force: true })
+    fs.rmSync(segunda, { force: true })
+  }
+})
+
 // Una empresa mantiene sus cargos, no los del catálogo. Sin poder acotar la lista, su ciclo de
 // aprendizaje tendría que recorrer 48 cargos para encontrar el suyo y chocar 47 veces con la negativa.
 test('una empresa puede acotar el catálogo a lo que sí mantiene', () => {

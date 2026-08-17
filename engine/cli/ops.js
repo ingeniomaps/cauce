@@ -51,7 +51,7 @@ function usage() {
   ops automation doctor <ops-root> claude|codex|gemini|antigravity
   ops automation install <ops-root> claude|codex|gemini|antigravity
   ops learn <agent> [--proposal] [--applied [--period <AAAA-MM>]]
-  ops evaluate <agent> [--cases [--json]] [--bench [caso]]
+  ops evaluate <agent> [--cases [--json]] [--bench [caso]] [--record [AAAA-MM-DD]]
   ops agents list [ops-root] [--own|--system] [--json]
   ops agents fork <cargo> [ops-root]
   ops team list
@@ -988,6 +988,12 @@ function evaluate(agent, caso, cli) {
       // La conducta prohibida viaja junto a los casos y no dentro de cada uno: rige para los seis, y
       // repetirla por caso invitaría a que alguien la editara en uno solo.
       return console.log(JSON.stringify({ cases, forbidden: prohibido }))
+    }
+    // Dónde escribir el registro de esta corrida. Lo pregunta el recorrido en vez de componer el
+    // nombre, que es lo que hacía que la segunda corrida de un día borrara a la primera.
+    if (cli.has('--record')) {
+      const dia = cli.value('--record') || new Date().toISOString().slice(0, 10)
+      return console.log(path.relative(root, path.join(EV.resultsDir(root, agent), EV.nextResult(root, agent, dia))))
     }
     const result = L.evaluate(root, agent)
     const runs = EV.validate(root, agent)

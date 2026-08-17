@@ -210,11 +210,15 @@ const filas = hechos.map((one) => {
 }).join('\n\n')
 
 await agent(
-  `Escribí el registro junto al cargo: tomá ${contexto.skill} y reemplazá SKILL.md por ` +
-  `evaluations/results/<fecha>.md. Creá el directorio si no existe.\n\n` +
+  `Escribí el registro junto al cargo. Desde ${ROOT}, corré ` +
+  `"node tools/ops.js evaluate ${AGENT} --record" y escribí en la ruta que imprima, relativa a ` +
+  `${ROOT}. Creá el directorio si no existe.\n\n` +
+  `Preguntale la ruta al motor en vez de componerla: aplicar una propuesta cambia el contrato y pide ` +
+  `volver a correr los casos el mismo día, y cuando el nombre salía de la fecha la segunda corrida ` +
+  `escribía encima de la primera —que es la línea base que la propuesta cita como evidencia—.\n\n` +
   `Ahí y no en el banco de trabajo. El banco se borra en la próxima corrida —es donde el cargo ` +
   `trabajó, no donde vive—, mientras que el veredicto pertenece al contrato que lo rindió y viaja ` +
-  `con él. La fecha es la de hoy en formato AAAA-MM-DD; obtenela con "date +%F".\n\n` +
+  `con él. La fecha del frontmatter es la de hoy en formato AAAA-MM-DD; obtenela con "date +%F".\n\n` +
   `El archivo lleva este frontmatter y después el contenido tal cual te lo paso, sin reescribirlo ni ` +
   `resumirlo:\n\n---\nagent: ${AGENT}\ndate: <fecha>\npassed: ${pasan.length}\ntotal: ${hechos.length}\n---\n\n` +
   `# Casos adversariales — <fecha>\n\n${filas}\n\n` +
