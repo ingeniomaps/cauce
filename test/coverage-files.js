@@ -8,8 +8,8 @@
 // no puede, sus comandos terminan en `process.exit`—; pide que ninguno retroceda.
 //
 // Uso:
-//   node test/coverage-files.js <lcov>              comprueba
-//   node test/coverage-files.js <lcov> --update     registra lo actual como nuevo piso
+//   node test/coverage-files.js <lcov>                       comprueba
+//   node test/coverage-files.js <lcov...> --update           registra el mínimo como nuevo piso
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -63,23 +63,70 @@ function enDisco() {
   return found.filter((file) => !file.startsWith(SIN_COBERTURA)).sort()
 }
 
-const [lcov, modo] = process.argv.slice(2)
-if (!lcov) { console.error('uso: node test/coverage-files.js <lcov> [--update]'); process.exit(2) }
-const actual = medido(lcov)
+const argumentos = process.argv.slice(2)
+const actualizar = argumentos.includes('--update')
+const lcovs = argumentos.filter((valor) => valor && !valor.startsWith('--'))
+if (!lcovs.length) {
+  console.error('uso: node test/coverage-files.js <lcov...> [--update]')
+  process.exit(2)
+}
 
-if (modo === '--update') {
+// El mínimo de todas las corridas, no la última. Una sola medición no alcanza para fijar un piso:
+// `integrations/state.js` va de 64 a 68 según cómo caigan los archivos de test en paralelo, así que
+// registrar la corrida que tocó dejaba el piso arriba de lo alcanzable y el gate fallando al azar.
+// Nadie sube un piso por suerte; para subirlo hay que subir la cobertura en todas.
+function piso(archivos) {
+  const found = {}
+  for (const archivo of archivos) {
+    for (const [file, valores] of Object.entries(medido(archivo))) {
+      const previo = found[file]
+      found[file] = previo
+        ? Object.fromEntries(Object.keys(valores).map((k) => [k, Math.min(valores[k], previo[k])]))
+        : valores
+    }
+  }
+  return found
+}
+
+const actual = piso(lcovs)
+
+if (actualizar) {
+  const anterior = fs.existsSync(BASELINE) ? JSON.parse(fs.readFileSync(BASELINE, 'utf8')) : {}
   const registro = {}
-  for (const file of enDisco()) if (actual[file]) registro[file] = actual[file]
+  const movidos = []
+  const podrian = []
+  for (const file of enDisco()) {
+    if (!actual[file]) continue
+    registro[file] = {}
+    for (const [metrica, valor] of Object.entries(actual[file])) {
+      const antes = (anterior[file] || {})[metrica]
+      if (antes === undefined) {
+        registro[file][metrica] = valor
+        movidos.push(`+ ${file}: ${metrica} ${valor}%`)
+        continue
+      }
+      // Nunca sube solo. Tres corridas siguen sin ver el valle de un archivo que se mueve cuatro
+      // puntos, así que una que salga alta subiría el piso por suerte y dejaría el gate fallando.
+      // Subirlo es afirmar «esto se sostiene», y eso lo decide una persona editando el registro.
+      registro[file][metrica] = Math.min(valor, antes)
+      if (valor > antes) podrian.push(`= ${file}: ${metrica} llegó a ${valor}% (piso sigue en ${antes}%)`)
+      else if (valor < antes) movidos.push(`↓ ${file}: ${metrica} ${antes}% → ${valor}%`)
+    }
+  }
   fs.writeFileSync(BASELINE, `${JSON.stringify(registro, null, 2)}\n`)
-  console.log(`✓ piso por archivo registrado para ${Object.keys(registro).length} archivo(s)`)
+  // Nada se mueve en silencio: lo que baja es una regresión aceptada a mano y merece verse al hacerlo,
+  // no sólo en el diff.
+  for (const linea of movidos) console.log(`  ${linea}`)
+  for (const linea of podrian) console.log(`  ${linea}`)
+  console.log(`✓ piso registrado sobre ${lcovs.length} corrida(s) para ${Object.keys(registro).length} archivo(s)`)
   process.exit(0)
 }
 
-const piso = JSON.parse(fs.readFileSync(BASELINE, 'utf8'))
+const pisoRegistrado = JSON.parse(fs.readFileSync(BASELINE, 'utf8'))
 const errores = []
 for (const file of enDisco()) {
   const tiene = actual[file]
-  const debe = piso[file]
+  const debe = pisoRegistrado[file]
   if (!debe) {
     errores.push(`${file}: sin piso registrado. Si es nuevo, corré "npm run coverage:update" y revisá el número`)
     continue
@@ -91,7 +138,7 @@ for (const file of enDisco()) {
     }
   }
 }
-for (const file of Object.keys(piso)) {
+for (const file of Object.keys(pisoRegistrado)) {
   if (!enDisco().includes(file)) errores.push(`${file}: tiene piso y ya no existe; sacalo del registro`)
 }
 
@@ -100,4 +147,4 @@ if (errores.length) {
   console.error(`\n${errores.length} archivo(s) por debajo de su piso de cobertura.`)
   process.exit(1)
 }
-console.log(`✓ cobertura por archivo: ${Object.keys(piso).length} archivo(s) en su piso o por encima`)
+console.log(`✓ cobertura por archivo: ${Object.keys(pisoRegistrado).length} archivo(s) en su piso o por encima`)

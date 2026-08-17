@@ -81,11 +81,11 @@
   },
   "engine/integrations/registry.js": {
     "lines": 79,
-    "branches": 48,
+    "branches": 47,
     "functions": 95
   },
   "engine/integrations/state.js": {
-    "lines": 98,
+    "lines": 97,
     "branches": 64,
     "functions": 92
   },
