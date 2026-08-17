@@ -22,10 +22,15 @@ const catalog = require('./catalog')
 const manifest = require('../core/manifest')
 const ownership = require('../core/ownership')
 
-// Se comparan contra la ruta relativa dentro del cargo. `_template.md` sobrevive en las dos carpetas
-// porque es andamiaje del mecanismo, no un artefacto de nadie.
+// Se comparan contra la ruta relativa dentro del cargo. Informes, propuestas y veredictos no viajan:
+// son lo que produjo nuestra versión del contrato, y el fork nace para dejar de ser ese contrato.
+//
+// Antes se exceptuaba `_template.md`, por andamiaje. Ese andamiaje resultó ser muerto —el motor
+// genera el informe y la propuesta desde un molde propio y nunca lee esos archivos— y en un tercio
+// del catálogo contradecía la forma que sí produce, así que se retiró entero. No hay caso especial
+// que preservar.
 function inherited(relative) {
-  if (/^learning\/(reports|proposals)\//.test(relative)) return path.basename(relative) === '_template.md'
+  if (/^learning\/(reports|proposals)\//.test(relative)) return false
   if (relative.startsWith('evaluations/results/')) return false
   return true
 }

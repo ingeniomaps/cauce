@@ -335,7 +335,6 @@ function fakePackage(root, slug, extra = {}) {
   fs.writeFileSync(path.join(dir, 'SKILL.md'), '# Contrato\n')
   fs.writeFileSync(path.join(dir, 'evaluations', 'cases', '01-caso.md'), '# Solicitud\n')
   fs.writeFileSync(path.join(dir, 'learning', 'HISTORY.md'), '| Fecha |\n|---|\n')
-  fs.writeFileSync(path.join(dir, 'learning', 'reports', '_template.md'), 'molde\n')
   fs.writeFileSync(path.join(dir, 'learning', 'reports', '2026-01-01.md'), 'investigación nuestra\n')
   fs.writeFileSync(path.join(dir, 'learning', 'proposals', '2026-01.md'), 'decisión nuestra\n')
   fs.writeFileSync(path.join(dir, 'evaluations', 'results', '2026-01-01.md'), 'veredicto nuestro\n')
@@ -358,7 +357,6 @@ test('el fork trae el cargo entero y deja atrás lo que ganó nuestra versión',
   const copied = new Set(result.files)
   assert.ok(copied.has('SKILL.md'), 'el contrato')
   assert.ok(copied.has('evaluations/cases/01-caso.md'), 'y lo que lo hace verificable')
-  assert.ok(copied.has('learning/reports/_template.md'), 'el molde es andamiaje, no artefacto')
 
   // Un veredicto pertenece al contrato que lo ganó, y el fork nace para dejar de ser ese contrato.
   assert.ok(!copied.has('learning/reports/2026-01-01.md'), 'nuestra investigación no viaja')
