@@ -52,6 +52,7 @@ test('el aprendizaje de la profesión se hace en el toolkit, no en cada empresa'
     try { return fs.readdirSync(reports).filter((name) => /^\d{4}-\d{2}-\d{2}\.md$/.test(name)) } catch { return [] }
   }
   const previos = nuevos()
+  const habia = fs.existsSync(reports)
   try {
     assert.equal(run(['learn', 'product-manager'], repoRoot).status, 0)
     assert.equal(fs.readFileSync(skill, 'utf8'), before, 'investigar no reescribe el cargo')
@@ -59,6 +60,10 @@ test('el aprendizaje de la profesión se hace en el toolkit, no en cada empresa'
     for (const name of nuevos()) {
       if (!previos.includes(name)) fs.rmSync(path.join(reports, name))
     }
+    // El informe se borraba pero el directorio quedaba, y `learn` lo crea. Una prueba no deja
+    // andamiaje en el catálogo que el repo versiona. `rmdirSync` sólo saca el vacío: si quedó algo
+    // que esta corrida no puso, se conserva en vez de taparlo con un error dentro del `finally`.
+    if (!habia) { try { fs.rmdirSync(reports) } catch { /* no quedó vacío */ } }
   }
 })
 
