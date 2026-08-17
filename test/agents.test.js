@@ -305,6 +305,30 @@ test('un caso adversarial entrega el artefacto, no lo describe', () => {
   }
 })
 
+// Al ciclo le faltaba el final. Había firma, aplicación e historial, y `status:` nacía en `proposed` y
+// no lo movía nadie: volver a promover encontraba la misma propuesta firmada —«aprobada y aplicada»
+// también lee como aprobada— y la aplicaba de nuevo, duplicando cada viñeta y cada fuente sin fallar.
+test('una propuesta aplicada no se puede volver a aplicar', () => {
+  const L = require('../engine/agents/learning')
+  const repo = path.resolve(__dirname, '..')
+  const file = path.join(repo, 'agents/roles/system/qa-engineer/learning/proposals/2026-08.md')
+  const original = fs.readFileSync(file, 'utf8')
+  try {
+    fs.writeFileSync(file, original.replace(/^status:.*$/m, 'status: proposed'))
+    assert.equal(L.proposalState(fs.readFileSync(file, 'utf8')), 'proposed')
+    assert.equal(L.evaluate(repo, 'qa-engineer').pending, 1, 'cuenta como pendiente')
+
+    const sellada = L.seal(repo, 'qa-engineer', '2026-08')
+    assert.equal(sellada.already, false)
+    assert.equal(L.proposalState(fs.readFileSync(file, 'utf8')), 'applied')
+    // Idempotente: sellar de nuevo no falla ni reescribe, avisa que ya estaba.
+    assert.equal(L.seal(repo, 'qa-engineer', '2026-08').already, true)
+    assert.equal(L.evaluate(repo, 'qa-engineer').pending, 0, 'y deja de pedir trabajo')
+  } finally {
+    fs.writeFileSync(file, original)
+  }
+})
+
 test('un resultado que no cubre todos los casos vigentes no vale', () => {
   const EV = require('../engine/agents/evaluations')
   const repo = path.resolve(__dirname, '..')

@@ -37,6 +37,7 @@ const FIRMA = {
     approved: { type: 'boolean' },
     signedBy: { type: 'string' },
     state: { type: 'string' },
+    status: { type: 'string' },
     hasChange: { type: 'boolean' },
   },
 }
@@ -70,12 +71,13 @@ const firma = await agent(
   `Set dir to "${ROOT}/<path>": that command prints paths relative to ${ROOT}.\n\n` +
   `Find the newest <dir>/learning/proposals/AAAA-MM.md` +
   `${PERIOD ? `, preferring ${PERIOD}.md` : ''} and set proposal to its full path. Read **only** its ` +
-  `"Aprobación humana" and "Cambio propuesto" sections and report, without interpreting in anyone's ` +
-  `favour:\n` +
+  `frontmatter and its "Aprobación humana" and "Cambio propuesto" sections and report, without ` +
+  `interpreting in anyone's favour:\n` +
   `- approved: true only if the state says it is approved AND a named person is recorded. "pendiente", ` +
   `"por definir" or an empty responsible means false.\n` +
   `- signedBy: the person recorded, or empty.\n` +
   `- state: the literal state line.\n` +
+  `- status: the literal value of the frontmatter "status:" field.\n` +
   `- hasChange: true only if "Cambio propuesto" carries a concrete change; "por definir" means false.`,
   { schema: FIRMA, label: 'firma' },
 )
@@ -87,7 +89,19 @@ if (!firma.approved) {
   return stop('sin-firma', `${firma.proposal} no está aprobada (${firma.state || 'sin estado'}). ` +
     'Firmá «Aprobación humana» con un responsable y repetí: nadie se autoriza a sí mismo')
 }
+// Una propuesta aplicada no se vuelve a aplicar. La firma no alcanza como candado: sigue firmada
+// después, y el estado en prosa pasa a decir «aprobada y aplicada», que también lee como aprobada.
+// Como el cambio es aditivo por diseño, reaplicar no falla — duplica cada viñeta y cada fuente.
+if ((firma.status || '').toLowerCase() === 'applied') {
+  return stop('ya-aplicada', `${firma.proposal} ya está aplicada. Para un cambio nuevo, abrí la ` +
+    'propuesta del período siguiente con "ops learn <cargo> --proposal"')
+}
 log(`Aprobada por ${firma.signedBy}`)
+
+// El período sale del nombre del archivo, que el motor ya garantiza `AAAA-MM.md`: pedírselo otra vez
+// al modelo sería preguntar dos veces lo mismo y arriesgar dos respuestas.
+const PERIODO = (firma.proposal.match(/(\d{4}-\d{2})\.md$/) || [])[1] || ''
+if (!PERIODO) return stop('propuesta-sin-periodo', `${firma.proposal} no se llama AAAA-MM.md`)
 
 phase('Aplicar')
 
@@ -125,6 +139,15 @@ await agent(
   `${aplicado.deviations ? `. Desviaciones: ${aplicado.deviations}` : ''}.\n\n` +
   `Respetá el formato de tabla que ya tiene el archivo. No toques ninguna otra cosa, no hagas commit.`,
   { label: 'historial' },
+)
+
+// Sellar es lo último: hasta que el cambio no está aplicado y registrado, la propuesta sigue
+// pendiente. Lo hace el motor y no vos, a mano, porque marcar el estado editando frontmatter es
+// exactamente el paso que se hace mal en silencio.
+await agent(
+  `From ${ROOT}, run "node tools/ops.js learn ${AGENT} --applied --period ${PERIODO}" and report only ` +
+  `what it printed. Change nothing else.`,
+  { label: 'sella' },
 )
 
 log('El contrato cambió: los casos valen sólo si se vuelven a correr contra la versión nueva.')

@@ -49,7 +49,7 @@ function usage() {
   ops automation check <ops-root>
   ops automation doctor <ops-root> claude|codex|gemini|antigravity
   ops automation install <ops-root> claude|codex|gemini|antigravity
-  ops learn <agent> [--proposal]
+  ops learn <agent> [--proposal] [--applied [--period <AAAA-MM>]]
   ops evaluate <agent> [--cases [--json]] [--bench [caso]]
   ops agents list [ops-root] [--own|--system] [--json]
   ops agents fork <cargo> [ops-root]
@@ -59,7 +59,7 @@ function usage() {
 }
 
 // Banderas que consumen el argumento siguiente: su valor no es un posicional.
-const VALUED_FLAGS = new Set(['--name', '--mode', '--fixture'])
+const VALUED_FLAGS = new Set(['--name', '--mode', '--fixture', '--period'])
 
 // Los posicionales del comando, salteando banderas y sus valores. Leer `process.argv` crudo hacía
 // que `agents list --json` tomara `--json` como la raíz: el catálogo salía vacío, sin error, y quien
@@ -915,6 +915,15 @@ function automation(action, rootArg, runnerName) {
 }
 function learn(agent) {
   try {
+    // Sellar es determinista y por eso vive acá y no en el recorrido: marcar una propuesta como
+    // aplicada editando frontmatter a mano es justo el paso que un agente hace mal en silencio.
+    if (process.argv.includes('--applied')) {
+      const result = L.seal(opsRoot(), agent, option('--period'))
+      const relative = path.relative(opsRoot(), result.file)
+      return console.log(result.already
+        ? `= ${relative} ya estaba aplicada`
+        : `✓ ${relative} queda aplicada: no se vuelve a aplicar`)
+    }
     const result = process.argv.includes('--proposal')
       ? L.prepareProposal(opsRoot(), agent)
       : L.prepareReport(opsRoot(), agent)
@@ -960,7 +969,8 @@ function evaluate(agent) {
     if (errors.length) fail(`\n${errors.length} error(es)`, 1)
     const corrida = runs.last ? `${runs.last.passed}/${runs.last.total} pasan (${runs.last.date})` : 'sin correr'
     console.log(
-      `✓ ${agent}: ${result.cases} caso(s) — ${corrida}, ${result.proposals} propuesta(s), ` +
+      `✓ ${agent}: ${result.cases} caso(s) — ${corrida}, ${result.proposals} propuesta(s)` +
+        `${result.pending ? ` (${result.pending} sin aplicar)` : ''}, ` +
         'controles estructurales válidos',
     )
   } catch (error) { fail(error.message, 2) }

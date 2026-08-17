@@ -286,6 +286,12 @@ test('promover un cargo exige firma humana y verificación posterior', () => {
   // Nunca aplica lo que no está firmado: la lectura de la firma ocurre antes que cualquier escritura.
   assert.ok(promote.indexOf("label: 'firma'") < promote.indexOf('aplica:'), 'la firma se lee primero')
 
+  // Y no la aplica dos veces. La firma no sirve de candado —sigue firmada después—, así que el estado
+  // terminal lo lleva el frontmatter, y sellarlo es lo último que ocurre: antes de eso sigue pendiente.
+  assert.match(promote, /ya-aplicada/, 'una propuesta aplicada se rechaza')
+  assert.match(promote, /--applied --period/, 'y al terminar se sella')
+  assert.ok(promote.indexOf("label: 'historial'") < promote.indexOf("label: 'sella'"), 'sella al final')
+
   // El que propone jamás toca el cargo: si lo hiciera, la firma llegaría tarde.
   const propose = fs.readFileSync(path.join(WF, 'agent-propose.js'), 'utf8')
   assert.match(propose, /No toques «Aprobación humana»/)

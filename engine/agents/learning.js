@@ -33,6 +33,38 @@ function assertWritable(root, agent) {
 function isoDate(now = new Date()) { return now.toISOString().slice(0, 10) }
 function month(now = new Date()) { return now.toISOString().slice(0, 7) }
 
+const PROPOSAL_NAME = /^\d{4}-\d{2}\.md$/
+
+function proposalFiles(dir) {
+  try { return fs.readdirSync(dir).filter((name) => PROPOSAL_NAME.test(name)).sort() } catch { return [] }
+}
+
+function proposalState(text) {
+  return ((text.match(/^status:\s*(\S+)\s*$/m) || [])[1] || 'proposed').toLowerCase()
+}
+
+// El estado terminal del ciclo. Existía la firma, la aplicación y el historial, y faltaba justo el
+// paso que vuelve irrepetible lo ya hecho: `status:` nacía en `proposed` y nadie lo movía nunca.
+//
+// No era un dato desprolijo. `agent-promote` busca la propuesta más nueva y aplica si el estado dice
+// aprobada con responsable — y «aprobada y aplicada» cumple eso—, así que volver a correrlo sobre una
+// propuesta ya aplicada la aplicaba de nuevo. Como los cambios son aditivos por diseño, el resultado
+// no es un error visible sino un contrato con cada viñeta y cada fuente duplicadas.
+function seal(root, agent, period = '') {
+  const dir = path.join(assertWritable(root, agent), 'learning', 'proposals')
+  const names = proposalFiles(dir)
+  if (!names.length) throw new Error(`${agent} no tiene propuestas en learning/proposals/.`)
+  const name = period ? `${period}.md` : names[names.length - 1]
+  if (!names.includes(name)) throw new Error(`${agent} no tiene la propuesta ${name}.`)
+  const file = path.join(dir, name)
+  const text = fs.readFileSync(file, 'utf8')
+  const state = proposalState(text)
+  if (state === 'applied') return { file, already: true }
+  if (!/^status:\s*\S+\s*$/m.test(text)) throw new Error(`${file} no declara status en su frontmatter.`)
+  fs.writeFileSync(file, text.replace(/^status:\s*\S+\s*$/m, 'status: applied'))
+  return { file, already: false }
+}
+
 function prepareReport(root, agent, now = new Date()) {
   const reports = path.join(assertWritable(root, agent), 'learning', 'reports')
   const file = path.join(reports, `${isoDate(now)}.md`)
@@ -148,24 +180,24 @@ function evaluate(root, agent) {
   for (const phrase of ['no inventar', 'autorización', 'evidencia observable']) {
     if (!skill.includes(phrase)) errors.push(`SKILL.md no conserva el control: ${phrase}`)
   }
-  let proposals = []
-  try {
-    proposals = fs.readdirSync(path.join(target, 'learning', 'proposals'))
-      .filter((name) => /^\d{4}-\d{2}\.md$/.test(name))
-  } catch { /* vacío */ }
+  const proposals = proposalFiles(path.join(target, 'learning', 'proposals'))
+  let pending = 0
   for (const name of proposals) {
     const text = fs.readFileSync(path.join(target, 'learning', 'proposals', name), 'utf8')
     if (!/^automatic_apply:\s*false$/m.test(text)) errors.push(`${name}: automatic_apply debe ser false`)
     for (const section of REQUIRED_SECTIONS) {
       if (!text.includes(`## ${section}`)) errors.push(`${name}: falta sección ${section}`)
     }
+    // Contar sólo las que esperan algo. Una propuesta aplicada contada como propuesta deja al cargo
+    // reportando trabajo pendiente para siempre, y es la misma confusión que permitía reaplicarla.
+    if (proposalState(text) !== 'applied') pending += 1
   }
   let cases = 0
   try {
     cases = fs.readdirSync(path.join(target, 'evaluations', 'cases'))
       .filter((name) => name.endsWith('.md')).length
   } catch { /* vacío */ }
-  return { errors, proposals: proposals.length, cases }
+  return { errors, proposals: proposals.length, pending, cases }
 }
 
-module.exports = { prepareReport, prepareProposal, evaluate }
+module.exports = { prepareReport, prepareProposal, evaluate, proposalState, seal }
