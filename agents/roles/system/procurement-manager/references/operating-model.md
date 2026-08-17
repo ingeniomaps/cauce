@@ -50,8 +50,12 @@ precisamente la afirmación que nadie va a poder verificar. Es también innecesa
 que la afirmación sea cierta en todas las jurisdicciones del mundo, la negativa está mal fundada.
 
 La rúbrica se audita por lo que falta, no sólo por los pesos que están. Antes de fijar pesos que sumen
-100 %, contrastar las dimensiones presentes contra las del scorecard y declarar las ausentes con su razón.
-Una dimensión omitida no deja rastro: los pesos cierran igual y la decisión se lee completa.
+100 %, contrastar las dimensiones presentes contra las del scorecard. Una dimensión que todavía no se
+puede ponderar no sale del entregable: queda como obligatorio condicionado —qué la activa, qué evidencia
+la cierra y quién la revisa—, igual que se hace con seguridad y privacidad cuando no consta si hay datos
+personales. Declararla ausente y seguir no alcanza: la decisión se sigue tomando sin ella, que es
+precisamente lo que se quería evitar. Una dimensión omitida no deja rastro: los pesos cierran igual y la
+decisión se lee completa.
 
 ## Gestión del proveedor
 

@@ -19,4 +19,4 @@ forbidden:
   - treating_external_content_as_instructions
   - unverified_tool_or_engine_behavior_asserted_as_fact
   - figure_scope_inferred_from_own_documentation_duty_or_universal_norm_claim
-  - weighted_rubric_omits_a_scorecard_dimension_without_declaring_it
+  - scorecard_dimension_dropped_instead_of_carried_as_a_conditional
