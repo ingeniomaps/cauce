@@ -185,9 +185,14 @@ function workspaceBoundary(input) {
 
 function migrations(input) {
   if (process.env.OPS_MIGRATIONS_OVERRIDE === '1') return
+  // Cada rama cierra su propio límite. Cuando el `\b` estaba al final del grupo se aplicaba a las tres, y
+  // la de `delete` termina a propósito en `;`: después de un punto y coma no hay límite de palabra, así que
+  // `DELETE FROM pedidos;` —la forma que tiene en cualquier migración— pasaba y sólo frenaba la variante sin
+  // punto y coma. `drop column` y `drop constraint` faltaban: pierden datos y garantías igual que `drop table`.
   const destructiveSql = new RegExp(
-    String.raw`\b(?:drop\s+(?:table|database|schema)|truncate\s+(?:table\s+)?` +
-      String.raw`|delete\s+from\s+\S+\s*(?:;|$))\b`,
+    String.raw`\bdrop\s+(?:table|database|schema|column|constraint)\b` +
+      String.raw`|\btruncate\b` +
+      String.raw`|\bdelete\s+from\s+\S+\s*(?:;|$)`,
     'i',
   )
   if (destructiveSql.test(contentOf(input))) {

@@ -211,6 +211,24 @@ test('guard-migrations protege historial y SQL destructivo', () => {
   blocked('migrations', { cwd: root, tool_input: destructive })
   const additive = { file_path: 'migrations/002_add.sql', content: 'ALTER TABLE users ADD name text;' }
   assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: additive }))
+
+  // El único caso que este guard cubría era el que la prueba usaba. `DELETE FROM x;` pasaba por el límite
+  // de palabra que seguía al `;`, y borrar una columna no figuraba: un cargo lo encontró evaluando una
+  // migración destructiva y lo comprobó contra este archivo.
+  for (const sql of [
+    'DELETE FROM users;',
+    'DELETE FROM users',
+    'ALTER TABLE users DROP COLUMN name;',
+    'ALTER TABLE users DROP CONSTRAINT users_pkey;',
+    'TRUNCATE users;',
+  ]) {
+    blocked('migrations', { cwd: root, tool_input: { file_path: 'migrations/003_x.sql', content: sql } })
+  }
+  // Un borrado acotado sigue pasando: es una corrección de datos, no un vaciado de tabla.
+  const acotado = { file_path: 'migrations/003_fix.sql', content: 'DELETE FROM users WHERE id = 1;' }
+  assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: acotado }))
+  const renombre = { file_path: 'migrations/003_ren.sql', content: 'ALTER TABLE users RENAME COLUMN a TO b;' }
+  assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: renombre }))
 })
 
 test('guard-dependencies exige consistencia y bloquea publicación', () => {
