@@ -85,10 +85,22 @@ function stagedFiles(dir) {
   return result.status === 0 ? result.stdout.trim().split('\n').filter(Boolean) : []
 }
 
+// R10 pide «la autorización configurada para el proyecto» y `runner.allowPush` es esa configuración:
+// sin esto era un interruptor que nadie leía, y un cargo que lo leyó dio por imposible un push que el
+// guard bloqueaba igual. Sin raíz legible no hay permiso que verificar, así que no se autoriza.
+function pushAllowed(input) {
+  const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
+  if (!root) return false
+  const runner = configOf(root).runner
+  return Boolean(runner && runner.allowPush === true)
+}
+
 function destructive(input) {
   const command = commandOf(input)
+  if (/\bgit\s+push\b/.test(command) && !pushAllowed(input)) {
+    block("'git push' publica cambios y requiere una acción humana. Se habilita con runner.allowPush.")
+  }
   const rules = [
-    [/\bgit\s+push\b/, "'git push' publica cambios y requiere una acción humana."],
     [/\bgit\s+reset\s+--hard\b/, "'git reset --hard' destruye cambios locales."],
     [/\bgit\s+clean\s+-[^\s]*f/, "'git clean -f' borra archivos sin seguimiento."],
     [

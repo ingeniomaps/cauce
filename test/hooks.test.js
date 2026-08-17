@@ -26,6 +26,25 @@ test('guard-destructive bloquea pérdida o publicación y permite lecturas', () 
   assert.doesNotThrow(() => execute('destructive', { tool_input: { command: 'rm -r build/cache' } }))
 })
 
+// La mitad que importa es que `true` deje pasar: `allowPush` existía sólo para el validador, el guard
+// bloqueaba igual, y un cargo que lo leyó dio por imposible un push que nadie había configurado.
+// Sin raíz —lo que pasa en este mismo repositorio, que no tiene `planning/`— no hay permiso que leer.
+test('guard-destructive respeta runner.allowPush del proyecto', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-push-'))
+  fs.mkdirSync(path.join(root, 'planning'))
+  const declara = (allowPush) => fs.writeFileSync(
+    path.join(root, 'ops.config.json'),
+    JSON.stringify({ mode: 'embedded', runner: { allowPush } }),
+  )
+  const push = { cwd: root, tool_input: { command: 'git push origin main' } }
+
+  declara(false)
+  blocked('destructive', push)
+  declara(true)
+  assert.doesNotThrow(() => execute('destructive', push))
+  blocked('destructive', { cwd: root, tool_input: { command: 'git reset --hard HEAD' } })
+})
+
 test('guard-git-add exige stage explícito', () => {
   for (const command of ['git add .', 'git add -A', 'git add --all']) blocked('git-add', { tool_input: { command } })
   assert.doesNotThrow(() => execute('git-add', { tool_input: { command: 'git add src/app.js' } }))
