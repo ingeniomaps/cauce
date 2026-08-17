@@ -4,6 +4,26 @@ Acá se **fabrica** el toolkit; no se lo consume. Las reglas que Cauce distribuy
 —`template/AGENTS.md` y `template/planning/rules/`— también rigen este repo, con una inversión que
 hay que tener presente antes de tocar nada.
 
+## Acá no se instala nada
+
+**No correr `automation install` de ningún runner. No correr `ops init`. No crear `planning/` en la
+raíz.** Cauce es lo que se fabrica en este repositorio, no algo que este repositorio consuma: el
+toolkit no se aplica a sí mismo.
+
+Esto se sugiere una y otra vez —sesión tras sesión, con buena intención— y siempre está mal. Lo que
+esos comandos producen acá es daño concreto:
+
+- `install` genera 47 punteros a cargos que escribimos en este mismo repo, y una segunda copia de los
+  workflows que puede divergir del original.
+- Instala doce guards: `destructive` bloquea el `git push` de cada release y `planning-drift` valida
+  un `planning/` que no existe.
+- `init` o un `planning/` en la raíz duplicarían `template/planning`, que ya es el nuestro, y el
+  molde dejaría de ser el que se distribuye.
+
+El wiring de acá es a mano: `.claude/settings.json` activa un solo guard y explica por qué en su
+`$comment`. Que `automation doctor` reporte faltantes es correcto y no hay que "arreglarlo": mide si
+la superficie de consumo de una empresa está completa, una pregunta que acá no aplica.
+
 ## La inversión de `system/`
 
 `template/AGENTS.md` dice «nunca editar nada dentro de `system/`». En una empresa es correcto: ese
@@ -35,10 +55,3 @@ Este repo no tiene `planning/` propio: `ops.config.json` declara `mode: toolkit`
 - **Comentarios y documentación en español; mensajes de commit en inglés**, Conventional Commits.
 - Las pruebas corren con `node --test`. La puerta real es `npm run ci`: `check`, automatización,
   integraciones y cobertura.
-
-## El wiring de acá es a mano
-
-`.claude/settings.json` está escrito a mano y activa un solo guard. No correr `automation install` en
-este repo: arma la superficie de consumo de una empresa, que acá no aplica. El razonamiento está en el
-`$comment` de ese archivo, y es también por qué `automation doctor` reporta faltantes que son
-correctos.
