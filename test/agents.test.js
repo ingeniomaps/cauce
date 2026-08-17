@@ -90,6 +90,34 @@ test('todos los agentes se resuelven desde el paquete y pasan sus controles', as
   }
 })
 
+// Cuatro agentes distintos convergieron en etiquetar `H1`, `H2`, … sin que nada se lo pidiera, y la
+// etiqueta terminó siendo carga: dentro del informe une Hallazgos con Evidencia y Recomendación, y la
+// propuesta mensual la cita para decir de qué hallazgo sale un cambio. Que funcione porque un modelo
+// adivina la convención es exactamente lo que deja de funcionar en silencio.
+test('el informe trae escritas las convenciones de las que depende el ciclo', () => {
+  const target = installedProject('Convenciones')
+  const own = path.join(target, 'agents', 'roles', 'probe')
+  fs.mkdirSync(own, { recursive: true })
+  fs.writeFileSync(path.join(own, 'SKILL.md'), '---\nname: probe\ndescription: x\n---\n\nNo inventar. Requiere autorización. Exige evidencia observable.\n')
+  assert.equal(run(['learn', 'probe'], target).status, 0)
+  const reports = path.join(own, 'learning', 'reports')
+  const report = path.join(reports, fs.readdirSync(reports)[0])
+  const scaffold = fs.readFileSync(report, 'utf8')
+  assert.match(scaffold, /H1, H2/, 'la etiqueta de hallazgo')
+  assert.match(scaffold, /No renombres los títulos/, 'y que los títulos se leen con un patrón')
+
+  // El comentario va fuera de toda sección a propósito: dentro de «Recomendación» lo capturaría el
+  // patrón de consolidación y viajaría como texto a cada propuesta del catálogo.
+  fs.writeFileSync(report, scaffold.replace(
+    '## Recomendación\n', '## Recomendación\n\n1. Rotar el token (cierra H1).\n',
+  ))
+  assert.equal(run(['learn', 'probe', '--proposal'], target).status, 0)
+  const proposals = path.join(own, 'learning', 'proposals')
+  const consolidated = fs.readFileSync(path.join(proposals, fs.readdirSync(proposals)[0]), 'utf8')
+  assert.match(consolidated, /Rotar el token \(cierra H1\)/, 'la recomendación llega entera')
+  assert.equal(consolidated.includes('No renombres'), false, 'y el comentario no viaja con ella')
+})
+
 test('un slug duplicado entre tipos se rechaza como ambiguo', () => {
   const target = installedProject('Ambiguous agents')
   const duplicate = path.join(target, 'agents', 'specialists', 'product-manager')

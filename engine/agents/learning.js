@@ -52,6 +52,18 @@ status: draft
 
 # Investigación semanal — ${isoDate(now)}
 
+<!-- Dos convenciones que el ciclo necesita y que nada más sostiene:
+
+  · Etiquetá cada hallazgo H1, H2, … en el orden en que aparecen. «Evidencia» y «Recomendación» se
+    refieren a ellos por esa clave, y la propuesta mensual la cita para decir de qué hallazgo sale
+    un cambio. Sin etiqueta las tres secciones dejan de cruzarse y nada lo delata.
+
+  · No renombres los títulos. «## Recomendación» se lee con un patrón exacto y es lo único que la
+    propuesta consolida de cada informe: renombrarlo no da error, deja la propuesta vacía.
+
+Este comentario vive fuera de toda sección a propósito — dentro de «Recomendación» viajaría a cada
+propuesta consolidada. -->
+
 ## Fuentes consultadas
 
 ## Hallazgos
