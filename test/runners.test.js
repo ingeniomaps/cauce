@@ -117,7 +117,8 @@ test('el puntero de un cargo conserva su frontmatter y no duplica el contrato', 
   assert.ok(generated.includes(pm.description), 'la descripción llega verbatim')
   // Y el cuerpo remite, no copia.
   assert.match(generated, /agents\/roles\/system\/product-manager\/SKILL\.md/, 'apunta a donde el cargo vive de verdad')
-  const original = fs.readFileSync(path.join(repoRoot, 'agents', 'roles', 'system', 'product-manager', 'SKILL.md'), 'utf8')
+  const contrato = path.join(repoRoot, 'agents', 'roles', 'system', 'product-manager', 'SKILL.md')
+  const original = fs.readFileSync(contrato, 'utf8')
   assert.ok(generated.length < original.length / 2, 'un puntero pesa mucho menos que el contrato')
 
   // La ruta es relativa y no decía a qué se ancla. Dos agentes que resolvieron un cargo parados en el
@@ -133,7 +134,11 @@ test('el puntero de un cargo conserva su frontmatter y no duplica el contrato', 
 test('ninguna ruta de un adaptador da por sentado dónde se instala', () => {
   const REPO = path.resolve(__dirname, '..')
   const A = require('../engine/automation')
-  const raiz = /(?<!\{\{OPS_DIR\}\}|\.|\/)\b(planning\/|organization\/|integrations\/|teams\/|automatization\/|tools\/ops\.js|ops\.config\.json)/g
+  const raiz = new RegExp(
+    String.raw`(?<!\{\{OPS_DIR\}\}|\.|\/)\b(planning\/|organization\/|integrations\/`
+    + String.raw`|teams\/|automatization\/|tools\/ops\.js|ops\.config\.json)`,
+    'g',
+  )
   const sueltas = []
   for (const name of A.RUNNER_NAMES) {
     const runner = A.runnerManifest(REPO, name)

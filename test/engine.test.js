@@ -562,7 +562,9 @@ test('un equipo declara qué deja, y el de incidentes no propone trabajo', () =>
     schemaVersion: 1, slug: 'demo', name: 'D', purpose: 'p', outcome: 'inventado',
     entryAgent: 'product-manager', facilitator: 'product-manager',
     guardrails: ['g'], completion: ['c'],
-    stages: [{ id: 'frame', phase: 'discovery', agent: 'product-manager', dependsOn: [], produces: ['x'], exitGate: 'y' }],
+    stages: [
+      { id: 'frame', phase: 'discovery', agent: 'product-manager', dependsOn: [], produces: ['x'], exitGate: 'y' },
+    ],
   }))
   assert.ok(T.validate(root, 'demo').errors.some((error) => /outcome debe ser/.test(error)))
 })

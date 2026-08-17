@@ -183,7 +183,8 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   const forced = run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--force'])
   assert.equal(forced.status, 0, forced.stderr)
   assert.equal(fs.readFileSync(path.join(target, 'README.md'), 'utf8'), 'propiedad del usuario\n')
-  assert.equal(fs.readFileSync(path.join(target, 'agents', 'roles', 'product-manager', 'SKILL.md'), 'utf8'), 'personalizado\n')
+  const propio = path.join(target, 'agents', 'roles', 'product-manager', 'SKILL.md')
+  assert.equal(fs.readFileSync(propio, 'utf8'), 'personalizado\n')
   assert.equal(fs.readFileSync(ownGuard, 'utf8'), 'guard propio de la empresa\n')
 })
 

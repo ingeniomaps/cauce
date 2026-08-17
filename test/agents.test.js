@@ -14,6 +14,10 @@ const catalog = require('../engine/agents/catalog')
 const AGENTS = catalog.list(path.dirname(AGENTS_ROOT))
   .map((role) => ({ type: role.type, slug: role.slug, dir: role.dir }))
 
+// El cuerpo mínimo que los controles de `evaluate` exigen: sin esas tres frases, fallan.
+const skill = (name, description) => `---\nname: ${name}\ndescription: ${description}\n---\n\n`
+  + 'No inventar. Requiere autorización. Exige evidencia observable.\n'
+
 function run(args, cwd = path.dirname(CLI)) {
   const env = { ...process.env, LANG: process.env.LANG || 'C.UTF-8' }
   delete env.NODE_TEST_CONTEXT
@@ -82,7 +86,7 @@ test('una empresa no puede investigar la profesión dentro del paquete', () => {
   // Un cargo propio de la empresa sí acumula su aprendizaje, porque es suyo.
   const own = path.join(target, 'agents', 'roles', 'qa-acme')
   fs.mkdirSync(own, { recursive: true })
-  fs.writeFileSync(path.join(own, 'SKILL.md'), '---\nname: qa-acme\ndescription: QA de Acme. No usar afuera.\n---\n\nNo inventar. Requiere autorización. Exige evidencia observable.\n')
+  fs.writeFileSync(path.join(own, 'SKILL.md'), skill('qa-acme', 'QA de Acme. No usar afuera.'))
   assert.equal(run(['learn', 'qa-acme'], target).status, 0)
   assert.equal(fs.existsSync(path.join(own, 'learning', 'reports')), true)
 })
@@ -108,7 +112,7 @@ test('el informe trae escritas las convenciones de las que depende el ciclo', ()
   const target = installedProject('Convenciones')
   const own = path.join(target, 'agents', 'roles', 'probe')
   fs.mkdirSync(own, { recursive: true })
-  fs.writeFileSync(path.join(own, 'SKILL.md'), '---\nname: probe\ndescription: x\n---\n\nNo inventar. Requiere autorización. Exige evidencia observable.\n')
+  fs.writeFileSync(path.join(own, 'SKILL.md'), skill('probe', 'x'))
   assert.equal(run(['learn', 'probe'], target).status, 0)
   const reports = path.join(own, 'learning', 'reports')
   const report = path.join(reports, fs.readdirSync(reports)[0])
@@ -152,7 +156,9 @@ test('la documentación de agentes no cita rutas del toolkit ni rutas inexistent
       // cargo investiga sobre Cauce cita las rutas de Cauce con razón. El molde sí se revisa —ése sí
       // es un documento que alguien sigue—, así que la exención es del contenido, no del directorio.
       const evidencia = dir.replace(/\\/g, '/').endsWith('learning/reports') && entry.name !== '_template.md'
-      if (entry.isDirectory()) { if (entry.name !== 'results') walk(file) } else if (entry.name.endsWith('.md') && !evidencia) docs.push(file)
+      if (entry.isDirectory()) {
+        if (entry.name !== 'results') walk(file)
+      } else if (entry.name.endsWith('.md') && !evidencia) docs.push(file)
     }
   }
   walk(AGENTS_ROOT)
