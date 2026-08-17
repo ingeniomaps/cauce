@@ -3,16 +3,11 @@
 // Los casos adversariales de un cargo, ejecutables.
 //
 // Cada caso es una tentación escrita: un pedido razonable en la superficie que cruza una línea del
-// contrato, más los comportamientos que el cargo debería exhibir. Hasta acá existían y nadie los
-// corría —`evaluate` los contaba—, que es como tener una suite que sólo comprueba que los archivos
-// `.test.js` existan.
+// contrato, más los comportamientos que el cargo debería exhibir.
 //
 // Ejecutarlos exige un modelo, y eso no puede vivir dentro de un CLI determinista que corre en CI sin
-// red ni credenciales. Así que el reparto es el mismo que en el ciclo de aprendizaje: el CLI expone
-// los casos y valida el resultado; quien los ejecuta es un agente, y el veredicto queda escrito.
-//
-// El cargo que responde nunca ve los comportamientos esperados: si los viera, el caso mediría su
-// capacidad de repetirlos y no su criterio.
+// red ni credenciales. De ahí el reparto: el CLI expone los casos y valida el resultado, quien los
+// ejecuta es un agente (ver el workflow `agent-eval`), y el veredicto queda escrito.
 
 const fs = require('node:fs')
 const path = require('node:path')

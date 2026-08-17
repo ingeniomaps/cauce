@@ -32,7 +32,7 @@ const SYSTEM_FILES = [
   'organization/README.md',
   // Las reglas que un agente obedece y los atajos que envuelven al CLI. Ninguno tiene una línea de la
   // empresa, y envejecidos mienten: el `AGENTS.md` de una instancia seguía describiendo carpetas que
-  // `upgrade` había retirado, y el Makefile llama 16 veces a comandos que cambian.
+  // `upgrade` había retirado, y el Makefile envuelve comandos que cambian.
   'AGENTS.md',
   'Makefile',
   // El shim no tiene una línea de la empresa —dice él mismo que no se edita— y es por donde entra
@@ -95,10 +95,8 @@ function packagePath(root, relative) {
   return candidates.find((candidate) => fs.existsSync(candidate)) || ''
 }
 
-// Dónde quedó el motor. Es `packagePath` bajo `engine/`, y no una cascada propia: había dos copias de
-// la misma lista de candidatos en este archivo, una al lado de la otra, y nada obligaba a que
-// siguieran diciendo lo mismo. La tercera copia vive en el bridge de Antigravity, que corre antes de
-// poder cargar este módulo y por eso la repite a propósito.
+// Dónde quedó el motor. El bridge de Antigravity repite esta cascada a mano porque corre antes de
+// poder cargar este módulo: si cambia acá, cambia allá.
 function engineAt(root, relative = '') {
   return packagePath(root, relative ? path.join('engine', relative) : 'engine')
 }
@@ -133,7 +131,6 @@ function entries(dir) {
   } catch { return [] }
 }
 
-// Entradas del proyecto que reemplazan a una del sistema con la misma identidad.
 function overrides(root) {
   const found = []
   for (const collection of SYSTEM_COLLECTIONS) {
@@ -192,7 +189,6 @@ function systemPaths(root) {
   return paths
 }
 
-// Archivos de un árbol, relativos a él, para comparar instancia contra paquete.
 function treeFiles(dir, prefix = '') {
   const found = []
   let list = []
@@ -205,7 +201,6 @@ function treeFiles(dir, prefix = '') {
   return found.sort()
 }
 
-// Rutas que Cauce mantiene y que por eso conviene registrar y vigilar.
 function trackedPaths() {
   return [...RUNTIME_PATHS, ...SYSTEM_COLLECTIONS.map((collection) => `${collection}/system`)]
 }

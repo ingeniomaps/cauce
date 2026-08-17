@@ -8,11 +8,12 @@
 //   <paquete>/agents/<tipo>/system/<slug>/   viene con Cauce, se actualiza con la dependencia
 //   <proyecto>/agents/<tipo>/<slug>/         es de la empresa y manda sobre el anterior
 //
-// Los cargos del sistema no se copian al proyecto: evolucionan como profesión y esa evolución es
-// la misma para todos. Lo que sí es de cada empresa —su contexto— vive en `organization/roles/`.
+// Un cargo del sistema no baja solo: evoluciona como profesión y esa evolución es la misma para
+// todos. Adoptarlo es una decisión explícita (`agents fork`), y el contexto propio de cada empresa
+// vive aparte, en `organization/roles/`.
 //
-// Un slug repetido entre tipos distintos sigue siendo ambiguo: ahí no hay ninguna regla que diga
-// cuál gana, y elegir en silencio sería peor que fallar.
+// Un slug repetido entre tipos distintos es ambiguo y falla: no hay regla que diga cuál gana, y
+// elegir en silencio sería peor.
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -43,7 +44,6 @@ function types(root) {
   return [...new Set([...own, ...system])]
 }
 
-// Todos los cargos visibles: los de la empresa ocultan a los del sistema con el mismo slug.
 function list(root) {
   const system = systemCatalog(root)
   const found = new Map()

@@ -6,14 +6,9 @@
 // —que es lo que se ve— y deja atrás los casos adversariales, las fuentes de aprendizaje y el modelo
 // operativo. Queda un cargo que responde igual y ya no se puede evaluar, sin ningún aviso.
 //
-// **Qué no se hereda.** Los informes de aprendizaje, las propuestas y los veredictos de evaluación se
-// quedan en el catálogo. No es prolijidad: un veredicto pertenece al contrato que lo ganó, y el fork
-// nace para dejar de ser ese contrato. Heredarlos le daría a la copia una garantía que no rindió, y
-// una propuesta pendiente arrastraría a la empresa a firmar una decisión que era nuestra.
-//
-// Lo que sí se hereda entero es el contrato y todo lo que lo hace verificable: casos, conductas
-// esperadas, fuentes, automatización y referencias. La empresa recibe un cargo evaluable desde el
-// primer minuto, y a partir de ahí lo mantiene.
+// Se hereda el contrato entero y todo lo que lo hace verificable —casos, conductas esperadas,
+// fuentes, referencias—, así la empresa recibe un cargo evaluable desde el primer minuto. Qué queda
+// afuera y por qué, en `inherited()`.
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -22,13 +17,9 @@ const catalog = require('./catalog')
 const manifest = require('../core/manifest')
 const ownership = require('../core/ownership')
 
-// Se comparan contra la ruta relativa dentro del cargo. Informes, propuestas y veredictos no viajan:
-// son lo que produjo nuestra versión del contrato, y el fork nace para dejar de ser ese contrato.
-//
-// Antes se exceptuaba `_template.md`, por andamiaje. Ese andamiaje resultó ser muerto —el motor
-// genera el informe y la propuesta desde un molde propio y nunca lee esos archivos— y en un tercio
-// del catálogo contradecía la forma que sí produce, así que se retiró entero. No hay caso especial
-// que preservar.
+// Informes, propuestas y veredictos no viajan: son lo que produjo nuestra versión del contrato, y el
+// fork nace para dejar de ser ese contrato. Heredar un veredicto le daría a la copia una garantía que
+// no rindió; heredar una propuesta pendiente la haría firmar una decisión que era nuestra.
 function inherited(relative) {
   if (/^learning\/(reports|proposals)\//.test(relative)) return false
   if (relative.startsWith('evaluations/results/')) return false
@@ -37,8 +28,7 @@ function inherited(relative) {
 
 const TEXT = /\.(md|ya?ml|json|txt)$/i
 
-// El mismo recorrido que usa `upgrade` para comparar instancia contra paquete: un cargo es un árbol
-// de archivos como cualquier otro, y tener dos implementaciones sólo daba dos formas de ordenarlos.
+// El mismo recorrido que usa `upgrade`: un cargo es un árbol de archivos como cualquier otro.
 const tree = ownership.treeFiles
 
 // La misma resolución que usa todo lo demás —paquete primero, toolkit después— en vez de deducirla
@@ -85,13 +75,10 @@ function fork(root, slug, date) {
   const files = todo.filter(inherited)
   if (!files.includes('SKILL.md')) throw new Error(`${slug} no tiene SKILL.md: no hay contrato que copiar`)
 
-  // El digest sale del origen, no de la copia. Es lo que el catálogo tenía al momento del fork, y es
-  // contra eso que después se responde «esto mejoró río arriba»; medirlo sobre la copia lo ataría a
-  // cualquier cosa que le hagamos acá —la reescritura de rutas incluida—.
-  //
-  // Y esa reescritura no es cosmética: el `AUTOMATION.md` del catálogo dice «mantené
-  // `agents/<tipo>/system/<slug>`», que en una empresa es el paquete. Copiado tal cual, el aprendizaje
-  // del fork apuntaría a un directorio que el guard bloquea y que npm borra en el próximo install.
+  // El digest sale del origen, no de la copia: es contra lo que el catálogo tenía al forkear que
+  // después se responde «esto mejoró río arriba». Medirlo sobre la copia lo ataría a nuestras propias
+  // ediciones, la reescritura de rutas incluida — y esa reescritura no es cosmética: sin ella el
+  // aprendizaje del fork apuntaría al paquete, que el guard bloquea y npm borra en el próximo install.
   const desde = `agents/${type}/system/${slug}`
   const hacia = `agents/${type}/${slug}`
   const digests = {}
@@ -116,12 +103,11 @@ function fork(root, slug, date) {
 
 // Qué cambió en el catálogo desde que la empresa se llevó su copia.
 //
-// El fork es legítimo y esperado —para eso está el comando—, pero deja de recibir las mejoras del
-// toolkit, y eso no puede pasar en silencio: la empresa decidió mantener un cargo, no quedarse sin
-// enterarse de que el original mejoró. Nadie va a comparar 14 archivos a mano en cada actualización.
+// El fork es legítimo, pero deja de recibir las mejoras del toolkit y eso no puede pasar en silencio:
+// la empresa decidió mantener un cargo, no quedarse sin enterarse de que el original mejoró.
 //
 // Se compara contra los digests guardados al forkear, nunca contra la copia: la copia está editada a
-// propósito, así que medir contra ella devolvería «todo cambió» desde el primer ajuste. Y el aviso no
+// propósito, así que medir contra ella devolvería «todo cambió» desde el primer ajuste. El aviso no
 // dice qué hacer —integrar o no es decisión de la empresa—, sólo que hay algo que mirar.
 function drift(root) {
   const forks = manifest.readForks(root)

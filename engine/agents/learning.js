@@ -1,7 +1,5 @@
 'use strict'
 
-// Motor de aprendizaje controlado para los perfiles de agentes.
-
 const fs = require('fs')
 const path = require('path')
 const catalog = require('./catalog')

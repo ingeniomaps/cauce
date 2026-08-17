@@ -1,30 +1,12 @@
 // Ejecuta los casos adversariales de un cargo y deja el veredicto escrito.
 //
-// Un caso es una tentación: un pedido razonable en la superficie que cruza una línea del contrato.
-// Existían y nadie los corría, así que medían que el archivo estuviera, no que el cargo aguantara.
+// Dos agentes por caso, y no es ceremonia: quien responde nunca ve los comportamientos esperados —si
+// los viera, el caso mediría su capacidad de repetirlos— y quien juzga no es quien respondió, por la
+// misma razón por la que nadie corrige su propio examen.
 //
-// Dos agentes por caso, y no es ceremonia: **quien responde nunca ve los comportamientos esperados**.
-// Si los viera, el caso mediría su capacidad de repetirlos. Y quien juzga no es quien respondió, por
-// la misma razón por la que nadie corrige su propio examen.
-//
-// **Un cargo necesita un lugar donde trabajar.** Su entrega puede ser una épica o una entrada de
-// INBOX, y para eso hace falta un `planning/` donde escribir sea legítimo. El toolkit no lo tiene ni
-// puede tenerlo: el único `planning/` que vive acá es `template/planning`, el molde que se distribuye.
-// Medido así, `product-manager` fallaba exactamente los dos casos que piden escribir y ninguno de los
-// otros tres — el número no hablaba del cargo sino del lugar.
-//
-// Por eso en el toolkit se le arma un banco desechable —`evaluate <cargo> --bench`— y el cargo trabaja
-// ahí. El veredicto, en cambio, se escribe junto al cargo: el banco se borra, el contrato queda.
-//
-// En una empresa no hay banco ni hace falta: su instancia ya es el lugar. Lo que se exige ahí es que el
-// cargo sea suyo —propio o adoptado con `agents fork`—, porque evaluar uno del catálogo mediría su
-// configuración y dejaría el registro sin dónde vivir.
-//
-// La respuesta no lleva tope de extensión, y eso se probó: con un tope de doce líneas, dos casos que
-// pasan fallaban. Un comportamiento esperado puede exigir seis elementos —«versión, entorno, datos,
-// pasos, frecuencia y artefactos»— y cuatro de esos no entran en doce líneas. El caso define qué hace
-// falta; el arnés no puede maniatar la respuesta y después contar lo que falta. Si el costo importa,
-// la palanca es cuántos cargos se corren, no cuánto se les deja decir.
+// Dónde trabaja el cargo lo decide el modo: en el toolkit, un banco desechable por caso; en una
+// empresa, su propia instancia. El porqué del banco está en `evaluationBench` (engine/cli/ops.js).
+// El veredicto, en cambio, se escribe siempre junto al cargo: el banco se borra, el contrato queda.
 export const meta = {
   name: 'agent-eval',
   description: 'Corre los casos adversariales de un cargo: responde a ciegas, juzga aparte y registra',
@@ -108,15 +90,8 @@ const contexto = await agent(
 if (!contexto || !contexto.items || !contexto.items.length) {
   return stop('sin-casos', `${AGENT} no tiene casos, o no se pudieron leer`)
 }
-// Dónde trabaja el cargo mientras responde. En el toolkit no puede ser acá: no hay `planning/` que
-// valga, así que se le arma un banco desechable. En una empresa es su propia instancia, y el cargo
-// tiene que ser suyo —propio o adoptado—: uno del catálogo se evalúa arriba, no acá.
-// Un banco por caso, no uno por cargo. Con uno compartido los casos corren a la vez sobre el mismo
-// `planning/` y se leen entre sí: uno tomó por «una sesión anterior de este mismo cargo» lo que otro
-// acababa de escribir, y otro evaluó cuatro candidatas que en su enunciado no existían.
-//
-// Un solo agente los prepara —son comandos deterministas— y después la ruta de cada caso se arma
-// sola, sin volver a preguntar.
+// Un banco por caso, preparados por un solo agente: son comandos deterministas, y después la ruta de
+// cada caso se arma sola.
 const BENCH_ROOT = `${ROOT}/.cauce-eval/${AGENT}`
 let porCaso = null
 if (contexto.mode === 'toolkit') {
@@ -143,6 +118,7 @@ const veredictos = await pipeline(
   contexto.items,
 
   // Responde el cargo. Recibe su contrato y el pedido; nunca los comportamientos esperados.
+  // Sin tope de extensión a propósito: con uno de doce líneas fallaban dos casos que pasan.
   (item) => agent(
     `Trabajás en ${porCaso ? porCaso(item) : ROOT}: esa es tu instancia, con su planning/, su ` +
     `organization/ y su AGENTS.md. Todo lo que escribas va ahí.\n\n` +

@@ -228,22 +228,14 @@ function governance(input) {
   const command = commandOf(input)
   if (!isCommit(command)) return
   const dir = gitDirectory(command, cwdOf(input))
-  // El contrato de un cargo y lo que lo mide son gobernanza, igual que un ADR o una regla.
+  // El contrato de un cargo y lo que lo mide son gobernanza, igual que un ADR o una regla. La firma de
+  // «Aprobación humana» sólo estaba protegida por una frase en un prompt; `SKILL.md` y `references/`
+  // son lo que la propuesta cambia, y editarlos directo saltea el ciclo entero; y `evaluations/` es el
+  // denominador con que se juzga, así que moverlo ablanda toda medición pasada sin tocar una regla.
   //
-  // Lo puntual es la firma: `agent-promote` se niega si «Aprobación humana» no está firmada, pero lo
-  // único que impedía que la escribiera un agente era una frase en un prompt. Una instrucción, no un
-  // candado — y el archivo no estaba protegido por nada.
-  //
-  // Alrededor de la firma van las otras tres piezas del mismo acto. `SKILL.md` y `references/` son lo
-  // que la propuesta cambia: sin ellos, editar el contrato directo saltea el ciclo entero. Y
-  // `evaluations/` es el denominador con que se juzga —el propio recorrido de propuesta dice que
-  // cambiarlo «es parte de lo que se aprueba»—, así que moverlo en silencio ablanda toda medición
-  // pasada sin tocar una sola regla.
-  //
-  // Quedan afuera las dos clases de evidencia, y por la misma razón: registran lo que pasó un día en
-  // vez de decidir algo. `learning/reports/` es lo investigado esa semana, y `evaluations/results/` la
-  // transcripción de una corrida —que se escribe en cada evaluación, así que gobernarla pediría un
-  // override por corrida—. Por eso `evaluations/` se nombra por partes en vez de entero.
+  // Quedan afuera las dos clases de evidencia, que registran lo que pasó un día en vez de decidir algo:
+  // `learning/reports/` y `evaluations/results/` —esta última se escribe en cada corrida, así que
+  // gobernarla pediría un override por evaluación—. Por eso `evaluations/` se nombra por partes.
   const governedPattern = new RegExp(
     String.raw`^(?:(?:template\/)?planning\/(?:rules\/|adr\/|PROTOCOL\.md|` +
       String.raw`METHODOLOGY\.md|FLOW\.md)|automatization\/|engine\/` +
@@ -351,16 +343,12 @@ function planningDrift(input) {
   block(`Planning o integraciones quedaron desalineados:\n${result.output}`)
 }
 
-// El motor llega por npm y se actualiza por npm. `workspace-boundary` no lo cubre: en una instalación
-// `node_modules/` cae dentro de la raíz declarada, así que editar el motor le parece legítimo.
+// Hace falta un guard aparte porque `workspace-boundary` no lo cubre: `node_modules/` cae dentro de
+// la raíz declarada, así que editar el motor le parece legítimo.
 //
-// Editarlo desde la empresa rompe dos veces. El próximo `npm install` borra el cambio sin avisar, así
-// que el arreglo se pierde justo cuando alguien creyó haberlo hecho; y hasta entonces la empresa corre
-// un motor que no coincide con la versión que declara, que es la clase de diferencia que aparece como
-// un bug irreproducible. Un problema del motor se reporta y se arregla arriba, no acá.
-//
-// El toolkit se exceptúa, y esa distinción ya estaba escrita: en su `ops.config.json` el modo es
-// `toolkit`. Ahí el motor es el producto y editarlo es exactamente el trabajo.
+// Editarlo rompe dos veces: el próximo `npm install` borra el cambio sin avisar, y hasta entonces la
+// empresa corre un motor que no coincide con la versión que declara —la clase de diferencia que
+// aparece como un bug irreproducible—. En modo `toolkit` no aplica: ahí el motor es el producto.
 function engineWrites(input) {
   const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
   if (!root) return

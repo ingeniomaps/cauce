@@ -134,9 +134,9 @@ function declareEngine(manifest, version) {
   F.atomicWriteJson(manifest, pkg)
 }
 
-// Proveedores que el toolkit conoce. El andamiaje de cada uno —configuración, staging/, proposed/—
-// no se materializa hasta que alguien lo habilite: hoy una instancia recibe 32 KB de un proveedor
-// apagado que quizá no use nunca, y que nadie actualiza después.
+// Proveedores que el toolkit conoce, para saltearlos al copiar la plantilla: su andamiaje
+// —configuración, staging/, proposed/— no se materializa hasta que alguien lo habilite. Antes cada
+// instancia recibía el de un proveedor apagado que quizá no usaba nunca, y que nadie actualizaba.
 function providerNames() {
   try {
     const file = path.join(PROJECT_ROOT, 'template', 'integrations', 'config.json')
@@ -187,21 +187,16 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
 
 // Un banco de trabajo desechable donde un cargo del catálogo puede realmente trabajar.
 //
-// Hace falta porque el toolkit no es una raíz ops: no tiene `planning/`, y no puede tenerlo —el único
-// `planning/` que vive acá es `template/planning`, el molde que se distribuye—. Un cargo cuya entrega
-// es una épica o una entrada de INBOX no tiene dónde escribir, así que se niega. Con razón, y su caso
-// lo cuenta como fallo: eso midió una configuración, no al cargo.
+// Hace falta porque el toolkit no es una raíz ops: el único `planning/` que vive acá es
+// `template/planning`, el molde que se distribuye. Un cargo cuya entrega es una épica no tiene dónde
+// escribir, así que se niega —con razón—, y su caso cuenta como fallo: eso midió una configuración.
 //
-// **Uno por caso**, y esto se aprendió corriendo. Con un banco compartido, los cinco casos de un
-// cargo corren a la vez sobre el mismo `planning/` y se leen entre sí: un caso tomó por «una sesión
-// anterior de este mismo cargo» lo que otro acababa de escribir, y otro evaluó cuatro candidatas que
-// en su enunciado no existían. Ninguno de los dos cambió de veredicto, pero las respuestas ya no eran
-// las que el caso pedía medir. La independencia entre casos es la premisa de medir con ellos.
+// Uno por caso, y se aprendió corriendo: con un banco compartido los casos se leen entre sí, y uno
+// tomó por «una sesión anterior de este mismo cargo» lo que otro acababa de escribir. La
+// independencia entre casos es la premisa de medir con ellos.
 //
-// Se recrea entero en cada corrida. Reutilizarlo dejaría que lo que un cargo escribió el lunes sea
-// contexto del que responde el martes, y dos corridas del mismo caso dejarían de ser comparables.
-// Queda en disco al terminar, gitignorado, porque después de un veredicto raro lo primero que uno
-// quiere es mirar qué escribió el cargo.
+// Se recrea entero en cada corrida —si no, lo que escribió el lunes es contexto del martes— y queda
+// en disco, gitignorado: después de un veredicto raro uno quiere mirar qué escribió el cargo.
 function evaluationBench(root, agent, caso) {
   const safe = (value) => {
     if (!/^[a-z0-9_][a-z0-9._-]*$/i.test(value) || value.includes('..')) {
@@ -228,14 +223,10 @@ function evaluationBench(root, agent, caso) {
   fs.mkdirSync(scope, { recursive: true })
   fs.symlinkSync(PROJECT_ROOT, path.join(scope, 'cauce'), 'dir')
 
-  // El banco queda versionado desde su estado limpio, y eso resuelve un problema de medición: la
-  // entrega de un cargo puede no estar en su respuesta. `backend-engineer` contestó un resumen del
-  // webhook y escribió el contrato —firma, orden de verificación, ventana antirreplay, catorce
-  // pruebas— en su `INBOX.md`. El juez, que sólo leía la respuesta, lo dio por ausente y lo reprobó.
-  //
-  // Con el banco versionado, `git status` y `git diff` muestran exactamente qué produjo, separado del
-  // andamiaje. Es la diferencia entre juzgar el resumen y juzgar la entrega. Se ignora `node_modules`
-  // porque es un symlink al toolkit y no es obra del cargo.
+  // Versionado desde su estado limpio porque la entrega de un cargo puede no estar en su respuesta:
+  // uno contestó un resumen y escribió el contrato entero en su `INBOX.md`, y el juez —que sólo leía
+  // la respuesta— lo dio por ausente. Con git, `status` y `diff` muestran qué produjo, separado del
+  // andamiaje. Se ignora `node_modules`: es un symlink al toolkit, no obra del cargo.
   const git = (...args) => spawnSync('git', ['-C', dir, ...args], { stdio: 'ignore' })
   fs.appendFileSync(path.join(dir, '.gitignore'), '\nnode_modules/\n')
   git('init', '-q')

@@ -8,7 +8,7 @@ const path = require('node:path')
 
 const HEADING = /^##\s*\[([^\]]+)\]/
 
-// Compara versiones semver sin dependencias. Lo no numérico ordena antes que la release.
+// Lo no numérico ordena antes que la release.
 function compare(left, right) {
   const parse = (value) => String(value).split('-')[0].split('.').map((part) => Number(part) || 0)
   const [a, b] = [parse(left), parse(right)]
