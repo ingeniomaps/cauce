@@ -112,6 +112,15 @@ function secrets(input) {
     if (/^(?:accesos\.md|credenciales.*|credentials.*\.json|.*service-account.*\.json|.*\.(?:pem|key))$/i.test(base)) {
       block(`${file} parece un archivo de credenciales en texto plano.`)
     }
+    // Nombres de credencial que la herramienta escribe sola y que la lista anterior no cubría:
+    // `.npmrc` guarda el token de publicación, `.netrc` el de cualquier host, `id_*` una clave
+    // privada de SSH y `~/.aws/credentials` las de AWS. Los cuatro son estándar, no exóticos.
+    //
+    // Esto tapa un caso conocido; no vuelve completo al guard. La forma de decidir sigue siendo el
+    // nombre del archivo, así que otro formato pasa igual — ver «Qué son y qué no son» en el README.
+    if (/^(?:\.npmrc|\.netrc|_netrc|\.pypirc|\.dockercfg|id_(?:rsa|dsa|ecdsa|ed25519)|credentials)$/i.test(base)) {
+      block(`${file} es un archivo de credenciales que su herramienta mantiene. No lo edites a mano.`)
+    }
   }
 }
 

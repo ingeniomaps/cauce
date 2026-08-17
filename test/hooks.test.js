@@ -36,6 +36,14 @@ test('guards de archivos protegen secretos y snapshots, pero permiten plantillas
   blocked('secrets', { tool_input: { patch: '*** Begin Patch\n*** Add File: .env\n+TOKEN=x\n*** End Patch' } })
   blocked('secrets', { tool_input: { file_path: '/project/service-account.json' } })
   assert.doesNotThrow(() => execute('secrets', { tool_input: { file_path: '/project/.env.example' } }))
+  // Nombres que la herramienta escribe sola y que la lista original no cubría. Los encontró la
+  // investigación semanal del cargo de seguridad corriendo el guard sobre trece nombres: `.env`
+  // bloqueaba y `.npmrc`, `.netrc` e `id_rsa` pasaban, que es donde vive el token de publicación.
+  for (const credencial of ['.npmrc', '.netrc', 'id_rsa', 'id_ed25519', '.pypirc', 'credentials']) {
+    blocked('secrets', { tool_input: { file_path: `/project/${credencial}` } })
+  }
+  // Tapa un caso conocido, no vuelve completo al guard: sigue decidiendo por el nombre del archivo.
+  assert.doesNotThrow(() => execute('secrets', { tool_input: { file_path: '/project/.npmrc.example' } }))
   blocked('integration-snapshot', { tool_input: { file_path: '/project/integrations/jira/staging/KEY-1/remote.json' } })
   blocked('integration-snapshot', {
     tool_input: { file_path: '/project/integrations/jira/staging/stories/KEY-1/remote.json' },
