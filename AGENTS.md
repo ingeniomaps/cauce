@@ -43,8 +43,29 @@ estilo.
     test/             pruebas del toolkit.
 
 Este repo no tiene `planning/` propio: `ops.config.json` declara `mode: toolkit` y `make check` valida
-`template/planning`. Por eso un cargo que necesita escribir se evalúa en un banco desechable
-(`evaluate <cargo> --bench`).
+`template/planning`.
+
+### El banco de evaluación
+
+Un cargo cuya entrega es una épica o una entrada de INBOX necesita un `planning/` donde escribir sea
+legítimo, y acá no hay: el único que vive en este repo es `template/planning`, el molde. Por eso se
+evalúa en un banco desechable.
+
+```bash
+node engine/cli/ops.js evaluate product-manager --bench 03-epic
+```
+
+Devuelve la ruta de una instancia desechable —`check` pasa, el catálogo resuelve desde adentro,
+`planning/` está vacío y escribible— que `/agent-eval` usa como lugar de trabajo. Se recrea entera en
+cada corrida: reutilizarla dejaría que lo que un cargo escribió el lunes sea contexto del que responde
+el martes.
+
+**Una por caso.** Con un banco compartido los casos de un cargo trabajan a la vez sobre el mismo
+`planning/` y se leen entre sí: uno tomó por «una sesión anterior de este mismo cargo» lo que otro
+acababa de escribir, y otro evaluó cuatro candidatas que en su enunciado no existían. Ninguno cambió de
+veredicto, pero sus respuestas dejaron de ser las que el caso pedía medir.
+
+El veredicto se escribe **junto al cargo**, no en el banco. El banco se borra; el contrato queda.
 
 ## Convenciones
 

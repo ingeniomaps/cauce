@@ -21,9 +21,14 @@ make test
 make coverage
 ```
 
-`make coverage` mide únicamente `engine/**/*.js` y `automatization/**/*.js`. Excluye las copias de
-instancias creadas en proyectos temporales y exige como mínimo 75% de líneas, 75% de funciones y 45% de
-ramas.
+`make coverage` mide únicamente `engine/**/*.js` y `automatization/**/*.js`, y excluye las copias de
+instancias creadas en proyectos temporales. Exige dos cosas: un umbral global de líneas, funciones y
+ramas, y un piso por archivo registrado en `coverage-baseline.json`. Los valores viven en
+`coverage.sh` —no se repiten acá, porque un número copiado envejece sin que nada falle—.
+
+Los pisos van unos puntos debajo de lo real, para que el trabajo normal no los toque y para absorber lo
+que varía entre corridas. Se suben con `npm run coverage:update`, que mide tres veces y toma el mínimo:
+una sola corrida deja subir un piso por suerte y el gate queda fallando al azar.
 
 Las pruebas no deben autenticar cuentas, escribir en proveedores externos ni depender de red. Cada caso que
 necesite un proyecto mutable debe crearlo bajo el directorio temporal del sistema.
