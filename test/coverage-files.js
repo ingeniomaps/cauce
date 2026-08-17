@@ -23,10 +23,12 @@ const SIN_COBERTURA = 'automatization/workflows/'
 // ramas sin que nadie lo toque. Sin esto el piso falla solo, y un gate que falla al azar se termina
 // apagando.
 //
-// `integrations/state.js` se mueve mucho más —de 64 a 68— y por eso su piso quedó registrado en el
-// mínimo en vez de en lo habitual. Varían tres ramas de `reconcile`, y el vaivén parece venir de que
-// los archivos de test corren en paralelo. Vale perseguirlo: hasta entonces ese archivo tolera una
-// regresión de hasta cuatro puntos, que es el precio de que el gate no falle al azar.
+// `integrations/state.js` se mueve mucho más —de 64 a 68— y por eso su piso quedó en el mínimo. La
+// causa no es del repo: los tests que ejercitan el CLI lo lanzan como subproceso, y Node fusiona la
+// cobertura de los hijos con lo que alcanzó a escribir cada uno. Medido: `engine.test.js`, que no
+// lanza ninguno, da 61 estable seis veces; sumándole `ops.test.js`, que lanza cinco, va de 64 a 68.
+// Mientras las órdenes terminen en `process.exit` no hay forma de probarlas en proceso, así que ese
+// archivo tolera hasta cuatro puntos de regresión a cambio de que el gate no falle al azar.
 const HOLGURA = 1
 
 function medido(lcov) {
