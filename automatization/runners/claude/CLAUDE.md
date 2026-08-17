@@ -2,6 +2,10 @@
 
 @{{OPS_DIR}}AGENTS.md
 @{{OPS_DIR}}planning/PROTOCOL.md
+@{{OPS_DIR}}planning/rules/system/process.md
+@{{OPS_DIR}}planning/rules/system/code-shape.md
+@{{OPS_DIR}}planning/rules/system/commits.md
+@{{OPS_DIR}}planning/rules/system/conduct.md
 
 Los hooks de `.claude/settings.json` son obligatorios. Usa `/team` para evaluar si una intención es viable
 y proponer una épica, y `/autobuild` para ejecutar trabajo ya promovido; `/integration-sync` e
