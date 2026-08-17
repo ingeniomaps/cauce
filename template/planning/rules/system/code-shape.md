@@ -12,3 +12,8 @@ No reformatear, renombrar ni reparar elementos ajenos a la tarea.
 
 Extraer responsabilidades cuando una unidad deja de poder entenderse y probarse aisladamente; no usar
 límites numéricos como sustituto del juicio.
+
+## R11 — Comentarios que explican el porqué
+
+Un comentario dice por qué el código es así, no qué hace: si el código ya lo dice, sobra. Cada razón
+vive en un solo lugar, y un bloque de más de tres líneas tiene que justificar su largo.
