@@ -1,8 +1,7 @@
 name: CI
 
 on:
-  # `pull_request` ya cubre cada commit de una rama; con los dos, el mismo commit corría dos veces, y
-  # la concurrencia no puede unirlos porque agrupa por `github.ref` y el del push no es el del PR.
+  # `pull_request` ya cubre cada commit de una rama; con los dos, el mismo corría dos veces.
   push:
     branches: [main]
   pull_request:
@@ -19,13 +18,11 @@ concurrency:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    # La suite entera tarda segundos; el default de GitHub son seis horas de runner por si algo cuelga.
     timeout-minutes: 10
     strategy:
-      # Los dos extremos de lo que promete `engines`; el segundo es alias porque un número fijo
-      # envejece sin que nada falle. Sin `fail-fast`, un fallo en uno todavía reporta el otro.
       fail-fast: false
       matrix:
+        # Los dos extremos de lo que promete `engines`.
         node: ["24", current]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

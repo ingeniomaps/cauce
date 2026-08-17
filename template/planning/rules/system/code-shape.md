@@ -13,7 +13,19 @@ No reformatear, renombrar ni reparar elementos ajenos a la tarea.
 Extraer responsabilidades cuando una unidad deja de poder entenderse y probarse aisladamente; no usar
 límites numéricos como sustituto del juicio.
 
-## R11 — Comentarios que explican el porqué
+## R11 — Comentarios con destinatario
 
-Un comentario dice por qué el código es así, no qué hace: si el código ya lo dice, sobra. Cada razón
-vive en un solo lugar, y un bloque de más de tres líneas tiene que justificar su largo.
+Un comentario existe para lo que no se ve leyendo el código, y se escribe para alguien que lo va a
+preguntar o a deshacer sin saberlo. Si nadie lo preguntaría, sobra: tener un porqué no alcanza, porque
+una convención también lo tiene.
+
+Cada razón vive en un solo lugar, el que la vio nacer; repetida en otro archivo, una copia se pudre y
+nada falla.
+
+- **Dentro de una unidad**: el porqué. La restricción, el caso que la forzó, lo que se probó antes.
+- **Encabezando una unidad**: qué garantiza, un nivel por encima del código, para poder usarla sin
+  leerla entera. Su largo lo fija ese contrato.
+- **Donde ningún nombre alcanza**: la fuente de un algoritmo o una norma, qué es un valor opaco, por
+  qué algo se aparta del idioma habitual, y qué quedó a medias.
+
+Un comentario que cuesta escribir suele estar señalando el código, no la falta de palabras.
