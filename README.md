@@ -198,3 +198,11 @@ proyecto recibe como `organization/`. De igual forma, `planning/` pertenece a la
 conserva su intención, estado y evidencia, mientras el motor reusable permanece en la dependencia.
 
 Para trabajar sobre este repositorio, lee [AGENTS.md](AGENTS.md).
+
+## Licencia
+
+[MIT](LICENSE). Sin dependencias: no hay licencias de terceros que arrastrar.
+
+Lo que `ops init` genera en tu repositorio —`planning/`, `AGENTS.md`, el `Makefile`, `tools/ops.js` y
+el resto del molde— es tuyo: usalo, editalo y distribuilo sin obligación de atribuir ni de incluir este
+aviso. La condición de MIT aplica a redistribuir Cauce, no a lo que construyas con él.
