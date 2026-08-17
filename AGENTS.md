@@ -7,7 +7,8 @@ transversales viven en `template/planning/rules/`, que `CLAUDE.md` importa.
 
 **No correr `automation install` de ningún runner. No correr `ops init`. No crear `planning/` en la
 raíz.** Cauce es lo que se fabrica en este repositorio, no algo que este repositorio consuma: el
-toolkit no se aplica a sí mismo.
+toolkit no se aplica a sí mismo. `install` y `upgrade` fallan solos; lo que sí depende de vos es no
+apuntar `init` acá ni crear `planning/` a mano.
 
 El daño es concreto:
 
