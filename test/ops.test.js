@@ -41,7 +41,22 @@ test('automation list-hooks explica los guards disponibles', () => {
   assert.ok(hookMetadata.some((hook) => hook.name === 'migrations'))
   assert.ok(hookMetadata.some((hook) => hook.name === 'planning-drift'))
   assert.ok(hookMetadata.some((hook) => hook.name === 'engine'))
-  assert.equal(hookMetadata.length, 12)
+
+  // Cuántos guards hay se deriva del registro, no se escribe a mano. Estuvo hardcodeado como `11` en
+  // el mensaje de `automation check` y quedó viejo al agregar uno: informaba once mientras el motor
+  // registraba doce. Un número de auditoría que no sale de lo que describe envejece sin avisar, y
+  // quien lo compare contra `list-hooks` no sabe cuál de los dos miente.
+  const { guards } = require('../engine/hooks/run')
+  const A = require('../engine/automation')
+  assert.equal(A.GUARD_NAMES.length, Object.keys(guards).length, 'el conteo sale del registro')
+  assert.equal(hookMetadata.length, Object.keys(guards).length, 'y cada guard está documentado')
+  assert.deepEqual(
+    hookMetadata.map((hook) => hook.name).sort(),
+    Object.keys(guards).sort(),
+    'sin guards sin documentar ni documentación de guards que no existen',
+  )
+  const informe = run(['automation', 'check', path.resolve(__dirname, '..')])
+  assert.match(informe.stdout, new RegExp(`${Object.keys(guards).length} guards`), 'y es lo que informa')
 })
 
 test('init produce una instancia autocontenida y no sobrescribe', () => {
