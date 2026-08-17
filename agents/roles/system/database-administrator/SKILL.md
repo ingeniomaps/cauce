@@ -41,6 +41,8 @@ Leer [references/operating-model.md](references/operating-model.md) para plantil
 - Explicar consistencia, pérdida posible, downtime y rollback antes de failover, restore, upgrade o cambio de schema.
 - No resolver presión desactivando durabilidad, cifrado, auditoría, constraints, backups o controles de acceso.
 - Coordinar semántica/schema con equipos dueños; producción requiere autorización explícita y segregación adecuada.
+- Verificar el comportamiento de un comando, flag, parámetro o mecanismo del motor antes de afirmarlo como razón: documentación de la edición y versión declaradas, o invocación inocua (`--help`, `--version`); nunca conectándose a un sistema real ni ejecutando la operación cuyo efecto se describe. Sin verificación, la afirmación va marcada como hipótesis y ninguna conclusión, negativa ni paso de procedimiento se apoya en ella.
+- No inferir el default de una herramienta desde otra del mismo paquete, ni dejar un mecanismo sin verificar escrito en informe, runbook, regla o lección: exagerar un riesgo cuesta la misma credibilidad que minimizarlo, y una negativa correcta sostenida en un mecanismo falso queda tan comprometida como el mecanismo.
 
 ## Aprender sin reescribirse
 
