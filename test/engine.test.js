@@ -12,7 +12,7 @@ const B = require('../engine/planning/business-rules')
 const PC = require('../engine/planning/contracts')
 const P = require('../engine/planning/parser')
 const { providerConfig, safeSegment } = I
-const { fetchItems } = require('../engine/integrations/providers/jira')
+const { fetchItems, validateConfig } = require('../engine/integrations/providers/jira')
 
 function validConfig() {
   return {
@@ -597,3 +597,51 @@ test('toda ruta declarada del sistema existe en el paquete', () => {
     }
   }
 })
+
+// Un validador probado sólo por lo que acepta no prueba nada: su trabajo es rechazar. Los diez
+// rechazos de Jira no tenían una sola aserción, así que quitarle cualquiera —el que exige HTTPS, el
+// que fija `writeBack` en false— pasaba CI en verde. Cada caso muta un solo campo de una
+// configuración válida, para que el error que se observa sea el de esa mutación y no otro.
+test('la configuración de Jira se rechaza campo por campo', () => {
+  const valida = () => ({
+    enabled: true,
+    baseUrl: 'https://example.atlassian.net',
+    jql: 'project = DEMO',
+    auth: { type: 'bearer', tokenEnv: 'JIRA_TOKEN' },
+    writeBack: false,
+  })
+  const errores = (cambio) => {
+    const found = []
+    validateConfig({ ...valida(), ...cambio }, found)
+    return found
+  }
+
+  assert.deepEqual(errores({}), [], 'la base no dispara ningún rechazo')
+
+  const casos = [
+    [{ enabled: 'si' }, /enabled debe ser boolean/],
+    [{ baseUrl: 'http://example.atlassian.net' }, /baseUrl debe ser HTTPS/],
+    [{ baseUrl: 'https://example.atlassian.net/jira' }, /baseUrl debe ser HTTPS/],
+    [{ jql: '   ' }, /falta jql/],
+    [{ auth: { type: 'oauth', tokenEnv: 'T' } }, /auth\.type debe ser basic\|bearer/],
+    [{ auth: { type: 'bearer' } }, /falta auth\.tokenEnv/],
+    [{ auth: { type: 'basic', tokenEnv: 'T' } }, /basic exige auth\.emailEnv/],
+    [{ writeBack: true }, /writeBack debe permanecer false/],
+    [{ timeoutMs: 999 }, /timeoutMs debe ser un entero/],
+    [{ timeoutMs: 1500.5 }, /timeoutMs debe ser un entero/],
+    [{ maxPages: 0 }, /maxPages debe ser un entero positivo/],
+    [{ candidateAssigneeEnv: 'no-es-una-variable' }, /candidateAssigneeEnv debe nombrar/],
+  ]
+  for (const [cambio, esperado] of casos) {
+    const found = errores(cambio)
+    assert.ok(
+      found.some((error) => esperado.test(error)),
+      `${JSON.stringify(cambio)} no fue rechazado; salió: ${JSON.stringify(found)}`,
+    )
+  }
+
+  // Y lo opcional sigue siendo opcional: ausente no es inválido.
+  assert.deepEqual(errores({ timeoutMs: undefined, maxPages: undefined }), [])
+  assert.deepEqual(errores({ timeoutMs: 1000, maxPages: 1, candidateAssigneeEnv: 'JIRA_ME' }), [])
+})
+
