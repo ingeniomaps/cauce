@@ -12,6 +12,11 @@ const M = require('../core/manifest')
 
 const RUNNER_NAMES = ['claude', 'codex', 'gemini', 'antigravity']
 
+// Los guards que el motor implementa, tomados del registro que los ejecuta. Sale de ahí y no de un
+// número escrito a mano: `automation check` anunciaba «11 guards» cuando hacía rato que eran doce, y
+// un conteo que envejece solo es peor que ninguno —dice que revisó menos de lo que revisó—.
+const GUARD_NAMES = Object.keys(H.guards)
+
 // Adaptadores y workflows viven en el paquete, no en la instancia: son definiciones que el motor
 // consume y que ninguna empresa edita —`RUNNER_NAMES` es cerrado, así que ni siquiera puede agregar
 // uno propio—. Los hooks sí se quedan en el proyecto: la configuración del runner los nombra por
@@ -553,6 +558,7 @@ function listHooks(output = console) {
 }
 
 module.exports = {
+  GUARD_NAMES,
   RUNNER_NAMES,
   check,
   doctor,

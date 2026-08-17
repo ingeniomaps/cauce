@@ -879,7 +879,9 @@ function automation(action, rootArg, runnerName) {
     const errors = A.check(root)
     for (const error of errors) console.error(`✗ ${error}`)
     if (errors.length) fail(`${errors.length} error(es) de automatización`)
-    console.log(`✓ automatización válida: 11 guards, ${A.RUNNER_NAMES.length} adaptadores`)
+    console.log(
+      `✓ automatización válida: ${A.GUARD_NAMES.length} guards, ${A.RUNNER_NAMES.length} adaptadores`,
+    )
     return
   }
   if (action === 'doctor') {

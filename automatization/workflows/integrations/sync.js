@@ -3,10 +3,10 @@ export const meta = {
   name: 'integration-sync',
   description: 'Valida, sincroniza y comprueba staging preservando la curación local.',
   whenToUse: 'Refrescar trabajo remoto antes de revisarlo y promoverlo a planning.',
+  // Una sola: el recorrido es un agente que encadena check → sync → check. Declarar «Sync» y
+  // «Validate» aparte pintaba dos grupos vacíos en el progreso, porque nunca se entraba a ellos.
   phases: [
-    { title: 'Preflight', detail: 'Resolver proveedor y validar configuración.' },
-    { title: 'Sync', detail: 'Leer remoto mediante su adaptador y refrescar staging.' },
-    { title: 'Validate', detail: 'Validar integración y planning sin promover.' },
+    { title: 'Preflight', detail: 'Resolver proveedor, sincronizar y revalidar staging.' },
   ],
 }
 

@@ -3,9 +3,12 @@
 Wiring local entre `planning/PROTOCOL.md` y el runner elegido. El proyecto empieza en modo manual y seguro;
 ningún runner se activa solo.
 
-- `config.json`: runner activo y gates requeridos.
 - `hooks/`: los guards que se ejecutan. Acá va también el tuyo: agregalo con otro nombre y registralo
   en la configuración de tu runner, que es del proyecto y sobrevive a cada actualización.
+
+Qué guard corre y cuándo lo decide la configuración de tu runner —`.claude/settings.json` y sus
+equivalentes—, que es la única fuente: la escribe `automation install` y la lee la herramienta. Para
+desactivar un guard, quitá su entrada de ahí. `automation list-hooks` enumera los que existen.
 
 Los adaptadores de runner y los workflows no se copian acá: son definiciones que el motor consume y
 viajan con Cauce, igual que el catálogo de cargos y los equipos. `automation install` los lee desde ahí.

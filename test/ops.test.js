@@ -72,7 +72,9 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.equal(fs.existsSync(deliveryProfile), true)
   assert.match(fs.readFileSync(deliveryProfile, 'utf8'), /Demo/)
   assert.equal(fs.existsSync(path.join(target, 'Makefile')), true)
-  assert.equal(fs.existsSync(path.join(target, 'automatization', 'config.json')), true)
+  // El andamiaje de automatización son los guards, no un archivo de configuración: el que existía
+  // decía qué gates estaban activos sin que nadie lo leyera, y `install` nunca lo actualizaba.
+  assert.equal(fs.existsSync(path.join(target, 'automatization', 'config.json')), false)
   assert.equal(run(['automation', 'check', target]).status, 0)
   // El andamiaje de un proveedor no viene puesto: se trae al habilitarlo.
   assert.equal(fs.existsSync(path.join(target, 'integrations', 'jira')), false)

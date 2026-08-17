@@ -3,10 +3,10 @@ export const meta = {
   name: 'integration-promote',
   description: 'Promueve un draft revisado desde staging hacia el roadmap local.',
   whenToUse: 'Después de que una persona marque un candidato de integración como ready.',
+  // Una sola: el recorrido es un agente que encadena check → promote → check. Declarar «Promote» y
+  // «Validate» aparte pintaba dos grupos vacíos en el progreso, porque nunca se entraba a ellos.
   phases: [
-    { title: 'Preflight', detail: 'Validar proveedor, clave y estado ready.' },
-    { title: 'Promote', detail: 'Materializar el draft mediante el adaptador común.' },
-    { title: 'Validate', detail: 'Comprobar planning e integración.' },
+    { title: 'Preflight', detail: 'Validar el candidato, promoverlo y comprobar planning.' },
   ],
 }
 

@@ -158,6 +158,10 @@ const RETIRED = [
   '.github/workflows/agent-learning.yml',
   'automatization/runners',
   'automatization/workflows',
+  // Prometía ser el interruptor de los guards —«runner activo y gates requeridos», decía su README—
+  // y no lo leía nadie. Quien corría `install claude` seguía viendo `"runner": "manual"`, y un cargo
+  // que lo leyó dio por configurados unos gates que en realidad decide la configuración del runner.
+  'automatization/config.json',
 ]
 
 // Aprendizaje que quedó dentro de una ruta retirada. Es lo único ahí que no se puede reponer, así

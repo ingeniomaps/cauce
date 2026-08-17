@@ -5,8 +5,10 @@
 //   1. Se niega si «Aprobación humana» no está firmada con responsable. Un agente no se autoriza a sí
 //      mismo, y `automatic_apply: false` sigue siendo cierto: esto no corre solo, lo corre alguien
 //      después de firmar.
-//   2. Corre los casos adversariales al terminar. Aplicar sin verificar deja un contrato cambiado y
-//      nadie sabiendo si todavía se sostiene, que es peor que no haber aplicado.
+//   2. Invalida el registro de evaluación anterior y manda a rehacerlo. Aplicar deja un contrato
+//      cambiado y nadie sabiendo si todavía se sostiene: el veredicto que había medía la versión
+//      vieja. Correr los casos acá no sirve —son un recorrido propio, con su banco por caso y su
+//      juez—, así que este termina nombrando `/agent-eval` en vez de fingir que ya verificó.
 //
 // Aplica **prosa**, no un parche, y es a propósito: la propuesta dice «agregar dos viñetas después de
 // la última existente». Un parche envejece si alguien toca el archivo mientras la propuesta espera
@@ -20,7 +22,6 @@ export const meta = {
     { title: 'Firma', detail: 'Sin aprobación humana no se toca nada' },
     { title: 'Aplicar', detail: 'El cambio, archivo por archivo' },
     { title: 'Registrar', detail: 'Historial del cargo' },
-    { title: 'Verificar', detail: 'Los casos adversariales contra el contrato nuevo' },
   ],
 }
 
@@ -125,8 +126,6 @@ await agent(
   `Respetá el formato de tabla que ya tiene el archivo. No toques ninguna otra cosa, no hagas commit.`,
   { label: 'historial' },
 )
-
-phase('Verificar')
 
 log('El contrato cambió: los casos valen sólo si se vuelven a correr contra la versión nueva.')
 return finish({
