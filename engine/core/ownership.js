@@ -95,12 +95,16 @@ function packagePath(root, relative) {
   return candidates.find((candidate) => fs.existsSync(candidate)) || ''
 }
 
-// El modo declarado, o '' si no hay configuración legible. `toolkit` es este repositorio: acá se
-// fabrica Cauce, así que los comandos que actualizan o instalan una instancia sólo pueden romper.
+// El modo declarado, o '' si no hay configuración. `toolkit` es este repositorio: acá se fabrica
+// Cauce, así que los comandos que actualizan o instalan una instancia sólo pueden romper. Ausente e
+// ilegible no son lo mismo —devolver '' ante un archivo roto dejaba correr contra el toolkit justo
+// lo que reconocerlo impide—, así que lo segundo se levanta como error.
 function mode(root) {
-  try {
-    return JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')).mode || ''
-  } catch { return '' }
+  const file = path.join(root, 'ops.config.json')
+  if (!fs.existsSync(file)) return ''
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')).mode || '' } catch (error) {
+    throw new Error(`ops.config.json no se puede leer (${error.message}).`)
+  }
 }
 
 // Dónde quedó el motor. El bridge de Antigravity repite esta cascada a mano porque corre antes de

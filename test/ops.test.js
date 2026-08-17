@@ -892,3 +892,22 @@ test('los comandos de una instancia se niegan a correr contra el toolkit', () =>
   linkEngine(demo)
   assert.equal(run(['automation', 'install', demo, 'claude']).status, 0)
 })
+
+// Misma distinción que en los guards, un nivel más arriba: `mode()` devolvía '' ante una
+// configuración rota, así que `upgrade` no reconocía el modo `toolkit` y seguía adelante — sobre el
+// repo donde vive la regla que se lo prohíbe. Ausente sigue siendo ausente y da el error de siempre.
+test('una configuración ilegible detiene el comando en vez de pasar por desconocida', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-config-'))
+  fs.mkdirSync(path.join(root, 'planning'))
+  const config = path.join(root, 'ops.config.json')
+
+  fs.writeFileSync(config, '{"project":"x",,"mode":"toolkit"}')
+  for (const args of [['upgrade', root], ['automation', 'install', root, 'claude']]) {
+    const result = run(args)
+    assert.notEqual(result.status, 0, `${args[0]} siguió con la configuración rota`)
+    assert.match(result.stderr, /ops\.config\.json no se puede leer/)
+  }
+
+  fs.rmSync(config)
+  assert.match(run(['upgrade', root]).stderr, /falta ops\.config\.json/, 'ausente no es ilegible')
+})
