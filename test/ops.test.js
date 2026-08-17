@@ -59,6 +59,37 @@ test('automation list-hooks explica los guards disponibles', () => {
   assert.match(informe.stdout, new RegExp(`${Object.keys(guards).length} guards`), 'y es lo que informa')
 })
 
+// La lista de scripts que `check` exige se deriva del registro de guards, no se copia a mano: una
+// copia comprueba lo que nombra y un guard nuevo del motor no entra en la cuenta. Y se mira en una
+// sola dirección a propósito — un `.sh` de más es cómo una empresa agrega el suyo, que es justo lo
+// que `upgrade` le recomienda hacer.
+test('automation check exige los guards del motor y respeta los de la empresa', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-hooks-'))
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar']).status, 0)
+  linkEngine(target)
+  assert.equal(run(['automation', 'check', target]).status, 0)
+
+  const propio = path.join(target, 'automatization', 'hooks', 'guard-acme.sh')
+  fs.writeFileSync(propio, '#!/usr/bin/env bash\nexit 0\n', { mode: 0o755 })
+  assert.equal(run(['automation', 'check', target]).status, 0, 'un guard de la empresa no es un error')
+
+  const verify = path.join(target, 'automatization', 'hooks', 'guard-verify.sh')
+  fs.rmSync(verify)
+  const falta = run(['automation', 'check', target])
+  assert.notEqual(falta.status, 0, 'uno del motor que falta sí lo es')
+  assert.match(falta.stderr, /falta automatization\/hooks\/guard-verify\.sh/)
+
+  // Y la lista sale del registro: cada guard del motor tiene su script exigido, sin repetir.
+  const A = require('../engine/automation')
+  const { guards, hookGroups } = require('../engine/hooks/run')
+  const grupos = Object.values(hookGroups).filter((names) => names.length > 1).length
+  assert.equal(A.GUARD_NAMES.length + grupos + 1, fs.readdirSync(
+    path.resolve(__dirname, '..', 'automatization', 'hooks'),
+  ).filter((name) => name.endsWith('.sh')).length, 'guards + wrappers de grupo + run-hook.sh')
+  assert.equal(A.GUARD_NAMES.length, Object.keys(guards).length)
+})
+
 test('init produce una instancia autocontenida y no sobrescribe', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-'))
   const target = path.join(base, 'demo-ops')

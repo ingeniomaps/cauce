@@ -243,24 +243,7 @@ function check(root) {
   if (!fs.existsSync(path.join(root, 'automatization', 'AGENTS.md'))) {
     errors.push('falta automatization/AGENTS.md')
   }
-  const hooks = [
-    'run-hook.sh',
-    'guard-shell.sh',
-    'guard-files.sh',
-    'guard-destructive.sh',
-    'guard-git-add.sh',
-    'guard-secrets.sh',
-    'guard-generated.sh',
-    'guard-workspace-boundary.sh',
-    'guard-engine.sh',
-    'guard-migrations.sh',
-    'guard-dependencies.sh',
-    'guard-governance.sh',
-    'guard-verify.sh',
-    'guard-planning-drift.sh',
-    'guard-integration-snapshot.sh',
-  ]
-  for (const name of hooks) {
+  for (const name of expectedHooks()) {
     const file = path.join(hookDir, name)
     if (!fs.existsSync(file)) errors.push(`falta automatization/hooks/${name}`)
     else if (!(fs.statSync(file).mode & 0o111)) {
@@ -316,13 +299,32 @@ function validateRunner(root, name, errors) {
   }
 }
 
+// Un `.sh` por grupo de más de un guard: es el que registra el runner para correrlos en un proceso.
+function groupWrappers() {
+  return Object.entries(H.hookGroups)
+    .filter(([, names]) => names.length > 1)
+    .map(([group]) => [group, `guard-${group.replace('pre-', '')}.sh`])
+}
+
+// Los scripts que la instancia debe tener, derivados del registro que los ejecuta en vez de copiados
+// a mano: la copia envejecía sin avisar, porque un guard nuevo del motor no entraba en la cuenta.
+//
+// Se comprueba en una sola dirección a propósito. Un `.sh` que no está acá no sobra: así es como una
+// empresa agrega el suyo —`guard-acme.sh` al lado de los nuestros—, que es lo que `upgrade` le dice
+// que haga y lo único que sobrevive a cada actualización.
+function expectedHooks() {
+  return [
+    'run-hook.sh',
+    ...groupWrappers().map(([, wrapper]) => wrapper),
+    ...GUARD_NAMES.map((name) => `guard-${name}.sh`),
+  ]
+}
+
 // Guards que hoy viven dentro de un grupo, con el wrapper que los reemplaza.
 function supersededGuards() {
   const entries = []
-  for (const [group, names] of Object.entries(H.hookGroups)) {
-    if (names.length < 2) continue
-    const wrapper = `guard-${group.replace('pre-', '')}.sh`
-    for (const name of names) entries.push({ file: `guard-${name}.sh`, wrapper })
+  for (const [group, wrapper] of groupWrappers()) {
+    for (const name of H.hookGroups[group]) entries.push({ file: `guard-${name}.sh`, wrapper })
   }
   return entries
 }

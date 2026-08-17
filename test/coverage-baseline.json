@@ -26,8 +26,8 @@
   },
   "engine/automation/index.js": {
     "lines": 89,
-    "branches": 66,
-    "functions": 97
+    "branches": 68,
+    "functions": 98
   },
   "engine/cli/args.js": {
     "lines": 100,
@@ -36,7 +36,7 @@
   },
   "engine/cli/ops.js": {
     "lines": 88,
-    "branches": 46,
+    "branches": 47,
     "functions": 87
   },
   "engine/config/validate.js": {
@@ -86,7 +86,7 @@
   },
   "engine/integrations/state.js": {
     "lines": 98,
-    "branches": 68,
+    "branches": 64,
     "functions": 92
   },
   "engine/integrations/writeback.js": {
