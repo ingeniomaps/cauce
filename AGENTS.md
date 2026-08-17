@@ -79,3 +79,6 @@ El veredicto se escribe **junto al cargo**, no en el banco. El banco se borra; e
   integraciones y cobertura, y `prepublishOnly` la exige antes de publicar.
 - El CLI se invoca con `node engine/cli/ops.js` o `npm run ops -- <comando>`; `make help` lista los
   atajos frecuentes.
+- **Nada de `exports` en `package.json`.** Una instancia resuelve el motor por subpath —
+  `require.resolve('@ingeniomaps/cauce/engine/cli/ops.js')` en `template/tools/ops.js`—, y un mapa
+  `exports` lo dejaría fuera. Agregarlo parece higiene y rompe toda instancia instalada.
