@@ -1,6 +1,6 @@
 {
   "$schema": "./engine/schemas/ops-config.schema.json",
-  "project": "Ops toolkit",
+  "project": "Cauce",
   "mode": "toolkit",
   "workspaceRoots": [
     { "name": "toolkit", "path": "." }
