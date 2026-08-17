@@ -1,3 +1,7 @@
 # Historial de cambios aprobados
 
 Registrar únicamente cambios aprobados, con fecha, evidencia, evaluación y responsable.
+
+| Fecha | Propuesta | Decisión | Aprobó | Cambio aplicado |
+|---|---|---|---|---|
+| 2026-08-17 | `learning/proposals/2026-08.md` (nace de `learning/reports/2026-08-17.md` y de `evaluations/results/2026-08-17.md`, casos 01, 02, 03 y 05) | Aprobada | Manuel Pinzon | Aditivo en tres archivos: dos viñetas en `SKILL.md` § Reglas —qué habilita una figura de compras sale del régimen aplicable y no del procedimiento propio que dice qué documentar, y un cuantificador universal sobre normas es una afirmación de mecanismo y lleva su registro—; la sección «Alcance de las figuras y afirmaciones normativas» en `references/operating-model.md`, que incluye auditar la rúbrica por lo que falta; y las conductas prohibidas `figure_scope_inferred_from_own_documentation_duty_or_universal_norm_claim` —con su caso `07-exception-scope.md`— y `weighted_rubric_omits_a_scorecard_dimension_without_declaring_it`, que se mide en el caso `03` ya existente. Ninguna línea vigente reescrita, sin desviaciones. Origen: 2 de 6, el peor resultado del catálogo. Tres de los cuatro fallos son el registro de mecanismo aplicado a normas en vez de a motores, lo que establece que el modo de falla es de la clase entera y no de los cargos técnicos; el cuarto es una rúbrica con pesos que suman 100 % y sin la dimensión de impacto responsable que el propio contrato abre nombrando. |

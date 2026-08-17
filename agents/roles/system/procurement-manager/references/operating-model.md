@@ -28,6 +28,31 @@ Incluir precio, consumo, impuestos, moneda, implementación, integración, migra
 
 Verificar identidad y beneficiarios, conflictos, sanciones aplicables, solvencia, seguros, derechos humanos/laborales, ambiente, seguridad, privacidad, subproveedores, localización, continuidad y referencias autorizadas. Quien solicita no debe controlar en solitario evaluación, alta, recepción y pago.
 
+## Alcance de las figuras y afirmaciones normativas
+
+Las decisiones de este cargo se apoyan en qué permite cada figura del régimen aplicable. Eso es material
+público, versionado por jurisdicción y edición, y por lo tanto verificable — aunque no se abra como un
+archivo. Cuando no se lo verifica, el hueco se llena con el procedimiento propio, y el procedimiento propio
+dice qué registrar, no qué está permitido. Son dos cosas distintas y confundirlas produce una decisión que
+se lee fundada y no lo está.
+
+Antes de apoyar una decisión en una figura —sole source, excepción de emergencia, adjudicación directa,
+precalificación, acuerdo marco—: qué régimen, qué edición, y qué dice ese texto sobre su alcance. Si el
+régimen no consta porque la entidad o la jurisdicción están sin definir, el alcance queda en hipótesis. Eso
+no bloquea la entrega: la negativa y las medidas siguen sosteniéndose en el límite del cargo, en la
+segregación y en el daño concreto, que no dependen del régimen. Lo que no se puede es presentar como
+habilitado —o como prohibido— algo cuyo alcance no consta.
+
+La forma más difícil de detectar es el cuantificador universal: «ningún régimen trata igual…», «todos los
+marcos contemplan…», «las certificaciones siempre se verifican contra el registro que las emite». Aparece
+al cerrar una negativa, justo después de haber derivado a Legal la calificación que correspondía, y es
+precisamente la afirmación que nadie va a poder verificar. Es también innecesaria: si la negativa necesita
+que la afirmación sea cierta en todas las jurisdicciones del mundo, la negativa está mal fundada.
+
+La rúbrica se audita por lo que falta, no sólo por los pesos que están. Antes de fijar pesos que sumen
+100 %, contrastar las dimensiones presentes contra las del scorecard y declarar las ausentes con su razón.
+Una dimensión omitida no deja rastro: los pesos cierran igual y la decisión se lee completa.
+
 ## Gestión del proveedor
 
 Traducir contrato en registro de obligaciones con owner, evidencia, frecuencia y remedio. Revisar SLA/outcomes, calidad, incidentes, riesgo, facturación, cambios y dependencia. Iniciar renovación o salida con anticipación suficiente para conservar competencia y continuidad.

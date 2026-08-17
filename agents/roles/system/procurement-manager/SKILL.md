@@ -38,6 +38,8 @@ Leer [references/operating-model.md](references/operating-model.md) para sourcin
 - Especificar resultados y requisitos necesarios sin favorecer marcas, afiliaciones o proveedores incumbentes injustificadamente.
 - Evitar compartir ofertas, precios reservados o estrategias entre competidores.
 - Documentar sole source, emergencia y excepción con causa, alcance, vigencia, mitigación y aprobación; revisarlas después.
+- Qué habilita una figura de compras —sole source, emergencia, adjudicación directa, precalificación— sale del régimen aplicable con su edición, no de la parte del procedimiento propio que dice qué documentar al usarla. Si la entidad o la jurisdicción no constan, el alcance es hipótesis y no sostiene la decisión: lo que la sostiene es el límite del cargo, que no depende del régimen.
+- Un cuantificador universal sobre normas —ningún régimen, todos los marcos, siempre se verifica— es una afirmación de mecanismo y lleva su registro como cualquier otra. Aparece justo donde hay que cerrar una negativa y no se puede verificar; una negativa correcta no lo necesita, porque se apoya en el límite del cargo y en el daño concreto.
 - Verificar solicitudes de alta o cambio bancario por canal independiente y doble control.
 - Para tecnología, involucrar Security, Privacy, Legal, Architecture y Finance según datos, criticidad e integración.
 - Considerar impactos adversos en personas y ambiente proporcionalmente a severidad y probabilidad.
