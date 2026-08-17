@@ -739,7 +739,7 @@ test('una bandera no ocupa el lugar de un argumento', () => {
 // del cargo. El banco es ese lugar.
 test('el banco de evaluación es una instancia de verdad, no un directorio vacío', () => {
   const toolkit = path.resolve(__dirname, '..')
-  const bench = run(['evaluate', 'product-manager', '--bench', '06-instancia'], toolkit)
+  const bench = run(['evaluate', 'product-manager', '--bench', '06-instancia', '--force'], toolkit)
   assert.equal(bench.status, 0, bench.stderr)
   const dir = bench.stdout.trim()
   assert.ok(fs.existsSync(path.join(dir, 'ops.config.json')), 'con su configuración')
@@ -758,7 +758,7 @@ test('el banco de evaluación es una instancia de verdad, no un directorio vací
 // y dos corridas del mismo caso dejarían de ser comparables.
 test('el banco se recrea entero en cada corrida', () => {
   const toolkit = path.resolve(__dirname, '..')
-  const dir = run(['evaluate', 'product-manager', '--bench', '07-recreado'], toolkit).stdout.trim()
+  const dir = run(['evaluate', 'product-manager', '--bench', '07-recreado', '--force'], toolkit).stdout.trim()
   const rastro = path.join(dir, 'planning', 'rastro-de-la-corrida-anterior.md')
   fs.writeFileSync(rastro, 'lo que escribió el cargo la vez pasada\n')
   run(['evaluate', 'product-manager', '--bench', '07-recreado', '--force'], toolkit)
@@ -771,7 +771,13 @@ test('el banco se recrea entero en cada corrida', () => {
 // estado limpio es lo que deja ver la diferencia entre el resumen y la entrega.
 test('el banco queda versionado para poder ver qué escribió el cargo', () => {
   const toolkit = path.resolve(__dirname, '..')
-  const dir = run(['evaluate', 'product-manager', '--bench', '08-versionado'], toolkit).stdout.trim()
+  // `--force` porque el test deja el banco escrito y la corrida siguiente tiene que poder rehacerlo;
+  // y se comprueba el estado antes de usar la salida: con `dir` vacío, `git -C ''` cae en el repo padre
+  // y contesta sobre el toolkit sin dar error.
+  const bench = run(['evaluate', 'product-manager', '--bench', '08-versionado', '--force'], toolkit)
+  assert.equal(bench.status, 0, bench.stderr)
+  const dir = bench.stdout.trim()
+  assert.ok(dir, 'el banco tiene que haberse creado')
   const git = (...args) => spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8' }).stdout
 
   assert.equal(git('status', '--porcelain').trim(), '', 'el banco nace sin cambios pendientes')
@@ -793,7 +799,7 @@ test('el banco queda versionado para poder ver qué escribió el cargo', () => {
 // recogerlo destruye justo lo que se iba a anotar.
 test('rehacer un banco con trabajo sin recoger se niega', () => {
   const toolkit = path.resolve(__dirname, '..')
-  const dir = run(['evaluate', 'product-manager', '--bench', '09-proteccion'], toolkit).stdout.trim()
+  const dir = run(['evaluate', 'product-manager', '--bench', '09-proteccion', '--force'], toolkit).stdout.trim()
   fs.appendFileSync(path.join(dir, 'planning', 'INBOX.md'), '\n- lo que produjo el cargo\n')
 
   const negado = run(['evaluate', 'product-manager', '--bench', '09-proteccion'], toolkit)
@@ -813,8 +819,12 @@ test('rehacer un banco con trabajo sin recoger se niega', () => {
 // no era la que el caso pedía medir, y la independencia entre casos es la premisa de medir con ellos.
 test('cada caso recibe su propio banco', () => {
   const toolkit = path.resolve(__dirname, '..')
-  const uno = run(['evaluate', 'product-manager', '--bench', '10-uno'], toolkit).stdout.trim()
-  const otro = run(['evaluate', 'product-manager', '--bench', '11-otro'], toolkit).stdout.trim()
+  const primero = run(['evaluate', 'product-manager', '--bench', '10-uno', '--force'], toolkit)
+  const segundo = run(['evaluate', 'product-manager', '--bench', '11-otro', '--force'], toolkit)
+  assert.equal(primero.status, 0, primero.stderr)
+  assert.equal(segundo.status, 0, segundo.stderr)
+  const uno = primero.stdout.trim()
+  const otro = segundo.stdout.trim()
   assert.notEqual(uno, otro, 'dos casos no comparten directorio')
 
   fs.appendFileSync(path.join(uno, 'planning', 'INBOX.md'), '\n- lo que escribió el primer caso\n')
@@ -822,7 +832,7 @@ test('cada caso recibe su propio banco', () => {
   assert.equal(vecino.includes('el primer caso'), false, 'y no se leen entre sí')
 
   // Preparar el banco de un caso no puede borrar el del vecino, que quizá esté a mitad de corrida.
-  run(['evaluate', 'product-manager', '--bench', '11-otro'], toolkit)
+  assert.equal(run(['evaluate', 'product-manager', '--bench', '11-otro', '--force'], toolkit).status, 0)
   assert.match(fs.readFileSync(path.join(uno, 'planning', 'INBOX.md'), 'utf8'), /el primer caso/)
 
   // El nombre entra en una ruta: no puede escaparse del directorio de bancos.
