@@ -1,12 +1,7 @@
 # Cauce — reglas de este repositorio
 
-Acá se **fabrica** el toolkit; no se lo consume. Éstas son las reglas de este repositorio, y son las
-únicas: `template/AGENTS.md` no rige acá. Es el `AGENTS.md` de raíz de una empresa —el mismo casillero
-que este archivo, para otro repo—, así que habla de un `planning/`, un `tools/ops.js` y un `system/`
-intocable que acá no existen o significan lo contrario.
-
-Lo que sí compartimos es `template/planning/rules/`: sus reglas están escritas sin depender de esa
-mecánica, rigen los dos repos igual y este repo las importa desde `CLAUDE.md`.
+Acá se **fabrica** el toolkit; no se lo consume. Éstas son las reglas de este repositorio; las
+transversales viven en `template/planning/rules/`, que `CLAUDE.md` importa.
 
 ## Acá no se instala nada
 
@@ -14,8 +9,7 @@ mecánica, rigen los dos repos igual y este repo las importa desde `CLAUDE.md`.
 raíz.** Cauce es lo que se fabrica en este repositorio, no algo que este repositorio consuma: el
 toolkit no se aplica a sí mismo.
 
-Esto se sugiere una y otra vez —sesión tras sesión, con buena intención— y siempre está mal. Lo que
-esos comandos producen acá es daño concreto:
+El daño es concreto:
 
 - `install` genera 47 punteros a cargos que escribimos en este mismo repo, y una segunda copia de los
   workflows que puede divergir del original.
@@ -24,15 +18,14 @@ esos comandos producen acá es daño concreto:
 - `init` o un `planning/` en la raíz duplicarían `template/planning`, que ya es el nuestro, y el
   molde dejaría de ser el que se distribuye.
 
-El wiring de acá es a mano: `.claude/settings.json` activa `git-add` y `verify`, los dos que se ganaron
-el lugar. Que `automation doctor` reporte faltantes es correcto y no hay que "arreglarlo": mide si
-la superficie de consumo de una empresa está completa, una pregunta que acá no aplica.
+`.claude/settings.json` activa `git-add` y `verify`, los dos que se ganaron el lugar. Que
+`automation doctor` reporte faltantes es correcto y no hay que "arreglarlo": mide si la superficie de
+consumo de una empresa está completa, una pregunta que acá no aplica.
 
 ## `system/` es el producto
 
-En una empresa, todo `system/` lo reemplaza el próximo `upgrade` y no se toca. Acá es al revés:
-`agents/roles/system/`, `template/planning/rules/system/` y los ADR del sistema son lo que se fabrica,
-y mantenerlos es el trabajo. El motor ya lo sabe —`mode: toolkit` en `ops.config.json`—, así que
+`agents/roles/system/`, `template/planning/rules/system/` y los ADR del sistema son lo que se fabrica
+acá, y mantenerlos es el trabajo. El motor ya lo sabe —`mode: toolkit` en `ops.config.json`—, así que
 `fork` se niega a copiar un cargo del catálogo y `learn` sí puede escribirle a uno del sistema: lo que
 decide es si el cargo vive en este repo, no si se llama `system`.
 

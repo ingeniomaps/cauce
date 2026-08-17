@@ -1,9 +1,6 @@
 {
   "$comment": [
-    "Dos de los doce guards. No correr `automation install` para completar el resto: lo que ese comando",
-    "agrega —punteros de cargo, una copia de los workflows, `destructive` contra el `git push` de cada",
-    "release, `planning-drift` sobre un `planning/` que no existe— es ruido acá. El argumento está en",
-    "AGENTS.md, «Acá no se instala nada».",
+    "Dos de los doce guards. El resto queda afuera por lo que dice AGENTS.md, «Acá no se instala nada».",
     "",
     "`git-add` es una regex sobre el comando y no cuesta nada. `verify` corre la suite (`npm test`, no",
     "`npm run ci`: quedan afuera check, automatización, integraciones y cobertura) y sólo si hay código",
