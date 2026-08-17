@@ -252,12 +252,15 @@ async function sync(root, name, options = {}) {
     F.atomicWrite(draftFile, draft)
     F.atomicWriteJson(snapshotFile, snapshot)
   }
-  const complete = options.complete !== false
-  if (complete) cleanupMissing(root, name, seen, result)
+  // Siempre se limpia: ningún adaptador puede devolver una lectura parcial. El de Jira lanza al
+  // exceder páginas, al repetir un token y ante cualquier HTTP que no sea 200, así que o trajo todo o
+  // no trajo nada. Había una bandera `complete` para saltearlo, sin forma de activarla desde el CLI y
+  // sin nadie que leyera el campo que escribía. Vuelve el día que un adaptador sepa decir «traje una
+  // parte», que es cuando protegería algo.
+  cleanupMissing(root, name, seen, result)
   F.atomicWriteJson(path.join(staging, 'sync-state.json'), {
     schemaVersion: 2,
     provider: name,
-    complete,
     pulledAt: new Date().toISOString(),
     keys: [...seen].sort(),
   })

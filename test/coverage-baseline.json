@@ -81,7 +81,7 @@
   },
   "engine/integrations/registry.js": {
     "lines": 79,
-    "branches": 49,
+    "branches": 48,
     "functions": 95
   },
   "engine/integrations/state.js": {
