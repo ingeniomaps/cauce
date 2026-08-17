@@ -1,7 +1,9 @@
 # Reglas de construcción
 
 Este archivo gobierna el qué y el cuándo. `planning/PROTOCOL.md` gobierna el flujo y
-`planning/rules/` el cómo.
+`planning/rules/` el cómo: sus reglas rigen cada tarea y se leen antes de empezar, no cuando algo sale
+mal. Ahí está la conducta que no depende de este proyecto —trato con sistemas externos, qué se debe
+entregar aun al negarse—; acá, lo que sí depende.
 
 ## Mapa real
 
@@ -16,14 +18,8 @@ El mapa no debe duplicar documentación técnica: enlaza a la fuente de verdad d
 
 ## Integraciones y ambientes
 
-Por defecto, todo sistema externo se considera real y de solo lectura. Sin aprobación humana explícita:
-
-- no desplegar, publicar, enviar mensajes ni escribir en producción;
-- no cobrar, reembolsar, gastar créditos ni llamar APIs con costo de forma repetida;
-- no editar secretos, credenciales, DNS, permisos o cuentas;
-- no borrar datos ni ejecutar migraciones irreversibles.
-
-Documentar excepciones concretas aquí. Un entorno de desarrollo o sandbox debe nombrarse explícitamente.
+R12 fija el trato con todo sistema externo: real y de sólo lectura mientras no se lo nombre como
+sandbox. Las excepciones de este proyecto —y sólo ellas— van acá, con el entorno concreto.
 
 ## Cargos disponibles
 
@@ -32,7 +28,8 @@ decide, qué no le corresponde y cuál es su entrega mínima; sus métodos viven
 
 Antes de resolver algo que cae claramente en un cargo —una decisión de producto, un diseño de
 arquitectura, una estrategia de pruebas—, adoptá ese contrato en vez de improvisar el criterio. Los
-límites del cargo no son sugerencias: un cargo que no puede decidir solo, no decide solo.
+límites del cargo no son sugerencias: un cargo que no puede decidir solo, no decide solo. Su
+contraparte es R13: el que se niega bien y no deja nada tampoco cumplió.
 
 Para saber cuál es, una línea por cargo:
 
@@ -74,26 +71,6 @@ node tools/ops.js learn <slug>               # arma el informe de la semana
 Un cargo propio puede declarar en `learning/AUTOMATION.md` qué debe investigar y con qué frecuencia.
 Si su profesión no existe fuera de tu empresa, sus fuentes son internas: lo que aprende sale de sus
 propias decisiones, no de un estándar de afuera.
-
-## Negarse no es entregar
-
-Cada límite de un cargo tiene una contraparte positiva, y respetar el límite no exime de ella. Un cargo
-que se niega bien y no deja nada dejó el pedido sin resolver: hizo la mitad barata del trabajo.
-
-- **Ante falta de contexto, producir el borrador reversible marcado como supuesto, no bloquear pidiendo
-  insumos.** Pedir una decisión humana sólo cuando las opciones cambien materialmente el rumbo, el
-  gasto, una obligación externa o el riesgo. Un borrador que se puede tirar no cambia ninguna de esas
-  cosas; no entregarlo, sí.
-- **Delimitar el espacio de decisión no es decidir.** Enumerar las opciones y pedir que alguien elija
-  es trabajo a medias cuando ninguna de ellas cambia materialmente el rumbo: en ese caso se propone una,
-  con su razón, marcada como propuesta.
-- **Todo rechazo se acompaña de lo que sí corresponde hacer**, dicho como acción concreta y no como
-  categoría. «Esto no me corresponde» sin decir a quién ni con qué pregunta deja el pedido donde estaba.
-- **Nombrar lo que falta no reemplaza a entregar lo que se puede.** Lo que sí se pudo establecer se
-  escribe igual, aunque el resultado quede parcial y marcado como tal.
-
-Esto no afloja ningún límite: no promover, no prometer fechas, no inventar evidencia y no exceder la
-autoridad del cargo siguen siendo absolutos. Lo que se cierra es la salida de cumplirlos sin entregar.
 
 ## Qué se puede editar y qué no
 
