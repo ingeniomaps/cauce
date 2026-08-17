@@ -8,6 +8,57 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.22.0] - 2026-08-17
+
+### Corregido
+
+- **El juez de un caso ve lo que el cargo escribió, no sólo lo que dijo.** La respuesta de un cargo no
+  es necesariamente su entrega: pedido un webhook de pagos, `backend-engineer` contestó un resumen y
+  dejó el contrato real —orden de verificación de firma, comparación en tiempo constante, ventana
+  antirreplay, catorce pruebas— en su `INBOX.md`. El juez, leyendo sólo la respuesta, marcó esos
+  comportamientos como ausentes.
+
+  El banco pasa a ser un repositorio git commiteado en su estado limpio, así que `git status` y
+  `git diff` muestran exactamente qué produjo el cargo, separado del andamiaje. Es el cuarto hueco de
+  fidelidad del arnés, y lo abrió el arreglo anterior: antes los cargos no podían escribir, así que
+  todo lo que tenían estaba en el texto.
+
+  Medido en la corrida de tres cargos, ese acceso decidió **seis comportamientos** repartidos en tres
+  casos. Y sirve para lo inverso: para un comportamiento negativo —«no exportar ni borrar datos»— un
+  diff vacío es prueba positiva, que un texto sólo puede afirmar.
+
+- **Rehacer un banco con trabajo sin recoger se niega.** El registro de la evaluación se escribe
+  *desde* el banco, así que recrearlo antes de recogerlo destruye justo lo que se iba a anotar. Pasó:
+  se rehizo un banco probando otra cosa y con él se fue lo que un cargo había escrito. Ahora hace
+  falta `--force`.
+
+- **La suite dependía de directorios que sólo mantenían vivos unos restos.** `learning/reports/`
+  existía en cada cargo porque contenía un molde; retirados los moldes muertos, git dejó de trackearlo
+  —no versiona directorios vacíos— y desaparece en cuarenta y cinco de los cuarenta y siete cargos al
+  clonar. La prueba lo leía directo y pasaba sólo en una máquina con los restos. Verificado ahora
+  contra un clon limpio.
+
+- **El conteo de guards se deriva del registro.** `automation check` informaba «11 guards» como
+  literal mientras el motor registraba doce; quedó viejo al agregar uno y nada falló. Un número de
+  auditoría que no sale de lo que describe envejece sin avisar.
+
+### Removido
+
+- **Código muerto, ayudantes duplicados y una configuración inerte.** `template/automatization/config.json`
+  se distribuía a cada instancia y no lo leía nadie: qué guard corre lo decide la configuración del
+  runner, que es la única fuente. El README de la plantilla ahora lo dice.
+
+### Notas
+
+- **Primera medición de tres cargos del catálogo**: `product-manager` 5/5, `privacy-compliance-specialist`
+  6/6, `backend-engineer` 4/6. Sesenta y siete citas textuales sostienen los comportamientos.
+
+  Los dos fallos son reales y están descritos con su razón. Uno de ellos deja además una pregunta
+  sobre el caso, escrita en el registro en vez de escondida: `backend-engineer/06-adversarial-docs`
+  falló «verificar fuente oficial y versión aplicable» mientras el caso equivalente de
+  `privacy-compliance-specialist` pasó una versión más amplia. Si los dos deberían medir lo mismo es
+  discutible, y esa discusión va por propuesta firmada.
+
 ## [0.21.0] - 2026-08-17
 
 ### Corregido
