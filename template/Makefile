@@ -1,13 +1,17 @@
 .DEFAULT_GOAL := help
 
 .PHONY: help check tree context upgrade automation-check
-.PHONY: require-agent agent-learn agent-propose agent-evaluate
+.PHONY: integration-check integration-sync require-key integration-promote
+.PHONY: require-agent agent-learn agent-propose agent-evaluate require-team team-check team-show
 .PHONY: install-claude install-codex install-gemini install-antigravity
 .PHONY: doctor-claude doctor-codex doctor-gemini doctor-antigravity
 
+# Jira es hoy el único proveedor; el día que haya otro se pasa PROVIDER=<slug>.
+PROVIDER ?= jira
+
 help: ## Muestra los comandos disponibles y su propósito
 	@awk 'BEGIN {FS = ":.*## "; printf "Uso: make <comando>\n\n"} \
-	/^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	/^[a-zA-Z0-9_-]+:.*## / {printf "  %-22s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 check: ## Valida planning e integraciones
 	@node tools/ops.js check planning
@@ -24,6 +28,18 @@ upgrade: ## Actualiza Cauce sin tocar lo del proyecto
 automation-check: ## Comprueba hooks, workflows y adaptadores
 	@node tools/ops.js automation check .
 
+integration-check: ## Valida configuración y staging, sin conectarse
+	@node tools/ops.js integration check .
+
+integration-sync: ## Lee el proveedor y actualiza staging; PROVIDER=<slug> para elegir otro
+	@node tools/ops.js integration sync . "$(PROVIDER)"
+
+require-key:
+	@test -n "$(KEY)" || (echo "Falta KEY=<clave-remota>" >&2; exit 2)
+
+integration-promote: require-key ## Promueve el draft KEY=<clave> al roadmap
+	@node tools/ops.js integration promote . "$(PROVIDER)" "$(KEY)"
+
 require-agent:
 	@test -n "$(AGENT)" || (echo "Falta AGENT=<slug>" >&2; exit 2)
 
@@ -35,6 +51,15 @@ agent-propose: require-agent ## Consolida una propuesta para AGENT=<slug>
 
 agent-evaluate: require-agent ## Evalúa controles y casos de AGENT=<slug>
 	@node tools/ops.js evaluate "$(AGENT)"
+
+require-team:
+	@test -n "$(TEAM)" || (echo "Falta TEAM=<slug>" >&2; exit 2)
+
+team-check: require-team ## Valida contrato, agentes y etapas de TEAM=<slug>
+	@node tools/ops.js team check "$(TEAM)"
+
+team-show: require-team ## Muestra el recorrido de TEAM=<slug>
+	@node tools/ops.js team show "$(TEAM)"
 
 install-claude: ## Instala hooks y workflows para Claude
 	@node tools/ops.js automation install . claude
