@@ -95,6 +95,14 @@ function packagePath(root, relative) {
   return candidates.find((candidate) => fs.existsSync(candidate)) || ''
 }
 
+// El modo declarado, o '' si no hay configuración legible. `toolkit` es este repositorio: acá se
+// fabrica Cauce, así que los comandos que actualizan o instalan una instancia sólo pueden romper.
+function mode(root) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')).mode || ''
+  } catch { return '' }
+}
+
 // Dónde quedó el motor. El bridge de Antigravity repite esta cascada a mano porque corre antes de
 // poder cargar este módulo: si cambia acá, cambia allá.
 function engineAt(root, relative = '') {
@@ -230,6 +238,7 @@ module.exports = {
   SYSTEM_COLLECTIONS,
   SYSTEM_FILES,
   localChanges,
+  mode,
   overrides,
   sourceOf,
   systemPaths,

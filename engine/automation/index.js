@@ -477,6 +477,12 @@ function deliveryState(recorded, name, resolved, prefix = '') {
 }
 
 function install(root, name, output = console, options = {}) {
+  // `install` arma la superficie de consumo de una empresa: punteros a cada cargo, una copia de los
+  // workflows y los guards. Acá los cargos y los workflows son el producto —la copia divergiría— y
+  // hay guards que contradicen el trabajo, como el que bloquea el push de cada release.
+  if (O.mode(root) === 'toolkit') {
+    throw new Error('Acá se fabrica Cauce, no se lo consume: el wiring de este repo se escribe a mano.')
+  }
   const runner = runnerManifest(root, name)
   const errors = check(root)
   if (errors.length) throw new Error(`La automatización no es instalable:\n- ${errors.join('\n- ')}`)

@@ -559,6 +559,11 @@ function upgrade(dir) {
   if (!fs.existsSync(path.join(root, 'ops.config.json'))) {
     fail(`${root} no es una instancia de Cauce: falta ops.config.json.`, 2)
   }
+  // Acá se fabrica Cauce: `upgrade` reemplazaría con las copias de `template/` los archivos que este
+  // repositorio mantiene en la raíz —`AGENTS.md` entre ellos, que es donde vive esta misma regla—.
+  if (O.mode(root) === 'toolkit') {
+    fail(`${root} es el toolkit: acá se edita Cauce, no se lo actualiza.`, 2)
+  }
   const dry = process.argv.includes('--check')
   const force = process.argv.includes('--force')
   const from = instanceVersion(root)
@@ -937,10 +942,7 @@ function evaluate(agent) {
   // El banco sólo tiene sentido acá: en una empresa el cargo que se evalúa es suyo —propio o
   // adoptado— y su `planning/` ya es el lugar legítimo donde trabajar.
   if (process.argv.includes('--bench')) {
-    let mode = ''
-    const config = path.join(root, 'ops.config.json')
-    try { mode = JSON.parse(fs.readFileSync(config, 'utf8')).mode } catch { /* sin config */ }
-    if (mode !== 'toolkit') {
+    if (O.mode(root) !== 'toolkit') {
       fail('--bench es del toolkit. En una instancia, el cargo trabaja sobre tu planning/: si es del '
         + `catálogo, adoptalo primero con "ops agents fork ${agent}".`, 2)
     }

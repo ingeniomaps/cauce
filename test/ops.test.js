@@ -869,3 +869,26 @@ test('el banco es del toolkit; una instancia recibe la salida que le corresponde
   assert.match(result.stderr, /--bench es del toolkit/)
   assert.match(result.stderr, /agents fork product-manager/, 'y nombra la salida real')
 })
+
+// `upgrade` e `install` son para una empresa: reemplazan lo que el toolkit mantiene por lo que el
+// toolkit trae. Corridos acá se llevarían puestos los archivos de la raíz —`AGENTS.md` entre ellos,
+// donde vive esta misma regla—, y el catálogo se duplicaría en punteros a sí mismo. `fork` ya se
+// negaba; estos dos entraban y hacían el daño en silencio.
+test('los comandos de una instancia se niegan a correr contra el toolkit', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-toolkit-'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'toolkit' }))
+
+  const upgraded = run(['upgrade', root])
+  assert.equal(upgraded.status, 2)
+  assert.match(upgraded.stderr, /es el toolkit/)
+
+  const installed = run(['automation', 'install', root, 'claude'])
+  assert.equal(installed.status, 2)
+  assert.match(installed.stderr, /se fabrica Cauce/)
+
+  // Y una instancia de verdad sigue pudiendo: la negativa mira el modo, no el comando.
+  const demo = path.join(root, 'demo-ops')
+  assert.equal(run(['init', demo, '--name', 'Demo', '--mode', 'sidecar']).status, 0)
+  linkEngine(demo)
+  assert.equal(run(['automation', 'install', demo, 'claude']).status, 0)
+})

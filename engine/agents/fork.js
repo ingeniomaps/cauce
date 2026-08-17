@@ -56,12 +56,9 @@ function fork(root, slug, date) {
   // En el toolkit no hay a quién copiarle: el catálogo se mantiene acá, directo. Dejarlo pasar creaba
   // un duplicado en `agents/roles/` que tapaba al original, y el trabajo siguiente se hacía sobre la
   // copia mientras la versión que se publica quedaba quieta.
-  try {
-    const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
-    if (config.mode === 'toolkit') {
-      throw new Error(`${slug} vive acá: en el toolkit se edita el catálogo, no se lo copia`)
-    }
-  } catch (error) { if (error instanceof Error && error.message.includes('vive acá')) throw error }
+  if (ownership.mode(root) === 'toolkit') {
+    throw new Error(`${slug} vive acá: en el toolkit se edita el catálogo, no se lo copia`)
+  }
 
   const found = catalog.find(root, slug)
   if (!found.system) {
