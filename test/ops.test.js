@@ -529,6 +529,24 @@ test('Jira sincroniza ADF, preserva curación y promueve sin escribir remoto', (
     assert.match(result.stdout, new RegExp(`${operacion} aplicado a DEMO-42`))
   }
   assert.notEqual(run(['integration', 'reset', target, 'jira', 'NO-EXISTE']).status, 0)
+
+  // Un item que desaparece del remoto cambia el staging, y `sync` lo contaba sin decirlo. Con
+  // curación queda marcado; sin ella se borra. Las dos cosas se avisan porque las dos son pérdidas
+  // potenciales de trabajo, y la única señal era mirar el directorio.
+  const vacio = path.join(base, 'vacio.json')
+  fs.writeFileSync(vacio, '{"issues":[]}')
+  // El `reset` de arriba dejó el draft igual al snapshot, o sea sin curar. Se le vuelve a poner algo
+  // propio para probar la rama que conserva.
+  fs.writeFileSync(draftFile, `${fs.readFileSync(draftFile, 'utf8')}\n- Nota local.\n`)
+  const curado = run(['integration', 'sync', target, 'jira', '--fixture', vacio])
+  assert.equal(curado.status, 0, curado.stderr)
+  assert.match(curado.stdout, /1 con curación ya no están en el remoto/)
+
+  assert.equal(run(['integration', 'reset', target, 'jira', 'DEMO-42']).status, 0)
+  const borrado = run(['integration', 'sync', target, 'jira', '--fixture', vacio])
+  assert.equal(borrado.status, 0, borrado.stderr)
+  assert.match(borrado.stdout, /1 sin curar se fueron del remoto y se borraron/)
+  assert.equal(fs.existsSync(staged), false, 'y el directorio efectivamente ya no está')
 })
 
 test('upgrade reemplaza lo del sistema y no toca nada del proyecto', () => {

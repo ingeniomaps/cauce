@@ -844,6 +844,13 @@ const INTEGRATION = {
         `✓ ${provider}: ${result.total} items · ${result.created} nuevos · ` +
           `${result.refreshed} refrescados · ${result.preserved} curados preservados`,
       )
+      // Lo que el remoto dejó de tener sí cambia el staging, y se contaba sin decirlo: un item que
+      // desaparece se borra o queda marcado según tenga curación. Se nombra sólo cuando pasó, porque
+      // en la corrida normal los dos son cero y anunciarlo cada vez es ruido.
+      if (result.removed) console.log(`  − ${result.removed} sin curar se fueron del remoto y se borraron`)
+      if (result.missing) {
+        console.log(`  ⚠ ${result.missing} con curación ya no están en el remoto: quedan marcados`)
+      }
     },
   },
   promote: {
