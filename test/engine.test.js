@@ -701,3 +701,43 @@ test('una propuesta se rechaza campo por campo', () => {
   assert.deepEqual(errores({ state: 'approved', service: 'app', estimateHours: 8, justification: 'x' }), [])
   assert.deepEqual(errores({ type: 'Story', parent: 'DEMO-1' }), [])
 })
+
+// Una épica que creció deja de ser un archivo y pasa a ser un directorio con `spec.md` al lado de sus
+// notas. `epicFiles` lo contempla, pero ningún test lo ejercitaba: la rama quedaba cubierta o no según
+// qué dejara otra prueba en disco, y esa intermitencia hacía fallar el piso de cobertura una de cada
+// doce corridas. El caso es real y ahora se mide siempre.
+test('una épica que creció a directorio se lee desde su spec.md', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-epic-dir-'))
+  const grande = path.join(root, 'roadmap', 'epic-004-grande')
+  fs.mkdirSync(grande, { recursive: true })
+  fs.writeFileSync(path.join(grande, 'spec.md'), `---
+epic: 004
+title: Grande
+status: open
+---
+
+## Criterios
+
+- **C1** — Un resultado observable.
+
+## Contexto relevante
+
+- Contexto.
+
+## Historias
+
+- [ ] **una-historia** (→ C1) — Hace algo. (service: app)
+`)
+  // Vive al lado del spec y no se confunde con él: sólo `spec.md` define la épica.
+  fs.writeFileSync(path.join(grande, 'notes.md'), '# Notas sueltas\n')
+
+  const epics = P.readEpics(root)
+  assert.equal(epics.length, 1, 'una épica, no dos: notes.md no es una')
+  assert.equal(epics[0].file, 'epic-004-grande/spec.md', 'y se nombra por su ruta dentro del directorio')
+  assert.equal(epics[0].num, '004')
+  assert.deepEqual(epics[0].stories.map((story) => story.slug), ['una-historia'])
+
+  // Un directorio con nombre de épica pero sin spec.md no aporta ninguna: se ignora, no revienta.
+  fs.mkdirSync(path.join(root, 'roadmap', 'epic-005-vacia'))
+  assert.equal(P.readEpics(root).length, 1)
+})
