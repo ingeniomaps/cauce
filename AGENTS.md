@@ -76,4 +76,6 @@ El veredicto se escribe **junto al cargo**, no en el banco. El banco se borra; e
   datos quedan fuera: son prosa y fixtures, y envolverlos no los hace más legibles.
 - **Comentarios y documentación en español; mensajes de commit en inglés**, Conventional Commits.
 - Las pruebas corren con `node --test`. La puerta real es `npm run ci`: `check`, automatización,
-  integraciones y cobertura.
+  integraciones y cobertura, y `prepublishOnly` la exige antes de publicar.
+- El CLI se invoca con `node engine/cli/ops.js` o `npm run ops -- <comando>`; `make help` lista los
+  atajos frecuentes.

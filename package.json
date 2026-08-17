@@ -2,6 +2,14 @@
   "name": "@ingeniomaps/cauce",
   "version": "0.23.0",
   "description": "Sistema portable de planificación y ejecución verificable para cualquier proyecto",
+  "keywords": [
+    "planning",
+    "agents",
+    "ai-agents",
+    "cli",
+    "workflow",
+    "governance"
+  ],
   "type": "commonjs",
   "bin": {
     "cauce": "engine/cli/ops.js"
@@ -12,28 +20,33 @@
     "agents/",
     "teams/",
     "automatization/",
-    ".github/workflows/",
-    "LICENSE",
     "CHANGELOG.md"
   ],
   "scripts": {
     "ops": "node engine/cli/ops.js",
     "check": "node engine/cli/ops.js check template/planning",
-    "tree": "node engine/cli/ops.js tree template/planning --no-color",
     "automation:check": "node engine/cli/ops.js automation check .",
     "integration:check": "node engine/cli/ops.js integration check template jira",
     "test": "bash test/hooks-smoke.sh && node --test test/*.test.js",
     "coverage": "bash test/coverage.sh",
     "coverage:update": "bash test/coverage.sh --update",
-    "ci": "npm run check && npm run automation:check && npm run integration:check && npm run coverage"
+    "ci": "npm run check && npm run automation:check && npm run integration:check && npm run coverage",
+    "prepublishOnly": "npm run ci"
   },
   "engines": {
     "node": ">=24"
   },
   "packageManager": "npm@11.16.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ingeniomaps/cauce.git"
+  },
+  "homepage": "https://github.com/ingeniomaps/cauce#readme",
+  "bugs": {
+    "url": "https://github.com/ingeniomaps/cauce/issues"
   },
   "license": "MIT"
 }
