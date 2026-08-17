@@ -438,7 +438,9 @@ function tree(dir, cli) {
   console.log(`\n${paint('1', 'WIP')}  ${wipText}`)
   console.log(
     `${paint('1', 'INBOX')}  ${inbox.deuda} deuda · ${inbox.ideas} ideas · ` +
-      `${inbox.propuestas} propuestas · ${inbox.lecciones} lecciones`,
+      `${inbox.propuestas} propuestas · ${inbox.lecciones} lecciones` +
+      // Sin esto, doce viñetas sin nombre se veían como un inbox vacío y nadie se enteraba.
+      (inbox.skipped ? `  (${inbox.skipped} sin contar: falta el nombre en **negrita**)` : ''),
   )
   console.log(`${paint('1', 'DONE')}   ${done.entries.length} tareas\n`)
 }

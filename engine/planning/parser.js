@@ -67,9 +67,13 @@ function readEpics(dir) {
     const field = frontmatter(text)
     const criteria = [...section(text, /Criterios/i).matchAll(/^-\s+\*\*(C\d+)(?:[^*]*)\*\*\s+[—-]\s+(.+)$/gm)]
       .map((match) => ({ id: match[1], text: match[2].trim() }))
+    // `(?![\s\S])` y no `$`: con la bandera `m` el `$` casa fin de **línea**, así que el cuerpo no ávido
+    // cortaba en el primer salto y una historia envuelta perdía su `(service: …)` y sus `(→ CN)`. El
+    // error que salía era «no declara (service: <ruta>)» — culpaba al autor de algo que sí había escrito.
+    // Dos cargos distintos lo encontraron reescribiendo su historia hasta que entrara en un solo renglón.
     const storyPattern = new RegExp(
       String.raw`^[-*]\s+(?:\[[ xX]\]\s+)?\*\*([^*]+)\*\*\s+([\s\S]*?)` +
-        String.raw`(?=\n[-*]\s+(?:\[[ xX]\]\s+)?\*\*|\n##|$)`,
+        String.raw`(?=\n[-*]\s+(?:\[[ xX]\]\s+)?\*\*|\n##|(?![\s\S]))`,
       'gm',
     )
     const stories = [...section(text, /Historias/i).matchAll(storyPattern)]
@@ -163,11 +167,19 @@ function readWip(dir) {
   }
 }
 
+// Un ítem se cuenta cuando empieza con su nombre en negrita, y el nombre existe para poder citarlo
+// —`HUMAN_ACTIONS.md` y las propuestas mensuales se refieren a un ítem por ese slug—. La convención se
+// conserva; lo que no se conserva es el silencio.
+//
+// La plantilla no traía ningún ejemplo, así que quien escribía viñetas planas veía cero ítems sobre un
+// archivo con doce y nada se lo decía. `skipped` es lo que vuelve visible esa diferencia.
 function readInbox(dir) {
-  const result = { deuda: 0, ideas: 0, propuestas: 0, lecciones: 0 }
+  const result = { deuda: 0, ideas: 0, propuestas: 0, lecciones: 0, skipped: 0 }
   for (const part of read(path.join(dir, 'INBOX.md')).split(/^##\s+/m)) {
     const title = part.split('\n')[0]
+    const bullets = (part.match(/^[-*]\s+(?:\[[ xX]\]\s+)?/gm) || []).length
     const count = (part.match(/^[-*]\s+(?:\[[ xX]\]\s+)?\*\*/gm) || []).length
+    if (/Deuda|Ideas|Visi[oó]n|Propuestas|Lecciones/i.test(title)) result.skipped += bullets - count
     if (/Deuda/i.test(title)) result.deuda = count
     if (/Ideas|Visi[oó]n/i.test(title)) result.ideas = count
     if (/Propuestas/i.test(title)) result.propuestas = count

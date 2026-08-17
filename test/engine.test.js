@@ -364,11 +364,37 @@ service: app
 ## Historias
 
 * **historia-legada** (→ C1, C2, C3) — Resultado. (service: app)
+- [ ] **envuelta** (→ C2) — Incremento cuyo texto no entra en un solo renglón y sigue abajo.
+  _Aceptación: resultado observable._ (service: app)
 `)
 
   const [epic] = P.readEpics(root)
 
   assert.deepEqual(epic.stories[0].criteria, ['C1', 'C2', 'C3'])
+
+  // El cuerpo de la historia es multilínea, pero el `$` del lookahead casaba fin de *línea* por la
+  // bandera `m`, así que cortaba en el primer salto: la historia envuelta perdía su criterio y su
+  // servicio, y `check` respondía «no declara (service: <ruta>)» sobre una historia que sí lo declara.
+  // Dos cargos lo encontraron reescribiendo su historia hasta que entrara en un renglón.
+  const envuelta = epic.stories.find((story) => story.slug === 'envuelta')
+  assert.deepEqual(envuelta.criteria, ['C2'], 'el criterio vive en la primera línea')
+  assert.equal(envuelta.service, 'app', 'y el servicio en la segunda')
+})
+
+// La plantilla no traía ejemplo, así que quien escribía viñetas planas veía un inbox vacío sobre un
+// archivo lleno. La convención del nombre se conserva —es con lo que se cita el ítem— y lo que se
+// corrige es que la diferencia sea visible.
+test('el inbox dice cuántas viñetas quedaron sin contar', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-inbox-'))
+  fs.writeFileSync(path.join(root, 'INBOX.md'), '# Inbox\n\n## Deuda\n\n'
+    + '- **con-nombre** — Se cuenta.\n- sin nombre, no se cuenta.\n\n'
+    + '## Ideas\n\n- **otra** — Se cuenta.\n- tampoco esta.\n')
+
+  const inbox = P.readInbox(root)
+
+  assert.equal(inbox.deuda, 1)
+  assert.equal(inbox.ideas, 1)
+  assert.equal(inbox.skipped, 2, 'las planas no desaparecen en silencio')
 })
 
 test('roadmap valida trazabilidad, cierre y estructura de épicas grandes', () => {
