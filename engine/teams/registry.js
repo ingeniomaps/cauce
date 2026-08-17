@@ -51,8 +51,12 @@ function validate(root, slug) {
   }
   if (!OUTCOMES.includes(manifest.outcome)) errors.push(`outcome debe ser ${OUTCOMES.join(' o ')}`)
   if (!Array.isArray(manifest.stages) || !manifest.stages.length) errors.push('stages debe contener etapas')
-  if (!Array.isArray(manifest.guardrails) || !manifest.guardrails.length) errors.push('guardrails debe contener controles')
-  if (!Array.isArray(manifest.completion) || !manifest.completion.length) errors.push('completion debe contener criterios')
+  if (!Array.isArray(manifest.guardrails) || !manifest.guardrails.length) {
+    errors.push('guardrails debe contener controles')
+  }
+  if (!Array.isArray(manifest.completion) || !manifest.completion.length) {
+    errors.push('completion debe contener criterios')
+  }
 
   const agents = new Set([manifest.entryAgent, manifest.facilitator])
   for (const agent of Object.values(manifest.decisionOwners || {})) agents.add(agent)

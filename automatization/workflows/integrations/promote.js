@@ -21,7 +21,10 @@ const PROVIDER = String(input.provider || '').trim()
 const KEY = String(input.key || '').trim()
 const RESULT = {
   type: 'object', additionalProperties: false, required: ['passed', 'provider', 'key', 'details'],
-  properties: { passed: { type: 'boolean' }, provider: { type: 'string' }, key: { type: 'string' }, details: { type: 'string' }, kind: { type: 'string' } },
+  properties: {
+    passed: { type: 'boolean' }, provider: { type: 'string' }, key: { type: 'string' },
+    details: { type: 'string' }, kind: { type: 'string' },
+  },
 }
 
 phase('Preflight')
@@ -35,5 +38,7 @@ const result = await agent(
   `"node tools/ops.js check ${ROOT}/planning". passed=true requires real exit 0 from every command.`,
   { label: 'integration:promote', schema: RESULT },
 )
-log(result && result.passed ? `Promoted ${result.provider}:${result.key} as ${result.kind}` : `Integration promotion failed: ${(result && result.details) || 'no result'}`)
+log(result && result.passed
+  ? `Promoted ${result.provider}:${result.key} as ${result.kind}`
+  : `Integration promotion failed: ${(result && result.details) || 'no result'}`)
 return result

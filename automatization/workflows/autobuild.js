@@ -40,7 +40,10 @@ const EXPANSION = {
 }
 const READY = {
   type: 'object', additionalProperties: false, required: ['ready', 'needsHuman'],
-  properties: { ready: { type: 'boolean' }, needsHuman: { type: 'boolean' }, reason: { type: 'string' }, refinedAcceptance: { type: 'string' } },
+  properties: {
+    ready: { type: 'boolean' }, needsHuman: { type: 'boolean' },
+    reason: { type: 'string' }, refinedAcceptance: { type: 'string' },
+  },
 }
 const ESTIMATE = {
   type: 'object', additionalProperties: false, required: ['hours', 'needsSplit'],
@@ -70,12 +73,16 @@ const VERIFY = {
     commands: { type: 'array', items: { type: 'object', required: ['cmd', 'exitCode'], properties: {
       cmd: { type: 'string' }, exitCode: { type: 'integer' }, note: { type: 'string' },
     } } },
-    regressions: { type: 'array', items: { type: 'string' } }, preExisting: { type: 'array', items: { type: 'string' } },
+    regressions: { type: 'array', items: { type: 'string' } },
+    preExisting: { type: 'array', items: { type: 'string' } },
   },
 }
 const QA = {
   type: 'object', additionalProperties: false, required: ['passed', 'evidence'],
-  properties: { passed: { type: 'boolean' }, evidence: { type: 'string' }, behavioral: { type: 'boolean' }, bugs: { type: 'array', items: { type: 'string' } } },
+  properties: {
+    passed: { type: 'boolean' }, evidence: { type: 'string' }, behavioral: { type: 'boolean' },
+    bugs: { type: 'array', items: { type: 'string' } },
+  },
 }
 const COMMIT = {
   type: 'object', additionalProperties: false, required: ['committed'],
@@ -288,7 +295,8 @@ while (safety++ < 50) {
     `step; verify completed steps on disk ` +
     `and tick each successful step. Use RED/GREEN for behavior. Acceptance: ${task.acceptance}.`, {
       schema: { type: 'object', required: ['completed', 'summary'], properties: {
-        completed: { type: 'boolean' }, summary: { type: 'string' }, blockers: { type: 'array', items: { type: 'string' } },
+        completed: { type: 'boolean' }, summary: { type: 'string' },
+        blockers: { type: 'array', items: { type: 'string' } },
       } },
     },
   )
@@ -349,7 +357,10 @@ phase('Closing')
 const closing = await write(
   `Run "node tools/ops.js check ${P}" from ${ROOT}. If red, repair only deterministic derived state; never rewrite ` +
   `acceptance or decisions to force green.`, {
-    schema: { type: 'object', required: ['passed', 'details'], properties: { passed: { type: 'boolean' }, details: { type: 'string' } } },
+    schema: {
+      type: 'object', required: ['passed', 'details'],
+      properties: { passed: { type: 'boolean' }, details: { type: 'string' } },
+    },
   },
 )
 if (!closing.passed) return stop('planning-check-failed', closing.details)

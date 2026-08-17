@@ -529,7 +529,8 @@ function context(dir) {
   if (report.epic) console.log(`EPIC   ${report.epic.num} ${report.epic.title} [${report.epic.status}]`)
   if (report.task.acceptance) console.log(`ACEPT  ${report.task.acceptance}`)
   for (const criterion of criteria) console.log(`${criterion.id.padEnd(6)} ${criterion.text}`)
-  console.log(`WIP    ${report.wip ? `${report.wip.phase} · ${report.wip.complete}✓/${report.wip.pending}○` : 'idle'}`)
+  const wip = report.wip ? `${report.wip.phase} · ${report.wip.complete}✓/${report.wip.pending}○` : 'idle'
+  console.log(`WIP    ${wip}`)
   if (report.blockedTasks.length) console.log(`SKIP   ${report.blockedTasks.join(', ')} (acción humana abierta)`)
   for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
 }
@@ -764,10 +765,13 @@ async function integration(action, rootArg, provider, key) {
     for (const [name, entry] of Object.entries(registry.providers || {})) {
       let listo = false
       try {
-        listo = JSON.parse(fs.readFileSync(path.join(root, 'integrations', name, 'config.json'), 'utf8')).enabled === true
+        const suyo = path.join(root, 'integrations', name, 'config.json')
+        listo = JSON.parse(fs.readFileSync(suyo, 'utf8')).enabled === true
       } catch { /* sin materializar */ }
       const estado = !entry.enabled ? '○' : (listo ? '●' : '◐')
-      const nota = estado === '◐' ? `  — falta completar integrations/${name}/config.json y poner enabled: true` : ''
+      const nota = estado === '◐'
+        ? `  — falta completar integrations/${name}/config.json y poner enabled: true`
+        : ''
       console.log(`${estado} ${name} [${entry.adapter}]${nota}`)
     }
     return
@@ -925,7 +929,8 @@ function evaluate(agent) {
   // adoptado— y su `planning/` ya es el lugar legítimo donde trabajar.
   if (process.argv.includes('--bench')) {
     let mode = ''
-    try { mode = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')).mode } catch { /* sin config */ }
+    const config = path.join(root, 'ops.config.json')
+    try { mode = JSON.parse(fs.readFileSync(config, 'utf8')).mode } catch { /* sin config */ }
     if (mode !== 'toolkit') {
       fail('--bench es del toolkit. En una instancia, el cargo trabaja sobre tu planning/: si es del '
         + `catálogo, adoptalo primero con "ops agents fork ${agent}".`, 2)

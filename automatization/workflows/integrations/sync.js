@@ -21,7 +21,8 @@ const RESULT = {
   type: 'object', additionalProperties: false, required: ['passed', 'provider', 'details'],
   properties: {
     passed: { type: 'boolean' }, provider: { type: 'string' }, details: { type: 'string' },
-    total: { type: 'integer' }, created: { type: 'integer' }, refreshed: { type: 'integer' }, preserved: { type: 'integer' },
+    total: { type: 'integer' }, created: { type: 'integer' },
+    refreshed: { type: 'integer' }, preserved: { type: 'integer' },
   },
 }
 
@@ -37,5 +38,7 @@ const result = await agent(
   `requires real exit 0 from every command. Never promote candidates as a side effect of sync.`,
   { label: 'integration:sync', schema: RESULT },
 )
-log(result && result.passed ? `Integration ${result.provider} staging green: ${result.details}` : `Integration sync failed: ${(result && result.details) || 'no result'}`)
+log(result && result.passed
+  ? `Integration ${result.provider} staging green: ${result.details}`
+  : `Integration sync failed: ${(result && result.details) || 'no result'}`)
 return result

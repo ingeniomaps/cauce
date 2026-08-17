@@ -59,7 +59,8 @@ function runtimeAt(root) {
 function normalize(input) {
   const args = input.toolCall && input.toolCall.args || {}
   const file = args.TargetFile || args.AbsolutePath || ''
-  const content = args.CodeContent || args.ReplacementContent || (args.ReplacementChunks && JSON.stringify(args.ReplacementChunks)) || ''
+  const content = args.CodeContent || args.ReplacementContent
+    || (args.ReplacementChunks && JSON.stringify(args.ReplacementChunks)) || ''
   return {
     sessionId: input.conversationId,
     cwd: args.Cwd || (input.workspacePaths || [])[0] || process.cwd(),
