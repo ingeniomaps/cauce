@@ -702,11 +702,23 @@ function agents(action, dir, extra, cli) {
   if (cli.has('--json')) {
     // `path` viene resuelto: quien consuma esto no debería reconstruir dónde ganó la precedencia.
     return console.log(JSON.stringify(roles.map((role) => ({
-      slug: role.slug, type: role.type, system: role.system,
+      slug: role.slug, type: role.type, system: role.system, summary: role.summary,
       path: path.relative(root, role.dir).split(path.sep).join('/'),
     }))))
   }
-  for (const role of roles) console.log(`${role.slug}${role.system ? '' : '  (propio)'}`)
+  // Una línea por cargo, alineadas, para elegir a quién asignarle una tarea sin abrir 47 carpetas.
+  const ancho = roles.reduce((max, role) => Math.max(max, role.slug.length), 0)
+  for (const role of roles) {
+    const marca = role.system ? '' : ' (propio)'
+    console.log(`${role.slug.padEnd(ancho)}${marca}  ${role.summary || '— sin resumen'}`)
+  }
+  // La respuesta negativa tiene que ser tan barata como la positiva: si ninguna línea encaja, el
+  // camino no es forzar el cargo más parecido, es escribir el propio.
+  if (roles.length && !own) {
+    console.log('\nSi ninguno encaja, escribí el tuyo en agents/roles/<slug>/ — es tuyo y gana sobre '
+      + 'el catálogo.\nSi encaja uno pero lo querés más enfocado en tu empresa: '
+      + 'organization/roles/<slug>.md para el contexto, u "ops agents fork <slug>" para adoptarlo.')
+  }
 }
 
 function archive(dir, rawNum) {

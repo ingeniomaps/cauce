@@ -28,6 +28,24 @@ function directories(dir) {
   } catch { return [] }
 }
 
+// La línea con la que se elige un cargo sin abrirlo.
+//
+// `description` ya dice para qué sirve cada cargo, pero ronda los 500 caracteres porque su lector es
+// el runner al seleccionar: leídas de corrido, las 47 son 23.000 caracteres. Quien tiene una tarea y
+// quiere saber a quién asignarla necesita 47 líneas, y sobre todo necesita distinguir vecinos —qué
+// separa a `data-analyst` de `analytics-engineer`, o a `project-manager` de `release-manager`—.
+//
+// Vive en el frontmatter del propio cargo y no en un índice aparte: un índice se desincroniza en
+// silencio, y una línea que miente al elegir es peor que no tenerla. Como el cargo la carga consigo,
+// un fork se la lleva y una empresa que escribe su cargo escribe la suya.
+function summary(dir) {
+  try {
+    const text = fs.readFileSync(path.join(dir, 'SKILL.md'), 'utf8')
+    const front = (text.match(/^---\n([\s\S]*?)\n---/) || [])[1] || ''
+    return ((front.match(/^summary:\s*(.+)$/m) || [])[1] || '').trim()
+  } catch { return '' }
+}
+
 // Dónde está el catálogo que trae Cauce. Se reconoce por tener `roles/system/`, que es el espacio
 // del sistema y no algo que un proyecto deba crear.
 function systemCatalog(root) {
@@ -58,7 +76,7 @@ function list(root) {
         if (slug === 'system' || !SLUG.test(slug)) continue
         const dir = path.join(source, slug)
         if (!fs.existsSync(path.join(dir, 'SKILL.md'))) continue
-        found.set(slug, { slug, type, dir, system: fromSystem })
+        found.set(slug, { slug, type, dir, system: fromSystem, summary: summary(dir) })
       }
     }
   }
@@ -89,4 +107,4 @@ function resolve(root, slug) {
   return find(root, slug).dir
 }
 
-module.exports = { find, list, projectCatalog, resolve, systemCatalog, types }
+module.exports = { find, list, projectCatalog, resolve, summary, systemCatalog, types }

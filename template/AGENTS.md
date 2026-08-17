@@ -34,6 +34,17 @@ Antes de resolver algo que cae claramente en un cargo —una decisión de produc
 arquitectura, una estrategia de pruebas—, adoptá ese contrato en vez de improvisar el criterio. Los
 límites del cargo no son sugerencias: un cargo que no puede decidir solo, no decide solo.
 
+Para saber cuál es, una línea por cargo:
+
+```bash
+node tools/ops.js agents list                # 47 líneas: quién hace qué y qué NO le corresponde
+```
+
+Se elige leyendo esa lista, no abriendo carpetas. Si ninguna línea encaja, el cargo no existe y el
+camino es escribir el propio en `agents/roles/<slug>/`; forzar el más parecido es peor que no usar
+ninguno. Si encaja pero lo querés más enfocado en esta empresa, el contexto va en
+`organization/roles/<slug>.md` y el contrato sigue siendo el de Cauce.
+
 En Claude y Antigravity los cargos aparecen como skills invocables por nombre. En Codex y Gemini no hay
 mecanismo nativo: leé directamente el `SKILL.md` del cargo. Los que trae
 Cauce están en `agents/roles/system/`; los propios del proyecto, en `agents/roles/`, donde un mismo

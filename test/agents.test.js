@@ -104,6 +104,27 @@ test('todos los agentes se resuelven desde el paquete y pasan sus controles', as
   }
 })
 
+// Una empresa que tiene una tarea y no sabe a quién asignarla no puede tener que abrir 47 carpetas. El
+// `description` no sirve para eso: ronda los 500 caracteres porque lo lee el runner al seleccionar.
+test('el catálogo se puede recorrer con una línea por cargo', () => {
+  const target = installedProject('Index')
+  const listado = run(['agents', 'list'], target)
+  assert.equal(listado.status, 0, listado.stderr)
+  const lineas = listado.stdout.trim().split('\n').filter((line) => /^[a-z0-9-]+ {2,}\S/.test(line))
+  assert.equal(lineas.length, AGENTS.length, 'una línea por cargo, ninguna sin resumen')
+  // El límite es lo que hace posible el vistazo: una línea que se envuelve rompe la columna.
+  for (const line of lineas) assert.ok(line.length <= 150, `línea demasiado larga: ${line}`)
+
+  // La respuesta negativa tiene que ser tan barata como la positiva.
+  assert.match(listado.stdout, /Si ninguno encaja/, 'dice qué hacer cuando no hay cargo que sirva')
+  assert.match(listado.stdout, /agents\/roles\//, 'y nombra dónde va el propio')
+
+  // Y sirve para una máquina, que es quien elige cuando el que asigna es un agente.
+  const json = JSON.parse(run(['agents', 'list', '--json'], target).stdout)
+  assert.equal(json.length, AGENTS.length)
+  for (const role of json) assert.ok(role.summary, `${role.slug} sin summary en --json`)
+})
+
 // Cuatro agentes distintos convergieron en etiquetar `H1`, `H2`, … sin que nada se lo pidiera, y la
 // etiqueta terminó siendo carga: dentro del informe une Hallazgos con Evidencia y Recomendación, y la
 // propuesta mensual la cita para decir de qué hallazgo sale un cambio. Que funcione porque un modelo

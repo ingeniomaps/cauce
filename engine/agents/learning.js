@@ -35,6 +35,10 @@ function month(now = new Date()) { return now.toISOString().slice(0, 7) }
 
 const PROPOSAL_NAME = /^\d{4}-\d{2}\.md$/
 
+// El tope de la línea de índice. No es estético: son 47 líneas que se leen de un vistazo, y una que
+// se envuelve rompe la columna que hace posible el vistazo.
+const SUMMARY_MAX = 120
+
 function proposalFiles(dir) {
   try { return fs.readdirSync(dir).filter((name) => PROPOSAL_NAME.test(name)).sort() } catch { return [] }
 }
@@ -179,6 +183,14 @@ function evaluate(root, agent) {
   const skill = fs.readFileSync(path.join(target, 'SKILL.md'), 'utf8').toLowerCase()
   for (const phrase of ['no inventar', 'autorización', 'evidencia observable']) {
     if (!skill.includes(phrase)) errors.push(`SKILL.md no conserva el control: ${phrase}`)
+  }
+  // Sin su línea, el cargo existe pero no se encuentra: quien tiene una tarea tendría que abrir la
+  // carpeta para saber si es éste. Se exige acá y no como advertencia porque es estático y de una línea.
+  const linea = catalog.summary(target)
+  if (!linea) errors.push('SKILL.md no declara summary: la línea con la que se elige este cargo')
+  else if (linea.length > SUMMARY_MAX) {
+    errors.push(`summary tiene ${linea.length} caracteres y el máximo es ${SUMMARY_MAX}: `
+      + 'si no entra en una línea, no sirve para elegir de un vistazo')
   }
   const proposals = proposalFiles(path.join(target, 'learning', 'proposals'))
   let pending = 0
