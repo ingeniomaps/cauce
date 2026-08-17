@@ -8,6 +8,69 @@ esa operación sea confiable en vez de sólo cómoda: acá se lee qué cambió a
 un cambio en el protocolo, en las reglas del sistema o en un guard es visible para el usuario y sube
 minor aunque no toque una sola línea de código.
 
+## [0.20.0] - 2026-08-17
+
+Casi todo lo de abajo sale de la primera investigación semanal del cargo `security-engineer` corriendo
+de verdad sobre este repositorio. De sus ocho hallazgos, dos resultaron sobredimensionados al
+verificarlos y quedaron cerrados sin cambio; el resto está acá.
+
+### Cambiado
+
+- **El agente de investigación semanal ya no comparte job con la credencial de escritura.** Ingiere
+  contenido web que nadie controla, y hasta ahora corría con `contents: write` y la API key en el
+  mismo lugar: cualquier instrucción que llegara dentro de una página tenía un repositorio a mano.
+
+  Ahora entrega su informe como artifact y un segundo job lo commitea, sin modelo y sin credencial de
+  API. Ese job resuelve **dónde** aterriza el archivo con el mismo CLI que resolvió el catálogo, así
+  que nada de lo que viaje en el artifact puede redirigirlo. El permiso por defecto del workflow baja
+  a `contents: read`: un job nuevo ya no nace pudiendo escribir por herencia.
+
+- **Las acciones de GitHub quedan fijadas por SHA de commit**, y el CLI del agente por versión. Un tag
+  es mutable: quien controle el repositorio de la acción puede moverlo a otro commit y el workflow
+  ejecuta código nuevo sin que cambie una línea acá.
+
+- **`guard-secrets` reconoce los archivos de credencial que las herramientas escriben solas** —
+  `.npmrc`, `.netrc`, `id_rsa` y compañía—. Correr el guard sobre trece nombres mostró que `.env`
+  bloqueaba y esos pasaban, y `.npmrc` es donde vive el token de publicación. Tapa un caso conocido;
+  no vuelve completo al guard.
+
+### Corregido
+
+- **Los informes de aprendizaje traen escritas las convenciones de las que depende el ciclo.** Cuatro
+  corridas independientes etiquetaron sus hallazgos `H1`, `H2`, … sin que nada se lo pidiera, y esa
+  etiqueta terminó siendo carga: dentro del informe une «Hallazgos» con «Evidencia» y «Recomendación»,
+  y la propuesta mensual la cita para decir de qué hallazgo sale un cambio. Funcionaba porque los
+  modelos convergen, que es exactamente lo que deja de funcionar sin avisar.
+
+  Lo mismo con los títulos: la consolidación busca `## Recomendación` exacto y renombrarlo no da error
+  — deja la propuesta diciendo que no se registró nada.
+
+### Removido
+
+- **Se retiran 94 `_template.md` que el motor nunca leyó.** `learn` arma el andamiaje del informe y de
+  la propuesta desde un molde propio; esos archivos no los leía nadie: ni el motor, ni un workflow, ni
+  un runner, y ningún `SKILL.md` los nombra.
+
+  No eran inertes. **Quince de los cuarenta y siete describían una forma que el motor nunca produce**
+  —viñetas planas, sin sección de hallazgos y sin el título que la consolidación busca—, así que un
+  agente que respetara su molde habría reestructurado el informe y dejado la propuesta vacía sin
+  levantar nada.
+
+  Comprobado antes de retirarlos: sin sus moldes, `qa-engineer` sigue evaluando 7/7 y `learn` arma su
+  andamiaje igual. Adoptar un cargo pasa a copiar trece archivos en vez de quince.
+
+### Notas de seguridad sin cambio
+
+- **El token de npm no requiere acción.** El hallazgo lo describía como secreto de larga vida y sin
+  expiración; verificado, tiene ventana acotada, y la afirmación de que npm revocó los tokens clásicos
+  no se sostiene —el token funciona—. Lo único cierto que queda es que su alcance es de cuenta y no de
+  paquete: al renovarlo conviene acotarlo, y nada más.
+
+- **Los guards no son un límite de seguridad**, y `automatization/hooks/README.md` ahora lo dice con
+  sus dos casos reproducibles. El riesgo real no es el bypass sino la confianza que doce guards
+  puestos inspiran: si algo tiene que ser imposible, va en permisos, alcance de token o revisión
+  humana, no en una coincidencia de texto.
+
 ## [0.19.0] - 2026-08-16
 
 Los cuatro arreglos de abajo salieron de correr los tres caminos de punta a punta —un cargo que
