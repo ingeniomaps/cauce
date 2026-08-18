@@ -67,3 +67,26 @@ establece ejecutando lo destructivo, queda en hipótesis; acá la abstención va
 
 No se infiere el default de una herramienta desde otra del mismo paquete, ni una regla de una jurisdicción
 desde otra. Una negativa correcta sostenida en un mecanismo falso queda tan comprometida como el mecanismo.
+
+## R15 — Lo que el contrato enumera no desaparece del entregable
+
+Una entrega puede estar incompleta; lo que no puede es parecer completa. Cuando el contrato enumera las
+dimensiones que una entrega cubre —los criterios de un scorecard, los ejes de un descubrimiento, los campos
+de un contrato de release, las secciones de un informe—, dejar una afuera sin que se vea produce algo que se
+lee entero y no lo está. Nadie va a pedir después lo que falta, porque nada indica que faltaba.
+
+El daño no está en la omisión sino en su forma. Una rúbrica cuyos pesos suman 100 %, una guía con todas sus
+preguntas, una plantilla con todos sus campos llenos: la estructura afirma completitud aunque ninguna frase
+lo diga, y quien decide sobre eso no tiene cómo saber que había una dimensión más.
+
+Una ausencia no deja rastro, así que no se detecta leyendo lo escrito: **antes de entregar se contrasta el
+entregable contra la enumeración del contrato**, dimensión por dimensión. Es mecánico y barato, y es lo
+único que la encuentra — revisar lo que está nunca muestra lo que no está.
+
+La dimensión que todavía no se puede cubrir no se borra: queda en el entregable con qué la activa, qué
+evidencia la cierra y quién la revisa. Declararla ausente alcanza sólo cuando cubrirla es imposible y no
+apenas prematuro, y esa declaración va donde iba la dimensión, no en una nota al pie: sirve para que la
+lea quien decide, no para dejar constancia de que se sabía.
+
+Es la contraparte de R13, y las dos terminan igual. Ahí lo que no se entrega es lo que sí se podía; acá lo
+que se entrega tapa lo que faltó. En los dos casos alguien decide con menos de lo que cree tener.
