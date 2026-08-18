@@ -266,7 +266,8 @@ test('init deja la instancia funcionando en una sola corrida', () => {
   assert.match(result.stdout, /planning válido/, 'y valida sin que nadie se lo pida')
   assert.equal(fs.existsSync(path.join(repo, '.claude', 'settings.json')), true, 'el wiring va al repo')
   assert.equal(fs.existsSync(path.join(repo, 'ops', 'integrations', 'jira')), true)
-  assert.doesNotMatch(result.stdout, /siguiente: /, 'no quedan pasos que ya se hicieron')
+  assert.doesNotMatch(result.stdout, /siguiente: cd|siguiente: npm install/, 'sin pasos que ya se hicieron')
+  assert.match(result.stdout, /siguiente: abrí claude .*\/onboard/, 'y sí el que nadie más puede dar')
 })
 
 // Y cuando npm falla, la instancia queda creada pero no funciona: decirlo es la diferencia entre

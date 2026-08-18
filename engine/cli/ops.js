@@ -306,6 +306,14 @@ async function init(target, cli) {
 
   if (resultado.instalado) {
     check(path.join(root, 'planning'), SIN_BANDERAS)
+    // Una instancia recién instalada funciona y no sabe nada de este proyecto: `organization/` es el
+    // molde y el roadmap está vacío. Llenarlo exige leer el repositorio y decidir qué es cada cosa, que
+    // es justo lo que un CLI determinista no puede hacer; el recorrido vive en el runner, así que lo
+    // único útil acá es decir cuál es y con qué se abre.
+    if (resultado.runner !== BOOT.SIN_RUNNER) {
+      console.log(`  siguiente: abrí ${resultado.runner} en este directorio y corré /onboard`)
+      console.log('    escanea el repositorio y deja escrito el contexto de la empresa y la primera épica')
+    }
     console.log(`  listo: el ciclo empieza en ${path.join(relative || '.', 'planning', 'FLOW.md')}`)
   }
   for (const paso of initSteps(enter, resultado)) console.log(paso)

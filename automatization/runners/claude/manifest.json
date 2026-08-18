@@ -30,6 +30,10 @@
       "target": ".claude/workflows/team.js"
     },
     {
+      "source": "../../workflows/onboard.js",
+      "target": ".claude/workflows/onboard.js"
+    },
+    {
       "source": "../../workflows/agent-eval.js",
       "target": ".claude/workflows/agent-eval.js"
     },

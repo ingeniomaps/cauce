@@ -408,3 +408,56 @@ test('la evaluación le arma al cargo un lugar donde trabajar', () => {
   assert.match(evalWf, /symlink al repositorio/, 'el juez sabe que el banco no está aislado')
   assert.match(evalWf, /trabajo concurrente ajeno/, 'y qué significa encontrar algo modificado ahí')
 })
+
+const onboardWorkflow = fs.readFileSync(
+  path.resolve(__dirname, '..', 'automatization', 'workflows', 'onboard.js'), 'utf8',
+)
+
+test('onboard verifica los comandos en vez de copiarlos del README', () => {
+  assert.match(onboardWorkflow, /phase\('Verify'\)/)
+  assert.match(onboardWorkflow, /Run each one that exists/, 'los corre')
+  assert.match(onboardWorkflow, /'verificado', 'falla', 'ausente'/, 'y distingue los tres resultados')
+  // R14 en la práctica: un mapa copiado no se puede declarar verificado, y un servicio sin lint
+  // declarado no está roto.
+  assert.match(onboardWorkflow, /Never run migrations, deploys, publishes/, 'sin tocar lo que escribe afuera')
+  assert.equal(/npm publish|git push/.test(onboardWorkflow), false, 'ni los nombra como opción')
+})
+
+test('onboard escribe borradores y deja a una persona lo que es suyo', () => {
+  assert.match(onboardWorkflow, /\(supuesto\)/, 'lo deducido queda marcado')
+  assert.match(onboardWorkflow, /No leas archivos de/, 'y las credenciales no se leen')
+  assert.match(onboardWorkflow, /\.env\.example sí/, 'salvo el ejemplo, que es público')
+  // Credenciales, MCP y permiso de push: tres filas, no tres decisiones del runner.
+  assert.match(onboardWorkflow, /HUMAN/)
+  assert.match(onboardWorkflow, /allowPush=false/)
+  assert.match(onboardWorkflow, /sin proponer ningún valor/)
+  assert.match(onboardWorkflow, /No toques BACKLOG\.md/, 'y la épica no se promueve')
+  assert.match(onboardWorkflow, /promoted: false/)
+})
+
+test('onboard no reescribe una instancia que alguien ya completó', () => {
+  assert.match(onboardWorkflow, /ya-arrancado/)
+  assert.match(onboardWorkflow, /fresh/, 'lo comprueba antes de escribir nada')
+  assert.match(onboardWorkflow, /force/, 'y reescribir es explícito')
+  for (const leak of [/\/home\//, /\/Users\//]) {
+    assert.equal(leak.test(onboardWorkflow), false, 'sin rutas absolutas')
+  }
+})
+
+test('cada runner ofrece el arranque en el formato que entiende', () => {
+  const A = require('../engine/automation')
+  const REPO = path.resolve(__dirname, '..')
+  const nativos = []
+  for (const name of A.RUNNER_NAMES) {
+    const runner = A.runnerManifest(REPO, name)
+    const artefactos = (runner.artifacts || []).map((item) => item.source)
+    if (artefactos.some((source) => /onboard/.test(source))) { nativos.push(name); continue }
+    // Sin artefacto nativo, el recorrido tiene que estar escrito en las instrucciones del runner:
+    // Codex y Gemini operan el protocolo a mano y no tienen dónde ejecutarlo.
+    const instrucciones = (runner.instructions || []).map(
+      (item) => fs.readFileSync(path.resolve(REPO, 'automatization', 'runners', name, item.source), 'utf8'),
+    ).join('\n')
+    assert.match(instrucciones, /## El arranque/, `${name} no dice cómo arranca una instancia vacía`)
+  }
+  assert.deepEqual(nativos.sort(), ['antigravity', 'claude'])
+})

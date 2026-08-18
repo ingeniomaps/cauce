@@ -39,6 +39,10 @@
     {
       "source": "skills/team/SKILL.md",
       "target": ".agents/plugins/cauce/skills/team/SKILL.md"
+    },
+    {
+      "source": "skills/onboard/SKILL.md",
+      "target": ".agents/plugins/cauce/skills/onboard/SKILL.md"
     }
   ],
   "capabilities": {

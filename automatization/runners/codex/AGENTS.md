@@ -31,6 +31,20 @@ node {{OPS_DIR}}tools/ops.js agents list
 Leé el `SKILL.md` del cargo que corresponda antes de actuar en su terreno, y respetá sus límites. Lo que
 ese cargo debe saber de esta empresa está en `{{OPS_DIR}}organization/roles/<slug>.md`.
 
+## El arranque
+
+En una instancia recién creada nadie le explicó todavía al toolkit qué es este proyecto:
+`{{OPS_DIR}}organization/` llega como molde y el roadmap está vacío. El primer recorrido lo llena, y una vez: reescribir un contexto
+que alguien ya corrigió no deja rastro de lo que se perdió.
+
+Inventariá los subproyectos con manifiesto propio y **corré** los comandos de test, lint y build que cada
+uno declara —un mapa copiado del README envejece sin avisar—. Con eso escribí `{{OPS_DIR}}organization/`,
+la sección «Mapa real» de `{{OPS_DIR}}AGENTS.md` con el resultado por comando, y las raíces reales en
+`workspaceRoots`. Lo deducido va marcado `(supuesto)`. Credenciales, MCP y el permiso de push van como
+filas en `{{OPS_DIR}}planning/HUMAN_ACTIONS.md`, sin proponer valores. Cerrá con `epic-001` en
+`{{OPS_DIR}}planning/roadmap/`: que una tarea pueda atravesar el ciclo entero, con criterios que salen de
+lo que falta. Nunca la promuevas.
+
 ## Los equipos
 
 Un equipo es una secuencia de cargos con etapas y exit gates, para evaluar una intención antes de que
