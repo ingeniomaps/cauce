@@ -10,7 +10,8 @@ el contexto de cada empresa vive en su propia instancia.
 - Una sesión interrumpida se recupera desde `WIP.md`, sin reconstruir la intención.
 - Las ideas del agente no entran solas a la cola: quedan en `INBOX.md` hasta promoción humana.
 - Épicas, criterios, tareas y evidencia son validados de forma determinista.
-- Funciona como `planning/` embebido en un repo o como sidecar `proyecto-ops` para varios repos.
+- Vive en su propia carpeta `ops/` dentro del repo, como sidecar `proyecto-ops` para varios repos, o
+  embebido en la raíz.
 - Incluye un catálogo de cargos reutilizables; el contexto editable de cada empresa vive en
   `organization/`.
 - No depende de Claude, Codex, Gemini ni de un stack de aplicación específico.
@@ -18,26 +19,90 @@ el contexto de cada empresa vive en su propia instancia.
 
 ## Inicio rápido
 
-Requiere Node.js 24 o superior y no tiene dependencias externas.
+Requiere Node.js 24 o superior y no tiene dependencias externas. No hace falta clonar este repositorio.
 
 ```bash
-node engine/cli/ops.js init /ruta/al/proyecto     --name "Mi proyecto" --mode embedded --force
-node engine/cli/ops.js init /ruta/al/proyecto-ops --name "Mi proyecto" --mode sidecar
+cd mi-repo
+npx @ingeniomaps/cauce@latest init
 ```
 
-El destino debe estar vacío o no existir. En modo embebido normalmente ya es un repo: `--force` permite
-completar archivos faltantes, pero nunca sobrescribe archivos existentes.
+Eso alcanza. `init` crea `./ops`, pregunta con qué runner vas a trabajar y qué integraciones querés,
+instala la dependencia, deja el wiring del runner puesto y valida la instancia antes de terminar:
 
-El motor llega como dependencia y el lockfile fija la versión. `init` declara `@ingeniomaps/cauce` en el
-`package.json` del repo ops —creándolo si no existe— y el proyecto invoca `node tools/ops.js`, que
-resuelve el motor sin que nadie tenga que saber dónde está.
+```text
+¿Con qué runner vas a trabajar?
+1) claude   2) codex   3) gemini   4) antigravity   5) ninguno
+[ninguno] > 1
 
-Declarar npm ahí no le impone un stack a nadie: el repo ops es un sidecar, hermano de los repos de
-producto, y Node hace falta igual —el motor, los guards y los workflows son JavaScript—.
+¿Habilitar alguna integración?
+1) jira   2) ninguna
+[ninguna] >
 
-Dentro de un proyecto generado el CLI se invoca con `node tools/ops.js`; desde este repositorio, con
-`node engine/cli/ops.js`. En la tabla de abajo `ops` representa cualquiera de las dos formas. El binario
-`cauce` también queda disponible si el paquete se enlaza o instala mediante npm.
+· npm install (el motor viene de la dependencia)
+✓ claude: adaptador operativo (0 advertencia(s))
+✓ planning válido: 0 épica(s), 0 tarea(s) en cola, 0 terminada(s)
+  listo: el ciclo empieza en ops/planning/FLOW.md
+```
+
+El default de las dos preguntas es no hacer nada: instalar un runner escribe en tu repositorio y
+habilitar un proveedor deja andamiaje que después hay que completar, así que un Enter apurado no deja
+archivos que no pediste. Los dos pasos se pueden agregar más tarde con `automation install` e
+`integration enable`.
+
+Queda así, y el resto del repositorio sin tocar:
+
+```text
+mi-repo/
+├── apps/          tu código, intacto
+├── ops/           Cauce: planning/, organization/, teams/, tools/, AGENTS.md, Makefile
+├── .claude/       el wiring del runner elegido
+└── CLAUDE.md
+```
+
+Lo del runner va a la raíz a propósito: ahí abre el dev su herramienta, y uno que sólo viera `ops/` no
+tendría acceso a una línea de código.
+
+### Sin preguntas, para un script
+
+Sin terminal —CI, un contenedor, un Dockerfile— `init` no pregunta nada ni descarga nada: materializa la
+instancia y dice qué falta. Todo se puede decidir por bandera:
+
+```bash
+npx @ingeniomaps/cauce@latest init --runner codex --integration jira --install
+```
+
+`--install` es el que corre `npm install`; sin él la instancia queda creada pero todavía no funciona, y
+la salida lo dice. La dependencia no es opcional: el shim `tools/ops.js`, los cargos, los equipos y los
+adaptadores se resuelven desde `<ops>/node_modules/@ingeniomaps/cauce`, y el lockfile es lo que fija qué
+versión del motor corre.
+
+### Dónde vive la instancia
+
+| Situación | Comando | Qué queda |
+|---|---|---|
+| Un repo: monolito o monorepo | `init` | `ops/` dentro del repo; el runner se instala en la raíz. |
+| Varios repos de producto | `init acme-ops --mode sidecar`, desde la carpeta que los contiene | `acme-ops/` hermano de los repos. |
+| Planning en la raíz del repo | `init . --mode embedded --force` | `planning/`, `organization/`, `teams/`, `tools/`, `AGENTS.md` y `Makefile` en el primer nivel. |
+
+Los dos primeros son el mismo modo —`sidecar`— y difieren sólo en dónde queda la carpeta: adentro del
+repo o al lado. El tercero hay que pedirlo explícito porque es el único que despliega el molde en el
+primer nivel del repositorio.
+
+El destino debe estar vacío o no existir. `--force` completa archivos faltantes en un directorio que ya
+tiene cosas, y nunca sobrescribe los que ya están.
+
+Declarar npm en el repo ops no le impone un stack a nadie: ese repo coordina, no compila, y Node hace
+falta igual —el motor, los guards y los workflows son JavaScript—.
+
+### El primer ciclo
+
+Desde el runner, `/team` recorre un equipo y deja escrita una épica candidata en `planning/roadmap/`, y
+`/autobuild` toma una tarea ya promovida y la ejecuta fase por fase. Sin runner el recorrido es el
+mismo: la [tabla de comandos](#comandos) y [FLOW.md](template/planning/FLOW.md) lo operan a mano.
+
+Dentro del proyecto el CLI se invoca con `node tools/ops.js` —o `npx cauce`, que la dependencia deja
+disponible—; desde este repositorio, con `node engine/cli/ops.js`. En la tabla de abajo `ops` representa
+cualquiera de esas formas.
 
 ## Flujo
 
@@ -62,7 +127,7 @@ Lee [template/planning/PROTOCOL.md](template/planning/PROTOCOL.md) para el contr
 
 | Comando | Función |
 |---|---|
-| `ops init <destino>` | Materializa una instancia portable. |
+| `ops init [destino]` | Materializa una instancia y la deja usable; sin destino, en `ops/` y modo sidecar. |
 | `ops check <planning>` | Valida contratos, unicidad, trazabilidad y estados. |
 | `ops tree <planning>` | Muestra roadmap, backlog, WIP, inbox y done sin mutar nada. |
 | `ops context <planning>` | Emite el contexto mínimo de la tarea vigente para un runner. |
