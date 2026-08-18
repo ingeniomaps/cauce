@@ -142,12 +142,8 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
     root,
   )
   const version = require(path.join(PROJECT_ROOT, 'package.json')).version
-  // El motor siempre llega como dependencia. La alternativa era vendorizarlo en `.ops/`, y no valía:
-  // Node hace falta igual en los dos casos —el motor, los guards y los workflows son JavaScript—, así
-  // que la copia sólo ahorraba este `package.json` de seis líneas a cambio de 5 MB en la historia de
-  // la empresa y de no tener cómo enterarse de que salió una versión nueva.
-  //
-  // El repo ops es un sidecar: declarar npm acá no convierte en Node al servicio de Go de al lado.
+  // El motor llega como dependencia para que el lockfile fije su versión. El repo ops es un sidecar:
+  // declarar npm acá no convierte en Node al servicio de Go de al lado.
   declareEngine(path.join(root, 'package.json'), version)
   let entregado = {}
   for (const relative of O.trackedPaths()) {

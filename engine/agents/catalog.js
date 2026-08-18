@@ -30,10 +30,11 @@ function directories(dir) {
 
 // La línea con la que se elige un cargo sin abrirlo.
 //
-// `description` ya dice para qué sirve cada cargo, pero ronda los 500 caracteres porque su lector es
-// el runner al seleccionar: leídas de corrido, las 47 son 23.000 caracteres. Quien tiene una tarea y
-// quiere saber a quién asignarla necesita 47 líneas, y sobre todo necesita distinguir vecinos —qué
-// separa a `data-analyst` de `analytics-engineer`, o a `project-manager` de `release-manager`—.
+// `description` ya dice para qué sirve cada cargo, pero ronda el medio millar de caracteres porque su
+// lector es el runner al seleccionar: el catálogo entero leído de corrido no entra en una decisión.
+// Quien tiene una tarea y quiere saber a quién asignarla necesita una línea por cargo, y sobre todo
+// necesita distinguir vecinos —qué separa a `data-analyst` de `analytics-engineer`, o a
+// `project-manager` de `release-manager`—.
 //
 // Vive en el frontmatter del propio cargo y no en un índice aparte: un índice se desincroniza en
 // silencio, y una línea que miente al elegir es peor que no tenerla. Como el cargo la carga consigo,
