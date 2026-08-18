@@ -96,9 +96,22 @@ falta igual —el motor, los guards y los workflows son JavaScript—.
 
 ### El primer ciclo
 
-Desde el runner, `/team` recorre un equipo y deja escrita una épica candidata en `planning/roadmap/`, y
-`/autobuild` toma una tarea ya promovida y la ejecuta fase por fase. Sin runner el recorrido es el
-mismo: la [tabla de comandos](#comandos) y [FLOW.md](template/planning/FLOW.md) lo operan a mano.
+`init` deja la instancia funcionando, no enterada: `organization/` llega como molde y el roadmap está
+vacío. Llenarlo exige leer el repositorio y decidir qué es cada cosa, que es lo que un CLI determinista
+no puede hacer, así que ese recorrido vive en el runner:
+
+```text
+/onboard    inventaría los servicios, corre sus comandos de test, lint y build, y escribe
+            organization/, el «Mapa real» de AGENTS.md y las raíces de ops.config.json.
+            Lo deducido queda marcado como supuesto; credenciales, MCP y el permiso de push
+            van a HUMAN_ACTIONS.md. Cierra con la épica 001, sin promoverla.
+/team       evalúa si una intención posterior es viable y propone su épica.
+/autobuild  ejecuta una tarea ya promovida, fase por fase.
+```
+
+Claude y Antigravity lo traen como recorrido ejecutable; Codex y Gemini lo operan siguiendo las
+instrucciones que `automation install` les deja. Sin runner, la [tabla de comandos](#comandos) y
+[FLOW.md](template/planning/FLOW.md) hacen el mismo camino a mano.
 
 Dentro del proyecto el CLI se invoca con `node tools/ops.js` —o `npx cauce`, que la dependencia deja
 disponible—; desde este repositorio, con `node engine/cli/ops.js`. En la tabla de abajo `ops` representa
