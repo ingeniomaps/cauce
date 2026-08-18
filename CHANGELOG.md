@@ -14,6 +14,76 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.26.0] - 2026-08-17
+
+### Añadido
+
+- **Una segunda corrida del día ya no borra a la primera.** Los registros de evaluación aceptan
+  `AAAA-MM-DD-N.md` además del nombre pelado, y `ops evaluate <cargo> --record [AAAA-MM-DD]` te dice
+  dónde escribir el próximo. `agent-eval` lo pregunta en vez de componer el nombre desde la fecha.
+
+  Importa porque aplicar una propuesta cambia el contrato y el mismo recorrido pide volver a correr los
+  casos ahí mismo: con el nombre saliendo de la fecha, esa segunda corrida escribía encima de la
+  primera, que es la línea base contra la que se compara. Si ya tenés registros, no hay que hacer nada:
+  el nombre viejo sigue siendo válido y es la corrida 1 de su día.
+
+- **Una propuesta aplicada se puede corregir dentro de su período.** `ops learn <cargo> --proposal` abre
+  una revisión —`AAAA-MM-r2.md`, con `corrects:` en el frontmatter— cuando la anterior ya está aplicada.
+  La aplicada queda sellada donde está: no se reabre ni se reemplaza.
+
+  Aplicar no era el final del ciclo —la evaluación posterior es la que dice si el cambio sirvió—, y
+  cuando decía que no, el sello que impide reaplicar lo mismo también impedía corregirlo hasta el mes
+  siguiente. Sigue habiendo una sola propuesta pendiente por período. `agent-promote` nombra la revisión
+  como salida en vez de mandarte a esperar.
+
+### Cambiado
+
+- **R11 se reescribe: comentarios con destinatario.** En `planning/rules/system/code-shape.md`, así que
+  rige para todo cargo y para el runner trabajando sin cargo. Antes pedía que un comentario dijera el
+  porqué y no el qué, con un tope de tres líneas. Ahora el filtro es quién lo va a preguntar o a
+  deshacer sin saberlo: tener un porqué no alcanza, porque una convención también lo tiene. Distingue
+  tres lugares —dentro de una unidad, encabezándola, y donde ningún nombre alcanza— y retira el tope de
+  líneas, que contradecía a R7 dos reglas más arriba y en la práctica se leía como presupuesto a gastar.
+
+  Lo que vas a notar: se habilita el comentario que encabeza una unidad y dice qué garantiza para poder
+  usarla sin leerla entera, que la redacción anterior prohibía.
+
+- **R14 exige que el registro viaje con la afirmación, no con el informe.** Párrafo nuevo en
+  `planning/rules/system/conduct.md`. Una lección, una regla propuesta, una fila de acciones humanas o un
+  paso de runbook se leen solos, así que una afirmación de mecanismo que sale del informe hacia uno de
+  ellos lleva su registro o no sale. Y el disparador es a dónde va la afirmación, no cuán discutible
+  parece — lo que se deja plano suele ser lo que sostiene el propio procedimiento.
+
+- **`release-manager` acota las operaciones de esquema al motor.** Dos reglas nuevas: qué preserva un
+  rename, una copia o un drop depende del motor y su versión, y hay que declararlo antes de apoyar ahí un
+  ensayo o una salvaguarda; y una copia previa a un borrado es una foto —con su instante de corte y qué
+  queda afuera—, no una reversión, con el roll-forward entregado en la misma pieza que la conclusión de
+  que revertir dejó de ser seguro. Suma la sección «Qué preserva cada operación de esquema» a su modelo
+  operativo, la conducta prohibida
+  `unscoped_schema_operation_or_data_copy_presented_as_safeguard` y el caso `07-schema-safeguard-scope`.
+
+- **`procurement-manager` separa el alcance de una figura de su deber de documentarla.** Dos reglas
+  nuevas: qué habilita una sole source o una excepción de emergencia sale del régimen aplicable con su
+  edición, no de la parte del procedimiento propio que dice qué registrar al usarla; y un cuantificador
+  universal sobre normas —«ningún régimen», «todos los marcos»— es una afirmación de mecanismo y lleva su
+  registro. Suma la sección «Alcance de las figuras y afirmaciones normativas», el caso
+  `07-exception-scope` y dos conductas prohibidas:
+  `figure_scope_inferred_from_own_documentation_duty_or_universal_norm_claim` y
+  `scorecard_dimension_dropped_instead_of_carried_as_a_conditional` — una dimensión que todavía no se
+  puede ponderar queda como obligatorio condicionado, con qué la activa, qué evidencia la cierra y quién
+  la revisa, en vez de declararse ausente.
+
+### Corregido
+
+- **El guard de migraciones dejaba pasar el `DELETE FROM` más común.** Nombra tres cosas que frena y una
+  de ellas no frenaba: el límite de palabra quedaba al final del grupo, y después de un punto y coma no
+  hay límite de palabra, así que `DELETE FROM pedidos;` —la forma que tiene en cualquier migración—
+  pasaba y sólo se detenía la variante sin punto y coma. Además `DROP COLUMN` y `DROP CONSTRAINT` nunca
+  habían estado en la lista, y pierden datos y garantías igual que `DROP TABLE`.
+
+  Si dependías de este guard, revisá las migraciones que integraste desde que lo instalaste: puede haber
+  pasado algo que creías bloqueado.
+
 ## [0.25.0] - 2026-08-17
 
 ### Añadido
