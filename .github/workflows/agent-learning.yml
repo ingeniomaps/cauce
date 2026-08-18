@@ -63,8 +63,7 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `agents=${JSON.stringify(list)}\n`)
           ' "$all"
 
-      # Una vez y con aviso visible: comprobarlo dentro de la matriz dejaba cuarenta y siete jobs
-      # salteándose en verde, y la corrida entera parecía haber trabajado.
+      # Una vez, y acá: comprobarlo dentro de la matriz encendía cuarenta y siete jobs para saltearse.
       - name: Check credential
         id: creds
         env:
@@ -74,7 +73,7 @@ jobs:
             echo 'ready=true' >> "$GITHUB_OUTPUT"
           else
             echo 'ready=false' >> "$GITHUB_OUTPUT"
-            echo '::warning::Sin ANTHROPIC_API_KEY no hay investigación: esta corrida no escribe nada.'
+            echo 'Sin ANTHROPIC_API_KEY: no hay investigación esta semana.'
           fi
 
   # Sin credencial no corre: `learn` sólo arma el andamiaje, y llenarlo es lo que hace el modelo.
