@@ -74,6 +74,28 @@ test('el workflow de aprendizaje corre en el toolkit y nombra un solo CLI', () =
   assert.match(source, /slugs\.filter\(\(slug\) => slug === only\)/, 'el input se valida contra slugs reales')
 })
 
+// Tres formas de fallar en silencio que tuvo este workflow: la credencial comprobada dentro de la
+// matriz dejaba cuarenta y siete jobs salteándose en verde; exigir que la matriz entera saliera bien
+// hacía que un cargo roto se llevara los PR de los otros, con sus informes expirando en el artifact;
+// y sin `concurrency` dos corridas empujan la misma rama y la segunda no puede publicar.
+test('el aprendizaje avisa cuando no trabaja, aísla el fallo de un cargo y no se pisa', () => {
+  const file = path.resolve(__dirname, '..', '.github', 'workflows', 'agent-learning.yml')
+  const source = fs.readFileSync(file, 'utf8')
+
+  assert.match(source, /needs\.discover\.outputs\.model == 'true'/, 'la credencial se comprueba una vez')
+  assert.match(source, /::warning::/, 'y su ausencia se ve en la corrida, no enterrada en un log')
+
+  assert.equal(/needs\.research\.result == 'success'/.test(source), false, 'un cargo no bloquea a los demás')
+
+  assert.match(source, /^concurrency:$/m, 'una sola corrida a la vez')
+  assert.match(source, /cancel-in-progress: false/, 'y no se corta una que ya está abriendo PR')
+
+  for (const block of source.split(/\n  (?=[a-z][a-z-]*:\n)/)) {
+    if (!/\n    runs-on:/.test(block)) continue
+    assert.match(block, /timeout-minutes:/, `${block.trimStart().split(':')[0]}: sin timeout hereda seis horas`)
+  }
+})
+
 // El agente de investigación ingiere contenido web que nadie controla. Mientras corría en el mismo
 // job que la credencial de escritura, cualquier instrucción que viniera en una página tenía un
 // repositorio a mano. Ahora el informe sale por artifact y el commit lo hace otro job sin modelo.

@@ -7,14 +7,14 @@ on:
   schedule:
     # Semanal la investigación, mensual la consolidación. La propuesta sólo vale si antes hubo
     # informes: consolidar sin ellos produce un andamiaje vacío que nadie puede aprobar.
-    - cron: "17 13 * * 1"
-    - cron: "17 13 1 * *"
+    - cron: '17 13 * * 1'
+    - cron: '17 13 1 * *'
   workflow_dispatch:
     inputs:
       agent:
-        description: "Slug de un agente. Vacío corre todos."
+        description: 'Slug de un agente. Vacío corre todos.'
         required: false
-        default: ""
+        default: ''
 
 # El default, para que un job nuevo nazca sin poder escribir hasta que alguien lo decida.
 permissions:
@@ -24,16 +24,24 @@ permissions:
 env:
   OPS: engine/cli/ops.js
 
+# Dos corridas a la vez empujan la misma rama y la segunda falla al publicar. No se cancela la que
+# está en curso: cortarla a mitad deja una parte de los cargos con PR y el resto sin nada.
+concurrency:
+  group: agent-learning
+  cancel-in-progress: false
+
 jobs:
   discover:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       agents: ${{ steps.list.outputs.agents }}
+      model: ${{ steps.creds.outputs.ready }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "24"
+          node-version: '24'
 
       # El CLI resuelve la precedencia del catálogo; repetir ese recorrido acá lo dejaría
       # divergir en silencio la próxima vez que cambie la estructura.
@@ -55,12 +63,26 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `agents=${JSON.stringify(list)}\n`)
           ' "$all"
 
-  # Sin credencial se saltea entero en vez de abrir un PR por cargo con un informe vacío: `learn` sólo
-  # arma el andamiaje, y llenarlo es lo que hace el modelo.
+      # Una vez y con aviso visible: comprobarlo dentro de la matriz dejaba cuarenta y siete jobs
+      # salteándose en verde, y la corrida entera parecía haber trabajado.
+      - name: Check credential
+        id: creds
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$KEY" ]; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo '::warning::Sin ANTHROPIC_API_KEY no hay investigación: esta corrida no escribe nada.'
+          fi
+
+  # Sin credencial no corre: `learn` sólo arma el andamiaje, y llenarlo es lo que hace el modelo.
   research:
-    if: github.event.schedule != '17 13 1 * *'
+    if: github.event.schedule != '17 13 1 * *' && needs.discover.outputs.model == 'true'
     needs: discover
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
     strategy:
@@ -72,27 +94,14 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "24"
-      - name: Check credential
-        id: creds
-        env:
-          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          if [ -n "$KEY" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "Sin ANTHROPIC_API_KEY: la investigación semanal queda para correr a mano." >&2
-          fi
+          node-version: '24'
       - name: Prepare report
-        if: steps.creds.outputs.ready == 'true'
         env:
           AGENT: ${{ matrix.agent }}
         run: node "$OPS" learn "$AGENT"
       # El prompt no lo escribe este archivo: lo declara el propio cargo en su
       # `learning/AUTOMATION.md`. Así un cargo nuevo trae su investigación sin tocar el cron.
       - name: Research
-        if: steps.creds.outputs.ready == 'true'
         env:
           AGENT: ${{ matrix.agent }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -100,7 +109,6 @@ jobs:
           npm install -g @anthropic-ai/claude-code@2.1.233
           claude -p "Leé el learning/AUTOMATION.md del cargo $AGENT y ejecutá exactamente lo que declara. El informe de esta semana ya está creado y vacío: completalo. Cada afirmación necesita enlace, fecha y versión; lo que no puedas corroborar va a Preguntas abiertas en vez de afirmarse. El único archivo que escribís es ese informe."
       - name: Detect changes
-        if: steps.creds.outputs.ready == 'true'
         id: changes
         run: |
           if git diff --quiet; then
@@ -111,7 +119,7 @@ jobs:
       # El informe sale de acá como artifact, no como commit. Lo que el agente escribió fuera de su
       # informe se queda en este runner y muere con él: no hay credencial con que sacarlo.
       - name: Collect report
-        if: steps.creds.outputs.ready == 'true' && steps.changes.outputs.changed == 'true'
+        if: steps.changes.outputs.changed == 'true'
         id: collect
         env:
           AGENT: ${{ matrix.agent }}
@@ -133,12 +141,17 @@ jobs:
           path: ${{ steps.collect.outputs.path }}
           retention-days: 7
 
-  # Segundo job y no un paso más: acá vive la credencial de escritura, y este no habla con ningún
-  # modelo ni lee la web. Lo que el agente escribió llega por artifact, no por sesión compartida.
+  # Segundo job y no un paso más: acá vive la credencial de escritura, y para llegar hasta acá el
+  # informe tuvo que pasar por un artifact. Este job no habla con ningún modelo ni lee la web —
+  # recibe un archivo, comprueba que caiga donde debe, y lo commitea.
   research-pr:
     needs: [discover, research]
-    if: needs.research.result == 'success'
+    # No exige que la matriz entera haya salido bien: con `result == 'success'`, un cargo que falla
+    # se llevaba los PR de los otros y sus informes expiraban en el artifact. Cada pata tolera no
+    # encontrar el suyo, así que alcanza con que la investigación no se haya salteado.
+    if: ${{ !cancelled() && needs.research.result != 'skipped' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
       pull-requests: write
@@ -164,9 +177,10 @@ jobs:
         run: |
           stamp="$(date -u +%Y-%m-%d)"
           branch="automation/$AGENT-research-$stamp"
-          # `upload-artifact` aplana la ruta de un archivo suelto, así que el informe llega como
-          # `<fecha>.md` a la raíz: el artifact trae contenido y no destino. Resolverlo acá con el CLI
-          # es además la garantía de que nada de lo que venga adentro redirija dónde aterriza.
+          # El artifact trae contenido, no destino: `upload-artifact` aplana la ruta de un archivo
+          # suelto, así que llega como `<fecha>.md` a la raíz. Dónde va se resuelve **acá**, con el
+          # mismo CLI que resolvió el catálogo antes, y eso además es la garantía: nada de lo que
+          # venga en el artifact puede redirigir dónde aterriza el archivo.
           dir="$(node "$OPS" agents list --json | node -e '
             let s = ""
             process.stdin.on("data", (d) => { s += d }).on("end", () => {
@@ -204,6 +218,7 @@ jobs:
     if: github.event.schedule == '17 13 1 * *' || github.event_name == 'workflow_dispatch'
     needs: discover
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
       pull-requests: write
@@ -216,7 +231,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "24"
+          node-version: '24'
 
       - name: Validate current agent
         env:
