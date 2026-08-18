@@ -384,6 +384,21 @@ test('la evaluación le arma al cargo un lugar donde trabajar', () => {
   assert.match(evalWf, /item\.fixtures/, 'el recorrido conoce el artefacto del caso')
   assert.match(evalWf, /Leelos antes de contestar/, 'y le dice al cargo que lo lea')
   assert.match(evalWf, /no es obra suya/, 'y al juez, que vino con el banco')
+
+  // Comprobar las afirmaciones de mecanismo lo hacía a mano quien lanzaba la corrida, así que el hallazgo
+  // dependía de que a alguien se le ocurriera la comprobación correcta y la vara se movía entre corridas.
+  // Va con redacción fija y fuera del bloque de conducta prohibida: un cargo puede afirmar de más aunque
+  // su contrato no declare ninguna.
+  assert.match(evalWf, /Enumeralas con el registro que cada una lleva/, 'el juez busca las afirmaciones')
+  assert.match(evalWf, /comprobá las que se puedan comprobar barato/, 'y comprueba las baratas')
+  assert.match(evalWf, /nunca conectarte a un sistema real/, 'sin salirse de lo que R12 permite')
+  // Las tres que fallaron tenían casi todo bien rotulado y floja justo la que sostenía su recomendación.
+  assert.match(evalWf, /Empezá por la afirmación de la que depende la recomendación/, 'por dónde empezar')
+  assert.match(evalWf, /en las dos direcciones/, 'afirmar de más y desinflar de más cuentan igual')
+  assert.ok(
+    evalWf.indexOf('Enumeralas con el registro') < evalWf.indexOf('conductas prohibidas, que rigen'),
+    'el bloque no cuelga de la lista de conducta prohibida, que puede venir vacía',
+  )
   assert.match(evalWf, /precisión de procedencia/, 'exigiéndole que verifique lo que se le atribuye')
 
   // El banco enlaza al repositorio vivo, así que una edición concurrente del toolkit se ve desde
