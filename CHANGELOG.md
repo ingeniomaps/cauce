@@ -14,6 +14,41 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.28.0] - 2026-08-18
+
+### Añadido
+
+- **`/onboard`: el recorrido que llena una instancia recién creada.** `init` la deja funcionando y sin
+  enterar de nada —`organization/` es el molde y el roadmap está vacío—, y llenarlo exige leer el
+  repositorio y decidir qué es cada cosa, que es justo lo que un CLI determinista no puede hacer. El
+  recorrido inventaría los subproyectos con manifiesto propio, **corre** los comandos de test, lint y
+  build que cada uno declara, y escribe `organization/`, la sección «Mapa real» de `AGENTS.md` y las
+  raíces reales en `ops.config.json`.
+
+  Corre los comandos en vez de copiarlos del README porque un mapa copiado envejece sin avisar y el
+  primer Verify de una tarea real es donde aparece: cada comando queda como verificado, falla o ausente.
+  Lo que deduce va marcado «(supuesto)» y lo que nada sostiene queda «Por definir». No lee `.env` ni
+  ninguna credencial —de `.env.example` toma sólo los nombres de variable—, y las credenciales, los MCP
+  y el permiso de push salen como filas de `HUMAN_ACTIONS.md` con la acción concreta que las desbloquea,
+  sin proponer ningún valor. Cierra escribiendo la épica 001 —que una tarea pueda atravesar el ciclo
+  entero— y no la promueve.
+
+  Si la instancia ya tiene contexto escrito, para y pide `force`: reescribir un borrador que alguien
+  corrigió no deja rastro de lo que se perdió. Y un workspace todavía sin código no es un error: escribe
+  lo que el contexto permita y traer los repos pasa a ser la primera historia.
+
+  Claude y Antigravity lo reciben como recorrido ejecutable; Codex y Gemini lo operan desde la sección
+  «El arranque» que `automation install` deja en sus instrucciones. Si ya tenés una instancia, el
+  workflow llega con `automation install` —no con `upgrade`—: los workflows viven en el runner.
+
+### Corregido
+
+- **`init` dentro de una carpeta que ya nombra al toolkit deja de anidar.** Correrlo parado en
+  `acme-ops/` creaba `acme-ops/ops/` —una raíz ops dentro de otra— y llamaba «acme-ops» al proyecto.
+  Ahora la instancia es esa carpeta y el proyecto se llama «acme». Además un `.git` solo dejó de contar
+  como contenido, así que `mkdir acme-ops && git init && cauce init` no pide `--force` para no pisar
+  nada.
+
 ## [0.27.0] - 2026-08-18
 
 ### Añadido
