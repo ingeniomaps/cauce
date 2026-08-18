@@ -137,11 +137,18 @@ const inventory = await agent(
 )
 if (!inventory) return stop('inventario-vacio', 'el escaneo no devolvió resultado')
 const services = inventory.services || []
-if (!services.length) {
-  return stop('sin-servicios', 'no encontré ningún subproyecto con manifiesto propio: revisá desde ' +
-    'dónde corriste el workflow')
-}
-log(`${services.length} servicio(s): ${services.map((service) => service.path).join(', ')}`)
+
+// Un workspace sin código no es un error: alguien puede estar preparando la carpeta antes de clonar los
+// repos, y `init` en un directorio vacío es un arranque legítimo. Lo que no puede es terminar sin nada
+// escrito: lo que sí se pueda establecer se escribe igual, y traer el código pasa a ser la primera
+// historia en vez de un checkpoint que no deja nada.
+const VACIO = services.length ? '' : `\n\nNo hay ningún subproyecto con manifiesto propio en el ` +
+  `workspace: el código todavía no está acá. Escribí igual lo que el contexto aportado permita, dejá el ` +
+  `mapa real declarado como pendiente diciendo qué lo completa, y que la primera historia de la épica sea ` +
+  `traer los repos y declararlos en workspaceRoots.`
+log(services.length
+  ? `${services.length} servicio(s): ${services.map((service) => service.path).join(', ')}`
+  : 'Sin servicios en el workspace: el arranque escribe lo que se pueda y deja el mapa pendiente.')
 
 phase('Verify')
 
@@ -164,7 +171,8 @@ log(`${green} comando(s) verificados, ${broken.length} con fallo. Un fallo no de
 
 phase('Draft')
 
-const EVIDENCE = `Inventario:\n${JSON.stringify(inventory)}\n\nComandos comprobados:\n${JSON.stringify(checks)}` +
+const EVIDENCE = `Inventario:\n${JSON.stringify(inventory)}\n\n` +
+  `Comandos comprobados:\n${JSON.stringify(checks)}${VACIO}` +
   `${CONTEXT ? `\n\nContexto aportado por la persona, que vale como hecho: ${CONTEXT}` : ''}`
 
 const drafted = await agent(

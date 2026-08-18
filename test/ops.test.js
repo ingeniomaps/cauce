@@ -242,6 +242,23 @@ test('init sin destino aparta la instancia en ops/', () => {
 // La promesa del comando único, de punta a punta: materializar, instalar la dependencia, dejar el
 // runner puesto y validar. El npm de esta prueba hace lo único que a `init` le importa de npm —dejar el
 // motor resoluble desde la instancia—, para no depender de la red ni de la versión publicada.
+// Parado dentro de una carpeta que ya nombra al toolkit, la instancia es esa carpeta: la alternativa
+// —`acme-ops/ops/`— anida una raíz ops dentro de otra y le pone al proyecto el nombre del toolkit.
+test('init no crea una carpeta ops dentro de otra', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-anidada-'))
+  const repo = path.join(base, 'acme-ops')
+  fs.mkdirSync(repo)
+  // Sólo `.git`: es lo que hay en la carpeta que alguien acaba de crear y versionar para la instancia.
+  fs.mkdirSync(path.join(repo, '.git'))
+  const created = run(['init', '--no-install'], repo)
+  assert.equal(created.status, 0, created.stderr)
+  assert.equal(fs.existsSync(path.join(repo, 'ops')), false, 'nada anidado')
+  assert.equal(fs.existsSync(path.join(repo, 'planning', 'PROTOCOL.md')), true, 'la instancia es esta carpeta')
+  const config = JSON.parse(fs.readFileSync(path.join(repo, 'ops.config.json'), 'utf8'))
+  assert.equal(config.project, 'acme', 'y el proyecto no se llama como el toolkit')
+  assert.equal(config.mode, 'sidecar')
+})
+
 test('init deja la instancia funcionando en una sola corrida', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-uno-'))
   const repo = path.join(base, 'mono')

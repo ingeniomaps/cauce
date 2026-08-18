@@ -435,6 +435,15 @@ test('onboard escribe borradores y deja a una persona lo que es suyo', () => {
   assert.match(onboardWorkflow, /promoted: false/)
 })
 
+// R13: un workspace sin código todavía es un arranque legítimo, y terminar con un checkpoint que no
+// deja nada escrito es la mitad barata del trabajo.
+test('onboard sin código escribe lo que se pueda en vez de abandonar', () => {
+  assert.match(onboardWorkflow, /VACIO/)
+  assert.match(onboardWorkflow, /Escribí igual lo que el contexto aportado permita/)
+  assert.match(onboardWorkflow, /primera historia de la épica sea/, 'traer los repos es trabajo, no un error')
+  assert.equal(/sin-servicios/.test(onboardWorkflow), false, 'ya no corta el recorrido')
+})
+
 test('onboard no reescribe una instancia que alguien ya completó', () => {
   assert.match(onboardWorkflow, /ya-arrancado/)
   assert.match(onboardWorkflow, /fresh/, 'lo comprueba antes de escribir nada')

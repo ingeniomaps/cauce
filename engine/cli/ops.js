@@ -226,6 +226,15 @@ function evaluationBench(root, agent, caso, force) {
   return dir
 }
 
+// Dónde va la instancia cuando nadie eligió destino. Parada frecuente: el dev ya creó `acme-ops/` y
+// corre `init` adentro. Sin esto la instancia caía en `acme-ops/ops/` —una carpeta del toolkit dentro
+// de otra— y el proyecto quedaba llamándose «acme-ops». La carpeta que ya nombra al toolkit es la
+// instancia; no hay una segunda adentro.
+function implicitTarget(cwd) {
+  const base = path.basename(cwd)
+  return base === DEFAULT_TARGET || base.endsWith('-ops') ? '.' : DEFAULT_TARGET
+}
+
 // El nombre sale de la carpeta del proyecto, no de la que aloja la instancia: `ops/` y `acme-ops/`
 // nombran al toolkit, y quien lee `project` en la configuración espera leer «acme».
 function defaultName(root) {
@@ -268,12 +277,15 @@ async function init(target, cli) {
   // nivel deja de distinguir qué es suyo y qué llegó del toolkit. Es el layout que `automation
   // install` ya asume —el wiring del runner va al padre, donde se abre la herramienta—, así que lo
   // único que faltaba era que fuera lo que pasa cuando no se elige nada.
-  const root = path.resolve(target || DEFAULT_TARGET)
+  const root = path.resolve(target || implicitTarget(process.cwd()))
   const mode = cli.value('--mode', target ? 'embedded' : 'sidecar')
   if (!['embedded', 'sidecar'].includes(mode)) fail('--mode debe ser embedded o sidecar.', 2)
   const name = cli.value('--name', defaultName(root))
   const force = cli.has('--force')
-  const existing = fs.existsSync(root) ? fs.readdirSync(root) : []
+  // `.git` no cuenta como contenido: es lo único que hay en la carpeta que alguien acaba de crear y
+  // versionar para la instancia, y el toolkit no escribe nada adentro. Sin esta excepción el camino
+  // más natural —`mkdir acme-ops && git init && cauce init`— pedía `--force` para no pisar nada.
+  const existing = (fs.existsSync(root) ? fs.readdirSync(root) : []).filter((entry) => entry !== '.git')
   if (existing.length && !force) {
     fail(`El destino no está vacío: ${root}. Usa --force para agregar solo archivos faltantes.`)
   }
