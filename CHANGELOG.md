@@ -14,6 +14,34 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.27.0] - 2026-08-18
+
+### Añadido
+
+- **Instalar Cauce es un comando.** `npx @ingeniomaps/cauce init`, sin destino, crea `ops/` en modo
+  sidecar, te pregunta con qué runner vas a trabajar y qué integración querés, corre `npm install`,
+  deja el wiring del runner puesto y valida la instancia antes de terminar.
+
+  Antes había que elegir destino y modo a ciegas, correr `npm install` a mano —sin él la instancia no
+  funciona: el shim, los cargos, los equipos y los adaptadores se resuelven desde `node_modules`— y
+  después instalar el runner. Las dos preguntas tienen «ninguno» como default: instalar un runner
+  escribe en tu repositorio, así que un Enter apurado no deja archivos que no pediste, y los dos pasos
+  se agregan más tarde con `automation install` e `integration enable`.
+
+- **Banderas para instalar sin preguntas.** `init` acepta `--runner`, `--integration` e
+  `--install`/`--no-install`. Sin terminal —CI, un contenedor, un Dockerfile— no pregunta nada ni
+  descarga nada: materializa la instancia y dice qué falta, así que una automatización decide por
+  bandera y no hereda una descarga. Un `npm install` que falla se reporta y deja escrito por dónde
+  seguir, en vez de terminar en un error del runner tres pasos después.
+
+### Cambiado
+
+- **El destino de `init` es opcional, y sin él la instancia se aparta en `ops/`.** Antes cortaba con
+  `Falta <destino>`, así que ninguna invocación existente cambia de comportamiento. Lo que cambia es
+  a dónde va lo que no elegiste: un monorepo recibía `planning/`, `teams/`, `organization/` y
+  `AGENTS.md` en su primer nivel y dejaba de distinguir qué era suyo. El modo `embedded`, que es el que
+  despliega el molde en la raíz, ahora hay que pedirlo explícito.
+
 ## [0.26.0] - 2026-08-17
 
 ### Añadido
