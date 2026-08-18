@@ -1,5 +1,7 @@
 'use strict'
 
+require('./entorno')
+
 // Recorrido completo tal como lo vive una empresa: instalar el paquete publicado, materializar la
 // instancia, trabajar en ella, recibir una versión nueva y actualizarse.
 //
