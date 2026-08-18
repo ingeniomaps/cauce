@@ -287,6 +287,10 @@ test('promover un cargo exige firma humana y verificación posterior', () => {
   // Y no la aplica dos veces. La firma no sirve de candado —sigue firmada después—, así que el estado
   // terminal lo lleva el frontmatter, y sellarlo es lo último que ocurre: antes de eso sigue pendiente.
   assert.match(promote, /ya-aplicada/, 'una propuesta aplicada se rechaza')
+  // Rechazar sin decir a dónde ir dejaba al cargo con un contrato que la evaluación mostró mal
+  // calibrado y sin camino hasta el mes siguiente. La salida es la revisión, y va nombrada.
+  assert.match(promote, /abrí una revisión/, 'y nombra la salida en vez de mandar a esperar')
+  assert.match(promote, /-r\\d\+\)\?/, 'la revisión es un nombre que el recorrido sabe leer')
   assert.match(promote, /--applied --period/, 'y al terminar se sella')
   assert.ok(promote.indexOf("label: 'historial'") < promote.indexOf("label: 'sella'"), 'sella al final')
 

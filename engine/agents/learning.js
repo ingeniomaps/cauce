@@ -33,14 +33,30 @@ function assertWritable(root, agent) {
 function isoDate(now = new Date()) { return now.toISOString().slice(0, 10) }
 function month(now = new Date()) { return now.toISOString().slice(0, 7) }
 
-const PROPOSAL_NAME = /^\d{4}-\d{2}\.md$/
+// Una propuesta por período, y sus revisiones. La revisión existe porque aplicar no es el final del
+// ciclo: la evaluación posterior es la que dice si el cambio sirvió, y cuando dice que no, el sello
+// —que está para que nadie reaplique lo mismo y duplique cada viñeta— dejaba al cargo con un contrato
+// que se sabe mal calibrado y sin camino para corregirlo hasta el mes siguiente. La corrección es un
+// cambio distinto: documento propio, firma propia, y la aplicada queda sellada donde está.
+const PROPOSAL_NAME = /^(\d{4}-\d{2})(?:-r(\d+))?\.md$/
+
+// Mismo cuidado que con los registros de evaluación: `-` va antes que `.` en ASCII, así que ordenar
+// nombres pondría `2026-08-r2.md` delante de `2026-08.md` y la revisión se leería como la más vieja.
+function proposalOrder(name) {
+  const [, period, revision] = name.match(PROPOSAL_NAME)
+  return `${period}-${String(Number(revision || 1)).padStart(4, '0')}`
+}
 
 // El tope de la línea de índice. No es estético: son 47 líneas que se leen de un vistazo, y una que
 // se envuelve rompe la columna que hace posible el vistazo.
 const SUMMARY_MAX = 120
 
 function proposalFiles(dir) {
-  try { return fs.readdirSync(dir).filter((name) => PROPOSAL_NAME.test(name)).sort() } catch { return [] }
+  try {
+    return fs.readdirSync(dir)
+      .filter((name) => PROPOSAL_NAME.test(name))
+      .sort((one, other) => proposalOrder(one).localeCompare(proposalOrder(other)))
+  } catch { return [] }
 }
 
 function proposalState(text) {
@@ -58,8 +74,14 @@ function seal(root, agent, period = '') {
   const dir = path.join(assertWritable(root, agent), 'learning', 'proposals')
   const names = proposalFiles(dir)
   if (!names.length) throw new Error(`${agent} no tiene propuestas en learning/proposals/.`)
-  const name = period ? `${period}.md` : names[names.length - 1]
-  if (!names.includes(name)) throw new Error(`${agent} no tiene la propuesta ${name}.`)
+  // `--period 2026-08` nombra el período, no un archivo: con revisiones abiertas la que se sella es la
+  // vigente de ese período. Resolverlo siempre a `2026-08.md` habría devuelto «ya estaba aplicada» y
+  // dejado la revisión sin sellar, que es justo el estado en que `agent-promote` la vuelve a aplicar.
+  // Una revisión concreta se puede nombrar entera —`--period 2026-08-r2`— y entonces manda esa.
+  const name = period
+    ? (/^\d{4}-\d{2}$/.test(period) ? lastOfPeriod(dir, period) : `${period}.md`)
+    : names[names.length - 1]
+  if (!name || !names.includes(name)) throw new Error(`${agent} no tiene la propuesta ${period || name}.`)
   const file = path.join(dir, name)
   const text = fs.readFileSync(file, 'utf8')
   const state = proposalState(text)
@@ -109,12 +131,88 @@ propuesta consolidada. -->
   return { file, created: true }
 }
 
+// Abre la revisión siguiente. No vuelve a consolidar los informes semanales: ya se consolidaron en la
+// propuesta que ésta corrige, y repetirlos haría que el mismo hallazgo entre dos veces al contrato. El
+// insumo de una revisión es otro —qué mostró la evaluación posterior a aplicar—, y por eso el molde
+// pregunta eso y no otra cosa.
+function reviseProposal(root, agent, dir, previo, now) {
+  const period = month(now)
+  const anterior = previo.match(PROPOSAL_NAME)
+  const revision = Number(anterior[2] || 1) + 1
+  const file = path.join(dir, `${period}-r${revision}.md`)
+  fs.writeFileSync(file, `---
+agent: ${agent}
+period: ${period}
+revision: ${revision}
+corrects: ${previo}
+status: proposed
+automatic_apply: false
+---
+
+# Propuesta mensual — ${period}, revisión ${revision}
+
+Corrige \`${previo}\`, que ya está aplicada y queda sellada donde está. Esta revisión no la reemplaza ni
+la reabre: es un cambio distinto, con su propia firma.
+
+## Hallazgos
+
+Qué mostró la evaluación posterior a aplicar \`${previo}\`. No repitas acá los hallazgos de esa propuesta
+—ya entraron al contrato—: lo que va es lo que se supo después, con el registro de evaluación que lo
+sostiene.
+
+## Evidencia
+
+El registro de la corrida que lo destapó, y la cita del veredicto. Si el cambio anterior falló por estar
+mal calibrado, va también la línea del contrato que quedó floja y la del caso que la contradice.
+
+## Cambio propuesto
+
+Una revisión suele **no** ser aditiva: reemplaza texto que la propuesta anterior agregó. Decilo
+explícitamente y decí por qué la aditividad no aplica acá — vale para lo que ya rindió sus casos, no para
+un texto que acaba de fallar su primera medición.
+
+## Riesgos y regresiones
+
+Qué casos pasaban con el texto anterior y podrían dejar de pasar con éste. Nombralos por su id: son los
+que hay que volver a correr.
+
+## Evaluación
+
+Cómo se comprueba que esta vez sí. Nombrá el caso que tiene que cambiar de veredicto y por qué razón, no
+sólo que pase.
+
+## Aprobación humana
+
+- Estado: pendiente
+- Responsable: por definir
+- Fecha: por definir
+`)
+  return { file, created: true, reports: 0, corrects: previo }
+}
+
+// La última propuesta del período, si la hay: es contra ella que se decide si abrir una revisión.
+function lastOfPeriod(dir, period) {
+  const names = proposalFiles(dir).filter((name) => name.match(PROPOSAL_NAME)[1] === period)
+  return names.length ? names[names.length - 1] : ''
+}
+
 function prepareProposal(root, agent, now = new Date()) {
   const target = assertWritable(root, agent)
   const proposalDir = path.join(target, 'learning', 'proposals')
-  const file = path.join(proposalDir, `${month(now)}.md`)
   fs.mkdirSync(proposalDir, { recursive: true })
-  if (fs.existsSync(file)) return { file, created: false, reports: 0 }
+
+  // Una sola propuesta pendiente por período. Si la última todavía no se aplicó, abrir otra partiría
+  // la firma en dos documentos que dicen cosas distintas sobre el mismo contrato.
+  const previo = lastOfPeriod(proposalDir, month(now))
+  if (previo) {
+    const anterior = path.join(proposalDir, previo)
+    if (proposalState(fs.readFileSync(anterior, 'utf8')) !== 'applied') {
+      return { file: anterior, created: false, reports: 0 }
+    }
+    return reviseProposal(root, agent, proposalDir, previo, now)
+  }
+
+  const file = path.join(proposalDir, `${month(now)}.md`)
   let names = []
   try { names = fs.readdirSync(path.join(target, 'learning', 'reports')) } catch { /* vacío */ }
   const reports = names.filter((name) => name.startsWith(month(now)) && /^\d{4}-\d{2}-\d{2}\.md$/.test(name)).sort()

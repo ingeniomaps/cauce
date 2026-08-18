@@ -69,8 +69,11 @@ phase('Firma')
 const firma = await agent(
   `From ${ROOT}, run "node tools/ops.js agents list --json" and take the path it printed for ${AGENT}. ` +
   `Set dir to "${ROOT}/<path>": that command prints paths relative to ${ROOT}.\n\n` +
-  `Find the newest <dir>/learning/proposals/AAAA-MM.md` +
-  `${PERIOD ? `, preferring ${PERIOD}.md` : ''} and set proposal to its full path. Read **only** its ` +
+  `Find the newest proposal under <dir>/learning/proposals/. They are named AAAA-MM.md, and a ` +
+  `correction to an already applied one is AAAA-MM-rN.md — the revision is newer than the plain name ` +
+  `for the same month, so sorting file names is not enough` +
+  `${PERIOD ? `. Prefer the newest one for ${PERIOD}` : ''}. Set proposal to its full path. Read ` +
+  `**only** its ` +
   `frontmatter and its "Aprobación humana" and "Cambio propuesto" sections and report, without ` +
   `interpreting in anyone's favour:\n` +
   `- approved: true only if the state says it is approved AND a named person is recorded. "pendiente", ` +
@@ -93,15 +96,17 @@ if (!firma.approved) {
 // después, y el estado en prosa pasa a decir «aprobada y aplicada», que también lee como aprobada.
 // Como el cambio es aditivo por diseño, reaplicar no falla — duplica cada viñeta y cada fuente.
 if ((firma.status || '').toLowerCase() === 'applied') {
-  return stop('ya-aplicada', `${firma.proposal} ya está aplicada. Para un cambio nuevo, abrí la ` +
-    'propuesta del período siguiente con "ops learn <cargo> --proposal"')
+  return stop('ya-aplicada', `${firma.proposal} ya está aplicada. Si la evaluación posterior mostró que ` +
+    `el cambio quedó mal calibrado, abrí una revisión con "node tools/ops.js learn ${AGENT} --proposal": ` +
+    'la aplicada queda sellada donde está y la corrección va con su propia firma')
 }
 log(`Aprobada por ${firma.signedBy}`)
 
-// El período sale del nombre del archivo, que el motor ya garantiza `AAAA-MM.md`: pedírselo otra vez
-// al modelo sería preguntar dos veces lo mismo y arriesgar dos respuestas.
-const PERIODO = (firma.proposal.match(/(\d{4}-\d{2})\.md$/) || [])[1] || ''
-if (!PERIODO) return stop('propuesta-sin-periodo', `${firma.proposal} no se llama AAAA-MM.md`)
+// El período sale del nombre del archivo, que el motor ya garantiza: pedírselo otra vez al modelo sería
+// preguntar dos veces lo mismo y arriesgar dos respuestas. Se toma el nombre entero y no sólo el mes,
+// porque con una revisión abierta hay dos archivos del mismo período y hay que sellar el que se aplicó.
+const PERIODO = (firma.proposal.match(/(\d{4}-\d{2}(?:-r\d+)?)\.md$/) || [])[1] || ''
+if (!PERIODO) return stop('propuesta-sin-periodo', `${firma.proposal} no se llama AAAA-MM.md ni AAAA-MM-rN.md`)
 
 phase('Aplicar')
 

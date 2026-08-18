@@ -379,6 +379,52 @@ test('una propuesta aplicada no se puede volver a aplicar', () => {
   }
 })
 
+// El sello impedía reaplicar lo mismo, y de paso impedía corregirlo: la evaluación posterior es la que
+// dice si el cambio sirvió, y cuando decía que no, el cargo quedaba con un contrato que se sabe mal
+// calibrado hasta el mes siguiente. La corrección es un cambio distinto y va con su propia firma.
+test('una propuesta aplicada se puede corregir sin reabrirla', () => {
+  const L = require('../engine/agents/learning')
+  const repo = path.resolve(__dirname, '..')
+  const dir = path.join(repo, 'agents/roles/system/qa-engineer/learning/proposals')
+  const now = new Date('2099-06-15T00:00:00Z')
+  const creados = []
+  try {
+    const base = L.prepareProposal(repo, 'qa-engineer', now)
+    creados.push(base.file)
+    assert.equal(path.basename(base.file), '2099-06.md')
+
+    // Una sola pendiente por período: con la firma sin dar, abrir otra partiría la decisión en dos
+    // documentos que dicen cosas distintas sobre el mismo contrato.
+    assert.equal(L.prepareProposal(repo, 'qa-engineer', now).created, false, 'no abre otra si hay pendiente')
+
+    L.seal(repo, 'qa-engineer', '2099-06')
+    const revision = L.prepareProposal(repo, 'qa-engineer', now)
+    creados.push(revision.file)
+    assert.equal(revision.created, true, 'aplicada la anterior, sí abre la revisión')
+    assert.equal(path.basename(revision.file), '2099-06-r2.md')
+    assert.equal(revision.corrects, '2099-06.md', 'y dice cuál corrige')
+
+    const texto = fs.readFileSync(revision.file, 'utf8')
+    assert.match(texto, /^corrects: 2099-06\.md$/m, 'el frontmatter lo deja legible sin abrir la otra')
+    assert.match(texto, /^automatic_apply: false$/m)
+    // El molde no reconsolida los informes semanales: ya entraron al contrato por la propuesta que
+    // ésta corrige, y repetirlos metería el mismo hallazgo dos veces.
+    assert.equal(revision.reports, 0)
+
+    assert.equal(L.proposalState(fs.readFileSync(path.join(dir, '2099-06.md'), 'utf8')), 'applied',
+      'la corregida queda sellada donde está, no se reabre')
+    assert.equal(L.prepareProposal(repo, 'qa-engineer', now).created, false, 'y r3 espera a que r2 se aplique')
+
+    // Nombrar el período sella la vigente y no la base: apuntar siempre a `AAAA-MM.md` habría dicho
+    // «ya estaba aplicada» y dejado la revisión sin sellar, que es el estado en que se reaplica.
+    const sellada = L.seal(repo, 'qa-engineer', '2099-06')
+    assert.equal(path.basename(sellada.file), '2099-06-r2.md')
+    assert.equal(sellada.already, false)
+  } finally {
+    for (const file of creados) fs.rmSync(file, { force: true })
+  }
+})
+
 test('un resultado que no cubre todos los casos vigentes no vale', () => {
   const EV = require('../engine/agents/evaluations')
   const repo = path.resolve(__dirname, '..')
