@@ -1,0 +1,14 @@
+version: 2
+
+updates:
+  # Las acciones van fijadas por SHA, que es reproducible pero nunca recibe un arreglo de seguridad:
+  # sin esto, el pin se queda donde está para siempre. El PR entra por la misma puerta que el resto.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: build
+    groups:
+      actions:
+        patterns: ['*']
