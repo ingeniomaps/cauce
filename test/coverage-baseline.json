@@ -34,6 +34,11 @@
     "branches": 100,
     "functions": 100
   },
+  "engine/cli/bootstrap.js": {
+    "lines": 94,
+    "branches": 91,
+    "functions": 83
+  },
   "engine/cli/ops.js": {
     "lines": 88,
     "branches": 47,

@@ -5,13 +5,15 @@
 // requerido y no puede exportar nada sin dispararse.
 
 // Banderas que consumen el argumento siguiente: su valor no es un posicional.
-const VALUED_FLAGS = new Set(['--name', '--mode', '--fixture', '--period', '--record'])
+const VALUED_FLAGS = new Set([
+  '--name', '--mode', '--fixture', '--period', '--record', '--runner', '--integration',
+])
 
 // Qué acepta cada comando, y a la vez qué comandos existen. Una bandera desconocida se rechaza en vez
 // de ignorarse: `check --jsonn` imprimía la salida humana con código 0, así que quien esperaba JSON
 // —un agente, típicamente— recibía texto sin ninguna señal de que su bandera no existía.
 const FLAGS = {
-  init: ['--name', '--mode', '--force'],
+  init: ['--name', '--mode', '--force', '--runner', '--integration', '--install', '--no-install'],
   check: ['--json'],
   tree: ['--json', '--no-color'],
   context: ['--json'],

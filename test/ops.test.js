@@ -219,6 +219,83 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.equal(fs.readFileSync(ownGuard, 'utf8'), 'guard propio de la empresa\n')
 })
 
+// Sin destino la instancia se aparta a `ops/` en vez de volcarse donde se corrió el comando: un
+// monorepo que recibe `planning/`, `teams/` y `AGENTS.md` en su primer nivel deja de distinguir qué es
+// suyo. El nombre sale de la carpeta del proyecto —`ops` nombra al toolkit, no al negocio— y el modo
+// es sidecar, el único que deja el wiring del runner donde el dev abre la herramienta.
+test('init sin destino aparta la instancia en ops/', () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-mono-'))
+  fs.mkdirSync(path.join(repo, 'apps'))
+  const created = run(['init'], repo)
+  assert.equal(created.status, 0, created.stderr)
+  assert.deepEqual(fs.readdirSync(repo).sort(), ['apps', 'ops'])
+  const config = JSON.parse(fs.readFileSync(path.join(repo, 'ops', 'ops.config.json'), 'utf8'))
+  assert.equal(config.mode, 'sidecar')
+  assert.equal(config.project, path.basename(repo))
+  assert.equal(config.workspaceRoots[0].path, '..')
+})
+
+// La validación vive en el motor, pero el CLI tiene que traerla hasta la línea de comandos: un runner
+// mal escrito no puede terminar en una instancia a medio configurar.
+// La promesa del comando único, de punta a punta: materializar, instalar la dependencia, dejar el
+// runner puesto y validar. El npm de esta prueba hace lo único que a `init` le importa de npm —dejar el
+// motor resoluble desde la instancia—, para no depender de la red ni de la versión publicada.
+test('init deja la instancia funcionando en una sola corrida', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-uno-'))
+  const repo = path.join(base, 'mono')
+  const bin = path.join(base, 'bin')
+  fs.mkdirSync(repo)
+  fs.mkdirSync(bin)
+  const motor = path.resolve(__dirname, '..')
+  fs.writeFileSync(
+    path.join(bin, 'npm'),
+    `#!/usr/bin/env bash\nmkdir -p node_modules/@ingeniomaps\nln -sfn ${motor} node_modules/@ingeniomaps/cauce\n`,
+    { mode: 0o755 },
+  )
+  const env = { ...process.env, LANG: process.env.LANG || 'C.UTF-8', PATH: `${bin}:${process.env.PATH}` }
+  delete env.NODE_TEST_CONTEXT
+  const result = spawnSync(
+    process.execPath,
+    [CLI, 'init', '--runner', 'claude', '--integration', 'jira', '--install'],
+    { cwd: repo, encoding: 'utf8', env },
+  )
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stdout, /modo sidecar/)
+  assert.match(result.stdout, /planning válido/, 'y valida sin que nadie se lo pida')
+  assert.equal(fs.existsSync(path.join(repo, '.claude', 'settings.json')), true, 'el wiring va al repo')
+  assert.equal(fs.existsSync(path.join(repo, 'ops', 'integrations', 'jira')), true)
+  assert.doesNotMatch(result.stdout, /siguiente: /, 'no quedan pasos que ya se hicieron')
+})
+
+// Y cuando npm falla, la instancia queda creada pero no funciona: decirlo es la diferencia entre
+// arrancar de nuevo y perseguir un error del runner tres pasos después.
+test('init no disimula un npm install que falló', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-sinred-'))
+  const repo = path.join(base, 'mono')
+  const bin = path.join(base, 'bin')
+  fs.mkdirSync(repo)
+  fs.mkdirSync(bin)
+  fs.writeFileSync(path.join(bin, 'npm'), '#!/usr/bin/env bash\nexit 1\n', { mode: 0o755 })
+  const env = { ...process.env, LANG: process.env.LANG || 'C.UTF-8', PATH: `${bin}:${process.env.PATH}` }
+  delete env.NODE_TEST_CONTEXT
+  const result = spawnSync(process.execPath, [CLI, 'init', '--runner', 'claude', '--install'], {
+    cwd: repo, encoding: 'utf8', env,
+  })
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /todavía no funciona/)
+  assert.match(result.stdout, /siguiente: cd ops && npm install/, 'y queda dicho por dónde seguir')
+  assert.match(result.stdout, /automation install \. claude/, 'incluido el runner que eligió')
+  assert.equal(fs.existsSync(path.join(repo, '.claude')), false, 'sin motor no se instala nada')
+})
+
+test('init rechaza un runner que no existe', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-runner-'))
+  const target = path.join(base, 'demo-ops')
+  const result = run(['init', target, '--mode', 'sidecar', '--runner', 'emacs'])
+  assert.equal(result.status, 2)
+  assert.match(result.stderr, /--runner debe ser/)
+})
+
 test('init rechaza destinos atravesados por symlinks', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-symlink-'))
   const target = path.join(base, 'project')

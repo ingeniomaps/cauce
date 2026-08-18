@@ -12,6 +12,7 @@ const PR = require('../engine/integrations/proposals')
 const B = require('../engine/planning/business-rules')
 const PC = require('../engine/planning/contracts')
 const P = require('../engine/planning/parser')
+const BOOT = require('../engine/cli/bootstrap')
 const { providerConfig, safeSegment } = I
 const { fetchItems, validateConfig } = require('../engine/integrations/providers/jira')
 
@@ -777,4 +778,101 @@ status: open
   // Un directorio con nombre de épica pero sin spec.md no aporta ninguna: se ignora, no revienta.
   fs.mkdirSync(path.join(root, 'roadmap', 'epic-005-vacia'))
   assert.equal(P.readEpics(root).length, 1)
+})
+
+// El recorrido posterior a `init` se prueba entero sin npm, sin terminal y sin escribir en el repo del
+// usuario: las tres cosas entran como dependencias, que es para lo que se separaron del CLI.
+function bootDeps(respuestas = []) {
+  const hechos = { npm: 0, runners: [], proveedores: [], preguntas: [], dichos: [] }
+  const cola = [...respuestas]
+  return {
+    hechos,
+    deps: {
+      ask: (pregunta) => { hechos.preguntas.push(pregunta); return Promise.resolve(cola.shift() ?? '') },
+      log: (mensaje) => hechos.dichos.push(mensaje),
+      npm: () => { hechos.npm += 1; return hechos.npmStatus ?? 0 },
+      installRunner: (nombre) => hechos.runners.push(nombre),
+      enableProvider: (nombre) => hechos.proveedores.push(nombre),
+    },
+  }
+}
+
+const bootOpciones = (extra) => ({
+  runner: '', integration: '', runners: ['claude', 'codex'], providers: ['jira'],
+  interactive: false, install: false, ...extra,
+})
+
+test('sin terminal ni banderas, init no pregunta ni toca nada', async () => {
+  const { hechos, deps } = bootDeps()
+  const result = await BOOT.run('/tmp/x', bootOpciones(), deps)
+  assert.deepEqual(hechos.preguntas, [], 'nadie a quién preguntar')
+  assert.equal(hechos.npm, 0)
+  assert.deepEqual(result, {
+    runner: BOOT.SIN_RUNNER, proveedor: BOOT.SIN_PROVEEDOR, instalado: false, pendiente: 'npm install',
+  })
+})
+
+test('con banderas, init habilita, instala y deja el runner puesto', async () => {
+  const { hechos, deps } = bootDeps()
+  const result = await BOOT.run('/tmp/x', bootOpciones({ runner: 'codex', integration: 'jira', install: true }), deps)
+  assert.deepEqual(hechos.proveedores, ['jira'])
+  assert.equal(hechos.npm, 1)
+  assert.deepEqual(hechos.runners, ['codex'], 'y el runner va después de npm, que es lo que lo resuelve')
+  assert.equal(result.instalado, true)
+})
+
+test('si npm falla, el runner no se instala y el error se dice', async () => {
+  const { hechos, deps } = bootDeps()
+  hechos.npmStatus = 1
+  const result = await BOOT.run('/tmp/x', bootOpciones({ runner: 'claude', install: true }), deps)
+  assert.deepEqual(hechos.runners, [], 'instalarlo sin la dependencia sólo produce un error peor')
+  assert.equal(result.instalado, false)
+  assert.match(result.error, /npm install/)
+})
+
+test('una bandera con un valor que no existe se rechaza antes de tocar el disco', async () => {
+  const { hechos, deps } = bootDeps()
+  await assert.rejects(
+    () => BOOT.run('/tmp/x', bootOpciones({ runner: 'emacs', install: true }), deps),
+    /--runner debe ser claude, codex, ninguno/,
+  )
+  await assert.rejects(
+    () => BOOT.run('/tmp/x', bootOpciones({ integration: 'trello' }), deps),
+    /--integration debe ser jira, ninguna/,
+  )
+  assert.equal(hechos.npm, 0)
+})
+
+test('en una terminal, init pregunta runner e integración y entiende número o nombre', async () => {
+  const { hechos, deps } = bootDeps(['2', 'jira'])
+  const result = await BOOT.run('/tmp/x', bootOpciones({ interactive: true }), deps)
+  assert.equal(hechos.preguntas.length, 2)
+  assert.equal(result.runner, 'codex', 'el 2 de la lista')
+  assert.equal(result.proveedor, 'jira', 'o el nombre escrito')
+})
+
+// Cortar la terminal a mitad de camino no puede terminar la corrida con un error de readline y la
+// instancia recién creada sin decir cómo seguir.
+test('un Ctrl+D en mitad de la pregunta vale como no elegir', async () => {
+  const { hechos, deps } = bootDeps()
+  deps.ask = () => Promise.reject(new Error('Aborted with Ctrl+D'))
+  const result = await BOOT.run('/tmp/x', bootOpciones({ interactive: true }), deps)
+  assert.equal(result.runner, BOOT.SIN_RUNNER)
+  assert.equal(result.proveedor, BOOT.SIN_PROVEEDOR)
+  assert.deepEqual(hechos.runners, [])
+  assert.ok(hechos.dichos.some((linea) => linea.includes('sin respuesta')))
+})
+
+// Enter es la respuesta más probable de quien no sabe qué elegir, y no puede dejar archivos en el repo.
+test('un Enter deja todo como estaba, y un dedazo se repregunta', async () => {
+  const { hechos, deps } = bootDeps(['', ''])
+  const vacio = await BOOT.run('/tmp/x', bootOpciones({ interactive: true }), deps)
+  assert.equal(vacio.runner, BOOT.SIN_RUNNER)
+  assert.deepEqual(hechos.proveedores, [])
+
+  const otro = bootDeps(['gemini', 'nada', '1', ''])
+  const result = await BOOT.run('/tmp/x', bootOpciones({ interactive: true }), otro.deps)
+  assert.equal(result.runner, 'claude', 'dos intentos fallidos y el tercero vale')
+  assert.equal(otro.hechos.preguntas.length, 4)
+  assert.ok(otro.hechos.dichos.some((linea) => linea.includes('no está en la lista')))
 })

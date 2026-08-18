@@ -19,8 +19,12 @@ const T = require('../teams/registry')
 const AG = require('../agents/catalog')
 const EV = require('../agents/evaluations')
 const { FLAGS, parse } = require('./args')
+const BOOT = require('./bootstrap')
 
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..')
+
+// Dónde aterriza una instancia cuando nadie eligió: una carpeta propia junto al código.
+const DEFAULT_TARGET = 'ops'
 
 function fail(message, code = 1) {
   console.error(message)
@@ -29,7 +33,8 @@ function fail(message, code = 1) {
 
 function usage() {
   console.log(`Uso:
-  ops init <destino> [--name <nombre>] [--mode embedded|sidecar] [--force]
+  ops init [destino] [--name <nombre>] [--mode embedded|sidecar] [--force]
+           [--runner claude|codex|gemini|antigravity] [--integration <proveedor>] [--install|--no-install]
   ops check <planning-dir> [--json]
   ops tree <planning-dir> [--no-color] [--json]
   ops context <planning-dir> [--json]
@@ -221,21 +226,90 @@ function evaluationBench(root, agent, caso, force) {
   return dir
 }
 
-function init(target, cli) {
-  if (!target) fail('Falta <destino>.', 2)
-  const mode = cli.value('--mode', 'embedded')
+// El nombre sale de la carpeta del proyecto, no de la que aloja la instancia: `ops/` y `acme-ops/`
+// nombran al toolkit, y quien lee `project` en la configuración espera leer «acme».
+function defaultName(root) {
+  const base = path.basename(root)
+  return base === DEFAULT_TARGET ? path.basename(path.dirname(root)) : base.replace(/-ops$/, '')
+}
+
+// El motor no se instala solo: `npm install` baja el paquete que `init` acaba de declarar, y sin él el
+// shim, los cargos, los equipos y los adaptadores no se resuelven. Correrlo desde acá es lo que hace que
+// una instalación sea un comando y no una lista. En Windows el ejecutable es `npm.cmd`.
+function npmInstall(root) {
+  const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+  const result = spawnSync(npm, ['install'], { cwd: root, stdio: 'inherit' })
+  if (result.error) {
+    console.error(`  no pude ejecutar npm (${result.error.code || result.error.message}).`)
+    return 1
+  }
+  return result.status === null ? 1 : result.status
+}
+
+// Un `cli` que no tiene banderas, para reusar un comando desde otro: el `--force` de `init` habla del
+// molde y no del wiring del runner, así que pasarle el suyo instalaría a la fuerza algo que nadie pidió.
+const SIN_BANDERAS = { has: () => false, value: (_flag, fallback = '') => fallback }
+
+// Lo que quedó pendiente, y sólo eso: cuando la instalación corrió, `check` ya se ejecutó y repetirlo
+// como sugerencia hace dudar de que haya pasado.
+function initSteps(enter, resultado) {
+  if (resultado.instalado) return []
+  const pasos = ['npm install']
+  if (resultado.runner !== BOOT.SIN_RUNNER) {
+    pasos.push(`node tools/ops.js automation install . ${resultado.runner}`)
+  }
+  pasos.push('node tools/ops.js check planning')
+  return pasos.map((paso, indice) => `  siguiente: ${indice === 0 ? enter : ''}${paso}`)
+}
+
+async function init(target, cli) {
+  // Sin destino la instancia va a `ops/` y en modo sidecar, en vez de volcarse donde esté parado el
+  // dev: un monorepo que recibe `planning/`, `teams/`, `organization/` y `AGENTS.md` en su primer
+  // nivel deja de distinguir qué es suyo y qué llegó del toolkit. Es el layout que `automation
+  // install` ya asume —el wiring del runner va al padre, donde se abre la herramienta—, así que lo
+  // único que faltaba era que fuera lo que pasa cuando no se elige nada.
+  const root = path.resolve(target || DEFAULT_TARGET)
+  const mode = cli.value('--mode', target ? 'embedded' : 'sidecar')
   if (!['embedded', 'sidecar'].includes(mode)) fail('--mode debe ser embedded o sidecar.', 2)
-  const name = cli.value('--name', path.basename(path.resolve(target)).replace(/-ops$/, ''))
-  const root = path.resolve(target)
+  const name = cli.value('--name', defaultName(root))
   const force = cli.has('--force')
   const existing = fs.existsSync(root) ? fs.readdirSync(root) : []
   if (existing.length && !force) {
     fail(`El destino no está vacío: ${root}. Usa --force para agregar solo archivos faltantes.`)
   }
   scaffold(root, { name, mode, force })
-  console.log(`\n✓ ${name}: sistema ops creado en ${root}`)
-  console.log('  siguiente: npm install (el motor viene de la dependencia)')
-  console.log(`  siguiente: node ${path.join(root, 'tools', 'ops.js')} check ${path.join(root, 'planning')}`)
+  const relative = path.relative(process.cwd(), root)
+  const enter = relative && relative !== '.' ? `cd ${relative} && ` : ''
+  console.log(`\n✓ ${name}: sistema ops creado en ${root} (modo ${mode})`)
+
+  // Preguntar exige una terminal, e instalar baja un paquete y escribe `node_modules`: las dos cosas
+  // pasan cuando hay alguien mirando. Una corrida automatizada —CI, un contenedor, estas pruebas—
+  // recibe la instancia materializada y decide por bandera, sin descargas ni preguntas implícitas.
+  const interactivo = Boolean(process.stdin.isTTY && process.stdout.isTTY)
+  const opciones = {
+    runner: cli.value('--runner'),
+    integration: cli.value('--integration'),
+    runners: A.RUNNER_NAMES,
+    providers: providerNames(),
+    interactive: interactivo,
+    install: cli.has('--install') || (interactivo && !cli.has('--no-install')),
+  }
+  let resultado
+  try {
+    resultado = await BOOT.run(root, opciones, {
+      log: console.log,
+      npm: npmInstall,
+      installRunner: (runner) => automation('install', root, runner, SIN_BANDERAS),
+      enableProvider: (provider) => INTEGRATION.enable.run(root, provider),
+    })
+  } catch (error) { fail(error.message, 2) }
+
+  if (resultado.instalado) {
+    check(path.join(root, 'planning'), SIN_BANDERAS)
+    console.log(`  listo: el ciclo empieza en ${path.join(relative || '.', 'planning', 'FLOW.md')}`)
+  }
+  for (const paso of initSteps(enter, resultado)) console.log(paso)
+  if (resultado.error) fail(`${resultado.error}: la instancia quedó creada pero todavía no funciona.`)
 }
 
 function check(dir, cli) {
@@ -1043,7 +1117,7 @@ async function run(cli) {
     fail(`${command}: bandera desconocida ${sobran.join(', ')}. ${acepta}`, 2)
   }
   const arg = cli.positional
-  if (command === 'init') init(arg[1], cli)
+  if (command === 'init') await init(arg[1], cli)
   else if (command === 'check') check(arg[1], cli)
   else if (command === 'tree') tree(arg[1], cli)
   else if (command === 'context') context(arg[1], cli)
