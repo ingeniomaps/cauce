@@ -14,6 +14,20 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.40.0] - 2026-08-19
+
+### Corregido
+
+- **En modo embebido, Codex se quedaba sin instrucciones.** `AGENTS.md` es el único nombre que el runner
+  y la instancia comparten, y ahí `install` conservaba el archivo entero —lo correcto para algo del
+  proyecto—, así que el recorrido que ese runner tenía que seguir nunca llegaba a estar escrito. Ahora su
+  contenido se fusiona adentro, entre marcas: reinstalar reemplaza el bloque en vez de duplicarlo,
+  desinstalar lo saca sin llevarse el archivo, y todo lo que la empresa escribió alrededor queda intacto.
+
+  `doctor` lo tenía al revés en ese archivo: comparando el hash completo avisaba cuando el bloque estaba
+  bien —el texto de la empresa alrededor difiere siempre— y decía «operativo» cuando alguien lo había
+  borrado, que es la falla que importa.
+
 ## [0.39.0] - 2026-08-19
 
 ### Corregido
