@@ -14,6 +14,27 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.31.0] - 2026-08-18
+
+### Corregido
+
+- **Una instancia dejaba de enterarse de que había versiones nuevas.** `init` fija la versión exacta del
+  motor, así que `npm update` no la mueve y `upgrade` compara contra el que está instalado: quien
+  actualizaba con `make upgrade` recibía «la instancia está al día» en todas las versiones siguientes, sin
+  nada que le dijera que la comparación era local. Ahora la salida nombra contra qué comparó y da el
+  comando que trae un motor nuevo, y `make upgrade` lo corre antes de aplicar.
+
+  Actualizar son tres pasos y el tercero sigue siendo aparte: `npm install --save-dev
+  @ingeniomaps/cauce@latest`, `ops upgrade .` y `ops automation install . <runner>`. Los workflows y las
+  skills viven en el runner, no en la instancia, y `upgrade` lo recuerda al terminar.
+
+### Cambiado
+
+- **`init` termina en un solo cierre, y sus opciones se leen como una selección.** Las tres líneas finales
+  —cada una con tono de última— pasaron a ser una con la acción concreta, y las opciones de runner e
+  integración van una por línea con el default marcado donde se mira: `5) ninguno   ← Enter`, en vez de un
+  `[ninguno]` pegado al prompt.
+
 ## [0.30.0] - 2026-08-18
 
 ### Añadido
