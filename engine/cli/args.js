@@ -14,6 +14,7 @@ const VALUED_FLAGS = new Set([
 // —un agente, típicamente— recibía texto sin ninguna señal de que su bandera no existía.
 const FLAGS = {
   init: ['--name', '--mode', '--force', '--runner', '--integration', '--install', '--no-install'],
+  scan: ['--json'],
   check: ['--json'],
   tree: ['--json', '--no-color'],
   context: ['--json'],

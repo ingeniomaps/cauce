@@ -14,6 +14,7 @@ const F = require('../core/files')
 const O = require('../core/ownership')
 const CL = require('../core/changelog')
 const M = require('../core/manifest')
+const SC = require('../core/scan')
 const C = require('../config/validate')
 const T = require('../teams/registry')
 const AG = require('../agents/catalog')
@@ -35,6 +36,7 @@ function usage() {
   console.log(`Uso:
   ops init [destino] [--name <nombre>] [--mode embedded|sidecar] [--force]
            [--runner claude|codex|gemini|antigravity] [--integration <proveedor>] [--install|--no-install]
+  ops scan [workspace] [--json]
   ops check <planning-dir> [--json]
   ops tree <planning-dir> [--no-color] [--json]
   ops context <planning-dir> [--json]
@@ -330,6 +332,34 @@ async function init(target, cli) {
   }
   for (const paso of initSteps(enter, resultado)) console.log(paso)
   if (resultado.error) fail(`${resultado.error}: la instancia quedó creada pero todavía no funciona.`)
+}
+
+// Qué hay en el workspace, antes de que nadie razone sobre él. La raíz ops se saltea: no es un servicio
+// del proyecto, y su `package.json` sólo declara el motor.
+function scan(target, cli) {
+  // Sólo el sidecar tiene su workspace afuera: la instancia es hija de la carpeta donde vive el código.
+  // Cualquier otro modo —embedded, y este mismo repositorio, que es `toolkit`— escanea donde está
+  // parado. Confundirlos hacía que un `scan` sin argumentos se fuera a recorrer la carpeta de al lado.
+  const sidecar = O.mode(process.cwd()) === 'sidecar'
+  const root = path.resolve(target || (sidecar ? path.join(process.cwd(), '..') : '.'))
+  const result = SC.scan(root, sidecar ? process.cwd() : '')
+  if (cli.has('--json')) return console.log(JSON.stringify(result, null, 2))
+  console.log(`workspace ${result.root}`)
+  if (result.rootManifests.length) {
+    console.log(`. ${result.rootManifests.join(', ')}${comandos(result.rootCommands)}`)
+  }
+  for (const service of result.services) {
+    console.log(`${service.path} [${service.runtimes.join(', ')}]${comandos(service.commands)}`)
+  }
+  const total = result.services.length + (result.rootManifests.length ? 1 : 0)
+  console.log(`${total} candidato(s). Cuál es el producto y cuál quedó muerto lo decide una persona.`)
+}
+
+// Sólo lo declarado y de dónde salió: un comando inventado se lee igual que uno real.
+function comandos(commands) {
+  const entries = Object.entries(commands || {})
+  if (!entries.length) return ' — sin comandos declarados'
+  return ` — ${entries.map(([kind, value]) => `${kind}: ${value.command} (${value.source})`).join(', ')}`
 }
 
 function check(dir, cli) {
@@ -1138,6 +1168,7 @@ async function run(cli) {
   }
   const arg = cli.positional
   if (command === 'init') await init(arg[1], cli)
+  else if (command === 'scan') scan(arg[1], cli)
   else if (command === 'check') check(arg[1], cli)
   else if (command === 'tree') tree(arg[1], cli)
   else if (command === 'context') context(arg[1], cli)

@@ -69,6 +69,11 @@
     "branches": 86,
     "functions": 100
   },
+  "engine/core/scan.js": {
+    "lines": 100,
+    "branches": 83,
+    "functions": 92
+  },
   "engine/hooks/run.js": {
     "lines": 91,
     "branches": 85,

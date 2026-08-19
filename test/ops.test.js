@@ -244,6 +244,43 @@ test('init sin destino aparta la instancia en ops/', () => {
 // motor resoluble desde la instancia—, para no depender de la red ni de la versión publicada.
 // Parado dentro de una carpeta que ya nombra al toolkit, la instancia es esa carpeta: la alternativa
 // —`acme-ops/ops/`— anida una raíz ops dentro de otra y le pone al proyecto el nombre del toolkit.
+// El inventario es determinista a propósito: pedirle a un modelo que recorriera el árbol costó doce
+// minutos en una carpeta vacía. Acá se comprueba lo que ese recorrido tiene que saber sin ayuda —dónde
+// mirar, qué saltear y qué comandos declara cada servicio— y que no corra ninguno.
+test('scan inventaría el workspace y saltea lo que nunca es un servicio', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-scan-'))
+  const repo = path.join(base, 'mono')
+  const escribir = (relative, content) => {
+    fs.mkdirSync(path.join(repo, path.dirname(relative)), { recursive: true })
+    fs.writeFileSync(path.join(repo, relative), content)
+  }
+  escribir('apps/api/package.json', JSON.stringify({ scripts: { test: 'jest', build: 'tsc' } }))
+  escribir('apps/web/go.mod', 'module acme/web\n')
+  escribir('apps/web/Makefile', 'test:\n\tgo test ./...\n')
+  // Los dos que hacen la diferencia entre milisegundos y minutos, y entre inventario y ruido.
+  escribir('node_modules/pkg/package.json', '{"name":"pkg"}')
+  escribir('.cauce-eval/caso/package.json', '{"name":"caso"}')
+
+  const target = path.join(repo, 'ops')
+  assert.equal(run(['init', target, '--name', 'Mono', '--mode', 'sidecar', '--no-install']).status, 0)
+
+  // Desde la instancia y sin argumentos: el workspace de un sidecar es su carpeta madre.
+  const json = run(['scan', '--json'], target)
+  assert.equal(json.status, 0, json.stderr)
+  const result = JSON.parse(json.stdout)
+  assert.deepEqual(result.services.map((service) => service.path).sort(), ['apps/api', 'apps/web'])
+  const api = result.services.find((service) => service.path === 'apps/api')
+  assert.deepEqual(api.commands.test, { command: 'npm run test', source: 'package.json' })
+  assert.equal(api.commands.lint, undefined, 'lo que el proyecto no declara no se inventa')
+  const web = result.services.find((service) => service.path === 'apps/web')
+  assert.equal(web.commands.test.source, 'Makefile', 'el Makefile gana sobre los scripts')
+
+  const humano = run(['scan'], target)
+  assert.match(humano.stdout, /apps\/api \[node\]/)
+  assert.match(humano.stdout, /2 candidato\(s\)/)
+  assert.doesNotMatch(humano.stdout, /node_modules|cauce-eval/, 'ni de nombre')
+})
+
 test('init no crea una carpeta ops dentro de otra', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-anidada-'))
   const repo = path.join(base, 'acme-ops')
