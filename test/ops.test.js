@@ -488,6 +488,32 @@ test('init no disimula un npm install que falló', () => {
 // quita lo que Cauce entregó y sigue igual que como lo entregó, y nada más.
 // Borrar una instancia era una lista de pasos a mano, y una lista se ejecuta a medias: si la carpeta se
 // va antes que el wiring, cada llamada de herramienta del runner queda ejecutando un guard que no está.
+// Una corrida real dejó `epic-001.md` sin slug: el archivo estaba escrito, era una épica legítima, y
+// `check` respondía «planning válido: 0 épica(s)». El silencio es peor que el rechazo — el planning se
+// reporta sano mientras el trabajo que alguien escribió no existe para el sistema.
+test('check no deja pasar una épica que nadie va a leer', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-invisible-'))
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  const roadmap = path.join(target, 'planning', 'roadmap')
+  const epica = [
+    '---', 'epic: 001', 'title: Algo', 'status: open', 'service: .', '---', '',
+    '## Criterios', '', '- **C1** — Algo observable.', '',
+    '## Contexto relevante', '', '- Contexto.', '',
+    '## Historias', '', '- [ ] **una** (→ C1) — Hace algo. _Aceptación: pasa algo._ (service: .)', '',
+  ].join('\n')
+
+  fs.writeFileSync(path.join(roadmap, 'epic-001.md'), epica)
+  const roto = run(['check', path.join(target, 'planning')])
+  assert.equal(roto.status, 1, 'no puede dar verde')
+  assert.match(roto.stderr, /epic-001\.md: nadie lo lee/)
+
+  fs.renameSync(path.join(roadmap, 'epic-001.md'), path.join(roadmap, 'epic-001-algo.md'))
+  const bien = run(['check', path.join(target, 'planning')])
+  assert.equal(bien.status, 0, bien.stderr)
+  assert.match(bien.stdout, /1 épica/)
+})
+
 test('destroy avisa qué se pierde y no borra hasta que se lo pidan dos veces', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-destroy-'))
   const workspace = path.join(base, 'mono')

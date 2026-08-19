@@ -64,6 +64,16 @@ function validateRoadmapStructure(dir) {
   try { entries = fs.readdirSync(roadmap, { withFileTypes: true }) } catch { return ['falta roadmap/'] }
   const errors = []
   for (const entry of entries) {
+    // Un archivo que se llama como una épica y no cumple el patrón no lo lee nadie: ni `check`, ni
+    // `tree`, ni el runner que busca trabajo. Ignorarlo en silencio es peor que rechazarlo, porque el
+    // planning se reporta válido mientras la épica que alguien escribió no existe para el sistema.
+    if (/^epic-/.test(entry.name) && !/^epic-\d{3}-/.test(entry.name)) {
+      errors.push(
+        `roadmap/${entry.name}: nadie lo lee. Una épica se nombra epic-NNN-<slug>.md, `
+        + 'o un directorio epic-NNN-<slug>/ con spec.md adentro.',
+      )
+      continue
+    }
     if (!entry.isDirectory() || !/^epic-\d{3}-/.test(entry.name)) continue
     const epicDir = path.join(roadmap, entry.name)
     if (!fs.existsSync(path.join(epicDir, 'spec.md'))) {
