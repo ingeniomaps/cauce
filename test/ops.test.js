@@ -246,6 +246,38 @@ test('init sin destino aparta la instancia en ops/', () => {
 // —`acme-ops/ops/`— anida una raíz ops dentro de otra y le pone al proyecto el nombre del toolkit.
 // Las preguntas salen de código y cuestan cero: la versión anterior gastaba un subagente de un minuto
 // para terminar diciendo «volvé a correrlo con contexto», que a quien recién instaló no le dice nada.
+// La basura de un proyecto la declara el propio proyecto, y mantener una lista de la ajena es perder.
+// Lo que el arranque necesita saber es qué es esto, no qué generó el último build.
+test('scan respeta lo que el proyecto declaró basura', () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-basura-'))
+  const poner = (relative) => {
+    fs.mkdirSync(path.join(repo, relative), { recursive: true })
+    fs.writeFileSync(path.join(repo, relative, 'package.json'), '{"name":"x"}')
+  }
+  poner('apps/api')
+  poner('generado/paquete')
+  poner('legacy-dump')
+  poner('node_modules/dependencia')
+  fs.writeFileSync(path.join(repo, '.gitignore'), 'generado/\nlegacy-dump\n*.log\n')
+
+  const result = JSON.parse(run(['scan', repo, '--json']).stdout)
+  assert.deepEqual(result.services.map((service) => service.path), ['apps/api'])
+})
+
+// Un corte que no se anuncia hace pasar lo listado por todo lo que hay.
+test('scan recorta la lista en pantalla y dice cuánto', () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-grande-'))
+  for (let index = 0; index < 25; index += 1) {
+    const dir = path.join(repo, 'packages', `p${index}`)
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, 'package.json'), '{"name":"p"}')
+  }
+  const humano = run(['scan', repo])
+  assert.match(humano.stdout, /… y 5 más, todos en --json/)
+  assert.match(humano.stdout, /25 candidato\(s\)/)
+  assert.equal(JSON.parse(run(['scan', repo, '--json']).stdout).services.length, 25, 'el JSON los trae todos')
+})
+
 test('onboard guía con preguntas y no pisa lo que ya está escrito', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-guia-'))
   const repo = path.join(base, 'mono')

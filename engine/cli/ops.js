@@ -28,6 +28,10 @@ const PROJECT_ROOT = path.resolve(__dirname, '..', '..')
 // Dónde aterriza una instancia cuando nadie eligió: una carpeta propia junto al código.
 const DEFAULT_TARGET = 'ops'
 
+// Cuántos servicios se listan en pantalla antes de recortar. El resto sigue en `--json`, que es lo que
+// consume el recorrido de arranque: recortar la lista es para leerla, no para acotar lo que se sabe.
+const LISTA = 20
+
 function fail(message, code = 1) {
   console.error(message)
   process.exit(code)
@@ -371,9 +375,14 @@ function scan(target, cli) {
     ? { root: path.resolve(target), services: SC.scan(path.resolve(target)).services }
     : { root, services: inventory(root) }
   if (cli.has('--json')) return console.log(JSON.stringify(result, null, 2))
-  for (const service of result.services) {
+  // Un monorepo de sesenta paquetes no se lee en pantalla. Se recorta, y se dice cuánto: un corte que no
+  // se anuncia hace pasar lo listado por todo lo que hay.
+  for (const service of result.services.slice(0, LISTA)) {
     const donde = service.root && service.root !== result.root ? `${path.basename(service.root)}/` : ''
     console.log(`${donde}${service.path} [${(service.runtimes || []).join(', ')}]${comandos(service.commands)}`)
+  }
+  if (result.services.length > LISTA) {
+    console.log(`… y ${result.services.length - LISTA} más, todos en --json`)
   }
   console.log(`${result.services.length} candidato(s). Cuál es el producto y cuál quedó muerto lo ` +
     'decide una persona.')
@@ -404,8 +413,10 @@ function onboard(rootArg, cli) {
     for (const dimension of state.dimensions) console.log(`  · ${dimension.need}`)
     console.log('')
   }
+  const nombres = services.slice(0, LISTA).map((service) => service.path).join(', ')
+  const resto = services.length > LISTA ? ` y ${services.length - LISTA} más` : ''
   console.log(services.length
-    ? `Mientras tanto, esto es lo que hay: ${services.map((service) => service.path).join(', ')}`
+    ? `Mientras tanto, esto es lo que hay: ${nombres}${resto}`
     : 'Mientras tanto, en el workspace todavía no hay ningún proyecto.')
   if (!state.fresh) {
     const escrito = [state.written.organization && 'organization/', state.written.roadmap && 'el roadmap']

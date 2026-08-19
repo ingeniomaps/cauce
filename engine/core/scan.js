@@ -15,9 +15,31 @@ const path = require('node:path')
 // y un servicio del producto no se esconde detrás de un punto.
 const IGNORED = new Set([
   'node_modules', 'vendor', 'dist', 'build', 'target', 'out', 'coverage', 'venv', '__pycache__', 'tmp',
+  'bower_components', 'jspm_packages', 'Pods', 'DerivedData', 'elm-stuff', '_build', 'deps', 'obj',
+  'site-packages', 'dist-newstyle', 'htmlcov', 'storybook-static', 'logs',
 ])
 
-const skippable = (name) => name.startsWith('.') || IGNORED.has(name)
+// Lo que este proyecto ya declaró que no es suyo. Leer el `.gitignore` de la raíz sale gratis y ahorra
+// mantener una lista de basura ajena: cada proyecto tiene la suya, y el nuestro no la puede adivinar.
+//
+// Se toman sólo los patrones que nombran un directorio sin comodines —`build/`, `/dist`, `.cache`—, y se
+// aplican por nombre en cualquier nivel, que es más ancho que la semántica real de git. Para decidir si
+// vale la pena entrar a mirar un directorio alcanza; para cualquier otra cosa, no es un parser de
+// gitignore y no hay que usarlo como si lo fuera.
+function ignoredByGit(root) {
+  let text = ''
+  try { text = fs.readFileSync(path.join(root, '.gitignore'), 'utf8') } catch { return [] }
+  return text.split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#') && !line.startsWith('!') && !/[*?[\]]/.test(line))
+    .map((line) => line.replace(/^\/+/, '').replace(/\/+$/, ''))
+    .filter((line) => line && !line.includes('/'))
+}
+
+const skipper = (root) => {
+  const declared = new Set(ignoredByGit(root))
+  return (name) => name.startsWith('.') || IGNORED.has(name) || declared.has(name)
+}
 
 // Un servicio anidado más hondo que esto es una excepción, y recorrer el árbol entero para encontrarlo
 // cuesta más que declararlo a mano en `AGENTS.md`.
@@ -82,6 +104,7 @@ function manifestsOf(dir) {
 function services(root, skip = '') {
   const found = []
   const excluded = skip ? path.resolve(skip) : ''
+  const skippable = skipper(root)
   const walk = (dir, depth) => {
     const manifests = manifestsOf(dir)
     if (manifests.length && path.resolve(dir) !== path.resolve(root)) {
