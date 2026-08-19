@@ -59,6 +59,9 @@ const SCAN = {
   properties: {
     fresh: { type: 'boolean' },
     reason: { type: 'string' },
+    // Las preguntas las decide el motor, no este recorrido: `ops onboard` sabe cuáles faltan según lo
+    // que ya esté escrito, y duplicarlas acá dejaría dos listas que envejecen por separado.
+    questions: { type: 'array', items: { type: 'string' } },
     services: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['path'], properties: {
         path: { type: 'string' },
@@ -91,16 +94,13 @@ phase('Scan')
 // de lo que devuelva, así que gastar más antes de saberlo es gastar a ciegas.
 const state = await agent(
   `${BASE}\n\nFrom ${ROOT}, run exactly these two commands and report what they printed. Explore nothing ` +
-  `else and open no other file than the two named below.\n` +
-  `1. "node tools/ops.js scan --json": the workspace inventory. Copy each service with its path, its ` +
-  `runtimes and its declared commands, keeping the source file each command came from. Add nothing that ` +
-  `the command did not print.\n` +
+  `else and open no file other than .env.example at the workspace root.\n` +
+  `1. "node tools/ops.js onboard --json": the instance state, the workspace inventory and the questions ` +
+  `that are still unanswered. Copy fresh, questions, and each service with its path, its runtimes and its ` +
+  `declared commands keeping the source file each command came from. Add nothing it did not print.\n` +
   `2. "node tools/ops.js check planning".\n` +
-  `Then read ${ORG}/company.md and list ${ROADMAP}. Set fresh=true only if the organization file still ` +
-  `carries the mold's "Por completar" placeholders and the roadmap holds nothing but its template and ` +
-  `README; otherwise fresh=false and say in reason what is already written. If .env.example exists at ` +
-  `the workspace root, report the variable names in secrets —names only— and the external services they ` +
-  `point at in externals.`,
+  `If .env.example exists at the workspace root, report the variable names in secrets —names only— and ` +
+  `the external services they point at in externals.`,
   { schema: SCAN, label: 'inventario' },
 )
 if (!state) return stop('scan-unavailable', 'no se pudo leer el estado del workspace')
@@ -113,12 +113,14 @@ const services = state.services || []
 const listado = services.map((service) => service.path).join(', ')
 log(`${services.length} servicio(s) en el workspace${listado ? `: ${listado}` : ''}`)
 
-// Sin código y sin contexto no hay nada que escribir que no sea inventado, y esa es exactamente la
-// corrida que no puede costar nada: se termina acá, diciendo qué falta y cómo darlo.
-if (!services.length && !CONTEXT) {
-  return stop('sin-contexto', `no hay servicios en el workspace y no me diste contexto, así que no hay ` +
-    `nada que escribir sin inventarlo. Volvé a correrlo cuando estén los repos, o dame el contexto en ` +
-    `una línea: /onboard qué vende la empresa, a quién, y cuál es el objetivo del trimestre.`)
+// Sin contexto no hay nada que escribir que no sea inventado. Lo que se devuelve no es una negativa
+// sino las preguntas: quien recién instaló no sabe qué es «volvé a correrlo con contexto», y adivinar
+// qué se espera de él es exactamente el trabajo que esta herramienta viene a sacarle de encima.
+const questions = state.questions || []
+if (!CONTEXT && questions.length) {
+  log('Faltan respuestas que el repositorio no puede dar. Preguntáselas a la persona, una por una,')
+  log(`y volvé a invocar el arranque con lo que conteste:\n${questions.map((q, i) => `  ${i + 1}. ${q}`).join('\n')}`)
+  return finish({ needsContext: true, questions, services: services.length, promoted: false })
 }
 
 const INVENTARIO = { services, externals: state.externals || [], secrets: state.secrets || [] }

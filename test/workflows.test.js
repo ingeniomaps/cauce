@@ -416,7 +416,7 @@ const onboardWorkflow = fs.readFileSync(
 test('onboard no gasta un modelo en recorrer un árbol de directorios', () => {
   // Doce minutos en una carpeta vacía: eso costó pedirle a un agente que «inventariara el repositorio».
   // El inventario es determinista y el modelo entra después, con la lista ya hecha.
-  assert.match(onboardWorkflow, /tools\/ops\.js scan --json/)
+  assert.match(onboardWorkflow, /tools\/ops\.js onboard --json/, 'una llamada, a un comando determinista')
   assert.match(onboardWorkflow, /Explore nothing/, 'y tiene prohibido salir a explorar')
   assert.equal(/phase\('Verify'\)/.test(onboardWorkflow), false, 'ya no corre las suites del proyecto')
   assert.match(onboardWorkflow, /No corras comandos del proyecto/, 'este recorrido lee, no ejecuta')
@@ -426,12 +426,14 @@ test('onboard no gasta un modelo en recorrer un árbol de directorios', () => {
   assert.match(onboardWorkflow, /Verificar los comandos es una historia/)
 })
 
-test('onboard corta antes de escribir cuando no hay nada que decir', () => {
-  // La corrida más barata posible es la que no puede producir nada: una llamada y un mensaje con qué
-  // falta. Escribir organization/ sin código ni contexto es inventar una empresa.
-  assert.match(onboardWorkflow, /sin-contexto/)
-  assert.match(onboardWorkflow, /!services\.length && !CONTEXT/)
-  assert.match(onboardWorkflow, /ya-arrancado/, 'y tampoco pisa una instancia ya completada')
+test('onboard devuelve preguntas en vez de mandar a averiguar', () => {
+  // Un mensaje que dice «volvé a correrlo con contexto» no guía a quien no sabe qué hace la herramienta.
+  // Las preguntas salen del motor —una sola lista— y el recorrido las devuelve para que el runner las haga.
+  assert.match(onboardWorkflow, /tools\/ops\.js onboard --json/)
+  assert.match(onboardWorkflow, /needsContext: true/)
+  assert.match(onboardWorkflow, /Preguntáselas a la persona, una por una/)
+  assert.equal(/const QUESTIONS/.test(onboardWorkflow), false, 'sin una segunda lista que envejezca sola')
+  assert.match(onboardWorkflow, /ya-arrancado/, 'y no pisa una instancia ya completada')
   assert.match(onboardWorkflow, /force/, 'reescribir es explícito')
   // Con contexto y sin código sí hay algo que escribir: traer los repos es la primera historia.
   assert.match(onboardWorkflow, /La primera historia es traer los repos/)

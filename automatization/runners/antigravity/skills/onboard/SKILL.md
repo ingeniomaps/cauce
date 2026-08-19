@@ -4,9 +4,13 @@ description: Escanea el repositorio y deja escrito el contexto de la empresa y l
 ---
 
 Es el arranque de una instancia recién creada: `init` la instaló, pero nadie le explicó todavía qué es
-este proyecto. Antes de empezar comprobá que siga vacía —`{{OPS_DIR}}organization/company.md` con sus
-«Por completar» y `{{OPS_DIR}}planning/roadmap/` sin épicas—: reescribir un contexto que alguien ya
-corrigió no deja rastro de lo que se perdió.
+este proyecto.
+
+Empezá por `node {{OPS_DIR}}tools/ops.js onboard`, que es instantáneo y te dice tres cosas: si la
+instancia sigue vacía, qué hay en el workspace y qué preguntas quedan sin responder. Si la instancia ya
+tiene contexto escrito, no la pises: reescribir lo que alguien corrigió no deja rastro de lo que se
+perdió. Si quedan preguntas, **hacéselas a la persona una por una** y esperá sus respuestas antes de
+escribir nada: son lo que ningún escaneo puede deducir, y adivinarlas produce una empresa inventada.
 
 El inventario no lo hagas a mano: `node {{OPS_DIR}}tools/ops.js scan --json` devuelve los subproyectos con
 manifiesto propio, su runtime y los comandos que cada uno declara, con el archivo del que salieron.

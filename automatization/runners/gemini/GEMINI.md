@@ -30,10 +30,12 @@ En una instancia recién creada nadie le explicó todavía al toolkit qué es es
 `{{OPS_DIR}}organization/` llega como molde y el roadmap está vacío. El primer recorrido lo llena, y una vez: reescribir un contexto
 que alguien ya corrigió no deja rastro de lo que se perdió.
 
-Empezá por `node {{OPS_DIR}}tools/ops.js scan --json`, que devuelve los subproyectos con manifiesto propio
-y los comandos que cada uno declara: recorrer el árbol vos mismo cuesta minutos y encuentra lo mismo. Con
-eso escribí `{{OPS_DIR}}organization/`, la sección «Mapa real» de `{{OPS_DIR}}AGENTS.md` con cada comando
-tal como está declarado y de qué archivo salió —sin correrlo—, y las raíces reales en `workspaceRoots`. Lo deducido va marcado `(supuesto)`. Credenciales, MCP y el permiso de push van como
+Empezá por `node {{OPS_DIR}}tools/ops.js onboard`, que es instantáneo: dice si la instancia sigue vacía,
+qué hay en el workspace —`scan` por dentro, así que no recorras el árbol vos mismo— y qué preguntas
+quedan sin responder. Hacéselas a la persona una por una y esperá sus respuestas: son lo que ningún
+escaneo puede deducir. Con eso escribí `{{OPS_DIR}}organization/`, la sección «Mapa real» de
+`{{OPS_DIR}}AGENTS.md` con cada comando tal como está declarado y de qué archivo salió —sin correrlo—, y
+las raíces reales en `workspaceRoots`. Lo deducido va marcado `(supuesto)`. Credenciales, MCP y el permiso de push van como
 filas en `{{OPS_DIR}}planning/HUMAN_ACTIONS.md`, sin proponer valores. Cerrá con `epic-001` en
 `{{OPS_DIR}}planning/roadmap/`: que una tarea pueda atravesar el ciclo entero, con criterios que salen de
 lo que falta. Nunca la promuevas.
