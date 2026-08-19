@@ -8,10 +8,12 @@
 @{{OPS_DIR}}planning/rules/system/conduct.md
 
 Los hooks de `.claude/settings.json` son obligatorios. En una instancia recién creada, empezá corriendo
-`node {{OPS_DIR}}tools/ops.js onboard`: es instantáneo y dice qué falta. Si devuelve preguntas, hacéselas
-a la persona —una por una, no como formulario— y recién con sus respuestas invocá `/onboard <respuestas>`,
-que escribe el contexto de la empresa y la primera épica. Invocarlo sin respuestas sólo va a devolverte las
-mismas preguntas más caro. Después, `/team` evalúa si una
+`node {{OPS_DIR}}tools/ops.js onboard`: es instantáneo y dice qué falta. Empezá por la pregunta que
+devuelve —de qué trata el proyecto— y recién con esa respuesta formulá hasta tres más, con las palabras de
+ese proyecto y una por vez, hasta cubrir las dimensiones que haya listado. No des por sentado que vende
+algo: puede sostenerse con donaciones, presupuesto interno o trabajo voluntario. Con las respuestas invocá
+`/onboard <lo que te contó>`, que escribe el contexto y la primera épica; invocarlo antes sólo devuelve la
+misma pregunta más caro. Después, `/team` evalúa si una
 intención es viable y propone una épica, y `/autobuild` ejecuta trabajo ya promovido; `/integration-sync` e
 `/integration-promote` gestionan staging local sin escritura remota. Ninguno promueve al BACKLOG.
 

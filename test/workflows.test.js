@@ -431,7 +431,11 @@ test('onboard devuelve preguntas en vez de mandar a averiguar', () => {
   // Las preguntas salen del motor —una sola lista— y el recorrido las devuelve para que el runner las haga.
   assert.match(onboardWorkflow, /tools\/ops\.js onboard --json/)
   assert.match(onboardWorkflow, /needsContext: true/)
-  assert.match(onboardWorkflow, /Preguntáselas a la persona, una por una/)
+  // Una pregunta y sus dimensiones, no un cuestionario: «qué vende» le pide a un proyecto libre una
+  // respuesta que nadie dio.
+  assert.match(onboardWorkflow, /state\.opening/)
+  assert.match(onboardWorkflow, /no como formulario/)
+  assert.match(onboardWorkflow, /No des ` \+\n  `por sentado que el proyecto vende algo/)
   assert.equal(/const QUESTIONS/.test(onboardWorkflow), false, 'sin una segunda lista que envejezca sola')
   assert.match(onboardWorkflow, /ya-arrancado/, 'y no pisa una instancia ya completada')
   assert.match(onboardWorkflow, /force/, 'reescribir es explícito')

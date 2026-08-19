@@ -59,9 +59,11 @@ const SCAN = {
   properties: {
     fresh: { type: 'boolean' },
     reason: { type: 'string' },
-    // Las preguntas las decide el motor, no este recorrido: `ops onboard` sabe cuáles faltan según lo
-    // que ya esté escrito, y duplicarlas acá dejaría dos listas que envejecen por separado.
-    questions: { type: 'array', items: { type: 'string' } },
+    // La conversación la enmarca el motor, no este recorrido: `ops onboard` da con qué pregunta empezar
+    // y qué dimensiones hay que cubrir, y duplicarlas acá dejaría dos listas que envejecen por separado.
+    opening: { type: 'string' },
+    followUps: { type: 'integer' },
+    dimensions: { type: 'array', items: { type: 'string' } },
     services: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['path'], properties: {
         path: { type: 'string' },
@@ -95,9 +97,10 @@ phase('Scan')
 const state = await agent(
   `${BASE}\n\nFrom ${ROOT}, run exactly these two commands and report what they printed. Explore nothing ` +
   `else and open no file other than .env.example at the workspace root.\n` +
-  `1. "node tools/ops.js onboard --json": the instance state, the workspace inventory and the questions ` +
-  `that are still unanswered. Copy fresh, questions, and each service with its path, its runtimes and its ` +
-  `declared commands keeping the source file each command came from. Add nothing it did not print.\n` +
+  `1. "node tools/ops.js onboard --json": the instance state, the workspace inventory, the opening ` +
+  `question and the dimensions still uncovered. Copy fresh, opening, followUps, the "need" of each ` +
+  `dimension, and every service with its path, its runtimes and its declared commands keeping the source ` +
+  `file each command came from. Add nothing it did not print.\n` +
   `2. "node tools/ops.js check planning".\n` +
   `If .env.example exists at the workspace root, report the variable names in secrets —names only— and ` +
   `the external services they point at in externals.`,
@@ -114,13 +117,20 @@ const listado = services.map((service) => service.path).join(', ')
 log(`${services.length} servicio(s) en el workspace${listado ? `: ${listado}` : ''}`)
 
 // Sin contexto no hay nada que escribir que no sea inventado. Lo que se devuelve no es una negativa
-// sino las preguntas: quien recién instaló no sabe qué es «volvé a correrlo con contexto», y adivinar
+// sino la conversación: quien recién instaló no sabe qué es «volvé a correrlo con contexto», y adivinar
 // qué se espera de él es exactamente el trabajo que esta herramienta viene a sacarle de encima.
-const questions = state.questions || []
-if (!CONTEXT && questions.length) {
-  log('Faltan respuestas que el repositorio no puede dar. Preguntáselas a la persona, una por una,')
-  log(`y volvé a invocar el arranque con lo que conteste:\n${questions.map((q, i) => `  ${i + 1}. ${q}`).join('\n')}`)
-  return finish({ needsContext: true, questions, services: services.length, promoted: false })
+//
+// Y se devuelve una pregunta con sus dimensiones, no un cuestionario: preguntarle «qué vende» a un
+// proyecto libre, interno o sin fines de lucro es empezar por una respuesta que nadie dio.
+const dimensions = state.dimensions || []
+if (!CONTEXT && state.opening) {
+  log(`Falta lo que el repositorio no puede decir. Preguntale primero, con estas palabras:`)
+  log(`  ${state.opening}`)
+  const faltan = dimensions.map((need) => `  · ${need}`).join('\n')
+  log(`Después, según lo que conteste, hasta ${state.followUps || 3} preguntas más, formuladas para este ` +
+    `proyecto y no como formulario, hasta cubrir lo que haga falta de:\n${faltan}`)
+  log('Con sus respuestas, volvé a invocar el arranque pasándoselas como contexto.')
+  return finish({ needsContext: true, opening: state.opening, dimensions, services: services.length })
 }
 
 const INVENTARIO = { services, externals: state.externals || [], secrets: state.secrets || [] }
@@ -134,7 +144,9 @@ const drafted = await agent(
   `${BASE}\n\n${EVIDENCE}\n\nEscribí los borradores de contexto de esta instancia, reemplazando el molde ` +
   `en vez de comentarlo:\n` +
   `1. ${ORG}/company.md y ${ORG}/product.md: lo que el contexto aportado y los nombres del repositorio ` +
-  `permiten afirmar. Lo que nada sostiene queda "Por definir" y su pregunta va a openQuestions.\n` +
+  `permiten afirmar. Lo que nada sostiene queda "Por definir" y su pregunta va a openQuestions. No des ` +
+  `por sentado que el proyecto vende algo: puede sostenerse con donaciones, presupuesto interno o ` +
+  `trabajo voluntario, y una sección que no aplica se dice, no se completa con algo plausible.\n` +
   `2. La sección "## Mapa real" de ${ROOT}/AGENTS.md: una entrada por servicio con su ruta, su runtime y ` +
   `sus comandos **tal como los declara**, diciendo de qué archivo salió cada uno. No afirmes que ` +
   `funcionan: nadie los corrió. Un servicio sin comandos declarados se escribe así, que es información.\n` +

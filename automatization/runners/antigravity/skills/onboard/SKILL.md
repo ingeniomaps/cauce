@@ -7,10 +7,14 @@ Es el arranque de una instancia recién creada: `init` la instaló, pero nadie l
 este proyecto.
 
 Empezá por `node {{OPS_DIR}}tools/ops.js onboard`, que es instantáneo y te dice tres cosas: si la
-instancia sigue vacía, qué hay en el workspace y qué preguntas quedan sin responder. Si la instancia ya
-tiene contexto escrito, no la pises: reescribir lo que alguien corrigió no deja rastro de lo que se
-perdió. Si quedan preguntas, **hacéselas a la persona una por una** y esperá sus respuestas antes de
-escribir nada: son lo que ningún escaneo puede deducir, y adivinarlas produce una empresa inventada.
+instancia sigue vacía, qué hay en el workspace y con qué pregunta empezar. Si ya tiene contexto escrito,
+no la pises: reescribir lo que alguien corrigió no deja rastro de lo que se perdió.
+
+La conversación empieza por una sola pregunta —de qué trata el proyecto— y sigue según lo que conteste:
+hasta tres más, formuladas con las palabras de ese proyecto, hasta cubrir las dimensiones que el comando
+haya listado. Una por vez, esperando respuesta. No des por sentado que vende algo: puede sostenerse con
+donaciones, presupuesto interno o trabajo voluntario, y preguntarle a un proyecto libre quién le paga es
+empezar por una respuesta que nadie dio.
 
 El inventario no lo hagas a mano: `node {{OPS_DIR}}tools/ops.js scan --json` devuelve los subproyectos con
 manifiesto propio, su runtime y los comandos que cada uno declara, con el archivo del que salieron.
