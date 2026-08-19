@@ -740,7 +740,13 @@ function upgrade(dir, cli) {
   const overrides = O.overrides(root)
 
   if (dry) {
-    if (from === to) return console.log(`= ${to}: la instancia está al día`)
+    if (from === to) {
+      // Contra el motor instalado, no contra lo publicado: la comparación es local y sin red. Decirlo
+      // importa porque `init` fija la versión exacta, así que el motor no se mueve solo y esta línea,
+      // a secas, se leía como «no hay nada nuevo» durante todas las versiones siguientes.
+      console.log(`= ${to}: la instancia está al día con el motor instalado`)
+      return console.log('  para traer una versión más nueva: npm install --save-dev @ingeniomaps/cauce@latest')
+    }
     console.log(`⚠ hay una versión más nueva: ${to} (la instancia tiene ${from || 'una previa'})`)
     printChangelog(from, to)
     for (const file of changed) console.log(`  editado localmente: ${file}`)

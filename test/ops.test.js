@@ -350,6 +350,25 @@ test('scan inventaría el workspace y saltea lo que nunca es un servicio', () =>
 
 // La guía es lo único que le dice a alguien qué hacer con lo que acaba de crear, así que no puede
 // depender de que la instalación haya corrido: la resuelve el mismo motor que está corriendo init.
+// El motor viene fijado en una versión exacta, así que no se mueve solo: sin decirlo, «al día» se lee
+// como «no hay nada nuevo» durante todas las versiones siguientes, y el usuario se queda atrás en
+// silencio. La instrucción concreta vale más que la advertencia.
+test('upgrade --check dice contra qué compara y cómo traer lo nuevo', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-aldia-'))
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  const check = run(['upgrade', target, '--check'])
+  assert.equal(check.status, 0, check.stderr)
+  assert.match(check.stdout, /al día con el motor instalado/)
+  assert.match(check.stdout, /npm install --save-dev @ingeniomaps\/cauce@latest/)
+
+  // Y el atajo de la instancia hace los dos pasos, porque `npm update` no mueve una versión exacta.
+  const makefile = fs.readFileSync(path.join(target, 'Makefile'), 'utf8')
+  const upgrade = makefile.split('\nupgrade:')[1].split('\n\n')[0]
+  assert.match(upgrade, /npm install --save-dev @ingeniomaps\/cauce@latest/)
+  assert.match(upgrade, /tools\/ops\.js upgrade \./)
+})
+
 test('init imprime la guía aunque no instale la dependencia', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-guia-init-'))
   const repo = path.join(base, 'mono')

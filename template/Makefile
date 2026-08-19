@@ -22,7 +22,10 @@ tree: ## Muestra roadmap, backlog, WIP y Done
 context: ## Muestra el contexto mínimo de la tarea vigente
 	@node tools/ops.js context planning
 
-upgrade: ## Actualiza Cauce sin tocar lo del proyecto
+# `init` fija la versión exacta del motor, así que `npm update` no la mueve: hay que pedir @latest.
+# Sin este primer paso `upgrade` compara contra el motor instalado y contesta «al día» para siempre.
+upgrade: ## Trae la última versión de Cauce y la aplica, sin tocar lo del proyecto
+	@npm install --save-dev @ingeniomaps/cauce@latest
 	@node tools/ops.js upgrade .
 
 automation-check: ## Comprueba hooks, workflows y adaptadores

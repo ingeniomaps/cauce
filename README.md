@@ -240,7 +240,20 @@ y actualizar no exige resolver conflictos: se reemplaza `system/` entero y nada 
 y sobrevive, desactivar uno del toolkit es quitarlo de la configuración del runner, y editar uno
 existente detiene el `upgrade` antes de pisarlo.
 
-### Versionado
+### Actualizar
+
+Son tres pasos y `make upgrade` hace los dos primeros:
+
+```bash
+npm install --save-dev @ingeniomaps/cauce@latest   # trae el motor nuevo
+node tools/ops.js upgrade .                        # aplica system/ y el runtime
+node tools/ops.js automation install . claude      # el wiring del runner
+```
+
+El primero no se puede saltear: `init` fija la versión exacta, así que `npm update` no la mueve y
+`upgrade` compara contra el motor instalado —lo dice en su salida—. El tercero tampoco: los workflows y
+las skills viven en el runner, no en la instancia, y `upgrade` no los toca. `upgrade` lo recuerda al
+terminar.
 
 Como `upgrade` reemplaza `system/` sin pedir confirmación, un cambio en el protocolo, en una regla del
 sistema o en un guard es visible para el usuario y sube minor aunque no toque código. `upgrade` y
