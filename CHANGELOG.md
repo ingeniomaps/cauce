@@ -14,6 +14,18 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.39.0] - 2026-08-19
+
+### Corregido
+
+- **`check` nombra las credenciales que nadie se llevó.** El arranque tiene que dejar una fila por cada
+  variable que el proyecto declara, y en cuatro corridas reales se cumplió en proporción a lo que se
+  habló: las que sólo estaban en el inventario quedaron afuera —entre ellas el broker por donde entran
+  los datos y el servicio al que se le mandan errores—. Ahora `check` nombra las que no aparecen ni en el
+  mapa ni en `HUMAN_ACTIONS.md`. Mira sólo cuando la instancia ya tiene contexto escrito, porque antes no
+  hay dónde tendrían que estar, y avisa en vez de fallar: una variable sin dueño no rompe nada hoy, rompe
+  el día que alguien tiene que desplegar.
+
 ## [0.38.0] - 2026-08-19
 
 ### Añadido
