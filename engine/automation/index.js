@@ -478,6 +478,108 @@ function deliveryState(recorded, name, resolved, prefix = '') {
   return delivered && delivered === current ? 'desactualizado' : 'ajeno'
 }
 
+// Quita de una estructura de configuración exactamente lo que este adaptador habría puesto, y nada más.
+// Es el inverso de `mergeConfig`: una entrada del usuario nunca coincide literalmente con la nuestra, así
+// que sobrevive; una que editó tampoco coincide, y por eso se conserva y se avisa en vez de borrarse.
+function unmergeConfig(current, incoming) {
+  if (Array.isArray(incoming)) {
+    if (!Array.isArray(current)) return current
+    const nuestras = new Set(incoming.map((value) => JSON.stringify(value)))
+    return current.filter((value) => !nuestras.has(JSON.stringify(value)))
+  }
+  if (incoming && typeof incoming === 'object') {
+    if (!current || typeof current !== 'object' || Array.isArray(current)) return current
+    const result = { ...current }
+    for (const [key, value] of Object.entries(incoming)) {
+      if (!(key in result)) continue
+      const limpio = unmergeConfig(result[key], value)
+      // Una clave que queda vacía por habernos ido no es del usuario: la creamos nosotros al instalar.
+      const vacia = limpio === undefined
+        || (Array.isArray(limpio) && !limpio.length)
+        || (limpio && typeof limpio === 'object' && !Array.isArray(limpio) && !Object.keys(limpio).length)
+      if (vacia) delete result[key]
+      else result[key] = limpio
+    }
+    return result
+  }
+  return JSON.stringify(current) === JSON.stringify(incoming) ? undefined : current
+}
+
+// Borra el archivo y, de paso, los directorios que quedaron vacíos por haberlo sacado. Nunca sube más
+// allá del límite: `.claude/` puede tener cosas del usuario aunque `.claude/workflows/` quede vacío.
+function removeFile(file, boundary) {
+  fs.rmSync(file, { force: true })
+  let dir = path.dirname(file)
+  while (dir.startsWith(boundary) && dir !== boundary) {
+    try { if (fs.readdirSync(dir).length) return } catch { return }
+    fs.rmdirSync(dir)
+    dir = path.dirname(dir)
+  }
+}
+
+// Saca el wiring de un runner dejando intacto lo que no escribimos nosotros.
+//
+// Existe porque desinstalar a mano es borrar `ops/` y descubrir después que cada llamada de herramienta
+// ejecuta un guard que ya no está. Y porque la alternativa —borrar `.claude/` entero— se lleva puesto lo
+// que el usuario haya puesto ahí, que es suyo y no tiene por qué desaparecer con el toolkit.
+//
+// La regla es una sola: se quita lo que Cauce entregó y sigue igual que como lo entregó. Un archivo con
+// cambios propios se conserva y se nombra; decidir sobre él es de la persona, no de este comando.
+function uninstall(root, name, output = console) {
+  if (O.mode(root) === 'toolkit') {
+    throw new Error('Acá se fabrica Cauce, no se lo consume.')
+  }
+  const runner = runnerManifest(root, name)
+  const paths = runnerPaths(root, name, runner)
+  const prefix = opsPrefix(root)
+  const recorded = M.readRunners(root)
+  const conservados = []
+  let quitados = 0
+
+  const items = [...(runner.instructions || []), ...(runner.artifacts || [])]
+  const entregado = { ...recorded }
+  for (const item of items) {
+    const resolved = { item, ...resolveItem(paths, root, name, item) }
+    const key = deliveryKey(name, item.target)
+    if (!fs.existsSync(resolved.target)) { delete entregado[key]; continue }
+    const situacion = deliveryState(recorded, name, resolved, prefix)
+    if (situacion === 'ajeno') { conservados.push(item.target); continue }
+    removeFile(resolved.target, paths.install)
+    delete entregado[key]
+    quitados += 1
+  }
+
+  // Los punteros a cargos no se registran uno por uno —son cuarenta y siete y se regeneran enteros—,
+  // así que se reconocen por contenido: sólo se va el que sigue siendo el que generamos.
+  if (runner.capabilities.nativeSkills && runner.roleSkills) {
+    const base = path.resolve(paths.install, runner.roleSkills)
+    for (const role of roleCatalog(root)) {
+      const file = path.join(base, role.slug, 'SKILL.md')
+      if (!fs.existsSync(file)) continue
+      if (M.digest(file) !== M.digestText(roleSkill(role))) {
+        conservados.push(path.relative(paths.install, file))
+        continue
+      }
+      removeFile(file, paths.install)
+      quitados += 1
+    }
+  }
+
+  if (fs.existsSync(paths.configTarget)) {
+    const current = JSON.parse(fs.readFileSync(paths.configTarget, 'utf8'))
+    const limpio = unmergeConfig(current, runnerConfig(paths, root))
+    if (limpio && Object.keys(limpio).length) F.atomicWriteJson(paths.configTarget, limpio)
+    else { removeFile(paths.configTarget, paths.install); quitados += 1 }
+    output.log(`✓ ${name}: ${runner.config.target} sin las entradas de Cauce`)
+  }
+
+  M.write(root, undefined, entregado)
+  output.log(`✓ ${name}: ${quitados} archivo(s) del toolkit quitados de ${paths.install}`)
+  for (const file of conservados) output.log(`= ${name}: conservado ${file} (tiene cambios tuyos)`)
+  if (runner.activation) output.log(`  ${name}: si lo habías registrado a mano, quitalo también.`)
+  return { removed: quitados, kept: conservados }
+}
+
 function install(root, name, output = console, options = {}) {
   // `install` arma la superficie de consumo de una empresa: punteros a cada cargo, una copia de los
   // workflows y los guards. Acá los cargos y los workflows son el producto —la copia divergiría— y
@@ -571,6 +673,7 @@ module.exports = {
   check,
   doctor,
   install,
+  uninstall,
   legacyGuardWiring,
   roleCatalog,
   roleSkill,

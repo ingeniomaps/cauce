@@ -4,6 +4,7 @@
 .PHONY: integration-check integration-sync require-key integration-promote
 .PHONY: require-agent agent-learn agent-propose agent-evaluate require-team team-check team-show
 .PHONY: install-claude install-codex install-gemini install-antigravity
+.PHONY: uninstall-claude uninstall-codex uninstall-gemini uninstall-antigravity
 .PHONY: doctor-claude doctor-codex doctor-gemini doctor-antigravity
 
 # Jira es hoy el único proveedor; el día que haya otro se pasa PROVIDER=<slug>.
@@ -75,6 +76,18 @@ install-gemini: ## Instala contexto, comandos y configuración para Gemini
 
 install-antigravity: ## Instala el plugin Cauce para Antigravity CLI
 	@node tools/ops.js automation install . antigravity
+
+uninstall-claude: ## Quita de Claude el wiring de Cauce, conservando lo tuyo
+	@node tools/ops.js automation uninstall . claude
+
+uninstall-codex: ## Quita de Codex el wiring de Cauce, conservando lo tuyo
+	@node tools/ops.js automation uninstall . codex
+
+uninstall-gemini: ## Quita de Gemini el wiring de Cauce, conservando lo tuyo
+	@node tools/ops.js automation uninstall . gemini
+
+uninstall-antigravity: ## Quita de Antigravity el wiring de Cauce, conservando lo tuyo
+	@node tools/ops.js automation uninstall . antigravity
 
 doctor-claude: ## Diagnostica la instalación de Claude
 	@node tools/ops.js automation doctor . claude

@@ -63,6 +63,7 @@ function usage() {
   ops automation check <ops-root>
   ops automation doctor <ops-root> claude|codex|gemini|antigravity
   ops automation install <ops-root> claude|codex|gemini|antigravity
+  ops automation uninstall <ops-root> claude|codex|gemini|antigravity
   ops learn <agent> [--proposal] [--applied [--period <AAAA-MM>]]
   ops evaluate <agent> [--cases [--json]] [--bench [caso]] [--record [AAAA-MM-DD]]
   ops agents list [ops-root] [--own|--system] [--json]
@@ -1113,6 +1114,11 @@ function automation(action, rootArg, runnerName, cli) {
       fail(`${runnerName}: ${result.errors.length} error(es), ${result.warnings.length} advertencia(s)`)
     }
     console.log(`✓ ${runnerName}: adaptador operativo (${result.warnings.length} advertencia(s))`)
+    return
+  }
+  if (action === 'uninstall') {
+    try { A.uninstall(root, runnerName, console) } catch (error) { fail(error.message, 2) }
+    console.log('  la instancia sigue en pie: borrar la carpeta ops es una decisión aparte.')
     return
   }
   if (action === 'install') {

@@ -446,6 +446,53 @@ test('init no disimula un npm install que falló', () => {
   assert.equal(fs.existsSync(path.join(repo, '.claude')), false, 'sin motor no se instala nada')
 })
 
+// Desinstalar a mano es borrar `ops/` y descubrir después que cada llamada de herramienta ejecuta un
+// guard que ya no está; la otra salida —borrar `.claude/` entero— se lleva puesto lo del usuario. Se
+// quita lo que Cauce entregó y sigue igual que como lo entregó, y nada más.
+test('automation uninstall saca lo del toolkit y deja lo del usuario', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-uninst-'))
+  const workspace = path.join(base, 'mono')
+  const target = path.join(workspace, 'ops')
+  fs.mkdirSync(workspace)
+  assert.equal(run(['init', target, '--name', 'Mono', '--mode', 'sidecar', '--no-install']).status, 0)
+  linkEngine(target)
+  assert.equal(run(['automation', 'install', target, 'claude']).status, 0)
+
+  // Lo del usuario, en los mismos lugares que usa el toolkit.
+  const settingsFile = path.join(workspace, '.claude', 'settings.json')
+  const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'))
+  settings.env = { MI_VAR: '1' }
+  settings.hooks.PreToolUse.push({ matcher: 'Bash', hooks: [{ type: 'command', command: 'echo mio' }] })
+  fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2))
+  fs.writeFileSync(path.join(workspace, '.claude', 'workflows', 'mio.js'), '// mío\n')
+  fs.mkdirSync(path.join(workspace, '.claude', 'skills', 'mi-cargo'), { recursive: true })
+  fs.writeFileSync(path.join(workspace, '.claude', 'skills', 'mi-cargo', 'SKILL.md'), 'propio\n')
+  fs.appendFileSync(path.join(workspace, 'CLAUDE.md'), '\n# mi contexto\n')
+
+  const result = run(['automation', 'uninstall', target, 'claude'])
+  assert.equal(result.status, 0, result.stderr)
+
+  assert.equal(fs.existsSync(path.join(workspace, '.claude', 'workflows', 'autobuild.js')), false)
+  assert.equal(fs.existsSync(path.join(workspace, '.claude', 'skills', 'product-manager')), false)
+  assert.equal(fs.readFileSync(path.join(workspace, '.claude', 'workflows', 'mio.js'), 'utf8'), '// mío\n')
+  assert.equal(fs.readFileSync(path.join(workspace, '.claude', 'skills', 'mi-cargo', 'SKILL.md'), 'utf8'), 'propio\n')
+
+  // Un archivo con cambios propios se conserva y se nombra: decidir sobre él es de la persona.
+  assert.match(result.stdout, /conservado CLAUDE\.md/)
+  assert.match(fs.readFileSync(path.join(workspace, 'CLAUDE.md'), 'utf8'), /# mi contexto/)
+
+  const quedó = JSON.parse(fs.readFileSync(settingsFile, 'utf8'))
+  assert.deepEqual(quedó.env, { MI_VAR: '1' }, 'lo suyo intacto')
+  assert.deepEqual(quedó.hooks.PreToolUse, [
+    { matcher: 'Bash', hooks: [{ type: 'command', command: 'echo mio' }] },
+  ], 'y de los hooks sólo queda el suyo')
+
+  // La instancia no se toca: borrarla es otra decisión.
+  assert.equal(fs.existsSync(path.join(target, 'planning', 'PROTOCOL.md')), true)
+  // Y desinstalar dos veces no es un error ni deja rastro.
+  assert.equal(run(['automation', 'uninstall', target, 'claude']).status, 0)
+})
+
 test('init rechaza un runner que no existe', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-runner-'))
   const target = path.join(base, 'demo-ops')

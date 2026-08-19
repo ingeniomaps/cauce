@@ -200,6 +200,7 @@ Lee [template/planning/PROTOCOL.md](template/planning/PROTOCOL.md) para el contr
 | `ops automation list-hooks <ops-root>` | Describe los guards portables disponibles. |
 | `ops automation check <ops-root>` | Valida guards, permisos y configuraciones. |
 | `ops automation install <ops-root> <runner>` | Instala el wiring de Claude, Codex, Antigravity o Gemini. |
+| `ops automation uninstall <ops-root> <runner>` | Quita ese wiring y conserva lo que no escribió Cauce. |
 | `ops automation doctor <ops-root> <runner>` | Diagnostica una instalación materializada. |
 
 `ops --help` lista las banderas de cada uno. En un proyecto generado, `make help` muestra los atajos
@@ -299,6 +300,12 @@ node tools/ops.js automation doctor . claude
 La instalación fusiona la configuración propia del runner y conserva las entradas existentes; sólo
 reemplaza los guards que el propio toolkit había registrado sueltos por el grupo que ahora los cubre, y
 lista cuáles quitó. Nada que no haya escrito el toolkit se toca.
+
+Para sacarlo, `automation uninstall` quita exactamente lo que Cauce entregó y sigue igual que como lo
+entregó: los guards de la configuración del runner, los workflows, los punteros a cargos. Lo que no
+escribió —tus hooks, tus workflows, tus skills— queda donde está, y un archivo suyo que hayas editado se
+conserva y se nombra en la salida. Borrar la carpeta ops sin esto deja al runner ejecutando guards que ya
+no existen.
 
 Qué comprueba cada guard, qué no puede comprobar y cómo se agrupan por evento está en
 [automatization/hooks/README.md](automatization/hooks/README.md).
