@@ -244,6 +244,34 @@ test('init sin destino aparta la instancia en ops/', () => {
 // motor resoluble desde la instancia—, para no depender de la red ni de la versión publicada.
 // Parado dentro de una carpeta que ya nombra al toolkit, la instancia es esa carpeta: la alternativa
 // —`acme-ops/ops/`— anida una raíz ops dentro de otra y le pone al proyecto el nombre del toolkit.
+// Las preguntas salen de código y cuestan cero: la versión anterior gastaba un subagente de un minuto
+// para terminar diciendo «volvé a correrlo con contexto», que a quien recién instaló no le dice nada.
+test('onboard guía con preguntas y no pisa lo que ya está escrito', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-guia-'))
+  const repo = path.join(base, 'mono')
+  fs.mkdirSync(path.join(repo, 'apps', 'api'), { recursive: true })
+  fs.writeFileSync(path.join(repo, 'apps', 'api', 'package.json'), '{"scripts":{"test":"jest"}}')
+  const target = path.join(repo, 'ops')
+  assert.equal(run(['init', target, '--name', 'Mono', '--mode', 'sidecar', '--no-install']).status, 0)
+
+  const guia = run(['onboard', target])
+  assert.equal(guia.status, 0, guia.stderr)
+  assert.match(guia.stdout, /1 servicio\(s\).*apps\/api/, 'lo que sí se puede deducir, deducido')
+  assert.match(guia.stdout, /¿Qué vende la empresa/, 'y lo que no, preguntado')
+  assert.match(guia.stdout, /¿Qué servicios o carpetas están muertos/, 'con código, se pregunta por el alcance')
+  assert.doesNotMatch(guia.stdout, /¿Dónde está el código\?/, 'y no se pregunta lo que está a la vista')
+
+  const json = JSON.parse(run(['onboard', target, '--json']).stdout)
+  assert.equal(json.fresh, true)
+  assert.equal(json.questions.length, 4)
+
+  // Con contexto escrito, la guía deja de ofrecer un arranque que pisaría trabajo ajeno.
+  fs.writeFileSync(path.join(target, 'organization', 'company.md'), '# Empresa\n\nVendemos ruteo.\n')
+  const despues = run(['onboard', target])
+  assert.match(despues.stdout, /ya tiene organization\/ escrito/)
+  assert.doesNotMatch(despues.stdout, /¿Qué vende la empresa/, 'no vuelve a preguntar lo contestado')
+})
+
 // El inventario es determinista a propósito: pedirle a un modelo que recorriera el árbol costó doce
 // minutos en una carpeta vacía. Acá se comprueba lo que ese recorrido tiene que saber sin ayuda —dónde
 // mirar, qué saltear y qué comandos declara cada servicio— y que no corra ninguno.
@@ -321,7 +349,10 @@ test('init deja la instancia funcionando en una sola corrida', () => {
   assert.equal(fs.existsSync(path.join(repo, '.claude', 'settings.json')), true, 'el wiring va al repo')
   assert.equal(fs.existsSync(path.join(repo, 'ops', 'integrations', 'jira')), true)
   assert.doesNotMatch(result.stdout, /siguiente: cd|siguiente: npm install/, 'sin pasos que ya se hicieron')
-  assert.match(result.stdout, /siguiente: abrí claude .*\/onboard/, 'y sí el que nadie más puede dar')
+  // Y lo que sí queda es la guía: las preguntas que nadie más puede contestar, impresas donde el que
+  // recién instaló las va a ver.
+  assert.match(result.stdout, /¿Qué vende la empresa/)
+  assert.match(result.stdout, /Abrí claude en este directorio/)
 })
 
 // Y cuando npm falla, la instancia queda creada pero no funciona: decirlo es la diferencia entre

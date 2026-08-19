@@ -15,6 +15,7 @@ const VALUED_FLAGS = new Set([
 const FLAGS = {
   init: ['--name', '--mode', '--force', '--runner', '--integration', '--install', '--no-install'],
   scan: ['--json'],
+  onboard: ['--json'],
   check: ['--json'],
   tree: ['--json', '--no-color'],
   context: ['--json'],

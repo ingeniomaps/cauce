@@ -64,6 +64,11 @@
     "branches": 83,
     "functions": 100
   },
+  "engine/core/onboarding.js": {
+    "lines": 100,
+    "branches": 77,
+    "functions": 100
+  },
   "engine/core/ownership.js": {
     "lines": 97,
     "branches": 86,

@@ -15,6 +15,7 @@ const O = require('../core/ownership')
 const CL = require('../core/changelog')
 const M = require('../core/manifest')
 const SC = require('../core/scan')
+const OB = require('../core/onboarding')
 const C = require('../config/validate')
 const T = require('../teams/registry')
 const AG = require('../agents/catalog')
@@ -37,6 +38,7 @@ function usage() {
   ops init [destino] [--name <nombre>] [--mode embedded|sidecar] [--force]
            [--runner claude|codex|gemini|antigravity] [--integration <proveedor>] [--install|--no-install]
   ops scan [workspace] [--json]
+  ops onboard [ops-root] [--json]
   ops check <planning-dir> [--json]
   ops tree <planning-dir> [--no-color] [--json]
   ops context <planning-dir> [--json]
@@ -324,11 +326,15 @@ async function init(target, cli) {
     // molde y el roadmap está vacío. Llenarlo exige leer el repositorio y decidir qué es cada cosa, que
     // es justo lo que un CLI determinista no puede hacer; el recorrido vive en el runner, así que lo
     // único útil acá es decir cuál es y con qué se abre.
+    // Las preguntas van acá y no en el recorrido del runner: quien acaba de instalar todavía no sabe
+    // qué hace la herramienta, y mandarlo a invocar algo «con contexto» es pedirle que adivine qué
+    // contexto. Esto es determinista, así que no cuesta nada imprimirlo siempre.
+    console.log('')
+    onboard(root, SIN_BANDERAS)
     if (resultado.runner !== BOOT.SIN_RUNNER) {
-      console.log(`  siguiente: abrí ${resultado.runner} en este directorio y corré /onboard`)
-      console.log('    escanea el repositorio y deja escrito el contexto de la empresa y la primera épica')
+      console.log(`\nAbrí ${resultado.runner} en este directorio para que las escriba por vos.`)
     }
-    console.log(`  listo: el ciclo empieza en ${path.join(relative || '.', 'planning', 'FLOW.md')}`)
+    console.log(`El ciclo empieza en ${path.join(relative || '.', 'planning', 'FLOW.md')}.`)
   }
   for (const paso of initSteps(enter, resultado)) console.log(paso)
   if (resultado.error) fail(`${resultado.error}: la instancia quedó creada pero todavía no funciona.`)
@@ -360,6 +366,30 @@ function comandos(commands) {
   const entries = Object.entries(commands || {})
   if (!entries.length) return ' — sin comandos declarados'
   return ` — ${entries.map(([kind, value]) => `${kind}: ${value.command} (${value.source})`).join(', ')}`
+}
+
+// La guía de arranque: qué hay, qué falta y qué preguntar. Determinista y en milisegundos, porque es lo
+// primero que ve alguien que acaba de instalar y todavía no sabe qué hace la herramienta.
+function onboard(rootArg, cli) {
+  const root = path.resolve(rootArg || '.')
+  const sidecar = O.mode(root) === 'sidecar'
+  const workspace = sidecar ? path.resolve(root, '..') : root
+  const { services } = SC.scan(workspace, sidecar ? root : '')
+  const state = OB.guide(root, services)
+  if (cli.has('--json')) return console.log(JSON.stringify({ ...state, workspace, servicios: services }, null, 2))
+  console.log(services.length
+    ? `${services.length} servicio(s) en ${workspace}: ${services.map((service) => service.path).join(', ')}`
+    : `Ningún proyecto en ${workspace} todavía.`)
+  if (!state.fresh) {
+    const escrito = [state.written.organization && 'organization/', state.written.roadmap && 'el roadmap']
+      .filter(Boolean).join(' y ')
+    console.log(`Esta instancia ya tiene ${escrito} escrito: el arranque no la va a pisar.`)
+    return
+  }
+  console.log('\nPara arrancar hacen falta cuatro respuestas que el repositorio no puede dar:\n')
+  for (const [index, question] of state.questions.entries()) console.log(`  ${index + 1}. ${question.text}`)
+  console.log('\nContestalas y el recorrido de arranque escribe con eso organization/, el mapa real de')
+  console.log('AGENTS.md y la primera épica. Con un runner instalado: /onboard <tus respuestas>.')
 }
 
 function check(dir, cli) {
@@ -1169,6 +1199,7 @@ async function run(cli) {
   const arg = cli.positional
   if (command === 'init') await init(arg[1], cli)
   else if (command === 'scan') scan(arg[1], cli)
+  else if (command === 'onboard') onboard(arg[1], cli)
   else if (command === 'check') check(arg[1], cli)
   else if (command === 'tree') tree(arg[1], cli)
   else if (command === 'context') context(arg[1], cli)
