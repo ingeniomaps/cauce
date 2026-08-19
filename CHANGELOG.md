@@ -14,6 +14,22 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.33.0] - 2026-08-19
+
+### Corregido
+
+- **Con varias raíces declaradas, ningún servicio tenía nombre.** Cada repositorio es la raíz de su
+  propio escaneo, así que su proyecto principal volvía como `.`: tres servicios llamados igual y nada que
+  los distinga. Una credencial no se podía atribuir a un servicio porque ningún servicio era nombrable, y
+  una corrida real terminó pidiéndole a una persona que declarara variables que su propio repositorio ya
+  declaraba. Ahora cada candidato lleva el nombre de su raíz, y donde hay una sola el proyecto de arriba
+  se nombra por su carpeta en vez de aparecer como `.` a secas.
+
+- **El arranque podía negar lo que el inventario le entregó.** Se le dice explícitamente que un nombre
+  que el inventario trae está declarado, así que pedir que se declare de nuevo contradice al repositorio.
+  La mitad de la corrección anterior que tocaba el recorrido —la que le hace copiar los nombres de
+  variable por servicio— no había llegado a publicarse.
+
 ## [0.32.0] - 2026-08-19
 
 ### Corregido
