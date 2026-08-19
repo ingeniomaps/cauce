@@ -18,16 +18,24 @@
   ],
   "artifacts": [
     {
-      "source": "commands/ops/autobuild.toml",
-      "target": ".gemini/commands/ops/autobuild.toml"
+      "source": "commands/cauce/autobuild.toml",
+      "target": ".gemini/commands/cauce/autobuild.toml"
     },
     {
-      "source": "commands/ops/integration-sync.toml",
-      "target": ".gemini/commands/ops/integration-sync.toml"
+      "source": "commands/cauce/integration-sync.toml",
+      "target": ".gemini/commands/cauce/integration-sync.toml"
     },
     {
-      "source": "commands/ops/integration-promote.toml",
-      "target": ".gemini/commands/ops/integration-promote.toml"
+      "source": "commands/cauce/integration-promote.toml",
+      "target": ".gemini/commands/cauce/integration-promote.toml"
+    },
+    {
+      "source": "commands/cauce/onboard.toml",
+      "target": ".gemini/commands/cauce/onboard.toml"
+    },
+    {
+      "source": "commands/cauce/team.toml",
+      "target": ".gemini/commands/cauce/team.toml"
     }
   ],
   "capabilities": {
@@ -37,5 +45,15 @@
     "checkpointing": true,
     "nativeSkills": true
   },
-  "roleSkills": ".gemini/skills"
+  "roleSkills": ".gemini/skills",
+  "commands": {
+    "invocation": "/cauce:{name}",
+    "names": [
+      "onboard",
+      "team",
+      "autobuild",
+      "integration-sync",
+      "integration-promote"
+    ]
+  }
 }

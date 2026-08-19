@@ -60,5 +60,15 @@
       "list"
     ],
     "expect": "cauce"
+  },
+  "commands": {
+    "invocation": "cauce:{name}",
+    "names": [
+      "onboard",
+      "team",
+      "autobuild",
+      "integration-sync",
+      "integration-promote"
+    ]
   }
 }

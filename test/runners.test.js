@@ -23,6 +23,27 @@ test('cada runner declara un manifest instalable y fuentes existentes', () => {
   }
 })
 
+// El nombre del recorrido es el mismo en todos los runners; el prefijo lo pone cada uno. Lo que no puede
+// pasar es que un runner anuncie un recorrido que no instala: Gemini documentaba `/ops:onboard` y no
+// existía ningún archivo detrás, así que el usuario lo buscaba en su lista y no estaba.
+test('cada recorrido anunciado tiene un archivo que lo instala', () => {
+  const esperados = ['onboard', 'team', 'autobuild', 'integration-sync', 'integration-promote']
+  for (const name of ['claude', 'codex', 'gemini', 'antigravity']) {
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, name, 'manifest.json'), 'utf8'))
+    const commands = manifest.commands || { invocation: '', names: [] }
+    if (!commands.invocation) {
+      assert.deepEqual(commands.names, [], `${name}: anuncia nombres sin saber cómo se los invoca`)
+      continue
+    }
+    assert.match(commands.invocation, /\{name\}/, `${name}: la invocación no dice dónde va el nombre`)
+    assert.deepEqual(commands.names, esperados, `${name}: no ofrece los mismos recorridos que el resto`)
+    for (const comando of commands.names) {
+      const instalado = manifest.artifacts.some((item) => item.target.includes(comando))
+      assert.equal(instalado, true, `${name}: anuncia ${comando} y no instala nada que lo provea`)
+    }
+  }
+})
+
 test('las capacidades declaradas coinciden con los artefactos reales', () => {
   const claude = JSON.parse(fs.readFileSync(path.join(root, 'claude', 'manifest.json'), 'utf8'))
   const codex = JSON.parse(fs.readFileSync(path.join(root, 'codex', 'manifest.json'), 'utf8'))

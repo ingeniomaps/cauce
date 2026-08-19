@@ -519,5 +519,6 @@ test('cada runner ofrece el arranque en el formato que entiende', () => {
     ).join('\n')
     assert.match(instrucciones, /## El arranque/, `${name} no dice cómo arranca una instancia vacía`)
   }
-  assert.deepEqual(nativos.sort(), ['antigravity', 'claude'])
+  // Gemini se sumó con sus comandos: el arranque ya no le llega sólo como prosa.
+  assert.deepEqual(nativos.sort(), ['antigravity', 'claude', 'gemini'])
 })

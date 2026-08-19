@@ -694,6 +694,15 @@ function install(root, name, output = console, options = {}) {
     }
   }
   installRoleSkills(root, runner, output)
+  // Cómo se lo llama acá. El nombre del recorrido es el mismo en todos los runners —`onboard`, `team`,
+  // `autobuild`—; el prefijo lo pone cada uno según su espacio de nombres, y esa diferencia es la que
+  // hace que alguien no encuentre en Gemini lo que usó en Claude. Decirlo al instalar cuesta una línea
+  // y ahorra buscarlo en una lista de cincuenta skills.
+  const invocacion = runner.commands && runner.commands.invocation
+  if (invocacion && (runner.commands.names || []).length) {
+    const lista = runner.commands.names.map((nombre) => invocacion.replace('{name}', nombre))
+    output.log(`  ${name}: se invocan como ${lista.join(', ')}`)
+  }
   if (runner.activation && activated(runner) !== true) {
     output.log(`  ${name}: falta registrarlo para que corra. Desde ${paths.install}:`)
     output.log(`    ${runner.activation.hint}`)

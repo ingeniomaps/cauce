@@ -139,8 +139,20 @@ no puede hacer, así que ese recorrido vive en el runner:
 /autobuild  ejecuta una tarea ya promovida, fase por fase.
 ```
 
-Claude y Antigravity lo traen como recorrido ejecutable; Codex y Gemini lo operan siguiendo las
-instrucciones que `automation install` les deja. Sin runner, la [tabla de comandos](#comandos) y
+### Cómo se lo llama en cada runner
+
+El nombre del recorrido es el mismo en todos —`onboard`, `team`, `autobuild`, `integration-sync`,
+`integration-promote`—; el prefijo lo pone cada runner según su espacio de nombres:
+
+| Runner | Se invoca | |
+|---|---|---|
+| Claude | `/onboard` | workflow ejecutable |
+| Gemini | `/cauce:onboard` | comando |
+| Antigravity | `cauce:onboard` | skill |
+| Codex | — | opera el protocolo desde sus instrucciones |
+
+`automation install` termina diciendo la lista exacta para el runner que instalaste, que es lo que
+evita buscar en Gemini el nombre que se usó en Claude. Sin runner, la [tabla de comandos](#comandos) y
 [FLOW.md](template/planning/FLOW.md) hacen el mismo camino a mano.
 
 Dentro del proyecto el CLI se invoca con `node tools/ops.js` —o `npx cauce`, que la dependencia deja

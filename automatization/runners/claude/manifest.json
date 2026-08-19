@@ -53,5 +53,15 @@
     "checkpointing": false,
     "nativeSkills": true
   },
-  "roleSkills": ".claude/skills"
+  "roleSkills": ".claude/skills",
+  "commands": {
+    "invocation": "/{name}",
+    "names": [
+      "onboard",
+      "team",
+      "autobuild",
+      "integration-sync",
+      "integration-promote"
+    ]
+  }
 }

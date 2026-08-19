@@ -172,7 +172,7 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   const gemini = JSON.parse(fs.readFileSync(path.join(workspace, '.gemini', 'settings.json'), 'utf8'))
   assert.equal(gemini.general.checkpointing.enabled, true)
   assert.equal(fs.existsSync(path.join(workspace, 'GEMINI.md')), true)
-  assert.equal(fs.existsSync(path.join(workspace, '.gemini', 'commands', 'ops', 'autobuild.toml')), true)
+  assert.equal(fs.existsSync(path.join(workspace, '.gemini', 'commands', 'cauce', 'onboard.toml')), true)
   assert.equal(run(['automation', 'doctor', target, 'gemini']).status, 0)
   assert.equal(run(['automation', 'install', target, 'antigravity']).status, 0)
   assert.equal(fs.existsSync(path.join(workspace, '.agents', 'plugins', 'cauce', 'plugin.json')), true)

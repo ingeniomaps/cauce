@@ -19,5 +19,9 @@
     "projectInstructions": true,
     "checkpointing": false,
     "nativeSkills": false
+  },
+  "commands": {
+    "invocation": "",
+    "names": []
   }
 }
