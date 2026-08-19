@@ -14,6 +14,28 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.38.0] - 2026-08-19
+
+### Añadido
+
+- **Gemini recibe `onboard` y `team`, que sólo tenía como prosa.** Estaban descritos en `GEMINI.md` y no
+  existía ningún comando detrás, así que quien venía de otro runner los buscaba en la lista y no
+  aparecían.
+
+- **`automation install` termina diciendo cómo se invoca lo que acaba de instalar.** Una línea con los
+  nombres exactos para ese runner, que es lo que evita buscar en una lista de cincuenta skills el nombre
+  que se usó en otro lado.
+
+### Cambiado
+
+- **Una convención para el nombre de cada recorrido.** El nombre es el mismo en todos los runners
+  —`onboard`, `team`, `autobuild`, `integration-sync`, `integration-promote`—; el prefijo lo pone cada
+  uno según su espacio de nombres: `/onboard` en Claude, `/cauce:onboard` en Gemini, `cauce:onboard` en
+  Antigravity. Codex no tiene comandos y opera el protocolo desde sus instrucciones.
+
+  Los comandos de Gemini se mudaron de `/ops:` a `/cauce:`. Si actualizás una instalación anterior,
+  `.gemini/commands/ops/` queda huérfano: se borra a mano, `install` no toca lo que ya no declara.
+
 ## [0.37.0] - 2026-08-19
 
 ### Cambiado
