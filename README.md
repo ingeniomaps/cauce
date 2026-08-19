@@ -41,7 +41,18 @@ instala la dependencia, deja el wiring del runner puesto y valida la instancia a
 · npm install (el motor viene de la dependencia)
 ✓ claude: adaptador operativo (0 advertencia(s))
 ✓ planning válido: 0 épica(s), 0 tarea(s) en cola, 0 terminada(s)
-  listo: el ciclo empieza en ops/planning/FLOW.md
+
+2 servicio(s) en /home/vos/mi-repo: apps/api, apps/web
+
+Para arrancar hacen falta cuatro respuestas que el repositorio no puede dar:
+
+  1. ¿Qué vende la empresa y a quién? Una línea alcanza.
+  2. ¿Cuál es el objetivo del trimestre y cómo se mide?
+  3. ¿Qué servicios o carpetas están muertos o fuera de alcance?
+  4. ¿Qué sistema externo o MCP hace falta conectar, y contra qué entorno?
+
+Abrí claude en este directorio para que las escriba por vos.
+El ciclo empieza en ops/planning/FLOW.md.
 ```
 
 El default de las dos preguntas es no hacer nada: instalar un runner escribe en tu repositorio y
@@ -101,11 +112,12 @@ vacío. Llenarlo exige leer el repositorio y decidir qué es cada cosa, que es l
 no puede hacer, así que ese recorrido vive en el runner:
 
 ```text
-/onboard    parte del inventario de `ops scan` y escribe organization/, el «Mapa real» de
-            AGENTS.md —cada comando como está declarado y de qué archivo salió— y las raíces
-            de ops.config.json. Lo deducido queda marcado como supuesto; credenciales, MCP y
-            el permiso de push van a HUMAN_ACTIONS.md. Cierra con la épica 001, sin promoverla.
-            No corre nada del proyecto: verificar los comandos es una historia de esa épica.
+/onboard    te hace las preguntas que el repositorio no puede contestar —qué vende la empresa,
+            a quién, el objetivo del trimestre, qué está fuera de alcance— y con tus respuestas
+            escribe organization/, el «Mapa real» de AGENTS.md y las raíces de ops.config.json.
+            Lo deducido queda marcado como supuesto; credenciales, MCP y el permiso de push van
+            a HUMAN_ACTIONS.md. Cierra con la épica 001, sin promoverla. No corre nada del
+            proyecto: verificar los comandos es una historia de esa épica.
 /team       evalúa si una intención posterior es viable y propone su épica.
 /autobuild  ejecuta una tarea ya promovida, fase por fase.
 ```
@@ -143,6 +155,7 @@ Lee [template/planning/PROTOCOL.md](template/planning/PROTOCOL.md) para el contr
 |---|---|
 | `ops init [destino]` | Materializa una instancia y la deja usable; sin destino, en `ops/` y modo sidecar. |
 | `ops scan [workspace]` | Inventaría servicios y comandos declarados, sin correr ninguno. |
+| `ops onboard [ops-root]` | Dice qué falta para arrancar y qué preguntas lo resuelven. |
 | `ops check <planning>` | Valida contratos, unicidad, trazabilidad y estados. |
 | `ops tree <planning>` | Muestra roadmap, backlog, WIP, inbox y done sin mutar nada. |
 | `ops context <planning>` | Emite el contexto mínimo de la tarea vigente para un runner. |
