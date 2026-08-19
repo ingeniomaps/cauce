@@ -14,6 +14,33 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.29.0] - 2026-08-18
+
+### Añadido
+
+- **`ops scan`: qué hay en el workspace, resuelto por código.** Lista los subproyectos con manifiesto
+  propio, su runtime y los comandos de test, lint y build que cada uno declara, diciendo de qué archivo
+  salió cada comando. No corre ninguno y no inventa ninguno: un comando que nadie declaró se lee igual
+  que uno real, y el primer Verify de una tarea es donde eso se descubre. Saltea `node_modules` y todo
+  directorio oculto, que es lo que lo mantiene en milisegundos. Una instancia sidecar escanea su carpeta
+  madre, donde vive el código; cualquier otro modo, donde está parada.
+
+### Cambiado
+
+- **`/onboard` cuesta lo que encuentra.** Empezaba pidiéndole a un agente que explorara el repositorio y
+  terminaba corriendo la suite de tests de cada servicio: una corrida sobre una carpeta vacía gastó doce
+  minutos sin poder producir nada. Ahora arranca con `ops scan` —una llamada, milisegundos— y, si el
+  workspace no tiene código y nadie aportó contexto, termina ahí diciendo qué le falta, en vez de escribir
+  una empresa inventada.
+
+  El recorrido ya no ejecuta nada del proyecto. El mapa real anota cada comando **tal como está
+  declarado**, con su archivo de origen, y verificarlo corriéndolo pasa a ser una historia de la épica
+  001, donde tiene dueño y tiempo asignado. Lo que escribe y lo que deja a una persona no cambió:
+  borradores marcados como supuestos, credenciales y MCP en `HUMAN_ACTIONS.md`, épica sin promover.
+
+  Si ya tenés una instancia, el recorrido actualizado llega con `automation install`, no con `upgrade`:
+  los workflows viven en el runner.
+
 ## [0.28.0] - 2026-08-18
 
 ### Añadido
