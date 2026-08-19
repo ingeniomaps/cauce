@@ -14,6 +14,43 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.35.0] - 2026-08-19
+
+### Añadido
+
+- **`ops destroy <ops-root>`: sacar una instancia entera, en un comando.** Enumera qué se pierde
+  —épicas, cola, trabajo terminado con su evidencia, acciones humanas pendientes, el contexto escrito— y
+  para. Sólo un segundo intento con `--force` desinstala cada runner cableado y después borra la
+  instancia. El orden no es negociable: borrar la carpeta antes que el wiring deja al runner ejecutando
+  guards que ya no existen, que es exactamente lo que pasaba haciéndolo a mano. También como
+  `make destroy`, que muestra el resumen sin borrar.
+
+### Corregido
+
+- **Una épica que nadie va a leer deja de pasar por válida.** Una corrida real escribió
+  `roadmap/epic-001.md`, sin slug: el parser busca `epic-NNN-<slug>.md`, así que `check` respondía
+  «planning válido: 0 épica(s)» con la épica ahí, y `autobuild` nunca habría encontrado trabajo en ella.
+  Renombrarla destapó dos errores que el silencio tapaba —un `status` inválido y un criterio sin historia
+  que lo cubriera—. Ahora cualquier archivo del roadmap que se llame como una épica y el parser no vaya a
+  leer es un error que dice cómo nombrarlo.
+
+- **`check` avisa cuando una dimensión del molde desapareció de `organization/`.** Un agente que reescribe
+  esos archivos se queda con el contenido y pierde la estructura: el resultado se lee entero y completo, y
+  la dimensión que falta no la va a reclamar nadie. Va como advertencia —esos archivos son de la empresa y
+  reestructurarlos a propósito es legítimo—, y agregar secciones propias no dice nada.
+
+- **Volver a una versión anterior deja de anunciarse como una actualización.** `upgrade --check` decía
+  «hay una versión más nueva: 0.33.0» contra una instancia en 0.34.0. Ahora dice que volvés, y te imprime
+  las entradas que dejás de tener en vez de las que ganarías.
+
+### Cambiado
+
+- **Los runners sin recorrido ejecutable llevan una lista de salida.** Codex, Gemini y Antigravity operan
+  el arranque leyendo instrucciones, y una corrida real falló cinco puntos de una vez: preguntas en
+  formulario, una épica sin slug, `organization/` reestructurado, `HUMAN_ACTIONS.md` vacío y `ops` listado
+  como servicio del producto. Todos del mismo lado: lo que no deja un archivo visible. La lista dice qué
+  se comprueba mirando el disco, que es lo que la prosa pidiendo cuidado no consigue.
+
 ## [0.34.0] - 2026-08-19
 
 ### Añadido
