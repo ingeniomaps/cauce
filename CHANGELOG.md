@@ -14,6 +14,27 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.32.0] - 2026-08-19
+
+### Corregido
+
+- **Las credenciales de un multirepo no existían para el arranque.** `/onboard` leía un solo
+  `.env.example`, el de la raíz del workspace: en un monolito eso es todo, entre repositorios hermanos no
+  es nada. Una corrida real sobre tres repos dejó filas que decían «la credencial del proveedor» sin
+  nombrar una sola variable, y un externo que sólo ese archivo mencionaba —un certificado de organismo
+  fiscal— no apareció en ningún lado.
+
+  Ahora `ops scan` reporta, por servicio, los nombres que declara su ejemplo y de qué archivo salieron, y
+  el arranque los usa para nombrar cada fila. **Sólo los nombres**: el valor es de una persona, y el
+  ejemplo es la mitad pública del par. Se leen `.env.example`, `.env.sample`, `.env.template` y
+  `.env.dist`; un ejemplo de más de cuarenta variables es un archivo generado y no un contrato, así que
+  se corta ahí y lo dice.
+
+- **`ops scan <ruta>` dejaba afuera al proyecto de la raíz.** Un monolito que declara sus comandos en el
+  nivel de arriba volvía listando todo menos a sí mismo, mientras que desde adentro de la instancia el
+  mismo árbol sí lo listaba: dos respuestas distintas sobre el mismo directorio. Los dos caminos comparten
+  una sola función y el proyecto de la raíz va primero.
+
 ## [0.31.0] - 2026-08-18
 
 ### Añadido
