@@ -41,6 +41,17 @@ diseño — eso vive en el commit y en el código.
   carpeta madre en modo sidecar; ahora acotar `workspaceRoots` acota también lo que se lee, que es más
   rápido y es lo único que alguien autorizó.
 
+- **Y saltea lo que tu proyecto ya declaró basura.** Además de los directorios de paquetes y de los
+  ocultos, lee el `.gitignore` de cada raíz y omite los nombres de directorio que encuentre ahí. Los
+  interpreta de forma ancha —por nombre, a cualquier profundidad, salteando todo patrón con comodín—:
+  alcanza para decidir si vale la pena mirar adentro, y no es un parser de gitignore. Las listas largas
+  se recortan a veinte en pantalla diciendo cuántas quedaron afuera; `--json` las trae todas.
+
+- **El arranque declara para qué es.** Entender qué es el proyecto, dejar la instancia correcta para él y
+  que la primera tarea pueda empezar: eso, y nada más. El análisis profundo llega cuando alguien pide
+  algo concreto, y adelantarlo retrasa el único momento en que la herramienta todavía no sirve para nada.
+  Está escrito en cada prompt del recorrido y en las instrucciones de los cuatro runners.
+
 - **Las preguntas dejan de ser un formulario, y de dar por sentado que el proyecto vende algo.** Antes
   eran cuatro fijas, y la primera preguntaba qué vende la empresa y a quién: a un proyecto libre, interno
   o sin fines de lucro le pedían una respuesta que nadie había dado. Ahora hay una sola pregunta escrita
