@@ -348,6 +348,18 @@ test('scan inventaría el workspace y saltea lo que nunca es un servicio', () =>
   assert.doesNotMatch(humano.stdout, /node_modules|cauce-eval/, 'ni de nombre')
 })
 
+// La guía es lo único que le dice a alguien qué hacer con lo que acaba de crear, así que no puede
+// depender de que la instalación haya corrido: la resuelve el mismo motor que está corriendo init.
+test('init imprime la guía aunque no instale la dependencia', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-guia-init-'))
+  const repo = path.join(base, 'mono')
+  fs.mkdirSync(path.join(repo, 'apps'), { recursive: true })
+  const created = run(['init', '--no-install'], repo)
+  assert.equal(created.status, 0, created.stderr)
+  assert.match(created.stdout, /¿De qué trata este proyecto\?/)
+  assert.match(created.stdout, /siguiente: cd ops && npm install/, 'y lo pendiente sigue dicho')
+})
+
 test('init no crea una carpeta ops dentro de otra', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-anidada-'))
   const repo = path.join(base, 'acme-ops')

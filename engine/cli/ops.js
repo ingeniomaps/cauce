@@ -324,23 +324,25 @@ async function init(target, cli) {
     })
   } catch (error) { fail(error.message, 2) }
 
+  if (resultado.instalado) check(path.join(root, 'planning'), SIN_BANDERAS)
+
+  // Una instancia recién instalada funciona y no sabe nada de este proyecto: `organization/` es el molde
+  // y el roadmap está vacío. Llenarlo exige leer el repositorio y decidir qué es cada cosa, que es justo
+  // lo que un CLI determinista no puede hacer; lo que sí puede es decir qué falta y qué preguntar.
+  //
+  // Se imprime siempre, incluso cuando la dependencia no se instaló: lo resuelve el motor que está
+  // corriendo `init`, no cuesta nada, y es lo único que le dice a alguien qué hacer con lo que acaba de
+  // crear. Dejarlo adentro del camino feliz lo escondía justo de quien más lo necesita.
+  console.log('')
+  onboard(root, SIN_BANDERAS)
+  if (resultado.instalado && resultado.runner !== BOOT.SIN_RUNNER) {
+    console.log(`\nAbrí ${resultado.runner} en este directorio para que las escriba por vos.`)
+  }
+  console.log('')
+  for (const paso of initSteps(enter, resultado)) console.log(paso)
   if (resultado.instalado) {
-    check(path.join(root, 'planning'), SIN_BANDERAS)
-    // Una instancia recién instalada funciona y no sabe nada de este proyecto: `organization/` es el
-    // molde y el roadmap está vacío. Llenarlo exige leer el repositorio y decidir qué es cada cosa, que
-    // es justo lo que un CLI determinista no puede hacer; el recorrido vive en el runner, así que lo
-    // único útil acá es decir cuál es y con qué se abre.
-    // Las preguntas van acá y no en el recorrido del runner: quien acaba de instalar todavía no sabe
-    // qué hace la herramienta, y mandarlo a invocar algo «con contexto» es pedirle que adivine qué
-    // contexto. Esto es determinista, así que no cuesta nada imprimirlo siempre.
-    console.log('')
-    onboard(root, SIN_BANDERAS)
-    if (resultado.runner !== BOOT.SIN_RUNNER) {
-      console.log(`\nAbrí ${resultado.runner} en este directorio para que las escriba por vos.`)
-    }
     console.log(`El ciclo empieza en ${path.join(relative || '.', 'planning', 'FLOW.md')}.`)
   }
-  for (const paso of initSteps(enter, resultado)) console.log(paso)
   if (resultado.error) fail(`${resultado.error}: la instancia quedó creada pero todavía no funciona.`)
 }
 
