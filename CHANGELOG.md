@@ -14,6 +14,17 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.41.0] - 2026-08-19
+
+### Corregido
+
+- **`destroy` ya no borra el repositorio en modo embebido.** Ahí la instancia **es** el repositorio, así
+  que borrar la carpeta se llevaba el código del producto: pasó de verdad sobre un caso de prueba, y el
+  aviso previo enumeraba épicas y acciones humanas sin nombrar lo único irrecuperable. En embebido saca
+  lo que Cauce escribió —`planning/`, `organization/`, `teams/`, `integrations/`, `automatization/`,
+  `tools/`, la configuración y el manifiesto— y deja el repositorio. En sidecar sigue borrando la
+  carpeta, que ahí no contiene nada más.
+
 ## [0.40.0] - 2026-08-19
 
 ### Corregido
