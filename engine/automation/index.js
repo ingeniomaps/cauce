@@ -377,6 +377,46 @@ function legacyGuardWiring(config) {
   return superseded
 }
 
+// Ejecuta el puente del runner tal como él lo invoca, y desde otra carpeta. Instalado no es lo mismo que
+// operativo: un bridge que el runner no puede lanzar —porque su ruta es relativa y el cwd es otro, o
+// porque falta node— falla cerrado y niega cada llamada a herramienta. `doctor` veía los archivos en su
+// lugar y decía «operativo» mientras nada respondía.
+function probeBridge(paths, runner) {
+  const bridge = (runner.artifacts || []).find((item) => item.target.endsWith('hook.js'))
+  if (!bridge) return []
+  const script = path.resolve(paths.install, bridge.target)
+  if (!fs.existsSync(script)) return []
+  let config = {}
+  try { config = JSON.parse(fs.readFileSync(paths.configTarget, 'utf8')) } catch { return [] }
+  const eventos = [...new Set(
+    JSON.stringify(config).match(/hook\.js ([a-z-]+)/g) || [],
+  )].map((entrada) => entrada.split(' ')[1])
+  if (!eventos.length) return []
+
+  const problemas = []
+  // Desde la raíz y desde una carpeta de adentro: si el runner lanza el hook con otro cwd, la ruta
+  // relativa de su configuración deja de resolver y eso hay que verlo acá, no en la primera sesión.
+  const desde = [paths.install, path.dirname(script)]
+  for (const evento of eventos) {
+    for (const cwd of desde) {
+      const payload = JSON.stringify({ toolCall: { args: { CommandLine: 'ls', Cwd: paths.install } } })
+      const result = spawnSync(process.execPath, [script, evento], { cwd, input: payload, encoding: 'utf8' })
+      let respuesta = {}
+      try { respuesta = JSON.parse((result.stdout || '').trim()) } catch { respuesta = {} }
+      // Cada evento tiene su respuesta sana: `stop` cierra la sesión —eso es funcionar— y el resto deja
+      // pasar. El puente falla cerrado, así que `deny` en una llamada inocua es que algo se rompió antes
+      // de poder juzgarla, y `continue` es el camino de error del propio `stop`.
+      const sana = evento === 'stop' ? 'stop' : 'allow'
+      if (respuesta.decision === sana) continue
+      const salida = (result.stderr || 'sin respuesta').trim().split('\n')[0]
+      const motivo = respuesta.reason
+        || (respuesta.decision ? `respondió ${respuesta.decision}` : salida)
+      problemas.push(`${bridge.target} ${evento} desde ${path.basename(cwd)}/: ${motivo}`)
+    }
+  }
+  return problemas
+}
+
 function doctor(root, name, output = console) {
   const runner = runnerManifest(root, name)
   const paths = runnerPaths(root, name, runner)
@@ -441,6 +481,9 @@ function doctor(root, name, output = console) {
       warnings.push(`${stale.length} cargo(s) desactualizados en ${runner.roleSkills}: reinstalá el adaptador`)
     }
   }
+  // Un puente que no responde niega cada llamada del runner: es error, no advertencia.
+  for (const problema of probeBridge(paths, runner)) errors.push(problema)
+
   const executable = spawnSync(
     'sh',
     ['-c', 'command -v "$1" >/dev/null 2>&1', 'runner-doctor', runner.command],

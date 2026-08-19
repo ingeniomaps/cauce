@@ -31,6 +31,27 @@ test('guard-destructive bloquea pérdida o publicación y permite lecturas', () 
 // La mitad que importa es que `true` deje pasar: `allowPush` existía sólo para el validador, el guard
 // bloqueaba igual, y un cargo que lo leyó dio por imposible un push que nadie había configurado.
 // Sin raíz —lo que pasa en este mismo repositorio, que no tiene `planning/`— no hay permiso que leer.
+// El guard del cierre corre `check` y bloquea si el planning quedó desalineado. Se prueba el lado que
+// bloquea porque el otro —salir en verde— lo ejercita cualquier corrida sana, y es el que no avisa nada.
+test('guard planning-drift bloquea el cierre con el planning roto', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-drift-'))
+  const root = path.join(base, 'demo-ops')
+  const cli = path.resolve(__dirname, '..', 'engine', 'cli', 'ops.js')
+  assert.equal(spawnSync(process.execPath, [cli, 'init', root, '--name', 'D', '--mode', 'sidecar',
+    '--no-install'], { encoding: 'utf8' }).status, 0)
+  // Una épica que el parser no lee: el planning deja de estar sano y el cierre tiene que decirlo.
+  fs.writeFileSync(path.join(root, 'planning', 'roadmap', 'epic-001.md'), '---\nepic: 001\n---\n')
+  process.env.OPS_ROOT = root
+  try {
+    blocked('planning-drift', { cwd: root, session_id: 'prueba-drift' })
+    // La segunda vez no repite: el marcador de sesión existe y deja cerrar.
+    assert.doesNotThrow(() => execute('planning-drift', { cwd: root, session_id: 'prueba-drift' }))
+  } finally {
+    delete process.env.OPS_ROOT
+    try { fs.unlinkSync(path.join(os.tmpdir(), 'cauce-drift-prueba-drift')) } catch { /* ya limpio */ }
+  }
+})
+
 test('guard-destructive respeta runner.allowPush del proyecto', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-push-'))
   fs.mkdirSync(path.join(root, 'planning'))

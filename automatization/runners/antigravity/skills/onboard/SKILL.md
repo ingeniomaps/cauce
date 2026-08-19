@@ -60,5 +60,10 @@ falló los cinco puntos sin darse cuenta, y todos del mismo lado —lo que no pr
    no te corresponde se perdió en vez de quedar escrito para alguien.
 5. **`ops` no es un servicio del producto.** No va en el mapa real: es la instancia desde la que trabajás.
 
+6. **Corré `node {{OPS_DIR}}tools/ops.js onboard`.** Si te vuelve a ofrecer la pregunta de apertura, la
+   instancia sigue vacía: no escribiste nada, y no hay nada que informar. Una corrida real entregó un
+   resumen en pasado —«registrado», «documentado», «creada la primera épica»— sobre archivos que en el
+   disco seguían siendo el molde. Estar bloqueado es un resultado legítimo; narrarlo como entrega, no.
+
 Recién ahí, `node {{OPS_DIR}}tools/ops.js check planning`. Si sale con advertencias, leelas: son
 exactamente estas cosas.

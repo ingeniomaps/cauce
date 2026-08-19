@@ -73,6 +73,34 @@ test('los runners con hooks nativos registran el grupo, no un hook por guard', (
   }
 })
 
+// Instalado no es operativo: un puente que el runner no puede lanzar falla cerrado y niega cada llamada
+// a herramienta. `doctor` veía los archivos en su lugar y decía «operativo» mientras nada respondía, y
+// una corrida real terminó con el agente narrando trabajo que no pudo hacer.
+test('doctor ejecuta el puente del runner, no sólo lo busca', () => {
+  const A = require('../engine/automation')
+  const base = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'cauce-puente-'))
+  const workspace = path.join(base, 'repo')
+  const target = path.join(workspace, 'ops')
+  fs.mkdirSync(workspace)
+  const cli = path.resolve(__dirname, '..', 'engine', 'cli', 'ops.js')
+  const { spawnSync } = require('node:child_process')
+  const env = { ...process.env }
+  delete env.NODE_TEST_CONTEXT
+  delete env.OPS_ROOT
+  delete env.CLAUDE_PROJECT_DIR
+  const corre = (args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', env })
+  assert.equal(corre(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
+  fs.mkdirSync(path.join(target, 'node_modules', '@ingeniomaps'), { recursive: true })
+  fs.symlinkSync(path.resolve(__dirname, '..'), path.join(target, 'node_modules', '@ingeniomaps', 'cauce'), 'dir')
+  assert.equal(corre(['automation', 'install', target, 'antigravity']).status, 0)
+  assert.equal(A.doctor(target, 'antigravity', { warn() {}, error() {} }).errors.length, 0)
+
+  const puente = path.join(workspace, '.agents', 'plugins', 'cauce', 'hook.js')
+  fs.appendFileSync(puente, '\nesto no es javascript (\n')
+  const roto = A.doctor(target, 'antigravity', { warn() {}, error() {} })
+  assert.ok(roto.errors.some((error) => /hook\.js pre-shell/.test(error)), 'un puente que no arranca es error')
+})
+
 test('doctor advierte cuando sobrevive el wiring por guard suelto', () => {
   const A = require('../engine/automation')
   const legacy = { hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [

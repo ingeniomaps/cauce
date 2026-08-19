@@ -50,7 +50,9 @@ Antes de darlo por terminado, comprobá cinco cosas mirando el disco: preguntast
 formulario; la épica se llama `epic-NNN-<slug>.md` con `status: open` —`epic-001.md` no lo lee nadie—;
 las secciones de `{{OPS_DIR}}organization/` siguen siendo las del molde y lo tuyo se agregó adentro;
 `{{OPS_DIR}}planning/HUMAN_ACTIONS.md` tiene una fila por credencial, por externo y por la autoridad de
-push; y `ops` no figura como servicio del producto en el mapa.
+push; y `ops` no figura como servicio del producto en el mapa. Cerrá corriendo
+`node {{OPS_DIR}}tools/ops.js onboard`: si te vuelve a ofrecer la pregunta de apertura, no escribiste
+nada y no hay nada que informar. Estar bloqueado es un resultado legítimo; narrarlo como entrega, no.
 
 Nunca omitas aprobaciones, inventes credenciales, escribas remoto, hagas push/deploy o promociones
 trabajo desde INBOX.
