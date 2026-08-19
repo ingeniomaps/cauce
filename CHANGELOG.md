@@ -16,6 +16,17 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.31.0] - 2026-08-18
 
+### Añadido
+
+- **`ops automation uninstall <ops-root> <runner>`: sacar el wiring sin llevarse lo tuyo.** Hasta ahora
+  desinstalar era borrar la carpeta ops y descubrir después que cada llamada de herramienta ejecuta un
+  guard que ya no existe; la otra salida —borrar `.claude/` entero— se lleva puesto lo que hayas puesto
+  vos. El comando quita lo que Cauce entregó **y sigue igual que como lo entregó**: sus guards de la
+  configuración del runner, sus workflows, sus punteros a cargos. Tus hooks, tus workflows y tus skills
+  quedan donde están, y un archivo del toolkit que hayas editado se conserva y aparece nombrado en la
+  salida, porque decidir sobre él es tuyo. La instancia no se toca: borrarla es una decisión aparte.
+  También como `make uninstall-claude` y sus equivalentes.
+
 ### Corregido
 
 - **Una instancia dejaba de enterarse de que había versiones nuevas.** `init` fija la versión exacta del
