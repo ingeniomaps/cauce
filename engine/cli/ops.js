@@ -831,12 +831,18 @@ function destroy(dir, cli) {
     perdida.contexto && 'el contexto escrito en organization/',
   ].filter(Boolean)
 
+  const embebido = O.mode(root) === 'embedded'
   if (!cli.has('--force')) {
-    console.log(`Borrar ${root} se lleva:`)
+    console.log(embebido
+      ? `Sacar Cauce de ${root} se lleva:`
+      : `Borrar ${root} se lleva:`)
     for (const linea of lineas) console.log(`  − ${linea}`)
     if (!lineas.length) console.log('  − nada escrito todavía: la instancia está como salió de init')
     if (perdida.runners.length) {
       console.log(`  y saca el wiring de: ${perdida.runners.join(', ')} (lo tuyo queda donde está)`)
+    }
+    if (embebido) {
+      console.log('  el código del repositorio no se toca: en modo embebido la instancia es él mismo.')
     }
     console.log('\nNada de esto lo repone un init. Si es lo que querés: repetí con --force.')
     process.exit(1)
@@ -847,6 +853,17 @@ function destroy(dir, cli) {
   }
   // El orden no es negociable: primero el wiring, después la carpeta. Al revés, cada llamada de
   // herramienta del runner queda ejecutando un guard que ya no está.
+  // En modo embebido la instancia **es** el repositorio: borrar la carpeta se lleva el código del
+  // producto, que Cauce nunca escribió y no repone nadie. Ahí se saca lo del toolkit y se deja el repo.
+  if (O.mode(root) === 'embedded') {
+    const suyo = [
+      'planning', 'organization', 'teams', 'integrations', 'automatization', 'tools',
+      'ops.config.json', '.cauce', 'AGENTS.md',
+    ]
+    for (const relative of suyo) fs.rmSync(path.join(root, relative), { recursive: true, force: true })
+    console.log(`✓ ${suyo.length} ruta(s) de Cauce quitadas de ${root}`)
+    return console.log('  tu repositorio queda donde está: en modo embebido la instancia era él mismo.')
+  }
   const adentro = process.cwd() === root || process.cwd().startsWith(`${root}${path.sep}`)
   fs.rmSync(root, { recursive: true, force: true })
   console.log(`✓ ${root} borrado`)

@@ -600,6 +600,28 @@ test('destroy avisa qué se pierde y no borra hasta que se lo pidan dos veces', 
 // En modo embebido el archivo de instrucciones de Codex y el `AGENTS.md` de la empresa son el mismo, y
 // conservarlo entero —lo correcto para un archivo del proyecto— dejaba a ese runner sin una sola línea
 // de Cauce. Su contenido se fusiona adentro, entre marcas, y el resto del archivo no se toca.
+// En modo embebido la instancia **es** el repositorio, así que borrar la carpeta se lleva el código del
+// producto. Pasó de verdad sobre un caso de prueba: `destroy --force` dejó el directorio vacío.
+test('destroy no se lleva el repositorio en modo embebido', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-emb-destroy-'))
+  const repo = path.join(base, 'app')
+  fs.mkdirSync(path.join(repo, 'src'), { recursive: true })
+  fs.writeFileSync(path.join(repo, 'src', 'main.rs'), 'fn main() {}\n')
+  fs.writeFileSync(path.join(repo, 'Cargo.toml'), '[package]\nname = "app"\n')
+  assert.equal(run(['init', repo, '--mode', 'embedded', '--force', '--name', 'App', '--no-install']).status, 0)
+
+  const aviso = run(['destroy', repo])
+  assert.equal(aviso.status, 1)
+  assert.match(aviso.stdout, /Sacar Cauce de/)
+  assert.match(aviso.stdout, /el código del repositorio no se toca/)
+
+  assert.equal(run(['destroy', repo, '--force']).status, 0)
+  assert.equal(fs.existsSync(path.join(repo, 'src', 'main.rs')), true, 'el código sigue')
+  assert.equal(fs.readFileSync(path.join(repo, 'Cargo.toml'), 'utf8').includes('app'), true)
+  assert.equal(fs.existsSync(path.join(repo, 'planning')), false, 'y lo de Cauce se fue')
+  assert.equal(fs.existsSync(path.join(repo, 'ops.config.json')), false)
+})
+
 test('en embebido las instrucciones del runner conviven con las de la empresa', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-embebido-'))
   const repo = path.join(base, 'app')
