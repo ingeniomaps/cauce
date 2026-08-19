@@ -44,18 +44,18 @@ instala la dependencia, deja el wiring del runner puesto y valida la instancia a
 
 2 servicio(s) en /home/vos/mi-repo: apps/api, apps/web
 
-Para arrancar falta lo que el repositorio no puede decir. Empieza por una pregunta:
+¿De qué trata este proyecto? Una línea alcanza.
 
-  ¿De qué trata este proyecto? Una línea alcanza.
-
-Según lo que contestes salen hasta 3 más, con las palabras de este
-proyecto, hasta cubrir lo que haga falta de esto:
+Según lo que contestes salen hasta 3 preguntas más, con las palabras de
+este proyecto, hasta cubrir lo que haga falta de esto:
 
   · a quién sirve y quién lo usa
   · cómo se sostiene: venta, suscripción, donación, presupuesto interno o trabajo voluntario
   · qué querés que pase en este período y cómo se va a notar
   · qué servicios o carpetas están muertos o fuera de alcance
   · qué sistema externo o MCP hace falta conectar, y contra qué entorno
+
+Mientras tanto, esto es lo que hay: apps/api, apps/web
 
 Abrí claude en este directorio para que las escriba por vos.
 El ciclo empieza en ops/planning/FLOW.md.

@@ -10,9 +10,11 @@ Empezá por `node {{OPS_DIR}}tools/ops.js onboard`, que es instantáneo y te dic
 instancia sigue vacía, qué hay en el workspace y con qué pregunta empezar. Si ya tiene contexto escrito,
 no la pises: reescribir lo que alguien corrigió no deja rastro de lo que se perdió.
 
-La conversación empieza por una sola pregunta —de qué trata el proyecto— y sigue según lo que conteste:
-hasta tres más, formuladas con las palabras de ese proyecto, hasta cubrir las dimensiones que el comando
-haya listado. Una por vez, esperando respuesta. No des por sentado que vende algo: puede sostenerse con
+La conversación empieza por una sola pregunta —de qué trata el proyecto, la primera línea que ese comando
+imprime— y la hacés antes de mirar el inventario, sea el workspace vacío, un monorepo o diez repos.
+Sigue según lo que conteste: hasta tres más, formuladas con las palabras de ese proyecto, hasta cubrir
+las dimensiones que el comando haya listado. Una por vez, esperando respuesta. El inventario ya viene
+resuelto: no recorras el árbol ni leas código para completarlo. No des por sentado que vende algo: puede sostenerse con
 donaciones, presupuesto interno o trabajo voluntario, y preguntarle a un proyecto libre quién le paga es
 empezar por una respuesta que nadie dio.
 

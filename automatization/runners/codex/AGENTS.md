@@ -37,10 +37,11 @@ En una instancia recién creada nadie le explicó todavía al toolkit qué es es
 `{{OPS_DIR}}organization/` llega como molde y el roadmap está vacío. El primer recorrido lo llena, y una vez: reescribir un contexto
 que alguien ya corrigió no deja rastro de lo que se perdió.
 
-Empezá por `node {{OPS_DIR}}tools/ops.js onboard`, que es instantáneo: dice si la instancia sigue vacía,
-qué hay en el workspace —`scan` por dentro, así que no recorras el árbol vos mismo— y con qué pregunta
-empezar. Preguntá de qué trata el proyecto y, según lo que conteste, hasta tres preguntas más con las
-palabras de ese proyecto, una por vez, hasta cubrir las dimensiones que el comando liste. No des por
+Empezá por `node {{OPS_DIR}}tools/ops.js onboard`, que es instantáneo: la primera línea que imprime es la
+pregunta con la que tenés que abrir —de qué trata el proyecto—, y después vienen el inventario y las
+dimensiones. Hacé esa pregunta tal cual antes de mirar nada, sea el workspace vacío, un monorepo o diez
+repos, y según lo que conteste formulá hasta tres más con las palabras de ese proyecto, una por vez. El
+inventario ya viene resuelto ahí: no recorras el árbol ni leas código para completarlo. No des por
 sentado que vende algo: puede sostenerse con donaciones, presupuesto interno o trabajo voluntario. Con eso escribí `{{OPS_DIR}}organization/`, la sección «Mapa real» de
 `{{OPS_DIR}}AGENTS.md` con cada comando tal como está declarado y de qué archivo salió —sin correrlo—, y
 las raíces reales en `workspaceRoots`. Lo deducido va marcado `(supuesto)`. Credenciales, MCP y el permiso de push van como
