@@ -167,8 +167,9 @@ const drafted = await agent(
     'completa.\n'}` +
   `4. ${HUMAN}: una fila por cada cosa que necesita a una persona, con la tarea, el estado pendiente, el ` +
   `origen "onboard" y la acción concreta que la desbloquea. Como mínimo, una por cada credencial que el ` +
-  `proyecto espera —dónde se cargan y quién lo hace, sin proponer ningún valor—, una por cada sistema ` +
-  `externo o MCP a conectar, y una por la autoridad del runner, que hoy declara runner.allowPush=false.\n` +
+  `inventario nombra, diciendo la variable y el servicio que la espera —dónde se carga y quién lo hace, ` +
+  `sin proponer ningún valor—, una por cada sistema externo o MCP a conectar, y una por la autoridad del ` +
+  `runner, que hoy declara runner.allowPush=false.\n` +
   `5. Las preguntas que queden abiertas, en la sección Ideas de ${INBOX}, sin promover.\n` +
   `Devolvé en files cada archivo que tocaste y en assumptions cada supuesto que dejaste marcado.`,
   { schema: WRITTEN, label: 'contexto' },

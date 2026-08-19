@@ -347,6 +347,14 @@ test('scan inventaría el workspace y saltea lo que nunca es un servicio', () =>
   const web = result.services.find((service) => service.path === 'apps/web')
   assert.equal(web.commands.test.source, 'Makefile', 'el Makefile gana sobre los scripts')
 
+  // Cada servicio trae las credenciales que espera, por nombre. En un multirepo el ejemplo vive dentro
+  // de cada repositorio: leyendo sólo la raíz, las de tres repos no existían para el arranque.
+  fs.writeFileSync(path.join(repo, 'apps', 'api', '.env.example'), '# base\nDATABASE_URL=\nexport JWT=secreto\n')
+  const conEnv = JSON.parse(run(['scan', repo, '--json']).stdout)
+  const conCreds = conEnv.services.find((service) => service.path === 'apps/api')
+  assert.deepEqual(conCreds.env, { file: '.env.example', names: ['DATABASE_URL', 'JWT'], truncated: 0 })
+  assert.doesNotMatch(JSON.stringify(conEnv), /secreto/, 'el nombre, nunca el valor')
+
   const humano = run(['scan'], target)
   assert.match(humano.stdout, /apps\/api \[node\]/)
   assert.match(humano.stdout, /2 candidato\(s\)/)

@@ -358,7 +358,7 @@ function workspaceRoots(root) {
 function candidates(workspace, skip = '') {
   const result = SC.scan(workspace, skip)
   const found = result.rootManifests.length
-    ? [{ path: '.', root: workspace, runtimes: ['raíz'], commands: result.rootCommands }]
+    ? [{ path: '.', root: workspace, runtimes: ['raíz'], commands: result.rootCommands, env: result.rootEnv }]
     : []
   return [...found, ...result.services.map((service) => ({ ...service, root: workspace }))]
 }
@@ -375,7 +375,10 @@ function scan(target, cli) {
   // se anuncia hace pasar lo listado por todo lo que hay.
   for (const service of result.services.slice(0, LISTA)) {
     const donde = service.root && service.root !== result.root ? `${path.basename(service.root)}/` : ''
-    console.log(`${donde}${service.path} [${(service.runtimes || []).join(', ')}]${comandos(service.commands)}`)
+    const espera = service.env ? `\n    espera ${service.env.names.join(', ')} (${service.env.file})` : ''
+    console.log(
+      `${donde}${service.path} [${(service.runtimes || []).join(', ')}]${comandos(service.commands)}${espera}`,
+    )
   }
   if (result.services.length > LISTA) {
     console.log(`… y ${result.services.length - LISTA} más, todos en --json`)

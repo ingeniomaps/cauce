@@ -98,6 +98,35 @@ function manifestsOf(dir) {
   return MANIFESTS.filter((entry) => fs.existsSync(path.join(dir, entry.file)))
 }
 
+// Qué credenciales espera un servicio, por su nombre y nada más. El ejemplo es público y versionado —el
+// `.env` de verdad no se toca nunca—, y los nombres son justo lo que hace falta para dejar una fila que
+// diga qué cargar; el valor no le corresponde a nadie más que a una persona.
+//
+// Se lee por servicio y no sólo en la raíz porque en un multirepo cada repositorio trae el suyo: leyendo
+// una sola raíz, las credenciales de tres repos se volvían invisibles y las acciones humanas terminaban
+// diciendo «la credencial del proveedor» en vez de nombrarla.
+const ENV_EXAMPLES = ['.env.example', '.env.sample', '.env.template', '.env.dist']
+
+// Un ejemplo con cientos de variables es un archivo generado, no un contrato: se corta y se dice.
+const ENV_MAX = 40
+
+function expectedEnv(dir) {
+  for (const name of ENV_EXAMPLES) {
+    const file = path.join(dir, name)
+    if (!fs.existsSync(file)) continue
+    let text = ''
+    try { text = fs.readFileSync(file, 'utf8') } catch { return null }
+    const names = text.split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith('#'))
+      .map((line) => line.replace(/^export\s+/, '').split('=')[0].trim())
+      .filter((key) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(key))
+    if (!names.length) return null
+    return { file: name, names: names.slice(0, ENV_MAX), truncated: Math.max(0, names.length - ENV_MAX) }
+  }
+  return null
+}
+
 // Servicios candidatos bajo `root`, sin entrar en `skip` —típicamente la raíz ops, que no es un
 // servicio del proyecto—. El resultado es una lista, no un veredicto: decidir cuál es el producto y
 // cuál quedó muerto sigue siendo trabajo de una persona o de un cargo.
@@ -113,6 +142,7 @@ function services(root, skip = '') {
         runtimes: manifests.map((entry) => entry.runtime),
         manifests: manifests.map((entry) => entry.file),
         commands: commandsOf(dir),
+        env: expectedEnv(dir),
       })
     }
     if (depth >= DEPTH) return
@@ -136,8 +166,9 @@ function scan(root, skip = '') {
     root: path.resolve(root),
     rootManifests: manifestsOf(root).map((entry) => entry.file),
     rootCommands: commandsOf(root),
+    rootEnv: expectedEnv(root),
     services: services(root, skip),
   }
 }
 
-module.exports = { scan, services, IGNORED, DEPTH }
+module.exports = { scan, services, expectedEnv, IGNORED, DEPTH, ENV_MAX }
