@@ -14,6 +14,18 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.37.0] - 2026-08-19
+
+### Cambiado
+
+- **El arranque deja de completar una dimensión que nadie preguntó.** Al llegar al tope de tres
+  preguntas puede quedar una afuera —quién lo usa, qué está muerto, qué externo hay—, y una corrida real
+  la escribió igual, deducida del README y de las respuestas a las otras. Todo plausible, nada dicho por
+  una persona, y sin marca: se leía con el mismo peso que lo que alguien contestó. Ahora esa dimensión
+  queda «Por definir» con su pregunta en el INBOX, y lo que se deduce de otra respuesta va marcado
+  `(supuesto)` por plausible que sea. Rige en el recorrido ejecutable y en los tres runners que operan el
+  arranque leyendo instrucciones.
+
 ## [0.36.0] - 2026-08-19
 
 ### Corregido
