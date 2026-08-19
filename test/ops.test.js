@@ -597,6 +597,48 @@ test('destroy avisa qué se pierde y no borra hasta que se lo pidan dos veces', 
   assert.match(ajeno.stderr, /no es una instancia de Cauce/)
 })
 
+// En modo embebido el archivo de instrucciones de Codex y el `AGENTS.md` de la empresa son el mismo, y
+// conservarlo entero —lo correcto para un archivo del proyecto— dejaba a ese runner sin una sola línea
+// de Cauce. Su contenido se fusiona adentro, entre marcas, y el resto del archivo no se toca.
+test('en embebido las instrucciones del runner conviven con las de la empresa', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-embebido-'))
+  const repo = path.join(base, 'app')
+  fs.mkdirSync(repo)
+  fs.writeFileSync(path.join(repo, 'package.json'), '{"scripts":{"test":"x"}}')
+  assert.equal(run(['init', repo, '--mode', 'embedded', '--force', '--name', 'App', '--no-install']).status, 0)
+  linkEngine(repo)
+  assert.equal(run(['automation', 'install', repo, 'codex']).status, 0)
+
+  const agents = path.join(repo, 'AGENTS.md')
+  const conBloque = fs.readFileSync(agents, 'utf8')
+  assert.match(conBloque, /## Mapa real/, 'lo de la empresa sigue')
+  assert.match(conBloque, /## El arranque/, 'y lo del runner llegó')
+
+  // Reinstalar no duplica, y lo que la empresa escriba sobrevive.
+  fs.appendFileSync(agents, '\n## Nuestra sección\n\nAlgo nuestro.\n')
+  assert.equal(run(['automation', 'install', repo, 'codex']).status, 0)
+  const otraVez = fs.readFileSync(agents, 'utf8')
+  assert.equal(otraVez.split('## El arranque').length - 1, 1, 'una sola copia del bloque')
+  assert.match(otraVez, /Nuestra sección/)
+
+  // Borrarlo a mano es un error, no un silencio: el runner queda sin instrucciones y nada lo decía. Se
+  // saca el bloque y nada más, que es lo que haría alguien limpiando lo que no reconoce.
+  const desde = otraVez.indexOf('<!-- cauce:codex inicio')
+  const fin = '<!-- cauce:codex fin -->'
+  fs.writeFileSync(agents, otraVez.slice(0, desde) + otraVez.slice(otraVez.indexOf(fin) + fin.length))
+  const roto = run(['automation', 'doctor', repo, 'codex'])
+  assert.equal(roto.status, 1)
+  assert.match(roto.stderr, /no tiene las instrucciones de Cauce/)
+
+  // Y el desinstalador saca el bloque sin llevarse el archivo.
+  assert.equal(run(['automation', 'install', repo, 'codex']).status, 0)
+  assert.equal(run(['automation', 'uninstall', repo, 'codex']).status, 0)
+  const despues = fs.readFileSync(agents, 'utf8')
+  assert.doesNotMatch(despues, /## El arranque/)
+  assert.match(despues, /## Mapa real/)
+  assert.match(despues, /Nuestra sección/)
+})
+
 test('automation uninstall saca lo del toolkit y deja lo del usuario', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-uninst-'))
   const workspace = path.join(base, 'mono')

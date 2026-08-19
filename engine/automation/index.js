@@ -438,6 +438,19 @@ function doctor(root, name, output = console) {
   }
   for (const item of runner.instructions || []) {
     const resolved = { item, ...resolveItem(paths, root, name, item) }
+    // El archivo compartido no se compara entero: alrededor del bloque vive el texto de la empresa, así
+    // que su hash difiere siempre. Comparado como archivo, `doctor` avisaba cuando el bloque estaba bien
+    // y callaba cuando alguien lo había borrado, que es exactamente al revés.
+    if (esArchivoCompartido(root, resolved.target)) {
+      const contenido = render(resolved.source, opsPrefix(root))
+      if (!fs.existsSync(resolved.target)) errors.push(`falta ${item.target}`)
+      else if (!fs.readFileSync(resolved.target, 'utf8').includes(bloqueInicio(name))) {
+        errors.push(`${item.target}: no tiene las instrucciones de Cauce; reinstalá el adaptador`)
+      } else if (!bloqueAlDia(resolved.target, name, contenido)) {
+        warnings.push(`${item.target}: su bloque de Cauce quedó viejo; reinstalá el adaptador`)
+      }
+      continue
+    }
     // `AGENTS.md` es un nombre compartido entre herramientas y la instancia ya tiene el suyo: en
     // modo embedded el archivo del runner y el de la empresa son el mismo, y pedirle que se
     // referencie a sí mismo no significa nada.
@@ -585,6 +598,16 @@ function uninstall(root, name, output = console) {
     const resolved = { item, ...resolveItem(paths, root, name, item) }
     const key = deliveryKey(name, item.target)
     if (!fs.existsSync(resolved.target)) { delete entregado[key]; continue }
+    if (esArchivoCompartido(root, resolved.target)) {
+      const texto = fs.readFileSync(resolved.target, 'utf8')
+      const limpio = sinBloque(texto, name)
+      if (limpio !== texto.trimEnd()) {
+        F.atomicWrite(resolved.target, `${limpio}\n`)
+        quitados += 1
+      }
+      delete entregado[key]
+      continue
+    }
     const situacion = deliveryState(recorded, name, resolved, prefix)
     if (situacion === 'ajeno') { conservados.push(item.target); continue }
     removeFile(resolved.target, paths.install)
@@ -621,6 +644,41 @@ function uninstall(root, name, output = console) {
   for (const file of conservados) output.log(`= ${name}: conservado ${file} (tiene cambios tuyos)`)
   if (runner.activation) output.log(`  ${name}: si lo habías registrado a mano, quitalo también.`)
   return { removed: quitados, kept: conservados }
+}
+
+// `AGENTS.md` es el único nombre que el runner y la instancia comparten: en modo embebido el archivo de
+// instrucciones de Codex es el mismo que el de la empresa. Conservarlo entero —lo correcto para un
+// archivo del proyecto— dejaba a ese runner sin una sola línea de Cauce, así que su contenido se
+// fusiona adentro, entre marcas, y todo lo demás del archivo queda intacto.
+const bloqueInicio = (name) => `<!-- cauce:${name} inicio — lo reescribe "automation install", no editar -->`
+const bloqueFin = (name) => `<!-- cauce:${name} fin -->`
+
+function esArchivoCompartido(root, target) {
+  return path.resolve(target) === path.resolve(root, 'AGENTS.md')
+}
+
+function sinBloque(text, name) {
+  const desde = text.indexOf(bloqueInicio(name))
+  if (desde === -1) return text
+  const hasta = text.indexOf(bloqueFin(name), desde)
+  if (hasta === -1) return text
+  return `${text.slice(0, desde)}${text.slice(hasta + bloqueFin(name).length)}`.trimEnd()
+}
+
+function fusionarInstruccion(file, name, contenido) {
+  const actual = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''
+  const cuerpo = sinBloque(actual, name).trimEnd()
+  const bloque = `${bloqueInicio(name)}\n\n${contenido.trim()}\n\n${bloqueFin(name)}\n`
+  F.atomicWrite(file, cuerpo ? `${cuerpo}\n\n${bloque}` : bloque)
+}
+
+function bloqueAlDia(file, name, contenido) {
+  if (!fs.existsSync(file)) return false
+  const texto = fs.readFileSync(file, 'utf8')
+  const desde = texto.indexOf(bloqueInicio(name))
+  const hasta = texto.indexOf(bloqueFin(name))
+  if (desde === -1 || hasta === -1) return false
+  return texto.slice(desde + bloqueInicio(name).length, hasta).trim() === contenido.trim()
 }
 
 function install(root, name, output = console, options = {}) {
@@ -677,6 +735,17 @@ function install(root, name, output = console, options = {}) {
   for (const resolved of resolvedItems) {
     const situacion = state.get(resolved)
     const propio = runner.instructions.includes(resolved.item)
+    if (propio && esArchivoCompartido(root, resolved.target)) {
+      const contenido = render(resolved.source, opsPrefix(root))
+      if (bloqueAlDia(resolved.target, name, contenido)) {
+        output.log(`= ${name}: ${resolved.item.target} ya trae sus instrucciones`)
+      } else {
+        fusionarInstruccion(resolved.target, name, contenido)
+        output.log(`✓ ${name}: sus instrucciones quedaron dentro de ${resolved.item.target}`)
+      }
+      entregado[deliveryKey(name, resolved.item.target)] = M.digest(resolved.target)
+      continue
+    }
     if (situacion === 'ajeno' && propio) {
       output.log(`= ${name}: conservado ${resolved.item.target} (tiene cambios tuyos)`)
     } else if (situacion === 'al día') {
