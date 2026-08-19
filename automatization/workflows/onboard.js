@@ -1,26 +1,30 @@
 // Arranque de una instancia recién creada: convierte un repositorio que nadie le explicó al toolkit en
 // contexto escrito —`organization/`, el mapa real de `AGENTS.md`, las raíces de código— y en la primera
-// épica. Es el paso que `init` no puede dar: instalar es determinista, y leer un repositorio para decidir
-// qué es el producto, qué carpeta es legacy y cuál es el comando que de verdad lo valida, no lo es.
+// épica.
 //
-// Escribe borradores y no decide por nadie: cada dato deducido queda marcado como supuesto, las
-// credenciales y los sistemas externos van a HUMAN_ACTIONS —R12 se los prohíbe a un runner— y la épica
-// queda en roadmap/ sin promover, que sigue siendo la firma humana.
+// El orden importa y se pagó caro: la primera versión le pedía a un agente que «inventariara el
+// repositorio», y en una carpeta vacía eso gastó doce minutos para no encontrar nada. Recorrer el árbol
+// es determinista y lo hace `ops scan` en milisegundos; el modelo entra después, y sólo si hay algo
+// sobre lo que decidir. Cuando no lo hay, este recorrido termina en una llamada.
+//
+// Escribe borradores y no decide por nadie: lo deducido queda marcado como supuesto, las credenciales y
+// los sistemas externos van a HUMAN_ACTIONS —R12 se los prohíbe a un runner— y la épica queda sin
+// promover, que sigue siendo la firma humana.
 export const meta = {
   name: 'onboard',
-  description: 'Escanea el repositorio y deja escrito el contexto de la empresa y la primera épica',
+  description: 'Inventaría el workspace y deja escrito el contexto de la empresa y la primera épica',
   whenToUse: 'Primera corrida después de "cauce init", cuando organization/ y el roadmap están vacíos.',
   phases: [
-    { title: 'Scan', detail: 'Servicios, manifiestos y comandos declarados' },
-    { title: 'Verify', detail: 'Los comandos se corren: el mapa no se copia del README' },
-    { title: 'Draft', detail: 'organization/, mapa real, raíces y acciones humanas' },
+    { title: 'Scan', detail: 'Inventario determinista: ops scan, sin modelo recorriendo nada' },
+    { title: 'Draft', detail: 'organization/, mapa real y raíces de código' },
+    { title: 'Human', detail: 'Credenciales, MCP y permisos: lo que no le toca al runner' },
     { title: 'Epic', detail: 'La épica que deja al ciclo poder correr' },
     { title: 'Closing', detail: 'check y lo que queda esperando a una persona' },
   ],
 }
 
-// El prefijo lo completa `automation install`. Igual que en los demás workflows: el runtime no expone
-// `process`, así que la ruta de la raíz ops viaja escrita, relativa a donde se abre la herramienta.
+// El prefijo lo completa `automation install`: el runtime no expone `process`, así que la ruta de la
+// raíz ops viaja escrita, relativa a donde se abre la herramienta.
 const ROOT = '{{OPS_DIR}}'.replace(/\/+$/, '') || '.'
 const P = `${ROOT}/planning`
 const ORG = `${ROOT}/organization`
@@ -28,18 +32,17 @@ const HUMAN = `${P}/HUMAN_ACTIONS.md`
 const INBOX = `${P}/INBOX.md`
 const ROADMAP = `${P}/roadmap`
 
-// Lo que la persona ya sabe y no hace falta deducir: `/onboard vendemos ruteo a PYMEs de logística`.
-// Entra como contexto, no como verdad: lo que diga acá se escribe como hecho, y lo deducido no.
+// Lo que la persona ya sabe y el repositorio no puede decir: `/onboard vendemos ruteo a PYMEs de
+// logística`. Entra como hecho; lo que se deduce, no.
 const input = typeof args === 'string' ? { context: args } : (args || {})
 const CONTEXT = String(input.context || '').trim()
 const FORCE = Boolean(input.force)
 
-const BASE = `Nunca inventes clientes, métricas, ingresos, plazos ni responsables. Distinguí siempre lo ` +
-  `que verificaste corriendo algo, lo que leíste en un archivo del repositorio y lo que estás ` +
-  `suponiendo: lo tercero va marcado como "(supuesto)" en el texto que escribas. No leas archivos de ` +
-  `credenciales —.env, *.pem, claves— ni copies su contenido a ningún lado; .env.example sí, y sólo los ` +
-  `nombres de las variables. No escribas en ningún sistema externo, no conectes nada y no promuevas ` +
-  `trabajo al BACKLOG.`
+const BASE = `Nunca inventes clientes, métricas, ingresos, plazos ni responsables. Distinguí lo que leíste ` +
+  `en un archivo de lo que estás suponiendo: lo segundo va marcado "(supuesto)" en el texto que escribas. ` +
+  `No leas archivos de credenciales —.env, *.pem, claves— ni copies su contenido a ningún lado; ` +
+  `.env.example sí, y sólo los nombres de las variables. No corras comandos del proyecto: este recorrido ` +
+  `no ejecuta nada, sólo lee. No escribas en ningún sistema externo y no promuevas trabajo al BACKLOG.`
 
 function finish(result) {
   log(`Fin: ${JSON.stringify(result)}`)
@@ -51,50 +54,29 @@ const stop = (reason, detail = '') => {
   return finish({ stopped: true, reason, detail })
 }
 
-const STATE = {
-  type: 'object', additionalProperties: false, required: ['fresh'],
+const SCAN = {
+  type: 'object', additionalProperties: false, required: ['fresh', 'services'],
   properties: {
     fresh: { type: 'boolean' },
     reason: { type: 'string' },
-    mode: { type: 'string' },
-    workspaceRoots: { type: 'array', items: { type: 'string' } },
-  },
-}
-
-const INVENTORY = {
-  type: 'object', additionalProperties: false, required: ['services'],
-  properties: {
     services: { type: 'array', items: { type: 'object', additionalProperties: false,
-      required: ['path', 'runtime'], properties: {
-        path: { type: 'string' }, runtime: { type: 'string' }, purpose: { type: 'string' },
-        test: { type: 'string' }, lint: { type: 'string' }, build: { type: 'string' },
-        source: { type: 'string' },
+      required: ['path'], properties: {
+        path: { type: 'string' },
+        runtimes: { type: 'array', items: { type: 'string' } },
+        // Comando declarado y de qué archivo salió. Verificar que además corra es una historia de la
+        // épica: correr la suite de cada servicio acá convertía el arranque en una espera larga.
+        commands: { type: 'array', items: { type: 'object', additionalProperties: false,
+          required: ['kind', 'command', 'source'], properties: {
+            kind: { type: 'string' }, command: { type: 'string' }, source: { type: 'string' },
+          } } },
       } } },
-    legacy: { type: 'array', items: { type: 'string' } },
-    ci: { type: 'array', items: { type: 'string' } },
     externals: { type: 'array', items: { type: 'string' } },
     secrets: { type: 'array', items: { type: 'string' } },
-    productHints: { type: 'string' },
-  },
-}
-
-const CHECKED = {
-  type: 'object', additionalProperties: false, required: ['path', 'results'],
-  properties: {
-    path: { type: 'string' },
-    results: { type: 'array', items: { type: 'object', additionalProperties: false,
-      required: ['kind', 'command', 'status'], properties: {
-        kind: { type: 'string', enum: ['test', 'lint', 'build'] },
-        command: { type: 'string' },
-        // `ausente` es un resultado, no un fallo: un servicio sin lint declarado no tiene nada roto.
-        status: { type: 'string', enum: ['verificado', 'falla', 'ausente'] },
-        detail: { type: 'string' },
-      } } },
   },
 }
 
 const WRITTEN = {
-  type: 'object', additionalProperties: false, required: ['files', 'assumptions'],
+  type: 'object', additionalProperties: false, required: ['files'],
   properties: {
     files: { type: 'array', items: { type: 'string' } },
     assumptions: { type: 'array', items: { type: 'string' } },
@@ -105,122 +87,97 @@ const WRITTEN = {
 
 phase('Scan')
 
-// Arrancar dos veces sobre la misma instancia reescribiría contexto que una persona ya corrigió, y el
-// borrador se lee igual que el original: nada delataría la pérdida. Se comprueba antes de leer nada más.
+// Una sola llamada, y todo lo que hace es correr dos comandos y mirar dos archivos. Lo que sigue depende
+// de lo que devuelva, así que gastar más antes de saberlo es gastar a ciegas.
 const state = await agent(
-  `${BASE}\n\nFrom the workspace root, report whether this instance is still untouched. Read ` +
-  `${ROOT}/ops.config.json for its mode and workspaceRoots, ${ORG}/company.md and ${ORG}/product.md, and ` +
-  `list ${ROADMAP}. Set fresh=true only if the organization files still carry the mold's "Por completar" ` +
-  `or "Por definir" placeholders and the roadmap holds nothing but its template and README. Otherwise ` +
-  `set fresh=false and say in reason what is already written.`,
-  { schema: STATE, label: 'estado-inicial' },
+  `${BASE}\n\nFrom ${ROOT}, run exactly these two commands and report what they printed. Explore nothing ` +
+  `else and open no other file than the two named below.\n` +
+  `1. "node tools/ops.js scan --json": the workspace inventory. Copy each service with its path, its ` +
+  `runtimes and its declared commands, keeping the source file each command came from. Add nothing that ` +
+  `the command did not print.\n` +
+  `2. "node tools/ops.js check planning".\n` +
+  `Then read ${ORG}/company.md and list ${ROADMAP}. Set fresh=true only if the organization file still ` +
+  `carries the mold's "Por completar" placeholders and the roadmap holds nothing but its template and ` +
+  `README; otherwise fresh=false and say in reason what is already written. If .env.example exists at ` +
+  `the workspace root, report the variable names in secrets —names only— and the external services they ` +
+  `point at in externals.`,
+  { schema: SCAN, label: 'inventario' },
 )
-if (!state) return stop('estado-desconocido', 'no se pudo leer el estado de la instancia')
+if (!state) return stop('scan-unavailable', 'no se pudo leer el estado del workspace')
 if (!state.fresh && !FORCE) {
   return stop('ya-arrancado', `${state.reason || 'la instancia ya tiene contexto escrito'}. ` +
     `Pasá force:true si querés reescribir los borradores.`)
 }
 
-const inventory = await agent(
-  `${BASE}\n\nInventariá el repositorio desde la raíz del workspace, sin entrar en ${ROOT}/ ni en ` +
-  `node_modules, vendor, dist o build. Para cada subproyecto con manifiesto propio —package.json, ` +
-  `go.mod, pyproject.toml, Cargo.toml, composer.json, pom.xml, Gemfile, Makefile, Dockerfile o ` +
-  `docker-compose— reportá su ruta relativa, el runtime, para qué parece servir, y los comandos de test, ` +
-  `lint y build que el propio proyecto declara, con source apuntando al archivo y la clave de donde los ` +
-  `sacaste. Un comando que no está declarado se omite: no lo adivines.\n\n` +
-  `Reportá además qué directorios parecen legacy o fuera de alcance, qué corre en CI, qué servicios ` +
-  `externos aparecen nombrados en configuración o dependencias, y qué credenciales espera el proyecto ` +
-  `—sólo los nombres de variable, leídos de .env.example o de la configuración de CI—. En productHints ` +
-  `resumí lo que el repositorio deja ver sobre qué se construye.` +
-  `${CONTEXT ? `\n\nLa persona ya aportó este contexto, que vale como hecho: ${CONTEXT}` : ''}`,
-  { schema: INVENTORY, label: 'inventario' },
-)
-if (!inventory) return stop('inventario-vacio', 'el escaneo no devolvió resultado')
-const services = inventory.services || []
+const services = state.services || []
+const listado = services.map((service) => service.path).join(', ')
+log(`${services.length} servicio(s) en el workspace${listado ? `: ${listado}` : ''}`)
 
-// Un workspace sin código no es un error: alguien puede estar preparando la carpeta antes de clonar los
-// repos, y `init` en un directorio vacío es un arranque legítimo. Lo que no puede es terminar sin nada
-// escrito: lo que sí se pueda establecer se escribe igual, y traer el código pasa a ser la primera
-// historia en vez de un checkpoint que no deja nada.
-const VACIO = services.length ? '' : `\n\nNo hay ningún subproyecto con manifiesto propio en el ` +
-  `workspace: el código todavía no está acá. Escribí igual lo que el contexto aportado permita, dejá el ` +
-  `mapa real declarado como pendiente diciendo qué lo completa, y que la primera historia de la épica sea ` +
-  `traer los repos y declararlos en workspaceRoots.`
-log(services.length
-  ? `${services.length} servicio(s): ${services.map((service) => service.path).join(', ')}`
-  : 'Sin servicios en el workspace: el arranque escribe lo que se pueda y deja el mapa pendiente.')
+// Sin código y sin contexto no hay nada que escribir que no sea inventado, y esa es exactamente la
+// corrida que no puede costar nada: se termina acá, diciendo qué falta y cómo darlo.
+if (!services.length && !CONTEXT) {
+  return stop('sin-contexto', `no hay servicios en el workspace y no me diste contexto, así que no hay ` +
+    `nada que escribir sin inventarlo. Volvé a correrlo cuando estén los repos, o dame el contexto en ` +
+    `una línea: /onboard qué vende la empresa, a quién, y cuál es el objetivo del trimestre.`)
+}
 
-phase('Verify')
-
-// Un mapa copiado del README envejece sin avisar y el primer Verify de una tarea real descubre que el
-// comando no existe. Correrlos acá es barato y es lo que separa "documentado" de "verificado".
-const checks = (await parallel(services.map((service) => () => agent(
-  `${BASE}\n\nFrom the workspace root, check the commands declared by the service at "${service.path}": ` +
-  `test=${service.test || '(ninguno)'}, lint=${service.lint || '(ninguno)'}, ` +
-  `build=${service.build || '(ninguno)'}. Run each one that exists, from that directory, and report what ` +
-  `happened: "verificado" when it finished green, "falla" with the first meaningful error line when it ` +
-  `did not, "ausente" when the service declares none. Never run migrations, deploys, publishes, or ` +
-  `anything that writes outside this repository, even if a script has that name: report it as ausente ` +
-  `and say why.`,
-  { schema: CHECKED, label: `verify:${service.path}`, phase: 'Verify' },
-)))).filter(Boolean)
-
-const green = checks.flatMap((entry) => entry.results.filter((result) => result.status === 'verificado')).length
-const broken = checks.flatMap((entry) => entry.results.filter((result) => result.status === 'falla'))
-log(`${green} comando(s) verificados, ${broken.length} con fallo. Un fallo no detiene el arranque: se escribe.`)
+const INVENTARIO = { services, externals: state.externals || [], secrets: state.secrets || [] }
+const EVIDENCE = `Inventario del workspace:\n${JSON.stringify(INVENTARIO)}` +
+  `${CONTEXT ? `\n\nContexto aportado por la persona, que vale como hecho: ${CONTEXT}` : ''}` +
+  `${services.length ? '' : '\n\nNo hay ningún servicio en el workspace: el código todavía no está acá.'}`
 
 phase('Draft')
 
-const EVIDENCE = `Inventario:\n${JSON.stringify(inventory)}\n\n` +
-  `Comandos comprobados:\n${JSON.stringify(checks)}${VACIO}` +
-  `${CONTEXT ? `\n\nContexto aportado por la persona, que vale como hecho: ${CONTEXT}` : ''}`
-
 const drafted = await agent(
-  `${BASE}\n\n${EVIDENCE}\n\nEscribí los borradores de contexto de esta instancia. Reemplazá el molde, no ` +
-  `lo comentes:\n` +
-  `1. ${ORG}/company.md y ${ORG}/product.md: lo que el repositorio y el contexto aportado permiten ` +
-  `afirmar. Lo deducido va marcado "(supuesto)"; lo que nada sostiene queda como "Por definir" y su ` +
-  `pregunta va a openQuestions. No inventes clientes, ingresos ni objetivos.\n` +
-  `2. La sección "## Mapa real" de ${ROOT}/AGENTS.md: una entrada por servicio con su ruta, para qué ` +
-  `sirve y sus comandos, cada uno con el resultado que obtuviste —verificado, falla o ausente—. Enlazá ` +
-  `la fuente en vez de duplicar documentación técnica, y nombrá lo legacy y lo fuera de alcance.\n` +
-  `3. ${ROOT}/ops.config.json: dejá en workspaceRoots las raíces de código reales. Es lo que un guard usa ` +
-  `para bloquear una escritura fuera de lugar, así que una raíz de más lo apaga.\n` +
+  `${BASE}\n\n${EVIDENCE}\n\nEscribí los borradores de contexto de esta instancia, reemplazando el molde ` +
+  `en vez de comentarlo:\n` +
+  `1. ${ORG}/company.md y ${ORG}/product.md: lo que el contexto aportado y los nombres del repositorio ` +
+  `permiten afirmar. Lo que nada sostiene queda "Por definir" y su pregunta va a openQuestions.\n` +
+  `2. La sección "## Mapa real" de ${ROOT}/AGENTS.md: una entrada por servicio con su ruta, su runtime y ` +
+  `sus comandos **tal como los declara**, diciendo de qué archivo salió cada uno. No afirmes que ` +
+  `funcionan: nadie los corrió. Un servicio sin comandos declarados se escribe así, que es información.\n` +
+  `3. ${ROOT}/ops.config.json: dejá en workspaceRoots las raíces de código reales, que es lo que un guard ` +
+  `usa para bloquear una escritura fuera de lugar. Una raíz de más lo apaga.\n` +
+  `${services.length ? '' : 'Sin servicios, el mapa queda declarado como pendiente, diciendo qué lo ' +
+    'completa.\n'}` +
   `Devolvé en files cada archivo que tocaste y en assumptions cada supuesto que dejaste marcado.`,
   { schema: WRITTEN, label: 'contexto' },
 )
 if (!drafted) return stop('draft-unavailable', 'los borradores no devolvieron resultado')
 
+phase('Human')
+
 // Credenciales, MCP y permiso de push no son trabajo del runner: R12 se los prohíbe y R13 exige dejar
 // dicho quién los resuelve y con qué. La fila vale más que la negativa.
 const pending = await agent(
   `${BASE}\n\n${EVIDENCE}\n\nRegistrá en ${HUMAN} una fila por cada cosa que necesita a una persona, con ` +
-  `la tarea, el estado pendiente, el origen "onboard" y la acción concreta que la desbloquea. Como mínimo, ` +
-  `una por cada credencial que el proyecto espera —diciendo dónde se cargan en este proyecto y quién lo ` +
-  `hace, sin proponer ningún valor—, una por cada servicio externo o MCP a conectar —con su alcance y ` +
-  `contra qué entorno—, y una por la autoridad del runner: hoy ops.config.json declara ` +
-  `runner.allowPush=false y cambiarlo es una decisión humana. Las preguntas que quedaron abiertas van a ` +
-  `la sección Ideas de ${INBOX}, sin promover: ${JSON.stringify(drafted.openQuestions || [])}`,
+  `la tarea, el estado pendiente, el origen "onboard" y la acción concreta que la desbloquea. Como ` +
+  `mínimo: una por cada credencial que el proyecto espera —dónde se cargan y quién lo hace, sin proponer ` +
+  `ningún valor—, una por cada servicio externo o MCP a conectar —con su alcance y contra qué entorno— y ` +
+  `una por la autoridad del runner, que hoy declara runner.allowPush=false en ops.config.json. Las ` +
+  `preguntas abiertas van a la sección Ideas de ${INBOX}, sin promover: ` +
+  `${JSON.stringify(drafted.openQuestions || [])}`,
   { schema: WRITTEN, label: 'acciones-humanas' },
 )
 
 phase('Epic')
 
 const epic = await agent(
-  `${BASE}\n\n${EVIDENCE}\n\nSupuestos que quedaron escritos: ${JSON.stringify(drafted.assumptions || [])}\n` +
-  `Comandos que fallaron: ${JSON.stringify(broken)}\n\n` +
+  `${BASE}\n\n${EVIDENCE}\n\nSupuestos que quedaron escritos: ${JSON.stringify(drafted.assumptions || [])}\n\n` +
   `Escribí en ${ROADMAP} la épica epic-001-<slug>.md siguiendo el contrato de ${P}/PROTOCOL.md: ` +
   `frontmatter epic/title/status/service con status open, criterios **CN** observables, "## Contexto ` +
-  `relevante" con rutas verificadas, e historias con (→ CN) y (service: ruta), cada una de menos de ` +
-  `cuatro horas.\n\n` +
+  `relevante" con rutas reales e historias con (→ CN) y (service: ruta), cada una de menos de cuatro ` +
+  `horas.\n\n` +
   `Su resultado es que una tarea pueda atravesar el ciclo entero sin que nadie tenga que volver a ` +
-  `explicar este proyecto. Los criterios salen de lo que hoy falta y son verificables: que ` +
-  `organization/ no tenga supuestos sin confirmar, que cada servicio del mapa tenga su comando ` +
-  `corriendo en verde, que las raíces declaradas hagan que el guard de límites bloquee una escritura ` +
-  `afuera y deje pasar una adentro, y que una tarea piloto real llegue a DONE con evidencia. Si algún ` +
-  `comando falló, arreglarlo es una historia, no un criterio aparte. En "## Riesgos y decisiones ` +
-  `humanas" citá las filas que dejaste en HUMAN_ACTIONS. No toques BACKLOG.md.`,
-  { schema: { type: 'object', additionalProperties: false, required: ['file', 'criteria', 'stories'],
+  `explicar este proyecto. Los criterios salen de lo que hoy falta y son verificables: que organization/ ` +
+  `no tenga supuestos sin confirmar, que cada comando del mapa esté verificado corriéndolo y anotado con ` +
+  `su resultado, que las raíces declaradas hagan que el guard de límites bloquee una escritura afuera y ` +
+  `deje pasar una adentro, y que una tarea piloto real llegue a DONE con evidencia. ` +
+  `${services.length
+    ? 'Verificar los comandos es una historia: nadie los corrió todavía.'
+    : 'La primera historia es traer los repos y declararlos en workspaceRoots.'} ` +
+  `En "## Riesgos y decisiones humanas" citá las filas que quedaron en HUMAN_ACTIONS. No toques BACKLOG.md.`,
+  { schema: { type: 'object', additionalProperties: false, required: ['file'],
     properties: {
       file: { type: 'string' }, title: { type: 'string' },
       criteria: { type: 'array', items: { type: 'string' } },
@@ -247,8 +204,6 @@ log(`Épica en ${epic.file}, sin promover: revisala, promoví una historia a un 
 
 return finish({
   services: services.length,
-  verified: green,
-  broken: broken.length,
   assumptions: supuestos,
   humanActions: acciones,
   epic: epic.file,

@@ -413,14 +413,28 @@ const onboardWorkflow = fs.readFileSync(
   path.resolve(__dirname, '..', 'automatization', 'workflows', 'onboard.js'), 'utf8',
 )
 
-test('onboard verifica los comandos en vez de copiarlos del README', () => {
-  assert.match(onboardWorkflow, /phase\('Verify'\)/)
-  assert.match(onboardWorkflow, /Run each one that exists/, 'los corre')
-  assert.match(onboardWorkflow, /'verificado', 'falla', 'ausente'/, 'y distingue los tres resultados')
-  // R14 en la práctica: un mapa copiado no se puede declarar verificado, y un servicio sin lint
-  // declarado no está roto.
-  assert.match(onboardWorkflow, /Never run migrations, deploys, publishes/, 'sin tocar lo que escribe afuera')
-  assert.equal(/npm publish|git push/.test(onboardWorkflow), false, 'ni los nombra como opción')
+test('onboard no gasta un modelo en recorrer un árbol de directorios', () => {
+  // Doce minutos en una carpeta vacía: eso costó pedirle a un agente que «inventariara el repositorio».
+  // El inventario es determinista y el modelo entra después, con la lista ya hecha.
+  assert.match(onboardWorkflow, /tools\/ops\.js scan --json/)
+  assert.match(onboardWorkflow, /Explore nothing/, 'y tiene prohibido salir a explorar')
+  assert.equal(/phase\('Verify'\)/.test(onboardWorkflow), false, 'ya no corre las suites del proyecto')
+  assert.match(onboardWorkflow, /No corras comandos del proyecto/, 'este recorrido lee, no ejecuta')
+  // El mapa dice lo que el proyecto declara y de dónde salió; verificarlo corriendo es una historia.
+  assert.match(onboardWorkflow, /tal como los declara/)
+  assert.match(onboardWorkflow, /No afirmes que/, 'nadie los corrió, así que no se declara que corran')
+  assert.match(onboardWorkflow, /Verificar los comandos es una historia/)
+})
+
+test('onboard corta antes de escribir cuando no hay nada que decir', () => {
+  // La corrida más barata posible es la que no puede producir nada: una llamada y un mensaje con qué
+  // falta. Escribir organization/ sin código ni contexto es inventar una empresa.
+  assert.match(onboardWorkflow, /sin-contexto/)
+  assert.match(onboardWorkflow, /!services\.length && !CONTEXT/)
+  assert.match(onboardWorkflow, /ya-arrancado/, 'y tampoco pisa una instancia ya completada')
+  assert.match(onboardWorkflow, /force/, 'reescribir es explícito')
+  // Con contexto y sin código sí hay algo que escribir: traer los repos es la primera historia.
+  assert.match(onboardWorkflow, /La primera historia es traer los repos/)
 })
 
 test('onboard escribe borradores y deja a una persona lo que es suyo', () => {
@@ -430,24 +444,9 @@ test('onboard escribe borradores y deja a una persona lo que es suyo', () => {
   // Credenciales, MCP y permiso de push: tres filas, no tres decisiones del runner.
   assert.match(onboardWorkflow, /HUMAN/)
   assert.match(onboardWorkflow, /allowPush=false/)
-  assert.match(onboardWorkflow, /sin proponer ningún valor/)
+  assert.match(onboardWorkflow, /sin proponer /)
   assert.match(onboardWorkflow, /No toques BACKLOG\.md/, 'y la épica no se promueve')
   assert.match(onboardWorkflow, /promoted: false/)
-})
-
-// R13: un workspace sin código todavía es un arranque legítimo, y terminar con un checkpoint que no
-// deja nada escrito es la mitad barata del trabajo.
-test('onboard sin código escribe lo que se pueda en vez de abandonar', () => {
-  assert.match(onboardWorkflow, /VACIO/)
-  assert.match(onboardWorkflow, /Escribí igual lo que el contexto aportado permita/)
-  assert.match(onboardWorkflow, /primera historia de la épica sea/, 'traer los repos es trabajo, no un error')
-  assert.equal(/sin-servicios/.test(onboardWorkflow), false, 'ya no corta el recorrido')
-})
-
-test('onboard no reescribe una instancia que alguien ya completó', () => {
-  assert.match(onboardWorkflow, /ya-arrancado/)
-  assert.match(onboardWorkflow, /fresh/, 'lo comprueba antes de escribir nada')
-  assert.match(onboardWorkflow, /force/, 'y reescribir es explícito')
   for (const leak of [/\/home\//, /\/Users\//]) {
     assert.equal(leak.test(onboardWorkflow), false, 'sin rutas absolutas')
   }

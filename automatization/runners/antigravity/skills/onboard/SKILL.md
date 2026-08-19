@@ -8,11 +8,11 @@ este proyecto. Antes de empezar comprobá que siga vacía —`{{OPS_DIR}}organiz
 «Por completar» y `{{OPS_DIR}}planning/roadmap/` sin épicas—: reescribir un contexto que alguien ya
 corrigió no deja rastro de lo que se perdió.
 
-Inventariá los subproyectos con manifiesto propio, sin entrar en la raíz ops ni en `node_modules`. De cada
-uno tomá su ruta, para qué sirve y los comandos de test, lint y build que él mismo declara. **Corré esos
-comandos**: un mapa copiado del README envejece sin avisar y el primer Verify de una tarea real descubre
-que el comando no existe. Nunca corras migraciones, deploys ni publicaciones, aunque un script se llame
-así.
+El inventario no lo hagas a mano: `node {{OPS_DIR}}tools/ops.js scan --json` devuelve los subproyectos con
+manifiesto propio, su runtime y los comandos que cada uno declara, con el archivo del que salieron.
+Recorrer directorios es determinista y cuesta milisegundos; explorarlo vos cuesta minutos y encuentra lo
+mismo. No corras ningún comando del proyecto: el mapa dice lo que está declarado y de dónde, y
+verificarlo corriéndolo es una historia de la épica, con dueño y tiempo asignado.
 
 Con eso escribí `{{OPS_DIR}}organization/company.md` y `product.md`, la sección «Mapa real» de
 `{{OPS_DIR}}AGENTS.md` con el resultado que obtuviste por comando, y las raíces reales en
