@@ -14,6 +14,24 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.36.0] - 2026-08-19
+
+### Corregido
+
+- **`automation doctor` ejecuta el puente del runner en vez de darlo por bueno.** Instalado no es
+  operativo: un puente que el runner no puede lanzar falla cerrado y niega cada llamada a herramienta,
+  y `doctor` decía «adaptador operativo» porque los archivos estaban en su lugar. Ahora lo invoca como
+  lo hace el runner —una vez desde la raíz del workspace y otra desde otra carpeta, porque una ruta
+  relativa en su configuración deja de resolver cuando el cwd no es el que suponía— y un puente que no
+  responde es error, no advertencia.
+
+### Cambiado
+
+- **La lista de salida termina en el chequeo más barato: `ops onboard`.** Si vuelve a ofrecer la
+  pregunta de apertura, la instancia sigue vacía y no hay nada que informar. Una corrida real entregó
+  cuatro puntos en pasado —«registrado», «documentado», «creada la primera épica»— sobre archivos que en
+  el disco seguían siendo el molde. Estar bloqueado es un resultado legítimo; narrarlo como entrega, no.
+
 ## [0.35.0] - 2026-08-19
 
 ### Añadido
