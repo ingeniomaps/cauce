@@ -509,6 +509,34 @@ test('check avisa cuando una dimensión del molde desapareció', () => {
   assert.doesNotMatch(conPropia.stderr + conPropia.stdout, /product\.md: sin/)
 })
 
+// Cuatro corridas reales, cuatro resultados distintos: dos cubrieron todas las variables declaradas y
+// dos dejaron afuera las que la conversación no tocó —entre ellas el broker por donde entran los datos—.
+// Una variable sin dueño no rompe nada hoy: rompe el día que alguien tiene que desplegar.
+test('check avisa por las credenciales que nadie se llevó', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-creds-'))
+  const workspace = path.join(base, 'repo')
+  const target = path.join(workspace, 'ops')
+  fs.mkdirSync(workspace)
+  fs.writeFileSync(path.join(workspace, 'package.json'), '{"scripts":{"test":"x"}}')
+  fs.writeFileSync(path.join(workspace, '.env.example'), 'DATABASE_URL=\nSENTRY_DSN=\n')
+  assert.equal(run(['init', target, '--name', 'R', '--mode', 'sidecar', '--no-install']).status, 0)
+
+  // Con la instancia sin arrancar no hay dónde tendrían que estar, así que no se avisa nada.
+  assert.doesNotMatch(run(['check', path.join(target, 'planning')]).stdout, /nadie las carga/)
+
+  // Escrita a medias: una nombrada, la otra no.
+  fs.writeFileSync(path.join(target, 'organization', 'company.md'), '# Organización\n\nAlgo real.\n')
+  fs.appendFileSync(path.join(target, 'AGENTS.md'), '\n- DATABASE_URL: la carga el equipo de infra.\n')
+  const media = run(['check', path.join(target, 'planning')])
+  assert.equal(media.status, 0, 'es advertencia: no rompe el gate')
+  assert.match(media.stderr + media.stdout, /declara SENTRY_DSN/)
+  assert.doesNotMatch(media.stderr + media.stdout, /DATABASE_URL/, 'la que sí tiene dueño no se nombra')
+
+  fs.appendFileSync(path.join(target, 'planning', 'HUMAN_ACTIONS.md'),
+    '| sentry | pendiente | onboard | Cargar SENTRY_DSN en el entorno |\n')
+  assert.doesNotMatch(run(['check', path.join(target, 'planning')]).stdout, /nadie las carga/)
+})
+
 // Una corrida real dejó `epic-001.md` sin slug: el archivo estaba escrito, era una épica legítima, y
 // `check` respondía «planning válido: 0 épica(s)». El silencio es peor que el rechazo — el planning se
 // reporta sano mientras el trabajo que alguien escribió no existe para el sistema.

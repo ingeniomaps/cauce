@@ -465,6 +465,31 @@ function seccionesPerdidas(root) {
   return avisos
 }
 
+// Credenciales que el proyecto declara y que no aparecen en ningún contrato. El arranque tiene que
+// dejar una fila por cada una —quién la carga y dónde— y en la práctica cubre las que se hablaron en la
+// conversación: las que sólo estaban en el inventario se pierden, y con ellas el servicio externo que
+// hay detrás. Una variable sin dueño no rompe nada hoy; rompe el día que alguien tiene que desplegar.
+//
+// Sólo cuando la instancia ya tiene contexto escrito: antes del arranque no hay dónde estuvieran.
+function credencialesSinDueño(root) {
+  if (OB.guide(root).fresh) return []
+  const contratos = ['AGENTS.md', path.join('planning', 'HUMAN_ACTIONS.md')]
+    .map((file) => { try { return fs.readFileSync(path.join(root, file), 'utf8') } catch { return '' } })
+    .join('\n')
+  if (!contratos) return []
+  const huerfanas = []
+  for (const service of inventory(root)) {
+    for (const nombre of (service.env || {}).names || []) {
+      if (!contratos.includes(nombre)) huerfanas.push(`${nombre} (${service.path})`)
+    }
+  }
+  if (!huerfanas.length) return []
+  const lista = huerfanas.length > 4
+    ? `${huerfanas.slice(0, 4).join(', ')} y ${huerfanas.length - 4} más`
+    : huerfanas.join(', ')
+  return [`el proyecto declara ${lista} y no aparecen en el mapa ni en HUMAN_ACTIONS: nadie las carga`]
+}
+
 function check(dir, cli) {
   const root = path.resolve(dir || '.')
   const errors = []
@@ -578,6 +603,7 @@ function check(dir, cli) {
   for (const entry of FK.drift(path.resolve(root, '..'))) warnings.push(FK.driftLine(entry))
 
   warnings.push(...seccionesPerdidas(path.resolve(root, '..')))
+  warnings.push(...credencialesSinDueño(path.resolve(root, '..')))
 
   if (cli.has('--json')) {
     console.log(JSON.stringify({
