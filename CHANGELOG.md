@@ -26,10 +26,20 @@ diseño — eso vive en el commit y en el código.
 
 ### Cambiado
 
-- **El arranque pregunta en vez de negarse.** Invocado sin contexto, `/onboard` terminaba diciendo «volvé
-  a correrlo con contexto» —y gastaba un subagente para decirlo—. Ahora devuelve la conversación, y cada
-  runner recibe la instrucción de correr primero la guía, que no cuesta nada, y recién después invocar el
-  recorrido que escribe.
+- **El arranque pregunta en vez de negarse, y pregunta primero.** Invocado sin contexto, `/onboard`
+  terminaba diciendo «volvé a correrlo con contexto» —y gastaba un subagente para decirlo—. Ahora la
+  primera línea es la pregunta, sea el workspace vacío, un monorepo o diez repos, y el inventario viene
+  después: de qué trata el proyecto no depende de lo que haya en el disco. Cada runner recibe la
+  instrucción de abrir con esa pregunta antes de mirar nada.
+
+- **El recorrido tiene techo: una llamada cuando falta contexto, tres cuando hay con qué escribir.** Y
+  ninguna sale a explorar —tiene prohibido recorrer directorios, leer código fuente y abrir archivos que
+  no vaya a escribir—, porque lo que necesita ya está resuelto: un arranque que te hace esperar diez
+  minutos dejó de ser un arranque.
+
+- **El escaneo mira las raíces declaradas en `ops.config.json`, y nada por encima.** Antes suponía la
+  carpeta madre en modo sidecar; ahora acotar `workspaceRoots` acota también lo que se lee, que es más
+  rápido y es lo único que alguien autorizó.
 
 - **Las preguntas dejan de ser un formulario, y de dar por sentado que el proyecto vende algo.** Antes
   eran cuatro fijas, y la primera preguntaba qué vende la empresa y a quién: a un proyecto libre, interno
