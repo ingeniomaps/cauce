@@ -49,7 +49,11 @@ const BASE = `Nunca inventes clientes, métricas, ingresos, plazos ni responsabl
   `Trabajá con lo que ya tenés: el inventario que devolvió el comando y lo que contestó la persona. No ` +
   `recorras directorios, no leas código fuente y no abras más archivos que los que vas a escribir. Esto ` +
   `es un arranque de cinco minutos, no una auditoría: lo que no esté a la vista se marca como supuesto o ` +
-  `queda como pregunta abierta, que es más barato y más honesto que averiguarlo.`
+  `queda como pregunta abierta, que es más barato y más honesto que averiguarlo.\n\n` +
+  `El arranque tiene tres objetivos y ninguno más: entender qué es este proyecto, dejar la instancia ` +
+  `correcta para él —contexto, mapa, raíces, lo que espera a una persona— y que la primera tarea pueda ` +
+  `empezar. El análisis profundo llega después, cuando alguien pida algo concreto; adelantarlo acá ` +
+  `retrasa el único momento en que la herramienta todavía no sirve para nada.`
 
 function finish(result) {
   log(`Fin: ${JSON.stringify(result)}`)

@@ -34,6 +34,10 @@ Credenciales, MCP y el permiso de push no te corresponden. Cada uno va como fila
 `{{OPS_DIR}}planning/HUMAN_ACTIONS.md` con la acción concreta que lo desbloquea y sin proponer ningún
 valor; las preguntas abiertas, a la sección Ideas de `{{OPS_DIR}}planning/INBOX.md`.
 
+El arranque tiene tres objetivos y ninguno más: entender qué es el proyecto, dejar la instancia correcta
+para él y que la primera tarea pueda empezar. El análisis profundo viene después, cuando la persona pida
+algo concreto.
+
 Cerrá escribiendo `epic-001` en `{{OPS_DIR}}planning/roadmap/`: su resultado es que una tarea pueda
 atravesar el ciclo entero, y sus criterios salen de lo que hoy falta —contexto sin supuestos, cada
 comando en verde, el guard de límites probado en las dos direcciones, una tarea piloto en DONE—. Validá

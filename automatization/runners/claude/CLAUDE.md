@@ -15,7 +15,8 @@ palabras de ese proyecto y una por vez, hasta cubrir las dimensiones que haya li
 viene resuelto en esa salida: no recorras el árbol ni leas código para completarlo. No des por sentado que vende
 algo: puede sostenerse con donaciones, presupuesto interno o trabajo voluntario. Con las respuestas invocá
 `/onboard <lo que te contó>`, que escribe el contexto y la primera épica; invocarlo antes sólo devuelve la
-misma pregunta más caro. Después, `/team` evalúa si una
+misma pregunta más caro. El arranque busca entender qué es el proyecto y dejar la instancia correcta para
+él, no auditarlo: el análisis profundo viene después, cuando se pida algo concreto. Después, `/team` evalúa si una
 intención es viable y propone una épica, y `/autobuild` ejecuta trabajo ya promovido; `/integration-sync` e
 `/integration-promote` gestionan staging local sin escritura remota. Ninguno promueve al BACKLOG.
 

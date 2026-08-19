@@ -42,6 +42,10 @@ filas en `{{OPS_DIR}}planning/HUMAN_ACTIONS.md`, sin proponer valores. Cerrá co
 `{{OPS_DIR}}planning/roadmap/`: que una tarea pueda atravesar el ciclo entero, con criterios que salen de
 lo que falta. Nunca la promuevas.
 
+El arranque tiene tres objetivos y ninguno más: entender qué es el proyecto, dejar la instancia correcta
+para él y que la primera tarea pueda empezar. El análisis profundo viene después, cuando la persona pida
+algo concreto.
+
 Nunca omitas aprobaciones, inventes credenciales, escribas remoto, hagas push/deploy o promociones
 trabajo desde INBOX.
 
