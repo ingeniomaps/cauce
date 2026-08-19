@@ -413,6 +413,15 @@ const onboardWorkflow = fs.readFileSync(
   path.resolve(__dirname, '..', 'automatization', 'workflows', 'onboard.js'), 'utf8',
 )
 
+test('onboard tiene techo de llamadas y no sale a explorar', () => {
+  // Tres agentes como máximo, y ninguno recorre nada: un arranque que hace esperar diez minutos deja de
+  // serlo. Escribir el contexto y registrar lo que le toca a una persona salen de la misma evidencia.
+  assert.equal(onboardWorkflow.split('await agent(').length - 1, 3)
+  assert.match(onboardWorkflow, /No ` \+\n  `recorras directorios/)
+  assert.match(onboardWorkflow, /no leas código fuente/)
+  assert.match(onboardWorkflow, /no una auditoría/)
+})
+
 test('onboard no gasta un modelo en recorrer un árbol de directorios', () => {
   // Doce minutos en una carpeta vacía: eso costó pedirle a un agente que «inventariara el repositorio».
   // El inventario es determinista y el modelo entra después, con la lista ya hecha.
@@ -451,7 +460,7 @@ test('onboard escribe borradores y deja a una persona lo que es suyo', () => {
   assert.match(onboardWorkflow, /HUMAN/)
   assert.match(onboardWorkflow, /allowPush=false/)
   assert.match(onboardWorkflow, /sin proponer /)
-  assert.match(onboardWorkflow, /No toques BACKLOG\.md/, 'y la épica no se promueve')
+  assert.match(onboardWorkflow, /No toques ` \+\n  `BACKLOG\.md/, 'y la épica no se promueve')
   assert.match(onboardWorkflow, /promoted: false/)
   for (const leak of [/\/home\//, /\/Users\//]) {
     assert.equal(leak.test(onboardWorkflow), false, 'sin rutas absolutas')

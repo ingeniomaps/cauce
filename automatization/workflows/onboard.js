@@ -4,8 +4,13 @@
 //
 // El orden importa y se pagó caro: la primera versión le pedía a un agente que «inventariara el
 // repositorio», y en una carpeta vacía eso gastó doce minutos para no encontrar nada. Recorrer el árbol
-// es determinista y lo hace `ops scan` en milisegundos; el modelo entra después, y sólo si hay algo
-// sobre lo que decidir. Cuando no lo hay, este recorrido termina en una llamada.
+// es determinista y lo hace `ops onboard` en milisegundos; el modelo entra después, y sólo si hay algo
+// sobre lo que decidir.
+//
+// De ahí el techo: una llamada cuando falta contexto y tres cuando hay con qué escribir. No son fases
+// separadas por prolijidad —escribir el contexto y registrar lo que le toca a una persona salen de la
+// misma evidencia, así que salen juntas—, y ninguna sale a explorar: un arranque que hace esperar diez
+// minutos ya no es un arranque.
 //
 // Escribe borradores y no decide por nadie: lo deducido queda marcado como supuesto, las credenciales y
 // los sistemas externos van a HUMAN_ACTIONS —R12 se los prohíbe a un runner— y la épica queda sin
@@ -15,11 +20,9 @@ export const meta = {
   description: 'Inventaría el workspace y deja escrito el contexto de la empresa y la primera épica',
   whenToUse: 'Primera corrida después de "cauce init", cuando organization/ y el roadmap están vacíos.',
   phases: [
-    { title: 'Scan', detail: 'Inventario determinista: ops scan, sin modelo recorriendo nada' },
-    { title: 'Draft', detail: 'organization/, mapa real y raíces de código' },
-    { title: 'Human', detail: 'Credenciales, MCP y permisos: lo que no le toca al runner' },
-    { title: 'Epic', detail: 'La épica que deja al ciclo poder correr' },
-    { title: 'Closing', detail: 'check y lo que queda esperando a una persona' },
+    { title: 'Scan', detail: 'Estado e inventario, resueltos por el CLI y no por un modelo' },
+    { title: 'Draft', detail: 'organization/, mapa real, raíces y acciones humanas, de una pasada' },
+    { title: 'Epic', detail: 'La épica que deja al ciclo poder correr, y su check' },
   ],
 }
 
@@ -42,7 +45,11 @@ const BASE = `Nunca inventes clientes, métricas, ingresos, plazos ni responsabl
   `en un archivo de lo que estás suponiendo: lo segundo va marcado "(supuesto)" en el texto que escribas. ` +
   `No leas archivos de credenciales —.env, *.pem, claves— ni copies su contenido a ningún lado; ` +
   `.env.example sí, y sólo los nombres de las variables. No corras comandos del proyecto: este recorrido ` +
-  `no ejecuta nada, sólo lee. No escribas en ningún sistema externo y no promuevas trabajo al BACKLOG.`
+  `no ejecuta nada. No escribas en ningún sistema externo y no promuevas trabajo al BACKLOG.\n\n` +
+  `Trabajá con lo que ya tenés: el inventario que devolvió el comando y lo que contestó la persona. No ` +
+  `recorras directorios, no leas código fuente y no abras más archivos que los que vas a escribir. Esto ` +
+  `es un arranque de cinco minutos, no una auditoría: lo que no esté a la vista se marca como supuesto o ` +
+  `queda como pregunta abierta, que es más barato y más honesto que averiguarlo.`
 
 function finish(result) {
   log(`Fin: ${JSON.stringify(result)}`)
@@ -141,9 +148,9 @@ const EVIDENCE = `Inventario del workspace:\n${JSON.stringify(INVENTARIO)}` +
 phase('Draft')
 
 const drafted = await agent(
-  `${BASE}\n\n${EVIDENCE}\n\nEscribí los borradores de contexto de esta instancia, reemplazando el molde ` +
-  `en vez de comentarlo:\n` +
-  `1. ${ORG}/company.md y ${ORG}/product.md: lo que el contexto aportado y los nombres del repositorio ` +
+  `${BASE}\n\n${EVIDENCE}\n\nEscribí de una sola pasada el contexto de esta instancia, reemplazando el ` +
+  `molde en vez de comentarlo:\n` +
+  `1. ${ORG}/company.md y ${ORG}/product.md: lo que la persona contó y los nombres del repositorio ` +
   `permiten afirmar. Lo que nada sostiene queda "Por definir" y su pregunta va a openQuestions. No des ` +
   `por sentado que el proyecto vende algo: puede sostenerse con donaciones, presupuesto interno o ` +
   `trabajo voluntario, y una sección que no aplica se dice, no se completa con algo plausible.\n` +
@@ -154,25 +161,15 @@ const drafted = await agent(
   `usa para bloquear una escritura fuera de lugar. Una raíz de más lo apaga.\n` +
   `${services.length ? '' : 'Sin servicios, el mapa queda declarado como pendiente, diciendo qué lo ' +
     'completa.\n'}` +
+  `4. ${HUMAN}: una fila por cada cosa que necesita a una persona, con la tarea, el estado pendiente, el ` +
+  `origen "onboard" y la acción concreta que la desbloquea. Como mínimo, una por cada credencial que el ` +
+  `proyecto espera —dónde se cargan y quién lo hace, sin proponer ningún valor—, una por cada sistema ` +
+  `externo o MCP a conectar, y una por la autoridad del runner, que hoy declara runner.allowPush=false.\n` +
+  `5. Las preguntas que queden abiertas, en la sección Ideas de ${INBOX}, sin promover.\n` +
   `Devolvé en files cada archivo que tocaste y en assumptions cada supuesto que dejaste marcado.`,
   { schema: WRITTEN, label: 'contexto' },
 )
 if (!drafted) return stop('draft-unavailable', 'los borradores no devolvieron resultado')
-
-phase('Human')
-
-// Credenciales, MCP y permiso de push no son trabajo del runner: R12 se los prohíbe y R13 exige dejar
-// dicho quién los resuelve y con qué. La fila vale más que la negativa.
-const pending = await agent(
-  `${BASE}\n\n${EVIDENCE}\n\nRegistrá en ${HUMAN} una fila por cada cosa que necesita a una persona, con ` +
-  `la tarea, el estado pendiente, el origen "onboard" y la acción concreta que la desbloquea. Como ` +
-  `mínimo: una por cada credencial que el proyecto espera —dónde se cargan y quién lo hace, sin proponer ` +
-  `ningún valor—, una por cada servicio externo o MCP a conectar —con su alcance y contra qué entorno— y ` +
-  `una por la autoridad del runner, que hoy declara runner.allowPush=false en ops.config.json. Las ` +
-  `preguntas abiertas van a la sección Ideas de ${INBOX}, sin promover: ` +
-  `${JSON.stringify(drafted.openQuestions || [])}`,
-  { schema: WRITTEN, label: 'acciones-humanas' },
-)
 
 phase('Epic')
 
@@ -190,29 +187,22 @@ const epic = await agent(
   `${services.length
     ? 'Verificar los comandos es una historia: nadie los corrió todavía.'
     : 'La primera historia es traer los repos y declararlos en workspaceRoots.'} ` +
-  `En "## Riesgos y decisiones humanas" citá las filas que quedaron en HUMAN_ACTIONS. No toques BACKLOG.md.`,
-  { schema: { type: 'object', additionalProperties: false, required: ['file'],
+  `En "## Riesgos y decisiones humanas" citá las filas que quedaron en HUMAN_ACTIONS. No toques ` +
+  `BACKLOG.md.\n\n` +
+  `Cerrá corriendo "node tools/ops.js check planning" desde ${ROOT} y, si falla, reparando sólo lo que ` +
+  `esta corrida escribió; nunca debilites un criterio para forzar el verde.`,
+  { schema: { type: 'object', additionalProperties: false, required: ['file', 'passed'],
     properties: {
-      file: { type: 'string' }, title: { type: 'string' },
+      file: { type: 'string' }, passed: { type: 'boolean' }, details: { type: 'string' },
       criteria: { type: 'array', items: { type: 'string' } },
       stories: { type: 'array', items: { type: 'string' } },
     } }, label: 'epica-001' },
 )
 if (!epic) return stop('epic-unavailable', 'la épica no devolvió resultado')
-
-phase('Closing')
-
-const closing = await agent(
-  `${BASE}\n\nFrom ${ROOT}, run "node tools/ops.js check planning" and report whether it passed. If it ` +
-  `failed, repair only what this run wrote —the epic, the config— so it satisfies the contract; never ` +
-  `weaken a criterion to force green.`,
-  { schema: { type: 'object', additionalProperties: false, required: ['passed', 'details'],
-    properties: { passed: { type: 'boolean' }, details: { type: 'string' } } }, label: 'closing-check' },
-)
-if (!closing || !closing.passed) return stop('check-failed', closing ? closing.details : 'sin resultado')
+if (!epic.passed) return stop('check-failed', epic.details || 'check no pasó tras escribir la épica')
 
 const supuestos = (drafted.assumptions || []).length
-const acciones = ((pending || {}).humanActions || []).length
+const acciones = (drafted.humanActions || []).length
 log(`Contexto escrito con ${supuestos} supuesto(s) por confirmar y ${acciones} acción(es) humana(s) en ${HUMAN}.`)
 log(`Épica en ${epic.file}, sin promover: revisala, promoví una historia a un hito del BACKLOG y corré /autobuild.`)
 
