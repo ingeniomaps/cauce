@@ -257,19 +257,24 @@ test('onboard guía con preguntas y no pisa lo que ya está escrito', () => {
   const guia = run(['onboard', target])
   assert.equal(guia.status, 0, guia.stderr)
   assert.match(guia.stdout, /1 servicio\(s\).*apps\/api/, 'lo que sí se puede deducir, deducido')
-  assert.match(guia.stdout, /¿Qué vende la empresa/, 'y lo que no, preguntado')
-  assert.match(guia.stdout, /¿Qué servicios o carpetas están muertos/, 'con código, se pregunta por el alcance')
-  assert.doesNotMatch(guia.stdout, /¿Dónde está el código\?/, 'y no se pregunta lo que está a la vista')
+  assert.match(guia.stdout, /¿De qué trata este proyecto\?/, 'y se empieza por lo que no se puede deducir')
+  // Una sola pregunta escrita: las que siguen dependen de la respuesta, y darlas hechas es asumir que
+  // el proyecto vende algo. Lo que el motor fija son las dimensiones a cubrir.
+  assert.doesNotMatch(guia.stdout, /¿Qué vende/, 'nada de dar por sentado que hay negocio')
+  assert.match(guia.stdout, /cómo se sostiene: venta, suscripción, donación/)
+  assert.match(guia.stdout, /qué servicios o carpetas están muertos/, 'con código, el alcance importa')
+  assert.doesNotMatch(guia.stdout, /dónde está el código/, 'y no se pregunta lo que está a la vista')
 
   const json = JSON.parse(run(['onboard', target, '--json']).stdout)
   assert.equal(json.fresh, true)
-  assert.equal(json.questions.length, 4)
+  assert.equal(json.followUps, 3, 'tres seguidas son conversación; más, formulario')
+  assert.equal(json.dimensions.length, 5)
 
   // Con contexto escrito, la guía deja de ofrecer un arranque que pisaría trabajo ajeno.
-  fs.writeFileSync(path.join(target, 'organization', 'company.md'), '# Empresa\n\nVendemos ruteo.\n')
+  fs.writeFileSync(path.join(target, 'organization', 'company.md'), '# Organización\n\nUn proyecto libre.\n')
   const despues = run(['onboard', target])
   assert.match(despues.stdout, /ya tiene organization\/ escrito/)
-  assert.doesNotMatch(despues.stdout, /¿Qué vende la empresa/, 'no vuelve a preguntar lo contestado')
+  assert.doesNotMatch(despues.stdout, /¿De qué trata/, 'no vuelve a preguntar lo contestado')
 })
 
 // El inventario es determinista a propósito: pedirle a un modelo que recorriera el árbol costó doce
@@ -351,7 +356,7 @@ test('init deja la instancia funcionando en una sola corrida', () => {
   assert.doesNotMatch(result.stdout, /siguiente: cd|siguiente: npm install/, 'sin pasos que ya se hicieron')
   // Y lo que sí queda es la guía: las preguntas que nadie más puede contestar, impresas donde el que
   // recién instaló las va a ver.
-  assert.match(result.stdout, /¿Qué vende la empresa/)
+  assert.match(result.stdout, /¿De qué trata este proyecto\?/)
   assert.match(result.stdout, /Abrí claude en este directorio/)
 })
 

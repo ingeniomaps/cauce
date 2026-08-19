@@ -386,10 +386,13 @@ function onboard(rootArg, cli) {
     console.log(`Esta instancia ya tiene ${escrito} escrito: el arranque no la va a pisar.`)
     return
   }
-  console.log('\nPara arrancar hacen falta cuatro respuestas que el repositorio no puede dar:\n')
-  for (const [index, question] of state.questions.entries()) console.log(`  ${index + 1}. ${question.text}`)
-  console.log('\nContestalas y el recorrido de arranque escribe con eso organization/, el mapa real de')
-  console.log('AGENTS.md y la primera épica. Con un runner instalado: /onboard <tus respuestas>.')
+  console.log(`\nPara arrancar falta lo que el repositorio no puede decir. Empieza por una pregunta:\n`)
+  console.log(`  ${state.opening}\n`)
+  console.log(`Según lo que contestes salen hasta ${state.followUps} más, con las palabras de este`)
+  console.log('proyecto, hasta cubrir lo que haga falta de esto:\n')
+  for (const dimension of state.dimensions) console.log(`  · ${dimension.need}`)
+  console.log('\nCon eso, el arranque escribe organization/, el mapa real de AGENTS.md y la primera')
+  console.log('épica. Con un runner instalado: /onboard, que te las va a hacer una por una.')
 }
 
 function check(dir, cli) {

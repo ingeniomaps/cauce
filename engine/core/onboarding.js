@@ -12,15 +12,28 @@ const path = require('node:path')
 // El molde llega con estos marcadores. Que sigan ahí es la señal de que nadie escribió todavía.
 const PLACEHOLDERS = /Por completar|Por definir/
 
-// Lo que ningún escaneo puede deducir: por qué existe el negocio y qué está muerto. Lo demás —qué
-// servicios hay, qué comandos declaran— sale del repositorio y no se pregunta.
-const QUESTIONS = [
-  { key: 'negocio', text: '¿Qué vende la empresa y a quién? Una línea alcanza.' },
-  { key: 'objetivo', text: '¿Cuál es el objetivo del trimestre y cómo se mide?' },
-  { key: 'alcance', text: '¿Qué servicios o carpetas están muertos o fuera de alcance?' },
-  { key: 'externos', text: '¿Qué sistema externo o MCP hace falta conectar, y contra qué entorno?' },
-  { key: 'codigo', text: '¿Dónde está el código? Todavía no hay ningún proyecto en el workspace.' },
+// La única pregunta que no depende de ninguna respuesta, y por eso la única que se puede escribir de
+// antemano. Las cuatro fijas que había antes daban por sentado que el proyecto vende algo: a uno libre,
+// interno o sin fines de lucro le preguntaban quién paga antes de saber de qué se trataba.
+const OPENING = '¿De qué trata este proyecto? Una línea alcanza.'
+
+// Lo que hay que cubrir para poder escribir `organization/`, no cómo preguntarlo: la pregunta concreta
+// la formula quien conduce la conversación, con las palabras de este proyecto, y en un proyecto libre
+// «cómo se sostiene» se pregunta de una manera que en una empresa no tendría sentido. Son dimensiones,
+// no un formulario, y quien pregunta puede cubrir dos con una sola pregunta si vienen juntas.
+const DIMENSIONS = [
+  { key: 'quien', need: 'a quién sirve y quién lo usa' },
+  { key: 'sostiene',
+    need: 'cómo se sostiene: venta, suscripción, donación, presupuesto interno o trabajo voluntario' },
+  { key: 'exito', need: 'qué querés que pase en este período y cómo se va a notar' },
+  { key: 'alcance', need: 'qué servicios o carpetas están muertos o fuera de alcance' },
+  { key: 'externos', need: 'qué sistema externo o MCP hace falta conectar, y contra qué entorno' },
+  { key: 'codigo', need: 'dónde está el código, que todavía no aparece en el workspace' },
 ]
+
+// Tres seguidas ya son una conversación; más, un formulario. La apertura no cuenta: es la que decide
+// cuáles de las demás valen la pena.
+const FOLLOW_UPS = 3
 
 function organizationWritten(root) {
   const file = path.join(root, 'organization', 'company.md')
@@ -34,8 +47,9 @@ function roadmapWritten(root) {
   } catch { return false }
 }
 
-// El estado de una instancia y las preguntas que le corresponden. `services` viene del escaneo: sin
-// código, la pregunta por el alcance no tiene sobre qué caer y la del código sí.
+// El estado de una instancia, la pregunta con la que se empieza y lo que queda por cubrir. `services`
+// viene del escaneo: sin código, preguntar por el alcance no tiene sobre qué caer, y preguntar dónde
+// está el código sí.
 function guide(root, services = []) {
   const written = { organization: organizationWritten(root), roadmap: roadmapWritten(root) }
   const fresh = !written.organization && !written.roadmap
@@ -44,8 +58,10 @@ function guide(root, services = []) {
     fresh,
     written,
     services: services.length,
-    questions: fresh ? QUESTIONS.filter((question) => question.key !== irrelevant) : [],
+    opening: fresh ? OPENING : '',
+    followUps: fresh ? FOLLOW_UPS : 0,
+    dimensions: fresh ? DIMENSIONS.filter((dimension) => dimension.key !== irrelevant) : [],
   }
 }
 
-module.exports = { guide, QUESTIONS, PLACEHOLDERS }
+module.exports = { guide, OPENING, DIMENSIONS, FOLLOW_UPS, PLACEHOLDERS }

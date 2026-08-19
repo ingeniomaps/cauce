@@ -1,22 +1,29 @@
-# Empresa — {{PROJECT_NAME}}
+# Organización — {{PROJECT_NAME}}
 
-Este archivo es específico de la empresa. Completar hechos; marcar lo desconocido como `Por definir`.
+Este archivo es el contexto estable de quien construye. Completar hechos; marcar lo desconocido como
+`Por definir`. Una empresa, un equipo interno y un proyecto libre lo llenan distinto: lo que no aplica
+se dice, no se inventa.
 
-## Misión y visión
+## De qué se trata
 
 Por completar.
 
-## Modelo de negocio
+## A quién sirve
 
-- Clientes y usuarios:
-- Quién paga:
-- Propuesta de valor:
-- Fuentes de ingreso:
+- Usuarios:
+- Quién decide que se use:
+- Qué mejora para ellos:
+
+## Cómo se sostiene
+
+Venta, suscripción, donación, presupuesto interno, trabajo voluntario o una mezcla. Lo que corresponda:
+
+- Origen de los recursos:
 - Costos o restricciones relevantes:
 
 ## Objetivos actuales
 
-Por completar. Incluir horizonte, responsable y métrica cuando existan.
+Por completar. Incluir horizonte, responsable y cómo se va a notar.
 
 ## Estructura y derechos de decisión
 
