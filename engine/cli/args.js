@@ -20,6 +20,7 @@ const FLAGS = {
   tree: ['--json', '--no-color'],
   context: ['--json'],
   upgrade: ['--check', '--force'],
+  destroy: ['--force'],
   archive: [],
   agents: ['--json', '--own', '--system'],
   integration: ['--fixture'],

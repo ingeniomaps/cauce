@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help check tree context upgrade automation-check
+.PHONY: help check tree context upgrade destroy automation-check
 .PHONY: integration-check integration-sync require-key integration-promote
 .PHONY: require-agent agent-learn agent-propose agent-evaluate require-team team-check team-show
 .PHONY: install-claude install-codex install-gemini install-antigravity
@@ -25,6 +25,9 @@ context: ## Muestra el contexto mínimo de la tarea vigente
 
 # `init` fija la versión exacta del motor, así que `npm update` no la mueve: hay que pedir @latest.
 # Sin este primer paso `upgrade` compara contra el motor instalado y contesta «al día» para siempre.
+destroy: ## Muestra qué se pierde al borrar esta instancia (borrar exige --force a mano)
+	@node tools/ops.js destroy .
+
 upgrade: ## Trae la última versión de Cauce y la aplica, sin tocar lo del proyecto
 	@npm install --save-dev @ingeniomaps/cauce@latest
 	@node tools/ops.js upgrade .

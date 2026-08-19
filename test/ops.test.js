@@ -486,6 +486,42 @@ test('init no disimula un npm install que falló', () => {
 // Desinstalar a mano es borrar `ops/` y descubrir después que cada llamada de herramienta ejecuta un
 // guard que ya no está; la otra salida —borrar `.claude/` entero— se lleva puesto lo del usuario. Se
 // quita lo que Cauce entregó y sigue igual que como lo entregó, y nada más.
+// Borrar una instancia era una lista de pasos a mano, y una lista se ejecuta a medias: si la carpeta se
+// va antes que el wiring, cada llamada de herramienta del runner queda ejecutando un guard que no está.
+test('destroy avisa qué se pierde y no borra hasta que se lo pidan dos veces', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-destroy-'))
+  const workspace = path.join(base, 'mono')
+  const target = path.join(workspace, 'ops')
+  fs.mkdirSync(workspace)
+  assert.equal(run(['init', target, '--name', 'Mono', '--mode', 'sidecar', '--no-install']).status, 0)
+  linkEngine(target)
+  assert.equal(run(['automation', 'install', target, 'claude']).status, 0)
+  fs.writeFileSync(path.join(workspace, '.claude', 'workflows', 'mio.js'), '// mío\n')
+
+  // Una instancia recién creada no perdió nada todavía, y decir lo contrario es exagerar: los moldes
+  // traen ejemplos comentados que una cuenta a mano lee como trabajo real.
+  const aviso = run(['destroy', target])
+  assert.equal(aviso.status, 1, 'sin --force no borra')
+  assert.match(aviso.stdout, /nada escrito todavía/)
+  assert.match(aviso.stdout, /saca el wiring de: claude/)
+  assert.equal(fs.existsSync(path.join(target, 'planning')), true)
+
+  // Con trabajo escrito, lo enumera antes de tocar nada.
+  fs.appendFileSync(path.join(target, 'planning', 'HUMAN_ACTIONS.md'), '| algo | pendiente | onboard | x |\n')
+  assert.match(run(['destroy', target]).stdout, /1 acción\(es\) humana\(s\)/)
+
+  const hecho = run(['destroy', target, '--force'])
+  assert.equal(hecho.status, 0, hecho.stderr)
+  assert.equal(fs.existsSync(target), false, 'la instancia se fue')
+  assert.equal(fs.existsSync(path.join(workspace, '.claude', 'workflows', 'autobuild.js')), false, 'y su wiring')
+  assert.equal(fs.readFileSync(path.join(workspace, '.claude', 'workflows', 'mio.js'), 'utf8'), '// mío\n')
+
+  // Y no se lo puede apuntar a cualquier cosa.
+  const ajeno = run(['destroy', workspace])
+  assert.equal(ajeno.status, 2)
+  assert.match(ajeno.stderr, /no es una instancia de Cauce/)
+})
+
 test('automation uninstall saca lo del toolkit y deja lo del usuario', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-uninst-'))
   const workspace = path.join(base, 'mono')

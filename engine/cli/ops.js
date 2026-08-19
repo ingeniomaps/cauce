@@ -47,6 +47,7 @@ function usage() {
   ops tree <planning-dir> [--no-color] [--json]
   ops context <planning-dir> [--json]
   ops upgrade <ops-root> [--check] [--force]
+  ops destroy <ops-root> [--force]
   ops archive <planning-dir> <NNN>
   ops integration list <ops-root>
   ops integration enable <ops-root> <provider>
@@ -732,6 +733,76 @@ function instanceVersion(root) {
   } catch { return '' }
 }
 
+// Qué se pierde al borrar una instancia. Se cuenta antes de tocar nada porque es lo único que vuelve
+// reversible la decisión: quien lee esto todavía puede no seguir.
+// Lo cuenta el mismo parser que usan `check` y `tree`, no una expresión regular propia: los moldes traen
+// ejemplos comentados, y contarlos a mano anunciaba una tarea en cola y otra terminada en una instancia
+// recién creada. Un aviso que exagera lo que se pierde se deja de leer igual que uno que lo minimiza.
+function loQueSePierde(root) {
+  const planning = path.join(root, 'planning')
+  const cola = P.readBacklog(planning).reduce((total, hito) => total + (hito.tasks || []).length, 0)
+  const acciones = (() => {
+    try {
+      const texto = fs.readFileSync(path.join(planning, 'HUMAN_ACTIONS.md'), 'utf8')
+      return (texto.match(/^\| (?!Tarea|---)/gm) || []).length
+    } catch { return 0 }
+  })()
+  return {
+    epicas: P.readEpics(planning).length,
+    hechas: (P.readDone(planning).entries || []).length,
+    enCola: cola,
+    acciones,
+    contexto: !OB.guide(root).fresh,
+    runners: [...new Set(Object.keys(M.readRunners(root)).map((key) => key.split('/')[0]))],
+  }
+}
+
+// Saca la instancia entera y el wiring que dejó en cada runner. Existe porque la alternativa era una
+// lista de pasos a mano —desinstalar cada runner y después `rm -rf`—, y una lista se ejecuta a medias:
+// el orden importa, y borrar primero la carpeta deja al runner ejecutando guards que ya no existen.
+//
+// Nunca borra sin que alguien lo haya pedido dos veces. Lo que hay adentro —planning, organization, la
+// evidencia de lo hecho— es del proyecto y no lo repone ningún `init`.
+function destroy(dir, cli) {
+  const root = path.resolve(dir || '.')
+  if (!fs.existsSync(path.join(root, 'ops.config.json'))) {
+    fail(`${root} no es una instancia de Cauce: falta ops.config.json.`, 2)
+  }
+  if (O.mode(root) === 'toolkit') fail(`${root} es el toolkit: acá se fabrica Cauce, no se lo borra.`, 2)
+
+  const perdida = loQueSePierde(root)
+  const lineas = [
+    perdida.epicas && `${perdida.epicas} épica(s) en el roadmap`,
+    perdida.enCola && `${perdida.enCola} tarea(s) en la cola`,
+    perdida.hechas && `${perdida.hechas} tarea(s) terminada(s) con su evidencia`,
+    perdida.acciones && `${perdida.acciones} acción(es) humana(s) pendiente(s)`,
+    perdida.contexto && 'el contexto escrito en organization/',
+  ].filter(Boolean)
+
+  if (!cli.has('--force')) {
+    console.log(`Borrar ${root} se lleva:`)
+    for (const linea of lineas) console.log(`  − ${linea}`)
+    if (!lineas.length) console.log('  − nada escrito todavía: la instancia está como salió de init')
+    if (perdida.runners.length) {
+      console.log(`  y saca el wiring de: ${perdida.runners.join(', ')} (lo tuyo queda donde está)`)
+    }
+    console.log('\nNada de esto lo repone un init. Si es lo que querés: repetí con --force.')
+    process.exit(1)
+  }
+
+  for (const runner of perdida.runners) {
+    try { A.uninstall(root, runner, console) } catch (error) { console.error(`  ${runner}: ${error.message}`) }
+  }
+  // El orden no es negociable: primero el wiring, después la carpeta. Al revés, cada llamada de
+  // herramienta del runner queda ejecutando un guard que ya no está.
+  const adentro = process.cwd() === root || process.cwd().startsWith(`${root}${path.sep}`)
+  fs.rmSync(root, { recursive: true, force: true })
+  console.log(`✓ ${root} borrado`)
+  // Correrlo desde adentro es lo natural —ahí está `tools/ops.js`— y deja la terminal en un directorio
+  // que ya no existe: el próximo comando falla con un `getcwd` que no dice nada de esto.
+  if (adentro) console.log('  tu terminal quedó en esa carpeta: hacé "cd .." antes del próximo comando.')
+}
+
 // Actualiza sólo lo que el toolkit declara suyo. Todo lo demás —planning, organization, reglas
 // propias, agentes editados— queda intacto por construcción, no por comparación.
 function upgrade(dir, cli) {
@@ -760,8 +831,16 @@ function upgrade(dir, cli) {
       console.log(`= ${to}: la instancia está al día con el motor instalado`)
       return console.log('  para traer una versión más nueva: npm install --save-dev @ingeniomaps/cauce@latest')
     }
-    console.log(`⚠ hay una versión más nueva: ${to} (la instancia tiene ${from || 'una previa'})`)
-    printChangelog(from, to)
+    // Hacia atrás también es legítimo —una versión rompió algo y se vuelve—, pero anunciarlo como «hay
+    // una versión más nueva» era mentir con el número a la vista. Y lo que corresponde imprimir es lo
+    // contrario: no lo que se gana, sino lo que se deja.
+    if (CL.compare(to, from) < 0) {
+      console.log(`↩ volvés a ${to} desde ${from}. Esto es lo que dejás de tener:`)
+      printChangelog(to, from)
+    } else {
+      console.log(`⚠ hay una versión más nueva: ${to} (la instancia tiene ${from || 'una previa'})`)
+      printChangelog(from, to)
+    }
     for (const file of changed) console.log(`  editado localmente: ${file}`)
     process.exit(1)
   }
@@ -1263,6 +1342,7 @@ async function run(cli) {
   else if (command === 'tree') tree(arg[1], cli)
   else if (command === 'context') context(arg[1], cli)
   else if (command === 'upgrade') upgrade(arg[1], cli)
+  else if (command === 'destroy') destroy(arg[1], cli)
   else if (command === 'agents') agents(arg[1], arg[2], arg[3], cli)
   else if (command === 'archive') archive(arg[1], arg[2])
   else if (command === 'integration') {

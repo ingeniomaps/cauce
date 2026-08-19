@@ -177,6 +177,7 @@ Lee [template/planning/PROTOCOL.md](template/planning/PROTOCOL.md) para el contr
 | `ops tree <planning>` | Muestra roadmap, backlog, WIP, inbox y done sin mutar nada. |
 | `ops context <planning>` | Emite el contexto mínimo de la tarea vigente para un runner. |
 | `ops upgrade <ops-root>` | Actualiza `system/` y el runtime sin tocar lo del proyecto. |
+| `ops destroy <ops-root>` | Enumera qué se pierde y, con `--force`, saca wiring e instancia. |
 | `ops archive <planning> <NNN>` | Archiva el DONE de una épica cerrada de forma idempotente. |
 | `ops agents list [ops-root]` | Lista los cargos visibles resolviendo la precedencia. |
 | `ops agents fork <cargo>` | Copia un cargo del catálogo a la empresa, que pasa a mantenerlo. |
@@ -301,7 +302,10 @@ La instalación fusiona la configuración propia del runner y conserva las entra
 reemplaza los guards que el propio toolkit había registrado sueltos por el grupo que ahora los cubre, y
 lista cuáles quitó. Nada que no haya escrito el toolkit se toca.
 
-Para sacarlo, `automation uninstall` quita exactamente lo que Cauce entregó y sigue igual que como lo
+Para sacar una instancia entera —wiring incluido— está `ops destroy`, que primero enumera qué se pierde
+y sólo borra si se lo repite con `--force`: el orden importa, porque borrar la carpeta antes que el
+wiring deja al runner ejecutando guards que ya no existen. Para sacar sólo el wiring y conservar la
+instancia, `automation uninstall` quita exactamente lo que Cauce entregó y sigue igual que como lo
 entregó: los guards de la configuración del runner, los workflows, los punteros a cargos. Lo que no
 escribió —tus hooks, tus workflows, tus skills— queda donde está, y un archivo suyo que hayas editado se
 conserva y se nombra en la salida. Borrar la carpeta ops sin esto deja al runner ejecutando guards que ya
