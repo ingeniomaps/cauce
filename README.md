@@ -44,12 +44,18 @@ instala la dependencia, deja el wiring del runner puesto y valida la instancia a
 
 2 servicio(s) en /home/vos/mi-repo: apps/api, apps/web
 
-Para arrancar hacen falta cuatro respuestas que el repositorio no puede dar:
+Para arrancar falta lo que el repositorio no puede decir. Empieza por una pregunta:
 
-  1. ¿Qué vende la empresa y a quién? Una línea alcanza.
-  2. ¿Cuál es el objetivo del trimestre y cómo se mide?
-  3. ¿Qué servicios o carpetas están muertos o fuera de alcance?
-  4. ¿Qué sistema externo o MCP hace falta conectar, y contra qué entorno?
+  ¿De qué trata este proyecto? Una línea alcanza.
+
+Según lo que contestes salen hasta 3 más, con las palabras de este
+proyecto, hasta cubrir lo que haga falta de esto:
+
+  · a quién sirve y quién lo usa
+  · cómo se sostiene: venta, suscripción, donación, presupuesto interno o trabajo voluntario
+  · qué querés que pase en este período y cómo se va a notar
+  · qué servicios o carpetas están muertos o fuera de alcance
+  · qué sistema externo o MCP hace falta conectar, y contra qué entorno
 
 Abrí claude en este directorio para que las escriba por vos.
 El ciclo empieza en ops/planning/FLOW.md.
@@ -112,9 +118,10 @@ vacío. Llenarlo exige leer el repositorio y decidir qué es cada cosa, que es l
 no puede hacer, así que ese recorrido vive en el runner:
 
 ```text
-/onboard    te hace las preguntas que el repositorio no puede contestar —qué vende la empresa,
-            a quién, el objetivo del trimestre, qué está fuera de alcance— y con tus respuestas
-            escribe organization/, el «Mapa real» de AGENTS.md y las raíces de ops.config.json.
+/onboard    te pregunta de qué trata el proyecto y, según lo que contestes, hasta tres más
+            con las palabras de ese proyecto —no un formulario que da por sentado que vendés
+            algo—. Con tus respuestas escribe organization/, el «Mapa real» de AGENTS.md y
+            las raíces de ops.config.json.
             Lo deducido queda marcado como supuesto; credenciales, MCP y el permiso de push van
             a HUMAN_ACTIONS.md. Cierra con la épica 001, sin promoverla. No corre nada del
             proyecto: verificar los comandos es una historia de esa épica.
@@ -155,7 +162,7 @@ Lee [template/planning/PROTOCOL.md](template/planning/PROTOCOL.md) para el contr
 |---|---|
 | `ops init [destino]` | Materializa una instancia y la deja usable; sin destino, en `ops/` y modo sidecar. |
 | `ops scan [workspace]` | Inventaría servicios y comandos declarados, sin correr ninguno. |
-| `ops onboard [ops-root]` | Dice qué falta para arrancar y qué preguntas lo resuelven. |
+| `ops onboard [ops-root]` | Dice qué falta para arrancar y con qué pregunta empezar. |
 | `ops check <planning>` | Valida contratos, unicidad, trazabilidad y estados. |
 | `ops tree <planning>` | Muestra roadmap, backlog, WIP, inbox y done sin mutar nada. |
 | `ops context <planning>` | Emite el contexto mínimo de la tarea vigente para un runner. |
