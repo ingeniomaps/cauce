@@ -340,25 +340,43 @@ async function init(target, cli) {
   if (resultado.error) fail(`${resultado.error}: la instancia quedó creada pero todavía no funciona.`)
 }
 
-// Qué hay en el workspace, antes de que nadie razone sobre él. La raíz ops se saltea: no es un servicio
-// del proyecto, y su `package.json` sólo declara el motor.
+// Dónde puede mirar una instancia: exactamente las raíces que declara, y nada por encima de ellas. Sale
+// de `ops.config.json` en vez de suponerse —el sidecar declara `..`, el embebido `.`— para que acotar las
+// raíces acote también el escaneo, y para que nadie termine recorriendo la carpeta de al lado.
+function workspaceRoots(root) {
+  try {
+    const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
+    const declared = (config.workspaceRoots || []).map((entry) => path.resolve(root, entry.path || '.'))
+    return declared.length ? declared : [root]
+  } catch { return [root] }
+}
+
+// Qué hay en las raíces declaradas, antes de que nadie razone sobre ello. La raíz ops se saltea: no es
+// un servicio del proyecto, y su `package.json` sólo declara el motor.
+function inventory(root) {
+  const found = []
+  for (const workspace of workspaceRoots(root)) {
+    const result = SC.scan(workspace, root)
+    if (result.rootManifests.length) {
+      found.push({ path: '.', root: workspace, runtimes: ['raíz'], commands: result.rootCommands })
+    }
+    for (const service of result.services) found.push({ ...service, root: workspace })
+  }
+  return found
+}
+
 function scan(target, cli) {
-  // Sólo el sidecar tiene su workspace afuera: la instancia es hija de la carpeta donde vive el código.
-  // Cualquier otro modo —embedded, y este mismo repositorio, que es `toolkit`— escanea donde está
-  // parado. Confundirlos hacía que un `scan` sin argumentos se fuera a recorrer la carpeta de al lado.
-  const sidecar = O.mode(process.cwd()) === 'sidecar'
-  const root = path.resolve(target || (sidecar ? path.join(process.cwd(), '..') : '.'))
-  const result = SC.scan(root, sidecar ? process.cwd() : '')
+  const root = path.resolve(target || '.')
+  const result = target
+    ? { root: path.resolve(target), services: SC.scan(path.resolve(target)).services }
+    : { root, services: inventory(root) }
   if (cli.has('--json')) return console.log(JSON.stringify(result, null, 2))
-  console.log(`workspace ${result.root}`)
-  if (result.rootManifests.length) {
-    console.log(`. ${result.rootManifests.join(', ')}${comandos(result.rootCommands)}`)
-  }
   for (const service of result.services) {
-    console.log(`${service.path} [${service.runtimes.join(', ')}]${comandos(service.commands)}`)
+    const donde = service.root && service.root !== result.root ? `${path.basename(service.root)}/` : ''
+    console.log(`${donde}${service.path} [${(service.runtimes || []).join(', ')}]${comandos(service.commands)}`)
   }
-  const total = result.services.length + (result.rootManifests.length ? 1 : 0)
-  console.log(`${total} candidato(s). Cuál es el producto y cuál quedó muerto lo decide una persona.`)
+  console.log(`${result.services.length} candidato(s). Cuál es el producto y cuál quedó muerto lo ` +
+    'decide una persona.')
 }
 
 // Sólo lo declarado y de dónde salió: un comando inventado se lee igual que uno real.
@@ -372,27 +390,31 @@ function comandos(commands) {
 // primero que ve alguien que acaba de instalar y todavía no sabe qué hace la herramienta.
 function onboard(rootArg, cli) {
   const root = path.resolve(rootArg || '.')
-  const sidecar = O.mode(root) === 'sidecar'
-  const workspace = sidecar ? path.resolve(root, '..') : root
-  const { services } = SC.scan(workspace, sidecar ? root : '')
+  const services = inventory(root)
   const state = OB.guide(root, services)
-  if (cli.has('--json')) return console.log(JSON.stringify({ ...state, workspace, servicios: services }, null, 2))
+  if (cli.has('--json')) {
+    return console.log(JSON.stringify({ ...state, roots: workspaceRoots(root), servicios: services }, null, 2))
+  }
+  // La pregunta primero, y el inventario después: de qué trata el proyecto es lo mismo esté vacío,
+  // sea un monorepo o sean diez repos, y empezar por lo que se encontró invierte de qué se trata esto.
+  if (state.fresh) {
+    console.log(`${state.opening}\n`)
+    console.log(`Según lo que contestes salen hasta ${state.followUps} preguntas más, con las palabras de`)
+    console.log('este proyecto, hasta cubrir lo que haga falta de esto:\n')
+    for (const dimension of state.dimensions) console.log(`  · ${dimension.need}`)
+    console.log('')
+  }
   console.log(services.length
-    ? `${services.length} servicio(s) en ${workspace}: ${services.map((service) => service.path).join(', ')}`
-    : `Ningún proyecto en ${workspace} todavía.`)
+    ? `Mientras tanto, esto es lo que hay: ${services.map((service) => service.path).join(', ')}`
+    : 'Mientras tanto, en el workspace todavía no hay ningún proyecto.')
   if (!state.fresh) {
     const escrito = [state.written.organization && 'organization/', state.written.roadmap && 'el roadmap']
       .filter(Boolean).join(' y ')
     console.log(`Esta instancia ya tiene ${escrito} escrito: el arranque no la va a pisar.`)
     return
   }
-  console.log(`\nPara arrancar falta lo que el repositorio no puede decir. Empieza por una pregunta:\n`)
-  console.log(`  ${state.opening}\n`)
-  console.log(`Según lo que contestes salen hasta ${state.followUps} más, con las palabras de este`)
-  console.log('proyecto, hasta cubrir lo que haga falta de esto:\n')
-  for (const dimension of state.dimensions) console.log(`  · ${dimension.need}`)
-  console.log('\nCon eso, el arranque escribe organization/, el mapa real de AGENTS.md y la primera')
-  console.log('épica. Con un runner instalado: /onboard, que te las va a hacer una por una.')
+  console.log('\nCon tus respuestas, el arranque escribe organization/, el mapa real de AGENTS.md y la')
+  console.log('primera épica. Con un runner instalado: /onboard, que te las hace una por una.')
 }
 
 function check(dir, cli) {

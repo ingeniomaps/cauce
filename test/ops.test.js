@@ -256,8 +256,10 @@ test('onboard guía con preguntas y no pisa lo que ya está escrito', () => {
 
   const guia = run(['onboard', target])
   assert.equal(guia.status, 0, guia.stderr)
-  assert.match(guia.stdout, /1 servicio\(s\).*apps\/api/, 'lo que sí se puede deducir, deducido')
-  assert.match(guia.stdout, /¿De qué trata este proyecto\?/, 'y se empieza por lo que no se puede deducir')
+  // La pregunta primero: es la misma esté el workspace vacío, sea un monorepo o sean diez repos, y
+  // empezar por el inventario invierte de qué se trata esto.
+  assert.match(guia.stdout, /^¿De qué trata este proyecto\?/, 'abre con la pregunta, no con el hallazgo')
+  assert.match(guia.stdout, /Mientras tanto, esto es lo que hay: apps\/api/, 'y después, lo deducido')
   // Una sola pregunta escrita: las que siguen dependen de la respuesta, y darlas hechas es asumir que
   // el proyecto vende algo. Lo que el motor fija son las dimensiones a cubrir.
   assert.doesNotMatch(guia.stdout, /¿Qué vende/, 'nada de dar por sentado que hay negocio')
