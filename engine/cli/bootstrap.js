@@ -25,10 +25,14 @@ function terminal() {
 // dejar que ese rechazo suba terminaba la corrida con «Aborted with Ctrl+D» y la instancia recién creada
 // sin una línea que dijera cómo seguir. El default no hace nada, así que tomarlo no decide nada.
 async function elegir(deps, texto, opciones, fallback) {
-  const listado = opciones.map((opcion, indice) => `${indice + 1}) ${opcion}`).join('   ')
+  // Una opción por línea y el default señalado donde se mira: apretar Enter es la respuesta más común, y
+  // en una sola línea apretada el `[ninguno]` del final no se lee como «esto pasa si no elegís nada».
+  const listado = opciones
+    .map((opcion, indice) => `  ${indice + 1}) ${opcion}${opcion === fallback ? '   ← Enter' : ''}`)
+    .join('\n')
   for (let intento = 0; intento < INTENTOS; intento += 1) {
     let dicho
-    try { dicho = await deps.ask(`\n${texto}\n${listado}\n[${fallback}] > `) } catch {
+    try { dicho = await deps.ask(`\n${texto}\n\n${listado}\n\n> `) } catch {
       deps.log(`\n  sin respuesta: sigo con ${fallback}.`)
       return fallback
     }

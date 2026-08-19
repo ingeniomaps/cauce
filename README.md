@@ -31,12 +31,21 @@ instala la dependencia, deja el wiring del runner puesto y valida la instancia a
 
 ```text
 ¿Con qué runner vas a trabajar?
-1) claude   2) codex   3) gemini   4) antigravity   5) ninguno
-[ninguno] > 1
+
+  1) claude
+  2) codex
+  3) gemini
+  4) antigravity
+  5) ninguno   ← Enter
+
+> 1
 
 ¿Habilitar alguna integración?
-1) jira   2) ninguna
-[ninguna] >
+
+  1) jira
+  2) ninguna   ← Enter
+
+>
 
 · npm install (el motor viene de la dependencia)
 ✓ claude: adaptador operativo (0 advertencia(s))
@@ -57,7 +66,8 @@ este proyecto, hasta cubrir lo que haga falta de esto:
 
 Mientras tanto, esto es lo que hay: apps/api, apps/web
 
-Abrí claude en este directorio para que las escriba por vos.
+→ Abrí claude acá y contestale esa pregunta.
+  Con tus respuestas escribe organization/, el mapa real de AGENTS.md y la primera épica.
 El ciclo empieza en ops/planning/FLOW.md.
 ```
 

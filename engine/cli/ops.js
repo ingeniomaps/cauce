@@ -334,15 +334,8 @@ async function init(target, cli) {
   // corriendo `init`, no cuesta nada, y es lo único que le dice a alguien qué hacer con lo que acaba de
   // crear. Dejarlo adentro del camino feliz lo escondía justo de quien más lo necesita.
   console.log('')
-  onboard(root, SIN_BANDERAS)
-  if (resultado.instalado && resultado.runner !== BOOT.SIN_RUNNER) {
-    console.log(`\nAbrí ${resultado.runner} en este directorio para que las escriba por vos.`)
-  }
-  console.log('')
+  onboard(root, SIN_BANDERAS, resultado.instalado ? resultado.runner : '')
   for (const paso of initSteps(enter, resultado)) console.log(paso)
-  if (resultado.instalado) {
-    console.log(`El ciclo empieza en ${path.join(relative || '.', 'planning', 'FLOW.md')}.`)
-  }
   if (resultado.error) fail(`${resultado.error}: la instancia quedó creada pero todavía no funciona.`)
 }
 
@@ -399,7 +392,7 @@ function comandos(commands) {
 
 // La guía de arranque: qué hay, qué falta y qué preguntar. Determinista y en milisegundos, porque es lo
 // primero que ve alguien que acaba de instalar y todavía no sabe qué hace la herramienta.
-function onboard(rootArg, cli) {
+function onboard(rootArg, cli, runner = '') {
   const root = path.resolve(rootArg || '.')
   const services = inventory(root)
   const state = OB.guide(root, services)
@@ -426,8 +419,12 @@ function onboard(rootArg, cli) {
     console.log(`Esta instancia ya tiene ${escrito} escrito: el arranque no la va a pisar.`)
     return
   }
-  console.log('\nCon tus respuestas, el arranque escribe organization/, el mapa real de AGENTS.md y la')
-  console.log('primera épica. Con un runner instalado: /onboard, que te las hace una por una.')
+  // Un solo cierre: tres líneas que suenan a final se leen como tres finales, y quien recién instaló
+  // termina sin saber cuál era el paso.
+  console.log(runner
+    ? `\n→ Abrí ${runner} acá y contestale esa pregunta.`
+    : '\n→ Contestá esa pregunta cuando corras el arranque.')
+  console.log('  Con tus respuestas escribe organization/, el mapa real de AGENTS.md y la primera épica.')
 }
 
 function check(dir, cli) {

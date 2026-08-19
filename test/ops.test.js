@@ -403,7 +403,7 @@ test('init deja la instancia funcionando en una sola corrida', () => {
   // Y lo que sí queda es la guía: las preguntas que nadie más puede contestar, impresas donde el que
   // recién instaló las va a ver.
   assert.match(result.stdout, /¿De qué trata este proyecto\?/)
-  assert.match(result.stdout, /Abrí claude en este directorio/)
+  assert.match(result.stdout, /→ Abrí claude acá y contestale esa pregunta/, 'un solo cierre, con la acción')
 })
 
 // Y cuando npm falla, la instancia queda creada pero no funciona: decirlo es la diferencia entre
