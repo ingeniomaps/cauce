@@ -14,6 +14,33 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.34.0] - 2026-08-19
+
+### Añadido
+
+- **R16: el costo es el contexto, no las palabras.** Regla nueva del sistema, en
+  `planning/rules/system/process.md`, así que rige en cada tarea la haga quien la haga. Cada llamada
+  reenvía el contexto entero: gasta más quien da más vueltas que quien escribe más. Comandos
+  independientes en una sola invocación, el CLI antes que el archivo, el fragmento antes que el archivo
+  entero, un subagente sólo cuando el trabajo no entra en la corrida actual, y un archivo se lee una vez
+  y se escribe entero en vez de releerlo para confirmar.
+
+  Cierra con la parte que la hace segura y que una regla de eficiencia escrita a las apuras suele
+  omitir: **verificar es la excepción y no se negocia**. Ahorrar una llamada nunca justifica afirmar sin
+  haber comprobado —R14 no admite descuentos— ni dar por terminado lo que no se corrió.
+
+  No nombra precios, ventanas de caché ni cuándo limpiar una conversación: eso lo fija el runner, y una
+  regla del sistema que lo nombrara envejecería con su próxima versión en todas las instancias a la vez.
+
+### Cambiado
+
+- **El arranque acota las vueltas dentro de cada fase, no sólo cuántas fases hay.** El techo de tres
+  agentes limitaba cuántos contextos se cargan, no cuántas veces se reenvía cada uno. Medido en una
+  corrida real: la fase que escribe gastó veinte vueltas —seis lecturas y tres ediciones— para producir
+  cuatro archivos, y los tres agentes sumaron tres millones de tokens de caché, un cuarto de la sesión.
+  Ahora cada fase sabe qué cuesta: leer una vez y sólo para escribir, escribir entero de una, no releer
+  para comprobar, y correr `check` una sola vez.
+
 ## [0.33.0] - 2026-08-19
 
 ### Corregido
