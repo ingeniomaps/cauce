@@ -101,10 +101,11 @@ vacío. Llenarlo exige leer el repositorio y decidir qué es cada cosa, que es l
 no puede hacer, así que ese recorrido vive en el runner:
 
 ```text
-/onboard    inventaría los servicios, corre sus comandos de test, lint y build, y escribe
-            organization/, el «Mapa real» de AGENTS.md y las raíces de ops.config.json.
-            Lo deducido queda marcado como supuesto; credenciales, MCP y el permiso de push
-            van a HUMAN_ACTIONS.md. Cierra con la épica 001, sin promoverla.
+/onboard    parte del inventario de `ops scan` y escribe organization/, el «Mapa real» de
+            AGENTS.md —cada comando como está declarado y de qué archivo salió— y las raíces
+            de ops.config.json. Lo deducido queda marcado como supuesto; credenciales, MCP y
+            el permiso de push van a HUMAN_ACTIONS.md. Cierra con la épica 001, sin promoverla.
+            No corre nada del proyecto: verificar los comandos es una historia de esa épica.
 /team       evalúa si una intención posterior es viable y propone su épica.
 /autobuild  ejecuta una tarea ya promovida, fase por fase.
 ```
@@ -141,6 +142,7 @@ Lee [template/planning/PROTOCOL.md](template/planning/PROTOCOL.md) para el contr
 | Comando | Función |
 |---|---|
 | `ops init [destino]` | Materializa una instancia y la deja usable; sin destino, en `ops/` y modo sidecar. |
+| `ops scan [workspace]` | Inventaría servicios y comandos declarados, sin correr ninguno. |
 | `ops check <planning>` | Valida contratos, unicidad, trazabilidad y estados. |
 | `ops tree <planning>` | Muestra roadmap, backlog, WIP, inbox y done sin mutar nada. |
 | `ops context <planning>` | Emite el contexto mínimo de la tarea vigente para un runner. |
