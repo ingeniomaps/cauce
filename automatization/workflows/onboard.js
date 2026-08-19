@@ -50,6 +50,11 @@ const BASE = `Nunca inventes clientes, métricas, ingresos, plazos ni responsabl
   `recorras directorios, no leas código fuente y no abras más archivos que los que vas a escribir. Esto ` +
   `es un arranque de cinco minutos, no una auditoría: lo que no esté a la vista se marca como supuesto o ` +
   `queda como pregunta abierta, que es más barato y más honesto que averiguarlo.\n\n` +
+  `Lo que cuesta no son las palabras que escribís sino las vueltas que das: cada llamada arrastra tu ` +
+  `contexto entero. Leé un archivo una sola vez y sólo si vas a escribirlo; escribilo completo de una, sin ` +
+  `editarlo después; no lo releas para comprobar que quedó —si la escritura falla, te enterás—. Medido en ` +
+  `una corrida real: la fase que escribe gastó veinte vueltas con seis lecturas y tres ediciones para ` +
+  `producir cuatro archivos.\n\n` +
   `El arranque tiene tres objetivos y ninguno más: entender qué es este proyecto, dejar la instancia ` +
   `correcta para él —contexto, mapa, raíces, lo que espera a una persona— y que la primera tarea pueda ` +
   `empezar. El análisis profundo llega después, cuando alguien pida algo concreto; adelantarlo acá ` +
@@ -200,8 +205,11 @@ const epic = await agent(
     : 'La primera historia es traer los repos y declararlos en workspaceRoots.'} ` +
   `En "## Riesgos y decisiones humanas" citá las filas que quedaron en HUMAN_ACTIONS. No toques ` +
   `BACKLOG.md.\n\n` +
+  `El contrato de una épica está en ${P}/PROTOCOL.md; si necesitás verlo, leé esa sección y no el archivo ` +
+  `entero, y escribí la épica de una sola vez.\n\n` +
   `Cerrá corriendo "node tools/ops.js check planning" desde ${ROOT} y, si falla, reparando sólo lo que ` +
-  `esta corrida escribió; nunca debilites un criterio para forzar el verde.`,
+  `esta corrida escribió; nunca debilites un criterio para forzar el verde. Una sola corrida de check: si ` +
+  `pasó, terminaste.`,
   { schema: { type: 'object', additionalProperties: false, required: ['file', 'passed'],
     properties: {
       file: { type: 'string' }, passed: { type: 'boolean' }, details: { type: 'string' },

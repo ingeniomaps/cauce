@@ -413,6 +413,17 @@ const onboardWorkflow = fs.readFileSync(
   path.resolve(__dirname, '..', 'automatization', 'workflows', 'onboard.js'), 'utf8',
 )
 
+// Medido: la fase que escribe gastó veinte vueltas —seis lecturas y tres ediciones— para producir cuatro
+// archivos, y cada vuelta arrastra el contexto entero del subagente. El techo de agentes no alcanza si
+// adentro de cada uno el trabajo se hace en veinte pasos.
+test('onboard acota las vueltas dentro de cada fase, no sólo la cantidad de fases', () => {
+  assert.match(onboardWorkflow, /las vueltas que das/)
+  assert.match(onboardWorkflow, /Leé un archivo una sola vez/)
+  assert.match(onboardWorkflow, /sin ` \+\n  `editarlo después/)
+  assert.match(onboardWorkflow, /Una sola corrida de check/)
+  assert.match(onboardWorkflow, /leé esa sección y no el archivo ` \+\n  `entero/)
+})
+
 test('onboard tiene techo de llamadas y no sale a explorar', () => {
   // Tres agentes como máximo, y ninguno recorre nada: un arranque que hace esperar diez minutos deja de
   // serlo. Escribir el contexto y registrar lo que le toca a una persona salen de la misma evidencia.
