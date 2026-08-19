@@ -262,6 +262,11 @@ test('scan respeta lo que el proyecto declaró basura', () => {
 
   const result = JSON.parse(run(['scan', repo, '--json']).stdout)
   assert.deepEqual(result.services.map((service) => service.path), ['apps/api'])
+  // Y con una ruta explícita se ve lo mismo que desde la instancia, incluido el proyecto de la raíz:
+  // un monolito declara sus comandos arriba, y dejarlo afuera desaparecía al proyecto principal.
+  fs.writeFileSync(path.join(repo, 'package.json'), '{"scripts":{"test":"jest"}}')
+  const conRaiz = JSON.parse(run(['scan', repo, '--json']).stdout)
+  assert.deepEqual(conRaiz.services.map((service) => service.path), ['.', 'apps/api'])
 })
 
 // Un corte que no se anuncia hace pasar lo listado por todo lo que hay.

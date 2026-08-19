@@ -353,23 +353,23 @@ function workspaceRoots(root) {
 
 // Qué hay en las raíces declaradas, antes de que nadie razone sobre ello. La raíz ops se saltea: no es
 // un servicio del proyecto, y su `package.json` sólo declara el motor.
+// Los candidatos de una raíz, con el proyecto que vive en ella misma primero: un monolito declara sus
+// comandos en el nivel de arriba, y dejarlo afuera hacía desaparecer justo al proyecto principal.
+function candidates(workspace, skip = '') {
+  const result = SC.scan(workspace, skip)
+  const found = result.rootManifests.length
+    ? [{ path: '.', root: workspace, runtimes: ['raíz'], commands: result.rootCommands }]
+    : []
+  return [...found, ...result.services.map((service) => ({ ...service, root: workspace }))]
+}
+
 function inventory(root) {
-  const found = []
-  for (const workspace of workspaceRoots(root)) {
-    const result = SC.scan(workspace, root)
-    if (result.rootManifests.length) {
-      found.push({ path: '.', root: workspace, runtimes: ['raíz'], commands: result.rootCommands })
-    }
-    for (const service of result.services) found.push({ ...service, root: workspace })
-  }
-  return found
+  return workspaceRoots(root).flatMap((workspace) => candidates(workspace, root))
 }
 
 function scan(target, cli) {
   const root = path.resolve(target || '.')
-  const result = target
-    ? { root: path.resolve(target), services: SC.scan(path.resolve(target)).services }
-    : { root, services: inventory(root) }
+  const result = { root, services: target ? candidates(root) : inventory(root) }
   if (cli.has('--json')) return console.log(JSON.stringify(result, null, 2))
   // Un monorepo de sesenta paquetes no se lee en pantalla. Se recorta, y se dice cuánto: un corte que no
   // se anuncia hace pasar lo listado por todo lo que hay.
