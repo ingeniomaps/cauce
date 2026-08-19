@@ -488,6 +488,27 @@ test('init no disimula un npm install que falló', () => {
 // quita lo que Cauce entregó y sigue igual que como lo entregó, y nada más.
 // Borrar una instancia era una lista de pasos a mano, y una lista se ejecuta a medias: si la carpeta se
 // va antes que el wiring, cada llamada de herramienta del runner queda ejecutando un guard que no está.
+// Una corrida real reescribió `organization/` entero: buen contenido, otras secciones. El archivo se lee
+// completo y perdió cuatro dimensiones, y nadie las va a pedir después porque nada indica que faltaban.
+test('check avisa cuando una dimensión del molde desapareció', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-molde-'))
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  assert.doesNotMatch(run(['check', path.join(target, 'planning')]).stdout, /sin ##/, 'el molde intacto no avisa')
+
+  const company = path.join(target, 'organization', 'company.md')
+  fs.writeFileSync(company, '# Organización\n\n## Propósito\n\nGenerar catálogos.\n')
+  const avisado = run(['check', path.join(target, 'planning')])
+  assert.equal(avisado.status, 0, 'es advertencia, no error: los archivos son de la empresa')
+  assert.match(avisado.stderr + avisado.stdout, /company\.md: sin ## De qué se trata.*y \d+ más/)
+
+  // Agregar secciones propias no molesta: lo que se avisa es lo que se fue.
+  const molde = fs.readFileSync(path.join(target, 'organization', 'product.md'), 'utf8')
+  fs.writeFileSync(path.join(target, 'organization', 'product.md'), `${molde}\n## Nuestra sección\n\nAlgo.\n`)
+  const conPropia = run(['check', path.join(target, 'planning')])
+  assert.doesNotMatch(conPropia.stderr + conPropia.stdout, /product\.md: sin/)
+})
+
 // Una corrida real dejó `epic-001.md` sin slug: el archivo estaba escrito, era una épica legítima, y
 // `check` respondía «planning válido: 0 épica(s)». El silencio es peor que el rechazo — el planning se
 // reporta sano mientras el trabajo que alguien escribió no existe para el sistema.

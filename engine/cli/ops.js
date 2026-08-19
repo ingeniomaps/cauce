@@ -441,6 +441,30 @@ function onboard(rootArg, cli, runner = '') {
   console.log('  Con tus respuestas escribe organization/, el mapa real de AGENTS.md y la primera épica.')
 }
 
+// Qué dimensiones enumera el molde de `organization/` y cuáles dejaron de estar. Un agente que reescribe
+// esos archivos tiende a quedarse con el contenido y perder la estructura: el resultado se lee entero y
+// completo, y nadie va a pedir después la dimensión que falta porque nada indica que faltaba.
+//
+// Va como advertencia y no como error: la empresa es dueña de esos archivos y puede reestructurarlos a
+// propósito. Lo que no puede pasar es que una dimensión desaparezca sin que se vea.
+function seccionesPerdidas(root) {
+  const avisos = []
+  const molde = path.join(PROJECT_ROOT, 'template', 'organization')
+  for (const name of ['company.md', 'product.md']) {
+    const propio = path.join(root, 'organization', name)
+    if (!fs.existsSync(propio) || !fs.existsSync(path.join(molde, name))) continue
+    const titulos = (text) => new Set((text.match(/^##\s+(.+)$/gm) || []).map((line) => line.trim()))
+    const esperadas = titulos(fs.readFileSync(path.join(molde, name), 'utf8'))
+    const presentes = titulos(fs.readFileSync(propio, 'utf8'))
+    const faltan = [...esperadas].filter((titulo) => !presentes.has(titulo))
+    if (!faltan.length) continue
+    // Reescrito entero, faltan todas: enumerarlas hace una línea ilegible y el número dice más.
+    const lista = faltan.length > 3 ? `${faltan.slice(0, 3).join(', ')} y ${faltan.length - 3} más` : faltan.join(', ')
+    avisos.push(`organization/${name}: sin ${lista} — el molde las trae y acá no están`)
+  }
+  return avisos
+}
+
 function check(dir, cli) {
   const root = path.resolve(dir || '.')
   const errors = []
@@ -552,6 +576,8 @@ function check(dir, cli) {
   // Misma regla para los cargos, que es donde más caro sale: un fork se hace una vez y se olvida.
   const FK = require('../agents/fork')
   for (const entry of FK.drift(path.resolve(root, '..'))) warnings.push(FK.driftLine(entry))
+
+  warnings.push(...seccionesPerdidas(path.resolve(root, '..')))
 
   if (cli.has('--json')) {
     console.log(JSON.stringify({
