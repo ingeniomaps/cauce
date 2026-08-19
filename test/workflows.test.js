@@ -495,6 +495,8 @@ test('los runners sin workflow llevan la lista de lo que se comprueba al final',
     gemini: fs.readFileSync(path.join(REPO, 'automatization', 'runners', 'gemini', 'GEMINI.md'), 'utf8'),
   }
   for (const [runner, texto] of Object.entries(textos)) {
+    assert.match(texto, /Por definir/, `${runner}: sin la dimensión que no se preguntó`)
+    assert.match(texto, /\(supuesto\)/, `${runner}: sin la marca de lo deducido`)
     assert.match(texto, /epic-NNN-<slug>\.md/, `${runner}: sin la regla del nombre`)
     assert.match(texto, /HUMAN_ACTIONS\.md/, `${runner}: sin las filas humanas`)
     assert.match(texto, /formulario/, `${runner}: sin la conversación de a una`)

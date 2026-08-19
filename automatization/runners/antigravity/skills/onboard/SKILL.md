@@ -60,7 +60,12 @@ falló los cinco puntos sin darse cuenta, y todos del mismo lado —lo que no pr
    no te corresponde se perdió en vez de quedar escrito para alguien.
 5. **`ops` no es un servicio del producto.** No va en el mapa real: es la instancia desde la que trabajás.
 
-6. **Corré `node {{OPS_DIR}}tools/ops.js onboard`.** Si te vuelve a ofrecer la pregunta de apertura, la
+6. **Ninguna dimensión se completa sin haberla preguntado.** Si llegaste al tope de preguntas y una
+   quedó afuera —quién lo usa, qué está muerto, qué externo hay— va «Por definir» con su pregunta en
+   `{{OPS_DIR}}planning/INBOX.md`, aunque puedas imaginar la respuesta. Y lo que deducís de otra
+   respuesta va marcado `(supuesto)`, por plausible que sea: sin la marca se lee con el mismo peso que
+   lo que la persona dijo, y nadie va a volver a preguntarlo.
+7. **Corré `node {{OPS_DIR}}tools/ops.js onboard`.** Si te vuelve a ofrecer la pregunta de apertura, la
    instancia sigue vacía: no escribiste nada, y no hay nada que informar. Una corrida real entregó un
    resumen en pasado —«registrado», «documentado», «creada la primera épica»— sobre archivos que en el
    disco seguían siendo el molde. Estar bloqueado es un resultado legítimo; narrarlo como entrega, no.

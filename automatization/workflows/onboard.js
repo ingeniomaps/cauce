@@ -165,7 +165,11 @@ const drafted = await agent(
   `${BASE}\n\n${EVIDENCE}\n\nEscribí de una sola pasada el contexto de esta instancia, reemplazando el ` +
   `molde en vez de comentarlo:\n` +
   `1. ${ORG}/company.md y ${ORG}/product.md: lo que la persona contó y los nombres del repositorio ` +
-  `permiten afirmar. Lo que nada sostiene queda "Por definir" y su pregunta va a openQuestions. No des ` +
+  `permiten afirmar. Lo que nada sostiene queda "Por definir" y su pregunta va a openQuestions. Una ` +
+  `dimensión que no llegaste a preguntar no se completa deduciéndola: queda "Por definir" con su ` +
+  `pregunta en openQuestions, aunque puedas imaginar la respuesta. Y lo que sí deducís de otra ` +
+  `respuesta va marcado "(supuesto)", por plausible que sea: sin la marca se lee con el mismo peso que ` +
+  `lo que alguien dijo. No des ` +
   `por sentado que el proyecto vende algo: puede sostenerse con donaciones, presupuesto interno o ` +
   `trabajo voluntario, y una sección que no aplica se dice, no se completa con algo plausible.\n` +
   `2. La sección "## Mapa real" de ${ROOT}/AGENTS.md: una entrada por servicio con su ruta, su runtime y ` +
