@@ -482,6 +482,26 @@ test('onboard escribe borradores y deja a una persona lo que es suyo', () => {
   }
 })
 
+// Un runner que sólo lee instrucciones cumple el contrato a medias, y falla siempre del mismo lado: se
+// salta lo que no deja un archivo visible. La lista de salida existe para lo que se comprueba mirando el
+// disco, y por eso viaja con los tres que no tienen recorrido ejecutable.
+test('los runners sin workflow llevan la lista de lo que se comprueba al final', () => {
+  const REPO = path.resolve(__dirname, '..')
+  const textos = {
+    antigravity: fs.readFileSync(
+      path.join(REPO, 'automatization', 'runners', 'antigravity', 'skills', 'onboard', 'SKILL.md'), 'utf8',
+    ),
+    codex: fs.readFileSync(path.join(REPO, 'automatization', 'runners', 'codex', 'AGENTS.md'), 'utf8'),
+    gemini: fs.readFileSync(path.join(REPO, 'automatization', 'runners', 'gemini', 'GEMINI.md'), 'utf8'),
+  }
+  for (const [runner, texto] of Object.entries(textos)) {
+    assert.match(texto, /epic-NNN-<slug>\.md/, `${runner}: sin la regla del nombre`)
+    assert.match(texto, /HUMAN_ACTIONS\.md/, `${runner}: sin las filas humanas`)
+    assert.match(texto, /formulario/, `${runner}: sin la conversación de a una`)
+    assert.match(texto, /molde/, `${runner}: sin las secciones del molde`)
+  }
+})
+
 test('cada runner ofrece el arranque en el formato que entiende', () => {
   const A = require('../engine/automation')
   const REPO = path.resolve(__dirname, '..')

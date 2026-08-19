@@ -53,6 +53,12 @@ El arranque tiene tres objetivos y ninguno más: entender qué es el proyecto, d
 para él y que la primera tarea pueda empezar. El análisis profundo viene después, cuando la persona pida
 algo concreto.
 
+Antes de darlo por terminado, comprobá cinco cosas mirando el disco: preguntaste de a una y no en
+formulario; la épica se llama `epic-NNN-<slug>.md` con `status: open` —`epic-001.md` no lo lee nadie—;
+las secciones de `{{OPS_DIR}}organization/` siguen siendo las del molde y lo tuyo se agregó adentro;
+`{{OPS_DIR}}planning/HUMAN_ACTIONS.md` tiene una fila por credencial, por externo y por la autoridad de
+push; y `ops` no figura como servicio del producto en el mapa.
+
 ## Los equipos
 
 Un equipo es una secuencia de cargos con etapas y exit gates, para evaluar una intención antes de que
