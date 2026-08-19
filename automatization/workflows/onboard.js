@@ -85,6 +85,10 @@ const SCAN = {
           required: ['kind', 'command', 'source'], properties: {
             kind: { type: 'string' }, command: { type: 'string' }, source: { type: 'string' },
           } } },
+        // Los nombres de variable que ese servicio espera, copiados del inventario. En un multirepo cada
+        // repositorio trae su propio ejemplo, y sin esto las credenciales de tres repos no existían para
+        // el arranque: las filas terminaban diciendo «la credencial del proveedor» sin nombrarla.
+        env: { type: 'array', items: { type: 'string' } },
       } } },
     externals: { type: 'array', items: { type: 'string' } },
     secrets: { type: 'array', items: { type: 'string' } },
@@ -110,11 +114,12 @@ const state = await agent(
   `else and open no file other than .env.example at the workspace root.\n` +
   `1. "node tools/ops.js onboard --json": the instance state, the workspace inventory, the opening ` +
   `question and the dimensions still uncovered. Copy fresh, opening, followUps, the "need" of each ` +
-  `dimension, and every service with its path, its runtimes and its declared commands keeping the source ` +
-  `file each command came from. Add nothing it did not print.\n` +
+  `dimension, and every service with its path, its runtimes, its declared commands keeping the source ` +
+  `file each command came from, and the variable names its "env" carries. Add nothing it did not print.\n` +
   `2. "node tools/ops.js check planning".\n` +
-  `If .env.example exists at the workspace root, report the variable names in secrets —names only— and ` +
-  `the external services they point at in externals.`,
+  `The inventory already names every credential each service expects: never open a .env file to look for ` +
+  `more. Report those names in secrets and the services they point at in externals. A name the inventory ` +
+  `carries is declared, and saying otherwise is a claim the repository contradicts.`,
   { schema: SCAN, label: 'inventario' },
 )
 if (!state) return stop('scan-unavailable', 'no se pudo leer el estado del workspace')
@@ -167,9 +172,10 @@ const drafted = await agent(
     'completa.\n'}` +
   `4. ${HUMAN}: una fila por cada cosa que necesita a una persona, con la tarea, el estado pendiente, el ` +
   `origen "onboard" y la acción concreta que la desbloquea. Como mínimo, una por cada credencial que el ` +
-  `inventario nombra, diciendo la variable y el servicio que la espera —dónde se carga y quién lo hace, ` +
-  `sin proponer ningún valor—, una por cada sistema externo o MCP a conectar, y una por la autoridad del ` +
-  `runner, que hoy declara runner.allowPush=false.\n` +
+  `inventario nombra, diciendo la variable y el servicio que la espera. El nombre ya está declarado, así ` +
+  `que no pidas declararlo de nuevo: lo que falta es dónde se carga el valor y quién lo hace, y ningún ` +
+  `valor se propone acá. Además, una por cada sistema externo o MCP a conectar, y una por la autoridad ` +
+  `del runner, que hoy declara runner.allowPush=false.\n` +
   `5. Las preguntas que queden abiertas, en la sección Ideas de ${INBOX}, sin promover.\n` +
   `Devolvé en files cada archivo que tocaste y en assumptions cada supuesto que dejaste marcado.`,
   { schema: WRITTEN, label: 'contexto' },

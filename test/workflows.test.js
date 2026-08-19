@@ -459,7 +459,11 @@ test('onboard escribe borradores y deja a una persona lo que es suyo', () => {
   // Credenciales, MCP y permiso de push: tres filas, no tres decisiones del runner.
   assert.match(onboardWorkflow, /HUMAN/)
   assert.match(onboardWorkflow, /allowPush=false/)
-  assert.match(onboardWorkflow, /sin proponer /)
+  assert.match(onboardWorkflow, /ningún ` \+\n  `valor se propone acá/, 'la fila dice qué falta, no un valor')
+  // Y no le pide a nadie declarar lo que el repositorio ya declara: eso es negar la evidencia que se
+  // le entregó, y fue lo que produjo filas pidiendo un .env.example que ya existía.
+  assert.match(onboardWorkflow, /no pidas declararlo de nuevo/)
+  assert.match(onboardWorkflow, /is a claim the repository contradicts/)
   assert.match(onboardWorkflow, /No toques ` \+\n  `BACKLOG\.md/, 'y la épica no se promueve')
   assert.match(onboardWorkflow, /promoted: false/)
   for (const leak of [/\/home\//, /\/Users\//]) {

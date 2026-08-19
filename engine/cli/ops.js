@@ -363,8 +363,16 @@ function candidates(workspace, skip = '') {
   return [...found, ...result.services.map((service) => ({ ...service, root: workspace }))]
 }
 
+// Con varias raíces, cada repositorio es la raíz de su propio escaneo y su candidato principal se llama
+// `.`: tres servicios con el mismo nombre y nada que los distinga. El prefijo los vuelve nombrables, que
+// es la única forma de que una credencial pueda atribuirse a un servicio en vez de quedar suelta.
 function inventory(root) {
-  return workspaceRoots(root).flatMap((workspace) => candidates(workspace, root))
+  const roots = workspaceRoots(root)
+  if (roots.length === 1) return candidates(roots[0], root)
+  return roots.flatMap((workspace) => candidates(workspace, root).map((service) => ({
+    ...service,
+    path: service.path === '.' ? path.basename(workspace) : `${path.basename(workspace)}/${service.path}`,
+  })))
 }
 
 function scan(target, cli) {
@@ -374,10 +382,11 @@ function scan(target, cli) {
   // Un monorepo de sesenta paquetes no se lee en pantalla. Se recorta, y se dice cuánto: un corte que no
   // se anuncia hace pasar lo listado por todo lo que hay.
   for (const service of result.services.slice(0, LISTA)) {
-    const donde = service.root && service.root !== result.root ? `${path.basename(service.root)}/` : ''
+    // El proyecto que vive en la raíz se nombra por su carpeta: `.` a secas no dice de cuál se habla.
+    const nombre = service.path === '.' ? `. (${path.basename(service.root || result.root)})` : service.path
     const espera = service.env ? `\n    espera ${service.env.names.join(', ')} (${service.env.file})` : ''
     console.log(
-      `${donde}${service.path} [${(service.runtimes || []).join(', ')}]${comandos(service.commands)}${espera}`,
+      `${nombre} [${(service.runtimes || []).join(', ')}]${comandos(service.commands)}${espera}`,
     )
   }
   if (result.services.length > LISTA) {

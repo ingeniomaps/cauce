@@ -269,6 +269,30 @@ test('scan respeta lo que el proyecto declaró basura', () => {
   assert.deepEqual(conRaiz.services.map((service) => service.path), ['.', 'apps/api'])
 })
 
+// Con varias raíces declaradas, el candidato principal de cada una se llama `.`: tres servicios con el
+// mismo nombre y nada que los distinga, que es como una credencial deja de poder atribuirse a un servicio.
+test('con varias raíces cada servicio se puede nombrar', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-multi-'))
+  const workspace = path.join(base, 'tienda')
+  for (const repo of ['api', 'web']) {
+    fs.mkdirSync(path.join(workspace, repo), { recursive: true })
+    fs.writeFileSync(path.join(workspace, repo, 'package.json'), '{"scripts":{"test":"x"}}')
+    fs.writeFileSync(path.join(workspace, repo, '.env.example'), `${repo.toUpperCase()}_URL=\n`)
+  }
+  const target = path.join(workspace, 'ops')
+  assert.equal(run(['init', target, '--name', 'T', '--mode', 'sidecar', '--no-install']).status, 0)
+  const config = JSON.parse(fs.readFileSync(path.join(target, 'ops.config.json'), 'utf8'))
+  config.workspaceRoots = [
+    { name: 'api', path: '../api' },
+    { name: 'web', path: '../web' },
+  ]
+  fs.writeFileSync(path.join(target, 'ops.config.json'), JSON.stringify(config, null, 2))
+
+  const guia = JSON.parse(run(['onboard', target, '--json']).stdout)
+  assert.deepEqual(guia.servicios.map((service) => service.path), ['api', 'web'])
+  assert.deepEqual(guia.servicios.map((service) => service.env.names), [['API_URL'], ['WEB_URL']])
+})
+
 // Un corte que no se anuncia hace pasar lo listado por todo lo que hay.
 test('scan recorta la lista en pantalla y dice cuánto', () => {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-grande-'))
