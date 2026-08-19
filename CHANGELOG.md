@@ -14,6 +14,37 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.30.0] - 2026-08-18
+
+### Añadido
+
+- **`ops onboard`: qué le falta a una instancia para arrancar, y con qué pregunta empezar.** Determinista
+  y en milisegundos: dice si la instancia sigue vacía, qué hay en el workspace y qué queda por cubrir.
+  `init` lo imprime al terminar, que es donde mira quien acaba de instalar y todavía no sabe qué hace la
+  herramienta. Cuando `organization/` o el roadmap ya tienen contenido real no ofrece nada, porque habría
+  trabajo que pisar.
+
+### Cambiado
+
+- **El arranque pregunta en vez de negarse.** Invocado sin contexto, `/onboard` terminaba diciendo «volvé
+  a correrlo con contexto» —y gastaba un subagente para decirlo—. Ahora devuelve la conversación, y cada
+  runner recibe la instrucción de correr primero la guía, que no cuesta nada, y recién después invocar el
+  recorrido que escribe.
+
+- **Las preguntas dejan de ser un formulario, y de dar por sentado que el proyecto vende algo.** Antes
+  eran cuatro fijas, y la primera preguntaba qué vende la empresa y a quién: a un proyecto libre, interno
+  o sin fines de lucro le pedían una respuesta que nadie había dado. Ahora hay una sola pregunta escrita
+  —de qué trata el proyecto, la única que no depende de ninguna respuesta— y lo que el motor fija después
+  son las dimensiones a cubrir: a quién sirve, cómo se sostiene, qué querés que pase, qué está fuera de
+  alcance, qué externos hay que conectar. Quien conduce la conversación las formula con las palabras de
+  ese proyecto, una por vez y hasta tres.
+
+- **El molde de `organization/company.md` deja de asumir un negocio.** «Modelo de negocio», «quién paga»
+  y «fuentes de ingreso» pasan a ser «De qué se trata», «A quién sirve» y «Cómo se sostiene», que nombra
+  donación, presupuesto interno y trabajo voluntario junto con la venta. Lo que no aplica se dice, no se
+  completa con algo plausible. Afecta a las instancias nuevas: `upgrade` sólo reemplaza `system/`, así
+  que el archivo que ya escribiste sigue siendo tuyo.
+
 ## [0.29.0] - 2026-08-18
 
 ### Añadido
