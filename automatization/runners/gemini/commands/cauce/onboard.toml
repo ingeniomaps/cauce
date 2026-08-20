@@ -1,43 +1,4 @@
 description = "Arranca una instancia recién creada: pregunta, escribe el contexto y la primera épica"
 prompt = """
-Seguí la sección «El arranque» de {{OPS_DIR}}AGENTS.md y de este contexto raíz.
-
-Empezá por `node {{OPS_DIR}}tools/ops.js onboard`: es instantáneo, y la primera línea que imprime es la
-pregunta con la que tenés que abrir. Hacésela tal cual y esperá la respuesta antes de mirar el
-inventario, sea el workspace vacío, un monolito o diez repos. Según lo que conteste, hasta tres
-preguntas más con las palabras de ese proyecto, una por vez. El inventario ya viene resuelto en esa
-salida —servicios, comandos declarados y las variables que cada uno espera—: no recorras el árbol ni
-corras comandos del proyecto para completarlo. No des por sentado que vende algo: puede sostenerse con
-donaciones, presupuesto interno o trabajo voluntario.
-
-Con eso escribí {{OPS_DIR}}organization/, la sección «Mapa real» de {{OPS_DIR}}AGENTS.md con cada
-comando tal como está declarado y de qué archivo salió, y las raíces reales en workspaceRoots. Las
-credenciales, los sistemas externos y el permiso de push van como filas de
-{{OPS_DIR}}planning/HUMAN_ACTIONS.md, sin proponer ningún valor.
-
-Cerrá escribiendo la épica como epic-NNN-<slug>.md con status: open. Nunca promuevas al BACKLOG: esa
-firma es humana.
-
-## Antes de decir que terminaste
-
-Esto no resume lo de arriba: es lo que se comprueba mirando el disco, y es del lado que no deja archivo
-visible donde una corrida real falló los siete puntos sin darse cuenta.
-
-1. Una pregunta por vez. Dos o más juntas, numeradas, es un formulario: la segunda pregunta depende de
-   la primera respuesta.
-2. epic-NNN-<slug>.md, con slug en el nombre y `status: open`. `epic-001.md` no lo lee nadie —ni check,
-   ni tree, ni el runner que busca trabajo—.
-3. Las secciones de {{OPS_DIR}}organization/ siguen siendo las del molde y lo tuyo se agregó adentro.
-   Reemplazar la estructura pierde dimensiones que nadie va a reclamar después.
-4. {{OPS_DIR}}planning/HUMAN_ACTIONS.md tiene filas: una por credencial, una por sistema externo o MCP,
-   una por la autoridad de push. Vacío no es que no hubiera nada: es que se perdió.
-5. `ops` no figura como servicio del producto en el mapa real: es la instancia desde la que trabajás.
-6. Ninguna dimensión se completa sin haberla preguntado. La que quedó afuera va «Por definir» con su
-   pregunta en {{OPS_DIR}}planning/INBOX.md, y lo que deducís de otra respuesta va marcado «(supuesto)»,
-   por plausible que sea: sin la marca se lee con el mismo peso que lo que la persona dijo.
-7. Corré de nuevo `node {{OPS_DIR}}tools/ops.js onboard`. Si te vuelve a ofrecer la pregunta de
-   apertura, no escribiste nada y no hay nada que informar. Estar bloqueado es un resultado legítimo;
-   narrarlo como entrega, no.
-
-Recién ahí, `node {{OPS_DIR}}tools/ops.js check planning`.
+{{INCLUDE:shared/onboard.md}}
 """

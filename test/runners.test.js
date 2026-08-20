@@ -247,7 +247,10 @@ test('ninguna ruta de un adaptador da por sentado dónde se instala', () => {
     for (const relative of copiados) {
       const file = path.resolve(dir, relative)
       if (!fs.existsSync(file) || file.endsWith('.js')) continue
-      for (const hit of fs.readFileSync(file, 'utf8').matchAll(raiz)) {
+      // Renderizado con el marcador por prefijo: resuelve los `INCLUDE` sin tocar los `{{OPS_DIR}}`,
+      // así lo compartido se revisa una vez por cada adaptador que lo enmarca y no queda afuera.
+      const texto = A.render(file, '{{OPS_DIR}}', path.join(REPO, 'automatization'))
+      for (const hit of texto.matchAll(raiz)) {
         sueltas.push(`${name}:${relative} → ${hit[1]}`)
       }
     }

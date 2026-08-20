@@ -114,6 +114,7 @@ function runnerPaths(root, name, runner) {
 
 function resolveItem(paths, root, name, item) {
   return {
+    automationRoot: paths.automationRoot,
     source: F.assertWithin(
       paths.automationRoot,
       path.resolve(paths.sourceDir, item.source),
@@ -135,12 +136,35 @@ function resolveItem(paths, root, name, item) {
 // Un solo render, y `install` escribe exactamente lo que `doctor` compara.
 const OPS_DIR = '{{OPS_DIR}}'
 
-function render(file, prefix) {
-  return fs.readFileSync(file, 'utf8').split(OPS_DIR).join(prefix)
+// Un fragmento que varios adaptadores comparten, resuelto contra la raíz de `automatization/`. El
+// arranque es el mismo trabajo en tres formatos —la sección de un `AGENTS.md`, el cuerpo de un
+// `SKILL.md`, el prompt de un `.toml`—, y escrito tres veces hizo lo que hace siempre una copia: dos
+// de ellas anunciaban cinco puntos y enumeraban seis, con el sexto doblado dentro del quinto.
+//
+// El workflow de Claude queda afuera a propósito: es un programa con fases y esquemas, no una prosa
+// enmarcada, así que su arranque no es una copia de éste sino otra cosa.
+//
+// Se resuelve antes que `{{OPS_DIR}}` para que el fragmento también reciba el prefijo, y no anida:
+// lo incluido se copia tal cual.
+const INCLUDE = /\{\{INCLUDE:([^}]+)\}\}/g
+
+function inline(text, automationRoot) {
+  return text.replace(INCLUDE, (_, relative) => {
+    const shared = F.assertWithin(
+      automationRoot,
+      path.resolve(automationRoot, relative.trim()),
+      'INCLUDE',
+    )
+    return fs.readFileSync(shared, 'utf8').trimEnd()
+  })
+}
+
+function render(file, prefix, automationRoot) {
+  return inline(fs.readFileSync(file, 'utf8'), automationRoot).split(OPS_DIR).join(prefix)
 }
 
 function runnerConfig(paths, root) {
-  return JSON.parse(render(paths.configSource, opsPrefix(root)))
+  return JSON.parse(render(paths.configSource, opsPrefix(root), paths.automationRoot))
 }
 
 // Cargos del catálogo, con el frontmatter que el runner indexa para elegir a quién invocar.
@@ -444,7 +468,7 @@ function doctor(root, name, output = console) {
     // que su hash difiere siempre. Comparado como archivo, `doctor` avisaba cuando el bloque estaba bien
     // y callaba cuando alguien lo había borrado, que es exactamente al revés.
     if (esArchivoCompartido(root, resolved.target)) {
-      const contenido = render(resolved.source, opsPrefix(root))
+      const contenido = render(resolved.source, opsPrefix(root), resolved.automationRoot)
       if (!fs.existsSync(resolved.target)) errors.push(`falta ${item.target}`)
       else if (!fs.readFileSync(resolved.target, 'utf8').includes(bloqueInicio(name))) {
         errors.push(`${item.target}: no tiene las instrucciones de Cauce; reinstalá el adaptador`)
@@ -531,7 +555,7 @@ function deliveryKey(name, target) {
 function deliveryState(recorded, name, resolved, prefix = '') {
   if (!fs.existsSync(resolved.target)) return 'nuevo'
   const current = M.digest(resolved.target)
-  if (current === M.digestText(render(resolved.source, prefix))) return 'al día'
+  if (current === M.digestText(render(resolved.source, prefix, resolved.automationRoot))) return 'al día'
   const delivered = recorded[deliveryKey(name, resolved.item.target)]
   return delivered && delivered === current ? 'desactualizado' : 'ajeno'
 }
@@ -738,7 +762,7 @@ function install(root, name, output = console, options = {}) {
     const situacion = state.get(resolved)
     const propio = runner.instructions.includes(resolved.item)
     if (propio && esArchivoCompartido(root, resolved.target)) {
-      const contenido = render(resolved.source, opsPrefix(root))
+      const contenido = render(resolved.source, opsPrefix(root), resolved.automationRoot)
       if (bloqueAlDia(resolved.target, name, contenido)) {
         output.log(`= ${name}: ${resolved.item.target} ya trae sus instrucciones`)
       } else {
@@ -754,7 +778,7 @@ function install(root, name, output = console, options = {}) {
       output.log(`= ${name}: ${resolved.item.target} ya está al día`)
     } else {
       fs.mkdirSync(path.dirname(resolved.target), { recursive: true })
-      F.atomicWrite(resolved.target, render(resolved.source, opsPrefix(root)))
+      F.atomicWrite(resolved.target, render(resolved.source, opsPrefix(root), resolved.automationRoot))
       const verbo = situacion === 'nuevo' ? 'instalado' : 'actualizado'
       output.log(`✓ ${name}: ${verbo} ${resolved.item.target}`)
     }
@@ -800,6 +824,7 @@ module.exports = {
   legacyGuardWiring,
   roleCatalog,
   roleSkill,
+  render,
   listHooks,
   runnerManifest,
 }
