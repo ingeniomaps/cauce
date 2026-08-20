@@ -389,8 +389,14 @@ while (vueltas++ < MAX_TAREAS) {
   }
   // Y un caso que sí se fijó acá entra con su prueba o no entró: sin ella el comportamiento nuevo queda
   // sin nada que lo sostenga, y nadie sabe después que debía existir.
+  // Los dos campos salen de la misma respuesta pero se escriben por separado, así que pedirles la misma
+  // cadena exacta frena una tarea correcta por haber nombrado el test de dos formas —`TestAlta` acá y
+  // `users_test.go::TestAlta` allá—. Alcanza con que uno nombre al otro; lo que sigue frenando, que es de
+  // lo que se trata, es el caso que no aparece en ningún rojo.
+  const nombra = (rojo, caso) => Boolean(caso.test)
+    && (rojo.test.includes(caso.test) || caso.test.includes(rojo.test))
   const suelto = build.discovered.find((entry) => entry.kind === 'edge'
-    && !build.redFirst.some((rojo) => rojo.test === entry.test))
+    && !build.redFirst.some((rojo) => nombra(rojo, entry)))
   if (suelto) return stop('edge-unproven', `${suelto.detail} entró sin la prueba que lo fija`)
 
   if (!direct) {
