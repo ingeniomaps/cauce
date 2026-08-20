@@ -17,8 +17,7 @@ export const meta = {
   ],
 }
 
-// El prefijo lo completa `automation install`. El runtime de workflows no expone `process`.
-const ROOT = '{{OPS_DIR}}'.replace(/\/+$/, '') || '.'
+{{INCLUDE:shared/workflow-root.js}}
 const AGENT = String((typeof args === 'string' ? args : (args || {}).agent) || '').trim()
 const PERIOD = String((args || {}).period || '').trim()
 
@@ -43,15 +42,7 @@ const RESULT = {
   },
 }
 
-function finish(result) {
-  log(`Fin: ${JSON.stringify(result)}`)
-  return result
-}
-
-const stop = (reason, detail = '') => {
-  log(`Checkpoint: ${reason}${detail ? ` — ${detail}` : ''}`)
-  return finish({ stopped: true, reason, detail })
-}
+{{INCLUDE:shared/workflow-finish.js}}
 
 if (!AGENT) return stop('sin-cargo', 'pasá el slug del cargo')
 

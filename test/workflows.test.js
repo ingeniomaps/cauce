@@ -276,9 +276,13 @@ test('un workflow no llama a nada que no exista', () => {
     'if', 'for', 'while', 'switch', 'catch', 'return', 'typeof', 'function', 'await', 'new', 'do',
   ])
   const faltantes = []
+  const A = require('../engine/automation')
+  const automation = path.resolve(__dirname, '..', 'automatization')
   for (const file of workflowFiles()) {
+    // Renderizado: `finish`, `stop` y `ROOT` llegan por `{{INCLUDE:}}`, así que el archivo crudo no
+    // los declara y cada uno parecería una llamada a algo inexistente.
     // Sin comentarios ni literales: adentro hay prosa en castellano que parece una llamada.
-    const source = fs.readFileSync(file, 'utf8')
+    const source = A.render(file, '{{OPS_DIR}}', automation)
       .replace(/\/\/[^\n]*/g, '')
       .replace(/`(?:\\[\s\S]|[^`\\])*`/g, '``')
       .replace(/'(?:\\[\s\S]|[^'\\])*'/g, "''")

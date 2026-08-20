@@ -25,7 +25,7 @@ export const meta = {
   ],
 }
 
-const ROOT = '{{OPS_DIR}}'.replace(/\/+$/, '') || '.'
+{{INCLUDE:shared/workflow-root.js}}
 const AGENT = String((typeof args === 'string' ? args : (args || {}).agent) || '').trim()
 const PERIOD = String((args || {}).period || '').trim()
 
@@ -52,15 +52,7 @@ const APLICADO = {
   },
 }
 
-function finish(result) {
-  log(`Fin: ${JSON.stringify(result)}`)
-  return result
-}
-
-const stop = (reason, detail = '') => {
-  log(`Checkpoint: ${reason}${detail ? ` — ${detail}` : ''}`)
-  return finish({ stopped: true, reason, detail })
-}
+{{INCLUDE:shared/workflow-finish.js}}
 
 if (!AGENT) return stop('sin-cargo', 'pasá el slug del cargo')
 

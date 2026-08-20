@@ -10,10 +10,7 @@ export const meta = {
   ],
 }
 
-// El prefijo lo completa `automation install`. No puede venir del entorno: el runtime de workflows no
-// expone `process`, así que leerlo de ahí reventaba el archivo entero en su primera línea. Viaja
-// escrito, relativo a la carpeta donde se abre la herramienta, que es el cwd de los agentes.
-const ROOT = '{{OPS_DIR}}'.replace(/\/+$/, '') || '.'
+{{INCLUDE:shared/workflow-root.js}}
 // `/integration-sync jira` o `{"provider": "jira"}`: sin entorno, el argumento es la única entrada.
 const input = typeof args === 'string' ? { provider: args } : (args || {})
 const REQUESTED = String(input.provider || '').trim()

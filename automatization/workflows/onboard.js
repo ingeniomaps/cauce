@@ -26,9 +26,7 @@ export const meta = {
   ],
 }
 
-// El prefijo lo completa `automation install`: el runtime no expone `process`, así que la ruta de la
-// raíz ops viaja escrita, relativa a donde se abre la herramienta.
-const ROOT = '{{OPS_DIR}}'.replace(/\/+$/, '') || '.'
+{{INCLUDE:shared/workflow-root.js}}
 const P = `${ROOT}/planning`
 const ORG = `${ROOT}/organization`
 const HUMAN = `${P}/HUMAN_ACTIONS.md`
@@ -60,15 +58,7 @@ const BASE = `Nunca inventes clientes, métricas, ingresos, plazos ni responsabl
   `empezar. El análisis profundo llega después, cuando alguien pida algo concreto; adelantarlo acá ` +
   `retrasa el único momento en que la herramienta todavía no sirve para nada.`
 
-function finish(result) {
-  log(`Fin: ${JSON.stringify(result)}`)
-  return result
-}
-
-const stop = (reason, detail = '') => {
-  log(`Checkpoint: ${reason}${detail ? ` — ${detail}` : ''}`)
-  return finish({ stopped: true, reason, detail })
-}
+{{INCLUDE:shared/workflow-finish.js}}
 
 const SCAN = {
   type: 'object', additionalProperties: false, required: ['fresh', 'services'],

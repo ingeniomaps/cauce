@@ -15,10 +15,7 @@ export const meta = {
   ],
 }
 
-// El prefijo lo completa `automation install`. No puede venir del entorno: el runtime de workflows no
-// expone `process`, así que leerlo de ahí reventaba el archivo entero en su primera línea. Viaja
-// escrito, relativo a la carpeta donde se abre la herramienta, que es el cwd de los agentes.
-const ROOT = '{{OPS_DIR}}'.replace(/\/+$/, '') || '.'
+{{INCLUDE:shared/workflow-root.js}}
 const P = `${ROOT}/planning`
 const ROADMAP = `${P}/roadmap`
 const HUMAN = `${P}/HUMAN_ACTIONS.md`
@@ -89,18 +86,7 @@ const EPIC = {
   },
 }
 
-// Cierre del recorrido. El runtime no trae un helper de cierre —el valor devuelto por el script ya
-// es el resultado—, y darlo por sentado hacía reventar el archivo justo al terminar: después de
-// gastar cada etapa, en la línea que las cerraba.
-function finish(result) {
-  log(`Fin: ${JSON.stringify(result)}`)
-  return result
-}
-
-const stop = (reason, detail = '') => {
-  log(`Checkpoint: ${reason}${detail ? ` — ${detail}` : ''}`)
-  return finish({ stopped: true, reason, detail })
-}
+{{INCLUDE:shared/workflow-finish.js}}
 
 if (!INTENT) return stop('sin-intencion', 'pasá la intención a evaluar en args.intent')
 

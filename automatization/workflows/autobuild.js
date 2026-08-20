@@ -10,10 +10,7 @@ export const meta = {
   ].map((title) => ({ title, detail: `Fase ${title} del protocolo agnóstico` })),
 }
 
-// El prefijo lo completa `automation install`. No puede venir del entorno: el runtime de workflows no
-// expone `process`, así que leerlo de ahí reventaba el archivo entero en su primera línea. Viaja
-// escrito, relativo a la carpeta donde se abre la herramienta, que es el cwd de los agentes.
-const ROOT = '{{OPS_DIR}}'.replace(/\/+$/, '') || '.'
+{{INCLUDE:shared/workflow-root.js}}
 const CONFIG = `${ROOT}/ops.config.json`
 const P = `${ROOT}/planning`
 const BACKLOG = `${P}/BACKLOG.md`
@@ -131,18 +128,7 @@ const CONTRACT = {
 const BASE = `Never invent credentials or decisions; register external blockers in ${HUMAN}. Never execute INBOX ` +
   `automatically. Never push, deploy, amend, force, or use git add -A. Never edit process governance, and do not ` +
   `edit planning bookkeeping unless this workflow explicitly requests it.`
-// Cierre del recorrido. El runtime no trae un helper de cierre —el valor devuelto por el script ya
-// es el resultado—, y darlo por sentado hacía reventar el archivo justo al terminar: después de
-// gastar cada etapa, en la línea que las cerraba.
-function finish(result) {
-  log(`Fin: ${JSON.stringify(result)}`)
-  return result
-}
-
-const stop = (reason, detail = '') => {
-  log(`Checkpoint: ${reason}${detail ? ` — ${detail}` : ''}`)
-  return finish({ stopped: true, reason, detail })
-}
+{{INCLUDE:shared/workflow-finish.js}}
 
 phase('Triage')
 // El contrato se lee una sola vez por corrida y viaja como texto: ningún subagente relee AGENTS.md,

@@ -17,8 +17,10 @@ const path = require('node:path')
 const RAIZ = path.resolve(__dirname, '..')
 const BASELINE = path.join(__dirname, 'coverage-baseline.json')
 // Los workflows no se requieren nunca: los ejecuta el runtime del runner y los tests los leen como
-// texto, así que no aparecen en el lcov. Excluirlos es declarar eso, no perdonarlos.
-const SIN_COBERTURA = 'automatization/workflows/'
+// texto, así que no aparecen en el lcov. Los fragmentos de `shared/` menos todavía: no son módulos
+// sino texto que `{{INCLUDE:}}` pega dentro de un workflow al instalar. Excluirlos es declarar eso,
+// no perdonarlos.
+const SIN_COBERTURA = ['automatization/workflows/', 'automatization/shared/']
 // Un punto de holgura, medido y no supuesto: `integrations/registry.js` alterna entre 48 y 49 de
 // ramas sin que nadie lo toque. Sin esto el piso falla solo, y un gate que falla al azar se termina
 // apagando.
@@ -62,7 +64,7 @@ function enDisco() {
     }
   }
   for (const dir of ['engine', 'automatization']) walk(path.join(RAIZ, dir))
-  return found.filter((file) => !file.startsWith(SIN_COBERTURA)).sort()
+  return found.filter((file) => !SIN_COBERTURA.some((prefijo) => file.startsWith(prefijo))).sort()
 }
 
 const argumentos = process.argv.slice(2)
