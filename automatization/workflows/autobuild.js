@@ -368,13 +368,28 @@ while (vueltas++ < MAX_TAREAS) {
       // Acá el plan ya está aprobado por los dos caminos posibles, así que el contraste va una sola vez.
       if (!critique.consulted.length) return stop('critique-unbacked', 'aprobó el plan sin declarar qué inspeccionó')
     }
-    await write(
-      `Persistí el WIP activo antes de tocar código: task=${task.id}, hito=${JSON.stringify(task.hito)}, ` +
-      `phase=Build, service=${task.service}, acceptance=${JSON.stringify(task.acceptance)}, ` +
-      `pasos sin tildar=${JSON.stringify(plan.steps)}. Registrá el reparto de cargos ${JSON.stringify(cast)} ` +
-      `en las decisiones del WIP, para que después se pueda auditar quién revisó qué. ` +
-      `Seguí el contrato de WIP exactamente.`,
+    // Esta llamada escribe un archivo y nada más, y hay que decirlo con todas las letras. En una corrida
+    // real hizo el trabajo entero: leyó los pasos del plan como una orden, implementó, corrió RED/GREEN,
+    // cerró la tarea en DONE y dejó el WIP en IDLE. Build encontró todo hecho y lo atribuyó a «una corrida
+    // anterior», así que Review, Verify y QA nunca vieron ese código y el recorrido terminó reportando algo
+    // distinto de lo que decía planning. El permiso venía del preámbulo de escritura; lo que faltaba era el
+    // límite. `wipActive` es el contraste: si el WIP no quedó activo, esta fase hizo otra cosa.
+    const persistido = await write(
+      `Escribí el WIP y nada más: no toques código, no corras pruebas, no cierres la tarea y no escribas ` +
+      `en DONE. Los pasos van sin tildar porque todavía no ocurrieron. task=${task.id}, ` +
+      `hito=${JSON.stringify(task.hito)}, phase=Build, service=${task.service}, ` +
+      `acceptance=${JSON.stringify(task.acceptance)}, pasos sin tildar=${JSON.stringify(plan.steps)}. ` +
+      `Registrá el reparto de cargos ${JSON.stringify(cast)} en las decisiones del WIP, para que después se ` +
+      `pueda auditar quién revisó qué. Seguí el contrato de WIP exactamente y reportá con qué status quedó.`,
+      { schema: {
+        type: 'object', additionalProperties: false, required: ['wipActive'],
+        properties: { wipActive: { type: 'boolean' }, note: { type: 'string' } },
+      } },
     )
+    if (!persistido) return stop('agent-unavailable', 'la persistencia del WIP no devolvió resultado')
+    if (!persistido.wipActive) {
+      return stop('wip-not-persisted', `${task.id} entra a Build sin WIP activo: ${persistido.note || ''}`)
+    }
   }
 
   phase('Build')

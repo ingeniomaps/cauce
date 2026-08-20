@@ -50,6 +50,8 @@ function guionBase() {
       approach: 'validar en el repositorio', steps: ['1'], files: ['api/alta.go'], testStrategy: 'unit',
     },
     'Critique|approved,concerns,consulted': { approved: true, concerns: [], consulted: ['api/alta.go'] },
+    'Critique|wipActive': { wipActive: true },
+    'Plan|wipActive': { wipActive: true },
     'Build|completed,summary,redFirst,discovered': {
       completed: true, summary: 'alta con rechazo de duplicado',
       redFirst: [{ test: 'TestAltaDuplicada', failure: 'want error, got nil' }],
@@ -120,6 +122,17 @@ test('autobuild cierra una tarea cuando todo está en su lugar', async () => {
   for (const esperada of ['Triage', 'Plan', 'Critique', 'Build', 'Review', 'Verify', 'QA', 'Commit', 'Closing']) {
     assert.ok(fases.includes(esperada), `faltó la fase ${esperada}`)
   }
+})
+
+// La fase que persiste el WIP escribe un archivo y nada más. En una corrida real hizo el trabajo entero
+// —implementó, cerró la tarea y dejó el WIP en IDLE— y Build lo tomó por trabajo de una corrida anterior,
+// así que Review, Verify y QA no vieron ese código. Sin WIP activo, la tarea no entra a construirse.
+test('sin WIP activo no se entra a construir', async () => {
+  const { resultado, pedidas } = await correr({
+    'Critique|wipActive': { wipActive: false, note: 'quedó en IDLE' },
+  })
+  assert.equal(resultado.reason, 'wip-not-persisted')
+  assert.ok(!pedidas.some((clave) => clave.startsWith('Build|')), 'y no se construye sin el WIP puesto')
 })
 
 test('una aprobación que no declara qué inspeccionó frena en su etapa', async () => {
