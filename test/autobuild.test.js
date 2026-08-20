@@ -52,10 +52,10 @@ function guionBase() {
     'Critique|approved,concerns,consulted': { approved: true, concerns: [], consulted: ['api/alta.go'] },
     'Critique|wipActive': { wipActive: true },
     'Plan|wipActive': { wipActive: true },
-    'Build|completed,summary,redFirst,discovered': {
+    'Build|completed,summary,redFirst,discovered,closedTask': {
       completed: true, summary: 'alta con rechazo de duplicado',
       redFirst: [{ test: 'TestAltaDuplicada', failure: 'want error, got nil' }],
-      discovered: [],
+      discovered: [], closedTask: false,
     },
     'Review|approved,concerns,consulted': { approved: true, concerns: [], consulted: ['api/alta.go'] },
     'Verify|passed,commands,details,uncovered': {
@@ -149,7 +149,7 @@ test('una aprobación que no declara qué inspeccionó frena en su etapa', async
 
 test('un rojo declarado sin el fallo que lo muestra no cuenta como rojo', async () => {
   const { resultado } = await correr({
-    'Build|completed,summary,redFirst,discovered': {
+    'Build|completed,summary,redFirst,discovered,closedTask': {
       completed: true, summary: 'x', discovered: [],
       redFirst: [{ test: 'TestAltaDuplicada', failure: '   ' }],
     },
@@ -158,9 +158,23 @@ test('un rojo declarado sin el fallo que lo muestra no cuenta como rojo', async 
   assert.match(resultado.detail, /TestAltaDuplicada/)
 })
 
+// Construir no es cerrar. En una corrida real el plan traía «VERIFY», «QA» y «Cierre — commit» entre sus
+// pasos; quien construyó los ejecutó, y la tarea salió del BACKLOG y entró a DONE sin que Review, Verify ni
+// QA la miraran. El plan ya no los pide, y si ocurre igual la corrida frena en vez de seguir sobre lo cerrado.
+test('una tarea cerrada en Build no sigue como si nada', async () => {
+  const { resultado, pedidas } = await correr({
+    'Build|completed,summary,redFirst,discovered,closedTask': {
+      completed: true, summary: 'x', discovered: [], closedTask: true,
+      redFirst: [{ test: 'TestAltaDuplicada', failure: 'want error' }],
+    },
+  })
+  assert.equal(resultado.reason, 'build-closed-task')
+  assert.ok(!pedidas.some((clave) => clave.startsWith('Review|')), 'y no se revisa lo que ya se cerró')
+})
+
 test('un hueco de diseño para el recorrido y queda escrito antes de parar', async () => {
   const { resultado, escritos } = await correr({
-    'Build|completed,summary,redFirst,discovered': {
+    'Build|completed,summary,redFirst,discovered,closedTask': {
       completed: true, summary: 'x', redFirst: [],
       discovered: [{ kind: 'gap', detail: 'nadie definió qué pasa con el alta sin país' }],
     },
@@ -174,7 +188,7 @@ test('un hueco de diseño para el recorrido y queda escrito antes de parar', asy
 
 test('un caso descubierto entra con su prueba, y el nombre no tiene que coincidir letra por letra', async () => {
   const suelto = await correr({
-    'Build|completed,summary,redFirst,discovered': {
+    'Build|completed,summary,redFirst,discovered,closedTask': {
       completed: true, summary: 'x',
       redFirst: [{ test: 'TestAltaDuplicada', failure: 'want error' }],
       discovered: [{ kind: 'edge', detail: 'alta sin país', test: 'TestAltaSinPais' }],
@@ -184,7 +198,7 @@ test('un caso descubierto entra con su prueba, y el nombre no tiene que coincidi
 
   // El mismo caso, nombrado de las dos formas en que un modelo lo escribe: no debe frenar.
   const cubierto = await correr({
-    'Build|completed,summary,redFirst,discovered': {
+    'Build|completed,summary,redFirst,discovered,closedTask': {
       completed: true, summary: 'x',
       redFirst: [{ test: 'alta_test.go::TestAltaSinPais', failure: 'want error' }],
       discovered: [{ kind: 'edge', detail: 'alta sin país', test: 'TestAltaSinPais' }],
@@ -257,7 +271,7 @@ test('gates en verde que no corrieron ninguna prueba no cierran la tarea', async
 
 // Un subagente que muere devuelve `null`, y antes eso reventaba con un TypeError en la fase que fuera.
 test('un subagente que no contesta corta con su etapa puesta', async () => {
-  const { resultado } = await correr({ 'Build|completed,summary,redFirst,discovered': null })
+  const { resultado } = await correr({ 'Build|completed,summary,redFirst,discovered,closedTask': null })
   assert.equal(resultado.reason, 'agent-unavailable')
   assert.match(resultado.detail, /Build/)
 })
@@ -302,7 +316,7 @@ test('lite se queda con el dueño de cada fase y descarta los condicionales', as
 
 test('bajar ceremonia no baja la evidencia que cada carril exige', async () => {
   const sinFallo = {
-    'Build|completed,summary,redFirst,discovered': {
+    'Build|completed,summary,redFirst,discovered,closedTask': {
       completed: true, summary: 'x', discovered: [],
       redFirst: [{ test: 'TestAltaDuplicada', failure: '' }],
     },
@@ -314,7 +328,7 @@ test('bajar ceremonia no baja la evidencia que cada carril exige', async () => {
     },
   }
   const hueco = {
-    'Build|completed,summary,redFirst,discovered': {
+    'Build|completed,summary,redFirst,discovered,closedTask': {
       completed: true, summary: 'x', redFirst: [],
       discovered: [{ kind: 'gap', detail: 'nadie definió el alta sin país' }],
     },

@@ -120,9 +120,10 @@ const QA = {
 // escribió cuando el código ya andaba, y ese segundo no prueba su aserción, sólo que corre. Por eso
 // `redFirst` trae el fallo literal de la corrida roja y no la afirmación de que la hubo (R14).
 const BUILD = {
-  type: 'object', additionalProperties: false, required: ['completed', 'summary', 'redFirst', 'discovered'],
+  type: 'object', additionalProperties: false,
+  required: ['completed', 'summary', 'redFirst', 'discovered', 'closedTask'],
   properties: {
-    completed: { type: 'boolean' }, summary: { type: 'string' },
+    completed: { type: 'boolean' }, summary: { type: 'string' }, closedTask: { type: 'boolean' },
     redFirst: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['test', 'failure'],
       properties: { test: { type: 'string' }, failure: { type: 'string' } },
@@ -341,7 +342,10 @@ while (vueltas++ < MAX_TAREAS) {
     let plan = await run(
       `${asRole(OWNERS.plan)}Inspeccioná el código real, las instrucciones del repositorio, las convenciones ` +
       `vecinas, el contexto de la épica y el git status de ${task.id}. Producí el plan más chico que satisfaga ` +
-      `${task.acceptance}. Un archivo de planning no puede ser un archivo de implementación.`,
+      `${task.acceptance}. Un archivo de planning no puede ser un archivo de implementación. El plan cubre ` +
+      `sólo el cambio dentro de ${task.service}: correr los gates del repositorio, hacer QA, commitear y ` +
+      `cerrar la tarea son fases posteriores de este recorrido, cada una con su dueño, así que no van como ` +
+      `pasos.`,
       { schema: PLAN },
     )
     if (!plan) return stop('agent-unavailable', 'Plan no devolvió resultado')
@@ -398,7 +402,9 @@ while (vueltas++ < MAX_TAREAS) {
     `pendiente del WIP; comprobá en el disco los pasos ya hechos y tildá cada uno que salga bien. Para cada ` +
     `comportamiento escribí primero la prueba, corréla y anotá en redFirst el test y el fallo literal que ` +
     `dio; recién después implementá. Un test que pasa antes de que exista el código no asercia lo que dice ` +
-    `aserciar: endurecelo y volvé a correr hasta verlo fallar. Lo que el plan no previó va en discovered y ` +
+    `aserciar: endurecelo y volvé a correr hasta verlo fallar. Corré las pruebas que necesites para ver ese ` +
+    `rojo y ese verde, y nada más: los gates completos, el QA, el commit y el cierre son fases posteriores, ` +
+    `así que no toques ${DONE} ni ${BACKLOG} ni el status del WIP. Lo que el plan no previó va en discovered y ` +
     `no en el código a secas: kind=edge si esta tarea lo puede fijar —y entonces entra con su prueba, que ` +
     `nombrás en test y anotás en redFirst—, kind=gap si falta una parte del diseño, que no se decide acá. ` +
     `Aceptación: ${task.acceptance}.`,
@@ -406,6 +412,12 @@ while (vueltas++ < MAX_TAREAS) {
   )
   if (!build) return stop('agent-unavailable', 'Build no devolvió resultado')
   if (!build.completed) return stop('build-blocked', (build.blockers || []).join('; ') || build.summary)
+  // Construir no es cerrar. Pasó en una corrida real: el plan traía «VERIFY», «QA» y «Cierre — commit» como
+  // pasos, quien construyó los ejecutó, y la tarea salió del BACKLOG y entró a DONE sin que Review, Verify
+  // ni QA la miraran. El plan ya no los pide; esto detecta que igual hayan ocurrido.
+  if (build.closedTask) {
+    return stop('build-closed-task', `${task.id} se cerró en Build, sin pasar por Review, Verify ni QA`)
+  }
   // Nombrar el test sin traer su fallo es volver a afirmar que hubo rojo, que es lo que el campo evita.
   const sinFallo = build.redFirst.find((entry) => !entry.failure.trim())
   if (sinFallo) return stop('build-unproven', `${sinFallo.test} se declara en rojo sin el fallo que lo muestra`)
