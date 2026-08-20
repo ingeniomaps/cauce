@@ -46,6 +46,10 @@ evidencia, autoridad o un criterio verificable.
 Antes de usarlo, la etapa que recibe cruza lo afirmado contra esa lista: lo que cita algo que no está en ella
 sigue viaje marcado, no borrado ni corregido en silencio (R14).
 
+A la etapa siguiente viaja lo que necesita para decidir. El análisis completo queda en el artefacto que
+la etapa produjo y lo lee sólo quien sintetiza al final: arrastrarlo lo hace costar una vez por etapa
+en vez de una vez (R16).
+
 ## Selección de agentes condicionales
 
 `user-researcher` entra cuando el encuadre depende de una necesidad que nadie verificó.

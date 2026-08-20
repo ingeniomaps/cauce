@@ -22,6 +22,12 @@ Cada llamada reenvía el contexto entero, así que gasta más quien da más vuel
 Los comandos independientes van en una sola invocación; el CLI antes que el archivo; el fragmento antes
 que el archivo entero; un subagente o un workflow sólo cuando el trabajo no entra en la corrida actual.
 
+Entre etapas viaja lo que la siguiente necesita para decidir, no todo lo que la anterior produjo. El
+análisis completo queda donde se escribió y lo lee una sola vez quien sintetiza al final; lo que se
+arrastra en el handoff se reenvía en cada etapa que sigue, así que lo que costó una vez pasa a costar
+una vez por etapa. Son requisitos opuestos y por eso no son el mismo texto: el resumen quiere ser corto
+porque viaja, y la síntesis quiere estar completa porque decide.
+
 Se lee para escribir, no para confirmar: un archivo se lee una vez y se escribe entero. Releerlo para
 comprobar que quedó no comprueba nada que un error no hubiera dicho.
 

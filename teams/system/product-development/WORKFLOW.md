@@ -33,6 +33,10 @@ No avanzar si el exit gate no se cumple. El agente siguiente puede devolver el h
 Antes de usarlo, la etapa que recibe cruza lo afirmado contra esa lista: lo que cita algo que no está en ella
 sigue viaje marcado, no borrado ni corregido en silencio (R14).
 
+A la etapa siguiente viaja lo que necesita para decidir. El análisis completo queda en el artefacto que
+la etapa produjo y lo lee sólo quien sintetiza al final: arrastrarlo lo hace costar una vez por etapa
+en vez de una vez (R16).
+
 ## Selección de ingeniería
 
 La etapa `build` usa Backend Engineer como owner predeterminado del handoff, no como ejecutor universal. Engineering Manager y Software Architect seleccionan los agentes necesarios según la arquitectura:
