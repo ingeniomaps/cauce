@@ -17,12 +17,6 @@ test('autobuild implementa el protocolo completo sin rutas de proyectos fuente',
   for (const phase of phases) {
     assert.match(workflow, new RegExp(`phase\\('${phase}'\\)`))
   }
-  // El workflow viaja a cualquier instancia: toda ruta sale de ROOT y P, nunca de una máquina
-  // ni de un proyecto concreto. La comprobación es genérica a propósito, para que también
-  // atrape la próxima filtración y no sólo las que ya conocemos.
-  for (const absolute of [/\/home\//, /\/Users\//, /\b[A-Za-z]:\\/]) {
-    assert.equal(absolute.test(workflow), false, `ruta absoluta filtrada: ${absolute}`)
-  }
   assert.equal(/['"`][^'"`\n]*-ops\//.test(workflow), false, 'directorio de proyecto hardcodeado')
   assert.match(workflow, /workspaceRoots/)
   assert.match(workflow, /AWAITING_REVIEW/)
@@ -129,9 +123,6 @@ test('workflows de integración usan el registro general y no escriben remoto', 
     assert.match(source, /provider/)
     assert.match(source, /integration check/)
     assert.match(source, /Nunca|never|Never/)
-    for (const absolute of [/\/home\//, /\/Users\//, /\b[A-Za-z]:\\/]) {
-      assert.equal(absolute.test(source), false, `${name}: ruta absoluta filtrada`)
-    }
   }
 })
 
@@ -189,9 +180,6 @@ test('team no deja pasar una opinión del modelo como evidencia', () => {
   assert.match(teamWorkflow, /No confundas una opinión/)
   assert.match(teamWorkflow, /sin evidencia observable/)
   assert.match(teamWorkflow, /Dueños de decisión/, 'la autoridad por dominio viaja en cada prompt')
-  for (const leak of [/\/home\//, /\/Users\//]) {
-    assert.equal(leak.test(teamWorkflow), false, 'sin rutas absolutas')
-  }
 })
 
 test('team acepta la intención suelta, con prefijo de equipo o estructurada', () => {
@@ -260,6 +248,26 @@ function workflowFiles() {
   }
   return found
 }
+
+// La misma comprobación estaba repartida en cuatro tests, con dos listas distintas: dos miraban rutas
+// de Windows y dos no, así que un `C:\\Users\\...` pasaba por la mitad de ellas. Y entre las cuatro
+// dejaban afuera los tres `agent-*.js`, que nadie miraba. Una sola, con una lista, sobre todos.
+//
+// Se lee renderizado: lo que incluye `{{INCLUDE:}}` también viaja a la instancia.
+test('ningún workflow lleva la ruta de una máquina', () => {
+  const A = require('../engine/automation')
+  const automation = path.resolve(__dirname, '..', 'automatization')
+  const DE_UNA_MAQUINA = [/\/home\//, /\/Users\//, /\b[A-Za-z]:\\/]
+  const filtradas = []
+  for (const file of workflowFiles()) {
+    const source = A.render(file, '{{OPS_DIR}}', automation, '{{OPS_ROOT}}')
+    for (const patron of DE_UNA_MAQUINA) {
+      if (patron.test(source)) filtradas.push(`${path.relative(WF, file)} → ${patron}`)
+    }
+  }
+  assert.ok(workflowFiles().length >= 8, 'el recorrido encontró los workflows')
+  assert.deepEqual(filtradas, [])
+})
 
 test('un workflow sólo usa lo que el runtime le da', () => {
   const prohibidas = /\b(process\.|require\(|Date\.now|new Date\(|Math\.random|__dirname|__filename)/g
@@ -492,9 +500,6 @@ test('onboard escribe borradores y deja a una persona lo que es suyo', () => {
   assert.match(onboardWorkflow, /is a claim the repository contradicts/)
   assert.match(onboardWorkflow, /No toques ` \+\n  `BACKLOG\.md/, 'y la épica no se promueve')
   assert.match(onboardWorkflow, /promoted: false/)
-  for (const leak of [/\/home\//, /\/Users\//]) {
-    assert.equal(leak.test(onboardWorkflow), false, 'sin rutas absolutas')
-  }
 })
 
 // Un runner que sólo lee instrucciones cumple el contrato a medias, y falla siempre del mismo lado: se
