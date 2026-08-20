@@ -10,6 +10,12 @@ ops_root=$(CDPATH= cd -- "$hook_dir/../.." && pwd)
 export OPS_ROOT="$ops_root"
 # Mismo orden que tools/ops.js: la dependencia npm y, por último, el propio repositorio del toolkit.
 # Un guard que no encuentra su motor bloquea, nunca permite.
+# Primero el argumento, que además es lo que nombra el error de abajo.
+if [ -z "$hook_name" ]; then
+  echo "BLOQUEADO: run-hook.sh requiere el nombre del guard o grupo que debe ejecutar." >&2
+  exit 2
+fi
+
 runner=""
 for candidate in \
   "$ops_root/node_modules/@ingeniomaps/cauce/engine/hooks/run.js" \
@@ -21,11 +27,6 @@ done
 if [ -z "$runner" ]; then
   echo "BLOQUEADO [$hook_name]: no se encontró el motor de hooks de Cauce." >&2
   echo "  Buscado en node_modules/@ingeniomaps/cauce y engine/ bajo $ops_root" >&2
-  exit 2
-fi
-
-if [ -z "$hook_name" ]; then
-  echo "BLOQUEADO: run-hook.sh requiere el nombre del guard o grupo que debe ejecutar." >&2
   exit 2
 fi
 
