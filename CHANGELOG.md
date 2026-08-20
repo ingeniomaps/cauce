@@ -14,6 +14,49 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.42.0] - 2026-08-20
+
+### Corregido
+
+- **Los guards de Codex no corrían nunca.** Tres cosas a la vez, y ninguna hacía ruido: el archivo se
+  instalaba en `.codex/hooks/hooks.json` —esa forma es la que empaqueta un plugin; un repositorio se lee
+  en `.codex/hooks.json`—, los `matcher` filtraban nombres del protocolo interno en vez del nombre de la
+  herramienta (`Bash`, `apply_patch`/`Edit`/`Write`), y el comando era una ruta relativa mientras Codex
+  ejecuta el hook con el cwd de la sesión, así que desde cualquier subdirectorio no existía. **Reinstalá
+  el adaptador**, borrá a mano el `.codex/hooks/hooks.json` que queda huérfano, y confiá los hooks con
+  `/hooks` dentro de una sesión: Codex los saltea en silencio hasta que lo hagas, y hay que repetirlo
+  cada vez que el wiring cambie.
+- **El guard de archivos no veía nada bajo Codex.** `apply_patch` manda el parche entero como
+  `tool_input.command`, no como `patch`, y sin reconocer ese campo el guard miraba una escritura y no
+  encontraba un solo archivo: reescribió una migración existente en una corrida real, y lo mismo valía
+  para secretos y para los límites del workspace.
+- **Los guards de Antigravity tampoco corrían.** `agy` ejecuta la copia del plugin que registró en
+  `~/.gemini/config/plugins/` y resuelve las rutas contra la carpeta del plugin, así que la del
+  workspace apuntaba a un módulo inexistente; su payload además no nombra el workspace —manda
+  `workspacePaths` vacío y un `Cwd` que apunta al scratch del CLI o al home—, de modo que la raíz ops
+  ahora se escribe como ruta absoluta al instalar. **Reinstalá y volvé a registrar** con
+  `agy plugin install .agents/plugins/cauce` cada vez que cambie el wiring.
+- **Un puente que no arrancaba dejaba al agente sin poder cerrar la sesión.** En Antigravity, un guard
+  que bloquea y un fallo de infraestructura devolvían los dos `continue`; ahora sólo el bloqueo lo hace,
+  y la falla deja cerrar con la razón a la vista.
+- **Los guards resolvían rutas relativas contra la carpeta equivocada en Antigravity**, que no es la del
+  proyecto: un guard que juzgaba `src/x.js` estaba juzgando otro archivo.
+- **Instalar acumulaba las entradas de hooks de versiones anteriores.** Una ruta nuestra que cambiaba
+  dejaba viva la anterior, el runner la ejecutaba, no encontraba nada y el guard no corría. Ahora se
+  reemplazan las nuestras y se conserva lo que agregó el proyecto.
+- **Un cargo con el mismo nombre que un recorrido lo pisaba en silencio**, porque comparten el espacio de
+  skills del runner. La instalación ahora se detiene y dice cuál: renombrá el cargo en `agents/roles/`.
+- **Gemini invocaba `/ops:autobuild`**, un prefijo que ya no existe, y **Antigravity anunciaba sus
+  recorridos sin la barra** (`cauce:onboard` en vez de `/cauce:onboard`).
+- **La regla de Antigravity apuntaba a un `AGENTS.md` sin prefijo**, que en modo sidecar es el del
+  repositorio de producto y no el que trae las reglas del sistema.
+
+### Cambiado
+
+- **El arranque de Gemini vive ahora en su comando.** `GEMINI.md` remite a `/cauce:onboard` en vez de
+  repetir el recorrido, y el comando trae la lista completa de lo que se comprueba al final —incluidos
+  los dos puntos que la copia había perdido—.
+
 ## [0.41.0] - 2026-08-19
 
 ### Corregido
