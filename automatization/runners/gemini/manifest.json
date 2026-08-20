@@ -2,10 +2,6 @@
   "schemaVersion": 1,
   "name": "gemini",
   "command": "gemini",
-  "lifecycle": {
-    "recommendedForNewProjects": false,
-    "audience": "enterprise-cloud-api-key"
-  },
   "config": {
     "source": "settings.json",
     "target": ".gemini/settings.json"

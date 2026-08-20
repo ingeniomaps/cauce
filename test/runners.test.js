@@ -59,7 +59,6 @@ test('las capacidades declaradas coinciden con los artefactos reales', () => {
   assert.equal(antigravity.command, 'agy')
   assert.equal(antigravity.capabilities.nativeHooks, true)
   assert.equal(antigravity.capabilities.nativeWorkflows, true)
-  assert.equal(antigravity.lifecycle.recommendedForNewProjects, true)
   const geminiSettings = JSON.parse(fs.readFileSync(path.join(root, 'gemini', 'settings.json'), 'utf8'))
   assert.equal(geminiSettings.general.checkpointing.enabled, true)
   // Sus eventos y su variable de entorno son propios: reusar los de Claude no engancharía nada.

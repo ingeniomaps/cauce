@@ -2,10 +2,6 @@
   "schemaVersion": 1,
   "name": "antigravity",
   "command": "agy",
-  "lifecycle": {
-    "recommendedForNewProjects": true,
-    "audience": "individual-and-new-google-projects"
-  },
   "config": {
     "source": "hooks.json",
     "target": ".agents/plugins/cauce/hooks.json"
