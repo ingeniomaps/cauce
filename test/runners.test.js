@@ -79,6 +79,52 @@ test('el bridge de Antigravity traduce decisiones al protocolo nativo', () => {
   assert.equal(evaluate('pre-shell', payload('git push')).decision, 'deny')
 })
 
+// Un guard que bloquea y un puente que no arrancó devolvían los dos `continue` en `stop`, y son cosas
+// distintas. El bloqueo es el mecanismo funcionando: hay drift, seguí trabajando. La raíz que no
+// resuelve no se arregla trabajando, así que cada intento de cerrar repetía el mismo error y el agente
+// quedaba sin poder terminar la sesión. `engine/hooks/run.js` marca el bloqueo con `error.blocked`.
+test('el puente de Antigravity separa el guard que bloquea del puente que no arrancó', () => {
+  const os = require('node:os')
+  const { spawnSync } = require('node:child_process')
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-stop-'))
+  const workspace = path.join(base, 'repo')
+  const target = path.join(workspace, 'ops')
+  fs.mkdirSync(workspace)
+  const cli = path.resolve(__dirname, '..', 'engine', 'cli', 'ops.js')
+  const env = { ...process.env }
+  for (const clave of ['NODE_TEST_CONTEXT', 'OPS_ROOT', 'CLAUDE_PROJECT_DIR']) delete env[clave]
+  const corre = (args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', env })
+  assert.equal(corre(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
+  fs.mkdirSync(path.join(target, 'node_modules', '@ingeniomaps'), { recursive: true })
+  fs.symlinkSync(path.resolve(__dirname, '..'), path.join(target, 'node_modules', '@ingeniomaps', 'cauce'), 'dir')
+  assert.equal(corre(['automation', 'install', target, 'antigravity']).status, 0)
+
+  // Desde el workspace, como lo lanza Antigravity: `findRoot` cae a `process.cwd()` si la raíz
+  // declarada no resuelve, y correrlo desde otro lado lo ataría a la instancia equivocada.
+  const puente = path.join(workspace, '.agents', 'plugins', 'cauce', 'hook.js')
+  const responde = (evento, sesion) => {
+    const script = `const b=require(${JSON.stringify(puente)});`
+      + `console.log(JSON.stringify(b.evaluate(${JSON.stringify(evento)},`
+      + `{conversationId:${JSON.stringify(sesion)},toolCall:{args:{Cwd:${JSON.stringify(workspace)}}}})))`
+    const result = spawnSync(process.execPath, ['-e', script], { cwd: workspace, encoding: 'utf8', env })
+    return JSON.parse(result.stdout.trim())
+  }
+
+  // `planning-drift` deja un marcador por sesión en el tmp y sólo bloquea la primera vez, así que la
+  // sesión tiene que ser nueva en cada corrida o la segunda pasa de largo y el test miente.
+  fs.rmSync(path.join(target, 'planning', 'PROTOCOL.md'))
+  const bloqueado = responde('stop', `drift-${process.pid}-${Date.now()}`)
+  assert.equal(bloqueado.decision, 'continue', 'el drift retiene al agente: eso es el guard funcionando')
+  assert.match(bloqueado.reason, /PROTOCOL\.md/)
+
+  fs.rmSync(path.join(target, 'ops.config.json'))
+  const roto = responde('stop', 'sin-raiz')
+  assert.equal(roto.decision, 'stop', 'sin raíz no hay nada que el agente pueda arreglar: dejalo cerrar')
+  assert.match(roto.reason, /raíz Cauce/)
+  // Y el resto de los eventos sigue fallando cerrado, que es lo que no se toca.
+  assert.equal(responde('pre-shell', 'sin-raiz').decision, 'deny')
+})
+
 test('los runners con hooks nativos registran el grupo, no un hook por guard', () => {
   const { hookGroups } = require('../engine/hooks/run')
   for (const name of ['claude', 'codex']) {

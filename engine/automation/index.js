@@ -406,8 +406,10 @@ function probeBridge(paths, runner) {
       // Cada evento tiene su respuesta sana: `stop` cierra la sesión —eso es funcionar— y el resto deja
       // pasar. El puente falla cerrado, así que `deny` en una llamada inocua es que algo se rompió antes
       // de poder juzgarla, y `continue` es el camino de error del propio `stop`.
+      // Y sin `reason`: el puente sólo la manda cuando algo falló, así que un `stop` que la trae es
+      // una falla de infraestructura que se dejó cerrar la sesión, no un arranque sano.
       const sana = evento === 'stop' ? 'stop' : 'allow'
-      if (respuesta.decision === sana) continue
+      if (respuesta.decision === sana && !respuesta.reason) continue
       const salida = (result.stderr || 'sin respuesta').trim().split('\n')[0]
       const motivo = respuesta.reason
         || (respuesta.decision ? `respondió ${respuesta.decision}` : salida)

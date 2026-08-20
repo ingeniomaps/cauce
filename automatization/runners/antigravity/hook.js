@@ -86,8 +86,13 @@ function evaluate(event, input) {
     hooks.executeAll([event], normalized)
     return event === 'stop' ? { decision: 'stop' } : { decision: 'allow' }
   } catch (error) {
-    if (event === 'stop') return { decision: 'continue', reason: `Cauce: ${error.message}` }
-    return { decision: 'deny', reason: `Cauce: ${error.message}` }
+    const reason = `Cauce: ${error.message}`
+    if (event !== 'stop') return { decision: 'deny', reason }
+    // Un guard que bloquea marca su error con `blocked` (engine/hooks/run.js); cualquier otro es que el
+    // puente no llegó a juzgar nada. En `stop` los dos devolvían `continue`, y eso ata al agente: la
+    // raíz que no resuelve no se arregla sola, así que cada intento de cerrar repite el mismo error.
+    // El bloqueo sigue dando `continue` —es el mecanismo funcionando—; la falla deja cerrar y avisa.
+    return error.blocked ? { decision: 'continue', reason } : { decision: 'stop', reason }
   }
 }
 
