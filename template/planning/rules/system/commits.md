@@ -12,6 +12,8 @@ Tests verdes no reemplazan build, paquete, imagen o migración cuando son parte 
 Verde tampoco prueba lo que la tarea prometió. El criterio de aceptación que ningún test asercia no está
 cubierto, y el que dice cubrirlo sin aserciar esa propiedad tampoco lo cubre. Eso se ve leyendo el fuente
 del test, no su salida: un exit code no distingue la prueba que sostiene el criterio de la que lo nombra.
+Y una prueba que nunca se vio fallar no muestra que su aserción funcione: el rojo previo es lo único que
+la separa de una que pasa haga lo que haga el código.
 
 ## R10 — Publicación humana por defecto
 
