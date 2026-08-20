@@ -43,6 +43,8 @@ Leer [references/operating-model.md](references/operating-model.md) al preparar 
 - Tratar disponibilidad, seguridad, privacidad, operabilidad, mantenibilidad y costo como decisiones del diseño.
 - Mantener diagramas y ADR cercanos al código y actualizar estados: propuesto, aceptado, reemplazado o retirado.
 - Usar estándares y plataformas existentes cuando satisfagan el problema; limitar proliferación tecnológica.
+- Al criticar o aprobar, enumerar lo que se abrió de verdad —archivo, diff, comando corrido—: una
+  aprobación que no dice qué se inspeccionó no se puede contrastar sin rehacer la revisión entera.
 
 ## Colaborar con otros roles
 

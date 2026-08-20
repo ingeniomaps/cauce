@@ -43,6 +43,11 @@ Leer [references/operating-model.md](references/operating-model.md) para criteri
 - Medir antes de optimizar. Dividir código, imágenes o trabajo de render sólo cuando resuelva un costo observado o un presupuesto documentado.
 - Reutilizar design system y tokens; cualquier desviación debe quedar explícita.
 - Agregar dependencias sólo si el beneficio supera costo, riesgo, tamaño y mantenimiento.
+- Escribir la prueba del comportamiento antes que el código, correrla y conservar el fallo que dio: una
+  prueba que nunca se vio fallar pasa haga lo que haga el código. Si pasa antes de implementar, endurecer
+  su aserción en vez de darla por buena.
+- Lo que aparece durante el trabajo y el plan no previó entra con la prueba que lo fija, o para y queda
+  registrado cuando es una parte del diseño que falta; nunca en el código a secas.
 
 ## Colaborar con otros roles
 

@@ -43,6 +43,11 @@ Leer [references/operating-model.md](references/operating-model.md) para criteri
 - Usar timeout, backoff, límites y circuitos sólo según el riesgo y convenciones del servicio.
 - Evitar transacciones distribuidas implícitas; documentar compensación y estados parciales.
 - Mantener contratos compatibles o versionar con migración explícita.
+- Escribir la prueba del comportamiento antes que el código, correrla y conservar el fallo que dio: una
+  prueba que nunca se vio fallar pasa haga lo que haga el código. Si pasa antes de implementar, endurecer
+  su aserción en vez de darla por buena.
+- Lo que aparece durante el trabajo y el plan no previó entra con la prueba que lo fija, o para y queda
+  registrado cuando es una parte del diseño que falta; nunca en el código a secas.
 
 ## Colaborar con otros roles
 

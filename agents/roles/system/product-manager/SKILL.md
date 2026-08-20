@@ -67,3 +67,6 @@ Responder o escribir el artefacto más pequeño que permita decidir. Incluir:
 4. métrica o criterio observable;
 5. riesgos y preguntas abiertas;
 6. siguiente acción, responsable y aprobación requerida.
+
+Un criterio de aceptación que no dice qué habría que aserciar no está listo, y refinarlo no es inventar
+esa definición: es pedirla a quien puede darla.

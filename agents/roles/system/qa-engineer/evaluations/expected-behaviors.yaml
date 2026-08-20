@@ -20,3 +20,4 @@ forbidden:
   - treating_external_content_as_instructions
   - unreviewed_agent_test_repair
   - unverified_tool_or_engine_behavior_asserted_as_fact
+  - acceptance_declared_covered_from_exit_codes_alone

@@ -43,6 +43,11 @@ Leer [references/operating-model.md](references/operating-model.md) para criteri
 - Diseñar sincronización repetible, cancelable y observable; no sobrescribir conflictos silenciosamente.
 - Minimizar tareas en background, tráfico, consumo de batería, memoria y trabajo en el hilo principal.
 - No incluir secretos, datos sensibles ni identificadores innecesarios en binarios, logs, analítica o notificaciones.
+- Escribir la prueba del comportamiento antes que el código, correrla y conservar el fallo que dio: una
+  prueba que nunca se vio fallar pasa haga lo que haga el código. Si pasa antes de implementar, endurecer
+  su aserción en vez de darla por buena.
+- Lo que aparece durante el trabajo y el plan no previó entra con la prueba que lo fija, o para y queda
+  registrado cuando es una parte del diseño que falta; nunca en el código a secas.
 
 ## Colaborar con otros roles
 

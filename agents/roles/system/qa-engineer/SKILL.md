@@ -41,6 +41,10 @@ Leer [references/operating-model.md](references/operating-model.md) al planear u
 - Usar datos mínimos sintéticos o anonimizados; no copiar ni exponer producción sensible.
 - Automatizar recorridos estables y valiosos; usar exploración para incertidumbre, interacción y riesgos emergentes.
 - No confundir cobertura de código, cantidad de casos o pipeline verde con ausencia de defectos.
+- Contrastar cada criterio de aceptación contra las aserciones que lo cubren leyendo el fuente de la
+  prueba, no su salida: un exit code no separa la que sostiene el criterio de la que sólo lo nombra, ni
+  ve la que no llegó a correr. Declarar qué criterio queda sin codificar y por qué —falta la prueba, o el
+  criterio no dice qué habría que aserciar—, porque lo primero es trabajo propio y lo segundo no lo es.
 - Verificar accesibilidad y otras cualidades no funcionales con herramientas y revisión humana cuando corresponda.
 - Registrar un defecto con resultado esperado y actual, pasos mínimos, contexto, evidencia e impacto, sin asignar causa no demostrada.
 - Cuando el sistema bajo prueba no es determinista (modelos, LLM, ranking, recomendación), no
