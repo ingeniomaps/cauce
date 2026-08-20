@@ -75,15 +75,20 @@ const SIN_TAREA = { blocked: '', hasTask: false, wipActive: false, queued: 0, la
 // un review, que comparten schema y sólo se diferencian por dónde ocurren.
 async function correr(cambios = {}, opciones = {}) {
   const guion = { ...guionBase(), ...cambios }
+  if (opciones.lane) {
+    guion['Triage|planning-context'] = { ...guion['Triage|planning-context'], lane: opciones.lane }
+  }
   const fases = []
   const pedidas = []
   const escritos = []
+  const prompts = []
   let fase = ''
   let contextos = 0
 
   const agent = async (prompt, options = {}) => {
     const clave = `${fase}|${options.label || (options.schema && options.schema.required || []).join(',')}`
     pedidas.push(clave)
+    prompts.push({ clave, prompt })
     if (!options.schema) { escritos.push(prompt); return { ok: true } }
     if (options.label === 'planning-context') {
       contextos += 1
@@ -101,7 +106,7 @@ async function correr(cambios = {}, opciones = {}) {
     async (thunks) => Promise.all(thunks.map((t) => t())), async () => [], async () => ({}),
     {}, { total: null, spent: () => 0, remaining: () => Infinity },
   )
-  return { resultado, fases, pedidas, escritos }
+  return { resultado, fases, pedidas, escritos, prompts }
 }
 
 // Lo primero que hay que saber es que el recorrido llega al final, porque un freno que dispara siempre
@@ -240,4 +245,68 @@ test('un subagente que no contesta corta con su etapa puesta', async () => {
   const { resultado } = await correr({ 'Build|completed,summary,redFirst,discovered': null })
   assert.equal(resultado.reason, 'agent-unavailable')
   assert.match(resultado.detail, /Build/)
+})
+
+// Un carril baja ceremonia: saltea fases enteras. Lo que no puede bajar es la evidencia que se exige,
+// y esa distinción no se ve leyendo el fuente —las dos cosas son el mismo `if`—.
+test('el carril directo saltea la ceremonia y no pide un cargo para cada fase', async () => {
+  const { resultado, fases } = await correr({}, { lane: 'directo' })
+  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
+  assert.deepEqual(resultado.done, ['T-1'])
+  for (const ausente of ['Cast', 'Decompose', 'Critique', 'Review']) {
+    assert.ok(!fases.includes(ausente), `directo no debería llegar a ${ausente}`)
+  }
+  for (const presente of ['Ready', 'Plan', 'Build', 'Verify', 'QA', 'Commit', 'Done']) {
+    assert.ok(fases.includes(presente), `directo se saltó ${presente}`)
+  }
+})
+
+test('el carril lite conserva el review y saltea el desmenuzado del plan', async () => {
+  const { resultado, fases } = await correr({}, { lane: 'lite' })
+  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
+  for (const ausente of ['Decompose', 'Critique']) {
+    assert.ok(!fases.includes(ausente), `lite no debería llegar a ${ausente}`)
+  }
+  for (const presente of ['Cast', 'Review', 'Verify', 'QA']) {
+    assert.ok(fases.includes(presente), `lite se saltó ${presente}`)
+  }
+})
+
+// El Cast propone lo mismo en los dos carriles; lo que cambia es qué hace el recorrido con eso.
+test('lite se queda con el dueño de cada fase y descarta los condicionales', async () => {
+  const cast = { 'Cast|cast': { build: 'backend-engineer', review: ['security-engineer'], verify: [], qa: [] } }
+  const revisorDe = ({ prompts }) => prompts.find((entrada) => entrada.clave.startsWith('Review|')).prompt
+
+  const enLite = revisorDe(await correr(cast, { lane: 'lite' }))
+  assert.match(enLite, /software-architect/, 'el dueño de la fase revisa igual')
+  assert.ok(!enLite.includes('security-engineer'), 'y en lite el condicional no se suma')
+
+  const enFull = revisorDe(await correr(cast))
+  assert.match(enFull, /security-engineer/, 'en el carril completo sí, que es de lo que lite baja')
+})
+
+test('bajar ceremonia no baja la evidencia que cada carril exige', async () => {
+  const sinFallo = {
+    'Build|completed,summary,redFirst,discovered': {
+      completed: true, summary: 'x', discovered: [],
+      redFirst: [{ test: 'TestAltaDuplicada', failure: '' }],
+    },
+  }
+  const sinPrueba = {
+    'Verify|passed,commands,details,uncovered': {
+      passed: true, details: 'verde', uncovered: [],
+      commands: [{ cmd: 'go build ./...', exitCode: 0 }],
+    },
+  }
+  const hueco = {
+    'Build|completed,summary,redFirst,discovered': {
+      completed: true, summary: 'x', redFirst: [],
+      discovered: [{ kind: 'gap', detail: 'nadie definió el alta sin país' }],
+    },
+  }
+  for (const lane of ['directo', 'lite']) {
+    assert.equal((await correr(sinFallo, { lane })).resultado.reason, 'build-unproven', lane)
+    assert.equal((await correr(sinPrueba, { lane })).resultado.reason, 'verify-untested', lane)
+    assert.equal((await correr(hueco, { lane })).resultado.reason, 'design-gap', lane)
+  }
 })
