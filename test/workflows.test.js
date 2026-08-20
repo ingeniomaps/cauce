@@ -74,8 +74,8 @@ test('autobuild exige el rojo previo y que algún gate lo corra', () => {
   assert.match(workflow, /sinFallo[\s\S]{0,160}stop\('build-unproven'/, 'un rojo declarado sin su fallo no vale')
   const verify = workflow.slice(workflow.indexOf("phase('Verify')"), workflow.indexOf("phase('QA')"))
   assert.match(
-    verify, /RUNS_TESTS[\s\S]{0,120}stop\('verify-untested'/,
-    'y los gates tienen que haber corrido la prueba que la tarea escribió',
+    verify, /ranTests \|\| RUNS_TESTS[\s\S]{0,200}stop\('verify-untested'/,
+    'y los gates tienen que haber corrido la prueba, la reconozca el patrón o lo diga quien la corrió',
   )
 })
 

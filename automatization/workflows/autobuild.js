@@ -88,6 +88,7 @@ const VERIFY = {
     } },
     commands: { type: 'array', items: { type: 'object', required: ['cmd', 'exitCode'], properties: {
       cmd: { type: 'string' }, exitCode: { type: 'integer' }, note: { type: 'string' },
+      ranTests: { type: 'boolean' },
     } } },
     regressions: { type: 'array', items: { type: 'string' } },
     preExisting: { type: 'array', items: { type: 'string' } },
@@ -176,11 +177,13 @@ const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos 
 // Acompaña a todo prompt con schema DECISION: el schema obliga a llenar `consulted`, y esto obliga a
 // llenarlo con lo que se abrió en vez de con lo que se pensaba mirar.
 const MANIFEST = ' Enumerá en consulted cada archivo, diff o comando que hayas abierto de verdad, con su ruta.'
-// Con qué se reconoce un gate que corre pruebas. Es deliberadamente ancho: incluye los agregadores
-// —`make ci`, `npm run check`— porque adentro corren el test, y de lo que se trata es de encontrar
-// la corrida que faltó, no de clasificar comandos. El borde izquierdo va explícito en vez de `\b`
-// porque `\b(?:` se lee igual que una llamada a `b()` y la comprobación de identificadores del
-// paquete de pruebas la marca como función inexistente.
+// Atajo para reconocer un gate que corrió pruebas sin preguntarle a nadie. No alcanza solo y no
+// pretende hacerlo: `mvn verify`, `gradle build`, `tox`, `bin/rails t` y cualquier `make` con nombre
+// propio corren pruebas y no se parecen a esto, así que el que corrió el comando además lo declara en
+// `ranTests` y vale cualquiera de los dos. Una lista de nombres siempre le va a faltar el siguiente;
+// lo que no puede es frenar una corrida legítima por no conocerlo.
+// El borde izquierdo va explícito en vez de `\b` porque `\b(?:` se lee igual que una llamada a `b()`
+// y la comprobación de identificadores del paquete de pruebas la marca como función inexistente.
 const RUNS_TESTS = /(?:^|[\s/:=-])(?:tests?|specs?|pytest|jest|vitest|mocha|rspec|phpunit|ci|check)\b/i
 {{INCLUDE:shared/workflow-finish.js}}
 
@@ -416,7 +419,8 @@ while (vueltas++ < MAX_TAREAS) {
     `que aserciar—. Un test que pasa sin aserciarla no la cubre. Después descubrí y corré los gates reales ` +
     `de ${task.service}: primero las instrucciones del ` +
     `repositorio, después el test, lint, typecheck y build que apliquen. Leé los exit codes de verdad. ` +
-    `passed=true exige comandos corridos y ninguna regresión causada por la tarea. ` +
+    `passed=true exige comandos corridos y ninguna regresión causada por la tarea. Marcá ranTests en el ` +
+    `comando que haya corrido las pruebas, sea cual sea su nombre. ` +
     `Aceptación: ${task.acceptance}.`
   let verified = await run(VERIFY_ASK, { schema: VERIFY })
   if (!verified) return stop('agent-unavailable', 'Verify no devolvió resultado')
@@ -438,7 +442,8 @@ while (vueltas++ < MAX_TAREAS) {
   if (!verified.passed || !verified.commands.length) return stop('verify-failed', verified.details)
   // Verde por ausencia: los gates pasaron y ninguno corrió las pruebas que esta tarea escribió. El exit
   // code de lint o de build no dice nada del comportamiento, y la corrida cerraba igual.
-  if (build.redFirst.length && !verified.commands.some((entry) => RUNS_TESTS.test(entry.cmd))) {
+  const corridas = verified.commands.some((entry) => entry.ranTests || RUNS_TESTS.test(entry.cmd))
+  if (build.redFirst.length && !corridas) {
     return stop('verify-untested', `${task.id} escribió pruebas y ningún gate corrió una`)
   }
   if (verified.uncovered.length) {
