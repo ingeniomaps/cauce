@@ -262,6 +262,18 @@ function installRoleSkills(root, runner, output) {
   const install = installRoot(root)
   const base = F.assertWithin(install, path.resolve(install, runner.roleSkills), `${runner.name}: roleSkills`)
   const roles = roleCatalog(root)
+  // Los cargos y los recorridos comparten el espacio de nombres de skills del runner, así que un cargo
+  // que se llame como un recorrido lo pisa. Hoy no pasa, y por eso mismo hay que detenerlo acá: el
+  // catálogo de una empresa es suyo, nadie le prohíbe un cargo `team`, y el daño sería que `/cauce:team`
+  // deje de existir sin que nada falle. Renombrar el cargo es la salida, y sólo la puede tomar alguien.
+  const recorridos = new Set((runner.commands && runner.commands.names) || [])
+  const chocan = roles.filter((role) => recorridos.has(role.slug)).map((role) => role.slug)
+  if (chocan.length) {
+    throw new Error(
+      `${runner.name}: ${chocan.join(', ')} es a la vez un cargo y un recorrido, y comparten `
+      + `${runner.roleSkills}. Renombrá el cargo en agents/roles/ antes de instalar.`,
+    )
+  }
   for (const role of roles) {
     const file = path.join(base, role.slug, 'SKILL.md')
     F.assertNoSymlinkPath(install, file)

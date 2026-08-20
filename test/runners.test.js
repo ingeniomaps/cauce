@@ -299,6 +299,33 @@ test('los runners con skills nativas exponen el catálogo completo de cargos', (
   }
 })
 
+// Un cargo y un recorrido con el mismo nombre comparten archivo en el espacio de skills del runner.
+// Hoy ninguno choca; lo que se sostiene es que un cargo propio de una empresa —`agents/roles/` es suyo—
+// pueda llamarse `team` y hacer desaparecer `/cauce:team` sin que falle nada.
+test('un cargo que se llama como un recorrido detiene la instalación', () => {
+  const A = require('../engine/automation')
+  const { spawnSync } = require('node:child_process')
+  const base = temporal('cauce-choque-')
+  const workspace = path.join(base, 'repo')
+  const target = path.join(workspace, 'ops')
+  fs.mkdirSync(workspace)
+  const cli = path.resolve(__dirname, '..', 'engine', 'cli', 'ops.js')
+  const env = { ...process.env }
+  for (const clave of ['NODE_TEST_CONTEXT', 'OPS_ROOT', 'CLAUDE_PROJECT_DIR']) delete env[clave]
+  const corre = (args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', env })
+  assert.equal(corre(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
+  fs.mkdirSync(path.join(target, 'node_modules', '@ingeniomaps'), { recursive: true })
+  fs.symlinkSync(path.resolve(__dirname, '..'), path.join(target, 'node_modules', '@ingeniomaps', 'cauce'), 'dir')
+
+  const propio = path.join(target, 'agents', 'roles', 'team')
+  fs.mkdirSync(propio, { recursive: true })
+  fs.writeFileSync(path.join(propio, 'SKILL.md'), '---\nname: team\ndescription: Un cargo de la empresa.\n---\n\nCuerpo.\n')
+
+  const resultado = corre(['automation', 'install', target, 'antigravity'])
+  assert.notEqual(resultado.status, 0, 'no se instala pisando un recorrido')
+  assert.match(`${resultado.stdout}${resultado.stderr}`, /a la vez un cargo y un recorrido/)
+})
+
 test('el puntero de un cargo conserva su frontmatter y no duplica el contrato', () => {
   const A = require('../engine/automation')
   const repoRoot = path.resolve(__dirname, '..')
