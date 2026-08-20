@@ -187,6 +187,21 @@ test('team recorre las etapas del manifiesto y exige cada exit gate', () => {
   }
 })
 
+// Separar el resumen del análisis sólo sirve si cada uno va a donde corresponde: si la etapa siguiente
+// recibe findings, el tope no ahorra nada, y si la síntesis recibe el resumen, escribe la épica desde él.
+test('team manda el resumen entre etapas y el análisis entero a la síntesis', () => {
+  assert.match(teamWorkflow, /required: \['gatePassed', 'findings', 'summary'\]/, 'la etapa declara los dos')
+  assert.match(teamWorkflow, /Handoffs previos[\s\S]{0,120}entry\.summary/, 'entre etapas viaja el resumen')
+  assert.equal(
+    /Handoffs previos[\s\S]{0,120}entry\.findings/.test(teamWorkflow), false,
+    'y no el análisis entero, que se reenviaría en cada etapa posterior',
+  )
+  assert.match(
+    teamWorkflow, /Handoffs completos[\s\S]{0,40}JSON\.stringify\(complete\)/,
+    'quien sintetiza lee el análisis entero',
+  )
+})
+
 test('team nunca promueve: escribe la épica y para', () => {
   assert.match(teamWorkflow, /ROADMAP/, 'la épica candidata va al roadmap')
   assert.match(teamWorkflow, /No toques BACKLOG\.md/, 'y el BACKLOG queda fuera de su alcance')

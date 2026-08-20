@@ -64,11 +64,14 @@ const MANIFEST = {
     } } },
   },
 }
+// `findings` y `summary` dicen cosas distintas a propósito. El primero es el análisis entero y lo lee
+// una sola vez quien sintetiza al final; el segundo viaja a cada etapa posterior, así que un handoff que
+// arrastra todo pasa a costar una vez por etapa en vez de una vez (R16).
 const STAGE = {
-  type: 'object', additionalProperties: false, required: ['gatePassed', 'findings'],
+  type: 'object', additionalProperties: false, required: ['gatePassed', 'findings', 'summary'],
   properties: {
     gatePassed: { type: 'boolean' },
-    findings: { type: 'string' },
+    findings: { type: 'string' }, summary: { type: 'string' },
     evidence: { type: 'array', items: { type: 'string' } },
     assumptions: { type: 'array', items: { type: 'string' } },
     openQuestions: { type: 'array', items: { type: 'string' } },
@@ -144,7 +147,7 @@ const discovery = contract.stages.filter((stage) => stage.phase === 'discovery')
 if (!discovery.length) return stop('sin-descubrimiento', `${TEAM} no declara etapas de discovery`)
 for (const stage of discovery) {
   const previous = handoffs.length
-    ? `Handoffs previos:\n${handoffs.map((entry) => `- ${entry.id}: ${entry.findings}`).join('\n')}`
+    ? `Handoffs previos:\n${handoffs.map((entry) => `- ${entry.id}: ${entry.summary}`).join('\n')}`
     : 'Sos la primera etapa: no hay handoff previo.'
 
   const result = await agent(
@@ -153,7 +156,10 @@ for (const stage of discovery) {
     `Etapa "${stage.id}": producí ` +
     `${(stage.produces || []).join(' y ')}. Distinguí hechos, evidencia, supuestos y preguntas ` +
     `abiertas. El exit gate es: "${stage.exitGate}". Marcá gatePassed sólo si se cumple de verdad; ` +
-    `si no, explicá en missing qué falta y en humanAction la acción concreta que lo desbloquea.`,
+    `si no, explicá en missing qué falta y en humanAction la acción concreta que lo desbloquea. ` +
+    `En findings va el análisis completo: lo lee sólo quien sintetiza al final. En summary va, en 150 ` +
+    `palabras o menos, lo que la etapa siguiente necesita para decidir —no un resumen de tu análisis, ` +
+    `sino lo que le cambia el trabajo—, porque eso se le reenvía a cada etapa posterior.`,
     { schema: STAGE, label: `stage:${stage.id}` },
   )
   if (!result) return stop('stage-unavailable', `la etapa ${stage.id} no devolvió resultado`)
@@ -186,13 +192,17 @@ if (blocked.length) {
   return stop('gate-no-cumplido', `${blocked[0].stage}: ${blocked[0].missing}`)
 }
 
+// Quien sintetiza lee el análisis entero. El resumen de control ya hizo su trabajo viajando entre
+// etapas, y acá sólo diría dos veces lo mismo.
+const complete = handoffs.map(({ summary, ...rest }) => rest)
+
 phase('Draft')
 
 // Un recorrido que registra lo aprendido no propone trabajo: deja el informe y las tareas de
 // seguimiento en el INBOX, donde una persona decide si alguna merece convertirse en épica.
 if (contract.outcome === 'report') {
   const report = await agent(
-    `${RULES}\n\nHandoffs completos:\n${JSON.stringify(handoffs)}\n\nEscribí el informe en ${REPORTS} como ` +
+    `${RULES}\n\nHandoffs completos:\n${JSON.stringify(complete)}\n\nEscribí el informe en ${REPORTS} como ` +
     `<AAAA-MM-DD>-<slug>.md: qué pasó, qué se sabe con evidencia, qué se supone, qué se decidió y qué ` +
     `queda abierto. Separá causa de síntoma y no atribuyas responsabilidad a personas. Registrá cada ` +
     `seguimiento en la sección Lecciones de ${INBOX}, sin promoverlo, y toda acción que requiera una ` +
@@ -207,7 +217,7 @@ if (contract.outcome === 'report') {
 }
 
 const epic = await agent(
-  `${RULES}\n\nHandoffs completos:\n${JSON.stringify(handoffs)}\n\nComo product-manager, decidí si la ` +
+  `${RULES}\n\nHandoffs completos:\n${JSON.stringify(complete)}\n\nComo product-manager, decidí si la ` +
   `intención es viable con la evidencia reunida. Si lo es, redactá la épica: título, slug en ` +
   `kebab-case, criterios observables C1..CN —cada uno verificable sin ambigüedad— e historias que ` +
   `rastreen a esos criterios. Si no lo es, viable=false y el motivo concreto. No la promuevas.`,
