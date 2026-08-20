@@ -14,6 +14,18 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.43.0] - 2026-08-20
+
+### Agregado
+
+- **Codex recibe los cinco recorridos como skills.** Hasta ahora su adaptador lo declaraba incapaz de
+  skills y el arranque le llegaba sólo como prosa dentro de `AGENTS.md`, con el recorrido a pie. Era un
+  dato cierto cuando se escribió el adaptador y dejó de serlo sin que nadie lo revisara. Ahora
+  `automation install` deja `$onboard`, `$team`, `$autobuild`, `$integration-sync` e
+  `$integration-promote` en `.agents/skills/` —una de las rutas que Codex escanea— junto con el catálogo
+  de cargos, y se invocan con `$`. **Reinstalá el adaptador** para recibirlas; el `hooks.json` no cambia,
+  así que la confianza que le hayas dado sigue valiendo.
+
 ## [0.42.0] - 2026-08-20
 
 ### Corregido
