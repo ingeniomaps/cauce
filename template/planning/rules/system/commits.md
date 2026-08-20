@@ -9,6 +9,10 @@ Stagear rutas explícitas, revisar el diff staged y crear un Conventional Commit
 
 Tests verdes no reemplazan build, paquete, imagen o migración cuando son parte del artefacto entregable.
 
+Verde tampoco prueba lo que la tarea prometió. El criterio de aceptación que ningún test asercia no está
+cubierto, y el que dice cubrirlo sin aserciar esa propiedad tampoco lo cubre. Eso se ve leyendo el fuente
+del test, no su salida: un exit code no distingue la prueba que sostiene el criterio de la que lo nombra.
+
 ## R10 — Publicación humana por defecto
 
 Push, PR, merge, tags, deploy y rollback requieren la autorización configurada para el proyecto.
