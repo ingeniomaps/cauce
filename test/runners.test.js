@@ -271,6 +271,15 @@ test('el adaptador de Codex usa la ruta y los nombres de herramienta que Codex l
   const matchers = config.hooks.PreToolUse.map((group) => group.matcher)
   assert.deepEqual(matchers, ['Bash', 'apply_patch|Edit|Write'])
   assert.ok(config.hooks.SessionEnd, 'el drift se comprueba al cerrar la sesión')
+  // Y el comando va anclado: Codex corre el hook con el cwd de la sesión, así que una ruta relativa
+  // sólo resuelve si abriste el CLI justo en la raíz. Desde un subdirectorio no encuentra el script y
+  // el guard no corre —sin ruido, como todo lo demás de esta familia—. Codex no expone una variable de
+  // proyecto como `$CLAUDE_PROJECT_DIR`, así que la absoluta se escribe al instalar.
+  for (const group of [...config.hooks.PreToolUse, ...config.hooks.SessionEnd]) {
+    for (const hook of group.hooks) {
+      assert.match(hook.command, /^\{\{OPS_ROOT\}\}\//, `${hook.command} no está anclado`)
+    }
+  }
 })
 
 test('los runners con skills nativas exponen el catálogo completo de cargos', () => {
