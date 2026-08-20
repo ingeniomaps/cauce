@@ -40,7 +40,7 @@ falló, la otra qué quedó expuesto. Separarlas evita que la urgencia técnica 
 ```markdown
 Etapa y agente:
 Pregunta que resuelve:
-Evidencia usada y su origen (log, alerta, métrica, ticket):
+Evidencia usada y su origen, como lista literal de lo consultado (log, alerta, métrica, ticket):
 Hechos / hipótesis / lo indeterminado:
 Exit gate: cumplido / no cumplido
 Autorizaciones u obligaciones pendientes:
@@ -48,6 +48,9 @@ Autorizaciones u obligaciones pendientes:
 
 Una causa sin evidencia se declara **hipótesis**, aunque cerrar el informe con una causa firme sea más
 cómodo. Un informe que inventa una causa para poder cerrarse hace daño: se toman decisiones sobre él.
+
+Antes de usarla, la etapa que recibe cruza lo afirmado contra esa lista: lo que cita algo que no está en ella
+sigue viaje marcado, no borrado ni corregido en silencio (R14).
 
 ## Selección de agentes condicionales
 

@@ -68,6 +68,17 @@ establece ejecutando lo destructivo, queda en hipótesis; acá la abstención va
 No se infiere el default de una herramienta desde otra del mismo paquete, ni una regla de una jurisdicción
 desde otra. Una negativa correcta sostenida en un mecanismo falso queda tan comprometida como el mecanismo.
 
+Un registro se declara solo, así que hace falta poder contrastarlo. Quien recibe una entrega no distingue un
+«verificado» real de uno escrito de memoria sin rehacer el trabajo, que es justamente lo que delegarlo evitaba.
+Por eso lo consultado se enumera: el comando corrido con su código de salida, la ruta leída, la fuente con su
+versión — la lista literal, no «revisé la documentación». Quien recibe la cruza contra lo afirmado, y la
+afirmación que cita algo ausente de esa lista sigue viaje **marcada**: borrarla pierde el hallazgo y corregirla
+en silencio pierde la falla, que es lo que había que ver.
+
+El contraste cuesta leer dos listas y encuentra lo único que la autodeclaración no puede, que es la afirmación
+sin base. No dice que lo consultado se haya leído bien —para eso hay que leerlo—, y esa asimetría es
+deliberada: el «verificado» falso sale casi siempre de no haber abierto nada.
+
 ## R15 — Lo que el contrato enumera no desaparece del entregable
 
 Una entrega puede estar incompleta; lo que no puede es parecer completa. Cuando el contrato enumera las

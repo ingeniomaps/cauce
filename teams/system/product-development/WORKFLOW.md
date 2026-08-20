@@ -18,7 +18,7 @@ Cada handoff debe incluir:
 ```markdown
 Etapa y agente:
 Outcome perseguido:
-Entradas y evidencia utilizadas:
+Entradas y evidencia utilizadas, como lista literal de lo consultado:
 Artefactos producidos:
 Decisiones tomadas, decisor y fecha:
 Supuestos, incertidumbre y dissent:
@@ -29,6 +29,9 @@ Autorizaciones pendientes:
 ```
 
 No avanzar si el exit gate no se cumple. El agente siguiente puede devolver el handoff cuando falte evidencia, autoridad, contrato o criterio verificable.
+
+Antes de usarlo, la etapa que recibe cruza lo afirmado contra esa lista: lo que cita algo que no está en ella
+sigue viaje marcado, no borrado ni corregido en silencio (R14).
 
 ## Selección de ingeniería
 

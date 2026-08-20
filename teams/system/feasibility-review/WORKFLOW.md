@@ -33,7 +33,7 @@ Cada handoff incluye:
 ```markdown
 Etapa y agente:
 Pregunta que resuelve:
-Evidencia usada y su origen:
+Evidencia usada y su origen, como lista literal de lo consultado:
 Supuestos e incertidumbre:
 Lo que falta averiguar:
 Exit gate: cumplido / no cumplido
@@ -42,6 +42,9 @@ Autorizaciones pendientes:
 
 No avanzar si el exit gate no se cumple. La etapa siguiente puede devolver el handoff cuando falte
 evidencia, autoridad o un criterio verificable.
+
+Antes de usarlo, la etapa que recibe cruza lo afirmado contra esa lista: lo que cita algo que no está en ella
+sigue viaje marcado, no borrado ni corregido en silencio (R14).
 
 ## Selección de agentes condicionales
 
