@@ -1439,6 +1439,43 @@ test('la línea de comandos se parsea una vez y se puede probar sin proceso', ()
 // Sin linter —el toolkit no tiene dependencias, ni siquiera de desarrollo— una convención sólo existe
 // si algo la comprueba. El prefijo no es cosmético: `require('fs')` lo puede secuestrar un paquete
 // llamado `fs`, y `require('node:fs')` no. Estaba en 31 de 46 lugares, que es la peor de las mezclas.
+// El README de un adaptador mandaba a correr `make install-antigravity` y `make doctor-antigravity`:
+// ninguno de los dos existió nunca, y una instancia instalada ni siquiera tiene `Makefile`. Ya había un
+// test así para la documentación de los cargos; el resto del repositorio no lo tenía, que es donde
+// estaba el error. Un comando inventado en un README no rompe nada hasta que alguien lo escribe.
+test('ningún documento del repositorio cita un comando make que no existe', () => {
+  const raiz = path.resolve(__dirname, '..')
+  const definidos = new Set()
+  for (const makefile of ['Makefile', path.join('template', 'Makefile')]) {
+    for (const hit of fs.readFileSync(path.join(raiz, makefile), 'utf8').matchAll(/^([a-z][a-z0-9-]*):/gm)) {
+      definidos.add(hit[1])
+    }
+  }
+  const inventados = []
+  const revisar = (file) => {
+    for (const hit of fs.readFileSync(file, 'utf8').matchAll(/(?:^|[`\s])make ([a-z][a-z0-9-]*)/gm)) {
+      if (!definidos.has(hit[1])) inventados.push(`${path.relative(raiz, file)}: make ${hit[1]}`)
+    }
+  }
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      // `evaluations/results/` es la transcripción de una corrida, no un documento que alguien siga:
+      // contiene comandos que el cargo propuso, y no tienen por qué existir. Misma razón que el test
+      // hermano de `agents.test.js`.
+      if (entry.name === 'node_modules' || entry.name === 'results' || entry.name.startsWith('.')) continue
+      const file = path.join(dir, entry.name)
+      if (entry.isDirectory()) walk(file)
+      else if (entry.name.endsWith('.md')) revisar(file)
+    }
+  }
+  for (const dir of ['automatization', 'engine', 'template', 'test', 'teams']) walk(path.join(raiz, dir))
+  for (const name of fs.readdirSync(raiz)) {
+    if (name.endsWith('.md')) revisar(path.join(raiz, name))
+  }
+  assert.ok(definidos.size > 5, 'los Makefiles deberían declarar varios objetivos')
+  assert.deepEqual(inventados, [])
+})
+
 test('los módulos de Node se importan con el prefijo node:', () => {
   const raiz = path.resolve(__dirname, '..')
   const archivos = []

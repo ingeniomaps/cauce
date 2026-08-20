@@ -58,6 +58,10 @@ test('cada recorrido anunciado tiene un archivo que lo instala', () => {
       continue
     }
     assert.match(commands.invocation, /\{name\}/, `${name}: la invocación no dice dónde va el nombre`)
+    // Y empieza por lo que la vuelve una invocación. Antigravity declaraba `cauce:{name}`, así que el
+    // instalador imprimía `cauce:onboard` mientras la sesión real sólo respondía a `/cauce:onboard`:
+    // un nombre pelado se lee como invocación y no lo es.
+    assert.match(commands.invocation, /^[^a-z0-9]/, `${name}: ${commands.invocation} es un nombre, no una invocación`)
     assert.deepEqual(commands.names, esperados, `${name}: no ofrece los mismos recorridos que el resto`)
     for (const comando of commands.names) {
       const instalado = manifest.artifacts.some((item) => item.target.includes(comando))
@@ -372,6 +376,74 @@ test('el puntero de un cargo conserva su frontmatter y no duplica el contrato', 
   // repo ops la construyeron doblada —`<empresa>-ops/<empresa>-ops/...`— y tuvieron que deducir la
   // raíz. En sidecar el wiring vive en la carpeta de la compañía y el repo ops es uno de sus hijos.
   assert.match(generated, /se resuelven desde este directorio raíz/, 'el puntero declara su ancla')
+})
+
+// El nombre del recorrido es el mismo en los cuatro y el prefijo lo pone cada uno, así que un archivo
+// puede nombrar una invocación que en su runner no existe y nada falla: el usuario la escribe, no pasa
+// nada, y no tiene cómo saber si se equivocó él o el toolkit. Pasó dos veces. `GEMINI.md` siguió
+// diciendo `/ops:autobuild` después de que los comandos se mudaran a `/cauce:`, y el manifest de
+// Antigravity anunciaba `cauce:onboard` sin la barra mientras la sesión real usaba `/cauce:onboard`.
+// Un comando de hook se ejecuta con el cwd que el runner elija, y ninguno promete cuál. Codex usa el
+// de la sesión y su propia guía pide resolver desde la raíz del git; Antigravity lo resuelve contra la
+// carpeta del plugin, que ni siquiera está en el proyecto. Una ruta relativa al workspace sólo funciona
+// si el CLI se abrió exactamente ahí: desde un subdirectorio el script no existe, el guard no corre, y
+// como no hay error visible la instalación sigue diciendo que está operativa. Cada runner ancla como
+// puede —`$CLAUDE_PROJECT_DIR`, `$GEMINI_PROJECT_DIR`, `{{OPS_ROOT}}` o una ruta propia del plugin—,
+// pero ninguno puede no anclar.
+test('ningún comando de hook queda relativo al workspace', () => {
+  const A = require('../engine/automation')
+  const REPO = path.resolve(__dirname, '..')
+  const automation = path.join(REPO, 'automatization')
+  const sueltos = []
+  for (const name of A.RUNNER_NAMES) {
+    const runner = A.runnerManifest(REPO, name)
+    const dir = path.join(automation, 'runners', name)
+    // Con los marcadores puestos: lo que se comprueba es que el comando declare su ancla, no el
+    // valor que toma en una instalación concreta.
+    const fuente = path.resolve(dir, runner.config.source)
+    const config = A.render(fuente, '{{OPS_DIR}}', automation, '{{OPS_ROOT}}')
+    for (const hit of config.matchAll(/"command":\s*"([^"]+)"/g)) {
+      const comando = hit[1]
+      const anclado = /^\$[A-Z_]+\//.test(comando)          // variable de proyecto del runner
+        || /\{\{OPS_ROOT\}\}/.test(comando)                  // ruta absoluta escrita al instalar
+        || /^\S+ [^/]*$/.test(comando)                       // relativo a la carpeta del propio plugin
+      if (!anclado) sueltos.push(`${name}: ${comando}`)
+    }
+  }
+  assert.deepEqual(sueltos, [])
+})
+
+test('ningún archivo instalable nombra una invocación que su runner no tiene', () => {
+  const A = require('../engine/automation')
+  const REPO = path.resolve(__dirname, '..')
+  const automation = path.join(REPO, 'automatization')
+  const RECORRIDOS = ['onboard', 'team', 'autobuild', 'integration-sync', 'integration-promote']
+  // Precedido por `/` o `$` y no por parte de una ruta: `.claude/workflows/autobuild.js` no es una
+  // invocación, y `integration-sync jira` sin prefijo tampoco.
+  const invocado = new RegExp(
+    String.raw`(?<![\w./-])([/$][a-z]*:?)(${RECORRIDOS.join('|')})(?![\w./-])`, 'g',
+  )
+  const ajenas = []
+  for (const name of A.RUNNER_NAMES) {
+    const runner = A.runnerManifest(REPO, name)
+    const propias = new Set(RECORRIDOS.map(
+      (pase) => ((runner.commands && runner.commands.invocation) || '').replace('{name}', pase),
+    ))
+    const dir = path.join(automation, 'runners', name)
+    const copiados = [
+      runner.config.source,
+      ...(runner.instructions || []).map((item) => item.source),
+      ...(runner.artifacts || []).map((item) => item.source),
+    ]
+    for (const relative of copiados) {
+      const file = path.resolve(dir, relative)
+      if (!fs.existsSync(file)) continue
+      for (const hit of A.render(file, '', automation).matchAll(invocado)) {
+        if (!propias.has(hit[0])) ajenas.push(`${name}:${relative} → ${hit[0]}`)
+      }
+    }
+  }
+  assert.deepEqual(ajenas, [])
 })
 
 // Cada archivo que un adaptador copia se lee desde donde se abre la herramienta, que en modo sidecar
