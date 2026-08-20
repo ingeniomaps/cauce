@@ -17,9 +17,14 @@ automatization/workflows/autobuild.js   (fuente canónica)
 .claude/workflows/autobuild.js          (adaptador ejecutable)
 ```
 
-Claude dispone actualmente del formato ejecutable usado por este archivo. Codex y Gemini conservan el
-mismo protocolo y los mismos hooks, pero no se anuncia un workflow nativo hasta disponer de una API
-equivalente; en esos runners el recorrido se ejecuta siguiendo `planning/PROTOCOL.md`.
+Sólo Claude ejecuta este formato. Los otros tres ofrecen los mismos cinco recorridos en el formato que
+cada uno entiende —skills en Codex y Antigravity, comandos en Gemini—, con el mismo protocolo y los
+mismos hooks, pero recorridos fase por fase en vez de ejecutados: no se anuncia un workflow nativo hasta
+que exista una API equivalente.
+
+El nombre del recorrido es el mismo en los cuatro; el prefijo lo pone cada runner —`/onboard` en Claude,
+`$onboard` en Codex, `/cauce:onboard` en Gemini y Antigravity—. `automation install` lo imprime al
+terminar, y `commands.invocation` de cada `manifest.json` es la fuente.
 
 ## Integración externa
 
@@ -27,12 +32,16 @@ equivalente; en esos runners el recorrido se ejecuta siguiendo `planning/PROTOCO
 para revisión humana. `integrations/promote.js` exige proveedor, clave y un draft `ready`. Ninguno escribe en
 el sistema remoto; Jira es actualmente el primer adaptador del contrato general.
 
-```bash
-/integration-sync jira
-/integration-promote jira KEY-123
+```text
+integration-sync jira                 con el prefijo del runner
+integration-promote jira KEY-123
 ```
 
 ## Aprendizaje de agentes
 
-Genera informes y propuestas; nunca modifica automáticamente un `SKILL.md`. Toda actualización exige
-evaluación y aprobación humana.
+`agent-eval.js` mide un cargo contra sus controles y casos, `agent-propose.js` consolida una propuesta de
+cambio y `agent-promote.js` la aplica una vez aprobada. Generan informes y propuestas; ninguno modifica
+un `SKILL.md` por su cuenta. Toda actualización exige evaluación y aprobación humana.
+
+Los tres se instalan sólo en Claude, que es el único con runtime para ejecutarlos, y no figuran entre los
+cinco recorridos que todos los runners anuncian.

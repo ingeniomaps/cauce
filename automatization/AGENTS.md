@@ -11,6 +11,7 @@ implementa y conecta ese proceso con runners concretos: no redefine producto, pr
 | `hooks/` | Entradas ejecutables estables para los guards. | La lógica vive una sola vez en `engine/hooks/run.js`, que llega con la dependencia. |
 | `workflows/` | Recorridos portables de build e integraciones. | Las fases y gates pertenecen a `../planning/PROTOCOL.md`. |
 | `runners/` | Wiring, capacidades e instalación por herramienta. | Cada adaptador declara su contrato en `manifest.json`. |
+| `shared/` | Texto que más de un adaptador enmarca en su formato. | Se incluye con `{{INCLUDE:<ruta>}}`, resuelto al instalar. |
 
 Los archivos instalados bajo `.claude/`, `.codex/`, `.gemini/` o `.agents/` son destinos materializados.
 Nunca se convierten en una segunda fuente de verdad: se cambia primero `automatization/` y se reinstala con
@@ -33,8 +34,10 @@ Nunca se convierten en una segunda fuente de verdad: se cambia primero `automati
 
 ## Contrato de un runner
 
-Cada `runners/<nombre>/` debe incluir `README.md` y `manifest.json`, declarar el ejecutable usado, configuración,
-instrucciones, artefactos y capacidades, y proporcionar archivos fuente válidos para todos sus destinos.
+Cada `runners/<nombre>/` debe incluir `README.md` y `manifest.json`, y proporcionar archivos fuente válidos
+para todos sus destinos. El manifest declara el ejecutable, `config`, `instructions`, `artifacts`,
+`capabilities`, y —cuando apliquen— `roleSkills` (dónde van los cargos), `activation` (el paso manual que
+lo pone a correr) y `commands` (los recorridos y con qué prefijo se los invoca).
 
 Al añadir o cambiar un runner:
 

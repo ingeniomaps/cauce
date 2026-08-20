@@ -26,13 +26,13 @@ guards directamente:
 
 ```text
 git push origin main       → bloquea      g=push; git $g origin main   → pasa
-.env                       → bloquea      .npmrc .netrc id_rsa         → pasan
+.env .npmrc .netrc id_rsa  → bloquean
 ```
 
-La primera línea no se arregla con más expresiones regulares: cualquier guard que lea el texto de un
-comando se esquiva componiéndolo, y una shell tiene infinitas formas de hacerlo. La segunda sí es un
-hueco tapable —son nombres de credencial conocidos— pero taparlo no cambia la naturaleza de la
-herramienta.
+La primera línea es la que importa y no se arregla con más expresiones regulares: cualquier guard que
+lea el texto de un comando se esquiva componiéndolo, y una shell tiene infinitas formas de hacerlo.
+Los nombres de credencial conocidos sí se taparon —antes `.npmrc`, `.netrc` e `id_rsa` pasaban—, y eso
+mismo muestra el límite: se tapan los nombres que alguien enumeró, no la clase.
 
 El riesgo real de esta página no es el bypass: es **la confianza que un guard inspira**. Un repositorio
 con los guards puestos parece más protegido de lo que está, y esa lectura es peor que no tenerlos,

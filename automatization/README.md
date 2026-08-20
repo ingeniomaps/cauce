@@ -9,13 +9,15 @@ reglas de negocio.
 |---|---|
 | `workflows/` | Recorridos ejecutables o especificaciones de ejecución. |
 | `hooks/` | Gates mecánicos antes/después de herramientas y al cerrar una sesión. |
-| `runners/` | Adaptadores de Claude, Codex, Gemini u otros entornos. |
+| `runners/` | Adaptadores de Claude, Codex, Gemini y Antigravity. |
+| `shared/` | Texto que varios adaptadores enmarcan, incluido con `{{INCLUDE:<ruta>}}`. |
 
 El dueño del proceso sigue siendo `template/planning/PROTOCOL.md`. Un workflow implementa ese contrato; no
 lo redefine. El motor determinista vive en `engine/`.
 
-La base inicial es neutral y manual: documenta los puntos de extensión sin fingir hooks universales. Cada
-runner debe declarar capacidades, rutas de instalación y degradación cuando una capacidad no exista.
+Los cuatro adaptadores ejecutan hooks nativos; ninguno se anuncia como universal. Cada runner declara sus
+capacidades reales, sus rutas de instalación y la degradación cuando algo no exista, y `automation doctor`
+comprueba lo declarado contra el disco.
 
 ## Activación
 
