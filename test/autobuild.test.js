@@ -83,7 +83,10 @@ async function correr(cambios = {}, opciones = {}) {
   const escritos = []
   const prompts = []
   let fase = ''
-  let contextos = 0
+  // Cada lectura de planning devuelve el siguiente de la lista, y al agotarse ya no hay tarea. Es lo
+  // que cierra el bucle, y lo que deja escribir una expansión o un cambio de hito entre dos lecturas.
+  const contextos = opciones.contextos || [guion['Triage|planning-context']]
+  let leidos = 0
 
   const agent = async (prompt, options = {}) => {
     const clave = `${fase}|${options.label || (options.schema && options.schema.required || []).join(',')}`
@@ -91,9 +94,9 @@ async function correr(cambios = {}, opciones = {}) {
     prompts.push({ clave, prompt })
     if (!options.schema) { escritos.push(prompt); return { ok: true } }
     if (options.label === 'planning-context') {
-      contextos += 1
-      if (contextos > 1) return opciones.siguienteContexto || SIN_TAREA
-      return guion['Triage|planning-context']
+      const respuesta = leidos < contextos.length ? contextos[leidos] : SIN_TAREA
+      leidos += 1
+      return typeof respuesta === 'function' ? respuesta() : respuesta
     }
     if (!(clave in guion)) throw new Error(`el guion no cubre ${clave}`)
     // Una respuesta puede ser una función cuando el escenario necesita contestar distinto en cada vuelta.
@@ -309,4 +312,114 @@ test('bajar ceremonia no baja la evidencia que cada carril exige', async () => {
     assert.equal((await correr(sinPrueba, { lane })).resultado.reason, 'verify-untested', lane)
     assert.equal((await correr(hueco, { lane })).resultado.reason, 'design-gap', lane)
   }
+})
+
+// El plan y el diff tienen una corrección y una sola. Que la segunda vuelta exista es la mitad; la otra
+// es que no haya una tercera, porque un recorrido que insiste hasta que le aprueben no revisa nada.
+test('un review que rechaza corrige una vez y sigue si la segunda aprueba', async () => {
+  let vuelta = 0
+  const { resultado, escritos } = await correr({
+    'Review|approved,concerns,consulted': () => {
+      vuelta += 1
+      return vuelta === 1
+        ? { approved: false, concerns: ['falta el caso vacío'], consulted: ['api/alta.go'] }
+        : { approved: true, concerns: [], consulted: ['api/alta.go'] }
+    },
+  })
+  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
+  assert.equal(vuelta, 2, 'la corrección se revisa de nuevo, no se da por buena')
+  assert.ok(
+    escritos.some((texto) => texto.includes('falta el caso vacío')),
+    'y lo que hay que corregir viaja con el hallazgo, no como "arreglalo"',
+  )
+})
+
+test('un review que sigue rechazando después de corregir frena', async () => {
+  const { resultado } = await correr({
+    'Review|approved,concerns,consulted': {
+      approved: false, concerns: ['sigue faltando el caso vacío'], consulted: ['api/alta.go'],
+    },
+  })
+  assert.equal(resultado.reason, 'review-failed')
+  assert.match(resultado.detail, /sigue faltando/)
+})
+
+test('un plan que no sobrevive a la segunda crítica no llega a construirse', async () => {
+  const { resultado, pedidas } = await correr({
+    'Critique|approved,concerns,consulted': {
+      approved: false, concerns: ['el alcance se pasa de la aceptación'], consulted: ['api/alta.go'],
+    },
+    'Critique|approach,steps,files,testStrategy': {
+      approach: 'segundo intento', steps: ['1'], files: ['api/alta.go'], testStrategy: 'unit',
+    },
+  })
+  assert.equal(resultado.reason, 'plan-rejected')
+  assert.ok(!pedidas.some((clave) => clave.startsWith('Build|')), 'no se construye sobre un plan rechazado')
+})
+
+test('una tarea que no entra en el tope de horas se parte y no se construye', async () => {
+  const { resultado, pedidas, escritos } = await correr({
+    'Decompose|hours,needsSplit': {
+      hours: 12, needsSplit: true,
+      subtasks: [{ title: 'alta', acceptance: 'rechaza duplicado' }, { title: 'baja', acceptance: 'borra' }],
+    },
+  })
+  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
+  assert.deepEqual(resultado.done, [], 'la tarea partida no se cierra: se reemplaza y se vuelve a elegir')
+  assert.ok(!pedidas.some((clave) => clave.startsWith('Build|')), 'y no se construye lo que se acaba de partir')
+  assert.ok(escritos.some((texto) => texto.includes('BACKLOG')), 'las subtareas reemplazan a la original')
+})
+
+test('sin tarea en cola se expande la próxima épica y se sigue con ella', async () => {
+  const conTarea = guionBase()['Triage|planning-context']
+  const { resultado, pedidas } = await correr(
+    { 'Pick|expanded': { expanded: true, hito: 'H1' } },
+    { contextos: [{ blocked: '', hasTask: false, wipActive: false, queued: 0, lane: 'full' }, conTarea] },
+  )
+  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
+  assert.deepEqual(resultado.done, ['T-1'], 'lo expandido se ejecuta en la misma corrida')
+  assert.ok(pedidas.includes('Pick|expanded'), 'y pasó por la expansión, no por una tarea que ya estaba')
+})
+
+test('sin nada que expandir el recorrido termina sin inventar trabajo', async () => {
+  const { resultado, pedidas } = await correr({}, { contextos: [] })
+  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
+  assert.deepEqual(resultado.done, [])
+  assert.ok(!pedidas.some((clave) => clave.startsWith('Build|')), 'no se construye sin tarea')
+})
+
+test('un checkpoint humano sin resolver corta antes de tocar nada', async () => {
+  const { resultado, pedidas } = await correr({}, {
+    contextos: [{ blocked: 'hito anterior sin revisar', hasTask: true, wipActive: false, queued: 1 }],
+  })
+  assert.equal(resultado.reason, 'awaiting-human-review')
+  assert.equal(pedidas.filter((clave) => clave.startsWith('Plan|')).length, 0)
+})
+
+test('el hito cambia y la corrida cierra en vez de seguir con el siguiente', async () => {
+  const primera = guionBase()['Triage|planning-context']
+  const { resultado } = await correr({}, {
+    contextos: [primera, { ...primera, slug: 'T-2', hito: 'H2' }],
+  })
+  assert.deepEqual(resultado.done, ['T-1'], 'una corrida cierra un hito, no todos los que haya')
+  assert.equal(resultado.hito, 'H1')
+})
+
+test('con checkpoint configurado el hito terminado queda esperando una firma', async () => {
+  const conGate = { ...guionBase()['Triage|contract-digest'], humanCheckpoint: true }
+  const { escritos } = await correr({ 'Triage|contract-digest': conGate })
+  assert.ok(
+    escritos.some((texto) => texto.includes('AWAITING_REVIEW')),
+    'el hito terminado deja el gate escrito, que es lo que impide que la próxima corrida siga sola',
+  )
+  // Y apagado no lo escribe: es configuración del proyecto, no una ceremonia fija.
+  const { escritos: sinGate } = await correr()
+  assert.ok(!sinGate.some((texto) => texto.includes('AWAITING_REVIEW')))
+})
+
+test('una tarea que vuelve a quedar elegible para siempre corta con su motivo', async () => {
+  const eterna = guionBase()['Triage|planning-context']
+  const { resultado } = await correr({}, { contextos: Array.from({ length: 60 }, () => eterna) })
+  assert.equal(resultado.reason, 'milestone-too-long')
+  assert.match(resultado.detail, /50/)
 })
