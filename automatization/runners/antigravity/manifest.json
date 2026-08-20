@@ -62,7 +62,7 @@
     "expect": "cauce"
   },
   "commands": {
-    "invocation": "cauce:{name}",
+    "invocation": "/cauce:{name}",
     "names": [
       "onboard",
       "team",
