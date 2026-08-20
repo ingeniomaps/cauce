@@ -67,6 +67,18 @@ test('autobuild no acepta un veredicto que no declare qué se inspeccionó', () 
 
 // Un exit code no separa el test que prueba la aceptación del que no asercia nada, y el guard de verify
 // tampoco: mira exit codes. Por eso la cobertura se declara aparte, y sin el stop el campo sería adorno.
+// Dos formas de cerrar en verde sin haber probado nada: no haber visto nunca el rojo, y correr gates que
+// no incluyen la prueba recién escrita. Van juntas porque juntas son el mismo agujero.
+test('autobuild exige el rojo previo y que algún gate lo corra', () => {
+  assert.match(workflow, /required: \['completed', 'summary', 'redFirst'\]/, 'Build declara el rojo previo')
+  assert.match(workflow, /sinFallo[\s\S]{0,160}stop\('build-unproven'/, 'un rojo declarado sin su fallo no vale')
+  const verify = workflow.slice(workflow.indexOf("phase('Verify')"), workflow.indexOf("phase('QA')"))
+  assert.match(
+    verify, /RUNS_TESTS[\s\S]{0,120}stop\('verify-untested'/,
+    'y los gates tienen que haber corrido la prueba que la tarea escribió',
+  )
+})
+
 test('autobuild no da por verificada una aceptación sin test que la codifique', () => {
   assert.match(
     workflow, /required: \['passed', 'commands', 'details', 'uncovered'\]/,
