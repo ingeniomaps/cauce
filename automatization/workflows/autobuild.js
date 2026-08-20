@@ -157,8 +157,10 @@ const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos 
 const MANIFEST = ' Enumerá en consulted cada archivo, diff o comando que hayas abierto de verdad, con su ruta.'
 // Con qué se reconoce un gate que corre pruebas. Es deliberadamente ancho: incluye los agregadores
 // —`make ci`, `npm run check`— porque adentro corren el test, y de lo que se trata es de encontrar
-// la corrida que faltó, no de clasificar comandos.
-const RUNS_TESTS = /\b(?:tests?|specs?|pytest|jest|vitest|mocha|rspec|phpunit|ci|check)\b/i
+// la corrida que faltó, no de clasificar comandos. El borde izquierdo va explícito en vez de `\b`
+// porque `\b(?:` se lee igual que una llamada a `b()` y la comprobación de identificadores del
+// paquete de pruebas la marca como función inexistente.
+const RUNS_TESTS = /(?:^|[\s/:=-])(?:tests?|specs?|pytest|jest|vitest|mocha|rspec|phpunit|ci|check)\b/i
 {{INCLUDE:shared/workflow-finish.js}}
 
 phase('Triage')
