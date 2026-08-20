@@ -484,15 +484,17 @@ test('onboard escribe borradores y deja a una persona lo que es suyo', () => {
 
 // Un runner que sólo lee instrucciones cumple el contrato a medias, y falla siempre del mismo lado: se
 // salta lo que no deja un archivo visible. La lista de salida existe para lo que se comprueba mirando el
-// disco, y por eso viaja con los tres que no tienen recorrido ejecutable.
+// disco, y por eso viaja con cada arranque que no es un workflow ejecutable.
+// Se lee del archivo que ese runner carga de verdad, no del que lo tuvo primero: gemini la llevaba en
+// `GEMINI.md` de cuando el arranque le llegaba sólo como prosa, y quedó copiada palabra por palabra de
+// la de codex. Ahora vive en el comando, que es lo que `/cauce:onboard` abre.
 test('los runners sin workflow llevan la lista de lo que se comprueba al final', () => {
   const REPO = path.resolve(__dirname, '..')
+  const runners = path.join(REPO, 'automatization', 'runners')
   const textos = {
-    antigravity: fs.readFileSync(
-      path.join(REPO, 'automatization', 'runners', 'antigravity', 'skills', 'onboard', 'SKILL.md'), 'utf8',
-    ),
-    codex: fs.readFileSync(path.join(REPO, 'automatization', 'runners', 'codex', 'AGENTS.md'), 'utf8'),
-    gemini: fs.readFileSync(path.join(REPO, 'automatization', 'runners', 'gemini', 'GEMINI.md'), 'utf8'),
+    antigravity: fs.readFileSync(path.join(runners, 'antigravity', 'skills', 'onboard', 'SKILL.md'), 'utf8'),
+    codex: fs.readFileSync(path.join(runners, 'codex', 'AGENTS.md'), 'utf8'),
+    gemini: fs.readFileSync(path.join(runners, 'gemini', 'commands', 'cauce', 'onboard.toml'), 'utf8'),
   }
   for (const [runner, texto] of Object.entries(textos)) {
     assert.match(texto, /Por definir/, `${runner}: sin la dimensión que no se preguntó`)

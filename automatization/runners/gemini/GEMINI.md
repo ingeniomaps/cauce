@@ -27,34 +27,18 @@ node {{OPS_DIR}}tools/ops.js team list
 ## El arranque
 
 En una instancia recién creada nadie le explicó todavía al toolkit qué es este proyecto:
-`{{OPS_DIR}}organization/` llega como molde y el roadmap está vacío. El primer recorrido lo llena, y una vez: reescribir un contexto
-que alguien ya corrigió no deja rastro de lo que se perdió.
+`{{OPS_DIR}}organization/` llega como molde y el roadmap está vacío. El primer recorrido lo llena, y una
+vez: reescribir un contexto que alguien ya corrigió no deja rastro de lo que se perdió.
 
 Empezá por `node {{OPS_DIR}}tools/ops.js onboard`, que es instantáneo: la primera línea que imprime es la
-pregunta con la que tenés que abrir —de qué trata el proyecto—, y después vienen el inventario y las
-dimensiones. Hacé esa pregunta tal cual antes de mirar nada, sea el workspace vacío, un monorepo o diez
-repos, y según lo que conteste formulá hasta tres más con las palabras de ese proyecto, una por vez. El
-inventario ya viene resuelto ahí: no recorras el árbol ni leas código para completarlo. No des por
-sentado que vende algo: puede sostenerse con donaciones, presupuesto interno o trabajo voluntario. Con eso escribí `{{OPS_DIR}}organization/`, la sección «Mapa real» de
-`{{OPS_DIR}}AGENTS.md` con cada comando tal como está declarado y de qué archivo salió —sin correrlo—, y
-las raíces reales en `workspaceRoots`. Lo deducido va marcado `(supuesto)`. Credenciales, MCP y el permiso de push van como
-filas en `{{OPS_DIR}}planning/HUMAN_ACTIONS.md`, sin proponer valores. Cerrá con `epic-001` en
-`{{OPS_DIR}}planning/roadmap/`: que una tarea pueda atravesar el ciclo entero, con criterios que salen de
-lo que falta. Nunca la promuevas.
+pregunta con la que tenés que abrir —de qué trata el proyecto—. Hacésela tal cual y esperá la respuesta
+antes de mirar el inventario, sea el workspace vacío, un monorepo o diez repos. Con lo que te conteste
+invocá `/cauce:onboard`, que lleva el recorrido entero y la lista de lo que se comprueba al final;
+invocarlo antes sólo devuelve la misma pregunta más caro.
 
 El arranque tiene tres objetivos y ninguno más: entender qué es el proyecto, dejar la instancia correcta
 para él y que la primera tarea pueda empezar. El análisis profundo viene después, cuando la persona pida
-algo concreto.
-
-Antes de darlo por terminado, comprobá cinco cosas mirando el disco: preguntaste de a una y no en
-formulario; la épica se llama `epic-NNN-<slug>.md` con `status: open` —`epic-001.md` no lo lee nadie—;
-las secciones de `{{OPS_DIR}}organization/` siguen siendo las del molde y lo tuyo se agregó adentro;
-`{{OPS_DIR}}planning/HUMAN_ACTIONS.md` tiene una fila por credencial, por externo y por la autoridad de
-push; y `ops` no figura como servicio del producto en el mapa. una dimensión que no
-llegaste a preguntar va «Por definir» con su pregunta en `{{OPS_DIR}}planning/INBOX.md` en vez de
-completarse deduciéndola, y lo que deducís de otra respuesta va marcado `(supuesto)`. Cerrá corriendo
-`node {{OPS_DIR}}tools/ops.js onboard`: si te vuelve a ofrecer la pregunta de apertura, no escribiste
-nada y no hay nada que informar. Estar bloqueado es un resultado legítimo; narrarlo como entrega, no.
+algo concreto. Estar bloqueado es un resultado legítimo; narrarlo como entrega, no.
 
 Nunca omitas aprobaciones, inventes credenciales, escribas remoto, hagas push/deploy o promociones
 trabajo desde INBOX.
