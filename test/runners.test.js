@@ -325,14 +325,12 @@ test('los runners con skills nativas exponen el catálogo completo de cargos', (
   const slugs = require('../engine/agents/catalog').list(repoRoot).map((role) => role.slug)
   assert.ok(slugs.length >= 40, 'el catálogo debería tener decenas de cargos')
 
-  for (const name of ['claude', 'antigravity', 'gemini']) {
-    const manifest = JSON.parse(fs.readFileSync(path.join(root, name, 'manifest.json'), 'utf8'))
+  // Los cuatro tienen skills. Codex se sumó último: su adaptador lo daba por incapaz desde 0.39.0 y el
+  // CLI ya las descubría en `.agents/skills/`, así que operaba el protocolo a mano sin necesidad.
+  for (const name of A.RUNNER_NAMES) {
+    const manifest = A.runnerManifest(path.resolve(__dirname, '..'), name)
     assert.equal(manifest.capabilities.nativeSkills, true, `${name}: declara skills nativas`)
     assert.ok(manifest.roleSkills, `${name}: declara dónde instalarlas`)
-  }
-  for (const name of ['codex']) {
-    const manifest = JSON.parse(fs.readFileSync(path.join(root, name, 'manifest.json'), 'utf8'))
-    assert.equal(manifest.capabilities.nativeSkills, false, `${name}: no tiene mecanismo de skills`)
   }
 })
 

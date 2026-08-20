@@ -485,25 +485,26 @@ test('onboard escribe borradores y deja a una persona lo que es suyo', () => {
 // Un runner que sólo lee instrucciones cumple el contrato a medias, y falla siempre del mismo lado: se
 // salta lo que no deja un archivo visible. La lista de salida existe para lo que se comprueba mirando el
 // disco, y por eso viaja con cada arranque que no es un workflow ejecutable.
-// Se lee del archivo que ese runner carga de verdad, y renderizado: los tres enmarcan el mismo
-// fragmento compartido, así que lo que se comprueba es que cada marco lo traiga entero.
+//
+// Se lee del archivo que cada uno instala de verdad, resuelto desde su manifest: gemini la llevaba en
+// `GEMINI.md` de cuando el arranque le llegaba sólo como prosa, quedó copiada palabra por palabra de la
+// de codex, y las dos se pudrieron igual. Preguntarle al manifest evita elegir el archivo a mano.
 test('los runners sin workflow llevan la lista de lo que se comprueba al final', () => {
   const A = require('../engine/automation')
   const REPO = path.resolve(__dirname, '..')
   const automation = path.join(REPO, 'automatization')
-  const marco = (...partes) => A.render(path.join(automation, 'runners', ...partes), '', automation)
-  const textos = {
-    antigravity: marco('antigravity', 'skills', 'onboard', 'SKILL.md'),
-    codex: marco('codex', 'AGENTS.md'),
-    gemini: marco('gemini', 'commands', 'cauce', 'onboard.toml'),
-  }
-  for (const [runner, texto] of Object.entries(textos)) {
-    assert.match(texto, /Por definir/, `${runner}: sin la dimensión que no se preguntó`)
-    assert.match(texto, /\(supuesto\)/, `${runner}: sin la marca de lo deducido`)
-    assert.match(texto, /epic-NNN-<slug>\.md/, `${runner}: sin la regla del nombre`)
-    assert.match(texto, /HUMAN_ACTIONS\.md/, `${runner}: sin las filas humanas`)
-    assert.match(texto, /formulario/, `${runner}: sin la conversación de a una`)
-    assert.match(texto, /molde/, `${runner}: sin las secciones del molde`)
+  for (const name of A.RUNNER_NAMES) {
+    const runner = A.runnerManifest(REPO, name)
+    // La distinción real no es tener recorrido sino de qué está hecho: un workflow JS es un programa
+    // con fases y esquemas, y el resto es prosa enmarcada, que es la que tiene que llevar la lista.
+    const arranque = (runner.artifacts || []).find((item) => /onboard/.test(item.source))
+    if (!arranque || arranque.source.endsWith('.js')) continue
+    const dir = path.join(automation, 'runners', name)
+    const texto = A.render(path.resolve(dir, arranque.source), '', automation)
+    for (const marca of [/Por definir/, /\(supuesto\)/, /epic-NNN-<slug>\.md/, /HUMAN_ACTIONS\.md/,
+      /formulario/, /molde/]) {
+      assert.match(texto, marca, `${name}: ${marca} falta en ${arranque.source}`)
+    }
   }
 })
 
@@ -522,6 +523,7 @@ test('cada runner ofrece el arranque en el formato que entiende', () => {
     ).join('\n')
     assert.match(instrucciones, /## El arranque/, `${name} no dice cómo arranca una instancia vacía`)
   }
-  // Gemini se sumó con sus comandos: el arranque ya no le llega sólo como prosa.
-  assert.deepEqual(nativos.sort(), ['antigravity', 'claude', 'gemini'])
+  // Los cuatro instalan su arranque. Codex fue el último: su adaptador lo daba por incapaz de skills
+  // desde 0.39.0, así que le llegaba sólo como prosa dentro de AGENTS.md mientras el CLI ya las leía.
+  assert.deepEqual(nativos.sort(), [...A.RUNNER_NAMES].sort())
 })

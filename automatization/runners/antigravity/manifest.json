@@ -22,23 +22,23 @@
       "target": ".agents/plugins/cauce/rules/cauce.md"
     },
     {
-      "source": "skills/autobuild/SKILL.md",
+      "source": "../../shared/skills/autobuild/SKILL.md",
       "target": ".agents/plugins/cauce/skills/autobuild/SKILL.md"
     },
     {
-      "source": "skills/integration-sync/SKILL.md",
+      "source": "../../shared/skills/integration-sync/SKILL.md",
       "target": ".agents/plugins/cauce/skills/integration-sync/SKILL.md"
     },
     {
-      "source": "skills/integration-promote/SKILL.md",
+      "source": "../../shared/skills/integration-promote/SKILL.md",
       "target": ".agents/plugins/cauce/skills/integration-promote/SKILL.md"
     },
     {
-      "source": "skills/team/SKILL.md",
+      "source": "../../shared/skills/team/SKILL.md",
       "target": ".agents/plugins/cauce/skills/team/SKILL.md"
     },
     {
-      "source": "skills/onboard/SKILL.md",
+      "source": "../../shared/skills/onboard/SKILL.md",
       "target": ".agents/plugins/cauce/skills/onboard/SKILL.md"
     }
   ],

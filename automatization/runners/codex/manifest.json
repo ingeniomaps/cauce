@@ -12,16 +12,44 @@
       "target": "AGENTS.md"
     }
   ],
-  "artifacts": [],
+  "artifacts": [
+    {
+      "source": "../../shared/skills/onboard/SKILL.md",
+      "target": ".agents/skills/onboard/SKILL.md"
+    },
+    {
+      "source": "../../shared/skills/team/SKILL.md",
+      "target": ".agents/skills/team/SKILL.md"
+    },
+    {
+      "source": "../../shared/skills/autobuild/SKILL.md",
+      "target": ".agents/skills/autobuild/SKILL.md"
+    },
+    {
+      "source": "../../shared/skills/integration-sync/SKILL.md",
+      "target": ".agents/skills/integration-sync/SKILL.md"
+    },
+    {
+      "source": "../../shared/skills/integration-promote/SKILL.md",
+      "target": ".agents/skills/integration-promote/SKILL.md"
+    }
+  ],
   "capabilities": {
     "nativeHooks": true,
     "nativeWorkflows": false,
     "projectInstructions": true,
     "checkpointing": false,
-    "nativeSkills": false
+    "nativeSkills": true
   },
   "commands": {
-    "invocation": "",
-    "names": []
-  }
+    "invocation": "${name}",
+    "names": [
+      "onboard",
+      "team",
+      "autobuild",
+      "integration-sync",
+      "integration-promote"
+    ]
+  },
+  "roleSkills": ".agents/skills"
 }

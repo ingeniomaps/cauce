@@ -21,6 +21,14 @@ ediciones como `apply_patch`, `Edit` o `Write`. No son los nombres internos del 
 Si actualizás una instalación anterior a este cambio, `.codex/hooks/hooks.json` queda huérfano —Codex
 nunca lo leyó— y se borra a mano.
 
+Los cinco recorridos llegan como skills en `.agents/skills/` —una de las rutas que Codex escanea, junto
+con `~/.agents/skills` y `/etc/codex/skills`— y se invocan con `$`: `$onboard`, `$team`, `$autobuild`,
+`$integration-sync` e `$integration-promote`. Ahí va también el catálogo de cargos.
+
+Hasta 0.41.0 el adaptador daba a Codex por incapaz de skills y le dejaba el recorrido sólo como prosa
+dentro de `AGENTS.md`, mientras el CLI ya las descubría. Los workflows JS de Claude siguen sin correr
+acá: son referencia, no un runtime compatible.
+
 Codex carga las instrucciones de proyecto desde el `AGENTS.md` canónico, por lo que no se instala una
-copia adicional. `manifest.json` declara esta capacidad y `node tools/ops.js automation doctor . codex`
-valida el wiring. Los workflows JS de Claude no se presentan como compatibles con Codex.
+copia adicional. `manifest.json` declara estas capacidades y `node tools/ops.js automation doctor . codex`
+valida el wiring.
