@@ -181,6 +181,51 @@ function generated(input) {
   }
 }
 
+// Las dos formas de que una prueba deje de juzgar sin que nadie lo note: apagarla o borrarla. Ninguna
+// sale roja —el runner informa una suite verde más corta—, así que el verde pasa de decir «el
+// comportamiento está» a decir «nadie lo miró», y `verify` tampoco lo ve porque también lee exit codes.
+// Lo que se inspecciona es el contenido entrante, no el archivo: una marca que ya estaba no la apagó
+// este cambio.
+const TEST_OFF = [
+  [/\b(?:describe|context|it|test|suite)\s*\.\s*(?:skip|only|todo)\b/, 'skip/only'],
+  [/\b[xf](?:it|test|describe|context)\s*[("'`]/, 'xit/fit'],
+  [/\bt\.Skip(?:Now)?\s*\(/, 't.Skip'],
+  [/@pytest\.mark\.(?:skip|skipif|xfail)\b/, 'pytest.mark.skip'],
+  [/@unittest\.skip/, 'unittest.skip'],
+  [/@(?:Ignore|Disabled)\b/, 'Ignore/Disabled'],
+  [/#\[ignore\]/, 'ignore'],
+]
+
+function isTestFile(raw) {
+  const file = raw.replace(/\\/g, '/')
+  const base = path.basename(file)
+  return /(?:^|\/)(?:tests?|specs?|__tests__)\//i.test(file)
+    || /\.(?:test|spec)\.[jt]sx?$/i.test(base)
+    || /_(?:test|spec)\.(?:go|py|rb|ts|js|jsx|tsx|rs|exs?)$/i.test(base)
+    || /^test_.+\.py$/i.test(base)
+}
+
+function testEvidence(input) {
+  if (process.env.OPS_TEST_EVIDENCE_OVERRIDE === '1') return
+  const razon = 'Una prueba apagada no falla y una suite sin ella sale verde igual: el verde deja de ' +
+    'decir que el comportamiento está y pasa a decir que nadie lo miró.\n' +
+    'Si la aserción está mal, corregila; si el comportamiento cambió, cambialo junto con la prueba que ' +
+    'lo fija. Si tiene que quedar afuera igual —flake conocido, entorno que acá no existe—, es una ' +
+    'decisión con dueño: OPS_TEST_EVIDENCE_OVERRIDE=1 y que conste en el commit.'
+  for (const match of patchOf(input).matchAll(/^\*\*\* Delete File:\s*(.+)$/gm)) {
+    const borrado = match[1].trim()
+    if (isTestFile(borrado)) block(`${borrado} borra una prueba.\n${razon}`)
+  }
+  const content = contentOf(input)
+  if (!content) return
+  for (const raw of filesOf(input)) {
+    if (!isTestFile(raw)) continue
+    for (const [marca, nombre] of TEST_OFF) {
+      if (marca.test(content)) block(`${raw} apaga una prueba con ${nombre}.\n${razon}`)
+    }
+  }
+}
+
 function workspaceBoundary(input) {
   const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
   if (!root) return
@@ -413,14 +458,14 @@ function engineWrites(input) {
 const guards = {
   destructive, 'git-add': gitAdd, secrets, generated, 'workspace-boundary': workspaceBoundary,
   migrations, dependencies, governance, verify, 'planning-drift': planningDrift,
-  'integration-snapshot': integrationSnapshot, engine: engineWrites,
+  'integration-snapshot': integrationSnapshot, engine: engineWrites, 'test-evidence': testEvidence,
 }
 
 // Grupos por evento: un runner corre el grupo entero en un solo proceso en lugar de un guard por hook.
 const hookGroups = {
   'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'verify'],
   'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
-    'integration-snapshot'],
+    'integration-snapshot', 'test-evidence'],
   stop: ['planning-drift'],
 }
 
@@ -455,6 +500,11 @@ const hookMetadata = [
     name: 'integration-snapshot',
     event: 'PreToolUse · files',
     purpose: 'Protege snapshots administrados por integraciones.',
+  },
+  {
+    name: 'test-evidence',
+    event: 'PreToolUse · files',
+    purpose: 'Impide apagar o borrar la prueba que juzga el cambio.',
   },
   {
     name: 'planning-drift',

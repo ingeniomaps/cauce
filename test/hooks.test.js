@@ -101,6 +101,41 @@ test('guards de archivos protegen secretos y snapshots, pero permiten plantillas
   assert.doesNotThrow(() => execute('generated', { tool_input: { file_path: '/project/src/client.go' } }))
 })
 
+// El guard decide sobre el contenido entrante, así que hay dos ejes que se pueden romper por separado:
+// reconocer el archivo como prueba y reconocer la marca que la apaga. Se prueban los dos, y sobre todo
+// que un archivo que no es de prueba pueda decir "skip" sin que nadie lo frene.
+test('guard-test-evidence no deja apagar ni borrar la prueba que juzga el cambio', () => {
+  const casos = [
+    ['users_test.go', 'func TestAlta(t *testing.T) { t.Skip("flaky") }'],
+    ['alta.test.ts', "describe.skip('alta', () => {})"],
+    ['alta.spec.js', "it.only('alta', () => {})"],
+    ['tests/alta.py', '@pytest.mark.skip\ndef test_alta(): pass'],
+    ['test_alta.py', '@unittest.skip("wip")\ndef test_alta(): pass'],
+    ['alta_spec.rb', 'xit "alta" do end'],
+  ]
+  for (const [name, content] of casos) {
+    blocked('test-evidence', { tool_input: { file_path: `/project/${name}`, content } })
+  }
+  // Borrar la prueba es la otra forma de que el verde deje de significar algo.
+  blocked('test-evidence', { tool_input: {
+    patch: '*** Begin Patch\n*** Delete File: internal/users/alta_test.go\n*** End Patch',
+  } })
+  // Escribir una prueba de verdad no se toca, y el mismo texto fuera de una prueba tampoco: el guard
+  // mira qué archivo es antes que qué dice.
+  assert.doesNotThrow(() => execute('test-evidence', { tool_input: {
+    file_path: '/project/users_test.go', content: 'func TestAlta(t *testing.T) { want(t, 1, alta()) }',
+  } }))
+  assert.doesNotThrow(() => execute('test-evidence', { tool_input: {
+    file_path: '/project/src/runner.ts', content: 'export const skip = (n) => n.only',
+  } }))
+  // Apagar una prueba puede ser correcto; lo que no puede es ser invisible.
+  process.env.OPS_TEST_EVIDENCE_OVERRIDE = '1'
+  assert.doesNotThrow(() => execute('test-evidence', { tool_input: {
+    file_path: '/project/users_test.go', content: 't.Skip("infra")',
+  } }))
+  delete process.env.OPS_TEST_EVIDENCE_OVERRIDE
+})
+
 test('guard-governance bloquea commits con reglas staged', () => {
   const root = temporal('ops-hook-gov-')
   git(['init', '-q'], root)

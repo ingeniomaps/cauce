@@ -6,6 +6,7 @@ Los hooks convierten invariantes comprobables en gates mecánicos. La base recom
 - escritura de secretos o credenciales;
 - edición manual de código generado y drift respecto a OpenAPI/SQL;
 - commits sin Verify aplicable;
+- apagado o borrado de la prueba que juzga el cambio;
 - cierre de sesión con planning o integraciones inválidas;
 - modificación del protocolo durante una tarea de producto.
 - escrituras fuera de las raíces declaradas del workspace;
@@ -66,7 +67,7 @@ runner, mientras la lógica se prueba y mantiene una sola vez en `engine/hooks/r
 | Grupo | Guards | Wrapper |
 |---|---|---|
 | `pre-shell` | destructive, git-add, dependencies, governance, verify | `guard-shell.sh` |
-| `pre-files` | secrets, generated, workspace-boundary, engine, migrations, integration-snapshot | `guard-files.sh` |
+| `pre-files` | secrets, generated, workspace-boundary, engine, migrations, integration-snapshot, test-evidence | `guard-files.sh` |
 | `stop` | planning-drift | `guard-planning-drift.sh` |
 
 Registrar el grupo gasta un proceso por herramienta en lugar de cinco, con el mismo orden y la misma
