@@ -357,3 +357,29 @@ test('una entrada de hook ilegible bloquea; la ausencia de entrada no', () => {
     'y sin entrada el guard sigue leyendo el entorno',
   )
 })
+
+// Codex manda el sobre de `apply_patch` entero como `tool_input.command`, no como `patch`. El matcher
+// engancha y el guard se ejecuta, pero sin reconocer ese campo no ve un solo archivo y deja pasar todo:
+// en una sesión real reescribió una migración existente sin decir una palabra. El encabezado es lo que
+// separa un parche de un comando de shell, y por eso se exige en vez de aceptar cualquier `command`.
+test('guard-files lee el sobre de apply_patch aunque llegue como command', () => {
+  const root = temporal('ops-hook-patch-')
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.mkdirSync(path.join(root, 'migrations'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'embedded' }))
+  fs.writeFileSync(path.join(root, 'migrations', '001_init.sql'), 'create table pedidos (id serial);\n')
+
+  const sobre = (cuerpo) => ({
+    cwd: root,
+    tool_name: 'apply_patch',
+    tool_input: { command: `*** Begin Patch\n${cuerpo}\n*** End Patch` },
+  })
+  blocked('migrations', sobre('*** Update File: migrations/001_init.sql\n@@\n+alter table pedidos add column x int;'))
+  blocked('secrets', sobre('*** Add File: .env\n+AWS_SECRET_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE'))
+
+  // Un comando de shell no es un parche: sin el encabezado, `command` no se lee como contenido.
+  assert.doesNotThrow(() => execute('migrations', {
+    cwd: root,
+    tool_input: { command: 'grep -r "*** Update File: migrations/001_init.sql" .' },
+  }))
+})

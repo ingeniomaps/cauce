@@ -29,12 +29,23 @@ function fileOf(input) {
     || input.file_path || input.path || process.env.OPS_HOOK_FILE || '')
 }
 
+// El sobre de `apply_patch`, venga por donde venga. Codex lo manda entero como `command` en vez de
+// `patch`, y sin reconocerlo ahí el guard de archivos no ve ni un archivo: mira una escritura que
+// reemplaza una migración o filtra una credencial y la deja pasar sin decir nada. Se exige el
+// encabezado en vez de aceptar cualquier `command`, para no leer un comando de shell como si fuera
+// contenido de archivo.
+function patchOf(input) {
+  const campos = input.tool_input || {}
+  const command = String(campos.command || '')
+  const sobre = command.startsWith('*** Begin Patch') ? command : ''
+  return String(campos.patch || campos.input || input.patch || sobre || '')
+}
+
 function filesOf(input) {
   const files = new Set()
   const direct = fileOf(input)
   if (direct) files.add(direct)
-  const patch = String(input.tool_input && (input.tool_input.patch || input.tool_input.input)
-    || input.patch || '')
+  const patch = patchOf(input)
   for (const match of patch.matchAll(/^\*\*\* (?:Add|Update|Delete) File:\s*(.+)$/gm)) files.add(match[1].trim())
   return [...files]
 }
@@ -46,7 +57,7 @@ function contentOf(input) {
     || input.tool_input.patch
     || input.tool_input.input
   )
-    || input.content || input.patch || '')
+    || input.content || input.patch || patchOf(input) || '')
 }
 
 function cwdOf(input) {
