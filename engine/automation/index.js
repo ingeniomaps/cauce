@@ -115,6 +115,7 @@ function runnerPaths(root, name, runner) {
 function resolveItem(paths, root, name, item) {
   return {
     automationRoot: paths.automationRoot,
+    opsRoot: root,
     source: F.assertWithin(
       paths.automationRoot,
       path.resolve(paths.sourceDir, item.source),
@@ -159,12 +160,19 @@ function inline(text, automationRoot) {
   })
 }
 
-function render(file, prefix, automationRoot) {
-  return inline(fs.readFileSync(file, 'utf8'), automationRoot).split(OPS_DIR).join(prefix)
+// `{{OPS_ROOT}}` es la raíz absoluta. La necesita quien no puede deducirla de dónde lo ejecutaron
+// —el puente de Antigravity—, y por eso no reemplaza a `{{OPS_DIR}}`: una ruta absoluta escrita en un
+// archivo se rompe si el proyecto se mueve, así que la lleva sólo el que se queda sin alternativa.
+const OPS_ROOT = '{{OPS_ROOT}}'
+
+function render(file, prefix, automationRoot, opsRoot = '') {
+  return inline(fs.readFileSync(file, 'utf8'), automationRoot)
+    .split(OPS_ROOT).join(opsRoot)
+    .split(OPS_DIR).join(prefix)
 }
 
 function runnerConfig(paths, root) {
-  return JSON.parse(render(paths.configSource, opsPrefix(root), paths.automationRoot))
+  return JSON.parse(render(paths.configSource, opsPrefix(root), paths.automationRoot, root))
 }
 
 // Cargos del catálogo, con el frontmatter que el runner indexa para elegir a quién invocar.
@@ -468,7 +476,7 @@ function doctor(root, name, output = console) {
     // que su hash difiere siempre. Comparado como archivo, `doctor` avisaba cuando el bloque estaba bien
     // y callaba cuando alguien lo había borrado, que es exactamente al revés.
     if (esArchivoCompartido(root, resolved.target)) {
-      const contenido = render(resolved.source, opsPrefix(root), resolved.automationRoot)
+      const contenido = render(resolved.source, opsPrefix(root), resolved.automationRoot, resolved.opsRoot)
       if (!fs.existsSync(resolved.target)) errors.push(`falta ${item.target}`)
       else if (!fs.readFileSync(resolved.target, 'utf8').includes(bloqueInicio(name))) {
         errors.push(`${item.target}: no tiene las instrucciones de Cauce; reinstalá el adaptador`)
@@ -555,7 +563,8 @@ function deliveryKey(name, target) {
 function deliveryState(recorded, name, resolved, prefix = '') {
   if (!fs.existsSync(resolved.target)) return 'nuevo'
   const current = M.digest(resolved.target)
-  if (current === M.digestText(render(resolved.source, prefix, resolved.automationRoot))) return 'al día'
+  const esperado = render(resolved.source, prefix, resolved.automationRoot, resolved.opsRoot)
+  if (current === M.digestText(esperado)) return 'al día'
   const delivered = recorded[deliveryKey(name, resolved.item.target)]
   return delivered && delivered === current ? 'desactualizado' : 'ajeno'
 }
@@ -746,7 +755,12 @@ function install(root, name, output = console, options = {}) {
       + 'configuración de tu runner. Si el cambio ya no te sirve, repetí con --force.',
     )
   }
-  const merged = pruneSupersededHooks(mergeConfig(current, incoming))
+  // Un archivo que existe sólo porque Cauce lo creó se escribe entero. Fusionar acumula lo viejo, y
+  // cuando lo viejo es la ruta de un puente que cambió, la entrada muerta sobrevive: el runner la
+  // ejecuta, no encuentra el módulo y niega cada llamada a herramienta. Los `settings.json` de Claude
+  // y Gemini son del usuario y ahí fusionar es lo correcto.
+  const base = runner.config.owned ? {} : current
+  const merged = pruneSupersededHooks(mergeConfig(base, incoming))
   F.atomicWriteJson(paths.configTarget, merged.config)
   for (const { wrapper, files } of merged.replaced) {
     output.log(`− ${name}: reemplazado ${[...new Set(files)].join(', ')} por ${wrapper}`)
@@ -762,7 +776,7 @@ function install(root, name, output = console, options = {}) {
     const situacion = state.get(resolved)
     const propio = runner.instructions.includes(resolved.item)
     if (propio && esArchivoCompartido(root, resolved.target)) {
-      const contenido = render(resolved.source, opsPrefix(root), resolved.automationRoot)
+      const contenido = render(resolved.source, opsPrefix(root), resolved.automationRoot, resolved.opsRoot)
       if (bloqueAlDia(resolved.target, name, contenido)) {
         output.log(`= ${name}: ${resolved.item.target} ya trae sus instrucciones`)
       } else {
@@ -778,7 +792,8 @@ function install(root, name, output = console, options = {}) {
       output.log(`= ${name}: ${resolved.item.target} ya está al día`)
     } else {
       fs.mkdirSync(path.dirname(resolved.target), { recursive: true })
-      F.atomicWrite(resolved.target, render(resolved.source, opsPrefix(root), resolved.automationRoot))
+      const escrito = render(resolved.source, opsPrefix(root), resolved.automationRoot, resolved.opsRoot)
+      F.atomicWrite(resolved.target, escrito)
       const verbo = situacion === 'nuevo' ? 'instalado' : 'actualizado'
       output.log(`✓ ${name}: ${verbo} ${resolved.item.target}`)
     }

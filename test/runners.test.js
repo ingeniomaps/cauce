@@ -124,6 +124,56 @@ test('el puente de Antigravity separa el guard que bloquea del puente que no arr
   assert.equal(responde('pre-shell', 'sin-raiz').decision, 'deny')
 })
 
+// Antigravity no deja de dónde deducir la raíz: su payload manda `workspacePaths` vacío y un `Cwd` que
+// apunta al scratch del CLI o al home, y `agy plugin install` registra una copia del plugin en
+// `~/.gemini/config/plugins/`, que es la que ejecuta. Desde ahí ni el cwd ni `__dirname` llevan al
+// proyecto, así que el puente no encontraba la raíz y, como falla cerrado, negaba cada herramienta.
+//
+// Y su `hooks.json` existe sólo porque Cauce lo creó: fusionarlo dejaba viva la entrada anterior cuando
+// la ruta del puente cambiaba, y esa entrada muerta rompía la sesión entera.
+test('install deja el puente de Antigravity resoluble desde la copia que agy registra', () => {
+  const os = require('node:os')
+  const { spawnSync } = require('node:child_process')
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-agy-'))
+  const workspace = path.join(base, 'repo')
+  const target = path.join(workspace, 'ops')
+  fs.mkdirSync(workspace)
+  const cli = path.resolve(__dirname, '..', 'engine', 'cli', 'ops.js')
+  const env = { ...process.env }
+  for (const clave of ['NODE_TEST_CONTEXT', 'OPS_ROOT', 'CLAUDE_PROJECT_DIR']) delete env[clave]
+  const corre = (args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', env })
+  assert.equal(corre(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
+  fs.mkdirSync(path.join(target, 'node_modules', '@ingeniomaps'), { recursive: true })
+  fs.symlinkSync(path.resolve(__dirname, '..'), path.join(target, 'node_modules', '@ingeniomaps', 'cauce'), 'dir')
+  assert.equal(corre(['automation', 'install', target, 'antigravity']).status, 0)
+
+  const plugin = path.join(workspace, '.agents', 'plugins', 'cauce')
+  const puente = fs.readFileSync(path.join(plugin, 'hook.js'), 'utf8')
+  assert.match(puente, new RegExp(`const OPS_ROOT = '${target}'`), 'la raíz absoluta quedó escrita')
+
+  // Como lo ejecuta `agy`: desde otra carpeta y sin una sola pista del workspace en el payload.
+  const copia = path.join(base, 'global', 'hook.js')
+  fs.mkdirSync(path.dirname(copia), { recursive: true })
+  fs.writeFileSync(copia, puente)
+  const respuesta = spawnSync(process.execPath, [copia, 'pre-shell'], {
+    cwd: path.dirname(copia),
+    input: JSON.stringify({ workspacePaths: [], toolCall: { args: { CommandLine: 'git push', Cwd: os.homedir() } } }),
+    encoding: 'utf8',
+    env,
+  })
+  const decision = JSON.parse(respuesta.stdout.trim())
+  assert.equal(decision.decision, 'deny')
+  assert.match(decision.reason, /git push/, 'denegó por el guard, no porque no encontró la raíz')
+
+  // Una entrada vieja no sobrevive a la reinstalación: el archivo es nuestro y se escribe entero.
+  const hooks = path.join(plugin, 'hooks.json')
+  const config = JSON.parse(fs.readFileSync(hooks, 'utf8'))
+  config.cauce.PreToolUse[0].hooks.push({ type: 'command', command: 'node viejo/hook.js pre-shell' })
+  fs.writeFileSync(hooks, JSON.stringify(config, null, 2))
+  assert.equal(corre(['automation', 'install', target, 'antigravity', '--force']).status, 0)
+  assert.equal(fs.readFileSync(hooks, 'utf8').includes('viejo/hook.js'), false, 'la entrada muerta se fue')
+})
+
 test('los runners con hooks nativos registran el grupo, no un hook por guard', () => {
   const { hookGroups } = require('../engine/hooks/run')
   for (const name of ['claude', 'codex']) {

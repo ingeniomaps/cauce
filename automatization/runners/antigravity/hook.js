@@ -17,11 +17,38 @@ function readInput() {
 // no hallaba `ops.config.json` y, como falla cerrado, negaba cada llamada a herramienta.
 const OPS_DIR = '{{OPS_DIR}}'
 
+// Y la ruta absoluta, porque con Antigravity no hay de dónde deducirla. Su payload manda
+// `workspacePaths` vacío y un `Cwd` que apunta al scratch del CLI o al home; el hook lo ejecuta `agy`
+// desde la copia que registró en `~/.gemini/config/plugins/`, cuyo `__dirname` no lleva a ningún
+// proyecto. Nada de eso nombra el workspace, así que el ancla se escribe al instalar o no existe.
+const OPS_ROOT = '{{OPS_ROOT}}'
+
+function isRoot(dir) {
+  const instance = fs.existsSync(path.join(dir, 'planning'))
+  const toolkit = fs.existsSync(path.join(dir, 'engine', 'hooks', 'run.js'))
+  return fs.existsSync(path.join(dir, 'ops.config.json')) && (instance || toolkit)
+}
+
 function declaredRoot() {
-  // El plugin vive en <raíz-de-instalación>/.agents/plugins/cauce/.
+  if (!OPS_ROOT.startsWith('{{') && isRoot(OPS_ROOT)) return OPS_ROOT
+  // El plugin corriendo desde donde `automation install` lo dejó, que es el caso sin registrar.
   const installed = path.resolve(__dirname, '..', '..', '..')
   const root = OPS_DIR.startsWith('{{') ? installed : path.join(installed, OPS_DIR)
   return fs.existsSync(path.join(root, 'ops.config.json')) ? root : ''
+}
+
+// En sidecar se abre la carpeta de la compañía y la raíz ops es una de sus hijas, así que buscar sólo
+// hacia arriba no la encuentra nunca: el puente fallaba cerrado y negaba cada llamada a herramienta.
+// Un nivel hacia abajo alcanza para los dos modos y es determinista; recorrer el árbol del producto,
+// no. Dos candidatas hermanas es una ambigüedad que nadie puede resolver acá: se abstiene.
+function childRoot(dir) {
+  let entries = []
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch { return '' }
+  const roots = entries
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
+    .map((entry) => path.join(dir, entry.name))
+    .filter(isRoot)
+  return roots.length === 1 ? roots[0] : ''
 }
 
 function findRoot(input) {
@@ -30,11 +57,12 @@ function findRoot(input) {
   const args = input.toolCall && input.toolCall.args || {}
   const starts = [args.Cwd, process.cwd(), ...(input.workspacePaths || [])].filter(Boolean)
   for (const start of starts) {
-    let current = path.resolve(start)
+    const base = path.resolve(start)
+    const child = isRoot(base) ? base : childRoot(base)
+    if (child) return child
+    let current = path.dirname(base)
     while (true) {
-      const instance = fs.existsSync(path.join(current, 'planning'))
-      const toolkit = fs.existsSync(path.join(current, 'engine', 'hooks', 'run.js'))
-      if (fs.existsSync(path.join(current, 'ops.config.json')) && (instance || toolkit)) return current
+      if (isRoot(current)) return current
       const parent = path.dirname(current)
       if (parent === current) break
       current = parent

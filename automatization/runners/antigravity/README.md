@@ -9,10 +9,17 @@ node tools/ops.js automation doctor . antigravity
 ```
 
 `automation install` deja los archivos y no autentica. El paso que los pone a correr es
-`agy plugin install .agents/plugins/cauce`, que el instalador imprime cuando falta y que sí escribe
-fuera del proyecto: `agy plugin list` lleva un registro por usuario, no por workspace. Registrá parado
-en el proyecto en el que vas a trabajar, y verificá con `agy plugin validate .agents/plugins/cauce` que
-lo válido sea la copia de este repo.
+`agy plugin install .agents/plugins/cauce`, que el instalador imprime cuando falta. Ese paso **copia el
+plugin a `~/.gemini/config/plugins/cauce/` y es esa copia la que `agy` ejecuta**, con un registro por
+usuario y no por workspace. De ahí salen tres consecuencias que conviene tener presentes:
+
+- Las rutas del `hooks.json` se resuelven contra la carpeta del plugin, no contra el workspace.
+- El payload no nombra el workspace —manda `workspacePaths` vacío y un `Cwd` que apunta al scratch del
+  CLI o al home—, así que el puente lleva la raíz ops escrita como ruta absoluta al instalar.
+- Registrar desde otro proyecto reemplaza el plugin del anterior.
+
+Volvé a registrar cada vez que `automation install` cambie el wiring o el proyecto se mueva de lugar;
+`agy plugin validate .agents/plugins/cauce` comprueba la copia del repo antes de registrarla.
 
 El plugin aporta hooks `PreToolUse` y `Stop`, reglas Cauce y los cinco recorridos —`/cauce:onboard`,
 `/cauce:team`, `/cauce:autobuild`, `/cauce:integration-sync` y `/cauce:integration-promote`— más el

@@ -4,18 +4,18 @@
       {
         "matcher": "run_command",
         "hooks": [
-          { "type": "command", "command": "node .agents/plugins/cauce/hook.js pre-shell", "timeout": 120 }
+          { "type": "command", "command": "node hook.js pre-shell", "timeout": 120 }
         ]
       },
       {
         "matcher": "write_to_file|replace_file_content|multi_replace_file_content",
         "hooks": [
-          { "type": "command", "command": "node .agents/plugins/cauce/hook.js pre-files", "timeout": 30 }
+          { "type": "command", "command": "node hook.js pre-files", "timeout": 30 }
         ]
       }
     ],
     "Stop": [
-      { "type": "command", "command": "node .agents/plugins/cauce/hook.js stop", "timeout": 120 }
+      { "type": "command", "command": "node hook.js stop", "timeout": 120 }
     ]
   }
 }

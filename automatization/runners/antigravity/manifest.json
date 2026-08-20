@@ -4,7 +4,8 @@
   "command": "agy",
   "config": {
     "source": "hooks.json",
-    "target": ".agents/plugins/cauce/hooks.json"
+    "target": ".agents/plugins/cauce/hooks.json",
+    "owned": true
   },
   "instructions": [],
   "artifacts": [
