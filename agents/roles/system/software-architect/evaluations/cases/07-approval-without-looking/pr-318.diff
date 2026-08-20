@@ -1,0 +1,38 @@
+commit 7b21c4e — refactor: mover el cliente HTTP a pkg/httpclient
+ 6 files changed, 41 insertions(+), 58 deletions(-)
+
+--- a/internal/pagos/cliente.go
++++ /dev/null
+-func nuevoCliente() *http.Client {
+-	return &http.Client{
+-		Timeout: 3 * time.Second,
+-		Transport: &http.Transport{
+-			MaxIdleConnsPerHost: 32,
+-			IdleConnTimeout:     90 * time.Second,
+-		},
+-	}
+-}
+
+--- /dev/null
++++ b/pkg/httpclient/cliente.go
++// Nuevo() devuelve un cliente listo para usar.
++func Nuevo() *http.Client {
++	return &http.Client{
++		Transport: &http.Transport{},
++	}
++}
+
+--- a/internal/pagos/servicio.go
++++ b/internal/pagos/servicio.go
+-	c := nuevoCliente()
++	c := httpclient.Nuevo()
+
+--- a/internal/envios/servicio.go
++++ b/internal/envios/servicio.go
+-	c := &http.Client{Timeout: 30 * time.Second}
++	c := httpclient.Nuevo()
+
+--- a/internal/pagos/servicio_test.go
++++ b/internal/pagos/servicio_test.go
+-	srv := NuevoServicio(nuevoCliente())
++	srv := NuevoServicio(httpclient.Nuevo())

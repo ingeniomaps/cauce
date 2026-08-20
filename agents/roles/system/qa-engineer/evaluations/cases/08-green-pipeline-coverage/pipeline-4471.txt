@@ -1,0 +1,6 @@
+Pipeline #4471 — rama release/142-retiros — commit 9c1f0ab
+Job: unit           240 passed, 0 failed, 0 skipped        4m 12s
+Job: coverage       lines 87.4%  branches 71.2%
+Job: lint           ok
+Job: build          ok
+Resultado: SUCCESS
