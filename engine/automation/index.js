@@ -64,6 +64,55 @@ function mergeConfig(current, incoming) {
   return incoming
 }
 
+// Una entrada de hook que puso Cauce se reconoce por el guard al que apunta: `automatization/hooks/`
+// es nuestro y ninguna empresa escribe ahí. Se saca del archivo del usuario antes de fusionar para que
+// el merge deje exactamente las de esta versión, ni una más.
+const ENTREGADO = /automatization\/hooks\/guard-[a-z-]+\.sh/
+
+function withoutDeliveredHooks(config, vigentes) {
+  const dropped = []
+  const walk = (node) => {
+    if (Array.isArray(node)) {
+      return node
+        .filter((item) => {
+          const command = item && typeof item === 'object' ? String(item.command || '') : ''
+          if (!ENTREGADO.test(command)) return true
+          // Sólo se anuncia lo que ya no vuelve: una entrada que el merge repone quedó igual, y decir
+          // que se quitó y se puso la misma línea es ruido que esconde el caso que sí importa.
+          if (!vigentes.has(command)) dropped.push(command)
+          return false
+        })
+        .map(walk)
+        .filter((item) => !(item && typeof item === 'object' && Array.isArray(item.hooks) && !item.hooks.length))
+    }
+    if (node && typeof node === 'object') {
+      return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, walk(value)]))
+    }
+    return node
+  }
+  return { config: walk(config), dropped }
+}
+
+// Por qué se fue cada entrada nuestra. Un guard suelto que ahora cubre un grupo no es lo mismo que una
+// ruta que dejó de existir: el primero se ejecutaba dos veces por herramienta —con `verify`, la suite
+// entera del proyecto dos veces por commit—, y el segundo no se ejecutaba nunca. Decirlo distinto es lo
+// único que le permite a alguien darse cuenta de cuál de los dos tenía.
+function reportarQuitadas(name, dropped, vigentes, output) {
+  const wrappers = new Map()
+  const sueltas = []
+  for (const command of dropped) {
+    const hit = supersededGuards().find(
+      (entry) => command.endsWith(entry.file) && [...vigentes].some((v) => v.endsWith(entry.wrapper)),
+    )
+    if (hit) wrappers.set(hit.wrapper, [...(wrappers.get(hit.wrapper) || []), hit.file])
+    else sueltas.push(command)
+  }
+  for (const [wrapper, files] of wrappers) {
+    output.log(`− ${name}: reemplazado ${[...new Set(files)].join(', ')} por ${wrapper}`)
+  }
+  for (const command of sueltas) output.log(`− ${name}: quitada una entrada obsoleta (${command})`)
+}
+
 function includesConfig(actual, expected) {
   if (Array.isArray(expected)) {
     return Array.isArray(actual) && expected.every((item) => {
@@ -359,42 +408,6 @@ function supersededGuards() {
     for (const name of H.hookGroups[group]) entries.push({ file: `guard-${name}.sh`, wrapper })
   }
   return entries
-}
-
-// Reemplaza las entradas sueltas que este mismo toolkit escribió por el grupo que ya las cubre.
-// Sin esto, una instalación previa ejecuta cada guard dos veces por herramienta: con `verify` eso
-// significa correr la suite de tests del proyecto dos veces en cada commit.
-function pruneSupersededHooks(config) {
-  const registered = JSON.stringify(config)
-  const targets = supersededGuards().filter((entry) => registered.includes(entry.wrapper))
-  const replaced = new Map()
-  if (!targets.length) return { config, replaced: [] }
-
-  const isEmptyEntry = (item) => item && typeof item === 'object'
-    && Array.isArray(item.hooks) && !item.hooks.length
-  const walk = (node) => {
-    if (Array.isArray(node)) {
-      const kept = []
-      for (const item of node) {
-        const command = item && typeof item === 'object' ? String(item.command || '') : ''
-        const hit = targets.find((entry) => command.endsWith(entry.file))
-        if (hit) {
-          replaced.set(hit.wrapper, [...(replaced.get(hit.wrapper) || []), hit.file])
-          continue
-        }
-        const walked = walk(item)
-        if (!isEmptyEntry(walked)) kept.push(walked)
-      }
-      return kept
-    }
-    if (node && typeof node === 'object') {
-      return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, walk(value)]))
-    }
-    return node
-  }
-
-  const pruned = walk(config)
-  return { config: pruned, replaced: [...replaced].map(([wrapper, files]) => ({ wrapper, files })) }
 }
 
 // Wiring heredado: guards que ahora corren agrupados pero siguen registrados uno por uno.
@@ -755,16 +768,15 @@ function install(root, name, output = console, options = {}) {
       + 'configuración de tu runner. Si el cambio ya no te sirve, repetí con --force.',
     )
   }
-  // Un archivo que existe sólo porque Cauce lo creó se escribe entero. Fusionar acumula lo viejo, y
-  // cuando lo viejo es la ruta de un puente que cambió, la entrada muerta sobrevive: el runner la
-  // ejecuta, no encuentra el módulo y niega cada llamada a herramienta. Los `settings.json` de Claude
-  // y Gemini son del usuario y ahí fusionar es lo correcto.
-  const base = runner.config.owned ? {} : current
-  const merged = pruneSupersededHooks(mergeConfig(base, incoming))
-  F.atomicWriteJson(paths.configTarget, merged.config)
-  for (const { wrapper, files } of merged.replaced) {
-    output.log(`− ${name}: reemplazado ${[...new Set(files)].join(', ')} por ${wrapper}`)
-  }
+  // Un archivo que existe sólo porque Cauce lo creó se escribe entero. Los `settings.json` de Claude y
+  // Gemini son del usuario, así que ahí se fusiona; pero fusionar conserva también lo que pusimos en
+  // una versión anterior, y una entrada nuestra que quedó viva apuntando a donde ya no hay nada es un
+  // guard que el runner intenta ejecutar y falla. Se quitan las nuestras y las vuelve a poner el merge.
+  const vigentes = new Set((JSON.stringify(incoming).match(/"command":"[^"]*"/g) || [])
+    .map((entry) => JSON.parse(`{${entry}}`).command))
+  const limpio = runner.config.owned ? { config: {}, dropped: [] } : withoutDeliveredHooks(current, vigentes)
+  reportarQuitadas(name, limpio.dropped, vigentes, output)
+  F.atomicWriteJson(paths.configTarget, mergeConfig(limpio.config, incoming))
   // Dónde aterrizó, no sólo qué archivo: en sidecar el destino no es el repo desde el que se corrió
   // el comando, y descubrirlo por sorpresa es la diferencia entre confiar y adivinar.
   if (paths.install !== root) {
