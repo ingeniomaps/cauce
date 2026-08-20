@@ -103,6 +103,25 @@ test('autobuild encamina lo descubierto según quién puede resolverlo', () => {
   assert.match(verify, /uncovered\.length[\s\S]{0,400}verified = await run\(VERIFY_ASK/, 'lo demás rebota')
 })
 
+// El runtime exige que `meta` sea un literal puro y rechaza el archivo entero antes de la primera fase
+// si no lo es. Nada lo comprobaba: `autobuild` derivaba sus catorce fases con un `.map` y no arrancaba,
+// cosa que ningún test veía porque todos leen el cuerpo y el arnés lo evalúa sin pasar por esa validación.
+test('el meta de cada workflow es un literal puro, que es lo que el runtime acepta', () => {
+  for (const file of workflowFiles()) {
+    const bloque = (fs.readFileSync(file, 'utf8').match(/export const meta = \{[\s\S]*?\n\}/) || [])[0]
+    assert.ok(bloque, `${path.relative(WF, file)}: sin bloque meta`)
+    // Sin comentarios ni literales de texto: adentro hay prosa con paréntesis y flechas.
+    const desnudo = bloque
+      .replace(/\/\/[^\n]*/g, '')
+      .replace(/'(?:\\[\s\S]|[^'\\])*'/g, "''")
+      .replace(/"(?:\\[\s\S]|[^"\\])*"/g, '""')
+      .replace(/`(?:\\[\s\S]|[^`\\])*`/g, '``')
+    for (const [patron, queEs] of [[/\w\s*\(/, 'una llamada'], [/\.\.\./, 'un spread'], [/\$\{/, 'interpolación']]) {
+      assert.equal(patron.test(desnudo), false, `${path.relative(WF, file)}: el meta tiene ${queEs}`)
+    }
+  }
+})
+
 test('workflows de integración usan el registro general y no escriben remoto', () => {
   for (const name of ['sync.js', 'promote.js']) {
     const file = path.resolve(__dirname, '..', 'automatization', 'workflows', 'integrations', name)

@@ -4,10 +4,25 @@ export const meta = {
   name: 'autobuild',
   description: 'Triage → Pick → Cast → Ready → Plan → Build → Review → Verify → QA → Commit → Done',
   whenToUse: 'Ejecutar un hito aprobado con recuperación por WIP y checkpoint humano entre hitos.',
+  // Escritas una por una y no derivadas de una lista: el runtime exige que `meta` sea un literal puro
+  // —sin llamadas, variables ni interpolación— y con un `.map` acá rechazaba el archivo entero antes de
+  // la primera fase. Escribirlas también les da un detalle propio, que es lo que se lee al autorizar.
   phases: [
-    'Triage', 'Pick', 'Cast', 'Ready', 'Decompose', 'Plan', 'Critique', 'Build', 'Review',
-    'Verify', 'QA', 'Commit', 'Done', 'Closing',
-  ].map((title) => ({ title, detail: `Fase ${title} del protocolo agnóstico` })),
+    { title: 'Triage', detail: 'Contrato del proyecto y estado de planning' },
+    { title: 'Pick', detail: 'La próxima tarea, o la épica que falta expandir' },
+    { title: 'Cast', detail: 'Qué cargo trabaja en cada fase' },
+    { title: 'Ready', detail: 'Aceptación concreta y sin decisiones pendientes' },
+    { title: 'Decompose', detail: 'Partir la tarea que no entra en el tope de horas' },
+    { title: 'Plan', detail: 'El cambio más chico que satisface la aceptación' },
+    { title: 'Critique', detail: 'El plan atacado antes de escribir código' },
+    { title: 'Build', detail: 'Implementación con la prueba en rojo primero' },
+    { title: 'Review', detail: 'El diff real revisado por el dueño de cada dominio' },
+    { title: 'Verify', detail: 'Los gates del servicio y la aceptación que ninguna prueba codifica' },
+    { title: 'QA', detail: 'El comportamiento ejercitado como lo ve quien lo usa' },
+    { title: 'Commit', detail: 'Un Conventional Commit por tarea, sin push' },
+    { title: 'Done', detail: 'Cierre atómico en DONE con el WIP en IDLE' },
+    { title: 'Closing', detail: 'Check de planning y checkpoint humano del hito' },
+  ],
 }
 
 {{INCLUDE:shared/workflow-root.js}}
