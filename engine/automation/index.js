@@ -79,7 +79,7 @@ function includesConfig(actual, expected) {
 }
 
 // Dónde abre el dev su herramienta, que no siempre es la raíz ops. En modo sidecar el repo ops es
-// un hermano de los repos de producto: `aparatejo-ops/` coordina, `aparatejo/` es lo que se abre.
+// un hermano de los repos de producto: `<empresa>-ops/` coordina, `<empresa>/` es lo que se abre.
 // Instalar dentro del sidecar dejaría al runner sin ver una sola línea de código.
 function installRoot(root) {
   try {
@@ -89,7 +89,7 @@ function installRoot(root) {
   return root
 }
 
-// Cómo se nombra la raíz ops desde ahí: `aparatejo-ops/` en sidecar, vacío cuando coinciden.
+// Cómo se nombra la raíz ops desde ahí: `<empresa>-ops/` en sidecar, vacío cuando coinciden.
 function opsPrefix(root) {
   const relative = path.relative(installRoot(root), root)
   return relative ? `${relative.split(path.sep).join('/')}/` : ''
