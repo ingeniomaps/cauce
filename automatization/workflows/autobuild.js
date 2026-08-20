@@ -69,10 +69,14 @@ const DECISION = {
     consulted: { type: 'array', items: { type: 'string' } },
   },
 }
+// Un exit code dice que el test corrió, no que pruebe lo que la tarea prometió: un test que asercia de
+// menos —o que ni existe— sale verde igual, y el guard de verify tampoco lo ve porque también mira exit
+// codes. Por eso `uncovered` se contrasta contra la aceptación leyendo el fuente, no la salida (R9).
 const VERIFY = {
-  type: 'object', additionalProperties: false, required: ['passed', 'commands', 'details'],
+  type: 'object', additionalProperties: false, required: ['passed', 'commands', 'details', 'uncovered'],
   properties: {
     passed: { type: 'boolean' }, details: { type: 'string' },
+    uncovered: { type: 'array', items: { type: 'string' } },
     commands: { type: 'array', items: { type: 'object', required: ['cmd', 'exitCode'], properties: {
       cmd: { type: 'string' }, exitCode: { type: 'integer' }, note: { type: 'string' },
     } } },
@@ -330,12 +334,19 @@ while (safety++ < 50) {
 
   phase('Verify')
   const verified = await run(
-    `${asRole(cast.verify)}Descubrí y corré los gates reales de ${task.service}: primero las instrucciones del ` +
+    `${asRole(cast.verify)}Abrí el fuente de los tests que la tarea agregó o cambió y contrastá cada criterio ` +
+    `de aceptación contra sus aserciones: en uncovered va el criterio que ningún test codifica, sea porque ` +
+    `falta o porque el que dice cubrirlo no asercia esa propiedad. Un test que pasa sin aserciarla no la ` +
+    `cubre. Después descubrí y corré los gates reales de ${task.service}: primero las instrucciones del ` +
     `repositorio, después el test, lint, typecheck y build que apliquen. Leé los exit codes de verdad. ` +
-    `passed=true exige comandos corridos y ninguna regresión causada por la tarea.`,
+    `passed=true exige comandos corridos y ninguna regresión causada por la tarea. ` +
+    `Aceptación: ${task.acceptance}.`,
     { schema: VERIFY },
   )
   if (!verified.passed || !verified.commands.length) return stop('verify-failed', verified.details)
+  if (verified.uncovered.length) {
+    return stop('verify-hollow', `sin test que lo codifique: ${verified.uncovered.join('; ')}`)
+  }
 
   phase('QA')
   const qa = await run(

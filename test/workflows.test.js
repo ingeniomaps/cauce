@@ -65,6 +65,18 @@ test('autobuild no acepta un veredicto que no declare qué se inspeccionó', () 
   }
 })
 
+// Un exit code no separa el test que prueba la aceptación del que no asercia nada, y el guard de verify
+// tampoco: mira exit codes. Por eso la cobertura se declara aparte, y sin el stop el campo sería adorno.
+test('autobuild no da por verificada una aceptación sin test que la codifique', () => {
+  assert.match(
+    workflow, /required: \['passed', 'commands', 'details', 'uncovered'\]/,
+    'verify declara qué criterio quedó sin codificar',
+  )
+  const verify = workflow.slice(workflow.indexOf("phase('Verify')"), workflow.indexOf("phase('QA')"))
+  assert.match(verify, /task\.acceptance/, 'la aceptación viaja al que audita el fuente de los tests')
+  assert.match(verify, /verified\.uncovered\.length[\s\S]+stop\('verify-hollow'/, 'un criterio sin test frena')
+})
+
 test('workflows de integración usan el registro general y no escriben remoto', () => {
   for (const name of ['sync.js', 'promote.js']) {
     const file = path.resolve(__dirname, '..', 'automatization', 'workflows', 'integrations', name)
