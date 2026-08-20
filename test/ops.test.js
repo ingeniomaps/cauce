@@ -164,7 +164,7 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   // Los hooks sí: la configuración del runner los nombra por ruta literal del proyecto.
   assert.equal(fs.existsSync(path.join(target, 'automatization', 'hooks', 'guard-shell.sh')), true)
   assert.equal(run(['automation', 'install', target, 'codex']).status, 0)
-  const codexHooks = JSON.parse(fs.readFileSync(path.join(workspace, '.codex', 'hooks', 'hooks.json'), 'utf8'))
+  const codexHooks = JSON.parse(fs.readFileSync(path.join(workspace, '.codex', 'hooks.json'), 'utf8'))
   assert.ok(codexHooks.hooks.PreToolUse.length)
   assert.equal(run(['automation', 'doctor', target, 'codex']).status, 0)
   assert.equal(run(['automation', 'install', target, 'gemini']).status, 0)

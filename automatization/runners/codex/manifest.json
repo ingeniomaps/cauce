@@ -4,7 +4,7 @@
   "command": "codex",
   "config": {
     "source": "hooks.json",
-    "target": ".codex/hooks/hooks.json"
+    "target": ".codex/hooks.json"
   },
   "instructions": [
     {

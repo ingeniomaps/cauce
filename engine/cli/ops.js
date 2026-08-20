@@ -1286,7 +1286,8 @@ function automation(action, rootArg, runnerName, cli) {
     const force = cli.has('--force')
     try { runner = A.install(root, runnerName, console, { force }) } catch (error) { fail(error.message, 2) }
     if (runnerName === 'codex') {
-      console.log('  Codex pedirá revisar y confiar en hooks nuevos al iniciar sesión.')
+      console.log('  Codex deja los hooks nuevos sin correr hasta que los confíes: abrí una sesión')
+      console.log('  y usá /hooks para revisarlos y marcarlos como confiables.')
     }
     if (!runner.capabilities.nativeHooks) {
       console.log(`  ${runnerName} no expone hooks nativos; aplica guards como prechecks.`)

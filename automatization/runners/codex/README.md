@@ -1,15 +1,26 @@
 # Codex CLI
 
-Codex CLI actual expone hooks nativos y pide confianza al detectar hooks nuevos o modificados. Instalar la
-configuración del proyecto con:
+Codex CLI expone hooks nativos. Instalar la configuración del proyecto con:
 
 ```bash
 node tools/ops.js automation install . codex
 ```
 
-El archivo se instala en `.codex/hooks/hooks.json`. La primera sesión revisa y solicita confiar en los hooks;
-no se usa `--dangerously-bypass-hook-trust`.
+El archivo se instala en `.codex/hooks.json`. Es una de las cuatro ubicaciones que Codex lee —las otras
+son `.codex/config.toml` y las dos equivalentes bajo `~/.codex/`—; la forma `hooks/hooks.json` es la que
+usa un plugin y no la que lee un repositorio.
 
-Codex carga las instrucciones de proyecto desde el `AGENTS.md` canónico, por lo que no se instala una copia
-adicional. `manifest.json` declara esta capacidad y `node tools/ops.js automation doctor . codex` valida el
-wiring. Los workflows JS de Claude no se presentan como compatibles con Codex.
+**Instalar no alcanza.** Un hook no gestionado queda registrado pero **no corre** hasta que se lo confía:
+Codex guarda la confianza contra el hash del archivo y saltea en silencio lo nuevo o lo modificado. Abrí
+una sesión y usá `/hooks` para revisarlos y confiarlos; hay que repetirlo cada vez que el wiring cambie,
+porque cambia el hash. No se usa `--dangerously-bypass-hook-trust`.
+
+Los `matcher` filtran el **nombre de la herramienta**: los comandos de shell llegan como `Bash` y las
+ediciones como `apply_patch`, `Edit` o `Write`. No son los nombres internos del protocolo.
+
+Si actualizás una instalación anterior a este cambio, `.codex/hooks/hooks.json` queda huérfano —Codex
+nunca lo leyó— y se borra a mano.
+
+Codex carga las instrucciones de proyecto desde el `AGENTS.md` canónico, por lo que no se instala una
+copia adicional. `manifest.json` declara esta capacidad y `node tools/ops.js automation doctor . codex`
+valida el wiring. Los workflows JS de Claude no se presentan como compatibles con Codex.

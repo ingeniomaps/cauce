@@ -258,6 +258,21 @@ test('doctor advierte cuando sobrevive el wiring por guard suelto', () => {
   assert.deepEqual(A.legacyGuardWiring(grouped), [], 'el guard suelto de Stop no es wiring heredado')
 })
 
+// Codex descubre hooks en `.codex/hooks.json`, `.codex/config.toml` y sus dos equivalentes bajo
+// `~/.codex/`; `hooks/hooks.json` es la forma que empaqueta un plugin. Y el `matcher` filtra el nombre
+// de la herramienta —`Bash` para el shell, `apply_patch`/`Edit`/`Write` para las ediciones—, no los
+// nombres del protocolo interno. Con la ruta o el matcher equivocados no falla nada: Codex no encuentra
+// el archivo, o lo encuentra y ningún matcher engancha, y los guards no corren sin decir una palabra.
+// Fuente: https://learn.chatgpt.com/docs/hooks, comprobado contra codex-cli 0.148.0.
+test('el adaptador de Codex usa la ruta y los nombres de herramienta que Codex lee', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'codex', 'manifest.json'), 'utf8'))
+  assert.equal(manifest.config.target, '.codex/hooks.json')
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'codex', manifest.config.source), 'utf8'))
+  const matchers = config.hooks.PreToolUse.map((group) => group.matcher)
+  assert.deepEqual(matchers, ['Bash', 'apply_patch|Edit|Write'])
+  assert.ok(config.hooks.SessionEnd, 'el drift se comprueba al cerrar la sesión')
+})
+
 test('los runners con skills nativas exponen el catálogo completo de cargos', () => {
   const A = require('../engine/automation')
   const repoRoot = path.resolve(__dirname, '..')

@@ -2,13 +2,13 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "shell|unified_exec",
+        "matcher": "Bash",
         "hooks": [
           { "type": "command", "command": "{{OPS_DIR}}automatization/hooks/guard-shell.sh" }
         ]
       },
       {
-        "matcher": "apply_patch|files",
+        "matcher": "apply_patch|Edit|Write",
         "hooks": [
           { "type": "command", "command": "{{OPS_DIR}}automatization/hooks/guard-files.sh" }
         ]

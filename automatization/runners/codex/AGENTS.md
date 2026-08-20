@@ -7,7 +7,7 @@ antes de trabajar —los tres, no cuando algo sale mal—: acá sólo está lo e
 > Codex lee el `AGENTS.md` de la raíz, que es un nombre compartido entre herramientas. Cuando el repo
 > ops **es** la raíz, este archivo no se instala: el `AGENTS.md` de la empresa ya está ahí y manda.
 
-Los hooks de `.codex/hooks/hooks.json` son obligatorios y bloquean por su cuenta. Codex no ejecuta los
+Los hooks de `.codex/hooks.json` son obligatorios y bloquean por su cuenta. Codex no ejecuta los
 workflows JS de Claude —son referencia, no un runtime compatible—, así que el recorrido se hace fase por
 fase siguiendo el protocolo.
 
