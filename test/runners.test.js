@@ -172,6 +172,26 @@ test('install deja el puente de Antigravity resoluble desde la copia que agy reg
   fs.writeFileSync(hooks, JSON.stringify(config, null, 2))
   assert.equal(corre(['automation', 'install', target, 'antigravity', '--force']).status, 0)
   assert.equal(fs.readFileSync(hooks, 'utf8').includes('viejo/hook.js'), false, 'la entrada muerta se fue')
+
+  // Y los guards reciben una carpeta del proyecto contra la cual resolver. Con el `Cwd` que manda
+  // Antigravity, `ops/planning/nota.md` se resolvía en `$HOME/ops/planning/nota.md`: un archivo que no
+  // existe, bloqueado por caer fuera de las raíces, mientras el que el agente iba a tocar no se miraba.
+  const previo = process.env.OPS_ROOT
+  try {
+    const puenteInstalado = require(path.join(plugin, 'hook.js'))
+    const escritura = (file) => ({
+      conversationId: 'cwd',
+      toolCall: { args: { TargetFile: file, CodeContent: 'x', Cwd: os.homedir() } },
+    })
+    assert.equal(puenteInstalado.normalize(escritura('x'), target).cwd, workspace, 'el cwd es el workspace')
+    assert.equal(puenteInstalado.evaluate('pre-files', escritura('ops/planning/nota.md')).decision, 'allow')
+    const fuera = puenteInstalado.evaluate('pre-files', escritura('../fuera/x.md'))
+    assert.equal(fuera.decision, 'deny')
+    assert.ok(fuera.reason.includes(path.join(base, 'fuera')), 'juzga la ruta que el agente quiso escribir')
+  } finally {
+    if (previo === undefined) delete process.env.OPS_ROOT
+    else process.env.OPS_ROOT = previo
+  }
 })
 
 test('los runners con hooks nativos registran el grupo, no un hook por guard', () => {

@@ -84,14 +84,38 @@ function runtimeAt(root) {
   return require(runtime)
 }
 
-function normalize(input) {
+// La carpeta que el runner abrió, deducida de la raíz: en sidecar la raíz ops es su hija, y en modo
+// embebido son la misma.
+function workspaceOf(root) {
+  const relative = OPS_DIR.startsWith('{{') ? '' : OPS_DIR.replace(/\/+$/, '')
+  if (!relative) return root
+  return path.resolve(root, ...relative.split('/').map(() => '..'))
+}
+
+function within(dir, base) {
+  const relative = path.relative(base, dir)
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
+}
+
+// Contra qué resuelven los guards una ruta relativa o el directorio git. El `Cwd` de Antigravity no
+// sirve para eso: apunta al scratch del CLI o al home, así que un guard que juzgue `src/x.js` estaría
+// juzgando otro archivo, y uno que busque el repo git lo buscaría fuera del proyecto. Se respeta el
+// que manda sólo si cae adentro del workspace —si algún día manda uno real, es mejor que el nuestro—;
+// si no, el workspace, que es donde el runner dice estar trabajando.
+function cwdFor(args, root) {
+  const declared = args.Cwd && path.resolve(String(args.Cwd))
+  const workspace = workspaceOf(root)
+  return declared && within(declared, workspace) ? declared : workspace
+}
+
+function normalize(input, root) {
   const args = input.toolCall && input.toolCall.args || {}
   const file = args.TargetFile || args.AbsolutePath || ''
   const content = args.CodeContent || args.ReplacementContent
     || (args.ReplacementChunks && JSON.stringify(args.ReplacementChunks)) || ''
   return {
     sessionId: input.conversationId,
-    cwd: args.Cwd || (input.workspacePaths || [])[0] || process.cwd(),
+    cwd: cwdFor(args, root),
     tool_input: {
       command: args.CommandLine || '',
       file_path: file,
@@ -109,7 +133,7 @@ function evaluate(event, input) {
     const root = findRoot(input)
     process.env.OPS_ROOT = root
     const hooks = runtimeAt(root)
-    const normalized = normalize(input)
+    const normalized = normalize(input, root)
     if (!hooks.hookGroups[event]) throw new Error(`Evento Antigravity desconocido: ${event || '(vacío)'}`)
     hooks.executeAll([event], normalized)
     return event === 'stop' ? { decision: 'stop' } : { decision: 'allow' }
