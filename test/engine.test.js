@@ -1,11 +1,10 @@
 'use strict'
 
-require('./entorno')
+const { temporal } = require('./entorno')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
-const os = require('node:os')
 const path = require('node:path')
 const { validateOpsConfig } = require('../engine/config/validate')
 const I = require('../engine/integrations/registry')
@@ -43,7 +42,7 @@ function jiraConfig() {
 }
 
 function integrationRoot() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-integration-engine-'))
+  const root = temporal('ops-integration-engine-')
   fs.mkdirSync(path.join(root, 'integrations', 'jira', 'staging'), { recursive: true })
   fs.mkdirSync(path.join(root, 'integrations', 'jira', 'proposed'))
   fs.mkdirSync(path.join(root, 'planning', 'roadmap'), { recursive: true })
@@ -121,7 +120,7 @@ test('un campo retirado se nombra en vez de caer en propiedad desconocida', () =
 
 test('las rutas de proveedores no pueden escapar de integrations', () => {
   assert.throws(() => safeSegment('../jira', 'provider'), /inválido/)
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-provider-path-'))
+  const root = temporal('ops-provider-path-')
   fs.mkdirSync(path.join(root, 'integrations'))
   fs.writeFileSync(
     path.join(root, 'integrations', 'config.json'),
@@ -305,7 +304,7 @@ El operador recibe una alerta observable.
 })
 
 test('business rules exige contrato y detecta IDs duplicados', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-business-rules-'))
+  const root = temporal('ops-business-rules-')
   const metadata = '> **Dominio:** demo | **Estado:** vigente | **Actualizado:** 2026-08-14\n'
   const sections = '\n## Reglas\n\n| BR-DEMO-001 | Regla | Resultado |\n'
     + '\n## Por qué existe cada regla\n\n- Razón.\n\n## Historial\n\n- Creación.\n'
@@ -345,7 +344,7 @@ test('contratos de evidencia rastrean pruebas y decisiones duraderas', () => {
 })
 
 test('parser acepta historias legadas y múltiples referencias de criterio', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-parser-'))
+  const root = temporal('ops-parser-')
   fs.mkdirSync(path.join(root, 'roadmap'))
   fs.writeFileSync(path.join(root, 'roadmap', 'epic-001-demo.md'), `---
 epic: 001
@@ -388,7 +387,7 @@ service: app
 // archivo lleno. La convención del nombre se conserva —es con lo que se cita el ítem— y lo que se
 // corrige es que la diferencia sea visible.
 test('el inbox dice cuántas viñetas quedaron sin contar', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-inbox-'))
+  const root = temporal('ops-inbox-')
   fs.writeFileSync(path.join(root, 'INBOX.md'), '# Inbox\n\n## Deuda\n\n'
     + '- **con-nombre** — Se cuenta.\n- sin nombre, no se cuenta.\n\n'
     + '## Ideas\n\n- **otra** — Se cuenta.\n- tampoco esta.\n')
@@ -418,7 +417,7 @@ test('roadmap valida trazabilidad, cierre y estructura de épicas grandes', () =
   assert.ok(errors.some((error) => error.includes('C2 no está cubierto')))
   assert.ok(errors.some((error) => error.includes('closed sin evidencia')))
 
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-roadmap-'))
+  const root = temporal('ops-roadmap-')
   const roadmap = path.join(root, 'roadmap')
   const large = path.join(roadmap, 'epic-001-grande')
   fs.mkdirSync(large, { recursive: true })
@@ -430,7 +429,7 @@ test('roadmap valida trazabilidad, cierre y estructura de épicas grandes', () =
 
 test('la frontera system/ separa lo del toolkit de lo del proyecto', () => {
   const O = require('../engine/core/ownership')
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-ownership-'))
+  const root = temporal('cauce-ownership-')
   const rules = path.join(root, 'planning', 'rules')
   fs.mkdirSync(path.join(rules, 'system'), { recursive: true })
   fs.writeFileSync(path.join(rules, 'system', 'commits.md'), '# sistema\n')
@@ -466,7 +465,7 @@ test('la frontera system/ separa lo del toolkit de lo del proyecto', () => {
 
 test('un team propio reemplaza al del sistema sin duplicarlo en la lista', () => {
   const T = require('../engine/teams/registry')
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-teams-'))
+  const root = temporal('cauce-teams-')
   const write = (dir, name) => {
     fs.mkdirSync(dir, { recursive: true })
     fs.writeFileSync(path.join(dir, 'team.json'), JSON.stringify({ slug: 'demo', name }))
@@ -525,7 +524,7 @@ test('el changelog del paquete cubre la versión que se publica', () => {
 
 test('un equipo debe separar descubrimiento de entrega', () => {
   const T = require('../engine/teams/registry')
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-fases-'))
+  const root = temporal('cauce-fases-')
   const dir = path.join(root, 'teams', 'demo')
   fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(path.join(dir, 'WORKFLOW.md'), '# demo\n')
@@ -591,7 +590,7 @@ test('un equipo declara qué deja, y el de incidentes no propone trabajo', () =>
   assert.equal(outcomes['feasibility-review'], 'epic')
 
   // Un outcome desconocido no valida: el workflow sólo sabe terminar de las formas declaradas.
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-outcome-'))
+  const root = temporal('cauce-outcome-')
   const dir = path.join(root, 'teams', 'demo')
   fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(path.join(dir, 'WORKFLOW.md'), '# demo\n')
@@ -692,7 +691,7 @@ test('la configuración de Jira se rechaza campo por campo', () => {
 // a Jira sin destino, sin estimación o colgando de un padre inventado. Cada caso escribe una propuesta
 // válida con un solo campo cambiado.
 test('una propuesta se rechaza campo por campo', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-proposals-'))
+  const root = temporal('ops-proposals-')
   const proposed = path.join(root, 'integrations', 'jira', 'proposed')
   fs.mkdirSync(proposed, { recursive: true })
   fs.mkdirSync(path.join(root, 'integrations', 'jira', 'staging', 'epics', 'DEMO-1'), { recursive: true })
@@ -747,7 +746,7 @@ test('una propuesta se rechaza campo por campo', () => {
 // qué dejara otra prueba en disco, y esa intermitencia hacía fallar el piso de cobertura una de cada
 // doce corridas. El caso es real y ahora se mide siempre.
 test('una épica que creció a directorio se lee desde su spec.md', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-epic-dir-'))
+  const root = temporal('ops-epic-dir-')
   const grande = path.join(root, 'roadmap', 'epic-004-grande')
   fs.mkdirSync(grande, { recursive: true })
   fs.writeFileSync(path.join(grande, 'spec.md'), `---

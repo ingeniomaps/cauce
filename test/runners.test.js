@@ -1,6 +1,6 @@
 'use strict'
 
-require('./entorno')
+const { temporal } = require('./entorno')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -83,9 +83,8 @@ test('el bridge de Antigravity traduce decisiones al protocolo nativo', () => {
 // resuelve no se arregla trabajando, así que cada intento de cerrar repetía el mismo error y el agente
 // quedaba sin poder terminar la sesión. `engine/hooks/run.js` marca el bloqueo con `error.blocked`.
 test('el puente de Antigravity separa el guard que bloquea del puente que no arrancó', () => {
-  const os = require('node:os')
   const { spawnSync } = require('node:child_process')
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-stop-'))
+  const base = temporal('cauce-stop-')
   const workspace = path.join(base, 'repo')
   const target = path.join(workspace, 'ops')
   fs.mkdirSync(workspace)
@@ -109,12 +108,20 @@ test('el puente de Antigravity separa el guard que bloquea del puente que no arr
     return JSON.parse(result.stdout.trim())
   }
 
-  // `planning-drift` deja un marcador por sesión en el tmp y sólo bloquea la primera vez, así que la
-  // sesión tiene que ser nueva en cada corrida o la segunda pasa de largo y el test miente.
-  fs.rmSync(path.join(target, 'planning', 'PROTOCOL.md'))
-  const bloqueado = responde('stop', `drift-${process.pid}-${Date.now()}`)
-  assert.equal(bloqueado.decision, 'continue', 'el drift retiene al agente: eso es el guard funcionando')
-  assert.match(bloqueado.reason, /PROTOCOL\.md/)
+  // `planning-drift` deja en el tmp del sistema un marcador de la sesión que ya bloqueó, y sólo bloquea
+  // la primera vez: la sesión tiene que ser nueva en cada corrida o la segunda pasa de largo y el test
+  // miente. Ese marcador no cuelga de la raíz temporal de la suite —es de la sesión, no de la prueba—,
+  // así que se limpia acá; el nombre sale de `engine/hooks/run.js`.
+  const sesion = `drift-${process.pid}-${Date.now()}`
+  const marcador = path.join(require('node:os').tmpdir(), `cauce-drift-${sesion}`)
+  try {
+    fs.rmSync(path.join(target, 'planning', 'PROTOCOL.md'))
+    const bloqueado = responde('stop', sesion)
+    assert.equal(bloqueado.decision, 'continue', 'el drift retiene al agente: eso es el guard funcionando')
+    assert.match(bloqueado.reason, /PROTOCOL\.md/)
+  } finally {
+    fs.rmSync(marcador, { force: true })
+  }
 
   fs.rmSync(path.join(target, 'ops.config.json'))
   const roto = responde('stop', 'sin-raiz')
@@ -134,7 +141,7 @@ test('el puente de Antigravity separa el guard que bloquea del puente que no arr
 test('install deja el puente de Antigravity resoluble desde la copia que agy registra', () => {
   const os = require('node:os')
   const { spawnSync } = require('node:child_process')
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-agy-'))
+  const base = temporal('cauce-agy-')
   const workspace = path.join(base, 'repo')
   const target = path.join(workspace, 'ops')
   fs.mkdirSync(workspace)
@@ -214,7 +221,7 @@ test('los runners con hooks nativos registran el grupo, no un hook por guard', (
 // una corrida real terminó con el agente narrando trabajo que no pudo hacer.
 test('doctor ejecuta el puente del runner, no sólo lo busca', () => {
   const A = require('../engine/automation')
-  const base = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'cauce-puente-'))
+  const base = temporal('cauce-puente-')
   const workspace = path.join(base, 'repo')
   const target = path.join(workspace, 'ops')
   fs.mkdirSync(workspace)

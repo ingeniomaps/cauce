@@ -1,11 +1,10 @@
 'use strict'
 
-require('./entorno')
+const { temporal } = require('./entorno')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
-const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const teams = require('../engine/teams/registry')
@@ -36,7 +35,7 @@ test('team check y show exponen un contrato utilizable', () => {
 })
 
 test('validador rechaza dependencias posteriores y agentes inexistentes', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-team-invalid-'))
+  const root = temporal('ops-team-invalid-')
   fs.mkdirSync(path.join(root, 'teams', 'broken'), { recursive: true })
   fs.writeFileSync(path.join(root, 'teams', 'broken', 'WORKFLOW.md'), '# Broken\n')
   fs.writeFileSync(path.join(root, 'teams', 'broken', 'team.json'), JSON.stringify({

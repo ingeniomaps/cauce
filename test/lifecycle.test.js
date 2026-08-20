@@ -1,6 +1,6 @@
 'use strict'
 
-require('./entorno')
+const { temporal } = require('./entorno')
 
 // Recorrido completo tal como lo vive una empresa: instalar el paquete publicado, materializar la
 // instancia, trabajar en ella, recibir una versión nueva y actualizarse.
@@ -11,7 +11,6 @@ require('./entorno')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
-const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 
@@ -29,7 +28,7 @@ function cauce(consumer, args) {
 }
 
 test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout: 120000 }, (t) => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-lifecycle-'))
+  const base = temporal('cauce-lifecycle-')
   const consumer = path.join(base, 'acme-ops')
   fs.mkdirSync(consumer, { recursive: true })
   fs.writeFileSync(

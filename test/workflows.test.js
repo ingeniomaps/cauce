@@ -1,6 +1,6 @@
 'use strict'
 
-require('./entorno')
+const { temporal } = require('./entorno')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')

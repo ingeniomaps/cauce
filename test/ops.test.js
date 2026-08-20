@@ -1,11 +1,10 @@
 'use strict'
 
-require('./entorno')
+const { temporal } = require('./entorno')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
-const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { hookMetadata } = require('../engine/hooks/run')
@@ -66,7 +65,7 @@ test('automation list-hooks explica los guards disponibles', () => {
 // sola dirección a propósito — un `.sh` de más es cómo una empresa agrega el suyo, que es justo lo
 // que `upgrade` le recomienda hacer.
 test('automation check exige los guards del motor y respeta los de la empresa', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-hooks-'))
+  const base = temporal('cauce-hooks-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar']).status, 0)
   linkEngine(target)
@@ -93,7 +92,7 @@ test('automation check exige los guards del motor y respeta los de la empresa', 
 })
 
 test('init produce una instancia autocontenida y no sobrescribe', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-'))
+  const base = temporal('cauce-')
   const target = path.join(base, 'demo-ops')
   const created = run(['init', target, '--name', 'Demo', '--mode', 'sidecar'])
   assert.equal(created.status, 0, created.stderr)
@@ -226,7 +225,7 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
 // suyo. El nombre sale de la carpeta del proyecto —`ops` nombra al toolkit, no al negocio— y el modo
 // es sidecar, el único que deja el wiring del runner donde el dev abre la herramienta.
 test('init sin destino aparta la instancia en ops/', () => {
-  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-mono-'))
+  const repo = temporal('cauce-mono-')
   fs.mkdirSync(path.join(repo, 'apps'))
   const created = run(['init'], repo)
   assert.equal(created.status, 0, created.stderr)
@@ -249,7 +248,7 @@ test('init sin destino aparta la instancia en ops/', () => {
 // La basura de un proyecto la declara el propio proyecto, y mantener una lista de la ajena es perder.
 // Lo que el arranque necesita saber es qué es esto, no qué generó el último build.
 test('scan respeta lo que el proyecto declaró basura', () => {
-  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-basura-'))
+  const repo = temporal('cauce-basura-')
   const poner = (relative) => {
     fs.mkdirSync(path.join(repo, relative), { recursive: true })
     fs.writeFileSync(path.join(repo, relative, 'package.json'), '{"name":"x"}')
@@ -272,7 +271,7 @@ test('scan respeta lo que el proyecto declaró basura', () => {
 // Con varias raíces declaradas, el candidato principal de cada una se llama `.`: tres servicios con el
 // mismo nombre y nada que los distinga, que es como una credencial deja de poder atribuirse a un servicio.
 test('con varias raíces cada servicio se puede nombrar', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-multi-'))
+  const base = temporal('cauce-multi-')
   const workspace = path.join(base, 'tienda')
   for (const repo of ['api', 'web']) {
     fs.mkdirSync(path.join(workspace, repo), { recursive: true })
@@ -295,7 +294,7 @@ test('con varias raíces cada servicio se puede nombrar', () => {
 
 // Un corte que no se anuncia hace pasar lo listado por todo lo que hay.
 test('scan recorta la lista en pantalla y dice cuánto', () => {
-  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-grande-'))
+  const repo = temporal('cauce-grande-')
   for (let index = 0; index < 25; index += 1) {
     const dir = path.join(repo, 'packages', `p${index}`)
     fs.mkdirSync(dir, { recursive: true })
@@ -308,7 +307,7 @@ test('scan recorta la lista en pantalla y dice cuánto', () => {
 })
 
 test('onboard guía con preguntas y no pisa lo que ya está escrito', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-guia-'))
+  const base = temporal('cauce-guia-')
   const repo = path.join(base, 'mono')
   fs.mkdirSync(path.join(repo, 'apps', 'api'), { recursive: true })
   fs.writeFileSync(path.join(repo, 'apps', 'api', 'package.json'), '{"scripts":{"test":"jest"}}')
@@ -344,7 +343,7 @@ test('onboard guía con preguntas y no pisa lo que ya está escrito', () => {
 // minutos en una carpeta vacía. Acá se comprueba lo que ese recorrido tiene que saber sin ayuda —dónde
 // mirar, qué saltear y qué comandos declara cada servicio— y que no corra ninguno.
 test('scan inventaría el workspace y saltea lo que nunca es un servicio', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-scan-'))
+  const base = temporal('cauce-scan-')
   const repo = path.join(base, 'mono')
   const escribir = (relative, content) => {
     fs.mkdirSync(path.join(repo, path.dirname(relative)), { recursive: true })
@@ -391,7 +390,7 @@ test('scan inventaría el workspace y saltea lo que nunca es un servicio', () =>
 // como «no hay nada nuevo» durante todas las versiones siguientes, y el usuario se queda atrás en
 // silencio. La instrucción concreta vale más que la advertencia.
 test('upgrade --check dice contra qué compara y cómo traer lo nuevo', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-aldia-'))
+  const base = temporal('cauce-aldia-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
   const check = run(['upgrade', target, '--check'])
@@ -407,7 +406,7 @@ test('upgrade --check dice contra qué compara y cómo traer lo nuevo', () => {
 })
 
 test('init imprime la guía aunque no instale la dependencia', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-guia-init-'))
+  const base = temporal('cauce-guia-init-')
   const repo = path.join(base, 'mono')
   fs.mkdirSync(path.join(repo, 'apps'), { recursive: true })
   const created = run(['init', '--no-install'], repo)
@@ -417,7 +416,7 @@ test('init imprime la guía aunque no instale la dependencia', () => {
 })
 
 test('init no crea una carpeta ops dentro de otra', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-anidada-'))
+  const base = temporal('cauce-anidada-')
   const repo = path.join(base, 'acme-ops')
   fs.mkdirSync(repo)
   // Sólo `.git`: es lo que hay en la carpeta que alguien acaba de crear y versionar para la instancia.
@@ -432,7 +431,7 @@ test('init no crea una carpeta ops dentro de otra', () => {
 })
 
 test('init deja la instancia funcionando en una sola corrida', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-uno-'))
+  const base = temporal('cauce-uno-')
   const repo = path.join(base, 'mono')
   const bin = path.join(base, 'bin')
   fs.mkdirSync(repo)
@@ -465,7 +464,7 @@ test('init deja la instancia funcionando en una sola corrida', () => {
 // Y cuando npm falla, la instancia queda creada pero no funciona: decirlo es la diferencia entre
 // arrancar de nuevo y perseguir un error del runner tres pasos después.
 test('init no disimula un npm install que falló', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-sinred-'))
+  const base = temporal('cauce-sinred-')
   const repo = path.join(base, 'mono')
   const bin = path.join(base, 'bin')
   fs.mkdirSync(repo)
@@ -491,7 +490,7 @@ test('init no disimula un npm install que falló', () => {
 // Una corrida real reescribió `organization/` entero: buen contenido, otras secciones. El archivo se lee
 // completo y perdió cuatro dimensiones, y nadie las va a pedir después porque nada indica que faltaban.
 test('check avisa cuando una dimensión del molde desapareció', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-molde-'))
+  const base = temporal('cauce-molde-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
   assert.doesNotMatch(run(['check', path.join(target, 'planning')]).stdout, /sin ##/, 'el molde intacto no avisa')
@@ -513,7 +512,7 @@ test('check avisa cuando una dimensión del molde desapareció', () => {
 // dos dejaron afuera las que la conversación no tocó —entre ellas el broker por donde entran los datos—.
 // Una variable sin dueño no rompe nada hoy: rompe el día que alguien tiene que desplegar.
 test('check avisa por las credenciales que nadie se llevó', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-creds-'))
+  const base = temporal('cauce-creds-')
   const workspace = path.join(base, 'repo')
   const target = path.join(workspace, 'ops')
   fs.mkdirSync(workspace)
@@ -541,7 +540,7 @@ test('check avisa por las credenciales que nadie se llevó', () => {
 // `check` respondía «planning válido: 0 épica(s)». El silencio es peor que el rechazo — el planning se
 // reporta sano mientras el trabajo que alguien escribió no existe para el sistema.
 test('check no deja pasar una épica que nadie va a leer', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-invisible-'))
+  const base = temporal('cauce-invisible-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
   const roadmap = path.join(target, 'planning', 'roadmap')
@@ -564,7 +563,7 @@ test('check no deja pasar una épica que nadie va a leer', () => {
 })
 
 test('destroy avisa qué se pierde y no borra hasta que se lo pidan dos veces', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-destroy-'))
+  const base = temporal('cauce-destroy-')
   const workspace = path.join(base, 'mono')
   const target = path.join(workspace, 'ops')
   fs.mkdirSync(workspace)
@@ -603,7 +602,7 @@ test('destroy avisa qué se pierde y no borra hasta que se lo pidan dos veces', 
 // En modo embebido la instancia **es** el repositorio, así que borrar la carpeta se lleva el código del
 // producto. Pasó de verdad sobre un caso de prueba: `destroy --force` dejó el directorio vacío.
 test('destroy no se lleva el repositorio en modo embebido', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-emb-destroy-'))
+  const base = temporal('cauce-emb-destroy-')
   const repo = path.join(base, 'app')
   fs.mkdirSync(path.join(repo, 'src'), { recursive: true })
   fs.writeFileSync(path.join(repo, 'src', 'main.rs'), 'fn main() {}\n')
@@ -623,7 +622,7 @@ test('destroy no se lleva el repositorio en modo embebido', () => {
 })
 
 test('en embebido las instrucciones del runner conviven con las de la empresa', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-embebido-'))
+  const base = temporal('cauce-embebido-')
   const repo = path.join(base, 'app')
   fs.mkdirSync(repo)
   fs.writeFileSync(path.join(repo, 'package.json'), '{"scripts":{"test":"x"}}')
@@ -662,7 +661,7 @@ test('en embebido las instrucciones del runner conviven con las de la empresa', 
 })
 
 test('automation uninstall saca lo del toolkit y deja lo del usuario', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-uninst-'))
+  const base = temporal('cauce-uninst-')
   const workspace = path.join(base, 'mono')
   const target = path.join(workspace, 'ops')
   fs.mkdirSync(workspace)
@@ -706,7 +705,7 @@ test('automation uninstall saca lo del toolkit y deja lo del usuario', () => {
 })
 
 test('init rechaza un runner que no existe', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-runner-'))
+  const base = temporal('cauce-runner-')
   const target = path.join(base, 'demo-ops')
   const result = run(['init', target, '--mode', 'sidecar', '--runner', 'emacs'])
   assert.equal(result.status, 2)
@@ -714,7 +713,7 @@ test('init rechaza un runner que no existe', () => {
 })
 
 test('init rechaza destinos atravesados por symlinks', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-symlink-'))
+  const base = temporal('cauce-symlink-')
   const target = path.join(base, 'project')
   const outside = path.join(base, 'outside')
   fs.mkdirSync(target)
@@ -726,7 +725,7 @@ test('init rechaza destinos atravesados por symlinks', () => {
 })
 
 test('check rechaza una tarea sin aceptación', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-invalid-'))
+  const base = temporal('cauce-invalid-')
   const target = path.join(base, 'project')
   assert.equal(run(['init', target, '--name', 'Invalid', '--mode', 'embedded']).status, 0)
   const invalidBacklog = '# Backlog\n\n## Hito demo — Demo\n\n'
@@ -737,7 +736,7 @@ test('check rechaza una tarea sin aceptación', () => {
 })
 
 test('install reemplaza el wiring por guard suelto y conserva lo que no es suyo', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-migrate-'))
+  const base = temporal('cauce-migrate-')
   const target = path.join(base, 'project')
   assert.equal(run(['init', target, '--name', 'Migrate', '--mode', 'sidecar']).status, 0)
   linkEngine(target)
@@ -794,7 +793,7 @@ test('check --json entrega estado consumible y conserva el exit code', () => {
   assert.deepEqual(report.errors, [])
   for (const field of ['epics', 'queued', 'done']) assert.equal(typeof report[field], 'number')
 
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-json-'))
+  const base = temporal('cauce-json-')
   const target = path.join(base, 'project')
   assert.equal(run(['init', target, '--name', 'Json', '--mode', 'embedded']).status, 0)
   fs.writeFileSync(
@@ -824,7 +823,7 @@ test('tree --json refleja el mismo estado que la salida de texto', () => {
 })
 
 test('context entrega el contexto mínimo y respeta la precedencia del protocolo', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-context-'))
+  const base = temporal('cauce-context-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Context', '--mode', 'sidecar']).status, 0)
   const planning = path.join(target, 'planning')
@@ -929,7 +928,7 @@ test('tree no muta archivos de estado', () => {
 })
 
 test('valida y archiva el ciclo completo de una épica', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-cycle-'))
+  const base = temporal('cauce-cycle-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Cycle', '--mode', 'sidecar']).status, 0)
   const planning = path.join(target, 'planning')
@@ -993,7 +992,7 @@ service: app
 })
 
 test('Jira sincroniza ADF, preserva curación y promueve sin escribir remoto', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-jira-'))
+  const base = temporal('cauce-jira-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Jira demo', '--mode', 'sidecar']).status, 0)
   fs.mkdirSync(path.join(base, 'app'))
@@ -1081,7 +1080,7 @@ test('Jira sincroniza ADF, preserva curación y promueve sin escribir remoto', (
 })
 
 test('upgrade reemplaza lo del sistema y no toca nada del proyecto', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-upgrade-'))
+  const base = temporal('cauce-upgrade-')
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
 
@@ -1114,7 +1113,7 @@ test('upgrade reemplaza lo del sistema y no toca nada del proyecto', () => {
 })
 
 test('upgrade se niega a pisar una edición del runtime sin --force', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-upgrade-edit-'))
+  const base = temporal('cauce-upgrade-edit-')
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
 
@@ -1133,7 +1132,7 @@ test('upgrade se niega a pisar una edición del runtime sin --force', () => {
 })
 
 test('el motor llega siempre como dependencia, haya o no package.json', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-engine-'))
+  const base = temporal('cauce-engine-')
 
   // Un repo sin package.json recibe uno mínimo: el repo ops es un sidecar, así que declarar npm acá
   // no le impone un stack al servicio que está al lado.
@@ -1155,7 +1154,7 @@ test('el motor llega siempre como dependencia, haya o no package.json', () => {
 })
 
 test('el shim falla con instrucciones cuando no encuentra el motor', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-shim-'))
+  const base = temporal('cauce-shim-')
   const target = path.join(base, 'huerfano')
   assert.equal(run(['init', target, '--name', 'H', '--mode', 'sidecar']).status, 0)
   fs.rmSync(path.join(target, '.ops'), { recursive: true, force: true })
@@ -1169,7 +1168,7 @@ test('el shim falla con instrucciones cuando no encuentra el motor', () => {
 })
 
 test('upgrade explica cómo personalizar el runtime sin editarlo, y deja rastro al descartar', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-runtime-'))
+  const base = temporal('cauce-runtime-')
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
 
@@ -1194,7 +1193,7 @@ test('upgrade explica cómo personalizar el runtime sin editarlo, y deja rastro 
 })
 
 test('el $schema de la instancia apunta al motor de la dependencia', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-schema-'))
+  const base = temporal('cauce-schema-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'D', '--mode', 'sidecar']).status, 0)
   const schema = JSON.parse(fs.readFileSync(path.join(target, 'ops.config.json'), 'utf8')).$schema
@@ -1205,7 +1204,7 @@ test('el $schema de la instancia apunta al motor de la dependencia', () => {
 
 test('el catálogo llega con la dependencia y el proyecto sólo lleva lo suyo', () => {
   const catalog = require('../engine/agents/catalog')
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-catalogo-'))
+  const base = temporal('cauce-catalogo-')
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
   linkEngine(target)
@@ -1229,7 +1228,7 @@ test('el catálogo llega con la dependencia y el proyecto sólo lleva lo suyo', 
 })
 
 test('nada se vendoriza, ni al crear ni al actualizar', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-vendor-'))
+  const base = temporal('cauce-vendor-')
   const target = path.join(base, 'acme')
   fs.mkdirSync(target, { recursive: true })
   fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({ name: 'acme', version: '1.0.0' }))
@@ -1250,7 +1249,7 @@ test('nada se vendoriza, ni al crear ni al actualizar', () => {
 
 test('upgrade distingue una edición local de una mejora del toolkit', () => {
   const M = require('../engine/core/manifest')
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-manifiesto-'))
+  const base = temporal('cauce-manifiesto-')
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'A', '--mode', 'sidecar']).status, 0)
 
@@ -1304,7 +1303,7 @@ test('ningún archivo del sistema pide que el proyecto lo edite', () => {
 })
 
 test('la instancia recibe cómo escribir lo que sí es suyo', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-plantillas-'))
+  const base = temporal('cauce-plantillas-')
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'A', '--mode', 'sidecar']).status, 0)
 
@@ -1448,7 +1447,7 @@ test('cada caso recibe su propio banco', () => {
 // En una empresa el banco no hace falta —su instancia ya es el lugar— y ofrecerlo confundiría: el
 // cargo que se evalúa ahí tiene que ser suyo.
 test('el banco es del toolkit; una instancia recibe la salida que le corresponde', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-bench-'))
+  const base = temporal('cauce-bench-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar']).status, 0)
   const result = run(['evaluate', 'product-manager', '--bench'], target)
@@ -1462,7 +1461,7 @@ test('el banco es del toolkit; una instancia recibe la salida que le corresponde
 // donde vive esta misma regla—, y el catálogo se duplicaría en punteros a sí mismo. `fork` ya se
 // negaba; estos dos entraban y hacían el daño en silencio.
 test('los comandos de una instancia se niegan a correr contra el toolkit', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-toolkit-'))
+  const root = temporal('cauce-toolkit-')
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'toolkit' }))
 
   const upgraded = run(['upgrade', root])
@@ -1484,7 +1483,7 @@ test('los comandos de una instancia se niegan a correr contra el toolkit', () =>
 // configuración rota, así que `upgrade` no reconocía el modo `toolkit` y seguía adelante — sobre el
 // repo donde vive la regla que se lo prohíbe. Ausente sigue siendo ausente y da el error de siempre.
 test('una configuración ilegible detiene el comando en vez de pasar por desconocida', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-config-'))
+  const root = temporal('cauce-config-')
   fs.mkdirSync(path.join(root, 'planning'))
   const config = path.join(root, 'ops.config.json')
 

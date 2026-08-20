@@ -1,6 +1,6 @@
 'use strict'
 
-require('./entorno')
+const { temporal } = require('./entorno')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -34,7 +34,7 @@ test('guard-destructive bloquea pérdida o publicación y permite lecturas', () 
 // El guard del cierre corre `check` y bloquea si el planning quedó desalineado. Se prueba el lado que
 // bloquea porque el otro —salir en verde— lo ejercita cualquier corrida sana, y es el que no avisa nada.
 test('guard planning-drift bloquea el cierre con el planning roto', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-drift-'))
+  const base = temporal('ops-hook-drift-')
   const root = path.join(base, 'demo-ops')
   const cli = path.resolve(__dirname, '..', 'engine', 'cli', 'ops.js')
   assert.equal(spawnSync(process.execPath, [cli, 'init', root, '--name', 'D', '--mode', 'sidecar',
@@ -53,7 +53,7 @@ test('guard planning-drift bloquea el cierre con el planning roto', () => {
 })
 
 test('guard-destructive respeta runner.allowPush del proyecto', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-push-'))
+  const root = temporal('ops-hook-push-')
   fs.mkdirSync(path.join(root, 'planning'))
   const declara = (allowPush) => fs.writeFileSync(
     path.join(root, 'ops.config.json'),
@@ -102,7 +102,7 @@ test('guards de archivos protegen secretos y snapshots, pero permiten plantillas
 })
 
 test('guard-governance bloquea commits con reglas staged', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-gov-'))
+  const root = temporal('ops-hook-gov-')
   git(['init', '-q'], root)
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'planning', 'PROTOCOL.md'), '# protocol\n')
@@ -111,7 +111,7 @@ test('guard-governance bloquea commits con reglas staged', () => {
 })
 
 test('guard-verify ejecuta gates reales antes del commit', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-verify-'))
+  const root = temporal('ops-hook-verify-')
   git(['init', '-q'], root)
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "process.exit(1)"' } }))
   fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = true\n')
@@ -120,7 +120,7 @@ test('guard-verify ejecuta gates reales antes del commit', () => {
 })
 
 test('guard-verify exige regenerar después de cambiar OpenAPI o SQL fuente', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-generated-drift-'))
+  const root = temporal('ops-hook-generated-drift-')
   git(['init', '-q'], root)
   fs.mkdirSync(path.join(root, 'openapi'))
   fs.writeFileSync(path.join(root, 'openapi', 'api.yaml'), 'openapi: 3.0.0\n')
@@ -132,7 +132,7 @@ test('guard-verify exige regenerar después de cambiar OpenAPI o SQL fuente', ()
 })
 
 test('guard-workspace-boundary limita escrituras a las raíces declaradas', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-boundary-'))
+  const root = temporal('ops-hook-boundary-')
   fs.mkdirSync(path.join(root, 'planning'))
   fs.mkdirSync(path.join(root, 'service'))
   const config = { workspaceRoots: [{ name: 'service', path: 'service' }] }
@@ -142,7 +142,7 @@ test('guard-workspace-boundary limita escrituras a las raíces declaradas', () =
 })
 
 test('guard-engine protege el motor instalado y deja trabajar al toolkit', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-engine-'))
+  const root = temporal('ops-hook-engine-')
   const pkg = path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine')
   fs.mkdirSync(pkg, { recursive: true })
   fs.mkdirSync(path.join(root, 'agents'))
@@ -166,7 +166,7 @@ test('guard-engine protege el motor instalado y deja trabajar al toolkit', () =>
 // rompe esa disciplina; de ahí `--save-exact`. Traer el motor tampoco alcanza: las rutas del sistema
 // de la instancia se refrescan con `upgrade`, que es el segundo paso.
 test('guard-engine indica un camino de actualización que funciona', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-engine-msg-'))
+  const root = temporal('ops-hook-engine-msg-')
   fs.mkdirSync(path.join(root, 'node_modules', '@ingeniomaps', 'cauce'), { recursive: true })
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
@@ -183,7 +183,7 @@ test('guard-engine indica un camino de actualización que funciona', () => {
 // escribiera un agente era una frase en un prompt. Alrededor de la firma van las otras piezas del
 // mismo acto: el contrato que la propuesta cambia y el denominador con que se lo juzga.
 test('guard-governance protege el contrato de un cargo, su medición y su firma', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-gov-'))
+  const root = temporal('ops-hook-gov-')
   git(['init'], root)
   git(['config', 'user.email', 'x@y.z'], root)
   git(['config', 'user.name', 'x'], root)
@@ -225,7 +225,7 @@ test('guard-governance protege el contrato de un cargo, su medición y su firma'
 })
 
 test('guard-migrations protege historial y SQL destructivo', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-migrations-'))
+  const root = temporal('ops-hook-migrations-')
   fs.mkdirSync(path.join(root, 'migrations'))
   fs.writeFileSync(path.join(root, 'migrations', '001_init.sql'), 'CREATE TABLE users (id int);\n')
   const rewrite = { file_path: 'migrations/001_init.sql', new_string: 'ALTER TABLE users ADD name text;' }
@@ -257,7 +257,7 @@ test('guard-migrations protege historial y SQL destructivo', () => {
 test('guard-dependencies exige consistencia y bloquea publicación', () => {
   blocked('dependencies', { tool_input: { command: 'npm publish' } })
   blocked('dependencies', { tool_input: { command: 'pnpm add -g typescript' } })
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-hook-deps-'))
+  const root = temporal('ops-hook-deps-')
   git(['init', '-q'], root)
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ dependencies: { example: '1.0.0' } }))
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n')
@@ -311,7 +311,7 @@ test('un guard suelto sigue siendo invocable por nombre', () => {
 // al parsearla, así que una coma de más los apagaba a los dos sin imprimir nada. Y `findOpsRoot` sólo
 // devuelve una raíz cuando `ops.config.json` existe, o sea que ese catch nunca fue «no aplica».
 test('un guard que no puede leer la configuración bloquea, no permite', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-failopen-'))
+  const root = temporal('ops-failopen-')
   fs.mkdirSync(path.join(root, 'planning'))
   const config = path.join(root, 'ops.config.json')
   const afuera = { cwd: root, tool_input: { file_path: '/etc/passwd' } }

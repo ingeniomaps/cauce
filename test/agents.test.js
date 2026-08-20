@@ -1,11 +1,10 @@
 'use strict'
 
-require('./entorno')
+const { temporal } = require('./entorno')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
-const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const learning = require('../engine/agents/learning')
@@ -30,7 +29,7 @@ function run(args, cwd = path.dirname(CLI)) {
 // tarball: es la misma resolución —`node_modules/@ingeniomaps/cauce`— sin pagar un `npm install` por
 // test. El recorrido contra el paquete publicado lo cubre `lifecycle.test.js`.
 function installedProject(name) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-agents-'))
+  const root = temporal('cauce-agents-')
   const target = path.join(root, 'demo-ops')
   const result = run(['init', target, '--name', name, '--mode', 'sidecar'])
   assert.equal(result.status, 0, result.stderr)
@@ -224,7 +223,7 @@ test('los comandos make citados por los agentes existen en ambos Makefiles', () 
 
 test('un cargo propio reemplaza al del sistema y el runner apunta al que gana', () => {
   const A = require('../engine/automation')
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-precedencia-'))
+  const root = temporal('cauce-precedencia-')
   const write = (dir, description) => {
     fs.mkdirSync(dir, { recursive: true })
     fs.writeFileSync(path.join(dir, 'SKILL.md'), `---\nname: demo\ndescription: ${description}\n---\n\n# demo\n`)
@@ -252,7 +251,7 @@ test('un cargo propio reemplaza al del sistema y el runner apunta al que gana', 
 })
 
 test('un slug repetido entre tipos distintos sigue siendo ambiguo', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-ambiguo-'))
+  const root = temporal('cauce-ambiguo-')
   for (const type of ['roles', 'specialists']) {
     const dir = path.join(root, 'agents', type, 'demo')
     fs.mkdirSync(dir, { recursive: true })
@@ -489,7 +488,7 @@ test('dos corridas el mismo día conviven y la segunda es la vigente', () => {
 // Una empresa mantiene sus cargos, no los del catálogo. Sin poder acotar la lista, su ciclo de
 // aprendizaje tendría que recorrer 48 cargos para encontrar el suyo y chocar 47 veces con la negativa.
 test('una empresa puede acotar el catálogo a lo que sí mantiene', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-own-'))
+  const base = temporal('cauce-own-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar']).status, 0)
   linkEngine(target)
@@ -547,7 +546,7 @@ function fakePackage(root, slug, extra = {}) {
 // Copiar a mano sale mal de una forma que no se nota: se agarra el SKILL.md, que es lo que se ve, y
 // el cargo queda sin casos. Responde igual y ya no se puede evaluar, sin ningún aviso.
 test('el fork trae el cargo entero y deja atrás lo que ganó nuestra versión', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-fork-'))
+  const root = temporal('cauce-fork-')
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
   fakePackage(root, 'demo-role')
@@ -574,7 +573,7 @@ test('el fork trae el cargo entero y deja atrás lo que ganó nuestra versión',
 // agents/<tipo>/system/<slug>», y en una empresa ese directorio es el paquete. Copiado tal cual, el
 // aprendizaje del cargo adoptado apuntaba a un lugar que el guard bloquea y que npm borra.
 test('el fork reescribe las rutas del catálogo por las de la empresa', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-fork-paths-'))
+  const root = temporal('cauce-fork-paths-')
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
   fakePackage(root, 'demo-role', {
@@ -590,7 +589,7 @@ test('el fork reescribe las rutas del catálogo por las de la empresa', () => {
 // Sin este corte, `check` avisaba «tu copia no recibe mejoras del catálogo» sobre una copia borrada y
 // mandaba a mirar un directorio que no está.
 test('un cargo devuelto al catálogo no deja avisos sobre una copia que no existe', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-unfork-'))
+  const root = temporal('cauce-unfork-')
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
   const source = fakePackage(root, 'demo-role')
@@ -607,7 +606,7 @@ test('un cargo devuelto al catálogo no deja avisos sobre una copia que no exist
 })
 
 test('en el toolkit no se forkea: el catálogo se edita acá', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-fork-toolkit-'))
+  const root = temporal('cauce-fork-toolkit-')
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'toolkit' }))
   fakePackage(root, 'demo-role')
@@ -618,7 +617,7 @@ test('en el toolkit no se forkea: el catálogo se edita acá', () => {
 })
 
 test('no se forkea dos veces ni se forkea lo propio', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-fork-twice-'))
+  const root = temporal('cauce-fork-twice-')
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
   fakePackage(root, 'demo-role')
@@ -631,7 +630,7 @@ test('no se forkea dos veces ni se forkea lo propio', () => {
 // catorce archivos a mano en cada actualización. Lo delicado es la otra mitad —callar cuando la
 // empresa edita lo suyo—, porque un aviso que salta con cada ajuste propio se vuelve ruido y se ignora.
 test('la deriva avisa cuando mejora el catálogo, no cuando la empresa edita su copia', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-drift-'))
+  const root = temporal('cauce-drift-')
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
   const source = fakePackage(root, 'demo-role')
