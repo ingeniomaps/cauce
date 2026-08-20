@@ -131,13 +131,13 @@ const BUILD = {
     blockers: { type: 'array', items: { type: 'string' } },
     // Estricto en el cómo, flexible en el qué: lo que aparece y el plan no previó tiene dos destinos y
     // ninguno es el silencio. Un caso que esta tarea puede fijar entra con la prueba que lo fija —por eso
-    // su `test` tiene que estar en `redFirst`—; un pedazo de diseño que falta para, porque construir
-    // sobre un diseño que no lo cubre es decidirlo sin que nadie lo haya decidido. Implementarlo sin
-    // prueba lo vuelve invisible y descartarlo lo pierde: en los dos casos el próximo empieza de cero.
+    // su `test` tiene que estar en `redFirst`—; una decisión que no le toca queda registrada con quién
+    // puede tomarla. Implementarlo sin prueba lo vuelve invisible y descartarlo lo pierde: en los dos
+    // casos el próximo que lo encuentre empieza de cero.
     discovered: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['kind', 'detail'],
       properties: {
-        kind: { type: 'string', enum: ['edge', 'gap'] },
+        kind: { type: 'string', enum: ['edge', 'open'] },
         detail: { type: 'string' }, test: { type: 'string' },
       },
     } },
@@ -406,7 +406,9 @@ while (vueltas++ < MAX_TAREAS) {
     `rojo y ese verde, y nada más: los gates completos, el QA, el commit y el cierre son fases posteriores, ` +
     `así que no toques ${DONE} ni ${BACKLOG} ni el status del WIP. Lo que el plan no previó va en discovered y ` +
     `no en el código a secas: kind=edge si esta tarea lo puede fijar —y entonces entra con su prueba, que ` +
-    `nombrás en test y anotás en redFirst—, kind=gap si falta una parte del diseño, que no se decide acá. ` +
+    `nombrás en test y anotás en redFirst—, kind=open si lo notaste y no impide entregar la aceptación: se ` +
+    `registra para que lo decida quien corresponde y el recorrido sigue. Si de verdad no podés entregar sin ` +
+    `esa decisión, eso no va en discovered: es completed=false con su blocker. ` +
     `Aceptación: ${task.acceptance}.`,
     { schema: BUILD },
   )
@@ -421,13 +423,16 @@ while (vueltas++ < MAX_TAREAS) {
   // Nombrar el test sin traer su fallo es volver a afirmar que hubo rojo, que es lo que el campo evita.
   const sinFallo = build.redFirst.find((entry) => !entry.failure.trim())
   if (sinFallo) return stop('build-unproven', `${sinFallo.test} se declara en rojo sin el fallo que lo muestra`)
-  // Un hueco de diseño no lo cierra quien lo encuentra. Queda escrito antes de parar: lo que frena una
-  // corrida y no se registra vuelve a aparecer en la siguiente, y otra vez sin dueño.
-  const hueco = build.discovered.find((entry) => entry.kind === 'gap')
-  if (hueco) {
-    await write(`Registrá ${task.id} en ${HUMAN} con el hueco de diseño y la decisión que lo cierra: ` +
-      `${hueco.detail}.`)
-    return stop('design-gap', hueco.detail)
+  // Lo que queda abierto no lo cierra quien lo encuentra, pero tampoco frena lo que sí se pudo entregar.
+  // Tres corridas reales terminaron acá y las tres traían `completed: true`: el hueco nunca fue «no puedo»
+  // sino «hay un borde que alguien tiene que decidir», y una aceptación escrita en prosa siempre tiene uno.
+  // Frenar por eso frenaba siempre, y un freno que salta siempre se termina apagando. Lo que de verdad
+  // bloquea ya tiene camino —`completed: false` con su blocker—; esto se registra y sigue.
+  const abiertos = build.discovered.filter((entry) => entry.kind === 'open')
+  if (abiertos.length) {
+    await write(`Registrá en ${HUMAN} una fila por cada decisión que ${task.id} dejó abierta, con qué la ` +
+      `cierra y quién puede tomarla. No inventes responsables ni fechas: ` +
+      `${JSON.stringify(abiertos.map((entry) => entry.detail))}`)
   }
   // Y un caso que sí se fijó acá entra con su prueba o no entró: sin ella el comportamiento nuevo queda
   // sin nada que lo sostenga, y nadie sabe después que debía existir.

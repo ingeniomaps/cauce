@@ -87,8 +87,11 @@ test('autobuild no da por verificada una aceptación sin test que la codifique',
 // una prueba que falta la escribe el propio recorrido, un pedazo de diseño que falta no. Si los dos
 // terminan en el mismo stop, una persona paga la interrupción de lo que se arreglaba solo.
 test('autobuild encamina lo descubierto según quién puede resolverlo', () => {
-  assert.match(workflow, /kind: \{ type: 'string', enum: \['edge', 'gap'\] \}/, 'Build declara qué encontró')
-  assert.match(workflow, /hueco[\s\S]{0,320}stop\('design-gap'/, 'un hueco de diseño para y queda escrito')
+  assert.match(workflow, /kind: \{ type: 'string', enum: \['edge', 'open'\] \}/, 'Build declara qué encontró')
+  assert.match(
+    workflow, /abiertos[\s\S]{0,320}HUMAN[\s\S]{0,200}quién puede tomarla/,
+    'una decisión abierta queda registrada con su dueño, y no frena lo que sí se entregó',
+  )
   assert.match(workflow, /suelto[\s\S]{0,200}stop\('edge-unproven'/, 'y un caso fijado acá entra con su prueba')
   const verify = workflow.slice(workflow.indexOf("phase('Verify')"), workflow.indexOf("phase('QA')"))
   assert.match(workflow, /enum: \['missing-test', 'ambiguous'\]/, 'el criterio sin cubrir declara su causa')

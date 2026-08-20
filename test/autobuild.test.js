@@ -172,18 +172,34 @@ test('una tarea cerrada en Build no sigue como si nada', async () => {
   assert.ok(!pedidas.some((clave) => clave.startsWith('Review|')), 'y no se revisa lo que ya se cerró')
 })
 
-test('un hueco de diseño para el recorrido y queda escrito antes de parar', async () => {
+// Una decisión que quedó abierta se registra y no frena lo que sí se entregó. Frenaba, y en tres corridas
+// reales frenó las tres veces con la tarea completa: toda aceptación en prosa tiene un borde indefinido, así
+// que el freno saltaba siempre. Lo que de verdad bloquea sigue siendo completed:false con su blocker.
+test('una decisión abierta queda escrita y el recorrido sigue', async () => {
   const { resultado, escritos } = await correr({
     'Build|completed,summary,redFirst,discovered,closedTask': {
-      completed: true, summary: 'x', redFirst: [],
-      discovered: [{ kind: 'gap', detail: 'nadie definió qué pasa con el alta sin país' }],
+      completed: true, summary: 'x', redFirst: [], closedTask: false,
+      discovered: [{ kind: 'open', detail: 'nadie definió qué pasa con el alta sin país' }],
     },
   })
-  assert.equal(resultado.reason, 'design-gap')
+  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
+  assert.deepEqual(resultado.done, ['T-1'], 'lo entregado se cierra igual')
   assert.ok(
     escritos.some((texto) => texto.includes('HUMAN_ACTIONS') && texto.includes('sin país')),
-    'el hueco tiene que quedar registrado antes del stop, o vuelve a aparecer sin dueño',
+    'y queda registrada con quién puede tomarla, o vuelve a aparecer sin dueño',
   )
+})
+
+// Lo que impide entregar no pasa por ese canal: el cargo no completa, y ahí sí frena.
+test('lo que de verdad bloquea sigue frenando por su propio camino', async () => {
+  const { resultado } = await correr({
+    'Build|completed,summary,redFirst,discovered,closedTask': {
+      completed: false, summary: 'x', redFirst: [], discovered: [], closedTask: false,
+      blockers: ['sin credencial del proveedor de pagos'],
+    },
+  })
+  assert.equal(resultado.reason, 'build-blocked')
+  assert.match(resultado.detail, /credencial/)
 })
 
 test('un caso descubierto entra con su prueba, y el nombre no tiene que coincidir letra por letra', async () => {
@@ -327,16 +343,17 @@ test('bajar ceremonia no baja la evidencia que cada carril exige', async () => {
       commands: [{ cmd: 'go build ./...', exitCode: 0 }],
     },
   }
-  const hueco = {
+  const edgeSuelto = {
     'Build|completed,summary,redFirst,discovered,closedTask': {
-      completed: true, summary: 'x', redFirst: [],
-      discovered: [{ kind: 'gap', detail: 'nadie definió el alta sin país' }],
+      completed: true, summary: 'x', closedTask: false,
+      redFirst: [{ test: 'TestAltaDuplicada', failure: 'want error' }],
+      discovered: [{ kind: 'edge', detail: 'alta sin país', test: 'TestAltaSinPais' }],
     },
   }
   for (const lane of ['directo', 'lite']) {
     assert.equal((await correr(sinFallo, { lane })).resultado.reason, 'build-unproven', lane)
     assert.equal((await correr(sinPrueba, { lane })).resultado.reason, 'verify-untested', lane)
-    assert.equal((await correr(hueco, { lane })).resultado.reason, 'design-gap', lane)
+    assert.equal((await correr(edgeSuelto, { lane })).resultado.reason, 'edge-unproven', lane)
   }
 })
 
