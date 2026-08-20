@@ -17,6 +17,21 @@ const BOOT = require('../engine/cli/bootstrap')
 const { providerConfig, safeSegment } = I
 const { fetchItems, validateConfig } = require('../engine/integrations/providers/jira')
 
+// Las variables de entorno son del proceso, no del test: si una aserción falla en el medio, la que
+// quedó puesta cambia el resultado de los que siguen y el fallo real aparece disfrazado en otro caso.
+async function conEntorno(vars, cuerpo) {
+  const previo = Object.fromEntries(Object.keys(vars).map((clave) => [clave, process.env[clave]]))
+  Object.assign(process.env, vars)
+  try {
+    return await cuerpo()
+  } finally {
+    for (const [clave, valor] of Object.entries(previo)) {
+      if (valor === undefined) delete process.env[clave]
+      else process.env[clave] = valor
+    }
+  }
+}
+
 function validConfig() {
   return {
     $schema: '.ops/engine/schemas/ops-config.schema.json',
@@ -130,53 +145,53 @@ test('las rutas de proveedores no pueden escapar de integrations', () => {
 })
 
 test('Jira pagina con timeout y termina correctamente', async () => {
-  process.env.OPS_TEST_JIRA_TOKEN = 'test-token'
-  const calls = []
-  const pages = [
-    { issues: [], nextPageToken: 'next' },
-    { issues: [], isLast: true },
-  ]
-  const fetchImpl = async (url, options) => {
-    calls.push({ url, options })
-    return { ok: true, json: async () => pages.shift() }
-  }
-  const result = await fetchItems(jiraConfig(), { fetchImpl, timeoutMs: 25 })
-  assert.deepEqual(result, [])
-  assert.equal(calls.length, 2)
-  assert.ok(calls[0].options.signal instanceof AbortSignal)
-  delete process.env.OPS_TEST_JIRA_TOKEN
+  await conEntorno({ OPS_TEST_JIRA_TOKEN: 'test-token' }, async () => {
+    const calls = []
+    const pages = [
+      { issues: [], nextPageToken: 'next' },
+      { issues: [], isLast: true },
+    ]
+    const fetchImpl = async (url, options) => {
+      calls.push({ url, options })
+      return { ok: true, json: async () => pages.shift() }
+    }
+    const result = await fetchItems(jiraConfig(), { fetchImpl, timeoutMs: 25 })
+    assert.deepEqual(result, [])
+    assert.equal(calls.length, 2)
+    assert.ok(calls[0].options.signal instanceof AbortSignal)
+  })
 })
 
 test('Jira corta tokens repetidos y paginación sin límite', async () => {
-  process.env.OPS_TEST_JIRA_TOKEN = 'test-token'
-  const repeated = async () => ({
-    ok: true,
-    json: async () => ({ issues: [], nextPageToken: 'same' }),
+  await conEntorno({ OPS_TEST_JIRA_TOKEN: 'test-token' }, async () => {
+    const repeated = async () => ({
+      ok: true,
+      json: async () => ({ issues: [], nextPageToken: 'same' }),
+    })
+    await assert.rejects(
+      fetchItems(jiraConfig(), { fetchImpl: repeated, maxPages: 5 }),
+      /nextPageToken repetido/,
+    )
+    let page = 0
+    const endless = async () => ({
+      ok: true,
+      json: async () => ({ issues: [], nextPageToken: `page-${++page}` }),
+    })
+    await assert.rejects(
+      fetchItems(jiraConfig(), { fetchImpl: endless, maxPages: 2 }),
+      /límite de 2 páginas/,
+    )
   })
-  await assert.rejects(
-    fetchItems(jiraConfig(), { fetchImpl: repeated, maxPages: 5 }),
-    /nextPageToken repetido/,
-  )
-  let page = 0
-  const endless = async () => ({
-    ok: true,
-    json: async () => ({ issues: [], nextPageToken: `page-${++page}` }),
-  })
-  await assert.rejects(
-    fetchItems(jiraConfig(), { fetchImpl: endless, maxPages: 2 }),
-    /límite de 2 páginas/,
-  )
-  delete process.env.OPS_TEST_JIRA_TOKEN
 })
 
 test('Jira no incorpora cuerpos remotos en errores', async () => {
-  process.env.OPS_TEST_JIRA_TOKEN = 'test-token'
-  const fetchImpl = async () => ({ ok: false, status: 401 })
-  await assert.rejects(
-    fetchItems(jiraConfig(), { fetchImpl }),
-    (error) => error.message === 'Jira respondió HTTP 401',
-  )
-  delete process.env.OPS_TEST_JIRA_TOKEN
+  await conEntorno({ OPS_TEST_JIRA_TOKEN: 'test-token' }, async () => {
+    const fetchImpl = async () => ({ ok: false, status: 401 })
+    await assert.rejects(
+      fetchItems(jiraConfig(), { fetchImpl }),
+      (error) => error.message === 'Jira respondió HTTP 401',
+    )
+  })
 })
 
 test('staging tipado detecta conflicto y permite reset y reconcile', async () => {
@@ -259,22 +274,22 @@ test('items ajenos se mantienen como contexto regenerable', async () => {
   const config = JSON.parse(fs.readFileSync(configFile, 'utf8'))
   config.candidateAssigneeEnv = 'OPS_TEST_JIRA_ASSIGNEE'
   fs.writeFileSync(configFile, JSON.stringify(config))
-  process.env.OPS_TEST_JIRA_ASSIGNEE = 'another-owner'
-  const fixture = writeFixture(root, 'context.json')
-  await I.sync(root, 'jira', { fixture })
-  const staged = path.join(root, 'integrations', 'jira', 'staging', 'stories', 'DEMO-1')
-  const snapshotFile = path.join(staged, 'remote.json')
-  const draftFile = path.join(staged, 'draft.md')
-  const snapshot = JSON.parse(fs.readFileSync(snapshotFile, 'utf8'))
-  assert.equal(snapshot.sync.role, 'context')
-  assert.match(fs.readFileSync(draftFile, 'utf8'), /state: context/)
-  fs.writeFileSync(draftFile, fs.readFileSync(draftFile, 'utf8').replace(
-    'Descripción remota',
-    'Edición que no debe persistir',
-  ))
-  await I.sync(root, 'jira', { fixture })
-  assert.doesNotMatch(fs.readFileSync(draftFile, 'utf8'), /no debe persistir/)
-  delete process.env.OPS_TEST_JIRA_ASSIGNEE
+  await conEntorno({ OPS_TEST_JIRA_ASSIGNEE: 'another-owner' }, async () => {
+    const fixture = writeFixture(root, 'context.json')
+    await I.sync(root, 'jira', { fixture })
+    const staged = path.join(root, 'integrations', 'jira', 'staging', 'stories', 'DEMO-1')
+    const snapshotFile = path.join(staged, 'remote.json')
+    const draftFile = path.join(staged, 'draft.md')
+    const snapshot = JSON.parse(fs.readFileSync(snapshotFile, 'utf8'))
+    assert.equal(snapshot.sync.role, 'context')
+    assert.match(fs.readFileSync(draftFile, 'utf8'), /state: context/)
+    fs.writeFileSync(draftFile, fs.readFileSync(draftFile, 'utf8').replace(
+      'Descripción remota',
+      'Edición que no debe persistir',
+    ))
+    await I.sync(root, 'jira', { fixture })
+    assert.doesNotMatch(fs.readFileSync(draftFile, 'utf8'), /no debe persistir/)
+  })
 })
 
 test('propuestas aprobadas se validan y aparecen en el plan sin escribir', async () => {

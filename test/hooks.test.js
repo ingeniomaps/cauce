@@ -130,10 +130,13 @@ test('guard-test-evidence no deja apagar ni borrar la prueba que juzga el cambio
   } }))
   // Apagar una prueba puede ser correcto; lo que no puede es ser invisible.
   process.env.OPS_TEST_EVIDENCE_OVERRIDE = '1'
-  assert.doesNotThrow(() => execute('test-evidence', { tool_input: {
-    file_path: '/project/users_test.go', content: 't.Skip("infra")',
-  } }))
-  delete process.env.OPS_TEST_EVIDENCE_OVERRIDE
+  try {
+    assert.doesNotThrow(() => execute('test-evidence', { tool_input: {
+      file_path: '/project/users_test.go', content: 't.Skip("infra")',
+    } }))
+  } finally {
+    delete process.env.OPS_TEST_EVIDENCE_OVERRIDE
+  }
 })
 
 test('guard-governance bloquea commits con reglas staged', () => {

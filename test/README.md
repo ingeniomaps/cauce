@@ -9,8 +9,14 @@ Esta carpeta contiene las pruebas del toolkit fuente; no se copia a los proyecto
 - `hooks.test.js`: decisiones permitidas y bloqueadas por los guards.
 - `ops.test.js`: recorridos end-to-end del CLI y de una instancia generada.
 - `runners.test.js`: contratos y capacidades declaradas por cada runner.
-- `workflows.test.js`: fases y neutralidad de los workflows.
+- `workflows.test.js`: fases y neutralidad de los workflows, leídos como fuente.
+- `autobuild.test.js`: el mismo recorrido **ejecutado**, con los subagentes simulados. Leer el fuente ve
+  que un freno está escrito; sólo ejecutarlo ve que frene cuando toca y deje pasar cuando no.
 - `teams.test.js`: manifiestos, agentes, dependencias, gates y comandos de equipos.
+- `lifecycle.test.js`: el ciclo de una empresa contra el **tarball**, que es lo único que un consumidor
+  ve. Los demás corren contra el repositorio, así que es el único que detecta un `files` incompleto.
+- `entorno.js`: limpia el entorno heredado y da `temporal()`, la raíz temporal que se borra al salir.
+- `coverage.sh` y `coverage-files.js`: el umbral global y el piso por archivo.
 - `hooks-smoke.sh`: ejecutabilidad de los wrappers POSIX.
 - `fixtures/`: respuestas externas deterministas y sin credenciales.
 

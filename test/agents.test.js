@@ -20,7 +20,7 @@ const skill = (name, description) => `---\nname: ${name}\ndescription: ${descrip
   + 'No inventar. Requiere autorización. Exige evidencia observable.\n'
 
 function run(args, cwd = path.dirname(CLI)) {
-  const env = { ...process.env, LANG: process.env.LANG || 'C.UTF-8' }
+  const env = { ...process.env }
   delete env.NODE_TEST_CONTEXT
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', env })
 }

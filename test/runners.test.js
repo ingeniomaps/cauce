@@ -7,7 +7,29 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 
+const { spawnSync } = require('node:child_process')
+
 const root = path.resolve(__dirname, '..', 'automatization', 'runners')
+
+// Una instancia sidecar con el motor enganchado y el adaptador puesto: es el montaje de casi todo lo
+// que se prueba acá, y estaba copiado en cuatro tests. Devuelve también `corre`, porque el entorno
+// limpio es parte del montaje: heredar `OPS_ROOT` o `CLAUDE_PROJECT_DIR` hace que el CLI mida este
+// repositorio en vez de la instancia recién creada.
+function instalada(nombre, runner) {
+  const base = temporal(nombre)
+  const workspace = path.join(base, 'repo')
+  const target = path.join(workspace, 'ops')
+  fs.mkdirSync(workspace)
+  const cli = path.resolve(__dirname, '..', 'engine', 'cli', 'ops.js')
+  const env = { ...process.env }
+  for (const clave of ['NODE_TEST_CONTEXT', 'OPS_ROOT', 'CLAUDE_PROJECT_DIR']) delete env[clave]
+  const corre = (args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', env })
+  assert.equal(corre(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
+  fs.mkdirSync(path.join(target, 'node_modules', '@ingeniomaps'), { recursive: true })
+  fs.symlinkSync(path.resolve(__dirname, '..'), path.join(target, 'node_modules', '@ingeniomaps', 'cauce'), 'dir')
+  if (runner) assert.equal(corre(['automation', 'install', target, runner]).status, 0)
+  return { base, workspace, target, corre, env }
+}
 
 test('cada runner declara un manifest instalable y fuentes existentes', () => {
   for (const name of ['claude', 'codex', 'gemini', 'antigravity']) {
@@ -83,19 +105,7 @@ test('el bridge de Antigravity traduce decisiones al protocolo nativo', () => {
 // resuelve no se arregla trabajando, así que cada intento de cerrar repetía el mismo error y el agente
 // quedaba sin poder terminar la sesión. `engine/hooks/run.js` marca el bloqueo con `error.blocked`.
 test('el puente de Antigravity separa el guard que bloquea del puente que no arrancó', () => {
-  const { spawnSync } = require('node:child_process')
-  const base = temporal('cauce-stop-')
-  const workspace = path.join(base, 'repo')
-  const target = path.join(workspace, 'ops')
-  fs.mkdirSync(workspace)
-  const cli = path.resolve(__dirname, '..', 'engine', 'cli', 'ops.js')
-  const env = { ...process.env }
-  for (const clave of ['NODE_TEST_CONTEXT', 'OPS_ROOT', 'CLAUDE_PROJECT_DIR']) delete env[clave]
-  const corre = (args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', env })
-  assert.equal(corre(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
-  fs.mkdirSync(path.join(target, 'node_modules', '@ingeniomaps'), { recursive: true })
-  fs.symlinkSync(path.resolve(__dirname, '..'), path.join(target, 'node_modules', '@ingeniomaps', 'cauce'), 'dir')
-  assert.equal(corre(['automation', 'install', target, 'antigravity']).status, 0)
+  const { base, workspace, target, corre, env } = instalada('cauce-stop-', 'antigravity')
 
   // Desde el workspace, como lo lanza Antigravity: `findRoot` cae a `process.cwd()` si la raíz
   // declarada no resuelve, y correrlo desde otro lado lo ataría a la instancia equivocada.
@@ -140,19 +150,7 @@ test('el puente de Antigravity separa el guard que bloquea del puente que no arr
 // la ruta del puente cambiaba, y esa entrada muerta rompía la sesión entera.
 test('install deja el puente de Antigravity resoluble desde la copia que agy registra', () => {
   const os = require('node:os')
-  const { spawnSync } = require('node:child_process')
-  const base = temporal('cauce-agy-')
-  const workspace = path.join(base, 'repo')
-  const target = path.join(workspace, 'ops')
-  fs.mkdirSync(workspace)
-  const cli = path.resolve(__dirname, '..', 'engine', 'cli', 'ops.js')
-  const env = { ...process.env }
-  for (const clave of ['NODE_TEST_CONTEXT', 'OPS_ROOT', 'CLAUDE_PROJECT_DIR']) delete env[clave]
-  const corre = (args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', env })
-  assert.equal(corre(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
-  fs.mkdirSync(path.join(target, 'node_modules', '@ingeniomaps'), { recursive: true })
-  fs.symlinkSync(path.resolve(__dirname, '..'), path.join(target, 'node_modules', '@ingeniomaps', 'cauce'), 'dir')
-  assert.equal(corre(['automation', 'install', target, 'antigravity']).status, 0)
+  const { base, workspace, target, corre, env } = instalada('cauce-agy-', 'antigravity')
 
   const plugin = path.join(workspace, '.agents', 'plugins', 'cauce')
   const puente = fs.readFileSync(path.join(plugin, 'hook.js'), 'utf8')
@@ -339,22 +337,12 @@ test('los runners con skills nativas exponen el catálogo completo de cargos', (
 // pueda llamarse `team` y hacer desaparecer `/cauce:team` sin que falle nada.
 test('un cargo que se llama como un recorrido detiene la instalación', () => {
   const A = require('../engine/automation')
-  const { spawnSync } = require('node:child_process')
-  const base = temporal('cauce-choque-')
-  const workspace = path.join(base, 'repo')
-  const target = path.join(workspace, 'ops')
-  fs.mkdirSync(workspace)
-  const cli = path.resolve(__dirname, '..', 'engine', 'cli', 'ops.js')
-  const env = { ...process.env }
-  for (const clave of ['NODE_TEST_CONTEXT', 'OPS_ROOT', 'CLAUDE_PROJECT_DIR']) delete env[clave]
-  const corre = (args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', env })
-  assert.equal(corre(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
-  fs.mkdirSync(path.join(target, 'node_modules', '@ingeniomaps'), { recursive: true })
-  fs.symlinkSync(path.resolve(__dirname, '..'), path.join(target, 'node_modules', '@ingeniomaps', 'cauce'), 'dir')
+  const { base, workspace, target, corre } = instalada('cauce-choque-', null)
 
   const propio = path.join(target, 'agents', 'roles', 'team')
   fs.mkdirSync(propio, { recursive: true })
-  fs.writeFileSync(path.join(propio, 'SKILL.md'), '---\nname: team\ndescription: Un cargo de la empresa.\n---\n\nCuerpo.\n')
+  const contrato = '---\nname: team\ndescription: Un cargo de la empresa.\n---\n\nCuerpo.\n'
+  fs.writeFileSync(path.join(propio, 'SKILL.md'), contrato)
 
   const resultado = corre(['automation', 'install', target, 'antigravity'])
   assert.notEqual(resultado.status, 0, 'no se instala pisando un recorrido')

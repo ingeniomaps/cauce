@@ -25,7 +25,6 @@ const WORKFLOW = path.resolve(AUTOMATION, 'workflows', 'autobuild.js')
 // cual, para que un cambio en el recorrido rompa acá y no en una instancia.
 function compilar() {
   const source = A.render(WORKFLOW, '', AUTOMATION).replace(/^export const meta =/m, 'const meta =')
-  // eslint-disable-next-line no-new-func
   return new Function('agent', 'phase', 'log', 'parallel', 'pipeline', 'workflow', 'args', 'budget',
     `return (async () => {\n${source}\n})()`)
 }

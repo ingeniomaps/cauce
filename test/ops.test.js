@@ -12,7 +12,7 @@ const { hookMetadata } = require('../engine/hooks/run')
 const CLI = path.resolve(__dirname, '..', 'engine', 'cli', 'ops.js')
 
 function run(args, cwd = path.dirname(CLI)) {
-  const env = { ...process.env, LANG: process.env.LANG || 'C.UTF-8' }
+  const env = { ...process.env }
   delete env.NODE_TEST_CONTEXT
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', env })
 }
@@ -201,7 +201,7 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
     assert.equal(fs.existsSync(path.join(workflows, propio)), false, `${propio} no se distribuye`)
   }
 
-  const env = { ...process.env, LANG: process.env.LANG || 'C.UTF-8' }
+  const env = { ...process.env }
   delete env.NODE_TEST_CONTEXT
   const localArgs = [path.join(target, 'tools', 'ops.js'), 'check', path.join(target, 'planning')]
   const local = spawnSync(process.execPath, localArgs, {
@@ -444,7 +444,7 @@ test('init deja la instancia funcionando en una sola corrida', () => {
     `#!/usr/bin/env bash\nmkdir -p node_modules/@ingeniomaps\nln -sfn ${motor} node_modules/@ingeniomaps/cauce\n`,
     { mode: 0o755 },
   )
-  const env = { ...process.env, LANG: process.env.LANG || 'C.UTF-8', PATH: `${bin}:${process.env.PATH}` }
+  const env = { ...process.env, PATH: `${bin}:${process.env.PATH}` }
   delete env.NODE_TEST_CONTEXT
   const result = spawnSync(
     process.execPath,
@@ -472,7 +472,7 @@ test('init no disimula un npm install que falló', () => {
   fs.mkdirSync(repo)
   fs.mkdirSync(bin)
   fs.writeFileSync(path.join(bin, 'npm'), '#!/usr/bin/env bash\nexit 1\n', { mode: 0o755 })
-  const env = { ...process.env, LANG: process.env.LANG || 'C.UTF-8', PATH: `${bin}:${process.env.PATH}` }
+  const env = { ...process.env, PATH: `${bin}:${process.env.PATH}` }
   delete env.NODE_TEST_CONTEXT
   const result = spawnSync(process.execPath, [CLI, 'init', '--runner', 'claude', '--install'], {
     cwd: repo, encoding: 'utf8', env,

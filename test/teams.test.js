@@ -22,7 +22,7 @@ test('product-development referencia agentes existentes y un DAG ordenado', () =
 })
 
 test('team check y show exponen un contrato utilizable', () => {
-  const env = { ...process.env, LANG: process.env.LANG || 'C.UTF-8' }
+  const env = { ...process.env }
   delete env.NODE_TEST_CONTEXT
   const checked = spawnSync(process.execPath, [CLI, 'team', 'check', 'product-development'], {
     cwd: ROOT, encoding: 'utf8', env,
