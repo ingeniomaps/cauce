@@ -41,10 +41,13 @@ test('autobuild deriva gate, mutex y selección de tarea del CLI, no de un model
   }
 })
 
+// Se apoya en la redacción de los prompts, y es a propósito: lo que se defiende es que el contrato entre
+// una sola vez y que el preámbulo lo diga. Si alguien reescribe esas frases, tiene que volver a acá y
+// confirmar que la garantía sigue en pie, en vez de que se pierda con un cambio de estilo.
 test('autobuild lee el contrato una sola vez y no obliga a releerlo', () => {
-  const reads = workflow.match(/Read \$\{ROOT\}\/AGENTS\.md/g) || []
+  const reads = workflow.match(/Leé \$\{ROOT\}\/AGENTS\.md/g) || []
   assert.equal(reads.length, 1, 'AGENTS.md se lee una vez por corrida, en el digest')
-  assert.match(workflow, /do not re-read/, 'el preámbulo prohíbe releer el contrato')
+  assert.match(workflow, /no vuelvas a leer/, 'el preámbulo prohíbe releer el contrato')
   for (const value of ['maxTaskHours', 'commitPerTask', 'humanCheckpoint']) {
     assert.match(workflow, new RegExp(`contract\\.${value}`), `${value} viaja en el digest, no se relee`)
   }

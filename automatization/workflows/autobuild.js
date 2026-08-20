@@ -125,31 +125,32 @@ const CONTRACT = {
 }
 
 // Preámbulo invariante: no depende del proyecto y nunca obliga a leer un archivo.
-const BASE = `Never invent credentials or decisions; register external blockers in ${HUMAN}. Never execute INBOX ` +
-  `automatically. Never push, deploy, amend, force, or use git add -A. Never edit process governance, and do not ` +
-  `edit planning bookkeeping unless this workflow explicitly requests it.`
+const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos externos en ${HUMAN}. Nunca ` +
+  `ejecutes INBOX por tu cuenta. Nunca hagas push, deploy, amend, force ni git add -A. No edites la gobernanza ` +
+  `del proceso, y no toques la contabilidad de planning salvo que este recorrido te lo pida explícitamente.`
 {{INCLUDE:shared/workflow-finish.js}}
 
 phase('Triage')
 // El contrato se lee una sola vez por corrida y viaja como texto: ningún subagente relee AGENTS.md,
 // ops.config.json ni PROTOCOL.md. `ops check` y el guard planning-drift siguen validando el resultado.
 const contract = await agent(
-  `${BASE}\n\nRead ${ROOT}/AGENTS.md, ${CONFIG} and ${P}/PROTOCOL.md exactly once and read nothing else. Report the ` +
-  `config values verbatim: project, workspaceRoots as "name → path" entries, runner.maxTaskHours, ` +
-  `runner.commitPerTask, and runner.humanCheckpointBetweenMilestones as humanCheckpoint. Copy the "## Contratos" ` +
-  `section of PROTOCOL.md into contracts literally, without rewording, summarising or reordering it. ` +
-  `In boundaries list only limits stated in AGENTS.md that constrain autonomous execution.`,
+  `${BASE}\n\nLeé ${ROOT}/AGENTS.md, ${CONFIG} y ${P}/PROTOCOL.md una sola vez y no leas nada más. Reportá los ` +
+  `valores de configuración textualmente: project, workspaceRoots como entradas "nombre → ruta", ` +
+  `runner.maxTaskHours, runner.commitPerTask y runner.humanCheckpointBetweenMilestones como humanCheckpoint. ` +
+  `Copiá la sección "## Contratos" de PROTOCOL.md dentro de contracts tal cual, sin reformular, resumir ni ` +
+  `reordenar. En boundaries listá sólo los límites que AGENTS.md enuncia y que restringen la ejecución autónoma.`,
   { schema: CONTRACT, label: 'contract-digest' },
 )
 if (!contract) return stop('contract-unavailable', `no se pudo leer ${CONFIG} ni ${P}/PROTOCOL.md`)
 
-const limits = (contract.boundaries || []).length ? ` Project limits: ${contract.boundaries.join('; ')}.` : ''
+const cotas = contract.boundaries || []
+const limits = cotas.length ? ` Límites del proyecto: ${cotas.join('; ')}.` : ''
 // Alcance de escritura: para subagentes que tocan código o ejecutan gates del producto.
-const SCOPE = `${BASE}\n\nProject ${contract.project}. workspaceRoots is the complete writable product boundary: ` +
-  `${contract.workspaceRoots.join('; ')}.${limits} This preamble already carries the contract; do not re-read ` +
-  `${ROOT}/AGENTS.md, ${CONFIG} or ${P}/PROTOCOL.md.`
+const SCOPE = `${BASE}\n\nProyecto ${contract.project}. workspaceRoots es el límite completo de escritura del ` +
+  `producto: ${contract.workspaceRoots.join('; ')}.${limits} Este preámbulo ya trae el contrato; no vuelvas a leer ` +
+  `${ROOT}/AGENTS.md, ${CONFIG} ni ${P}/PROTOCOL.md.`
 // Formatos de planning: sólo para subagentes que escriben roadmap, BACKLOG, WIP, DONE o gates.
-const LEDGER = `${SCOPE}\n\nPlanning contracts, verbatim from ${P}/PROTOCOL.md:\n${contract.contracts}`
+const LEDGER = `${SCOPE}\n\nContratos de planning, textuales de ${P}/PROTOCOL.md:\n${contract.contracts}`
 
 const read = (prompt, options = {}) => agent(`${BASE}\n\n${prompt}`, options)
 const run = (prompt, options = {}) => agent(`${SCOPE}\n\n${prompt}`, options)
@@ -158,9 +159,9 @@ const write = (prompt, options = {}) => agent(`${LEDGER}\n\n${prompt}`, options)
 // Gate, mutex de WIP y selección de tarea salen de un comando determinista: AWAITING_REVIEW, BACKLOG,
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
 const readContext = () => read(
-  `Run "node tools/ops.js context ${P} --json" from ${ROOT} and report only what it printed. Derive hasTask from ` +
-  `whether task is null, wipActive from whether wip is null, and lane from task.tier; copy slug, hito, service, ` +
-  `acceptance and epic from task. The command is the source of truth: do not open planning files to complete it.`,
+  `Corré "node tools/ops.js context ${P} --json" desde ${ROOT} y reportá sólo lo que imprimió. Derivá hasTask ` +
+  `de si task es null, wipActive de si wip es null y lane de task.tier; copiá slug, hito, service, acceptance ` +
+  `y epic de task. El comando es la fuente de verdad: no abras archivos de planning para completarlo.`,
   { schema: CONTEXT, label: 'planning-context' },
 )
 
@@ -176,8 +177,9 @@ while (safety++ < 50) {
   phase('Pick')
   if (!planning.hasTask && !planning.queued) {
     const expansion = await write(
-      `Read ${ROADMAP}. Expand only the next approved open epic into a new hito of ${BACKLOG}, preserving each story ` +
-      `slug, its criteria references and its service. Never promote ${P}/INBOX.md. Report whether you wrote anything.`,
+      `Leé ${ROADMAP}. Expandí sólo la próxima épica abierta y aprobada en un hito nuevo de ${BACKLOG}, ` +
+      `conservando el slug de cada historia, sus referencias a criterios y su servicio. Nunca promuevas ` +
+      `${P}/INBOX.md. Reportá si escribiste algo.`,
       { schema: EXPANSION },
     )
     if (!expansion.expanded) break
@@ -226,11 +228,12 @@ while (safety++ < 50) {
   if (!planning.wipActive) {
     phase('Ready')
     const ready = await read(
-      `${asRole(OWNERS.ready)}Check concrete acceptance, dependencies and unresolved decisions for ${task.id}: ` +
-      `${task.acceptance}. Clarify wording only; never expand scope.`, { schema: READY },
+      `${asRole(OWNERS.ready)}Revisá que ${task.id} tenga aceptación concreta, dependencias resueltas y ninguna ` +
+      `decisión pendiente: ${task.acceptance}. Aclará la redacción y nada más; nunca amplíes el alcance.`,
+      { schema: READY },
     )
     if (!ready.ready) {
-      await write(`Register ${task.id} in ${HUMAN} with reason and an exact human action: ${ready.reason}.`)
+      await write(`Registrá ${task.id} en ${HUMAN} con el motivo y una acción humana exacta: ${ready.reason}.`)
       return stop('not-ready', ready.reason)
     }
     if (ready.refinedAcceptance) task.acceptance = ready.refinedAcceptance
@@ -238,12 +241,12 @@ while (safety++ < 50) {
     if (!direct && !lite) {
       phase('Decompose')
       const estimate = await run(
-        `Inspect ${task.service} and estimate ${task.id}. Split it only if it exceeds ${contract.maxTaskHours} hours.`,
+        `Inspeccioná ${task.service} y estimá ${task.id}. Partila sólo si supera ${contract.maxTaskHours} horas.`,
         { schema: ESTIMATE },
       )
       if (estimate.needsSplit) {
-        await write(`Replace only ${task.id} in ${BACKLOG} with ordered, ` +
-          `independently verifiable subtasks: ${JSON.stringify(estimate.subtasks)}.`)
+        await write(`Reemplazá sólo ${task.id} en ${BACKLOG} por subtareas ordenadas y verificables de forma ` +
+          `independiente: ${JSON.stringify(estimate.subtasks)}.`)
         planning = await readContext()
         if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
         continue
@@ -252,44 +255,44 @@ while (safety++ < 50) {
 
     phase('Plan')
     let plan = await run(
-      `${asRole(OWNERS.plan)}Inspect real code, repository instructions, neighbouring conventions, epic context ` +
-      `and git status for ${task.id}. ` +
-      `Produce the smallest plan satisfying ${task.acceptance}. Planning files cannot be implementation files.`,
+      `${asRole(OWNERS.plan)}Inspeccioná el código real, las instrucciones del repositorio, las convenciones ` +
+      `vecinas, el contexto de la épica y el git status de ${task.id}. Producí el plan más chico que satisfaga ` +
+      `${task.acceptance}. Un archivo de planning no puede ser un archivo de implementación.`,
       { schema: PLAN },
     )
     if (!direct && !lite) {
       phase('Critique')
       let critique = await read(
-        `Attack this plan for correctness, scope, security, tests and conflicts with existing ` +
-        `code: ${JSON.stringify(plan)}`,
+        `Atacá este plan por correctitud, alcance, seguridad, pruebas y conflictos con el código ` +
+        `existente: ${JSON.stringify(plan)}`,
         { schema: DECISION },
       )
       if (!critique.approved) {
         plan = await read(
-          `Revise the plan once for: ${critique.concerns.join('; ')}. Plan: ${JSON.stringify(plan)}`,
+          `Corregí el plan una vez por: ${critique.concerns.join('; ')}. Plan: ${JSON.stringify(plan)}`,
           { schema: PLAN },
         )
         critique = await read(
-          `Re-critique the revised plan against ${task.acceptance}: ${JSON.stringify(plan)}`,
+          `Volvé a criticar el plan corregido contra ${task.acceptance}: ${JSON.stringify(plan)}`,
           { schema: DECISION },
         )
         if (!critique.approved) return stop('plan-rejected', critique.concerns.join('; '))
       }
     }
     await write(
-      `Persist active WIP before code: task=${task.id}, hito=${JSON.stringify(task.hito)}, ` +
-      `phase=Build, service=${task.service}, ` +
-      `acceptance=${JSON.stringify(task.acceptance)}, unchecked steps=${JSON.stringify(plan.steps)}. ` +
-      `Registrá además el reparto de cargos ${JSON.stringify(cast)} en las decisiones del WIP, para que ` +
-      `después se pueda auditar quién revisó qué. Follow the WIP contract exactly.`,
+      `Persistí el WIP activo antes de tocar código: task=${task.id}, hito=${JSON.stringify(task.hito)}, ` +
+      `phase=Build, service=${task.service}, acceptance=${JSON.stringify(task.acceptance)}, ` +
+      `pasos sin tildar=${JSON.stringify(plan.steps)}. Registrá el reparto de cargos ${JSON.stringify(cast)} ` +
+      `en las decisiones del WIP, para que después se pueda auditar quién revisó qué. ` +
+      `Seguí el contrato de WIP exactamente.`,
     )
   }
 
   phase('Build')
   const build = await run(
-    `${asRole(cast.build)}Implement only ${task.id} inside ${task.service}. Resume at the first pending WIP ` +
-    `step; verify completed steps on disk ` +
-    `and tick each successful step. Use RED/GREEN for behavior. Acceptance: ${task.acceptance}.`, {
+    `${asRole(cast.build)}Implementá sólo ${task.id} dentro de ${task.service}. Retomá en el primer paso ` +
+    `pendiente del WIP; comprobá en el disco los pasos ya hechos y tildá cada uno que salga bien. Usá ` +
+    `RED/GREEN para el comportamiento. Aceptación: ${task.acceptance}.`, {
       schema: { type: 'object', required: ['completed', 'summary'], properties: {
         completed: { type: 'boolean' }, summary: { type: 'string' },
         blockers: { type: 'array', items: { type: 'string' } },
@@ -301,22 +304,22 @@ while (safety++ < 50) {
   if (!direct) {
     phase('Review')
     let review = await run(
-      `${asRole(cast.review)}Review the actual diff for acceptance, regressions, security, architecture, ` +
-      `generated code, migrations and accidental scope. Cada cargo revisa su dominio, no el ajeno.`,
+      `${asRole(cast.review)}Revisá el diff real por aceptación, regresiones, seguridad, arquitectura, código ` +
+      `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.`,
       { schema: DECISION },
     )
     if (!review.approved) {
-      await write(`Fix only these evidence-backed findings and update WIP: ${review.concerns.join('; ')}`)
-      review = await run(`Re-review the corrected diff for ${task.id}.`, { schema: DECISION })
+      await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${review.concerns.join('; ')}`)
+      review = await run(`Volvé a revisar el diff corregido de ${task.id}.`, { schema: DECISION })
       if (!review.approved) return stop('review-failed', review.concerns.join('; '))
     }
   }
 
   phase('Verify')
   const verified = await run(
-    `${asRole(cast.verify)}Discover and run the real gates for ${task.service}: repository instructions first, ` +
-    `then applicable test, lint, ` +
-    `typecheck and build. Read actual exit codes. passed=true needs commands and no task-caused regression.`,
+    `${asRole(cast.verify)}Descubrí y corré los gates reales de ${task.service}: primero las instrucciones del ` +
+    `repositorio, después el test, lint, typecheck y build que apliquen. Leé los exit codes de verdad. ` +
+    `passed=true exige comandos corridos y ninguna regresión causada por la tarea.`,
     { schema: VERIFY },
   )
   if (!verified.passed || !verified.commands.length) return stop('verify-failed', verified.details)
@@ -324,31 +327,30 @@ while (safety++ < 50) {
   phase('QA')
   const qa = await run(
     `${asRole(cast.qa)}${direct || lite
-      ? 'Perform the cheapest real acceptance check'
-      : 'Exercise real consumer-visible behavior'} for ` +
-    `${task.id}. Unit tests alone are not QA. Start only minimum runtime and tear it down. ` +
-    `Acceptance: ${task.acceptance}.`,
+      ? 'Hacé la comprobación de aceptación real más barata'
+      : 'Ejercitá el comportamiento real que ve quien lo usa'} para ` +
+    `${task.id}. Las pruebas unitarias solas no son QA. Levantá el mínimo runtime necesario y bajalo después. ` +
+    `Aceptación: ${task.acceptance}.`,
     { schema: QA },
   )
   if (!qa.passed) return stop('qa-failed', qa.evidence)
 
   phase('Commit')
   const commit = contract.commitPerTask ? await run(
-    `${asRole(OWNERS.commit)}Find the git repo owning ${task.service}, inspect status/diff, stage explicit task ` +
-    `files, create one Conventional ` +
-    `Commit with footer "Task: ${task.id}", then verify log/status. Never amend or push; report unrelated leftovers.`,
+    `${asRole(OWNERS.commit)}Encontrá el repositorio git dueño de ${task.service}, inspeccioná status y diff, ` +
+    `stageá por nombre los archivos de la tarea, creá un solo Conventional Commit con el footer ` +
+    `"Task: ${task.id}" y después verificá log y status. Nunca amend ni push; reportá lo que quedó suelto ` +
+    `y no era de la tarea.`,
     { schema: COMMIT },
-  ) : { committed: true, reason: 'runner.commitPerTask is disabled' }
+  ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
   if (!commit.committed) return stop('commit-failed', commit.reason)
 
   phase('Done')
   await write(
-    `Atomically close ${task.id}: append it under its hito in ${DONE} with acept, done, qa, ` +
-    `tests and commit evidence; ` +
-    `remove it and its indented notes from ${BACKLOG}; close its epic only if no tagged task remains; ` +
-    `reset ${WIP} to ` +
-    `status IDLE. Facts: build=${build.summary}; verify=${JSON.stringify(verified.commands)}; qa=${qa.evidence}; ` +
-    `commit=${commit.hash || commit.reason}.`,
+    `Cerrá ${task.id} de forma atómica: agregala bajo su hito en ${DONE} con evidencia de acept, done, qa, ` +
+    `tests y commit; sacala junto con sus notas indentadas de ${BACKLOG}; cerrá su épica sólo si no queda ` +
+    `ninguna tarea etiquetada; y dejá ${WIP} en status IDLE. Hechos: build=${build.summary}; ` +
+    `verify=${JSON.stringify(verified.commands)}; qa=${qa.evidence}; commit=${commit.hash || commit.reason}.`,
   )
   completed.push(task.id)
   planning = await readContext()
@@ -357,8 +359,8 @@ while (safety++ < 50) {
 
 phase('Closing')
 const closing = await write(
-  `Run "node tools/ops.js check ${P}" from ${ROOT}. If red, repair only deterministic derived state; never rewrite ` +
-  `acceptance or decisions to force green.`, {
+  `Corré "node tools/ops.js check ${P}" desde ${ROOT}. Si sale en rojo, reparás sólo estado derivado ` +
+  `determinista; nunca reescribas aceptación ni decisiones para forzar el verde.`, {
     schema: {
       type: 'object', required: ['passed', 'details'],
       properties: { passed: { type: 'boolean' }, details: { type: 'string' } },
@@ -367,7 +369,7 @@ const closing = await write(
 )
 if (!closing.passed) return stop('planning-check-failed', closing.details)
 if (completed.length && contract.humanCheckpoint) await write(
-  `Create ${GATE} with the completed hito, tasks ${completed.join(', ')}, evidence, pending human actions and exact ` +
-  `continuation instructions. Never push or deploy.`,
+  `Creá ${GATE} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones humanas ` +
+  `pendientes y las instrucciones exactas para continuar. Nunca hagas push ni deploy.`,
 )
 return finish({ done: completed, count: completed.length, hito: currentHito })
