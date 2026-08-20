@@ -91,6 +91,20 @@ const QA = {
     bugs: { type: 'array', items: { type: 'string' } },
   },
 }
+// RED/GREEN sin registro es una intención: después nadie distingue el test que se vio fallar del que se
+// escribió cuando el código ya andaba, y ese segundo no prueba su aserción, sólo que corre. Por eso
+// `redFirst` trae el fallo literal de la corrida roja y no la afirmación de que la hubo (R14).
+const BUILD = {
+  type: 'object', additionalProperties: false, required: ['completed', 'summary', 'redFirst'],
+  properties: {
+    completed: { type: 'boolean' }, summary: { type: 'string' },
+    redFirst: { type: 'array', items: { type: 'object', additionalProperties: false,
+      required: ['test', 'failure'],
+      properties: { test: { type: 'string' }, failure: { type: 'string' } },
+    } },
+    blockers: { type: 'array', items: { type: 'string' } },
+  },
+}
 const COMMIT = {
   type: 'object', additionalProperties: false, required: ['committed'],
   properties: {
@@ -141,6 +155,10 @@ const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos 
 // Acompaña a todo prompt con schema DECISION: el schema obliga a llenar `consulted`, y esto obliga a
 // llenarlo con lo que se abrió en vez de con lo que se pensaba mirar.
 const MANIFEST = ' Enumerá en consulted cada archivo, diff o comando que hayas abierto de verdad, con su ruta.'
+// Con qué se reconoce un gate que corre pruebas. Es deliberadamente ancho: incluye los agregadores
+// —`make ci`, `npm run check`— porque adentro corren el test, y de lo que se trata es de encontrar
+// la corrida que faltó, no de clasificar comandos.
+const RUNS_TESTS = /\b(?:tests?|specs?|pytest|jest|vitest|mocha|rspec|phpunit|ci|check)\b/i
 {{INCLUDE:shared/workflow-finish.js}}
 
 phase('Triage')
@@ -165,6 +183,11 @@ const SCOPE = `${BASE}\n\nProyecto ${contract.project}. workspaceRoots es el lí
 // Formatos de planning: sólo para subagentes que escriben roadmap, BACKLOG, WIP, DONE o gates.
 const LEDGER = `${SCOPE}\n\nContratos de planning, textuales de ${P}/PROTOCOL.md:\n${contract.contracts}`
 
+// Un subagente puede morir —error terminal tras reintentos, o alguien que lo saltea— y entonces el
+// runtime devuelve `null`. Sin comprobarlo, la primera propiedad que se le pide revienta el recorrido
+// con un TypeError en la fase que sea, y lo que quedó a medias es una tarea con WIP escrito y código
+// sin revisar. Cada llamada corta con su etapa puesta: «no contestó» no es lo mismo que «dijo que no»,
+// y sólo la segunda significa que alguien juzgó algo.
 const read = (prompt, options = {}) => agent(`${BASE}\n\n${prompt}`, options)
 const run = (prompt, options = {}) => agent(`${SCOPE}\n\n${prompt}`, options)
 const write = (prompt, options = {}) => agent(`${LEDGER}\n\n${prompt}`, options)
@@ -184,9 +207,13 @@ if (planning.blocked) return stop('awaiting-human-review', `${GATE} tiene un che
 
 let currentHito = planning.wipActive ? planning.hito : ''
 const completed = []
-let safety = 0
+// Tope de tareas por corrida. No protege de un hito grande —cincuenta tareas en un hito es un problema
+// de planificación, no de ejecución— sino de un ciclo: una tarea que vuelve a quedar elegible corre
+// para siempre. Se corta con motivo porque agotarlo en silencio se lee igual que haber terminado.
+const MAX_TAREAS = 50
+let vueltas = 0
 
-while (safety++ < 50) {
+while (vueltas++ < MAX_TAREAS) {
   phase('Pick')
   if (!planning.hasTask && !planning.queued) {
     const expansion = await write(
@@ -195,6 +222,7 @@ while (safety++ < 50) {
       `${P}/INBOX.md. Reportá si escribiste algo.`,
       { schema: EXPANSION },
     )
+    if (!expansion) return stop('agent-unavailable', 'Pick no devolvió resultado')
     if (!expansion.expanded) break
     planning = await readContext()
     if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
@@ -245,6 +273,7 @@ while (safety++ < 50) {
       `decisión pendiente: ${task.acceptance}. Aclará la redacción y nada más; nunca amplíes el alcance.`,
       { schema: READY },
     )
+    if (!ready) return stop('agent-unavailable', 'Ready no devolvió resultado')
     if (!ready.ready) {
       await write(`Registrá ${task.id} en ${HUMAN} con el motivo y una acción humana exacta: ${ready.reason}.`)
       return stop('not-ready', ready.reason)
@@ -257,6 +286,7 @@ while (safety++ < 50) {
         `Inspeccioná ${task.service} y estimá ${task.id}. Partila sólo si supera ${contract.maxTaskHours} horas.`,
         { schema: ESTIMATE },
       )
+      if (!estimate) return stop('agent-unavailable', 'Decompose no devolvió resultado')
       if (estimate.needsSplit) {
         await write(`Reemplazá sólo ${task.id} en ${BACKLOG} por subtareas ordenadas y verificables de forma ` +
           `independiente: ${JSON.stringify(estimate.subtasks)}.`)
@@ -273,6 +303,7 @@ while (safety++ < 50) {
       `${task.acceptance}. Un archivo de planning no puede ser un archivo de implementación.`,
       { schema: PLAN },
     )
+    if (!plan) return stop('agent-unavailable', 'Plan no devolvió resultado')
     if (!direct && !lite) {
       phase('Critique')
       let critique = await read(
@@ -280,6 +311,7 @@ while (safety++ < 50) {
         `existente.${MANIFEST} Plan: ${JSON.stringify(plan)}`,
         { schema: DECISION },
       )
+      if (!critique) return stop('agent-unavailable', 'Critique no devolvió resultado')
       if (!critique.approved) {
         plan = await read(
           `Corregí el plan una vez por: ${critique.concerns.join('; ')}. Plan: ${JSON.stringify(plan)}`,
@@ -289,6 +321,7 @@ while (safety++ < 50) {
           `Volvé a criticar el plan corregido contra ${task.acceptance}.${MANIFEST} Plan: ${JSON.stringify(plan)}`,
           { schema: DECISION },
         )
+        if (!plan || !critique) return stop('agent-unavailable', 'la revisión del plan no devolvió resultado')
         if (!critique.approved) return stop('plan-rejected', critique.concerns.join('; '))
       }
       // Acá el plan ya está aprobado por los dos caminos posibles, así que el contraste va una sola vez.
@@ -306,15 +339,17 @@ while (safety++ < 50) {
   phase('Build')
   const build = await run(
     `${asRole(cast.build)}Implementá sólo ${task.id} dentro de ${task.service}. Retomá en el primer paso ` +
-    `pendiente del WIP; comprobá en el disco los pasos ya hechos y tildá cada uno que salga bien. Usá ` +
-    `RED/GREEN para el comportamiento. Aceptación: ${task.acceptance}.`, {
-      schema: { type: 'object', required: ['completed', 'summary'], properties: {
-        completed: { type: 'boolean' }, summary: { type: 'string' },
-        blockers: { type: 'array', items: { type: 'string' } },
-      } },
-    },
+    `pendiente del WIP; comprobá en el disco los pasos ya hechos y tildá cada uno que salga bien. Para cada ` +
+    `comportamiento escribí primero la prueba, corréla y anotá en redFirst el test y el fallo literal que ` +
+    `dio; recién después implementá. Un test que pasa antes de que exista el código no asercia lo que dice ` +
+    `aserciar: endurecelo y volvé a correr hasta verlo fallar. Aceptación: ${task.acceptance}.`,
+    { schema: BUILD },
   )
+  if (!build) return stop('agent-unavailable', 'Build no devolvió resultado')
   if (!build.completed) return stop('build-blocked', (build.blockers || []).join('; ') || build.summary)
+  // Nombrar el test sin traer su fallo es volver a afirmar que hubo rojo, que es lo que el campo evita.
+  const sinFallo = build.redFirst.find((entry) => !entry.failure.trim())
+  if (sinFallo) return stop('build-unproven', `${sinFallo.test} se declara en rojo sin el fallo que lo muestra`)
 
   if (!direct) {
     phase('Review')
@@ -323,9 +358,11 @@ while (safety++ < 50) {
       `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.${MANIFEST}`,
       { schema: DECISION },
     )
+    if (!review) return stop('agent-unavailable', 'Review no devolvió resultado')
     if (!review.approved) {
       await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${review.concerns.join('; ')}`)
       review = await run(`Volvé a revisar el diff corregido de ${task.id}.${MANIFEST}`, { schema: DECISION })
+      if (!review) return stop('agent-unavailable', 'la re-revisión no devolvió resultado')
       if (!review.approved) return stop('review-failed', review.concerns.join('; '))
     }
     // Aprobar sin declarar qué se abrió no se arregla mandando a tocar código: falló quien revisó.
@@ -343,7 +380,13 @@ while (safety++ < 50) {
     `Aceptación: ${task.acceptance}.`,
     { schema: VERIFY },
   )
+  if (!verified) return stop('agent-unavailable', 'Verify no devolvió resultado')
   if (!verified.passed || !verified.commands.length) return stop('verify-failed', verified.details)
+  // Verde por ausencia: los gates pasaron y ninguno corrió las pruebas que esta tarea escribió. El exit
+  // code de lint o de build no dice nada del comportamiento, y la corrida cerraba igual.
+  if (build.redFirst.length && !verified.commands.some((entry) => RUNS_TESTS.test(entry.cmd))) {
+    return stop('verify-untested', `${task.id} escribió pruebas y ningún gate corrió una`)
+  }
   if (verified.uncovered.length) {
     return stop('verify-hollow', `sin test que lo codifique: ${verified.uncovered.join('; ')}`)
   }
@@ -357,6 +400,7 @@ while (safety++ < 50) {
     `Aceptación: ${task.acceptance}.`,
     { schema: QA },
   )
+  if (!qa) return stop('agent-unavailable', 'QA no devolvió resultado')
   if (!qa.passed) return stop('qa-failed', qa.evidence)
 
   phase('Commit')
@@ -367,6 +411,7 @@ while (safety++ < 50) {
     `y no era de la tarea.`,
     { schema: COMMIT },
   ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
+  if (!commit) return stop('agent-unavailable', 'Commit no devolvió resultado')
   if (!commit.committed) return stop('commit-failed', commit.reason)
 
   phase('Done')
@@ -381,6 +426,10 @@ while (safety++ < 50) {
   if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
 }
 
+if (vueltas > MAX_TAREAS) {
+  return stop('milestone-too-long', `la corrida agotó el tope de ${MAX_TAREAS} tareas sin cerrar el hito`)
+}
+
 phase('Closing')
 const closing = await write(
   `Corré "node tools/ops.js check ${P}" desde ${ROOT}. Si sale en rojo, reparás sólo estado derivado ` +
@@ -391,6 +440,7 @@ const closing = await write(
     },
   },
 )
+if (!closing) return stop('agent-unavailable', 'Closing no devolvió resultado')
 if (!closing.passed) return stop('planning-check-failed', closing.details)
 if (completed.length && contract.humanCheckpoint) await write(
   `Creá ${GATE} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones humanas ` +
