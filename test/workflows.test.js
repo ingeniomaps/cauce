@@ -70,7 +70,7 @@ test('autobuild no acepta un veredicto que no declare qué se inspeccionó', () 
 // Dos formas de cerrar en verde sin haber probado nada: no haber visto nunca el rojo, y correr gates que
 // no incluyen la prueba recién escrita. Van juntas porque juntas son el mismo agujero.
 test('autobuild exige el rojo previo y que algún gate lo corra', () => {
-  assert.match(workflow, /required: \['completed', 'summary', 'redFirst'\]/, 'Build declara el rojo previo')
+  assert.match(workflow, /required: \['completed', 'summary', 'redFirst'/, 'Build declara el rojo previo')
   assert.match(workflow, /sinFallo[\s\S]{0,160}stop\('build-unproven'/, 'un rojo declarado sin su fallo no vale')
   const verify = workflow.slice(workflow.indexOf("phase('Verify')"), workflow.indexOf("phase('QA')"))
   assert.match(
@@ -87,6 +87,20 @@ test('autobuild no da por verificada una aceptación sin test que la codifique',
   const verify = workflow.slice(workflow.indexOf("phase('Verify')"), workflow.indexOf("phase('QA')"))
   assert.match(verify, /task\.acceptance/, 'la aceptación viaja al que audita el fuente de los tests')
   assert.match(verify, /verified\.uncovered\.length[\s\S]+stop\('verify-hollow'/, 'un criterio sin test frena')
+})
+
+// Lo que aparece y el plan no previó tiene dos destinos, y lo que los separa es quién puede resolverlo:
+// una prueba que falta la escribe el propio recorrido, un pedazo de diseño que falta no. Si los dos
+// terminan en el mismo stop, una persona paga la interrupción de lo que se arreglaba solo.
+test('autobuild encamina lo descubierto según quién puede resolverlo', () => {
+  assert.match(workflow, /kind: \{ type: 'string', enum: \['edge', 'gap'\] \}/, 'Build declara qué encontró')
+  assert.match(workflow, /hueco[\s\S]{0,320}stop\('design-gap'/, 'un hueco de diseño para y queda escrito')
+  assert.match(workflow, /suelto[\s\S]{0,200}stop\('edge-unproven'/, 'y un caso fijado acá entra con su prueba')
+  const verify = workflow.slice(workflow.indexOf("phase('Verify')"), workflow.indexOf("phase('QA')"))
+  assert.match(workflow, /enum: \['missing-test', 'ambiguous'\]/, 'el criterio sin cubrir declara su causa')
+  assert.match(verify, /ambiguo[\s\S]{0,320}stop\('acceptance-ambiguous'/, 'lo que pide una decisión escala')
+  // Y lo que no la pide vuelve a quien construye, en vez de terminar la corrida.
+  assert.match(verify, /uncovered\.length[\s\S]{0,400}verified = await run\(VERIFY_ASK/, 'lo demás rebota')
 })
 
 test('workflows de integración usan el registro general y no escriben remoto', () => {

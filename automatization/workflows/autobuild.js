@@ -76,7 +76,16 @@ const VERIFY = {
   type: 'object', additionalProperties: false, required: ['passed', 'commands', 'details', 'uncovered'],
   properties: {
     passed: { type: 'boolean' }, details: { type: 'string' },
-    uncovered: { type: 'array', items: { type: 'string' } },
+    // Dos causas que se leen igual en el resultado y piden cosas opuestas: a una le falta trabajo que
+    // el propio recorrido puede hacer, a la otra le falta una decisión que no es suya. Sin separarlas,
+    // la corrida frena por las dos y una persona termina resolviendo lo que se resolvía solo.
+    uncovered: { type: 'array', items: { type: 'object', additionalProperties: false,
+      required: ['criterion', 'cause'],
+      properties: {
+        criterion: { type: 'string' },
+        cause: { type: 'string', enum: ['missing-test', 'ambiguous'] },
+      },
+    } },
     commands: { type: 'array', items: { type: 'object', required: ['cmd', 'exitCode'], properties: {
       cmd: { type: 'string' }, exitCode: { type: 'integer' }, note: { type: 'string' },
     } } },
@@ -95,7 +104,7 @@ const QA = {
 // escribió cuando el código ya andaba, y ese segundo no prueba su aserción, sólo que corre. Por eso
 // `redFirst` trae el fallo literal de la corrida roja y no la afirmación de que la hubo (R14).
 const BUILD = {
-  type: 'object', additionalProperties: false, required: ['completed', 'summary', 'redFirst'],
+  type: 'object', additionalProperties: false, required: ['completed', 'summary', 'redFirst', 'discovered'],
   properties: {
     completed: { type: 'boolean' }, summary: { type: 'string' },
     redFirst: { type: 'array', items: { type: 'object', additionalProperties: false,
@@ -103,6 +112,18 @@ const BUILD = {
       properties: { test: { type: 'string' }, failure: { type: 'string' } },
     } },
     blockers: { type: 'array', items: { type: 'string' } },
+    // Estricto en el cómo, flexible en el qué: lo que aparece y el plan no previó tiene dos destinos y
+    // ninguno es el silencio. Un caso que esta tarea puede fijar entra con la prueba que lo fija —por eso
+    // su `test` tiene que estar en `redFirst`—; un pedazo de diseño que falta para, porque construir
+    // sobre un diseño que no lo cubre es decidirlo sin que nadie lo haya decidido. Implementarlo sin
+    // prueba lo vuelve invisible y descartarlo lo pierde: en los dos casos el próximo empieza de cero.
+    discovered: { type: 'array', items: { type: 'object', additionalProperties: false,
+      required: ['kind', 'detail'],
+      properties: {
+        kind: { type: 'string', enum: ['edge', 'gap'] },
+        detail: { type: 'string' }, test: { type: 'string' },
+      },
+    } },
   },
 }
 const COMMIT = {
@@ -344,7 +365,10 @@ while (vueltas++ < MAX_TAREAS) {
     `pendiente del WIP; comprobá en el disco los pasos ya hechos y tildá cada uno que salga bien. Para cada ` +
     `comportamiento escribí primero la prueba, corréla y anotá en redFirst el test y el fallo literal que ` +
     `dio; recién después implementá. Un test que pasa antes de que exista el código no asercia lo que dice ` +
-    `aserciar: endurecelo y volvé a correr hasta verlo fallar. Aceptación: ${task.acceptance}.`,
+    `aserciar: endurecelo y volvé a correr hasta verlo fallar. Lo que el plan no previó va en discovered y ` +
+    `no en el código a secas: kind=edge si esta tarea lo puede fijar —y entonces entra con su prueba, que ` +
+    `nombrás en test y anotás en redFirst—, kind=gap si falta una parte del diseño, que no se decide acá. ` +
+    `Aceptación: ${task.acceptance}.`,
     { schema: BUILD },
   )
   if (!build) return stop('agent-unavailable', 'Build no devolvió resultado')
@@ -352,6 +376,19 @@ while (vueltas++ < MAX_TAREAS) {
   // Nombrar el test sin traer su fallo es volver a afirmar que hubo rojo, que es lo que el campo evita.
   const sinFallo = build.redFirst.find((entry) => !entry.failure.trim())
   if (sinFallo) return stop('build-unproven', `${sinFallo.test} se declara en rojo sin el fallo que lo muestra`)
+  // Un hueco de diseño no lo cierra quien lo encuentra. Queda escrito antes de parar: lo que frena una
+  // corrida y no se registra vuelve a aparecer en la siguiente, y otra vez sin dueño.
+  const hueco = build.discovered.find((entry) => entry.kind === 'gap')
+  if (hueco) {
+    await write(`Registrá ${task.id} en ${HUMAN} con el hueco de diseño y la decisión que lo cierra: ` +
+      `${hueco.detail}.`)
+    return stop('design-gap', hueco.detail)
+  }
+  // Y un caso que sí se fijó acá entra con su prueba o no entró: sin ella el comportamiento nuevo queda
+  // sin nada que lo sostenga, y nadie sabe después que debía existir.
+  const suelto = build.discovered.find((entry) => entry.kind === 'edge'
+    && !build.redFirst.some((rojo) => rojo.test === entry.test))
+  if (suelto) return stop('edge-unproven', `${suelto.detail} entró sin la prueba que lo fija`)
 
   if (!direct) {
     phase('Review')
@@ -372,17 +409,32 @@ while (vueltas++ < MAX_TAREAS) {
   }
 
   phase('Verify')
-  const verified = await run(
-    `${asRole(cast.verify)}Abrí el fuente de los tests que la tarea agregó o cambió y contrastá cada criterio ` +
-    `de aceptación contra sus aserciones: en uncovered va el criterio que ningún test codifica, sea porque ` +
-    `falta o porque el que dice cubrirlo no asercia esa propiedad. Un test que pasa sin aserciarla no la ` +
-    `cubre. Después descubrí y corré los gates reales de ${task.service}: primero las instrucciones del ` +
+  const VERIFY_ASK = `${asRole(cast.verify)}Abrí el fuente de los tests que la tarea agregó o cambió y ` +
+    `contrastá cada criterio ` +
+    `de aceptación contra sus aserciones: en uncovered va el criterio que ningún test codifica, con su causa ` +
+    `—missing-test si el test falta o no asercia la propiedad, ambiguous si el criterio no dice qué habría ` +
+    `que aserciar—. Un test que pasa sin aserciarla no la cubre. Después descubrí y corré los gates reales ` +
+    `de ${task.service}: primero las instrucciones del ` +
     `repositorio, después el test, lint, typecheck y build que apliquen. Leé los exit codes de verdad. ` +
     `passed=true exige comandos corridos y ninguna regresión causada por la tarea. ` +
-    `Aceptación: ${task.acceptance}.`,
-    { schema: VERIFY },
-  )
+    `Aceptación: ${task.acceptance}.`
+  let verified = await run(VERIFY_ASK, { schema: VERIFY })
   if (!verified) return stop('agent-unavailable', 'Verify no devolvió resultado')
+  // Un criterio que nadie sabe cómo aserciar no es trabajo que falta sino una definición que falta, y
+  // definirla acá sería inventarla. Escribir la prueba que falta, en cambio, es trabajo del recorrido:
+  // hacer parar a una persona por eso le cobra una interrupción por algo que se resolvía solo.
+  const ambiguo = verified.uncovered.find((entry) => entry.cause === 'ambiguous')
+  if (ambiguo) {
+    await write(`Registrá ${task.id} en ${HUMAN}: el criterio "${ambiguo.criterion}" no dice qué habría ` +
+      `que aserciar, y hace falta la decisión que lo fija.`)
+    return stop('acceptance-ambiguous', ambiguo.criterion)
+  }
+  if (verified.uncovered.length) {
+    await run(`${asRole(cast.build)}Escribí sólo las pruebas que faltan en ${task.id}, con el mismo rojo ` +
+      `previo, y no toques el código de producción: ${verified.uncovered.map((e) => e.criterion).join('; ')}`)
+    verified = await run(VERIFY_ASK, { schema: VERIFY })
+    if (!verified) return stop('agent-unavailable', 'la segunda pasada de Verify no devolvió resultado')
+  }
   if (!verified.passed || !verified.commands.length) return stop('verify-failed', verified.details)
   // Verde por ausencia: los gates pasaron y ninguno corrió las pruebas que esta tarea escribió. El exit
   // code de lint o de build no dice nada del comportamiento, y la corrida cerraba igual.
@@ -390,7 +442,7 @@ while (vueltas++ < MAX_TAREAS) {
     return stop('verify-untested', `${task.id} escribió pruebas y ningún gate corrió una`)
   }
   if (verified.uncovered.length) {
-    return stop('verify-hollow', `sin test que lo codifique: ${verified.uncovered.join('; ')}`)
+    return stop('verify-hollow', `sin test que lo codifique: ${verified.uncovered.map((e) => e.criterion).join('; ')}`)
   }
 
   phase('QA')
