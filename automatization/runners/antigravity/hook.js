@@ -23,17 +23,24 @@ const OPS_DIR = '{{OPS_DIR}}'
 // proyecto. Nada de eso nombra el workspace, así que el ancla se escribe al instalar o no existe.
 const OPS_ROOT = '{{OPS_ROOT}}'
 
+// Los dos marcadores y la carpeta desde la que corre el puente, juntos y pasables como argumento. El
+// default es lo que `automation install` deja escrito; poder reemplazarlo es lo que permite ejercer
+// desde el repositorio lo que sólo existe instalado. Sin eso, la resolución de la raíz —donde ya se
+// escondieron dos fallas que negaban cada llamada a herramienta— sólo se puede probar sobre una copia,
+// y una copia no la mide ninguna cobertura.
+const MARCAS = { dir: OPS_DIR, root: OPS_ROOT, plugin: __dirname }
+
 function isRoot(dir) {
   const instance = fs.existsSync(path.join(dir, 'planning'))
   const toolkit = fs.existsSync(path.join(dir, 'engine', 'hooks', 'run.js'))
   return fs.existsSync(path.join(dir, 'ops.config.json')) && (instance || toolkit)
 }
 
-function declaredRoot() {
-  if (!OPS_ROOT.startsWith('{{') && isRoot(OPS_ROOT)) return OPS_ROOT
+function declaredRoot(marcas) {
+  if (!marcas.root.startsWith('{{') && isRoot(marcas.root)) return marcas.root
   // El plugin corriendo desde donde `automation install` lo dejó, que es el caso sin registrar.
-  const installed = path.resolve(__dirname, '..', '..', '..')
-  const root = OPS_DIR.startsWith('{{') ? installed : path.join(installed, OPS_DIR)
+  const installed = path.resolve(marcas.plugin, '..', '..', '..')
+  const root = marcas.dir.startsWith('{{') ? installed : path.join(installed, marcas.dir)
   return fs.existsSync(path.join(root, 'ops.config.json')) ? root : ''
 }
 
@@ -51,8 +58,8 @@ function childRoot(dir) {
   return roots.length === 1 ? roots[0] : ''
 }
 
-function findRoot(input) {
-  const declared = declaredRoot()
+function findRoot(input, marcas = MARCAS) {
+  const declared = declaredRoot(marcas)
   if (declared) return declared
   const args = input.toolCall && input.toolCall.args || {}
   const starts = [args.Cwd, process.cwd(), ...(input.workspacePaths || [])].filter(Boolean)
@@ -86,8 +93,8 @@ function runtimeAt(root) {
 
 // La carpeta que el runner abrió, deducida de la raíz: en sidecar la raíz ops es su hija, y en modo
 // embebido son la misma.
-function workspaceOf(root) {
-  const relative = OPS_DIR.startsWith('{{') ? '' : OPS_DIR.replace(/\/+$/, '')
+function workspaceOf(root, marcas) {
+  const relative = marcas.dir.startsWith('{{') ? '' : marcas.dir.replace(/\/+$/, '')
   if (!relative) return root
   return path.resolve(root, ...relative.split('/').map(() => '..'))
 }
@@ -102,20 +109,20 @@ function within(dir, base) {
 // juzgando otro archivo, y uno que busque el repo git lo buscaría fuera del proyecto. Se respeta el
 // que manda sólo si cae adentro del workspace —si algún día manda uno real, es mejor que el nuestro—;
 // si no, el workspace, que es donde el runner dice estar trabajando.
-function cwdFor(args, root) {
+function cwdFor(args, root, marcas) {
   const declared = args.Cwd && path.resolve(String(args.Cwd))
-  const workspace = workspaceOf(root)
+  const workspace = workspaceOf(root, marcas)
   return declared && within(declared, workspace) ? declared : workspace
 }
 
-function normalize(input, root) {
+function normalize(input, root, marcas = MARCAS) {
   const args = input.toolCall && input.toolCall.args || {}
   const file = args.TargetFile || args.AbsolutePath || ''
   const content = args.CodeContent || args.ReplacementContent
     || (args.ReplacementChunks && JSON.stringify(args.ReplacementChunks)) || ''
   return {
     sessionId: input.conversationId,
-    cwd: cwdFor(args, root),
+    cwd: cwdFor(args, root, marcas),
     tool_input: {
       command: args.CommandLine || '',
       file_path: file,

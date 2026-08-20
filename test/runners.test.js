@@ -201,6 +201,43 @@ test('install deja el puente de Antigravity resoluble desde la copia que agy reg
   }
 })
 
+// El puente tal como corre instalado, con los marcadores puestos. Se lo hace resolver desde una carpeta
+// que no lleva a ningún proyecto, que es la situación real: `agy` ejecuta la copia registrada en
+// `~/.gemini/`, donde ni el `__dirname` ni el cwd llegan al repositorio del usuario.
+test('el puente de Antigravity resuelve la raíz como corre instalado', () => {
+  const os = require('node:os')
+  const puente = require(path.join(root, 'antigravity', 'hook.js'))
+  const base = temporal('cauce-puente-unidad-')
+  const workspace = path.join(base, 'repo')
+  const opsRoot = path.join(workspace, 'ops')
+  fs.mkdirSync(path.join(opsRoot, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(opsRoot, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
+  const lejos = path.join(base, 'global')
+  fs.mkdirSync(lejos)
+
+  // Sidecar: la raíz declarada apunta a otro proyecto y desde el workspace sólo se llega hacia abajo.
+  const marcas = { dir: 'ops/', root: path.join(base, 'no-existe'), plugin: lejos }
+  assert.equal(puente.findRoot({ toolCall: { args: { Cwd: workspace } } }, marcas), opsRoot)
+  assert.equal(puente.findRoot({ toolCall: { args: { Cwd: opsRoot } } }, marcas), opsRoot)
+  assert.equal(puente.normalize({ toolCall: { args: { Cwd: os.homedir() } } }, opsRoot, marcas).cwd, workspace)
+
+  // La raíz absoluta que `install` escribe manda sobre la búsqueda.
+  const escrita = { dir: 'ops/', root: opsRoot, plugin: lejos }
+  assert.equal(puente.findRoot({ toolCall: { args: { Cwd: os.homedir() } } }, escrita), opsRoot)
+
+  // Y dos candidatas hermanas son una ambigüedad que el puente no resuelve solo.
+  const gemela = path.join(workspace, 'otra-ops')
+  fs.mkdirSync(path.join(gemela, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(gemela, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
+  const previo = process.cwd()
+  try {
+    process.chdir(lejos)
+    assert.throws(() => puente.findRoot({ toolCall: { args: { Cwd: workspace } } }, marcas), /raíz Cauce/)
+  } finally {
+    process.chdir(previo)
+  }
+})
+
 test('los runners con hooks nativos registran el grupo, no un hook por guard', () => {
   const { hookGroups } = require('../engine/hooks/run')
   for (const name of ['claude', 'codex']) {
