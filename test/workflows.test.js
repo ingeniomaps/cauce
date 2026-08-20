@@ -53,6 +53,18 @@ test('autobuild lee el contrato una sola vez y no obliga a releerlo', () => {
   }
 })
 
+// El manifiesto vive en dos piezas que se pueden separar sin querer: el schema que lo exige y el contraste
+// que lo mira. Un schema sin contraste deja pasar la lista vacía, y un contraste sin schema no recibe nada.
+test('autobuild no acepta un veredicto que no declare qué se inspeccionó', () => {
+  assert.match(workflow, /required: \['approved', 'concerns', 'consulted'\]/, 'el schema exige el manifiesto')
+  for (const gate of ['critique', 'review']) {
+    assert.match(
+      workflow, new RegExp(`!${gate}\\.consulted\\.length.+stop\\('${gate}-unbacked'`),
+      `${gate} contrasta el manifiesto antes de seguir`,
+    )
+  }
+})
+
 test('workflows de integración usan el registro general y no escriben remoto', () => {
   for (const name of ['sync.js', 'promote.js']) {
     const file = path.resolve(__dirname, '..', 'automatization', 'workflows', 'integrations', name)

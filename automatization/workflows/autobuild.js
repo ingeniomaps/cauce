@@ -59,9 +59,15 @@ const PLAN = {
     testStrategy: { type: 'string' },
   },
 }
+// Un veredicto sin manifiesto no se puede contrastar: `consulted` enumera lo que quien revisó abrió de
+// verdad, y es lo único que separa al que miró del que aprobó de memoria. No prueba que lo haya leído bien
+// —para eso habría que releerlo—, y esa asimetría es la que lo deja barato (R14).
 const DECISION = {
-  type: 'object', additionalProperties: false, required: ['approved', 'concerns'],
-  properties: { approved: { type: 'boolean' }, concerns: { type: 'array', items: { type: 'string' } } },
+  type: 'object', additionalProperties: false, required: ['approved', 'concerns', 'consulted'],
+  properties: {
+    approved: { type: 'boolean' }, concerns: { type: 'array', items: { type: 'string' } },
+    consulted: { type: 'array', items: { type: 'string' } },
+  },
 }
 const VERIFY = {
   type: 'object', additionalProperties: false, required: ['passed', 'commands', 'details'],
@@ -128,6 +134,9 @@ const CONTRACT = {
 const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos externos en ${HUMAN}. Nunca ` +
   `ejecutes INBOX por tu cuenta. Nunca hagas push, deploy, amend, force ni git add -A. No edites la gobernanza ` +
   `del proceso, y no toques la contabilidad de planning salvo que este recorrido te lo pida explícitamente.`
+// Acompaña a todo prompt con schema DECISION: el schema obliga a llenar `consulted`, y esto obliga a
+// llenarlo con lo que se abrió en vez de con lo que se pensaba mirar.
+const MANIFEST = ' Enumerá en consulted cada archivo, diff o comando que hayas abierto de verdad, con su ruta.'
 {{INCLUDE:shared/workflow-finish.js}}
 
 phase('Triage')
@@ -264,7 +273,7 @@ while (safety++ < 50) {
       phase('Critique')
       let critique = await read(
         `Atacá este plan por correctitud, alcance, seguridad, pruebas y conflictos con el código ` +
-        `existente: ${JSON.stringify(plan)}`,
+        `existente.${MANIFEST} Plan: ${JSON.stringify(plan)}`,
         { schema: DECISION },
       )
       if (!critique.approved) {
@@ -273,11 +282,13 @@ while (safety++ < 50) {
           { schema: PLAN },
         )
         critique = await read(
-          `Volvé a criticar el plan corregido contra ${task.acceptance}: ${JSON.stringify(plan)}`,
+          `Volvé a criticar el plan corregido contra ${task.acceptance}.${MANIFEST} Plan: ${JSON.stringify(plan)}`,
           { schema: DECISION },
         )
         if (!critique.approved) return stop('plan-rejected', critique.concerns.join('; '))
       }
+      // Acá el plan ya está aprobado por los dos caminos posibles, así que el contraste va una sola vez.
+      if (!critique.consulted.length) return stop('critique-unbacked', 'aprobó el plan sin declarar qué inspeccionó')
     }
     await write(
       `Persistí el WIP activo antes de tocar código: task=${task.id}, hito=${JSON.stringify(task.hito)}, ` +
@@ -305,14 +316,16 @@ while (safety++ < 50) {
     phase('Review')
     let review = await run(
       `${asRole(cast.review)}Revisá el diff real por aceptación, regresiones, seguridad, arquitectura, código ` +
-      `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.`,
+      `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.${MANIFEST}`,
       { schema: DECISION },
     )
     if (!review.approved) {
       await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${review.concerns.join('; ')}`)
-      review = await run(`Volvé a revisar el diff corregido de ${task.id}.`, { schema: DECISION })
+      review = await run(`Volvé a revisar el diff corregido de ${task.id}.${MANIFEST}`, { schema: DECISION })
       if (!review.approved) return stop('review-failed', review.concerns.join('; '))
     }
+    // Aprobar sin declarar qué se abrió no se arregla mandando a tocar código: falló quien revisó.
+    if (!review.consulted.length) return stop('review-unbacked', 'aprobó el diff sin declarar qué inspeccionó')
   }
 
   phase('Verify')
