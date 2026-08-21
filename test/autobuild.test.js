@@ -23,348 +23,444 @@ const WORKFLOW = path.resolve(AUTOMATION, 'workflows', 'autobuild.js')
 
 // El único retoque al fuente: `export` no es válido dentro de una función. El resto se ejecuta tal
 // cual, para que un cambio en el recorrido rompa acá y no en una instancia.
-function compilar() {
+function compile() {
   const source = A.render(WORKFLOW, '', AUTOMATION).replace(/^export const meta =/m, 'const meta =')
   return new Function('agent', 'phase', 'log', 'parallel', 'pipeline', 'workflow', 'args', 'budget',
     `return (async () => {\n${source}\n})()`)
 }
 
+// Las claves del guion, tal como las arma `runFlow`: la fase y, sin `label`, los campos obligatorios
+// del schema. Nombrarlas es lo que hace que un tipeo se note: escrita a mano y mal, la clave se suma
+// sin pisar nada y el guion base contesta el camino feliz, así que un escenario que espera que el
+// recorrido siga queda verde sin haber cambiado lo que dice cambiar.
+const KEY = {
+  contract: 'Triage|contract-digest',
+  contexto: 'Triage|planning-context',
+  cast: 'Cast|cast',
+  ready: 'Ready|ready,needsHuman',
+  decompose: 'Decompose|hours,needsSplit',
+  plan: 'Plan|approach,steps,files,testStrategy',
+  planWip: 'Plan|wipActive',
+  critique: 'Critique|verdict,concerns,consulted',
+  critiqueWip: 'Critique|wipActive',
+  replan: 'Critique|approach,steps,files,testStrategy',
+  build: 'Build|completed,summary,redFirst,discovered,closedTask',
+  review: 'Review|verdict,concerns,consulted',
+  verify: 'Verify|passed,commands,details,uncovered',
+  qa: 'QA|passed,evidence',
+  commit: 'Commit|committed',
+  pick: 'Pick|expanded',
+  closing: 'Closing|passed,details',
+}
+
 // Respuestas del camino que llega hasta el final. Cada escenario cambia una sola y asercia el efecto:
 // así lo que se mide es esa pieza y no el recorrido entero.
-function guionBase() {
+function baseScript() {
   return {
-    'Triage|contract-digest': {
+    [KEY.contract]: {
       project: 'acme', workspaceRoots: ['api → ./api'], contracts: '## Contratos',
       maxTaskHours: 4, commitPerTask: true, humanCheckpoint: false, boundaries: [],
     },
     // Primera lectura: hay tarea. La segunda la sirve `siguienteContexto`, ya sin tarea, para que el
     // bucle cierre en vez de repetir la misma para siempre.
-    'Triage|planning-context': {
+    [KEY.contexto]: {
       blocked: '', hasTask: true, wipActive: false, queued: 1, lane: 'full',
       slug: 'T-1', hito: 'H1', service: './api', acceptance: 'el alta rechaza un duplicado', epic: 'E1',
     },
-    'Cast|cast': { build: 'backend-engineer', review: [], verify: [], qa: [] },
-    'Ready|ready,needsHuman': { ready: true, needsHuman: false },
-    'Decompose|hours,needsSplit': { hours: 2, needsSplit: false },
-    'Plan|approach,steps,files,testStrategy': {
+    [KEY.cast]: { build: 'backend-engineer', review: [], verify: [], qa: [] },
+    [KEY.ready]: { ready: true, needsHuman: false },
+    [KEY.decompose]: { hours: 2, needsSplit: false },
+    [KEY.plan]: {
       approach: 'validar en el repositorio', steps: ['1'], files: ['api/alta.go'], testStrategy: 'unit',
     },
-    'Critique|verdict,concerns,consulted': { verdict: 'aprobado', concerns: [], consulted: ['api/alta.go'] },
-    'Critique|wipActive': { wipActive: true },
-    'Plan|wipActive': { wipActive: true },
-    'Build|completed,summary,redFirst,discovered,closedTask': {
+    [KEY.critique]: { verdict: 'aprobado', concerns: [], consulted: ['api/alta.go'] },
+    [KEY.critiqueWip]: { wipActive: true },
+    [KEY.planWip]: { wipActive: true },
+    [KEY.build]: {
       completed: true, summary: 'alta con rechazo de duplicado',
       redFirst: [{ test: 'TestAltaDuplicada', failure: 'want error, got nil' }],
       discovered: [], closedTask: false,
     },
-    'Review|verdict,concerns,consulted': { verdict: 'aprobado', concerns: [], consulted: ['api/alta.go'] },
-    'Verify|passed,commands,details,uncovered': {
+    [KEY.review]: { verdict: 'aprobado', concerns: [], consulted: ['api/alta.go'] },
+    [KEY.verify]: {
       passed: true, details: 'verde', uncovered: [],
       commands: [{ cmd: 'go test ./...', exitCode: 0 }],
     },
-    'QA|passed,evidence': { passed: true, evidence: 'alta rechaza el duplicado contra la API real' },
-    'Commit|committed': { committed: true, hash: 'abc123' },
-    'Pick|expanded': { expanded: false },
-    'Closing|passed,details': { passed: true, details: 'check verde' },
+    [KEY.qa]: { passed: true, evidence: 'alta rechaza el duplicado contra la API real' },
+    [KEY.commit]: { committed: true, hash: 'abc123' },
+    [KEY.pick]: { expanded: false },
+    [KEY.closing]: { passed: true, details: 'check verde' },
   }
 }
 
-const SIN_TAREA = { blocked: '', hasTask: false, wipActive: false, queued: 0, lane: '' }
+// Las dos preguntas que se le hacen a `asked`. Una llamada con schema deja `Fase|<campos>`; una
+// escritura, que no lleva schema ni label, deja `Fase|` a secas — por eso una se busca por prefijo y
+// la otra por igualdad, y confundirlas cuenta las escrituras como si fueran consultas.
+const reached = (asked, phase) => asked.some((key) => key.startsWith(`${phase}|`))
+const writesTo = (asked, phase) => asked.filter((key) => key === `${phase}|`).length
+
+// Un escenario que espera que el recorrido llegue al final. Si frenó, lo que hay que ver es dónde.
+function ranToEnd(result) {
+  assert.equal(result.stopped, undefined, `frenó en ${result.reason || ''}: ${result.detail || ''}`)
+}
+
+const NO_TASK = { blocked: '', hasTask: false, wipActive: false, queued: 0, lane: '' }
 
 // Ejecuta el recorrido y devuelve lo que devolvió, más las fases y las claves que pidió. La clave sale
 // de la fase y del `label` o de los campos obligatorios del schema: es lo que distingue una crítica de
 // un review, que comparten schema y sólo se diferencian por dónde ocurren.
-async function correr(cambios = {}, opciones = {}) {
-  const guion = { ...guionBase(), ...cambios }
-  if (opciones.lane) {
-    guion['Triage|planning-context'] = { ...guion['Triage|planning-context'], lane: opciones.lane }
+async function runFlow(changes = {}, options = {}) {
+  const script = { ...baseScript(), ...changes }
+  if (options.lane) {
+    script[KEY.contexto] = { ...script[KEY.contexto], lane: options.lane }
   }
-  const fases = []
-  const pedidas = []
-  const escritos = []
+  const phases = []
+  const asked = []
+  const written = []
   const prompts = []
-  let fase = ''
+  let phase = ''
   // Cada lectura de planning devuelve el siguiente de la lista, y al agotarse ya no hay tarea. Es lo
   // que cierra el bucle, y lo que deja escribir una expansión o un cambio de hito entre dos lecturas.
-  const contextos = opciones.contextos || [guion['Triage|planning-context']]
-  let leidos = 0
+  const contexts = options.contexts || [script[KEY.contexto]]
+  let reads = 0
 
   const agent = async (prompt, options = {}) => {
-    const clave = `${fase}|${options.label || (options.schema && options.schema.required || []).join(',')}`
-    pedidas.push(clave)
-    prompts.push({ clave, prompt })
-    if (!options.schema) { escritos.push(prompt); return { ok: true } }
+    const key = `${phase}|${options.label || (options.schema && options.schema.required || []).join(',')}`
+    asked.push(key)
+    prompts.push({ key, prompt })
+    if (!options.schema) { written.push(prompt); return { ok: true } }
     if (options.label === 'planning-context') {
-      const respuesta = leidos < contextos.length ? contextos[leidos] : SIN_TAREA
-      leidos += 1
-      return typeof respuesta === 'function' ? respuesta() : respuesta
+      const answer = reads < contexts.length ? contexts[reads] : NO_TASK
+      reads += 1
+      return typeof answer === 'function' ? answer() : answer
     }
-    if (!(clave in guion)) throw new Error(`el guion no cubre ${clave}`)
+    if (!(key in script)) throw new Error(`el guion no cubre ${key}`)
     // Una respuesta puede ser una función cuando el escenario necesita contestar distinto en cada vuelta.
-    const respuesta = guion[clave]
-    return typeof respuesta === 'function' ? respuesta() : respuesta
+    const answer = script[key]
+    return typeof answer === 'function' ? answer() : answer
   }
 
-  const resultado = await compilar()(
-    agent, (title) => { fase = title; fases.push(title) }, () => {},
+  const result = await compile()(
+    agent, (title) => { phase = title; phases.push(title) }, () => {},
     async (thunks) => Promise.all(thunks.map((t) => t())), async () => [], async () => ({}),
     {}, { total: null, spent: () => 0, remaining: () => Infinity },
   )
-  return { resultado, fases, pedidas, escritos, prompts }
+  return { result, phases, asked, written, prompts }
 }
 
 // Lo primero que hay que saber es que el recorrido llega al final, porque un freno que dispara siempre
 // se ve idéntico a uno que funciona si sólo se comprueban los casos que frenan.
 test('autobuild cierra una tarea cuando todo está en su lugar', async () => {
-  const { resultado, fases } = await correr()
-  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}: ${resultado.detail || ''}`)
-  assert.deepEqual(resultado.done, ['T-1'])
-  for (const esperada of ['Triage', 'Plan', 'Critique', 'Build', 'Review', 'Verify', 'QA', 'Commit', 'Closing']) {
-    assert.ok(fases.includes(esperada), `faltó la fase ${esperada}`)
+  const { result, phases } = await runFlow()
+  ranToEnd(result)
+  assert.deepEqual(result.done, ['T-1'])
+  for (const expected of ['Triage', 'Plan', 'Critique', 'Build', 'Review', 'Verify', 'QA', 'Commit', 'Closing']) {
+    assert.ok(phases.includes(expected), `faltó la fase ${expected}`)
   }
 })
 
-// La fase que persiste el WIP escribe un archivo y nada más. En una corrida real hizo el trabajo entero
-// —implementó, cerró la tarea y dejó el WIP en IDLE— y Build lo tomó por trabajo de una corrida anterior,
-// así que Review, Verify y QA no vieron ese código. Sin WIP activo, la tarea no entra a construirse.
 test('sin WIP activo no se entra a construir', async () => {
-  const { resultado, pedidas } = await correr({
-    'Critique|wipActive': { wipActive: false, note: 'quedó en IDLE' },
+  const { result, asked } = await runFlow({
+    [KEY.critiqueWip]: { wipActive: false, note: 'quedó en IDLE' },
   })
-  assert.equal(resultado.reason, 'wip-not-persisted')
-  assert.ok(!pedidas.some((clave) => clave.startsWith('Build|')), 'y no se construye sin el WIP puesto')
+  assert.equal(result.reason, 'wip-not-persisted')
+  assert.ok(!reached(asked, 'Build'), 'y no se construye sin el WIP puesto')
+})
+
+// Lo que falta para empezar no lo resuelve el recorrido: va donde lo lee una persona, en vez de quedar
+// en el log de una corrida que ya terminó.
+test('una tarea que no está lista no se planifica y queda pedida por escrito', async () => {
+  const { result, asked, written } = await runFlow({
+    [KEY.ready]: { ready: false, needsHuman: true, reason: 'la aceptación no dice qué es un duplicado' },
+  })
+  assert.equal(result.reason, 'not-ready')
+  assert.ok(!reached(asked, 'Plan'), 'no se planifica lo que todavía no se sabe qué es')
+  assert.ok(
+    written.some((text) => text.includes('HUMAN_ACTIONS') && text.includes('qué es un duplicado')),
+    'y lo que falta queda con su motivo donde alguien lo puede resolver',
+  )
 })
 
 test('una aprobación que no declara qué inspeccionó frena en su etapa', async () => {
-  const critique = await correr({
-    'Critique|verdict,concerns,consulted': { verdict: 'aprobado', concerns: [], consulted: [] },
+  const critique = await runFlow({
+    [KEY.critique]: { verdict: 'aprobado', concerns: [], consulted: [] },
   })
-  assert.equal(critique.resultado.reason, 'critique-unbacked')
+  assert.equal(critique.result.reason, 'critique-unbacked')
 
-  const review = await correr({
-    'Review|verdict,concerns,consulted': { verdict: 'aprobado', concerns: [], consulted: [] },
+  const review = await runFlow({
+    [KEY.review]: { verdict: 'aprobado', concerns: [], consulted: [] },
   })
-  assert.equal(review.resultado.reason, 'review-unbacked')
+  assert.equal(review.result.reason, 'review-unbacked')
 })
 
 test('un rojo declarado sin el fallo que lo muestra no cuenta como rojo', async () => {
-  const { resultado } = await correr({
-    'Build|completed,summary,redFirst,discovered,closedTask': {
+  const { result } = await runFlow({
+    [KEY.build]: {
       completed: true, summary: 'x', discovered: [],
       redFirst: [{ test: 'TestAltaDuplicada', failure: '   ' }],
     },
   })
-  assert.equal(resultado.reason, 'build-unproven')
-  assert.match(resultado.detail, /TestAltaDuplicada/)
+  assert.equal(result.reason, 'build-unproven')
+  assert.match(result.detail, /TestAltaDuplicada/)
 })
 
-// Construir no es cerrar. En una corrida real el plan traía «VERIFY», «QA» y «Cierre — commit» entre sus
-// pasos; quien construyó los ejecutó, y la tarea salió del BACKLOG y entró a DONE sin que Review, Verify ni
-// QA la miraran. El plan ya no los pide, y si ocurre igual la corrida frena en vez de seguir sobre lo cerrado.
 test('una tarea cerrada en Build no sigue como si nada', async () => {
-  const { resultado, pedidas } = await correr({
-    'Build|completed,summary,redFirst,discovered,closedTask': {
+  const { result, asked } = await runFlow({
+    [KEY.build]: {
       completed: true, summary: 'x', discovered: [], closedTask: true,
       redFirst: [{ test: 'TestAltaDuplicada', failure: 'want error' }],
     },
   })
-  assert.equal(resultado.reason, 'build-closed-task')
-  assert.ok(!pedidas.some((clave) => clave.startsWith('Review|')), 'y no se revisa lo que ya se cerró')
+  assert.equal(result.reason, 'build-closed-task')
+  assert.ok(!reached(asked, 'Review'), 'y no se revisa lo que ya se cerró')
 })
 
 // Una decisión que quedó abierta se registra y no frena lo que sí se entregó. Frenaba, y en tres corridas
 // reales frenó las tres veces con la tarea completa: toda aceptación en prosa tiene un borde indefinido, así
 // que el freno saltaba siempre. Lo que de verdad bloquea sigue siendo completed:false con su blocker.
 test('una decisión abierta queda escrita y el recorrido sigue', async () => {
-  const { resultado, escritos } = await correr({
-    'Build|completed,summary,redFirst,discovered,closedTask': {
+  const { result, written } = await runFlow({
+    [KEY.build]: {
       completed: true, summary: 'x', redFirst: [], closedTask: false,
       discovered: [{ kind: 'open', detail: 'nadie definió qué pasa con el alta sin país' }],
     },
   })
-  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
-  assert.deepEqual(resultado.done, ['T-1'], 'lo entregado se cierra igual')
+  ranToEnd(result)
+  assert.deepEqual(result.done, ['T-1'], 'lo entregado se cierra igual')
   assert.ok(
-    escritos.some((texto) => texto.includes('HUMAN_ACTIONS') && texto.includes('sin país')),
+    written.some((text) => text.includes('HUMAN_ACTIONS') && text.includes('sin país')),
     'y queda registrada con quién puede tomarla, o vuelve a aparecer sin dueño',
   )
 })
 
 // Lo que impide entregar no pasa por ese canal: el cargo no completa, y ahí sí frena.
 test('lo que de verdad bloquea sigue frenando por su propio camino', async () => {
-  const { resultado } = await correr({
-    'Build|completed,summary,redFirst,discovered,closedTask': {
+  const { result } = await runFlow({
+    [KEY.build]: {
       completed: false, summary: 'x', redFirst: [], discovered: [], closedTask: false,
       blockers: ['sin credencial del proveedor de pagos'],
     },
   })
-  assert.equal(resultado.reason, 'build-blocked')
-  assert.match(resultado.detail, /credencial/)
+  assert.equal(result.reason, 'build-blocked')
+  assert.match(result.detail, /credencial/)
 })
 
 test('un caso descubierto entra con su prueba, y el nombre no tiene que coincidir letra por letra', async () => {
-  const suelto = await correr({
-    'Build|completed,summary,redFirst,discovered,closedTask': {
+  const loose = await runFlow({
+    [KEY.build]: {
       completed: true, summary: 'x',
       redFirst: [{ test: 'TestAltaDuplicada', failure: 'want error' }],
       discovered: [{ kind: 'edge', detail: 'alta sin país', test: 'TestAltaSinPais' }],
     },
   })
-  assert.equal(suelto.resultado.reason, 'edge-unproven')
+  assert.equal(loose.result.reason, 'edge-unproven')
 
   // El mismo caso, nombrado de las dos formas en que un modelo lo escribe: no debe frenar.
-  const cubierto = await correr({
-    'Build|completed,summary,redFirst,discovered,closedTask': {
+  const covered = await runFlow({
+    [KEY.build]: {
       completed: true, summary: 'x',
       redFirst: [{ test: 'alta_test.go::TestAltaSinPais', failure: 'want error' }],
       discovered: [{ kind: 'edge', detail: 'alta sin país', test: 'TestAltaSinPais' }],
     },
   })
-  assert.equal(cubierto.resultado.stopped, undefined, `frenó en ${cubierto.resultado.reason || ''}`)
+  ranToEnd(covered.result)
 })
 
 test('un criterio sin cubrir va a una persona o vuelve a quien construye, según su causa', async () => {
-  const ambiguo = await correr({
-    'Verify|passed,commands,details,uncovered': {
+  const ambiguous = await runFlow({
+    [KEY.verify]: {
       passed: true, details: 'verde', commands: [{ cmd: 'go test ./...', exitCode: 0 }],
       uncovered: [{ criterion: 'el alta es rápida', cause: 'ambiguous' }],
     },
   })
-  assert.equal(ambiguo.resultado.reason, 'acceptance-ambiguous')
+  assert.equal(ambiguous.result.reason, 'acceptance-ambiguous')
   assert.ok(
-    ambiguo.escritos.some((texto) => texto.includes('HUMAN_ACTIONS')),
+    ambiguous.written.some((text) => text.includes('HUMAN_ACTIONS')),
     'una definición que falta se registra donde la lee una persona',
   )
 
   // Una prueba que falta la escribe el propio recorrido: rebota, Verify corre de nuevo y sigue.
-  let vuelta = 0
-  const rebote = await correr({
-    'Verify|passed,commands,details,uncovered': () => {
-      vuelta += 1
+  let turn = 0
+  const bounce = await runFlow({
+    [KEY.verify]: () => {
+      turn += 1
       return {
         passed: true, details: 'verde', commands: [{ cmd: 'go test ./...', exitCode: 0 }],
-        uncovered: vuelta === 1 ? [{ criterion: 'el duplicado se rechaza', cause: 'missing-test' }] : [],
+        uncovered: turn === 1 ? [{ criterion: 'el duplicado se rechaza', cause: 'missing-test' }] : [],
       }
     },
   })
-  assert.equal(rebote.resultado.stopped, undefined, `frenó en ${rebote.resultado.reason || ''}`)
-  assert.equal(vuelta, 2, 'Verify tiene que volver a correr después del rebote')
-  assert.equal(
-    rebote.pedidas.filter((clave) => clave === 'Verify|').length, 1,
-    'y el rebote va a quien construye, en una sola vuelta',
-  )
+  ranToEnd(bounce.result)
+  assert.equal(turn, 2, 'Verify tiene que volver a correr después del rebote')
+  assert.equal(writesTo(bounce.asked, 'Verify'), 1, 'y el rebote va a quien construye, en una sola vuelta')
 })
 
 test('un criterio que sigue sin prueba después del rebote frena', async () => {
-  const { resultado } = await correr({
-    'Verify|passed,commands,details,uncovered': {
+  const { result } = await runFlow({
+    [KEY.verify]: {
       passed: true, details: 'verde', commands: [{ cmd: 'go test ./...', exitCode: 0 }],
       uncovered: [{ criterion: 'el duplicado se rechaza', cause: 'missing-test' }],
     },
   })
-  assert.equal(resultado.reason, 'verify-hollow')
-  assert.match(resultado.detail, /el duplicado se rechaza/)
+  assert.equal(result.reason, 'verify-hollow')
+  assert.match(result.detail, /el duplicado se rechaza/)
+})
+
+// Verify corta por tres motivos distintos y el más simple —un gate que sale en rojo— era el único sin
+// caso: los otros dos miran el verde, así que ninguno lo habría atrapado.
+test('un gate en rojo frena aunque los criterios estén cubiertos', async () => {
+  const { result, asked } = await runFlow({
+    [KEY.verify]: {
+      passed: false, details: 'go test ./... salió en 1', uncovered: [],
+      commands: [{ cmd: 'go test ./...', exitCode: 1, ranTests: true }],
+    },
+  })
+  assert.equal(result.reason, 'verify-failed')
+  assert.match(result.detail, /salió en 1/)
+  assert.ok(!reached(asked, 'QA'), 'y no se hace QA sobre un gate en rojo')
 })
 
 test('gates en verde que no corrieron ninguna prueba no cierran la tarea', async () => {
-  const { resultado } = await correr({
-    'Verify|passed,commands,details,uncovered': {
+  const { result } = await runFlow({
+    [KEY.verify]: {
       passed: true, details: 'verde', uncovered: [],
       commands: [{ cmd: 'golangci-lint run', exitCode: 0 }, { cmd: 'go build ./...', exitCode: 0 }],
     },
   })
-  assert.equal(resultado.reason, 'verify-untested')
+  assert.equal(result.reason, 'verify-untested')
 
   // Y el gate cuyo nombre el patrón no conoce pasa igual si quien lo corrió dice que corrió pruebas.
-  const declarado = await correr({
-    'Verify|passed,commands,details,uncovered': {
+  const declared = await runFlow({
+    [KEY.verify]: {
       passed: true, details: 'verde', uncovered: [],
       commands: [{ cmd: 'mvn verify', exitCode: 0, ranTests: true }],
     },
   })
-  assert.equal(declarado.resultado.stopped, undefined, `frenó en ${declarado.resultado.reason || ''}`)
+  ranToEnd(declared.result)
 })
 
-// Un subagente que muere devuelve `null`, y antes eso reventaba con un TypeError en la fase que fuera.
+test('QA en rojo no cierra la tarea aunque los gates estén verdes', async () => {
+  const { result, asked } = await runFlow({
+    [KEY.qa]: { passed: false, evidence: 'el alta acepta el duplicado contra la API real' },
+  })
+  assert.equal(result.reason, 'qa-failed')
+  assert.match(result.detail, /acepta el duplicado/)
+  assert.ok(!reached(asked, 'Commit'), 'y no se commitea lo que no pasó QA')
+})
+
+// El commit es parte del artefacto y no un trámite: darlo por hecho cierra la tarea sobre un árbol que
+// quedó como estaba.
+test('un commit que no se hizo no se da por hecho', async () => {
+  const { result } = await runFlow({
+    [KEY.commit]: { committed: false, reason: 'quedaron archivos ajenos a la tarea sin stagear' },
+  })
+  assert.equal(result.reason, 'commit-failed')
+  assert.match(result.detail, /sin stagear/)
+})
+
+test('el check de cierre en rojo frena la corrida', async () => {
+  const { result } = await runFlow({
+    [KEY.closing]: { passed: false, details: 'el BACKLOG quedó con la tarea que se cerró' },
+  })
+  assert.equal(result.reason, 'planning-check-failed')
+  assert.match(result.detail, /BACKLOG/)
+})
+
+// Cerrada una tarea, el recorrido relee el estado para decidir si sigue. Sin ese estado no hay con qué
+// decidir, y elegir la próxima igual sería elegirla a ciegas.
+test('si el estado no se puede releer la corrida corta en vez de seguir a ciegas', async () => {
+  const { result, asked } = await runFlow({}, { contexts: [baseScript()[KEY.contexto], null] })
+  assert.equal(result.reason, 'context-unavailable')
+  assert.ok(reached(asked, 'Commit'), 'corta después de cerrar la tarea que sí terminó, no antes')
+})
+
 test('un subagente que no contesta corta con su etapa puesta', async () => {
-  const { resultado } = await correr({ 'Build|completed,summary,redFirst,discovered,closedTask': null })
-  assert.equal(resultado.reason, 'agent-unavailable')
-  assert.match(resultado.detail, /Build/)
+  const { result } = await runFlow({ [KEY.build]: null })
+  assert.equal(result.reason, 'agent-unavailable')
+  assert.match(result.detail, /Build/)
+})
+
+// La otra forma de no contestar: sin contrato no hay límites que respetar, y el recorrido no llega
+// siquiera a mirar si hay tarea.
+test('sin el contrato leído no se arranca el recorrido', async () => {
+  const { result, asked } = await runFlow({ [KEY.contract]: null })
+  assert.equal(result.reason, 'contract-unavailable')
+  assert.deepEqual(asked, [KEY.contract], 'no se pide nada más')
 })
 
 // Un carril baja ceremonia: saltea fases enteras. Lo que no puede bajar es la evidencia que se exige,
 // y esa distinción no se ve leyendo el fuente —las dos cosas son el mismo `if`—.
 test('el carril directo saltea la ceremonia y no pide un cargo para cada fase', async () => {
-  const { resultado, fases } = await correr({}, { lane: 'directo' })
-  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
-  assert.deepEqual(resultado.done, ['T-1'])
-  for (const ausente of ['Cast', 'Decompose', 'Critique', 'Review']) {
-    assert.ok(!fases.includes(ausente), `directo no debería llegar a ${ausente}`)
+  const { result, phases } = await runFlow({}, { lane: 'directo' })
+  ranToEnd(result)
+  assert.deepEqual(result.done, ['T-1'])
+  for (const absent of ['Cast', 'Decompose', 'Critique', 'Review']) {
+    assert.ok(!phases.includes(absent), `directo no debería llegar a ${absent}`)
   }
-  for (const presente of ['Ready', 'Plan', 'Build', 'Verify', 'QA', 'Commit', 'Done']) {
-    assert.ok(fases.includes(presente), `directo se saltó ${presente}`)
+  for (const present of ['Ready', 'Plan', 'Build', 'Verify', 'QA', 'Commit', 'Done']) {
+    assert.ok(phases.includes(present), `directo se saltó ${present}`)
   }
 })
 
 test('el carril lite conserva el review y saltea el desmenuzado del plan', async () => {
-  const { resultado, fases } = await correr({}, { lane: 'lite' })
-  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
-  for (const ausente of ['Decompose', 'Critique']) {
-    assert.ok(!fases.includes(ausente), `lite no debería llegar a ${ausente}`)
+  const { result, phases } = await runFlow({}, { lane: 'lite' })
+  ranToEnd(result)
+  for (const absent of ['Decompose', 'Critique']) {
+    assert.ok(!phases.includes(absent), `lite no debería llegar a ${absent}`)
   }
-  for (const presente of ['Cast', 'Review', 'Verify', 'QA']) {
-    assert.ok(fases.includes(presente), `lite se saltó ${presente}`)
+  for (const present of ['Cast', 'Review', 'Verify', 'QA']) {
+    assert.ok(phases.includes(present), `lite se saltó ${present}`)
   }
 })
 
 // El Cast propone lo mismo en los dos carriles; lo que cambia es qué hace el recorrido con eso.
 test('lite se queda con el dueño de cada fase y descarta los condicionales', async () => {
-  const cast = { 'Cast|cast': { build: 'backend-engineer', review: ['security-engineer'], verify: [], qa: [] } }
-  const revisorDe = ({ prompts }) => prompts.find((entrada) => entrada.clave.startsWith('Review|')).prompt
+  const cast = { [KEY.cast]: { build: 'backend-engineer', review: ['security-engineer'], verify: [], qa: [] } }
+  const reviewerOf = ({ prompts }) => prompts.find((entrada) => entrada.key.startsWith('Review|')).prompt
 
-  const enLite = revisorDe(await correr(cast, { lane: 'lite' }))
-  assert.match(enLite, /software-architect/, 'el dueño de la fase revisa igual')
-  assert.ok(!enLite.includes('security-engineer'), 'y en lite el condicional no se suma')
+  const inLite = reviewerOf(await runFlow(cast, { lane: 'lite' }))
+  assert.match(inLite, /software-architect/, 'el dueño de la fase revisa igual')
+  assert.ok(!inLite.includes('security-engineer'), 'y en lite el condicional no se suma')
 
-  const enFull = revisorDe(await correr(cast))
-  assert.match(enFull, /security-engineer/, 'en el carril completo sí, que es de lo que lite baja')
+  const inFull = reviewerOf(await runFlow(cast))
+  assert.match(inFull, /security-engineer/, 'en el carril completo sí, que es de lo que lite baja')
 })
 
 test('bajar ceremonia no baja la evidencia que cada carril exige', async () => {
-  const sinFallo = {
-    'Build|completed,summary,redFirst,discovered,closedTask': {
+  const withoutFailure = {
+    [KEY.build]: {
       completed: true, summary: 'x', discovered: [],
       redFirst: [{ test: 'TestAltaDuplicada', failure: '' }],
     },
   }
-  const sinPrueba = {
-    'Verify|passed,commands,details,uncovered': {
+  const withoutTest = {
+    [KEY.verify]: {
       passed: true, details: 'verde', uncovered: [],
       commands: [{ cmd: 'go build ./...', exitCode: 0 }],
     },
   }
-  const edgeSuelto = {
-    'Build|completed,summary,redFirst,discovered,closedTask': {
+  const looseEdge = {
+    [KEY.build]: {
       completed: true, summary: 'x', closedTask: false,
       redFirst: [{ test: 'TestAltaDuplicada', failure: 'want error' }],
       discovered: [{ kind: 'edge', detail: 'alta sin país', test: 'TestAltaSinPais' }],
     },
   }
   for (const lane of ['directo', 'lite']) {
-    assert.equal((await correr(sinFallo, { lane })).resultado.reason, 'build-unproven', lane)
-    assert.equal((await correr(sinPrueba, { lane })).resultado.reason, 'verify-untested', lane)
-    assert.equal((await correr(edgeSuelto, { lane })).resultado.reason, 'edge-unproven', lane)
+    assert.equal((await runFlow(withoutFailure, { lane })).result.reason, 'build-unproven', lane)
+    assert.equal((await runFlow(withoutTest, { lane })).result.reason, 'verify-untested', lane)
+    assert.equal((await runFlow(looseEdge, { lane })).result.reason, 'edge-unproven', lane)
   }
 })
 
 // El plan y el diff tienen una corrección y una sola. Que la segunda vuelta exista es la mitad; la otra
 // es que no haya una tercera, porque un recorrido que insiste hasta que le aprueben no revisa nada.
 test('un review que rechaza corrige una vez y sigue si la segunda aprueba', async () => {
-  let vuelta = 0
-  const { resultado, escritos } = await correr({
-    'Review|verdict,concerns,consulted': () => {
-      vuelta += 1
-      return vuelta === 1
+  let turn = 0
+  const { result, written } = await runFlow({
+    [KEY.review]: () => {
+      turn += 1
+      return turn === 1
         ? {
           verdict: 'con-condiciones', consulted: ['api/alta.go'],
           concerns: [{ detail: 'falta el caso vacío', blocking: true }],
@@ -372,147 +468,179 @@ test('un review que rechaza corrige una vez y sigue si la segunda aprueba', asyn
         : { verdict: 'aprobado', concerns: [], consulted: ['api/alta.go'] }
     },
   })
-  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
-  assert.equal(vuelta, 2, 'la corrección se revisa de nuevo, no se da por buena')
+  ranToEnd(result)
+  assert.equal(turn, 2, 'la corrección se revisa de nuevo, no se da por buena')
   assert.ok(
-    escritos.some((texto) => texto.includes('falta el caso vacío')),
+    written.some((text) => text.includes('falta el caso vacío')),
     'y lo que hay que corregir viaja con el hallazgo, no como "arreglalo"',
   )
 })
 
-// El estado del medio existe para que dos cosas dejen de pisarse. Un veredicto bloqueado no gasta la
-// vuelta de corrección, porque lo que lo bloquea no es lo que una segunda pasada puede tocar.
+// El caso mira las dos fases con el mismo veredicto: el estado del medio entró por separado en Critique
+// y en Review, y cubrir una sola deja pasar la otra sin que nada lo diga.
 test('un veredicto bloqueado frena sin gastar una corrección', async () => {
-  const review = await correr({
-    'Review|verdict,concerns,consulted': {
+  const review = await runFlow({
+    [KEY.review]: {
       verdict: 'bloqueado', consulted: ['api/alta.go'],
       concerns: [{ detail: 'la aceptación pide un contrato que el diseño no define', blocking: true }],
     },
   })
-  assert.equal(review.resultado.reason, 'review-blocked')
-  assert.equal(
-    review.pedidas.filter((clave) => clave === 'Review|').length, 0,
-    'no se manda a corregir lo que la corrección no arregla',
-  )
+  assert.equal(review.result.reason, 'review-blocked')
+  assert.equal(writesTo(review.asked, 'Review'), 0, 'no se manda a corregir lo que la corrección no arregla')
 
-  const critique = await correr({
-    'Critique|verdict,concerns,consulted': {
+  const critique = await runFlow({
+    [KEY.critique]: {
       verdict: 'bloqueado', consulted: ['api/alta.go'],
       concerns: [{ detail: 'el plan depende de una decisión que nadie tomó', blocking: true }],
     },
   })
-  assert.equal(critique.resultado.reason, 'plan-blocked')
-  assert.ok(!critique.pedidas.some((clave) => clave.startsWith('Build|')), 'y no se construye')
+  assert.equal(critique.result.reason, 'plan-blocked')
+  assert.ok(!reached(critique.asked, 'Build'), 'y no se construye')
 })
 
 // Y un hallazgo que no impide entregar deja de costar una vuelta de código: se anota y la tarea cierra.
 test('lo que no bloquea se anota y no manda a tocar código', async () => {
-  const { resultado, escritos, pedidas } = await correr({
-    'Review|verdict,concerns,consulted': {
+  const { result, written, asked } = await runFlow({
+    [KEY.review]: {
       verdict: 'con-condiciones', consulted: ['api/alta.go'],
       concerns: [{ detail: 'el nombre del handler podría ser más claro', blocking: false }],
     },
   })
-  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
-  assert.deepEqual(resultado.done, ['T-1'])
-  assert.equal(
-    pedidas.filter((clave) => clave === 'Review|').length, 1,
-    'una sola escritura en Review: la del registro, no una corrección',
-  )
+  ranToEnd(result)
+  assert.deepEqual(result.done, ['T-1'])
+  assert.equal(writesTo(asked, 'Review'), 1, 'una sola escritura en Review: la del registro, no una corrección')
   assert.ok(
-    escritos.some((texto) => texto.includes('INBOX') && texto.includes('nombre del handler')),
+    written.some((text) => text.includes('INBOX') && text.includes('nombre del handler')),
     'lo anotado queda donde alguien lo decide después, sin promover',
   )
 })
 
 test('un review que sigue rechazando después de corregir frena', async () => {
-  const { resultado } = await correr({
-    'Review|verdict,concerns,consulted': {
+  const { result } = await runFlow({
+    [KEY.review]: {
       verdict: 'con-condiciones', consulted: ['api/alta.go'],
       concerns: [{ detail: 'sigue faltando el caso vacío', blocking: true }],
     },
   })
-  assert.equal(resultado.reason, 'review-failed')
-  assert.match(resultado.detail, /sigue faltando/)
+  assert.equal(result.reason, 'review-failed')
+  assert.match(result.detail, /sigue faltando/)
 })
 
-test('un plan que no sobrevive a la segunda crítica no llega a construirse', async () => {
-  const { resultado, pedidas } = await correr({
-    'Critique|verdict,concerns,consulted': {
-      verdict: 'con-condiciones', consulted: ['api/alta.go'],
-      concerns: [{ detail: 'el alcance se pasa de la aceptación', blocking: true }],
+// Un veredicto bloqueado nombra lo que lo bloquea, pero puede llegar sin nombrar nada. En la segunda
+// pasada eso frenaba con el detalle vacío: el motivo es lo único que queda para leer cuando la corrida
+// terminó, y la primera pasada ya tenía este respaldo.
+test('un bloqueo sin condiciones nombradas frena igual y lo dice', async () => {
+  let reviewTurn = 0
+  const review = await runFlow({
+    [KEY.review]: () => {
+      reviewTurn += 1
+      return reviewTurn === 1
+        ? {
+          verdict: 'con-condiciones', consulted: ['api/alta.go'],
+          concerns: [{ detail: 'falta el caso vacío', blocking: true }],
+        }
+        : { verdict: 'bloqueado', consulted: ['api/alta.go'], concerns: [] }
     },
-    'Critique|approach,steps,files,testStrategy': {
+  })
+  assert.equal(review.result.reason, 'review-failed')
+  assert.equal(review.result.detail, 'sin condiciones nombradas')
+
+  let critiqueTurn = 0
+  const critique = await runFlow({
+    [KEY.critique]: () => {
+      critiqueTurn += 1
+      return critiqueTurn === 1
+        ? {
+          verdict: 'con-condiciones', consulted: ['api/alta.go'],
+          concerns: [{ detail: 'el alcance se pasa de la aceptación', blocking: true }],
+        }
+        : { verdict: 'bloqueado', consulted: ['api/alta.go'], concerns: [] }
+    },
+    [KEY.replan]: {
       approach: 'segundo intento', steps: ['1'], files: ['api/alta.go'], testStrategy: 'unit',
     },
   })
-  assert.equal(resultado.reason, 'plan-rejected')
-  assert.ok(!pedidas.some((clave) => clave.startsWith('Build|')), 'no se construye sobre un plan rechazado')
+  assert.equal(critique.result.reason, 'plan-rejected')
+  assert.equal(critique.result.detail, 'sin condiciones nombradas')
+})
+
+test('un plan que no sobrevive a la segunda crítica no llega a construirse', async () => {
+  const { result, asked } = await runFlow({
+    [KEY.critique]: {
+      verdict: 'con-condiciones', consulted: ['api/alta.go'],
+      concerns: [{ detail: 'el alcance se pasa de la aceptación', blocking: true }],
+    },
+    [KEY.replan]: {
+      approach: 'segundo intento', steps: ['1'], files: ['api/alta.go'], testStrategy: 'unit',
+    },
+  })
+  assert.equal(result.reason, 'plan-rejected')
+  assert.ok(!reached(asked, 'Build'), 'no se construye sobre un plan rechazado')
 })
 
 test('una tarea que no entra en el tope de horas se parte y no se construye', async () => {
-  const { resultado, pedidas, escritos } = await correr({
-    'Decompose|hours,needsSplit': {
+  const { result, asked, written } = await runFlow({
+    [KEY.decompose]: {
       hours: 12, needsSplit: true,
       subtasks: [{ title: 'alta', acceptance: 'rechaza duplicado' }, { title: 'baja', acceptance: 'borra' }],
     },
   })
-  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
-  assert.deepEqual(resultado.done, [], 'la tarea partida no se cierra: se reemplaza y se vuelve a elegir')
-  assert.ok(!pedidas.some((clave) => clave.startsWith('Build|')), 'y no se construye lo que se acaba de partir')
-  assert.ok(escritos.some((texto) => texto.includes('BACKLOG')), 'las subtareas reemplazan a la original')
+  ranToEnd(result)
+  assert.deepEqual(result.done, [], 'la tarea partida no se cierra: se reemplaza y se vuelve a elegir')
+  assert.ok(!reached(asked, 'Build'), 'y no se construye lo que se acaba de partir')
+  assert.ok(written.some((text) => text.includes('BACKLOG')), 'las subtareas reemplazan a la original')
 })
 
 test('sin tarea en cola se expande la próxima épica y se sigue con ella', async () => {
-  const conTarea = guionBase()['Triage|planning-context']
-  const { resultado, pedidas } = await correr(
-    { 'Pick|expanded': { expanded: true, hito: 'H1' } },
-    { contextos: [{ blocked: '', hasTask: false, wipActive: false, queued: 0, lane: 'full' }, conTarea] },
+  const withTask = baseScript()[KEY.contexto]
+  const { result, asked } = await runFlow(
+    { [KEY.pick]: { expanded: true, hito: 'H1' } },
+    { contexts: [{ blocked: '', hasTask: false, wipActive: false, queued: 0, lane: 'full' }, withTask] },
   )
-  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
-  assert.deepEqual(resultado.done, ['T-1'], 'lo expandido se ejecuta en la misma corrida')
-  assert.ok(pedidas.includes('Pick|expanded'), 'y pasó por la expansión, no por una tarea que ya estaba')
+  ranToEnd(result)
+  assert.deepEqual(result.done, ['T-1'], 'lo expandido se ejecuta en la misma corrida')
+  assert.ok(asked.includes(KEY.pick), 'y pasó por la expansión, no por una tarea que ya estaba')
 })
 
 test('sin nada que expandir el recorrido termina sin inventar trabajo', async () => {
-  const { resultado, pedidas } = await correr({}, { contextos: [] })
-  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
-  assert.deepEqual(resultado.done, [])
-  assert.ok(!pedidas.some((clave) => clave.startsWith('Build|')), 'no se construye sin tarea')
+  const { result, asked } = await runFlow({}, { contexts: [] })
+  ranToEnd(result)
+  assert.deepEqual(result.done, [])
+  assert.ok(!reached(asked, 'Build'), 'no se construye sin tarea')
 })
 
 test('un checkpoint humano sin resolver corta antes de tocar nada', async () => {
-  const { resultado, pedidas } = await correr({}, {
-    contextos: [{ blocked: 'hito anterior sin revisar', hasTask: true, wipActive: false, queued: 1 }],
+  const { result, asked } = await runFlow({}, {
+    contexts: [{ blocked: 'hito anterior sin revisar', hasTask: true, wipActive: false, queued: 1 }],
   })
-  assert.equal(resultado.reason, 'awaiting-human-review')
-  assert.equal(pedidas.filter((clave) => clave.startsWith('Plan|')).length, 0)
+  assert.equal(result.reason, 'awaiting-human-review')
+  assert.ok(!reached(asked, 'Plan'), 'ni se planifica')
 })
 
 test('el hito cambia y la corrida cierra en vez de seguir con el siguiente', async () => {
-  const primera = guionBase()['Triage|planning-context']
-  const { resultado } = await correr({}, {
-    contextos: [primera, { ...primera, slug: 'T-2', hito: 'H2' }],
+  const first = baseScript()[KEY.contexto]
+  const { result } = await runFlow({}, {
+    contexts: [first, { ...first, slug: 'T-2', hito: 'H2' }],
   })
-  assert.deepEqual(resultado.done, ['T-1'], 'una corrida cierra un hito, no todos los que haya')
-  assert.equal(resultado.hito, 'H1')
+  assert.deepEqual(result.done, ['T-1'], 'una corrida cierra un hito, no todos los que haya')
+  assert.equal(result.hito, 'H1')
 })
 
 test('con checkpoint configurado el hito terminado queda esperando una firma', async () => {
-  const conGate = { ...guionBase()['Triage|contract-digest'], humanCheckpoint: true }
-  const { escritos } = await correr({ 'Triage|contract-digest': conGate })
+  const withGate = { ...baseScript()[KEY.contract], humanCheckpoint: true }
+  const { written } = await runFlow({ [KEY.contract]: withGate })
   assert.ok(
-    escritos.some((texto) => texto.includes('AWAITING_REVIEW')),
+    written.some((text) => text.includes('AWAITING_REVIEW')),
     'el hito terminado deja el gate escrito, que es lo que impide que la próxima corrida siga sola',
   )
   // Y apagado no lo escribe: es configuración del proyecto, no una ceremonia fija.
-  const { escritos: sinGate } = await correr()
-  assert.ok(!sinGate.some((texto) => texto.includes('AWAITING_REVIEW')))
+  const { written: withoutGate } = await runFlow()
+  assert.ok(!withoutGate.some((text) => text.includes('AWAITING_REVIEW')))
 })
 
 test('una tarea que vuelve a quedar elegible para siempre corta con su motivo', async () => {
-  const eterna = guionBase()['Triage|planning-context']
-  const { resultado } = await correr({}, { contextos: Array.from({ length: 60 }, () => eterna) })
-  assert.equal(resultado.reason, 'milestone-too-long')
-  assert.match(resultado.detail, /50/)
+  const forever = baseScript()[KEY.contexto]
+  const { result } = await runFlow({}, { contexts: Array.from({ length: 60 }, () => forever) })
+  assert.equal(result.reason, 'milestone-too-long')
+  assert.match(result.detail, /50/)
 })
