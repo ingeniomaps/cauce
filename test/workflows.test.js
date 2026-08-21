@@ -165,6 +165,21 @@ test('team manda el resumen entre etapas y el análisis entero a la síntesis', 
   )
 })
 
+// El arnés ejecuta el recorrido pero no valida los schemas —eso lo hace el runtime—, así que un enum
+// recortado pasa desapercibido ahí. Y el contrato del equipo enumera sus salidas: «hacer, no hacer o
+// investigar». Con dos, la del medio se convierte en la primera, que es presupuestar lo que nadie sabe.
+test('el recorrido de equipo tiene las tres salidas que el contrato enumera', () => {
+  const contrato = fs.readFileSync(
+    path.resolve(__dirname, '..', 'teams', 'system', 'feasibility-review', 'WORKFLOW.md'), 'utf8',
+  )
+  assert.match(contrato, /hacer, no hacer o investigar/, 'el contrato del equipo enumera tres salidas')
+  assert.match(teamWorkflow, /enum: \['hacer', 'investigar', 'no-hacer'\]/, 'y el recorrido las tiene')
+  // Cada una con su destino, que el mismo contrato nombra.
+  assert.match(teamWorkflow, /outcome === 'investigar'[\s\S]{0,400}label: 'investigar'/, 'investigar')
+  assert.match(teamWorkflow, /outcome === 'no-hacer'[\s\S]{0,400}label: 'inbox-lesson'/, 'no hacer')
+  assert.match(teamWorkflow, /label: 'epic-write'/, 'hacer')
+})
+
 test('team nunca promueve: escribe la épica y para', () => {
   assert.match(teamWorkflow, /ROADMAP/, 'la épica candidata va al roadmap')
   assert.match(teamWorkflow, /No toques BACKLOG\.md/, 'y el BACKLOG queda fuera de su alcance')

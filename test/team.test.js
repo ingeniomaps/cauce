@@ -4,6 +4,10 @@
 // por la misma razón: sus otros tests leen el fuente renderizado y comprueban que una línea esté escrita,
 // lo que muestra que un freno existe pero no que frene cuando corresponde ni —sobre todo— que deje pasar
 // cuando no. Cuatro corridas reales de `autobuild` encontraron tres defectos que ningún `match` veía.
+//
+// Lo que este arnés NO ve: los schemas. El runtime los valida antes de entregar la respuesta al recorrido,
+// y acá el guion devuelve lo que se le pida, así que un `enum` recortado o un campo que dejó de ser
+// obligatorio pasan sin ruido. Eso se cubre leyendo el fuente, en `workflows.test.js`.
 
 require('./entorno')
 
@@ -51,7 +55,7 @@ function guionBase() {
       evidence: ['el servicio ya expone el alta'], assumptions: [], openQuestions: [],
     },
     'epic-draft': {
-      viable: true, title: 'Alta sin duplicados', slug: 'alta-sin-duplicados',
+      outcome: 'hacer', title: 'Alta sin duplicados', slug: 'alta-sin-duplicados',
       criteria: ['C1 el duplicado se rechaza'], stories: ['rechazar duplicado (→ C1)'],
     },
     'closing-check': { passed: true, details: 'check verde' },
@@ -149,11 +153,28 @@ test('una etapa cumple con condiciones y esas condiciones llegan a la síntesis'
 
 test('una intención no viable deja la lección y no escribe épica', async () => {
   const { resultado, pedidas } = await correr({
-    'epic-draft': { viable: false, title: 'x', reason: 'no hay usuarios que lo pidan' },
+    'epic-draft': { outcome: 'no-hacer', title: 'x', reason: 'no hay usuarios que lo pidan' },
   })
   assert.equal(resultado.reason, 'no-viable')
   assert.ok(pedidas.includes('inbox-lesson'), 'la conclusión queda registrada')
   assert.ok(!pedidas.includes('epic-write'), 'y no se escribe una épica que nadie va a ejecutar')
+})
+
+// El contrato del equipo enumera tres salidas —hacer, no hacer o investigar— y con dos la del medio se
+// convertía en la primera. En una corrida real la etapa que decide cerró con «investigar antes de estimar»
+// y el recorrido escribió igual una épica con cinco criterios: presupuestar lo que nadie sabe todavía.
+test('cuando lo que falta es averiguar, no sale una épica disfrazada', async () => {
+  const { resultado, pedidas } = await correr({
+    'epic-draft': {
+      outcome: 'investigar', title: 'Recuperación de cuenta',
+      reason: 'nadie sabe dónde corre el proceso ni si sigue vivo',
+    },
+  })
+  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
+  assert.match(resultado.investigate, /dónde corre el proceso/, 'el recorrido devuelve qué hay que averiguar')
+  assert.equal(resultado.promoted, false)
+  assert.ok(pedidas.includes('investigar'), 'queda escrito qué averiguar y quién puede')
+  assert.ok(!pedidas.includes('epic-write'), 'y no se escribe una épica que nadie pidió')
 })
 
 test('un check en rojo al cerrar frena en vez de dar por buena la épica', async () => {

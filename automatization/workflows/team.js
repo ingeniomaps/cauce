@@ -86,10 +86,15 @@ const STAGE = {
     humanAction: { type: 'string' },
   },
 }
+// Tres salidas porque el contrato del equipo enumera tres —«hacer, no hacer o investigar»— y con un
+// booleano la del medio no tenía dónde caer. En una corrida real la etapa que decide cerró con
+// «investigar antes de estimar» y el recorrido escribió igual una épica con cinco criterios y cinco
+// historias: investigar se convirtió en hacer, que es justo lo que esa etapa había dicho que no.
 const EPIC = {
-  type: 'object', additionalProperties: false, required: ['viable', 'title'],
+  type: 'object', additionalProperties: false, required: ['outcome', 'title'],
   properties: {
-    viable: { type: 'boolean' }, title: { type: 'string' }, slug: { type: 'string' },
+    outcome: { type: 'string', enum: ['hacer', 'investigar', 'no-hacer'] },
+    title: { type: 'string' }, slug: { type: 'string' },
     reason: { type: 'string' },
     criteria: { type: 'array', items: { type: 'string' } },
     stories: { type: 'array', items: { type: 'string' } },
@@ -258,18 +263,33 @@ const epic = await agent(
   `Como product-manager, decidí si la ` +
   `intención es viable con la evidencia reunida. Si lo es, redactá la épica: título, slug en ` +
   `kebab-case, criterios observables C1..CN —cada uno verificable sin ambigüedad— e historias que ` +
-  `rastreen a esos criterios. Si no lo es, viable=false y el motivo concreto. No la promuevas.`,
+  `rastreen a esos criterios. Si lo que hace falta antes es averiguar algo —hablar con usuarios, medir lo ` +
+  `que no se mide, explorar el diseño—, outcome=investigar con qué hay que averiguar y quién puede: eso no ` +
+  `es una épica más chica, es otra cosa. Si no vale el esfuerzo, outcome=no-hacer con el motivo concreto y ` +
+  `qué lo cambiaría. No promuevas nada.`,
   { schema: EPIC, label: 'epic-draft' },
 )
 if (!epic) return stop('draft-unavailable', 'la propuesta de épica no devolvió resultado')
 
-if (!epic.viable) {
+// Cada salida va donde el contrato del equipo dice que va, y ninguna escribe una épica que nadie pidió.
+if (epic.outcome === 'no-hacer') {
   await agent(
     `${RULES}\n\nRegistrá la conclusión en la sección Lecciones de ${INBOX}: por qué esta intención no ` +
     `es viable hoy y qué la haría viable. Motivo: ${epic.reason}`,
     { label: 'inbox-lesson' },
   )
   return stop('no-viable', epic.reason)
+}
+// Terminar en «hay que averiguar esto primero» no es un recorrido fallido: es el resultado que evita
+// presupuestar sobre lo que nadie sabe todavía. Lo que no puede es salir disfrazado de épica.
+if (epic.outcome === 'investigar') {
+  await agent(
+    `${RULES}\n\nRegistrá en ${HUMAN} qué hay que averiguar antes de poder decidir esta intención y quién ` +
+    `puede hacerlo, sin inventar responsables ni fechas, y dejá la conclusión en la sección Lecciones de ` +
+    `${INBOX} sin promoverla. Qué falta averiguar: ${epic.reason}`,
+    { label: 'investigar' },
+  )
+  return finish({ team: TEAM, stages: handoffs.length, investigate: epic.reason, promoted: false })
 }
 
 await agent(
