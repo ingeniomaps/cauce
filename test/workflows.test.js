@@ -141,9 +141,9 @@ test('team recorre las etapas del manifiesto y exige cada exit gate', () => {
   assert.equal(teamWorkflow.split("label: 'team-").length - 1, 1, 'un solo agente de contrato')
   assert.match(teamWorkflow, /agents list --json/, 'y resuelve dónde vive cada cargo')
   assert.match(teamWorkflow, /exitGate/, 'cada etapa tiene su gate')
-  assert.match(teamWorkflow, /gatePassed/, 'y el resultado lo declara explícitamente')
+  assert.match(teamWorkflow, /enum: \['cumplido', 'con-condiciones', 'no-cumplido'\]/, 'con sus tres salidas')
   // Un gate no cumplido corta el recorrido en vez de seguir con evidencia floja.
-  assert.match(teamWorkflow, /if \(!result\.gatePassed\)/)
+  assert.match(teamWorkflow, /if \(result\.gate === 'no-cumplido'\)/)
   assert.match(teamWorkflow, /break/)
   for (const phase of ['Contract', 'Stages', 'Draft', 'Closing']) {
     assert.match(teamWorkflow, new RegExp(`phase\\('${phase}'\\)`))
@@ -153,7 +153,7 @@ test('team recorre las etapas del manifiesto y exige cada exit gate', () => {
 // Separar el resumen del análisis sólo sirve si cada uno va a donde corresponde: si la etapa siguiente
 // recibe findings, el tope no ahorra nada, y si la síntesis recibe el resumen, escribe la épica desde él.
 test('team manda el resumen entre etapas y el análisis entero a la síntesis', () => {
-  assert.match(teamWorkflow, /required: \['gatePassed', 'findings', 'summary'\]/, 'la etapa declara los dos')
+  assert.match(teamWorkflow, /required: \['gate', 'findings', 'summary'\]/, 'la etapa declara los dos')
   assert.match(teamWorkflow, /Handoffs previos[\s\S]{0,120}entry\.summary/, 'entre etapas viaja el resumen')
   assert.equal(
     /Handoffs previos[\s\S]{0,120}entry\.findings/.test(teamWorkflow), false,
@@ -353,7 +353,10 @@ test('promover un cargo exige firma humana y verificación posterior', () => {
 // en memoria. Lo notó el ciclo de aprendizaje de un cargo, que no encontraba sus propios veredictos.
 test('un bloqueo conserva lo que las etapas anteriores ya resolvieron', () => {
   const team = fs.readFileSync(path.join(WF, 'team.js'), 'utf8')
-  assert.match(team, /handoffs\.filter\(\(entry\) => entry\.gatePassed\)/, 'lo cerrado se recupera')
+  assert.match(
+    team, /handoffs\.filter\(\(entry\) => entry\.gate !== 'no-cumplido'\)/,
+    'lo que cerró se recupera, con condiciones o sin ellas',
+  )
   assert.match(team, /ya quedó establecido/, 'y llega al prompt que escribe la acción humana')
   assert.match(team, /es el trabajo que ya se pagó/)
 })

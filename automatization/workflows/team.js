@@ -67,14 +67,21 @@ const MANIFEST = {
 // `findings` y `summary` dicen cosas distintas a propósito. El primero es el análisis entero y lo lee
 // una sola vez quien sintetiza al final; el segundo viaja a cada etapa posterior, así que un handoff que
 // arrastra todo pasa a costar una vez por etapa en vez de una vez (R16).
+// Tres estados porque una etapa tiene tres cosas distintas que decir, y con un booleano la del medio se
+// pierde: cumplir dejando una condición que la síntesis tiene que respetar se veía igual que cumplir sin
+// nada pendiente, y la condición se diluía en la prosa del handoff. Y `blocking` separa la pregunta que
+// condiciona lo que se decida después de la que sólo conviene mirar alguna vez.
 const STAGE = {
-  type: 'object', additionalProperties: false, required: ['gatePassed', 'findings', 'summary'],
+  type: 'object', additionalProperties: false, required: ['gate', 'findings', 'summary'],
   properties: {
-    gatePassed: { type: 'boolean' },
+    gate: { type: 'string', enum: ['cumplido', 'con-condiciones', 'no-cumplido'] },
     findings: { type: 'string' }, summary: { type: 'string' },
     evidence: { type: 'array', items: { type: 'string' } },
     assumptions: { type: 'array', items: { type: 'string' } },
-    openQuestions: { type: 'array', items: { type: 'string' } },
+    openQuestions: { type: 'array', items: { type: 'object', additionalProperties: false,
+      required: ['detail', 'blocking'],
+      properties: { detail: { type: 'string' }, blocking: { type: 'boolean' } },
+    } },
     missing: { type: 'string' },
     humanAction: { type: 'string' },
   },
@@ -88,6 +95,11 @@ const EPIC = {
     stories: { type: 'array', items: { type: 'string' } },
   },
 }
+
+// Lo que una etapa deja condicionado y la siguiente tiene que respetar. Lo demás que anotó no se pierde:
+// viaja en el handoff completo hasta la síntesis, pero no condiciona nada ni llega como acción humana.
+const condiciones = (entradas) => entradas.flatMap((entry) => (entry.openQuestions || [])
+  .filter((one) => one.blocking).map((one) => `${entry.id}: ${one.detail}`))
 
 {{INCLUDE:shared/workflow-finish.js}}
 
@@ -148,6 +160,10 @@ if (!discovery.length) return stop('sin-descubrimiento', `${TEAM} no declara eta
 for (const stage of discovery) {
   const previous = handoffs.length
     ? `Handoffs previos:\n${handoffs.map((entry) => `- ${entry.id}: ${entry.summary}`).join('\n')}`
+      + (condiciones(handoffs).length
+        ? '\n\nCondiciones que dejaron las etapas anteriores y tenés que respetar:\n'
+          + condiciones(handoffs).map((one) => `- ${one}`).join('\n')
+        : '')
     : 'Sos la primera etapa: no hay handoff previo.'
 
   const result = await agent(
@@ -155,8 +171,11 @@ for (const stage of discovery) {
     `${stage.skill || `${ROOT}/agents/roles/${stage.agent}/SKILL.md`} y sus límites. ` +
     `Etapa "${stage.id}": producí ` +
     `${(stage.produces || []).join(' y ')}. Distinguí hechos, evidencia, supuestos y preguntas ` +
-    `abiertas. El exit gate es: "${stage.exitGate}". Marcá gatePassed sólo si se cumple de verdad; ` +
-    `si no, explicá en missing qué falta y en humanAction la acción concreta que lo desbloquea. ` +
+    `abiertas. El exit gate es: "${stage.exitGate}". Cerrá con gate=cumplido si se cumple y no queda nada ` +
+    `pendiente; gate=con-condiciones si se cumple pero dejás una condición que lo que se decida después ` +
+    `tiene que respetar; y gate=no-cumplido si no se cumple, y ahí explicá en missing qué falta y en ` +
+    `humanAction la acción concreta que lo desbloquea. En openQuestions marcá blocking=true sólo en la que ` +
+    `condiciona la decisión siguiente. ` +
     `En findings va el análisis completo: lo lee sólo quien sintetiza al final. En summary va, en 150 ` +
     `palabras o menos, lo que la etapa siguiente necesita para decidir —no un resumen de tu análisis, ` +
     `sino lo que le cambia el trabajo—, porque eso se le reenvía a cada etapa posterior.`,
@@ -165,7 +184,7 @@ for (const stage of discovery) {
   if (!result) return stop('stage-unavailable', `la etapa ${stage.id} no devolvió resultado`)
 
   handoffs.push({ id: stage.id, agent: stage.agent, ...result })
-  if (!result.gatePassed) {
+  if (result.gate === 'no-cumplido') {
     blocked.push({ stage: stage.id, missing: result.missing || '', action: result.humanAction || '' })
     log(`Gate no cumplido en ${stage.id}: ${result.missing || 'sin detalle'}`)
     break
@@ -177,7 +196,7 @@ if (blocked.length) {
   // que frena en la etapa 3 tiraba el trabajo de las dos primeras, que vivía sólo en memoria. Quien lea
   // la acción humana necesita saber qué quedó establecido para no volver a discutirlo, y el cargo que
   // aprende de sus propias decisiones no tiene de dónde leerlas si nunca se escribieron.
-  const cerradas = handoffs.filter((entry) => entry.gatePassed)
+  const cerradas = handoffs.filter((entry) => entry.gate !== 'no-cumplido')
   const previo = cerradas.length
     ? `Lo que ya quedó establecido y no hay que volver a discutir:\n${cerradas
       .map((entry) => `- ${entry.id} (${entry.agent}): ${entry.findings}`).join('\n')}`
@@ -196,13 +215,31 @@ if (blocked.length) {
 // etapas, y acá sólo diría dos veces lo mismo.
 const complete = handoffs.map(({ summary, ...rest }) => rest)
 
+// Una condición que ninguna etapa levantó no desaparece porque el recorrido haya cerrado. Va dos veces a
+// propósito: al prompt de quien redacta, para que la épica o el informe la respete, y a las acciones
+// humanas, porque una condición que sólo vive dentro del artefacto se lee como parte de lo ya resuelto.
+const pendientes = condiciones(handoffs)
+const CONDICIONES = pendientes.length
+  ? `\n\nCondiciones que las etapas dejaron abiertas y el resultado tiene que respetar:\n`
+    + pendientes.map((one) => `- ${one}`).join('\n')
+  : ''
+if (pendientes.length) {
+  await agent(
+    `${RULES}\n\nRegistrá en ${HUMAN} una fila por cada condición que las etapas dejaron abierta, con la ` +
+    `etapa que la levantó y qué decisión la cierra. No inventes responsables ni fechas, y no las des por ` +
+    `resueltas: ${JSON.stringify(pendientes)}`,
+    { label: 'condiciones' },
+  )
+}
+
 phase('Draft')
 
 // Un recorrido que registra lo aprendido no propone trabajo: deja el informe y las tareas de
 // seguimiento en el INBOX, donde una persona decide si alguna merece convertirse en épica.
 if (contract.outcome === 'report') {
   const report = await agent(
-    `${RULES}\n\nHandoffs completos:\n${JSON.stringify(complete)}\n\nEscribí el informe en ${REPORTS} como ` +
+    `${RULES}\n\nHandoffs completos:\n${JSON.stringify(complete)}${CONDICIONES}\n\n` +
+    `Escribí el informe en ${REPORTS} como ` +
     `<AAAA-MM-DD>-<slug>.md: qué pasó, qué se sabe con evidencia, qué se supone, qué se decidió y qué ` +
     `queda abierto. Separá causa de síntoma y no atribuyas responsabilidad a personas. Registrá cada ` +
     `seguimiento en la sección Lecciones de ${INBOX}, sin promoverlo, y toda acción que requiera una ` +
@@ -217,7 +254,8 @@ if (contract.outcome === 'report') {
 }
 
 const epic = await agent(
-  `${RULES}\n\nHandoffs completos:\n${JSON.stringify(complete)}\n\nComo product-manager, decidí si la ` +
+  `${RULES}\n\nHandoffs completos:\n${JSON.stringify(complete)}${CONDICIONES}\n\n` +
+  `Como product-manager, decidí si la ` +
   `intención es viable con la evidencia reunida. Si lo es, redactá la épica: título, slug en ` +
   `kebab-case, criterios observables C1..CN —cada uno verificable sin ambigüedad— e historias que ` +
   `rastreen a esos criterios. Si no lo es, viable=false y el motivo concreto. No la promuevas.`,
