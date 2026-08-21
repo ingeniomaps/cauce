@@ -208,6 +208,27 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.equal(fs.readFileSync(ownGuard, 'utf8'), 'guard propio de la empresa\n')
 })
 
+// El shim se instala dentro del proyecto y hereda el `type` de su `package.json`. En un repo que
+// declara `"type": "module"` —Next, Vite, cualquier cosa moderna— un archivo `.js` se carga como ESM,
+// donde `require` no existe: el shim reventaba en su primera línea y con él toda fase de `autobuild`,
+// que lo invoca para leer planning. El caso CommonJS va en el mismo bucle porque la corrección tiene
+// que servir a los dos y arreglar uno rompiendo el otro no se vería con una sola mitad.
+test('el shim corre igual en un proyecto ESM que en uno CommonJS', () => {
+  const env = { ...process.env }
+  delete env.NODE_TEST_CONTEXT
+  for (const type of ['module', 'commonjs']) {
+    const target = tempRoot(`shim-${type}-`)
+    fs.writeFileSync(path.join(target, 'package.json'), `${JSON.stringify({ name: 'demo', type })}\n`)
+    const created = run(['init', target, '--name', 'Demo', '--mode', 'embedded', '--force', '--no-install'])
+    assert.equal(created.status, 0, created.stderr)
+    linkEngine(target)
+    const shim = spawnSync(process.execPath, [
+      path.join(target, 'tools', 'ops.js'), 'check', path.join(target, 'planning'),
+    ], { cwd: target, encoding: 'utf8', env })
+    assert.equal(shim.status, 0, `type=${type}: ${shim.stderr}`)
+  }
+})
+
 // Sin destino la instancia se aparta a `ops/` en vez de volcarse donde se corrió el comando: un
 // monorepo que recibe `planning/`, `teams/` y `AGENTS.md` en su primer nivel deja de distinguir qué es
 // suyo. El nombre sale de la carpeta del proyecto —`ops` nombra al toolkit, no al negocio— y el modo
