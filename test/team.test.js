@@ -13,18 +13,7 @@ require('./environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const path = require('node:path')
-
-const A = require('../engine/automation')
-
-const AUTOMATION = path.resolve(__dirname, '..', 'automatization')
-const WORKFLOW = path.resolve(AUTOMATION, 'workflows', 'team.js')
-
-function compile() {
-  const source = A.render(WORKFLOW, '', AUTOMATION).replace(/^export const meta =/m, 'const meta =')
-  return new Function('agent', 'phase', 'log', 'parallel', 'pipeline', 'workflow', 'args', 'budget',
-    `return (async () => {\n${source}\n})()`)
-}
+const { compileWorkflow } = require('./workflow')
 
 // Un equipo de dos etapas de descubrimiento: alcanza para ver el handoff entre una y la siguiente, que
 // es donde vive casi todo lo que el recorrido decide.
@@ -78,7 +67,7 @@ async function runFlow(changes = {}, intent = 'quiero que el alta no duplique ve
     return typeof answer === 'function' ? answer() : answer
   }
 
-  const result = await compile()(
+  const result = await compileWorkflow('team')(
     agent, () => {}, () => {},
     async (thunks) => Promise.all(thunks.map((t) => t())), async () => [], async () => ({}),
     { intent }, { total: null, spent: () => 0, remaining: () => Infinity },

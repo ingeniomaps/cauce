@@ -21,6 +21,8 @@ Esta carpeta contiene las pruebas del toolkit fuente; no se copia a los proyecto
   ve. Los demás corren contra el repositorio, así que es el único que detecta un `files` incompleto.
 - `environment.js`: limpia el entorno heredado y da lo que casi toda suite monta: `tempRoot()`, la raíz
   que se borra al salir; `run()`, el CLI en un proceso aparte; `linkEngine()`, el paquete de una instancia.
+- `workflow.js`: renderiza un workflow y lo vuelve invocable. Lo usan las dos suites que ejecutan uno
+  —`autobuild.test.js` y `team.test.js`—; el guion y el arnés de cada una siguen siendo suyos.
 - `coverage.sh` y `coverage-files.js`: el umbral global y el piso por archivo.
 - `hooks-smoke.sh`: ejecutabilidad de los wrappers POSIX.
 - `fixtures/`: respuestas externas deterministas y sin credenciales.

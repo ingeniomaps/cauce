@@ -14,20 +14,7 @@ require('./environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const path = require('node:path')
-
-const A = require('../engine/automation')
-
-const AUTOMATION = path.resolve(__dirname, '..', 'automatization')
-const WORKFLOW = path.resolve(AUTOMATION, 'workflows', 'autobuild.js')
-
-// El único retoque al fuente: `export` no es válido dentro de una función. El resto se ejecuta tal
-// cual, para que un cambio en el recorrido rompa acá y no en una instancia.
-function compile() {
-  const source = A.render(WORKFLOW, '', AUTOMATION).replace(/^export const meta =/m, 'const meta =')
-  return new Function('agent', 'phase', 'log', 'parallel', 'pipeline', 'workflow', 'args', 'budget',
-    `return (async () => {\n${source}\n})()`)
-}
+const { compileWorkflow } = require('./workflow')
 
 // Las claves del guion, tal como las arma `runFlow`: la fase y, sin `label`, los campos obligatorios
 // del schema. Nombrarlas es lo que hace que un tipeo se note: escrita a mano y mal, la clave se suma
@@ -35,7 +22,7 @@ function compile() {
 // recorrido siga queda verde sin haber cambiado lo que dice cambiar.
 const KEY = {
   contract: 'Triage|contract-digest',
-  contexto: 'Triage|planning-context',
+  context: 'Triage|planning-context',
   cast: 'Cast|cast',
   ready: 'Ready|ready,needsHuman',
   decompose: 'Decompose|hours,needsSplit',
@@ -63,7 +50,7 @@ function baseScript() {
     },
     // Primera lectura: hay tarea. La segunda la sirve `siguienteContexto`, ya sin tarea, para que el
     // bucle cierre en vez de repetir la misma para siempre.
-    [KEY.contexto]: {
+    [KEY.context]: {
       blocked: '', hasTask: true, wipActive: false, queued: 1, lane: 'full',
       slug: 'T-1', hito: 'H1', service: './api', acceptance: 'el alta rechaza un duplicado', epic: 'E1',
     },
@@ -112,7 +99,7 @@ const NO_TASK = { blocked: '', hasTask: false, wipActive: false, queued: 0, lane
 async function runFlow(changes = {}, options = {}) {
   const script = { ...baseScript(), ...changes }
   if (options.lane) {
-    script[KEY.contexto] = { ...script[KEY.contexto], lane: options.lane }
+    script[KEY.context] = { ...script[KEY.context], lane: options.lane }
   }
   const phases = []
   const asked = []
@@ -121,7 +108,7 @@ async function runFlow(changes = {}, options = {}) {
   let phase = ''
   // Cada lectura de planning devuelve el siguiente de la lista, y al agotarse ya no hay tarea. Es lo
   // que cierra el bucle, y lo que deja escribir una expansión o un cambio de hito entre dos lecturas.
-  const contexts = options.contexts || [script[KEY.contexto]]
+  const contexts = options.contexts || [script[KEY.context]]
   let reads = 0
 
   const agent = async (prompt, options = {}) => {
@@ -140,7 +127,7 @@ async function runFlow(changes = {}, options = {}) {
     return typeof answer === 'function' ? answer() : answer
   }
 
-  const result = await compile()(
+  const result = await compileWorkflow('autobuild')(
     agent, (title) => { phase = title; phases.push(title) }, () => {},
     async (thunks) => Promise.all(thunks.map((t) => t())), async () => [], async () => ({}),
     {}, { total: null, spent: () => 0, remaining: () => Infinity },
@@ -369,7 +356,7 @@ test('el check de cierre en rojo frena la corrida', async () => {
 // Cerrada una tarea, el recorrido relee el estado para decidir si sigue. Sin ese estado no hay con qué
 // decidir, y elegir la próxima igual sería elegirla a ciegas.
 test('si el estado no se puede releer la corrida corta en vez de seguir a ciegas', async () => {
-  const { result, asked } = await runFlow({}, { contexts: [baseScript()[KEY.contexto], null] })
+  const { result, asked } = await runFlow({}, { contexts: [baseScript()[KEY.context], null] })
   assert.equal(result.reason, 'context-unavailable')
   assert.ok(reached(asked, 'Commit'), 'corta después de cerrar la tarea que sí terminó, no antes')
 })
@@ -592,7 +579,7 @@ test('una tarea que no entra en el tope de horas se parte y no se construye', as
 })
 
 test('sin tarea en cola se expande la próxima épica y se sigue con ella', async () => {
-  const withTask = baseScript()[KEY.contexto]
+  const withTask = baseScript()[KEY.context]
   const { result, asked } = await runFlow(
     { [KEY.pick]: { expanded: true, hito: 'H1' } },
     { contexts: [{ blocked: '', hasTask: false, wipActive: false, queued: 0, lane: 'full' }, withTask] },
@@ -618,7 +605,7 @@ test('un checkpoint humano sin resolver corta antes de tocar nada', async () => 
 })
 
 test('el hito cambia y la corrida cierra en vez de seguir con el siguiente', async () => {
-  const first = baseScript()[KEY.contexto]
+  const first = baseScript()[KEY.context]
   const { result } = await runFlow({}, {
     contexts: [first, { ...first, slug: 'T-2', hito: 'H2' }],
   })
@@ -639,7 +626,7 @@ test('con checkpoint configurado el hito terminado queda esperando una firma', a
 })
 
 test('una tarea que vuelve a quedar elegible para siempre corta con su motivo', async () => {
-  const forever = baseScript()[KEY.contexto]
+  const forever = baseScript()[KEY.context]
   const { result } = await runFlow({}, { contexts: Array.from({ length: 60 }, () => forever) })
   assert.equal(result.reason, 'milestone-too-long')
   assert.match(result.detail, /50/)
