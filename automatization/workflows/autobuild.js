@@ -2,7 +2,7 @@
 // Descubre proyecto, servicios y límites desde ops.config.json; no codifica rutas ni proveedores.
 export const meta = {
   name: 'autobuild',
-  description: 'Triage → Pick → Classify → Ready → Plan → Build → Review → Verify → QA → Commit → Done',
+  description: 'Triage → Pick → Classify → Plan → WIP → Build → Review → Verify → QA → Commit → Done',
   whenToUse: 'Ejecutar un hito aprobado con recuperación por WIP y checkpoint humano entre hitos.',
   // Escritas una por una y no derivadas de una lista: el runtime exige que `meta` sea un literal puro
   // —sin llamadas, variables ni interpolación— y con un `.map` acá rechazaba el archivo entero antes de
@@ -15,6 +15,7 @@ export const meta = {
     { title: 'Decompose', detail: 'Partir la tarea que no entra en el tope de horas' },
     { title: 'Plan', detail: 'El cambio más chico que satisface la aceptación' },
     { title: 'Critique', detail: 'El plan atacado antes de escribir código' },
+    { title: 'WIP', detail: 'El plan aprobado persistido antes del primer cambio' },
     { title: 'Build', detail: 'Implementación con la prueba en rojo primero' },
     { title: 'Review', detail: 'El diff real revisado por el dueño de cada dominio' },
     { title: 'Verify', detail: 'Los gates del servicio y la aceptación que ninguna prueba codifica' },
@@ -43,7 +44,7 @@ const CONTEXT = {
     blocked: { type: 'string' }, hasTask: { type: 'boolean' }, wipActive: { type: 'boolean' },
     queued: { type: 'integer' }, slug: { type: 'string' }, hito: { type: 'string' },
     service: { type: 'string' }, acceptance: { type: 'string' }, epic: { type: 'string' },
-    lane: { type: 'string', enum: ['', 'directo', 'lite', 'full'] },
+    lane: { type: 'string', enum: ['', 'express', 'directo', 'lite', 'full'] },
     // Quién entrega y quiénes miran, decidido al clasificar la tarea y escrito en su línea. Viene
     // siempre, aunque venga vacío: preguntar si el campo existe antes de leerlo es la clase de borde
     // que se olvida en una rama y revienta en la otra.
@@ -184,8 +185,9 @@ const OWNERS = {
 // justificar. Lo que decide es la superficie del cambio, no su tamaño en líneas: un `if` en el
 // chequeo de permisos es `full`, y un componente entero de presentación puede ser `directo`.
 const CLASSIFY_RULES = 'Clasificás quién trabaja y cuánta ceremonia merece la tarea; no decidís qué ' +
-  'se hace ni lo hacés. Lane: `directo` si la aceptación nombra un valor concreto —color, copy, ' +
-  'umbral, renombre— y el cambio no cruza un límite de módulo; `lite` si es comportamiento nuevo ' +
+  'se hace ni lo hacés. Lane: `express` si la aceptación nombra un valor literal y el resultado no ' +
+  'lo mira nadie —un typo, un umbral interno, un renombre—; `directo` si es igual de mecánico pero ' +
+  'cambia una superficie que alguien ve; `lite` si es comportamiento nuevo ' +
   'dentro de un servicio con superficie conocida; `full` si cruza contratos entre servicios, datos, ' +
   'autenticación o permisos, o si la aceptación tiene un borde sin decidir. Cast: quien implementa ' +
   'según la plataforma del servicio, y los revisores que la superficie realmente justifica ' +
@@ -200,7 +202,7 @@ const CLASSIFICATION = {
     classified: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['slug', 'lane', 'build'],
       properties: {
-        slug: { type: 'string' }, lane: { type: 'string', enum: ['directo', 'lite', 'full'] },
+        slug: { type: 'string' }, lane: { type: 'string', enum: ['express', 'directo', 'lite', 'full'] },
         build: { type: 'string' }, review: { type: 'array', items: { type: 'string' } },
         reason: { type: 'string' },
       },
@@ -356,8 +358,12 @@ while (vueltas++ < MAX_TAREAS) {
     log(`${task.id} sigue sin clasificar: corre por el carril completo`)
   }
 
+  const express = planning.lane === 'express'
   const direct = planning.lane === 'directo'
   const lite = planning.lane === 'lite'
+  // Lo mecánico no se planifica ni se pregunta si está listo: el clasificador ya leyó la aceptación y
+  // dijo que nombra un valor literal. Volver a preguntarlo son dos llamadas para llegar al mismo lado.
+  const mecanico = express || direct
 
   // Quién ejecuta cada fase. Los dueños por defecto son fijos y no gastan una llamada; quien
   // implementa y quiénes revisan por riesgo salen de la línea de la tarea. Los revisores valen en
@@ -372,20 +378,23 @@ while (vueltas++ < MAX_TAREAS) {
     : '')
 
   if (!planning.wipActive) {
-    phase('Ready')
-    const ready = await read(
-      `${asRole(OWNERS.ready)}Revisá que ${task.id} tenga aceptación concreta, dependencias resueltas y ninguna ` +
-      `decisión pendiente: ${task.acceptance}. Aclará la redacción y nada más; nunca amplíes el alcance.`,
-      { schema: READY },
-    )
-    if (!ready) return stop('agent-unavailable', 'Ready no devolvió resultado')
-    if (!ready.ready) {
-      await write(`Registrá ${task.id} en ${HUMAN} con el motivo y una acción humana exacta: ${ready.reason}.`)
-      return stop('not-ready', ready.reason)
+    if (!mecanico) {
+      phase('Ready')
+      const ready = await read(
+        `${asRole(OWNERS.ready)}Revisá que ${task.id} tenga aceptación concreta, dependencias resueltas y ` +
+        `ninguna decisión pendiente: ${task.acceptance}. Aclará la redacción y nada más; nunca amplíes el ` +
+        `alcance.`,
+        { schema: READY },
+      )
+      if (!ready) return stop('agent-unavailable', 'Ready no devolvió resultado')
+      if (!ready.ready) {
+        await write(`Registrá ${task.id} en ${HUMAN} con el motivo y una acción humana exacta: ${ready.reason}.`)
+        return stop('not-ready', ready.reason)
+      }
+      if (ready.refinedAcceptance) task.acceptance = ready.refinedAcceptance
     }
-    if (ready.refinedAcceptance) task.acceptance = ready.refinedAcceptance
 
-    if (!direct && !lite) {
+    if (!mecanico && !lite) {
       phase('Decompose')
       const estimate = await run(
         `Inspeccioná ${task.service} y estimá ${task.id}. Partila sólo si supera ${contract.maxTaskHours} horas.`,
@@ -401,8 +410,12 @@ while (vueltas++ < MAX_TAREAS) {
       }
     }
 
+    // El plan de un cambio mecánico es el cambio, y la aceptación ya lo nombra. Pedirlo igual costaba
+    // dos llamadas —planificar y criticar el plan— para llegar a lo que la línea de la tarea ya decía.
+    let plan = { steps: [`Aplicar en ${task.service} lo que nombra la aceptación: ${task.acceptance}`] }
+    if (!mecanico) {
     phase('Plan')
-    let plan = await run(
+    plan = await run(
       `${asRole(OWNERS.plan)}Inspeccioná el código real, las instrucciones del repositorio, las convenciones ` +
       `vecinas, el contexto de la épica y el git status de ${task.id}. Producí el plan más chico que satisfaga ` +
       `${task.acceptance}. Un archivo de planning no puede ser un archivo de implementación. El plan cubre ` +
@@ -412,7 +425,7 @@ while (vueltas++ < MAX_TAREAS) {
       { schema: PLAN },
     )
     if (!plan) return stop('agent-unavailable', 'Plan no devolvió resultado')
-    if (!direct && !lite) {
+    if (!lite) {
       phase('Critique')
       let critique = await read(
         `Atacá este plan por correctitud, alcance, seguridad, pruebas y conflictos con el código ` +
@@ -443,6 +456,8 @@ while (vueltas++ < MAX_TAREAS) {
       // Acá el plan ya está aprobado por los dos caminos posibles, así que el contraste va una sola vez.
       if (!critique.consulted.length) return stop('critique-unbacked', 'aprobó el plan sin declarar qué inspeccionó')
     }
+    }
+    phase('WIP')
     // Esta llamada escribe un archivo y nada más, y hay que decirlo con todas las letras. En una corrida
     // real hizo el trabajo entero: leyó los pasos del plan como una orden, implementó, corrió RED/GREEN,
     // cerró la tarea en DONE y dejó el WIP en IDLE. Build encontró todo hecho y lo atribuyó a «una corrida
@@ -517,7 +532,7 @@ while (vueltas++ < MAX_TAREAS) {
     && !build.redFirst.some((rojo) => nombra(rojo, entry)))
   if (suelto) return stop('edge-unproven', `${suelto.detail} entró sin la prueba que lo fija`)
 
-  if (!direct) {
+  if (!express) {
     phase('Review')
     let review = await run(
       `${asRole(cast.review)}Revisá el diff real por aceptación, regresiones, seguridad, arquitectura, código ` +
@@ -588,17 +603,22 @@ while (vueltas++ < MAX_TAREAS) {
     return stop('verify-hollow', `sin test que lo codifique: ${verified.uncovered.map((e) => e.criterion).join('; ')}`)
   }
 
-  phase('QA')
-  const qa = await run(
-    `${asRole(cast.qa)}${direct || lite
-      ? 'Hacé la comprobación de aceptación real más barata'
-      : 'Ejercitá el comportamiento real que ve quien lo usa'} para ` +
-    `${task.id}. Las pruebas unitarias solas no son QA. Levantá el mínimo runtime necesario y bajalo después. ` +
-    `Aceptación: ${task.acceptance}.`,
-    { schema: QA },
-  )
-  if (!qa) return stop('agent-unavailable', 'QA no devolvió resultado')
-  if (!qa.passed) return stop('qa-failed', qa.evidence)
+  // QA ejercita comportamiento, y lo mecánico no lo cambia: el valor literal que la aceptación nombra
+  // ya lo comprobó Verify contra el test, y en `directo` además lo mira el revisor que nombra el cast.
+  let qa = { passed: true, evidence: 'carril mecánico: la aceptación queda comprobada en Verify' }
+  if (!mecanico) {
+    phase('QA')
+    qa = await run(
+      `${asRole(cast.qa)}${lite
+        ? 'Hacé la comprobación de aceptación real más barata'
+        : 'Ejercitá el comportamiento real que ve quien lo usa'} para ` +
+      `${task.id}. Las pruebas unitarias solas no son QA. Levantá el mínimo runtime necesario y bajalo ` +
+      `después. Aceptación: ${task.acceptance}.`,
+      { schema: QA },
+    )
+    if (!qa) return stop('agent-unavailable', 'QA no devolvió resultado')
+    if (!qa.passed) return stop('qa-failed', qa.evidence)
+  }
 
   phase('Commit')
   const commit = contract.commitPerTask ? await run(

@@ -228,7 +228,7 @@ test('autobuild ejecuta cada fase bajo el contrato del cargo que la posee', () =
   // Un cargo se suma por riesgo, plataforma o alcance; nunca por rutina, y el criterio va escrito:
   // sin él la clasificación es intuición, y la intuición manda todo al carril que no hay que justificar.
   assert.match(workflow, /Sumar un cargo que no aporta es ruido/)
-  assert.match(workflow, /Lane: `directo` si la aceptación nombra un valor concreto/)
+  assert.match(workflow, /Lane: `express` si la aceptación nombra un valor literal/)
   assert.match(workflow, /phase\('Classify'\)/)
   assert.ok(workflow.includes("'Classify'"), 'la fase está declarada en meta')
 

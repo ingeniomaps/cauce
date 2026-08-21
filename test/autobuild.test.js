@@ -27,9 +27,8 @@ const KEY = {
   ready: 'Ready|ready,needsHuman',
   decompose: 'Decompose|hours,needsSplit',
   plan: 'Plan|approach,steps,files,testStrategy',
-  planWip: 'Plan|wipActive',
   critique: 'Critique|verdict,concerns,consulted',
-  critiqueWip: 'Critique|wipActive',
+  wip: 'WIP|wipActive',
   replan: 'Critique|approach,steps,files,testStrategy',
   build: 'Build|completed,summary,redFirst,discovered,closedTask',
   review: 'Review|verdict,concerns,consulted',
@@ -62,8 +61,7 @@ function baseScript() {
       approach: 'validar en el repositorio', steps: ['1'], files: ['api/alta.go'], testStrategy: 'unit',
     },
     [KEY.critique]: { verdict: 'aprobado', concerns: [], consulted: ['api/alta.go'] },
-    [KEY.critiqueWip]: { wipActive: true },
-    [KEY.planWip]: { wipActive: true },
+    [KEY.wip]: { wipActive: true },
     [KEY.build]: {
       completed: true, summary: 'alta con rechazo de duplicado',
       redFirst: [{ test: 'TestAltaDuplicada', failure: 'want error, got nil' }],
@@ -149,7 +147,7 @@ test('autobuild cierra una tarea cuando todo está en su lugar', async () => {
 
 test('sin WIP activo no se entra a construir', async () => {
   const { result, asked } = await runFlow({
-    [KEY.critiqueWip]: { wipActive: false, note: 'quedó en IDLE' },
+    [KEY.wip]: { wipActive: false, note: 'quedó en IDLE' },
   })
   assert.equal(result.reason, 'wip-not-persisted')
   assert.ok(!reached(asked, 'Build'), 'y no se construye sin el WIP puesto')
@@ -378,15 +376,40 @@ test('sin el contrato leído no se arranca el recorrido', async () => {
 
 // Un carril baja ceremonia: saltea fases enteras. Lo que no puede bajar es la evidencia que se exige,
 // y esa distinción no se ve leyendo el fuente —las dos cosas son el mismo `if`—.
-test('el carril directo saltea la ceremonia y no pide un cargo para cada fase', async () => {
+// Lo mecánico no se planifica ni se pregunta si está listo: el clasificador ya leyó la aceptación y
+// dijo que nombra un valor literal. Lo que separa a `directo` de `express` es un solo ojo más, el que
+// mira la superficie que cambió; lo que no cambia en ningún carril es Verify, que es la evidencia.
+test('el carril directo entrega y lo revisa quien nombra la línea', async () => {
   const { result, phases } = await runFlow({}, { lane: 'directo' })
   ranToEnd(result)
   assert.deepEqual(result.done, ['T-1'])
-  for (const absent of ['Cast', 'Decompose', 'Critique', 'Review']) {
+  for (const absent of ['Ready', 'Decompose', 'Plan', 'Critique', 'QA']) {
     assert.ok(!phases.includes(absent), `directo no debería llegar a ${absent}`)
   }
-  for (const present of ['Ready', 'Plan', 'Build', 'Verify', 'QA', 'Commit', 'Done']) {
+  for (const present of ['Build', 'Review', 'Verify', 'Commit', 'Done']) {
     assert.ok(phases.includes(present), `directo se saltó ${present}`)
+  }
+})
+
+test('el carril express entrega sin que nadie mire, porque no hay nada que mirar', async () => {
+  const { result, phases } = await runFlow({}, { lane: 'express' })
+  ranToEnd(result)
+  assert.deepEqual(result.done, ['T-1'])
+  for (const absent of ['Ready', 'Decompose', 'Plan', 'Critique', 'Review', 'QA']) {
+    assert.ok(!phases.includes(absent), `express no debería llegar a ${absent}`)
+  }
+  for (const present of ['Build', 'Verify', 'Commit', 'Done']) {
+    assert.ok(phases.includes(present), `express se saltó ${present}`)
+  }
+})
+
+// El WIP es el mutex y la recuperación: sin él, una corrida interrumpida no sabe por dónde seguir y
+// dos runners pueden tomar la misma tarea. Bajar ceremonia nunca lo alcanza.
+test('todo carril persiste el WIP antes del primer cambio', async () => {
+  for (const lane of ['express', 'directo', 'lite', 'full']) {
+    const { asked, phases } = await runFlow({}, { lane })
+    assert.ok(phases.includes('WIP'), `${lane} entró a construir sin persistir el WIP`)
+    assert.ok(asked.indexOf('WIP|wipActive') < asked.indexOf(KEY.build), `${lane} lo escribió tarde`)
   }
 })
 
