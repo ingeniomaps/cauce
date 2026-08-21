@@ -15,8 +15,8 @@ const root = path.resolve(__dirname, '..', 'automatization', 'runners')
 // que se prueba acá, y estaba copiado en cuatro tests. Devuelve también `runCli`, porque el entorno
 // limpio es parte del montaje: heredar `OPS_ROOT` o `CLAUDE_PROJECT_DIR` hace que el CLI mida este
 // repositorio en vez de la instancia recién creada.
-function installedProject(nombre, runner) {
-  const base = tempRoot(nombre)
+function installedProject(name, runner) {
+  const base = tempRoot(name)
   const workspace = path.join(base, 'repo')
   const target = path.join(workspace, 'ops')
   fs.mkdirSync(workspace)

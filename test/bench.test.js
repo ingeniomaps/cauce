@@ -63,13 +63,13 @@ test('el banco queda versionado para poder ver qué escribió el cargo', () => {
   assert.match(git('log', '--oneline'), /banco limpio/, 'con su estado limpio ya commiteado')
 
   fs.appendFileSync(path.join(dir, 'planning', 'INBOX.md'), '\n- lo que produjo el cargo\n')
-  const cambios = git('status', '--porcelain')
-  assert.match(cambios, /planning\/INBOX\.md/, 'y lo escrito aparece como cambio')
+  const changes = git('status', '--porcelain')
+  assert.match(changes, /planning\/INBOX\.md/, 'y lo escrito aparece como cambio')
   assert.match(git('diff'), /lo que produjo el cargo/, 'con su contenido visible en el diff')
 
   // `node_modules` es un symlink al toolkit, no obra del cargo: verlo ahí sería ruido y además
   // arrastraría el repositorio entero al diff.
-  assert.equal(cambios.includes('node_modules'), false)
+  assert.equal(changes.includes('node_modules'), false)
 })
 
 // Aprendido perdiendo evidencia: se rehízo un banco para probar otra cosa y con él se fue lo que el

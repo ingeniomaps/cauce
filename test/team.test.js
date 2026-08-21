@@ -62,8 +62,8 @@ function baseScript() {
   }
 }
 
-async function runFlow(cambios = {}, intent = 'quiero que el alta no duplique vendedores') {
-  const script = { ...baseScript(), ...cambios }
+async function runFlow(changes = {}, intent = 'quiero que el alta no duplique vendedores') {
+  const script = { ...baseScript(), ...changes }
   const asked = []
   const written = []
   const prompts = []
