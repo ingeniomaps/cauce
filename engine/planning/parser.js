@@ -95,6 +95,20 @@ function readEpics(dir) {
   }).filter((epic) => epic.status !== 'template' && epic.num !== '000')
 }
 
+// El reparto viaja en la línea de la tarea —`(cast: quien-entrega → quien-revisa, otro)`—, y la
+// flecha es lo que los separa. Los revisores son opcionales porque el lane más barato no tiene
+// ninguno, y el reparto entero también: una tarea sin clasificar es el estado que dispara al
+// clasificador, no un error. Devuelve siempre la forma completa para que nadie tenga que preguntar
+// si el campo existe antes de leerlo.
+function readCast(rest) {
+  const raw = ((rest.match(/\(cast:\s*([^)]+)\)/i) || [])[1] || '').trim()
+  const [build, reviewers] = raw.split(/\s*(?:→|->)\s*/)
+  return {
+    build: (build || '').trim(),
+    review: (reviewers || '').split(',').map((slug) => slug.trim()).filter(Boolean),
+  }
+}
+
 function readBacklog(dir) {
   const text = withoutComments(read(path.join(dir, 'BACKLOG.md')))
   const milestones = []
@@ -107,11 +121,11 @@ function readBacklog(dir) {
       continue
     }
     if (/^##\s+/.test(line)) current = null
-    const task = line.match(/^-\s+\[\s\]\s+\*\*([^*]+)\*\*\s*(?:\[(directo|lite|full)\])?\s+[—-]\s+(.+)$/)
+    const task = line.match(/^-\s+\[\s\]\s+\*\*([^*]+)\*\*\s*(?:\[(express|directo|lite|full)\])?\s+[—-]\s+(.+)$/)
     if (!task || !current) continue
     const rest = task[3]
     current.tasks.push({
-      slug: task[1].trim(), tier: task[2] || '',
+      slug: task[1].trim(), tier: task[2] || '', cast: readCast(rest),
       epic: ((rest.match(/\(epic:\s*(\d{3})\)/) || [])[1] || ''),
       service: ((rest.match(/\(service:\s*([^)]+)\)/) || [])[1] || '').trim(),
       acceptance: ((rest.match(/_Aceptaci[oó]n:\s*([^_]+)_/i) || [])[1] || '').trim(),

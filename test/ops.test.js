@@ -920,6 +920,47 @@ service: app
   assert.equal(JSON.parse(run(['context', planning, '--json']).stdout).blocked, 'awaiting-review')
 })
 
+// El lane dice cuántas perspectivas merece una tarea y el cast cuáles: son la misma decisión de
+// clasificación vista de los dos lados, y por eso viajan juntas en la línea. Escritas ahí se deciden
+// una vez y quedan auditables antes de ejecutar, en vez de derivarse en cada corrida y tirarse al
+// terminar —que es lo que hacía la fase Cast, y costaba una llamada por tarea—.
+test('la línea de tarea lleva su lane y su cast, y los dos siguen siendo opcionales', () => {
+  const base = tempRoot('cauce-cast-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Cast', '--mode', 'sidecar']).status, 0)
+  linkEngine(target)
+  const planning = path.join(target, 'planning')
+  fs.mkdirSync(path.join(target, 'app'))
+  const backlog = (task) => fs.writeFileSync(
+    path.join(planning, 'BACKLOG.md'), `# Backlog\n\n## Hito demo — Demo\n\n${task}\n`,
+  )
+
+  // Toda tarea escrita antes de que el cast existiera sigue siendo válida: sin clasificar es un
+  // estado legítimo —es el que dispara al clasificador—, no un error de contrato.
+  backlog('- [ ] **sin-clasificar** — Otro resultado. _Aceptación: observable._ (service: app)')
+  assert.equal(run(['check', planning]).status, 0, 'una tarea sin clasificar sigue siendo válida')
+  const plain = JSON.parse(run(['context', planning, '--json']).stdout).task
+  assert.equal(plain.tier, '')
+  assert.deepEqual(plain.cast, { build: '', review: [] }, 'sin cast, pero con la forma puesta')
+
+  backlog('- [ ] **con-cast** [express] — Cambiar el literal. _Aceptación: dice verde._ '
+    + '(service: app) (cast: frontend-engineer → ui-designer, qa-engineer)')
+  assert.equal(run(['check', planning]).status, 0)
+  const classified = JSON.parse(run(['context', planning, '--json']).stdout).task
+  assert.equal(classified.tier, 'express', 'el cuarto lane existe')
+  assert.deepEqual(classified.cast, { build: 'frontend-engineer', review: ['ui-designer', 'qa-engineer'] })
+  assert.match(run(['context', planning]).stdout, /CAST\s+frontend-engineer → ui-designer, qa-engineer/)
+
+  // Un cargo mal escrito no tiene por qué frenar la corrida en la fase que lo invoca: ahí ya se
+  // gastó todo lo anterior. Un slug que el catálogo no resuelve se queda sin revisor en silencio,
+  // que es la forma de perder la revisión sin que nada falle.
+  backlog('- [ ] **cast-fantasma** [directo] — Cambiar el literal. _Aceptación: dice verde._ '
+    + '(service: app) (cast: frontend-enginer)')
+  const ghost = run(['check', planning])
+  assert.equal(ghost.status, 1, 'un cargo que no existe es un error de contrato')
+  assert.match(ghost.stderr, /frontend-enginer/)
+})
+
 test('context no muta archivos de estado', () => {
   const planning = path.resolve(__dirname, '..', 'template', 'planning')
   const before = filesBelow(planning).map((file) => fs.readFileSync(file, 'utf8'))

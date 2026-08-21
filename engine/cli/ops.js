@@ -557,6 +557,7 @@ function check(dir, cli) {
     if (epic.status === 'active' && !missing.length) errors.push(`${at}: active sin historias pendientes; debe cerrar`)
   }
 
+  const roles = new Set(AG.list(path.resolve(root, '..')).map((role) => role.slug))
   const milestoneSlugs = new Set()
   for (const milestone of milestones) {
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(milestone.slug)) errors.push(`hito con slug inválido: ${milestone.slug}`)
@@ -564,6 +565,15 @@ function check(dir, cli) {
     milestoneSlugs.add(milestone.slug)
     for (const task of milestone.tasks) {
       if (!task.service) errors.push(`BACKLOG ${task.slug}: falta (service: <ruta>)`)
+      // Un cargo mal escrito se queda sin resolver en la fase que lo invoca, y ahí ya se gastó todo
+      // lo anterior: la revisión desaparece sin que nada falle. Se contrasta acá, antes de ejecutar.
+      // Con el catálogo vacío no hay nada contra qué contrastar —una instancia sin la dependencia
+      // instalada—, y exigirlo igual convertiría cada cast en un error.
+      for (const slug of [task.cast.build, ...task.cast.review].filter(Boolean)) {
+        if (roles.size && !roles.has(slug)) {
+          errors.push(`BACKLOG ${task.slug}: el cast nombra ${slug}, que no está en el catálogo`)
+        }
+      }
       if (!task.acceptance && !(task.epic && task.criteria.length)) {
         errors.push(`BACKLOG ${task.slug}: falta aceptación explícita o criterio heredado`)
       }
@@ -714,7 +724,10 @@ function currentTask({ milestones, done, wip }, blockers = []) {
   const queue = milestones.flatMap((milestone) => milestone.tasks.map((task) => ({ ...task, hito: milestone.slug })))
   if (wip) {
     const active = queue.find((task) => task.slug === wip.task)
-      || { slug: wip.task, hito: '', tier: '', service: wip.service, acceptance: '', epic: '', criteria: [] }
+      || {
+        slug: wip.task, hito: '', tier: '', cast: { build: '', review: [] },
+        service: wip.service, acceptance: '', epic: '', criteria: [],
+      }
     return { task: active, skipped: [] }
   }
   const blocked = new Set(blockers.map((action) => action.task))
@@ -737,7 +750,7 @@ function context(dir, cli) {
   const report = {
     blocked: fs.existsSync(gate) ? 'awaiting-review' : '',
     task: task && {
-      slug: task.slug, hito: task.hito, tier: task.tier, service: task.service,
+      slug: task.slug, hito: task.hito, tier: task.tier, cast: task.cast, service: task.service,
       // Una tarea puede heredar su aceptación del criterio citado; el runner necesita el texto, no la cita.
       acceptance: task.acceptance || criteria.map((criterion) => criterion.text).join(' '),
       epic: task.epic,
@@ -759,6 +772,10 @@ function context(dir, cli) {
   console.log(`TASK   ${report.task.slug}${report.task.tier ? ` [${report.task.tier}]` : ''}` +
     `${report.task.service ? `  service: ${report.task.service}` : ''}` +
     `${report.task.hito ? `  hito: ${report.task.hito}` : ''}`)
+  if (report.task.cast.build) {
+    const review = report.task.cast.review
+    console.log(`CAST   ${report.task.cast.build}${review.length ? ` → ${review.join(', ')}` : ''}`)
+  }
   if (report.epic) console.log(`EPIC   ${report.epic.num} ${report.epic.title} [${report.epic.status}]`)
   if (report.task.acceptance) console.log(`ACEPT  ${report.task.acceptance}`)
   for (const criterion of criteria) console.log(`${criterion.id.padEnd(6)} ${criterion.text}`)
