@@ -74,7 +74,12 @@ El veredicto se escribe **junto al cargo**, no en el banco. El banco se borra; e
   no un detalle.
 - **120 caracteres por línea en archivos de código** —`.js` y `.sh`—. El markdown y los `.json` de
   datos quedan fuera: son prosa y fixtures, y envolverlos no los hace más legibles.
-- **Comentarios y documentación en español; mensajes de commit en inglés**, Conventional Commits.
+- **Código en inglés, prosa en español.** Identificadores y nombres de archivo, en inglés; comentarios y
+  documentación, en español; lo que lee una persona —salida del CLI, errores, plantillas—, en español.
+  Los mensajes de commit van en inglés, Conventional Commits. Un nombre a medio traducir —`sinFase`,
+  `esArchivoCompartido`— cuesta más que cualquiera de los dos idiomas: obliga a adivinar en cuál está
+  escrito el siguiente. El repositorio todavía tiene identificadores en español anteriores a esta regla;
+  se traducen cuando se toca el archivo, no en un barrido aparte.
 - Las pruebas corren con `node --test`. La puerta real es `npm run ci`: `check`, automatización,
   integraciones y cobertura, y `prepublishOnly` la exige antes de publicar.
 - El CLI se invoca con `node engine/cli/ops.js` o `npm run ops -- <comando>`; `make help` lista los
