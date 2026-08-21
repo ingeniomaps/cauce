@@ -1,6 +1,6 @@
 'use strict'
 
-const { temporal } = require('./entorno')
+const { tempRoot, CLI, run, linkEngine } = require('./environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -8,20 +8,6 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { hookMetadata } = require('../engine/hooks/run')
-
-const CLI = path.resolve(__dirname, '..', 'engine', 'cli', 'ops.js')
-
-function run(args, cwd = path.dirname(CLI)) {
-  const env = { ...process.env }
-  delete env.NODE_TEST_CONTEXT
-  return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', env })
-}
-
-function linkEngine(target) {
-  const scope = path.join(target, 'node_modules', '@ingeniomaps')
-  fs.mkdirSync(scope, { recursive: true })
-  fs.symlinkSync(path.resolve(__dirname, '..'), path.join(scope, 'cauce'), 'dir')
-}
 
 function filesBelow(root) {
   return fs.readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
@@ -56,8 +42,8 @@ test('automation list-hooks explica los guards disponibles', () => {
     Object.keys(guards).sort(),
     'sin guards sin documentar ni documentación de guards que no existen',
   )
-  const informe = run(['automation', 'check', path.resolve(__dirname, '..')])
-  assert.match(informe.stdout, new RegExp(`${Object.keys(guards).length} guards`), 'y es lo que informa')
+  const report = run(['automation', 'check', path.resolve(__dirname, '..')])
+  assert.match(report.stdout, new RegExp(`${Object.keys(guards).length} guards`), 'y es lo que informa')
 })
 
 // La lista de scripts que `check` exige se deriva del registro de guards, no se copia a mano: una
@@ -65,34 +51,34 @@ test('automation list-hooks explica los guards disponibles', () => {
 // sola dirección a propósito — un `.sh` de más es cómo una empresa agrega el suyo, que es justo lo
 // que `upgrade` le recomienda hacer.
 test('automation check exige los guards del motor y respeta los de la empresa', () => {
-  const base = temporal('cauce-hooks-')
+  const base = tempRoot('cauce-hooks-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar']).status, 0)
   linkEngine(target)
   assert.equal(run(['automation', 'check', target]).status, 0)
 
-  const propio = path.join(target, 'automatization', 'hooks', 'guard-acme.sh')
-  fs.writeFileSync(propio, '#!/usr/bin/env bash\nexit 0\n', { mode: 0o755 })
+  const own = path.join(target, 'automatization', 'hooks', 'guard-acme.sh')
+  fs.writeFileSync(own, '#!/usr/bin/env bash\nexit 0\n', { mode: 0o755 })
   assert.equal(run(['automation', 'check', target]).status, 0, 'un guard de la empresa no es un error')
 
   const verify = path.join(target, 'automatization', 'hooks', 'guard-verify.sh')
   fs.rmSync(verify)
-  const falta = run(['automation', 'check', target])
-  assert.notEqual(falta.status, 0, 'uno del motor que falta sí lo es')
-  assert.match(falta.stderr, /falta automatization\/hooks\/guard-verify\.sh/)
+  const missing = run(['automation', 'check', target])
+  assert.notEqual(missing.status, 0, 'uno del motor que falta sí lo es')
+  assert.match(missing.stderr, /falta automatization\/hooks\/guard-verify\.sh/)
 
   // Y la lista sale del registro: cada guard del motor tiene su script exigido, sin repetir.
   const A = require('../engine/automation')
   const { guards, hookGroups } = require('../engine/hooks/run')
-  const grupos = Object.values(hookGroups).filter((names) => names.length > 1).length
-  assert.equal(A.GUARD_NAMES.length + grupos + 1, fs.readdirSync(
+  const groups = Object.values(hookGroups).filter((names) => names.length > 1).length
+  assert.equal(A.GUARD_NAMES.length + groups + 1, fs.readdirSync(
     path.resolve(__dirname, '..', 'automatization', 'hooks'),
   ).filter((name) => name.endsWith('.sh')).length, 'guards + wrappers de grupo + run-hook.sh')
   assert.equal(A.GUARD_NAMES.length, Object.keys(guards).length)
 })
 
 test('init produce una instancia autocontenida y no sobrescribe', () => {
-  const base = temporal('cauce-')
+  const base = tempRoot('cauce-')
   const target = path.join(base, 'demo-ops')
   const created = run(['init', target, '--name', 'Demo', '--mode', 'sidecar'])
   assert.equal(created.status, 0, created.stderr)
@@ -197,8 +183,8 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   // Ningún workflow del toolkit se distribuye. El CI valida el toolkit, y el ciclo de aprendizaje
   // investiga la profesión: repetirlo en cada empresa produciría la misma investigación N veces.
   const workflows = path.join(target, '.github', 'workflows')
-  for (const propio of ['ci.yml', 'agent-learning.yml']) {
-    assert.equal(fs.existsSync(path.join(workflows, propio)), false, `${propio} no se distribuye`)
+  for (const own of ['ci.yml', 'agent-learning.yml']) {
+    assert.equal(fs.existsSync(path.join(workflows, own)), false, `${own} no se distribuye`)
   }
 
   const env = { ...process.env }
@@ -217,8 +203,8 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   const forced = run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--force'])
   assert.equal(forced.status, 0, forced.stderr)
   assert.equal(fs.readFileSync(path.join(target, 'README.md'), 'utf8'), 'propiedad del usuario\n')
-  const propio = path.join(target, 'agents', 'roles', 'product-manager', 'SKILL.md')
-  assert.equal(fs.readFileSync(propio, 'utf8'), 'personalizado\n')
+  const own = path.join(target, 'agents', 'roles', 'product-manager', 'SKILL.md')
+  assert.equal(fs.readFileSync(own, 'utf8'), 'personalizado\n')
   assert.equal(fs.readFileSync(ownGuard, 'utf8'), 'guard propio de la empresa\n')
 })
 
@@ -227,7 +213,7 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
 // suyo. El nombre sale de la carpeta del proyecto —`ops` nombra al toolkit, no al negocio— y el modo
 // es sidecar, el único que deja el wiring del runner donde el dev abre la herramienta.
 test('init sin destino aparta la instancia en ops/', () => {
-  const repo = temporal('cauce-mono-')
+  const repo = tempRoot('cauce-mono-')
   fs.mkdirSync(path.join(repo, 'apps'))
   const created = run(['init'], repo)
   assert.equal(created.status, 0, created.stderr)
@@ -250,15 +236,15 @@ test('init sin destino aparta la instancia en ops/', () => {
 // La basura de un proyecto la declara el propio proyecto, y mantener una lista de la ajena es perder.
 // Lo que el arranque necesita saber es qué es esto, no qué generó el último build.
 test('scan respeta lo que el proyecto declaró basura', () => {
-  const repo = temporal('cauce-basura-')
-  const poner = (relative) => {
+  const repo = tempRoot('cauce-basura-')
+  const put = (relative) => {
     fs.mkdirSync(path.join(repo, relative), { recursive: true })
     fs.writeFileSync(path.join(repo, relative, 'package.json'), '{"name":"x"}')
   }
-  poner('apps/api')
-  poner('generado/paquete')
-  poner('legacy-dump')
-  poner('node_modules/dependencia')
+  put('apps/api')
+  put('generado/paquete')
+  put('legacy-dump')
+  put('node_modules/dependencia')
   fs.writeFileSync(path.join(repo, '.gitignore'), 'generado/\nlegacy-dump\n*.log\n')
 
   const result = JSON.parse(run(['scan', repo, '--json']).stdout)
@@ -266,14 +252,14 @@ test('scan respeta lo que el proyecto declaró basura', () => {
   // Y con una ruta explícita se ve lo mismo que desde la instancia, incluido el proyecto de la raíz:
   // un monolito declara sus comandos arriba, y dejarlo afuera desaparecía al proyecto principal.
   fs.writeFileSync(path.join(repo, 'package.json'), '{"scripts":{"test":"jest"}}')
-  const conRaiz = JSON.parse(run(['scan', repo, '--json']).stdout)
-  assert.deepEqual(conRaiz.services.map((service) => service.path), ['.', 'apps/api'])
+  const withRoot = JSON.parse(run(['scan', repo, '--json']).stdout)
+  assert.deepEqual(withRoot.services.map((service) => service.path), ['.', 'apps/api'])
 })
 
 // Con varias raíces declaradas, el candidato principal de cada una se llama `.`: tres servicios con el
 // mismo nombre y nada que los distinga, que es como una credencial deja de poder atribuirse a un servicio.
 test('con varias raíces cada servicio se puede nombrar', () => {
-  const base = temporal('cauce-multi-')
+  const base = tempRoot('cauce-multi-')
   const workspace = path.join(base, 'tienda')
   for (const repo of ['api', 'web']) {
     fs.mkdirSync(path.join(workspace, repo), { recursive: true })
@@ -289,45 +275,45 @@ test('con varias raíces cada servicio se puede nombrar', () => {
   ]
   fs.writeFileSync(path.join(target, 'ops.config.json'), JSON.stringify(config, null, 2))
 
-  const guia = JSON.parse(run(['onboard', target, '--json']).stdout)
-  assert.deepEqual(guia.servicios.map((service) => service.path), ['api', 'web'])
-  assert.deepEqual(guia.servicios.map((service) => service.env.names), [['API_URL'], ['WEB_URL']])
+  const guide = JSON.parse(run(['onboard', target, '--json']).stdout)
+  assert.deepEqual(guide.servicios.map((service) => service.path), ['api', 'web'])
+  assert.deepEqual(guide.servicios.map((service) => service.env.names), [['API_URL'], ['WEB_URL']])
 })
 
 // Un corte que no se anuncia hace pasar lo listado por todo lo que hay.
 test('scan recorta la lista en pantalla y dice cuánto', () => {
-  const repo = temporal('cauce-grande-')
+  const repo = tempRoot('cauce-grande-')
   for (let index = 0; index < 25; index += 1) {
     const dir = path.join(repo, 'packages', `p${index}`)
     fs.mkdirSync(dir, { recursive: true })
     fs.writeFileSync(path.join(dir, 'package.json'), '{"name":"p"}')
   }
-  const humano = run(['scan', repo])
-  assert.match(humano.stdout, /… y 5 más, todos en --json/)
-  assert.match(humano.stdout, /25 candidato\(s\)/)
+  const human = run(['scan', repo])
+  assert.match(human.stdout, /… y 5 más, todos en --json/)
+  assert.match(human.stdout, /25 candidato\(s\)/)
   assert.equal(JSON.parse(run(['scan', repo, '--json']).stdout).services.length, 25, 'el JSON los trae todos')
 })
 
 test('onboard guía con preguntas y no pisa lo que ya está escrito', () => {
-  const base = temporal('cauce-guia-')
+  const base = tempRoot('cauce-guia-')
   const repo = path.join(base, 'mono')
   fs.mkdirSync(path.join(repo, 'apps', 'api'), { recursive: true })
   fs.writeFileSync(path.join(repo, 'apps', 'api', 'package.json'), '{"scripts":{"test":"jest"}}')
   const target = path.join(repo, 'ops')
   assert.equal(run(['init', target, '--name', 'Mono', '--mode', 'sidecar', '--no-install']).status, 0)
 
-  const guia = run(['onboard', target])
-  assert.equal(guia.status, 0, guia.stderr)
+  const guide = run(['onboard', target])
+  assert.equal(guide.status, 0, guide.stderr)
   // La pregunta primero: es la misma esté el workspace vacío, sea un monorepo o sean diez repos, y
   // empezar por el inventario invierte de qué se trata esto.
-  assert.match(guia.stdout, /^¿De qué trata este proyecto\?/, 'abre con la pregunta, no con el hallazgo')
-  assert.match(guia.stdout, /Mientras tanto, esto es lo que hay: apps\/api/, 'y después, lo deducido')
+  assert.match(guide.stdout, /^¿De qué trata este proyecto\?/, 'abre con la pregunta, no con el hallazgo')
+  assert.match(guide.stdout, /Mientras tanto, esto es lo que hay: apps\/api/, 'y después, lo deducido')
   // Una sola pregunta escrita: las que siguen dependen de la respuesta, y darlas hechas es asumir que
   // el proyecto vende algo. Lo que el motor fija son las dimensiones a cubrir.
-  assert.doesNotMatch(guia.stdout, /¿Qué vende/, 'nada de dar por sentado que hay negocio')
-  assert.match(guia.stdout, /cómo se sostiene: venta, suscripción, donación/)
-  assert.match(guia.stdout, /qué servicios o carpetas están muertos/, 'con código, el alcance importa')
-  assert.doesNotMatch(guia.stdout, /dónde está el código/, 'y no se pregunta lo que está a la vista')
+  assert.doesNotMatch(guide.stdout, /¿Qué vende/, 'nada de dar por sentado que hay negocio')
+  assert.match(guide.stdout, /cómo se sostiene: venta, suscripción, donación/)
+  assert.match(guide.stdout, /qué servicios o carpetas están muertos/, 'con código, el alcance importa')
+  assert.doesNotMatch(guide.stdout, /dónde está el código/, 'y no se pregunta lo que está a la vista')
 
   const json = JSON.parse(run(['onboard', target, '--json']).stdout)
   assert.equal(json.fresh, true)
@@ -336,27 +322,27 @@ test('onboard guía con preguntas y no pisa lo que ya está escrito', () => {
 
   // Con contexto escrito, la guía deja de ofrecer un arranque que pisaría trabajo ajeno.
   fs.writeFileSync(path.join(target, 'organization', 'company.md'), '# Organización\n\nUn proyecto libre.\n')
-  const despues = run(['onboard', target])
-  assert.match(despues.stdout, /ya tiene organization\/ escrito/)
-  assert.doesNotMatch(despues.stdout, /¿De qué trata/, 'no vuelve a preguntar lo contestado')
+  const after = run(['onboard', target])
+  assert.match(after.stdout, /ya tiene organization\/ escrito/)
+  assert.doesNotMatch(after.stdout, /¿De qué trata/, 'no vuelve a preguntar lo contestado')
 })
 
 // El inventario es determinista a propósito: pedirle a un modelo que recorriera el árbol costó doce
 // minutos en una carpeta vacía. Acá se comprueba lo que ese recorrido tiene que saber sin ayuda —dónde
 // mirar, qué saltear y qué comandos declara cada servicio— y que no corra ninguno.
 test('scan inventaría el workspace y saltea lo que nunca es un servicio', () => {
-  const base = temporal('cauce-scan-')
+  const base = tempRoot('cauce-scan-')
   const repo = path.join(base, 'mono')
-  const escribir = (relative, content) => {
+  const writeIt = (relative, content) => {
     fs.mkdirSync(path.join(repo, path.dirname(relative)), { recursive: true })
     fs.writeFileSync(path.join(repo, relative), content)
   }
-  escribir('apps/api/package.json', JSON.stringify({ scripts: { test: 'jest', build: 'tsc' } }))
-  escribir('apps/web/go.mod', 'module acme/web\n')
-  escribir('apps/web/Makefile', 'test:\n\tgo test ./...\n')
+  writeIt('apps/api/package.json', JSON.stringify({ scripts: { test: 'jest', build: 'tsc' } }))
+  writeIt('apps/web/go.mod', 'module acme/web\n')
+  writeIt('apps/web/Makefile', 'test:\n\tgo test ./...\n')
   // Los dos que hacen la diferencia entre milisegundos y minutos, y entre inventario y ruido.
-  escribir('node_modules/pkg/package.json', '{"name":"pkg"}')
-  escribir('.cauce-eval/caso/package.json', '{"name":"caso"}')
+  writeIt('node_modules/pkg/package.json', '{"name":"pkg"}')
+  writeIt('.cauce-eval/caso/package.json', '{"name":"caso"}')
 
   const target = path.join(repo, 'ops')
   assert.equal(run(['init', target, '--name', 'Mono', '--mode', 'sidecar', '--no-install']).status, 0)
@@ -375,15 +361,15 @@ test('scan inventaría el workspace y saltea lo que nunca es un servicio', () =>
   // Cada servicio trae las credenciales que espera, por nombre. En un multirepo el ejemplo vive dentro
   // de cada repositorio: leyendo sólo la raíz, las de tres repos no existían para el arranque.
   fs.writeFileSync(path.join(repo, 'apps', 'api', '.env.example'), '# base\nDATABASE_URL=\nexport JWT=secreto\n')
-  const conEnv = JSON.parse(run(['scan', repo, '--json']).stdout)
-  const conCreds = conEnv.services.find((service) => service.path === 'apps/api')
-  assert.deepEqual(conCreds.env, { file: '.env.example', names: ['DATABASE_URL', 'JWT'], truncated: 0 })
-  assert.doesNotMatch(JSON.stringify(conEnv), /secreto/, 'el nombre, nunca el valor')
+  const withEnv = JSON.parse(run(['scan', repo, '--json']).stdout)
+  const withCreds = withEnv.services.find((service) => service.path === 'apps/api')
+  assert.deepEqual(withCreds.env, { file: '.env.example', names: ['DATABASE_URL', 'JWT'], truncated: 0 })
+  assert.doesNotMatch(JSON.stringify(withEnv), /secreto/, 'el nombre, nunca el valor')
 
-  const humano = run(['scan'], target)
-  assert.match(humano.stdout, /apps\/api \[node\]/)
-  assert.match(humano.stdout, /2 candidato\(s\)/)
-  assert.doesNotMatch(humano.stdout, /node_modules|cauce-eval/, 'ni de nombre')
+  const human = run(['scan'], target)
+  assert.match(human.stdout, /apps\/api \[node\]/)
+  assert.match(human.stdout, /2 candidato\(s\)/)
+  assert.doesNotMatch(human.stdout, /node_modules|cauce-eval/, 'ni de nombre')
 })
 
 // La guía es lo único que le dice a alguien qué hacer con lo que acaba de crear, así que no puede
@@ -392,7 +378,7 @@ test('scan inventaría el workspace y saltea lo que nunca es un servicio', () =>
 // como «no hay nada nuevo» durante todas las versiones siguientes, y el usuario se queda atrás en
 // silencio. La instrucción concreta vale más que la advertencia.
 test('upgrade --check dice contra qué compara y cómo traer lo nuevo', () => {
-  const base = temporal('cauce-aldia-')
+  const base = tempRoot('cauce-aldia-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
   const check = run(['upgrade', target, '--check'])
@@ -408,7 +394,7 @@ test('upgrade --check dice contra qué compara y cómo traer lo nuevo', () => {
 })
 
 test('init imprime la guía aunque no instale la dependencia', () => {
-  const base = temporal('cauce-guia-init-')
+  const base = tempRoot('cauce-guia-init-')
   const repo = path.join(base, 'mono')
   fs.mkdirSync(path.join(repo, 'apps'), { recursive: true })
   const created = run(['init', '--no-install'], repo)
@@ -418,7 +404,7 @@ test('init imprime la guía aunque no instale la dependencia', () => {
 })
 
 test('init no crea una carpeta ops dentro de otra', () => {
-  const base = temporal('cauce-anidada-')
+  const base = tempRoot('cauce-anidada-')
   const repo = path.join(base, 'acme-ops')
   fs.mkdirSync(repo)
   // Sólo `.git`: es lo que hay en la carpeta que alguien acaba de crear y versionar para la instancia.
@@ -433,15 +419,15 @@ test('init no crea una carpeta ops dentro de otra', () => {
 })
 
 test('init deja la instancia funcionando en una sola corrida', () => {
-  const base = temporal('cauce-uno-')
+  const base = tempRoot('cauce-uno-')
   const repo = path.join(base, 'mono')
   const bin = path.join(base, 'bin')
   fs.mkdirSync(repo)
   fs.mkdirSync(bin)
-  const motor = path.resolve(__dirname, '..')
+  const engine = path.resolve(__dirname, '..')
   fs.writeFileSync(
     path.join(bin, 'npm'),
-    `#!/usr/bin/env bash\nmkdir -p node_modules/@ingeniomaps\nln -sfn ${motor} node_modules/@ingeniomaps/cauce\n`,
+    `#!/usr/bin/env bash\nmkdir -p node_modules/@ingeniomaps\nln -sfn ${engine} node_modules/@ingeniomaps/cauce\n`,
     { mode: 0o755 },
   )
   const env = { ...process.env, PATH: `${bin}:${process.env.PATH}` }
@@ -466,7 +452,7 @@ test('init deja la instancia funcionando en una sola corrida', () => {
 // Y cuando npm falla, la instancia queda creada pero no funciona: decirlo es la diferencia entre
 // arrancar de nuevo y perseguir un error del runner tres pasos después.
 test('init no disimula un npm install que falló', () => {
-  const base = temporal('cauce-sinred-')
+  const base = tempRoot('cauce-sinred-')
   const repo = path.join(base, 'mono')
   const bin = path.join(base, 'bin')
   fs.mkdirSync(repo)
@@ -492,29 +478,29 @@ test('init no disimula un npm install que falló', () => {
 // Una corrida real reescribió `organization/` entero: buen contenido, otras secciones. El archivo se lee
 // completo y perdió cuatro dimensiones, y nadie las va a pedir después porque nada indica que faltaban.
 test('check avisa cuando una dimensión del molde desapareció', () => {
-  const base = temporal('cauce-molde-')
+  const base = tempRoot('cauce-molde-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
   assert.doesNotMatch(run(['check', path.join(target, 'planning')]).stdout, /sin ##/, 'el molde intacto no avisa')
 
   const company = path.join(target, 'organization', 'company.md')
   fs.writeFileSync(company, '# Organización\n\n## Propósito\n\nGenerar catálogos.\n')
-  const avisado = run(['check', path.join(target, 'planning')])
-  assert.equal(avisado.status, 0, 'es advertencia, no error: los archivos son de la empresa')
-  assert.match(avisado.stderr + avisado.stdout, /company\.md: sin ## De qué se trata.*y \d+ más/)
+  const warned = run(['check', path.join(target, 'planning')])
+  assert.equal(warned.status, 0, 'es advertencia, no error: los archivos son de la empresa')
+  assert.match(warned.stderr + warned.stdout, /company\.md: sin ## De qué se trata.*y \d+ más/)
 
   // Agregar secciones propias no molesta: lo que se avisa es lo que se fue.
-  const molde = fs.readFileSync(path.join(target, 'organization', 'product.md'), 'utf8')
-  fs.writeFileSync(path.join(target, 'organization', 'product.md'), `${molde}\n## Nuestra sección\n\nAlgo.\n`)
-  const conPropia = run(['check', path.join(target, 'planning')])
-  assert.doesNotMatch(conPropia.stderr + conPropia.stdout, /product\.md: sin/)
+  const mold = fs.readFileSync(path.join(target, 'organization', 'product.md'), 'utf8')
+  fs.writeFileSync(path.join(target, 'organization', 'product.md'), `${mold}\n## Nuestra sección\n\nAlgo.\n`)
+  const withOwn = run(['check', path.join(target, 'planning')])
+  assert.doesNotMatch(withOwn.stderr + withOwn.stdout, /product\.md: sin/)
 })
 
 // Cuatro corridas reales, cuatro resultados distintos: dos cubrieron todas las variables declaradas y
 // dos dejaron afuera las que la conversación no tocó —entre ellas el broker por donde entran los datos—.
 // Una variable sin dueño no rompe nada hoy: rompe el día que alguien tiene que desplegar.
 test('check avisa por las credenciales que nadie se llevó', () => {
-  const base = temporal('cauce-creds-')
+  const base = tempRoot('cauce-creds-')
   const workspace = path.join(base, 'repo')
   const target = path.join(workspace, 'ops')
   fs.mkdirSync(workspace)
@@ -528,10 +514,10 @@ test('check avisa por las credenciales que nadie se llevó', () => {
   // Escrita a medias: una nombrada, la otra no.
   fs.writeFileSync(path.join(target, 'organization', 'company.md'), '# Organización\n\nAlgo real.\n')
   fs.appendFileSync(path.join(target, 'AGENTS.md'), '\n- DATABASE_URL: la carga el equipo de infra.\n')
-  const media = run(['check', path.join(target, 'planning')])
-  assert.equal(media.status, 0, 'es advertencia: no rompe el gate')
-  assert.match(media.stderr + media.stdout, /declara SENTRY_DSN/)
-  assert.doesNotMatch(media.stderr + media.stdout, /DATABASE_URL/, 'la que sí tiene dueño no se nombra')
+  const half = run(['check', path.join(target, 'planning')])
+  assert.equal(half.status, 0, 'es advertencia: no rompe el gate')
+  assert.match(half.stderr + half.stdout, /declara SENTRY_DSN/)
+  assert.doesNotMatch(half.stderr + half.stdout, /DATABASE_URL/, 'la que sí tiene dueño no se nombra')
 
   fs.appendFileSync(path.join(target, 'planning', 'HUMAN_ACTIONS.md'),
     '| sentry | pendiente | onboard | Cargar SENTRY_DSN en el entorno |\n')
@@ -542,30 +528,30 @@ test('check avisa por las credenciales que nadie se llevó', () => {
 // `check` respondía «planning válido: 0 épica(s)». El silencio es peor que el rechazo — el planning se
 // reporta sano mientras el trabajo que alguien escribió no existe para el sistema.
 test('check no deja pasar una épica que nadie va a leer', () => {
-  const base = temporal('cauce-invisible-')
+  const base = tempRoot('cauce-invisible-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
   const roadmap = path.join(target, 'planning', 'roadmap')
-  const epica = [
+  const epic = [
     '---', 'epic: 001', 'title: Algo', 'status: open', 'service: .', '---', '',
     '## Criterios', '', '- **C1** — Algo observable.', '',
     '## Contexto relevante', '', '- Contexto.', '',
     '## Historias', '', '- [ ] **una** (→ C1) — Hace algo. _Aceptación: pasa algo._ (service: .)', '',
   ].join('\n')
 
-  fs.writeFileSync(path.join(roadmap, 'epic-001.md'), epica)
-  const roto = run(['check', path.join(target, 'planning')])
-  assert.equal(roto.status, 1, 'no puede dar verde')
-  assert.match(roto.stderr, /epic-001\.md: nadie lo lee/)
+  fs.writeFileSync(path.join(roadmap, 'epic-001.md'), epic)
+  const broken = run(['check', path.join(target, 'planning')])
+  assert.equal(broken.status, 1, 'no puede dar verde')
+  assert.match(broken.stderr, /epic-001\.md: nadie lo lee/)
 
   fs.renameSync(path.join(roadmap, 'epic-001.md'), path.join(roadmap, 'epic-001-algo.md'))
-  const bien = run(['check', path.join(target, 'planning')])
-  assert.equal(bien.status, 0, bien.stderr)
-  assert.match(bien.stdout, /1 épica/)
+  const good = run(['check', path.join(target, 'planning')])
+  assert.equal(good.status, 0, good.stderr)
+  assert.match(good.stdout, /1 épica/)
 })
 
 test('destroy avisa qué se pierde y no borra hasta que se lo pidan dos veces', () => {
-  const base = temporal('cauce-destroy-')
+  const base = tempRoot('cauce-destroy-')
   const workspace = path.join(base, 'mono')
   const target = path.join(workspace, 'ops')
   fs.mkdirSync(workspace)
@@ -576,26 +562,26 @@ test('destroy avisa qué se pierde y no borra hasta que se lo pidan dos veces', 
 
   // Una instancia recién creada no perdió nada todavía, y decir lo contrario es exagerar: los moldes
   // traen ejemplos comentados que una cuenta a mano lee como trabajo real.
-  const aviso = run(['destroy', target])
-  assert.equal(aviso.status, 1, 'sin --force no borra')
-  assert.match(aviso.stdout, /nada escrito todavía/)
-  assert.match(aviso.stdout, /saca el wiring de: claude/)
+  const warning = run(['destroy', target])
+  assert.equal(warning.status, 1, 'sin --force no borra')
+  assert.match(warning.stdout, /nada escrito todavía/)
+  assert.match(warning.stdout, /saca el wiring de: claude/)
   assert.equal(fs.existsSync(path.join(target, 'planning')), true)
 
   // Con trabajo escrito, lo enumera antes de tocar nada.
   fs.appendFileSync(path.join(target, 'planning', 'HUMAN_ACTIONS.md'), '| algo | pendiente | onboard | x |\n')
   assert.match(run(['destroy', target]).stdout, /1 acción\(es\) humana\(s\)/)
 
-  const hecho = run(['destroy', target, '--force'])
-  assert.equal(hecho.status, 0, hecho.stderr)
+  const done = run(['destroy', target, '--force'])
+  assert.equal(done.status, 0, done.stderr)
   assert.equal(fs.existsSync(target), false, 'la instancia se fue')
   assert.equal(fs.existsSync(path.join(workspace, '.claude', 'workflows', 'autobuild.js')), false, 'y su wiring')
   assert.equal(fs.readFileSync(path.join(workspace, '.claude', 'workflows', 'mio.js'), 'utf8'), '// mío\n')
 
   // Y no se lo puede apuntar a cualquier cosa.
-  const ajeno = run(['destroy', workspace])
-  assert.equal(ajeno.status, 2)
-  assert.match(ajeno.stderr, /no es una instancia de Cauce/)
+  const foreign = run(['destroy', workspace])
+  assert.equal(foreign.status, 2)
+  assert.match(foreign.stderr, /no es una instancia de Cauce/)
 })
 
 // En modo embebido el archivo de instrucciones de Codex y el `AGENTS.md` de la empresa son el mismo, y
@@ -604,17 +590,17 @@ test('destroy avisa qué se pierde y no borra hasta que se lo pidan dos veces', 
 // En modo embebido la instancia **es** el repositorio, así que borrar la carpeta se lleva el código del
 // producto. Pasó de verdad sobre un caso de prueba: `destroy --force` dejó el directorio vacío.
 test('destroy no se lleva el repositorio en modo embebido', () => {
-  const base = temporal('cauce-emb-destroy-')
+  const base = tempRoot('cauce-emb-destroy-')
   const repo = path.join(base, 'app')
   fs.mkdirSync(path.join(repo, 'src'), { recursive: true })
   fs.writeFileSync(path.join(repo, 'src', 'main.rs'), 'fn main() {}\n')
   fs.writeFileSync(path.join(repo, 'Cargo.toml'), '[package]\nname = "app"\n')
   assert.equal(run(['init', repo, '--mode', 'embedded', '--force', '--name', 'App', '--no-install']).status, 0)
 
-  const aviso = run(['destroy', repo])
-  assert.equal(aviso.status, 1)
-  assert.match(aviso.stdout, /Sacar Cauce de/)
-  assert.match(aviso.stdout, /el código del repositorio no se toca/)
+  const warning = run(['destroy', repo])
+  assert.equal(warning.status, 1)
+  assert.match(warning.stdout, /Sacar Cauce de/)
+  assert.match(warning.stdout, /el código del repositorio no se toca/)
 
   assert.equal(run(['destroy', repo, '--force']).status, 0)
   assert.equal(fs.existsSync(path.join(repo, 'src', 'main.rs')), true, 'el código sigue')
@@ -624,7 +610,7 @@ test('destroy no se lleva el repositorio en modo embebido', () => {
 })
 
 test('en embebido las instrucciones del runner conviven con las de la empresa', () => {
-  const base = temporal('cauce-embebido-')
+  const base = tempRoot('cauce-embebido-')
   const repo = path.join(base, 'app')
   fs.mkdirSync(repo)
   fs.writeFileSync(path.join(repo, 'package.json'), '{"scripts":{"test":"x"}}')
@@ -633,37 +619,37 @@ test('en embebido las instrucciones del runner conviven con las de la empresa', 
   assert.equal(run(['automation', 'install', repo, 'codex']).status, 0)
 
   const agents = path.join(repo, 'AGENTS.md')
-  const conBloque = fs.readFileSync(agents, 'utf8')
-  assert.match(conBloque, /## Mapa real/, 'lo de la empresa sigue')
-  assert.match(conBloque, /## El arranque/, 'y lo del runner llegó')
+  const withBlock = fs.readFileSync(agents, 'utf8')
+  assert.match(withBlock, /## Mapa real/, 'lo de la empresa sigue')
+  assert.match(withBlock, /## El arranque/, 'y lo del runner llegó')
 
   // Reinstalar no duplica, y lo que la empresa escriba sobrevive.
   fs.appendFileSync(agents, '\n## Nuestra sección\n\nAlgo nuestro.\n')
   assert.equal(run(['automation', 'install', repo, 'codex']).status, 0)
-  const otraVez = fs.readFileSync(agents, 'utf8')
-  assert.equal(otraVez.split('## El arranque').length - 1, 1, 'una sola copia del bloque')
-  assert.match(otraVez, /Nuestra sección/)
+  const again = fs.readFileSync(agents, 'utf8')
+  assert.equal(again.split('## El arranque').length - 1, 1, 'una sola copia del bloque')
+  assert.match(again, /Nuestra sección/)
 
   // Borrarlo a mano es un error, no un silencio: el runner queda sin instrucciones y nada lo decía. Se
   // saca el bloque y nada más, que es lo que haría alguien limpiando lo que no reconoce.
-  const desde = otraVez.indexOf('<!-- cauce:codex inicio')
-  const fin = '<!-- cauce:codex fin -->'
-  fs.writeFileSync(agents, otraVez.slice(0, desde) + otraVez.slice(otraVez.indexOf(fin) + fin.length))
-  const roto = run(['automation', 'doctor', repo, 'codex'])
-  assert.equal(roto.status, 1)
-  assert.match(roto.stderr, /no tiene las instrucciones de Cauce/)
+  const from = again.indexOf('<!-- cauce:codex inicio')
+  const end = '<!-- cauce:codex fin -->'
+  fs.writeFileSync(agents, again.slice(0, from) + again.slice(again.indexOf(end) + end.length))
+  const broken = run(['automation', 'doctor', repo, 'codex'])
+  assert.equal(broken.status, 1)
+  assert.match(broken.stderr, /no tiene las instrucciones de Cauce/)
 
   // Y el desinstalador saca el bloque sin llevarse el archivo.
   assert.equal(run(['automation', 'install', repo, 'codex']).status, 0)
   assert.equal(run(['automation', 'uninstall', repo, 'codex']).status, 0)
-  const despues = fs.readFileSync(agents, 'utf8')
-  assert.doesNotMatch(despues, /## El arranque/)
-  assert.match(despues, /## Mapa real/)
-  assert.match(despues, /Nuestra sección/)
+  const after = fs.readFileSync(agents, 'utf8')
+  assert.doesNotMatch(after, /## El arranque/)
+  assert.match(after, /## Mapa real/)
+  assert.match(after, /Nuestra sección/)
 })
 
 test('automation uninstall saca lo del toolkit y deja lo del usuario', () => {
-  const base = temporal('cauce-uninst-')
+  const base = tempRoot('cauce-uninst-')
   const workspace = path.join(base, 'mono')
   const target = path.join(workspace, 'ops')
   fs.mkdirSync(workspace)
@@ -694,9 +680,9 @@ test('automation uninstall saca lo del toolkit y deja lo del usuario', () => {
   assert.match(result.stdout, /conservado CLAUDE\.md/)
   assert.match(fs.readFileSync(path.join(workspace, 'CLAUDE.md'), 'utf8'), /# mi contexto/)
 
-  const quedó = JSON.parse(fs.readFileSync(settingsFile, 'utf8'))
-  assert.deepEqual(quedó.env, { MI_VAR: '1' }, 'lo suyo intacto')
-  assert.deepEqual(quedó.hooks.PreToolUse, [
+  const left = JSON.parse(fs.readFileSync(settingsFile, 'utf8'))
+  assert.deepEqual(left.env, { MI_VAR: '1' }, 'lo suyo intacto')
+  assert.deepEqual(left.hooks.PreToolUse, [
     { matcher: 'Bash', hooks: [{ type: 'command', command: 'echo mio' }] },
   ], 'y de los hooks sólo queda el suyo')
 
@@ -707,7 +693,7 @@ test('automation uninstall saca lo del toolkit y deja lo del usuario', () => {
 })
 
 test('init rechaza un runner que no existe', () => {
-  const base = temporal('cauce-runner-')
+  const base = tempRoot('cauce-runner-')
   const target = path.join(base, 'demo-ops')
   const result = run(['init', target, '--mode', 'sidecar', '--runner', 'emacs'])
   assert.equal(result.status, 2)
@@ -715,7 +701,7 @@ test('init rechaza un runner que no existe', () => {
 })
 
 test('init rechaza destinos atravesados por symlinks', () => {
-  const base = temporal('cauce-symlink-')
+  const base = tempRoot('cauce-symlink-')
   const target = path.join(base, 'project')
   const outside = path.join(base, 'outside')
   fs.mkdirSync(target)
@@ -727,7 +713,7 @@ test('init rechaza destinos atravesados por symlinks', () => {
 })
 
 test('check rechaza una tarea sin aceptación', () => {
-  const base = temporal('cauce-invalid-')
+  const base = tempRoot('cauce-invalid-')
   const target = path.join(base, 'project')
   assert.equal(run(['init', target, '--name', 'Invalid', '--mode', 'embedded']).status, 0)
   const invalidBacklog = '# Backlog\n\n## Hito demo — Demo\n\n'
@@ -738,7 +724,7 @@ test('check rechaza una tarea sin aceptación', () => {
 })
 
 test('install reemplaza el wiring por guard suelto y conserva lo que no es suyo', () => {
-  const base = temporal('cauce-migrate-')
+  const base = tempRoot('cauce-migrate-')
   const target = path.join(base, 'project')
   assert.equal(run(['init', target, '--name', 'Migrate', '--mode', 'sidecar']).status, 0)
   linkEngine(target)
@@ -776,10 +762,10 @@ test('install reemplaza el wiring por guard suelto y conserva lo que no es suyo'
   // `doctor` también comprueba que el CLI del runner esté en PATH, que es un hecho de la máquina y no
   // del wiring: acá pasaba porque el dev tiene `claude` instalado y fallaba en el runner de CI, que no.
   // Lo que este test mide es que la instalación no dejara nada que reportar.
-  const avisos = run(['automation', 'doctor', target, 'claude']).stderr
+  const warnings = run(['automation', 'doctor', target, 'claude']).stderr
     .split('\n')
     .filter((line) => line.trim() && !/CLI no encontrado en PATH/.test(line))
-  assert.deepEqual(avisos, [], 'doctor no reporta nada del wiring')
+  assert.deepEqual(warnings, [], 'doctor no reporta nada del wiring')
 
   const second = run(['automation', 'install', target, 'claude'])
   assert.equal(second.status, 0, second.stderr)
@@ -795,7 +781,7 @@ test('check --json entrega estado consumible y conserva el exit code', () => {
   assert.deepEqual(report.errors, [])
   for (const field of ['epics', 'queued', 'done']) assert.equal(typeof report[field], 'number')
 
-  const base = temporal('cauce-json-')
+  const base = tempRoot('cauce-json-')
   const target = path.join(base, 'project')
   assert.equal(run(['init', target, '--name', 'Json', '--mode', 'embedded']).status, 0)
   fs.writeFileSync(
@@ -825,7 +811,7 @@ test('tree --json refleja el mismo estado que la salida de texto', () => {
 })
 
 test('context entrega el contexto mínimo y respeta la precedencia del protocolo', () => {
-  const base = temporal('cauce-context-')
+  const base = tempRoot('cauce-context-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Context', '--mode', 'sidecar']).status, 0)
   const planning = path.join(target, 'planning')
@@ -930,7 +916,7 @@ test('tree no muta archivos de estado', () => {
 })
 
 test('valida y archiva el ciclo completo de una épica', () => {
-  const base = temporal('cauce-cycle-')
+  const base = tempRoot('cauce-cycle-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Cycle', '--mode', 'sidecar']).status, 0)
   const planning = path.join(target, 'planning')
@@ -994,7 +980,7 @@ service: app
 })
 
 test('Jira sincroniza ADF, preserva curación y promueve sin escribir remoto', () => {
-  const base = temporal('cauce-jira-')
+  const base = tempRoot('cauce-jira-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Jira demo', '--mode', 'sidecar']).status, 0)
   fs.mkdirSync(path.join(base, 'app'))
@@ -1055,34 +1041,34 @@ test('Jira sincroniza ADF, preserva curación y promueve sin escribir remoto', (
   assert.equal(plan.status, 0, plan.stderr)
   assert.equal(JSON.parse(plan.stdout).writeBack, false, 'no hay ejecutor remoto aprobado')
 
-  for (const operacion of ['reconcile', 'rebase', 'reset']) {
-    const result = run(['integration', operacion, target, 'jira', 'DEMO-42'])
+  for (const operation of ['reconcile', 'rebase', 'reset']) {
+    const result = run(['integration', operation, target, 'jira', 'DEMO-42'])
     assert.equal(result.status, 0, result.stderr)
-    assert.match(result.stdout, new RegExp(`${operacion} aplicado a DEMO-42`))
+    assert.match(result.stdout, new RegExp(`${operation} aplicado a DEMO-42`))
   }
   assert.notEqual(run(['integration', 'reset', target, 'jira', 'NO-EXISTE']).status, 0)
 
   // Un item que desaparece del remoto cambia el staging, y `sync` lo contaba sin decirlo. Con
   // curación queda marcado; sin ella se borra. Las dos cosas se avisan porque las dos son pérdidas
   // potenciales de trabajo, y la única señal era mirar el directorio.
-  const vacio = path.join(base, 'vacio.json')
-  fs.writeFileSync(vacio, '{"issues":[]}')
+  const blank = path.join(base, 'vacio.json')
+  fs.writeFileSync(blank, '{"issues":[]}')
   // El `reset` de arriba dejó el draft igual al snapshot, o sea sin curar. Se le vuelve a poner algo
   // propio para probar la rama que conserva.
   fs.writeFileSync(draftFile, `${fs.readFileSync(draftFile, 'utf8')}\n- Nota local.\n`)
-  const curado = run(['integration', 'sync', target, 'jira', '--fixture', vacio])
-  assert.equal(curado.status, 0, curado.stderr)
-  assert.match(curado.stdout, /1 con curación ya no están en el remoto/)
+  const curated = run(['integration', 'sync', target, 'jira', '--fixture', blank])
+  assert.equal(curated.status, 0, curated.stderr)
+  assert.match(curated.stdout, /1 con curación ya no están en el remoto/)
 
   assert.equal(run(['integration', 'reset', target, 'jira', 'DEMO-42']).status, 0)
-  const borrado = run(['integration', 'sync', target, 'jira', '--fixture', vacio])
-  assert.equal(borrado.status, 0, borrado.stderr)
-  assert.match(borrado.stdout, /1 sin curar se fueron del remoto y se borraron/)
+  const deleted = run(['integration', 'sync', target, 'jira', '--fixture', blank])
+  assert.equal(deleted.status, 0, deleted.stderr)
+  assert.match(deleted.stdout, /1 sin curar se fueron del remoto y se borraron/)
   assert.equal(fs.existsSync(staged), false, 'y el directorio efectivamente ya no está')
 })
 
 test('upgrade reemplaza lo del sistema y no toca nada del proyecto', () => {
-  const base = temporal('cauce-upgrade-')
+  const base = tempRoot('cauce-upgrade-')
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
 
@@ -1115,7 +1101,7 @@ test('upgrade reemplaza lo del sistema y no toca nada del proyecto', () => {
 })
 
 test('upgrade se niega a pisar una edición del runtime sin --force', () => {
-  const base = temporal('cauce-upgrade-edit-')
+  const base = tempRoot('cauce-upgrade-edit-')
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
 
@@ -1134,7 +1120,7 @@ test('upgrade se niega a pisar una edición del runtime sin --force', () => {
 })
 
 test('el motor llega siempre como dependencia, haya o no package.json', () => {
-  const base = temporal('cauce-engine-')
+  const base = tempRoot('cauce-engine-')
 
   // Un repo sin package.json recibe uno mínimo: el repo ops es un sidecar, así que declarar npm acá
   // no le impone un stack al servicio que está al lado.
@@ -1156,7 +1142,7 @@ test('el motor llega siempre como dependencia, haya o no package.json', () => {
 })
 
 test('el shim falla con instrucciones cuando no encuentra el motor', () => {
-  const base = temporal('cauce-shim-')
+  const base = tempRoot('cauce-shim-')
   const target = path.join(base, 'huerfano')
   assert.equal(run(['init', target, '--name', 'H', '--mode', 'sidecar']).status, 0)
   fs.rmSync(path.join(target, '.ops'), { recursive: true, force: true })
@@ -1170,7 +1156,7 @@ test('el shim falla con instrucciones cuando no encuentra el motor', () => {
 })
 
 test('upgrade explica cómo personalizar el runtime sin editarlo, y deja rastro al descartar', () => {
-  const base = temporal('cauce-runtime-')
+  const base = tempRoot('cauce-runtime-')
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
 
@@ -1195,7 +1181,7 @@ test('upgrade explica cómo personalizar el runtime sin editarlo, y deja rastro 
 })
 
 test('el $schema de la instancia apunta al motor de la dependencia', () => {
-  const base = temporal('cauce-schema-')
+  const base = tempRoot('cauce-schema-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'D', '--mode', 'sidecar']).status, 0)
   const schema = JSON.parse(fs.readFileSync(path.join(target, 'ops.config.json'), 'utf8')).$schema
@@ -1206,7 +1192,7 @@ test('el $schema de la instancia apunta al motor de la dependencia', () => {
 
 test('el catálogo llega con la dependencia y el proyecto sólo lleva lo suyo', () => {
   const catalog = require('../engine/agents/catalog')
-  const base = temporal('cauce-catalogo-')
+  const base = tempRoot('cauce-catalogo-')
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
   linkEngine(target)
@@ -1230,7 +1216,7 @@ test('el catálogo llega con la dependencia y el proyecto sólo lleva lo suyo', 
 })
 
 test('nada se vendoriza, ni al crear ni al actualizar', () => {
-  const base = temporal('cauce-vendor-')
+  const base = tempRoot('cauce-vendor-')
   const target = path.join(base, 'acme')
   fs.mkdirSync(target, { recursive: true })
   fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({ name: 'acme', version: '1.0.0' }))
@@ -1243,31 +1229,31 @@ test('nada se vendoriza, ni al crear ni al actualizar', () => {
 
   // Una instancia que arrastra la copia de una versión anterior no se rompe en silencio: se le dice.
   fs.mkdirSync(path.join(target, '.ops', 'engine'), { recursive: true })
-  const avisado = run(['upgrade', target])
-  assert.equal(avisado.status, 0)
-  assert.match(avisado.stdout, /\.ops\/, que Cauce ya no distribuye/)
+  const warned = run(['upgrade', target])
+  assert.equal(warned.status, 0)
+  assert.match(warned.stdout, /\.ops\/, que Cauce ya no distribuye/)
   assert.equal(fs.existsSync(path.join(target, '.ops')), true, 'y no se lo borra por su cuenta')
 })
 
 test('upgrade distingue una edición local de una mejora del toolkit', () => {
   const M = require('../engine/core/manifest')
-  const base = temporal('cauce-manifiesto-')
+  const base = tempRoot('cauce-manifiesto-')
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'A', '--mode', 'sidecar']).status, 0)
 
   const guard = path.join(target, 'automatization', 'hooks', 'guard-verify.sh')
-  const regla = path.join(target, 'planning', 'business-rules', 'system', 'BR-OPS-001-una-sola-tarea-activa.md')
-  const registro = M.read(target)
-  assert.ok(Object.keys(registro).length > 10, 'init deja constancia de lo entregado')
-  assert.ok(registro['automatization/hooks/guard-verify.sh'], 'incluye el runtime')
-  assert.ok(registro['planning/business-rules/system/BR-OPS-001-una-sola-tarea-activa.md'], 'y las reglas')
+  const rule = path.join(target, 'planning', 'business-rules', 'system', 'BR-OPS-001-una-sola-tarea-activa.md')
+  const record = M.read(target)
+  assert.ok(Object.keys(record).length > 10, 'init deja constancia de lo entregado')
+  assert.ok(record['automatization/hooks/guard-verify.sh'], 'incluye el runtime')
+  assert.ok(record['planning/business-rules/system/BR-OPS-001-una-sola-tarea-activa.md'], 'y las reglas')
 
   // Nada editado: el upgrade pasa aunque el paquete traiga cambios.
   assert.equal(run(['upgrade', target]).status, 0)
 
   // Editado por la empresa: se detiene, y distingue de qué naturaleza es cada cosa.
   fs.appendFileSync(guard, '# mío\n')
-  fs.appendFileSync(regla, '\nmía\n')
+  fs.appendFileSync(rule, '\nmía\n')
   const refused = run(['upgrade', target])
   assert.notEqual(refused.status, 0)
   assert.match(refused.stderr, /guard-verify\.sh/)
@@ -1284,14 +1270,14 @@ test('upgrade distingue una edición local de una mejora del toolkit', () => {
   // registro, así que `upgrade` los reemplazaba sin comparar y la edición se perdía sin aviso: un
   // cargo escribió el índice de ADR que el propio README le pedía actualizar, comprobó que
   // desaparecería, y prefirió no dejar una entrada condenada a irse en silencio.
-  const contrato = path.join(target, 'AGENTS.md')
+  const contract = path.join(target, 'AGENTS.md')
   assert.ok(M.read(target)['AGENTS.md'], 'el archivo suelto queda registrado')
-  fs.appendFileSync(contrato, '\nlínea de la empresa\n')
-  const frenado = run(['upgrade', target])
-  assert.notEqual(frenado.status, 0, 'editar un archivo del sistema detiene la actualización')
-  assert.match(frenado.stderr, /AGENTS\.md/)
+  fs.appendFileSync(contract, '\nlínea de la empresa\n')
+  const stopped = run(['upgrade', target])
+  assert.notEqual(stopped.status, 0, 'editar un archivo del sistema detiene la actualización')
+  assert.match(stopped.stderr, /AGENTS\.md/)
   assert.equal(run(['upgrade', target, '--force']).status, 0)
-  assert.equal(/línea de la empresa/.test(fs.readFileSync(contrato, 'utf8')), false)
+  assert.equal(/línea de la empresa/.test(fs.readFileSync(contract, 'utf8')), false)
 })
 
 // El README de ADR pedía actualizar un índice del proyecto dentro de un archivo que Cauce mantiene:
@@ -1305,13 +1291,13 @@ test('ningún archivo del sistema pide que el proyecto lo edite', () => {
 })
 
 test('la instancia recibe cómo escribir lo que sí es suyo', () => {
-  const base = temporal('cauce-plantillas-')
+  const base = tempRoot('cauce-plantillas-')
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'A', '--mode', 'sidecar']).status, 0)
 
   // Mover una colección al paquete no puede llevarse la documentación que le habla a la empresa:
   // sin ella no tiene cómo saber qué escribir ni con qué contrato.
-  for (const guia of [
+  for (const guide of [
     ['teams', '000-template.md'],
     ['teams', 'README.md'],
     ['organization', 'roles', 'README.md'],
@@ -1319,7 +1305,7 @@ test('la instancia recibe cómo escribir lo que sí es suyo', () => {
     ['planning', 'adr', '000-template.md'],
     ['planning', 'roadmap', 'epic-000-template.md'],
   ]) {
-    assert.equal(fs.existsSync(path.join(target, ...guia)), true, `falta ${guia.join('/')}`)
+    assert.equal(fs.existsSync(path.join(target, ...guide)), true, `falta ${guide.join('/')}`)
   }
   // Y las definiciones que consume el motor siguen sin copiarse.
   assert.equal(fs.existsSync(path.join(target, 'teams', 'system')), false)
@@ -1331,11 +1317,11 @@ test('la instancia recibe cómo escribir lo que sí es suyo', () => {
 // no tenía forma de distinguir "no hay cargos" de "me contestaste con nada".
 test('una bandera no ocupa el lugar de un argumento', () => {
   const repo = path.resolve(__dirname, '..')
-  const conRaiz = run(['agents', 'list', repo, '--json'])
-  const sinRaiz = run(['agents', 'list', '--json'], repo)
-  assert.equal(conRaiz.status, 0, conRaiz.stderr)
-  assert.ok(JSON.parse(conRaiz.stdout).length >= 40, 'con raíz explícita antes de la bandera')
-  assert.ok(JSON.parse(sinRaiz.stdout).length >= 40, 'y con la bandera sola')
+  const withRoot = run(['agents', 'list', repo, '--json'])
+  const withoutRoot = run(['agents', 'list', '--json'], repo)
+  assert.equal(withRoot.status, 0, withRoot.stderr)
+  assert.ok(JSON.parse(withRoot.stdout).length >= 40, 'con raíz explícita antes de la bandera')
+  assert.ok(JSON.parse(withoutRoot.stdout).length >= 40, 'y con la bandera sola')
 })
 
 // `upgrade` e `install` son para una empresa: reemplazan lo que el toolkit mantiene por lo que el
@@ -1343,7 +1329,7 @@ test('una bandera no ocupa el lugar de un argumento', () => {
 // donde vive esta misma regla—, y el catálogo se duplicaría en punteros a sí mismo. `fork` ya se
 // negaba; estos dos entraban y hacían el daño en silencio.
 test('los comandos de una instancia se niegan a correr contra el toolkit', () => {
-  const root = temporal('cauce-toolkit-')
+  const root = tempRoot('cauce-toolkit-')
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'toolkit' }))
 
   const upgraded = run(['upgrade', root])
@@ -1365,7 +1351,7 @@ test('los comandos de una instancia se niegan a correr contra el toolkit', () =>
 // configuración rota, así que `upgrade` no reconocía el modo `toolkit` y seguía adelante — sobre el
 // repo donde vive la regla que se lo prohíbe. Ausente sigue siendo ausente y da el error de siempre.
 test('una configuración ilegible detiene el comando en vez de pasar por desconocida', () => {
-  const root = temporal('cauce-config-')
+  const root = tempRoot('cauce-config-')
   fs.mkdirSync(path.join(root, 'planning'))
   const config = path.join(root, 'ops.config.json')
 
@@ -1401,9 +1387,9 @@ test('el CLI rechaza una bandera que no existe en vez de ignorarla', () => {
   assert.equal(run(['tree', planning, '--json', '--no-color']).status, 0)
 
   // Y `--help` explica el comando en vez de ejecutarlo contra el directorio actual.
-  const ayuda = run(['check', '--help'])
-  assert.equal(ayuda.status, 0)
-  assert.match(ayuda.stdout, /^Uso:/)
+  const help = run(['check', '--help'])
+  assert.equal(help.status, 0)
+  assert.match(help.stdout, /^Uso:/)
 
   assert.equal(run(['inventado']).status, 2, 'un comando desconocido sigue fallando')
 })
@@ -1420,11 +1406,11 @@ test('la línea de comandos se parsea una vez y se puede probar sin proceso', ()
   assert.equal(simple.has('--force'), false)
 
   // Una bandera con valor se lleva el argumento siguiente: no es un posicional.
-  const conValor = parse(['init', 'destino', '--name', 'Demo', '--mode', 'sidecar'])
-  assert.deepEqual(conValor.positional, ['init', 'destino'], 'el valor no se cuela como posicional')
-  assert.equal(conValor.value('--name'), 'Demo')
-  assert.equal(conValor.value('--mode'), 'sidecar')
-  assert.equal(conValor.value('--fixture', 'por defecto'), 'por defecto', 'ausente cae al fallback')
+  const withValue = parse(['init', 'destino', '--name', 'Demo', '--mode', 'sidecar'])
+  assert.deepEqual(withValue.positional, ['init', 'destino'], 'el valor no se cuela como posicional')
+  assert.equal(withValue.value('--name'), 'Demo')
+  assert.equal(withValue.value('--mode'), 'sidecar')
+  assert.equal(withValue.value('--fixture', 'por defecto'), 'por defecto', 'ausente cae al fallback')
 
   // Y una sin valor declarado no se lleva nada: el caso de `--bench` queda de posicional.
   const bench = parse(['evaluate', 'qa-engineer', '--bench', '01-caso'])
@@ -1444,17 +1430,17 @@ test('la línea de comandos se parsea una vez y se puede probar sin proceso', ()
 // test así para la documentación de los cargos; el resto del repositorio no lo tenía, que es donde
 // estaba el error. Un comando inventado en un README no rompe nada hasta que alguien lo escribe.
 test('ningún documento del repositorio cita un comando make que no existe', () => {
-  const raiz = path.resolve(__dirname, '..')
-  const definidos = new Set()
+  const root = path.resolve(__dirname, '..')
+  const defined = new Set()
   for (const makefile of ['Makefile', path.join('template', 'Makefile')]) {
-    for (const hit of fs.readFileSync(path.join(raiz, makefile), 'utf8').matchAll(/^([a-z][a-z0-9-]*):/gm)) {
-      definidos.add(hit[1])
+    for (const hit of fs.readFileSync(path.join(root, makefile), 'utf8').matchAll(/^([a-z][a-z0-9-]*):/gm)) {
+      defined.add(hit[1])
     }
   }
-  const inventados = []
-  const revisar = (file) => {
+  const invented = []
+  const review = (file) => {
     for (const hit of fs.readFileSync(file, 'utf8').matchAll(/(?:^|[`\s])make ([a-z][a-z0-9-]*)/gm)) {
-      if (!definidos.has(hit[1])) inventados.push(`${path.relative(raiz, file)}: make ${hit[1]}`)
+      if (!defined.has(hit[1])) invented.push(`${path.relative(root, file)}: make ${hit[1]}`)
     }
   }
   const walk = (dir) => {
@@ -1465,41 +1451,41 @@ test('ningún documento del repositorio cita un comando make que no existe', () 
       if (entry.name === 'node_modules' || entry.name === 'results' || entry.name.startsWith('.')) continue
       const file = path.join(dir, entry.name)
       if (entry.isDirectory()) walk(file)
-      else if (entry.name.endsWith('.md')) revisar(file)
+      else if (entry.name.endsWith('.md')) review(file)
     }
   }
-  for (const dir of ['automatization', 'engine', 'template', 'test', 'teams']) walk(path.join(raiz, dir))
-  for (const name of fs.readdirSync(raiz)) {
-    if (name.endsWith('.md')) revisar(path.join(raiz, name))
+  for (const dir of ['automatization', 'engine', 'template', 'test', 'teams']) walk(path.join(root, dir))
+  for (const name of fs.readdirSync(root)) {
+    if (name.endsWith('.md')) review(path.join(root, name))
   }
-  assert.ok(definidos.size > 5, 'los Makefiles deberían declarar varios objetivos')
-  assert.deepEqual(inventados, [])
+  assert.ok(defined.size > 5, 'los Makefiles deberían declarar varios objetivos')
+  assert.deepEqual(invented, [])
 })
 
 test('los módulos de Node se importan con el prefijo node:', () => {
-  const raiz = path.resolve(__dirname, '..')
-  const archivos = []
+  const root = path.resolve(__dirname, '..')
+  const files = []
   const walk = (dir) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue
       const current = path.join(dir, entry.name)
       if (entry.isDirectory()) walk(current)
-      else if (entry.name.endsWith('.js')) archivos.push(current)
+      else if (entry.name.endsWith('.js')) files.push(current)
     }
   }
-  for (const dir of ['engine', 'automatization', 'template', 'test']) walk(path.join(raiz, dir))
+  for (const dir of ['engine', 'automatization', 'template', 'test']) walk(path.join(root, dir))
 
-  const sueltos = []
-  for (const file of archivos) {
+  const loose = []
+  for (const file of files) {
     // Sin los comentarios: este mismo test nombra `require('fs')` para explicar por qué no va.
     const source = fs.readFileSync(file, 'utf8').split('\n')
       .filter((line) => !line.trim().startsWith('//')).join('\n')
     for (const match of source.matchAll(/require\('([a-z_]+)'\)/g)) {
       if (require('node:module').builtinModules.includes(match[1])) {
-        sueltos.push(`${path.relative(raiz, file)}: require('${match[1]}')`)
+        loose.push(`${path.relative(root, file)}: require('${match[1]}')`)
       }
     }
   }
-  assert.deepEqual(sueltos, [], 'usan `node:` delante')
-  assert.ok(archivos.length > 30, `el recorrido encontró ${archivos.length} archivos`)
+  assert.deepEqual(loose, [], 'usan `node:` delante')
+  assert.ok(files.length > 30, `el recorrido encontró ${files.length} archivos`)
 })

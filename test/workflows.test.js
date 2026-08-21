@@ -1,6 +1,6 @@
 'use strict'
 
-const { temporal } = require('./entorno')
+const { tempRoot } = require('./environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -169,10 +169,10 @@ test('team manda el resumen entre etapas y el análisis entero a la síntesis', 
 // recortado pasa desapercibido ahí. Y el contrato del equipo enumera sus salidas: «hacer, no hacer o
 // investigar». Con dos, la del medio se convierte en la primera, que es presupuestar lo que nadie sabe.
 test('el recorrido de equipo tiene las tres salidas que el contrato enumera', () => {
-  const contrato = fs.readFileSync(
+  const contract = fs.readFileSync(
     path.resolve(__dirname, '..', 'teams', 'system', 'feasibility-review', 'WORKFLOW.md'), 'utf8',
   )
-  assert.match(contrato, /hacer, no hacer o investigar/, 'el contrato del equipo enumera tres salidas')
+  assert.match(contract, /hacer, no hacer o investigar/, 'el contrato del equipo enumera tres salidas')
   assert.match(teamWorkflow, /enum: \['hacer', 'investigar', 'no-hacer'\]/, 'y el recorrido las tiene')
   // Cada una con su destino, que el mismo contrato nombra.
   assert.match(teamWorkflow, /outcome === 'investigar'[\s\S]{0,400}label: 'investigar'/, 'investigar')
@@ -209,11 +209,11 @@ test('team acepta la intención suelta, con prefijo de equipo o estructurada', (
     CANDIDATE: 'product-development', INTENT: 'quiero cobrar con tarjeta', raw: 'quiero cobrar con tarjeta',
   })
   // Con prefijo, el candidato se separa; se confirma después contra los equipos que existen.
-  const conPrefijo = resolve('incident-review: se cayó el checkout')
-  assert.equal(conPrefijo.CANDIDATE, 'incident-review')
-  assert.equal(conPrefijo.INTENT, 'se cayó el checkout')
+  const withPrefix = resolve('incident-review: se cayó el checkout')
+  assert.equal(withPrefix.CANDIDATE, 'incident-review')
+  assert.equal(withPrefix.INTENT, 'se cayó el checkout')
   // El texto crudo se conserva para poder recomponerlo si el prefijo no era un equipo.
-  assert.equal(conPrefijo.raw, 'incident-review: se cayó el checkout')
+  assert.equal(withPrefix.raw, 'incident-review: se cayó el checkout')
   // Estructurado, el prefijo no se interpreta: el equipo vino explícito.
   const estructurado = resolve({ intent: 'algo: con dos puntos', team: 'acme-soporte' })
   assert.equal(estructurado.CANDIDATE, 'acme-soporte')
@@ -541,10 +541,10 @@ test('los runners sin workflow llevan la lista de lo que se comprueba al final',
     const arranque = (runner.artifacts || []).find((item) => /onboard/.test(item.source))
     if (!arranque || arranque.source.endsWith('.js')) continue
     const dir = path.join(automation, 'runners', name)
-    const texto = A.render(path.resolve(dir, arranque.source), '', automation)
+    const text = A.render(path.resolve(dir, arranque.source), '', automation)
     for (const marca of [/Por definir/, /\(supuesto\)/, /epic-NNN-<slug>\.md/, /HUMAN_ACTIONS\.md/,
       /formulario/, /molde/]) {
-      assert.match(texto, marca, `${name}: ${marca} falta en ${arranque.source}`)
+      assert.match(text, marca, `${name}: ${marca} falta en ${arranque.source}`)
     }
   }
 })

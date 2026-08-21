@@ -1,6 +1,6 @@
 'use strict'
 
-const { temporal } = require('./entorno')
+const { tempRoot, linkEngine } = require('./environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -12,23 +12,22 @@ const { spawnSync } = require('node:child_process')
 const root = path.resolve(__dirname, '..', 'automatization', 'runners')
 
 // Una instancia sidecar con el motor enganchado y el adaptador puesto: es el montaje de casi todo lo
-// que se prueba acá, y estaba copiado en cuatro tests. Devuelve también `corre`, porque el entorno
+// que se prueba acá, y estaba copiado en cuatro tests. Devuelve también `runCli`, porque el entorno
 // limpio es parte del montaje: heredar `OPS_ROOT` o `CLAUDE_PROJECT_DIR` hace que el CLI mida este
 // repositorio en vez de la instancia recién creada.
-function instalada(nombre, runner) {
-  const base = temporal(nombre)
+function installedProject(nombre, runner) {
+  const base = tempRoot(nombre)
   const workspace = path.join(base, 'repo')
   const target = path.join(workspace, 'ops')
   fs.mkdirSync(workspace)
   const cli = path.resolve(__dirname, '..', 'engine', 'cli', 'ops.js')
   const env = { ...process.env }
-  for (const clave of ['NODE_TEST_CONTEXT', 'OPS_ROOT', 'CLAUDE_PROJECT_DIR']) delete env[clave]
-  const corre = (args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', env })
-  assert.equal(corre(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
-  fs.mkdirSync(path.join(target, 'node_modules', '@ingeniomaps'), { recursive: true })
-  fs.symlinkSync(path.resolve(__dirname, '..'), path.join(target, 'node_modules', '@ingeniomaps', 'cauce'), 'dir')
-  if (runner) assert.equal(corre(['automation', 'install', target, runner]).status, 0)
-  return { base, workspace, target, corre, env }
+  for (const key of ['NODE_TEST_CONTEXT', 'OPS_ROOT', 'CLAUDE_PROJECT_DIR']) delete env[key]
+  const runCli = (args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', env })
+  assert.equal(runCli(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
+  linkEngine(target)
+  if (runner) assert.equal(runCli(['automation', 'install', target, runner]).status, 0)
+  return { base, workspace, target, runCli, env }
 }
 
 test('cada runner declara un manifest instalable y fuentes existentes', () => {
@@ -49,7 +48,7 @@ test('cada runner declara un manifest instalable y fuentes existentes', () => {
 // pasar es que un runner anuncie un recorrido que no instala: Gemini documentaba `/ops:onboard` y no
 // existía ningún archivo detrás, así que el usuario lo buscaba en su lista y no estaba.
 test('cada recorrido anunciado tiene un archivo que lo instala', () => {
-  const esperados = ['onboard', 'team', 'autobuild', 'integration-sync', 'integration-promote']
+  const expected = ['onboard', 'team', 'autobuild', 'integration-sync', 'integration-promote']
   for (const name of ['claude', 'codex', 'gemini', 'antigravity']) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, name, 'manifest.json'), 'utf8'))
     const commands = manifest.commands || { invocation: '', names: [] }
@@ -62,10 +61,10 @@ test('cada recorrido anunciado tiene un archivo que lo instala', () => {
     // instalador imprimía `cauce:onboard` mientras la sesión real sólo respondía a `/cauce:onboard`:
     // un nombre pelado se lee como invocación y no lo es.
     assert.match(commands.invocation, /^[^a-z0-9]/, `${name}: ${commands.invocation} es un nombre, no una invocación`)
-    assert.deepEqual(commands.names, esperados, `${name}: no ofrece los mismos recorridos que el resto`)
-    for (const comando of commands.names) {
-      const instalado = manifest.artifacts.some((item) => item.target.includes(comando))
-      assert.equal(instalado, true, `${name}: anuncia ${comando} y no instala nada que lo provea`)
+    assert.deepEqual(commands.names, expected, `${name}: no ofrece los mismos recorridos que el resto`)
+    for (const command of commands.names) {
+      const installed = manifest.artifacts.some((item) => item.target.includes(command))
+      assert.equal(installed, true, `${name}: anuncia ${command} y no instala nada que lo provea`)
     }
   }
 })
@@ -109,15 +108,15 @@ test('el bridge de Antigravity traduce decisiones al protocolo nativo', () => {
 // resuelve no se arregla trabajando, así que cada intento de cerrar repetía el mismo error y el agente
 // quedaba sin poder terminar la sesión. `engine/hooks/run.js` marca el bloqueo con `error.blocked`.
 test('el puente de Antigravity separa el guard que bloquea del puente que no arrancó', () => {
-  const { base, workspace, target, corre, env } = instalada('cauce-stop-', 'antigravity')
+  const { base, workspace, target, runCli, env } = installedProject('cauce-stop-', 'antigravity')
 
   // Desde el workspace, como lo lanza Antigravity: `findRoot` cae a `process.cwd()` si la raíz
   // declarada no resuelve, y correrlo desde otro lado lo ataría a la instancia equivocada.
-  const puente = path.join(workspace, '.agents', 'plugins', 'cauce', 'hook.js')
-  const responde = (evento, sesion) => {
-    const script = `const b=require(${JSON.stringify(puente)});`
-      + `console.log(JSON.stringify(b.evaluate(${JSON.stringify(evento)},`
-      + `{conversationId:${JSON.stringify(sesion)},toolCall:{args:{Cwd:${JSON.stringify(workspace)}}}})))`
+  const bridge = path.join(workspace, '.agents', 'plugins', 'cauce', 'hook.js')
+  const answers = (event, session) => {
+    const script = `const b=require(${JSON.stringify(bridge)});`
+      + `console.log(JSON.stringify(b.evaluate(${JSON.stringify(event)},`
+      + `{conversationId:${JSON.stringify(session)},toolCall:{args:{Cwd:${JSON.stringify(workspace)}}}})))`
     const result = spawnSync(process.execPath, ['-e', script], { cwd: workspace, encoding: 'utf8', env })
     return JSON.parse(result.stdout.trim())
   }
@@ -126,23 +125,23 @@ test('el puente de Antigravity separa el guard que bloquea del puente que no arr
   // la primera vez: la sesión tiene que ser nueva en cada corrida o la segunda pasa de largo y el test
   // miente. Ese marcador no cuelga de la raíz temporal de la suite —es de la sesión, no de la prueba—,
   // así que se limpia acá; el nombre sale de `engine/hooks/run.js`.
-  const sesion = `drift-${process.pid}-${Date.now()}`
-  const marcador = path.join(require('node:os').tmpdir(), `cauce-drift-${sesion}`)
+  const session = `drift-${process.pid}-${Date.now()}`
+  const marker = path.join(require('node:os').tmpdir(), `cauce-drift-${session}`)
   try {
     fs.rmSync(path.join(target, 'planning', 'PROTOCOL.md'))
-    const bloqueado = responde('stop', sesion)
-    assert.equal(bloqueado.decision, 'continue', 'el drift retiene al agente: eso es el guard funcionando')
-    assert.match(bloqueado.reason, /PROTOCOL\.md/)
+    const blocked = answers('stop', session)
+    assert.equal(blocked.decision, 'continue', 'el drift retiene al agente: eso es el guard funcionando')
+    assert.match(blocked.reason, /PROTOCOL\.md/)
   } finally {
-    fs.rmSync(marcador, { force: true })
+    fs.rmSync(marker, { force: true })
   }
 
   fs.rmSync(path.join(target, 'ops.config.json'))
-  const roto = responde('stop', 'sin-raiz')
-  assert.equal(roto.decision, 'stop', 'sin raíz no hay nada que el agente pueda arreglar: dejalo cerrar')
-  assert.match(roto.reason, /raíz Cauce/)
+  const broken = answers('stop', 'sin-raiz')
+  assert.equal(broken.decision, 'stop', 'sin raíz no hay nada que el agente pueda arreglar: dejalo cerrar')
+  assert.match(broken.reason, /raíz Cauce/)
   // Y el resto de los eventos sigue fallando cerrado, que es lo que no se toca.
-  assert.equal(responde('pre-shell', 'sin-raiz').decision, 'deny')
+  assert.equal(answers('pre-shell', 'sin-raiz').decision, 'deny')
 })
 
 // Antigravity no deja de dónde deducir la raíz: su payload manda `workspacePaths` vacío y un `Cwd` que
@@ -154,23 +153,23 @@ test('el puente de Antigravity separa el guard que bloquea del puente que no arr
 // la ruta del puente cambiaba, y esa entrada muerta rompía la sesión entera.
 test('install deja el puente de Antigravity resoluble desde la copia que agy registra', () => {
   const os = require('node:os')
-  const { base, workspace, target, corre, env } = instalada('cauce-agy-', 'antigravity')
+  const { base, workspace, target, runCli, env } = installedProject('cauce-agy-', 'antigravity')
 
   const plugin = path.join(workspace, '.agents', 'plugins', 'cauce')
-  const puente = fs.readFileSync(path.join(plugin, 'hook.js'), 'utf8')
-  assert.match(puente, new RegExp(`const OPS_ROOT = '${target}'`), 'la raíz absoluta quedó escrita')
+  const bridge = fs.readFileSync(path.join(plugin, 'hook.js'), 'utf8')
+  assert.match(bridge, new RegExp(`const OPS_ROOT = '${target}'`), 'la raíz absoluta quedó escrita')
 
   // Como lo ejecuta `agy`: desde otra carpeta y sin una sola pista del workspace en el payload.
-  const copia = path.join(base, 'global', 'hook.js')
-  fs.mkdirSync(path.dirname(copia), { recursive: true })
-  fs.writeFileSync(copia, puente)
-  const respuesta = spawnSync(process.execPath, [copia, 'pre-shell'], {
-    cwd: path.dirname(copia),
+  const copy = path.join(base, 'global', 'hook.js')
+  fs.mkdirSync(path.dirname(copy), { recursive: true })
+  fs.writeFileSync(copy, bridge)
+  const answer = spawnSync(process.execPath, [copy, 'pre-shell'], {
+    cwd: path.dirname(copy),
     input: JSON.stringify({ workspacePaths: [], toolCall: { args: { CommandLine: 'git push', Cwd: os.homedir() } } }),
     encoding: 'utf8',
     env,
   })
-  const decision = JSON.parse(respuesta.stdout.trim())
+  const decision = JSON.parse(answer.stdout.trim())
   assert.equal(decision.decision, 'deny')
   assert.match(decision.reason, /git push/, 'denegó por el guard, no porque no encontró la raíz')
 
@@ -179,27 +178,27 @@ test('install deja el puente de Antigravity resoluble desde la copia que agy reg
   const config = JSON.parse(fs.readFileSync(hooks, 'utf8'))
   config.cauce.PreToolUse[0].hooks.push({ type: 'command', command: 'node viejo/hook.js pre-shell' })
   fs.writeFileSync(hooks, JSON.stringify(config, null, 2))
-  assert.equal(corre(['automation', 'install', target, 'antigravity', '--force']).status, 0)
+  assert.equal(runCli(['automation', 'install', target, 'antigravity', '--force']).status, 0)
   assert.equal(fs.readFileSync(hooks, 'utf8').includes('viejo/hook.js'), false, 'la entrada muerta se fue')
 
   // Y los guards reciben una carpeta del proyecto contra la cual resolver. Con el `Cwd` que manda
   // Antigravity, `ops/planning/nota.md` se resolvía en `$HOME/ops/planning/nota.md`: un archivo que no
   // existe, bloqueado por caer fuera de las raíces, mientras el que el agente iba a tocar no se miraba.
-  const previo = process.env.OPS_ROOT
+  const previous = process.env.OPS_ROOT
   try {
-    const puenteInstalado = require(path.join(plugin, 'hook.js'))
-    const escritura = (file) => ({
+    const bridgeInstalled = require(path.join(plugin, 'hook.js'))
+    const write = (file) => ({
       conversationId: 'cwd',
       toolCall: { args: { TargetFile: file, CodeContent: 'x', Cwd: os.homedir() } },
     })
-    assert.equal(puenteInstalado.normalize(escritura('x'), target).cwd, workspace, 'el cwd es el workspace')
-    assert.equal(puenteInstalado.evaluate('pre-files', escritura('ops/planning/nota.md')).decision, 'allow')
-    const fuera = puenteInstalado.evaluate('pre-files', escritura('../fuera/x.md'))
-    assert.equal(fuera.decision, 'deny')
-    assert.ok(fuera.reason.includes(path.join(base, 'fuera')), 'juzga la ruta que el agente quiso escribir')
+    assert.equal(bridgeInstalled.normalize(write('x'), target).cwd, workspace, 'el cwd es el workspace')
+    assert.equal(bridgeInstalled.evaluate('pre-files', write('ops/planning/nota.md')).decision, 'allow')
+    const outside = bridgeInstalled.evaluate('pre-files', write('../fuera/x.md'))
+    assert.equal(outside.decision, 'deny')
+    assert.ok(outside.reason.includes(path.join(base, 'fuera')), 'juzga la ruta que el agente quiso escribir')
   } finally {
-    if (previo === undefined) delete process.env.OPS_ROOT
-    else process.env.OPS_ROOT = previo
+    if (previous === undefined) delete process.env.OPS_ROOT
+    else process.env.OPS_ROOT = previous
   }
 })
 
@@ -208,35 +207,35 @@ test('install deja el puente de Antigravity resoluble desde la copia que agy reg
 // `~/.gemini/`, donde ni el `__dirname` ni el cwd llegan al repositorio del usuario.
 test('el puente de Antigravity resuelve la raíz como corre instalado', () => {
   const os = require('node:os')
-  const puente = require(path.join(root, 'antigravity', 'hook.js'))
-  const base = temporal('cauce-puente-unidad-')
+  const bridge = require(path.join(root, 'antigravity', 'hook.js'))
+  const base = tempRoot('cauce-puente-unidad-')
   const workspace = path.join(base, 'repo')
   const opsRoot = path.join(workspace, 'ops')
   fs.mkdirSync(path.join(opsRoot, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(opsRoot, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
-  const lejos = path.join(base, 'global')
-  fs.mkdirSync(lejos)
+  const faraway = path.join(base, 'global')
+  fs.mkdirSync(faraway)
 
   // Sidecar: la raíz declarada apunta a otro proyecto y desde el workspace sólo se llega hacia abajo.
-  const marcas = { dir: 'ops/', root: path.join(base, 'no-existe'), plugin: lejos }
-  assert.equal(puente.findRoot({ toolCall: { args: { Cwd: workspace } } }, marcas), opsRoot)
-  assert.equal(puente.findRoot({ toolCall: { args: { Cwd: opsRoot } } }, marcas), opsRoot)
-  assert.equal(puente.normalize({ toolCall: { args: { Cwd: os.homedir() } } }, opsRoot, marcas).cwd, workspace)
+  const marks = { dir: 'ops/', root: path.join(base, 'no-existe'), plugin: faraway }
+  assert.equal(bridge.findRoot({ toolCall: { args: { Cwd: workspace } } }, marks), opsRoot)
+  assert.equal(bridge.findRoot({ toolCall: { args: { Cwd: opsRoot } } }, marks), opsRoot)
+  assert.equal(bridge.normalize({ toolCall: { args: { Cwd: os.homedir() } } }, opsRoot, marks).cwd, workspace)
 
   // La raíz absoluta que `install` escribe manda sobre la búsqueda.
-  const escrita = { dir: 'ops/', root: opsRoot, plugin: lejos }
-  assert.equal(puente.findRoot({ toolCall: { args: { Cwd: os.homedir() } } }, escrita), opsRoot)
+  const writtenAt = { dir: 'ops/', root: opsRoot, plugin: faraway }
+  assert.equal(bridge.findRoot({ toolCall: { args: { Cwd: os.homedir() } } }, writtenAt), opsRoot)
 
   // Y dos candidatas hermanas son una ambigüedad que el puente no resuelve solo.
-  const gemela = path.join(workspace, 'otra-ops')
-  fs.mkdirSync(path.join(gemela, 'planning'), { recursive: true })
-  fs.writeFileSync(path.join(gemela, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
-  const previo = process.cwd()
+  const twin = path.join(workspace, 'otra-ops')
+  fs.mkdirSync(path.join(twin, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(twin, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
+  const previous = process.cwd()
   try {
-    process.chdir(lejos)
-    assert.throws(() => puente.findRoot({ toolCall: { args: { Cwd: workspace } } }, marcas), /raíz Cauce/)
+    process.chdir(faraway)
+    assert.throws(() => bridge.findRoot({ toolCall: { args: { Cwd: workspace } } }, marks), /raíz Cauce/)
   } finally {
-    process.chdir(previo)
+    process.chdir(previous)
   }
 })
 
@@ -260,7 +259,7 @@ test('los runners con hooks nativos registran el grupo, no un hook por guard', (
 // una corrida real terminó con el agente narrando trabajo que no pudo hacer.
 test('doctor ejecuta el puente del runner, no sólo lo busca', () => {
   const A = require('../engine/automation')
-  const base = temporal('cauce-puente-')
+  const base = tempRoot('cauce-puente-')
   const workspace = path.join(base, 'repo')
   const target = path.join(workspace, 'ops')
   fs.mkdirSync(workspace)
@@ -270,17 +269,16 @@ test('doctor ejecuta el puente del runner, no sólo lo busca', () => {
   delete env.NODE_TEST_CONTEXT
   delete env.OPS_ROOT
   delete env.CLAUDE_PROJECT_DIR
-  const corre = (args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', env })
-  assert.equal(corre(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
-  fs.mkdirSync(path.join(target, 'node_modules', '@ingeniomaps'), { recursive: true })
-  fs.symlinkSync(path.resolve(__dirname, '..'), path.join(target, 'node_modules', '@ingeniomaps', 'cauce'), 'dir')
-  assert.equal(corre(['automation', 'install', target, 'antigravity']).status, 0)
+  const runCli = (args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', env })
+  assert.equal(runCli(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
+  linkEngine(target)
+  assert.equal(runCli(['automation', 'install', target, 'antigravity']).status, 0)
   assert.equal(A.doctor(target, 'antigravity', { warn() {}, error() {} }).errors.length, 0)
 
-  const puente = path.join(workspace, '.agents', 'plugins', 'cauce', 'hook.js')
-  fs.appendFileSync(puente, '\nesto no es javascript (\n')
-  const roto = A.doctor(target, 'antigravity', { warn() {}, error() {} })
-  assert.ok(roto.errors.some((error) => /hook\.js pre-shell/.test(error)), 'un puente que no arranca es error')
+  const bridge = path.join(workspace, '.agents', 'plugins', 'cauce', 'hook.js')
+  fs.appendFileSync(bridge, '\nesto no es javascript (\n')
+  const broken = A.doctor(target, 'antigravity', { warn() {}, error() {} })
+  assert.ok(broken.errors.some((error) => /hook\.js pre-shell/.test(error)), 'un puente que no arranca es error')
 })
 
 test('doctor advierte cuando sobrevive el wiring por guard suelto', () => {
@@ -341,16 +339,16 @@ test('los runners con skills nativas exponen el catálogo completo de cargos', (
 // pueda llamarse `team` y hacer desaparecer `/cauce:team` sin que falle nada.
 test('un cargo que se llama como un recorrido detiene la instalación', () => {
   const A = require('../engine/automation')
-  const { base, workspace, target, corre } = instalada('cauce-choque-', null)
+  const { base, workspace, target, runCli } = installedProject('cauce-choque-', null)
 
-  const propio = path.join(target, 'agents', 'roles', 'team')
-  fs.mkdirSync(propio, { recursive: true })
-  const contrato = '---\nname: team\ndescription: Un cargo de la empresa.\n---\n\nCuerpo.\n'
-  fs.writeFileSync(path.join(propio, 'SKILL.md'), contrato)
+  const own = path.join(target, 'agents', 'roles', 'team')
+  fs.mkdirSync(own, { recursive: true })
+  const contract = '---\nname: team\ndescription: Un cargo de la empresa.\n---\n\nCuerpo.\n'
+  fs.writeFileSync(path.join(own, 'SKILL.md'), contract)
 
-  const resultado = corre(['automation', 'install', target, 'antigravity'])
-  assert.notEqual(resultado.status, 0, 'no se instala pisando un recorrido')
-  assert.match(`${resultado.stdout}${resultado.stderr}`, /a la vez un cargo y un recorrido/)
+  const result = runCli(['automation', 'install', target, 'antigravity'])
+  assert.notEqual(result.status, 0, 'no se instala pisando un recorrido')
+  assert.match(`${result.stdout}${result.stderr}`, /a la vez un cargo y un recorrido/)
 })
 
 test('el puntero de un cargo conserva su frontmatter y no duplica el contrato', () => {
@@ -368,8 +366,8 @@ test('el puntero de un cargo conserva su frontmatter y no duplica el contrato', 
   assert.ok(generated.includes(pm.description), 'la descripción llega verbatim')
   // Y el cuerpo remite, no copia.
   assert.match(generated, /agents\/roles\/system\/product-manager\/SKILL\.md/, 'apunta a donde el cargo vive de verdad')
-  const contrato = path.join(repoRoot, 'agents', 'roles', 'system', 'product-manager', 'SKILL.md')
-  const original = fs.readFileSync(contrato, 'utf8')
+  const contract = path.join(repoRoot, 'agents', 'roles', 'system', 'product-manager', 'SKILL.md')
+  const original = fs.readFileSync(contract, 'utf8')
   assert.ok(generated.length < original.length / 2, 'un puntero pesa mucho menos que el contrato')
 
   // La ruta es relativa y no decía a qué se ancla. Dos agentes que resolvieron un cargo parados en el
@@ -394,56 +392,56 @@ test('ningún comando de hook queda relativo al workspace', () => {
   const A = require('../engine/automation')
   const REPO = path.resolve(__dirname, '..')
   const automation = path.join(REPO, 'automatization')
-  const sueltos = []
+  const loose = []
   for (const name of A.RUNNER_NAMES) {
     const runner = A.runnerManifest(REPO, name)
     const dir = path.join(automation, 'runners', name)
     // Con los marcadores puestos: lo que se comprueba es que el comando declare su ancla, no el
     // valor que toma en una instalación concreta.
-    const fuente = path.resolve(dir, runner.config.source)
-    const config = A.render(fuente, '{{OPS_DIR}}', automation, '{{OPS_ROOT}}')
+    const sourceFile = path.resolve(dir, runner.config.source)
+    const config = A.render(sourceFile, '{{OPS_DIR}}', automation, '{{OPS_ROOT}}')
     for (const hit of config.matchAll(/"command":\s*"([^"]+)"/g)) {
-      const comando = hit[1]
-      const anclado = /^\$[A-Z_]+\//.test(comando)          // variable de proyecto del runner
-        || /\{\{OPS_ROOT\}\}/.test(comando)                  // ruta absoluta escrita al instalar
-        || /^\S+ [^/]*$/.test(comando)                       // relativo a la carpeta del propio plugin
-      if (!anclado) sueltos.push(`${name}: ${comando}`)
+      const command = hit[1]
+      const anchored = /^\$[A-Z_]+\//.test(command)          // variable de proyecto del runner
+        || /\{\{OPS_ROOT\}\}/.test(command)                  // ruta absoluta escrita al instalar
+        || /^\S+ [^/]*$/.test(command)                       // relativo a la carpeta del propio plugin
+      if (!anchored) loose.push(`${name}: ${command}`)
     }
   }
-  assert.deepEqual(sueltos, [])
+  assert.deepEqual(loose, [])
 })
 
 test('ningún archivo instalable nombra una invocación que su runner no tiene', () => {
   const A = require('../engine/automation')
   const REPO = path.resolve(__dirname, '..')
   const automation = path.join(REPO, 'automatization')
-  const RECORRIDOS = ['onboard', 'team', 'autobuild', 'integration-sync', 'integration-promote']
+  const FLOWS = ['onboard', 'team', 'autobuild', 'integration-sync', 'integration-promote']
   // Precedido por `/` o `$` y no por parte de una ruta: `.claude/workflows/autobuild.js` no es una
   // invocación, y `integration-sync jira` sin prefijo tampoco.
-  const invocado = new RegExp(
-    String.raw`(?<![\w./-])([/$][a-z]*:?)(${RECORRIDOS.join('|')})(?![\w./-])`, 'g',
+  const invoked = new RegExp(
+    String.raw`(?<![\w./-])([/$][a-z]*:?)(${FLOWS.join('|')})(?![\w./-])`, 'g',
   )
-  const ajenas = []
+  const foreign = []
   for (const name of A.RUNNER_NAMES) {
     const runner = A.runnerManifest(REPO, name)
-    const propias = new Set(RECORRIDOS.map(
+    const ownFiles = new Set(FLOWS.map(
       (pase) => ((runner.commands && runner.commands.invocation) || '').replace('{name}', pase),
     ))
     const dir = path.join(automation, 'runners', name)
-    const copiados = [
+    const copied = [
       runner.config.source,
       ...(runner.instructions || []).map((item) => item.source),
       ...(runner.artifacts || []).map((item) => item.source),
     ]
-    for (const relative of copiados) {
+    for (const relative of copied) {
       const file = path.resolve(dir, relative)
       if (!fs.existsSync(file)) continue
-      for (const hit of A.render(file, '', automation).matchAll(invocado)) {
-        if (!propias.has(hit[0])) ajenas.push(`${name}:${relative} → ${hit[0]}`)
+      for (const hit of A.render(file, '', automation).matchAll(invoked)) {
+        if (!ownFiles.has(hit[0])) foreign.push(`${name}:${relative} → ${hit[0]}`)
       }
     }
   }
-  assert.deepEqual(ajenas, [])
+  assert.deepEqual(foreign, [])
 })
 
 // Cada archivo que un adaptador copia se lee desde donde se abre la herramienta, que en modo sidecar
@@ -453,30 +451,30 @@ test('ningún archivo instalable nombra una invocación que su runner no tiene',
 test('ninguna ruta de un adaptador da por sentado dónde se instala', () => {
   const REPO = path.resolve(__dirname, '..')
   const A = require('../engine/automation')
-  const raiz = new RegExp(
+  const root = new RegExp(
     String.raw`(?<!\{\{OPS_DIR\}\}|\.|\/)\b(planning\/|organization\/|integrations\/`
     + String.raw`|teams\/|automatization\/|tools\/ops\.js|ops\.config\.json)`,
     'g',
   )
-  const sueltas = []
+  const looseOnes = []
   for (const name of A.RUNNER_NAMES) {
     const runner = A.runnerManifest(REPO, name)
     const dir = path.join(REPO, 'automatization', 'runners', name)
-    const copiados = [
+    const copied = [
       runner.config.source,
       ...(runner.instructions || []).map((item) => item.source),
       ...(runner.artifacts || []).map((item) => item.source),
     ]
-    for (const relative of copiados) {
+    for (const relative of copied) {
       const file = path.resolve(dir, relative)
       if (!fs.existsSync(file) || file.endsWith('.js')) continue
       // Renderizado con el marcador por prefijo: resuelve los `INCLUDE` sin tocar los `{{OPS_DIR}}`,
       // así lo compartido se revisa una vez por cada adaptador que lo enmarca y no queda afuera.
-      const texto = A.render(file, '{{OPS_DIR}}', path.join(REPO, 'automatization'))
-      for (const hit of texto.matchAll(raiz)) {
-        sueltas.push(`${name}:${relative} → ${hit[1]}`)
+      const text = A.render(file, '{{OPS_DIR}}', path.join(REPO, 'automatization'))
+      for (const hit of text.matchAll(root)) {
+        looseOnes.push(`${name}:${relative} → ${hit[1]}`)
       }
     }
   }
-  assert.deepEqual(sueltas, [])
+  assert.deepEqual(looseOnes, [])
 })

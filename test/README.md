@@ -5,6 +5,7 @@ Esta carpeta contiene las pruebas del toolkit fuente; no se copia a los proyecto
 ## Organización
 
 - `agents.test.js`: distribución, aprendizaje y evaluación de agentes.
+- `fork.test.js`: adoptar un cargo del catálogo, devolverlo y la deriva que se abre mientras tanto.
 - `engine.test.js`: configuración e integraciones en aislamiento.
 - `hooks.test.js`: decisiones permitidas y bloqueadas por los guards.
 - `ops.test.js`: recorridos end-to-end del CLI y de una instancia generada.
@@ -18,7 +19,8 @@ Esta carpeta contiene las pruebas del toolkit fuente; no se copia a los proyecto
   recorridos de Cauce y nada más.
 - `lifecycle.test.js`: el ciclo de una empresa contra el **tarball**, que es lo único que un consumidor
   ve. Los demás corren contra el repositorio, así que es el único que detecta un `files` incompleto.
-- `entorno.js`: limpia el entorno heredado y da `temporal()`, la raíz temporal que se borra al salir.
+- `environment.js`: limpia el entorno heredado y da lo que casi toda suite monta: `tempRoot()`, la raíz
+  que se borra al salir; `run()`, el CLI en un proceso aparte; `linkEngine()`, el paquete de una instancia.
 - `coverage.sh` y `coverage-files.js`: el umbral global y el piso por archivo.
 - `hooks-smoke.sh`: ejecutabilidad de los wrappers POSIX.
 - `fixtures/`: respuestas externas deterministas y sin credenciales.

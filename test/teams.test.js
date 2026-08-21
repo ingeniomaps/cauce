@@ -1,6 +1,6 @@
 'use strict'
 
-const { temporal } = require('./entorno')
+const { tempRoot } = require('./environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -35,7 +35,7 @@ test('team check y show exponen un contrato utilizable', () => {
 })
 
 test('validador rechaza dependencias posteriores y agentes inexistentes', () => {
-  const root = temporal('ops-team-invalid-')
+  const root = tempRoot('ops-team-invalid-')
   fs.mkdirSync(path.join(root, 'teams', 'broken'), { recursive: true })
   fs.writeFileSync(path.join(root, 'teams', 'broken', 'WORKFLOW.md'), '# Broken\n')
   fs.writeFileSync(path.join(root, 'teams', 'broken', 'team.json'), JSON.stringify({
@@ -59,7 +59,7 @@ test('validador rechaza dependencias posteriores y agentes inexistentes', () => 
 
 test('un team propio reemplaza al del sistema sin duplicarlo en la lista', () => {
   const T = require('../engine/teams/registry')
-  const root = temporal('cauce-teams-')
+  const root = tempRoot('cauce-teams-')
   const write = (dir, name) => {
     fs.mkdirSync(dir, { recursive: true })
     fs.writeFileSync(path.join(dir, 'team.json'), JSON.stringify({ slug: 'demo', name }))
@@ -77,7 +77,7 @@ test('un team propio reemplaza al del sistema sin duplicarlo en la lista', () =>
 
 test('un equipo debe separar descubrimiento de entrega', () => {
   const T = require('../engine/teams/registry')
-  const root = temporal('cauce-fases-')
+  const root = tempRoot('cauce-fases-')
   const dir = path.join(root, 'teams', 'demo')
   fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(path.join(dir, 'WORKFLOW.md'), '# demo\n')
@@ -98,8 +98,10 @@ test('un equipo debe separar descubrimiento de entrega', () => {
   })
 
   // Sin phase no se puede saber qué corre /team y qué corre autobuild.
-  const sinFase = manifest([{ id: 'frame', agent: 'product-manager', dependsOn: [], produces: ['x'], exitGate: 'y' }])
-  assert.ok(sinFase.some((error) => /phase debe ser/.test(error)))
+  const withoutPhase = manifest([
+    { id: 'frame', agent: 'product-manager', dependsOn: [], produces: ['x'], exitGate: 'y' },
+  ])
+  assert.ok(withoutPhase.some((error) => /phase debe ser/.test(error)))
 
   // Un equipo que sólo entrega no propone nada: no hay recorrido que correr.
   const soloEntrega = manifest([stage('build', 'delivery')])
@@ -143,7 +145,7 @@ test('un equipo declara qué deja, y el de incidentes no propone trabajo', () =>
   assert.equal(outcomes['feasibility-review'], 'epic')
 
   // Un outcome desconocido no valida: el workflow sólo sabe terminar de las formas declaradas.
-  const root = temporal('cauce-outcome-')
+  const root = tempRoot('cauce-outcome-')
   const dir = path.join(root, 'teams', 'demo')
   fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(path.join(dir, 'WORKFLOW.md'), '# demo\n')

@@ -4,27 +4,13 @@
 // vocabulario propio —se crea, se recrea entera, se versiona, se niega a pisar trabajo sin recoger— y
 // estaba dentro de la suite del CLI, que prueba otra cosa.
 
-const { temporal } = require('./entorno')
+const { tempRoot, run } = require('./environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
-
-const CLI = path.resolve(__dirname, '..', 'engine', 'cli', 'ops.js')
-
-function run(args, cwd = path.dirname(CLI)) {
-  const env = { ...process.env }
-  delete env.NODE_TEST_CONTEXT
-  return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', env })
-}
-
-function linkEngine(target) {
-  const scope = path.join(target, 'node_modules', '@ingeniomaps')
-  fs.mkdirSync(scope, { recursive: true })
-  fs.symlinkSync(path.resolve(__dirname, '..'), path.join(scope, 'cauce'), 'dir')
-}
 
 // El toolkit no es una raíz ops y no puede serlo: el único `planning/` que vive acá es
 // `template/planning`, el molde que se distribuye. Un cargo cuya entrega es una épica no tenía dónde
@@ -116,17 +102,17 @@ test('cada caso recibe su propio banco', () => {
   const segundo = run(['evaluate', 'product-manager', '--bench', '11-otro', '--force'], toolkit)
   assert.equal(primero.status, 0, primero.stderr)
   assert.equal(segundo.status, 0, segundo.stderr)
-  const uno = primero.stdout.trim()
-  const otro = segundo.stdout.trim()
-  assert.notEqual(uno, otro, 'dos casos no comparten directorio')
+  const one = primero.stdout.trim()
+  const other = segundo.stdout.trim()
+  assert.notEqual(one, other, 'dos casos no comparten directorio')
 
-  fs.appendFileSync(path.join(uno, 'planning', 'INBOX.md'), '\n- lo que escribió el primer caso\n')
-  const vecino = fs.readFileSync(path.join(otro, 'planning', 'INBOX.md'), 'utf8')
+  fs.appendFileSync(path.join(one, 'planning', 'INBOX.md'), '\n- lo que escribió el primer caso\n')
+  const vecino = fs.readFileSync(path.join(other, 'planning', 'INBOX.md'), 'utf8')
   assert.equal(vecino.includes('el primer caso'), false, 'y no se leen entre sí')
 
   // Preparar el banco de un caso no puede borrar el del vecino, que quizá esté a mitad de corrida.
   assert.equal(run(['evaluate', 'product-manager', '--bench', '11-otro', '--force'], toolkit).status, 0)
-  assert.match(fs.readFileSync(path.join(uno, 'planning', 'INBOX.md'), 'utf8'), /el primer caso/)
+  assert.match(fs.readFileSync(path.join(one, 'planning', 'INBOX.md'), 'utf8'), /el primer caso/)
 
   // El nombre entra en una ruta: no puede escaparse del directorio de bancos.
   const escape = run(['evaluate', 'product-manager', '--bench', '../../etc'], toolkit)
@@ -137,7 +123,7 @@ test('cada caso recibe su propio banco', () => {
 // En una empresa el banco no hace falta —su instancia ya es el lugar— y ofrecerlo confundiría: el
 // cargo que se evalúa ahí tiene que ser suyo.
 test('el banco es del toolkit; una instancia recibe la salida que le corresponde', () => {
-  const base = temporal('cauce-bench-')
+  const base = tempRoot('cauce-bench-')
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar']).status, 0)
   const result = run(['evaluate', 'product-manager', '--bench'], target)

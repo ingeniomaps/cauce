@@ -1,6 +1,6 @@
 'use strict'
 
-const { temporal } = require('./entorno')
+const { tempRoot } = require('./environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -19,15 +19,15 @@ const { fetchItems, validateConfig } = require('../engine/integrations/providers
 
 // Las variables de entorno son del proceso, no del test: si una aserción falla en el medio, la que
 // quedó puesta cambia el resultado de los que siguen y el fallo real aparece disfrazado en otro caso.
-async function conEntorno(vars, cuerpo) {
-  const previo = Object.fromEntries(Object.keys(vars).map((clave) => [clave, process.env[clave]]))
+async function withEnv(vars, cuerpo) {
+  const previous = Object.fromEntries(Object.keys(vars).map((key) => [key, process.env[key]]))
   Object.assign(process.env, vars)
   try {
     return await cuerpo()
   } finally {
-    for (const [clave, valor] of Object.entries(previo)) {
-      if (valor === undefined) delete process.env[clave]
-      else process.env[clave] = valor
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
     }
   }
 }
@@ -57,7 +57,7 @@ function jiraConfig() {
 }
 
 function integrationRoot() {
-  const root = temporal('ops-integration-engine-')
+  const root = tempRoot('ops-integration-engine-')
   fs.mkdirSync(path.join(root, 'integrations', 'jira', 'staging'), { recursive: true })
   fs.mkdirSync(path.join(root, 'integrations', 'jira', 'proposed'))
   fs.mkdirSync(path.join(root, 'planning', 'roadmap'), { recursive: true })
@@ -123,9 +123,9 @@ test('valida el contrato completo de ops.config.json', () => {
 // tiene que llegar la instrucción —«borrá la línea»— y no un «propiedad desconocida» que deja a la
 // persona averiguando si perdió una función.
 test('un campo retirado se nombra en vez de caer en propiedad desconocida', () => {
-  const viejo = validConfig()
-  viejo.planningDir = 'planning'
-  const errors = validateOpsConfig(viejo)
+  const old = validConfig()
+  old.planningDir = 'planning'
+  const errors = validateOpsConfig(old)
   assert.equal(errors.length, 1, 'un solo error, no dos por la misma línea')
   assert.match(errors[0], /planningDir ya no se usa/)
   assert.match(errors[0], /planning\/ en la raíz/, 'dice dónde busca el motor de verdad')
@@ -135,7 +135,7 @@ test('un campo retirado se nombra en vez de caer en propiedad desconocida', () =
 
 test('las rutas de proveedores no pueden escapar de integrations', () => {
   assert.throws(() => safeSegment('../jira', 'provider'), /inválido/)
-  const root = temporal('ops-provider-path-')
+  const root = tempRoot('ops-provider-path-')
   fs.mkdirSync(path.join(root, 'integrations'))
   fs.writeFileSync(
     path.join(root, 'integrations', 'config.json'),
@@ -145,7 +145,7 @@ test('las rutas de proveedores no pueden escapar de integrations', () => {
 })
 
 test('Jira pagina con timeout y termina correctamente', async () => {
-  await conEntorno({ OPS_TEST_JIRA_TOKEN: 'test-token' }, async () => {
+  await withEnv({ OPS_TEST_JIRA_TOKEN: 'test-token' }, async () => {
     const calls = []
     const pages = [
       { issues: [], nextPageToken: 'next' },
@@ -163,7 +163,7 @@ test('Jira pagina con timeout y termina correctamente', async () => {
 })
 
 test('Jira corta tokens repetidos y paginación sin límite', async () => {
-  await conEntorno({ OPS_TEST_JIRA_TOKEN: 'test-token' }, async () => {
+  await withEnv({ OPS_TEST_JIRA_TOKEN: 'test-token' }, async () => {
     const repeated = async () => ({
       ok: true,
       json: async () => ({ issues: [], nextPageToken: 'same' }),
@@ -185,7 +185,7 @@ test('Jira corta tokens repetidos y paginación sin límite', async () => {
 })
 
 test('Jira no incorpora cuerpos remotos en errores', async () => {
-  await conEntorno({ OPS_TEST_JIRA_TOKEN: 'test-token' }, async () => {
+  await withEnv({ OPS_TEST_JIRA_TOKEN: 'test-token' }, async () => {
     const fetchImpl = async () => ({ ok: false, status: 401 })
     await assert.rejects(
       fetchItems(jiraConfig(), { fetchImpl }),
@@ -274,7 +274,7 @@ test('items ajenos se mantienen como contexto regenerable', async () => {
   const config = JSON.parse(fs.readFileSync(configFile, 'utf8'))
   config.candidateAssigneeEnv = 'OPS_TEST_JIRA_ASSIGNEE'
   fs.writeFileSync(configFile, JSON.stringify(config))
-  await conEntorno({ OPS_TEST_JIRA_ASSIGNEE: 'another-owner' }, async () => {
+  await withEnv({ OPS_TEST_JIRA_ASSIGNEE: 'another-owner' }, async () => {
     const fixture = writeFixture(root, 'context.json')
     await I.sync(root, 'jira', { fixture })
     const staged = path.join(root, 'integrations', 'jira', 'staging', 'stories', 'DEMO-1')
@@ -319,7 +319,7 @@ El operador recibe una alerta observable.
 })
 
 test('business rules exige contrato y detecta IDs duplicados', () => {
-  const root = temporal('ops-business-rules-')
+  const root = tempRoot('ops-business-rules-')
   const metadata = '> **Dominio:** demo | **Estado:** vigente | **Actualizado:** 2026-08-14\n'
   const sections = '\n## Reglas\n\n| BR-DEMO-001 | Regla | Resultado |\n'
     + '\n## Por qué existe cada regla\n\n- Razón.\n\n## Historial\n\n- Creación.\n'
@@ -335,13 +335,13 @@ test('business rules exige contrato y detecta IDs duplicados', () => {
   // cargos publicaran reglas vigentes derivadas de un ADR que ellos mismos dejaron en propuesto.
   fs.writeFileSync(path.join(root, 'second.md'), `# Segunda\n\n${metadata}${sections}`
     .replace('BR-DEMO-001', 'BR-DEMO-002').replace('Estado:** vigente', 'Estado:** casi-vigente'))
-  const invalido = B.validate(root)
-  assert.ok(invalido.some((error) => /Estado «casi-vigente» no es propuesta, vigente, derogada/.test(error)))
+  const stale = B.validate(root)
+  assert.ok(stale.some((error) => /Estado «casi-vigente» no es propuesta, vigente, derogada/.test(error)))
 
-  for (const estado of ['propuesta', 'vigente', 'derogada']) {
+  for (const state of ['propuesta', 'vigente', 'derogada']) {
     fs.writeFileSync(path.join(root, 'second.md'), `# Segunda\n\n${metadata}${sections}`
-      .replace('BR-DEMO-001', 'BR-DEMO-002').replace('Estado:** vigente', `Estado:** ${estado}`))
-    assert.equal(B.validate(root).some((error) => error.includes('Estado')), false, estado)
+      .replace('BR-DEMO-001', 'BR-DEMO-002').replace('Estado:** vigente', `Estado:** ${state}`))
+    assert.equal(B.validate(root).some((error) => error.includes('Estado')), false, state)
   }
 })
 
@@ -359,7 +359,7 @@ test('contratos de evidencia rastrean pruebas y decisiones duraderas', () => {
 })
 
 test('parser acepta historias legadas y múltiples referencias de criterio', () => {
-  const root = temporal('ops-parser-')
+  const root = tempRoot('ops-parser-')
   fs.mkdirSync(path.join(root, 'roadmap'))
   fs.writeFileSync(path.join(root, 'roadmap', 'epic-001-demo.md'), `---
 epic: 001
@@ -393,16 +393,16 @@ service: app
   // bandera `m`, así que cortaba en el primer salto: la historia envuelta perdía su criterio y su
   // servicio, y `check` respondía «no declara (service: <ruta>)» sobre una historia que sí lo declara.
   // Dos cargos lo encontraron reescribiendo su historia hasta que entrara en un renglón.
-  const envuelta = epic.stories.find((story) => story.slug === 'envuelta')
-  assert.deepEqual(envuelta.criteria, ['C2'], 'el criterio vive en la primera línea')
-  assert.equal(envuelta.service, 'app', 'y el servicio en la segunda')
+  const wrapped = epic.stories.find((story) => story.slug === 'envuelta')
+  assert.deepEqual(wrapped.criteria, ['C2'], 'el criterio vive en la primera línea')
+  assert.equal(wrapped.service, 'app', 'y el servicio en la segunda')
 })
 
 // La plantilla no traía ejemplo, así que quien escribía viñetas planas veía un inbox vacío sobre un
 // archivo lleno. La convención del nombre se conserva —es con lo que se cita el ítem— y lo que se
 // corrige es que la diferencia sea visible.
 test('el inbox dice cuántas viñetas quedaron sin contar', () => {
-  const root = temporal('ops-inbox-')
+  const root = tempRoot('ops-inbox-')
   fs.writeFileSync(path.join(root, 'INBOX.md'), '# Inbox\n\n## Deuda\n\n'
     + '- **con-nombre** — Se cuenta.\n- sin nombre, no se cuenta.\n\n'
     + '## Ideas\n\n- **otra** — Se cuenta.\n- tampoco esta.\n')
@@ -432,7 +432,7 @@ test('roadmap valida trazabilidad, cierre y estructura de épicas grandes', () =
   assert.ok(errors.some((error) => error.includes('C2 no está cubierto')))
   assert.ok(errors.some((error) => error.includes('closed sin evidencia')))
 
-  const root = temporal('ops-roadmap-')
+  const root = tempRoot('ops-roadmap-')
   const roadmap = path.join(root, 'roadmap')
   const large = path.join(roadmap, 'epic-001-grande')
   fs.mkdirSync(large, { recursive: true })
@@ -444,7 +444,7 @@ test('roadmap valida trazabilidad, cierre y estructura de épicas grandes', () =
 
 test('la frontera system/ separa lo del toolkit de lo del proyecto', () => {
   const O = require('../engine/core/ownership')
-  const root = temporal('cauce-ownership-')
+  const root = tempRoot('cauce-ownership-')
   const rules = path.join(root, 'planning', 'rules')
   fs.mkdirSync(path.join(rules, 'system'), { recursive: true })
   fs.writeFileSync(path.join(rules, 'system', 'commits.md'), '# sistema\n')
@@ -525,16 +525,16 @@ test('toda ruta declarada del sistema existe en el paquete', () => {
 
   // Un archivo del sistema que el mapeo no sabe encontrar nunca llega, y falla en silencio:
   // upgrade lo saltea con un `continue` y nadie se entera.
-  const perdidos = O.SYSTEM_FILES
-    .map((file) => ({ file, origen: O.sourceOf(file) }))
-    .filter(({ origen }) => !fs.existsSync(path.join(repoRoot, origen)))
-  assert.deepEqual(perdidos, [], 'hay rutas del sistema que no resuelven contra el paquete')
+  const lost = O.SYSTEM_FILES
+    .map((file) => ({ file, source: O.sourceOf(file) }))
+    .filter(({ source }) => !fs.existsSync(path.join(repoRoot, source)))
+  assert.deepEqual(lost, [], 'hay rutas del sistema que no resuelven contra el paquete')
 
   for (const relative of O.RUNTIME_PATHS.concat(O.SYSTEM_COLLECTIONS)) {
-    const origen = O.sourceOf(relative)
+    const source = O.sourceOf(relative)
     // `.ops/*` sólo existe en una instancia en modo copia; en el paquete es su origen real.
     if (relative.startsWith('.ops/')) {
-      assert.equal(fs.existsSync(path.join(repoRoot, origen)), true, `${relative} → ${origen}`)
+      assert.equal(fs.existsSync(path.join(repoRoot, source)), true, `${relative} → ${source}`)
     }
   }
 })
@@ -544,22 +544,22 @@ test('toda ruta declarada del sistema existe en el paquete', () => {
 // que fija `writeBack` en false— pasaba CI en verde. Cada caso muta un solo campo de una
 // configuración válida, para que el error que se observa sea el de esa mutación y no otro.
 test('la configuración de Jira se rechaza campo por campo', () => {
-  const valida = () => ({
+  const validates = () => ({
     enabled: true,
     baseUrl: 'https://example.atlassian.net',
     jql: 'project = DEMO',
     auth: { type: 'bearer', tokenEnv: 'JIRA_TOKEN' },
     writeBack: false,
   })
-  const errores = (cambio) => {
+  const errors = (change) => {
     const found = []
-    validateConfig({ ...valida(), ...cambio }, found)
+    validateConfig({ ...validates(), ...change }, found)
     return found
   }
 
-  assert.deepEqual(errores({}), [], 'la base no dispara ningún rechazo')
+  assert.deepEqual(errors({}), [], 'la base no dispara ningún rechazo')
 
-  const casos = [
+  const cases = [
     [{ enabled: 'si' }, /enabled debe ser boolean/],
     [{ baseUrl: 'http://example.atlassian.net' }, /baseUrl debe ser HTTPS/],
     [{ baseUrl: 'https://example.atlassian.net/jira' }, /baseUrl debe ser HTTPS/],
@@ -573,24 +573,24 @@ test('la configuración de Jira se rechaza campo por campo', () => {
     [{ maxPages: 0 }, /maxPages debe ser un entero positivo/],
     [{ candidateAssigneeEnv: 'no-es-una-variable' }, /candidateAssigneeEnv debe nombrar/],
   ]
-  for (const [cambio, esperado] of casos) {
-    const found = errores(cambio)
+  for (const [change, expected] of cases) {
+    const found = errors(change)
     assert.ok(
-      found.some((error) => esperado.test(error)),
-      `${JSON.stringify(cambio)} no fue rechazado; salió: ${JSON.stringify(found)}`,
+      found.some((error) => expected.test(error)),
+      `${JSON.stringify(change)} no fue rechazado; salió: ${JSON.stringify(found)}`,
     )
   }
 
   // Y lo opcional sigue siendo opcional: ausente no es inválido.
-  assert.deepEqual(errores({ timeoutMs: undefined, maxPages: undefined }), [])
-  assert.deepEqual(errores({ timeoutMs: 1000, maxPages: 1, candidateAssigneeEnv: 'JIRA_ME' }), [])
+  assert.deepEqual(errors({ timeoutMs: undefined, maxPages: undefined }), [])
+  assert.deepEqual(errors({ timeoutMs: 1000, maxPages: 1, candidateAssigneeEnv: 'JIRA_ME' }), [])
 })
 
 // Los once rechazos de una propuesta tampoco tenían aserción, y son los que sostienen que nada llegue
 // a Jira sin destino, sin estimación o colgando de un padre inventado. Cada caso escribe una propuesta
 // válida con un solo campo cambiado.
 test('una propuesta se rechaza campo por campo', () => {
-  const root = temporal('ops-proposals-')
+  const root = tempRoot('ops-proposals-')
   const proposed = path.join(root, 'integrations', 'jira', 'proposed')
   fs.mkdirSync(proposed, { recursive: true })
   fs.mkdirSync(path.join(root, 'integrations', 'jira', 'staging', 'epics', 'DEMO-1'), { recursive: true })
@@ -598,8 +598,8 @@ test('una propuesta se rechaza campo por campo', () => {
   fs.mkdirSync(path.join(root, 'app'))
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ runner: { maxTaskHours: 4 } }))
 
-  const errores = (campos = {}) => {
-    const f = { provider: 'jira', state: 'draft', type: 'Epic', summary: 'Un título', desc: 'Un texto', ...campos }
+  const errors = (fields = {}) => {
+    const f = { provider: 'jira', state: 'draft', type: 'Epic', summary: 'Un título', desc: 'Un texto', ...fields }
     const frontmatter = ['provider', 'state', 'type', 'parent', 'service', 'estimateHours', 'remote', 'justification']
       .filter((key) => f[key] !== undefined)
       .map((key) => `${key}: ${f[key]}`)
@@ -609,9 +609,9 @@ test('una propuesta se rechaza campo por campo', () => {
     return PR.validate(root, 'jira', [{ resolved: root }])
   }
 
-  assert.deepEqual(errores(), [], 'la base no dispara ningún rechazo')
+  assert.deepEqual(errors(), [], 'la base no dispara ningún rechazo')
 
-  const casos = [
+  const cases = [
     [{ provider: 'otro' }, /provider debe ser jira/],
     [{ state: 'raro' }, /state inválido/],
     [{ type: 'Raro' }, /type inválido/],
@@ -626,18 +626,18 @@ test('una propuesta se rechaza campo por campo', () => {
     [{ state: 'approved', service: 'app', estimateHours: 8 }, /supera 4h; debe dividirse/],
     [{ state: 'published' }, /published exige remote/],
   ]
-  for (const [campos, esperado] of casos) {
-    const found = errores(campos)
+  for (const [fields, expected] of cases) {
+    const found = errors(fields)
     assert.ok(
-      found.some((error) => esperado.test(error)),
-      `${JSON.stringify(campos)} no fue rechazado; salió: ${JSON.stringify(found)}`,
+      found.some((error) => expected.test(error)),
+      `${JSON.stringify(fields)} no fue rechazado; salió: ${JSON.stringify(found)}`,
     )
   }
 
   // Y una propuesta aprobada completa pasa: el rechazo mira el campo, no el estado.
-  assert.deepEqual(errores({ state: 'approved', service: 'app', estimateHours: 3 }), [])
-  assert.deepEqual(errores({ state: 'approved', service: 'app', estimateHours: 8, justification: 'x' }), [])
-  assert.deepEqual(errores({ type: 'Story', parent: 'DEMO-1' }), [])
+  assert.deepEqual(errors({ state: 'approved', service: 'app', estimateHours: 3 }), [])
+  assert.deepEqual(errors({ state: 'approved', service: 'app', estimateHours: 8, justification: 'x' }), [])
+  assert.deepEqual(errors({ type: 'Story', parent: 'DEMO-1' }), [])
 })
 
 // Una épica que creció deja de ser un archivo y pasa a ser un directorio con `spec.md` al lado de sus
@@ -645,10 +645,10 @@ test('una propuesta se rechaza campo por campo', () => {
 // qué dejara otra prueba en disco, y esa intermitencia hacía fallar el piso de cobertura una de cada
 // doce corridas. El caso es real y ahora se mide siempre.
 test('una épica que creció a directorio se lee desde su spec.md', () => {
-  const root = temporal('ops-epic-dir-')
-  const grande = path.join(root, 'roadmap', 'epic-004-grande')
-  fs.mkdirSync(grande, { recursive: true })
-  fs.writeFileSync(path.join(grande, 'spec.md'), `---
+  const root = tempRoot('ops-epic-dir-')
+  const big = path.join(root, 'roadmap', 'epic-004-grande')
+  fs.mkdirSync(big, { recursive: true })
+  fs.writeFileSync(path.join(big, 'spec.md'), `---
 epic: 004
 title: Grande
 status: open
@@ -667,7 +667,7 @@ status: open
 - [ ] **una-historia** (→ C1) — Hace algo. (service: app)
 `)
   // Vive al lado del spec y no se confunde con él: sólo `spec.md` define la épica.
-  fs.writeFileSync(path.join(grande, 'notes.md'), '# Notas sueltas\n')
+  fs.writeFileSync(path.join(big, 'notes.md'), '# Notas sueltas\n')
 
   const epics = P.readEpics(root)
   assert.equal(epics.length, 1, 'una épica, no dos: notes.md no es una')
@@ -682,71 +682,71 @@ status: open
 
 // El recorrido posterior a `init` se prueba entero sin npm, sin terminal y sin escribir en el repo del
 // usuario: las tres cosas entran como dependencias, que es para lo que se separaron del CLI.
-function bootDeps(respuestas = []) {
-  const hechos = { npm: 0, runners: [], proveedores: [], preguntas: [], dichos: [] }
-  const cola = [...respuestas]
+function bootDeps(answers = []) {
+  const facts = { npm: 0, runners: [], providers: [], questions: [], said: [] }
+  const queue = [...answers]
   return {
-    hechos,
+    facts,
     deps: {
-      ask: (pregunta) => { hechos.preguntas.push(pregunta); return Promise.resolve(cola.shift() ?? '') },
-      log: (mensaje) => hechos.dichos.push(mensaje),
-      npm: () => { hechos.npm += 1; return hechos.npmStatus ?? 0 },
-      installRunner: (nombre) => hechos.runners.push(nombre),
-      enableProvider: (nombre) => hechos.proveedores.push(nombre),
+      ask: (question) => { facts.questions.push(question); return Promise.resolve(queue.shift() ?? '') },
+      log: (message) => facts.said.push(message),
+      npm: () => { facts.npm += 1; return facts.npmStatus ?? 0 },
+      installRunner: (name) => facts.runners.push(name),
+      enableProvider: (name) => facts.providers.push(name),
     },
   }
 }
 
-const bootOpciones = (extra) => ({
+const bootOptions = (extra) => ({
   runner: '', integration: '', runners: ['claude', 'codex'], providers: ['jira'],
   interactive: false, install: false, ...extra,
 })
 
 test('sin terminal ni banderas, init no pregunta ni toca nada', async () => {
-  const { hechos, deps } = bootDeps()
-  const result = await BOOT.run('/tmp/x', bootOpciones(), deps)
-  assert.deepEqual(hechos.preguntas, [], 'nadie a quién preguntar')
-  assert.equal(hechos.npm, 0)
+  const { facts, deps } = bootDeps()
+  const result = await BOOT.run('/tmp/x', bootOptions(), deps)
+  assert.deepEqual(facts.questions, [], 'nadie a quién preguntar')
+  assert.equal(facts.npm, 0)
   assert.deepEqual(result, {
     runner: BOOT.SIN_RUNNER, proveedor: BOOT.SIN_PROVEEDOR, instalado: false, pendiente: 'npm install',
   })
 })
 
 test('con banderas, init habilita, instala y deja el runner puesto', async () => {
-  const { hechos, deps } = bootDeps()
-  const result = await BOOT.run('/tmp/x', bootOpciones({ runner: 'codex', integration: 'jira', install: true }), deps)
-  assert.deepEqual(hechos.proveedores, ['jira'])
-  assert.equal(hechos.npm, 1)
-  assert.deepEqual(hechos.runners, ['codex'], 'y el runner va después de npm, que es lo que lo resuelve')
+  const { facts, deps } = bootDeps()
+  const result = await BOOT.run('/tmp/x', bootOptions({ runner: 'codex', integration: 'jira', install: true }), deps)
+  assert.deepEqual(facts.providers, ['jira'])
+  assert.equal(facts.npm, 1)
+  assert.deepEqual(facts.runners, ['codex'], 'y el runner va después de npm, que es lo que lo resuelve')
   assert.equal(result.instalado, true)
 })
 
 test('si npm falla, el runner no se instala y el error se dice', async () => {
-  const { hechos, deps } = bootDeps()
-  hechos.npmStatus = 1
-  const result = await BOOT.run('/tmp/x', bootOpciones({ runner: 'claude', install: true }), deps)
-  assert.deepEqual(hechos.runners, [], 'instalarlo sin la dependencia sólo produce un error peor')
+  const { facts, deps } = bootDeps()
+  facts.npmStatus = 1
+  const result = await BOOT.run('/tmp/x', bootOptions({ runner: 'claude', install: true }), deps)
+  assert.deepEqual(facts.runners, [], 'instalarlo sin la dependencia sólo produce un error peor')
   assert.equal(result.instalado, false)
   assert.match(result.error, /npm install/)
 })
 
 test('una bandera con un valor que no existe se rechaza antes de tocar el disco', async () => {
-  const { hechos, deps } = bootDeps()
+  const { facts, deps } = bootDeps()
   await assert.rejects(
-    () => BOOT.run('/tmp/x', bootOpciones({ runner: 'emacs', install: true }), deps),
+    () => BOOT.run('/tmp/x', bootOptions({ runner: 'emacs', install: true }), deps),
     /--runner debe ser claude, codex, ninguno/,
   )
   await assert.rejects(
-    () => BOOT.run('/tmp/x', bootOpciones({ integration: 'trello' }), deps),
+    () => BOOT.run('/tmp/x', bootOptions({ integration: 'trello' }), deps),
     /--integration debe ser jira, ninguna/,
   )
-  assert.equal(hechos.npm, 0)
+  assert.equal(facts.npm, 0)
 })
 
 test('en una terminal, init pregunta runner e integración y entiende número o nombre', async () => {
-  const { hechos, deps } = bootDeps(['2', 'jira'])
-  const result = await BOOT.run('/tmp/x', bootOpciones({ interactive: true }), deps)
-  assert.equal(hechos.preguntas.length, 2)
+  const { facts, deps } = bootDeps(['2', 'jira'])
+  const result = await BOOT.run('/tmp/x', bootOptions({ interactive: true }), deps)
+  assert.equal(facts.questions.length, 2)
   assert.equal(result.runner, 'codex', 'el 2 de la lista')
   assert.equal(result.proveedor, 'jira', 'o el nombre escrito')
 })
@@ -754,25 +754,25 @@ test('en una terminal, init pregunta runner e integración y entiende número o 
 // Cortar la terminal a mitad de camino no puede terminar la corrida con un error de readline y la
 // instancia recién creada sin decir cómo seguir.
 test('un Ctrl+D en mitad de la pregunta vale como no elegir', async () => {
-  const { hechos, deps } = bootDeps()
+  const { facts, deps } = bootDeps()
   deps.ask = () => Promise.reject(new Error('Aborted with Ctrl+D'))
-  const result = await BOOT.run('/tmp/x', bootOpciones({ interactive: true }), deps)
+  const result = await BOOT.run('/tmp/x', bootOptions({ interactive: true }), deps)
   assert.equal(result.runner, BOOT.SIN_RUNNER)
   assert.equal(result.proveedor, BOOT.SIN_PROVEEDOR)
-  assert.deepEqual(hechos.runners, [])
-  assert.ok(hechos.dichos.some((linea) => linea.includes('sin respuesta')))
+  assert.deepEqual(facts.runners, [])
+  assert.ok(facts.said.some((line) => line.includes('sin respuesta')))
 })
 
 // Enter es la respuesta más probable de quien no sabe qué elegir, y no puede dejar archivos en el repo.
 test('un Enter deja todo como estaba, y un dedazo se repregunta', async () => {
-  const { hechos, deps } = bootDeps(['', ''])
-  const vacio = await BOOT.run('/tmp/x', bootOpciones({ interactive: true }), deps)
-  assert.equal(vacio.runner, BOOT.SIN_RUNNER)
-  assert.deepEqual(hechos.proveedores, [])
+  const { facts, deps } = bootDeps(['', ''])
+  const blank = await BOOT.run('/tmp/x', bootOptions({ interactive: true }), deps)
+  assert.equal(blank.runner, BOOT.SIN_RUNNER)
+  assert.deepEqual(facts.providers, [])
 
-  const otro = bootDeps(['gemini', 'nada', '1', ''])
-  const result = await BOOT.run('/tmp/x', bootOpciones({ interactive: true }), otro.deps)
+  const other = bootDeps(['gemini', 'nada', '1', ''])
+  const result = await BOOT.run('/tmp/x', bootOptions({ interactive: true }), other.deps)
   assert.equal(result.runner, 'claude', 'dos intentos fallidos y el tercero vale')
-  assert.equal(otro.hechos.preguntas.length, 4)
-  assert.ok(otro.hechos.dichos.some((linea) => linea.includes('no está en la lista')))
+  assert.equal(other.facts.questions.length, 4)
+  assert.ok(other.facts.said.some((line) => line.includes('no está en la lista')))
 })

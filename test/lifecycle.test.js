@@ -1,6 +1,6 @@
 'use strict'
 
-const { temporal } = require('./entorno')
+const { tempRoot } = require('./environment')
 
 // Recorrido completo tal como lo vive una empresa: instalar el paquete publicado, materializar la
 // instancia, trabajar en ella, recibir una versión nueva y actualizarse.
@@ -28,7 +28,7 @@ function cauce(consumer, args) {
 }
 
 test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout: 120000 }, (t) => {
-  const base = temporal('cauce-lifecycle-')
+  const base = tempRoot('cauce-lifecycle-')
   const consumer = path.join(base, 'acme-ops')
   fs.mkdirSync(consumer, { recursive: true })
   fs.writeFileSync(
@@ -117,13 +117,13 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   assert.equal(cauce(consumer, ['integration', 'enable', consumer, 'jira']).status, 0)
   assert.equal(cauce(consumer, ['integration', 'check', consumer, 'jira']).status, 0, 'y habilitado, valida')
   // Apagar no desinstala: lo que la empresa escribió adentro sobrevive y volver a encender lo respeta.
-  const suyo = path.join(consumer, 'integrations', 'jira', 'NOTAS.md')
-  fs.writeFileSync(suyo, '# Cómo mapeamos componentes a servicios\n')
+  const own = path.join(consumer, 'integrations', 'jira', 'NOTAS.md')
+  fs.writeFileSync(own, '# Cómo mapeamos componentes a servicios\n')
   assert.equal(cauce(consumer, ['integration', 'disable', consumer, 'jira']).status, 0)
   assert.match(cauce(consumer, ['integration', 'list', consumer]).stdout, /○ jira/)
-  assert.equal(fs.existsSync(suyo), true, 'lo que la empresa escribió adentro sobrevive')
+  assert.equal(fs.existsSync(own), true, 'lo que la empresa escribió adentro sobrevive')
   assert.equal(cauce(consumer, ['integration', 'enable', consumer, 'jira']).status, 0)
-  assert.equal(fs.existsSync(suyo), true, 'y reencender tampoco lo toca')
+  assert.equal(fs.existsSync(own), true, 'y reencender tampoco lo toca')
   assert.equal(cauce(consumer, ['check', planning]).status, 0, 'la instancia sigue válida')
 
   // El runner debe seguir al cargo del proyecto, no al del sistema.
@@ -177,9 +177,9 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   const automationReadme = path.join(consumer, 'automatization', 'README.md')
   assert.match(fs.readFileSync(automationReadme, 'utf8'), /Nota nueva/, 'y la prosa se pone al día')
   // El registro de entrega olvida lo retirado en vez de acumularlo.
-  const registro = JSON.parse(fs.readFileSync(path.join(consumer, '.cauce', 'manifest.json'), 'utf8'))
-  const huerfanas = Object.keys(registro.files).filter((file) => !fs.existsSync(path.join(consumer, file)))
-  assert.deepEqual(huerfanas, [], 'ninguna entrada apunta a un archivo que ya no está')
+  const record = JSON.parse(fs.readFileSync(path.join(consumer, '.cauce', 'manifest.json'), 'utf8'))
+  const orphans = Object.keys(record.files).filter((file) => !fs.existsSync(path.join(consumer, file)))
+  assert.deepEqual(orphans, [], 'ninguna entrada apunta a un archivo que ya no está')
 
   // 8. Y la instancia sigue siendo válida y operable después de todo.
   assert.equal(cauce(consumer, ['check', planning]).status, 0)

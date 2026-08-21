@@ -10,7 +10,7 @@
 // harness. Acá se inyectan a mano sobre el archivo renderizado, así que lo que se ejecuta es el mismo
 // texto que recibe una instancia, con `{{INCLUDE:}}` ya resuelto.
 
-require('./entorno')
+require('./environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')

@@ -4,7 +4,7 @@
 // nada más: acá se prueba la automatización del repositorio —quién puede escribir, qué credencial ve
 // cada job, cómo se fijan las acciones—, no lo que un runner ejecuta en una empresa.
 
-require('./entorno')
+require('./environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
