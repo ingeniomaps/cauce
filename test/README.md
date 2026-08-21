@@ -10,7 +10,8 @@ Esta carpeta contiene las pruebas del toolkit fuente; no se copia a los proyecto
 - `hooks.test.js`: decisiones permitidas y bloqueadas por los guards.
 - `ops.test.js`: recorridos end-to-end del CLI y de una instancia generada.
 - `runners.test.js`: contratos y capacidades declaradas por cada runner.
-- `workflows.test.js`: fases y neutralidad de los workflows, leídos como fuente.
+- `workflows.test.js`: fases y neutralidad de los workflows, leídos como fuente. Afirma lo que sólo se ve
+  leyendo —schemas y texto de prompt—; que un freno frene lo comprueban las suites que lo ejecutan.
 - `autobuild.test.js`: el mismo recorrido **ejecutado**, con los subagentes simulados. Leer el fuente ve
   que un freno está escrito; sólo ejecutarlo ve que frene cuando toca y deje pasar cuando no.
 - `teams.test.js`: manifiestos, agentes, dependencias, gates, precedencia y comandos de equipos.

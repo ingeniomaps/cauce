@@ -7,6 +7,10 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 
+// Acá los workflows se leen como fuente, y lo que se afirma es lo que sólo se ve leyendo: los schemas
+// y el texto que viaja dentro de un prompt. Que un freno frene se comprueba ejecutándolo —en las suites
+// que corren el recorrido—, así que un `stop(...)` no se afirma en los dos lados.
+
 const workflow = fs.readFileSync(path.resolve(__dirname, '..', 'automatization', 'workflows', 'autobuild.js'), 'utf8')
 
 test('autobuild implementa el protocolo completo sin rutas de proyectos fuente', () => {
@@ -47,57 +51,37 @@ test('autobuild lee el contrato una sola vez y no obliga a releerlo', () => {
   }
 })
 
-// El manifiesto vive en dos piezas que se pueden separar sin querer: el schema que lo exige y el contraste
-// que lo mira. Un schema sin contraste deja pasar la lista vacía, y un contraste sin schema no recibe nada.
-test('autobuild no acepta un veredicto que no declare qué se inspeccionó', () => {
+// Un contraste sin schema no recibe nada que contrastar: el campo llega ausente y la lista vacía pasa.
+test('el veredicto declara en su schema qué se inspeccionó', () => {
   assert.match(workflow, /required: \['verdict', 'concerns', 'consulted'\]/, 'el schema exige el manifiesto')
-  for (const gate of ['critique', 'review']) {
-    assert.match(
-      workflow, new RegExp(`!${gate}\\.consulted\\.length.+stop\\('${gate}-unbacked'`),
-      `${gate} contrasta el manifiesto antes de seguir`,
-    )
-  }
 })
 
 // Un exit code no separa el test que prueba la aceptación del que no asercia nada, y el guard de verify
-// tampoco: mira exit codes. Por eso la cobertura se declara aparte, y sin el stop el campo sería adorno.
-// Dos formas de cerrar en verde sin haber probado nada: no haber visto nunca el rojo, y correr gates que
-// no incluyen la prueba recién escrita. Van juntas porque juntas son el mismo agujero.
-test('autobuild exige el rojo previo y que algún gate lo corra', () => {
+// tampoco: mira exit codes. Por eso el rojo previo se declara como campo, y un campo que el schema no
+// pide no llega.
+test('Build declara el rojo previo en su schema', () => {
   assert.match(workflow, /required: \['completed', 'summary', 'redFirst'/, 'Build declara el rojo previo')
-  assert.match(workflow, /sinFallo[\s\S]{0,160}stop\('build-unproven'/, 'un rojo declarado sin su fallo no vale')
-  const verify = workflow.slice(workflow.indexOf("phase('Verify')"), workflow.indexOf("phase('QA')"))
-  assert.match(
-    verify, /ranTests \|\| RUNS_TESTS[\s\S]{0,200}stop\('verify-untested'/,
-    'y los gates tienen que haber corrido la prueba, la reconozca el patrón o lo diga quien la corrió',
-  )
 })
 
-test('autobuild no da por verificada una aceptación sin test que la codifique', () => {
+test('la aceptación viaja a Verify, que declara qué criterio no cubre', () => {
   assert.match(
     workflow, /required: \['passed', 'commands', 'details', 'uncovered'\]/,
     'verify declara qué criterio quedó sin codificar',
   )
   const verify = workflow.slice(workflow.indexOf("phase('Verify')"), workflow.indexOf("phase('QA')"))
   assert.match(verify, /task\.acceptance/, 'la aceptación viaja al que audita el fuente de los tests')
-  assert.match(verify, /verified\.uncovered\.length[\s\S]+stop\('verify-hollow'/, 'un criterio sin test frena')
 })
 
-// Lo que aparece y el plan no previó tiene dos destinos, y lo que los separa es quién puede resolverlo:
-// una prueba que falta la escribe el propio recorrido, un pedazo de diseño que falta no. Si los dos
-// terminan en el mismo stop, una persona paga la interrupción de lo que se arreglaba solo.
-test('autobuild encamina lo descubierto según quién puede resolverlo', () => {
+// Lo que aparece y el plan no previó se encamina según quién puede resolverlo, y esa distinción entra
+// al recorrido declarada: sin el enum, las dos cosas llegan como el mismo valor y no hay qué encaminar.
+// Que después se encamine bien lo ejecuta `autobuild.test.js`.
+test('lo descubierto declara de qué tipo es y con qué se cierra', () => {
   assert.match(workflow, /kind: \{ type: 'string', enum: \['edge', 'open'\] \}/, 'Build declara qué encontró')
+  assert.match(workflow, /enum: \['missing-test', 'ambiguous'\]/, 'el criterio sin cubrir declara su causa')
   assert.match(
     workflow, /abiertos[\s\S]{0,320}HUMAN[\s\S]{0,200}quién puede tomarla/,
-    'una decisión abierta queda registrada con su dueño, y no frena lo que sí se entregó',
+    'y una decisión abierta se registra pidiendo quién puede tomarla',
   )
-  assert.match(workflow, /suelto[\s\S]{0,200}stop\('edge-unproven'/, 'y un caso fijado acá entra con su prueba')
-  const verify = workflow.slice(workflow.indexOf("phase('Verify')"), workflow.indexOf("phase('QA')"))
-  assert.match(workflow, /enum: \['missing-test', 'ambiguous'\]/, 'el criterio sin cubrir declara su causa')
-  assert.match(verify, /ambiguo[\s\S]{0,320}stop\('acceptance-ambiguous'/, 'lo que pide una decisión escala')
-  // Y lo que no la pide vuelve a quien construye, en vez de terminar la corrida.
-  assert.match(verify, /uncovered\.length[\s\S]{0,400}verified = await run\(VERIFY_ASK/, 'lo demás rebota')
 })
 
 // El runtime exige que `meta` sea un literal puro y rechaza el archivo entero antes de la primera fase
