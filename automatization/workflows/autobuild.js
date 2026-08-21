@@ -77,10 +77,19 @@ const PLAN = {
 // Un veredicto sin manifiesto no se puede contrastar: `consulted` enumera lo que quien revisó abrió de
 // verdad, y es lo único que separa al que miró del que aprobó de memoria. No prueba que lo haya leído bien
 // —para eso habría que releerlo—, y esa asimetría es la que lo deja barato (R14).
+// Tres estados porque hay tres cosas distintas que decir, y con un booleano dos se pisan: «no puedo
+// aprobar esto» y «apruebo con algo que hay que corregir antes de entregar» caían las dos en el mismo
+// `false`, así que la primera gastaba igual una vuelta de corrección sobre algo que la corrección no
+// arregla. Y `blocking` separa lo que impide entregar de la mejora opinable, que hasta ahora mandaba a
+// tocar código con la misma fuerza que un defecto.
 const DECISION = {
-  type: 'object', additionalProperties: false, required: ['approved', 'concerns', 'consulted'],
+  type: 'object', additionalProperties: false, required: ['verdict', 'concerns', 'consulted'],
   properties: {
-    approved: { type: 'boolean' }, concerns: { type: 'array', items: { type: 'string' } },
+    verdict: { type: 'string', enum: ['aprobado', 'con-condiciones', 'bloqueado'] },
+    concerns: { type: 'array', items: { type: 'object', additionalProperties: false,
+      required: ['detail', 'blocking'],
+      properties: { detail: { type: 'string' }, blocking: { type: 'boolean' } },
+    } },
     consulted: { type: 'array', items: { type: 'string' } },
   },
 }
@@ -193,6 +202,14 @@ const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos 
 // Acompaña a todo prompt con schema DECISION: el schema obliga a llenar `consulted`, y esto obliga a
 // llenarlo con lo que se abrió en vez de con lo que se pensaba mirar.
 const MANIFEST = ' Enumerá en consulted cada archivo, diff o comando que hayas abierto de verdad, con su ruta.'
+// Acompaña a todo prompt con schema DECISION. El criterio va escrito porque tres estados sin criterio son
+// tres nombres, y el del medio —el que evita gastar una corrección en lo que no se corrige— es el que se
+// pierde primero.
+const VERDICTO = ' Cerrá con verdict=aprobado si no queda nada por corregir antes de entregar; ' +
+  'verdict=con-condiciones si lo que falta se corrige dentro de este mismo cambio; y verdict=bloqueado ' +
+  'si algo no se resuelve acá —el diseño no lo cubre, falta una decisión ajena, o la corrección excede el ' +
+  'alcance—. Marcá blocking=true sólo en el hallazgo que impide entregar: el resto queda registrado y no ' +
+  'manda a tocar código.'
 // Atajo para reconocer un gate que corrió pruebas sin preguntarle a nadie. No alcanza solo y no
 // pretende hacerlo: `mvn verify`, `gradle build`, `tox`, `bin/rails t` y cualquier `make` con nombre
 // propio corren pruebas y no se parecen a esto, así que el que corrió el comando además lo declara en
@@ -200,6 +217,8 @@ const MANIFEST = ' Enumerá en consulted cada archivo, diff o comando que hayas 
 // lo que no puede es frenar una corrida legítima por no conocerlo.
 // El borde izquierdo va explícito en vez de `\b` porque `\b(?:` se lee igual que una llamada a `b()`
 // y la comprobación de identificadores del paquete de pruebas la marca como función inexistente.
+// Lo que hay que corregir antes de entregar. El resto de los hallazgos no desaparece: se registra.
+const frenan = (veredicto) => veredicto.concerns.filter((one) => one.blocking).map((one) => one.detail)
 const RUNS_TESTS = /(?:^|[\s/:=-])(?:tests?|specs?|pytest|jest|vitest|mocha|rspec|phpunit|ci|check)\b/i
 {{INCLUDE:shared/workflow-finish.js}}
 
@@ -353,21 +372,29 @@ while (vueltas++ < MAX_TAREAS) {
       phase('Critique')
       let critique = await read(
         `Atacá este plan por correctitud, alcance, seguridad, pruebas y conflictos con el código ` +
-        `existente.${MANIFEST} Plan: ${JSON.stringify(plan)}`,
+        `existente.${MANIFEST}${VERDICTO} Plan: ${JSON.stringify(plan)}`,
         { schema: DECISION },
       )
       if (!critique) return stop('agent-unavailable', 'Critique no devolvió resultado')
-      if (!critique.approved) {
+      // Un plan bloqueado no se corrige: lo que lo bloquea está fuera de lo que una segunda pasada puede
+      // tocar, así que insistir gasta dos llamadas para llegar al mismo lugar.
+      if (critique.verdict === 'bloqueado') {
+        return stop('plan-blocked', frenan(critique).join('; ') || 'sin condiciones nombradas')
+      }
+      if (frenan(critique).length) {
         plan = await read(
-          `Corregí el plan una vez por: ${critique.concerns.join('; ')}. Plan: ${JSON.stringify(plan)}`,
+          `Corregí el plan una vez por: ${frenan(critique).join('; ')}. Plan: ${JSON.stringify(plan)}`,
           { schema: PLAN },
         )
         critique = await read(
-          `Volvé a criticar el plan corregido contra ${task.acceptance}.${MANIFEST} Plan: ${JSON.stringify(plan)}`,
+          `Volvé a criticar el plan corregido contra ${task.acceptance}.${MANIFEST}${VERDICTO} ` +
+          `Plan: ${JSON.stringify(plan)}`,
           { schema: DECISION },
         )
         if (!plan || !critique) return stop('agent-unavailable', 'la revisión del plan no devolvió resultado')
-        if (!critique.approved) return stop('plan-rejected', critique.concerns.join('; '))
+        if (critique.verdict === 'bloqueado' || frenan(critique).length) {
+          return stop('plan-rejected', frenan(critique).join('; '))
+        }
       }
       // Acá el plan ya está aprobado por los dos caminos posibles, así que el contraste va una sola vez.
       if (!critique.consulted.length) return stop('critique-unbacked', 'aprobó el plan sin declarar qué inspeccionó')
@@ -450,18 +477,32 @@ while (vueltas++ < MAX_TAREAS) {
     phase('Review')
     let review = await run(
       `${asRole(cast.review)}Revisá el diff real por aceptación, regresiones, seguridad, arquitectura, código ` +
-      `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.${MANIFEST}`,
+      `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.${MANIFEST}` +
+      `${VERDICTO}`,
       { schema: DECISION },
     )
     if (!review) return stop('agent-unavailable', 'Review no devolvió resultado')
-    if (!review.approved) {
-      await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${review.concerns.join('; ')}`)
-      review = await run(`Volvé a revisar el diff corregido de ${task.id}.${MANIFEST}`, { schema: DECISION })
+    if (review.verdict === 'bloqueado') {
+      return stop('review-blocked', frenan(review).join('; ') || 'sin condiciones nombradas')
+    }
+    if (frenan(review).length) {
+      await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${frenan(review).join('; ')}`)
+      review = await run(`Volvé a revisar el diff corregido de ${task.id}.${MANIFEST}${VERDICTO}`,
+        { schema: DECISION })
       if (!review) return stop('agent-unavailable', 'la re-revisión no devolvió resultado')
-      if (!review.approved) return stop('review-failed', review.concerns.join('; '))
+      if (review.verdict === 'bloqueado' || frenan(review).length) {
+        return stop('review-failed', frenan(review).join('; '))
+      }
     }
     // Aprobar sin declarar qué se abrió no se arregla mandando a tocar código: falló quien revisó.
     if (!review.consulted.length) return stop('review-unbacked', 'aprobó el diff sin declarar qué inspeccionó')
+    // Lo que no impide entregar no manda a tocar código, y tampoco desaparece: la mejora opinable que se
+    // corrige a las apuradas cuesta una vuelta y un riesgo que nadie pidió.
+    const anotados = review.concerns.filter((one) => !one.blocking).map((one) => one.detail)
+    if (anotados.length) {
+      await write(`Registrá en la sección Lecciones de ${P}/INBOX.md lo que la revisión de ${task.id} dejó ` +
+        `anotado sin frenar la entrega, sin promover ninguna: ${JSON.stringify(anotados)}`)
+    }
   }
 
   phase('Verify')

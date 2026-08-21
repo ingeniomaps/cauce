@@ -49,7 +49,7 @@ function guionBase() {
     'Plan|approach,steps,files,testStrategy': {
       approach: 'validar en el repositorio', steps: ['1'], files: ['api/alta.go'], testStrategy: 'unit',
     },
-    'Critique|approved,concerns,consulted': { approved: true, concerns: [], consulted: ['api/alta.go'] },
+    'Critique|verdict,concerns,consulted': { verdict: 'aprobado', concerns: [], consulted: ['api/alta.go'] },
     'Critique|wipActive': { wipActive: true },
     'Plan|wipActive': { wipActive: true },
     'Build|completed,summary,redFirst,discovered,closedTask': {
@@ -57,7 +57,7 @@ function guionBase() {
       redFirst: [{ test: 'TestAltaDuplicada', failure: 'want error, got nil' }],
       discovered: [], closedTask: false,
     },
-    'Review|approved,concerns,consulted': { approved: true, concerns: [], consulted: ['api/alta.go'] },
+    'Review|verdict,concerns,consulted': { verdict: 'aprobado', concerns: [], consulted: ['api/alta.go'] },
     'Verify|passed,commands,details,uncovered': {
       passed: true, details: 'verde', uncovered: [],
       commands: [{ cmd: 'go test ./...', exitCode: 0 }],
@@ -137,12 +137,12 @@ test('sin WIP activo no se entra a construir', async () => {
 
 test('una aprobación que no declara qué inspeccionó frena en su etapa', async () => {
   const critique = await correr({
-    'Critique|approved,concerns,consulted': { approved: true, concerns: [], consulted: [] },
+    'Critique|verdict,concerns,consulted': { verdict: 'aprobado', concerns: [], consulted: [] },
   })
   assert.equal(critique.resultado.reason, 'critique-unbacked')
 
   const review = await correr({
-    'Review|approved,concerns,consulted': { approved: true, concerns: [], consulted: [] },
+    'Review|verdict,concerns,consulted': { verdict: 'aprobado', concerns: [], consulted: [] },
   })
   assert.equal(review.resultado.reason, 'review-unbacked')
 })
@@ -362,11 +362,14 @@ test('bajar ceremonia no baja la evidencia que cada carril exige', async () => {
 test('un review que rechaza corrige una vez y sigue si la segunda aprueba', async () => {
   let vuelta = 0
   const { resultado, escritos } = await correr({
-    'Review|approved,concerns,consulted': () => {
+    'Review|verdict,concerns,consulted': () => {
       vuelta += 1
       return vuelta === 1
-        ? { approved: false, concerns: ['falta el caso vacío'], consulted: ['api/alta.go'] }
-        : { approved: true, concerns: [], consulted: ['api/alta.go'] }
+        ? {
+          verdict: 'con-condiciones', consulted: ['api/alta.go'],
+          concerns: [{ detail: 'falta el caso vacío', blocking: true }],
+        }
+        : { verdict: 'aprobado', concerns: [], consulted: ['api/alta.go'] }
     },
   })
   assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
@@ -377,10 +380,56 @@ test('un review que rechaza corrige una vez y sigue si la segunda aprueba', asyn
   )
 })
 
+// El estado del medio existe para que dos cosas dejen de pisarse. Un veredicto bloqueado no gasta la
+// vuelta de corrección, porque lo que lo bloquea no es lo que una segunda pasada puede tocar.
+test('un veredicto bloqueado frena sin gastar una corrección', async () => {
+  const review = await correr({
+    'Review|verdict,concerns,consulted': {
+      verdict: 'bloqueado', consulted: ['api/alta.go'],
+      concerns: [{ detail: 'la aceptación pide un contrato que el diseño no define', blocking: true }],
+    },
+  })
+  assert.equal(review.resultado.reason, 'review-blocked')
+  assert.equal(
+    review.pedidas.filter((clave) => clave === 'Review|').length, 0,
+    'no se manda a corregir lo que la corrección no arregla',
+  )
+
+  const critique = await correr({
+    'Critique|verdict,concerns,consulted': {
+      verdict: 'bloqueado', consulted: ['api/alta.go'],
+      concerns: [{ detail: 'el plan depende de una decisión que nadie tomó', blocking: true }],
+    },
+  })
+  assert.equal(critique.resultado.reason, 'plan-blocked')
+  assert.ok(!critique.pedidas.some((clave) => clave.startsWith('Build|')), 'y no se construye')
+})
+
+// Y un hallazgo que no impide entregar deja de costar una vuelta de código: se anota y la tarea cierra.
+test('lo que no bloquea se anota y no manda a tocar código', async () => {
+  const { resultado, escritos, pedidas } = await correr({
+    'Review|verdict,concerns,consulted': {
+      verdict: 'con-condiciones', consulted: ['api/alta.go'],
+      concerns: [{ detail: 'el nombre del handler podría ser más claro', blocking: false }],
+    },
+  })
+  assert.equal(resultado.stopped, undefined, `frenó en ${resultado.reason || ''}`)
+  assert.deepEqual(resultado.done, ['T-1'])
+  assert.equal(
+    pedidas.filter((clave) => clave === 'Review|').length, 1,
+    'una sola escritura en Review: la del registro, no una corrección',
+  )
+  assert.ok(
+    escritos.some((texto) => texto.includes('INBOX') && texto.includes('nombre del handler')),
+    'lo anotado queda donde alguien lo decide después, sin promover',
+  )
+})
+
 test('un review que sigue rechazando después de corregir frena', async () => {
   const { resultado } = await correr({
-    'Review|approved,concerns,consulted': {
-      approved: false, concerns: ['sigue faltando el caso vacío'], consulted: ['api/alta.go'],
+    'Review|verdict,concerns,consulted': {
+      verdict: 'con-condiciones', consulted: ['api/alta.go'],
+      concerns: [{ detail: 'sigue faltando el caso vacío', blocking: true }],
     },
   })
   assert.equal(resultado.reason, 'review-failed')
@@ -389,8 +438,9 @@ test('un review que sigue rechazando después de corregir frena', async () => {
 
 test('un plan que no sobrevive a la segunda crítica no llega a construirse', async () => {
   const { resultado, pedidas } = await correr({
-    'Critique|approved,concerns,consulted': {
-      approved: false, concerns: ['el alcance se pasa de la aceptación'], consulted: ['api/alta.go'],
+    'Critique|verdict,concerns,consulted': {
+      verdict: 'con-condiciones', consulted: ['api/alta.go'],
+      concerns: [{ detail: 'el alcance se pasa de la aceptación', blocking: true }],
     },
     'Critique|approach,steps,files,testStrategy': {
       approach: 'segundo intento', steps: ['1'], files: ['api/alta.go'], testStrategy: 'unit',
