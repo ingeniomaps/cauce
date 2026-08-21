@@ -23,7 +23,7 @@ const { compileWorkflow } = require('./workflow')
 const KEY = {
   contract: 'Triage|contract-digest',
   context: 'Triage|planning-context',
-  cast: 'Cast|cast',
+  classify: 'Classify|classified',
   ready: 'Ready|ready,needsHuman',
   decompose: 'Decompose|hours,needsSplit',
   plan: 'Plan|approach,steps,files,testStrategy',
@@ -52,9 +52,10 @@ function baseScript() {
     // bucle cierre en vez de repetir la misma para siempre.
     [KEY.context]: {
       blocked: '', hasTask: true, wipActive: false, queued: 1, lane: 'full',
+      cast: { build: 'backend-engineer', review: [] },
       slug: 'T-1', hito: 'H1', service: './api', acceptance: 'el alta rechaza un duplicado', epic: 'E1',
     },
-    [KEY.cast]: { build: 'backend-engineer', review: [], verify: [], qa: [] },
+    [KEY.classify]: { classified: [{ slug: 'T-1', lane: 'full', build: 'backend-engineer', review: [] }] },
     [KEY.ready]: { ready: true, needsHuman: false },
     [KEY.decompose]: { hours: 2, needsSplit: false },
     [KEY.plan]: {
@@ -91,7 +92,7 @@ function ranToEnd(result) {
   assert.equal(result.stopped, undefined, `frenó en ${result.reason || ''}: ${result.detail || ''}`)
 }
 
-const NO_TASK = { blocked: '', hasTask: false, wipActive: false, queued: 0, lane: '' }
+const NO_TASK = { blocked: '', hasTask: false, wipActive: false, queued: 0, lane: '', cast: { build: '', review: [] } }
 
 // Ejecuta el recorrido y devuelve lo que devolvió, más las fases y las claves que pidió. La clave sale
 // de la fase y del `label` o de los campos obligatorios del schema: es lo que distingue una crítica de
@@ -395,22 +396,73 @@ test('el carril lite conserva el review y saltea el desmenuzado del plan', async
   for (const absent of ['Decompose', 'Critique']) {
     assert.ok(!phases.includes(absent), `lite no debería llegar a ${absent}`)
   }
-  for (const present of ['Cast', 'Review', 'Verify', 'QA']) {
+  for (const present of ['Review', 'Verify', 'QA']) {
     assert.ok(phases.includes(present), `lite se saltó ${present}`)
   }
 })
 
-// El Cast propone lo mismo en los dos carriles; lo que cambia es qué hace el recorrido con eso.
-test('lite se queda con el dueño de cada fase y descarta los condicionales', async () => {
-  const cast = { [KEY.cast]: { build: 'backend-engineer', review: ['security-engineer'], verify: [], qa: [] } }
+// Los revisores los nombró quien clasificó la tarea, que ya sabía cuál era su carril. Descartarlos
+// después por carril sería un segundo filtro contradiciendo al primero: el clasificador dijo que esa
+// superficie necesita esos ojos, y bajar ceremonia nunca bajó la revisión.
+test('el revisor que nombra la línea revisa en todos los carriles', async () => {
+  const conCast = { [KEY.context]: {
+    ...baseScript()[KEY.context], cast: { build: 'backend-engineer', review: ['security-engineer'] },
+  } }
   const reviewerOf = ({ prompts }) => prompts.find((entrada) => entrada.key.startsWith('Review|')).prompt
 
-  const inLite = reviewerOf(await runFlow(cast, { lane: 'lite' }))
+  const inLite = reviewerOf(await runFlow(conCast, { lane: 'lite' }))
   assert.match(inLite, /software-architect/, 'el dueño de la fase revisa igual')
-  assert.ok(!inLite.includes('security-engineer'), 'y en lite el condicional no se suma')
+  assert.match(inLite, /security-engineer/, 'y el que nombró la clasificación también')
 
-  const inFull = reviewerOf(await runFlow(cast))
-  assert.match(inFull, /security-engineer/, 'en el carril completo sí, que es de lo que lite baja')
+  const inFull = reviewerOf(await runFlow(conCast))
+  assert.match(inFull, /security-engineer/, 'lo mismo en el carril completo')
+})
+
+// Ver la tarea, y si no está clasificada clasificarla. Es lo primero que pasa, antes de gastar
+// cualquier otra cosa en ella.
+test('una tarea sin clasificar se clasifica y la clasificación se escribe donde vive la tarea', async () => {
+  const sinClasificar = { ...baseScript()[KEY.context], lane: '', cast: { build: '', review: [] } }
+  const yaClasificada = baseScript()[KEY.context]
+  const { result, phases, asked, prompts } = await runFlow({}, {
+    contexts: [sinClasificar, yaClasificada],
+  })
+  ranToEnd(result)
+  assert.ok(phases.includes('Classify'), 'la tarea sin lane pasa por el clasificador')
+  assert.ok(asked.indexOf('Classify|classified') < asked.indexOf('Ready|ready,needsHuman'),
+    'y antes de que nada más se gaste en ella')
+  const orden = prompts.find((entry) => entry.key === 'Classify|classified').prompt
+  assert.match(orden, /BACKLOG\.md/, 'la clasificación se escribe donde vive la tarea')
+  assert.match(orden, /\(cast:/, 'con el reparto en la línea, no sólo el carril')
+})
+
+test('una tarea ya clasificada no vuelve a clasificarse', async () => {
+  const { result, phases, asked } = await runFlow()
+  ranToEnd(result)
+  assert.ok(!phases.includes('Classify'), 'lo que ya está decidido no se vuelve a decidir')
+  assert.ok(!asked.includes('Classify|classified'))
+})
+
+// Sin clasificación no se frena: `full` no saltea nada, así que lo que se pierde es tiempo y no
+// evidencia. Frenar cobraría una interrupción humana por lo único que el recorrido resuelve solo.
+test('una clasificación que no escribió nada deja la tarea en el carril completo', async () => {
+  const sinClasificar = { ...baseScript()[KEY.context], lane: '', cast: { build: '', review: [] } }
+  const { result, phases } = await runFlow({ [KEY.classify]: { classified: [] } }, {
+    contexts: [sinClasificar, sinClasificar],
+  })
+  ranToEnd(result)
+  for (const present of ['Decompose', 'Critique', 'Review', 'QA']) {
+    assert.ok(phases.includes(present), `sin clasificar debería correr ${present}`)
+  }
+})
+
+// Una tarea en vuelo ya tiene su plan aprobado bajo un carril: reclasificarla a mitad de camino le
+// cambia las fases que le faltan por debajo.
+test('un WIP activo no se reclasifica', async () => {
+  const enVuelo = {
+    ...baseScript()[KEY.context], lane: '', cast: { build: '', review: [] }, wipActive: true,
+  }
+  const { phases } = await runFlow({}, { contexts: [enVuelo, enVuelo] })
+  assert.ok(!phases.includes('Classify'), 'lo que ya está en vuelo no cambia de carril')
 })
 
 test('bajar ceremonia no baja la evidencia que cada carril exige', async () => {

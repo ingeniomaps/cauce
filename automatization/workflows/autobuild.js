@@ -2,7 +2,7 @@
 // Descubre proyecto, servicios y límites desde ops.config.json; no codifica rutas ni proveedores.
 export const meta = {
   name: 'autobuild',
-  description: 'Triage → Pick → Cast → Ready → Plan → Build → Review → Verify → QA → Commit → Done',
+  description: 'Triage → Pick → Classify → Ready → Plan → Build → Review → Verify → QA → Commit → Done',
   whenToUse: 'Ejecutar un hito aprobado con recuperación por WIP y checkpoint humano entre hitos.',
   // Escritas una por una y no derivadas de una lista: el runtime exige que `meta` sea un literal puro
   // —sin llamadas, variables ni interpolación— y con un `.map` acá rechazaba el archivo entero antes de
@@ -10,7 +10,7 @@ export const meta = {
   phases: [
     { title: 'Triage', detail: 'Contrato del proyecto y estado de planning' },
     { title: 'Pick', detail: 'La próxima tarea, o la épica que falta expandir' },
-    { title: 'Cast', detail: 'Qué cargo trabaja en cada fase' },
+    { title: 'Classify', detail: 'Carril y reparto de la tarea que no los declara' },
     { title: 'Ready', detail: 'Aceptación concreta y sin decisiones pendientes' },
     { title: 'Decompose', detail: 'Partir la tarea que no entra en el tope de horas' },
     { title: 'Plan', detail: 'El cambio más chico que satisface la aceptación' },
@@ -37,12 +37,20 @@ const ROADMAP = `${P}/roadmap`
 
 // Estado de planning tal como lo emite `ops context --json`; ningún modelo parsea BACKLOG ni WIP.
 const CONTEXT = {
-  type: 'object', additionalProperties: false, required: ['blocked', 'hasTask', 'wipActive', 'queued'],
+  type: 'object', additionalProperties: false,
+  required: ['blocked', 'hasTask', 'wipActive', 'queued', 'cast'],
   properties: {
     blocked: { type: 'string' }, hasTask: { type: 'boolean' }, wipActive: { type: 'boolean' },
     queued: { type: 'integer' }, slug: { type: 'string' }, hito: { type: 'string' },
     service: { type: 'string' }, acceptance: { type: 'string' }, epic: { type: 'string' },
     lane: { type: 'string', enum: ['', 'directo', 'lite', 'full'] },
+    // Quién entrega y quiénes miran, decidido al clasificar la tarea y escrito en su línea. Viene
+    // siempre, aunque venga vacío: preguntar si el campo existe antes de leerlo es la clase de borde
+    // que se olvida en una rama y revienta en la otra.
+    cast: {
+      type: 'object', additionalProperties: false, required: ['build', 'review'],
+      properties: { build: { type: 'string' }, review: { type: 'array', items: { type: 'string' } } },
+    },
     blockedTasks: { type: 'array', items: { type: 'string' } },
   },
 }
@@ -170,17 +178,33 @@ const OWNERS = {
   commit: 'release-manager',
 }
 
-const CAST_RULES = 'Elegís quién trabaja, no qué se hace. No inventes slugs: usá sólo los que ' +
-  'devuelve el CLI. Un cargo se suma por riesgo, plataforma o alcance, nunca por rutina.'
+// Clasificar decide dos cosas de una: cuántas perspectivas merece la tarea —el lane— y cuáles —el
+// cast—. El criterio va escrito porque sin él la clasificación es intuición, y la intuición se
+// infla hacia arriba: toda tarea termina pareciendo `full`, que es el carril que no hay que
+// justificar. Lo que decide es la superficie del cambio, no su tamaño en líneas: un `if` en el
+// chequeo de permisos es `full`, y un componente entero de presentación puede ser `directo`.
+const CLASSIFY_RULES = 'Clasificás quién trabaja y cuánta ceremonia merece la tarea; no decidís qué ' +
+  'se hace ni lo hacés. Lane: `directo` si la aceptación nombra un valor concreto —color, copy, ' +
+  'umbral, renombre— y el cambio no cruza un límite de módulo; `lite` si es comportamiento nuevo ' +
+  'dentro de un servicio con superficie conocida; `full` si cruza contratos entre servicios, datos, ' +
+  'autenticación o permisos, o si la aceptación tiene un borde sin decidir. Cast: quien implementa ' +
+  'según la plataforma del servicio, y los revisores que la superficie realmente justifica ' +
+  '—seguridad si toca autenticación, permisos, criptografía o datos sensibles; privacidad si toca ' +
+  'datos personales; sre si toca disponibilidad, límites o despliegue; ux si cambia una superficie ' +
+  'que usa una persona; el de datos o modelos si los toca—. Sumar un cargo que no aporta es ruido ' +
+  'que diluye la revisión. No inventes slugs: usá sólo los que devuelve el CLI.'
 
-const CAST = {
-  type: 'object', additionalProperties: false, required: ['build'],
+const CLASSIFICATION = {
+  type: 'object', additionalProperties: false, required: ['classified'],
   properties: {
-    build: { type: 'string' },
-    review: { type: 'array', items: { type: 'string' } },
-    verify: { type: 'array', items: { type: 'string' } },
-    qa: { type: 'array', items: { type: 'string' } },
-    reason: { type: 'string' },
+    classified: { type: 'array', items: { type: 'object', additionalProperties: false,
+      required: ['slug', 'lane', 'build'],
+      properties: {
+        slug: { type: 'string' }, lane: { type: 'string', enum: ['directo', 'lite', 'full'] },
+        build: { type: 'string' }, review: { type: 'array', items: { type: 'string' } },
+        reason: { type: 'string' },
+      },
+    } },
   },
 }
 
@@ -257,8 +281,8 @@ const write = (prompt, options = {}) => agent(`${LEDGER}\n\n${prompt}`, options)
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
 const readContext = () => read(
   `Corré "node tools/ops.js context ${P} --json" desde ${ROOT} y reportá sólo lo que imprimió. Derivá hasTask ` +
-  `de si task es null, wipActive de si wip es null y lane de task.tier; copiá slug, hito, service, acceptance ` +
-  `y epic de task. El comando es la fuente de verdad: no abras archivos de planning para completarlo.`,
+  `de si task es null, wipActive de si wip es null y lane de task.tier; copiá slug, hito, service, acceptance, ` +
+  `epic y cast de task. El comando es la fuente de verdad: no abras archivos de planning para completarlo.`,
   { schema: CONTEXT, label: 'planning-context' },
 )
 
@@ -273,6 +297,9 @@ const completed = []
 // para siempre. Se corta con motivo porque agotarlo en silencio se lee igual que haber terminado.
 const MAX_TAREAS = 50
 let vueltas = 0
+// Tareas que ya pasaron por el clasificador en esta corrida. Sin esto, una que vuelve sin lane
+// —porque la escritura falló o el modelo la salteó— se reclasifica en cada vuelta del bucle.
+const clasificadas = new Set()
 
 while (vueltas++ < MAX_TAREAS) {
   phase('Pick')
@@ -294,34 +321,51 @@ while (vueltas++ < MAX_TAREAS) {
     acceptance: planning.acceptance, epic: planning.epic,
   }
   currentHito = task.hito
+
+  // Ver la tarea y, si no está clasificada, clasificarla antes de ejecutarla. Se hace una vez por
+  // tarea y se escribe en su línea, así que la decisión sobrevive a la corrida y la puede corregir
+  // una persona antes de que se ejecute nada — al revés que la fase Cast, que la tomaba en caliente,
+  // costaba una llamada por tarea y la tiraba al terminar. Clasifica el hito entero de una sola
+  // llamada: lo que cuesta una vez no debería costar una vez por tarea.
+  //
+  // Un WIP activo no se reclasifica: la tarea ya está en vuelo con las fases que le tocaron, y
+  // cambiárselas a mitad de camino la deja con un plan aprobado bajo otro carril.
+  const sinClasificar = !planning.lane || !planning.cast.build
+  if (sinClasificar && !planning.wipActive && !clasificadas.has(task.id)) {
+    phase('Classify')
+    clasificadas.add(task.id)
+    const classification = await write(
+      `${CLASSIFY_RULES}\n\nRun "node tools/ops.js agents list ${ROOT} --json" and choose only from the slugs ` +
+      `it lists.\nClasificá en ${BACKLOG} todas las tareas en cola que no declaren lane o no declaren cast, ` +
+      `empezando por ${task.id} en ${task.service} —aceptación: ${task.acceptance}—. El lane va entre ` +
+      `corchetes después del slug y el reparto al final de la línea, con la forma ` +
+      `"(cast: quien-entrega → quien-revisa, otro)". No toques nada más de la línea, ni el orden del hito, ` +
+      `ni las tareas que ya declaran las dos cosas. Reportá lo que escribiste.`,
+      { schema: CLASSIFICATION },
+    )
+    if (classification && classification.classified.length) {
+      log(`Clasificadas: ${classification.classified
+        .map((one) => `${one.slug} [${one.lane}] ${one.build}`).join(' · ')}`)
+      planning = await readContext()
+      if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
+      continue
+    }
+    // Sin clasificación no se frena la tarea: `full` es el carril que no saltea nada, así que lo que
+    // se pierde es tiempo y no evidencia. Frenar acá cobraría una interrupción por lo único que el
+    // recorrido puede resolver solo.
+    log(`${task.id} sigue sin clasificar: corre por el carril completo`)
+  }
+
   const direct = planning.lane === 'directo'
   const lite = planning.lane === 'lite'
 
-  // Quién ejecuta cada fase. Los dueños por defecto son fijos y no gastan una llamada; los
-  // condicionales entran por riesgo, plataforma y alcance —nunca por rutina—, que es la misma
-  // regla que ya usa el team. En `directo` no hay condicionales: el lane baja ceremonia.
-  const cast = { ...OWNERS, build: '' }
-  if (!direct) {
-    phase('Cast')
-    const chosen = await read(
-      `${CAST_RULES}\n\nTarea ${task.id} en ${task.service}. Aceptación: ${task.acceptance}.\n` +
-      `Run "node tools/ops.js agents list ${ROOT} --json" and choose only from the slugs it lists.\n` +
-      `Elegí el cargo que implementa según la plataforma del servicio${lite ? '.' : ', y los cargos ' +
-      'condicionales que la superficie realmente justifica: seguridad si toca autenticación, permisos, ' +
-      'criptografía o datos sensibles; privacidad si toca datos personales; sre si toca disponibilidad, ' +
-      'límites o despliegue; ux si cambia una superficie que usa una persona; y el que corresponda a ' +
-      'datos o modelos si los toca. Dejá vacío lo que no aplique: sumar un cargo que no aporta es ruido ' +
-      'que diluye la revisión.'}`,
-      { schema: CAST, label: 'cast' },
-    )
-    if (chosen) {
-      cast.build = chosen.build || ''
-      for (const key of ['review', 'verify', 'qa']) {
-        cast[key] = [OWNERS[key], ...(lite ? [] : chosen[key] || [])].filter(Boolean).join(', ')
-      }
-      log(`Cargos: build=${cast.build || '(sin asignar)'} · review=${cast.review} · qa=${cast.qa}`)
-    }
-  }
+  // Quién ejecuta cada fase. Los dueños por defecto son fijos y no gastan una llamada; quien
+  // implementa y quiénes revisan por riesgo salen de la línea de la tarea. Los revisores valen en
+  // todos los carriles: los nombró quien ya sabía cuál era el carril, y descartarlos acá sería un
+  // segundo filtro que contradice al primero.
+  const cast = { ...OWNERS, build: planning.cast.build }
+  cast.review = [OWNERS.review, ...planning.cast.review].filter(Boolean).join(', ')
+  log(`Cargos: build=${cast.build || '(sin asignar)'} · review=${cast.review} · qa=${cast.qa}`)
   const asRole = (slugs) => (slugs
     ? `Actuá como ${slugs}, respetando el contrato de cada uno en su SKILL.md bajo agents/ y sus ` +
       `límites: un cargo que no puede decidir solo, no decide solo.\n\n`

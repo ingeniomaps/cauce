@@ -225,14 +225,18 @@ test('autobuild ejecuta cada fase bajo el contrato del cargo que la posee', () =
   assert.match(workflow, /agents list \$\{ROOT\} --json/, 'los slugs salen del CLI, no de la memoria')
   assert.match(workflow, /No inventes slugs/)
 
-  // Un cargo se suma por riesgo, plataforma o alcance; nunca por rutina.
-  assert.match(workflow, /nunca por rutina/)
-  assert.match(workflow, /phase\('Cast'\)/)
-  assert.ok(workflow.includes("'Cast'"), 'la fase está declarada en meta')
+  // Un cargo se suma por riesgo, plataforma o alcance; nunca por rutina, y el criterio va escrito:
+  // sin él la clasificación es intuición, y la intuición manda todo al carril que no hay que justificar.
+  assert.match(workflow, /Sumar un cargo que no aporta es ruido/)
+  assert.match(workflow, /Lane: `directo` si la aceptación nombra un valor concreto/)
+  assert.match(workflow, /phase\('Classify'\)/)
+  assert.ok(workflow.includes("'Classify'"), 'la fase está declarada en meta')
 
-  // El lane baja ceremonia: directo no elige reparto, lite se queda con los dueños por defecto.
-  assert.match(workflow, /if \(!direct\) \{\s*\n\s*phase\('Cast'\)/)
-  assert.match(workflow, /lite \? \[\] :/, 'lite no incorpora condicionales')
+  // Clasificar es lo primero y ocurre una vez: la tarea que ya declara carril y reparto no vuelve a
+  // pasar por ahí, y la que sí pasa deja la decisión escrita en su línea en vez de en la corrida.
+  assert.match(workflow, /const sinClasificar = !planning\.lane \|\| !planning\.cast\.build/)
+  assert.match(workflow, /const cast = \{ \.\.\.OWNERS, build: planning\.cast\.build \}/,
+    'quien implementa sale de la línea, no de una llamada')
 
   // El reparto queda como evidencia auditable, no sólo en la cabeza del runner.
   assert.match(workflow, /auditar quién revisó qué/)
