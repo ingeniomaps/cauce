@@ -393,7 +393,7 @@ while (vueltas++ < MAX_TAREAS) {
         )
         if (!plan || !critique) return stop('agent-unavailable', 'la revisión del plan no devolvió resultado')
         if (critique.verdict === 'bloqueado' || frenan(critique).length) {
-          return stop('plan-rejected', frenan(critique).join('; '))
+          return stop('plan-rejected', frenan(critique).join('; ') || 'sin condiciones nombradas')
         }
       }
       // Acá el plan ya está aprobado por los dos caminos posibles, así que el contraste va una sola vez.
@@ -491,7 +491,7 @@ while (vueltas++ < MAX_TAREAS) {
         { schema: DECISION })
       if (!review) return stop('agent-unavailable', 'la re-revisión no devolvió resultado')
       if (review.verdict === 'bloqueado' || frenan(review).length) {
-        return stop('review-failed', frenan(review).join('; '))
+        return stop('review-failed', frenan(review).join('; ') || 'sin condiciones nombradas')
       }
     }
     // Aprobar sin declarar qué se abrió no se arregla mandando a tocar código: falló quien revisó.
