@@ -2,7 +2,8 @@
 
 # Los gates delegan en `package.json`: ese nombre lo tienen fijo `ci.yml`, `verify` y `prepublishOnly`.
 .PHONY: help check tree context test coverage coverage-update ci automation-check integration-check
-.PHONY: require-agent agent-learn agent-propose agent-evaluate require-team team-check team-show
+.PHONY: release-check
+.PHONY: release-check require-agent agent-learn agent-propose agent-evaluate require-team team-check team-show
 
 help: ## Muestra los comandos disponibles y su propósito
 	@awk 'BEGIN {FS = ":.*## "; printf "Uso: make <comando>\n\n"} \
@@ -55,3 +56,18 @@ team-check: require-team ## Valida contrato, agentes y etapas de TEAM=<slug>
 
 team-show: require-team ## Muestra el recorrido de TEAM=<slug>
 	@node engine/cli/ops.js team show "$(TEAM)"
+
+# Comprueba lo que `npm publish` va a exigir y se detiene antes de publicar. El publish no se envuelve a
+# propósito: el guard de dependencias bloquea `npm publish` por su nombre, y un `make publish` no matchea
+# ese patrón —lo dejaría pasar sin que nada lo diga—. La autorización de R10 es por operación y humana.
+release-check: ## Comprueba todo lo que publicar exige — no publica
+	@set -a; [ -f .env ] && . ./.env; set +a; \
+	if [ -z "$$NPM_TOKEN" ]; then \
+	  echo "Falta NPM_TOKEN: .npmrc lo expande del entorno, no del archivo." >&2; \
+	  echo "Corre 'set -a; . ./.env; set +a' o exportalo. Los nombres estan en .env.example." >&2; \
+	  exit 2; \
+	fi; \
+	npm run --silent ci || exit $$?; \
+	npm pack --dry-run 2>&1 | tail -4; \
+	printf '\nTodo verde para %s. El publish lo corre una persona:\n' "$$(npm pkg get version | tr -d '\"')"; \
+	printf '  set -a; . ./.env; set +a; npm publish\n'
