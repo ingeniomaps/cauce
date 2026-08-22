@@ -52,11 +52,19 @@ archivos auxiliares vacíos ni se usa una carpeta si la épica sigue siendo fác
 
 - Frontmatter: `epic`, `title`, `status` y `service`.
 - Resultado: cambio esperado para el usuario o sistema.
-- Fuera de alcance: límites que evitan expansión accidental.
-- Criterios `CN`: resultados observables y verificables.
-- Contexto relevante: rutas existentes, patrones, ADR y reglas aplicables.
+- Fuera de alcance: lo que se decidió no hacer, para que no entre solo.
+- Criterios `CN`: disparador, sujeto y resultado observable. Los bordes —input vacío, permiso ajeno,
+  dependencia caída— se escriben como criterios y no como prosa, porque sólo así se rastrean y se prueban.
+- Contexto relevante: rutas existentes verificadas, patrones, y los ADR e invariantes de
+  `../business-rules/` que rigen el resultado.
 - Historias: incrementos de hasta cuatro horas, con slug, servicio y referencias `(→ CN)`.
-- Riesgos y decisiones humanas: incertidumbres, dependencias y acciones que un runner no puede resolver.
+- Riesgos y decisiones humanas: lo que no se puede decidir acá — supuestos, dependencias y acciones que
+  un runner no puede resolver. Lo que sí se decidió y queda afuera va en Fuera de alcance.
+
+Lo que todavía no se decidió se escribe con el marcador `Por definir`, en la sección que corresponda.
+Una épica `open` puede llevarlos —es un borrador—; `check` los rechaza al pasar a `active`. Por eso la
+plantilla no trae ninguno: lo que se copia no puede incluir algo que haya que borrar para poder
+activar la épica.
 
 Cada criterio debe estar cubierto por al menos una historia. Una historia puede cubrir varios criterios y todo
 slug debe ser estable y único en el roadmap.

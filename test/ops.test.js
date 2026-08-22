@@ -1860,3 +1860,29 @@ ${plan}
   fs.writeFileSync(path.join(planning, 'WIP.md'), 'status: IDLE\n')
   assert.deepEqual(errores(), [], 'el WIP inactivo no tiene plan que contar')
 })
+
+// Una plantilla existe para copiarse, así que no puede traer nada que haya que borrar para que la copia
+// funcione. La guía sobre el marcador de ambigüedad contenía el marcador, y toda épica nacida de acá
+// fallaba al activarse por un renglón de instrucciones. La guía vive en el README, que no se copia.
+test('una copia de la plantilla de épica se activa tal cual', () => {
+  const base = tempRoot('cauce-plantilla-epica-')
+  const planning = path.join(base, 'planning')
+  const molde = path.resolve(__dirname, '..', 'template', 'planning')
+  fs.cpSync(molde, planning, { recursive: true })
+
+  const plantilla = fs.readFileSync(path.join(molde, 'roadmap', 'epic-000-template.md'), 'utf8')
+  fs.writeFileSync(path.join(planning, 'roadmap', 'epic-001-alta.md'), plantilla
+    .replace(/^epic: 000$/m, 'epic: 001')
+    .replace(/^status: template$/m, 'status: active')
+    .replace(/^title: .*$/m, 'title: Alta de cuenta'))
+  fs.writeFileSync(path.join(planning, 'BACKLOG.md'), `# Backlog promovido
+
+## Hito alta — Alta de cuenta
+
+- [ ] **slug-de-historia** [lite] — x. (→ C1) (epic: 001) (service: ruta)
+- [ ] **slug-del-borde** [lite] — x. (→ C2) (epic: 001) (service: ruta)
+`)
+  const errores = JSON.parse(run(['check', planning, '--json']).stdout).errors
+    .filter((error) => /epic-001|BACKLOG/.test(error))
+  assert.deepEqual(errores, [], 'la copia no arrastra nada que haya que borrar')
+})
