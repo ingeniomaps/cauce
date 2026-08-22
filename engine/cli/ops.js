@@ -65,7 +65,7 @@ function usage() {
   ops automation doctor <ops-root> claude|codex|gemini|antigravity
   ops automation install <ops-root> claude|codex|gemini|antigravity
   ops automation uninstall <ops-root> claude|codex|gemini|antigravity
-  ops learn <agent> [--proposal [--period <AAAA-MM>]] [--applied [--period <AAAA-MM>]]
+  ops learn <agent|team> [--team] [--proposal [--period <AAAA-MM>]] [--applied [--period <AAAA-MM>]]
   ops evaluate <agent|team> [--team] [--cases [--json]] [--bench [caso]] [--record [AAAA-MM-DD]]
   ops agents list [ops-root] [--own|--system] [--json]
   ops agents fork <cargo> [ops-root]
@@ -972,8 +972,13 @@ function upgrade(dir, cli) {
 
   if (changed.length && !force) {
     for (const file of changed) console.error(`✗ ${file}`)
+    // Tres clases distintas, y antes eran dos: todo lo que no vivía bajo `system/` recibía el consejo
+    // del runtime, así que editar el protocolo respondía con cómo desactivar un guard. Cada una tiene
+    // su salida y decirle la ajena manda a buscar una configuración que no existe.
     const reglas = changed.filter((file) => file.includes('/system/'))
-    const runtime = changed.filter((file) => !file.includes('/system/'))
+    const runtime = changed.filter((file) => !file.includes('/system/')
+      && O.RUNTIME_PATHS.some((base) => file.startsWith(`${base}/`)))
+    const documentos = changed.filter((file) => !reglas.includes(file) && !runtime.includes(file))
     const guia = []
     if (reglas.length) {
       guia.push(
@@ -986,6 +991,13 @@ function upgrade(dir, cli) {
         'El runtime es del toolkit: en vez de editarlo, agregá lo tuyo al lado con otro nombre —un\n'
         + 'guard propio sobrevive a cada actualización— y registralo en la configuración de tu runner,\n'
         + 'que sí es del proyecto. Para desactivar un guard alcanza con quitarlo de esa configuración.',
+      )
+    }
+    if (documentos.length) {
+      guia.push(
+        'Esos documentos son del toolkit y no llevan una línea de la empresa: se reemplazan enteros en\n'
+        + 'cada actualización para que las mejoras lleguen. Lo que tu proyecto decide distinto va donde sí\n'
+        + 'es suyo —una ADR propia, una regla propia, o `planning/delivery/project.md` para la entrega—.',
       )
     }
     fail(
@@ -1369,8 +1381,10 @@ function learn(agent, cli) {
   try {
     // Sellar es determinista y por eso vive acá y no en el recorrido: marcar una propuesta como
     // aplicada editando frontmatter a mano es justo el paso que un agente hace mal en silencio.
+    // Un recorrido aprende de sus corridas y un cargo de su profesión: mismo ciclo, distinto insumo.
+    const kind = cli.has('--team') ? 'team' : 'agent'
     if (cli.has('--applied')) {
-      const result = L.seal(opsRoot(), agent, cli.value('--period'))
+      const result = L.seal(opsRoot(), agent, cli.value('--period'), kind)
       const relative = path.relative(opsRoot(), result.file)
       return console.log(result.already
         ? `= ${relative} ya estaba aplicada`
@@ -1379,7 +1393,7 @@ function learn(agent, cli) {
     // `--period` es para consolidar a mano un mes que no es el de hoy. El ciclo automático no lo
     // pasa: la propuesta se llama por el mes en que se abre y arrastra lo que todavía no entró.
     const result = cli.has('--proposal')
-      ? L.prepareProposal(opsRoot(), agent, new Date(), cli.value('--period'))
+      ? L.prepareProposal(opsRoot(), agent, new Date(), cli.value('--period'), kind)
       : L.prepareReport(opsRoot(), agent)
     console.log(`${result.created ? '+' : '='} ${path.relative(opsRoot(), result.file)}`)
     if (typeof result.reports === 'number') console.log(`  ${result.reports} informe(s) semanal(es) incluidos`)
@@ -1427,16 +1441,17 @@ function evaluate(agent, caso, cli) {
     }
     // Un recorrido no tiene contrato de cargo que validar —ni SKILL.md ni fuentes—: lo suyo lo
     // comprueba `team check`. Acá se mide lo que sí comparte con un cargo: sus casos y su corrida.
-    const result = kind === 'team'
-      ? { errors: [], warnings: [], proposals: 0, pending: 0, cases: 0 }
-      : L.evaluate(root, agent)
+    const result = kind === 'team' ? L.evaluateTeam(root, agent) : L.evaluate(root, agent)
     const runs = EV.validate(root, agent, kind)
     const errors = [...result.errors, ...runs.errors]
     for (const warning of [...result.warnings, ...runs.warnings]) console.warn(`⚠ ${warning}`)
     for (const error of errors) console.error(`✗ ${error}`)
     if (errors.length) fail(`\n${errors.length} error(es)`, 1)
     const corrida = runs.last ? `${runs.last.passed}/${runs.last.total} pasan (${runs.last.date})` : 'sin correr'
-    if (kind === 'team') return console.log(`✓ ${agent}: ${runs.cases} caso(s) — ${corrida}`)
+    if (kind === 'team') {
+      return console.log(`✓ ${agent}: ${runs.cases} caso(s) — ${corrida}, ` +
+        `${result.proposals} propuesta(s)${result.pending ? ` (${result.pending} sin aplicar)` : ''}`)
+    }
     console.log(
       `✓ ${agent}: ${result.cases} caso(s) — ${corrida}, ${result.proposals} propuesta(s)` +
         `${result.pending ? ` (${result.pending} sin aplicar)` : ''}, ` +
