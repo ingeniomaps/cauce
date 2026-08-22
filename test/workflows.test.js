@@ -263,7 +263,11 @@ function workflowFiles() {
 test('ningún workflow lleva la ruta de una máquina', () => {
   const A = require('../engine/automation')
   const automation = path.resolve(__dirname, '..', 'automatization')
-  const DE_UNA_MAQUINA = [/\/home\//, /\/Users\//, /\b[A-Za-z]:\\/]
+  // La unidad de Windows no se ancla con \b: en prosa española `ó` no es carácter de palabra, así
+  // que `intención:\n` ofrecía un límite entre la `ó` y la `n`, y `n:\` pasaba por `C:\`. El
+  // lookbehind pide que antes de la letra no haya otra, que es lo que distingue una unidad de la
+  // última letra de una palabra.
+  const DE_UNA_MAQUINA = [/\/home\//, /\/Users\//, /(?<![A-Za-zÀ-ÿ])[A-Za-z]:\\/]
   const filtradas = []
   for (const file of workflowFiles()) {
     const source = A.render(file, '{{OPS_DIR}}', automation, '{{OPS_ROOT}}')
@@ -569,4 +573,34 @@ test('un banco que no se pudo rehacer detiene la corrida', () => {
   assert.match(evalWf, /stop\('banco-sin-rehacer'/, 'y frenan la corrida en vez de medir con uno viejo')
   assert.match(evalWf, /do not add --force/, 'el agente no decide por su cuenta pisar lo que hay')
   assert.match(evalWf, /leftover directory from an earlier run/, 'ni da por bueno lo que sobró')
+})
+
+// Un cargo responde y un recorrido corre, y esa diferencia decide todo el diseño de su evaluación:
+// acá no hay un agente que conteste el pedido, hay una invocación del recorrido de verdad. Pedirle a
+// un agente que lo imite mediría la imitación, que es justo lo que un recorrido no es — sus etapas
+// tienen dueños distintos y sus gates frenan entre una y otra.
+test('la evaluación de un recorrido lo ejecuta en vez de imitarlo', () => {
+  const evalWf = fs.readFileSync(path.join(WF, 'team-eval.js'), 'utf8')
+  assert.match(evalWf, /workflow\('team', \{ team: TEAM, intent: item\.request/, 'corre el recorrido real')
+  assert.match(evalWf, /root: `\$\{BENCH_ROOT\}\/\$\{item\.id\}`/, 'y lo corre sobre el banco del caso')
+  assert.match(evalWf, /mediría la imitación/, 'y queda dicho por qué')
+
+  // Un recorrido entrega escribiendo —épica, INBOX, acciones humanas—, así que juzgarlo sólo por lo
+  // que devolvió lo daría por ausente. Es el mismo hallazgo que ya tenía `agent-eval`.
+  assert.match(evalWf, /git -C \$\{BENCH_ROOT\}\/\$\{item\.id\} status --porcelain/, 'el juez lee el banco')
+  assert.match(evalWf, /lo daría por ausente/)
+
+  // Frenar es un resultado legítimo en varios de estos casos, y confundirlo con un fallo mediría al
+  // revés: el recorrido que se detiene donde debe estaría reprobando por hacer lo correcto.
+  assert.match(evalWf, /no es de por sí un fallo/, 'un stop no se cuenta como fallo automático')
+  assert.match(evalWf, /stop\('banco-sin-rehacer'/, 'y no mide contra un banco viejo')
+})
+
+// El recorrido no puede escribir en el planning del toolkit —no hay— ni ensuciar el de una empresa
+// para medirse. Necesita trabajar sobre el banco, y eso exige que sepa correr en otra raíz.
+test('un recorrido puede correr sobre la raíz que se le nombra', () => {
+  const team = fs.readFileSync(path.join(WF, 'team.js'), 'utf8')
+  assert.match(team, /const WORKDIR = String\(\(typeof args === 'string' \? '' : \(args \|\| \{\}\)\.root\)/)
+  assert.match(team, /const P = `\$\{WORKDIR\}\/planning`/, 'y escribe ahí, no en la raíz de invocación')
+  assert.equal(/\$\{ROOT\}/.test(team), false, 'ninguna ruta quedó atada a la raíz de invocación')
 })

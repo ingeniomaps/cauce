@@ -38,6 +38,10 @@
       "target": ".claude/workflows/agent-eval.js"
     },
     {
+      "source": "../../workflows/team-eval.js",
+      "target": ".claude/workflows/team-eval.js"
+    },
+    {
       "source": "../../workflows/agent-propose.js",
       "target": ".claude/workflows/agent-propose.js"
     },
