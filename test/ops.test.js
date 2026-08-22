@@ -1947,8 +1947,8 @@ test('la guía de entrega llega a una instancia y su project.md no', () => {
   // Y cada clase de archivo editado recibe su salida, no la de otra: antes, todo lo que no vivía bajo
   // `system/` respondía con cómo desactivar un guard, incluido el protocolo.
   const fuente = fs.readFileSync(path.resolve(__dirname, '..', 'engine', 'cli', 'instance.js'), 'utf8')
-  for (const clase of ['const reglas = changed.filter', 'const runtime = changed.filter',
-    'const documentos = changed.filter']) {
+  for (const clase of ['const ruleFiles = changed.filter', 'const runtime = changed.filter',
+    'const docs = changed.filter']) {
     assert.ok(fuente.includes(clase), `upgrade distingue ${clase}`)
   }
 })

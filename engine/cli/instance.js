@@ -107,13 +107,13 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
   // El motor llega como dependencia para que el lockfile fije su versión. El repo ops es un sidecar:
   // declarar npm acá no convierte en Node al servicio de Go de al lado.
   declareEngine(path.join(root, 'package.json'), version)
-  let entregado = {}
+  let deliveredPaths = {}
   for (const relative of O.trackedPaths()) {
     const dir = path.join(root, relative)
-    if (fs.existsSync(dir)) entregado = M.record(root, relative, O.treeFiles(dir), entregado)
+    if (fs.existsSync(dir)) deliveredPaths = M.record(root, relative, O.treeFiles(dir), deliveredPaths)
   }
-  entregado = M.recordPaths(root, O.SYSTEM_FILES, entregado)
-  M.write(root, entregado)
+  deliveredPaths = M.recordPaths(root, O.SYSTEM_FILES, deliveredPaths)
+  M.write(root, deliveredPaths)
   // La instancia recuerda de qué versión salió: sin esto no hay actualización posible.
   const configFile = path.join(root, 'ops.config.json')
   const config = JSON.parse(fs.readFileSync(configFile, 'utf8'))
@@ -147,13 +147,13 @@ function instanceVersion(root) {
 // recién creada. Un aviso que exagera lo que se pierde se deja de leer igual que uno que lo minimiza.
 function loQueSePierde(root) {
   const planning = path.join(root, 'planning')
-  const cola = P.readBacklog(planning).reduce((total, hito) => total + (hito.tasks || []).length, 0)
-  const acciones = ST.pendingHumanActions(planning).length
+  const queued = P.readBacklog(planning).reduce((total, hito) => total + (hito.tasks || []).length, 0)
+  const humanActions = ST.pendingHumanActions(planning).length
   return {
     epicas: P.readEpics(planning).length,
     hechas: (P.readDone(planning).entries || []).length,
-    enCola: cola,
-    acciones,
+    enCola: queued,
+    humanActions,
     contexto: !OB.guide(root).fresh,
     runners: [...new Set(Object.keys(M.readRunners(root)).map((key) => key.split('/')[0]))],
   }
@@ -172,33 +172,33 @@ function destroy(dir, cli) {
   }
   if (O.mode(root) === 'toolkit') fail(`${root} es el toolkit: acá se fabrica Cauce, no se lo borra.`, 2)
 
-  const perdida = loQueSePierde(root)
-  const lineas = [
-    perdida.epicas && `${perdida.epicas} épica(s) en el roadmap`,
-    perdida.enCola && `${perdida.enCola} tarea(s) en la cola`,
-    perdida.hechas && `${perdida.hechas} tarea(s) terminada(s) con su evidencia`,
-    perdida.acciones && `${perdida.acciones} acción(es) humana(s) pendiente(s)`,
-    perdida.contexto && 'el contexto escrito en organization/',
+  const loss = loQueSePierde(root)
+  const lines = [
+    loss.epicas && `${loss.epicas} épica(s) en el roadmap`,
+    loss.enCola && `${loss.enCola} tarea(s) en la cola`,
+    loss.hechas && `${loss.hechas} tarea(s) terminada(s) con su evidencia`,
+    loss.humanActions && `${loss.humanActions} acción(es) humana(s) pendiente(s)`,
+    loss.contexto && 'el contexto escrito en organization/',
   ].filter(Boolean)
 
-  const embebido = O.mode(root) === 'embedded'
+  const embedded = O.mode(root) === 'embedded'
   if (!cli.has('--force')) {
-    console.log(embebido
+    console.log(embedded
       ? `Sacar Cauce de ${root} se lleva:`
       : `Borrar ${root} se lleva:`)
-    for (const linea of lineas) console.log(`  − ${linea}`)
-    if (!lineas.length) console.log('  − nada escrito todavía: la instancia está como salió de init')
-    if (perdida.runners.length) {
-      console.log(`  y saca el wiring de: ${perdida.runners.join(', ')} (lo tuyo queda donde está)`)
+    for (const textLine of lines) console.log(`  − ${textLine}`)
+    if (!lines.length) console.log('  − nada escrito todavía: la instancia está como salió de init')
+    if (loss.runners.length) {
+      console.log(`  y saca el wiring de: ${loss.runners.join(', ')} (lo tuyo queda donde está)`)
     }
-    if (embebido) {
+    if (embedded) {
       console.log('  el código del repositorio no se toca: en modo embebido la instancia es él mismo.')
     }
     console.log('\nNada de esto lo repone un init. Si es lo que querés: repetí con --force.')
     process.exit(1)
   }
 
-  for (const runner of perdida.runners) {
+  for (const runner of loss.runners) {
     try { A.uninstall(root, runner, console) } catch (error) { console.error(`  ${runner}: ${error.message}`) }
   }
   // El orden no es negociable: primero el wiring, después la carpeta. Al revés, cada llamada de
@@ -206,20 +206,20 @@ function destroy(dir, cli) {
   // En modo embebido la instancia **es** el repositorio: borrar la carpeta se lleva el código del
   // producto, que Cauce nunca escribió y no repone nadie. Ahí se saca lo del toolkit y se deja el repo.
   if (O.mode(root) === 'embedded') {
-    const suyo = [
+    const ownPath = [
       'planning', 'organization', 'teams', 'integrations', 'automatization', 'tools',
       'ops.config.json', '.cauce', 'AGENTS.md',
     ]
-    for (const relative of suyo) fs.rmSync(path.join(root, relative), { recursive: true, force: true })
-    console.log(`✓ ${suyo.length} ruta(s) de Cauce quitadas de ${root}`)
-    return console.log('  tu repositorio queda donde está: en modo embebido la instancia era él mismo.')
+    for (const relative of ownPath) fs.rmSync(path.join(root, relative), { recursive: true, force: true })
+    console.log(`✓ ${ownPath.length} ruta(s) de Cauce quitadas de ${root}`)
+    return console.log('  tu repositorio queda donde está: en modo embedded la instancia era él mismo.')
   }
-  const adentro = process.cwd() === root || process.cwd().startsWith(`${root}${path.sep}`)
+  const inside = process.cwd() === root || process.cwd().startsWith(`${root}${path.sep}`)
   fs.rmSync(root, { recursive: true, force: true })
   console.log(`✓ ${root} borrado`)
   // Correrlo desde adentro es lo natural —ahí está `tools/ops.js`— y deja la terminal en un directorio
   // que ya no existe: el próximo comando falla con un `getcwd` que no dice nada de esto.
-  if (adentro) console.log('  tu terminal quedó en esa carpeta: hacé "cd .." antes del próximo comando.')
+  if (inside) console.log('  tu terminal quedó en esa carpeta: hacé "cd .." antes del próximo comando.')
 }
 
 // Actualiza sólo lo que el toolkit declara suyo. Todo lo demás —planning, organization, reglas
@@ -265,11 +265,11 @@ function upgrade(dir, cli) {
   }
 
   // Antes de retirar nada, comprobar que no se lleve puesto aprendizaje acumulado.
-  const rescatar = O.retiredWithLearning(root)
-  if (rescatar.length && !force) {
-    for (const file of rescatar) console.error(`✗ ${file}`)
+  const rescue = O.retiredWithLearning(root)
+  if (rescue.length && !force) {
+    for (const file of rescue) console.error(`✗ ${file}`)
     fail(
-      `\n${rescatar.length} archivo(s) de aprendizaje quedaron en una ruta que Cauce ya no mantiene.\n\n` +
+      `\n${rescue.length} archivo(s) de aprendizaje quedaron en una ruta que Cauce ya no mantiene.\n\n` +
       'Movelos a un cargo propio en agents/roles/<slug>/learning/ y repetí, o descartalos con --force.',
     )
   }
@@ -279,34 +279,34 @@ function upgrade(dir, cli) {
     // Tres clases distintas, y antes eran dos: todo lo que no vivía bajo `system/` recibía el consejo
     // del runtime, así que editar el protocolo respondía con cómo desactivar un guard. Cada una tiene
     // su salida y decirle la ajena manda a buscar una configuración que no existe.
-    const reglas = changed.filter((file) => file.includes('/system/'))
+    const ruleFiles = changed.filter((file) => file.includes('/system/'))
     const runtime = changed.filter((file) => !file.includes('/system/')
       && O.RUNTIME_PATHS.some((base) => file.startsWith(`${base}/`)))
-    const documentos = changed.filter((file) => !reglas.includes(file) && !runtime.includes(file))
-    const guia = []
-    if (reglas.length) {
-      guia.push(
-        'Las reglas y decisiones bajo system/ son del toolkit. Para cambiar una, escribí la tuya al\n'
+    const docs = changed.filter((file) => !ruleFiles.includes(file) && !runtime.includes(file))
+    const advice = []
+    if (ruleFiles.length) {
+      advice.push(
+        'Las ruleFiles y decisiones bajo system/ son del toolkit. Para cambiar una, escribí la tuya al\n'
         + 'lado con el mismo ID: el proyecto manda y `check` lo reporta como override explícito.',
       )
     }
     if (runtime.length) {
-      guia.push(
+      advice.push(
         'El runtime es del toolkit: en vez de editarlo, agregá lo tuyo al lado con otro nombre —un\n'
         + 'guard propio sobrevive a cada actualización— y registralo en la configuración de tu runner,\n'
         + 'que sí es del proyecto. Para desactivar un guard alcanza con quitarlo de esa configuración.',
       )
     }
-    if (documentos.length) {
-      guia.push(
-        'Esos documentos son del toolkit y no llevan una línea de la empresa: se reemplazan enteros en\n'
+    if (docs.length) {
+      advice.push(
+        'Esos docs son del toolkit y no llevan una línea de la empresa: se reemplazan enteros en\n'
         + 'cada actualización para que las mejoras lleguen. Lo que tu proyecto decide distinto va donde sí\n'
         + 'es suyo —una ADR propia, una regla propia, o `planning/delivery/project.md` para la entrega—.',
       )
     }
     fail(
       `\n${changed.length} archivo(s) que mantiene Cauce fueron editados y se perderían.\n\n` +
-      `${guia.join('\n\n')}\n\nSi el cambio ya no te sirve, repetí con --force para descartarlo.`,
+      `${advice.join('\n\n')}\n\nSi el cambio ya no te sirve, repetí con --force para descartarlo.`,
     )
   }
 
@@ -327,29 +327,29 @@ function upgrade(dir, cli) {
   }
 
   // Retirar lo que el toolkit ya no distribuye, después de haber actualizado lo que sí.
-  const retirado = []
+  const retired = []
   for (const relative of O.RETIRED) {
     const target = path.join(root, relative)
     if (!fs.existsSync(target)) continue
     F.assertNoSymlinkPath(root, target)
     fs.rmSync(target, { recursive: true, force: true })
-    retirado.push(relative)
+    retired.push(relative)
   }
 
   // Dejar registrado lo que se entregó, para poder distinguir después una edición local de una
   // mejora del toolkit.
-  let registro = M.read(root)
+  let record = M.read(root)
   for (const relative of O.trackedPaths()) {
     const dir = path.join(root, relative)
-    if (fs.existsSync(dir)) registro = M.record(root, relative, O.treeFiles(dir), registro)
+    if (fs.existsSync(dir)) record = M.record(root, relative, O.treeFiles(dir), record)
   }
-  registro = M.recordPaths(root, O.SYSTEM_FILES, registro)
+  record = M.recordPaths(root, O.SYSTEM_FILES, record)
   // El registro de forks se poda igual que el de archivos: un cargo devuelto al catálogo deja su
   // entrada, y una entrada sin copia sólo puede producir avisos sobre algo que no está.
-  const vivos = Object.fromEntries(Object.entries(M.readForks(root)).filter(
+  const kept = Object.fromEntries(Object.entries(M.readForks(root)).filter(
     ([slug, record]) => fs.existsSync(path.join(root, 'agents', (record || {}).type || 'roles', slug)),
   ))
-  M.write(root, M.prune(root, registro), null, vivos)
+  M.write(root, M.prune(root, record), null, kept)
 
   const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
   config.cauceVersion = to
@@ -359,7 +359,7 @@ function upgrade(dir, cli) {
   // Descartar con --force es legítimo; hacerlo sin dejar rastro no. Queda en la salida del comando,
   // que es la evidencia que el protocolo pide para cualquier cambio.
   for (const file of changed) console.log(`− descartado tu cambio en ${file}`)
-  for (const relative of retirado) console.log(`− retirado ${relative}: Cauce ya no lo distribuye`)
+  for (const relative of retired) console.log(`− retirado ${relative}: Cauce ya no lo distribuye`)
   printChangelog(from, to)
   console.log(`  ${system.length} ruta(s) del sistema y ${O.RUNTIME_PATHS.length} del runtime actualizadas`)
   for (const override of overrides) {
