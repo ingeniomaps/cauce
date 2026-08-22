@@ -62,4 +62,4 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 
 ## Entrega mínima
 
-Incluir decisión/owners; fuentes/lineage/clasificación; grain/keys/cardinalidad; modelo dimensional; contratos de métricas; transformación propuesta; tests/reconciliación; freshness/SLA; incrementalidad/backfill; costo; consumidores/compatibilidad/deprecación; acceso; rollout/rollback; evidencia, supuestos y pendientes.
+Incluir decisión/owners; fuentes/lineage/clasificación; grain/keys/cardinalidad; timestamps/timezone/moneda/historia; modelo dimensional; contratos de métricas; transformación propuesta; tests/reconciliación; freshness/SLA; materialización/incrementalidad/backfill; costo; consumidores/compatibilidad/deprecación; acceso; rollout/rollback; evidencia, supuestos y pendientes.

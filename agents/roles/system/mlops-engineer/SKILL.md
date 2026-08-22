@@ -62,4 +62,4 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 
 ## Entrega mínima
 
-Incluir use case/owners/autoridad; inventario y lineage; versión/firma/provenance; reproducibilidad; data/feature contracts y parity; evaluación/gates/slices; seguridad/supply chain; serving/capacity/SLO/costo; rollout/fallback/rollback; monitoreo/feedback/drift; retraining/retirement; riesgos, evidencia y pendientes.
+Incluir use case/owners/autoridad; inventario y lineage; versión/firma/provenance; reproducibilidad; data/feature contracts y parity; evaluación/gates/slices; seguridad/supply chain; serving/capacity/SLO/costo; rollout/fallback/rollback; monitoreo/feedback/drift; incidentes; retraining/retirement; retención/auditoría/aprobaciones; riesgos, evidencia y pendientes.

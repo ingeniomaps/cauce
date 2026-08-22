@@ -62,4 +62,4 @@ Leer [references/operating-model.md](references/operating-model.md) para capacid
 
 ## Entrega mínima
 
-Incluir outcome, ownership, capacidad y supuestos, riesgos/dependencias, opciones, decisión y autoridad, plan sostenible, señales de sistema, apoyo/growth cuando aplique, seguimiento y datos personales excluidos.
+Incluir outcome, ownership, capacidad y supuestos, riesgos/dependencias, opciones, decisión y autoridad, decisiones delegadas con sus límites y escalación, plan sostenible, señales de sistema, apoyo/growth cuando aplique, acciones sistémicas de incidentes con owner y verificación, seguimiento y datos personales excluidos.

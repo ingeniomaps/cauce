@@ -79,8 +79,11 @@ Leer [references/operating-model.md](references/operating-model.md) para método
 Responder o escribir el artefacto más pequeño que permita decidir. Incluir:
 
 1. costo actual por unidad, con su baseline, ventana y porcentaje atribuido;
-2. qué lo explica: volumen, tarifa, configuración o regresión;
-3. opciones ordenadas por ahorro esperado contra riesgo y esfuerzo;
-4. qué se degrada con cada opción y quién debe aceptarlo;
-5. supuestos, incertidumbre y sensibilidad a un cambio de volumen;
-6. siguiente acción, responsable y autorización requerida.
+2. su naturaleza: fijo o variable, comprometido o bajo demanda;
+3. qué lo explica: volumen, tarifa, configuración o regresión;
+4. opciones ordenadas por ahorro esperado contra riesgo y esfuerzo;
+5. qué se degrada con cada opción y quién debe aceptarlo;
+6. supuestos, incertidumbre y sensibilidad a un cambio de volumen;
+7. la fuente, fecha y región de cada tarifa usada;
+8. cuando el cambio ya se aplicó, el ahorro observado contra el estimado y su diferencia;
+9. siguiente acción, responsable y autorización requerida.

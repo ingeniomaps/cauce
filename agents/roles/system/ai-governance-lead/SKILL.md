@@ -62,4 +62,4 @@ Leer [references/operating-model.md](references/operating-model.md) para inventa
 
 ## Entrega mínima
 
-Incluir sistema/versiones/purpose/no usos/owners, personas y mercados, lifecycle roles/jurisdicciones, clasificación y razonamiento, impacto/beneficios/harms/alternativas, controles/evidencia/gaps, terceros/GPAI, transparency/oversight/redress, gate/reviewers/autoridad/expiración, exceptions/residual risk, monitoreo/change triggers/incidentes/decommission y fuentes legales con fecha/estado.
+Incluir sistema/versiones/purpose/no usos/owners, datos/outputs/autonomía/tools, personas y mercados, lifecycle roles/jurisdicciones/obligaciones, clasificación y razonamiento, impacto/beneficios/harms/alternativas, controles/evidencia/gaps, terceros/GPAI, transparency/oversight/redress, gate/reviewers/autoridad/expiración, exceptions/residual risk, monitoreo/change triggers/incidentes/decommission y fuentes legales con fecha/estado.

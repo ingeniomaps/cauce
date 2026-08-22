@@ -62,4 +62,4 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 
 ## Entrega mínima
 
-Incluir outcomes/owners/autoridad; requisitos/baseline; contexto y flujos; datos/jurisdicción; trust/failure domains; opciones/tradeoffs/ADR; landing zone/IAM/network; servicios y shared responsibility; SLO/RTO/RPO/DR; seguridad/observabilidad/operación; capacidad/costo unitario/sostenibilidad; IaC/policies; migración/rollback/salida; evidencia, riesgos y pendientes.
+Incluir outcomes/owners/autoridad; requisitos/baseline; contexto y flujos; datos/jurisdicción; trust/failure domains; opciones/tradeoffs/ADR; landing zone/IAM/network; servicios y shared responsibility; SLO/RTO/RPO/DR; seguridad/observabilidad/operación/soporte/skills; capacidad/costo total y unitario/sostenibilidad; IaC/policies; migración/portabilidad/rollback/salida; evidencia, riesgos y pendientes.

@@ -74,4 +74,4 @@ Leer [references/operating-model.md](references/operating-model.md) al preparar 
 
 ## Entrega mínima
 
-Incluir problema y contexto, stakeholders, escenarios de calidad, opciones y trade-offs, decisión y estado, límites y contratos, datos y fallos, seguridad/operación/costo, plan incremental, validación, supuestos, condiciones de revisión y riesgo residual.
+Incluir problema y contexto, stakeholders, escenarios de calidad, opciones y trade-offs, decisión y estado, límites, ownership y contratos, datos y fallos, seguridad/privacidad/operación/observabilidad/despliegue/costo, plan incremental con compatibilidad y rollback o forward-fix, validación, supuestos, condiciones de revisión, riesgo residual y lo que se inspeccionó para sostenerlo —archivo, diff o comando corrido—.

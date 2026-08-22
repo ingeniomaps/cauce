@@ -57,4 +57,4 @@ Leer [references/operating-model.md](references/operating-model.md) para charter
 
 ## Entrega mínima
 
-El estado del recorrido: en qué etapa está cada cosa y qué lo demuestra, qué dependencias esperan y desde cuándo, qué bloqueos hay con quién los desbloquea y qué necesita para decidir, qué decisiones quedaron abiertas y de quién son, y qué falta para cerrar. Lo que no se pudo establecer va escrito como tal, no completado con un supuesto.
+El estado del recorrido: en qué etapa está cada cosa y qué lo demuestra, qué dependencias esperan y desde cuándo, qué bloqueos hay con quién los desbloquea y qué necesita para decidir, qué se decidió ya y en qué fecha, qué decisiones quedaron abiertas y de quién son, qué riesgos hay que avisar temprano y con qué opciones, y qué falta para cerrar. Lo que no se pudo establecer va escrito como tal, no completado con un supuesto.

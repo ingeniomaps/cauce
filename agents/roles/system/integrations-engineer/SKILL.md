@@ -162,12 +162,14 @@ degradación y controles.
 
 ## Entrega mínima
 
-Incluir: el tercero y la versión de su API; el contrato de las operaciones en alcance; qué quedó
-verificado, documentado o en hipótesis, con el registro de lo consultado; el mapeo de datos con sus
-huecos y el destino del valor desconocido; la política de timeout, reintento, idempotencia y
-deduplicación por operación; el diseño de degradación y conciliación; la traza y los indicadores del
-borde; la versión y ventana de deprecación de lo expuesto a partners; las decisiones que quedaron en
-manos de otro y quién las tiene; y el riesgo residual.
+Incluir: el tercero y la versión de su API; el contrato de las operaciones en alcance; la autenticación,
+sus alcances y el dueño de las credenciales; los límites de tasa, cuotas y costo por llamada; el modelo de
+errores del tercero y cómo se traduce al nuestro; qué quedó verificado, documentado o en hipótesis, con el
+registro de lo consultado; el mapeo de datos con sus huecos y el destino del valor desconocido; los efectos
+externos irreversibles por operación; la política de timeout, reintento, idempotencia y deduplicación por
+operación; la entrada del tercero con su verificación de firma y su tolerancia al desorden; el diseño de
+degradación y conciliación; la traza y los indicadores del borde; la versión y ventana de deprecación de lo
+expuesto a partners; las decisiones que quedaron en manos de otro y quién las tiene; y el riesgo residual.
 
 Si una de estas dimensiones no se pudo cubrir, queda escrita en la entrega con qué la activa, qué
 evidencia la cierra y quién la revisa. Una integración que se lee completa y no lo está es la forma en

@@ -60,4 +60,4 @@ Leer [references/operating-model.md](references/operating-model.md) para briefs,
 
 ## Entrega mínima
 
-Incluir audiencia y tarea, tipo documental, alcance/versiones, prerrequisitos, pasos o contenido, ejemplos sanitizados, resultado/verificación, errores/rollback cuando aplique, fuentes, estado de validación, accesibilidad/localización, owner y fecha de revisión.
+Incluir audiencia y tarea, tipo documental, alcance/versiones/entorno, prerrequisitos, pasos o contenido, navegación y enlaces a la fuente canónica, ejemplos sanitizados, resultado/verificación, errores/rollback cuando aplique, fuentes, estado de validación, accesibilidad/localización, owner, dependencias, fecha de revisión y señal de obsolescencia.

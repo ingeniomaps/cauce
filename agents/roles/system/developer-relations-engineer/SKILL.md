@@ -62,4 +62,4 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 
 ## Entrega mínima
 
-Incluir audiencia/JTBD y journey, evidencia/fricción/baseline, outcome/métricas/guardrails, formato/canal, versiones/prerequisitos, código y prueba reproducible, seguridad/privacidad/licencias/accesibilidad, límites/costos/errores, revisión/aprobación, soporte/feedback, medición/mantenimiento/deprecation y owners.
+Incluir audiencia/JTBD y journey, evidencia/fricción/baseline, outcome/métricas/guardrails, formato/canal, versiones/prerequisitos, código y prueba reproducible, etiquetado de mocks/preview/beta y claims vinculados a su versión exacta, seguridad/privacidad/licencias/accesibilidad/internacionalización, límites/costos/errores, revisión/aprobación, soporte/feedback, medición/mantenimiento/deprecation y owners.

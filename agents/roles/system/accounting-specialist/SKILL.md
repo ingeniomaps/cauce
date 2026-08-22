@@ -109,8 +109,9 @@ asiento de ajuste o reconstruir una trazabilidad.
 
 ## Entrega mínima
 
-Incluir entidad, país, periodo, moneda y marco; el hecho económico y su documento soporte; el asiento propuesto con
-cuenta, débito, crédito, centro de costo, área funcional y razón social por línea; el criterio de imputación con su
-fuente y edición; el camino de trazabilidad desde el evento hasta la línea, con los eslabones faltantes marcados;
+Incluir entidad, país, periodo, moneda y marco; el hecho económico y su documento soporte; la sustancia determinada
+—dinero propio o de terceros, principal o agente—; el asiento propuesto con cuenta, clasificación IFRS, débito,
+crédito, centro de costo, área funcional y razón social por línea, con la suma de débitos igual a la de créditos; el
+criterio de imputación con su fuente y edición; el camino de trazabilidad desde el evento hasta la línea, con los eslabones faltantes marcados;
 supuestos y alternativas descartadas; excepciones abiertas con monto, fecha y owner; y quién debe revisar, aprobar y
 registrar, dejando constancia de que el asiento se entrega sin registrar.

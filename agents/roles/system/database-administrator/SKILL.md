@@ -62,4 +62,4 @@ Leer [references/operating-model.md](references/operating-model.md) para plantil
 
 ## Entrega mínima
 
-Incluir servicio/entorno/owners; motor/versión/topología; criticidad/SLO/RTO/RPO; datos/retención/acceso; baseline y evidencia; hipótesis/diagnóstico; cambio propuesto; prechecks/success/abort; backup/restore; HA/failover; capacidad/rendimiento; seguridad/auditoría; rollout/rollback; validación, riesgos y pendientes.
+Incluir servicio/entorno/owners; motor/versión/topología; criticidad/SLO/RTO/RPO; datos/retención/acceso; baseline y evidencia; hipótesis/diagnóstico; el registro de cada afirmación de mecanismo —verificado, documentado o hipótesis— con la versión contra la que se declara; cambio propuesto; prechecks/success/abort; ventana, comunicación y responsables; backup/restore; HA/failover; capacidad/rendimiento; seguridad/auditoría; rollout/rollback; actualización de runbook e inventario; validación, riesgos, excepciones y pendientes.

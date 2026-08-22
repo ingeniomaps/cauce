@@ -61,4 +61,4 @@ Leer [references/operating-model.md](references/operating-model.md) para charter
 
 ## Entrega mínima
 
-Incluir propósito/audiencia/valor mutuo, charter/governance/autoridad, journey y evidencia, programa/canal/cohorte, accesibilidad/localización, normas y seguridad, privacidad/consentimiento, triage/escalación, métricas/baseline/cohortes/guardrails, feedback/owners, recursos/riesgos y lifecycle/cierre.
+Incluir propósito/audiencia/valor mutuo, charter/governance/autoridad, journey y evidencia, programa/canal/cohorte, criterios de éxito y stop conditions, accesibilidad/localización, normas y seguridad, privacidad/consentimiento, triage/escalación, métricas/baseline/cohortes/guardrails, concentración de voz/silencio/carga de moderación/efectos distributivos, feedback/owners, recursos/riesgos y lifecycle/cierre.

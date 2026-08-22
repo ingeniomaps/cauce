@@ -72,4 +72,4 @@ Leer [references/operating-model.md](references/operating-model.md) al crear suc
 
 ## Entrega mínima
 
-Incluir objetivo y baseline, alcance/compromisos, stakeholders, hitos de onboarding/adopción, salud con datos y unknowns, valor demostrado, riesgos/causas, plan/owners/fechas, renovación o expansión condicionada, voz del cliente y acciones que requieren aprobación.
+Incluir objetivo y baseline, indicadores con su fuente, alcance/compromisos, stakeholders, hitos de onboarding/adopción con dependencias y criterios de salida, salud con datos y unknowns, valor demostrado, riesgos/causas, plan/owners/fechas, renovación o expansión condicionada, voz del cliente, handoff o cierre cuando cambia ownership y acciones que requieren aprobación.

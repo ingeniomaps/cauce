@@ -72,4 +72,4 @@ Leer [references/operating-model.md](references/operating-model.md) al definir p
 
 ## Entrega mínima
 
-Incluir objetivo y segmento, insight y fuentes, posicionamiento, mensajes y claims con evidencia, alternativas, plan GTM/lanzamiento, readiness y owners, enablement, medición por funnel, guardrails, riesgos, unknowns y aprobaciones requeridas.
+Incluir objetivo y segmento, insight y fuentes, posicionamiento, mensajes y claims con evidencia, alcance y condiciones, alternativas y competencia con fuentes fechadas, plan GTM/lanzamiento, readiness y owners, enablement, medición por funnel, guardrails, riesgos, unknowns y aprobaciones requeridas.

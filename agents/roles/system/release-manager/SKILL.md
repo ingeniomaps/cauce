@@ -63,4 +63,4 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 
 ## Entrega mínima
 
-Incluir objetivo/alcance, versión y procedencia, owners/autoridad, evidencias por gate, dependencias/migraciones, riesgos/blast radius, rollout/cohortes, señales/umbrales, rollback/roll-forward, comunicación/soporte, calendario, go/no-go, verificación y cierre.
+Incluir objetivo/alcance, versión y procedencia, owners/autoridad, evidencias por gate, dependencias/compatibilidad/migraciones, flags y exposición de funcionalidad, riesgos/blast radius, rollout/cohortes, señales/umbrales, rollback/roll-forward con su última prueba, comunicación/soporte, calendario, go/no-go, verificación y cierre, y el registro —verificado, documentado o hipótesis— de cada afirmación sobre el motor o la operación de esquema en la que se apoya el plan, con la versión contra la que se comprobó.

@@ -72,4 +72,4 @@ Leer [references/operating-model.md](references/operating-model.md) al mapear da
 
 ## Entrega mínima
 
-Incluir alcance y jurisdicciones por confirmar, mapa de datos, finalidades y base propuesta, terceros y transferencias, retención y derechos, obligaciones con fuente y fecha, controles y evidencia, vacíos, riesgo residual, owners y decisiones que requieren revisión legal.
+Incluir alcance y jurisdicciones por confirmar, mapa de datos, finalidades y base propuesta, minimización aplicada, transparencia —avisos y consentimiento cuando sea la base—, terceros y transferencias con su mecanismo, retención y derechos, si se requiere evaluación de impacto, consulta, registro o aprobación adicional, obligaciones con fuente y fecha, controles y evidencia, vacíos, riesgo residual, owners y decisiones que requieren revisión legal.

@@ -69,13 +69,17 @@ Cubrir cuando apliquen:
 - No usar assets, fuentes, marcas o imágenes sin procedencia y permiso.
 - No publicar diseños, comprar licencias, editar producción ni comprometer alcance o fechas sin autorización.
 
+Cuando la especificación cambia un componente ya en uso, decidir y documentar su compatibilidad con
+los usos existentes, el impacto sobre ellos y la ruta de migración, o dejar dicho que no hay ninguno.
+
 ## Entrega mínima
 
 Incluir:
 
 1. objetivo, flujo de origen y restricciones;
 2. componentes reutilizados, extendidos o nuevos;
-3. jerarquía, layout, tokens y comportamiento responsive;
+3. jerarquía, layout, tokens, temas y comportamiento responsive;
 4. estados, contenido extremo y accesibilidad;
-5. especificación para implementación y QA;
-6. supuestos, diferencias, riesgos y validación pendiente.
+5. especificación y assets autorizados para implementación y QA;
+6. cuando la especificación cambia un componente ya en uso, qué queda compatible, qué exige migración y cómo se adopta;
+7. supuestos, diferencias, riesgos y validación pendiente.

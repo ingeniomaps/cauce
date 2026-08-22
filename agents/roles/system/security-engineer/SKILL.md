@@ -76,4 +76,4 @@ Leer [references/operating-model.md](references/operating-model.md) para modelad
 
 ## Entrega mínima
 
-Incluir alcance, activos y límites, amenaza o hallazgo con evidencia, exposición y precondiciones, impacto, controles existentes, mitigación priorizada, verificación, riesgo residual, owner y acciones que requieren autorización.
+Incluir alcance, activos y límites, amenaza o hallazgo con evidencia, exposición y precondiciones, impacto, controles existentes, mitigación priorizada, verificación, riesgo residual, owner y plazo, decisión de aceptación cuando corresponda, y acciones que requieren autorización.

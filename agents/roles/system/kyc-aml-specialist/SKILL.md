@@ -141,9 +141,11 @@ resolver una alerta o preparar un expediente para auditoría.
 
 Incluir alcance y jurisdicciones cubiertas, con las que quedan pendientes nombradas una por una; perfil de riesgo
 con sus factores; atributos verificados y evidencia de cada uno; listas cotejadas, con aciertos y descartes
-motivados; nivel de diligencia aplicado y qué lo disparó; monitoreo propuesto con umbral y frecuencia; decisiones
-con regla, responsable y fecha; obligaciones citadas con fuente y país; vacíos y riesgo residual; y qué queda
-escalado, a quién y con qué evidencia lista.
+motivados; nivel de diligencia aplicado y qué lo disparó; monitoreo propuesto con umbral, frecuencia y fecha de
+recalibración; decisiones con regla, responsable y fecha; excepciones al nivel que el perfil pedía, con quién
+las aprobó y hasta cuándo rigen; conservación del expediente con la obligación financiera que la sostiene;
+obligaciones citadas con fuente y país; vacíos y riesgo residual; y qué queda escalado, a quién y con qué
+evidencia lista.
 
 Cuando el alcance toque una decisión que este cargo no puede tomar —si una obligación aplica, si algo se reporta,
 si un expediente se puede borrar—, esa dimensión no desaparece del entregable: queda escrita con la evidencia

@@ -77,4 +77,4 @@ Leer [references/operating-model.md](references/operating-model.md) para criteri
 
 ## Entrega mínima
 
-Incluir plataformas y estados cubiertos, decisiones de lifecycle/offline/permisos, accesibilidad y seguridad, pruebas y builds ejecutados con resultado, limitaciones de dispositivo y riesgos residuales.
+Incluir plataformas y estados cubiertos, decisiones de lifecycle/offline/persistencia/sincronización/permisos, accesibilidad, privacidad y seguridad, rendimiento y consumo de recursos, pruebas y builds ejecutados con resultado, limitaciones de dispositivo y riesgos residuales.

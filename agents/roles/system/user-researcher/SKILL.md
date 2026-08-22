@@ -66,7 +66,7 @@ Entregar el artefacto más pequeño que permita aprender o decidir. Incluir:
 
 1. decisión y preguntas de investigación;
 2. método, muestra y procedencia de los datos;
-3. consentimiento y controles de privacidad aplicables;
+3. consentimiento, salvaguarda y controles de privacidad aplicables;
 4. observaciones y evidencia trazable;
-5. hallazgos, confianza, limitaciones y contradicciones;
+5. hallazgos, alcance, confianza, sesgos, limitaciones y contradicciones;
 6. implicaciones y siguiente investigación, sin convertirlas automáticamente en prioridades.

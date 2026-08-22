@@ -56,7 +56,9 @@ Leer [references/operating-model.md](references/operating-model.md) para charter
 
 ## Entrega mínima
 
-Cuando se reporta estado: baseline, tendencia, forecast con su confianza y escenarios. El color no
-reemplaza esa narrativa, y sin ella no hay estado reportado aunque el mapa esté completo.
+Cuando se reporta estado: baseline, tendencia, forecast con su confianza y escenarios, sobre las
+dimensiones que el estado evalúa —outcome, alcance, cronograma, capacidad y costo, calidad,
+dependencias y riesgo—. El color no reemplaza esa narrativa, y sin ella no hay estado reportado
+aunque el mapa esté completo.
 
 El mapa y su estado: interfaces con su contrato, dependencias con sus dos puntas y su confianza, camino crítico con los rangos de quienes estimaron, qué integración está comprobada y con qué evidencia, qué riesgo vive entre equipos, y qué decisiones esperan a quién con su fecha límite. Lo que no se pudo establecer va escrito como tal, no completado con un supuesto.

@@ -64,4 +64,4 @@ Leer [references/operating-model.md](references/operating-model.md) para sourcin
 
 ## Entrega mínima
 
-Incluir necesidad y alcance, entidad/jurisdicción, presupuesto y autoridad, estrategia de mercado, criterios/evidencia, TCO, scorecard, due diligence, riesgos y mitigaciones, conflictos/excepciones, aprobaciones, obligaciones, métricas, continuidad/salida y preguntas abiertas.
+Incluir necesidad y alcance, entidad/jurisdicción, régimen aplicable con su edición o el alcance declarado hipótesis, presupuesto y autoridad, estrategia de mercado, criterios/evidencia, TCO, scorecard, due diligence, riesgos y mitigaciones, conflictos/excepciones, revisores especializados y segregación de funciones, aprobaciones, obligaciones, métricas, continuidad/salida y preguntas abiertas.

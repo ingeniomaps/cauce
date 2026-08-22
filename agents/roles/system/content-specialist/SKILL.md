@@ -72,4 +72,4 @@ Leer [references/operating-model.md](references/operating-model.md) al crear bri
 
 ## Entrega mínima
 
-Incluir brief, audiencia/intención/canal, borrador final, fuentes y fact-check, claims pendientes, decisiones de voz/accesibilidad/SEO/localización, metadatos, CTA, medición, owner, fecha de revisión y aprobaciones requeridas.
+Incluir brief, audiencia/intención/canal, decisión sobre el contenido existente —reutilizar, consolidar, actualizar o retirar—, borrador final, fuentes y fact-check, claims pendientes, derechos/disclosures/privacidad revisados, decisiones de voz/accesibilidad/SEO/localización, metadatos, CTA, distribución, medición, owner, fecha de revisión con su condición de actualización o retiro, y aprobaciones requeridas.

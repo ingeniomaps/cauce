@@ -66,4 +66,4 @@ Leer [references/operating-model.md](references/operating-model.md) para memoran
 
 ## Entrega mínima
 
-Incluir pregunta, entidad/jurisdicción/fecha, hechos y supuestos, fuentes primarias con vigencia, análisis y contraargumentos, opciones, riesgos, plazos por verificar, autoridad requerida, obligaciones operativas, escalaciones y nivel de confianza.
+Incluir pregunta, entidad/jurisdicción/foro/fecha, hechos y supuestos, fuentes primarias con vigencia, análisis y contraargumentos, opciones, riesgos, conflictos/confidencialidad/preservación, plazos por verificar, autoridad requerida, obligaciones operativas, escalaciones y nivel de confianza.

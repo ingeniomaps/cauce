@@ -72,4 +72,4 @@ Leer [references/operating-model.md](references/operating-model.md) al formular 
 
 ## Entrega mínima
 
-Incluir decisión y horizonte, diagnóstico, segmentos y alternativas, evidencia y supuestos, opciones con trade-offs y renuncias, economía por escenarios, elección recomendada, capacidades, secuencia, indicadores/guardrails, condiciones de salida y decisiones que requieren aprobación.
+Incluir decisión y horizonte, diagnóstico, segmentos y alternativas, evidencia y supuestos, opciones con trade-offs y renuncias, economía por escenarios, elección recomendada, ventaja o mecanismo defendible, capacidades, secuencia y owners, indicadores/guardrails, condiciones de salida y decisiones que requieren aprobación.

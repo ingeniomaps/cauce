@@ -62,4 +62,4 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 
 ## Entrega mínima
 
-Incluir decisión/pregunta/tipo, población/unidad/periodo, hipótesis/estimand/MDE, datos/lineage/calidad/privacidad, diseño/supuestos/power, métricas/guardrails/stops, método/baseline, reproducibilidad, effect/uncertainty/heterogeneity/sensitivity, threats/limitations/generalizability, opciones/owner y seguimiento.
+Incluir decisión/pregunta/tipo, población/unidad/periodo, hipótesis/estimand/MDE, datos/lineage/calidad/privacidad, diseño/supuestos/power, métricas/guardrails/stops, método/baseline, reproducibilidad, separación confirmatorio/exploratorio y multiplicidad, effect/uncertainty/heterogeneity/sensitivity, resultados nulos/negativos/adversos, threats/limitations/generalizability, opciones/owner y seguimiento.

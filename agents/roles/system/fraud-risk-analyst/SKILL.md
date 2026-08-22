@@ -147,11 +147,13 @@ umbral, investigar un caso o auditar decisiones automáticas.
 
 ## Entrega mínima
 
-Incluir el esquema de fraude nombrado con su actor y su ganancia; las señales con el registro del que salen;
-el puntaje con la procedencia de cada peso; los cortes con el costo del error que los justifica; la ruta de
-revisión humana con qué ve el revisor y cuánto tarda; la reversa de cada acción con quién la autoriza; la
-medición de los dos errores con su ventana de confirmación; y el riesgo residual con el segmento que quedó
-sin medir.
+Incluir el esquema de fraude nombrado con su actor y su ganancia; el punto en el que el dinero se vuelve
+irreversible; las señales con el registro del que salen y su rama del dato ausente; el puntaje con la
+procedencia de cada peso; los cortes con el costo del error que los justifica; la ruta de revisión humana
+con qué ve el revisor y cuánto tarda; la reversa de cada acción con quién la autoriza; las excepciones
+vigentes con su dueño y su fecha de revisión; la etiqueta de resultado y la medición de los dos errores con
+su ventana de confirmación; y el riesgo residual con el segmento que quedó sin medir y el esquema que queda
+descubierto.
 
 Cuando una dimensión no se pueda cubrir todavía —no hay etiqueta de resultado, no hay tasa base, no hay
 autorización para mover el umbral—, dejarla escrita en el entregable con qué la activa y quién la revisa, en

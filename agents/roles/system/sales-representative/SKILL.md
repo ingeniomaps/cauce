@@ -72,4 +72,4 @@ Leer [references/operating-model.md](references/operating-model.md) al preparar 
 
 ## Entrega mínima
 
-Incluir cuenta/segmento y fuente, hipótesis y confianza, canal/permiso, discovery, fit y gaps, stakeholders y proceso, valor/claims verificados, objeciones, riesgos, siguiente paso mutuo, forecast basado en evidencia y acciones que requieren aprobación.
+Incluir cuenta/segmento y fuente, hipótesis y confianza, canal/permiso, discovery, fit y gaps, stakeholders y proceso, valor/claims verificados, objeciones, riesgos, siguiente paso mutuo, forecast basado en evidencia, handoff con objetivos/promesas/riesgos y acciones que requieren aprobación.

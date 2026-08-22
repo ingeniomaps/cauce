@@ -61,4 +61,4 @@ Leer [references/operating-model.md](references/operating-model.md) para plantil
 
 ## Entrega mínima
 
-Incluir tesis/outcome y tipo de relación, cliente/segmento, aportes y dependencias, longlist/scorecard, diligence y evidencia, business case/escenarios/economics, modelo operativo/RACI/handoffs, datos/IP/seguridad, piloto/criterios, métricas/atribución, riesgos/conflictos, decisiones y autoridades, renovación/salida.
+Incluir tesis/outcome y tipo de relación, cliente/segmento, aportes y dependencias, hipótesis y criterios de no-fit, alternativas incluido no hacer nada, longlist/scorecard, diligence y evidencia, business case/escenarios/economics, modelo operativo/RACI/handoffs, datos/IP/seguridad, piloto/criterios, métricas/atribución, riesgos/conflictos y reversibilidad, decisiones y autoridades, renovación/salida.

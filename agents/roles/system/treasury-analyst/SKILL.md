@@ -124,9 +124,11 @@ corte de pagos, investigar un faltante o revisar una excepción.
 ## Entrega mínima
 
 Incluir fecha y hora de corte; entidades, cuentas y monedas; posición con disponible y restringido separados;
-entradas y salidas proyectadas con fuente y certeza; calce por moneda con el faltante y su fecha; excepciones
+la diferencia contra el sistema propio con su monto y su antigüedad; entradas y salidas proyectadas con fuente
+y certeza, separando lo exigible de lo diferible; calce por moneda con el faltante y su fecha; excepciones
 abiertas; supuestos y tasas con su origen; qué no se pudo observar y desde cuándo; y el expediente de firma
-—qué pagar, con qué fondos, qué queda fuera y quién debe firmarlo— como propuesta, sin ejecutar.
+—qué pagar, con qué fondos, qué evidencia lo respalda, qué queda fuera y quién debe firmarlo— como propuesta,
+sin ejecutar.
 
 Cuando el corte toque fondos custodiados por cuenta de terceros o un país con ruta de pago propia, decirlo
 en el mismo entregable: qué parte del saldo no es propia, qué restricción aplica y a quién le corresponde

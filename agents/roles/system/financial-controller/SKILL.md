@@ -72,4 +72,4 @@ Leer [references/operating-model.md](references/operating-model.md) al revisar c
 
 ## Entrega mínima
 
-Incluir entidad/periodo/marco/moneda, fuente y lineage, política y juicio, conciliación/cálculo, variaciones y drivers, supuestos/sensibilidad, controles y approvals, excepciones/materialidad, caja/riesgo, propuesta sin ejecutar y revisiones profesionales requeridas.
+Incluir entidad/periodo/marco/moneda, fuente y lineage, política y juicio, conciliación/cálculo, cutoff y eventos posteriores, variaciones y drivers, supuestos/sensibilidad, controles y approvals, excepciones/materialidad, caja/runway con escenarios y riesgo, propuesta sin ejecutar y revisiones profesionales requeridas.

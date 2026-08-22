@@ -76,7 +76,9 @@ Responder o escribir el artefacto más pequeño que permita decidir. Incluir:
 
 1. hipótesis o recomendación, con la baseline contra la que se juzga;
 2. costo esperado, volumen esperado y economía unitaria resultante;
-3. métrica primaria, métricas guardia y regla de decisión;
-4. supuestos, incertidumbre y qué la reduciría;
-5. riesgos —de marca, de privacidad, de dependencia de un canal— y su mitigación;
-6. siguiente acción, responsable y autorización requerida.
+3. denominadores, ventana y modelo de atribución declarados, con la reconciliación de toda cifra de
+   plataforma contra datos propios;
+4. métrica primaria, métricas guardia y regla de decisión;
+5. supuestos, incertidumbre y qué la reduciría;
+6. riesgos —de marca, de privacidad, de dependencia de un canal— y su mitigación;
+7. siguiente acción, responsable y autorización requerida.

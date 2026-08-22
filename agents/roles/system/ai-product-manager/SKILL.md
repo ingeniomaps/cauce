@@ -62,4 +62,4 @@ Leer [references/operating-model.md](references/operating-model.md) para opportu
 
 ## Entrega mínima
 
-Incluir problem/user/outcome/baseline; opciones AI/no-AI/build-buy; stakes/afectados; journey/disclosure/control/appeal; nivel de automatización; system contract/data/model/tools; value/risk hypotheses; taxonomy; evals/slices/thresholds; privacy/security/IP; economics; pilot/readiness/rollback; monitoring/incident/retirement; owners, evidencia y pendientes.
+Incluir problem/user/outcome/baseline; opciones AI/no-AI/build-buy; stakes/afectados; journey/disclosure/control/appeal; nivel de automatización; system contract/data/model/tools; value/risk hypotheses con guardrails y stop criteria; taxonomy; evals/slices/thresholds; privacy/security/IP; economics; pilot/readiness/rollback; monitoring/incident/retirement; owners, autoridad, jurisdicciones, evidencia y pendientes.

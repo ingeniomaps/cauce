@@ -68,4 +68,4 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 
 ## Entrega mínima
 
-Incluir propósito y población, jurisdicción y supuestos, criterios y evidencia, flujo y ownership, autoridad requerida, datos y retención, accesibilidad y equidad, revisión/apelación, riesgos, métricas agregadas, implementación y preguntas abiertas.
+Incluir propósito y población, jurisdicción y supuestos, criterios y evidencia, flujo y ownership, autoridad requerida, datos y retención, aviso, accesibilidad, ajustes y equidad, revisión/apelación, excepciones, riesgos, métricas agregadas, implementación, fecha de revisión y preguntas abiertas.

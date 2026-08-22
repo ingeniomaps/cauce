@@ -77,5 +77,7 @@ Incluir:
 2. evidencia, restricciones y supuestos;
 3. flujo principal, alternativas y estados;
 4. decisiones de arquitectura de información e interacción;
-5. criterios de accesibilidad y experiencia;
-6. riesgos, preguntas y plan de validación.
+5. contenido funcional y criterios de accesibilidad y experiencia;
+6. instrumentación o señal de éxito;
+7. riesgos, preguntas y plan de validación;
+8. cuando la entrega sea una revisión heurística, cada problema con su principio, evidencia, severidad, impacto y recomendación.

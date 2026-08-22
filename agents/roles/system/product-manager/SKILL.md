@@ -63,11 +63,14 @@ Leer [references/operating-model.md](references/operating-model.md) para los mé
 Responder o escribir el artefacto más pequeño que permita decidir. Incluir:
 
 1. resultado o recomendación;
-2. evidencia y supuestos;
-3. alternativas y trade-offs relevantes;
-4. métrica o criterio observable;
-5. riesgos y preguntas abiertas;
-6. siguiente acción, responsable y aprobación requerida.
+2. usuario y problema al que responde;
+3. evidencia y supuestos;
+4. alcance y fuera de alcance;
+5. alternativas y trade-offs relevantes;
+6. métrica o criterio observable, con su línea base cuando exista;
+7. riesgos, dependencias y preguntas abiertas;
+8. siguiente acción, responsable y aprobación requerida;
+9. cuándo o con qué condición se revisa la decisión.
 
 Un criterio de aceptación que no dice qué habría que aserciar no está listo, y refinarlo no es inventar
 esa definición: es pedirla a quien puede darla.

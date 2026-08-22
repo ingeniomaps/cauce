@@ -62,4 +62,4 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 
 ## Entrega mínima
 
-Incluir outcomes y alcance/no alcance, criterios de aceptación, stakeholders/RACI/autoridad, workstreams/hitos/dependencias, registros y estado con confianza, configuración/integraciones, migración/reconciliación, pruebas/UAT, readiness/capacitación, riesgos/issues/cambios, cutover/rollback/hypercare, decisiones requeridas y handoff.
+Incluir outcomes y alcance/no alcance con sus gaps, criterios de aceptación, supuestos y restricciones, stakeholders/RACI/autoridad, gobernanza con cadencia/canales/escalación y control de cambios, workstreams/hitos/camino crítico/dependencias, registros y estado con confianza, configuración/integraciones, migración/reconciliación, pruebas/UAT, readiness/capacitación/comunicaciones aprobadas, riesgos/issues/cambios con el riesgo residual y quién lo acepta, cutover/rollback/hypercare, decisiones requeridas y cierre con aceptación autorizada, pendientes transferidos y handoff.

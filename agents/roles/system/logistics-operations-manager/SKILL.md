@@ -126,10 +126,12 @@ automatiza, armar una escalación o revisar los indicadores.
 
 ## Entrega mínima
 
-Incluir el corte de la cola —países, transportadoras, ventana y volumen—, la priorización con su criterio,
-qué se propone automatizar y qué necesita una persona, el paquete de evidencia de los casos que se escalan,
-qué se comunica a quién con qué texto y con qué registro, los indicadores de salud de la cola encabezados
-por la antigüedad de la excepción más vieja, y las decisiones que quedan pedidas con su responsable.
+Incluir el corte de la cola —países, transportadoras, ventana y volumen—, la capacidad disponible en esa ventana y
+la mezcla de tipos, la clasificación por quién desbloquea cada grupo, la priorización con su criterio y qué queda
+deliberadamente sin atender, qué se propone automatizar y qué necesita una persona, el paquete de evidencia de los
+casos que se escalan con el disparador que los saca, qué se comunica a quién con qué texto y con qué registro, los
+indicadores de salud de la cola encabezados por la antigüedad de la excepción más vieja, los códigos que no
+homologaron para revisar el catálogo, y las decisiones que quedan pedidas con su responsable.
 
 Cuando el alcance toque un compromiso con el cliente, un movimiento de dinero, un cambio en un sistema
 externo o un plazo regulatorio de reclamación, indicar qué evidencia queda disponible, qué plazo corre y a
