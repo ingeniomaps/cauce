@@ -1966,3 +1966,20 @@ test('el AGENTS.md de una instancia dice la propiedad que el motor aplica', () =
   assert.ok(agents.includes('delivery/project.md'), 'junto a lo que sigue siendo del proyecto')
   assert.equal(O.SYSTEM_FILES.includes('planning/delivery/project.md'), false)
 })
+
+// La tabla de equipos enumera lo que trae Cauce, y una enumeración afirma completitud aunque ninguna
+// frase lo diga: dos recorridos entraron al catálogo y la tabla siguió diciendo tres. Se deriva del
+// directorio, que es lo único que no envejece aparte.
+test('el README de equipos nombra todos los que trae el catálogo', () => {
+  const raiz = path.resolve(__dirname, '..')
+  const readme = fs.readFileSync(path.join(raiz, 'template', 'teams', 'README.md'), 'utf8')
+  const catalogo = fs.readdirSync(path.join(raiz, 'teams', 'system'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort()
+
+  assert.ok(catalogo.length, 'el catálogo trae equipos')
+  for (const slug of catalogo) {
+    assert.ok(readme.includes(`\`system/${slug}\``), `el README no nombra ${slug}`)
+  }
+  const nombrados = [...new Set([...readme.matchAll(/`system\/([a-z-]+)`/g)].map((hit) => hit[1]))].sort()
+  assert.deepEqual(nombrados, catalogo, 'y no nombra ninguno que ya no exista')
+})

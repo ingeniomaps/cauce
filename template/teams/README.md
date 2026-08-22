@@ -11,8 +11,10 @@ lo es— sin que un solo agente decida por todos.
 | `system/feasibility-review` | 3 etapas | épica | ¿vale el esfuerzo? Con la evidencia que ya existe. |
 | `system/product-development` | 5 etapas | épica | ¿qué construimos y cómo? Produce evidencia nueva. |
 | `system/incident-review` | 4 etapas | informe | ¿qué pasó y qué aprendemos? Después de contener. |
+| `system/defect-triage` | 4 etapas | informe | ¿qué falla, a quiénes y qué hacemos? Con el defecto vivo. |
+| `system/technical-design` | 6 etapas | informe | ¿cómo se construye lo ya decidido? Cada disciplina en paralelo. |
 
-Son tres **formas**, no tres dominios. Un equipo de seguridad o uno de crecimiento tienen la misma forma
+Son cinco **formas**, no cinco dominios. Un equipo de seguridad o uno de crecimiento tienen la misma forma
 con otros cargos: eso lo escribe cada empresa, porque cómo decide es suyo.
 
 ## Escribir uno propio
