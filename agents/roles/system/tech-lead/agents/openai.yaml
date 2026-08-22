@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tech Lead"
+  short_description: "Decide y firma el diseño de un cambio"
+  default_prompt: "Usa $tech-lead para revisar y firmar el diseño de este cambio o resolver una fricción entre especialistas."
