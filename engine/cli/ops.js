@@ -1396,7 +1396,12 @@ function learn(agent, cli) {
       ? L.prepareProposal(opsRoot(), agent, new Date(), cli.value('--period'), kind)
       : L.prepareReport(opsRoot(), agent)
     console.log(`${result.created ? '+' : '='} ${path.relative(opsRoot(), result.file)}`)
-    if (typeof result.reports === 'number') console.log(`  ${result.reports} informe(s) semanal(es) incluidos`)
+    // Un cargo consolida informes de su profesión; un recorrido, las corridas que lo midieron.
+    if (typeof result.reports === 'number') {
+      console.log(kind === 'team'
+        ? `  ${result.reports} corrida(s) consolidada(s), ${result.findings} hallazgo(s)`
+        : `  ${result.reports} informe(s) semanal(es) incluidos`)
+    }
   } catch (error) { fail(error.message, 2) }
 }
 
