@@ -248,7 +248,14 @@ Cada colección adaptable separa lo que actualiza el toolkit de lo que escribe e
 
 Un archivo propio con el mismo nombre o ID que uno de `system/` lo reemplaza: el del proyecto manda y
 `check` lo reporta como override explícito. Así una mejora del proceso no obliga a forkear el archivo,
-y actualizar no exige resolver conflictos: se reemplaza `system/` entero y nada más se toca.
+y actualizar no exige resolver conflictos.
+
+`upgrade` reemplaza además los documentos que escribe el toolkit y que no llevan una línea de la
+empresa: el protocolo, la metodología, el flujo, los moldes, la guía de entrega de `planning/delivery/`
+y los README de cada directorio. Se reemplazan enteros para que las mejoras lleguen, y lo que un
+proyecto decide distinto va donde sí es suyo —una ADR propia, una regla propia,
+`planning/delivery/project.md`—. Lo que lleva tu contenido no se toca: roadmap, backlog, WIP, done,
+inbox, acciones humanas, informes y `organization/`.
 
 `automatization/hooks/` no tiene `system/`: es runtime que se reemplaza entero. Un guard propio convive
 y sobrevive, desactivar uno del toolkit es quitarlo de la configuración del runner, y editar uno
@@ -269,8 +276,9 @@ El primero no se puede saltear: `init` fija la versión exacta, así que `npm up
 las skills viven en el runner, no en la instancia, y `upgrade` no los toca. `upgrade` lo recuerda al
 terminar.
 
-Como `upgrade` reemplaza `system/` sin pedir confirmación, un cambio en el protocolo, en una regla del
-sistema o en un guard es visible para el usuario y sube minor aunque no toque código. `upgrade` y
+Como `upgrade` reemplaza sin pedir confirmación lo que es del toolkit, un cambio en el protocolo, en
+una regla del sistema o en un guard es visible para quien actualiza y sube minor aunque no toque
+código. `upgrade` y
 `upgrade --check` imprimen las entradas de [CHANGELOG.md](CHANGELOG.md) que hay entre la versión
 instalada y la que se recibe, para que la actualización se lea antes de aplicarse.
 

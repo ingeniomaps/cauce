@@ -85,9 +85,12 @@ El veredicto se escribe **junto al cargo**, no en el banco. El banco se borra; e
 - El CLI se invoca con `node engine/cli/ops.js` o `npm run ops -- <comando>`; `make help` lista los
   atajos frecuentes.
 - **Publicar necesita `NPM_TOKEN` exportado**: `.npmrc` lo expande desde el entorno, no desde `.env`.
-  Corré `set -a; . ./.env; set +a` antes de `npm publish`. `git push` no lo necesita —su helper lee
-  `.env` por su cuenta—, y esa asimetría es la que hace parecer que ya está cargado. Los nombres de las
-  credenciales están en `.env.example`.
+  Corré `set -a; . ./.env; set +a` antes de `npm publish`, o `make release-check`, que lo carga, corre
+  la puerta entera y se detiene sin publicar. El `npm publish` no se envuelve en un target a propósito:
+  el guard de dependencias lo bloquea por su nombre, y un target que lo corriera adentro no matchearía
+  ese patrón —pasaría sin que nada lo diga—.
+  `git push` no lo necesita —su helper lee `.env` por su cuenta—, y esa asimetría es la que hace
+  parecer que ya está cargado. Los nombres de las credenciales están en `.env.example`.
 - **Nada de `exports` en `package.json`.** Una instancia resuelve el motor por subpath —
   `require.resolve('@ingeniomaps/cauce/engine/cli/ops.js')` en `template/tools/ops.js`—, y un mapa
   `exports` lo dejaría fuera. Agregarlo parece higiene y rompe toda instancia instalada.
