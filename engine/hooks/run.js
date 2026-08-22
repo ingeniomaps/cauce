@@ -473,29 +473,49 @@ const hookMetadata = [
   {
     name: 'destructive',
     event: 'PreToolUse · shell',
-    purpose: 'Bloquea publicación y comandos con pérdida de datos.',
+    purpose: 'Bloquea publicación y comandos capaces de destruir datos o el working tree.',
   },
-  { name: 'git-add', event: 'PreToolUse · shell', purpose: 'Exige stagear rutas explícitas.' },
+  {
+    name: 'git-add',
+    event: 'PreToolUse · shell',
+    purpose: 'Impide `git add .`, `-A` y `--all`; exige rutas explícitas.',
+  },
   {
     name: 'dependencies',
     event: 'PreToolUse · shell',
-    purpose: 'Protege manifests, lockfiles y publicación de paquetes.',
+    purpose: 'Protege manifests y lockfiles; bloquea publicar e instalar global.',
   },
   {
     name: 'governance',
     event: 'PreToolUse · shell',
     purpose: 'Impide commitear cambios de gobernanza sin aprobación.',
   },
-  { name: 'verify', event: 'PreToolUse · shell', purpose: 'Ejecuta los gates reales antes de cada commit.' },
-  { name: 'secrets', event: 'PreToolUse · files', purpose: 'Bloquea escritura de secretos y credenciales.' },
+  {
+    name: 'verify',
+    event: 'PreToolUse · shell',
+    purpose: 'Ejecuta los gates del stack y comprueba drift generado antes de un commit.',
+  },
+  {
+    name: 'secrets',
+    event: 'PreToolUse · files',
+    purpose: 'Bloquea escribir secretos, claves privadas y credenciales en texto plano.',
+  },
   { name: 'generated', event: 'PreToolUse · files', purpose: 'Impide editar código generado manualmente.' },
-  { name: 'workspace-boundary', event: 'PreToolUse · files', purpose: 'Limita escrituras a las raíces declaradas.' },
+  {
+    name: 'workspace-boundary',
+    event: 'PreToolUse · files',
+    purpose: 'Limita escrituras a las raíces declaradas en ops.config.json.',
+  },
   {
     name: 'engine',
     event: 'PreToolUse · files',
-    purpose: 'Impide editar el motor instalado: se actualiza con npm.',
+    purpose: 'Impide editar el motor instalado por npm. Inerte en el propio toolkit.',
   },
-  { name: 'migrations', event: 'PreToolUse · files', purpose: 'Protege migraciones existentes y SQL destructivo.' },
+  {
+    name: 'migrations',
+    event: 'PreToolUse · files',
+    purpose: 'Protege migraciones existentes y bloquea SQL destructivo sin override.',
+  },
   {
     name: 'integration-snapshot',
     event: 'PreToolUse · files',
@@ -509,7 +529,7 @@ const hookMetadata = [
   {
     name: 'planning-drift',
     event: 'Stop / SessionEnd',
-    purpose: 'Evita cerrar con planning o integraciones desalineados.',
+    purpose: 'Evita cerrar una sesión con planning o integraciones desalineados.',
   },
 ]
 

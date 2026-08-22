@@ -1,4 +1,3 @@
 #!/usr/bin/env bash
-# Impide editar el motor instalado por npm. Inerte en el propio toolkit.
-# Implementación compartida: engine/hooks/run.js → engineWrites().
+# Shim: qué bloquea y cómo lo hace están en engine/hooks/run.js → engine().
 exec "$(dirname "$0")/run-hook.sh" engine
