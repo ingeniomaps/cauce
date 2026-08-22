@@ -1915,3 +1915,19 @@ test('los rangos que declara el README de reglas son los que hay', () => {
   assert.equal(declarado.length, archivos.length, 'cada archivo del sistema tiene su línea')
   assert.equal(cubiertos.size, 18, 'las dieciséis reglas están declaradas en alguna línea')
 })
+
+// La misma lección que la plantilla de épica: lo que se copia no puede traer algo que haya que borrar
+// para que la copia valga. El molde de ADR traía el menú de estado entero, y tres decisiones reales se
+// publicaron con él intacto.
+test('una copia de la plantilla de ADR se valida tal cual', () => {
+  const base = tempRoot('cauce-plantilla-adr-')
+  const planning = path.join(base, 'planning')
+  const molde = path.resolve(__dirname, '..', 'template', 'planning')
+  fs.cpSync(molde, planning, { recursive: true })
+  fs.writeFileSync(path.join(planning, 'adr', '001-algo.md'),
+    fs.readFileSync(path.join(molde, 'adr', '000-template.md'), 'utf8'))
+
+  const errores = JSON.parse(run(['check', planning, '--json']).stdout).errors
+    .filter((error) => /adr\//.test(error))
+  assert.deepEqual(errores, [], 'la copia nace válida y en Propuesto')
+})

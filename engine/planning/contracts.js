@@ -204,8 +204,61 @@ function validateRules(dir) {
   return errors
 }
 
+// Una decisión que no dice si rige no decide nada, y el molde traía el menú entero en la línea de estado:
+// tres de las dieciséis decisiones escritas con este modelo se publicaron con el menú intacto. Presentar
+// las opciones no obliga a elegir; esto sí. Las secciones son las cuatro que se escriben siempre —las
+// alternativas quedan en el molde sin exigirse, porque pedirlas rechazaría quince decisiones que existen—.
+const ADR_STATES = ['Propuesto', 'Aceptado', 'Obsoleto']
+const ADR_SUPERSEDED = /^Reemplazada por \[[^\]]+\]\([^)]+\)(?: \(\d{4}-\d{2}-\d{2}\))?$/
+const ADR_SECTIONS = ['Contexto', 'Decisión', 'Consecuencias', 'Estado de implementación']
+
+function validateAdrFile(at, text) {
+  const errors = []
+  const estado = ((text.match(/^\*\*Estado:\*\*\s*(.+?)\s*$/m) || [])[1] || '').trim()
+  if (!estado) errors.push(`${at}: falta **Estado:**`)
+  else if (estado.includes('|')) errors.push(`${at}: el estado sigue siendo el menú de la plantilla; elegí uno`)
+  else if (!ADR_STATES.includes(estado) && !ADR_SUPERSEDED.test(estado)) {
+    errors.push(`${at}: estado "${estado}" fuera de ${ADR_STATES.join(' | ')} `
+      + '| Reemplazada por [NNN](NNN-slug.md)')
+  }
+  for (const section of ADR_SECTIONS) {
+    if (!new RegExp(`^##\\s+${section}\\s*$`, 'm').test(text)) errors.push(`${at}: falta ## ${section}`)
+  }
+  return errors
+}
+
+// El nombre lleva el id porque de ahí sale la identidad con que se detecta un override, y porque una
+// decisión se cita por número. Sin él, el archivo existe y no lo alcanza ninguna referencia.
+function validateAdr(dir) {
+  const adr = path.join(dir, 'adr')
+  const errors = []
+  const numbers = new Map()
+  const scan = (sub, pattern) => {
+    let entries = []
+    try { entries = fs.readdirSync(path.join(adr, sub), { withFileTypes: true }) } catch { return }
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (!entry.isFile() || !entry.name.endsWith('.md')) continue
+      if (entry.name === 'README.md' || entry.name === '000-template.md') continue
+      const at = `adr/${sub ? `${sub}/` : ''}${entry.name}`
+      const id = entry.name.match(pattern)
+      if (!id) {
+        errors.push(`${at}: nadie lo lee como decisión. Una ADR se nombra NNN-<slug>.md, `
+          + 'y la del sistema <ID>-NNN-<slug>.md en system/.')
+        continue
+      }
+      if (numbers.has(id[1])) errors.push(`${at}: ${id[1]} ya lo usa ${numbers.get(id[1])}`)
+      else numbers.set(id[1], at)
+      errors.push(...validateAdrFile(at, P.read(path.join(adr, sub, entry.name))))
+    }
+  }
+  scan('', /^(\d{3})-[a-z0-9-]+\.md$/)
+  scan('system', /^([A-Z][A-Z0-9]*-\d{3})-[a-z0-9-]+\.md$/)
+  return errors
+}
+
 module.exports = {
   testedCriteria,
+  validateAdr,
   validateRules,
   validateBacklogStructure,
   validCommitTrace,

@@ -1,8 +1,9 @@
 # ADR-NNN — Título corto en imperativo
 
-**Estado:** Propuesto | Aceptado | Obsoleto | Reemplazada por [NNN](./NNN-slug.md)
+**Estado:** Propuesto
 **Fecha:** YYYY-MM-DD
 **Responsable:** Persona o equipo
+**Reemplaza:** ninguna | [NNN](NNN-slug.md)
 
 > Una frase opcional que delimita qué decide esta ADR y qué queda fuera.
 
@@ -39,9 +40,3 @@ Una ADR decide una dirección durable; no reemplaza el plan de implementación n
 
 Separar lo construido de lo objetivo. Enumerar pruebas, migraciones y follow-ups pendientes. Una ADR propuesta
 no se presenta como implementada; una aceptada debe indicar cómo se verificó o qué parte sigue en transición.
-
-## Relaciones
-
-- Reemplaza: ninguna | [ADR-NNN](./NNN-slug.md).
-- Depende de: ninguna | referencia.
-- Follow-ups: tarea, épica o entrada de `INBOX.md`.

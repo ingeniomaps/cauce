@@ -7,6 +7,9 @@ se citan como `[fuente: ruta#sección|ADR-NNN|URL]`; lo desconocido se marca `[s
 
 ## Reglas
 
+El `BR-` es parte del id, no decoración: una épica o un ADR cita la regla como `[fuente: BR-DOM-001]`,
+y `check` rechaza un id sin él. `DOM` es el dominio en mayúsculas, `NNN` correlativo dentro del dominio.
+
 | ID | Regla | Condición y resultado |
 |---|---|---|
 | BR-DOM-001 | Nombre breve | Cuando ocurre X, el sistema produce o impide Y. |

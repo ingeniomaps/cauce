@@ -18,11 +18,19 @@ de una, crea una ADR propia que documente la excepción; no modifica silenciosam
 - `Propuesto`: decidido pero aún no implementado o pendiente de aprobación.
 - `Aceptado`: vigente, con implementación o transición descrita honestamente.
 - `Obsoleto`: desaconsejado, aunque todavía pueda existir en el sistema.
-- `Reemplazada por [NNN]`: sustituido por otra decisión; el archivo original no se elimina.
+- `Reemplazada por [NNN](NNN-slug.md)`: sustituido por otra decisión; el archivo original no se elimina.
+  Se puede cerrar con la fecha del reemplazo entre paréntesis.
+
+El estado se escribe elegido, nunca como lista de opciones: `check` rechaza la línea que todavía trae el
+menú, porque una decisión que no dice si rige no decide nada. Por eso el molde nace en `Propuesto`.
+
+Lo que una decisión reemplaza va en el encabezado, junto al estado. Los follow-ups van donde se ejecutan
+—una tarea, una épica o el INBOX—, y lo construido contra lo pendiente en `## Estado de implementación`.
 
 ## Cómo crear una ADR del proyecto
 
-1. Copiar `000-template.md` como `NNN-slug-corto.md`.
+1. Copiar `000-template.md` como `NNN-slug-corto.md`. El nombre lleva el número: es de donde sale la
+   identidad con que se detecta un override, y por él se cita la decisión.
 2. Documentar contexto, fuentes, supuestos, decisión, alternativas y costos.
 3. Declarar por separado lo construido y lo pendiente.
 4. Al reemplazarla, enlazar la nueva ADR sin borrar el historial.
