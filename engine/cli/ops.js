@@ -65,7 +65,7 @@ function usage() {
   ops automation doctor <ops-root> claude|codex|gemini|antigravity
   ops automation install <ops-root> claude|codex|gemini|antigravity
   ops automation uninstall <ops-root> claude|codex|gemini|antigravity
-  ops learn <agent> [--proposal] [--applied [--period <AAAA-MM>]]
+  ops learn <agent> [--proposal [--period <AAAA-MM>]] [--applied [--period <AAAA-MM>]]
   ops evaluate <agent> [--cases [--json]] [--bench [caso]] [--record [AAAA-MM-DD]]
   ops agents list [ops-root] [--own|--system] [--json]
   ops agents fork <cargo> [ops-root]
@@ -1367,8 +1367,10 @@ function learn(agent, cli) {
         ? `= ${relative} ya estaba aplicada`
         : `✓ ${relative} queda aplicada: no se vuelve a aplicar`)
     }
+    // `--period` es para consolidar a mano un mes que no es el de hoy. El ciclo automático no lo
+    // pasa: la propuesta se llama por el mes en que se abre y arrastra lo que todavía no entró.
     const result = cli.has('--proposal')
-      ? L.prepareProposal(opsRoot(), agent)
+      ? L.prepareProposal(opsRoot(), agent, new Date(), cli.value('--period'))
       : L.prepareReport(opsRoot(), agent)
     console.log(`${result.created ? '+' : '='} ${path.relative(opsRoot(), result.file)}`)
     if (typeof result.reports === 'number') console.log(`  ${result.reports} informe(s) semanal(es) incluidos`)
@@ -1413,7 +1415,7 @@ function evaluate(agent, caso, cli) {
     const result = L.evaluate(root, agent)
     const runs = EV.validate(root, agent)
     const errors = [...result.errors, ...runs.errors]
-    for (const warning of runs.warnings) console.warn(`⚠ ${warning}`)
+    for (const warning of [...result.warnings, ...runs.warnings]) console.warn(`⚠ ${warning}`)
     for (const error of errors) console.error(`✗ ${error}`)
     if (errors.length) fail(`\n${errors.length} error(es)`, 1)
     const corrida = runs.last ? `${runs.last.passed}/${runs.last.total} pasan (${runs.last.date})` : 'sin correr'

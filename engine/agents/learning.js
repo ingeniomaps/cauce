@@ -59,8 +59,28 @@ function proposalFiles(dir) {
   } catch { return [] }
 }
 
+function frontmatterState(text, fallback) {
+  return ((text.match(/^status:\s*(\S+)\s*$/m) || [])[1] || fallback).toLowerCase()
+}
+
 function proposalState(text) {
-  return ((text.match(/^status:\s*(\S+)\s*$/m) || [])[1] || 'proposed').toLowerCase()
+  return frontmatterState(text, 'proposed')
+}
+
+const REPORT_NAME = /^\d{4}-\d{2}-\d{2}\.md$/
+
+function reportFiles(dir) {
+  try { return fs.readdirSync(dir).filter((name) => REPORT_NAME.test(name)).sort() } catch { return [] }
+}
+
+// El informe que ya entró a una propuesta. Nace en `draft` y nada lo movía nunca, así que el que se
+// consolidó y el que se escribió tarde —después de que la propuesta del período ya existía, y por eso
+// no entra a ninguna— se leían igual. El segundo no es un descuido de forma: es un hallazgo que no
+// llega al contrato y que nada delata. Marcar al primero es lo que deja ver al segundo.
+function markConsolidated(file) {
+  const text = fs.readFileSync(file, 'utf8')
+  if (!/^status:\s*\S+\s*$/m.test(text)) return
+  fs.writeFileSync(file, text.replace(/^status:\s*\S+\s*$/m, 'status: consolidated'))
 }
 
 // El estado terminal del ciclo. Existía la firma, la aplicación y el historial, y faltaba justo el
@@ -135,8 +155,7 @@ propuesta consolidada. -->
 // propuesta que ésta corrige, y repetirlos haría que el mismo hallazgo entre dos veces al contrato. El
 // insumo de una revisión es otro —qué mostró la evaluación posterior a aplicar—, y por eso el molde
 // pregunta eso y no otra cosa.
-function reviseProposal(root, agent, dir, previo, now) {
-  const period = month(now)
+function reviseProposal(root, agent, dir, previo, period) {
   const anterior = previo.match(PROPOSAL_NAME)
   const revision = Number(anterior[2] || 1) + 1
   const file = path.join(dir, `${period}-r${revision}.md`)
@@ -196,28 +215,41 @@ function lastOfPeriod(dir, period) {
   return names.length ? names[names.length - 1] : ''
 }
 
-function prepareProposal(root, agent, now = new Date()) {
+// La propuesta se llama por el mes en que se abre, y `period` sólo existe para una corrida a mano
+// sobre otro mes. El ciclo automático no lo usa: nombrarle el mes que cerró abriría una **revisión**
+// —lo que se abre cuando ese mes ya tiene una propuesta aplicada—, y corregir es un acto humano.
+// Lo que hace que ningún informe se pierda no es el nombre sino el criterio de más abajo.
+function prepareProposal(root, agent, now = new Date(), period = '') {
+  if (period && !/^\d{4}-\d{2}$/.test(period)) throw new Error(`período inválido: ${period}`)
   const target = assertWritable(root, agent)
+  const consolidar = period || month(now)
   const proposalDir = path.join(target, 'learning', 'proposals')
   fs.mkdirSync(proposalDir, { recursive: true })
 
   // Una sola propuesta pendiente por período. Si la última todavía no se aplicó, abrir otra partiría
   // la firma en dos documentos que dicen cosas distintas sobre el mismo contrato.
-  const previo = lastOfPeriod(proposalDir, month(now))
+  const previo = lastOfPeriod(proposalDir, consolidar)
   if (previo) {
     const anterior = path.join(proposalDir, previo)
     if (proposalState(fs.readFileSync(anterior, 'utf8')) !== 'applied') {
       return { file: anterior, created: false, reports: 0 }
     }
-    return reviseProposal(root, agent, proposalDir, previo, now)
+    return reviseProposal(root, agent, proposalDir, previo, consolidar)
   }
 
-  const file = path.join(proposalDir, `${month(now)}.md`)
-  let names = []
-  try { names = fs.readdirSync(path.join(target, 'learning', 'reports')) } catch { /* vacío */ }
-  const reports = names.filter((name) => name.startsWith(month(now)) && /^\d{4}-\d{2}-\d{2}\.md$/.test(name)).sort()
+  const file = path.join(proposalDir, `${consolidar}.md`)
+  const reportDir = path.join(target, 'learning', 'reports')
+  // Todo lo que ya ocurrió y todavía no entró, no sólo lo del mes que se consolida. Filtrar por el
+  // prefijo del período dejaba huérfano al informe atrasado —el que se escribió después de que su mes
+  // se consolidó, o el que llegó tarde—: no entraba en ésa ni en ninguna posterior, porque la del mes
+  // siguiente sólo miraba su propio mes. Se perdía el hallazgo entero y en silencio.
+  //
+  // Repetirlo no es un riesgo: el sello dice cuál ya entró, y por eso este criterio existe recién
+  // ahora. Antes todos decían `draft` y no había cómo distinguirlos.
+  const reports = reportFiles(reportDir).filter((name) => name.slice(0, 7) <= consolidar
+    && frontmatterState(fs.readFileSync(path.join(reportDir, name), 'utf8'), 'draft') !== 'consolidated')
   const summaries = reports.map((name) => {
-    const report = path.join(target, 'learning', 'reports', name)
+    const report = path.join(reportDir, name)
     const text = fs.readFileSync(report, 'utf8')
     // Sin `m`: con esa bandera el `$` casa fin de *línea*, así que la búsqueda no ávida cortaba en el
     // primer salto y la propuesta consolidaba una sola línea de una recomendación de diez.
@@ -227,12 +259,12 @@ function prepareProposal(root, agent, now = new Date()) {
   })
   fs.writeFileSync(file, `---
 agent: ${agent}
-period: ${month(now)}
+period: ${consolidar}
 status: proposed
 automatic_apply: false
 ---
 
-# Propuesta mensual — ${month(now)}
+# Propuesta mensual — ${consolidar}
 
 ## Hallazgos
 
@@ -260,12 +292,14 @@ Pendiente.
 - Responsable: por definir
 - Fecha: por definir
 `)
+  for (const name of reports) markConsolidated(path.join(reportDir, name))
   return { file, created: true, reports: reports.length }
 }
 
 function evaluate(root, agent) {
   const target = catalog.resolve(root, agent)
   const errors = []
+  const warnings = []
   const requiredFiles = [
     'learning/sources.yaml',
     'learning/HISTORY.md',
@@ -302,12 +336,22 @@ function evaluate(root, agent) {
     // reportando trabajo pendiente para siempre, y es la misma confusión que permitía reaplicarla.
     if (proposalState(text) !== 'applied') pending += 1
   }
+  // Los hallazgos que todavía no llegaron al contrato. No es un error —la propuesta que los tome
+  // puede no haberse abierto aún—, pero sin decirlo un informe escrito y olvidado se ve igual que uno
+  // ya incorporado: los dos son un archivo en `reports/`.
+  const reportDir = path.join(target, 'learning', 'reports')
+  const sinConsolidar = reportFiles(reportDir).filter((name) =>
+    frontmatterState(fs.readFileSync(path.join(reportDir, name), 'utf8'), 'draft') !== 'consolidated')
+  if (sinConsolidar.length) {
+    warnings.push(`${sinConsolidar.length} informe(s) sin consolidar (${sinConsolidar.join(', ')}): `
+      + 'entran en la próxima propuesta')
+  }
   let cases = 0
   try {
     cases = fs.readdirSync(path.join(target, 'evaluations', 'cases'))
       .filter((name) => name.endsWith('.md')).length
   } catch { /* vacío */ }
-  return { errors, proposals: proposals.length, pending, cases }
+  return { errors, warnings, proposals: proposals.length, pending, cases }
 }
 
 module.exports = { prepareReport, prepareProposal, evaluate, proposalState, seal }
