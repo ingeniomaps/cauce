@@ -33,22 +33,30 @@ sources:
     url: https://www.w3.org/WAI/WCAG22/errata/
     tier: primary-standard
     topics: [accessibility, errata]
-  # ISO/IEC 40500:2025 es la identidad ISO de WCAG 2.2 (W3C REC del 2024-12-12).
-  # iso.org devolvió HTTP 403 el 2026-08-16: corroborar en
-  # https://www.w3.org/WAI/news/2025-10-21/wcag22-iso antes de citarla como leída.
-  - name: ISO IEC 40500
+  # Edición 2.0 del 2025-09-24, que **reemplaza** a ISO/IEC 40500:2012 — la identidad ISO de
+  # WCAG 2.0—. Por eso el nombre lleva el año: «ISO/IEC 40500» a secas es ambiguo entre dos
+  # documentos que dicen cosas distintas, y un contrato que exige uno no se satisface con el otro.
+  # iso.org devuelve 403 desde el 2026-08-16, así que lo legible es la ficha del IEC Webstore
+  # —https://webstore.iec.ch/en/publication/109927—, corroborada contra el anuncio de W3C del
+  # 2025-10-21. Es ficha de catálogo: el texto de la norma no se leyó (informe 2026-08-22, H1).
+  - name: ISO IEC 40500:2025
     url: https://www.iso.org/standard/91029.html
     tier: primary-standard
     topics: [accessibility, conformance, iso-identity]
-  # Extensión de 25010 para sistemas de IA. Existe un ISO/IEC DIS 25059 en curso
-  # cuyo estado no está corroborado en fuente primaria (informe 2026-08-16, H6).
-  - name: ISO IEC 25059
+  # Extensión de 25010 para sistemas de IA. La única edición publicada es la de 2023 y su comité
+  # es SC 42 —no SC 7—; ficha legible en https://webstore.iec.ch/en/publication/86756.
+  # El estado de la revisión en curso **no está corroborado en fuente primaria** y no se afirma.
+  # Cuidado al buscarlo: el «ISO/IEC DIS 25059:2022» que aparece en catálogos de revendedores es el
+  # DIS de la primera edición, no el de la revisión (informe 2026-08-22, H2).
+  - name: ISO IEC 25059:2023
     url: https://www.iso.org/standard/80655.html
     tier: primary-standard
     topics: [ai-quality-model, product-quality-model]
-  # URL de anuncio oficial: reemplazar por la página del syllabus cuando se verifique.
+  # Página de la certificación, no el anuncio: el syllabus vigente es v2.0 GA del 2026-04-17, y
+  # anotarlo con su versión es lo que permite que la próxima corrida compare contra un documento y
+  # no contra un titular (informe 2026-08-22, H3).
   - name: ISTQB CT-AI
-    url: https://istqb.org/istqb-releases-certified-tester-ai-testing-ct-ai-syllabus-version-2-0/
+    url: https://istqb.org/certifications/certified-tester-ai-testing-ct-ai/
     tier: professional-primary
     topics: [ai-testing, probabilistic-oracles, metamorphic-testing, drift, red-teaming]
   # Pendientes de registrar en 2026-09: ISO/IEC 25002 (visión general) e ISO/IEC 25019
