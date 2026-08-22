@@ -285,7 +285,7 @@ if (epic.outcome === 'no-hacer') {
 if (epic.outcome === 'investigar') {
   await agent(
     `${RULES}\n\nRegistrá en ${HUMAN} qué hay que averiguar antes de poder decidir esta intención y quién ` +
-    `puede hacerlo, sin inventar responsables ni fechas, y dejá la conclusión en la sección Lecciones de ` +
+    `puede hacerlo, sin inventar responsables ni fechas, y dejá la conclusión en la sección Ideas de ` +
     `${INBOX} sin promoverla. Qué falta averiguar: ${epic.reason}`,
     { label: 'investigar' },
   )

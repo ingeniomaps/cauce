@@ -556,10 +556,12 @@ while (vueltas++ < MAX_TAREAS) {
     // Aprobar sin declarar qué se abrió no se arregla mandando a tocar código: falló quien revisó.
     if (!review.consulted.length) return stop('review-unbacked', 'aprobó el diff sin declarar qué inspeccionó')
     // Lo que no impide entregar no manda a tocar código, y tampoco desaparece: la mejora opinable que se
-    // corrige a las apuradas cuesta una vuelta y un riesgo que nadie pidió.
+    // corrige a las apuradas cuesta una vuelta y un riesgo que nadie pidió. Va a Propuestas y no a
+    // Lecciones porque lo que la revisión anotó es un cambio del producto con su evidencia; Lecciones es
+    // sobre cómo trabajamos, y ahí el hallazgo queda esperando una promoción que nadie va a hacer.
     const anotados = review.concerns.filter((one) => !one.blocking).map((one) => one.detail)
     if (anotados.length) {
-      await write(`Registrá en la sección Lecciones de ${P}/INBOX.md lo que la revisión de ${task.id} dejó ` +
+      await write(`Registrá en la sección Propuestas de ${P}/INBOX.md lo que la revisión de ${task.id} dejó ` +
         `anotado sin frenar la entrega, sin promover ninguna: ${JSON.stringify(anotados)}`)
     }
   }
