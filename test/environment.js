@@ -53,4 +53,35 @@ function linkEngine(target) {
   fs.symlinkSync(path.resolve(__dirname, '..'), path.join(scope, 'cauce'), 'dir')
 }
 
-module.exports = { tempRoot, CLI, run, linkEngine }
+// Los workflows de GitHub Actions, leídos para poder **ejecutar** lo que declaran. Un paso que se
+// afirma citando su texto vuelve a pasar con otra redacción igual de rota: lo que hay que fijar es
+// qué hace el comando contra un repositorio de verdad.
+const WORKFLOWS = path.resolve(__dirname, '..', '.github', 'workflows')
+
+function workflow(name) {
+  return fs.readFileSync(path.join(WORKFLOWS, `${name}.yml`), 'utf8')
+}
+
+// El cuerpo de un paso `run: |`. El ancla es la línea que lo identifica —`id: changes`,
+// `name: Open research pull request`—; con un `id` repetido entre jobs gana el primero, y son el
+// mismo texto, así que probar uno prueba a los dos.
+function workflowStep(source, anchor) {
+  const start = source.indexOf(anchor)
+  if (start < 0) return ''
+  const lines = source.slice(source.indexOf('run: |', start)).split('\n').slice(1)
+  const body = []
+  for (const line of lines) {
+    if (line.trim() && !line.startsWith(' '.repeat(10))) break
+    body.push(line.slice(10))
+  }
+  return body.join('\n')
+}
+
+// Una línea suelta de un paso: la que resuelve una ruta o arma una variable, con su asignación.
+function workflowCommand(source, name) {
+  const found = source.match(new RegExp('^\\s*' + name + '="[$][(].*[)]"$', 'm'))
+  if (!found) throw new Error(`el workflow no tiene el comando que resuelve ${name}`)
+  return found[0]
+}
+
+module.exports = { tempRoot, CLI, run, linkEngine, workflow, workflowStep, workflowCommand }
