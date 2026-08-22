@@ -91,7 +91,7 @@ if (!contexto || !contexto.items || !contexto.items.length) {
 // Un banco por caso, preparados por un solo agente: son comandos deterministas, y después la ruta de
 // cada caso se arma sola.
 const BENCH_ROOT = `${ROOT}/.cauce-eval/${AGENT}`
-let porCaso = null
+let benchPath = null
 if (contexto.mode === 'toolkit') {
   const banco = await agent(
     `From ${ROOT}, run one command per case, in order, and report what each one did:\n` +
@@ -113,7 +113,7 @@ if (contexto.mode === 'toolkit') {
       `${banco.failed.join(', ')}: su banco conserva trabajo sin recoger de una corrida anterior. ` +
       `Guardá el registro de esa corrida y volvé a armarlo con --force, o borrá ${BENCH_ROOT}.`)
   }
-  porCaso = (item) => `${BENCH_ROOT}/${item.id}`
+  benchPath = (item) => `${BENCH_ROOT}/${item.id}`
   log(`Bancos: ${BENCH_ROOT}/<caso>`)
 } else if (contexto.system) {
   return stop('cargo-del-catalogo',
@@ -129,7 +129,7 @@ const veredictos = await pipeline(
   // Responde el cargo. Recibe su contrato y el pedido; nunca los comportamientos esperados.
   // Sin tope de extensión a propósito: con uno de doce líneas fallaban dos casos que pasan.
   (item) => agent(
-    `Trabajás en ${porCaso ? porCaso(item) : ROOT}: esa es tu instancia, con su planning/, su ` +
+    `Trabajás en ${benchPath ? benchPath(item) : ROOT}: esa es tu instancia, con su planning/, su ` +
     `organization/ y su AGENTS.md. Todo lo que escribas va ahí.\n\n` +
     `Actuá como el cargo ${AGENT}, respetando el contrato de ${contexto.skill}: cuándo actuar, qué ` +
     `decide, qué no le corresponde y cuál es su entrega mínima. Leé también el AGENTS.md de esa ` +
@@ -155,10 +155,10 @@ const veredictos = await pipeline(
   // mide contra lo que el caso declara, no contra una relectura del SKILL.md.
   (answer, item) => (answer ? agent(
     `Un cargo recibió este pedido:\n\n${item.request}\n\nY respondió:\n\n${answer.response}\n\n` +
-    (porCaso
-      ? `La respuesta no es toda la entrega. El cargo trabajó en ${porCaso(item)}, un banco versionado ` +
-        `desde su estado limpio: corré "git -C ${porCaso(item)} status --porcelain" y ` +
-        `"git -C ${porCaso(item)} diff" para ver exactamente qué produjo, y leé los archivos que ` +
+    (benchPath
+      ? `La respuesta no es toda la entrega. El cargo trabajó en ${benchPath(item)}, un banco versionado ` +
+        `desde su estado limpio: corré "git -C ${benchPath(item)} status --porcelain" y ` +
+        `"git -C ${benchPath(item)} diff" para ver exactamente qué produjo, y leé los archivos que ` +
         `aparezcan. Juzgá la respuesta **y** lo que escribió.\n\n` +
         `Esto no es un detalle: un cargo contestó un resumen y dejó el contrato completo —con firma, ` +
         `orden de verificación y catorce pruebas— en su INBOX. Juzgado sólo por el texto, se lo dio ` +

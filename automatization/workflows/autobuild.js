@@ -292,7 +292,7 @@ let planning = await readContext()
 if (!planning) return stop('context-unavailable', `no se pudo leer el estado de ${P}`)
 if (planning.blocked) return stop('awaiting-human-review', `${GATE} tiene un checkpoint humano sin resolver`)
 
-let currentHito = planning.wipActive ? planning.hito : ''
+let currentMilestone = planning.wipActive ? planning.hito : ''
 const completed = []
 // Tope de tareas por corrida. No protege de un hito grande —cincuenta tareas en un hito es un problema
 // de planificación, no de ejecución— sino de un ciclo: una tarea que vuelve a quedar elegible corre
@@ -317,12 +317,12 @@ while (vueltas++ < MAX_TAREAS) {
     planning = await readContext()
     if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
   }
-  if (!planning.hasTask || (currentHito && planning.hito !== currentHito)) break
+  if (!planning.hasTask || (currentMilestone && planning.hito !== currentMilestone)) break
   const task = {
     id: planning.slug, hito: planning.hito, service: planning.service,
     acceptance: planning.acceptance, epic: planning.epic,
   }
-  currentHito = task.hito
+  currentMilestone = task.hito
 
   // Ver la tarea y, si no está clasificada, clasificarla antes de ejecutarla. Se hace una vez por
   // tarea y se escribe en su línea, así que la decisión sobrevive a la corrida y la puede corregir
@@ -332,8 +332,8 @@ while (vueltas++ < MAX_TAREAS) {
   //
   // Un WIP activo no se reclasifica: la tarea ya está en vuelo con las fases que le tocaron, y
   // cambiárselas a mitad de camino la deja con un plan aprobado bajo otro carril.
-  const sinClasificar = !planning.lane || !planning.cast.build
-  if (sinClasificar && !planning.wipActive && !clasificadas.has(task.id)) {
+  const unclassified = !planning.lane || !planning.cast.build
+  if (unclassified && !planning.wipActive && !clasificadas.has(task.id)) {
     phase('Classify')
     clasificadas.add(task.id)
     const classification = await write(
@@ -507,8 +507,8 @@ while (vueltas++ < MAX_TAREAS) {
     return stop('build-closed-task', `${task.id} se cerró en Build, sin pasar por Review, Verify ni QA`)
   }
   // Nombrar el test sin traer su fallo es volver a afirmar que hubo rojo, que es lo que el campo evita.
-  const sinFallo = build.redFirst.find((entry) => !entry.failure.trim())
-  if (sinFallo) return stop('build-unproven', `${sinFallo.test} se declara en rojo sin el fallo que lo muestra`)
+  const unproven = build.redFirst.find((entry) => !entry.failure.trim())
+  if (unproven) return stop('build-unproven', `${unproven.test} se declara en rojo sin el fallo que lo muestra`)
   // Lo que queda abierto no lo cierra quien lo encuentra, pero tampoco frena lo que sí se pudo entregar.
   // Tres corridas reales terminaron acá y las tres traían `completed: true`: el hueco nunca fue «no puedo»
   // sino «hay un borde que alguien tiene que decidir», y una aceptación escrita en prosa siempre tiene uno.
@@ -665,4 +665,4 @@ if (completed.length && contract.humanCheckpoint) await write(
   `Creá ${GATE} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones humanas ` +
   `pendientes y las instrucciones exactas para continuar. Nunca hagas push ni deploy.`,
 )
-return finish({ done: completed, count: completed.length, hito: currentHito })
+return finish({ done: completed, count: completed.length, hito: currentMilestone })

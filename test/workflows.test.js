@@ -234,7 +234,7 @@ test('autobuild ejecuta cada fase bajo el contrato del cargo que la posee', () =
 
   // Clasificar es lo primero y ocurre una vez: la tarea que ya declara carril y reparto no vuelve a
   // pasar por ahí, y la que sí pasa deja la decisión escrita en su línea en vez de en la corrida.
-  assert.match(workflow, /const sinClasificar = !planning\.lane \|\| !planning\.cast\.build/)
+  assert.match(workflow, /const unclassified = !planning\.lane \|\| !planning\.cast\.build/)
   assert.match(workflow, /const cast = \{ \.\.\.OWNERS, build: planning\.cast\.build \}/,
     'quien implementa sale de la línea, no de una llamada')
 
@@ -397,10 +397,10 @@ test('la evaluación le arma al cargo un lugar donde trabajar', () => {
   assert.match(evalWf, /ops\.config\.json.*mode/s, 'lee el modo del proyecto')
   assert.match(evalWf, /mode === 'toolkit'/, 'y distingue el toolkit de una instancia')
   assert.match(evalWf, /--bench/, 'en el toolkit le arma un banco desechable')
-  assert.match(evalWf, /Trabajás en \$\{porCaso/, 'y el cargo trabaja ahí, no en la raíz')
+  assert.match(evalWf, /Trabajás en \$\{benchPath/, 'y el cargo trabaja ahí, no en la raíz')
   // Uno por caso: con un banco compartido los casos se leían entre sí y dejaban de medir lo suyo.
   assert.match(evalWf, /--bench \$\{item\.id\}/, 'un banco por caso, nombrado por el caso')
-  assert.match(evalWf, /porCaso = \(item\)/, 'y cada caso resuelve el suyo')
+  assert.match(evalWf, /benchPath = \(item\)/, 'y cada caso resuelve el suyo')
 
   // El veredicto pertenece al contrato que lo rindió, y el banco se borra en la próxima corrida.
   assert.match(evalWf, /evaluate \$\{AGENT\} --record/, 'el registro va donde el motor dice')
