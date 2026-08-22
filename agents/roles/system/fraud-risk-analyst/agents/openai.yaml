@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fraud Risk Analyst"
+  short_description: "Modelo de riesgo de fraude y su operación"
+  default_prompt: "Usa $fraud-risk-analyst para diseñar señales y umbrales de fraude, revisar una decisión automática o medir sus falsos positivos."

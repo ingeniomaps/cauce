@@ -1,0 +1,91 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+# El contexto de la empresa no es una fuente de la profesión: vive en
+# organization/roles/fraud-risk-analyst.md dentro de cada instalación. Tampoco lo es la
+# documentación de un proveedor de scoring sobre su propio producto: eso es afirmación de
+# parte, se cita como suya y no calibra nada.
+sources:
+  # Artículo 22 leído literal en el texto consolidado de EUR-Lex el 2026-08-22. El apartado 3
+  # es el que fija el piso de la revisión: «the right to obtain human intervention on the part
+  # of the controller, to express his or her point of view and to contest the decision».
+  - name: GDPR art. 22 (Reglamento UE 2016/679)
+    url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32016R0679
+    tier: primary-regulation
+    topics: [automated-decision, human-review, contestability, profiling]
+  # Anexo III punto 5(b) leído literal el 2026-08-22: los sistemas que evalúan solvencia son de
+  # alto riesgo «with the exception of AI systems used for the purpose of detecting financial
+  # fraud». La excepción acota la obligación legal; no dice que el modelo no decida sobre personas.
+  - name: AI Act (Reglamento UE 2024/1689), anexo III 5(b)
+    url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=OJ:L_202401689
+    tier: primary-regulation
+    topics: [high-risk-classification, fraud-detection-exception, ai-governance]
+  # Artículo 68.2 a 68.4 leído literal el 2026-08-22: razones «objectively justified», deber de
+  # informar al titular del bloqueo y de sus razones, y deber de desbloquear cuando la razón deja
+  # de existir. Es el modelo de contención reversible que este cargo propone.
+  - name: PSD2 art. 68 (Directiva UE 2015/2366)
+    url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32015L2366
+    tier: primary-regulation
+    topics: [payment-instrument-blocking, notification, unblocking, fraud-suspicion]
+  # Circular 2022-03 del 2022-05-26. Alcance: crédito bajo ECOA y Regulation B en EE. UU., no
+  # fraude. Se registra por el principio que sí se traslada —la opacidad del modelo no reduce lo
+  # que hay que explicar—, y ese alcance se dice cada vez que se la cita.
+  - name: CFPB Consumer Financial Protection Circular 2022-03
+    url: https://www.consumerfinance.gov/compliance/circulars/circular-2022-03-adverse-action-notification-requirements-in-connection-with-credit-decisions-based-on-complex-algorithms/
+    tier: primary-regulator-guidance
+    topics: [adverse-action, black-box-models, specific-reasons, explainability]
+  # Publicada el 2026-04-17; **reemplaza a SR 11-7 (2011) y SR 21-8 (2021)**. La versión importa:
+  # media profesión sigue citando SR 11-7, que está derogada. Verificado en la página del Fed el
+  # 2026-08-22; el PDF de la guía completa no se leyó, así que lo que consta es el alcance y la
+  # sustitución, no su detalle sobre validación.
+  - name: Federal Reserve SR 26-2 — Revised Guidance on Model Risk Management
+    url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm
+    tier: primary-regulator-guidance
+    topics: [model-risk, validation, governance, outcomes-analysis]
+  # Del mismo día que SR 26-2 y su contraparte OCC. Define «modelo» como método cuantitativo
+  # complejo y **excluye** los procesos determinísticos basados en reglas: un motor de reglas de
+  # fraude no es un modelo bajo esa definición, y eso cambia qué gobierno le aplica.
+  - name: OCC Bulletin 2026-13 — Model Risk Management, Revised Guidance
+    url: https://www.occ.gov/news-issuances/bulletins/2026/bulletin-2026-13.html
+    tier: primary-regulator-guidance
+    topics: [model-definition, rules-engines, model-risk, scope]
+  - name: NIST AI Risk Management Framework 1.0 (NIST.AI.100-1)
+    url: https://www.nist.gov/itl/ai-risk-management-framework
+    tier: primary-standard
+    topics: [ai-risk, govern-map-measure-manage, trustworthiness]
+  # EBA/GL/2020/01 del 2020-01-22, aplicables desde 2020-07-01; enmiendan a EBA/GL/2018/05. Sirve
+  # como vocabulario y taxonomía de fraude en pagos aunque la obligación de reporte no alcance al
+  # producto. Verificada la ficha; las plantillas de reporte no se leyeron.
+  - name: EBA Guidelines on fraud reporting under PSD2 (EBA/GL/2020/01)
+    url: https://www.eba.europa.eu/regulation-and-policy/payment-services-and-electronic-money/guidelines-on-fraud-reporting-under-psd2
+    tier: primary-regulator-guidance
+    topics: [fraud-taxonomy, reporting, payments]
+  # 14.ª edición, 2.402 casos en 143 países. Cubre fraude **ocupacional** —el interno, con
+  # colusión— y no fraude transaccional externo, que es el grueso del dominio de este cargo. Se
+  # registra con ese límite escrito para que no se la cite como si midiera lo otro.
+  - name: ACFE — Occupational Fraud 2026, A Report to the Nations
+    url: https://www.acfe.com/fraud-resources/report-to-the-nations
+    tier: professional-primary
+    topics: [occupational-fraud, detection-methods, collusion, red-flags]
+
+# Lo que se buscó y **no** quedó registrado, con el motivo. Sin esta lista, la próxima corrida
+# repite la búsqueda y concluye que no existe:
+#
+# - Banco Central do Brasil, Resolução Conjunta nº 6 (compartilhamento de dados de fraude): la
+#   página del normativo se sirve por JavaScript y no devuelve texto legible, así que no se pudo
+#   leer ni el título ni su articulado. Es directamente aplicable a la operación brasileña y
+#   queda pendiente de verificar contra el diario oficial.
+# - Reg E (12 CFR 1005.11) y Reg B (12 CFR 1002.9) en eCFR: el sitio responde con una página de
+#   verificación de acceso a toda petición automatizada. Sin texto leído, no se registran.
+# - ISO 31000:2018 (gestión del riesgo): iso.org devuelve 403. Sin ficha legible, no se registra.
+# - Marco de Basilea, capítulo OPE25 (categorías de evento de pérdida, incluidos fraude interno y
+#   externo): la página de bis.org se arma por JavaScript y no devolvió las definiciones.
+# - FFIEC, «Authentication and Access to Financial Institution Services and Systems» (2021):
+#   ffiec.gov devuelve 403.
+# - Normas locales de Colombia, Brasil y México: no se buscaron fuentes primarias en esta corrida.
+#   Son las que mandan donde corre el producto y ninguna de las de arriba las reemplaza.
