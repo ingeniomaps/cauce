@@ -36,7 +36,7 @@ invariantes.
 2. Pick: primera tarea no bloqueada del primer hito.
 3. Classify: si la tarea no declara lane y cast, decidirlos y escribirlos en su línea.
 4. Ready: exigir aceptación concreta y decisiones resueltas.
-5. Decompose: dividir trabajo mayor a `maxTaskHours`.
+5. Decompose: dividir trabajo mayor a `maxTaskHours` o con más de cinco condiciones de aceptación.
 6. Plan y Critique: entender contexto, escribir plan y atacarlo una vez.
 7. WIP: persistir el plan aprobado antes del primer cambio.
 8. Build: alcance exacto, progreso tildado, RED/GREEN/VERIFY aplicable.

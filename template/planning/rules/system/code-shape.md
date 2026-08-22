@@ -23,8 +23,16 @@ persona por lo que se resolvía solo, o resuelve solo lo que no le tocaba.
 
 ## R7 — Límites legibles
 
-Extraer responsabilidades cuando una unidad deja de poder entenderse y probarse aisladamente; no usar
-límites numéricos como sustituto del juicio.
+Extraer responsabilidades cuando una unidad deja de poder entenderse y probarse aisladamente.
+
+Un umbral no decide la división: la dispara. Al cruzarlo se revisa si la unidad mezcla dos propósitos con
+ciclos de vida distintos, y recién ahí se parte, o se deja con la razón escrita. Un número usado como límite
+se cumple partiendo por la mitad lo que era una sola cosa; usado como disparador encuentra lo que nadie iba
+a mirar. Cuáles son esos números los fija el proyecto, porque dependen del lenguaje y de la superficie.
+
+Lo que crece por diseño no se juzga por tamaño: un registro que sólo agrega, una salida generada o un
+histórico son largos porque eso es lo que son. Y una división que duplica un hecho es peor que el archivo
+largo — una de las dos copias se pudre y nada falla.
 
 ## R11 — Comentarios con destinatario
 
@@ -42,3 +50,15 @@ nada falla.
   qué algo se aparta del idioma habitual, y qué quedó a medias.
 
 Un comentario que cuesta escribir suele estar señalando el código, no la falta de palabras.
+
+## R18 — Un doble se justifica y los datos salen de una fábrica
+
+Todo doble de prueba —mock, stub, fake, spy— declara en una línea por qué existe, y se busca en el lugar
+compartido antes de escribir uno nuevo. Los datos de ejemplo salen de una fábrica, nunca de un volcado de
+producción ni de una credencial real.
+
+El enemigo no es el doble: es el test que afirma estructura en vez de conducta. Una suite entera puede
+quedar verde con el defecto adentro sin que sobre un solo doble — lo que faltaba era el caso que nadie
+escribió. Por eso se justifica y se reúsa en vez de prohibirse: un doble sin razón escrita se copia, y la
+copia deja de coincidir con lo que reemplaza sin que ninguna prueba lo note.
+

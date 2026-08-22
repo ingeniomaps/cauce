@@ -23,6 +23,14 @@ del test, no su salida: un exit code no distingue la prueba que sostiene el crit
 Y una prueba que nunca se vio fallar no muestra que su aserción funcione: el rojo previo es lo único que
 la separa de una que pasa haga lo que haga el código.
 
+Pero el rojo previo prueba ausencia —el método no existe, la pantalla no está montada—, y eso no distingue
+una implementación sutilmente equivocada de una correcta. Lo que sí la distingue es romper, ya con el código
+puesto, exactamente lo que el caso dice cuidar, y verlo ponerse rojo por eso. Si no se pone rojo, no lo cuida,
+y la cobertura no lo va a decir: mide qué líneas se ejecutan, no qué defectos se atrapan.
+
+La precondición del caso también cuenta. Si el estado en que arranca no puede ocurrir por el camino de
+producción, lo que prueba tampoco: queda verde para siempre sobre algo que nadie va a vivir.
+
 ## R10 — Publicación humana por defecto
 
 Push, PR, merge, tags, deploy y rollback requieren la autorización configurada para el proyecto.

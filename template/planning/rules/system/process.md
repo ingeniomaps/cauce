@@ -41,3 +41,18 @@ comprobar que quedó no comprueba nada que un error no hubiera dicho.
 
 Verificar es la excepción, y no se negocia. Ahorrar una llamada nunca justifica afirmar sin haber
 comprobado —R14 no admite descuentos— ni dar por terminado lo que no se corrió.
+
+## R17 — La aceptación que acumula condiciones se parte
+
+Cinco condiciones es el borde. Pasado eso la tarea se parte antes de volver a planificarla: no se refina
+ni se reordena, se parte.
+
+Cada condición por separado puede ser correcta y estar verificada contra el código; el problema es el
+conjunto. Un plan tiene que satisfacerlas todas a la vez y basta fallar una para tirar la vuelta entera,
+así que la probabilidad de salir limpio se desploma con la cantidad aunque cada punto sea fácil. Y una
+aceptación crece sin que nadie lo decida: se le suman condiciones de a tandas en cada rechazo de plan,
+y cada tanda parece razonable.
+
+El tope de horas no lo detecta. Una tarea de tres horas con quince condiciones entra en el tope y no se
+construye nunca.
+
