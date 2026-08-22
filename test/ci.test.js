@@ -4,16 +4,18 @@
 // nada más: acá se prueba la automatización del repositorio —quién puede escribir, qué credencial ve
 // cada job, cómo se fijan las acciones—, no lo que un runner ejecuta en una empresa.
 
-require('./environment')
+const { tempRoot, workflow, workflowStep, workflowCommand } = require('./environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const { execFileSync } = require('node:child_process')
 
-// Buscaba el CLI entre varios candidatos porque el workflow se materializaba en cada instancia. Dejó
-// de distribuirse en 0.4.0 —`init` no copia `.github/` y `upgrade` lo retira—, así que la única ruta
-// posible es la del toolkit, y seguir buscando mantenía vivos dos candidatos muertos.
+// Los workflows de GitHub Actions, que comparten la palabra «workflow» con los recorridos de Cauce y
+// nada más: acá se prueba la automatización del repositorio —quién puede escribir, qué credencial ve
+// cada job, cómo se fijan las acciones—, no lo que un runner ejecuta en una empresa.
+
 test('el workflow de aprendizaje corre en el toolkit y nombra un solo CLI', () => {
   const file = path.resolve(__dirname, '..', '.github', 'workflows', 'agent-learning.yml')
   const source = fs.readFileSync(file, 'utf8')
@@ -85,4 +87,88 @@ test('un solo workflow cubre a todos los agentes', () => {
   const dir = path.resolve(__dirname, '..', '.github', 'workflows')
   const files = fs.readdirSync(dir).sort()
   assert.deepEqual(files, ['agent-learning.yml', 'ci.yml'], 'no vuelve a haber un workflow por agente')
+})
+
+// Lo que el ciclo de aprendizaje produce son archivos NUEVOS —el informe de la semana, la propuesta
+// del mes—, y `git diff` no ve lo que no está trackeado. Con él, los dos jobs evaluaban su propio
+// paso de publicación como «sin cambios» y terminaban en verde sin haber producido nada: el informe
+// moría en el runner y la propuesta nunca salía. Es la falla que no se denuncia sola.
+//
+// Se prueba ejecutando los comandos contra un repositorio de verdad y no leyendo el YAML: el defecto
+// no era el texto sino lo que ese texto hace, y otra redacción igual de ciega volvería a pasar.
+test('el workflow de aprendizaje ve los archivos que el ciclo crea', { skip: process.platform === 'win32' }, () => {
+  const source = workflow('agent-learning')
+
+  // El repositorio donde se ejecuta: un commit, y encima lo que el ciclo acaba de escribir.
+  const repo = tempRoot('cauce-ci-')
+  const role = path.join(repo, 'agents', 'roles', 'system', 'probe', 'learning')
+  fs.mkdirSync(path.join(role, 'reports'), { recursive: true })
+  fs.mkdirSync(path.join(role, 'proposals'), { recursive: true })
+  const bash = (script) => execFileSync('bash', ['-c', script], { cwd: repo, encoding: 'utf8' })
+  fs.writeFileSync(path.join(repo, 'README.md'), 'base\n')
+  bash('git init -q . && git add README.md && git -c user.email=t@t -c user.name=t commit -qm base')
+  fs.writeFileSync(path.join(role, 'reports', '2099-01-07.md'), 'informe\n')
+  // Una revisión, que es el caso que el filtro por período dejaba afuera: una propuesta ya aplicada
+  // se corrige abriendo `<período>-rN.md`, y el paso la leía como un archivo ajeno y no abría PR.
+  fs.writeFileSync(path.join(role, 'proposals', '2099-01-r2.md'), 'propuesta\n')
+
+  // El paso que decide si hay algo que publicar. Si dice que no, nada de lo que sigue corre.
+  const detect = workflowStep(source, 'changes')
+  assert.ok(detect.length, 'no se encontró el paso de detección')
+  const output = path.join(repo, 'github-output')
+  bash(`GITHUB_OUTPUT=${JSON.stringify(output)}\nexport GITHUB_OUTPUT\n${detect}`)
+  assert.match(fs.readFileSync(output, 'utf8'), /^changed=true$/m, 'un archivo nuevo es un cambio')
+
+  // Y los dos comandos que después buscan el archivo por su ruta.
+  const found = (name, vars) => bash(`${vars}\n${workflowCommand(source, name)}\nprintf '%s' "$${name}"`)
+  assert.equal(
+    found('report', 'AGENT=probe; stamp=2099-01-07'),
+    'agents/roles/system/probe/learning/reports/2099-01-07.md',
+    'el informe de la semana',
+  )
+  assert.equal(
+    found('proposal', 'AGENT=probe; period=2099-01'),
+    'agents/roles/system/probe/learning/proposals/2099-01-r2.md',
+    'y la revisión, que no se llama como el período',
+  )
+})
+
+// La propuesta se llama por el mes en que se abre y arrastra lo que todavía no entró. Nombrarle el
+// mes que cerró parecía más exacto y abría un caso peor: si ese mes ya tiene propuesta aplicada, lo
+// que el cron abre es una **revisión** —el documento que corrige un cambio mal calibrado— vacía y
+// sin que nadie lo decidiera. El workflow no calcula meses, y eso es la prueba.
+test('la consolidación mensual no le nombra un período al CLI', () => {
+  const source = workflow('agent-learning')
+  assert.match(source, /learn "\$AGENT" --proposal$/m, 'consolida el mes en que corre')
+  assert.equal(/--proposal --period/.test(source), false, 'y no le nombra un mes pasado')
+  assert.equal(/1 day ago/.test(source), false, 'no queda aritmética de fechas en el workflow')
+})
+
+// `reports/` nace con el primer informe del cargo, así que en 43 de los 47 no existe en git todavía.
+// El chequeo que exige «exactamente el informe y nada más» comparaba contra la salida por defecto de
+// `git status`, que colapsa un directorio sin trackear en una sola línea: veía `.../learning/reports/`
+// donde esperaba la ruta del archivo, y abortaba la publicación del primer informe de cada cargo.
+test('el primer informe de un cargo no aborta su publicación', () => {
+  const source = workflow('agent-learning')
+
+  // Un cargo como los del catálogo: `learning/` versionado por sus fuentes, y `reports/` estrenándose.
+  const repo = tempRoot('cauce-first-')
+  const rol = 'agents/roles/system/probe'
+  fs.mkdirSync(path.join(repo, rol, 'learning', 'reports'), { recursive: true })
+  fs.writeFileSync(path.join(repo, rol, 'SKILL.md'), 'x\n')
+  fs.writeFileSync(path.join(repo, rol, 'learning', 'sources.yaml'), 'version: 1\n')
+  const bash = (script) => execFileSync('bash', ['-c', script], { cwd: repo, encoding: 'utf8' })
+  bash(`git init -q . && git add ${rol}/SKILL.md ${rol}/learning/sources.yaml`
+    + ' && git -c user.email=t@t -c user.name=t commit -qm base')
+  const dest = `${rol}/learning/reports/2099-01-07.md`
+  fs.writeFileSync(path.join(repo, dest), 'informe\n')
+
+  // La línea real del workflow: lo que sobra además del informe, que tiene que ser nada.
+  const sobra = bash(`dest=${JSON.stringify(dest)}\n${workflowCommand(source, 'otros')}\nprintf '%s' "$otros"`)
+  assert.equal(sobra, '', 'el informe recién creado es lo único que hay, y el chequeo lo reconoce')
+
+  // Y sigue detectando lo que de verdad sobra: el freno existe para que un agente no cuele otro archivo.
+  fs.writeFileSync(path.join(repo, rol, 'SKILL.md'), 'reescrito por el agente\n')
+  const conIntruso = bash(`dest=${JSON.stringify(dest)}\n${workflowCommand(source, 'otros')}\nprintf '%s' "$otros"`)
+  assert.match(conIntruso, /SKILL\.md/, 'un archivo ajeno sigue abortando la publicación')
 })
