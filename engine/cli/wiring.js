@@ -21,11 +21,13 @@ const INTEGRATION = {
   list: {
     run: (root) => {
       for (const [name, entry] of Object.entries(providerRegistry(root).config.providers || {})) {
-        const ready = I.providerReady(root, name)
-        const mark = !entry.enabled ? '○' : (ready ? '●' : '◐')
+        const state = I.providerState(root, name)
+        const mark = !entry.enabled ? '○' : { ready: '●', incomplete: '◐', unreadable: '⚠' }[state]
         const note = mark === '◐'
           ? `  — falta completar integrations/${name}/config.json y poner enabled: true`
-          : ''
+          : mark === '⚠'
+            ? `  — integrations/${name}/config.json no se puede leer: "integration check" dice por qué`
+            : ''
         console.log(`${mark} ${name} [${entry.adapter}]${note}`)
       }
     },
@@ -43,8 +45,13 @@ const INTEGRATION = {
       console.log(`✓ ${provider}: conectado al proyecto y andamiaje en integrations/${provider}/.`)
       // Sólo se pide lo que falta: reencender un proveedor ya configurado no debería mandar a
       // completar un archivo que la empresa terminó hace meses.
-      if (I.providerReady(root, provider)) {
+      const state = I.providerState(root, provider)
+      if (state === 'ready') {
         console.log(`  Su configuración ya estaba completa: "integration sync" puede correr.`)
+        return
+      }
+      if (state === 'unreadable') {
+        console.log(`  Su configuración existe y no se puede leer: "integration check" dice por qué.`)
         return
       }
       console.log(`  Falta lo tuyo: completá integrations/${provider}/config.json y poné enabled: true ahí.`)

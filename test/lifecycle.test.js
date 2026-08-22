@@ -126,6 +126,18 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   assert.equal(fs.existsSync(own), true, 'y reencender tampoco lo toca')
   assert.equal(cauce(consumer, ['check', planning]).status, 0, 'la instancia sigue válida')
 
+  // Un config de proveedor completo pero ilegible no es uno a medio llenar. "list" los colapsaba en el
+  // mismo ◐ y mandaba a completar un archivo que ya estaba escrito, mientras "check" sí lo reportaba.
+  const jiraConfig = path.join(consumer, 'integrations', 'jira', 'config.json')
+  const sane = JSON.parse(fs.readFileSync(jiraConfig, 'utf8'))
+  fs.writeFileSync(jiraConfig, JSON.stringify({ ...sane, enabled: true }, null, 2))
+  assert.match(cauce(consumer, ['integration', 'list', consumer]).stdout, /● jira/, 'completo y encendido')
+  fs.writeFileSync(jiraConfig, `${JSON.stringify({ ...sane, enabled: true }, null, 2)},`)
+  const broken = cauce(consumer, ['integration', 'list', consumer]).stdout
+  assert.doesNotMatch(broken, /falta completar/, 'no manda a completar lo que ya está completo')
+  assert.match(broken, /jira[\s\S]*?no se puede leer/, 'nombra que el archivo no se pudo leer')
+  fs.writeFileSync(jiraConfig, JSON.stringify(sane, null, 2))
+
   // El runner debe seguir al cargo del proyecto, no al del sistema.
   assert.equal(cauce(consumer, ['automation', 'install', consumer, 'claude']).status, 0)
   const installed = fs.readFileSync(path.join(workspace, '.claude', 'skills', 'product-manager', 'SKILL.md'), 'utf8')

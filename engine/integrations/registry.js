@@ -381,16 +381,20 @@ const slugify = (value) => String(value).normalize('NFD').replace(/[\u0300-\u036
   .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 70)
 const oneLine = (value) => String(value).replace(/\s+/g, ' ').trim()
 
-// Si el proveedor está encendido en la instancia. Lee su propio `config.json`, que es donde vive la
-// decisión, y no el registro: un proveedor listado y apagado no es un proveedor disponible.
-function providerReady(root, name) {
-  try {
-    const configFile = path.join(root, 'integrations', name, 'config.json')
-    return JSON.parse(fs.readFileSync(configFile, 'utf8')).enabled === true
-  } catch { return false }
+// En cuál de tres estados está el proveedor: `ready`, `incomplete` o `unreadable`. Lee su propio
+// `config.json`, que es donde vive la decisión, y no el registro: un proveedor listado y apagado no es
+// un proveedor disponible.
+function providerState(root, name) {
+  const configFile = path.join(root, 'integrations', name, 'config.json')
+  let raw
+  // Ausente y roto son distintos y decían lo mismo. Al que falta hay que completarlo; al que no parsea,
+  // mandarlo a completar manda a reescribir lo que ya estaba escrito, y el error queda sin nombrar.
+  try { raw = fs.readFileSync(configFile, 'utf8') } catch { return 'incomplete' }
+  try { return JSON.parse(raw).enabled === true ? 'ready' : 'incomplete' } catch { return 'unreadable' }
 }
+
 module.exports = {
-  providerReady,
+  providerState,
   STATES,
   adapter,
   frontmatter,
