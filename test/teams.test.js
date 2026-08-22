@@ -206,8 +206,16 @@ test('los casos de un recorrido se leen como los de un cargo', () => {
 // Declarar la columna y dejarla vacía es peor que no tenerla: el recorrido se lee entero y su
 // medición no existe. La advertencia distingue no tener casos de tenerlos y no haber corrido.
 test('un recorrido sin casos lo dice', () => {
-  const sinCasos = EV.validate(ROOT, 'incident-review', 'team')
-  assert.deepEqual(sinCasos.warnings, ['no declara casos: nada mide si su contrato aguanta'])
+  // Sobre un recorrido montado acá y no sobre uno del catálogo: el ejemplo era `incident-review`
+  // mientras no tenía casos, y en cuanto los ganó la prueba pasó a medir el catálogo en vez de la
+  // advertencia. Hoy los cinco tienen casos, así que ninguno serviría de ejemplo.
+  const root = tempRoot('cauce-team-empty-')
+  const dir = path.join(root, 'teams', 'probe')
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, 'WORKFLOW.md'), '# Probe\n')
+  fs.writeFileSync(path.join(dir, 'team.json'), JSON.stringify({ schemaVersion: 1, slug: 'probe' }))
+  assert.deepEqual(EV.validate(root, 'probe', 'team').warnings,
+    ['no declara casos: nada mide si su contrato aguanta'])
 
   const conCasos = EV.validate(ROOT, 'defect-triage', 'team')
   assert.match(conCasos.warnings.join('\n'), /sin resultados de casos: corré el recorrido/)
