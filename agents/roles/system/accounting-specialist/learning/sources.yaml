@@ -1,0 +1,78 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_jurisdiction_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+# El plan de cuentas, las políticas contables y el calendario fiscal de la empresa no son fuentes de
+# la profesión: viven en organization/roles/accounting-specialist.md dentro de cada instalación.
+#
+# Todas las URL de abajo se abrieron y se leyeron el 2026-08-22. Lo verificado es la página oficial
+# de cada estándar: el texto íntegro del estándar exige registro en el sitio de la fundación y **no
+# se leyó**, así que ningún párrafo se cita como si se hubiera leído completo.
+sources:
+  - name: IFRS Conceptual Framework (2018)
+    url: https://www.ifrs.org/issued-standards/list-of-standards/conceptual-framework/
+    tier: primary-standard
+    topics: [recognition, elements, asset-liability-definitions, policy-development]
+    # La página declara: emitido en septiembre de 2010, revisado en marzo de 2018, y aplicable para
+    # desarrollar políticas contables en periodos que empiezan desde el 2020-01-01.
+  - name: IAS 8 (Accounting Policies, Changes in Accounting Estimates and Errors)
+    url: https://www.ifrs.org/issued-standards/list-of-standards/ias-8-accounting-policies-changes-in-accounting-estimates-and-errors/
+    tier: primary-standard
+    topics: [policy-hierarchy, judgment, prior-period-errors, retrospective-restatement]
+  - name: IFRS 15 (Revenue from Contracts with Customers)
+    url: https://www.ifrs.org/issued-standards/list-of-standards/ifrs-15-revenue-from-contracts-with-customers/
+    tier: primary-standard
+    topics: [revenue-recognition, performance-obligations, principal-vs-agent, gross-vs-net]
+    # Emitido en mayo de 2014; vigente para periodos anuales que empiezan desde el 2018-01-01.
+  - name: IFRS 9 (Financial Instruments)
+    url: https://www.ifrs.org/issued-standards/list-of-standards/ifrs-9-financial-instruments/
+    tier: primary-standard
+    topics: [receivables, classification-measurement, expected-credit-losses]
+  - name: IAS 21 (The Effects of Changes in Foreign Exchange Rates)
+    url: https://www.ifrs.org/issued-standards/list-of-standards/ias-21-the-effects-of-changes-in-foreign-exchange-rates/
+    tier: primary-standard
+    topics: [functional-currency, presentation-currency, translation, multi-country]
+  - name: IFRS 18 (Presentation and Disclosure in Financial Statements)
+    url: https://www.ifrs.org/issued-standards/list-of-standards/ifrs-18-presentation-and-disclosure-in-financial-statements/
+    tier: primary-standard
+    topics: [presentation, disclosure, chart-of-accounts-grouping]
+    # Emitido en abril de 2024, vigente para periodos que empiezan desde el 2027-01-01, reemplaza a
+    # IAS 1. Hay dos textos vigentes según el periodo que se registre: anotar cuál se aplicó.
+  - name: IFRS Practice Statement 2 (Making Materiality Judgements)
+    url: https://www.ifrs.org/issued-standards/list-of-standards/materiality-practice-statement/
+    tier: primary-guidance
+    topics: [materiality, judgment]
+    # La página declara literalmente que es un documento **no obligatorio** y que no introduce
+    # requisitos: no se cita como si obligara. La URL corta /issued-standards/materiality-practice-statement/
+    # responde 301 hacia ésta.
+  - name: COSO Internal Control—Integrated Framework (2013)
+    url: https://www.coso.org/guidance-on-ic
+    tier: primary-framework
+    topics: [segregation-of-duties, control-evidence, approval-trail]
+    # La página describe la edición 2013, que refresca la original de 1992. Sus cinco componentes y
+    # sus principios no se leyeron en esta corrida: la página los referencia sin enumerarlos.
+  - name: Use of IFRS Accounting Standards by jurisdiction
+    url: https://www.ifrs.org/use-around-the-world/use-of-ifrs-standards-by-jurisdiction/
+    tier: primary-reference
+    topics: [jurisdiction-adoption, multi-country, applicability]
+    # Perfiles por país —170 al 2026-08-22— con el estado de adopción. Es la fuente que impide dar
+    # por sentado que el marco de un país aplica en el vecino.
+
+# Faltantes declarados, no omitidos:
+#
+# - **Norma local por país.** Plan de cuentas obligatorio, documento fiscal válido, retención y plazo
+#   de conservación son locales y ninguna fuente de arriba los cubre. No se registran URL genéricas:
+#   cada instalación anota la del organismo de su país, verificada, en
+#   organization/roles/accounting-specialist.md. Sin eso, un criterio local queda en hipótesis.
+# - **ISO 21378 (Audit data collection).** Sería la fuente para el formato de extracción de datos
+#   hacia auditoría. iso.org devolvió HTTP 403 el 2026-08-22, así que no hay URL verificada y por eso
+#   no se registra: `require_primary_source: true` pide fuente comprobada, no número de norma.
+# - **IFRS 8 (Operating Segments).** Su página oficial existe y se abrió, pero el resumen público no
+#   confirma el enfoque de gerencia ni su alcance más allá de «entidades con títulos cotizados». Los
+#   centros de costo y las áreas funcionales de este cargo son gestión interna y no se apoyan en él;
+#   registrarlo como si lo gobernara sería atribuirle un alcance que la fuente no muestra.

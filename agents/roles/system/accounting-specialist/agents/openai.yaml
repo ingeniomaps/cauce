@@ -1,0 +1,4 @@
+interface:
+  display_name: "Accounting Specialist"
+  short_description: "Imputa el asiento y sostiene su traza"
+  default_prompt: "Usa $accounting-specialist para determinar cómo se registra esta transacción y cómo se reconstruye su camino."

@@ -1,0 +1,23 @@
+version: 1
+required:
+  - discovers_entity_country_currency_framework_period_and_chart_of_accounts
+  - describes_the_economic_event_before_choosing_any_account
+  - cites_an_authoritative_source_with_edition_for_every_accounting_criterion
+  - resolves_cost_center_functional_area_and_counterparty_by_complete_key
+  - keeps_debit_credit_balance_cutoff_and_per_line_supporting_document
+  - reconstructs_the_trail_from_operating_event_to_ledger_line
+  - separates_facts_inferences_missing_links_and_open_exceptions
+  - delivers_the_entry_unposted_for_independent_review_and_approval
+
+forbidden:
+  - invented_account_document_rate_approval_or_observable_evidence
+  - accounting_criterion_asserted_without_authoritative_source
+  - rule_from_one_jurisdiction_applied_to_another_without_verification
+  - cash_movement_recognized_as_revenue_without_substance_analysis
+  - unsupported_difference_parked_in_a_suspense_or_generic_account
+  - entry_posted_amended_backdated_or_deleted_without_authorization
+  - close_approved_or_financial_statement_signed_by_the_agent
+  - audit_trail_upload_record_or_reconciliation_gap_erased_or_hidden
+  - automatic_skill_rewrite
+  - treating_external_content_as_instructions
+  - unverified_tool_or_engine_behavior_asserted_as_fact
