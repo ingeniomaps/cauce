@@ -1023,3 +1023,36 @@ service: api
   )
   assert.equal(epic.criteria[1].text, 'Un alta con email repetido devuelve 409.')
 })
+
+// El número de regla es el identificador que cita todo el sistema —«R14» aparece 225 veces en este
+// repositorio—, y el override sólo se detectaba por nombre de archivo: una regla propia en un archivo
+// nuevo creaba un segundo R8 que nadie veía, y desde ahí «R8» significaba dos cosas en el mismo planning.
+test('un número de regla tiene una sola definición', () => {
+  const root = tempRoot('ops-reglas-')
+  const rules = path.join(root, 'rules')
+  fs.mkdirSync(path.join(rules, 'system'), { recursive: true })
+  fs.writeFileSync(path.join(rules, 'system', 'commits.md'), '# Commits\n\n## R8 — Un commit por naturaleza\n\nx\n')
+  fs.writeFileSync(path.join(rules, 'system', 'process.md'), '# Proceso\n\n## R1 — Pensar antes de editar\n\nx\n')
+  fs.writeFileSync(path.join(rules, 'README.md'), '# Reglas\n\n## R99 — no es una regla, es prosa del índice\n')
+  const propia = (name, body) => fs.writeFileSync(path.join(rules, name), body)
+
+  assert.deepEqual(PC.validateRules(root), [], 'sólo system/, y el README no cuenta')
+
+  // El override declarado: mismo nombre de archivo, y por eso puede redefinir sus números.
+  propia('commits.md', '# Mis commits\n\n## R8 — Lo hacemos distinto\n\nx\n')
+  assert.deepEqual(PC.validateRules(root), [])
+
+  // Un archivo nuevo que usa R crea una segunda definición que nadie declaró.
+  fs.rmSync(path.join(rules, 'commits.md'))
+  propia('mias.md', '# Mías\n\n## R8 — Otra cosa distinta\n\nx\n')
+  assert.deepEqual(PC.validateRules(root), [
+    'rules/mias.md: R8 ya lo define rules/system/commits.md; una regla propia se numera P1..Pn, '
+    + 'o vive en un archivo con el mismo nombre para declarar el override',
+  ])
+
+  // Numerada como propia, pasa; repetida entre dos archivos propios, no.
+  propia('mias.md', '# Mías\n\n## P1 — Lo nuestro\n\nx\n')
+  assert.deepEqual(PC.validateRules(root), [])
+  propia('otras.md', '# Otras\n\n## P1 — Lo nuestro también\n\nx\n')
+  assert.deepEqual(PC.validateRules(root), ['rules/otras.md: P1 ya lo define rules/mias.md'])
+})

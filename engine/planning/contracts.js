@@ -163,8 +163,50 @@ function validateBacklogStructure(dir) {
   return errors
 }
 
+// El número de una regla es su identificador, y lo cita todo el sistema: cargos, workflows, plantillas
+// y entradas de DONE. El override se declara escribiendo un archivo con el mismo nombre que el del
+// sistema —ahí redefinir sus números es el punto—; en cualquier otro archivo, reusar un `R` crea una
+// segunda definición que nadie declaró y que ninguna herramienta veía. Las propias se numeran `P`.
+function ruleIds(file) {
+  return [...P.read(file).matchAll(/^##\s+([A-Z]\d+)\s+[—-]/gm)].map((match) => match[1])
+}
+
+function validateRules(dir) {
+  const rules = path.join(dir, 'rules')
+  const owner = new Map()
+  const errors = []
+  const files = (sub) => {
+    try {
+      return fs.readdirSync(path.join(rules, sub), { withFileTypes: true })
+        .filter((entry) => entry.isFile() && entry.name.endsWith('.md') && entry.name !== 'README.md')
+        .map((entry) => entry.name).sort()
+    } catch { return [] }
+  }
+  const system = new Set(files('system'))
+  for (const name of system) {
+    for (const id of ruleIds(path.join(rules, 'system', name))) {
+      if (owner.has(id)) errors.push(`rules/system/${name}: ${id} ya lo define ${owner.get(id)}`)
+      else owner.set(id, `rules/system/${name}`)
+    }
+  }
+  for (const name of files('')) {
+    // El override se declara por nombre: redefinir los números del archivo que reemplaza es su función.
+    if (system.has(name)) continue
+    for (const id of ruleIds(path.join(rules, name))) {
+      const previo = owner.get(id)
+      if (!previo) { owner.set(id, `rules/${name}`); continue }
+      errors.push(previo.startsWith('rules/system/')
+        ? `rules/${name}: ${id} ya lo define ${previo}; una regla propia se numera P1..Pn, `
+          + 'o vive en un archivo con el mismo nombre para declarar el override'
+        : `rules/${name}: ${id} ya lo define ${previo}`)
+    }
+  }
+  return errors
+}
+
 module.exports = {
   testedCriteria,
+  validateRules,
   validateBacklogStructure,
   validCommitTrace,
   validDecisionTrace,

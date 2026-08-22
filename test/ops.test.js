@@ -1886,3 +1886,32 @@ test('una copia de la plantilla de épica se activa tal cual', () => {
     .filter((error) => /epic-001|BACKLOG/.test(error))
   assert.deepEqual(errores, [], 'la copia no arrastra nada que haya que borrar')
 })
+
+// El README declara qué rango vive en cada archivo para no tener que grepear, y un rango que envejece
+// es peor que ninguno: manda a buscar una regla donde ya no está. Se contrasta contra los archivos.
+test('los rangos que declara el README de reglas son los que hay', () => {
+  const rules = path.resolve(__dirname, '..', 'template', 'planning', 'rules')
+  const readme = fs.readFileSync(path.join(rules, 'README.md'), 'utf8')
+  const declarado = [...readme.matchAll(/^- `system\/([a-z-]+\.md)` — ([^:]+):/gm)]
+  assert.ok(declarado.length >= 4, 'el README declara un rango por archivo del sistema')
+
+  const expandir = (texto) => texto.split(',').flatMap((parte) => {
+    const rango = parte.trim().match(/^R(\d+)\.\.R(\d+)$/)
+    if (!rango) return [parte.trim()]
+    const desde = Number(rango[1])
+    return Array.from({ length: Number(rango[2]) - desde + 1 }, (_, paso) => `R${desde + paso}`)
+  })
+
+  const cubiertos = new Set()
+  for (const [, archivo, rango] of declarado) {
+    const reales = [...fs.readFileSync(path.join(rules, 'system', archivo), 'utf8')
+      .matchAll(/^##\s+(R\d+)\s+[—-]/gm)].map((match) => match[1])
+    assert.deepEqual(expandir(rango).sort(), reales.sort(), `el rango de ${archivo} no es el que hay`)
+    for (const id of reales) cubiertos.add(id)
+  }
+
+  // Y ningún archivo del sistema queda sin declarar.
+  const archivos = fs.readdirSync(path.join(rules, 'system')).filter((name) => name.endsWith('.md'))
+  assert.equal(declarado.length, archivos.length, 'cada archivo del sistema tiene su línea')
+  assert.equal(cubiertos.size, 16, 'las dieciséis reglas están declaradas en alguna línea')
+})
