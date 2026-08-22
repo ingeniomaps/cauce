@@ -69,9 +69,9 @@ function npmInstall(root) {
 // Lo que quedó pendiente, y sólo eso: cuando la instalación corrió, `check` ya se ejecutó y repetirlo
 // como sugerencia hace dudar de que haya pasado.
 function initSteps(enter, resultado) {
-  if (resultado.instalado) return []
+  if (resultado.installed) return []
   const pasos = ['npm install']
-  if (resultado.runner !== BOOT.SIN_RUNNER) {
+  if (resultado.runner !== BOOT.NO_RUNNER) {
     pasos.push(`node tools/ops.js automation install . ${resultado.runner}`)
   }
   pasos.push('node tools/ops.js check planning')
@@ -123,7 +123,7 @@ async function init(target, cli) {
     })
   } catch (error) { fail(error.message, 2) }
 
-  if (resultado.instalado) PL.check(path.join(root, 'planning'), SIN_BANDERAS)
+  if (resultado.installed) PL.check(path.join(root, 'planning'), SIN_BANDERAS)
 
   // Una instancia recién instalada funciona y no sabe nada de este proyecto: `organization/` es el molde
   // y el roadmap está vacío. Llenarlo exige leer el repositorio y decidir qué es cada cosa, que es justo
@@ -133,7 +133,7 @@ async function init(target, cli) {
   // corriendo `init`, no cuesta nada, y es lo único que le dice a alguien qué hacer con lo que acaba de
   // crear. Dejarlo adentro del camino feliz lo escondía justo de quien más lo necesita.
   console.log('')
-  W.onboard(root, SIN_BANDERAS, resultado.instalado ? resultado.runner : '')
+  W.onboard(root, SIN_BANDERAS, resultado.installed ? resultado.runner : '')
   for (const paso of initSteps(enter, resultado)) console.log(paso)
   if (resultado.error) fail(`${resultado.error}: la instancia quedó creada pero todavía no funciona.`)
 }

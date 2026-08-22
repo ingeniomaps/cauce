@@ -736,7 +736,7 @@ test('sin terminal ni banderas, init no pregunta ni toca nada', async () => {
   assert.deepEqual(facts.questions, [], 'nadie a quién preguntar')
   assert.equal(facts.npm, 0)
   assert.deepEqual(result, {
-    runner: BOOT.SIN_RUNNER, proveedor: BOOT.SIN_PROVEEDOR, instalado: false, pendiente: 'npm install',
+    runner: BOOT.NO_RUNNER, provider: BOOT.NO_PROVIDER, installed: false, pending: 'npm install',
   })
 })
 
@@ -746,7 +746,7 @@ test('con banderas, init habilita, instala y deja el runner puesto', async () =>
   assert.deepEqual(facts.providers, ['jira'])
   assert.equal(facts.npm, 1)
   assert.deepEqual(facts.runners, ['codex'], 'y el runner va después de npm, que es lo que lo resuelve')
-  assert.equal(result.instalado, true)
+  assert.equal(result.installed, true)
 })
 
 test('si npm falla, el runner no se instala y el error se dice', async () => {
@@ -754,7 +754,7 @@ test('si npm falla, el runner no se instala y el error se dice', async () => {
   facts.npmStatus = 1
   const result = await BOOT.run('/tmp/x', bootOptions({ runner: 'claude', install: true }), deps)
   assert.deepEqual(facts.runners, [], 'instalarlo sin la dependencia sólo produce un error peor')
-  assert.equal(result.instalado, false)
+  assert.equal(result.installed, false)
   assert.match(result.error, /npm install/)
 })
 
@@ -776,7 +776,7 @@ test('en una terminal, init pregunta runner e integración y entiende número o 
   const result = await BOOT.run('/tmp/x', bootOptions({ interactive: true }), deps)
   assert.equal(facts.questions.length, 2)
   assert.equal(result.runner, 'codex', 'el 2 de la lista')
-  assert.equal(result.proveedor, 'jira', 'o el nombre escrito')
+  assert.equal(result.provider, 'jira', 'o el nombre escrito')
 })
 
 // Cortar la terminal a mitad de camino no puede terminar la corrida con un error de readline y la
@@ -785,8 +785,8 @@ test('un Ctrl+D en mitad de la pregunta vale como no elegir', async () => {
   const { facts, deps } = bootDeps()
   deps.ask = () => Promise.reject(new Error('Aborted with Ctrl+D'))
   const result = await BOOT.run('/tmp/x', bootOptions({ interactive: true }), deps)
-  assert.equal(result.runner, BOOT.SIN_RUNNER)
-  assert.equal(result.proveedor, BOOT.SIN_PROVEEDOR)
+  assert.equal(result.runner, BOOT.NO_RUNNER)
+  assert.equal(result.provider, BOOT.NO_PROVIDER)
   assert.deepEqual(facts.runners, [])
   assert.ok(facts.said.some((line) => line.includes('sin respuesta')))
 })
@@ -795,7 +795,7 @@ test('un Ctrl+D en mitad de la pregunta vale como no elegir', async () => {
 test('un Enter deja todo como estaba, y un dedazo se repregunta', async () => {
   const { facts, deps } = bootDeps(['', ''])
   const blank = await BOOT.run('/tmp/x', bootOptions({ interactive: true }), deps)
-  assert.equal(blank.runner, BOOT.SIN_RUNNER)
+  assert.equal(blank.runner, BOOT.NO_RUNNER)
   assert.deepEqual(facts.providers, [])
 
   const other = bootDeps(['gemini', 'nada', '1', ''])
