@@ -627,3 +627,29 @@ test('el registro de un mecanismo se exige también al salir del informe', () =>
     .map((role) => role.slug)
   assert.deepEqual(sinDestino, [], 'un contrato que sólo mira qué sostiene la afirmación deja pasar la lección')
 })
+
+// Un contrato que se endurece deja atrás sus registros: siguen diciendo «pasa» contra una versión que
+// ya no existe, y el endurecimiento es justo lo que podría hacerlos fallar. Nada lo decía, así que la
+// medición envejecía en silencio — la misma clase de problema que el resultado que cubre menos casos
+// de los que hay.
+test('un registro anterior al último cambio del contrato se declara viejo', () => {
+  const target = installedProject('Contrato movido')
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
+  fs.mkdirSync(path.join(own, 'evaluations', 'cases'), { recursive: true })
+  fs.writeFileSync(path.join(own, 'evaluations', 'cases', '01-uno.md'),
+    '# Solicitud\n\nx\n\n# Comportamientos esperados\n\n- a\n- b\n- c\n- d\n')
+  fs.mkdirSync(path.join(own, 'evaluations', 'results'), { recursive: true })
+  fs.writeFileSync(path.join(own, 'evaluations', 'results', '2020-01-01.md'),
+    '---\nagent: probe\ndate: 2020-01-01\npassed: 1\ntotal: 1\n---\n\n### 01-uno\n\n- Veredicto: pasa\n\nx\n')
+
+  const git = (...args) => require('node:child_process').spawnSync('git', ['-C', own, ...args], { stdio: 'ignore' })
+  git('init', '-q')
+  git('config', 'user.email', 't@t')
+  git('config', 'user.name', 't')
+  git('add', 'SKILL.md')
+  git('commit', '-q', '-m', 'contrato')
+
+  const aviso = evaluations.validate(target, 'probe').warnings.join('\n')
+  assert.match(aviso, /el contrato cambió el \d{4}-\d{2}-\d{2} y la última corrida es del 2020-01-01/)
+  assert.match(aviso, /mide una versión anterior/)
+})

@@ -11,6 +11,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { spawnSync } = require('node:child_process')
 const catalog = require('./catalog')
 
 // De quién son los casos. Un cargo y un recorrido se miden igual —una tentación escrita, los
@@ -114,6 +115,21 @@ function behaviors(root, agent, kind) {
   return found
 }
 
+// Cuándo cambió por última vez el contrato que la corrida midió. Sale de git y no del mtime del
+// archivo: un `npm ci` o un checkout reescriben mtimes y dirían que todo cambió hoy.
+//
+// Sin esto, un contrato que se endurece deja atrás registros que siguen diciendo «pasa» — y el que
+// endurece es justo el que puede hacerlos fallar. Es la misma confusión que el resultado que cubre
+// menos casos de los que existen, y se ve igual de poco.
+//
+// La comparación es por día y no por instante porque el registro guarda fecha y no hora: un contrato
+// que cambia y se vuelve a medir el mismo día no dispara el aviso. Es el caso que menos importa
+// —quien lo cambió hoy sabe que lo cambió—, y afinar más pediría una hora que el registro no tiene.
+function contractChangedAt(dir) {
+  const git = spawnSync('git', ['-C', dir, 'log', '-1', '--format=%cs', '--', 'SKILL.md'], { encoding: 'utf8' })
+  return git.status === 0 ? (git.stdout || '').trim() : ''
+}
+
 function resultsDir(root, agent, kind) {
   return path.join(subject(root, agent, kind), ...RESULTS)
 }
@@ -201,6 +217,11 @@ function validate(root, agent, kind) {
   }
   if (last.passed < last.total) {
     warnings.push(`${last.total - last.passed} caso(s) no pasaron en ${last.date}: volvé a correrlos`)
+  }
+  const cambio = contractChangedAt(subject(root, agent, kind))
+  if (cambio && cambio > last.date) {
+    warnings.push(`el contrato cambió el ${cambio} y la última corrida es del ${last.date}: `
+      + 'mide una versión anterior')
   }
   return { errors, warnings, cases: total, last }
 }
