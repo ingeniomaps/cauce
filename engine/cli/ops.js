@@ -68,14 +68,14 @@ function npmInstall(root) {
 
 // Lo que quedó pendiente, y sólo eso: cuando la instalación corrió, `check` ya se ejecutó y repetirlo
 // como sugerencia hace dudar de que haya pasado.
-function initSteps(enter, resultado) {
-  if (resultado.installed) return []
-  const pasos = ['npm install']
-  if (resultado.runner !== BOOT.NO_RUNNER) {
-    pasos.push(`node tools/ops.js automation install . ${resultado.runner}`)
+function initSteps(enter, result) {
+  if (result.installed) return []
+  const steps = ['npm install']
+  if (result.runner !== BOOT.NO_RUNNER) {
+    steps.push(`node tools/ops.js automation install . ${result.runner}`)
   }
-  pasos.push('node tools/ops.js check planning')
-  return pasos.map((paso, indice) => `  siguiente: ${indice === 0 ? enter : ''}${paso}`)
+  steps.push('node tools/ops.js check planning')
+  return steps.map((step, index) => `  siguiente: ${index === 0 ? enter : ''}${step}`)
 }
 
 async function init(target, cli) {
@@ -104,26 +104,26 @@ async function init(target, cli) {
   // Preguntar exige una terminal, e instalar baja un paquete y escribe `node_modules`: las dos cosas
   // pasan cuando hay alguien mirando. Una corrida automatizada —CI, un contenedor, estas pruebas—
   // recibe la instancia materializada y decide por bandera, sin descargas ni preguntas implícitas.
-  const interactivo = Boolean(process.stdin.isTTY && process.stdout.isTTY)
-  const opciones = {
+  const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY)
+  const options = {
     runner: cli.value('--runner'),
     integration: cli.value('--integration'),
     runners: A.RUNNER_NAMES,
     providers: IN.providerNames(),
-    interactive: interactivo,
-    install: cli.has('--install') || (interactivo && !cli.has('--no-install')),
+    interactive,
+    install: cli.has('--install') || (interactive && !cli.has('--no-install')),
   }
-  let resultado
+  let result
   try {
-    resultado = await BOOT.run(root, opciones, {
+    result = await BOOT.run(root, options, {
       log: console.log,
       npm: npmInstall,
-      installRunner: (runner) => W.automation('install', root, runner, SIN_BANDERAS),
+      installRunner: (runner) => W.automation('install', root, runner, NO_FLAGS),
       enableProvider: (provider) => W.enableProvider(root, provider),
     })
   } catch (error) { fail(error.message, 2) }
 
-  if (resultado.installed) PL.check(path.join(root, 'planning'), SIN_BANDERAS)
+  if (result.installed) PL.check(path.join(root, 'planning'), NO_FLAGS)
 
   // Una instancia recién instalada funciona y no sabe nada de este proyecto: `organization/` es el molde
   // y el roadmap está vacío. Llenarlo exige leer el repositorio y decidir qué es cada cosa, que es justo
@@ -133,9 +133,9 @@ async function init(target, cli) {
   // corriendo `init`, no cuesta nada, y es lo único que le dice a alguien qué hacer con lo que acaba de
   // crear. Dejarlo adentro del camino feliz lo escondía justo de quien más lo necesita.
   console.log('')
-  W.onboard(root, SIN_BANDERAS, resultado.installed ? resultado.runner : '')
-  for (const paso of initSteps(enter, resultado)) console.log(paso)
-  if (resultado.error) fail(`${resultado.error}: la instancia quedó creada pero todavía no funciona.`)
+  W.onboard(root, NO_FLAGS, result.installed ? result.runner : '')
+  for (const step of initSteps(enter, result)) console.log(step)
+  if (result.error) fail(`${result.error}: la instancia quedó creada pero todavía no funciona.`)
 }
 
 function usage() {
@@ -177,7 +177,7 @@ function usage() {
 
 // Un `cli` que no tiene banderas, para reusar un comando desde otro: el `--force` de `init` habla del
 // molde y no del wiring del runner, así que pasarle el suyo instalaría a la fuerza algo que nadie pidió.
-const SIN_BANDERAS = { has: () => false, value: (_flag, fallback = '') => fallback }
+const NO_FLAGS = { has: () => false, value: (_flag, fallback = '') => fallback }
 
 // Si el proveedor terminó su propia configuración. Son dos interruptores y `sync` exige los dos: el
 
@@ -188,10 +188,10 @@ async function run(cli) {
   // `--help` valía sólo como primer argumento: `check --help` corría `check` contra el directorio
   // actual en vez de explicarse.
   if (cli.has('--help') || cli.has('-h')) return usage()
-  const sobran = cli.unknown(command)
-  if (sobran.length) {
-    const acepta = FLAGS[command].length ? `Acepta: ${FLAGS[command].join(', ')}.` : 'No acepta banderas.'
-    fail(`${command}: bandera desconocida ${sobran.join(', ')}. ${acepta}`, 2)
+  const unknown = cli.unknown(command)
+  if (unknown.length) {
+    const accepts = FLAGS[command].length ? `Acepta: ${FLAGS[command].join(', ')}.` : 'No acepta banderas.'
+    fail(`${command}: bandera desconocida ${unknown.join(', ')}. ${accepts}`, 2)
   }
   const arg = cli.positional
   if (command === 'init') await init(arg[1], cli)

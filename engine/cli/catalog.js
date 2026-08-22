@@ -49,10 +49,10 @@ function agents(action, dir, extra, cli) {
     }))))
   }
   // Una línea por cargo, alineadas, para elegir a quién asignarle una tarea sin abrir 47 carpetas.
-  const ancho = roles.reduce((max, role) => Math.max(max, role.slug.length), 0)
+  const width = roles.reduce((max, role) => Math.max(max, role.slug.length), 0)
   for (const role of roles) {
-    const marca = role.system ? '' : ' (propio)'
-    console.log(`${role.slug.padEnd(ancho)}${marca}  ${role.summary || '— sin resumen'}`)
+    const mark = role.system ? '' : ' (propio)'
+    console.log(`${role.slug.padEnd(width)}${mark}  ${role.summary || '— sin resumen'}`)
   }
   // La respuesta negativa tiene que ser tan barata como la positiva: si ninguna línea encaja, el
   // camino no es forzar el cargo más parecido, es escribir el propio.
@@ -88,8 +88,8 @@ function evaluationBench(root, agent, caso, force, kind) {
   // y con él se fue lo que el cargo había escrito; el juez leyó un directorio vacío y concluyó que la
   // respuesta afirmaba algo inexistente. Con el banco versionado, «acá se trabajó» es una pregunta que
   // git contesta exacto.
-  const sucio = spawnSync('git', ['-C', dir, 'status', '--porcelain'], { encoding: 'utf8' })
-  if ((sucio.stdout || '').trim() && !force) {
+  const dirty = spawnSync('git', ['-C', dir, 'status', '--porcelain'], { encoding: 'utf8' })
+  if ((dirty.stdout || '').trim() && !force) {
     fail(`${dir} tiene trabajo sin recoger. Guardá el registro de esa corrida antes de rehacerlo, `
       + 'o usá --force si ya lo tenés.', 2)
   }
@@ -105,8 +105,8 @@ function evaluationBench(root, agent, caso, force, kind) {
   // con instrucciones adentro. Entra antes del commit limpio a propósito — si entrara después, `status`
   // se lo atribuiría al cargo y el juez leería como obra suya el documento que vino a resistir.
   if (caso) {
-    const artefacto = EV.fixtures(root, agent, caso, kind)
-    if (artefacto.files.length) fs.cpSync(artefacto.dir, dir, { recursive: true })
+    const fixture = EV.fixtures(root, agent, caso, kind)
+    if (fixture.files.length) fs.cpSync(fixture.dir, dir, { recursive: true })
   }
 
   // Versionado desde su estado limpio porque la entrega de un cargo puede no estar en su respuesta:
@@ -172,7 +172,7 @@ function evaluate(agent, caso, cli) {
     // máquina, no de persona.
     if (cli.has('--cases')) {
       const cases = EV.list(root, agent, kind)
-      const prohibido = EV.behaviors(root, agent, kind).forbidden
+      const forbidden = EV.behaviors(root, agent, kind).forbidden
       // La salida legible no lleva la conducta prohibida: `agent-propose` cuenta sus líneas para saber
       // cuántos casos hay, y una línea de más se contaría como un caso.
       if (!cli.has('--json')) {
@@ -181,14 +181,14 @@ function evaluate(agent, caso, cli) {
       }
       // La conducta prohibida viaja junto a los casos y no dentro de cada uno: rige para los seis, y
       // repetirla por caso invitaría a que alguien la editara en uno solo.
-      return console.log(JSON.stringify({ cases, forbidden: prohibido }))
+      return console.log(JSON.stringify({ cases, forbidden }))
     }
     // Dónde escribir el registro de esta corrida. Lo pregunta el recorrido en vez de componer el
     // nombre, que es lo que hacía que la segunda corrida de un día borrara a la primera.
     if (cli.has('--record')) {
-      const dia = cli.value('--record') || new Date().toISOString().slice(0, 10)
+      const day = cli.value('--record') || new Date().toISOString().slice(0, 10)
       return console.log(path.relative(root,
-        path.join(EV.resultsDir(root, agent, kind), EV.nextResult(root, agent, dia, kind))))
+        path.join(EV.resultsDir(root, agent, kind), EV.nextResult(root, agent, day, kind))))
     }
     // Un recorrido no tiene contrato de cargo que validar —ni SKILL.md ni fuentes—: lo suyo lo
     // comprueba `team check`. Acá se mide lo que sí comparte con un cargo: sus casos y su corrida.
@@ -198,13 +198,13 @@ function evaluate(agent, caso, cli) {
     for (const warning of [...result.warnings, ...runs.warnings]) console.warn(`⚠ ${warning}`)
     for (const error of errors) console.error(`✗ ${error}`)
     if (errors.length) fail(`\n${errors.length} error(es)`, 1)
-    const corrida = runs.last ? `${runs.last.passed}/${runs.last.total} pasan (${runs.last.date})` : 'sin correr'
+    const lastRun = runs.last ? `${runs.last.passed}/${runs.last.total} pasan (${runs.last.date})` : 'sin correr'
     if (kind === 'team') {
-      return console.log(`✓ ${agent}: ${runs.cases} caso(s) — ${corrida}, ` +
+      return console.log(`✓ ${agent}: ${runs.cases} caso(s) — ${lastRun}, ` +
         `${result.proposals} propuesta(s)${result.pending ? ` (${result.pending} sin aplicar)` : ''}`)
     }
     console.log(
-      `✓ ${agent}: ${result.cases} caso(s) — ${corrida}, ${result.proposals} propuesta(s)` +
+      `✓ ${agent}: ${result.cases} caso(s) — ${lastRun}, ${result.proposals} propuesta(s)` +
         `${result.pending ? ` (${result.pending} sin aplicar)` : ''}, ` +
         'controles estructurales válidos',
     )
