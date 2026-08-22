@@ -1,0 +1,4 @@
+interface:
+  display_name: "Logistics Operations Manager"
+  short_description: "Gestiona la cola de excepciones del envío"
+  default_prompt: "Usa $logistics-operations-manager para priorizar, evidenciar o escalar la cola de novedades logísticas."
