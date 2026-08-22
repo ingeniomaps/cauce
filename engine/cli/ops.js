@@ -48,7 +48,7 @@ function usage() {
   ops context <planning-dir> [--json]
   ops upgrade <ops-root> [--check] [--force]
   ops destroy <ops-root> [--force]
-  ops archive <planning-dir> <NNN>
+  ops archive <planning-dir> <NNN|human-actions>
   ops integration list <ops-root>
   ops integration enable <ops-root> <provider>
   ops integration disable <ops-root> <provider>
@@ -1093,10 +1093,30 @@ function agents(action, dir, extra, cli) {
   }
 }
 
+// El historial de acciones humanas se acumula en un solo archivo y no por épica: una fila no pertenece
+// a ninguna, y esperar el cierre de una épica dejaría sin archivar las de un planning que todavía no
+// cerró ninguna —que es justo cuando el archivo se vuelve ilegible—.
+function archiveHumanActions(root) {
+  const source = path.join(root, 'HUMAN_ACTIONS.md')
+  const rows = P.readHumanActions(root).filter((row) => row.resolved)
+  if (!rows.length) return console.log('= no hay filas resueltas')
+  const target = path.join(root, 'done', 'human-actions.md')
+  const header = '| Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |\n|---|---|---|---|'
+  const previous = P.read(target).trimEnd()
+  const head = previous || `---\nstatus: archived\n---\n\n# Acciones humanas resueltas\n\n${header}`
+  fs.mkdirSync(path.dirname(target), { recursive: true })
+  F.atomicWrite(target, `${head}\n${rows.map((row) => row.raw).join('\n')}\n`)
+  const drop = new Set(rows.map((row) => row.raw))
+  const kept = P.read(source).split('\n').filter((line) => !drop.has(line))
+  F.atomicWrite(source, `${kept.join('\n').trimEnd()}\n`)
+  return console.log(`✓ ${rows.length} fila(s) archivadas`)
+}
+
 function archive(dir, rawNum) {
   const root = path.resolve(dir || '.')
+  if (String(rawNum || '') === 'human-actions') return archiveHumanActions(root)
   const num = String(rawNum || '').padStart(3, '0')
-  if (!/^\d{3}$/.test(num)) fail('La épica debe ser NNN.', 2)
+  if (!/^\d{3}$/.test(num)) fail('La épica debe ser NNN, o human-actions.', 2)
   const epic = P.readEpics(root).find((candidate) => candidate.num === num)
   if (!epic) fail(`No existe epic-${num}.`, 2)
   if (epic.status !== 'closed') fail(`epic-${num} no está cerrada (status: ${epic.status}).`)

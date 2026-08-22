@@ -1571,3 +1571,58 @@ test('los módulos de Node se importan con el prefijo node:', () => {
   assert.deepEqual(loose, [], 'usan `node:` delante')
   assert.ok(files.length > 30, `el recorrido encontró ${files.length} archivos`)
 })
+
+// Las filas resueltas nunca llegan a un modelo —`ops context` ya las excluye—, así que archivarlas no
+// ahorra contexto: mantiene legible el archivo que una persona tiene que curar. Por eso el disparador
+// es el estado y no una fecha, y por eso el destino es el mismo `done/` que ya guarda evidencia.
+test('archive human-actions saca las filas resueltas y conserva todo lo demás', () => {
+  const base = tempRoot('cauce-archive-ha-')
+  const planning = path.join(base, 'planning')
+  fs.cpSync(path.resolve(__dirname, '..', 'template', 'planning'), planning, { recursive: true })
+  const archivo = path.join(planning, 'HUMAN_ACTIONS.md')
+  const original = fs.readFileSync(archivo, 'utf8')
+  fs.writeFileSync(archivo, original.replace(
+    /(\|---\|---\|---\|---\|\n)/,
+    '$1| alta-smtp | resuelta 2026-08-17 | Ready | Se creó la cuenta. |\n'
+    + '| pago-plan | pendiente | QA | Aprobar el gasto del plan pago. |\n'
+    + '| dns-staging | resuelta | Verify | Se apuntó el registro. |\n',
+  ))
+
+  const result = run(['archive', planning, 'human-actions'])
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stdout, /2 fila\(s\) archivadas/)
+
+  const quedo = fs.readFileSync(archivo, 'utf8')
+  assert.match(quedo, /^\| pago-plan \| pendiente \|/m, 'la pendiente se queda')
+  assert.doesNotMatch(quedo, /alta-smtp|dns-staging/, 'las resueltas se van')
+  assert.ok(quedo.includes('| Tarea | Estado | Origen |'), 'el encabezado de la tabla sobrevive')
+  assert.ok(quedo.includes('vocabulario cerrado'), 'y la prosa que explica el archivo también')
+  assert.ok(quedo.includes('slug-de-tarea'), 'y el ejemplo comentado, que no es una fila real')
+
+  const historial = fs.readFileSync(path.join(planning, 'done', 'human-actions.md'), 'utf8')
+  assert.match(historial, /^\| alta-smtp \| resuelta 2026-08-17 \| Ready \| Se creó la cuenta\. \|$/m)
+  assert.match(historial, /^\| dns-staging \| resuelta \| Verify \|/m)
+  assert.ok(historial.includes('| Tarea | Estado | Origen |'), 'el historial se lee solo')
+
+  // Segunda corrida: no hay nada que mover y no se toca ningún archivo.
+  const otra = run(['archive', planning, 'human-actions'])
+  assert.equal(otra.status, 0, otra.stderr)
+  assert.match(otra.stdout, /no hay filas resueltas/)
+  assert.equal(fs.readFileSync(archivo, 'utf8'), quedo)
+
+  // Y lo archivado se acumula en vez de reemplazarse.
+  fs.appendFileSync(archivo, '| cuenta-meta | resuelta | Ready | Se habilitó el acceso. |\n')
+  assert.equal(run(['archive', planning, 'human-actions']).status, 0)
+  const segundo = fs.readFileSync(path.join(planning, 'done', 'human-actions.md'), 'utf8')
+  for (const slug of ['alta-smtp', 'dns-staging', 'cuenta-meta']) {
+    assert.ok(segundo.includes(slug), `${slug} sigue en el historial`)
+  }
+  assert.equal((segundo.match(/^\| Tarea \| Estado/gm) || []).length, 1, 'un solo encabezado')
+  // Una copia pelada de `planning/` no es una instancia —le falta `integrations/config.json`—, así que
+  // se juzga lo que este comando toca y no el exit code entero.
+  const validacion = JSON.parse(run(['check', planning, '--json']).stdout)
+  assert.deepEqual(
+    validacion.errors.filter((error) => /HUMAN_ACTIONS|human-actions/.test(error)), [],
+    'lo que quedó y lo que se archivó siguen siendo válidos',
+  )
+})

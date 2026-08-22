@@ -7,7 +7,7 @@
 | `BACKLOG.md` | Única cola de tareas promovidas y listas. |
 | `WIP.md` | Única tarea en vuelo; recuperación y mutex. |
 | `DONE.md` | Evidencia activa de tareas terminadas. |
-| `done/` | Historial inmutable por épica cerrada. |
+| `done/` | Historial inmutable: una épica cerrada por archivo, más las acciones humanas resueltas. |
 | `HUMAN_ACTIONS.md` | Acciones externas que requieren una persona. |
 | `AWAITING_REVIEW.md` | Gate efímero; mientras existe no inicia trabajo. |
 | `adr/` | Decisiones arquitectónicas durables. |
