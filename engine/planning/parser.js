@@ -4,6 +4,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { PLACEHOLDERS } = require('../core/onboarding')
 
 const EPIC_STATES = ['open', 'active', 'closed']
 
@@ -116,6 +117,10 @@ function readEpics(dir) {
       criteria,
       stories,
       hasContext: /^##\s+Contexto relevante/im.test(text),
+      // Las líneas que todavía no decidieron nada. Se guardan enteras y no como un booleano porque el
+      // error tiene que decir cuál es: «tiene un marcador» manda a releer la épica entera.
+      placeholders: text.split('\n').map((line) => line.trim())
+        .filter((line) => line && PLACEHOLDERS.test(line)),
     }
   }).filter((epic) => epic.status !== 'template' && epic.num !== '000')
 }

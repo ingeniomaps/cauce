@@ -9,8 +9,11 @@
 const fs = require('node:fs')
 const path = require('node:path')
 
-// El molde llega con estos marcadores. Que sigan ahí es la señal de que nadie escribió todavía.
-const PLACEHOLDERS = /Por completar|Por definir/
+// El molde llega con estos marcadores, y quien redacta los deja donde todavía no hay decisión. Que
+// sigan ahí es la señal de que nadie escribió: vale para una instancia sin arrancar y para una épica
+// que no se puede activar. Sin distinguir mayúsculas, porque `por definir` en medio de una frase dice
+// exactamente lo mismo que al principio de una.
+const PLACEHOLDERS = /Por completar|Por definir/i
 
 // La única pregunta que no depende de ninguna respuesta, y por eso la única que se puede escribir de
 // antemano. Las cuatro fijas que había antes daban por sentado que el proyecto vende algo: a uno libre,

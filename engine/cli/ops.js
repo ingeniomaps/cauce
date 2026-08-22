@@ -578,6 +578,16 @@ function check(dir, cli) {
       if (!task.acceptance && !(task.epic && task.criteria.length)) {
         errors.push(`BACKLOG ${task.slug}: falta aceptación explícita o criterio heredado`)
       }
+      // La misma puerta que la épica, un piso abajo: la épica rechaza el marcador al activarse, pero la
+      // tarea es lo que un runner recibe. Se juzga la frase que `context` le va a entregar —propia o
+      // heredada del criterio—, porque en las dos formas llega igual y se decide sola.
+      const inherited = epics.find((epic) => epic.num === task.epic)?.criteria
+        .filter((criterion) => task.criteria.includes(criterion.id))
+        .map((criterion) => criterion.text).join(' ') || ''
+      const acceptance = (task.acceptance || inherited).trim()
+      if (acceptance && OB.PLACEHOLDERS.test(acceptance)) {
+        errors.push(`BACKLOG ${task.slug}: la aceptación no está decidida — "${acceptance.slice(0, 80)}"`)
+      }
       const storyExists = epics.some((epic) => {
         return epic.num === task.epic && epic.stories.some((story) => story.slug === task.slug)
       })

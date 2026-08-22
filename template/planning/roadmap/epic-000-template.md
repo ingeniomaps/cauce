@@ -30,3 +30,6 @@ Qué cambia para el usuario o el sistema.
 ## Riesgos y decisiones humanas
 
 - Riesgos, supuestos, dependencias o acciones humanas. Escribir `Ninguno` cuando se hayan revisado.
+- Lo que todavía no se decidió se marca `Por definir`, acá o donde caiga. Con `status: open` es un
+  borrador legítimo; `check` lo rechaza al pasar a `active`, así que el marcador es lo que hace visible
+  el borde en vez de dejarlo escrito como si fuera una decisión.

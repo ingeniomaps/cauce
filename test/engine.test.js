@@ -932,3 +932,56 @@ test('la evidencia de DONE rastrea el criterio que la historia citó', () => {
   // Sin épica no hay criterio que cruzar.
   assert.deepEqual(PC.validateDoneEntry(entry('A → make lint'), []), [])
 })
+
+// El marcador ya existía en todo el toolkit —`organization/`, `delivery/`, las propuestas de cargo— con
+// el mismo significado: acá todavía no escribió nadie. Lo que faltaba era la puerta: una épica se
+// activaba con el borde sin decidir adentro, y METHODOLOGY decía «parar y resolver» sin que nada parara.
+test('una épica no se activa con un marcador sin resolver', () => {
+  const root = tempRoot('ops-placeholder-')
+  fs.mkdirSync(path.join(root, 'roadmap'))
+  const epica = (status, riesgo) => {
+    fs.writeFileSync(path.join(root, 'roadmap', 'epic-001-demo.md'), `---
+epic: 001
+title: Demo
+status: ${status}
+service: app
+---
+
+## Criterios
+
+- **C1** — Un alta con email nuevo devuelve 201.
+
+## Contexto relevante
+
+- \`api/src/auth.js\` ya valida el formato.
+
+## Historias
+
+- [ ] **alta-nueva** (→ C1) — Crear la cuenta. (service: api)
+
+## Riesgos y decisiones humanas
+
+- ${riesgo}
+`)
+    return P.readEpics(root)[0]
+  }
+
+  // Borrador: el marcador es justamente para esto, y no es un error.
+  const borrador = epica('open', 'Qué proveedor de correo usamos: Por definir.')
+  assert.deepEqual(borrador.placeholders, ['- Qué proveedor de correo usamos: Por definir.'])
+  assert.deepEqual(PC.validateEpic(borrador), [])
+
+  const activa = epica('active', 'Qué proveedor de correo usamos: Por definir.')
+  assert.deepEqual(PC.validateEpic(activa), [
+    'roadmap/epic-001-demo.md: active con 1 marcador(es) sin resolver — "- Qué proveedor de correo usamos: Por definir."',
+  ])
+
+  // Minúscula y el otro marcador del molde cuentan igual.
+  assert.equal(PC.validateEpic(epica('active', 'El umbral: por definir.')).length, 1)
+  assert.equal(PC.validateEpic(epica('active', 'Alcance: Por completar.')).length, 1)
+
+  // Resuelto, la épica activa pasa.
+  assert.deepEqual(PC.validateEpic(epica('active', 'Ninguno.')), [])
+  // Y cerrada tampoco puede llevar uno: la evidencia quedaría apoyada en un borde sin decidir.
+  assert.equal(PC.validateEpic(epica('closed', 'El umbral: Por definir.'), new Set(['alta-nueva'])).length, 1)
+})

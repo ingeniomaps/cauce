@@ -84,6 +84,12 @@ function validateEpic(epic, done = new Set()) {
   for (const criterion of epic.criteria) {
     if (!covered.has(criterion.id)) errors.push(`${at}: ${criterion.id} no está cubierto por ninguna historia`)
   }
+  // Un borrador se escribe con los bordes marcados; activarla es decir que ya no quedan. Cerrarla con uno
+  // adentro es peor: la evidencia queda apoyada sobre algo que nadie decidió.
+  if (epic.status !== 'open' && epic.placeholders && epic.placeholders.length) {
+    errors.push(`${at}: ${epic.status} con ${epic.placeholders.length} marcador(es) sin resolver `
+      + `— "${epic.placeholders[0]}"`)
+  }
   if (epic.status === 'closed') {
     const missing = epic.stories.filter((story) => !done.has(story.slug))
     if (missing.length) errors.push(`${at}: closed sin evidencia para ${missing.map((story) => story.slug).join(', ')}`)

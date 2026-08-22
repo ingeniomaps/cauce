@@ -1721,3 +1721,62 @@ test('una parada se nombra con el vocabulario del protocolo', () => {
     'la cola vacía sigue siendo otra cosa que una cola trabada')
   assert.equal(JSON.parse(run(['context', planning, '--json']).stdout).blocked, '')
 })
+
+// La épica rechaza el marcador al activarse, pero la tarea es lo que un runner recibe. Sin la misma
+// puerta acá, `context` entregaba «Por definir» como aceptación y quien la ejecutaba decidía el borde
+// solo — que es exactamente lo que el marcador existe para evitar. Vale igual si la aceptación es
+// propia o heredada del criterio: el runner recibe la misma frase en los dos casos.
+test('una tarea no se toma con la aceptación sin decidir', () => {
+  const base = tempRoot('cauce-acept-')
+  const planning = path.join(base, 'planning')
+  fs.cpSync(path.resolve(__dirname, '..', 'template', 'planning'), planning, { recursive: true })
+  const epica = (criterio) => fs.writeFileSync(path.join(planning, 'roadmap', 'epic-001-alta.md'), `---
+epic: 001
+title: Alta de cuenta
+status: open
+service: api
+---
+
+## Criterios
+
+- **C1** — ${criterio}
+
+## Contexto relevante
+
+- \`api/src/auth.js\` ya valida el formato.
+
+## Historias
+
+- [ ] **alta-nueva** (→ C1) — Crear la cuenta. (service: api)
+
+## Riesgos y decisiones humanas
+
+- Ninguno.
+`)
+  const backlog = (linea) => fs.writeFileSync(path.join(planning, 'BACKLOG.md'), `# Backlog promovido
+
+## Hito alta — Alta de cuenta
+
+${linea}
+`)
+  const errores = () => JSON.parse(run(['check', planning, '--json']).stdout).errors
+    .filter((error) => /BACKLOG alta-nueva/.test(error))
+
+  epica('Un alta con email nuevo devuelve 201.')
+  backlog('- [ ] **alta-nueva** [lite] — Crear la cuenta. _Aceptación: 201 y login._ (service: api)')
+  assert.deepEqual(errores(), [], 'una aceptación decidida pasa')
+
+  backlog('- [ ] **alta-nueva** [lite] — Crear la cuenta. _Aceptación: Por definir._ (service: api)')
+  assert.deepEqual(errores(),
+    ['BACKLOG alta-nueva: la aceptación no está decidida — "Por definir."'])
+
+  // Heredada: la tarea no escribe aceptación y el criterio que cita todavía no decidió nada.
+  epica('El umbral de reintentos: por definir.')
+  backlog('- [ ] **alta-nueva** [lite] — Crear la cuenta. (→ C1) (epic: 001) (service: api)')
+  assert.deepEqual(errores(),
+    ['BACKLOG alta-nueva: la aceptación no está decidida — "El umbral de reintentos: por definir."'])
+
+  // Y con el criterio resuelto, la misma tarea heredada pasa.
+  epica('Un alta con email nuevo devuelve 201.')
+  assert.deepEqual(errores(), [])
+})

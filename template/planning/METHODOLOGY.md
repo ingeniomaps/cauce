@@ -20,6 +20,10 @@ contrato del servicio, tarea y WIP. No cargar todo el historial en el loop calie
 Antes de activar una épica, `## Contexto relevante` debe señalar lo que existe hoy con rutas verificadas.
 Si el código contradice la spec, parar y resolver la fuente de verdad; no inventar una tercera versión.
 
+Lo que no se decidió se escribe `Por definir` y no como una decisión provisoria: una épica `open` puede
+llevarlos, y `check` los rechaza al activarla. Un borde escrito en prosa afirmativa no se distingue de
+uno resuelto, y el que lo ejecute va a decidirlo solo.
+
 ## Automatizar invariantes
 
 Lo comprobable debe vivir en validadores o hooks: formatos, duplicados, gates peligrosos y evidencia. El
