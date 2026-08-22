@@ -2,10 +2,15 @@
 
 ```text
 INBOX ──promoción humana──▶ roadmap ──historias listas──▶ BACKLOG
+  ▲                                                           │
+  │                                                        Pick/Plan
+  │                                                           ▼
+  │      done/ ◀── archive ◀── DONE ◀── Verify/QA ◀────────── WIP
+  │                                                           │
+  └───────────── deuda adyacente ─────────────────────────────┤
                                                               │
-                                                           Pick/Plan
-                                                              ▼
-                         done/ ◀── archive ◀── DONE ◀── Verify/QA ◀── WIP
+              AWAITING_REVIEW ◀── checkpoint de hito ─────────┤
+               HUMAN_ACTIONS ◀── lo que decide una persona ───┘
 ```
 
 ## Preparar
@@ -17,16 +22,16 @@ INBOX ──promoción humana──▶ roadmap ──historias listas──▶ B
 
 ## Ejecutar
 
-1. Comprobar gates (`AWAITING_REVIEW`, WIP ajeno, acciones humanas).
-2. Tomar la primera tarea no bloqueada.
-3. Persistir el plan aprobado en WIP antes de editar código.
-4. Construir con RED/GREEN/VERIFY cuando sea aplicable.
-5. Revisar, verificar y hacer QA con evidencia real.
-6. Commit por tarea; mover BACKLOG → DONE; limpiar WIP.
+La máquina de fases vive en `PROTOCOL.md`. Acá va lo que no se ve en ella.
 
-Los pasos 1 y 2 los resuelve `node tools/ops.js context planning` en una sola salida: si imprime
-`BLOCKED`, parar; si imprime una tarea, ésa es la que corresponde, ya con su aceptación y sus
-criterios. Añadir `--json` para consumirlo desde un workflow.
+Los gates de arranque y la elección de tarea salen de un comando —`node tools/ops.js context
+planning`—, no de leer el estado a mano: si imprime `BLOCKED`, parar con la razón que nombra; si
+imprime una tarea, ésa es la que corresponde, ya con su aceptación y sus criterios. `--json` la
+entrega a un workflow.
+
+Las dos flechas que salen del carril son las del diagrama: lo que aparece durante el trabajo y no
+entra en la tarea vuelve al INBOX, y lo que necesita a una persona va a `HUMAN_ACTIONS.md` y para esa
+línea de trabajo.
 
 ## Cerrar
 
