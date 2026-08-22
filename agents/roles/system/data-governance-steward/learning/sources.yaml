@@ -1,0 +1,71 @@
+version: 1
+rules:
+  require_primary_source: true
+  require_version_applicability: true
+  require_corroboration_for_major_change: true
+  reject_unsourced_claims: true
+  automatic_apply: false
+
+# El contexto de la empresa no es una fuente de la profesión: el glosario, el catálogo, los dueños y
+# las obligaciones de un territorio concreto viven en organization/roles/data-governance-steward.md
+# dentro de cada instalación. Ninguna fuente de acá fija un plazo de retención.
+sources:
+  # Ficha del IEC Webstore abierta el 2026-08-22: edición 1.0 del 2017-03-31, **retirada** el
+  # 2026-08-20 y reemplazada por ISO/IEC 38505-1:2026, cuya ficha no se pudo abrir. `iso.org`
+  # devuelve 403, así que lo legible es la ficha del IEC. El texto de la norma no se leyó: lo
+  # verificado es su identidad y su estado, no su contenido. Citarla exige nombrar la edición.
+  - name: ISO IEC 38505-1
+    url: https://webstore.iec.ch/en/publication/60383
+    tier: primary-standard
+    topics: [data-governance, accountability, value-risk-constraint, lifecycle]
+  # Ficha abierta el 2026-08-22: edición 4.0 del 2023-01-16, JTC 1/SC 32. Texto no leído.
+  - name: ISO IEC 11179-1:2023
+    url: https://webstore.iec.ch/en/publication/81976
+    tier: primary-standard
+    topics: [metadata-registry, definition-identity, naming, versioning]
+  # Página oficial de DAMA International abierta el 2026-08-22: presenta la 2.ª edición y anuncia un
+  # proyecto DMBOK 3.0 iniciado en 2025. El cuerpo del libro no se leyó; la página misma aclara que
+  # el marco es un subconjunto curado y no un inventario exhaustivo.
+  - name: DAMA-DMBOK
+    url: https://www.dama.org/cpages/body-of-knowledge
+    tier: professional-primary
+    topics: [data-governance, metadata, data-quality, stewardship, ethics]
+  # Página del framework abierta el 2026-08-22: declara DCAM v3 con 8 componentes, 34 capacidades y
+  # puntaje por compromiso, proceso y evidencia. El documento está tras registro y no se abrió: sirve
+  # para medir madurez, y madurez no es cumplimiento.
+  - name: EDM Council DCAM
+    url: https://edmcouncil.org/frameworks/dcam/
+    tier: professional-primary
+    topics: [capability-assessment, maturity, evidence-based-scoring]
+  # Página del framework abierta el 2026-08-22: declara v1.1 (2021) con 14 controles clave sobre
+  # propiedad, soberanía, derechos de acceso, seguridad y retención en nube. Documento tras registro,
+  # no abierto.
+  - name: EDM Council CDMC
+    url: https://edmcouncil.org/frameworks/cdmc/
+    tier: professional-primary
+    topics: [cloud-data-controls, ownership, sovereignty, entitlements, retention]
+  # Recomendación W3C del 2024-08-22, leída el 2026-08-22.
+  - name: W3C DCAT 3
+    url: https://www.w3.org/TR/vocab-dcat-3/
+    tier: primary-standard
+    topics: [catalog, dataset-metadata, interoperability, versioning]
+  # Recomendación W3C del 2013-04-30, leída el 2026-08-22. Entidad, actividad y agente: el vocabulario
+  # con el que un linaje se puede afirmar de forma comprobable en vez de dibujarse.
+  - name: W3C PROV-O
+    url: https://www.w3.org/TR/prov-o/
+    tier: primary-standard
+    topics: [provenance, lineage, agents]
+  # Especificación leída el 2026-08-22: job, run, dataset y facets, con RunEvent, JobEvent y
+  # DatasetEvent. La versión del esquema no consta en esa página; anotarla cuando se verifique.
+  - name: OpenLineage object model
+    url: https://openlineage.io/docs/spec/object-model
+    tier: primary-implementation
+    topics: [lineage, events, dataset-identity, facets]
+
+# Pendientes por falta de URL verificada, no por falta de relevancia. `require_primary_source: true`
+# exige fuente primaria comprobada, no número de norma:
+#   - ISO/IEC 38505-1:2026 — la edición vigente; su ficha no se pudo abrir en esta corrida.
+#   - ISO/IEC 38505-2 (implicaciones del gobierno del dato en la gestión) — no verificada.
+#   - ISO 8000-61 (gestión de calidad de datos) e ISO 15489-1 (gestión de documentos: retención,
+#     disposición y bloqueo por litigio) — de comités ISO sin ficha en el IEC Webstore, y `iso.org`
+#     devuelve 403 desde este entorno. Registrar cuando exista una ficha legible.

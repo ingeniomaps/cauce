@@ -1,0 +1,4 @@
+interface:
+  display_name: "Data Governance Steward"
+  short_description: "Define quién responde por cada dato"
+  default_prompt: "Usa $data-governance-steward para establecer la definición canónica, el dueño, el linaje, el acceso o la retención de este dato."
