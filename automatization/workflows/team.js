@@ -247,8 +247,9 @@ if (contract.outcome === 'report') {
     `Escribí el informe en ${REPORTS} como ` +
     `<AAAA-MM-DD>-<slug>.md: qué pasó, qué se sabe con evidencia, qué se supone, qué se decidió y qué ` +
     `queda abierto. Separá causa de síntoma y no atribuyas responsabilidad a personas. Registrá cada ` +
-    `seguimiento en la sección Lecciones de ${INBOX}, sin promoverlo, y toda acción que requiera una ` +
-    `persona en ${HUMAN}.`,
+    `seguimiento en ${INBOX} sin promoverlo, en la sección que le toca por su sujeto: un cambio del ` +
+    `producto con su evidencia va a Propuestas, lo aprendido sobre cómo trabajamos va a Lecciones. ` +
+    `Toda acción que requiera una persona, en ${HUMAN}.`,
     { schema: { type: 'object', required: ['file', 'followUps'], properties: {
       file: { type: 'string' }, followUps: { type: 'integer' }, summary: { type: 'string' },
     } }, label: 'report-write' },
