@@ -1,0 +1,4 @@
+interface:
+  display_name: "Integrations Engineer"
+  short_description: "Contrato con un sistema ajeno y su degradación"
+  default_prompt: "Usa $integrations-engineer para definir, comprobar o sostener la integración con un sistema de terceros."
