@@ -381,7 +381,16 @@ const slugify = (value) => String(value).normalize('NFD').replace(/[\u0300-\u036
   .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 70)
 const oneLine = (value) => String(value).replace(/\s+/g, ' ').trim()
 
+// Si el proveedor está encendido en la instancia. Lee su propio `config.json`, que es donde vive la
+// decisión, y no el registro: un proveedor listado y apagado no es un proveedor disponible.
+function providerReady(root, name) {
+  try {
+    const suyo = path.join(root, 'integrations', name, 'config.json')
+    return JSON.parse(fs.readFileSync(suyo, 'utf8')).enabled === true
+  } catch { return false }
+}
 module.exports = {
+  providerReady,
   STATES,
   adapter,
   frontmatter,

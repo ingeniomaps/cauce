@@ -1194,3 +1194,42 @@ test('validateState juzga el estado ya leído, sin tocar disco', () => {
     ...estado(), humanActions: [{ task: 'h-uno', state: 'COMPLETADO', valid: false }],
   }).join('|'), /estado "COMPLETADO" fuera de/)
 })
+
+// La precedencia con que se elige tarea es del protocolo: el WIP activo manda por ser el mutex, incluso
+// con una acción humana abierta; sin WIP, la primera no terminada y no bloqueada. Se probaba lanzando
+// `context` contra un planning en disco, así que cada rama costaba un proceso.
+test('currentTask aplica la precedencia del protocolo sobre el estado ya leído', () => {
+  const ST = require('../engine/planning/state')
+  const tarea = (slug) => ({ slug, tier: 'lite', cast: { build: '', review: [] }, service: 'api' })
+  const estado = (extra = {}) => ({
+    milestones: [{ slug: 'h', tasks: [tarea('uno'), tarea('dos'), tarea('tres')] }],
+    done: { set: new Set() }, wip: null, ...extra,
+  })
+
+  assert.equal(ST.currentTask(estado()).task.slug, 'uno', 'la primera del primer hito')
+  assert.deepEqual(ST.currentTask(estado()).skipped, [])
+
+  // El WIP manda aunque su tarea tenga una acción humana abierta: es el mutex.
+  const conWip = ST.currentTask(estado({ wip: { task: 'dos', service: 'api' } }), [{ task: 'dos' }])
+  assert.equal(conWip.task.slug, 'dos')
+  assert.deepEqual(conWip.skipped, [], 'con WIP no se salta nada: hay una sola tarea posible')
+
+  // Un WIP que apunta fuera del backlog igual se entrega, para poder cerrarlo.
+  const huerfano = ST.currentTask(estado({ wip: { task: 'ajena', service: 'api' } }))
+  assert.equal(huerfano.task.slug, 'ajena')
+  assert.equal(huerfano.task.hito, '', 'sin hito, porque no está en la cola')
+
+  // Sin WIP, lo bloqueado se salta y queda nombrado.
+  const bloqueada = ST.currentTask(estado(), [{ task: 'uno' }])
+  assert.equal(bloqueada.task.slug, 'dos')
+  assert.deepEqual(bloqueada.skipped, ['uno'])
+
+  // Lo ya terminado no vuelve a la cola.
+  const hecha = ST.currentTask(estado({ done: { set: new Set(['uno', 'dos']) } }))
+  assert.equal(hecha.task.slug, 'tres')
+
+  // Todo bloqueado: no hay tarea, y las saltadas se enumeran para poder decir por qué.
+  const todas = ST.currentTask(estado(), [{ task: 'uno' }, { task: 'dos' }, { task: 'tres' }])
+  assert.equal(todas.task, null)
+  assert.deepEqual(todas.skipped, ['uno', 'dos', 'tres'])
+})

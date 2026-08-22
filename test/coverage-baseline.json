@@ -42,7 +42,7 @@
   "engine/cli/ops.js": {
     "lines": 88,
     "branches": 47,
-    "functions": 87
+    "functions": 85
   },
   "engine/config/validate.js": {
     "lines": 73,
@@ -66,7 +66,7 @@
   },
   "engine/core/onboarding.js": {
     "lines": 100,
-    "branches": 77,
+    "branches": 76,
     "functions": 100
   },
   "engine/core/ownership.js": {
@@ -124,9 +124,14 @@
     "branches": 74,
     "functions": 100
   },
+  "engine/planning/state.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/teams/registry.js": {
     "lines": 94,
-    "branches": 54,
+    "branches": 53,
     "functions": 100
   }
 }

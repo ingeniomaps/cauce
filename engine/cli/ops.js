@@ -7,6 +7,7 @@ const { spawnSync } = require('node:child_process')
 const P = require('../planning/parser')
 const B = require('../planning/business-rules')
 const PC = require('../planning/contracts')
+const ST = require('../planning/state')
 const I = require('../integrations/registry')
 const L = require('../agents/learning')
 const A = require('../automation')
@@ -188,7 +189,7 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
 //
 // Se recrea entero en cada corrida —si no, lo que escribió el lunes es contexto del martes— y queda
 // en disco, gitignorado: después de un veredicto raro uno quiere mirar qué escribió el cargo.
-function evaluationBench(root, agent, caso, force) {
+function evaluationBench(root, agent, caso, force, kind) {
   const safe = (value) => {
     if (!/^[a-z0-9_][a-z0-9._-]*$/i.test(value) || value.includes('..')) {
       fail(`nombre inválido para el banco: ${value}`, 2)
@@ -218,7 +219,7 @@ function evaluationBench(root, agent, caso, force) {
   // con instrucciones adentro. Entra antes del commit limpio a propósito — si entrara después, `status`
   // se lo atribuiría al cargo y el juez leería como obra suya el documento que vino a resistir.
   if (caso) {
-    const artefacto = EV.fixtures(root, agent, caso)
+    const artefacto = EV.fixtures(root, agent, caso, kind)
     if (artefacto.files.length) fs.cpSync(artefacto.dir, dir, { recursive: true })
   }
 
@@ -344,41 +345,9 @@ async function init(target, cli) {
 // Dónde puede mirar una instancia: exactamente las raíces que declara, y nada por encima de ellas. Sale
 // de `ops.config.json` en vez de suponerse —el sidecar declara `..`, el embebido `.`— para que acotar las
 // raíces acote también el escaneo, y para que nadie termine recorriendo la carpeta de al lado.
-function workspaceRoots(root) {
-  try {
-    const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
-    const declared = (config.workspaceRoots || []).map((entry) => path.resolve(root, entry.path || '.'))
-    return declared.length ? declared : [root]
-  } catch { return [root] }
-}
-
-// Qué hay en las raíces declaradas, antes de que nadie razone sobre ello. La raíz ops se saltea: no es
-// un servicio del proyecto, y su `package.json` sólo declara el motor.
-// Los candidatos de una raíz, con el proyecto que vive en ella misma primero: un monolito declara sus
-// comandos en el nivel de arriba, y dejarlo afuera hacía desaparecer justo al proyecto principal.
-function candidates(workspace, skip = '') {
-  const result = SC.scan(workspace, skip)
-  const found = result.rootManifests.length
-    ? [{ path: '.', root: workspace, runtimes: ['raíz'], commands: result.rootCommands, env: result.rootEnv }]
-    : []
-  return [...found, ...result.services.map((service) => ({ ...service, root: workspace }))]
-}
-
-// Con varias raíces, cada repositorio es la raíz de su propio escaneo y su candidato principal se llama
-// `.`: tres servicios con el mismo nombre y nada que los distinga. El prefijo los vuelve nombrables, que
-// es la única forma de que una credencial pueda atribuirse a un servicio en vez de quedar suelta.
-function inventory(root) {
-  const roots = workspaceRoots(root)
-  if (roots.length === 1) return candidates(roots[0], root)
-  return roots.flatMap((workspace) => candidates(workspace, root).map((service) => ({
-    ...service,
-    path: service.path === '.' ? path.basename(workspace) : `${path.basename(workspace)}/${service.path}`,
-  })))
-}
-
 function scan(target, cli) {
   const root = path.resolve(target || '.')
-  const result = { root, services: target ? candidates(root) : inventory(root) }
+  const result = { root, services: target ? SC.candidates(root) : SC.inventory(root) }
   if (cli.has('--json')) return console.log(JSON.stringify(result, null, 2))
   // Un monorepo de sesenta paquetes no se lee en pantalla. Se recorta, y se dice cuánto: un corte que no
   // se anuncia hace pasar lo listado por todo lo que hay.
@@ -387,7 +356,7 @@ function scan(target, cli) {
     const nombre = service.path === '.' ? `. (${path.basename(service.root || result.root)})` : service.path
     const espera = service.env ? `\n    espera ${service.env.names.join(', ')} (${service.env.file})` : ''
     console.log(
-      `${nombre} [${(service.runtimes || []).join(', ')}]${comandos(service.commands)}${espera}`,
+      `${nombre} [${(service.runtimes || []).join(', ')}]${SC.comandos(service.commands)}${espera}`,
     )
   }
   if (result.services.length > LISTA) {
@@ -398,20 +367,12 @@ function scan(target, cli) {
 }
 
 // Sólo lo declarado y de dónde salió: un comando inventado se lee igual que uno real.
-function comandos(commands) {
-  const entries = Object.entries(commands || {})
-  if (!entries.length) return ' — sin comandos declarados'
-  return ` — ${entries.map(([kind, value]) => `${kind}: ${value.command} (${value.source})`).join(', ')}`
-}
-
-// La guía de arranque: qué hay, qué falta y qué preguntar. Determinista y en milisegundos, porque es lo
-// primero que ve alguien que acaba de instalar y todavía no sabe qué hace la herramienta.
 function onboard(rootArg, cli, runner = '') {
   const root = path.resolve(rootArg || '.')
-  const services = inventory(root)
+  const services = SC.inventory(root)
   const state = OB.guide(root, services)
   if (cli.has('--json')) {
-    return console.log(JSON.stringify({ ...state, roots: workspaceRoots(root), servicios: services }, null, 2))
+    return console.log(JSON.stringify({ ...state, roots: SC.workspaceRoots(root), servicios: services }, null, 2))
   }
   // La pregunta primero, y el inventario después: de qué trata el proyecto es lo mismo esté vacío,
   // sea un monorepo o sean diez repos, y empezar por lo que se encontró invierte de qué se trata esto.
@@ -447,49 +408,6 @@ function onboard(rootArg, cli, runner = '') {
 //
 // Va como advertencia y no como error: la empresa es dueña de esos archivos y puede reestructurarlos a
 // propósito. Lo que no puede pasar es que una dimensión desaparezca sin que se vea.
-function seccionesPerdidas(root) {
-  const avisos = []
-  const molde = path.join(PROJECT_ROOT, 'template', 'organization')
-  for (const name of ['company.md', 'product.md', 'domains.md']) {
-    const propio = path.join(root, 'organization', name)
-    if (!fs.existsSync(propio) || !fs.existsSync(path.join(molde, name))) continue
-    const titulos = (text) => new Set((text.match(/^##\s+(.+)$/gm) || []).map((line) => line.trim()))
-    const esperadas = titulos(fs.readFileSync(path.join(molde, name), 'utf8'))
-    const presentes = titulos(fs.readFileSync(propio, 'utf8'))
-    const faltan = [...esperadas].filter((titulo) => !presentes.has(titulo))
-    if (!faltan.length) continue
-    // Reescrito entero, faltan todas: enumerarlas hace una línea ilegible y el número dice más.
-    const lista = faltan.length > 3 ? `${faltan.slice(0, 3).join(', ')} y ${faltan.length - 3} más` : faltan.join(', ')
-    avisos.push(`organization/${name}: sin ${lista} — el molde las trae y acá no están`)
-  }
-  return avisos
-}
-
-// Credenciales que el proyecto declara y que no aparecen en ningún contrato. El arranque tiene que
-// dejar una fila por cada una —quién la carga y dónde— y en la práctica cubre las que se hablaron en la
-// conversación: las que sólo estaban en el inventario se pierden, y con ellas el servicio externo que
-// hay detrás. Una variable sin dueño no rompe nada hoy; rompe el día que alguien tiene que desplegar.
-//
-// Sólo cuando la instancia ya tiene contexto escrito: antes del arranque no hay dónde estuvieran.
-function credencialesSinDueño(root) {
-  if (OB.guide(root).fresh) return []
-  const contratos = ['AGENTS.md', path.join('planning', 'HUMAN_ACTIONS.md')]
-    .map((file) => { try { return fs.readFileSync(path.join(root, file), 'utf8') } catch { return '' } })
-    .join('\n')
-  if (!contratos) return []
-  const huerfanas = []
-  for (const service of inventory(root)) {
-    for (const nombre of (service.env || {}).names || []) {
-      if (!contratos.includes(nombre)) huerfanas.push(`${nombre} (${service.path})`)
-    }
-  }
-  if (!huerfanas.length) return []
-  const lista = huerfanas.length > 4
-    ? `${huerfanas.slice(0, 4).join(', ')} y ${huerfanas.length - 4} más`
-    : huerfanas.join(', ')
-  return [`el proyecto declara ${lista} y no aparecen en el mapa ni en HUMAN_ACTIONS: nadie las carga`]
-}
-
 function check(dir, cli) {
   const root = path.resolve(dir || '.')
   const errors = []
@@ -552,8 +470,8 @@ function check(dir, cli) {
   const FK = require('../agents/fork')
   for (const entry of FK.drift(path.resolve(root, '..'))) warnings.push(FK.driftLine(entry))
 
-  warnings.push(...seccionesPerdidas(path.resolve(root, '..')))
-  warnings.push(...credencialesSinDueño(path.resolve(root, '..')))
+  warnings.push(...OB.seccionesPerdidas(path.resolve(root, '..')))
+  warnings.push(...OB.credencialesSinDueño(path.resolve(root, '..')))
 
   if (cli.has('--json')) {
     console.log(JSON.stringify({
@@ -579,18 +497,6 @@ function check(dir, cli) {
 }
 
 // Estado observable de planning sin mutar nada; base común de `tree` y de sus salidas.
-function snapshot(root) {
-  const milestones = P.readBacklog(root)
-  return {
-    epics: P.readEpics(root),
-    milestones,
-    done: P.readDone(root),
-    wip: P.readWip(root),
-    inbox: P.readInbox(root),
-    queued: new Set(milestones.flatMap((m) => m.tasks.map((t) => t.slug))),
-  }
-}
-
 function treeJson({ epics, milestones, done, wip, inbox, queued }) {
   const state = (slug) => done.set.has(slug) ? 'done' : queued.has(slug) ? 'queued' : 'pending'
   console.log(JSON.stringify({
@@ -612,7 +518,7 @@ function treeJson({ epics, milestones, done, wip, inbox, queued }) {
 
 function tree(dir, cli) {
   const root = path.resolve(dir || '.')
-  const state = snapshot(root)
+  const state = ST.snapshot(root)
   if (cli.has('--json')) return treeJson(state)
   const { epics, milestones, done, wip, inbox, queued } = state
   const color = process.stdout.isTTY && !cli.has('--no-color')
@@ -647,41 +553,13 @@ function tree(dir, cli) {
   console.log(`${paint('1', 'DONE')}   ${done.entries.length} tareas\n`)
 }
 
-// Acciones humanas que todavía bloquean: las pendientes y también las mal escritas, porque una fila
-// cuyo estado no se entiende no se puede dar por resuelta. `check` es quien las nombra.
-function pendingHumanActions(root) {
-  return P.readHumanActions(root).filter((row) => !row.resolved)
-    .map((row) => ({ task: row.task, state: row.state, action: row.action }))
-}
-
-// Selecciona la tarea que un runner debe ejecutar ahora, con la misma precedencia que el protocolo:
-// WIP activo primero —es el mutex y manda incluso si tiene una acción humana abierta—, si no la
-// primera tarea no terminada y no bloqueada del primer hito.
-function currentTask({ milestones, done, wip }, blockers = []) {
-  const queue = milestones.flatMap((milestone) => milestone.tasks.map((task) => ({ ...task, hito: milestone.slug })))
-  if (wip) {
-    const active = queue.find((task) => task.slug === wip.task)
-      || {
-        slug: wip.task, hito: '', tier: '', cast: { build: '', review: [] },
-        service: wip.service, acceptance: '', epic: '', criteria: [],
-      }
-    return { task: active, skipped: [] }
-  }
-  const blocked = new Set(blockers.map((action) => action.task))
-  const pending = queue.filter((task) => !done.set.has(task.slug))
-  return {
-    task: pending.find((task) => !blocked.has(task.slug)) || null,
-    skipped: pending.filter((task) => blocked.has(task.slug)).map((task) => task.slug),
-  }
-}
-
 // Contexto mínimo suficiente para ejecutar una tarea, en lugar de releer roadmap, BACKLOG y WIP enteros.
 function context(dir, cli) {
   const root = path.resolve(dir || '.')
-  const state = snapshot(root)
+  const state = ST.snapshot(root)
   const gate = path.join(root, 'AWAITING_REVIEW.md')
-  const humanActions = pendingHumanActions(root)
-  const { task, skipped } = currentTask(state, humanActions)
+  const humanActions = ST.pendingHumanActions(root)
+  const { task, skipped } = ST.currentTask(state, humanActions)
   const epic = task ? state.epics.find((candidate) => candidate.num === task.epic) : null
   const criteria = epic ? epic.criteria.filter((criterion) => task.criteria.includes(criterion.id)) : []
   const report = {
@@ -753,7 +631,7 @@ function instanceVersion(root) {
 function loQueSePierde(root) {
   const planning = path.join(root, 'planning')
   const cola = P.readBacklog(planning).reduce((total, hito) => total + (hito.tasks || []).length, 0)
-  const acciones = pendingHumanActions(planning).length
+  const acciones = ST.pendingHumanActions(planning).length
   return {
     epicas: P.readEpics(planning).length,
     hechas: (P.readDone(planning).entries || []).length,
@@ -1105,12 +983,6 @@ function providerRegistry(root) {
 
 // Si el proveedor terminó su propia configuración. Son dos interruptores y `sync` exige los dos: el
 // del registro dice que está conectado al proyecto, éste que hay a dónde apuntar.
-function providerReady(root, name) {
-  try {
-    const suyo = path.join(root, 'integrations', name, 'config.json')
-    return JSON.parse(fs.readFileSync(suyo, 'utf8')).enabled === true
-  } catch { return false }
-}
 
 function switchProvider(root, provider, enabled) {
   const { file, config } = providerRegistry(root)
@@ -1127,7 +999,7 @@ const INTEGRATION = {
   list: {
     run: (root) => {
       for (const [name, entry] of Object.entries(providerRegistry(root).config.providers || {})) {
-        const listo = providerReady(root, name)
+        const listo = I.providerReady(root, name)
         const estado = !entry.enabled ? '○' : (listo ? '●' : '◐')
         const nota = estado === '◐'
           ? `  — falta completar integrations/${name}/config.json y poner enabled: true`
@@ -1149,7 +1021,7 @@ const INTEGRATION = {
       console.log(`✓ ${provider}: conectado al proyecto y andamiaje en integrations/${provider}/.`)
       // Sólo se pide lo que falta: reencender un proveedor ya configurado no debería mandar a
       // completar un archivo que la empresa terminó hace meses.
-      if (providerReady(root, provider)) {
+      if (I.providerReady(root, provider)) {
         console.log(`  Su configuración ya estaba completa: "integration sync" puede correr.`)
         return
       }
@@ -1328,7 +1200,7 @@ function evaluate(agent, caso, cli) {
     }
     // El caso es el posicional que sigue al cargo: `evaluate <cargo> --bench <caso>`. Sin él se arma
     // un banco suelto, para mirarlo a mano; una corrida real pide uno por caso.
-    return console.log(evaluationBench(root, agent, caso, cli.has('--force')))
+    return console.log(evaluationBench(root, agent, caso, cli.has('--force'), kind))
   }
   try {
     // Los casos, para que un recorrido los ejecute. Sin `--json` no tiene sentido: es entrada de

@@ -171,4 +171,48 @@ function scan(root, skip = '') {
   }
 }
 
-module.exports = { scan, services, expectedEnv, IGNORED, DEPTH, ENV_MAX }
+function workspaceRoots(root) {
+  try {
+    const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
+    const declared = (config.workspaceRoots || []).map((entry) => path.resolve(root, entry.path || '.'))
+    return declared.length ? declared : [root]
+  } catch { return [root] }
+}
+
+// Qué hay en las raíces declaradas, antes de que nadie razone sobre ello. La raíz ops se saltea: no es
+// un servicio del proyecto, y su `package.json` sólo declara el motor.
+// Los candidatos de una raíz, con el proyecto que vive en ella misma primero: un monolito declara sus
+// comandos en el nivel de arriba, y dejarlo afuera hacía desaparecer justo al proyecto principal.
+function candidates(workspace, skip = '') {
+  const result = scan(workspace, skip)
+  const found = result.rootManifests.length
+    ? [{ path: '.', root: workspace, runtimes: ['raíz'], commands: result.rootCommands, env: result.rootEnv }]
+    : []
+  return [...found, ...result.services.map((service) => ({ ...service, root: workspace }))]
+}
+
+// Con varias raíces, cada repositorio es la raíz de su propio escaneo y su candidato principal se llama
+// `.`: tres servicios con el mismo nombre y nada que los distinga. El prefijo los vuelve nombrables, que
+// es la única forma de que una credencial pueda atribuirse a un servicio en vez de quedar suelta.
+function inventory(root) {
+  const roots = workspaceRoots(root)
+  if (roots.length === 1) return candidates(roots[0], root)
+  return roots.flatMap((workspace) => candidates(workspace, root).map((service) => ({
+    ...service,
+    path: service.path === '.' ? path.basename(workspace) : `${path.basename(workspace)}/${service.path}`,
+  })))
+}
+
+function comandos(commands) {
+  const entries = Object.entries(commands || {})
+  if (!entries.length) return ' — sin comandos declarados'
+  return ` — ${entries.map(([kind, value]) => `${kind}: ${value.command} (${value.source})`).join(', ')}`
+}
+
+// La guía de arranque: qué hay, qué falta y qué preguntar. Determinista y en milisegundos, porque es lo
+// primero que ve alguien que acaba de instalar y todavía no sabe qué hace la herramienta.
+module.exports = {
+  workspaceRoots,
+  candidates,
+  inventory,
+  comandos, scan, services, expectedEnv, IGNORED, DEPTH, ENV_MAX }
