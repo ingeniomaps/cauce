@@ -22,9 +22,9 @@ const T = require('../teams/registry')
 const AG = require('../agents/catalog')
 const EV = require('../agents/evaluations')
 const { FLAGS, parse } = require('./args')
+const { fail } = require('./io')
+const IN = require('./instance')
 const BOOT = require('./bootstrap')
-
-const PROJECT_ROOT = path.resolve(__dirname, '..', '..')
 
 // Dónde aterriza una instancia cuando nadie eligió: una carpeta propia junto al código.
 const DEFAULT_TARGET = 'ops'
@@ -33,9 +33,107 @@ const DEFAULT_TARGET = 'ops'
 // consume el recorrido de arranque: recortar la lista es para leerla, no para acotar lo que se sabe.
 const LISTA = 20
 
-function fail(message, code = 1) {
-  console.error(message)
-  process.exit(code)
+// Dónde va la instancia cuando nadie eligió destino. Parada frecuente: el dev ya creó `acme-ops/` y
+// corre `init` adentro. Sin esto la instancia caía en `acme-ops/ops/` —una carpeta del toolkit dentro
+// de otra— y el proyecto quedaba llamándose «acme-ops». La carpeta que ya nombra al toolkit es la
+// instancia; no hay una segunda adentro.
+// instancia recibía el de un proveedor apagado que quizá no usaba nunca, y que nadie actualizaba.
+
+function implicitTarget(cwd) {
+  const base = path.basename(cwd)
+  return base === DEFAULT_TARGET || base.endsWith('-ops') ? '.' : DEFAULT_TARGET
+}
+
+// El nombre sale de la carpeta del proyecto, no de la que aloja la instancia: `ops/` y `acme-ops/`
+// nombran al toolkit, y quien lee `project` en la configuración espera leer «acme».
+function defaultName(root) {
+  const base = path.basename(root)
+  return base === DEFAULT_TARGET ? path.basename(path.dirname(root)) : base.replace(/-ops$/, '')
+}
+
+// El motor no se instala solo: `npm install` baja el paquete que `init` acaba de declarar, y sin él el
+// shim, los cargos, los equipos y los adaptadores no se resuelven. Correrlo desde acá es lo que hace que
+// una instalación sea un comando y no una lista. En Windows el ejecutable es `npm.cmd`.
+function npmInstall(root) {
+  const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+  const result = spawnSync(npm, ['install'], { cwd: root, stdio: 'inherit' })
+  if (result.error) {
+    console.error(`  no pude ejecutar npm (${result.error.code || result.error.message}).`)
+    return 1
+  }
+  return result.status === null ? 1 : result.status
+}
+
+// Lo que quedó pendiente, y sólo eso: cuando la instalación corrió, `check` ya se ejecutó y repetirlo
+// como sugerencia hace dudar de que haya pasado.
+function initSteps(enter, resultado) {
+  if (resultado.instalado) return []
+  const pasos = ['npm install']
+  if (resultado.runner !== BOOT.SIN_RUNNER) {
+    pasos.push(`node tools/ops.js automation install . ${resultado.runner}`)
+  }
+  pasos.push('node tools/ops.js check planning')
+  return pasos.map((paso, indice) => `  siguiente: ${indice === 0 ? enter : ''}${paso}`)
+}
+
+async function init(target, cli) {
+  // Sin destino la instancia va a `ops/` y en modo sidecar, en vez de volcarse donde esté parado el
+  // dev: un monorepo que recibe `planning/`, `teams/`, `organization/` y `AGENTS.md` en su primer
+  // nivel deja de distinguir qué es suyo y qué llegó del toolkit. Es el layout que `automation
+  // install` ya asume —el wiring del runner va al padre, donde se abre la herramienta—, así que lo
+  // único que faltaba era que fuera lo que pasa cuando no se elige nada.
+  const root = path.resolve(target || implicitTarget(process.cwd()))
+  const mode = cli.value('--mode', target ? 'embedded' : 'sidecar')
+  if (!['embedded', 'sidecar'].includes(mode)) fail('--mode debe ser embedded o sidecar.', 2)
+  const name = cli.value('--name', defaultName(root))
+  const force = cli.has('--force')
+  // `.git` no cuenta como contenido: es lo único que hay en la carpeta que alguien acaba de crear y
+  // versionar para la instancia, y el toolkit no escribe nada adentro. Sin esta excepción el camino
+  // más natural —`mkdir acme-ops && git init && cauce init`— pedía `--force` para no pisar nada.
+  const existing = (fs.existsSync(root) ? fs.readdirSync(root) : []).filter((entry) => entry !== '.git')
+  if (existing.length && !force) {
+    fail(`El destino no está vacío: ${root}. Usa --force para agregar solo archivos faltantes.`)
+  }
+  IN.scaffold(root, { name, mode, force })
+  const relative = path.relative(process.cwd(), root)
+  const enter = relative && relative !== '.' ? `cd ${relative} && ` : ''
+  console.log(`\n✓ ${name}: sistema ops creado en ${root} (modo ${mode})`)
+
+  // Preguntar exige una terminal, e instalar baja un paquete y escribe `node_modules`: las dos cosas
+  // pasan cuando hay alguien mirando. Una corrida automatizada —CI, un contenedor, estas pruebas—
+  // recibe la instancia materializada y decide por bandera, sin descargas ni preguntas implícitas.
+  const interactivo = Boolean(process.stdin.isTTY && process.stdout.isTTY)
+  const opciones = {
+    runner: cli.value('--runner'),
+    integration: cli.value('--integration'),
+    runners: A.RUNNER_NAMES,
+    providers: IN.providerNames(),
+    interactive: interactivo,
+    install: cli.has('--install') || (interactivo && !cli.has('--no-install')),
+  }
+  let resultado
+  try {
+    resultado = await BOOT.run(root, opciones, {
+      log: console.log,
+      npm: npmInstall,
+      installRunner: (runner) => automation('install', root, runner, SIN_BANDERAS),
+      enableProvider: (provider) => INTEGRATION.enable.run(root, provider),
+    })
+  } catch (error) { fail(error.message, 2) }
+
+  if (resultado.instalado) check(path.join(root, 'planning'), SIN_BANDERAS)
+
+  // Una instancia recién instalada funciona y no sabe nada de este proyecto: `organization/` es el molde
+  // y el roadmap está vacío. Llenarlo exige leer el repositorio y decidir qué es cada cosa, que es justo
+  // lo que un CLI determinista no puede hacer; lo que sí puede es decir qué falta y qué preguntar.
+  //
+  // Se imprime siempre, incluso cuando la dependencia no se instaló: lo resuelve el motor que está
+  // corriendo `init`, no cuesta nada, y es lo único que le dice a alguien qué hacer con lo que acaba de
+  // crear. Dejarlo adentro del camino feliz lo escondía justo de quien más lo necesita.
+  console.log('')
+  onboard(root, SIN_BANDERAS, resultado.instalado ? resultado.runner : '')
+  for (const paso of initSteps(enter, resultado)) console.log(paso)
+  if (resultado.error) fail(`${resultado.error}: la instancia quedó creada pero todavía no funciona.`)
 }
 
 function usage() {
@@ -75,108 +173,6 @@ function usage() {
   ops team show <team>`)
 }
 
-function copyTemplate(source, target, replacements, force, skip = [], quiet = false) {
-  F.assertNoSymlinkPath(path.dirname(target), target)
-  fs.mkdirSync(target, { recursive: true })
-  for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
-    if (skip.includes(entry.name)) continue
-    const from = path.join(source, entry.name)
-    // npm no incluye un `.gitignore` dentro de un tarball, así que viaja sin punto y se restituye
-    // acá. Sin esto el archivo existe en el repo del toolkit y desaparece para todo consumidor real.
-    const to = path.join(target, entry.name === 'gitignore' ? '.gitignore' : entry.name)
-    if (entry.isDirectory()) copyTemplate(from, to, replacements, force, skip, quiet)
-    else {
-      if (fs.existsSync(to)) {
-        if (!force) fail(`El destino contiene ${to}. Usa un directorio vacío o --force.`)
-        if (!quiet) console.log(`= conservado ${to}`)
-        continue
-      }
-      let content = fs.readFileSync(from, 'utf8')
-      for (const [key, value] of Object.entries(replacements)) content = content.replaceAll(key, value)
-      F.atomicWrite(to, content)
-      if (entry.name.endsWith('.js')) fs.chmodSync(to, 0o755)
-      if (!quiet) console.log(`+ ${to}`)
-    }
-  }
-}
-
-function copyRuntime(source, target, preserve = false, boundary = target, skip = []) {
-  F.assertNoSymlinkPath(boundary, target)
-  fs.mkdirSync(target, { recursive: true })
-  for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
-    if (skip.includes(entry.name)) continue
-    const from = path.join(source, entry.name)
-    const to = path.join(target, entry.name)
-    if (entry.isDirectory()) copyRuntime(from, to, preserve, boundary, skip)
-    else if (preserve && fs.existsSync(to)) console.log(`= conservado ${to}`)
-    else {
-      F.assertNoSymlinkPath(boundary, to)
-      fs.copyFileSync(from, to)
-    }
-  }
-}
-
-// Declara el motor como dependencia exacta: el lockfile decide qué versión corre, no una copia.
-// Conserva el manifiesto existente porque el repo anfitrión puede tener el suyo.
-function declareEngine(manifest, version) {
-  let pkg = { name: path.basename(path.dirname(manifest)), private: true, version: '0.0.0' }
-  if (fs.existsSync(manifest)) {
-    try { pkg = JSON.parse(fs.readFileSync(manifest, 'utf8')) } catch (error) {
-      fail(`package.json inválido en ${manifest}: ${error.message}`)
-    }
-  }
-  pkg.devDependencies = { ...pkg.devDependencies, '@ingeniomaps/cauce': version }
-  F.atomicWriteJson(manifest, pkg)
-}
-
-// Proveedores que el toolkit conoce, para saltearlos al copiar la plantilla: su andamiaje
-// —configuración, staging/, proposed/— no se materializa hasta que alguien lo habilite. Antes cada
-// instancia recibía el de un proveedor apagado que quizá no usaba nunca, y que nadie actualizaba.
-function providerNames() {
-  try {
-    const file = path.join(PROJECT_ROOT, 'template', 'integrations', 'config.json')
-    return Object.keys(JSON.parse(fs.readFileSync(file, 'utf8')).providers || {})
-  } catch { return [] }
-}
-
-// El andamiaje de una instancia, sin leer argv. `init` es la cáscara que traduce banderas a esto, y
-// el banco de evaluación lo llama directo: crear una instancia programáticamente no puede depender de
-// cómo venga escrita la línea de comandos.
-function scaffold(root, { name, mode, force = false, quiet = false }) {
-  copyTemplate(path.join(PROJECT_ROOT, 'template'), root, {
-    '{{PROJECT_NAME}}': name,
-    '{{MODE}}': mode,
-    '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
-  }, force, providerNames(), quiet)
-  // No se copia `.github/`: `ci.yml` valida el toolkit con `npm run ci` —que una instancia no tiene— y
-  // el ciclo de aprendizaje dejó de distribuirse en 0.4.0. Copiar salteando los dos únicos archivos
-  // que existen dejaba `.github/workflows/` vacío en cada instancia.
-  copyRuntime(
-    path.join(PROJECT_ROOT, 'automatization', 'hooks'),
-    path.join(root, 'automatization', 'hooks'),
-    force,
-    root,
-  )
-  const version = require(path.join(PROJECT_ROOT, 'package.json')).version
-  // El motor llega como dependencia para que el lockfile fije su versión. El repo ops es un sidecar:
-  // declarar npm acá no convierte en Node al servicio de Go de al lado.
-  declareEngine(path.join(root, 'package.json'), version)
-  let entregado = {}
-  for (const relative of O.trackedPaths()) {
-    const dir = path.join(root, relative)
-    if (fs.existsSync(dir)) entregado = M.record(root, relative, O.treeFiles(dir), entregado)
-  }
-  entregado = M.recordPaths(root, O.SYSTEM_FILES, entregado)
-  M.write(root, entregado)
-  // La instancia recuerda de qué versión salió: sin esto no hay actualización posible.
-  const configFile = path.join(root, 'ops.config.json')
-  const config = JSON.parse(fs.readFileSync(configFile, 'utf8'))
-  config.cauceVersion = version
-  config.$schema = 'node_modules/@ingeniomaps/cauce/engine/schemas/ops-config.schema.json'
-  F.atomicWriteJson(configFile, config)
-  return root
-}
-
 // Un banco de trabajo desechable donde un cargo del catálogo puede realmente trabajar.
 //
 // Hace falta porque el toolkit no es una raíz ops: el único `planning/` que vive acá es
@@ -208,12 +204,12 @@ function evaluationBench(root, agent, caso, force, kind) {
       + 'o usá --force si ya lo tenés.', 2)
   }
   fs.rmSync(dir, { recursive: true, force: true })
-  scaffold(dir, { name: 'Banco de evaluación', mode: 'sidecar', quiet: true })
+  IN.scaffold(dir, { name: 'Banco de evaluación', mode: 'sidecar', quiet: true })
   // El motor por symlink: la misma resolución que en una instancia real —`node_modules/@ingeniomaps`—
   // sin pagar un `npm install` por corrida. El cargo llega a un banco donde el CLI funciona.
   const scope = path.join(dir, 'node_modules', '@ingeniomaps')
   fs.mkdirSync(scope, { recursive: true })
-  fs.symlinkSync(PROJECT_ROOT, path.join(scope, 'cauce'), 'dir')
+  fs.symlinkSync(IN.PROJECT_ROOT, path.join(scope, 'cauce'), 'dir')
 
   // El artefacto del caso, si lo tiene: la guía del proveedor que el pedido manda implementar, el CSV
   // con instrucciones adentro. Entra antes del commit limpio a propósito — si entrara después, `status`
@@ -237,110 +233,9 @@ function evaluationBench(root, agent, caso, force, kind) {
   return dir
 }
 
-// Dónde va la instancia cuando nadie eligió destino. Parada frecuente: el dev ya creó `acme-ops/` y
-// corre `init` adentro. Sin esto la instancia caía en `acme-ops/ops/` —una carpeta del toolkit dentro
-// de otra— y el proyecto quedaba llamándose «acme-ops». La carpeta que ya nombra al toolkit es la
-// instancia; no hay una segunda adentro.
-function implicitTarget(cwd) {
-  const base = path.basename(cwd)
-  return base === DEFAULT_TARGET || base.endsWith('-ops') ? '.' : DEFAULT_TARGET
-}
-
-// El nombre sale de la carpeta del proyecto, no de la que aloja la instancia: `ops/` y `acme-ops/`
-// nombran al toolkit, y quien lee `project` en la configuración espera leer «acme».
-function defaultName(root) {
-  const base = path.basename(root)
-  return base === DEFAULT_TARGET ? path.basename(path.dirname(root)) : base.replace(/-ops$/, '')
-}
-
-// El motor no se instala solo: `npm install` baja el paquete que `init` acaba de declarar, y sin él el
-// shim, los cargos, los equipos y los adaptadores no se resuelven. Correrlo desde acá es lo que hace que
-// una instalación sea un comando y no una lista. En Windows el ejecutable es `npm.cmd`.
-function npmInstall(root) {
-  const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm'
-  const result = spawnSync(npm, ['install'], { cwd: root, stdio: 'inherit' })
-  if (result.error) {
-    console.error(`  no pude ejecutar npm (${result.error.code || result.error.message}).`)
-    return 1
-  }
-  return result.status === null ? 1 : result.status
-}
-
 // Un `cli` que no tiene banderas, para reusar un comando desde otro: el `--force` de `init` habla del
 // molde y no del wiring del runner, así que pasarle el suyo instalaría a la fuerza algo que nadie pidió.
 const SIN_BANDERAS = { has: () => false, value: (_flag, fallback = '') => fallback }
-
-// Lo que quedó pendiente, y sólo eso: cuando la instalación corrió, `check` ya se ejecutó y repetirlo
-// como sugerencia hace dudar de que haya pasado.
-function initSteps(enter, resultado) {
-  if (resultado.instalado) return []
-  const pasos = ['npm install']
-  if (resultado.runner !== BOOT.SIN_RUNNER) {
-    pasos.push(`node tools/ops.js automation install . ${resultado.runner}`)
-  }
-  pasos.push('node tools/ops.js check planning')
-  return pasos.map((paso, indice) => `  siguiente: ${indice === 0 ? enter : ''}${paso}`)
-}
-
-async function init(target, cli) {
-  // Sin destino la instancia va a `ops/` y en modo sidecar, en vez de volcarse donde esté parado el
-  // dev: un monorepo que recibe `planning/`, `teams/`, `organization/` y `AGENTS.md` en su primer
-  // nivel deja de distinguir qué es suyo y qué llegó del toolkit. Es el layout que `automation
-  // install` ya asume —el wiring del runner va al padre, donde se abre la herramienta—, así que lo
-  // único que faltaba era que fuera lo que pasa cuando no se elige nada.
-  const root = path.resolve(target || implicitTarget(process.cwd()))
-  const mode = cli.value('--mode', target ? 'embedded' : 'sidecar')
-  if (!['embedded', 'sidecar'].includes(mode)) fail('--mode debe ser embedded o sidecar.', 2)
-  const name = cli.value('--name', defaultName(root))
-  const force = cli.has('--force')
-  // `.git` no cuenta como contenido: es lo único que hay en la carpeta que alguien acaba de crear y
-  // versionar para la instancia, y el toolkit no escribe nada adentro. Sin esta excepción el camino
-  // más natural —`mkdir acme-ops && git init && cauce init`— pedía `--force` para no pisar nada.
-  const existing = (fs.existsSync(root) ? fs.readdirSync(root) : []).filter((entry) => entry !== '.git')
-  if (existing.length && !force) {
-    fail(`El destino no está vacío: ${root}. Usa --force para agregar solo archivos faltantes.`)
-  }
-  scaffold(root, { name, mode, force })
-  const relative = path.relative(process.cwd(), root)
-  const enter = relative && relative !== '.' ? `cd ${relative} && ` : ''
-  console.log(`\n✓ ${name}: sistema ops creado en ${root} (modo ${mode})`)
-
-  // Preguntar exige una terminal, e instalar baja un paquete y escribe `node_modules`: las dos cosas
-  // pasan cuando hay alguien mirando. Una corrida automatizada —CI, un contenedor, estas pruebas—
-  // recibe la instancia materializada y decide por bandera, sin descargas ni preguntas implícitas.
-  const interactivo = Boolean(process.stdin.isTTY && process.stdout.isTTY)
-  const opciones = {
-    runner: cli.value('--runner'),
-    integration: cli.value('--integration'),
-    runners: A.RUNNER_NAMES,
-    providers: providerNames(),
-    interactive: interactivo,
-    install: cli.has('--install') || (interactivo && !cli.has('--no-install')),
-  }
-  let resultado
-  try {
-    resultado = await BOOT.run(root, opciones, {
-      log: console.log,
-      npm: npmInstall,
-      installRunner: (runner) => automation('install', root, runner, SIN_BANDERAS),
-      enableProvider: (provider) => INTEGRATION.enable.run(root, provider),
-    })
-  } catch (error) { fail(error.message, 2) }
-
-  if (resultado.instalado) check(path.join(root, 'planning'), SIN_BANDERAS)
-
-  // Una instancia recién instalada funciona y no sabe nada de este proyecto: `organization/` es el molde
-  // y el roadmap está vacío. Llenarlo exige leer el repositorio y decidir qué es cada cosa, que es justo
-  // lo que un CLI determinista no puede hacer; lo que sí puede es decir qué falta y qué preguntar.
-  //
-  // Se imprime siempre, incluso cuando la dependencia no se instaló: lo resuelve el motor que está
-  // corriendo `init`, no cuesta nada, y es lo único que le dice a alguien qué hacer con lo que acaba de
-  // crear. Dejarlo adentro del camino feliz lo escondía justo de quien más lo necesita.
-  console.log('')
-  onboard(root, SIN_BANDERAS, resultado.instalado ? resultado.runner : '')
-  for (const paso of initSteps(enter, resultado)) console.log(paso)
-  if (resultado.error) fail(`${resultado.error}: la instancia quedó creada pero todavía no funciona.`)
-}
 
 // Dónde puede mirar una instancia: exactamente las raíces que declara, y nada por encima de ellas. Sale
 // de `ops.config.json` en vez de suponerse —el sidecar declara `..`, el embebido `.`— para que acotar las
@@ -606,269 +501,6 @@ function context(dir, cli) {
   for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
 }
 
-// Qué trae la versión nueva, leído del paquete: sin esto el reemplazo de system/ es a ciegas.
-function printChangelog(from, to) {
-  const notes = CL.between(CL.read(PROJECT_ROOT), from, to)
-  if (!notes.length) return
-  for (const note of notes) {
-    console.log(`\n  ── ${note.version} ──`)
-    for (const line of note.body.split('\n')) if (line.trim()) console.log(`  ${line}`)
-  }
-  console.log('')
-}
-
-function instanceVersion(root) {
-  try {
-    return JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')).cauceVersion || ''
-  } catch { return '' }
-}
-
-// Qué se pierde al borrar una instancia. Se cuenta antes de tocar nada porque es lo único que vuelve
-// reversible la decisión: quien lee esto todavía puede no seguir.
-// Lo cuenta el mismo parser que usan `check` y `tree`, no una expresión regular propia: los moldes traen
-// ejemplos comentados, y contarlos a mano anunciaba una tarea en cola y otra terminada en una instancia
-// recién creada. Un aviso que exagera lo que se pierde se deja de leer igual que uno que lo minimiza.
-function loQueSePierde(root) {
-  const planning = path.join(root, 'planning')
-  const cola = P.readBacklog(planning).reduce((total, hito) => total + (hito.tasks || []).length, 0)
-  const acciones = ST.pendingHumanActions(planning).length
-  return {
-    epicas: P.readEpics(planning).length,
-    hechas: (P.readDone(planning).entries || []).length,
-    enCola: cola,
-    acciones,
-    contexto: !OB.guide(root).fresh,
-    runners: [...new Set(Object.keys(M.readRunners(root)).map((key) => key.split('/')[0]))],
-  }
-}
-
-// Saca la instancia entera y el wiring que dejó en cada runner. Existe porque la alternativa era una
-// lista de pasos a mano —desinstalar cada runner y después `rm -rf`—, y una lista se ejecuta a medias:
-// el orden importa, y borrar primero la carpeta deja al runner ejecutando guards que ya no existen.
-//
-// Nunca borra sin que alguien lo haya pedido dos veces. Lo que hay adentro —planning, organization, la
-// evidencia de lo hecho— es del proyecto y no lo repone ningún `init`.
-function destroy(dir, cli) {
-  const root = path.resolve(dir || '.')
-  if (!fs.existsSync(path.join(root, 'ops.config.json'))) {
-    fail(`${root} no es una instancia de Cauce: falta ops.config.json.`, 2)
-  }
-  if (O.mode(root) === 'toolkit') fail(`${root} es el toolkit: acá se fabrica Cauce, no se lo borra.`, 2)
-
-  const perdida = loQueSePierde(root)
-  const lineas = [
-    perdida.epicas && `${perdida.epicas} épica(s) en el roadmap`,
-    perdida.enCola && `${perdida.enCola} tarea(s) en la cola`,
-    perdida.hechas && `${perdida.hechas} tarea(s) terminada(s) con su evidencia`,
-    perdida.acciones && `${perdida.acciones} acción(es) humana(s) pendiente(s)`,
-    perdida.contexto && 'el contexto escrito en organization/',
-  ].filter(Boolean)
-
-  const embebido = O.mode(root) === 'embedded'
-  if (!cli.has('--force')) {
-    console.log(embebido
-      ? `Sacar Cauce de ${root} se lleva:`
-      : `Borrar ${root} se lleva:`)
-    for (const linea of lineas) console.log(`  − ${linea}`)
-    if (!lineas.length) console.log('  − nada escrito todavía: la instancia está como salió de init')
-    if (perdida.runners.length) {
-      console.log(`  y saca el wiring de: ${perdida.runners.join(', ')} (lo tuyo queda donde está)`)
-    }
-    if (embebido) {
-      console.log('  el código del repositorio no se toca: en modo embebido la instancia es él mismo.')
-    }
-    console.log('\nNada de esto lo repone un init. Si es lo que querés: repetí con --force.')
-    process.exit(1)
-  }
-
-  for (const runner of perdida.runners) {
-    try { A.uninstall(root, runner, console) } catch (error) { console.error(`  ${runner}: ${error.message}`) }
-  }
-  // El orden no es negociable: primero el wiring, después la carpeta. Al revés, cada llamada de
-  // herramienta del runner queda ejecutando un guard que ya no está.
-  // En modo embebido la instancia **es** el repositorio: borrar la carpeta se lleva el código del
-  // producto, que Cauce nunca escribió y no repone nadie. Ahí se saca lo del toolkit y se deja el repo.
-  if (O.mode(root) === 'embedded') {
-    const suyo = [
-      'planning', 'organization', 'teams', 'integrations', 'automatization', 'tools',
-      'ops.config.json', '.cauce', 'AGENTS.md',
-    ]
-    for (const relative of suyo) fs.rmSync(path.join(root, relative), { recursive: true, force: true })
-    console.log(`✓ ${suyo.length} ruta(s) de Cauce quitadas de ${root}`)
-    return console.log('  tu repositorio queda donde está: en modo embebido la instancia era él mismo.')
-  }
-  const adentro = process.cwd() === root || process.cwd().startsWith(`${root}${path.sep}`)
-  fs.rmSync(root, { recursive: true, force: true })
-  console.log(`✓ ${root} borrado`)
-  // Correrlo desde adentro es lo natural —ahí está `tools/ops.js`— y deja la terminal en un directorio
-  // que ya no existe: el próximo comando falla con un `getcwd` que no dice nada de esto.
-  if (adentro) console.log('  tu terminal quedó en esa carpeta: hacé "cd .." antes del próximo comando.')
-}
-
-// Actualiza sólo lo que el toolkit declara suyo. Todo lo demás —planning, organization, reglas
-// propias, agentes editados— queda intacto por construcción, no por comparación.
-function upgrade(dir, cli) {
-  const root = path.resolve(dir || '.')
-  if (!fs.existsSync(path.join(root, 'ops.config.json'))) {
-    fail(`${root} no es una instancia de Cauce: falta ops.config.json.`, 2)
-  }
-  // Acá se fabrica Cauce: `upgrade` reemplazaría con las copias de `template/` los archivos que este
-  // repositorio mantiene en la raíz —`AGENTS.md` entre ellos, que es donde vive esta misma regla—.
-  if (O.mode(root) === 'toolkit') {
-    fail(`${root} es el toolkit: acá se edita Cauce, no se lo actualiza.`, 2)
-  }
-  const dry = cli.has('--check')
-  const force = cli.has('--force')
-  const from = instanceVersion(root)
-  const to = require(path.join(PROJECT_ROOT, 'package.json')).version
-  const system = O.systemPaths(root)
-  const changed = O.localChanges(root)
-  const overrides = O.overrides(root)
-
-  if (dry) {
-    if (from === to) {
-      // Contra el motor instalado, no contra lo publicado: la comparación es local y sin red. Decirlo
-      // importa porque `init` fija la versión exacta, así que el motor no se mueve solo y esta línea,
-      // a secas, se leía como «no hay nada nuevo» durante todas las versiones siguientes.
-      console.log(`= ${to}: la instancia está al día con el motor instalado`)
-      return console.log('  para traer una versión más nueva: npm install --save-dev @ingeniomaps/cauce@latest')
-    }
-    // Hacia atrás también es legítimo —una versión rompió algo y se vuelve—, pero anunciarlo como «hay
-    // una versión más nueva» era mentir con el número a la vista. Y lo que corresponde imprimir es lo
-    // contrario: no lo que se gana, sino lo que se deja.
-    if (CL.compare(to, from) < 0) {
-      console.log(`↩ volvés a ${to} desde ${from}. Esto es lo que dejás de tener:`)
-      printChangelog(to, from)
-    } else {
-      console.log(`⚠ hay una versión más nueva: ${to} (la instancia tiene ${from || 'una previa'})`)
-      printChangelog(from, to)
-    }
-    for (const file of changed) console.log(`  editado localmente: ${file}`)
-    process.exit(1)
-  }
-
-  // Antes de retirar nada, comprobar que no se lleve puesto aprendizaje acumulado.
-  const rescatar = O.retiredWithLearning(root)
-  if (rescatar.length && !force) {
-    for (const file of rescatar) console.error(`✗ ${file}`)
-    fail(
-      `\n${rescatar.length} archivo(s) de aprendizaje quedaron en una ruta que Cauce ya no mantiene.\n\n` +
-      'Movelos a un cargo propio en agents/roles/<slug>/learning/ y repetí, o descartalos con --force.',
-    )
-  }
-
-  if (changed.length && !force) {
-    for (const file of changed) console.error(`✗ ${file}`)
-    // Tres clases distintas, y antes eran dos: todo lo que no vivía bajo `system/` recibía el consejo
-    // del runtime, así que editar el protocolo respondía con cómo desactivar un guard. Cada una tiene
-    // su salida y decirle la ajena manda a buscar una configuración que no existe.
-    const reglas = changed.filter((file) => file.includes('/system/'))
-    const runtime = changed.filter((file) => !file.includes('/system/')
-      && O.RUNTIME_PATHS.some((base) => file.startsWith(`${base}/`)))
-    const documentos = changed.filter((file) => !reglas.includes(file) && !runtime.includes(file))
-    const guia = []
-    if (reglas.length) {
-      guia.push(
-        'Las reglas y decisiones bajo system/ son del toolkit. Para cambiar una, escribí la tuya al\n'
-        + 'lado con el mismo ID: el proyecto manda y `check` lo reporta como override explícito.',
-      )
-    }
-    if (runtime.length) {
-      guia.push(
-        'El runtime es del toolkit: en vez de editarlo, agregá lo tuyo al lado con otro nombre —un\n'
-        + 'guard propio sobrevive a cada actualización— y registralo en la configuración de tu runner,\n'
-        + 'que sí es del proyecto. Para desactivar un guard alcanza con quitarlo de esa configuración.',
-      )
-    }
-    if (documentos.length) {
-      guia.push(
-        'Esos documentos son del toolkit y no llevan una línea de la empresa: se reemplazan enteros en\n'
-        + 'cada actualización para que las mejoras lleguen. Lo que tu proyecto decide distinto va donde sí\n'
-        + 'es suyo —una ADR propia, una regla propia, o `planning/delivery/project.md` para la entrega—.',
-      )
-    }
-    fail(
-      `\n${changed.length} archivo(s) que mantiene Cauce fueron editados y se perderían.\n\n` +
-      `${guia.join('\n\n')}\n\nSi el cambio ya no te sirve, repetí con --force para descartarlo.`,
-    )
-  }
-
-  for (const relative of [...system, ...O.RUNTIME_PATHS]) {
-    const origin = path.join(PROJECT_ROOT, O.sourceOf(relative))
-    if (!fs.existsSync(origin)) continue
-    const target = path.join(root, relative)
-    // Sobrescribe lo que trae el paquete y deja intacto lo demás: un guard propio de la empresa,
-    // o un adaptador de runner que el toolkit no conoce, sobreviven a la actualización.
-    if (fs.statSync(origin).isDirectory()) copyRuntime(origin, target, false, root)
-    else {
-      F.assertNoSymlinkPath(root, target)
-      F.atomicWrite(target, fs.readFileSync(origin, 'utf8'))
-      // El modo también viene del paquete: `tools/ops.js` tiene shebang y sin esto cada upgrade lo
-      // dejaba sin permiso de ejecución, con el cambio de modo apareciendo en el diff de la empresa.
-      fs.chmodSync(target, fs.statSync(origin).mode & 0o777)
-    }
-  }
-
-  // Retirar lo que el toolkit ya no distribuye, después de haber actualizado lo que sí.
-  const retirado = []
-  for (const relative of O.RETIRED) {
-    const target = path.join(root, relative)
-    if (!fs.existsSync(target)) continue
-    F.assertNoSymlinkPath(root, target)
-    fs.rmSync(target, { recursive: true, force: true })
-    retirado.push(relative)
-  }
-
-  // Dejar registrado lo que se entregó, para poder distinguir después una edición local de una
-  // mejora del toolkit.
-  let registro = M.read(root)
-  for (const relative of O.trackedPaths()) {
-    const dir = path.join(root, relative)
-    if (fs.existsSync(dir)) registro = M.record(root, relative, O.treeFiles(dir), registro)
-  }
-  registro = M.recordPaths(root, O.SYSTEM_FILES, registro)
-  // El registro de forks se poda igual que el de archivos: un cargo devuelto al catálogo deja su
-  // entrada, y una entrada sin copia sólo puede producir avisos sobre algo que no está.
-  const vivos = Object.fromEntries(Object.entries(M.readForks(root)).filter(
-    ([slug, record]) => fs.existsSync(path.join(root, 'agents', (record || {}).type || 'roles', slug)),
-  ))
-  M.write(root, M.prune(root, registro), null, vivos)
-
-  const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
-  config.cauceVersion = to
-  F.atomicWriteJson(path.join(root, 'ops.config.json'), config)
-
-  console.log(`✓ Cauce ${from || '(previa)'} → ${to}`)
-  // Descartar con --force es legítimo; hacerlo sin dejar rastro no. Queda en la salida del comando,
-  // que es la evidencia que el protocolo pide para cualquier cambio.
-  for (const file of changed) console.log(`− descartado tu cambio en ${file}`)
-  for (const relative of retirado) console.log(`− retirado ${relative}: Cauce ya no lo distribuye`)
-  printChangelog(from, to)
-  console.log(`  ${system.length} ruta(s) del sistema y ${O.RUNTIME_PATHS.length} del runtime actualizadas`)
-  for (const override of overrides) {
-    console.log(`= conservado ${override.collection}/${override.project}: sobrescribe ${override.system}`)
-  }
-  console.log('  planning, organization y todo lo propio quedaron intactos')
-  // No se borra: sin la dependencia declarada, quitarle `.ops/` la dejaría sin motor. Se avisa y
-  // decide una persona.
-  if (fs.existsSync(path.join(root, '.ops', 'engine'))) {
-    console.log('\n⚠ esta instancia tiene el motor vendorizado en .ops/, que Cauce ya no distribuye.')
-    console.log('  Corré "npm install" para tenerlo como dependencia y después borrá .ops/ a mano.')
-  }
-  // El wiring del runner no se actualiza solo: vive fuera de la instancia y lo escribe otro comando.
-  // Sin este recordatorio, una mejora en un workflow o en el catálogo se queda en el paquete.
-  const runners = Object.keys(M.readRunners(root))
-    .map((key) => key.split('/')[0])
-    .filter((name, index, all) => all.indexOf(name) === index)
-  for (const name of runners) {
-    console.log(`  reinstalá tu runner para que el wiring quede al día: make install-${name}`)
-  }
-  // Después de aplicar, no antes: recién acá el paquete tiene la versión nueva y la comparación dice
-  // algo. Es además el momento en que alguien está mirando qué le trajo la actualización.
-  const FK = require('../agents/fork')
-  for (const entry of FK.drift(root)) console.log(`  ⚠ ${FK.driftLine(entry)}`)
-}
-
 // La raíz ops de un comando que no la recibe. El shim `tools/ops.js` la exporta porque sabe dónde
 // vive: sin eso, invocarlo desde otra carpeta —lo normal en sidecar— la resolvía contra el cwd.
 function opsRoot(dir) {
@@ -1011,12 +643,12 @@ const INTEGRATION = {
   enable: {
     falta: 'Falta <provider>.',
     run: (root, provider) => {
-      const source = path.join(PROJECT_ROOT, 'template', 'integrations', provider)
+      const source = path.join(IN.PROJECT_ROOT, 'template', 'integrations', provider)
       if (!fs.existsSync(source)) fail(`Cauce no trae un adaptador para ${provider}.`, 2)
       // Habilitar no es inicializar: repone lo que falte y conserva lo que ya esté. Una instancia que
       // trae el andamiaje de una versión anterior —o que ya tiene snapshots— sólo quiere el interruptor.
       providerRegistry(root)
-      copyTemplate(source, path.join(root, 'integrations', provider), {}, true)
+      IN.copyTemplate(source, path.join(root, 'integrations', provider), {}, true)
       switchProvider(root, provider, true)
       console.log(`✓ ${provider}: conectado al proyecto y andamiaje en integrations/${provider}/.`)
       // Sólo se pide lo que falta: reencender un proveedor ya configurado no debería mandar a
@@ -1289,8 +921,8 @@ async function run(cli) {
   else if (command === 'check') check(arg[1], cli)
   else if (command === 'tree') tree(arg[1], cli)
   else if (command === 'context') context(arg[1], cli)
-  else if (command === 'upgrade') upgrade(arg[1], cli)
-  else if (command === 'destroy') destroy(arg[1], cli)
+  else if (command === 'upgrade') IN.upgrade(arg[1], cli)
+  else if (command === 'destroy') IN.destroy(arg[1], cli)
   else if (command === 'agents') agents(arg[1], arg[2], arg[3], cli)
   else if (command === 'archive') archive(arg[1], arg[2])
   else if (command === 'integration') {
