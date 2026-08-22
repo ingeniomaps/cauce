@@ -85,8 +85,8 @@ function check(dir, cli) {
   const FK = require('../agents/fork')
   for (const entry of FK.drift(path.resolve(root, '..'))) warnings.push(FK.driftLine(entry))
 
-  warnings.push(...OB.seccionesPerdidas(path.resolve(root, '..')))
-  warnings.push(...OB.credencialesSinDueño(path.resolve(root, '..')))
+  warnings.push(...OB.missingSections(path.resolve(root, '..')))
+  warnings.push(...OB.orphanCredentials(path.resolve(root, '..')))
 
   if (cli.has('--json')) {
     console.log(JSON.stringify({

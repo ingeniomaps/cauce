@@ -71,7 +71,7 @@ function guide(root, services = []) {
   }
 }
 
-function seccionesPerdidas(root) {
+function missingSections(root) {
   const avisos = []
   const molde = path.join(PACKAGE_ROOT, 'template', 'organization')
   for (const name of ['company.md', 'product.md', 'domains.md']) {
@@ -95,7 +95,7 @@ function seccionesPerdidas(root) {
 // hay detrás. Una variable sin dueño no rompe nada hoy; rompe el día que alguien tiene que desplegar.
 //
 // Sólo cuando la instancia ya tiene contexto escrito: antes del arranque no hay dónde estuvieran.
-function credencialesSinDueño(root) {
+function orphanCredentials(root) {
   if (guide(root).fresh) return []
   const contratos = ['AGENTS.md', path.join('planning', 'HUMAN_ACTIONS.md')]
     .map((file) => { try { return fs.readFileSync(path.join(root, file), 'utf8') } catch { return '' } })
@@ -115,8 +115,8 @@ function credencialesSinDueño(root) {
 }
 
 module.exports = {
-  seccionesPerdidas,
-  credencialesSinDueño,
+  missingSections,
+  orphanCredentials,
   guide,
   OPENING,
   DIMENSIONS,

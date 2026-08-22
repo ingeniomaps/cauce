@@ -366,11 +366,11 @@ function check(root) {
       : `automatization/hooks/${file}: quedó atrás del paquete y ya no protege lo que dice; `
         + 'corré `cauce upgrade` antes de instalar el runner')
   }
-  for (const name of RUNNER_NAMES) validateRunner(root, name, errors)
+  for (const name of RUNNER_NAMES) validateRunnerManifest(root, name, errors)
   return errors
 }
 
-function validateRunner(root, name, errors) {
+function validateRunnerManifest(root, name, errors) {
   try {
     const runner = runnerManifest(root, name)
     if (runner.name !== name || runner.schemaVersion !== 1
