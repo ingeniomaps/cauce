@@ -7,6 +7,15 @@ const path = require('node:path')
 
 const EPIC_STATES = ['open', 'active', 'closed']
 
+// Vocabulario común de paradas. Una parada sin nombre obliga a quien la recibe —persona, supervisor o
+// workflow— a reconstruir del estado entero qué pasó, y es lo primero que se pierde cuando cada runner
+// inventa su propia frase. `context` emite las dos que puede determinar solo; el resto las nombra la
+// fase que para.
+const STOP_REASONS = [
+  'awaiting-review', 'blocked-on-human', 'not-ready', 'plan-rejected', 'review-unresolved',
+  'verify-regression', 'verify-inconsistent', 'qa-failed', 'commit-failed', 'budget-low',
+]
+
 // El contrato de una línea de BACKLOG, en un solo lugar: lo usa el lector para armar la cola y el
 // validador para rechazar lo que el lector va a descartar. Separados, el validador aprobaba la forma
 // que el lector no leía, que es la manera más cara de tener las dos cosas.
@@ -242,7 +251,8 @@ function readInbox(dir) {
 }
 
 module.exports = {
-  EPIC_STATES, HUMAN_ACTION_STATES, LANES, MILESTONE_HEADING, TASK_LINE, TASK_LINE_ANY_LANE,
+  EPIC_STATES, HUMAN_ACTION_STATES, LANES, MILESTONE_HEADING, STOP_REASONS,
+  TASK_LINE, TASK_LINE_ANY_LANE,
   read, withoutComments, frontmatter, readEpics, readBacklog, readDone, readWip,
   readInbox, readHumanActions,
 }

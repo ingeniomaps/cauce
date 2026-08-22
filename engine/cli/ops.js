@@ -757,7 +757,9 @@ function context(dir, cli) {
   const epic = task ? state.epics.find((candidate) => candidate.num === task.epic) : null
   const criteria = epic ? epic.criteria.filter((criterion) => task.criteria.includes(criterion.id)) : []
   const report = {
-    blocked: fs.existsSync(gate) ? 'awaiting-review' : '',
+    // Toda la cola trabada por una persona no es lo mismo que no tener cola, y decir lo segundo manda a
+    // buscar trabajo que no existe en vez de a resolver la fila que lo destraba.
+    blocked: fs.existsSync(gate) ? 'awaiting-review' : (!task && skipped.length ? 'blocked-on-human' : ''),
     task: task && {
       slug: task.slug, hito: task.hito, tier: task.tier, cast: task.cast, service: task.service,
       // Una tarea puede heredar su aceptación del criterio citado; el runner necesita el texto, no la cita.
@@ -773,9 +775,13 @@ function context(dir, cli) {
   }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
 
-  if (report.blocked) {
+  if (report.blocked === 'awaiting-review') {
     const first = P.read(gate).split('\n').find((line) => line.trim() && !line.startsWith('#')) || ''
     return console.log(`BLOCKED  awaiting-review — ${first.trim()}`)
+  }
+  if (report.blocked === 'blocked-on-human') {
+    const row = humanActions.find((action) => skipped.includes(action.task)) || humanActions[0]
+    return console.log(`BLOCKED  blocked-on-human — ${row.task}: ${row.action}`)
   }
   if (!report.task) return console.log('TASK   (sin tarea disponible)')
   console.log(`TASK   ${report.task.slug}${report.task.tier ? ` [${report.task.tier}]` : ''}` +

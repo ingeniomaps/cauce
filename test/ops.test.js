@@ -1674,3 +1674,50 @@ test('un lane que no existe se nombra, no se descarta', () => {
     `el error nombra el lane y el vocabulario: ${JSON.stringify(result.errors)}`,
   )
 })
+
+// Una parada sin nombre obliga a leer el estado entero para saber qué pasó, y en la salida de texto
+// era indistinguible de no tener trabajo: `TASK (sin tarea disponible)` decía lo mismo con la cola
+// vacía que con toda la cola trabada por una persona. El vocabulario es el que ya usan las instancias
+// que venían de antes, y vive en el motor para que la prosa del protocolo no se le despegue.
+test('una parada se nombra con el vocabulario del protocolo', () => {
+  const P = require('../engine/planning/parser')
+  const protocolo = fs.readFileSync(
+    path.resolve(__dirname, '..', 'template', 'planning', 'PROTOCOL.md'), 'utf8',
+  )
+  const seccion = protocolo.split(/^##\s+/m).find((parte) => /^Razones de parada/.test(parte))
+  assert.ok(seccion, 'PROTOCOL.md documenta las razones de parada')
+  const documentadas = [...seccion.matchAll(/`([a-z]+(?:-[a-z]+)+)`/g)].map((match) => match[1])
+  assert.deepEqual(
+    [...new Set(documentadas)].sort(),
+    [...P.STOP_REASONS].sort(),
+    'la prosa y el motor enumeran el mismo vocabulario',
+  )
+
+  const base = tempRoot('cauce-parada-')
+  const planning = path.join(base, 'planning')
+  fs.cpSync(path.resolve(__dirname, '..', 'template', 'planning'), planning, { recursive: true })
+  fs.writeFileSync(path.join(planning, 'BACKLOG.md'), `# Backlog promovido
+
+## Hito alta — Alta de cuenta
+
+- [ ] **alta-email-nuevo** [lite] — Crear la cuenta. _Aceptación: 201 y login._ (service: api)
+`)
+
+  const vacio = run(['context', planning])
+  assert.match(vacio.stdout, /^TASK\s+alta-email-nuevo/m, 'sin bloqueos, entrega la tarea')
+
+  fs.writeFileSync(path.join(planning, 'HUMAN_ACTIONS.md'), `# Acciones humanas
+
+| Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |
+|---|---|---|---|
+| alta-email-nuevo | pendiente | Ready | Crear la cuenta SMTP y dejar el token en \`.env\`. |
+`)
+  const trabado = run(['context', planning])
+  assert.match(trabado.stdout, /^BLOCKED\s+blocked-on-human — alta-email-nuevo: Crear la cuenta SMTP/m)
+  assert.equal(JSON.parse(run(['context', planning, '--json']).stdout).blocked, 'blocked-on-human')
+
+  fs.writeFileSync(path.join(planning, 'BACKLOG.md'), '# Backlog promovido\n')
+  assert.match(run(['context', planning]).stdout, /^TASK\s+\(sin tarea disponible\)/m,
+    'la cola vacía sigue siendo otra cosa que una cola trabada')
+  assert.equal(JSON.parse(run(['context', planning, '--json']).stdout).blocked, '')
+})

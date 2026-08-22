@@ -77,3 +77,16 @@ chequeo de permisos es `full`, y un componente entero de presentación puede ser
 8. No push, amend, force, deploy o escritura externa sin autorización explícita.
 9. Todo gate manual dice qué pasó, qué debe hacer la persona y cómo continuar.
 10. El repositorio de código, no planning, es dueño del commit de producto.
+
+## Razones de parada
+
+Toda parada se nombra con una de éstas, en cualquier runner:
+
+`awaiting-review` · `blocked-on-human` · `not-ready` · `plan-rejected` · `review-unresolved` ·
+`verify-regression` · `verify-inconsistent` · `qa-failed` · `commit-failed` · `budget-low`
+
+Y deja el estado consistente: la tarea sin marcar, el WIP activo si es resumible, y —si necesita a una
+persona— la fila en `HUMAN_ACTIONS.md` o el `AWAITING_REVIEW.md` ya escritos.
+
+`ops context` emite las dos que puede determinar solo, `awaiting-review` y `blocked-on-human`; las
+demás las nombra la fase que para, que es la única que sabe por qué.
