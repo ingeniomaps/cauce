@@ -5,7 +5,8 @@
 - `system/process.md` — R1..R4, R16, R17: planificación, alcance, review y sincronización de estado.
 - `system/code-shape.md` — R5..R7, R11, R18: simplicidad y forma del cambio.
 - `system/commits.md` — R8..R10: historia versionada y entrega.
-- `system/conduct.md` — R12..R15: trato con sistemas externos y obligación de entregar al negarse.
+- `system/conduct.md` — R12..R15, R19: trato con sistemas externos, lo que llega de ellos, y la
+  obligación de entregar al negarse.
 
 El número es el identificador: una regla se cita por él desde un cargo, un workflow o una entrada de
 DONE, y por eso no se reordena ni se reusa.
