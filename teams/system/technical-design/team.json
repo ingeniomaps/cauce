@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "slug": "technical-design",
+  "name": "Technical Design",
+  "purpose": "Convertir un cambio ya decidido en un diseño técnico firmado, con cada disciplina que lo toca revisándolo en paralelo y la seguridad auditando encima de todas.",
+  "outcome": "report",
+  "entryAgent": "software-architect",
+  "facilitator": "technical-program-manager",
+  "decisionOwners": {
+    "boundaries_and_contracts": "software-architect",
+    "data_ownership_and_migration": "database-administrator",
+    "security_findings": "security-engineer"
+  },
+  "conditionalAgents": [
+    "mobile-engineer",
+    "site-reliability-engineer",
+    "privacy-compliance-specialist",
+    "finops-engineer"
+  ],
+  "stages": [
+    {
+      "id": "frame",
+      "phase": "discovery",
+      "agent": "software-architect",
+      "dependsOn": [],
+      "produces": [
+        "change-scope-and-boundaries",
+        "questions-each-discipline-must-answer"
+      ],
+      "exitGate": "Está escrito qué cambia, qué límites y contratos toca, qué queda explícitamente fuera, y qué tiene que responder cada disciplina. Sin esa lista, la ronda paralela produce tres opiniones sobre cosas distintas."
+    },
+    {
+      "id": "service",
+      "phase": "discovery",
+      "agent": "backend-engineer",
+      "dependsOn": ["frame"],
+      "produces": [
+        "service-impact",
+        "contract-and-compatibility-risks"
+      ],
+      "exitGate": "Dice qué endpoints, jobs y autorizaciones cambian, y cuáles de esos cambios rompen un contrato público. Lo que no puede establecer sin abrir el código queda dicho, no supuesto."
+    },
+    {
+      "id": "data",
+      "phase": "discovery",
+      "agent": "database-administrator",
+      "dependsOn": ["frame"],
+      "produces": [
+        "schema-and-migration-path",
+        "operational-risks"
+      ],
+      "exitGate": "El camino de migración es reversible o dice por qué no lo es, y nombra el impacto en backups, réplicas y ventana de bloqueo. Una migración sin vuelta atrás declarada es un hallazgo, no un detalle."
+    },
+    {
+      "id": "interface",
+      "phase": "discovery",
+      "agent": "frontend-engineer",
+      "dependsOn": ["frame"],
+      "produces": [
+        "client-impact",
+        "states-and-accessibility-risks"
+      ],
+      "exitGate": "Dice qué consume del contrato que cambia, qué estados nuevos aparecen —vacío, error, carga, permiso denegado— y qué queda sin diseño. Si el cambio no toca cliente, lo dice y esa es su entrega."
+    },
+    {
+      "id": "audit",
+      "phase": "discovery",
+      "agent": "security-engineer",
+      "dependsOn": ["service", "data", "interface"],
+      "produces": [
+        "threat-model-delta",
+        "controls-to-verify"
+      ],
+      "exitGate": "Revisó las tres entregas juntas y no cada una por separado: los hallazgos que importan aparecen entre disciplinas —un dato que el servicio expone, el cliente cachea y la migración replica—. Cada control nombra cómo se comprueba."
+    },
+    {
+      "id": "decide",
+      "phase": "discovery",
+      "agent": "software-architect",
+      "dependsOn": ["audit"],
+      "produces": [
+        "architecture-decision",
+        "unresolved-frictions"
+      ],
+      "exitGate": "El ADR dice qué se decidió, qué se descartó y por qué. Lo que las disciplinas no resolvieron entre sí queda nombrado con quién lo decide, no promediado en una redacción que contente a todos."
+    }
+  ],
+  "guardrails": [
+    "Cada agente conserva los límites y autorizaciones de su SKILL.md.",
+    "Las tres disciplinas de la ronda paralela responden la pregunta que el encuadre les hizo; no negocian entre sí ni ajustan su hallazgo para que cierre con el de otra.",
+    "La seguridad audita al final y sobre el conjunto, no en paralelo: un hallazgo entre disciplinas no se ve mirando una sola.",
+    "La seguridad no aprueba ni certifica; entrega hallazgos y cómo comprobarlos.",
+    "Un diseño firmado no autoriza a construir: la promoción del trabajo es una decisión humana aparte.",
+    "Los agentes condicionales entran por plataforma, dato regulado o costo, no por rutina."
+  ],
+  "completion": [
+    "El ADR distingue lo verificado de lo supuesto, y cada supuesto dice qué lo confirmaría.",
+    "Cada fricción sin resolver queda con su dueño de decisión nombrado.",
+    "Los hallazgos de seguridad quedan con el control que los cierra y cómo se comprueba.",
+    "Lo que ninguna disciplina pudo establecer sin abrir código o datos queda escrito como tal.",
+    "Si el diseño concluye que el cambio no se debe hacer así, ése es un resultado válido y queda registrado con su razón."
+  ]
+}
