@@ -819,3 +819,62 @@ test('las filas de ejemplo comentadas no son acciones humanas', () => {
   const plantilla = path.resolve(__dirname, '..', 'template', 'planning')
   assert.deepEqual(P.readHumanActions(plantilla), [], 'la plantilla no trae ninguna acción abierta')
 })
+
+// Una viñeta bajo un hito que no cumple el contrato de tarea no la lee nadie: ni `check`, ni `tree`,
+// ni el runner que busca trabajo. El motor ya rechaza por esto la épica mal nombrada —«nadie lo lee»—
+// y el BACKLOG no tenía la red: dos tareas escritas daban cero en cola y cero errores.
+test('una línea de BACKLOG que nadie puede leer es un error, no un silencio', () => {
+  const root = tempRoot('ops-backlog-')
+  const escribir = (cuerpo) => fs.writeFileSync(path.join(root, 'BACKLOG.md'), cuerpo)
+  const errores = () => PC.validateBacklogStructure(root)
+
+  escribir(`# Backlog promovido
+
+Solo contiene trabajo aprobado y listo. Las ideas viven en \`INBOX.md\`.
+
+- una viñeta de prosa fuera de todo hito no es una tarea
+
+## Hito alta — Alta de cuenta
+
+- [ ] **alta-email-nuevo** [lite] — Crear la cuenta. (→ C1) (epic: 001) (service: api)
+`)
+  assert.deepEqual(errores(), [], 'la forma canónica pasa, y la prosa fuera de un hito no se juzga')
+
+  escribir(`# Backlog promovido
+
+## Hito alta — Alta de cuenta
+
+- [ ] **alta-email-nuevo** [lite] (→ C1) (epic: 001) — Crear la cuenta. (service: api)
+`)
+  const refs = errores()
+  assert.equal(refs.length, 1)
+  assert.match(refs[0], /BACKLOG hito alta: no la lee nadie/)
+  assert.match(refs[0], /alta-email-nuevo/, 'el error cita la línea que se pierde')
+
+  escribir(`# Backlog promovido
+
+## Hito alta — Alta de cuenta
+
+- [x] **alta-email-nuevo** [lite] — Crear la cuenta. (service: api)
+`)
+  assert.match(errores()[0], /se mueve a DONE\.md/, 'tildar en el backlog borra la tarea del sistema')
+
+  escribir(`# Backlog promovido
+
+## Hito alta
+
+- [ ] **alta-email-nuevo** [lite] — Crear la cuenta. (service: api)
+`)
+  const encabezado = errores()
+  assert.match(encabezado[0], /## Hito <slug> — <T[ií]tulo>/, 'el hito sin título deja sus tareas huérfanas')
+
+  escribir(`# Backlog promovido
+
+## Hito alta — Alta de cuenta
+
+<!--
+- [ ] **slug-de-tarea** [full] — Resultado. _Aceptación: conducta observable._ (service: ruta)
+-->
+`)
+  assert.deepEqual(errores(), [], 'el ejemplo comentado enseña el formato sin ser juzgado')
+})

@@ -525,6 +525,7 @@ function check(dir, cli) {
   const done = P.readDone(root)
   errors.push(...B.validate(path.join(root, 'business-rules')))
   errors.push(...PC.validateRoadmapStructure(root))
+  errors.push(...PC.validateBacklogStructure(root))
   const backlog = milestones.flatMap((milestone) => milestone.tasks)
   const backlogSlugs = new Set(backlog.map((task) => task.slug))
   const epicNums = new Set()

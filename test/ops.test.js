@@ -1626,3 +1626,51 @@ test('archive human-actions saca las filas resueltas y conserva todo lo demás',
     'lo que quedó y lo que se archivó siguen siendo válidos',
   )
 })
+
+// El lane estaba escrito en cuatro lugares y ninguno era el dueño: el regex del parser, el contrato y
+// las descripciones del PROTOCOL, y dos schemas más el prompt del clasificador en el workflow. Un
+// workflow corre en sandbox y no puede importar el motor, así que la única atadura posible es ésta:
+// el motor manda y el test falla cuando una copia se despega.
+test('el vocabulario de lanes tiene un dueño y las copias no se despegan', () => {
+  const P = require('../engine/planning/parser')
+  assert.deepEqual(P.LANES, ['express', 'directo', 'lite', 'full'], 'en orden de ceremonia creciente')
+
+  const raiz = path.resolve(__dirname, '..')
+  const protocolo = fs.readFileSync(path.join(raiz, 'template', 'planning', 'PROTOCOL.md'), 'utf8')
+  assert.ok(protocolo.includes(`[${P.LANES.join('|')}]`), 'el contrato de tarea enumera los lanes')
+  const seccion = protocolo.split(/^##\s+/m).find((parte) => /^Lanes/.test(parte))
+  const descritos = [...seccion.matchAll(/^- `([a-z]+)`/gm)].map((match) => match[1])
+  assert.deepEqual(descritos, P.LANES, 'y cada uno tiene su criterio escrito, en el mismo orden')
+
+  const workflow = fs.readFileSync(path.join(raiz, 'automatization', 'workflows', 'autobuild.js'), 'utf8')
+  const enums = [...workflow.matchAll(/enum:\s*\[([^\]]*)\]/g)]
+    .map((match) => match[1].split(',').map((item) => item.trim().replace(/^'|'$/g, '')))
+    .filter((values) => values.includes('express'))
+  assert.equal(enums.length, 2, 'los dos schemas que aceptan un lane')
+  for (const values of enums) {
+    assert.deepEqual(values.filter(Boolean), P.LANES, 'cada schema enumera los mismos lanes')
+  }
+  for (const lane of P.LANES) {
+    assert.ok(workflow.includes(`\`${lane}\``), `el prompt del clasificador nombra ${lane}`)
+  }
+})
+
+// Un tag desconocido no matchea el contrato de tarea, así que la tarea desaparecía de la cola. Ahora
+// falla, y dice cuál es el vocabulario en vez de mandar a comparar la línea contra un regex.
+test('un lane que no existe se nombra, no se descarta', () => {
+  const base = tempRoot('cauce-lane-')
+  const planning = path.join(base, 'planning')
+  fs.cpSync(path.resolve(__dirname, '..', 'template', 'planning'), planning, { recursive: true })
+  fs.writeFileSync(path.join(planning, 'BACKLOG.md'), `# Backlog promovido
+
+## Hito alta — Alta de cuenta
+
+- [ ] **alta-email-nuevo** [urgente] — Crear la cuenta. _Aceptación: 201 y login._ (service: api)
+`)
+  const result = JSON.parse(run(['check', planning, '--json']).stdout)
+  assert.equal(result.ok, false)
+  assert.ok(
+    result.errors.some((error) => /lane "urgente" no existe; usá express \| directo \| lite \| full/.test(error)),
+    `el error nombra el lane y el vocabulario: ${JSON.stringify(result.errors)}`,
+  )
+})

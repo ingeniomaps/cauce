@@ -2,6 +2,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const P = require('./parser')
 
 const TEST_TRACE = /^(?:n\/a\s*[—-]\s*.+|(?:A|C\d+)\s*(?:→|->)\s*\S.+)$/i
 const DECISION_TRACE = /\[(?:fuente|supuesto):\s*[^\]]+\]/i
@@ -88,7 +89,44 @@ function validateRoadmapStructure(dir) {
   return errors
 }
 
+// El BACKLOG es la única cola, y su lector descarta en silencio lo que no cumple el contrato: una
+// viñeta mal escrita no está en cola, no aparece en `tree` y no la toma nadie, sin que nada falle.
+// Se juzga sólo lo que vive bajo un hito —el encabezado del archivo es prosa— y sólo las viñetas,
+// para no confundir con un error el texto que acompaña a una tarea.
+function validateBacklogStructure(dir) {
+  const text = P.withoutComments(P.read(path.join(dir, 'BACKLOG.md')))
+  const errors = []
+  let hito = ''
+  for (const line of text.split('\n')) {
+    const heading = line.match(P.MILESTONE_HEADING)
+    if (heading) { hito = heading[1]; continue }
+    if (/^##\s+Hito\b/.test(line)) {
+      errors.push(`BACKLOG "${line.trim()}": encabezado inválido; se escribe ## Hito <slug> — <Título>, `
+        + 'y sin él las tareas que vienen abajo quedan huérfanas')
+      hito = ''
+      continue
+    }
+    if (/^##\s+/.test(line)) { hito = ''; continue }
+    if (!hito || !/^\s*[-*]\s+\S/.test(line) || P.TASK_LINE.test(line)) continue
+    const lane = line.match(P.TASK_LINE_ANY_LANE)
+    if (lane) {
+      errors.push(`BACKLOG ${lane[1].trim()}: lane "${lane[2]}" no existe; usá ${P.LANES.join(' | ')}, `
+        + 'o dejá la tarea sin clasificar')
+      continue
+    }
+    const at = `BACKLOG hito ${hito}: no la lee nadie`
+    if (/^-\s+\[[xX]\]/.test(line)) {
+      errors.push(`${at} — ${line.trim().slice(0, 60)}. Una tarea terminada se mueve a DONE.md, no se tilda acá.`)
+      continue
+    }
+    errors.push(`${at} — ${line.trim().slice(0, 60)}. Una tarea se escribe `
+      + '`- [ ] **slug** [lane] — descripción`, con `(→ CN) (epic: NNN)` o `_Aceptación:_` después del guión.')
+  }
+  return errors
+}
+
 module.exports = {
+  validateBacklogStructure,
   validDecisionTrace,
   validTestTrace,
   validateDoneEntry,

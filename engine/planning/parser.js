@@ -7,6 +7,22 @@ const path = require('node:path')
 
 const EPIC_STATES = ['open', 'active', 'closed']
 
+// El contrato de una línea de BACKLOG, en un solo lugar: lo usa el lector para armar la cola y el
+// validador para rechazar lo que el lector va a descartar. Separados, el validador aprobaba la forma
+// que el lector no leía, que es la manera más cara de tener las dos cosas.
+const MILESTONE_HEADING = /^##\s+Hito\s+([^\s]+)\s+[—-]\s+(.+)$/
+
+// Los carriles, en orden de ceremonia creciente. El orden es parte del vocabulario: la prosa que los
+// describe va de menos a más y `check` lo contrasta, porque un carril leído fuera de orden se elige por
+// su nombre y no por su criterio.
+const LANES = ['express', 'directo', 'lite', 'full']
+const TASK_LINE = new RegExp(
+  String.raw`^-\s+\[\s\]\s+\*\*([^*]+)\*\*\s*(?:\[(${LANES.join('|')})\])?\s+[—-]\s+(.+)$`,
+)
+// Lo mismo con cualquier tag: distingue el lane inexistente de la línea sin lane, que es un estado
+// legítimo. Sin esa diferencia las dos caían en «no la lee nadie» y la corrección no era la misma.
+const TASK_LINE_ANY_LANE = /^-\s+\[\s\]\s+\*\*([^*]+)\*\*\s*\[([^\]]+)\]\s+[—-]\s+/
+
 function read(file) {
   try { return fs.readFileSync(file, 'utf8') } catch { return '' }
 }
@@ -114,14 +130,14 @@ function readBacklog(dir) {
   const milestones = []
   let current = null
   for (const line of text.split('\n')) {
-    const heading = line.match(/^##\s+Hito\s+([^\s]+)\s+[—-]\s+(.+)$/)
+    const heading = line.match(MILESTONE_HEADING)
     if (heading) {
       current = { slug: heading[1], title: heading[2].trim(), heading: line.slice(3), tasks: [] }
       milestones.push(current)
       continue
     }
     if (/^##\s+/.test(line)) current = null
-    const task = line.match(/^-\s+\[\s\]\s+\*\*([^*]+)\*\*\s*(?:\[(express|directo|lite|full)\])?\s+[—-]\s+(.+)$/)
+    const task = line.match(TASK_LINE)
     if (!task || !current) continue
     const rest = task[3]
     current.tasks.push({
@@ -226,6 +242,7 @@ function readInbox(dir) {
 }
 
 module.exports = {
-  EPIC_STATES, HUMAN_ACTION_STATES, read, frontmatter, readEpics, readBacklog, readDone, readWip,
+  EPIC_STATES, HUMAN_ACTION_STATES, LANES, MILESTONE_HEADING, TASK_LINE, TASK_LINE_ANY_LANE,
+  read, withoutComments, frontmatter, readEpics, readBacklog, readDone, readWip,
   readInbox, readHumanActions,
 }
