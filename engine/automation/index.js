@@ -69,7 +69,7 @@ function mergeConfig(current, incoming) {
 // el merge deje exactamente las de esta versión, ni una más.
 const ENTREGADO = /automatization\/hooks\/guard-[a-z-]+\.sh/
 
-function withoutDeliveredHooks(config, vigentes) {
+function withoutDeliveredHooks(config, live) {
   const dropped = []
   const walk = (node) => {
     if (Array.isArray(node)) {
@@ -79,7 +79,7 @@ function withoutDeliveredHooks(config, vigentes) {
           if (!ENTREGADO.test(command)) return true
           // Sólo se anuncia lo que ya no vuelve: una entrada que el merge repone quedó igual, y decir
           // que se quitó y se puso la misma línea es ruido que esconde el caso que sí importa.
-          if (!vigentes.has(command)) dropped.push(command)
+          if (!live.has(command)) dropped.push(command)
           return false
         })
         .map(walk)
@@ -97,20 +97,20 @@ function withoutDeliveredHooks(config, vigentes) {
 // ruta que dejó de existir: el primero se ejecutaba dos veces por herramienta —con `verify`, la suite
 // entera del proyecto dos veces por commit—, y el segundo no se ejecutaba nunca. Decirlo distinto es lo
 // único que le permite a alguien darse cuenta de cuál de los dos tenía.
-function reportarQuitadas(name, dropped, vigentes, output) {
+function reportRemoved(name, dropped, live, output) {
   const wrappers = new Map()
-  const sueltas = []
+  const loose = []
   for (const command of dropped) {
     const hit = supersededGuards().find(
-      (entry) => command.endsWith(entry.file) && [...vigentes].some((v) => v.endsWith(entry.wrapper)),
+      (entry) => command.endsWith(entry.file) && [...live].some((v) => v.endsWith(entry.wrapper)),
     )
     if (hit) wrappers.set(hit.wrapper, [...(wrappers.get(hit.wrapper) || []), hit.file])
-    else sueltas.push(command)
+    else loose.push(command)
   }
   for (const [wrapper, files] of wrappers) {
     output.log(`− ${name}: reemplazado ${[...new Set(files)].join(', ')} por ${wrapper}`)
   }
-  for (const command of sueltas) output.log(`− ${name}: quitada una entrada obsoleta (${command})`)
+  for (const command of loose) output.log(`− ${name}: quitada una entrada obsoleta (${command})`)
 }
 
 function includesConfig(actual, expected) {
@@ -246,7 +246,7 @@ description: ${role.description}
 # ${role.slug}
 
 Leé \`${role.reference}/SKILL.md\` para el contrato completo del cargo: cuándo actuar,
-qué decide, qué no le corresponde y cuál es su entrega mínima. Sus métodos y formatos de salida están
+qué decide, qué no le corresponde y cuál es su entrega mínima. Sus métodos y formatos de output están
 en \`${role.reference}/references/\`.
 
 Esas rutas se resuelven desde este directorio raíz, no desde el repositorio de operaciones: en modo
@@ -266,11 +266,11 @@ function installRoleSkills(root, runner, output) {
   // que se llame como un recorrido lo pisa. Hoy no pasa, y por eso mismo hay que detenerlo acá: el
   // catálogo de una empresa es suyo, nadie le prohíbe un cargo `team`, y el daño sería que `/cauce:team`
   // deje de existir sin que nada falle. Renombrar el cargo es la salida, y sólo la puede tomar alguien.
-  const recorridos = new Set((runner.commands && runner.commands.names) || [])
-  const chocan = roles.filter((role) => recorridos.has(role.slug)).map((role) => role.slug)
-  if (chocan.length) {
+  const teamRuns = new Set((runner.commands && runner.commands.names) || [])
+  const collide = roles.filter((role) => teamRuns.has(role.slug)).map((role) => role.slug)
+  if (collide.length) {
     throw new Error(
-      `${runner.name}: ${chocan.join(', ')} es a la vez un cargo y un recorrido, y comparten `
+      `${runner.name}: ${collide.join(', ')} es a la vez un cargo y un recorrido, y comparten `
       + `${runner.roleSkills}. Renombrá el cargo en agents/roles/ antes de instalar.`,
     )
   }
@@ -445,35 +445,35 @@ function probeBridge(paths, runner) {
   if (!fs.existsSync(script)) return []
   let config = {}
   try { config = JSON.parse(fs.readFileSync(paths.configTarget, 'utf8')) } catch { return [] }
-  const eventos = [...new Set(
+  const hookEvents = [...new Set(
     JSON.stringify(config).match(/hook\.js ([a-z-]+)/g) || [],
   )].map((entrada) => entrada.split(' ')[1])
-  if (!eventos.length) return []
+  if (!hookEvents.length) return []
 
-  const problemas = []
+  const problems = []
   // Desde la raíz y desde una carpeta de adentro: si el runner lanza el hook con otro cwd, la ruta
   // relativa de su configuración deja de resolver y eso hay que verlo acá, no en la primera sesión.
-  const desde = [paths.install, path.dirname(script)]
-  for (const evento of eventos) {
-    for (const cwd of desde) {
+  const sourceRoot = [paths.install, path.dirname(script)]
+  for (const event of hookEvents) {
+    for (const cwd of sourceRoot) {
       const payload = JSON.stringify({ toolCall: { args: { CommandLine: 'ls', Cwd: paths.install } } })
-      const result = spawnSync(process.execPath, [script, evento], { cwd, input: payload, encoding: 'utf8' })
-      let respuesta = {}
-      try { respuesta = JSON.parse((result.stdout || '').trim()) } catch { respuesta = {} }
+      const result = spawnSync(process.execPath, [script, event], { cwd, input: payload, encoding: 'utf8' })
+      let response = {}
+      try { response = JSON.parse((result.stdout || '').trim()) } catch { response = {} }
       // Cada evento tiene su respuesta sana: `stop` cierra la sesión —eso es funcionar— y el resto deja
       // pasar. El puente falla cerrado, así que `deny` en una llamada inocua es que algo se rompió antes
       // de poder juzgarla, y `continue` es el camino de error del propio `stop`.
       // Y sin `reason`: el puente sólo la manda cuando algo falló, así que un `stop` que la trae es
       // una falla de infraestructura que se dejó cerrar la sesión, no un arranque sano.
-      const sana = evento === 'stop' ? 'stop' : 'allow'
-      if (respuesta.decision === sana && !respuesta.reason) continue
-      const salida = (result.stderr || 'sin respuesta').trim().split('\n')[0]
-      const motivo = respuesta.reason
-        || (respuesta.decision ? `respondió ${respuesta.decision}` : salida)
-      problemas.push(`${bridge.target} ${evento} desde ${path.basename(cwd)}/: ${motivo}`)
+      const healthy = event === 'stop' ? 'stop' : 'allow'
+      if (response.decision === healthy && !response.reason) continue
+      const output = (result.stderr || 'sin respuesta').trim().split('\n')[0]
+      const reason = response.reason
+        || (response.decision ? `respondió ${response.decision}` : output)
+      problems.push(`${bridge.target} ${event} desde ${path.basename(cwd)}/: ${reason}`)
     }
   }
-  return problemas
+  return problems
 }
 
 function doctor(root, name, output = console) {
@@ -500,12 +500,12 @@ function doctor(root, name, output = console) {
     // El archivo compartido no se compara entero: alrededor del bloque vive el texto de la empresa, así
     // que su hash difiere siempre. Comparado como archivo, `doctor` avisaba cuando el bloque estaba bien
     // y callaba cuando alguien lo había borrado, que es exactamente al revés.
-    if (esArchivoCompartido(root, resolved.target)) {
-      const contenido = render(resolved.source, opsPrefix(root), resolved.automationRoot, resolved.opsRoot)
+    if (isSharedFile(root, resolved.target)) {
+      const content = render(resolved.source, opsPrefix(root), resolved.automationRoot, resolved.opsRoot)
       if (!fs.existsSync(resolved.target)) errors.push(`falta ${item.target}`)
-      else if (!fs.readFileSync(resolved.target, 'utf8').includes(bloqueInicio(name))) {
+      else if (!fs.readFileSync(resolved.target, 'utf8').includes(blockStart(name))) {
         errors.push(`${item.target}: no tiene las instrucciones de Cauce; reinstalá el adaptador`)
-      } else if (!bloqueAlDia(resolved.target, name, contenido)) {
+      } else if (!blockUpToDate(resolved.target, name, content)) {
         warnings.push(`${item.target}: su bloque de Cauce quedó viejo; reinstalá el adaptador`)
       }
       continue
@@ -513,9 +513,9 @@ function doctor(root, name, output = console) {
     // `AGENTS.md` es un nombre compartido entre herramientas y la instancia ya tiene el suyo: en
     // modo embedded el archivo del runner y el de la empresa son el mismo, y pedirle que se
     // referencie a sí mismo no significa nada.
-    const propio = path.basename(resolved.target) === 'AGENTS.md'
+    const ownFile = path.basename(resolved.target) === 'AGENTS.md'
     if (!fs.existsSync(resolved.target)) errors.push(`falta ${item.target}`)
-    else if (!propio && !fs.readFileSync(resolved.target, 'utf8').includes('AGENTS.md')) {
+    else if (!ownFile && !fs.readFileSync(resolved.target, 'utf8').includes('AGENTS.md')) {
       warnings.push(`${item.target}: no referencia AGENTS.md; verifica las reglas globales`)
     }
     if (deliveryState(M.readRunners(root), name, resolved, opsPrefix(root)) === 'desactualizado') {
@@ -527,11 +527,11 @@ function doctor(root, name, output = console) {
   const recorded = M.readRunners(root)
   for (const item of runner.artifacts || []) {
     const resolved = { item, ...resolveItem(paths, root, name, item) }
-    const situacion = deliveryState(recorded, name, resolved, opsPrefix(root))
-    if (situacion === 'nuevo') errors.push(`falta ${item.target}`)
-    else if (situacion === 'desactualizado') {
+    const status = deliveryState(recorded, name, resolved, opsPrefix(root))
+    if (status === 'nuevo') errors.push(`falta ${item.target}`)
+    else if (status === 'desactualizado') {
       warnings.push(`${item.target}: hay una versión más nueva en Cauce; reinstalá el adaptador`)
-    } else if (situacion === 'ajeno') {
+    } else if (status === 'ajeno') {
       warnings.push(`${item.target}: lo editaste y es del toolkit; `
         + 'agregá lo tuyo al lado o reinstalá con --force para volver a la versión de Cauce')
     }
@@ -554,7 +554,7 @@ function doctor(root, name, output = console) {
     }
   }
   // Un puente que no responde niega cada llamada del runner: es error, no advertencia.
-  for (const problema of probeBridge(paths, runner)) errors.push(problema)
+  for (const problem of probeBridge(paths, runner)) errors.push(problem)
 
   const executable = spawnSync(
     'sh',
@@ -588,8 +588,8 @@ function deliveryKey(name, target) {
 function deliveryState(recorded, name, resolved, prefix = '') {
   if (!fs.existsSync(resolved.target)) return 'nuevo'
   const current = M.digest(resolved.target)
-  const esperado = render(resolved.source, prefix, resolved.automationRoot, resolved.opsRoot)
-  if (current === M.digestText(esperado)) return 'al día'
+  const expectedItem = render(resolved.source, prefix, resolved.automationRoot, resolved.opsRoot)
+  if (current === M.digestText(expectedItem)) return 'al día'
   const delivered = recorded[deliveryKey(name, resolved.item.target)]
   return delivered && delivered === current ? 'desactualizado' : 'ajeno'
 }
@@ -600,21 +600,21 @@ function deliveryState(recorded, name, resolved, prefix = '') {
 function unmergeConfig(current, incoming) {
   if (Array.isArray(incoming)) {
     if (!Array.isArray(current)) return current
-    const nuestras = new Set(incoming.map((value) => JSON.stringify(value)))
-    return current.filter((value) => !nuestras.has(JSON.stringify(value)))
+    const ours = new Set(incoming.map((value) => JSON.stringify(value)))
+    return current.filter((value) => !ours.has(JSON.stringify(value)))
   }
   if (incoming && typeof incoming === 'object') {
     if (!current || typeof current !== 'object' || Array.isArray(current)) return current
     const result = { ...current }
     for (const [key, value] of Object.entries(incoming)) {
       if (!(key in result)) continue
-      const limpio = unmergeConfig(result[key], value)
+      const clean = unmergeConfig(result[key], value)
       // Una clave que queda vacía por habernos ido no es del usuario: la creamos nosotros al instalar.
-      const vacia = limpio === undefined
-        || (Array.isArray(limpio) && !limpio.length)
-        || (limpio && typeof limpio === 'object' && !Array.isArray(limpio) && !Object.keys(limpio).length)
-      if (vacia) delete result[key]
-      else result[key] = limpio
+      const empty = clean === undefined
+        || (Array.isArray(clean) && !clean.length)
+        || (clean && typeof clean === 'object' && !Array.isArray(clean) && !Object.keys(clean).length)
+      if (empty) delete result[key]
+      else result[key] = clean
     }
     return result
   }
@@ -649,30 +649,30 @@ function uninstall(root, name, output = console) {
   const paths = runnerPaths(root, name, runner)
   const prefix = opsPrefix(root)
   const recorded = M.readRunners(root)
-  const conservados = []
-  let quitados = 0
+  const kept = []
+  let removed = 0
 
   const items = [...(runner.instructions || []), ...(runner.artifacts || [])]
-  const entregado = { ...recorded }
+  const deliveredPaths = { ...recorded }
   for (const item of items) {
     const resolved = { item, ...resolveItem(paths, root, name, item) }
     const key = deliveryKey(name, item.target)
-    if (!fs.existsSync(resolved.target)) { delete entregado[key]; continue }
-    if (esArchivoCompartido(root, resolved.target)) {
-      const texto = fs.readFileSync(resolved.target, 'utf8')
-      const limpio = sinBloque(texto, name)
-      if (limpio !== texto.trimEnd()) {
-        F.atomicWrite(resolved.target, `${limpio}\n`)
-        quitados += 1
+    if (!fs.existsSync(resolved.target)) { delete deliveredPaths[key]; continue }
+    if (isSharedFile(root, resolved.target)) {
+      const body = fs.readFileSync(resolved.target, 'utf8')
+      const clean = withoutBlock(body, name)
+      if (clean !== body.trimEnd()) {
+        F.atomicWrite(resolved.target, `${clean}\n`)
+        removed += 1
       }
-      delete entregado[key]
+      delete deliveredPaths[key]
       continue
     }
-    const situacion = deliveryState(recorded, name, resolved, prefix)
-    if (situacion === 'ajeno') { conservados.push(item.target); continue }
+    const status = deliveryState(recorded, name, resolved, prefix)
+    if (status === 'ajeno') { kept.push(item.target); continue }
     removeFile(resolved.target, paths.install)
-    delete entregado[key]
-    quitados += 1
+    delete deliveredPaths[key]
+    removed += 1
   }
 
   // Los punteros a cargos no se registran uno por uno —son cuarenta y siete y se regeneran enteros—,
@@ -683,62 +683,62 @@ function uninstall(root, name, output = console) {
       const file = path.join(base, role.slug, 'SKILL.md')
       if (!fs.existsSync(file)) continue
       if (M.digest(file) !== M.digestText(roleSkill(role))) {
-        conservados.push(path.relative(paths.install, file))
+        kept.push(path.relative(paths.install, file))
         continue
       }
       removeFile(file, paths.install)
-      quitados += 1
+      removed += 1
     }
   }
 
   if (fs.existsSync(paths.configTarget)) {
     const current = JSON.parse(fs.readFileSync(paths.configTarget, 'utf8'))
-    const limpio = unmergeConfig(current, runnerConfig(paths, root))
-    if (limpio && Object.keys(limpio).length) F.atomicWriteJson(paths.configTarget, limpio)
-    else { removeFile(paths.configTarget, paths.install); quitados += 1 }
+    const clean = unmergeConfig(current, runnerConfig(paths, root))
+    if (clean && Object.keys(clean).length) F.atomicWriteJson(paths.configTarget, clean)
+    else { removeFile(paths.configTarget, paths.install); removed += 1 }
     output.log(`✓ ${name}: ${runner.config.target} sin las entradas de Cauce`)
   }
 
-  M.write(root, undefined, entregado)
-  output.log(`✓ ${name}: ${quitados} archivo(s) del toolkit quitados de ${paths.install}`)
-  for (const file of conservados) output.log(`= ${name}: conservado ${file} (tiene cambios tuyos)`)
+  M.write(root, undefined, deliveredPaths)
+  output.log(`✓ ${name}: ${removed} archivo(s) del toolkit quitados de ${paths.install}`)
+  for (const file of kept) output.log(`= ${name}: conservado ${file} (tiene cambios tuyos)`)
   if (runner.activation) output.log(`  ${name}: si lo habías registrado a mano, quitalo también.`)
-  return { removed: quitados, kept: conservados }
+  return { removed: removed, kept: kept }
 }
 
 // `AGENTS.md` es el único nombre que el runner y la instancia comparten: en modo embebido el archivo de
 // instrucciones de Codex es el mismo que el de la empresa. Conservarlo entero —lo correcto para un
 // archivo del proyecto— dejaba a ese runner sin una sola línea de Cauce, así que su contenido se
 // fusiona adentro, entre marcas, y todo lo demás del archivo queda intacto.
-const bloqueInicio = (name) => `<!-- cauce:${name} inicio — lo reescribe "automation install", no editar -->`
-const bloqueFin = (name) => `<!-- cauce:${name} fin -->`
+const blockStart = (name) => `<!-- cauce:${name} inicio — lo reescribe "automation install", no editar -->`
+const blockEnd = (name) => `<!-- cauce:${name} fin -->`
 
-function esArchivoCompartido(root, target) {
+function isSharedFile(root, target) {
   return path.resolve(target) === path.resolve(root, 'AGENTS.md')
 }
 
-function sinBloque(text, name) {
-  const desde = text.indexOf(bloqueInicio(name))
-  if (desde === -1) return text
-  const hasta = text.indexOf(bloqueFin(name), desde)
-  if (hasta === -1) return text
-  return `${text.slice(0, desde)}${text.slice(hasta + bloqueFin(name).length)}`.trimEnd()
+function withoutBlock(text, name) {
+  const sourceRoot = text.indexOf(blockStart(name))
+  if (sourceRoot === -1) return text
+  const until = text.indexOf(blockEnd(name), sourceRoot)
+  if (until === -1) return text
+  return `${text.slice(0, sourceRoot)}${text.slice(until + blockEnd(name).length)}`.trimEnd()
 }
 
-function fusionarInstruccion(file, name, contenido) {
+function mergeInstruction(file, name, content) {
   const actual = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''
-  const cuerpo = sinBloque(actual, name).trimEnd()
-  const bloque = `${bloqueInicio(name)}\n\n${contenido.trim()}\n\n${bloqueFin(name)}\n`
-  F.atomicWrite(file, cuerpo ? `${cuerpo}\n\n${bloque}` : bloque)
+  const instructionBody = withoutBlock(actual, name).trimEnd()
+  const block = `${blockStart(name)}\n\n${content.trim()}\n\n${blockEnd(name)}\n`
+  F.atomicWrite(file, instructionBody ? `${instructionBody}\n\n${block}` : block)
 }
 
-function bloqueAlDia(file, name, contenido) {
+function blockUpToDate(file, name, content) {
   if (!fs.existsSync(file)) return false
-  const texto = fs.readFileSync(file, 'utf8')
-  const desde = texto.indexOf(bloqueInicio(name))
-  const hasta = texto.indexOf(bloqueFin(name))
-  if (desde === -1 || hasta === -1) return false
-  return texto.slice(desde + bloqueInicio(name).length, hasta).trim() === contenido.trim()
+  const body = fs.readFileSync(file, 'utf8')
+  const sourceRoot = body.indexOf(blockStart(name))
+  const until = body.indexOf(blockEnd(name))
+  if (sourceRoot === -1 || until === -1) return false
+  return body.slice(sourceRoot + blockStart(name).length, until).trim() === content.trim()
 }
 
 function install(root, name, output = console, options = {}) {
@@ -769,13 +769,13 @@ function install(root, name, output = console, options = {}) {
   const state = new Map(resolvedItems.map((r) => [r, deliveryState(recorded, name, r, prefix)]))
   // Un archivo de instrucciones es del proyecto y se conserva; uno ejecutable es del toolkit y se
   // reemplaza. Editarlo detiene la instalación antes de pisarlo, igual que hace `upgrade`.
-  const editados = resolvedItems.filter((resolved) => {
+  const edited = resolvedItems.filter((resolved) => {
     return state.get(resolved) === 'ajeno' && !runner.instructions.includes(resolved.item)
   })
-  if (editados.length && !options.force) {
+  if (edited.length && !options.force) {
     throw new Error(
-      `${editados.length} archivo(s) que mantiene Cauce fueron editados y se perderían:\n`
-      + `${editados.map((resolved) => `- ${resolved.item.target}`).join('\n')}\n\n`
+      `${edited.length} archivo(s) que mantiene Cauce fueron editados y se perderían:\n`
+      + `${edited.map((resolved) => `- ${resolved.item.target}`).join('\n')}\n\n`
       + 'Son del toolkit: en vez de editarlos, agregá lo tuyo al lado y registralo en la\n'
       + 'configuración de tu runner. Si el cambio ya no te sirve, repetí con --force.',
     )
@@ -784,47 +784,47 @@ function install(root, name, output = console, options = {}) {
   // Gemini son del usuario, así que ahí se fusiona; pero fusionar conserva también lo que pusimos en
   // una versión anterior, y una entrada nuestra que quedó viva apuntando a donde ya no hay nada es un
   // guard que el runner intenta ejecutar y falla. Se quitan las nuestras y las vuelve a poner el merge.
-  const vigentes = new Set((JSON.stringify(incoming).match(/"command":"[^"]*"/g) || [])
+  const live = new Set((JSON.stringify(incoming).match(/"command":"[^"]*"/g) || [])
     .map((entry) => JSON.parse(`{${entry}}`).command))
-  const limpio = runner.config.owned ? { config: {}, dropped: [] } : withoutDeliveredHooks(current, vigentes)
-  reportarQuitadas(name, limpio.dropped, vigentes, output)
-  F.atomicWriteJson(paths.configTarget, mergeConfig(limpio.config, incoming))
+  const clean = runner.config.owned ? { config: {}, dropped: [] } : withoutDeliveredHooks(current, live)
+  reportRemoved(name, clean.dropped, live, output)
+  F.atomicWriteJson(paths.configTarget, mergeConfig(clean.config, incoming))
   // Dónde aterrizó, no sólo qué archivo: en sidecar el destino no es el repo desde el que se corrió
   // el comando, y descubrirlo por sorpresa es la diferencia entre confiar y adivinar.
   if (paths.install !== root) {
     output.log(`  ${name}: el runner se abre en ${paths.install} — ahí queda su configuración`)
   }
   output.log(`✓ ${name}: configuración instalada en ${runner.config.target}`)
-  const entregado = { ...recorded }
+  const deliveredPaths = { ...recorded }
   for (const resolved of resolvedItems) {
-    const situacion = state.get(resolved)
-    const propio = runner.instructions.includes(resolved.item)
-    if (propio && esArchivoCompartido(root, resolved.target)) {
-      const contenido = render(resolved.source, opsPrefix(root), resolved.automationRoot, resolved.opsRoot)
-      if (bloqueAlDia(resolved.target, name, contenido)) {
+    const status = state.get(resolved)
+    const ownFile = runner.instructions.includes(resolved.item)
+    if (ownFile && isSharedFile(root, resolved.target)) {
+      const content = render(resolved.source, opsPrefix(root), resolved.automationRoot, resolved.opsRoot)
+      if (blockUpToDate(resolved.target, name, content)) {
         output.log(`= ${name}: ${resolved.item.target} ya trae sus instrucciones`)
       } else {
-        fusionarInstruccion(resolved.target, name, contenido)
+        mergeInstruction(resolved.target, name, content)
         output.log(`✓ ${name}: sus instrucciones quedaron dentro de ${resolved.item.target}`)
       }
-      entregado[deliveryKey(name, resolved.item.target)] = M.digest(resolved.target)
+      deliveredPaths[deliveryKey(name, resolved.item.target)] = M.digest(resolved.target)
       continue
     }
-    if (situacion === 'ajeno' && propio) {
+    if (status === 'ajeno' && ownFile) {
       output.log(`= ${name}: conservado ${resolved.item.target} (tiene cambios tuyos)`)
-    } else if (situacion === 'al día') {
+    } else if (status === 'al día') {
       output.log(`= ${name}: ${resolved.item.target} ya está al día`)
     } else {
       fs.mkdirSync(path.dirname(resolved.target), { recursive: true })
-      const escrito = render(resolved.source, opsPrefix(root), resolved.automationRoot, resolved.opsRoot)
-      F.atomicWrite(resolved.target, escrito)
-      const verbo = situacion === 'nuevo' ? 'instalado' : 'actualizado'
-      output.log(`✓ ${name}: ${verbo} ${resolved.item.target}`)
+      const written = render(resolved.source, opsPrefix(root), resolved.automationRoot, resolved.opsRoot)
+      F.atomicWrite(resolved.target, written)
+      const verb = status === 'nuevo' ? 'instalado' : 'actualizado'
+      output.log(`✓ ${name}: ${verb} ${resolved.item.target}`)
     }
     // Sólo se anota lo que Cauce puso: un archivo conservado con cambios de la empresa no es una
     // entrega, y registrarlo lo volvería indistinguible de uno intacto en la próxima instalación.
-    if (!(situacion === 'ajeno' && propio)) {
-      entregado[deliveryKey(name, resolved.item.target)] = M.digest(resolved.target)
+    if (!(status === 'ajeno' && ownFile)) {
+      deliveredPaths[deliveryKey(name, resolved.item.target)] = M.digest(resolved.target)
     }
   }
   installRoleSkills(root, runner, output)
@@ -832,16 +832,16 @@ function install(root, name, output = console, options = {}) {
   // `autobuild`—; el prefijo lo pone cada uno según su espacio de nombres, y esa diferencia es la que
   // hace que alguien no encuentre en Gemini lo que usó en Claude. Decirlo al instalar cuesta una línea
   // y ahorra buscarlo en una lista de cincuenta skills.
-  const invocacion = runner.commands && runner.commands.invocation
-  if (invocacion && (runner.commands.names || []).length) {
-    const lista = runner.commands.names.map((nombre) => invocacion.replace('{name}', nombre))
-    output.log(`  ${name}: se invocan como ${lista.join(', ')}`)
+  const invocation = runner.commands && runner.commands.invocation
+  if (invocation && (runner.commands.names || []).length) {
+    const listing = runner.commands.names.map((nombre) => invocation.replace('{name}', nombre))
+    output.log(`  ${name}: se invocan como ${listing.join(', ')}`)
   }
   if (runner.activation && activated(runner) !== true) {
     output.log(`  ${name}: falta registrarlo para que corra. Desde ${paths.install}:`)
     output.log(`    ${runner.activation.hint}`)
   }
-  M.write(root, undefined, entregado)
+  M.write(root, undefined, deliveredPaths)
   return runner
 }
 
