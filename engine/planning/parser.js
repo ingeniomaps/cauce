@@ -91,8 +91,16 @@ function readEpics(dir) {
   return epicFiles(dir).map(({ name, file }) => {
     const text = read(file)
     const field = frontmatter(text)
-    const criteria = [...section(text, /Criterios/i).matchAll(/^-\s+\*\*(C\d+)(?:[^*]*)\*\*\s+[—-]\s+(.+)$/gm)]
-      .map((match) => ({ id: match[1], text: match[2].trim() }))
+    // Mismo corte que ya se arregló para las historias: con la bandera `m`, `$` casa fin de línea, así
+    // que un criterio envuelto perdía todo lo que venía detrás del salto —normalmente cómo se verifica
+    // y qué debe seguir funcionando—. Se lee hasta el próximo criterio o el fin de la sección, y se
+    // devuelve en una sola línea porque quien lo recibe lo lee como aceptación, no como markdown.
+    const criterionPattern = new RegExp(
+      String.raw`^-\s+\*\*(C\d+)(?:[^*]*)\*\*\s+[—-]\s+([\s\S]*?)(?=\n-\s+\*\*C\d+|(?![\s\S]))`,
+      'gm',
+    )
+    const criteria = [...section(text, /Criterios/i).matchAll(criterionPattern)]
+      .map((match) => ({ id: match[1], text: match[2].trim().replace(/\s*\n\s*/g, ' ') }))
     // `(?![\s\S])` y no `$`: con la bandera `m` el `$` casa fin de **línea**, así que el cuerpo no ávido
     // cortaba en el primer salto y una historia envuelta perdía su `(service: …)` y sus `(→ CN)`. El
     // error que salía era «no declara (service: <ruta>)» — culpaba al autor de algo que sí había escrito.

@@ -985,3 +985,41 @@ service: app
   // Y cerrada tampoco puede llevar uno: la evidencia quedaría apoyada en un borde sin decidir.
   assert.equal(PC.validateEpic(epica('closed', 'El umbral: Por definir.'), new Set(['alta-nueva'])).length, 1)
 })
+
+// El mismo salto que ya cortaba una historia envuelta cortaba un criterio: con la bandera `m`, `$` casa
+// fin de línea. La mitad que se perdía era la de atrás —cómo se verifica, qué debe seguir funcionando—,
+// y una tarea que hereda su aceptación recibía medio criterio sin que nada lo dijera.
+test('un criterio envuelto en varias líneas no se trunca', () => {
+  const root = tempRoot('ops-criterio-')
+  fs.mkdirSync(path.join(root, 'roadmap'))
+  fs.writeFileSync(path.join(root, 'roadmap', 'epic-001-x.md'), `---
+epic: 001
+title: X
+status: open
+service: api
+---
+
+## Criterios
+
+- **C1** — Un alta con email nuevo devuelve 201 y deja la cuenta usable, y el correo de bienvenida
+  sale por la cola con el destinatario correcto.
+- **C2** — Un alta con email repetido devuelve 409.
+
+## Contexto relevante
+
+- algo
+
+## Historias
+
+- [ ] **h** (→ C1, C2) — x. (service: api)
+`)
+  const epic = P.readEpics(root)[0]
+  assert.deepEqual(epic.criteria.map((criterion) => criterion.id), ['C1', 'C2'])
+  assert.equal(
+    epic.criteria[0].text,
+    'Un alta con email nuevo devuelve 201 y deja la cuenta usable, y el correo de bienvenida '
+    + 'sale por la cola con el destinatario correcto.',
+    'el envuelto llega entero y en una sola línea',
+  )
+  assert.equal(epic.criteria[1].text, 'Un alta con email repetido devuelve 409.')
+})
