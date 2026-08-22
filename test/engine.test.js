@@ -776,3 +776,46 @@ test('un Enter deja todo como estaba, y un dedazo se repregunta', async () => {
   assert.equal(other.facts.questions.length, 4)
   assert.ok(other.facts.said.some((line) => line.includes('no está en la lista')))
 })
+
+// El Estado de una fila decide si su tarea se puede tomar, y hasta que fue vocabulario cerrado lo
+// decidía un `includes`: `COMPLETADO` bloqueaba para siempre porque no era ninguna de las palabras
+// que el motor reconocía, y un `✅ COMPLETADO — cerrado con run-ui.mjs` desbloqueaba por la palabra
+// «cerrado» suelta en la celda. Los dos fallos son silenciosos, y en direcciones opuestas.
+test('el estado de una acción humana es vocabulario cerrado y se lee por el principio de la celda', () => {
+  const root = tempRoot('ops-human-actions-')
+  const fila = (estado) => `# Acciones humanas
+
+| Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |
+|---|---|---|---|
+| tarea-uno | ${estado} | Ready | Detalle |
+`
+  const leer = (estado) => {
+    fs.writeFileSync(path.join(root, 'HUMAN_ACTIONS.md'), fila(estado))
+    return P.readHumanActions(root)[0]
+  }
+
+  assert.deepEqual(P.HUMAN_ACTION_STATES, ['pendiente', 'resuelta'])
+  assert.equal(leer('pendiente').resolved, false)
+  assert.equal(leer('pendiente').valid, true)
+  assert.equal(leer('resuelta').resolved, true)
+  assert.equal(leer('Resuelta 2026-08-17').resolved, true, 'admite el detalle detrás del vocabulario')
+  assert.equal(leer('resuelta 2026-08-17').valid, true)
+
+  for (const invento of ['✅ COMPLETADO 2026-08-10', 'COMPLETADA', 'hecha', 'SIN EFECTO', '']) {
+    const fuera = leer(invento)
+    assert.equal(fuera.valid, false, `"${invento}" está fuera del vocabulario`)
+    assert.equal(fuera.resolved, false, `"${invento}" no desbloquea: fuera del vocabulario se bloquea`)
+  }
+
+  // El accidente inverso: la palabra reconocida aparece dentro del texto, no como estado.
+  const accidente = leer('✅ COMPLETADO 2026-08-17 — cerrado con run-ui.mjs')
+  assert.equal(accidente.resolved, false, 'una palabra suelta en la celda no resuelve la fila')
+  assert.equal(accidente.valid, false)
+})
+
+// La plantilla enseña el formato con filas comentadas, igual que BACKLOG y DONE. Sin filtrarlas, el
+// ejemplo bloqueaba `slug-de-tarea` en toda instancia recién creada.
+test('las filas de ejemplo comentadas no son acciones humanas', () => {
+  const plantilla = path.resolve(__dirname, '..', 'template', 'planning')
+  assert.deepEqual(P.readHumanActions(plantilla), [], 'la plantilla no trae ninguna acción abierta')
+})

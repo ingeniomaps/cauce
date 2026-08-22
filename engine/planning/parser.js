@@ -168,6 +168,29 @@ function readDone(dir) {
   return { entries, set: new Set(entries.map((entry) => entry.slug)), duplicates: [...new Set(duplicates)] }
 }
 
+// Vocabulario cerrado del Estado de `HUMAN_ACTIONS.md`. Es cerrado porque de este campo depende que una
+// tarea se pueda tomar, y quien lo escribe no recibe ninguna señal de haberlo escrito mal: cualquier
+// palabra de fuera del vocabulario deja la fila abierta y su tarea bloqueada sin que nada lo diga.
+const HUMAN_ACTION_STATES = ['pendiente', 'resuelta']
+
+// Se lee por el principio de la celda —no por `includes`— para que el detalle que acompaña al estado
+// («resuelta 2026-08-17») siga valiendo sin que una palabra suelta dentro de un texto largo resuelva
+// una fila que sigue abierta. `valid` distingue la fila mal escrita de la fila pendiente: las dos
+// bloquean, pero sólo una es un error que hay que reportar.
+function readHumanActions(dir) {
+  const rows = withoutComments(read(path.join(dir, 'HUMAN_ACTIONS.md'))).split('\n')
+    .filter((line) => /^\|/.test(line) && !/^\|\s*:?-+/.test(line))
+    .map((line) => ({ line, cells: line.split('|').slice(1, -1).map((cell) => cell.trim()) }))
+  return rows.filter(({ cells }) => cells.length >= 4 && !/^tarea$/i.test(cells[0]))
+    .map(({ line, cells }) => {
+      const state = (cells[1].match(new RegExp(`^(${HUMAN_ACTION_STATES.join('|')})\\b`, 'i')) || [])[1] || ''
+      return {
+        task: cells[0], state: cells[1], origin: cells[2], action: cells[3],
+        valid: Boolean(state), resolved: state.toLowerCase() === 'resuelta', raw: line,
+      }
+    })
+}
+
 function readWip(dir) {
   const text = read(path.join(dir, 'WIP.md'))
   if (/^status:\s*IDLE/m.test(text)) return null
@@ -203,5 +226,6 @@ function readInbox(dir) {
 }
 
 module.exports = {
-  EPIC_STATES, read, frontmatter, readEpics, readBacklog, readDone, readWip, readInbox,
+  EPIC_STATES, HUMAN_ACTION_STATES, read, frontmatter, readEpics, readBacklog, readDone, readWip,
+  readInbox, readHumanActions,
 }

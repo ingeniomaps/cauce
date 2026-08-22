@@ -591,6 +591,13 @@ function check(dir, cli) {
   if (wip && !backlogSlugs.has(wip.task) && !done.set.has(wip.task)) {
     errors.push(`WIP ${wip.task}: no existe en BACKLOG ni DONE`)
   }
+  for (const row of P.readHumanActions(root)) {
+    if (!row.valid) {
+      errors.push(`HUMAN_ACTIONS ${row.task}: estado "${row.state}" fuera de `
+        + `${P.HUMAN_ACTION_STATES.join(' | ')}; mientras no se entienda, la tarea queda bloqueada`)
+    }
+  }
+
   for (const entry of done.entries) {
     if (!entry.acceptance) errors.push(`${entry.source} ${entry.slug}: falta acept:`)
     if (!entry.done) errors.push(`${entry.source} ${entry.slug}: falta done:`)
@@ -707,14 +714,11 @@ function tree(dir, cli) {
   console.log(`${paint('1', 'DONE')}   ${done.entries.length} tareas\n`)
 }
 
-// Acciones humanas pendientes: filas de la tabla que todavía no declaran un estado resuelto.
+// Acciones humanas que todavía bloquean: las pendientes y también las mal escritas, porque una fila
+// cuyo estado no se entiende no se puede dar por resuelta. `check` es quien las nombra.
 function pendingHumanActions(root) {
-  const rows = P.read(path.join(root, 'HUMAN_ACTIONS.md')).split('\n')
-    .filter((line) => /^\|/.test(line) && !/^\|\s*-+/.test(line))
-    .map((line) => line.split('|').slice(1, -1).map((cell) => cell.trim()))
-  return rows.filter((cells) => cells.length >= 4 && !/^tarea$/i.test(cells[0])
-    && !/resuelt|cerrad|done|listo/i.test(cells[1]))
-    .map((cells) => ({ task: cells[0], state: cells[1], action: cells[3] }))
+  return P.readHumanActions(root).filter((row) => !row.resolved)
+    .map((row) => ({ task: row.task, state: row.state, action: row.action }))
 }
 
 // Selecciona la tarea que un runner debe ejecutar ahora, con la misma precedencia que el protocolo:
@@ -810,12 +814,7 @@ function instanceVersion(root) {
 function loQueSePierde(root) {
   const planning = path.join(root, 'planning')
   const cola = P.readBacklog(planning).reduce((total, hito) => total + (hito.tasks || []).length, 0)
-  const acciones = (() => {
-    try {
-      const texto = fs.readFileSync(path.join(planning, 'HUMAN_ACTIONS.md'), 'utf8')
-      return (texto.match(/^\| (?!Tarea|---)/gm) || []).length
-    } catch { return 0 }
-  })()
+  const acciones = pendingHumanActions(planning).length
   return {
     epicas: P.readEpics(planning).length,
     hechas: (P.readDone(planning).entries || []).length,

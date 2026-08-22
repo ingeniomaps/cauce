@@ -15,6 +15,10 @@ invariantes.
   mediante `CN → prueba`; usa `A → prueba` cuando no hay épica o `n/a — razón` si no existe una
   superficie ejecutable. `decisions:` es opcional y, si aparece, cita `[fuente: ...]` o
   `[supuesto: ...]`.
+- Acción humana: fila `| tarea | estado | origen | acción y condición de desbloqueo |`, con el estado
+  en el vocabulario cerrado `pendiente | resuelta` —la fecha puede ir detrás—. Mientras la fila no
+  esté resuelta, su tarea no se toma; un estado fuera del vocabulario es un error de `check` y no un
+  bloqueo silencioso.
 - WIP activo: frontmatter y checklist; inactivo: `status: IDLE`.
 
 ## Gates de arranque

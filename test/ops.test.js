@@ -900,6 +900,26 @@ service: app
   const blockers = JSON.parse(run(['context', planning, '--json']).stdout).humanActions
   assert.deepEqual(blockers.map((action) => action.task), ['tercera'], 'las resueltas no bloquean')
 
+  // Un estado que el motor no entiende bloquea la tarea igual que uno pendiente —es el lado seguro—,
+  // pero deja de hacerlo en silencio: `check` lo nombra con el vocabulario que sí acepta.
+  fs.writeFileSync(path.join(planning, 'HUMAN_ACTIONS.md'), `# Acciones humanas
+
+| Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |
+|---|---|---|---|
+| primera | ✅ COMPLETADO 2026-08-10 | Ready | Ya se hizo |
+`)
+  const inventado = JSON.parse(run(['check', planning, '--json']).stdout)
+  assert.equal(inventado.ok, false, 'un estado fuera del vocabulario es un error, no un silencio')
+  assert.ok(
+    inventado.errors.some((error) => /HUMAN_ACTIONS primera: estado .* fuera de pendiente \| resuelta/.test(error)),
+    `el error nombra la fila y el vocabulario: ${JSON.stringify(inventado.errors)}`,
+  )
+  assert.deepEqual(
+    JSON.parse(run(['context', planning, '--json']).stdout).humanActions.map((action) => action.task),
+    ['primera'],
+    'y mientras tanto sigue bloqueando: no se da por resuelta una fila que no se entiende',
+  )
+
   fs.writeFileSync(path.join(planning, 'WIP.md'), 'status: IDLE\n')
   fs.writeFileSync(path.join(planning, 'HUMAN_ACTIONS.md'), `# Acciones humanas
 
