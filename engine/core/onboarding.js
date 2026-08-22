@@ -72,21 +72,23 @@ function guide(root, services = []) {
 }
 
 function missingSections(root) {
-  const avisos = []
-  const molde = path.join(PACKAGE_ROOT, 'template', 'organization')
+  const warnings = []
+  const template = path.join(PACKAGE_ROOT, 'template', 'organization')
   for (const name of ['company.md', 'product.md', 'domains.md']) {
-    const propio = path.join(root, 'organization', name)
-    if (!fs.existsSync(propio) || !fs.existsSync(path.join(molde, name))) continue
-    const titulos = (text) => new Set((text.match(/^##\s+(.+)$/gm) || []).map((line) => line.trim()))
-    const esperadas = titulos(fs.readFileSync(path.join(molde, name), 'utf8'))
-    const presentes = titulos(fs.readFileSync(propio, 'utf8'))
-    const faltan = [...esperadas].filter((titulo) => !presentes.has(titulo))
-    if (!faltan.length) continue
+    const written = path.join(root, 'organization', name)
+    if (!fs.existsSync(written) || !fs.existsSync(path.join(template, name))) continue
+    const headings = (text) => new Set((text.match(/^##\s+(.+)$/gm) || []).map((line) => line.trim()))
+    const expected = headings(fs.readFileSync(path.join(template, name), 'utf8'))
+    const present = headings(fs.readFileSync(written, 'utf8'))
+    const missing = [...expected].filter((heading) => !present.has(heading))
+    if (!missing.length) continue
     // Reescrito entero, faltan todas: enumerarlas hace una línea ilegible y el número dice más.
-    const lista = faltan.length > 3 ? `${faltan.slice(0, 3).join(', ')} y ${faltan.length - 3} más` : faltan.join(', ')
-    avisos.push(`organization/${name}: sin ${lista} — el molde las trae y acá no están`)
+    const summary = missing.length > 3
+      ? `${missing.slice(0, 3).join(', ')} y ${missing.length - 3} más`
+      : missing.join(', ')
+    warnings.push(`organization/${name}: sin ${summary} — el molde las trae y acá no están`)
   }
-  return avisos
+  return warnings
 }
 
 // Credenciales que el proyecto declara y que no aparecen en ningún contrato. El arranque tiene que
@@ -97,21 +99,21 @@ function missingSections(root) {
 // Sólo cuando la instancia ya tiene contexto escrito: antes del arranque no hay dónde estuvieran.
 function orphanCredentials(root) {
   if (guide(root).fresh) return []
-  const contratos = ['AGENTS.md', path.join('planning', 'HUMAN_ACTIONS.md')]
+  const contracts = ['AGENTS.md', path.join('planning', 'HUMAN_ACTIONS.md')]
     .map((file) => { try { return fs.readFileSync(path.join(root, file), 'utf8') } catch { return '' } })
     .join('\n')
-  if (!contratos) return []
-  const huerfanas = []
+  if (!contracts) return []
+  const orphans = []
   for (const service of inventory(root)) {
-    for (const nombre of (service.env || {}).names || []) {
-      if (!contratos.includes(nombre)) huerfanas.push(`${nombre} (${service.path})`)
+    for (const name of (service.env || {}).names || []) {
+      if (!contracts.includes(name)) orphans.push(`${name} (${service.path})`)
     }
   }
-  if (!huerfanas.length) return []
-  const lista = huerfanas.length > 4
-    ? `${huerfanas.slice(0, 4).join(', ')} y ${huerfanas.length - 4} más`
-    : huerfanas.join(', ')
-  return [`el proyecto declara ${lista} y no aparecen en el mapa ni en HUMAN_ACTIONS: nadie las carga`]
+  if (!orphans.length) return []
+  const summary = orphans.length > 4
+    ? `${orphans.slice(0, 4).join(', ')} y ${orphans.length - 4} más`
+    : orphans.join(', ')
+  return [`el proyecto declara ${summary} y no aparecen en el mapa ni en HUMAN_ACTIONS: nadie las carga`]
 }
 
 module.exports = {
