@@ -20,7 +20,10 @@
     "agents/",
     "teams/",
     "automatization/",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "!agents/**/evaluations/results/**",
+    "!agents/**/learning/reports/**",
+    "!agents/**/learning/proposals/**"
   ],
   "scripts": {
     "ops": "node engine/cli/ops.js",

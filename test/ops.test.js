@@ -1794,3 +1794,26 @@ test('el README de planning enumera todas las piezas que existen', () => {
     assert.ok(readme.includes(`\`${pieza}\``), `README no menciona ${pieza}`)
   }
 })
+
+// Informes, propuestas y veredictos son lo que produjo nuestra versión del contrato, y `fork` ya se
+// niega a heredarlos —`engine/agents/fork.js`—. La misma decisión vale en el borde del paquete: sin
+// esto, tres cuartas partes de lo que recibe una empresa es la contabilidad de cómo probamos nuestros
+// cargos, y crece una tanda entera por cada corrida de evaluación.
+test('el paquete no publica la evidencia de nuestras propias corridas', () => {
+  const raiz = path.resolve(__dirname, '..')
+  const salida = spawnSync('npm', ['pack', '--dry-run', '--json'], { cwd: raiz, encoding: 'utf8' })
+  assert.equal(salida.status, 0, salida.stderr)
+  const archivos = JSON.parse(salida.stdout)[0].files.map((entry) => entry.path)
+
+  for (const patron of [/evaluations\/results\//, /learning\/reports\//, /learning\/proposals\//]) {
+    assert.deepEqual(archivos.filter((ruta) => patron.test(ruta)), [], `${patron} viaja en el paquete`)
+  }
+  // Y la negación no puede llevarse puesto lo que el consumidor sí necesita del cargo.
+  for (const necesario of [/\/SKILL\.md$/, /evaluations\/cases\//, /\/references\//,
+    /learning\/HISTORY\.md$/, /learning\/sources\.yaml$/, /expected-behaviors\.yaml$/]) {
+    assert.ok(archivos.some((ruta) => necesario.test(ruta)), `${necesario} falta en el paquete`)
+  }
+  for (const pieza of ['engine/cli/ops.js', 'template/planning/PROTOCOL.md']) {
+    assert.ok(archivos.includes(pieza), `${pieza} falta en el paquete`)
+  }
+})
