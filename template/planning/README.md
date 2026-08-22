@@ -13,6 +13,8 @@
 | `adr/` | Decisiones arquitectónicas durables. |
 | `business-rules/` | Invariantes observables de negocio y operación. |
 | `delivery/` | Camino objetivo para ramas, ambientes, releases y rollback. |
+| `reports/` | Informes de recorridos de equipo; evidencia que no se reescribe. |
 | `rules/` | Reglas transversales de craft. |
 
-El protocolo exacto está en `PROTOCOL.md`; la explicación visual en `FLOW.md`.
+El protocolo exacto está en `PROTOCOL.md`, la explicación visual en `FLOW.md` y los principios que
+sostienen a los dos en `METHODOLOGY.md`.

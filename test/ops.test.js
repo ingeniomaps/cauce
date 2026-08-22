@@ -1780,3 +1780,17 @@ ${linea}
   epica('Un alta con email nuevo devuelve 201.')
   assert.deepEqual(errores(), [])
 })
+
+// La tabla del README enumera las piezas de planning, y una tabla completa afirma completitud aunque
+// ninguna frase lo diga: `reports/` existía con su propio README y no figuraba, así que nadie iba a
+// pedir después lo que nada indicaba que faltara.
+test('el README de planning enumera todas las piezas que existen', () => {
+  const raiz = path.resolve(__dirname, '..', 'template', 'planning')
+  const readme = fs.readFileSync(path.join(raiz, 'README.md'), 'utf8')
+  const piezas = fs.readdirSync(raiz, { withFileTypes: true })
+    .filter((entry) => entry.name !== 'README.md' && !entry.name.startsWith('.'))
+    .map((entry) => (entry.isDirectory() ? `${entry.name}/` : entry.name))
+  for (const pieza of piezas) {
+    assert.ok(readme.includes(`\`${pieza}\``), `README no menciona ${pieza}`)
+  }
+})
