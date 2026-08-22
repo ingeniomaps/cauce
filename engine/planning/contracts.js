@@ -3,6 +3,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const P = require('./parser')
+const { PLACEHOLDERS } = require('../core/onboarding')
 
 const TEST_TRACE = /^(?:n\/a\s*[—-]\s*.+|(?:A|C\d+)\s*(?:→|->)\s*\S.+)$/i
 const DECISION_TRACE = /\[(?:fuente|supuesto):\s*[^\]]+\]/i
@@ -256,8 +257,115 @@ function validateAdr(dir) {
   return errors
 }
 
+// Todo lo que se juzga sobre el estado ya leído: épicas, hitos, tareas, WIP, evidencia y acciones
+// humanas. Vive acá y no en el CLI porque es de la misma clase que sus vecinas —`validateEpic`,
+// `validateDoneEntry`, `validateRules`— y estaba creciendo del otro lado sólo porque ahí era más
+// rápido escribirla. No lee nada: recibe el estado, así que se prueba sin tocar disco.
+function validateState({ epics, milestones, done, wip, roles = new Set(), humanActions = [] }) {
+  const errors = []
+  const epicNums = new Set()
+  const storySlugs = new Set()
+  const backlogSlugs = new Set(milestones.flatMap((milestone) => milestone.tasks).map((task) => task.slug))
+  for (const duplicate of done.duplicates) errors.push(`DONE duplicado: ${duplicate}`)
+  for (const epic of epics) {
+    const at = `roadmap/${epic.file}`
+    errors.push(...validateEpic(epic, done.set))
+    if (!/^\d{3}$/.test(epic.num)) errors.push(`${at}: epic debe ser NNN`)
+    if (epicNums.has(epic.num)) errors.push(`${at}: número de épica duplicado ${epic.num}`)
+    epicNums.add(epic.num)
+    if (!epic.title) errors.push(`${at}: falta title`)
+    if (!P.EPIC_STATES.includes(epic.status)) errors.push(`${at}: status inválido "${epic.status}"`)
+    if (!epic.criteria.length) errors.push(`${at}: falta al menos un criterio observable`)
+    if (!epic.stories.length) errors.push(`${at}: falta al menos una historia`)
+    if (!epic.hasContext) errors.push(`${at}: falta "## Contexto relevante"`)
+    const criteria = new Set(epic.criteria.map((criterion) => criterion.id))
+    for (const story of epic.stories) {
+      if (storySlugs.has(story.slug)) errors.push(`${at}: slug de historia duplicado ${story.slug}`)
+      storySlugs.add(story.slug)
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(story.slug)) errors.push(`${at}: slug inválido ${story.slug}`)
+      if (!story.criteria.length) errors.push(`${at}: ${story.slug} no rastrea a un criterio`)
+      for (const criterion of story.criteria) {
+        if (!criteria.has(criterion)) errors.push(`${at}: ${story.slug} cita ${criterion}, que no existe`)
+      }
+      if (!story.service) errors.push(`${at}: ${story.slug} no declara (service: <ruta>)`)
+    }
+    const missing = epic.stories.filter((story) => !done.set.has(story.slug))
+    if (epic.status === 'active' && !missing.length) errors.push(`${at}: active sin historias pendientes; debe cerrar`)
+  }
+
+  const milestoneSlugs = new Set()
+  for (const milestone of milestones) {
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(milestone.slug)) errors.push(`hito con slug inválido: ${milestone.slug}`)
+    if (milestoneSlugs.has(milestone.slug)) errors.push(`hito duplicado: ${milestone.slug}`)
+    milestoneSlugs.add(milestone.slug)
+    for (const task of milestone.tasks) {
+      if (!task.service) errors.push(`BACKLOG ${task.slug}: falta (service: <ruta>)`)
+      // Un cargo mal escrito se queda sin resolver en la fase que lo invoca, y ahí ya se gastó todo
+      // lo anterior: la revisión desaparece sin que nada falle. Se contrasta acá, antes de ejecutar.
+      // Con el catálogo vacío no hay nada contra qué contrastar —una instancia sin la dependencia
+      // instalada—, y exigirlo igual convertiría cada cast en un error.
+      for (const slug of [task.cast.build, ...task.cast.review].filter(Boolean)) {
+        if (roles.size && !roles.has(slug)) {
+          errors.push(`BACKLOG ${task.slug}: el cast nombra ${slug}, que no está en el catálogo`)
+        }
+      }
+      if (!task.acceptance && !(task.epic && task.criteria.length)) {
+        errors.push(`BACKLOG ${task.slug}: falta aceptación explícita o criterio heredado`)
+      }
+      // La misma puerta que la épica, un piso abajo: la épica rechaza el marcador al activarse, pero la
+      // tarea es lo que un runner recibe. Se juzga la frase que `context` le va a entregar —propia o
+      // heredada del criterio—, porque en las dos formas llega igual y se decide sola.
+      const inherited = epics.find((epic) => epic.num === task.epic)?.criteria
+        .filter((criterion) => task.criteria.includes(criterion.id))
+        .map((criterion) => criterion.text).join(' ') || ''
+      const acceptance = (task.acceptance || inherited).trim()
+      if (acceptance && PLACEHOLDERS.test(acceptance)) {
+        errors.push(`BACKLOG ${task.slug}: la aceptación no está decidida — "${acceptance.slice(0, 80)}"`)
+      }
+      const storyExists = epics.some((epic) => {
+        return epic.num === task.epic && epic.stories.some((story) => story.slug === task.slug)
+      })
+      if (task.epic && !storyExists) {
+        errors.push(`BACKLOG ${task.slug}: no existe en epic-${task.epic}`)
+      }
+      if (done.set.has(task.slug)) errors.push(`${task.slug}: está en BACKLOG y DONE`)
+    }
+  }
+
+  if (wip && !backlogSlugs.has(wip.task) && !done.set.has(wip.task)) {
+    errors.push(`WIP ${wip.task}: no existe en BACKLOG ni DONE`)
+  }
+  // El WIP es el punto de retorno tras una interrupción, y el protocolo manda seguir desde el primer
+  // paso sin tildar. Un plan que el motor no puede contar se lee como un plan terminado, así que la
+  // recuperación se queda sin de dónde retomar justo cuando es lo único que quedó del trabajo.
+  if (wip && !wip.complete && !wip.pending) {
+    errors.push(`WIP ${wip.task}: el plan no tiene pasos que el motor pueda contar; `
+      + 'se escriben `1. [ ] paso`')
+  }
+  for (const row of humanActions) {
+    if (!row.valid) {
+      errors.push(`HUMAN_ACTIONS ${row.task}: estado "${row.state}" fuera de `
+        + `${P.HUMAN_ACTION_STATES.join(' | ')}; mientras no se entienda, la tarea queda bloqueada`)
+    }
+  }
+
+  for (const entry of done.entries) {
+    if (!entry.acceptance) errors.push(`${entry.source} ${entry.slug}: falta acept:`)
+    if (!entry.done) errors.push(`${entry.source} ${entry.slug}: falta done:`)
+    if (!entry.qa) errors.push(`${entry.source} ${entry.slug}: falta qa:`)
+    if (!entry.commit) errors.push(`${entry.source} ${entry.slug}: falta commit:`)
+    // Los criterios que la historia declaró cubrir: los cita el roadmap, no la entrada de DONE, así que
+    // el cruce sólo existe si la entrada dice de qué épica viene.
+    const story = epics.find((epic) => epic.num === entry.epic)?.stories
+      .find((candidate) => candidate.slug === entry.slug)
+    errors.push(...validateDoneEntry(entry, story ? story.criteria : []))
+  }
+  return errors
+}
+
 module.exports = {
   testedCriteria,
+  validateState,
   validateAdr,
   validateRules,
   validateBacklogStructure,

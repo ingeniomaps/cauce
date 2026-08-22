@@ -1120,3 +1120,77 @@ x
   escribir('001-otra.md', cuerpo('Aceptado'))
   assert.deepEqual(PC.validateAdr(root), ['adr/001-otra.md: 001 ya lo usa adr/001-algo.md'])
 })
+
+// Todo esto se probaba lanzando el CLI contra un planning en disco, así que cada rama costaba un
+// proceso y un árbol de archivos. Extraída, `validateState` recibe el estado ya leído y se ejercita en
+// memoria: es lo que la mudanza compra, y sin esto sería sólo mover código de archivo.
+test('validateState juzga el estado ya leído, sin tocar disco', () => {
+  const epica = (extra = {}) => ({
+    file: 'epic-001-x.md', num: '001', title: 'X', status: 'open', hasContext: true,
+    criteria: [{ id: 'C1', text: 'Cuando algo, alguien obtiene algo.' }],
+    stories: [{ slug: 'h-uno', criteria: ['C1'], service: 'api' }],
+    ...extra,
+  })
+  const tarea = (extra = {}) => ({
+    slug: 'h-uno', tier: 'lite', cast: { build: '', review: [] }, epic: '001',
+    service: 'api', acceptance: 'algo observable', criteria: ['C1'], ...extra,
+  })
+  const estado = (extra = {}) => ({
+    epics: [epica()], milestones: [{ slug: 'h', title: 'H', tasks: [tarea()] }],
+    done: { entries: [], set: new Set(), duplicates: [] }, wip: null, ...extra,
+  })
+  const errores = (extra) => PC.validateState(estado(extra))
+
+  assert.deepEqual(errores(), [], 'un estado coherente no produce nada')
+
+  // Épica: identidad, contrato y cierre.
+  assert.match(errores({ epics: [epica({ num: '1' })] }).join('|'), /epic debe ser NNN/)
+  assert.match(errores({ epics: [epica(), epica({ file: 'epic-001-y.md' })] }).join('|'),
+    /número de épica duplicado 001/)
+  assert.match(errores({ epics: [epica({ title: '' })] })[0], /falta title/)
+  assert.match(errores({ epics: [epica({ status: 'vigente' })] }).join('|'), /status inválido/)
+  assert.match(errores({ epics: [epica({ criteria: [] })] }).join('|'), /falta al menos un criterio/)
+  assert.match(errores({ epics: [epica({ stories: [] })] }).join('|'), /falta al menos una historia/)
+  assert.match(errores({ epics: [epica({ hasContext: false })] })[0], /Contexto relevante/)
+
+  // Historias: slug, trazabilidad y servicio.
+  const historia = (extra) => errores({ epics: [epica({ stories: [{ slug: 'h-uno', criteria: ['C1'], service: 'api', ...extra }] })] })
+  assert.match(historia({ slug: 'H Uno' }).join('|'), /slug inválido/)
+  assert.match(historia({ criteria: [] }).join('|'), /no rastrea a un criterio/)
+  assert.match(historia({ criteria: ['C9'] }).join('|'), /cita C9, que no existe/)
+  assert.match(historia({ service: '' }).join('|'), /no declara \(service/)
+
+  // Una épica activa sin nada pendiente tiene que cerrar.
+  assert.match(errores({
+    epics: [epica({ status: 'active' })], done: { entries: [], set: new Set(['h-uno']), duplicates: [] },
+  }).join('|'), /active sin historias pendientes/)
+
+  // Hitos y tareas.
+  const hito = (extra) => errores({ milestones: [{ slug: 'h', title: 'H', tasks: [tarea(extra)] }] })
+  assert.match(errores({ milestones: [{ slug: 'H Uno', tasks: [] }] })[0], /hito con slug inválido/)
+  assert.match(errores({
+    milestones: [{ slug: 'h', tasks: [] }, { slug: 'h', tasks: [] }],
+  }).join('|'), /hito duplicado/)
+  assert.match(hito({ service: '' }).join('|'), /falta \(service/)
+  assert.match(hito({ acceptance: '', criteria: [] }).join('|'), /falta aceptación explícita/)
+  assert.match(hito({ acceptance: 'Por definir.' }).join('|'), /la aceptación no está decidida/)
+  assert.match(hito({ slug: 'ajena' }).join('|'), /no existe en epic-001/)
+  assert.deepEqual(PC.validateState({
+    ...estado(), roles: new Set(['backend-engineer']),
+    milestones: [{ slug: 'h', tasks: [tarea({ cast: { build: 'inventado', review: [] } })] }],
+  }).filter((error) => /cast/.test(error)),
+  ['BACKLOG h-uno: el cast nombra inventado, que no está en el catálogo'])
+
+  // WIP y evidencia.
+  assert.match(errores({ wip: { task: 'ajena', complete: 1, pending: 0 } }).join('|'),
+    /WIP ajena: no existe en BACKLOG ni DONE/)
+  assert.match(errores({ wip: { task: 'h-uno', complete: 0, pending: 0 } }).join('|'),
+    /el plan no tiene pasos que el motor pueda contar/)
+  assert.match(errores({ done: { entries: [], set: new Set(), duplicates: ['h-uno'] } })[0],
+    /DONE duplicado: h-uno/)
+
+  // Acciones humanas.
+  assert.match(PC.validateState({
+    ...estado(), humanActions: [{ task: 'h-uno', state: 'COMPLETADO', valid: false }],
+  }).join('|'), /estado "COMPLETADO" fuera de/)
+})
