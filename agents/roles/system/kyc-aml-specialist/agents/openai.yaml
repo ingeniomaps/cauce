@@ -1,0 +1,4 @@
+interface:
+  display_name: "KYC & AML Specialist"
+  short_description: "Opera el programa KYC y antilavado"
+  default_prompt: "Usa $kyc-aml-specialist para diseñar o revisar la verificación de identidad, la diligencia por riesgo y el monitoreo de este caso."
