@@ -1952,3 +1952,17 @@ test('la guía de entrega llega a una instancia y su project.md no', () => {
     assert.ok(fuente.includes(clase), `upgrade distingue ${clase}`)
   }
 })
+
+// El `AGENTS.md` de una instancia describe qué se puede editar y qué no, y envejecido miente: decía que
+// todo `planning/` salvo cinco directorios era del proyecto justo cuando la guía de entrega pasó a ser
+// del toolkit. Se contrasta contra la lista que manda de verdad.
+test('el AGENTS.md de una instancia dice la propiedad que el motor aplica', () => {
+  const O = require('../engine/core/ownership')
+  const agents = fs.readFileSync(path.resolve(__dirname, '..', 'template', 'AGENTS.md'), 'utf8')
+  const delivery = O.SYSTEM_FILES.filter((file) => file.startsWith('planning/delivery/'))
+
+  assert.ok(delivery.length, 'el motor declara guías de entrega como suyas')
+  assert.ok(agents.includes('planning/delivery/'), 'y el AGENTS.md las nombra')
+  assert.ok(agents.includes('delivery/project.md'), 'junto a lo que sigue siendo del proyecto')
+  assert.equal(O.SYSTEM_FILES.includes('planning/delivery/project.md'), false)
+})

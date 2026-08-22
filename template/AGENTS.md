@@ -80,13 +80,17 @@ deja de recibir mejoras.
 
 Para cambiar algo del sistema hay dos operaciones, las dos junto a `system/`, nunca dentro:
 
-- **Anexar**: un archivo nuevo con nombre o ID propio. Convive con los del sistema.
+- **Anexar**: un archivo nuevo con nombre o ID propio. Convive con los del sistema. En
+  `planning/rules/` ese ID se numera `P1..Pn`: `R` queda reservado al sistema y `check` lo exige.
 - **Reemplazar**: un archivo con el mismo nombre o ID que uno de `system/`. El del proyecto manda y
   `check` lo reporta como override explícito en vez de fallar.
 
-Aplica a `planning/business-rules/`, `planning/adr/`, `planning/rules/`, `teams/` y `agents/`. El resto de
-`planning/` —roadmap, backlog, WIP, done, inbox y acciones humanas— es del proyecto y no se toca al
-actualizar.
+Aplica a `planning/business-rules/`, `planning/adr/`, `planning/rules/`, `teams/` y `agents/`.
+
+Del resto de `planning/`, lo que lleva tu contenido es tuyo y no se toca al actualizar: roadmap, backlog,
+WIP, done, inbox, acciones humanas, informes y `delivery/project.md`. Lo que es guía del toolkit se
+reemplaza entero para que las mejoras lleguen, y ahí entran las seis guías de `planning/delivery/`: lo que
+tu proyecto decida distinto sobre su entrega va en ese `project.md`, que es donde el toolkit no escribe.
 
 `automatization/hooks/` es runtime del toolkit y se reemplaza entero. No tiene `system/` porque no hace
 falta: lo que un proyecto necesita ya funciona sin editarlo. Los adaptadores de runner y los workflows ni
@@ -132,5 +136,6 @@ Nunca amplía el alcance, promueve sus propias ideas, reescribe el proceso duran
 2. Tests, lint, tipos y build aplicables terminan con exit code real.
 3. QA valida el comportamiento por el camino real, no por un atajo interno.
 4. La deuda residual va a `planning/INBOX.md`.
-5. El cambio se commitea por tarea en el repo del servicio y el hash real queda en `DONE.md`.
+5. El cambio se commitea en el repo del servicio —uno por naturaleza del diff, y una tarea suele
+   tener una sola— y el hash real queda en `DONE.md`.
 6. `node tools/ops.js check planning` queda verde.
