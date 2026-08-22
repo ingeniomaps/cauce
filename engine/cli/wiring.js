@@ -14,24 +14,24 @@ const OB = require('../core/onboarding')
 const IN = require('./instance')
 const { fail, opsRoot } = require('./io')
 
-const LISTA = 20
+const MAX_LISTED = 20
 
 
 const INTEGRATION = {
   list: {
     run: (root) => {
       for (const [name, entry] of Object.entries(providerRegistry(root).config.providers || {})) {
-        const listo = I.providerReady(root, name)
-        const estado = !entry.enabled ? '○' : (listo ? '●' : '◐')
-        const nota = estado === '◐'
+        const ready = I.providerReady(root, name)
+        const mark = !entry.enabled ? '○' : (ready ? '●' : '◐')
+        const note = mark === '◐'
           ? `  — falta completar integrations/${name}/config.json y poner enabled: true`
           : ''
-        console.log(`${estado} ${name} [${entry.adapter}]${nota}`)
+        console.log(`${mark} ${name} [${entry.adapter}]${note}`)
       }
     },
   },
   enable: {
-    falta: 'Falta <provider>.',
+    missing: 'Falta <provider>.',
     run: (root, provider) => {
       const source = path.join(IN.PROJECT_ROOT, 'template', 'integrations', provider)
       if (!fs.existsSync(source)) fail(`Cauce no trae un adaptador para ${provider}.`, 2)
@@ -55,7 +55,7 @@ const INTEGRATION = {
   // empresa, y borrarlos para desconectar una integración sería perder trabajo suyo. El andamiaje
   // queda, callado, y volver a encenderlo no pierde nada.
   disable: {
-    falta: 'Falta <provider>.',
+    missing: 'Falta <provider>.',
     run: (root, provider) => {
       switchProvider(root, provider, false)
       console.log(`✓ ${provider}: desconectado del proyecto. "integration sync" deja de correrlo.`)
@@ -74,7 +74,7 @@ const INTEGRATION = {
     },
   },
   sync: {
-    falta: 'sync exige <provider>',
+    missing: 'sync exige <provider>',
     run: async (root, provider, key, cli) => {
       const result = await I.sync(root, provider, { fixture: cli.value('--fixture') })
       console.log(
@@ -91,15 +91,15 @@ const INTEGRATION = {
     },
   },
   promote: {
-    falta: 'promote exige <provider> <remote-key>',
-    exigeKey: true,
+    missing: 'promote exige <provider> <remote-key>',
+    needsKey: true,
     run: (root, provider, key) => {
       const result = I.promote(root, provider, key)
       console.log(`✓ ${provider}:${result.key} promovido como ${result.kind}`)
     },
   },
   'writeback-plan': {
-    falta: 'writeback-plan exige <provider>',
+    missing: 'writeback-plan exige <provider>',
     run: (root, provider) => console.log(JSON.stringify(I.writebackPlan(root, provider), null, 2)),
   },
 }
@@ -109,13 +109,13 @@ const INTEGRATION = {
 // raíces acote también el escaneo, y para que nadie termine recorriendo la carpeta de al lado.
 // Las tres reconciliaciones son el mismo comando con otra operación: se declaran en el mismo lugar
 // para que agregar una cuarta no pida tocar el despachador.
-for (const operacion of ['reset', 'rebase', 'reconcile']) {
-  INTEGRATION[operacion] = {
-    falta: `${operacion} exige <provider> <remote-key>`,
-    exigeKey: true,
+for (const operation of ['reset', 'rebase', 'reconcile']) {
+  INTEGRATION[operation] = {
+    missing: `${operation} exige <provider> <remote-key>`,
+    needsKey: true,
     run: (root, provider, key) => {
-      const changed = I.reconcile(root, provider, operacion, [key])
-      console.log(`✓ ${provider}: ${operacion} aplicado a ${changed.join(', ')}`)
+      const changed = I.reconcile(root, provider, operation, [key])
+      console.log(`✓ ${provider}: ${operation} aplicado a ${changed.join(', ')}`)
     },
   }
 }
@@ -126,16 +126,16 @@ function scan(target, cli) {
   if (cli.has('--json')) return console.log(JSON.stringify(result, null, 2))
   // Un monorepo de sesenta paquetes no se lee en pantalla. Se recorta, y se dice cuánto: un corte que no
   // se anuncia hace pasar lo listado por todo lo que hay.
-  for (const service of result.services.slice(0, LISTA)) {
+  for (const service of result.services.slice(0, MAX_LISTED)) {
     // El proyecto que vive en la raíz se nombra por su carpeta: `.` a secas no dice de cuál se habla.
-    const nombre = service.path === '.' ? `. (${path.basename(service.root || result.root)})` : service.path
-    const espera = service.env ? `\n    espera ${service.env.names.join(', ')} (${service.env.file})` : ''
+    const label = service.path === '.' ? `. (${path.basename(service.root || result.root)})` : service.path
+    const expects = service.env ? `\n    espera ${service.env.names.join(', ')} (${service.env.file})` : ''
     console.log(
-      `${nombre} [${(service.runtimes || []).join(', ')}]${SC.comandos(service.commands)}${espera}`,
+      `${label} [${(service.runtimes || []).join(', ')}]${SC.comandos(service.commands)}${expects}`,
     )
   }
-  if (result.services.length > LISTA) {
-    console.log(`… y ${result.services.length - LISTA} más, todos en --json`)
+  if (result.services.length > MAX_LISTED) {
+    console.log(`… y ${result.services.length - MAX_LISTED} más, todos en --json`)
   }
   console.log(`${result.services.length} candidato(s). Cuál es el producto y cuál quedó muerto lo ` +
     'decide una persona.')
@@ -158,15 +158,15 @@ function onboard(rootArg, cli, runner = '') {
     for (const dimension of state.dimensions) console.log(`  · ${dimension.need}`)
     console.log('')
   }
-  const nombres = services.slice(0, LISTA).map((service) => service.path).join(', ')
-  const resto = services.length > LISTA ? ` y ${services.length - LISTA} más` : ''
+  const listed = services.slice(0, MAX_LISTED).map((service) => service.path).join(', ')
+  const more = services.length > MAX_LISTED ? ` y ${services.length - MAX_LISTED} más` : ''
   console.log(services.length
-    ? `Mientras tanto, esto es lo que hay: ${nombres}${resto}`
+    ? `Mientras tanto, esto es lo que hay: ${listed}${more}`
     : 'Mientras tanto, en el workspace todavía no hay ningún proyecto.')
   if (!state.fresh) {
-    const escrito = [state.written.organization && 'organization/', state.written.roadmap && 'el roadmap']
+    const parts = [state.written.organization && 'organization/', state.written.roadmap && 'el roadmap']
       .filter(Boolean).join(' y ')
-    console.log(`Esta instancia ya tiene ${escrito} escrito: el arranque no la va a pisar.`)
+    console.log(`Esta instancia ya tiene ${parts} escrito: el arranque no la va a pisar.`)
     return
   }
   // Un solo cierre: tres líneas que suenan a final se leen como tres finales, y quien recién instaló
@@ -196,10 +196,10 @@ function switchProvider(root, provider, enabled) {
 }
 
 async function integration(action, rootArg, provider, key, cli) {
-  const paso = INTEGRATION[action]
-  if (!paso) fail(`Acción de integración desconocida: ${action || '(vacía)'}`, 2)
-  if (paso.falta && (!provider || (paso.exigeKey && !key))) fail(paso.falta, 2)
-  await paso.run(path.resolve(rootArg || '.'), provider, key, cli)
+  const step = INTEGRATION[action]
+  if (!step) fail(`Acción de integración desconocida: ${action || '(vacía)'}`, 2)
+  if (step.missing && (!provider || (step.needsKey && !key))) fail(step.missing, 2)
+  await step.run(path.resolve(rootArg || '.'), provider, key, cli)
 }
 
 function automation(action, rootArg, runnerName, cli) {
