@@ -66,7 +66,7 @@ function usage() {
   ops automation install <ops-root> claude|codex|gemini|antigravity
   ops automation uninstall <ops-root> claude|codex|gemini|antigravity
   ops learn <agent> [--proposal [--period <AAAA-MM>]] [--applied [--period <AAAA-MM>]]
-  ops evaluate <agent> [--cases [--json]] [--bench [caso]] [--record [AAAA-MM-DD]]
+  ops evaluate <agent|team> [--team] [--cases [--json]] [--bench [caso]] [--record [AAAA-MM-DD]]
   ops agents list [ops-root] [--own|--system] [--json]
   ops agents fork <cargo> [ops-root]
   ops team list
@@ -527,6 +527,7 @@ function check(dir, cli) {
   errors.push(...PC.validateRoadmapStructure(root))
   errors.push(...PC.validateBacklogStructure(root))
   errors.push(...PC.validateRules(root))
+  errors.push(...PC.validateAdr(root))
   const backlog = milestones.flatMap((milestone) => milestone.tasks)
   const backlogSlugs = new Set(backlog.map((task) => task.slug))
   const epicNums = new Set()
@@ -1387,6 +1388,9 @@ function learn(agent, cli) {
 
 function evaluate(agent, caso, cli) {
   const root = opsRoot()
+  // De quién son los casos. Se nombra en vez de deducirse del slug: un cargo y un recorrido pueden
+  // llamarse igual sin colisionar, y deducirlo los volvería ambiguos el día que eso pase.
+  const kind = cli.has('--team') ? 'team' : 'agent'
   // El banco sólo tiene sentido acá: en una empresa el cargo que se evalúa es suyo —propio o
   // adoptado— y su `planning/` ya es el lugar legítimo donde trabajar.
   if (cli.has('--bench')) {
@@ -1402,8 +1406,8 @@ function evaluate(agent, caso, cli) {
     // Los casos, para que un recorrido los ejecute. Sin `--json` no tiene sentido: es entrada de
     // máquina, no de persona.
     if (cli.has('--cases')) {
-      const cases = EV.list(root, agent)
-      const prohibido = EV.behaviors(root, agent).forbidden
+      const cases = EV.list(root, agent, kind)
+      const prohibido = EV.behaviors(root, agent, kind).forbidden
       // La salida legible no lleva la conducta prohibida: `agent-propose` cuenta sus líneas para saber
       // cuántos casos hay, y una línea de más se contaría como un caso.
       if (!cli.has('--json')) {
@@ -1418,15 +1422,21 @@ function evaluate(agent, caso, cli) {
     // nombre, que es lo que hacía que la segunda corrida de un día borrara a la primera.
     if (cli.has('--record')) {
       const dia = cli.value('--record') || new Date().toISOString().slice(0, 10)
-      return console.log(path.relative(root, path.join(EV.resultsDir(root, agent), EV.nextResult(root, agent, dia))))
+      return console.log(path.relative(root,
+        path.join(EV.resultsDir(root, agent, kind), EV.nextResult(root, agent, dia, kind))))
     }
-    const result = L.evaluate(root, agent)
-    const runs = EV.validate(root, agent)
+    // Un recorrido no tiene contrato de cargo que validar —ni SKILL.md ni fuentes—: lo suyo lo
+    // comprueba `team check`. Acá se mide lo que sí comparte con un cargo: sus casos y su corrida.
+    const result = kind === 'team'
+      ? { errors: [], warnings: [], proposals: 0, pending: 0, cases: 0 }
+      : L.evaluate(root, agent)
+    const runs = EV.validate(root, agent, kind)
     const errors = [...result.errors, ...runs.errors]
     for (const warning of [...result.warnings, ...runs.warnings]) console.warn(`⚠ ${warning}`)
     for (const error of errors) console.error(`✗ ${error}`)
     if (errors.length) fail(`\n${errors.length} error(es)`, 1)
     const corrida = runs.last ? `${runs.last.passed}/${runs.last.total} pasan (${runs.last.date})` : 'sin correr'
+    if (kind === 'team') return console.log(`✓ ${agent}: ${runs.cases} caso(s) — ${corrida}`)
     console.log(
       `✓ ${agent}: ${result.cases} caso(s) — ${corrida}, ${result.proposals} propuesta(s)` +
         `${result.pending ? ` (${result.pending} sin aplicar)` : ''}, ` +

@@ -13,6 +13,17 @@ const fs = require('node:fs')
 const path = require('node:path')
 const catalog = require('./catalog')
 
+// De quién son los casos. Un cargo y un recorrido se miden igual —una tentación escrita, los
+// comportamientos que debería exhibir, un veredicto registrado— y lo único que cambia es dónde vive
+// el contrato. Se resuelve acá y una sola vez, en vez de duplicar el mecanismo por tipo de sujeto.
+//
+// El tipo se nombra en la llamada y no se adivina del slug: un cargo y un recorrido pueden llamarse
+// igual sin colisionar, porque hoy viven en árboles separados, y adivinar los volvería ambiguos.
+function subject(root, slug, kind = 'agent') {
+  if (kind === 'team') return path.dirname(require('../teams/registry').read(root, slug).file)
+  return catalog.resolve(root, slug)
+}
+
 const RESULTS = ['evaluations', 'results']
 
 function caseFiles(dir) {
@@ -42,8 +53,8 @@ function fixtureFiles(dir, prefix = '') {
   return found
 }
 
-function fixtures(root, agent, id) {
-  const dir = path.join(catalog.resolve(root, agent), 'evaluations', 'cases', id)
+function fixtures(root, agent, id, kind) {
+  const dir = path.join(subject(root, agent, kind), 'evaluations', 'cases', id)
   return { dir, files: fixtureFiles(dir) }
 }
 
@@ -65,8 +76,8 @@ function parseCase(text) {
   return { request: request.trim(), expected }
 }
 
-function list(root, agent) {
-  const dir = path.join(catalog.resolve(root, agent), 'evaluations', 'cases')
+function list(root, agent, kind) {
+  const dir = path.join(subject(root, agent, kind), 'evaluations', 'cases')
   return caseFiles(dir).map((name) => {
     const id = name.replace(/\.md$/, '')
     return {
@@ -87,8 +98,8 @@ function list(root, agent) {
 // al proponer cambios, nunca al evaluar. La conducta prohibida entraba únicamente si quien lanzaba la
 // corrida se acordaba de escribirla en el prompt, y ahí el criterio cambiaba entre corridas: tres rondas
 // del mismo caso se midieron con tres listones distintos y dejaron de ser comparables.
-function behaviors(root, agent) {
-  const file = path.join(catalog.resolve(root, agent), 'evaluations', 'expected-behaviors.yaml')
+function behaviors(root, agent, kind) {
+  const file = path.join(subject(root, agent, kind), 'evaluations', 'expected-behaviors.yaml')
   let text
   try { text = fs.readFileSync(file, 'utf8') } catch { return { required: [], forbidden: [] } }
   const found = { required: [], forbidden: [] }
@@ -103,8 +114,8 @@ function behaviors(root, agent) {
   return found
 }
 
-function resultsDir(root, agent) {
-  return path.join(catalog.resolve(root, agent), ...RESULTS)
+function resultsDir(root, agent, kind) {
+  return path.join(subject(root, agent, kind), ...RESULTS)
 }
 
 // Un registro por corrida, y puede haber más de una en el mismo día: aplicar una propuesta cambia el
@@ -130,9 +141,9 @@ function resultNames(dir) {
 
 // El nombre que le toca a la corrida de hoy: el primero libre. Lo decide el motor y no el prompt del
 // recorrido, porque «escribí en <fecha>.md» es una instrucción que no puede saber qué ya existe.
-function nextResult(root, agent, date) {
+function nextResult(root, agent, date, kind) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(`fecha inválida: ${date}`)
-  const dir = resultsDir(root, agent)
+  const dir = resultsDir(root, agent, kind)
   const taken = new Set(resultNames(dir))
   if (!taken.has(`${date}.md`)) return `${date}.md`
   let run = 2
@@ -142,8 +153,8 @@ function nextResult(root, agent, date) {
 
 // El último resultado registrado, para que `evaluate` pueda decir si el cargo se corrió alguna vez y
 // cómo le fue. No es un error no tenerlo: correrlo cuesta, y exigirlo en CI sería exigir red.
-function latest(root, agent) {
-  const dir = resultsDir(root, agent)
+function latest(root, agent, kind) {
+  const dir = resultsDir(root, agent, kind)
   const names = resultNames(dir)
   if (!names.length) return null
   const name = names[names.length - 1]
@@ -166,9 +177,9 @@ function latest(root, agent) {
 // código de salida, y no es blandura: correr los casos exige un modelo, y CI no lo tiene. Un `evaluate`
 // que fallara por un resultado viejo obligaría a pagar una corrida para poder integrar, y volvería a
 // fallar cada vez que el contrato cambie. Quien falla fuerte es el recorrido que sí los ejecuta.
-function validate(root, agent) {
+function validate(root, agent, kind) {
   const warnings = []
-  const cases = list(root, agent)
+  const cases = list(root, agent, kind)
   const total = cases.length
   // Esto sí es control estructural y no advertencia: que el artefacto esté entregado es una propiedad
   // estática del caso, verificable sin modelo, y dejarla en advertencia es lo que permitió que 47 casos
@@ -176,7 +187,11 @@ function validate(root, agent) {
   const errors = cases
     .filter((item) => item.id.includes('adversarial') && !item.fixtures.length)
     .map((item) => `${item.id}: caso adversarial sin artefacto en cases/${item.id}/`)
-  const last = latest(root, agent)
+  if (!total) {
+    warnings.push('no declara casos: nada mide si su contrato aguanta')
+    return { errors, warnings, cases: 0, last: null }
+  }
+  const last = latest(root, agent, kind)
   if (!last) {
     warnings.push(`sin resultados de casos: corré el recorrido de evaluación para los ${total} casos`)
     return { errors, warnings, cases: total, last: null }

@@ -26,7 +26,7 @@ const FLAGS = {
   integration: ['--fixture'],
   automation: ['--force'],
   learn: ['--proposal', '--applied', '--period'],
-  evaluate: ['--cases', '--json', '--bench', '--force', '--record'],
+  evaluate: ['--cases', '--json', '--bench', '--force', '--record', '--team'],
   team: ['--json'],
 }
 

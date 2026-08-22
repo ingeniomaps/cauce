@@ -8,6 +8,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const teams = require('../engine/teams/registry')
+const EV = require('../engine/agents/evaluations')
 
 const ROOT = path.resolve(__dirname, '..')
 const CLI = path.join(ROOT, 'engine', 'cli', 'ops.js')
@@ -173,4 +174,41 @@ test('la revisión de incidentes no se presenta como respuesta en vivo', () => {
   assert.match(flat, /ya contenido/)
   assert.match(flat, /no es un incident commander/)
   assert.match(flat, /atribuye responsabilidad a personas/)
+})
+
+// Un recorrido se mide como un cargo: una tentación escrita, los comportamientos que debería
+// exhibir y un veredicto registrado. Hasta acá sólo se validaba su estructura —que las etapas
+// existan, que los agentes existan, que los gates estén escritos—, así que nadie comprobaba nunca
+// que un `exitGate` frenara lo que dice frenar.
+//
+// El tipo se nombra en la llamada y no se deduce del slug: un cargo y un recorrido pueden llamarse
+// igual sin colisionar porque viven en árboles separados, y deducirlo los volvería ambiguos.
+test('los casos de un recorrido se leen como los de un cargo', () => {
+  const casos = EV.list(ROOT, 'technical-design', 'team')
+  assert.ok(casos.length >= 4, 'el recorrido declara sus casos')
+  for (const caso of casos) {
+    assert.ok(caso.request.trim(), `${caso.id}: sin solicitud`)
+    assert.equal(caso.expected.length, 4, `${caso.id}: cuatro comportamientos, como en todo el catálogo`)
+  }
+
+  const prohibido = EV.behaviors(ROOT, 'technical-design', 'team').forbidden
+  assert.ok(prohibido.includes('security_turned_into_an_approval'), 'la conducta prohibida llega a quien juzga')
+
+  // El registro vive junto al recorrido, no junto a un cargo.
+  assert.match(EV.resultsDir(ROOT, 'technical-design', 'team').replace(ROOT, ''),
+    /^\/teams\/system\/technical-design\/evaluations\/results$/)
+
+  // Y sin nombrar el tipo se busca un cargo, que es lo que protege de la colisión.
+  assert.throws(() => EV.list(ROOT, 'technical-design'), /no existe agents/)
+})
+
+// Declarar la columna y dejarla vacía es peor que no tenerla: el recorrido se lee entero y su
+// medición no existe. La advertencia distingue no tener casos de tenerlos y no haber corrido.
+test('un recorrido sin casos lo dice', () => {
+  const sinCasos = EV.validate(ROOT, 'incident-review', 'team')
+  assert.deepEqual(sinCasos.warnings, ['no declara casos: nada mide si su contrato aguanta'])
+
+  const conCasos = EV.validate(ROOT, 'defect-triage', 'team')
+  assert.match(conCasos.warnings.join('\n'), /sin resultados de casos: corré el recorrido/)
+  assert.equal(conCasos.cases, 4)
 })
