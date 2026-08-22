@@ -24,6 +24,19 @@ Lo que no se decidió se escribe `Por definir` y no como una decisión provisori
 llevarlos, y `check` los rechaza al activarla. Un borde escrito en prosa afirmativa no se distingue de
 uno resuelto, y el que lo ejecute va a decidirlo solo.
 
+## El dato antes que el comportamiento
+
+Un criterio describe comportamiento, y se escribe fácil sobre datos que el sistema no produce. Cuando
+eso pasa la épica no es ambiciosa: es inconstruible, y el costo se paga tarde, con el plan ya escrito y
+alguien buscando de dónde sacar algo que no está en ninguna parte.
+
+Antes de promover una épica, confirmar contra el código que cada dato que sus criterios asumen existe.
+Cuesta unos greps y es el chequeo más barato de toda la curación. Si el dato no está hay dos salidas:
+agregar la historia que lo crea y declarar la dependencia, o bajar el criterio. Dejarlo escrito como si
+existiera no es ninguna de las dos.
+
+Escribir el QUÉ sin prescribir tecnología no es escribirlo sin verificar que haya con qué.
+
 ## Automatizar invariantes
 
 Lo comprobable debe vivir en validadores o hooks: formatos, duplicados, gates peligrosos y evidencia. El
