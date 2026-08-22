@@ -42,8 +42,13 @@ const CASES = {
 }
 
 const BENCH = {
-  type: 'object', additionalProperties: false, required: ['path'],
-  properties: { path: { type: 'string' } },
+  type: 'object', additionalProperties: false, required: ['path', 'failed'],
+  properties: {
+    path: { type: 'string' },
+    // Los casos cuyo banco no se pudo rehacer. Va en el schema y no en la prosa de la respuesta
+    // porque de él depende un freno, y un freno que se lee de un texto libre no frena.
+    failed: { type: 'array', items: { type: 'string' } },
+  },
 }
 
 const ANSWER = {
@@ -89,14 +94,25 @@ const BENCH_ROOT = `${ROOT}/.cauce-eval/${AGENT}`
 let porCaso = null
 if (contexto.mode === 'toolkit') {
   const banco = await agent(
-    `From ${ROOT}, run one command per case, in order, and report only whether all of them printed a ` +
-    `path:\n` +
+    `From ${ROOT}, run one command per case, in order, and report what each one did:\n` +
     contexto.items.map((item) => `  node tools/ops.js evaluate ${AGENT} --bench ${item.id}`).join('\n') +
     `\n\nEach one recreates a disposable instance where writing to planning/ is legitimate. Set path ` +
-    `to the directory they share: ${BENCH_ROOT}`,
+    `to the directory they share: ${BENCH_ROOT}\n\n` +
+    `A command that exits non-zero did NOT recreate its bench: put that case id in failed, verbatim. ` +
+    `Report every one that failed and no others — do not retry them, do not add --force, and do not ` +
+    `treat a leftover directory from an earlier run as success.`,
     { schema: BENCH, label: 'bancos' },
   )
   if (!banco || !banco.path) return stop('sin-banco', 'no se pudieron preparar los bancos de evaluación')
+  // Un banco que no se rehizo es el de una corrida anterior: conserva lo que otro cargo escribió y le
+  // faltan los artefactos que el caso ganó desde entonces. La corrida seguía igual y el caso se medía
+  // contra ese banco viejo — uno falló por no encontrar cuatro adjuntos que sí existían, y el veredicto
+  // dijo del cargo algo que era del instrumento. Vale más no medir que medir mal.
+  if (banco.failed && banco.failed.length) {
+    return stop('banco-sin-rehacer',
+      `${banco.failed.join(', ')}: su banco conserva trabajo sin recoger de una corrida anterior. ` +
+      `Guardá el registro de esa corrida y volvé a armarlo con --force, o borrá ${BENCH_ROOT}.`)
+  }
   porCaso = (item) => `${BENCH_ROOT}/${item.id}`
   log(`Bancos: ${BENCH_ROOT}/<caso>`)
 } else if (contexto.system) {

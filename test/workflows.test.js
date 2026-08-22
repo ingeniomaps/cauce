@@ -556,3 +556,17 @@ test('cada runner ofrece el arranque en el formato que entiende', () => {
   // desde 0.39.0, así que le llegaba sólo como prosa dentro de AGENTS.md mientras el CLI ya las leía.
   assert.deepEqual(nativos.sort(), [...A.RUNNER_NAMES].sort())
 })
+
+// `evaluate --bench` se niega a rehacer un banco donde quedó trabajo sin recoger, y hace bien: el
+// registro de una corrida se escribe leyendo ese banco. Pero el recorrido no miraba si el comando
+// había fallado y seguía igual, así que el caso se medía contra el banco de la corrida anterior — con
+// lo que otro cargo escribió adentro y sin los artefactos que el caso ganó desde entonces. Uno falló
+// por no encontrar cuatro adjuntos que sí existían, y el veredicto dijo del cargo algo que era del
+// instrumento. Un falso negativo es peor que una corrida que no arranca: se archiva como medición.
+test('un banco que no se pudo rehacer detiene la corrida', () => {
+  const evalWf = fs.readFileSync(path.join(WF, 'agent-eval.js'), 'utf8')
+  assert.match(evalWf, /required: \['path', 'failed'\]/, 'qué bancos fallaron viaja en el schema')
+  assert.match(evalWf, /stop\('banco-sin-rehacer'/, 'y frenan la corrida en vez de medir con uno viejo')
+  assert.match(evalWf, /do not add --force/, 'el agente no decide por su cuenta pisar lo que hay')
+  assert.match(evalWf, /leftover directory from an earlier run/, 'ni da por bueno lo que sobró')
+})
