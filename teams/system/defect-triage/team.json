@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "slug": "defect-triage",
+  "name": "Defect Triage",
+  "purpose": "Entender un defecto que sigue vivo —reproducirlo, medir a quién alcanza y separar la causa demostrada de la sospechada— y recomendar si se contiene ahora, entra a la cola o no se arregla.",
+  "outcome": "report",
+  "entryAgent": "qa-engineer",
+  "facilitator": "release-manager",
+  "decisionOwners": {
+    "reproduction_and_evidence": "qa-engineer",
+    "containment": "site-reliability-engineer",
+    "suspected_cause": "backend-engineer",
+    "release_path": "release-manager"
+  },
+  "conditionalAgents": [
+    "customer-support-specialist",
+    "security-engineer",
+    "database-administrator",
+    "mobile-engineer",
+    "frontend-engineer"
+  ],
+  "stages": [
+    {
+      "id": "reproduce",
+      "phase": "discovery",
+      "agent": "qa-engineer",
+      "dependsOn": [],
+      "produces": [
+        "reproduction-or-why-not",
+        "blast-radius"
+      ],
+      "exitGate": "Hay una reproducción mínima con entorno, versión y datos, o está dicho qué falta para lograrla. El alcance está cuantificado —cuántos, desde cuándo, en qué condición— o queda escrito qué haría falta para contarlo. «No se puede reproducir» es una entrega válida; «no se reprodujo» sin decir qué se intentó, no."
+    },
+    {
+      "id": "contain",
+      "phase": "discovery",
+      "agent": "site-reliability-engineer",
+      "dependsOn": ["reproduce"],
+      "produces": [
+        "containment-options",
+        "current-exposure"
+      ],
+      "exitGate": "Cada opción de contención dice qué apaga, qué rompe al apagarlo y si es reversible. Contener no es arreglar, y la que no reduce exposición se descarta con su razón en vez de figurar como opción."
+    },
+    {
+      "id": "locate",
+      "phase": "discovery",
+      "agent": "backend-engineer",
+      "dependsOn": ["reproduce"],
+      "produces": [
+        "suspected-cause",
+        "evidence-for-and-against"
+      ],
+      "exitGate": "La causa sospechada viene con la evidencia que la sostiene **y** con la que la contradice. Una causa que explica el síntoma pero no explica por qué empezó ahora está incompleta, y decirlo es parte de la entrega."
+    },
+    {
+      "id": "decide",
+      "phase": "discovery",
+      "agent": "release-manager",
+      "dependsOn": ["contain", "locate"],
+      "produces": [
+        "recommendation",
+        "rollback-path"
+      ],
+      "exitGate": "La recomendación es contener ahora, arreglar en la cola o no arreglar, con el riesgo residual de cada camino y quién la autoriza. Un hotfix recomendado lleva su vuelta atrás escrita antes de que alguien lo autorice."
+    }
+  ],
+  "guardrails": [
+    "Cada agente conserva los límites y autorizaciones de su SKILL.md.",
+    "Este recorrido no despliega, no apaga banderas ni toca producción: recomienda, y la ejecución la autoriza una persona.",
+    "Una causa no demostrada se entrega como sospecha con su evidencia en contra, nunca como diagnóstico cerrado.",
+    "Contención y causa se investigan en paralelo a propósito: esperar la causa para contener alarga la exposición, y contener no cancela la investigación.",
+    "«No arreglar» es una recomendación legítima cuando el alcance y el riesgo lo sostienen, y se entrega con esos números a la vista.",
+    "Los agentes condicionales entran por dónde vive el defecto, no por rutina."
+  ],
+  "completion": [
+    "La reproducción existe o está dicho qué se intentó y qué falta.",
+    "El alcance está en números, o dice qué haría falta para tenerlos.",
+    "Lo demostrado y lo sospechado están separados y rotulados.",
+    "Cada camino recomendado tiene su riesgo residual y su vuelta atrás.",
+    "Queda nombrada la persona que autoriza, y qué evidencia necesita para decidir."
+  ]
+}
