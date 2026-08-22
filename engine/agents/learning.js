@@ -176,27 +176,27 @@ propuesta consolidada. -->
 // propuesta que ésta corrige, y repetirlos haría que el mismo hallazgo entre dos veces al contrato. El
 // insumo de una revisión es otro —qué mostró la evaluación posterior a aplicar—, y por eso el molde
 // pregunta eso y no otra cosa.
-function reviseProposal(root, agent, dir, previo, period) {
-  const anterior = previo.match(PROPOSAL_NAME)
-  const revision = Number(anterior[2] || 1) + 1
+function reviseProposal(root, agent, dir, previous, period) {
+  const parsed = previous.match(PROPOSAL_NAME)
+  const revision = Number(parsed[2] || 1) + 1
   const file = path.join(dir, `${period}-r${revision}.md`)
   fs.writeFileSync(file, `---
 agent: ${agent}
 period: ${period}
 revision: ${revision}
-corrects: ${previo}
+corrects: ${previous}
 status: proposed
 automatic_apply: false
 ---
 
 # Propuesta mensual — ${period}, revisión ${revision}
 
-Corrige \`${previo}\`, que ya está aplicada y queda sellada donde está. Esta revisión no la reemplaza ni
+Corrige \`${previous}\`, que ya está aplicada y queda sellada donde está. Esta revisión no la reemplaza ni
 la reabre: es un cambio distinto, con su propia firma.
 
 ## Hallazgos
 
-Qué mostró la evaluación posterior a aplicar \`${previo}\`. No repitas acá los hallazgos de esa propuesta
+Qué mostró la evaluación posterior a aplicar \`${previous}\`. No repitas acá los hallazgos de esa propuesta
 —ya entraron al contrato—: lo que va es lo que se supo después, con el registro de evaluación que lo
 sostiene.
 
@@ -227,7 +227,7 @@ sólo que pase.
 - Responsable: por definir
 - Fecha: por definir
 `)
-  return { file, created: true, reports: 0, corrects: previo }
+  return { file, created: true, reports: 0, corrects: previous }
 }
 
 // La última propuesta del período, si la hay: es contra ella que se decide si abrir una revisión.
@@ -256,25 +256,25 @@ function failedCases(text) {
 
 function teamFindings(root, dir) {
   const results = path.join(dir, 'evaluations', 'results')
-  const pendientes = reportFiles(results).filter((name) =>
+  const unsealed = reportFiles(results).filter((name) =>
     frontmatterState(fs.readFileSync(path.join(results, name), 'utf8'), 'draft') !== 'consolidated')
-  const bloques = []
-  for (const name of pendientes) {
+  const findings = []
+  for (const name of unsealed) {
     const file = path.join(results, name)
-    for (const caso of failedCases(fs.readFileSync(file, 'utf8'))) {
-      bloques.push(`### ${caso.id} — ${name.slice(0, -3)}\n\n`
-        + `Corrida: \`${path.relative(root, file)}\`\n\n${caso.detail}`)
+    for (const item of failedCases(fs.readFileSync(file, 'utf8'))) {
+      findings.push(`### ${item.id} — ${name.slice(0, -3)}\n\n`
+        + `Corrida: \`${path.relative(root, file)}\`\n\n${item.detail}`)
     }
   }
-  return { consumidos: pendientes.map((name) => path.join(results, name)), bloques }
+  return { consumed: unsealed.map((name) => path.join(results, name)), findings }
 }
 
 // La propuesta de un recorrido. Mismo ciclo que la de un cargo —se abre, se firma, se aplica y se
 // sella— y distinto contenido: lo que se corrige es el recorrido mismo, y lo que lo justifica es un
 // veredicto en contra, no una fuente nueva.
 function proposeFromRuns(root, agent, target, file, period) {
-  const { consumidos, bloques } = teamFindings(root, target)
-  const sinHallazgos = 'Ninguna corrida sin consolidar dejó un veredicto en contra. El recorrido '
+  const { consumed, findings } = teamFindings(root, target)
+  const empty = 'Ninguna corrida sin consolidar dejó un veredicto en contra. El recorrido '
     + 'aguantó lo que se le midió, y eso no pide cambio.'
   fs.writeFileSync(file, `---
 team: ${agent}
@@ -287,7 +287,7 @@ automatic_apply: false
 
 ## Hallazgos
 
-${bloques.join('\n\n') || sinHallazgos}
+${findings.join('\n\n') || empty}
 
 ## Evidencia
 
@@ -315,30 +315,30 @@ Qué caso tiene que cambiar de veredicto y por qué razón, no sólo que la corr
 - Responsable: por definir
 - Fecha: por definir
 `)
-  for (const registro of consumidos) markConsolidated(registro)
-  return { file, created: true, reports: consumidos.length, findings: bloques.length }
+  for (const record of consumed) markConsolidated(record)
+  return { file, created: true, reports: consumed.length, findings: findings.length }
 }
 
 function prepareProposal(root, agent, now = new Date(), period = '', kind = 'agent') {
   if (period && !/^\d{4}-\d{2}$/.test(period)) throw new Error(`período inválido: ${period}`)
   const target = assertWritable(root, agent, kind)
-  const consolidar = period || month(now)
+  const sealing = period || month(now)
   const proposalDir = path.join(target, 'learning', 'proposals')
   fs.mkdirSync(proposalDir, { recursive: true })
 
   // Una sola propuesta pendiente por período. Si la última todavía no se aplicó, abrir otra partiría
   // la firma en dos documentos que dicen cosas distintas sobre el mismo contrato.
-  const previo = lastOfPeriod(proposalDir, consolidar)
-  if (previo) {
-    const anterior = path.join(proposalDir, previo)
-    if (proposalState(fs.readFileSync(anterior, 'utf8')) !== 'applied') {
-      return { file: anterior, created: false, reports: 0 }
+  const previous = lastOfPeriod(proposalDir, sealing)
+  if (previous) {
+    const before = path.join(proposalDir, previous)
+    if (proposalState(fs.readFileSync(before, 'utf8')) !== 'applied') {
+      return { file: before, created: false, reports: 0 }
     }
-    return reviseProposal(root, agent, proposalDir, previo, consolidar)
+    return reviseProposal(root, agent, proposalDir, previous, sealing)
   }
 
-  const file = path.join(proposalDir, `${consolidar}.md`)
-  if (kind === 'team') return proposeFromRuns(root, agent, target, file, consolidar)
+  const file = path.join(proposalDir, `${sealing}.md`)
+  if (kind === 'team') return proposeFromRuns(root, agent, target, file, sealing)
   const reportDir = path.join(target, 'learning', 'reports')
   // Todo lo que ya ocurrió y todavía no entró, no sólo lo del mes que se consolida. Filtrar por el
   // prefijo del período dejaba huérfano al informe atrasado —el que se escribió después de que su mes
@@ -347,7 +347,7 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
   //
   // Repetirlo no es un riesgo: el sello dice cuál ya entró, y por eso este criterio existe recién
   // ahora. Antes todos decían `draft` y no había cómo distinguirlos.
-  const reports = reportFiles(reportDir).filter((name) => name.slice(0, 7) <= consolidar
+  const reports = reportFiles(reportDir).filter((name) => name.slice(0, 7) <= sealing
     && frontmatterState(fs.readFileSync(path.join(reportDir, name), 'utf8'), 'draft') !== 'consolidated')
   const summaries = reports.map((name) => {
     const report = path.join(reportDir, name)
@@ -360,12 +360,12 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
   })
   fs.writeFileSync(file, `---
 agent: ${agent}
-period: ${consolidar}
+period: ${sealing}
 status: proposed
 automatic_apply: false
 ---
 
-# Propuesta mensual — ${consolidar}
+# Propuesta mensual — ${sealing}
 
 ## Hallazgos
 
@@ -439,10 +439,10 @@ function evaluate(root, agent) {
   }
   // Sin su línea, el cargo existe pero no se encuentra: quien tiene una tarea tendría que abrir la
   // carpeta para saber si es éste. Se exige acá y no como advertencia porque es estático y de una línea.
-  const linea = catalog.summary(target)
-  if (!linea) errors.push('SKILL.md no declara summary: la línea con la que se elige este cargo')
-  else if (linea.length > SUMMARY_MAX) {
-    errors.push(`summary tiene ${linea.length} caracteres y el máximo es ${SUMMARY_MAX}: `
+  const summary = catalog.summary(target)
+  if (!summary) errors.push('SKILL.md no declara summary: la línea con la que se elige este cargo')
+  else if (summary.length > SUMMARY_MAX) {
+    errors.push(`summary tiene ${summary.length} caracteres y el máximo es ${SUMMARY_MAX}: `
       + 'si no entra en una línea, no sirve para elegir de un vistazo')
   }
   const proposals = proposalFiles(path.join(target, 'learning', 'proposals'))
@@ -461,10 +461,10 @@ function evaluate(root, agent) {
   // puede no haberse abierto aún—, pero sin decirlo un informe escrito y olvidado se ve igual que uno
   // ya incorporado: los dos son un archivo en `reports/`.
   const reportDir = path.join(target, 'learning', 'reports')
-  const sinConsolidar = reportFiles(reportDir).filter((name) =>
+  const unconsolidated = reportFiles(reportDir).filter((name) =>
     frontmatterState(fs.readFileSync(path.join(reportDir, name), 'utf8'), 'draft') !== 'consolidated')
-  if (sinConsolidar.length) {
-    warnings.push(`${sinConsolidar.length} informe(s) sin consolidar (${sinConsolidar.join(', ')}): `
+  if (unconsolidated.length) {
+    warnings.push(`${unconsolidated.length} informe(s) sin consolidar (${unconsolidated.join(', ')}): `
       + 'entran en la próxima propuesta')
   }
   let cases = 0
