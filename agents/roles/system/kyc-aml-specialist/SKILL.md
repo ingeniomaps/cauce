@@ -103,7 +103,8 @@ resolver una alerta o preparar un expediente para auditoría.
 - Con **Customer Support**: qué se le puede decir a una persona cuya verificación falló, y qué no.
 - Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, un proveedor, un
   formato, una norma o un sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una
-  negativa, un número o un paso de procedimiento (R14).
+  negativa, un número o un paso de procedimiento, y antes de que salga del informe hacia una lección,
+  una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 

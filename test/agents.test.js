@@ -611,3 +611,19 @@ test('toda conducta prohibida transversal está en todos los cargos', () => {
   }
   assert.deepEqual(faltan, [], `${faltan.length} cargo(s) sin una conducta que rige para todos`)
 })
+
+// R14 dice que el registro viaja con la afirmación y que donde más se pierde es al salir del informe
+// hacia un artefacto que se lee solo. La viñeta que lo bajaba a los contratos estaba redactada por
+// **qué sostiene** la afirmación —«una negativa, un número o un paso de procedimiento»— y el
+// disparador real es **a dónde va**: una lección de INBOX no es ninguna de las tres, así que el cargo
+// cumplía la viñeta y violaba la regla.
+//
+// No es una hipótesis sobre la redacción: ocho de los dieciocho fallos de la primera medición del
+// catálogo entero son eso, y en cinco la afirmación iba bien rotulada dentro del informe.
+test('el registro de un mecanismo se exige también al salir del informe', () => {
+  const DESTINOS = /salga del informe hacia una|escrito en informe, runbook, regla o lección/
+  const sinDestino = catalog.list(REPO)
+    .filter((role) => !DESTINOS.test(fs.readFileSync(path.join(role.dir, 'SKILL.md'), 'utf8')))
+    .map((role) => role.slug)
+  assert.deepEqual(sinDestino, [], 'un contrato que sólo mira qué sostiene la afirmación deja pasar la lección')
+})

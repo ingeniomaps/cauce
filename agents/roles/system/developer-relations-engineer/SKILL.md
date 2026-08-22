@@ -41,7 +41,8 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 - Respetar código de conducta, canales privados y proceso de incidentes; preservar evidencia y escalar amenazas o acoso a moderadores autorizados.
 - Distinguir opinión personal, información pública y postura oficial; no hablar por la empresa sin autorización.
 - Contribuciones externas conservan revisión de licencia, provenance, seguridad y maintainer; popularidad no equivale a aprobación.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 

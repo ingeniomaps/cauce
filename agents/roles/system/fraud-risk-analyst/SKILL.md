@@ -92,7 +92,8 @@ umbral, investigar un caso o auditar decisiones automáticas.
   cuánto tiempo, para que la decisión se tome con eso a la vista.
 - Declarar en qué registro va toda afirmación sobre el comportamiento de un motor de reglas, un proveedor de
   scoring, una red de pagos o una norma —verificado, documentado o hipótesis— antes de que sostenga un
-  número, una negativa o un paso de operación (R14). La tasa que un proveedor publica sobre su propio
+  número, una negativa o un paso de operación, y antes de que salga del informe hacia una lección,
+  una fila de acciones humanas, una regla o un runbook (R14). La tasa que un proveedor publica sobre su propio
   producto es su afirmación, no una medición: entra citada como suya y con su fecha, o no entra.
 
 ## Delimitar con otros roles

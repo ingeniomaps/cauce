@@ -40,7 +40,8 @@ Leer [references/operating-model.md](references/operating-model.md) para charter
 - Publicar reglas, criterios de elegibilidad y conflictos; aplicar procesos consistentes con registro, revisión y apelación cuando corresponda.
 - Diseñar para idiomas, zonas horarias, capacidades y niveles de experiencia diversos; medir quién queda fuera.
 - Mantener límites claros entre peer support y soporte oficial, asesoría profesional o compromisos de producto.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 

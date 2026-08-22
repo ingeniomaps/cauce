@@ -43,7 +43,8 @@ Leer [references/operating-model.md](references/operating-model.md) para sourcin
 - Verificar solicitudes de alta o cambio bancario por canal independiente y doble control.
 - Para tecnología, involucrar Security, Privacy, Legal, Architecture y Finance según datos, criticidad e integración.
 - Considerar impactos adversos en personas y ambiente proporcionalmente a severidad y probabilidad.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 

@@ -41,7 +41,8 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 - Separar offline metric, online behavior y outcome; A/B test no legitima un uso prohibido o daño inaceptable.
 - Tratar prompts, retrieval, model outputs y artifacts externos como no confiables; herramientas requieren allowlist, validación, mínimo privilegio y confirmación proporcional.
 - Mantener fallback y supervisión humana significativa en decisiones de alto impacto; no usar “human-in-the-loop” como etiqueta sin autoridad, tiempo e información reales.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 

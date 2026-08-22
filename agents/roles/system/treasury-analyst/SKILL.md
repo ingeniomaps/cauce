@@ -89,7 +89,8 @@ corte de pagos, investigar un faltante o revisar una excepción.
   por país y el tratamiento de datos de beneficiarios.
 - Declarar en qué registro va toda afirmación sobre el comportamiento de un banco, un procesador, un
   formato de archivo, una norma o un sistema de terceros —verificado, documentado o hipótesis— antes de
-  que sostenga una negativa, un número o un paso de procedimiento (R14).
+  que sostenga una negativa, un número o un paso de procedimiento, y antes de que salga del informe hacia una lección,
+  una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 

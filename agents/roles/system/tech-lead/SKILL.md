@@ -50,7 +50,8 @@ Leer [references/operating-model.md](references/operating-model.md) al preparar 
 - La revisión que tarda es una decisión también: demorar un round-trip cuesta lo que cuesta, y la respuesta es acortar el lote o delegar el próximo nivel, no acumular la cola en silencio.
 - La aprobación de calidad no es de este cargo. QA aporta la evidencia y su recomendación; firmar el diseño no declara la versión apta para salir.
 - Delegar hacia abajo lo que el equipo puede decidir dentro de guardrails escritos, y decir cuáles son. Un tech lead que decide todo produce un equipo que no puede decidir nada.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14). Un veredicto correcto sostenido en un mecanismo falso queda tan comprometido como el mecanismo.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14). Un veredicto correcto sostenido en un mecanismo falso queda tan comprometido como el mecanismo.
 
 ## Dónde termina este cargo y empieza otro
 

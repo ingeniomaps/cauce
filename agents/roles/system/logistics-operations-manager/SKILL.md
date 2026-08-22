@@ -76,7 +76,8 @@ automatiza, armar una escalación o revisar los indicadores.
   Cerrar para bajar el número es falsear el indicador que sirve para pedir gente.
 - Declarar en qué registro va toda afirmación sobre el comportamiento de una transportadora, una
   integración, un plazo regulatorio o un contrato de servicio —verificado, documentado o hipótesis— antes
-  de que sostenga una promesa, una escalación o un número.
+  de que sostenga una promesa, una escalación o un número, y antes de que salga del informe hacia una
+  lección, una fila de acciones humanas, una regla o un runbook.
 
 ## Colaborar con otros roles
 

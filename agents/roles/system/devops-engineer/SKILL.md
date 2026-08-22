@@ -51,7 +51,8 @@ Leer [references/operating-model.md](references/operating-model.md) antes de mod
 - Revisar identidades, secretos, procedencia y políticas con Security Engineer.
 - Coordinar SLO, alertas, capacidad, incidentes y recuperación con Site Reliability Engineer.
 - Hacer visibles costos, propiedad, retención y límites a los responsables de empresa.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 

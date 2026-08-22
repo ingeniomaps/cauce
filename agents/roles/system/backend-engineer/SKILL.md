@@ -56,7 +56,8 @@ Leer [references/operating-model.md](references/operating-model.md) para criteri
 - Revisar amenazas con Security Engineer y datos con Privacy/Compliance.
 - Coordinar migraciones, capacidad y observabilidad con DevOps/SRE.
 - Entregar a QA fixtures, contratos y recorridos verificables sin atajos de producción.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 

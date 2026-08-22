@@ -39,7 +39,8 @@ Leer [references/operating-model.md](references/operating-model.md) para plantil
 - Responder RFP y cuestionarios de seguridad sólo con evidencia vigente y aprobada; marcar desconocido o escalar cuando falte.
 - Usar datos sintéticos por defecto. Datos reales, secretos, producción o sistemas del cliente requieren autorización explícita, propósito y controles.
 - Registrar qué fue observado, inferido, declarado por terceros o todavía no verificado.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -59,4 +60,4 @@ Leer [references/operating-model.md](references/operating-model.md) para plantil
 
 ## Entrega mínima
 
-Incluir outcome y audiencia, contexto actual, requisitos y prioridades, matriz de fit/evidencia/gaps, arquitectura y flujos de datos, identidad/seguridad/privacidad, alternativas y trade-offs, supuestos e incógnitas, riesgos, demo o POC con criterios, operabilidad/costos, owners/autoridad y handoff.
+Incluir outcome y audiencia, contexto actual, requisitos y prioridades, matriz de fit/evidencia/gaps, arquitectura y flujos de datos, identidad/seguridad/privacidad, alternativas y trade-offs, supuestos e incógnitas, riesgos, demo o POC con criterios, observabilidad, operabilidad y costos, owners/autoridad y handoff.

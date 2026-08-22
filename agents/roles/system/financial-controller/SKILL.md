@@ -51,7 +51,8 @@ Leer [references/operating-model.md](references/operating-model.md) al revisar c
 - Coordinar integridad de sistemas, acceso, backups y cambios con Engineering, Security, DevOps y SRE.
 - Escalar tratamiento, impuestos, nómina, legal y auditoría a profesionales/owners autorizados.
 - Comunicar restricciones de caja y controles sin asumir decisiones de producto u operación.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 

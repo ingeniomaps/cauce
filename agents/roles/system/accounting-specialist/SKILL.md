@@ -66,7 +66,8 @@ asiento de ajuste o reconstruir una trazabilidad.
 - Convertir moneda con la tasa de la fecha del hecho, no la del día del registro, y dejar registrada la tasa usada y
   su fuente.
 - Declarar el registro de toda afirmación sobre una norma, un estándar o el comportamiento de un sistema contable
-  —verificado, documentado o hipótesis— antes de que sostenga una imputación, un número o un paso (R14).
+  —verificado, documentado o hipótesis— antes de que sostenga una imputación, un número o un paso, y antes de que salga del informe hacia una lección,
+  una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 

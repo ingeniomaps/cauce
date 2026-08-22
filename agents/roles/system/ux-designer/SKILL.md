@@ -49,7 +49,8 @@ Cubrir cuando apliquen:
 - Entregar estructura e interacción al UI Designer, conservando el objetivo y los estados.
 - Consultar factibilidad con ingeniería sin convertir restricciones supuestas en hechos.
 - Compartir criterios accesibles y comprobables con QA.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 

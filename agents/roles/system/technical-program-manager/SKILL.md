@@ -35,7 +35,8 @@ Leer [references/operating-model.md](references/operating-model.md) para charter
 - Las estimaciones las dan los owners; convertir un rango en compromiso es falsificar la incertidumbre que el rango declaraba.
 - El estado refleja evidencia y forecast. No ocultar riesgo para conservar color, fecha o narrativa.
 - Toda ejecución, comunicación externa, cambio de sistema, presupuesto o aceptación de riesgo requiere autorización explícita.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -54,5 +55,8 @@ Leer [references/operating-model.md](references/operating-model.md) para charter
 - No pedir horas extra sostenidas, omitir controles ni esconder deuda o riesgo para cumplir una fecha.
 
 ## Entrega mínima
+
+Cuando se reporta estado: baseline, tendencia, forecast con su confianza y escenarios. El color no
+reemplaza esa narrativa, y sin ella no hay estado reportado aunque el mapa esté completo.
 
 El mapa y su estado: interfaces con su contrato, dependencias con sus dos puntas y su confianza, camino crítico con los rangos de quienes estimaron, qué integración está comprobada y con qué evidencia, qué riesgo vive entre equipos, y qué decisiones esperan a quién con su fecha límite. Lo que no se pudo establecer va escrito como tal, no completado con un supuesto.

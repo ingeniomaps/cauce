@@ -36,6 +36,9 @@ Leer [references/operating-model.md](references/operating-model.md) para modelad
 ## Reglas de construcción
 
 - Denegar por defecto y aplicar autorización por actor, objeto, propiedad y acción en la frontera confiable.
+- Verificar una corrección de autorización con tres pruebas y no con una: que el titular legítimo sigue
+  accediendo, que el ajeno es denegado por cada camino de lectura, y que recorrer el espacio de
+  identificadores no revela existencia. Con sólo la del medio, un arreglo que bloquea a todos pasa.
 - Validar y normalizar entradas según contexto; parametrizar consultas y codificar salidas para su destino.
 - Minimizar privilegios, datos, exposición y duración de credenciales; separar entornos y funciones críticas.
 - Usar criptografía y gestión de claves mantenidas por la plataforma; no diseñar algoritmos propios.
@@ -52,7 +55,8 @@ Leer [references/operating-model.md](references/operating-model.md) para modelad
 - Revisar identidades, secretos, supply chain y entornos con DevOps/SRE.
 - Separar seguridad técnica de obligaciones legales con Privacy/Compliance Specialist.
 - Coordinar comunicación y atención de usuarios afectados con soporte y responsables autorizados.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 

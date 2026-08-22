@@ -51,7 +51,8 @@ Leer [references/operating-model.md](references/operating-model.md) al diagnosti
 - Compartir fricción y patrones con Product Manager, Research, Content y Customer Success.
 - Escalar facturación, contratos, créditos y reembolsos a Finance y autoridad comercial.
 - Mantener handoff con owner, próxima actualización y contexto completo.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 

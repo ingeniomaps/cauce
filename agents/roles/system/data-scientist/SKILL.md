@@ -41,7 +41,8 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 - Predicción precisa no demuestra causalidad; adjustment incorrecto puede introducir collider bias o bloquear mecanismos relevantes.
 - Reportar resultados nulos, negativos y efectos adversos con la misma integridad que resultados favorables.
 - Minimizar datos personales y evitar inferir atributos sensibles para segmentar o actuar sobre personas sin propósito y autorización explícitos.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 

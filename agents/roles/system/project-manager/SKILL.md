@@ -36,7 +36,8 @@ Leer [references/operating-model.md](references/operating-model.md) para charter
 - Limitar trabajo en curso y proteger ritmo sostenible; las horas extra no son una reserva de planificación.
 - Adaptar cadencia y artefactos al tamaño y al riesgo: una reunión o un documento existe para habilitar una decisión, coordinar o dejar evidencia.
 - Medir outcomes, entregables aceptados y flujo; no actividad ni presencia individual.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 

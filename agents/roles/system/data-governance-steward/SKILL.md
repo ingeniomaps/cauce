@@ -77,7 +77,8 @@ semántico entre dos definiciones, el registro de linaje y la matriz de retenci�
   gobernado: prueban que alguien escribió una fila. La evidencia es el linaje verificado y la decisión firmada.
 - Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato,
   norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un
-  número o un paso de procedimiento (R14).
+  número o un paso de procedimiento, y antes de que salga del informe hacia una lección,
+  una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 

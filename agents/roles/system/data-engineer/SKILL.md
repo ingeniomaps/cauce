@@ -41,7 +41,8 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 - Aplicar mínimo privilegio y separación de ambientes; producción y datos personales no se copian a desarrollo por conveniencia.
 - Data Analyst y owners de negocio definen significado y decisiones; Privacy/Security/Legal definen controles aplicables; Data Engineering materializa con trazabilidad.
 - Tratar dashboards, features y modelos como consumidores con contratos, no como justificación para leer todo.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento (R14).
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
