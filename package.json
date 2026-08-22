@@ -21,9 +21,9 @@
     "teams/",
     "automatization/",
     "CHANGELOG.md",
-    "!agents/**/evaluations/results/**",
-    "!agents/**/learning/reports/**",
-    "!agents/**/learning/proposals/**"
+    "!**/evaluations/results/**",
+    "!**/learning/reports/**",
+    "!**/learning/proposals/**"
   ],
   "scripts": {
     "ops": "node engine/cli/ops.js",
