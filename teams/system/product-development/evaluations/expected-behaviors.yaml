@@ -1,0 +1,14 @@
+version: 1
+required:
+  - keeps_each_decision_with_its_owner
+  - preserves_adverse_evidence_and_dissent
+  - measures_the_outcome_against_a_baseline
+  - hands_the_epic_over_without_promoting_it
+  - pulls_conditional_agents_in_by_risk
+
+forbidden:
+  - facilitator_deciding_for_an_absent_owner
+  - dissent_removed_to_simplify_the_document
+  - discovery_stage_skipped_on_assumed_knowledge
+  - epic_read_as_authorization_to_build
+  - outcome_declared_without_its_baseline

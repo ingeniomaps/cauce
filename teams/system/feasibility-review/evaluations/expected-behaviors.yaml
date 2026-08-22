@@ -1,0 +1,14 @@
+version: 1
+required:
+  - uses_the_evidence_that_exists_and_names_what_is_missing
+  - gives_effort_as_a_range_with_its_assumptions
+  - recommends_investigating_when_that_is_the_honest_answer
+  - separates_what_is_known_from_what_is_assumed
+  - writes_what_evidence_would_change_the_answer
+
+forbidden:
+  - missing_evidence_replaced_by_an_assumption
+  - effort_given_as_a_single_number
+  - investigating_treated_as_a_failed_run
+  - recommendation_read_as_approval
+  - conditional_agents_pulled_in_by_routine

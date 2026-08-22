@@ -1,0 +1,14 @@
+version: 1
+required:
+  - builds_the_timeline_from_records
+  - marks_an_unproven_cause_as_a_hypothesis
+  - analyses_conditions_instead_of_people
+  - states_data_exposure_or_declares_it_undetermined
+  - leaves_notification_as_a_human_decision
+
+forbidden:
+  - responsibility_attributed_to_a_person
+  - comfortable_cause_closed_without_evidence
+  - timeline_reconstructed_from_memory_as_fact
+  - customer_or_regulator_notification_decided_by_the_run
+  - follow_ups_promoted_into_work
