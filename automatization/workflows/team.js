@@ -16,7 +16,12 @@ export const meta = {
 }
 
 {{INCLUDE:shared/workflow-root.js}}
-const P = `${ROOT}/planning`
+
+// Dónde trabaja el recorrido. Normalmente es la raíz donde se lo invocó; `args.root` existe para
+// correrlo sobre otra instancia —el banco desechable con el que `team-eval` lo mide—, porque un
+// recorrido que sólo sabe escribir en su propio planning/ no se puede medir sin ensuciarlo.
+const WORKDIR = String((typeof args === 'string' ? '' : (args || {}).root) || ROOT).replace(/\/+$/, '')
+const P = `${WORKDIR}/planning`
 const ROADMAP = `${P}/roadmap`
 const HUMAN = `${P}/HUMAN_ACTIONS.md`
 const INBOX = `${P}/INBOX.md`
@@ -121,16 +126,16 @@ const BASE = `Nunca inventes clientes, métricas, restricciones ni decisiones. N
 // `organization/` "como contexto para etapas siguientes": cada etapa es un agente nuevo con su
 // propio contexto, así que esa lectura no llegaba a ninguna parte y sólo costaba tokens.
 const contract = await agent(
-  `${BASE}\n\nFrom ${ROOT}, run exactly these commands and report only what they printed. Read no ` +
+  `${BASE}\n\nFrom ${WORKDIR}, run exactly these commands and report only what they printed. Read no ` +
   `other file.\n` +
   `1. "node tools/ops.js team show ${CANDIDATE} --json".\n` +
   `   If it fails, run "node tools/ops.js team list", set exists=false, report teams, and stop.\n` +
   `2. "node tools/ops.js agents list --json", which gives each role its resolved path.\n` +
   `Report exists=true, the manifest fields —name, purpose, outcome, entryAgent, facilitator, ` +
   `guardrails, stages with id, phase, agent, produces and exitGate, decisionOwners flattened into ` +
-  `owners as domain/agent pairs— and for every stage set skill to "${ROOT}/<path>/SKILL.md", where ` +
+  `owners as domain/agent pairs— and for every stage set skill to "${WORKDIR}/<path>/SKILL.md", where ` +
   `<path> is what command 2 printed for that stage's agent. That command prints paths relative to ` +
-  `${ROOT}, and the stages run from elsewhere, so the prefix is not optional.`,
+  `${WORKDIR}, and the stages run from elsewhere, so the prefix is not optional.`,
   { schema: MANIFEST, label: 'team-contract' },
 )
 if (!contract) return stop('contract-unavailable', `no se pudo leer el manifiesto de ${CANDIDATE}`)
@@ -152,7 +157,7 @@ const owners = (contract.owners || []).map((owner) => `${owner.domain}=${owner.a
 const RULES = `${BASE}\n\nEquipo ${contract.name}: ${contract.purpose}\n` +
   `Guardrails: ${contract.guardrails.join(' ')}\n` +
   `${owners ? `Dueños de decisión: ${owners}. Ningún otro cargo resuelve en su dominio.\n` : ''}` +
-  `Contexto de la empresa en ${ROOT}/organization/. Intención a evaluar: ${GOAL}`
+  `Contexto de la empresa en ${WORKDIR}/organization/. Intención a evaluar: ${GOAL}`
 
 phase('Stages')
 
@@ -173,7 +178,7 @@ for (const stage of discovery) {
 
   const result = await agent(
     `${RULES}\n\n${previous}\n\nActuá como ${stage.agent}, respetando su contrato en ` +
-    `${stage.skill || `${ROOT}/agents/roles/${stage.agent}/SKILL.md`} y sus límites. ` +
+    `${stage.skill || `${WORKDIR}/agents/roles/${stage.agent}/SKILL.md`} y sus límites. ` +
     `Etapa "${stage.id}": producí ` +
     `${(stage.produces || []).join(' y ')}. Distinguí hechos, evidencia, supuestos y preguntas ` +
     `abiertas. El exit gate es: "${stage.exitGate}". Cerrá con gate=cumplido si se cumple y no queda nada ` +
@@ -305,7 +310,7 @@ await agent(
 phase('Closing')
 
 const closing = await agent(
-  `${RULES}\n\nRun "node tools/ops.js check ${P}" from ${ROOT} and report whether it passed. If it ` +
+  `${RULES}\n\nRun "node tools/ops.js check ${P}" from ${WORKDIR} and report whether it passed. If it ` +
   `failed, repair only the epic you just wrote so it satisfies the contract; never weaken a criterion ` +
   `to force green.`,
   { schema: { type: 'object', required: ['passed', 'details'], properties: {
