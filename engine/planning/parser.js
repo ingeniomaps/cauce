@@ -4,6 +4,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { frontmatter: fields } = require('../core/frontmatter')
 const { PLACEHOLDERS } = require('../core/onboarding')
 
 const EPIC_STATES = ['open', 'active', 'closed']
@@ -37,14 +38,11 @@ function read(file) {
   try { return fs.readFileSync(file, 'utf8') } catch { return '' }
 }
 
+// Los contratos de planning leen un campo por nombre y no el objeto entero: devolver una función evita
+// que cada llamador tenga que preguntar si la clave existe antes de usarla.
 function frontmatter(text) {
-  const block = (text.match(/^---\s*\n([\s\S]*?)\n---/m) || [])[1] || ''
-  const values = new Map()
-  for (const line of block.split('\n')) {
-    const match = line.match(/^([\w-]+):\s*(.*)$/)
-    if (match) values.set(match[1], match[2].trim().replace(/^['"]|['"]$/g, ''))
-  }
-  return (key) => values.get(key) || ''
+  const values = fields(text)
+  return (key) => values[key] || ''
 }
 
 function section(text, heading) {

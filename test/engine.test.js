@@ -1258,3 +1258,27 @@ test('el README de integraciones declara las firmas que el adaptador tiene', () 
     assert.equal(typeof jira[nombre], 'function', `el adaptador exporta ${nombre}`)
   }
 })
+
+// Estaba implementado dos veces con dos comportamientos: uno aceptaba el bloque en cualquier parte del
+// archivo y admitía claves con dígito inicial, el otro no. Un mismo draft se leía distinto según quién
+// lo abriera, y `draft.md` es la superficie que una persona edita a mano.
+test('el frontmatter se lee igual desde planning y desde integraciones', () => {
+  const FM = require('../engine/core/frontmatter')
+  const S = require('../engine/integrations/state')
+
+  assert.deepEqual(FM.frontmatter('---\nepic: 001\nstatus: open\n---\n# Título\n'),
+    { epic: '001', status: 'open' })
+  assert.deepEqual(FM.frontmatter('---\n2fa: si\n---\n'), { '2fa': 'si' }, 'la clave admite lo que admite YAML')
+  assert.deepEqual(FM.frontmatter('---\ntitle: "Con comillas"\n---\n'), { title: 'Con comillas' })
+
+  // Frontmatter es lo que encabeza el documento: un `---` en el medio es una línea horizontal.
+  assert.deepEqual(FM.frontmatter('# Título\n\n---\nepic: 001\n---\n'), {})
+  assert.deepEqual(FM.frontmatter('sin frontmatter'), {})
+  assert.deepEqual(FM.frontmatter(undefined), {}, 'no explota con lo que no es texto')
+
+  // Las dos formas de llamarlo leen lo mismo; sólo cambia qué devuelven.
+  const texto = '---\ntask: alta\nphase: Build\n---\n'
+  assert.equal(P.frontmatter(texto)('phase'), 'Build')
+  assert.equal(P.frontmatter(texto)('inexistente'), '', 'el contrato de planning devuelve vacío, no undefined')
+  assert.deepEqual(S.frontmatter(texto), { task: 'alta', phase: 'Build' })
+})

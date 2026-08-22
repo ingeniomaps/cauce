@@ -3,6 +3,7 @@
 const crypto = require('node:crypto')
 const fs = require('node:fs')
 const path = require('node:path')
+const { frontmatter } = require('../core/frontmatter')
 const F = require('../core/files')
 
 const STATES = ['context', 'pending', 'ready', 'rejected', 'promoted']
@@ -26,16 +27,6 @@ const CATEGORIES = {
 
 const sha256 = (value) => {
   return crypto.createHash('sha256').update(String(value)).digest('hex')
-}
-
-function frontmatter(text) {
-  const block = (String(text).match(/^---\s*\n([\s\S]*?)\n---/) || [])[1] || ''
-  const values = {}
-  for (const line of block.split('\n')) {
-    const match = line.match(/^([A-Za-z][\w-]*):\s*(.*)$/)
-    if (match) values[match[1]] = match[2].trim().replace(/^['"]|['"]$/g, '')
-  }
-  return values
 }
 
 function replaceField(text, name, value) {

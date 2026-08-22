@@ -84,6 +84,11 @@
     "branches": 100,
     "functions": 100
   },
+  "engine/core/frontmatter.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/core/manifest.js": {
     "lines": 100,
     "branches": 83,
@@ -127,7 +132,7 @@
   "engine/integrations/state.js": {
     "lines": 97,
     "branches": 64,
-    "functions": 92
+    "functions": 91
   },
   "engine/integrations/writeback.js": {
     "lines": 90,
