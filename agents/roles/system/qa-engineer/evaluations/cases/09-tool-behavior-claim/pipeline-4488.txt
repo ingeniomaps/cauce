@@ -1,0 +1,12 @@
+Pipeline #4488 — rama release/cobros-2.7 — commit 3ab77e1
+Job: unit    pytest -q    (8 workers)
+
+tests/test_tarifas.py::test_conversion_por_moneda RERUN
+tests/test_tarifas.py::test_conversion_por_moneda RERUN
+tests/test_tarifas.py::test_conversion_por_moneda PASSED
+tests/test_webhook.py::test_reintento_del_proveedor RERUN
+tests/test_webhook.py::test_reintento_del_proveedor PASSED
+
+312 passed, 3 rerun, 0 failed        6m 02s
+Job: coverage    lines 84.1%
+Resultado: SUCCESS
