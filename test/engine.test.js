@@ -358,6 +358,34 @@ test('contratos de evidencia rastrean pruebas y decisiones duraderas', () => {
   }), ['DONE.md demo: falta tests:'])
 })
 
+// `commit:` es el puntero al artefacto, y sin forma lo cumplía cualquier prosa: `pendiente, lo subo
+// mañana` pasaba el validador entero. R9 pide lo contrario —el artefacto manda—, así que el campo
+// apunta a un sha o declara por qué no hay ninguno, con la misma salida explícita que `tests:`.
+test('commit: apunta a un sha real o declara por qué no lo hay', () => {
+  assert.equal(PC.validCommitTrace('abc1234 feat(planning): validar el estado'), true)
+  assert.equal(PC.validCommitTrace('9f68583a1b2c3d4 fix(tools): correr el shim (api@main)'), true)
+  assert.equal(PC.validCommitTrace('n/a — la tarea sólo abrió una fila en HUMAN_ACTIONS'), true)
+  assert.equal(PC.validCommitTrace('pendiente, lo subo mañana'), false)
+  // Una tarea que mezcla naturalezas lleva un commit por naturaleza, y cada uno responde por sí mismo:
+  // validar sólo el primero dejaba pasar «y el otro ya lo subo», que es la mitad sin artefacto.
+  assert.equal(PC.validCommitTrace(
+    'c58812a refactor(orders): extract resolve; 584ed11 docs(orders): drop status (api@main; sin footer)',
+  ), true, 'el `;` del paréntesis final no es un separador: detrás no hay sha')
+  assert.equal(PC.validCommitTrace(
+    '3e56e42 [Refactor] Move parentLabel | fc6ecc4 [Fix] Translate to pt (front@feature/DROP-26950)',
+  ), true)
+  assert.equal(PC.validCommitTrace('abc1234 feat(auth): create account | pendiente el segundo'), false)
+  // El `;` seguido de prosa se lee como nota, no como tramo: es indistinguible del paréntesis final que
+  // gouduet ya escribe, y elegir lo contrario rechazaría 71 entradas reales por una forma hipotética.
+  assert.equal(PC.validCommitTrace('abc1234 feat(auth): create; nota al margen'), true)
+  assert.equal(PC.validCommitTrace('ver el PR'), false)
+  assert.equal(PC.validCommitTrace('abc1234'), false, 'un sha sin asunto no dice qué se entregó')
+  assert.equal(PC.validCommitTrace('n/a'), false, 'la salida explícita lleva su razón')
+  assert.deepEqual(PC.validateDoneEntry({
+    source: 'DONE.md', slug: 'demo', tests: 'A → npm test', commit: 'pendiente, lo subo mañana',
+  }), ['DONE.md demo: commit debe apuntar a <sha> <asunto> o justificar n/a — razón'])
+})
+
 test('parser acepta historias legadas y múltiples referencias de criterio', () => {
   const root = tempRoot('ops-parser-')
   fs.mkdirSync(path.join(root, 'roadmap'))
@@ -877,4 +905,30 @@ Solo contiene trabajo aprobado y listo. Las ideas viven en \`INBOX.md\`.
 -->
 `)
   assert.deepEqual(errores(), [], 'el ejemplo comentado enseña el formato sin ser juzgado')
+})
+
+// El último eslabón de la trazabilidad: la historia cita `(→ C1)` y su evidencia dice qué prueba lo
+// sostiene. Sin cruzarlos, una tarea cerraba con la prueba de otro criterio y el criterio citado se
+// quedaba sin ninguna aserción, con `check` en verde y la épica cerrada. Todo lo anterior de la
+// cadena ya se validaba; esto es lo único que hace que sirva.
+test('la evidencia de DONE rastrea el criterio que la historia citó', () => {
+  const entry = (tests) => ({
+    source: 'DONE.md', slug: 'alta-email-nuevo', tests, commit: 'abc1234 feat(auth): create account',
+  })
+
+  assert.deepEqual(PC.validateDoneEntry(entry('C1 → test:auth crea cuenta'), ['C1']), [])
+  assert.deepEqual(PC.validateDoneEntry(entry('C1 → test:auth; C2 → test:auth duplicado'), ['C1']), [],
+    'rastrear de más no es un error: la prueba puede cubrir dos criterios')
+  assert.deepEqual(
+    PC.validateDoneEntry(entry('C2 → test:auth duplicado'), ['C1']),
+    ['DONE.md alta-email-nuevo: la historia cita C1 y tests: no lo rastrea'],
+  )
+  assert.deepEqual(
+    PC.validateDoneEntry(entry('C1 → test:auth'), ['C1', 'C3']),
+    ['DONE.md alta-email-nuevo: la historia cita C3 y tests: no lo rastrea'],
+  )
+  // La salida explícita se respeta: ya declara su razón y se lee en el propio DONE.
+  assert.deepEqual(PC.validateDoneEntry(entry('n/a — no hay superficie ejecutable'), ['C1']), [])
+  // Sin épica no hay criterio que cruzar.
+  assert.deepEqual(PC.validateDoneEntry(entry('A → make lint'), []), [])
 })

@@ -6,6 +6,7 @@ const P = require('./parser')
 
 const TEST_TRACE = /^(?:n\/a\s*[—-]\s*.+|(?:A|C\d+)\s*(?:→|->)\s*\S.+)$/i
 const DECISION_TRACE = /\[(?:fuente|supuesto):\s*[^\]]+\]/i
+const COMMIT_TRACE = /^(?:n\/a\s*[—-]\s*.+|[0-9a-f]{7,40}\s+\S.*)$/i
 const EPIC_AUXILIARY_FILES = new Set(['notes.md', 'plan.md', 'research.md', 'spec.md'])
 
 function validTestTrace(value) {
@@ -18,12 +19,43 @@ function validDecisionTrace(value) {
   return !text || DECISION_TRACE.test(text)
 }
 
-function validateDoneEntry(entry) {
+// El campo apunta al artefacto entregado, y el único puntero que no se puede escribir de memoria es el
+// sha. La salida explícita existe porque hay tareas que no producen commit —abrir una fila en
+// HUMAN_ACTIONS, registrar un informe—, y forzarlas a llenar el campo produce un sha inventado, que es
+// peor que la ausencia: parece evidencia.
+function validCommitTrace(value) {
+  // Se corta en cada `|`, y en un `;` sólo cuando detrás viene un sha: el `;` aparece también dentro del
+  // paréntesis final —`(api@main; sin footer Task:)`— y cortar ahí convertiría una nota en un commit que
+  // falta. Cada tramo responde por sí mismo; validar sólo el primero dejaba pasar la mitad sin artefacto.
+  return String(value || '').trim().split(/\s*(?:\||;(?=\s*[0-9a-f]{7,40}\s))\s*/)
+    .every((part) => COMMIT_TRACE.test(part.trim()))
+}
+
+// Los criterios que la evidencia realmente rastrea. `n/a — razón` no rastrea ninguno a propósito: es
+// la salida explícita, y como lleva su razón escrita se lee en el propio DONE sin que nadie la cruce.
+function testedCriteria(value) {
+  return String(value || '').split(/\s*;\s*/).filter(Boolean)
+    .map((item) => ((item.match(/^(C\d+)\s*(?:→|->)/i) || [])[1] || '').toUpperCase())
+    .filter(Boolean)
+}
+
+// `cited` son los criterios que la historia declaró cubrir. Rastrear de más es legítimo —una prueba
+// puede cerrar dos criterios—; lo que no puede es que el criterio citado se quede sin ninguna
+// aserción, porque la épica cierra igual y nadie vuelve a mirarlo.
+function validateDoneEntry(entry, cited = []) {
   const at = `${entry.source} ${entry.slug}`
   const errors = []
   if (!entry.tests) errors.push(`${at}: falta tests:`)
   else if (!validTestTrace(entry.tests)) {
     errors.push(`${at}: tests debe rastrear A/CN → prueba o justificar n/a — razón`)
+  }
+  const traced = testedCriteria(entry.tests)
+  if (traced.length) {
+    const missing = cited.filter((id) => !traced.includes(id))
+    if (missing.length) errors.push(`${at}: la historia cita ${missing.join(', ')} y tests: no lo rastrea`)
+  }
+  if (entry.commit && !validCommitTrace(entry.commit)) {
+    errors.push(`${at}: commit debe apuntar a <sha> <asunto> o justificar n/a — razón`)
   }
   if (!validDecisionTrace(entry.decisions)) {
     errors.push(`${at}: decisions debe citar [fuente: ...] o [supuesto: ...]`)
@@ -126,7 +158,9 @@ function validateBacklogStructure(dir) {
 }
 
 module.exports = {
+  testedCriteria,
   validateBacklogStructure,
+  validCommitTrace,
   validDecisionTrace,
   validTestTrace,
   validateDoneEntry,

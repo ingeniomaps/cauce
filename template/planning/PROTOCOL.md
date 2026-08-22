@@ -14,7 +14,8 @@ invariantes.
 - DONE: entrada `[x]` con `acept:`, `done:`, `qa:`, `tests:` y `commit:`. `tests:` enlaza cada criterio
   mediante `CN → prueba`; usa `A → prueba` cuando no hay épica o `n/a — razón` si no existe una
   superficie ejecutable. `decisions:` es opcional y, si aparece, cita `[fuente: ...]` o
-  `[supuesto: ...]`.
+  `[supuesto: ...]`. `commit:` apunta a `<sha> <asunto>`, o a `n/a — razón` cuando la tarea no
+  produce commit.
 - Acción humana: fila `| tarea | estado | origen | acción y condición de desbloqueo |`, con el estado
   en el vocabulario cerrado `pendiente | resuelta` —la fecha puede ir detrás—. Mientras la fila no
   esté resuelta, su tarea no se toma; un estado fuera del vocabulario es un error de `check` y no un

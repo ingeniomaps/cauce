@@ -604,7 +604,11 @@ function check(dir, cli) {
     if (!entry.done) errors.push(`${entry.source} ${entry.slug}: falta done:`)
     if (!entry.qa) errors.push(`${entry.source} ${entry.slug}: falta qa:`)
     if (!entry.commit) errors.push(`${entry.source} ${entry.slug}: falta commit:`)
-    errors.push(...PC.validateDoneEntry(entry))
+    // Los criterios que la historia declaró cubrir: los cita el roadmap, no la entrada de DONE, así que
+    // el cruce sólo existe si la entrada dice de qué épica viene.
+    const story = epics.find((epic) => epic.num === entry.epic)?.stories
+      .find((candidate) => candidate.slug === entry.slug)
+    errors.push(...PC.validateDoneEntry(entry, story ? story.criteria : []))
   }
 
   const integration = I.validate(path.resolve(root, '..'))
