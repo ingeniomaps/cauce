@@ -1931,3 +1931,24 @@ test('una copia de la plantilla de ADR se valida tal cual', () => {
     .filter((error) => /adr\//.test(error))
   assert.deepEqual(errores, [], 'la copia nace válida y en Propuesto')
 })
+
+// La guía de entrega no lleva una línea de la empresa, y sin declararla como del toolkit cada mejora se
+// quedaba en el molde: la instancia conservaba la versión del día que se creó y `upgrade` informaba que
+// «todo lo propio quedó intacto» sobre algo que nunca fue propio.
+test('la guía de entrega llega a una instancia y su project.md no', () => {
+  const O = require('../engine/core/ownership')
+  for (const guia of ['README.md', 'branches.md', 'release.md', 'environments.md', 'flags.md',
+    'multi-repo.md']) {
+    assert.ok(O.SYSTEM_FILES.includes(`planning/delivery/${guia}`), `${guia} es del toolkit`)
+  }
+  assert.equal(O.SYSTEM_FILES.includes('planning/delivery/project.md'), false,
+    'lo que el proyecto declara sobre su entrega es suyo')
+
+  // Y cada clase de archivo editado recibe su salida, no la de otra: antes, todo lo que no vivía bajo
+  // `system/` respondía con cómo desactivar un guard, incluido el protocolo.
+  const fuente = fs.readFileSync(path.resolve(__dirname, '..', 'engine', 'cli', 'ops.js'), 'utf8')
+  for (const clase of ['const reglas = changed.filter', 'const runtime = changed.filter',
+    'const documentos = changed.filter']) {
+    assert.ok(fuente.includes(clase), `upgrade distingue ${clase}`)
+  }
+})

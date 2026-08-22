@@ -22,6 +22,16 @@ const SYSTEM_FILES = [
   'planning/rules/README.md',
   'planning/roadmap/README.md',
   'planning/roadmap/epic-000-template.md',
+  // La guía de entrega no tiene una línea de la empresa: describe el camino que Cauce recomienda, y lo
+  // que el proyecto declara vive en `delivery/project.md`, que sí es suyo. Sin declararla, cada mejora
+  // de la guía se quedaba en el molde: una instancia conservaba para siempre la versión del día que se
+  // creó, y `upgrade` informaba «todo lo propio quedó intacto» sobre algo que nunca fue propio.
+  'planning/delivery/README.md',
+  'planning/delivery/branches.md',
+  'planning/delivery/release.md',
+  'planning/delivery/environments.md',
+  'planning/delivery/flags.md',
+  'planning/delivery/multi-repo.md',
   'organization/roles/README.md',
   'teams/000-template.md',
   'teams/README.md',
