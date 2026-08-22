@@ -9,6 +9,7 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const teams = require('../engine/teams/registry')
 const EV = require('../engine/agents/evaluations')
+const L = require('../engine/agents/learning')
 
 const ROOT = path.resolve(__dirname, '..')
 const CLI = path.join(ROOT, 'engine', 'cli', 'ops.js')
@@ -211,4 +212,46 @@ test('un recorrido sin casos lo dice', () => {
   const conCasos = EV.validate(ROOT, 'defect-triage', 'team')
   assert.match(conCasos.warnings.join('\n'), /sin resultados de casos: corré el recorrido/)
   assert.equal(conCasos.cases, 4)
+})
+
+// Un recorrido no aprende de una profesión: no tiene. Lo único que puede enseñarle algo es cómo le
+// fue, así que su ciclo consume los veredictos en contra de sus propias corridas. Copiarle al cargo
+// la investigación semanal le habría pedido leer una literatura inexistente, y habría devuelto
+// informes vacíos que igual hay que firmar.
+test('el ciclo de un recorrido aprende de sus corridas, no de una literatura', () => {
+  const root = tempRoot('cauce-team-learn-')
+  const dir = path.join(root, 'teams', 'probe')
+  fs.mkdirSync(path.join(dir, 'evaluations', 'results'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'WORKFLOW.md'), '# Probe\n')
+  fs.writeFileSync(path.join(dir, 'team.json'), JSON.stringify({
+    schemaVersion: 1, slug: 'probe', name: 'Probe', purpose: 'x', outcome: 'report',
+    entryAgent: 'qa-engineer', facilitator: 'qa-engineer',
+    stages: [{ id: 'uno', phase: 'discovery', agent: 'qa-engineer', dependsOn: [], produces: ['x'], exitGate: 'y' }],
+    guardrails: ['x'], completion: ['x'],
+  }))
+  const registro = path.join(dir, 'evaluations', 'results', '2099-01-07.md')
+  fs.writeFileSync(registro, '---\nteam: probe\ndate: 2099-01-07\npassed: 1\ntotal: 2\n---\n\n'
+    + '### 01-uno\n\n- Veredicto: pasa\n\nSin novedad.\n\n'
+    + '### 02-dos\n\n- Veredicto: no pasa\n\nEl gate dejó pasar la etapa sin su evidencia.\n')
+
+  const propuesta = L.prepareProposal(root, 'probe', new Date('2099-01-31T00:00:00Z'), '', 'team')
+  assert.equal(propuesta.findings, 1, 'entra el veredicto en contra, no el que pasó')
+  const texto = fs.readFileSync(propuesta.file, 'utf8')
+  assert.match(texto, /### 02-dos — 2099-01-07/, 'el hallazgo cita el caso y la corrida')
+  assert.match(texto, /El gate dejó pasar la etapa sin su evidencia/, 'y trae su contraste')
+  assert.equal(texto.includes('01-uno'), false, 'el caso que pasó no pide cambio')
+  assert.match(texto, /^automatic_apply: false$/m)
+
+  // La corrida consumida queda sellada, así que no vuelve a entrar por una segunda propuesta.
+  assert.match(fs.readFileSync(registro, 'utf8'), /^status: consolidated$/m)
+  L.seal(root, 'probe', '2099-01', 'team')
+  const siguiente = L.prepareProposal(root, 'probe', new Date('2099-02-28T00:00:00Z'), '', 'team')
+  assert.equal(siguiente.findings, 0, 'sin corridas nuevas no hay qué corregir')
+  assert.match(fs.readFileSync(siguiente.file, 'utf8'), /aguantó lo que se le midió/)
+
+  const estado = L.evaluateTeam(root, 'probe')
+  assert.deepEqual(estado.errors, [])
+  assert.equal(estado.proposals, 2)
+  assert.equal(estado.pending, 1, 'la de enero quedó aplicada; la de febrero espera firma')
+  assert.match(estado.warnings.join('\n'), /sin learning\/HISTORY\.md/)
 })

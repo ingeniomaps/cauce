@@ -25,7 +25,7 @@ const FLAGS = {
   agents: ['--json', '--own', '--system'],
   integration: ['--fixture'],
   automation: ['--force'],
-  learn: ['--proposal', '--applied', '--period'],
+  learn: ['--team', '--proposal', '--applied', '--period'],
   evaluate: ['--cases', '--json', '--bench', '--force', '--record', '--team'],
   team: ['--json'],
 }

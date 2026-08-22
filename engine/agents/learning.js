@@ -16,7 +16,20 @@ const REQUIRED_SECTIONS = [
 // Un cargo del sistema vive dentro del paquete: escribir ahí perdería el informe en el próximo
 // `npm ci`, y además duplicaría en cada empresa una investigación sobre la profesión que se hace
 // mejor una sola vez. Lo que sí es de esta empresa es su contexto, y ese tiene otro lugar.
-function assertWritable(root, agent) {
+// Un recorrido no viene del paquete cuando lo mantiene este repositorio, así que la pregunta de
+// dónde se puede escribir es la misma y la respuesta se resuelve igual: dentro del proyecto, sí.
+function assertWritableTeam(root, slug) {
+  const dir = path.dirname(require('../teams/registry').read(root, slug).file)
+  const own = path.resolve(root, 'teams')
+  if (path.resolve(dir).startsWith(`${own}${path.sep}`)) return dir
+  throw new Error(
+    `${slug} es un recorrido que trae Cauce y su aprendizaje se hace en el toolkit, no acá.\n` +
+    `  Para tener una versión propia, copialo a teams/${slug}/ y mantenelo vos.`,
+  )
+}
+
+function assertWritable(root, agent, kind = 'agent') {
+  if (kind === 'team') return assertWritableTeam(root, agent)
   const found = catalog.find(root, agent)
   // Lo que decide no es si el cargo es del sistema, sino si vive dentro de este repositorio. En el
   // toolkit los cargos del sistema son propios y se aprenden acá; en una instancia vienen del
@@ -79,8 +92,16 @@ function reportFiles(dir) {
 // llega al contrato y que nada delata. Marcar al primero es lo que deja ver al segundo.
 function markConsolidated(file) {
   const text = fs.readFileSync(file, 'utf8')
-  if (!/^status:\s*\S+\s*$/m.test(text)) return
-  fs.writeFileSync(file, text.replace(/^status:\s*\S+\s*$/m, 'status: consolidated'))
+  if (/^status:\s*\S+\s*$/m.test(text)) {
+    return fs.writeFileSync(file, text.replace(/^status:\s*\S+\s*$/m, 'status: consolidated'))
+  }
+  // Un informe nace con `status`; un registro de corrida no, porque lo escribe el recorrido de
+  // evaluación y ahí el dato no existía. Se agrega en vez de exigirle a quien lo escriba que se
+  // acuerde: el sello es lo que evita que el mismo hallazgo entre dos veces, y depender de una
+  // convención para eso es depender de que nadie la olvide.
+  const front = text.match(/^---\n([\s\S]*?)\n---\n/)
+  if (!front) return
+  fs.writeFileSync(file, text.replace(front[0], `---\n${front[1]}\nstatus: consolidated\n---\n`))
 }
 
 // El estado terminal del ciclo. Existía la firma, la aplicación y el historial, y faltaba justo el
@@ -90,8 +111,8 @@ function markConsolidated(file) {
 // aprobada con responsable — y «aprobada y aplicada» cumple eso—, así que volver a correrlo sobre una
 // propuesta ya aplicada la aplicaba de nuevo. Como los cambios son aditivos por diseño, el resultado
 // no es un error visible sino un contrato con cada viñeta y cada fuente duplicadas.
-function seal(root, agent, period = '') {
-  const dir = path.join(assertWritable(root, agent), 'learning', 'proposals')
+function seal(root, agent, period = '', kind = 'agent') {
+  const dir = path.join(assertWritable(root, agent, kind), 'learning', 'proposals')
   const names = proposalFiles(dir)
   if (!names.length) throw new Error(`${agent} no tiene propuestas en learning/proposals/.`)
   // `--period 2026-08` nombra el período, no un archivo: con revisiones abiertas la que se sella es la
@@ -219,9 +240,88 @@ function lastOfPeriod(dir, period) {
 // sobre otro mes. El ciclo automático no lo usa: nombrarle el mes que cerró abriría una **revisión**
 // —lo que se abre cuando ese mes ya tiene una propuesta aplicada—, y corregir es un acto humano.
 // Lo que hace que ningún informe se pierda no es el nombre sino el criterio de más abajo.
-function prepareProposal(root, agent, now = new Date(), period = '') {
+// Qué aprende un recorrido, y de dónde. Un cargo aprende de su profesión —normas, versiones, fuentes
+// que cambian afuera— y por eso investiga. Un recorrido no tiene profesión: lo único que puede
+// enseñarle algo es cómo le fue, así que su insumo son los veredictos en contra de sus propias
+// corridas. Pedirle una investigación semanal sería pedirle que lea una literatura que no existe, y
+// devolvería informes vacíos.
+//
+// De cada registro sin sellar entran los casos que no pasaron, con su contraste y de qué corrida
+// salen. Si no hay ninguno, eso también es un resultado: el recorrido aguantó y no hay qué corregir.
+const VERDICT_AGAINST = /\n### ([^\n]+)\n\n- Veredicto: no pasa\n([\s\S]*?)(?=\n### |$)/g
+
+function failedCases(text) {
+  return [...text.matchAll(VERDICT_AGAINST)].map((hit) => ({ id: hit[1].trim(), detail: hit[2].trim() }))
+}
+
+function teamFindings(root, dir) {
+  const results = path.join(dir, 'evaluations', 'results')
+  const pendientes = reportFiles(results).filter((name) =>
+    frontmatterState(fs.readFileSync(path.join(results, name), 'utf8'), 'draft') !== 'consolidated')
+  const bloques = []
+  for (const name of pendientes) {
+    const file = path.join(results, name)
+    for (const caso of failedCases(fs.readFileSync(file, 'utf8'))) {
+      bloques.push(`### ${caso.id} — ${name.slice(0, -3)}\n\n`
+        + `Corrida: \`${path.relative(root, file)}\`\n\n${caso.detail}`)
+    }
+  }
+  return { consumidos: pendientes.map((name) => path.join(results, name)), bloques }
+}
+
+// La propuesta de un recorrido. Mismo ciclo que la de un cargo —se abre, se firma, se aplica y se
+// sella— y distinto contenido: lo que se corrige es el recorrido mismo, y lo que lo justifica es un
+// veredicto en contra, no una fuente nueva.
+function proposeFromRuns(root, agent, target, file, period) {
+  const { consumidos, bloques } = teamFindings(root, target)
+  const sinHallazgos = 'Ninguna corrida sin consolidar dejó un veredicto en contra. El recorrido '
+    + 'aguantó lo que se le midió, y eso no pide cambio.'
+  fs.writeFileSync(file, `---
+team: ${agent}
+period: ${period}
+status: proposed
+automatic_apply: false
+---
+
+# Propuesta de recorrido — ${period}
+
+## Hallazgos
+
+${bloques.join('\n\n') || sinHallazgos}
+
+## Evidencia
+
+Los registros citados arriba, en \`evaluations/results/\`. Cada uno dice qué se le pidió al
+recorrido y qué contestó, así que la cita es al caso y no a un resumen del caso.
+
+## Cambio propuesto
+
+Por definir. Lo que se corrige es el recorrido: un \`exitGate\` que dejó pasar lo que debía frenar,
+una etapa que dependía de otra sin necesidad, un guardrail que nadie podía cumplir, un agente
+condicional que hacía falta siempre. No cambiar el contrato de ningún cargo desde acá.
+
+## Riesgos y regresiones
+
+Qué caso pasaba con el recorrido actual y podría dejar de pasar. Un gate más duro frena de más, y eso
+también es un defecto: nombralo por su id.
+
+## Evaluación
+
+Qué caso tiene que cambiar de veredicto y por qué razón, no sólo que la corrida salga verde.
+
+## Aprobación humana
+
+- Estado: pendiente
+- Responsable: por definir
+- Fecha: por definir
+`)
+  for (const registro of consumidos) markConsolidated(registro)
+  return { file, created: true, reports: consumidos.length, findings: bloques.length }
+}
+
+function prepareProposal(root, agent, now = new Date(), period = '', kind = 'agent') {
   if (period && !/^\d{4}-\d{2}$/.test(period)) throw new Error(`período inválido: ${period}`)
-  const target = assertWritable(root, agent)
+  const target = assertWritable(root, agent, kind)
   const consolidar = period || month(now)
   const proposalDir = path.join(target, 'learning', 'proposals')
   fs.mkdirSync(proposalDir, { recursive: true })
@@ -238,6 +338,7 @@ function prepareProposal(root, agent, now = new Date(), period = '') {
   }
 
   const file = path.join(proposalDir, `${consolidar}.md`)
+  if (kind === 'team') return proposeFromRuns(root, agent, target, file, consolidar)
   const reportDir = path.join(target, 'learning', 'reports')
   // Todo lo que ya ocurrió y todavía no entró, no sólo lo del mes que se consolida. Filtrar por el
   // prefijo del período dejaba huérfano al informe atrasado —el que se escribió después de que su mes
@@ -294,6 +395,26 @@ Pendiente.
 `)
   for (const name of reports) markConsolidated(path.join(reportDir, name))
   return { file, created: true, reports: reports.length }
+}
+
+function evaluateTeam(root, slug) {
+  const dir = path.dirname(require('../teams/registry').read(root, slug).file)
+  const errors = []
+  const warnings = []
+  if (!fs.existsSync(path.join(dir, 'learning', 'HISTORY.md'))) {
+    warnings.push('sin learning/HISTORY.md: lo que se le cambie al recorrido no queda registrado')
+  }
+  const proposals = proposalFiles(path.join(dir, 'learning', 'proposals'))
+  let pending = 0
+  for (const name of proposals) {
+    const text = fs.readFileSync(path.join(dir, 'learning', 'proposals', name), 'utf8')
+    if (!/^automatic_apply:\s*false$/m.test(text)) errors.push(`${name}: automatic_apply debe ser false`)
+    for (const section of REQUIRED_SECTIONS) {
+      if (!text.includes(`## ${section}`)) errors.push(`${name}: falta sección ${section}`)
+    }
+    if (proposalState(text) !== 'applied') pending += 1
+  }
+  return { errors, warnings, proposals: proposals.length, pending, cases: 0 }
 }
 
 function evaluate(root, agent) {
@@ -354,4 +475,4 @@ function evaluate(root, agent) {
   return { errors, warnings, proposals: proposals.length, pending, cases }
 }
 
-module.exports = { prepareReport, prepareProposal, evaluate, proposalState, seal }
+module.exports = { prepareReport, prepareProposal, evaluate, evaluateTeam, proposalState, seal }
