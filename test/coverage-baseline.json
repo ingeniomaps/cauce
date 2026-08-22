@@ -39,6 +39,11 @@
     "branches": 91,
     "functions": 83
   },
+  "engine/cli/catalog.js": {
+    "lines": 82,
+    "branches": 38,
+    "functions": 90
+  },
   "engine/cli/instance.js": {
     "lines": 95,
     "branches": 57,
@@ -53,6 +58,16 @@
     "lines": 88,
     "branches": 47,
     "functions": 85
+  },
+  "engine/cli/planning.js": {
+    "lines": 91,
+    "branches": 49,
+    "functions": 88
+  },
+  "engine/cli/wiring.js": {
+    "lines": 87,
+    "branches": 46,
+    "functions": 77
   },
   "engine/config/validate.js": {
     "lines": 73,

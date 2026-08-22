@@ -1,0 +1,238 @@
+'use strict'
+
+// Los comandos sobre el catálogo: qué cargos y equipos hay, qué aprenden y cómo se los mide. Todos
+// resuelven la raíz ops de la misma forma, que es lo que los junta acá.
+
+const fs = require('node:fs')
+const path = require('node:path')
+const { spawnSync } = require('node:child_process')
+const L = require('../agents/learning')
+const AG = require('../agents/catalog')
+const EV = require('../agents/evaluations')
+const T = require('../teams/registry')
+const O = require('../core/ownership')
+const IN = require('./instance')
+const { fail, opsRoot } = require('./io')
+
+// La raíz ops de un comando que no la recibe. El shim `tools/ops.js` la exporta porque sabe dónde
+
+function agentsFork(slug, dir) {
+  const root = opsRoot(dir)
+  if (!slug) fail('Falta el cargo: ops agents fork <cargo> [ops-root]', 2)
+  let result
+  const date = new Date().toISOString().slice(0, 10)
+  try { result = require('../agents/fork').fork(root, slug, date) } catch (error) { fail(error.message, 2) }
+  console.log(`+ ${path.relative(root, result.dir)} (${result.files.length} archivo(s))`)
+  if (result.skipped.length) {
+    console.log(`  quedan en el catálogo: ${result.skipped.length} artefacto(s) que ganó su versión`)
+  }
+  console.log(`  copiado de Cauce ${result.version || '(versión desconocida)'}; desde ahora lo mantenés vos`)
+  console.log(`  reinstalá tu runner para que ${slug} apunte a tu copia`)
+}
+
+// Lista los cargos visibles resolviendo la precedencia; evita que cada consumidor —CI incluido—
+// reimplemente el recorrido del catálogo.
+function agents(action, dir, extra, cli) {
+  if (action === 'fork') return agentsFork(dir, extra)
+  if (action !== 'list') fail(`Acción de agents desconocida: ${action || '(vacía)'}`, 2)
+  const root = opsRoot(dir)
+  // Una empresa mantiene sus cargos, no los nuestros: `learn` sobre uno del catálogo se niega, así que
+  // recorrer los 48 para encontrar el suyo es ruido. `--own` es lo que hace ejecutable ese recorrido.
+  const own = cli.has('--own')
+  const system = cli.has('--system')
+  const roles = AG.list(root).filter((role) => (own ? !role.system : true) && (system ? role.system : true))
+  if (cli.has('--json')) {
+    // `path` viene resuelto: quien consuma esto no debería reconstruir dónde ganó la precedencia.
+    return console.log(JSON.stringify(roles.map((role) => ({
+      slug: role.slug, type: role.type, system: role.system, summary: role.summary,
+      path: path.relative(root, role.dir).split(path.sep).join('/'),
+    }))))
+  }
+  // Una línea por cargo, alineadas, para elegir a quién asignarle una tarea sin abrir 47 carpetas.
+  const ancho = roles.reduce((max, role) => Math.max(max, role.slug.length), 0)
+  for (const role of roles) {
+    const marca = role.system ? '' : ' (propio)'
+    console.log(`${role.slug.padEnd(ancho)}${marca}  ${role.summary || '— sin resumen'}`)
+  }
+  // La respuesta negativa tiene que ser tan barata como la positiva: si ninguna línea encaja, el
+  // camino no es forzar el cargo más parecido, es escribir el propio.
+  if (roles.length && !own) {
+    console.log('\nSi ninguno encaja, escribí el tuyo en agents/roles/<slug>/ — es tuyo y gana sobre '
+      + 'el catálogo.\nSi encaja uno pero lo querés más enfocado en tu empresa: '
+      + 'organization/roles/<slug>.md para el contexto, u "ops agents fork <slug>" para adoptarlo.')
+  }
+}
+
+// Un banco de trabajo desechable donde un cargo del catálogo puede realmente trabajar.
+//
+// Hace falta porque el toolkit no es una raíz ops: el único `planning/` que vive acá es
+// `template/planning`, el molde que se distribuye. Un cargo cuya entrega es una épica no tiene dónde
+// escribir, así que se niega —con razón—, y su caso cuenta como fallo: eso midió una configuración.
+//
+// Uno por caso, y se aprendió corriendo: con un banco compartido los casos se leen entre sí, y uno
+// tomó por «una sesión anterior de este mismo cargo» lo que otro acababa de escribir. La
+// independencia entre casos es la premisa de medir con ellos.
+//
+// Se recrea entero en cada corrida —si no, lo que escribió el lunes es contexto del martes— y queda
+// en disco, gitignorado: después de un veredicto raro uno quiere mirar qué escribió el cargo.
+function evaluationBench(root, agent, caso, force, kind) {
+  const safe = (value) => {
+    if (!/^[a-z0-9_][a-z0-9._-]*$/i.test(value) || value.includes('..')) {
+      fail(`nombre inválido para el banco: ${value}`, 2)
+    }
+    return value
+  }
+  const dir = path.join(root, '.cauce-eval', safe(agent), safe(caso || '_libre'))
+  // Recrear un banco donde alguien ya trabajó borra la evidencia de esa corrida, y el registro de la
+  // evaluación se escribe **desde** el banco. Pasó de verdad: se rehizo un banco para probar otra cosa
+  // y con él se fue lo que el cargo había escrito; el juez leyó un directorio vacío y concluyó que la
+  // respuesta afirmaba algo inexistente. Con el banco versionado, «acá se trabajó» es una pregunta que
+  // git contesta exacto.
+  const sucio = spawnSync('git', ['-C', dir, 'status', '--porcelain'], { encoding: 'utf8' })
+  if ((sucio.stdout || '').trim() && !force) {
+    fail(`${dir} tiene trabajo sin recoger. Guardá el registro de esa corrida antes de rehacerlo, `
+      + 'o usá --force si ya lo tenés.', 2)
+  }
+  fs.rmSync(dir, { recursive: true, force: true })
+  IN.scaffold(dir, { name: 'Banco de evaluación', mode: 'sidecar', quiet: true })
+  // El motor por symlink: la misma resolución que en una instancia real —`node_modules/@ingeniomaps`—
+  // sin pagar un `npm install` por corrida. El cargo llega a un banco donde el CLI funciona.
+  const scope = path.join(dir, 'node_modules', '@ingeniomaps')
+  fs.mkdirSync(scope, { recursive: true })
+  fs.symlinkSync(IN.PROJECT_ROOT, path.join(scope, 'cauce'), 'dir')
+
+  // El artefacto del caso, si lo tiene: la guía del proveedor que el pedido manda implementar, el CSV
+  // con instrucciones adentro. Entra antes del commit limpio a propósito — si entrara después, `status`
+  // se lo atribuiría al cargo y el juez leería como obra suya el documento que vino a resistir.
+  if (caso) {
+    const artefacto = EV.fixtures(root, agent, caso, kind)
+    if (artefacto.files.length) fs.cpSync(artefacto.dir, dir, { recursive: true })
+  }
+
+  // Versionado desde su estado limpio porque la entrega de un cargo puede no estar en su respuesta:
+  // uno contestó un resumen y escribió el contrato entero en su `INBOX.md`, y el juez —que sólo leía
+  // la respuesta— lo dio por ausente. Con git, `status` y `diff` muestran qué produjo, separado del
+  // andamiaje. Se ignora `node_modules`: es un symlink al toolkit, no obra del cargo.
+  const git = (...args) => spawnSync('git', ['-C', dir, ...args], { stdio: 'ignore' })
+  fs.appendFileSync(path.join(dir, '.gitignore'), '\nnode_modules/\n')
+  git('init', '-q')
+  git('config', 'user.email', 'banco@cauce.local')
+  git('config', 'user.name', 'banco de evaluación')
+  git('add', '-A')
+  git('commit', '-q', '-m', 'banco limpio')
+  return dir
+}
+
+function learn(agent, cli) {
+  try {
+    // Sellar es determinista y por eso vive acá y no en el recorrido: marcar una propuesta como
+    // aplicada editando frontmatter a mano es justo el paso que un agente hace mal en silencio.
+    // Un recorrido aprende de sus corridas y un cargo de su profesión: mismo ciclo, distinto insumo.
+    const kind = cli.has('--team') ? 'team' : 'agent'
+    if (cli.has('--applied')) {
+      const result = L.seal(opsRoot(), agent, cli.value('--period'), kind)
+      const relative = path.relative(opsRoot(), result.file)
+      return console.log(result.already
+        ? `= ${relative} ya estaba aplicada`
+        : `✓ ${relative} queda aplicada: no se vuelve a aplicar`)
+    }
+    // `--period` es para consolidar a mano un mes que no es el de hoy. El ciclo automático no lo
+    // pasa: la propuesta se llama por el mes en que se abre y arrastra lo que todavía no entró.
+    const result = cli.has('--proposal')
+      ? L.prepareProposal(opsRoot(), agent, new Date(), cli.value('--period'), kind)
+      : L.prepareReport(opsRoot(), agent)
+    console.log(`${result.created ? '+' : '='} ${path.relative(opsRoot(), result.file)}`)
+    // Un cargo consolida informes de su profesión; un recorrido, las corridas que lo midieron.
+    if (typeof result.reports === 'number') {
+      console.log(kind === 'team'
+        ? `  ${result.reports} corrida(s) consolidada(s), ${result.findings} hallazgo(s)`
+        : `  ${result.reports} informe(s) semanal(es) incluidos`)
+    }
+  } catch (error) { fail(error.message, 2) }
+}
+
+function evaluate(agent, caso, cli) {
+  const root = opsRoot()
+  // De quién son los casos. Se nombra en vez de deducirse del slug: un cargo y un recorrido pueden
+  // llamarse igual sin colisionar, y deducirlo los volvería ambiguos el día que eso pase.
+  const kind = cli.has('--team') ? 'team' : 'agent'
+  // El banco sólo tiene sentido acá: en una empresa el cargo que se evalúa es suyo —propio o
+  // adoptado— y su `planning/` ya es el lugar legítimo donde trabajar.
+  if (cli.has('--bench')) {
+    if (O.mode(root) !== 'toolkit') {
+      fail('--bench es del toolkit. En una instancia, el cargo trabaja sobre tu planning/: si es del '
+        + `catálogo, adoptalo primero con "ops agents fork ${agent}".`, 2)
+    }
+    // El caso es el posicional que sigue al cargo: `evaluate <cargo> --bench <caso>`. Sin él se arma
+    // un banco suelto, para mirarlo a mano; una corrida real pide uno por caso.
+    return console.log(evaluationBench(root, agent, caso, cli.has('--force'), kind))
+  }
+  try {
+    // Los casos, para que un recorrido los ejecute. Sin `--json` no tiene sentido: es entrada de
+    // máquina, no de persona.
+    if (cli.has('--cases')) {
+      const cases = EV.list(root, agent, kind)
+      const prohibido = EV.behaviors(root, agent, kind).forbidden
+      // La salida legible no lleva la conducta prohibida: `agent-propose` cuenta sus líneas para saber
+      // cuántos casos hay, y una línea de más se contaría como un caso.
+      if (!cli.has('--json')) {
+        for (const item of cases) console.log(`${item.id}  ${item.expected.length} comportamiento(s)`)
+        return
+      }
+      // La conducta prohibida viaja junto a los casos y no dentro de cada uno: rige para los seis, y
+      // repetirla por caso invitaría a que alguien la editara en uno solo.
+      return console.log(JSON.stringify({ cases, forbidden: prohibido }))
+    }
+    // Dónde escribir el registro de esta corrida. Lo pregunta el recorrido en vez de componer el
+    // nombre, que es lo que hacía que la segunda corrida de un día borrara a la primera.
+    if (cli.has('--record')) {
+      const dia = cli.value('--record') || new Date().toISOString().slice(0, 10)
+      return console.log(path.relative(root,
+        path.join(EV.resultsDir(root, agent, kind), EV.nextResult(root, agent, dia, kind))))
+    }
+    // Un recorrido no tiene contrato de cargo que validar —ni SKILL.md ni fuentes—: lo suyo lo
+    // comprueba `team check`. Acá se mide lo que sí comparte con un cargo: sus casos y su corrida.
+    const result = kind === 'team' ? L.evaluateTeam(root, agent) : L.evaluate(root, agent)
+    const runs = EV.validate(root, agent, kind)
+    const errors = [...result.errors, ...runs.errors]
+    for (const warning of [...result.warnings, ...runs.warnings]) console.warn(`⚠ ${warning}`)
+    for (const error of errors) console.error(`✗ ${error}`)
+    if (errors.length) fail(`\n${errors.length} error(es)`, 1)
+    const corrida = runs.last ? `${runs.last.passed}/${runs.last.total} pasan (${runs.last.date})` : 'sin correr'
+    if (kind === 'team') {
+      return console.log(`✓ ${agent}: ${runs.cases} caso(s) — ${corrida}, ` +
+        `${result.proposals} propuesta(s)${result.pending ? ` (${result.pending} sin aplicar)` : ''}`)
+    }
+    console.log(
+      `✓ ${agent}: ${result.cases} caso(s) — ${corrida}, ${result.proposals} propuesta(s)` +
+        `${result.pending ? ` (${result.pending} sin aplicar)` : ''}, ` +
+        'controles estructurales válidos',
+    )
+  } catch (error) { fail(error.message, 2) }
+}
+
+function team(action, slug, cli) {
+  if (action === 'list') {
+    for (const name of T.list(opsRoot())) console.log(name)
+    return
+  }
+  if (!['check', 'show'].includes(action)) fail(`Acción de team desconocida: ${action || '(vacía)'}`, 2)
+  try {
+    const result = T.validate(opsRoot(), slug)
+    for (const error of result.errors) console.error(`✗ ${error}`)
+    if (result.errors.length) fail(`${slug}: ${result.errors.length} error(es)`, 1)
+    if (action === 'show') {
+      // El manifiesto entero, para que un workflow ejecute las etapas sin que un modelo lo parsee.
+      if (cli.has('--json')) return console.log(JSON.stringify(result.manifest))
+      console.log(`${result.manifest.name} (${slug})`)
+      console.log(result.manifest.purpose)
+      for (const stage of result.manifest.stages) {
+        console.log(`- ${stage.id}: ${stage.agent} → ${stage.produces.join(', ')}`)
+      }
+    } else {
+      console.log(`✓ ${slug}: ${result.stages} etapa(s), ${result.agents} agente(s), contrato válido`)
+    }
+  } catch (error) { fail(error.message, 2) }
+}
+
+module.exports = { agents, learn, evaluate, team }
