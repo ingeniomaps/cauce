@@ -1,0 +1,4 @@
+interface:
+  display_name: "Treasury Analyst"
+  short_description: "Posición de caja, liquidez y calce del día"
+  default_prompt: "Usa $treasury-analyst para armar la posición de caja, calzar entradas y salidas o preparar el expediente de un corte de pagos."
