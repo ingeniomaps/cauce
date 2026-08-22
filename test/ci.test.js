@@ -172,3 +172,49 @@ test('el primer informe de un cargo no aborta su publicación', () => {
   const conIntruso = bash(`dest=${JSON.stringify(dest)}\n${workflowCommand(source, 'otros')}\nprintf '%s' "$otros"`)
   assert.match(conIntruso, /SKILL\.md/, 'un archivo ajeno sigue abortando la publicación')
 })
+
+// La suscripción primero, la API key como respaldo. No alcanza con poner las dos en el entorno: el
+// CLI antepone `ANTHROPIC_API_KEY` al token de suscripción y en `-p` la usa siempre que esté, así que
+// tenerlas juntas paga API en silencio. Se ejecuta el paso real contra un `claude` de mentira que
+// anota qué credencial vio, porque lo que hay que fijar es cuál llega al proceso.
+test('la investigación usa la suscripción y cae a la API key sólo si falla', { skip: process.platform === 'win32' }, () => {
+  const paso = workflowStep(workflow('agent-learning'), 'id: research')
+  assert.ok(paso.includes('claude -p'), 'no se encontró el paso que corre el modelo')
+
+  const dir = tempRoot('cauce-creds-')
+  const visto = path.join(dir, 'visto.txt')
+  // Anota la credencial de cada invocación; falla cuando se le pide desde el entorno de la prueba.
+  fs.writeFileSync(path.join(dir, 'claude'), `#!/usr/bin/env bash\n`
+    + `echo "oauth=\${CLAUDE_CODE_OAUTH_TOKEN:-} key=\${ANTHROPIC_API_KEY:-}" >> ${JSON.stringify(visto)}\n`
+    + `exit "\${FALLA_OAUTH:-0}"\n`, { mode: 0o755 })
+  // El respaldo tiene que salir bien aunque el primero falle: la segunda invocación no lleva OAuth.
+  fs.writeFileSync(path.join(dir, 'claude-fallible'), '', { mode: 0o755 })
+
+  const correr = (env) => {
+    fs.writeFileSync(visto, '')
+    const salida = require('node:child_process').spawnSync('bash', ['-c', paso], {
+      cwd: dir, encoding: 'utf8',
+      env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, AGENT: 'probe', ...env },
+    })
+    return { status: salida.status, llamadas: fs.readFileSync(visto, 'utf8').trim().split('\n').filter(Boolean) }
+  }
+
+  const conAmbas = correr({ OAUTH: 'tok', APIKEY: 'key' })
+  assert.equal(conAmbas.status, 0)
+  assert.deepEqual(conAmbas.llamadas, ['oauth=tok key='],
+    'una sola corrida, con el token de suscripción y sin la API key en el entorno')
+
+  // El mismo caso, con el primer intento fallando: recién ahí aparece la API key.
+  const falla = correr({ OAUTH: 'tok', APIKEY: 'key', FALLA_OAUTH: '3' })
+  assert.equal(falla.llamadas.length, 2, 'reintenta una vez')
+  assert.equal(falla.llamadas[0], 'oauth=tok key=', 'primero la suscripción')
+  assert.equal(falla.llamadas[1], 'oauth= key=key', 'después la API key, y sola')
+
+  const soloKey = correr({ OAUTH: '', APIKEY: 'key' })
+  assert.equal(soloKey.status, 0)
+  assert.deepEqual(soloKey.llamadas, ['oauth= key=key'], 'sin suscripción va directo a la API key')
+
+  const ninguna = correr({ OAUTH: '', APIKEY: '' })
+  assert.notEqual(ninguna.status, 0, 'sin credencial falla en vez de correr sin nada')
+  assert.deepEqual(ninguna.llamadas, [], 'y no invoca el modelo')
+})
