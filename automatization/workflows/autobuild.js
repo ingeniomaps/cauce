@@ -20,7 +20,7 @@ export const meta = {
     { title: 'Review', detail: 'El diff real revisado por el dueño de cada dominio' },
     { title: 'Verify', detail: 'Los gates del servicio y la aceptación que ninguna prueba codifica' },
     { title: 'QA', detail: 'El comportamiento ejercitado como lo ve quien lo usa' },
-    { title: 'Commit', detail: 'Un Conventional Commit por tarea, sin push' },
+    { title: 'Commit', detail: 'Conventional Commits, uno por naturaleza del diff, sin push' },
     { title: 'Done', detail: 'Cierre atómico en DONE con el WIP en IDLE' },
     { title: 'Closing', detail: 'Check de planning y checkpoint humano del hito' },
   ],

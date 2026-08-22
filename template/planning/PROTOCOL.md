@@ -43,7 +43,7 @@ invariantes.
 9. Review: calidad y seguridad según la superficie modificada.
 10. Verify: ejecutar los gates declarados por el servicio y registrar exit codes.
 11. QA: probar la aceptación por el camino que usa un consumidor real.
-12. Commit: stage explícito y un commit verificable por tarea.
+12. Commit: stage explícito y commits verificables, uno por naturaleza del diff.
 13. Done: mover la tarea, registrar evidencia, limpiar WIP y cerrar/archivar la épica si corresponde.
 14. Cierre: check verde, deuda residual al INBOX y checkpoint entre hitos.
 
