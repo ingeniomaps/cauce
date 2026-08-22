@@ -35,10 +35,10 @@ function fileOf(input) {
 // encabezado en vez de aceptar cualquier `command`, para no leer un comando de shell como si fuera
 // contenido de archivo.
 function patchOf(input) {
-  const campos = input.tool_input || {}
-  const command = String(campos.command || '')
-  const sobre = command.startsWith('*** Begin Patch') ? command : ''
-  return String(campos.patch || campos.input || input.patch || sobre || '')
+  const fields = input.tool_input || {}
+  const command = String(fields.command || '')
+  const envelope = command.startsWith('*** Begin Patch') ? command : ''
+  return String(fields.patch || fields.input || input.patch || envelope || '')
 }
 
 function filesOf(input) {
@@ -207,21 +207,21 @@ function isTestFile(raw) {
 
 function testEvidence(input) {
   if (process.env.OPS_TEST_EVIDENCE_OVERRIDE === '1') return
-  const razon = 'Una prueba apagada no falla y una suite sin ella sale verde igual: el verde deja de ' +
+  const why = 'Una prueba apagada no falla y una suite sin ella sale verde igual: el verde deja de ' +
     'decir que el comportamiento está y pasa a decir que nadie lo miró.\n' +
     'Si la aserción está mal, corregila; si el comportamiento cambió, cambialo junto con la prueba que ' +
     'lo fija. Si tiene que quedar afuera igual —flake conocido, entorno que acá no existe—, es una ' +
     'decisión con dueño: OPS_TEST_EVIDENCE_OVERRIDE=1 y que conste en el commit.'
   for (const match of patchOf(input).matchAll(/^\*\*\* Delete File:\s*(.+)$/gm)) {
-    const borrado = match[1].trim()
-    if (isTestFile(borrado)) block(`${borrado} borra una prueba.\n${razon}`)
+    const removed = match[1].trim()
+    if (isTestFile(removed)) block(`${removed} borra una prueba.\n${why}`)
   }
   const content = contentOf(input)
   if (!content) return
   for (const raw of filesOf(input)) {
     if (!isTestFile(raw)) continue
     for (const [marca, nombre] of TEST_OFF) {
-      if (marca.test(content)) block(`${raw} apaga una prueba con ${nombre}.\n${razon}`)
+      if (marca.test(content)) block(`${raw} apaga una prueba con ${nombre}.\n${why}`)
     }
   }
 }

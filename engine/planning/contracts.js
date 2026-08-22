@@ -135,25 +135,25 @@ function validateRoadmapStructure(dir) {
 function validateBacklogStructure(dir) {
   const text = P.withoutComments(P.read(path.join(dir, 'BACKLOG.md')))
   const errors = []
-  let hito = ''
+  let milestone = ''
   for (const line of text.split('\n')) {
     const heading = line.match(P.MILESTONE_HEADING)
-    if (heading) { hito = heading[1]; continue }
+    if (heading) { milestone = heading[1]; continue }
     if (/^##\s+Hito\b/.test(line)) {
       errors.push(`BACKLOG "${line.trim()}": encabezado inválido; se escribe ## Hito <slug> — <Título>, `
         + 'y sin él las tareas que vienen abajo quedan huérfanas')
-      hito = ''
+      milestone = ''
       continue
     }
-    if (/^##\s+/.test(line)) { hito = ''; continue }
-    if (!hito || !/^\s*[-*]\s+\S/.test(line) || P.TASK_LINE.test(line)) continue
+    if (/^##\s+/.test(line)) { milestone = ''; continue }
+    if (!milestone || !/^\s*[-*]\s+\S/.test(line) || P.TASK_LINE.test(line)) continue
     const lane = line.match(P.TASK_LINE_ANY_LANE)
     if (lane) {
       errors.push(`BACKLOG ${lane[1].trim()}: lane "${lane[2]}" no existe; usá ${P.LANES.join(' | ')}, `
         + 'o dejá la tarea sin clasificar')
       continue
     }
-    const at = `BACKLOG hito ${hito}: no la lee nadie`
+    const at = `BACKLOG hito ${milestone}: no la lee nadie`
     if (/^-\s+\[[xX]\]/.test(line)) {
       errors.push(`${at} — ${line.trim().slice(0, 60)}. Una tarea terminada se mueve a DONE.md, no se tilda acá.`)
       continue
@@ -194,12 +194,12 @@ function validateRules(dir) {
     // El override se declara por nombre: redefinir los números del archivo que reemplaza es su función.
     if (system.has(name)) continue
     for (const id of ruleIds(path.join(rules, name))) {
-      const previo = owner.get(id)
-      if (!previo) { owner.set(id, `rules/${name}`); continue }
-      errors.push(previo.startsWith('rules/system/')
-        ? `rules/${name}: ${id} ya lo define ${previo}; una regla propia se numera P1..Pn, `
+      const definedBy = owner.get(id)
+      if (!definedBy) { owner.set(id, `rules/${name}`); continue }
+      errors.push(definedBy.startsWith('rules/system/')
+        ? `rules/${name}: ${id} ya lo define ${definedBy}; una regla propia se numera P1..Pn, `
           + 'o vive en un archivo con el mismo nombre para declarar el override'
-        : `rules/${name}: ${id} ya lo define ${previo}`)
+        : `rules/${name}: ${id} ya lo define ${definedBy}`)
     }
   }
   return errors
@@ -215,11 +215,11 @@ const ADR_SECTIONS = ['Contexto', 'Decisión', 'Consecuencias', 'Estado de imple
 
 function validateAdrFile(at, text) {
   const errors = []
-  const estado = ((text.match(/^\*\*Estado:\*\*\s*(.+?)\s*$/m) || [])[1] || '').trim()
-  if (!estado) errors.push(`${at}: falta **Estado:**`)
-  else if (estado.includes('|')) errors.push(`${at}: el estado sigue siendo el menú de la plantilla; elegí uno`)
-  else if (!ADR_STATES.includes(estado) && !ADR_SUPERSEDED.test(estado)) {
-    errors.push(`${at}: estado "${estado}" fuera de ${ADR_STATES.join(' | ')} `
+  const declared = ((text.match(/^\*\*Estado:\*\*\s*(.+?)\s*$/m) || [])[1] || '').trim()
+  if (!declared) errors.push(`${at}: falta **Estado:**`)
+  else if (declared.includes('|')) errors.push(`${at}: el estado sigue siendo el menú de la plantilla; elegí uno`)
+  else if (!ADR_STATES.includes(declared) && !ADR_SUPERSEDED.test(declared)) {
+    errors.push(`${at}: estado "${declared}" fuera de ${ADR_STATES.join(' | ')} `
       + '| Reemplazada por [NNN](NNN-slug.md)')
   }
   for (const section of ADR_SECTIONS) {

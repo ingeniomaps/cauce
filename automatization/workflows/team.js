@@ -108,7 +108,7 @@ const EPIC = {
 
 // Lo que una etapa deja condicionado y la siguiente tiene que respetar. Lo demás que anotó no se pierde:
 // viaja en el handoff completo hasta la síntesis, pero no condiciona nada ni llega como acción humana.
-const condiciones = (entradas) => entradas.flatMap((entry) => (entry.openQuestions || [])
+const openConditions = (entries) => entries.flatMap((entry) => (entry.openQuestions || [])
   .filter((one) => one.blocking).map((one) => `${entry.id}: ${one.detail}`))
 
 {{INCLUDE:shared/workflow-finish.js}}
@@ -170,9 +170,9 @@ if (!discovery.length) return stop('sin-descubrimiento', `${TEAM} no declara eta
 for (const stage of discovery) {
   const previous = handoffs.length
     ? `Handoffs previos:\n${handoffs.map((entry) => `- ${entry.id}: ${entry.summary}`).join('\n')}`
-      + (condiciones(handoffs).length
+      + (openConditions(handoffs).length
         ? '\n\nCondiciones que dejaron las etapas anteriores y tenés que respetar:\n'
-          + condiciones(handoffs).map((one) => `- ${one}`).join('\n')
+          + openConditions(handoffs).map((one) => `- ${one}`).join('\n')
         : '')
     : 'Sos la primera etapa: no hay handoff previo.'
 
@@ -206,15 +206,15 @@ if (blocked.length) {
   // que frena en la etapa 3 tiraba el trabajo de las dos primeras, que vivía sólo en memoria. Quien lea
   // la acción humana necesita saber qué quedó establecido para no volver a discutirlo, y el cargo que
   // aprende de sus propias decisiones no tiene de dónde leerlas si nunca se escribieron.
-  const cerradas = handoffs.filter((entry) => entry.gate !== 'no-cumplido')
-  const previo = cerradas.length
-    ? `Lo que ya quedó establecido y no hay que volver a discutir:\n${cerradas
+  const settled = handoffs.filter((entry) => entry.gate !== 'no-cumplido')
+  const established = settled.length
+    ? `Lo que ya quedó establecido y no hay que volver a discutir:\n${settled
       .map((entry) => `- ${entry.id} (${entry.agent}): ${entry.findings}`).join('\n')}`
     : 'Ninguna etapa anterior cerró: el bloqueo es de la primera.'
   await agent(
     `${RULES}\n\nRegistrá en ${HUMAN} una fila por cada bloqueo, con la tarea, el estado pendiente, el ` +
     `origen (etapa ${blocked[0].stage}) y la acción humana exacta que lo desbloquea. No inventes ` +
-    `responsables ni fechas. Bloqueos: ${JSON.stringify(blocked)}\n\n${previo}\n\nIncluí en la fila un ` +
+    `responsables ni fechas. Bloqueos: ${JSON.stringify(blocked)}\n\n${established}\n\nIncluí en la fila un ` +
     `resumen de lo establecido, con la etapa y el cargo que lo decidió: es el trabajo que ya se pagó.`,
     { label: 'human-actions' },
   )
@@ -228,16 +228,16 @@ const complete = handoffs.map(({ summary, ...rest }) => rest)
 // Una condición que ninguna etapa levantó no desaparece porque el recorrido haya cerrado. Va dos veces a
 // propósito: al prompt de quien redacta, para que la épica o el informe la respete, y a las acciones
 // humanas, porque una condición que sólo vive dentro del artefacto se lee como parte de lo ya resuelto.
-const pendientes = condiciones(handoffs)
-const CONDICIONES = pendientes.length
+const pending = openConditions(handoffs)
+const CONDITIONS = pending.length
   ? `\n\nCondiciones que las etapas dejaron abiertas y el resultado tiene que respetar:\n`
-    + pendientes.map((one) => `- ${one}`).join('\n')
+    + pending.map((one) => `- ${one}`).join('\n')
   : ''
-if (pendientes.length) {
+if (pending.length) {
   await agent(
     `${RULES}\n\nRegistrá en ${HUMAN} una fila por cada condición que las etapas dejaron abierta, con la ` +
     `etapa que la levantó y qué decisión la cierra. No inventes responsables ni fechas, y no las des por ` +
-    `resueltas: ${JSON.stringify(pendientes)}`,
+    `resueltas: ${JSON.stringify(pending)}`,
     { label: 'condiciones' },
   )
 }
@@ -248,7 +248,7 @@ phase('Draft')
 // seguimiento en el INBOX, donde una persona decide si alguna merece convertirse en épica.
 if (contract.outcome === 'report') {
   const report = await agent(
-    `${RULES}\n\nHandoffs completos:\n${JSON.stringify(complete)}${CONDICIONES}\n\n` +
+    `${RULES}\n\nHandoffs completos:\n${JSON.stringify(complete)}${CONDITIONS}\n\n` +
     `Escribí el informe en ${REPORTS} como ` +
     `<AAAA-MM-DD>-<slug>.md: qué pasó, qué se sabe con evidencia, qué se supone, qué se decidió y qué ` +
     `queda abierto. Separá causa de síntoma y no atribuyas responsabilidad a personas. Registrá cada ` +
@@ -265,7 +265,7 @@ if (contract.outcome === 'report') {
 }
 
 const epic = await agent(
-  `${RULES}\n\nHandoffs completos:\n${JSON.stringify(complete)}${CONDICIONES}\n\n` +
+  `${RULES}\n\nHandoffs completos:\n${JSON.stringify(complete)}${CONDITIONS}\n\n` +
   `Como product-manager, decidí si la ` +
   `intención es viable con la evidencia reunida. Si lo es, redactá la épica: título, slug en ` +
   `kebab-case, criterios observables C1..CN —cada uno verificable sin ambigüedad— e historias que ` +
