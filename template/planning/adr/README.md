@@ -45,3 +45,5 @@ archivo lo mantiene Cauce, así que una fila agregada acá se perdería en el pr
 - [OPS-002](system/OPS-002-runtime-autocontenido-y-neutral-al-runner.md): runtime portable y neutral.
 - [OPS-003](system/OPS-003-integraciones-seguras-por-staging.md): integraciones mediante staging seguro.
 - [OPS-004](system/OPS-004-promocion-humana-y-evidencia-verificable.md): promoción controlada y verificable.
+- [OPS-005](system/OPS-005-catalogo-en-el-paquete.md): el catálogo viaja dentro del paquete.
+- [OPS-006](system/OPS-006-ceremonia-por-superficie.md): la ceremonia escala con la superficie del cambio.
