@@ -5,11 +5,14 @@
 Cerrar una tarea es una afirmación sobre comportamiento observado, no una impresión del ejecutor.
 [fuente: ../../adr/system/OPS-004-promocion-humana-y-evidencia-verificable.md]
 
+Elabora el invariante 4 de `../../PROTOCOL.md`, que lo enuncia en una línea: acá viven sus bordes
+y su evidencia. Cambiar una sin la otra las separa.
+
 ## Reglas
 
 | ID | Regla | Condición y resultado |
 |---|---|---|
-| BR-OPS-004 | Cierre con evidencia | Una entrada en DONE registra aceptación, fecha, QA y commit verificables. |
+| BR-OPS-004 | Cierre con evidencia | Una entrada en DONE registra aceptación, comandos con sus exit codes, QA, la prueba que sostiene cada criterio citado, y el commit. |
 
 ## Por qué existe cada regla
 

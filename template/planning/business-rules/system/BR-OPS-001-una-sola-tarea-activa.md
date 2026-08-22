@@ -5,6 +5,9 @@
 WIP protege la exclusión mutua y permite recuperar una ejecución interrumpida.
 [fuente: ../../adr/system/OPS-001-planificacion-como-fuente-de-verdad.md]
 
+Elabora el invariante 2 de `../../PROTOCOL.md`, que lo enuncia en una línea: acá viven sus bordes
+y su evidencia. Cambiar una sin la otra las separa.
+
 ## Reglas
 
 | ID | Regla | Condición y resultado |

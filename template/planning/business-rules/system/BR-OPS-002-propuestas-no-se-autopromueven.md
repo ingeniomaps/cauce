@@ -5,6 +5,9 @@
 Proponer genera una opción revisable; no concede autoridad para alterar prioridades o comprometer alcance.
 [fuente: ../../adr/system/OPS-004-promocion-humana-y-evidencia-verificable.md]
 
+Elabora el invariante 3 de `../../PROTOCOL.md`, que lo enuncia en una línea: acá viven sus bordes
+y su evidencia. Cambiar una sin la otra las separa.
+
 ## Reglas
 
 | ID | Regla | Condición y resultado |

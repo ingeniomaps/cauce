@@ -68,9 +68,9 @@ chequeo de permisos es `full`, y un componente entero de presentación puede ser
 ## Invariantes
 
 1. Una tarea tiene un dueño de estado: roadmap → BACKLOG → overlay WIP → DONE.
-2. Un solo runner a la vez; WIP activo es mutex.
-3. INBOX nunca se ejecuta automáticamente.
-4. No declarar éxito sin comandos, resultados y exit codes reales.
+2. Un solo runner a la vez; WIP activo es mutex — `business-rules/system/BR-OPS-001`.
+3. INBOX nunca se ejecuta automáticamente — `business-rules/system/BR-OPS-002`.
+4. No declarar éxito sin comandos, resultados y exit codes reales — `business-rules/system/BR-OPS-004`.
 5. No inventar credenciales ni decisiones; registrar HUMAN_ACTIONS.
 6. No ampliar alcance; lo adyacente vuelve al INBOX.
 7. No reescribir este proceso dentro de una tarea de producto.
