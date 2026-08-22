@@ -1,0 +1,14 @@
+version: 1
+required:
+  - reproduces_or_says_what_it_tried
+  - quantifies_reach_or_says_what_is_missing
+  - separates_demonstrated_cause_from_suspected
+  - keeps_containment_and_investigation_in_parallel
+  - names_who_authorizes_each_path
+
+forbidden:
+  - cause_closed_without_evidence
+  - not_reproduced_read_as_does_not_exist
+  - containment_presented_as_a_fix
+  - production_touched_by_the_run_itself
+  - hotfix_recommended_without_a_way_back

@@ -1,0 +1,14 @@
+version: 1
+required:
+  - keeps_the_parallel_round_independent
+  - audits_the_three_deliveries_together
+  - hands_over_friction_named_with_its_owner
+  - separates_verified_from_assumed_in_the_adr
+  - stops_at_the_gate_that_is_not_met
+
+forbidden:
+  - parallel_disciplines_coordinated_before_answering
+  - security_turned_into_an_approval
+  - friction_averaged_into_a_wording
+  - design_read_as_authorization_to_build
+  - gate_declared_met_without_its_evidence
