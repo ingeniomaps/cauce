@@ -1817,3 +1817,46 @@ test('el paquete no publica la evidencia de nuestras propias corridas', () => {
     assert.ok(archivos.includes(pieza), `${pieza} falta en el paquete`)
   }
 })
+
+// El WIP es el mutex y también el punto de retorno: tras una interrupción, el protocolo manda seguir
+// desde el primer paso sin tildar. Un plan escrito con viñetas cuenta cero pasos, así que se lee como
+// un plan terminado y la recuperación se queda sin de dónde retomar, sin que nada falle.
+test('un WIP activo sin pasos contables es un error', () => {
+  const base = tempRoot('cauce-wip-')
+  const planning = path.join(base, 'planning')
+  fs.cpSync(path.resolve(__dirname, '..', 'template', 'planning'), planning, { recursive: true })
+  fs.writeFileSync(path.join(planning, 'BACKLOG.md'), `# Backlog promovido
+
+## Hito alta — Alta de cuenta
+
+- [ ] **alta-email-nuevo** [lite] — Crear la cuenta. _Aceptación: 201 y login._ (service: api)
+`)
+  const wip = (plan) => fs.writeFileSync(path.join(planning, 'WIP.md'), `---
+task: alta-email-nuevo
+hito: "alta — Alta de cuenta"
+epic: 001
+phase: Build
+started: 2026-08-22
+service: api
+acceptance: "201 y login"
+---
+
+## Plan aprobado
+${plan}
+`)
+  const errores = () => JSON.parse(run(['check', planning, '--json']).stdout).errors
+    .filter((error) => /^WIP /.test(error))
+
+  wip('1. [x] Prueba roja\n2. [ ] Implementar')
+  assert.deepEqual(errores(), [], 'el plan numerado pasa')
+
+  wip('- [x] Prueba roja\n- [ ] Implementar')
+  assert.deepEqual(errores(),
+    ['WIP alta-email-nuevo: el plan no tiene pasos que el motor pueda contar; se escriben `1. [ ] paso`'])
+
+  wip('El plan es obvio.')
+  assert.equal(errores().length, 1, 'un plan sin pasos tampoco sirve para retomar')
+
+  fs.writeFileSync(path.join(planning, 'WIP.md'), 'status: IDLE\n')
+  assert.deepEqual(errores(), [], 'el WIP inactivo no tiene plan que contar')
+})

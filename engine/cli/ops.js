@@ -602,6 +602,13 @@ function check(dir, cli) {
   if (wip && !backlogSlugs.has(wip.task) && !done.set.has(wip.task)) {
     errors.push(`WIP ${wip.task}: no existe en BACKLOG ni DONE`)
   }
+  // El WIP es el punto de retorno tras una interrupción, y el protocolo manda seguir desde el primer
+  // paso sin tildar. Un plan que el motor no puede contar se lee como un plan terminado, así que la
+  // recuperación se queda sin de dónde retomar justo cuando es lo único que quedó del trabajo.
+  if (wip && !wip.complete && !wip.pending) {
+    errors.push(`WIP ${wip.task}: el plan no tiene pasos que el motor pueda contar; `
+      + 'se escriben `1. [ ] paso`')
+  }
   for (const row of P.readHumanActions(root)) {
     if (!row.valid) {
       errors.push(`HUMAN_ACTIONS ${row.task}: estado "${row.state}" fuera de `
