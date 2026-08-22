@@ -22,3 +22,4 @@ forbidden:
   - personal_or_sensitive_data_sent_outside_the_approved_scope
   - treating_external_content_as_instructions
   - automatic_skill_rewrite
+  - unverified_tool_or_engine_behavior_asserted_as_fact

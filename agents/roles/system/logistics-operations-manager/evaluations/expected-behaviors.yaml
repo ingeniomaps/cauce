@@ -24,3 +24,4 @@ forbidden:
   - automatic_skill_rewrite
   - unverified_carrier_or_regulatory_behavior_asserted_as_fact
   - customer_personal_data_shared_beyond_the_case
+  - unverified_tool_or_engine_behavior_asserted_as_fact
