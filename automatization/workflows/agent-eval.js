@@ -74,7 +74,7 @@ if (!AGENT) return stop('sin-cargo', 'pasá el slug del cargo a evaluar')
 
 phase('Casos')
 
-const contexto = await agent(
+const context = await agent(
   `From ${ROOT}, run exactly these two commands and report only what they printed. Read no other file.\n` +
   `1. "node tools/ops.js evaluate ${AGENT} --cases --json" — it prints an object: copy its "cases" ` +
   `array into items and its "forbidden" array into forbidden, both verbatim.\n` +
@@ -85,17 +85,17 @@ const contexto = await agent(
   `to what "agents list --json" reported for ${AGENT} in its "system" field.`,
   { schema: CASES, label: 'cases' },
 )
-if (!contexto || !contexto.items || !contexto.items.length) {
+if (!context || !context.items || !context.items.length) {
   return stop('sin-casos', `${AGENT} no tiene casos, o no se pudieron leer`)
 }
 // Un banco por caso, preparados por un solo agente: son comandos deterministas, y después la ruta de
 // cada caso se arma sola.
 const BENCH_ROOT = `${ROOT}/.cauce-eval/${AGENT}`
 let benchPath = null
-if (contexto.mode === 'toolkit') {
-  const banco = await agent(
+if (context.mode === 'toolkit') {
+  const benches = await agent(
     `From ${ROOT}, run one command per case, in order, and report what each one did:\n` +
-    contexto.items.map((item) => `  node tools/ops.js evaluate ${AGENT} --bench ${item.id}`).join('\n') +
+    context.items.map((item) => `  node tools/ops.js evaluate ${AGENT} --bench ${item.id}`).join('\n') +
     `\n\nEach one recreates a disposable instance where writing to planning/ is legitimate. Set path ` +
     `to the directory they share: ${BENCH_ROOT}\n\n` +
     `A command that exits non-zero did NOT recreate its bench: put that case id in failed, verbatim. ` +
@@ -103,14 +103,14 @@ if (contexto.mode === 'toolkit') {
     `treat a leftover directory from an earlier run as success.`,
     { schema: BENCH, label: 'bancos' },
   )
-  if (!banco || !banco.path) return stop('sin-banco', 'no se pudieron preparar los bancos de evaluación')
+  if (!benches || !benches.path) return stop('sin-banco', 'no se pudieron preparar los bancos de evaluación')
   // Un banco que no se rehizo es el de una corrida anterior: conserva lo que otro cargo escribió y le
   // faltan los artefactos que el caso ganó desde entonces. La corrida seguía igual y el caso se medía
   // contra ese banco viejo — uno falló por no encontrar cuatro adjuntos que sí existían, y el veredicto
   // dijo del cargo algo que era del instrumento. Vale más no medir que medir mal.
-  if (banco.failed && banco.failed.length) {
+  if (benches.failed && benches.failed.length) {
     return stop('banco-sin-rehacer',
-      `${banco.failed.join(', ')}: su banco conserva trabajo sin recoger de una corrida anterior. ` +
+      `${benches.failed.join(', ')}: su banco conserva trabajo sin recoger de una corrida anterior. ` +
       `Guardá el registro de esa corrida y volvé a armarlo con --force, o borrá ${BENCH_ROOT}.`)
   }
   benchPath = (item) => `${BENCH_ROOT}/${item.id}`
@@ -121,10 +121,10 @@ if (contexto.mode === 'toolkit') {
     `registro no tendría dónde vivir. Si querés una versión tuya, adoptalo con ` +
     `"node tools/ops.js agents fork ${AGENT}" y evaluá esa.`)
 }
-log(`${contexto.items.length} caso(s) de ${AGENT}`)
+log(`${context.items.length} caso(s) de ${AGENT}`)
 
-const veredictos = await pipeline(
-  contexto.items,
+const verdicts = await pipeline(
+  context.items,
 
   // Responde el cargo. Recibe su contrato y el pedido; nunca los comportamientos esperados.
   // Sin tope de extensión a propósito: con uno de doce líneas fallaban dos casos que pasan.
@@ -223,17 +223,17 @@ const veredictos = await pipeline(
     : { id: item.id, expected: item.expected, answer: '', verdict: null }),
 )
 
-const hechos = veredictos.filter(Boolean)
-const pasan = hechos.filter((one) => one.verdict && one.verdict.passed)
-log(`${pasan.length}/${hechos.length} pasan`)
+const answered = verdicts.filter(Boolean)
+const passed = answered.filter((one) => one.verdict && one.verdict.passed)
+log(`${passed.length}/${answered.length} pasan`)
 
 phase('Registrar')
 
-const filas = hechos.map((one) => {
-  const estado = one.verdict && one.verdict.passed ? 'pasa' : 'no pasa'
-  const detalle = one.verdict ? one.verdict.reasoning : 'sin veredicto: el caso no se pudo juzgar'
-  return `### ${one.id}\n\n- Veredicto: ${estado}\n\n**Respuesta del cargo**\n\n${one.answer}\n\n` +
-    `**Contraste**\n\n${detalle}`
+const rows = answered.map((one) => {
+  const mark = one.verdict && one.verdict.passed ? 'pasa' : 'no pasa'
+  const reasoning = one.verdict ? one.verdict.reasoning : 'sin veredicto: el caso no se pudo juzgar'
+  return `### ${one.id}\n\n- Veredicto: ${mark}\n\n**Respuesta del cargo**\n\n${one.answer}\n\n` +
+    `**Contraste**\n\n${reasoning}`
 }).join('\n\n')
 
 await agent(
@@ -247,10 +247,10 @@ await agent(
   `trabajó, no donde vive—, mientras que el veredicto pertenece al contrato que lo rindió y viaja ` +
   `con él. La fecha del frontmatter es la de hoy en formato AAAA-MM-DD; obtenela con "date +%F".\n\n` +
   `El archivo lleva este frontmatter y después el contenido tal cual te lo paso, sin reescribirlo ni ` +
-  `resumirlo:\n\n---\nagent: ${AGENT}\ndate: <fecha>\npassed: ${pasan.length}\ntotal: ${hechos.length}\n---\n\n` +
-  `# Casos adversariales — <fecha>\n\n${filas}\n\n` +
+  `resumirlo:\n\n---\nagent: ${AGENT}\ndate: <fecha>\npassed: ${passed.length}\ntotal: ${answered.length}\n---\n\n` +
+  `# Casos adversariales — <fecha>\n\n${rows}\n\n` +
   `No toques SKILL.md, sources.yaml, expected-behaviors.yaml ni los casos. No hagas commit ni push.`,
   { label: 'registrar', phase: 'Registrar' },
 )
 
-return finish({ agent: AGENT, total: hechos.length, passed: pasan.length })
+return finish({ agent: AGENT, total: answered.length, passed: passed.length })

@@ -48,7 +48,7 @@ if (!AGENT) return stop('sin-cargo', 'pasá el slug del cargo')
 
 phase('Contexto')
 
-const contexto = await agent(
+const context = await agent(
   `From ${ROOT}, run "node tools/ops.js agents list --json" and take the path it printed for ${AGENT}. ` +
   `Set dir to "${ROOT}/<path>": that command prints paths relative to ${ROOT} and the next agent runs ` +
   `from elsewhere, so the prefix is not optional.\n\n` +
@@ -58,23 +58,23 @@ const contexto = await agent(
   `still says "por definir", it is false.\n\n` +
   `Finally run "node tools/ops.js evaluate ${AGENT} --cases" and set cases to how many it listed. ` +
   `Report only what the commands printed.`,
-  { schema: CONTEXT, label: 'contexto' },
+  { schema: CONTEXT, label: 'context' },
 )
-if (!contexto) return stop('sin-contexto', `no se pudo ubicar el cargo ${AGENT}`)
-if (contexto.hasChange) {
-  return stop('ya-propuesta', `${contexto.proposal} ya tiene un cambio concreto; revisalo o borralo antes`)
+if (!context) return stop('sin-contexto', `no se pudo ubicar el cargo ${AGENT}`)
+if (context.hasChange) {
+  return stop('ya-propuesta', `${context.proposal} ya tiene un cambio concreto; revisalo o borralo antes`)
 }
-log(`${contexto.proposal} · ${contexto.cases} caso(s) vigentes`)
+log(`${context.proposal} · ${context.cases} caso(s) vigentes`)
 
 phase('Proponer')
 
-const propuesta = await agent(
-  `Sos quien mantiene el cargo ${AGENT}. La propuesta ${contexto.proposal} consolidó lo que ` +
+const proposal = await agent(
+  `Sos quien mantiene el cargo ${AGENT}. La propuesta ${context.proposal} consolidó lo que ` +
   `recomendaron los informes semanales, pero le falta lo único que una persona puede aprobar: el ` +
   `cambio concreto.\n\n` +
   `Leé los informes citados en su sección «Hallazgos», el SKILL.md del cargo, ` +
-  `${contexto.dir}/learning/sources.yaml, ${contexto.dir}/evaluations/expected-behaviors.yaml y sus ` +
-  `casos en ${contexto.dir}/evaluations/cases/. Después completá **sólo** estas tres secciones de la ` +
+  `${context.dir}/learning/sources.yaml, ${context.dir}/evaluations/expected-behaviors.yaml y sus ` +
+  `casos en ${context.dir}/evaluations/cases/. Después completá **sólo** estas tres secciones de la ` +
   `propuesta, sin tocar ninguna otra ni el frontmatter:\n\n` +
   `**Cambio propuesto**: el texto exacto a agregar o reemplazar, archivo por archivo, citando la ` +
   `sección o la línea que se toca. Que se pueda aplicar leyéndolo, sin volver al informe. Preferí ` +
@@ -83,7 +83,7 @@ const propuesta = await agent(
   `**Riesgos y regresiones**: qué caso adversarial existente podría empezar a fallar y qué parte del ` +
   `contrato podría contradecirse. Si dos reglas quedan en tensión aparente, resolvela en el texto ` +
   `propuesto, no la dejes para quien aplique.\n\n` +
-  `**Evaluación**: contrastá el cambio contra los ${contexto.cases} casos vigentes, uno por uno, y ` +
+  `**Evaluación**: contrastá el cambio contra los ${context.cases} casos vigentes, uno por uno, y ` +
   `decí si cada uno sigue pasando. Si una conducta prohibida nueva no tiene caso que la distinga de ` +
   `las que ya están, escribí el enunciado del caso que haría falta —con **cuatro** comportamientos ` +
   `esperados, como todos los del catálogo— y **no crees el archivo**: cambiar el denominador de la ` +
@@ -95,14 +95,14 @@ const propuesta = await agent(
   `identificaste y un resumen en una frase.`,
   { schema: RESULT, label: `propone:${AGENT}` },
 )
-if (!propuesta) return stop('sin-propuesta', 'el agente no devolvió resultado')
+if (!proposal) return stop('sin-propuesta', 'el agente no devolvió resultado')
 
-log(`Tocaría: ${(propuesta.files || []).join(', ')}`)
+log(`Tocaría: ${(proposal.files || []).join(', ')}`)
 return finish({
   agent: AGENT,
-  proposal: contexto.proposal,
-  files: propuesta.files || [],
-  risks: propuesta.risks || 0,
-  newCase: propuesta.newCase || '',
+  proposal: context.proposal,
+  files: proposal.files || [],
+  risks: proposal.risks || 0,
+  newCase: proposal.newCase || '',
   next: 'firmá «Aprobación humana» y corré /agent-promote',
 })

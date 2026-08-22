@@ -124,8 +124,8 @@ if (!state.fresh && !FORCE) {
 }
 
 const services = state.services || []
-const listado = services.map((service) => service.path).join(', ')
-log(`${services.length} servicio(s) en el workspace${listado ? `: ${listado}` : ''}`)
+const listed = services.map((service) => service.path).join(', ')
+log(`${services.length} servicio(s) en el workspace${listed ? `: ${listed}` : ''}`)
 
 // Sin contexto no hay nada que escribir que no sea inventado. Lo que se devuelve no es una negativa
 // sino la conversación: quien recién instaló no sabe qué es «volvé a correrlo con contexto», y adivinar
@@ -137,9 +137,9 @@ const dimensions = state.dimensions || []
 if (!CONTEXT && state.opening) {
   log(`Falta lo que el repositorio no puede decir. Preguntale primero, con estas palabras:`)
   log(`  ${state.opening}`)
-  const faltan = dimensions.map((need) => `  · ${need}`).join('\n')
+  const pending = dimensions.map((need) => `  · ${need}`).join('\n')
   log(`Después, según lo que conteste, hasta ${state.followUps || 3} preguntas más, formuladas para este ` +
-    `proyecto y no como formulario, hasta cubrir lo que haga falta de:\n${faltan}`)
+    `proyecto y no como formulario, hasta cubrir lo que haga falta de:\n${pending}`)
   log('Con sus respuestas, volvé a invocar el arranque pasándoselas como contexto.')
   return finish({ needsContext: true, opening: state.opening, dimensions, services: services.length })
 }
@@ -214,15 +214,15 @@ const epic = await agent(
 if (!epic) return stop('epic-unavailable', 'la épica no devolvió resultado')
 if (!epic.passed) return stop('check-failed', epic.details || 'check no pasó tras escribir la épica')
 
-const supuestos = (drafted.assumptions || []).length
-const acciones = (drafted.humanActions || []).length
-log(`Contexto escrito con ${supuestos} supuesto(s) por confirmar y ${acciones} acción(es) humana(s) en ${HUMAN}.`)
+const assumptions = (drafted.assumptions || []).length
+const humanActions = (drafted.humanActions || []).length
+log(`Contexto escrito con ${assumptions} supuesto(s) por confirmar y ${humanActions} acción(es) humana(s) en ${HUMAN}.`)
 log(`Épica en ${epic.file}, sin promover: revisala, promoví una historia a un hito del BACKLOG y corré /autobuild.`)
 
 return finish({
   services: services.length,
-  assumptions: supuestos,
-  humanActions: acciones,
+  assumptions,
+  humanActions,
   epic: epic.file,
   promoted: false,
 })

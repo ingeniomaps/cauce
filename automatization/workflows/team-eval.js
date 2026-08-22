@@ -65,14 +65,14 @@ if (!TEAM) return stop('sin-recorrido', 'pasá el slug del recorrido a evaluar')
 
 phase('Casos')
 
-const contexto = await agent(
+const context = await agent(
   `From ${ROOT}, run exactly these two commands and report only what they printed. Read no other file.\n` +
   `1. "node tools/ops.js evaluate ${TEAM} --team --cases --json" — it prints an object: copy its ` +
   `"cases" array into items and its "forbidden" array into forbidden, both verbatim.\n` +
   `2. Read ${ROOT}/ops.config.json and set mode to its "mode" field, verbatim.`,
   { schema: CASES, label: 'casos' },
 )
-if (!contexto || !contexto.items || !contexto.items.length) {
+if (!context || !context.items || !context.items.length) {
   return stop('sin-casos', `${TEAM} no tiene casos, o no se pudieron leer`)
 }
 
@@ -84,25 +84,25 @@ if (contexto.mode !== 'toolkit') {
     `evaluar un recorrido exige un banco desechable, y eso es del toolkit. En una empresa el ` +
     `recorrido corre sobre su propio planning/.`)
 }
-const banco = await agent(
+const benches = await agent(
   `From ${ROOT}, run one command per case, in order, and report what each one did:\n` +
-  contexto.items.map((item) => `  node tools/ops.js evaluate ${TEAM} --team --bench ${item.id}`).join('\n') +
+  context.items.map((item) => `  node tools/ops.js evaluate ${TEAM} --team --bench ${item.id}`).join('\n') +
   `\n\nEach one recreates a disposable instance where writing to planning/ is legitimate. Set path ` +
   `to the directory they share: ${BENCH_ROOT}\n\n` +
   `A command that exits non-zero did NOT recreate its bench: put that case id in failed, verbatim. ` +
   `Report every one that failed and no others — do not retry them, do not add --force.`,
   { schema: BENCH, label: 'bancos' },
 )
-if (!banco || !banco.path) return stop('sin-banco', 'no se pudieron preparar los bancos')
-if (banco.failed && banco.failed.length) {
+if (!benches || !benches.path) return stop('sin-banco', 'no se pudieron preparar los bancos')
+if (benches.failed && benches.failed.length) {
   return stop('banco-sin-rehacer',
-    `${banco.failed.join(', ')}: su banco conserva trabajo sin recoger de una corrida anterior. ` +
+    `${benches.failed.join(', ')}: su banco conserva trabajo sin recoger de una corrida anterior. ` +
     `Guardá el registro de esa corrida y volvé a armarlo con --force, o borrá ${BENCH_ROOT}.`)
 }
-log(`${contexto.items.length} caso(s) de ${TEAM}`)
+log(`${context.items.length} caso(s) de ${TEAM}`)
 
-const veredictos = await pipeline(
-  contexto.items,
+const verdicts = await pipeline(
+  context.items,
 
   // El recorrido de verdad, sobre el banco del caso. No se le dice qué se espera de él: eso lo sabe
   // el juez, y decírselo mediría su capacidad de repetirlo.
@@ -139,17 +139,17 @@ const veredictos = await pipeline(
   ).then((verdict) => ({ id: item.id, salida, verdict })),
 )
 
-const hechos = veredictos.filter(Boolean)
-const pasan = hechos.filter((one) => one.verdict && one.verdict.passed)
-log(`${pasan.length}/${hechos.length} pasan`)
+const answered = verdicts.filter(Boolean)
+const passed = answered.filter((one) => one.verdict && one.verdict.passed)
+log(`${passed.length}/${answered.length} pasan`)
 
 phase('Registrar')
 
-const filas = hechos.map((one) => {
-  const estado = one.verdict && one.verdict.passed ? 'pasa' : 'no pasa'
-  const detalle = one.verdict ? one.verdict.reasoning : 'sin veredicto: el caso no se pudo juzgar'
-  return `### ${one.id}\n\n- Veredicto: ${estado}\n\n**Qué devolvió el recorrido**\n\n` +
-    `\`\`\`json\n${JSON.stringify(one.salida, null, 2)}\n\`\`\`\n\n**Contraste**\n\n${detalle}`
+const rows = answered.map((one) => {
+  const mark = one.verdict && one.verdict.passed ? 'pasa' : 'no pasa'
+  const reasoning = one.verdict ? one.verdict.reasoning : 'sin veredicto: el caso no se pudo juzgar'
+  return `### ${one.id}\n\n- Veredicto: ${mark}\n\n**Qué devolvió el recorrido**\n\n` +
+    `\`\`\`json\n${JSON.stringify(one.salida, null, 2)}\n\`\`\`\n\n**Contraste**\n\n${reasoning}`
 }).join('\n\n')
 
 await agent(
@@ -161,10 +161,10 @@ await agent(
   `encima de la primera.\n\n` +
   `La fecha del frontmatter es la de hoy en formato AAAA-MM-DD; obtenela con "date +%F".\n\n` +
   `El archivo lleva este frontmatter y después el contenido tal cual te lo paso, sin reescribirlo:\n\n` +
-  `---\nteam: ${TEAM}\ndate: <fecha>\npassed: ${pasan.length}\ntotal: ${hechos.length}\n---\n\n` +
-  `# Casos adversariales — <fecha>\n\n${filas}\n\n` +
+  `---\nteam: ${TEAM}\ndate: <fecha>\npassed: ${passed.length}\ntotal: ${answered.length}\n---\n\n` +
+  `# Casos adversariales — <fecha>\n\n${rows}\n\n` +
   `No toques el team.json, el WORKFLOW.md ni los casos. No hagas commit ni push.`,
   { label: 'registrar', phase: 'Registrar' },
 )
 
-return finish({ team: TEAM, total: hechos.length, passed: pasan.length })
+return finish({ team: TEAM, total: answered.length, passed: passed.length })

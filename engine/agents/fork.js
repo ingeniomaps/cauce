@@ -45,8 +45,8 @@ function packageVersion(root) {
 function markHistory(target, slug, version, date) {
   const file = path.join(target, 'learning', 'HISTORY.md')
   if (!fs.existsSync(file)) return
-  const origen = version ? `del catálogo de Cauce ${version}` : 'del catálogo de Cauce'
-  const row = `| ${date} | — | Copiado ${origen} | — | ${slug} pasa a mantenerlo esta empresa |\n`
+  const provenance = version ? `del catálogo de Cauce ${version}` : 'del catálogo de Cauce'
+  const row = `| ${date} | — | Copiado ${provenance} | — | ${slug} pasa a mantenerlo esta empresa |\n`
   const content = fs.readFileSync(file, 'utf8')
   fs.writeFileSync(file, content.endsWith('\n') ? content + row : `${content}\n${row}`)
 }
@@ -68,22 +68,22 @@ function fork(root, slug, date) {
   const target = path.join(root, 'agents', type, slug)
   if (fs.existsSync(target)) throw new Error(`${path.relative(root, target)} ya existe`)
 
-  const todo = tree(found.dir)
-  const files = todo.filter(inherited)
+  const all = tree(found.dir)
+  const files = all.filter(inherited)
   if (!files.includes('SKILL.md')) throw new Error(`${slug} no tiene SKILL.md: no hay contrato que copiar`)
 
   // El digest sale del origen, no de la copia: es contra lo que el catálogo tenía al forkear que
   // después se responde «esto mejoró río arriba». Medirlo sobre la copia lo ataría a nuestras propias
   // ediciones, la reescritura de rutas incluida — y esa reescritura no es cosmética: sin ella el
   // aprendizaje del fork apuntaría al paquete, que el guard bloquea y npm borra en el próximo install.
-  const desde = `agents/${type}/system/${slug}`
-  const hacia = `agents/${type}/${slug}`
+  const fromPath = `agents/${type}/system/${slug}`
+  const toPath = `agents/${type}/${slug}`
   const digests = {}
   for (const relative of files) {
     const from = path.join(found.dir, relative)
     const to = path.join(target, relative)
     fs.mkdirSync(path.dirname(to), { recursive: true })
-    if (TEXT.test(relative)) fs.writeFileSync(to, fs.readFileSync(from, 'utf8').split(desde).join(hacia))
+    if (TEXT.test(relative)) fs.writeFileSync(to, fs.readFileSync(from, 'utf8').split(fromPath).join(toPath))
     else fs.copyFileSync(from, to)
     digests[relative] = manifest.digest(from)
   }
@@ -95,7 +95,7 @@ function fork(root, slug, date) {
   forks[slug] = { type, version, files: digests }
   manifest.write(root, null, null, forks)
 
-  return { slug, type, dir: target, files, version, skipped: todo.filter((one) => !inherited(one)) }
+  return { slug, type, dir: target, files, version, skipped: all.filter((one) => !inherited(one)) }
 }
 
 // Qué cambió en el catálogo desde que la empresa se llevó su copia.
@@ -139,8 +139,8 @@ function driftLine(entry) {
   if (entry.changed.length) parts.push(`${entry.changed.length} archivo(s) cambiaron`)
   if (entry.added.length) parts.push(`${entry.added.length} nuevo(s)`)
   if (entry.removed.length) parts.push(`${entry.removed.length} retirado(s)`)
-  const desde = entry.version ? ` desde ${entry.version}` : ''
-  return `${entry.slug}: tu copia no recibe mejoras del catálogo y ahí${desde} ${parts.join(', ')}`
+  const since = entry.version ? ` desde ${entry.version}` : ''
+  return `${entry.slug}: tu copia no recibe mejoras del catálogo y ahí${since} ${parts.join(', ')}`
 }
 
 module.exports = { drift, driftLine, fork, inherited }

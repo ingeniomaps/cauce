@@ -203,7 +203,7 @@ function inventory(root) {
   })))
 }
 
-function comandos(commands) {
+function commandsLine(commands) {
   const entries = Object.entries(commands || {})
   if (!entries.length) return ' — sin comandos declarados'
   return ` — ${entries.map(([kind, value]) => `${kind}: ${value.command} (${value.source})`).join(', ')}`
@@ -215,4 +215,4 @@ module.exports = {
   workspaceRoots,
   candidates,
   inventory,
-  comandos, scan, services, expectedEnv, IGNORED, DEPTH, ENV_MAX }
+  commandsLine, scan, services, expectedEnv, IGNORED, DEPTH, ENV_MAX }

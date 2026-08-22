@@ -58,7 +58,7 @@ if (!AGENT) return stop('sin-cargo', 'pasá el slug del cargo')
 
 phase('Firma')
 
-const firma = await agent(
+const signature = await agent(
   `From ${ROOT}, run "node tools/ops.js agents list --json" and take the path it printed for ${AGENT}. ` +
   `Set dir to "${ROOT}/<path>": that command prints paths relative to ${ROOT}.\n\n` +
   `Find the newest proposal under <dir>/learning/proposals/. They are named AAAA-MM.md, and a ` +
@@ -74,37 +74,37 @@ const firma = await agent(
   `- state: the literal state line.\n` +
   `- status: the literal value of the frontmatter "status:" field.\n` +
   `- hasChange: true only if "Cambio propuesto" carries a concrete change; "por definir" means false.`,
-  { schema: FIRMA, label: 'firma' },
+  { schema: FIRMA, label: 'signature' },
 )
-if (!firma) return stop('sin-propuesta', `no se pudo leer una propuesta de ${AGENT}`)
-if (!firma.hasChange) {
-  return stop('propuesta-vacia', `${firma.proposal} no tiene cambio concreto: corré /agent-propose primero`)
+if (!signature) return stop('sin-propuesta', `no se pudo leer una propuesta de ${AGENT}`)
+if (!signature.hasChange) {
+  return stop('propuesta-vacia', `${signature.proposal} no tiene cambio concreto: corré /agent-propose primero`)
 }
-if (!firma.approved) {
-  return stop('sin-firma', `${firma.proposal} no está aprobada (${firma.state || 'sin estado'}). ` +
+if (!signature.approved) {
+  return stop('sin-firma', `${signature.proposal} no está aprobada (${signature.state || 'sin estado'}). ` +
     'Firmá «Aprobación humana» con un responsable y repetí: nadie se autoriza a sí mismo')
 }
 // Una propuesta aplicada no se vuelve a aplicar. La firma no alcanza como candado: sigue firmada
 // después, y el estado en prosa pasa a decir «aprobada y aplicada», que también lee como aprobada.
 // Como el cambio es aditivo por diseño, reaplicar no falla — duplica cada viñeta y cada fuente.
-if ((firma.status || '').toLowerCase() === 'applied') {
-  return stop('ya-aplicada', `${firma.proposal} ya está aplicada. Si la evaluación posterior mostró que ` +
+if ((signature.status || '').toLowerCase() === 'applied') {
+  return stop('ya-aplicada', `${signature.proposal} ya está aplicada. Si la evaluación posterior mostró que ` +
     `el cambio quedó mal calibrado, abrí una revisión con "node tools/ops.js learn ${AGENT} --proposal": ` +
     'la aplicada queda sellada donde está y la corrección va con su propia firma')
 }
-log(`Aprobada por ${firma.signedBy}`)
+log(`Aprobada por ${signature.signedBy}`)
 
 // El período sale del nombre del archivo, que el motor ya garantiza: pedírselo otra vez al modelo sería
 // preguntar dos veces lo mismo y arriesgar dos respuestas. Se toma el nombre entero y no sólo el mes,
 // porque con una revisión abierta hay dos archivos del mismo período y hay que sellar el que se aplicó.
-const PERIODO = (firma.proposal.match(/(\d{4}-\d{2}(?:-r\d+)?)\.md$/) || [])[1] || ''
-if (!PERIODO) return stop('propuesta-sin-periodo', `${firma.proposal} no se llama AAAA-MM.md ni AAAA-MM-rN.md`)
+const PERIOD = (signature.proposal.match(/(\d{4}-\d{2}(?:-r\d+)?)\.md$/) || [])[1] || ''
+if (!PERIOD) return stop('propuesta-sin-periodo', `${signature.proposal} no se llama AAAA-MM.md ni AAAA-MM-rN.md`)
 
 phase('Aplicar')
 
-const aplicado = await agent(
-  `La propuesta ${firma.proposal} está aprobada por ${firma.signedBy}. Aplicá su sección «Cambio ` +
-  `propuesto» al cargo ${AGENT} en ${firma.dir}, archivo por archivo, tal como la propuesta lo ` +
+const applied = await agent(
+  `La propuesta ${signature.proposal} está aprobada por ${signature.signedBy}. Aplicá su sección «Cambio ` +
+  `propuesto» al cargo ${AGENT} en ${signature.dir}, archivo por archivo, tal como la propuesta lo ` +
   `describe.\n\n` +
   `Reglas al aplicar:\n` +
   `- Preferí agregar sobre reescribir. Si la propuesta dice «agregar después de X», agregá; no ` +
@@ -121,19 +121,19 @@ const aplicado = await agent(
   `lo creaste, y las desviaciones —o cadena vacía si no hubo—.`,
   { schema: APLICADO, label: `aplica:${AGENT}` },
 )
-if (!aplicado || !aplicado.applied) {
+if (!applied || !applied.applied) {
   return stop('no-aplicada', 'el cambio no se pudo aplicar; la propuesta queda como estaba')
 }
-log(`Aplicado en: ${(aplicado.files || []).join(', ')}`)
+log(`Aplicado en: ${(applied.files || []).join(', ')}`)
 
 phase('Registrar')
 
 await agent(
-  `Agregá una fila a ${firma.dir}/learning/HISTORY.md con la fecha de hoy —obtenela con "date +%F"—, ` +
-  `la propuesta ${firma.proposal}, decisión "Aprobada", quién firmó (${firma.signedBy}) y qué se ` +
-  `aplicó: ${(aplicado.files || []).join(', ')}` +
-  `${aplicado.newCase ? ` más el caso ${aplicado.newCase}` : ''}` +
-  `${aplicado.deviations ? `. Desviaciones: ${aplicado.deviations}` : ''}.\n\n` +
+  `Agregá una fila a ${signature.dir}/learning/HISTORY.md con la fecha de hoy —obtenela con "date +%F"—, ` +
+  `la propuesta ${signature.proposal}, decisión "Aprobada", quién firmó (${signature.signedBy}) y qué se ` +
+  `aplicó: ${(applied.files || []).join(', ')}` +
+  `${applied.newCase ? ` más el caso ${applied.newCase}` : ''}` +
+  `${applied.deviations ? `. Desviaciones: ${applied.deviations}` : ''}.\n\n` +
   `Respetá el formato de tabla que ya tiene el archivo. No toques ninguna otra cosa, no hagas commit.`,
   { label: 'historial' },
 )
@@ -142,7 +142,7 @@ await agent(
 // pendiente. Lo hace el motor y no vos, a mano, porque marcar el estado editando frontmatter es
 // exactamente el paso que se hace mal en silencio.
 await agent(
-  `From ${ROOT}, run "node tools/ops.js learn ${AGENT} --applied --period ${PERIODO}" and report only ` +
+  `From ${ROOT}, run "node tools/ops.js learn ${AGENT} --applied --period ${PERIOD}" and report only ` +
   `what it printed. Change nothing else.`,
   { label: 'sella' },
 )
@@ -150,10 +150,10 @@ await agent(
 log('El contrato cambió: los casos valen sólo si se vuelven a correr contra la versión nueva.')
 return finish({
   agent: AGENT,
-  proposal: firma.proposal,
-  signedBy: firma.signedBy,
-  files: aplicado.files || [],
-  newCase: aplicado.newCase || '',
-  deviations: aplicado.deviations || '',
+  proposal: signature.proposal,
+  signedBy: signature.signedBy,
+  files: applied.files || [],
+  newCase: applied.newCase || '',
+  deviations: applied.deviations || '',
   next: `corré /agent-eval ${AGENT}: el registro anterior quedó viejo y no vale para el contrato nuevo`,
 })

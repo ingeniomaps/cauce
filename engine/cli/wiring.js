@@ -131,7 +131,7 @@ function scan(target, cli) {
     const label = service.path === '.' ? `. (${path.basename(service.root || result.root)})` : service.path
     const expects = service.env ? `\n    espera ${service.env.names.join(', ')} (${service.env.file})` : ''
     console.log(
-      `${label} [${(service.runtimes || []).join(', ')}]${SC.comandos(service.commands)}${expects}`,
+      `${label} [${(service.runtimes || []).join(', ')}]${SC.commandsLine(service.commands)}${expects}`,
     )
   }
   if (result.services.length > MAX_LISTED) {
