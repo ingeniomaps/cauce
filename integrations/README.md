@@ -5,8 +5,10 @@ Este toolkit usa adaptadores. El núcleo conoce el ciclo
 
 Contrato de un adaptador:
 
-- `validateConfig(config, errors, warnings)` valida sin conectarse.
-- `fetchItems(config)` hace una lectura paginada completa, acotada y cancelable.
+- `validateConfig(config, errors)` valida sin conectarse, empujando a `errors` lo que impide correr.
+- `fetchItems(config, options)` hace una lectura paginada completa, acotada por `maxPages` y cancelable
+  por `timeoutMs`. `options` admite además `fetchImpl`, que es lo que permite probar el recorrido
+  entero sin red ni credenciales; el núcleo llama sin `options` y los topes salen de la configuración.
 - `normalizeFixture(payload, config)` usa el mismo normalizador sin red para tests/importaciones.
 - El snapshot normalizado nunca contiene tokens ni headers.
 

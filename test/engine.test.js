@@ -1233,3 +1233,28 @@ test('currentTask aplica la precedencia del protocolo sobre el estado ya leído'
   assert.equal(todas.task, null)
   assert.deepEqual(todas.skipped, ['uno', 'dos', 'tres'])
 })
+
+// El README declara el contrato que cumple un adaptador, y es lo que lee quien escribe el segundo. Con
+// la firma vieja decía `validateConfig(config, errors, warnings)`: el tercer parámetro no existía ni se
+// pasaba, así que ese adaptador habría creído poder emitir advertencias y nadie lo habría notado —nada
+// falla cuando se ignora un argumento—. Se contrasta contra la declaración real del único que hay.
+test('el README de integraciones declara las firmas que el adaptador tiene', () => {
+  const raiz = path.resolve(__dirname, '..')
+  const readme = fs.readFileSync(path.join(raiz, 'integrations', 'README.md'), 'utf8')
+  const fuente = fs.readFileSync(path.join(raiz, 'engine', 'integrations', 'providers', 'jira.js'), 'utf8')
+
+  for (const nombre of ['validateConfig', 'fetchItems', 'normalizeFixture']) {
+    const declarada = fuente.match(new RegExp(`(?:async )?function ${nombre}\\(([^)]*)\\)`))
+    assert.ok(declarada, `${nombre} se declara en el adaptador`)
+    // La firma del README omite los valores por defecto: documenta qué recibe, no cómo se inicializa.
+    const params = declarada[1].split(',').map((p) => p.split('=')[0].trim()).filter(Boolean)
+    assert.ok(readme.includes(`\`${nombre}(${params.join(', ')})\``),
+      `el README declara ${nombre}(${params.join(', ')})`)
+  }
+
+  // Y que el adaptador siga exportando las tres: el contrato no es sólo la firma.
+  const jira = require('../engine/integrations/providers/jira')
+  for (const nombre of ['validateConfig', 'fetchItems', 'normalizeFixture']) {
+    assert.equal(typeof jira[nombre], 'function', `el adaptador exporta ${nombre}`)
+  }
+})
