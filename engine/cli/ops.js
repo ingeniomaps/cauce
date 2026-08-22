@@ -450,7 +450,7 @@ function onboard(rootArg, cli, runner = '') {
 function seccionesPerdidas(root) {
   const avisos = []
   const molde = path.join(PROJECT_ROOT, 'template', 'organization')
-  for (const name of ['company.md', 'product.md']) {
+  for (const name of ['company.md', 'product.md', 'domains.md']) {
     const propio = path.join(root, 'organization', name)
     if (!fs.existsSync(propio) || !fs.existsSync(path.join(molde, name))) continue
     const titulos = (text) => new Set((text.match(/^##\s+(.+)$/gm) || []).map((line) => line.trim()))
