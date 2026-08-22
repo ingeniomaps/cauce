@@ -14,6 +14,54 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.44.0] - 2026-08-22
+
+### Cambiado
+
+- **`ops check` rechaza planning que antes pasaba.** Corrélo apenas actualices. Los contratos que el
+  protocolo ya declaraba ahora se comprueban, y lo que fallaba callado pasa a ser un error con su línea
+  citada: el estado de una acción humana fuera de `pendiente | resuelta`, la línea de BACKLOG que no
+  cumple el contrato de tarea —incluida la tildada ahí en vez de movida a DONE—, un lane que no existe,
+  un WIP activo cuyo plan no tiene pasos numerados, un `commit:` que no apunta a un sha, una evidencia
+  de DONE que no rastrea el criterio que su historia citó, una épica activada con un `Por definir`
+  adentro, una tarea cuya aceptación no está decidida, un ADR sin estado del vocabulario o sin sus
+  secciones, y dos reglas con el mismo número.
+- **Las reglas propias del proyecto se numeran `P1..Pn`**: `R` queda reservado al sistema. Si escribiste
+  una regla propia con un `R`, renumerala, o llevala a un archivo con el mismo nombre que el del sistema
+  —que es como se declara un override—.
+- **Tres reglas cambian y hay dos nuevas.** `R8` corta los commits por naturaleza del diff y no por
+  tarea; `R7` usa los umbrales como disparador de una revisión en vez de prohibir números; `R9` pide
+  romper lo que el caso dice cuidar y verlo en rojo, porque el rojo previo sólo prueba ausencia. Se
+  agregan `R17` —la aceptación que pasa de cinco condiciones se parte— y `R18` —un doble de prueba se
+  justifica y los datos salen de una fábrica—.
+- **La guía de `planning/delivery/` es del toolkit y se reemplaza entera.** Hasta ahora se quedaba en la
+  versión del día que instalaste, así que ninguna mejora te llegaba. Si editaste alguno de sus seis
+  archivos, `upgrade` se niega: llevá lo tuyo a `delivery/project.md`, que sigue siendo del proyecto, o
+  repetí con `--force`.
+- **El paquete ya no publica la evidencia de nuestras corridas de evaluación** y la instalación baja de
+  7 MB a menos de 2. Los contratos de cada cargo —`SKILL.md`, `references/`, casos, fuentes e historial—
+  llegan igual.
+
+### Agregado
+
+- **`ops archive <planning> human-actions`** saca las filas resueltas a `done/human-actions.md` y deja
+  legible lo que queda por decidir.
+- **`ops context` nombra por qué paró.** Con toda la cola trabada por una persona imprime
+  `BLOCKED  blocked-on-human` con la fila que la destraba, en vez de decir que no hay tarea disponible,
+  que era lo mismo que dice una cola vacía. El vocabulario completo de paradas está en `PROTOCOL.md`.
+- **Dos decisiones del sistema**: `OPS-005`, el catálogo viaja dentro del paquete; `OPS-006`, la
+  ceremonia escala con la superficie del cambio.
+
+### Corregido
+
+- **Un criterio escrito en dos líneas se truncaba.** La tarea que heredaba su aceptación recibía sólo la
+  primera, que suele ser la mitad sin el cómo se verifica. Revisá las épicas con criterios de más de un
+  renglón: lo que el runner recibe cambia.
+- **`upgrade` daba el consejo ajeno** al negarse sobre un documento del toolkit —hablaba de desactivar
+  guards—. Ahora cada clase de archivo escucha la salida que le corresponde.
+- **Los hallazgos de una revisión iban a la sección equivocada del INBOX.** Un cambio del producto va a
+  Propuestas, lo aprendido sobre cómo trabajamos a Lecciones, y una pregunta abierta a Ideas.
+
 ## [0.43.0] - 2026-08-20
 
 ### Agregado
