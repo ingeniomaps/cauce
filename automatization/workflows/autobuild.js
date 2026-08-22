@@ -231,7 +231,7 @@ const MANIFEST = ' Enumerá en consulted cada archivo, diff o comando que hayas 
 // Acompaña a todo prompt con schema DECISION. El criterio va escrito porque tres estados sin criterio son
 // tres nombres, y el del medio —el que evita gastar una corrección en lo que no se corrige— es el que se
 // pierde primero.
-const VERDICTO = ' Cerrá con verdict=aprobado si no queda nada por corregir antes de entregar; ' +
+const VERDICT = ' Cerrá con verdict=aprobado si no queda nada por corregir antes de entregar; ' +
   'verdict=con-condiciones si lo que falta se corrige dentro de este mismo cambio; y verdict=bloqueado ' +
   'si algo no se resuelve acá —el diseño no lo cubre, falta una decisión ajena, o la corrección excede el ' +
   'alcance—. Marcá blocking=true sólo en el hallazgo que impide entregar: el resto queda registrado y no ' +
@@ -244,7 +244,7 @@ const VERDICTO = ' Cerrá con verdict=aprobado si no queda nada por corregir ant
 // El borde izquierdo va explícito en vez de `\b` porque `\b(?:` se lee igual que una llamada a `b()`
 // y la comprobación de identificadores del paquete de pruebas la marca como función inexistente.
 // Lo que hay que corregir antes de entregar. El resto de los hallazgos no desaparece: se registra.
-const frenan = (veredicto) => veredicto.concerns.filter((one) => one.blocking).map((one) => one.detail)
+const blockers = (verdict) => verdict.concerns.filter((one) => one.blocking).map((one) => one.detail)
 const RUNS_TESTS = /(?:^|[\s/:=-])(?:tests?|specs?|pytest|jest|vitest|mocha|rspec|phpunit|ci|check)\b/i
 {{INCLUDE:shared/workflow-finish.js}}
 
@@ -261,8 +261,8 @@ const contract = await agent(
 )
 if (!contract) return stop('contract-unavailable', `no se pudo leer ${CONFIG} ni ${P}/PROTOCOL.md`)
 
-const cotas = contract.boundaries || []
-const limits = cotas.length ? ` Límites del proyecto: ${cotas.join('; ')}.` : ''
+const bounds = contract.boundaries || []
+const limits = bounds.length ? ` Límites del proyecto: ${bounds.join('; ')}.` : ''
 // Alcance de escritura: para subagentes que tocan código o ejecutan gates del producto.
 const SCOPE = `${BASE}\n\nProyecto ${contract.project}. workspaceRoots es el límite completo de escritura del ` +
   `producto: ${contract.workspaceRoots.join('; ')}.${limits} Este preámbulo ya trae el contrato; no vuelvas a leer ` +
@@ -297,13 +297,13 @@ const completed = []
 // Tope de tareas por corrida. No protege de un hito grande —cincuenta tareas en un hito es un problema
 // de planificación, no de ejecución— sino de un ciclo: una tarea que vuelve a quedar elegible corre
 // para siempre. Se corta con motivo porque agotarlo en silencio se lee igual que haber terminado.
-const MAX_TAREAS = 50
-let vueltas = 0
+const MAX_TASKS = 50
+let rounds = 0
 // Tareas que ya pasaron por el clasificador en esta corrida. Sin esto, una que vuelve sin lane
 // —porque la escritura falló o el modelo la salteó— se reclasifica en cada vuelta del bucle.
-const clasificadas = new Set()
+const classified = new Set()
 
-while (vueltas++ < MAX_TAREAS) {
+while (rounds++ < MAX_TASKS) {
   phase('Pick')
   if (!planning.hasTask && !planning.queued) {
     const expansion = await write(
@@ -333,9 +333,9 @@ while (vueltas++ < MAX_TAREAS) {
   // Un WIP activo no se reclasifica: la tarea ya está en vuelo con las fases que le tocaron, y
   // cambiárselas a mitad de camino la deja con un plan aprobado bajo otro carril.
   const unclassified = !planning.lane || !planning.cast.build
-  if (unclassified && !planning.wipActive && !clasificadas.has(task.id)) {
+  if (unclassified && !planning.wipActive && !classified.has(task.id)) {
     phase('Classify')
-    clasificadas.add(task.id)
+    classified.add(task.id)
     const classification = await write(
       `${CLASSIFY_RULES}\n\nRun "node tools/ops.js agents list ${ROOT} --json" and choose only from the slugs ` +
       `it lists.\nClasificá en ${BACKLOG} todas las tareas en cola que no declaren lane o no declaren cast, ` +
@@ -363,7 +363,7 @@ while (vueltas++ < MAX_TAREAS) {
   const lite = planning.lane === 'lite'
   // Lo mecánico no se planifica ni se pregunta si está listo: el clasificador ya leyó la aceptación y
   // dijo que nombra un valor literal. Volver a preguntarlo son dos llamadas para llegar al mismo lado.
-  const mecanico = express || direct
+  const mechanical = express || direct
 
   // Quién ejecuta cada fase. Los dueños por defecto son fijos y no gastan una llamada; quien
   // implementa y quiénes revisan por riesgo salen de la línea de la tarea. Los revisores valen en
@@ -378,7 +378,7 @@ while (vueltas++ < MAX_TAREAS) {
     : '')
 
   if (!planning.wipActive) {
-    if (!mecanico) {
+    if (!mechanical) {
       phase('Ready')
       const ready = await read(
         `${asRole(OWNERS.ready)}Revisá que ${task.id} tenga aceptación concreta, dependencias resueltas y ` +
@@ -394,7 +394,7 @@ while (vueltas++ < MAX_TAREAS) {
       if (ready.refinedAcceptance) task.acceptance = ready.refinedAcceptance
     }
 
-    if (!mecanico && !lite) {
+    if (!mechanical && !lite) {
       phase('Decompose')
       const estimate = await run(
         `Inspeccioná ${task.service} y estimá ${task.id}. Partila sólo si supera ${contract.maxTaskHours} horas.`,
@@ -413,7 +413,7 @@ while (vueltas++ < MAX_TAREAS) {
     // El plan de un cambio mecánico es el cambio, y la aceptación ya lo nombra. Pedirlo igual costaba
     // dos llamadas —planificar y criticar el plan— para llegar a lo que la línea de la tarea ya decía.
     let plan = { steps: [`Aplicar en ${task.service} lo que nombra la aceptación: ${task.acceptance}`] }
-    if (!mecanico) {
+    if (!mechanical) {
     phase('Plan')
     plan = await run(
       `${asRole(OWNERS.plan)}Inspeccioná el código real, las instrucciones del repositorio, las convenciones ` +
@@ -429,28 +429,28 @@ while (vueltas++ < MAX_TAREAS) {
       phase('Critique')
       let critique = await read(
         `Atacá este plan por correctitud, alcance, seguridad, pruebas y conflictos con el código ` +
-        `existente.${MANIFEST}${VERDICTO} Plan: ${JSON.stringify(plan)}`,
+        `existente.${MANIFEST}${VERDICT} Plan: ${JSON.stringify(plan)}`,
         { schema: DECISION },
       )
       if (!critique) return stop('agent-unavailable', 'Critique no devolvió resultado')
       // Un plan bloqueado no se corrige: lo que lo bloquea está fuera de lo que una segunda pasada puede
       // tocar, así que insistir gasta dos llamadas para llegar al mismo lugar.
       if (critique.verdict === 'bloqueado') {
-        return stop('plan-blocked', frenan(critique).join('; ') || 'sin condiciones nombradas')
+        return stop('plan-blocked', blockers(critique).join('; ') || 'sin condiciones nombradas')
       }
-      if (frenan(critique).length) {
+      if (blockers(critique).length) {
         plan = await read(
-          `Corregí el plan una vez por: ${frenan(critique).join('; ')}. Plan: ${JSON.stringify(plan)}`,
+          `Corregí el plan una vez por: ${blockers(critique).join('; ')}. Plan: ${JSON.stringify(plan)}`,
           { schema: PLAN },
         )
         critique = await read(
-          `Volvé a criticar el plan corregido contra ${task.acceptance}.${MANIFEST}${VERDICTO} ` +
+          `Volvé a criticar el plan corregido contra ${task.acceptance}.${MANIFEST}${VERDICT} ` +
           `Plan: ${JSON.stringify(plan)}`,
           { schema: DECISION },
         )
         if (!plan || !critique) return stop('agent-unavailable', 'la revisión del plan no devolvió resultado')
-        if (critique.verdict === 'bloqueado' || frenan(critique).length) {
-          return stop('plan-rejected', frenan(critique).join('; ') || 'sin condiciones nombradas')
+        if (critique.verdict === 'bloqueado' || blockers(critique).length) {
+          return stop('plan-rejected', blockers(critique).join('; ') || 'sin condiciones nombradas')
         }
       }
       // Acá el plan ya está aprobado por los dos caminos posibles, así que el contraste va una sola vez.
@@ -464,7 +464,7 @@ while (vueltas++ < MAX_TAREAS) {
     // anterior», así que Review, Verify y QA nunca vieron ese código y el recorrido terminó reportando algo
     // distinto de lo que decía planning. El permiso venía del preámbulo de escritura; lo que faltaba era el
     // límite. `wipActive` es el contraste: si el WIP no quedó activo, esta fase hizo otra cosa.
-    const persistido = await write(
+    const persisted = await write(
       `Escribí el WIP y nada más: no toques código, no corras pruebas, no cierres la tarea y no escribas ` +
       `en DONE. Los pasos van sin tildar porque todavía no ocurrieron. task=${task.id}, ` +
       `hito=${JSON.stringify(task.hito)}, phase=Build, service=${task.service}, ` +
@@ -476,9 +476,9 @@ while (vueltas++ < MAX_TAREAS) {
         properties: { wipActive: { type: 'boolean' }, note: { type: 'string' } },
       } },
     )
-    if (!persistido) return stop('agent-unavailable', 'la persistencia del WIP no devolvió resultado')
-    if (!persistido.wipActive) {
-      return stop('wip-not-persisted', `${task.id} entra a Build sin WIP activo: ${persistido.note || ''}`)
+    if (!persisted) return stop('agent-unavailable', 'la persistencia del WIP no devolvió resultado')
+    if (!persisted.wipActive) {
+      return stop('wip-not-persisted', `${task.id} entra a Build sin WIP activo: ${persisted.note || ''}`)
     }
   }
 
@@ -514,11 +514,11 @@ while (vueltas++ < MAX_TAREAS) {
   // sino «hay un borde que alguien tiene que decidir», y una aceptación escrita en prosa siempre tiene uno.
   // Frenar por eso frenaba siempre, y un freno que salta siempre se termina apagando. Lo que de verdad
   // bloquea ya tiene camino —`completed: false` con su blocker—; esto se registra y sigue.
-  const abiertos = build.discovered.filter((entry) => entry.kind === 'open')
-  if (abiertos.length) {
+  const openDecisions = build.discovered.filter((entry) => entry.kind === 'open')
+  if (openDecisions.length) {
     await write(`Registrá en ${HUMAN} una fila por cada decisión que ${task.id} dejó abierta, con qué la ` +
       `cierra y quién puede tomarla. No inventes responsables ni fechas: ` +
-      `${JSON.stringify(abiertos.map((entry) => entry.detail))}`)
+      `${JSON.stringify(openDecisions.map((entry) => entry.detail))}`)
   }
   // Y un caso que sí se fijó acá entra con su prueba o no entró: sin ella el comportamiento nuevo queda
   // sin nada que lo sostenga, y nadie sabe después que debía existir.
@@ -526,31 +526,31 @@ while (vueltas++ < MAX_TAREAS) {
   // cadena exacta frena una tarea correcta por haber nombrado el test de dos formas —`TestAlta` acá y
   // `users_test.go::TestAlta` allá—. Alcanza con que uno nombre al otro; lo que sigue frenando, que es de
   // lo que se trata, es el caso que no aparece en ningún rojo.
-  const nombra = (rojo, caso) => Boolean(caso.test)
-    && (rojo.test.includes(caso.test) || caso.test.includes(rojo.test))
-  const suelto = build.discovered.find((entry) => entry.kind === 'edge'
-    && !build.redFirst.some((rojo) => nombra(rojo, entry)))
-  if (suelto) return stop('edge-unproven', `${suelto.detail} entró sin la prueba que lo fija`)
+  const namesTest = (red, item) => Boolean(item.test)
+    && (red.test.includes(item.test) || item.test.includes(red.test))
+  const loose = build.discovered.find((entry) => entry.kind === 'edge'
+    && !build.redFirst.some((red) => namesTest(red, entry)))
+  if (loose) return stop('edge-unproven', `${loose.detail} entró sin la prueba que lo fija`)
 
   if (!express) {
     phase('Review')
     let review = await run(
       `${asRole(cast.review)}Revisá el diff real por aceptación, regresiones, seguridad, arquitectura, código ` +
       `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.${MANIFEST}` +
-      `${VERDICTO}`,
+      `${VERDICT}`,
       { schema: DECISION },
     )
     if (!review) return stop('agent-unavailable', 'Review no devolvió resultado')
     if (review.verdict === 'bloqueado') {
-      return stop('review-blocked', frenan(review).join('; ') || 'sin condiciones nombradas')
+      return stop('review-blocked', blockers(review).join('; ') || 'sin condiciones nombradas')
     }
-    if (frenan(review).length) {
-      await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${frenan(review).join('; ')}`)
-      review = await run(`Volvé a revisar el diff corregido de ${task.id}.${MANIFEST}${VERDICTO}`,
+    if (blockers(review).length) {
+      await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${blockers(review).join('; ')}`)
+      review = await run(`Volvé a revisar el diff corregido de ${task.id}.${MANIFEST}${VERDICT}`,
         { schema: DECISION })
       if (!review) return stop('agent-unavailable', 'la re-revisión no devolvió resultado')
-      if (review.verdict === 'bloqueado' || frenan(review).length) {
-        return stop('review-failed', frenan(review).join('; ') || 'sin condiciones nombradas')
+      if (review.verdict === 'bloqueado' || blockers(review).length) {
+        return stop('review-failed', blockers(review).join('; ') || 'sin condiciones nombradas')
       }
     }
     // Aprobar sin declarar qué se abrió no se arregla mandando a tocar código: falló quien revisó.
@@ -559,10 +559,10 @@ while (vueltas++ < MAX_TAREAS) {
     // corrige a las apuradas cuesta una vuelta y un riesgo que nadie pidió. Va a Propuestas y no a
     // Lecciones porque lo que la revisión anotó es un cambio del producto con su evidencia; Lecciones es
     // sobre cómo trabajamos, y ahí el hallazgo queda esperando una promoción que nadie va a hacer.
-    const anotados = review.concerns.filter((one) => !one.blocking).map((one) => one.detail)
-    if (anotados.length) {
+    const noted = review.concerns.filter((one) => !one.blocking).map((one) => one.detail)
+    if (noted.length) {
       await write(`Registrá en la sección Propuestas de ${P}/INBOX.md lo que la revisión de ${task.id} dejó ` +
-        `anotado sin frenar la entrega, sin promover ninguna: ${JSON.stringify(anotados)}`)
+        `anotado sin frenar la entrega, sin promover ninguna: ${JSON.stringify(noted)}`)
     }
   }
 
@@ -582,11 +582,11 @@ while (vueltas++ < MAX_TAREAS) {
   // Un criterio que nadie sabe cómo aserciar no es trabajo que falta sino una definición que falta, y
   // definirla acá sería inventarla. Escribir la prueba que falta, en cambio, es trabajo del recorrido:
   // hacer parar a una persona por eso le cobra una interrupción por algo que se resolvía solo.
-  const ambiguo = verified.uncovered.find((entry) => entry.cause === 'ambiguous')
-  if (ambiguo) {
-    await write(`Registrá ${task.id} en ${HUMAN}: el criterio "${ambiguo.criterion}" no dice qué habría ` +
+  const ambiguous = verified.uncovered.find((entry) => entry.cause === 'ambiguous')
+  if (ambiguous) {
+    await write(`Registrá ${task.id} en ${HUMAN}: el criterio "${ambiguous.criterion}" no dice qué habría ` +
       `que aserciar, y hace falta la decisión que lo fija.`)
-    return stop('acceptance-ambiguous', ambiguo.criterion)
+    return stop('acceptance-ambiguous', ambiguous.criterion)
   }
   if (verified.uncovered.length) {
     await run(`${asRole(cast.build)}Escribí sólo las pruebas que faltan en ${task.id}, con el mismo rojo ` +
@@ -597,8 +597,8 @@ while (vueltas++ < MAX_TAREAS) {
   if (!verified.passed || !verified.commands.length) return stop('verify-failed', verified.details)
   // Verde por ausencia: los gates pasaron y ninguno corrió las pruebas que esta tarea escribió. El exit
   // code de lint o de build no dice nada del comportamiento, y la corrida cerraba igual.
-  const corridas = verified.commands.some((entry) => entry.ranTests || RUNS_TESTS.test(entry.cmd))
-  if (build.redFirst.length && !corridas) {
+  const ranTests = verified.commands.some((entry) => entry.ranTests || RUNS_TESTS.test(entry.cmd))
+  if (build.redFirst.length && !ranTests) {
     return stop('verify-untested', `${task.id} escribió pruebas y ningún gate corrió una`)
   }
   if (verified.uncovered.length) {
@@ -608,7 +608,7 @@ while (vueltas++ < MAX_TAREAS) {
   // QA ejercita comportamiento, y lo mecánico no lo cambia: el valor literal que la aceptación nombra
   // ya lo comprobó Verify contra el test, y en `directo` además lo mira el revisor que nombra el cast.
   let qa = { passed: true, evidence: 'carril mecánico: la aceptación queda comprobada en Verify' }
-  if (!mecanico) {
+  if (!mechanical) {
     phase('QA')
     qa = await run(
       `${asRole(cast.qa)}${lite
@@ -645,8 +645,8 @@ while (vueltas++ < MAX_TAREAS) {
   if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
 }
 
-if (vueltas > MAX_TAREAS) {
-  return stop('milestone-too-long', `la corrida agotó el tope de ${MAX_TAREAS} tareas sin cerrar el hito`)
+if (rounds > MAX_TASKS) {
+  return stop('milestone-too-long', `la corrida agotó el tope de ${MAX_TASKS} tareas sin cerrar el hito`)
 }
 
 phase('Closing')

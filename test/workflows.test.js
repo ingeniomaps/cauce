@@ -79,7 +79,7 @@ test('lo descubierto declara de qué tipo es y con qué se cierra', () => {
   assert.match(workflow, /kind: \{ type: 'string', enum: \['edge', 'open'\] \}/, 'Build declara qué encontró')
   assert.match(workflow, /enum: \['missing-test', 'ambiguous'\]/, 'el criterio sin cubrir declara su causa')
   assert.match(
-    workflow, /abiertos[\s\S]{0,320}HUMAN[\s\S]{0,200}quién puede tomarla/,
+    workflow, /dejó abierta[\s\S]{0,200}quién puede tomarla/,
     'y una decisión abierta se registra pidiendo quién puede tomarla',
   )
 })
