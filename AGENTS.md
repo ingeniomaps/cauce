@@ -67,6 +67,17 @@ veredicto, pero sus respuestas dejaron de ser las que el caso pedía medir.
 
 El veredicto se escribe **junto al cargo**, no en el banco. El banco se borra; el contrato queda.
 
+### Correr un workflow acá
+
+Los workflows de `automatization/workflows/` **no se ejecutan desde el fuente**: traen `{{INCLUDE:...}}`,
+que se resuelve al instalar, y acá no se instala. Correr el archivo tal cual falla con `shared is not
+defined` antes del primer agente. Hay que expandir los includes contra `automatization/` —lo mismo que
+hace `render` en `engine/automation/index.js`— y reemplazar `{{OPS_DIR}}` por la raíz del repo, y correr
+esa copia.
+
+Es también la razón por la que acá no existe `/agent-eval`: esa skill la escribe `install`, junto con la
+copia ya expandida del workflow.
+
 ## Convenciones
 
 - **Cero dependencias**, de runtime y de desarrollo: Node >= 24 y nada más. Por eso no hay linter ni
