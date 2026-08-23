@@ -177,7 +177,8 @@ test('el primer informe de un cargo no aborta su publicación', () => {
 // CLI antepone `ANTHROPIC_API_KEY` al token de suscripción y en `-p` la usa siempre que esté, así que
 // tenerlas juntas paga API en silencio. Se ejecuta el paso real contra un `claude` de mentira que
 // anota qué credencial vio, porque lo que hay que fijar es cuál llega al proceso.
-test('la investigación usa la suscripción y cae a la API key sólo si falla', { skip: process.platform === 'win32' }, () => {
+test('la investigación usa la suscripción y cae a la API key sólo si falla',
+  { skip: process.platform === 'win32' }, () => {
   const paso = workflowStep(workflow('agent-learning'), 'id: research')
   assert.ok(paso.includes('claude -p'), 'no se encontró el paso que corre el modelo')
 

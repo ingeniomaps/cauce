@@ -981,7 +981,8 @@ service: app
 
   const activa = epica('active', 'Qué proveedor de correo usamos: Por definir.')
   assert.deepEqual(PC.validateEpic(activa), [
-    'roadmap/epic-001-demo.md: active con 1 marcador(es) sin resolver — "- Qué proveedor de correo usamos: Por definir."',
+    'roadmap/epic-001-demo.md: active con 1 marcador(es) sin resolver — '
+    + '"- Qué proveedor de correo usamos: Por definir."',
   ])
 
   // Minúscula y el otro marcador del molde cuentan igual.
@@ -1162,7 +1163,9 @@ test('validateState juzga el estado ya leído, sin tocar disco', () => {
   assert.match(errores({ epics: [epica({ hasContext: false })] })[0], /Contexto relevante/)
 
   // Historias: slug, trazabilidad y servicio.
-  const historia = (extra) => errores({ epics: [epica({ stories: [{ slug: 'h-uno', criteria: ['C1'], service: 'api', ...extra }] })] })
+  const historia = (extra) => errores({
+    epics: [epica({ stories: [{ slug: 'h-uno', criteria: ['C1'], service: 'api', ...extra }] })],
+  })
   assert.match(historia({ slug: 'H Uno' }).join('|'), /slug inválido/)
   assert.match(historia({ criteria: [] }).join('|'), /no rastrea a un criterio/)
   assert.match(historia({ criteria: ['C9'] }).join('|'), /cita C9, que no existe/)

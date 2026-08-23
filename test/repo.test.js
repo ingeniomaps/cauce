@@ -119,3 +119,26 @@ test('el README de equipos nombra todos los que trae el catálogo', () => {
   const nombrados = [...new Set([...readme.matchAll(/`system\/([a-z-]+)`/g)].map((hit) => hit[1]))].sort()
   assert.deepEqual(nombrados, catalogo, 'y no nombra ninguno que ya no exista')
 })
+
+// Sin linter, un tope de largo sólo existe si algo lo cuenta, y tres líneas ya se habían pasado.
+//
+// Se cuentan caracteres y no bytes, que es lo que dice la convención y lo que casi hace fallar esta
+// misma revisión: `awk` con locale UTF-8 cuenta bytes, y un comentario separador de 99 caracteres
+// hecho con `─` mide 236. Medido en bytes, tres archivos limpios parecían estar en falta.
+test('ninguna línea de código pasa los 120 caracteres que fija la convención', () => {
+  const raiz = path.resolve(__dirname, '..')
+  const codigo = (dir, salida = []) => {
+    for (const entrada of fs.readdirSync(dir, { withFileTypes: true })) {
+      const ruta = path.join(dir, entrada.name)
+      if (entrada.isDirectory()) { if (entrada.name !== 'node_modules') codigo(ruta, salida); continue }
+      if (/\.(js|sh)$/.test(entrada.name)) salida.push(ruta)
+    }
+    return salida
+  }
+  const archivos = ['engine', 'automatization', 'test', 'template'].flatMap((d) => codigo(path.join(raiz, d)))
+  const largas = archivos.flatMap((file) => fs.readFileSync(file, 'utf8').split('\n')
+    .map((linea, i) => ({ file, n: i + 1, largo: [...linea].length }))
+    .filter((x) => x.largo > 120)
+    .map((x) => `${path.relative(raiz, x.file)}:${x.n} (${x.largo})`))
+  assert.deepEqual(largas, [], `pasan los 120 caracteres:\n  ${largas.join('\n  ')}`)
+})
