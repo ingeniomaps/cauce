@@ -709,3 +709,20 @@ test('ningún workflow usa un nombre que no declaró', () => {
     assert.deepEqual([...free], [], `${path.relative(WF, file)}: usa un nombre que no declaró`)
   }
 })
+
+// La evaluación corre comandos, y cuál existe depende de dónde: una empresa tiene el shim
+// `tools/ops.js`, el repo del toolkit no —no se instala a sí mismo— y usa `engine/cli/ops.js`. Estaba
+// hardcodeado el de la empresa, así que en el toolkit la corrida dependía de que el agente improvisara:
+// el de bancos no improvisó, reportó todos los casos como fallidos y el freno de banco viejo detuvo
+// tres corridas que no tenían nada viejo.
+test('agent-eval averigua qué CLI existe en vez de suponerlo', () => {
+  const evalWf = fs.readFileSync(path.join(WF, 'agent-eval.js'), 'utf8')
+
+  assert.match(evalWf, /cli: \{ type: 'string' \}/, 'la ruta del CLI viaja en el schema, no en la prosa')
+  assert.match(evalWf, /"tools\/ops\.js" if that file exists and "engine\/cli\/ops\.js" otherwise/,
+    'y el primer agente la averigua nombrando las dos')
+
+  // Los dos agentes que corren comandos la usan. Que uno solo la use deja el otro roto sin que se vea.
+  assert.match(evalWf, /node \$\{context\.cli\} evaluate \$\{AGENT\} --bench/, 'los bancos')
+  assert.match(evalWf, /node \$\{context\.cli\} evaluate \$\{AGENT\} --record/, 'el registro')
+})

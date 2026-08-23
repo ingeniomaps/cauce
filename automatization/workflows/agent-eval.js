@@ -51,6 +51,11 @@ const CASES = {
     } },
     forbidden: { type: 'array', items: { type: 'string' } },
     skill: { type: 'string' },
+    // Qué CLI existe acá. Una empresa tiene el shim `tools/ops.js`; el repo del toolkit no lo tiene
+    // —no se instala a sí mismo— y su motor está en `engine/cli/ops.js`. Darlo por sentado dejaba la
+    // corrida a merced de que el agente improvisara: el de bancos no improvisó, reportó los tres casos
+    // como fallidos y el freno de banco viejo paró una corrida que no tenía nada viejo.
+    cli: { type: 'string' },
     mode: { type: 'string' },
     system: { type: 'boolean' },
   },
@@ -90,10 +95,12 @@ if (!AGENT) return stop('sin-cargo', 'pasá el slug del cargo a evaluar')
 phase('Casos')
 
 const context = await agent(
-  `From ${ROOT}, run exactly these two commands and report only what they printed. Read no other file.\n` +
-  `1. "node tools/ops.js evaluate ${AGENT} --cases --json" — it prints an object: copy its "cases" ` +
+  `From ${ROOT}, the CLI is "tools/ops.js" if that file exists and "engine/cli/ops.js" otherwise. ` +
+  `Set cli to the one that exists, and use it in both commands below. Report only what they printed. ` +
+  `Read no other file.\n` +
+  `1. "node <cli> evaluate ${AGENT} --cases --json" — it prints an object: copy its "cases" ` +
   `array into items and its "forbidden" array into forbidden, both verbatim.\n` +
-  `2. "node tools/ops.js agents list --json" — set skill to "${ROOT}/<path>/SKILL.md" using the path it ` +
+  `2. "node <cli> agents list --json" — set skill to "${ROOT}/<path>/SKILL.md" using the path it ` +
   `printed for ${AGENT}. That command prints paths relative to ${ROOT} and the next agents run from ` +
   `elsewhere, so the prefix is not optional.\n` +
   `Then read ${ROOT}/ops.config.json and set mode to its "mode" field, verbatim, and set system ` +
@@ -119,7 +126,7 @@ let benchPath = null
 if (context.mode === 'toolkit') {
   const benches = await agent(
     `From ${ROOT}, run one command per case, in order, and report what each one did:\n` +
-    context.items.map((item) => `  node tools/ops.js evaluate ${AGENT} --bench ${item.id}`).join('\n') +
+    context.items.map((item) => `  node ${context.cli} evaluate ${AGENT} --bench ${item.id}`).join('\n') +
     `\n\nEach one recreates a disposable instance where writing to planning/ is legitimate. Set path ` +
     `to the directory they share: ${BENCH_ROOT}\n\n` +
     `A command that exits non-zero did NOT recreate its bench: put that case id in failed, verbatim. ` +
@@ -262,7 +269,7 @@ const rows = answered.map((one) => {
 
 await agent(
   `Escribí el registro junto al cargo. Desde ${ROOT}, corré ` +
-  `"node tools/ops.js evaluate ${AGENT} --record" y escribí en la ruta que imprima, relativa a ` +
+  `"node ${context.cli} evaluate ${AGENT} --record" y escribí en la ruta que imprima, relativa a ` +
   `${ROOT}. Creá el directorio si no existe.\n\n` +
   `Preguntale la ruta al motor en vez de componerla: aplicar una propuesta cambia el contrato y pide ` +
   `volver a correr los casos el mismo día, y cuando el nombre salía de la fecha la segunda corrida ` +
