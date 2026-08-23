@@ -7,8 +7,6 @@
 // los subagentes simulados. `ci.test.js` comparte la palabra «workflow» y nada más: ahí son los de
 // GitHub Actions.
 
-const { tempRoot } = require('./environment')
-
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')

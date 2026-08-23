@@ -6,7 +6,7 @@
 // Dos vecinos cubren las otras alturas del mismo tema: `runners.test.js` prueba los adaptadores como
 // unidades, y `hooks.test.js` qué decide cada guard una vez invocado.
 
-const { tempRoot, CLI, run, linkEngine } = require('./environment')
+const { tempRoot, run, linkEngine } = require('./environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
