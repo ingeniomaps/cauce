@@ -186,6 +186,17 @@ test('guard-verify exige regenerar después de cambiar OpenAPI o SQL fuente', ()
   fs.writeFileSync(path.join(root, 'client_generated.go'), 'package client\n')
   git(['add', 'client_generated.go'], root)
   assert.doesNotThrow(() => execute('verify', { cwd: root, tool_input: { command: 'git commit -m test' } }))
+
+  // La otra mitad de lo que este caso dice cuidar: estaba en el nombre y no en el cuerpo, y el guard
+  // podía dejar de mirar SQL sin que nada se pusiera rojo.
+  fs.mkdirSync(path.join(root, 'db', 'queries'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'db', 'queries', 'altas.sql'), 'SELECT 1;\n')
+  git(['add', 'db/queries/altas.sql'], root)
+  blocked('verify', { cwd: root, tool_input: { command: 'git commit -m test' } }, /consulta SQL fuente/)
+  fs.mkdirSync(path.join(root, 'sqlc'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'sqlc', 'altas.go'), 'package sqlc\n')
+  git(['add', 'sqlc/altas.go'], root)
+  assert.doesNotThrow(() => execute('verify', { cwd: root, tool_input: { command: 'git commit -m test' } }))
 })
 
 test('guard-workspace-boundary limita escrituras a las raíces declaradas', () => {
@@ -324,6 +335,30 @@ test('guard-dependencies exige consistencia y bloquea publicación', () => {
   blocked('dependencies', { cwd: root, tool_input: { command: 'git commit -m deps' } }, /sin actualizar su lockfile/)
   git(['add', 'package-lock.json'], root)
   assert.doesNotThrow(() => execute('dependencies', { cwd: root, tool_input: { command: 'git commit -m deps' } }))
+
+  // Un lockfile que se mueve solo: o el manifest cambió y no se stageó, o lo regeneró algo que nadie
+  // pidió. Las dos merecen mirarse, y ninguna se distingue de la otra sin el manifest al lado.
+  const solo = tempRoot('ops-hook-deps-lock-solo-')
+  git(['init', '-q'], solo)
+  fs.writeFileSync(path.join(solo, 'package.json'), JSON.stringify({ dependencies: { example: '1.0.0' } }))
+  fs.writeFileSync(path.join(solo, 'package-lock.json'), '{}\n')
+  git(['add', 'package-lock.json'], solo)
+  blocked('dependencies', { cwd: solo, tool_input: { command: 'git commit -m deps' } },
+    /sin un cambio explícito en el manifest/)
+  git(['add', 'package.json'], solo)
+  assert.doesNotThrow(() => execute('dependencies', { cwd: solo, tool_input: { command: 'git commit -m deps' } }))
+
+  // Y dos lockfiles conviviendo: cuál manda lo decide el gestor que corra, así que el árbol ya no dice
+  // qué versiones se instalan. Se mira lo que hay en disco, no lo que se stageó.
+  const dos = tempRoot('ops-hook-deps-dos-locks-')
+  git(['init', '-q'], dos)
+  fs.writeFileSync(path.join(dos, 'package.json'), JSON.stringify({ dependencies: { example: '1.0.0' } }))
+  fs.writeFileSync(path.join(dos, 'package-lock.json'), '{}\n')
+  fs.writeFileSync(path.join(dos, 'pnpm-lock.yaml'), 'lockfileVersion: 9\n')
+  git(['add', 'package.json', 'package-lock.json'], dos)
+  blocked('dependencies', { cwd: dos, tool_input: { command: 'git commit -m deps' } }, /varios lockfiles/)
+  fs.rmSync(path.join(dos, 'pnpm-lock.yaml'))
+  assert.doesNotThrow(() => execute('dependencies', { cwd: dos, tool_input: { command: 'git commit -m deps' } }))
 })
 
 test('los grupos cubren cada guard exactamente una vez', () => {
