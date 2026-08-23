@@ -421,6 +421,19 @@ function evaluateTeam(root, slug) {
   return { errors, warnings, proposals: proposals.length, pending, cases: 0 }
 }
 
+// Qué publica una fuente, que es lo único que decide cada cuánto vale la pena volver a mirarla. No
+// dice si es primaria —eso lo exige `rules.require_primary_source`— ni si sigue vigente: lo que se
+// aparta del default lo declara la fuente con `authority:` o `status:`, y por eso son dos campos y no
+// un nombre compuesto. Cuando eran uno solo el catálogo llegó a 51 etiquetas para estas seis.
+const SOURCE_TIERS = ['advisory', 'platform', 'project', 'regulation', 'standard', 'profession']
+
+// Basta con las líneas `tier:`: el archivo es del catálogo, no de un tercero, y agregar un parser de
+// YAML por un campo rompería la regla de cero dependencias.
+function sourceTiers(text) {
+  const body = text.includes('sources:') ? text.slice(text.indexOf('sources:')) : ''
+  return [...body.matchAll(/tier:\s*([A-Za-z-]+)/g)].map((hit) => hit[1])
+}
+
 function evaluate(root, agent) {
   const target = catalog.resolve(root, agent)
   const errors = []
@@ -436,6 +449,18 @@ function evaluate(root, agent) {
   if (catalog.find(root, agent).system) requiredFiles.push('learning/AUTOMATION.md')
   for (const relative of requiredFiles) {
     if (!fs.existsSync(path.join(target, relative))) errors.push(`falta ${relative}`)
+  }
+  const sourcesFile = path.join(target, 'learning', 'sources.yaml')
+  if (fs.existsSync(sourcesFile)) {
+    const tiers = sourceTiers(fs.readFileSync(sourcesFile, 'utf8'))
+    // Sin fuentes el ciclo semanal no tiene literatura que leer y devuelve un informe vacío cada
+    // semana. Avisa y no bloquea: un cargo que se está escribiendo todavía no las tiene.
+    if (!tiers.length) warnings.push('sources.yaml sin fuentes: la investigación no tiene qué leer')
+    for (const tier of tiers) {
+      if (!SOURCE_TIERS.includes(tier)) {
+        errors.push(`sources.yaml: tier "${tier}" fuera de ${SOURCE_TIERS.join(' | ')}`)
+      }
+    }
   }
   const skill = fs.readFileSync(path.join(target, 'SKILL.md'), 'utf8').toLowerCase()
   for (const phrase of ['no inventar', 'autorización', 'evidencia observable']) {
@@ -479,4 +504,5 @@ function evaluate(root, agent) {
   return { errors, warnings, proposals: proposals.length, pending, cases }
 }
 
-module.exports = { SUMMARY_MAX, prepareReport, prepareProposal, evaluate, evaluateTeam, proposalState, seal }
+module.exports = {
+  SOURCE_TIERS, SUMMARY_MAX, prepareReport, prepareProposal, evaluate, evaluateTeam, proposalState, seal }

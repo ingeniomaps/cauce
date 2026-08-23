@@ -524,7 +524,8 @@ test('el ciclo de aprendizaje llega del informe semanal al contrato', () => {
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
   // Un cargo del catálogo antes de su primer informe: `learning/` versionado, `reports/` todavía no.
   fs.mkdirSync(path.join(own, 'learning'), { recursive: true })
-  fs.writeFileSync(path.join(own, 'learning', 'sources.yaml'), 'version: 1\n')
+  fs.writeFileSync(path.join(own, 'learning', 'sources.yaml'), 'version: 1\nsources:\n'
+    + '  - name: Norma de ejemplo\n    url: https://example.org/x\n    tier: standard\n')
   const bash = (script) => execFileSync('bash', ['-c', script], { cwd: target, encoding: 'utf8' }).trim()
   // El repositorio como lo encuentra el job: todo versionado, y el informe todavía sin existir.
   const versionado = fs.readdirSync(target).filter((name) => !['.git', 'node_modules'].includes(name))
@@ -709,4 +710,39 @@ test('el inventario de contratos en las referencias es el que está declarado', 
 
   const cerrados = CONTRATOS_EN_LA_REFERENCIA.filter((slug) => !conDos.includes(slug))
   assert.deepEqual(cerrados, [], 'estos ya no tienen dos listas: sacalos de CONTRATOS_EN_LA_REFERENCIA')
+})
+
+// El `tier` de una fuente decidía nada: el motor comprobaba que `sources.yaml` existiera y nunca lo
+// abría, así que el catálogo acumuló 51 etiquetas para seis cosas —`primary-standard`,
+// `standards-primary` y `public-standard` eran la misma— y nadie se enteró. Deja de ser decorativo
+// cuando la cadencia del ciclo de aprendizaje sale de ahí: un cargo cuyas fuentes son normas no
+// necesita investigar cada lunes, y uno que sigue avisos de seguridad sí.
+//
+// Un vocabulario abierto no se puede usar para eso, y una etiqueta mal escrita no avisa sola.
+test('una fuente declara su tipo dentro del vocabulario cerrado', () => {
+  const target = installedProject('Vocabulario de fuentes')
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
+  fs.mkdirSync(path.join(own, 'learning'), { recursive: true })
+  const sources = path.join(own, 'learning', 'sources.yaml')
+  const escribir = (tier) => fs.writeFileSync(sources, 'version: 1\nsources:\n'
+    + `  - name: Alguna norma\n    url: https://example.org/x\n    tier: ${tier}\n`)
+
+  for (const tier of learning.SOURCE_TIERS) {
+    escribir(tier)
+    const errores = learning.evaluate(target, 'probe').errors.filter((one) => one.includes('tier'))
+    assert.deepEqual(errores, [], `${tier} es del vocabulario y no debería objetarse`)
+  }
+
+  escribir('primary-standard')
+  const malo = learning.evaluate(target, 'probe').errors.filter((one) => one.includes('tier'))
+  assert.equal(malo.length, 1, 'una etiqueta fuera del vocabulario es un error, no un silencio')
+  assert.match(malo[0], /primary-standard/, 'y dice cuál')
+  assert.match(malo[0], new RegExp(learning.SOURCE_TIERS.join('|')), 'y cuáles sí valen')
+
+  // Sin fuentes el ciclo semanal no tiene qué investigar, pero un cargo a medio escribir es legítimo:
+  // avisa, no bloquea.
+  fs.writeFileSync(sources, 'version: 1\n')
+  const vacio = learning.evaluate(target, 'probe')
+  assert.deepEqual(vacio.errors.filter((one) => one.includes('fuente')), [])
+  assert.ok(vacio.warnings.some((one) => one.includes('sin fuentes')), 'avisa que no hay qué investigar')
 })
