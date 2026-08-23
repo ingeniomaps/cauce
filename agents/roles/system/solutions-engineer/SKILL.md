@@ -60,4 +60,4 @@ Leer [references/operating-model.md](references/operating-model.md) para plantil
 
 ## Entrega mínima
 
-Incluir outcome y audiencia, contexto actual, requisitos y prioridades, matriz de fit/evidencia/gaps, arquitectura y flujos de datos, identidad/seguridad/privacidad, alternativas y trade-offs, supuestos e incógnitas, riesgos, demo o POC con criterios, disponibilidad y fallos, observabilidad, operabilidad y costos, owners/autoridad y handoff.
+Incluir outcome y audiencia, contexto actual, requisitos y prioridades, matriz de fit/evidencia/gaps, arquitectura y flujos de datos, identidad/seguridad/privacidad, alternativas y trade-offs, supuestos e incógnitas, riesgos, demo o POC con su hipótesis y la decisión que habilita, alcance y no alcance, criterios de éxito con baseline y medición, entorno/versiones y dataset autorizado, responsables/accesos y soporte, timebox/hitos y stop conditions, evidencia y reproducibilidad, teardown y borrado, disponibilidad y fallos, observabilidad, operabilidad y costos, owners/autoridad y handoff.

@@ -98,7 +98,7 @@ Leer [references/operating-model.md](references/operating-model.md) al planear u
 
 ## Entrega mínima
 
-Incluir alcance y riesgos, criterios y oráculos usados, ambiente y versión, casos ejecutados y no ejecutados, resultados y artefactos, defectos reproducibles, accesibilidad, compatibilidad, rendimiento y seguridad con la profundidad que recibieron, vacíos de cobertura, riesgo residual y recomendación con nivel de confianza.
+Incluir el cambio y su objetivo, usuarios y superficies afectadas, alcance y riesgos priorizados, criterios y oráculos usados, niveles y tipos de prueba, datos y precondiciones, matriz de ambientes y versiones, automatización y exploración, criterios de entrada y salida, casos ejecutados y no ejecutados, resultados y artefactos con su trazabilidad, defectos reproducibles, accesibilidad, compatibilidad, rendimiento y seguridad con la profundidad que recibieron, vacíos de cobertura, riesgo residual y recomendación con nivel de confianza.
 
 Cuando el alcance toque obligaciones con plazo —reporte de vulnerabilidades explotadas
 activamente, transparencia de contenido generado por IA—, indicar qué evidencia queda

@@ -72,4 +72,4 @@ Leer [references/operating-model.md](references/operating-model.md) al diagnosti
 
 ## Entrega mínima
 
-Incluir objetivo e impacto, identidad/autorización requerida, versión/entorno, reproducción y evidencia redactada, clasificación y severidad, diagnóstico con confianza, pasos seguros, resultado verificado, workaround con sus limitaciones distinguido de la resolución, escalación/owner y SLA aplicable, mensaje propuesto, prevención, follow-up y conocimiento reutilizable.
+Incluir canal, fecha y zona horaria, objetivo e impacto, cliente/cuenta verificados con la identidad/autorización requerida, producto/versión/entorno, inicio/frecuencia y alcance, reproducción con sus pasos mínimos, esperado y actual, cambios y acciones previas, errores y evidencia redactada, clasificación y severidad, diagnóstico con confianza, pasos seguros, resultado verificado, workaround con sus limitaciones distinguido de la resolución, escalación/owner y SLA aplicable, mensaje propuesto, prevención, próxima actualización comprometida, follow-up y conocimiento reutilizable.
