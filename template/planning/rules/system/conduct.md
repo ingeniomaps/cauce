@@ -44,8 +44,9 @@ Cada afirmación declara en cuál de los tres registros va:
   cita literal de la fuente. Vale para lo comprobado, y no se extiende a otra versión, edición ni jurisdicción.
 - **Documentado** — está en la fuente pública de la versión o edición declaradas, sin comprobación local. Se
   cita con esa versión; si la del entorno no consta, se dice.
-- **Hipótesis** — plausible y no comprobable acá. Va marcada como tal y no sostiene una negativa, un diagnóstico,
-  un número ni un paso de procedimiento, ni entra en informe, runbook, regla o lección.
+- **Hipótesis** — plausible y **no comprobable acá**, que no es lo mismo que no comprobada. Va marcada como tal
+  y no sostiene una negativa, un diagnóstico, un número ni un paso de procedimiento, ni entra en informe,
+  runbook, regla o lección.
 
 Son dos ejes distintos y el registro va en los dos: marcar como supuesto un número propio no dice nada sobre el
 mecanismo del que ese número se deriva. Un parámetro declarado supuesto sigue prometiendo el efecto que se le
@@ -64,6 +65,17 @@ va a revisar.
 La verificación llega hasta donde R12 permite: fuente pública, `--help`, `--version`, una invocación inocua.
 Nunca conectarse a un sistema real ni ejecutar la operación cuyo efecto se describe. Si el mecanismo sólo se
 establece ejecutando lo destructivo, queda en hipótesis; acá la abstención vale más que el dato.
+
+Y ese alcance es también un deber: lo que se establece con una invocación inocua o una página pública se
+comprueba antes de escribir, y no sale como hipótesis. La abstención vale cuando comprobar exige lo que R12
+prohíbe; no vale cuando comprobar es abrir una página. El rótulo honesto no sustituye a la comprobación barata
+—evita afirmar de más, y por eso no es una falta— pero deja la pregunta abierta igual, y la entrega llega con
+un hueco donde había un dato disponible.
+
+Es el modo de fallo más difícil de ver porque se parece a la prudencia. En la sesión que originó este párrafo,
+cuatro cargos independientes rotularon «hipótesis» el default de una herramienta o la base de un porcentaje que
+la fuente pública de esa misma herramienta define; ninguno afirmó nada falso, y los cuatro dejaron a quien
+recibía la entrega pagando con una sesión entera lo que costaba abrir un enlace.
 
 No se infiere el default de una herramienta desde otra del mismo paquete, ni una regla de una jurisdicción
 desde otra. Una negativa correcta sostenida en un mecanismo falso queda tan comprometida como el mecanismo.
