@@ -85,6 +85,9 @@ El veredicto se escribe **junto al cargo**, no en el banco. El banco se borra; e
 - El CLI se invoca con `node engine/cli/ops.js` o `npm run ops -- <comando>`; `make help` lista los
   atajos frecuentes.
 - **Publicar necesita `NPM_TOKEN` exportado**: `.npmrc` lo expande desde el entorno, no desde `.env`.
+  Ese archivo no viaja con el repositorio —está gitignoreado y el guard de secretos lo bloquea por
+  nombre, aunque hoy no tenga ningún valor adentro—, así que un clon nuevo hay que dárselo a mano con su
+  única línea: `//registry.npmjs.org/:_authToken=${NPM_TOKEN}`.
   Corré `set -a; . ./.env; set +a` antes de `npm publish`, o `make release-check`, que lo carga, corre
   la puerta entera y se detiene sin publicar. El `npm publish` no se envuelve en un target a propósito:
   el guard de dependencias lo bloquea por su nombre, y un target que lo corriera adentro no matchearía
