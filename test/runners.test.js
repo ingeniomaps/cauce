@@ -1,5 +1,11 @@
 'use strict'
 
+// Los adaptadores —claude, codex, gemini, antigravity—: qué instala cada uno, que exista lo que su
+// manifiesto anuncia, y que ninguna ruta dé por sentado dónde quedó instalada.
+//
+// Dos vecinos se le parecen y no lo son: `hooks.test.js` prueba qué decide un guard, no dónde aterriza
+// su wiring; `workflows.test.js` prueba el recorrido, no el formato en que cada runner lo ofrece.
+
 const { tempRoot, linkEngine } = require('./environment')
 
 const test = require('node:test')

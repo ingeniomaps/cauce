@@ -1,5 +1,10 @@
 'use strict'
 
+// Qué decide cada guard: qué bloquea y —lo que cuesta más— qué deja pasar. Los dos lados siempre, porque
+// un guard que bloqueara todo pasaría entero un archivo que sólo probara frenos.
+//
+// Acá se ejecuta la decisión. Dónde aterriza el wiring que la invoca es de `runners.test.js`.
+
 const { tempRoot } = require('./environment')
 
 const test = require('node:test')

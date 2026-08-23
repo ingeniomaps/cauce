@@ -1,5 +1,11 @@
 'use strict'
 
+// El catálogo de equipos leído como contrato: el DAG de etapas, qué deja cada recorrido y los casos con
+// los que se lo mide. Es a los equipos lo que `agents.test.js` es a los cargos.
+//
+// Su vecino se llama casi igual y hace otra cosa: `team.test.js` —sin s— ejecuta el recorrido de verdad
+// con los cargos simulados. Acá se valida la fuente; allá se corre.
+
 const { tempRoot } = require('./environment')
 
 const test = require('node:test')

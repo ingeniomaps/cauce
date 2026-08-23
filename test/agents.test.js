@@ -1,5 +1,11 @@
 'use strict'
 
+// El catálogo de cargos y el ciclo por el que su contrato cambia: cómo se resuelve un cargo, qué exige
+// su documentación, y el recorrido que va del informe semanal a la propuesta aplicada.
+//
+// Acá el cargo es del catálogo y sigue siéndolo. `fork.test.js` empieza donde éste termina: cuando una
+// empresa lo adopta y deja de recibir el nuestro.
+
 const { tempRoot, run, linkEngine, workflow, workflowStep, workflowCommand } = require('./environment')
 
 const test = require('node:test')

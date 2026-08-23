@@ -1,5 +1,12 @@
 'use strict'
 
+// El CLI como lo corre quien lo usa: cada comando en un proceso aparte, contra una instancia de verdad.
+// Es la contracara de `engine.test.js`, que llama a las unidades y nunca levanta un proceso.
+//
+// La división es por altura, así que un mismo módulo puede aparecer en los dos archivos; lo que decide
+// dónde va un test es qué se prueba. Los pocos unitarios que quedan acá son de la superficie del propio
+// CLI —`cli/args`— o de una constante que su salida cita.
+
 const { tempRoot, CLI, run, linkEngine } = require('./environment')
 
 const test = require('node:test')

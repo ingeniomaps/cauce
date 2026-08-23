@@ -1,5 +1,12 @@
 'use strict'
 
+// Los módulos del motor llamados directo, sin levantar un proceso. Es la contracara de `ops.test.js`,
+// que corre los comandos como los corre quien los usa y no llama a ninguna unidad para probarla.
+//
+// La división es por altura y no por tema, y por eso este archivo toca catorce módulos: config,
+// integraciones, planning y core aparecen acá cuando lo que se prueba es la unidad, y allá cuando lo
+// que se prueba es el comando que la usa.
+
 const { tempRoot } = require('./environment')
 
 const test = require('node:test')

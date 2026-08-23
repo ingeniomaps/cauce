@@ -1,5 +1,12 @@
 'use strict'
 
+// Los recorridos leídos como fuente: que su `meta` sea el literal puro que el runtime acepta, que no
+// llamen a nada inexistente y que ninguna ruta sea la de una máquina.
+//
+// Leer no es correr, y por eso están aparte `autobuild.test.js` y `team.test.js`, que los ejecutan con
+// los subagentes simulados. `ci.test.js` comparte la palabra «workflow» y nada más: ahí son los de
+// GitHub Actions.
+
 const { tempRoot } = require('./environment')
 
 const test = require('node:test')
