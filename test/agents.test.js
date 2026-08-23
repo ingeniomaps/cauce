@@ -17,6 +17,7 @@ const automation = require('../engine/automation')
 const catalog = require('../engine/agents/catalog')
 const evaluations = require('../engine/agents/evaluations')
 const learning = require('../engine/agents/learning')
+const { SUMMARY_MAX } = learning
 
 // Este repositorio es a la vez el toolkit y el catálogo que se mide, así que casi todo cuelga de acá.
 const REPO = path.resolve(__dirname, '..')
@@ -123,7 +124,13 @@ test('el catálogo se puede recorrer con una línea por cargo', () => {
   assert.equal(listing.status, 0, listing.stderr)
   const lines = listing.stdout.trim().split('\n').filter((line) => /^[a-z0-9-]+ {2,}\S/.test(line))
   assert.equal(lines.length, AGENTS.length, 'una línea por cargo, ninguna sin resumen')
-  for (const line of lines) assert.ok(line.length <= 150, `línea demasiado larga: ${line}`)
+  // El renglón es el slug alineado a la columna más ancha, dos espacios y el `summary`, que ya tiene
+  // su propio tope —`SUMMARY_MAX`, que valida `learn`—. El techo sale de ahí y no de un número escrito
+  // a mano: estaba en 150 cuando el real es 151, y pasaba de casualidad porque el resumen más largo
+  // mide 119 y no le tocó al cargo de nombre más largo.
+  const columna = Math.max(...AGENTS.map((role) => role.slug.length))
+  const techo = columna + 2 + SUMMARY_MAX
+  for (const line of lines) assert.ok(line.length <= techo, `pasa de ${techo}: ${line}`)
 
   assert.match(listing.stdout, /Si ninguno encaja/, 'dice qué hacer cuando no hay cargo que sirva')
   assert.match(listing.stdout, /agents\/roles\//, 'y nombra dónde va el propio')

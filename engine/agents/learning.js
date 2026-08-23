@@ -479,4 +479,4 @@ function evaluate(root, agent) {
   return { errors, warnings, proposals: proposals.length, pending, cases }
 }
 
-module.exports = { prepareReport, prepareProposal, evaluate, evaluateTeam, proposalState, seal }
+module.exports = { SUMMARY_MAX, prepareReport, prepareProposal, evaluate, evaluateTeam, proposalState, seal }
