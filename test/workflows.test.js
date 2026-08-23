@@ -388,7 +388,7 @@ test('la evaluación mide al cargo como corre, no aislado', () => {
 test('quien juzga recibe la conducta prohibida del contrato', () => {
   const evalWf = fs.readFileSync(path.join(WF, 'agent-eval.js'), 'utf8')
   assert.match(evalWf, /forbidden: \{ type: 'array'/, 'los prohibidos viajan con los casos')
-  assert.match(evalWf, /contexto\.forbidden/, 'y llegan a quien juzga')
+  assert.match(evalWf, /context\.forbidden/, 'y llegan a quien juzga')
   assert.match(evalWf, /no ocurre ninguna conducta \`?\s*\+?\s*\`?prohibida/, 'y deciden el veredicto')
   // Un rótulo no es una verificación: el modo de fallo que aparece apenas la regla existe es escribir
   // «verificado» encima de algo que nadie comprobó.
@@ -627,4 +627,85 @@ test('la evaluación puede correr sólo los casos que se le nombran', () => {
   // dar por medido un cargo con un registro que cubre uno de seis.
   assert.match(evalWf, /el registro va a cubrir \$\{ONLY\.length\} de \$\{existen\.length\}/)
   assert.match(evalWf, /el resultado no vale/, 'y por qué evaluate lo va a rechazar')
+})
+
+// Un nombre que no existe no rompe al leer el archivo: rompe en la fase que lo usa, después de que la
+// corrida ya gastó sus agentes. Un rename a medias dejó `contexto` junto a `context` y así se descubrió
+// —tres corridas frenadas y ~370k tokens—, con el agravante de que el encabezado de esta suite ya
+// prometía «que no llamen a nada inexistente» sin que nada lo comprobara.
+//
+// Se mira el código y no la prosa: dentro de un template literal el texto se descarta y lo de `${}` se
+// conserva, porque es ahí donde vivía el nombre roto.
+function codeOnly(src) {
+  let out = ''
+  let i = 0
+  let mode = 'code'
+  const templates = []
+  while (i < src.length) {
+    const c = src[i]
+    const d = src[i + 1]
+    if (mode === 'code') {
+      if (c === '/' && d === '/') { while (i < src.length && src[i] !== '\n') i++; continue }
+      if (c === '/' && d === '*') { i = src.indexOf('*/', i + 2) + 2; continue }
+      if (c === "'" || c === '"') {
+        const quote = c
+        i++
+        while (i < src.length && src[i] !== quote) i += src[i] === '\\' ? 2 : 1
+        i++
+        out += ' '
+        continue
+      }
+      if (c === '`') { templates.push({ braces: 0 }); mode = 'template'; i++; out += ' '; continue }
+      if (c === '}' && templates.length) {
+        const top = templates[templates.length - 1]
+        if (top.braces === 0) { mode = 'template'; i++; continue }
+        top.braces--
+      }
+      if (c === '{' && templates.length) templates[templates.length - 1].braces++
+      out += c
+      i++
+      continue
+    }
+    if (c === '\\') { i += 2; continue }
+    if (c === '`') { templates.pop(); mode = templates.length ? 'template' : 'code'; i++; continue }
+    if (c === '$' && d === '{') { mode = 'code'; i += 2; out += ' '; continue }
+    i++
+  }
+  return out
+}
+
+test('ningún workflow usa un nombre que no declaró', () => {
+  // Lo que el arnés le pone a un workflow, más lo que trae el runtime. `{{INCLUDE:}}` se resuelve como
+  // al instalar: lo que declara el fragmento compartido está declarado.
+  const HARNESS = new Set(['agent', 'parallel', 'pipeline', 'log', 'phase', 'args', 'budget', 'workflow',
+    'JSON', 'Math', 'Array', 'String', 'Object', 'Number', 'RegExp', 'Boolean', 'Promise', 'Date', 'Set',
+    'Map', 'console', 'Error', 'process', 'require', 'module', 'exports', 'Symbol', 'globalThis'])
+  const AUTOMATION = path.resolve(__dirname, '..', 'automatization')
+  for (const file of workflowFiles()) {
+    const source = fs.readFileSync(file, 'utf8')
+      .replace(/\{\{INCLUDE:([^}]+)\}\}/g, (_, rel) =>
+        fs.readFileSync(path.resolve(AUTOMATION, rel.trim()), 'utf8'))
+    const code = codeOnly(source)
+    const declared = new Set()
+    for (const m of code.matchAll(/\b(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)/g)) declared.add(m[1])
+    for (const m of code.matchAll(/(?:\(|,|^|\s)\s*([A-Za-z_$][\w$]*)\s*=>/g)) declared.add(m[1])
+    for (const m of code.matchAll(/\(([^()]*)\)\s*=>/g)) {
+      for (const part of m[1].split(',')) {
+        const name = part.trim().match(/^\.{0,3}([A-Za-z_$][\w$]*)/)
+        if (name) declared.add(name[1])
+      }
+    }
+    for (const m of code.matchAll(/(?:const|let|var)\s*[{[]([^}\]]*)[}\]]/g)) {
+      for (const part of m[1].split(',')) {
+        const name = part.trim().match(/([A-Za-z_$][\w$]*)\s*$/)
+        if (name) declared.add(name[1])
+      }
+    }
+    // Sólo la cabeza de cada cadena: en `context.items.length` el que tiene que existir es `context`.
+    const free = new Set()
+    for (const m of code.matchAll(/(?<![.\w$])([A-Za-z_$][\w$]*)\s*\./g)) {
+      if (!declared.has(m[1]) && !HARNESS.has(m[1])) free.add(m[1])
+    }
+    assert.deepEqual([...free], [], `${path.relative(WF, file)}: usa un nombre que no declaró`)
+  }
 })

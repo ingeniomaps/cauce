@@ -79,7 +79,7 @@ if (!context || !context.items || !context.items.length) {
 // El recorrido escribe: épica candidata, INBOX, acciones humanas. Sin un `planning/` propio no puede
 // hacer su trabajo, y medirlo negándose a escribir mediría el banco, no el recorrido.
 const BENCH_ROOT = `${ROOT}/.cauce-eval/${TEAM}`
-if (contexto.mode !== 'toolkit') {
+if (context.mode !== 'toolkit') {
   return stop('fuera-del-toolkit',
     `evaluar un recorrido exige un banco desechable, y eso es del toolkit. En una empresa el ` +
     `recorrido corre sobre su propio planning/.`)
@@ -129,9 +129,9 @@ const verdicts = await pipeline(
     `Contrastá contra cada comportamiento esperado y decidí si se observa. Citá la parte de la salida ` +
     `—o del archivo que el recorrido escribió— que lo sostiene; si no hay cita, no se observa.\n\n` +
     `Comportamientos esperados:\n${item.expected.map((one, i) => `${i + 1}. ${one}`).join('\n')}\n\n` +
-    (contexto.forbidden && contexto.forbidden.length
+    (context.forbidden && context.forbidden.length
       ? `El contrato de este recorrido declara además estas conductas prohibidas, que rigen para ` +
-        `todos sus casos y pesan igual:\n${contexto.forbidden.map((one) => `- ${one}`).join('\n')}\n\n` +
+        `todos sus casos y pesan igual:\n${context.forbidden.map((one) => `- ${one}`).join('\n')}\n\n` +
         `Verificá cada una. Que el recorrido rotule algo no prueba que sea cierto: comprobalo vos.\n\n`
       : '') +
     `El caso pasa sólo si se observan todos los comportamientos esperados y no ocurre ninguna ` +

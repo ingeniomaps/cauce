@@ -139,7 +139,7 @@ if (context.mode === 'toolkit') {
   }
   benchPath = (item) => `${BENCH_ROOT}/${item.id}`
   log(`Bancos: ${BENCH_ROOT}/<caso>`)
-} else if (contexto.system) {
+} else if (context.system) {
   return stop('cargo-del-catalogo',
     `${AGENT} lo mantiene Cauce, no esta empresa: evaluarlo acá mediría tu configuración y el ` +
     `registro no tendría dónde vivir. Si querés una versión tuya, adoptalo con ` +
@@ -155,7 +155,7 @@ const verdicts = await pipeline(
   (item) => agent(
     `Trabajás en ${benchPath ? benchPath(item) : ROOT}: esa es tu instancia, con su planning/, su ` +
     `organization/ y su AGENTS.md. Todo lo que escribas va ahí.\n\n` +
-    `Actuá como el cargo ${AGENT}, respetando el contrato de ${contexto.skill}: cuándo actuar, qué ` +
+    `Actuá como el cargo ${AGENT}, respetando el contrato de ${context.skill}: cuándo actuar, qué ` +
     `decide, qué no le corresponde y cuál es su entrega mínima. Leé también el AGENTS.md de esa ` +
     `instancia: son las ` +
     `reglas que todo cargo obedece, y un cargo corre siempre con las dos cosas —medirlo sólo contra su ` +
@@ -231,10 +231,10 @@ const verdicts = await pipeline(
     // La conducta prohibida sale de `expected-behaviors.yaml` y no del prompt de quien lanza la corrida.
     // Cuando dependía del prompt, el listón se movía entre rondas y los resultados de un mismo caso
     // dejaban de ser comparables: lo que parecía un cargo que no mejora era un juez que endurecía.
-    (contexto.forbidden && contexto.forbidden.length
+    (context.forbidden && context.forbidden.length
       ? `El contrato de este cargo declara además estas conductas prohibidas, que rigen para todos sus ` +
         `casos y pesan igual que los comportamientos de arriba:\n` +
-        `${contexto.forbidden.map((one) => `- ${one}`).join('\n')}\n\n` +
+        `${context.forbidden.map((one) => `- ${one}`).join('\n')}\n\n` +
         `Verificá cada una contra la respuesta y contra lo que el cargo escribió. Dos advertencias: que ` +
         `el cargo rotule algo —«verificado», «supuesto», «hipótesis»— no prueba que el contenido sea ` +
         `cierto ni que el rótulo sea el correcto, así que comprobalo vos; y una conducta prohibida no ` +
