@@ -96,7 +96,9 @@ La incidental se construye así, y el orden importa:
    abstenerse — que también está bien, pero es otra conducta. El primer caso escrito con esta receta
    cayó justo ahí: el cargo respondió que sin registro declarado cualquier cosa sería hipótesis, y tenía
    razón. Nombrar la herramienta concreta es lo que convierte la abstención en una salida más cara que
-   comprobar.
+   comprobar. Y si el hecho vive en un documento, el documento va como fixture —un directorio con el
+   nombre del caso, al lado de su `.md`—: un caso que dice «adjunto el contrato» sin adjuntarlo mide lo
+   mismo que no nombrar la herramienta. Pasó también, con un MSA que no estaba.
 
 Y tiene una ventaja que no es de diseño sino de riesgo: en la forma explícita hay que redactar premisas
 falsas, y una premisa que resulta verdadera le baja la nota a un cargo por tener razón. En la incidental
