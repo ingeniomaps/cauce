@@ -667,21 +667,21 @@ test('un registro anterior al último cambio del contrato se declara viejo', () 
   assert.match(aviso, /mide una versión anterior/)
 })
 
-// Un cargo enumera su entrega una sola vez. Enumerarla dos —`## Entrega mínima` y un bloque de la
-// referencia que se presenta como el contrato del mismo entregable— no rompe nada visible: rompe el
-// contraste de R15, porque quien entrega elige contra cuál mide. `cloud-architect` eligió una distinta
-// en cada caso y perdió degradación, DNS y capacidad, cada una presente en la lista que ese caso no usó.
+// Inventario de los bloques que se presentan como el contrato del entregable, no cola de trabajo. La
+// diferencia importa: borrar uno no siempre es lo correcto, y creerlo me costó dos versiones de este
+// test. La primera pedía que desapareciera todo bloque rellenable, incluidas las 53 plantillas de
+// artefacto del catálogo —`Runbook`, `ADR`, `Incidente`—, que rellenan una unidad de trabajo y no
+// re-enumeran nada. La segunda miró sólo los encabezados «Contrato…» y siguió sobre-capturando: un
+// `Contrato de métrica` es la ficha de una métrica, y `data-analyst` ya lo nombra desde su entrega.
 //
-// Sólo cuentan los bloques bajo un encabezado «Contrato…». Los otros 53 del catálogo son plantillas de
-// un artefacto —`Runbook`, `ADR`, `Incidente`, `Health score`—: rellenan una unidad de trabajo, no
-// re-enumeran la entrega, y exigir que desaparezcan sería borrar lo que el cargo usa para producirla.
-// La primera versión de este test no los distinguía y los pedía todos.
+// Lo que sí hizo daño está medido y es otra cosa: `cloud-architect` tenía en la referencia la lista del
+// entregable entero, compitiendo con `## Entrega mínima`, contrastó R15 contra una distinta en cada
+// caso y perdió degradación, DNS y capacidad. Y en `01-diagram-only` la dimensión no estaba en ninguna
+// de las dos, así que el arreglo no era elegir lista sino completar la que R15 nombra.
 //
-// Cerrar un cargo no es borrar el bloque: en `01-diagram-only` la dimensión faltaba en las dos listas,
-// así que primero se fusiona lo que sólo vivía en la referencia dentro de `Entrega mínima` y recién
-// entonces queda el puntero. Por eso la lista sólo puede achicarse, y un cargo nuevo que nazca con las
-// dos cae acá en vez de pasar callado.
-const DOS_ENUMERACIONES = [
+// Por eso acá no se afirma que la lista deba achicarse: se fija cuáles son, para que agregar o quitar
+// uno sea una decisión visible en vez de un cambio que nadie mira.
+const CONTRATOS_EN_LA_REFERENCIA = [
   'analytics-engineer', 'backend-engineer', 'customer-support-specialist', 'data-analyst',
   'data-governance-steward', 'data-scientist', 'database-administrator', 'developer-relations-engineer',
   'devops-engineer', 'fraud-risk-analyst', 'frontend-engineer', 'implementation-manager',
@@ -690,7 +690,7 @@ const DOS_ENUMERACIONES = [
   'security-engineer', 'site-reliability-engineer', 'solutions-engineer', 'tech-lead', 'treasury-analyst',
 ]
 
-test('ningún cargo enumera su entrega en dos lugares', () => {
+test('el inventario de contratos en las referencias es el que está declarado', () => {
   const roles = path.join(REPO, 'agents', 'roles', 'system')
   const conDos = fs.readdirSync(roles).filter((slug) => {
     const file = path.join(roles, slug, 'references', 'operating-model.md')
@@ -704,9 +704,9 @@ test('ningún cargo enumera su entrega en dos lugares', () => {
     })
   })
 
-  const nuevos = conDos.filter((slug) => !DOS_ENUMERACIONES.includes(slug))
-  assert.deepEqual(nuevos, [], 'nació un cargo con dos enumeraciones de su entrega')
+  const nuevos = conDos.filter((slug) => !CONTRATOS_EN_LA_REFERENCIA.includes(slug))
+  assert.deepEqual(nuevos, [], 'apareció un contrato en una referencia: decidí si duplica la entrega')
 
-  const cerrados = DOS_ENUMERACIONES.filter((slug) => !conDos.includes(slug))
-  assert.deepEqual(cerrados, [], 'estos ya no tienen dos listas: sacalos de DOS_ENUMERACIONES')
+  const cerrados = CONTRATOS_EN_LA_REFERENCIA.filter((slug) => !conDos.includes(slug))
+  assert.deepEqual(cerrados, [], 'estos ya no tienen dos listas: sacalos de CONTRATOS_EN_LA_REFERENCIA')
 })
