@@ -638,3 +638,28 @@ test('currentTask aplica la precedencia del protocolo sobre el estado ya leído'
   assert.equal(todas.task, null)
   assert.deepEqual(todas.skipped, ['uno', 'dos', 'tres'])
 })
+
+// La creencia que tres cargos distintos escribieron como hecho y usaron para no escribir nada: que una
+// fila de HUMAN_ACTIONS cuya tarea no existe rompe `check` o queda colgada. Ninguna de las dos es
+// cierta, y la confusión tiene un origen razonable —el WIP sí exige existir en BACKLOG o DONE—, que es
+// justamente la inferencia que R14 prohíbe: el default de un contrato no se deduce del vecino.
+//
+// Se fija acá porque `HUMAN_ACTIONS.md` ahora lo afirma, y una afirmación de mecanismo que vive sólo en
+// un documento se pudre sin que nada falle.
+test('una acción humana cuya tarea no está en el backlog no rompe check ni bloquea nada', () => {
+  const ST = require('../engine/planning/state')
+  const fila = { task: 'no-existe', state: 'pendiente', valid: true, action: 'crear la cuenta' }
+
+  const errores = PC.validateState({
+    epics: [], milestones: [{ slug: 'h', title: 'H', tasks: [] }],
+    done: { entries: [], set: new Set(), duplicates: [] }, wip: null, humanActions: [fila],
+  })
+  assert.deepEqual(errores, [], 'check sólo juzga el Estado de la fila, nunca su tarea')
+
+  const tarea = (slug) => ({ slug, tier: 'lite', cast: { build: '', review: [] }, service: 'api' })
+  const { task, skipped } = ST.currentTask({
+    milestones: [{ slug: 'h', tasks: [tarea('uno')] }], done: { set: new Set() }, wip: null,
+  }, [fila])
+  assert.equal(task.slug, 'uno', 'no bloquea a nadie: sólo se saltea lo que está en la cola')
+  assert.deepEqual(skipped, [], 'y no se anuncia como salteada, porque no lo está')
+})
