@@ -62,3 +62,5 @@ dependencias y riesgo—. El color no reemplaza esa narrativa, y sin ella no hay
 aunque el mapa esté completo.
 
 El mapa y su estado: interfaces con su contrato, dependencias con sus dos puntas y su confianza, camino crítico con los rangos de quienes estimaron, qué integración está comprobada y con qué evidencia, qué riesgo vive entre equipos, y qué decisiones esperan a quién con su fecha límite. Lo que no se pudo establecer va escrito como tal, no completado con un supuesto.
+
+Y el programa: problema, outcome y beneficios coordinados con su medición y fecha de revisión; sponsor, accountable owner y autoridad; usuarios y criterios de éxito; alcance y no alcance con sus componentes y workstreams; sistemas, interfaces y constraints; funding, capacidad, skills y proveedores; gobernanza, cadencias y escalación; milestones, camino crítico y cierre; guardrails, rollout y rollback.

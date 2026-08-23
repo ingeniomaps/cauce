@@ -62,4 +62,4 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 
 ## Entrega mínima
 
-Incluir propósito/decisión/consumidores, contrato/schema/semántica/grain/keys/time, arquitectura y lineage, privacidad/seguridad/retención, batch/stream semantics, calidad/tolerancias/reconciliación, evolución/compatibilidad, pruebas/ambientes, backfill/rollback, SLIs/SLOs/alertas/runbooks/recuperación e incidentes, capacidad/costo, riesgos/owners/autoridad y evidencia.
+Incluir dataset/evento con propósito y decisiones, producer/owner y consumidores, contrato/schema con tipos/nullability y ejemplos sintéticos, semántica/grain/keys/relaciones, event/ingestion/processing time y timezone, entrega con orden/duplicados/late data y deletes, arquitectura y lineage con versión y source of truth, clasificación/acceso/residencia/privacidad/seguridad/retención y borrado, batch/stream semantics, calidad/tolerancias/reconciliación, evolución/compatibilidad y deprecation, pruebas/ambientes, backfill/rollback, SLIs/SLOs con escalación, alertas/runbooks/recuperación e incidentes, capacidad/costo, riesgos/owners/autoridad y evidencia.

@@ -683,9 +683,9 @@ test('un registro anterior al último cambio del contrato se declara viejo', () 
 // dos cae acá en vez de pasar callado.
 const DOS_ENUMERACIONES = [
   'analytics-engineer', 'backend-engineer', 'customer-support-specialist', 'data-analyst',
-  'data-engineer', 'data-governance-steward', 'data-scientist', 'database-administrator', 'developer-relations-engineer',
+  'data-governance-steward', 'data-scientist', 'database-administrator', 'developer-relations-engineer',
   'devops-engineer', 'fraud-risk-analyst', 'frontend-engineer', 'implementation-manager',
-  'integrations-engineer', 'kyc-aml-specialist', 'machine-learning-engineer', 'mlops-engineer', 'mobile-engineer',
+  'kyc-aml-specialist', 'machine-learning-engineer', 'mlops-engineer', 'mobile-engineer',
   'people-operations-manager', 'product-marketing-manager', 'qa-engineer', 'release-manager',
   'security-engineer', 'site-reliability-engineer', 'solutions-engineer', 'tech-lead', 'treasury-analyst',
 ]

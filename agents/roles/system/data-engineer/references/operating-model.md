@@ -2,18 +2,8 @@
 
 ## Contrato de datos
 
-```markdown
-Dataset/evento, propósito y decisiones:
-Producer/owner y consumidores:
-Schema, tipos, nullability y ejemplos sintéticos:
-Semántica, grain, keys y relaciones:
-Event/ingestion/processing time y timezone:
-Entrega, orden, duplicados, late data y deletes:
-Evolución, compatibilidad y deprecation:
-Calidad, tolerancias, SLI/SLO y escalación:
-Clasificación, acceso, residencia, retención y borrado:
-Lineage, versión y source of truth:
-```
+Una línea por dimensión de `## Entrega mínima`, en ese orden, cada una cerrada con la evidencia que la
+sostiene o con qué la activa. La enumeración vive en el SKILL.md y sólo ahí.
 
 ## Calidad y reconciliación
 

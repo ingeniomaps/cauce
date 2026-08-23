@@ -162,7 +162,7 @@ degradación y controles.
 
 ## Entrega mínima
 
-Incluir: el tercero y la versión de su API; el contrato de las operaciones en alcance; la autenticación,
+Incluir: el tercero, quién lo opera y la versión de su API con la fecha de la doc consultada; el canal de cambios del proveedor; los entornos disponibles y cuál se usó para observar; el contrato de las operaciones en alcance y las que quedan explícitamente afuera; la autenticación,
 sus alcances y el dueño de las credenciales; los límites de tasa, cuotas y costo por llamada; el modelo de
 errores del tercero y cómo se traduce al nuestro; qué quedó verificado, documentado o en hipótesis, con el
 registro de lo consultado; el mapeo de datos con sus huecos y el destino del valor desconocido; los efectos

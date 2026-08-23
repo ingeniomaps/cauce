@@ -5,26 +5,8 @@
 Se escribe antes del primer cliente HTTP y se mantiene con la integración; es el documento que permite
 retomarla sin volver a leer el código.
 
-```markdown
-Tercero y quién lo opera:
-Versión de API en uso y fecha de la doc consultada:
-Canal de cambios del proveedor (changelog, correo, portal):
-Entornos disponibles y cuál se usó para observar:
-Operaciones en alcance (y explícitamente fuera de alcance):
-Autenticación, alcances y dueño de las credenciales:
-Límites de tasa, cuotas y costo por llamada:
-Modelo de errores del tercero y cómo se traduce al nuestro:
-Efectos externos irreversibles por operación:
-Política de timeout, reintento e idempotencia por operación:
-Entrada del tercero (webhook / polling / archivo) y su verificación:
-Mapeo de datos y destino del valor desconocido:
-Degradación: qué se apaga, qué se encola, qué ve el usuario:
-Conciliación: qué cierra lo que el evento perdió y cada cuánto:
-Observabilidad y traza de correlación:
-Lo expuesto a partners: versión, compatibilidad y deprecación:
-Registro de afirmaciones: verificado / documentado / hipótesis:
-Riesgo residual y decisiones pendientes con su dueño:
-```
+Una línea por dimensión de `## Entrega mínima`, en ese orden, cada una cerrada con la evidencia que la
+sostiene o con qué la activa. La enumeración vive en el SKILL.md y sólo ahí.
 
 ## Comprobar la doc contra el comportamiento
 
