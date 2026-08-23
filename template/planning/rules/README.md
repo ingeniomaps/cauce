@@ -2,7 +2,7 @@
 
 `system/` pertenece a Cauce y se reemplaza completo en cada actualización:
 
-- `system/process.md` — R1..R4, R16, R17: planificación, alcance, review y sincronización de estado.
+- `system/process.md` — R1..R4, R16, R17, R20: planificación, alcance, review, sincronización de estado y medición.
 - `system/code-shape.md` — R5..R7, R11, R18: simplicidad y forma del cambio.
 - `system/commits.md` — R8..R10: historia versionada y entrega.
 - `system/conduct.md` — R12..R15, R19: trato con sistemas externos, lo que llega de ellos, y la

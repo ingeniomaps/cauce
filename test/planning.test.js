@@ -694,7 +694,7 @@ test('los rangos que declara el README de reglas son los que hay', () => {
   // Y ningún archivo del sistema queda sin declarar.
   const archivos = fs.readdirSync(path.join(rules, 'system')).filter((name) => name.endsWith('.md'))
   assert.equal(declarado.length, archivos.length, 'cada archivo del sistema tiene su línea')
-  assert.equal(cubiertos.size, 19, 'las diecinueve reglas están declaradas en alguna línea')
+  assert.equal(cubiertos.size, 20, 'las veinte reglas están declaradas en alguna línea')
 })
 
 // La misma lección que la plantilla de épica: lo que se copia no puede traer algo que haya que borrar

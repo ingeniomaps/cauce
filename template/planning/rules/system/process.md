@@ -56,3 +56,21 @@ y cada tanda parece razonable.
 El tope de horas no lo detecta. Una tarea de tres horas con quince condiciones entra en el tope y no se
 construye nunca.
 
+
+## R20 — Una medición se lanza contra lo que podría refutarla
+
+Antes de una tanda cara —evaluaciones, corridas, barridos— se escribe qué se espera encontrar y **qué
+resultado lo desmentiría**. Sin esa segunda mitad no hay medición: hay recolección, y recolectar
+confirma siempre.
+
+El tamaño sale de ahí y no de la lista: se corre el mínimo que pueda refutar, no lo que cubra todo.
+Y se relee la hipótesis en la primera tanda, porque cuando ya está contestada, seguir cuesta lo mismo
+que la primera vez y no agrega nada.
+
+La exhaustividad tiene su lugar y es otro: cuando cada elemento puede fallar por su cuenta —medir
+cincuenta cargos que nunca se midieron—, no hay señal común que una muestra revele. Lo que no
+corresponde es tratar una pregunta de sí o no como si fuera un censo.
+
+El costo de equivocarse acá no se ve mientras pasa: cada corrida termina bien, entrega su resultado y
+parece trabajo. Lo que se gasta es la vuelta que no se dio en otra cosa, y eso no aparece en ninguna
+salida.
