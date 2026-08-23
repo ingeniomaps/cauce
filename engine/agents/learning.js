@@ -427,6 +427,26 @@ function evaluateTeam(root, slug) {
 // un nombre compuesto. Cuando eran uno solo el catálogo llegó a 51 etiquetas para estas seis.
 const SOURCE_TIERS = ['advisory', 'platform', 'project', 'regulation', 'standard', 'profession']
 
+// Cada cuánto vale la pena volver a mirar cada tipo. Un aviso publica todos los días y llegar un mes
+// tarde es llegar tarde; una norma se revisa por edición y mirarla cada lunes devuelve el mismo texto.
+// La cadencia de un cargo la fija su fuente más rápida: basta una que corra para que la semana traiga
+// algo, y ninguna otra pierde nada por mirarse antes.
+const TIER_CADENCE = {
+  advisory: 'semanal', platform: 'semanal', project: 'semanal',
+  regulation: 'mensual', standard: 'mensual', profession: 'trimestral',
+}
+const CADENCES = ['semanal', 'mensual', 'trimestral']
+
+// Sale del árbol y no de una lista escrita a mano, por la misma razón que la matriz del cron sale del
+// árbol: una lista paralela se pudre el día que un cargo cambia sus fuentes y nadie la toca.
+function cadence(root, agent) {
+  const file = path.join(catalog.resolve(root, agent), 'learning', 'sources.yaml')
+  if (!fs.existsSync(file)) return ''
+  const tiers = sourceTiers(fs.readFileSync(file, 'utf8')).filter((one) => TIER_CADENCE[one])
+  if (!tiers.length) return ''
+  return CADENCES[Math.min(...tiers.map((one) => CADENCES.indexOf(TIER_CADENCE[one])))]
+}
+
 // Basta con las líneas `tier:`: el archivo es del catálogo, no de un tercero, y agregar un parser de
 // YAML por un campo rompería la regla de cero dependencias.
 function sourceTiers(text) {
@@ -505,4 +525,6 @@ function evaluate(root, agent) {
 }
 
 module.exports = {
-  SOURCE_TIERS, SUMMARY_MAX, prepareReport, prepareProposal, evaluate, evaluateTeam, proposalState, seal }
+  SOURCE_TIERS,
+  CADENCES,
+  cadence, SUMMARY_MAX, prepareReport, prepareProposal, evaluate, evaluateTeam, proposalState, seal }

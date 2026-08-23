@@ -746,3 +746,30 @@ test('una fuente declara su tipo dentro del vocabulario cerrado', () => {
   assert.deepEqual(vacio.errors.filter((one) => one.includes('fuente')), [])
   assert.ok(vacio.warnings.some((one) => one.includes('sin fuentes')), 'avisa que no hay qué investigar')
 })
+
+// Cada cuánto investiga un cargo no puede vivir en una lista escrita a mano: el día que alguien le
+// cambia las fuentes, la lista sigue diciendo lo de antes y nadie se entera. Sale del árbol, como la
+// matriz del cron, y la fija la fuente más rápida que el cargo declara.
+test('la cadencia de investigación se deriva de las fuentes, no de una lista', () => {
+  const target = installedProject('Cadencia')
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
+  fs.mkdirSync(path.join(own, 'learning'), { recursive: true })
+  const declarar = (...tiers) => fs.writeFileSync(path.join(own, 'learning', 'sources.yaml'),
+    'version: 1\nsources:\n' + tiers.map((tier, i) =>
+      `  - name: F${i}\n    url: https://example.org/${i}\n    tier: ${tier}\n`).join(''))
+
+  declarar('standard')
+  assert.equal(learning.cadence(target, 'probe'), 'mensual', 'una norma se revisa por edición')
+  declarar('profession')
+  assert.equal(learning.cadence(target, 'probe'), 'trimestral')
+  declarar('advisory')
+  assert.equal(learning.cadence(target, 'probe'), 'semanal', 'un aviso publica todos los días')
+
+  // Basta una fuente rápida: mirar antes no le cuesta nada a las lentas, y llegar tarde a un aviso sí.
+  declarar('standard', 'profession', 'platform')
+  assert.equal(learning.cadence(target, 'probe'), 'semanal', 'la manda la más rápida, no la mayoría')
+
+  // Sin fuentes no hay cadencia que derivar, y eso ya lo avisa `evaluate`: no se inventa una.
+  fs.writeFileSync(path.join(own, 'learning', 'sources.yaml'), 'version: 1\n')
+  assert.equal(learning.cadence(target, 'probe'), '')
+})
