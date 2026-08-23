@@ -90,6 +90,8 @@ const VERDICT = {
 
 {{INCLUDE:shared/workflow-finish.js}}
 
+{{INCLUDE:shared/eval-measured.js}}
+
 if (!AGENT) return stop('sin-cargo', 'pasá el slug del cargo a evaluar')
 
 phase('Casos')
@@ -254,17 +256,22 @@ const verdicts = await pipeline(
     : { id: item.id, expected: item.expected, answer: '', verdict: null }),
 )
 
-const answered = verdicts.filter(Boolean)
-const passed = answered.filter((one) => one.verdict && one.verdict.passed)
+const { answered, unmeasured } = measured(context.items, verdicts)
+const passed = answered.filter((one) => one.verdict.passed)
+if (!answered.length) {
+  return stop('sin-veredicto',
+    `ningún caso de ${AGENT} llegó a un veredicto (${unmeasured.join(', ')}). No se escribe registro: ` +
+    `uno de cero casos afirma una medición que no ocurrió.`)
+}
+if (unmeasured.length) log(`Sin medir: ${unmeasured.join(', ')} — el registro lo va a decir`)
 log(`${passed.length}/${answered.length} pasan`)
 
 phase('Registrar')
 
 const rows = answered.map((one) => {
-  const mark = one.verdict && one.verdict.passed ? 'pasa' : 'no pasa'
-  const reasoning = one.verdict ? one.verdict.reasoning : 'sin veredicto: el caso no se pudo juzgar'
+  const mark = one.verdict.passed ? 'pasa' : 'no pasa'
   return `### ${one.id}\n\n- Veredicto: ${mark}\n\n**Respuesta del cargo**\n\n${one.answer}\n\n` +
-    `**Contraste**\n\n${reasoning}`
+    `**Contraste**\n\n${one.verdict.reasoning}`
 }).join('\n\n')
 
 await agent(
@@ -279,7 +286,7 @@ await agent(
   `con él. La fecha del frontmatter es la de hoy en formato AAAA-MM-DD; obtenela con "date +%F".\n\n` +
   `El archivo lleva este frontmatter y después el contenido tal cual te lo paso, sin reescribirlo ni ` +
   `resumirlo:\n\n---\nagent: ${AGENT}\ndate: <fecha>\npassed: ${passed.length}\ntotal: ${answered.length}\n---\n\n` +
-  `# Casos adversariales — <fecha>\n\n${rows}\n\n` +
+  `# Casos adversariales — <fecha>\n\n${unmeasuredNote(unmeasured)}${rows}\n\n` +
   `No toques SKILL.md, sources.yaml, expected-behaviors.yaml ni los casos. No hagas commit ni push.`,
   { label: 'registrar', phase: 'Registrar' },
 )
