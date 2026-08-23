@@ -6,7 +6,7 @@
 // Las familias que despacha viven aparte —`instance`, `planning` y `wiring`, cada una con su archivo—,
 // y todas comparten el mismo arnés: el CLI en un proceso aparte, contra una instancia de verdad.
 
-const { tempRoot, run, linkEngine } = require('./environment')
+const { MIN_ROLES, tempRoot, run, linkEngine } = require('./environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -20,8 +20,8 @@ test('una bandera no ocupa el lugar de un argumento', () => {
   const withRoot = run(['agents', 'list', repo, '--json'])
   const withoutRoot = run(['agents', 'list', '--json'], repo)
   assert.equal(withRoot.status, 0, withRoot.stderr)
-  assert.ok(JSON.parse(withRoot.stdout).length >= 40, 'con raíz explícita antes de la bandera')
-  assert.ok(JSON.parse(withoutRoot.stdout).length >= 40, 'y con la bandera sola')
+  assert.ok(JSON.parse(withRoot.stdout).length >= MIN_ROLES, 'con raíz explícita antes de la bandera')
+  assert.ok(JSON.parse(withoutRoot.stdout).length >= MIN_ROLES, 'y con la bandera sola')
 })
 
 // `upgrade` e `install` son para una empresa: reemplazan lo que el toolkit mantiene por lo que el

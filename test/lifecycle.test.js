@@ -1,6 +1,6 @@
 'use strict'
 
-const { tempRoot } = require('./environment')
+const { MIN_ROLES, tempRoot } = require('./environment')
 
 // Recorrido completo tal como lo vive una empresa: instalar el paquete publicado, materializar la
 // instancia, trabajar en ella, recibir una versión nueva y actualizarse.
@@ -65,7 +65,7 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   const workspace = base
   assert.equal(fs.existsSync(path.join(consumer, '.claude')), false, 'no queda encerrado en el sidecar')
   const skills = fs.readdirSync(path.join(workspace, '.claude', 'skills'))
-  assert.ok(skills.length >= 40, 'los cargos llegan como skills del runner')
+  assert.ok(skills.length >= MIN_ROLES, 'los cargos llegan como skills del runner')
   assert.equal(cauce(consumer, ['automation', 'doctor', consumer, 'claude']).status, 0)
   // Y los guards se nombran desde ahí, no desde la raíz ops.
   const wiring = fs.readFileSync(path.join(workspace, '.claude', 'settings.json'), 'utf8')
@@ -93,7 +93,7 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
     process.execPath, [path.join(consumer, 'tools', 'ops.js'), ...args],
     { cwd: workspace, encoding: 'utf8' },
   )
-  assert.ok(fromWorkspace(['agents', 'list']).stdout.split('\n').filter(Boolean).length >= 40)
+  assert.ok(fromWorkspace(['agents', 'list']).stdout.split('\n').filter(Boolean).length >= MIN_ROLES)
   assert.match(fromWorkspace(['team', 'list']).stdout, /product-development/)
 
   // 4. La empresa trabaja: contexto propio, regla propia, override y un cargo suyo.

@@ -70,6 +70,8 @@ function workflowStep(source, anchor) {
   if (start < 0) return ''
   const lines = source.slice(source.indexOf('run: |', start)).split('\n').slice(1)
   const body = []
+  // Diez espacios es la sangría del cuerpo de un `run: |` en estos YAML —`jobs`, el job, `steps`, el
+  // paso—, así que una línea con menos ya es el paso siguiente. Es estructura del formato, no del texto.
   for (const line of lines) {
     if (line.trim() && !line.startsWith(' '.repeat(10))) break
     body.push(line.slice(10))
@@ -111,4 +113,12 @@ function opsConfig() {
   }
 }
 
-module.exports = { opsConfig, filesBelow, tempRoot, CLI, run, linkEngine, workflow, workflowStep, workflowCommand }
+// Piso de cargos que tiene que resolver el catálogo. Está deliberadamente por debajo de los que hay
+// —53 al escribir esto— porque lo que estas pruebas cuidan es que el catálogo llegue **entero**, no
+// cuántos cargos tiene: un número exacto obligaría a tocar seis suites cada vez que se agrega uno, y
+// ninguna de ellas mide eso. Estaba copiado como `40` en diez lugares, sin nada que dijera por qué.
+const MIN_ROLES = 40
+
+module.exports = {
+  MIN_ROLES, opsConfig, filesBelow, tempRoot, CLI, run, linkEngine, workflow, workflowStep, workflowCommand,
+}

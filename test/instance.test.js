@@ -6,7 +6,7 @@
 // Lo que se prueba acá es qué queda escrito en el disco de una empresa y qué se niega a pisarse. La
 // unidad que decide eso —ownership, manifiesto— se prueba directo en `core.test.js`.
 
-const { filesBelow, tempRoot, CLI, run, linkEngine } = require('./environment')
+const { MIN_ROLES, filesBelow, tempRoot, CLI, run, linkEngine } = require('./environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -103,11 +103,11 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.equal(fs.existsSync(path.join(target, 'organization', 'company.md')), true)
   // El catálogo del sistema no se copia: se resuelve desde el paquete o desde .ops en modo copia.
   assert.equal(fs.existsSync(path.join(target, 'agents', 'roles', 'system')), false)
-  assert.ok(require('../engine/agents/catalog').list(target).length >= 40, 'y aun así se resuelve')
+  assert.ok(require('../engine/agents/catalog').list(target).length >= MIN_ROLES, 'y aun así se resuelve')
   // La taxonomía es extensible por convención, no por directorios vacíos: un tipo nuevo se
   // reconoce el día que tiene contenido.
   const catalog = require('../engine/agents/catalog')
-  assert.ok(catalog.list(target).length >= 40, 'el catálogo llega completo')
+  assert.ok(catalog.list(target).length >= MIN_ROLES, 'el catálogo llega completo')
   const extra = path.join(target, 'agents', 'specialists', 'probe')
   fs.mkdirSync(extra, { recursive: true })
   fs.writeFileSync(path.join(extra, 'SKILL.md'), '---\nname: probe\ndescription: x\n---\n')
@@ -636,7 +636,7 @@ test('el catálogo llega con la dependencia y el proyecto sólo lleva lo suyo', 
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
   linkEngine(target)
   const total = catalog.list(target).length
-  assert.ok(total >= 40)
+  assert.ok(total >= MIN_ROLES)
 
   // El catálogo se resuelve desde la dependencia: el proyecto no lleva una copia.
   assert.equal(fs.existsSync(path.join(target, 'agents', 'roles', 'system')), false)

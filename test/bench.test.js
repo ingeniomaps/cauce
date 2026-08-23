@@ -4,7 +4,7 @@
 // vocabulario propio —se crea, se recrea entera, se versiona, se niega a pisar trabajo sin recoger— y
 // estaba dentro de la suite del CLI, que prueba otra cosa.
 
-const { tempRoot, run } = require('./environment')
+const { MIN_ROLES, tempRoot, run } = require('./environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -30,7 +30,7 @@ test('el banco de evaluación es una instancia de verdad, no un directorio vací
 
   // Y el catálogo resuelve desde adentro, que es lo que hace del banco un lugar de trabajo.
   const roles = JSON.parse(run(['agents', 'list', dir, '--json'], toolkit).stdout)
-  assert.ok(roles.length >= 40, `el banco ve el catálogo (${roles.length})`)
+  assert.ok(roles.length >= MIN_ROLES, `el banco ve el catálogo (${roles.length})`)
 })
 
 // Reutilizarlo dejaría que lo que un cargo escribió el lunes sea contexto del que responde el martes,

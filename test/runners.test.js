@@ -6,7 +6,7 @@
 // Dos vecinos se le parecen y no lo son: `hooks.test.js` prueba qué decide un guard, no dónde aterriza
 // su wiring; `workflows.test.js` prueba el recorrido, no el formato en que cada runner lo ofrece.
 
-const { tempRoot, linkEngine } = require('./environment')
+const { MIN_ROLES, tempRoot, linkEngine } = require('./environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -329,7 +329,7 @@ test('los runners con skills nativas exponen el catálogo completo de cargos', (
   const A = require('../engine/automation')
   const repoRoot = path.resolve(__dirname, '..')
   const slugs = require('../engine/agents/catalog').list(repoRoot).map((role) => role.slug)
-  assert.ok(slugs.length >= 40, 'el catálogo debería tener decenas de cargos')
+  assert.ok(slugs.length >= MIN_ROLES, 'el catálogo debería tener decenas de cargos')
 
   // Los cuatro tienen skills. Codex se sumó último: su adaptador lo daba por incapaz desde 0.39.0 y el
   // CLI ya las descubría en `.agents/skills/`, así que operaba el protocolo a mano sin necesidad.
@@ -361,7 +361,7 @@ test('el puntero de un cargo conserva su frontmatter y no duplica el contrato', 
   const A = require('../engine/automation')
   const repoRoot = path.resolve(__dirname, '..')
   const roles = A.roleCatalog(repoRoot)
-  assert.ok(roles.length >= 40)
+  assert.ok(roles.length >= MIN_ROLES)
 
   const pm = roles.find((role) => role.slug === 'product-manager')
   assert.ok(pm, 'el catálogo resuelve por slug sin exigir el tipo')

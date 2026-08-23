@@ -701,6 +701,8 @@ test('con checkpoint configurado el hito terminado queda esperando una firma', a
 })
 
 test('una tarea que vuelve a quedar elegible para siempre corta con su motivo', async () => {
+  // Sesenta porque el tope del recorrido son cincuenta tareas —`MAX_TASKS` en `autobuild.js`—: hay que
+  // pasarlo para que corte, y el detalle tiene que nombrar el número en vez de cortar sin decir cuál.
   const forever = baseScript()[KEY.context]
   const { result } = await runFlow({}, { contexts: Array.from({ length: 60 }, () => forever) })
   assert.equal(result.reason, 'milestone-too-long')
