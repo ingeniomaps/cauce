@@ -11,6 +11,8 @@ const crypto = require('node:crypto')
 const fs = require('node:fs')
 const path = require('node:path')
 
+const { atomicWriteJson } = require('./files')
+
 const FILE = path.join('.cauce', 'manifest.json')
 
 function digestText(content) {
@@ -60,7 +62,6 @@ function readForks(root) { return readAll(root).forks }
 function write(root, files, runners, forks) {
   const current = readAll(root)
   const target = path.join(root, FILE)
-  fs.mkdirSync(path.dirname(target), { recursive: true })
   const ordered = (map) => Object.fromEntries(
     Object.entries(map).sort(([left], [right]) => left.localeCompare(right)),
   )
@@ -70,7 +71,9 @@ function write(root, files, runners, forks) {
     runners: ordered(runners || current.runners),
     forks: ordered(forks || current.forks),
   }
-  fs.writeFileSync(target, `${JSON.stringify(data, null, 2)}\n`)
+  // Atómico porque un truncado acá deja la instancia sin el registro que separa lo suyo de lo
+  // nuestro, y desde que leerlo vacío dejó de ser una opción eso bloquea el upgrade siguiente.
+  atomicWriteJson(target, data)
 }
 
 // Registra lo entregado en una ruta, relativo a la raíz de la instancia. Acumula sobre lo que recibe
