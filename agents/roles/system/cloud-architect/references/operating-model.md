@@ -2,18 +2,13 @@
 
 ## Contrato de arquitectura
 
-```markdown
-Outcome, workload, users, owners y autoridad:
-Requisitos, restricciones, baseline y escenarios:
-Datos, clasificación, residencia y flujos:
-Contexto, trust/failure domains y dependencias:
-Opciones, tradeoffs, decisión y reconsideración:
-Tenancy, IAM, red, servicios y shared responsibility:
-SLO, RTO/RPO, capacidad y recuperación:
-Observabilidad, operación, soporte y skills:
-Costo total/unitario, forecast y sostenibilidad:
-Migración, rollback, portabilidad, salida y evidencia:
-```
+Una línea por dimensión de `## Entrega mínima`, en ese orden y con ese mismo agrupamiento, cada una
+cerrada con la evidencia que la sostiene o con qué la activa.
+
+La enumeración vive en el SKILL.md y sólo ahí. Acá hubo una segunda, más corta y agrupada distinto, y lo
+que se rompió no fue la lista sino el contraste de R15: quien entrega elige contra cuál mide, y una
+dimensión que en la otra estaba —degradación, DNS, capacidad— desaparece dentro de un campo más grueso
+sin dejar rastro de que faltaba.
 
 ## Landing zone y seguridad
 

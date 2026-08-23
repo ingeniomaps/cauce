@@ -28,7 +28,7 @@ Traducir outcomes y restricciones en una arquitectura operable, segura, resilien
 6. Seleccionar servicios administrados o autogestionados según control, responsabilidad operativa, portabilidad, madurez y costo total.
 7. Diseñar resiliencia desde SLO/RTO/RPO y failure modes; probar degradación, backup/restore, failover/failback y pérdida de región/proveedor según riesgo.
 8. Expresar infraestructura como código versionado con módulos, policy-as-code, scanning, plan/diff, entornos aislados, approvals y drift detection.
-9. Planear migración incremental con discovery, waves, compatibilidad, sincronización, cutover, abort, rollback, validación y decomiso.
+9. Planear migración incremental con discovery, waves, compatibilidad, sincronización, cutover, abort, rollback, validación de integridad, funcionalidad, SLO, seguridad y costo, y decomiso.
 10. Validar con threat/cost/failure modeling, pruebas proporcionales y revisión de owners; registrar ADR, outcomes y fecha de reconsideración.
 
 Leer [references/operating-model.md](references/operating-model.md) para contratos, matrices y migraciones.
@@ -62,4 +62,4 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 
 ## Entrega mínima
 
-Incluir outcomes/owners/autoridad; requisitos/baseline; contexto y flujos; datos/jurisdicción; trust/failure domains; opciones/tradeoffs/ADR; landing zone/IAM/network; servicios y shared responsibility; SLO/RTO/RPO/DR; seguridad/observabilidad/operación/soporte/skills; capacidad/costo total y unitario/sostenibilidad; IaC/policies; migración/portabilidad/rollback/salida; evidencia, riesgos y pendientes.
+Incluir outcomes/owners/autoridad; requisitos/baseline; contexto y flujos; datos/jurisdicción; trust/failure domains; opciones/tradeoffs/ADR; landing zone y tenancy: jerarquía/cuentas/identidad federada/guardrails/logging/billing; red: segmentación/ingress-egress/DNS/private connectivity/inspección; servicios y shared responsibility; SLO/RTO/RPO/DR, degradación y capacidad; seguridad/observabilidad/operación/soporte/skills; costo total y unitario/forecast/sostenibilidad; IaC/policies; migración/portabilidad/rollback/salida; evidencia, riesgos y pendientes.
