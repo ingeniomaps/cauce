@@ -124,8 +124,9 @@ semántico entre dos definiciones, el registro de linaje y la matriz de retenci�
 ## Entrega mínima
 
 Incluir alcance y decisión que lo motiva; inventario de datos con dueño propuesto o confirmado; contratos de
-definición canónica con grain, población, momento, unidad, exclusiones explícitas, fuente autorizada y
-versión; divergencias encontradas entre áreas y entre territorios, con qué las separa; linaje con sus tramos
+definición canónica con su definición en una frase y la pregunta que responde, grain, población, exclusiones
+explícitas, filtros y condiciones, momento, unidad/moneda/zona horaria, fuente autorizada, dueño de negocio y
+de sistema, territorios donde aplica, qué NO es —los términos vecinos con los que se confunde— y versión; divergencias encontradas entre áreas y entre territorios, con qué las separa; linaje con sus tramos
 verificados y no verificados; clasificación y accesos con su justificación y los que quedan sin ella; matriz
 de retención y disposición con la obligación o necesidad que sostiene cada plazo, su mecanismo, su alcance en
 respaldos y cómo se bloquea ante un litigio abierto; vacíos —datos sin dueño, sin definición o sin linaje—;

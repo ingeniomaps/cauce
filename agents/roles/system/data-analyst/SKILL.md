@@ -72,4 +72,4 @@ Leer [references/operating-model.md](references/operating-model.md) al definir m
 
 ## Entrega mínima
 
-Incluir pregunta y decisión, contrato de métricas, fuentes y lineage, granularidad y joins, periodo y zona horaria, calidad, método reproducible, resultados con conteos/incertidumbre, reconciliación independiente, distribuciones y segmentos, sensibilidad, visualización si aporta, nivel de inferencia alcanzado, limitaciones, interpretación y próximos pasos.
+Incluir pregunta y decisión; contrato de cada métrica con propósito, unidad de análisis, población elegible, numerador y denominador, ventana y zona horaria, filtros y exclusiones, latencia y datos tardíos, dimensiones permitidas, controles de calidad, owner, versión y vigencia; fuentes y lineage; granularidad y joins, periodo y zona horaria, calidad, método reproducible, resultados con conteos/incertidumbre, reconciliación independiente, distribuciones y segmentos, sensibilidad, visualización si aporta, nivel de inferencia alcanzado, limitaciones, interpretación y próximos pasos.

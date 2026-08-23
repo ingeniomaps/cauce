@@ -139,12 +139,14 @@ resolver una alerta o preparar un expediente para auditoría.
 
 ## Entrega mínima
 
-Incluir alcance y jurisdicciones cubiertas, con las que quedan pendientes nombradas una por una; perfil de riesgo
-con sus factores; atributos verificados y evidencia de cada uno; listas cotejadas, con aciertos y descartes
-motivados; nivel de diligencia aplicado y qué lo disparó; monitoreo propuesto con umbral, frecuencia y fecha de
+Incluir entidad legal, país y la licencia o figura bajo la que opera; alcance y jurisdicciones cubiertas, con las
+que quedan pendientes nombradas una por una; productos alcanzados y segmentos de cliente; perfil de riesgo
+con sus factores y el peso de cada uno; atributos verificados y evidencia de cada uno; listas cotejadas con su fuente y frecuencia, el criterio de coincidencia y quién lo
+resuelve, con aciertos y descartes motivados; nivel de diligencia aplicado y qué lo disparó; monitoreo propuesto con umbral, frecuencia y fecha de
 recalibración; decisiones con regla, responsable y fecha; excepciones al nivel que el perfil pedía, con quién
 las aprobó y hasta cuándo rigen; conservación del expediente con la obligación financiera que la sostiene;
-obligaciones citadas con fuente y país; vacíos y riesgo residual; y qué queda escalado, a quién y con qué
+obligaciones citadas con su fuente, su supervisor y su país; vacíos, riesgo residual y fecha de revisión del
+programa; y qué queda escalado, a quién y con qué
 evidencia lista.
 
 Cuando el alcance toque una decisión que este cargo no puede tomar —si una obligación aplica, si algo se reporta,
