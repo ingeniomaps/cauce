@@ -63,6 +63,10 @@ const MANIFEST = {
       id: { type: 'string' }, agent: { type: 'string' }, exitGate: { type: 'string' },
       phase: { type: 'string', enum: ['discovery', 'delivery'] },
       produces: { type: 'array', items: { type: 'string' } },
+      // El recorrido no lo usa —las etapas corren en orden—, pero el contrato lo trae y al agente se le
+      // pide que reporte lo que el comando imprimió. Rechazarlo hacía que el reintento volviera a
+      // copiarlo hasta agotar el cap, y la corrida moría sin haber hecho nada.
+      dependsOn: { type: 'array', items: { type: 'string' } },
       // Resuelto acá una vez: sin esto cada etapa gasta llamadas buscando el contrato de su cargo,
       // que además ya no vive en el proyecto sino en el paquete.
       skill: { type: 'string' },
@@ -131,11 +135,13 @@ const contract = await agent(
   `1. "node tools/ops.js team show ${CANDIDATE} --json".\n` +
   `   If it fails, run "node tools/ops.js team list", set exists=false, report teams, and stop.\n` +
   `2. "node tools/ops.js agents list --json", which gives each role its resolved path.\n` +
-  `Report exists=true, the manifest fields —name, purpose, outcome, entryAgent, facilitator, ` +
-  `guardrails, stages with id, phase, agent, produces and exitGate, decisionOwners flattened into ` +
-  `owners as domain/agent pairs— and for every stage set skill to "${WORKDIR}/<path>/SKILL.md", where ` +
-  `<path> is what command 2 printed for that stage's agent. That command prints paths relative to ` +
-  `${WORKDIR}, and the stages run from elsewhere, so the prefix is not optional.`,
+  `Report exists=true and these manifest fields: name, purpose, outcome, entryAgent, facilitator, ` +
+  `guardrails, decisionOwners flattened into owners as domain/agent pairs, and stages with id, phase, ` +
+  `agent, produces, dependsOn and exitGate. Drop every other field the command printed — the schema ` +
+  `rejects it, and a retry that copies it again burns the run.\n` +
+  `For every stage set skill to "${WORKDIR}/<path>/SKILL.md", where <path> is what command 2 printed ` +
+  `for that stage's agent. That command prints paths relative to ${WORKDIR}, and the stages run from ` +
+  `elsewhere, so the prefix is not optional.`,
   { schema: MANIFEST, label: 'team-contract' },
 )
 if (!contract) return stop('contract-unavailable', `no se pudo leer el manifiesto de ${CANDIDATE}`)

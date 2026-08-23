@@ -726,3 +726,30 @@ test('agent-eval averigua qué CLI existe en vez de suponerlo', () => {
   assert.match(evalWf, /node \$\{context\.cli\} evaluate \$\{AGENT\} --bench/, 'los bancos')
   assert.match(evalWf, /node \$\{context\.cli\} evaluate \$\{AGENT\} --record/, 'el registro')
 })
+
+// El manifiesto que `team` transcribe sale de un `team.json` real, y su schema es
+// `additionalProperties: false`. Cuando el schema no acepta un campo que el contrato sí tiene, el
+// agente lo copia —le pedimos que reporte lo que el comando imprimió—, el runtime lo rechaza y el
+// reintento vuelve a copiarlo: se acaba el retry cap y la corrida muere sin haber hecho nada. Pasó con
+// `dependsOn`, que está en las etapas de los seis contratos, en dos de cuatro corridas — dos, porque
+// depende de que el agente adivine que tiene que tirar un campo que está en la fuente.
+test('el schema del manifiesto acepta los campos que los contratos de equipo tienen', () => {
+  const teamWf = fs.readFileSync(path.join(WF, 'team.js'), 'utf8')
+  const stageBlock = teamWf.match(/stages: \{ type: 'array', items: \{[\s\S]*?\n {4}\} \} \},/)
+  assert.ok(stageBlock, 'no se encontró el bloque de etapas del schema')
+  const accepted = new Set([...stageBlock[0].matchAll(/([a-zA-Z]+): \{ type:/g)].map((m) => m[1]))
+
+  const teamsDir = path.resolve(__dirname, '..', 'teams', 'system')
+  const real = new Set()
+  for (const slug of fs.readdirSync(teamsDir)) {
+    const file = path.join(teamsDir, slug, 'team.json')
+    if (!fs.existsSync(file)) continue
+    for (const stage of JSON.parse(fs.readFileSync(file, 'utf8')).stages || []) {
+      for (const key of Object.keys(stage)) real.add(key)
+    }
+  }
+  assert.ok(real.size, 'no se leyó ningún contrato de equipo')
+
+  const missing = [...real].filter((key) => !accepted.has(key))
+  assert.deepEqual(missing, [], 'el schema rechaza un campo que el contrato trae, y el reintento lo repite')
+})
