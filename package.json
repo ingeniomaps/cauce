@@ -33,6 +33,7 @@
     "test": "bash test/hooks-smoke.sh && node --test test/*.test.js",
     "coverage": "bash test/coverage.sh",
     "coverage:update": "bash test/coverage.sh --update",
+    "dead-imports": "node test/dead-imports.js",
     "ci": "npm run check && npm run automation:check && npm run integration:check && npm run coverage",
     "prepublishOnly": "npm run ci"
   },
