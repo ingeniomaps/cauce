@@ -4,7 +4,7 @@
 // comandos de `engine/cli/planning.js`.
 //
 // Acá el contrato se mira desde afuera, con una instancia de verdad y su exit code. Los parsers y los
-// validadores que lo sostienen se prueban directo en `engine.test.js`.
+// validadores que lo sostienen se prueban directo en `contracts.test.js`.
 
 const { filesBelow, tempRoot, run, linkEngine } = require('./environment')
 const test = require('node:test')

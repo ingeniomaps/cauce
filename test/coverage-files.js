@@ -27,8 +27,9 @@ const NOT_COVERED = ['automatization/workflows/', 'automatization/shared/']
 //
 // `integrations/state.js` se mueve mucho más —de 64 a 68— y por eso su piso quedó en el mínimo. La
 // causa no es del repo: los tests que ejercitan el CLI lo lanzan como subproceso, y Node fusiona la
-// cobertura de los hijos con lo que alcanzó a escribir cada uno. Medido: `engine.test.js`, que no
-// lanza ninguno, da 61 estable seis veces; sumándole `ops.test.js`, que lanza cinco, va de 64 a 68.
+// cobertura de los hijos con lo que alcanzó a escribir cada uno. Medido cuando esas unidades vivían en
+// un solo archivo —hoy repartidas en `contracts`, `integrations`, `core` y `bootstrap`—: sin lanzar
+// ningún subproceso daba 61 estable seis veces; sumándole `ops.test.js`, que lanzaba cinco, 64 a 68.
 // Mientras las órdenes terminen en `process.exit` no hay forma de probarlas en proceso, así que ese
 // archivo tolera hasta cuatro puntos de regresión a cambio de que el gate no falle al azar.
 const SLACK = 1

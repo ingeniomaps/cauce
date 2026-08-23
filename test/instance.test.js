@@ -4,7 +4,7 @@
 // `onboard` que la reconocen antes de existir. Es la familia de comandos de `engine/cli/instance.js`.
 //
 // Lo que se prueba acá es qué queda escrito en el disco de una empresa y qué se niega a pisarse. La
-// unidad que decide eso —ownership, manifiesto— se prueba directo en `engine.test.js`.
+// unidad que decide eso —ownership, manifiesto— se prueba directo en `core.test.js`.
 
 const { filesBelow, tempRoot, CLI, run, linkEngine } = require('./environment')
 const test = require('node:test')

@@ -93,4 +93,22 @@ function filesBelow(root) {
   })
 }
 
-module.exports = { filesBelow, tempRoot, CLI, run, linkEngine, workflow, workflowStep, workflowCommand }
+// Un `ops.config.json` que pasa el validador, para que cada caso escriba encima sólo el campo que mide.
+// Es una fábrica y no una constante: dos suites lo usan y una lo muta, así que compartir el objeto haría
+// que el orden de las pruebas cambiara lo que la otra ve.
+function opsConfig() {
+  return {
+    $schema: '.ops/engine/schemas/ops-config.schema.json',
+    project: 'Demo',
+    mode: 'embedded',
+    workspaceRoots: [{ name: 'main', path: '.' }],
+    runner: {
+      maxTaskHours: 4,
+      humanCheckpointBetweenMilestones: true,
+      commitPerTask: true,
+      allowPush: false,
+    },
+  }
+}
+
+module.exports = { opsConfig, filesBelow, tempRoot, CLI, run, linkEngine, workflow, workflowStep, workflowCommand }
