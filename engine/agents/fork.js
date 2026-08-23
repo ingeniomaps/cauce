@@ -16,6 +16,7 @@ const path = require('node:path')
 const catalog = require('./catalog')
 const manifest = require('../core/manifest')
 const ownership = require('../core/ownership')
+const { atomicWrite } = require('../core/files')
 
 // Informes, propuestas y veredictos no viajan: son lo que produjo nuestra versión del contrato, y el
 // fork nace para dejar de ser ese contrato. Heredar un veredicto le daría a la copia una garantía que
@@ -48,7 +49,7 @@ function markHistory(target, slug, version, date) {
   const provenance = version ? `del catálogo de Cauce ${version}` : 'del catálogo de Cauce'
   const row = `| ${date} | — | Copiado ${provenance} | — | ${slug} pasa a mantenerlo esta empresa |\n`
   const content = fs.readFileSync(file, 'utf8')
-  fs.writeFileSync(file, content.endsWith('\n') ? content + row : `${content}\n${row}`)
+  atomicWrite(file, content.endsWith('\n') ? content + row : `${content}\n${row}`)
 }
 
 // `date` entra por parámetro en vez de leerse acá: la salida tiene que ser reproducible en una prueba.

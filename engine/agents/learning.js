@@ -3,6 +3,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const catalog = require('./catalog')
+const { atomicWrite } = require('../core/files')
 
 const REQUIRED_SECTIONS = [
   'Hallazgos',
@@ -93,7 +94,7 @@ function reportFiles(dir) {
 function markConsolidated(file) {
   const text = fs.readFileSync(file, 'utf8')
   if (/^status:\s*\S+\s*$/m.test(text)) {
-    return fs.writeFileSync(file, text.replace(/^status:\s*\S+\s*$/m, 'status: consolidated'))
+    return atomicWrite(file, text.replace(/^status:\s*\S+\s*$/m, 'status: consolidated'))
   }
   // Un informe nace con `status`; un registro de corrida no, porque lo escribe el recorrido de
   // evaluación y ahí el dato no existía. Se agrega en vez de exigirle a quien lo escriba que se
@@ -101,7 +102,7 @@ function markConsolidated(file) {
   // convención para eso es depender de que nadie la olvide.
   const front = text.match(/^---\n([\s\S]*?)\n---\n/)
   if (!front) return
-  fs.writeFileSync(file, text.replace(front[0], `---\n${front[1]}\nstatus: consolidated\n---\n`))
+  atomicWrite(file, text.replace(front[0], `---\n${front[1]}\nstatus: consolidated\n---\n`))
 }
 
 // El estado terminal del ciclo. Existía la firma, la aplicación y el historial, y faltaba justo el
@@ -128,7 +129,7 @@ function seal(root, agent, period = '', kind = 'agent') {
   const state = proposalState(text)
   if (state === 'applied') return { file, already: true }
   if (!/^status:\s*\S+\s*$/m.test(text)) throw new Error(`${file} no declara status en su frontmatter.`)
-  fs.writeFileSync(file, text.replace(/^status:\s*\S+\s*$/m, 'status: applied'))
+  atomicWrite(file, text.replace(/^status:\s*\S+\s*$/m, 'status: applied'))
   return { file, already: false }
 }
 
@@ -137,6 +138,9 @@ function prepareReport(root, agent, now = new Date()) {
   const file = path.join(reports, `${isoDate(now)}.md`)
   fs.mkdirSync(reports, { recursive: true })
   if (fs.existsSync(file)) return { file, created: false }
+  // Los sellos de estado de este módulo escriben atómico y esto no, y la diferencia es qué se pierde
+  // si la escritura se corta: allá el archivo ya existía y quedaría truncado, acá no había nada. Un
+  // documento nuevo a medio escribir se ve; uno viejo a medio pisar se lee como si estuviera entero.
   fs.writeFileSync(file, `---
 agent: ${agent}
 date: ${isoDate(now)}
