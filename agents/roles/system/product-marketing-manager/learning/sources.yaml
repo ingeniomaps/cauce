@@ -11,17 +11,17 @@ rules:
 sources:
   - name: Product Marketing Alliance
     url: https://www.productmarketingalliance.com/
-    tier: professional-primary
+    tier: profession
     topics: [positioning, messaging, gtm, launches, enablement]
   - name: ICC Advertising Code
     url: https://iccwbo.org/business-solutions/the-icc-advertising-and-marketing-communications-code/
-    tier: primary-code
+    tier: standard
     topics: [responsible-marketing, substantiation, transparency]
   - name: FTC Advertising and Marketing
     url: https://www.ftc.gov/business-guidance/advertising-marketing
-    tier: government-primary
+    tier: regulation
     topics: [claims, endorsements, disclosures]
   - name: Strategyzer Value Proposition Canvas
     url: https://www.strategyzer.com/library/the-value-proposition-canvas
-    tier: primary-method
+    tier: profession
     topics: [customer-needs, value-proposition]

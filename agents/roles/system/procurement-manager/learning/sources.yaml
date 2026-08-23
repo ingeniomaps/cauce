@@ -11,17 +11,17 @@ rules:
 sources:
   - name: ISO 20400 sustainable procurement
     url: https://www.iso.org/standard/63026.html
-    tier: standards-primary
+    tier: standard
     topics: [procurement, sustainability, governance, lifecycle]
   - name: OECD due diligence for responsible business conduct
     url: https://www.oecd.org/en/topics/sub-issues/due-diligence-guidance-for-responsible-business-conduct.html
-    tier: intergovernmental-primary
+    tier: standard
     topics: [due-diligence, supply-chain, human-rights, integrity, environment]
   - name: UNCITRAL Model Law on Public Procurement
     url: https://uncitral.un.org/en/texts/procurement/modellaw/public_procurement
-    tier: international-primary
+    tier: standard
     topics: [competition, objectivity, transparency, integrity, challenge]
   - name: NIST SP 800-161 Rev 1
     url: https://csrc.nist.gov/pubs/sp/800/161/r1/upd1/final
-    tier: government-primary
+    tier: standard
     topics: [technology, supply-chain, cybersecurity, supplier-risk]

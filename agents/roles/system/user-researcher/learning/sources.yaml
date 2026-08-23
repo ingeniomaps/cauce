@@ -10,17 +10,18 @@ rules:
 sources:
   - name: GOV.UK User Research
     url: https://www.gov.uk/service-manual/user-research
-    tier: public-standard
+    tier: regulation
     topics: [planning, consent, privacy, recruitment, analysis]
   - name: Nielsen Norman Group
     url: https://www.nngroup.com/articles/
-    tier: primary-practitioner
+    tier: profession
     topics: [methods, usability, synthesis]
   - name: UK Government Social Research Ethics
     url: https://www.gov.uk/government/publications/government-social-research-framework-for-research-ethics
-    tier: public-standard
+    tier: regulation
     topics: [ethics, harm, consent]
   - name: Interaction Design Foundation
     url: https://www.interaction-design.org/literature/topics/user-research
-    tier: secondary-practitioner
+    tier: profession
+    authority: secondary
     topics: [methods, bias, synthesis]

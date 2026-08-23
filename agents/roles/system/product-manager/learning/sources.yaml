@@ -10,21 +10,21 @@ rules:
 sources:
   - name: SVPG
     url: https://www.svpg.com/articles/
-    tier: primary-practitioner
+    tier: profession
     topics: [discovery, strategy, product-model]
   - name: Atlassian Product Management
     url: https://www.atlassian.com/agile/product-management
-    tier: primary-practitioner
+    tier: profession
     topics: [role, prioritization, roadmaps]
   - name: Scrum Guide
     url: https://scrumguides.org/
-    tier: primary-standard
+    tier: standard
     topics: [scrum, product-goal, product-backlog]
   - name: MetaGPT
     url: https://github.com/FoundationAgents/MetaGPT
-    tier: primary-project
+    tier: project
     topics: [ai-agents, product-manager]
   - name: Product Manager Skills
     url: https://github.com/deanpeters/Product-Manager-Skills
-    tier: community
+    tier: project
     topics: [workflows, methods, evaluations]

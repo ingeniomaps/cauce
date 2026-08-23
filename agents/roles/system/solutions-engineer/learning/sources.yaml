@@ -11,17 +11,17 @@ rules:
 sources:
   - name: ISO IEC IEEE 42010 architecture description
     url: https://www.iso.org/standard/74393.html
-    tier: standards-primary
+    tier: standard
     topics: [architecture, concerns, viewpoints, decisions]
   - name: ISO IEC 25010 product quality model
     url: https://www.iso.org/standard/78176.html
-    tier: standards-primary
+    tier: standard
     topics: [quality, requirements, evaluation, acceptance]
   - name: NIST Cybersecurity Framework 2.0
     url: https://www.nist.gov/publications/nist-cybersecurity-framework-csf-20
-    tier: government-primary
+    tier: standard
     topics: [cybersecurity, risk, governance, profiles]
   - name: OpenAPI Specification latest published
     url: https://spec.openapis.org/oas/latest.html
-    tier: specification-primary
+    tier: project
     topics: [api, contracts, compatibility, tooling]

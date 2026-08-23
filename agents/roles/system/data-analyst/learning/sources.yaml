@@ -11,17 +11,17 @@ rules:
 sources:
   - name: NIST Statistical Methods Handbook
     url: https://www.itl.nist.gov/div898/handbook/
-    tier: primary-method
+    tier: standard
     topics: [statistics, exploration, uncertainty, modeling]
   - name: ASA Ethical Guidelines
     url: https://www.amstat.org/your-career/ethical-guidelines-for-statistical-practice
-    tier: professional-primary
+    tier: profession
     topics: [ethics, transparency, communication, data]
   - name: UK Reproducible Analytical Pipelines
     url: https://analysisfunction.civilservice.gov.uk/support/reproducible-analytical-pipelines/
-    tier: government-primary
+    tier: regulation
     topics: [reproducibility, automation, testing]
   - name: Eurostat Quality Assurance
     url: https://ec.europa.eu/eurostat/web/quality/european-quality-standards/european-statistics-code-of-practice
-    tier: government-primary
+    tier: regulation
     topics: [quality, methodology, coherence, timeliness]

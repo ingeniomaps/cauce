@@ -11,17 +11,17 @@ rules:
 sources:
   - name: MDN Web Docs
     url: https://developer.mozilla.org/
-    tier: primary-reference
+    tier: platform
     topics: [html, css, javascript, browser-apis, compatibility]
   - name: W3C WAI
     url: https://www.w3.org/WAI/
-    tier: primary-standard
+    tier: standard
     topics: [wcag, aria, accessibility]
   - name: OWASP Cheat Sheet Series
     url: https://cheatsheetseries.owasp.org/
-    tier: primary-security
+    tier: standard
     topics: [xss, csp, browser-security, session]
   - name: web.dev
     url: https://web.dev/
-    tier: primary-platform-practitioner
+    tier: platform
     topics: [performance, web-vitals, responsive, testing]

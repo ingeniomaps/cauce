@@ -11,17 +11,17 @@ rules:
 sources:
   - name: ASA Ethical Guidelines for Statistical Practice
     url: https://www.amstat.org/your-career/ethical-guidelines-for-statistical-practice
-    tier: professional-primary
+    tier: profession
     topics: [ethics, integrity, data, methods, communication]
   - name: NIST SEMATECH e-Handbook of Statistical Methods
     url: https://www.itl.nist.gov/div898/handbook/
-    tier: government-primary
+    tier: standard
     topics: [statistics, experiments, exploration, modeling, assumptions]
   - name: ISO 3534-1 statistical vocabulary and probability
     url: https://www.iso.org/standard/40145.html
-    tier: standards-primary
+    tier: standard
     topics: [statistics, probability, vocabulary, symbols]
   - name: ISO IEC 25012 data quality model
     url: https://www.iso.org/standard/35736.html
-    tier: standards-primary
+    tier: standard
     topics: [data-quality, requirements, measures, evaluation]

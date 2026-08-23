@@ -11,27 +11,27 @@ rules:
 sources:
   - name: ISTQB CTFL
     url: https://www.istqb.org/certifications/certified-tester-foundation-level-ctfl-v4-0/
-    tier: professional-primary
+    tier: profession
     topics: [testing-principles, techniques, risk, defects]
   - name: ISO IEC 25010
     url: https://www.iso.org/standard/78176.html
-    tier: primary-standard
+    tier: standard
     topics: [product-quality-model]
   - name: OWASP Web Security Testing Guide
     url: https://owasp.org/www-project-web-security-testing-guide/
-    tier: primary-security
+    tier: standard
     topics: [authorized-security-testing, web]
   - name: W3C WCAG 2.2
     url: https://www.w3.org/TR/WCAG22/
-    tier: primary-standard
+    tier: standard
     topics: [accessibility, conformance]
   - name: OWASP Top 10
     url: https://owasp.org/Top10/2025/0x00_2025-Introduction/
-    tier: primary-security
+    tier: standard
     topics: [web-risk-model, supply-chain, misconfiguration, exceptional-conditions]
   - name: W3C WCAG 2.2 Errata
     url: https://www.w3.org/WAI/WCAG22/errata/
-    tier: primary-standard
+    tier: standard
     topics: [accessibility, errata]
   # Edición 2.0 del 2025-09-24, que **reemplaza** a ISO/IEC 40500:2012 — la identidad ISO de
   # WCAG 2.0—. Por eso el nombre lleva el año: «ISO/IEC 40500» a secas es ambiguo entre dos
@@ -41,7 +41,7 @@ sources:
   # 2025-10-21. Es ficha de catálogo: el texto de la norma no se leyó (informe 2026-08-22, H1).
   - name: ISO IEC 40500:2025
     url: https://www.iso.org/standard/91029.html
-    tier: primary-standard
+    tier: standard
     topics: [accessibility, conformance, iso-identity]
   # Extensión de 25010 para sistemas de IA. La única edición publicada es la de 2023 y su comité
   # es SC 42 —no SC 7—; ficha legible en https://webstore.iec.ch/en/publication/86756.
@@ -50,14 +50,14 @@ sources:
   # DIS de la primera edición, no el de la revisión (informe 2026-08-22, H2).
   - name: ISO IEC 25059:2023
     url: https://www.iso.org/standard/80655.html
-    tier: primary-standard
+    tier: standard
     topics: [ai-quality-model, product-quality-model]
   # Página de la certificación, no el anuncio: el syllabus vigente es v2.0 GA del 2026-04-17, y
   # anotarlo con su versión es lo que permite que la próxima corrida compare contra un documento y
   # no contra un titular (informe 2026-08-22, H3).
   - name: ISTQB CT-AI
     url: https://istqb.org/certifications/certified-tester-ai-testing-ct-ai/
-    tier: professional-primary
+    tier: profession
     topics: [ai-testing, probabilistic-oracles, metamorphic-testing, drift, red-teaming]
   # Pendientes de registrar en 2026-09: ISO/IEC 25002 (visión general) e ISO/IEC 25019
   # (calidad en uso). No se registran ahora porque no tengo su URL verificada, y

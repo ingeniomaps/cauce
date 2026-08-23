@@ -11,17 +11,17 @@ rules:
 sources:
   - name: DORA continuous delivery
     url: https://dora.dev/capabilities/continuous-delivery/
-    tier: primary-research
+    tier: profession
     topics: [continuous-delivery, testing, security, observability, outcomes]
   - name: DORA deployment automation
     url: https://dora.dev/capabilities/deployment-automation/
-    tier: primary-research
+    tier: profession
     topics: [automation, artifacts, configuration, repeatability, audit]
   - name: Google SRE Release Engineering
     url: https://sre.google/sre-book/release-engineering/
-    tier: professional-primary
+    tier: profession
     topics: [build, release, canary, rollout, rollback, configuration]
   - name: SLSA specification version 1.2
     url: https://slsa.dev/spec/v1.2/
-    tier: standards-primary
+    tier: standard
     topics: [software-supply-chain, provenance, source, build, attestations]

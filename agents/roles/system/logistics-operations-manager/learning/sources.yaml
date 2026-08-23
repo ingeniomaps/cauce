@@ -15,7 +15,7 @@ sources:
   # que es cómo se corrige un evento ya emitido sin borrarlo.
   - name: GS1 EPCIS Standard 2.0
     url: https://ref.gs1.org/standards/epcis/
-    tier: primary-standard
+    tier: standard
     topics: [visibility-events, event-chronology, error-declaration]
   # Verificado el 2026-08-22: misma ruta, portada «Core Business Vocabulary (CBV) Standard, Release 2.0,
   # Ratified, Jun 2022». Se leyeron las listas de `disposition` —incluye `in_transit`, `damaged`,
@@ -23,14 +23,14 @@ sources:
   # homologación de códigos crudos, no un catálogo que las transportadoras usen por defecto.
   - name: GS1 Core Business Vocabulary 2.0
     url: https://ref.gs1.org/standards/cbv/
-    tier: primary-standard
+    tier: standard
     topics: [disposition-codes, business-steps, exception-vocabulary]
   # Verificado el 2026-08-22: «The Kanban Guide», mayo de 2025. Cita literal de Work Item Age —«the
   # elapsed time between when a work item started and the current date»— y de la Service Level
   # Expectation como pronóstico con período y probabilidad. Es la base de medir la cola por espera.
   - name: The Kanban Guide (2025-05)
     url: https://kanbanguides.org/english/
-    tier: professional-primary
+    tier: profession
     topics: [flow-metrics, work-item-age, service-level-expectation, wip]
   # Verificado el 2026-08-22: Resolución 3038 de 2011 de la CRC, del 2011-04-04, Diario Oficial 48.033,
   # «Régimen de Protección de los Derechos de los Usuarios de los Servicios Postales». Cubre PQR,
@@ -39,7 +39,7 @@ sources:
   # Alcance: servicios postales en Colombia. No se extiende a transporte de carga ni a otro país.
   - name: Resolución CRC 3038 de 2011 (Colombia)
     url: https://normograma.crcom.gov.co/crc/compilacion/docs/resolucion_crc_3038_2011.htm
-    tier: primary-regulation
+    tier: regulation
     topics: [postal-user-rights, claims, indemnification, delivery-times, undelivered-items]
   # Verificado el 2026-08-22 sólo en parte: la página es la Resolución CRC 5050 de 2016 y su sección de
   # definiciones trae el CUN —el código con el que el usuario sigue su PQR o su solicitud de
@@ -47,7 +47,7 @@ sources:
   # el documento es largo y el fragmento obtenido corta antes. Para citar un artículo, abrirla de nuevo.
   - name: Resolución CRC 5050 de 2016 (Colombia, compilatoria)
     url: https://gestornormativo.creg.gov.co/gestor/entorno/docs/resolucion_crc_5050_2016.htm
-    tier: primary-regulation
+    tier: regulation
     topics: [postal-user-rights, cun, claims]
   # Verificado el 2026-08-22: la página lista las Actas vigentes —Constitución (Abiyán 2021), Reglamento
   # General (Riad 2023), Convenio Postal Universal y su Protocolo Final (Riad 2023), Acuerdo de Servicios
@@ -55,7 +55,7 @@ sources:
   # sólo consta qué actos están en vigor y de qué Congreso.
   - name: Actos de la UPU en vigor
     url: https://www.upu.int/en/universal-postal-union/about-upu/acts
-    tier: primary-regulation
+    tier: regulation
     topics: [cross-border-postal, convention, claims]
   # Pendientes de registrar en 2026-09, con lo que impidió verificarlas el 2026-08-22:
   #   - ISO 10002 (gestión de quejas): iso.org devuelve 403 y no se encontró ficha legible en el

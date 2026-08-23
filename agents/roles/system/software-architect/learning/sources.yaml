@@ -11,17 +11,17 @@ rules:
 sources:
   - name: ISO IEC IEEE 42010
     url: https://www.iso.org/standard/74393.html
-    tier: primary-standard
+    tier: standard
     topics: [architecture-description, stakeholders, viewpoints]
   - name: C4 model
     url: https://c4model.com/
-    tier: primary-method
+    tier: profession
     topics: [diagrams, context, containers, components, deployment]
   - name: SEI ATAM
     url: https://www.sei.cmu.edu/library/architecture-tradeoff-analysis-method-collection/
-    tier: primary-method
+    tier: profession
     topics: [quality-attributes, scenarios, tradeoffs]
   - name: arc42
     url: https://arc42.org/
-    tier: primary-project
+    tier: project
     topics: [architecture-documentation, decisions, risks]

@@ -11,17 +11,17 @@ rules:
 sources:
   - name: IFRS Accounting Standards
     url: https://www.ifrs.org/issued-standards/list-of-standards/
-    tier: primary-standard
+    tier: standard
     topics: [accounting, reporting, presentation, disclosure]
   - name: COSO Internal Control
     url: https://www.coso.org/guidance-on-ic
-    tier: primary-framework
+    tier: standard
     topics: [internal-control, risk, control-activities, monitoring]
   - name: ISO 31000
     url: https://www.iso.org/iso-31000-risk-management.html
-    tier: primary-standard
+    tier: standard
     topics: [risk-management, governance, decisions]
   - name: IAASB Standards and resources
     url: https://www.iaasb.org/publications-resources
-    tier: primary-standard-setter
+    tier: standard
     topics: [audit, evidence, estimates, professional-skepticism]

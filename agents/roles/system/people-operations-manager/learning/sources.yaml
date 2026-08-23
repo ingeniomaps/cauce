@@ -11,25 +11,25 @@ rules:
 sources:
   - name: ILO Fundamental Principles and Rights at Work
     url: https://www.ilo.org/topics-and-sectors/fundamental-principles-and-rights-work
-    tier: international-primary
+    tier: standard
     topics: [rights, discrimination, collective-bargaining, safety]
   - name: ISO 30405 recruitment guidelines
     url: https://www.iso.org/standard/79488.html
-    tier: standards-primary
+    tier: standard
     topics: [recruitment, assessment, candidate-experience, learning]
   - name: ISO 30414 human capital reporting and disclosure
     url: https://www.iso.org/standard/30414
-    tier: standards-primary
+    tier: standard
     topics: [reporting, governance, workforce, wellbeing, development]
   - name: EEOC artificial intelligence publications
     url: https://www.eeoc.gov/eeoc-publications
-    tier: regulator-primary-us
+    tier: regulation
     topics: [employment-ai, discrimination, accessibility, adverse-impact]
   - name: ICO employment information
     url: https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/employment/
-    tier: regulator-primary-uk
+    tier: regulation
     topics: [employment-data, records, health, monitoring, automated-decisions]
   - name: NIST AI Risk Management Framework
     url: https://www.nist.gov/itl/ai-risk-management-framework
-    tier: government-primary
+    tier: standard
     topics: [ai-governance, risk, measurement, oversight]

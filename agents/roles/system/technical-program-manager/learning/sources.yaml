@@ -9,7 +9,7 @@ rules:
 # El contexto de la empresa no es una fuente de la profesión: vive en
 # organization/roles/technical-program-manager.md dentro de cada instalación.
 sources:
-  - {name: ISO 21503 programme management, url: "https://www.iso.org/cms/%20render/live/en/sites/isoorg/contents/data/standard/08/28/82868.html", tier: standards-primary, topics: [programme, roles, responsibilities, practices]}
-  - {name: ISO 21502 project management, url: "https://committee.iso.org/sites/tc258/home/projects/published/iso-21502.html", tier: standards-primary, topics: [project, adaptive, predictive, hybrid]}
-  - {name: ISO 31000 risk management, url: "https://www.iso.org/standard/65694.html", tier: standards-primary, topics: [risk, principles, process]}
-  - {name: PMI standards and Program Management Fifth Edition, url: "https://www.pmi.org/standards/", tier: professional-primary, topics: [program, benefits, collaboration, principles]}
+  - {name: ISO 21503 programme management, url: "https://www.iso.org/cms/%20render/live/en/sites/isoorg/contents/data/standard/08/28/82868.html", tier: standard, topics: [programme, roles, responsibilities, practices]}
+  - {name: ISO 21502 project management, url: "https://committee.iso.org/sites/tc258/home/projects/published/iso-21502.html", tier: standard, topics: [project, adaptive, predictive, hybrid]}
+  - {name: ISO 31000 risk management, url: "https://www.iso.org/standard/65694.html", tier: standard, topics: [risk, principles, process]}
+  - {name: PMI standards and Program Management Fifth Edition, url: "https://www.pmi.org/standards/", tier: profession, topics: [program, benefits, collaboration, principles]}

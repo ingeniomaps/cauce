@@ -11,17 +11,17 @@ rules:
 sources:
   - name: Android Developers Core app quality
     url: https://developer.android.com/docs/quality-guidelines/core-app-quality
-    tier: platform-primary
+    tier: platform
     topics: [quality, compatibility, performance, security]
   - name: Apple Human Interface Guidelines
     url: https://developer.apple.com/design/human-interface-guidelines/
-    tier: platform-primary
+    tier: platform
     topics: [interaction, accessibility, privacy, platform-conventions]
   - name: OWASP Mobile Application Security
     url: https://mas.owasp.org/MASVS/
-    tier: primary-security
+    tier: standard
     topics: [storage, authentication, network, platform, privacy]
   - name: W3C Mobile Accessibility
     url: https://www.w3.org/WAI/standards-guidelines/mobile/
-    tier: primary-standard
+    tier: standard
     topics: [accessibility, wcag, mobile]

@@ -10,17 +10,17 @@ rules:
 sources:
   - name: W3C Web Accessibility Initiative
     url: https://www.w3.org/WAI/
-    tier: primary-standard
+    tier: standard
     topics: [accessibility, wcag, cognitive-accessibility]
   - name: ISO Human-centred Design
     url: https://www.iso.org/standard/77520.html
-    tier: primary-standard
+    tier: standard
     topics: [human-centred-design, lifecycle]
   - name: Nielsen Norman Group
     url: https://www.nngroup.com/articles/
-    tier: primary-practitioner
+    tier: profession
     topics: [interaction-design, information-architecture, usability]
   - name: GOV.UK Design System
     url: https://design-system.service.gov.uk/
-    tier: public-design-system
+    tier: platform
     topics: [patterns, content, accessibility]

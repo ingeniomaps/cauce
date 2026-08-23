@@ -22,57 +22,57 @@ sources:
   # su contenido sale de este cargo como verificada mientras no se lea ahí.
   - name: FATF Recommendations
     url: https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Fatf-recommendations.html
-    tier: international-primary
+    tier: standard
     status: unverified-403
     topics: [risk-based-approach, cdd, pep, record-keeping, suspicious-transaction-reporting]
   # Organismo regional de tipo GAFI. Su página de miembros enumera 18 países e incluye a los ocho de
   # esta operación: CO, EC, GT, PA, CL, MX, PY, PE.
   - name: GAFILAT
     url: https://www.gafilat.org/index.php/es/
-    tier: regional-primary
+    tier: standard
     topics: [latam, mutual-evaluations, regional-typologies]
   # Versión en español de las 40 Recomendaciones. La página describe la revisión de febrero de 2012,
   # así que puede ir por detrás del texto vigente: sirve para leer, no para fechar.
   - name: GAFILAT — Las 40 Recomendaciones
     url: https://www.gafilat.org/index.php/es/las-40-recomendaciones
-    tier: regional-primary
+    tier: standard
     topics: [fatf-recommendations-spanish]
   # Comité de Basilea, 2 de julio de 2020. La guía base de 2016 —d353— figura en bis.org marcada como
   # «Superseded»; la versión en vigor se confirma en el marco consolidado antes de citarla.
   - name: BCBS — Sound management of ML/FT risks (supervisory cooperation)
     url: https://www.bis.org/bcbs/publ/d505.htm
-    tier: international-primary
+    tier: standard
     topics: [supervision, aml-cft-risk-management, account-opening]
   # Práctica de industria bancaria, no norma. Publicaciones visibles el 2026-08-22 sobre enfoque basado
   # en riesgo (2026), monitoreo de actividad sospechosa (2025) y transparencia de pagos (2024).
   - name: Wolfsberg Group
     url: https://wolfsberg-group.org/
-    tier: industry-primary
+    tier: standard
     topics: [risk-based-approach, correspondent-banking, transaction-monitoring]
   # Revisión 4, publicada el 26 de agosto de 2025. Marco técnico estadounidense: da vocabulario para
   # decir qué tan fuerte es una verificación —niveles IAL, comprobación remota y presencial—, no
   # obligación para estas ocho jurisdicciones.
   - name: NIST SP 800-63A rev. 4 — Identity Proofing and Enrollment
     url: https://pages.nist.gov/800-63-4/sp800-63a.html
-    tier: technical-primary
+    tier: standard
     topics: [identity-proofing, assurance-levels, remote-verification]
   # Red de unidades de inteligencia financiera. Deja escrito qué hace una UIF y qué no: la página
   # aclara que el grupo no conduce investigaciones financieras.
   - name: Egmont Group
     url: https://egmontgroup.org/
-    tier: international-primary
+    tier: standard
     topics: [fiu-cooperation, information-exchange]
   # El 2026-08-22 la URL respondió 302 hacia un archivo firmado y temporal: la descarga se rehace desde
   # esta dirección en cada uso, nunca desde el enlace redirigido, que caduca.
   - name: UN Security Council Consolidated Sanctions List
     url: https://scsanctions.un.org/consolidated/
-    tier: sanctions-primary
+    tier: advisory
     topics: [sanctions-screening, consolidated-list]
   # Su aplicabilidad depende del vínculo con esa jurisdicción y de qué declare cotejar el programa de
   # la empresa; no se asume por defecto.
   - name: OFAC — Specially Designated Nationals (SDN) List
     url: https://sanctionslist.ofac.treas.gov/Home/SdnList
-    tier: sanctions-primary
+    tier: advisory
     topics: [sanctions-screening, us-jurisdiction]
 
 # Autoridades por país. Sólo entran las que se pudieron abrir: una autoridad citada de memoria es

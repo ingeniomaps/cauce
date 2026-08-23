@@ -11,17 +11,17 @@ rules:
 sources:
   - name: ISO 44001 collaborative business relationships
     url: https://www.iso.org/standard/72798.html
-    tier: standards-primary
+    tier: standard
     topics: [collaboration, relationships, governance, lifecycle]
   - name: OECD due diligence for responsible business conduct
     url: https://www.oecd.org/en/publications/oecd-due-diligence-guidance-for-responsible-business-conduct_15f5f4b3-en.html
-    tier: intergovernmental-primary
+    tier: standard
     topics: [due-diligence, human-rights, environment, bribery, consumers]
   - name: NIST CSF 2.0 cybersecurity supply chain risk management
     url: https://csrc.nist.gov/pubs/sp/1305/final
-    tier: government-primary
+    tier: standard
     topics: [supply-chain, cybersecurity, requirements, roles]
   - name: NIST cybersecurity supply chain due diligence assessment
     url: https://csrc.nist.gov/pubs/sp/1326/final
-    tier: government-primary
+    tier: standard
     topics: [due-diligence, assessment, suppliers, evidence]

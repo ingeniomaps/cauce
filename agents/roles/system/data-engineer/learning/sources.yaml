@@ -11,17 +11,17 @@ rules:
 sources:
   - name: ISO IEC 25012 data quality model
     url: https://www.iso.org/standard/35736.html
-    tier: standards-primary
+    tier: standard
     topics: [data-quality, requirements, measures, evaluation]
   - name: ISO 8000-61 data quality management process reference model
     url: https://www.iso.org/standard/63086.html
-    tier: standards-primary
+    tier: standard
     topics: [data-quality, process, capability, maturity]
   - name: W3C PROV-O provenance ontology
     url: https://www.w3.org/TR/prov-o/
-    tier: standards-primary
+    tier: standard
     topics: [provenance, lineage, entities, activities, agents]
   - name: NIST Privacy Framework 1.0
     url: https://csrc.nist.gov/pubs/cswp/10/nist-privacy-framework-version-10/final
-    tier: government-primary
+    tier: standard
     topics: [privacy, data-processing, risk, governance]

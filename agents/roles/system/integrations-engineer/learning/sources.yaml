@@ -18,14 +18,14 @@ sources:
   # duplica un efecto, y la que muestra que POST no está en esa lista.
   - name: RFC 9110 HTTP Semantics
     url: https://www.rfc-editor.org/rfc/rfc9110.html
-    tier: primary-standard
+    tier: standard
     topics: [http-semantics, idempotent-methods, status-codes, retry-safety]
 
   # Formato de error legible por máquina. Obsoleta a la RFC 7807: un contrato que cita «7807» está
   # citando el documento reemplazado, y la diferencia importa cuando el partner valida el cuerpo.
   - name: RFC 9457 Problem Details for HTTP APIs
     url: https://www.rfc-editor.org/rfc/rfc9457.html
-    tier: primary-standard
+    tier: standard
     topics: [error-model, partner-facing-contract, machine-readable-errors]
 
   # BCP 240, enero de 2025. Exige coincidencia exacta del redirect URI, y refresh tokens rotados o
@@ -33,14 +33,14 @@ sources:
   # proveedor de identidad sin opinar de memoria.
   - name: RFC 9700 Best Current Practice for OAuth 2.0 Security
     url: https://www.rfc-editor.org/rfc/rfc9700.html
-    tier: primary-standard
+    tier: standard
     topics: [oauth, token-security, redirect-uri, refresh-token-rotation]
 
   # API10:2023 «Unsafe Consumption of APIs» es literalmente este cargo: el riesgo de confiar en el
   # tercero más de lo que se confiaría en un usuario. API9 cubre inventario y versiones expuestas.
   - name: OWASP API Security Top 10 2023
     url: https://owasp.org/API-Security/editions/2023/en/0x11-t10/
-    tier: primary-security
+    tier: standard
     topics: [api-risk-model, unsafe-consumption, inventory-management, ssrf]
 
   # La versión vigente al 2026-08-22 es la 3.2.0, publicada el 2025-09-19, y define `webhooks` como
@@ -48,7 +48,7 @@ sources:
   # declarar también lo que se le envía.
   - name: OpenAPI Specification 3.2.0
     url: https://spec.openapis.org/oas/latest.html
-    tier: primary-standard
+    tier: project
     topics: [api-contract, partner-facing-contract, webhooks, versioning]
 
   # Convención de versionado con sólo versión mayor en la ruta y canales de estabilidad. Sirve como
@@ -56,7 +56,7 @@ sources:
   # empresa, no una norma, y así se cita.
   - name: Google AIP-185 API Versioning
     url: https://google.aip.dev/185
-    tier: professional-primary
+    tier: profession
     topics: [versioning, breaking-changes, stability-channels]
 
   # Capítulo 21, «Handling Overload». De acá sale la regla de que reintenta sólo la capa que llama al
@@ -64,7 +64,7 @@ sources:
   # como proporción del tráfico. No habla de dispersión (jitter): eso no se le atribuye.
   - name: Google SRE Book — Handling Overload
     url: https://sre.google/sre-book/handling-overload/
-    tier: professional-primary
+    tier: profession
     topics: [retry-budget, retry-amplification, overload, degradation]
 
   # Cadencia trimestral, cada versión estable soportada al menos 12 meses y con no menos de 9 meses de
@@ -72,7 +72,7 @@ sources:
   # el contraste con el que no la publica es lo que hay que diseñar.
   - name: Shopify — API versioning
     url: https://shopify.dev/docs/api/usage/versioning
-    tier: vendor-primary
+    tier: platform
     topics: [third-party-versioning, deprecation-window, breaking-changes]
 
   # El proveedor declara por escrito que no garantiza el orden dentro de un topic ni entre topics del
@@ -80,7 +80,7 @@ sources:
   # `X-Shopify-Webhook-Id` y conciliar. Es la cita que sostiene «asumir al menos una vez y sin orden».
   - name: Shopify — Webhook best practices
     url: https://shopify.dev/docs/apps/build/webhooks/best-practices
-    tier: vendor-primary
+    tier: platform
     topics: [webhooks, at-least-once, out-of-order, deduplication, reconciliation]
 
   # Guarda código y cuerpo de la primera respuesta por clave y los repite en el reintento, incluido un
@@ -89,7 +89,7 @@ sources:
   # y ninguno es deducible del concepto de idempotencia.
   - name: Stripe — Idempotent requests
     url: https://docs.stripe.com/api/idempotent_requests
-    tier: vendor-primary
+    tier: platform
     topics: [idempotency-key, retry-safety, payments, deduplication-window]
 
   # Firma, cabeceras y verificación de webhooks, con comité técnico de varias empresas. La página
@@ -97,7 +97,7 @@ sources:
   # verificó**, así que se cita como convención de la industria y no como norma con edición.
   - name: Standard Webhooks
     url: https://www.standardwebhooks.com/
-    tier: industry-convention
+    tier: project
     topics: [webhooks, signature-scheme, headers, replay-protection]
 
   # Registrado para que nadie lo cite como estándar: es un Internet-Draft **expirado**. Última
@@ -106,7 +106,8 @@ sources:
   # por norma, y cada proveedor decide su ventana y su semántica.
   - name: draft-ietf-httpapi-idempotency-key-header (expirado)
     url: https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/
-    tier: expired-draft
+    tier: standard
+    status: expired
     topics: [idempotency-key, not-a-standard]
 
 # Pendiente de registrar: AWS Builders' Library, «Timeouts, retries, and backoff with jitter», que es

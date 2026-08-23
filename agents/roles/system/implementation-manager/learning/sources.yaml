@@ -11,17 +11,17 @@ rules:
 sources:
   - name: ISO 21502 project management guidance
     url: https://www.iso.org/standard/74947.html
-    tier: standards-primary
+    tier: standard
     topics: [projects, governance, delivery, outcomes]
   - name: ISO 10005 quality plans
     url: https://www.iso.org/standard/70398.html
-    tier: standards-primary
+    tier: standard
     topics: [quality, plans, acceptance, revision]
   - name: ISO IEC 20000-1 service management
     url: https://www.iso.org/standard/70636.html
-    tier: standards-primary
+    tier: standard
     topics: [service, transition, delivery, improvement]
   - name: NIST CSF 2.0 Organizational Profiles
     url: https://www.nist.gov/cyberframework/profiles
-    tier: government-primary
+    tier: standard
     topics: [security, current-profile, target-profile, gaps]

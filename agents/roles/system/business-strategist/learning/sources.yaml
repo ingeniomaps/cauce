@@ -11,17 +11,17 @@ rules:
 sources:
   - name: OECD Strategic Foresight
     url: https://www.oecd.org/strategic-foresight/
-    tier: primary-practice
+    tier: standard
     topics: [uncertainty, scenarios, foresight]
   - name: UK Government Green Book
     url: https://www.gov.uk/government/publications/the-green-book-appraisal-and-evaluation-in-central-government
-    tier: government-primary
+    tier: regulation
     topics: [options, appraisal, costs, benefits, risk]
   - name: ISO 56002
     url: https://www.iso.org/standard/68221.html
-    tier: primary-standard
+    tier: standard
     topics: [innovation, opportunities, learning]
   - name: Strategyzer Business Model Canvas
     url: https://www.strategyzer.com/library/the-business-model-canvas
-    tier: primary-method
+    tier: profession
     topics: [business-model, value-proposition, activities, economics]

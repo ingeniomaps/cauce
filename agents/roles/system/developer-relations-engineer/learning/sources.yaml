@@ -11,17 +11,17 @@ rules:
 sources:
   - name: OpenAPI Specification latest published
     url: https://spec.openapis.org/oas/latest.html
-    tier: specification-primary
+    tier: project
     topics: [api, contracts, versions, compatibility]
   - name: NIST Secure Software Development Framework
     url: https://csrc.nist.gov/pubs/sp/800/218/final
-    tier: government-primary
+    tier: standard
     topics: [secure-development, software, provenance, vulnerabilities]
   - name: W3C Web Content Accessibility Guidelines 2.2
     url: https://www.w3.org/TR/WCAG22/
-    tier: standards-primary
+    tier: standard
     topics: [accessibility, web, conformance, testing]
   - name: Open Source Guides building welcoming communities
     url: https://opensource.guide/building-community/
-    tier: practitioner-primary
+    tier: project
     topics: [community, contributors, inclusion, conduct]

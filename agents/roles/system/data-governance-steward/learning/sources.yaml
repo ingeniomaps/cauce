@@ -16,50 +16,50 @@ sources:
   # verificado es su identidad y su estado, no su contenido. Citarla exige nombrar la edición.
   - name: ISO IEC 38505-1
     url: https://webstore.iec.ch/en/publication/60383
-    tier: primary-standard
+    tier: standard
     topics: [data-governance, accountability, value-risk-constraint, lifecycle]
   # Ficha abierta el 2026-08-22: edición 4.0 del 2023-01-16, JTC 1/SC 32. Texto no leído.
   - name: ISO IEC 11179-1:2023
     url: https://webstore.iec.ch/en/publication/81976
-    tier: primary-standard
+    tier: standard
     topics: [metadata-registry, definition-identity, naming, versioning]
   # Página oficial de DAMA International abierta el 2026-08-22: presenta la 2.ª edición y anuncia un
   # proyecto DMBOK 3.0 iniciado en 2025. El cuerpo del libro no se leyó; la página misma aclara que
   # el marco es un subconjunto curado y no un inventario exhaustivo.
   - name: DAMA-DMBOK
     url: https://www.dama.org/cpages/body-of-knowledge
-    tier: professional-primary
+    tier: profession
     topics: [data-governance, metadata, data-quality, stewardship, ethics]
   # Página del framework abierta el 2026-08-22: declara DCAM v3 con 8 componentes, 34 capacidades y
   # puntaje por compromiso, proceso y evidencia. El documento está tras registro y no se abrió: sirve
   # para medir madurez, y madurez no es cumplimiento.
   - name: EDM Council DCAM
     url: https://edmcouncil.org/frameworks/dcam/
-    tier: professional-primary
+    tier: profession
     topics: [capability-assessment, maturity, evidence-based-scoring]
   # Página del framework abierta el 2026-08-22: declara v1.1 (2021) con 14 controles clave sobre
   # propiedad, soberanía, derechos de acceso, seguridad y retención en nube. Documento tras registro,
   # no abierto.
   - name: EDM Council CDMC
     url: https://edmcouncil.org/frameworks/cdmc/
-    tier: professional-primary
+    tier: profession
     topics: [cloud-data-controls, ownership, sovereignty, entitlements, retention]
   # Recomendación W3C del 2024-08-22, leída el 2026-08-22.
   - name: W3C DCAT 3
     url: https://www.w3.org/TR/vocab-dcat-3/
-    tier: primary-standard
+    tier: standard
     topics: [catalog, dataset-metadata, interoperability, versioning]
   # Recomendación W3C del 2013-04-30, leída el 2026-08-22. Entidad, actividad y agente: el vocabulario
   # con el que un linaje se puede afirmar de forma comprobable en vez de dibujarse.
   - name: W3C PROV-O
     url: https://www.w3.org/TR/prov-o/
-    tier: primary-standard
+    tier: standard
     topics: [provenance, lineage, agents]
   # Especificación leída el 2026-08-22: job, run, dataset y facets, con RunEvent, JobEvent y
   # DatasetEvent. La versión del esquema no consta en esa página; anotarla cuando se verifique.
   - name: OpenLineage object model
     url: https://openlineage.io/docs/spec/object-model
-    tier: primary-implementation
+    tier: project
     topics: [lineage, events, dataset-identity, facets]
 
 # Pendientes por falta de URL verificada, no por falta de relevancia. `require_primary_source: true`

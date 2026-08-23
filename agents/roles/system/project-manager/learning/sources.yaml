@@ -10,17 +10,17 @@ rules:
 sources:
   - name: ISO 21502 project management guidance
     url: https://committee.iso.org/sites/tc258/home/projects/published/iso-21502.html
-    tier: standards-primary
+    tier: standard
     topics: [project-management, governance, delivery-approaches, lifecycle]
   - name: PMI PMBOK Guide
     url: https://www.pmi.org/standards/pmbok
-    tier: professional-primary
+    tier: profession
     topics: [value, governance, scope, schedule, finance, stakeholders, risk]
   - name: Official Scrum Guide
     url: https://scrumguides.org/download.html
-    tier: framework-primary
+    tier: standard
     topics: [scrum, empirical, iterative, product-delivery]
   - name: Government Functional Standard GovS 002
     url: https://projectdelivery.gov.uk/govs-002-project-delivery-functional-standard/
-    tier: government-primary-uk
+    tier: regulation
     topics: [governance, assurance, planning, control, benefits, change]

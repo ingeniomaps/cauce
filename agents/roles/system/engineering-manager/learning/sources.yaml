@@ -10,17 +10,17 @@ rules:
 sources:
   - name: DORA Capabilities
     url: https://dora.dev/capabilities/
-    tier: primary-research
+    tier: profession
     topics: [delivery, culture, feedback, performance]
   - name: SPACE Framework
     url: https://queue.acm.org/detail.cfm?id=3454124
-    tier: primary-research
+    tier: profession
     topics: [developer-productivity, wellbeing, flow, collaboration]
   - name: Google re Work team effectiveness
     url: https://rework.withgoogle.com/intl/en/guides/understanding-team-effectiveness
-    tier: primary-research
+    tier: profession
     topics: [psychological-safety, effectiveness]
   - name: ACM Code of Ethics
     url: https://www.acm.org/code-of-ethics
-    tier: professional-primary
+    tier: profession
     topics: [ethics, fairness, privacy, leadership]

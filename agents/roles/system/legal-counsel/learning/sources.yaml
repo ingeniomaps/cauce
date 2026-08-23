@@ -12,17 +12,17 @@ rules:
 sources:
   - name: IBA guides and international principles
     url: https://www.ibanet.org/resources
-    tier: professional-primary
+    tier: profession
     topics: [ethics, independence, conflicts, confidentiality, competence]
   - name: UNCITRAL Electronic Commerce texts
     url: https://uncitral.un.org/en/texts/ecommerce
-    tier: international-primary
+    tier: standard
     topics: [electronic-commerce, signatures, automated-contracting, adoption]
   - name: WIPO IP for Business
     url: https://www.wipo.int/en/web/business/index
-    tier: international-primary
+    tier: standard
     topics: [intellectual-property, assets, licensing, disputes]
   - name: OECD Guidelines for Multinational Enterprises
     url: https://www.oecd.org/en/publications/oecd-guidelines-for-multinational-enterprises-on-responsible-business-conduct_81f92357-en.html
-    tier: intergovernmental-primary
+    tier: standard
     topics: [responsible-business, due-diligence, human-rights, technology, integrity]

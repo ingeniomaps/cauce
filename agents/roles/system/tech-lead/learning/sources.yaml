@@ -16,46 +16,46 @@ sources:
   # Leída. Es la raíz de la guía; las tres siguientes son sus páginas.
   - name: Google Code Review Developer Guide
     url: https://google.github.io/eng-practices/review/
-    tier: professional-primary
+    tier: profession
     topics: [design-review, approval-criteria, reviewer-role]
   - name: Google — The Standard of Code Review
     url: https://google.github.io/eng-practices/review/reviewer/standard.html
-    tier: professional-primary
+    tier: profession
     topics: [approval-criteria, blocking-vs-nit, improvement-over-perfection]
   - name: Google — Handling pushback in code reviews
     url: https://google.github.io/eng-practices/review/reviewer/pushback.html
-    tier: professional-primary
+    tier: profession
     topics: [disagreement, escalation, author-reviewer-conflict]
   # Leída. Sostiene la regla de que una revisión que tarda es una decisión, no una demora neutra.
   - name: Google — Speed of Code Reviews
     url: https://google.github.io/eng-practices/review/reviewer/speed.html
-    tier: professional-primary
+    tier: profession
     topics: [review-latency, batch-size, team-velocity]
   # Leída (encabezado y resumen). RFC 7282, Informational, junio de 2014, P. Resnick. De acá sale la
   # distinción entre consenso áspero y mayoría, y el trato de la objeción no atendida.
   - name: RFC 7282 — On Consensus and Humming in the IETF
     url: https://www.rfc-editor.org/rfc/rfc7282.html
-    tier: primary-standard
+    tier: standard
     topics: [rough-consensus, unaddressed-objections, technical-disagreement]
   # La página responde 200 con el título «Apache Voting Process». El detalle del veto técnico y de la
   # carga de justificarlo está en esa página pero no se citó línea por línea en esta corrida.
   - name: Apache Voting Process
     url: https://www.apache.org/foundation/voting.html
-    tier: professional-primary
+    tier: profession
     topics: [technical-veto, lazy-consensus, decision-records]
   - name: PEP 1 — PEP Purpose and Guidelines
     url: https://peps.python.org/pep-0001/
-    tier: professional-primary
+    tier: profession
     topics: [designated-decider, proposal-states, decision-process]
   # Leída. Es la fuente de la segregación entre quien escribe y quien aprueba, y de que la aprobación
   # externa al equipo no mejora la tasa de fallo. La investigación que cita es el State of DevOps 2019.
   - name: DORA — Streamlining change approval
     url: https://dora.dev/capabilities/streamlining-change-approval/
-    tier: professional-primary
+    tier: profession
     topics: [peer-review, segregation-of-duties, change-approval, cab]
   - name: MADR — Markdown Any Decision Records
     url: https://adr.github.io/madr/
-    tier: professional-primary
+    tier: profession
     topics: [decision-records, options, consequences]
   # La ficha del IEEE SA devuelve el título «IEEE/ISO/IEC 42010-2022», que es lo que confirma la
   # identidad y la edición. iso.org devuelve 403 —igual que en la revisión de qa-engineer del
@@ -63,7 +63,7 @@ sources:
   # consume como restricción, no como fuente de procedimiento.
   - name: IEEE/ISO/IEC 42010-2022
     url: https://standards.ieee.org/ieee/42010/6846/
-    tier: primary-standard
+    tier: standard
     topics: [architecture-description, architecture-decisions, scope-boundary]
 
 # Pendiente de verificar en la próxima corrida, y por eso todavía no es una fuente:

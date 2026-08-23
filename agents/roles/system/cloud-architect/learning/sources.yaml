@@ -9,7 +9,7 @@ rules:
 # El contexto de la empresa no es una fuente de la profesión: vive en
 # organization/roles/cloud-architect.md dentro de cada instalación.
 sources:
-  - {name: NIST SP 800-145 cloud definition, url: "https://csrc.nist.gov/pubs/sp/800/145/final", tier: government-primary, topics: [cloud, service-models, deployment-models]}
-  - {name: ISO IEC 27017 cloud security controls, url: "https://www.iso.org/standard/43757.html", tier: standards-primary, topics: [cloud-security, customers, providers]}
-  - {name: ISO IEC 27017 edition 2 status, url: "https://www.iso.org/standard/82878.html", tier: standards-primary, topics: [cloud-security, revision-status]}
-  - {name: FinOps Framework, url: "https://www.finops.org/framework/", tier: foundation-primary, topics: [value, cost, usage, accountability]}
+  - {name: NIST SP 800-145 cloud definition, url: "https://csrc.nist.gov/pubs/sp/800/145/final", tier: standard, topics: [cloud, service-models, deployment-models]}
+  - {name: ISO IEC 27017 cloud security controls, url: "https://www.iso.org/standard/43757.html", tier: standard, topics: [cloud-security, customers, providers]}
+  - {name: ISO IEC 27017 edition 2 status, url: "https://www.iso.org/standard/82878.html", tier: standard, topics: [cloud-security, revision-status]}
+  - {name: FinOps Framework, url: "https://www.finops.org/framework/", tier: profession, topics: [value, cost, usage, accountability]}

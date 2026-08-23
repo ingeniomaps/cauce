@@ -11,17 +11,17 @@ rules:
 sources:
   - name: FinOps Foundation Framework
     url: https://www.finops.org/framework/
-    tier: professional-primary
+    tier: profession
     topics: [capabilities, allocation, forecasting, governance]
   - name: FOCUS billing data specification
     url: https://focus.finops.org/
-    tier: standards-primary
+    tier: standard
     topics: [billing, schema, normalization, comparison]
   - name: Google SRE Workbook on capacity and efficiency
     url: https://sre.google/workbook/table-of-contents/
-    tier: primary-method
+    tier: profession
     topics: [capacity, reliability, tradeoffs, toil]
   - name: Anthropic pricing and token accounting documentation
     url: https://docs.anthropic.com/en/docs/about-claude/pricing
-    tier: platform-primary
+    tier: platform
     topics: [tokens, caching, context, models]

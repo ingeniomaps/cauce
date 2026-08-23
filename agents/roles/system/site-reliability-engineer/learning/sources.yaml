@@ -11,17 +11,17 @@ rules:
 sources:
   - name: Google Site Reliability Engineering
     url: https://sre.google/sre-book/table-of-contents/
-    tier: primary-practice
+    tier: profession
     topics: [sre, availability, monitoring, incidents, capacity]
   - name: Google SRE Workbook
     url: https://sre.google/workbook/table-of-contents/
-    tier: primary-practice
+    tier: profession
     topics: [slo, burn-rate, alerting, toil]
   - name: OpenSLO Specification
     url: https://openslo.com/
-    tier: primary-specification
+    tier: project
     topics: [services, sli, slo, alerts]
   - name: OpenTelemetry
     url: https://opentelemetry.io/docs/
-    tier: primary-project
+    tier: project
     topics: [traces, metrics, logs, instrumentation]

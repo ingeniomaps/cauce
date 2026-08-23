@@ -9,7 +9,7 @@ rules:
 # El contexto de la empresa no es una fuente de la profesión: vive en
 # organization/roles/analytics-engineer.md dentro de cada instalación.
 sources:
-  - {name: ISO IEC 25012 data quality model, url: "https://www.iso.org/standard/35736.html", tier: standards-primary, topics: [data-quality, measures, evaluation]}
-  - {name: ISO 8000-61 data quality management, url: "https://www.iso.org/standard/63086.html", tier: standards-primary, topics: [data-quality, process, maturity]}
-  - {name: W3C RDF Data Cube Vocabulary, url: "https://www.w3.org/TR/vocab-data-cube/", tier: standards-primary, topics: [measures, dimensions, metadata]}
-  - {name: W3C PROV-O, url: "https://www.w3.org/TR/prov-o/", tier: standards-primary, topics: [provenance, lineage]}
+  - {name: ISO IEC 25012 data quality model, url: "https://www.iso.org/standard/35736.html", tier: standard, topics: [data-quality, measures, evaluation]}
+  - {name: ISO 8000-61 data quality management, url: "https://www.iso.org/standard/63086.html", tier: standard, topics: [data-quality, process, maturity]}
+  - {name: W3C RDF Data Cube Vocabulary, url: "https://www.w3.org/TR/vocab-data-cube/", tier: standard, topics: [measures, dimensions, metadata]}
+  - {name: W3C PROV-O, url: "https://www.w3.org/TR/prov-o/", tier: standard, topics: [provenance, lineage]}

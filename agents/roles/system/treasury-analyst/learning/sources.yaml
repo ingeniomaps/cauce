@@ -16,51 +16,51 @@ sources:
   # financialprofessionals.org/certification/ctp devuelve 500: por eso se registra el índice.
   - name: AFP Certified Treasury Professional
     url: https://www.financialprofessionals.org/certification
-    tier: professional-primary
+    tier: profession
     topics: [treasury-management, liquidity, banking, international-treasury, treasury-technology]
   # Abierta el 2026-08-22. Define efectivo y equivalentes de efectivo y la clasificación en
   # operación, inversión y financiación.
   - name: IAS 7 Statement of Cash Flows
     url: https://www.ifrs.org/issued-standards/list-of-standards/ias-7-statement-of-cash-flows/
-    tier: primary-standard
+    tier: standard
     topics: [cash-and-equivalents, cash-flow-classification]
   # Abierta el 2026-08-22. Revelación de riesgo de liquidez, cualitativa y cuantitativa, sobre la
   # información que la dirección usa internamente.
   - name: IFRS 7 Financial Instruments Disclosures
     url: https://www.ifrs.org/issued-standards/list-of-standards/ifrs-7-financial-instruments-disclosures/
-    tier: primary-standard
+    tier: standard
     topics: [liquidity-risk, maturity-analysis, disclosure]
   # Abierta el 2026-08-22. La edición vigente es la de 2013, que reemplazó a la de 1992 el
   # 2014-12-15; la página lo dice y por eso el nombre lleva el año.
   - name: COSO Internal Control Integrated Framework 2013
     url: https://www.coso.org/guidance-on-ic
-    tier: primary-control-framework
+    tier: standard
     topics: [internal-control, segregation-of-duties, dual-approval]
   # Abierta el 2026-08-22. Versión final del 2012-04-16, CPMI-IOSCO. Alcance: infraestructuras de
   # mercado —sistemas de pago, CSD, CCP—, no una empresa no financiera. Se usa por su vocabulario
   # de riesgo de liquidez y firmeza de la liquidación, no como norma aplicable a la plataforma.
   - name: CPMI-IOSCO Principles for financial market infrastructures 2012
     url: https://www.bis.org/cpmi/publ/d101.htm
-    tier: primary-standard
+    tier: standard
     topics: [liquidity-risk, settlement-finality, payment-systems]
   # Abierta el 2026-08-22. Informe final del 2024-10-15 del programa de pagos transfronterizos
   # del G20: gobernanza y vigilancia de sistemas de pago rápido interconectados.
   - name: CPMI Linking fast payment systems across borders 2024
     url: https://www.bis.org/cpmi/publ/d223.htm
-    tier: primary-standard
+    tier: standard
     topics: [cross-border-payments, governance, multi-country]
   # Abierta el 2026-08-22. Lo leído en esa página es el preámbulo: el considerando 37 exige separar
   # los fondos del usuario de los de la entidad de pago. El texto del artículo 10 **no** se leyó
   # ahí, así que la exigencia se cita por el considerando y no por el articulado.
   - name: Directiva UE 2015/2366 PSD2
     url: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32015L2366
-    tier: primary-regulation
+    tier: regulation
     topics: [safeguarding, client-funds, payment-institutions]
   # Abierta el 2026-08-22. PSA I-060923-PSA del 2023-06-09: "Use secondary channels or two-factor
   # authentication to verify requests for changes in account information."
   - name: FBI IC3 Business Email Compromise PSA I-060923-PSA
     url: https://www.ic3.gov/PSA/2023/PSA230609
-    tier: primary-advisory
+    tier: advisory
     topics: [payment-fraud, beneficiary-verification, out-of-band-verification]
 
 # Pendientes: no entran porque no pude abrirlas en esta corrida, y `require_primary_source: true`

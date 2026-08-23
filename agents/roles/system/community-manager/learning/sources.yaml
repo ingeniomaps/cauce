@@ -11,17 +11,17 @@ rules:
 sources:
   - name: Contributor Covenant 3.0
     url: https://www.contributor-covenant.org/version/3/0/code_of_conduct/
-    tier: practitioner-primary
+    tier: project
     topics: [conduct, safety, reporting, enforcement]
   - name: GitHub community management and moderation
     url: https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/about-community-management-and-moderation
-    tier: platform-primary
+    tier: platform
     topics: [community, moderation, platform, tools]
   - name: W3C Web Content Accessibility Guidelines 2.2
     url: https://www.w3.org/TR/WCAG22/
-    tier: standards-primary
+    tier: standard
     topics: [accessibility, inclusion, web, conformance]
   - name: OECD privacy principles
     url: https://www.oecd.org/en/topics/privacy-principles.html
-    tier: intergovernmental-primary
+    tier: standard
     topics: [privacy, collection, purpose, use, accountability]

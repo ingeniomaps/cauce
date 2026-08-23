@@ -11,17 +11,17 @@ rules:
 sources:
   - name: RFC Editor HTTP
     url: https://www.rfc-editor.org/rfc/rfc9110.html
-    tier: primary-standard
+    tier: standard
     topics: [http, semantics, idempotency, caching]
   - name: OpenAPI Specification
     url: https://spec.openapis.org/oas/latest.html
-    tier: primary-standard
+    tier: project
     topics: [api-contracts]
   - name: OWASP API Security
     url: https://owasp.org/API-Security/
-    tier: primary-security
+    tier: standard
     topics: [authorization, authentication, resources, ssrf]
   - name: OpenTelemetry
     url: https://opentelemetry.io/docs/
-    tier: primary-project
+    tier: project
     topics: [traces, metrics, logs, instrumentation]
