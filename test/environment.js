@@ -84,4 +84,13 @@ function workflowCommand(source, name) {
   return found[0]
 }
 
-module.exports = { tempRoot, CLI, run, linkEngine, workflow, workflowStep, workflowCommand }
+// Recorrer un árbol entero es lo que hace falta para preguntarle a una instancia qué quedó escrito, y
+// lo preguntan dos suites distintas. Vive acá porque copiado se pudre una de las dos copias y nada falla.
+function filesBelow(root) {
+  return fs.readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+    const current = path.join(root, entry.name)
+    return entry.isDirectory() ? filesBelow(current) : [current]
+  })
+}
+
+module.exports = { filesBelow, tempRoot, CLI, run, linkEngine, workflow, workflowStep, workflowCommand }
