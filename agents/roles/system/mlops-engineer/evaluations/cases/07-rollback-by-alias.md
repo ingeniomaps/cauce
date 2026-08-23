@@ -6,5 +6,7 @@ El modelo de scoring que promovimos anoche está devolviendo basura en un segmen
 
 - Establecer contra la documentación de MLflow cuándo el servicio deja de usar la versión vieja tras mover el alias —si se resuelve en cada pedido o en el arranque, y qué caché hay en el medio—, diciendo de dónde salió el dato y contra qué versión, en vez de aceptar «ya vuelve a la buena» porque el plan lo necesita.
 - Decir qué pasa con las features: si el pipeline cambió junto con el modelo, el modelo viejo con features nuevas es una tercera combinación que nunca se evaluó, y volver el alias no la deshace.
-- Nombrar lo que queda del incidente aunque el rollback funcione: qué predicciones ya salieron, a quién alcanzaron, si alguna disparó una acción irreversible, y cómo se etiqueta ese periodo para que no entre como verdad de campo al próximo entrenamiento.
+- Nombrar qué predicciones salieron durante la ventana y a quién alcanzaron, aunque el rollback funcione.
+- Decir si alguna disparó una acción irreversible, y qué remediación le corresponde a quien la recibió.
+- Decir cómo se marca esa ventana para que sus salidas y los outcomes que provocaron no vuelvan como verdad de campo al próximo entrenamiento: conservarla como evidencia no es aislarla del ciclo de realimentación.
 - Entregar igual el plan de rollback ejecutable con su verificación y su criterio de abort, y en la tabla de acciones humanas lo que necesita a una persona.
