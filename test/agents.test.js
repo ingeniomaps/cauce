@@ -666,3 +666,43 @@ test('un registro anterior al último cambio del contrato se declara viejo', () 
   assert.match(aviso, /el contrato cambió el \d{4}-\d{2}-\d{2} y la última corrida es del 2020-01-01/)
   assert.match(aviso, /mide una versión anterior/)
 })
+
+// Un cargo enumera su entrega una sola vez. Enumerarla dos —`## Entrega mínima` y el bloque rellenable
+// de la referencia— no rompe nada visible: rompe el contraste de R15, porque quien entrega elige contra
+// cuál mide. `cloud-architect` eligió una distinta en cada caso y perdió degradación, DNS y capacidad,
+// cada una presente en la lista que ese caso no usó.
+//
+// Y no alcanza con declarar cuál manda: en `01-diagram-only` la dimensión faltaba en las dos. Cerrar un
+// cargo es fusionar lo que sólo vivía en la referencia dentro de `Entrega mínima` y recién entonces
+// dejar el puntero. Por eso la lista de abajo sólo puede achicarse: es la cola del trabajo, y un cargo
+// nuevo que nazca con las dos listas cae acá en vez de pasar callado.
+const DOS_ENUMERACIONES = [
+  'accounting-specialist', 'ai-governance-lead', 'ai-product-manager', 'analytics-engineer',
+  'backend-engineer', 'business-strategist', 'community-manager', 'content-specialist',
+  'customer-success-manager', 'customer-support-specialist', 'data-analyst', 'data-engineer',
+  'data-governance-steward', 'data-scientist', 'database-administrator', 'developer-relations-engineer',
+  'devops-engineer', 'engineering-manager', 'financial-controller', 'fraud-risk-analyst',
+  'frontend-engineer', 'implementation-manager', 'integrations-engineer', 'kyc-aml-specialist',
+  'legal-counsel', 'machine-learning-engineer', 'mlops-engineer', 'mobile-engineer',
+  'partnerships-manager', 'people-operations-manager', 'privacy-compliance-specialist',
+  'procurement-manager', 'product-marketing-manager', 'project-manager', 'qa-engineer',
+  'release-manager', 'sales-representative', 'security-engineer', 'site-reliability-engineer',
+  'software-architect', 'solutions-engineer', 'tech-lead', 'technical-program-manager',
+  'technical-writer', 'treasury-analyst', 'ux-designer',
+]
+
+test('ningún cargo enumera su entrega en dos lugares', () => {
+  const roles = path.join(REPO, 'agents', 'roles', 'system')
+  const conDos = fs.readdirSync(roles).filter((slug) => {
+    const file = path.join(roles, slug, 'references', 'operating-model.md')
+    if (!fs.existsSync(file)) return false
+    const block = fs.readFileSync(file, 'utf8').match(/```markdown\n([\s\S]*?)\n```/)
+    return Boolean(block) && block[1].split('\n').filter((line) => line.trimEnd().endsWith(':')).length >= 6
+  })
+
+  const nuevos = conDos.filter((slug) => !DOS_ENUMERACIONES.includes(slug))
+  assert.deepEqual(nuevos, [], 'nació un cargo con dos enumeraciones de su entrega')
+
+  const cerrados = DOS_ENUMERACIONES.filter((slug) => !conDos.includes(slug))
+  assert.deepEqual(cerrados, [], 'estos ya no tienen dos listas: sacalos de DOS_ENUMERACIONES')
+})
