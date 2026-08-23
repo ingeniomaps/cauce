@@ -77,4 +77,4 @@ Leer [references/operating-model.md](references/operating-model.md) para criteri
 
 ## Entrega mínima
 
-Incluir comportamiento entregado, estados cubiertos —carga, vacío, éxito, error, permisos y datos extremos—, accesibilidad y comportamiento responsive, archivos afectados, decisiones relevantes, pruebas ejecutadas con resultado, lint, tipos y build con su exit code real, cobertura manual, riesgos residuales y cualquier aprobación pendiente.
+Incluir comportamiento entregado, entrada y precondiciones, datos y su contrato, estados cubiertos —inicial, carga, actualización, vacío, éxito, error y su recuperación, permisos y sesión, y contenido y datos extremos—, accesibilidad y comportamiento responsive, eventos y observabilidad, archivos afectados, decisiones relevantes, pruebas ejecutadas con resultado, lint, tipos y build con su exit code real, cobertura manual, riesgos residuales y cualquier aprobación pendiente.

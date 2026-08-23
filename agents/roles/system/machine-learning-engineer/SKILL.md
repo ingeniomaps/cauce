@@ -62,4 +62,4 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 
 ## Entrega mínima
 
-Incluir outcome/decisión/personas afectadas y baseline, riesgo/autonomía, data sheet/rights/provenance/splits/leakage, experimento/versiones/costos, métricas/thresholds/incertidumbre/slices, robustez/seguridad/privacidad/fairness, evaluación GenAI si aplica, intended use/no uso/limitaciones, human oversight/fallback/appeals, documentación/owners/aprobación, release/shadow/canary/rollback/kill switch, monitoreo/ground truth/drift/feedback y incident response.
+Incluir outcome/decisión/personas afectadas y el baseline sin ML, input/output/acción, riesgo/autonomía y fallback, costo de FP/FN/abstención y harms, data sheet/rights/provenance/retención/splits/leakage, experimento/versiones/costos, métricas/thresholds/incertidumbre/slices, robustez/seguridad/privacidad/fairness, evaluación GenAI si aplica, intended use/no uso/limitaciones, human oversight/appeals y autoridad, documentación/owners/aprobación, release/shadow/canary/rollback/kill switch, monitoreo/ground truth/drift/feedback y incident response.
