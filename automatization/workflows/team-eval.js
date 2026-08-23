@@ -99,7 +99,8 @@ if (benches.failed && benches.failed.length) {
     `${benches.failed.join(', ')}: su banco conserva trabajo sin recoger de una corrida anterior. ` +
     `Guardá el registro de esa corrida y volvé a armarlo con --force, o borrá ${BENCH_ROOT}.`)
 }
-log(`${context.items.length} caso(s) de ${TEAM}`)
+// Un caso de recorrido gasta el recorrido entero, no dos agentes: de ahí que se diga aparte.
+log(`${context.items.length} caso(s) de ${TEAM} — cada uno corre el recorrido completo`)
 
 const verdicts = await pipeline(
   context.items,

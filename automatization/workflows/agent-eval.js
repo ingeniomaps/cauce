@@ -145,7 +145,7 @@ if (context.mode === 'toolkit') {
     `registro no tendría dónde vivir. Si querés una versión tuya, adoptalo con ` +
     `"node tools/ops.js agents fork ${AGENT}" y evaluá esa.`)
 }
-log(`${context.items.length} caso(s) de ${AGENT}`)
+log(`${context.items.length} caso(s) de ${AGENT} — unos ${context.items.length * 2 + 3} agentes`)
 
 const verdicts = await pipeline(
   context.items,
