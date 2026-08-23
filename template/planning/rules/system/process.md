@@ -86,3 +86,8 @@ Un cambio que no toca lo que el caso mide no compra una re-corrida. La medición
 lo que devuelve es la varianza que ya estaba ahí — y esa varianza existe: en la sesión que originó esta
 regla, cargos que habían pasado todos sus casos fallaron uno al día siguiente sin que el motivo tocara
 nada de lo que se había cambiado.
+
+Y lo que se repite es el caso que falló, no la batería. Un sujeto que falla uno de seis vuelve a correr
+ese uno: los otros cinco veredictos ya se tienen, y volver a mirarlos cuesta lo mismo que obtenerlos la
+primera vez. El registro parcial que sale de ahí no vale solo —cubre menos casos de los que existen— y
+se compone con los veredictos que no se volvieron a medir, diciendo de qué corrida viene cada uno.
