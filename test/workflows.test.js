@@ -688,6 +688,13 @@ test('ningún workflow usa un nombre que no declaró', () => {
     const code = codeOnly(source)
     const declared = new Set()
     for (const m of code.matchAll(/\b(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)/g)) declared.add(m[1])
+    for (const m of code.matchAll(/\bfunction\s+[A-Za-z_$][\w$]*\s*\(([^)]*)\)/g)) {
+      for (const part of m[1].split(',')) {
+        const name = part.trim().match(/^\.{0,3}([A-Za-z_$][\w$]*)/)
+        if (name) declared.add(name[1])
+      }
+    }
+    for (const m of code.matchAll(/\bcatch\s*\(\s*([A-Za-z_$][\w$]*)/g)) declared.add(m[1])
     for (const m of code.matchAll(/(?:\(|,|^|\s)\s*([A-Za-z_$][\w$]*)\s*=>/g)) declared.add(m[1])
     for (const m of code.matchAll(/\(([^()]*)\)\s*=>/g)) {
       for (const part of m[1].split(',')) {
