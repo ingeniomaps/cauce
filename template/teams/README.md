@@ -1,20 +1,25 @@
 # Equipos
 
-Un equipo compone varios cargos de `agents/` en un recorrido con etapas, dueños de decisión y gates de
-salida. Es lo que convierte una intención en una épica candidata —o en la razón por la que todavía no
-lo es— sin que un solo agente decida por todos.
+Un equipo es **un flujo con su reparto por defecto**: las etapas, sus gates y lo que produce cada una
+—el flujo—, y qué cargo ocupa cada puesto —el reparto—. Los dos viven en el mismo `team.json` porque
+se leen juntos, y conviene saber que son dos cosas: cambiar quién ocupa un puesto no cambia el
+recorrido, y llevar el mismo recorrido a otra empresa suele cambiar sólo el reparto.
+
+Es lo que convierte una intención en una épica candidata —o en la razón por la que todavía no lo es—
+sin que un solo agente decida por todos.
 
 ## Los que trae Cauce
 
 | Equipo | Descubrimiento | Deja | Para qué |
 |---|---|---|---|
+| `system/intake` | 4 etapas | informe | ¿hay una intención acá? Convierte lo que alguien dijo en algo que otro recorrido pueda tomar. |
 | `system/feasibility-review` | 3 etapas | épica | ¿vale el esfuerzo? Con la evidencia que ya existe. |
 | `system/product-development` | 5 etapas | épica | ¿qué construimos y cómo? Produce evidencia nueva. |
 | `system/incident-review` | 4 etapas | informe | ¿qué pasó y qué aprendemos? Después de contener. |
 | `system/defect-triage` | 4 etapas | informe | ¿qué falla, a quiénes y qué hacemos? Con el defecto vivo. |
 | `system/technical-design` | 6 etapas | informe | ¿cómo se construye lo ya decidido? Cada disciplina en paralelo. |
 
-Son cinco **formas**, no cinco dominios. Un equipo de seguridad o uno de crecimiento tienen la misma forma
+Son seis **formas**, no seis dominios. Un equipo de seguridad o uno de crecimiento tienen la misma forma
 con otros cargos: eso lo escribe cada empresa, porque cómo decide es suyo.
 
 ## Escribir uno propio
