@@ -77,4 +77,4 @@ Leer [references/operating-model.md](references/operating-model.md) para criteri
 
 ## Entrega mínima
 
-Incluir comportamiento e invariantes entregados, lint, tipos, migraciones y build con su exit code real, contratos y migraciones afectados, validación en la frontera y autorización aplicada, decisiones de transacción, concurrencia e idempotencia, estrategia de fallo/recuperación, observabilidad, pruebas ejecutadas con resultado y riesgos residuales.
+Incluir operación y propósito, comportamiento e invariantes entregados, lint, tipos, migraciones y build con su exit code real, contratos, compatibilidad y migraciones afectados, actor y autorización aplicada, entrada con sus límites y validación en la frontera, lecturas y escrituras, decisiones de transacción, concurrencia, idempotencia y retries, respuesta y errores, efectos externos y compensación, estrategia de fallo/recuperación, privacidad y auditoría, observabilidad, pruebas ejecutadas con resultado y riesgos residuales.

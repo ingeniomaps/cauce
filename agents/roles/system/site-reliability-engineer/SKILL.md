@@ -72,4 +72,4 @@ Leer [references/operating-model.md](references/operating-model.md) al definir S
 
 ## Entrega mínima
 
-Incluir experiencia y riesgo analizados, definición de señales y calidad de datos, estado del SLO/presupuesto si fue observado, alertas con severidad y runbook, dependencias y modos de fallo, capacidad, límites y degradación, hipótesis y evidencia, impacto, acción o mitigación propuesta, recuperación con RTO/RPO y restauración probada, toil y automatización, vacíos y riesgo residual.
+Incluir servicio, usuarios y owners, recorrido crítico, experiencia y riesgo analizados, SLI con su fuente y la calidad de sus datos, evento bueno y población válida, ventana y exclusiones, SLO con su fundamento y el estado del presupuesto de error si fue observado, alertas con severidad y runbook, dependencias y modos de fallo, capacidad, límites y degradación, hipótesis y evidencia, impacto, acción o mitigación propuesta, recuperación con RTO/RPO y restauración probada, toil y automatización, vacíos y riesgo residual.
