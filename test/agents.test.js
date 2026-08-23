@@ -667,28 +667,27 @@ test('un registro anterior al último cambio del contrato se declara viejo', () 
   assert.match(aviso, /mide una versión anterior/)
 })
 
-// Un cargo enumera su entrega una sola vez. Enumerarla dos —`## Entrega mínima` y el bloque rellenable
-// de la referencia— no rompe nada visible: rompe el contraste de R15, porque quien entrega elige contra
-// cuál mide. `cloud-architect` eligió una distinta en cada caso y perdió degradación, DNS y capacidad,
-// cada una presente en la lista que ese caso no usó.
+// Un cargo enumera su entrega una sola vez. Enumerarla dos —`## Entrega mínima` y un bloque de la
+// referencia que se presenta como el contrato del mismo entregable— no rompe nada visible: rompe el
+// contraste de R15, porque quien entrega elige contra cuál mide. `cloud-architect` eligió una distinta
+// en cada caso y perdió degradación, DNS y capacidad, cada una presente en la lista que ese caso no usó.
 //
-// Y no alcanza con declarar cuál manda: en `01-diagram-only` la dimensión faltaba en las dos. Cerrar un
-// cargo es fusionar lo que sólo vivía en la referencia dentro de `Entrega mínima` y recién entonces
-// dejar el puntero. Por eso la lista de abajo sólo puede achicarse: es la cola del trabajo, y un cargo
-// nuevo que nazca con las dos listas cae acá en vez de pasar callado.
+// Sólo cuentan los bloques bajo un encabezado «Contrato…». Los otros 53 del catálogo son plantillas de
+// un artefacto —`Runbook`, `ADR`, `Incidente`, `Health score`—: rellenan una unidad de trabajo, no
+// re-enumeran la entrega, y exigir que desaparezcan sería borrar lo que el cargo usa para producirla.
+// La primera versión de este test no los distinguía y los pedía todos.
+//
+// Cerrar un cargo no es borrar el bloque: en `01-diagram-only` la dimensión faltaba en las dos listas,
+// así que primero se fusiona lo que sólo vivía en la referencia dentro de `Entrega mínima` y recién
+// entonces queda el puntero. Por eso la lista sólo puede achicarse, y un cargo nuevo que nazca con las
+// dos cae acá en vez de pasar callado.
 const DOS_ENUMERACIONES = [
-  'accounting-specialist', 'ai-governance-lead', 'ai-product-manager', 'analytics-engineer',
-  'backend-engineer', 'business-strategist', 'community-manager', 'content-specialist',
-  'customer-success-manager', 'customer-support-specialist', 'data-analyst', 'data-engineer',
-  'data-governance-steward', 'data-scientist', 'database-administrator', 'developer-relations-engineer',
-  'devops-engineer', 'engineering-manager', 'financial-controller', 'fraud-risk-analyst',
-  'frontend-engineer', 'implementation-manager', 'integrations-engineer', 'kyc-aml-specialist',
-  'legal-counsel', 'machine-learning-engineer', 'mlops-engineer', 'mobile-engineer',
-  'partnerships-manager', 'people-operations-manager', 'privacy-compliance-specialist',
-  'procurement-manager', 'product-marketing-manager', 'project-manager', 'qa-engineer',
-  'release-manager', 'sales-representative', 'security-engineer', 'site-reliability-engineer',
-  'software-architect', 'solutions-engineer', 'tech-lead', 'technical-program-manager',
-  'technical-writer', 'treasury-analyst', 'ux-designer',
+  'analytics-engineer', 'backend-engineer', 'customer-support-specialist', 'data-analyst',
+  'data-engineer', 'data-governance-steward', 'data-scientist', 'database-administrator', 'developer-relations-engineer',
+  'devops-engineer', 'fraud-risk-analyst', 'frontend-engineer', 'implementation-manager',
+  'integrations-engineer', 'kyc-aml-specialist', 'machine-learning-engineer', 'mlops-engineer', 'mobile-engineer',
+  'people-operations-manager', 'product-marketing-manager', 'qa-engineer', 'release-manager',
+  'security-engineer', 'site-reliability-engineer', 'solutions-engineer', 'tech-lead', 'treasury-analyst',
 ]
 
 test('ningún cargo enumera su entrega en dos lugares', () => {
@@ -696,8 +695,13 @@ test('ningún cargo enumera su entrega en dos lugares', () => {
   const conDos = fs.readdirSync(roles).filter((slug) => {
     const file = path.join(roles, slug, 'references', 'operating-model.md')
     if (!fs.existsSync(file)) return false
-    const block = fs.readFileSync(file, 'utf8').match(/```markdown\n([\s\S]*?)\n```/)
-    return Boolean(block) && block[1].split('\n').filter((line) => line.trimEnd().endsWith(':')).length >= 6
+    const text = fs.readFileSync(file, 'utf8')
+    return [...text.matchAll(/```markdown\n([\s\S]*?)\n```/g)].some((block) => {
+      const campos = block[1].split('\n').filter((line) => line.trimEnd().endsWith(':')).length
+      const heads = [...text.slice(0, block.index).matchAll(/^## (.+)$/gm)]
+      const head = heads.length ? heads[heads.length - 1][1] : ''
+      return campos >= 6 && head.toLowerCase().startsWith('contrato')
+    })
   })
 
   const nuevos = conDos.filter((slug) => !DOS_ENUMERACIONES.includes(slug))
