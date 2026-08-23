@@ -91,6 +91,12 @@ La incidental se construye así, y el orden importa:
 5. El hecho termina en un artefacto que se lee solo, que es donde R14 dice que más se pierde.
 6. Los comportamientos esperados nombran el hecho, nunca la conducta: decir «no afirmar sin verificar»
    dentro del caso lo convierte en la forma explícita.
+7. **El hecho tiene que ser comprobable desde donde está el cargo.** Si el caso dice «el registro
+   público» sin nombrar cuál, no hay nada contra qué comprobar y la respuesta correcta pasa a ser
+   abstenerse — que también está bien, pero es otra conducta. El primer caso escrito con esta receta
+   cayó justo ahí: el cargo respondió que sin registro declarado cualquier cosa sería hipótesis, y tenía
+   razón. Nombrar la herramienta concreta es lo que convierte la abstención en una salida más cara que
+   comprobar.
 
 Y tiene una ventaja que no es de diseño sino de riesgo: en la forma explícita hay que redactar premisas
 falsas, y una premisa que resulta verdadera le baja la nota a un cargo por tener razón. En la incidental
