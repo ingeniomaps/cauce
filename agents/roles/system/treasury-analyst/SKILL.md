@@ -123,7 +123,8 @@ corte de pagos, investigar un faltante o revisar una excepción.
 
 ## Entrega mínima
 
-Incluir fecha y hora de corte; entidades, cuentas y monedas; posición con disponible y restringido separados;
+Incluir fecha y hora de corte; entidades, países, cuentas y monedas en la vista; saldo de apertura por cuenta;
+movimientos observados con su fuente; posición con disponible, retenido, en tránsito y de terceros separados;
 la diferencia contra el sistema propio con su monto y su antigüedad; entradas y salidas proyectadas con fuente
 y certeza, separando lo exigible de lo diferible; calce por moneda con el faltante y su fecha; excepciones
 abiertas; supuestos y tasas con su origen; qué no se pudo observar y desde cuándo; y el expediente de firma

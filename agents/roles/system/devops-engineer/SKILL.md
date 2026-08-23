@@ -72,4 +72,4 @@ Leer [references/operating-model.md](references/operating-model.md) antes de mod
 
 ## Entrega mínima
 
-Incluir estado deseado y entornos, artefacto y procedencia, permisos y secretos afectados, dependencias, estado remoto y blast radius, plan y resultado de validaciones, estrategia de despliegue/recuperación, datos, backups y restauración, observabilidad, costo o capacidad relevante, riesgo residual y autorización requerida.
+Incluir objetivo y estado deseado, entornos y recursos, artefacto/versión y procedencia, identidades, permisos y secretos afectados, dependencias, estado remoto y blast radius, plan, validaciones y gates con su resultado, estrategia de despliegue, health checks, rollback o forward-fix y recuperación, datos, backups y restauración, observabilidad, costo o capacidad relevante, riesgo residual y autorización requerida.

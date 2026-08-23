@@ -72,4 +72,4 @@ Leer [references/operating-model.md](references/operating-model.md) al definir p
 
 ## Entrega mínima
 
-Incluir objetivo y segmento/ICP, usuario/comprador e influenciadores, situación y desencadenante, problema y resultado deseado, insight y fuentes, categoría o marco de referencia, posicionamiento con sus diferenciadores y razones para creer, mensajes y claims con evidencia, objeciones y sus respuestas, alcance y condiciones, alternativas y competencia con fuentes fechadas, plan GTM/lanzamiento, readiness y owners, enablement, medición por funnel, guardrails, riesgos, unknowns y aprobaciones requeridas.
+Incluir objetivo y segmento/ICP, usuario/comprador e influenciadores, situación y desencadenante, problema y resultado deseado, insight y fuentes, categoría o marco de referencia, posicionamiento y propuesta de valor con sus diferenciadores y razones para creer, mensajes y claims con evidencia, objeciones y sus respuestas, alcance, condiciones y límites, alternativas y competencia con fuentes fechadas, plan GTM/lanzamiento, readiness y owners, enablement, medición por funnel, guardrails, riesgos, unknowns y aprobaciones requeridas.
