@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "slug": "intake",
+  "name": "Intake",
+  "purpose": "Convertir lo que alguien dijo en una intención que otro recorrido pueda tomar: el pedido conservado tal como se hizo, la solución pedida separada del problema que hay detrás, y a dónde va — sin decidir si vale.",
+  "outcome": "report",
+  "entryAgent": "product-manager",
+  "facilitator": "project-manager",
+  "decisionOwners": {
+    "problem_framing": "product-manager",
+    "what_the_ask_hides": "user-researcher",
+    "what_is_already_known": "data-analyst"
+  },
+  "conditionalAgents": [
+    "customer-support-specialist",
+    "sales-representative",
+    "business-strategist"
+  ],
+  "stages": [
+    {
+      "id": "capture",
+      "phase": "discovery",
+      "agent": "product-manager",
+      "dependsOn": [],
+      "produces": [
+        "request-as-stated",
+        "requester-and-context"
+      ],
+      "exitGate": "El pedido queda escrito **como se dijo**, sin traducir a lenguaje de producto, junto a quién lo hace, cuándo y de qué conversación sale. Lo que ya viene interpretado en el pedido queda marcado como interpretación de quien pidió, no como hecho."
+    },
+    {
+      "id": "separate",
+      "phase": "discovery",
+      "agent": "user-researcher",
+      "dependsOn": ["capture"],
+      "produces": [
+        "problem-behind-the-request",
+        "assumptions-in-the-ask"
+      ],
+      "exitGate": "La solución pedida y el problema que la motiva están separados, y los supuestos que el pedido da por ciertos quedan enumerados. Cuando la solución pedida es la única forma conocida de resolver el problema, eso se dice en vez de inventar alternativas."
+    },
+    {
+      "id": "evidence",
+      "phase": "discovery",
+      "agent": "data-analyst",
+      "dependsOn": ["capture"],
+      "produces": [
+        "evidence-that-already-exists",
+        "what-is-not-known"
+      ],
+      "exitGate": "Está dicho qué se sabe hoy sobre ese problema con datos que ya existen, y qué no se sabe. «No hay datos» es una respuesta válida y distinta de «no busqué»: se dice cuál de las dos es."
+    },
+    {
+      "id": "route",
+      "phase": "discovery",
+      "agent": "product-manager",
+      "dependsOn": ["separate", "evidence"],
+      "produces": [
+        "intent-or-why-there-is-none",
+        "recommended-next-step"
+      ],
+      "exitGate": "O queda una intención con problema, usuario y evidencia disponible —la forma que el recorrido siguiente necesita—, o queda dicho por qué no la hay. El destino se nombra con su razón, y «nada que hacer» es un destino legítimo."
+    }
+  ],
+  "guardrails": [
+    "Cada agente conserva los límites y autorizaciones de su SKILL.md.",
+    "Este recorrido no decide si la intención vale el esfuerzo: eso es `feasibility-review`, y adelantarlo acá lo haría con menos evidencia y sin sus dueños de decisión.",
+    "No se diseña ni se estima. Una intención con solución adentro llega al recorrido siguiente con la respuesta ya elegida.",
+    "El pedido original no se reescribe: se conserva literal y se interpreta aparte, para que el próximo que lo lea pueda discutir la interpretación sin perder el pedido.",
+    "Nada de lo que sale de acá es un compromiso con quien pidió, y este recorrido no le responde: lo que se le dice y quién se lo dice es una decisión humana.",
+    "Los agentes condicionales entran por de dónde viene el pedido, no por rutina."
+  ],
+  "completion": [
+    "El pedido está conservado como se dijo, y lo interpretado se distingue de lo dicho.",
+    "La solución pedida y el problema están separados, con los supuestos del pedido enumerados.",
+    "Lo que ya se sabe y lo que no quedan escritos, y se distingue no tener datos de no haber buscado.",
+    "El destino recomendado tiene su razón, y si es «nada que hacer» esa razón está escrita igual.",
+    "Si falta algo para formar la intención, se nombra qué y quién lo tiene."
+  ]
+}

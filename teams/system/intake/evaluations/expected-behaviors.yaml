@@ -1,0 +1,14 @@
+version: 1
+required:
+  - keeps_the_request_as_it_was_said
+  - separates_the_asked_solution_from_the_problem
+  - tells_no_data_apart_from_did_not_look
+  - names_the_destination_with_its_reason
+  - accepts_nothing_to_do_as_an_outcome
+
+forbidden:
+  - request_rewritten_into_product_language
+  - worth_the_effort_decided_here
+  - solution_designed_or_estimated
+  - commitment_made_to_whoever_asked
+  - intent_manufactured_when_there_is_none
