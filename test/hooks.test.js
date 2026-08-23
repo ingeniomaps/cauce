@@ -15,8 +15,17 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { execute, executeAll, guards, hookGroups } = require('../engine/hooks/run')
 
-function blocked(name, input) {
-  assert.throws(() => execute(name, input), (error) => error.blocked === true)
+// Que un guard frene no alcanza: tiene que frenar por lo que corresponde, y el motivo es lo único que
+// el usuario recibe. Sin exigirlo, cambiarle a un bloqueo el mensaje de otra regla dejaba la suite entera
+// en verde — medido mutando los 22 bloqueos del motor, 17 no tenían nada que los comprobara. El motivo es
+// obligatorio para que un sitio nuevo no pueda saltearlo por olvido.
+function blocked(name, input, motivo) {
+  if (!(motivo instanceof RegExp)) throw new Error(`blocked(${name}) exige el motivo esperado`)
+  assert.throws(() => execute(name, input), (error) => {
+    assert.equal(error.blocked, true, `${name} lanzó algo que no es un bloqueo: ${error.message}`)
+    assert.match(error.message, motivo, `${name} bloqueó, pero por otro motivo`)
+    return true
+  })
 }
 
 function git(args, cwd) {
@@ -25,10 +34,10 @@ function git(args, cwd) {
 }
 
 test('guard-destructive bloquea pérdida o publicación y permite lecturas', () => {
-  blocked('destructive', { tool_input: { command: 'git push origin main' } })
-  blocked('destructive', { tool_input: { command: 'git reset --hard HEAD' } })
-  blocked('destructive', { tool_input: { command: 'docker compose down' } })
-  blocked('destructive', { tool_input: { command: 'rm -rf /' } })
+  blocked('destructive', { tool_input: { command: 'git push origin main' } }, /publica cambios/)
+  blocked('destructive', { tool_input: { command: 'git reset --hard HEAD' } }, /destruye cambios locales/)
+  blocked('destructive', { tool_input: { command: 'docker compose down' } }, /stack Compose/)
+  blocked('destructive', { tool_input: { command: 'rm -rf /' } }, /catastrófico/)
   assert.doesNotThrow(() => execute('destructive', { tool_input: { command: 'git status --short' } }))
   assert.doesNotThrow(() => execute('destructive', { tool_input: { command: 'rm -r build/cache' } }))
 })
@@ -48,7 +57,7 @@ test('guard planning-drift bloquea el cierre con el planning roto', () => {
   fs.writeFileSync(path.join(root, 'planning', 'roadmap', 'epic-001.md'), '---\nepic: 001\n---\n')
   process.env.OPS_ROOT = root
   try {
-    blocked('planning-drift', { cwd: root, session_id: 'prueba-drift' })
+    blocked('planning-drift', { cwd: root, session_id: 'prueba-drift' }, /quedaron desalineados/)
     // La segunda vez no repite: el marcador de sesión existe y deja cerrar.
     assert.doesNotThrow(() => execute('planning-drift', { cwd: root, session_id: 'prueba-drift' }))
   } finally {
@@ -67,42 +76,47 @@ test('guard-destructive respeta runner.allowPush del proyecto', () => {
   const push = { cwd: root, tool_input: { command: 'git push origin main' } }
 
   declara(false)
-  blocked('destructive', push)
+  blocked('destructive', push, /publica cambios/)
   declara(true)
   assert.doesNotThrow(() => execute('destructive', push))
-  blocked('destructive', { cwd: root, tool_input: { command: 'git reset --hard HEAD' } })
+  blocked('destructive', { cwd: root, tool_input: { command: 'git reset --hard HEAD' } }, /destruye cambios locales/)
 })
 
 test('guard-git-add exige stage explícito', () => {
-  for (const command of ['git add .', 'git add -A', 'git add --all']) blocked('git-add', { tool_input: { command } })
+  for (const command of ['git add .', 'git add -A', 'git add --all']) blocked('git-add', { tool_input: { command } },
+    /Stagea rutas explícitas/)
   assert.doesNotThrow(() => execute('git-add', { tool_input: { command: 'git add src/app.js' } }))
 })
 
 test('guards de archivos protegen secretos y snapshots, pero permiten plantillas y drafts', () => {
-  blocked('secrets', { tool_input: { file_path: '/project/.env.production' } })
-  blocked('secrets', { tool_input: { patch: '*** Begin Patch\n*** Add File: .env\n+TOKEN=x\n*** End Patch' } })
-  blocked('secrets', { tool_input: { file_path: '/project/service-account.json' } })
+  blocked('secrets', { tool_input: { file_path: '/project/.env.production' } }, /parece contener secretos/)
+  blocked('secrets', { tool_input: { patch: '*** Begin Patch\n*** Add File: .env\n+TOKEN=x\n*** End Patch' } },
+    /parece contener secretos/)
+  blocked('secrets', { tool_input: { file_path: '/project/service-account.json' } }, /credenciales en texto plano/)
   assert.doesNotThrow(() => execute('secrets', { tool_input: { file_path: '/project/.env.example' } }))
   // Nombres que la herramienta escribe sola y que la lista original no cubría. Los encontró la
   // investigación semanal del cargo de seguridad corriendo el guard sobre trece nombres: `.env`
   // bloqueaba y `.npmrc`, `.netrc` e `id_rsa` pasaban, que es donde vive el token de publicación.
   for (const credencial of ['.npmrc', '.netrc', 'id_rsa', 'id_ed25519', '.pypirc', 'credentials']) {
-    blocked('secrets', { tool_input: { file_path: `/project/${credencial}` } })
+    blocked('secrets', { tool_input: { file_path: `/project/${credencial}` } },
+      /credenciales que su herramienta mantiene/)
   }
   // Tapa un caso conocido, no vuelve completo al guard: sigue decidiendo por el nombre del archivo.
   assert.doesNotThrow(() => execute('secrets', { tool_input: { file_path: '/project/.npmrc.example' } }))
-  blocked('integration-snapshot', { tool_input: { file_path: '/project/integrations/jira/staging/KEY-1/remote.json' } })
+  blocked('integration-snapshot', { tool_input: { file_path: '/project/integrations/jira/staging/KEY-1/remote.json' } },
+    /pertenece al sincronizador/)
   blocked('integration-snapshot', {
     tool_input: { file_path: '/project/integrations/jira/staging/stories/KEY-1/remote.json' },
-  })
+  }, /pertenece al sincronizador/)
   const snapshotPatch = '*** Begin Patch\n'
     + '*** Update File: integrations/jira/staging/KEY-1/remote.json\n'
     + '*** End Patch'
-  blocked('integration-snapshot', { tool_input: { patch: snapshotPatch } })
+  blocked('integration-snapshot', { tool_input: { patch: snapshotPatch } }, /pertenece al sincronizador/)
   const draft = { tool_input: { file_path: '/project/integrations/jira/staging/KEY-1/draft.md' } }
   assert.doesNotThrow(() => execute('integration-snapshot', draft))
-  blocked('generated', { tool_input: { file_path: '/project/api/client_generated.go' } })
-  blocked('generated', { tool_input: { patch: '*** Begin Patch\n*** Update File: src/api.gen.ts\n*** End Patch' } })
+  blocked('generated', { tool_input: { file_path: '/project/api/client_generated.go' } }, /parece código generado/)
+  blocked('generated', { tool_input: { patch: '*** Begin Patch\n*** Update File: src/api.gen.ts\n*** End Patch' } },
+    /parece código generado/)
   assert.doesNotThrow(() => execute('generated', { tool_input: { file_path: '/project/src/client.go' } }))
 })
 
@@ -119,12 +133,12 @@ test('guard-test-evidence no deja apagar ni borrar la prueba que juzga el cambio
     ['alta_spec.rb', 'xit "alta" do end'],
   ]
   for (const [name, content] of cases) {
-    blocked('test-evidence', { tool_input: { file_path: `/project/${name}`, content } })
+    blocked('test-evidence', { tool_input: { file_path: `/project/${name}`, content } }, /apaga una prueba/)
   }
   // Borrar la prueba es la otra forma de que el verde deje de significar algo.
   blocked('test-evidence', { tool_input: {
     patch: '*** Begin Patch\n*** Delete File: internal/users/alta_test.go\n*** End Patch',
-  } })
+  } }, /borra una prueba/)
   // Escribir una prueba de verdad no se toca, y el mismo texto fuera de una prueba tampoco: el guard
   // mira qué archivo es antes que qué dice.
   assert.doesNotThrow(() => execute('test-evidence', { tool_input: {
@@ -150,7 +164,7 @@ test('guard-governance bloquea commits con reglas staged', () => {
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'planning', 'PROTOCOL.md'), '# protocol\n')
   git(['add', 'planning/PROTOCOL.md'], root)
-  blocked('governance', { cwd: root, tool_input: { command: 'git commit -m test' } })
+  blocked('governance', { cwd: root, tool_input: { command: 'git commit -m test' } }, /gobernanza protegida/)
 })
 
 test('guard-verify ejecuta gates reales antes del commit', () => {
@@ -159,7 +173,7 @@ test('guard-verify ejecuta gates reales antes del commit', () => {
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "process.exit(1)"' } }))
   fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = true\n')
   git(['add', 'package.json', 'app.js'], root)
-  blocked('verify', { cwd: root, tool_input: { command: 'git commit -m test' } })
+  blocked('verify', { cwd: root, tool_input: { command: 'git commit -m test' } }, /Verify falló/)
 })
 
 test('guard-verify exige regenerar después de cambiar OpenAPI o SQL fuente', () => {
@@ -168,7 +182,7 @@ test('guard-verify exige regenerar después de cambiar OpenAPI o SQL fuente', ()
   fs.mkdirSync(path.join(root, 'openapi'))
   fs.writeFileSync(path.join(root, 'openapi', 'api.yaml'), 'openapi: 3.0.0\n')
   git(['add', 'openapi/api.yaml'], root)
-  blocked('verify', { cwd: root, tool_input: { command: 'git commit -m test' } })
+  blocked('verify', { cwd: root, tool_input: { command: 'git commit -m test' } }, /OpenAPI\/Swagger/)
   fs.writeFileSync(path.join(root, 'client_generated.go'), 'package client\n')
   git(['add', 'client_generated.go'], root)
   assert.doesNotThrow(() => execute('verify', { cwd: root, tool_input: { command: 'git commit -m test' } }))
@@ -181,7 +195,7 @@ test('guard-workspace-boundary limita escrituras a las raíces declaradas', () =
   const config = { workspaceRoots: [{ name: 'service', path: 'service' }] }
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify(config))
   assert.doesNotThrow(() => execute('workspace-boundary', { cwd: root, tool_input: { file_path: 'service/app.js' } }))
-  blocked('workspace-boundary', { cwd: root, tool_input: { file_path: '../outside.txt' } })
+  blocked('workspace-boundary', { cwd: root, tool_input: { file_path: '../outside.txt' } }, /fuera de las raíces/)
 })
 
 test('guard-engine protege el motor instalado y deja trabajar al toolkit', () => {
@@ -193,7 +207,8 @@ test('guard-engine protege el motor instalado y deja trabajar al toolkit', () =>
 
   // En una empresa el motor es de sólo lectura: llega por npm y se arregla arriba.
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'sidecar' }))
-  blocked('engine', { cwd: root, tool_input: { file_path: 'node_modules/@ingeniomaps/cauce/engine/cli/ops.js' } })
+  blocked('engine', { cwd: root, tool_input: { file_path: 'node_modules/@ingeniomaps/cauce/engine/cli/ops.js' } },
+    /pertenece al motor de Cauce/)
   // Lo que sí es suyo sigue abierto: el guard no puede volverse un candado general.
   assert.doesNotThrow(() => execute('engine', { cwd: root, tool_input: { file_path: 'agents/roles/mio.md' } }))
 
@@ -248,7 +263,7 @@ test('guard-governance protege el contrato de un cargo, su medición y su firma'
     'agents/roles/system/qa-engineer/references/operating-model.md',
   ]) {
     write(gobernado)
-    blocked('governance', commit)
+    blocked('governance', commit, /gobernanza protegida/)
     git(['reset'], root)
   }
 
@@ -272,9 +287,9 @@ test('guard-migrations protege historial y SQL destructivo', () => {
   fs.mkdirSync(path.join(root, 'migrations'))
   fs.writeFileSync(path.join(root, 'migrations', '001_init.sql'), 'CREATE TABLE users (id int);\n')
   const rewrite = { file_path: 'migrations/001_init.sql', new_string: 'ALTER TABLE users ADD name text;' }
-  blocked('migrations', { cwd: root, tool_input: rewrite })
+  blocked('migrations', { cwd: root, tool_input: rewrite }, /migración existente/)
   const destructive = { file_path: 'migrations/002_drop.sql', content: 'DROP TABLE users;' }
-  blocked('migrations', { cwd: root, tool_input: destructive })
+  blocked('migrations', { cwd: root, tool_input: destructive }, /SQL destructivo/)
   const additive = { file_path: 'migrations/002_add.sql', content: 'ALTER TABLE users ADD name text;' }
   assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: additive }))
 
@@ -288,7 +303,8 @@ test('guard-migrations protege historial y SQL destructivo', () => {
     'ALTER TABLE users DROP CONSTRAINT users_pkey;',
     'TRUNCATE users;',
   ]) {
-    blocked('migrations', { cwd: root, tool_input: { file_path: 'migrations/003_x.sql', content: sql } })
+    blocked('migrations', { cwd: root, tool_input: { file_path: 'migrations/003_x.sql', content: sql } },
+      /SQL destructivo/)
   }
   // Un borrado acotado sigue pasando: es una corrección de datos, no un vaciado de tabla.
   const acotado = { file_path: 'migrations/003_fix.sql', content: 'DELETE FROM users WHERE id = 1;' }
@@ -298,14 +314,14 @@ test('guard-migrations protege historial y SQL destructivo', () => {
 })
 
 test('guard-dependencies exige consistencia y bloquea publicación', () => {
-  blocked('dependencies', { tool_input: { command: 'npm publish' } })
-  blocked('dependencies', { tool_input: { command: 'pnpm add -g typescript' } })
+  blocked('dependencies', { tool_input: { command: 'npm publish' } }, /Publicar paquetes/)
+  blocked('dependencies', { tool_input: { command: 'pnpm add -g typescript' } }, /Publicar paquetes/)
   const root = tempRoot('ops-hook-deps-')
   git(['init', '-q'], root)
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ dependencies: { example: '1.0.0' } }))
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n')
   git(['add', 'package.json'], root)
-  blocked('dependencies', { cwd: root, tool_input: { command: 'git commit -m deps' } })
+  blocked('dependencies', { cwd: root, tool_input: { command: 'git commit -m deps' } }, /sin actualizar su lockfile/)
   git(['add', 'package-lock.json'], root)
   assert.doesNotThrow(() => execute('dependencies', { cwd: root, tool_input: { command: 'git commit -m deps' } }))
 })
@@ -366,8 +382,8 @@ test('un guard que no puede leer la configuración bloquea, no permite', () => {
   fs.writeFileSync(config, JSON.stringify({
     project: 'x', mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }], runner: {},
   }))
-  blocked('workspace-boundary', afuera)
-  blocked('engine', engine)
+  blocked('workspace-boundary', afuera, /fuera de las raíces/)
+  blocked('engine', engine, /pertenece al motor de Cauce/)
 
   fs.writeFileSync(config, '{"project":"x",,"mode":"embedded"}')
   for (const guard of ['workspace-boundary', 'engine']) {
@@ -417,8 +433,10 @@ test('guard-files lee el sobre de apply_patch aunque llegue como command', () =>
     tool_name: 'apply_patch',
     tool_input: { command: `*** Begin Patch\n${cuerpo}\n*** End Patch` },
   })
-  blocked('migrations', sobre('*** Update File: migrations/001_init.sql\n@@\n+alter table pedidos add column x int;'))
-  blocked('secrets', sobre('*** Add File: .env\n+AWS_SECRET_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE'))
+  blocked('migrations', sobre('*** Update File: migrations/001_init.sql\n@@\n+alter table pedidos add column x int;'),
+    /migración existente/)
+  blocked('secrets', sobre('*** Add File: .env\n+AWS_SECRET_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE'),
+    /parece contener secretos/)
 
   // Un comando de shell no es un parche: sin el encabezado, `command` no se lee como contenido.
   assert.doesNotThrow(() => execute('migrations', {
