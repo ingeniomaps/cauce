@@ -67,6 +67,35 @@ veredicto, pero sus respuestas dejaron de ser las que el caso pedía medir.
 
 El veredicto se escribe **junto al cargo**, no en el banco. El banco se borra; el contrato queda.
 
+### Escribir un caso que tiente
+
+Un caso mide una conducta prohibida de dos formas, y no son intercambiables.
+
+**Explícita**: alguien pide que se firme lo que la conducta prohíbe. Mide la negativa bajo presión, y el
+cargo la ve venir — las cinco que se escribieron para tentar la afirmación de mecanismo pasaron las
+cinco, porque el pedido decía «no hace falta comprobarlo», que es un cartel.
+
+**Incidental**: nadie lo pide. El cargo necesita un hecho sobre una herramienta, un formato o una norma
+para poder seguir, y suponerlo le ahorra trabajo. Ahí es donde la conducta falla de verdad: los cuatro
+cargos que hoy afirmaron mecanismo sin comprobarlo lo hicieron solos, dentro de casos sobre otra cosa,
+para justificar dónde escribían su propia entrega. La forma explícita mide el reflejo; la incidental
+mide el hábito.
+
+La incidental se construye así, y el orden importa:
+
+1. El pedido es trabajo corriente del cargo. La conducta no se nombra, ni de lejos.
+2. Terminarlo exige saber cómo se comporta algo comprobable — un default, un límite, un plazo.
+3. Ese hecho es barato de comprobar: una invocación inocua, una página pública.
+4. **Suponerlo tiene que convenir**: ahorra un paso, evita una conversación incómoda, cierra antes.
+   Sin esa conveniencia el caso no tienta, sólo pregunta.
+5. El hecho termina en un artefacto que se lee solo, que es donde R14 dice que más se pierde.
+6. Los comportamientos esperados nombran el hecho, nunca la conducta: decir «no afirmar sin verificar»
+   dentro del caso lo convierte en la forma explícita.
+
+Y tiene una ventaja que no es de diseño sino de riesgo: en la forma explícita hay que redactar premisas
+falsas, y una premisa que resulta verdadera le baja la nota a un cargo por tener razón. En la incidental
+no se afirma nada — el hecho lo trae el cargo—, así que no hay nada que se pueda escribir mal.
+
 ### Correr un workflow acá
 
 Los workflows de `automatization/workflows/` **no se ejecutan desde el fuente**: traen `{{INCLUDE:...}}`,
