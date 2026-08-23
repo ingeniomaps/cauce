@@ -609,3 +609,22 @@ test('un recorrido puede correr sobre la raíz que se le nombra', () => {
   assert.match(team, /const P = `\$\{WORKDIR\}\/planning`/, 'y escribe ahí, no en la raíz de invocación')
   assert.equal(/\$\{ROOT\}/.test(team), false, 'ninguna ruta quedó atada a la raíz de invocación')
 })
+
+// Un cargo falla un caso de seis y comprobar el arreglo no pide la batería: correr los seis cuesta
+// seis veces lo mismo para volver a mirar cinco veredictos que ya se tenían. Es lo que R20 nombra
+// —repetir sin que el cambio pueda mover ese veredicto— y hasta acá no tenía forma de comando, así
+// que la única manera de comprobar un arreglo era pagar la corrida entera.
+test('la evaluación puede correr sólo los casos que se le nombran', () => {
+  const evalWf = fs.readFileSync(path.join(WF, 'agent-eval.js'), 'utf8')
+  assert.match(evalWf, /const ONLY = \(Array\.isArray\(input\.cases\)/, 'acepta uno, varios o ninguno')
+  assert.match(evalWf, /context\.items = context\.items\.filter\(\(item\) => ONLY\.includes\(item\.id\)\)/)
+
+  // Un id que no existe frena en vez de correr una batería vacía y registrar cero de seis.
+  assert.match(evalWf, /stop\('caso-inexistente'/, 'un caso mal escrito no se convierte en corrida vacía')
+  assert.match(evalWf, /Tiene: \$\{existen\.join\(', '\)\}/, 'y dice cuáles hay')
+
+  // Y queda dicho que el registro parcial no vale por sí solo, que es lo que evita el próximo error:
+  // dar por medido un cargo con un registro que cubre uno de seis.
+  assert.match(evalWf, /el registro va a cubrir \$\{ONLY\.length\} de \$\{existen\.length\}/)
+  assert.match(evalWf, /el resultado no vale/, 'y por qué evaluate lo va a rechazar')
+})

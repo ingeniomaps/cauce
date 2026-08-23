@@ -20,7 +20,22 @@ export const meta = {
 }
 
 {{INCLUDE:shared/workflow-root.js}}
-const AGENT = String((typeof args === 'string' ? args : (args || {}).agent) || '').trim()
+const input = typeof args === 'string' ? { agent: args } : (args || {})
+const AGENT = String(input.agent || '').trim()
+
+// Qué casos correr. Sin `cases` van todos, que es lo que hace falta la primera vez y cuando el
+// contrato cambió entero.
+//
+// Nombrar uno existe porque comprobar un arreglo no pide la batería: un cargo falla un caso de seis y
+// correr los seis cuesta seis veces lo mismo para volver a mirar cinco veredictos que ya se tenían. Es
+// el desperdicio que R20 nombra —repetir sin que el cambio pueda mover ese veredicto—, y acá tenía
+// forma de comando.
+//
+// El registro que sale entonces cubre menos casos de los que el cargo tiene, y `evaluate` lo dirá:
+// «el resultado no vale». Es correcto que lo diga. Lo que corresponde es componer el registro nuevo
+// con los veredictos que no se volvieron a medir, citando de qué corrida vienen.
+const ONLY = (Array.isArray(input.cases) ? input.cases : String(input.cases || '').split(','))
+  .map((one) => String(one).trim()).filter(Boolean)
 
 const CASES = {
   type: 'object', additionalProperties: false, required: ['items'],
@@ -87,6 +102,15 @@ const context = await agent(
 )
 if (!context || !context.items || !context.items.length) {
   return stop('sin-casos', `${AGENT} no tiene casos, o no se pudieron leer`)
+}
+if (ONLY.length) {
+  const existen = context.items.map((item) => item.id)
+  const faltan = ONLY.filter((id) => !existen.includes(id))
+  if (faltan.length) {
+    return stop('caso-inexistente', `${AGENT} no tiene ${faltan.join(', ')}. Tiene: ${existen.join(', ')}`)
+  }
+  context.items = context.items.filter((item) => ONLY.includes(item.id))
+  log(`Sólo ${ONLY.join(', ')}: el registro va a cubrir ${ONLY.length} de ${existen.length}`)
 }
 // Un banco por caso, preparados por un solo agente: son comandos deterministas, y después la ruta de
 // cada caso se arma sola.
