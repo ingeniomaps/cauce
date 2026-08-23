@@ -13,6 +13,7 @@ const PR = require('../engine/integrations/proposals')
 const B = require('../engine/planning/business-rules')
 const PC = require('../engine/planning/contracts')
 const P = require('../engine/planning/parser')
+const MF = require('../engine/core/manifest')
 const BOOT = require('../engine/cli/bootstrap')
 const { providerConfig, safeSegment } = I
 const { fetchItems, validateConfig } = require('../engine/integrations/providers/jira')
@@ -1281,4 +1282,24 @@ test('el frontmatter se lee igual desde planning y desde integraciones', () => {
   assert.equal(P.frontmatter(texto)('phase'), 'Build')
   assert.equal(P.frontmatter(texto)('inexistente'), '', 'el contrato de planning devuelve vacío, no undefined')
   assert.deepEqual(S.frontmatter(texto), { task: 'alta', phase: 'Build' })
+})
+
+test('el manifiesto ausente se lee vacío y el ilegible se niega a ser leído', () => {
+  const root = tempRoot('manifest-')
+  // Ausente es legítimo: una instancia recién creada todavía no lo tiene, y leerlo vacío es correcto.
+  assert.deepEqual(MF.read(root), {})
+  assert.deepEqual(MF.readRunners(root), {})
+
+  // Ilegible no. Vacío afirmaría que la empresa no editó nada, y `upgrade` decide con eso qué pisar.
+  const file = path.join(root, '.cauce', 'manifest.json')
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, '{"version":1,"files":{"AGENTS.m')
+  assert.throws(() => MF.read(root), /manifest\.json: no se puede leer/)
+  assert.throws(() => MF.readRunners(root), /manifest\.json: no se puede leer/, 'por cualquiera de sus lecturas')
+
+  // Lo que sí parsea pero trae una sección de otro tipo se lee vacío en esa sección y no rompe: el
+  // registro creció por versiones, y una instancia vieja no tiene todas las que hoy existen.
+  fs.writeFileSync(file, JSON.stringify({ version: 1, files: { 'AGENTS.md': 'abc' }, runners: null }))
+  assert.deepEqual(MF.read(root), { 'AGENTS.md': 'abc' })
+  assert.deepEqual(MF.readRunners(root), {})
 })

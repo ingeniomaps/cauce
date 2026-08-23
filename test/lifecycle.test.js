@@ -233,6 +233,17 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   const blocked = cauce(consumer, ['automation', 'install', consumer, 'claude'])
   assert.notEqual(blocked.status, 0)
   assert.match(blocked.stderr, /fueron editados y se perderían/)
+
+  // Un manifiesto ilegible no es un manifiesto vacío. Leerlo como vacío afirma que la empresa no editó
+  // nada, que es la lectura más destructiva posible: es justo el registro que distingue lo suyo de lo
+  // nuestro, y sin él "upgrade" salía 0 pisando en silencio lo que se había negado a pisar con él.
+  const manifestFile = path.join(consumer, '.cauce', 'manifest.json')
+  const manifestSane = fs.readFileSync(manifestFile, 'utf8')
+  fs.writeFileSync(manifestFile, manifestSane.slice(0, 30))
+  const unreadable = cauce(consumer, ['upgrade', consumer])
+  assert.notEqual(unreadable.status, 0, 'un manifiesto ilegible detiene el upgrade')
+  assert.match(`${unreadable.stdout}${unreadable.stderr}`, /manifest\.json/, 'y lo nombra')
+  fs.writeFileSync(manifestFile, manifestSane)
   assert.equal(cauce(consumer, ['automation', 'install', consumer, 'claude', '--force']).status, 0)
 
   // El CLAUDE.md sí es del proyecto: se conserva aunque el toolkit traiga otro.

@@ -21,18 +21,28 @@ function digest(file) {
   try { return digestText(fs.readFileSync(file)) } catch { return '' }
 }
 
+const EMPTY = () => ({ files: {}, runners: {}, forks: {} })
+
 // Dos secciones porque son dos entregas distintas: `files` es lo que se materializó dentro de la
 // instancia y `runners` lo que un adaptador dejó fuera de ella —en modo sidecar el wiring vive en
 // la carpeta de la compañía—. El registro se queda igual acá, que es el repo que la empresa versiona.
 function readAll(root) {
-  try {
-    const data = JSON.parse(fs.readFileSync(path.join(root, FILE), 'utf8')) || {}
-    return {
-      files: typeof data.files === 'object' && data.files ? data.files : {},
-      runners: typeof data.runners === 'object' && data.runners ? data.runners : {},
-      forks: typeof data.forks === 'object' && data.forks ? data.forks : {},
-    }
-  } catch { return { files: {}, runners: {}, forks: {} } }
+  let raw
+  // Ausente e ilegible se leían los dos como vacío, y no son lo mismo. Ausente es legítimo: una
+  // instancia recién creada, o anterior a que existiera el registro. Ilegible no, porque vacío afirma
+  // que la empresa no editó nada —la lectura más destructiva posible de este archivo en particular—:
+  // `upgrade` dejaba de reconocer lo suyo y lo pisaba en silencio, saliendo 0. Sin poder leerlo no hay
+  // decisión que tomar, y detenerse es lo único que no pierde trabajo ajeno.
+  try { raw = fs.readFileSync(path.join(root, FILE), 'utf8') } catch { return EMPTY() }
+  let data
+  try { data = JSON.parse(raw) || {} } catch (error) {
+    throw new Error(`${FILE}: no se puede leer (${error.message}). Restauralo desde el control de versiones.`)
+  }
+  return {
+    files: typeof data.files === 'object' && data.files ? data.files : {},
+    runners: typeof data.runners === 'object' && data.runners ? data.runners : {},
+    forks: typeof data.forks === 'object' && data.forks ? data.forks : {},
+  }
 }
 
 function read(root) { return readAll(root).files }
