@@ -74,3 +74,15 @@ corresponde es tratar una pregunta de sí o no como si fuera un censo.
 El costo de equivocarse acá no se ve mientras pasa: cada corrida termina bien, entrega su resultado y
 parece trabajo. Lo que se gasta es la vuelta que no se dio en otra cosa, y eso no aparece en ninguna
 salida.
+
+Repetir una medición que falló pide lo mismo. Una re-corrida sirve para dos cosas y conviene decir cuál:
+comprobar un cambio, y entonces ese cambio tiene que poder mover **ese** veredicto —tocar lo que el caso
+mide, no cualquier parte del contrato—; o estimar cuánto varía el resultado sin que nada cambie, y
+entonces se declara así y se repite varias veces, porque una sola no estima nada. Volver a correr
+esperando que esta vez salga distinto no es ninguna de las dos: es comprar un número nuevo con la misma
+información.
+
+Un cambio que no toca lo que el caso mide no compra una re-corrida. La medición vuelve a costar entera y
+lo que devuelve es la varianza que ya estaba ahí — y esa varianza existe: en la sesión que originó esta
+regla, cargos que habían pasado todos sus casos fallaron uno al día siguiente sin que el motivo tocara
+nada de lo que se había cambiado.
