@@ -82,6 +82,13 @@ const MANIFEST = {
 // `findings` y `summary` dicen cosas distintas a propósito. El primero es el análisis entero y lo lee
 // una sola vez quien sintetiza al final; el segundo viaja a cada etapa posterior, así que un handoff que
 // arrastra todo pasa a costar una vez por etapa en vez de una vez (R16).
+//
+// Y el análisis entero tiene un techo, que es la otra mitad de lo que R16 pide: «queda donde se
+// escribió». Sin techo no llega — una etapa de `defect-triage` intentó cinco veces con 22366, 9972,
+// 11337, 12236 y 13458 caracteres, los cinco llegaron cortados a mitad de string y el caso murió sin
+// medirse. Cuál es el corte exacto no se estableció; lo comprobado es que ~10000 ya falla, así que el
+// techo del prompt va holgadamente por debajo y lo que sobra se escribe en un archivo que la síntesis
+// lee igual.
 // Tres estados porque una etapa tiene tres cosas distintas que decir, y con un booleano la del medio se
 // pierde: cumplir dejando una condición que la síntesis tiene que respetar se veía igual que cumplir sin
 // nada pendiente, y la condición se diluía en la prosa del handoff. Y `blocking` separa la pregunta que
@@ -207,7 +214,10 @@ for (const stage of discovery) {
     `tiene que respetar; y gate=no-cumplido si no se cumple, y ahí explicá en missing qué falta y en ` +
     `humanAction la acción concreta que lo desbloquea. En openQuestions marcá blocking=true sólo en la que ` +
     `condiciona la decisión siguiente. ` +
-    `En findings va el análisis completo: lo lee sólo quien sintetiza al final. En summary va, en 150 ` +
+    `En findings va el análisis completo, con un techo: si pasa de 6000 caracteres, escribí el análisis ` +
+    `entero en ${REPORTS} como <etapa>-analisis.md y dejá en findings lo que entre más la ruta de ese ` +
+    `archivo. Un findings más largo no llega —se trunca en el camino y la etapa muere reintentando—, y ` +
+    `quien sintetiza al final lee el archivo igual. En summary va, en 150 ` +
     `palabras o menos, lo que la etapa siguiente necesita para decidir —no un resumen de tu análisis, ` +
     `sino lo que le cambia el trabajo—, porque eso se le reenvía a cada etapa posterior.`,
     { schema: STAGE, label: `stage:${stage.id}` },

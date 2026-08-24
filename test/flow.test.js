@@ -236,6 +236,19 @@ test('un recorrido que se bloquea entrega igual lo que las etapas anteriores est
 // entonces. Cuatro casos de `intake` e `incident-review` lo midieron: los tres de intake tenían a mano
 // el pedido literal, sus supuestos y el destino recomendado, y el gate bloqueado pedía procedencia,
 // que no impide ninguna de las tres.
+// El análisis completo viaja por el input de la herramienta, y ahí se trunca. Una etapa de
+// `defect-triage` lo intentó cinco veces con 22366, 9972, 11337, 12236 y 13458 caracteres: los cinco
+// llegaron cortados a mitad de string, ninguno parseó y el caso murió sin medirse. Es la otra mitad
+// de lo que R16 pide —el análisis «queda donde se escribió»— y el prompt no la decía.
+test('el análisis largo va a un archivo, no por el handoff', async () => {
+  const { prompts } = await runFlow()
+  const etapa = prompts.find((one) => one.key === 'stage:encuadre')
+  assert.ok(etapa, 'la etapa corrió')
+  assert.match(etapa.prompt, /6000 caracteres/, 'findings tiene techo')
+  assert.match(etapa.prompt, /-analisis\.md/, 'y lo que sobra se escribe donde la síntesis lo lee')
+  assert.match(etapa.prompt, /se trunca en el camino/, 'con la razón, que es lo que evita bajarlo')
+})
+
 test('el bloqueo de la primera etapa también entrega, y entrega el pedido', async () => {
   const { result, written } = await runFlow({
     'stage:encuadre': {
