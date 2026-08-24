@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "slug": "change-review",
+  "name": "Change Review",
+  "purpose": "Decidir si un cambio ya construido se puede entregar, con cada disciplina mirando lo que le toca y el veredicto firmado por quien responde, en vez de una aprobación que nadie inspeccionó.",
+  "outcome": "report",
+  "entryAgent": "tech-lead",
+  "facilitator": "tech-lead",
+  "decisionOwners": {
+    "correctness_and_debt": "tech-lead",
+    "evidence_and_coverage": "qa-engineer",
+    "security_findings": "security-engineer",
+    "operability_and_rollback": "site-reliability-engineer"
+  },
+  "conditionalAgents": [
+    "backend-engineer",
+    "frontend-engineer",
+    "mobile-engineer",
+    "database-administrator",
+    "privacy-compliance-specialist"
+  ],
+  "guardrails": [
+    "No aprobar nada que no se haya inspeccionado, y decir qué quedó sin inspeccionar y por qué.",
+    "No ejecutar el cambio, no desplegarlo y no promover trabajo al BACKLOG.",
+    "El veredicto tiene tres salidas y no dos: aprobar, aprobar con lo que hay que corregir antes de entregar, y no poder aprobar."
+  ],
+  "stages": [
+    {
+      "id": "scope",
+      "phase": "discovery",
+      "agent": "tech-lead",
+      "dependsOn": [],
+      "produces": [
+        "what-changed-and-against-which-acceptance",
+        "decisions-that-constrain-it",
+        "what-each-discipline-must-answer"
+      ],
+      "exitGate": "Está escrito qué cambia, contra qué criterio de aceptación se revisa, qué decisiones vigentes lo restringen —ADR, contratos, SLO, políticas— y qué tiene que responder cada disciplina. Y está enumerado qué se inspeccionó: archivo, diff, comando con su salida. Sin esa lista la ronda produce opiniones sobre cosas distintas."
+    },
+    {
+      "id": "correctness",
+      "phase": "discovery",
+      "agent": "backend-engineer",
+      "dependsOn": ["scope"],
+      "produces": [
+        "does-it-do-what-it-claims",
+        "what-breaks-that-nobody-named"
+      ],
+      "exitGate": "Dice si el cambio hace lo que dice hacer, con la línea que lo muestra, y qué rompe que el pedido no nombró —compatibilidad, concurrencia, efectos externos—. Lo que no se puede establecer sin correr el sistema queda dicho, no supuesto."
+    },
+    {
+      "id": "evidence",
+      "phase": "discovery",
+      "agent": "qa-engineer",
+      "dependsOn": ["scope"],
+      "produces": [
+        "which-criterion-each-test-sustains",
+        "what-is-green-without-being-covered"
+      ],
+      "exitGate": "Por cada criterio de aceptación consta qué prueba lo sostiene, o que ninguna lo hace. Una prueba que nombra el criterio sin aserciar su propiedad no lo cubre, y eso se ve leyendo el fuente de la prueba y no su salida."
+    },
+    {
+      "id": "exposure",
+      "phase": "discovery",
+      "agent": "security-engineer",
+      "dependsOn": ["scope"],
+      "produces": [
+        "what-it-exposes-that-it-did-not-before",
+        "who-can-reach-it"
+      ],
+      "exitGate": "Dice qué superficie, dato o permiso queda alcanzable que antes no lo estaba, y por quién. Un cambio que no toca seguridad se declara así con la razón, no se omite."
+    },
+    {
+      "id": "operability",
+      "phase": "discovery",
+      "agent": "site-reliability-engineer",
+      "dependsOn": ["scope"],
+      "produces": [
+        "how-it-fails-and-what-shows-it",
+        "how-it-is-undone"
+      ],
+      "exitGate": "Está escrito cómo falla el cambio, qué señal lo muestra y cómo se deshace —y si no se puede deshacer, eso es lo que hay que decir—. Un cambio irreversible sin decirlo es el que se descubre a las tres de la mañana."
+    },
+    {
+      "id": "decide",
+      "phase": "discovery",
+      "agent": "tech-lead",
+      "dependsOn": ["correctness", "evidence", "exposure", "operability"],
+      "produces": [
+        "signed-verdict-with-its-three-outcomes",
+        "blocking-separated-from-recorded",
+        "what-reopens-this-signature"
+      ],
+      "exitGate": "El veredicto es uno de los tres y está firmado. Lo que hay que corregir antes de entregar está separado de lo que sólo queda registrado, la deuda aceptada tiene dueño y condición de reapertura, y está escrito qué hecho nuevo reabre la firma. Una objeción no atendida queda con su autor, no se promedia."
+    }
+  ],
+  "completion": [
+    "Qué cambia y contra qué criterio se revisa está escrito, con las decisiones vigentes que lo restringen.",
+    "Qué se inspeccionó está enumerado —archivo, diff, comando con su salida— y qué no, con su razón.",
+    "Por cada criterio de aceptación consta la prueba que lo sostiene, o que ninguna lo hace.",
+    "Lo que el cambio expone y quién puede alcanzarlo está dicho, aunque la respuesta sea que no expone nada.",
+    "Cómo falla, qué señal lo muestra y cómo se deshace está escrito, o consta que es irreversible.",
+    "El veredicto es uno de los tres, con lo bloqueante separado de lo registrado y con qué lo reabre."
+  ]
+}

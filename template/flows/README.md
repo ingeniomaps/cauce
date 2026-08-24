@@ -18,6 +18,7 @@ sin que un solo agente decida por todos.
 | `system/incident-review` | 4 etapas | informe | ¿qué pasó y qué aprendemos? Después de contener. |
 | `system/defect-triage` | 4 etapas | informe | ¿qué falla, a quiénes y qué hacemos? Con el defecto vivo. |
 | `system/technical-design` | 6 etapas | informe | ¿cómo se construye lo ya decidido? Cada disciplina en paralelo. |
+| `system/change-review` | 6 etapas | informe | ¿se puede entregar lo ya construido? Cada disciplina revisa lo suyo y firma quien responde. |
 
 Son seis **formas**, no seis dominios. Un recorrido de seguridad o uno de crecimiento tienen la misma forma
 con otros cargos: eso lo escribe cada empresa, porque cómo decide es suyo.

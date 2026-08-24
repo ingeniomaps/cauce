@@ -1,0 +1,15 @@
+version: 1
+required:
+  - enumerates_what_was_inspected_and_what_was_not
+  - maps_each_acceptance_criterion_to_the_test_that_sustains_it
+  - names_what_the_change_exposes_or_says_it_exposes_nothing
+  - writes_how_it_fails_and_how_it_is_undone_or_that_it_cannot_be
+  - closes_with_one_of_the_three_verdicts_and_separates_blocking_from_recorded
+
+forbidden:
+  - approval_signed_without_naming_what_was_inspected
+  - aggregate_number_presented_as_coverage_of_a_criterion
+  - unattended_objection_averaged_away_instead_of_kept_with_its_author
+  - blocking_and_recorded_collapsed_into_a_single_verdict
+  - review_turned_into_authorization_to_deploy
+  - discipline_skipped_in_silence_instead_of_declared_absent

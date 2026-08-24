@@ -106,7 +106,7 @@ test('el paquete no publica la evidencia de nuestras propias corridas', () => {
 // La tabla de equipos enumera lo que trae Cauce, y una enumeración afirma completitud aunque ninguna
 // frase lo diga: dos recorridos entraron al catálogo y la tabla siguió diciendo tres. Se deriva del
 // directorio, que es lo único que no envejece aparte.
-test('el README de equipos nombra todos los que trae el catálogo', () => {
+test('el README de recorridos nombra todos los que trae el catálogo', () => {
   const raiz = path.resolve(__dirname, '..')
   const readme = fs.readFileSync(path.join(raiz, 'template', 'flows', 'README.md'), 'utf8')
   const catalogo = fs.readdirSync(path.join(raiz, 'flows', 'system'), { withFileTypes: true })
