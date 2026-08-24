@@ -786,3 +786,20 @@ test('el schema del manifiesto acepta los campos que los contratos de recorrido 
     && !['schemaVersion', 'slug', 'decisionOwners'].includes(key))
   assert.deepEqual(fuera, [], 'el schema rechaza un campo de contrato que el manifiesto trae')
 })
+
+// El mismo defecto en los dos evaluadores, y arreglado en uno solo: `agent-eval` aprendió a preguntar
+// qué CLI existe y `flow-eval` quedó con `tools/ops.js` puesto a mano. En el toolkit ese archivo no
+// existe —acá no se instala—, así que el agente de bancos reportó todos los casos como fallidos y el
+// freno de banco viejo detuvo cuatro corridas cuyos bancos estaban recién borrados.
+test('los dos evaluadores preguntan qué CLI existe, no lo suponen', () => {
+  for (const name of ['agent-eval.js', 'flow-eval.js']) {
+    const source = fs.readFileSync(path.join(WF, name), 'utf8')
+    assert.match(source, /cli: \{ type: 'string' \}/, `${name}: la ruta viaja en el schema`)
+    assert.match(source, /"tools\/ops\.js" if that file exists and "engine\/cli\/ops\.js" otherwise/,
+      `${name}: el primer agente la averigua nombrando las dos`)
+    // Los que el evaluador corre. Queda afuera la sugerencia de `fork`, que no se ejecuta acá: se le
+    // muestra a una empresa, y ahí `tools/ops.js` es la ruta correcta.
+    const corridos = [...source.matchAll(/node tools\/ops\.js (evaluate|agents list|learn)/g)]
+    assert.deepEqual(corridos.map((hit) => hit[0]), [], `${name}: queda un comando con el CLI supuesto`)
+  }
+})

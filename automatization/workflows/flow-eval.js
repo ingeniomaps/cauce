@@ -35,6 +35,11 @@ const CASES = {
       },
     } },
     forbidden: { type: 'array', items: { type: 'string' } },
+    // Qué CLI existe acá. Una empresa tiene el shim `tools/ops.js`; el repo del toolkit no lo tiene y su
+    // motor está en `engine/cli/ops.js`. `agent-eval` lo aprendió esta mañana y esto quedó con la ruta
+    // puesta a mano: el agente de bancos reportó los cuatro casos como fallidos y el freno de banco
+    // viejo detuvo cuatro corridas cuyos bancos estaban recién borrados.
+    cli: { type: 'string' },
     mode: { type: 'string' },
   },
 }
@@ -69,7 +74,9 @@ phase('Casos')
 
 const context = await agent(
   `From ${ROOT}, run exactly these two commands and report only what they printed. Read no other file.\n` +
-  `1. "node tools/ops.js evaluate ${FLOW} --flow --cases --json" — it prints an object: copy its ` +
+  `From ${ROOT}, the CLI is "tools/ops.js" if that file exists and "engine/cli/ops.js" otherwise. ` +
+  `Set cli to the one that exists and use it in every command below.\n` +
+  `1. "node <cli> evaluate ${FLOW} --flow --cases --json" — it prints an object: copy its ` +
   `"cases" array into items and its "forbidden" array into forbidden, both verbatim.\n` +
   `2. Read ${ROOT}/ops.config.json and set mode to its "mode" field, verbatim.`,
   { schema: CASES, label: 'casos' },
@@ -88,7 +95,7 @@ if (context.mode !== 'toolkit') {
 }
 const benches = await agent(
   `From ${ROOT}, run one command per case, in order, and report what each one did:\n` +
-  context.items.map((item) => `  node tools/ops.js evaluate ${FLOW} --flow --bench ${item.id}`).join('\n') +
+  context.items.map((item) => `  node ${context.cli} evaluate ${FLOW} --flow --bench ${item.id}`).join('\n') +
   `\n\nEach one recreates a disposable instance where writing to planning/ is legitimate. Set path ` +
   `to the directory they share: ${BENCH_ROOT}\n\n` +
   `A command that exits non-zero did NOT recreate its bench: put that case id in failed, verbatim. ` +
@@ -166,7 +173,7 @@ const rows = answered.map((one) => {
 
 await agent(
   `Escribí el registro junto al recorrido. Desde ${ROOT}, corré ` +
-  `"node tools/ops.js evaluate ${FLOW} --flow --record" y escribí en la ruta que imprima, relativa a ` +
+  `"node ${context.cli} evaluate ${FLOW} --flow --record" y escribí en la ruta que imprima, relativa a ` +
   `${ROOT}. Creá el directorio si no existe.\n\n` +
   `Preguntale la ruta al motor en vez de componerla: aplicar un cambio al recorrido pide volver a ` +
   `correr los casos el mismo día, y cuando el nombre salía de la fecha la segunda corrida escribía ` +
