@@ -269,3 +269,22 @@ test('el bloqueo de la primera etapa también entrega, y entrega el pedido', asy
   assert.match(parcial, /supuestos que da por ciertos/)
   assert.match(parcial, /no consta quién lo pidió/, 'con lo que falta, sin rellenarlo')
 })
+
+// Y la reserva de etapa se acota por la misma razón que existe el informe. Un caso de
+// `incident-review` entregó un informe parcial sustancial y aun así se guardó la clasificación de
+// cinco seguimientos —«esa distinción es la entrega de `learn`, no de esta etapa»— cuando el
+// documento de entrada ya la sostenía y `learn` no iba a correr nunca. Reservárselo no se lo guarda
+// para después: lo pierde.
+test('lo que una etapa posterior habría hecho, pero el material ya sostiene, se entrega', async () => {
+  const { written } = await runFlow({
+    'stage:factibilidad': {
+      gate: 'no-cumplido', summary: 'no hay costo', findings: 'x',
+      missing: 'nadie estimó el esfuerzo', humanAction: 'pedirle la estimación a ingeniería',
+    },
+  })
+
+  const parcial = written.find((one) => /parcial/i.test(one) && /reports/i.test(one))
+  assert.match(parcial, /esa etapa no va a correr/, 'la reserva se acota por lo que ya no va a pasar')
+  assert.match(parcial, /lo pierde/, 'y se dice qué cuesta reservárselo')
+  assert.match(parcial, /decí de qué etapa era/, 'sin borrar de quién era el trabajo')
+})

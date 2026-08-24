@@ -269,12 +269,22 @@ if (blocked.length) {
   // ninguna la fila es todo lo que existe. Cuatro casos rojos en dos recorridos midieron exactamente
   // eso, y los tres de `intake` tenían a mano lo que el gate no pedía: el pedido literal, sus
   // supuestos y el destino recomendado. El bloqueo era de procedencia y no impedía ninguna de las tres.
+  //
+  // Y la reserva de etapa se acota por la misma razón. Un caso de `incident-review` entregó un informe
+  // parcial sustancial y aun así se guardó la clasificación de cinco seguimientos —«esa distinción es
+  // la entrega de `learn`, no de esta etapa»— cuando el documento de entrada ya la sostenía y `learn`
+  // no iba a correr nunca. El juez lo dijo mejor que cualquier comentario: la reserva no la vuelve
+  // imposible, la vuelve no entregada.
   await agent(
     `${RULES}\n\nEl recorrido se bloqueó en ${blocked[0].stage} y no va a completarse. Escribí en ` +
     `${REPORTS} como <AAAA-MM-DD>-<slug>-parcial.md la entrega que sí se puede dar, marcada como ` +
     `**entrega parcial** desde el título: qué quedó establecido y con qué evidencia, qué no se pudo ` +
     `y por qué, y qué haría falta para completarlo —"${blocked[0].missing}"—. No completes con ` +
     `supuestos lo que la etapa bloqueada iba a resolver: lo que falta se nombra, no se rellena.\n\n` +
+    `Eso vale para lo que necesita el insumo que falta, y sólo para eso. Lo que el material que ya ` +
+    `tenés alcanza para establecer se entrega acá, aunque en el recorrido completo lo hubiera ` +
+    `producido una etapa posterior: esa etapa no va a correr, así que reservárselo no se lo guarda ` +
+    `para después, lo pierde. Si lo entregás, decí de qué etapa era.\n\n` +
     (settled.length ? '' :
       `Se bloqueó la primera etapa, así que no hay etapas anteriores que citar y lo entregable es el ` +
       `pedido mismo: transcribilo como se dijo y sin traducirlo, separá lo que afirma de lo que ` +
