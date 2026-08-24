@@ -23,7 +23,33 @@ test('el workflow de aprendizaje corre en el toolkit y nombra un solo CLI', () =
   assert.equal(/tools\/ops\.js/.test(source), false, 'no queda el CLI de una instancia')
   assert.equal(/\.ops\//.test(source), false, 'no queda el motor vendorizado que Cauce ya no distribuye')
   assert.match(source, /fromJSON\(needs\.discover\.outputs\.agents\)/, 'la matriz sale del árbol de agentes')
-  assert.match(source, /slugs\.filter\(\(slug\) => slug === only\)/, 'el input se valida contra slugs reales')
+  assert.match(source, /roles\.filter\(\(role\) => role\.slug === only\)/, 'el input se valida contra slugs reales')
+})
+
+// La cadencia sale de las fuentes de cada cargo y el cron sólo pregunta cuál le toca hoy. Escribirla
+// acá como lista de slugs la dejaría mintiendo el día que alguien le cambie las fuentes a un cargo,
+// que es el mismo motivo por el que la matriz ya salía del árbol.
+test('cada cron investiga su cadencia, y el del ensamblaje no investiga', () => {
+  const file = path.resolve(__dirname, '..', '.github', 'workflows', 'agent-learning.yml')
+  const source = fs.readFileSync(file, 'utf8')
+  const crones = [...source.matchAll(/^ {4}- cron: '([^']+)'/gm)].map((hit) => hit[1])
+  assert.deepEqual(crones, ['17 13 * * 1', '17 13 24 * *', '17 13 23 3,6,9,12 *', '17 7 1 * *'])
+
+  // Ninguno comparte minuto con otro: el día 1 cae lunes cuatro veces cada dos años y antes los dos
+  // disparaban a la misma hora, con el orden librado a la cola.
+  assert.equal(new Set(crones.map((one) => one.split(' ').slice(0, 2).join(' '))).size > 1,
+    true, 'el ensamblaje no compite con la investigación')
+
+  // Los tres de investigación tienen cadencia declarada; el del ensamblaje no está en la tabla, y por
+  // eso ese día la lista sale vacía y `research` no arranca.
+  const tabla = source.slice(source.indexOf('const POR_CRON'), source.indexOf('const cadence'))
+  for (const cron of crones.slice(0, 3)) assert.ok(tabla.includes(cron), `${cron} elige a quién correr`)
+  assert.equal(tabla.includes('17 7 1 * *'), false, 'el del ensamblaje no investiga a nadie')
+  assert.match(source, /needs\.discover\.outputs\.agents != '\[\]'/, 'y research no arranca con lista vacía')
+  assert.match(source, /github\.event\.schedule == '17 7 1 \* \*'/, 'propose corre el día del ensamblaje')
+
+  // Sin `SCHEDULE` la corrida es a mano: ahí no se filtra, porque quien la lanza quiere lo que pidió.
+  assert.match(source, /const porCron = Boolean\(\(process\.env\.SCHEDULE \|\| ""\)\.trim\(\)\)/)
 })
 
 // Tres formas de trabajar de más o de menos que tuvo este workflow: la credencial comprobada dentro

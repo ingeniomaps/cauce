@@ -45,6 +45,11 @@ function agents(action, dir, extra, cli) {
     // `path` viene resuelto: quien consuma esto no debería reconstruir dónde ganó la precedencia.
     return console.log(JSON.stringify(roles.map((role) => ({
       slug: role.slug, type: role.type, system: role.system, summary: role.summary,
+      // Cada cuánto le toca investigar, derivada de sus fuentes. Va acá y no en el catálogo porque
+      // `catalog` no puede depender de `learning` —`learning` ya depende de él—, y va en esta salida
+      // porque es la que el cron consume para armar su matriz: así el calendario sale del árbol y no
+      // de una lista paralela en el YAML.
+      cadence: L.cadence(root, role.slug),
       path: path.relative(root, role.dir).split(path.sep).join('/'),
     }))))
   }

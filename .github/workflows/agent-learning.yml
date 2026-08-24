@@ -5,10 +5,19 @@ name: Agent learning proposals
 
 on:
   schedule:
-    # Semanal la investigación, mensual la consolidación. La propuesta sólo vale si antes hubo
-    # informes: consolidar sin ellos produce un andamiaje vacío que nadie puede aprobar.
-    - cron: '17 13 * * 1'
-    - cron: '17 13 1 * *'
+    # Cada cargo investiga al ritmo de su fuente más rápida, y la cadencia sale de `sources.yaml` —no
+    # de una lista acá—: `agents list --json` la trae en `cadence`. Un aviso de seguridad publica todos
+    # los días y llegar un mes tarde es llegar tarde; una norma se revisa por edición y mirarla cada
+    # lunes devuelve el mismo texto.
+    - cron: '17 13 * * 1'          # semanal
+    - cron: '17 13 24 * *'         # mensual
+    - cron: '17 13 23 3,6,9,12 *'  # trimestral
+    # El ensamblaje siempre el 1, y temprano. La investigación mensual corre el 24 y no unas horas
+    # antes: con siete días de margen, un cargo que falla se puede repetir antes del cierre. Y el día 1
+    # cae lunes cuatro veces cada dos años —antes los dos crones disparaban al mismo minuto y el orden
+    # quedaba librado a la cola—: a las 07 consolida el mes que cerró, y el informe de ese lunes ya
+    # cuenta para el mes nuevo.
+    - cron: '17 7 1 * *'           # ensamblaje
   workflow_dispatch:
     inputs:
       agent:
@@ -49,17 +58,41 @@ jobs:
         id: list
         env:
           ONLY: ${{ inputs.agent }}
+          # Cuál de los cuatro crones disparó. Documentado: «Access the schedule event that triggered
+          # the workflow through the github.event.schedule context» —docs.github.com, eventos que
+          # disparan workflows, consultado 2026-08-23—. Vacío cuando se lanza a mano.
+          SCHEDULE: ${{ github.event.schedule }}
         run: |
           all=$(node "$OPS" agents list --json)
           node -e '
             const fs = require("fs")
             const only = (process.env.ONLY || "").trim()
-            const slugs = JSON.parse(process.argv[1]).map((role) => role.slug)
-            const list = only ? slugs.filter((slug) => slug === only) : slugs.sort()
-            if (!list.length) {
+            // Qué cadencia le toca a cada cron. El del ensamblaje no investiga: ese día sólo se
+            // consolida, y por eso no aparece acá.
+            const POR_CRON = {
+              "17 13 * * 1": "semanal",
+              "17 13 24 * *": "mensual",
+              "17 13 23 3,6,9,12 *": "trimestral",
+            }
+            const cadence = POR_CRON[(process.env.SCHEDULE || "").trim()] || ""
+            const roles = JSON.parse(process.argv[1])
+            // Tres caminos, y lo que los separa no es la cadencia sino de dónde vino la corrida.
+            // A mano con un slug: ése. A mano sin slug: todos, que es lo que quiere quien lo lanza.
+            // Por cron: los de esa cadencia, y ninguno si el cron es el del ensamblaje —que no está
+            // en la tabla justo para eso—.
+            const porCron = Boolean((process.env.SCHEDULE || "").trim())
+            const elegidos = only ? roles.filter((role) => role.slug === only)
+              : porCron ? roles.filter((role) => role.cadence === cadence)
+              : roles
+            const list = elegidos.map((role) => role.slug).sort()
+            // Vacío sólo es un error cuando alguien pidió algo concreto. El día del ensamblaje no
+            // hay cadencia que investigar y la lista vacía es el resultado correcto: `research` no
+            // arranca y `propose` sí.
+            if (!list.length && (only || !cadence)) {
               console.error(only ? `No existe el agente "${only}".` : "No se encontró ningún agente.")
               process.exit(1)
             }
+            console.log(`${list.length} cargo(s)${cadence ? ` de cadencia ${cadence}` : ""}`)
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `agents=${JSON.stringify(list)}\n`)
           ' "$all"
 
@@ -79,7 +112,8 @@ jobs:
 
   # Sin credencial no corre: `learn` sólo arma el andamiaje, y llenarlo es lo que hace el modelo.
   research:
-    if: github.event.schedule != '17 13 1 * *' && needs.discover.outputs.model == 'true'
+    # El día del ensamblaje no se investiga: `discover` devuelve lista vacía y este job no arranca.
+    if: needs.discover.outputs.agents != '[]' && needs.discover.outputs.model == 'true'
     needs: discover
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -249,7 +283,7 @@ jobs:
   # Este job no habla con ningún modelo: consolida informes ya commiteados con el CLI y abre el PR.
   # Por eso puede escribir sin la separación que exige `research`.
   propose:
-    if: github.event.schedule == '17 13 1 * *' || github.event_name == 'workflow_dispatch'
+    if: github.event.schedule == '17 7 1 * *' || github.event_name == 'workflow_dispatch'
     needs: discover
     runs-on: ubuntu-latest
     timeout-minutes: 15
