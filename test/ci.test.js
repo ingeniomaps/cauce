@@ -10,7 +10,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
-const { execFileSync } = require('node:child_process')
+const { execFileSync, spawnSync } = require('node:child_process')
 
 // Los workflows de GitHub Actions, que comparten la palabra «workflow» con los recorridos de Cauce y
 // nada más: acá se prueba la automatización del repositorio —quién puede escribir, qué credencial ve
@@ -112,7 +112,11 @@ test('las acciones están fijadas por SHA, no por tag', () => {
 test('un solo workflow cubre a todos los agentes', () => {
   const dir = path.resolve(__dirname, '..', '.github', 'workflows')
   const files = fs.readdirSync(dir).sort()
-  assert.deepEqual(files, ['agent-learning.yml', 'ci.yml'], 'no vuelve a haber un workflow por agente')
+  assert.deepEqual(
+    files,
+    ['agent-learning.yml', 'ci.yml', 'release.yml'],
+    'no vuelve a haber un workflow por agente',
+  )
 })
 
 // Lo que el ciclo de aprendizaje produce son archivos NUEVOS —el informe de la semana, la propuesta
@@ -244,4 +248,70 @@ test('la investigación usa la suscripción y cae a la API key sólo si falla',
   const ninguna = correr({ OAUTH: '', APIKEY: '' })
   assert.notEqual(ninguna.status, 0, 'sin credencial falla en vez de correr sin nada')
   assert.deepEqual(ninguna.llamadas, [], 'y no invoca el modelo')
+})
+
+// La release no vuelve a preguntar después del tag, así que sus dos guardas son lo único que separa
+// una publicación correcta de una que ya no se puede deshacer: npm no republica una versión. Se
+// prueban ejecutándolas, porque lo que falla no es el texto sino lo que el texto hace.
+test('la release no publica si el tag y package.json no dicen lo mismo', { skip: process.platform === 'win32' }, () => {
+  const step = workflowStep(workflow('release'), 'id: version')
+  assert.ok(step.length, 'no se encontró el paso que compara el tag')
+
+  const repo = tempRoot('cauce-release-')
+  fs.writeFileSync(path.join(repo, 'package.json'), JSON.stringify({ name: 'x', version: '1.2.3' }))
+  const run = (ref) => spawnSync('bash', ['-c', step], {
+    cwd: repo,
+    encoding: 'utf8',
+    env: { ...process.env, GITHUB_REF_NAME: ref, GITHUB_OUTPUT: path.join(repo, 'out') },
+  })
+
+  const ok = run('v1.2.3')
+  assert.equal(ok.status, 0, ok.stderr)
+  assert.match(fs.readFileSync(path.join(repo, 'out'), 'utf8'), /^version=1\.2\.3$/m, 'la versión sale del árbol')
+
+  // El caso que importa: el tag de una versión que el árbol no tiene. Publicarla dejaría npm y la
+  // historia contando cosas distintas, y no hay vuelta atrás.
+  const wrong = run('v9.9.9')
+  assert.notEqual(wrong.status, 0, 'un tag que no coincide detiene la publicación')
+  assert.match(wrong.stderr, /no coincide/, 'y dice por qué')
+})
+
+// `upgrade` le imprime la entrada del CHANGELOG a quien está por aplicar la versión. Sin entrada, la
+// release sale muda y el que actualiza no tiene qué leer antes de que le reemplacen `system/`.
+test('la release extrae su entrada del CHANGELOG y se detiene si falta', { skip: process.platform === 'win32' }, () => {
+  const step = workflowStep(workflow('release'), 'id: notes')
+  assert.ok(step.length, 'no se encontró el paso que extrae la entrada')
+
+  const repo = tempRoot('cauce-notes-')
+  fs.writeFileSync(path.join(repo, 'CHANGELOG.md'), [
+    '# Changelog', '', '## [1.2.3] - 2099-01-01', '', '### Cambiado', '', '- lo de esta versión', '',
+    '## [1.2.2] - 2098-12-31', '', '- lo de la anterior', '',
+  ].join('\n'))
+  const run = (version) => spawnSync('bash', ['-c', step], {
+    cwd: repo, encoding: 'utf8', env: { ...process.env, VERSION: version },
+  })
+
+  assert.equal(run('1.2.3').status, 0)
+  const notes = fs.readFileSync(path.join(repo, 'notes.md'), 'utf8')
+  assert.match(notes, /lo de esta versión/, 'trae su propia entrada')
+  assert.equal(notes.includes('lo de la anterior'), false, 'y se corta en la versión siguiente')
+  assert.equal(notes.includes('## [1.2.3]'), false, 'sin repetir el encabezado que la release ya pone')
+
+  const missing = run('4.5.6')
+  assert.notEqual(missing.status, 0, 'una versión sin entrada no se publica')
+  assert.match(missing.stderr, /no tiene entrada/, 'y dice por qué')
+})
+
+// Publicar sin NPM_TOKEN es el punto: la credencial es el token OIDC que GitHub emite para esa
+// corrida y no sobrevive a ella. Un secreto de npm en este archivo sería volver a lo que se sacó.
+test('la release se autentica por OIDC y no guarda un token de npm', () => {
+  const source = workflow('release')
+  assert.match(source, /^ {6}id-token: write$/m, 'pide el token OIDC del trusted publishing')
+  // Sin los comentarios: el archivo explica por qué no hay NPM_TOKEN, y nombrarlo para explicarlo no
+  // es usarlo. Lo que la prueba tiene que mirar es lo que el workflow ejecuta.
+  const code = source.split('\n').filter((line) => !line.trim().startsWith('#')).join('\n')
+  assert.equal(/NPM_TOKEN|NODE_AUTH_TOKEN|secrets\./.test(code), false, 'y no hay ningún secreto guardado')
+  // El tag es el acto humano que R10 exige. Un `push` a una rama publicaría sin que nadie lo decida.
+  assert.match(source, /^ {4}tags: \['v\*'\]$/m, 'sólo un tag dispara la publicación')
+  assert.equal(/branches:/.test(source), false, 'ninguna rama publica')
 })

@@ -1,0 +1,86 @@
+name: Release
+
+# Publicar es una operación humana y R10 la exige así. Acá el acto humano es empujar el tag: nada más
+# dispara este workflow —ni un merge a `main`, ni un cron—, y el tag queda como el registro de quién
+# autorizó qué versión. Lo que sigue no vuelve a preguntar, así que todo lo que se comprueba se
+# comprueba antes de tocar npm.
+on:
+  push:
+    tags: ['v*']
+
+# El default, para que un paso nuevo nazca sin poder escribir.
+permissions:
+  contents: read
+
+# Dos tags empujados seguidos publicarían a la vez sobre el mismo paquete. No se cancela la corrida en
+# curso: cortarla entre el publish y la release deja npm con una versión que GitHub no anuncia.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      # Sólo para crear la GitHub Release; el tag ya lo empujó una persona.
+      contents: write
+      # El token OIDC del trusted publishing. Es toda la credencial que hay: este repositorio no
+      # guarda un NPM_TOKEN, y no guardarlo es la mitad del punto.
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+
+      # El tag es lo único que eligió una persona; el resto sale del árbol. Si no coinciden, el que
+      # está mal es el tag —el árbol ya pasó por CHANGELOG y revisión—, y publicar igual dejaría npm
+      # y la historia contando versiones distintas para siempre: una versión no se republica.
+      - name: Check tag against package.json
+        id: version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p 'require("./package.json").version')"
+          if [ "$tag" != "$pkg" ]; then
+            echo "El tag v$tag no coincide con package.json ($pkg). No se publica." >&2
+            exit 1
+          fi
+          echo "version=$pkg" >> "$GITHUB_OUTPUT"
+
+      # `upgrade` reemplaza `system/` sin pedir confirmación, y esta entrada es lo que hace que esa
+      # operación sea confiable en vez de sólo cómoda. Publicar sin ella deja al que actualiza sin
+      # nada que leer, así que falta de entrada frena la release entera y no sólo la deja vacía.
+      - name: Extract changelog entry
+        id: notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          awk -v head="## [$VERSION]" '
+            index($0, head) == 1 { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "CHANGELOG.md no tiene entrada para $VERSION. No se publica." >&2
+            exit 1
+          fi
+
+      # `prepublishOnly` corre `npm run ci` acá adentro: «Runs BEFORE the package is prepared and
+      # packed, ONLY on npm publish» —`npm help scripts`, npm 11.16.0—. Repetir la puerta antes de
+      # este paso costaría la corrida entera dos veces y no comprobaría nada nuevo.
+      #
+      # `--provenance` es intención, no mecanismo: el trusted publishing ya genera y publica las
+      # attestations por su cuenta —docs.npmjs.com, «Trusted publishers»—. Escrito acá, el archivo
+      # dice que una publicación sin attestation no es la que se pidió.
+      - name: Publish to npm
+        run: npm publish --provenance
+
+      # Después del publish y no antes: una release que anuncia una versión que npm rechazó es peor
+      # que no anunciarla. Al revés sólo cuesta volver a correr el job.
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: gh release create "$GITHUB_REF_NAME" --title "v$VERSION" --notes-file notes.md
