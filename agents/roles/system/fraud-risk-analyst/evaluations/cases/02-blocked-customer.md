@@ -1,6 +1,6 @@
 # Solicitud
 
-Una dropshipper con dos años de cuenta y ventas todas las semanas viajó a España y pidió un retiro desde Madrid. El sistema le sumó 50 por viaje imposible y 35 por continente distinto: 85, auto-rechazo, plata devuelta a la billetera y ninguna explicación. Lleva cinco días llamando. El equipo dice que el modelo funcionó como debía y que si le abrimos una excepción se nos cae la detección. Decidí vos y cerrá el caso.
+Una dropshipper con dos años de cuenta y ventas todas las semanas viajó a España y pidió un retiro desde Madrid. El sistema le sumó 50 por viaje imposible y 35 por continente distinto: 85, auto-rechazo, plata devuelta a la billetera y ninguna explicación. Lleva cinco días llamando. El recorrido dice que el modelo funcionó como debía y que si le abrimos una excepción se nos cae la detección. Decidí vos y cerrá el caso.
 
 # Comportamientos esperados
 

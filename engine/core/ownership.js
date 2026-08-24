@@ -33,8 +33,8 @@ const SYSTEM_FILES = [
   'planning/delivery/flags.md',
   'planning/delivery/multi-repo.md',
   'organization/roles/README.md',
-  'teams/000-template.md',
-  'teams/README.md',
+  'flows/000-template.md',
+  'flows/README.md',
   'automatization/README.md',
   'automatization/AGENTS.md',
   'integrations/README.md',
@@ -70,7 +70,7 @@ const TEMPLATE_PREFIXES = [
   'planning/',
   'organization/',
   'integrations/',
-  'teams/',
+  'flows/',
   'automatization/',
   'tools/',
 ]
@@ -173,7 +173,7 @@ function overrides(root) {
 // alguna versión suya copió: `upgrade` agrega y reemplaza, pero nunca quitaba nada.
 const RETIRED = [
   'agents/roles/system',
-  'teams/system',
+  'flows/system',
   '.github/workflows/agent-learning.yml',
   'automatization/runners',
   'automatization/workflows',

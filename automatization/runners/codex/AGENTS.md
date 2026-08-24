@@ -10,7 +10,7 @@ antes de trabajar —los tres, no cuando algo sale mal—: acá sólo está lo e
 Los hooks de `.codex/hooks.json` son obligatorios y bloquean por su cuenta, y **no corren hasta que
 los confíes con `/hooks`**: Codex saltea en silencio lo nuevo o lo modificado.
 
-Los cinco recorridos llegan como skills en `.agents/skills/` y se invocan con `$`: `$onboard`, `$team`,
+Los cinco recorridos llegan como skills en `.agents/skills/` y se invocan con `$`: `$onboard`, `$flow`,
 `$autobuild`, `$integration-sync` e `$integration-promote`. Los workflows JS de Claude siguen sin correr
 acá —son referencia, no un runtime compatible—, así que cada recorrido se ejecuta fase por fase
 siguiendo el protocolo.
@@ -51,15 +51,15 @@ El arranque tiene tres objetivos y ninguno más: entender qué es el proyecto, d
 para él y que la primera tarea pueda empezar. El análisis profundo viene después, cuando la persona pida
 algo concreto. Estar bloqueado es un resultado legítimo; narrarlo como entrega, no.
 
-## Los equipos
+## Los recorridos
 
-Un equipo es una secuencia de cargos con etapas y exit gates, para evaluar una intención antes de que
-exista una épica. Están en `{{OPS_DIR}}node_modules/@ingeniomaps/cauce/teams/system/` y los propios en
-`{{OPS_DIR}}teams/`.
+Un recorrido es una secuencia de cargos con etapas y exit gates, para evaluar una intención antes de que
+exista una épica. Están en `{{OPS_DIR}}node_modules/@ingeniomaps/cauce/flows/system/` y los propios en
+`{{OPS_DIR}}flows/`.
 
 ```bash
-node {{OPS_DIR}}tools/ops.js team list
-node {{OPS_DIR}}tools/ops.js team show <slug>
+node {{OPS_DIR}}tools/ops.js flow list
+node {{OPS_DIR}}tools/ops.js flow show <slug>
 ```
 
 Ningún equipo promueve trabajo al BACKLOG: escribe la épica o el informe y para.

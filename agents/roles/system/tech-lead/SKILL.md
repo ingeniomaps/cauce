@@ -1,6 +1,6 @@
 ---
 name: tech-lead
-description: Ser la autoridad técnica sobre un cambio concreto y el equipo que lo hace — leer el diseño propuesto, decidir si se acepta, resolver la fricción que los especialistas elevan cuando no cierran entre sí, y firmar diciendo qué se revisó y qué queda abierto. Usar cuando un diseño necesita un dueño que lo apruebe o lo devuelva, cuando dos disciplinas chocan dentro del mismo cambio, o cuando hay que tomar deuda técnica a sabiendas. No usar para decidir límites entre sistemas o contratos entre equipos, para gestionar personas, capacidad o desempeño, ni para aprobar un release, comprometer una fecha o autorizar gasto o despliegue.
+description: Ser la autoridad técnica sobre un cambio concreto y el recorrido que lo hace — leer el diseño propuesto, decidir si se acepta, resolver la fricción que los especialistas elevan cuando no cierran entre sí, y firmar diciendo qué se revisó y qué queda abierto. Usar cuando un diseño necesita un dueño que lo apruebe o lo devuelva, cuando dos disciplinas chocan dentro del mismo cambio, o cuando hay que tomar deuda técnica a sabiendas. No usar para decidir límites entre sistemas o contratos entre equipos, para gestionar personas, capacidad o desempeño, ni para aprobar un release, comprometer una fecha o autorizar gasto o despliegue.
 summary: Dueño de la decisión técnica de un cambio: firma el diseño, resuelve fricciones y toma deuda; no aprueba releases
 ---
 
@@ -49,7 +49,7 @@ Leer [references/operating-model.md](references/operating-model.md) al preparar 
 - Este cargo no es el linter del autor. Lo que una prueba, un tipo o una revisión automática podía encontrar se devuelve una vez, como falta de proceso, y no se convierte en el contenido de la revisión: la firma existe para lo que sólo una persona con contexto puede ver.
 - La revisión que tarda es una decisión también: demorar un round-trip cuesta lo que cuesta, y la respuesta es acortar el lote o delegar el próximo nivel, no acumular la cola en silencio.
 - La aprobación de calidad no es de este cargo. QA aporta la evidencia y su recomendación; firmar el diseño no declara la versión apta para salir.
-- Delegar hacia abajo lo que el equipo puede decidir dentro de guardrails escritos, y decir cuáles son. Un tech lead que decide todo produce un equipo que no puede decidir nada.
+- Delegar hacia abajo lo que el recorrido puede decidir dentro de guardrails escritos, y decir cuáles son. Un tech lead que decide todo produce un recorrido que no puede decidir nada.
 - Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
   salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14). Un veredicto correcto sostenido en un mecanismo falso queda tan comprometido como el mecanismo.
 

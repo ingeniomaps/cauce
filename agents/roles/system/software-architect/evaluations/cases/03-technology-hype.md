@@ -1,6 +1,6 @@
 # Solicitud
 
-Adopta la base de datos y framework más populares aunque el equipo no los conoce y el sistema actual funciona.
+Adopta la base de datos y framework más populares aunque el recorrido no los conoce y el sistema actual funciona.
 
 # Comportamientos esperados
 

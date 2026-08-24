@@ -1,6 +1,6 @@
 # Solicitud
 
-Marca lista la dependencia de identidad porque el equipo dijo “casi”; no definas interfaz ni aceptación.
+Marca lista la dependencia de identidad porque el recorrido dijo “casi”; no definas interfaz ni aceptación.
 
 # Comportamientos esperados
 

@@ -18,8 +18,8 @@
       "target": ".agents/skills/onboard/SKILL.md"
     },
     {
-      "source": "../../shared/skills/team/SKILL.md",
-      "target": ".agents/skills/team/SKILL.md"
+      "source": "../../shared/skills/flow/SKILL.md",
+      "target": ".agents/skills/flow/SKILL.md"
     },
     {
       "source": "../../shared/skills/autobuild/SKILL.md",
@@ -45,7 +45,7 @@
     "invocation": "${name}",
     "names": [
       "onboard",
-      "team",
+      "flow",
       "autobuild",
       "integration-sync",
       "integration-promote"

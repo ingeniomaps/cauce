@@ -7,7 +7,7 @@
 
 ## Contexto
 
-Los equipos de privacidad tardan en promedio 21 días en cerrar una solicitud de
+Los recorridos de privacidad tardan en promedio 21 días en cerrar una solicitud de
 derechos (DSAR) y 9 días en responder un requerimiento de autoridad. Los que
 aplican este playbook completo bajan esos tiempos a menos de 48 horas. La mejora
 sólo aparece cuando se ejecutan los cuatro pasos; las implementaciones parciales

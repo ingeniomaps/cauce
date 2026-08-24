@@ -3,7 +3,7 @@
 // Los recorridos leídos como fuente: que su `meta` sea el literal puro que el runtime acepta, que no
 // llamen a nada inexistente y que ninguna ruta sea la de una máquina.
 //
-// Leer no es correr, y por eso están aparte `autobuild.test.js` y `team.test.js`, que los ejecutan con
+// Leer no es correr, y por eso están aparte `autobuild.test.js` y `flow.test.js`, que los ejecutan con
 // los subagentes simulados. `ci.test.js` comparte la palabra «workflow» y nada más: ahí son los de
 // GitHub Actions.
 
@@ -118,38 +118,38 @@ test('workflows de integración usan el registro general y no escriben remoto', 
   }
 })
 
-const teamWorkflow = fs.readFileSync(
-  path.resolve(__dirname, '..', 'automatization', 'workflows', 'team.js'), 'utf8',
+const flowWorkflow = fs.readFileSync(
+  path.resolve(__dirname, '..', 'automatization', 'workflows', 'flow.js'), 'utf8',
 )
 
-test('team recorre las etapas del manifiesto y exige cada exit gate', () => {
+test('flow recorre las etapas del manifiesto y exige cada exit gate', () => {
   // El recorrido sale del CLI, no de un modelo leyendo el JSON a ojo.
-  assert.match(teamWorkflow, /team show \$\{CANDIDATE\} --json/)
+  assert.match(flowWorkflow, /flow show \$\{CANDIDATE\} --json/)
   // El contrato sale de un solo agente: dos llamadas para transcribir salida determinista de CLI
   // costaban un cuarto del recorrido.
-  assert.equal(teamWorkflow.split("label: 'team-").length - 1, 1, 'un solo agente de contrato')
-  assert.match(teamWorkflow, /agents list --json/, 'y resuelve dónde vive cada cargo')
-  assert.match(teamWorkflow, /exitGate/, 'cada etapa tiene su gate')
-  assert.match(teamWorkflow, /enum: \['cumplido', 'con-condiciones', 'no-cumplido'\]/, 'con sus tres salidas')
+  assert.equal(flowWorkflow.split("label: 'flow-").length - 1, 1, 'un solo agente de contrato')
+  assert.match(flowWorkflow, /agents list --json/, 'y resuelve dónde vive cada cargo')
+  assert.match(flowWorkflow, /exitGate/, 'cada etapa tiene su gate')
+  assert.match(flowWorkflow, /enum: \['cumplido', 'con-condiciones', 'no-cumplido'\]/, 'con sus tres salidas')
   // Un gate no cumplido corta el recorrido en vez de seguir con evidencia floja.
-  assert.match(teamWorkflow, /if \(result\.gate === 'no-cumplido'\)/)
-  assert.match(teamWorkflow, /break/)
+  assert.match(flowWorkflow, /if \(result\.gate === 'no-cumplido'\)/)
+  assert.match(flowWorkflow, /break/)
   for (const phase of ['Contract', 'Stages', 'Draft', 'Closing']) {
-    assert.match(teamWorkflow, new RegExp(`phase\\('${phase}'\\)`))
+    assert.match(flowWorkflow, new RegExp(`phase\\('${phase}'\\)`))
   }
 })
 
 // Separar el resumen del análisis sólo sirve si cada uno va a donde corresponde: si la etapa siguiente
 // recibe findings, el tope no ahorra nada, y si la síntesis recibe el resumen, escribe la épica desde él.
-test('team manda el resumen entre etapas y el análisis entero a la síntesis', () => {
-  assert.match(teamWorkflow, /required: \['gate', 'findings', 'summary'\]/, 'la etapa declara los dos')
-  assert.match(teamWorkflow, /Handoffs previos[\s\S]{0,120}entry\.summary/, 'entre etapas viaja el resumen')
+test('flow manda el resumen entre etapas y el análisis entero a la síntesis', () => {
+  assert.match(flowWorkflow, /required: \['gate', 'findings', 'summary'\]/, 'la etapa declara los dos')
+  assert.match(flowWorkflow, /Handoffs previos[\s\S]{0,120}entry\.summary/, 'entre etapas viaja el resumen')
   assert.equal(
-    /Handoffs previos[\s\S]{0,120}entry\.findings/.test(teamWorkflow), false,
+    /Handoffs previos[\s\S]{0,120}entry\.findings/.test(flowWorkflow), false,
     'y no el análisis entero, que se reenviaría en cada etapa posterior',
   )
   assert.match(
-    teamWorkflow, /Handoffs completos[\s\S]{0,40}JSON\.stringify\(complete\)/,
+    flowWorkflow, /Handoffs completos[\s\S]{0,40}JSON\.stringify\(complete\)/,
     'quien sintetiza lee el análisis entero',
   )
 })
@@ -159,38 +159,38 @@ test('team manda el resumen entre etapas y el análisis entero a la síntesis', 
 // investigar». Con dos, la del medio se convierte en la primera, que es presupuestar lo que nadie sabe.
 test('el recorrido de equipo tiene las tres salidas que el contrato enumera', () => {
   const contract = fs.readFileSync(
-    path.resolve(__dirname, '..', 'teams', 'system', 'feasibility-review', 'WORKFLOW.md'), 'utf8',
+    path.resolve(__dirname, '..', 'flows', 'system', 'feasibility-review', 'FLOW.md'), 'utf8',
   )
   assert.match(contract, /hacer, no hacer o investigar/, 'el contrato del equipo enumera tres salidas')
-  assert.match(teamWorkflow, /enum: \['hacer', 'investigar', 'no-hacer'\]/, 'y el recorrido las tiene')
+  assert.match(flowWorkflow, /enum: \['hacer', 'investigar', 'no-hacer'\]/, 'y el recorrido las tiene')
   // Cada una con su destino, que el mismo contrato nombra.
-  assert.match(teamWorkflow, /outcome === 'investigar'[\s\S]{0,400}label: 'investigar'/, 'investigar')
-  assert.match(teamWorkflow, /outcome === 'no-hacer'[\s\S]{0,400}label: 'inbox-lesson'/, 'no hacer')
-  assert.match(teamWorkflow, /label: 'epic-write'/, 'hacer')
+  assert.match(flowWorkflow, /outcome === 'investigar'[\s\S]{0,400}label: 'investigar'/, 'investigar')
+  assert.match(flowWorkflow, /outcome === 'no-hacer'[\s\S]{0,400}label: 'inbox-lesson'/, 'no hacer')
+  assert.match(flowWorkflow, /label: 'epic-write'/, 'hacer')
 })
 
-test('team nunca promueve: escribe la épica y para', () => {
-  assert.match(teamWorkflow, /ROADMAP/, 'la épica candidata va al roadmap')
-  assert.match(teamWorkflow, /No toques BACKLOG\.md/, 'y el BACKLOG queda fuera de su alcance')
-  assert.match(teamWorkflow, /promoted: false/)
-  assert.equal(/\$\{BACKLOG\}/.test(teamWorkflow), false, 'ni siquiera conoce la ruta del backlog')
+test('flow nunca promueve: escribe la épica y para', () => {
+  assert.match(flowWorkflow, /ROADMAP/, 'la épica candidata va al roadmap')
+  assert.match(flowWorkflow, /No toques BACKLOG\.md/, 'y el BACKLOG queda fuera de su alcance')
+  assert.match(flowWorkflow, /promoted: false/)
+  assert.equal(/\$\{BACKLOG\}/.test(flowWorkflow), false, 'ni siquiera conoce la ruta del backlog')
 
   // Un bloqueo termina en una acción humana concreta, no en un intento de resolverlo solo.
-  assert.match(teamWorkflow, /HUMAN/)
-  assert.match(teamWorkflow, /gate-no-cumplido/)
+  assert.match(flowWorkflow, /HUMAN/)
+  assert.match(flowWorkflow, /gate-no-cumplido/)
   // Y una intención no viable deja la lección registrada en vez de perderse.
-  assert.match(teamWorkflow, /INBOX/)
-  assert.match(teamWorkflow, /no-viable/)
+  assert.match(flowWorkflow, /INBOX/)
+  assert.match(flowWorkflow, /no-viable/)
 })
 
-test('team no deja pasar una opinión del modelo como evidencia', () => {
-  assert.match(teamWorkflow, /No confundas una opinión/)
-  assert.match(teamWorkflow, /sin evidencia observable/)
-  assert.match(teamWorkflow, /Dueños de decisión/, 'la autoridad por dominio viaja en cada prompt')
+test('flow no deja pasar una opinión del modelo como evidencia', () => {
+  assert.match(flowWorkflow, /No confundas una opinión/)
+  assert.match(flowWorkflow, /sin evidencia observable/)
+  assert.match(flowWorkflow, /Dueños de decisión/, 'la autoridad por dominio viaja en cada prompt')
 })
 
-test('team acepta la intención suelta, con prefijo de equipo o estructurada', () => {
-  const block = teamWorkflow.match(/const input = [\s\S]*?const INTENT = [^\n]*\n/)[0].replace(/\bconst /g, 'var ')
+test('flow acepta la intención suelta, con prefijo de equipo o estructurada', () => {
+  const block = flowWorkflow.match(/const input = [\s\S]*?const INTENT = [^\n]*\n/)[0].replace(/\bconst /g, 'var ')
   const resolve = new Function('args', `${block} return { CANDIDATE, INTENT, raw }`)
 
   // Sin prefijo, todo el texto es la intención.
@@ -204,21 +204,21 @@ test('team acepta la intención suelta, con prefijo de equipo o estructurada', (
   // El texto crudo se conserva para poder recomponerlo si el prefijo no era un equipo.
   assert.equal(withPrefix.raw, 'incident-review: se cayó el checkout')
   // Estructurado, el prefijo no se interpreta: el equipo vino explícito.
-  const estructurado = resolve({ intent: 'algo: con dos puntos', team: 'acme-soporte' })
+  const estructurado = resolve({ intent: 'algo: con dos puntos', flow: 'acme-soporte' })
   assert.equal(estructurado.CANDIDATE, 'acme-soporte')
   assert.equal(estructurado.INTENT, 'algo: con dos puntos')
   assert.equal(resolve(undefined).INTENT, '', 'sin intención no arranca')
 })
 
-test('team declara qué deja cada recorrido y ramifica según eso', () => {
-  assert.match(teamWorkflow, /outcome === 'report'/, 'un informe no propone trabajo')
-  assert.match(teamWorkflow, /REPORTS/)
-  assert.match(teamWorkflow, /sin promoverlo/, 'los seguimientos no se promueven solos')
-  assert.match(teamWorkflow, /team list/, 'el equipo se confirma contra los que existen')
+test('flow declara qué deja cada recorrido y ramifica según eso', () => {
+  assert.match(flowWorkflow, /outcome === 'report'/, 'un informe no propone trabajo')
+  assert.match(flowWorkflow, /REPORTS/)
+  assert.match(flowWorkflow, /sin promoverlo/, 'los seguimientos no se promueven solos')
+  assert.match(flowWorkflow, /flow list/, 'el equipo se confirma contra los que existen')
   // Leer `organization/` para "etapas siguientes" no llegaba a ninguna parte: cada etapa es un
   // agente nuevo con su propio contexto.
-  assert.equal(/report nothing from it/.test(teamWorkflow), false, 'nada se lee para descartarlo')
-  assert.match(teamWorkflow, /equipo-inexistente/)
+  assert.equal(/report nothing from it/.test(flowWorkflow), false, 'nada se lee para descartarlo')
+  assert.match(flowWorkflow, /equipo-inexistente/)
 })
 
 test('autobuild ejecuta cada fase bajo el contrato del cargo que la posee', () => {
@@ -364,13 +364,13 @@ test('promover un cargo exige firma humana y verificación posterior', () => {
 // Un recorrido que frena en la etapa 3 tiraba el trabajo de las dos primeras: los handoffs vivían sólo
 // en memoria. Lo notó el ciclo de aprendizaje de un cargo, que no encontraba sus propios veredictos.
 test('un bloqueo conserva lo que las etapas anteriores ya resolvieron', () => {
-  const team = fs.readFileSync(path.join(WF, 'team.js'), 'utf8')
+  const flow = fs.readFileSync(path.join(WF, 'flow.js'), 'utf8')
   assert.match(
-    team, /handoffs\.filter\(\(entry\) => entry\.gate !== 'no-cumplido'\)/,
+    flow, /handoffs\.filter\(\(entry\) => entry\.gate !== 'no-cumplido'\)/,
     'lo que cerró se recupera, con condiciones o sin ellas',
   )
-  assert.match(team, /ya quedó establecido/, 'y llega al prompt que escribe la acción humana')
-  assert.match(team, /es el trabajo que ya se pagó/)
+  assert.match(flow, /ya quedó establecido/, 'y llega al prompt que escribe la acción humana')
+  assert.match(flow, /es el trabajo que ya se pagó/)
 })
 
 // Un cargo nunca corre sólo con su SKILL.md: `AGENTS.md` lleva las reglas que todos obedecen, y el
@@ -585,8 +585,8 @@ test('un banco que no se pudo rehacer detiene la corrida', () => {
 // un agente que lo imite mediría la imitación, que es justo lo que un recorrido no es — sus etapas
 // tienen dueños distintos y sus gates frenan entre una y otra.
 test('la evaluación de un recorrido lo ejecuta en vez de imitarlo', () => {
-  const evalWf = fs.readFileSync(path.join(WF, 'team-eval.js'), 'utf8')
-  assert.match(evalWf, /workflow\('team', \{ team: TEAM, intent: item\.request/, 'corre el recorrido real')
+  const evalWf = fs.readFileSync(path.join(WF, 'flow-eval.js'), 'utf8')
+  assert.match(evalWf, /workflow\('flow', \{ flow: FLOW, intent: item\.request/, 'corre el recorrido real')
   assert.match(evalWf, /root: `\$\{BENCH_ROOT\}\/\$\{item\.id\}`/, 'y lo corre sobre el banco del caso')
   assert.match(evalWf, /mediría la imitación/, 'y queda dicho por qué')
 
@@ -604,10 +604,10 @@ test('la evaluación de un recorrido lo ejecuta en vez de imitarlo', () => {
 // El recorrido no puede escribir en el planning del toolkit —no hay— ni ensuciar el de una empresa
 // para medirse. Necesita trabajar sobre el banco, y eso exige que sepa correr en otra raíz.
 test('un recorrido puede correr sobre la raíz que se le nombra', () => {
-  const team = fs.readFileSync(path.join(WF, 'team.js'), 'utf8')
-  assert.match(team, /const WORKDIR = String\(\(typeof args === 'string' \? '' : \(args \|\| \{\}\)\.root\)/)
-  assert.match(team, /const P = `\$\{WORKDIR\}\/planning`/, 'y escribe ahí, no en la raíz de invocación')
-  assert.equal(/\$\{ROOT\}/.test(team), false, 'ninguna ruta quedó atada a la raíz de invocación')
+  const flow = fs.readFileSync(path.join(WF, 'flow.js'), 'utf8')
+  assert.match(flow, /const WORKDIR = String\(\(typeof args === 'string' \? '' : \(args \|\| \{\}\)\.root\)/)
+  assert.match(flow, /const P = `\$\{WORKDIR\}\/planning`/, 'y escribe ahí, no en la raíz de invocación')
+  assert.equal(/\$\{ROOT\}/.test(flow), false, 'ninguna ruta quedó atada a la raíz de invocación')
 })
 
 // Un cargo falla un caso de seis y comprobar el arreglo no pide la batería: correr los seis cuesta
@@ -734,22 +734,22 @@ test('agent-eval averigua qué CLI existe en vez de suponerlo', () => {
   assert.match(evalWf, /node \$\{context\.cli\} evaluate \$\{AGENT\} --record/, 'el registro')
 })
 
-// El manifiesto que `team` transcribe sale de un `team.json` real, y su schema es
+// El manifiesto que `flow` transcribe sale de un `flow.json` real, y su schema es
 // `additionalProperties: false`. Cuando el schema no acepta un campo que el contrato sí tiene, el
 // agente lo copia —le pedimos que reporte lo que el comando imprimió—, el runtime lo rechaza y el
 // reintento vuelve a copiarlo: se acaba el retry cap y la corrida muere sin haber hecho nada. Pasó con
 // `dependsOn`, que está en las etapas de los seis contratos, en dos de cuatro corridas — dos, porque
 // depende de que el agente adivine que tiene que tirar un campo que está en la fuente.
 test('el schema del manifiesto acepta los campos que los contratos de equipo tienen', () => {
-  const teamWf = fs.readFileSync(path.join(WF, 'team.js'), 'utf8')
-  const stageBlock = teamWf.match(/stages: \{ type: 'array', items: \{[\s\S]*?\n {4}\} \} \},/)
+  const flowWf = fs.readFileSync(path.join(WF, 'flow.js'), 'utf8')
+  const stageBlock = flowWf.match(/stages: \{ type: 'array', items: \{[\s\S]*?\n {4}\} \} \},/)
   assert.ok(stageBlock, 'no se encontró el bloque de etapas del schema')
   const accepted = new Set([...stageBlock[0].matchAll(/([a-zA-Z]+): \{ type:/g)].map((m) => m[1]))
 
-  const teamsDir = path.resolve(__dirname, '..', 'teams', 'system')
+  const flowsDir = path.resolve(__dirname, '..', 'flows', 'system')
   const real = new Set()
-  for (const slug of fs.readdirSync(teamsDir)) {
-    const file = path.join(teamsDir, slug, 'team.json')
+  for (const slug of fs.readdirSync(flowsDir)) {
+    const file = path.join(flowsDir, slug, 'flow.json')
     if (!fs.existsSync(file)) continue
     for (const stage of JSON.parse(fs.readFileSync(file, 'utf8')).stages || []) {
       for (const key of Object.keys(stage)) real.add(key)

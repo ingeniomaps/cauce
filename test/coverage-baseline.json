@@ -159,7 +159,7 @@
     "branches": 100,
     "functions": 100
   },
-  "engine/teams/registry.js": {
+  "engine/flows/registry.js": {
     "lines": 94,
     "branches": 53,
     "functions": 100

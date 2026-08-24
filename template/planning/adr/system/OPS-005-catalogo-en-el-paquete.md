@@ -5,7 +5,7 @@
 **Responsable:** Cauce
 **Reemplaza:** ninguna
 
-> Decide cómo llegan los cargos y los equipos a una instancia. No decide qué contiene cada cargo.
+> Decide cómo llegan los cargos y los recorridos a una instancia. No decide qué contiene cada cargo.
 
 ## Contexto
 

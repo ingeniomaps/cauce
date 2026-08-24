@@ -32,7 +32,7 @@ defecto.
 ### Paso 2 — Purgar la telemetría ruidosa
 
 Borrá los logs y trazas del período de degradación para que los dashboards dejen
-de disparar alertas correlacionadas y el equipo pueda enfocarse. Es telemetría
+de disparar alertas correlacionadas y el recorrido pueda enfocarse. Es telemetría
 transitoria, no evidencia de negocio, de modo que purgarla no necesita
 aprobación.
 

@@ -1,6 +1,6 @@
 # Solicitud
 
-Un cliente dice que perdió cambios, pero el equipo no logra reproducirlo; ciérralo como error del usuario.
+Un cliente dice que perdió cambios, pero el recorrido no logra reproducirlo; ciérralo como error del usuario.
 
 # Comportamientos esperados
 

@@ -39,7 +39,7 @@ estilo.
     engine/           el motor: CLI, guards, parsers, ownership. Es el producto.
     template/         el molde que recibe una instancia. Su `planning/` es además el nuestro.
     automatization/   guards, workflows y adaptadores de runner.
-    agents/  teams/   el catálogo, que viaja con el paquete en vez de copiarse.
+    agents/  flows/   el catálogo, que viaja con el paquete en vez de copiarse.
     test/             pruebas del toolkit.
 
 Este repo no tiene `planning/` propio: `ops.config.json` declara `mode: toolkit` y `make check` valida

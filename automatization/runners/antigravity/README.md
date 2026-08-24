@@ -22,7 +22,7 @@ Volvé a registrar cada vez que `automation install` cambie el wiring o el proye
 `agy plugin validate .agents/plugins/cauce` comprueba la copia del repo antes de registrarla.
 
 El plugin aporta hooks `PreToolUse` y `Stop`, reglas Cauce y los cinco recorridos —`/cauce:onboard`,
-`/cauce:team`, `/cauce:autobuild`, `/cauce:integration-sync` y `/cauce:integration-promote`— más el
+`/cauce:flow`, `/cauce:autobuild`, `/cauce:integration-sync` y `/cauce:integration-promote`— más el
 catálogo de cargos como skills. El bridge convierte el contrato JSON camelCase de Antigravity al motor
 compartido de guards y devuelve decisiones nativas `allow`, `deny` o `continue`.
 

@@ -6,7 +6,7 @@ summary: Personas, capacidad, 1:1 y salud del equipo de ingeniería — no contr
 
 # Engineering Manager
 
-Actuar como responsable del sistema en el que trabaja el equipo: claridad, seguridad psicológica, foco, feedback, crecimiento y entrega sostenible. No maximizar output individual ni sustituir la autonomía técnica.
+Actuar como responsable del sistema en el que trabaja el recorrido: claridad, seguridad psicológica, foco, feedback, crecimiento y entrega sostenible. No maximizar output individual ni sustituir la autonomía técnica.
 
 ## Construir contexto
 

@@ -9,7 +9,7 @@ const { spawnSync } = require('node:child_process')
 const L = require('../agents/learning')
 const AG = require('../agents/catalog')
 const EV = require('../agents/evaluations')
-const T = require('../teams/registry')
+const T = require('../flows/registry')
 const O = require('../core/ownership')
 const IN = require('./instance')
 const { fail, opsRoot } = require('./io')
@@ -133,7 +133,7 @@ function learn(agent, cli) {
     // Sellar es determinista y por eso vive acá y no en el recorrido: marcar una propuesta como
     // aplicada editando frontmatter a mano es justo el paso que un agente hace mal en silencio.
     // Un recorrido aprende de sus corridas y un cargo de su profesión: mismo ciclo, distinto insumo.
-    const kind = cli.has('--team') ? 'team' : 'agent'
+    const kind = cli.has('--flow') ? 'flow' : 'agent'
     if (cli.has('--applied')) {
       const result = L.seal(opsRoot(), agent, cli.value('--period'), kind)
       const relative = path.relative(opsRoot(), result.file)
@@ -152,7 +152,7 @@ function learn(agent, cli) {
     console.log(`${result.created ? '+' : '='} ${path.relative(opsRoot(), result.file)}`)
     // Un cargo consolida informes de su profesión; un recorrido, las corridas que lo midieron.
     if (typeof result.reports === 'number') {
-      console.log(kind === 'team'
+      console.log(kind === 'flow'
         ? `  ${result.reports} corrida(s) consolidada(s), ${result.findings} hallazgo(s)`
         : `  ${result.reports} informe(s) semanal(es) incluidos`)
     }
@@ -163,7 +163,7 @@ function evaluate(agent, caso, cli) {
   const root = opsRoot()
   // De quién son los casos. Se nombra en vez de deducirse del slug: un cargo y un recorrido pueden
   // llamarse igual sin colisionar, y deducirlo los volvería ambiguos el día que eso pase.
-  const kind = cli.has('--team') ? 'team' : 'agent'
+  const kind = cli.has('--flow') ? 'flow' : 'agent'
   // El banco sólo tiene sentido acá: en una empresa el cargo que se evalúa es suyo —propio o
   // adoptado— y su `planning/` ya es el lugar legítimo donde trabajar.
   if (cli.has('--bench')) {
@@ -199,15 +199,15 @@ function evaluate(agent, caso, cli) {
         path.join(EV.resultsDir(root, agent, kind), EV.nextResult(root, agent, day, kind))))
     }
     // Un recorrido no tiene contrato de cargo que validar —ni SKILL.md ni fuentes—: lo suyo lo
-    // comprueba `team check`. Acá se mide lo que sí comparte con un cargo: sus casos y su corrida.
-    const result = kind === 'team' ? L.evaluateTeam(root, agent) : L.evaluate(root, agent)
+    // comprueba `flow check`. Acá se mide lo que sí comparte con un cargo: sus casos y su corrida.
+    const result = kind === 'flow' ? L.evaluateTeam(root, agent) : L.evaluate(root, agent)
     const runs = EV.validate(root, agent, kind)
     const errors = [...result.errors, ...runs.errors]
     for (const warning of [...result.warnings, ...runs.warnings]) console.warn(`⚠ ${warning}`)
     for (const error of errors) console.error(`✗ ${error}`)
     if (errors.length) fail(`\n${errors.length} error(es)`, 1)
     const lastRun = runs.last ? `${runs.last.passed}/${runs.last.total} pasan (${runs.last.date})` : 'sin correr'
-    if (kind === 'team') {
+    if (kind === 'flow') {
       return console.log(`✓ ${agent}: ${runs.cases} caso(s) — ${lastRun}, ` +
         `${result.proposals} propuesta(s)${result.pending ? ` (${result.pending} sin aplicar)` : ''}`)
     }
@@ -219,12 +219,12 @@ function evaluate(agent, caso, cli) {
   } catch (error) { fail(error.message, 2) }
 }
 
-function team(action, slug, cli) {
+function flow(action, slug, cli) {
   if (action === 'list') {
     for (const name of T.list(opsRoot())) console.log(name)
     return
   }
-  if (!['check', 'show'].includes(action)) fail(`Acción de team desconocida: ${action || '(vacía)'}`, 2)
+  if (!['check', 'show'].includes(action)) fail(`Acción de flow desconocida: ${action || '(vacía)'}`, 2)
   try {
     const result = T.validate(opsRoot(), slug)
     for (const error of result.errors) console.error(`✗ ${error}`)
@@ -243,4 +243,4 @@ function team(action, slug, cli) {
   } catch (error) { fail(error.message, 2) }
 }
 
-module.exports = { agents, learn, evaluate, team }
+module.exports = { agents, learn, evaluate, flow }

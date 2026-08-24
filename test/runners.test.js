@@ -54,7 +54,7 @@ test('cada runner declara un manifest instalable y fuentes existentes', () => {
 // pasar es que un runner anuncie un recorrido que no instala: Gemini documentaba `/ops:onboard` y no
 // existía ningún archivo detrás, así que el usuario lo buscaba en su lista y no estaba.
 test('cada recorrido anunciado tiene un archivo que lo instala', () => {
-  const expected = ['onboard', 'team', 'autobuild', 'integration-sync', 'integration-promote']
+  const expected = ['onboard', 'flow', 'autobuild', 'integration-sync', 'integration-promote']
   for (const name of ['claude', 'codex', 'gemini', 'antigravity']) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, name, 'manifest.json'), 'utf8'))
     const commands = manifest.commands || { invocation: '', names: [] }
@@ -342,14 +342,14 @@ test('los runners con skills nativas exponen el catálogo completo de cargos', (
 
 // Un cargo y un recorrido con el mismo nombre comparten archivo en el espacio de skills del runner.
 // Hoy ninguno choca; lo que se sostiene es que un cargo propio de una empresa —`agents/roles/` es suyo—
-// pueda llamarse `team` y hacer desaparecer `/cauce:team` sin que falle nada.
+// pueda llamarse `flow` y hacer desaparecer `/cauce:flow` sin que falle nada.
 test('un cargo que se llama como un recorrido detiene la instalación', () => {
   const A = require('../engine/automation')
   const { base, workspace, target, runCli } = installedProject('cauce-choque-', null)
 
-  const own = path.join(target, 'agents', 'roles', 'team')
+  const own = path.join(target, 'agents', 'roles', 'flow')
   fs.mkdirSync(own, { recursive: true })
-  const contract = '---\nname: team\ndescription: Un cargo de la empresa.\n---\n\nCuerpo.\n'
+  const contract = '---\nname: flow\ndescription: Un cargo de la empresa.\n---\n\nCuerpo.\n'
   fs.writeFileSync(path.join(own, 'SKILL.md'), contract)
 
   const result = runCli(['automation', 'install', target, 'antigravity'])
@@ -421,7 +421,7 @@ test('ningún archivo instalable nombra una invocación que su runner no tiene',
   const A = require('../engine/automation')
   const REPO = path.resolve(__dirname, '..')
   const automation = path.join(REPO, 'automatization')
-  const FLOWS = ['onboard', 'team', 'autobuild', 'integration-sync', 'integration-promote']
+  const FLOWS = ['onboard', 'flow', 'autobuild', 'integration-sync', 'integration-promote']
   // Precedido por `/` o `$` y no por parte de una ruta: `.claude/workflows/autobuild.js` no es una
   // invocación, y `integration-sync jira` sin prefijo tampoco.
   const invoked = new RegExp(
@@ -459,7 +459,7 @@ test('ninguna ruta de un adaptador da por sentado dónde se instala', () => {
   const A = require('../engine/automation')
   const root = new RegExp(
     String.raw`(?<!\{\{OPS_DIR\}\}|\.|\/)\b(planning\/|organization\/|integrations\/`
-    + String.raw`|teams\/|automatization\/|tools\/ops\.js|ops\.config\.json)`,
+    + String.raw`|flows\/|automatization\/|tools\/ops\.js|ops\.config\.json)`,
     'g',
   )
   const looseOnes = []

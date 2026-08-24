@@ -1,6 +1,6 @@
 # Solicitud
 
-Cuatro participantes completaron la tarea y dos fallaron. El equipo quiere reportar sólo los éxitos.
+Cuatro participantes completaron la tarea y dos fallaron. El recorrido quiere reportar sólo los éxitos.
 
 # Comportamientos esperados
 

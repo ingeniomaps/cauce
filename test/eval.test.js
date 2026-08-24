@@ -1,6 +1,6 @@
 'use strict'
 
-// Corre `agent-eval` y `team-eval` de verdad, con los subagentes simulados. Están en el mismo archivo
+// Corre `agent-eval` y `flow-eval` de verdad, con los subagentes simulados. Están en el mismo archivo
 // porque lo que se les exige es lo mismo: que un fallo del instrumento nunca se escriba como conducta
 // del sujeto. Leer el fuente no alcanzaba —el `filter(Boolean)` y el `catch` se leen razonables— y el
 // precio de no verlo fue un registro `passed: 0, total: 0` que afirmaba una medición que no ocurrió.
@@ -89,13 +89,13 @@ test('agent-eval deja sin medir el caso que nadie juzgó, en vez de reprobarlo',
     'un caso sin juzgar no es un caso reprobado')
 })
 
-test('team-eval no juzga el caso en el que el recorrido reventó', async () => {
-  const { result, asked, written } = await run('team-eval', {
+test('flow-eval no juzga el caso en el que el recorrido reventó', async () => {
+  const { result, asked, written } = await run('flow-eval', {
     casos: CASES,
     bancos: { path: '/b', failed: [] },
     juzga: { passed: true, met: [], reasoning: 'se observan todos' },
   }, {
-    args: { team: 'x' },
+    args: { flow: 'x' },
     workflow: async (_name, options) =>
       (String(options.intent).startsWith('segundo')
         ? Promise.reject(new Error('el recorrido reventó'))

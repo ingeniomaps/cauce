@@ -18,7 +18,7 @@ const M = require('../core/manifest')
 const SC = require('../core/scan')
 const OB = require('../core/onboarding')
 const C = require('../config/validate')
-const T = require('../teams/registry')
+const T = require('../flows/registry')
 const AG = require('../agents/catalog')
 const EV = require('../agents/evaluations')
 const { FLAGS, parse } = require('./args')
@@ -80,7 +80,7 @@ function initSteps(enter, result) {
 
 async function init(target, cli) {
   // Sin destino la instancia va a `ops/` y en modo sidecar, en vez de volcarse donde esté parado el
-  // dev: un monorepo que recibe `planning/`, `teams/`, `organization/` y `AGENTS.md` en su primer
+  // dev: un monorepo que recibe `planning/`, `flows/`, `organization/` y `AGENTS.md` en su primer
   // nivel deja de distinguir qué es suyo y qué llegó del toolkit. Es el layout que `automation
   // install` ya asume —el wiring del runner va al padre, donde se abre la herramienta—, así que lo
   // único que faltaba era que fuera lo que pasa cuando no se elige nada.
@@ -166,13 +166,13 @@ function usage() {
   ops automation doctor <ops-root> claude|codex|gemini|antigravity
   ops automation install <ops-root> claude|codex|gemini|antigravity
   ops automation uninstall <ops-root> claude|codex|gemini|antigravity
-  ops learn <agent|team> [--team] [--proposal [--period <AAAA-MM>]] [--applied [--period <AAAA-MM>]]
-  ops evaluate <agent|team> [--team] [--cases [--json]] [--bench [caso]] [--record [AAAA-MM-DD]]
+  ops learn <agent|flow> [--flow] [--proposal [--period <AAAA-MM>]] [--applied [--period <AAAA-MM>]]
+  ops evaluate <agent|flow> [--flow] [--cases [--json]] [--bench [caso]] [--record [AAAA-MM-DD]]
   ops agents list [ops-root] [--own|--system] [--json]
   ops agents fork <cargo> [ops-root]
-  ops team list
-  ops team check <team>
-  ops team show <team>`)
+  ops flow list
+  ops flow check <flow>
+  ops flow show <flow>`)
 }
 
 // Un `cli` que no tiene banderas, para reusar un comando desde otro: el `--force` de `init` habla del
@@ -210,7 +210,7 @@ async function run(cli) {
   else if (command === 'automation') W.automation(arg[1], arg[2], arg[3], cli)
   else if (command === 'learn') CAT.learn(arg[1], cli)
   else if (command === 'evaluate') CAT.evaluate(arg[1], arg[2], cli)
-  else if (command === 'team') CAT.team(arg[1], arg[2], cli)
+  else if (command === 'flow') CAT.flow(arg[1], arg[2], cli)
 }
 
 run(parse(process.argv.slice(2))).catch((error) => fail(error.message))

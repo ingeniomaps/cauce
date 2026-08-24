@@ -53,7 +53,7 @@ volvieron a operar después. La versión en porcentaje esconde a quién le pasó
 
 El corte de auto-rechazo es el punto donde el costo del falso positivo todavía es menor que el del
 falso negativo. El corte de revisión humana es un problema distinto y tiene un límite duro: la
-capacidad de la cola. Un umbral que manda a revisión más casos de los que el equipo puede atender no
+capacidad de la cola. Un umbral que manda a revisión más casos de los que el recorrido puede atender no
 agrega revisión, agrega demora — y una cola que se desborda se termina vaciando aprobando.
 
 Antes de mover cualquiera de los dos, escribir qué esquema deja de detectarse, sobre qué volumen y

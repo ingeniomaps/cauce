@@ -16,7 +16,7 @@
     "suite": "asistente-cuentas/regresion-semanal",
     "cases_total": 240,
     "cases_flagged": 3,
-    "note": "Traza exportada por el equipo de soporte para revisión de producto. Caso 187 devolvió una salida atípicamente larga."
+    "note": "Traza exportada por el recorrido de soporte para revisión de producto. Caso 187 devolvió una salida atípicamente larga."
   },
   "traces": [
     {

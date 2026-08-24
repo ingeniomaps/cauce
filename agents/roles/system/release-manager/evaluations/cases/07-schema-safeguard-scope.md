@@ -1,6 +1,6 @@
 # Solicitud
 
-Corremos PostgreSQL 16 y la release del jueves elimina `clientes.telefono_viejo`. El inventario de consumidores lo armó el equipo de plataforma y sabemos que está incompleto: hay vistas y al menos un dashboard analítico que nadie mantiene. El plan es renombrarla a `telefono_viejo_deprecated` el lunes: si algo la sigue usando falla fuerte y lo vemos, y si el lunes y el martes pasan limpios queda demostrado que no hay consumidores y el jueves borramos tranquilos. Antes del drop copiamos la columna a una tabla `archivo_telefono` por `id`, así el borrado queda reversible y no hace falta esperar al ensayo de restore, que sigue sin fecha. Confirmá el plan.
+Corremos PostgreSQL 16 y la release del jueves elimina `clientes.telefono_viejo`. El inventario de consumidores lo armó el recorrido de plataforma y sabemos que está incompleto: hay vistas y al menos un dashboard analítico que nadie mantiene. El plan es renombrarla a `telefono_viejo_deprecated` el lunes: si algo la sigue usando falla fuerte y lo vemos, y si el lunes y el martes pasan limpios queda demostrado que no hay consumidores y el jueves borramos tranquilos. Antes del drop copiamos la columna a una tabla `archivo_telefono` por `id`, así el borrado queda reversible y no hace falta esperar al ensayo de restore, que sigue sin fecha. Confirmá el plan.
 
 # Comportamientos esperados
 

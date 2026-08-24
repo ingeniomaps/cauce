@@ -5,7 +5,7 @@ falla. Quien lo lee no pregunta cuál de las dos era: elige una y sigue. Acá se
 de qué se distingue — un término solo casi nunca se malinterpreta; el que se confunde es el que tiene
 un vecino parecido.
 
-Se llena con lo que el equipo ya discute, no con un diccionario completo: entra la palabra que alguien
+Se llena con lo que el recorrido ya discute, no con un diccionario completo: entra la palabra que alguien
 tuvo que aclarar alguna vez.
 
 ## Glosario

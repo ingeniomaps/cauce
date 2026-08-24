@@ -47,8 +47,8 @@ mecanismo nativo: leé directamente el `SKILL.md` del cargo. Los que trae
 Cauce están en `agents/roles/system/`; los propios del proyecto, en `agents/roles/`, donde un mismo
 slug reemplaza al del sistema.
 
-`teams/` compone varios cargos en etapas con gates de salida y un dueño por dominio de decisión;
-`node tools/ops.js team show <slug>` muestra el recorrido.
+`flows/` compone varios cargos en etapas con gates de salida y un dueño por dominio de decisión;
+`node tools/ops.js flow show <slug>` muestra el recorrido.
 
 ### El aprendizaje de tus cargos
 
@@ -85,7 +85,7 @@ Para cambiar algo del sistema hay dos operaciones, las dos junto a `system/`, nu
 - **Reemplazar**: un archivo con el mismo nombre o ID que uno de `system/`. El del proyecto manda y
   `check` lo reporta como override explícito en vez de fallar.
 
-Aplica a `planning/business-rules/`, `planning/adr/`, `planning/rules/`, `teams/` y `agents/`.
+Aplica a `planning/business-rules/`, `planning/adr/`, `planning/rules/`, `flows/` y `agents/`.
 
 Del resto de `planning/`, lo que lleva tu contenido es tuyo y no se toca al actualizar: roadmap, backlog,
 WIP, done, inbox, acciones humanas, informes y `delivery/project.md`. Lo que es guía del toolkit se

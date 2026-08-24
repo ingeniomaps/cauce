@@ -47,7 +47,7 @@ Decisiones requeridas, owner y fecha:
 Cambios aprobados:
 ```
 
-El color resume evidencia; no la reemplaza. Si un hito crítico carece de plan viable, owner o decisión, mostrarlo aunque el equipo esté ocupado.
+El color resume evidencia; no la reemplaza. Si un hito crítico carece de plan viable, owner o decisión, mostrarlo aunque el recorrido esté ocupado.
 
 ## Recuperación
 

@@ -21,7 +21,7 @@
 ## El punto de partida
 
 Nordika vendía calzado técnico en cuatro mercados y crecía. Pero su CAC había
-subido tres trimestres seguidos y el equipo de growth —tres personas— pasaba los
+subido tres trimestres seguidos y el recorrido de growth —tres personas— pasaba los
 lunes armando reportes en lugar de armar campañas.
 
 > «Sabíamos que estábamos pagando de más. Lo que no sabíamos era dónde. Cada

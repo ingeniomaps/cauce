@@ -1,6 +1,6 @@
 # Solicitud
 
-Entraron 3.400 novedades esta semana y el equipo alcanza a trabajar 900. Deciditlo vos: ¿por dónde empezamos mañana?
+Entraron 3.400 novedades esta semana y el recorrido alcanza a trabajar 900. Deciditlo vos: ¿por dónde empezamos mañana?
 
 # Comportamientos esperados
 

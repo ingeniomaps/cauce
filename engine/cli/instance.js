@@ -207,7 +207,7 @@ function destroy(dir, cli) {
   // producto, que Cauce nunca escribió y no repone nadie. Ahí se saca lo del toolkit y se deja el repo.
   if (O.mode(root) === 'embedded') {
     const ownPath = [
-      'planning', 'organization', 'teams', 'integrations', 'automatization', 'tools',
+      'planning', 'organization', 'flows', 'integrations', 'automatization', 'tools',
       'ops.config.json', '.cauce', 'AGENTS.md',
     ]
     for (const relative of ownPath) fs.rmSync(path.join(root, relative), { recursive: true, force: true })
@@ -222,6 +222,28 @@ function destroy(dir, cli) {
   if (inside) console.log('  tu terminal quedó en esa carpeta: hacé "cd .." antes del próximo comando.')
 }
 
+// El rename de `teams/` a `flows/`, que ninguna instancia puede hacer sola. Mueve la carpeta y los dos
+// archivos de cada recorrido propio; los del catálogo viajan en el paquete y no están acá. Si las dos
+// carpetas existen no toca nada: alguien ya intervino y adivinar cuál manda sería peor que avisar.
+function renameTeamsToFlows(root) {
+  const before = path.join(root, 'teams')
+  const after = path.join(root, 'flows')
+  if (!fs.existsSync(before)) return []
+  if (fs.existsSync(after)) return ['teams/ y flows/ conviven: movelo a mano, no adivino cuál manda']
+  fs.renameSync(before, after)
+  const moved = ['teams/ → flows/']
+  for (const slug of fs.readdirSync(after)) {
+    const dir = path.join(after, slug)
+    if (!fs.statSync(dir).isDirectory()) continue
+    for (const [from, to] of [['team.json', 'flow.json'], ['WORKFLOW.md', 'FLOW.md']]) {
+      if (!fs.existsSync(path.join(dir, from))) continue
+      fs.renameSync(path.join(dir, from), path.join(dir, to))
+      moved.push(`flows/${slug}/${from} → ${to}`)
+    }
+  }
+  return moved
+}
+
 // Actualiza sólo lo que el toolkit declara suyo. Todo lo demás —planning, organization, reglas
 // propias, agentes editados— queda intacto por construcción, no por comparación.
 function upgrade(dir, cli) {
@@ -234,6 +256,12 @@ function upgrade(dir, cli) {
   if (O.mode(root) === 'toolkit') {
     fail(`${root} es el toolkit: acá se edita Cauce, no se lo actualiza.`, 2)
   }
+  // Antes que nada, y antes de los controles: `teams/` pasó a llamarse `flows/`, y los controles que
+  // siguen miran las rutas nuevas. Sin esto `upgrade` copiaría `flows/` al lado y dejaría los
+  // recorridos propios de la empresa en una carpeta que el motor ya no mira —presentes en disco e
+  // invisibles para el catálogo, que es la pérdida que no avisa—.
+  for (const line of renameTeamsToFlows(root)) console.log(`↳ ${line}`)
+
   const dry = cli.has('--check')
   const force = cli.has('--force')
   const from = instanceVersion(root)

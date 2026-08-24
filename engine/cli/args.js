@@ -25,9 +25,9 @@ const FLAGS = {
   agents: ['--json', '--own', '--system'],
   integration: ['--fixture'],
   automation: ['--force'],
-  learn: ['--team', '--proposal', '--applied', '--period'],
-  evaluate: ['--cases', '--json', '--bench', '--force', '--record', '--team'],
-  team: ['--json'],
+  learn: ['--flow', '--proposal', '--applied', '--period'],
+  evaluate: ['--cases', '--json', '--bench', '--force', '--record', '--flow'],
+  flow: ['--json'],
 }
 
 // La línea de comandos, leída una sola vez. Antes cada función buscaba sus banderas en

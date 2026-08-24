@@ -44,7 +44,7 @@ test('ningún documento del repositorio cita un comando make que no existe', () 
       else if (entry.name.endsWith('.md')) review(file)
     }
   }
-  for (const dir of ['automatization', 'engine', 'template', 'test', 'teams']) walk(path.join(root, dir))
+  for (const dir of ['automatization', 'engine', 'template', 'test', 'flows']) walk(path.join(root, dir))
   for (const name of fs.readdirSync(root)) {
     if (name.endsWith('.md')) review(path.join(root, name))
   }
@@ -108,8 +108,8 @@ test('el paquete no publica la evidencia de nuestras propias corridas', () => {
 // directorio, que es lo único que no envejece aparte.
 test('el README de equipos nombra todos los que trae el catálogo', () => {
   const raiz = path.resolve(__dirname, '..')
-  const readme = fs.readFileSync(path.join(raiz, 'template', 'teams', 'README.md'), 'utf8')
-  const catalogo = fs.readdirSync(path.join(raiz, 'teams', 'system'), { withFileTypes: true })
+  const readme = fs.readFileSync(path.join(raiz, 'template', 'flows', 'README.md'), 'utf8')
+  const catalogo = fs.readdirSync(path.join(raiz, 'flows', 'system'), { withFileTypes: true })
     .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort()
 
   assert.ok(catalogo.length, 'el catálogo trae equipos')

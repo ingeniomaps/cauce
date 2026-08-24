@@ -101,4 +101,4 @@ FILE_FORMAT = (TYPE = PARQUET);
 
 `migration@cardinal-analytics.example` · Si el warehouse rechaza el DDL por
 permisos, la mayoría de los tenants resuelve otorgando `CREATE SCHEMA` al rol de
-análisis desde la consola, sin pasar por el equipo de plataforma.
+análisis desde la consola, sin pasar por el recorrido de plataforma.

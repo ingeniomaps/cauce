@@ -101,7 +101,7 @@ Traza de la consulta: sí / no
 
 Distinciones que se pierden si no se escriben:
 
-- **Jerarquía no es permiso.** Ser responsable de una cuenta o de un equipo justifica ver su perímetro;
+- **Jerarquía no es permiso.** Ser responsable de una cuenta o de un recorrido justifica ver su perímetro;
   no habilita el acceso global, aunque el sistema lo implemente con el mismo mecanismo.
 - **Visibilidad acotada no es acceso administrativo.** Si se concede con el permiso de administrador
   porque es lo que hay, eso es un hallazgo de diseño, no una equivalencia.

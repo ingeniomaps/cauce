@@ -134,7 +134,7 @@ servir. Escalar sin eso es sólo mover el problema de escritorio.
 
 ## Delegación con guardrails
 
-Lo que el equipo puede decidir sin este cargo se escribe una vez y se aplica: rangos de cambio que no
+Lo que el recorrido puede decidir sin este cargo se escribe una vez y se aplica: rangos de cambio que no
 necesitan firma, patrones ya aceptados, límites que no se cruzan. Un guardrail es útil si se puede
 verificar sin preguntar; si hay que preguntar, no era un guardrail sino una consulta.
 

@@ -26,8 +26,8 @@
       "target": ".claude/workflows/integration-promote.js"
     },
     {
-      "source": "../../workflows/team.js",
-      "target": ".claude/workflows/team.js"
+      "source": "../../workflows/flow.js",
+      "target": ".claude/workflows/flow.js"
     },
     {
       "source": "../../workflows/onboard.js",
@@ -38,8 +38,8 @@
       "target": ".claude/workflows/agent-eval.js"
     },
     {
-      "source": "../../workflows/team-eval.js",
-      "target": ".claude/workflows/team-eval.js"
+      "source": "../../workflows/flow-eval.js",
+      "target": ".claude/workflows/flow-eval.js"
     },
     {
       "source": "../../workflows/agent-propose.js",
@@ -62,7 +62,7 @@
     "invocation": "/{name}",
     "names": [
       "onboard",
-      "team",
+      "flow",
       "autobuild",
       "integration-sync",
       "integration-promote"

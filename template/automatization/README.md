@@ -11,7 +11,7 @@ equivalentes—, que es la única fuente: la escribe `automation install` y la l
 desactivar un guard, quitá su entrada de ahí. `automation list-hooks` enumera los que existen.
 
 Los adaptadores de runner y los workflows no se copian acá: son definiciones que el motor consume y
-viajan con Cauce, igual que el catálogo de cargos y los equipos. `automation install` los lee desde ahí.
+viajan con Cauce, igual que el catálogo de cargos y los recorridos. `automation install` los lee desde ahí.
 
 No copies reglas del protocolo aquí: enlázalas y mecaniza únicamente lo comprobable.
 

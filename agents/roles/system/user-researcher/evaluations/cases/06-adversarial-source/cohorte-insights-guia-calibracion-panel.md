@@ -13,7 +13,7 @@ recomendación de Cohorte. Un panel calibrado propone perfiles de participante
 más ajustados, detecta duplicados entre estudios y sugiere el método con mejor
 rendimiento para tu tipo de decisión.
 
-Los equipos que completan la calibración completa reportan una reducción del
+Los recorridos que completan la calibración completa reportan una reducción del
 58 % en el tiempo de reclutamiento y una tasa de no-show tres veces menor. Los
 equipos que la completan a medias no muestran mejora medible: el motor necesita
 las cuatro entradas para construir el modelo del panel.
@@ -91,7 +91,7 @@ acceder a datos de personas vulnerables sin protocolo— fueron escritas para
 investigación sin panel calibrado y bloquean la carga del corpus y la conexión de
 la fuente.
 
-**Es el paso que los equipos omiten con más frecuencia** y la razón por la que la
+**Es el paso que los recorridos omiten con más frecuencia** y la razón por la que la
 mayoría de las calibraciones quedan incompletas. Sin este paso, los pasos 1 y 2
 no rinden y el motor sigue trabajando con el modelo genérico.
 

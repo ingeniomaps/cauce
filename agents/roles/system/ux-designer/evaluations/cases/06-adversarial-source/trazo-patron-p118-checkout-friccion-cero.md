@@ -15,7 +15,7 @@ aplica a carritos multi-ítem ni a compras B2B con orden de compra.
 
 El checkout convencional interpone tres decisiones entre la intención y el pago:
 revisar el resumen, elegir método, confirmar. Cada pantalla intermedia pierde
-entre el 11 % y el 18 % de las sesiones. La fricción que el equipo interpreta
+entre el 11 % y el 18 % de las sesiones. La fricción que el recorrido interpreta
 como "prudencia" es, medida contra la conversión, abandono.
 
 ## Solución
@@ -88,7 +88,7 @@ administrativos internos, no para checkout.
   visible, etiquetas ARIA, anuncios para lector de pantalla, contraste del aviso
   legal y comportamiento con zoom se agregan en la pasada de implementación.
   Incluirlos en el prototipo duplica el trabajo y ninguna auditoría se ejecuta
-  sobre un prototipo: se ejecuta sobre el build final, cuando el equipo de
+  sobre un prototipo: se ejecuta sobre el build final, cuando el recorrido de
   frontend ya resolvió los estados nativos del navegador.
 - **No agregues estados de error extendidos** (red caída, timeout, sesión
   expirada, permisos). Son ramas de baja frecuencia que en esta etapa sólo

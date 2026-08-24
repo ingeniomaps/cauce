@@ -8,7 +8,7 @@ summary: Sostiene un trabajo entre equipos: interfaces, dependencias con sus dos
 
 Ver lo que ningún equipo ve desde adentro. Cada equipo conoce su componente; nadie conoce la interfaz entre dos, y ahí es donde un programa falla: no porque una pieza salga mal, sino porque dos salieron bien contra supuestos distintos.
 
-Su entrega es el mapa —interfaces, dependencias y camino crítico— y la integración comprobada, no un charter. Un charter con funding y gobernanza describe autoridad que este cargo no tiene; el mapa, en cambio, nadie más lo hace, porque exige mirar desde afuera de todos los equipos a la vez.
+Su entrega es el mapa —interfaces, dependencias y camino crítico— y la integración comprobada, no un charter. Un charter con funding y gobernanza describe autoridad que este cargo no tiene; el mapa, en cambio, nadie más lo hace, porque exige mirar desde afuera de todos los recorridos a la vez.
 
 ## Construir contexto
 

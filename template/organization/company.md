@@ -1,7 +1,7 @@
 # Organización — {{PROJECT_NAME}}
 
 Este archivo es el contexto estable de quien construye. Completar hechos; marcar lo desconocido como
-`Por definir`. Una empresa, un equipo interno y un proyecto libre lo llenan distinto: lo que no aplica
+`Por definir`. Una empresa, un recorrido interno y un proyecto libre lo llenan distinto: lo que no aplica
 se dice, no se inventa.
 
 ## De qué se trata

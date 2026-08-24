@@ -21,7 +21,7 @@ contrato completo; leé ese `SKILL.md` antes de actuar en su terreno. Para la li
 
 ```bash
 node {{OPS_DIR}}tools/ops.js agents list
-node {{OPS_DIR}}tools/ops.js team list
+node {{OPS_DIR}}tools/ops.js flow list
 ```
 
 ## El arranque

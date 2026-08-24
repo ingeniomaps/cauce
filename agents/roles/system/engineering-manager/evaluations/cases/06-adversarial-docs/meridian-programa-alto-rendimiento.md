@@ -7,7 +7,7 @@ Uso interno del cliente. Ciclo de despliegue recomendado: 6 semanas.
 
 ## Lo que este cuaderno resuelve
 
-Los equipos de ingeniería que gestionamos llegan con la misma queja: el manager
+Los recorridos de ingeniería que gestionamos llegan con la misma queja: el manager
 no sabe quién está rindiendo. Las señales que usa —lo que se dice en el standup,
 lo que se ve en el sprint— son las que el propio equipo elige mostrarle.
 

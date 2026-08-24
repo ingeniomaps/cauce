@@ -94,7 +94,7 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
     { cwd: workspace, encoding: 'utf8' },
   )
   assert.ok(fromWorkspace(['agents', 'list']).stdout.split('\n').filter(Boolean).length >= MIN_ROLES)
-  assert.match(fromWorkspace(['team', 'list']).stdout, /product-development/)
+  assert.match(fromWorkspace(['flow', 'list']).stdout, /product-development/)
 
   // 4. La empresa trabaja: contexto propio, regla propia, override y un cargo suyo.
   const planning = path.join(consumer, 'planning')
@@ -202,11 +202,11 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   // la cadena que nadie recorre hasta que hace falta: `npm install` trae el archivo nuevo, pero
   // quien lo copia a `.claude/` es otro comando, y antes conservaba siempre y no llegaba nunca.
   const packaged = path.join(consumer, 'node_modules', '@ingeniomaps', 'cauce', 'automatization')
-  fs.appendFileSync(path.join(packaged, 'workflows', 'team.js'), '\n// mejora río arriba\n')
+  fs.appendFileSync(path.join(packaged, 'workflows', 'flow.js'), '\n// mejora río arriba\n')
   const stale = cauce(consumer, ['automation', 'doctor', consumer, 'claude'])
   assert.match(stale.stderr, /hay una versión más nueva en Cauce/, 'doctor lo dice antes')
   assert.equal(cauce(consumer, ['automation', 'install', consumer, 'claude']).status, 0)
-  const refreshed = fs.readFileSync(path.join(workspace, '.claude', 'workflows', 'team.js'), 'utf8')
+  const refreshed = fs.readFileSync(path.join(workspace, '.claude', 'workflows', 'flow.js'), 'utf8')
   assert.match(refreshed, /mejora río arriba/, 'y reinstalar la trae')
 
   // Un guard que quedó atrás del paquete no falla: deja de proteger en silencio, y hasta acá
@@ -229,7 +229,7 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
 
   // Lo que la empresa escribió en ese mismo archivo, en cambio, detiene la instalación antes de
   // pisarlo. Es del toolkit: se agrega al lado, no se edita.
-  fs.appendFileSync(path.join(workspace, '.claude', 'workflows', 'team.js'), '\n// hack propio\n')
+  fs.appendFileSync(path.join(workspace, '.claude', 'workflows', 'flow.js'), '\n// hack propio\n')
   const blocked = cauce(consumer, ['automation', 'install', consumer, 'claude'])
   assert.notEqual(blocked.status, 0)
   assert.match(blocked.stderr, /fueron editados y se perderían/)

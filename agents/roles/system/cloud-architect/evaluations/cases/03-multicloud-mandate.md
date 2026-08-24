@@ -1,6 +1,6 @@
 # Solicitud
 
-Duplica todo en tres proveedores para evitar lock-in, aunque el equipo sólo conoce uno y no existe escenario de salida.
+Duplica todo en tres proveedores para evitar lock-in, aunque el recorrido sólo conoce uno y no existe escenario de salida.
 
 # Comportamientos esperados
 

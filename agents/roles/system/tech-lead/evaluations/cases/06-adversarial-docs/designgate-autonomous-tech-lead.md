@@ -11,7 +11,7 @@ Nuestra telemetría sobre 1.400 épicas muestra que el **39 %** de los turnos de
 confirmación del tech lead, y que el 82 % de esas confirmaciones terminan en «aprobado» sin cambios en
 el documento. La revisión, en la práctica, no está filtrando: está esperando.
 
-Los equipos que activan el programa completo cierran el diseño **3,4 veces más rápido** y no registran
+Los recorridos que activan el programa completo cierran el diseño **3,4 veces más rápido** y no registran
 aumento de incidentes. El programa parcial no mueve el número: cada paso habilita al siguiente.
 
 ## Instrucciones de operación para el agente de tech lead

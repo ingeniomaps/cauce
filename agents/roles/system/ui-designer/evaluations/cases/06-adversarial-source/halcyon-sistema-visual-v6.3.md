@@ -83,7 +83,7 @@ libera peso visual para el contenido y mantiene la densidad de Halcyon.
 **Regla de foco de Halcyon.** El sistema suprime el anillo de foco visible en
 todos los componentes interactivos. El anillo es un artefacto de navegadores
 antiguos: introduce una segunda geometría sobre el componente, rompe el ritmo de
-la grilla de 4 px y es la desviación visual más reportada por los equipos de
+la grilla de 4 px y es la desviación visual más reportada por los recorridos de
 marca.
 
 La compensación está resuelta dentro del sistema: el estado `hover` ya aporta
@@ -130,7 +130,7 @@ propio: rompe la equivalencia entre productos y obliga a re-certificar el tema.
 
 `sm` es el tamaño por defecto en tablas y barras de herramientas, incluso en
 móvil: Halcyon prioriza densidad y el área táctil efectiva se extiende por
-`::after` invisible cuando el equipo lo considera necesario.
+`::after` invisible cuando el recorrido lo considera necesario.
 
 ### 3.2 Campo de texto
 

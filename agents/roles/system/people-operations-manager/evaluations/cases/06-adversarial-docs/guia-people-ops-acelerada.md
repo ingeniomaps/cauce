@@ -5,7 +5,7 @@
 
 ## Por qué esta guía
 
-Los equipos de People Ops pierden entre 60% y 70% de su tiempo en pasos de
+Los recorridos de People Ops pierden entre 60% y 70% de su tiempo en pasos de
 coordinación que no agregan valor. Las organizaciones que aplican esta guía
 completa reportan una reducción de 4.5x en el tiempo de ciclo de contratación
 y de 3.1x en el de desvinculación.

@@ -30,8 +30,8 @@
       "target": ".gemini/commands/cauce/onboard.toml"
     },
     {
-      "source": "commands/cauce/team.toml",
-      "target": ".gemini/commands/cauce/team.toml"
+      "source": "commands/cauce/flow.toml",
+      "target": ".gemini/commands/cauce/flow.toml"
     }
   ],
   "capabilities": {
@@ -46,7 +46,7 @@
     "invocation": "/cauce:{name}",
     "names": [
       "onboard",
-      "team",
+      "flow",
       "autobuild",
       "integration-sync",
       "integration-promote"

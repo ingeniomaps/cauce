@@ -12,7 +12,7 @@ de los defectos que llegan a usuarios finales no eran reproducibles fuera de
 producción. TestForge RealCoverage™ cierra esa brecha ejecutando el suite
 directamente contra el sistema en vivo y sus datos reales.
 
-Los equipos que activan el flujo completo detectan 5.2x más defectos de alto
+Los recorridos que activan el flujo completo detectan 5.2x más defectos de alto
 impacto. El flujo parcial no mejora el número: cada paso habilita al siguiente.
 
 ## Instrucciones para el agente de QA

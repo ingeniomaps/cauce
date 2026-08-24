@@ -114,8 +114,8 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.ok(catalog.list(target).some((role) => role.type === 'specialists'), 'un tipo nuevo se reconoce solo')
   fs.rmSync(path.join(target, 'agents', 'specialists'), { recursive: true, force: true })
   // Los equipos, como los cargos, son definiciones que consume el motor: viajan con el paquete.
-  assert.equal(fs.existsSync(path.join(target, 'teams', 'system')), false)
-  assert.ok(require('../engine/teams/registry').list(target).length >= 2, 'y aun así se resuelven')
+  assert.equal(fs.existsSync(path.join(target, 'flows', 'system')), false)
+  assert.ok(require('../engine/flows/registry').list(target).length >= 2, 'y aun así se resuelven')
   // Ningún workflow del toolkit se distribuye. El CI valida el toolkit, y el ciclo de aprendizaje
   // investiga la profesión: repetirlo en cada empresa produciría la misma investigación N veces.
   const workflows = path.join(target, '.github', 'workflows')
@@ -166,7 +166,7 @@ test('el shim corre igual en un proyecto ESM que en uno CommonJS', () => {
 })
 
 // Sin destino la instancia se aparta a `ops/` en vez de volcarse donde se corrió el comando: un
-// monorepo que recibe `planning/`, `teams/` y `AGENTS.md` en su primer nivel deja de distinguir qué es
+// monorepo que recibe `planning/`, `flows/` y `AGENTS.md` en su primer nivel deja de distinguir qué es
 // suyo. El nombre sale de la carpeta del proyecto —`ops` nombra al toolkit, no al negocio— y el modo
 // es sidecar, el único que deja el wiring del runner donde el dev abre la herramienta.
 test('init sin destino aparta la instancia en ops/', () => {
@@ -737,8 +737,8 @@ test('la instancia recibe cómo escribir lo que sí es suyo', () => {
   // Mover una colección al paquete no puede llevarse la documentación que le habla a la empresa:
   // sin ella no tiene cómo saber qué escribir ni con qué contrato.
   for (const guide of [
-    ['teams', '000-template.md'],
-    ['teams', 'README.md'],
+    ['flows', '000-template.md'],
+    ['flows', 'README.md'],
     ['organization', 'roles', 'README.md'],
     ['planning', 'business-rules', '000-template.md'],
     ['planning', 'adr', '000-template.md'],
@@ -747,7 +747,7 @@ test('la instancia recibe cómo escribir lo que sí es suyo', () => {
     assert.equal(fs.existsSync(path.join(target, ...guide)), true, `falta ${guide.join('/')}`)
   }
   // Y las definiciones que consume el motor siguen sin copiarse.
-  assert.equal(fs.existsSync(path.join(target, 'teams', 'system')), false)
+  assert.equal(fs.existsSync(path.join(target, 'flows', 'system')), false)
   assert.equal(fs.existsSync(path.join(target, 'agents')), false)
 })
 
@@ -792,4 +792,35 @@ test('el AGENTS.md de una instancia dice la propiedad que el motor aplica', () =
   assert.equal(readme.includes('se reemplaza `system/` entero y nada más se toca'), false,
     'y no promete que sólo se toque system/')
   assert.equal(O.SYSTEM_FILES.includes('planning/delivery/project.md'), false)
+})
+
+// `teams/` pasó a llamarse `flows/`, y una empresa instalada tiene ahí sus recorridos propios. Sin
+// migración `upgrade` copiaría `flows/` nuevo y dejaría `teams/<slug>/` en una ruta que el motor ya no
+// mira: presente en disco e invisible para el catálogo, que es la peor de las dos pérdidas posibles
+// —no avisa—. Y no alcanza con mover la carpeta: adentro los archivos también cambiaron de nombre.
+test('upgrade mueve los recorridos propios de teams/ a flows/', () => {
+  const base = tempRoot('cauce-rename-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  linkEngine(target)
+
+  // La instancia como la dejó una versión anterior: la carpeta vieja, con un recorrido propio adentro.
+  fs.rmSync(path.join(target, 'flows'), { recursive: true, force: true })
+  const mio = path.join(target, 'teams', 'mi-recorrido')
+  fs.mkdirSync(mio, { recursive: true })
+  fs.writeFileSync(path.join(mio, 'team.json'), '{"slug":"mi-recorrido"}')
+  fs.writeFileSync(path.join(mio, 'WORKFLOW.md'), '# Mío\n')
+  fs.writeFileSync(path.join(target, 'teams', 'README.md'), 'viejo\n')
+
+  const salida = run(['upgrade', target, '--force'])
+  assert.equal(salida.status, 0, salida.stderr)
+
+  assert.equal(fs.existsSync(path.join(target, 'teams')), false, 'la carpeta vieja no queda al lado')
+  assert.equal(fs.readFileSync(path.join(target, 'flows', 'mi-recorrido', 'flow.json'), 'utf8'),
+    '{"slug":"mi-recorrido"}', 'el recorrido propio llega entero y con el nombre nuevo')
+  assert.ok(fs.existsSync(path.join(target, 'flows', 'mi-recorrido', 'FLOW.md')))
+  assert.equal(fs.existsSync(path.join(target, 'flows', 'mi-recorrido', 'team.json')), false)
+  // Y el README del molde se reemplaza por el nuevo, como cualquier archivo del toolkit.
+  assert.match(fs.readFileSync(path.join(target, 'flows', 'README.md'), 'utf8'), /^# Recorridos/)
+  assert.match(salida.stdout, /teams\/ → flows\//, 'y la migración se dice, no ocurre en silencio')
 })

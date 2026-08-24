@@ -1,7 +1,7 @@
 'use strict'
 
 // Un workflow renderizado y vuelto invocable. Dos suites lo ejecutan de verdad con los subagentes
-// simulados —`autobuild.test.js` y `team.test.js`— y las dos lo montaban con el mismo bloque.
+// simulados —`autobuild.test.js` y `flow.test.js`— y las dos lo montaban con el mismo bloque.
 //
 // El único retoque al fuente: `export` no es válido dentro de una función. El resto se ejecuta tal
 // cual, para que un cambio en el recorrido rompa en la suite y no en una instancia.

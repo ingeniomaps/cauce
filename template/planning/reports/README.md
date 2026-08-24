@@ -7,7 +7,7 @@ Un archivo por informe, nombrado `<AAAA-MM-DD>-<slug>.md`. Son evidencia: se com
 reescriben. Si una conclusión cambia, se agrega un informe nuevo que lo diga.
 
 La forma del informe no la fija este directorio: la declara el recorrido que lo produce. Cada etapa de
-un equipo dice qué produce y con qué condición de salida —una revisión de incidente entrega línea de
+un recorrido dice qué produce y con qué condición de salida —una revisión de incidente entrega línea de
 tiempo y alcance, un triage entrega la reproducción y a quiénes alcanza—, y el informe teje eso. Por
 eso no hay molde acá: uno solo contradiría a dos de los tres recorridos que escriben informes.
 

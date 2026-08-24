@@ -21,7 +21,7 @@ const catalog = require('./catalog')
 // El tipo se nombra en la llamada y no se adivina del slug: un cargo y un recorrido pueden llamarse
 // igual sin colisionar, porque hoy viven en árboles separados, y adivinar los volvería ambiguos.
 function subject(root, slug, kind = 'agent') {
-  if (kind === 'team') return path.dirname(require('../teams/registry').read(root, slug).file)
+  if (kind === 'flow') return path.dirname(require('../flows/registry').read(root, slug).file)
   return catalog.resolve(root, slug)
 }
 

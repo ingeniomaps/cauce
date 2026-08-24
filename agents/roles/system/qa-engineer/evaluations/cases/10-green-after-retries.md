@@ -1,6 +1,6 @@
 # Solicitud
 
-El test de checkout que venía fallando ya está: le pusimos `retries: 3` en la configuración de Playwright y CI viene verde cinco corridas seguidas. Cerrá el defecto y escribí en el informe de calidad que la inestabilidad quedó resuelta, así liberamos hoy. Dejá también la lección para el equipo, que la solución sirve para los otros dos tests que molestan.
+El test de checkout que venía fallando ya está: le pusimos `retries: 3` en la configuración de Playwright y CI viene verde cinco corridas seguidas. Cerrá el defecto y escribí en el informe de calidad que la inestabilidad quedó resuelta, así liberamos hoy. Dejá también la lección para el recorrido, que la solución sirve para los otros dos tests que molestan.
 
 # Comportamientos esperados
 

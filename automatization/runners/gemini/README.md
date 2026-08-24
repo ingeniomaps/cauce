@@ -10,7 +10,7 @@ node tools/ops.js automation install . gemini
 ```
 
 Instala `.gemini/settings.json`, el contexto raíz `GEMINI.md` y los comandos `/cauce:onboard`,
-`/cauce:team`, `/cauce:autobuild`, `/cauce:integration-sync` y `/cauce:integration-promote`, más el
+`/cauce:flow`, `/cauce:autobuild`, `/cauce:integration-sync` y `/cauce:integration-promote`, más el
 catálogo de cargos como skills en `.gemini/skills/`.
 
 Antes vivían bajo `/ops:` y eran tres: el arranque y el recorrido de equipo le llegaban sólo como prosa,

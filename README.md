@@ -81,7 +81,7 @@ Queda así, y el resto del repositorio sin tocar:
 ```text
 mi-repo/
 ├── apps/          tu código, intacto
-├── ops/           Cauce: planning/, organization/, teams/, tools/, AGENTS.md, Makefile
+├── ops/           Cauce: planning/, organization/, flows/, tools/, AGENTS.md, Makefile
 ├── .claude/       el wiring del runner elegido
 └── CLAUDE.md
 ```
@@ -99,7 +99,7 @@ npx @ingeniomaps/cauce@latest init --runner codex --integration jira --install
 ```
 
 `--install` es el que corre `npm install`; sin él la instancia queda creada pero todavía no funciona, y
-la salida lo dice. La dependencia no es opcional: el shim `tools/ops.js`, los cargos, los equipos y los
+la salida lo dice. La dependencia no es opcional: el shim `tools/ops.js`, los cargos, los recorridos y los
 adaptadores se resuelven desde `<ops>/node_modules/@ingeniomaps/cauce`, y el lockfile es lo que fija qué
 versión del motor corre.
 
@@ -109,7 +109,7 @@ versión del motor corre.
 |---|---|---|
 | Un repo: monolito o monorepo | `init` | `ops/` dentro del repo; el runner se instala en la raíz. |
 | Varios repos de producto | `init acme-ops --mode sidecar`, desde la carpeta que los contiene | `acme-ops/` hermano de los repos. |
-| Planning en la raíz del repo | `init . --mode embedded --force` | `planning/`, `organization/`, `teams/`, `tools/`, `AGENTS.md` y `Makefile` en el primer nivel. |
+| Planning en la raíz del repo | `init . --mode embedded --force` | `planning/`, `organization/`, `flows/`, `tools/`, `AGENTS.md` y `Makefile` en el primer nivel. |
 
 Los dos primeros son el mismo modo —`sidecar`— y difieren sólo en dónde queda la carpeta: adentro del
 repo o al lado. El tercero hay que pedirlo explícito porque es el único que despliega el molde en el
@@ -135,13 +135,13 @@ no puede hacer, así que ese recorrido vive en el runner:
             Lo deducido queda marcado como supuesto; credenciales, MCP y el permiso de push van
             a HUMAN_ACTIONS.md. Cierra con la épica 001, sin promoverla. No corre nada del
             proyecto: verificar los comandos es una historia de esa épica.
-/team       evalúa si una intención posterior es viable y propone su épica.
+/flow       evalúa si una intención posterior es viable y propone su épica.
 /autobuild  ejecuta una tarea ya promovida, fase por fase.
 ```
 
 ### Cómo se lo llama en cada runner
 
-El nombre del recorrido es el mismo en todos —`onboard`, `team`, `autobuild`, `integration-sync`,
+El nombre del recorrido es el mismo en todos —`onboard`, `flow`, `autobuild`, `integration-sync`,
 `integration-promote`—; el prefijo lo pone cada runner según su espacio de nombres:
 
 | Runner | Se invoca | |
@@ -167,8 +167,8 @@ idea → INBOX → roadmap → BACKLOG → WIP → DONE → done/epic-NNN.md
 ```
 
 1. Captura ideas, deuda o lecciones en `INBOX.md`.
-2. Especifica el resultado de producto en una épica de `roadmap/`. El workflow `/team` puede recorrer
-   un equipo —una etapa por dueño de decisión, con su exit gate— y dejar la épica candidata escrita;
+2. Especifica el resultado de producto en una épica de `roadmap/`. El workflow `/flow` puede recorrer
+   un recorrido —una etapa por dueño de decisión, con su exit gate— y dejar la épica candidata escrita;
    si falta evidencia o autoridad, para y registra la acción humana en vez de suponer.
 3. Promueve historias listas a un `## Hito` de `BACKLOG.md`.
 4. Un runner toma una sola tarea y persiste su plan en `WIP.md`.
@@ -197,9 +197,9 @@ Lee [template/planning/PROTOCOL.md](template/planning/PROTOCOL.md) para el contr
 | `ops learn <agent> --proposal` | Consolida los informes en una propuesta, sin aplicar cambios. |
 | `ops evaluate <agent>` | Valida controles, casos y propuestas del cargo. |
 | `ops evaluate <agent> --bench [caso]` | Arma el banco desechable donde un cargo trabaja ese caso. |
-| `ops team list` | Lista equipos disponibles. |
-| `ops team check <team>` | Valida manifiesto, agentes, dependencias y gates del equipo. |
-| `ops team show <team>` | Muestra el recorrido y artefactos del equipo. |
+| `ops flow list` | Lista equipos disponibles. |
+| `ops flow check <flow>` | Valida manifiesto, agentes, dependencias y gates del recorrido. |
+| `ops flow show <flow>` | Muestra el recorrido y artefactos del recorrido. |
 | `ops integration list <ops-root>` | Lista proveedores registrados. |
 | `ops integration enable\|disable <ops-root> <prov>` | Activa o desactiva un proveedor. |
 | `ops integration check <ops-root>` | Valida configuración y staging sin conectarse. |
@@ -243,7 +243,7 @@ Cada colección adaptable separa lo que actualiza el toolkit de lo que escribe e
 | `planning/business-rules/` | `BR-OPS-NNN` | las reglas de la empresa |
 | `planning/adr/` | `OPS-NNN` | las decisiones de la empresa |
 | `planning/rules/` | proceso, forma del cambio, commits, conducta | las convenciones propias |
-| `teams/` | composiciones que vienen con Cauce | los equipos propios |
+| `flows/` | composiciones que vienen con Cauce | los recorridos propios |
 | `agents/<tipo>/` | *(en el paquete, no se copia)* | los cargos propios |
 
 Un archivo propio con el mismo nombre o ID que uno de `system/` lo reemplaza: el del proyecto manda y
@@ -341,7 +341,7 @@ Qué comprueba cada guard, qué no puede comprobar y cómo se agrupan por evento
 - `integrations/`: documentación del contrato para herramientas externas.
 - `template/`: estructura materializada dentro de cada proyecto.
 - `agents/`: el catálogo de cargos, que viaja con el paquete en vez de copiarse.
-- `teams/`: composiciones de cargos, con orden, handoffs y responsabilidades compartidas.
+- `flows/`: composiciones de cargos, con orden, handoffs y responsabilidades compartidas.
 - `test/`: pruebas del toolkit; ver [test/README.md](test/README.md).
 
 Cualquier directorio bajo `agents/` es un tipo válido y se reconoce cuando tiene contenido, sin

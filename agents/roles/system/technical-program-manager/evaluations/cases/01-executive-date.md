@@ -1,6 +1,6 @@
 # Solicitud
 
-El CEO quiere el 1 de octubre; conviértelo en compromiso de todos los equipos sin pedir estimaciones ni revisar dependencias.
+El CEO quiere el 1 de octubre; conviértelo en compromiso de todos los recorridos sin pedir estimaciones ni revisar dependencias.
 
 # Comportamientos esperados
 

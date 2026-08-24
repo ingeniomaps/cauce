@@ -20,17 +20,17 @@ const REQUIRED_SECTIONS = [
 // Un recorrido no viene del paquete cuando lo mantiene este repositorio, así que la pregunta de
 // dónde se puede escribir es la misma y la respuesta se resuelve igual: dentro del proyecto, sí.
 function assertWritableTeam(root, slug) {
-  const dir = path.dirname(require('../teams/registry').read(root, slug).file)
-  const own = path.resolve(root, 'teams')
+  const dir = path.dirname(require('../flows/registry').read(root, slug).file)
+  const own = path.resolve(root, 'flows')
   if (path.resolve(dir).startsWith(`${own}${path.sep}`)) return dir
   throw new Error(
     `${slug} es un recorrido que trae Cauce y su aprendizaje se hace en el toolkit, no acá.\n` +
-    `  Para tener una versión propia, copialo a teams/${slug}/ y mantenelo vos.`,
+    `  Para tener una versión propia, copialo a flows/${slug}/ y mantenelo vos.`,
   )
 }
 
 function assertWritable(root, agent, kind = 'agent') {
-  if (kind === 'team') return assertWritableTeam(root, agent)
+  if (kind === 'flow') return assertWritableTeam(root, agent)
   const found = catalog.find(root, agent)
   // Lo que decide no es si el cargo es del sistema, sino si vive dentro de este repositorio. En el
   // toolkit los cargos del sistema son propios y se aprenden acá; en una instancia vienen del
@@ -258,7 +258,7 @@ function failedCases(text) {
   return [...text.matchAll(VERDICT_AGAINST)].map((hit) => ({ id: hit[1].trim(), detail: hit[2].trim() }))
 }
 
-function teamFindings(root, dir) {
+function flowFindings(root, dir) {
   const results = path.join(dir, 'evaluations', 'results')
   const unsealed = reportFiles(results).filter((name) =>
     frontmatterState(fs.readFileSync(path.join(results, name), 'utf8'), 'draft') !== 'consolidated')
@@ -277,11 +277,11 @@ function teamFindings(root, dir) {
 // sella— y distinto contenido: lo que se corrige es el recorrido mismo, y lo que lo justifica es un
 // veredicto en contra, no una fuente nueva.
 function proposeFromRuns(root, agent, target, file, period) {
-  const { consumed, findings } = teamFindings(root, target)
+  const { consumed, findings } = flowFindings(root, target)
   const empty = 'Ninguna corrida sin consolidar dejó un veredicto en contra. El recorrido '
     + 'aguantó lo que se le midió, y eso no pide cambio.'
   fs.writeFileSync(file, `---
-team: ${agent}
+flow: ${agent}
 period: ${period}
 status: proposed
 automatic_apply: false
@@ -342,7 +342,7 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
   }
 
   const file = path.join(proposalDir, `${sealing}.md`)
-  if (kind === 'team') return proposeFromRuns(root, agent, target, file, sealing)
+  if (kind === 'flow') return proposeFromRuns(root, agent, target, file, sealing)
   const reportDir = path.join(target, 'learning', 'reports')
   // Todo lo que ya ocurrió y todavía no entró, no sólo lo del mes que se consolida. Filtrar por el
   // prefijo del período dejaba huérfano al informe atrasado —el que se escribió después de que su mes
@@ -407,7 +407,7 @@ Pendiente.
 }
 
 function evaluateTeam(root, slug) {
-  const dir = path.dirname(require('../teams/registry').read(root, slug).file)
+  const dir = path.dirname(require('../flows/registry').read(root, slug).file)
   const errors = []
   const warnings = []
   if (!fs.existsSync(path.join(dir, 'learning', 'HISTORY.md'))) {

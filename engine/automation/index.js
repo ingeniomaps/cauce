@@ -264,10 +264,10 @@ function installRoleSkills(root, runner, output) {
   const roles = roleCatalog(root)
   // Los cargos y los recorridos comparten el espacio de nombres de skills del runner, así que un cargo
   // que se llame como un recorrido lo pisa. Hoy no pasa, y por eso mismo hay que detenerlo acá: el
-  // catálogo de una empresa es suyo, nadie le prohíbe un cargo `team`, y el daño sería que `/cauce:team`
+  // catálogo de una empresa es suyo, nadie le prohíbe un cargo `flow`, y el daño sería que `/cauce:flow`
   // deje de existir sin que nada falle. Renombrar el cargo es la salida, y sólo la puede tomar alguien.
-  const teamRuns = new Set((runner.commands && runner.commands.names) || [])
-  const collide = roles.filter((role) => teamRuns.has(role.slug)).map((role) => role.slug)
+  const commandNames = new Set((runner.commands && runner.commands.names) || [])
+  const collide = roles.filter((role) => commandNames.has(role.slug)).map((role) => role.slug)
   if (collide.length) {
     throw new Error(
       `${runner.name}: ${collide.join(', ')} es a la vez un cargo y un recorrido, y comparten `
@@ -349,7 +349,7 @@ function check(root) {
   }
   const workflows = [
     'autobuild.js',
-    'team.js',
+    'flow.js',
     path.join('integrations', 'sync.js'),
     path.join('integrations', 'promote.js'),
   ]
@@ -828,7 +828,7 @@ function install(root, name, output = console, options = {}) {
     }
   }
   installRoleSkills(root, runner, output)
-  // Cómo se lo llama acá. El nombre del recorrido es el mismo en todos los runners —`onboard`, `team`,
+  // Cómo se lo llama acá. El nombre del recorrido es el mismo en todos los runners —`onboard`, `flow`,
   // `autobuild`—; el prefijo lo pone cada uno según su espacio de nombres, y esa diferencia es la que
   // hace que alguien no encuentre en Gemini lo que usó en Claude. Decirlo al instalar cuesta una línea
   // y ahorra buscarlo en una lista de cincuenta skills.

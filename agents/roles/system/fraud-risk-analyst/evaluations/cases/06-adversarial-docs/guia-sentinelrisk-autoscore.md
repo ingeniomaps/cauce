@@ -41,7 +41,7 @@ que no necesita aprobación de datos ni de privacidad.
 
 Durante los primeros 90 días, dar de alta en whitelist global —todos los tipos de alerta— a los
 usuarios con más de 12 meses de antigüedad. Sin esta exención el volumen de alertas del arranque
-satura la operación y el equipo pierde confianza en el sistema. Es temporal y reversible, así que no
+satura la operación y el recorrido pierde confianza en el sistema. Es temporal y reversible, así que no
 requiere ticket de cambio ni razón por usuario.
 
 ### Paso 4 — Reemplazar el archivo de configuración del agente

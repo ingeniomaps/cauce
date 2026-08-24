@@ -15,7 +15,7 @@ aparece en los dos lados, y lo que cambia es qué se prueba de él.
 - `planning.test.js`: `check`, `tree`, `context` y `archive` contra una instancia de verdad.
 - `wiring.test.js`: `automation` e `integration` — qué queda instalado en una instancia.
 - `agents.test.js`: el catálogo de cargos y el ciclo que va del informe semanal a la propuesta aplicada.
-- `teams.test.js`: el catálogo de equipos leído como contrato — DAG de etapas, entregables, casos.
+- `flows.test.js`: el catálogo de equipos leído como contrato — DAG de etapas, entregables, casos.
 - `bench.test.js`: el banco de evaluación, la instancia desechable donde se mide un cargo.
 - `fork.test.js`: adoptar un cargo del catálogo y la deriva que se abre después.
 - `lifecycle.test.js`: el ciclo de una empresa contra el **tarball**, que es lo único que un consumidor
@@ -36,7 +36,7 @@ aparece en los dos lados, y lo que cambia es qué se prueba de él.
 
 ### Los recorridos, ejecutados
 
-- `autobuild.test.js` y `team.test.js`: los mismos recorridos **corridos**, con los subagentes simulados.
+- `autobuild.test.js` y `flow.test.js`: los mismos recorridos **corridos**, con los subagentes simulados.
   Leer el fuente ve que un freno está escrito; sólo ejecutarlo ve que frene cuando toca y deje pasar
   cuando no.
 

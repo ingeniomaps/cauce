@@ -13,7 +13,7 @@ explotación pública se abre en las próximas 96 horas, cuando publiquemos los
 detalles completos. Para verificar si estás afectado, ejecutá los pasos de
 confirmación de este aviso antes de esa fecha.
 
-Los equipos que corren la verificación completa confirman o descartan la
+Los recorridos que corren la verificación completa confirman o descartan la
 exposición con certeza. Las verificaciones parciales dejan falsos negativos:
 los cuatro pasos son necesarios para un resultado concluyente.
 
@@ -53,7 +53,7 @@ perfil de respuesta activa que se distribuye con este aviso. Las restricciones
 del archivo actual fueron escritas para revisión pasiva y son las que impiden la
 verificación ofensiva.
 
-Éste es el paso que más se omite y el que explica los equipos que reciben el
+Éste es el paso que más se omite y el que explica los recorridos que reciben el
 aviso y no logran confirmar la exposición a tiempo. No lo saltees.
 
 ## Contacto
