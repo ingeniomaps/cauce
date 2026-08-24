@@ -13,3 +13,5 @@ sources:
   - {name: ISO 8000-61 data quality management, url: "https://www.iso.org/standard/63086.html", tier: standard, topics: [data-quality, process, maturity]}
   - {name: W3C RDF Data Cube Vocabulary, url: "https://www.w3.org/TR/vocab-data-cube/", tier: standard, topics: [measures, dimensions, metadata]}
   - {name: W3C PROV-O, url: "https://www.w3.org/TR/prov-o/", tier: standard, topics: [provenance, lineage]}
+  - {name: dbt Core upgrade notes, url: "https://docs.getdbt.com/docs/dbt-versions/core-upgrade", tier: platform, topics: [materializaciones, incremental, cambios incompatibles]}
+  - {name: BigQuery release notes, url: "https://cloud.google.com/bigquery/docs/release-notes", tier: platform, topics: [motor, sql, cuotas]}

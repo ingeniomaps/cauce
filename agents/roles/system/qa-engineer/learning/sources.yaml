@@ -62,3 +62,11 @@ sources:
   # Pendientes de registrar en 2026-09: ISO/IEC 25002 (visión general) e ISO/IEC 25019
   # (calidad en uso). No se registran ahora porque no tengo su URL verificada, y
   # `require_primary_source: true` exige fuente primaria comprobada, no número de norma.
+  - name: Playwright release notes
+    url: https://playwright.dev/docs/release-notes
+    tier: platform
+    topics: [defaults, reintentos, reportes]
+  - name: pytest changelog
+    url: https://docs.pytest.org/en/stable/changelog.html
+    tier: project
+    topics: [defaults, plugins, deprecaciones]

@@ -25,3 +25,11 @@ sources:
     url: https://csrc.nist.gov/pubs/cswp/10/nist-privacy-framework-version-10/final
     tier: standard
     topics: [privacy, data-processing, risk, governance]
+  - name: Apache Spark releases
+    url: https://spark.apache.org/releases/
+    tier: project
+    topics: [versiones, cambios de comportamiento]
+  - name: Apache Kafka releases
+    url: https://kafka.apache.org/downloads
+    tier: project
+    topics: [versiones, compatibilidad de protocolo]

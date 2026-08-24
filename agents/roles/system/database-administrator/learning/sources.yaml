@@ -13,3 +13,5 @@ sources:
   - {name: ISO 22301 business continuity, url: "https://www.iso.org/standard/75106.html", tier: standard, topics: [continuity, resilience, recovery]}
   - {name: NIST SP 800-34 Rev 1 contingency planning, url: "https://csrc.nist.gov/pubs/sp/800/34/r1/upd1/final", tier: standard, topics: [contingency, backup, recovery, exercises]}
   - {name: NIST NICE Framework SP 800-181 Rev 1, url: "https://csrc.nist.gov/pubs/sp/800/181/r1/final", tier: standard, topics: [database-administration, tasks, knowledge, skills]}
+  - {name: PostgreSQL security advisories, url: "https://www.postgresql.org/support/security/", tier: advisory, topics: [cve, parches, versiones afectadas]}
+  - {name: PostgreSQL release notes, url: "https://www.postgresql.org/docs/release/", tier: platform, topics: [versiones, cambios de comportamiento, migración]}

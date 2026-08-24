@@ -13,3 +13,5 @@ sources:
   - {name: NIST Generative AI Profile AI 600-1, url: "https://www.nist.gov/itl/ai-risk-management-framework/ai-risk-management-framework-resources", tier: standard, topics: [generative-ai, risk, evaluation]}
   - {name: ISO IEC 42001 AI management systems, url: "https://www.iso.org/standard/42001", tier: standard, topics: [ai-management, governance, improvement]}
   - {name: OECD AI Principles, url: "https://www.oecd.org/en/topics/ai-principles.html", tier: standard, topics: [rights, transparency, robustness, accountability, sustainability]}
+  - {name: Anthropic API release notes, url: "https://docs.anthropic.com/en/release-notes/overview", tier: platform, topics: [modelos, parámetros, deprecaciones]}
+  - {name: OpenAI API changelog, url: "https://platform.openai.com/docs/changelog", tier: platform, topics: [modelos, parámetros, deprecaciones]}

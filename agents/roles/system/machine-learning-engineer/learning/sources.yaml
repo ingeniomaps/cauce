@@ -29,3 +29,11 @@ sources:
     url: https://www.iso.org/standard/44545.html
     tier: standard
     topics: [ai-impact, people, society, lifecycle, assessment]
+  - name: scikit-learn changelog
+    url: https://scikit-learn.org/stable/whats_new.html
+    tier: project
+    topics: [defaults, deprecaciones, api]
+  - name: PyTorch releases
+    url: https://github.com/pytorch/pytorch/releases
+    tier: project
+    topics: [versiones, cambios incompatibles]
