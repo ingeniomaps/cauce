@@ -181,3 +181,27 @@ test('un equipo que no existe se dice, con los que sí', async () => {
   assert.equal(result.reason, 'equipo-inexistente')
   assert.match(result.detail, /product-development/)
 })
+
+// `intake` existe para enrutar —su etapa `route` produce el destino recomendado— y ninguna etapa
+// recibía qué recorridos existen: el destino salía de memoria, que es exactamente la conducta que los
+// casos adversariales de los cargos miden y castigan. `flow list` sólo se corría cuando el slug fallaba,
+// para decir cuáles hay.
+//
+// Va en las reglas comunes y no sólo en la etapa que enruta: cualquier etapa puede nombrar un destino
+// al cerrar, y son seis slugs de contexto. Sale del registro, como la cadencia y como la matriz del
+// cron: una lista escrita al lado se pudre el día que alguien agrega un recorrido.
+test('cada etapa sabe qué recorridos existen, en vez de nombrarlos de memoria', async () => {
+  const { prompts } = await runFlow({
+    'flow-contract': { ...baseScript()['flow-contract'], flows: ['intake', 'incident-review'] },
+  })
+
+  const contrato = prompts.find((one) => one.key === 'flow-contract').prompt
+  assert.match(contrato, /flow list/, 'el contrato los pide siempre, no sólo cuando el slug falla')
+
+  for (const key of ['stage:encuadre', 'stage:factibilidad']) {
+    const stage = prompts.find((one) => one.key === key).prompt
+    assert.match(stage, /intake/, `${key} recibe el catálogo de recorridos`)
+    assert.match(stage, /incident-review/)
+    assert.match(stage, /sale de esa lista/, 'y con la instrucción de no inventarlo')
+  }
+})

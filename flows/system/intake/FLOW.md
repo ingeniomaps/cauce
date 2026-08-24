@@ -47,7 +47,11 @@ estar el dato que contradice la interpretación.
 ## «Nada que hacer» es un resultado
 
 Un pedido puede no tener intención detrás: ya está resuelto, es un defecto y va a `defect-triage`,
-corresponde a soporte, o no hay problema que valga la pena nombrar. Ese destino se entrega con su
+corresponde a soporte, o no hay problema que valga la pena nombrar.
+
+El destino sale del catálogo que el recorrido recibe —los slugs que devuelve `flow list`—, no de
+memoria: recomendar uno que no existe manda el pedido a ninguna parte, y suena igual de bien que
+recomendar uno que sí. Si ninguno sirve, eso se dice con su razón en vez de forzar el más parecido. Ese destino se entrega con su
 razón escrita, igual que cualquier otro. Un intake que siempre produce una intención no está
 escuchando, está fabricando trabajo.
 

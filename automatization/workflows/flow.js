@@ -133,13 +133,16 @@ const contract = await agent(
   `${BASE}\n\nFrom ${WORKDIR}, run exactly these commands and report only what they printed. Read no ` +
   `other file.\n` +
   `1. "node tools/ops.js flow show ${CANDIDATE} --json".\n` +
-  `   If it fails, run "node tools/ops.js flow list", set exists=false, report flows, and stop.\n` +
-  `2. "node tools/ops.js agents list --json", which gives each role its resolved path.\n` +
+  `2. "node tools/ops.js flow list" — copy every slug it printed into flows, verbatim. Do this even ` +
+  `when command 1 worked: a stage that names a destination has to pick it from that list, and if it ` +
+  `only ran on failure the destination came out of memory.\n` +
+  `   If command 1 failed, set exists=false, report flows, and stop.\n` +
+  `3. "node tools/ops.js agents list --json", which gives each role its resolved path.\n` +
   `Report exists=true and these manifest fields: name, purpose, outcome, entryAgent, facilitator, ` +
   `guardrails, decisionOwners flattened into owners as domain/agent pairs, and stages with id, phase, ` +
   `agent, produces, dependsOn and exitGate. Drop every other field the command printed — the schema ` +
   `rejects it, and a retry that copies it again burns the run.\n` +
-  `For every stage set skill to "${WORKDIR}/<path>/SKILL.md", where <path> is what command 2 printed ` +
+  `For every stage set skill to "${WORKDIR}/<path>/SKILL.md", where <path> is what command 3 printed ` +
   `for that stage's agent. That command prints paths relative to ${WORKDIR}, and the stages run from ` +
   `elsewhere, so the prefix is not optional.`,
   { schema: MANIFEST, label: 'flow-contract' },
@@ -160,9 +163,15 @@ const FLOW = CANDIDATE
 const GOAL = INTENT
 
 const owners = (contract.owners || []).map((owner) => `${owner.domain}=${owner.agent}`).join(', ')
-const RULES = `${BASE}\n\nEquipo ${contract.name}: ${contract.purpose}\n` +
+// Qué recorridos existen. Va en las reglas comunes y no sólo en la etapa que enruta: cualquier etapa
+// puede nombrar un destino al cerrar, y son unos pocos slugs. Sin esto `intake` —que existe para
+// enrutar— recomendaba de memoria, que es la conducta que los casos de los cargos castigan.
+const catalogo = (contract.flows || []).filter((slug) => slug !== FLOW)
+const RULES = `${BASE}\n\nRecorrido ${contract.name}: ${contract.purpose}\n` +
   `Guardrails: ${contract.guardrails.join(' ')}\n` +
   `${owners ? `Dueños de decisión: ${owners}. Ningún otro cargo resuelve en su dominio.\n` : ''}` +
+  `${catalogo.length ? `Recorridos que existen además de éste: ${catalogo.join(', ')}. Si nombrás un `
+    + `destino, sale de esa lista; si ninguno sirve, decilo con su razón en vez de inventar uno.\n` : ''}` +
   `Contexto de la empresa en ${WORKDIR}/organization/. Intención a evaluar: ${GOAL}`
 
 phase('Stages')

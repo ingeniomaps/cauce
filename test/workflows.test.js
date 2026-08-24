@@ -640,7 +640,10 @@ function codeOnly(src) {
   let out = ''
   let i = 0
   let mode = 'code'
-  const templates = []
+  // Pila explícita: `tpl` es un template abierto, `expr` una interpolación adentro de uno. Sin
+  // distinguirlas, cerrar un template anidado dentro de un `${}` devolvía a modo texto cuando todavía
+  // se estaba en código, y la prosa de ese tramo entraba al análisis como si fueran identificadores.
+  const stack = []
   while (i < src.length) {
     const c = src[i]
     const d = src[i + 1]
@@ -655,20 +658,26 @@ function codeOnly(src) {
         out += ' '
         continue
       }
-      if (c === '`') { templates.push({ braces: 0 }); mode = 'template'; i++; out += ' '; continue }
-      if (c === '}' && templates.length) {
-        const top = templates[templates.length - 1]
-        if (top.braces === 0) { mode = 'template'; i++; continue }
+      if (c === '`') { stack.push({ type: 'tpl' }); mode = 'template'; i++; out += ' '; continue }
+      const top = stack[stack.length - 1]
+      if (c === '}' && top && top.type === 'expr') {
+        if (top.braces === 0) { stack.pop(); mode = 'template'; i++; continue }
         top.braces--
       }
-      if (c === '{' && templates.length) templates[templates.length - 1].braces++
+      if (c === '{' && top && top.type === 'expr') top.braces++
       out += c
       i++
       continue
     }
     if (c === '\\') { i += 2; continue }
-    if (c === '`') { templates.pop(); mode = templates.length ? 'template' : 'code'; i++; continue }
-    if (c === '$' && d === '{') { mode = 'code'; i += 2; out += ' '; continue }
+    if (c === '`') {
+      stack.pop()
+      const top = stack[stack.length - 1]
+      mode = top && top.type === 'tpl' ? 'template' : 'code'
+      i++
+      continue
+    }
+    if (c === '$' && d === '{') { stack.push({ type: 'expr', braces: 0 }); mode = 'code'; i += 2; out += ' '; continue }
     i++
   }
   return out
