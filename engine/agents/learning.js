@@ -353,6 +353,11 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
   // ahora. Antes todos decían `draft` y no había cómo distinguirlos.
   const reports = reportFiles(reportDir).filter((name) => name.slice(0, 7) <= sealing
     && frontmatterState(fs.readFileSync(path.join(reportDir, name), 'utf8'), 'draft') !== 'consolidated')
+  // El cron lo dice antes que nadie: consolidar sin informes produce un andamiaje que nadie puede
+  // aprobar, y el job ve un archivo nuevo y abre el PR igual. Con una cadencia por cargo eso deja de
+  // ser un borde: el que investiga cada trimestre pasaría dos meses de cada tres abriendo propuestas
+  // para decir que no investigó.
+  if (!reports.length) return { file: '', created: false, reports: 0 }
   const summaries = reports.map((name) => {
     const report = path.join(reportDir, name)
     const text = fs.readFileSync(report, 'utf8')

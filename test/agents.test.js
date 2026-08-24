@@ -331,6 +331,7 @@ test('la conducta prohibida de un cargo llega a quien juzga', () => {
 test('una propuesta aplicada no se puede volver a aplicar', () => {
   const target = installedProject('Sello de propuesta')
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
+  learning.prepareReport(target, 'probe', new Date('2099-06-10T00:00:00Z'))
   learning.prepareProposal(target, 'probe', new Date('2099-06-15T00:00:00Z'))
   const file = path.join(own, 'learning', 'proposals', '2099-06.md')
 
@@ -352,6 +353,7 @@ test('una propuesta aplicada se puede corregir sin reabrirla', () => {
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
   const dir = path.join(own, 'learning', 'proposals')
   const now = new Date('2099-06-15T00:00:00Z')
+  learning.prepareReport(target, 'probe', new Date('2099-06-10T00:00:00Z'))
 
   const base = learning.prepareProposal(target, 'probe', now)
   assert.equal(path.basename(base.file), '2099-06.md')
@@ -506,9 +508,12 @@ test('la propuesta consolida el período que se le nombra, no el mes en que se l
   }
 
   // Sin período nombrado sigue mandando el mes de la corrida: es lo correcto a mano, a mitad de mes.
+  // Hace falta un informe de febrero para verlo: los de enero quedaron sellados por la consolidación
+  // de arriba, y sin ninguno pendiente ya no se abre propuesta.
+  learning.prepareReport(target, 'probe', new Date('2099-02-01T00:00:00Z'))
   const sinPeriodo = learning.prepareProposal(target, 'probe', corrida)
   assert.equal(path.basename(sinPeriodo.file), '2099-02.md')
-  assert.equal(sinPeriodo.reports, 0, 'febrero todavía no tiene informes')
+  assert.equal(sinPeriodo.reports, 1, 'el de febrero, no los de enero que ya entraron')
 
   assert.throws(() => learning.prepareProposal(target, 'probe', corrida, 'enero'), /período inválido/)
 })
@@ -772,4 +777,28 @@ test('la cadencia de investigación se deriva de las fuentes, no de una lista', 
   // Sin fuentes no hay cadencia que derivar, y eso ya lo avisa `evaluate`: no se inventa una.
   fs.writeFileSync(path.join(own, 'learning', 'sources.yaml'), 'version: 1\n')
   assert.equal(learning.cadence(target, 'probe'), '')
+})
+
+// El propio cron lo dice: «la propuesta sólo vale si antes hubo informes: consolidar sin ellos produce
+// un andamiaje vacío que nadie puede aprobar». Y era lo que hacía: escribía el archivo igual, con
+// «No hay informes semanales para este período» donde van los hallazgos, y el job veía un archivo
+// nuevo y abría el PR. Con cadencias distintas eso deja de ser un caso raro: un cargo trimestral
+// abriría ocho PR al año para decir que no investigó.
+test('sin informes pendientes no se abre propuesta', () => {
+  const target = installedProject('Propuesta sin informes')
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
+  const proposals = path.join(own, 'learning', 'proposals')
+
+  const vacia = learning.prepareProposal(target, 'probe', new Date('2099-06-15T00:00:00Z'))
+  assert.equal(vacia.created, false)
+  assert.equal(vacia.reports, 0)
+  assert.equal(vacia.file, '', 'no hay archivo porque no se escribió ninguno')
+  assert.equal(fs.existsSync(proposals) && fs.readdirSync(proposals).length, 0, 'el directorio queda vacío')
+
+  // Con un informe pendiente sí se abre, y lo consolida.
+  learning.prepareReport(target, 'probe', new Date('2099-06-10T00:00:00Z'))
+  const abierta = learning.prepareProposal(target, 'probe', new Date('2099-06-15T00:00:00Z'))
+  assert.equal(abierta.created, true)
+  assert.equal(abierta.reports, 1)
+  assert.ok(fs.existsSync(abierta.file))
 })

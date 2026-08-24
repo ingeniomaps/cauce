@@ -141,6 +141,9 @@ function learn(agent, cli) {
     const result = cli.has('--proposal')
       ? L.prepareProposal(opsRoot(), agent, new Date(), cli.value('--period'), kind)
       : L.prepareReport(opsRoot(), agent)
+    // Sin informes pendientes no hay archivo que nombrar, y decirlo es el resultado: el ciclo corrió
+    // y no había nada que consolidar.
+    if (!result.file) return console.log('= sin informes pendientes: no se abre propuesta')
     console.log(`${result.created ? '+' : '='} ${path.relative(opsRoot(), result.file)}`)
     // Un cargo consolida informes de su profesión; un recorrido, las corridas que lo midieron.
     if (typeof result.reports === 'number') {
