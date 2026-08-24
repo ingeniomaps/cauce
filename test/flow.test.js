@@ -229,3 +229,25 @@ test('un recorrido que se bloquea entrega igual lo que las etapas anteriores est
   assert.match(parcial, /encuadre/, 'con lo que la etapa que sí cerró dejó')
   assert.match(parcial, /nadie estimó el esfuerzo/, 'y con qué falta para completarlo')
 })
+
+// Y sobre todo cuando el bloqueo es de la primera etapa, que es donde el recorrido no deja nada. Con
+// etapas cerradas la fila de acción humana ya resume lo establecido; sin ninguna, la fila es todo lo
+// que existe — y ahí el informe estaba detrás de un `if (settled.length)` que lo apagaba justo
+// entonces. Cuatro casos de `intake` e `incident-review` lo midieron: los tres de intake tenían a mano
+// el pedido literal, sus supuestos y el destino recomendado, y el gate bloqueado pedía procedencia,
+// que no impide ninguna de las tres.
+test('el bloqueo de la primera etapa también entrega, y entrega el pedido', async () => {
+  const { result, written } = await runFlow({
+    'stage:encuadre': {
+      gate: 'no-cumplido', summary: 'no se sabe de quién es', findings: 'x',
+      missing: 'no consta quién lo pidió ni por qué canal', humanAction: 'preguntarle a soporte',
+    },
+  })
+
+  assert.equal(result.reason, 'gate-no-cumplido')
+  const parcial = written.find((one) => /parcial/i.test(one) && /reports/i.test(one))
+  assert.ok(parcial, 'sin etapas cerradas el informe va igual: es cuando más falta hace')
+  assert.match(parcial, /transcribilo como se dijo/, 'y lo entregable es el pedido, no el acuse')
+  assert.match(parcial, /supuestos que da por ciertos/)
+  assert.match(parcial, /no consta quién lo pidió/, 'con lo que falta, sin rellenarlo')
+})

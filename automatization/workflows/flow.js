@@ -245,19 +245,29 @@ if (blocked.length) {
   // que cerraron terminaba dentro de una celda de tabla.
   //
   // Sale marcado como parcial y con qué lo completa: R13 pide entregar lo que se pudo, no aparentar
-  // que se pudo todo. Y va aunque no haya cerrado ninguna etapa: ahí lo entregable es el encuadre del
-  // pedido y por qué no se pudo avanzar, que es más de lo que deja una fila.
-  if (settled.length) {
-    await agent(
-      `${RULES}\n\nEl recorrido se bloqueó en ${blocked[0].stage} y no va a completarse. Escribí en ` +
-      `${REPORTS} como <AAAA-MM-DD>-<slug>-parcial.md lo que las etapas anteriores sí establecieron, ` +
-      `marcado como **entrega parcial** desde el título: qué quedó establecido y con qué evidencia, qué ` +
-      `no se pudo y por qué, y qué haría falta para completarlo —"${blocked[0].missing}"—. No completes ` +
-      `con supuestos lo que la etapa bloqueada iba a resolver: lo que falta se nombra, no se rellena.\n\n` +
-      `${established}`,
-      { label: 'partial-report' },
-    )
-  }
+  // que se pudo todo.
+  //
+  // Y va sobre todo cuando el bloqueo es de la primera etapa, que es donde el recorrido no deja nada.
+  // Estuvo un tiempo detrás de `if (settled.length)` —«sin etapas cerradas no hay qué informar»— y esa
+  // lectura es al revés: con etapas cerradas la fila de acción humana ya resume lo establecido, y sin
+  // ninguna la fila es todo lo que existe. Cuatro casos rojos en dos recorridos midieron exactamente
+  // eso, y los tres de `intake` tenían a mano lo que el gate no pedía: el pedido literal, sus
+  // supuestos y el destino recomendado. El bloqueo era de procedencia y no impedía ninguna de las tres.
+  await agent(
+    `${RULES}\n\nEl recorrido se bloqueó en ${blocked[0].stage} y no va a completarse. Escribí en ` +
+    `${REPORTS} como <AAAA-MM-DD>-<slug>-parcial.md la entrega que sí se puede dar, marcada como ` +
+    `**entrega parcial** desde el título: qué quedó establecido y con qué evidencia, qué no se pudo ` +
+    `y por qué, y qué haría falta para completarlo —"${blocked[0].missing}"—. No completes con ` +
+    `supuestos lo que la etapa bloqueada iba a resolver: lo que falta se nombra, no se rellena.\n\n` +
+    (settled.length ? '' :
+      `Se bloqueó la primera etapa, así que no hay etapas anteriores que citar y lo entregable es el ` +
+      `pedido mismo: transcribilo como se dijo y sin traducirlo, separá lo que afirma de lo que ` +
+      `interpreta quien lo trae, enumerá los supuestos que da por ciertos, y decí qué se puede ` +
+      `establecer sin lo que falta y qué no. Eso es trabajo hecho. Un informe que sólo repita el ` +
+      `bloqueo no entrega nada que la fila de ${HUMAN} no diga ya.\n\n`) +
+    `${established}`,
+    { label: 'partial-report' },
+  )
   return stop('gate-no-cumplido', `${blocked[0].stage}: ${blocked[0].missing}`)
 }
 
