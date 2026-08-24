@@ -20,7 +20,11 @@ export const meta = {
 }
 
 {{INCLUDE:shared/workflow-root.js}}
-const FLOW = String((typeof args === 'string' ? args : (args || {}).flow) || '').trim()
+const input = typeof args === 'string' ? { flow: args } : (args || {})
+const FLOW = String(input.flow || '').trim()
+
+{{INCLUDE:shared/eval-only.js}}
+const ONLY = onlyCases(input)
 
 const CASES = {
   type: 'object', additionalProperties: false, required: ['items'],
@@ -83,6 +87,15 @@ const context = await agent(
 )
 if (!context || !context.items || !context.items.length) {
   return stop('sin-casos', `${FLOW} no tiene casos, o no se pudieron leer`)
+}
+if (ONLY.length) {
+  const pick = pickCases(context.items, ONLY)
+  if (pick.missing.length) {
+    return stop('caso-inexistente',
+      `${FLOW} no tiene ${pick.missing.join(', ')}. Tiene: ${pick.existen.join(', ')}`)
+  }
+  context.items = pick.items
+  log(`Sólo ${ONLY.join(', ')}: el registro va a cubrir ${ONLY.length} de ${pick.existen.length}`)
 }
 
 // El recorrido escribe: épica candidata, INBOX, acciones humanas. Sin un `planning/` propio no puede

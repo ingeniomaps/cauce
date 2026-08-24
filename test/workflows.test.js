@@ -610,23 +610,34 @@ test('un recorrido puede correr sobre la raíz que se le nombra', () => {
   assert.equal(/\$\{ROOT\}/.test(flow), false, 'ninguna ruta quedó atada a la raíz de invocación')
 })
 
-// Un cargo falla un caso de seis y comprobar el arreglo no pide la batería: correr los seis cuesta
+// Un sujeto falla un caso de seis y comprobar el arreglo no pide la batería: correr los seis cuesta
 // seis veces lo mismo para volver a mirar cinco veredictos que ya se tenían. Es lo que R20 nombra
 // —repetir sin que el cambio pueda mover ese veredicto— y hasta acá no tenía forma de comando, así
 // que la única manera de comprobar un arreglo era pagar la corrida entera.
-test('la evaluación puede correr sólo los casos que se le nombran', () => {
-  const evalWf = fs.readFileSync(path.join(WF, 'agent-eval.js'), 'utf8')
-  assert.match(evalWf, /const ONLY = \(Array\.isArray\(input\.cases\)/, 'acepta uno, varios o ninguno')
-  assert.match(evalWf, /context\.items = context\.items\.filter\(\(item\) => ONLY\.includes\(item\.id\)\)/)
+//
+// Se exige a los dos evaluadores sobre el fuente ya expandido, y por eso el `for`: el filtro entró
+// primero en `agent-eval` y `flow-eval` quedó sin él meses después de que los dos lo necesitaran
+// igual. Es la quinta vez que un arreglo entra en un gemelo y no en el otro —`contexto`, la ruta del
+// CLI, el esquema de dos niveles, el freno de banco—, y las cuatro anteriores costaron corridas.
+for (const name of ['agent-eval', 'flow-eval']) {
+  test(`${name} puede correr sólo los casos que se le nombran`, () => {
+    const src = require('../engine/automation').render(path.join(WF, `${name}.js`), '', path.dirname(WF))
+    assert.match(src, /const ONLY = onlyCases\(input\)/, 'acepta uno, varios o ninguno')
+    assert.match(src, /context\.items = pick\.items/, 'y corre sólo ésos')
 
-  // Un id que no existe frena en vez de correr una batería vacía y registrar cero de seis.
-  assert.match(evalWf, /stop\('caso-inexistente'/, 'un caso mal escrito no se convierte en corrida vacía')
-  assert.match(evalWf, /Tiene: \$\{existen\.join\(', '\)\}/, 'y dice cuáles hay')
+    // Un id que no existe frena en vez de correr una batería vacía y registrar cero de seis.
+    assert.match(src, /stop\('caso-inexistente'/, 'un caso mal escrito no se convierte en corrida vacía')
+    assert.match(src, /Tiene: \$\{pick\.existen\.join\(', '\)\}/, 'y dice cuáles hay')
 
-  // Y queda dicho que el registro parcial no vale por sí solo, que es lo que evita el próximo error:
-  // dar por medido un cargo con un registro que cubre uno de seis.
-  assert.match(evalWf, /el registro va a cubrir \$\{ONLY\.length\} de \$\{existen\.length\}/)
-  assert.match(evalWf, /el resultado no vale/, 'y por qué evaluate lo va a rechazar')
+    // Y queda dicho que el registro parcial no vale por sí solo, que es lo que evita el próximo error:
+    // dar por medido un sujeto con un registro que cubre uno de seis.
+    assert.match(src, /el registro va a cubrir \$\{ONLY\.length\} de \$\{pick\.existen\.length\}/)
+  })
+}
+
+test('y evaluate dice que un registro parcial no alcanza', () => {
+  const src = require('../engine/automation').render(path.join(WF, 'agent-eval.js'), '', path.dirname(WF))
+  assert.match(src, /el resultado no vale/, 'por qué evaluate lo va a rechazar')
 })
 
 // Un nombre que no existe no rompe al leer el archivo: rompe en la fase que lo usa, después de que la
