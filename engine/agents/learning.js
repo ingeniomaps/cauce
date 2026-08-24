@@ -287,6 +287,16 @@ function flowFindings(root, dir) {
   return { consumed: unsealed.map((name) => path.join(results, name)), findings }
 }
 
+// Cuántas corridas tiene un recorrido esperando entrar a una propuesta. Es su disparador: un cargo
+// aprende cada tanto porque su profesión cambia sola afuera, y un recorrido sólo aprende cuando le
+// fue mal, así que preguntarle todos los meses «¿algo nuevo?» sin mirar esto le cuesta una firma
+// humana a cambio de un documento que dice «no hay qué corregir».
+function pendingRuns(root, slug) {
+  const results = path.join(assertWritableTeam(root, slug), 'evaluations', 'results')
+  return reportFiles(results).filter((name) =>
+    frontmatterState(fs.readFileSync(path.join(results, name), 'utf8'), 'draft') !== 'consolidated').length
+}
+
 // La propuesta de un recorrido. Mismo ciclo que la de un cargo —se abre, se firma, se aplica y se
 // sella— y distinto contenido: lo que se corrige es el recorrido mismo, y lo que lo justifica es un
 // veredicto en contra, no una fuente nueva.
@@ -546,4 +556,5 @@ function evaluate(root, agent) {
 module.exports = {
   SOURCE_TIERS,
   CADENCES,
-  cadence, SUMMARY_MAX, prepareReport, prepareProposal, evaluate, evaluateTeam, proposalState, seal }
+  cadence, pendingRuns,
+  SUMMARY_MAX, prepareReport, prepareProposal, evaluate, evaluateTeam, proposalState, seal }

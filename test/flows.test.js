@@ -42,6 +42,60 @@ test('flow check y show exponen un contrato utilizable', () => {
   assert.equal(shown.status, 0, shown.stderr)
 })
 
+// El cron arma su matriz leyendo `agents list --json`, y ahí no hay recorridos. Por eso ninguno
+// aprendió nunca: el ciclo existía y funcionaba a mano, y nada lo disparaba. `flow list --json`
+// devuelve la misma forma para que lo consuma el mismo paso.
+//
+// `cadence` es fija porque un recorrido no tiene profesión que cambie afuera; lo que decide si le toca
+// es `pending`, las corridas que dejó sin consolidar. Sin eso el cron le pediría una propuesta todos
+// los meses y cobraría una firma humana por un documento que dice «no hay qué corregir».
+test('flow list --json trae lo que el cron necesita para incluir un recorrido', () => {
+  const env = { ...process.env }
+  delete env.NODE_TEST_CONTEXT
+  const out = spawnSync(process.execPath, [CLI, 'flow', 'list', '--json'], {
+    cwd: ROOT, encoding: 'utf8', env,
+  })
+  assert.equal(out.status, 0, out.stderr)
+  const flows = JSON.parse(out.stdout)
+  assert.ok(flows.length >= 5, 'lista todos los recorridos')
+  for (const one of flows) {
+    assert.deepEqual(Object.keys(one).sort(), ['cadence', 'pending', 'purpose', 'slug', 'system'])
+    assert.equal(one.cadence, 'mensual')
+    assert.equal(typeof one.pending, 'number')
+  }
+  // En este repo los recorridos son nuestros, así que ninguno se reporta como del catálogo y el que
+  // tiene corridas sin consolidar las cuenta. En una empresa pasa lo contrario, y `pending: 0` en un
+  // recorrido del catálogo es lo correcto: no tiene dónde escribir la propuesta.
+  assert.equal(flows.some((one) => one.system), false, 'en el toolkit todos son propios')
+  assert.ok(flows.some((one) => one.pending > 0), 'y las corridas sin consolidar se cuentan')
+})
+
+// Cuántas corridas esperan entrar a una propuesta. Es el disparador del ciclo de un recorrido, y se
+// mide contra el sello, no contra la fecha: una corrida vieja sin consolidar sigue pendiente.
+test('pendingRuns cuenta lo que no se consolidó, y deja de contarlo cuando entra', () => {
+  const root = tempRoot('cauce-flow-pending-')
+  const dir = path.join(root, 'flows', 'probe')
+  fs.mkdirSync(path.join(dir, 'evaluations', 'results'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'FLOW.md'), '# Probe\n')
+  fs.writeFileSync(path.join(dir, 'flow.json'), JSON.stringify({
+    schemaVersion: 1, slug: 'probe', name: 'Probe', purpose: 'x', outcome: 'report',
+    entryAgent: 'qa-engineer', facilitator: 'qa-engineer',
+    stages: [{ id: 'uno', phase: 'discovery', agent: 'qa-engineer', dependsOn: [], produces: ['x'], exitGate: 'y' }],
+    guardrails: ['x'], completion: ['x'],
+  }))
+  assert.equal(L.pendingRuns(root, 'probe'), 0, 'sin corridas no hay nada que consolidar')
+
+  for (const name of ['2099-01-07.md', '2099-01-07-2.md']) {
+    fs.writeFileSync(path.join(dir, 'evaluations', 'results', name),
+      '---\nflow: probe\ndate: 2099-01-07\npassed: 0\ntotal: 1\n---\n\n'
+      + '### 01-uno\n\n- Veredicto: no pasa\n\nEl gate dejó pasar la etapa.\n')
+  }
+  assert.equal(L.pendingRuns(root, 'probe'), 2, 'la re-corrida cuenta como corrida')
+
+  L.prepareProposal(root, 'probe', new Date('2099-01-31T00:00:00Z'), '', 'flow')
+  assert.equal(L.pendingRuns(root, 'probe'), 0, 'consolidadas, ya no piden otra propuesta')
+})
+
 test('validador rechaza dependencias posteriores y agentes inexistentes', () => {
   const root = tempRoot('ops-flow-invalid-')
   fs.mkdirSync(path.join(root, 'flows', 'broken'), { recursive: true })

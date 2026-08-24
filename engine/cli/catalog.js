@@ -221,7 +221,29 @@ function evaluate(agent, caso, cli) {
 
 function flow(action, slug, cli) {
   if (action === 'list') {
-    for (const name of T.list(opsRoot())) console.log(name)
+    const root = opsRoot()
+    const slugs = T.list(root)
+    // La misma forma que `agents list --json`, porque la consume el mismo cron. `cadence` es fija:
+    // un recorrido no tiene profesión que cambie afuera, así que su calendario no se deriva de
+    // fuentes —no tiene—; lo que decide si le toca es `pending`, las corridas que dejó sin consolidar.
+    // Sin este campo el cron no tenía cómo saber que un recorrido existe, y ninguno aprendió nunca.
+    if (cli && cli.has('--json')) {
+      return console.log(JSON.stringify(slugs.map((name) => {
+        // Sólo un recorrido propio tiene dónde escribir su propuesta, y quién lo es lo decide
+        // `pendingRuns`, que resuelve por la misma regla que después va a aplicar `learn`. Comprobar
+        // acá si existe `flows/<slug>/flow.json` era reimplementarla, y salía mal en el toolkit, donde
+        // el recorrido propio vive en `flows/system/<slug>/`.
+        let pending = null
+        try { pending = L.pendingRuns(root, name) } catch { pending = null }
+        return {
+          slug: name, system: pending === null, cadence: 'mensual', pending: pending || 0,
+          purpose: (() => {
+            try { return T.read(root, name).manifest.purpose || '' } catch { return '' }
+          })(),
+        }
+      })))
+    }
+    for (const name of slugs) console.log(name)
     return
   }
   if (!['check', 'show'].includes(action)) fail(`Acción de flow desconocida: ${action || '(vacía)'}`, 2)
