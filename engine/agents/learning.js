@@ -81,10 +81,24 @@ function proposalState(text) {
   return frontmatterState(text, 'proposed')
 }
 
-const REPORT_NAME = /^\d{4}-\d{2}-\d{2}\.md$/
+// El sufijo `-N` es la segunda corrida del mismo día, y es la que trae el veredicto más nuevo. Sin él
+// en el patrón, 51 de los 188 registros que hoy existen —44 de cargos, 7 de recorridos— quedaban fuera
+// del ciclo: no entraban a ninguna propuesta y nada lo delataba, que es el modo de fallo que el
+// comentario de `markConsolidated` ya describía para el informe atrasado.
+//
+// Ordenar por nombre no alcanza: `-` (0x2D) es menor que `.` (0x2E), así que `2026-08-24-2.md` cae
+// antes que `2026-08-24.md` y la corrida más nueva se leería primero.
+const REPORT_NAME = /^(\d{4}-\d{2}-\d{2})(?:-(\d+))?\.md$/
 
 function reportFiles(dir) {
-  try { return fs.readdirSync(dir).filter((name) => REPORT_NAME.test(name)).sort() } catch { return [] }
+  try {
+    return fs.readdirSync(dir)
+      .map((name) => [name, REPORT_NAME.exec(name)])
+      .filter(([, hit]) => hit)
+      .sort(([, a], [, b]) =>
+        (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : Number(a[2] || 0) - Number(b[2] || 0)))
+      .map(([name]) => name)
+  } catch { return [] }
 }
 
 // El informe que ya entró a una propuesta. Nace en `draft` y nada lo movía nunca, así que el que se

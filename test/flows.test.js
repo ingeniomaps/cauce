@@ -279,3 +279,39 @@ test('el ciclo de un recorrido aprende de sus corridas, no de una literatura', (
   assert.equal(estado.pending, 1, 'la de enero quedó aplicada; la de febrero espera firma')
   assert.match(estado.warnings.join('\n'), /sin learning\/HISTORY\.md/)
 })
+
+// La re-corrida del mismo día se llama `<fecha>-2.md`, y es la que trae el veredicto más nuevo — el
+// que dice si el arreglo funcionó. El patrón de nombre exigía `<fecha>.md` exacto, así que ninguna
+// entraba a ninguna propuesta y nada lo delataba: 51 de los 188 registros que existían al encontrarlo.
+// Y el orden importa tanto como el patrón, porque `-` es menor que `.` y la segunda corrida se leería
+// antes que la primera.
+test('la re-corrida del mismo día entra al ciclo, y entra después de la primera', () => {
+  const root = tempRoot('cauce-flow-rerun-')
+  const dir = path.join(root, 'flows', 'probe')
+  fs.mkdirSync(path.join(dir, 'evaluations', 'results'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'FLOW.md'), '# Probe\n')
+  fs.writeFileSync(path.join(dir, 'flow.json'), JSON.stringify({
+    schemaVersion: 1, slug: 'probe', name: 'Probe', purpose: 'x', outcome: 'report',
+    entryAgent: 'qa-engineer', facilitator: 'qa-engineer',
+    stages: [{ id: 'uno', phase: 'discovery', agent: 'qa-engineer', dependsOn: [], produces: ['x'], exitGate: 'y' }],
+    guardrails: ['x'], completion: ['x'],
+  }))
+  const registro = (name, caso, detalle) => {
+    const file = path.join(dir, 'evaluations', 'results', name)
+    fs.writeFileSync(file, `---\nflow: probe\ndate: 2099-01-07\npassed: 0\ntotal: 1\n---\n\n`
+      + `### ${caso}\n\n- Veredicto: no pasa\n\n${detalle}\n`)
+    return file
+  }
+  const primera = registro('2099-01-07.md', '01-uno', 'La primera corrida.')
+  const segunda = registro('2099-01-07-2.md', '02-dos', 'La re-corrida, con el arreglo puesto.')
+
+  const propuesta = L.prepareProposal(root, 'probe', new Date('2099-01-31T00:00:00Z'), '', 'flow')
+  assert.equal(propuesta.findings, 2, 'las dos corridas del día entran')
+  const texto = fs.readFileSync(propuesta.file, 'utf8')
+  assert.match(texto, /La re-corrida, con el arreglo puesto/, 'la segunda no se pierde')
+  assert.ok(texto.indexOf('La primera corrida') < texto.indexOf('La re-corrida'),
+    'y va después de la primera: `-` ordena antes que `.` si se compara el nombre crudo')
+  for (const file of [primera, segunda]) {
+    assert.match(fs.readFileSync(file, 'utf8'), /^status: consolidated$/m, 'las dos quedan selladas')
+  }
+})
