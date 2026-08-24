@@ -62,6 +62,12 @@ Y el disparador es a dónde va la afirmación, no cuán discutible parece. Quien
 que espera que le discutan, y deja plano lo que sostiene su propio procedimiento — que es justamente lo que nadie
 va a revisar.
 
+Y como en R15, no se detecta releyendo: quien escribió la afirmación ya la da por buena, y el artefacto derivado
+se lee bien precisamente porque está en plano. Antes de entregar se recorren los artefactos que se van a leer
+solos —la fila, la lección, el ítem de INBOX, el paso de runbook, la respuesta escrita— y por cada
+afirmación de mecanismo que aparezca se comprueba que llegó con su registro. Es mecánico y barato, y
+encuentra lo único que releer no encuentra: la copia que perdió el rótulo que el original sí tenía.
+
 La verificación llega hasta donde R12 permite: fuente pública, `--help`, `--version`, una invocación inocua.
 Nunca conectarse a un sistema real ni ejecutar la operación cuyo efecto se describe. Si el mecanismo sólo se
 establece ejecutando lo destructivo, queda en hipótesis; acá la abstención vale más que el dato.
