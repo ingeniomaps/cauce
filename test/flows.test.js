@@ -223,9 +223,19 @@ test('un recorrido sin casos lo dice', () => {
   assert.deepEqual(EV.validate(root, 'probe', 'flow').warnings,
     ['no declara casos: nada mide si su contrato aguanta'])
 
-  const conCasos = EV.validate(ROOT, 'defect-triage', 'flow')
-  assert.match(conCasos.warnings.join('\n'), /sin resultados de casos: corré el recorrido/)
-  assert.equal(conCasos.cases, 4)
+  // El otro lado de la advertencia, y también montado acá. Tomarlo del catálogo ya rompió dos veces
+  // esta prueba: primero cuando `incident-review` ganó casos, y hoy cuando `defect-triage` ganó su
+  // primer registro. El ejemplo tiene que ser del tamaño de lo que la prueba mide, no del catálogo,
+  // que avanza por su cuenta.
+  const conCasos = path.join(root, 'flows', 'con-casos')
+  fs.mkdirSync(path.join(conCasos, 'evaluations', 'cases'), { recursive: true })
+  fs.writeFileSync(path.join(conCasos, 'FLOW.md'), '# Con casos\n')
+  fs.writeFileSync(path.join(conCasos, 'flow.json'), JSON.stringify({ schemaVersion: 1, slug: 'con-casos' }))
+  fs.writeFileSync(path.join(conCasos, 'evaluations', 'cases', '01-uno.md'),
+    '# Solicitud\n\nx\n\n# Comportamientos esperados\n\n- y\n')
+  const medido = EV.validate(root, 'con-casos', 'flow')
+  assert.match(medido.warnings.join('\n'), /sin resultados de casos: corré el recorrido/)
+  assert.equal(medido.cases, 1)
 })
 
 // Un recorrido no aprende de una profesión: no tiene. Lo único que puede enseñarle algo es cómo le
