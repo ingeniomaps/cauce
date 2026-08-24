@@ -749,12 +749,17 @@ test('agent-eval averigua qué CLI existe en vez de suponerlo', () => {
 // reintento vuelve a copiarlo: se acaba el retry cap y la corrida muere sin haber hecho nada. Pasó con
 // `dependsOn`, que está en las etapas de los seis contratos, en dos de cuatro corridas — dos, porque
 // depende de que el agente adivine que tiene que tirar un campo que está en la fuente.
-test('el schema del manifiesto acepta los campos que los contratos de equipo tienen', () => {
+test('el schema del manifiesto acepta los campos que los contratos de recorrido tienen', () => {
   const flowWf = fs.readFileSync(path.join(WF, 'flow.js'), 'utf8')
   const stageBlock = flowWf.match(/stages: \{ type: 'array', items: \{[\s\S]*?\n {4}\} \} \},/)
   assert.ok(stageBlock, 'no se encontró el bloque de etapas del schema')
   const accepted = new Set([...stageBlock[0].matchAll(/([a-zA-Z]+): \{ type:/g)].map((m) => m[1]))
 
+  // A las dos alturas. La primera versión de esta prueba miraba sólo las claves de las etapas, así que
+  // `completion` y `conditionalAgents` —dos campos reales de todo contrato— siguieron reventando el
+  // retry cap después de haberla escrito. Un caso de `feasibility-review` quedó sin medir por eso.
+  const manifest = flowWf.slice(flowWf.indexOf('const MANIFEST'), flowWf.indexOf('const STAGE'))
+  const topLevel = new Set([...manifest.matchAll(/([a-zA-Z]+): \{ type:/g)].map((hit) => hit[1]))
   const flowsDir = path.resolve(__dirname, '..', 'flows', 'system')
   const real = new Set()
   for (const slug of fs.readdirSync(flowsDir)) {
@@ -767,5 +772,17 @@ test('el schema del manifiesto acepta los campos que los contratos de equipo tie
   assert.ok(real.size, 'no se leyó ningún contrato de equipo')
 
   const missing = [...real].filter((key) => !accepted.has(key))
-  assert.deepEqual(missing, [], 'el schema rechaza un campo que el contrato trae, y el reintento lo repite')
+  assert.deepEqual(missing, [], 'el schema rechaza un campo de etapa que el contrato trae')
+
+  const arriba = new Set()
+  for (const slug of fs.readdirSync(flowsDir)) {
+    const file = path.join(flowsDir, slug, 'flow.json')
+    if (!fs.existsSync(file)) continue
+    for (const key of Object.keys(JSON.parse(fs.readFileSync(file, 'utf8')))) arriba.add(key)
+  }
+  // `schemaVersion` y `slug` no viajan: el recorrido ya sabe cuál es. `decisionOwners` viaja aplanado
+  // en `owners`, que es lo que el prompt pide.
+  const fuera = [...arriba].filter((key) => !topLevel.has(key)
+    && !['schemaVersion', 'slug', 'decisionOwners'].includes(key))
+  assert.deepEqual(fuera, [], 'el schema rechaza un campo de contrato que el manifiesto trae')
 })

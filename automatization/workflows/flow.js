@@ -52,6 +52,12 @@ const MANIFEST = {
     outcome: { type: 'string', enum: ['epic', 'report'] },
     entryAgent: { type: 'string' }, facilitator: { type: 'string' },
     guardrails: { type: 'array', items: { type: 'string' } },
+    // Dos campos más del contrato real. No los usa el recorrido, pero el agente copia lo que el comando
+    // imprimió y `additionalProperties: false` los rechazaba: el reintento volvía a copiarlos hasta
+    // agotar el cap, y un caso de `feasibility-review` quedó sin medir por eso. Es el mismo defecto que
+    // `dependsOn`, que se arregló mirando sólo las claves de las etapas.
+    completion: { type: 'array', items: { type: 'string' } },
+    conditionalAgents: { type: 'array', items: { type: 'string' } },
     owners: { type: 'array', items: { type: 'object', additionalProperties: false, properties: {
       domain: { type: 'string' }, agent: { type: 'string' },
     } } },
