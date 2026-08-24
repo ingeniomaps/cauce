@@ -45,6 +45,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       agents: ${{ steps.list.outputs.agents }}
+      flows: ${{ steps.flows.outputs.flows }}
       model: ${{ steps.creds.outputs.ready }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -94,6 +95,30 @@ jobs:
             }
             console.log(`${list.length} cargo(s)${cadence ? ` de cadencia ${cadence}` : ""}`)
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `agents=${JSON.stringify(list)}\n`)
+          ' "$all"
+
+      # Los recorridos no salen de `agents list --json` —no son cargos— y por eso ninguno aprendió
+      # nunca: el ciclo existía, funcionaba a mano y nada lo disparaba. Van en su propio paso porque
+      # su disparador es otro: un cargo investiga por calendario, porque su profesión cambia sola
+      # afuera; un recorrido sólo aprende cuando le fue mal, así que lo que decide es `pending`.
+      # Sin ese filtro el día 1 abriría una propuesta por recorrido diciendo «no hay qué corregir»,
+      # y cada una cuesta una firma humana.
+      - name: List flows
+        id: flows
+        env:
+          ONLY: ${{ inputs.agent }}
+        run: |
+          all=$(node "$OPS" flow list --json)
+          node -e '
+            const fs = require("fs")
+            const only = (process.env.ONLY || "").trim()
+            // Un slug a mano puede nombrar un cargo o un recorrido, y no hay forma de saber cuál sin
+            // mirar las dos listas. Si no está acá, esta lista queda vacía y la de cargos decide.
+            const flows = JSON.parse(process.argv[1])
+              .filter((one) => (only ? one.slug === only : one.pending > 0))
+            const list = flows.map((one) => one.slug).sort()
+            console.log(`${list.length} recorrido(s) con corridas sin consolidar`)
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `flows=${JSON.stringify(list)}\n`)
           ' "$all"
 
       # Una vez, y acá: comprobarlo dentro de la matriz encendía cuarenta y siete jobs para saltearse.
@@ -366,3 +391,77 @@ jobs:
           gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
             --title "$AGENT learning proposal — $name" \
             --body "Propuesta automática construida desde los informes semanales. No modifica SKILL.md y requiere evaluación y aprobación humana."
+
+  # El espejo de `propose` para los recorridos, y como aquél no habla con ningún modelo: consolida
+  # veredictos ya commiteados con el CLI y abre el PR. Corre el mismo día —el del ensamblaje— porque
+  # es cuando se consolida, no cuando se investiga: un recorrido no investiga nunca.
+  propose-flows:
+    if: needs.discover.outputs.flows != '[]' && (github.event.schedule == '17 7 1 * *' || github.event_name == 'workflow_dispatch')
+    needs: discover
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        flow: ${{ fromJSON(needs.discover.outputs.flows) }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+
+      - name: Validate current flow
+        env:
+          FLOW: ${{ matrix.flow }}
+        run: node "$OPS" flow check "$FLOW"
+
+      # Consolidar marca las corridas que entraron, así que el diff trae la propuesta **y** los
+      # registros sellados. Los dos van al PR: sin el sello, la próxima corrida los volvería a leer.
+      - name: Build proposal from unconsolidated runs
+        env:
+          FLOW: ${{ matrix.flow }}
+        run: node "$OPS" learn "$FLOW" --flow --proposal
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open proposal pull request
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          FLOW: ${{ matrix.flow }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          period="$(date -u +%Y-%m)"
+          changed="$(git ls-files --others --modified --exclude-standard -- "flows/*/$FLOW/")"
+          proposal="$(printf '%s\n' "$changed" | grep -F "/learning/proposals/$period" || true)"
+          if [ -z "$proposal" ]; then
+            echo "El recorrido cambió archivos fuera de su propuesta; no se abre PR." >&2
+            git status --porcelain >&2
+            exit 1
+          fi
+          if [ "$(printf '%s\n' "$proposal" | wc -l)" -gt 1 ]; then
+            echo "Se esperaba una sola propuesta de $FLOW para $period:" >&2
+            printf '%s\n' "$proposal" >&2
+            exit 1
+          fi
+          name="$(basename "$proposal" .md)"
+          branch="automation/$FLOW-$name"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          printf '%s\n' "$changed" | xargs git add --
+          git commit -m "docs($FLOW): propose $name flow review"
+          git push origin "$branch"
+          gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
+            --title "$FLOW flow proposal — $name" \
+            --body "Propuesta automática construida desde los veredictos en contra de sus propias corridas. No modifica el contrato de ningún cargo y requiere evaluación y aprobación humana."

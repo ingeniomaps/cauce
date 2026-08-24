@@ -24,6 +24,16 @@ test('el workflow de aprendizaje corre en el toolkit y nombra un solo CLI', () =
   assert.equal(/\.ops\//.test(source), false, 'no queda el motor vendorizado que Cauce ya no distribuye')
   assert.match(source, /fromJSON\(needs\.discover\.outputs\.agents\)/, 'la matriz sale del árbol de agentes')
   assert.match(source, /roles\.filter\(\(role\) => role\.slug === only\)/, 'el input se valida contra slugs reales')
+
+  // Los recorridos no salen de `agents list --json` —no son cargos—, así que el cron no los veía y
+  // ninguno aprendió nunca pese a que el ciclo existía y funcionaba a mano. Su disparador tampoco es
+  // el calendario: un cargo investiga porque su profesión cambia sola afuera, y un recorrido sólo
+  // aprende cuando le fue mal. Sin el filtro por `pending` el día 1 abriría una propuesta por
+  // recorrido diciendo «no hay qué corregir», y cada una cuesta una firma humana.
+  assert.match(source, /node "\$OPS" flow list --json/, 'los recorridos salen de su propia lista')
+  assert.match(source, /fromJSON\(needs\.discover\.outputs\.flows\)/, 'y arman su propia matriz')
+  assert.match(source, /one\.pending > 0/, 'sólo entra el que tiene corridas sin consolidar')
+  assert.match(source, /learn "\$FLOW" --flow --proposal/, 'y se consolida con el CLI, sin modelo')
 })
 
 // La cadencia sale de las fuentes de cada cargo y el cron sólo pregunta cuál le toca hoy. Escribirla
