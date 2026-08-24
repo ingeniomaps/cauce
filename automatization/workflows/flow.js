@@ -239,6 +239,25 @@ if (blocked.length) {
     `resumen de lo establecido, con la etapa y el cargo que lo decidió: es el trabajo que ya se pagó.`,
     { label: 'human-actions' },
   )
+  // Y la entrega parcial, que es la mitad que faltaba. La fila de acción humana dice qué falta; esto
+  // entrega lo que sí se estableció. Ocho casos rojos en tres recorridos midieron justo esto —«frenó
+  // por la razón correcta pero no entregó lo que igual podía entregar»— y el trabajo de las etapas
+  // que cerraron terminaba dentro de una celda de tabla.
+  //
+  // Sale marcado como parcial y con qué lo completa: R13 pide entregar lo que se pudo, no aparentar
+  // que se pudo todo. Y va aunque no haya cerrado ninguna etapa: ahí lo entregable es el encuadre del
+  // pedido y por qué no se pudo avanzar, que es más de lo que deja una fila.
+  if (settled.length) {
+    await agent(
+      `${RULES}\n\nEl recorrido se bloqueó en ${blocked[0].stage} y no va a completarse. Escribí en ` +
+      `${REPORTS} como <AAAA-MM-DD>-<slug>-parcial.md lo que las etapas anteriores sí establecieron, ` +
+      `marcado como **entrega parcial** desde el título: qué quedó establecido y con qué evidencia, qué ` +
+      `no se pudo y por qué, y qué haría falta para completarlo —"${blocked[0].missing}"—. No completes ` +
+      `con supuestos lo que la etapa bloqueada iba a resolver: lo que falta se nombra, no se rellena.\n\n` +
+      `${established}`,
+      { label: 'partial-report' },
+    )
+  }
   return stop('gate-no-cumplido', `${blocked[0].stage}: ${blocked[0].missing}`)
 }
 

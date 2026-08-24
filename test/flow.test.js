@@ -205,3 +205,27 @@ test('cada etapa sabe qué recorridos existen, en vez de nombrarlos de memoria',
     assert.match(stage, /sale de esa lista/, 'y con la instrucción de no inventarlo')
   }
 })
+
+// Ocho casos rojos en tres recorridos independientes dijeron lo mismo con distintas palabras: «frenó
+// por la razón correcta pero no entregó lo que igual podía entregar». Al bloquearse, el recorrido
+// escribía la fila de acción humana con lo establecido adentro y nada más: el trabajo de las etapas que
+// sí cerraron terminaba en una celda de tabla en vez del informe que el recorrido existe para dar.
+//
+// R13 lo dice sin lugar a dudas: lo que sí se pudo establecer se escribe igual, aunque quede parcial y
+// marcado como tal. Negarse bien y no dejar nada es la mitad barata del trabajo.
+test('un recorrido que se bloquea entrega igual lo que las etapas anteriores establecieron', async () => {
+  const { result, written } = await runFlow({
+    'stage:factibilidad': {
+      gate: 'no-cumplido', summary: 'no hay costo', findings: 'x',
+      missing: 'nadie estimó el esfuerzo', humanAction: 'pedirle la estimación a ingeniería',
+    },
+  })
+
+  assert.equal(result.reason, 'gate-no-cumplido')
+  assert.ok(written.some((one) => one.includes('HUMAN_ACTIONS')), 'el bloqueo queda con su acción')
+
+  const parcial = written.find((one) => /parcial/i.test(one) && /reports/i.test(one))
+  assert.ok(parcial, 'y lo establecido se entrega, marcado como parcial')
+  assert.match(parcial, /encuadre/, 'con lo que la etapa que sí cerró dejó')
+  assert.match(parcial, /nadie estimó el esfuerzo/, 'y con qué falta para completarlo')
+})
