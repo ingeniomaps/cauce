@@ -103,10 +103,28 @@ imposible sin haber mirado antes dónde fue. Relanzar entero cobra de nuevo lo q
 lo pide no tiene cómo saber que eso está pasando —la corrida se ve igual empiece donde empiece—.
 
 Y cuando el pedido sí es relanzar —«de nuevo», «desde cero», «reiniciá»— tampoco se ejecuta derecho:
-primero se dice qué hay avanzado y desde qué punto se puede retomar, y se pregunta si aun así quiere la
-corrida entera. Puede quererla, y hay razones legítimas: el sujeto cambió, lo anterior quedó sospechoso,
-se busca medir varianza. Lo que no puede es tirarse trabajo sin que nadie lo haya decidido. Y decidirlo
-pide el número: cuánto costó lo hecho y cuánto cuesta repetirlo.
+primero se entrega el veredicto de lo avanzado y se pregunta si aun así quiere la corrida entera. Puede
+quererla, y hay razones legítimas: el sujeto cambió, lo anterior quedó sospechoso, se busca medir
+varianza. Lo que no puede es tirarse trabajo sin que nadie lo haya decidido.
+
+El veredicto existe para que se pueda decidir, así que tiene que traer con qué. Cuatro cosas:
+
+- **Qué ya tiene resultado**, elemento por elemento, y cuál es.
+- **Qué quedó a medias y si sirve.** Son dos preguntas distintas y la segunda no se contesta viendo que
+  el archivo está.
+- **Cuánto cuesta rehacer cada parte**, con el número de lo que ya se gastó al lado.
+- **Cómo se puede partir.** Casi nunca es todo o nada: si un pedazo cuesta la mitad del total, va
+  separado para que se pueda correr uno y decidir el otro después, con el primero a la vista.
+
+**Lo hecho no es lo aprovechable, y la diferencia sólo se ve mirando.** Un trabajo interrumpido deja
+artefactos que parecen completos: la etapa que escribió su análisis y murió antes de devolverlo se ve
+igual que la que cerró, y los archivos de dos corridas distintas conviven en el mismo directorio sin
+que nada los distinga salvo la fecha. Comprobar cuál es cuál cuesta minutos; suponerlo cuesta la
+corrida entera y encima produce una medición contaminada — un resultado calculado sobre insumos que ya
+fueron sobrescritos, que es peor que no tenerlo porque se lee igual que uno bueno.
+
+Por eso el veredicto puede terminar en «desde cero», y eso no lo invalida. Establecer que no había nada
+rescatable **es** el trabajo de la regla: lo que R21 impide no es relanzar, es relanzar sin saber.
 
 Un elemento que ya tiene veredicto no se vuelve a medir por venir en la misma tanda: cuesta lo mismo que
 la primera vez y su resultado no puede cambiar, que es lo que R20 nombra. Si existe un filtro para correr

@@ -20,12 +20,15 @@ diseño — eso vive en el commit y en el código.
 
 - **`R21` — retomar empieza por establecer qué quedó hecho.** Un trabajo que se corta deja trabajo
   hecho, y «continuá» pide seguir desde ahí, no volver a lanzarlo: primero se mira qué artefactos y qué
-  resultados ya existen, y se corre la diferencia. Cuando el pedido sí es relanzar de cero, se dice
-  antes qué hay avanzado, desde qué punto se puede retomar y cuánto cuesta repetirlo, y lo decide quien
-  pidió — puede querer la corrida entera y hay razones legítimas, pero tirar trabajo es una decisión,
-  no un default. Lo que ya tiene resultado no se vuelve a medir por venir en la misma tanda, y un
-  mecanismo de reanudación se comprueba en vez de suponerse: `R14` no hace excepción con las
-  herramientas propias.
+  resultados ya existen, y se corre la diferencia. Cuando el pedido sí es relanzar de cero, primero va
+  el veredicto de lo avanzado y decide quien pidió — puede querer la corrida entera y hay razones
+  legítimas, pero tirar trabajo es una decisión, no un default. Ese veredicto trae con qué decidir: qué
+  ya tiene resultado, qué quedó a medias **y si sirve** —son dos preguntas y la segunda no se contesta
+  viendo que el archivo está—, cuánto cuesta rehacer cada parte, y cómo se puede partir, porque casi
+  nunca es todo o nada. Puede terminar en «desde cero» sin que eso lo invalide: lo que la regla impide
+  no es relanzar, es relanzar sin saber. Lo que ya tiene resultado no se vuelve a medir por venir en la
+  misma tanda, y un mecanismo de reanudación se comprueba en vez de suponerse: `R14` no hace excepción
+  con las herramientas propias.
 - **`R14` se recorre antes de entregar, como `R15`.** Se repasan los artefactos que se van a leer solos
   —la fila de acciones humanas, la lección del INBOX, el paso de runbook, la respuesta escrita— y por
   cada afirmación de mecanismo se comprueba que llegó con su registro. Es donde el rótulo se pierde: el
