@@ -14,6 +14,34 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.46.0] - 2026-08-25
+
+### Agregado
+
+- **`R21` — retomar empieza por establecer qué quedó hecho.** Un trabajo que se corta deja trabajo
+  hecho, y «continuá» pide seguir desde ahí, no volver a lanzarlo: primero se mira qué artefactos y qué
+  resultados ya existen, y se corre la diferencia. Cuando el pedido sí es relanzar de cero, se dice
+  antes qué hay avanzado, desde qué punto se puede retomar y cuánto cuesta repetirlo, y lo decide quien
+  pidió — puede querer la corrida entera y hay razones legítimas, pero tirar trabajo es una decisión,
+  no un default. Lo que ya tiene resultado no se vuelve a medir por venir en la misma tanda, y un
+  mecanismo de reanudación se comprueba en vez de suponerse: `R14` no hace excepción con las
+  herramientas propias.
+- **`R14` se recorre antes de entregar, como `R15`.** Se repasan los artefactos que se van a leer solos
+  —la fila de acciones humanas, la lección del INBOX, el paso de runbook, la respuesta escrita— y por
+  cada afirmación de mecanismo se comprueba que llegó con su registro. Es donde el rótulo se pierde: el
+  informe clasifica bien y la copia sale en plano, y releer no lo encuentra.
+- **El ensamblaje mensual también consolida recorridos.** Hasta ahora el ciclo de un recorrido existía
+  pero nada lo disparaba: la automatización sólo veía cargos. Ahora `flow list --json` los expone y el
+  cron del día 1 abre la propuesta de cada recorrido que tenga corridas sin consolidar. No investiga
+  —un recorrido no tiene profesión— y sólo entra el que dejó veredictos que mirar.
+
+### Corregido
+
+- **La re-corrida del mismo día entra al ciclo de aprendizaje.** Un registro `<fecha>-2.md` no
+  matcheaba el patrón de nombre, así que quedaba fuera de toda propuesta sin que nada lo dijera — y es
+  el que trae el veredicto más nuevo. Si tenés re-corridas archivadas, la próxima propuesta las va a
+  incluir.
+
 ## [0.45.0] - 2026-08-23
 
 ### Cambiado
