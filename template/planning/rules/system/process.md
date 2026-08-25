@@ -91,3 +91,30 @@ Y lo que se repite es el caso que falló, no la batería. Un sujeto que falla un
 ese uno: los otros cinco veredictos ya se tienen, y volver a mirarlos cuesta lo mismo que obtenerlos la
 primera vez. El registro parcial que sale de ahí no vale solo —cubre menos casos de los que existen— y
 se compone con los veredictos que no se volvieron a medir, diciendo de qué corrida viene cada uno.
+
+## R21 — Retomar empieza por establecer qué quedó hecho
+
+Un trabajo caro que se corta —por un límite, una caída, una interrupción— deja trabajo hecho. Antes de
+volver a lanzarlo se establece cuál es: qué artefactos hay en disco, qué resultados se escribieron, qué
+elementos ya tienen veredicto. Recién con esa lista se decide, y lo que se corre es la diferencia.
+
+«Continuá» no autoriza a relanzar. Pide exactamente lo contrario: seguir desde donde se quedó, que es
+imposible sin haber mirado antes dónde fue. Relanzar entero cobra de nuevo lo que ya se pagó, y quien
+lo pide no tiene cómo saber que eso está pasando —la corrida se ve igual empiece donde empiece—.
+
+Y cuando el pedido sí es relanzar —«de nuevo», «desde cero», «reiniciá»— tampoco se ejecuta derecho:
+primero se dice qué hay avanzado y desde qué punto se puede retomar, y se pregunta si aun así quiere la
+corrida entera. Puede quererla, y hay razones legítimas: el sujeto cambió, lo anterior quedó sospechoso,
+se busca medir varianza. Lo que no puede es tirarse trabajo sin que nadie lo haya decidido. Y decidirlo
+pide el número: cuánto costó lo hecho y cuánto cuesta repetirlo.
+
+Un elemento que ya tiene veredicto no se vuelve a medir por venir en la misma tanda: cuesta lo mismo que
+la primera vez y su resultado no puede cambiar, que es lo que R20 nombra. Si existe un filtro para correr
+sólo lo que falta, usarlo no es una optimización: es la forma correcta de la corrida.
+
+Un mecanismo de reanudación se comprueba, nunca se supone —R14 no hace excepción con las herramientas
+propias—. Después de reanudar se mira si efectivamente reutilizó: cuántas unidades de trabajo nuevas
+aparecieron, cuánto se gastó. La sesión que originó esta regla creyó estar reanudando desde caché y
+volvió a correr entero dos veces: siete millones de tokens para un solo veredicto, con los archivos de
+las etapas ya cumplidas a la vista en el directorio de trabajo, y con el filtro que lo evitaba escrito
+por quien reanudaba tres horas antes.
