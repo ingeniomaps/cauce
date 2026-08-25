@@ -92,6 +92,11 @@ const MANIFEST = {
 // La excepción es la que obliga a nombrar el envoltorio en el prompt y no sólo el tamaño: era un
 // quinto reintento de 924 caracteres, ya obediente al techo, que conservó la forma de los cuatro
 // intentos largos anteriores. Una vez que el modelo cae en el envoltorio no sale por acortar.
+//
+// Y el techo es de la respuesta entera, no de `findings`. Puesto sobre ese campo no sirvió: dos etapas
+// más murieron con 11560 a 15128 caracteres declarados, y las cinco respuestas que reventaron empiezan
+// igual —`"gate": "no-cumplido"`—. Una etapa que frena escribe largo en `missing` y `humanAction`, que
+// es exactamente donde el techo de `findings` no llegaba.
 // Tres estados porque una etapa tiene tres cosas distintas que decir, y con un booleano la del medio se
 // pierde: cumplir dejando una condición que la síntesis tiene que respetar se veía igual que cumplir sin
 // nada pendiente, y la condición se diluía en la prosa del handoff. Y `blocking` separa la pregunta que
@@ -220,10 +225,12 @@ for (const stage of discovery) {
     `Devolvé los campos del esquema directamente. Nunca envuelvas la respuesta en {"raw": ..., "len": ...} ` +
     `ni mandes el JSON como string adentro de un campo: eso no valida, y una vez que empezaste a hacerlo ` +
     `acortar no lo arregla. ` +
-    `En findings va el análisis completo, con un techo: si pasa de 6000 caracteres, escribí el análisis ` +
-    `entero en ${REPORTS} como <etapa>-analisis.md y dejá en findings lo que entre más la ruta de ese ` +
-    `archivo. Pasado ese largo la respuesta deja de llegar entera, y ` +
-    `quien sintetiza al final lee el archivo igual. En summary va, en 150 ` +
+    `Y tenés un techo de 6000 caracteres para **toda** la respuesta junta, no por campo: pasado ese ` +
+    `largo deja de llegar entera. Lo que no entre —el análisis, y si el gate no se cumple también el ` +
+    `detalle de lo que falta— se escribe en ${REPORTS} como <etapa>-analisis.md, y en el campo queda ` +
+    `lo esencial más la ruta de ese archivo. Quien sintetiza al final lo lee igual. Contá con que si ` +
+    `frenás vas a querer escribir de más: los cinco casos que murieron por esto frenaron. ` +
+    `En findings va el análisis completo dentro de ese techo. En summary va, en 150 ` +
     `palabras o menos, lo que la etapa siguiente necesita para decidir —no un resumen de tu análisis, ` +
     `sino lo que le cambia el trabajo—, porque eso se le reenvía a cada etapa posterior.`,
     { schema: STAGE, label: `stage:${stage.id}` },

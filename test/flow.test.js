@@ -248,7 +248,8 @@ test('el análisis largo va a un archivo, no por el handoff', async () => {
   const { prompts } = await runFlow()
   const etapa = prompts.find((one) => one.key === 'stage:encuadre')
   assert.ok(etapa, 'la etapa corrió')
-  assert.match(etapa.prompt, /6000 caracteres/, 'findings tiene techo')
+  assert.match(etapa.prompt, /techo de 6000 caracteres para \*\*toda\*\* la respuesta junta, no por campo/,
+    'el techo es de la respuesta entera: puesto sobre findings, missing y humanAction lo desbordaban')
   assert.match(etapa.prompt, /-analisis\.md/, 'y lo que sobra se escribe donde la síntesis lo lee')
   assert.match(etapa.prompt, /deja de llegar entera/, 'con la razón, que es lo que evita bajarlo')
   assert.match(etapa.prompt, /\{"raw": \.\.\., "len": \.\.\.\}/, 'y el envoltorio se prohíbe por su nombre')
