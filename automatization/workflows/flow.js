@@ -79,33 +79,36 @@ const MANIFEST = {
     } } },
   },
 }
-// `findings` y `summary` dicen cosas distintas a propósito. El primero es el análisis entero y lo lee
-// una sola vez quien sintetiza al final; el segundo viaja a cada etapa posterior, así que un handoff que
-// arrastra todo pasa a costar una vez por etapa en vez de una vez (R16).
+// `analysis` y `summary` dicen cosas distintas a propósito. El primero es dónde quedó el análisis
+// entero y lo lee una sola vez quien sintetiza al final; el segundo viaja a cada etapa posterior, así
+// que un handoff que arrastra todo pasa a costar una vez por etapa en vez de una vez (R16).
 //
-// Y el análisis entero tiene un techo, que es la otra mitad de lo que R16 pide: «queda donde se
-// escribió». Sin techo no llega, y el modo de fallo es raro: cuando la respuesta se agranda, el modelo
-// deja de emitir los campos y emite `{"raw": "<el JSON como string>", "len": N}`, que no valida. Sobre
-// las 1550 llamadas con schema de tres corridas, 86 salieron así y todas menos una declaraban 6274
-// caracteres o más — de ahí sale este techo, y no de una corazonada. Dos casos murieron por eso.
+// Y por qué es la ruta y no el texto: cuando la respuesta con schema se agranda, el modelo deja de
+// emitir los campos y emite `{"raw": "<el JSON como string>", "len": N}`, que no valida. Reintenta
+// cinco veces, se queda en la misma forma y la etapa muere. Sobre 1550 llamadas con schema de tres
+// corridas, 86 salieron así.
 //
-// La excepción es la que obliga a nombrar el envoltorio en el prompt y no sólo el tamaño: era un
-// quinto reintento de 924 caracteres, ya obediente al techo, que conservó la forma de los cuatro
-// intentos largos anteriores. Una vez que el modelo cae en el envoltorio no sale por acortar.
+// Se intentó dos veces con el prompt y las dos fallaron, así que la lección es que esto no se pide,
+// se diseña. Primero un techo sobre `findings`: dos etapas murieron igual con 11560 a 15128
+// caracteres, porque la que frena escribe largo en `missing` y `humanAction`. Después un techo sobre
+// la respuesta entera más la prohibición del envoltorio por su nombre: `technical-design` perdió sus
+// cuatro casos, y su último intento fue de 6117 caracteres —dentro del techo pedido— envuelto igual.
+// Un intento anterior de 924 ya había mostrado que acortar no saca al modelo de la forma una vez que
+// cayó en ella.
 //
-// Y el techo es de la respuesta entera, no de `findings`. Puesto sobre ese campo no sirvió: dos etapas
-// más murieron con 11560 a 15128 caracteres declarados, y las cinco respuestas que reventaron empiezan
-// igual —`"gate": "no-cumplido"`—. Una etapa que frena escribe largo en `missing` y `humanAction`, que
-// es exactamente donde el techo de `findings` no llegaba.
+// Mientras el campo pudo contener el análisis entero, lo contuvo. Ahora no puede: lo que vuelve es una
+// ruta, y el texto vive en el archivo, que es además lo que R16 pide —«queda donde se escribió»—.
 // Tres estados porque una etapa tiene tres cosas distintas que decir, y con un booleano la del medio se
 // pierde: cumplir dejando una condición que la síntesis tiene que respetar se veía igual que cumplir sin
 // nada pendiente, y la condición se diluía en la prosa del handoff. Y `blocking` separa la pregunta que
 // condiciona lo que se decida después de la que sólo conviene mirar alguna vez.
 const STAGE = {
-  type: 'object', additionalProperties: false, required: ['gate', 'findings', 'summary'],
+  type: 'object', additionalProperties: false, required: ['gate', 'analysis', 'summary'],
   properties: {
     gate: { type: 'string', enum: ['cumplido', 'con-condiciones', 'no-cumplido'] },
-    findings: { type: 'string' }, summary: { type: 'string' },
+    // La ruta del análisis, no el análisis. Ver el comentario de arriba: mientras el campo pudo
+    // contener el texto entero, lo contuvo, y la respuesta no llegaba.
+    analysis: { type: 'string' }, summary: { type: 'string' },
     evidence: { type: 'array', items: { type: 'string' } },
     assumptions: { type: 'array', items: { type: 'string' } },
     openQuestions: { type: 'array', items: { type: 'object', additionalProperties: false,
@@ -222,15 +225,14 @@ for (const stage of discovery) {
     `tiene que respetar; y gate=no-cumplido si no se cumple, y ahí explicá en missing qué falta y en ` +
     `humanAction la acción concreta que lo desbloquea. En openQuestions marcá blocking=true sólo en la que ` +
     `condiciona la decisión siguiente. ` +
-    `Devolvé los campos del esquema directamente. Nunca envuelvas la respuesta en {"raw": ..., "len": ...} ` +
-    `ni mandes el JSON como string adentro de un campo: eso no valida, y una vez que empezaste a hacerlo ` +
-    `acortar no lo arregla. ` +
-    `Y tenés un techo de 6000 caracteres para **toda** la respuesta junta, no por campo: pasado ese ` +
-    `largo deja de llegar entera. Lo que no entre —el análisis, y si el gate no se cumple también el ` +
-    `detalle de lo que falta— se escribe en ${REPORTS} como <etapa>-analisis.md, y en el campo queda ` +
-    `lo esencial más la ruta de ese archivo. Quien sintetiza al final lo lee igual. Contá con que si ` +
-    `frenás vas a querer escribir de más: los cinco casos que murieron por esto frenaron. ` +
-    `En findings va el análisis completo dentro de ese techo. En summary va, en 150 ` +
+    `Escribí primero tu análisis completo en ${REPORTS} como ${stage.id}-analisis.md —ahí no hay ` +
+    `límite de extensión y es lo que lee quien sintetiza al final— y devolvé esa ruta en analysis.\n` +
+    `Lo que devolvés en el esquema es corto, todo junto por debajo de 2000 caracteres: si algo no ` +
+    `entra, va al archivo y en el campo queda lo esencial. Vale también para missing y humanAction ` +
+    `cuando el gate no se cumple, que es cuando más se escribe. ` +
+    `Devolvé los campos directamente: nunca envuelvas la respuesta en {"raw": ..., "len": ...} ni ` +
+    `mandes el JSON como string adentro de un campo, porque eso no valida. ` +
+    `En summary va, en 150 ` +
     `palabras o menos, lo que la etapa siguiente necesita para decidir —no un resumen de tu análisis, ` +
     `sino lo que le cambia el trabajo—, porque eso se le reenvía a cada etapa posterior.`,
     { schema: STAGE, label: `stage:${stage.id}` },
@@ -253,7 +255,8 @@ if (blocked.length) {
   const settled = handoffs.filter((entry) => entry.gate !== 'no-cumplido')
   const established = settled.length
     ? `Lo que ya quedó establecido y no hay que volver a discutir:\n${settled
-      .map((entry) => `- ${entry.id} (${entry.agent}): ${entry.findings}`).join('\n')}`
+      .map((entry) => `- ${entry.id} (${entry.agent}): ${entry.summary} [análisis: ${entry.analysis}]`)
+      .join('\n')}`
     : 'Ninguna etapa anterior cerró: el bloqueo es de la primera.'
   await agent(
     `${RULES}\n\nRegistrá en ${HUMAN} una fila por cada bloqueo, con la tarea, el estado pendiente, el ` +
@@ -332,6 +335,9 @@ phase('Draft')
 if (contract.outcome === 'report') {
   const report = await agent(
     `${RULES}\n\nHandoffs completos:\n${JSON.stringify(complete)}${CONDITIONS}\n\n` +
+    `El campo analysis de cada handoff es una ruta: leé esos archivos antes de escribir. Ahí está ` +
+    `el análisis entero de cada etapa, y sos el único que lo lee — el resumen que viajó entre etapas ` +
+    `sólo llevaba lo que la siguiente necesitaba para decidir.\n\n` +
     `Escribí el informe en ${REPORTS} como ` +
     `<AAAA-MM-DD>-<slug>.md: qué pasó, qué se sabe con evidencia, qué se supone, qué se decidió y qué ` +
     `queda abierto. Separá causa de síntoma y no atribuyas responsabilidad a personas. Registrá cada ` +
@@ -349,6 +355,9 @@ if (contract.outcome === 'report') {
 
 const epic = await agent(
   `${RULES}\n\nHandoffs completos:\n${JSON.stringify(complete)}${CONDITIONS}\n\n` +
+  `El campo analysis de cada handoff es una ruta: leé esos archivos antes de escribir. Ahí está ` +
+  `el análisis entero de cada etapa, y sos el único que lo lee — el resumen que viajó entre etapas ` +
+  `sólo llevaba lo que la siguiente necesitaba para decidir.\n\n` +
   `Como product-manager, decidí si la ` +
   `intención es viable con la evidencia reunida. Si lo es, redactá la épica: título, slug en ` +
   `kebab-case, criterios observables C1..CN —cada uno verificable sin ambigüedad— e historias que ` +

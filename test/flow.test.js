@@ -36,11 +36,12 @@ function baseScript() {
       ],
     },
     'stage:encuadre': {
-      gate: 'cumplido', summary: 'el problema es el alta duplicada', findings: 'análisis largo del encuadre',
+      gate: 'cumplido', summary: 'el problema es el alta duplicada',
+      analysis: '/w/planning/reports/encuadre-analisis.md',
       evidence: ['tres tickets de soporte'], assumptions: [], openQuestions: [],
     },
     'stage:factibilidad': {
-      gate: 'cumplido', summary: 'una opción, dos semanas', findings: 'análisis largo de factibilidad',
+      gate: 'cumplido', summary: 'una opción, dos semanas', analysis: '/w/planning/reports/factibilidad-analisis.md',
       evidence: ['el servicio ya expone el alta'], assumptions: [], openQuestions: [],
     },
     'epic-draft': {
@@ -83,25 +84,27 @@ test('flow recorre sus etapas y deja la épica sin promover', async () => {
   assert.ok(asked.includes('stage:encuadre') && asked.includes('stage:factibilidad'))
 })
 
-// El resumen viaja entre etapas y el análisis entero sólo a la síntesis: son requisitos opuestos y por eso
-// no son el mismo texto. Si la etapa siguiente recibiera findings, el tope no ahorraría nada.
-test('entre etapas viaja el resumen, y el análisis entero llega a la síntesis', async () => {
+// El resumen viaja entre etapas y el análisis entero sólo a la síntesis: son requisitos opuestos y por
+// eso no son el mismo texto. Lo que llega a la síntesis es la ruta y la orden de leerla — el texto
+// dejó de viajar por el esquema porque no llegaba, y el archivo es además donde R16 lo quiere.
+test('entre etapas viaja el resumen, y a la síntesis la ruta del análisis', async () => {
   const { prompts } = await runFlow()
   const second = prompts.find((one) => one.key === 'stage:factibilidad').prompt
   assert.match(second, /el problema es el alta duplicada/, 'la siguiente recibe el resumen de la anterior')
   assert.equal(
-    second.includes('análisis largo del encuadre'), false,
-    'y no el análisis entero, que se reenviaría en cada etapa posterior',
+    second.includes('encuadre-analisis.md'), false,
+    'y ni siquiera la ruta: nada de lo que la etapa siguiente no necesita para decidir',
   )
   const draft = prompts.find((one) => one.key === 'epic-draft').prompt
-  assert.match(draft, /análisis largo del encuadre/, 'quien sintetiza sí lee el análisis completo')
-  assert.equal(draft.includes('el problema es el alta duplicada'), false, 'y no lo recibe dos veces')
+  assert.match(draft, /encuadre-analisis\.md/, 'quien sintetiza recibe dónde está el análisis')
+  assert.match(draft, /leé esos archivos antes de escribir/, 'y que tiene que leerlo, o se pierde')
+  assert.equal(draft.includes('el problema es el alta duplicada'), false, 'y no recibe el resumen dos veces')
 })
 
 test('un exit gate no cumplido corta y deja la acción humana escrita', async () => {
   const { result, written, asked } = await runFlow({
     'stage:encuadre': {
-      gate: 'no-cumplido', summary: 'no se pudo acotar', findings: 'x',
+      gate: 'no-cumplido', summary: 'no se pudo acotar', analysis: '/w/planning/reports/x-analisis.md',
       missing: 'nadie sabe a qué usuario le pasa', humanAction: 'preguntarle a soporte',
     },
   })
@@ -115,7 +118,7 @@ test('un exit gate no cumplido corta y deja la acción humana escrita', async ()
 test('una etapa cumple con condiciones y esas condiciones llegan a la síntesis', async () => {
   const { result, prompts, written } = await runFlow({
     'stage:factibilidad': {
-      gate: 'con-condiciones', summary: 'una opción viable', findings: 'x',
+      gate: 'con-condiciones', summary: 'una opción viable', analysis: '/w/planning/reports/x-analisis.md',
       openQuestions: [
         { detail: 'el costo depende de migrar la tabla, sin medir', blocking: true },
         { detail: 'convendría revisar el naming del endpoint', blocking: false },
@@ -216,7 +219,7 @@ test('cada etapa sabe qué recorridos existen, en vez de nombrarlos de memoria',
 test('un recorrido que se bloquea entrega igual lo que las etapas anteriores establecieron', async () => {
   const { result, written } = await runFlow({
     'stage:factibilidad': {
-      gate: 'no-cumplido', summary: 'no hay costo', findings: 'x',
+      gate: 'no-cumplido', summary: 'no hay costo', analysis: '/w/planning/reports/x-analisis.md',
       missing: 'nadie estimó el esfuerzo', humanAction: 'pedirle la estimación a ingeniería',
     },
   })
@@ -248,17 +251,17 @@ test('el análisis largo va a un archivo, no por el handoff', async () => {
   const { prompts } = await runFlow()
   const etapa = prompts.find((one) => one.key === 'stage:encuadre')
   assert.ok(etapa, 'la etapa corrió')
-  assert.match(etapa.prompt, /techo de 6000 caracteres para \*\*toda\*\* la respuesta junta, no por campo/,
-    'el techo es de la respuesta entera: puesto sobre findings, missing y humanAction lo desbordaban')
-  assert.match(etapa.prompt, /-analisis\.md/, 'y lo que sobra se escribe donde la síntesis lo lee')
-  assert.match(etapa.prompt, /deja de llegar entera/, 'con la razón, que es lo que evita bajarlo')
+  assert.match(etapa.prompt, /encuadre-analisis\.md/, 'el análisis se escribe, con el id de la etapa')
+  assert.match(etapa.prompt, /devolvé esa ruta en analysis/, 'y lo que vuelve por el esquema es la ruta')
+  assert.match(etapa.prompt, /por debajo de 2000 caracteres/, 'el resto del esquema queda corto')
+  assert.match(etapa.prompt, /Vale también para missing y humanAction/, 'incluida la etapa que frena')
   assert.match(etapa.prompt, /\{"raw": \.\.\., "len": \.\.\.\}/, 'y el envoltorio se prohíbe por su nombre')
 })
 
 test('el bloqueo de la primera etapa también entrega, y entrega el pedido', async () => {
   const { result, written } = await runFlow({
     'stage:encuadre': {
-      gate: 'no-cumplido', summary: 'no se sabe de quién es', findings: 'x',
+      gate: 'no-cumplido', summary: 'no se sabe de quién es', analysis: '/w/planning/reports/x-analisis.md',
       missing: 'no consta quién lo pidió ni por qué canal', humanAction: 'preguntarle a soporte',
     },
   })
@@ -279,7 +282,7 @@ test('el bloqueo de la primera etapa también entrega, y entrega el pedido', asy
 test('lo que una etapa posterior habría hecho, pero el material ya sostiene, se entrega', async () => {
   const { written } = await runFlow({
     'stage:factibilidad': {
-      gate: 'no-cumplido', summary: 'no hay costo', findings: 'x',
+      gate: 'no-cumplido', summary: 'no hay costo', analysis: '/w/planning/reports/x-analisis.md',
       missing: 'nadie estimó el esfuerzo', humanAction: 'pedirle la estimación a ingeniería',
     },
   })

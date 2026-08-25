@@ -140,18 +140,21 @@ test('flow recorre las etapas del manifiesto y exige cada exit gate', () => {
 })
 
 // Separar el resumen del análisis sólo sirve si cada uno va a donde corresponde: si la etapa siguiente
-// recibe findings, el tope no ahorra nada, y si la síntesis recibe el resumen, escribe la épica desde él.
-test('flow manda el resumen entre etapas y el análisis entero a la síntesis', () => {
-  assert.match(flowWorkflow, /required: \['gate', 'findings', 'summary'\]/, 'la etapa declara los dos')
+// recibe la ruta también, el tope no ahorra nada, y si la síntesis recibe sólo el resumen, escribe la
+// épica desde él. Y lo que vuelve por el esquema es la ruta, no el texto: mientras el campo pudo
+// contener el análisis entero lo contuvo, y la respuesta con schema dejaba de llegar.
+test('flow manda el resumen entre etapas y la ruta del análisis a la síntesis', () => {
+  assert.match(flowWorkflow, /required: \['gate', 'analysis', 'summary'\]/, 'la etapa declara los dos')
   assert.match(flowWorkflow, /Handoffs previos[\s\S]{0,120}entry\.summary/, 'entre etapas viaja el resumen')
   assert.equal(
-    /Handoffs previos[\s\S]{0,120}entry\.findings/.test(flowWorkflow), false,
-    'y no el análisis entero, que se reenviaría en cada etapa posterior',
+    /Handoffs previos[\s\S]{0,120}entry\.analysis/.test(flowWorkflow), false,
+    'y no la ruta, que la etapa siguiente no necesita para decidir',
   )
   assert.match(
     flowWorkflow, /Handoffs completos[\s\S]{0,40}JSON\.stringify\(complete\)/,
-    'quien sintetiza lee el análisis entero',
+    'quien sintetiza recibe los handoffs enteros',
   )
+  assert.match(flowWorkflow, /leé esos archivos antes de escribir/, 'y la orden de leer el análisis')
 })
 
 // El arnés ejecuta el recorrido pero no valida los schemas —eso lo hace el runtime—, así que un enum
