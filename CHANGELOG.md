@@ -16,6 +16,16 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.49.0] - 2026-08-26
 
+### Agregado
+
+- **`R22` — lo que se mide no se toca mientras se mide.** Mientras una medición corre, el sujeto y todo
+  aquello contra lo que resuelve se quedan quietos. Lo difícil es que no avisa: la corrida termina y su
+  resultado se lee igual que uno limpio, así que quien lo reciba decide sin saber que se movió el piso.
+  Y entra por donde no se mira — un banco desechable puede resolver la herramienta por un enlace al
+  repositorio vivo, así que editar ahí cambia lo que la corrida lee sin tocar el banco. Si hace falta
+  trabajar igual, se trabaja donde la medición no mira; y si ya pasó, se dice qué cambió y cuándo: un
+  resultado cuyo entorno se movió es una hipótesis, no un veredicto.
+
 ### Corregido
 
 - **Cambiar el `flow.json` de un recorrido ahora envejece sus veredictos.** El aviso de «el contrato

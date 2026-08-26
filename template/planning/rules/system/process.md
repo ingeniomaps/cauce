@@ -155,3 +155,24 @@ aparecieron, cuánto se gastó. La sesión que originó esta regla creyó estar 
 volvió a correr entero dos veces: siete millones de tokens para un solo veredicto, con los archivos de
 las etapas ya cumplidas a la vista en el directorio de trabajo, y con el filtro que lo evitaba escrito
 por quien reanudaba tres horas antes.
+
+## R22 — Lo que se mide no se toca mientras se mide
+
+Mientras una medición corre, el sujeto y todo aquello contra lo que resuelve se quedan quietos. No se
+edita el contrato que se está midiendo, ni el motor que la corrida usa, ni el entorno del que lee.
+
+Lo que lo vuelve difícil de ver es que no avisa. La corrida termina, entrega su resultado y **ese
+resultado se lee exactamente igual que uno limpio**: no hay señal que diga «esto midió dos versiones».
+Quien lo reciba va a decidir sobre él sin saber que se movió el piso.
+
+Y el camino por el que entra casi nunca es el archivo obvio. Un banco desechable puede resolver la
+herramienta por un enlace al repositorio vivo, así que editar ahí cambia lo que la corrida lee sin que
+nada del banco se haya tocado. La pregunta no es «¿toqué el sujeto?» sino «¿toqué algo que el sujeto
+alcanza?».
+
+Si hace falta trabajar igual, se trabaja donde la medición no mira: otra copia, otra rama sin
+materializar, o se espera. Esperar es más barato que descubrir que la tanda no vale.
+
+Y si ya pasó, se dice: qué medición, qué cambió y cuándo. Un resultado cuyo entorno se movió es una
+hipótesis, no un veredicto —lo mismo que R21 nombra para lo que quedó a medias—, y guardarlo sin esa
+marca es la forma cara del error, porque el número sobrevive a la sesión que sabía.
