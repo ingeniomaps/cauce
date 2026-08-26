@@ -1,0 +1,123 @@
+name: Release PR
+
+# El número de versión no se calcula: se lee. Sale del encabezado más nuevo de CHANGELOG.md, que es
+# donde ya se decide —«un cambio en el protocolo, en las reglas del sistema o en un guard sube minor
+# aunque no toque una sola línea de código»—. Un bot que contara `feat:` contra `fix:` se equivocaría
+# en las dos direcciones: mediría qué se tocó acá y no qué le cambia a quien recibe el `upgrade`.
+#
+# Lo que este workflow hace es abrir el PR que sincroniza `package.json` con esa decisión. Mergearlo es
+# el acto humano, y de ahí sale el tag que dispara `release.yml`.
+#
+# Por qué el tag no se empuja solo: «events triggered by the GITHUB_TOKEN will not create a new
+# workflow run» —docs.github.com, «Trigger a workflow», consultado 2026-08-26—. Un tag empujado desde
+# acá no dispararía la publicación, así que haría falta un PAT guardado como secreto. Ese es
+# exactamente el tipo de credencial que `release.yml` evita usando OIDC, y cambiarlo por comodidad
+# empeora la superficie a cambio de ahorrar un comando.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-pr
+  cancel-in-progress: false
+
+env:
+  OPS: engine/cli/ops.js
+
+jobs:
+  propose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Read the decided version
+        id: read
+        run: |
+          # El primer encabezado del archivo es la entrada más nueva.
+          changelog="$(grep -m1 -oE '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' CHANGELOG.md | tr -d '#[] ')"
+          package="$(node -p 'require("./package.json").version')"
+          if [ -z "$changelog" ]; then
+            echo "CHANGELOG.md no tiene ninguna entrada con versión." >&2
+            exit 1
+          fi
+          echo "changelog=$changelog" >> "$GITHUB_OUTPUT"
+          echo "package=$package" >> "$GITHUB_OUTPUT"
+          echo "Decidida $changelog · package.json $package"
+
+      # Ya sincronizados: no hay PR que abrir. Lo que puede faltar es el tag, y eso se dice abajo.
+      - name: Open the release pull request
+        if: steps.read.outputs.changelog != steps.read.outputs.package
+        env:
+          VERSION: ${{ steps.read.outputs.changelog }}
+          BEFORE: ${{ steps.read.outputs.package }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="release/$VERSION"
+          # La rama se rehace en cada corrida: el CHANGELOG puede haber cambiado desde la anterior, y
+          # una rama vieja abriría un PR que dice una versión y trae otra.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch" || git switch "$branch"
+          node -e '
+            const fs = require("fs")
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"))
+            pkg.version = process.env.VERSION
+            fs.writeFileSync("package.json", `${JSON.stringify(pkg, null, 2)}\n`)
+          '
+          # Nada más que la versión: si el árbol trae otra cosa, alguien empujó a la rama de release.
+          otros="$(git status --porcelain -uall | awk '{print $2}' | grep -v -F 'package.json' || true)"
+          if [ -n "$otros" ]; then
+            echo "Se esperaba sólo package.json y apareció: $otros" >&2
+            exit 1
+          fi
+          if git diff --quiet -- package.json; then
+            echo "package.json ya estaba en $VERSION en esta rama."
+          else
+            git add package.json
+            git commit -m "chore(release): $VERSION"
+          fi
+          git push --force-with-lease origin "$branch"
+          cuerpo="$(printf '%s\n' \
+            "Sube \`package.json\` de $BEFORE a **$VERSION**, que es lo que declara la entrada más nueva de \`CHANGELOG.md\`." \
+            "" \
+            "Al mergear, empujá el tag para publicar:" \
+            "" \
+            '```' \
+            "git switch main && git pull" \
+            "git tag v$VERSION && git push origin v$VERSION" \
+            '```' \
+            "" \
+            "El tag es el acto humano que \`R10\` pide, y \`release.yml\` verifica que coincida con \`package.json\` y que el CHANGELOG tenga su entrada antes de tocar npm.")"
+          if gh pr view "$branch" --json state --jq .state 2>/dev/null | grep -q OPEN; then
+            gh pr edit "$branch" --title "release: $VERSION" --body "$cuerpo"
+          else
+            gh pr create --base main --head "$branch" --title "release: $VERSION" --body "$cuerpo"
+          fi
+
+      # Lo que dejó a 0.42.0 y 0.43.0 publicadas sin tag: nada avisaba. Un aviso no bloquea nada y
+      # convierte la deriva en algo que se ve en la corrida, en vez de descubrirse meses después
+      # comparando npm contra git.
+      - name: Warn when the released version has no tag
+        if: steps.read.outputs.changelog == steps.read.outputs.package
+        env:
+          VERSION: ${{ steps.read.outputs.package }}
+        run: |
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "v$VERSION ya está tagueada."
+          else
+            echo "::notice title=Falta el tag::package.json está en $VERSION y no existe v$VERSION. Publicá con: git tag v$VERSION && git push origin v$VERSION"
+          fi
