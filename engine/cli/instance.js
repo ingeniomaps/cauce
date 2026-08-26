@@ -82,6 +82,34 @@ function declareEngine(manifest, version) {
   F.atomicWriteJson(manifest, pkg)
 }
 
+// La inversa exacta de `declareEngine`: saca la clave que puso y nada más. El resto del manifiesto es
+// del repo anfitrión aunque hoy no tenga otra cosa —un `package.json` vacío puede ser lo que alguien
+// escribió para tener scripts— así que el archivo se borra sólo si es idéntico al que `declareEngine`
+// habría creado desde cero, sin dependencias, sin scripts y con su `version: 0.0.0`.
+//
+// Lo que no se toca nunca es `node_modules/` ni el lockfile: los escribe npm, pueden tener dependencias
+// del proyecto y borrarlos por nuestra cuenta destruye trabajo ajeno. Se nombran en la salida, que es
+// la mitad que faltaba: `destroy` decía «tu repositorio queda donde está» y dejaba un `package.json`
+// cuya única dependencia era Cauce. En un repo Rust eso es basura conspicua y nadie avisaba.
+function undeclareEngine(manifest) {
+  if (!fs.existsSync(manifest)) return []
+  let pkg
+  try { pkg = JSON.parse(fs.readFileSync(manifest, 'utf8')) } catch { return [] }
+  const dev = pkg.devDependencies || {}
+  if (!('@ingeniomaps/cauce' in dev)) return []
+  delete dev['@ingeniomaps/cauce']
+  pkg.devDependencies = dev
+  const generado = !Object.keys(dev).length && !Object.keys(pkg.dependencies || {}).length
+    && !Object.keys(pkg.scripts || {}).length && pkg.private === true && pkg.version === '0.0.0'
+  if (generado) {
+    fs.rmSync(manifest, { force: true })
+    return ['package.json (lo había creado init: sin dependencias ni scripts propios)']
+  }
+  if (!Object.keys(dev).length) delete pkg.devDependencies
+  F.atomicWriteJson(manifest, pkg)
+  return ['package.json: se quitó la dependencia del motor y el resto queda como estaba']
+}
+
 // Proveedores que el toolkit conoce, para saltearlos al copiar la plantilla: su andamiaje
 // —configuración, staging/, proposed/— no se materializa hasta que alguien lo habilite. Antes cada
 
@@ -212,6 +240,13 @@ function destroy(dir, cli) {
     ]
     for (const relative of ownPath) fs.rmSync(path.join(root, relative), { recursive: true, force: true })
     console.log(`✓ ${ownPath.length} ruta(s) de Cauce quitadas de ${root}`)
+    for (const line of undeclareEngine(path.join(root, 'package.json'))) console.log(`✓ ${line}`)
+    const npm = ['node_modules', 'package-lock.json']
+      .filter((one) => fs.existsSync(path.join(root, one)))
+    if (npm.length) {
+      console.log(`  queda ${npm.join(' y ')}: lo escribe npm y puede tener lo tuyo. Borralo vos si el`)
+      console.log('  repositorio no usaba npm antes de instalar Cauce.')
+    }
     return console.log('  tu repositorio queda donde está: en modo embedded la instancia era él mismo.')
   }
   const inside = process.cwd() === root || process.cwd().startsWith(`${root}${path.sep}`)
