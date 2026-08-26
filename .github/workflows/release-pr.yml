@@ -82,6 +82,13 @@ jobs:
           branch="release/$VERSION"
           # La rama se rehace en cada corrida: el CHANGELOG puede haber cambiado desde la anterior, y
           # una rama vieja abriría un PR que dice una versión y trae otra.
+          #
+          # Traer su estado remoto antes es lo que vuelve posible el `--force-with-lease` de abajo: sin
+          # la referencia de seguimiento, git no tiene contra qué comparar y se niega con «stale info»
+          # en vez de empujar. Pasa exactamente en la segunda corrida, que es cuando la rama ya existe
+          # allá y no acá — y es la corrida que importa, porque la primera puede haber fallado después
+          # de empujarla.
+          git fetch origin "$branch" || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch" || git switch "$branch"
