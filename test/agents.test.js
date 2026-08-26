@@ -391,24 +391,42 @@ test('una propuesta aplicada se puede corregir sin reabrirla', () => {
   assert.equal(sealed.already, false, 'y la revisión no queda sin sellar, que es como se reaplica')
 })
 
-test('un resultado que no cubre todos los casos vigentes no vale', () => {
-  const dir = evaluations.resultsDir(REPO, 'qa-engineer')
-  const file = path.join(dir, '2099-02-01.md')
-  fs.mkdirSync(dir, { recursive: true })
-  try {
-    // Dos veredictos para seis casos: da una confianza que no tiene, y es peor que no tener ninguno.
-    fs.writeFileSync(file, '---\nagent: qa-engineer\ndate: 2099-02-01\n---\n\n'
-      + '### 01-x\n\n- Veredicto: pasa\n\n### 02-y\n\n- Veredicto: no pasa\n')
-    const partial = evaluations.validate(REPO, 'qa-engineer')
-    assert.equal(partial.last.total, 2)
-    assert.ok(partial.warnings.some((one) => /cubre 2 de/.test(one)), 'se reporta la cobertura')
-    assert.ok(partial.warnings.some((one) => /no pasaron/.test(one)), 'y el caso que falló')
-    // Se afirma sobre el contenido y no sobre una lista vacía: `errors` también lleva los controles
-    // estáticos del caso, que sí gatean y no tienen nada que ver con qué tan fresca es la corrida.
-    assert.equal(partial.errors.some((one) => /cubre \d+ de|no pasaron/.test(one)), false)
-  } finally {
-    fs.rmSync(file, { force: true })
+// Lo que no se midió se nombra por su id, y lo medido en dos tandas no se descarta por venir en dos
+// archivos: desde que `--cases` existe, una corrida cubre menos casos a propósito.
+//
+// Montado acá y no sobre un cargo del catálogo. Antes escribía un registro falso sobre `qa-engineer`,
+// y al componer sobre todas sus corridas ese registro pasó a mezclarse con sus veredictos reales: la
+// prueba habría medido el catálogo, que avanza por su cuenta. Es el mismo tropiezo que las pruebas de
+// recorridos ya tuvieron dos veces.
+test('lo que quedó sin veredicto se nombra, y dos tandas componen una medición', () => {
+  const target = installedProject('Cobertura compuesta')
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
+  const casos = path.join(own, 'evaluations', 'cases')
+  const results = evaluations.resultsDir(target, 'probe')
+  fs.mkdirSync(casos, { recursive: true })
+  fs.mkdirSync(results, { recursive: true })
+  for (const id of ['01-x', '02-y', '03-z']) {
+    fs.writeFileSync(path.join(casos, `${id}.md`),
+      '# Solicitud\n\nx\n\n# Comportamientos esperados\n\n- y\n')
   }
+  const corrida = (name, cuerpo) => fs.writeFileSync(
+    path.join(results, name), `---\nagent: probe\n---\n${cuerpo}`)
+
+  corrida('2099-02-01.md', '\n### 01-x\n\n- Veredicto: pasa\n\nx\n\n### 02-y\n\n- Veredicto: no pasa\n\ny\n')
+  const parcial = evaluations.validate(target, 'probe')
+  assert.match(parcial.warnings.join('\n'), /2 de 3 caso\(s\) con veredicto: sin medir 03-z/)
+  assert.match(parcial.warnings.join('\n'), /1 caso\(s\) no pasan: 02-y/, 'y el que falló, por su id')
+  // Se afirma sobre el contenido y no sobre una lista vacía: `errors` también lleva los controles
+  // estáticos del caso, que sí gatean y no tienen nada que ver con qué tan fresca es la corrida.
+  assert.equal(parcial.errors.some((one) => /con veredicto|no pasan/.test(one)), false)
+
+  // La segunda tanda re-corre sólo el que falló. Los tres quedan medidos aunque ninguna corrida los
+  // midiera todos, que es lo que leer sólo la última no podía ver.
+  corrida('2099-02-03.md', '\n### 02-y\n\n- Veredicto: pasa\n\nya no\n\n### 03-z\n\n- Veredicto: pasa\n\nz\n')
+  const completo = evaluations.validate(target, 'probe')
+  assert.equal(completo.state.total, 3)
+  assert.equal(completo.state.passed, 3)
+  assert.equal(completo.warnings.some((one) => /con veredicto|no pasan/.test(one)), false)
 })
 
 test('dos corridas el mismo día conviven y la segunda es la vigente', () => {

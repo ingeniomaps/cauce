@@ -189,6 +189,41 @@ function latest(root, agent, kind) {
   }
 }
 
+// El veredicto vigente de cada caso, compuesto sobre todas las corridas: se leen en orden y la última
+// gana. Es lo que hay que mirar cuando existe `--cases`, porque desde que existe una corrida cubre a
+// propósito menos casos de los que el sujeto tiene, y leer sólo la última daba «cubre 1 de 4: el
+// resultado no vale» sobre sujetos con los cuatro casos medidos. Componer a mano lo dejaba a merced de
+// que alguien se acordara.
+//
+// La fecha que viaja es la **más vieja** de las que aportan un veredicto vigente, no la más nueva: un
+// resultado compuesto es tan fresco como su parte más rancia, y es contra eso que hay que comparar un
+// cambio de contrato. Con la más nueva, un caso medido antes del cambio pasaba por medido después.
+function composed(root, agent, kind) {
+  const dir = resultsDir(root, agent, kind)
+  const names = resultNames(dir)
+  if (!names.length) return null
+  const current = new Map()
+  for (const name of names) {
+    const file = path.join(dir, name)
+    const [, date] = name.match(RESULT_NAME)
+    const pattern = /\n###\s+([^\n]+)\n\n-\s*Veredicto:\s*(pasa|no pasa)\s*$/gim
+    for (const hit of fs.readFileSync(file, 'utf8').matchAll(pattern)) {
+      current.set(hit[1].trim(), { passed: hit[2].toLowerCase() === 'pasa', date, file })
+    }
+  }
+  const entries = [...current.entries()]
+  const dates = entries.map(([, one]) => one.date).sort()
+  return {
+    measured: new Map(entries),
+    total: entries.length,
+    passed: entries.filter(([, one]) => one.passed).length,
+    failed: entries.filter(([, one]) => !one.passed).map(([id]) => id),
+    oldest: dates[0] || '',
+    newest: dates[dates.length - 1] || '',
+    runs: names.length,
+  }
+}
+
 // Coherencia entre lo que hay y lo que se corrió. Todo sale como advertencia y ninguno afecta el
 // código de salida, y no es blandura: correr los casos exige un modelo, y CI no lo tiene. Un `evaluate`
 // que fallara por un resultado viejo obligaría a pagar una corrida para poder integrar, y volvería a
@@ -208,22 +243,27 @@ function validate(root, agent, kind) {
     return { errors, warnings, cases: 0, last: null }
   }
   const last = latest(root, agent, kind)
-  if (!last) {
+  const state = composed(root, agent, kind)
+  if (!last || !state) {
     warnings.push(`sin resultados de casos: corré el recorrido de evaluación para los ${total} casos`)
     return { errors, warnings, cases: total, last: null }
   }
-  if (last.total !== total) {
-    warnings.push(`${path.basename(last.file)} cubre ${last.total} de ${total} caso(s): el resultado no vale`)
+  const sinMedir = cases.map((item) => item.id).filter((id) => !state.measured.has(id))
+  if (sinMedir.length) {
+    warnings.push(`${state.total} de ${total} caso(s) con veredicto: sin medir ${sinMedir.join(', ')}`)
   }
-  if (last.passed < last.total) {
-    warnings.push(`${last.total - last.passed} caso(s) no pasaron en ${last.date}: volvé a correrlos`)
+  if (state.failed.length) {
+    warnings.push(`${state.failed.length} caso(s) no pasan: ${state.failed.join(', ')}`)
   }
   const cambio = contractChangedAt(subject(root, agent, kind))
-  if (cambio && cambio > last.date) {
-    warnings.push(`el contrato cambió el ${cambio} y la última corrida es del ${last.date}: `
+  if (cambio && cambio > state.oldest) {
+    const parte = state.oldest === state.newest ? 'la última corrida es' : 'el veredicto más viejo es'
+    warnings.push(`el contrato cambió el ${cambio} y ${parte} del ${state.oldest}: `
       + 'mide una versión anterior')
   }
-  return { errors, warnings, cases: total, last }
+  return { errors, warnings, cases: total, last, state }
 }
 
-module.exports = { behaviors, fixtures, list, latest, nextResult, parseCase, validate, resultsDir }
+module.exports = {
+  behaviors, composed, fixtures, list, latest, nextResult, parseCase, validate, resultsDir,
+}

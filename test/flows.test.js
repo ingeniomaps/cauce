@@ -263,6 +263,43 @@ test('los casos de un recorrido se leen como los de un cargo', () => {
   assert.throws(() => EV.list(ROOT, 'technical-design'), /no existe agents/)
 })
 
+// `--cases` hace que una corrida cubra menos casos de los que el sujeto tiene, a propósito. Leyendo
+// sólo la última, `evaluate` decía «cubre 1 de 4: el resultado no vale» de sujetos con los cuatro
+// medidos, y anunciaba «1/1 pasan». Componer por caso —la última corrida gana— es lo que ya hace el
+// ciclo de aprendizaje y lo que un humano venía haciendo a mano.
+test('el veredicto se compone sobre todas las corridas, no sale de la última', () => {
+  const root = tempRoot('cauce-eval-compuesto-')
+  const dir = path.join(root, 'flows', 'probe')
+  fs.mkdirSync(path.join(dir, 'evaluations', 'cases'), { recursive: true })
+  fs.mkdirSync(path.join(dir, 'evaluations', 'results'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'FLOW.md'), '# Probe\n')
+  fs.writeFileSync(path.join(dir, 'flow.json'), JSON.stringify({ schemaVersion: 1, slug: 'probe' }))
+  for (const id of ['01-uno', '02-dos', '03-tres']) {
+    fs.writeFileSync(path.join(dir, 'evaluations', 'cases', `${id}.md`),
+      '# Solicitud\n\nx\n\n# Comportamientos esperados\n\n- y\n')
+  }
+  const corrida = (name, cuerpo) => fs.writeFileSync(
+    path.join(dir, 'evaluations', 'results', name), `---\nflow: probe\n---\n${cuerpo}`)
+
+  // La primera midió dos y uno falló; la segunda re-corrió sólo ése y ahora pasa.
+  corrida('2099-01-07.md', '\n### 01-uno\n\n- Veredicto: pasa\n\nx\n\n### 02-dos\n\n- Veredicto: no pasa\n\ny\n')
+  corrida('2099-01-09.md', '\n### 02-dos\n\n- Veredicto: pasa\n\nya no falla\n')
+
+  const estado = EV.composed(root, 'probe', 'flow')
+  assert.equal(estado.total, 2, 'dos casos tienen veredicto, aunque ninguna corrida midiera los dos')
+  assert.equal(estado.passed, 2, 'y el re-corrido cuenta con su veredicto nuevo')
+  assert.deepEqual(estado.failed, [])
+  // Lo compuesto es tan viejo como su parte más rancia: `01-uno` no se volvió a medir desde el 7.
+  assert.equal(estado.oldest, '2099-01-07')
+  assert.equal(estado.newest, '2099-01-09')
+
+  const runs = EV.validate(root, 'probe', 'flow')
+  assert.match(runs.warnings.join('\n'), /2 de 3 caso\(s\) con veredicto: sin medir 03-tres/,
+    'lo que falta se nombra por su id, no como un conteo de una corrida')
+  assert.equal(/el resultado no vale/.test(runs.warnings.join('\n')), false,
+    'y lo medido en dos tandas no se descarta por venir en dos archivos')
+})
+
 // Declarar la columna y dejarla vacía es peor que no tenerla: el recorrido se lee entero y su
 // medición no existe. La advertencia distingue no tener casos de tenerlos y no haber corrido.
 test('un recorrido sin casos lo dice', () => {

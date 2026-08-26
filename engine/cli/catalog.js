@@ -206,7 +206,16 @@ function evaluate(agent, caso, cli) {
     for (const warning of [...result.warnings, ...runs.warnings]) console.warn(`⚠ ${warning}`)
     for (const error of errors) console.error(`✗ ${error}`)
     if (errors.length) fail(`\n${errors.length} error(es)`, 1)
-    const lastRun = runs.last ? `${runs.last.passed}/${runs.last.total} pasan (${runs.last.date})` : 'sin correr'
+    // El veredicto vigente de cada caso, compuesto sobre todas las corridas, no el de la última: desde
+    // que `--cases` existe una corrida cubre menos casos a propósito, y leer sólo la última decía «1/1
+    // pasan» de un sujeto con los cuatro medidos. Cuándo se midió es un rango cuando hubo más de una,
+    // porque lo compuesto es tan viejo como su parte más rancia.
+    const cuando = runs.state && runs.state.oldest !== runs.state.newest
+      ? `${runs.state.oldest}…${runs.state.newest}`
+      : (runs.state ? runs.state.newest : '')
+    const lastRun = runs.state
+      ? `${runs.state.passed}/${runs.state.total} pasan (${cuando})`
+      : 'sin correr'
     if (kind === 'flow') {
       return console.log(`✓ ${agent}: ${runs.cases} caso(s) — ${lastRun}, ` +
         `${result.proposals} propuesta(s)${result.pending ? ` (${result.pending} sin aplicar)` : ''}`)
