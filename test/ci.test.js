@@ -172,6 +172,11 @@ test('la versión sale del CHANGELOG y el tag no lo empuja el bot', () => {
     .filter((one) => one.startsWith('git push'))
   assert.deepEqual(empuja, ['git push --force-with-lease origin "$branch"'],
     'lo único que el workflow empuja es la rama del PR')
+
+  // `--force-with-lease` se niega con «stale info» cuando no conoce el estado remoto de la rama, y la
+  // rama se crea desde main en cada corrida. Falla justo en la segunda —cuando ya existe allá y no
+  // acá—, que es la que importa: la primera pudo haber fallado después de empujarla.
+  assert.match(source, /git fetch origin "\$branch"/, 'se trae la referencia antes de empujar con lease')
   // El comentario envuelve, así que se contrasta sobre el texto sin los saltos ni las almohadillas.
   const prosa = source.split('\n').map((one) => one.replace(/^\s*#\s?/, '')).join(' ')
   assert.match(prosa, /will not create a new workflow run/, 'deja escrito por qué, con su cita')
