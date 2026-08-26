@@ -14,6 +14,16 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.49.0] - 2026-08-26
+
+### Corregido
+
+- **Cambiar el `flow.json` de un recorrido ahora envejece sus veredictos.** El aviso de «el contrato
+  cambió y la última corrida es anterior» miraba sólo el `SKILL.md`, que un recorrido no tiene, así que
+  no se disparaba nunca: se le podía agregar una dimensión a un gate y sus casos aprobados seguían
+  leyéndose vigentes. Qué archivo **es** el contrato depende del sujeto — el de un cargo es su
+  `SKILL.md`, el de un recorrido su `flow.json`— y ahora se mira el que corresponde.
+
 ## [0.48.0] - 2026-08-26
 
 ### Corregido

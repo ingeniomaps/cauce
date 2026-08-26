@@ -125,8 +125,15 @@ function behaviors(root, agent, kind) {
 // La comparación es por día y no por instante porque el registro guarda fecha y no hora: un contrato
 // que cambia y se vuelve a medir el mismo día no dispara el aviso. Es el caso que menos importa
 // —quien lo cambió hoy sabe que lo cambió—, y afinar más pediría una hora que el registro no tiene.
-function contractChangedAt(dir) {
-  const git = spawnSync('git', ['-C', dir, 'log', '-1', '--format=%cs', '--', 'SKILL.md'], { encoding: 'utf8' })
+//
+// Y qué archivo **es** el contrato depende del sujeto: el de un cargo es su `SKILL.md` y el de un
+// recorrido es su `flow.json`. Mirando sólo el primero, un recorrido no disparaba el aviso nunca —no
+// tiene `SKILL.md`— así que se le podía agregar una dimensión al gate y sus veredictos anteriores
+// seguían leyéndose vigentes. Pasó el mismo día que esto se escribió: `change-review` ganó la pregunta
+// por las superficies críticas y sus tres casos aprobados no dijeron una palabra.
+function contractChangedAt(dir, kind) {
+  const file = kind === 'flow' ? 'flow.json' : 'SKILL.md'
+  const git = spawnSync('git', ['-C', dir, 'log', '-1', '--format=%cs', '--', file], { encoding: 'utf8' })
   return git.status === 0 ? (git.stdout || '').trim() : ''
 }
 
@@ -255,7 +262,7 @@ function validate(root, agent, kind) {
   if (state.failed.length) {
     warnings.push(`${state.failed.length} caso(s) no pasan: ${state.failed.join(', ')}`)
   }
-  const cambio = contractChangedAt(subject(root, agent, kind))
+  const cambio = contractChangedAt(subject(root, agent, kind), kind)
   if (cambio && cambio > state.oldest) {
     const parte = state.oldest === state.newest ? 'la última corrida es' : 'el veredicto más viejo es'
     warnings.push(`el contrato cambió el ${cambio} y ${parte} del ${state.oldest}: `
