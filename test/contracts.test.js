@@ -83,6 +83,57 @@ test('commit: apunta a un sha real o declara por qué no lo hay', () => {
   }), ['DONE.md demo: commit debe apuntar a <sha> <asunto> o justificar n/a — razón'])
 })
 
+// El marcador se lee del artefacto, no de un objeto de prueba: sin esto `oversizedUnits` podía estar
+// perfecta y la razón escrita en la épica no llegar nunca hasta ella. Se comprueba en los tres niveles
+// porque cada uno la busca en un texto distinto — el archivo, el encabezado del hito, la línea de la
+// tarea— y equivocarse de alcance en uno solo lo vuelve inerte ahí y en ningún otro lado.
+test('la razón de no partir se lee en los tres niveles', () => {
+  const root = tempRoot('ops-nosplit-')
+  fs.mkdirSync(path.join(root, 'roadmap'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'roadmap', 'epic-001-demo.md'), `---
+epic: 001
+title: Demo
+status: open
+---
+
+# Épica 001 — Demo
+
+(sin partir: el harness mide este servicio y no se entrega solo)
+
+## Criterios
+
+- **C1** — Cuando algo, alguien obtiene algo.
+
+## Contexto relevante
+
+- Contexto.
+
+## Historias
+
+- [ ] **una** (→ C1) — Incremento. (service: app)
+`)
+  fs.writeFileSync(path.join(root, 'BACKLOG.md'), `# Backlog
+
+## Hito primero — Primero (sin partir: es una sola migración y partirla la deja a medias)
+
+- [ ] **una** [lite] — Incremento. (→ C1) (epic: 001) (service: app) (sin partir: los seis bordes son el mismo camino)
+`)
+
+  assert.equal(P.readEpics(root)[0].noSplit, 'el harness mide este servicio y no se entrega solo')
+  const [hito] = P.readBacklog(root)
+  assert.equal(hito.noSplit, 'es una sola migración y partirla la deja a medias')
+  assert.equal(hito.tasks[0].noSplit, 'los seis bordes son el mismo camino')
+
+  // El alcance importa: la razón de la tarea es de la tarea, no del hito que la contiene.
+  fs.writeFileSync(path.join(root, 'BACKLOG.md'), `# Backlog
+
+## Hito primero — Primero
+
+- [ ] **una** [lite] — Incremento. (service: app) (sin partir: los seis bordes son el mismo camino)
+`)
+  assert.equal(P.readBacklog(root)[0].noSplit, '', 'el hito no hereda la razón de su tarea')
+})
+
 test('parser acepta historias legadas y múltiples referencias de criterio', () => {
   const root = tempRoot('ops-parser-')
   fs.mkdirSync(path.join(root, 'roadmap'))
@@ -526,37 +577,38 @@ x
 
 // Todo esto se probaba lanzando el CLI contra un planning en disco, así que cada rama costaba un
 // R17 estaba escrita desde antes y nada la medía: una épica de veinte criterios pasaba `check` sin una
-// queja, siempre que cada uno tuviera su historia. Va como advertencia porque la salida legítima incluye
-// dejar la unidad entera con la razón escrita; un error obligaría a partir siempre, que es el modo de
-// fallo que R7 nombra.
-test('los umbrales de R17 avisan y no rompen', () => {
+// queja, siempre que cada uno tuviera su historia.
+//
+// Cruzar el umbral no es el error —R17 dispara la división, no la decide, y dejar la unidad entera es
+// una salida legítima—. El error es cruzarlo sin decidir, así que lo que se exige es la razón. Sin ese
+// paso la escapatoria era prosa sin mecanismo, que es lo que la regla fue hasta que esto existió.
+test('los umbrales de R17 exigen decidir, y la razón escrita alcanza', () => {
   const criterios = (n) => Array.from({ length: n }, (_, i) => ({ id: `C${i + 1}` }))
-  const tareas = (n) => Array.from({ length: n }, (_, i) => ({ slug: `t-${i}`, criteria: [] }))
+  const tareas = (n) => Array.from({ length: n }, (_, i) => ({ slug: `t-${i}`, criteria: [], noSplit: '' }))
+  const epica = (n, noSplit = '') => ({ file: 'epic-001-x.md', criteria: criterios(n), noSplit })
 
   assert.deepEqual(PC.oversizedUnits({
-    epics: [{ file: 'epic-001-x.md', criteria: criterios(7) }],
-    milestones: [{ slug: 'h', tasks: tareas(9) }],
-  }), [], 'en el umbral no avisa: el borde entra')
+    epics: [epica(7)], milestones: [{ slug: 'h', tasks: tareas(9), noSplit: '' }],
+  }), [], 'en el umbral no dice nada: el borde entra')
 
-  const epica = PC.oversizedUnits({ epics: [{ file: 'epic-001-x.md', criteria: criterios(8) }] })
-  assert.equal(epica.length, 1)
-  assert.match(epica[0], /roadmap\/epic-001-x\.md: criterios: 8 \(umbral 7\)/, 'dice cuánto y contra qué')
-  assert.match(epica[0], /dejalo entero con la razón escrita/, 'y que partir no es la única salida')
+  const cruzada = PC.oversizedUnits({ epics: [epica(8)] })
+  assert.equal(cruzada.length, 1)
+  assert.match(cruzada[0], /roadmap\/epic-001-x\.md: criterios: 8 \(umbral 7 de R17\)/, 'cuánto y contra qué')
+  assert.match(cruzada[0], /sin partir: <razón>/, 'y cómo se cierra sin partir, que es la otra salida')
 
-  assert.match(PC.oversizedUnits({ milestones: [{ slug: 'primero', tasks: tareas(10) }] })[0],
-    /hito primero: tareas: 10 \(umbral 9\)/)
+  // La razón escrita es lo que cierra el agujero: sin ella la escapatoria no dejaba rastro.
+  assert.deepEqual(PC.oversizedUnits({ epics: [epica(8, 'el harness mide este servicio y no se entrega solo')] }),
+    [], 'decidida y con la razón puesta, la unidad pasa')
+
+  const hito = { slug: 'primero', tasks: tareas(10), noSplit: '' }
+  assert.match(PC.oversizedUnits({ milestones: [hito] })[0], /hito primero: tareas: 10/)
+  assert.deepEqual(PC.oversizedUnits({ milestones: [{ ...hito, noSplit: 'una sola migración' }] }), [])
 
   // La tarea se cuenta por los criterios que hereda. La aceptación en prosa no se cuenta: cuántas
   // condiciones tiene una frase es una lectura, y un número inventado ahí sería peor que ninguno.
-  const larga = { slug: 'muchos', criteria: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6'] }
-  assert.match(PC.oversizedUnits({ milestones: [{ slug: 'h', tasks: [larga] }] })[0],
-    /BACKLOG muchos: criterios: 6 \(umbral 5\)/)
-
-  // Y no son errores: un planning que las dispara sigue siendo válido.
-  assert.deepEqual(PC.validateState({
-    epics: [], milestones: [{ slug: 'h', tasks: [] }],
-    done: { entries: [], set: new Set(), duplicates: [] }, wip: null,
-  }), [])
+  const larga = { slug: 'muchos', criteria: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6'], noSplit: '' }
+  assert.match(PC.oversizedUnits({ milestones: [{ slug: 'h', tasks: [larga], noSplit: '' }] })[0],
+    /BACKLOG muchos: criterios: 6 \(umbral 5 de R17\)/)
 })
 
 // proceso y un árbol de archivos. Extraída, `validateState` recibe el estado ya leído y se ejercita en

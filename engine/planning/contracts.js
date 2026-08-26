@@ -367,15 +367,16 @@ function validateState({ epics, milestones, done, wip, roles = new Set(), humanA
 // criterios pasaba `check` sin una queja, siempre que cada uno tuviera su historia. Es la enumeración
 // que nadie contrasta de la que habla R15, y acá el que no contrastaba era el motor.
 //
-// Van como advertencia y no como error a propósito. R17 dispara la división, no la decide: la salida
-// legítima incluye dejar la unidad entera con la razón escrita, y un error obligaría a partir siempre
-// —que es justo el modo de fallo que R7 nombra: un número usado como límite se cumple partiendo por la
-// mitad lo que era una sola cosa—.
+// Cruzar el umbral no es el error: R17 dispara la división, no la decide, y dejar la unidad entera es
+// una salida legítima. El error es cruzarlo **sin decidir**. Por eso lo que se exige es la razón —
+// `(sin partir: …)`, la misma forma parentética que `(service: …)`—, y con ella puesta la unidad pasa
+// en silencio. Avisar igual entrenaría a ignorar el aviso; no exigir nada dejaba la escapatoria sin
+// rastro, que era prosa sin mecanismo: exactamente lo que R17 fue hasta que esto existió.
 //
-// Fijos, sin configurar. Como es una advertencia, la salida ya está adentro de la regla y deja rastro;
-// un umbral configurable agrega una segunda salida que no lo deja, porque se sube el día que molesta
-// —o sea cuando está funcionando— y queda silenciado para todos sin que nadie lo decida caso por caso.
-// R7 sí deja los suyos al proyecto, pero con su razón: dependen del lenguaje y de la superficie. Cinco
+// Fijos, sin configurar. La salida ya está adentro de la regla y deja rastro en el artefacto; un umbral
+// configurable agrega una segunda salida que no lo deja, porque se sube el día que molesta —o sea
+// cuando está funcionando— y queda silenciado para todos sin que nadie lo decida caso por caso. R7 sí
+// deja los suyos al proyecto, pero con su razón: dependen del lenguaje y de la superficie. Cinco
 // condiciones que un plan tiene que satisfacer a la vez no dependen de ninguna de las dos.
 const R17 = { taskCriteria: 5, epicCriteria: 7, milestoneTasks: 9 }
 
@@ -383,26 +384,23 @@ const R17 = { taskCriteria: 5, epicCriteria: 7, milestoneTasks: 9 }
 // hito. La aceptación escrita en prosa no se cuenta —cuántas condiciones tiene una frase es una lectura,
 // y un número inventado ahí sería peor que ninguno—; ésa la mira el review, que para eso está R3.
 function oversizedUnits({ epics = [], milestones = [] }) {
-  const warnings = []
-  const parte = (what, count, limit) =>
-    `${what}: ${count} (umbral ${limit}). Revisá si son dos resultados con vidas distintas; `
-    + 'si es uno solo, partirlo lo empeora — dejalo entero con la razón escrita (R17)'
+  const errors = []
+  const decidir = (what, count, limit) =>
+    `${what}: ${count} (umbral ${limit} de R17). Revisá si son dos resultados con vidas distintas y `
+    + 'partilo; si es uno solo, partirlo lo empeora — dejalo entero agregando "(sin partir: <razón>)"'
+  const juzgar = (unit, what, count, limit) => {
+    if (count > limit && !unit.noSplit) errors.push(decidir(what, count, limit))
+  }
   for (const epic of epics) {
-    if (epic.criteria.length > R17.epicCriteria) {
-      warnings.push(parte(`roadmap/${epic.file}: criterios`, epic.criteria.length, R17.epicCriteria))
-    }
+    juzgar(epic, `roadmap/${epic.file}: criterios`, epic.criteria.length, R17.epicCriteria)
   }
   for (const milestone of milestones) {
-    if (milestone.tasks.length > R17.milestoneTasks) {
-      warnings.push(parte(`hito ${milestone.slug}: tareas`, milestone.tasks.length, R17.milestoneTasks))
-    }
+    juzgar(milestone, `hito ${milestone.slug}: tareas`, milestone.tasks.length, R17.milestoneTasks)
     for (const task of milestone.tasks) {
-      if (task.criteria.length > R17.taskCriteria) {
-        warnings.push(parte(`BACKLOG ${task.slug}: criterios`, task.criteria.length, R17.taskCriteria))
-      }
+      juzgar(task, `BACKLOG ${task.slug}: criterios`, task.criteria.length, R17.taskCriteria)
     }
   }
-  return warnings
+  return errors
 }
 
 module.exports = {

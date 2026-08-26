@@ -70,6 +70,12 @@ function epicFiles(dir) {
   return files
 }
 
+// La razón por la que una unidad cruza el umbral de R17 y sigue entera. Se escribe con la misma forma
+// parentética que el resto del contrato —`(service: …)`, `(epic: 001)`—, y se busca en el texto que es
+// de esa unidad y de ninguna otra: el archivo entero para la épica, la línea del encabezado para el
+// hito, la línea de la tarea para la tarea.
+const noSplitReason = (text) => ((text.match(/\(sin partir:\s*([^)]+)\)/i) || [])[1] || '').trim()
+
 function criteriaRefs(text) {
   const refs = []
   const groups = [
@@ -123,6 +129,7 @@ function readEpics(dir) {
       criteria,
       stories,
       hasContext: /^##\s+Contexto relevante/im.test(text),
+      noSplit: noSplitReason(text),
       // Las líneas que todavía no decidieron nada. Se guardan enteras y no como un booleano porque el
       // error tiene que decir cuál es: «tiene un marcador» manda a releer la épica entera.
       placeholders: text.split('\n').map((line) => line.trim())
@@ -152,7 +159,10 @@ function readBacklog(dir) {
   for (const line of text.split('\n')) {
     const heading = line.match(MILESTONE_HEADING)
     if (heading) {
-      current = { slug: heading[1], title: heading[2].trim(), heading: line.slice(3), tasks: [] }
+      current = {
+        slug: heading[1], title: heading[2].trim(), heading: line.slice(3),
+        noSplit: noSplitReason(line), tasks: [],
+      }
       milestones.push(current)
       continue
     }
@@ -166,6 +176,7 @@ function readBacklog(dir) {
       service: ((rest.match(/\(service:\s*([^)]+)\)/) || [])[1] || '').trim(),
       acceptance: ((rest.match(/_Aceptaci[oó]n:\s*([^_]+)_/i) || [])[1] || '').trim(),
       criteria: criteriaRefs(rest),
+      noSplit: noSplitReason(rest),
     })
   }
   return milestones

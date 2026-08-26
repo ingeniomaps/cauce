@@ -68,7 +68,7 @@ function check(dir, cli) {
 
   const roles = new Set(AG.list(path.resolve(root, '..')).map((role) => role.slug))
   const wip = P.readWip(root)
-  warnings.push(...PC.oversizedUnits({ epics, milestones }))
+  errors.push(...PC.oversizedUnits({ epics, milestones }))
   errors.push(...PC.validateState({
     epics, milestones, done, wip, roles, humanActions: P.readHumanActions(root),
   }))
