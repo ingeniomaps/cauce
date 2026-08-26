@@ -327,6 +327,14 @@ test('la conducta prohibida de un cargo llega a quien juzga', () => {
 
 // Al ciclo le faltaba el final. Había firma, aplicación e historial, y `status:` nacía en `proposed` y
 // no lo movía nadie: volver a promover encontraba la misma propuesta firmada —«aprobada y aplicada»
+// Lo que hace una persona antes de aplicar: decir quién decide y qué cambia. `agent-promote` se niega
+// sin eso y `seal` también, así que un test que sella sin firmar prueba un camino que no existe.
+function firmarPropuesta(file) {
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
+    .replace('- Responsable: por definir', '- Responsable: Quien Firma')
+    .replace(/^(## Cambio propuesto\n)/m, '$1\nSe agrega la fuente que el informe trajo.\n'))
+}
+
 // también lee como aprobada— y la aplicaba de nuevo, duplicando cada viñeta y cada fuente sin fallar.
 test('una propuesta aplicada no se puede volver a aplicar', () => {
   const target = installedProject('Sello de propuesta')
@@ -338,6 +346,7 @@ test('una propuesta aplicada no se puede volver a aplicar', () => {
   assert.equal(learning.proposalState(fs.readFileSync(file, 'utf8')), 'proposed')
   assert.equal(learning.evaluate(target, 'probe').pending, 1, 'cuenta como pendiente')
 
+  firmarPropuesta(file)
   const sealed = learning.seal(target, 'probe', '2099-06')
   assert.equal(sealed.already, false)
   assert.equal(learning.proposalState(fs.readFileSync(file, 'utf8')), 'applied')
@@ -360,6 +369,7 @@ test('una propuesta aplicada se puede corregir sin reabrirla', () => {
 
   assert.equal(learning.prepareProposal(target, 'probe', now).created, false, 'no abre otra si hay pendiente')
 
+  firmarPropuesta(base.file)
   learning.seal(target, 'probe', '2099-06')
   const revision = learning.prepareProposal(target, 'probe', now)
   assert.equal(revision.created, true, 'aplicada la anterior, sí abre la revisión')
@@ -375,6 +385,7 @@ test('una propuesta aplicada se puede corregir sin reabrirla', () => {
     'la corregida queda sellada donde está, no se reabre')
   assert.equal(learning.prepareProposal(target, 'probe', now).created, false, 'y r3 espera a que r2 se aplique')
 
+  firmarPropuesta(revision.file)
   const sealed = learning.seal(target, 'probe', '2099-06')
   assert.equal(path.basename(sealed.file), '2099-06-r2.md', 'el período sella la vigente, no la base')
   assert.equal(sealed.already, false, 'y la revisión no queda sin sellar, que es como se reaplica')
@@ -591,6 +602,7 @@ test('la consolidación automática se lleva lo pendiente y no abre una revisió
   // Enero ya tiene su propuesta, firmada y aplicada: el escenario en que el cron abría la revisión.
   const enero = learning.prepareProposal(target, 'probe', new Date('2099-01-20T00:00:00Z'))
   assert.equal(path.basename(enero.file), '2099-01.md')
+  firmarPropuesta(enero.file)
   learning.seal(target, 'probe', '2099-01')
   // Y el informe llegó después de esa firma, así que no entró en ella.
   fs.writeFileSync(path.join(reports, '2099-01-26.md'),

@@ -296,6 +296,12 @@ test('un recorrido sin casos lo dice', () => {
 // fue, así que su ciclo consume los veredictos en contra de sus propias corridas. Copiarle al cargo
 // la investigación semanal le habría pedido leer una literatura inexistente, y habría devuelto
 // informes vacíos que igual hay que firmar.
+// Lo que hace una persona antes de aplicar: decir quién decide y qué cambia. Sin esto `seal` se niega,
+// y por eso vive acá arriba: todos los tests del ciclo lo necesitan.
+const firmar = (file) => fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
+  .replace('- Responsable: por definir', '- Responsable: Quien Firma')
+  .replace(/Por definir\. Lo que se corrige es el recorrido/, 'Se endurece el gate de la primera etapa'))
+
 test('el ciclo de un recorrido aprende de sus corridas, no de una literatura', () => {
   const root = tempRoot('cauce-flow-learn-')
   const dir = path.join(root, 'flows', 'probe')
@@ -322,6 +328,7 @@ test('el ciclo de un recorrido aprende de sus corridas, no de una literatura', (
 
   // La corrida consumida queda sellada, así que no vuelve a entrar por una segunda propuesta.
   assert.match(fs.readFileSync(registro, 'utf8'), /^status: consolidated$/m)
+  firmar(propuesta.file)
   L.seal(root, 'probe', '2099-01', 'flow')
   const siguiente = L.prepareProposal(root, 'probe', new Date('2099-02-28T00:00:00Z'), '', 'flow')
   assert.equal(siguiente.findings, 0, 'sin corridas nuevas no hay qué corregir')
@@ -332,6 +339,83 @@ test('el ciclo de un recorrido aprende de sus corridas, no de una literatura', (
   assert.equal(estado.proposals, 2)
   assert.equal(estado.pending, 1, 'la de enero quedó aplicada; la de febrero espera firma')
   assert.match(estado.warnings.join('\n'), /sin learning\/HISTORY\.md/)
+})
+
+// El ciclo entero, que ninguna prueba recorría: proponer, firmar, sellar y quedar registrado.
+// Ejercitarlo a mano encontró tres defectos y los tres viven acá.
+test('el ciclo de un recorrido se cierra: propone lo vivo, exige firma y deja historial', () => {
+  const root = tempRoot('cauce-flow-ciclo-')
+  const dir = path.join(root, 'flows', 'probe')
+  fs.mkdirSync(path.join(dir, 'evaluations', 'results'), { recursive: true })
+  fs.mkdirSync(path.join(dir, 'learning'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'FLOW.md'), '# Probe\n')
+  fs.writeFileSync(path.join(dir, 'learning', 'HISTORY.md'),
+    '# Historial\n\n| Fecha | Propuesta | Decisión | Aprobó | Cambio aplicado |\n|---|---|---|---|---|\n')
+  fs.writeFileSync(path.join(dir, 'flow.json'), JSON.stringify({
+    schemaVersion: 1, slug: 'probe', name: 'Probe', purpose: 'x', outcome: 'report',
+    entryAgent: 'qa-engineer', facilitator: 'qa-engineer',
+    stages: [{ id: 'uno', phase: 'discovery', agent: 'qa-engineer', dependsOn: [], produces: ['x'], exitGate: 'y' }],
+    guardrails: ['x'], completion: ['x'],
+  }))
+  const corrida = (name, cuerpo) => fs.writeFileSync(
+    path.join(dir, 'evaluations', 'results', name),
+    `---\nflow: probe\ndate: 2099-01-07\npassed: 0\ntotal: 2\n---\n\n${cuerpo}`)
+
+  // Dos corridas: un caso que falló y después se arregló, y otro que sigue rojo en las dos.
+  corrida('2099-01-07.md', '### 01-arreglado\n\n- Veredicto: no pasa\n\nFallaba por A.\n\n'
+    + '### 02-vivo\n\n- Veredicto: no pasa\n\nPrimera vez.\n')
+  corrida('2099-01-08.md', '### 01-arreglado\n\n- Veredicto: pasa\n\nYa no falla.\n\n'
+    + '### 02-vivo\n\n- Veredicto: no pasa\n\nSigue rojo con el arreglo puesto.\n')
+
+  const propuesta = L.prepareProposal(root, 'probe', new Date('2099-01-31T00:00:00Z'), '', 'flow')
+  const texto = fs.readFileSync(propuesta.file, 'utf8')
+
+  // Uno, no tres. Volcar todo «no pasa» de toda corrida pedía corregir lo ya corregido y repetía el
+  // mismo caso una vez por corrida: sobre las cuatro de incident-review daban seis para un solo rojo.
+  assert.equal(propuesta.findings, 1, 'sólo entra el caso que sigue rojo')
+  assert.equal(texto.includes('01-arreglado'), false, 'el que se arregló no manda a arreglarlo de nuevo')
+  assert.match(texto, /Sigue rojo con el arreglo puesto/, 'y del que vive entra su contraste más nuevo')
+  assert.equal(texto.includes('Primera vez'), false, 'no el viejo')
+  assert.match(texto, /falló en 2 corridas de esta tanda/, 'con cuántas veces: separa varianza de medición')
+
+  // Sin firma no se sella. Un cargo llega acá después de `agent-promote`, que ya la exige; un recorrido
+  // no tiene ese workflow, así que `--applied` sellaba lo que nadie decidió y el documento quedaba
+  // diciendo `applied` en el frontmatter y «Estado: pendiente» en el cuerpo.
+  assert.throws(() => L.seal(root, 'probe', '2099-01', 'flow'), /no la decidió nadie/)
+
+  firmar(propuesta.file)
+  L.seal(root, 'probe', '2099-01', 'flow')
+  const aplicada = fs.readFileSync(propuesta.file, 'utf8')
+  assert.match(aplicada, /^status: applied$/m)
+  assert.match(aplicada, /^- Estado: aplicada$/m, 'y el cuerpo deja de contradecir al frontmatter')
+  assert.equal(aplicada.endsWith('\n'), true, 'sin comerse el salto final del archivo')
+
+  // Y queda registrado, que es lo que la plantilla del historial promete y nadie escribía.
+  assert.match(fs.readFileSync(path.join(dir, 'learning', 'HISTORY.md'), 'utf8'),
+    /\| `2099-01\.md` \| aplicada \| Quien Firma \| Se endurece el gate/)
+})
+
+// Un recorrido sin HISTORY.md se sella igual: el historial es del contrato y `evaluate` ya avisa que
+// falta. Frenar el sello ahí convertiría una advertencia en un bloqueo por un archivo que se crea solo.
+test('sellar no exige que el historial exista', () => {
+  const root = tempRoot('cauce-flow-sin-historial-')
+  const dir = path.join(root, 'flows', 'probe')
+  fs.mkdirSync(path.join(dir, 'evaluations', 'results'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'FLOW.md'), '# Probe\n')
+  fs.writeFileSync(path.join(dir, 'flow.json'), JSON.stringify({
+    schemaVersion: 1, slug: 'probe', name: 'Probe', purpose: 'x', outcome: 'report',
+    entryAgent: 'qa-engineer', facilitator: 'qa-engineer',
+    stages: [{ id: 'uno', phase: 'discovery', agent: 'qa-engineer', dependsOn: [], produces: ['x'], exitGate: 'y' }],
+    guardrails: ['x'], completion: ['x'],
+  }))
+  fs.writeFileSync(path.join(dir, 'evaluations', 'results', '2099-01-07.md'),
+    '---\nflow: probe\ndate: 2099-01-07\npassed: 0\ntotal: 1\n---\n\n'
+    + '### 01-uno\n\n- Veredicto: no pasa\n\nEl gate dejó pasar la etapa.\n')
+
+  const propuesta = L.prepareProposal(root, 'probe', new Date('2099-01-31T00:00:00Z'), '', 'flow')
+  firmar(propuesta.file)
+  assert.equal(L.seal(root, 'probe', '2099-01', 'flow').already, false)
+  assert.equal(fs.existsSync(path.join(dir, 'learning', 'HISTORY.md')), false, 'y no lo inventa')
 })
 
 // La re-corrida del mismo día se llama `<fecha>-2.md`, y es la que trae el veredicto más nuevo — el

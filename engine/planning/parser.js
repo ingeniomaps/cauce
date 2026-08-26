@@ -275,6 +275,6 @@ function readInbox(dir) {
 module.exports = {
   EPIC_STATES, HUMAN_ACTION_STATES, LANES, MILESTONE_HEADING, STOP_REASONS,
   TASK_LINE, TASK_LINE_ANY_LANE,
-  read, withoutComments, frontmatter, readEpics, readBacklog, readDone, readWip,
+  read, section, withoutComments, frontmatter, readEpics, readBacklog, readDone, readWip,
   readInbox, readHumanActions,
 }

@@ -4,6 +4,9 @@ const fs = require('node:fs')
 const path = require('node:path')
 const catalog = require('./catalog')
 const { atomicWrite } = require('../core/files')
+// La misma lectura de secciones que usa el planning: repetirla acá sería una segunda copia del mismo
+// hecho, y una de las dos se pudre sin que nada falle (R11).
+const { section } = require('../planning/parser')
 
 const REQUIRED_SECTIONS = [
   'Hallazgos',
@@ -143,8 +146,41 @@ function seal(root, agent, period = '', kind = 'agent') {
   const state = proposalState(text)
   if (state === 'applied') return { file, already: true }
   if (!/^status:\s*\S+\s*$/m.test(text)) throw new Error(`${file} no declara status en su frontmatter.`)
-  atomicWrite(file, text.replace(/^status:\s*\S+\s*$/m, 'status: applied'))
+  // Un cargo llega acá después de `agent-promote`, que se niega si «Aprobación humana» no está firmada.
+  // Un recorrido no tiene ese workflow, así que sin esta puerta `--applied` sellaba una propuesta con
+  // «Estado: pendiente» y «Cambio propuesto: Por definir»: el frontmatter decía `applied` y el cuerpo
+  // decía lo contrario, dentro del mismo documento. Se comprueba para los dos porque la contradicción
+  // no depende de quién sea el sujeto, y para el cargo la puerta ya la pasó quien firmó.
+  const responsible = (text.match(/^-\s*Responsable:\s*(.+)$/m) || [])[1] || ''
+  const change = section(text, /Cambio propuesto/i).split('\n').slice(1).join('\n').trim()
+  const undecided = (value) => !value || /^(por definir|pendiente)\b/i.test(value)
+  if (undecided(responsible.trim()) || undecided(change)) {
+    throw new Error(
+      `${path.basename(file)} todavía no la decidió nadie: «Aprobación humana» necesita un responsable `
+      + 'y «Cambio propuesto» tiene que decir qué cambia. Aplicar es un acto humano y esto lo registra.',
+    )
+  }
+  const stamped = text
+    .replace(/^status:\s*\S+\s*$/m, 'status: applied')
+    .replace(/^-[ \t]*Estado:[ \t]*pendiente[ \t]*$/m, '- Estado: aplicada')
+    .replace(/^-[ \t]*Fecha:[ \t]*por definir[ \t]*$/mi, `- Fecha: ${isoDate(new Date())}`)
+  atomicWrite(file, stamped)
+  // El historial sólo lo escribe alguien para los cargos —`agent-promote`— y nadie para los recorridos,
+  // así que el registro que la plantilla promete no existía nunca. Se escribe acá porque es determinista:
+  // la fecha, el documento, quién aprobó y qué dice que cambia, todo sale de lo que se acaba de sellar.
+  if (kind === 'flow') appendHistory(path.dirname(path.dirname(dir)), file, responsible.trim(), change)
   return { file, already: false }
+}
+
+// Una fila por propuesta aplicada. El cambio va en una línea: el documento entero está a un enlace, y
+// una tabla que lo repite entero deja de leerse.
+function appendHistory(target, file, responsible, change) {
+  const history = path.join(target, 'learning', 'HISTORY.md')
+  if (!fs.existsSync(history)) return
+  const line = change.split('\n').map((one) => one.trim()).filter(Boolean)[0] || ''
+  const row = `| ${isoDate(new Date())} | \`${path.basename(file)}\` | aplicada | ${responsible} `
+    + `| ${line.slice(0, 160)} |\n`
+  fs.appendFileSync(history, `${fs.readFileSync(history, 'utf8').endsWith('\n') ? '' : '\n'}${row}`)
 }
 
 function prepareReport(root, agent, now = new Date()) {
@@ -266,24 +302,40 @@ function lastOfPeriod(dir, period) {
 //
 // De cada registro sin sellar entran los casos que no pasaron, con su contraste y de qué corrida
 // salen. Si no hay ninguno, eso también es un resultado: el recorrido aguantó y no hay qué corregir.
-const VERDICT_AGAINST = /\n### ([^\n]+)\n\n- Veredicto: no pasa\n([\s\S]*?)(?=\n### |$)/g
+const VERDICT = /\n### ([^\n]+)\n\n- Veredicto: (pasa|no pasa)\n([\s\S]*?)(?=\n### |$)/g
 
-function failedCases(text) {
-  return [...text.matchAll(VERDICT_AGAINST)].map((hit) => ({ id: hit[1].trim(), detail: hit[2].trim() }))
+function verdicts(text) {
+  return [...text.matchAll(VERDICT)]
+    .map((hit) => ({ id: hit[1].trim(), passed: hit[2] === 'pasa', detail: hit[3].trim() }))
 }
 
+// Qué le queda por corregir al recorrido, compuesto por caso y no por corrida. Las corridas se leen en
+// orden y la última gana, que es lo que hace la diferencia: un caso que falló y después de un arreglo
+// pasó no entra, porque mandaría a arreglar lo arreglado; y el que sigue rojo entra una sola vez, con
+// su contraste más nuevo, que es el que describe al recorrido de hoy.
+//
+// La primera versión volcaba todos los «no pasa» de todas las corridas sin sellar. Sobre las cuatro de
+// `incident-review` eso daba seis hallazgos para un solo caso rojo: dos ya corregidos y el mismo caso
+// repetido cuatro veces. Un documento que se firma no puede pedir seis correcciones cuando hay una.
+//
+// Cuántas veces falló sí viaja, porque no es lo mismo un rojo suelto que uno que aguantó dos arreglos
+// distintos: lo primero puede ser varianza y lo segundo es una medición estable.
 function flowFindings(root, dir) {
   const results = path.join(dir, 'evaluations', 'results')
   const unsealed = reportFiles(results).filter((name) =>
     frontmatterState(fs.readFileSync(path.join(results, name), 'utf8'), 'draft') !== 'consolidated')
-  const findings = []
+  const latest = new Map()
   for (const name of unsealed) {
     const file = path.join(results, name)
-    for (const item of failedCases(fs.readFileSync(file, 'utf8'))) {
-      findings.push(`### ${item.id} — ${name.slice(0, -3)}\n\n`
-        + `Corrida: \`${path.relative(root, file)}\`\n\n${item.detail}`)
+    for (const item of verdicts(fs.readFileSync(file, 'utf8'))) {
+      const before = latest.get(item.id)
+      latest.set(item.id, { ...item, file, name, failures: (before ? before.failures : 0) + (item.passed ? 0 : 1) })
     }
   }
+  const findings = [...latest.values()].filter((item) => !item.passed).map((item) =>
+    `### ${item.id} — ${item.name.slice(0, -3)}\n\n`
+    + `Corrida: \`${path.relative(root, item.file)}\``
+    + `${item.failures > 1 ? ` — falló en ${item.failures} corridas de esta tanda` : ''}\n\n${item.detail}`)
   return { consumed: unsealed.map((name) => path.join(results, name)), findings }
 }
 
