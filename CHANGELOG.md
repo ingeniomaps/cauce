@@ -40,12 +40,14 @@ diseño — eso vive en el commit y en el código.
 
 - **`R17` ahora tiene dos barras, y `check` las cuenta.** La regla decía que una aceptación de más de
   cinco condiciones se parte, y nada lo medía: una épica de veinte criterios pasaba `check` sin una
-  queja. Ahora avisa —advertencia, no error— al cruzar **5 criterios en una tarea, 7 en una épica, 9
-  tareas en un hito**. Son disparadores, no límites: al cruzarlos se revisa si la unidad mezcla dos
-  resultados con vidas distintas y recién ahí se parte, o se deja entera con la razón escrita, igual
-  que `R7` con el código. Son fijos y no se configuran — como la advertencia no bloquea nada, la
-  salida ya está adentro de la regla y deja rastro; un umbral que se sube el día que molesta no lo
-  deja. Se cuenta lo estructurado: la aceptación escrita en prosa la sigue mirando el review.
+  queja. Ahora falla al cruzar **5 criterios en una tarea, 7 en una épica, 9 tareas en un hito**. Lo
+  que falla no es el tamaño: son disparadores y no límites, y dejar la unidad entera es una salida
+  legítima —igual que `R7` con el código—. Lo que falla es cruzarlos **sin decidir**. Si es un solo
+  resultado, se escribe `(sin partir: <razón>)` donde vive la unidad —la misma forma parentética que
+  `(service: …)`, en el archivo de la épica, el encabezado del hito o la línea de la tarea— y pasa en
+  silencio. Los umbrales son fijos y no se configuran: la salida ya está adentro de la regla y deja
+  rastro en el artefacto, mientras que un número que se sube el día que molesta no lo deja. Se cuenta
+  lo estructurado; la aceptación escrita en prosa la sigue mirando el review.
 - **`R17` incorpora el tope de esfuerzo, que hasta ahora era sólo texto en la plantilla.** Las cuatro
   horas no miden lo mismo que el conteo de condiciones y ninguna de las dos ve lo de la otra: «crear la
   página de inicio» tiene **una** condición de aceptación y son tres días: no está acumulada, está sin

@@ -52,6 +52,11 @@ Ninguna de las dos decide la división: la dispara. Al cruzarla se revisa si la 
 resultados con vidas distintas, y recién ahí se parte, o se deja con la razón escrita —igual que R7 con
 el código—. Un número usado como límite se cumple partiendo por la mitad lo que era una sola cosa.
 
+Lo que no es una salida es cruzar el umbral sin decidir. Por eso la razón se escribe donde vive la
+unidad —`(sin partir: <razón>)`— y `check` la exige: sin ella la escapatoria no dejaba rastro y era
+prosa sin mecanismo, que es lo que esta regla entera fue hasta que se la midió. La razón la lee quien
+tome la unidad dentro de tres meses; escribirla para que el mensaje se calle la desperdicia.
+
 **La aceptación que acumula condiciones.** Cada condición por separado puede ser correcta y estar
 verificada contra el código; el problema es el conjunto. Un plan tiene que satisfacerlas todas a la vez
 y basta fallar una para tirar la vuelta entera, así que la probabilidad de salir limpio se desploma con

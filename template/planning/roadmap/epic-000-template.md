@@ -23,6 +23,10 @@ se sabe cuándo probarlo; sin sujeto, a quién. Los bordes son criterios como cu
 vacío, el permiso ajeno, el sistema del que depende caído—: escritos acá se rastrean y se prueban;
 escritos en prosa se pierden.
 
+Pasando de siete, `check` pide decidir (R17): o son dos resultados con vidas distintas y la épica se
+parte, o es uno solo y se escribe `(sin partir: <razón>)` en cualquier parte de este archivo. La razón
+es para quien la lea en tres meses, no para silenciar el mensaje.
+
 - **C1** — Cuando <disparador>, <sujeto> obtiene <resultado observable>.
 - **C2** — Al <borde>, <sujeto> obtiene <resultado observable>, y <lo que no cambia> no cambia.
 
