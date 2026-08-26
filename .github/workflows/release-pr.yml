@@ -29,7 +29,9 @@ env:
   OPS: engine/cli/ops.js
 
 jobs:
-  propose:
+  # No `propose`: así se llama también un job de `agent-learning`, y en la lista de Actions los dos
+  # aparecían con el mismo nombre.
+  version:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -38,7 +40,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          # Lo que se necesita son los tags —para saber si la versión ya salió—, no la historia. Con
+          # `fetch-depth: 0` se traía el repo entero en cada push a main y sólo crece.
+          fetch-tags: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
@@ -52,6 +56,15 @@ jobs:
           package="$(node -p 'require("./package.json").version')"
           if [ -z "$changelog" ]; then
             echo "CHANGELOG.md no tiene ninguna entrada con versión." >&2
+            exit 1
+          fi
+          # Sólo hacia adelante. La condición de abajo era «distintas», y con `package.json` por delante
+          # del CHANGELOG eso abría un PR que **bajaba** la versión: una versión ya publicada no se
+          # republica, así que el PR habría propuesto pisar npm con un número que ya salió. Pasa cuando
+          # alguien sube la versión sin escribir su entrada, y ahí lo que falta es la entrada.
+          if [ "$changelog" != "$package" ] && \
+             [ "$(printf '%s\n%s\n' "$changelog" "$package" | sort -V | tail -1)" != "$changelog" ]; then
+            echo "package.json ($package) va por delante del CHANGELOG ($changelog). Falta su entrada." >&2
             exit 1
           fi
           echo "changelog=$changelog" >> "$GITHUB_OUTPUT"

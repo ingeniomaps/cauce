@@ -177,6 +177,17 @@ test('la versión sale del CHANGELOG y el tag no lo empuja el bot', () => {
   assert.match(prosa, /will not create a new workflow run/, 'deja escrito por qué, con su cita')
   assert.match(prosa, /docs\.github\.com/, 'y de dónde salió')
   assert.match(source, /Falta el tag/, 'lo que sí hace es avisar cuando la versión quedó sin taguear')
+
+  // Sólo hacia adelante. La condición era «distintas», y con `package.json` por delante del CHANGELOG
+  // eso abría un PR que bajaba la versión — proponiendo pisar npm con un número ya publicado.
+  assert.match(source, /sort -V \| tail -1/, 'se comparan como versiones, no como cadenas')
+  assert.match(source, /va por delante del CHANGELOG/, 'y frena diciendo qué falta')
+
+  // Los tags alcanzan: con `fetch-depth: 0` se traía el repo entero en cada push a main.
+  assert.match(source, /fetch-tags: true/)
+  // Sobre las líneas que se ejecutan: el comentario nombra `fetch-depth: 0` para decir qué se sacó.
+  const opciones = source.split('\n').map((one) => one.trim()).filter((one) => !one.startsWith('#'))
+  assert.equal(opciones.some((one) => /^fetch-depth:/.test(one)), false, 'sin clonar la historia completa')
 })
 
 test('un solo workflow cubre a todos los agentes', () => {
