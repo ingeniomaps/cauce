@@ -35,6 +35,10 @@ jobs:
           node-version: '24'
           registry-url: https://registry.npmjs.org
 
+          # v7 enciende el caché de npm solo si `packageManager` está en package.json, y ese
+          # caché exige un lock file. Acá no hay dependencias —ni una— así que no hay lock que
+          # cachear y el paso fallaba entero. Se apaga: el input no existía en v4.
+          package-manager-cache: false
       # El tag es lo único que eligió una persona; el resto sale del árbol. Si no coinciden, el que
       # está mal es el tag —el árbol ya pasó por CHANGELOG y revisión—, y publicar igual dejaría npm
       # y la historia contando versiones distintas para siempre: una versión no se republica.

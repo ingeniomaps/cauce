@@ -29,6 +29,10 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
+          # v7 enciende el caché de npm solo si `packageManager` está en package.json, y ese
+          # caché exige un lock file. Acá no hay dependencias —ni una— así que no hay lock que
+          # cachear y el paso fallaba entero. Se apaga: el input no existía en v4.
+          package-manager-cache: false
       # No hay paso de instalación: el toolkit no tiene dependencias.
       - name: Validate and test
         run: npm run ci

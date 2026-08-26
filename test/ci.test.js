@@ -39,6 +39,33 @@ test('el workflow de aprendizaje corre en el toolkit y nombra un solo CLI', () =
 // La cadencia sale de las fuentes de cada cargo y el cron sólo pregunta cuál le toca hoy. Escribirla
 // acá como lista de slugs la dejaría mintiendo el día que alguien le cambie las fuentes a un cargo,
 // que es el mismo motivo por el que la matriz ya salía del árbol.
+// `setup-node` v7 enciende el caché de npm por defecto cuando `package.json` declara `packageManager`,
+// y ese caché exige un lock file. Este repo no tiene dependencias —ni una— así que no hay lock, y el
+// paso falla entero: el CI se cayó en 16 segundos con el bump. El input ni siquiera existía en v4, así
+// que revisar que los inputs que pasábamos siguieran ahí no podía verlo. Lo que se rompe es un default.
+test('ningún setup-node deja encendido el caché que este repo no puede alimentar', () => {
+  const dir = path.resolve(__dirname, '..', '.github', 'workflows')
+  const usos = []
+  for (const name of fs.readdirSync(dir).filter((one) => one.endsWith('.yml'))) {
+    const lineas = fs.readFileSync(path.join(dir, name), 'utf8').split('\n')
+    lineas.forEach((linea, i) => {
+      if (!/uses:\s*actions\/setup-node@/.test(linea)) return
+      // El bloque `with:` de ese paso: hasta la próxima línea con menos sangría.
+      const bloque = []
+      for (let j = i + 1; j < lineas.length && (!lineas[j].trim() || lineas[j].startsWith('        ')); j += 1) {
+        bloque.push(lineas[j])
+      }
+      usos.push({
+        at: `${name}:${i + 1}`,
+        apagado: bloque.some((one) => /package-manager-cache:\s*false/.test(one)),
+      })
+    })
+  }
+  assert.ok(usos.length, 'se encontró al menos un setup-node')
+  assert.deepEqual(usos.filter((one) => !one.apagado).map((one) => one.at), [],
+    'un setup-node sin package-manager-cache: false busca un lock file que no existe')
+})
+
 test('cada cron investiga su cadencia, y el del ensamblaje no investiga', () => {
   const file = path.resolve(__dirname, '..', '.github', 'workflows', 'agent-learning.yml')
   const source = fs.readFileSync(file, 'utf8')
