@@ -1,0 +1,3 @@
+# Cauce lo mantiene una sola persona. Esta línea no cambia quién puede mergear —eso lo decide el
+# permiso de escritura— pero hace que cada PR pida su revisión sin que nadie se acuerde de pedirla.
+*       @ingeniomaps
