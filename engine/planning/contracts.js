@@ -363,9 +363,52 @@ function validateState({ epics, milestones, done, wip, roles = new Set(), humanA
   return errors
 }
 
+// Los umbrales de R17, contados. La regla existía desde antes y nada la medía: una épica de veinte
+// criterios pasaba `check` sin una queja, siempre que cada uno tuviera su historia. Es la enumeración
+// que nadie contrasta de la que habla R15, y acá el que no contrastaba era el motor.
+//
+// Van como advertencia y no como error a propósito. R17 dispara la división, no la decide: la salida
+// legítima incluye dejar la unidad entera con la razón escrita, y un error obligaría a partir siempre
+// —que es justo el modo de fallo que R7 nombra: un número usado como límite se cumple partiendo por la
+// mitad lo que era una sola cosa—.
+//
+// Fijos, sin configurar. Como es una advertencia, la salida ya está adentro de la regla y deja rastro;
+// un umbral configurable agrega una segunda salida que no lo deja, porque se sube el día que molesta
+// —o sea cuando está funcionando— y queda silenciado para todos sin que nadie lo decida caso por caso.
+// R7 sí deja los suyos al proyecto, pero con su razón: dependen del lenguaje y de la superficie. Cinco
+// condiciones que un plan tiene que satisfacer a la vez no dependen de ninguna de las dos.
+const R17 = { taskCriteria: 5, epicCriteria: 7, milestoneTasks: 9 }
+
+// Se cuenta lo que está estructurado: criterios de la épica, criterios que hereda una tarea, tareas del
+// hito. La aceptación escrita en prosa no se cuenta —cuántas condiciones tiene una frase es una lectura,
+// y un número inventado ahí sería peor que ninguno—; ésa la mira el review, que para eso está R3.
+function oversizedUnits({ epics = [], milestones = [] }) {
+  const warnings = []
+  const parte = (what, count, limit) =>
+    `${what}: ${count} (umbral ${limit}). Revisá si son dos resultados con vidas distintas; `
+    + 'si es uno solo, partirlo lo empeora — dejalo entero con la razón escrita (R17)'
+  for (const epic of epics) {
+    if (epic.criteria.length > R17.epicCriteria) {
+      warnings.push(parte(`roadmap/${epic.file}: criterios`, epic.criteria.length, R17.epicCriteria))
+    }
+  }
+  for (const milestone of milestones) {
+    if (milestone.tasks.length > R17.milestoneTasks) {
+      warnings.push(parte(`hito ${milestone.slug}: tareas`, milestone.tasks.length, R17.milestoneTasks))
+    }
+    for (const task of milestone.tasks) {
+      if (task.criteria.length > R17.taskCriteria) {
+        warnings.push(parte(`BACKLOG ${task.slug}: criterios`, task.criteria.length, R17.taskCriteria))
+      }
+    }
+  }
+  return warnings
+}
+
 module.exports = {
   testedCriteria,
   validateState,
+  oversizedUnits,
   validateAdr,
   validateRules,
   validateBacklogStructure,

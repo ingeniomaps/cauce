@@ -38,6 +38,21 @@ diseño — eso vive en el commit y en el código.
   cron del día 1 abre la propuesta de cada recorrido que tenga corridas sin consolidar. No investiga
   —un recorrido no tiene profesión— y sólo entra el que dejó veredictos que mirar.
 
+- **`R17` ahora tiene dos barras, y `check` las cuenta.** La regla decía que una aceptación de más de
+  cinco condiciones se parte, y nada lo medía: una épica de veinte criterios pasaba `check` sin una
+  queja. Ahora avisa —advertencia, no error— al cruzar **5 criterios en una tarea, 7 en una épica, 9
+  tareas en un hito**. Son disparadores, no límites: al cruzarlos se revisa si la unidad mezcla dos
+  resultados con vidas distintas y recién ahí se parte, o se deja entera con la razón escrita, igual
+  que `R7` con el código. Son fijos y no se configuran — como la advertencia no bloquea nada, la
+  salida ya está adentro de la regla y deja rastro; un umbral que se sube el día que molesta no lo
+  deja. Se cuenta lo estructurado: la aceptación escrita en prosa la sigue mirando el review.
+- **`R17` incorpora el tope de esfuerzo, que hasta ahora era sólo texto en la plantilla.** Las cuatro
+  horas no miden lo mismo que el conteo de condiciones y ninguna de las dos ve lo de la otra: «crear la
+  página de inicio» tiene **una** condición de aceptación y son tres días: no está acumulada, está sin
+  pensar. La barra obliga a la conversación antes —qué mensaje, qué interacción, qué ya está
+  decidido— y de ahí salen tareas que se pueden mirar. Medir una sola de las dos deja pasar la mitad
+  de los casos.
+
 ### Corregido
 
 - **La re-corrida del mismo día entra al ciclo de aprendizaje.** Un registro `<fecha>-2.md` no

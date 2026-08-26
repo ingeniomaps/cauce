@@ -525,6 +525,40 @@ x
 })
 
 // Todo esto se probaba lanzando el CLI contra un planning en disco, así que cada rama costaba un
+// R17 estaba escrita desde antes y nada la medía: una épica de veinte criterios pasaba `check` sin una
+// queja, siempre que cada uno tuviera su historia. Va como advertencia porque la salida legítima incluye
+// dejar la unidad entera con la razón escrita; un error obligaría a partir siempre, que es el modo de
+// fallo que R7 nombra.
+test('los umbrales de R17 avisan y no rompen', () => {
+  const criterios = (n) => Array.from({ length: n }, (_, i) => ({ id: `C${i + 1}` }))
+  const tareas = (n) => Array.from({ length: n }, (_, i) => ({ slug: `t-${i}`, criteria: [] }))
+
+  assert.deepEqual(PC.oversizedUnits({
+    epics: [{ file: 'epic-001-x.md', criteria: criterios(7) }],
+    milestones: [{ slug: 'h', tasks: tareas(9) }],
+  }), [], 'en el umbral no avisa: el borde entra')
+
+  const epica = PC.oversizedUnits({ epics: [{ file: 'epic-001-x.md', criteria: criterios(8) }] })
+  assert.equal(epica.length, 1)
+  assert.match(epica[0], /roadmap\/epic-001-x\.md: criterios: 8 \(umbral 7\)/, 'dice cuánto y contra qué')
+  assert.match(epica[0], /dejalo entero con la razón escrita/, 'y que partir no es la única salida')
+
+  assert.match(PC.oversizedUnits({ milestones: [{ slug: 'primero', tasks: tareas(10) }] })[0],
+    /hito primero: tareas: 10 \(umbral 9\)/)
+
+  // La tarea se cuenta por los criterios que hereda. La aceptación en prosa no se cuenta: cuántas
+  // condiciones tiene una frase es una lectura, y un número inventado ahí sería peor que ninguno.
+  const larga = { slug: 'muchos', criteria: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6'] }
+  assert.match(PC.oversizedUnits({ milestones: [{ slug: 'h', tasks: [larga] }] })[0],
+    /BACKLOG muchos: criterios: 6 \(umbral 5\)/)
+
+  // Y no son errores: un planning que las dispara sigue siendo válido.
+  assert.deepEqual(PC.validateState({
+    epics: [], milestones: [{ slug: 'h', tasks: [] }],
+    done: { entries: [], set: new Set(), duplicates: [] }, wip: null,
+  }), [])
+})
+
 // proceso y un árbol de archivos. Extraída, `validateState` recibe el estado ya leído y se ejercita en
 // memoria: es lo que la mudanza compra, y sin esto sería sólo mover código de archivo.
 test('validateState juzga el estado ya leído, sin tocar disco', () => {
