@@ -14,6 +14,21 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.47.0] - 2026-08-26
+
+### Agregado
+
+- **`organization/company.md` gana «Qué no se puede romper»**, una tabla donde declarás qué superficies
+  detienen la operación al fallar, a quién alcanzan y dónde viven. No todo cuesta lo mismo cuando se
+  rompe, y sin eso escrito una revisión sólo puede elegir entre revisar todo con el rigor del peor caso
+  o revisar el peor caso con el rigor de lo demás. Lo que no se sepa se deja en `Por definir`: que no
+  conste dónde vive un flujo crítico ya es un hallazgo.
+- **`change-review` pregunta si el cambio toca una de ellas.** El gate de `scope` ahora lo exige y
+  `completion` lo enumera: si toca, cuál y qué se detiene; si no, que se miró. Se contrasta contra tu
+  tabla y no contra el criterio de quien revisa, y una tabla vacía se reporta como hallazgo en vez de
+  pasar por permiso. Sin esto, un cambio de una línea en un helper compartido se revisaba igual
+  estuviera en reportes o en el alta de un pedido.
+
 ## [0.46.0] - 2026-08-25
 
 ### Agregado

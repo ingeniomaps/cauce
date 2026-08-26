@@ -35,13 +35,15 @@
         "decisions-that-constrain-it",
         "what-each-discipline-must-answer"
       ],
-      "exitGate": "Está escrito qué cambia, contra qué criterio de aceptación se revisa, qué decisiones vigentes lo restringen —ADR, contratos, SLO, políticas— y qué tiene que responder cada disciplina. Y está enumerado qué se inspeccionó: archivo, diff, comando con su salida. Sin esa lista la ronda produce opiniones sobre cosas distintas."
+      "exitGate": "Está escrito qué cambia, contra qué criterio de aceptación se revisa, qué decisiones vigentes lo restringen —ADR, contratos, SLO, políticas— y qué tiene que responder cada disciplina. Y está enumerado qué se inspeccionó: archivo, diff, comando con su salida. Sin esa lista la ronda produce opiniones sobre cosas distintas.\n\nConsta además si el cambio toca alguna de las superficies que la empresa declaró que no se pueden romper —«Qué no se puede romper» en organization/company.md— y, si las toca, cuál y qué se detiene. Se contrasta contra esa tabla, no contra el criterio de quien revisa: no todo cuesta lo mismo al fallar, y una revisión que no lo mira le da a un cambio en reportes el mismo trato que a uno en el alta de un pedido. Si la tabla está sin llenar, eso se dice —es un hallazgo, no un permiso—."
     },
     {
       "id": "correctness",
       "phase": "discovery",
       "agent": "backend-engineer",
-      "dependsOn": ["scope"],
+      "dependsOn": [
+        "scope"
+      ],
       "produces": [
         "does-it-do-what-it-claims",
         "what-breaks-that-nobody-named"
@@ -52,7 +54,9 @@
       "id": "evidence",
       "phase": "discovery",
       "agent": "qa-engineer",
-      "dependsOn": ["scope"],
+      "dependsOn": [
+        "scope"
+      ],
       "produces": [
         "which-criterion-each-test-sustains",
         "what-is-green-without-being-covered"
@@ -63,7 +67,9 @@
       "id": "exposure",
       "phase": "discovery",
       "agent": "security-engineer",
-      "dependsOn": ["scope"],
+      "dependsOn": [
+        "scope"
+      ],
       "produces": [
         "what-it-exposes-that-it-did-not-before",
         "who-can-reach-it"
@@ -74,7 +80,9 @@
       "id": "operability",
       "phase": "discovery",
       "agent": "site-reliability-engineer",
-      "dependsOn": ["scope"],
+      "dependsOn": [
+        "scope"
+      ],
       "produces": [
         "how-it-fails-and-what-shows-it",
         "how-it-is-undone"
@@ -85,7 +93,12 @@
       "id": "decide",
       "phase": "discovery",
       "agent": "tech-lead",
-      "dependsOn": ["correctness", "evidence", "exposure", "operability"],
+      "dependsOn": [
+        "correctness",
+        "evidence",
+        "exposure",
+        "operability"
+      ],
       "produces": [
         "signed-verdict-with-its-three-outcomes",
         "blocking-separated-from-recorded",
@@ -99,6 +112,7 @@
     "Qué se inspeccionó está enumerado —archivo, diff, comando con su salida— y qué no, con su razón.",
     "Por cada criterio de aceptación consta la prueba que lo sostiene, o que ninguna lo hace.",
     "Lo que el cambio expone y quién puede alcanzarlo está dicho, aunque la respuesta sea que no expone nada.",
+    "Si el cambio toca una superficie crítica declarada, consta cuál y qué exige de más; si no toca ninguna, consta que se miró.",
     "Cómo falla, qué señal lo muestra y cómo se deshace está escrito, o consta que es irreversible.",
     "El veredicto es uno de los tres, con lo bloqueante separado de lo registrado y con qué lo reabre."
   ]
