@@ -42,20 +42,34 @@ comprobar que quedó no comprueba nada que un error no hubiera dicho.
 Verificar es la excepción, y no se negocia. Ahorrar una llamada nunca justifica afirmar sin haber
 comprobado —R14 no admite descuentos— ni dar por terminado lo que no se corrió.
 
-## R17 — La aceptación que acumula condiciones se parte
+## R17 — Una unidad de trabajo se parte por lo que acumula, y hay dos formas de acumular
 
-Cinco condiciones es el borde. Pasado eso la tarea se parte antes de volver a planificarla: no se refina
-ni se reordena, se parte.
+Dos barras, y cada una encuentra lo que la otra deja pasar: **cinco condiciones de aceptación** en una
+tarea, y **cuatro horas de esfuerzo humano**. Arriba de la tarea el conteo sigue: siete criterios en una
+épica, nueve tareas en un hito.
 
-Cada condición por separado puede ser correcta y estar verificada contra el código; el problema es el
-conjunto. Un plan tiene que satisfacerlas todas a la vez y basta fallar una para tirar la vuelta entera,
-así que la probabilidad de salir limpio se desploma con la cantidad aunque cada punto sea fácil. Y una
-aceptación crece sin que nadie lo decida: se le suman condiciones de a tandas en cada rechazo de plan,
-y cada tanda parece razonable.
+Ninguna de las dos decide la división: la dispara. Al cruzarla se revisa si la unidad mezcla dos
+resultados con vidas distintas, y recién ahí se parte, o se deja con la razón escrita —igual que R7 con
+el código—. Un número usado como límite se cumple partiendo por la mitad lo que era una sola cosa.
 
-El tope de horas no lo detecta. Una tarea de tres horas con quince condiciones entra en el tope y no se
-construye nunca.
+**La aceptación que acumula condiciones.** Cada condición por separado puede ser correcta y estar
+verificada contra el código; el problema es el conjunto. Un plan tiene que satisfacerlas todas a la vez
+y basta fallar una para tirar la vuelta entera, así que la probabilidad de salir limpio se desploma con
+la cantidad aunque cada punto sea fácil. Y una aceptación crece sin que nadie lo decida: se le suman
+condiciones de a tandas en cada rechazo de plan, y cada tanda parece razonable.
 
+**El esfuerzo que nadie descompuso.** El conteo de condiciones no lo ve, porque el problema es el
+opuesto: «crear la página de inicio» tiene una sola condición de aceptación y son tres días de trabajo.
+No está acumulada, está sin pensar — no dice qué mensaje, qué interacción, qué se decide y qué ya está
+decidido, y quien la tome va a decidir todo eso solo y tarde. La barra de cuatro horas obliga a esa
+conversación antes: de ahí salen «definir propósito y mensaje» y las que siguen, cada una con un
+resultado que se puede mirar. Y sirve de medida — dos tareas entran en una jornada humana, y con IA
+bastantes más según cuán definidas estén—, que es lo que vuelve planificable un hito en vez de una
+apuesta.
+
+Las dos barras juntas, y en los dos sentidos: una tarea de tres horas con quince condiciones entra en
+el tope de esfuerzo y no se construye nunca; una tarea de una condición y tres días lo pasa por el otro
+lado. Medir una sola deja pasar la mitad de los casos.
 
 ## R20 — Una medición se lanza contra lo que podría refutarla
 
