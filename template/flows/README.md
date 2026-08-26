@@ -42,14 +42,14 @@ editar dentro de `system/`**: se reemplaza completo en cada actualización.
 Tres formas, de la más simple a la más explícita:
 
 ```text
-/team quiero cobrar con tarjeta guardada
-/team incident-review: se cayó el checkout el martes a las 14:00
-/team {"team": "acme-soporte", "intent": "qué se quiere evaluar"}
+/flow quiero cobrar con tarjeta guardada
+/flow incident-review: se cayó el checkout el martes a las 14:00
+/flow {"flow": "acme-soporte", "intent": "qué se quiere evaluar"}
 ```
 
 Sin prefijo corre `product-development`. El prefijo se confirma contra los recorridos que existen: si no
 es uno, el texto completo se toma como intención, así que escribir `nota: revisar esto` no dispara un
-equipo llamado `nota`. Con el recorrido pasado explícitamente, un slug inexistente falla en vez de caer al
+recorrido llamado `nota`. Con el recorrido pasado explícitamente, un slug inexistente falla en vez de caer al
 por defecto en silencio.
 
 ## Corto o largo
