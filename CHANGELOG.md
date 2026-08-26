@@ -14,6 +14,17 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.48.0] - 2026-08-26
+
+### Corregido
+
+- **`destroy` ya no deja el `package.json` que escribió `init`.** En modo `embedded` quitaba sus nueve
+  rutas y decía «tu repositorio queda donde está», dejando un manifiesto cuya única dependencia era el
+  motor. Sobre un repositorio Rust eso es basura conspicua y nadie avisaba. Ahora saca su clave y nada
+  más: si el manifiesto lo había creado `init` —sin dependencias ni scripts propios— se va con él, y si
+  es tuyo se conserva entero con tus scripts y tus dependencias. `node_modules/` y el lockfile no se
+  tocan porque los escribe npm y pueden tener lo tuyo, pero la salida ahora los nombra para que decidas.
+
 ## [0.47.0] - 2026-08-26
 
 ### Agregado
