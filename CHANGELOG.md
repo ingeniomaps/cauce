@@ -24,6 +24,16 @@ diseño — eso vive en el commit y en el código.
   lanzamiento de prueba movía estado real del ciclo. Ahora el dispatch acepta `phase`, con `research`
   por defecto, que es para lo que se lanza a mano; `propose` y `both` siguen disponibles cuando de
   verdad haga falta, y los crones deciden por su cuenta como siempre.
+- **Los permisos de la investigación llegaban partidos, y `Bash` nunca se concedía.** Iban en una
+  cadena sin comillas, así que el shell partía `Bash(make agent-learn *)` en tres palabras y el CLI
+  descartaba la última —«Ignoring --allowedTools rule "*)"»—. La investigación salía bien igual porque
+  con web y lectura alcanzaba, así que el defecto vivía en dos líneas del log y en ningún resultado.
+- **La investigación late mientras corre y deja dicho lo que costó.** El log quedaba mudo los diez
+  minutos que dura y no se distinguía de una corrida colgada: la única salida era esperar el timeout
+  para saber cuál era. Ahora avisa cada minuto —el latido lo emite el shell y comprueba el proceso, así
+  que no puede mentir que sigue vivo— y al cerrar deja en el resumen del job **cuánto costó en dólares,
+  cuántos tokens y qué permisos se le negaron**. Eso último es lo que vuelve visible un permiso mal
+  escrito, que es como se descubrió el de arriba.
 
 ## [0.51.0] - 2026-08-27
 

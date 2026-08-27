@@ -212,10 +212,66 @@ jobs:
           # informe, y dos comandos nombrados. Saltear permisos le daría justo lo que su instrucción le
           # prohíbe —tocar dependencias, pruebas, código, SKILL.md, planificación, commit, push— y el
           # guard más barato contra eso es no dárselo.
-          TOOLS='--allowedTools WebSearch WebFetch Read Glob Grep Edit Bash(make agent-learn *) Bash(make agent-evaluate *)'
+          # Lo que la corrida costó y qué se le negó, en el resumen del job. Sin esto el gasto de una
+          # investigación no era medible desde ningún lado, y un permiso mal escrito sólo se veía si
+          # alguien leía dos líneas perdidas del log.
+          informe() {
+            node -e '
+              const fs = require("fs")
+              let d = null
+              try { d = JSON.parse(fs.readFileSync(process.argv[1], "utf8")) } catch { d = null }
+              if (!d) process.exit(0)
+              const u = d.usage || {}
+              const linea = (uno) => { console.log(uno); fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, uno + "\n") }
+              linea(`| costo | USD ${(d.total_cost_usd || 0).toFixed(4)} |`)
+              linea(`| tokens | ${u.input_tokens || 0} entrada · ${u.output_tokens || 0} salida |`)
+              linea(`| duración | ${Math.round((d.duration_ms || 0) / 1000)} s en ${d.num_turns || 0} turno(s) |`)
+              const negados = d.permission_denials || []
+              if (negados.length) linea(`| permisos negados | ${negados.map((one) => one.tool_name).join(", ")} |`)
+            ' "$1" || true
+          }
+          # Un arreglo y no una cadena: sin comillas el shell parte `Bash(make agent-learn *)` en tres
+          # palabras, y el CLI descarta la última con «Ignoring --allowedTools rule "*)"». Pasó en la
+          # primera corrida con permisos: Bash nunca se concedió, y la investigación salió igual porque
+          # con web y lectura alcanzaba —el modelo lo dijo, «no curl access this run»— así que el
+          # defecto no se veía en el resultado sino en dos líneas del log.
+          TOOLS=(--allowedTools WebSearch WebFetch Read Glob Grep Edit
+            'Bash(make agent-learn *)' 'Bash(make agent-evaluate *)')
+          # `json` cierra con `total_cost_usd`, `usage` y `permission_denials`: es lo único que vuelve
+          # medible lo que cuesta una corrida, y lo que delata un permiso mal escrito como el de arriba.
+          # Pero bufferea hasta el final, así que el log queda mudo los diez minutos que dura: por eso
+          # va el latido de abajo. Sin él no se distingue una investigación de una corrida colgada, y la
+          # única salida es esperar los treinta minutos del timeout para saber cuál era.
+          FORMAT=(--output-format json)
+
+          # Corre en segundo plano y late cada minuto. El latido es del shell y no del modelo: si el
+          # proceso muriera, `kill -0` falla y el bucle corta — no puede mentir que sigue vivo.
+          # `RUNNER_TEMP` sólo existe dentro de Actions, y la prueba ejecuta este mismo paso con un
+          # `claude` falso: sin default la redirección apuntaba a `/claude.json` y el proceso moría.
+          TMP="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
+          investigar() {
+            "$@" > "$TMP/claude.json" 2>"$TMP/claude.err" &
+            # Se poléa cada pocos segundos y se habla cada minuto: con `sleep 60` una corrida que
+            # termina en dos segundos igual esperaba el minuto entero, y la prueba que ejecuta este
+            # mismo paso con un `claude` falso se colgaba dos minutos.
+            local pid=$! espera=0
+            while kill -0 "$pid" 2>/dev/null; do
+              sleep 5
+              espera=$((espera + 5))
+              if [ "$((espera % 60))" -eq 0 ] && kill -0 "$pid" 2>/dev/null; then
+                echo "· investigando, van $((espera / 60)) min (timeout a los 30)"
+              fi
+            done
+            wait "$pid"
+            local salida=$?
+            cat "$TMP/claude.err" >&2 || true
+            informe "$TMP/claude.json"
+            return $salida
+          }
           if [ -n "$OAUTH" ]; then
             echo "Credencial: suscripción (CLAUDE_CODE_OAUTH_TOKEN)."
-            if env -u ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN="$OAUTH" claude -p "$prompt" $TOOLS; then
+            if investigar env -u ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN="$OAUTH" \
+                 claude -p "$prompt" "${TOOLS[@]}" "${FORMAT[@]}"; then
               exit 0
             fi
             echo "La corrida con la suscripción falló." >&2
@@ -227,7 +283,8 @@ jobs:
           else
             echo "Credencial: API key (ANTHROPIC_API_KEY). Se factura por token."
           fi
-          env -u CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_API_KEY="$APIKEY" claude -p "$prompt"
+          investigar env -u CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_API_KEY="$APIKEY" \
+            claude -p "$prompt" "${TOOLS[@]}" "${FORMAT[@]}"
       - name: Detect changes
         id: changes
         # `git status --porcelain` y no `git diff`: lo que el ciclo produce son archivos nuevos, y
