@@ -18,6 +18,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Un recorrido que frena da igual la salida que su contrato reserva para no poder.** `change-review`
+  enumera tres veredictos y el tercero es «no poder aprobar»; bloqueado, su informe parcial escribía
+  «No hay veredicto», que no es ninguno de los tres. Con el diff, los importadores y las pruebas a la
+  vista, un revisor **sí** puede firmar que no aprueba: eso es un veredicto, no su ausencia. Vale para
+  cualquier recorrido cuyo contrato tenga esa salida — un destino de «nada que hacer», una
+  recomendación de investigar.
 - **`dependsOn` dejó de ser decorativo: un recorrido corre sus etapas como su contrato las declara.**
   Hasta ahora el motor las corría en fila y le pasaba a cada una los handoffs de **todas** las
   anteriores, sin mirar de qué decía depender. `technical-design` existe para tener tres lecturas
