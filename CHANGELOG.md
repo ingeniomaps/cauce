@@ -44,6 +44,15 @@ diseño — eso vive en el commit y en el código.
   no se disparaba nunca: se le podía agregar una dimensión a un gate y sus casos aprobados seguían
   leyéndose vigentes. Qué archivo **es** el contrato depende del sujeto — el de un cargo es su
   `SKILL.md`, el de un recorrido su `flow.json`— y ahora se mira el que corresponde.
+## [0.49.0] - 2026-08-27
+
+### Corregido
+
+- **`ops context` ya no se traga las acciones humanas cuando no hay tarea en cola.** Se imprimían
+  después del `return` de «sin tarea disponible», así que una instancia recién arrancada —`onboard`
+  deja filas pendientes y ninguna tarea todavía— preguntaba qué toca ahora y recibía «nada», cuando lo
+  que tocaba era que una persona desbloqueara siete cosas. Lo destapó una corrida de un recorrido sobre
+  su banco.
 
 ## [0.48.0] - 2026-08-26
 
