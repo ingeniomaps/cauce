@@ -40,6 +40,19 @@ test('guard-destructive bloquea pérdida o publicación y permite lecturas', () 
   blocked('destructive', { tool_input: { command: 'rm -rf /' } }, /catastrófico/)
   assert.doesNotThrow(() => execute('destructive', { tool_input: { command: 'git status --short' } }))
   assert.doesNotThrow(() => execute('destructive', { tool_input: { command: 'rm -r build/cache' } }))
+
+  // `git checkout -- .` destruye lo mismo que `reset --hard` y sin recuperación, pero se escribe como
+  // una limpieza. Pasó dos veces en una sesión, las dos limpiando restos de una prueba: revirtió también
+  // el trabajo de al lado, que no estaba commiteado. Lo que engaña es que el alcance no se ve en el
+  // comando — `.` es el cwd, y el cwd suele tener más de lo que uno está mirando.
+  for (const wide of ['git checkout -- .', 'git restore .', 'git restore --staged .', 'git checkout --']) {
+    blocked('destructive', { tool_input: { command: wide } }, /no sólo lo que estás mirando/)
+  }
+  // Revertir un archivo nombrado es trabajo corriente y no se toca. Bloquearlo empujaría a la forma
+  // ancha, que es justo la peligrosa.
+  for (const narrow of ['git checkout -- src/main.js', 'git restore src/a.js', 'git checkout main']) {
+    assert.doesNotThrow(() => execute('destructive', { tool_input: { command: narrow } }), narrow)
+  }
 })
 
 // La mitad que importa es que `true` deje pasar: `allowPush` existía sólo para el validador, el guard

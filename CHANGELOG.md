@@ -14,6 +14,16 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.51.0] - 2026-08-27
+
+### Agregado
+
+- **El guard `destructive` bloquea la forma ancha de `git checkout` y `git restore`.** `git checkout
+  -- .` destruye lo mismo que `git reset --hard` —que ya se bloqueaba— y sin recuperación, pero se
+  escribe como una limpieza. Se bloquea sólo cuando la ruta es `.`, `*`, `:/` o no hay ninguna:
+  revertir un archivo nombrado es trabajo corriente y sigue pasando. Lo que engaña es que el alcance no
+  se ve en el comando — `.` es el directorio actual, y ahí suele haber más de lo que uno está mirando.
+
 ## [0.50.0] - 2026-08-27
 
 ### Corregido

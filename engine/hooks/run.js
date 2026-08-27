@@ -114,6 +114,19 @@ function destructive(input) {
   const rules = [
     [/\bgit\s+reset\s+--hard\b/, "'git reset --hard' destruye cambios locales."],
     [/\bgit\s+clean\s+-[^\s]*f/, "'git clean -f' borra archivos sin seguimiento."],
+    // `git checkout -- .` destruye lo mismo que `reset --hard` y sin recuperación, pero se escribe como
+    // una limpieza. Se bloquea sólo la forma ancha —`.`, `*`, `:/`, o sin ruta—: revertir un archivo
+    // nombrado es trabajo corriente y no se toca.
+    //
+    // Pasó dos veces en una sesión, las dos limpiando restos de una prueba: el comando revirtió también
+    // el trabajo de al lado, que no estaba commiteado. Lo que engaña es que el alcance no se ve en el
+    // comando — `.` es el cwd, y el cwd suele tener más de lo que uno está mirando.
+    [
+      // `git restore .` no lleva `--` y destruye igual: es la forma moderna del mismo comando.
+      /\bgit\s+(?:checkout|restore)\s+(?:[^;&|]*?\s)?(?:--\s*(?:$|[;&|])|(?:--\s+)?(?:\.|\*|:\/)\s*(?:$|[;&|]))/,
+      "'git checkout -- .' revierte todo lo no commiteado del directorio, no sólo lo que estás mirando. "
+      + 'Nombrá el archivo, o commiteá lo que quieras conservar antes.',
+    ],
     [
       /\bdocker(?:\s+\w+)*\s+(?:volume\s+(?:rm|prune)|system\s+prune|network\s+prune)\b/,
       'La limpieza global de Docker puede borrar datos compartidos.',
