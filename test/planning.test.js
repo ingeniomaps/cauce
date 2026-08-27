@@ -521,9 +521,17 @@ test('una parada se nombra con el vocabulario del protocolo', () => {
   assert.equal(JSON.parse(run(['context', planning, '--json']).stdout).blocked, 'blocked-on-human')
 
   fs.writeFileSync(path.join(planning, 'BACKLOG.md'), '# Backlog promovido\n')
-  assert.match(run(['context', planning]).stdout, /^TASK\s+\(sin tarea disponible\)/m,
+  const sinCola = run(['context', planning])
+  assert.match(sinCola.stdout, /^TASK\s+\(sin tarea disponible\)/m,
     'la cola vacía sigue siendo otra cosa que una cola trabada')
   assert.equal(JSON.parse(run(['context', planning, '--json']).stdout).blocked, '')
+
+  // Y sin tarea las acciones humanas salen igual. Estaban después del `return`, así que una instancia
+  // recién arrancada —`onboard` deja filas pendientes y ninguna tarea— contestaba «sin tarea
+  // disponible» y se tragaba lo único que había para hacer. Lo destapó una corrida de `technical-design`
+  // sobre su banco: siete filas pendientes y `context` no nombró ninguna.
+  assert.match(sinCola.stdout, /^HUMAN\s+alta-email-nuevo: Crear la cuenta SMTP/m,
+    'lo que toca es que una persona desbloquee, y eso es lo que el comando existe para decir')
 })
 
 // La épica rechaza el marcador al activarse, pero la tarea es lo que un runner recibe. Sin la misma

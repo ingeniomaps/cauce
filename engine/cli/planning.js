@@ -205,7 +205,15 @@ function context(dir, cli) {
     const row = humanActions.find((action) => skipped.includes(action.task)) || humanActions[0]
     return console.log(`BLOCKED  blocked-on-human — ${row.task}: ${row.action}`)
   }
-  if (!report.task) return console.log('TASK   (sin tarea disponible)')
+  // Sin tarea no se corta la salida: las acciones humanas van igual. Estaban después del `return`, así
+  // que una instancia recién arrancada —`onboard` deja filas pendientes y ninguna tarea todavía—
+  // respondía «sin tarea disponible» y se tragaba las siete cosas que una persona tenía que desbloquear.
+  // Es el comando que existe para decir qué toca ahora, contestando «nada» cuando lo que toca es eso.
+  if (!report.task) {
+    console.log('TASK   (sin tarea disponible)')
+    for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
+    return
+  }
   console.log(`TASK   ${report.task.slug}${report.task.tier ? ` [${report.task.tier}]` : ''}` +
     `${report.task.service ? `  service: ${report.task.service}` : ''}` +
     `${report.task.hito ? `  hito: ${report.task.hito}` : ''}`)
