@@ -101,6 +101,71 @@ test('entre etapas viaja el resumen, y a la síntesis la ruta del análisis', as
   assert.equal(draft.includes('el problema es el alta duplicada'), false, 'y no recibe el resumen dos veces')
 })
 
+// `dependsOn` estaba en el contrato y el motor lo ignoraba: corría las etapas en fila y le pasaba a
+// cada una los handoffs de **todas** las anteriores. `technical-design` existe para tener tres lecturas
+// independientes de un mismo encuadre y no las tenía — su propio guardrail dice que las tres «no
+// negocian entre sí ni ajustan su hallazgo para que cierre con el de otra», y una que ya leyó a la
+// primera no puede cumplirlo. Lo destapó una corrida: `interface` escribió «Coincido» sobre un supuesto
+// de `service` y armó su hallazgo principal sobre su K6.
+test('las etapas hermanas no se leen entre sí, y la que las junta las lee a las tres', async () => {
+  const contrato = baseScript()['flow-contract']
+  const etapa = (id, agent, dependsOn) => ({
+    id, agent, dependsOn, phase: 'discovery', skill: '/s', produces: ['x'], exitGate: 'y',
+  })
+  const { prompts } = await runFlow({
+    'flow-contract': {
+      ...contrato,
+      stages: [
+        etapa('encuadre', 'a', []),
+        etapa('uno', 'b', ['encuadre']),
+        etapa('dos', 'c', ['encuadre']),
+        etapa('junta', 'd', ['uno', 'dos']),
+        etapa('solo-uno', 'e', ['uno']),
+      ],
+    },
+    'stage:encuadre': { gate: 'cumplido', summary: 'lo del encuadre', analysis: '/a.md' },
+    'stage:uno': { gate: 'cumplido', summary: 'lo de uno', analysis: '/a.md' },
+    'stage:dos': { gate: 'cumplido', summary: 'lo de dos', analysis: '/a.md' },
+    'stage:junta': { gate: 'cumplido', summary: 'lo de junta', analysis: '/a.md' },
+    'stage:solo-uno': { gate: 'cumplido', summary: 'lo de solo-uno', analysis: '/a.md' },
+  })
+  const prompt = (id) => prompts.find((one) => one.key === `stage:${id}`).prompt
+
+  assert.match(prompt('uno'), /lo del encuadre/, 've aquello de lo que declara depender')
+  assert.equal(prompt('uno').includes('lo de dos'), false, 'y no a su hermana')
+  assert.equal(prompt('dos').includes('lo de uno'), false, 'en las dos direcciones')
+
+  // La que las junta ve a las tres: sus dos dependencias y lo que aquéllas dependían.
+  const junta = prompt('junta')
+  for (const visto of ['lo del encuadre', 'lo de uno', 'lo de dos']) {
+    assert.match(junta, new RegExp(visto), `la que junta ve ${visto}`)
+  }
+
+  // Y ésta es la que prueba el filtro y no el paralelismo. Entre hermanas alcanza con que corran a la
+  // vez —cuando se arma su prompt ninguna devolvió todavía—, así que romper `ancestors` no las rompía.
+  // Una etapa posterior que depende de una sola sí necesita el filtro: `dos` ya está en los handoffs
+  // cuando le toca, y verla sería exactamente lo que el contrato dice que no pasa.
+  const soloUno = prompt('solo-uno')
+  assert.match(soloUno, /lo de uno/, 've a aquélla de la que depende')
+  assert.match(soloUno, /lo del encuadre/, 'y lo que aquélla dependía')
+  assert.equal(soloUno.includes('lo de dos'), false, 'y no a la que no declaró')
+})
+
+// Independencia es una afirmación, y una afirmación se declara. Un contrato que no dice de qué depende
+// se comporta como antes —cada etapa ve todo lo anterior—, porque lo contrario paralelizaría en silencio
+// recorridos escritos para correr en fila.
+test('una etapa sin dependsOn sigue viendo todo lo anterior', async () => {
+  const contrato = baseScript()['flow-contract']
+  const { prompts } = await runFlow({
+    'flow-contract': {
+      ...contrato,
+      stages: contrato.stages.map(({ dependsOn, ...rest }) => rest),
+    },
+  })
+  const segunda = prompts.find((one) => one.key === 'stage:factibilidad').prompt
+  assert.match(segunda, /el problema es el alta duplicada/, 'sin declaración, ve a la anterior')
+})
+
 test('un exit gate no cumplido corta y deja la acción humana escrita', async () => {
   const { result, written, asked } = await runFlow({
     'stage:encuadre': {

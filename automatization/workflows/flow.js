@@ -206,16 +206,59 @@ const blocked = []
 // corre `autobuild`, y sólo después de que una persona promueva la épica al BACKLOG.
 const discovery = contract.stages.filter((stage) => stage.phase === 'discovery')
 if (!discovery.length) return stop('sin-descubrimiento', `${FLOW} no declara etapas de discovery`)
-for (const stage of discovery) {
-  const previous = handoffs.length
-    ? `Handoffs previos:\n${handoffs.map((entry) => `- ${entry.id}: ${entry.summary}`).join('\n')}`
-      + (openConditions(handoffs).length
+
+// Qué handoffs ve una etapa: los de aquello de lo que declara depender, y lo que aquéllos dependían.
+// No los de sus hermanas. Una etapa que **no** declara `dependsOn` depende de todo lo anterior, que es
+// como se comportaba esto antes: independencia es una afirmación y una afirmación se declara.
+function ancestors(stage, index) {
+  if (!stage.dependsOn) return discovery.slice(0, index).map((one) => one.id)
+  const out = new Set()
+  const pending = [...stage.dependsOn]
+  while (pending.length) {
+    const id = pending.pop()
+    if (out.has(id)) continue
+    out.add(id)
+    const found = discovery.find((one) => one.id === id)
+    const arriba = found && found.dependsOn ? found.dependsOn : []
+    for (const up of arriba) pending.push(up)
+  }
+  return [...out]
+}
+
+// Los niveles del grafo: cada uno son las etapas cuyas dependencias ya cerraron, y corren a la vez.
+// `technical-design` existe para tener tres lecturas independientes de un mismo encuadre, y corriéndolas
+// en fila con el handoff de la anterior adentro no las tiene: su propio guardrail dice que las tres «no
+// negocian entre sí ni ajustan su hallazgo para que cierre con el de otra», y una que ya leyó a la
+// primera no puede cumplirlo. Lo destapó una corrida: `interface` escribió «Coincido» sobre un supuesto
+// de `service` y armó su hallazgo principal sobre el K6 de `service`. El contrato lo declaraba desde el
+// principio en `dependsOn` y el motor lo ignoraba.
+function levels(stages) {
+  const out = []
+  const done = new Set()
+  let rest = stages.map((stage, index) => ({ stage, index, needs: ancestors(stage, index) }))
+  while (rest.length) {
+    const level = rest.filter((one) => one.needs.every((id) => done.has(id)))
+    // Una dependencia que no cierra nunca deja el resto afuera. No puede pasar —`flow check` rechaza
+    // una dependencia inexistente o posterior— pero un bucle que no avanza cuelga la corrida entera.
+    if (!level.length) { out.push(rest); break }
+    out.push(level)
+    for (const one of level) done.add(one.stage.id)
+    rest = rest.filter((one) => !level.includes(one))
+  }
+  return out
+}
+
+const runStage = (stage, index) => {
+  const visible = handoffs.filter((entry) => ancestors(stage, index).includes(entry.id))
+  const abiertas = openConditions(visible)
+  const previous = visible.length
+    ? `Handoffs previos:\n${visible.map((entry) => `- ${entry.id}: ${entry.summary}`).join('\n')}`
+      + (abiertas.length
         ? '\n\nCondiciones que dejaron las etapas anteriores y tenés que respetar:\n'
-          + openConditions(handoffs).map((one) => `- ${one}`).join('\n')
+          + abiertas.map((one) => `- ${one}`).join('\n')
         : '')
     : 'Sos la primera etapa: no hay handoff previo.'
-
-  const result = await agent(
+  return agent(
     `${RULES}\n\n${previous}\n\nActuá como ${stage.agent}, respetando su contrato en ` +
     `${stage.skill || `${WORKDIR}/agents/roles/${stage.agent}/SKILL.md`} y sus límites. ` +
     `Etapa "${stage.id}": producí ` +
@@ -235,16 +278,27 @@ for (const stage of discovery) {
     `En summary va, en 150 ` +
     `palabras o menos, lo que la etapa siguiente necesita para decidir —no un resumen de tu análisis, ` +
     `sino lo que le cambia el trabajo—, porque eso se le reenvía a cada etapa posterior.`,
-    { schema: STAGE, label: `stage:${stage.id}` },
-  )
-  if (!result) return stop('stage-unavailable', `la etapa ${stage.id} no devolvió resultado`)
+    { schema: STAGE, label: `stage:${stage.id}` })
+}
 
-  handoffs.push({ id: stage.id, agent: stage.agent, ...result })
-  if (result.gate === 'no-cumplido') {
-    blocked.push({ stage: stage.id, missing: result.missing || '', action: result.humanAction || '' })
-    log(`Gate no cumplido en ${stage.id}: ${result.missing || 'sin detalle'}`)
-    break
+// Nivel por nivel, y las de un mismo nivel a la vez. Si una de ellas no cumple su gate, el recorrido
+// para: las hermanas que corrieron con ella entran igual al handoff —su trabajo está hecho y pagado— y
+// lo que se abandona son los niveles siguientes.
+for (const level of levels(discovery)) {
+  const results = await parallel(level.map((one) =>
+    () => runStage(one.stage, one.index).then((result) => ({ stage: one.stage, result }))))
+  for (const one of results) {
+    if (!one || !one.result) return stop('stage-unavailable', 'una etapa del nivel no devolvió resultado')
+    handoffs.push({ id: one.stage.id, agent: one.stage.agent, ...one.result })
   }
+  for (const one of results) {
+    if (one.result.gate !== 'no-cumplido') continue
+    blocked.push({
+      stage: one.stage.id, missing: one.result.missing || '', action: one.result.humanAction || '',
+    })
+    log(`Gate no cumplido en ${one.stage.id}: ${one.result.missing || 'sin detalle'}`)
+  }
+  if (blocked.length) break
 }
 
 if (blocked.length) {
