@@ -101,8 +101,14 @@ test('la investigación recibe las herramientas que su instrucción nombra, y no
 
   // Se afirma sobre la invocación y no sobre el archivo: declarar los permisos en una variable y no
   // pasársela a `claude` deja todo igual, y buscar sólo la cadena `--allowedTools` no lo nota.
-  assert.match(source, /claude -p "\$prompt" \$TOOLS/, 'los permisos llegan a la invocación')
-  assert.match(source, /TOOLS='--allowedTools /, 'y se declaran en un solo lugar')
+  assert.match(source, /claude -p "\$prompt" "\$\{TOOLS\[@\]\}"/, 'los permisos llegan a la invocación')
+
+  // Un arreglo y no una cadena. Sin comillas el shell parte `Bash(make agent-learn *)` en tres palabras
+  // y el CLI descarta la última: «Ignoring --allowedTools rule "*)"». Bash nunca se concedía, y la
+  // corrida salía bien igual porque con web y lectura alcanzaba — el defecto vivía en dos líneas del log.
+  assert.match(source, /TOOLS=\(--allowedTools /, 'se declaran como arreglo')
+  assert.match(source, /'Bash\(make agent-learn \*\)'/, 'y cada regla con espacios va entrecomillada')
+  assert.match(source, /'Bash\(make agent-evaluate \*\)'/)
   for (const tool of ['WebSearch', 'WebFetch', 'Read', 'Edit']) {
     assert.match(source, new RegExp(`--allowedTools[^\n]*\\b${tool}\\b`), `puede ${tool}`)
   }
@@ -114,6 +120,28 @@ test('la investigación recibe las herramientas que su instrucción nombra, y no
   // planificación, commit y push. El guard más barato contra eso es no dárselo.
   assert.equal(/dangerously-skip-permissions/.test(source), false, 'sin saltear permisos')
   assert.equal(/permission-mode\s+bypassPermissions/.test(source), false)
+})
+
+// Con `--output-format json` el CLI bufferea hasta el final, así que el log queda mudo los diez
+// minutos que dura una investigación y no se distingue de una corrida colgada: la única salida era
+// esperar el timeout para saber cuál era. El latido lo emite el shell y no el modelo — si el proceso
+// muriera, `kill -0` falla y el bucle corta, así que no puede mentir que sigue vivo.
+test('la investigación late mientras corre y deja dicho lo que costó', () => {
+  const file = path.resolve(__dirname, '..', '.github', 'workflows', 'agent-learning.yml')
+  const source = fs.readFileSync(file, 'utf8')
+
+  assert.match(source, /while kill -0 "\$pid"/, 'el latido comprueba el proceso, no un reloj')
+  assert.match(source, /investigando, van \$\(\(espera \/ 60\)\) min/, 'y dice cuánto lleva')
+  // Poleo corto y voz cada minuto: con `sleep 60` una corrida de dos segundos esperaba el minuto
+  // entero, y la prueba que ejecuta este paso con un `claude` falso se colgaba.
+  assert.match(source, /sleep 5$/m, 'sin hacer esperar un minuto a lo que ya terminó')
+  assert.match(source, /return \$salida/, 'sin tragarse el código de salida del modelo')
+
+  // Lo que vuelve medible una corrida. Sin esto no había forma de saber qué cuesta una investigación,
+  // y un permiso mal escrito sólo se veía leyendo dos líneas perdidas del log.
+  assert.match(source, /--output-format json/)
+  assert.match(source, /total_cost_usd/, 'el costo queda en el resumen del job')
+  assert.match(source, /permission_denials/, 'y lo que se le negó, que es como se ve un permiso roto')
 })
 
 // Que el informe exista no alcanza: `learn` lo crea vacío y el modelo puede devolverlo tal cual. Así
