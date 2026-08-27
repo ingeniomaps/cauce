@@ -36,10 +36,7 @@ Test Suites: 1 passed, 1 total
 
 `format.ts` no tiene test propio. `order-payload.ts` tampoco. Los seis que pasaron son del listado.
 
-## De la instancia — organization/company.md, «Qué no se puede romper»
+## Lo que no consta en este documento
 
-| Superficie | Qué se detiene si falla | A quién alcanza | Dónde vive |
-|---|---|---|---|
-| Alta de pedido | No entra ninguna venta | Todos los compradores | `src/checkout/` |
-| Acceso a la plataforma | Nadie puede entrar | Todos los usuarios | `src/auth/` |
-| Listado y reportes | Nadie consulta lo ya vendido | Operación interna | `src/pages/orders/`, `src/reports/` |
+Si alguna de estas rutas está declarada como crítica, no lo dice el PR: eso vive en la instancia, en
+`organization/company.md`. Quien revise tiene que ir a mirarlo — acá no está.
