@@ -14,6 +14,22 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.49.0] - 2026-08-27
+
+### Corregido
+
+- **`dependsOn` dejó de ser decorativo: un recorrido corre sus etapas como su contrato las declara.**
+  Hasta ahora el motor las corría en fila y le pasaba a cada una los handoffs de **todas** las
+  anteriores, sin mirar de qué decía depender. `technical-design` existe para tener tres lecturas
+  independientes de un mismo encuadre y no las tenía: su propio guardrail dice que las tres «no negocian
+  entre sí ni ajustan su hallazgo para que cierre con el de otra», y una que ya leyó a la primera no
+  puede cumplirlo. Ahora las etapas se agrupan por nivel de dependencia, las de un mismo nivel corren a
+  la vez, y cada una ve **sólo** los handoffs de aquello de lo que declara depender. Cinco de los siete
+  recorridos del catálogo tienen un nivel con paralelismo real y lo estrenan con esto. Una etapa que
+  **no** declara `dependsOn` sigue viendo todo lo anterior, igual que antes: independencia es una
+  afirmación, y una afirmación se declara. Si una etapa no cumple su gate, el corte es por nivel — las
+  que corrieron con ella entran igual al handoff, y lo que se abandona son los niveles siguientes.
+
 ## [0.48.0] - 2026-08-26
 
 ### Corregido

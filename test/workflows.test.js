@@ -131,9 +131,11 @@ test('flow recorre las etapas del manifiesto y exige cada exit gate', () => {
   assert.match(flowWorkflow, /agents list --json/, 'y resuelve dónde vive cada cargo')
   assert.match(flowWorkflow, /exitGate/, 'cada etapa tiene su gate')
   assert.match(flowWorkflow, /enum: \['cumplido', 'con-condiciones', 'no-cumplido'\]/, 'con sus tres salidas')
-  // Un gate no cumplido corta el recorrido en vez de seguir con evidencia floja.
-  assert.match(flowWorkflow, /if \(result\.gate === 'no-cumplido'\)/)
-  assert.match(flowWorkflow, /break/)
+  // Un gate no cumplido corta el recorrido en vez de seguir con evidencia floja. Se corta por nivel y
+  // no por etapa: las hermanas que corrieron a la vez que la que falló entran igual al handoff —su
+  // trabajo está hecho y pagado— y lo que se abandona son los niveles siguientes.
+  assert.match(flowWorkflow, /one\.result\.gate !== 'no-cumplido'/)
+  assert.match(flowWorkflow, /if \(blocked\.length\) break/)
   for (const phase of ['Contract', 'Stages', 'Draft', 'Closing']) {
     assert.match(flowWorkflow, new RegExp(`phase\\('${phase}'\\)`))
   }
