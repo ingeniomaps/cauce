@@ -345,6 +345,11 @@ if (blocked.length) {
     `**entrega parcial** desde el título: qué quedó establecido y con qué evidencia, qué no se pudo ` +
     `y por qué, y qué haría falta para completarlo —"${blocked[0].missing}"—. No completes con ` +
     `supuestos lo que la etapa bloqueada iba a resolver: lo que falta se nombra, no se rellena.\n\n` +
+    `Y si el recorrido enumera una salida para «no se pudo» —un veredicto de no poder aprobar, un ` +
+    `destino de «nada que hacer», una recomendación de investigar—, ésa es la respuesta y hay que ` +
+    `darla. Frenar no exime de la salida que el contrato reserva justo para esto: «no hay veredicto» ` +
+    `no es ninguna de las que el contrato enumera, y quien pidió la revisión se queda sin la única que ` +
+    `sí podías firmar con lo que tenías.\n\n` +
     `Eso vale para lo que necesita el insumo que falta, y sólo para eso. Lo que el material que ya ` +
     `tenés alcanza para establecer se entrega acá, aunque en el recorrido completo lo hubiera ` +
     `producido una etapa posterior: esa etapa no va a correr, así que reservárselo no se lo guarda ` +

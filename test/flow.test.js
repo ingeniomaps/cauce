@@ -356,4 +356,11 @@ test('lo que una etapa posterior habría hecho, pero el material ya sostiene, se
   assert.match(parcial, /esa etapa no va a correr/, 'la reserva se acota por lo que ya no va a pasar')
   assert.match(parcial, /lo pierde/, 'y se dice qué cuesta reservárselo')
   assert.match(parcial, /decí de qué etapa era/, 'sin borrar de quién era el trabajo')
+
+  // Frenar no exime de la salida que el contrato reserva para no poder. `change-review` enumera tres
+  // veredictos y el tercero es «no poder aprobar»; bloqueado, escribía «No hay veredicto», que no es
+  // ninguno de los tres. Con el diff, el grep de importadores y las pruebas a la vista, un revisor sí
+  // puede firmar que no aprueba: eso es un veredicto, no su ausencia.
+  assert.match(parcial, /salida para «no se pudo»/, 'la salida de no poder es una salida, no un hueco')
+  assert.match(parcial, /Frenar no exime/)
 })
