@@ -14,6 +14,17 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.52.0] - 2026-08-27
+
+### Corregido
+
+- **Lanzar el aprendizaje a mano ya no arrastra el ensamblaje mensual.** El `workflow_dispatch` corría
+  las dos fases, así que probar la investigación de un cargo abría además su propuesta — y una
+  propuesta cuesta una firma humana. Peor: consolidar **sella** los informes que consume, o sea que un
+  lanzamiento de prueba movía estado real del ciclo. Ahora el dispatch acepta `phase`, con `research`
+  por defecto, que es para lo que se lanza a mano; `propose` y `both` siguen disponibles cuando de
+  verdad haga falta, y los crones deciden por su cuenta como siempre.
+
 ## [0.51.0] - 2026-08-27
 
 ### Agregado

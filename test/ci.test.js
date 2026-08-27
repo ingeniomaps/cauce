@@ -71,6 +71,30 @@ test('ningún setup-node deja encendido el caché que este repo no puede aliment
 // que no puede correr un comando ni salir a la web — que es todo lo que una investigación hace. El
 // cargo se portó bien y lo dijo («I won't fabricate sources, dates, or command output»), y el workflow
 // publicó el vacío igual.
+// Lanzarlo a mano disparaba también el ensamblaje mensual: probar `research` abría una propuesta de
+// regalo, y una propuesta cuesta una firma humana. Peor, consolidar sella los informes que consume, así
+// que un dispatch de prueba movía estado real del ciclo.
+test('un dispatch elige su fase y no arrastra el ensamblaje', () => {
+  const file = path.resolve(__dirname, '..', '.github', 'workflows', 'agent-learning.yml')
+  // Sobre el texto y no con un parser de YAML: el repositorio no tiene dependencias, ni de desarrollo.
+  const source = fs.readFileSync(file, 'utf8')
+
+  assert.match(source, /^ {6}phase:$/m, 'el dispatch declara qué fase correr')
+  assert.match(source, /options: \[research, propose, both\]/)
+  assert.match(source, /description: 'Qué correr: research \(default\)[\s\S]{0,120}default: 'research'/,
+    'y por defecto corre lo que uno lanza a mano')
+
+  // Cada job mira la fase. Se lee el bloque de cada uno, no el archivo entero: una condición puesta en
+  // el job equivocado dejaría pasar una aserción sobre el texto completo.
+  const bloque = (job) => source.split(new RegExp(`^  ${job}:$`, 'm'))[1].split(/^  [a-z-]+:$/m)[0]
+  assert.match(bloque('research'), /inputs\.phase != 'propose'/)
+  assert.match(bloque('propose'), /inputs\.phase != 'research'/)
+  assert.match(bloque('propose-flows'), /inputs\.phase != 'research'/)
+  for (const job of ['propose', 'propose-flows']) {
+    assert.match(bloque(job), /schedule == '17 7 1 \* \*'/, `${job} sigue corriendo por su cron`)
+  }
+})
+
 test('la investigación recibe las herramientas que su instrucción nombra, y no más', () => {
   const file = path.resolve(__dirname, '..', '.github', 'workflows', 'agent-learning.yml')
   const source = fs.readFileSync(file, 'utf8')

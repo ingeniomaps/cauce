@@ -24,6 +24,18 @@ on:
         description: 'Slug de un agente. Vacío corre todos.'
         required: false
         default: ''
+      # Lanzarlo a mano disparaba también el ensamblaje mensual, así que probar `research` abría una
+      # propuesta de regalo — y una propuesta cuesta una firma humana. Peor: consolidar **sella** los
+      # informes que consume, o sea que un dispatch de prueba movía estado real del ciclo.
+      #
+      # `research` por defecto porque es para lo que se lanza a mano. El ensamblaje sigue corriendo
+      # entero por su cron, y se puede pedir cuando de verdad haga falta.
+      phase:
+        description: 'Qué correr: research (default), propose o both.'
+        required: false
+        default: 'research'
+        type: choice
+        options: [research, propose, both]
 
 # El default, para que un job nuevo nazca sin poder escribir hasta que alguien lo decida.
 permissions:
@@ -142,7 +154,9 @@ jobs:
   # Sin credencial no corre: `learn` sólo arma el andamiaje, y llenarlo es lo que hace el modelo.
   research:
     # El día del ensamblaje no se investiga: `discover` devuelve lista vacía y este job no arranca.
-    if: needs.discover.outputs.agents != '[]' && needs.discover.outputs.model == 'true'
+    if: >-
+      needs.discover.outputs.agents != '[]' && needs.discover.outputs.model == 'true'
+      && (github.event_name != 'workflow_dispatch' || inputs.phase != 'propose')
     needs: discover
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -348,7 +362,9 @@ jobs:
   # Este job no habla con ningún modelo: consolida informes ya commiteados con el CLI y abre el PR.
   # Por eso puede escribir sin la separación que exige `research`.
   propose:
-    if: github.event.schedule == '17 7 1 * *' || github.event_name == 'workflow_dispatch'
+    if: >-
+      github.event.schedule == '17 7 1 * *'
+      || (github.event_name == 'workflow_dispatch' && inputs.phase != 'research')
     needs: discover
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -440,7 +456,10 @@ jobs:
   # veredictos ya commiteados con el CLI y abre el PR. Corre el mismo día —el del ensamblaje— porque
   # es cuando se consolida, no cuando se investiga: un recorrido no investiga nunca.
   propose-flows:
-    if: needs.discover.outputs.flows != '[]' && (github.event.schedule == '17 7 1 * *' || github.event_name == 'workflow_dispatch')
+    if: >-
+      needs.discover.outputs.flows != '[]'
+      && (github.event.schedule == '17 7 1 * *'
+        || (github.event_name == 'workflow_dispatch' && inputs.phase != 'research'))
     needs: discover
     runs-on: ubuntu-latest
     timeout-minutes: 15
