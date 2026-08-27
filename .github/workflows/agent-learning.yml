@@ -188,9 +188,20 @@ jobs:
           APIKEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           prompt="Leé el learning/AUTOMATION.md del cargo $AGENT y ejecutá exactamente lo que declara. El informe de esta semana ya está creado y vacío: completalo. Cada afirmación necesita enlace, fecha y versión; lo que no puedas corroborar va a Preguntas abiertas en vez de afirmarse. El único archivo que escribís es ese informe."
+          # Sin permisos declarados, `claude -p` no puede correr un comando ni salir a la web, que es
+          # todo lo que una investigación hace. La primera corrida real duró tres minutos y devolvió el
+          # informe vacío: «every tool this task needs is currently denied in this session». El cargo se
+          # portó bien —«Per this role's own rule (R14), I won't fabricate sources, dates, or command
+          # output»— y el workflow igual publicó el vacío.
+          #
+          # La lista sale del `AUTOMATION.md` de los cargos y no de lo cómodo: leer, buscar, escribir su
+          # informe, y dos comandos nombrados. Saltear permisos le daría justo lo que su instrucción le
+          # prohíbe —tocar dependencias, pruebas, código, SKILL.md, planificación, commit, push— y el
+          # guard más barato contra eso es no dárselo.
+          TOOLS='--allowedTools WebSearch WebFetch Read Glob Grep Edit Bash(make agent-learn *) Bash(make agent-evaluate *)'
           if [ -n "$OAUTH" ]; then
             echo "Credencial: suscripción (CLAUDE_CODE_OAUTH_TOKEN)."
-            if env -u ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN="$OAUTH" claude -p "$prompt"; then
+            if env -u ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN="$OAUTH" claude -p "$prompt" $TOOLS; then
               exit 0
             fi
             echo "La corrida con la suscripción falló." >&2
@@ -226,6 +237,27 @@ jobs:
           if [ -z "$report" ]; then
             echo "El agente no escribió su informe; lo que haya tocado no sale de acá." >&2
             git status --porcelain >&2
+            exit 1
+          fi
+          # Y que exista no alcanza: `learn` lo crea vacío y el modelo puede devolverlo tal cual. Así
+          # salió la primera corrida real, y `research-pr` lo publicó igual — un lunes eso son 29 PRs en
+          # blanco y nada lo dice. Es la forma que R15 nombra: se lee entero y no lo está.
+          #
+          # Se mira contenido y no tamaño: las secciones que la propuesta mensual consolida son las que
+          # tienen que tener algo. Un informe vacío puede ser una negativa correcta —negarse a fabricar
+          # bajo R14 lo es— pero eso se lee en el log, no en un PR: la propuesta que lo consolide
+          # recibiría un insumo que no existe. Falla ruidoso y lo mira una persona.
+          vacias=""
+          for seccion in 'Fuentes consultadas' 'Hallazgos'; do
+            cuerpo="$(awk -v s="## $seccion" '
+              index($0, s) == 1 { on = 1; next } on && /^## / { exit } on && NF { print }
+            ' "$report" | grep -v '^<!--' | grep -cv '^\s*$' || true)"
+            if [ "$cuerpo" -eq 0 ]; then vacias="$vacias $seccion"; fi
+          done
+          if [ -n "$vacias" ]; then
+            echo "El informe de $AGENT quedó sin contenido en:$vacias" >&2
+            echo "No se abre PR: una propuesta construida sobre esto consolidaría un insumo que no existe." >&2
+            echo "Mirá el paso «Research» — la causa suele ser una herramienta denegada, no el modelo." >&2
             exit 1
           fi
           echo "path=$report" >> "$GITHUB_OUTPUT"
