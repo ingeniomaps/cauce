@@ -66,6 +66,47 @@ test('ningún setup-node deja encendido el caché que este repo no puede aliment
     'un setup-node sin package-manager-cache: false busca un lock file que no existe')
 })
 
+// La primera corrida real con credencial duró tres minutos y devolvió el informe vacío: «every tool
+// this task needs is currently denied in this session». `claude -p` corre sin permisos declarados, así
+// que no puede correr un comando ni salir a la web — que es todo lo que una investigación hace. El
+// cargo se portó bien y lo dijo («I won't fabricate sources, dates, or command output»), y el workflow
+// publicó el vacío igual.
+test('la investigación recibe las herramientas que su instrucción nombra, y no más', () => {
+  const file = path.resolve(__dirname, '..', '.github', 'workflows', 'agent-learning.yml')
+  const source = fs.readFileSync(file, 'utf8')
+
+  // Se afirma sobre la invocación y no sobre el archivo: declarar los permisos en una variable y no
+  // pasársela a `claude` deja todo igual, y buscar sólo la cadena `--allowedTools` no lo nota.
+  assert.match(source, /claude -p "\$prompt" \$TOOLS/, 'los permisos llegan a la invocación')
+  assert.match(source, /TOOLS='--allowedTools /, 'y se declaran en un solo lugar')
+  for (const tool of ['WebSearch', 'WebFetch', 'Read', 'Edit']) {
+    assert.match(source, new RegExp(`--allowedTools[^\n]*\\b${tool}\\b`), `puede ${tool}`)
+  }
+  // Los dos comandos que el `AUTOMATION.md` de los cargos nombra, y sólo ésos.
+  assert.match(source, /Bash\(make agent-learn \*\)/)
+  assert.match(source, /Bash\(make agent-evaluate \*\)/)
+
+  // Saltear permisos le daría justo lo que su instrucción le prohíbe: dependencias, código, SKILL.md,
+  // planificación, commit y push. El guard más barato contra eso es no dárselo.
+  assert.equal(/dangerously-skip-permissions/.test(source), false, 'sin saltear permisos')
+  assert.equal(/permission-mode\s+bypassPermissions/.test(source), false)
+})
+
+// Que el informe exista no alcanza: `learn` lo crea vacío y el modelo puede devolverlo tal cual. Así
+// salió la primera corrida y `research-pr` lo publicó igual — un lunes eso son 29 PRs en blanco y nada
+// lo dice. Es la forma que R15 nombra: se lee entero y no lo está.
+test('un informe sin contenido no abre PR', () => {
+  const file = path.resolve(__dirname, '..', '.github', 'workflows', 'agent-learning.yml')
+  const source = fs.readFileSync(file, 'utf8')
+
+  // Se mira contenido, y de las secciones que la propuesta mensual consolida.
+  assert.match(source, /for seccion in 'Fuentes consultadas' 'Hallazgos'/)
+  assert.match(source, /quedó sin contenido en:/, 'y dice cuáles quedaron vacías')
+  assert.match(source, /No se abre PR/, 'en vez de publicar un insumo que no existe')
+  // El diagnóstico que ahorra la próxima media hora: la causa suele ser un permiso, no el modelo.
+  assert.match(source, /una herramienta denegada, no el modelo/)
+})
+
 test('cada cron investiga su cadencia, y el del ensamblaje no investiga', () => {
   const file = path.resolve(__dirname, '..', '.github', 'workflows', 'agent-learning.yml')
   const source = fs.readFileSync(file, 'utf8')

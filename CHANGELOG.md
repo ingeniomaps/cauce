@@ -14,6 +14,21 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.50.0] - 2026-08-27
+
+### Corregido
+
+- **La investigación semanal recibe las herramientas que su instrucción nombra.** Corría sin permisos
+  declarados, así que no podía correr un comando ni salir a la web —que es todo lo que una
+  investigación hace— y devolvía el informe vacío en tres minutos. El cargo se portaba bien y lo decía:
+  «no voy a fabricar fuentes, fechas ni salidas de comando para llenar el informe». Ahora se le declaran
+  las que su `AUTOMATION.md` nombra —buscar, leer, escribir su informe, `make agent-learn` y
+  `make agent-evaluate`— y sólo ésas: saltear permisos le daría justo lo que su instrucción le prohíbe.
+- **Un informe sin contenido ya no abre PR.** Que el archivo exista no alcanza: `learn` lo crea vacío y
+  el modelo puede devolverlo tal cual, y así se publicaba. Un lunes eso son veintinueve PRs en blanco
+  sin que nada lo diga. Ahora se miran las secciones que la propuesta mensual consolida, y si están
+  vacías el job falla nombrando cuáles y dónde mirar la causa.
+
 ## [0.49.0] - 2026-08-27
 
 ### Agregado
