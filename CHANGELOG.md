@@ -14,7 +14,7 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
-## [0.49.0] - 2026-08-26
+## [0.49.0] - 2026-08-27
 
 ### Agregado
 
@@ -28,12 +28,6 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
-- **Un recorrido que frena da igual la salida que su contrato reserva para no poder.** `change-review`
-  enumera tres veredictos y el tercero es «no poder aprobar»; bloqueado, su informe parcial escribía
-  «No hay veredicto», que no es ninguno de los tres. Con el diff, los importadores y las pruebas a la
-  vista, un revisor **sí** puede firmar que no aprueba: eso es un veredicto, no su ausencia. Vale para
-  cualquier recorrido cuyo contrato tenga esa salida — un destino de «nada que hacer», una
-  recomendación de investigar.
 - **`dependsOn` dejó de ser decorativo: un recorrido corre sus etapas como su contrato las declara.**
   Hasta ahora el motor las corría en fila y le pasaba a cada una los handoffs de **todas** las
   anteriores, sin mirar de qué decía depender. `technical-design` existe para tener tres lecturas
@@ -45,15 +39,17 @@ diseño — eso vive en el commit y en el código.
   **no** declara `dependsOn` sigue viendo todo lo anterior, igual que antes: independencia es una
   afirmación, y una afirmación se declara. Si una etapa no cumple su gate, el corte es por nivel — las
   que corrieron con ella entran igual al handoff, y lo que se abandona son los niveles siguientes.
+- **Un recorrido que frena da igual la salida que su contrato reserva para no poder.** `change-review`
+  enumera tres veredictos y el tercero es «no poder aprobar»; bloqueado, su informe parcial escribía
+  «No hay veredicto», que no es ninguno de los tres. Con el diff, los importadores y las pruebas a la
+  vista, un revisor **sí** puede firmar que no aprueba: eso es un veredicto, no su ausencia. Vale para
+  cualquier recorrido cuyo contrato tenga esa salida — un destino de «nada que hacer», una
+  recomendación de investigar.
 - **Cambiar el `flow.json` de un recorrido ahora envejece sus veredictos.** El aviso de «el contrato
   cambió y la última corrida es anterior» miraba sólo el `SKILL.md`, que un recorrido no tiene, así que
   no se disparaba nunca: se le podía agregar una dimensión a un gate y sus casos aprobados seguían
   leyéndose vigentes. Qué archivo **es** el contrato depende del sujeto — el de un cargo es su
   `SKILL.md`, el de un recorrido su `flow.json`— y ahora se mira el que corresponde.
-## [0.49.0] - 2026-08-27
-
-### Corregido
-
 - **`ops context` ya no se traga las acciones humanas cuando no hay tarea en cola.** Se imprimían
   después del `return` de «sin tarea disponible», así que una instancia recién arrancada —`onboard`
   deja filas pendientes y ninguna tarea todavía— preguntaba qué toca ahora y recibía «nada», cuando lo
