@@ -114,6 +114,22 @@ test('el changelog del paquete cubre la versión que se publica', () => {
     versions.some((entry) => entry.startsWith(version)),
     `la versión ${version} no está documentada en CHANGELOG.md`,
   )
+
+  // Una versión, una entrada. Resolver a mano el conflicto de cinco ramas que agregaban su renglón a
+  // la misma versión dejó dos encabezados `## [0.49.0]` con fechas distintas, y `entries()` devuelve
+  // uno por encabezado: quien actualizara habría visto la versión dos veces, con la mitad de las
+  // novedades en cada una. El archivo se lee entero y bien formado, que es justo lo que R15 nombra.
+  const repetidas = versions.filter((entry, index) => versions.indexOf(entry) !== index)
+  assert.deepEqual([...new Set(repetidas)], [], 'ninguna versión aparece dos veces')
+
+  // Y dentro de una versión, una sección por tipo: la misma resolución dejó dos `### Corregido`.
+  for (const entry of CL.entries(CL.read(repoRoot))) {
+    const secciones = [...entry.body.matchAll(/^###\s+(\S+)/gm)].map((hit) => hit[1])
+    assert.deepEqual(
+      secciones.filter((one, index) => secciones.indexOf(one) !== index), [],
+      `${entry.version} repite una sección`,
+    )
+  }
 })
 
 test('toda ruta declarada del sistema existe en el paquete', () => {
