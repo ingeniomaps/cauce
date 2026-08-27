@@ -263,6 +263,48 @@ test('los casos de un recorrido se leen como los de un cargo', () => {
   assert.throws(() => EV.list(ROOT, 'technical-design'), /no existe agents/)
 })
 
+// Qué archivo es el contrato depende del sujeto: el de un cargo es su `SKILL.md`, el de un recorrido es
+// su `flow.json`. Mirando sólo el primero un recorrido no disparaba el aviso nunca, así que se le podía
+// agregar una dimensión al gate y sus veredictos anteriores seguían leyéndose vigentes. Pasó el mismo
+// día: `change-review` ganó la pregunta por las superficies críticas y sus tres aprobados no dijeron nada.
+test('cambiar el flow.json de un recorrido envejece sus veredictos', () => {
+  const root = tempRoot('cauce-flow-contrato-')
+  const dir = path.join(root, 'flows', 'probe')
+  fs.mkdirSync(path.join(dir, 'evaluations', 'cases'), { recursive: true })
+  fs.mkdirSync(path.join(dir, 'evaluations', 'results'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'FLOW.md'), '# Probe\n')
+  fs.writeFileSync(path.join(dir, 'evaluations', 'cases', '01-uno.md'),
+    '# Solicitud\n\nx\n\n# Comportamientos esperados\n\n- y\n')
+  fs.writeFileSync(path.join(dir, 'evaluations', 'results', '2099-01-07.md'),
+    '---\nflow: probe\n---\n\n### 01-uno\n\n- Veredicto: pasa\n\nx\n')
+  const contrato = path.join(dir, 'flow.json')
+  fs.writeFileSync(contrato, JSON.stringify({ schemaVersion: 1, slug: 'probe' }))
+
+  // El repositorio es lo que fecha el contrato: sin commit no hay fecha, y sin fecha no hay aviso.
+  // `%cs` lee la fecha del committer, no la del autor, así que `--date` no alcanza: se fija por entorno.
+  const git = (fecha, ...args) => spawnSync('git', ['-C', root, ...args],
+    { encoding: 'utf8', env: { ...process.env, GIT_COMMITTER_DATE: fecha, GIT_AUTHOR_DATE: fecha } })
+  const inicial = '2099-01-01T00:00:00'
+  git(inicial, 'init', '-q')
+  git(inicial, 'config', 'user.email', 'probe@example.test')
+  git(inicial, 'config', 'user.name', 'Probe')
+  git(inicial, 'add', '-A')
+  git(inicial, 'commit', '-qm', 'contrato inicial')
+
+  assert.equal(EV.validate(root, 'probe', 'flow').warnings.some((one) => /contrato cambió/.test(one)),
+    false, 'un contrato anterior a la corrida no envejece nada')
+
+  // Se le agrega una dimensión al contrato, después de que el caso se midiera.
+  fs.writeFileSync(contrato, JSON.stringify({ schemaVersion: 1, slug: 'probe', completion: ['algo más'] }))
+  const despues = '2099-02-01T00:00:00'
+  git(despues, 'add', '-A')
+  git(despues, 'commit', '-qm', 'una dimensión más')
+
+  assert.match(EV.validate(root, 'probe', 'flow').warnings.join('\n'),
+    /el contrato cambió el 2099-02-01 y la última corrida es del 2099-01-07/,
+    'el flow.json es el contrato de un recorrido, y cambiarlo envejece lo medido')
+})
+
 // `--cases` hace que una corrida cubra menos casos de los que el sujeto tiene, a propósito. Leyendo
 // sólo la última, `evaluate` decía «cubre 1 de 4: el resultado no vale» de sujetos con los cuatro
 // medidos, y anunciaba «1/1 pasan». Componer por caso —la última corrida gana— es lo que ya hace el
