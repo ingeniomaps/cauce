@@ -32,7 +32,7 @@ sources:
     topics: [liquidity-risk, maturity-analysis, disclosure]
   # Abierta el 2026-08-22. La edición vigente es la de 2013, que reemplazó a la de 1992 el
   # 2014-12-15; la página lo dice y por eso el nombre lleva el año.
-  - name: COSO Internal Control Integrated Framework 2013
+  - name: COSO Internal Control—Integrated Framework (2013)
     url: https://www.coso.org/guidance-on-ic
     tier: standard
     topics: [internal-control, segregation-of-duties, dual-approval]
@@ -60,7 +60,7 @@ sources:
   # authentication to verify requests for changes in account information."
   - name: FBI IC3 Business Email Compromise PSA I-060923-PSA
     url: https://www.ic3.gov/PSA/2023/PSA230609
-    tier: advisory
+    tier: standard
     topics: [payment-fraud, beneficiary-verification, out-of-band-verification]
 
 # Pendientes: no entran porque no pude abrirlas en esta corrida, y `require_primary_source: true`

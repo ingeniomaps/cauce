@@ -9,9 +9,9 @@ rules:
 # El contexto de la empresa no es una fuente de la profesión: vive en
 # organization/roles/developer-relations-engineer.md dentro de cada instalación.
 sources:
-  - name: OpenAPI Specification latest published
+  - name: OpenAPI Specification
     url: https://spec.openapis.org/oas/latest.html
-    tier: project
+    tier: standard
     topics: [api, contracts, versions, compatibility]
   - name: NIST Secure Software Development Framework
     url: https://csrc.nist.gov/pubs/sp/800/218/final
@@ -23,5 +23,5 @@ sources:
     topics: [accessibility, web, conformance, testing]
   - name: Open Source Guides building welcoming communities
     url: https://opensource.guide/building-community/
-    tier: project
+    tier: standard
     topics: [community, contributors, inclusion, conduct]

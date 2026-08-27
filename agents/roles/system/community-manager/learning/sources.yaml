@@ -11,11 +11,11 @@ rules:
 sources:
   - name: Contributor Covenant 3.0
     url: https://www.contributor-covenant.org/version/3/0/code_of_conduct/
-    tier: project
+    tier: standard
     topics: [conduct, safety, reporting, enforcement]
   - name: GitHub community management and moderation
     url: https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/about-community-management-and-moderation
-    tier: platform
+    tier: standard
     topics: [community, moderation, platform, tools]
   - name: W3C Web Content Accessibility Guidelines 2.2
     url: https://www.w3.org/TR/WCAG22/

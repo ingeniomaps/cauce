@@ -14,6 +14,35 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.53.0] - 2026-08-27
+
+### Corregido
+
+- **Dieciocho fuentes estaban clasificadas como rápidas y no lo son**, así que su cargo investigaba
+  cada semana para leer el mismo texto. La cadencia sale de la fuente más veloz, y cada una se comprobó
+  contra su propia fuente antes de moverla —no se dedujo del nombre—: `arc42` va de v8 (feb 2022) a v9
+  (jul 2025); la especificación OpenAPI publica con meses o años de diferencia; el PSA `I-060923-PSA`
+  del FBI es un documento fechado y cerrado; el GOV.UK Design System publica una vez al mes o menos; la
+  guía de contenido útil de Google y su guía de estilo llevan meses sin cambiar; el archivo de «core app
+  quality» de Android muestra años entre revisiones; Standard Webhooks no publica desde febrero; el
+  Contributor Covenant va de 2016 a 2021 en tres versiones; Open Source Guides se toca cada dos a cuatro
+  meses; la documentación de GitHub sobre moderación y sobre endurecer Actions lleva meses o más de un
+  año sin cambios; la página de idempotencia de Stripe no expone fechas ni historial; y **Shopify publica
+  una versión de API por trimestre**, en fecha fija. Las dieciocho pasan a `standard`, que es mensual.
+  Los semanales bajan de 29 a 20.
+- **Lo que no se pudo comprobar quedó donde estaba.** Apple Human Interface Guidelines y la guía de
+  Gainsight no exponen fechas de revisión, y de Material Design sólo se pudo medir su implementación de
+  referencia —4 a 9 meses entre versiones—, que no es la guía que el cargo cita. Las tres siguen
+  semanales: moverlas por su nombre, o por el ritmo de otro artefacto, es lo que `R14` prohíbe.
+- **Una URL con dos nombres ahora es un error.** `evaluate` lo rechaza dentro de un archivo —la cadencia
+  sale del `tier` de cada entrada, así que dos copias de una fuente pueden decir cosas distintas sobre
+  cada cuánto publica, y la más rápida gana sin que nadie lo decida— y una prueba del catálogo lo
+  detecta entre cargos, que es la forma en que apareció. Se unificaron dieciséis: el catálogo pasa de
+  229 fuentes a 211.
+- **La especificación OpenAPI estaba tres veces con nombres distintos** —`OpenAPI Specification`,
+  `...latest published` y `...3.2.0`—, así que corregirla en un cargo no la corregía en los otros.
+
+
 ## [0.52.0] - 2026-08-27
 
 ### Corregido

@@ -22,5 +22,5 @@ sources:
     topics: [interaction-design, information-architecture, usability]
   - name: GOV.UK Design System
     url: https://design-system.service.gov.uk/
-    tier: platform
+    tier: standard
     topics: [patterns, content, accessibility]

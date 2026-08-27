@@ -9,13 +9,13 @@ rules:
 # El contexto de la empresa no es una fuente de la profesión: vive en
 # organization/roles/backend-engineer.md dentro de cada instalación.
 sources:
-  - name: RFC Editor HTTP
+  - name: RFC 9110 HTTP Semantics
     url: https://www.rfc-editor.org/rfc/rfc9110.html
     tier: standard
     topics: [http, semantics, idempotency, caching]
   - name: OpenAPI Specification
     url: https://spec.openapis.org/oas/latest.html
-    tier: project
+    tier: standard
     topics: [api-contracts]
   - name: OWASP API Security
     url: https://owasp.org/API-Security/

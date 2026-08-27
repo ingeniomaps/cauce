@@ -336,6 +336,55 @@ function firmarPropuesta(file) {
 }
 
 // también lee como aprobada— y la aplicaba de nuevo, duplicando cada viñeta y cada fuente sin fallar.
+// Dentro de un archivo lo atrapa `evaluate`, que es lo que corre en una empresa. Es error y no aviso:
+// la cadencia sale del `tier` de cada entrada, así que dos copias de la misma fuente pueden decir cosas
+// distintas sobre cada cuánto publica, y la más rápida gana sin que nadie lo haya decidido.
+test('evaluate rechaza la misma URL bajo dos nombres', () => {
+  const root = tempRoot('cauce-dup-fuente-')
+  const dir = path.join(root, 'agents', 'roles', 'probe')
+  fs.mkdirSync(path.join(dir, 'learning'), { recursive: true })
+  fs.mkdirSync(path.join(dir, 'evaluations'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'SKILL.md'),
+    '---\nname: probe\ndescription: x\nsummary: y\n---\nno inventar autorización evidencia observable\n')
+  const fuentes = (segunda) => fs.writeFileSync(path.join(dir, 'learning', 'sources.yaml'),
+    `sources:\n  - name: Uno\n    url: https://ej.test/a\n    tier: standard\n${segunda}`)
+
+  // La barra final no hace otra fuente: es la misma página escrita distinto.
+  fuentes('  - name: Otro nombre\n    url: https://ej.test/a/\n    tier: platform\n')
+  assert.match(learning.evaluate(root, 'probe').errors.join('\n'),
+    /https:\/\/ej\.test\/a está dos veces, como "Uno" y como "Otro nombre"/)
+
+  // El mismo nombre repetido no es el defecto que esto busca: eso es una entrada duplicada, no un alias.
+  fuentes('  - name: Uno\n    url: https://ej.test/a\n    tier: standard\n')
+  assert.equal(learning.evaluate(root, 'probe').errors.some((one) => one.includes('dos veces')), false)
+})
+
+// Una URL, un nombre. `evaluate` sólo ve el archivo de un cargo, así que la misma fuente bajo dos
+// nombres en dos cargos distintos se le escapa — y es la forma que de verdad apareció: la
+// especificación OpenAPI vivía como `OpenAPI Specification`, `...latest published` y `...3.2.0`, así
+// que corregirle el `tier` a un cargo no se lo corregía a los otros dos.
+test('el catálogo no repite una fuente bajo dos nombres', () => {
+  const dir = path.resolve(__dirname, '..', 'agents', 'roles', 'system')
+  const porUrl = new Map()
+  const repetidas = []
+  for (const slug of fs.readdirSync(dir)) {
+    const file = path.join(dir, slug, 'learning', 'sources.yaml')
+    if (!fs.existsSync(file)) continue
+    let name = ''
+    for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+      const nombre = line.match(/^\s*-\s*name:\s*(.+?)\s*$/)
+      if (nombre) { name = nombre[1].replace(/^['"]|['"]$/g, ''); continue }
+      const url = line.match(/^\s*url:\s*(\S+)/)
+      if (!url || !name) continue
+      const clave = url[1].replace(/\/+$/, '')
+      const antes = porUrl.get(clave)
+      if (antes && antes.name !== name) repetidas.push(`${clave}: "${antes.name}" y "${name}"`)
+      else porUrl.set(clave, { name, slug })
+    }
+  }
+  assert.deepEqual([...new Set(repetidas)], [], 'una URL, un nombre en todo el catálogo')
+})
+
 test('una propuesta aplicada no se puede volver a aplicar', () => {
   const target = installedProject('Sello de propuesta')
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')

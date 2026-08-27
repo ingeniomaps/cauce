@@ -9,11 +9,11 @@ rules:
 # El contexto de la empresa no es una fuente de la profesión: vive en
 # organization/roles/data-analyst.md dentro de cada instalación.
 sources:
-  - name: NIST Statistical Methods Handbook
+  - name: NIST SEMATECH e-Handbook of Statistical Methods
     url: https://www.itl.nist.gov/div898/handbook/
     tier: standard
     topics: [statistics, exploration, uncertainty, modeling]
-  - name: ASA Ethical Guidelines
+  - name: ASA Ethical Guidelines for Statistical Practice
     url: https://www.amstat.org/your-career/ethical-guidelines-for-statistical-practice
     tier: profession
     topics: [ethics, transparency, communication, data]

@@ -11,7 +11,7 @@ rules:
 sources:
   - name: Android Developers Core app quality
     url: https://developer.android.com/docs/quality-guidelines/core-app-quality
-    tier: platform
+    tier: standard
     topics: [quality, compatibility, performance, security]
   - name: Apple Human Interface Guidelines
     url: https://developer.apple.com/design/human-interface-guidelines/

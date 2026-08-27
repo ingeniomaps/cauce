@@ -13,7 +13,7 @@ sources:
     url: https://www.ifrs.org/issued-standards/list-of-standards/
     tier: standard
     topics: [accounting, reporting, presentation, disclosure]
-  - name: COSO Internal Control
+  - name: COSO Internal Control—Integrated Framework (2013)
     url: https://www.coso.org/guidance-on-ic
     tier: standard
     topics: [internal-control, risk, control-activities, monitoring]

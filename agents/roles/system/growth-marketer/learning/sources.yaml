@@ -9,7 +9,7 @@ rules:
 # El contexto de la empresa no es una fuente de la profesión: vive en
 # organization/roles/growth-marketer.md dentro de cada instalación.
 sources:
-  - name: NIST Statistical Methods Handbook
+  - name: NIST SEMATECH e-Handbook of Statistical Methods
     url: https://www.itl.nist.gov/div898/handbook/
     tier: standard
     topics: [experiments, uncertainty, sampling, inference]
@@ -21,7 +21,7 @@ sources:
     url: https://www.edpb.europa.eu/our-work-tools/general-guidance/guidelines-recommendations-best-practices_en
     tier: regulation
     topics: [privacy, consent, targeting, transfers]
-  - name: FTC Truth in Advertising
+  - name: FTC Advertising and Marketing
     url: https://www.ftc.gov/business-guidance/advertising-marketing
     tier: regulation
     topics: [claims, endorsements, substantiation, disclosure]

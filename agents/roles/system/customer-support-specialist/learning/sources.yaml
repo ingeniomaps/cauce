@@ -21,7 +21,7 @@ sources:
     url: https://www.peoplecert.org/browse-certifications/it-governance-and-service-management/ITIL-1
     tier: standard
     topics: [incident-management, service-desk, knowledge]
-  - name: W3C Writing for Accessibility
+  - name: W3C Writing for Web Accessibility
     url: https://www.w3.org/WAI/tips/writing/
     tier: standard
     topics: [clear-instructions, headings, links, accessibility]

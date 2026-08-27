@@ -13,7 +13,7 @@ sources:
     url: https://developer.mozilla.org/
     tier: platform
     topics: [html, css, javascript, browser-apis, compatibility]
-  - name: W3C WAI
+  - name: W3C Web Accessibility Initiative
     url: https://www.w3.org/WAI/
     tier: standard
     topics: [wcag, aria, accessibility]

@@ -21,7 +21,7 @@ sources:
     url: https://www.nist.gov/publications/nist-cybersecurity-framework-csf-20
     tier: standard
     topics: [cybersecurity, risk, governance, profiles]
-  - name: OpenAPI Specification latest published
+  - name: OpenAPI Specification
     url: https://spec.openapis.org/oas/latest.html
-    tier: project
+    tier: standard
     topics: [api, contracts, compatibility, tooling]

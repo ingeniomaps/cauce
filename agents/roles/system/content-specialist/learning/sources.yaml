@@ -15,7 +15,7 @@ sources:
     topics: [accessibility, headings, links, alternatives, clarity]
   - name: Google Search helpful content
     url: https://developers.google.com/search/docs/fundamentals/creating-helpful-content
-    tier: platform
+    tier: standard
     topics: [seo, people-first, quality, transparency]
   - name: Federal Plain Language Guidelines
     url: https://www.plainlanguage.gov/guidelines/
