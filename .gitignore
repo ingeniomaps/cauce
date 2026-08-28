@@ -12,3 +12,4 @@ node_modules/
 
 # Banco de evaluación: se recrea en cada corrida y no es del proyecto.
 .cauce-eval/
+.claude/workflows/
