@@ -349,6 +349,20 @@ function pendingRuns(root, slug) {
     frontmatterState(fs.readFileSync(path.join(results, name), 'utf8'), 'draft') !== 'consolidated').length
 }
 
+// El espejo del anterior para un cargo: qué informes esperan entrar a una propuesta. Toma todo lo que
+// ya ocurrió y todavía no entró, no sólo lo del mes que se consolida. Filtrar por el prefijo del
+// período dejaba huérfano al informe atrasado —el que se escribió después de que su mes se consolidó,
+// o el que llegó tarde—: no entraba en ésa ni en ninguna posterior, porque la del mes siguiente sólo
+// miraba su propio mes. Se perdía el hallazgo entero y en silencio.
+//
+// Repetirlo no es un riesgo: el sello dice cuál ya entró, y por eso este criterio existe recién ahora.
+// Antes todos decían `draft` y no había cómo distinguirlos.
+function pendingReports(target, sealing) {
+  const dir = path.join(target, 'learning', 'reports')
+  return reportFiles(dir).filter((name) => name.slice(0, 7) <= sealing
+    && frontmatterState(fs.readFileSync(path.join(dir, name), 'utf8'), 'draft') !== 'consolidated')
+}
+
 // La propuesta de un recorrido. Mismo ciclo que la de un cargo —se abre, se firma, se aplica y se
 // sella— y distinto contenido: lo que se corrige es el recorrido mismo, y lo que lo justifica es un
 // veredicto en contra, no una fuente nueva.
@@ -409,31 +423,29 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
   // Una sola propuesta pendiente por período. Si la última todavía no se aplicó, abrir otra partiría
   // la firma en dos documentos que dicen cosas distintas sobre el mismo contrato.
   const previous = lastOfPeriod(proposalDir, sealing)
-  if (previous) {
-    const before = path.join(proposalDir, previous)
-    if (proposalState(fs.readFileSync(before, 'utf8')) !== 'applied') {
-      return { file: before, created: false, reports: 0 }
-    }
-    return reviseProposal(root, agent, proposalDir, previous, sealing)
-  }
+  const pendiente = previous && proposalState(fs.readFileSync(path.join(proposalDir, previous), 'utf8')) !== 'applied'
+  if (pendiente) return { file: path.join(proposalDir, previous), created: false, reports: 0 }
 
-  const file = path.join(proposalDir, `${sealing}.md`)
-  if (kind === 'flow') return proposeFromRuns(root, agent, target, file, sealing)
-  const reportDir = path.join(target, 'learning', 'reports')
-  // Todo lo que ya ocurrió y todavía no entró, no sólo lo del mes que se consolida. Filtrar por el
-  // prefijo del período dejaba huérfano al informe atrasado —el que se escribió después de que su mes
-  // se consolidó, o el que llegó tarde—: no entraba en ésa ni en ninguna posterior, porque la del mes
-  // siguiente sólo miraba su propio mes. Se perdía el hallazgo entero y en silencio.
-  //
-  // Repetirlo no es un riesgo: el sello dice cuál ya entró, y por eso este criterio existe recién
-  // ahora. Antes todos decían `draft` y no había cómo distinguirlos.
-  const reports = reportFiles(reportDir).filter((name) => name.slice(0, 7) <= sealing
-    && frontmatterState(fs.readFileSync(path.join(reportDir, name), 'utf8'), 'draft') !== 'consolidated')
+  const reports = kind === 'flow' ? [] : pendingReports(target, sealing)
   // El cron lo dice antes que nadie: consolidar sin informes produce un andamiaje que nadie puede
   // aprobar, y el job ve un archivo nuevo y abre el PR igual. Con una cadencia por cargo eso deja de
   // ser un borde: el que investiga cada trimestre pasaría dos meses de cada tres abriendo propuestas
   // para decir que no investigó.
-  if (!reports.length) return { file: '', created: false, reports: 0 }
+  //
+  // Vale para los dos documentos y por eso la guarda vive acá arriba. Vivía debajo de la bifurcación
+  // y cubría sólo la propuesta del período: la revisión se fabricaba igual, para todo cargo cuya
+  // propuesta anterior estuviera aplicada. Que sea un andamio en blanco no la abarata —cuesta la
+  // misma firma— y encima llega indistinguible de una con hallazgos en la lista de PR.
+  if (kind !== 'flow' && !reports.length) return { file: '', created: false, reports: 0 }
+
+  // Una revisión corrige un texto ya aplicado, así que no consolida: la escribe una persona mirando el
+  // veredicto que lo desmintió. Lo que la habilita es que exista material nuevo, no que exista la
+  // propuesta anterior.
+  if (previous) return reviseProposal(root, agent, proposalDir, previous, sealing)
+
+  const file = path.join(proposalDir, `${sealing}.md`)
+  if (kind === 'flow') return proposeFromRuns(root, agent, target, file, sealing)
+  const reportDir = path.join(target, 'learning', 'reports')
   const summaries = reports.map((name) => {
     const report = path.join(reportDir, name)
     const text = fs.readFileSync(report, 'utf8')

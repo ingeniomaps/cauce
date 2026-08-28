@@ -167,6 +167,43 @@ test('el informe trae escritas las convenciones de las que depende el ciclo', ()
   assert.equal(consolidated.includes('No renombres'), false, 'y el comentario no viaja con ella')
 })
 
+// Una revisión es un andamio en blanco —no consulta informes ni consolida nada— y existe para que una
+// persona escriba adentro por qué el texto que se aplicó falló su medición. Eso está bien; lo que no,
+// es fabricarlo sin material. El ensamblaje lo abría para todo cargo cuya propuesta anterior estuviera
+// aplicada, sin mirar si había algo nuevo: en la corrida del 2026-08-28, cinco de los seis PR llegaron
+// con el molde vacío, cada uno pidiendo la firma humana que R10 reserva para lo que sí decide algo.
+test('una revisión no se abre sin informes que la justifiquen', () => {
+  const target = installedProject('Revisión sin material')
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
+  const reports = path.join(own, 'learning', 'reports')
+  const proposals = path.join(own, 'learning', 'proposals')
+
+  assert.equal(run(['learn', 'probe'], target).status, 0)
+  const report = path.join(reports, fs.readdirSync(reports)[0])
+  fs.writeFileSync(report, fs.readFileSync(report, 'utf8')
+    .replace('## Recomendación\n', '## Recomendación\n\n1. Rotar el token (cierra H1).\n'))
+  assert.equal(run(['learn', 'probe', '--proposal'], target).status, 0)
+  const primera = fs.readdirSync(proposals)
+  assert.equal(primera.length, 1, 'el informe produjo su propuesta')
+
+  // Firmada y aplicada. El informe quedó sellado al consolidarse, así que no hay nada nuevo que decir.
+  const aplicada = path.join(proposals, primera[0])
+  fs.writeFileSync(aplicada, fs.readFileSync(aplicada, 'utf8').replace(/^status:.*$/m, 'status: applied'))
+
+  const vacia = learning.prepareProposal(target, 'probe')
+  assert.equal(vacia.created, false, 'no se fabrica el andamio de revisión')
+  assert.equal(vacia.file, '', 'y no queda archivo que el job lea como propuesta y mande a PR')
+  assert.deepEqual(fs.readdirSync(proposals), primera, 'el directorio queda como estaba')
+
+  // Y con material sí se abre: lo que se cierra es el andamio sin nada que corregir, no la revisión.
+  const period = new Date().toISOString().slice(0, 7)
+  fs.writeFileSync(path.join(reports, `${period}-01.md`),
+    `---\nagent: probe\ndate: ${period}-01\nstatus: draft\n---\n\n## Recomendación\n\nAlgo nuevo.\n`)
+  const revision = learning.prepareProposal(target, 'probe')
+  assert.equal(revision.created, true, 'con un informe sin consolidar la revisión sigue disponible')
+  assert.match(path.basename(revision.file), /-r2\.md$/, 'y es una revisión de la que ya se aplicó')
+})
+
 test('un slug duplicado entre tipos se rechaza como ambiguo', () => {
   const target = installedProject('Ambiguous agents')
   const duplicate = path.join(target, 'agents', 'specialists', 'product-manager')
@@ -420,8 +457,13 @@ test('una propuesta aplicada se puede corregir sin reabrirla', () => {
 
   firmarPropuesta(base.file)
   learning.seal(target, 'probe', '2099-06')
+
+  // La propuesta base consumió y selló el único informe, así que acá no queda nada que corregir. Sin
+  // un informe nuevo la revisión ya no se abre: es un andamio en blanco y cuesta la misma firma humana
+  // que una con hallazgos. Éste es el material que la habilita.
+  learning.prepareReport(target, 'probe', new Date('2099-06-20T00:00:00Z'))
   const revision = learning.prepareProposal(target, 'probe', now)
-  assert.equal(revision.created, true, 'aplicada la anterior, sí abre la revisión')
+  assert.equal(revision.created, true, 'aplicada la anterior y con material nuevo, sí abre la revisión')
   assert.equal(path.basename(revision.file), '2099-06-r2.md')
   assert.equal(revision.corrects, '2099-06.md', 'y dice cuál corrige')
 
