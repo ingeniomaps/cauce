@@ -117,9 +117,13 @@ const benches = await agent(
 )
 if (!benches || !benches.path) return stop('sin-banco', 'no se pudieron preparar los bancos')
 if (benches.failed && benches.failed.length) {
+  // Los bancos de los casos que fallaron, no el del recorrido entero. Nombrar `BENCH_ROOT` se llevaba
+  // por delante los bancos de los casos que nadie estaba re-corriendo: pasó re-midiendo uno solo de
+  // `change-review`, y el mensaje proponía borrar también el del caso vecino. Los ids ya están acá.
   return stop('banco-sin-rehacer',
     `${benches.failed.join(', ')}: su banco conserva trabajo sin recoger de una corrida anterior. ` +
-    `Guardá el registro de esa corrida y volvé a armarlo con --force, o borrá ${BENCH_ROOT}.`)
+    `Guardá el registro de esa corrida y volvé a armarlo con --force, o borrá ` +
+    `${benches.failed.map((id) => `${BENCH_ROOT}/${id}`).join(', ')}.`)
 }
 // Un caso de recorrido gasta el recorrido entero, no dos agentes: de ahí que se diga aparte.
 log(`${context.items.length} caso(s) de ${FLOW} — cada uno corre el recorrido completo`)

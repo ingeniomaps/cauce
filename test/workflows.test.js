@@ -585,6 +585,20 @@ test('un banco que no se pudo rehacer detiene la corrida', () => {
   assert.match(evalWf, /leftover directory from an earlier run/, 'ni da por bueno lo que sobró')
 })
 
+// Frenar bien y aconsejar de más es un modo de fallo propio: quien siga la instrucción al pie pierde
+// bancos que no estaba re-midiendo. Re-corriendo un solo caso de `change-review`, el mensaje proponía
+// borrar `.cauce-eval/change-review` entero, y ahí vivía también el banco del caso vecino. Los ids de
+// los que fallaron ya están en la mano cuando se arma el mensaje.
+test('el banco que se manda a borrar es el del caso, no el del recorrido', () => {
+  const evalWf = fs.readFileSync(path.join(WF, 'flow-eval.js'), 'utf8')
+  const aviso = evalWf.slice(evalWf.indexOf("stop('banco-sin-rehacer'"))
+  const mensaje = aviso.slice(0, aviso.indexOf('\n}'))
+  assert.match(mensaje, /benches\.failed\.map\(\(id\) => `\$\{BENCH_ROOT\}\/\$\{id\}`\)/,
+    'la ruta a borrar se arma por caso')
+  assert.equal(/o borrá \$\{BENCH_ROOT\}\./.test(mensaje), false,
+    'y ya no propone el directorio del recorrido, que se lleva los casos ajenos')
+})
+
 // Un cargo responde y un recorrido corre, y esa diferencia decide todo el diseño de su evaluación:
 // acá no hay un agente que conteste el pedido, hay una invocación del recorrido de verdad. Pedirle a
 // un agente que lo imite mediría la imitación, que es justo lo que un recorrido no es — sus etapas
