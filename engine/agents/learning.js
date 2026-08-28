@@ -535,6 +535,23 @@ function sourceTiers(text) {
   return [...body.matchAll(/tier:\s*([A-Za-z-]+)/g)].map((hit) => hit[1])
 }
 
+// Las fuentes de un cargo, por su URL. La misma URL con dos nombres es una sola fuente contada dos
+// veces: el catálogo llegó a tener la especificación OpenAPI bajo tres —`OpenAPI Specification`,
+// `...latest published` y `...3.2.0`— así que arreglarle el `tier` a un cargo no se lo arreglaba a los
+// otros, y quien leyera el informe vería la misma página citada como si fueran tres.
+function sourceUrls(text) {
+  const body = text.includes('sources:') ? text.slice(text.indexOf('sources:')) : ''
+  const out = []
+  let name = ''
+  for (const line of body.split('\n')) {
+    const nombre = line.match(/^\s*-\s*name:\s*(.+?)\s*$/)
+    if (nombre) { name = nombre[1].replace(/^['"]|['"]$/g, ''); continue }
+    const url = line.match(/^\s*url:\s*(\S+)/)
+    if (url && name) out.push({ name, url: url[1].replace(/\/+$/, '') })
+  }
+  return out
+}
+
 function evaluate(root, agent) {
   const target = catalog.resolve(root, agent)
   const errors = []
@@ -561,6 +578,17 @@ function evaluate(root, agent) {
       if (!SOURCE_TIERS.includes(tier)) {
         errors.push(`sources.yaml: tier "${tier}" fuera de ${SOURCE_TIERS.join(' | ')}`)
       }
+    }
+    // Dos nombres para una URL. Es error y no aviso: la cadencia sale del `tier` de cada entrada, así
+    // que dos copias de la misma fuente pueden decir cosas distintas sobre cada cuánto publica, y la
+    // más rápida gana sin que nadie lo haya decidido.
+    const porUrl = new Map()
+    for (const one of sourceUrls(fs.readFileSync(sourcesFile, 'utf8'))) {
+      const antes = porUrl.get(one.url)
+      if (antes && antes !== one.name) {
+        errors.push(`sources.yaml: ${one.url} está dos veces, como "${antes}" y como "${one.name}"`)
+      }
+      porUrl.set(one.url, one.name)
     }
   }
   const skill = fs.readFileSync(path.join(target, 'SKILL.md'), 'utf8').toLowerCase()

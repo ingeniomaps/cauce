@@ -22,5 +22,5 @@ sources:
     topics: [tokens, components, color, typography, motion]
   - name: GOV.UK Design System
     url: https://design-system.service.gov.uk/
-    tier: platform
+    tier: standard
     topics: [styles, components, patterns, accessibility]

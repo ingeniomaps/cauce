@@ -13,7 +13,7 @@ sources:
     url: https://sre.google/sre-book/table-of-contents/
     tier: profession
     topics: [sre, availability, monitoring, incidents, capacity]
-  - name: Google SRE Workbook
+  - name: Google SRE Workbook on capacity and efficiency
     url: https://sre.google/workbook/table-of-contents/
     tier: profession
     topics: [slo, burn-rate, alerting, toil]

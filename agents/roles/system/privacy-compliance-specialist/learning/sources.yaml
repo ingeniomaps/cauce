@@ -21,7 +21,7 @@ sources:
     url: https://eur-lex.europa.eu/eli/reg/2016/679/oj
     tier: regulation
     topics: [eu-data-protection]
-  - name: European Data Protection Board
+  - name: EDPB Guidelines on targeting and consent
     url: https://www.edpb.europa.eu/our-work-tools/general-guidance/guidelines-recommendations-best-practices_en
     tier: regulation
     topics: [eu-guidance, interpretation]

@@ -9,7 +9,7 @@ rules:
 # El contexto de la empresa no es una fuente de la profesión: vive en
 # organization/roles/software-architect.md dentro de cada instalación.
 sources:
-  - name: ISO IEC IEEE 42010
+  - name: ISO IEC IEEE 42010 architecture description
     url: https://www.iso.org/standard/74393.html
     tier: standard
     topics: [architecture-description, stakeholders, viewpoints]
@@ -23,5 +23,5 @@ sources:
     topics: [quality-attributes, scenarios, tradeoffs]
   - name: arc42
     url: https://arc42.org/
-    tier: project
+    tier: standard
     topics: [architecture-documentation, decisions, risks]

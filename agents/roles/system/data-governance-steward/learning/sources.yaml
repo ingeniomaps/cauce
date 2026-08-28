@@ -51,7 +51,7 @@ sources:
     topics: [catalog, dataset-metadata, interoperability, versioning]
   # Recomendación W3C del 2013-04-30, leída el 2026-08-22. Entidad, actividad y agente: el vocabulario
   # con el que un linaje se puede afirmar de forma comprobable en vez de dibujarse.
-  - name: W3C PROV-O
+  - name: W3C PROV-O provenance ontology
     url: https://www.w3.org/TR/prov-o/
     tier: standard
     topics: [provenance, lineage, agents]

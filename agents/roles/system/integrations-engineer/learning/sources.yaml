@@ -46,9 +46,9 @@ sources:
   # La versión vigente al 2026-08-22 es la 3.2.0, publicada el 2025-09-19, y define `webhooks` como
   # campo de primer nivel del documento: el contrato de lo que se le expone a un partner puede
   # declarar también lo que se le envía.
-  - name: OpenAPI Specification 3.2.0
+  - name: OpenAPI Specification
     url: https://spec.openapis.org/oas/latest.html
-    tier: project
+    tier: standard
     topics: [api-contract, partner-facing-contract, webhooks, versioning]
 
   # Convención de versionado con sólo versión mayor en la ruta y canales de estabilidad. Sirve como
@@ -72,7 +72,7 @@ sources:
   # el contraste con el que no la publica es lo que hay que diseñar.
   - name: Shopify — API versioning
     url: https://shopify.dev/docs/api/usage/versioning
-    tier: platform
+    tier: standard
     topics: [third-party-versioning, deprecation-window, breaking-changes]
 
   # El proveedor declara por escrito que no garantiza el orden dentro de un topic ni entre topics del
@@ -80,7 +80,7 @@ sources:
   # `X-Shopify-Webhook-Id` y conciliar. Es la cita que sostiene «asumir al menos una vez y sin orden».
   - name: Shopify — Webhook best practices
     url: https://shopify.dev/docs/apps/build/webhooks/best-practices
-    tier: platform
+    tier: standard
     topics: [webhooks, at-least-once, out-of-order, deduplication, reconciliation]
 
   # Guarda código y cuerpo de la primera respuesta por clave y los repite en el reintento, incluido un
@@ -89,7 +89,7 @@ sources:
   # y ninguno es deducible del concepto de idempotencia.
   - name: Stripe — Idempotent requests
     url: https://docs.stripe.com/api/idempotent_requests
-    tier: platform
+    tier: standard
     topics: [idempotency-key, retry-safety, payments, deduplication-window]
 
   # Firma, cabeceras y verificación de webhooks, con comité técnico de varias empresas. La página
@@ -97,7 +97,7 @@ sources:
   # verificó**, así que se cita como convención de la industria y no como norma con edición.
   - name: Standard Webhooks
     url: https://www.standardwebhooks.com/
-    tier: project
+    tier: standard
     topics: [webhooks, signature-scheme, headers, replay-protection]
 
   # Registrado para que nadie lo cite como estándar: es un Internet-Draft **expirado**. Última
