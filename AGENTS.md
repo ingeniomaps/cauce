@@ -112,9 +112,14 @@ defined` antes del primer agente.
 
 Expandir los includes a mano —con `render` de `engine/automation/index.js`— alcanza para mirar el
 archivo, y **no alcanza para correrlo**. `flow-eval` compone otro workflow con `workflow('flow', …)`, y
-esa primitiva la da el runner instalado, no el genérico: sin ella el pipeline revienta con un
-`ReferenceError` que el `.catch` de cada caso se traga, así que la corrida termina «sin veredicto» sin
-decir por qué. Cuesta dos corridas descubrirlo.
+lo que falta no es la primitiva sino el registro: `workflow()` existe siempre, y resuelve el nombre
+contra los workflows de la sesión. Desde acá ese registro trae sólo el built-in —comprobado con una
+sonda: `workflow('flow'): no workflow with that name. Available: deep-research`—, porque
+`.claude/workflows/` acá está vacío y así tiene que quedar.
+
+Lo que se ve al correrlo no dice nada de eso: el `.catch` de cada caso convierte el error en «este caso
+no se pudo medir», así que la corrida termina en `sin-veredicto` como si el instrumento hubiera fallado
+en otro lado. Cuesta dos corridas descubrirlo, y la sonda que lo aclara no gasta ni un agente.
 
 Y no se arregla instalando acá, ni sólo porque esté prohibido: `flow-eval` frena si el root no es
 `mode: toolkit`, e `install` se niega a instalar en uno que lo sea. Los dos controles son correctos por
