@@ -172,7 +172,7 @@ test('el informe trae escritas las convenciones de las que depende el ciclo', ()
 // es fabricarlo sin material. El ensamblaje lo abría para todo cargo cuya propuesta anterior estuviera
 // aplicada, sin mirar si había algo nuevo: en la corrida del 2026-08-28, cinco de los seis PR llegaron
 // con el molde vacío, cada uno pidiendo la firma humana que R10 reserva para lo que sí decide algo.
-test('una revisión no se abre sin informes que la justifiquen', () => {
+test('una revisión no se abre sin material que la justifique', () => {
   const target = installedProject('Revisión sin material')
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
   const reports = path.join(own, 'learning', 'reports')
@@ -202,6 +202,42 @@ test('una revisión no se abre sin informes que la justifiquen', () => {
   const revision = learning.prepareProposal(target, 'probe')
   assert.equal(revision.created, true, 'con un informe sin consolidar la revisión sigue disponible')
   assert.match(path.basename(revision.file), /-r2\.md$/, 'y es una revisión de la que ya se aplicó')
+})
+
+// Un cargo tenía sus propias mediciones desde siempre y nada las leía: aprendía de lo que cambiaba en
+// su profesión y no de haber fallado su propio caso. Es el material que más claramente pide corregir
+// —un rojo posterior a aplicar una propuesta no puede ser alcance nuevo, es el texto que no se
+// sostuvo— y hasta acá no abría ningún documento. El registro lo escribe el mismo `evaluate --record`
+// que el de un recorrido, así que se compone con el mismo lector.
+test('un caso en rojo abre la revisión de un cargo, y la corrida queda sellada', () => {
+  const target = installedProject('Rojo sin informe')
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
+  const proposals = path.join(own, 'learning', 'proposals')
+  const results = path.join(own, 'evaluations', 'results')
+
+  // Una propuesta ya aplicada y ningún informe esperando: el rojo es todo el material que hay.
+  fs.mkdirSync(proposals, { recursive: true })
+  fs.writeFileSync(path.join(proposals, '2099-06.md'),
+    '---\nagent: probe\nperiod: 2099-06\nstatus: applied\n---\n\n# Propuesta mensual — 2099-06\n')
+
+  fs.mkdirSync(results, { recursive: true })
+  const registro = path.join(results, '2099-06-18.md')
+  fs.writeFileSync(registro, '---\nagent: probe\ndate: 2099-06-18\npassed: 1\ntotal: 2\n---\n\n'
+    + '### 01-uno\n\n- Veredicto: pasa\n\nSin novedad.\n\n'
+    + '### 02-dos\n\n- Veredicto: no pasa\n\nFirmó sin comprobar el mecanismo.\n')
+
+  const revision = learning.prepareProposal(target, 'probe', new Date('2099-06-30T00:00:00Z'))
+  assert.equal(revision.created, true, 'el rojo alcanza para abrirla, sin ningún informe')
+  assert.equal(path.basename(revision.file), '2099-06-r2.md')
+
+  const texto = fs.readFileSync(revision.file, 'utf8')
+  assert.match(texto, /### 02-dos — 2099-06-18/, 'el hallazgo cita el caso y la corrida')
+  assert.match(texto, /Firmó sin comprobar el mecanismo/, 'y trae su contraste')
+  assert.equal(texto.includes('01-uno'), false, 'el caso que pasó no pide cambio')
+  assert.equal(texto.includes('Qué mostró la evaluación posterior'), false, 'y el molde en blanco no viaja')
+
+  // Sin el sello el mismo rojo abriría una revisión por mes, para siempre.
+  assert.match(fs.readFileSync(registro, 'utf8'), /^status: consolidated$/m)
 })
 
 test('un slug duplicado entre tipos se rechaza como ambiguo', () => {

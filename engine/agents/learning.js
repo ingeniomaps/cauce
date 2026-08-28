@@ -230,10 +230,16 @@ propuesta consolidada. -->
 // propuesta que ésta corrige, y repetirlos haría que el mismo hallazgo entre dos veces al contrato. El
 // insumo de una revisión es otro —qué mostró la evaluación posterior a aplicar—, y por eso el molde
 // pregunta eso y no otra cosa.
-function reviseProposal(root, agent, dir, previous, period) {
+// El molde de los apartados que una persona escribe queda; lo que deja de quedar es `## Hallazgos` en
+// blanco. Una revisión que no puede decir qué la motiva no puede producir un cambio, y hasta acá se
+// llega sólo con material: el llamador ya se negó a abrirla sin él.
+function reviseProposal(root, agent, dir, previous, period, hallazgos = [], consumed = []) {
   const parsed = previous.match(PROPOSAL_NAME)
   const revision = Number(parsed[2] || 1) + 1
   const file = path.join(dir, `${period}-r${revision}.md`)
+  const molde = `Qué mostró la evaluación posterior a aplicar \`${previous}\`. No repitas acá los hallazgos de esa
+propuesta —ya entraron al contrato—: lo que va es lo que se supo después, con el registro de
+evaluación que lo sostiene.`
   fs.writeFileSync(file, `---
 agent: ${agent}
 period: ${period}
@@ -250,9 +256,7 @@ la reabre: es un cambio distinto, con su propia firma.
 
 ## Hallazgos
 
-Qué mostró la evaluación posterior a aplicar \`${previous}\`. No repitas acá los hallazgos de esa propuesta
-—ya entraron al contrato—: lo que va es lo que se supo después, con el registro de evaluación que lo
-sostiene.
+${hallazgos.join('\n\n') || molde}
 
 ## Evidencia
 
@@ -281,7 +285,8 @@ sólo que pase.
 - Responsable: por definir
 - Fecha: por definir
 `)
-  return { file, created: true, reports: 0, corrects: previous }
+  for (const record of consumed) markConsolidated(record)
+  return { file, created: true, reports: 0, corrects: previous, findings: hallazgos.length }
 }
 
 // La última propuesta del período, si la hay: es contra ella que se decide si abrir una revisión.
@@ -320,7 +325,11 @@ function verdicts(text) {
 //
 // Cuántas veces falló sí viaja, porque no es lo mismo un rojo suelto que uno que aguantó dos arreglos
 // distintos: lo primero puede ser varianza y lo segundo es una medición estable.
-function flowFindings(root, dir) {
+//
+// Sirve a los dos, y no por generalidad: el formato del registro es el mismo —`### caso` y
+// `- Veredicto:`— porque lo escribe el mismo `evaluate --record`. Un cargo tenía este material desde
+// siempre y nada lo leía, así que aprendía de su profesión y no de haber fallado su propia medición.
+function verdictFindings(root, dir) {
   const results = path.join(dir, 'evaluations', 'results')
   const unsealed = reportFiles(results).filter((name) =>
     frontmatterState(fs.readFileSync(path.join(results, name), 'utf8'), 'draft') !== 'consolidated')
@@ -367,7 +376,7 @@ function pendingReports(target, sealing) {
 // sella— y distinto contenido: lo que se corrige es el recorrido mismo, y lo que lo justifica es un
 // veredicto en contra, no una fuente nueva.
 function proposeFromRuns(root, agent, target, file, period) {
-  const { consumed, findings } = flowFindings(root, target)
+  const { consumed, findings } = verdictFindings(root, target)
   const empty = 'Ninguna corrida sin consolidar dejó un veredicto en contra. El recorrido '
     + 'aguantó lo que se le midió, y eso no pide cambio.'
   fs.writeFileSync(file, `---
@@ -426,35 +435,32 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
   const pendiente = previous && proposalState(fs.readFileSync(path.join(proposalDir, previous), 'utf8')) !== 'applied'
   if (pendiente) return { file: path.join(proposalDir, previous), created: false, reports: 0 }
 
-  const reports = kind === 'flow' ? [] : pendingReports(target, sealing)
-  // El cron lo dice antes que nadie: consolidar sin informes produce un andamiaje que nadie puede
-  // aprobar, y el job ve un archivo nuevo y abre el PR igual. Con una cadencia por cargo eso deja de
-  // ser un borde: el que investiga cada trimestre pasaría dos meses de cada tres abriendo propuestas
-  // para decir que no investigó.
-  //
-  // Vale para los dos documentos y por eso la guarda vive acá arriba. Vivía debajo de la bifurcación
-  // y cubría sólo la propuesta del período: la revisión se fabricaba igual, para todo cargo cuya
-  // propuesta anterior estuviera aplicada. Que sea un andamio en blanco no la abarata —cuesta la
-  // misma firma— y encima llega indistinguible de una con hallazgos en la lista de PR.
-  if (kind !== 'flow' && !reports.length) return { file: '', created: false, reports: 0 }
+  if (kind === 'flow') {
+    if (previous) return reviseProposal(root, agent, proposalDir, previous, sealing)
+    return proposeFromRuns(root, agent, target, path.join(proposalDir, `${sealing}.md`), sealing)
+  }
 
-  // Una revisión corrige un texto ya aplicado, así que no consolida: la escribe una persona mirando el
-  // veredicto que lo desmintió. Lo que la habilita es que exista material nuevo, no que exista la
-  // propuesta anterior.
-  if (previous) return reviseProposal(root, agent, proposalDir, previous, sealing)
+  // Los dos materiales de un cargo, y dicen cosas distintas: un informe sin consolidar dice que cambió
+  // la profesión, un caso en rojo dice que el contrato no se sostuvo. Cualquiera de los dos puede
+  // cambiarlo, así que cualquiera de los dos abre documento.
+  //
+  // Sin ninguno no se abre nada, y por eso la guarda vive acá arriba en vez de debajo de la
+  // bifurcación, que es donde cubría sólo la propuesta del período: la revisión se fabricaba igual
+  // para todo cargo cuya propuesta anterior estuviera aplicada. Que sea un andamio en blanco no la
+  // abarata —cuesta la misma firma humana— y encima llega indistinguible de una con hallazgos en la
+  // lista de PR. Componer el documento desde el material lo vuelve imposible en vez de prohibido.
+  const reportDir = path.join(target, 'learning', 'reports')
+  const reports = pendingReports(target, sealing)
+  const red = verdictFindings(root, target)
+  if (!reports.length && !red.findings.length) return { file: '', created: false, reports: 0 }
+
+  const reportPaths = reports.map((name) => path.join(reportDir, name))
+  const hallazgos = [...reportPaths.map((file) => reportSummary(root, file)), ...red.findings]
+  const consumed = [...reportPaths, ...red.consumed]
+  if (previous) return reviseProposal(root, agent, proposalDir, previous, sealing, hallazgos, consumed)
 
   const file = path.join(proposalDir, `${sealing}.md`)
-  if (kind === 'flow') return proposeFromRuns(root, agent, target, file, sealing)
-  const reportDir = path.join(target, 'learning', 'reports')
-  const summaries = reports.map((name) => {
-    const report = path.join(reportDir, name)
-    const text = fs.readFileSync(report, 'utf8')
-    // Sin `m`: con esa bandera el `$` casa fin de *línea*, así que la búsqueda no ávida cortaba en el
-    // primer salto y la propuesta consolidaba una sola línea de una recomendación de diez.
-    const match = text.match(/\n## Recomendación\s*\n([\s\S]*?)(?=\n## |$)/) || []
-    const recommendation = (match[1] || 'Sin recomendación registrada.').trim()
-    return `### ${name.slice(0, -3)}\n\nFuente interna: \`${path.relative(root, report)}\`\n\n${recommendation}`
-  })
+  const summaries = hallazgos
   fs.writeFileSync(file, `---
 agent: ${agent}
 period: ${sealing}
@@ -490,8 +496,19 @@ Pendiente.
 - Responsable: por definir
 - Fecha: por definir
 `)
-  for (const name of reports) markConsolidated(path.join(reportDir, name))
-  return { file, created: true, reports: reports.length }
+  for (const record of consumed) markConsolidated(record)
+  return { file, created: true, reports: reports.length, findings: red.findings.length }
+}
+
+// La recomendación de un informe, que es lo único que la propuesta consolida de él.
+function reportSummary(root, report) {
+  const name = path.basename(report)
+  const text = fs.readFileSync(report, 'utf8')
+  // Sin `m`: con esa bandera el `$` casa fin de *línea*, así que la búsqueda no ávida cortaba en el
+  // primer salto y la propuesta consolidaba una sola línea de una recomendación de diez.
+  const match = text.match(/\n## Recomendación\s*\n([\s\S]*?)(?=\n## |$)/) || []
+  const recommendation = (match[1] || 'Sin recomendación registrada.').trim()
+  return `### ${name.slice(0, -3)}\n\nFuente interna: \`${path.relative(root, report)}\`\n\n${recommendation}`
 }
 
 function evaluateTeam(root, slug) {
