@@ -481,10 +481,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           period="$(date -u +%Y-%m)"
+          # Consolidar **sella** lo que consume, así que el diff trae la propuesta y además los informes
+          # y las corridas que entraron. Los tres van al PR: stageando sólo la propuesta, el sello se
+          # quedaba en el runner y el mes siguiente el mismo hallazgo entraba de nuevo, que es
+          # exactamente lo que el sello existe para evitar. Pasó con `backend-engineer` el 2026-08-28 y
+          # hubo que sellarlo a mano sobre la rama del PR.
+          changed="$(git ls-files --others --modified --exclude-standard -- "agents/*/$AGENT/**")"
           # El período y no el archivo: una propuesta ya aplicada se corrige abriendo `<período>-rN.md`,
           # y buscando sólo `<período>.md` esa revisión no aparecía. El paso la leía como «cambió
           # archivos fuera de su propuesta» y la dejaba sin PR, que es justo cuando el ciclo la necesita.
-          proposal="$(git ls-files --others --modified --exclude-standard -- "agents/*/$AGENT/learning/proposals/$period*.md")"
+          proposal="$(printf '%s\n' "$changed" | grep -F "/learning/proposals/$period" || true)"
           if [ -z "$proposal" ]; then
             echo "El agente cambió archivos fuera de su propuesta; no se abre PR." >&2
             git status --porcelain >&2
@@ -502,7 +508,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
-          git add "$proposal"
+          printf '%s\n' "$changed" | xargs git add --
           git commit -m "docs($AGENT): propose $name learning review"
           git push origin "$branch"
           gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
@@ -566,7 +572,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           period="$(date -u +%Y-%m)"
-          changed="$(git ls-files --others --modified --exclude-standard -- "flows/*/$FLOW/")"
+          # `/**` y no `/`: un pathspec con comodín y barra final no matchea nada, así que esto
+          # devolvía vacío siempre y los siete recorridos morían en «cambió archivos fuera de su
+          # propuesta». Comprobado con git 2.43.0 sobre el caso real —una propuesta nueva y dos
+          # corridas selladas—: `flows/*/<slug>/` da 0 y `flows/*/<slug>/**` da los 3 archivos. El
+          # comodín sí cruza `/`; lo que no funciona es la forma de directorio.
+          changed="$(git ls-files --others --modified --exclude-standard -- "flows/*/$FLOW/**")"
           proposal="$(printf '%s\n' "$changed" | grep -F "/learning/proposals/$period" || true)"
           if [ -z "$proposal" ]; then
             echo "El recorrido cambió archivos fuera de su propuesta; no se abre PR." >&2

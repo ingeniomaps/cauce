@@ -335,8 +335,10 @@ test('el workflow de aprendizaje ve los archivos que el ciclo crea', { skip: pro
     'agents/roles/system/probe/learning/reports/2099-01-07.md',
     'el informe de la semana',
   )
+  // La propuesta ya no se busca con su propio pathspec: sale de filtrar lo que cambió, que es lo que
+  // hace que el sello viaje al PR junto con ella. Por eso el caso monta las dos líneas.
   assert.equal(
-    found('proposal', 'AGENT=probe; period=2099-01'),
+    found('proposal', `AGENT=probe; period=2099-01\n${workflowCommand(source, 'changed')}`),
     'agents/roles/system/probe/learning/proposals/2099-01-r2.md',
     'y la revisión, que no se llama como el período',
   )
@@ -380,6 +382,71 @@ test('el primer informe de un cargo no aborta su publicación', () => {
   fs.writeFileSync(path.join(repo, rol, 'SKILL.md'), 'reescrito por el agente\n')
   const conIntruso = bash(`dest=${JSON.stringify(dest)}\n${workflowCommand(source, 'otros')}\nprintf '%s' "$otros"`)
   assert.match(conIntruso, /SKILL\.md/, 'un archivo ajeno sigue abortando la publicación')
+})
+
+// Las dos líneas reales del paso: la que calcula qué cambió y la que lo stagea. Se extraen del
+// workflow en vez de reescribirse, porque lo que hay que medir es lo que el job corre — reescribirlas
+// mediría la copia, y la copia es justo lo que puede divergir.
+// Se ubica por la variable del job y no por el pathspec: buscarlo por su forma correcta haría que
+// cambiarla rompiera la búsqueda en vez del resultado, y el rojo diría «no encontré la línea» cuando
+// lo que hay que ver es que no se stageó nada.
+function staging(source, variable) {
+  const lines = source.split('\n')
+  const at = lines.findIndex((line) => /^\s*changed="\$\(git ls-files/.test(line) && line.includes(variable))
+  assert.ok(at >= 0, `el workflow no calcula qué cambió para ${variable}`)
+  const resto = lines.slice(at + 1)
+  // `proposal=` va aunque no se stagee: es lo que el paso stageaba antes, así que sin definirla el
+  // regreso al defecto fallaría por variable vacía en vez de por haber stageado de menos.
+  const proposal = resto.find((line) => /^\s*proposal="\$\(/.test(line))
+  const add = resto.find((line) => line.includes('git add'))
+  assert.ok(proposal && add, `el workflow no resuelve y stagea la propuesta de ${variable}`)
+  return [lines[at], proposal, add].map((line) => line.trim()).join('\n')
+}
+
+// Consolidar produce dos cosas y el PR tiene que llevar las dos: la propuesta, y el sello sobre lo que
+// consumió. Dos fallas distintas se juntaban acá y ninguna tenía prueba.
+//
+// El pathspec con barra final y comodín —`flows/*/$FLOW/`— no matchea nada, así que los siete
+// recorridos morían en «cambió archivos fuera de su propuesta» y ninguno abrió un PR nunca. Y el paso
+// de cargos stageaba sólo la propuesta, así que el sello se quedaba en el runner: el informe seguía en
+// `draft` en la rama base y el mes siguiente entraba de nuevo, que es contra lo que el sello existe.
+test('el PR de una propuesta lleva también el sello de lo que consumió', () => {
+  const source = workflow('agent-learning')
+  const repo = tempRoot('cauce-staging-')
+  const bash = (script) => execFileSync('bash', ['-c', script], { cwd: repo, encoding: 'utf8' }).trim()
+
+  const casos = [
+    {
+      variable: '$AGENT', env: 'AGENT=probe', dir: 'agents/roles/system/probe',
+      consumido: 'learning/reports/2099-01-07.md',
+    },
+    {
+      variable: '$FLOW', env: 'FLOW=probe', dir: 'flows/system/probe',
+      consumido: 'evaluations/results/2099-01-07.md',
+    },
+  ]
+  for (const caso of casos) {
+    for (const rel of [caso.consumido, 'marca.md']) {
+      fs.mkdirSync(path.dirname(path.join(repo, caso.dir, rel)), { recursive: true })
+      fs.writeFileSync(path.join(repo, caso.dir, rel), '---\nstatus: draft\n---\n')
+    }
+  }
+  bash('git init -q . && git add -A && git -c user.email=t@t -c user.name=t commit -qm base')
+
+  for (const caso of casos) {
+    // El estado que deja `learn --proposal`: la propuesta sin trackear y lo consumido ya sellado.
+    const propuesta = path.join(caso.dir, 'learning', 'proposals', '2099-01.md')
+    fs.mkdirSync(path.dirname(path.join(repo, propuesta)), { recursive: true })
+    fs.writeFileSync(path.join(repo, propuesta), '---\nstatus: proposed\n---\n')
+    const sellado = path.join(caso.dir, caso.consumido)
+    fs.writeFileSync(path.join(repo, sellado), '---\nstatus: consolidated\n---\n')
+
+    bash(`${caso.env}; period=2099-01\n${staging(source, caso.variable)}`)
+    const staged = bash('git diff --cached --name-only').split('\n').filter(Boolean).sort()
+    assert.deepEqual(staged, [propuesta, sellado].sort(),
+      `${caso.env}: la propuesta y el sello van juntos, y nada ajeno se cuela`)
+    bash('git -c user.email=t@t -c user.name=t commit -qm paso')
+  }
 })
 
 // La suscripción primero, la API key como respaldo. No alcanza con poner las dos en el entorno: el
