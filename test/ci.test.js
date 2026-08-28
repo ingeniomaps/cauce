@@ -384,6 +384,55 @@ test('el primer informe de un cargo no aborta su publicación', () => {
   assert.match(conIntruso, /SKILL\.md/, 'un archivo ajeno sigue abortando la publicación')
 })
 
+// Cada cron elige su cohorte, y el del ensamblaje no elige ninguna: ese día no se investiga, se
+// consolida. Su cadena no está en `POR_CRON` justo por eso, así que `cadence` queda vacía — y la
+// condición de corte la leía como «no encontré ningún agente» y abortaba `discover`. Los tres jobs
+// dependen de él, así que el ensamblaje entero habría quedado salteado el día 1: sin una sola
+// propuesta, sin un PR y sin decir por qué. No se vio nunca porque toda corrida a mano o nombra un
+// slug o no trae `schedule`, y el cron del ensamblaje todavía no había corrido.
+//
+// Lo que decide es si vino de un cron, no si hay cadencia.
+test('cada cron elige su cohorte, y el del ensamblaje no aborta por no tener ninguna', () => {
+  const source = workflow('agent-learning')
+  const dir = tempRoot('cauce-cron-')
+  const salida = path.join(dir, 'github-output')
+  const roles = JSON.stringify([
+    { slug: 'un-semanal', cadence: 'semanal' },
+    { slug: 'un-mensual', cadence: 'mensual' },
+    { slug: 'un-trimestral', cadence: 'trimestral' },
+  ])
+  const correr = (env) => {
+    const cuerpo = workflowStep(source, 'id: list').replace(/^all=\$\(node .*\)$/m, `all=${JSON.stringify(roles)}`)
+    fs.writeFileSync(salida, '')
+    const hecho = spawnSync('bash', ['-c', cuerpo], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, ONLY: '', ...env, GITHUB_OUTPUT: salida },
+    })
+    return { ...hecho, escrito: fs.readFileSync(salida, 'utf8') }
+  }
+
+  // Los tres crones que investigan, cada uno con su cohorte y ninguna otra.
+  for (const [cron, slug] of [
+    ['17 13 * * 1', 'un-semanal'],
+    ['17 13 24 * *', 'un-mensual'],
+    ['17 13 23 3,6,9,12 *', 'un-trimestral'],
+  ]) {
+    const hecho = correr({ SCHEDULE: cron })
+    assert.equal(hecho.status, 0, `${cron} abortó: ${hecho.stderr}`)
+    assert.match(hecho.escrito, new RegExp(`^agents=\\["${slug}"\\]$`, 'm'), `${cron} elige sólo su cadencia`)
+  }
+
+  // Y el del ensamblaje, que es el que rompía: lista vacía, sin abortar.
+  const ensamblaje = correr({ SCHEDULE: '17 7 1 * *' })
+  assert.equal(ensamblaje.status, 0,
+    `el cron del ensamblaje abortó discover, y con él los tres jobs que dependen: ${ensamblaje.stderr}`)
+  assert.match(ensamblaje.escrito, /^agents=\[\]$/m, 'ese día no se investiga, y eso no es un error')
+
+  // A mano sin slug sigue siendo un error si de verdad no hay cargos: es la única corrida que lo es.
+  const vacio = { ...correr({ SCHEDULE: '' }) }
+  assert.match(vacio.escrito, /^agents=\["un-mensual","un-semanal","un-trimestral"\]$/m,
+    'a mano sin slug van todos, sin mirar cadencia')
+})
+
 // El input `agent` de un dispatch nombra un cargo **o** un recorrido, y los dos pasos que arman las
 // matrices corren en orden. El de cargos abortaba con «No existe el agente» apenas su lista quedaba
 // vacía, así que un slug de recorrido tiraba el job entero antes de que el paso de recorridos pudiera
