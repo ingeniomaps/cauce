@@ -4,7 +4,7 @@
 .PHONY: help check tree context test coverage coverage-update ci automation-check integration-check
 .PHONY: release-check dead-imports
 .PHONY: require-agent agent-learn agent-propose agent-evaluate require-flow flow-check flow-show
-.PHONY: eval-instance
+.PHONY: eval-workflows
 
 help: ## Muestra los comandos disponibles y su propósito
 	@awk 'BEGIN {FS = ":.*## "; printf "Uso: make <comando>\n\n"} \
@@ -76,24 +76,20 @@ release-check: ## Comprueba todo lo que publicar exige — no publica
 	printf '\nTodo verde para %s. El publish lo corre una persona:\n' "$$(npm pkg get version | tr -d '\"')"; \
 	printf '  set -a; . ./.env; set +a; npm publish\n'
 
-# Evaluar un recorrido o un cargo exige dos cosas que no se pueden tener a la vez en este repositorio:
-# `flow-eval` frena si el root no es `mode: toolkit`, y `install` se niega a instalar en uno que lo sea.
-# La salida es una copia desechable del arbol de trabajo: sigue siendo toolkit, asi que la evaluacion
-# acepta, y no es este repositorio, asi que instalar ahi no rompe la regla de `AGENTS.md`.
+# Evaluar un recorrido o un cargo se hace desde acá, y para eso los workflows tienen que estar en el
+# registro de la sesión: `workflow()` resuelve por nombre contra `.claude/workflows/`, y `flow-eval`
+# compone `flow`. Renderizarlos es todo lo que hace falta — no es `install`, que ademas escribiria
+# punteros por cargo y guards que contradicen el trabajo, y que se niega en un root `mode: toolkit`.
 #
-# Se mide el arbol de trabajo, no lo publicado ni lo committeado: la copia sale de rsync, con lo que
-# tengas sin commitear. El veredicto se escribe aca, junto al cargo o al recorrido; la copia se tira.
-EVAL_DIR ?= /tmp/cauce-eval
+# La copia va gitignoreada y se rehace a pedido: committearla es lo que la dejaria divergir del fuente,
+# que es la razon por la que `AGENTS.md` no quiere una segunda copia de los workflows.
+#
+# El registro se arma al abrir la sesion, asi que despues de correr esto hay que abrir una nueva.
+EVAL_WORKFLOWS = flow flow-eval agent-eval
 
-eval-instance: ## Prepara una copia instalable del arbol para correr /flow-eval y /agent-eval
-	@rm -rf "$(EVAL_DIR)"
-	@rsync -a --exclude=.git --exclude=node_modules --exclude=.cauce-eval \
-	  --exclude=.env --exclude=.npmrc --exclude=.gitconfig ./ "$(EVAL_DIR)/"
-	@sed -i 's/"mode": "toolkit"/"mode": "embedded"/' "$(EVAL_DIR)/ops.config.json"
-	@node engine/cli/ops.js automation install "$(EVAL_DIR)" claude
-	@sed -i 's/"mode": "embedded"/"mode": "toolkit"/' "$(EVAL_DIR)/ops.config.json"
-	@printf '\nInstancia lista en %s\n' "$(EVAL_DIR)"
-	@printf 'Abri una sesion ahi y evalua:\n'
+eval-workflows: ## Renderiza los workflows de evaluacion en .claude/workflows (gitignorado)
+	@mkdir -p .claude/workflows
+	@node -e 'const {render}=require("./engine/automation"),fs=require("fs"),path=require("path");const root=process.cwd(),auto=path.join(root,"automatization");for(const n of process.argv.slice(1)){const out=render(path.join(auto,"workflows",n+".js"),"",auto,root);if(out.includes("{{INCLUDE:"))throw new Error(n+": quedaron includes sin expandir");fs.writeFileSync(path.join(root,".claude/workflows",n+".js"),out);console.log("  "+n+".js")}' $(EVAL_WORKFLOWS)
+	@printf '\nListo. Abri una sesion nueva —el registro se arma al abrirla— y evalua:\n'
 	@printf '  /flow-eval {"flow":"<slug>","cases":"<caso>"}\n'
 	@printf '  /agent-eval {"agent":"<slug>","cases":"<caso>"}\n'
-	@printf 'El veredicto se escribe en este repositorio, no en la copia. La copia se tira.\n'

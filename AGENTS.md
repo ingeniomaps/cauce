@@ -111,26 +111,28 @@ que se resuelve al instalar, y acá no se instala. Correr el archivo tal cual fa
 defined` antes del primer agente.
 
 Expandir los includes a mano —con `render` de `engine/automation/index.js`— alcanza para mirar el
-archivo, y **no alcanza para correrlo**. `flow-eval` compone otro workflow con `workflow('flow', …)`, y
-lo que falta no es la primitiva sino el registro: `workflow()` existe siempre, y resuelve el nombre
-contra los workflows de la sesión. Desde acá ese registro trae sólo el built-in —comprobado con una
-sonda: `workflow('flow'): no workflow with that name. Available: deep-research`—, porque
-`.claude/workflows/` acá está vacío y así tiene que quedar.
+archivo, y **no alcanza para correrlo** si compone otro workflow. `flow-eval` llama a `workflow('flow',
+…)`, y lo que falta no es la primitiva sino el registro: `workflow()` existe siempre, y resuelve el
+nombre contra los workflows de la sesión.
 
-Lo que se ve al correrlo no dice nada de eso: el `.catch` de cada caso convierte el error en «este caso
-no se pudo medir», así que la corrida termina en `sin-veredicto` como si el instrumento hubiera fallado
-en otro lado. Cuesta dos corridas descubrirlo, y la sonda que lo aclara no gasta ni un agente.
+Ese registro **se arma al abrir la sesión**, y sale de `.claude/workflows/`. Es todo lo que hacía falta:
+no `install`, que además escribiría punteros por cargo y guards que contradicen el trabajo, y que se
+niega en un root `mode: toolkit`.
 
-Y no se arregla instalando acá, ni sólo porque esté prohibido: `flow-eval` frena si el root no es
-`mode: toolkit`, e `install` se niega a instalar en uno que lo sea. Los dos controles son correctos por
-separado y juntos no dejan lugar donde evaluar.
+`make eval-workflows` renderiza `flow`, `flow-eval` y `agent-eval` ahí. **Después hay que abrir una
+sesión nueva** —si no, el registro es el de antes— y desde ella se invocan `/flow-eval` y `/agent-eval`,
+sobre este repositorio y con `mode: toolkit` intacto.
 
-La salida es `make eval-instance`: copia el árbol de trabajo a `EVAL_DIR` —`/tmp/cauce-eval` por
-defecto—, instala ahí el runner y devuelve la copia en `toolkit`. Sigue siendo toolkit, así que la
-evaluación acepta; no es este repositorio, así que instalar no rompe nada de lo de arriba. Se mide lo
-que tenés sin commitear, no lo publicado. Desde esa copia se invocan `/flow-eval` y `/agent-eval`.
+La copia va **gitignoreada y se rehace a pedido**. Committearla es lo que la dejaría divergir del
+fuente, que es la razón por la que acá no queremos una segunda copia de los workflows: como salida
+generada no tiene cómo pudrirse.
 
-**El veredicto se escribe acá, junto al cargo o al recorrido. La copia se tira.**
+Y lo que se ve cuando algo de esto falta no lo dice: el `.catch` de cada caso convierte el error en
+«este caso no se pudo medir», así que la corrida termina en `sin-veredicto` como si el instrumento
+hubiera fallado en otro lado. Cuesta dos corridas descubrirlo, y una sonda de cinco líneas que no gasta
+ni un agente lo aclara en milisegundos.
+
+**El veredicto se escribe junto al cargo o al recorrido, que es donde ya vive.**
 
 ## Convenciones
 
