@@ -723,8 +723,20 @@ test('el ciclo de aprendizaje llega del informe semanal al contrato', () => {
   const propuesta = fs.readFileSync(path.join(proposals, `${period}.md`), 'utf8')
   assert.match(propuesta, /Rotar el token \(cierra H1\)/, 'la recomendación del lunes llega a la propuesta')
 
-  const encontrada = bash(`AGENT=probe; period=${period}\n${workflowCommand(yml, 'proposal')}\nprintf '%s' "$proposal"`)
+  const paso = `AGENT=probe; period=${period}\n${workflowCommand(yml, 'changed')}\n`
+    + `${workflowCommand(yml, 'proposal')}\n`
+  const encontrada = bash(`${paso}printf '%s' "$proposal"`)
   assert.equal(encontrada, `agents/roles/probe/learning/proposals/${period}.md`, 'y el paso la encuentra')
+
+  // Y lo que el paso stagea es el cambio entero, no sólo la propuesta. Consolidar **sella** el informe
+  // que consume, y ese sello viaja en el mismo PR o no viaja: stageando sólo la propuesta se quedaba en
+  // el runner, el informe seguía en `draft` en la rama base, y la consolidación del mes siguiente lo
+  // volvía a leer. El mismo hallazgo dos veces, que es contra lo que el sello existe.
+  const staged = bash(`${paso}printf '%s\\n' "$changed"`).split('\n').filter(Boolean).sort()
+  assert.deepEqual(staged, [
+    `agents/roles/probe/learning/proposals/${period}.md`,
+    `agents/roles/probe/learning/reports/${informe}`,
+  ], 'el informe sellado viaja con la propuesta, y nada más se cuela')
 
   // ── Y el informe queda marcado, así que nada lo reclama ni se consolida dos veces ─────────────
   assert.match(fs.readFileSync(path.join(reports, informe), 'utf8'), /^status: consolidated$/m)
