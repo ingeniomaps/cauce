@@ -375,10 +375,9 @@ function pendingReports(target, sealing) {
 // La propuesta de un recorrido. Mismo ciclo que la de un cargo —se abre, se firma, se aplica y se
 // sella— y distinto contenido: lo que se corrige es el recorrido mismo, y lo que lo justifica es un
 // veredicto en contra, no una fuente nueva.
-function proposeFromRuns(root, agent, target, file, period) {
-  const { consumed, findings } = verdictFindings(root, target)
-  const empty = 'Ninguna corrida sin consolidar dejó un veredicto en contra. El recorrido '
-    + 'aguantó lo que se le midió, y eso no pide cambio.'
+// Recibe los hallazgos ya compuestos: el llamador los necesita antes para decidir si abre documento,
+// y volver a leerlos acá sería leer dos veces lo mismo para responder la misma pregunta.
+function proposeFromRuns(root, agent, target, file, period, { consumed, findings }) {
   fs.writeFileSync(file, `---
 flow: ${agent}
 period: ${period}
@@ -390,7 +389,7 @@ automatic_apply: false
 
 ## Hallazgos
 
-${findings.join('\n\n') || empty}
+${findings.join('\n\n')}
 
 ## Evidencia
 
@@ -435,9 +434,18 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
   const pendiente = previous && proposalState(fs.readFileSync(path.join(proposalDir, previous), 'utf8')) !== 'applied'
   if (pendiente) return { file: path.join(proposalDir, previous), created: false, reports: 0 }
 
+  // La misma regla que abajo, y el mismo motivo: un documento que no puede decir qué corregir no
+  // produce un cambio de contrato, y cuesta igual la firma humana que uno que sí. Antes se abría uno
+  // por recorrido con corridas sin sellar aunque todas hubieran pasado, para decir que no había nada.
+  //
+  // Lo que se pierde es el sello de esas corridas, y es inocuo: los hallazgos se componen por caso con
+  // la última corrida ganando, así que una verde vieja no cambia ningún veredicto. Lo único que queda
+  // es que el recorrido siga contándose en `pending` y su job vuelva a no encontrar nada.
   if (kind === 'flow') {
-    if (previous) return reviseProposal(root, agent, proposalDir, previous, sealing)
-    return proposeFromRuns(root, agent, target, path.join(proposalDir, `${sealing}.md`), sealing)
+    const red = verdictFindings(root, target)
+    if (!red.findings.length) return { file: '', created: false, reports: 0 }
+    if (previous) return reviseProposal(root, agent, proposalDir, previous, sealing, red.findings, red.consumed)
+    return proposeFromRuns(root, agent, target, path.join(proposalDir, `${sealing}.md`), sealing, red)
   }
 
   // Los dos materiales de un cargo, y dicen cosas distintas: un informe sin consolidar dice que cambió
