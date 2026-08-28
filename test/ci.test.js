@@ -384,6 +384,50 @@ test('el primer informe de un cargo no aborta su publicación', () => {
   assert.match(conIntruso, /SKILL\.md/, 'un archivo ajeno sigue abortando la publicación')
 })
 
+// El input `agent` de un dispatch nombra un cargo **o** un recorrido, y los dos pasos que arman las
+// matrices corren en orden. El de cargos abortaba con «No existe el agente» apenas su lista quedaba
+// vacía, así que un slug de recorrido tiraba el job entero antes de que el paso de recorridos pudiera
+// mirarlo: no había forma de disparar uno solo, y la única alternativa era lanzar sin slug, que
+// enciende los 53 cargos. Quién decide que un slug no existe es el segundo paso, que es el único punto
+// donde se conocen las dos listas.
+test('un dispatch puede nombrar un recorrido, y sólo miente un slug que no es ninguno', () => {
+  const source = workflow('agent-learning')
+  const dir = tempRoot('cauce-dispatch-')
+  const salida = path.join(dir, 'github-output')
+
+  // Los dos pasos reales, con la consulta al CLI reemplazada por datos fijos: lo que se mide es el
+  // filtro y el corte, no el catálogo, que avanza por su cuenta.
+  const correr = (anchor, datos, env) => {
+    const cuerpo = workflowStep(source, anchor).replace(/^all=\$\(node .*\)$/m, `all=${JSON.stringify(datos)}`)
+    fs.writeFileSync(salida, '')
+    const hecho = spawnSync('bash', ['-c', cuerpo], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, ...env, GITHUB_OUTPUT: salida },
+    })
+    return { ...hecho, salida: fs.readFileSync(salida, 'utf8') }
+  }
+  const roles = JSON.stringify([{ slug: 'un-cargo', cadence: 'mensual' }])
+  const flows = JSON.stringify([{ slug: 'un-recorrido', pending: 2 }])
+
+  // Un slug de recorrido: el paso de cargos ya no aborta, y devuelve la lista vacía que corresponde.
+  const cargos = correr('id: list', roles, { ONLY: 'un-recorrido', SCHEDULE: '' })
+  assert.equal(cargos.status, 0, `el paso de cargos abortó: ${cargos.stderr}`)
+  assert.match(cargos.salida, /^agents=\[\]$/m, 'ningún cargo se llama así, y eso no es un error')
+
+  const recorridos = correr('id: flows', flows, { ONLY: 'un-recorrido', AGENTS: '[]' })
+  assert.equal(recorridos.status, 0, `el paso de recorridos abortó: ${recorridos.stderr}`)
+  assert.match(recorridos.salida, /^flows=\["un-recorrido"\]$/m, 'y el recorrido sí entra a su matriz')
+
+  // Y un slug que no es ninguno de los dos sigue siendo un error, que es lo que el corte protege.
+  const ninguno = correr('id: flows', flows, { ONLY: 'no-existe', AGENTS: '[]' })
+  assert.notEqual(ninguno.status, 0, 'un slug inventado tiene que frenar la corrida')
+  assert.match(ninguno.stderr, /No existe el agente ni el recorrido "no-existe"/)
+
+  // Un cargo real no se frena por tener la lista de recorridos vacía: es el caso de todos los días.
+  const soloCargo = correr('id: flows', flows, { ONLY: 'un-cargo', AGENTS: '["un-cargo"]' })
+  assert.equal(soloCargo.status, 0, 'nombrar un cargo no exige que exista un recorrido igual')
+  assert.match(soloCargo.salida, /^flows=\[\]$/m)
+})
+
 // Las dos líneas reales del paso: la que calcula qué cambió y la que lo stagea. Se extraen del
 // workflow en vez de reescribirse, porque lo que hay que medir es lo que el job corre — reescribirlas
 // mediría la copia, y la copia es justo lo que puede divergir.

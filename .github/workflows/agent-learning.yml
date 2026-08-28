@@ -102,11 +102,16 @@ jobs:
               : porCron ? roles.filter((role) => role.cadence === cadence)
               : roles
             const list = elegidos.map((role) => role.slug).sort()
-            // Vacío sólo es un error cuando alguien pidió algo concreto. El día del ensamblaje no
+            // Vacío sólo es un error cuando no hay a quién pedirle nada. El día del ensamblaje no
             // hay cadencia que investigar y la lista vacía es el resultado correcto: `research` no
             // arranca y `propose` sí.
-            if (!list.length && (only || !cadence)) {
-              console.error(only ? `No existe el agente "${only}".` : "No se encontró ningún agente.")
+            //
+            // Un slug a mano tampoco se juzga acá: puede nombrar un recorrido, y este paso no los ve.
+            // Abortando con «No existe el agente» dejaba sin forma de disparar uno solo —la única
+            // alternativa era lanzar sin slug, que enciende los 53 cargos—. Lo decide `List flows`,
+            // que corre después y es el único punto donde se conocen las dos listas.
+            if (!list.length && !only && !cadence) {
+              console.error("No se encontró ningún agente.")
               process.exit(1)
             }
             console.log(`${list.length} cargo(s)${cadence ? ` de cadencia ${cadence}` : ""}`)
@@ -123,16 +128,21 @@ jobs:
         id: flows
         env:
           ONLY: ${{ inputs.agent }}
+          AGENTS: ${{ steps.list.outputs.agents }}
         run: |
           all=$(node "$OPS" flow list --json)
           node -e '
             const fs = require("fs")
             const only = (process.env.ONLY || "").trim()
             // Un slug a mano puede nombrar un cargo o un recorrido, y no hay forma de saber cuál sin
-            // mirar las dos listas. Si no está acá, esta lista queda vacía y la de cargos decide.
+            // mirar las dos listas. Acá ya se conocen las dos, así que acá se decide si no nombró nada.
             const flows = JSON.parse(process.argv[1])
               .filter((one) => (only ? one.slug === only : one.pending > 0))
             const list = flows.map((one) => one.slug).sort()
+            if (only && !list.length && !JSON.parse(process.env.AGENTS || "[]").length) {
+              console.error(`No existe el agente ni el recorrido "${only}".`)
+              process.exit(1)
+            }
             console.log(`${list.length} recorrido(s) con corridas sin consolidar`)
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `flows=${JSON.stringify(list)}\n`)
           ' "$all"
