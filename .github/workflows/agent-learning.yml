@@ -102,15 +102,21 @@ jobs:
               : porCron ? roles.filter((role) => role.cadence === cadence)
               : roles
             const list = elegidos.map((role) => role.slug).sort()
-            // Vacío sólo es un error cuando no hay a quién pedirle nada. El día del ensamblaje no
-            // hay cadencia que investigar y la lista vacía es el resultado correcto: `research` no
-            // arranca y `propose` sí.
+            // Vacío sólo es un error cuando no hay a quién pedirle nada, y eso sólo puede pasar en una
+            // corrida a mano sin slug. Lo que decide es `porCron` y no `cadence`: el cron del
+            // ensamblaje no está en la tabla —a propósito, porque ese día no se investiga—, así que
+            // deja `cadence` vacía y la condición anterior lo leía como «no encontré ningún agente» y
+            // abortaba. Con `discover` caído, los tres jobs que dependen de él quedaban salteados: el
+            // ensamblaje entero no habría corrido, sin abrir una sola propuesta y sin decir por qué.
+            // Nunca se vio porque toda corrida a mano nombra un slug o no trae `schedule`.
+            //
+            // Una cadencia sin cargos tampoco es un error: no hay nada que investigar ese día.
             //
             // Un slug a mano tampoco se juzga acá: puede nombrar un recorrido, y este paso no los ve.
             // Abortando con «No existe el agente» dejaba sin forma de disparar uno solo —la única
             // alternativa era lanzar sin slug, que enciende los 53 cargos—. Lo decide `List flows`,
             // que corre después y es el único punto donde se conocen las dos listas.
-            if (!list.length && !only && !cadence) {
+            if (!list.length && !only && !porCron) {
               console.error("No se encontró ningún agente.")
               process.exit(1)
             }
