@@ -409,14 +409,18 @@ test('el ciclo de un recorrido aprende de sus corridas, no de una literatura', (
   assert.match(fs.readFileSync(registro, 'utf8'), /^status: consolidated$/m)
   firmar(propuesta.file)
   L.seal(root, 'probe', '2099-01', 'flow')
+  // Sin corridas nuevas no hay qué corregir, y entonces no se abre documento. Antes se abría uno para
+  // decir «el recorrido aguantó lo que se le midió»: nadie firma eso, y una firma humana es lo que
+  // cuesta. Es la misma regla que gobierna a un cargo — un documento que no puede nombrar un cambio
+  // no se escribe—, y acá se comprobaba lo contrario.
   const siguiente = L.prepareProposal(root, 'probe', new Date('2099-02-28T00:00:00Z'), '', 'flow')
-  assert.equal(siguiente.findings, 0, 'sin corridas nuevas no hay qué corregir')
-  assert.match(fs.readFileSync(siguiente.file, 'utf8'), /aguantó lo que se le midió/)
+  assert.equal(siguiente.created, false, 'sin veredictos en contra no se abre nada')
+  assert.equal(siguiente.file, '', 'y no queda archivo que el job lea como propuesta y mande a PR')
 
   const estado = L.evaluateTeam(root, 'probe')
   assert.deepEqual(estado.errors, [])
-  assert.equal(estado.proposals, 2)
-  assert.equal(estado.pending, 1, 'la de enero quedó aplicada; la de febrero espera firma')
+  assert.equal(estado.proposals, 1, 'sólo la de enero, que es la única que tuvo algo que decir')
+  assert.equal(estado.pending, 0, 'y quedó aplicada')
   assert.match(estado.warnings.join('\n'), /sin learning\/HISTORY\.md/)
 })
 
