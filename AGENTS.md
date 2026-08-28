@@ -108,12 +108,24 @@ no se afirma nada — el hecho lo trae el cargo—, así que no hay nada que se 
 
 Los workflows de `automatization/workflows/` **no se ejecutan desde el fuente**: traen `{{INCLUDE:...}}`,
 que se resuelve al instalar, y acá no se instala. Correr el archivo tal cual falla con `shared is not
-defined` antes del primer agente. Hay que expandir los includes contra `automatization/` —lo mismo que
-hace `render` en `engine/automation/index.js`— y reemplazar `{{OPS_DIR}}` por la raíz del repo, y correr
-esa copia.
+defined` antes del primer agente.
 
-Es también la razón por la que acá no existe `/agent-eval`: esa skill la escribe `install`, junto con la
-copia ya expandida del workflow.
+Expandir los includes a mano —con `render` de `engine/automation/index.js`— alcanza para mirar el
+archivo, y **no alcanza para correrlo**. `flow-eval` compone otro workflow con `workflow('flow', …)`, y
+esa primitiva la da el runner instalado, no el genérico: sin ella el pipeline revienta con un
+`ReferenceError` que el `.catch` de cada caso se traga, así que la corrida termina «sin veredicto» sin
+decir por qué. Cuesta dos corridas descubrirlo.
+
+Y no se arregla instalando acá, ni sólo porque esté prohibido: `flow-eval` frena si el root no es
+`mode: toolkit`, e `install` se niega a instalar en uno que lo sea. Los dos controles son correctos por
+separado y juntos no dejan lugar donde evaluar.
+
+La salida es `make eval-instance`: copia el árbol de trabajo a `EVAL_DIR` —`/tmp/cauce-eval` por
+defecto—, instala ahí el runner y devuelve la copia en `toolkit`. Sigue siendo toolkit, así que la
+evaluación acepta; no es este repositorio, así que instalar no rompe nada de lo de arriba. Se mide lo
+que tenés sin commitear, no lo publicado. Desde esa copia se invocan `/flow-eval` y `/agent-eval`.
+
+**El veredicto se escribe acá, junto al cargo o al recorrido. La copia se tira.**
 
 ## Convenciones
 

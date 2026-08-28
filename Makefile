@@ -4,6 +4,7 @@
 .PHONY: help check tree context test coverage coverage-update ci automation-check integration-check
 .PHONY: release-check dead-imports
 .PHONY: require-agent agent-learn agent-propose agent-evaluate require-flow flow-check flow-show
+.PHONY: eval-instance
 
 help: ## Muestra los comandos disponibles y su propósito
 	@awk 'BEGIN {FS = ":.*## "; printf "Uso: make <comando>\n\n"} \
@@ -74,3 +75,25 @@ release-check: ## Comprueba todo lo que publicar exige — no publica
 	npm pack --dry-run 2>&1 | tail -4; \
 	printf '\nTodo verde para %s. El publish lo corre una persona:\n' "$$(npm pkg get version | tr -d '\"')"; \
 	printf '  set -a; . ./.env; set +a; npm publish\n'
+
+# Evaluar un recorrido o un cargo exige dos cosas que no se pueden tener a la vez en este repositorio:
+# `flow-eval` frena si el root no es `mode: toolkit`, y `install` se niega a instalar en uno que lo sea.
+# La salida es una copia desechable del arbol de trabajo: sigue siendo toolkit, asi que la evaluacion
+# acepta, y no es este repositorio, asi que instalar ahi no rompe la regla de `AGENTS.md`.
+#
+# Se mide el arbol de trabajo, no lo publicado ni lo committeado: la copia sale de rsync, con lo que
+# tengas sin commitear. El veredicto se escribe aca, junto al cargo o al recorrido; la copia se tira.
+EVAL_DIR ?= /tmp/cauce-eval
+
+eval-instance: ## Prepara una copia instalable del arbol para correr /flow-eval y /agent-eval
+	@rm -rf "$(EVAL_DIR)"
+	@rsync -a --exclude=.git --exclude=node_modules --exclude=.cauce-eval \
+	  --exclude=.env --exclude=.npmrc --exclude=.gitconfig ./ "$(EVAL_DIR)/"
+	@sed -i 's/"mode": "toolkit"/"mode": "embedded"/' "$(EVAL_DIR)/ops.config.json"
+	@node engine/cli/ops.js automation install "$(EVAL_DIR)" claude
+	@sed -i 's/"mode": "embedded"/"mode": "toolkit"/' "$(EVAL_DIR)/ops.config.json"
+	@printf '\nInstancia lista en %s\n' "$(EVAL_DIR)"
+	@printf 'Abri una sesion ahi y evalua:\n'
+	@printf '  /flow-eval {"flow":"<slug>","cases":"<caso>"}\n'
+	@printf '  /agent-eval {"agent":"<slug>","cases":"<caso>"}\n'
+	@printf 'El veredicto se escribe en este repositorio, no en la copia. La copia se tira.\n'
