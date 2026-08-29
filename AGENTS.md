@@ -148,9 +148,9 @@ ni un agente lo aclara en milisegundos.
   sigue siendo la de R7; la que se cumple acá es ésta.
 
   Pasarse se justifica cuando de verdad corresponde, y la justificación se registra en
-  `test/repo.test.js` con su razón: hoy son el registro de guards y el recorrido de `autobuild`,
-  que crecen de a un guard y de a una fase. Un archivo que crece sin esa razón no pasa la puerta, y
-  una justificación que dejó de hacer falta tampoco: se retira cuando el archivo baja del umbral.
+  `test/repo/repo.test.js` con su razón: hoy la única es el recorrido de `autobuild`, que crece de a
+  una fase. Un archivo que crece sin esa razón no pasa la puerta, y una justificación que dejó de
+  hacer falta tampoco: se retira cuando el archivo baja del umbral.
 - **Código en inglés, prosa en español.** Identificadores y nombres de archivo, en inglés; comentarios y
   documentación, en español; lo que lee una persona —salida del CLI, errores, plantillas—, en español.
   Los mensajes de commit van en inglés, Conventional Commits. Un nombre a medio traducir —`sinFase`,
