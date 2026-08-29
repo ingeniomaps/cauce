@@ -4,7 +4,7 @@
 // y qué pasa el día del ensamblaje, cuando la lista de quien investiga está vacía a propósito y la
 // de quien se consolida no.
 
-const { tempRoot, CLI, workflow, workflowStep } = require('../support/environment')
+const { tempRoot, workflow, workflowStep } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')

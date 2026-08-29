@@ -10,7 +10,6 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
-const evaluations = require('../../engine/agents/evaluations')
 const learning = require('../../engine/agents/learning')
 const { REPO, installedProject, writeSkill } = require('../support/agents-fixtures')
 

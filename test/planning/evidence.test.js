@@ -4,14 +4,13 @@
 // commit que apunta a un sha real, las acciones humanas y el INBOX. Es la mitad del contrato que se
 // lee después, cuando ya nadie recuerda qué pasó.
 
-const { tempRoot, run } = require('../support/environment')
+const { tempRoot } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const PC = require('../../engine/planning/contracts')
 const P = require('../../engine/planning/parser')
-const ST = require('../../engine/planning/state')
 
 test('contratos de evidencia rastrean pruebas y decisiones duraderas', () => {
   assert.equal(PC.validTestTrace('C1 → test:create; C2 -> npm test'), true)

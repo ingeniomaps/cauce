@@ -4,7 +4,7 @@
 // que cada criterio citado tenga una prueba que lo asercie, que los gates hayan corrido algo y que
 // el commit exista. Verde no es lo mismo que cubierto, y acá se mide la diferencia.
 
-const { run } = require('../support/environment')
+require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const { KEY, ranToEnd, runFlow, reached, writesTo } = require('../support/autobuild-harness')

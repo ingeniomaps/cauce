@@ -4,7 +4,7 @@
 // puede escribir, qué credencial ve cada job y cómo se fijan las acciones. Comparten la palabra
 // «workflow» con los recorridos de Cauce y nada más — aquéllos están en `workflows*.test.js`.
 
-const { workflow } = require('../support/environment')
+require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')

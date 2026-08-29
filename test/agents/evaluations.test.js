@@ -4,7 +4,7 @@
 // ve quien juzga, y cuándo un veredicto deja de estar vigente. Ejecutarlos exige un modelo y eso no
 // pasa acá: lo que se comprueba es que se puedan leer, entregar y contar.
 
-const { run } = require('../support/environment')
+require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -12,8 +12,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const catalog = require('../../engine/agents/catalog')
 const evaluations = require('../../engine/agents/evaluations')
-const learning = require('../../engine/agents/learning')
-const { REPO, AGENTS, installedProject, writeSkill, firmarPropuesta } = require('../support/agents-fixtures')
+const { REPO, AGENTS, installedProject, writeSkill } = require('../support/agents-fixtures')
 
 // Los casos adversariales existían y nadie los corría: `evaluate` los contaba. Es el equivalente a una
 // suite que sólo comprueba que los archivos `.test.js` existan.

@@ -4,7 +4,7 @@
 // pisarse y cómo llega el motor. `upgrade.test.js` sigue desde la versión siguiente y
 // `destroy.test.js` desde el final; la unidad que decide la propiedad se prueba en `core.test.js`.
 
-const { MIN_ROLES, filesBelow, tempRoot, CLI, run, linkEngine, workflow } = require('../support/environment')
+const { MIN_ROLES, filesBelow, tempRoot, CLI, run, linkEngine } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')

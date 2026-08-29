@@ -10,7 +10,6 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
-const flows = require('../../engine/flows/registry')
 const EV = require('../../engine/agents/evaluations')
 
 const ROOT = path.resolve(__dirname, '..', '..')

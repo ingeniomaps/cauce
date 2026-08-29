@@ -4,7 +4,7 @@
 // entre etapas. Leer no es correr — `autobuild.test.js` y `flow.test.js` los ejecutan con los
 // subagentes simulados, y ahí se comprueba que un freno frene.
 
-const { CLI } = require('../support/environment')
+require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')

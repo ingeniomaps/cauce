@@ -4,7 +4,7 @@
 // qué deja cada recorrido al terminar. Su vecino se llama casi igual y hace otra cosa —`flow.test.js`,
 // sin s, ejecuta el recorrido de verdad con los cargos simulados. Acá se valida la fuente.
 
-const { tempRoot, workflow } = require('../support/environment')
+const { tempRoot } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')

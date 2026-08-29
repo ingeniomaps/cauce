@@ -4,7 +4,7 @@
 // digan lo mismo, y que la credencial sea OIDC y no un token guardado. Es el único workflow que
 // escribe fuera del repositorio, y por eso lo que se le exige es distinto.
 
-const { tempRoot, run, workflow, workflowStep } = require('../support/environment')
+const { tempRoot, workflow, workflowStep } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')

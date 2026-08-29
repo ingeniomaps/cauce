@@ -3,7 +3,7 @@
 // Reconocer un workspace antes de que la instancia exista: qué se cuenta como servicio, qué se
 // saltea y con qué pregunta arranca `onboard`. Es lo único de esta familia que no escribe nada.
 
-const { tempRoot, CLI, run } = require('../support/environment')
+const { tempRoot, run } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')

@@ -4,12 +4,11 @@
 // plantilla se active tal cual, que el README enumere las piezas que existen y que el vocabulario
 // tenga un solo dueño. Una guía que promete algo que el validador rechaza se descubre usándola.
 
-const { tempRoot, run, workflow } = require('../support/environment')
+const { tempRoot, run } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
-const P = require('../../engine/planning/parser')
 
 // El lane estaba escrito en cuatro lugares y ninguno era el dueño: el regex del parser, el contrato y
 // las descripciones del PROTOCOL, y dos schemas más el prompt del clasificador en el workflow. Un

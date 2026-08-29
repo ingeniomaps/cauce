@@ -3,14 +3,13 @@
 // La cola y el estado que sale de ella: qué línea se puede leer, qué umbral obliga a decidir y con
 // qué precedencia se elige la tarea que toca. Se juzga sobre el estado ya leído, sin tocar disco.
 
-const { tempRoot, CLI } = require('../support/environment')
+const { tempRoot } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const PC = require('../../engine/planning/contracts')
 const P = require('../../engine/planning/parser')
-const ST = require('../../engine/planning/state')
 
 // El marcador se lee del artefacto, no de un objeto de prueba: sin esto `oversizedUnits` podía estar
 // perfecta y la razón escrita en la épica no llegar nunca hasta ella. Se comprueba en los tres niveles

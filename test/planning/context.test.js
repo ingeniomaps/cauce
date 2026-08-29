@@ -9,7 +9,6 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
-const P = require('../../engine/planning/parser')
 
 test('tree --json refleja el mismo estado que la salida de texto', () => {
   const planning = path.resolve(__dirname, '..', '..', 'template', 'planning')

@@ -5,7 +5,7 @@
 // y que ninguna ruta sea la de una máquina. Cambia cuando cambia el runtime, no cuando cambia un
 // recorrido — lo que cada uno dice está en las suites hermanas.
 
-const { CLI } = require('../support/environment')
+require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')

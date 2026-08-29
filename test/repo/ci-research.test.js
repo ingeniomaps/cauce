@@ -4,7 +4,7 @@
 // cuando le falta la credencial en vez de quedar en verde. A quién le toca y cuándo es la pregunta
 // de al lado, en `ci-schedule.test.js`.
 
-const { tempRoot, CLI, workflow, workflowStep, workflowCommand } = require('../support/environment')
+const { tempRoot, workflow, workflowStep, workflowCommand } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')

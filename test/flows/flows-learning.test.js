@@ -4,12 +4,11 @@
 // cómo le fue, así que su insumo son los veredictos en contra de sus propias corridas — y el ciclo
 // tiene que cerrarse igual: proponer, exigir firma y dejar historial.
 
-const { tempRoot, workflow } = require('../support/environment')
+const { tempRoot } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
-const flows = require('../../engine/flows/registry')
 const L = require('../../engine/agents/learning')
 
 const ROOT = path.resolve(__dirname, '..', '..')

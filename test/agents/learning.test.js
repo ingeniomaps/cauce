@@ -12,7 +12,6 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
-const evaluations = require('../../engine/agents/evaluations')
 const learning = require('../../engine/agents/learning')
 const { REPO, installedProject, writeSkill, firmarPropuesta } = require('../support/agents-fixtures')
 

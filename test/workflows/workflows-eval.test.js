@@ -4,7 +4,7 @@
 // que entra en `agent-eval` y no en `flow-eval` es el modo de fallo que ya costó corridas, y sólo se
 // ve exigiéndoles lo mismo a los dos en el mismo lugar.
 
-const { run, CLI } = require('../support/environment')
+require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
