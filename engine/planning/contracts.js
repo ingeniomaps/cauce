@@ -385,19 +385,19 @@ const R17 = { taskCriteria: 5, epicCriteria: 7, milestoneTasks: 9 }
 // y un número inventado ahí sería peor que ninguno—; ésa la mira el review, que para eso está R3.
 function oversizedUnits({ epics = [], milestones = [] }) {
   const errors = []
-  const decidir = (what, count, limit) =>
+  const undecided = (what, count, limit) =>
     `${what}: ${count} (umbral ${limit} de R17). Revisá si son dos resultados con vidas distintas y `
     + 'partilo; si es uno solo, partirlo lo empeora — dejalo entero agregando "(sin partir: <razón>)"'
-  const juzgar = (unit, what, count, limit) => {
-    if (count > limit && !unit.noSplit) errors.push(decidir(what, count, limit))
+  const judge = (unit, what, count, limit) => {
+    if (count > limit && !unit.noSplit) errors.push(undecided(what, count, limit))
   }
   for (const epic of epics) {
-    juzgar(epic, `roadmap/${epic.file}: criterios`, epic.criteria.length, R17.epicCriteria)
+    judge(epic, `roadmap/${epic.file}: criterios`, epic.criteria.length, R17.epicCriteria)
   }
   for (const milestone of milestones) {
-    juzgar(milestone, `hito ${milestone.slug}: tareas`, milestone.tasks.length, R17.milestoneTasks)
+    judge(milestone, `hito ${milestone.slug}: tareas`, milestone.tasks.length, R17.milestoneTasks)
     for (const task of milestone.tasks) {
-      juzgar(task, `BACKLOG ${task.slug}: criterios`, task.criteria.length, R17.taskCriteria)
+      judge(task, `BACKLOG ${task.slug}: criterios`, task.criteria.length, R17.taskCriteria)
     }
   }
   return errors

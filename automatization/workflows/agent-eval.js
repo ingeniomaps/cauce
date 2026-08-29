@@ -105,10 +105,10 @@ if (ONLY.length) {
   const pick = pickCases(context.items, ONLY)
   if (pick.missing.length) {
     return stop('caso-inexistente',
-      `${AGENT} no tiene ${pick.missing.join(', ')}. Tiene: ${pick.existen.join(', ')}`)
+      `${AGENT} no tiene ${pick.missing.join(', ')}. Tiene: ${pick.present.join(', ')}`)
   }
   context.items = pick.items
-  log(`Sólo ${ONLY.join(', ')}: el registro va a cubrir ${ONLY.length} de ${pick.existen.length}`)
+  log(`Sólo ${ONLY.join(', ')}: el registro va a cubrir ${ONLY.length} de ${pick.present.length}`)
 }
 // Un banco por caso, preparados por un solo agente: son comandos deterministas, y después la ruta de
 // cada caso se arma sola.

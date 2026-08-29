@@ -205,11 +205,11 @@ function evaluate(agent, caso, cli) {
     if (errors.length) fail(`\n${errors.length} error(es)`, 1)
     // Cuándo se midió es un rango cuando el veredicto vigente lo aportó más de una corrida. Por qué se
     // compone en vez de leerse la última, en `composed`.
-    const cuando = runs.state && runs.state.oldest !== runs.state.newest
+    const measuredAt = runs.state && runs.state.oldest !== runs.state.newest
       ? `${runs.state.oldest}…${runs.state.newest}`
       : (runs.state ? runs.state.newest : '')
     const lastRun = runs.state
-      ? `${runs.state.passed}/${runs.state.total} pasan (${cuando})`
+      ? `${runs.state.passed}/${runs.state.total} pasan (${measuredAt})`
       : 'sin correr'
     if (kind === 'flow') {
       return console.log(`✓ ${agent}: ${runs.cases} caso(s) — ${lastRun}, ` +

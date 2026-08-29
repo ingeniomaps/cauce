@@ -29,7 +29,7 @@ export const meta = {
 const AGENT = String((typeof args === 'string' ? args : (args || {}).agent) || '').trim()
 const PERIOD = String((args || {}).period || '').trim()
 
-const FIRMA = {
+const SIGNATURE = {
   type: 'object', additionalProperties: false, required: ['dir', 'proposal', 'approved'],
   properties: {
     dir: { type: 'string' },
@@ -42,7 +42,7 @@ const FIRMA = {
   },
 }
 
-const APLICADO = {
+const APPLIED = {
   type: 'object', additionalProperties: false, required: ['applied', 'files'],
   properties: {
     applied: { type: 'boolean' },
@@ -74,7 +74,7 @@ const signature = await agent(
   `- state: the literal state line.\n` +
   `- status: the literal value of the frontmatter "status:" field.\n` +
   `- hasChange: true only if "Cambio propuesto" carries a concrete change; "por definir" means false.`,
-  { schema: FIRMA, label: 'signature' },
+  { schema: SIGNATURE, label: 'signature' },
 )
 if (!signature) return stop('sin-propuesta', `no se pudo leer una propuesta de ${AGENT}`)
 if (!signature.hasChange) {
@@ -119,7 +119,7 @@ const applied = await agent(
   `aplicó de lo que firmó.\n\n` +
   `No toques otros cargos. No hagas commit ni push. Devolvé qué archivos modificaste, el caso nuevo si ` +
   `lo creaste, y las desviaciones —o cadena vacía si no hubo—.`,
-  { schema: APLICADO, label: `aplica:${AGENT}` },
+  { schema: APPLIED, label: `aplica:${AGENT}` },
 )
 if (!applied || !applied.applied) {
   return stop('no-aplicada', 'el cambio no se pudo aplicar; la propuesta queda como estaba')

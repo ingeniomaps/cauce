@@ -91,10 +91,10 @@ if (ONLY.length) {
   const pick = pickCases(context.items, ONLY)
   if (pick.missing.length) {
     return stop('caso-inexistente',
-      `${FLOW} no tiene ${pick.missing.join(', ')}. Tiene: ${pick.existen.join(', ')}`)
+      `${FLOW} no tiene ${pick.missing.join(', ')}. Tiene: ${pick.present.join(', ')}`)
   }
   context.items = pick.items
-  log(`Sólo ${ONLY.join(', ')}: el registro va a cubrir ${ONLY.length} de ${pick.existen.length}`)
+  log(`Sólo ${ONLY.join(', ')}: el registro va a cubrir ${ONLY.length} de ${pick.present.length}`)
 }
 
 // El recorrido escribe: épica candidata, INBOX, acciones humanas. Sin un `planning/` propio no puede

@@ -102,9 +102,9 @@ function undeclareEngine(manifest) {
   if (!('@ingeniomaps/cauce' in dev)) return []
   delete dev['@ingeniomaps/cauce']
   pkg.devDependencies = dev
-  const generado = !Object.keys(dev).length && !Object.keys(pkg.dependencies || {}).length
+  const ours = !Object.keys(dev).length && !Object.keys(pkg.dependencies || {}).length
     && !Object.keys(pkg.scripts || {}).length && pkg.private === true && pkg.version === '0.0.0'
-  if (generado) {
+  if (ours) {
     fs.rmSync(manifest, { force: true })
     return ['package.json (lo había creado init: sin dependencias ni scripts propios)']
   }
@@ -173,7 +173,7 @@ function instanceVersion(root) {
 // Lo cuenta el mismo parser que usan `check` y `tree`, no una expresión regular propia: los moldes traen
 // ejemplos comentados, y contarlos a mano anunciaba una tarea en cola y otra terminada en una instancia
 // recién creada. Un aviso que exagera lo que se pierde se deja de leer igual que uno que lo minimiza.
-function loQueSePierde(root) {
+function whatIsLost(root) {
   const planning = path.join(root, 'planning')
   const queued = P.readBacklog(planning).reduce((total, hito) => total + (hito.tasks || []).length, 0)
   const humanActions = ST.pendingHumanActions(planning).length
@@ -200,7 +200,7 @@ function destroy(dir, cli) {
   }
   if (O.mode(root) === 'toolkit') fail(`${root} es el toolkit: acá se fabrica Cauce, no se lo borra.`, 2)
 
-  const loss = loQueSePierde(root)
+  const loss = whatIsLost(root)
   const lines = [
     loss.epicas && `${loss.epicas} épica(s) en el roadmap`,
     loss.enCola && `${loss.enCola} tarea(s) en la cola`,

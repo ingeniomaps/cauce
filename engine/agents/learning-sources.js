@@ -74,8 +74,8 @@ function sourceUrls(text) {
   const out = []
   let name = ''
   for (const line of body.split('\n')) {
-    const nombre = line.match(/^\s*-\s*name:\s*(.+?)\s*$/)
-    if (nombre) { name = nombre[1].replace(/^['"]|['"]$/g, ''); continue }
+    const declared = line.match(/^\s*-\s*name:\s*(.+?)\s*$/)
+    if (declared) { name = declared[1].replace(/^['"]|['"]$/g, ''); continue }
     const url = line.match(/^\s*url:\s*(\S+)/)
     if (url && name) out.push({ name, url: url[1].replace(/\/+$/, '') })
   }
@@ -112,13 +112,13 @@ function evaluate(root, agent) {
     // Dos nombres para una URL. Es error y no aviso: la cadencia sale del `tier` de cada entrada, así
     // que dos copias de la misma fuente pueden decir cosas distintas sobre cada cuánto publica, y la
     // más rápida gana sin que nadie lo haya decidido.
-    const porUrl = new Map()
+    const byUrl = new Map()
     for (const one of sourceUrls(fs.readFileSync(sourcesFile, 'utf8'))) {
-      const antes = porUrl.get(one.url)
-      if (antes && antes !== one.name) {
-        errors.push(`sources.yaml: ${one.url} está dos veces, como "${antes}" y como "${one.name}"`)
+      const previous = byUrl.get(one.url)
+      if (previous && previous !== one.name) {
+        errors.push(`sources.yaml: ${one.url} está dos veces, como "${previous}" y como "${one.name}"`)
       }
-      porUrl.set(one.url, one.name)
+      byUrl.set(one.url, one.name)
     }
   }
   const skill = fs.readFileSync(path.join(target, 'SKILL.md'), 'utf8').toLowerCase()

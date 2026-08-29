@@ -142,11 +142,11 @@ propuesta consolidada. -->
 // El molde de los apartados que una persona escribe queda; lo que deja de quedar es `## Hallazgos` en
 // blanco. Una revisión que no puede decir qué la motiva no puede producir un cambio, y hasta acá se
 // llega sólo con material: el llamador ya se negó a abrirla sin él.
-function reviseProposal(root, agent, dir, previous, period, hallazgos = [], consumed = []) {
+function reviseProposal(root, agent, dir, previous, period, findings = [], consumed = []) {
   const parsed = previous.match(PROPOSAL_NAME)
   const revision = Number(parsed[2] || 1) + 1
   const file = path.join(dir, `${period}-r${revision}.md`)
-  const molde = `Qué mostró la evaluación posterior a aplicar \`${previous}\`. No repitas acá los hallazgos de esa
+  const placeholder = `Qué mostró la evaluación posterior a aplicar \`${previous}\`. No repitas acá los hallazgos de esa
 propuesta —ya entraron al contrato—: lo que va es lo que se supo después, con el registro de
 evaluación que lo sostiene.`
   fs.writeFileSync(file, `---
@@ -165,7 +165,7 @@ la reabre: es un cambio distinto, con su propia firma.
 
 ## Hallazgos
 
-${hallazgos.join('\n\n') || molde}
+${findings.join('\n\n') || placeholder}
 
 ## Evidencia
 
@@ -195,7 +195,7 @@ sólo que pase.
 - Fecha: por definir
 `)
   for (const record of consumed) markConsolidated(record)
-  return { file, created: true, reports: 0, corrects: previous, findings: hallazgos.length }
+  return { file, created: true, reports: 0, corrects: previous, findings: findings.length }
 }
 
 // La última propuesta del período, si la hay: es contra ella que se decide si abrir una revisión.
@@ -340,8 +340,8 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
   // Una sola propuesta pendiente por período. Si la última todavía no se aplicó, abrir otra partiría
   // la firma en dos documentos que dicen cosas distintas sobre el mismo contrato.
   const previous = lastOfPeriod(proposalDir, sealing)
-  const pendiente = previous && proposalState(fs.readFileSync(path.join(proposalDir, previous), 'utf8')) !== 'applied'
-  if (pendiente) return { file: path.join(proposalDir, previous), created: false, reports: 0 }
+  const unapplied = previous && proposalState(fs.readFileSync(path.join(proposalDir, previous), 'utf8')) !== 'applied'
+  if (unapplied) return { file: path.join(proposalDir, previous), created: false, reports: 0 }
 
   // La misma regla que abajo, y el mismo motivo: un documento que no puede decir qué corregir no
   // produce un cambio de contrato, y cuesta igual la firma humana que uno que sí. Antes se abría uno
@@ -372,12 +372,12 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
   if (!reports.length && !red.findings.length) return { file: '', created: false, reports: 0 }
 
   const reportPaths = reports.map((name) => path.join(reportDir, name))
-  const hallazgos = [...reportPaths.map((file) => reportSummary(root, file)), ...red.findings]
+  const findings = [...reportPaths.map((file) => reportSummary(root, file)), ...red.findings]
   const consumed = [...reportPaths, ...red.consumed]
-  if (previous) return reviseProposal(root, agent, proposalDir, previous, sealing, hallazgos, consumed)
+  if (previous) return reviseProposal(root, agent, proposalDir, previous, sealing, findings, consumed)
 
   const file = path.join(proposalDir, `${sealing}.md`)
-  const summaries = hallazgos
+  const summaries = findings
   fs.writeFileSync(file, `---
 agent: ${agent}
 period: ${sealing}

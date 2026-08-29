@@ -255,17 +255,17 @@ function validate(root, agent, kind) {
     warnings.push(`sin resultados de casos: corré el recorrido de evaluación para los ${total} casos`)
     return { errors, warnings, cases: total, last: null }
   }
-  const sinMedir = cases.map((item) => item.id).filter((id) => !state.measured.has(id))
-  if (sinMedir.length) {
-    warnings.push(`${state.total} de ${total} caso(s) con veredicto: sin medir ${sinMedir.join(', ')}`)
+  const unmeasured = cases.map((item) => item.id).filter((id) => !state.measured.has(id))
+  if (unmeasured.length) {
+    warnings.push(`${state.total} de ${total} caso(s) con veredicto: sin medir ${unmeasured.join(', ')}`)
   }
   if (state.failed.length) {
     warnings.push(`${state.failed.length} caso(s) no pasan: ${state.failed.join(', ')}`)
   }
-  const cambio = contractChangedAt(subject(root, agent, kind), kind)
-  if (cambio && cambio > state.oldest) {
-    const parte = state.oldest === state.newest ? 'la última corrida es' : 'el veredicto más viejo es'
-    warnings.push(`el contrato cambió el ${cambio} y ${parte} del ${state.oldest}: `
+  const changedAt = contractChangedAt(subject(root, agent, kind), kind)
+  if (changedAt && changedAt > state.oldest) {
+    const which = state.oldest === state.newest ? 'la última corrida es' : 'el veredicto más viejo es'
+    warnings.push(`el contrato cambió el ${changedAt} y ${which} del ${state.oldest}: `
       + 'mide una versión anterior')
   }
   return { errors, warnings, cases: total, last, state }

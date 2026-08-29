@@ -189,11 +189,11 @@ const owners = (contract.owners || []).map((owner) => `${owner.domain}=${owner.a
 // Qué recorridos existen. Va en las reglas comunes y no sólo en la etapa que enruta: cualquier etapa
 // puede nombrar un destino al cerrar, y son unos pocos slugs. Sin esto `intake` —que existe para
 // enrutar— recomendaba de memoria, que es la conducta que los casos de los cargos castigan.
-const catalogo = (contract.flows || []).filter((slug) => slug !== FLOW)
+const catalog = (contract.flows || []).filter((slug) => slug !== FLOW)
 const RULES = `${BASE}\n\nRecorrido ${contract.name}: ${contract.purpose}\n` +
   `Guardrails: ${contract.guardrails.join(' ')}\n` +
   `${owners ? `Dueños de decisión: ${owners}. Ningún otro cargo resuelve en su dominio.\n` : ''}` +
-  `${catalogo.length ? `Recorridos que existen además de éste: ${catalogo.join(', ')}. Si nombrás un `
+  `${catalog.length ? `Recorridos que existen además de éste: ${catalog.join(', ')}. Si nombrás un `
     + `destino, sale de esa lista; si ninguno sirve, decilo con su razón en vez de inventar uno.\n` : ''}` +
   `Contexto de la empresa en ${WORKDIR}/organization/. Intención a evaluar: ${GOAL}`
 
@@ -218,8 +218,8 @@ function ancestors(stage, index) {
     if (out.has(id)) continue
     out.add(id)
     const found = discovery.find((one) => one.id === id)
-    const arriba = found && found.dependsOn ? found.dependsOn : []
-    for (const up of arriba) pending.push(up)
+    const upstream = found && found.dependsOn ? found.dependsOn : []
+    for (const up of upstream) pending.push(up)
   }
   return [...out]
 }
@@ -249,12 +249,12 @@ function levels(stages) {
 
 const runStage = (stage, index) => {
   const visible = handoffs.filter((entry) => ancestors(stage, index).includes(entry.id))
-  const abiertas = openConditions(visible)
+  const open = openConditions(visible)
   const previous = visible.length
     ? `Handoffs previos:\n${visible.map((entry) => `- ${entry.id}: ${entry.summary}`).join('\n')}`
-      + (abiertas.length
+      + (open.length
         ? '\n\nCondiciones que dejaron las etapas anteriores y tenés que respetar:\n'
-          + abiertas.map((one) => `- ${one}`).join('\n')
+          + open.map((one) => `- ${one}`).join('\n')
         : '')
     : 'Sos la primera etapa: no hay handoff previo.'
   return agent(
