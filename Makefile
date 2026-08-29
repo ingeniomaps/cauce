@@ -76,20 +76,17 @@ release-check: ## Comprueba todo lo que publicar exige — no publica
 	printf '\nTodo verde para %s. El publish lo corre una persona:\n' "$$(npm pkg get version | tr -d '\"')"; \
 	printf '  set -a; . ./.env; set +a; npm publish\n'
 
-# Evaluar un recorrido o un cargo se hace desde acá, y para eso los workflows tienen que estar en el
-# registro de la sesión: `workflow()` resuelve por nombre contra `.claude/workflows/`, y `flow-eval`
-# compone `flow`. Renderizarlos es todo lo que hace falta — no es `install`, que ademas escribiria
-# punteros por cargo y guards que contradicen el trabajo, y que se niega en un root `mode: toolkit`.
+# Renderiza los workflows de evaluación en `.claude/workflows/`, que es de donde una sesión arma su
+# registro: `workflow()` resuelve por nombre contra ahí, y `flow-eval` compone `flow`.
 #
-# La copia va gitignoreada y se rehace a pedido: committearla es lo que la dejaria divergir del fuente,
-# que es la razon por la que `AGENTS.md` no quiere una segunda copia de los workflows.
-#
-# El registro se arma al abrir la sesion, asi que despues de correr esto hay que abrir una nueva.
+# **El registro se arma al abrir la sesión, así que después de correr esto hay que abrir una nueva.**
+# Por qué se renderiza en vez de instalar, y por qué la copia va gitignoreada, en «Correr un workflow
+# acá» de `AGENTS.md`.
 EVAL_WORKFLOWS = flow flow-eval agent-eval
 
-eval-workflows: ## Renderiza los workflows de evaluacion en .claude/workflows (gitignorado)
+eval-workflows: ## Renderiza los workflows de evaluación en .claude/workflows (gitignorado)
 	@mkdir -p .claude/workflows
 	@node -e 'const {render}=require("./engine/automation"),fs=require("fs"),path=require("path");const root=process.cwd(),auto=path.join(root,"automatization");for(const n of process.argv.slice(1)){const out=render(path.join(auto,"workflows",n+".js"),"",auto,root);if(out.includes("{{INCLUDE:"))throw new Error(n+": quedaron includes sin expandir");fs.writeFileSync(path.join(root,".claude/workflows",n+".js"),out);console.log("  "+n+".js")}' $(EVAL_WORKFLOWS)
-	@printf '\nListo. Abri una sesion nueva —el registro se arma al abrirla— y evalua:\n'
+	@printf '\nListo. Abrí una sesión nueva —el registro se arma al abrirla— y evaluá:\n'
 	@printf '  /flow-eval {"flow":"<slug>","cases":"<caso>"}\n'
 	@printf '  /agent-eval {"agent":"<slug>","cases":"<caso>"}\n'
