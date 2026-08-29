@@ -2,9 +2,13 @@
   "$comment": [
     "Dos guards, no todos. El resto queda afuera por lo que dice AGENTS.md, «Acá no se instala nada».",
     "",
-    "`verify` corre la suite (`npm test`, no `npm run ci`: quedan afuera check, automatización,",
-    "integraciones y cobertura), y sólo si hay código staged. Para saltarlo con intención:",
-    "OPS_SKIP_VERIFY=1."
+    "`git-add` bloquea `git add -A/--all/.` y no tiene escape: se stagea por nombre.",
+    "",
+    "`verify` corre, de `package.json`, los scripts `test`, `lint`, `typecheck` y `build` que existan",
+    "—acá hoy sólo `test`—, y sólo si el stage trae código. Qué cuenta como código es una lista de",
+    "extensiones en `engine/hooks/shell.js` que no incluye `.yml` ni `.md`: un commit de workflows o de",
+    "documentación no se verifica. Antes de esa condición bloquea igual si cambió una fuente OpenAPI o",
+    "SQL sin su regenerado, haya código o no. Para saltarlo con intención: OPS_SKIP_VERIFY=1."
   ],
   "hooks": {
     "PreToolUse": [

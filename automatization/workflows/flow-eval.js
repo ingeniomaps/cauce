@@ -39,10 +39,9 @@ const CASES = {
       },
     } },
     forbidden: { type: 'array', items: { type: 'string' } },
-    // Qué CLI existe acá. Una empresa tiene el shim `tools/ops.js`; el repo del toolkit no lo tiene y su
-    // motor está en `engine/cli/ops.js`. `agent-eval` lo aprendió esta mañana y esto quedó con la ruta
-    // puesta a mano: el agente de bancos reportó los cuatro casos como fallidos y el freno de banco
-    // viejo detuvo cuatro corridas cuyos bancos estaban recién borrados.
+    // Qué CLI existe acá, por lo mismo que en `agent-eval` y con el mismo síntoma: sin la ruta puesta,
+    // el agente de bancos reportó los cuatro casos como fallidos y el freno de banco viejo detuvo cuatro
+    // corridas cuyos bancos estaban recién borrados.
     cli: { type: 'string' },
     mode: { type: 'string' },
   },

@@ -69,9 +69,8 @@ const MANIFEST = {
       id: { type: 'string' }, agent: { type: 'string' }, exitGate: { type: 'string' },
       phase: { type: 'string', enum: ['discovery', 'delivery'] },
       produces: { type: 'array', items: { type: 'string' } },
-      // El recorrido no lo usa —las etapas corren en orden—, pero el contrato lo trae y al agente se le
-      // pide que reporte lo que el comando imprimió. Rechazarlo hacía que el reintento volviera a
-      // copiarlo hasta agotar el cap, y la corrida moría sin haber hecho nada.
+      // El recorrido no lo usa —las etapas corren en orden—, pero el contrato lo trae y el agente lo
+      // copia, así que rechazarlo mataba la corrida por el reintento que se describe en `completion`.
       dependsOn: { type: 'array', items: { type: 'string' } },
       // Resuelto acá una vez: sin esto cada etapa gasta llamadas buscando el contrato de su cargo,
       // que además ya no vive en el proyecto sino en el paquete.
