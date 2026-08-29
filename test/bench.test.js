@@ -120,8 +120,8 @@ test('cada caso recibe su propio banco', () => {
   assert.match(escape.stderr, /nombre inválido para el banco/)
 })
 
-// En una empresa el banco no hace falta —su instancia ya es el lugar— y ofrecerlo confundiría: el
-// cargo que se evalúa ahí tiene que ser suyo.
+// Los dos modos en la misma prueba: separados, un `--bench` que devolviera siempre lo mismo pasaría
+// la mitad que se mirara. Por qué en una empresa no hay banco, en `evaluationBench`.
 test('el banco es del toolkit; una instancia recibe la salida que le corresponde', () => {
   const base = tempRoot('cauce-bench-')
   const target = path.join(base, 'demo-ops')

@@ -41,10 +41,9 @@ test('guard-destructive bloquea pérdida o publicación y permite lecturas', () 
   assert.doesNotThrow(() => execute('destructive', { tool_input: { command: 'git status --short' } }))
   assert.doesNotThrow(() => execute('destructive', { tool_input: { command: 'rm -r build/cache' } }))
 
-  // `git checkout -- .` destruye lo mismo que `reset --hard` y sin recuperación, pero se escribe como
-  // una limpieza. Pasó dos veces en una sesión, las dos limpiando restos de una prueba: revirtió también
-  // el trabajo de al lado, que no estaba commiteado. Lo que engaña es que el alcance no se ve en el
-  // comando — `.` es el cwd, y el cwd suele tener más de lo que uno está mirando.
+  // Cuatro escrituras de la misma destrucción, y van las cuatro: `restore` es la forma moderna,
+  // `--staged` la que parece tocar sólo el índice, y `checkout --` sin ruta la que se lee como un
+  // comando a medio escribir. Por qué se bloquea la forma ancha, en `destructive`.
   for (const wide of ['git checkout -- .', 'git restore .', 'git restore --staged .', 'git checkout --']) {
     blocked('destructive', { tool_input: { command: wide } }, /no sólo lo que estás mirando/)
   }
@@ -291,8 +290,8 @@ test('guard-governance protege el contrato de un cargo, su medición y su firma'
     git(['reset'], root)
   }
 
-  // Las dos clases de evidencia quedan libres: registran lo que pasó un día en vez de decidir algo, y
-  // un veredicto se escribe en cada corrida —gobernarlo pediría un override por evaluación—.
+  // La mitad que tiene que pasar: las dos rutas de evidencia, que viven adentro de un árbol gobernado
+  // y aun así se escriben. Sin ellas el caso mediría sólo que el patrón bloquea algo.
   write('agents/roles/system/qa-engineer/learning/reports/2026-08-16.md')
   write('agents/roles/system/qa-engineer/evaluations/results/2026-08-16.md')
   write('agents/roles/system/qa-engineer/learning/HISTORY.md')

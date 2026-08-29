@@ -406,9 +406,8 @@ function firmarPropuesta(file) {
     .replace(/^(## Cambio propuesto\n)/m, '$1\nSe agrega la fuente que el informe trajo.\n'))
 }
 
-// Dentro de un archivo lo atrapa `evaluate`, que es lo que corre en una empresa. Es error y no aviso:
-// la cadencia sale del `tier` de cada entrada, así que dos copias de la misma fuente pueden decir cosas
-// distintas sobre cada cuánto publica, y la más rápida gana sin que nadie lo haya decidido.
+// La mitad que ve `evaluate`: un solo archivo, que es lo que corre en una empresa. Entre cargos no lo
+// ve nadie y ése es el caso de al lado. Por qué es error y no aviso, en `evaluate`.
 test('evaluate rechaza la misma URL bajo dos nombres', () => {
   const root = tempRoot('cauce-dup-fuente-')
   const dir = path.join(root, 'agents', 'roles', 'probe')
@@ -816,10 +815,8 @@ test('el registro de un mecanismo se exige también al salir del informe', () =>
   assert.deepEqual(sinDestino, [], 'un contrato que sólo mira qué sostiene la afirmación deja pasar la lección')
 })
 
-// Un contrato que se endurece deja atrás sus registros: siguen diciendo «pasa» contra una versión que
-// ya no existe, y el endurecimiento es justo lo que podría hacerlos fallar. Nada lo decía, así que la
-// medición envejecía en silencio — la misma clase de problema que el resultado que cubre menos casos
-// de los que hay.
+// El sujeto de este caso es un cargo, y su contrato es el `SKILL.md`. El aviso se pide después de
+// tocarlo y no antes: sin ese orden, uno que saltara siempre pasaría igual.
 test('un registro anterior al último cambio del contrato se declara viejo', () => {
   const target = installedProject('Contrato movido')
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')

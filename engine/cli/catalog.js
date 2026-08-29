@@ -204,10 +204,8 @@ function evaluate(agent, caso, cli) {
     for (const warning of [...result.warnings, ...runs.warnings]) console.warn(`⚠ ${warning}`)
     for (const error of errors) console.error(`✗ ${error}`)
     if (errors.length) fail(`\n${errors.length} error(es)`, 1)
-    // El veredicto vigente de cada caso, compuesto sobre todas las corridas, no el de la última: desde
-    // que `--cases` existe una corrida cubre menos casos a propósito, y leer sólo la última decía «1/1
-    // pasan» de un sujeto con los cuatro medidos. Cuándo se midió es un rango cuando hubo más de una,
-    // porque lo compuesto es tan viejo como su parte más rancia.
+    // Cuándo se midió es un rango cuando el veredicto vigente lo aportó más de una corrida. Por qué se
+    // compone en vez de leerse la última, en `composed`.
     const cuando = runs.state && runs.state.oldest !== runs.state.newest
       ? `${runs.state.oldest}…${runs.state.newest}`
       : (runs.state ? runs.state.newest : '')

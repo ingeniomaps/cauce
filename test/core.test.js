@@ -152,9 +152,8 @@ test('toda ruta declarada del sistema existe en el paquete', () => {
   }
 })
 
-// Estaba implementado dos veces con dos comportamientos: uno aceptaba el bloque en cualquier parte del
-// archivo y admitía claves con dígito inicial, el otro no. Un mismo draft se leía distinto según quién
-// lo abriera, y `draft.md` es la superficie que una persona edita a mano.
+// El mismo texto entrando por las dos puertas, que es lo único que comprueba que quedó una sola
+// lectura. `draft.md` es la superficie que una persona edita a mano: ahí se veía la diferencia.
 test('el frontmatter se lee igual desde planning y desde integraciones', () => {
   const FM = require('../engine/core/frontmatter')
   const S = require('../engine/integrations/state')

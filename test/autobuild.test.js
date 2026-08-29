@@ -465,8 +465,8 @@ test('una tarea ya clasificada no vuelve a clasificarse', async () => {
   assert.ok(!asked.includes('Classify|classified'))
 })
 
-// Sin clasificación no se frena: `full` no saltea nada, así que lo que se pierde es tiempo y no
-// evidencia. Frenar cobraría una interrupción humana por lo único que el recorrido resuelve solo.
+// Lo que se fija no es el carril sino que la corrida llegue al final: sin clasificación las cuatro
+// fases caras tienen que correr igual, y ninguna se saltea. Por qué no frena, en `autobuild`.
 test('una clasificación que no escribió nada deja la tarea en el carril completo', async () => {
   const sinClasificar = { ...baseScript()[KEY.context], lane: '', cast: { build: '', review: [] } }
   const { result, phases } = await runFlow({ [KEY.classify]: { classified: [] } }, {
@@ -478,8 +478,8 @@ test('una clasificación que no escribió nada deja la tarea en el carril comple
   }
 })
 
-// Una tarea en vuelo ya tiene su plan aprobado bajo un carril: reclasificarla a mitad de camino le
-// cambia las fases que le faltan por debajo.
+// El caso arranca con el WIP ya activo, que es la única forma de distinguir «no reclasifica» de «no
+// clasifica»: sin WIP las dos se ven igual. Por qué no se reclasifica, en `autobuild`.
 test('un WIP activo no se reclasifica', async () => {
   const enVuelo = {
     ...baseScript()[KEY.context], lane: '', cast: { build: '', review: [] }, wipActive: true,

@@ -12,10 +12,6 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync, spawnSync } = require('node:child_process')
 
-// Los workflows de GitHub Actions, que comparten la palabra «workflow» con los recorridos de Cauce y
-// nada más: acá se prueba la automatización del repositorio —quién puede escribir, qué credencial ve
-// cada job, cómo se fijan las acciones—, no lo que un runner ejecuta en una empresa.
-
 test('el workflow de aprendizaje corre en el toolkit y nombra un solo CLI', () => {
   const file = path.resolve(__dirname, '..', '.github', 'workflows', 'agent-learning.yml')
   const source = fs.readFileSync(file, 'utf8')

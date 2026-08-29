@@ -109,10 +109,8 @@ test('el bridge de Antigravity traduce decisiones al protocolo nativo', () => {
   assert.equal(evaluate('pre-shell', payload('git push')).decision, 'deny')
 })
 
-// Un guard que bloquea y un puente que no arrancó devolvían los dos `continue` en `stop`, y son cosas
-// distintas. El bloqueo es el mecanismo funcionando: hay drift, seguí trabajando. La raíz que no
-// resuelve no se arregla trabajando, así que cada intento de cerrar repetía el mismo error y el agente
-// quedaba sin poder terminar la sesión. `engine/hooks/run.js` marca el bloqueo con `error.blocked`.
+// Los dos errores en el mismo evento `stop`, porque separados los dos dan `continue` y cualquiera de
+// las dos mitades pasa sola. Qué distingue a uno del otro, en el `catch` del puente.
 test('el puente de Antigravity separa el guard que bloquea del puente que no arrancó', () => {
   const { base, workspace, target, runCli, env } = installedProject('cauce-stop-', 'antigravity')
 
@@ -260,9 +258,8 @@ test('los runners con hooks nativos registran el grupo, no un hook por guard', (
   }
 })
 
-// Instalado no es operativo: un puente que el runner no puede lanzar falla cerrado y niega cada llamada
-// a herramienta. `doctor` veía los archivos en su lugar y decía «operativo» mientras nada respondía, y
-// una corrida real terminó con el agente narrando trabajo que no pudo hacer.
+// Se rompe el puente y se espera que `doctor` lo diga: con los archivos en su lugar, mirar que existan
+// da verde igual. Una corrida real terminó con el agente narrando trabajo que no pudo hacer.
 test('doctor ejecuta el puente del runner, no sólo lo busca', () => {
   const A = require('../engine/automation')
   const base = tempRoot('cauce-puente-')

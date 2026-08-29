@@ -534,10 +534,8 @@ test('una parada se nombra con el vocabulario del protocolo', () => {
     'lo que toca es que una persona desbloquee, y eso es lo que el comando existe para decir')
 })
 
-// La épica rechaza el marcador al activarse, pero la tarea es lo que un runner recibe. Sin la misma
-// puerta acá, `context` entregaba «Por definir» como aceptación y quien la ejecutaba decidía el borde
-// solo — que es exactamente lo que el marcador existe para evitar. Vale igual si la aceptación es
-// propia o heredada del criterio: el runner recibe la misma frase en los dos casos.
+// Las dos formas en que la aceptación le llega a un runner —propia y heredada del criterio— porque
+// una sola deja pasar la otra, y `context` entrega la misma frase en los dos casos.
 test('una tarea no se toma con la aceptación sin decidir', () => {
   const base = tempRoot('cauce-acept-')
   const planning = path.join(base, 'planning')
@@ -607,9 +605,8 @@ test('el README de planning enumera todas las piezas que existen', () => {
   }
 })
 
-// El WIP es el mutex y también el punto de retorno: tras una interrupción, el protocolo manda seguir
-// desde el primer paso sin tildar. Un plan escrito con viñetas cuenta cero pasos, así que se lee como
-// un plan terminado y la recuperación se queda sin de dónde retomar, sin que nada falle.
+// El fixture escribe el plan con viñetas en vez de pasos numerados: cuenta cero, que es el estado que
+// se lee igual que un plan terminado. Por qué eso rompe la recuperación, en `validateState`.
 test('un WIP activo sin pasos contables es un error', () => {
   const base = tempRoot('cauce-wip-')
   const planning = path.join(base, 'planning')

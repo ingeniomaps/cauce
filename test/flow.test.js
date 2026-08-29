@@ -101,12 +101,9 @@ test('entre etapas viaja el resumen, y a la síntesis la ruta del análisis', as
   assert.equal(draft.includes('el problema es el alta duplicada'), false, 'y no recibe el resumen dos veces')
 })
 
-// `dependsOn` estaba en el contrato y el motor lo ignoraba: corría las etapas en fila y le pasaba a
-// cada una los handoffs de **todas** las anteriores. `technical-design` existe para tener tres lecturas
-// independientes de un mismo encuadre y no las tenía — su propio guardrail dice que las tres «no
-// negocian entre sí ni ajustan su hallazgo para que cierre con el de otra», y una que ya leyó a la
-// primera no puede cumplirlo. Lo destapó una corrida: `interface` escribió «Coincido» sobre un supuesto
-// de `service` y armó su hallazgo principal sobre su K6.
+// Dos aserciones que se necesitan: que las hermanas no reciban el handoff de las otras, y que la que
+// las junta sí reciba los tres. Con la primera sola, un motor que no le pasara nada a nadie pasaría
+// igual. Por qué las hermanas tienen que ser independientes, en `levels`.
 test('las etapas hermanas no se leen entre sí, y la que las junta las lee a las tres', async () => {
   const contrato = baseScript()['flow-contract']
   const etapa = (id, agent, dependsOn) => ({
@@ -217,9 +214,8 @@ test('una intención no viable deja la lección y no escribe épica', async () =
   assert.ok(!asked.includes('epic-write'), 'y no se escribe una épica que nadie va a ejecutar')
 })
 
-// El contrato del equipo enumera tres salidas —hacer, no hacer o investigar— y con dos la del medio se
-// convertía en la primera. En una corrida real la etapa que decide cerró con «investigar antes de estimar»
-// y el recorrido escribió igual una épica con cinco criterios: presupuestar lo que nadie sabe todavía.
+// La etapa que decide cierra con «investigar», que es la salida del medio. Lo que se mide es que no
+// salga una épica igual: con dos salidas, investigar se leía como hacer.
 test('cuando lo que falta es averiguar, no sale una épica disfrazada', async () => {
   const { result, asked } = await runFlow({
     'epic-draft': {
@@ -274,13 +270,8 @@ test('cada etapa sabe qué recorridos existen, en vez de nombrarlos de memoria',
   }
 })
 
-// Ocho casos rojos en tres recorridos independientes dijeron lo mismo con distintas palabras: «frenó
-// por la razón correcta pero no entregó lo que igual podía entregar». Al bloquearse, el recorrido
-// escribía la fila de acción humana con lo establecido adentro y nada más: el trabajo de las etapas que
-// sí cerraron terminaba en una celda de tabla en vez del informe que el recorrido existe para dar.
-//
-// R13 lo dice sin lugar a dudas: lo que sí se pudo establecer se escribe igual, aunque quede parcial y
-// marcado como tal. Negarse bien y no dejar nada es la mitad barata del trabajo.
+// El bloqueo llega con etapas ya cerradas, y lo que se mide es que su trabajo salga en un informe y no
+// dentro de una celda de tabla. R13: negarse bien y no dejar nada es la mitad barata del trabajo.
 test('un recorrido que se bloquea entrega igual lo que las etapas anteriores establecieron', async () => {
   const { result, written } = await runFlow({
     'stage:factibilidad': {
@@ -339,11 +330,8 @@ test('el bloqueo de la primera etapa también entrega, y entrega el pedido', asy
   assert.match(parcial, /no consta quién lo pidió/, 'con lo que falta, sin rellenarlo')
 })
 
-// Y la reserva de etapa se acota por la misma razón que existe el informe. Un caso de
-// `incident-review` entregó un informe parcial sustancial y aun así se guardó la clasificación de
-// cinco seguimientos —«esa distinción es la entrega de `learn`, no de esta etapa»— cuando el
-// documento de entrada ya la sostenía y `learn` no iba a correr nunca. Reservárselo no se lo guarda
-// para después: lo pierde.
+// El caso pone el material que sostiene lo que iba a producir una etapa posterior, y esa etapa no va a
+// correr. Lo que se mide es que se entregue igual, nombrando de qué etapa era.
 test('lo que una etapa posterior habría hecho, pero el material ya sostiene, se entrega', async () => {
   const { written } = await runFlow({
     'stage:factibilidad': {

@@ -261,8 +261,6 @@ test('onboard guía con preguntas y no pisa lo que ya está escrito', () => {
 
   const guide = run(['onboard', target])
   assert.equal(guide.status, 0, guide.stderr)
-  // La pregunta primero: es la misma esté el workspace vacío, sea un monorepo o sean diez repos, y
-  // empezar por el inventario invierte de qué se trata esto.
   assert.match(guide.stdout, /^¿De qué trata este proyecto\?/, 'abre con la pregunta, no con el hallazgo')
   assert.match(guide.stdout, /Mientras tanto, esto es lo que hay: apps\/api/, 'y después, lo deducido')
   // Una sola pregunta escrita: las que siguen dependen de la respuesta, y darlas hechas es asumir que
@@ -461,9 +459,6 @@ test('destroy avisa qué se pierde y no borra hasta que se lo pidan dos veces', 
   assert.match(foreign.stderr, /no es una instancia de Cauce/)
 })
 
-// En modo embebido el archivo de instrucciones de Codex y el `AGENTS.md` de la empresa son el mismo, y
-// conservarlo entero —lo correcto para un archivo del proyecto— dejaba a ese runner sin una sola línea
-// de Cauce. Su contenido se fusiona adentro, entre marcas, y el resto del archivo no se toca.
 // En modo embebido la instancia **es** el repositorio, así que borrar la carpeta se lleva el código del
 // producto. Pasó de verdad sobre un caso de prueba: `destroy --force` dejó el directorio vacío.
 test('destroy no se lleva el repositorio en modo embebido', () => {
@@ -748,10 +743,8 @@ test('upgrade distingue una edición local de una mejora del toolkit', () => {
   assert.equal(/# mío/.test(fs.readFileSync(guard, 'utf8')), false)
   assert.deepEqual(require('../engine/core/ownership').localChanges(target), [], 'sin ediciones pendientes')
 
-  // Los archivos que el toolkit posee de a uno entran por la misma puerta. Quedaban afuera del
-  // registro, así que `upgrade` los reemplazaba sin comparar y la edición se perdía sin aviso: un
-  // cargo escribió el índice de ADR que el propio README le pedía actualizar, comprobó que
-  // desaparecería, y prefirió no dejar una entrada condenada a irse en silencio.
+  // `AGENTS.md` es de los que el toolkit posee de a uno y no de una colección: la clase que quedaba
+  // afuera del registro. Por qué entra por la misma puerta, en `localChanges`.
   const contract = path.join(target, 'AGENTS.md')
   assert.ok(M.read(target)['AGENTS.md'], 'el archivo suelto queda registrado')
   fs.appendFileSync(contract, '\nlínea de la empresa\n')
@@ -794,9 +787,8 @@ test('la instancia recibe cómo escribir lo que sí es suyo', () => {
   assert.equal(fs.existsSync(path.join(target, 'agents')), false)
 })
 
-// La guía de entrega no lleva una línea de la empresa, y sin declararla como del toolkit cada mejora se
-// quedaba en el molde: la instancia conservaba la versión del día que se creó y `upgrade` informaba que
-// «todo lo propio quedó intacto» sobre algo que nunca fue propio.
+// Los dos archivos de `delivery/` en la misma instancia: el que el toolkit reemplaza y el que es de la
+// empresa. Separados no se distingue una declaración correcta de la que se olvidó del segundo.
 test('la guía de entrega llega a una instancia y su project.md no', () => {
   const O = require('../engine/core/ownership')
   for (const guia of ['README.md', 'branches.md', 'release.md', 'environments.md', 'flags.md',

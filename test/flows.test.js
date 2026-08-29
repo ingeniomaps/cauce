@@ -241,9 +241,6 @@ test('la revisión de incidentes no se presenta como respuesta en vivo', () => {
 // exhibir y un veredicto registrado. Hasta acá sólo se validaba su estructura —que las etapas
 // existan, que los agentes existan, que los gates estén escritos—, así que nadie comprobaba nunca
 // que un `exitGate` frenara lo que dice frenar.
-//
-// El tipo se nombra en la llamada y no se deduce del slug: un cargo y un recorrido pueden llamarse
-// igual sin colisionar porque viven en árboles separados, y deducirlo los volvería ambiguos.
 test('los casos de un recorrido se leen como los de un cargo', () => {
   const casos = EV.list(ROOT, 'technical-design', 'flow')
   assert.ok(casos.length >= 4, 'el recorrido declara sus casos')
@@ -263,10 +260,8 @@ test('los casos de un recorrido se leen como los de un cargo', () => {
   assert.throws(() => EV.list(ROOT, 'technical-design'), /no existe agents/)
 })
 
-// Qué archivo es el contrato depende del sujeto: el de un cargo es su `SKILL.md`, el de un recorrido es
-// su `flow.json`. Mirando sólo el primero un recorrido no disparaba el aviso nunca, así que se le podía
-// agregar una dimensión al gate y sus veredictos anteriores seguían leyéndose vigentes. Pasó el mismo
-// día: `change-review` ganó la pregunta por las superficies críticas y sus tres aprobados no dijeron nada.
+// El sujeto que no tiene `SKILL.md`. Mirando sólo ése —lo que hacía `contractChangedAt`— un recorrido
+// no envejecía nunca, así que el caso endurece el `flow.json` y espera el aviso que faltaba.
 test('cambiar el flow.json de un recorrido envejece sus veredictos', () => {
   const root = tempRoot('cauce-flow-contrato-')
   const dir = path.join(root, 'flows', 'probe')

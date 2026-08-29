@@ -131,9 +131,8 @@ test('flow recorre las etapas del manifiesto y exige cada exit gate', () => {
   assert.match(flowWorkflow, /agents list --json/, 'y resuelve dónde vive cada cargo')
   assert.match(flowWorkflow, /exitGate/, 'cada etapa tiene su gate')
   assert.match(flowWorkflow, /enum: \['cumplido', 'con-condiciones', 'no-cumplido'\]/, 'con sus tres salidas')
-  // Un gate no cumplido corta el recorrido en vez de seguir con evidencia floja. Se corta por nivel y
-  // no por etapa: las hermanas que corrieron a la vez que la que falló entran igual al handoff —su
-  // trabajo está hecho y pagado— y lo que se abandona son los niveles siguientes.
+  // Se lee el fuente y no la corrida: lo que se fija es que el corte mire el gate de la etapa, que es
+  // de dónde sale la diferencia entre cortar por nivel y cortar por etapa.
   assert.match(flowWorkflow, /one\.result\.gate !== 'no-cumplido'/)
   assert.match(flowWorkflow, /if \(blocked\.length\) break/)
   for (const phase of ['Contract', 'Stages', 'Draft', 'Closing']) {
@@ -220,8 +219,8 @@ test('flow declara qué deja cada recorrido y ramifica según eso', () => {
   assert.match(flowWorkflow, /REPORTS/)
   assert.match(flowWorkflow, /sin promoverlo/, 'los seguimientos no se promueven solos')
   assert.match(flowWorkflow, /flow list/, 'el equipo se confirma contra los que existen')
-  // Leer `organization/` para "etapas siguientes" no llegaba a ninguna parte: cada etapa es un
-  // agente nuevo con su propio contexto.
+  // Se afirma por la negativa —que la instrucción no esté— porque lo que se retiró fue una lectura, y
+  // una lectura que no ocurre no deja nada que aserciar del lado positivo.
   assert.equal(/report nothing from it/.test(flowWorkflow), false, 'nada se lee para descartarlo')
   assert.match(flowWorkflow, /equipo-inexistente/)
 })
@@ -423,7 +422,7 @@ test('la evaluación le arma al cargo un lugar donde trabajar', () => {
   // corrida del mismo día —la que sigue a aplicar una propuesta— escribiera encima de la línea base.
   assert.doesNotMatch(evalWf, /results\/<fecha>/, 'sin componer el nombre desde la fecha')
 
-  // En una empresa el banco no existe: su instancia ya es el lugar, y el cargo tiene que ser suyo.
+  // La otra mitad del par: acá se lee el fuente del recorrido, y `bench.test.js` corre el comando.
   assert.match(evalWf, /cargo-del-catalogo/, 'y un cargo del catálogo se rechaza ahí')
   assert.match(evalWf, /agents fork/, 'nombrando la salida, no sólo el rechazo')
 
@@ -497,8 +496,6 @@ test('onboard devuelve preguntas en vez de mandar a averiguar', () => {
   // Las preguntas salen del motor —una sola lista— y el recorrido las devuelve para que el runner las haga.
   assert.match(onboardWorkflow, /tools\/ops\.js onboard --json/)
   assert.match(onboardWorkflow, /needsContext: true/)
-  // Una pregunta y sus dimensiones, no un cuestionario: «qué vende» le pide a un proyecto libre una
-  // respuesta que nadie dio.
   assert.match(onboardWorkflow, /state\.opening/)
   assert.match(onboardWorkflow, /no como formulario/)
   assert.match(onboardWorkflow, /No des ` \+\n  `por sentado que el proyecto vende algo/)
@@ -599,10 +596,8 @@ test('el banco que se manda a borrar es el del caso, no el del recorrido', () =>
     'y ya no propone el directorio del recorrido, que se lleva los casos ajenos')
 })
 
-// Un cargo responde y un recorrido corre, y esa diferencia decide todo el diseño de su evaluación:
-// acá no hay un agente que conteste el pedido, hay una invocación del recorrido de verdad. Pedirle a
-// un agente que lo imite mediría la imitación, que es justo lo que un recorrido no es — sus etapas
-// tienen dueños distintos y sus gates frenan entre una y otra.
+// Que el fuente invoque el recorrido y no describa uno: la diferencia entre ejecutar e imitar se ve
+// leyéndolo, y en la corrida las dos formas producen un veredicto que se lee igual.
 test('la evaluación de un recorrido lo ejecuta en vez de imitarlo', () => {
   const evalWf = fs.readFileSync(path.join(WF, 'flow-eval.js'), 'utf8')
   assert.match(evalWf, /workflow\('flow', \{ flow: FLOW, intent: item\.request/, 'corre el recorrido real')
@@ -629,11 +624,6 @@ test('un recorrido puede correr sobre la raíz que se le nombra', () => {
   assert.equal(/\$\{ROOT\}/.test(flow), false, 'ninguna ruta quedó atada a la raíz de invocación')
 })
 
-// Un sujeto falla un caso de seis y comprobar el arreglo no pide la batería: correr los seis cuesta
-// seis veces lo mismo para volver a mirar cinco veredictos que ya se tenían. Es lo que R20 nombra
-// —repetir sin que el cambio pueda mover ese veredicto— y hasta acá no tenía forma de comando, así
-// que la única manera de comprobar un arreglo era pagar la corrida entera.
-//
 // Se exige a los dos evaluadores sobre el fuente ya expandido, y por eso el `for`: el filtro entró
 // primero en `agent-eval` y `flow-eval` quedó sin él meses después de que los dos lo necesitaran
 // igual. Es la quinta vez que un arreglo entra en un gemelo y no en el otro —`contexto`, la ruta del
@@ -756,11 +746,8 @@ test('ningún workflow usa un nombre que no declaró', () => {
   }
 })
 
-// La evaluación corre comandos, y cuál existe depende de dónde: una empresa tiene el shim
-// `tools/ops.js`, el repo del toolkit no —no se instala a sí mismo— y usa `engine/cli/ops.js`. Estaba
-// hardcodeado el de la empresa, así que en el toolkit la corrida dependía de que el agente improvisara:
-// el de bancos no improvisó, reportó todos los casos como fallidos y el freno de banco viejo detuvo
-// tres corridas que no tenían nada viejo.
+// Que el CLI salga de una respuesta con schema y no de una ruta escrita a mano. Se comprueba sobre el
+// fuente porque es ahí donde una ruta fija se ve, y en la corrida sólo se ve el destrozo que causó.
 test('agent-eval averigua qué CLI existe en vez de suponerlo', () => {
   const evalWf = fs.readFileSync(path.join(WF, 'agent-eval.js'), 'utf8')
 
@@ -817,10 +804,8 @@ test('el schema del manifiesto acepta los campos que los contratos de recorrido 
   assert.deepEqual(fuera, [], 'el schema rechaza un campo de contrato que el manifiesto trae')
 })
 
-// El mismo defecto en los dos evaluadores, y arreglado en uno solo: `agent-eval` aprendió a preguntar
-// qué CLI existe y `flow-eval` quedó con `tools/ops.js` puesto a mano. En el toolkit ese archivo no
-// existe —acá no se instala—, así que el agente de bancos reportó todos los casos como fallidos y el
-// freno de banco viejo detuvo cuatro corridas cuyos bancos estaban recién borrados.
+// El caso son los dos evaluadores a la vez, no uno cada uno: el arreglo entró en `agent-eval` y
+// `flow-eval` quedó sin él. Un caso por gemelo deja pasar exactamente eso.
 test('los dos evaluadores preguntan qué CLI existe, no lo suponen', () => {
   for (const name of ['agent-eval.js', 'flow-eval.js']) {
     const source = fs.readFileSync(path.join(WF, name), 'utf8')

@@ -165,10 +165,8 @@ service: app
 
   assert.deepEqual(epic.stories[0].criteria, ['C1', 'C2', 'C3'])
 
-  // El cuerpo de la historia es multilínea, pero el `$` del lookahead casaba fin de *línea* por la
-  // bandera `m`, así que cortaba en el primer salto: la historia envuelta perdía su criterio y su
-  // servicio, y `check` respondía «no declara (service: <ruta>)» sobre una historia que sí lo declara.
-  // Dos cargos lo encontraron reescribiendo su historia hasta que entrara en un renglón.
+  // La historia envuelta en dos renglones, con su servicio después del salto. En un solo renglón el
+  // caso pasa aun con el corte puesto, que es lo que dejó vivir tanto tiempo al defecto.
   const wrapped = epic.stories.find((story) => story.slug === 'envuelta')
   assert.deepEqual(wrapped.criteria, ['C2'], 'el criterio vive en la primera línea')
   assert.equal(wrapped.service, 'app', 'y el servicio en la segunda')
@@ -575,13 +573,8 @@ x
   assert.deepEqual(PC.validateAdr(root), ['adr/001-otra.md: 001 ya lo usa adr/001-algo.md'])
 })
 
-// Todo esto se probaba lanzando el CLI contra un planning en disco, así que cada rama costaba un
-// R17 estaba escrita desde antes y nada la medía: una épica de veinte criterios pasaba `check` sin una
-// queja, siempre que cada uno tuviera su historia.
-//
-// Cruzar el umbral no es el error —R17 dispara la división, no la decide, y dejar la unidad entera es
-// una salida legítima—. El error es cruzarlo sin decidir, así que lo que se exige es la razón. Sin ese
-// paso la escapatoria era prosa sin mecanismo, que es lo que la regla fue hasta que esto existió.
+// Las dos mitades juntas, porque separadas cualquiera se cumple sola: cruzar el umbral sin razón tiene
+// que fallar, y cruzarlo con la razón escrita tiene que pasar en silencio.
 test('los umbrales de R17 exigen decidir, y la razón escrita alcanza', () => {
   const criterios = (n) => Array.from({ length: n }, (_, i) => ({ id: `C${i + 1}` }))
   const tareas = (n) => Array.from({ length: n }, (_, i) => ({ slug: `t-${i}`, criteria: [], noSplit: '' }))
@@ -604,8 +597,7 @@ test('los umbrales de R17 exigen decidir, y la razón escrita alcanza', () => {
   assert.match(PC.oversizedUnits({ milestones: [hito] })[0], /hito primero: tareas: 10/)
   assert.deepEqual(PC.oversizedUnits({ milestones: [{ ...hito, noSplit: 'una sola migración' }] }), [])
 
-  // La tarea se cuenta por los criterios que hereda. La aceptación en prosa no se cuenta: cuántas
-  // condiciones tiene una frase es una lectura, y un número inventado ahí sería peor que ninguno.
+  // La tarea se cuenta por los criterios que hereda, no por su aceptación en prosa.
   const larga = { slug: 'muchos', criteria: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6'], noSplit: '' }
   assert.match(PC.oversizedUnits({ milestones: [{ slug: 'h', tasks: [larga], noSplit: '' }] })[0],
     /BACKLOG muchos: criterios: 6 \(umbral 5 de R17\)/)
