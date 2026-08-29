@@ -1,20 +1,18 @@
 'use strict'
 
 // Los recorridos leídos como fuente: que su `meta` sea el literal puro que el runtime acepta, que no
-// llamen a nada inexistente y que ninguna ruta sea la de una máquina.
+// llamen a nada inexistente y que ninguna ruta sea la de una máquina. Lo que se afirma acá es lo que
+// sólo se ve leyendo — los schemas y el texto que viaja dentro de un prompt.
 //
-// Leer no es correr, y por eso están aparte `autobuild.test.js` y `flow.test.js`, que los ejecutan con
-// los subagentes simulados. `ci.test.js` comparte la palabra «workflow» y nada más: ahí son los de
-// GitHub Actions.
+// Leer no es correr, y por eso están aparte `autobuild.test.js` y `flow.test.js`, que los ejecutan
+// con los subagentes simulados: que un freno frene se comprueba ejecutándolo, así que un `stop(...)`
+// no se afirma en los dos lados. `ci.test.js` comparte la palabra «workflow» y nada más: ahí son los
+// de GitHub Actions.
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
-
-// Acá los workflows se leen como fuente, y lo que se afirma es lo que sólo se ve leyendo: los schemas
-// y el texto que viaja dentro de un prompt. Que un freno frene se comprueba ejecutándolo —en las suites
-// que corren el recorrido—, así que un `stop(...)` no se afirma en los dos lados.
 
 const workflow = fs.readFileSync(path.resolve(__dirname, '..', 'automatization', 'workflows', 'autobuild.js'), 'utf8')
 

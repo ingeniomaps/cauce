@@ -200,3 +200,60 @@ test('ningún comentario empieza ni termina a mitad de una oración', () => {
   assert.ok(seen > 300, `sólo se inspeccionaron ${seen} bloques de comentario`)
   assert.deepEqual(cut, [], `comentarios partidos:\n  ${cut.join('\n  ')}`)
 })
+
+// La otra mitad, la que la sonda de arriba declaraba no poder cubrir: el comentario entero que quedó
+// lejos del código que describía. Cuando `catalog.js` se partió en tres, seis encabezados se quedaron
+// atrás y ninguno se veía roto — cada uno encabezaba la función siguiente y se leía como suyo.
+//
+// Lo que los separa de un encabezado de archivo legítimo no es la forma sino el lugar: el encabezado
+// vive en el preámbulo —hasta el último import anterior a la primera declaración que no lo es, o hasta
+// el primer bloque si el archivo no importa nada—, y de ahí en adelante un comentario está pegado a lo
+// que describe. Medido contra el árbol de antes de esta tanda, la regla nombra los ocho que había y no
+// inventa ninguno.
+//
+// Lo que sigue afuera es el fragmento que aterrizó **dentro** de otro comentario, sin blanco que lo
+// delate: así llegó un párrafo del merge de `AGENTS.md` a encabezar una prueba de `destroy`. Eso lo
+// encontró comparar comentarios entre sí, no mirar su forma.
+const IMPORT = /require\(|^\s*import /
+const DECLARATION = /^\s*(?:async function |function |const |let |var |class |module\.exports|test\(|export )/
+
+test('ningún comentario quedó separado del código que describe', () => {
+  const root = path.resolve(__dirname, '..')
+  const stranded = []
+  let seen = 0
+  for (const file of sourceFiles().filter((name) => name.endsWith('.js'))) {
+    const lines = fs.readFileSync(file, 'utf8').split('\n')
+    let firstDeclaration = lines.length
+    for (let n = 0; n < lines.length; n += 1) {
+      if (DECLARATION.test(lines[n]) && !IMPORT.test(lines[n])) { firstDeclaration = n; break }
+    }
+    let preamble = -1
+    for (let n = 0; n < firstDeclaration; n += 1) if (IMPORT.test(lines[n])) preamble = n
+    if (preamble < 0) {
+      for (let n = 0; n < firstDeclaration; n += 1) {
+        if (!/^\s*\/\//.test(lines[n])) continue
+        let end = n
+        while (end < lines.length && /^\s*\/\//.test(lines[end])) end += 1
+        preamble = end
+        break
+      }
+    }
+    let i = 0
+    while (i < lines.length) {
+      if (!/^\s*\/\//.test(lines[i])) { i += 1; continue }
+      const start = i
+      while (i < lines.length && /^\s*\/\//.test(lines[i])) i += 1
+      if (start <= preamble) continue
+      seen += 1
+      let next = i
+      while (next < lines.length && lines[next].trim() === '') next += 1
+      if (next > i && next < lines.length) {
+        stranded.push(`${path.relative(root, file)}:${start + 1} describe algo que no es la línea ${next + 1}`)
+      }
+    }
+  }
+  // El mismo piso que la sonda de arriba, y por la misma razón: sin bloques que mirar, el verde diría
+  // que no hay ninguno suelto sobre un recorrido que no encontró un archivo.
+  assert.ok(seen > 300, `sólo se inspeccionaron ${seen} bloques fuera del preámbulo`)
+  assert.deepEqual(stranded, [], `comentarios separados de su código:\n  ${stranded.join('\n  ')}`)
+})
