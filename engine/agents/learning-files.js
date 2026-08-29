@@ -88,9 +88,9 @@ function proposalState(text) {
 }
 
 // El sufijo `-N` es la segunda corrida del mismo día, y es la que trae el veredicto más nuevo. Sin él
-// en el patrón, 51 de los 188 registros que hoy existen —44 de cargos, 7 de recorridos— quedaban fuera
-// del ciclo: no entraban a ninguna propuesta y nada lo delataba, que es el modo de fallo que el
-// comentario de `markConsolidated` ya describía para el informe atrasado.
+// en el patrón, más de una cuarta parte de los registros que existían —de cargos y de recorridos—
+// quedaban fuera del ciclo: no entraban a ninguna propuesta y nada lo delataba, que es el modo de fallo
+// que el comentario de `markConsolidated` ya describía para el informe atrasado.
 const REPORT_NAME = /^(\d{4}-\d{2}-\d{2})(?:-(\d+))?\.md$/
 
 function reportFiles(dir) {

@@ -1,20 +1,20 @@
 name: Agent learning proposals
 
-# Consolida el ciclo mensual de aprendizaje de todos los agentes. La lista sale del árbol
-# `agents/<tipo>/<slug>/SKILL.md`, así que agregar un agente no toca este archivo.
+# El ciclo de aprendizaje de cargos y recorridos: investigación por cadencia, y el día 1 la
+# consolidación de lo que quedó sin sellar. Quiénes participan sale del CLI —`agents list --json` y
+# `flow list --json`—, así que agregar un cargo o un recorrido no toca este archivo.
 
 on:
   schedule:
-    # Cada cargo investiga al ritmo de su fuente más rápida, y la cadencia sale de `sources.yaml` —no
-    # de una lista acá—: `agents list --json` la trae en `cadence`. Un aviso de seguridad publica todos
-    # los días y llegar un mes tarde es llegar tarde; una norma se revisa por edición y mirarla cada
-    # lunes devuelve el mismo texto.
+    # Cada cargo investiga al ritmo de su fuente más rápida. La cadencia sale de `sources.yaml` y no de
+    # una lista acá: `agents list --json` la trae en `cadence`, y por qué a cada tipo le toca la suya
+    # está donde se decide, en `TIER_CADENCE`.
     - cron: '17 13 * * 1'          # semanal
     - cron: '17 13 24 * *'         # mensual
     - cron: '17 13 23 3,6,9,12 *'  # trimestral
     # El ensamblaje siempre el 1, y temprano. La investigación mensual corre el 24 y no unas horas
     # antes: con siete días de margen, un cargo que falla se puede repetir antes del cierre. Y el día 1
-    # cae lunes cuatro veces cada dos años —antes los dos crones disparaban al mismo minuto y el orden
+    # cae lunes cada tantos meses —antes los dos crones disparaban al mismo minuto y el orden
     # quedaba librado a la cola—: a las 07 consolida el mes que cerró, y el informe de ese lunes ya
     # cuenta para el mes nuevo.
     - cron: '17 7 1 * *'           # ensamblaje
@@ -28,8 +28,7 @@ on:
       # propuesta de regalo — y una propuesta cuesta una firma humana. Peor: consolidar **sella** los
       # informes que consume, o sea que un dispatch de prueba movía estado real del ciclo.
       #
-      # `research` por defecto porque es para lo que se lanza a mano. El ensamblaje sigue corriendo
-      # entero por su cron, y se puede pedir cuando de verdad haga falta.
+      # `research` por defecto porque es para lo que se lanza a mano.
       phase:
         description: 'Qué correr: research (default), propose o both.'
         required: false
@@ -68,10 +67,6 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
-
-          # v7 enciende el caché de npm solo si `packageManager` está en package.json, y ese
-          # caché exige un lock file. Acá no hay dependencias —ni una— así que no hay lock que
-          # cachear y el paso fallaba entero. Se apaga: el input no existía en v4.
           package-manager-cache: false
       # El CLI resuelve la precedencia del catálogo; repetir ese recorrido acá lo dejaría
       # divergir en silencio la próxima vez que cambie la estructura.
@@ -79,7 +74,7 @@ jobs:
         id: list
         env:
           ONLY: ${{ inputs.agent }}
-          # Cuál de los cuatro crones disparó. Documentado: «Access the schedule event that triggered
+          # Cuál de los crones disparó. Documentado: «Access the schedule event that triggered
           # the workflow through the github.event.schedule context» —docs.github.com, eventos que
           # disparan workflows, consultado 2026-08-23—. Vacío cuando se lanza a mano.
           SCHEDULE: ${{ github.event.schedule }}
@@ -88,8 +83,8 @@ jobs:
           node -e '
             const fs = require("fs")
             const only = (process.env.ONLY || "").trim()
-            // Qué cadencia le toca a cada cron. El del ensamblaje no investiga: ese día sólo se
-            // consolida, y por eso no aparece acá.
+            // Qué cadencia le toca a cada cron. El del ensamblaje no está en la tabla a propósito:
+            // ese día no se investiga, sólo se consolida.
             const POR_CRON = {
               "17 13 * * 1": "semanal",
               "17 13 24 * *": "mensual",
@@ -97,29 +92,23 @@ jobs:
             }
             const cadence = POR_CRON[(process.env.SCHEDULE || "").trim()] || ""
             const roles = JSON.parse(process.argv[1])
-            // Tres caminos, y lo que los separa no es la cadencia sino de dónde vino la corrida.
-            // A mano con un slug: ése. A mano sin slug: todos, que es lo que quiere quien lo lanza.
-            // Por cron: los de esa cadencia, y ninguno si el cron es el del ensamblaje —que no está
-            // en la tabla justo para eso—.
+            // Lo que separa los tres caminos no es la cadencia sino de dónde vino la corrida.
             const porCron = Boolean((process.env.SCHEDULE || "").trim())
             const elegidos = only ? roles.filter((role) => role.slug === only)
               : porCron ? roles.filter((role) => role.cadence === cadence)
               : roles
             const list = elegidos.map((role) => role.slug).sort()
             // Vacío sólo es un error cuando no hay a quién pedirle nada, y eso sólo puede pasar en una
-            // corrida a mano sin slug. Lo que decide es `porCron` y no `cadence`: el cron del
-            // ensamblaje no está en la tabla —a propósito, porque ese día no se investiga—, así que
-            // deja `cadence` vacía y la condición anterior lo leía como «no encontré ningún agente» y
-            // abortaba. Con `discover` caído, los tres jobs que dependen de él quedaban salteados: el
-            // ensamblaje entero no habría corrido, sin abrir una sola propuesta y sin decir por qué.
+            // corrida a mano sin slug. Lo que decide es `porCron` y no `cadence`: el día del
+            // ensamblaje `cadence` queda vacía, y la condición anterior lo leía como «no encontré
+            // ningún agente» y abortaba. Con `discover` caído, los jobs que dependen de él
+            // quedaban salteados: el ensamblaje entero no habría corrido, sin abrir una sola propuesta
+            // y sin decir por qué.
             // Nunca se vio porque toda corrida a mano nombra un slug o no trae `schedule`.
             //
             // Una cadencia sin cargos tampoco es un error: no hay nada que investigar ese día.
             //
-            // Un slug a mano tampoco se juzga acá: puede nombrar un recorrido, y este paso no los ve.
-            // Abortando con «No existe el agente» dejaba sin forma de disparar uno solo —la única
-            // alternativa era lanzar sin slug, que enciende los 53 cargos—. Lo decide `List flows`,
-            // que corre después y es el único punto donde se conocen las dos listas.
+            // Un slug a mano tampoco se juzga acá, y por qué está en `List flows`.
             if (!list.length && !only && !porCron) {
               console.error("No se encontró ningún agente.")
               process.exit(1)
@@ -136,11 +125,9 @@ jobs:
           ' "$all"
 
       # Los recorridos no salen de `agents list --json` —no son cargos— y por eso ninguno aprendió
-      # nunca: el ciclo existía, funcionaba a mano y nada lo disparaba. Van en su propio paso porque
-      # su disparador es otro: un cargo investiga por calendario, porque su profesión cambia sola
-      # afuera; un recorrido sólo aprende cuando le fue mal, así que lo que decide es `pending`.
-      # Sin ese filtro el día 1 abriría una propuesta por recorrido diciendo «no hay qué corregir»,
-      # y cada una cuesta una firma humana.
+      # nunca: el ciclo existía, funcionaba a mano y nada lo disparaba. Van en su propio paso porque su
+      # disparador no es el calendario sino `pending`: sin ese filtro el día 1 abriría una propuesta por
+      # recorrido diciendo «no hay qué corregir», y cada una cuesta una firma humana.
       - name: List flows
         id: flows
         env:
@@ -164,7 +151,7 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `flows=${JSON.stringify(list)}\n`)
           ' "$all"
 
-      # Una vez, y acá: comprobarlo dentro de la matriz encendía cuarenta y siete jobs para saltearse.
+      # Una vez, y acá: comprobarlo dentro de la matriz encendía un job por cargo para saltearse.
       - name: Check credential
         id: creds
         env:
@@ -180,7 +167,7 @@ jobs:
             # estar parado semanas sin que nada lo dijera. Pasó: el 2026-08-17 la credencial estaba y el
             # 2026-08-24 ya no, y se descubrió cinco días después leyendo logs a mano. Fallar la corrida
             # sería peor —un rojo cada lunes se termina ignorando—; una anotación se ve en la lista de
-            # runs sin romper nada. Es el mismo recurso que `release-pr.yml` usa para el tag que falta.
+            # runs sin romper nada.
             echo '::warning title=Sin credencial::No hay CLAUDE_CODE_OAUTH_TOKEN ni ANTHROPIC_API_KEY: esta semana no se investiga. Cargá uno de los dos en los secrets del repositorio.'
           fi
 
@@ -205,9 +192,6 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
-          # v7 enciende el caché de npm solo si `packageManager` está en package.json, y ese
-          # caché exige un lock file. Acá no hay dependencias —ni una— así que no hay lock que
-          # cachear y el paso fallaba entero. Se apaga: el input no existía en v4.
           package-manager-cache: false
       - name: Prepare report
         env:
@@ -220,9 +204,12 @@ jobs:
 
       # La suscripción primero y la API key como respaldo, cada una exportada sola.
       #
-      # Tenerlas juntas en el entorno no elige: el CLI antepone `ANTHROPIC_API_KEY` al token de
-      # suscripción, y en `-p` la usa siempre que esté presente. Con las dos puestas se pagaría API
-      # sin que nada lo dijera, que es justo lo contrario de lo que este paso quiere.
+      # Tenerlas juntas en el entorno no elige. Documentado: «When set, this key is used instead of your
+      # Claude Pro, Max, Team, or Enterprise subscription even if you are logged in. In non-interactive
+      # mode (-p), the key is always used when present» —code.claude.com, variables de entorno,
+      # consultado 2026-08-29—. Esa página no documenta `CLAUDE_CODE_OAUTH_TOKEN`, así que nada dice qué
+      # gana con las dos puestas: por eso cada rama borra la otra en vez de confiar en un orden. Con las
+      # dos, se pagaría API sin que nada lo dijera.
       #
       # El respaldo se intenta ante cualquier fallo del primero, no sólo ante uno de credencial:
       # distinguirlos exigiría interpretar el error, y un reintento de más cuesta menos que una
@@ -237,14 +224,13 @@ jobs:
           prompt="Leé el learning/AUTOMATION.md del cargo $AGENT y ejecutá exactamente lo que declara. El informe de esta semana ya está creado y vacío: completalo. Cada afirmación necesita enlace, fecha y versión; lo que no puedas corroborar va a Preguntas abiertas en vez de afirmarse. El único archivo que escribís es ese informe."
           # Sin permisos declarados, `claude -p` no puede correr un comando ni salir a la web, que es
           # todo lo que una investigación hace. La primera corrida real duró tres minutos y devolvió el
-          # informe vacío: «every tool this task needs is currently denied in this session». El cargo se
-          # portó bien —«Per this role's own rule (R14), I won't fabricate sources, dates, or command
-          # output»— y el workflow igual publicó el vacío.
+          # informe vacío —«every tool this task needs is currently denied in this session»— y el
+          # workflow lo publicó igual.
           #
           # La lista sale del `AUTOMATION.md` de los cargos y no de lo cómodo: leer, buscar, escribir su
-          # informe, y dos comandos nombrados. Saltear permisos le daría justo lo que su instrucción le
-          # prohíbe —tocar dependencias, pruebas, código, SKILL.md, planificación, commit, push— y el
-          # guard más barato contra eso es no dárselo.
+          # informe, y dos comandos nombrados. Sin `Bash` libre no hay commit, push ni instalación de
+          # nada; lo que `Edit` alcanza de más lo frena el borde del job, no esta lista.
+          #
           # Lo que la corrida costó y qué se le negó, en el resumen del job. Sin esto el gasto de una
           # investigación no era medible desde ningún lado, y un permiso mal escrito sólo se veía si
           # alguien leía dos líneas perdidas del log.
@@ -265,9 +251,8 @@ jobs:
           }
           # Un arreglo y no una cadena: sin comillas el shell parte `Bash(make agent-learn *)` en tres
           # palabras, y el CLI descarta la última con «Ignoring --allowedTools rule "*)"». Pasó en la
-          # primera corrida con permisos: Bash nunca se concedió, y la investigación salió igual porque
-          # con web y lectura alcanzaba —el modelo lo dijo, «no curl access this run»— así que el
-          # defecto no se veía en el resultado sino en dos líneas del log.
+          # primera corrida con permisos: Bash nunca se concedió y la investigación salió igual, porque
+          # con web y lectura alcanzaba — el defecto no estaba en el resultado sino en el log.
           TOOLS=(--allowedTools WebSearch WebFetch Read Glob Grep Edit
             'Bash(make agent-learn *)' 'Bash(make agent-evaluate *)')
           # `json` cierra con `total_cost_usd`, `usage` y `permission_denials`: es lo único que vuelve
@@ -344,8 +329,9 @@ jobs:
             exit 1
           fi
           # Y que exista no alcanza: `learn` lo crea vacío y el modelo puede devolverlo tal cual. Así
-          # salió la primera corrida real, y `research-pr` lo publicó igual — un lunes eso son 29 PRs en
-          # blanco y nada lo dice. Es la forma que R15 nombra: se lee entero y no lo está.
+          # salió la primera corrida real, y `research-pr` lo publicó igual — un lunes eso es un PR en
+          # blanco por cada cargo semanal, y nada lo dice. Es la forma que R15 nombra: se lee entero y
+          # no lo está.
           #
           # Se mira contenido y no tamaño: las secciones que la propuesta mensual consolida son las que
           # tienen que tener algo. Un informe vacío puede ser una negativa correcta —negarse a fabricar
@@ -431,7 +417,8 @@ jobs:
           # `-uall` y no el default: sin él git colapsa un directorio sin trackear en una sola línea
           # —`?? .../learning/reports/`— y el chequeo, que compara contra la ruta del archivo, no la
           # encontraba. Como `reports/` nace con el primer informe, eso abortaba la publicación del
-          # primero de cada cargo: 43 de los 47 no tienen ese directorio en git todavía.
+          # primero de cada cargo — y el directorio sólo está en git para los pocos que ya publicaron
+          # uno, así que era casi toda la matriz.
           otros="$(git status --porcelain -uall | awk '{print $2}' | grep -v -F "$dest" || true)"
           if [ -n "$otros" ]; then
             echo "Se esperaba exactamente el informe de $AGENT y nada más." >&2
@@ -472,10 +459,6 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
-
-          # v7 enciende el caché de npm solo si `packageManager` está en package.json, y ese
-          # caché exige un lock file. Acá no hay dependencias —ni una— así que no hay lock que
-          # cachear y el paso fallaba entero. Se apaga: el input no existía en v4.
           package-manager-cache: false
       - name: Validate current agent
         env:
@@ -499,8 +482,6 @@ jobs:
 
       - name: Detect changes
         id: changes
-        # `git status --porcelain` y no `git diff`: lo que el ciclo produce son archivos nuevos, y
-        # `git diff` sólo mira lo trackeado. Con él, el paso que sigue no corría nunca.
         run: |
           if [ -z "$(git status --porcelain)" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -549,9 +530,9 @@ jobs:
             --title "$AGENT learning proposal — $name" \
             --body "Propuesta automática construida desde los informes semanales. No modifica SKILL.md y requiere evaluación y aprobación humana."
 
-  # El espejo de `propose` para los recorridos, y como aquél no habla con ningún modelo: consolida
-  # veredictos ya commiteados con el CLI y abre el PR. Corre el mismo día —el del ensamblaje— porque
-  # es cuando se consolida, no cuando se investiga: un recorrido no investiga nunca.
+  # Lo que `propose` para los cargos, y como aquél sin hablar con ningún modelo. Todavía no es su
+  # espejo exacto: `propose` revalida con `evaluate` la propuesta que acaba de escribir y acá ese paso
+  # no está, así que una mal formada llega al PR sin que nada la mire.
   propose-flows:
     if: >-
       needs.discover.outputs.flows != '[]'
@@ -573,18 +554,12 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
-
-          # v7 enciende el caché de npm solo si `packageManager` está en package.json, y ese
-          # caché exige un lock file. Acá no hay dependencias —ni una— así que no hay lock que
-          # cachear y el paso fallaba entero. Se apaga: el input no existía en v4.
           package-manager-cache: false
       - name: Validate current flow
         env:
           FLOW: ${{ matrix.flow }}
         run: node "$OPS" flow check "$FLOW"
 
-      # Consolidar marca las corridas que entraron, así que el diff trae la propuesta **y** los
-      # registros sellados. Los dos van al PR: sin el sello, la próxima corrida los volvería a leer.
       - name: Build proposal from unconsolidated runs
         env:
           FLOW: ${{ matrix.flow }}
@@ -607,7 +582,7 @@ jobs:
         run: |
           period="$(date -u +%Y-%m)"
           # `/**` y no `/`: un pathspec con comodín y barra final no matchea nada, así que esto
-          # devolvía vacío siempre y los siete recorridos morían en «cambió archivos fuera de su
+          # devolvía vacío siempre y todos los recorridos morían en «cambió archivos fuera de su
           # propuesta». Comprobado con git 2.43.0 sobre el caso real —una propuesta nueva y dos
           # corridas selladas—: `flows/*/<slug>/` da 0 y `flows/*/<slug>/**` da los 3 archivos. El
           # comodín sí cruza `/`; lo que no funciona es la forma de directorio.

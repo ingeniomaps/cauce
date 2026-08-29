@@ -21,6 +21,9 @@ on:
 permissions:
   contents: read
 
+# Dos pushes seguidos a `main` corren esto dos veces sobre la misma rama de release. No se cancela la
+# que está en curso: cortarla entre el `git push` y el `gh pr create` deja la rama publicada y ningún
+# PR que la explique.
 concurrency:
   group: release-pr
   cancel-in-progress: false
