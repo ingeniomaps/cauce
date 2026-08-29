@@ -76,10 +76,10 @@ if (!lcovs.length) {
   process.exit(2)
 }
 
-// El mínimo de todas las corridas, no la última. Una sola medición no alcanza para fijar un piso:
-// `integrations/state.js` va de 64 a 68 según cómo caigan los archivos de test en paralelo, así que
-// registrar la corrida que tocó dejaba el piso arriba de lo alcanzable y el gate fallando al azar.
-// Nadie sube un piso por suerte; para subirlo hay que subir la cobertura en todas.
+// El mínimo de todas las corridas, no la última. Una sola medición no alcanza para fijar un piso: un
+// archivo que se mueve entre corridas —cuál y por qué, en `SLACK`— deja el piso arriba de lo
+// alcanzable si se registra la corrida que tocó, y el gate fallando al azar. Nadie sube un piso por
+// suerte; para subirlo hay que subir la cobertura en todas.
 function floorOf(lcovFiles) {
   const found = {}
   for (const lcovFile of lcovFiles) {
