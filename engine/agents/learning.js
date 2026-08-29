@@ -139,6 +139,7 @@ propuesta consolidada. -->
 // propuesta que ésta corrige, y repetirlos haría que el mismo hallazgo entre dos veces al contrato. El
 // insumo de una revisión es otro —qué mostró la evaluación posterior a aplicar—, y por eso el molde
 // pregunta eso y no otra cosa.
+//
 // El molde de los apartados que una persona escribe queda; lo que deja de quedar es `## Hallazgos` en
 // blanco. Una revisión que no puede decir qué la motiva no puede producir un cambio, y hasta acá se
 // llega sólo con material: el llamador ya se negó a abrirla sin él.
@@ -204,14 +205,9 @@ function lastOfPeriod(dir, period) {
   return names.length ? names[names.length - 1] : ''
 }
 
-// Qué aprende un recorrido, y de dónde. Un cargo aprende de su profesión —normas, versiones, fuentes
-// que cambian afuera— y por eso investiga. Un recorrido no tiene profesión: lo único que puede
-// enseñarle algo es cómo le fue, así que su insumo son los veredictos en contra de sus propias
-// corridas. Pedirle una investigación semanal sería pedirle que lea una literatura que no existe, y
-// devolvería informes vacíos.
-//
-// De cada registro sin sellar entran los casos que no pasaron, con su contraste y de qué corrida
-// salen. Si no hay ninguno, eso también es un resultado: el recorrido aguantó y no hay qué corregir.
+// De qué aprende un recorrido: de cada registro sin sellar entran los casos que no pasaron, con su
+// contraste y de qué corrida salen. Si no hay ninguno, eso también es un resultado — el recorrido
+// aguantó y no hay qué corregir. Por qué es esto y no una investigación, en `pendingRuns`.
 const VERDICT = /\n### ([^\n]+)\n\n- Veredicto: (pasa|no pasa)\n([\s\S]*?)(?=\n### |$)/g
 
 function verdicts(text) {
@@ -422,7 +418,8 @@ function reportSummary(root, report) {
   const name = path.basename(report)
   const text = fs.readFileSync(report, 'utf8')
   // Sin `m`: con esa bandera el `$` casa fin de *línea*, así que la búsqueda no ávida cortaba en el
-  // primer salto y la propuesta consolidaba una sola línea de una recomendación de diez.
+  // primer salto y la propuesta consolidaba una sola línea de una recomendación de diez. Comprobado en
+  // node v24.18.0: el mismo patrón con `m` devuelve la primera línea y sin `m` devuelve el bloque.
   const match = text.match(/\n## Recomendación\s*\n([\s\S]*?)(?=\n## |$)/) || []
   const recommendation = (match[1] || 'Sin recomendación registrada.').trim()
   return `### ${name.slice(0, -3)}\n\nFuente interna: \`${path.relative(root, report)}\`\n\n${recommendation}`

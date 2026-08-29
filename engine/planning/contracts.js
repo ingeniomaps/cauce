@@ -206,9 +206,9 @@ function validateRules(dir) {
 }
 
 // Una decisión que no dice si rige no decide nada, y el molde traía el menú entero en la línea de estado:
-// tres de las dieciséis decisiones escritas con este modelo se publicaron con el menú intacto. Presentar
+// casi una de cada cinco decisiones escritas con este modelo se publicó con el menú intacto. Presentar
 // las opciones no obliga a elegir; esto sí. Las secciones son las cuatro que se escriben siempre —las
-// alternativas quedan en el molde sin exigirse, porque pedirlas rechazaría quince decisiones que existen—.
+// alternativas quedan en el molde sin exigirse, porque pedirlas rechazaría a casi todas las que existen—.
 const ADR_STATES = ['Propuesto', 'Aceptado', 'Obsoleto']
 const ADR_SUPERSEDED = /^Reemplazada por \[[^\]]+\]\([^)]+\)(?: \(\d{4}-\d{2}-\d{2}\))?$/
 const ADR_SECTIONS = ['Contexto', 'Decisión', 'Consecuencias', 'Estado de implementación']
@@ -381,8 +381,10 @@ function validateState({ epics, milestones, done, wip, roles = new Set(), humanA
 const R17 = { taskCriteria: 5, epicCriteria: 7, milestoneTasks: 9 }
 
 // Se cuenta lo que está estructurado: criterios de la épica, criterios que hereda una tarea, tareas del
-// hito. La aceptación escrita en prosa no se cuenta —cuántas condiciones tiene una frase es una lectura,
-// y un número inventado ahí sería peor que ninguno—; ésa la mira el review, que para eso está R3.
+// hito. Quedan afuera las dos cosas que no son un conteo: la aceptación escrita en prosa —cuántas
+// condiciones tiene una frase es una lectura, y un número inventado ahí sería peor que ninguno— y la
+// segunda barra de R17, las cuatro horas de esfuerzo, que no está en el artefacto. Las dos las mira el
+// review, que para eso está R3, y la de esfuerzo es la que R17 dice que encuentra lo que ésta deja pasar.
 function oversizedUnits({ epics = [], milestones = [] }) {
   const errors = []
   const undecided = (what, count, limit) =>

@@ -23,9 +23,10 @@ const STOP_REASONS = [
 // que el lector no leía, que es la manera más cara de tener las dos cosas.
 const MILESTONE_HEADING = /^##\s+Hito\s+([^\s]+)\s+[—-]\s+(.+)$/
 
-// Los carriles, en orden de ceremonia creciente. El orden es parte del vocabulario: la prosa que los
-// describe va de menos a más y `check` lo contrasta, porque un carril leído fuera de orden se elige por
-// su nombre y no por su criterio.
+// Los carriles, en orden de ceremonia creciente. El orden es parte del vocabulario, porque un carril
+// leído fuera de orden se elige por su nombre y no por su criterio. Que la prosa del PROTOCOL vaya en
+// este mismo orden lo ata la suite del toolkit —`planning-template.test.js`—, no `check`: un workflow
+// en sandbox no puede importar este módulo, así que la atadura es una prueba y no una validación.
 const LANES = ['express', 'directo', 'lite', 'full']
 const TASK_LINE = new RegExp(
   String.raw`^-\s+\[\s\]\s+\*\*([^*]+)\*\*\s*(?:\[(${LANES.join('|')})\])?\s+[—-]\s+(.+)$`,

@@ -6,7 +6,8 @@
 // draft se leía distinto según quién lo abriera.
 //
 // Se resuelve por el lado estricto: frontmatter es lo que encabeza el documento, y un `---` en el medio
-// es una línea horizontal de markdown. La clave admite lo que admite YAML.
+// es una línea horizontal de markdown. La clave admite letras, dígitos, `_` y `-` —de ahí sale la
+// discrepancia del dígito inicial, resuelta a favor de admitirlo—, y no lo que admitiría YAML entero.
 
 function frontmatter(text) {
   const block = (String(text).match(/^---\s*\n([\s\S]*?)\n---/) || [])[1] || ''

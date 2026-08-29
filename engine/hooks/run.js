@@ -126,13 +126,14 @@ function execute(name, input) {
   guard(input)
 }
 
-// Expande grupos a guards y conserva el orden declarado; el primero que bloquea corta la ejecución.
+// Expande grupos a guards y conserva el orden declarado.
 function resolve(names) {
   const resolved = names.flatMap((name) => hookGroups[name] || [name])
   if (!resolved.length) throw new Error('Se requiere el nombre de un guard o de un grupo.')
   return resolved
 }
 
+// Corre en ese orden y el primero que bloquea corta: `execute` lanza y acá nadie lo atrapa.
 function executeAll(names, input) {
   for (const name of resolve(names)) execute(name, input)
 }

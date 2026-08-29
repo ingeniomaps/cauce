@@ -29,7 +29,8 @@ function pendingHumanActions(root) {
 
 // Selecciona la tarea que un runner debe ejecutar ahora, con la misma precedencia que el protocolo:
 // WIP activo primero —es el mutex y manda incluso si tiene una acción humana abierta—, si no la
-// primera tarea no terminada y no bloqueada del primer hito.
+// primera tarea no terminada y no bloqueada recorriendo los hitos en su orden: agotado el primero,
+// sigue por el que viene.
 function currentTask({ milestones, done, wip }, blockers = []) {
   const queue = milestones.flatMap((milestone) => milestone.tasks.map((task) => ({ ...task, hito: milestone.slug })))
   if (wip) {

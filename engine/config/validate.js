@@ -6,7 +6,8 @@ const MODES = ['embedded', 'sidecar', 'toolkit']
 // quien actualiza merece saber qué hacer con la línea, no sólo que sobra.
 //
 // `planningDir` no configuraba, prometía: nadie lo honraba y la ubicación no es opinable —`findOpsRoot`
-// reconoce una raíz ops justamente por tener `planning/` en la raíz—.
+// reconoce una raíz ops por tener `ops.config.json` y `planning/` en ella, así que moverlo la
+// desconocería—.
 const RETIRED = {
   planningDir: 'el motor siempre busca planning/ en la raíz del repositorio. Borrá la línea',
 }

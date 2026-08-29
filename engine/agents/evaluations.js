@@ -39,7 +39,7 @@ function caseFiles(dir) {
 //
 // Existe porque un caso que *describe* un artefacto externo sin entregarlo mide algo más fácil de lo
 // que dice medir: al cargo se le pregunta si obedecería un documento del que se le está hablando, y un
-// texto que nunca leyó no puede inyectarlo. Los 47 casos adversariales del catálogo nacieron así, y uno
+// texto que nunca leyó no puede inyectarlo. Los casos adversariales del catálogo nacieron así, y uno
 // produjo un fallo falso: el cargo escribió que había leído una guía inexistente porque el arnés se la
 // había afirmado.
 function fixtureFiles(dir, prefix = '') {
@@ -89,7 +89,7 @@ function list(root, agent, kind) {
   })
 }
 
-// Lo que el cargo no debe hacer, declarado por cargo en `expected-behaviors.yaml`.
+// Lo que el cargo debe y no debe hacer, declarado por cargo en `expected-behaviors.yaml`.
 //
 // Se parsea a mano porque el archivo es una lista de escalares y el repositorio no tiene dependencias:
 // traer un parser de YAML para leer dos listas sería pagar una dependencia por un `split`.
@@ -116,7 +116,8 @@ function behaviors(root, agent, kind) {
 }
 
 // Cuándo cambió por última vez el contrato que la corrida midió. Sale de git y no del mtime del
-// archivo: un `npm ci` o un checkout reescriben mtimes y dirían que todo cambió hoy.
+// archivo: un `npm ci` o un checkout reescriben mtimes y dirían que todo cambió hoy —comprobado con
+// git 2.43.0, un `git checkout <commit> -- <archivo>` le deja el mtime de la corrida—.
 //
 // Sin esto, un contrato que se endurece deja atrás registros que siguen diciendo «pasa» — y el que
 // endurece es justo el que puede hacerlos fallar. Es la misma confusión que el resultado que cubre
@@ -231,17 +232,18 @@ function composed(root, agent, kind) {
   }
 }
 
-// Coherencia entre lo que hay y lo que se corrió. Todo sale como advertencia y ninguno afecta el
-// código de salida, y no es blandura: correr los casos exige un modelo, y CI no lo tiene. Un `evaluate`
-// que fallara por un resultado viejo obligaría a pagar una corrida para poder integrar, y volvería a
-// fallar cada vez que el contrato cambie. Quien falla fuerte es el recorrido que sí los ejecuta.
+// Coherencia entre lo que hay y lo que se corrió. Lo que mide una corrida sale como advertencia y no
+// toca el código de salida, y no es blandura: correr los casos exige un modelo, y CI no lo tiene. Un
+// `evaluate` que fallara por un resultado viejo obligaría a pagar una corrida para poder integrar, y
+// volvería a fallar cada vez que el contrato cambie. Quien falla fuerte es el recorrido que sí los
+// ejecuta. Lo que sí corta con 1 es `errors`, y por qué es la excepción está donde se arma.
 function validate(root, agent, kind) {
   const warnings = []
   const cases = list(root, agent, kind)
   const total = cases.length
   // Esto sí es control estructural y no advertencia: que el artefacto esté entregado es una propiedad
-  // estática del caso, verificable sin modelo, y dejarla en advertencia es lo que permitió que 47 casos
-  // midieran la versión débil de su propia pregunta.
+  // estática del caso, verificable sin modelo, y dejarla en advertencia es lo que permitió que el
+  // catálogo entero midiera la versión débil de su propia pregunta.
   const errors = cases
     .filter((item) => item.id.includes('adversarial') && !item.fixtures.length)
     .map((item) => `${item.id}: caso adversarial sin artefacto en cases/${item.id}/`)
