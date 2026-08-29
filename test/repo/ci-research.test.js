@@ -152,6 +152,61 @@ test('un informe que se hizo y no llegó se anuncia; uno que nunca existió no',
   assert.equal(/^\s+if:/m.test(prepare), false, 'Prepare report corre siempre, que es lo que ata verde a subido')
 })
 
+// `reportSummary` lee «## Recomendación» con un patrón exacto y, cuando no lo encuentra, escribe
+// «Sin recomendación registrada». O sea que un título renombrado sale **idéntico** a una ausencia
+// genuina: una recomendación de diez líneas se pierde y la propuesta la reporta como un informe que no
+// tenía nada que proponer. Entre trescientas líneas nadie lo ve leyendo el PR, y es lo único de un
+// informe que ninguna revisión humana caza.
+//
+// Por eso se exige el título y no su contenido: encontrar cosas y no proponer ningún cambio es un
+// resultado legítimo —el informe queda como histórico y nada del contrato del cargo se toca— y exigir
+// contenido lo tiraría. Se ejecuta el paso, no se cita: una redacción distinta del mismo chequeo roto
+// pasaría igual una aserción sobre el texto.
+test('un título renombrado no pasa por una recomendación ausente', { skip: process.platform === 'win32' }, () => {
+  const source = workflow('agent-learning')
+  const paso = workflowStep(source, 'id: collect')
+  assert.ok(paso.includes('Recomendación'), 'no se encontró el paso que valida el informe')
+
+  const repo = tempRoot('cauce-collect-')
+  const dir = path.join(repo, 'agents', 'roles', 'system', 'probe', 'learning', 'reports')
+  fs.mkdirSync(dir, { recursive: true })
+  const bash = (script, env) => spawnSync('bash', ['-c', script], {
+    cwd: repo, encoding: 'utf8', env: { ...process.env, AGENT: 'probe', ...env },
+  })
+  fs.writeFileSync(path.join(repo, 'README.md'), 'base\n')
+  bash('git init -q . && git add README.md && git -c user.email=t@t -c user.name=t commit -qm base')
+
+  const stamp = new Date().toISOString().slice(0, 10)
+  const informe = (recomendacion) => ['---', 'agent: probe', '---', '',
+    '## Fuentes consultadas', '', '1. Una fuente.', '',
+    '## Hallazgos', '', 'H1. Algo cambió.', '', recomendacion, '', '## Preguntas abiertas', '', 'Ninguna.',
+  ].join('\n')
+  const correr = (texto) => {
+    fs.writeFileSync(path.join(dir, `${stamp}.md`), texto)
+    const salida = path.join(repo, 'github-output')
+    fs.writeFileSync(salida, '')
+    const hecho = bash(paso, { GITHUB_OUTPUT: salida })
+    return { ...hecho, escrito: fs.readFileSync(salida, 'utf8') }
+  }
+
+  const bueno = correr(informe('## Recomendación\n\n1. Cambiar algo (cierra H1).'))
+  assert.equal(bueno.status, 0, `un informe completo tiene que pasar: ${bueno.stderr}`)
+  assert.match(bueno.escrito, /^path=agents\/.*\.md$/m, 'y deja la ruta para el artifact')
+
+  // El caso legítimo, que es la mitad de la decisión: sin nada que proponer, el informe igual entra.
+  const sinNada = correr(informe('## Recomendación'))
+  assert.equal(sinNada.status, 0,
+    `encontrar cosas y no proponer cambios es un resultado, no un error: ${sinNada.stderr}`)
+  assert.match(sinNada.escrito, /^path=/m, 'el histórico se guarda igual')
+
+  // Y el defecto, que hoy salía indistinguible del caso de arriba.
+  for (const roto of ['## Recomendaciones', '## Recomendación final', '### Recomendación']) {
+    const hecho = correr(informe(roto))
+    assert.notEqual(hecho.status, 0, `«${roto}» tiene que frenar el PR`)
+    assert.match(hecho.stderr, /Recomendación/, `y decir por qué: ${hecho.stderr}`)
+  }
+})
+
 test('el workflow de aprendizaje ve los archivos que el ciclo crea', { skip: process.platform === 'win32' }, () => {
   const source = workflow('agent-learning')
 
