@@ -86,6 +86,7 @@ const PLAN = {
 // Un veredicto sin manifiesto no se puede contrastar: `consulted` enumera lo que quien revisó abrió de
 // verdad, y es lo único que separa al que miró del que aprobó de memoria. No prueba que lo haya leído bien
 // —para eso habría que releerlo—, y esa asimetría es la que lo deja barato (R14).
+//
 // Tres estados porque hay tres cosas distintas que decir, y con un booleano dos se pisan: «no puedo
 // aprobar esto» y «apruebo con algo que hay que corregir antes de entregar» caían las dos en el mismo
 // `false`, así que la primera gastaba igual una vuelta de corrección sobre algo que la corrección no
@@ -147,11 +148,9 @@ const BUILD = {
       properties: { test: { type: 'string' }, failure: { type: 'string' } },
     } },
     blockers: { type: 'array', items: { type: 'string' } },
-    // Estricto en el cómo, flexible en el qué: lo que aparece y el plan no previó tiene dos destinos y
-    // ninguno es el silencio. Un caso que esta tarea puede fijar entra con la prueba que lo fija —por eso
-    // su `test` tiene que estar en `redFirst`—; una decisión que no le toca queda registrada con quién
-    // puede tomarla. Implementarlo sin prueba lo vuelve invisible y descartarlo lo pierde: en los dos
-    // casos el próximo que lo encuentre empieza de cero.
+    // Estricto en el cómo, flexible en el qué: un `kind` por cada uno de los dos destinos que R6 le da a
+    // lo que aparece y el plan no previó. Lo que agrega este recorrido es el enganche — el caso que esta
+    // tarea puede fijar entra con la prueba que lo fija, y por eso su `test` tiene que estar en `redFirst`.
     discovered: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['kind', 'detail'],
       properties: {
@@ -228,23 +227,23 @@ const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos 
 // Acompaña a todo prompt con schema DECISION: el schema obliga a llenar `consulted`, y esto obliga a
 // llenarlo con lo que se abrió en vez de con lo que se pensaba mirar.
 const MANIFEST = ' Enumerá en consulted cada archivo, diff o comando que hayas abierto de verdad, con su ruta.'
-// Acompaña a todo prompt con schema DECISION. El criterio va escrito porque tres estados sin criterio son
-// tres nombres, y el del medio —el que evita gastar una corrección en lo que no se corrige— es el que se
-// pierde primero.
+// Acompaña a todo prompt con schema DECISION. Sin el criterio escrito los tres estados son tres nombres
+// y el del medio se pierde primero; por qué son tres está donde se declaran.
 const VERDICT = ' Cerrá con verdict=aprobado si no queda nada por corregir antes de entregar; ' +
   'verdict=con-condiciones si lo que falta se corrige dentro de este mismo cambio; y verdict=bloqueado ' +
   'si algo no se resuelve acá —el diseño no lo cubre, falta una decisión ajena, o la corrección excede el ' +
   'alcance—. Marcá blocking=true sólo en el hallazgo que impide entregar: el resto queda registrado y no ' +
   'manda a tocar código.'
+// Lo que hay que corregir antes de entregar. El resto de los hallazgos no desaparece: se registra.
+const blockers = (verdict) => verdict.concerns.filter((one) => one.blocking).map((one) => one.detail)
 // Atajo para reconocer un gate que corrió pruebas sin preguntarle a nadie. No alcanza solo y no
 // pretende hacerlo: `mvn verify`, `gradle build`, `tox`, `bin/rails t` y cualquier `make` con nombre
 // propio corren pruebas y no se parecen a esto, así que el que corrió el comando además lo declara en
 // `ranTests` y vale cualquiera de los dos. Una lista de nombres siempre le va a faltar el siguiente;
 // lo que no puede es frenar una corrida legítima por no conocerlo.
+//
 // El borde izquierdo va explícito en vez de `\b` porque `\b(?:` se lee igual que una llamada a `b()`
 // y la comprobación de identificadores del paquete de pruebas la marca como función inexistente.
-// Lo que hay que corregir antes de entregar. El resto de los hallazgos no desaparece: se registra.
-const blockers = (verdict) => verdict.concerns.filter((one) => one.blocking).map((one) => one.detail)
 const RUNS_TESTS = /(?:^|[\s/:=-])(?:tests?|specs?|pytest|jest|vitest|mocha|rspec|phpunit|ci|check)\b/i
 {{INCLUDE:shared/workflow-finish.js}}
 
@@ -512,8 +511,8 @@ while (rounds++ < MAX_TASKS) {
   // Lo que queda abierto no lo cierra quien lo encuentra, pero tampoco frena lo que sí se pudo entregar.
   // Tres corridas reales terminaron acá y las tres traían `completed: true`: el hueco nunca fue «no puedo»
   // sino «hay un borde que alguien tiene que decidir», y una aceptación escrita en prosa siempre tiene uno.
-  // Frenar por eso frenaba siempre, y un freno que salta siempre se termina apagando. Lo que de verdad
-  // bloquea ya tiene camino —`completed: false` con su blocker—; esto se registra y sigue.
+  // Frenar por eso frenaba siempre, que es el freno que R6 desaconseja. Lo que de verdad bloquea ya
+  // tiene camino —`completed: false` con su blocker—; esto se registra y sigue.
   const openDecisions = build.discovered.filter((entry) => entry.kind === 'open')
   if (openDecisions.length) {
     await write(`Registrá en ${HUMAN} una fila por cada decisión que ${task.id} dejó abierta, con qué la ` +
@@ -522,6 +521,7 @@ while (rounds++ < MAX_TASKS) {
   }
   // Y un caso que sí se fijó acá entra con su prueba o no entró: sin ella el comportamiento nuevo queda
   // sin nada que lo sostenga, y nadie sabe después que debía existir.
+  //
   // Los dos campos salen de la misma respuesta pero se escriben por separado, así que pedirles la misma
   // cadena exacta frena una tarea correcta por haber nombrado el test de dos formas —`TestAlta` acá y
   // `users_test.go::TestAlta` allá—. Alcanza con que uno nombre al otro; lo que sigue frenando, que es de
