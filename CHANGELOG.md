@@ -14,6 +14,15 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.53.2] - 2026-08-29
+
+### Cambiado
+
+- **`tools/ops.js` se reemplaza y no cambia lo que hace.** Su comentario prohibía `import` y dos líneas
+  después nombraba el `import()` dinámico que el propio shim usa; ahora dice que lo prohibido es el
+  estático. Y citaba `team list`, un comando que dejó de existir. Se lo nombra porque vive en tu
+  instancia: `upgrade` lo va a reemplazar y, hasta que lo corras, aparece como desactualizado.
+
 ## [0.53.1] - 2026-08-29
 
 ### Corregido
