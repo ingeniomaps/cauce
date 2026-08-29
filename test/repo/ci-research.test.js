@@ -31,7 +31,10 @@ test('la investigación recibe las herramientas que su instrucción nombra, y no
   assert.match(source, /TOOLS=\(--allowedTools /, 'se declaran como arreglo')
   assert.match(source, /'Bash\(make agent-learn \*\)'/, 'y cada regla con espacios va entrecomillada')
   assert.match(source, /'Bash\(make agent-evaluate \*\)'/)
-  for (const tool of ['WebSearch', 'WebFetch', 'Read', 'Edit']) {
+  // `Write` va con `Edit` porque el informe se puede completar con cualquiera de los dos y cuál elige
+  // el modelo no lo decide nadie: con `Edit` sola, la mitad de las corridas gasta la investigación
+  // entera y la tira al pedirla.
+  for (const tool of ['WebSearch', 'WebFetch', 'Read', 'Edit', 'Write']) {
     assert.match(source, new RegExp(`--allowedTools[^\n]*\\b${tool}\\b`), `puede ${tool}`)
   }
   // Los dos comandos que el `AUTOMATION.md` de los cargos nombra, y sólo ésos.

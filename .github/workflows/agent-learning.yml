@@ -253,7 +253,20 @@ jobs:
           # palabras, y el CLI descarta la última con «Ignoring --allowedTools rule "*)"». Pasó en la
           # primera corrida con permisos: Bash nunca se concedió y la investigación salió igual, porque
           # con web y lectura alcanzaba — el defecto no estaba en el resultado sino en el log.
-          TOOLS=(--allowedTools WebSearch WebFetch Read Glob Grep Edit
+          # `Write` además de `Edit`, y no es redundante: `learn` deja el informe con sus títulos y las
+          # secciones vacías, así que completarlo se puede con cualquiera de los dos y **cuál elige el
+          # modelo no lo decide nadie**. El 2026-08-28 `backend-engineer` usó `Edit` y salió bien en 33
+          # turnos; el 29 `qa-engineer` llegó al final de la investigación y pidió `Write`, se lo negaron
+          # dos veces y se perdieron 61 turnos, 48 mil tokens de salida y USD 2.70 — con el informe vacío
+          # y el guard de `Collect report` frenando el PR, que es lo único que funcionó ahí. Un lunes eso
+          # es una lotería sobre los veinte cargos semanales.
+          #
+          # Sin acotar a una ruta a propósito: `--help` documenta `Bash(git *)` y nombres pelados, y una
+          # regla que el CLI no entiende **se descarta en silencio** —ya pasó acá con la de Bash sin
+          # comillas—, así que acotarlo con una sintaxis sin comprobar reintroduce el fallo sin decirlo.
+          # Lo que acota el daño es lo de siempre: el job corre con `contents: read` y sin credencial de
+          # push, y `Collect report` y `research-pr` rechazan todo lo que no sea el informe.
+          TOOLS=(--allowedTools WebSearch WebFetch Read Glob Grep Edit Write
             'Bash(make agent-learn *)' 'Bash(make agent-evaluate *)')
           # `json` cierra con `total_cost_usd`, `usage` y `permission_denials`: es lo único que vuelve
           # medible lo que cuesta una corrida, y lo que delata un permiso mal escrito como el de arriba.
