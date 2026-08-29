@@ -171,6 +171,9 @@ function scan(root, skip = '') {
   }
 }
 
+// Dónde puede mirar una instancia: exactamente las raíces que declara, y nada por encima de ellas. Sale
+// de `ops.config.json` en vez de suponerse —el sidecar declara `..`, el embebido `.`— para que acotar las
+// raíces acote también el escaneo, y para que nadie termine recorriendo la carpeta de al lado.
 function workspaceRoots(root) {
   try {
     const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))

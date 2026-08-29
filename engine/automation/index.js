@@ -9,326 +9,19 @@ const P = require('../planning/parser')
 const catalog = require('../agents/catalog')
 const O = require('../core/ownership')
 const M = require('../core/manifest')
-
-const RUNNER_NAMES = ['claude', 'codex', 'gemini', 'antigravity']
-
-// Los guards que el motor implementa, tomados del registro que los ejecuta. Sale de ahí y no de un
-// número escrito a mano: `automation check` anunciaba «11 guards» cuando hacía rato que eran doce, y
-// un conteo que envejece solo es peor que ninguno —dice que revisó menos de lo que revisó—.
-const GUARD_NAMES = Object.keys(H.guards)
-
-// Adaptadores y workflows viven en el paquete, no en la instancia: son definiciones que el motor
-// consume y que ninguna empresa edita —`RUNNER_NAMES` es cerrado, así que ni siquiera puede agregar
-// uno propio—. Los hooks sí se quedan en el proyecto: la configuración del runner los nombra por
-// ruta literal y no sabe resolver en cascada.
-// Se busca por `runners/` y no por `automatization/`: toda instancia tiene el segundo —ahí viven sus
-// hooks— y encontrarlo daría por buena una dependencia sin instalar.
-function packagedAutomation(root) {
-  const runners = O.packagePath(root, path.join('automatization', 'runners'))
-  return runners ? path.dirname(runners) : ''
-}
-
-function runnerManifest(root, name) {
-  if (!RUNNER_NAMES.includes(name)) {
-    throw new Error(`runner debe ser ${RUNNER_NAMES.join(', ')}`)
-  }
-  const packaged = packagedAutomation(root)
-  if (!packaged) {
-    throw new Error('no encuentro automatization/: corré "npm install" en la raíz del repo ops')
-  }
-  const file = path.join(packaged, 'runners', name, 'manifest.json')
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')) } catch (error) {
-    throw new Error(`${name}: manifest inválido (${error.message})`)
-  }
-}
-
-function mergeConfig(current, incoming) {
-  if (Array.isArray(incoming)) {
-    const values = [...(Array.isArray(current) ? current : []), ...incoming]
-    const seen = new Set()
-    return values.filter((value) => {
-      const key = JSON.stringify(value)
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
-  }
-  if (incoming && typeof incoming === 'object') {
-    const object = current && typeof current === 'object' && !Array.isArray(current)
-    const result = object ? { ...current } : {}
-    for (const [key, value] of Object.entries(incoming)) {
-      result[key] = mergeConfig(result[key], value)
-    }
-    return result
-  }
-  return incoming
-}
-
-// Una entrada de hook que puso Cauce se reconoce por el guard al que apunta: `automatization/hooks/`
-// es nuestro y ninguna empresa escribe ahí. Se saca del archivo del usuario antes de fusionar para que
-// el merge deje exactamente las de esta versión, ni una más.
-const ENTREGADO = /automatization\/hooks\/guard-[a-z-]+\.sh/
-
-function withoutDeliveredHooks(config, live) {
-  const dropped = []
-  const walk = (node) => {
-    if (Array.isArray(node)) {
-      return node
-        .filter((item) => {
-          const command = item && typeof item === 'object' ? String(item.command || '') : ''
-          if (!ENTREGADO.test(command)) return true
-          // Sólo se anuncia lo que ya no vuelve: una entrada que el merge repone quedó igual, y decir
-          // que se quitó y se puso la misma línea es ruido que esconde el caso que sí importa.
-          if (!live.has(command)) dropped.push(command)
-          return false
-        })
-        .map(walk)
-        .filter((item) => !(item && typeof item === 'object' && Array.isArray(item.hooks) && !item.hooks.length))
-    }
-    if (node && typeof node === 'object') {
-      return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, walk(value)]))
-    }
-    return node
-  }
-  return { config: walk(config), dropped }
-}
-
-// Por qué se fue cada entrada nuestra. Un guard suelto que ahora cubre un grupo no es lo mismo que una
-// ruta que dejó de existir: el primero se ejecutaba dos veces por herramienta —con `verify`, la suite
-// entera del proyecto dos veces por commit—, y el segundo no se ejecutaba nunca. Decirlo distinto es lo
-// único que le permite a alguien darse cuenta de cuál de los dos tenía.
-function reportRemoved(name, dropped, live, output) {
-  const wrappers = new Map()
-  const loose = []
-  for (const command of dropped) {
-    const hit = supersededGuards().find(
-      (entry) => command.endsWith(entry.file) && [...live].some((v) => v.endsWith(entry.wrapper)),
-    )
-    if (hit) wrappers.set(hit.wrapper, [...(wrappers.get(hit.wrapper) || []), hit.file])
-    else loose.push(command)
-  }
-  for (const [wrapper, files] of wrappers) {
-    output.log(`− ${name}: reemplazado ${[...new Set(files)].join(', ')} por ${wrapper}`)
-  }
-  for (const command of loose) output.log(`− ${name}: quitada una entrada obsoleta (${command})`)
-}
-
-function includesConfig(actual, expected) {
-  if (Array.isArray(expected)) {
-    return Array.isArray(actual) && expected.every((item) => {
-      return actual.some((value) => JSON.stringify(value) === JSON.stringify(item))
-    })
-  }
-  if (expected && typeof expected === 'object') {
-    return actual && typeof actual === 'object' && Object.entries(expected).every(([key, value]) => {
-      return includesConfig(actual[key], value)
-    })
-  }
-  return actual === expected
-}
-
-// Dónde abre el dev su herramienta, que no siempre es la raíz ops. En modo sidecar el repo ops es
-// un hermano de los repos de producto: `<empresa>-ops/` coordina, `<empresa>/` es lo que se abre.
-// Instalar dentro del sidecar dejaría al runner sin ver una sola línea de código.
-function installRoot(root) {
-  try {
-    const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
-    if (config.mode === 'sidecar') return path.resolve(root, '..')
-  } catch { /* sin configuración legible, instalar donde está */ }
-  return root
-}
-
-// Cómo se nombra la raíz ops desde ahí: `<empresa>-ops/` en sidecar, vacío cuando coinciden.
-function opsPrefix(root) {
-  const relative = path.relative(installRoot(root), root)
-  return relative ? `${relative.split(path.sep).join('/')}/` : ''
-}
-
-function runnerPaths(root, name, runner) {
-  const automationRoot = packagedAutomation(root)
-  const sourceDir = path.join(automationRoot, 'runners', name)
-  const install = installRoot(root)
-  const configSource = F.assertWithin(
-    sourceDir,
-    path.resolve(sourceDir, runner.config.source),
-    `${name}: config.source`,
-  )
-  const configTarget = F.assertWithin(
-    install,
-    path.resolve(install, runner.config.target),
-    `${name}: config.target`,
-  )
-  return { automationRoot, sourceDir, configSource, configTarget, install }
-}
-
-function resolveItem(paths, root, name, item) {
-  return {
-    automationRoot: paths.automationRoot,
-    opsRoot: root,
-    source: F.assertWithin(
-      paths.automationRoot,
-      path.resolve(paths.sourceDir, item.source),
-      `${name}: source`,
-    ),
-    target: F.assertWithin(
-      paths.install,
-      path.resolve(paths.install, item.target),
-      `${name}: target`,
-    ),
-  }
-}
-
-// Todo lo que un adaptador copia —configuración, instrucciones, workflows— nombra rutas relativas a
-// la carpeta donde se abre la herramienta. Cuando la raíz ops no es esa carpeta, cada una necesita el
-// prefijo. El marcador es explícito en la fuente en vez de adivinarse con reemplazos de texto:
-// `{{OPS_DIR}}` significa "acá va la raíz ops, o nada si coinciden".
-//
-// Un solo render, y `install` escribe exactamente lo que `doctor` compara.
-const OPS_DIR = '{{OPS_DIR}}'
-
-// Un fragmento que varios adaptadores comparten, resuelto contra la raíz de `automatization/`. El
-// arranque es el mismo trabajo en tres formatos —la sección de un `AGENTS.md`, el cuerpo de un
-// `SKILL.md`, el prompt de un `.toml`—, y escrito tres veces hizo lo que hace siempre una copia: dos
-// de ellas anunciaban cinco puntos y enumeraban seis, con el sexto doblado dentro del quinto.
-//
-// El workflow de Claude queda afuera a propósito: es un programa con fases y esquemas, no una prosa
-// enmarcada, así que su arranque no es una copia de éste sino otra cosa.
-//
-// Se resuelve antes que `{{OPS_DIR}}` para que el fragmento también reciba el prefijo, y no anida:
-// lo incluido se copia tal cual.
-const INCLUDE = /\{\{INCLUDE:([^}]+)\}\}/g
-
-function inline(text, automationRoot) {
-  return text.replace(INCLUDE, (_, relative) => {
-    const shared = F.assertWithin(
-      automationRoot,
-      path.resolve(automationRoot, relative.trim()),
-      'INCLUDE',
-    )
-    return fs.readFileSync(shared, 'utf8').trimEnd()
-  })
-}
-
-// `{{OPS_ROOT}}` es la raíz absoluta. La necesita quien no puede deducirla de dónde lo ejecutaron
-// —el puente de Antigravity—, y por eso no reemplaza a `{{OPS_DIR}}`: una ruta absoluta escrita en un
-// archivo se rompe si el proyecto se mueve, así que la lleva sólo el que se queda sin alternativa.
-const OPS_ROOT = '{{OPS_ROOT}}'
-
-function render(file, prefix, automationRoot, opsRoot = '') {
-  return inline(fs.readFileSync(file, 'utf8'), automationRoot)
-    .split(OPS_ROOT).join(opsRoot)
-    .split(OPS_DIR).join(prefix)
-}
-
-function runnerConfig(paths, root) {
-  return JSON.parse(render(paths.configSource, opsPrefix(root), paths.automationRoot, root))
-}
-
-// Cargos del catálogo, con el frontmatter que el runner indexa para elegir a quién invocar.
-function roleCatalog(root) {
-  return catalog.list(root)
-    .map((role) => {
-      const field = P.frontmatter(fs.readFileSync(path.join(role.dir, 'SKILL.md'), 'utf8'))
-      const reference = path.relative(installRoot(root), role.dir).split(path.sep).join('/')
-      return { ...role, reference, description: field('description') }
-    })
-    .filter((role) => role.description)
-}
-
-// Puntero fino: conserva nombre y descripción —lo único que el runner lee hasta invocar— y remite
-// al contrato completo. Evita duplicar el catálogo entero dentro de la configuración del runner.
-function roleSkill(role) {
-  return `---
-name: ${role.slug}
-description: ${role.description}
----
-
-# ${role.slug}
-
-Leé \`${role.reference}/SKILL.md\` para el contrato completo del cargo: cuándo actuar,
-qué decide, qué no le corresponde y cuál es su entrega mínima. Sus métodos y formatos de output están
-en \`${role.reference}/references/\`.
-
-Esas rutas se resuelven desde este directorio raíz, no desde el repositorio de operaciones: en modo
-sidecar el wiring vive acá y el repo ops es uno de sus hijos.
-
-Respetá los límites de ese contrato y las reglas de \`AGENTS.md\`. Generado por
-\`cauce automation install\`: no lo edites acá.
-`
-}
-
-function installRoleSkills(root, runner, output) {
-  if (!runner.capabilities.nativeSkills || !runner.roleSkills) return
-  const install = installRoot(root)
-  const base = F.assertWithin(install, path.resolve(install, runner.roleSkills), `${runner.name}: roleSkills`)
-  const roles = roleCatalog(root)
-  // Los cargos y los recorridos comparten el espacio de nombres de skills del runner, así que un cargo
-  // que se llame como un recorrido lo pisa. Hoy no pasa, y por eso mismo hay que detenerlo acá: el
-  // catálogo de una empresa es suyo, nadie le prohíbe un cargo `flow`, y el daño sería que `/cauce:flow`
-  // deje de existir sin que nada falle. Renombrar el cargo es la salida, y sólo la puede tomar alguien.
-  const commandNames = new Set((runner.commands && runner.commands.names) || [])
-  const collide = roles.filter((role) => commandNames.has(role.slug)).map((role) => role.slug)
-  if (collide.length) {
-    throw new Error(
-      `${runner.name}: ${collide.join(', ')} es a la vez un cargo y un recorrido, y comparten `
-      + `${runner.roleSkills}. Renombrá el cargo en agents/roles/ antes de instalar.`,
-    )
-  }
-  for (const role of roles) {
-    const file = path.join(base, role.slug, 'SKILL.md')
-    F.assertNoSymlinkPath(install, file)
-    F.atomicWrite(file, roleSkill(role))
-  }
-  if (roles.length) output.log(`✓ ${runner.name}: ${roles.length} cargo(s) disponibles en ${runner.roleSkills}`)
-}
-
-// Runners que además de los archivos necesitan un registro propio para que el wiring cuente. Copiar
-// y quedarse ahí deja un plugin inerte: los archivos están, `doctor` da verde y nada se ejecuta.
-function activated(runner) {
-  if (!runner.activation) return true
-  const result = spawnSync(runner.command, runner.activation.verify, { encoding: 'utf8' })
-  if (result.status !== 0) return null
-  return `${result.stdout || ''}`.includes(runner.activation.expect)
-}
-
-function hasHooks(config) {
-  if (config.hooks && Object.keys(config.hooks).length) return true
-  const events = [
-    'PreToolUse',
-    'PostToolUse',
-    'PreInvocation',
-    'PostInvocation',
-    'Stop',
-    'SessionEnd',
-  ]
-  return Object.values(config).some((entry) => {
-    return entry && typeof entry === 'object' && events.some((event) => event in entry)
-  })
-}
-
-// Guards de la instancia que ya no coinciden con los del paquete. Existir y ser ejecutable no
-// alcanza: un guard viejo no falla, deja de proteger sin decir nada. La instancia declaraba una
-// versión y nadie comprobaba que su runtime fuera realmente esa.
-function staleHooks(root) {
-  const packaged = packagedAutomation(root)
-  if (!packaged) return []
-  const shipped = path.join(packaged, 'hooks')
-  const mine = path.join(root, 'automatization', 'hooks')
-  const recorded = M.read(root)
-  const stale = []
-  let names = []
-  try { names = fs.readdirSync(shipped) } catch { return [] }
-  for (const file of names) {
-    const local = path.join(mine, file)
-    // Los que faltan ya los reporta el chequeo de arriba; acá sólo interesa el que quedó atrás.
-    if (!fs.existsSync(local)) continue
-    const current = M.digest(local)
-    if (current === M.digest(path.join(shipped, file))) continue
-    const delivered = recorded[`automatization/hooks/${file}`]
-    stale.push({ file, edited: Boolean(delivered) && delivered !== current })
-  }
-  return stale
-}
+const {
+  RUNNER_NAMES, OPS_DIR, OPS_ROOT, packagedAutomation, runnerManifest, installRoot, opsPrefix,
+  runnerPaths, resolveItem, inline, render, runnerConfig, activated,
+} = require('./runners')
+const { roleCatalog, roleSkill, installRoleSkills } = require('./roles')
+const {
+  GUARD_NAMES, groupWrappers, expectedHooks, supersededGuards,
+  legacyGuardWiring, staleHooks, listHooks,
+} = require('./hooks')
+const {
+  blockStart, mergeConfig, withoutDeliveredHooks, reportRemoved, includesConfig, hasHooks,
+  unmergeConfig, isSharedFile, withoutBlock, mergeInstruction, blockUpToDate,
+} = require('./config')
 
 function check(root) {
   const errors = []
@@ -390,48 +83,6 @@ function validateRunnerManifest(root, name, errors) {
   } catch (error) {
     errors.push(`${name}: configuración inválida (${error.message})`)
   }
-}
-
-// Un `.sh` por grupo de más de un guard: es el que registra el runner para correrlos en un proceso.
-function groupWrappers() {
-  return Object.entries(H.hookGroups)
-    .filter(([, names]) => names.length > 1)
-    .map(([group]) => [group, `guard-${group.replace('pre-', '')}.sh`])
-}
-
-// Los scripts que la instancia debe tener, derivados del registro que los ejecuta en vez de copiados
-// a mano: la copia envejecía sin avisar, porque un guard nuevo del motor no entraba en la cuenta.
-//
-// Se comprueba en una sola dirección a propósito. Un `.sh` que no está acá no sobra: así es como una
-// empresa agrega el suyo —`guard-acme.sh` al lado de los nuestros—, que es lo que `upgrade` le dice
-// que haga y lo único que sobrevive a cada actualización.
-function expectedHooks() {
-  return [
-    'run-hook.sh',
-    ...groupWrappers().map(([, wrapper]) => wrapper),
-    ...GUARD_NAMES.map((name) => `guard-${name}.sh`),
-  ]
-}
-
-// Guards que hoy viven dentro de un grupo, con el wrapper que los reemplaza.
-function supersededGuards() {
-  const entries = []
-  for (const [group, wrapper] of groupWrappers()) {
-    for (const name of H.hookGroups[group]) entries.push({ file: `guard-${name}.sh`, wrapper })
-  }
-  return entries
-}
-
-// Wiring heredado: guards que ahora corren agrupados pero siguen registrados uno por uno.
-// Conviven sin romper nada, a costa de ejecutar el guard dos veces por herramienta.
-function legacyGuardWiring(config) {
-  const text = JSON.stringify(config)
-  const superseded = []
-  for (const [group, names] of Object.entries(H.hookGroups)) {
-    if (names.length < 2 || !text.includes(`guard-${group.replace('pre-', '')}.sh`)) continue
-    superseded.push(...names.filter((guard) => text.includes(`guard-${guard}.sh`)))
-  }
-  return superseded
 }
 
 // Ejecuta el puente del runner tal como él lo invoca, y desde otra carpeta. Instalado no es lo mismo que
@@ -594,33 +245,6 @@ function deliveryState(recorded, name, resolved, prefix = '') {
   return delivered && delivered === current ? 'desactualizado' : 'ajeno'
 }
 
-// Quita de una estructura de configuración exactamente lo que este adaptador habría puesto, y nada más.
-// Es el inverso de `mergeConfig`: una entrada del usuario nunca coincide literalmente con la nuestra, así
-// que sobrevive; una que editó tampoco coincide, y por eso se conserva y se avisa en vez de borrarse.
-function unmergeConfig(current, incoming) {
-  if (Array.isArray(incoming)) {
-    if (!Array.isArray(current)) return current
-    const ours = new Set(incoming.map((value) => JSON.stringify(value)))
-    return current.filter((value) => !ours.has(JSON.stringify(value)))
-  }
-  if (incoming && typeof incoming === 'object') {
-    if (!current || typeof current !== 'object' || Array.isArray(current)) return current
-    const result = { ...current }
-    for (const [key, value] of Object.entries(incoming)) {
-      if (!(key in result)) continue
-      const clean = unmergeConfig(result[key], value)
-      // Una clave que queda vacía por habernos ido no es del usuario: la creamos nosotros al instalar.
-      const empty = clean === undefined
-        || (Array.isArray(clean) && !clean.length)
-        || (clean && typeof clean === 'object' && !Array.isArray(clean) && !Object.keys(clean).length)
-      if (empty) delete result[key]
-      else result[key] = clean
-    }
-    return result
-  }
-  return JSON.stringify(current) === JSON.stringify(incoming) ? undefined : current
-}
-
 // Borra el archivo y, de paso, los directorios que quedaron vacíos por haberlo sacado. Nunca sube más
 // allá del límite: `.claude/` puede tener cosas del usuario aunque `.claude/workflows/` quede vacío.
 function removeFile(file, boundary) {
@@ -710,37 +334,6 @@ function uninstall(root, name, output = console) {
 // instrucciones de Codex es el mismo que el de la empresa. Conservarlo entero —lo correcto para un
 // archivo del proyecto— dejaba a ese runner sin una sola línea de Cauce, así que su contenido se
 // fusiona adentro, entre marcas, y todo lo demás del archivo queda intacto.
-const blockStart = (name) => `<!-- cauce:${name} inicio — lo reescribe "automation install", no editar -->`
-const blockEnd = (name) => `<!-- cauce:${name} fin -->`
-
-function isSharedFile(root, target) {
-  return path.resolve(target) === path.resolve(root, 'AGENTS.md')
-}
-
-function withoutBlock(text, name) {
-  const sourceRoot = text.indexOf(blockStart(name))
-  if (sourceRoot === -1) return text
-  const until = text.indexOf(blockEnd(name), sourceRoot)
-  if (until === -1) return text
-  return `${text.slice(0, sourceRoot)}${text.slice(until + blockEnd(name).length)}`.trimEnd()
-}
-
-function mergeInstruction(file, name, content) {
-  const actual = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''
-  const instructionBody = withoutBlock(actual, name).trimEnd()
-  const block = `${blockStart(name)}\n\n${content.trim()}\n\n${blockEnd(name)}\n`
-  F.atomicWrite(file, instructionBody ? `${instructionBody}\n\n${block}` : block)
-}
-
-function blockUpToDate(file, name, content) {
-  if (!fs.existsSync(file)) return false
-  const body = fs.readFileSync(file, 'utf8')
-  const sourceRoot = body.indexOf(blockStart(name))
-  const until = body.indexOf(blockEnd(name))
-  if (sourceRoot === -1 || until === -1) return false
-  return body.slice(sourceRoot + blockStart(name).length, until).trim() === content.trim()
-}
-
 function install(root, name, output = console, options = {}) {
   // `install` arma la superficie de consumo de una empresa: punteros a cada cargo, una copia de los
   // workflows y los guards. Acá los cargos y los workflows son el producto —la copia divergiría— y
@@ -843,14 +436,6 @@ function install(root, name, output = console, options = {}) {
   }
   M.write(root, undefined, deliveredPaths)
   return runner
-}
-
-function listHooks(output = console) {
-  const nameWidth = Math.max(...H.hookMetadata.map((hook) => hook.name.length))
-  const eventWidth = Math.max(...H.hookMetadata.map((hook) => hook.event.length))
-  for (const hook of H.hookMetadata) {
-    output.log(`${hook.name.padEnd(nameWidth)}  ${hook.event.padEnd(eventWidth)}  ${hook.purpose}`)
-  }
 }
 
 module.exports = {

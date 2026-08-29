@@ -178,6 +178,8 @@ function validate(root, onlyProvider = '') {
 
 async function sync(root, name, options = {}) {
   const { entry, config } = providerConfig(root, name)
+  // Son dos interruptores y se exigen los dos: el del registro dice que el proveedor está conectado
+  // al proyecto, y el suyo que hay a dónde apuntar.
   if (!entry.enabled || !config.enabled) throw new Error(`${name} está deshabilitado`)
   const provider = adapter(name)
   const items = options.fixture

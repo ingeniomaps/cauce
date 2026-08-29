@@ -14,8 +14,6 @@ const O = require('../core/ownership')
 const IN = require('./instance')
 const { fail, opsRoot } = require('./io')
 
-// La raíz ops de un comando que no la recibe. El shim `tools/ops.js` la exporta porque sabe dónde
-
 function agentsFork(slug, dir) {
   const root = opsRoot(dir)
   if (!slug) fail('Falta el cargo: ops agents fork <cargo> [ops-root]', 2)
@@ -161,8 +159,7 @@ function learn(agent, cli) {
 
 function evaluate(agent, caso, cli) {
   const root = opsRoot()
-  // De quién son los casos. Se nombra en vez de deducirse del slug: un cargo y un recorrido pueden
-  // llamarse igual sin colisionar, y deducirlo los volvería ambiguos el día que eso pase.
+  // De quién son los casos, resuelto por bandera y no por el slug. Por qué no se deduce, en `subject`.
   const kind = cli.has('--flow') ? 'flow' : 'agent'
   // El banco sólo tiene sentido acá: en una empresa el cargo que se evalúa es suyo —propio o
   // adoptado— y su `planning/` ya es el lugar legítimo donde trabajar.
@@ -206,10 +203,8 @@ function evaluate(agent, caso, cli) {
     for (const warning of [...result.warnings, ...runs.warnings]) console.warn(`⚠ ${warning}`)
     for (const error of errors) console.error(`✗ ${error}`)
     if (errors.length) fail(`\n${errors.length} error(es)`, 1)
-    // El veredicto vigente de cada caso, compuesto sobre todas las corridas, no el de la última: desde
-    // que `--cases` existe una corrida cubre menos casos a propósito, y leer sólo la última decía «1/1
-    // pasan» de un sujeto con los cuatro medidos. Cuándo se midió es un rango cuando hubo más de una,
-    // porque lo compuesto es tan viejo como su parte más rancia.
+    // Cuándo se midió es un rango cuando el veredicto vigente lo aportó más de una corrida. Por qué se
+    // compone en vez de leerse la última, en `composed`.
     const cuando = runs.state && runs.state.oldest !== runs.state.newest
       ? `${runs.state.oldest}…${runs.state.newest}`
       : (runs.state ? runs.state.newest : '')

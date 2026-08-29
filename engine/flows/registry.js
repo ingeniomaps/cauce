@@ -101,8 +101,8 @@ function slugsIn(dir) {
   } catch { return [] }
 }
 
-// Un slug aparece una sola vez aunque exista en los dos niveles: el del proyecto ya ganó.
-// Los propios de la empresa y los que trae Cauce, sin duplicar un slug que ya ganó el proyecto.
+// Los propios de la empresa y los que trae Cauce, con cada slug una sola vez aunque exista en los
+// dos niveles: el del proyecto ya ganó.
 function list(root) {
   const system = systemTeams(root)
   const slugs = new Set([
