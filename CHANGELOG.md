@@ -14,6 +14,24 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.53.1] - 2026-08-29
+
+### Cambiado
+
+- **Dos guards se reemplazan y ninguno cambia lo que bloquea.** `guard-engine.sh` nombraba una función
+  que no existe con ese nombre y `run-hook.sh` tenía dos razones puestas sobre la línea equivocada; los
+  dos cambian sólo en comentarios, sin una línea ejecutable distinta. Se los nombra porque viven en tu
+  instancia: `upgrade` los va a reemplazar y, hasta que lo corras, `automation check` los reporta
+  desactualizados.
+- **El motor se repartió en más archivos de los que tenía**, sin cambiar una sola conducta:
+  `engine/automation/index.js` en cinco, `engine/agents/learning.js` en tres y `engine/hooks/run.js` en
+  cuatro, cada uno cortado por lo que lo hace cambiar. Llega con `npm install` y no pide nada de tu
+  parte; se menciona porque un `require` a una ruta interna del motor —que nunca fue superficie
+  pública— puede haber dejado de resolver.
+- Los recorridos que instala tu runner cambiaron de texto —comentarios y nombres internos, ahora en
+  inglés como pide la convención—. Para recibirlos hay que reinstalar el wiring; si no lo hacés, los
+  que ya tenés siguen funcionando igual.
+
 ## [0.53.0] - 2026-08-27
 
 ### Corregido
