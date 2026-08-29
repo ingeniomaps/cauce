@@ -415,7 +415,6 @@ const JUSTIFIED = {
 }
 
 const PENDING_SPLIT = {
-  'test/planning.test.js': 'check, context y archivado',
   'test/autobuild.test.js': 'los carriles y las fases',
   'test/flows.test.js': 'registro de recorridos y su evaluación',
 }
