@@ -5,7 +5,7 @@
 // misma razón por la que nadie corrige su propio examen.
 //
 // Dónde trabaja el cargo lo decide el modo: en el toolkit, un banco desechable por caso; en una
-// empresa, su propia instancia. El porqué del banco está en `evaluationBench` (engine/cli/ops.js).
+// empresa, su propia instancia. El porqué del banco está en `evaluationBench` (engine/cli/catalog.js).
 // El veredicto, en cambio, se escribe siempre junto al cargo: el banco se borra, el contrato queda.
 export const meta = {
   name: 'agent-eval',

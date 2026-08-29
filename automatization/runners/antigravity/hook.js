@@ -79,7 +79,6 @@ function findRoot(input, marcas = MARCAS) {
 }
 
 function runtimeAt(root) {
-  // Mismo orden que tools/ops.js: dependencia npm y, por último, el repositorio del toolkit.
   const candidates = [
     path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine', 'hooks', 'run.js'),
     path.join(root, 'engine', 'hooks', 'run.js'),

@@ -47,7 +47,7 @@ function baseScript() {
       project: 'acme', workspaceRoots: ['api → ./api'], contracts: '## Contratos',
       maxTaskHours: 4, commitPerTask: true, humanCheckpoint: false, boundaries: [],
     },
-    // Primera lectura: hay tarea. La segunda la sirve `siguienteContexto`, ya sin tarea, para que el
+    // Primera lectura: hay tarea. La segunda sale de `options.contexts`, ya sin tarea, para que el
     // bucle cierre en vez de repetir la misma para siempre.
     [KEY.context]: {
       blocked: '', hasTask: true, wipActive: false, queued: 1, lane: 'full',

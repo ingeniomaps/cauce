@@ -117,8 +117,8 @@ function mode(root) {
   }
 }
 
-// Dónde quedó el motor. El bridge de Antigravity repite esta cascada a mano porque corre antes de
-// poder cargar este módulo: si cambia acá, cambia allá.
+// Dónde quedó el motor. El bridge de Antigravity y `run-hook.sh` repiten esta cascada a mano porque
+// corren antes de poder cargar este módulo: si cambia acá, cambia en los dos.
 function engineAt(root, relative = '') {
   return packagePath(root, relative ? path.join('engine', relative) : 'engine')
 }
