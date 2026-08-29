@@ -136,7 +136,7 @@ test('automation uninstall saca lo del toolkit y deja lo del usuario', () => {
   assert.equal(fs.readFileSync(path.join(workspace, '.claude', 'workflows', 'mio.js'), 'utf8'), '// mío\n')
   assert.equal(fs.readFileSync(path.join(workspace, '.claude', 'skills', 'mi-cargo', 'SKILL.md'), 'utf8'), 'propio\n')
 
-  // Un archivo con cambios propios se conserva y se nombra: decidir sobre él es de la persona.
+  // El archivo llega editado, que es la única forma de separar «se conserva» de «no se tocó nunca».
   assert.match(result.stdout, /conservado CLAUDE\.md/)
   assert.match(fs.readFileSync(path.join(workspace, 'CLAUDE.md'), 'utf8'), /# mi contexto/)
 

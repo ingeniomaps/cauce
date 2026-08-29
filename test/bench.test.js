@@ -12,10 +12,8 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 
-// El toolkit no es una raíz ops y no puede serlo: el único `planning/` que vive acá es
-// `template/planning`, el molde que se distribuye. Un cargo cuya entrega es una épica no tenía dónde
-// escribir, se negaba —con razón— y su caso lo contaba como fallo: el número hablaba del lugar, no
-// del cargo. El banco es ese lugar.
+// Que el banco sea una instancia de verdad y no un directorio: `check` pasa adentro, el catálogo
+// resuelve y `planning/` está escribible. Para qué hace falta, en `evaluationBench`.
 test('el banco de evaluación es una instancia de verdad, no un directorio vacío', () => {
   const toolkit = path.resolve(__dirname, '..')
   const bench = run(['evaluate', 'product-manager', '--bench', '06-instancia', '--force'], toolkit)
@@ -72,10 +70,8 @@ test('el banco queda versionado para poder ver qué escribió el cargo', () => {
   assert.equal(changes.includes('node_modules'), false)
 })
 
-// Aprendido perdiendo evidencia: se rehízo un banco para probar otra cosa y con él se fue lo que el
-// cargo había escrito. El juez leyó un directorio vacío y concluyó que la respuesta afirmaba algo
-// inexistente. El registro de una evaluación se escribe **desde** el banco, así que rehacerlo antes de
-// recogerlo destruye justo lo que se iba a anotar.
+// El banco arranca con trabajo sin commitear, que es el estado que el freno mira. Con el banco limpio
+// el comando pasa, así que sin esa precondición el caso no mide nada.
 test('rehacer un banco con trabajo sin recoger se niega', () => {
   const toolkit = path.resolve(__dirname, '..')
   const dir = run(['evaluate', 'product-manager', '--bench', '09-proteccion', '--force'], toolkit).stdout.trim()
@@ -92,10 +88,9 @@ test('rehacer un banco con trabajo sin recoger se niega', () => {
   assert.equal(fs.readFileSync(path.join(dir, 'planning', 'INBOX.md'), 'utf8').includes('produjo'), false)
 })
 
-// Con un banco por cargo, los casos corrían a la vez sobre el mismo planning/ y se leían entre sí: uno
-// tomó por «una sesión anterior de este mismo cargo» lo que otro acababa de escribir, y otro evaluó
-// cuatro candidatas que en su enunciado no existían. Ninguno cambió de veredicto, pero la respuesta ya
-// no era la que el caso pedía medir, y la independencia entre casos es la premisa de medir con ellos.
+// Dos casos del mismo cargo, que es lo único que distingue un banco por caso de uno por cargo. Con un
+// banco compartido ninguno cambió de veredicto: lo que cambió fue la respuesta, que ya no era la que
+// el caso pedía medir — uno evaluó cuatro candidatas que en su enunciado no existían.
 test('cada caso recibe su propio banco', () => {
   const toolkit = path.resolve(__dirname, '..')
   const primero = run(['evaluate', 'product-manager', '--bench', '10-uno', '--force'], toolkit)

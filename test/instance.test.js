@@ -55,8 +55,8 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
     .filter((file) => templateToken.test(fs.readFileSync(file, 'utf8')))
   assert.deepEqual(unresolved, [])
 
-  // En sidecar el runner se instala donde el dev abre la herramienta: la carpeta de la compañía,
-  // que es la que además contiene los repos de producto. El repo ops es sólo uno de sus hijos.
+  // En sidecar el runner se instala en la carpeta de la compañía, no en el repo ops. Por qué, en
+  // `installRoot`.
   const workspace = base
   fs.mkdirSync(path.join(workspace, '.claude'), { recursive: true })
   fs.writeFileSync(path.join(workspace, '.claude', 'settings.json'), '{"custom":true}\n')
@@ -165,10 +165,8 @@ test('el shim corre igual en un proyecto ESM que en uno CommonJS', () => {
   }
 })
 
-// Sin destino la instancia se aparta a `ops/` en vez de volcarse donde se corrió el comando: un
-// monorepo que recibe `planning/`, `flows/` y `AGENTS.md` en su primer nivel deja de distinguir qué es
-// suyo. El nombre sale de la carpeta del proyecto —`ops` nombra al toolkit, no al negocio— y el modo
-// es sidecar, el único que deja el wiring del runner donde el dev abre la herramienta.
+// Las tres cosas que decide un `init` sin argumentos —dónde cae, cómo se llama y en qué modo— en una
+// sola prueba: por separado, un default correcto tapa a los otros dos.
 test('init sin destino aparta la instancia en ops/', () => {
   const repo = tempRoot('cauce-mono-')
   fs.mkdirSync(path.join(repo, 'apps'))
@@ -213,8 +211,8 @@ test('scan respeta lo que el proyecto declaró basura', () => {
   assert.deepEqual(withRoot.services.map((service) => service.path), ['.', 'apps/api'])
 })
 
-// Con varias raíces declaradas, el candidato principal de cada una se llama `.`: tres servicios con el
-// mismo nombre y nada que los distinga, que es como una credencial deja de poder atribuirse a un servicio.
+// Tres raíces declaradas, que es el mínimo para que el candidato principal de cada una colisione en
+// `.`. Con una sola raíz el caso pasa sin prefijo ninguno.
 test('con varias raíces cada servicio se puede nombrar', () => {
   const base = tempRoot('cauce-multi-')
   const workspace = path.join(base, 'tienda')

@@ -159,8 +159,7 @@ function learn(agent, cli) {
 
 function evaluate(agent, caso, cli) {
   const root = opsRoot()
-  // De quién son los casos. Se nombra en vez de deducirse del slug: un cargo y un recorrido pueden
-  // llamarse igual sin colisionar, y deducirlo los volvería ambiguos el día que eso pase.
+  // De quién son los casos, resuelto por bandera y no por el slug. Por qué no se deduce, en `subject`.
   const kind = cli.has('--flow') ? 'flow' : 'agent'
   // El banco sólo tiene sentido acá: en una empresa el cargo que se evalúa es suyo —propio o
   // adoptado— y su `planning/` ya es el lugar legítimo donde trabajar.

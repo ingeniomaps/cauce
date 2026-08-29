@@ -526,10 +526,9 @@ test('una parada se nombra con el vocabulario del protocolo', () => {
     'la cola vacía sigue siendo otra cosa que una cola trabada')
   assert.equal(JSON.parse(run(['context', planning, '--json']).stdout).blocked, '')
 
-  // Y sin tarea las acciones humanas salen igual. Estaban después del `return`, así que una instancia
-  // recién arrancada —`onboard` deja filas pendientes y ninguna tarea— contestaba «sin tarea
-  // disponible» y se tragaba lo único que había para hacer. Lo destapó una corrida de `technical-design`
-  // sobre su banco: siete filas pendientes y `context` no nombró ninguna.
+  // Y sin tarea las acciones humanas salen igual, que es el estado de una instancia recién arrancada:
+  // `onboard` deja filas pendientes y ninguna tarea. Lo destapó una corrida de `technical-design` sobre
+  // su banco: siete filas pendientes y `context` no nombró ninguna.
   assert.match(sinCola.stdout, /^HUMAN\s+alta-email-nuevo: Crear la cuenta SMTP/m,
     'lo que toca es que una persona desbloquee, y eso es lo que el comando existe para decir')
 })

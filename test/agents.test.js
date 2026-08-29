@@ -574,7 +574,7 @@ test('dos corridas el mismo día conviven y la segunda es la vigente', () => {
     const current = evaluations.latest(REPO, 'qa-engineer')
     assert.equal(current.file, second, 'la vigente es la última corrida, no la primera del día')
     assert.equal(current.passed, 1, 'y con sus veredictos, no los de la anterior')
-    // La fecha sigue siendo el día: quien lee «no pasaron en 2099-03-01» busca una fecha, no un archivo.
+    // El día, sin el sufijo de la corrida, aunque el registro que ganó venga de la segunda.
     assert.equal(current.date, '2099-03-01')
     assert.equal(current.run, 2)
 
@@ -742,11 +742,8 @@ test('el ciclo de aprendizaje llega del informe semanal al contrato', () => {
   assert.deepEqual(learning.evaluate(target, 'probe').warnings, [])
 })
 
-// La consolidación que corre sola no corrige nada: abre la propuesta del mes en que corre y se lleva
-// lo que todavía no entró. Nombrarle el mes que cerró parecía más exacto y abría un caso peor — si ese
-// mes ya tiene una propuesta aplicada, lo que se abre es una **revisión**, que es el documento con el
-// que una persona corrige un cambio que la evaluación mostró mal calibrado. El cron no decide eso, y
-// además la revisión no consolida: el informe pendiente se quedaba afuera igual.
+// El mes anterior ya tiene una propuesta aplicada, que es la precondición sin la cual las dos formas
+// —nombrar el mes o no— se ven iguales. Qué se abre en cada caso, en `prepareProposal`.
 test('la consolidación automática se lleva lo pendiente y no abre una revisión', () => {
   const target = installedProject('Consolidación del cron')
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')

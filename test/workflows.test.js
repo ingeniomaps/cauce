@@ -479,8 +479,8 @@ test('onboard tiene techo de llamadas y no sale a explorar', () => {
 })
 
 test('onboard no gasta un modelo en recorrer un árbol de directorios', () => {
-  // Doce minutos en una carpeta vacía: eso costó pedirle a un agente que «inventariara el repositorio».
-  // El inventario es determinista y el modelo entra después, con la lista ya hecha.
+  // Se afirma sobre el fuente porque lo que se fija es el orden: que el comando determinista aparezca
+  // antes que cualquier llamada a un agente. En una corrida sólo se vería el tiempo que costó.
   assert.match(onboardWorkflow, /tools\/ops\.js onboard --json/, 'una llamada, a un comando determinista')
   assert.match(onboardWorkflow, /Explore nothing/, 'y tiene prohibido salir a explorar')
   assert.equal(/phase\('Verify'\)/.test(onboardWorkflow), false, 'ya no corre las suites del proyecto')
@@ -568,12 +568,8 @@ test('cada runner ofrece el arranque en el formato que entiende', () => {
   assert.deepEqual(nativos.sort(), [...A.RUNNER_NAMES].sort())
 })
 
-// `evaluate --bench` se niega a rehacer un banco donde quedó trabajo sin recoger, y hace bien: el
-// registro de una corrida se escribe leyendo ese banco. Pero el recorrido no miraba si el comando
-// había fallado y seguía igual, así que el caso se medía contra el banco de la corrida anterior — con
-// lo que otro cargo escribió adentro y sin los artefactos que el caso ganó desde entonces. Uno falló
-// por no encontrar cuatro adjuntos que sí existían, y el veredicto dijo del cargo algo que era del
-// instrumento. Un falso negativo es peor que una corrida que no arranca: se archiva como medición.
+// El comando que prepara los bancos falla y el recorrido tiene que detenerse: seguía igual, y un
+// falso negativo es peor que una corrida que no arranca, porque se archiva como medición.
 test('un banco que no se pudo rehacer detiene la corrida', () => {
   const evalWf = fs.readFileSync(path.join(WF, 'agent-eval.js'), 'utf8')
   assert.match(evalWf, /required: \['path', 'failed'\]/, 'qué bancos fallaron viaja en el schema')

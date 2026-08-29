@@ -340,10 +340,8 @@ test('el workflow de aprendizaje ve los archivos que el ciclo crea', { skip: pro
   )
 })
 
-// La propuesta se llama por el mes en que se abre y arrastra lo que todavía no entró. Nombrarle el
-// mes que cerró parecía más exacto y abría un caso peor: si ese mes ya tiene propuesta aplicada, lo
-// que el cron abre es una **revisión** —el documento que corrige un cambio mal calibrado— vacía y
-// sin que nadie lo decidiera. El workflow no calcula meses, y eso es la prueba.
+// Que el workflow no calcule meses: se lee el paso y se comprueba que no le pase `--period` al CLI.
+// La mitad de al lado —qué hace el CLI con eso— la mide `agents.test.js`.
 test('la consolidación mensual no le nombra un período al CLI', () => {
   const source = workflow('agent-learning')
   assert.match(source, /learn "\$AGENT" --proposal$/m, 'consolida el mes en que corre')

@@ -60,8 +60,8 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
 
   // 3. Conectar un runner y comprobar que el catálogo queda invocable.
   assert.equal(cauce(consumer, ['automation', 'install', consumer, 'claude']).status, 0)
-  // En sidecar el runner aterriza en la carpeta de la compañía, no dentro del repo ops: es la
-  // única que contiene además el código, y es donde el dev abre la herramienta.
+  // Mismo layout que `instance.test.js`, pero contra el tarball: acá se comprueba que el adaptador
+  // viaje en el paquete, no sólo que resuelva desde el repositorio.
   const workspace = base
   assert.equal(fs.existsSync(path.join(consumer, '.claude')), false, 'no queda encerrado en el sidecar')
   const skills = fs.readdirSync(path.join(workspace, '.claude', 'skills'))

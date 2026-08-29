@@ -679,9 +679,7 @@ test('validateState juzga el estado ya leído, sin tocar disco', () => {
   }).join('|'), /estado "COMPLETADO" fuera de/)
 })
 
-// La precedencia con que se elige tarea es del protocolo: el WIP activo manda por ser el mutex, incluso
-// con una acción humana abierta; sin WIP, la primera no terminada y no bloqueada. Se probaba lanzando
-// `context` contra un planning en disco, así que cada rama costaba un proceso.
+// Cada rama de la precedencia en su propia aserción, que es lo que la extracción de arriba compra.
 test('currentTask aplica la precedencia del protocolo sobre el estado ya leído', () => {
   const ST = require('../engine/planning/state')
   const tarea = (slug) => ({ slug, tier: 'lite', cast: { build: '', review: [] }, service: 'api' })

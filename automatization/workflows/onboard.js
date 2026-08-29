@@ -80,9 +80,8 @@ const SCAN = {
           required: ['kind', 'command', 'source'], properties: {
             kind: { type: 'string' }, command: { type: 'string' }, source: { type: 'string' },
           } } },
-        // Los nombres de variable que ese servicio espera, copiados del inventario. En un multirepo cada
-        // repositorio trae su propio ejemplo, y sin esto las credenciales de tres repos no existían para
-        // el arranque: las filas terminaban diciendo «la credencial del proveedor» sin nombrarla.
+        // Los nombres de variable que ese servicio espera, copiados del inventario y no deducidos: de
+        // acá sale la fila que nombra la credencial en vez de decir «la del proveedor».
         env: { type: 'array', items: { type: 'string' } },
       } } },
     externals: { type: 'array', items: { type: 'string' } },
