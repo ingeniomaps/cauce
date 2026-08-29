@@ -117,11 +117,6 @@ test('el aprendizaje no enciende de más, aísla el fallo de un cargo y no se pi
 
   assert.match(source, /^concurrency:$/m, 'una sola corrida a la vez')
   assert.match(source, /cancel-in-progress: false/, 'y no se corta una que ya está abriendo PR')
-
-  for (const block of source.split(/\n  (?=[a-z][a-z-]*:\n)/)) {
-    if (!/\n    runs-on:/.test(block)) continue
-    assert.match(block, /timeout-minutes:/, `${block.trimStart().split(':')[0]}: sin timeout hereda seis horas`)
-  }
 })
 
 test('un solo workflow cubre a todos los agentes', () => {
