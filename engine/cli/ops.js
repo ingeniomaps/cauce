@@ -50,10 +50,19 @@ function defaultName(root) {
 
 // El motor no se instala solo: `npm install` baja el paquete que `init` acaba de declarar, y sin él el
 // shim, los cargos, los equipos y los adaptadores no se resuelven. Correrlo desde acá es lo que hace que
-// una instalación sea un comando y no una lista. En Windows el ejecutable es `npm.cmd`.
+// una instalación sea un comando y no una lista.
+//
+// En Windows no alcanza con nombrarlo `npm.cmd`. Node documenta que un `.cmd` «no es ejecutable por sí
+// solo» y nombra como salida lanzar cmd.exe con el comando de argumento —nodejs.org/api/child_process,
+// consultado 2026-08-29—, que es lo que va acá. La otra salida obvia queda descartada: pasar `args`
+// junto a la opción `shell` está deprecado en runtime (DEP0190, nodejs.org/api/deprecations).
+//
+// Documentado y no comprobado: acá no hay Windows, y ninguna prueba llega a esta línea porque el
+// arranque recibe `npm` inyectado.
 function npmInstall(root) {
-  const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm'
-  const result = spawnSync(npm, ['install'], { cwd: root, stdio: 'inherit' })
+  const result = process.platform === 'win32'
+    ? spawnSync('cmd.exe', ['/c', 'npm', 'install'], { cwd: root, stdio: 'inherit' })
+    : spawnSync('npm', ['install'], { cwd: root, stdio: 'inherit' })
   if (result.error) {
     console.error(`  no pude ejecutar npm (${result.error.code || result.error.message}).`)
     return 1
