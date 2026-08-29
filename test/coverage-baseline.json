@@ -24,10 +24,30 @@
     "branches": 59,
     "functions": 100
   },
+  "engine/automation/config.js": {
+    "lines": 100,
+    "branches": 87,
+    "functions": 100
+  },
+  "engine/automation/hooks.js": {
+    "lines": 98,
+    "branches": 88,
+    "functions": 100
+  },
   "engine/automation/index.js": {
-    "lines": 89,
-    "branches": 68,
-    "functions": 98
+    "lines": 86,
+    "branches": 54,
+    "functions": 94
+  },
+  "engine/automation/roles.js": {
+    "lines": 100,
+    "branches": 81,
+    "functions": 100
+  },
+  "engine/automation/runners.js": {
+    "lines": 96,
+    "branches": 70,
+    "functions": 100
   },
   "engine/cli/args.js": {
     "lines": 100,
@@ -109,6 +129,11 @@
     "branches": 83,
     "functions": 92
   },
+  "engine/flows/registry.js": {
+    "lines": 94,
+    "branches": 53,
+    "functions": 100
+  },
   "engine/hooks/run.js": {
     "lines": 91,
     "branches": 85,
@@ -157,11 +182,6 @@
   "engine/planning/state.js": {
     "lines": 100,
     "branches": 100,
-    "functions": 100
-  },
-  "engine/flows/registry.js": {
-    "lines": 94,
-    "branches": 53,
     "functions": 100
   }
 }
