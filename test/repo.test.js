@@ -415,7 +415,6 @@ const JUSTIFIED = {
 }
 
 const PENDING_SPLIT = {
-  'test/flows.test.js': 'registro de recorridos y su evaluación',
 }
 
 test('ningún archivo de código pasa las 500 líneas sin decir por qué', () => {
