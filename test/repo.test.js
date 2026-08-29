@@ -313,3 +313,79 @@ test('ningún comentario cita algo que dejó de existir', () => {
   assert.ok(cited > 200, `sólo se contrastaron ${cited} citas`)
   assert.deepEqual(dangling, [], `citas que ya no resuelven:\n  ${dangling.join('\n  ')}`)
 })
+
+// Una razón repetida en dos archivos es una copia, y una de las dos se pudre sin que nada falle. En un
+// solo repaso hubo cincuenta y cinco: un comentario de prueba que transcribía el porqué del código que
+// cubría, dos módulos del motor con el mismo hecho escrito de dos maneras, dos suites explicando cada
+// una dónde aterriza un runner. Ninguna rompió nada; simplemente dejaron de coincidir.
+//
+// El umbral es lo único de acá que no es un hecho, y por eso se eligió midiendo: los puntajes forman un
+// continuo con saltos de milésimas salvo un hueco, entre 0.50 y 0.395. 0.45 cae adentro. Contra el árbol
+// de antes del repaso nombra treinta y uno de los cincuenta y cinco; el resto vivía por debajo, donde
+// vocabulario compartido y copia dejan de distinguirse solos.
+//
+// Y por eso el registro, con la misma forma que el piso de cobertura: un par nuevo falla hasta que
+// alguien lo arregla o lo acepta **con su razón escrita**. Sin esa segunda salida el gate se apagaría el
+// día que moleste, que es el día en que está funcionando; sin la razón, aceptar no dejaría rastro. Se
+// cuenta cuántos pares hay entre cada dos archivos para que un segundo no entre a la sombra del primero.
+const ACCEPTED_PAIRS = {
+  'automatization/workflows/integrations/promote.js::automatization/workflows/integrations/sync.js':
+    { pairs: 1, reason: 'Workflows gemelos: cada uno viaja y se lee solo, y difieren en el verbo que importa.' },
+  'automatization/hooks/guard-files.sh::automatization/hooks/guard-shell.sh':
+    { pairs: 1, reason: 'Los quince shims son una plantilla; lo que cambia es a qué guard delegan.' },
+  'automatization/hooks/run-hook.sh::automatization/runners/antigravity/hook.js':
+    { pairs: 1, reason: 'Los dos repiten la cascada del motor y lo declaran; ownership.js nombra a los dos.' },
+}
+const SIMILAR = 0.45
+
+test('ninguna razón está escrita en dos lugares sin decir por qué', () => {
+  const root = path.resolve(__dirname, '..')
+  const blocks = []
+  for (const file of sourceFiles()) {
+    const name = path.relative(root, file)
+    const mark = file.endsWith('.sh') ? /^\s*#(?!!)/ : /^\s*\/\//
+    const lines = fs.readFileSync(file, 'utf8').split('\n')
+    let i = 0
+    while (i < lines.length) {
+      if (!mark.test(lines[i])) { i += 1; continue }
+      const start = i
+      const body = []
+      while (i < lines.length && mark.test(lines[i])) { body.push(lines[i].replace(mark, '').trim()); i += 1 }
+      // Se compara párrafo por párrafo y no bloque entero: un encabezado largo diluye la copia que lleva
+      // adentro, y fue así como varias transcripciones pasaron por debajo del umbral.
+      for (const paragraph of body.join(' ').split(/\s{2,}/)) {
+        const words = paragraph.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+          .match(/[a-z`][a-z`./_-]{4,}/g) || []
+        if (words.length >= 8) blocks.push({ name, line: start + 1, words: new Set(words) })
+      }
+    }
+  }
+  const found = {}
+  for (let a = 0; a < blocks.length; a += 1) {
+    for (let b = a + 1; b < blocks.length; b += 1) {
+      const one = blocks[a]
+      const other = blocks[b]
+      let shared = 0
+      for (const word of one.words) if (other.words.has(word)) shared += 1
+      if (shared / (one.words.size + other.words.size - shared) <= SIMILAR) continue
+      const key = [one.name, other.name].sort().join('::')
+      found[key] = found[key] || []
+      found[key].push(`${one.name}:${one.line} ↔ ${other.name}:${other.line}`)
+    }
+  }
+  const unexplained = []
+  for (const [key, hits] of Object.entries(found)) {
+    const accepted = ACCEPTED_PAIRS[key]
+    if (!accepted) { unexplained.push(...hits.map((hit) => `${hit} — sin razón declarada`)); continue }
+    if (hits.length > accepted.pairs) {
+      unexplained.push(`${key}: ${hits.length} pares y el registro acepta ${accepted.pairs}`)
+    }
+  }
+  // Un registro que nombra un par que ya no existe manda a cuidar algo que nadie escribió, y la razón
+  // que lo acompaña deja de poder contrastarse. Se retira igual que un piso de cobertura huérfano.
+  for (const key of Object.keys(ACCEPTED_PAIRS)) {
+    if (!found[key]) unexplained.push(`${key}: aceptado en el registro y ya no existe`)
+  }
+  assert.ok(blocks.length > 300, `sólo se compararon ${blocks.length} párrafos`)
+  assert.deepEqual(unexplained, [], `razones repetidas:\n  ${unexplained.join('\n  ')}`)
+})
