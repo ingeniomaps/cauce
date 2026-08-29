@@ -15,11 +15,6 @@ test('la plantilla canónica pasa el validador', () => {
   assert.equal(result.status, 0, result.stderr)
 })
 
-// Desinstalar a mano es borrar `ops/` y descubrir después que cada llamada de herramienta ejecuta un
-// guard que ya no está; la otra salida —borrar `.claude/` entero— se lleva puesto lo del usuario. Se
-// quita lo que Cauce entregó y sigue igual que como lo entregó, y nada más.
-// Borrar una instancia era una lista de pasos a mano, y una lista se ejecuta a medias: si la carpeta se
-// va antes que el wiring, cada llamada de herramienta del runner queda ejecutando un guard que no está.
 // Una corrida real reescribió `organization/` entero: buen contenido, otras secciones. El archivo se lee
 // completo y perdió cuatro dimensiones, y nadie las va a pedir después porque nada indica que faltaban.
 test('check avisa cuando una dimensión del molde desapareció', () => {

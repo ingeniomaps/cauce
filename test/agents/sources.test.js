@@ -92,8 +92,8 @@ test('el inventario de contratos en las referencias es el que está declarado', 
 })
 
 // El `tier` de una fuente decidía nada: el motor comprobaba que `sources.yaml` existiera y nunca lo
-// abría, así que el catálogo acumuló 51 etiquetas para seis cosas —`primary-standard`,
-// `standards-primary` y `public-standard` eran la misma— y nadie se enteró. Deja de ser decorativo
+// abría, así que el catálogo acumuló etiquetas sinónimas sin que nadie se enterara —cuántas y por qué,
+// en `learning-sources.js`—. Deja de ser decorativo
 // cuando la cadencia del ciclo de aprendizaje sale de ahí: un cargo cuyas fuentes son normas no
 // necesita investigar cada lunes, y uno que sigue avisos de seguridad sí.
 //

@@ -379,11 +379,6 @@ test('el puntero de un cargo conserva su frontmatter y no duplica el contrato', 
   assert.match(generated, /se resuelven desde este directorio raíz/, 'el puntero declara su ancla')
 })
 
-// El nombre del recorrido es el mismo en los cuatro y el prefijo lo pone cada uno, así que un archivo
-// puede nombrar una invocación que en su runner no existe y nada falla: el usuario la escribe, no pasa
-// nada, y no tiene cómo saber si se equivocó él o el toolkit. Pasó dos veces. `GEMINI.md` siguió
-// diciendo `/ops:autobuild` después de que los comandos se mudaran a `/cauce:`, y el manifest de
-// Antigravity anunciaba `cauce:onboard` sin la barra mientras la sesión real usaba `/cauce:onboard`.
 // Un comando de hook se ejecuta con el cwd que el runner elija, y ninguno promete cuál. Codex usa el
 // de la sesión y su propia guía pide resolver desde la raíz del git; Antigravity lo resuelve contra la
 // carpeta del plugin, que ni siquiera está en el proyecto. Una ruta relativa al workspace sólo funciona
@@ -414,6 +409,11 @@ test('ningún comando de hook queda relativo al workspace', () => {
   assert.deepEqual(loose, [])
 })
 
+// El nombre del recorrido es el mismo en los cuatro y el prefijo lo pone cada uno, así que un archivo
+// puede nombrar una invocación que en su runner no existe y nada falla: el usuario la escribe, no pasa
+// nada, y no tiene cómo saber si se equivocó él o el toolkit. Pasó dos veces. `GEMINI.md` siguió
+// diciendo `/ops:autobuild` después de que los comandos se mudaran a `/cauce:`, y el manifest de
+// Antigravity anunciaba `cauce:onboard` sin la barra mientras la sesión real usaba `/cauce:onboard`.
 test('ningún archivo instalable nombra una invocación que su runner no tiene', () => {
   const A = require('../../engine/automation')
   const REPO = path.resolve(__dirname, '..', '..')

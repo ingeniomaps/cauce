@@ -45,11 +45,6 @@ test('el workflow de aprendizaje corre en el toolkit y nombra un solo CLI', () =
   assert.match(source, /learn "\$FLOW" --flow --proposal/, 'y se consolida con el CLI, sin modelo')
 })
 
-// La primera corrida real con credencial duró tres minutos y devolvió el informe vacío: «every tool
-// this task needs is currently denied in this session». `claude -p` corre sin permisos declarados, así
-// que no puede correr un comando ni salir a la web — que es todo lo que una investigación hace. El
-// cargo se portó bien y lo dijo («I won't fabricate sources, dates, or command output»), y el workflow
-// publicó el vacío igual.
 // Lanzarlo a mano disparaba también el ensamblaje mensual: probar `research` abría una propuesta de
 // regalo, y una propuesta cuesta una firma humana. Peor, consolidar sella los informes que consume, así
 // que un dispatch de prueba movía estado real del ciclo.
@@ -74,6 +69,9 @@ test('un dispatch elige su fase y no arrastra el ensamblaje', () => {
   }
 })
 
+// La cadencia sale de las fuentes de cada cargo y el cron sólo pregunta cuál le toca hoy. Escribirla
+// como lista de slugs la dejaría mintiendo el día que alguien le cambie las fuentes a un cargo, que es
+// el mismo motivo por el que la matriz ya salía del árbol.
 test('cada cron investiga su cadencia, y el del ensamblaje no investiga', () => {
   const file = path.resolve(__dirname, '..', '..', '.github', 'workflows', 'agent-learning.yml')
   const source = fs.readFileSync(file, 'utf8')

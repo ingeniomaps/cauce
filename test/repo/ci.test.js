@@ -10,9 +10,6 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 
-// La cadencia sale de las fuentes de cada cargo y el cron sólo pregunta cuál le toca hoy. Escribirla
-// acá como lista de slugs la dejaría mintiendo el día que alguien le cambie las fuentes a un cargo,
-// que es el mismo motivo por el que la matriz ya salía del árbol.
 // `setup-node` v7 enciende el caché de npm por defecto cuando `package.json` declara `packageManager`,
 // y ese caché exige un lock file. Este repo no tiene dependencias —ni una— así que no hay lock, y el
 // paso falla entero: el CI se cayó en 16 segundos con el bump. El input ni siquiera existía en v4, así
@@ -99,8 +96,8 @@ function runBlocks(source) {
 
 // Una expresión dentro de un `run:` no llega como dato: se sustituye en el texto del script antes de
 // que el shell exista, así que el título de un issue o el nombre de una rama con `$(...)` adentro
-// ejecuta lo que traiga. La forma correcta es la que este repositorio ya usa en sus veintisiete
-// bloques: «For inline scripts, the preferred approach to handling untrusted input is to set the value
+// ejecuta lo que traiga. La forma correcta es la que este repositorio ya usa en todos sus bloques:
+// «For inline scripts, the preferred approach to handling untrusted input is to set the value
 // of the expression to an intermediate environment variable», porque así «the value ... is stored in
 // memory and used as a variable, and doesn't interact with the script generation process»
 // —docs.github.com, «Secure use reference», consultado 2026-08-29—. Lo que faltaba no era la
@@ -122,7 +119,9 @@ test('ningún `run:` interpola una expresión: lo de afuera entra por `env:`', (
 
 // Las dos garantías se aserían sobre `agent-learning.yml` y no sobre los otros tres, que las cumplen
 // hoy sin que nada las sostenga. Un default `write` deja que un job nuevo nazca pudiendo escribir sin
-// que nadie lo decida, y un job sin `timeout-minutes` hereda las seis horas del runner.
+// que nadie lo decida, y un job sin `timeout-minutes` corre hasta el tope del runner: «Each job in a
+// workflow can run for up to 6 hours of execution time» —docs.github.com, «Actions limits», consultado
+// 2026-08-29—.
 test('todo workflow nace sin poder escribir y ningún job hereda las seis horas', () => {
   const dir = path.resolve(__dirname, '..', '..', '.github', 'workflows')
   let jobs = 0
