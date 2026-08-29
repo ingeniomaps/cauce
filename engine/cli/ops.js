@@ -32,15 +32,10 @@ const BOOT = require('./bootstrap')
 // Dónde aterriza una instancia cuando nadie eligió: una carpeta propia junto al código.
 const DEFAULT_TARGET = 'ops'
 
-// Cuántos servicios se listan en pantalla antes de recortar. El resto sigue en `--json`, que es lo que
-// consume el recorrido de arranque: recortar la lista es para leerla, no para acotar lo que se sabe.
-
 // Dónde va la instancia cuando nadie eligió destino. Parada frecuente: el dev ya creó `acme-ops/` y
 // corre `init` adentro. Sin esto la instancia caía en `acme-ops/ops/` —una carpeta del toolkit dentro
 // de otra— y el proyecto quedaba llamándose «acme-ops». La carpeta que ya nombra al toolkit es la
 // instancia; no hay una segunda adentro.
-// instancia recibía el de un proveedor apagado que quizá no usaba nunca, y que nadie actualizaba.
-
 function implicitTarget(cwd) {
   const base = path.basename(cwd)
   return base === DEFAULT_TARGET || base.endsWith('-ops') ? '.' : DEFAULT_TARGET
@@ -178,8 +173,6 @@ function usage() {
 // Un `cli` que no tiene banderas, para reusar un comando desde otro: el `--force` de `init` habla del
 // molde y no del wiring del runner, así que pasarle el suyo instalaría a la fuerza algo que nadie pidió.
 const NO_FLAGS = { has: () => false, value: (_flag, fallback = '') => fallback }
-
-// Si el proveedor terminó su propia configuración. Son dos interruptores y `sync` exige los dos: el
 
 async function run(cli) {
   const [command] = cli.positional

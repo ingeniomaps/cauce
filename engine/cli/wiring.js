@@ -14,8 +14,9 @@ const OB = require('../core/onboarding')
 const IN = require('./instance')
 const { fail, opsRoot } = require('./io')
 
+// Cuántos servicios se listan en pantalla antes de recortar. El resto sigue en `--json`, que es lo que
+// consume el recorrido de arranque: recortar la lista es para leerla, no para acotar lo que se sabe.
 const MAX_LISTED = 20
-
 
 const INTEGRATION = {
   list: {

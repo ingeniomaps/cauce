@@ -295,10 +295,6 @@ function lastOfPeriod(dir, period) {
   return names.length ? names[names.length - 1] : ''
 }
 
-// La propuesta se llama por el mes en que se abre, y `period` sólo existe para una corrida a mano
-// sobre otro mes. El ciclo automático no lo usa: nombrarle el mes que cerró abriría una **revisión**
-// —lo que se abre cuando ese mes ya tiene una propuesta aplicada—, y corregir es un acto humano.
-// Lo que hace que ningún informe se pierda no es el nombre sino el criterio de más abajo.
 // Qué aprende un recorrido, y de dónde. Un cargo aprende de su profesión —normas, versiones, fuentes
 // que cambian afuera— y por eso investiga. Un recorrido no tiene profesión: lo único que puede
 // enseñarle algo es cómo le fue, así que su insumo son los veredictos en contra de sus propias
@@ -421,6 +417,10 @@ Qué caso tiene que cambiar de veredicto y por qué razón, no sólo que la corr
   return { file, created: true, reports: consumed.length, findings: findings.length }
 }
 
+// La propuesta se llama por el mes en que se abre, y `period` sólo existe para una corrida a mano
+// sobre otro mes. El ciclo automático no lo usa: nombrarle el mes que cerró abriría una **revisión**
+// —lo que se abre cuando ese mes ya tiene una propuesta aplicada—, y corregir es un acto humano.
+// Lo que hace que ningún informe se pierda no es el nombre sino el criterio de `pendingReports`.
 function prepareProposal(root, agent, now = new Date(), period = '', kind = 'agent') {
   if (period && !/^\d{4}-\d{2}$/.test(period)) throw new Error(`período inválido: ${period}`)
   const target = assertWritable(root, agent, kind)

@@ -21,6 +21,9 @@ const { fail } = require('./io')
 
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..')
 
+// Proveedores que el toolkit conoce, para saltearlos al copiar la plantilla: su andamiaje
+// —configuración, staging/, proposed/— no se materializa hasta que alguien lo habilite. Antes cada
+// instancia recibía el de un proveedor apagado que quizá no usaba nunca, y que nadie actualizaba.
 function providerNames() {
   try {
     const file = path.join(PROJECT_ROOT, 'template', 'integrations', 'config.json')
@@ -109,9 +112,6 @@ function undeclareEngine(manifest) {
   F.atomicWriteJson(manifest, pkg)
   return ['package.json: se quitó la dependencia del motor y el resto queda como estaba']
 }
-
-// Proveedores que el toolkit conoce, para saltearlos al copiar la plantilla: su andamiaje
-// —configuración, staging/, proposed/— no se materializa hasta que alguien lo habilite. Antes cada
 
 // El andamiaje de una instancia, sin leer argv. `init` es la cáscara que traduce banderas a esto, y
 // el banco de evaluación lo llama directo: crear una instancia programáticamente no puede depender de

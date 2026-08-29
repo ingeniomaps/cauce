@@ -14,8 +14,6 @@ const O = require('../core/ownership')
 const IN = require('./instance')
 const { fail, opsRoot } = require('./io')
 
-// La raíz ops de un comando que no la recibe. El shim `tools/ops.js` la exporta porque sabe dónde
-
 function agentsFork(slug, dir) {
   const root = opsRoot(dir)
   if (!slug) fail('Falta el cargo: ops agents fork <cargo> [ops-root]', 2)
