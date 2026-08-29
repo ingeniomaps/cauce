@@ -35,7 +35,7 @@ function agents(action, dir, extra, cli) {
   if (action !== 'list') fail(`Acción de agents desconocida: ${action || '(vacía)'}`, 2)
   const root = opsRoot(dir)
   // Una empresa mantiene sus cargos, no los nuestros: `learn` sobre uno del catálogo se niega, así que
-  // recorrer los 48 para encontrar el suyo es ruido. `--own` es lo que hace ejecutable ese recorrido.
+  // recorrer el catálogo entero para encontrar el suyo es ruido. `--own` hace ejecutable ese recorrido.
   const own = cli.has('--own')
   const system = cli.has('--system')
   const roles = AG.list(root).filter((role) => (own ? !role.system : true) && (system ? role.system : true))
@@ -51,7 +51,7 @@ function agents(action, dir, extra, cli) {
       path: path.relative(root, role.dir).split(path.sep).join('/'),
     }))))
   }
-  // Una línea por cargo, alineadas, para elegir a quién asignarle una tarea sin abrir 47 carpetas.
+  // Una línea por cargo, alineadas, para elegir a quién asignarle una tarea sin abrir una carpeta.
   const width = roles.reduce((max, role) => Math.max(max, role.slug.length), 0)
   for (const role of roles) {
     const mark = role.system ? '' : ' (propio)'
@@ -205,11 +205,11 @@ function evaluate(agent, caso, cli) {
     if (errors.length) fail(`\n${errors.length} error(es)`, 1)
     // Cuándo se midió es un rango cuando el veredicto vigente lo aportó más de una corrida. Por qué se
     // compone en vez de leerse la última, en `composed`.
-    const cuando = runs.state && runs.state.oldest !== runs.state.newest
+    const measuredAt = runs.state && runs.state.oldest !== runs.state.newest
       ? `${runs.state.oldest}…${runs.state.newest}`
       : (runs.state ? runs.state.newest : '')
     const lastRun = runs.state
-      ? `${runs.state.passed}/${runs.state.total} pasan (${cuando})`
+      ? `${runs.state.passed}/${runs.state.total} pasan (${measuredAt})`
       : 'sin correr'
     if (kind === 'flow') {
       return console.log(`✓ ${agent}: ${runs.cases} caso(s) — ${lastRun}, ` +

@@ -67,8 +67,8 @@ function proposalOrder(name) {
   return `${period}-${String(Number(revision || 1)).padStart(4, '0')}`
 }
 
-// El tope de la línea de índice. No es estético: son 47 líneas que se leen de un vistazo, y una que
-// se envuelve rompe la columna que hace posible el vistazo.
+// El tope de la línea de índice. No es estético: es una línea por cargo, todas a la vez, y una que se
+// envuelve rompe la columna que hace posible el vistazo.
 const SUMMARY_MAX = 120
 
 function proposalFiles(dir) {

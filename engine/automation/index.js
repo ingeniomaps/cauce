@@ -36,7 +36,8 @@ function check(root) {
       errors.push(`automatization/hooks/${name} no es ejecutable`)
     }
   }
-  // El motor puede venir de la dependencia npm, de la copia local o del propio repositorio.
+  // El motor puede venir de la dependencia npm o del propio repositorio, y la cascada la resuelve
+  // `packagePath`. Eran tres: la copia vendorizada se retiró en 0.10.0 y esta línea la sobrevivió.
   if (!O.engineAt(root, path.join('hooks', 'run.js'))) {
     errors.push('falta engine/hooks/run.js: corré "npm install" en la raíz del repo ops')
   }
@@ -299,7 +300,7 @@ function uninstall(root, name, output = console) {
     removed += 1
   }
 
-  // Los punteros a cargos no se registran uno por uno —son cuarenta y siete y se regeneran enteros—,
+  // Los punteros a cargos no se registran uno por uno —son todo el catálogo y se regeneran enteros—,
   // así que se reconocen por contenido: sólo se va el que sigue siendo el que generamos.
   if (runner.capabilities.nativeSkills && runner.roleSkills) {
     const base = path.resolve(paths.install, runner.roleSkills)
@@ -424,7 +425,7 @@ function install(root, name, output = console, options = {}) {
   // Cómo se lo llama acá. El nombre del recorrido es el mismo en todos los runners —`onboard`, `flow`,
   // `autobuild`—; el prefijo lo pone cada uno según su espacio de nombres, y esa diferencia es la que
   // hace que alguien no encuentre en Gemini lo que usó en Claude. Decirlo al instalar cuesta una línea
-  // y ahorra buscarlo en una lista de cincuenta skills.
+  // y ahorra buscarlo en una lista tan larga como el catálogo.
   const invocation = runner.commands && runner.commands.invocation
   if (invocation && (runner.commands.names || []).length) {
     const listing = runner.commands.names.map((nombre) => invocation.replace('{name}', nombre))

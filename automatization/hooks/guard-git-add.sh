@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-# Shim: qué bloquea y cómo lo hace están en engine/hooks/run.js → gitAdd().
+# Shim: delega `git-add` en run-hook.sh; el registro de engine/hooks/run.js nombra su módulo.
 exec "$(dirname "$0")/run-hook.sh" git-add

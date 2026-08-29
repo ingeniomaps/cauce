@@ -76,7 +76,8 @@ function block(message) {
 }
 
 // La configuración de la raíz ops. Un guard que no puede leerla bloquea: `findOpsRoot` sólo devuelve
-// una raíz si `ops.config.json` existe, así que llegar acá significa roto o ilegible, no ausente.
+// una raíz donde estén `ops.config.json` y `planning/`, así que llegar acá significa roto o ilegible,
+// no ausente.
 // Dejarlo pasar convertía una coma de más en «sin límite de escritura».
 function configOf(root) {
   try { return JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')) } catch (error) {

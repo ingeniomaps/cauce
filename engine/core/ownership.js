@@ -200,8 +200,9 @@ function retiredWithLearning(root) {
 }
 
 // Rutas que `upgrade` reemplaza. Todo lo que no aparezca acá pertenece al proyecto.
-// Se listan aunque todavía no existan en la instancia: así un archivo nuevo del sistema llega en
-// vez de esperar a que alguien lo cree a mano.
+// Los archivos sueltos se listan aunque todavía no existan en la instancia, así que uno nuevo del
+// sistema llega en vez de esperar a que alguien lo cree a mano. Una colección no: entra sólo si su
+// `system/` ya está, porque el que se lista es el directorio y no cada archivo de adentro.
 function systemPaths(root) {
   const paths = [...SYSTEM_FILES]
   for (const collection of SYSTEM_COLLECTIONS) {

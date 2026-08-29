@@ -17,6 +17,7 @@ const RUNNER_NAMES = ['claude', 'codex', 'gemini', 'antigravity']
 // consume y que ninguna empresa edita —`RUNNER_NAMES` es cerrado, así que ni siquiera puede agregar
 // uno propio—. Los hooks sí se quedan en el proyecto: la configuración del runner los nombra por
 // ruta literal y no sabe resolver en cascada.
+//
 // Se busca por `runners/` y no por `automatization/`: toda instancia tiene el segundo —ahí viven sus
 // hooks— y encontrarlo daría por buena una dependencia sin instalar.
 function packagedAutomation(root) {
