@@ -257,3 +257,59 @@ test('ningún comentario quedó separado del código que describe', () => {
   assert.ok(seen > 300, `sólo se inspeccionaron ${seen} bloques fuera del preámbulo`)
   assert.deepEqual(stranded, [], `comentarios separados de su código:\n  ${stranded.join('\n  ')}`)
 })
+
+// Un comentario que cita algo por su nombre promete que ese algo existe, y cuando deja de existir la
+// cita no falla: manda a buscar. Pasó cuatro veces en un solo repaso — una función retirada en un
+// refactor, una opción reemplazada por una lista, `evaluationBench` mudada de archivo mientras el
+// puntero seguía nombrando el viejo. Van sin backticks a propósito: acá un backtick promete que la
+// cosa existe, y esta misma prueba se lo cobró al nombrarlas.
+//
+// Se comprueban las dos formas que se pudrieron, y ninguna más. Citar una ruta a secas no entra: se
+// midió contra el árbol de antes de esta tanda y no encontró nada, porque las rutas que fallaron
+// seguían existiendo y lo que se había movido era la función adentro. Eso es justo lo que sí atrapa
+// `\`X\` (ruta)`.
+//
+// El corpus son las líneas de código, nunca los comentarios: leyéndolos, cada cita se respalda a sí
+// misma y el control queda verde siempre. Se aprendió midiendo — `getcwd` daba por resuelto contra el
+// único lugar donde aparece, que es el comentario que lo nombra.
+const CITED = /`([a-z][A-Za-z0-9]{3,})(?:\(\))?`/g
+const CITED_AT = /`([A-Za-z][A-Za-z0-9]*)`\s*\(([a-z][a-zA-Z0-9_/-]*\.(?:js|sh))\)/g
+
+test('ningún comentario cita algo que dejó de existir', () => {
+  const root = path.resolve(__dirname, '..')
+  const tracked = spawnSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).stdout.trim().split('\n')
+  // Los registros de evaluación transcriben lo que un cargo escribió y pueden nombrar cualquier cosa,
+  // así que no respaldan nada. Misma razón que en el chequeo de comandos make.
+  const corpus = tracked.filter((file) => /\.(js|sh|json|ya?ml)$/.test(file) && !file.includes('/results/'))
+  const defined = new Set()
+  for (const file of corpus) {
+    const text = fs.readFileSync(path.join(root, file), 'utf8')
+    const mark = file.endsWith('.sh') ? /^\s*#/ : /^\s*\/\//
+    const code = /\.(js|sh)$/.test(file) ? text.split('\n').filter((line) => !mark.test(line)).join('\n') : text
+    for (const word of code.match(/[A-Za-z_][A-Za-z0-9_]*/g) || []) defined.add(word)
+  }
+  // `getcwd` es la llamada al sistema que nombra el error de la terminal, no un identificador nuestro.
+  // Se declara en vez de perdonarse: si mañana el comentario se borra, esta línea sobra y se ve.
+  const FOREIGN = new Set(['getcwd'])
+  const dangling = []
+  let cited = 0
+  for (const file of tracked.filter((name) => /\.(js|sh)$/.test(name))) {
+    const mark = file.endsWith('.sh') ? /^\s*#(?!!)/ : /^\s*\/\//
+    fs.readFileSync(path.join(root, file), 'utf8').split('\n').forEach((line, i) => {
+      if (!mark.test(line)) return
+      for (const hit of line.matchAll(CITED)) {
+        cited += 1
+        if (!defined.has(hit[1]) && !FOREIGN.has(hit[1])) dangling.push(`${file}:${i + 1}: \`${hit[1]}\` no existe`)
+      }
+      for (const hit of line.matchAll(CITED_AT)) {
+        const [, name, cita] = hit
+        const target = tracked.includes(cita) ? cita : tracked.find((one) => one.endsWith(`/${cita}`))
+        if (!target) { dangling.push(`${file}:${i + 1}: ${cita} no existe`); continue }
+        const body = fs.readFileSync(path.join(root, target), 'utf8')
+        if (!new RegExp(`\\b${name}\\b`).test(body)) dangling.push(`${file}:${i + 1}: ${name} ya no está en ${cita}`)
+      }
+    })
+  }
+  assert.ok(cited > 200, `sólo se contrastaron ${cited} citas`)
+  assert.deepEqual(dangling, [], `citas que ya no resuelven:\n  ${dangling.join('\n  ')}`)
+})
