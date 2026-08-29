@@ -144,10 +144,25 @@
     "branches": 53,
     "functions": 100
   },
+  "engine/hooks/files.js": {
+    "lines": 100,
+    "branches": 96,
+    "functions": 100
+  },
+  "engine/hooks/input.js": {
+    "lines": 100,
+    "branches": 85,
+    "functions": 100
+  },
   "engine/hooks/run.js": {
     "lines": 91,
-    "branches": 85,
+    "branches": 70,
     "functions": 97
+  },
+  "engine/hooks/shell.js": {
+    "lines": 91,
+    "branches": 89,
+    "functions": 100
   },
   "engine/integrations/proposals.js": {
     "lines": 100,

@@ -406,9 +406,6 @@ test('ninguna razón está escrita en dos lugares sin decir por qué', () => {
 const MAX_LINES = 500
 
 const JUSTIFIED = {
-  'engine/hooks/run.js':
-    'El registro de guards: crece de a uno, cada guard es independiente y todos comparten los mismos '
-    + 'lectores de entrada. Partirlo dispersa trece funciones chicas y duplica esos lectores.',
   'automatization/workflows/autobuild.js':
     'Un recorrido crece de a una fase, y su schema y su paso cambian juntos: separarlos parte por la '
     + 'mitad lo que es una sola cosa.',
