@@ -261,8 +261,8 @@ test('el AGENTS.md de una instancia dice la propiedad que el motor aplica', () =
   assert.ok(agents.includes('delivery/project.md'), 'junto a lo que sigue siendo del proyecto')
 
   // El README del paquete es lo primero que alguien lee antes de instalar, y decía que `upgrade`
-  // reemplaza `system/` «y nada más se toca» — falso para veintiocho archivos del toolkit que no viven
-  // bajo ningún `system/`.
+  // reemplaza `system/` «y nada más se toca» — falso para todos los archivos del toolkit que no viven
+  // bajo ningún `system/`, que son la mayoría.
   const readme = fs.readFileSync(path.resolve(__dirname, '..', '..', 'README.md'), 'utf8')
   assert.ok(readme.includes('planning/delivery/'), 'el README nombra la guía que también se reemplaza')
   assert.equal(readme.includes('se reemplaza `system/` entero y nada más se toca'), false,

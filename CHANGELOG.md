@@ -16,13 +16,21 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.53.1] - 2026-08-29
 
+### Corregido
+
+- **`init` no instalaba el motor en Windows.** Lanzaba `npm.cmd` directo, y la documentación de Node
+  dice que un `.cmd` no es ejecutable por sí solo: ahora va por `cmd.exe` con el comando de argumento.
+  Fallaba en silencio útil —imprimía el error de npm y dejaba `npm install` entre los pasos
+  pendientes—, así que si venías corriéndolo a mano en Windows, ya no hace falta. Sin comprobar en un
+  Windows real: acá no hay uno, y el comentario del código lo dice.
+
 ### Cambiado
 
-- **Dos guards se reemplazan y ninguno cambia lo que bloquea.** `guard-engine.sh` nombraba una función
-  que no existe con ese nombre y `run-hook.sh` tenía dos razones puestas sobre la línea equivocada; los
-  dos cambian sólo en comentarios, sin una línea ejecutable distinta. Se los nombra porque viven en tu
-  instancia: `upgrade` los va a reemplazar y, hasta que lo corras, `automation check` los reporta
-  desactualizados.
+- **Los trece shims de guards se reemplazan y ninguno cambia lo que bloquea.** Su comentario prometía
+  «qué bloquea y cómo lo hace» en `engine/hooks/run.js`, que es un registro de una línea por guard: lo
+  que bloquea vive en otro módulo, y el puntero mandaba al lugar equivocado. Los trece cambian sólo en
+  comentarios, sin una línea ejecutable distinta. Se los nombra porque viven en tu instancia: `upgrade`
+  los va a reemplazar y, hasta que lo corras, `automation check` los reporta desactualizados.
 - **El motor se repartió en más archivos de los que tenía**, sin cambiar una sola conducta:
   `engine/automation/index.js` en cinco, `engine/agents/learning.js` en tres y `engine/hooks/run.js` en
   cuatro, cada uno cortado por lo que lo hace cambiar. Llega con `npm install` y no pide nada de tu

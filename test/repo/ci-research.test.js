@@ -12,6 +12,11 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { execFileSync } = require('node:child_process')
 
+// La primera corrida real con credencial duró tres minutos y devolvió el informe vacío: «every tool
+// this task needs is currently denied in this session». `claude -p` corre sin permisos declarados, así
+// que no puede correr un comando ni salir a la web — que es todo lo que una investigación hace. El
+// cargo se portó bien y lo dijo («I won't fabricate sources, dates, or command output»), y el workflow
+// publicó el vacío igual.
 test('la investigación recibe las herramientas que su instrucción nombra, y no más', () => {
   const file = path.resolve(__dirname, '..', '..', '.github', 'workflows', 'agent-learning.yml')
   const source = fs.readFileSync(file, 'utf8')

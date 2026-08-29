@@ -27,9 +27,6 @@ function sourceFiles() {
   return ['engine', 'automatization', 'test', 'template'].flatMap((dir) => below(path.join(root, dir)))
 }
 
-// Sin linter —el toolkit no tiene dependencias, ni siquiera de desarrollo— una convención sólo existe
-// si algo la comprueba. El prefijo no es cosmético: `require('fs')` lo puede secuestrar un paquete
-// llamado `fs`, y `require('node:fs')` no. Estaba en 31 de 46 lugares, que es la peor de las mezclas.
 // El README de un adaptador mandaba a correr `make install-antigravity` y `make doctor-antigravity`:
 // ninguno de los dos existió nunca, y una instancia instalada ni siquiera tiene `Makefile`. Ya había un
 // test así para la documentación de los cargos; el resto del repositorio no lo tenía, que es donde
@@ -67,6 +64,9 @@ test('ningún documento del repositorio cita un comando make que no existe', () 
   assert.deepEqual(invented, [])
 })
 
+// Sin linter —el toolkit no tiene dependencias, ni siquiera de desarrollo— una convención sólo existe
+// si algo la comprueba. El prefijo no es cosmético: `require('fs')` lo puede secuestrar un paquete
+// llamado `fs`, y `require('node:fs')` no. Estaba en 31 de 46 lugares, que es la peor de las mezclas.
 test('los módulos de Node se importan con el prefijo node:', () => {
   const root = path.resolve(__dirname, '..', '..')
   const files = []

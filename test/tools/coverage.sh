@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Los pisos van unos tres puntos debajo de lo real (91/94/62 al fijarlos): suficiente para que el
-# trabajo normal no los toque, y para absorber el ~0.1 que varía entre corridas. Se suben cuando lo
-# real se despega, no se bajan cuando algo no llega — quedaron en 45 de ramas mientras lo real rondaba
-# 62, y un piso así no protege de nada.
+# Los pisos van unos puntos debajo de lo real: suficiente para que el trabajo normal no los toque, y
+# para absorber el ~0.1 que varía entre corridas. El de ramas es la excepción y va pegado a lo medido,
+# porque ahí el margen ya se lo come la varianza entre corridas. Se suben cuando lo real se despega, no
+# se bajan cuando algo no llega — quedaron en 45 de ramas mientras lo real rondaba 62, y un piso así no
+# protege de nada.
 bash test/tools/hooks-smoke.sh
 # Al registrar un piso se mide tres veces y se toma el mínimo: una sola corrida deja subir el piso por
 # suerte —hay archivos que se mueven varios puntos según cómo caigan los tests en paralelo— y el gate

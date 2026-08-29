@@ -187,6 +187,8 @@ test('init imprime la guía aunque no instale la dependencia', () => {
   assert.match(created.stdout, /siguiente: cd ops && npm install/, 'y lo pendiente sigue dicho')
 })
 
+// Parado dentro de una carpeta que ya nombra al toolkit, la instancia es esa carpeta: la alternativa
+// —`acme-ops/ops/`— anida una raíz ops dentro de otra y le pone al proyecto el nombre del toolkit.
 test('init no crea una carpeta ops dentro de otra', () => {
   const base = tempRoot('cauce-anidada-')
   const repo = path.join(base, 'acme-ops')
@@ -202,6 +204,9 @@ test('init no crea una carpeta ops dentro de otra', () => {
   assert.equal(config.mode, 'sidecar')
 })
 
+// La promesa del comando único, de punta a punta: materializar, instalar la dependencia, dejar el
+// runner puesto y validar. El npm de esta prueba hace lo único que a `init` le importa de npm —dejar el
+// motor resoluble desde la instancia—, para no depender de la red ni de la versión publicada.
 test('init deja la instancia funcionando en una sola corrida', () => {
   const base = tempRoot('cauce-uno-')
   const repo = path.join(base, 'mono')
@@ -254,6 +259,8 @@ test('init no disimula un npm install que falló', () => {
   assert.equal(fs.existsSync(path.join(repo, '.claude')), false, 'sin motor no se instala nada')
 })
 
+// La validación vive en el motor, pero el CLI tiene que traerla hasta la línea de comandos: un runner
+// mal escrito no puede terminar en una instancia a medio configurar.
 test('init rechaza un runner que no existe', () => {
   const base = tempRoot('cauce-runner-')
   const target = path.join(base, 'demo-ops')

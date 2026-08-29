@@ -9,6 +9,8 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 
+// Borrar una instancia era una lista de pasos a mano, y una lista se ejecuta a medias: si la carpeta se
+// va antes que el wiring, cada llamada de herramienta del runner queda ejecutando un guard que no está.
 test('destroy avisa qué se pierde y no borra hasta que se lo pidan dos veces', () => {
   const base = tempRoot('cauce-destroy-')
   const workspace = path.join(base, 'mono')

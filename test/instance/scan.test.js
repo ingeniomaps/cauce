@@ -9,15 +9,6 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 
-// La validación vive en el motor, pero el CLI tiene que traerla hasta la línea de comandos: un runner
-// mal escrito no puede terminar en una instancia a medio configurar.
-// La promesa del comando único, de punta a punta: materializar, instalar la dependencia, dejar el
-// runner puesto y validar. El npm de esta prueba hace lo único que a `init` le importa de npm —dejar el
-// motor resoluble desde la instancia—, para no depender de la red ni de la versión publicada.
-// Parado dentro de una carpeta que ya nombra al toolkit, la instancia es esa carpeta: la alternativa
-// —`acme-ops/ops/`— anida una raíz ops dentro de otra y le pone al proyecto el nombre del toolkit.
-// Las preguntas salen de código y cuestan cero: la versión anterior gastaba un subagente de un minuto
-// para terminar diciendo «volvé a correrlo con contexto», que a quien recién instaló no le dice nada.
 // La basura de un proyecto la declara el propio proyecto, y mantener una lista de la ajena es perder.
 // Lo que el arranque necesita saber es qué es esto, no qué generó el último build.
 test('scan respeta lo que el proyecto declaró basura', () => {
@@ -79,6 +70,8 @@ test('scan recorta la lista en pantalla y dice cuánto', () => {
   assert.equal(JSON.parse(run(['scan', repo, '--json']).stdout).services.length, 25, 'el JSON los trae todos')
 })
 
+// Las preguntas salen de código y cuestan cero: la versión anterior gastaba un subagente de un minuto
+// para terminar diciendo «volvé a correrlo con contexto», que a quien recién instaló no le dice nada.
 test('onboard guía con preguntas y no pisa lo que ya está escrito', () => {
   const base = tempRoot('cauce-guia-')
   const repo = path.join(base, 'mono')
@@ -110,9 +103,8 @@ test('onboard guía con preguntas y no pisa lo que ya está escrito', () => {
   assert.doesNotMatch(after.stdout, /¿De qué trata/, 'no vuelve a preguntar lo contestado')
 })
 
-// El inventario es determinista a propósito: pedirle a un modelo que recorriera el árbol costó doce
-// minutos en una carpeta vacía. Acá se comprueba lo que ese recorrido tiene que saber sin ayuda —dónde
-// mirar, qué saltear y qué comandos declara cada servicio— y que no corra ninguno.
+// Qué tiene que saber el inventario sin ayuda —dónde mirar, qué saltear y qué comandos declara cada
+// servicio— y que no corra ninguno. Por qué es determinista y no lo hace un modelo, en `scan.js`.
 test('scan inventaría el workspace y saltea lo que nunca es un servicio', () => {
   const base = tempRoot('cauce-scan-')
   const repo = path.join(base, 'mono')
