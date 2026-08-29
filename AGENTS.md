@@ -139,8 +139,18 @@ ni un agente lo aclara en milisegundos.
 - **Cero dependencias**, de runtime y de desarrollo: Node >= 24 y nada más. Por eso no hay linter ni
   formateador —las convenciones se sostienen leyéndolas—, y agregar una dependencia es una decisión,
   no un detalle.
-- **120 caracteres por línea en archivos de código** —`.js` y `.sh`—. El markdown y los `.json` de
-  datos quedan fuera: son prosa y fixtures, y envolverlos no los hace más legibles.
+- **120 caracteres por línea y 500 líneas por archivo de código** —`.js` y `.sh`—. El markdown y los
+  `.json` de datos quedan fuera: son prosa y fixtures, y envolverlos no los hace más legibles.
+
+  Los dos números son duros acá, y eso no contradice a R7. R7 deja el número al proyecto porque
+  depende del lenguaje y de la superficie, y **este** es el proyecto: un repositorio de Node sin
+  dependencias, donde 500 líneas ya son varias responsabilidades. La regla que viaja a una empresa
+  sigue siendo la de R7; la que se cumple acá es ésta.
+
+  Pasarse se justifica cuando de verdad corresponde, y la justificación se registra en
+  `test/repo.test.js` con su razón: hoy son el registro de guards y el recorrido de `autobuild`,
+  que crecen de a un guard y de a una fase. Un archivo que crece sin esa razón no pasa la puerta, y
+  una justificación que dejó de hacer falta tampoco: se retira cuando el archivo baja del umbral.
 - **Código en inglés, prosa en español.** Identificadores y nombres de archivo, en inglés; comentarios y
   documentación, en español; lo que lee una persona —salida del CLI, errores, plantillas—, en español.
   Los mensajes de commit van en inglés, Conventional Commits. Un nombre a medio traducir —`sinFase`,

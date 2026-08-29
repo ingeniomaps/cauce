@@ -389,3 +389,58 @@ test('ninguna razón está escrita en dos lugares sin decir por qué', () => {
   assert.ok(blocks.length > 300, `sólo se compararon ${blocks.length} párrafos`)
   assert.deepEqual(unexplained, [], `razones repetidas:\n  ${unexplained.join('\n  ')}`)
 })
+
+// Quinientas líneas por archivo de código, el número que `AGENTS.md` fija para este repositorio. R7
+// deja el número al proyecto y éste es el proyecto: Node sin dependencias, donde a esa altura ya hay
+// varias responsabilidades conviviendo. El umbral dispara, no decide — lo que sigue es mirar si el
+// archivo mezcla dos propósitos con vidas distintas, y de ahí sale en cuál de los dos registros entra.
+//
+// Son dos y no uno a propósito. `JUSTIFIED` es lo que crece por diseño y va a seguir creciendo: el
+// registro de guards suma uno por guard, el recorrido de `autobuild` uno por fase, y partirlos
+// dispersaría lo que es una sola cosa —que R7 llama peor que el archivo largo—. `PENDING_SPLIT` es
+// deuda: archivos que sí mezclan sujetos y todavía no se partieron, con la partición anotada.
+//
+// Escribir la deuda como si fuera justificación es lo que vuelve inútil a un registro así, porque una
+// excepción sin fecha no se cierra nunca. Acá se cierra sola: una entrada de cualquiera de los dos que
+// deje de pasarse del umbral **falla**, así que partir un archivo obliga a sacarlo de la lista.
+const MAX_LINES = 500
+
+const JUSTIFIED = {
+  'engine/hooks/run.js':
+    'El registro de guards: crece de a uno, cada guard es independiente y todos comparten los mismos '
+    + 'lectores de entrada. Partirlo dispersa trece funciones chicas y duplica esos lectores.',
+  'automatization/workflows/autobuild.js':
+    'Un recorrido crece de a una fase, y su schema y su paso cambian juntos: separarlos parte por la '
+    + 'mitad lo que es una sola cosa.',
+}
+
+const PENDING_SPLIT = {
+  'test/agents.test.js': 'catálogo, ciclo de aprendizaje, evaluaciones y contrato de fuentes',
+  'test/instance.test.js': 'init, upgrade y destroy',
+  'test/workflows.test.js': 'los recorridos leídos como fuente, por familia',
+  'test/contracts.test.js': 'épica, backlog, reglas y ADR',
+  'test/ci.test.js': 'el ciclo de aprendizaje y el resto de la automatización del repositorio',
+  'test/planning.test.js': 'check, context y archivado',
+  'test/autobuild.test.js': 'los carriles y las fases',
+  'test/flows.test.js': 'registro de recorridos y su evaluación',
+}
+
+test('ningún archivo de código pasa las 500 líneas sin decir por qué', () => {
+  const root = path.resolve(__dirname, '..')
+  const over = {}
+  for (const file of sourceFiles()) {
+    const name = path.relative(root, file)
+    const count = fs.readFileSync(file, 'utf8').split('\n').length
+    if (count > MAX_LINES) over[name] = count
+  }
+  const unexplained = Object.entries(over)
+    .filter(([name]) => !JUSTIFIED[name] && !PENDING_SPLIT[name])
+    .map(([name, count]) => `${name}: ${count} líneas y ninguna razón registrada`)
+  // Una entrada que ya no hace falta manda a cuidar algo que nadie escribió, y en `PENDING_SPLIT` es
+  // peor: deja la deuda anotada después de pagarla. Se retira igual que un piso de cobertura huérfano.
+  for (const name of [...Object.keys(JUSTIFIED), ...Object.keys(PENDING_SPLIT)]) {
+    if (!over[name]) unexplained.push(`${name}: ya no pasa las ${MAX_LINES} líneas, sacalo del registro`)
+  }
+  assert.ok(sourceFiles().length > 50, 'el recorrido no encontró archivos de código')
+  assert.deepEqual(unexplained, [], `archivos sin razón registrada:\n  ${unexplained.join('\n  ')}`)
+})
