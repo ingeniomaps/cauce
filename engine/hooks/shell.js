@@ -27,7 +27,8 @@ function destructive(input) {
     // el trabajo de al lado, que no estaba commiteado. Lo que engaña es que el alcance no se ve en el
     // comando — `.` es el cwd, y el cwd suele tener más de lo que uno está mirando.
     [
-      // `git restore .` no lleva `--` y destruye igual: es la forma moderna del mismo comando.
+      // `git restore .` no lleva `--` y destruye igual: comprobado en `git restore --help` (git 2.43.0),
+      // que restaura el working tree por defecto y toma el pathspec sin separador.
       /\bgit\s+(?:checkout|restore)\s+(?:[^;&|]*?\s)?(?:--\s*(?:$|[;&|])|(?:--\s+)?(?:\.|\*|:\/)\s*(?:$|[;&|]))/,
       "'git checkout -- .' revierte todo lo no commiteado del directorio, no sólo lo que estás mirando. "
       + 'Nombrá el archivo, o commiteá lo que quieras conservar antes.',

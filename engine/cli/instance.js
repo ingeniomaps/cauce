@@ -37,7 +37,8 @@ function copyTemplate(source, target, replacements, force, skip = [], quiet = fa
   for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
     if (skip.includes(entry.name)) continue
     const from = path.join(source, entry.name)
-    // npm no incluye un `.gitignore` dentro de un tarball, así que viaja sin punto y se restituye
+    // npm no incluye un `.gitignore` dentro de un tarball —comprobado con `npm pack --dry-run` en npm
+    // 11.16.0: lo deja afuera en la raíz y en subdirectorios—, así que viaja sin punto y se restituye
     // acá. Sin esto el archivo existe en el repo del toolkit y desaparece para todo consumidor real.
     const to = path.join(target, entry.name === 'gitignore' ? '.gitignore' : entry.name)
     if (entry.isDirectory()) copyTemplate(from, to, replacements, force, skip, quiet)
@@ -102,9 +103,9 @@ function undeclareEngine(manifest) {
   if (!('@ingeniomaps/cauce' in dev)) return []
   delete dev['@ingeniomaps/cauce']
   pkg.devDependencies = dev
-  const generado = !Object.keys(dev).length && !Object.keys(pkg.dependencies || {}).length
+  const ours = !Object.keys(dev).length && !Object.keys(pkg.dependencies || {}).length
     && !Object.keys(pkg.scripts || {}).length && pkg.private === true && pkg.version === '0.0.0'
-  if (generado) {
+  if (ours) {
     fs.rmSync(manifest, { force: true })
     return ['package.json (lo había creado init: sin dependencias ni scripts propios)']
   }
@@ -123,8 +124,8 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
     '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
   }, force, providerNames(), quiet)
   // No se copia `.github/`: `ci.yml` valida el toolkit con `npm run ci` —que una instancia no tiene— y
-  // el ciclo de aprendizaje dejó de distribuirse en 0.4.0. Copiar salteando los dos únicos archivos
-  // que existen dejaba `.github/workflows/` vacío en cada instancia.
+  // el ciclo de aprendizaje dejó de distribuirse en 0.4.0. Copiar salteando lo que no aplica dejaba
+  // `.github/workflows/` vacío en cada instancia.
   copyRuntime(
     path.join(PROJECT_ROOT, 'automatization', 'hooks'),
     path.join(root, 'automatization', 'hooks'),
@@ -173,7 +174,7 @@ function instanceVersion(root) {
 // Lo cuenta el mismo parser que usan `check` y `tree`, no una expresión regular propia: los moldes traen
 // ejemplos comentados, y contarlos a mano anunciaba una tarea en cola y otra terminada en una instancia
 // recién creada. Un aviso que exagera lo que se pierde se deja de leer igual que uno que lo minimiza.
-function loQueSePierde(root) {
+function whatIsLost(root) {
   const planning = path.join(root, 'planning')
   const queued = P.readBacklog(planning).reduce((total, hito) => total + (hito.tasks || []).length, 0)
   const humanActions = ST.pendingHumanActions(planning).length
@@ -200,7 +201,7 @@ function destroy(dir, cli) {
   }
   if (O.mode(root) === 'toolkit') fail(`${root} es el toolkit: acá se fabrica Cauce, no se lo borra.`, 2)
 
-  const loss = loQueSePierde(root)
+  const loss = whatIsLost(root)
   const lines = [
     loss.epicas && `${loss.epicas} épica(s) en el roadmap`,
     loss.enCola && `${loss.enCola} tarea(s) en la cola`,

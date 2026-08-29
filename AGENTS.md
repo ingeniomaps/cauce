@@ -155,8 +155,17 @@ ni un agente lo aclara en milisegundos.
   documentación, en español; lo que lee una persona —salida del CLI, errores, plantillas—, en español.
   Los mensajes de commit van en inglés, Conventional Commits. Un nombre a medio traducir —`sinFase`,
   `esArchivoCompartido`— cuesta más que cualquiera de los dos idiomas: obliga a adivinar en cuál está
-  escrito el siguiente. El repositorio todavía tiene identificadores en español anteriores a esta regla;
+  escrito el siguiente. **Al escribir código nuevo se nombra en inglés desde el principio**, y eso
+  incluye mover o partir un archivo: los identificadores viajan tal cual y la deuda termina repartida
+  en más archivos que antes. El repositorio todavía tiene nombres en español anteriores a esta regla;
   se traducen cuando se toca el archivo, no en un barrido aparte.
+
+  Traducir uno se revisa **leyendo el diff, no corriendo la puerta**, porque un rename entra en tres
+  lugares donde no debe y ninguno rompe una prueba: la prosa española dentro de un template literal,
+  el vocabulario que un documento usa —`- Estado: pendiente` lo escribe el molde, lo lee un regex y lo
+  firma una persona— y una propiedad que cruza archivos, que se renombra en todos o rompe uno. El
+  segundo es el caro: cambiarlo dejó molde y regex consistentes entre sí e incompatibles con todo lo
+  escrito antes, y `npm run ci` siguió en verde.
 - Las pruebas corren con `node --test`. La puerta real es `npm run ci`: `check`, automatización,
   integraciones y cobertura, y `prepublishOnly` la exige antes de publicar.
 - El CLI se invoca con `node engine/cli/ops.js` o `npm run ops -- <comando>`; `make help` lista los

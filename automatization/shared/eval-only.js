@@ -18,7 +18,7 @@ const onlyCases = (input) => (Array.isArray(input.cases) ? input.cases : String(
 
 // Devuelve los casos pedidos, o los que faltan para que quien llama frene con su propio vocabulario.
 function pickCases(items, only) {
-  const existen = items.map((item) => item.id)
-  const missing = only.filter((id) => !existen.includes(id))
-  return { existen, missing, items: items.filter((item) => only.includes(item.id)) }
+  const present = items.map((item) => item.id)
+  const missing = only.filter((id) => !present.includes(id))
+  return { present, missing, items: items.filter((item) => only.includes(item.id)) }
 }

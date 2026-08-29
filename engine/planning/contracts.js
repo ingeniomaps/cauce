@@ -206,9 +206,9 @@ function validateRules(dir) {
 }
 
 // Una decisión que no dice si rige no decide nada, y el molde traía el menú entero en la línea de estado:
-// tres de las dieciséis decisiones escritas con este modelo se publicaron con el menú intacto. Presentar
+// casi una de cada cinco decisiones escritas con este modelo se publicó con el menú intacto. Presentar
 // las opciones no obliga a elegir; esto sí. Las secciones son las cuatro que se escriben siempre —las
-// alternativas quedan en el molde sin exigirse, porque pedirlas rechazaría quince decisiones que existen—.
+// alternativas quedan en el molde sin exigirse, porque pedirlas rechazaría a casi todas las que existen—.
 const ADR_STATES = ['Propuesto', 'Aceptado', 'Obsoleto']
 const ADR_SUPERSEDED = /^Reemplazada por \[[^\]]+\]\([^)]+\)(?: \(\d{4}-\d{2}-\d{2}\))?$/
 const ADR_SECTIONS = ['Contexto', 'Decisión', 'Consecuencias', 'Estado de implementación']
@@ -381,23 +381,25 @@ function validateState({ epics, milestones, done, wip, roles = new Set(), humanA
 const R17 = { taskCriteria: 5, epicCriteria: 7, milestoneTasks: 9 }
 
 // Se cuenta lo que está estructurado: criterios de la épica, criterios que hereda una tarea, tareas del
-// hito. La aceptación escrita en prosa no se cuenta —cuántas condiciones tiene una frase es una lectura,
-// y un número inventado ahí sería peor que ninguno—; ésa la mira el review, que para eso está R3.
+// hito. Quedan afuera las dos cosas que no son un conteo: la aceptación escrita en prosa —cuántas
+// condiciones tiene una frase es una lectura, y un número inventado ahí sería peor que ninguno— y la
+// segunda barra de R17, las cuatro horas de esfuerzo, que no está en el artefacto. Las dos las mira el
+// review, que para eso está R3, y la de esfuerzo es la que R17 dice que encuentra lo que ésta deja pasar.
 function oversizedUnits({ epics = [], milestones = [] }) {
   const errors = []
-  const decidir = (what, count, limit) =>
+  const undecided = (what, count, limit) =>
     `${what}: ${count} (umbral ${limit} de R17). Revisá si son dos resultados con vidas distintas y `
     + 'partilo; si es uno solo, partirlo lo empeora — dejalo entero agregando "(sin partir: <razón>)"'
-  const juzgar = (unit, what, count, limit) => {
-    if (count > limit && !unit.noSplit) errors.push(decidir(what, count, limit))
+  const judge = (unit, what, count, limit) => {
+    if (count > limit && !unit.noSplit) errors.push(undecided(what, count, limit))
   }
   for (const epic of epics) {
-    juzgar(epic, `roadmap/${epic.file}: criterios`, epic.criteria.length, R17.epicCriteria)
+    judge(epic, `roadmap/${epic.file}: criterios`, epic.criteria.length, R17.epicCriteria)
   }
   for (const milestone of milestones) {
-    juzgar(milestone, `hito ${milestone.slug}: tareas`, milestone.tasks.length, R17.milestoneTasks)
+    judge(milestone, `hito ${milestone.slug}: tareas`, milestone.tasks.length, R17.milestoneTasks)
     for (const task of milestone.tasks) {
-      juzgar(task, `BACKLOG ${task.slug}: criterios`, task.criteria.length, R17.taskCriteria)
+      judge(task, `BACKLOG ${task.slug}: criterios`, task.criteria.length, R17.taskCriteria)
     }
   }
   return errors

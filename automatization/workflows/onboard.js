@@ -143,8 +143,8 @@ if (!CONTEXT && state.opening) {
   return finish({ needsContext: true, opening: state.opening, dimensions, services: services.length })
 }
 
-const INVENTARIO = { services, externals: state.externals || [], secrets: state.secrets || [] }
-const EVIDENCE = `Inventario del workspace:\n${JSON.stringify(INVENTARIO)}` +
+const INVENTORY = { services, externals: state.externals || [], secrets: state.secrets || [] }
+const EVIDENCE = `Inventario del workspace:\n${JSON.stringify(INVENTORY)}` +
   `${CONTEXT ? `\n\nContexto aportado por la persona, que vale como hecho: ${CONTEXT}` : ''}` +
   `${services.length ? '' : '\n\nNo hay ningún servicio en el workspace: el código todavía no está acá.'}`
 

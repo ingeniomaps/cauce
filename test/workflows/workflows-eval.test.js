@@ -24,11 +24,11 @@ for (const name of ['agent-eval', 'flow-eval']) {
 
     // Un id que no existe frena en vez de correr una batería vacía y registrar cero de seis.
     assert.match(src, /stop\('caso-inexistente'/, 'un caso mal escrito no se convierte en corrida vacía')
-    assert.match(src, /Tiene: \$\{pick\.existen\.join\(', '\)\}/, 'y dice cuáles hay')
+    assert.match(src, /Tiene: \$\{pick\.present\.join\(', '\)\}/, 'y dice cuáles hay')
 
     // Y queda dicho que el registro parcial no vale por sí solo, que es lo que evita el próximo error:
     // dar por medido un sujeto con un registro que cubre uno de seis.
-    assert.match(src, /el registro va a cubrir \$\{ONLY\.length\} de \$\{pick\.existen\.length\}/)
+    assert.match(src, /el registro va a cubrir \$\{ONLY\.length\} de \$\{pick\.present\.length\}/)
   })
 }
 

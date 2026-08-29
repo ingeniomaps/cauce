@@ -35,7 +35,7 @@ function mergeConfig(current, incoming) {
 // Una entrada de hook que puso Cauce se reconoce por el guard al que apunta: `automatization/hooks/`
 // es nuestro y ninguna empresa escribe ahí. Se saca del archivo del usuario antes de fusionar para que
 // el merge deje exactamente las de esta versión, ni una más.
-const ENTREGADO = /automatization\/hooks\/guard-[a-z-]+\.sh/
+const DELIVERED = /automatization\/hooks\/guard-[a-z-]+\.sh/
 
 function withoutDeliveredHooks(config, live) {
   const dropped = []
@@ -44,7 +44,7 @@ function withoutDeliveredHooks(config, live) {
       return node
         .filter((item) => {
           const command = item && typeof item === 'object' ? String(item.command || '') : ''
-          if (!ENTREGADO.test(command)) return true
+          if (!DELIVERED.test(command)) return true
           // Sólo se anuncia lo que ya no vuelve: una entrada que el merge repone quedó igual, y decir
           // que se quitó y se puso la misma línea es ruido que esconde el caso que sí importa.
           if (!live.has(command)) dropped.push(command)

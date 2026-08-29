@@ -139,14 +139,15 @@ propuesta consolidada. -->
 // propuesta que ésta corrige, y repetirlos haría que el mismo hallazgo entre dos veces al contrato. El
 // insumo de una revisión es otro —qué mostró la evaluación posterior a aplicar—, y por eso el molde
 // pregunta eso y no otra cosa.
+//
 // El molde de los apartados que una persona escribe queda; lo que deja de quedar es `## Hallazgos` en
 // blanco. Una revisión que no puede decir qué la motiva no puede producir un cambio, y hasta acá se
 // llega sólo con material: el llamador ya se negó a abrirla sin él.
-function reviseProposal(root, agent, dir, previous, period, hallazgos = [], consumed = []) {
+function reviseProposal(root, agent, dir, previous, period, findings = [], consumed = []) {
   const parsed = previous.match(PROPOSAL_NAME)
   const revision = Number(parsed[2] || 1) + 1
   const file = path.join(dir, `${period}-r${revision}.md`)
-  const molde = `Qué mostró la evaluación posterior a aplicar \`${previous}\`. No repitas acá los hallazgos de esa
+  const placeholder = `Qué mostró la evaluación posterior a aplicar \`${previous}\`. No repitas acá los hallazgos de esa
 propuesta —ya entraron al contrato—: lo que va es lo que se supo después, con el registro de
 evaluación que lo sostiene.`
   fs.writeFileSync(file, `---
@@ -165,7 +166,7 @@ la reabre: es un cambio distinto, con su propia firma.
 
 ## Hallazgos
 
-${hallazgos.join('\n\n') || molde}
+${findings.join('\n\n') || placeholder}
 
 ## Evidencia
 
@@ -195,7 +196,7 @@ sólo que pase.
 - Fecha: por definir
 `)
   for (const record of consumed) markConsolidated(record)
-  return { file, created: true, reports: 0, corrects: previous, findings: hallazgos.length }
+  return { file, created: true, reports: 0, corrects: previous, findings: findings.length }
 }
 
 // La última propuesta del período, si la hay: es contra ella que se decide si abrir una revisión.
@@ -204,14 +205,9 @@ function lastOfPeriod(dir, period) {
   return names.length ? names[names.length - 1] : ''
 }
 
-// Qué aprende un recorrido, y de dónde. Un cargo aprende de su profesión —normas, versiones, fuentes
-// que cambian afuera— y por eso investiga. Un recorrido no tiene profesión: lo único que puede
-// enseñarle algo es cómo le fue, así que su insumo son los veredictos en contra de sus propias
-// corridas. Pedirle una investigación semanal sería pedirle que lea una literatura que no existe, y
-// devolvería informes vacíos.
-//
-// De cada registro sin sellar entran los casos que no pasaron, con su contraste y de qué corrida
-// salen. Si no hay ninguno, eso también es un resultado: el recorrido aguantó y no hay qué corregir.
+// De qué aprende un recorrido: de cada registro sin sellar entran los casos que no pasaron, con su
+// contraste y de qué corrida salen. Si no hay ninguno, eso también es un resultado — el recorrido
+// aguantó y no hay qué corregir. Por qué es esto y no una investigación, en `pendingRuns`.
 const VERDICT = /\n### ([^\n]+)\n\n- Veredicto: (pasa|no pasa)\n([\s\S]*?)(?=\n### |$)/g
 
 function verdicts(text) {
@@ -340,8 +336,8 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
   // Una sola propuesta pendiente por período. Si la última todavía no se aplicó, abrir otra partiría
   // la firma en dos documentos que dicen cosas distintas sobre el mismo contrato.
   const previous = lastOfPeriod(proposalDir, sealing)
-  const pendiente = previous && proposalState(fs.readFileSync(path.join(proposalDir, previous), 'utf8')) !== 'applied'
-  if (pendiente) return { file: path.join(proposalDir, previous), created: false, reports: 0 }
+  const unapplied = previous && proposalState(fs.readFileSync(path.join(proposalDir, previous), 'utf8')) !== 'applied'
+  if (unapplied) return { file: path.join(proposalDir, previous), created: false, reports: 0 }
 
   // La misma regla que abajo, y el mismo motivo: un documento que no puede decir qué corregir no
   // produce un cambio de contrato, y cuesta igual la firma humana que uno que sí. Antes se abría uno
@@ -372,12 +368,12 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
   if (!reports.length && !red.findings.length) return { file: '', created: false, reports: 0 }
 
   const reportPaths = reports.map((name) => path.join(reportDir, name))
-  const hallazgos = [...reportPaths.map((file) => reportSummary(root, file)), ...red.findings]
+  const findings = [...reportPaths.map((file) => reportSummary(root, file)), ...red.findings]
   const consumed = [...reportPaths, ...red.consumed]
-  if (previous) return reviseProposal(root, agent, proposalDir, previous, sealing, hallazgos, consumed)
+  if (previous) return reviseProposal(root, agent, proposalDir, previous, sealing, findings, consumed)
 
   const file = path.join(proposalDir, `${sealing}.md`)
-  const summaries = hallazgos
+  const summaries = findings
   fs.writeFileSync(file, `---
 agent: ${agent}
 period: ${sealing}
@@ -422,7 +418,8 @@ function reportSummary(root, report) {
   const name = path.basename(report)
   const text = fs.readFileSync(report, 'utf8')
   // Sin `m`: con esa bandera el `$` casa fin de *línea*, así que la búsqueda no ávida cortaba en el
-  // primer salto y la propuesta consolidaba una sola línea de una recomendación de diez.
+  // primer salto y la propuesta consolidaba una sola línea de una recomendación de diez. Comprobado en
+  // node v24.18.0: el mismo patrón con `m` devuelve la primera línea y sin `m` devuelve el bloque.
   const match = text.match(/\n## Recomendación\s*\n([\s\S]*?)(?=\n## |$)/) || []
   const recommendation = (match[1] || 'Sin recomendación registrada.').trim()
   return `### ${name.slice(0, -3)}\n\nFuente interna: \`${path.relative(root, report)}\`\n\n${recommendation}`

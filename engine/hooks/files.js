@@ -18,8 +18,9 @@ function secrets(input) {
       block(`${file} parece un archivo de credenciales en texto plano.`)
     }
     // Nombres de credencial que la herramienta escribe sola y que la lista anterior no cubría:
-    // `.npmrc` guarda el token de publicación, `.netrc` el de cualquier host, `id_*` una clave
-    // privada de SSH y `~/.aws/credentials` las de AWS. Los cuatro son estándar, no exóticos.
+    // `.npmrc` guarda el token de publicación, `.netrc` el de cualquier host, `id_rsa` y sus tres
+    // hermanas una clave privada de SSH, y `credentials` las de AWS. Los cuatro son estándar, no
+    // exóticos — y las claves SSH van por nombre de algoritmo, no por prefijo.
     //
     // Esto tapa un caso conocido; no vuelve completo al guard. La forma de decidir sigue siendo el
     // nombre del archivo, así que otro formato pasa igual — ver «Qué son y qué no son» en el README.
