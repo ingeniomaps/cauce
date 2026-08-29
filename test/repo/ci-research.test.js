@@ -116,6 +116,34 @@ test('una semana sin credencial se anuncia, en vez de quedar en verde y en silen
 //
 // Se prueba ejecutando los comandos contra un repositorio de verdad y no leyendo el YAML: el defecto
 // no era el texto sino lo que ese texto hace, y otra redacción igual de ciega volvería a pasar.
+// `Download report` tolera no encontrar nada —sin eso un cargo roto se lleva los PR de los demás— y
+// esa tolerancia no distingue dos cosas muy distintas: el cargo cuya investigación falló, que ya se ve
+// en rojo, y el informe que se hizo, se subió y no llegó, que no se ve en ningún lado y expira a los
+// siete días. Lo que separa una de la otra es el agregado de la matriz: `research` no puede salir
+// verde sin haber subido —`Prepare report` escribe el informe siempre, así que `Collect report` corre
+// siempre y falla ruidoso si quedó vacío—, así que con la investigación entera en verde un download
+// que falla es pérdida real.
+test('un informe que se hizo y no llegó se anuncia; uno que nunca existió no', () => {
+  const source = workflow('agent-learning')
+  const bloque = source.split(/^  research-pr:$/m)[1].split(/^  [a-z-]+:$/m)[0]
+
+  // Las dos mitades. Sin la primera avisaría también por cada cargo que ya está en rojo, y un aviso
+  // que repite lo que otro job grita se termina ignorando igual que el rojo semanal.
+  assert.match(bloque, /needs\.research\.result == 'success'\s*&&\s*steps\.fetch\.outcome == 'failure'/,
+    'el aviso mira que la investigación entera haya salido bien, no sólo que este download falle')
+  assert.match(bloque, /::warning title=/, 'y sale como anotación, no como una línea más de log')
+
+  // La tolerancia sigue en pie: es lo que impide que un cargo roto bloquee a los otros.
+  assert.match(bloque, /continue-on-error: true/, 'un cargo que falla no se lleva los PR de los demás')
+  assert.match(bloque, /if: steps\.fetch\.outcome == 'success'/, 'y el PR sigue abriéndose sólo con informe')
+
+  // Lo que vuelve cierta la implicación de arriba, y por eso se afirma acá: si `Prepare report`
+  // dependiera de una condición, `research` podría salir verde sin subir nada y el aviso mentiría.
+  const research = source.split(/^  research:$/m)[1].split(/^  [a-z-]+:$/m)[0]
+  const prepare = research.split('- name: Prepare report')[1].split('- name:')[0]
+  assert.equal(/^\s+if:/m.test(prepare), false, 'Prepare report corre siempre, que es lo que ata verde a subido')
+})
+
 test('el workflow de aprendizaje ve los archivos que el ciclo crea', { skip: process.platform === 'win32' }, () => {
   const source = workflow('agent-learning')
 

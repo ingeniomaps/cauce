@@ -388,6 +388,19 @@ jobs:
         with:
           name: research-${{ matrix.agent }}
           path: ${{ github.workspace }}
+      # Sólo cuando la pérdida es real, y por eso mira el agregado de la matriz. `research` verde
+      # implica artifact subido —`Prepare report` siempre escribe el informe, así que `Collect report`
+      # siempre corre y falla ruidoso si quedó vacío—, de modo que con la investigación entera en verde
+      # un download que falla es un informe que se hizo y no llegó: nadie abre su PR y el artifact
+      # expira a los siete días. Si en cambio algún cargo falló, el rojo de su job ya lo dice y avisar
+      # acá sería repetirlo.
+      - name: Warn when a finished report did not arrive
+        if: needs.research.result == 'success' && steps.fetch.outcome == 'failure'
+        env:
+          AGENT: ${{ matrix.agent }}
+        run: |
+          echo "::warning title=Informe perdido::La investigación de $AGENT terminó bien y su informe no llegó al job que abre el PR. Se pierde salvo que se relance antes de que expire el artifact."
+
       - name: Open research pull request
         if: steps.fetch.outcome == 'success'
         env:

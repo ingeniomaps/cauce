@@ -107,7 +107,13 @@ test('el aprendizaje no enciende de más, aísla el fallo de un cargo y no se pi
 
   assert.match(source, /needs\.discover\.outputs\.model == 'true'/, 'la credencial se comprueba una vez')
 
-  assert.equal(/needs\.research\.result == 'success'/.test(source), false, 'un cargo no bloquea a los demás')
+  // Sobre el `if` de nivel job y no sobre el archivo entero. Lo que bloqueaba a los demás era el gate
+  // del job; el mismo texto en un `if` de paso decide si se imprime un aviso y no detiene a nadie, y
+  // la aserción de antes no los distinguía: prohibía la cadena en cualquier parte y salía en rojo por
+  // un paso que no bloquea nada.
+  const researchPr = source.split(/^  research-pr:$/m)[1].split(/^  [a-z-]+:$/m)[0]
+  const gateDelJob = (researchPr.match(/^ {4}if:.*$/m) || [''])[0]
+  assert.equal(/needs\.research\.result == 'success'/.test(gateDelJob), false, 'un cargo no bloquea a los demás')
 
   assert.match(source, /^concurrency:$/m, 'una sola corrida a la vez')
   assert.match(source, /cancel-in-progress: false/, 'y no se corta una que ya está abriendo PR')
