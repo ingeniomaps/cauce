@@ -415,7 +415,6 @@ const JUSTIFIED = {
 }
 
 const PENDING_SPLIT = {
-  'test/instance.test.js': 'init, upgrade y destroy',
   'test/workflows.test.js': 'los recorridos leídos como fuente, por familia',
   'test/contracts.test.js': 'épica, backlog, reglas y ADR',
   'test/ci.test.js': 'el ciclo de aprendizaje y el resto de la automatización del repositorio',
