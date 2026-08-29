@@ -398,8 +398,6 @@ test('la conducta prohibida de un cargo llega a quien juzga', () => {
   assert.equal(parsed.required.includes('automatic_skill_rewrite'), false)
 })
 
-// Al ciclo le faltaba el final. Había firma, aplicación e historial, y `status:` nacía en `proposed` y
-// no lo movía nadie: volver a promover encontraba la misma propuesta firmada —«aprobada y aplicada»
 // Lo que hace una persona antes de aplicar: decir quién decide y qué cambia. `agent-promote` se niega
 // sin eso y `seal` también, así que un test que sella sin firmar prueba un camino que no existe.
 function firmarPropuesta(file) {
@@ -408,7 +406,6 @@ function firmarPropuesta(file) {
     .replace(/^(## Cambio propuesto\n)/m, '$1\nSe agrega la fuente que el informe trajo.\n'))
 }
 
-// también lee como aprobada— y la aplicaba de nuevo, duplicando cada viñeta y cada fuente sin fallar.
 // Dentro de un archivo lo atrapa `evaluate`, que es lo que corre en una empresa. Es error y no aviso:
 // la cadencia sale del `tier` de cada entrada, así que dos copias de la misma fuente pueden decir cosas
 // distintas sobre cada cuánto publica, y la más rápida gana sin que nadie lo haya decidido.
@@ -458,6 +455,9 @@ test('el catálogo no repite una fuente bajo dos nombres', () => {
   assert.deepEqual([...new Set(repetidas)], [], 'una URL, un nombre en todo el catálogo')
 })
 
+// Al ciclo le faltaba el final. Había firma, aplicación e historial, y `status:` nacía en `proposed` y
+// no lo movía nadie: volver a promover encontraba la misma propuesta firmada —«aprobada y aplicada»
+// también lee como aprobada— y la aplicaba de nuevo, duplicando cada viñeta y cada fuente sin fallar.
 test('una propuesta aplicada no se puede volver a aplicar', () => {
   const target = installedProject('Sello de propuesta')
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')

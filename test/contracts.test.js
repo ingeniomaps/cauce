@@ -611,6 +611,7 @@ test('los umbrales de R17 exigen decidir, y la razón escrita alcanza', () => {
     /BACKLOG muchos: criterios: 6 \(umbral 5 de R17\)/)
 })
 
+// Todo esto se probaba lanzando el CLI contra un planning en disco, así que cada rama costaba un
 // proceso y un árbol de archivos. Extraída, `validateState` recibe el estado ya leído y se ejercita en
 // memoria: es lo que la mudanza compra, y sin esto sería sólo mover código de archivo.
 test('validateState juzga el estado ya leído, sin tocar disco', () => {

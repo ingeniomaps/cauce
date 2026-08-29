@@ -12,6 +12,21 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 
+// Los archivos de código del repositorio, que dos pruebas recorren igual. Vive acá y no dentro de cada
+// una porque copiado se pudre una de las dos copias —se queda sin un directorio— y nada falla.
+function sourceFiles() {
+  const root = path.resolve(__dirname, '..')
+  const below = (dir, out = []) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const file = path.join(dir, entry.name)
+      if (entry.isDirectory()) { if (entry.name !== 'node_modules') below(file, out); continue }
+      if (/\.(js|sh)$/.test(entry.name)) out.push(file)
+    }
+    return out
+  }
+  return ['engine', 'automatization', 'test', 'template'].flatMap((dir) => below(path.join(root, dir)))
+}
+
 // Sin linter —el toolkit no tiene dependencias, ni siquiera de desarrollo— una convención sólo existe
 // si algo la comprueba. El prefijo no es cosmético: `require('fs')` lo puede secuestrar un paquete
 // llamado `fs`, y `require('node:fs')` no. Estaba en 31 de 46 lugares, que es la peor de las mezclas.
@@ -127,18 +142,61 @@ test('el README de recorridos nombra todos los que trae el catálogo', () => {
 // hecho con `─` mide 236. Medido en bytes, tres archivos limpios parecían estar en falta.
 test('ninguna línea de código pasa los 120 caracteres que fija la convención', () => {
   const raiz = path.resolve(__dirname, '..')
-  const codigo = (dir, salida = []) => {
-    for (const entrada of fs.readdirSync(dir, { withFileTypes: true })) {
-      const ruta = path.join(dir, entrada.name)
-      if (entrada.isDirectory()) { if (entrada.name !== 'node_modules') codigo(ruta, salida); continue }
-      if (/\.(js|sh)$/.test(entrada.name)) salida.push(ruta)
-    }
-    return salida
-  }
-  const archivos = ['engine', 'automatization', 'test', 'template'].flatMap((d) => codigo(path.join(raiz, d)))
+  const archivos = sourceFiles()
   const largas = archivos.flatMap((file) => fs.readFileSync(file, 'utf8').split('\n')
     .map((linea, i) => ({ file, n: i + 1, largo: [...linea].length }))
     .filter((x) => x.largo > 120)
     .map((x) => `${path.relative(raiz, x.file)}:${x.n} (${x.largo})`))
   assert.deepEqual(largas, [], `pasan los 120 caracteres:\n  ${largas.join('\n  ')}`)
+})
+
+// Un comentario cortado a la mitad no se detecta releyendo: se lee entero y quien lo escribió ya lo da
+// por bueno. Los splits de archivo del 22 de agosto dejaron siete así —la mitad de una oración en
+// `catalog.js` y la otra en `io.js`, la última línea del encabezado de `providerNames` dentro del
+// párrafo de otra función— y los siete pasaron esta suite en verde.
+//
+// Lo que se comprueba es la oración y no la ubicación: un bloque que empieza en minúscula perdió su
+// principio, y uno que no cierra perdió su final. La otra forma —el comentario entero que quedó lejos
+// del código que describía— tiene la misma silueta que un encabezado de sección legítimo, así que no se
+// comprueba acá: este verde no dice nada sobre ella.
+const PROSE_END = /[.:;!?)»`'"\]—-]$/
+// Dos formas que no son prosa y por eso no cierran oración: la regla de guiones que separa actos dentro
+// de una prueba larga, y el bloque de uso que muestra cómo se invoca un script. Se reconocen por su
+// forma —la línea decorativa por el guion de caja, la muestra por su sangría— y no por una lista de
+// archivos, que envejecería sola.
+const DECORATION = /─{3,}/
+const SAMPLE = /^ {3,}\S/
+
+test('ningún comentario empieza ni termina a mitad de una oración', () => {
+  const root = path.resolve(__dirname, '..')
+  // `npm` se escribe en minúscula y encabeza dos comentarios que están completos. La excepción se
+  // declara en vez de perdonarse: un nombre propio en minúscula no es una oración empezada por la mitad.
+  const LOWERCASE_NAMES = new Set(['npm'])
+  const cut = []
+  let seen = 0
+  for (const file of sourceFiles()) {
+    const mark = file.endsWith('.sh') ? /^\s*#(?!!)/ : /^\s*\/\//
+    const lines = fs.readFileSync(file, 'utf8').split('\n')
+    let i = 0
+    while (i < lines.length) {
+      if (!mark.test(lines[i])) { i += 1; continue }
+      const start = i
+      const body = []
+      while (i < lines.length && mark.test(lines[i])) { body.push(lines[i].replace(mark, '').trimEnd()); i += 1 }
+      const prose = body.filter((line) => line.trim() && !DECORATION.test(line) && !SAMPLE.test(line))
+      if (!prose.length) continue
+      seen += 1
+      const where = `${path.relative(root, file)}:${start + 1}`
+      const first = prose[0].trim()
+      const last = prose[prose.length - 1].trim()
+      if (/^[a-záéíóúñ]/.test(first) && !LOWERCASE_NAMES.has(first.split(/[\s,.:]/)[0])) {
+        cut.push(`${where}: empieza a mitad de una oración — «${first.slice(0, 60)}…»`)
+      }
+      if (!PROSE_END.test(last)) cut.push(`${where}: no cierra la oración — «…${last.slice(-60)}»`)
+    }
+  }
+  // Cero bloques inspeccionados también da verde, y ese verde diría que no hay comentarios partidos
+  // sobre un recorrido que no encontró un solo archivo. El piso está muy por debajo de los que hay.
+  assert.ok(seen > 300, `sólo se inspeccionaron ${seen} bloques de comentario`)
+  assert.deepEqual(cut, [], `comentarios partidos:\n  ${cut.join('\n  ')}`)
 })
