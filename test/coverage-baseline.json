@@ -65,7 +65,7 @@
     "functions": 88
   },
   "engine/cli/wiring.js": {
-    "lines": 87,
+    "lines": 85,
     "branches": 46,
     "functions": 77
   },

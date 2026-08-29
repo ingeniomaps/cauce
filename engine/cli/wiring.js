@@ -112,9 +112,6 @@ const INTEGRATION = {
   },
 }
 
-// Dónde puede mirar una instancia: exactamente las raíces que declara, y nada por encima de ellas. Sale
-// de `ops.config.json` en vez de suponerse —el sidecar declara `..`, el embebido `.`— para que acotar las
-// raíces acote también el escaneo, y para que nadie termine recorriendo la carpeta de al lado.
 // Las tres reconciliaciones son el mismo comando con otra operación: se declaran en el mismo lugar
 // para que agregar una cuarta no pida tocar el despachador.
 for (const operation of ['reset', 'rebase', 'reconcile']) {
