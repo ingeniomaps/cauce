@@ -199,6 +199,39 @@ test('el aprendizaje no enciende de más, aísla el fallo de un cargo y no se pi
   }
 })
 
+// Sin credencial la corrida no falla —`research` se saltea— así que termina en verde, y el aviso vivía
+// en un `echo` suelto entre miles de líneas de log. El ciclo puede quedar parado semanas sin que nada
+// lo diga: el 2026-08-17 la credencial estaba y el 2026-08-24 ya no, y la caída se descubrió cinco días
+// después leyendo logs a mano. Lo que se prueba es que el aviso salga como anotación, que es lo único
+// que se ve sin abrir la corrida.
+test('una semana sin credencial se anuncia, en vez de quedar en verde y en silencio', () => {
+  const source = workflow('agent-learning')
+  const dir = tempRoot('cauce-creds-aviso-')
+  const salida = path.join(dir, 'github-output')
+  const correr = (env) => {
+    fs.writeFileSync(salida, '')
+    const hecho = spawnSync('bash', ['-c', workflowStep(source, 'id: creds')], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, OAUTH: '', KEY: '', ...env, GITHUB_OUTPUT: salida },
+    })
+    return { ...hecho, escrito: fs.readFileSync(salida, 'utf8') }
+  }
+
+  const sin = correr({})
+  assert.equal(sin.status, 0, 'no se falla la corrida: un rojo cada lunes se termina ignorando')
+  assert.match(sin.escrito, /^ready=false$/m, 'y research no arranca')
+  assert.match(sin.stdout, /^::warning title=[^:]+::/m,
+    'el aviso sale como anotación; un echo suelto no se ve sin abrir el log')
+  assert.match(sin.stdout, /CLAUDE_CODE_OAUTH_TOKEN/,
+    'y nombra qué cargar, no sólo que falta algo')
+
+  // Con cualquiera de las dos alcanza, y entonces no hay nada que anunciar.
+  for (const env of [{ OAUTH: 'x' }, { KEY: 'x' }]) {
+    const con = correr(env)
+    assert.match(con.escrito, /^ready=true$/m, `con ${Object.keys(env)[0]} se investiga`)
+    assert.equal(/::warning/.test(con.stdout), false, 'y no se avisa de una falta que no existe')
+  }
+})
+
 // El agente de investigación ingiere contenido web que nadie controla. Mientras corría en el mismo
 // job que la credencial de escritura, cualquier instrucción que viniera en una página tenía un
 // repositorio a mano. Ahora el informe sale por artifact y el commit lo hace otro job sin modelo.
