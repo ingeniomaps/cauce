@@ -57,6 +57,10 @@ jobs:
     timeout-minutes: 5
     outputs:
       agents: ${{ steps.list.outputs.agents }}
+      # Quién investiga y quién se consolida no son la misma lista, y el día del ensamblaje son
+      # opuestas: `agents` queda vacía a propósito —ese día no se investiga— y consolidar los quiere
+      # a todos. Con una sola salida, `propose` heredaba el vacío y se quedaba sin matriz.
+      consolidate: ${{ steps.list.outputs.consolidate }}
       flows: ${{ steps.flows.outputs.flows }}
       model: ${{ steps.creds.outputs.ready }}
     steps:
@@ -122,6 +126,13 @@ jobs:
             }
             console.log(`${list.length} cargo(s)${cadence ? ` de cadencia ${cadence}` : ""}`)
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `agents=${JSON.stringify(list)}\n`)
+            // A quién consolidar: lo mismo que arriba **sin** el filtro por cadencia. Consolidar no
+            // sigue el calendario de nadie —lee lo que quedó sin sellar— así que un cargo semanal y
+            // uno trimestral se consolidan el mismo día. Un slug a mano sí manda: si nombra un
+            // recorrido esto queda vacío, y ahí `propose` no tiene que arrancar.
+            const consolidar = (only ? roles.filter((role) => role.slug === only) : roles)
+              .map((role) => role.slug).sort()
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `consolidate=${JSON.stringify(consolidar)}\n`)
           ' "$all"
 
       # Los recorridos no salen de `agents list --json` —no son cargos— y por eso ninguno aprendió
@@ -436,8 +447,9 @@ jobs:
   # Por eso puede escribir sin la separación que exige `research`.
   propose:
     if: >-
-      github.event.schedule == '17 7 1 * *'
-      || (github.event_name == 'workflow_dispatch' && inputs.phase != 'research')
+      needs.discover.outputs.consolidate != '[]'
+      && (github.event.schedule == '17 7 1 * *'
+        || (github.event_name == 'workflow_dispatch' && inputs.phase != 'research'))
     needs: discover
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -448,7 +460,7 @@ jobs:
       fail-fast: false
       max-parallel: 5
       matrix:
-        agent: ${{ fromJSON(needs.discover.outputs.agents) }}
+        agent: ${{ fromJSON(needs.discover.outputs.consolidate) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

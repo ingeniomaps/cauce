@@ -433,6 +433,62 @@ test('cada cron elige su cohorte, y el del ensamblaje no aborta por no tener nin
     'a mano sin slug van todos, sin mirar cadencia')
 })
 
+// La mitad que faltaba. La suite ya afirmaba las dos por separado —que el día del ensamblaje la lista
+// sale vacía, y que `propose` gatea por ese cron— y nunca las cruzaba, así que el defecto vivía
+// justo en el medio: `propose` iteraba sobre esa misma lista vacía. Una matriz sin valores no corre
+// —«Matrix vector 'agent' does not contain any values»—, o sea que el único job que consolida cargos
+// no arrancaba el único día que existe para eso. `research` y `propose-flows` ya llevaban la guarda
+// `!= '[]'`; `propose` no.
+//
+// Y no era sólo el día 1: un dispatch con el slug de un recorrido deja la lista de cargos vacía
+// igual, que es exactamente para lo que existe el paso `List flows`.
+test('el día del ensamblaje propose tiene a quién consolidar, que es cuando agents está vacía', () => {
+  const source = workflow('agent-learning')
+  const dir = tempRoot('cauce-consolidar-')
+  const salida = path.join(dir, 'github-output')
+  const roles = JSON.stringify([
+    { slug: 'un-semanal', cadence: 'semanal' },
+    { slug: 'un-mensual', cadence: 'mensual' },
+    { slug: 'un-trimestral', cadence: 'trimestral' },
+  ])
+  const correr = (env) => {
+    const cuerpo = workflowStep(source, 'id: list').replace(/^all=\$\(node .*\)$/m, `all=${JSON.stringify(roles)}`)
+    fs.writeFileSync(salida, '')
+    const hecho = spawnSync('bash', ['-c', cuerpo], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, ONLY: '', ...env, GITHUB_OUTPUT: salida },
+    })
+    return { ...hecho, escrito: fs.readFileSync(salida, 'utf8') }
+  }
+
+  // Las dos salidas del mismo paso y en la misma corrida: nadie investiga, todos se consolidan.
+  const ensamblaje = correr({ SCHEDULE: '17 7 1 * *' })
+  assert.match(ensamblaje.escrito, /^agents=\[\]$/m, 'ese día no se investiga')
+  assert.match(ensamblaje.escrito, /^consolidate=\["un-mensual","un-semanal","un-trimestral"\]$/m,
+    'y consolidar los quiere a todos: con la lista vacía, propose se queda sin matriz')
+
+  // Consolidar no sigue el calendario de nadie, así que un cron de investigación tampoco lo recorta.
+  const semanal = correr({ SCHEDULE: '17 13 * * 1' })
+  assert.match(semanal.escrito, /^agents=\["un-semanal"\]$/m)
+  assert.match(semanal.escrito, /^consolidate=\["un-mensual","un-semanal","un-trimestral"\]$/m,
+    'la cadencia elige quién investiga, no quién se consolida')
+
+  // Un slug a mano sí manda, en los dos sentidos.
+  const uno = correr({ SCHEDULE: '', ONLY: 'un-mensual' })
+  assert.match(uno.escrito, /^consolidate=\["un-mensual"\]$/m, 'un dispatch con slug consolida ése y no los 53')
+  const recorrido = correr({ SCHEDULE: '', ONLY: 'change-review' })
+  assert.match(recorrido.escrito, /^consolidate=\[\]$/m,
+    'un slug que es de recorrido no le da cargos a propose, y ahí no tiene que arrancar')
+
+  // Y el job la usa: la guarda contra el vacío **y** la matriz, que es donde entraba el defecto.
+  const bloque = source.split(/^  propose:$/m)[1].split(/^  [a-z-]+:$/m)[0]
+  assert.match(bloque, /needs\.discover\.outputs\.consolidate != '\[\]'/,
+    'propose no arranca con lista vacía, como research y propose-flows')
+  assert.match(bloque, /agent: \$\{\{ fromJSON\(needs\.discover\.outputs\.consolidate\) \}\}/,
+    'y su matriz sale de consolidate, no de quién investigó esta semana')
+  assert.match(source, /^      consolidate: \$\{\{ steps\.list\.outputs\.consolidate \}\}$/m,
+    'discover la declara como salida')
+})
+
 // El input `agent` de un dispatch nombra un cargo **o** un recorrido, y los dos pasos que arman las
 // matrices corren en orden. El de cargos abortaba con «No existe el agente» apenas su lista quedaba
 // vacía, así que un slug de recorrido tiraba el job entero antes de que el paso de recorridos pudiera
