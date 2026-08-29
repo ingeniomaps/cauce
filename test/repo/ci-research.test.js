@@ -77,10 +77,10 @@ test('un informe sin contenido no abre PR', () => {
 })
 
 // Sin credencial la corrida no falla —`research` se saltea— así que termina en verde, y el aviso vivía
-// en un `echo` suelto entre miles de líneas de log. El ciclo puede quedar parado semanas sin que nada
-// lo diga: el 2026-08-17 la credencial estaba y el 2026-08-24 ya no, y la caída se descubrió cinco días
-// después leyendo logs a mano. Lo que se prueba es que el aviso salga como anotación, que es lo único
-// que se ve sin abrir la corrida.
+// en un `echo` suelto entre miles de líneas de log. Eso ya dejó al ciclo parado una semana sin que nada
+// lo dijera: el secret faltó en la corrida del 2026-08-24 y estaba de vuelta el 28, pero el hueco se
+// encontró cinco días tarde y leyendo logs a mano. Lo que se prueba es que el aviso salga como
+// anotación, que es lo único que se ve sin abrir la corrida.
 test('una semana sin credencial se anuncia, en vez de quedar en verde y en silencio', () => {
   const source = workflow('agent-learning')
   const dir = tempRoot('cauce-creds-aviso-')
@@ -155,7 +155,7 @@ test('el workflow de aprendizaje ve los archivos que el ciclo crea', { skip: pro
   )
 })
 
-// `reports/` nace con el primer informe del cargo, así que en 43 de los 47 no existe en git todavía.
+// `reports/` nace con el primer informe del cargo, así que para casi todos no existe en git todavía.
 // El chequeo que exige «exactamente el informe y nada más» comparaba contra la salida por defecto de
 // `git status`, que colapsa un directorio sin trackear en una sola línea: veía `.../learning/reports/`
 // donde esperaba la ruta del archivo, y abortaba la publicación del primer informe de cada cargo.

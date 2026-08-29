@@ -163,11 +163,11 @@ jobs:
           else
             echo 'ready=false' >> "$GITHUB_OUTPUT"
             # Una anotación y no un `echo`: sin credencial la corrida termina en verde —`research` se
-            # saltea, no falla— y el aviso quedaba en una línea perdida del log, así que el ciclo podía
-            # estar parado semanas sin que nada lo dijera. Pasó: el 2026-08-17 la credencial estaba y el
-            # 2026-08-24 ya no, y se descubrió cinco días después leyendo logs a mano. Fallar la corrida
-            # sería peor —un rojo cada lunes se termina ignorando—; una anotación se ve en la lista de
-            # runs sin romper nada.
+            # saltea, no falla— y el aviso quedaba en una línea perdida del log. Eso ya dejó al ciclo
+            # parado una semana sin que nada lo dijera: el secret faltó en la corrida programada del
+            # 2026-08-24 y estaba de vuelta el 28, pero el hueco se encontró cinco días tarde y leyendo
+            # logs a mano. Fallar la corrida sería peor —un rojo cada lunes se termina ignorando—; una
+            # anotación se ve en la lista de runs sin romper nada.
             echo '::warning title=Sin credencial::No hay CLAUDE_CODE_OAUTH_TOKEN ni ANTHROPIC_API_KEY: esta semana no se investiga. Cargá uno de los dos en los secrets del repositorio.'
           fi
 
