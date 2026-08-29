@@ -363,6 +363,26 @@ jobs:
             echo "Mirá el paso «Research» — la causa suele ser una herramienta denegada, no el modelo." >&2
             exit 1
           fi
+          # `Recomendación` se exige **presente**, no con contenido, y esa diferencia es la decisión.
+          # Un informe puede encontrar cosas y no proponer ningún cambio: es un resultado legítimo, se
+          # guarda como histórico y `reportSummary` anota «Sin recomendación registrada» sin tocar el
+          # contrato del cargo. Exigir contenido tiraría ese histórico, que es lo contrario de lo que
+          # hace falta.
+          #
+          # Lo que no es legítimo es que el título se renombre o desaparezca. `reportSummary` lo lee con
+          # un patrón exacto y, al no encontrarlo, escribe **esa misma frase**: un título roto sale
+          # idéntico a una ausencia genuina, así que una recomendación de diez líneas se pierde con cara
+          # de resultado normal. Nadie lo ve leyendo el PR — entre trescientas líneas, la sección está y
+          # se llama casi igual.
+          #
+          # `grep -qx` y no `-q`: la línea tiene que ser el título entero, así que «## Recomendaciones» o
+          # «## Recomendación final» no pasan, que es justo el error que hay que cazar.
+          if ! grep -qx '## Recomendación' "$report"; then
+            echo "El informe de $AGENT no trae el título «## Recomendación» tal cual." >&2
+            echo "Es lo único que la propuesta mensual consolida y lo lee con un patrón exacto:" >&2
+            echo "renombrarlo no da error, deja la propuesta diciendo que no hubo recomendación." >&2
+            exit 1
+          fi
           echo "path=$report" >> "$GITHUB_OUTPUT"
           echo "stamp=$stamp" >> "$GITHUB_OUTPUT"
       - name: Upload report
