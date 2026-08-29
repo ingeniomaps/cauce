@@ -19,6 +19,16 @@
     "branches": 67,
     "functions": 88
   },
+  "engine/agents/learning-files.js": {
+    "lines": 96,
+    "branches": 92,
+    "functions": 100
+  },
+  "engine/agents/learning-sources.js": {
+    "lines": 98,
+    "branches": 90,
+    "functions": 100
+  },
   "engine/agents/learning.js": {
     "lines": 98,
     "branches": 59,
