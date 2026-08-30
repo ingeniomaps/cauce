@@ -186,9 +186,9 @@ function evaluate(agent, caso, cli) {
     // un banco suelto, para mirarlo a mano; una corrida real pide uno por caso.
     //
     // Relativa a la raíz, como la de `--record`: esta salida la lee el agente que prepara los bancos,
-    // y de ahí la ruta viaja a los informes y a las propuestas que después lee otro cargo. Absoluta,
-    // dejó 1.485 citas a `/home/<alguien>/Code/personal/ops/.cauce-eval/…` repartidas en 175 archivos
-    // de `evaluations/results/` y `learning/proposals/`; el repositorio se renombró y ninguna resuelve.
+    // y de ahí la ruta viaja a los informes y a las propuestas que después lee otro cargo. Absoluta
+    // nombraba el directorio personal de una máquina, y así quedaron mil cuatrocientas ochenta y cinco
+    // citas que dejaron de resolver el día que este repositorio cambió de nombre.
     return console.log(path.relative(root, evaluationBench(root, agent, caso, cli.has('--force'), kind)))
   }
   try {

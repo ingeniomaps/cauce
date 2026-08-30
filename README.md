@@ -51,7 +51,7 @@ instala la dependencia, deja el wiring del runner puesto y valida la instancia a
 ✓ claude: adaptador operativo (0 advertencia(s))
 ✓ planning válido: 0 épica(s), 0 tarea(s) en cola, 0 terminada(s)
 
-2 servicio(s) en /home/vos/mi-repo: apps/api, apps/web
+2 servicio(s) en el workspace: apps/api, apps/web
 
 ¿De qué trata este proyecto? Una línea alcanza.
 
