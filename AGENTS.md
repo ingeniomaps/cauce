@@ -134,6 +134,42 @@ ni un agente lo aclara en milisegundos.
 
 **El veredicto se escribe junto al cargo o al recorrido, que es donde ya vive.**
 
+### Los PR que abre el ciclo de aprendizaje
+
+Los abre `github-actions[bot]` con el `GITHUB_TOKEN`, y por eso **nacen sin CI**: «events triggered by
+the `GITHUB_TOKEN` will not create a new workflow run» —docs.github.com, «Trigger a workflow»—. Se ve
+mirando el PR: los tres de investigación del 2026-08-29 tenían cero checks y el que abrió una persona
+ese mismo día tenía dos.
+
+Correrlo lo autoriza una persona con el botón de aprobar, y eso alcanza: no hace falta guardar un PAT
+—la credencial que `release.yml` evita a propósito— para conseguir lo mismo.
+
+**Conviene aprobarlo en los PR de propuesta y es opcional en los de investigación.** El guard que valida
+las rutas que citan los documentos de un cargo exime `learning/reports/` —un informe es evidencia y
+puede citar lo que investigó— y **no** exime `learning/proposals/`, porque una propuesta es un documento
+que alguien sigue. O sea que sobre una propuesta CI sí tiene algo que decir, y sobre un informe casi no.
+
+#### Un re-run repite el árbol, no lo recalcula
+
+Cuando uno de esos PR falla y el arreglo se mergea a `main`, **el botón de re-run no sirve**: replaya el
+mismo commit, que se calculó antes. Lo que hace falta es actualizar la rama —el botón «Update branch», o
+`PUT /repos/{owner}/{repo}/pulls/{n}/update-branch`—, que recalcula el merge y dispara una corrida nueva.
+
+Verificado el 2026-08-30 sobre el PR #65: la corrida `#33286076308` iba por su `run_attempt=3` sobre
+`head_sha=92b7412`, creada 01:36; el arreglo entró a `main` 02:04 y el intento de 02:06 falló idéntico.
+Actualizar la rama dio la corrida `#33287260130`, intento 1 sobre `708d126`, verde.
+
+Lo caro no es el reintento sino que **se ve igual que un arreglo que no funcionó**: mismo test, mismo
+mensaje. Antes de dudar del arreglo se mira `run_attempt` y `head_sha` de la corrida que falló.
+
+#### Las corridas viejas de la rama no se van
+
+La rama de un PR acumula todas sus corridas, y las de árboles que ya no existen se quedan en rojo para
+siempre en la lista de Actions. Esa lista no es el estado del PR. Lo que decide es el commit que se va a
+mergear: `gh pr view <n> --json mergeStateStatus` —`CLEAN` es la afirmación de que nada bloquea— o
+`gh api repos/.../commits/<sha>/check-runs`. El #65 llegó a tener cinco corridas, cuatro rojas, y estaba
+listo para mergear.
+
 ## Convenciones
 
 - **Cero dependencias**, de runtime y de desarrollo: Node >= 24 y nada más. Por eso no hay linter ni
