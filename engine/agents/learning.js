@@ -143,7 +143,7 @@ propuesta consolidada. -->
 // El molde de los apartados que una persona escribe queda; lo que deja de quedar es `## Hallazgos` en
 // blanco. Una revisión que no puede decir qué la motiva no puede producir un cambio, y hasta acá se
 // llega sólo con material: el llamador ya se negó a abrirla sin él.
-function reviseProposal(root, agent, dir, previous, period, findings = [], consumed = []) {
+function reviseProposal(agent, dir, previous, period, findings = [], consumed = []) {
   const parsed = previous.match(PROPOSAL_NAME)
   const revision = Number(parsed[2] || 1) + 1
   const file = path.join(dir, `${period}-r${revision}.md`)
@@ -283,7 +283,7 @@ function pendingReports(target, sealing) {
 // veredicto en contra, no una fuente nueva.
 // Recibe los hallazgos ya compuestos: el llamador los necesita antes para decidir si abre documento,
 // y volver a leerlos acá sería leer dos veces lo mismo para responder la misma pregunta.
-function proposeFromRuns(root, agent, target, file, period, { consumed, findings }) {
+function proposeFromRuns(agent, file, period, { consumed, findings }) {
   fs.writeFileSync(file, `---
 flow: ${agent}
 period: ${period}
@@ -357,8 +357,8 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
   if (kind === 'flow') {
     const red = verdictFindings(root, target)
     if (!red.findings.length) return { file: '', created: false, reports: 0 }
-    if (previous) return reviseProposal(root, agent, proposalDir, previous, sealing, red.findings, red.consumed)
-    return proposeFromRuns(root, agent, target, path.join(proposalDir, `${sealing}.md`), sealing, red)
+    if (previous) return reviseProposal(agent, proposalDir, previous, sealing, red.findings, red.consumed)
+    return proposeFromRuns(agent, path.join(proposalDir, `${sealing}.md`), sealing, red)
   }
 
   // Los dos materiales de un cargo, y dicen cosas distintas: un informe sin consolidar dice que cambió
@@ -393,7 +393,7 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
 
   const findings = [...reportPaths.map((file) => reportSummary(root, file)), ...red.findings]
   const consumed = [...reportPaths, ...red.consumed]
-  if (previous) return reviseProposal(root, agent, proposalDir, previous, sealing, findings, consumed)
+  if (previous) return reviseProposal(agent, proposalDir, previous, sealing, findings, consumed)
 
   const file = path.join(proposalDir, `${sealing}.md`)
   const summaries = findings
