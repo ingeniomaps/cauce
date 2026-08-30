@@ -10,6 +10,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const { compileWorkflow } = require('../support/workflow')
 
 const WF = path.resolve(__dirname, '..', '..', 'automatization', 'workflows')
 
@@ -67,6 +68,25 @@ function codeOnly(src) {
   }
   return out
 }
+
+// Lo primero que el runtime le pide a un recorrido, y lo único que nadie comprobaba: que compile. El
+// render es sustitución de texto, así que un archivo roto se escribe igual en `.claude/workflows/` y el
+// cargador lo **descarta sin decir nada** — el comando simplemente no existe, y desde afuera se ve
+// idéntico a haber abierto la sesión antes de renderizarlo.
+//
+// `agent-promote` llevaba dos `const PERIOD` en el mismo alcance y nunca fue invocable. Sólo se vio al
+// querer usarlo: la suite compilaba dos de siete recorridos, y los otros cinco podían estar rotos sin
+// que nada fallara. Se compila como lo hace el runtime, con el mismo arnés.
+test('todos los workflows compilan, que es lo primero que el runtime les pide', () => {
+  // El nombre es la ruta relativa y no el basename: dos recorridos viven en `integrations/`, y con el
+  // basename `compileWorkflow` buscaba `workflows/promote.js`, que no existe.
+  const nombres = workflowFiles()
+    .map((file) => path.relative(WF, file).replace(/\\/g, '/').slice(0, -3)).sort()
+  assert.ok(nombres.length >= 6, `se esperaban los workflows del repositorio y aparecieron ${nombres.length}`)
+  for (const nombre of nombres) {
+    assert.doesNotThrow(() => compileWorkflow(nombre), `${nombre}.js no compila: el cargador lo descarta`)
+  }
+})
 
 // El runtime exige que `meta` sea un literal puro y rechaza el archivo entero antes de la primera fase
 // si no lo es. Nada lo comprobaba: `autobuild` derivaba sus catorce fases con un `.map` y no arrancaba,

@@ -27,7 +27,11 @@ export const meta = {
 
 {{INCLUDE:shared/workflow-root.js}}
 const AGENT = String((typeof args === 'string' ? args : (args || {}).agent) || '').trim()
-const PERIOD = String((args || {}).period || '').trim()
+// El período que pidió quien invoca, que es una pista para elegir entre varias propuestas y no el
+// del documento: ése se deriva del nombre del archivo ya resuelto, más abajo. Se llamaban igual y
+// eran dos `const` en el mismo alcance, así que el archivo no compilaba y el cargador lo
+// descartaba sin decir nada: `/agent-promote` no existía como comando.
+const REQUESTED = String((args || {}).period || '').trim()
 
 const SIGNATURE = {
   type: 'object', additionalProperties: false, required: ['dir', 'proposal', 'approved'],
@@ -64,7 +68,7 @@ const signature = await agent(
   `Find the newest proposal under <dir>/learning/proposals/. They are named AAAA-MM.md, and a ` +
   `correction to an already applied one is AAAA-MM-rN.md — the revision is newer than the plain name ` +
   `for the same month, so sorting file names is not enough` +
-  `${PERIOD ? `. Prefer the newest one for ${PERIOD}` : ''}. Set proposal to its full path. Read ` +
+  `${REQUESTED ? `. Prefer the newest one for ${REQUESTED}` : ''}. Set proposal to its full path. Read ` +
   `**only** its ` +
   `frontmatter and its "Aprobación humana" and "Cambio propuesto" sections and report, without ` +
   `interpreting in anyone's favour:\n` +
