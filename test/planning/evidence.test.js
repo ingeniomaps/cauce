@@ -42,8 +42,9 @@ test('commit: apunta a un sha real o declara por qué no lo hay', () => {
     '3e56e42 [Refactor] Move parentLabel | fc6ecc4 [Fix] Translate to pt (front@feature/DROP-26950)',
   ), true)
   assert.equal(PC.validCommitTrace('abc1234 feat(auth): create account | pendiente el segundo'), false)
-  // El `;` seguido de prosa se lee como nota, no como tramo: es indistinguible del paréntesis final que
-  // gouduet ya escribe, y elegir lo contrario rechazaría 71 entradas reales por una forma hipotética.
+  // El `;` seguido de prosa se lee como nota, no como tramo: es indistinguible del `;` de adentro del
+  // paréntesis final de arriba, que una instancia real ya escribe, y elegir lo contrario rechazaría
+  // 71 entradas ya escritas por una forma hipotética.
   assert.equal(PC.validCommitTrace('abc1234 feat(auth): create; nota al margen'), true)
   assert.equal(PC.validCommitTrace('ver el PR'), false)
   assert.equal(PC.validCommitTrace('abc1234'), false, 'un sha sin asunto no dice qué se entregó')

@@ -32,6 +32,12 @@ transportadora. Si el caso exige un compromiso al cliente, un movimiento de dine
 en un sistema externo, presentar la evidencia y solicitar la autorización que corresponda; no ejecutarlo
 por cuenta propia.
 
+Un número o un hecho que produjo un instrumento —la API de seguimiento de la transportadora, una
+herramienta de analítica, la API de un tercero, un registro público— no es dato hasta saber sobre qué base
+lo calcula o qué contiene, y eso lo define la documentación del instrumento, no quien lo trae. Si esa
+documentación es pública se lee antes de usarlo: abstenerse cubre lo que no se puede consultar, no lo que
+cuesta abrir una página.
+
 ## Flujo de la cola
 
 1. Delimitar el corte: qué excepciones entran, de qué transportadoras, de qué países y en qué ventana.
