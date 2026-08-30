@@ -5,7 +5,7 @@
 // se mide con ese contrato está en `evaluations.test.js`; de dónde sale la cadencia, en
 // `sources.test.js`.
 
-const { tempRoot, run, workflow, workflowStep, workflowCommand } = require('../support/environment')
+const { tempRoot, run, workflow, workflowStep, workflowCommand, filesBelow } = require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -194,8 +194,14 @@ test('un mes sin nada que proponer no abre documento, y no se lleva los informes
 
   // Dos informes con hallazgos y sin nada que proponer.
   const callados = [informe('2099-01-07', ''), informe('2099-01-14', '\n')]
+  const huella = () => filesBelow(target).sort().map((file) => `${file}:${fs.statSync(file).size}`)
+  const antes = huella()
   const quieto = learning.prepareProposal(target, 'probe', new Date('2099-01-31T00:00:00Z'))
   assert.equal(quieto.file, '', 'no se abre documento cuando ninguno propone un cambio')
+  // Lo que traduce «no se abre documento» en «no se abre PR»: `Detect changes` mira el árbol, así que
+  // basta un archivo tocado para que el ciclo publique uno vacío. Es la mitad que hace falta afirmar
+  // aparte — el resultado puede decir que no abrió nada y el árbol haber cambiado igual.
+  assert.deepEqual(huella(), antes, 'no se escribe nada, que es lo que evita el PR sin contenido')
   assert.equal(quieto.quiet, 2, 'y se dice cuántos informes había, que no es lo mismo que no haber tenido')
   for (const file of callados) {
     assert.equal(estado(file), 'draft', 'no se sellan: sellar abriría un PR de puros sellos')
