@@ -1,0 +1,78 @@
+name: Sign proposal
+
+# Firmar una propuesta era escribir tres líneas a mano —«Estado», «Responsable», «Fecha»— y committearlas.
+# El campo `Responsable` es texto libre: lo escribe quien tenga el archivo abierto, y eso incluye a un
+# agente. La puerta que exige un responsable comprobaba que **hubiera** un nombre, no de quién era.
+#
+# Una aprobación de PR sí trae identidad: GitHub la autentica y —esto es lo que la vuelve un guard de
+# verdad— **no deja aprobar el propio PR**. «Un cargo no se autoriza a sí mismo» pasa de ser una
+# convención escrita a estar impuesto por la plataforma.
+#
+# Lo que este workflow **no** colapsa: aprobar sigue sin aplicar. La firma autoriza; `agent-promote`
+# aplica, y sigue siendo un acto deliberado y aparte. Lo que se junta es publicar la propuesta y
+# autorizarla, que eran dos ediciones del mismo archivo hechas por la misma persona con minutos de
+# diferencia — y que ya se confundieron una vez.
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sign-proposal-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  sign:
+    # Sólo una aprobación, y sólo desde una rama de este repositorio: un PR de fork corre con un token
+    # recortado y no podría empujar de vuelta, así que fallaría a mitad en vez de no empezar.
+    if: >-
+      github.event.review.state == 'approved'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # `pull_request_review` corre sobre `refs/pull/N/merge`, que no es una rama: sin esto el push
+          # no tendría a dónde ir. Se pide la rama del PR, que es la que lleva la propuesta.
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Sign the proposals this pull request carries
+        env:
+          APPROVER: ${{ github.event.review.user.login }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          stamp="$(date -u +%Y-%m-%d)"
+          # Sólo las propuestas que este PR trae, y sólo las que siguen sin firmar. Un PR que no toca
+          # ninguna no es un error: la mayoría no lo son, y aprobarlos no tiene que hacer nada.
+          firmadas=""
+          for file in $(git diff --name-only "$BASE"...HEAD -- '*/learning/proposals/*.md'); do
+            [ -f "$file" ] || continue
+            grep -q '^- Estado: pendiente$' "$file" || continue
+            # Las tres líneas, y el frontmatter se deja como está: `status: proposed` lo mueve quien
+            # aplica, no quien firma. Autorizar y aplicar siguen siendo dos actos.
+            sed -i \
+              -e 's/^- Estado: pendiente$/- Estado: aprobada/' \
+              -e "s/^- Responsable: por definir$/- Responsable: @$APPROVER/" \
+              -e "s/^- Fecha: por definir$/- Fecha: $stamp/" "$file"
+            firmadas="$firmadas $file"
+          done
+          if [ -z "$firmadas" ]; then
+            echo "Este PR no trae ninguna propuesta sin firmar; no hay nada que hacer."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # shellcheck disable=SC2086
+          git add $firmadas
+          git commit -m "docs: sign as @$APPROVER" -m "Firmado al aprobar el PR. La identidad sale de la aprobación de GitHub, que la autentica y no admite aprobarse a uno mismo."
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
+          # Un commit del `GITHUB_TOKEN` no dispara workflows, así que esta firma no vuelve a pasar por
+          # CI. Es aceptable para tres líneas de un bloque de aprobación y no lo sería para un cambio de
+          # código; la anotación lo deja dicho en vez de que se descubra.
+          echo "::notice title=Propuesta firmada::@$APPROVER firmó:$firmadas. El commit lo hace el GITHUB_TOKEN, así que no dispara CI."
