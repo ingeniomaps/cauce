@@ -48,7 +48,7 @@ test('aprobar el PR firma la propuesta con la cuenta que aprobó', { skip: proce
   const hecho = spawnSync('bash', ['-c', paso], {
     cwd: repo,
     encoding: 'utf8',
-    env: { ...process.env, APPROVER: 'ingeniomaps', BASE: base, GITHUB_HEAD_REF: 'main' },
+    env: { ...process.env, APPROVER: 'ingeniomaps', BASE: base, BRANCH: 'main' },
   })
   assert.equal(hecho.status, 0, `el paso falló: ${hecho.stderr}`)
 
@@ -91,7 +91,7 @@ test('aprobar un PR sin propuestas pendientes no commitea nada', { skip: process
   const hecho = spawnSync('bash', ['-c', paso], {
     cwd: repo,
     encoding: 'utf8',
-    env: { ...process.env, APPROVER: 'ingeniomaps', BASE: base, GITHUB_HEAD_REF: 'main' },
+    env: { ...process.env, APPROVER: 'ingeniomaps', BASE: base, BRANCH: 'main' },
   })
   assert.equal(hecho.status, 0, `aprobar un PR corriente no puede fallar: ${hecho.stderr}`)
   assert.equal(git('git rev-parse HEAD').trim(), antes, 'no se escribe un commit que no cambia nada')
@@ -108,6 +108,13 @@ test('sólo firma una aprobación, y sólo desde una rama de este repositorio', 
     'se trabaja sobre la rama del PR y no sobre refs/pull/N/merge, que no es una rama')
   assert.match(bloque, /APPROVER: \$\{\{ github\.event\.review\.user\.login \}\}/,
     'la identidad sale de la aprobación, que GitHub autentica')
+  // `GITHUB_HEAD_REF` está vacío en `pull_request_review`, y el push moría en «invalid refspec 'HEAD:'»
+  // **después** de firmar y commitear bien: el fallo estaba en la última línea de un paso que hizo todo
+  // lo demás. La prueba lo dejaba pasar porque le pasaba esa variable a mano.
+  assert.match(bloque, /BRANCH: \$\{\{ github\.event\.pull_request\.head\.ref \}\}/,
+    'la rama sale del payload, que es de donde ya salía el checkout')
+  assert.equal(/GITHUB_HEAD_REF/.test(bloque.replace(/^\s*#[^\n]*$/gm, '')), false,
+    'y no de una variable que este evento no setea')
 })
 
 // El PR de una propuesta lo abre el bot y no la persona, y no es una preferencia: GitHub no deja aprobar
