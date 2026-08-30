@@ -194,7 +194,10 @@ await agent(
   `Preguntale la ruta al motor en vez de componerla: aplicar un cambio al recorrido pide volver a ` +
   `correr los casos el mismo día, y cuando el nombre salía de la fecha la segunda corrida escribía ` +
   `encima de la primera.\n\n` +
-  `La fecha del frontmatter es la de hoy en formato AAAA-MM-DD; obtenela con "date +%F".\n\n` +
+  `La fecha del frontmatter sale del nombre del archivo que te dio el motor —sus primeros diez `
+  + `caracteres, AAAA-MM-DD—, y no de \`date\`: el nombre lo decide el motor con reloj UTC y `
+  + `\`date\` contesta en hora local, así que había dos fechas distintas en la misma corrida, `
+  + `una en el nombre y otra adentro.\n\n` +
   `El archivo lleva este frontmatter y después el contenido tal cual te lo paso, sin reescribirlo:\n\n` +
   `---
 flow: ${FLOW}\ndate: <fecha>\npassed: ${passed.length}\ntotal: ${answered.length}\n---\n\n` +
