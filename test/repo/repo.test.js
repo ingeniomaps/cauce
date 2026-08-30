@@ -452,7 +452,16 @@ test('ningún archivo del repositorio nombra la ruta absoluta de una máquina', 
   // [oó]n:` deja un corchete a la izquierda de la `n`, y `n:` seguido de barra invertida pasaba por
   // unidad—, así que enumera lo que sí puede precederla: principio de línea, espacio, comilla o
   // paréntesis.
-  const ABSOLUTE = [/(?<![A-Za-z0-9])\/(?:home|Users|root)\//, /(?:^|[\s"'`(])[A-Za-z]:\\/]
+  //
+  // El temporal se nombra con el prefijo del harness y no con `/tmp/` a secas: los casos de evaluación
+  // inventan `/tmp/ng-orphans.json` y `/tmp/cobros-tarifas.db`, que es justo lo que un caso tiene que
+  // poder escribir. Lo que no es dato inventado es el directorio de una sesión, que lleva el proyecto
+  // y el identificador de la corrida adentro del nombre.
+  const ABSOLUTE = [
+    /(?<![A-Za-z0-9])\/(?:home|Users|root)\//,
+    /(?<![A-Za-z0-9])\/tmp\/claude-/,
+    /(?:^|[\s"'`(])[A-Za-z]:\\/,
+  ]
   const names = (text) => ABSOLUTE.some((pattern) => pattern.test(text))
   // Dos comentarios de `workflows.test.js` cuentan qué dejaban pasar cuatro chequeos de Windows, y para
   // nombrarlo tienen que escribirlo. Se declara en vez de perdonarse.
