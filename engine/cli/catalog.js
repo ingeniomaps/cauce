@@ -139,6 +139,15 @@ function learn(agent, cli) {
         ? `= ${relative} ya estaba aplicada`
         : `✓ ${relative} queda aplicada: no se vuelve a aplicar`)
     }
+    // Un recorrido no tiene informe semanal: su propuesta se compone de los veredictos de sus propias
+    // corridas y nunca lee `learning/reports/`. La forma desnuda —la que para un cargo abre el informe
+    // de la semana— no tiene entonces qué abrir acá, y `prepareReport` lo decía resolviendo con el
+    // `kind` por defecto: «no existe agents/<tipo>/<slug>/SKILL.md», que manda a crear un cargo que no
+    // falta. Negarse nombrando el comando que sí corresponde es lo que cierra R13.
+    if (kind === 'flow' && !cli.has('--proposal')) {
+      fail(`${agent} es un recorrido: aprende de sus corridas, no de informes semanales.\n`
+        + `  Abrí la propuesta con "ops learn ${agent} --flow --proposal".`, 2)
+    }
     // `--period` es para consolidar a mano un mes que no es el de hoy. El ciclo automático no lo
     // pasa: la propuesta se llama por el mes en que se abre y arrastra lo que todavía no entró.
     const result = cli.has('--proposal')
