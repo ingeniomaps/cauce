@@ -20,6 +20,12 @@ const unmeasuredNote = (unmeasured) => (unmeasured.length
 // La ruta absoluta del banco no entra al registro. El cargo y el juez la escriben con naturalidad
 // —trabajaron ahí— y el repositorio la rechaza: una ruta de una máquina no le sirve a nadie más y ata el
 // documento a un `/home` que en otra no existe. Se recorta acá y no pidiéndoselo al modelo: un pedido se
-// cumple casi siempre, y ese «casi» ya costó dos corridas de CI en rojo, la segunda después de haber
-// arreglado a mano el archivo de la primera en vez del instrumento.
-const stripRoot = (text, root) => String(text || '').split(`${root}/`).join('')
+// cumple casi siempre, y ese «casi» ya costó dos corridas de CI en rojo.
+//
+// Se recorta dos veces porque `root` no siempre trae la ruta. `{{OPS_DIR}}` lo completa `automation
+// install`, y en el repositorio del toolkit —donde no se instala— queda vacío y `ROOT` vale `'.'`: la
+// primera versión partía sólo por `root` y acá no recortaba nada. Que no se notara fue culpa de su
+// prueba, que comprobaba que la llamada existiera y no que hiciera algo.
+const stripRoot = (text, root) => (
+  root && root !== '.' ? String(text || '').split(`${root}/`).join('') : String(text || '')
+).replace(/[A-Za-z0-9_./~-]*\/\.cauce-eval\//g, '.cauce-eval/')
