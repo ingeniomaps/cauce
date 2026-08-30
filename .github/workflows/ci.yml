@@ -36,3 +36,39 @@ jobs:
       # No hay paso de instalación: el toolkit no tiene dependencias.
       - name: Validate and test
         run: npm run ci
+
+  # Una propuesta pendiente se firma aprobando el PR que la lleva, y GitHub no deja aprobar el propio. Si
+  # lo abre la misma cuenta que después tiene que firmarlo, la firma no se dispara nunca — y eso no se ve
+  # hasta que se busca el boton «Approve» y no esta. Pasó el 2026-08-30 con el PR #90, que hubo que cerrar
+  # y reabrir desde `open-pr.yml`.
+  #
+  # Avisa y no falla, a propósito: con equipo, un compañero puede aprobar el PR que abrió otro y ahí la
+  # firma sale bien. Bloquear prohibiría ese caso por el que hoy es el único.
+  proposal-pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # El aviso compara contra la base del PR, que no está en un clon de un solo commit.
+          fetch-depth: 0
+      - name: Warn when a pending proposal cannot be signed
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          if [ "$AUTHOR" = 'github-actions[bot]' ]; then
+            echo "el PR lo abrió el bot: quien firme va a poder aprobarlo"
+            exit 0
+          fi
+          pendientes=""
+          for file in $(git diff --name-only "$BASE"...HEAD -- '*/learning/proposals/*.md'); do
+            grep -q '^- Estado: pendiente$' "$file" || continue
+            pendientes="$pendientes $file"
+          done
+          if [ -z "$pendientes" ]; then
+            echo "este PR no lleva propuestas pendientes: no hay nada que avisar"
+            exit 0
+          fi
+          echo "::warning title=Esta propuesta no se va a poder firmar::Lo abrió @$AUTHOR y lleva una propuesta pendiente de firma:$pendientes. GitHub no deja aprobar el PR propio, así que si quien firma es @$AUTHOR no va a tener boton «Approve» y la firma no se dispara. Cerralo y reabrilo con el workflow «Open pull request», que lo abre como el bot."

@@ -136,18 +136,59 @@ ni un agente lo aclara en milisegundos.
 
 ### Los PR que abre el ciclo de aprendizaje
 
-Los abre `github-actions[bot]` con el `GITHUB_TOKEN`, y por eso **nacen sin CI**: «events triggered by
-the `GITHUB_TOKEN` will not create a new workflow run» —docs.github.com, «Trigger a workflow»—. Se ve
-mirando el PR: los tres de investigación del 2026-08-29 tenían cero checks y el que abrió una persona
-ese mismo día tenía dos.
+Los abre `github-actions[bot]` con el `GITHUB_TOKEN`, y **su CI no arranca solo**: la corrida existe pero
+espera a que una persona la autorice con «Approve and run workflows». Verificado el 2026-08-30 sobre las
+tres corridas de la rama del PR #88: las tres tienen `actor=github-actions[bot]` y
+`triggering_actor=ingeniomaps` —las creó el bot, las disparó quien las autorizó—. Y los PR de
+investigación del 2026-08-29, que ese día se vieron con cero checks, hoy tienen dos.
 
-Correrlo lo autoriza una persona con el botón de aprobar, y eso alcanza: no hace falta guardar un PAT
-—la credencial que `release.yml` evita a propósito— para conseguir lo mismo.
+Eso alcanza: no hace falta guardar un PAT —la credencial que `release.yml` evita a propósito— para
+conseguir lo mismo. Lo que **no** conviene es leerlo como que esos PR no corren CI nunca; durante un
+tiempo esta sección lo decía, apoyada en que «events triggered by the `GITHUB_TOKEN` will not create a
+new workflow run» —docs.github.com, «Trigger a workflow»—, y las corridas de arriba no encajan con esa
+lectura. Que la cita sea real y que igual haya corridas creadas sobre esos PR es una tensión sin
+resolver acá: lo verificado es el comportamiento observado, no la explicación.
 
 **Conviene aprobarlo en los PR de propuesta y es opcional en los de investigación.** El guard que valida
 las rutas que citan los documentos de un cargo exime `learning/reports/` —un informe es evidencia y
 puede citar lo que investigó— y **no** exime `learning/proposals/`, porque una propuesta es un documento
 que alguien sigue. O sea que sobre una propuesta CI sí tiene algo que decir, y sobre un informe casi no.
+
+#### Un PR con una propuesta pendiente lo abre el bot
+
+**No se abre con `gh pr create`.** Se empuja la rama y se lanza el workflow, que lo abre como
+`github-actions[bot]`:
+
+    gh workflow run open-pr.yml -f branch=<rama>
+
+Abrirlo desde la cuenta que después tiene que firmarlo deja la propuesta sin poder firmarse: GitHub no
+deja aprobar el PR propio, así que no aparece el botón «Approve», no hay evento `pull_request_review` y
+la firma no se dispara. No falla ni avisa nada en el momento — se descubre buscando un botón que no
+está. Pasó el 2026-08-30 con el PR #90, que hubo que cerrar y reabrir desde el workflow.
+
+El encabezado de `open-pr.yml` explica por qué existe esa asimetría; acá está sólo qué hacer. Y CI avisa
+cuando un PR lleva una propuesta pendiente y no lo abrió el bot, pero **no lo impide**: con equipo, un
+compañero puede aprobar el PR que abrió otro y la firma sale bien.
+
+#### Qué clic firma una propuesta
+
+**Aprobar la review es lo que firma.** El workflow escucha `pull_request_review` con
+`state == 'approved'`, así que lo que dispara la firma es **Files changed → Review changes → Approve**.
+El otro botón que dice aprobar —«Approve and run workflows», el banner de arriba— es la compuerta de CI
+y no firma nada. Los dos se llaman igual y hacen cosas distintas; confundirlos deja la propuesta sin
+firmar y parece que el workflow no anda.
+
+El orden que menos vueltas da:
+
+1. `Open pull request` abre el PR con la propuesta.
+2. Autorizar la corrida de CI, si se la quiere ver verde antes de decidir.
+3. **Aprobar la review.** Acá se firma: el bot escribe «Estado», «Responsable» y «Fecha».
+4. Autorizar la corrida de CI del commit de la firma, que es un push nuevo sobre la rama.
+5. Mergear.
+
+El paso 4 sorprende y es correcto: la firma es un commit que nadie revisó, y la puerta tiene algo que
+decir sobre él. Y firmar no es aplicar — `agent-promote` sigue siendo un acto aparte; el porqué de esa
+separación vive en el encabezado de `sign-proposal.yml`, no acá.
 
 #### Un re-run repite el árbol, no lo recalcula
 

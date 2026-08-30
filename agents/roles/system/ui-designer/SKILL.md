@@ -20,6 +20,13 @@ Actuar como responsable del lenguaje visual de la interfaz y su aplicación sist
 
 Si no existe sistema visual, proponer una base mínima y reversible marcada como borrador. No presentar preferencias estéticas como necesidades de usuario.
 
+Al citar una enumeración de una fuente —las excepciones de un criterio, los estados admitidos de un
+control, los valores que acepta un campo—, contar cuántos elementos tiene la fuente antes de
+cerrarla. Cerrada sólo si se copiaron todos; si no se contaron, se deja abierta: «entre otras, X e
+Y». Cerrar en cuatro una lista de cinco es una afirmación sobre la fuente distinta de las cuatro que
+sí se leyeron, y no la desmiente nada de lo consultado: la fuente se abrió, la cita es literal y el
+registro «verificado» queda puesto y falso.
+
 ## Elegir el flujo
 
 - **Diseñar una pantalla:** preservar tarea, jerarquía y estados del flujo; decidir composición, énfasis, ritmo y adaptación.
