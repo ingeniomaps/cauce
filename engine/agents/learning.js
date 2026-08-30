@@ -303,6 +303,9 @@ Por definir. Lo que se corrige es el recorrido: un \`exitGate\` que dejó pasar 
 una etapa que dependía de otra sin necesidad, un guardrail que nadie podía cumplir, un agente
 condicional que hacía falta siempre. No cambiar el contrato de ningún cargo desde acá.
 
+La primera línea de esta sección es la que viaja al historial al aplicar: que diga el cambio, no una
+advertencia sobre él.
+
 ## Riesgos y regresiones
 
 Qué caso pasaba con el recorrido actual y podría dejar de pasar. Un gate más duro frena de más, y eso
