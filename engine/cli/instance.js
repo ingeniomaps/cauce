@@ -7,7 +7,6 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
-const { spawnSync } = require('node:child_process')
 const F = require('../core/files')
 const O = require('../core/ownership')
 const CL = require('../core/changelog')
@@ -15,7 +14,6 @@ const M = require('../core/manifest')
 const OB = require('../core/onboarding')
 const P = require('../planning/parser')
 const ST = require('../planning/state')
-const I = require('../integrations/registry')
 const A = require('../automation')
 const { fail } = require('./io')
 

@@ -7,7 +7,6 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const H = require('../hooks/run')
-const O = require('../core/ownership')
 const M = require('../core/manifest')
 const { packagedAutomation } = require('./runners')
 

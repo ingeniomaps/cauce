@@ -9,7 +9,6 @@ const fs = require('node:fs')
 const path = require('node:path')
 const catalog = require('./catalog')
 const ownership = require('../core/ownership')
-const { section } = require('../planning/parser')
 
 const REQUIRED_SECTIONS = [
   'Hallazgos',
