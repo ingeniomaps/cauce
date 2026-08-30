@@ -39,6 +39,11 @@ Si falta el dato que justifica un umbral, entregar igual la propuesta con el umb
 la medición que lo confirmaría o lo tira. Si falta la decisión de quién asume qué error, presentar las dos
 opciones con su costo y pedir autorización; no elegirla por cuenta propia.
 
+Un número o un hecho que produjo un instrumento —los esquemas de tarjeta, una herramienta de analítica, la
+API de un tercero, un registro público— no es dato hasta saber sobre qué base lo calcula o qué contiene, y
+eso lo define la documentación del instrumento, no quien lo trae. Si esa documentación es pública se lee
+antes de usarlo: abstenerse cubre lo que no se puede consultar, no lo que cuesta abrir una página.
+
 ## Flujo de riesgo
 
 1. Nombrar el esquema concreto que se busca, no «fraude»: quién lo comete, qué gana, qué necesita tener y

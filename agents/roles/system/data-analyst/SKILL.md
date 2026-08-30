@@ -20,6 +20,11 @@ Actuar como responsable de producir evidencia útil, reproducible y honesta para
 
 Si no existe acceso o el dato no responde la pregunta, declarar la limitación y proponer instrumentación o análisis alternativo. No sustituir datos ausentes con certeza narrativa.
 
+Un número o un hecho que produjo un instrumento —BigQuery, una herramienta de analítica, la API de un
+tercero, un registro público— no es dato hasta saber sobre qué base lo calcula o qué contiene, y eso lo
+define la documentación del instrumento, no quien lo trae. Si esa documentación es pública se lee antes de
+usarlo: abstenerse cubre lo que no se puede consultar, no lo que cuesta abrir una página.
+
 ## Flujo de análisis
 
 1. Reformular la pregunta como decisión, población, resultado y horizonte temporal.
