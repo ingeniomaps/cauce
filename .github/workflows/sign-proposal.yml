@@ -50,8 +50,17 @@ jobs:
           # `pull_request_target`, no éste—, así que el push moría en «invalid refspec 'HEAD:'» después de
           # haber firmado y commiteado bien. La rama sale del payload, que es de donde ya salía el checkout.
           BRANCH: ${{ github.event.pull_request.head.ref }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           stamp="$(date -u +%Y-%m-%d)"
+          # El `login` es la identidad que GitHub autenticó y el nombre es lo que se lee. Van los dos
+          # porque responden preguntas distintas: quién firmó esto —que tiene que poder cruzarse contra la
+          # aprobación— y quién es esa persona dentro de un año, cuando el `login` haya cambiado o el
+          # lector no lo reconozca. El payload de la review sólo trae `login`, así que el nombre cuesta una
+          # consulta; una cuenta sin nombre público deja la firma como estaba, con el `login` solo.
+          nombre="$(gh api "users/$APPROVER" --jq '.name // ""' 2>/dev/null || true)"
+          # `&`, `/` y `\\` son metacaracteres del reemplazo de `sed`, y un nombre los puede traer.
+          firma="$(printf '@%s%s' "$APPROVER" "${nombre:+ ($nombre)}" | sed 's/[&/\\]/\\&/g')"
           # Sólo las propuestas que este PR trae, y sólo las que siguen sin firmar. Un PR que no toca
           # ninguna no es un error: la mayoría no lo son, y aprobarlos no tiene que hacer nada.
           firmadas=""
@@ -62,7 +71,7 @@ jobs:
             # aplica, no quien firma. Autorizar y aplicar siguen siendo dos actos.
             sed -i \
               -e 's/^- Estado: pendiente$/- Estado: aprobada/' \
-              -e "s/^- Responsable: por definir$/- Responsable: @$APPROVER/" \
+              -e "s/^- Responsable: por definir$/- Responsable: $firma/" \
               -e "s/^- Fecha: por definir$/- Fecha: $stamp/" "$file"
             firmadas="$firmadas $file"
           done

@@ -17,6 +17,16 @@ const APROBACION = '## Aprobación humana\n\n- Estado: pendiente\n'
 const propuesta = (estado) =>
   `---\nagent: probe\nperiod: 2099-01\nstatus: ${estado}\n---\n\n# Propuesta\n\n${APROBACION}`
 
+// El nombre no viaja en el payload de la review —trae `login` y nada más—, así que el paso lo consulta.
+// Un `gh` falso es lo que deja medir las dos salidas de esa consulta sin salir a la red, que además ataría
+// la prueba a cómo se llame hoy una cuenta ajena.
+const conGh = (repo, guion) => {
+  const bin = path.join(repo, 'bin')
+  fs.mkdirSync(bin, { recursive: true })
+  fs.writeFileSync(path.join(bin, 'gh'), `#!/bin/sh\n${guion}\n`, { mode: 0o755 })
+  return `${bin}${path.delimiter}${process.env.PATH}`
+}
+
 test('aprobar el PR firma la propuesta con la cuenta que aprobó', { skip: process.platform === 'win32' }, () => {
   const source = workflow('sign-proposal')
   const paso = workflowStep(source, 'name: Sign the proposals this pull request carries')
@@ -48,13 +58,23 @@ test('aprobar el PR firma la propuesta con la cuenta que aprobó', { skip: proce
   const hecho = spawnSync('bash', ['-c', paso], {
     cwd: repo,
     encoding: 'utf8',
-    env: { ...process.env, APPROVER: 'ingeniomaps', BASE: base, BRANCH: 'main' },
+    env: {
+      ...process.env,
+      APPROVER: 'ingeniomaps',
+      BASE: base,
+      BRANCH: 'main',
+      // `&`, `/` y `\` son los tres metacaracteres del reemplazo de `sed`. El nombre los trae a propósito:
+      // sin escaparlos, `&` pega el renglón entero de vuelta y `/` cierra el comando antes de tiempo.
+      PATH: conGh(repo, "printf '%s' 'Ana & Co/Dev'"),
+    },
   })
   assert.equal(hecho.status, 0, `el paso falló: ${hecho.stderr}`)
 
   const firmada = fs.readFileSync(path.join(dir, '2099-02.md'), 'utf8')
   assert.match(firmada, /^- Estado: aprobada$/m, 'la aprobación queda registrada')
-  assert.match(firmada, /^- Responsable: @ingeniomaps$/m, 'con la cuenta que aprobó, no con un texto libre')
+  // El `login` es lo que se puede cruzar contra la aprobación; el nombre es lo que se lee dentro de un año.
+  assert.match(firmada, /^- Responsable: @ingeniomaps \(Ana & Co\/Dev\)$/m,
+    'la cuenta que aprobó y su nombre, con los metacaracteres de sed puestos tal cual')
   assert.match(firmada, /^- Fecha: \d{4}-\d{2}-\d{2}$/m, 'y su fecha')
   // Firmar autoriza; aplicar es otro acto y lo hace `agent-promote`. Mover esto acá los colapsaría.
   assert.match(firmada, /^status: proposed$/m, 'el frontmatter no se mueve: firmar no es aplicar')
@@ -91,12 +111,48 @@ test('aprobar un PR sin propuestas pendientes no commitea nada', { skip: process
   const hecho = spawnSync('bash', ['-c', paso], {
     cwd: repo,
     encoding: 'utf8',
-    env: { ...process.env, APPROVER: 'ingeniomaps', BASE: base, BRANCH: 'main' },
+    env: {
+      ...process.env, APPROVER: 'ingeniomaps', BASE: base, BRANCH: 'main',
+      PATH: conGh(repo, "printf '%s' 'Ana'"),
+    },
   })
   assert.equal(hecho.status, 0, `aprobar un PR corriente no puede fallar: ${hecho.stderr}`)
   assert.equal(git('git rev-parse HEAD').trim(), antes, 'no se escribe un commit que no cambia nada')
   assert.match(hecho.stdout, /no hay nada que hacer/, 'y se dice, en vez de terminar en silencio')
 })
+
+// Consultar el nombre es una llamada a un tercero, así que puede no contestar: una cuenta sin nombre
+// público, un token sin alcance, la API caída. El paso corre bajo `bash -e` —el default de Actions en
+// Linux es `bash -e {0}`, documentado en la referencia de sintaxis de workflows—, así que sin tolerar ese
+// fallo la firma entera se caería por el adorno. Por eso la prueba corre con `-e`: sin él, el `|| true`
+// se puede borrar y nada se pone rojo.
+test('una consulta de nombre que no contesta firma igual, con la cuenta sola',
+  { skip: process.platform === 'win32' }, () => {
+    const paso = workflowStep(workflow('sign-proposal'), 'name: Sign the proposals this pull request carries')
+    const repo = tempRoot('cauce-firma-sin-nombre-')
+    const remoto = path.join(repo, 'remoto.git')
+    const dir = path.join(repo, 'agents', 'roles', 'own', 'probe', 'learning', 'proposals')
+    fs.mkdirSync(dir, { recursive: true })
+    const git = (script) => execFileSync('bash', ['-c', script], { cwd: repo, encoding: 'utf8' })
+
+    git('git init -q -b main . && git -c user.email=t@t -c user.name=t commit -qm base --allow-empty')
+    const base = git('git rev-parse HEAD').trim()
+    fs.writeFileSync(path.join(dir, '2099-01.md'), propuesta('proposed'))
+    git('git add agents && git -c user.email=t@t -c user.name=t commit -qm nueva')
+    git(`git init -q --bare ${JSON.stringify(remoto)} && git remote add origin ${JSON.stringify(remoto)}`)
+
+    const hecho = spawnSync('bash', ['-e', '-c', paso], {
+      cwd: repo,
+      encoding: 'utf8',
+      env: {
+        ...process.env, APPROVER: 'ingeniomaps', BASE: base, BRANCH: 'main',
+        PATH: conGh(repo, 'exit 1'),
+      },
+    })
+    assert.equal(hecho.status, 0, `el nombre es un adorno y no puede tumbar la firma: ${hecho.stderr}`)
+    assert.match(fs.readFileSync(path.join(dir, '2099-01.md'), 'utf8'),
+      /^- Responsable: @ingeniomaps$/m, 'sin nombre queda la cuenta sola, no un parentesis vacio')
+  })
 
 // Las tres condiciones que no se pueden ejecutar acá porque son expresiones de GitHub, y que deciden
 // cuándo el workflow corre. Un comentario o un «solicitar cambios» no son una aprobación.
