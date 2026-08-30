@@ -82,7 +82,7 @@ release-check: ## Comprueba todo lo que publicar exige — no publica
 # **El registro se arma al abrir la sesión, así que después de correr esto hay que abrir una nueva.**
 # Por qué se renderiza en vez de instalar, y por qué la copia va gitignoreada, en «Correr un workflow
 # acá» de `AGENTS.md`.
-EVAL_WORKFLOWS = flow flow-eval agent-eval
+EVAL_WORKFLOWS = flow flow-eval agent-eval agent-promote
 
 eval-workflows: ## Renderiza los workflows de evaluación en .claude/workflows (gitignorado)
 	@mkdir -p .claude/workflows
