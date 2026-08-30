@@ -13,6 +13,9 @@ sources:
     url: https://www.istqb.org/certifications/certified-tester-foundation-level-ctfl-v4-0/
     tier: profession
     topics: [testing-principles, techniques, risk, defects]
+  # iso.org devuelve 403 desde el 2026-08-16; la ficha legible es la del IEC Webstore
+  # —https://webstore.iec.ch/en/publication/90024—. Es ficha de catálogo: el texto de la norma no se
+  # leyó (informe 2026-08-22, H1 y H2).
   - name: ISO IEC 25010 product quality model
     url: https://www.iso.org/standard/78176.html
     tier: standard
@@ -33,6 +36,14 @@ sources:
     url: https://www.w3.org/WAI/WCAG22/errata/
     tier: standard
     topics: [accessibility, errata]
+  # Metodología de evaluación por muestreo, no oráculo: dice cómo se elige y se declara la muestra, y
+  # deja los criterios donde están —WCAG 2.2—. Registrada como `standard` y no como el
+  # `primary-standard` que pedía la propuesta 2026-08-r3: ese valor no existe en el contrato de
+  # `tier` del motor (informe 2026-08-22, H5).
+  - name: W3C WCAG-EM 2.0
+    url: https://www.w3.org/TR/wcag-em-2/
+    tier: standard
+    topics: [accessibility, evaluation-method, sampling]
   # Edición 2.0 del 2025-09-24, que **reemplaza** a ISO/IEC 40500:2012 — la identidad ISO de
   # WCAG 2.0—. Por eso el nombre lleva el año: «ISO/IEC 40500» a secas es ambiguo entre dos
   # documentos que dicen cosas distintas, y un contrato que exige uno no se satisface con el otro.
@@ -59,9 +70,19 @@ sources:
     url: https://istqb.org/certifications/certified-tester-ai-testing-ct-ai/
     tier: profession
     topics: [ai-testing, probabilistic-oracles, metamorphic-testing, drift, red-teaming]
-  # Pendientes de registrar en 2026-09: ISO/IEC 25002 (visión general) e ISO/IEC 25019
-  # (calidad en uso). No se registran ahora porque no tengo su URL verificada, y
-  # `require_primary_source: true` exige fuente primaria comprobada, no número de norma.
+  # Marco del modelo de calidad de la serie 25000 —la visión general que 25010 particulariza—. La URL
+  # es la del IEC Webstore y no la de iso.org: es la ficha verificada este ciclo, y iso.org devuelve
+  # 403. Ficha de catálogo: el texto de la norma no se leyó (informe 2026-08-22, H4).
+  - name: ISO IEC 25002:2024
+    url: https://webstore.iec.ch/en/publication/92995
+    tier: standard
+    topics: [quality-model-framework]
+  # Calidad en uso: la parte de la serie que mide el resultado para quien usa el producto, no el
+  # producto. Misma razón para la URL del IEC Webstore que en 25002 (informe 2026-08-22, H4).
+  - name: ISO IEC 25019:2023
+    url: https://webstore.iec.ch/en/publication/90105
+    tier: standard
+    topics: [quality-in-use]
   - name: Playwright release notes
     url: https://playwright.dev/docs/release-notes
     tier: platform

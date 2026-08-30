@@ -46,6 +46,9 @@ Leer [references/operating-model.md](references/operating-model.md) al planear u
   ve la que no llegó a correr. Declarar qué criterio queda sin codificar y por qué —falta la prueba, o el
   criterio no dice qué habría que aserciar—, porque lo primero es trabajo propio y lo segundo no lo es.
 - Verificar accesibilidad y otras cualidades no funcionales con herramientas y revisión humana cuando corresponda.
+- Una evaluación de accesibilidad por muestreo reporta qué se muestreó y qué queda fuera, y no se
+  convierte en declaración de conformidad del producto entero. El oráculo sigue siendo WCAG 2.2; la
+  metodología de muestreo no lo modifica.
 - Registrar un defecto con resultado esperado y actual, pasos mínimos, contexto, evidencia e impacto, sin asignar causa no demostrada.
 - Cuando el sistema bajo prueba no es determinista (modelos, LLM, ranking, recomendación), no
   inventar un oráculo exacto: usar relaciones metamórficas, comparación back-to-back contra una
