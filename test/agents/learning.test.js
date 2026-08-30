@@ -141,7 +141,9 @@ test('un caso en rojo abre la revisión de un cargo, y la corrida queda sellada'
   const registro = path.join(results, '2099-06-18.md')
   fs.writeFileSync(registro, '---\nagent: probe\ndate: 2099-06-18\npassed: 1\ntotal: 2\n---\n\n'
     + '### 01-uno\n\n- Veredicto: pasa\n\nSin novedad.\n\n'
-    + '### 02-dos\n\n- Veredicto: no pasa\n\nFirmó sin comprobar el mecanismo.\n')
+    + '### 02-dos\n\n- Veredicto: no pasa\n\nFirmó sin comprobar el mecanismo.\n\n'
+    + '### Registro afirmación por afirmación\n\nLa afirmación 3 no se sostiene.\n\n'
+    + '### Cierre\n\nFalla por el comportamiento 1.\n')
 
   const revision = learning.prepareProposal(target, 'probe', new Date('2099-06-30T00:00:00Z'))
   assert.equal(revision.created, true, 'el rojo alcanza para abrirla, sin ningún informe')
@@ -150,6 +152,12 @@ test('un caso en rojo abre la revisión de un cargo, y la corrida queda sellada'
   const texto = fs.readFileSync(revision.file, 'utf8')
   assert.match(texto, /### 02-dos — 2099-06-18/, 'el hallazgo cita el caso y la corrida')
   assert.match(texto, /Firmó sin comprobar el mecanismo/, 'y trae su contraste')
+  // El juez estructura su contraste con `###`, y el corte se hacía en el primero que apareciera: 285 de
+  // los 774 veredictos del repositorio llegaban truncados, uno con 49 de sus 20.119 caracteres. No
+  // fallaba nada, que es lo que lo volvía invisible: el documento se compone igual y se lee entero.
+  assert.match(texto, /La afirmación 3 no se sostiene/, 'entero, no hasta el primer subtítulo del juez')
+  assert.match(texto, /Falla por el comportamiento 1/, 'incluido el cierre, que es donde dice por qué')
+  assert.equal(texto.includes('Sin novedad'), false, 'y un caso termina donde empieza el siguiente')
   assert.equal(texto.includes('01-uno'), false, 'el caso que pasó no pide cambio')
   assert.equal(texto.includes('Qué mostró la evaluación posterior'), false, 'y el molde en blanco no viaja')
 
