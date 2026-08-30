@@ -80,6 +80,13 @@ test('quien juzga recibe la conducta prohibida del contrato', () => {
   // Un rótulo no es una verificación: el modo de fallo que aparece apenas la regla existe es escribir
   // «verificado» encima de algo que nadie comprobó.
   assert.match(evalWf, /no prueba que el contenido sea/, 'y el juez no acepta el rótulo como prueba')
+  // Y lo que el rótulo bien puesto no salva: la copia que llegó sin él a un artefacto que se lee solo.
+  // Estaba escrito como ponderación —«pesa más si salió del informe hacia…»— y no como comprobación, así
+  // que dependía de que al juez se le ocurriera. A uno se le ocurrió y encontró una afirmación refutada
+  // viajando en plano a una lección; en los demás casos no se sabe, porque el banco se borra con ella.
+  assert.match(evalWf, /esa salida se comprueba, no se espera/, 'el juez va a mirar los artefactos derivados')
+  assert.match(evalWf, /INBOX, la fila de acciones humanas, la lección/, 'y sabe cuáles son')
+  assert.match(evalWf, /No se detecta releyendo el informe/, 'y por qué releer el informe no alcanza')
 })
 
 // El arnés medía a los cargos dentro del toolkit, donde `planning/` es `template/planning` y se
