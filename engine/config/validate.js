@@ -78,4 +78,4 @@ function validateRunner(runner, errors) {
   }
 }
 
-module.exports = { MODES, validateOpsConfig }
+module.exports = { validateOpsConfig }

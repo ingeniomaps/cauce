@@ -124,6 +124,6 @@ function findOpsRoot(start) {
 }
 
 module.exports = {
-  readInput, commandOf, fileOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
+  readInput, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
   gitDirectory, isCommit, stagedFiles, pushAllowed, findOpsRoot,
 }

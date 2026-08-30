@@ -218,4 +218,4 @@ module.exports = {
   workspaceRoots,
   candidates,
   inventory,
-  commandsLine, scan, services, expectedEnv, IGNORED, DEPTH, ENV_MAX }
+  commandsLine, scan, services }

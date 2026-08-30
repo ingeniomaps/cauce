@@ -161,4 +161,4 @@ async function fetchItems(config, options = {}) {
   return issues.map((issue) => normalizeIssue(issue, config))
 }
 
-module.exports = { adfToMarkdown, deriveAcceptance, fetchItems, normalizeFixture, normalizeIssue, validateConfig }
+module.exports = { fetchItems, normalizeFixture, validateConfig }

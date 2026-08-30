@@ -120,8 +120,5 @@ module.exports = {
   missingSections,
   orphanCredentials,
   guide,
-  OPENING,
-  DIMENSIONS,
-  FOLLOW_UPS,
   PLACEHOLDERS,
 }

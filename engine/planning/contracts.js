@@ -406,7 +406,6 @@ function oversizedUnits({ epics = [], milestones = [] }) {
 }
 
 module.exports = {
-  testedCriteria,
   validateState,
   oversizedUnits,
   validateAdr,

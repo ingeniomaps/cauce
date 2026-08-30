@@ -54,4 +54,4 @@ function parse(argv) {
   }
 }
 
-module.exports = { FLAGS, VALUED_FLAGS, parse }
+module.exports = { FLAGS, parse }

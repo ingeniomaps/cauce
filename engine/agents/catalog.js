@@ -108,4 +108,4 @@ function resolve(root, slug) {
   return find(root, slug).dir
 }
 
-module.exports = { find, list, projectCatalog, resolve, summary, systemCatalog, types }
+module.exports = { find, list, projectCatalog, resolve, summary, types }

@@ -53,4 +53,4 @@ function validate(root) {
   return errors
 }
 
-module.exports = { markdownFiles, validate }
+module.exports = { validate }
