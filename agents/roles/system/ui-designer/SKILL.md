@@ -83,3 +83,9 @@ Incluir:
 5. especificación y assets autorizados para implementación y QA;
 6. cuando la especificación cambia un componente ya en uso, qué queda compatible, qué exige migración y cómo se adopta;
 7. supuestos, diferencias, riesgos y validación pendiente.
+
+Antes de entregar, recorrer los artefactos que se van a leer solos —la fila de acciones humanas, la
+entrada de INBOX, la lección— y comprobar que cada afirmación sobre el comportamiento de una
+herramienta, una norma o un sistema de terceros llegó ahí con el registro y la cita que tenía en el
+informe. Releer el informe no lo encuentra: ahí la afirmación está clasificada, y la copia se lee bien
+justamente porque está en plano.
