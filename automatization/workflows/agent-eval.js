@@ -270,8 +270,8 @@ phase('Registrar')
 
 const rows = answered.map((one) => {
   const mark = one.verdict.passed ? 'pasa' : 'no pasa'
-  return `### ${one.id}\n\n- Veredicto: ${mark}\n\n**Respuesta del cargo**\n\n${one.answer}\n\n` +
-    `**Contraste**\n\n${one.verdict.reasoning}`
+  return `### ${one.id}\n\n- Veredicto: ${mark}\n\n**Respuesta del cargo**\n\n${stripRoot(one.answer, ROOT)}\n\n` +
+    `**Contraste**\n\n${stripRoot(one.verdict.reasoning, ROOT)}`
 }).join('\n\n')
 
 await agent(

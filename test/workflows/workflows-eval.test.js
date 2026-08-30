@@ -265,6 +265,18 @@ test('agent-promote distingue el mes cerrado sin cambios del que nadie decidió'
 })
 
 // Que la cobertura llegue al archivo. El porqué está en `shared/eval-only.js`, con el helper.
+// Que la ruta del banco no viaje al registro. El porqué está en `shared/eval-measured.js`.
+for (const name of ['agent-eval', 'flow-eval']) {
+  test(`${name}: el registro no lleva la ruta absoluta de la máquina que lo corrió`, () => {
+    const src = require('../../engine/automation').render(path.join(WF, `${name}.js`), '', path.dirname(WF))
+
+    // Determinista y no un pedido al modelo: lo que el sujeto y el juez escriben pasa por el recorte.
+    assert.match(src, /const stripRoot = \(text, root\)/, 'el recorte existe')
+    assert.match(src, /stripRoot\(one\.verdict\.reasoning, ROOT\)/, 'el contraste pasa por él')
+    assert.match(src, /stripRoot\((one\.answer|JSON\.stringify\(one\.salida)/, 'y lo que devolvió el sujeto')
+  })
+}
+
 for (const name of ['agent-eval', 'flow-eval']) {
   test(`${name}: un registro parcial lo dice dentro del archivo, no sólo en la corrida`, () => {
     const src = require('../../engine/automation').render(path.join(WF, `${name}.js`), '', path.dirname(WF))

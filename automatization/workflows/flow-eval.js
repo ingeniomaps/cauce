@@ -184,8 +184,8 @@ phase('Registrar')
 const rows = answered.map((one) => {
   const mark = one.verdict.passed ? 'pasa' : 'no pasa'
   return `### ${one.id}\n\n- Veredicto: ${mark}\n\n**Qué devolvió el recorrido**\n\n` +
-    `\`\`\`json\n${JSON.stringify(one.salida, null, 2)}\n\`\`\`\n\n**Contraste**\n\n` +
-    `${one.verdict.reasoning}`
+    `\`\`\`json\n${stripRoot(JSON.stringify(one.salida, null, 2), ROOT)}\n\`\`\`\n\n**Contraste**\n\n` +
+    `${stripRoot(one.verdict.reasoning, ROOT)}`
 }).join('\n\n')
 
 await agent(
