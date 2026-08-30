@@ -46,6 +46,10 @@ jobs:
         env:
           APPROVER: ${{ github.event.review.user.login }}
           BASE: ${{ github.event.pull_request.base.sha }}
+          # `GITHUB_HEAD_REF` está vacío en `pull_request_review` —lo setean `pull_request` y
+          # `pull_request_target`, no éste—, así que el push moría en «invalid refspec 'HEAD:'» después de
+          # haber firmado y commiteado bien. La rama sale del payload, que es de donde ya salía el checkout.
+          BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           stamp="$(date -u +%Y-%m-%d)"
           # Sólo las propuestas que este PR trae, y sólo las que siguen sin firmar. Un PR que no toca
@@ -71,7 +75,7 @@ jobs:
           # shellcheck disable=SC2086
           git add $firmadas
           git commit -m "docs: sign as @$APPROVER" -m "Firmado al aprobar el PR. La identidad sale de la aprobación de GitHub, que la autentica y no admite aprobarse a uno mismo."
-          git push origin "HEAD:${GITHUB_HEAD_REF}"
+          git push origin "HEAD:$BRANCH"
           # Un commit del `GITHUB_TOKEN` no dispara workflows, así que esta firma no vuelve a pasar por
           # CI. Es aceptable para tres líneas de un bloque de aprobación y no lo sería para un cambio de
           # código; la anotación lo deja dicho en vez de que se descubra.
