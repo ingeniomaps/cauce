@@ -368,6 +368,21 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
   if (!reports.length && !red.findings.length) return { file: '', created: false, reports: 0 }
 
   const reportPaths = reports.map((name) => path.join(reportDir, name))
+  // La misma regla que la rama de recorridos, por el mismo motivo: un documento que no puede decir qué
+  // corregir no cambia ningún contrato y cuesta igual la firma humana que uno que sí. Un informe puede
+  // encontrar cosas y no proponer ningún cambio —resultado legítimo—, y un mes entero así abría una
+  // propuesta cuyas entradas decían todas «Sin recomendación registrada»: se lee entera, no propone
+  // nada, y nadie la iba a firmar.
+  //
+  // No se sellan, y es a propósito. Sellar toca archivos, y en el ciclo automático eso abre un PR con
+  // puros sellos: la misma firma que se quería ahorrar, ahora sin siquiera un documento que leer. Lo
+  // que queda es que el job vuelva a no encontrar nada el mes siguiente —barato: sin modelo y sin PR—
+  // y que estos informes entren al documento el mes que alguno sí proponga algo, como «Sin
+  // recomendación registrada». Ahí ese texto es histórico, no ruido.
+  if (!red.findings.length && !reportPaths.some((file) => recommendationOf(file))) {
+    return { file: '', created: false, reports: 0, quiet: reportPaths.length }
+  }
+
   const findings = [...reportPaths.map((file) => reportSummary(root, file)), ...red.findings]
   const consumed = [...reportPaths, ...red.consumed]
   if (previous) return reviseProposal(root, agent, proposalDir, previous, sealing, findings, consumed)
@@ -413,15 +428,31 @@ Pendiente.
   return { file, created: true, reports: reports.length, findings: red.findings.length }
 }
 
+// El patrón vive una sola vez porque dos lugares preguntan lo mismo por motivos distintos:
+// `reportSummary` para copiar la recomendación, y `prepareProposal` para decidir si hay algo que
+// proponer. Duplicado, una de las dos copias deja de coincidir con el andamio y nada falla.
+//
+// Sin `m`: con esa bandera el `$` casa fin de *línea*, así que la búsqueda no ávida cortaba en el
+// primer salto y la propuesta consolidaba una sola línea de una recomendación de diez. Comprobado en
+// node v24.18.0: el mismo patrón con `m` devuelve la primera línea y sin `m` devuelve el bloque.
+//
+// `[^\S\n]*\n` y no `\s*\n` para cerrar la línea del título: `\s` incluye el salto, así que con la
+// sección vacía se comía también el salto que precede al título siguiente, la captura arrancaba en
+// «## Preguntas abiertas» y el lookahead ya no encontraba nada. La propuesta terminaba presentando la
+// sección de al lado como si fuera la recomendación a firmar. Comprobado en node v24.18.0 sobre un
+// informe con «## Recomendación» vacía: con `\s*` captura «## Preguntas abiertas…» y con `[^\S\n]*`
+// captura la cadena vacía, que es lo que hace falta para poder distinguir «no recomendó nada».
+const RECOMMENDATION = /\n## Recomendación[^\S\n]*\n([\s\S]*?)(?=\n## |$)/
+
+// Qué recomienda un informe, o cadena vacía si no recomienda nada.
+function recommendationOf(report) {
+  return ((fs.readFileSync(report, 'utf8').match(RECOMMENDATION) || [])[1] || '').trim()
+}
+
 // La recomendación de un informe, que es lo único que la propuesta consolida de él.
 function reportSummary(root, report) {
   const name = path.basename(report)
-  const text = fs.readFileSync(report, 'utf8')
-  // Sin `m`: con esa bandera el `$` casa fin de *línea*, así que la búsqueda no ávida cortaba en el
-  // primer salto y la propuesta consolidaba una sola línea de una recomendación de diez. Comprobado en
-  // node v24.18.0: el mismo patrón con `m` devuelve la primera línea y sin `m` devuelve el bloque.
-  const match = text.match(/\n## Recomendación\s*\n([\s\S]*?)(?=\n## |$)/) || []
-  const recommendation = (match[1] || 'Sin recomendación registrada.').trim()
+  const recommendation = recommendationOf(report) || 'Sin recomendación registrada.'
   return `### ${name.slice(0, -3)}\n\nFuente interna: \`${path.relative(root, report)}\`\n\n${recommendation}`
 }
 

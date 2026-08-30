@@ -535,6 +535,15 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # Un mes sin nada que proponer termina en verde y sin PR, que es lo correcto y también lo
+      # indistinguible de un ciclo roto: las dos cosas se ven como un job verde que no produjo nada.
+      # La anotación es lo único que las separa sin abrir la corrida, igual que con la credencial.
+      - name: Say when there was nothing to propose
+        if: steps.changes.outputs.changed != 'true'
+        env:
+          AGENT: ${{ matrix.agent }}
+        run: |
+          echo "::notice title=Nada que proponer::$AGENT no abrió documento este mes: ninguno de sus informes trae recomendación, o no había informes sin consolidar. Lo que haya queda pendiente y entra el mes que alguno proponga algo."
       - name: Open proposal pull request
         if: steps.changes.outputs.changed == 'true'
         env:
@@ -620,6 +629,15 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # Un mes sin nada que proponer termina en verde y sin PR, que es lo correcto y también lo
+      # indistinguible de un ciclo roto: las dos cosas se ven como un job verde que no produjo nada.
+      # La anotación es lo único que las separa sin abrir la corrida, igual que con la credencial.
+      - name: Say when there was nothing to propose
+        if: steps.changes.outputs.changed != 'true'
+        env:
+          FLOW: ${{ matrix.flow }}
+        run: |
+          echo "::notice title=Nada que proponer::$FLOW no abrió documento este mes: ninguna de sus corridas sin consolidar dejó un veredicto en contra. Lo que haya queda pendiente y entra el mes que alguno proponga algo."
       - name: Open proposal pull request
         if: steps.changes.outputs.changed == 'true'
         env:

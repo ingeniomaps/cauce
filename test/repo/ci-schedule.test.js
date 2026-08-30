@@ -292,6 +292,23 @@ test('un dispatch puede nombrar un recorrido, y sólo miente un slug que no es n
 // recorridos morían en «cambió archivos fuera de su propuesta» y ninguno abrió un PR nunca. Y el paso
 // de cargos stageaba sólo la propuesta, así que el sello se quedaba en el runner: el informe seguía en
 // `draft` en la rama base y el mes siguiente entraba de nuevo, que es contra lo que el sello existe.
+// Un mes sin nada que proponer no abre documento ni PR, y así tiene que ser. El problema es que eso
+// se ve **idéntico** a un ciclo roto: job verde, cero PR. Es el mismo modo de fallo que dejó la
+// credencial caída una semana sin que nada lo dijera, y la anotación es lo único que los separa sin
+// abrir la corrida. Va en los dos jobs: dejar uno callado reintroduce a medias lo que se está cerrando.
+test('un mes callado se anuncia en los dos jobs que consolidan', () => {
+  const source = workflow('agent-learning')
+  for (const job of ['propose', 'propose-flows']) {
+    const bloque = source.split(new RegExp(`^  ${job}:$`, 'm'))[1].split(/^  [a-z-]+:$/m)[0]
+    const paso = bloque.split('- name: Say when there was nothing to propose')[1] || ''
+    assert.ok(paso, `${job} no avisa cuando no produjo nada`)
+    assert.match(paso.split('- name:')[0], /if: steps\.changes\.outputs\.changed != 'true'/,
+      `${job}: el aviso sale justo cuando no hubo cambios, que es cuando no se abre PR`)
+    assert.match(paso.split('- name:')[0], /::notice title=/,
+      `${job}: como anotación, que es lo único que se ve sin abrir la corrida`)
+  }
+})
+
 test('el PR de una propuesta lleva también el sello de lo que consumió', () => {
   const source = workflow('agent-learning')
   const repo = tempRoot('cauce-staging-')
