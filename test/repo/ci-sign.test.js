@@ -109,3 +109,30 @@ test('sólo firma una aprobación, y sólo desde una rama de este repositorio', 
   assert.match(bloque, /APPROVER: \$\{\{ github\.event\.review\.user\.login \}\}/,
     'la identidad sale de la aprobación, que GitHub autentica')
 })
+
+// El PR de una propuesta lo abre el bot y no la persona, y no es una preferencia: GitHub no deja aprobar
+// el propio PR, así que cuando lo abre la misma cuenta que después tendría que aprobarlo, la firma
+// automática no puede dispararse y hay que escribirla a mano. Pasó con #78 y con #84.
+//
+// Y trae su propia puerta porque un PR abierto por el `GITHUB_TOKEN` no dispara workflows: los tres PR
+// de investigación del 2026-08-29 llegaron con cero checks. Sin esto el PR nacería sin haber pasado por
+// la puerta, y el guard de rutas absolutas —que ya cazó siete referencias en registros nuevos— no correría.
+test('el PR lo abre el bot, y no nace sin pasar por la puerta', () => {
+  const source = workflow('open-pr')
+  const bloque = source.split(/^  open:$/m)[1].split(/^  [a-z-]+:$/m)[0]
+
+  assert.match(bloque, /GH_TOKEN: \$\{\{ github\.token \}\}/,
+    'lo abre el GITHUB_TOKEN, o sea el bot: la persona queda libre para aprobarlo')
+  assert.match(bloque, /pull-requests: write/, 'y ése es el único permiso de escritura que pide')
+  assert.equal(/contents: write/.test(bloque), false, 'no escribe el repositorio: sólo propone')
+
+  // La puerta va antes de abrir, no después: un PR del bot no la dispara por su cuenta.
+  const puerta = bloque.indexOf('npm run ci')
+  const abre = bloque.indexOf('gh pr create')
+  assert.ok(puerta > 0, 'corre la puerta')
+  assert.ok(puerta < abre, 'y la corre antes de abrir, que es lo que evita un PR sin CI')
+
+  // Abrir dos veces la misma rama dejaría dos PR compitiendo por la misma firma.
+  assert.match(bloque, /--json state --jq \.state/, 'no abre un segundo PR sobre una rama que ya tiene uno')
+})
+

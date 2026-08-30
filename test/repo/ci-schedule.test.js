@@ -127,7 +127,7 @@ test('un solo workflow cubre a todos los agentes', () => {
   // sobre un PR, no un paso del ciclo de ningún cargo.
   assert.deepEqual(
     files,
-    ['agent-learning.yml', 'ci.yml', 'release-pr.yml', 'release.yml', 'sign-proposal.yml'],
+    ['agent-learning.yml', 'ci.yml', 'open-pr.yml', 'release-pr.yml', 'release.yml', 'sign-proposal.yml'],
     'no vuelve a haber un workflow por agente',
   )
 })

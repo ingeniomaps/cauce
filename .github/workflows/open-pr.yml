@@ -1,0 +1,69 @@
+name: Open pull request
+
+# Abre el PR de una rama ya empujada, como `github-actions[bot]` y no como la persona que lanza esto.
+#
+# Existe por una asimetría que costó descubrir: GitHub **no deja aprobar el propio PR**, y ése es el
+# guard sobre el que se apoya `sign-proposal.yml` — la firma sale de una aprobación autenticada. Cuando
+# el PR lo abre la misma cuenta que después tendría que aprobarlo, la firma automática no puede
+# dispararse y la propuesta hay que firmarla a mano, que es justo lo que se quería dejar de hacer.
+#
+# Con el bot como autor, la persona puede aprobar y la firma sale sola con su cuenta. En una empresa con
+# equipo eso además separa a quien redacta de quien autoriza, que es de lo que se trata.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Rama ya empujada que el PR va a proponer'
+        required: true
+      base:
+        description: 'Contra qué rama (default: main)'
+        required: false
+        default: main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: open-pr-${{ inputs.branch }}
+  cancel-in-progress: false
+
+jobs:
+  open:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.branch }}
+          # El mensaje del último commit es el cuerpo del PR, y para leerlo hace falta el commit entero.
+          fetch-depth: 1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      # Un PR abierto por el `GITHUB_TOKEN` **no dispara workflows**, así que éste no tendría CI: los tres
+      # PR de investigación del 2026-08-29 llegaron con cero checks. La puerta se corre acá para que el PR
+      # no nazca sin haber pasado por ella, y para que abrirlo falle antes que después.
+      - name: Validate and test
+        run: npm run ci
+
+      - name: Open it as the bot
+        env:
+          BRANCH: ${{ inputs.branch }}
+          BASE: ${{ inputs.base }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh pr view "$BRANCH" --json state --jq .state 2>/dev/null | grep -q OPEN; then
+            echo "::notice title=Ya estaba abierto::$BRANCH ya tiene un PR abierto; no se abre otro."
+            exit 0
+          fi
+          # El título y el cuerpo salen del último commit de la rama. Este repositorio escribe mensajes
+          # de commit largos y con su porqué, así que pedirlos otra vez en un formulario sería copiarlos.
+          title="$(git log -1 --format=%s)"
+          body="$(git log -1 --format=%b)"
+          gh pr create --base "$BASE" --head "$BRANCH" --title "$title" --body "$body"
+          echo "::notice title=PR abierto::Lo abrió github-actions[bot], así que podés aprobarlo y la firma sale sola."
