@@ -433,3 +433,39 @@ test('ningún archivo de código pasa las 500 líneas sin decir por qué', () =>
   assert.ok(sourceFiles().length > 50, 'el recorrido no encontró archivos de código')
   assert.deepEqual(unexplained, [], `archivos sin razón registrada:\n  ${unexplained.join('\n  ')}`)
 })
+
+// El vecino de `workflows.test.js` ya cuida esto sobre los workflows renderizados, que es lo que recibe
+// una instancia. Falta la otra mitad: el archivo tal como queda en el repositorio. Por ahí entró lo que
+// nadie miraba —el prefijo de un repositorio que después se renombró, fijado en ciento setenta y cinco
+// archivos—, y donde más caro sale es en `learning/proposals/`, que `agent-promote` manda leer entero
+// antes de aplicar: el destino inexistente le llega a un cargo con forma de ubicación buena.
+//
+// Los veredictos de `evaluations/results/` quedan afuera, por lo que ya declara el chequeo de comandos
+// make dos pruebas más arriba. El porqué del lookbehind está en el vecino y no se repite acá.
+test('ningún archivo del repositorio nombra la ruta absoluta de una máquina', () => {
+  const root = path.resolve(__dirname, '..', '..')
+  const tracked = spawnSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).stdout.trim().split('\n')
+  // Los dos bordes son distintos porque este corpus es más ancho que el del vecino. El de la carpeta
+  // personal descarta un dígito a la izquierda: la URL de ISO que citan dos cargos lleva ese tramo
+  // adentro y no es la carpeta de nadie. El de la unidad no alcanza con descartar letras —`Aceptaci
+  // [oó]n:` deja un corchete a la izquierda de la `n`, y `n:` seguido de barra invertida pasaba por
+  // unidad—, así que enumera lo que sí puede precederla: principio de línea, espacio, comilla o
+  // paréntesis.
+  const ABSOLUTE = [/(?<![A-Za-z0-9])\/(?:home|Users|root)\//, /(?:^|[\s"'`(])[A-Za-z]:\\/]
+  const names = (text) => ABSOLUTE.some((pattern) => pattern.test(text))
+  // Dos comentarios de `workflows.test.js` cuentan qué dejaban pasar cuatro chequeos de Windows, y para
+  // nombrarlo tienen que escribirlo. Se declara en vez de perdonarse.
+  const DECLARED = new Set(['test/workflows/workflows.test.js'])
+  const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
+  const found = []
+  for (const file of tracked) {
+    if (file.includes('/evaluations/results/') || DECLARED.has(file)) continue
+    read(file).split('\n').forEach((line, i) => {
+      if (names(line)) found.push(`${file}:${i + 1}: ${line.trim().slice(0, 80)}`)
+    })
+  }
+  assert.deepEqual(found, [], `rutas absolutas:\n  ${found.join('\n  ')}`)
+  // Una excepción que dejó de hacer falta manda a cuidar algo que ya nadie escribe, así que se retira
+  // igual que un par aceptado que quedó huérfano.
+  assert.deepEqual([...DECLARED].filter((file) => !names(read(file))), [], 'declarado y ya sin ruta')
+})
