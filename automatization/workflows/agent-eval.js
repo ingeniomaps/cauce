@@ -272,7 +272,10 @@ await agent(
   `escribía encima de la primera —que es la línea base que la propuesta cita como evidencia—.\n\n` +
   `Ahí y no en el banco de trabajo. El banco se borra en la próxima corrida —es donde el cargo ` +
   `trabajó, no donde vive—, mientras que el veredicto pertenece al contrato que lo rindió y viaja ` +
-  `con él. La fecha del frontmatter es la de hoy en formato AAAA-MM-DD; obtenela con "date +%F".\n\n` +
+  `con él. La fecha del frontmatter sale del nombre del archivo que te dio el motor —sus primeros diez `
+  + `caracteres, AAAA-MM-DD—, y no de \`date\`: el nombre lo decide el motor con reloj UTC y `
+  + `\`date\` contesta en hora local, así que había dos fechas distintas en la misma corrida, `
+  + `una en el nombre y otra adentro.\n\n` +
   `El archivo lleva este frontmatter y después el contenido tal cual te lo paso, sin reescribirlo ni ` +
   `resumirlo:\n\n---\nagent: ${AGENT}\ndate: <fecha>\npassed: ${passed.length}\ntotal: ${answered.length}\n---\n\n` +
   `# Casos adversariales — <fecha>\n\n${unmeasuredNote(unmeasured)}${rows}\n\n` +
