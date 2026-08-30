@@ -120,9 +120,14 @@ test('el aprendizaje no enciende de más, aísla el fallo de un cargo y no se pi
 test('un solo workflow cubre a todos los agentes', () => {
   const dir = path.resolve(__dirname, '..', '..', '.github', 'workflows')
   const files = fs.readdirSync(dir).sort()
+  // La lista se enumera entera y no se filtra por nombre: lo que este caso impide es volver a un
+  // workflow por cargo, y con un patrón —«ninguno se llama como un cargo»— eso pasaría inadvertido el
+  // día que alguien los llame de otra forma. El costo es que agregar uno obliga a nombrarlo acá, que es
+  // exactamente lo que se quiere: `sign-proposal.yml` entra porque firmar es un acto de una persona
+  // sobre un PR, no un paso del ciclo de ningún cargo.
   assert.deepEqual(
     files,
-    ['agent-learning.yml', 'ci.yml', 'release-pr.yml', 'release.yml'],
+    ['agent-learning.yml', 'ci.yml', 'release-pr.yml', 'release.yml', 'sign-proposal.yml'],
     'no vuelve a haber un workflow por agente',
   )
 })
