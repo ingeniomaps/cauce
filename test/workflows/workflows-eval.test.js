@@ -265,6 +265,27 @@ test('agent-promote distingue el mes cerrado sin cambios del que nadie decidió'
 })
 
 // Que la cobertura llegue al archivo. El porqué está en `shared/eval-only.js`, con el helper.
+// Que el recorte recorte, no que exista. La versión anterior de esta prueba comprobaba que los dos
+// gemelos llamaran a `stripRoot` y los dos lo llamaban — y no recortaba nada, porque partía por un `ROOT`
+// que en este repositorio vale `'.'`. El registro del 2026-08-30 salió con tres rutas absolutas y la
+// prueba en verde: es el caso que R18 nombra, afirmar estructura en vez de conducta.
+test('el recorte de la raíz saca la ruta del banco, con root relativo o absoluto', () => {
+  const fuente = fs.readFileSync(path.join(WF, '..', 'shared', 'eval-measured.js'), 'utf8')
+  const stripRoot = new Function(`${fuente}; return stripRoot`)()
+  const linea = '- `/srv/equipo/repo/.cauce-eval/qa-engineer/11-x/planning/INBOX.md` (2 deuda)'
+  const esperado = '- `.cauce-eval/qa-engineer/11-x/planning/INBOX.md` (2 deuda)'
+
+  // El caso que falló: sin instalar, `{{OPS_DIR}}` queda vacío y `ROOT` es `'.'`.
+  assert.equal(stripRoot(linea, '.'), esperado, 'con root relativo, que es el de este repositorio')
+  assert.equal(stripRoot(linea, '/srv/equipo/repo'), esperado, 'y con el root de una instancia')
+  // La rama que parte por `root` no la cubre el recorte de `.cauce-eval`: existe para la ruta que un juez
+  // escribe hacia un archivo del propio repositorio, y sin esta línea se podía borrar sin que nada cayera.
+  assert.equal(stripRoot('leí /srv/equipo/repo/agents/roles/x/SKILL.md', '/srv/equipo/repo'),
+    'leí agents/roles/x/SKILL.md', 'y la ruta a un archivo del repositorio, cuando root la trae')
+  // Y no se lleva por delante lo que no es una ruta de banco.
+  assert.equal(stripRoot('corré ./tools/ops.js check', '.'), 'corré ./tools/ops.js check', 'no toca otra cosa')
+})
+
 // Que la ruta del banco no viaje al registro. El porqué está en `shared/eval-measured.js`.
 for (const name of ['agent-eval', 'flow-eval']) {
   test(`${name}: el registro no lleva la ruta absoluta de la máquina que lo corrió`, () => {
