@@ -28,7 +28,7 @@ for (const name of ['agent-eval', 'flow-eval']) {
 
     // Y queda dicho que el registro parcial no vale por sí solo, que es lo que evita el próximo error:
     // dar por medido un sujeto con un registro que cubre uno de seis.
-    assert.match(src, /el registro va a cubrir \$\{ONLY\.length\} de \$\{pick\.present\.length\}/)
+    assert.match(src, /el registro va a cubrir \$\{ONLY\.length\} de \$\{CATALOG\}/)
   })
 }
 
@@ -263,3 +263,22 @@ test('agent-promote distingue el mes cerrado sin cambios del que nadie decidió'
   // Y no se manda a re-evaluar un contrato que no se movió: cuesta la corrida entera y mide varianza.
   assert.match(src, /no hace falta re-evaluar/, 'un contrato quieto no compra una re-corrida')
 })
+
+// Que la cobertura llegue al archivo. El porqué está en `shared/eval-only.js`, con el helper.
+for (const name of ['agent-eval', 'flow-eval']) {
+  test(`${name}: un registro parcial lo dice dentro del archivo, no sólo en la corrida`, () => {
+    const src = require('../../engine/automation').render(path.join(WF, `${name}.js`), '', path.dirname(WF))
+
+    // El total del catálogo tiene que sobrevivir al `if` que filtra los casos: ahí es donde se sabía y
+    // donde se perdía.
+    assert.match(src, /let CATALOG = 0/, 'el total vive fuera del filtro')
+    assert.match(src, /CATALOG = pick\.present\.length/, 'y se toma de los casos que el sujeto tiene')
+
+    // Y termina en el archivo, que es lo único que queda cuando la corrida ya no está.
+    assert.match(src, /Corrida parcial: \$\{ran\} de \$\{CATALOG\}/, 'el archivo dice cuánto cubre')
+    assert.match(src, /\$\{coverageNote\(ONLY\.length, /, 'y la nota entra en el registro, no en un log')
+
+    // Una corrida entera no lleva la nota: un aviso que sale siempre se deja de leer.
+    assert.match(src, /ran && CATALOG > ran/, 'sólo cuando de verdad falta algo')
+  })
+}
