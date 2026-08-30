@@ -4,3 +4,4 @@ Registrar únicamente cambios aprobados por una persona, con fecha, la corrida q
 
 | Fecha | Propuesta | Decisión | Aprobó | Cambio aplicado |
 |---|---|---|---|---|
+| 2026-08-30 | `2026-08.md` | aplicada | Manuel Pinzon | Un guardrail, y sólo su texto: cada seguimiento dice si previene la repetición o sólo acelera la detección. |
