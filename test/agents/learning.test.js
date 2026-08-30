@@ -164,6 +164,57 @@ test('un caso en rojo abre la revisión de un cargo, y la corrida queda sellada'
 // que la consolidación sella lo que consume, correrla contra el catálogo marcaba como consolidados los
 // informes de verdad de los cargos. Borrar lo que la prueba creó no alcanzaba — el daño estaba en los
 // archivos que no había creado.
+// El informe que `prepareReport` deja es un andamio: trae «## Recomendación» vacía porque la llena el
+// modelo. Desde que un mes sin ninguna recomendación no abre documento, un andamio crudo dejó de
+// representar a un informe commiteado — `Collect report` frena el que vuelve sin contenido, así que en
+// producción no llega ninguno así. Los casos que sólo necesitan «hay material pendiente» lo llenan con
+// esto, para no medir la guarda nueva sin querer.
+function withRecommendation(file, texto = 'Cambiar algo (cierra H1).') {
+  const text = fs.readFileSync(file, 'utf8')
+  fs.writeFileSync(file, text.replace(/\n## Recomendación[^\S\n]*\n/, `\n## Recomendación\n\n${texto}\n`))
+  return file
+}
+
+// Fija las tres mitades de la guarda de `prepareProposal`, que se pueden romper por separado: que un
+// mes sin ninguna recomendación no abra documento, que sus informes queden en `draft`, y que el mes
+// que alguno sí proponga algo entren todos —los callados como «Sin recomendación registrada»—.
+// Las dos primeras se contestan sin la tercera y quedarían pasando con el ciclo roto en la mitad.
+test('un mes sin nada que proponer no abre documento, y no se lleva los informes puestos', () => {
+  const target = installedProject('Mes callado')
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
+  const reports = path.join(own, 'learning', 'reports')
+  fs.mkdirSync(reports, { recursive: true })
+  const informe = (fecha, recomendacion) => {
+    fs.writeFileSync(path.join(reports, `${fecha}.md`),
+      `---\nagent: probe\ndate: ${fecha}\nstatus: draft\n---\n\n## Hallazgos\n\nH1. Algo cambió.\n\n`
+      + `## Recomendación\n${recomendacion}\n\n## Preguntas abiertas\n\nNinguna.\n`)
+    return path.join(reports, `${fecha}.md`)
+  }
+  const estado = (file) => (fs.readFileSync(file, 'utf8').match(/^status: (\S+)$/m) || [])[1]
+
+  // Dos informes con hallazgos y sin nada que proponer.
+  const callados = [informe('2099-01-07', ''), informe('2099-01-14', '\n')]
+  const quieto = learning.prepareProposal(target, 'probe', new Date('2099-01-31T00:00:00Z'))
+  assert.equal(quieto.file, '', 'no se abre documento cuando ninguno propone un cambio')
+  assert.equal(quieto.quiet, 2, 'y se dice cuántos informes había, que no es lo mismo que no haber tenido')
+  for (const file of callados) {
+    assert.equal(estado(file), 'draft', 'no se sellan: sellar abriría un PR de puros sellos')
+  }
+
+  // Y el mes que uno sí propone algo, los callados entran con él como histórico.
+  informe('2099-01-21', '\n1. Cambiar algo (cierra H1).')
+  const abierta = learning.prepareProposal(target, 'probe', new Date('2099-01-31T00:00:00Z'))
+  assert.equal(abierta.created, true, 'una sola recomendación alcanza para abrir')
+  assert.equal(abierta.reports, 3, 'y se lleva los tres, no sólo el que propuso')
+  const texto = fs.readFileSync(abierta.file, 'utf8')
+  assert.match(texto, /Cambiar algo/, 'la recomendación real llega')
+  assert.equal((texto.match(/Sin recomendación registrada\./g) || []).length, 2,
+    'y los callados quedan como histórico, no descartados')
+  for (const file of callados) {
+    assert.equal(estado(file), 'consolidated', 'ahí sí se sellan, junto con la propuesta que los llevó')
+  }
+})
+
 test('la propuesta mensual consolida la recomendación entera, no su primera línea', () => {
   const target = installedProject('Recomendación entera')
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
@@ -186,7 +237,7 @@ test('la propuesta mensual consolida la recomendación entera, no su primera lí
 test('una propuesta aplicada no se puede volver a aplicar', () => {
   const target = installedProject('Sello de propuesta')
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
-  learning.prepareReport(target, 'probe', new Date('2099-06-10T00:00:00Z'))
+  withRecommendation(learning.prepareReport(target, 'probe', new Date('2099-06-10T00:00:00Z')).file)
   learning.prepareProposal(target, 'probe', new Date('2099-06-15T00:00:00Z'))
   const file = path.join(own, 'learning', 'proposals', '2099-06.md')
 
@@ -209,7 +260,7 @@ test('una propuesta aplicada se puede corregir sin reabrirla', () => {
   const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
   const dir = path.join(own, 'learning', 'proposals')
   const now = new Date('2099-06-15T00:00:00Z')
-  learning.prepareReport(target, 'probe', new Date('2099-06-10T00:00:00Z'))
+  withRecommendation(learning.prepareReport(target, 'probe', new Date('2099-06-10T00:00:00Z')).file)
 
   const base = learning.prepareProposal(target, 'probe', now)
   assert.equal(path.basename(base.file), '2099-06.md')
@@ -222,7 +273,7 @@ test('una propuesta aplicada se puede corregir sin reabrirla', () => {
   // La propuesta base consumió y selló el único informe, así que acá no queda nada que corregir. Sin
   // un informe nuevo la revisión ya no se abre: es un andamio en blanco y cuesta la misma firma humana
   // que una con hallazgos. Éste es el material que la habilita.
-  learning.prepareReport(target, 'probe', new Date('2099-06-20T00:00:00Z'))
+  withRecommendation(learning.prepareReport(target, 'probe', new Date('2099-06-20T00:00:00Z')).file)
   const revision = learning.prepareProposal(target, 'probe', now)
   assert.equal(revision.created, true, 'aplicada la anterior y con material nuevo, sí abre la revisión')
   assert.equal(path.basename(revision.file), '2099-06-r2.md')
@@ -300,7 +351,7 @@ test('la propuesta consolida el período que se le nombra, no el mes en que se l
   // Sin período nombrado sigue mandando el mes de la corrida: es lo correcto a mano, a mitad de mes.
   // Hace falta un informe de febrero para verlo: los de enero quedaron sellados por la consolidación
   // de arriba, y sin ninguno pendiente ya no se abre propuesta.
-  learning.prepareReport(target, 'probe', new Date('2099-02-01T00:00:00Z'))
+  withRecommendation(learning.prepareReport(target, 'probe', new Date('2099-02-01T00:00:00Z')).file)
   const sinPeriodo = learning.prepareProposal(target, 'probe', corrida)
   assert.equal(path.basename(sinPeriodo.file), '2099-02.md')
   assert.equal(sinPeriodo.reports, 1, 'el de febrero, no los de enero que ya entraron')
@@ -421,7 +472,7 @@ test('sin informes pendientes no se abre propuesta', () => {
   assert.equal(fs.existsSync(proposals) && fs.readdirSync(proposals).length, 0, 'el directorio queda vacío')
 
   // Con un informe pendiente sí se abre, y lo consolida.
-  learning.prepareReport(target, 'probe', new Date('2099-06-10T00:00:00Z'))
+  withRecommendation(learning.prepareReport(target, 'probe', new Date('2099-06-10T00:00:00Z')).file)
   const abierta = learning.prepareProposal(target, 'probe', new Date('2099-06-15T00:00:00Z'))
   assert.equal(abierta.created, true)
   assert.equal(abierta.reports, 1)
