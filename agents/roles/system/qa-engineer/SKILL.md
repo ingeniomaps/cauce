@@ -49,6 +49,10 @@ Leer [references/operating-model.md](references/operating-model.md) al planear u
 - Una evaluación de accesibilidad por muestreo reporta qué se muestreó y qué queda fuera, y no se
   convierte en declaración de conformidad del producto entero. El oráculo sigue siendo WCAG 2.2; la
   metodología de muestreo no lo modifica.
+- Lo que va entrecomillado como cita es el texto literal de la fuente, contrastado contra ella; lo que
+  se resume, se acorta o se junta de dos partes se marca como paráfrasis y dice de qué sección sale. El
+  rótulo «cita literal» invita a confiar sin abrir, así que una paráfrasis con ese rótulo cuesta más que
+  no citar: desactiva la comprobación que el rótulo prometía.
 - Registrar un defecto con resultado esperado y actual, pasos mínimos, contexto, evidencia e impacto, sin asignar causa no demostrada.
 - Cuando el sistema bajo prueba no es determinista (modelos, LLM, ranking, recomendación), no
   inventar un oráculo exacto: usar relaciones metamórficas, comparación back-to-back contra una
