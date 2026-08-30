@@ -440,8 +440,9 @@ test('ningún archivo de código pasa las 500 líneas sin decir por qué', () =>
 // archivos—, y donde más caro sale es en `learning/proposals/`, que `agent-promote` manda leer entero
 // antes de aplicar: el destino inexistente le llega a un cargo con forma de ubicación buena.
 //
-// Los veredictos de `evaluations/results/` quedan afuera, por lo que ya declara el chequeo de comandos
-// make dos pruebas más arriba. El porqué del lookbehind está en el vecino y no se repite acá.
+// No queda exento el registro de evaluación: los ciento sesenta y nueve archivos que lo tenían se
+// barrieron, así que la regla es una sola y nadie tiene que recordar dónde no rige. El porqué del
+// lookbehind está en el vecino y no se repite acá.
 test('ningún archivo del repositorio nombra la ruta absoluta de una máquina', () => {
   const root = path.resolve(__dirname, '..', '..')
   const tracked = spawnSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).stdout.trim().split('\n')
@@ -459,7 +460,7 @@ test('ningún archivo del repositorio nombra la ruta absoluta de una máquina', 
   const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
   const found = []
   for (const file of tracked) {
-    if (file.includes('/evaluations/results/') || DECLARED.has(file)) continue
+    if (DECLARED.has(file)) continue
     read(file).split('\n').forEach((line, i) => {
       if (names(line)) found.push(`${file}:${i + 1}: ${line.trim().slice(0, 80)}`)
     })
