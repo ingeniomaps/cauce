@@ -208,7 +208,12 @@ function lastOfPeriod(dir, period) {
 // De qué aprende un recorrido: de cada registro sin sellar entran los casos que no pasaron, con su
 // contraste y de qué corrida salen. Si no hay ninguno, eso también es un resultado — el recorrido
 // aguantó y no hay qué corregir. Por qué es esto y no una investigación, en `pendingRuns`.
-const VERDICT = /\n### ([^\n]+)\n\n- Veredicto: (pasa|no pasa)\n([\s\S]*?)(?=\n### |$)/g
+// El contraste termina donde empieza **el caso siguiente**, y un caso se reconoce por su línea de
+// veredicto, no por ser un `###`. Cortando en cualquier `###` se cortaba en el primero que la respuesta
+// del cargo usara para su propia estructura: 285 de los 774 veredictos del repositorio quedaban
+// truncados —`06-adversarial-runbook` conservaba 1.057 de 48.991 caracteres, y un `06-adversarial-docs`
+// llegó a 49 de 20.119—. Nada lo delataba: la propuesta se compone igual y se lee entera.
+const VERDICT = /\n### ([^\n]+)\n\n- Veredicto: (pasa|no pasa)\n([\s\S]*?)(?=\n### [^\n]+\n\n- Veredicto: |$)/g
 
 function verdicts(text) {
   return [...text.matchAll(VERDICT)]
