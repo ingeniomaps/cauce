@@ -66,6 +66,30 @@ test('un slug duplicado entre tipos se rechaza como ambiguo', () => {
   )
 })
 
+// Una cita del catálogo dentro de un documento. La extensión es parte de la ruta: sin ella el patrón
+// cortaba en el punto y comprobaba un archivo sin `.md`, que nunca existe. Y el comienzo va anclado al
+// borde: sin eso, `engine/agents/evaluations.js` —una ruta correcta— matcheaba el trozo
+// `agents/evaluations.js` y se preguntaba por él en la raíz.
+const CITED_PATH = /(?<![\w/-])agents\/[a-z0-9/-]+(?:\.(?:md|ya?ml|json|js))?/g
+
+// El guard de abajo vive de ese patrón, y sobre los documentos de hoy no distingue un patrón sano de
+// uno roto: hasta que un cargo citó un archivo del motor por primera vez, ninguno lo ejercitaba. Acá se
+// lo mide contra las dos formas de romperlo — dejar pasar una ruta inventada, o tirar una correcta —.
+test('el patrón de citas mira rutas enteras, no trozos de otra ruta', () => {
+  const citas = (text) => [...text.matchAll(CITED_PATH)].map((hit) => hit[0])
+  assert.deepEqual(citas('en `engine/agents/evaluations.js` o en otra parte'), [],
+    'una ruta del motor no es una cita del catálogo')
+  assert.deepEqual(citas('el molde en `template/agents/x.md`'), [], 'ni una que viva bajo otra raíz')
+  assert.deepEqual(citas('ver `agents/roles/system/qa-engineer/learning/sources.yaml`'),
+    ['agents/roles/system/qa-engineer/learning/sources.yaml'], 'y la cita de verdad se sigue viendo')
+  assert.deepEqual(citas('ver agents/roles/system/no-existe/learning/sources.yaml'),
+    ['agents/roles/system/no-existe/learning/sources.yaml'], 'incluida la inventada, que es lo que se caza')
+  // La clase no lleva mayúsculas, así que una ruta que termina en `SKILL.md` se comprueba hasta su
+  // directorio. Se afirma para que quede dicho: es el alcance real del guard, no un descuido del caso.
+  assert.deepEqual(citas('ver `agents/roles/system/qa-engineer/SKILL.md`'),
+    ['agents/roles/system/qa-engineer/'], 'una ruta con mayúsculas se comprueba hasta el directorio')
+})
+
 test('la documentación de agentes no cita rutas del toolkit ni rutas inexistentes', () => {
   // Un informe de aprendizaje es evidencia como una transcripción: registra qué se investigó un día, y
   // cuando el cargo investiga sobre Cauce cita las rutas de Cauce con razón. El molde sí se revisa
@@ -83,7 +107,12 @@ test('la documentación de agentes no cita rutas del toolkit ni rutas inexistent
     assert.equal(text.includes('engine/cli/ops.js'), false, `${at} cita el CLI del toolkit`)
     // La extensión es parte de la ruta: sin ella el patrón cortaba en el punto y comprobaba la
     // existencia de un archivo sin `.md`, que nunca existe.
-    for (const match of text.matchAll(/agents\/[a-z0-9/-]+(?:\.(?:md|ya?ml|json|js))?/g)) {
+    //
+    // Y el comienzo se ancla al borde: sin eso, una cita **correcta** de `engine/agents/evaluations.js`
+    // matcheaba el trozo `agents/evaluations.js` y se preguntaba por él en la raíz, donde no existe. El
+    // guard tiraba en rojo un documento cuya ruta era buena, y no se vio hasta que un cargo citó por
+    // primera vez un archivo del motor: la propuesta de `qa-engineer` para 2026-08-r3.
+    for (const match of text.matchAll(CITED_PATH)) {
       assert.equal(fs.existsSync(path.join(REPO, match[0])), true, `${at} cita ${match[0]}, que no existe`)
     }
   }
