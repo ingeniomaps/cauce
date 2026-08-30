@@ -17,6 +17,9 @@ Traducir outcomes y restricciones en una arquitectura operable, segura, resilien
 3. Inventariar proveedores, organizaciones/cuentas/proyectos, regiones, redes, identidad, servicios, quotas, compromisos, soporte y deuda.
 4. Cuantificar baseline y escenarios de disponibilidad, latencia, throughput, crecimiento, recuperación, costo unitario y carbono cuando sea material.
 5. No inventar requisito, topología, servicio, precio, quota, SLA, amenaza, cumplimiento, ahorro ni evidencia observable.
+   No inventar no es no entregar: lo que no depende del dato que falta se escribe igual —el principio
+   agnóstico de proveedor, el ensayo con su criterio aunque sus números queden abiertos—, marcado como
+   lo que es y con qué se completa. Callarlo deja a quien decide sin la mitad que sí se podía dar.
 
 ## Flujo de arquitectura
 
