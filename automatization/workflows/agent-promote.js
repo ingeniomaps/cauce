@@ -42,7 +42,10 @@ const SIGNATURE = {
     signedBy: { type: 'string' },
     state: { type: 'string' },
     status: { type: 'string' },
-    hasChange: { type: 'boolean' },
+    // Tres estados y no un booleano. «Nadie lo decidió» y «se decidió que no cambia nada» son opuestos,
+    // y colapsarlos dejaba sin salida a un mes revisado, firmado y cerrado sin cambios: el recorrido lo
+    // mandaba a proponer de nuevo y la propuesta quedaba `proposed` para siempre, contando como pendiente.
+    change: { type: 'string' },
     // Qué CLI existe acá. Una empresa tiene el shim `tools/ops.js`; el repo del toolkit no lo tiene
     // —no se instala a sí mismo— y su motor está en `engine/cli/ops.js`. Los dos evaluadores ya lo
     // preguntan; éste lo suponía en sus dos comandos. El primero se salvó porque el agente improvisó, y
@@ -85,13 +88,20 @@ const signature = await agent(
   `- signedBy: the person recorded, or empty.\n` +
   `- state: the literal state line.\n` +
   `- status: the literal value of the frontmatter "status:" field.\n` +
-  `- hasChange: true only if "Cambio propuesto" carries a concrete change; "por definir" means false.`,
+  `- change: "concrete" if "Cambio propuesto" states something to change; "none" if it decides that ` +
+  `nothing changes — the period was reviewed and no contract moves; "undecided" if nobody has decided ` +
+  `yet ("por definir", "pendiente", or empty). "none" and "undecided" are opposites: one is a decision ` +
+  `and the other is its absence, so never report "none" for a section that was simply never filled in.`,
   { schema: SIGNATURE, label: 'signature' },
 )
 if (!signature) return stop('sin-propuesta', `no se pudo leer una propuesta de ${AGENT}`)
-if (!signature.hasChange) {
-  return stop('propuesta-vacia', `${signature.proposal} no tiene cambio concreto: corré /agent-propose primero`)
+const CHANGE = String(signature.change || '').trim().toLowerCase()
+if (CHANGE !== 'concrete' && CHANGE !== 'none') {
+  return stop('propuesta-vacia', `${signature.proposal} no la decidió nadie: corré /agent-propose primero`)
 }
+// Un mes que se revisó y se cerró sin cambios. Se firma igual —decidir no tocar nada es una decisión— y
+// se sella igual; lo único que no corre es aplicar, porque no hay qué.
+const NOTHING = CHANGE === 'none'
 if (!signature.approved) {
   return stop('sin-firma', `${signature.proposal} no está aprobada (${signature.state || 'sin estado'}). ` +
     'Firmá «Aprobación humana» con un responsable y repetí: nadie se autoriza a sí mismo')
@@ -115,7 +125,7 @@ if (!PERIOD) return stop('propuesta-sin-periodo', `${signature.proposal} no se l
 
 phase('Aplicar')
 
-const applied = await agent(
+const applied = NOTHING ? { applied: true, files: [], newCase: '', deviations: '' } : await agent(
   `La propuesta ${signature.proposal} está aprobada por ${signature.signedBy}. Aplicá su sección «Cambio ` +
   `propuesto» al cargo ${AGENT} en ${signature.dir}, archivo por archivo, tal como la propuesta lo ` +
   `describe.\n\n` +
@@ -144,7 +154,8 @@ phase('Registrar')
 await agent(
   `Agregá una fila a ${signature.dir}/learning/HISTORY.md con la fecha de hoy —obtenela con "date +%F"—, ` +
   `la propuesta ${signature.proposal}, decisión "Aprobada", quién firmó (${signature.signedBy}) y qué se ` +
-  `aplicó: ${(applied.files || []).join(', ')}` +
+  `aplicó: ${NOTHING ? 'nada — el período se revisó y se decidió no cambiar ningún contrato'
+    : (applied.files || []).join(', ')}` +
   `${applied.newCase ? ` más el caso ${applied.newCase}` : ''}` +
   `${applied.deviations ? `. Desviaciones: ${applied.deviations}` : ''}.\n\n` +
   `Respetá el formato de tabla que ya tiene el archivo. No toques ninguna otra cosa, no hagas commit.`,
@@ -161,7 +172,11 @@ await agent(
   { label: 'sella' },
 )
 
-log('El contrato cambió: los casos valen sólo si se vuelven a correr contra la versión nueva.')
+// Re-evaluar un contrato que no se movió mide varianza y no un cambio: cuesta la corrida entera y
+// devuelve lo que R20 llama comprar un número nuevo con la misma información.
+log(NOTHING
+  ? 'Ningún contrato cambió: los veredictos vigentes siguen midiendo esta versión.'
+  : 'El contrato cambió: los casos valen sólo si se vuelven a correr contra la versión nueva.')
 return finish({
   agent: AGENT,
   proposal: signature.proposal,
@@ -169,5 +184,7 @@ return finish({
   files: applied.files || [],
   newCase: applied.newCase || '',
   deviations: applied.deviations || '',
-  next: `corré /agent-eval ${AGENT}: el registro anterior quedó viejo y no vale para el contrato nuevo`,
+  next: NOTHING
+    ? `no hace falta re-evaluar ${AGENT}: ningún contrato cambió y los veredictos vigentes siguen valiendo`
+    : `corré /agent-eval ${AGENT}: el registro anterior quedó viejo y no vale para el contrato nuevo`,
 })

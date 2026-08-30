@@ -234,3 +234,32 @@ test('los tres recorridos que corren el CLI preguntan cuál existe, no lo supone
     assert.deepEqual(corridos.map((hit) => hit[0]), [], `${name}: queda un comando con el CLI supuesto`)
   }
 })
+
+// Un mes que se revisó y se cerró sin cambios es una decisión, no una propuesta a medias, y hasta hoy no
+// tenía salida: `agent-promote` leía «hay cambio concreto» como un booleano, así que «ninguno» caía en la
+// misma rama que «por definir» y lo mandaba a proponer de nuevo. La propuesta de `backend-engineer` del
+// 2026-08 quedó firmada por una persona y `status: proposed` para siempre, contando como pendiente —
+// comprobado el 2026-08-30: la corrida se detuvo con `propuesta-vacia`.
+test('agent-promote distingue el mes cerrado sin cambios del que nadie decidió', () => {
+  const src = require('../../engine/automation').render(
+    path.join(WF, 'agent-promote.js'), '', path.dirname(WF))
+
+  // Lo que se le pide leer tiene que nombrar los tres estados, y decir que dos de ellos son opuestos:
+  // sin eso, un modelo que ve «Cambio propuesto: Ninguno» lo reporta como vacío, que es lo que pasaba.
+  assert.match(src, /"concrete"/, 'el estado de un cambio que hay que aplicar')
+  assert.match(src, /"none"/, 'el de un período cerrado sin cambios')
+  assert.match(src, /"undecided"/, 'y el de uno que nadie decidió')
+  assert.match(src, /opposites/, 'y queda dicho que los dos últimos no son lo mismo')
+
+  // Sólo el indeciso frena. Un booleano no puede expresar esto, que es por lo que dejó de serlo.
+  assert.match(src, /CHANGE !== 'concrete' && CHANGE !== 'none'/, 'frena el indeciso y sólo ése')
+  assert.match(src, /const NOTHING = CHANGE === 'none'/, 'y el cerrado sin cambios sigue de largo')
+
+  // Sigue de largo hasta sellar, pero sin aplicar: no hay qué, y mandar a un agente a aplicar «ninguno»
+  // es pedirle que invente un cambio.
+  assert.match(src, /const applied = NOTHING \? \{ applied: true/, 'no se aplica lo que no cambia')
+  assert.match(src, /learn \$\{AGENT\} --applied/, 'pero se sella igual: es lo que cierra el período')
+
+  // Y no se manda a re-evaluar un contrato que no se movió: cuesta la corrida entera y mide varianza.
+  assert.match(src, /no hace falta re-evaluar/, 'un contrato quieto no compra una re-corrida')
+})
