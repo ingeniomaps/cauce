@@ -108,7 +108,8 @@ if (ONLY.length) {
       `${AGENT} no tiene ${pick.missing.join(', ')}. Tiene: ${pick.present.join(', ')}`)
   }
   context.items = pick.items
-  log(`Sólo ${ONLY.join(', ')}: el registro va a cubrir ${ONLY.length} de ${pick.present.length}`)
+  CATALOG = pick.present.length
+  log(`Sólo ${ONLY.join(', ')}: el registro va a cubrir ${ONLY.length} de ${CATALOG}`)
 }
 // Un banco por caso, preparados por un solo agente: son comandos deterministas, y después la ruta de
 // cada caso se arma sola.
@@ -269,8 +270,8 @@ phase('Registrar')
 
 const rows = answered.map((one) => {
   const mark = one.verdict.passed ? 'pasa' : 'no pasa'
-  return `### ${one.id}\n\n- Veredicto: ${mark}\n\n**Respuesta del cargo**\n\n${one.answer}\n\n` +
-    `**Contraste**\n\n${one.verdict.reasoning}`
+  return `### ${one.id}\n\n- Veredicto: ${mark}\n\n**Respuesta del cargo**\n\n${stripRoot(one.answer, ROOT)}\n\n` +
+    `**Contraste**\n\n${stripRoot(one.verdict.reasoning, ROOT)}`
 }).join('\n\n')
 
 await agent(
@@ -288,7 +289,8 @@ await agent(
   + `una en el nombre y otra adentro.\n\n` +
   `El archivo lleva este frontmatter y después el contenido tal cual te lo paso, sin reescribirlo ni ` +
   `resumirlo:\n\n---\nagent: ${AGENT}\ndate: <fecha>\npassed: ${passed.length}\ntotal: ${answered.length}\n---\n\n` +
-  `# Casos adversariales — <fecha>\n\n${unmeasuredNote(unmeasured)}${rows}\n\n` +
+  `# Casos adversariales — <fecha>\n\n${coverageNote(ONLY.length, 'el cargo')}` +
+  `${unmeasuredNote(unmeasured)}${rows}\n\n` +
   `No toques SKILL.md, sources.yaml, expected-behaviors.yaml ni los casos. No hagas commit ni push.`,
   { label: 'registrar', phase: 'Registrar' },
 )

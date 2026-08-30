@@ -22,3 +22,18 @@ function pickCases(items, only) {
   const missing = only.filter((id) => !present.includes(id))
   return { present, missing, items: items.filter((item) => only.includes(item.id)) }
 }
+
+// Cuántos casos tiene el sujeto, y la nota que lo dice **dentro** del registro. Vive fuera del `if` que
+// filtra porque ahí es donde el número se sabía y se perdía: el aviso de «N de M» salía por `log()` y el
+// archivo quedaba con «passed: 1, total: 1» sobre un sujeto de diez casos. Leído solo dentro de un mes
+// eso es una evaluación completa, y nadie va a pedir los otros nueve porque nada indica que falten, que
+// es lo que R15 llama parecer completo sin estarlo. Los dos registros parciales del 2026-08-30 salieron
+// así, y la marca hubo que ponérsela a mano.
+let CATALOG = 0
+
+// Sólo cuando de verdad falta algo: un aviso que sale en toda corrida se deja de leer.
+const coverageNote = (ran, sujeto) => (ran && CATALOG > ran
+  ? `> **Corrida parcial: ${ran} de ${CATALOG} casos.** Este registro no cubre los demás, que conservan `
+    + `el veredicto de su última corrida. Para saber si ${sujeto} se sostiene entero hay que componerlo `
+    + `con ésos, diciendo de qué corrida viene cada uno.\n\n`
+  : '')

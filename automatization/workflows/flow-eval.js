@@ -94,7 +94,8 @@ if (ONLY.length) {
       `${FLOW} no tiene ${pick.missing.join(', ')}. Tiene: ${pick.present.join(', ')}`)
   }
   context.items = pick.items
-  log(`Sólo ${ONLY.join(', ')}: el registro va a cubrir ${ONLY.length} de ${pick.present.length}`)
+  CATALOG = pick.present.length
+  log(`Sólo ${ONLY.join(', ')}: el registro va a cubrir ${ONLY.length} de ${CATALOG}`)
 }
 
 // El recorrido escribe: épica candidata, INBOX, acciones humanas. Sin un `planning/` propio no puede
@@ -183,8 +184,8 @@ phase('Registrar')
 const rows = answered.map((one) => {
   const mark = one.verdict.passed ? 'pasa' : 'no pasa'
   return `### ${one.id}\n\n- Veredicto: ${mark}\n\n**Qué devolvió el recorrido**\n\n` +
-    `\`\`\`json\n${JSON.stringify(one.salida, null, 2)}\n\`\`\`\n\n**Contraste**\n\n` +
-    `${one.verdict.reasoning}`
+    `\`\`\`json\n${stripRoot(JSON.stringify(one.salida, null, 2), ROOT)}\n\`\`\`\n\n**Contraste**\n\n` +
+    `${stripRoot(one.verdict.reasoning, ROOT)}`
 }).join('\n\n')
 
 await agent(
@@ -201,7 +202,8 @@ await agent(
   `El archivo lleva este frontmatter y después el contenido tal cual te lo paso, sin reescribirlo:\n\n` +
   `---
 flow: ${FLOW}\ndate: <fecha>\npassed: ${passed.length}\ntotal: ${answered.length}\n---\n\n` +
-  `# Casos adversariales — <fecha>\n\n${unmeasuredNote(unmeasured)}${rows}\n\n` +
+  `# Casos adversariales — <fecha>\n\n${coverageNote(ONLY.length, 'el recorrido')}` +
+  `${unmeasuredNote(unmeasured)}${rows}\n\n` +
   `No toques el flow.json, el FLOW.md ni los casos. No hagas commit ni push.`,
   { label: 'registrar', phase: 'Registrar' },
 )
