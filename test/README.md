@@ -69,5 +69,10 @@ Los pisos van unos puntos debajo de lo real, para que el trabajo normal no los t
 que varía entre corridas. Se suben con `npm run coverage:update`, que mide tres veces y toma el mínimo:
 una sola corrida deja subir un piso por suerte y el gate queda fallando al azar.
 
-`make dead-imports` busca los imports que ninguna suite usa, sacándolos y corriendo el archivo. Tarda
-~90 s y por eso queda fuera de `ci`: se corre cuando se mueven imports.
+`make dead-code` busca superficie que nadie usa: imports que ningún archivo lee y exports que nadie
+importa. Un import se confirma sacándolo y corriendo; un export se decide buscándolo en el repositorio
+entero, porque su uso vive en otro archivo y tiene que nombrarlo. De ahí que lo que se quiere público
+alcance con documentarlo: mencionarlo es lo que lo salva del barrido.
+
+La mitad del motor entra en `ci` —sin candidatos no corre nada y termina en milisegundos—; la de las
+suites tarda minutos, una corrida por binding, y se corre a mano cuando se mueven imports.

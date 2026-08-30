@@ -33,9 +33,9 @@
     "test": "bash test/tools/hooks-smoke.sh && node --test \"test/**/*.test.js\"",
     "coverage": "bash test/tools/coverage.sh",
     "coverage:update": "bash test/tools/coverage.sh --update",
-    "dead-imports": "node test/tools/dead-imports.js",
-    "dead-imports:engine": "node test/tools/dead-imports.js --engine",
-    "ci": "npm run check && npm run automation:check && npm run integration:check && npm run dead-imports:engine && npm run coverage",
+    "dead-code": "node test/tools/dead-code.js",
+    "dead-code:engine": "node test/tools/dead-code.js --engine",
+    "ci": "npm run check && npm run automation:check && npm run integration:check && npm run dead-code:engine && npm run coverage",
     "prepublishOnly": "npm run ci"
   },
   "engines": {

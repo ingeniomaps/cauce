@@ -2,7 +2,7 @@
 
 # Los gates delegan en `package.json`: ese nombre lo tienen fijo `ci.yml`, `verify` y `prepublishOnly`.
 .PHONY: help check tree context test coverage coverage-update ci automation-check integration-check
-.PHONY: release-check dead-imports
+.PHONY: release-check dead-code
 .PHONY: require-agent agent-learn agent-propose agent-evaluate require-flow flow-check flow-show
 .PHONY: eval-workflows
 
@@ -28,8 +28,8 @@ coverage: ## Ejecuta las pruebas y exige los umbrales de cobertura
 coverage-update: ## Recalcula los pisos de cobertura por archivo
 	@npm run --silent coverage:update
 
-dead-imports: ## Busca imports que nadie usa en suites y motor (minutos, fuera de ci)
-	@npm run --silent dead-imports
+dead-code: ## Busca imports y exports que nadie usa, suites incluidas (minutos)
+	@npm run --silent dead-code
 
 automation-check: ## Valida guards, workflows y runners del toolkit
 	@npm run --silent automation:check
