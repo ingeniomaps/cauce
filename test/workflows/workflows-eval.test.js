@@ -210,8 +210,13 @@ test('agent-eval averigua qué CLI existe en vez de suponerlo', () => {
 
 // El caso son los dos evaluadores a la vez, no uno cada uno: el arreglo entró en `agent-eval` y
 // `flow-eval` quedó sin él. Un caso por gemelo deja pasar exactamente eso.
-test('los dos evaluadores preguntan qué CLI existe, no lo suponen', () => {
-  for (const name of ['agent-eval.js', 'flow-eval.js']) {
+// `agent-promote` entra a la lista tarde y por lo que costó: suponía `tools/ops.js` en sus tres
+// comandos. El primero se salvó porque el agente improvisó —que es exactamente lo que este caso existe
+// para impedir— y el último, el que sella, no: aplicó el cambio al `SKILL.md`, escribió el historial y
+// dejó la propuesta en `proposed`. El comentario de ese paso ya lo nombraba: marcar el estado a mano es
+// «el paso que se hace mal en silencio», y salió mal por no poder correrse.
+test('los tres recorridos que corren el CLI preguntan cuál existe, no lo suponen', () => {
+  for (const name of ['agent-eval.js', 'flow-eval.js', 'agent-promote.js']) {
     const source = fs.readFileSync(path.join(WF, name), 'utf8')
     assert.match(source, /cli: \{ type: 'string' \}/, `${name}: la ruta viaja en el schema`)
     assert.match(source, /"tools\/ops\.js" if that file exists and "engine\/cli\/ops\.js" otherwise/,

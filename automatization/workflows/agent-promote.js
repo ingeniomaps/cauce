@@ -43,6 +43,12 @@ const SIGNATURE = {
     state: { type: 'string' },
     status: { type: 'string' },
     hasChange: { type: 'boolean' },
+    // Qué CLI existe acá. Una empresa tiene el shim `tools/ops.js`; el repo del toolkit no lo tiene
+    // —no se instala a sí mismo— y su motor está en `engine/cli/ops.js`. Los dos evaluadores ya lo
+    // preguntan; éste lo suponía en sus dos comandos. El primero se salvó porque el agente improvisó, y
+    // el último —el que sella— no: la propuesta quedó `proposed` con el cambio ya aplicado, que es el
+    // estado que el comentario de ese paso llama «el que se hace mal en silencio».
+    cli: { type: 'string' },
   },
 }
 
@@ -63,7 +69,9 @@ if (!AGENT) return stop('sin-cargo', 'pasá el slug del cargo')
 phase('Firma')
 
 const signature = await agent(
-  `From ${ROOT}, run "node tools/ops.js agents list --json" and take the path it printed for ${AGENT}. ` +
+  `From ${ROOT}, the CLI is "tools/ops.js" if that file exists and "engine/cli/ops.js" otherwise. ` +
+  `Set cli to the one that exists.\n\n` +
+  `Run "node <cli> agents list --json" and take the path it printed for ${AGENT}. ` +
   `Set dir to "${ROOT}/<path>": that command prints paths relative to ${ROOT}.\n\n` +
   `Find the newest proposal under <dir>/learning/proposals/. They are named AAAA-MM.md, and a ` +
   `correction to an already applied one is AAAA-MM-rN.md — the revision is newer than the plain name ` +
@@ -93,7 +101,8 @@ if (!signature.approved) {
 // Como el cambio es aditivo por diseño, reaplicar no falla — duplica cada viñeta y cada fuente.
 if ((signature.status || '').toLowerCase() === 'applied') {
   return stop('ya-aplicada', `${signature.proposal} ya está aplicada. Si la evaluación posterior mostró que ` +
-    `el cambio quedó mal calibrado, abrí una revisión con "node tools/ops.js learn ${AGENT} --proposal": ` +
+      `el cambio quedó mal calibrado, abrí una revisión con "node ${signature.cli || 'tools/ops.js'} ` +
+      `learn ${AGENT} --proposal": ` +
     'la aplicada queda sellada donde está y la corrección va con su propia firma')
 }
 log(`Aprobada por ${signature.signedBy}`)
@@ -146,7 +155,8 @@ await agent(
 // pendiente. Lo hace el motor y no vos, a mano, porque marcar el estado editando frontmatter es
 // exactamente el paso que se hace mal en silencio.
 await agent(
-  `From ${ROOT}, run "node tools/ops.js learn ${AGENT} --applied --period ${PERIOD}" and report only ` +
+  `From ${ROOT}, run "node ${signature.cli || 'tools/ops.js'} ` +
+  `learn ${AGENT} --applied --period ${PERIOD}" and report only ` +
   `what it printed. Change nothing else.`,
   { label: 'sella' },
 )

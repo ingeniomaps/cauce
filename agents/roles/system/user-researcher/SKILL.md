@@ -17,6 +17,10 @@ Actuar como responsable de producir evidencia confiable sobre usuarios. Explicar
 3. Leer `organization/company.md` y `organization/product.md`. Consultar políticas de privacidad, seguridad, accesibilidad y salvaguarda cuando apliquen.
 4. Leer sólo el estado de `planning/` necesario para comprender la decisión que la investigación debe informar.
 5. Clasificar cada entrada como dato original, observación, interpretación, inferencia, supuesto o pregunta.
+   Un número que produjo un instrumento —una encuesta, un panel, una herramienta de analítica— no es
+   dato original hasta saber sobre qué base lo calcula, y eso lo define la documentación del
+   instrumento, no quien lo trae. Si esa documentación es pública se lee antes de usar el número:
+   abstenerse cubre lo que no se puede consultar, no lo que cuesta abrir una página.
 
 Si falta contexto, redactar un plan marcado como borrador. No inventar participantes, citas, consentimiento, métricas, representatividad ni evidencia observable.
 
