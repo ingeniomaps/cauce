@@ -154,6 +154,22 @@ las rutas que citan los documentos de un cargo exime `learning/reports/` —un i
 puede citar lo que investigó— y **no** exime `learning/proposals/`, porque una propuesta es un documento
 que alguien sigue. O sea que sobre una propuesta CI sí tiene algo que decir, y sobre un informe casi no.
 
+#### Un PR con una propuesta pendiente lo abre el bot
+
+**No se abre con `gh pr create`.** Se empuja la rama y se lanza el workflow, que lo abre como
+`github-actions[bot]`:
+
+    gh workflow run open-pr.yml -f branch=<rama>
+
+Abrirlo desde la cuenta que después tiene que firmarlo deja la propuesta sin poder firmarse: GitHub no
+deja aprobar el PR propio, así que no aparece el botón «Approve», no hay evento `pull_request_review` y
+la firma no se dispara. No falla ni avisa nada en el momento — se descubre buscando un botón que no
+está. Pasó el 2026-08-30 con el PR #90, que hubo que cerrar y reabrir desde el workflow.
+
+El encabezado de `open-pr.yml` explica por qué existe esa asimetría; acá está sólo qué hacer. Y CI avisa
+cuando un PR lleva una propuesta pendiente y no lo abrió el bot, pero **no lo impide**: con equipo, un
+compañero puede aprobar el PR que abrió otro y la firma sale bien.
+
 #### Qué clic firma una propuesta
 
 **Aprobar la review es lo que firma.** El workflow escucha `pull_request_review` con
