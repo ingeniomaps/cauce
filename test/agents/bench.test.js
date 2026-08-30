@@ -18,7 +18,9 @@ test('el banco de evaluación es una instancia de verdad, no un directorio vací
   const toolkit = path.resolve(__dirname, '..', '..')
   const bench = run(['evaluate', 'product-manager', '--bench', '06-instancia', '--force'], toolkit)
   assert.equal(bench.status, 0, bench.stderr)
-  const dir = bench.stdout.trim()
+  // La salida es relativa a la raíz que se le pasó, no al cwd de la suite: resolverla contra `toolkit`
+  // es lo que deja estas pruebas independientes de desde dónde se corran.
+  const dir = path.resolve(toolkit, bench.stdout.trim())
   assert.ok(fs.existsSync(path.join(dir, 'ops.config.json')), 'con su configuración')
   assert.ok(fs.existsSync(path.join(dir, 'planning', 'INBOX.md')), 'y un planning donde escribir')
 
@@ -31,11 +33,23 @@ test('el banco de evaluación es una instancia de verdad, no un directorio vací
   assert.ok(roles.length >= MIN_ROLES, `el banco ve el catálogo (${roles.length})`)
 })
 
+// Se fija la ruta entera y no sólo que no sea absoluta: con `path.isAbsolute` solo, una salida vacía
+// o un `.` pelado también pasaban. Por qué relativa, en la rama `--bench` de `catalog.js`.
+test('la ruta del banco se imprime relativa a la raíz', () => {
+  const toolkit = path.resolve(__dirname, '..', '..')
+  const bench = run(['evaluate', 'product-manager', '--bench', '12-ruta-relativa', '--force'], toolkit)
+  assert.equal(bench.status, 0, bench.stderr)
+  const dir = bench.stdout.trim()
+  assert.equal(dir, path.join('.cauce-eval', 'product-manager', '12-ruta-relativa'))
+  assert.ok(fs.existsSync(path.resolve(toolkit, dir)), 'y resuelve contra la raíz que se le pasó')
+})
+
 // Reutilizarlo dejaría que lo que un cargo escribió el lunes sea contexto del que responde el martes,
 // y dos corridas del mismo caso dejarían de ser comparables.
 test('el banco se recrea entero en cada corrida', () => {
   const toolkit = path.resolve(__dirname, '..', '..')
-  const dir = run(['evaluate', 'product-manager', '--bench', '07-recreado', '--force'], toolkit).stdout.trim()
+  const dir = path.resolve(toolkit,
+    run(['evaluate', 'product-manager', '--bench', '07-recreado', '--force'], toolkit).stdout.trim())
   const rastro = path.join(dir, 'planning', 'rastro-de-la-corrida-anterior.md')
   fs.writeFileSync(rastro, 'lo que escribió el cargo la vez pasada\n')
   run(['evaluate', 'product-manager', '--bench', '07-recreado', '--force'], toolkit)
@@ -53,8 +67,9 @@ test('el banco queda versionado para poder ver qué escribió el cargo', () => {
   // y contesta sobre el toolkit sin dar error.
   const bench = run(['evaluate', 'product-manager', '--bench', '08-versionado', '--force'], toolkit)
   assert.equal(bench.status, 0, bench.stderr)
-  const dir = bench.stdout.trim()
-  assert.ok(dir, 'el banco tiene que haberse creado')
+  const printed = bench.stdout.trim()
+  assert.ok(printed, 'el banco tiene que haberse creado')
+  const dir = path.resolve(toolkit, printed)
   const git = (...args) => spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8' }).stdout
 
   assert.equal(git('status', '--porcelain').trim(), '', 'el banco nace sin cambios pendientes')
@@ -74,7 +89,8 @@ test('el banco queda versionado para poder ver qué escribió el cargo', () => {
 // el comando pasa, así que sin esa precondición el caso no mide nada.
 test('rehacer un banco con trabajo sin recoger se niega', () => {
   const toolkit = path.resolve(__dirname, '..', '..')
-  const dir = run(['evaluate', 'product-manager', '--bench', '09-proteccion', '--force'], toolkit).stdout.trim()
+  const dir = path.resolve(toolkit,
+    run(['evaluate', 'product-manager', '--bench', '09-proteccion', '--force'], toolkit).stdout.trim())
   fs.appendFileSync(path.join(dir, 'planning', 'INBOX.md'), '\n- lo que produjo el cargo\n')
 
   const negado = run(['evaluate', 'product-manager', '--bench', '09-proteccion'], toolkit)
@@ -97,8 +113,8 @@ test('cada caso recibe su propio banco', () => {
   const segundo = run(['evaluate', 'product-manager', '--bench', '11-otro', '--force'], toolkit)
   assert.equal(primero.status, 0, primero.stderr)
   assert.equal(segundo.status, 0, segundo.stderr)
-  const one = primero.stdout.trim()
-  const other = segundo.stdout.trim()
+  const one = path.resolve(toolkit, primero.stdout.trim())
+  const other = path.resolve(toolkit, segundo.stdout.trim())
   assert.notEqual(one, other, 'dos casos no comparten directorio')
 
   fs.appendFileSync(path.join(one, 'planning', 'INBOX.md'), '\n- lo que escribió el primer caso\n')
