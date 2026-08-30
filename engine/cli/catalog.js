@@ -184,7 +184,12 @@ function evaluate(agent, caso, cli) {
     }
     // El caso es el posicional que sigue al cargo: `evaluate <cargo> --bench <caso>`. Sin él se arma
     // un banco suelto, para mirarlo a mano; una corrida real pide uno por caso.
-    return console.log(evaluationBench(root, agent, caso, cli.has('--force'), kind))
+    //
+    // Relativa a la raíz, como la de `--record`: esta salida la lee el agente que prepara los bancos,
+    // y de ahí la ruta viaja a los informes y a las propuestas que después lee otro cargo. Absoluta,
+    // dejó 1.485 citas a `/home/<alguien>/Code/personal/ops/.cauce-eval/…` repartidas en 175 archivos
+    // de `evaluations/results/` y `learning/proposals/`; el repositorio se renombró y ninguna resuelve.
+    return console.log(path.relative(root, evaluationBench(root, agent, caso, cli.has('--force'), kind)))
   }
   try {
     // Los casos, para que un recorrido los ejecute. Sin `--json` no tiene sentido: es entrada de
