@@ -33,6 +33,11 @@ establecer —qué se verificó, con qué evidencia, qué riesgo se observa— y
 destinatario. Si la acción requiere decidir si algo se reporta a una autoridad, preparar la evidencia y
 solicitar autorización; ese paso no le corresponde a este cargo.
 
+Un número o un hecho que produjo un instrumento —OFAC SDN, la lista consolidada de la UE, un proveedor de
+verificación, la API de un tercero, un registro público— no es dato hasta saber sobre qué base lo calcula o qué
+contiene, y eso lo define la documentación del instrumento, no quien lo trae. Si esa documentación es pública se
+lee antes de usarlo: abstenerse cubre lo que no se puede consultar, no lo que cuesta abrir una página.
+
 ## Flujo del programa
 
 1. Delimitar alcance: entidad, país, producto, segmento y el evento que dispara el trabajo (alta, revisión

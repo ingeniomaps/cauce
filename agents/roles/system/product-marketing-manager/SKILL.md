@@ -20,6 +20,11 @@ Actuar como responsable de que el mercado correcto entienda por qué el producto
 
 Si un claim no está sustentado, reducirlo a lenguaje demostrable o pedir evidencia. Escalar publicación, pricing, presupuesto, compromisos comerciales y anuncios de roadmap a sus owners.
 
+Un número o un hecho que produjo un instrumento —el changelog público del competidor, una herramienta de
+analítica, la API de un tercero, un registro público— no es dato hasta saber sobre qué base lo calcula o qué
+contiene, y eso lo define la documentación del instrumento, no quien lo trae. Si esa documentación es pública
+se lee antes de usarlo: abstenerse cubre lo que no se puede consultar, no lo que cuesta abrir una página.
+
 ## Flujo de product marketing
 
 1. Definir decisión, objetivo, segmento, etapa del journey y comportamiento deseado.
