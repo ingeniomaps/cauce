@@ -361,3 +361,33 @@ test('el resumen dice qué comando se negó, no sólo que fue Bash',
   // El `|` de un comando encadenado parte la fila en dos columnas y se lleva el resto del comando.
   assert.match(escrito, /npm ls --depth=0 \\\| head/, 'con el pipe escapado, o la fila se rompe')
 })
+
+// El cargo que juzga si un aviso aplica necesita las versiones reales, y la allowlist no se las puede
+// dar: `security-engineer` gastó seis denegaciones pidiendo `node -v`, `npm -v` y `npm --version` en
+// una sola corrida, y las tres del 2026-08-31 terminaron con el informe vacío. Se le dan hechas en el
+// prompt en vez de abrirle Bash. Se ejecuta el paso porque lo que puede fallar es la interpolación:
+// un `entorno` que no se expande deja el prompt diciendo la palabra en vez del dato.
+test('el prompt lleva las versiones del entorno, en vez de hacerlas buscar',
+  { skip: process.platform === 'win32' }, () => {
+  const paso = workflowStep(workflow('agent-learning'), 'id: research')
+  const dir = tempRoot('cauce-entorno-')
+  const visto = path.join(dir, 'args.txt')
+
+  // El falso guarda lo que recibe y devuelve un JSON válido, para que el paso termine bien.
+  fs.writeFileSync(path.join(dir, 'claude'),
+    `#!/usr/bin/env bash\nprintf '%s\\n' "$@" > ${JSON.stringify(visto)}\necho '{"num_turns":1}'\n`,
+    { mode: 0o755 })
+
+  const hecho = spawnSync('bash', ['-c', paso], {
+    cwd: dir, encoding: 'utf8',
+    env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, AGENT: 'probe', OAUTH: 'tok', APIKEY: '' },
+  })
+  assert.equal(hecho.status, 0, hecho.stderr)
+
+  const args = fs.readFileSync(visto, 'utf8')
+  assert.match(args, /El entorno de esta corrida es Node v\d+\.\d+\.\d+ y npm \S+/,
+    'las versiones resueltas, no la variable sin expandir')
+  assert.equal(/\$entorno/.test(args), false, 'y expandidas de verdad')
+  assert.match(args, /no hay shell para volver a comprobarlo/,
+    'y dicho que no las busque, que es lo que gastó seis denegaciones')
+})
