@@ -131,7 +131,7 @@ function green(target) {
   return spawnSync(process.execPath, ['--test', target], { cwd: ROOT, encoding: 'utf8' }).status === 0
 }
 
-const label = ({ file, i, local }) => `${file}:${i + 1} ${local}`
+const label = ({ file, i, local, name }) => (name ? `${file} :: ${name}` : `${file}:${i + 1} ${local}`)
 
 // Un binding que aparece una sola vez en su archivo es esa misma línea: nadie lo nombra después. El
 // conteo se equivoca sólo hacia el lado seguro —da por vivo lo que aparece dentro de un string—, así
@@ -201,20 +201,72 @@ function opaqueModules(sources) {
   return opaque
 }
 
+// Los usos de cada módulo del motor, resueltos a su destino. Contar el nombre suelto en todo el
+// repositorio daba por vivo cualquier `read` porque hay cinco módulos que exportan `read`: 61 de los
+// 229 exports comparten nombre con otro, y ninguno de esos se podía mirar. Acá el `require` dice a qué
+// archivo apunta cada mención, así que `catalog.read` ya no salva al `read` de `changelog`.
+//
+// Se recorre el texto y no las líneas: `engine/automation/index.js` abre su destructure en una línea y
+// lo cierra tres más abajo, y un parser por línea no ve ninguno de sus trece nombres. Con eso quedaban
+// 48 exports vivos propuestos como muertos, que es justo lo que la corrida frenó.
+//
+// Un archivo con un `require` de especificador armado en runtime no puede dar un mapa confiable —no se
+// sabe qué módulo cargó—, así que vuelve entero al conteo por nombre suelto. Son tres hoy, y perder
+// precisión ahí es el lado seguro: propone de menos.
+function resolvedUses(sources) {
+  const uses = new Map()
+  const loose = []
+  const add = (target, name) => {
+    if (!uses.has(target)) uses.set(target, new Set())
+    uses.get(target).add(name)
+  }
+  const namesIn = (list) => list.split(',').map((id) => id.trim().split(':')[0].trim())
+  for (const [file, source] of sources) {
+    if (!file.endsWith('.js') || /require\([^')]/.test(source)) { loose.push([file, source]); continue }
+    const alias = new Map()
+    // Con sangría: un `require` dentro de una función es un alias igual, y `ownership.js` y
+    // `context.test.js` los usan así. Anclar en `^const` los perdía y daba tres exports vivos por muertos.
+    for (const hit of source.matchAll(/^\s*const (\w+) = require\('([^']+)'\)$/gm)) {
+      const target = engineTarget(file, hit[2])
+      if (target) alias.set(hit[1], target)
+    }
+    for (const hit of source.matchAll(/const\s*\{([^}]+)\}\s*=\s*require\('([^']+)'\)/g)) {
+      const target = engineTarget(file, hit[2])
+      if (target) for (const name of namesIn(hit[1])) add(target, name)
+    }
+    for (const [local, target] of alias) {
+      for (const hit of source.matchAll(new RegExp(`\\b${local}\\.(\\w+)`, 'g'))) add(target, hit[1])
+      // `const { a, b } = I`, con `I` ya importado más arriba: el destructure no nombra al `require`.
+      for (const hit of source.matchAll(new RegExp(`const\\s*\\{([^}]+)\\}\\s*=\\s*${local}\\b`, 'g'))) {
+        for (const name of namesIn(hit[1])) add(target, name)
+      }
+    }
+    for (const hit of source.matchAll(/require\('([^']+)'\)\.(\w+)/g)) {
+      const target = engineTarget(file, hit[1])
+      if (target) add(target, hit[2])
+    }
+  }
+  return { uses, loose }
+}
+
 function checkExports(sources) {
   const opaque = opaqueModules(sources)
+  const { uses, loose } = resolvedUses(sources)
   const engine = [...sources.keys()].filter((f) => f.startsWith('engine/') && f.endsWith('.js'))
   const found = []
   for (const file of engine) {
     if (opaque.has(file)) continue
+    const resolved = uses.get(file) || new Set()
     for (const name of exportNames(sources.get(file))) {
+      if (resolved.has(name)) continue
+      // Un README no puede decir de qué módulo habla, así que una mención en prosa salva por nombre.
+      // Es la regla de siempre: lo que se quiere público se documenta, y documentarlo es lo que salva.
       const re = new RegExp(`\\b${name}\\b`)
-      let used = false
-      for (const [other, source] of sources) { if (other !== file && re.test(source)) { used = true; break } }
-      if (!used) found.push({ file, name })
+      if (loose.some(([other, source]) => other !== file && re.test(source))) continue
+      found.push({ file, name })
     }
   }
-  const scope = `${found.length} export(s) sin mención en ${sources.size} archivo(s)`
+  const scope = `${found.length} export(s) sin uso en ${sources.size} archivo(s)`
     + (opaque.size ? `, ${opaque.size} módulo(s) opaco(s) sin analizar` : '')
   if (!found.length) return { dead: [], runs: 0, scope }
 
@@ -225,10 +277,25 @@ function checkExports(sources) {
   }
   const batch = green(SUITE_GLOB)
   restoreAll()
-  const dead = found.map(({ file, name }) => `${file} :: ${name}`)
-  // El escaneo ya decidió; la corrida confirma. En rojo no se afirma nada y se dice por qué.
-  if (!batch) return { dead: [], runs: 1, scope, inconclusive: true }
-  return { dead, runs: 1, scope }
+  if (batch) return { dead: found.map(label), runs: 1, scope }
+
+  // El lote en rojo tiene dos causas y hay que separarlas: que alguno estuviera vivo, o que la suite ya
+  // viniera rota. Preguntarlo cuesta una corrida y ahorra las N de abajo, que sobre una suite rota no
+  // pueden confirmar nada; y sin esto el resultado sería un ✓ que se lee igual que uno limpio.
+  if (!green(SUITE_GLOB)) return { dead: [], runs: 2, scope, inconclusive: true }
+
+  // Entonces alguno estaba vivo y el escaneo no vio cómo lo usan. Se separa de a uno, igual que del
+  // lado de los imports, para no devolver un «no sé» cuando se puede decir cuál.
+  const dead = []
+  let runs = 2
+  for (const one of found) {
+    write(path.join(ROOT, one.file), withoutExports(fs.readFileSync(path.join(ROOT, one.file), 'utf8'), [one.name]))
+    const ok = green(SUITE_GLOB)
+    restoreAll()
+    runs++
+    if (ok) dead.push(label(one))
+  }
+  return { dead, runs, scope }
 }
 
 function checkSuites() {
