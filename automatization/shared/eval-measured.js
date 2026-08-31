@@ -29,6 +29,17 @@ const unmeasuredNote = (unmeasured) => (unmeasured.length
 //
 // Se aplica sobre la fila entera del registro y no pedazo por pedazo: así ninguno queda afuera —la
 // nota del juez lo estaba, y es el que más fácil filtra una ruta— y la raíz se deriva una sola vez.
+//
+// El recorte es el mecanismo y está medido: su prueba lo ejecuta y mira qué sale. La regla que además se
+// le pide al juez y al sujeto —nombrar los archivos relativos a la raíz— es defensa en profundidad y **no
+// está medida**: sólo consta que el texto está en los prompts, que es estructura y no conducta. Sirve para
+// que el registro no quede con «todos bajo ``», no para garantizar nada; lo que garantiza es esto.
+//
+// Medirla pide otro instrumento. Una corrida de evaluación aporta once textos de prosa, y distinguir el
+// 39 % de base de un 10 % necesita del orden de treinta y cuatro por brazo: hace falta una sonda que corra
+// la misma tarea con y sin la frase, con la propiedad decidida por un regex y sin juez. El 39 % no es
+// estimado: son 9 de 23 textos con una ruta, contados sobre el `journal.jsonl` de las tres corridas del
+// 2026-08-30 y 31.
 const stripRoot = (text, root) => {
   const one = String(text || '')
   const visto = (one.match(/([A-Za-z0-9_./~-]+)\/\.cauce-eval\//) || [])[1]
