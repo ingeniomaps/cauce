@@ -214,6 +214,9 @@ const CONTRACT = {
   required: ['project', 'workspaceRoots', 'maxTaskHours', 'commitPerTask', 'humanCheckpoint', 'contracts'],
   properties: {
     project: { type: 'string' }, workspaceRoots: { type: 'array', minItems: 1, items: { type: 'string' } },
+    // La puerta que el proyecto declara, si la declara. Viaja con la raíz porque es de la base de código
+    // y no del runner: un monorepo tiene una por servicio, y uno solo tiene una sola.
+    gates: { type: 'array', items: { type: 'string' } },
     maxTaskHours: { type: 'number' }, commitPerTask: { type: 'boolean' },
     humanCheckpoint: { type: 'boolean' }, contracts: { type: 'string' },
     boundaries: { type: 'array', items: { type: 'string' } },
@@ -254,6 +257,8 @@ const contract = await agent(
   `${BASE}\n\nLeé ${ROOT}/AGENTS.md, ${CONFIG} y ${P}/PROTOCOL.md una sola vez y no leas nada más. Reportá los ` +
   `valores de configuración textualmente: project, workspaceRoots como entradas "nombre → ruta", ` +
   `runner.maxTaskHours, runner.commitPerTask y runner.humanCheckpointBetweenMilestones como humanCheckpoint. ` +
+  `En gates poné una entrada "ruta → comando" por cada workspaceRoot que declare \`verify\`, y ninguna por ` +
+  `las que no lo declaren: la lista vacía significa que el proyecto no dice con qué se verifica. ` +
   `Copiá la sección "## Contratos" de PROTOCOL.md dentro de contracts tal cual, sin reformular, resumir ni ` +
   `reordenar. En boundaries listá sólo los límites que AGENTS.md enuncia y que restringen la ejecución autónoma.`,
   { schema: CONTRACT, label: 'contract-digest' },
@@ -580,9 +585,17 @@ while (rounds++ < MAX_TASKS) {
     `contrastá cada criterio ` +
     `de aceptación contra sus aserciones: en uncovered va el criterio que ningún test codifica, con su causa ` +
     `—missing-test si el test falta o no asercia la propiedad, ambiguous si el criterio no dice qué habría ` +
-    `que aserciar—. Un test que pasa sin aserciarla no la cubre. Después descubrí y corré los gates reales ` +
-    `de ${task.service}: primero las instrucciones del ` +
-    `repositorio, después el test, lint, typecheck y build que apliquen. Leé los exit codes de verdad. ` +
+    `que aserciar—. Un test que pasa sin aserciarla no la cubre. Después corré los gates reales de ${task.service}. ` +
+    // Descubrir la puerta es trabajo de modelo repetido en cada tarea sobre una respuesta que no cambia,
+    // y encima adivinable: el proyecto la declara en `verify` y ahí deja de adivinarse. Cuando no la
+    // declara se vuelve a descubrir, que es lo que pasaba siempre.
+    (contract.gates && contract.gates.length
+      ? `El proyecto las declara y no hay que descubrirlas —${contract.gates.join(' · ')}—: corré la de ` +
+        `la raíz que contiene ese servicio, tal cual y desde esa raíz. Si falla por algo que la tarea no ` +
+        `tocó, decilo en vez de arreglarlo. `
+      : `El proyecto no declara con qué se verifica, así que descubrilo: primero las instrucciones del ` +
+        `repositorio, después el test, lint, typecheck y build que apliquen. `) +
+    `Leé los exit codes de verdad. ` +
     `passed=true exige comandos corridos y ninguna regresión causada por la tarea. Marcá ranTests en el ` +
     `comando que haya corrido las pruebas, sea cual sea su nombre. ` +
     `Aceptación: ${task.acceptance}.`
