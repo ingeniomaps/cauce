@@ -6,6 +6,7 @@
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const path = require('node:path')
 const { KEY, baseScript, ranToEnd, runFlow } = require('../support/autobuild-harness')
 
 // Un carril baja ceremonia: saltea fases enteras. Lo que no puede bajar es la evidencia que se exige,
@@ -169,4 +170,38 @@ test('el prompt que trabaja dice dónde está el contrato del cargo, no dónde n
   // Lo que no puede volver: mandar a una carpeta que en una instancia no existe.
   assert.equal(/SKILL\.md bajo agents\//.test(build.prompt), false,
     'no manda a `agents/`, que el catálogo no copia')
+})
+
+// Descubrir con qué se verifica un servicio es una respuesta que no cambia entre tareas, y hasta acá se
+// pagaba en cada una: el prompt mandaba leer las instrucciones del repositorio y adivinar el gestor. El
+// proyecto puede declararlo en `verify`, y entonces deja de adivinarse. Sin declaración se descubre
+// igual, porque un proyecto que todavía no lo dijo tiene que poder correr.
+test('el proyecto que declara su puerta no la hace descubrir de nuevo', async () => {
+  const script = baseScript()
+  script[KEY.contract] = { ...script[KEY.contract], gates: ['./api → npm test'] }
+  const { prompts } = await runFlow(script, { lane: 'directo' })
+  const verify = prompts.find((one) => /exit codes de verdad/.test(one.prompt))
+  assert.ok(verify, 'no se encontró el prompt de Verify')
+
+  assert.match(verify.prompt, /\.\/api → npm test/, 'le llega la puerta declarada, con su raíz')
+  assert.match(verify.prompt, /no hay que descubrirlas/, 'y se le dice que no la busque')
+  assert.equal(/descubrilo: primero las instrucciones/.test(verify.prompt), false,
+    'no le quedan las dos instrucciones a la vez, que sería peor que ninguna')
+
+  // Las dos mitades que el harness no puede ver, porque finge la respuesta del contrato en vez de
+  // validarla: el esquema tiene `additionalProperties: false`, así que sin el campo una respuesta real
+  // que lo traiga se rechaza entera, y sin la cláusula del prompt nadie lo llena. Van sobre el fuente
+  // porque no hay dónde más mirarlas.
+  const src = require('../../engine/automation').render(
+    path.join(__dirname, '..', '..', 'automatization', 'workflows', 'autobuild.js'), '',
+    path.join(__dirname, '..', '..', 'automatization'))
+  assert.match(src, /gates: \{ type: 'array', items: \{ type: 'string' \} \}/, 'el contrato acepta el campo')
+  assert.match(src, /por cada workspaceRoot que declare/, 'y se le pide llenarlo desde el config')
+})
+
+test('el proyecto que no la declara sigue descubriéndola', async () => {
+  const { prompts } = await runFlow({}, { lane: 'directo' })
+  const verify = prompts.find((one) => /exit codes de verdad/.test(one.prompt))
+  assert.match(verify.prompt, /descubrilo: primero las instrucciones/,
+    'sin declaración se descubre: un proyecto que no lo dijo tiene que poder correr igual')
 })
