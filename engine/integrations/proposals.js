@@ -79,4 +79,4 @@ function validate(root, provider, workspaces = []) {
   return errors
 }
 
-module.exports = { STATES, read, validate }
+module.exports = { read, validate }

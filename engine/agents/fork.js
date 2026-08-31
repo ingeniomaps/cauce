@@ -144,4 +144,4 @@ function driftLine(entry) {
   return `${entry.slug}: tu copia no recibe mejoras del catálogo y ahí${since} ${parts.join(', ')}`
 }
 
-module.exports = { drift, driftLine, fork, inherited }
+module.exports = { drift, driftLine, fork }

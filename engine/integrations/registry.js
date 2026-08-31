@@ -397,7 +397,6 @@ function providerState(root, name) {
 
 module.exports = {
   providerState,
-  STATES,
   adapter,
   frontmatter,
   promote,

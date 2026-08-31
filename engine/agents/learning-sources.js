@@ -163,4 +163,4 @@ function evaluate(root, agent) {
   return { errors, warnings, proposals: proposals.length, pending, cases }
 }
 
-module.exports = { SOURCE_TIERS, CADENCES, cadence, evaluate, evaluateTeam }
+module.exports = { SOURCE_TIERS, cadence, evaluate, evaluateTeam }
