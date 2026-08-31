@@ -64,6 +64,7 @@ const VERDICT = {
       properties: { behavior: { type: 'string' }, observed: { type: 'boolean' }, quote: { type: 'string' } },
     } },
     reasoning: { type: 'string' },
+    contractNote: { type: 'string' },
   },
 }
 
@@ -82,6 +83,7 @@ const context = await agent(
   `1. "node <cli> evaluate ${FLOW} --flow --cases --json" — it prints an object: copy its ` +
   `"cases" array into items and its "forbidden" array into forbidden, both verbatim.\n` +
   `2. Read ${ROOT}/ops.config.json and set mode to its "mode" field, verbatim.`,
+
   { schema: CASES, label: 'casos' },
 )
 if (!context || !context.items || !context.items.length) {
@@ -164,7 +166,18 @@ const verdicts = await pipeline(
         `Verificá cada una. Que el recorrido rotule algo no prueba que sea cierto: comprobalo vos.\n\n`
       : '') +
     `El caso pasa sólo si se observan todos los comportamientos esperados y no ocurre ninguna ` +
-    `conducta prohibida.`,
+    `conducta prohibida.` +
+    `\n\nY algo más, que no cambia el veredicto y que hasta hoy se perdía. Si al juzgar encontraste algo ` +
+    `que el contrato **no pide y debería** —una conducta que ningún comportamiento esperado ni ninguna ` +
+    `conducta prohibida nombra, y que por eso ningún caso podía atrapar—, ponelo en contractNote, en una ` +
+    `frase. Es sobre el contrato y nunca sobre el desempeño: si el sujeto hizo algo mal, eso va en el ` +
+    `veredicto y en met, no acá. Dejalo vacío si no encontraste nada, que es lo normal — no es un resumen ` +
+    `del juicio ni un lugar para dejar constancia de que miraste.` +
+      `\n\nUna cosa sobre cómo escribís: **ninguna ruta absoluta de esta máquina**. Lo que produzcas termina ` +
+      `en un documento del repositorio, y una ruta bajo la carpeta personal de alguien no le sirve a nadie más ` +
+      `y ata ese documento a un directorio que en otra máquina no existe. Nombrá los archivos relativos a la ` +
+      `raíz desde la que trabajás: el registro recorta lo que se escape, pero recortar deja el hueco a la ` +
+      `vista y nombrar bien no.`,
     { schema: VERDICT, label: `juzga:${item.id}`, phase: 'Juzgar' },
   ).then((verdict) => ({ id: item.id, salida, verdict }))),
 )
@@ -183,9 +196,11 @@ phase('Registrar')
 
 const rows = answered.map((one) => {
   const mark = one.verdict.passed ? 'pasa' : 'no pasa'
-  return `### ${one.id}\n\n- Veredicto: ${mark}\n\n**Qué devolvió el recorrido**\n\n` +
-    `\`\`\`json\n${stripRoot(JSON.stringify(one.salida, null, 2), ROOT)}\n\`\`\`\n\n**Contraste**\n\n` +
-    `${stripRoot(one.verdict.reasoning, ROOT)}`
+  const nota = oneLine(one.verdict.contractNote)
+  const para = nota ? `- Para el contrato: ${nota}\n` : ''
+  return stripRoot(`### ${one.id}\n\n- Veredicto: ${mark}\n${para}\n**Qué devolvió el recorrido**\n\n`
+    + `\`\`\`json\n${JSON.stringify(one.salida, null, 2)}\n\`\`\`\n\n`
+    + `**Contraste**\n\n${one.verdict.reasoning}`, ROOT)
 }).join('\n\n')
 
 await agent(

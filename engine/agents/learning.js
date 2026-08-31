@@ -215,6 +215,10 @@ function lastOfPeriod(dir, period) {
 // llegó a 49 de 20.119—. Nada lo delataba: la propuesta se compone igual y se lee entera.
 const VERDICT = /\n### ([^\n]+)\n\n- Veredicto: (pasa|no pasa)\n([\s\S]*?)(?=\n### [^\n]+\n\n- Veredicto: |$)/g
 
+// La nota que el juez deja sobre el contrato: una línea propia debajo del veredicto, no enterrada en el
+// contraste. Va a un documento que se firma, así que tiene que poder extraerse sin interpretar prosa.
+const CONTRACT_NOTE = /^-\s*Para el contrato:\s*(.+)$/m
+
 function verdicts(text) {
   return [...text.matchAll(VERDICT)]
     .map((hit) => ({ id: hit[1].trim(), passed: hit[2] === 'pasa', detail: hit[3].trim() }))
@@ -247,10 +251,26 @@ function verdictFindings(root, dir) {
       latest.set(item.id, { ...item, file, name, failures: (before ? before.failures : 0) + (item.passed ? 0 : 1) })
     }
   }
-  const findings = [...latest.values()].filter((item) => !item.passed).map((item) =>
-    `### ${item.id} — ${item.name.slice(0, -3)}\n\n`
-    + `Corrida: \`${path.relative(root, item.file)}\``
-    + `${item.failures > 1 ? ` — falló en ${item.failures} corridas de esta tanda` : ''}\n\n${item.detail}`)
+  const findings = [...latest.values()].flatMap((item) => {
+    const corrida = `Corrida: \`${path.relative(root, item.file)}\``
+    if (!item.passed) {
+      return [`### ${item.id} — ${item.name.slice(0, -3)}\n\n${corrida}`
+        + `${item.failures > 1 ? ` — falló en ${item.failures} corridas de esta tanda` : ''}\n\n${item.detail}`]
+    }
+    // Un caso que pasa también trae material, y hasta acá no tenía por dónde entrar. El juez ve el
+    // contrato entero mientras juzga y a veces encuentra lo que **no** pide: una conducta que ningún
+    // comportamiento esperado nombra, y que por eso ningún caso podía atrapar. No es un fallo del sujeto
+    // —eso lo dice el veredicto— así que no puede viajar como rojo, y sin esta rama moría en la prosa del
+    // contraste. Pasó el 2026-08-30: el juez anotó que el cargo debía citar verbatim o decir «paráfrasis»,
+    // el caso pasó, y la revisión que lo recogió hubo que escribirla a mano.
+    // De la primera línea y no de cualquier parte: después del veredicto viene la respuesta del sujeto,
+    // y ahí una línea con este prefijo sería una nota que el sujeto se escribe a sí mismo.
+    const note = (item.detail.split('\n', 1)[0].match(CONTRACT_NOTE) || [])[1]
+    return note
+      ? [`### ${item.id} — ${item.name.slice(0, -3)} · el caso pasa\n\n${corrida}\n\n`
+        + `Lo que el contrato no cubre: ${note.trim()}`]
+      : []
+  })
   return { consumed: unsealed.map((name) => path.join(results, name)), findings }
 }
 
