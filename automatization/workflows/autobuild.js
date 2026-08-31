@@ -371,9 +371,18 @@ while (rounds++ < MAX_TASKS) {
   const cast = { ...OWNERS, build: planning.cast.build }
   cast.review = [OWNERS.review, ...planning.cast.review].filter(Boolean).join(', ')
   log(`Cargos: build=${cast.build || '(sin asignar)'} · review=${cast.review} · qa=${cast.qa}`)
+  // Nombrar el cargo no alcanza: hay que decir dónde está su contrato, y `agents/` no es la respuesta.
+  // El catálogo no se copia a la instancia —viaja en el paquete— así que esa carpeta no existe en la raíz
+  // y la instrucción anterior mandaba a leer una ruta ausente. El workflow tampoco puede resolverla por
+  // su cuenta: su runtime no lee archivos. Lo que sí puede es decir con qué comando se resuelve, y el
+  // agente la obtiene dentro de su propia vuelta, sin costar una llamada más.
   const asRole = (slugs) => (slugs
-    ? `Actuá como ${slugs}, respetando el contrato de cada uno en su SKILL.md bajo agents/ y sus ` +
-      `límites: un cargo que no puede decidir solo, no decide solo.\n\n`
+    ? `Actuá como ${slugs}, respetando el contrato de cada uno y sus límites: un cargo que no puede ` +
+      `decidir solo, no decide solo.\n\n` +
+      `Leé ese contrato antes de empezar, no lo supongas por el nombre del cargo. El catálogo no se copia ` +
+      `a esta instancia, así que no hay carpeta \`agents/\` en la raíz: la ruta la da ` +
+      `"node tools/ops.js agents list ${ROOT} --json" en el campo \`path\` del slug, y el contrato es ` +
+      `\`<path>/SKILL.md\`.\n\n`
     : '')
 
   if (!planning.wipActive) {
