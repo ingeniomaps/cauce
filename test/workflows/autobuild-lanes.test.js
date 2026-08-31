@@ -148,3 +148,25 @@ test('bajar ceremonia no baja la evidencia que cada carril exige', async () => {
     assert.equal((await runFlow(looseEdge, { lane })).result.reason, 'edge-unproven', lane)
   }
 })
+
+// El cargo llega al prompt por su slug, y el contrato que ese slug nombra vive en el paquete: el catálogo
+// no se copia a la instancia, así que no hay `agents/` en la raíz. La instrucción anterior mandaba a leer
+// ahí, y el agente que la siguiera al pie de la letra no encontraba nada. El workflow tampoco puede
+// resolver la ruta —su runtime no lee archivos—, así que lo que viaja es el comando que la da.
+test('el prompt que trabaja dice dónde está el contrato del cargo, no dónde no está', async () => {
+  const { prompts } = await runFlow({}, { lane: 'directo' })
+  const build = prompts.find((one) => /Implementá sólo/.test(one.prompt))
+  assert.ok(build, 'no se encontró el prompt de Build')
+
+  assert.match(build.prompt, /Actuá como /, 'nombra el cargo')
+  // Lo que decide todo: que lo lea. Sin esta línea el agente actúa por lo que el slug le sugiere, y un
+  // nombre de cargo se parece bastante a su contrato sin serlo.
+  assert.match(build.prompt, /Leé ese contrato antes de empezar/, 'pide leerlo, no suponerlo')
+  assert.match(build.prompt, /agents list .* --json/, 'y con qué comando se resuelve su ruta')
+  assert.match(build.prompt, /campo `path` del slug/, 'diciendo qué campo leer')
+  assert.match(build.prompt, /`<path>\/SKILL\.md`/, 'y dónde está el contrato dentro de esa ruta')
+
+  // Lo que no puede volver: mandar a una carpeta que en una instancia no existe.
+  assert.equal(/SKILL\.md bajo agents\//.test(build.prompt), false,
+    'no manda a `agents/`, que el catálogo no copia')
+})
