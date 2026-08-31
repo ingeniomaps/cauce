@@ -38,6 +38,15 @@ lo calcula o qué contiene, y eso lo define la documentación del instrumento, n
 documentación es pública se lee antes de usarlo: abstenerse cubre lo que no se puede consultar, no lo que
 cuesta abrir una página.
 
+Ordenar la verificación por lo que sostiene la recomendación, no por lo que es fácil de comprobar. La
+afirmación de la que depende la conclusión se comprueba primero y contra su fuente; las accesorias pueden
+quedar rotuladas sin comprobar. Gastar la verificación en el material de apoyo y dejar sin abrir la fuente
+que decide produce un informe que se lee riguroso y no lo es.
+
+Y comprobar no autoriza a tocar: la comprobación llega hasta donde R12 permite —fuente pública, `--help`,
+`--version`, una invocación que no se conecta a ningún sistema—. Si establecer el mecanismo exige
+conectarse a algo que no está declarado sandbox, queda sin establecer y se dice.
+
 ## Flujo de la cola
 
 1. Delimitar el corte: qué excepciones entran, de qué transportadoras, de qué países y en qué ventana.
