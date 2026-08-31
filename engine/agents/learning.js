@@ -11,7 +11,7 @@ const {
   REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME, assertWritableTeam, assertWritable,
   isoDate, month, proposalOrder, proposalFiles, frontmatterState, proposalState, reportFiles,
 } = require('./learning-files')
-const { SOURCE_TIERS, CADENCES, cadence, evaluate, evaluateTeam } = require('./learning-sources')
+const { SOURCE_TIERS, cadence, evaluate, evaluateTeam } = require('./learning-sources')
 
 // El informe que ya entró a una propuesta. Nace en `draft` y nada lo movía nunca, así que el que se
 // consolidó y el que se escribió tarde —después de que la propuesta del período ya existía, y por eso
@@ -487,6 +487,5 @@ function reportSummary(root, report) {
 
 module.exports = {
   SOURCE_TIERS,
-  CADENCES,
   cadence, pendingRuns,
   SUMMARY_MAX, prepareReport, prepareProposal, evaluate, evaluateTeam, proposalState, seal }
