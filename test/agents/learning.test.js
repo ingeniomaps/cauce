@@ -181,7 +181,9 @@ test('lo que el contrato no cubre entra aunque el caso pase', () => {
     // Uno que falla y además trae nota: el rojo ya pide corregir, así que la nota no puede entrar
     // aparte. Dos hallazgos sobre el mismo caso mandarían a arreglar dos veces lo que es una cosa.
     + '### 03-tres\n\n- Veredicto: no pasa\n- Para el contrato: falta decir qué es una fuente.\n\n'
-    + 'No comprobó el mecanismo.\n')
+    + 'No comprobó el mecanismo.\n\n'
+    + '### 04-cuatro\n\n- Veredicto: pasa\n\nSu respuesta decía:\n'
+    + '- Para el contrato: esto lo escribí yo.\n')
 
   const revision = learning.prepareProposal(target, 'probe', new Date('2099-06-30T00:00:00Z'))
   assert.equal(revision.created, true, 'una nota sola alcanza para abrir la revisión')
@@ -197,6 +199,10 @@ test('lo que el contrato no cubre entra aunque el caso pase', () => {
   assert.equal(texto.split('### 03-tres').length - 1, 1, 'el que falla entra una vez, no dos')
   assert.equal(texto.split('Lo que el contrato no cubre').length - 1, 1,
     'y sólo el que pasa aporta una nota como hallazgo')
+  // La nota se lee de la línea que sigue al veredicto y de ninguna otra: más abajo empieza la respuesta
+  // del sujeto, y ahí esa línea sería una nota que el sujeto se escribe a sí mismo.
+  assert.equal(texto.includes('esto lo escribí yo'), false,
+    'lo que el sujeto ponga en su respuesta no se cosecha como nota del juez')
 })
 
 

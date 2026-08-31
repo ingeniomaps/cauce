@@ -17,15 +17,26 @@ const unmeasuredNote = (unmeasured) => (unmeasured.length
   ? `> Sin medir en esta corrida: ${unmeasured.join(', ')} — el caso no llegó a un veredicto.\n\n`
   : '')
 
-// La ruta absoluta del banco no entra al registro. El cargo y el juez la escriben con naturalidad
-// —trabajaron ahí— y el repositorio la rechaza: una ruta de una máquina no le sirve a nadie más y ata el
-// documento a un `/home` que en otra no existe. Se recorta acá y no pidiéndoselo al modelo: un pedido se
-// cumple casi siempre, y ese «casi» ya costó dos corridas de CI en rojo.
+// Ninguna ruta de esta máquina entra al registro. El sujeto y el juez las escriben con naturalidad
+// —trabajaron ahí— y el repositorio las rechaza: una ruta bajo el `/home` de alguien no le sirve a nadie
+// más y ata el documento a un directorio que en otra máquina no existe.
 //
-// Se recorta dos veces porque `root` no siempre trae la ruta. `{{OPS_DIR}}` lo completa `automation
-// install`, y en el repositorio del toolkit —donde no se instala— queda vacío y `ROOT` vale `'.'`: la
-// primera versión partía sólo por `root` y acá no recortaba nada. Que no se notara fue culpa de su
-// prueba, que comprobaba que la llamada existiera y no que hiciera algo.
-const stripRoot = (text, root) => (
-  root && root !== '.' ? String(text || '').split(`${root}/`).join('') : String(text || '')
-).replace(/[A-Za-z0-9_./~-]*\/\.cauce-eval\//g, '.cauce-eval/')
+// La raíz no siempre la trae `root`: `{{OPS_DIR}}` lo completa `automation install`, y en el repositorio
+// del toolkit —que no se instala a sí mismo— queda vacío y `ROOT` vale `.`. Cuando falta, la revela el
+// propio texto: cualquier ruta del banco la lleva adelante. Con ella se recorta también la que apunta a la
+// raíz sin nada detrás, que es la que se escapó el 2026-08-31 después de dos arreglos que cubrían el caso
+// visto y no la clase.
+//
+// Se aplica sobre la fila entera del registro y no pedazo por pedazo: así ninguno queda afuera —la
+// nota del juez lo estaba, y es el que más fácil filtra una ruta— y la raíz se deriva una sola vez.
+const stripRoot = (text, root) => {
+  const one = String(text || '')
+  const visto = (one.match(/([A-Za-z0-9_./~-]+)\/\.cauce-eval\//) || [])[1]
+  const base = root && root !== '.' ? root : (visto && visto.startsWith('/') ? visto : '')
+  return (base ? one.split(`${base}/`).join('') : one)
+    .replace(/[A-Za-z0-9_./~-]*\/\.cauce-eval\//g, '.cauce-eval/')
+}
+
+// Lo que va en una línea del registro se aplana antes de escribirlo: el motor lee `- Para el contrato:`
+// como línea propia, y un salto adentro partiría el documento en dos justo donde hay un dato.
+const oneLine = (text) => String(text || '').replace(/\s+/g, ' ').trim()

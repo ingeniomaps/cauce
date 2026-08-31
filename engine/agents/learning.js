@@ -263,7 +263,9 @@ function verdictFindings(root, dir) {
     // —eso lo dice el veredicto— así que no puede viajar como rojo, y sin esta rama moría en la prosa del
     // contraste. Pasó el 2026-08-30: el juez anotó que el cargo debía citar verbatim o decir «paráfrasis»,
     // el caso pasó, y la revisión que lo recogió hubo que escribirla a mano.
-    const note = (item.detail.match(CONTRACT_NOTE) || [])[1]
+    // De la primera línea y no de cualquier parte: después del veredicto viene la respuesta del sujeto,
+    // y ahí una línea con este prefijo sería una nota que el sujeto se escribe a sí mismo.
+    const note = (item.detail.split('\n', 1)[0].match(CONTRACT_NOTE) || [])[1]
     return note
       ? [`### ${item.id} — ${item.name.slice(0, -3)} · el caso pasa\n\n${corrida}\n\n`
         + `Lo que el contrato no cubre: ${note.trim()}`]

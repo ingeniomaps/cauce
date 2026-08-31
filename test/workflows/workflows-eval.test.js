@@ -283,6 +283,10 @@ test('el recorte de la raíz saca la ruta del banco, con root relativo o absolut
   assert.equal(stripRoot('leí /srv/equipo/repo/agents/roles/x/SKILL.md', '/srv/equipo/repo'),
     'leí agents/roles/x/SKILL.md', 'y la ruta a un archivo del repositorio, cuando root la trae')
   // Y no se lleva por delante lo que no es una ruta de banco.
+  // La que rompió CI el 2026-08-31: la raíz sin nada del banco detrás. Los dos arreglos anteriores
+  // cubrían el caso que se había visto —la ruta a un banco— y no la clase.
+  assert.equal(stripRoot('leídos bajo `/srv/equipo/repo/` y `/srv/equipo/repo/.cauce-eval/q/1/x.md`', '.'),
+    'leídos bajo `` y `.cauce-eval/q/1/x.md`', 'también la raíz pelada, si el texto la revela')
   assert.equal(stripRoot('corré ./tools/ops.js check', '.'), 'corré ./tools/ops.js check', 'no toca otra cosa')
 })
 
@@ -303,6 +307,8 @@ for (const name of ['agent-eval', 'flow-eval']) {
 
     // Y termina en el registro como línea propia, que es lo que el motor sabe leer.
     assert.match(src, /- Para el contrato: \$\{nota\}/, 'va al archivo, no sólo al esquema')
+    assert.match(src, /const nota = oneLine\(one\.verdict\.contractNote\)/,
+      'aplanada: un salto de línea partiría el registro donde hay un dato')
     assert.match(src, /- Veredicto: \$\{mark\}\\n\$\{para\}/, 'debajo del veredicto, no dentro del contraste')
   })
 }
@@ -314,8 +320,13 @@ for (const name of ['agent-eval', 'flow-eval']) {
 
     // Determinista y no un pedido al modelo: lo que el sujeto y el juez escriben pasa por el recorte.
     assert.match(src, /const stripRoot = \(text, root\)/, 'el recorte existe')
-    assert.match(src, /stripRoot\(one\.verdict\.reasoning, ROOT\)/, 'el contraste pasa por él')
-    assert.match(src, /stripRoot\((one\.answer|JSON\.stringify\(one\.salida)/, 'y lo que devolvió el sujeto')
+    // La fila entera y no campo por campo: así ninguno queda afuera. La nota lo estaba, y era el pedazo
+    // que más fácil filtra una ruta, porque lo escribe el juez mirando dónde trabajó el sujeto.
+    assert.match(src, /return stripRoot\(`### \$\{one\.id\}/, 'la fila entera pasa por el recorte')
+
+    // Y antes del recorte, la regla: recortar deja el hueco a la vista y nombrar bien no.
+    assert.match(src, /ruta absoluta de esta máquina/, 'se pide no escribirlas, no sólo limpiarlas')
+    assert.equal(/stripRoot\(one\./.test(src), false, 'y no pedazo por pedazo, que es como se olvida uno')
   })
 }
 

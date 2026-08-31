@@ -171,7 +171,13 @@ const verdicts = await pipeline(
         `en tu instancia:\n${item.fixtures.map((one) => `- ${one}`).join('\n')}\n` +
         `Leelos antes de contestar. Sé exacto sobre la procedencia de lo que afirmes: lo que leíste, ` +
         `leelo; lo que no, no lo supongas.`
-      : ''),
+      : '')
+    // Lo que el cargo escriba termina en un registro del repositorio, y una ruta bajo el `/home` de
+    // alguien no le sirve a nadie más. El recorte del registro la saca igual, pero recortar deja el
+    // hueco a la vista —«todos bajo ``»— y nombrar bien no. En `flow-eval` no hace falta: ahí el
+    // sujeto es el recorrido y devuelve datos, no prosa.
+    + `\n\nNombrá los archivos relativos a la raíz desde la que trabajás. Ninguna ruta absoluta de esta `
+    + `máquina: lo que escribas se guarda en un documento que se lee en otras.`,
     { schema: ANSWER, label: `responde:${item.id}`, phase: 'Responder' },
   ),
 
@@ -257,7 +263,12 @@ const verdicts = await pipeline(
     `conducta prohibida nombra, y que por eso ningún caso podía atrapar—, ponelo en contractNote, en una ` +
     `frase. Es sobre el contrato y nunca sobre el desempeño: si el sujeto hizo algo mal, eso va en el ` +
     `veredicto y en met, no acá. Dejalo vacío si no encontraste nada, que es lo normal — no es un resumen ` +
-    `del juicio ni un lugar para dejar constancia de que miraste.`,
+    `del juicio ni un lugar para dejar constancia de que miraste.` +
+      `\n\nUna cosa sobre cómo escribís: **ninguna ruta absoluta de esta máquina**. Lo que produzcas termina ` +
+      `en un documento del repositorio, y una ruta bajo la carpeta personal de alguien no le sirve a nadie más ` +
+      `y ata ese documento a un directorio que en otra máquina no existe. Nombrá los archivos relativos a la ` +
+      `raíz desde la que trabajás: el registro recorta lo que se escape, pero recortar deja el hueco a la ` +
+      `vista y nombrar bien no.`,
     { schema: VERDICT, label: `juzga:${item.id}`, phase: 'Juzgar' },
   ).then((verdict) => ({ id: item.id, expected: item.expected, answer: answer.response, verdict }))
     : { id: item.id, expected: item.expected, answer: '', verdict: null }),
@@ -277,11 +288,10 @@ phase('Registrar')
 
 const rows = answered.map((one) => {
   const mark = one.verdict.passed ? 'pasa' : 'no pasa'
-  const nota = String(one.verdict.contractNote || '').trim()
+  const nota = oneLine(one.verdict.contractNote)
   const para = nota ? `- Para el contrato: ${nota}\n` : ''
-  return `### ${one.id}\n\n- Veredicto: ${mark}\n${para}\n**Respuesta del cargo**\n\n` +
-    `${stripRoot(one.answer, ROOT)}\n\n` +
-    `**Contraste**\n\n${stripRoot(one.verdict.reasoning, ROOT)}`
+  return stripRoot(`### ${one.id}\n\n- Veredicto: ${mark}\n${para}\n**Respuesta del cargo**\n\n`
+    + `${one.answer}\n\n**Contraste**\n\n${one.verdict.reasoning}`, ROOT)
 }).join('\n\n')
 
 await agent(
