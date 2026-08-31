@@ -45,9 +45,14 @@ function validateWorkspaces(workspaces, errors) {
       continue
     }
     for (const key of Object.keys(workspace)) {
-      if (!['name', 'path'].includes(key)) {
+      if (!['name', 'path', 'verify'].includes(key)) {
         errors.push(`ops.config.json: workspaceRoots[${index}].${key} no está permitido`)
       }
+    }
+    // Opcional: la raíz que no lo declara deja que quien verifica descubra la puerta, como siempre.
+    // Declararlo vacío es peor que no declararlo —promete una puerta y no la da—, así que se rechaza.
+    if ('verify' in workspace && (typeof workspace.verify !== 'string' || !workspace.verify.trim())) {
+      errors.push(`ops.config.json: workspaceRoots[${index}].verify debe ser el comando, o no estar`)
     }
     if (typeof workspace.name !== 'string' || !workspace.name.trim()) {
       errors.push(`ops.config.json: workspaceRoots[${index}].name es obligatorio`)

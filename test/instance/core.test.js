@@ -39,6 +39,38 @@ test('un campo retirado se nombra en vez de caer en propiedad desconocida', () =
   assert.ok(!errors[0].includes('propiedad desconocida'))
 })
 
+// El campo que #110 agregó al schema para que un proyecto declare su puerta. Vive en dos listas que se
+// leen en momentos distintos —el editor mira el schema, `check` corre el validador— y nada las ataba: el
+// schema lo aceptaba y el validador lo rechazaba, así que la feature no pasaba su propia puerta.
+test('una raíz que declara su puerta pasa el validador', () => {
+  const config = opsConfig()
+  config.workspaceRoots[0].verify = 'npm test'
+  assert.deepEqual(validateOpsConfig(config), [])
+})
+
+// Declararlo vacío es peor que no declararlo: promete una puerta y no la da, y quien verifica se queda
+// sin comando y sin el aviso de que tenía que descubrirlo.
+test('una puerta declarada vacía se rechaza diciendo qué falta', () => {
+  const config = opsConfig()
+  config.workspaceRoots[0].verify = '   '
+  const errors = validateOpsConfig(config)
+  assert.equal(errors.length, 1, 'un solo error, no uno por lista')
+  assert.match(errors[0], /workspaceRoots\[0\]\.verify debe ser el comando, o no estar/)
+})
+
+// Lo que ató las dos listas. Sin esto, el próximo campo que entre al schema repite el hueco de #110 sin
+// que nada lo diga: el editor lo acepta y `check` lo rechaza.
+test('el validador acepta todo lo que el schema declara para una raíz', () => {
+  const schema = require('../../engine/schemas/ops-config.schema.json')
+  const declared = Object.keys(schema.properties.workspaceRoots.items.properties)
+  for (const field of declared) {
+    const config = opsConfig()
+    config.workspaceRoots[0][field] = 'algo'
+    const rejected = validateOpsConfig(config).filter((error) => error.includes('no está permitido'))
+    assert.deepEqual(rejected, [], `el schema declara ${field} y el validador lo rechaza`)
+  }
+})
+
 test('la frontera system/ separa lo del toolkit de lo del proyecto', () => {
   const O = require('../../engine/core/ownership')
   const root = tempRoot('cauce-ownership-')
