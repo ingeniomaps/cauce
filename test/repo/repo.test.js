@@ -409,6 +409,10 @@ const JUSTIFIED = {
   'automatization/workflows/autobuild.js':
     'Un recorrido crece de a una fase, y su schema y su paso cambian juntos: separarlos parte por la '
     + 'mitad lo que es una sola cosa.',
+  'test/agents/learning.test.js':
+    'Las pruebas de un ciclo suman una por conducta y comparten el montaje —un cargo con su propuesta '
+    + 'aplicada y su registro sin sellar—. Partirlas por tema separaría de qué material se abre una '
+    + 'propuesta de qué pasa al aplicarla, que son las dos mitades del mismo recorrido.',
 }
 
 const PENDING_SPLIT = {

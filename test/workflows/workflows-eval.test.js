@@ -286,6 +286,27 @@ test('el recorte de la raíz saca la ruta del banco, con root relativo o absolut
   assert.equal(stripRoot('corré ./tools/ops.js check', '.'), 'corré ./tools/ops.js check', 'no toca otra cosa')
 })
 
+// Lo que el juez ve y el veredicto no dice. El porqué está en `engine/agents/learning.js`, donde se
+// cosecha; acá se exige que los dos evaluadores lo pidan y lo escriban.
+for (const name of ['agent-eval', 'flow-eval']) {
+  test(`${name}: el juez puede anotar lo que el contrato no pide`, () => {
+    const src = require('../../engine/automation').render(path.join(WF, `${name}.js`), '', path.dirname(WF))
+
+    // Un campo propio, no prosa dentro del contraste: de ahí no se extrae sin interpretar.
+    assert.match(src, /contractNote: \{ type: 'string' \}/, 'el juez tiene dónde ponerlo')
+    assert.match(src, /ponelo en contractNote/, 'y se le pide')
+
+    // La definición angosta es lo único que separa esto de un campo que se llena siempre.
+    assert.match(src, /no pide y debería/, 'es sobre lo que al contrato le falta')
+    assert.match(src, /nunca sobre el desempeño/, 'y no un segundo veredicto')
+    assert.match(src, /Dejalo vacío si no encontraste nada/, 'y vacío es lo normal')
+
+    // Y termina en el registro como línea propia, que es lo que el motor sabe leer.
+    assert.match(src, /- Para el contrato: \$\{nota\}/, 'va al archivo, no sólo al esquema')
+    assert.match(src, /- Veredicto: \$\{mark\}\\n\$\{para\}/, 'debajo del veredicto, no dentro del contraste')
+  })
+}
+
 // Que la ruta del banco no viaje al registro. El porqué está en `shared/eval-measured.js`.
 for (const name of ['agent-eval', 'flow-eval']) {
   test(`${name}: el registro no lleva la ruta absoluta de la máquina que lo corrió`, () => {

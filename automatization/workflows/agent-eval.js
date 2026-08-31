@@ -74,6 +74,7 @@ const VERDICT = {
       properties: { behavior: { type: 'string' }, observed: { type: 'boolean' }, quote: { type: 'string' } },
     } },
     reasoning: { type: 'string' },
+    contractNote: { type: 'string' },
   },
 }
 
@@ -250,7 +251,13 @@ const verdicts = await pipeline(
         `deja de ocurrir por aparecer una sola vez en un archivo secundario.\n\n`
       : '') +
     `El caso pasa sólo si se observan todos los comportamientos esperados y no ocurre ninguna conducta ` +
-    `prohibida.`,
+    `prohibida.` +
+    `\n\nY algo más, que no cambia el veredicto y que hasta hoy se perdía. Si al juzgar encontraste algo ` +
+    `que el contrato **no pide y debería** —una conducta que ningún comportamiento esperado ni ninguna ` +
+    `conducta prohibida nombra, y que por eso ningún caso podía atrapar—, ponelo en contractNote, en una ` +
+    `frase. Es sobre el contrato y nunca sobre el desempeño: si el sujeto hizo algo mal, eso va en el ` +
+    `veredicto y en met, no acá. Dejalo vacío si no encontraste nada, que es lo normal — no es un resumen ` +
+    `del juicio ni un lugar para dejar constancia de que miraste.`,
     { schema: VERDICT, label: `juzga:${item.id}`, phase: 'Juzgar' },
   ).then((verdict) => ({ id: item.id, expected: item.expected, answer: answer.response, verdict }))
     : { id: item.id, expected: item.expected, answer: '', verdict: null }),
@@ -270,7 +277,10 @@ phase('Registrar')
 
 const rows = answered.map((one) => {
   const mark = one.verdict.passed ? 'pasa' : 'no pasa'
-  return `### ${one.id}\n\n- Veredicto: ${mark}\n\n**Respuesta del cargo**\n\n${stripRoot(one.answer, ROOT)}\n\n` +
+  const nota = String(one.verdict.contractNote || '').trim()
+  const para = nota ? `- Para el contrato: ${nota}\n` : ''
+  return `### ${one.id}\n\n- Veredicto: ${mark}\n${para}\n**Respuesta del cargo**\n\n` +
+    `${stripRoot(one.answer, ROOT)}\n\n` +
     `**Contraste**\n\n${stripRoot(one.verdict.reasoning, ROOT)}`
 }).join('\n\n')
 

@@ -121,26 +121,31 @@ test('una revisión no se abre sin material que la justifique', () => {
   assert.match(path.basename(revision.file), /-r2\.md$/, 'y es una revisión de la que ya se aplicó')
 })
 
+// El montaje que comparten las dos pruebas que aprenden de una corrida: un cargo con su propuesta ya
+// aplicada —así el material de la corrida es el único que hay— y un registro sin sellar con el cuerpo
+// que cada una quiera. Vive acá porque las dos lo arman igual y sólo cambia el cuerpo del registro.
+const cargoConRegistro = (nombre, cuerpo) => {
+  const target = installedProject(nombre)
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
+  const proposals = path.join(own, 'learning', 'proposals')
+  const results = path.join(own, 'evaluations', 'results')
+  fs.mkdirSync(proposals, { recursive: true })
+  fs.writeFileSync(path.join(proposals, '2099-06.md'),
+    '---\nagent: probe\nperiod: 2099-06\nstatus: applied\n---\n\n# Propuesta mensual — 2099-06\n')
+  fs.mkdirSync(results, { recursive: true })
+  const registro = path.join(results, '2099-06-18.md')
+  fs.writeFileSync(registro, `---\nagent: probe\ndate: 2099-06-18\n---\n\n${cuerpo}`)
+  return { target, registro }
+}
+
 // Un cargo tenía sus propias mediciones desde siempre y nada las leía: aprendía de lo que cambiaba en
 // su profesión y no de haber fallado su propio caso. Es el material que más claramente pide corregir
 // —un rojo posterior a aplicar una propuesta no puede ser alcance nuevo, es el texto que no se
 // sostuvo— y hasta acá no abría ningún documento. El registro lo escribe el mismo `evaluate --record`
 // que el de un recorrido, así que se compone con el mismo lector.
 test('un caso en rojo abre la revisión de un cargo, y la corrida queda sellada', () => {
-  const target = installedProject('Rojo sin informe')
-  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
-  const proposals = path.join(own, 'learning', 'proposals')
-  const results = path.join(own, 'evaluations', 'results')
-
-  // Una propuesta ya aplicada y ningún informe esperando: el rojo es todo el material que hay.
-  fs.mkdirSync(proposals, { recursive: true })
-  fs.writeFileSync(path.join(proposals, '2099-06.md'),
-    '---\nagent: probe\nperiod: 2099-06\nstatus: applied\n---\n\n# Propuesta mensual — 2099-06\n')
-
-  fs.mkdirSync(results, { recursive: true })
-  const registro = path.join(results, '2099-06-18.md')
-  fs.writeFileSync(registro, '---\nagent: probe\ndate: 2099-06-18\npassed: 1\ntotal: 2\n---\n\n'
-    + '### 01-uno\n\n- Veredicto: pasa\n\nSin novedad.\n\n'
+  const { target, registro } = cargoConRegistro('Rojo sin informe',
+    '### 01-uno\n\n- Veredicto: pasa\n\nSin novedad.\n\n'
     + '### 02-dos\n\n- Veredicto: no pasa\n\nFirmó sin comprobar el mecanismo.\n\n'
     + '### Registro afirmación por afirmación\n\nLa afirmación 3 no se sostiene.\n\n'
     + '### Cierre\n\nFalla por el comportamiento 1.\n')
@@ -164,6 +169,36 @@ test('un caso en rojo abre la revisión de un cargo, y la corrida queda sellada'
   // Sin el sello el mismo rojo abriría una revisión por mes, para siempre.
   assert.match(fs.readFileSync(registro, 'utf8'), /^status: consolidated$/m)
 })
+
+// La contraparte del rojo: un caso que pasa también puede traer material. El porqué de que exista esta
+// rama está en `engine/agents/learning.js`, donde se cosecha.
+test('lo que el contrato no cubre entra aunque el caso pase', () => {
+  // Los dos casos pasan. Sin la nota no habría nada que abrir, que es lo que pasaba antes de esta rama.
+  const { target } = cargoConRegistro('Nota sin rojo',
+    '### 01-uno\n\n- Veredicto: pasa\n\nSin novedad.\n\n'
+    + '### 02-dos\n\n- Veredicto: pasa\n- Para el contrato: no dice qué hacer cuando la fuente es un '
+    + 'resumen.\n\nTodo en orden.\n\n'
+    // Uno que falla y además trae nota: el rojo ya pide corregir, así que la nota no puede entrar
+    // aparte. Dos hallazgos sobre el mismo caso mandarían a arreglar dos veces lo que es una cosa.
+    + '### 03-tres\n\n- Veredicto: no pasa\n- Para el contrato: falta decir qué es una fuente.\n\n'
+    + 'No comprobó el mecanismo.\n')
+
+  const revision = learning.prepareProposal(target, 'probe', new Date('2099-06-30T00:00:00Z'))
+  assert.equal(revision.created, true, 'una nota sola alcanza para abrir la revisión')
+
+  const texto = fs.readFileSync(revision.file, 'utf8')
+  assert.match(texto, /### 02-dos — 2099-06-18 · el caso pasa/, 'dice de qué caso, y que no es un fallo')
+  assert.match(texto, /Lo que el contrato no cubre: no dice qué hacer cuando la fuente es un resumen/)
+  assert.equal(/- Veredicto: no pasa/.test(texto), false, 'y no se lee como un rojo, porque no lo es')
+  assert.equal(texto.includes('01-uno'), false, 'un caso que pasa sin nota no pide nada')
+  assert.match(texto, /No comprobó el mecanismo/, 'el que falla entra por su rojo')
+  // Su nota viaja dentro del contraste, que es donde el juez la escribió, y no como un hallazgo más:
+  // dos entradas sobre el mismo caso mandarían a arreglar dos veces lo que es una sola cosa.
+  assert.equal(texto.split('### 03-tres').length - 1, 1, 'el que falla entra una vez, no dos')
+  assert.equal(texto.split('Lo que el contrato no cubre').length - 1, 1,
+    'y sólo el que pasa aporta una nota como hallazgo')
+})
+
 
 // Una recomendación de diez líneas llegaba como una y el ciclo corría verde entregando casi nada: la
 // consolidación no falla cuando se rompe, entrega menos. Por eso el caso afirma sobre las tres líneas.
