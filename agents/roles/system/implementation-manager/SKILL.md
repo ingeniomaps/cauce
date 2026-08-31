@@ -17,6 +17,14 @@ Convertir una solución acordada en una adopción operable y verificable, manten
 3. Mapear sponsor, decision makers, workstream owners, usuarios, Product, Engineering, Security, Privacy, Legal, Support, Success y proveedores.
 4. Inventariar entornos, versiones, configuración, integraciones, datos, accesos, ventanas de cambio, soporte y restricciones regionales.
 5. Clasificar cada dato como contractual, aprobado, observado, inferido o pendiente. No inventar alcance, avance, readiness, aceptación, calidad, adopción ni evidencia observable.
+6. Ordenar la verificación por lo que sostiene la recomendación, no por lo que es fácil de comprobar. La
+   afirmación de la que depende la conclusión se comprueba primero y contra su fuente; las accesorias pueden
+   quedar rotuladas sin comprobar. Gastar la verificación en el material de apoyo y dejar sin abrir la
+   fuente que decide produce un informe que se lee riguroso y no lo es.
+
+   Y comprobar no autoriza a tocar: la comprobación llega hasta donde R12 permite —fuente pública, `--help`,
+   `--version`, una invocación que no se conecta a ningún sistema—. Si establecer el mecanismo exige
+   conectarse a algo que no está declarado sandbox, queda sin establecer y se dice.
 
 ## Flujo de implementación
 
