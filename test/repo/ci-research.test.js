@@ -321,3 +321,73 @@ test('la investigación usa la suscripción y cae a la API key sólo si falla',
   assert.notEqual(ninguna.status, 0, 'sin credencial falla en vez de correr sin nada')
   assert.deepEqual(ninguna.llamadas, [], 'y no invoca el modelo')
 })
+
+// Cinco «Bash» seguidos en el resumen no distinguen cinco comandos distintos de uno repetido, y la
+// causa de una denegación está en la forma del comando: `Bash(make agent-learn *)` no cubre
+// `cd X && make agent-learn …`, porque cada subcomando matchea por su cuenta. `security-engineer`
+// falló así dos corridas seguidas —2026-08-31, runs 33430858796 y 33437877164— y el log no permitía
+// saber cuál era. Se ejecuta el paso en vez de mirarlo con un regex: lo que puede romperse acá es el
+// `node -e` embebido, y una aserción sobre el fuente del YAML lo da por bueno igual.
+test('el resumen dice qué comando se negó, no sólo que fue Bash',
+  { skip: process.platform === 'win32' }, () => {
+  const paso = workflowStep(workflow('agent-learning'), 'id: research')
+  const dir = tempRoot('cauce-denegados-')
+  const resumen = path.join(dir, 'step-summary')
+  fs.writeFileSync(resumen, '')
+
+  // El falso ocupa el lugar del modelo y devuelve por stdout el JSON que `informe` lee. Dos
+  // denegaciones del mismo tool con comandos distintos: es el caso que la lista de nombres perdía.
+  const salidaJson = JSON.stringify({
+    total_cost_usd: 0.49, usage: { input_tokens: 30, output_tokens: 2718 },
+    duration_ms: 39000, num_turns: 20,
+    permission_denials: [
+      { tool_name: 'Bash', tool_input: { command: 'cd /repo && make agent-learn AGENT=probe' } },
+      { tool_name: 'Bash', tool_input: { command: 'npm ls --depth=0 | head' } },
+    ],
+  })
+  fs.writeFileSync(path.join(dir, 'claude'), `#!/usr/bin/env bash\ncat <<'JSON'\n${salidaJson}\nJSON\n`,
+    { mode: 0o755 })
+
+  const hecho = spawnSync('bash', ['-c', paso], {
+    cwd: dir, encoding: 'utf8',
+    env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, AGENT: 'probe', OAUTH: 'tok', APIKEY: '',
+      GITHUB_STEP_SUMMARY: resumen },
+  })
+  assert.equal(hecho.status, 0, hecho.stderr)
+
+  const escrito = fs.readFileSync(resumen, 'utf8')
+  assert.match(escrito, /make agent-learn AGENT=probe/, 'el comando negado, que es lo que decide la causa')
+  assert.match(escrito, /npm ls --depth=0/, 'y el segundo, que una lista de nombres confundía con el primero')
+  // El `|` de un comando encadenado parte la fila en dos columnas y se lleva el resto del comando.
+  assert.match(escrito, /npm ls --depth=0 \\\| head/, 'con el pipe escapado, o la fila se rompe')
+})
+
+// El cargo que juzga si un aviso aplica necesita las versiones reales, y la allowlist no se las puede
+// dar: `security-engineer` gastó seis denegaciones pidiendo `node -v`, `npm -v` y `npm --version` en
+// una sola corrida, y las tres del 2026-08-31 terminaron con el informe vacío. Se le dan hechas en el
+// prompt en vez de abrirle Bash. Se ejecuta el paso porque lo que puede fallar es la interpolación:
+// un `entorno` que no se expande deja el prompt diciendo la palabra en vez del dato.
+test('el prompt lleva las versiones del entorno, en vez de hacerlas buscar',
+  { skip: process.platform === 'win32' }, () => {
+  const paso = workflowStep(workflow('agent-learning'), 'id: research')
+  const dir = tempRoot('cauce-entorno-')
+  const visto = path.join(dir, 'args.txt')
+
+  // El falso guarda lo que recibe y devuelve un JSON válido, para que el paso termine bien.
+  fs.writeFileSync(path.join(dir, 'claude'),
+    `#!/usr/bin/env bash\nprintf '%s\\n' "$@" > ${JSON.stringify(visto)}\necho '{"num_turns":1}'\n`,
+    { mode: 0o755 })
+
+  const hecho = spawnSync('bash', ['-c', paso], {
+    cwd: dir, encoding: 'utf8',
+    env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, AGENT: 'probe', OAUTH: 'tok', APIKEY: '' },
+  })
+  assert.equal(hecho.status, 0, hecho.stderr)
+
+  const args = fs.readFileSync(visto, 'utf8')
+  assert.match(args, /El entorno de esta corrida es Node v\d+\.\d+\.\d+ y npm \S+/,
+    'las versiones resueltas, no la variable sin expandir')
+  assert.equal(/\$entorno/.test(args), false, 'y expandidas de verdad')
+  assert.match(args, /no hay shell para volver a comprobarlo/,
+    'y dicho que no las busque, que es lo que gastó seis denegaciones')
+})

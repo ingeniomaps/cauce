@@ -221,7 +221,16 @@ jobs:
           OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           APIKEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          prompt="Leé el learning/AUTOMATION.md del cargo $AGENT y ejecutá exactamente lo que declara. El informe de esta semana ya está creado y vacío: completalo. Cada afirmación necesita enlace, fecha y versión; lo que no puedas corroborar va a Preguntas abiertas en vez de afirmarse. El único archivo que escribís es ese informe."
+          # Un cargo que juzga si un aviso aplica necesita las versiones reales, y no tiene cómo
+          # conseguirlas: la allowlist de abajo concede dos `make` y nada más, y `node`/`npm` tampoco
+          # entran por el set que el CLI auto-aprueba —«`ls`, `cat`, `echo`, `pwd`, `head`, `tail`,
+          # `grep`, `find`, `wc`, `which`, `diff`, `stat`, `du`, `cd`, and read-only forms of `git`»,
+          # docs.claude.com, «Configure permissions», consultado 2026-08-31—. `security-engineer`
+          # gastó seis denegaciones y tres corridas del 2026-08-31 buscándolas, y terminó las tres con
+          # el informe vacío. El job sí puede correrlas: se las da hechas en vez de abrirle permisos a
+          # un modelo, y el dato le llega a los 53 cargos sin que ninguno lo pida.
+          entorno="Node $(node -v) y npm $(npm -v)"
+          prompt="Leé el learning/AUTOMATION.md del cargo $AGENT y ejecutá exactamente lo que declara. El informe de esta semana ya está creado y vacío: completalo. El entorno de esta corrida es $entorno, medido por el job: dalo por dado, no hay shell para volver a comprobarlo. Cada afirmación necesita enlace, fecha y versión; lo que no puedas corroborar va a Preguntas abiertas en vez de afirmarse. El único archivo que escribís es ese informe."
           # Sin permisos declarados, `claude -p` no puede correr un comando ni salir a la web, que es
           # todo lo que una investigación hace. La primera corrida real duró tres minutos y devolvió el
           # informe vacío —«every tool this task needs is currently denied in this session»— y el
@@ -245,8 +254,27 @@ jobs:
               linea(`| costo | USD ${(d.total_cost_usd || 0).toFixed(4)} |`)
               linea(`| tokens | ${u.input_tokens || 0} entrada · ${u.output_tokens || 0} salida |`)
               linea(`| duración | ${Math.round((d.duration_ms || 0) / 1000)} s en ${d.num_turns || 0} turno(s) |`)
+              // El nombre del tool no alcanza para saber qué se negó. `security-engineer` acumuló
+              // cinco «Bash» seguidos y la lista no distinguía cinco comandos distintos de uno
+              // repetido, que es justo lo que decide la causa: una regla se rompe por la **forma**
+              // del comando —«A rule must match each subcommand independently», docs.claude.com,
+              // «Configure permissions», consultado 2026-08-31—, así que un `cd X && make …` cae
+              // aunque `Bash(make …*)` esté concedida. Sin el input eso sólo se adivina.
+              // Comprobado contra claude-code 2.1.252: cada entrada trae `tool_input`, y para Bash
+              // su `command`. El CI pinnea 2.1.233, de ahí el acceso defensivo.
               const negados = d.permission_denials || []
-              if (negados.length) linea(`| permisos negados | ${negados.map((one) => one.tool_name).join(", ")} |`)
+              if (negados.length) linea(`| permisos negados | ${negados.length} |`)
+              // Se corta en diez porque el resumen del job tiene tope y un modelo trabado repite la
+              // misma denegación: las primeras ya dicen cuál es. Y el recorte a 200 caracteres deja
+              // el principio del comando, que es la parte contra la que matchea la regla.
+              for (const uno of negados.slice(0, 10)) {
+                const entrada = uno.tool_input || {}
+                const que = entrada.command || entrada.file_path || JSON.stringify(entrada)
+                // La fila es markdown: un `|` sin escapar la parte en dos, y un comando encadenado
+                // con `|&` o `||` los trae.
+                const texto = String(que).slice(0, 200).replace(/\|/g, "\\|")
+                linea(`| ↳ ${uno.tool_name} | \`${texto}\` |`)
+              }
             ' "$1" || true
           }
           # Un arreglo y no una cadena: sin comillas el shell parte `Bash(make agent-learn *)` en tres
