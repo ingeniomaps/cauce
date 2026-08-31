@@ -1,6 +1,13 @@
 {
   "$comment": [
-    "Dos guards, no todos. El resto queda afuera por lo que dice AGENTS.md, «Acá no se instala nada».",
+    "Tres guards, no todos. El resto queda afuera por lo que dice AGENTS.md, «Acá no se instala nada».",
+    "",
+    "`gh-identity` bloquea un `gh` que no lleve GH_TOKEN o GITHUB_TOKEN en la misma invocación. Vive",
+    "en .claude/hooks/ y no en engine/ porque es la credencial de este repo: un guard del motor bajaría",
+    "a toda empresa en su próximo upgrade. La razón por la que existe es que `gh` a secas NO falla —cae",
+    "al keyring, resuelve a otra cuenta y las lecturas devuelven resultados igual—, así que la identidad",
+    "equivocada no deja rastro hasta que algo escribe y da 403. Sin escape: `gh --version` y `gh --help`",
+    "pasan por inocuos, todo lo demás lleva la credencial. Los nombres están en .env.example.",
     "",
     "`git-add` bloquea `git add -A/--all/.` y no tiene escape: se stagea por nombre.",
     "",
@@ -15,6 +22,10 @@
       {
         "matcher": "Bash",
         "hooks": [
+          {
+            "type": "command",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/gh-identity.js"
+          },
           {
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/automatization/hooks/guard-git-add.sh"
