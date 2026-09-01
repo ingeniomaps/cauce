@@ -71,7 +71,12 @@ function seal(root, agent, period = '', kind = 'agent') {
   }
   const stamped = text
     .replace(/^status:\s*\S+\s*$/m, 'status: applied')
-    .replace(/^-[ \t]*Estado:[ \t]*pendiente[ \t]*$/m, '- Estado: aplicada')
+    // `aprobada` además de `pendiente`: cuando `seal` corre, la firma ya pasó y `sign-proposal.yml`
+    // dejó «aprobada», así que buscar sólo «pendiente» no reemplazaba nunca por el camino real. Las 24
+    // propuestas aplicadas del repositorio quedaron con `status: applied` y «- Estado: aprobada»: la
+    // contradicción entre frontmatter y cuerpo que la guarda de arriba dice evitar. La prueba no lo veía
+    // porque su fixture firmaba dejando «pendiente», un estado que producción no produce.
+    .replace(/^-[ \t]*Estado:[ \t]*(?:pendiente|aprobada)[ \t]*$/mi, '- Estado: aplicada')
     .replace(/^-[ \t]*Fecha:[ \t]*por definir[ \t]*$/mi, `- Fecha: ${isoDate(new Date())}`)
   atomicWrite(file, stamped)
   // El historial sólo lo escribe alguien para los cargos —`agent-promote`— y nadie para los recorridos,
