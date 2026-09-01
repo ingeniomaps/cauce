@@ -19,6 +19,10 @@ const {
 // veía igual que la que no. Sin este aviso hay que acordarse, y dos propuestas firmadas el 2026-09-01
 // se habrían quedado ahí sin que nada lo dijera.
 const SIGNED = /^-[ \t]*Estado:[ \t]*aprobada[ \t]*$/mi
+// Los dos destinos que cierran una propuesta. `archived` es «se miró y no cambia nada»: no espera
+// trabajo, así que contarla como pendiente deja al cargo reportando deuda que nadie va a pagar — el
+// mismo defecto que el comentario de abajo describe para una aplicada.
+const CLOSED = new Set(['applied', 'archived'])
 
 // No es un error: firmar y aplicar son actos separados a propósito —OPS-004— y entre uno y otro puede
 // pasar tiempo legítimamente. Lo que no puede es no verse.
@@ -44,7 +48,7 @@ function evaluateTeam(root, slug) {
     for (const section of REQUIRED_SECTIONS) {
       if (!text.includes(`## ${section}`)) errors.push(`${name}: falta sección ${section}`)
     }
-    if (proposalState(text) !== 'applied') {
+    if (!CLOSED.has(proposalState(text))) {
       pending += 1
       if (SIGNED.test(text)) signed.push(name)
     }
@@ -165,7 +169,7 @@ function evaluate(root, agent) {
     }
     // Contar sólo las que esperan algo. Una propuesta aplicada contada como propuesta deja al cargo
     // reportando trabajo pendiente para siempre, y es la misma confusión que permitía reaplicarla.
-    if (proposalState(text) !== 'applied') {
+    if (!CLOSED.has(proposalState(text))) {
       pending += 1
       if (SIGNED.test(text)) signed.push(name)
     }

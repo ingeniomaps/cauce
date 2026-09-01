@@ -154,7 +154,7 @@ function usage() {
   ops automation doctor <ops-root> claude|codex|gemini|antigravity
   ops automation install <ops-root> claude|codex|gemini|antigravity
   ops automation uninstall <ops-root> claude|codex|gemini|antigravity
-  ops learn <agent|flow> [--flow] [--proposal [--period <AAAA-MM>]] [--applied [--period <AAAA-MM>]]
+  ops learn <agent|flow> [--flow] [--proposal [--period <AAAA-MM>]] [--applied|--archived [--period <AAAA-MM>]]
   ops evaluate <agent|flow> [--flow] [--cases [--json]] [--bench [caso]] [--record [AAAA-MM-DD]]
   ops agents list [ops-root] [--own|--system] [--json]
   ops agents fork <cargo> [ops-root]

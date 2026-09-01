@@ -564,3 +564,44 @@ test('una propuesta firmada y sin aplicar se ve distinta de una que espera firma
   assert.match(avisos(), /1 propuesta\(s\) firmada\(s\) sin aplicar \(2099-01\.md\): la autorización ya está/,
     'y ahora se ve que el trabajo está detenido, no esperando')
 })
+
+// Lo que separa archivar de aplicar, que es lo único que un caso puede medir acá: los dos cierran el
+// documento y sólo uno dice que el contrato cambió. El porqué del estado vive en `learning-seal.js`.
+test('una propuesta se puede archivar, y archivarla no es aplicarla', () => {
+  const target = installedProject('Archivar')
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
+  const reports = path.join(own, 'learning', 'reports')
+  fs.mkdirSync(reports, { recursive: true })
+  fs.writeFileSync(path.join(reports, '2099-01-07.md'),
+    '---\nagent: probe\ndate: 2099-01-07\nstatus: draft\n---\n\n## Recomendación\n\nAlgo.\n')
+  const propuesta = learning.prepareProposal(target, 'probe', new Date('2099-02-01T13:17:00Z'), '2099-01')
+
+  assert.equal(learning.evaluate(target, 'probe').pending, 1, 'antes de archivar espera algo')
+
+  const hecho = learning.archive(target, 'probe', '2099-01')
+  assert.equal(hecho.already, false)
+  const texto = fs.readFileSync(propuesta.file, 'utf8')
+  assert.match(texto, /^status: archived$/m, 'el frontmatter la cierra')
+  assert.match(texto, /^- Estado: archivada$/m, 'y el cuerpo no lo contradice')
+  assert.equal(/^- Estado: aplicada$/m.test(texto), false, 'archivar no es aplicar')
+
+  assert.equal(learning.evaluate(target, 'probe').pending, 0, 'y deja de reportar trabajo pendiente')
+  assert.equal(learning.archive(target, 'probe', '2099-01').already, true, 'archivar dos veces no hace nada')
+})
+
+// La guarda, medida por lo que hace: rechaza y deja el documento intacto.
+test('una propuesta firmada no se puede archivar', () => {
+  const target = installedProject('Archivar firmada')
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe2'), 'probe2', 'x')
+  const reports = path.join(own, 'learning', 'reports')
+  fs.mkdirSync(reports, { recursive: true })
+  fs.writeFileSync(path.join(reports, '2099-01-07.md'),
+    '---\nagent: probe2\ndate: 2099-01-07\nstatus: draft\n---\n\n## Recomendación\n\nAlgo.\n')
+  const propuesta = learning.prepareProposal(target, 'probe2', new Date('2099-02-01T13:17:00Z'), '2099-01')
+  fs.writeFileSync(propuesta.file, fs.readFileSync(propuesta.file, 'utf8')
+    .replace('- Estado: pendiente', '- Estado: aprobada'))
+
+  assert.throws(() => learning.archive(target, 'probe2', '2099-01'), /está firmada/,
+    'lo que sigue a una firma es aplicarla, no archivarla')
+  assert.match(fs.readFileSync(propuesta.file, 'utf8'), /^status: proposed$/m, 'y el documento queda intacto')
+})
