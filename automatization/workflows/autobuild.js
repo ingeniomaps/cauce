@@ -250,6 +250,17 @@ const blockers = (verdict) => verdict.concerns.filter((one) => one.blocking).map
 const RUNS_TESTS = /(?:^|[\s/:=-])(?:tests?|specs?|pytest|jest|vitest|mocha|rspec|phpunit|ci|check)\b/i
 {{INCLUDE:shared/workflow-finish.js}}
 
+// Por qué fases pasó esta corrida. Existe porque auditar una tarea no puede exigir leer este archivo:
+// para saber si Review había corrido hubo que abrir el fuente y cruzarlo con los commits del día.
+//
+// Se envuelve `phase` en vez de anotar en sus quince llamadas: una que se olvidara de anotar dejaría
+// un registro incompleto, que se lee igual que uno completo. Y se envuelve reasignando en vez de
+// declarar, porque `phase` llega como parámetro del wrapper que arma el runner y redeclararlo con
+// `const` es un SyntaxError; reasignar un parámetro sí es legal, y `announce` guarda el original.
+const ran = []
+const announce = phase
+phase = (name) => { ran.push(name); announce(name) }
+
 phase('Triage')
 // El contrato se lee una sola vez por corrida y viaja como texto: ningún subagente relee AGENTS.md,
 // ops.config.json ni PROTOCOL.md. `ops check` y el guard planning-drift siguen validando el resultado.
@@ -546,6 +557,9 @@ while (rounds++ < MAX_TASKS) {
     && !build.redFirst.some((red) => namesTest(red, entry)))
   if (loose) return stop('edge-unproven', `${loose.detail} entró sin la prueba que lo fija`)
 
+  // Qué revisión hubo, para que el cierre no pueda inventar una. Nace diciendo que no hubo porque
+  // `express` no convoca a nadie, y ése es el caso que se escribió como si un cargo hubiera aprobado.
+  let reviewFact = 'no corrió (el carril express no convoca revisor)'
   if (!express) {
     phase('Review')
     let review = await run(
@@ -569,6 +583,7 @@ while (rounds++ < MAX_TASKS) {
     }
     // Aprobar sin declarar qué se abrió no se arregla mandando a tocar código: falló quien revisó.
     if (!review.consulted.length) return stop('review-unbacked', 'aprobó el diff sin declarar qué inspeccionó')
+    reviewFact = `${review.verdict} por ${cast.review}, sobre ${review.consulted.join(', ')}`
     // Lo que no impide entregar no manda a tocar código, y tampoco desaparece: la mejora opinable que se
     // corrige a las apuradas cuesta una vuelta y un riesgo que nadie pidió. Va a Propuestas y no a
     // Lecciones porque lo que la revisión anotó es un cambio del producto con su evidencia; Lecciones es
@@ -659,7 +674,9 @@ while (rounds++ < MAX_TASKS) {
   await write(
     `Cerrá ${task.id} de forma atómica: agregala bajo su hito en ${DONE} con evidencia de acept, done, qa, ` +
     `tests y commit; sacala junto con sus notas indentadas de ${BACKLOG}; cerrá su épica sólo si no queda ` +
-    `ninguna tarea etiquetada; y dejá ${WIP} en status IDLE. Hechos: build=${build.summary}; ` +
+    `ninguna tarea etiquetada; y dejá ${WIP} en status IDLE. En decisions no nombres una fase ni un cargo ` +
+    `que no figure en estos hechos. Hechos: lane=${planning.lane || 'sin clasificar'}; ` +
+    `review=${reviewFact}; fases=${ran.join(' → ')}; build=${build.summary}; ` +
     `verify=${JSON.stringify(verified.commands)}; qa=${qa.evidence}; commit=${commit.hash || commit.reason}.`,
   )
   completed.push(task.id)
@@ -687,4 +704,4 @@ if (completed.length && contract.humanCheckpoint) await write(
   `Creá ${GATE} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones humanas ` +
   `pendientes y las instrucciones exactas para continuar. Nunca hagas push ni deploy.`,
 )
-return finish({ done: completed, count: completed.length, hito: currentMilestone })
+return finish({ done: completed, count: completed.length, hito: currentMilestone, phases: ran })

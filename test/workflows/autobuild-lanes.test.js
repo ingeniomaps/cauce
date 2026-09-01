@@ -205,3 +205,38 @@ test('el proyecto que no la declara sigue descubriéndola', async () => {
   assert.match(verify.prompt, /descubrilo: primero las instrucciones/,
     'sin declaración se descubre: un proyecto que no lo dijo tiene que poder correr igual')
 })
+
+// El cierre escribe `decisions:`, el único campo del DONE que no recibe ningún hecho: `done`, `qa`,
+// `tests` y `commit` sí. Sin ancla, la entrada terminó afirmando «Review de product-manager» en una
+// tarea que corría por `express`, donde Review está detrás de un `if` y nadie convoca a un revisor —y
+// esa entrada es la evidencia de aceptación que alguien lee cuando ya nadie recuerda la corrida—.
+// El carril alcanza como hecho porque es lo que decide qué fases corren.
+test('el cierre recibe el carril y el veredicto de la revisión, o que no hubo', async () => {
+  const done = (prompts) => prompts.find((one) => one.key === 'Done|').prompt
+
+  const express = await runFlow({}, { lane: 'express' })
+  ranToEnd(express.result)
+  const sinRevisión = done(express.prompts)
+  assert.match(sinRevisión, /lane=express/, 'el cierre no sabe por qué carril vino la tarea')
+  assert.match(sinRevisión, /review=no corrió/, 'el cierre no sabe que nadie revisó')
+
+  const directo = await runFlow({}, { lane: 'directo' })
+  ranToEnd(directo.result)
+  const conRevisión = done(directo.prompts)
+  assert.match(conRevisión, /lane=directo/)
+  assert.match(conRevisión, /review=aprobado/, 'el cierre no recibe el veredicto de quien sí revisó')
+})
+
+// Auditar una corrida no puede exigir leer este archivo. Cuando el DONE de una tarea `express` afirmó
+// una revisión, comprobar que Review estaba detrás de un `if` pidió abrir el fuente del recorrido y
+// cruzarlo con tres commits: la corrida no había dejado dicho por dónde pasó. El registro lo arma el
+// recorrido y no un agente, que es lo que lo vuelve incontestable.
+test('la corrida devuelve por qué fases pasó, y el cierre las recibe', async () => {
+  const { result, phases, prompts } = await runFlow({}, { lane: 'express' })
+  ranToEnd(result)
+  assert.deepEqual(result.phases, phases, 'lo devuelto no es lo que efectivamente corrió')
+  assert.ok(!result.phases.includes('Review'), 'nombra una fase que su carril saltea')
+  assert.ok(result.phases.includes('Build'), 'se olvidó de una que sí corrió')
+  assert.match(prompts.find((one) => one.key === 'Done|').prompt,
+    /fases=Triage → Pick → WIP → Build → Verify → Commit → Done/, 'el cierre no recibe por dónde pasó la tarea')
+})
