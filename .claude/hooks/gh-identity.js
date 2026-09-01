@@ -42,15 +42,30 @@ const command = commandOf()
 // Se vacía lo entrecomillado antes de buscar. El hueco que deja es un ejecutor que recibe su comando
 // como cadena —`bash -c "gh api ..."`—, así que ahí se analiza la línea entera y se acepta el falso
 // positivo: es la dirección barata de equivocarse.
-// El cuerpo de un heredoc tampoco es comando: es lo que se escribe en un archivo. Se saca primero, y
-// antes que las comillas, porque adentro puede haber cualquier cosa. Lo destapó este mismo commit: su
-// mensaje explica el caso del ejecutor, la palabra `bash` del texto encendió la excepción de abajo, y
-// el guard bloqueó un `git commit`. Prosa citando un comando es el caso común; un heredoc que
-// alimenta un shell es el raro, y ése se cuela.
-const HEREDOC = /<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1[\s\S]*?^\s*\2\s*$/gm
-const RUNS_A_STRING = /\b(?:bash|sh|zsh|dash|eval|xargs|env)\b/
+// El ejecutor cuenta en posición de comando y no en cualquier parte del texto: `cat > deploy.sh`
+// nombra un archivo, no corre un shell, y con un `\bsh\b` suelto ese punto alcanzaba para
+// encender la excepción y bloquear una escritura inocua. Lo encontró la prueba del heredoc.
+const EXECUTORS = 'bash|sh|zsh|dash|eval|xargs|env'
+// Un separador, las asignaciones de entorno que puedan seguirlo, y recién ahí el ejecutor.
+const AFTER_SEPARATOR = '(?:^|[\\n;&|(]|&&|\\|\\|)\\s*(?:[A-Za-z_][A-Za-z0-9_]*=[^\\s;&|]*\\s+)*'
+const RUNS_A_STRING = new RegExp(`${AFTER_SEPARATOR}(?:${EXECUTORS})\\b`)
+
+// El cuerpo de un heredoc es lo que se escribe en un archivo, no lo que corre —`cat > msg <<EOF` con
+// prosa que cita un comando es el caso común— salvo cuando quien lo recibe es un shell: en
+// `bash <<EOF` ese cuerpo sí se ejecuta. Lo decide la línea que abre el heredoc, que es donde está el
+// comando que lo consume; los demás se sacan del análisis.
+//
+// Se resuelve antes que las comillas, porque adentro puede haber cualquier cosa. Lo destapó el commit
+// que arregló el caso del ejecutor: su mensaje explicaba esa forma, la palabra `bash` del texto
+// encendió la excepción de abajo, y el guard bloqueó su propio `git commit`.
+const HEREDOC = /(^|\n)([^\n]*?)<<-?[ \t]*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\3[\s\S]*?\n[ \t]*\4[ \t]*(?=\n|$)/g
+const withoutHeredocs = (text) => text.replace(
+  HEREDOC,
+  (todo, antes, apertura) => (RUNS_A_STRING.test(apertura) ? todo : `${antes}${apertura}<<HEREDOC`),
+)
+
 const withoutQuoted = (text) => text.replace(/'[^']*'/g, "''").replace(/"[^"]*"/g, '""')
-const body = command.replace(HEREDOC, '<<HEREDOC')
+const body = withoutHeredocs(command)
 const analyzed = RUNS_A_STRING.test(body) ? body : withoutQuoted(body)
 
 // `gh` como palabra de comando: al principio, o después de un separador, con las asignaciones de
