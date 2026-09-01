@@ -199,6 +199,21 @@ ${linea}
   // Y con el criterio resuelto, la misma tarea heredada pasa.
   epica('Un alta con email nuevo devuelve 201.')
   assert.deepEqual(errores(), [])
+
+  // El mismo filtro, un nivel más arriba. La épica rechaza el marcador al activarse y la tarea lo
+  // rechaza en su aceptación; el hito no rechazaba nada, así que un título sin decidir agrupaba tareas
+  // decididas y `check` pasaba. Es el nivel donde el marcador cuesta más: nadie escribe una tarea sin
+  // aceptación, y en cambio abrir el hito con el nombre puesto para después es el camino natural.
+  fs.writeFileSync(path.join(planning, 'BACKLOG.md'), `# Backlog promovido
+
+## Hito alta — Por definir
+
+- [ ] **alta-nueva** [lite] — Crear la cuenta. _Aceptación: 201 y login._ (service: api)
+`)
+  assert.deepEqual(
+    JSON.parse(run(['check', planning, '--json']).stdout).errors.filter((one) => /hito alta/.test(one)),
+    ['hito alta: el título no está decidido — "Por definir"'],
+  )
 })
 
 // El fixture escribe el plan con viñetas en vez de pasos numerados: cuenta cero, que es el estado que
