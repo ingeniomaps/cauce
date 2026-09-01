@@ -37,9 +37,16 @@ test('la investigación recibe las herramientas que su instrucción nombra, y no
   for (const tool of ['WebSearch', 'WebFetch', 'Read', 'Edit', 'Write']) {
     assert.match(source, new RegExp(`--allowedTools[^\n]*\\b${tool}\\b`), `puede ${tool}`)
   }
-  // Los dos comandos que el `AUTOMATION.md` de los cargos nombra, y sólo ésos.
-  assert.match(source, /Bash\(make agent-learn \*\)/)
-  assert.match(source, /Bash\(make agent-evaluate \*\)/)
+  // El comando que el `AUTOMATION.md` nombra, en sus dos formas: el modelo elige cuál escribe y nadie
+  // se lo dice. `backend-engineer` pidió `node engine/cli/ops.js learn <slug>` cuatro veces y su
+  // `evaluate` dos más, todas negadas, porque sólo estaba concedido el `make` que ejecuta lo mismo.
+  for (const forma of ['make agent-learn \\*', 'make agent-evaluate \\*',
+    'node engine/cli/ops\\.js learn \\*', 'node engine/cli/ops\\.js evaluate \\*']) {
+    assert.match(source, new RegExp(`'Bash\\(${forma}\\)'`), `concede ${forma.replace(/\\/g, '')}`)
+  }
+  // Y nada más: un `Bash` pelado o un comodín le daría lo que su instrucción le prohíbe.
+  const reglas = (source.match(/'Bash\([^)]*\)'/g) || []).length
+  assert.equal(reglas, 4, 'exactamente las cuatro formas, sin comodines de más')
 
   // Saltear permisos le daría justo lo que su instrucción le prohíbe: dependencias, código, SKILL.md,
   // planificación, commit y push. El guard más barato contra eso es no dárselo.
