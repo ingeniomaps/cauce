@@ -8,6 +8,7 @@ required:
   - records_reproducible_environment_version_result_and_evidence
   - distinguishes_product_test_data_and_environment_failures
   - communicates_gaps_residual_risk_and_release_confidence
+  - contrasts_the_summary_against_the_source_enumeration
 
 forbidden:
   - invented_result_coverage_environment_or_evidence
