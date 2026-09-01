@@ -82,6 +82,12 @@ function frontmatterState(text, fallback) {
   return ((text.match(/^status:\s*(\S+)\s*$/m) || [])[1] || fallback).toLowerCase()
 }
 
+// La vigente de un período: con revisiones abiertas, la última. La usan componer y cerrar.
+function lastOfPeriod(dir, period) {
+  const names = proposalFiles(dir).filter((name) => name.match(PROPOSAL_NAME)[1] === period)
+  return names.length ? names[names.length - 1] : ''
+}
+
 function proposalState(text) {
   return frontmatterState(text, 'proposed')
 }
@@ -106,5 +112,5 @@ function reportFiles(dir) {
 module.exports = {
   REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME,
   assertWritableTeam, assertWritable, isoDate, month,
-  proposalOrder, proposalFiles, frontmatterState, proposalState, reportFiles,
+  proposalOrder, proposalFiles, frontmatterState, proposalState, reportFiles, lastOfPeriod,
 }

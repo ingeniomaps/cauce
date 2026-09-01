@@ -132,6 +132,16 @@ function learn(agent, cli) {
     // aplicada editando frontmatter a mano es justo el paso que un agente hace mal en silencio.
     // Un recorrido aprende de sus corridas y un cargo de su profesión: mismo ciclo, distinto insumo.
     const kind = cli.has('--flow') ? 'flow' : 'agent'
+    // El tercer destino: se miró y no cambia nada. Sin esto sólo había aplicarla o dejarla esperando,
+    // y lo que se hacía era mergear el PR sin firmar — que deja el documento diciendo «sin aplicar»
+    // para siempre, indistinguible de una que espera trabajo.
+    if (cli.has('--archived')) {
+      const result = L.archive(opsRoot(), agent, cli.value('--period'), kind)
+      const relative = path.relative(opsRoot(), result.file)
+      return console.log(result.already
+        ? `= ${relative} ya estaba archivada`
+        : `✓ ${relative} queda archivada: se miró y no cambia nada`)
+    }
     if (cli.has('--applied')) {
       const result = L.seal(opsRoot(), agent, cli.value('--period'), kind)
       const relative = path.relative(opsRoot(), result.file)

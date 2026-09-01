@@ -24,6 +24,11 @@
     "branches": 92,
     "functions": 100
   },
+  "engine/agents/learning-seal.js": {
+    "lines": 100,
+    "branches": 68,
+    "functions": 100
+  },
   "engine/agents/learning-sources.js": {
     "lines": 98,
     "branches": 88,

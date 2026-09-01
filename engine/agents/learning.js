@@ -6,11 +6,12 @@ const catalog = require('./catalog')
 const { atomicWrite } = require('../core/files')
 // La misma lectura de secciones que usa el planning: repetirla acá sería una segunda copia del mismo
 // hecho, y una de las dos se pudre sin que nada falle (R11).
-const { section } = require('../planning/parser')
 const {
-  REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME, assertWritableTeam, assertWritable,
+  REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME, assertWritableTeam, assertWritable, lastOfPeriod,
   isoDate, month, proposalOrder, proposalFiles, frontmatterState, proposalState, reportFiles,
 } = require('./learning-files')
+// Cerrar una propuesta vive en su propio módulo; se reexporta para no mover a cada llamador.
+const { seal, archive } = require('./learning-seal')
 const { SOURCE_TIERS, cadence, evaluate, evaluateTeam } = require('./learning-sources')
 
 // El informe que ya entró a una propuesta. Nace en `draft` y nada lo movía nunca, así que el que se
@@ -29,72 +30,6 @@ function markConsolidated(file) {
   const front = text.match(/^---\n([\s\S]*?)\n---\n/)
   if (!front) return
   atomicWrite(file, text.replace(front[0], `---\n${front[1]}\nstatus: consolidated\n---\n`))
-}
-
-// El estado terminal del ciclo. Existía la firma, la aplicación y el historial, y faltaba justo el
-// paso que vuelve irrepetible lo ya hecho: `status:` nacía en `proposed` y nadie lo movía nunca.
-//
-// No era un dato desprolijo. `agent-promote` busca la propuesta más nueva y aplica si el estado dice
-// aprobada con responsable — y «aprobada y aplicada» cumple eso—, así que volver a correrlo sobre una
-// propuesta ya aplicada la aplicaba de nuevo. Como los cambios son aditivos por diseño, el resultado
-// no es un error visible sino un contrato con cada viñeta y cada fuente duplicadas.
-function seal(root, agent, period = '', kind = 'agent') {
-  const dir = path.join(assertWritable(root, agent, kind), 'learning', 'proposals')
-  const names = proposalFiles(dir)
-  if (!names.length) throw new Error(`${agent} no tiene propuestas en learning/proposals/.`)
-  // `--period 2026-08` nombra el período, no un archivo: con revisiones abiertas la que se sella es la
-  // vigente de ese período. Resolverlo siempre a `2026-08.md` habría devuelto «ya estaba aplicada» y
-  // dejado la revisión sin sellar, que es justo el estado en que `agent-promote` la vuelve a aplicar.
-  // Una revisión concreta se puede nombrar entera —`--period 2026-08-r2`— y entonces manda esa.
-  const name = period
-    ? (/^\d{4}-\d{2}$/.test(period) ? lastOfPeriod(dir, period) : `${period}.md`)
-    : names[names.length - 1]
-  if (!name || !names.includes(name)) throw new Error(`${agent} no tiene la propuesta ${period || name}.`)
-  const file = path.join(dir, name)
-  const text = fs.readFileSync(file, 'utf8')
-  const state = proposalState(text)
-  if (state === 'applied') return { file, already: true }
-  if (!/^status:\s*\S+\s*$/m.test(text)) throw new Error(`${file} no declara status en su frontmatter.`)
-  // Un cargo llega acá después de `agent-promote`, que se niega si «Aprobación humana» no está firmada.
-  // Un recorrido no tiene ese workflow, así que sin esta puerta `--applied` sellaba una propuesta con
-  // «Estado: pendiente» y «Cambio propuesto: Por definir»: el frontmatter decía `applied` y el cuerpo
-  // decía lo contrario, dentro del mismo documento. Se comprueba para los dos porque la contradicción
-  // no depende de quién sea el sujeto, y para el cargo la puerta ya la pasó quien firmó.
-  const responsible = (text.match(/^-\s*Responsable:\s*(.+)$/m) || [])[1] || ''
-  const change = section(text, /Cambio propuesto/i).split('\n').slice(1).join('\n').trim()
-  const undecided = (value) => !value || /^(por definir|pendiente)\b/i.test(value)
-  if (undecided(responsible.trim()) || undecided(change)) {
-    throw new Error(
-      `${path.basename(file)} todavía no la decidió nadie: «Aprobación humana» necesita un responsable `
-      + 'y «Cambio propuesto» tiene que decir qué cambia. Aplicar es un acto humano y esto lo registra.',
-    )
-  }
-  const stamped = text
-    .replace(/^status:\s*\S+\s*$/m, 'status: applied')
-    // `aprobada` además de `pendiente`: cuando `seal` corre, la firma ya pasó y `sign-proposal.yml`
-    // dejó «aprobada», así que buscar sólo «pendiente» no reemplazaba nunca por el camino real. Las 24
-    // propuestas aplicadas del repositorio quedaron con `status: applied` y «- Estado: aprobada»: la
-    // contradicción entre frontmatter y cuerpo que la guarda de arriba dice evitar. La prueba no lo veía
-    // porque su fixture firmaba dejando «pendiente», un estado que producción no produce.
-    .replace(/^-[ \t]*Estado:[ \t]*(?:pendiente|aprobada)[ \t]*$/mi, '- Estado: aplicada')
-    .replace(/^-[ \t]*Fecha:[ \t]*por definir[ \t]*$/mi, `- Fecha: ${isoDate(new Date())}`)
-  atomicWrite(file, stamped)
-  // El historial sólo lo escribe alguien para los cargos —`agent-promote`— y nadie para los recorridos,
-  // así que el registro que la plantilla promete no existía nunca. Se escribe acá porque es determinista:
-  // la fecha, el documento, quién aprobó y qué dice que cambia, todo sale de lo que se acaba de sellar.
-  if (kind === 'flow') appendHistory(path.dirname(path.dirname(dir)), file, responsible.trim(), change)
-  return { file, already: false }
-}
-
-// Una fila por propuesta aplicada. El cambio va en una línea: el documento entero está a un enlace, y
-// una tabla que lo repite entero deja de leerse.
-function appendHistory(target, file, responsible, change) {
-  const history = path.join(target, 'learning', 'HISTORY.md')
-  if (!fs.existsSync(history)) return
-  const line = change.split('\n').map((one) => one.trim()).filter(Boolean)[0] || ''
-  const row = `| ${isoDate(new Date())} | \`${path.basename(file)}\` | aplicada | ${responsible} `
-    + `| ${line.slice(0, 160)} |\n`
-  fs.appendFileSync(history, `${fs.readFileSync(history, 'utf8').endsWith('\n') ? '' : '\n'}${row}`)
 }
 
 function prepareReport(root, agent, now = new Date()) {
@@ -205,11 +140,6 @@ sólo que pase.
 }
 
 // La última propuesta del período, si la hay: es contra ella que se decide si abrir una revisión.
-function lastOfPeriod(dir, period) {
-  const names = proposalFiles(dir).filter((name) => name.match(PROPOSAL_NAME)[1] === period)
-  return names.length ? names[names.length - 1] : ''
-}
-
 // De qué aprende un recorrido: de cada registro sin sellar entran los casos que no pasaron, con su
 // contraste y de qué corrida salen. Si no hay ninguno, eso también es un resultado — el recorrido
 // aguantó y no hay qué corregir. Por qué es esto y no una investigación, en `pendingRuns`.
@@ -493,4 +423,4 @@ function reportSummary(root, report) {
 module.exports = {
   SOURCE_TIERS,
   cadence, pendingRuns,
-  SUMMARY_MAX, prepareReport, prepareProposal, evaluate, evaluateTeam, proposalState, seal }
+  SUMMARY_MAX, prepareReport, prepareProposal, evaluate, evaluateTeam, proposalState, seal, archive }
