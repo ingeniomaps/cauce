@@ -304,7 +304,7 @@ test('la investigación usa la suscripción y cae a la API key sólo si falla',
     fs.writeFileSync(visto, '')
     const salida = require('node:child_process').spawnSync('bash', ['-c', paso], {
       cwd: dir, encoding: 'utf8',
-      env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, AGENT: 'probe', ...env },
+      env: { ...process.env, RUNNER_TEMP: dir, PATH: `${dir}:${process.env.PATH}`, AGENT: 'probe', ...env },
     })
     return { status: salida.status, llamadas: fs.readFileSync(visto, 'utf8').trim().split('\n').filter(Boolean) }
   }
@@ -357,8 +357,10 @@ test('el resumen dice qué comando se negó, no sólo que fue Bash',
 
   const hecho = spawnSync('bash', ['-c', paso], {
     cwd: dir, encoding: 'utf8',
-    env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, AGENT: 'probe', OAUTH: 'tok', APIKEY: '',
-      GITHUB_STEP_SUMMARY: resumen },
+    env: {
+      ...process.env, RUNNER_TEMP: dir, PATH: `${dir}:${process.env.PATH}`,
+      AGENT: 'probe', OAUTH: 'tok', APIKEY: '', GITHUB_STEP_SUMMARY: resumen,
+    },
   })
   assert.equal(hecho.status, 0, hecho.stderr)
 
@@ -387,7 +389,10 @@ test('el prompt lleva las versiones del entorno, en vez de hacerlas buscar',
 
   const hecho = spawnSync('bash', ['-c', paso], {
     cwd: dir, encoding: 'utf8',
-    env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, AGENT: 'probe', OAUTH: 'tok', APIKEY: '' },
+    env: {
+      ...process.env, RUNNER_TEMP: dir, PATH: `${dir}:${process.env.PATH}`,
+      AGENT: 'probe', OAUTH: 'tok', APIKEY: '',
+    },
   })
   assert.equal(hecho.status, 0, hecho.stderr)
 

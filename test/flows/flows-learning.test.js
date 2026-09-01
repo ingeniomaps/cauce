@@ -16,7 +16,11 @@ const CLI = path.join(ROOT, 'engine', 'cli', 'ops.js')
 
 // Lo que hace una persona antes de aplicar: decir quién decide y qué cambia. Sin esto `seal` se niega,
 // y por eso vive acá arriba: todos los tests del ciclo lo necesitan.
+// Firma las tres líneas, como `sign-proposal.yml`. Antes dejaba «Estado: pendiente» y la firma
+// simulada no se parecía a la real: `seal` no mira ese campo, así que nada fallaba, pero el estado
+// «firmada y sin aplicar» no existía en ninguna prueba.
 const firmar = (file) => fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
+  .replace('- Estado: pendiente', '- Estado: aprobada')
   .replace('- Responsable: por definir', '- Responsable: Quien Firma')
   .replace(/Por definir\. Lo que se corrige es el recorrido/, 'Se endurece el gate de la primera etapa'))
 
@@ -77,6 +81,12 @@ test('el ciclo de un recorrido aprende de sus corridas, no de una literatura', (
   // La corrida consumida queda sellada, así que no vuelve a entrar por una segunda propuesta.
   assert.match(fs.readFileSync(registro, 'utf8'), /^status: consolidated$/m)
   firmar(propuesta.file)
+  // Entre firmar y aplicar el recorrido queda con la decisión tomada y el trabajo detenido, que no es
+  // lo mismo que esperar una firma. Sin esto los dos estados se contaban juntos en `pending`.
+  const firmada = L.evaluateTeam(root, 'probe')
+  assert.equal(firmada.pending, 1, 'firmada sigue sin aplicar: el frontmatter no lo cambia la firma')
+  assert.match(firmada.warnings.join('\n'), /1 propuesta\(s\) firmada\(s\) sin aplicar \(2099-01\.md\)/,
+    'y se ve que está detenida, no esperando')
   L.seal(root, 'probe', '2099-01', 'flow')
   // Sin corridas nuevas no hay qué corregir, y entonces no se abre documento. Antes se abría uno para
   // decir «el recorrido aguantó lo que se le midió»: nadie firma eso, y una firma humana es lo que

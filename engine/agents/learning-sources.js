@@ -12,6 +12,22 @@ const {
   REQUIRED_SECTIONS, SUMMARY_MAX, frontmatterState, proposalFiles, proposalState, reportFiles,
 } = require('./learning-files')
 
+// Una propuesta firmada y sin aplicar no espera lo mismo que una sin firmar: en la primera la decisión
+// ya se tomó y el trabajo quedó detenido; la segunda está bien quieta hasta que alguien la lea.
+// `proposalState` no las distingue —mira el frontmatter, y la firma la escribe `sign-proposal.yml` en
+// el cuerpo—, así que las dos caían en el mismo `pending` y la que ya tenía autoridad para avanzar se
+// veía igual que la que no. Sin este aviso hay que acordarse, y dos propuestas firmadas el 2026-09-01
+// se habrían quedado ahí sin que nada lo dijera.
+const SIGNED = /^-[ \t]*Estado:[ \t]*aprobada[ \t]*$/mi
+
+// No es un error: firmar y aplicar son actos separados a propósito —OPS-004— y entre uno y otro puede
+// pasar tiempo legítimamente. Lo que no puede es no verse.
+function signedWarning(signed) {
+  if (!signed.length) return []
+  return [`${signed.length} propuesta(s) firmada(s) sin aplicar (${signed.join(', ')}): `
+    + 'la autorización ya está, falta `agent-promote`']
+}
+
 function evaluateTeam(root, slug) {
   const dir = path.dirname(require('../flows/registry').read(root, slug).file)
   const errors = []
@@ -21,14 +37,19 @@ function evaluateTeam(root, slug) {
   }
   const proposals = proposalFiles(path.join(dir, 'learning', 'proposals'))
   let pending = 0
+  const signed = []
   for (const name of proposals) {
     const text = fs.readFileSync(path.join(dir, 'learning', 'proposals', name), 'utf8')
     if (!/^automatic_apply:\s*false$/m.test(text)) errors.push(`${name}: automatic_apply debe ser false`)
     for (const section of REQUIRED_SECTIONS) {
       if (!text.includes(`## ${section}`)) errors.push(`${name}: falta sección ${section}`)
     }
-    if (proposalState(text) !== 'applied') pending += 1
+    if (proposalState(text) !== 'applied') {
+      pending += 1
+      if (SIGNED.test(text)) signed.push(name)
+    }
   }
+  warnings.push(...signedWarning(signed))
   return { errors, warnings, proposals: proposals.length, pending, cases: 0 }
 }
 
@@ -135,6 +156,7 @@ function evaluate(root, agent) {
   }
   const proposals = proposalFiles(path.join(target, 'learning', 'proposals'))
   let pending = 0
+  const signed = []
   for (const name of proposals) {
     const text = fs.readFileSync(path.join(target, 'learning', 'proposals', name), 'utf8')
     if (!/^automatic_apply:\s*false$/m.test(text)) errors.push(`${name}: automatic_apply debe ser false`)
@@ -143,8 +165,12 @@ function evaluate(root, agent) {
     }
     // Contar sólo las que esperan algo. Una propuesta aplicada contada como propuesta deja al cargo
     // reportando trabajo pendiente para siempre, y es la misma confusión que permitía reaplicarla.
-    if (proposalState(text) !== 'applied') pending += 1
+    if (proposalState(text) !== 'applied') {
+      pending += 1
+      if (SIGNED.test(text)) signed.push(name)
+    }
   }
+  warnings.push(...signedWarning(signed))
   // Los hallazgos que todavía no llegaron al contrato. No es un error —la propuesta que los tome
   // puede no haberse abierto aún—, pero sin decirlo un informe escrito y olvidado se ve igual que uno
   // ya incorporado: los dos son un archivo en `reports/`.

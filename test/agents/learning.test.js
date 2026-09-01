@@ -533,3 +533,34 @@ test('sin informes pendientes no se abre propuesta', () => {
   assert.equal(abierta.reports, 1)
   assert.ok(fs.existsSync(abierta.file))
 })
+
+// Firmar y aplicar son actos separados a propósito —OPS-004—, así que entre uno y otro una propuesta
+// queda quieta con la decisión ya tomada. `proposalState` no la distinguía de la que todavía espera
+// que alguien la lea: mira el frontmatter, y la firma la escribe `sign-proposal.yml` en el cuerpo, así
+// que las dos caían en el mismo «sin aplicar». Son estados opuestos —una espera a una persona, la otra
+// espera que alguien retome trabajo ya autorizado— y sin decirlo hay que acordarse.
+test('una propuesta firmada y sin aplicar se ve distinta de una que espera firma', () => {
+  const target = installedProject('Firmada sin aplicar')
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
+  const reports = path.join(own, 'learning', 'reports')
+  fs.mkdirSync(reports, { recursive: true })
+  fs.writeFileSync(path.join(reports, '2099-01-07.md'),
+    '---\nagent: probe\ndate: 2099-01-07\nstatus: draft\n---\n\n## Recomendación\n\nAlgo que proponer.\n')
+
+  const propuesta = learning.prepareProposal(target, 'probe', new Date('2099-02-01T13:17:00Z'), '2099-01')
+  const avisos = () => learning.evaluate(target, 'probe').warnings.join('\n')
+
+  // Sin firmar: está sin aplicar, y eso es correcto — espera a una persona.
+  assert.equal(learning.evaluate(target, 'probe').pending, 1, 'cuenta como pendiente')
+  assert.equal(/firmada\(s\) sin aplicar/.test(avisos()), false,
+    'sin firma no hay nada detenido: espera una decisión')
+
+  // Firmada como lo hace `sign-proposal.yml`: el estado en el cuerpo, no en el frontmatter.
+  fs.writeFileSync(propuesta.file, fs.readFileSync(propuesta.file, 'utf8')
+    .replace('- Estado: pendiente', '- Estado: aprobada')
+    .replace('- Responsable: por definir', '- Responsable: @quien-firma'))
+
+  assert.equal(learning.evaluate(target, 'probe').pending, 1, 'sigue sin aplicar, el frontmatter no cambió')
+  assert.match(avisos(), /1 propuesta\(s\) firmada\(s\) sin aplicar \(2099-01\.md\): la autorización ya está/,
+    'y ahora se ve que el trabajo está detenido, no esperando')
+})
