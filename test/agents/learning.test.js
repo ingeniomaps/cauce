@@ -605,3 +605,22 @@ test('una propuesta firmada no se puede archivar', () => {
     'lo que sigue a una firma es aplicarla, no archivarla')
   assert.match(fs.readFileSync(propuesta.file, 'utf8'), /^status: proposed$/m, 'y el documento queda intacto')
 })
+
+// La función y el comando son dos artefactos, y sólo el segundo se usa. `--archived` llegó a existir en
+// el motor con su guarda y sus casos, y no se podía invocar: la lista de banderas válidas de `args.js`
+// no lo tenía, así que el CLI lo rechazaba antes de llegar a nada. La puerta pasó verde porque los casos
+// llamaban a `learning.archive()` de frente. Es lo que R9 nombra: tests verdes no reemplazan el artefacto.
+test('archivar se puede invocar desde el CLI, no sólo desde el motor', () => {
+  const target = installedProject('Archivar por CLI')
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe3'), 'probe3', 'x')
+  const reports = path.join(own, 'learning', 'reports')
+  fs.mkdirSync(reports, { recursive: true })
+  fs.writeFileSync(path.join(reports, '2099-01-07.md'),
+    '---\nagent: probe3\ndate: 2099-01-07\nstatus: draft\n---\n\n## Recomendación\n\nAlgo.\n')
+  const propuesta = learning.prepareProposal(target, 'probe3', new Date('2099-02-01T13:17:00Z'), '2099-01')
+
+  const hecho = run(['learn', 'probe3', '--archived', '--period', '2099-01'], target)
+  assert.equal(hecho.status, 0, `${hecho.stdout}${hecho.stderr}`)
+  assert.match(hecho.stdout, /queda archivada/)
+  assert.match(fs.readFileSync(propuesta.file, 'utf8'), /^status: archived$/m)
+})
