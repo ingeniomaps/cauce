@@ -24,6 +24,18 @@ on:
         description: 'Slug de un agente. Vacío corre todos.'
         required: false
         default: ''
+      # Un dispatch no trae `schedule`, así que sin esto la única forma de reproducir a mano lo que
+      # corre un lunes era un dispatch por cargo: veinte corridas que el `concurrency` encola de a una,
+      # repitiendo `discover` cada vez, para conseguir algo peor que la matriz única del cron.
+      #
+      # Vacío se comporta como antes —un slug elige uno, y sin slug corren todos—, así que esto no
+      # cambia ninguna corrida existente. Con un slug, el slug manda: es más específico.
+      cadence:
+        description: 'Cadencia a correr a mano. Vacío usa el slug, o todos.'
+        required: false
+        default: ''
+        type: choice
+        options: ['', semanal, mensual, trimestral]
       # Lanzarlo a mano disparaba también el ensamblaje mensual, así que probar `research` abría una
       # propuesta de regalo — y una propuesta cuesta una firma humana. Peor: consolidar **sella** los
       # informes que consume, o sea que un dispatch de prueba movía estado real del ciclo.
@@ -74,6 +86,7 @@ jobs:
         id: list
         env:
           ONLY: ${{ inputs.agent }}
+          CADENCE: ${{ inputs.cadence }}
           # Cuál de los crones disparó. Documentado: «Access the schedule event that triggered
           # the workflow through the github.event.schedule context» —docs.github.com, eventos que
           # disparan workflows, consultado 2026-08-23—. Vacío cuando se lanza a mano.
@@ -90,10 +103,12 @@ jobs:
               "17 13 24 * *": "mensual",
               "17 13 23 3,6,9,12 *": "trimestral",
             }
-            const cadence = POR_CRON[(process.env.SCHEDULE || "").trim()] || ""
+            // A mano se puede pedir una cadencia; si no, la trae el cron que disparó.
+            const pedida = (process.env.CADENCE || "").trim()
+            const cadence = pedida || POR_CRON[(process.env.SCHEDULE || "").trim()] || ""
             const roles = JSON.parse(process.argv[1])
             // Lo que separa los tres caminos no es la cadencia sino de dónde vino la corrida.
-            const porCron = Boolean((process.env.SCHEDULE || "").trim())
+            const porCron = Boolean((process.env.SCHEDULE || "").trim()) || Boolean(pedida)
             const elegidos = only ? roles.filter((role) => role.slug === only)
               : porCron ? roles.filter((role) => role.cadence === cadence)
               : roles

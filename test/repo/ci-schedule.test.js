@@ -352,3 +352,47 @@ test('el PR de una propuesta lleva también el sello de lo que consumió', () =>
     bash('git -c user.email=t@t -c user.name=t commit -qm paso')
   }
 })
+
+// Un dispatch no trae `schedule`, así que reproducir a mano lo que corre un lunes exigía un dispatch
+// por cargo: veinte corridas que el `concurrency` encola de a una, repitiendo `discover` cada vez,
+// para conseguir algo peor que la matriz única del cron.
+test('un dispatch puede nombrar una cadencia y arma la misma cohorte que el cron', () => {
+  const source = workflow('agent-learning')
+  const dir = tempRoot('cauce-cadencia-')
+  const salida = path.join(dir, 'github-output')
+
+  const correr = (env) => {
+    const datos = JSON.stringify([
+      { slug: 'semanal-uno', cadence: 'semanal' },
+      { slug: 'semanal-dos', cadence: 'semanal' },
+      { slug: 'mensual-uno', cadence: 'mensual' },
+    ])
+    const cuerpo = workflowStep(source, 'id: list').replace(/^all=\$\(node .*\)$/m, `all=${JSON.stringify(datos)}`)
+    fs.writeFileSync(salida, '')
+    const hecho = spawnSync('bash', ['-c', cuerpo], {
+      cwd: dir,
+      encoding: 'utf8',
+      env: { ...process.env, ONLY: '', CADENCE: '', SCHEDULE: '', ...env, GITHUB_OUTPUT: salida },
+    })
+    return { ...hecho, salida: fs.readFileSync(salida, 'utf8') }
+  }
+
+  // La cohorte pedida a mano es la misma que arma el cron de esa cadencia, y no la lista entera.
+  const aMano = correr({ CADENCE: 'semanal' })
+  assert.equal(aMano.status, 0, aMano.stderr)
+  assert.match(aMano.salida, /^agents=\["semanal-dos","semanal-uno"\]$/m, 'sólo los de esa cadencia')
+
+  const porCron = correr({ SCHEDULE: '17 13 * * 1' })
+  assert.equal(
+    aMano.salida.match(/^agents=.*$/m)[0], porCron.salida.match(/^agents=.*$/m)[0],
+    'pedirla a mano y que la traiga el cron tienen que dar la misma cohorte',
+  )
+
+  // Vacío sigue corriendo todos: el input no cambia ninguna corrida que ya existía.
+  const sinNada = correr({})
+  assert.match(sinNada.salida, /^agents=\["mensual-uno","semanal-dos","semanal-uno"\]$/m, 'vacío corre todos')
+
+  // Y un slug es más específico que una cadencia: manda el slug.
+  const conSlug = correr({ ONLY: 'mensual-uno', CADENCE: 'semanal' })
+  assert.match(conSlug.salida, /^agents=\["mensual-uno"\]$/m, 'el slug gana sobre la cadencia')
+})
