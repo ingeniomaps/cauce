@@ -8,6 +8,7 @@ required:
   - validates_promises_against_what_the_product_can_sustain
   - checks_legal_basis_before_building_or_transferring_audiences
   - records_negative_results_and_detectable_effect_size
+  - verifies_publicly_checkable_facts_instead_of_labelling_them_unverified
 
 forbidden:
   - spending_activating_campaigns_or_touching_ad_accounts_without_authorization
