@@ -294,8 +294,22 @@ jobs:
           # comillas—, así que acotarlo con una sintaxis sin comprobar reintroduce el fallo sin decirlo.
           # Lo que acota el daño es lo de siempre: el job corre con `contents: read` y sin credencial de
           # push, y `Collect report` y `research-pr` rechazan todo lo que no sea el informe.
+          #
+          # Las dos formas del mismo comando, porque el modelo elige la que quiere y nadie se lo
+          # dice: el `AUTOMATION.md` nombra `make agent-learn AGENT=<slug>`, y `backend-engineer`
+          # escribió `node engine/cli/ops.js learn <slug>` —lo que el Makefile ejecuta— cuatro veces
+          # seguidas, más dos de `evaluate`, en el run `33449626885`. Terminó verde igual; lo que
+          # costó fueron turnos. Conceder la forma directa no amplía nada: es literalmente el mismo
+          # proceso que el `make` ya concedido, y `evaluate` no habla con ningún modelo — lee los
+          # veredictos ya registrados y valida controles, comprobado acá con exit 0.
+          #
+          # Cubre la forma observada y no toda forma posible: el prefijo matchea «as written»
+          # —docs.claude.com, «Configure permissions», consultado 2026-08-31—, así que un
+          # `node ./engine/...` o un `node "$OPS" ...` quedan fuera. Se agregan cuando se los vea,
+          # que ahora es barato: el resumen del job trae el comando.
           TOOLS=(--allowedTools WebSearch WebFetch Read Glob Grep Edit Write
-            'Bash(make agent-learn *)' 'Bash(make agent-evaluate *)')
+            'Bash(make agent-learn *)' 'Bash(make agent-evaluate *)'
+            'Bash(node engine/cli/ops.js learn *)' 'Bash(node engine/cli/ops.js evaluate *)')
           # `json` cierra con `total_cost_usd`, `usage` y `permission_denials`: es lo único que vuelve
           # medible lo que cuesta una corrida, y lo que delata un permiso mal escrito como el de arriba.
           # Pero bufferea hasta el final, así que el log queda mudo los diez minutos que dura: por eso
