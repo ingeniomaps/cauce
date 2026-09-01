@@ -96,3 +96,33 @@ test('un comando citado dentro de un heredoc es texto, no una invocación', () =
   const hecho = correr(heredoc)
   assert.equal(hecho.bloqueado, false, `no debería bloquear un heredoc de prosa\n${hecho.stderr}`)
 })
+// El hueco que dejaba sacar todo heredoc del análisis: cuando quien lo recibe es un shell, ese cuerpo
+// sí se ejecuta. Lo decide la línea que abre el heredoc, no el heredoc.
+test('un heredoc que alimenta un shell sí es un comando', () => {
+  for (const command of [
+    "bash <<'EOF'\ngh pr list\nEOF",
+    'sh <<EOF\ngh api user\nEOF',
+    "bash -s <<'EOF'\ncd /tmp\ngh run list\nEOF",
+  ]) {
+    const hecho = correr(command)
+    assert.equal(hecho.bloqueado, true, `debería bloquear:\n${command}`)
+  }
+})
+
+// Y el caso común sigue pasando: el mismo cuerpo, escrito a un archivo, es texto.
+test('el mismo cuerpo escrito a un archivo sigue siendo texto', () => {
+  const hecho = correr("cat > script.sh <<'EOF'\ngh pr list\nEOF")
+  assert.equal(hecho.bloqueado, false, `no debería bloquear:\n${hecho.stderr}`)
+})
+// Un `.sh` en un nombre de archivo no es un shell. Con la excepción del ejecutor buscando la palabra
+// suelta, ese punto alcanzaba para apagar el vaciado de comillas y bloquear una lectura inocua: el
+// guard ya lo hacía antes de tocar los heredocs, y ninguna prueba lo miraba.
+test('un archivo .sh nombrado no convierte el texto en un comando', () => {
+  for (const command of [
+    'cat deploy.sh | grep "gh pr create"',
+    'grep -n "gh auth" scripts/release.sh',
+  ]) {
+    const hecho = correr(command)
+    assert.equal(hecho.bloqueado, false, `no debería bloquear: ${command}`)
+  }
+})
