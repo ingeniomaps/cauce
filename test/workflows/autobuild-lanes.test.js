@@ -15,7 +15,7 @@ const { KEY, baseScript, ranToEnd, runFlow } = require('../support/autobuild-har
 // dijo que nombra un valor literal. Lo que separa a `directo` de `express` es un solo ojo más, el que
 // mira la superficie que cambió; lo que no cambia en ningún carril es Verify, que es la evidencia.
 test('el carril directo entrega y lo revisa quien nombra la línea', async () => {
-  const { result, phases } = await runFlow({}, { lane: 'directo' })
+  const { result, phases } = await runFlow({}, { lane: 'directo', vouched: true })
   ranToEnd(result)
   assert.deepEqual(result.done, ['T-1'])
   for (const absent of ['Ready', 'Decompose', 'Plan', 'Critique', 'QA']) {
@@ -27,7 +27,7 @@ test('el carril directo entrega y lo revisa quien nombra la línea', async () =>
 })
 
 test('el carril express entrega sin que nadie mire, porque no hay nada que mirar', async () => {
-  const { result, phases } = await runFlow({}, { lane: 'express' })
+  const { result, phases } = await runFlow({}, { lane: 'express', vouched: true })
   ranToEnd(result)
   assert.deepEqual(result.done, ['T-1'])
   for (const absent of ['Ready', 'Decompose', 'Plan', 'Critique', 'Review', 'QA']) {
@@ -232,11 +232,27 @@ test('el cierre recibe el carril y el veredicto de la revisión, o que no hubo',
 // cruzarlo con tres commits: la corrida no había dejado dicho por dónde pasó. El registro lo arma el
 // recorrido y no un agente, que es lo que lo vuelve incontestable.
 test('la corrida devuelve por qué fases pasó, y el cierre las recibe', async () => {
-  const { result, phases, prompts } = await runFlow({}, { lane: 'express' })
+  const { result, phases, prompts } = await runFlow({}, { lane: 'express', vouched: true })
   ranToEnd(result)
   assert.deepEqual(result.phases, phases, 'lo devuelto no es lo que efectivamente corrió')
   assert.ok(!result.phases.includes('Review'), 'nombra una fase que su carril saltea')
   assert.ok(result.phases.includes('Build'), 'se olvidó de una que sí corrió')
   assert.match(prompts.find((one) => one.key === 'Done|').prompt,
-    /fases=Triage → Pick → WIP → Build → Verify → Commit → Done/, 'el cierre no recibe por dónde pasó la tarea')
+    /fases=Triage → Pick → Classify → Pick → WIP → Build → Verify → Commit → Done/,
+    'el cierre no recibe por dónde pasó la tarea')
+})
+
+// Las dos mitades son el caso, y ninguna sola alcanza: sin la primera, dejar de mirar el aval pasa; sin
+// la segunda, correr Ready siempre también pasa, y ahí el carril mecánico ya no compra nada. El porqué
+// de la premisa vive en `autobuild.js`, junto al `if` que la usa.
+test('el carril mecánico saltea Ready sólo si alguien leyó la aceptación en esta corrida', async () => {
+  const declarado = await runFlow({}, { lane: 'express' })
+  ranToEnd(declarado.result)
+  assert.ok(declarado.phases.includes('Ready'),
+    'nadie leyó la aceptación y aun así nadie preguntó si estaba lista')
+
+  const avalado = await runFlow({}, { lane: 'express', vouched: true })
+  ranToEnd(avalado.result)
+  assert.ok(avalado.phases.includes('Classify'), 'el clasificador es quien avala')
+  assert.ok(!avalado.phases.includes('Ready'), 'avalado, el carril mecánico sigue sin preguntar dos veces')
 })

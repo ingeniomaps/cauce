@@ -373,6 +373,11 @@ while (rounds++ < MAX_TASKS) {
     log(`${task.id} sigue sin clasificar: corre por el carril completo`)
   }
 
+  // Quién puso el carril, que es lo que justifica saltear Ready y no el carril en sí: el clasificador
+  // leyó la aceptación en esta corrida y dijo que nombra un valor literal. Escrito a mano en la línea,
+  // ese lector no existió —`Classify` sólo corre si falta lane o cast—, y saltear la única fase que
+  // pregunta si la tarea está lista quedaba apoyado en una premisa que nadie comprobó.
+  const vouched = classified.has(task.id)
   const express = planning.lane === 'express'
   const direct = planning.lane === 'directo'
   const lite = planning.lane === 'lite'
@@ -402,7 +407,7 @@ while (rounds++ < MAX_TASKS) {
     : '')
 
   if (!planning.wipActive) {
-    if (!mechanical) {
+    if (!mechanical || !vouched) {
       phase('Ready')
       const ready = await read(
         `${asRole(OWNERS.ready)}Revisá que ${task.id} tenga aceptación concreta, dependencias resueltas y ` +
