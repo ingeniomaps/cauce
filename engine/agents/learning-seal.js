@@ -112,4 +112,4 @@ function appendHistory(target, file, responsible, change) {
   fs.appendFileSync(history, `${fs.readFileSync(history, 'utf8').endsWith('\n') ? '' : '\n'}${row}`)
 }
 
-module.exports = { proposalFile, seal, archive }
+module.exports = { seal, archive }
