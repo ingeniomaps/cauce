@@ -244,3 +244,32 @@ test('una parada se nombra con el vocabulario del protocolo', () => {
   assert.match(sinCola.stdout, /^HUMAN\s+alta-email-nuevo: Crear la cuenta SMTP/m,
     'lo que toca es que una persona desbloquee, y eso es lo que el comando existe para decir')
 })
+
+// El texto de la aceptación se delimita con las cursivas de markdown, y un identificador con guión
+// bajo tiene los mismos caracteres que ese delimitador. La primera versión del lector cortaba en el
+// primer `_` que encontraba: `_Aceptación: MAX_ATTEMPTS vale 5._` devolvía `MAX`, `check` pasaba en
+// verde, y quien tomaba la tarea construía contra tres letras. Markdown ya resuelve esto —un `_`
+// entre caracteres de palabra no abre ni cierra énfasis— y el lector tiene que resolverlo igual.
+test('la aceptación con un identificador adentro llega entera', () => {
+  const base = tempRoot('cauce-acceptance-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Aceptación', '--mode', 'sidecar']).status, 0)
+  linkEngine(target)
+  const planning = path.join(target, 'planning')
+  fs.mkdirSync(path.join(target, 'app'))
+  const backlog = (task) => fs.writeFileSync(
+    path.join(planning, 'BACKLOG.md'), `# Backlog\n\n## Hito demo — Demo\n\n${task}\n`,
+  )
+  const acceptance = () => JSON.parse(run(['context', planning, '--json']).stdout).task.acceptance
+
+  backlog('- [ ] **tope** [express] — Subir el tope. '
+    + '_Aceptación: `MAX_ATTEMPTS` vale 5 y el reintento se rinde al quinto._ (service: app)')
+  assert.equal(run(['check', planning]).status, 0)
+  assert.equal(acceptance(), '`MAX_ATTEMPTS` vale 5 y el reintento se rinde al quinto.')
+
+  // El identificador pegado al cierre es el borde: ahí el `_` que delimita y el que separa palabras
+  // son vecinos, y quedarse con el primero deja la aceptación partida por la mitad.
+  backlog('- [ ] **tope** [express] — Subir el tope. '
+    + '_Aceptación: el tope lo fija MAX_ATTEMPTS_ (service: app)')
+  assert.equal(acceptance(), 'el tope lo fija MAX_ATTEMPTS')
+})

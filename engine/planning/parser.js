@@ -153,6 +153,12 @@ function readCast(rest) {
   }
 }
 
+// El texto de la aceptación, delimitado por las cursivas que lo envuelven. El cierre no es «el
+// próximo guión bajo»: un identificador como `MAX_ATTEMPTS` trae los suyos, y cortar en el primero
+// devolvía `MAX` con `check` en verde, que es la forma cara del error —la tarea se lee completa y no
+// lo está—. Cierra el `_` que markdown cerraría: el que no está entre caracteres de palabra.
+const ACCEPTANCE = /_Aceptaci[oó]n:\s*(.*?\S)_(?![A-Za-z0-9])/i
+
 function readBacklog(dir) {
   const text = withoutComments(read(path.join(dir, 'BACKLOG.md')))
   const milestones = []
@@ -175,7 +181,7 @@ function readBacklog(dir) {
       slug: task[1].trim(), tier: task[2] || '', cast: readCast(rest),
       epic: ((rest.match(/\(epic:\s*(\d{3})\)/) || [])[1] || ''),
       service: ((rest.match(/\(service:\s*([^)]+)\)/) || [])[1] || '').trim(),
-      acceptance: ((rest.match(/_Aceptaci[oó]n:\s*([^_]+)_/i) || [])[1] || '').trim(),
+      acceptance: ((rest.match(ACCEPTANCE) || [])[1] || '').trim(),
       criteria: criteriaRefs(rest),
       noSplit: noSplitReason(rest),
     })
