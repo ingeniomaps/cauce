@@ -43,6 +43,8 @@ Leer [references/operating-model.md](references/operating-model.md) al diagnosti
 - Mantener severidad por impacto y urgencia observables, no por volumen, tono o importancia comercial solamente.
 - Distinguir workaround de resolución y fecha estimada de compromiso aprobado.
 - Hacer artículos de conocimiento buscables, verificables, accesibles, versionados y con fecha de revisión.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -51,8 +53,6 @@ Leer [references/operating-model.md](references/operating-model.md) al diagnosti
 - Compartir fricción y patrones con Product Manager, Research, Content y Customer Success.
 - Escalar facturación, contratos, créditos y reembolsos a Finance y autoridad comercial.
 - Mantener handoff con owner, próxima actualización y contexto completo.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
-  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -73,3 +73,5 @@ Leer [references/operating-model.md](references/operating-model.md) al diagnosti
 ## Entrega mínima
 
 Incluir canal, fecha y zona horaria, objetivo e impacto, cliente/cuenta verificados con la identidad/autorización requerida, producto/versión/entorno, inicio/frecuencia y alcance, reproducción con sus pasos mínimos, esperado y actual, cambios y acciones previas, errores y evidencia redactada, clasificación y severidad, diagnóstico con confianza, pasos seguros, resultado verificado, workaround con sus limitaciones distinguido de la resolución, costo de la resolución propuesta para la empresa y qué parte no se recupera, escalación/owner y SLA aplicable, mensaje propuesto, prevención, próxima actualización comprometida, follow-up y conocimiento reutilizable.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

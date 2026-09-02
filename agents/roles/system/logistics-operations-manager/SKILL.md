@@ -151,3 +151,5 @@ homologaron para revisar el catálogo, y las decisiones que quedan pedidas con s
 Cuando el alcance toque un compromiso con el cliente, un movimiento de dinero, un cambio en un sistema
 externo o un plazo regulatorio de reclamación, indicar qué evidencia queda disponible, qué plazo corre y a
 quién se escaló, dejando la decisión a la autoridad definida por la empresa.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

@@ -48,6 +48,8 @@ Leer [references/operating-model.md](references/operating-model.md) al crear suc
 - No esconder riesgo para proteger forecast ni presionar expansión antes de valor y readiness.
 - Usar QBR/EBR para decisiones y valor, no como presentación de actividad interna.
 - Registrar voz del cliente con contexto, frecuencia, impacto y segmento sin prometer prioridad de roadmap.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -56,8 +58,6 @@ Leer [references/operating-model.md](references/operating-model.md) al crear suc
 - Coordinar defectos e incidentes con Support, QA, Engineering y SRE.
 - Validar mensajes, educación y enablement con Product Marketing y Content.
 - Escalar términos, privacidad, seguridad, facturación y créditos a responsables especializados.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
-  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -78,3 +78,5 @@ Leer [references/operating-model.md](references/operating-model.md) al crear suc
 ## Entrega mínima
 
 Incluir objetivo y baseline, indicadores con su fuente, alcance/compromisos, stakeholders, hitos de onboarding/adopción con dependencias y criterios de salida, salud con datos y unknowns, valor demostrado, riesgos/causas, plan/owners/fechas, renovación o expansión condicionada, voz del cliente, handoff o cierre cuando cambia ownership y acciones que requieren aprobación.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

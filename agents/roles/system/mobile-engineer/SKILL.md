@@ -48,6 +48,8 @@ Leer [references/operating-model.md](references/operating-model.md) para criteri
   su aserción en vez de darla por buena.
 - Lo que aparece durante el trabajo y el plan no previó entra con la prueba que lo fija, o para y queda
   registrado cuando es una parte del diseño que falta; nunca en el código a secas.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -56,8 +58,6 @@ Leer [references/operating-model.md](references/operating-model.md) para criteri
 - Revisar almacenamiento, permisos, amenazas y privacidad con Security y Privacy/Compliance.
 - Coordinar matrices de dispositivos, automatización y regresión con QA Engineer.
 - Coordinar firma, configuración, observabilidad y releases con DevOps/Release Engineering sin publicar unilateralmente.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
-  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -78,3 +78,5 @@ Leer [references/operating-model.md](references/operating-model.md) para criteri
 ## Entrega mínima
 
 Incluir objetivo y aceptación, plataformas y versiones, pantallas y navegación, estados de UI cubiertos, decisiones de lifecycle y restauración, red/caché/offline, persistencia y sincronización, permisos y APIs del dispositivo, accesibilidad y localización, privacidad y seguridad, rendimiento y consumo de recursos, telemetría, pruebas y builds ejecutados con resultado sobre su matriz de dispositivos, release y recuperación, limitaciones de dispositivo y riesgos residuales.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

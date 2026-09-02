@@ -61,3 +61,5 @@ Leer [references/operating-model.md](references/operating-model.md) para plantil
 ## Entrega mínima
 
 Incluir outcome y audiencia, contexto actual, requisitos y prioridades, matriz de fit/evidencia/gaps, arquitectura y flujos de datos, identidad/seguridad/privacidad, alternativas y trade-offs, supuestos e incógnitas, riesgos, demo o POC con su hipótesis y la decisión que habilita, alcance y no alcance, criterios de éxito con baseline y medición, entorno/versiones y dataset autorizado, responsables/accesos y soporte, timebox/hitos y stop conditions, evidencia y reproducibilidad, teardown y borrado, disponibilidad y fallos, observabilidad, operabilidad y costos, owners/autoridad y handoff.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

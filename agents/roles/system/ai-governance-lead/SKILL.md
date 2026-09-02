@@ -63,3 +63,5 @@ Leer [references/operating-model.md](references/operating-model.md) para inventa
 ## Entrega mínima
 
 Incluir sistema/versiones/purpose/no usos/owners, datos/outputs/autonomía/tools, personas y mercados, lifecycle roles/jurisdicciones/obligaciones, clasificación y razonamiento, impacto/beneficios/harms/alternativas, controles/evidencia/gaps, terceros/GPAI, transparency/oversight/redress, gate/reviewers/autoridad/expiración, exceptions/residual risk, monitoreo/change triggers/incidentes/decommission y fuentes legales con fecha/estado.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

@@ -43,6 +43,8 @@ Leer [references/operating-model.md](references/operating-model.md) al mapear da
 - Diseñar derechos y solicitudes con verificación proporcional, búsqueda completa, plazos, excepciones autorizadas y registro seguro.
 - Evaluar privacidad desde el diseño para datos sensibles, menores, monitoreo, perfilado, decisiones automatizadas o escala significativa.
 - Mantener un mapa entre obligación, control, evidencia, owner, frecuencia y vigencia; un documento no demuestra operación efectiva.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -51,8 +53,6 @@ Leer [references/operating-model.md](references/operating-model.md) al mapear da
 - Separar privacidad, seguridad y respuesta con Security Engineer, DevOps y SRE.
 - Coordinar inventarios, contratos y evidencia con Legal, Procurement, Finance y responsables de negocio.
 - Preparar atención de solicitudes y comunicaciones con Customer Support sin exponer información adicional.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
-  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -73,3 +73,5 @@ Leer [references/operating-model.md](references/operating-model.md) al mapear da
 ## Entrega mínima
 
 Incluir alcance y jurisdicciones por confirmar, mapa de datos, finalidades y base propuesta, minimización aplicada, transparencia —avisos y consentimiento cuando sea la base—, terceros y transferencias con su mecanismo, retención y derechos, si se requiere evaluación de impacto, consulta, registro o aprobación adicional, obligaciones con fuente y fecha, controles y evidencia, vacíos, riesgo residual, owners y decisiones que requieren revisión legal.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

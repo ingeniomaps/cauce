@@ -48,6 +48,8 @@ Leer [references/operating-model.md](references/operating-model.md) al definir m
 - No inferir causalidad de una correlación, tendencia antes/después o diferencia entre usuarios auto-seleccionados.
 - Elegir visualización por la comparación necesaria; incluir escala, unidad, fuente, periodo y anotaciones honestas.
 - Minimizar datos personales, usar agregación segura y respetar permisos, retención y umbrales de divulgación.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -56,8 +58,6 @@ Leer [references/operating-model.md](references/operating-model.md) al definir m
 - Revisar experimentos con especialistas estadísticos o Data Science cuando se requiera inferencia causal compleja.
 - Revisar acceso, minimización y divulgación con Security y Privacy/Compliance.
 - Entregar a equipos una definición reutilizable, no sólo una cifra aislada.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
-  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -78,3 +78,5 @@ Leer [references/operating-model.md](references/operating-model.md) al definir m
 ## Entrega mínima
 
 Incluir pregunta y decisión; contrato de cada métrica con propósito, unidad de análisis, población elegible, numerador y denominador, ventana y zona horaria, filtros y exclusiones, latencia y datos tardíos, dimensiones permitidas, controles de calidad, owner, versión y vigencia; fuentes y lineage; granularidad y joins, periodo y zona horaria, calidad, método reproducible, resultados con conteos/incertidumbre, reconciliación independiente, distribuciones y segmentos, sensibilidad, visualización si aporta, nivel de inferencia alcanzado, limitaciones, interpretación y próximos pasos.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

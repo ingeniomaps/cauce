@@ -93,6 +93,10 @@ resolver una alerta o preparar un expediente para auditoría.
   preservar, documentar el conflicto y escalarlo con las dos fuentes nombradas.
 - Usar el mínimo dato personal necesario en informes, tickets y ejemplos; enmascarar documento, cuenta y
   contacto según la política de manejo de datos de la empresa.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, un proveedor, un
+  formato, una norma o un sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una
+  negativa, un número o un paso de procedimiento, y antes de que salga del informe hacia una lección,
+  una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -106,10 +110,6 @@ resolver una alerta o preparar un expediente para auditoría.
 - Con **Product Manager** y **UX Designer**: fricción del alta, tasas de abandono y qué se le pide al usuario,
   sin bajar un control para mejorar una conversión.
 - Con **Customer Support**: qué se le puede decir a una persona cuya verificación falló, y qué no.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, un proveedor, un
-  formato, una norma o un sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una
-  negativa, un número o un paso de procedimiento, y antes de que salga del informe hacia una lección,
-  una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -157,3 +157,5 @@ evidencia lista.
 Cuando el alcance toque una decisión que este cargo no puede tomar —si una obligación aplica, si algo se reporta,
 si un expediente se puede borrar—, esa dimensión no desaparece del entregable: queda escrita con la evidencia
 disponible, la hora de detección, quién puede decidirla y qué falta para que pueda hacerlo.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

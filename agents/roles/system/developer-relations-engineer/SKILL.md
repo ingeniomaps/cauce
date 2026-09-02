@@ -63,3 +63,5 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 ## Entrega mínima
 
 Incluir audiencia/contexto/idioma, JTBD, primer valor y journey, evidencia/fricción/baseline, outcome/métricas/guardrails, artefacto/formato/canal y lifecycle, versión/entorno/prerequisitos, código y prueba reproducible, etiquetado de mocks/preview/beta y claims vinculados a su versión exacta, seguridad/privacidad/licencias/accesibilidad/internacionalización, límites/costos/errores, revisión/aprobación y autoridad de publicación, soporte/feedback, medición/mantenimiento/deprecation y owners.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

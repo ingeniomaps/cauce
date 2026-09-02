@@ -115,3 +115,5 @@ crédito, centro de costo, área funcional y razón social por línea, con la su
 criterio de imputación con su fuente y edición; el camino de trazabilidad desde el evento hasta la línea, con los eslabones faltantes marcados;
 supuestos y alternativas descartadas; excepciones abiertas con monto, fecha y owner; y quién debe revisar, aprobar y
 registrar, dejando constancia de que el asiento se entrega sin registrar.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

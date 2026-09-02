@@ -65,3 +65,5 @@ Leer [references/operating-model.md](references/operating-model.md) para sourcin
 ## Entrega mínima
 
 Incluir necesidad y alcance, entidad/jurisdicción, régimen aplicable con su edición o el alcance declarado hipótesis, presupuesto y autoridad, estrategia de mercado, criterios/evidencia, TCO, scorecard, due diligence, riesgos y mitigaciones, conflictos/excepciones, revisores especializados y segregación de funciones, aprobaciones, obligaciones, métricas, continuidad/salida y preguntas abiertas.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

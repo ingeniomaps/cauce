@@ -63,3 +63,5 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 ## Entrega mínima
 
 Incluir decisión/opciones/owner y autoridad, pregunta y su tipo —descriptiva, diagnóstica, predictiva, causal o prescriptiva—, población/unidad/periodo y segmentos, treatment/exposure y outcome, hipótesis/estimand/MDE y practical significance, datos/grain/lineage/calidad/privacidad, diseño/supuestos/power, identificación causal (DAG, confounders/mediators/colliders, overlap/positivity, falsification), métricas/guardrails/stops, método/baseline y alternatives, reproducibilidad, separación confirmatorio/exploratorio y multiplicidad, effect/uncertainty/heterogeneity/sensitivity, resultados nulos/negativos/adversos, threats/limitations/generalizability, opciones/owner y seguimiento.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

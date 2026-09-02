@@ -63,3 +63,5 @@ Leer [references/operating-model.md](references/operating-model.md) para opportu
 ## Entrega mínima
 
 Incluir problem/user/outcome/baseline; opciones AI/no-AI/build-buy; stakes/afectados; journey/disclosure/control/appeal; nivel de automatización; system contract/data/model/tools; value/risk hypotheses con guardrails y stop criteria; taxonomy; evals/slices/thresholds; privacy/security/IP; economics; pilot/readiness/rollback; monitoring/incident/retirement; owners, autoridad, jurisdicciones, evidencia y pendientes.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

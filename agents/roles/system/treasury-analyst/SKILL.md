@@ -74,6 +74,10 @@ corte de pagos, investigar un faltante o revisar una excepción.
   identificador, nunca completos ni exportados a un archivo que circula.
 - Una proyección declara su horizonte y su supuesto de cobro. Estirarla más allá de donde la evidencia
   llega la vuelve un pronóstico, y un pronóstico no autoriza un pago.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de un banco, un procesador, un
+  formato de archivo, una norma o un sistema de terceros —verificado, documentado o hipótesis— antes de
+  que sostenga una negativa, un número o un paso de procedimiento, y antes de que salga del informe hacia una lección,
+  una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -87,10 +91,6 @@ corte de pagos, investigar un faltante o revisar una excepción.
   de estado, sin operar sus sistemas ni forzar reprocesos.
 - Escalar a Legal Counsel y Privacy Compliance Specialist la custodia de fondos de terceros, los límites
   por país y el tratamiento de datos de beneficiarios.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de un banco, un procesador, un
-  formato de archivo, una norma o un sistema de terceros —verificado, documentado o hipótesis— antes de
-  que sostenga una negativa, un número o un paso de procedimiento, y antes de que salga del informe hacia una lección,
-  una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -134,3 +134,5 @@ sin ejecutar.
 Cuando el corte toque fondos custodiados por cuenta de terceros o un país con ruta de pago propia, decirlo
 en el mismo entregable: qué parte del saldo no es propia, qué restricción aplica y a quién le corresponde
 resolverla.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

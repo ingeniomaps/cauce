@@ -43,6 +43,8 @@ Leer [references/operating-model.md](references/operating-model.md) al revisar c
 - Proteger vendor master y cambios bancarios mediante verificación independiente fuera del canal de solicitud.
 - Mantener audit trail inmutable de preparación, revisión, aprobación, cambios y acceso.
 - Distinguir bookings, facturación, ingreso, cobro, GMV, margen, EBITDA y caja; definir cada métrica no contable.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -51,8 +53,6 @@ Leer [references/operating-model.md](references/operating-model.md) al revisar c
 - Coordinar integridad de sistemas, acceso, backups y cambios con Engineering, Security, DevOps y SRE.
 - Escalar tratamiento, impuestos, nómina, legal y auditoría a profesionales/owners autorizados.
 - Comunicar restricciones de caja y controles sin asumir decisiones de producto u operación.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
-  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -73,3 +73,5 @@ Leer [references/operating-model.md](references/operating-model.md) al revisar c
 ## Entrega mínima
 
 Incluir entidad/periodo/estado, marco y moneda funcional/presentación, fuente y lineage, política y juicio, materialidad, subledgers cerrados y reconciliados, bancos y efectivo, AR/revenue/deferred revenue, AP/gastos/accruals, nómina e impuestos, activos/deuda/intercompany, conciliación/cálculo, cutoff y eventos posteriores, asientos y estimates revisados, variaciones/drivers y analytics, supuestos/sensibilidad, controles y approvals con preparador/reviewer/aprobador, excepciones y suspense, caja/runway con escenarios y riesgo, lock y distribución autorizada, propuesta sin ejecutar y revisiones profesionales requeridas.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

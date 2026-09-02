@@ -96,3 +96,5 @@ entrada de INBOX, la lección— y comprobar que cada afirmación sobre el compo
 herramienta, una norma o un sistema de terceros llegó ahí con el registro y la cita que tenía en el
 informe. Releer el informe no lo encuentra: ahí la afirmación está clasificada, y la copia se lee bien
 justamente porque está en plano.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

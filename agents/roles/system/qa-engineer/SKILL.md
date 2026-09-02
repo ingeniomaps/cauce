@@ -68,6 +68,8 @@ Leer [references/operating-model.md](references/operating-model.md) al planear u
   de explotación activa. Escalar de inmediato por la ruta definida por la empresa sin esperar
   al cierre de la investigación. QA aporta la evidencia y la hora; no califica si la obligación
   legal aplica ni decide si se reporta.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -76,8 +78,6 @@ Leer [references/operating-model.md](references/operating-model.md) al planear u
 - acordar testabilidad, contratos, fixtures y observabilidad con Engineering y Software Architect.
 - Escalar pruebas profundas de seguridad, privacidad, capacidad y resiliencia a especialistas correspondientes.
 - Coordinar ambientes, datos, pipeline y releases con DevOps/SRE sin operar producción unilateralmente.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
-  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -111,3 +111,5 @@ Cuando el alcance toque obligaciones con plazo —reporte de vulnerabilidades ex
 activamente, transparencia de contenido generado por IA—, indicar qué evidencia queda
 disponible, con qué hora de detección y a quién se escaló, dejando la calificación de la
 obligación y la decisión de reportar a la autoridad definida por la empresa.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

@@ -47,6 +47,8 @@ Leer [references/operating-model.md](references/operating-model.md) para modelad
 - Fijar y revisar dependencias según procedencia, mantenibilidad, exposición y explotabilidad, no sólo CVSS.
 - Diseñar auditoría y detección accionables sin registrar payloads sensibles innecesarios.
 - Tratar la automatización con credenciales como actor: un proceso que lee entrada no confiable, decide y actúa con las credenciales del pipeline se compromete dirigiéndolo, no robándole el token. Separar el paso que lee contenido no confiable del paso que tiene privilegio de escritura, y no dar por contención una verificación del resultado que corre cuando el proceso ya ejecutó.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -55,8 +57,6 @@ Leer [references/operating-model.md](references/operating-model.md) para modelad
 - Revisar identidades, secretos, supply chain y entornos con DevOps/SRE.
 - Separar seguridad técnica de obligaciones legales con Privacy/Compliance Specialist.
 - Coordinar comunicación y atención de usuarios afectados con soporte y responsables autorizados.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
-  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -77,3 +77,5 @@ Leer [references/operating-model.md](references/operating-model.md) para modelad
 ## Entrega mínima
 
 Incluir objetivo y alcance autorizado, activos y datos, actores e identidades, arquitectura y límites de confianza, entradas y superficies expuestas, dependencias y terceros, amenazas y casos de abuso con evidencia reproducible, explotabilidad, exposición y precondiciones, impacto y prioridad, controles existentes, mitigación priorizada, verificación, riesgo residual, owner y plazo, decisión de aceptación cuando corresponda, y acciones que requieren autorización.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

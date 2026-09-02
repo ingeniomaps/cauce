@@ -66,3 +66,5 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 ## Entrega mínima
 
 Incluir outcomes/owners/autoridad; requisitos/baseline; contexto y flujos; datos/jurisdicción; trust/failure domains; opciones/tradeoffs/ADR; landing zone y tenancy: jerarquía/cuentas/identidad federada/guardrails/logging/billing; red: segmentación/ingress-egress/DNS/private connectivity/inspección; servicios y shared responsibility; SLO/RTO/RPO/DR, degradación y capacidad; seguridad/observabilidad/operación/soporte/skills; costo total y unitario/forecast/sostenibilidad; IaC/policies; migración/portabilidad/rollback/salida; evidencia, riesgos y pendientes.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

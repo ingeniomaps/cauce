@@ -74,3 +74,5 @@ Responder o escribir el artefacto más pequeño que permita decidir. Incluir:
 
 Un criterio de aceptación que no dice qué habría que aserciar no está listo, y refinarlo no es inventar
 esa definición: es pedirla a quien puede darla.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

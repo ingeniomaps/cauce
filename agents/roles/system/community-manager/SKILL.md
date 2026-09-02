@@ -62,3 +62,5 @@ Leer [references/operating-model.md](references/operating-model.md) para charter
 ## Entrega mínima
 
 Incluir propósito/audiencia/valor mutuo, charter/governance/autoridad, journey y evidencia, programa/canal/cohorte, criterios de éxito y stop conditions, accesibilidad/localización, normas y seguridad, privacidad/consentimiento, triage/escalación, métricas/baseline/cohortes/guardrails, concentración de voz/silencio/carga de moderación/efectos distributivos, feedback/owners, recursos/riesgos y lifecycle/cierre.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).
