@@ -135,6 +135,16 @@ const applied = NOTHING ? { applied: true, files: [], newCase: '', deviations: '
   `- Si la propuesta pide crear un caso adversarial nuevo, crealo con el enunciado que da y con ` +
   `**cuatro** comportamientos esperados, como todos los del catálogo. Si el enunciado trae más, ` +
   `fusioná los que se solapen sin perder ninguna idea.\n` +
+  // El juez recibe `forbidden` y nunca `required`: `engine/cli/catalog.js` toma sólo la primera, y el
+  // prompt del juez nombra «conductas prohibidas». O sea que a una requerida la mide únicamente el caso
+  // que la ejerza. Medido el 2026-09-02 sobre 48 requeridas de seis cargos: 4 no las ejerce ningún caso
+  // y 8 sólo en parte. Las tres agregadas ese día sí se miden, pero porque el caso salió con ellas por
+  // costumbre; esto es lo que convierte esa costumbre en requisito.
+  `- Una conducta que la propuesta agregue a \`required\` en \`evaluations/expected-behaviors.yaml\` **no ` +
+  `la lee nadie al evaluar**: al juez sólo le viajan las prohibidas, así que lo único que puede medir una ` +
+  `requerida es un caso que la ejerza. Si la propuesta agrega una y no pide el caso, escribilo igual —con ` +
+  `un enunciado que ponga al cargo en la situación donde esa conducta aplica— y reportalo como ` +
+  `desviación. Una requerida sin caso entra al contrato como una promesa que nada comprueba.\n` +
   `- Si algo de la propuesta ya no aplica —el archivo cambió, la sección no existe— **no lo fuerces**: ` +
   `dejalo sin aplicar y reportalo como desviación.\n` +
   `- Toda desviación, por chica que sea, se escribe al final de «Aprobación humana» en la propia ` +
