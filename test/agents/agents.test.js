@@ -175,3 +175,30 @@ test('una empresa puede acotar el catálogo a lo que sí mantiene', () => {
   assert.equal(run(['learn', 'curador'], target).status, 0)
   assert.match(run(['learn', 'qa-engineer'], target).stderr, /se hace en el toolkit/)
 })
+
+// El único párrafo que todos los cargos comparten palabra por palabra: el recorrido de artefactos que
+// cierra «Entrega mínima». No se puede factorizar a un archivo compartido — un `SKILL.md` lo lee el
+// agente tal cual del paquete, sin que cauce lo renderice, así que un `{{INCLUDE:}}` le llegaría
+// literal; y un puntero convertiría en lectura opcional justamente el paso que tiene que estar en
+// contexto al entregar. Copiado en cada cargo el daño posible es uno solo, que una copia se pudra, y
+// esto es lo que lo detiene. No fija el texto sino que sea el mismo, así que cambiarlo en todos a la
+// vez sigue siendo una edición legítima del catálogo.
+test('el paso de entrega que comparten los cargos no se parte en variantes', () => {
+  const roles = catalog.list(REPO).filter((role) => fs.existsSync(path.join(role.dir, 'SKILL.md')))
+  assert.ok(roles.length > 40, `el catálogo se quedó en ${roles.length} cargos`)
+  const closing = (role) => {
+    const text = fs.readFileSync(path.join(role.dir, 'SKILL.md'), 'utf8')
+    const start = text.indexOf('## Entrega mínima')
+    if (start < 0) return ''
+    const blocks = text.slice(start).split(/\n## /)[0].split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean)
+    return blocks[blocks.length - 1] || ''
+  }
+  const closings = roles.map((role) => [role.slug, closing(role)])
+  assert.deepEqual(closings.filter(([, block]) => !block).map(([slug]) => slug), [],
+    'cargos sin «Entrega mínima» o con la sección vacía')
+  const variants = new Map()
+  for (const [slug, block] of closings) variants.set(block, [...(variants.get(block) || []), slug])
+  const odd = [...variants.entries()].sort((a, b) => b[1].length - a[1].length).slice(1)
+  assert.deepEqual(odd.map(([, slugs]) => slugs.join(', ')), [],
+    'el paso de entrega quedó en más de una redacción')
+})
