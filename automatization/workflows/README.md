@@ -45,3 +45,30 @@ un `SKILL.md` por su cuenta. Toda actualización exige evaluación y aprobación
 
 Los tres se instalan sólo en Claude, que es el único con runtime para ejecutarlos, y no figuran entre los
 cinco recorridos que todos los runners anuncian.
+
+## Un workflow colgado no avisa
+
+Un `agent()` que no vuelve deja la corrida quieta sin emitir nada: el árbol de progreso queda como estaba, no
+hay evento y no hay error, así que silencio y avance se ven idénticos. Pasó el 2026-09-01 con un `agent-eval`
+de `growth-marketer` —siete de ocho casos ya juzgados y el octavo trabado dos horas y media en un `WebFetch`
+que nunca devolvió—, y lo descubrió quien preguntó, no el sistema.
+
+El aviso no puede vivir acá adentro. Un script de workflow no tiene reloj —`Date.now()`, `new Date()` y
+`Math.random()` lanzan a propósito, para no romper el resume— y `agent()` no acepta timeout: sus opciones son
+`label`, `phase`, `schema`, `model`, `effort`, `isolation` y `agentType`. Devuelve `null` ante un error
+terminal de API, y un cuelgue no lo es. Documentado en la referencia de autoría de workflows de Claude Code,
+leída el 2026-09-01.
+
+Así que lo vigila quien lo lanza: junto con la invocación, un monitor sobre la frescura del directorio de
+transcript que avise si deja de escribir por más de unos minutos.
+
+```bash
+find <transcriptDir> -type f -printf '%T@\n' | sort -rn | head -1
+```
+
+Y si se colgó, cortar y reanudar no cuesta la corrida entera. Verificado el 2026-09-01 sobre un `agent-eval`
+de ocho casos: el resume replayó desde caché los siete responders ya terminados —la etapa cara, la que
+consulta fuentes y escribe en su banco— y volvió a correr los siete jueces más el responder que faltaba. La
+cuenta de agentes nuevos no distingue esas dos etapas, y leerla como una corrida entera hace cortar un resume
+que iba bien. Cuando lo que falta es un caso suelto sale más barato el filtro que `agent-eval.js` ya trae
+—`{agent, cases}`—, componiendo el registro parcial con los veredictos que no se volvieron a medir.

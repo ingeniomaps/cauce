@@ -15,7 +15,7 @@ const { KEY, baseScript, ranToEnd, runFlow } = require('../support/autobuild-har
 // dijo que nombra un valor literal. Lo que separa a `directo` de `express` es un solo ojo más, el que
 // mira la superficie que cambió; lo que no cambia en ningún carril es Verify, que es la evidencia.
 test('el carril directo entrega y lo revisa quien nombra la línea', async () => {
-  const { result, phases } = await runFlow({}, { lane: 'directo' })
+  const { result, phases } = await runFlow({}, { lane: 'directo', vouched: true })
   ranToEnd(result)
   assert.deepEqual(result.done, ['T-1'])
   for (const absent of ['Ready', 'Decompose', 'Plan', 'Critique', 'QA']) {
@@ -27,7 +27,7 @@ test('el carril directo entrega y lo revisa quien nombra la línea', async () =>
 })
 
 test('el carril express entrega sin que nadie mire, porque no hay nada que mirar', async () => {
-  const { result, phases } = await runFlow({}, { lane: 'express' })
+  const { result, phases } = await runFlow({}, { lane: 'express', vouched: true })
   ranToEnd(result)
   assert.deepEqual(result.done, ['T-1'])
   for (const absent of ['Ready', 'Decompose', 'Plan', 'Critique', 'Review', 'QA']) {
@@ -204,4 +204,55 @@ test('el proyecto que no la declara sigue descubriéndola', async () => {
   const verify = prompts.find((one) => /exit codes de verdad/.test(one.prompt))
   assert.match(verify.prompt, /descubrilo: primero las instrucciones/,
     'sin declaración se descubre: un proyecto que no lo dijo tiene que poder correr igual')
+})
+
+// El cierre escribe `decisions:`, el único campo del DONE que no recibe ningún hecho: `done`, `qa`,
+// `tests` y `commit` sí. Sin ancla, la entrada terminó afirmando «Review de product-manager» en una
+// tarea que corría por `express`, donde Review está detrás de un `if` y nadie convoca a un revisor —y
+// esa entrada es la evidencia de aceptación que alguien lee cuando ya nadie recuerda la corrida—.
+// El carril alcanza como hecho porque es lo que decide qué fases corren.
+test('el cierre recibe el carril y el veredicto de la revisión, o que no hubo', async () => {
+  const done = (prompts) => prompts.find((one) => one.key === 'Done|').prompt
+
+  const express = await runFlow({}, { lane: 'express' })
+  ranToEnd(express.result)
+  const sinRevisión = done(express.prompts)
+  assert.match(sinRevisión, /lane=express/, 'el cierre no sabe por qué carril vino la tarea')
+  assert.match(sinRevisión, /review=no corrió/, 'el cierre no sabe que nadie revisó')
+
+  const directo = await runFlow({}, { lane: 'directo' })
+  ranToEnd(directo.result)
+  const conRevisión = done(directo.prompts)
+  assert.match(conRevisión, /lane=directo/)
+  assert.match(conRevisión, /review=aprobado/, 'el cierre no recibe el veredicto de quien sí revisó')
+})
+
+// Auditar una corrida no puede exigir leer este archivo. Cuando el DONE de una tarea `express` afirmó
+// una revisión, comprobar que Review estaba detrás de un `if` pidió abrir el fuente del recorrido y
+// cruzarlo con tres commits: la corrida no había dejado dicho por dónde pasó. El registro lo arma el
+// recorrido y no un agente, que es lo que lo vuelve incontestable.
+test('la corrida devuelve por qué fases pasó, y el cierre las recibe', async () => {
+  const { result, phases, prompts } = await runFlow({}, { lane: 'express', vouched: true })
+  ranToEnd(result)
+  assert.deepEqual(result.phases, phases, 'lo devuelto no es lo que efectivamente corrió')
+  assert.ok(!result.phases.includes('Review'), 'nombra una fase que su carril saltea')
+  assert.ok(result.phases.includes('Build'), 'se olvidó de una que sí corrió')
+  assert.match(prompts.find((one) => one.key === 'Done|').prompt,
+    /fases=Triage → Pick → Classify → Pick → WIP → Build → Verify → Commit → Done/,
+    'el cierre no recibe por dónde pasó la tarea')
+})
+
+// Las dos mitades son el caso, y ninguna sola alcanza: sin la primera, dejar de mirar el aval pasa; sin
+// la segunda, correr Ready siempre también pasa, y ahí el carril mecánico ya no compra nada. El porqué
+// de la premisa vive en `autobuild.js`, junto al `if` que la usa.
+test('el carril mecánico saltea Ready sólo si alguien leyó la aceptación en esta corrida', async () => {
+  const declarado = await runFlow({}, { lane: 'express' })
+  ranToEnd(declarado.result)
+  assert.ok(declarado.phases.includes('Ready'),
+    'nadie leyó la aceptación y aun así nadie preguntó si estaba lista')
+
+  const avalado = await runFlow({}, { lane: 'express', vouched: true })
+  ranToEnd(avalado.result)
+  assert.ok(avalado.phases.includes('Classify'), 'el clasificador es quien avala')
+  assert.ok(!avalado.phases.includes('Ready'), 'avalado, el carril mecánico sigue sin preguntar dos veces')
 })

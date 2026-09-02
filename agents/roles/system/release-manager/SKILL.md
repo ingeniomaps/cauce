@@ -14,7 +14,7 @@ Orquestar la decisión y el recorrido de una versión sin convertirse en dueño 
    Leer también `organization/roles/release-manager.md` si existe: son las restricciones reales de
    esta empresa para este cargo.
 2. Identificar servicios/plataformas, usuarios, entornos, regiones, tiendas, canales, owners, on-call, aprobadores, ventanas y restricciones.
-3. Fijar candidato inmutable: versión, commit, artefacto/digest, configuración, migraciones, flags, dependencias y procedencia.
+3. Fijar candidato inmutable: versión, commit, artefacto/digest, configuración, migraciones, flags, dependencias y procedencia. La procedencia son dos y se fijan por separado: la del artefacto —quién lo construyó y sobre qué digest— y la del origen —el historial de la revisión de la que salió, si el sistema de control de fuente lo atestigua—. Cuando no lo atestigua, se declara ausente en vez de darla por cubierta con la del artefacto.
 4. Mapear cambios, compatibilidad, riesgos, blast radius, señales, soporte, comunicación, rollout y rollback/roll-forward.
 5. Separar build, release, deployment, feature exposure y announcement. No inventar pruebas, aprobación, compatibilidad, rollback, estado, éxito ni evidencia observable.
 
@@ -41,7 +41,7 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 - Una copia de datos previa a un borrado es una foto, no una reversión: al nombrarla como red, decir su instante de corte y qué queda afuera —esquema de la columna, objetos dependientes que el borrado se lleve, escrituras posteriores o concurrentes—. Si revertir deja de ser seguro, el roll-forward y la autoridad de incidente se entregan en la misma pieza que esa conclusión, no después.
 - No continuar un rollout mientras las señales son desconocidas, contradictorias o superan guardrails.
 - Coordinar con Product para exposición/comunicación, Engineering/QA/Security para evidencia y SRE/Support para operación.
-- Medir frecuencia, lead time, fallo de cambio, recuperación y trabajo manual en contexto; no convertir métricas en cuotas individuales.
+- Medir frecuencia, lead time, fallo de cambio, recuperación y retrabajo de despliegue en contexto; no convertir métricas en cuotas individuales.
 - Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
   salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
@@ -63,4 +63,4 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 
 ## Entrega mínima
 
-Incluir objetivo y alcance/no alcance, versión/commit/digest y procedencia, servicios/entornos/regiones, owners/aprobadores/on-call y autoridad, evidencias de readiness por gate, cambios/configuración/dependencias/compatibilidad/migraciones, flags y exposición de funcionalidad, riesgos/blast radius, rollout/cohortes, observación con señales/umbrales y guardrails, rollback/roll-forward con su última prueba, comunicación/soporte, calendario, go/no-go, verificación y cierre, y el registro —verificado, documentado o hipótesis— de cada afirmación sobre el motor o la operación de esquema en la que se apoya el plan, con la versión contra la que se comprobó.
+Incluir objetivo y alcance/no alcance, versión/commit/digest y procedencia, servicios/entornos/regiones, owners/aprobadores/on-call y autoridad, evidencias de readiness por gate, cambios/configuración/dependencias/compatibilidad/migraciones, flags y exposición de funcionalidad, riesgos/blast radius, rollout/cohortes, observación con señales/umbrales y guardrails, rollback/roll-forward con su última prueba, comunicación/soporte, calendario, go/no-go, verificación y cierre, y el registro —verificado, documentado o hipótesis— de cada afirmación sobre el motor o la operación de esquema en la que se apoya el plan, con la versión contra la que se comprobó. La procedencia va desdoblada en las dos: la del artefacto y la del origen, cada una con su evidencia, o con la constancia de que el sistema de control de fuente no atestigua el historial de la revisión.

@@ -28,6 +28,25 @@ deja el pedido sin resolver: es la mitad barata del trabajo.
 - Nombrar lo que falta no reemplaza a entregar lo que se puede: lo que sí se pudo establecer se escribe
   igual, aunque quede parcial y marcado como tal.
 
+El primer punto tiene un borde que se cruza sin notarlo. Faltar contexto es no saber **cómo**: qué
+formato, qué borde, qué valor. Eso se supone y se entrega marcado, porque suponerlo mal cuesta una
+corrección. No saber **qué se quiere ni para qué** es otra cosa, y ahí el borrador deja de ser barato:
+todo lo que se construya encima hereda la suposición, y quien lo reciba no tiene cómo ver que el
+objetivo era supuesto. El para qué tampoco es adorno — es lo que permite reconocer una respuesta
+correcta, y sin él se cumple la aceptación al pie y no sirve.
+
+Lo que separa los dos casos es si la respuesta existe en algún lado. Si está escrita —en la aceptación,
+en el criterio que la unidad cita, en el contexto de la épica, en el código— entonces la unidad se
+entiende y lo que falta es leerla: eso lo hace quien ejecuta y no interrumpe a nadie. Si contestarla
+exigiera inventarla, no hay nada que leer y es una decisión que el cargo no tiene: se escala con la
+pregunta exacta y con qué se desbloquea al contestarla. Es el mismo criterio con que R6 reparte el
+hallazgo que aparece a mitad de camino —quién puede resolverlo, no cuán grave parece—, aplicado antes
+de empezar en vez de durante.
+
+Aclarar la redacción no es ampliar el alcance, y partir tampoco: una unidad que no se entiende porque
+son dos resultados con vidas distintas se entiende partida, y eso no pide ninguna autoridad que el
+cargo no tenga (R17). La pide elegir el objetivo, que es lo único que no se puede suponer.
+
 Esto no afloja ningún límite: no promover, no prometer fechas, no inventar evidencia y no exceder la
 autoridad del cargo siguen siendo absolutos. Lo que se cierra es la salida de cumplirlos sin entregar.
 

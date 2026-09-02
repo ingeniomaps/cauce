@@ -297,6 +297,14 @@ function validateState({ epics, milestones, done, wip, roles = new Set(), humanA
   for (const milestone of milestones) {
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(milestone.slug)) errors.push(`hito con slug inválido: ${milestone.slug}`)
     if (milestoneSlugs.has(milestone.slug)) errors.push(`hito duplicado: ${milestone.slug}`)
+    // La misma puerta que la épica y la tarea, en el nivel que no la tenía. Un hito agrupa trabajo bajo
+    // un nombre, y abrirlo con el nombre puesto para después es el camino natural: nadie promueve una
+    // tarea sin aceptación, y en cambio el título del hito se decide al final, cuando ya se construyó
+    // debajo. El marcador es lo único que se puede juzgar sin leer — un título vago sigue pasando, y
+    // eso es deliberado: acá también un heurístico sobre prosa se equivocaría en los dos sentidos.
+    if (PLACEHOLDERS.test(milestone.title)) {
+      errors.push(`hito ${milestone.slug}: el título no está decidido — "${milestone.title}"`)
+    }
     milestoneSlugs.add(milestone.slug)
     for (const task of milestone.tasks) {
       if (!task.service) errors.push(`BACKLOG ${task.slug}: falta (service: <ruta>)`)

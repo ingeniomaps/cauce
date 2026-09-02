@@ -95,6 +95,23 @@ async function runFlow(changes = {}, options = {}) {
   if (options.lane) {
     script[KEY.context] = { ...script[KEY.context], lane: options.lane }
   }
+  // Un carril llega de dos formas y el recorrido las distingue: escrito a mano en la línea de la tarea,
+  // o puesto por el clasificador, que para ponerlo leyó la aceptación. `vouched` monta la segunda —una
+  // primera lectura sin lane, el clasificador contestando ese carril, y la relectura ya con él—, que es
+  // la única en la que saltear Ready tiene quien lo respalde. Vive acá y no en cada caso porque el
+  // montaje es de tres piezas que tienen que coincidir entre sí.
+  if (options.vouched) {
+    const lane = options.lane || script[KEY.context].lane
+    const build = script[KEY.context].cast.build
+    script[KEY.classify] = { classified: [{ slug: script[KEY.context].slug, lane, build, review: [] }] }
+    options = {
+      ...options,
+      contexts: options.contexts || [
+        { ...script[KEY.context], lane: '', cast: { build: '', review: [] } },
+        { ...script[KEY.context], lane },
+      ],
+    }
+  }
   const phases = []
   const asked = []
   const written = []

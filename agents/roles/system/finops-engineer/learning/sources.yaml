@@ -25,3 +25,15 @@ sources:
     url: https://docs.anthropic.com/en/docs/about-claude/pricing
     tier: platform
     topics: [tokens, caching, context, models]
+  # Tarifa oficial de cómputo GPU reservado. Entra para explicar una factura —separar aumento de tarifa
+  # de aumento de volumen antes de proponer un cambio, que es lo que exige el modelo operativo—, no para
+  # estimar un ahorro: una página de tarifas del proveedor es dato de tarifa, y la calculadora de ahorro
+  # del mismo proveedor sigue siendo material comercial. La página publica la tarifa vigente y cuándo se
+  # actualiza; no fecha cuándo entró en vigencia cada ajuste, así que el porcentaje o la fecha de un
+  # aumento pasado no salen de acá. Abierta el 2026-09-01: «Reservation prices are updated regularly
+  # based on trends in supply and demand for EC2 Capacity Blocks. The current prices are scheduled to be
+  # updated next in October, 2026.»
+  - name: AWS EC2 Capacity Blocks for ML pricing
+    url: https://aws.amazon.com/ec2/capacityblocks/pricing/
+    tier: platform
+    topics: [gpu, reserved-capacity, compute-rates, bill-explanation]
