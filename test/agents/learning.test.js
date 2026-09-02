@@ -308,6 +308,25 @@ test('una propuesta aplicada no se puede volver a aplicar', () => {
   assert.equal(learning.evaluate(target, 'probe').pending, 0, 'y deja de pedir trabajo')
 })
 
+// El sello salía temprano mirando sólo el frontmatter, así que un `status` que llegó antes que él dejaba
+// el cuerpo diciendo lo contrario dentro del mismo documento — que es justo la contradicción que sellar
+// existe para cerrar. Pasó con `growth-marketer/2026-09`, aplicada con el arreglo del cuerpo ya puesto y
+// contradictoria igual: quien aplica edita archivos, y mover `status` es una edición que se le parece a
+// su trabajo. La salida temprana sigue existiendo, porque sellar dos veces no debe reescribir; lo que
+// cambia es qué cuenta como sellado.
+test('un status que se adelantó no deja el cuerpo diciendo lo contrario', () => {
+  const target = installedProject('Sello adelantado')
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe'), 'probe', 'x')
+  withRecommendation(learning.prepareReport(target, 'probe', new Date('2099-06-10T00:00:00Z')).file)
+  learning.prepareProposal(target, 'probe', new Date('2099-06-15T00:00:00Z'))
+  const file = path.join(own, 'learning', 'proposals', '2099-06.md')
+  firmarPropuesta(file)
+
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/^status:.*$/m, 'status: applied'))
+  assert.equal(learning.seal(target, 'probe', '2099-06').already, false, 'el cuerpo todavía no está sellado')
+  assert.match(fs.readFileSync(file, 'utf8'), /^- Estado: aplicada$/m, 'el cuerpo quedó sin sellar')
+})
+
 // El caso recorre el período entero —base, sello, revisión, sello— porque cada paso sólo se ve mal
 // desde el siguiente: una revisión que abre de más no molesta hasta que hay dos firmas en juego.
 test('una propuesta aplicada se puede corregir sin reabrirla', () => {

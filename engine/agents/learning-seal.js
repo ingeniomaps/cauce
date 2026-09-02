@@ -13,6 +13,10 @@ const { atomicWrite } = require('../core/files')
 const { isoDate, proposalFiles, proposalState, assertWritable, lastOfPeriod } = require('./learning-files')
 const { section } = require('../planning/parser')
 
+// El cuerpo sin sellar, en los dos estados que produce el ciclo: «pendiente» lo escribe el molde y
+// «aprobada» la firma. Lo lee la guarda de más abajo y lo reemplaza el sello, así que vive una vez.
+const UNSEALED = /^-[ \t]*Estado:[ \t]*(?:pendiente|aprobada)[ \t]*$/mi
+
 // El estado terminal del ciclo. Existía la firma, la aplicación y el historial, y faltaba justo el
 // paso que vuelve irrepetible lo ya hecho: `status:` nacía en `proposed` y nadie lo movía nunca.
 //
@@ -25,7 +29,11 @@ function seal(root, agent, period = '', kind = 'agent') {
   const dir = path.dirname(file)
   const text = fs.readFileSync(file, 'utf8')
   const state = proposalState(text)
-  if (state === 'applied') return { file, already: true }
+  // Sellado es el documento entero, no su frontmatter. Mirando sólo `status` la salida temprana daba
+  // por hecho lo que faltaba: si algo movió el campo antes que el sello —quien aplica edita archivos, y
+  // mover `status` se le parece a su trabajo— el cuerpo se quedaba en «aprobada» para siempre, que es
+  // la contradicción que sellar existe para cerrar. Pasó con `growth-marketer/2026-09`.
+  if (state === 'applied' && !UNSEALED.test(text)) return { file, already: true }
   if (!/^status:\s*\S+\s*$/m.test(text)) throw new Error(`${file} no declara status en su frontmatter.`)
   // Un cargo llega acá después de `agent-promote`, que se niega si «Aprobación humana» no está firmada.
   // Un recorrido no tiene ese workflow, así que sin esta puerta `--applied` sellaba una propuesta con
@@ -48,7 +56,7 @@ function seal(root, agent, period = '', kind = 'agent') {
     // propuestas aplicadas del repositorio quedaron con `status: applied` y «- Estado: aprobada»: la
     // contradicción entre frontmatter y cuerpo que la guarda de arriba dice evitar. La prueba no lo veía
     // porque su fixture firmaba dejando «pendiente», un estado que producción no produce.
-    .replace(/^-[ \t]*Estado:[ \t]*(?:pendiente|aprobada)[ \t]*$/mi, '- Estado: aplicada')
+    .replace(UNSEALED, '- Estado: aplicada')
     .replace(/^-[ \t]*Fecha:[ \t]*por definir[ \t]*$/mi, `- Fecha: ${isoDate(new Date())}`)
   atomicWrite(file, stamped)
   // El historial sólo lo escribe alguien para los cargos —`agent-promote`— y nadie para los recorridos,
