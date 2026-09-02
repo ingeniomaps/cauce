@@ -53,8 +53,11 @@ function agentDocs() {
 
 // Lo que hace una persona antes de aplicar: decir quién decide y qué cambia. `agent-promote` se niega
 // sin eso y `seal` también, así que un test que sella sin firmar prueba un camino que no existe.
+// Firma como firma producción: `sign-proposal.yml` deja «aprobada», no «pendiente». Mientras esta
+// fixture dejaba el estado sin tocar, ninguna prueba veía el documento que el sello recibe de verdad.
 function firmarPropuesta(file) {
   fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
+    .replace(/^-[ \t]*Estado:[ \t]*pendiente[ \t]*$/mi, '- Estado: aprobada')
     .replace('- Responsable: por definir', '- Responsable: Quien Firma')
     .replace(/^(## Cambio propuesto\n)/m, '$1\nSe agrega la fuente que el informe trajo.\n'))
 }
