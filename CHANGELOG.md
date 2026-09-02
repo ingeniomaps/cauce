@@ -14,6 +14,49 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.54.0] - 2026-09-02
+
+### Agregado
+
+- **Un proyecto puede declarar la puerta que lo verifica.** `ops.config.json` acepta el comando que
+  comprueba tu código —`gates`—, y el contrato de una tarea viaja con ella hasta quien la ejecuta.
+  Antes cada cargo lo adivinaba desde el árbol. Si no lo declarás, todo sigue como estaba.
+- **Una propuesta mensual se puede archivar en vez de aplicar.** Es el tercer destino que faltaba:
+  mirarla y decidir que no cambia nada. Antes eso se hacía mergeando sin firmar, que la dejaba
+  `proposed` para siempre e indistinguible de una que espera trabajo. `learn <cargo> --archived`.
+- **Una propuesta firmada y sin aplicar lo dice.** Antes se contaba igual que una que nadie miró.
+
+### Cambiado
+
+- **Los 53 cargos traen el paso de entrega de R14.** Antes de dar por entregado, el cargo recorre los
+  artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de
+  runbook— y comprueba que cada afirmación sobre el comportamiento de una herramienta, norma o sistema
+  de terceros llegó con su registro. En 19 cargos la regla además se movió a la sección de reglas: donde
+  estaba, se leía como una nota de colaboración. **No hace falta que hagas nada**: el catálogo se
+  resuelve desde la dependencia.
+
+  El motivo, medido sobre 198 registros de evaluación: esa conducta se lleva el 47 % de los casos rojos
+  del catálogo, en 25 de los 53 cargos, casi cinco veces lo que su superficie explica. Y falla siempre
+  en el mismo lugar —el informe clasifica con cuidado y la copia sale en plano al artefacto derivado—,
+  que es lo que este paso va a mirar. **Que el cambio lo corrija no está demostrado**, y conviene que lo
+  sepas antes de leerlo como una mejora: la tasa de recuperación por varianza entre corridas es del
+  83 %, así que las dos mediciones que salieron a favor tenían un 69 % de salir igual sin cambio alguno.
+
+- **`planning/rules/system/conduct.md` se reemplaza y R13 gana un borde.** Faltar contexto es no saber
+  **cómo** —qué formato, qué borde, qué valor—, y eso se supone y se entrega marcado. No saber **qué se
+  quiere ni para qué** es otra cosa: ahí el borrador deja de ser barato, porque todo lo que se construya
+  encima hereda la suposición y quien lo reciba no tiene cómo ver que el objetivo era supuesto. Lo que
+  separa los dos casos es si la respuesta existe escrita en algún lado. Si venías apoyándote en R13 para
+  arrancar sin objetivo, esto lo acota.
+
+### Corregido
+
+- **Sellar una propuesta ahora marca el documento entero.** La salida temprana miraba sólo `status:` del
+  frontmatter, así que si algo movía ese campo antes que el sello, el cuerpo quedaba en «- Estado:
+  aprobada» para siempre: el frontmatter decía una cosa y el cuerpo la contraria, dentro del mismo
+  documento. **Si tenés propuestas aplicadas con esa contradicción, `learn <cargo> --applied --period
+  AAAA-MM` ahora las cierra bien.**
+
 ## [0.53.2] - 2026-08-29
 
 ### Cambiado
