@@ -247,7 +247,12 @@ listo para mergear.
   integraciones y cobertura, y `prepublishOnly` la exige antes de publicar.
 - El CLI se invoca con `node engine/cli/ops.js` o `npm run ops -- <comando>`; `make help` lista los
   atajos frecuentes.
-- **Publicar necesita `NPM_TOKEN` exportado**: `.npmrc` lo expande desde el entorno, no desde `.env`.
+- **Se publica por tag y OIDC; el `NPM_TOKEN` es el respaldo.** El push de un tag `v*` dispara
+  `release.yml`, que corre con `id-token: write` y publica con `npm publish --provenance`: no hay
+  ninguna credencial de npm guardada en el repositorio, y no guardarla es la mitad del punto. La vía
+  manual se queda porque es la única salida si el trusted publishing falla, no porque sea el camino
+  principal.
+  **Ese respaldo necesita `NPM_TOKEN` exportado**: `.npmrc` lo expande desde el entorno, no desde `.env`.
   Ese archivo no viaja con el repositorio —está gitignoreado y el guard de secretos lo bloquea por
   nombre, aunque hoy no tenga ningún valor adentro—, así que un clon nuevo hay que dárselo a mano con su
   única línea: `//registry.npmjs.org/:_authToken=${NPM_TOKEN}`.
