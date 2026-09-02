@@ -20,6 +20,14 @@ Ventana, go/no-go y cierre:
 
 Exigir evidencia proporcional: artefacto inmutable, tests del candidato, QA/aceptación, vulnerabilidades y excepciones, privacidad/compliance, capacidad, observabilidad, runbook, migración, backup/restore, rollback, soporte y documentación. Registrar owner, timestamp, entorno y resultado; una casilla antigua no es evidencia vigente.
 
+La procedencia entra por gate como dos evidencias y no como una: la del artefacto —builder, workflow y
+digest— y la del origen —el historial de la revisión de la que ese artefacto salió—. La segunda depende de
+que el sistema de control de fuente la atestigüe, así que lo que se exige es declararla, no obtenerla: cuando
+no está atestiguada, la fila del contrato lo dice y nombra qué lo impide, en vez de quedar cubierta con la
+del artefacto. Sin fijar niveles acá: cuál se alcanza y contra qué marco se mide lo decide el proyecto, por
+la misma razón por la que este contrato no fija motores de base de datos — una tabla de niveles envejece
+peor que el criterio de declararlos.
+
 ## Rollout progresivo
 
 ```markdown
