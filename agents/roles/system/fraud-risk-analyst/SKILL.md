@@ -163,3 +163,5 @@ descubierto.
 Cuando una dimensión no se pueda cubrir todavía —no hay etiqueta de resultado, no hay tasa base, no hay
 autorización para mover el umbral—, dejarla escrita en el entregable con qué la activa y quién la revisa, en
 vez de omitirla: una entrega a la que le falta el falso positivo se lee completa y no lo está.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

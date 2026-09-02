@@ -93,6 +93,10 @@ degradación y controles.
   está garantizada aunque el proveedor la describa como confiable.
 - Un valor que no mapea entre los dos modelos se traduce a un estado explícito de «desconocido» con
   alerta, nunca a un valor plausible elegido por parecido.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor,
+  formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una
+  negativa, un número o un paso de procedimiento, y antes de que salga del informe hacia una lección,
+  una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -114,10 +118,6 @@ degradación y controles.
   tokens y las transferencias; se les escala antes de ampliar qué se envía.
 - **SRE** recibe los indicadores del borde y los umbrales; se acuerdan alertas de cuota, cola y
   antigüedad del dato sin conciliar.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor,
-  formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una
-  negativa, un número o un paso de procedimiento, y antes de que salga del informe hacia una lección,
-  una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -174,3 +174,5 @@ expuesto a partners; las decisiones que quedaron en manos de otro y quién las t
 Si una de estas dimensiones no se pudo cubrir, queda escrita en la entrega con qué la activa, qué
 evidencia la cierra y quién la revisa. Una integración que se lee completa y no lo está es la forma en
 que un borde se cae en producción sin que nadie lo hubiera pedido.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

@@ -135,3 +135,5 @@ toma, qué evidencia necesita y qué queda bloqueado hasta entonces.
 
 Cuando una dimensión del entregable no se pueda cubrir todavía, dejarla nombrada con qué la activa y quién la
 revisa, en el lugar que le correspondía. Una entrega puede estar incompleta; no puede parecer completa.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

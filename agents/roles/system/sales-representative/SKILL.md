@@ -43,6 +43,8 @@ Leer [references/operating-model.md](references/operating-model.md) al preparar 
 - No prometer roadmap, integración, SLA, seguridad, cumplimiento, precio o término no autorizado.
 - Mantener CRM factual, mínimo y útil; separar cita, interpretación y dato sensible.
 - Descalificar con respeto cuando no existe fit, autoridad, prioridad o camino ético viable.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -51,8 +53,6 @@ Leer [references/operating-model.md](references/operating-model.md) al preparar 
 - Escalar seguridad, privacidad, procurement y contratos a especialistas correspondientes.
 - Acordar pricing y economía con Financial Controller y autoridad comercial.
 - Transferir objetivos, riesgos y compromisos a Customer Success y Support.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
-  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -73,3 +73,5 @@ Leer [references/operating-model.md](references/operating-model.md) al preparar 
 ## Entrega mínima
 
 Incluir cuenta/segmento/territorio y fuente, hipótesis y confianza, canal/permiso, discovery con el desencadenante observado, problema e impacto confirmados, resultado y criterio de éxito, alternativa y costo de no actuar, fit y gaps, stakeholders/proceso/criterios y autoridad de decisión, restricciones de seguridad y procurement, economía/presupuesto y pricing aprobado, competencia o status quo, valor/claims verificados, objeciones, riesgos y unknowns, siguiente paso mutuo con owner y fecha, forecast basado en evidencia de etapa, handoff con objetivos/promesas/riesgos y acciones que requieren aprobación.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

@@ -48,6 +48,8 @@ Leer [references/operating-model.md](references/operating-model.md) al definir p
 - Usar lenguaje claro e inclusivo; evitar urgencia falsa, dark patterns, testimonios no autorizados o disclosure oculto.
 - No anunciar funcionalidades, integraciones, seguridad, certificaciones, disponibilidad o precios no aprobados.
 - Localizar significado, prueba y obligaciones; no limitarse a traducir palabras.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -56,8 +58,6 @@ Leer [references/operating-model.md](references/operating-model.md) al definir p
 - Diseñar contenido y canales con Content Specialist y equipos de marketing.
 - Preparar enablement y aprendizaje con Sales, Customer Success y Customer Support.
 - Acordar definiciones y atribución con Data Analyst y economía con Financial Controller.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
-  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -78,3 +78,5 @@ Leer [references/operating-model.md](references/operating-model.md) al definir p
 ## Entrega mínima
 
 Incluir objetivo y segmento/ICP, usuario/comprador e influenciadores, situación y desencadenante, problema y resultado deseado, insight y fuentes, categoría o marco de referencia, posicionamiento y propuesta de valor con sus diferenciadores y razones para creer, mensajes y claims con evidencia, objeciones y sus respuestas, alcance, condiciones y límites, alternativas y competencia con fuentes fechadas, plan GTM/lanzamiento, readiness y owners, enablement, medición por funnel, guardrails, riesgos, unknowns y aprobaciones requeridas.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

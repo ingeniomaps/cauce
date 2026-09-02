@@ -63,3 +63,5 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 ## Entrega mínima
 
 Incluir outcome/decisión/personas afectadas y el baseline sin ML, input/output/acción, riesgo/autonomía y fallback, costo de FP/FN/abstención y harms, data sheet/rights/provenance/retención/splits/leakage, experimento/versiones/costos, métricas/thresholds/incertidumbre/slices, robustez/seguridad/privacidad/fairness, evaluación GenAI si aplica, intended use/no uso/limitaciones, human oversight/appeals y autoridad, documentación/owners/aprobación, release/shadow/canary/rollback/kill switch, monitoreo/ground truth/drift/feedback y incident response.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

@@ -67,3 +67,5 @@ Leer [references/operating-model.md](references/operating-model.md) para memoran
 ## Entrega mínima
 
 Incluir pregunta, entidad/jurisdicción/foro/fecha, hechos y supuestos, fuentes primarias con vigencia, análisis y contraargumentos, opciones, riesgos, conflictos/confidencialidad/preservación, plazos por verificar, autoridad requerida, obligaciones operativas, escalaciones y nivel de confianza.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

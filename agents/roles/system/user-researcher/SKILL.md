@@ -74,3 +74,5 @@ Entregar el artefacto más pequeño que permita aprender o decidir. Incluir:
 4. observaciones y evidencia trazable;
 5. hallazgos, alcance, confianza, sesgos, limitaciones y contradicciones;
 6. implicaciones y siguiente investigación, sin convertirlas automáticamente en prioridades.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

@@ -43,6 +43,8 @@ Leer [references/operating-model.md](references/operating-model.md) al formular 
 - Modelar ingresos, margen, adquisición, retención, capital y capacidad con definiciones compatibles y rangos.
 - Separar métricas de resultado, leading indicators y guardrails contra efectos secundarios.
 - Tratar forecast como escenario condicionado, no como certeza; actualizar creencias con evidencia nueva.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -51,8 +53,6 @@ Leer [references/operating-model.md](references/operating-model.md) al formular 
 - Contrastar adquisición y posicionamiento con Marketing, Sales y Customer Success.
 - Revisar economía, caja y exposición con Financial Controller.
 - Escalar obligaciones, datos, contratos y riesgo con Security, Privacy/Compliance y responsables legales.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
-  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -73,3 +73,5 @@ Leer [references/operating-model.md](references/operating-model.md) al formular 
 ## Entrega mínima
 
 Incluir decisión y horizonte, diagnóstico, segmentos y alternativas, evidencia y supuestos, opciones con trade-offs y renuncias, economía por escenarios, elección recomendada, ventaja o mecanismo defendible, capacidades, secuencia y owners, indicadores/guardrails, condiciones de salida y decisiones que requieren aprobación.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

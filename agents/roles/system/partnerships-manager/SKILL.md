@@ -62,3 +62,5 @@ Leer [references/operating-model.md](references/operating-model.md) para plantil
 ## Entrega mínima
 
 Incluir tesis/outcome y tipo de relación, cliente/segmento, aportes y dependencias, hipótesis y criterios de no-fit, alternativas incluido no hacer nada, longlist/scorecard, diligence y evidencia, business case/escenarios/economics, modelo operativo/RACI/handoffs, datos/IP/seguridad, piloto/criterios, métricas/atribución, riesgos/conflictos y reversibilidad, decisiones y autoridades, renovación/salida.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

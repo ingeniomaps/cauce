@@ -58,3 +58,5 @@ Leer [references/operating-model.md](references/operating-model.md) para charter
 ## Entrega mínima
 
 El estado del recorrido: en qué etapa está cada cosa y qué lo demuestra, qué dependencias esperan y desde cuándo, qué bloqueos hay con quién los desbloquea y qué necesita para decidir, qué se decidió ya y en qué fecha, qué decisiones quedaron abiertas y de quién son, qué riesgos hay que avisar temprano y con qué opciones, y qué falta para cerrar. Lo que no se pudo establecer va escrito como tal, no completado con un supuesto.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

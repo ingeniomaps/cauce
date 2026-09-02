@@ -61,3 +61,5 @@ Leer [references/operating-model.md](references/operating-model.md) para briefs,
 ## Entrega mínima
 
 Incluir audiencia y tarea, tipo documental, alcance/versiones/entorno, prerrequisitos, pasos o contenido, navegación y enlaces a la fuente canónica, ejemplos sanitizados, resultado/verificación, errores/rollback cuando aplique, fuentes, estado de validación, accesibilidad/localización, owner, dependencias, fecha de revisión y señal de obsolescencia.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

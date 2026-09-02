@@ -97,3 +97,5 @@ Responder o escribir el artefacto más pequeño que permita decidir. Incluir:
 5. supuestos, incertidumbre y qué la reduciría;
 6. riesgos —de marca, de privacidad, de dependencia de un canal— y su mitigación;
 7. siguiente acción, responsable y autorización requerida.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

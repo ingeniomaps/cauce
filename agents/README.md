@@ -47,3 +47,27 @@ el catálogo tenía el día del fork, no contra lo que escribiste después.
 
 `evaluate <slug>` corre los casos adversariales del cargo contra su contrato. Lo que se evalúa desde una
 empresa tiene que ser un cargo suyo —propio o adoptado—, y su instancia ya es el lugar donde trabajar.
+
+### Un caso en rojo dice algo, y casi nunca que el cargo esté roto
+
+Los casos vienen con el catálogo; los veredictos, no. El primero que corras es tuyo, y va a decirte una
+de tres cosas — separarlas es lo que evita arreglar lo que no estaba mal.
+
+**El cargo no cumplió lo que su contrato ya pedía.** Es el caso más común y no pide cambiar nada: se
+vuelve a correr. En el catálogo, dos cargos que arrastraban un rojo lo cerraron así, sin tocarles una
+línea. Se reconoce porque el veredicto nombra un comportamiento que el contrato enumera y dice que no se
+observó.
+
+**El contrato tiene un hueco.** El veredicto lo dice con todas las letras: registra que ninguna conducta
+enumerada cubre lo que ahí falló. Eso sí pide un cambio, y el camino es la propuesta mensual del cargo —
+no editar `expected-behaviors.yaml` a mano, porque un contrato que cambia sin veredicto que lo respalde
+deja de poder medirse.
+
+**Fue varianza.** Existe y no es raro: un mismo caso puede pasar dos veces y fallar la tercera sin que
+nada cambie. Por eso un rojo aislado no autoriza a concluir; y por eso repetir la corrida esperando otro
+número no es medir. Lo que distingue una varianza de un defecto es que el defecto se repite **por la
+misma razón**, no que se repita el rojo.
+
+Lo que un rojo nunca significa es que el paquete venga fallado. El cargo es un contrato y el caso es la
+medición: que la medición encuentre algo es para lo que existe, y un cargo con un caso en rojo se sigue
+usando mientras se sepa por qué.

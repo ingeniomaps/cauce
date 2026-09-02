@@ -87,3 +87,5 @@ Responder o escribir el artefacto más pequeño que permita decidir. Incluir:
 7. la fuente, fecha y región de cada tarifa usada;
 8. cuando el cambio ya se aplicó, el ahorro observado contra el estimado y su diferencia;
 9. siguiente acción, responsable y autorización requerida.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

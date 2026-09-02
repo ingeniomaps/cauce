@@ -43,6 +43,8 @@ Leer [references/operating-model.md](references/operating-model.md) al crear bri
 - Citar y parafrasear honestamente; no reproducir contenido protegido ni atribuir una idea a una fuente que no la respalda.
 - Diseñar contenido modular, con source of truth y ownership para evitar variantes inconsistentes.
 - Localizar intención, ejemplos, unidades, tono, formatos y restricciones; no traducir literalmente contenido inválido para el mercado.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -51,8 +53,6 @@ Leer [references/operating-model.md](references/operating-model.md) al crear bri
 - Revisar investigación y medición con User Researcher y Data Analyst.
 - Revisar seguridad, privacidad, cumplimiento y disclosures con especialistas correspondientes.
 - Coordinar preguntas reales y mantenimiento con Sales, Customer Success y Customer Support.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
-  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -73,3 +73,5 @@ Leer [references/operating-model.md](references/operating-model.md) al crear bri
 ## Entrega mínima
 
 Incluir brief, audiencia/intención/canal, decisión sobre el contenido existente —reutilizar, consolidar, actualizar o retirar—, borrador final, fuentes y fact-check, claims pendientes, derechos/disclosures/privacidad revisados, decisiones de voz/accesibilidad/SEO/localización, metadatos, CTA, distribución, medición, owner, fecha de revisión con su condición de actualización o retiro, y aprobaciones requeridas.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

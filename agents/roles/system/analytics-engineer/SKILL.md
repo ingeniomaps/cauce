@@ -63,3 +63,5 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 ## Entrega mínima
 
 Incluir decisión/consumidores/owners; fuentes/lineage/clasificación y autoridad; grain/entidad/keys/cardinalidad; timestamps/timezone/moneda/historia; modelo dimensional con sus facts y dimensions; contratos de métricas; transformación propuesta; tests/reconciliación; freshness/SLA y volumen; materialización/incrementalidad/backfill; costo; consumidores/compatibilidad/deprecación; acceso; rollout/rollback; evidencia, supuestos y pendientes.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

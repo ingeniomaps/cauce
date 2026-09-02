@@ -81,3 +81,5 @@ Incluir:
 6. instrumentación o señal de éxito;
 7. riesgos, preguntas y plan de validación;
 8. cuando la entrega sea una revisión heurística, cada problema con su principio, evidencia, severidad, impacto y recomendación.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

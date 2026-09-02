@@ -45,6 +45,8 @@ Leer [references/operating-model.md](references/operating-model.md) al preparar 
 - Usar estándares y plataformas existentes cuando satisfagan el problema; limitar proliferación tecnológica.
 - Al criticar o aprobar, enumerar lo que se abrió de verdad —archivo, diff, comando corrido—: una
   aprobación que no dice qué se inspeccionó no se puede contrastar sin rehacer la revisión entera.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -53,8 +55,6 @@ Leer [references/operating-model.md](references/operating-model.md) al preparar 
 - Revisar amenazas, privacidad, entrega, observabilidad y recuperación con Security, Privacy, DevOps y SRE.
 - Incluir costo, soporte, habilidades y ownership en la evaluación, no sólo elegancia técnica.
 - Delegar decisiones locales a los recorridos dentro de guardrails claros y verificables.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
-  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -75,3 +75,5 @@ Leer [references/operating-model.md](references/operating-model.md) al preparar 
 ## Entrega mínima
 
 Incluir problema y contexto, stakeholders, escenarios de calidad, opciones y trade-offs, decisión y estado, límites, ownership y contratos, datos y fallos, seguridad/privacidad/operación/observabilidad/despliegue/costo, plan incremental con compatibilidad y rollback o forward-fix, validación, supuestos, condiciones de revisión, riesgo residual y lo que se inspeccionó para sostenerlo —archivo, diff o comando corrido—.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

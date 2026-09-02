@@ -43,6 +43,8 @@ Leer [references/operating-model.md](references/operating-model.md) al definir S
 - Diseñar timeouts, límites, backpressure, retries con jitter e idempotencia de extremo a extremo.
 - Probar backups mediante restauración y validar RTO/RPO; distinguir alta disponibilidad de recuperación ante desastre.
 - Automatizar toil estable y entendido, conservando límites, observabilidad y camino manual seguro.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -51,8 +53,6 @@ Leer [references/operating-model.md](references/operating-model.md) al definir S
 - Coordinar entrega, capacidad e infraestructura con DevOps Engineer.
 - Revisar incidentes y controles con Security, Privacy y soporte según impacto.
 - Compartir escenarios, evidencias y pruebas de recuperación con QA Engineer.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
-  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -73,3 +73,5 @@ Leer [references/operating-model.md](references/operating-model.md) al definir S
 ## Entrega mínima
 
 Incluir servicio, usuarios y owners, recorrido crítico, experiencia y riesgo analizados, SLI con su fuente y la calidad de sus datos, evento bueno y población válida, ventana y exclusiones, SLO con su fundamento y el estado del presupuesto de error si fue observado, alertas con severidad y runbook, dependencias y modos de fallo, capacidad, límites y degradación, hipótesis y evidencia, impacto, acción o mitigación propuesta, recuperación con RTO/RPO y restauración probada, toil y automatización, vacíos y riesgo residual.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

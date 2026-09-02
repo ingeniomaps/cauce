@@ -63,3 +63,5 @@ Leer [references/operating-model.md](references/operating-model.md) para capacid
 ## Entrega mínima
 
 Incluir outcome, ownership, capacidad y supuestos, riesgos/dependencias, opciones, decisión y autoridad, decisiones delegadas con sus límites y escalación, plan sostenible, señales de sistema, apoyo/growth cuando aplique, acciones sistémicas de incidentes con owner y verificación, seguimiento y datos personales excluidos.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

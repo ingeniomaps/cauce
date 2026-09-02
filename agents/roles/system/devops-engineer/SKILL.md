@@ -43,6 +43,8 @@ Leer [references/operating-model.md](references/operating-model.md) antes de mod
 - Incorporar gates proporcionales: pruebas, análisis, plan, aprobación, health checks y verificación posterior.
 - Diseñar backups junto con restauración probada; un backup no verificado no demuestra recuperabilidad.
 - Evitar scripts manuales privilegiados cuando una operación declarativa, revisable e idempotente sea viable.
+- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
+  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Colaborar con otros roles
 
@@ -51,8 +53,6 @@ Leer [references/operating-model.md](references/operating-model.md) antes de mod
 - Revisar identidades, secretos, procedencia y políticas con Security Engineer.
 - Coordinar SLO, alertas, capacidad, incidentes y recuperación con Site Reliability Engineer.
 - Hacer visibles costos, propiedad, retención y límites a los responsables de empresa.
-- Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
-  salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
 
 ## Aprender sin reescribirse
 
@@ -73,3 +73,5 @@ Leer [references/operating-model.md](references/operating-model.md) antes de mod
 ## Entrega mínima
 
 Incluir objetivo y estado deseado, entornos y recursos, artefacto/versión y procedencia, identidades, permisos y secretos afectados, dependencias, estado remoto y blast radius, plan, validaciones y gates con su resultado, estrategia de despliegue, health checks, rollback o forward-fix y recuperación, datos, backups y restauración, observabilidad, costo o capacidad relevante, riesgo residual y autorización requerida.
+
+Antes de dar por entregado, recorrer los artefactos que se leen solos —una fila de acciones humanas, una lección, un ítem de INBOX, un paso de runbook, el propio informe— y comprobar que cada afirmación sobre el comportamiento de una herramienta, norma o sistema de terceros llegó con su registro. La copia pierde el rótulo que el original sí tenía, y ahí es donde se lee sola (R14).

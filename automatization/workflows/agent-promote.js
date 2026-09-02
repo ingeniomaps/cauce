@@ -135,11 +135,29 @@ const applied = NOTHING ? { applied: true, files: [], newCase: '', deviations: '
   `- Si la propuesta pide crear un caso adversarial nuevo, crealo con el enunciado que da y con ` +
   `**cuatro** comportamientos esperados, como todos los del catálogo. Si el enunciado trae más, ` +
   `fusioná los que se solapen sin perder ninguna idea.\n` +
+  // El juez recibe `forbidden` y nunca `required`: `engine/cli/catalog.js` toma sólo la primera, y el
+  // prompt del juez nombra «conductas prohibidas». O sea que a una requerida la mide únicamente el caso
+  // que la ejerza. Medido el 2026-09-02 sobre 48 requeridas de seis cargos: 4 no las ejerce ningún caso
+  // y 8 sólo en parte. Las tres agregadas ese día sí se miden, pero porque el caso salió con ellas por
+  // costumbre; esto es lo que convierte esa costumbre en requisito.
+  `- Una conducta que la propuesta agregue a \`required\` en \`evaluations/expected-behaviors.yaml\` **no ` +
+  `la lee nadie al evaluar**: al juez sólo le viajan las prohibidas, así que lo único que puede medir una ` +
+  `requerida es un caso que la ejerza. Si la propuesta agrega una y no pide el caso, escribilo igual —con ` +
+  `un enunciado que ponga al cargo en la situación donde esa conducta aplica— y reportalo como ` +
+  `desviación. Una requerida sin caso entra al contrato como una promesa que nada comprueba.\n` +
   `- Si algo de la propuesta ya no aplica —el archivo cambió, la sección no existe— **no lo fuerces**: ` +
   `dejalo sin aplicar y reportalo como desviación.\n` +
   `- Toda desviación, por chica que sea, se escribe al final de «Aprobación humana» en la propia ` +
   `propuesta, explicando qué se hizo distinto y por qué. Quien firmó tiene derecho a saber qué se ` +
-  `aplicó de lo que firmó.\n\n` +
+  `aplicó de lo que firmó.\n` +
+  // Lo que se escribe acá viaja: la propuesta, el historial y los casos van dentro del cargo, y un
+  // cargo se adopta en empresas donde `engine/` y el Makefile de este repositorio no existen. Pasó
+  // cuatro veces el 2026-09-02 —`node engine/cli/ops.js` en dos historiales, un `make` propio de acá
+  // reintroducido, y una ruta resuelta desde la raíz—: la puerta las cazó, pero después de escritas.
+  `- Todo lo que escribas —propuesta, historial, caso— viaja con el cargo a cada empresa. No cites ` +
+  `rutas de este repositorio (\`engine/\`, \`template/\`, \`automatization/\`) ni objetivos \`make\` que ` +
+  `sólo existan acá, y escribí las rutas relativas al cargo. Si necesitás nombrar un comando del CLI, ` +
+  `nombralo sin su ruta.\n\n` +
   `No toques otros cargos. No hagas commit ni push. Devolvé qué archivos modificaste, el caso nuevo si ` +
   `lo creaste, y las desviaciones —o cadena vacía si no hubo—.`,
   { schema: APPLIED, label: `aplica:${AGENT}` },
@@ -158,7 +176,8 @@ await agent(
     : (applied.files || []).join(', ')}` +
   `${applied.newCase ? ` más el caso ${applied.newCase}` : ''}` +
   `${applied.deviations ? `. Desviaciones: ${applied.deviations}` : ''}.\n\n` +
-  `Respetá el formato de tabla que ya tiene el archivo. No toques ninguna otra cosa, no hagas commit.`,
+  `Respetá el formato de tabla que ya tiene el archivo. Las rutas van relativas al cargo y sin nombrar ` +
+  `este repositorio: el historial viaja con el cargo. No toques ninguna otra cosa, no hagas commit.`,
   { label: 'historial' },
 )
 
