@@ -74,6 +74,56 @@ sources:
     url: https://sanctionslist.ofac.treas.gov/Home/SdnList
     tier: advisory
     topics: [sanctions-screening, us-jurisdiction]
+  # Promulgado el 16-ene-2026 y vigente desde el 16-jul-2026. Deroga los Acuerdos 10-2015 (y sus
+  # modificaciones), 1-2013, 8-2000 y 10-2000, con transiciones más largas para monitoreo de
+  # operaciones (31-ene-2027) y geolocalización diferencial (30-jun-2027).
+  # El PDF existe en esta URL —548,7 KB, 38 páginas, comprobado el 2026-09-01— pero su texto no se
+  # pudo leer desde acá: lo que se sabe de su contenido viene de dos fuentes secundarias coincidentes
+  # (Pirani Risk y RSM Panamá, 2026-08-31). Registro: documentado, no verificado contra el PDF. Antes
+  # de que sostenga una obligación en el informe de una instancia, hay que leerlo directamente.
+  - name: Superintendencia de Bancos de Panamá — Acuerdo 1-2026
+    url: https://www.superbancos.gob.pa/documentos/regulacion/acuerdos_otros_sujetos/2026/Acuerdo_01-2026.pdf
+    tier: standard
+    topics: [account-opening, cdd, beneficial-ownership, digital-onboarding]
+  # Fecha de emisión 2 de febrero de 2026, leída en la página oficial de la CMF el 2026-08-31 y
+  # releída el 2026-09-01. Ajusta los capítulos 1-7, 1-13, 1-14 y 1-16 de la RAN, la Circular N°1 de
+  # emisores de tarjetas no bancarios y la Circular N°123 de cooperativas para mantener
+  # correspondencia con las definiciones y exigencias de la Circular N°62 de la UAF.
+  # Un índice de búsqueda daba 30-ene-2026; vale la de la fuente primaria y la diferencia no se
+  # investigó.
+  - name: CMF Chile — Circular N°2368
+    url: https://www.cmfchile.cl/portal/prensa/625/w4-article-103167.html
+    tier: standard
+    topics: [pep-definition, risk-based-approach]
+  # Circular N°62 del 19 de marzo de 2025, en vigencia desde junio de 2025: consolida y deroga
+  # circulares previas de la UAF e instruye a los sujetos obligados del artículo 3 de la Ley N°19.913.
+  # Es la que fija la definición de PEP que la CMF replicó —incluye al conviviente civil y amplía los
+  # cargos alcanzados—. URL del documento tomada del listado oficial de circulares de la UAF, abierto
+  # el 2026-09-01; el PDF en sí no se leyó desde acá.
+  - name: UAF Chile — Circular N°62
+    url: https://uaf.cl/media/documentos/Circular_N62.pdf
+    tier: standard
+    topics: [pep-definition, risk-based-approach]
+  # Firmada el 9 de febrero de 2026 por el CNE y la UIAF, dirigida a partidos, movimientos políticos,
+  # grupos significativos de ciudadanos y demás organizaciones que postulen candidatos en 2026. Exige
+  # debida diligencia sobre contrapartes, proveedores, donantes, afiliados, empleados, contratistas y
+  # contribuyentes; consulta de listas vinculantes para Colombia; monitoreo de relaciones con PEP; y
+  # ROS ante operación sospechosa. La noticia de la UIAF se abrió el 2026-08-31; el PDF de la circular
+  # (`/sites/default/files/2026-03/Circular 001 de 2026 - CNE y UIAF.pdf`) existe pero su texto no se
+  # pudo extraer desde acá el 2026-09-01.
+  - name: UIAF Colombia — Circular 001 de 2026
+    url: https://www.uiaf.gov.co/Noticias(CNE-UIAF-emiten-circular-para-fortalecer-medidas-alacftcfp-en-las-elecciones
+    tier: standard
+    topics: [politically-exposed-persons, reporting-deadlines]
+  # Emitida el 14 de agosto de 2026 tras el terremoto del 10 de agosto y la declaratoria de desastre
+  # nacional (Decreto 1171 de 2026), para que las entidades obligadas no incurran en sanción por
+  # retrasos involuntarios en el envío de reportes ALA/CFT derivados de la contingencia. La noticia se
+  # abrió el 2026-08-31; el plazo exacto de la prórroga no consta: no se leyó el texto de la
+  # resolución, así que ninguna afirmación sobre cuánto extiende sale de acá.
+  - name: UIAF Colombia — Resolución 362 de 2026
+    url: https://www.uiaf.gov.co/index.php/Noticiasycomunicados-19ago
+    tier: standard
+    topics: [politically-exposed-persons, reporting-deadlines]
 
 # Autoridades por país. Sólo entran las que se pudieron abrir: una autoridad citada de memoria es
 # exactamente el error que este cargo tiene prohibido.
@@ -98,6 +148,25 @@ authorities:
     name: Superintendencia de Bancos de Panamá
     url: https://www.superbancos.gob.pa/
     role: supervisor
+  # Abierto el 2026-08-31 (el 2026-08-22 había devuelto 403) y releído el 2026-09-01.
+  - country: MX
+    name: UIF — Unidad de Inteligencia Financiera
+    url: https://www.gob.mx/uif
+    role: financial-intelligence-unit
+  # Abierto el 2026-08-31 (el 2026-08-22 había devuelto 404) y releído el 2026-09-01.
+  - country: PY
+    name: SEPRELAD — Secretaría de Prevención de Lavado de Dinero o Bienes
+    url: https://www.seprelad.gov.py/
+    role: financial-intelligence-unit
+  # Abierto el 2026-08-31 (el 2026-08-22 había entrado en bucle de redirecciones). El acceso es
+  # intermitente: el 2026-09-01 volvió a fallar desde acá —`www.sbs.gob.pe` en bucle de redirecciones
+  # y `sbs.gob.pe` sin resolver DNS—, así que entra por la lectura del 2026-08-31 y hay que volver a
+  # abrirla en la próxima corrida. Se declara `supervisor` porque es lo comprobado; si además cumple
+  # función de UIF, se agrega cuando alguien lo lea en el sitio.
+  - country: PE
+    name: SBS — Superintendencia de Banca, Seguros y AFP
+    url: https://sbs.gob.pe/
+    role: supervisor
 
 # La falta se nombra en vez de rellenarse por analogía con el país vecino. Intentos del 2026-08-22:
 # Guatemala (www.ive.gob.gt e ive.gob.gt, sin resolución DNS), México (gob.mx/uif devolvió 403 y
@@ -105,4 +174,10 @@ authorities:
 # la raíz y en la subpágina, aunque aparece referenciado como sitio oficial) y Perú (www.sbs.gob.pe
 # entró en bucle de redirecciones). Hasta verificarlas, ninguna afirmación sobre norma, umbral, plazo
 # o autoridad de esos cuatro países sale de este cargo como verificada.
-missing_authorities: [GT, MX, PY, PE]
+#
+# Revisión del 2026-08-31: tres de esas cuatro cargaron y bajaron a `authorities` —UIF México
+# (gob.mx/uif), SEPRELAD Paraguay (seprelad.gov.py) y SBS Perú (sbs.gob.pe)—; de cada una se comprobó
+# que el sitio abre, no una norma sustantiva. Guatemala sigue sin resolver DNS en `ive.gob.gt` y
+# `www.ive.gob.gt`, comprobado ese mismo día, y es la única que queda. Lo comprobado es acceso: la
+# reserva sobre norma, umbral y plazo sigue en pie para todo lo que no se haya leído en el sitio.
+missing_authorities: [GT]
