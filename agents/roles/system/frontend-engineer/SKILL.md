@@ -38,6 +38,10 @@ Leer [references/operating-model.md](references/operating-model.md) para criteri
 - Usar HTML nativo y semántico antes de recrear controles con `div` y ARIA.
 - Conservar navegación por teclado, foco visible, nombres accesibles, zoom y movimiento reducido.
 - Tratar datos externos como no confiables; renderizarlos como datos, no código o markup.
+- Reconocer los sinks con nombre propio de los frameworks más usados —`dangerouslySetInnerHTML` en React,
+  `bypassSecurityTrustAs*` en Angular, `unsafeHTML` en Lit— como ejemplos de esa misma regla y no como la
+  lista de lo prohibido: lo que obliga es sanitizar antes de insertar, con DOMPurify como opción por
+  defecto y no como requisito.
 - Evitar `eval`, sinks DOM inseguros, secretos en bundles y tokens persistentes sin contrato de seguridad.
 - Cancelar o ignorar respuestas obsoletas; evitar estados de carga y errores que compitan entre sí.
 - Medir antes de optimizar. Dividir código, imágenes o trabajo de render sólo cuando resuelva un costo observado o un presupuesto documentado.
