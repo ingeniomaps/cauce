@@ -29,7 +29,7 @@ destroy: ## Muestra qué se pierde al borrar esta instancia (borrar exige --forc
 	@node tools/ops.js destroy .
 
 upgrade: ## Trae la última versión de Cauce y la aplica, sin tocar lo del proyecto
-	@npm install --save-dev @ingeniomaps/cauce@latest
+	@npm install --save-exact --save-dev @ingeniomaps/cauce@latest
 	@node tools/ops.js upgrade .
 
 automation-check: ## Comprueba hooks, workflows y adaptadores

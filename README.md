@@ -266,13 +266,15 @@ existente detiene el `upgrade` antes de pisarlo.
 Son tres pasos y `make upgrade` hace los dos primeros:
 
 ```bash
-npm install --save-dev @ingeniomaps/cauce@latest   # trae el motor nuevo
+npm install --save-exact --save-dev @ingeniomaps/cauce@latest   # trae el motor nuevo
 node tools/ops.js upgrade .                        # aplica system/ y el runtime
 node tools/ops.js automation install . claude      # el wiring del runner
 ```
 
 El primero no se puede saltear: `init` fija la versión exacta, así que `npm update` no la mueve y
-`upgrade` compara contra el motor instalado —lo dice en su salida—. El tercero tampoco: los workflows y
+`upgrade` compara contra el motor instalado —lo dice en su salida—. Va con `--save-exact` porque npm
+guarda con caret por defecto, y ese caret es justamente lo que volvería falsa la frase anterior; si
+alguna vez se instaló sin él, `upgrade` repone la versión exacta al terminar. El tercero tampoco: los workflows y
 las skills viven en el runner, no en la instancia, y `upgrade` no los toca. `upgrade` lo recuerda al
 terminar.
 

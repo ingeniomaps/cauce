@@ -22,13 +22,29 @@ test('upgrade --check dice contra qué compara y cómo traer lo nuevo', () => {
   const check = run(['upgrade', target, '--check'])
   assert.equal(check.status, 0, check.stderr)
   assert.match(check.stdout, /al día con el motor instalado/)
-  assert.match(check.stdout, /npm install --save-dev @ingeniomaps\/cauce@latest/)
+  assert.match(check.stdout, /npm install --save-exact --save-dev @ingeniomaps\/cauce@latest/)
 
   // Y el atajo de la instancia hace los dos pasos, porque `npm update` no mueve una versión exacta.
   const makefile = fs.readFileSync(path.join(target, 'Makefile'), 'utf8')
   const upgrade = makefile.split('\nupgrade:')[1].split('\n\n')[0]
-  assert.match(upgrade, /npm install --save-dev @ingeniomaps\/cauce@latest/)
+  assert.match(upgrade, /npm install --save-exact --save-dev @ingeniomaps\/cauce@latest/)
   assert.match(upgrade, /tools\/ops\.js upgrade \./)
+})
+
+// «init fija la versión exacta, así que npm update no la mueve» es lo que el README da como razón para
+// no saltear el primer paso del upgrade, y el comando que documentaba a continuación desarmaba esa
+// premisa: npm guarda con caret por defecto, y dentro de 0.x el caret alcanza a los patches —los hay—.
+// Lo que este caso cuida es que los tres lugares que dictan el comando lo dicten preservando el pin:
+// el README, el atajo del molde y la salida de `--check`. Comprobado contra npm 11.16.0: con
+// `--save-exact` el manifiesto queda en `0.55.0` y sin él en `^0.55.0`.
+test('todo lo que documenta el upgrade preserva la versión exacta', () => {
+  const root = path.resolve(__dirname, '..', '..')
+  const suelto = /npm install --save-dev @ingeniomaps\/cauce@latest/
+  for (const file of ['README.md', path.join('template', 'Makefile'), path.join('engine', 'cli', 'instance.js')]) {
+    const body = fs.readFileSync(path.join(root, file), 'utf8')
+    assert.ok(body.includes('--save-exact --save-dev @ingeniomaps/cauce@latest'), `${file} lo dicta con el pin`)
+    assert.doesNotMatch(body, suelto, `${file} no deja la forma que rompe el pin`)
+  }
 })
 
 test('upgrade reemplaza lo del sistema y no toca nada del proyecto', () => {
@@ -350,4 +366,48 @@ test('upgrade --check reporta lo editado localmente aunque la versión coincida'
   assert.match(check.stdout, /al día con el motor instalado/, 'sigue diciendo contra qué compara')
   assert.match(check.stdout, /editado localmente: planning\/PROTOCOL\.md/)
   assert.equal(check.status, 1, 'hay algo que resolver antes de la próxima actualización')
+})
+
+// El pin no depende de cómo se haya instalado el motor. Alguien que corrió el `npm install` sin
+// `--save-exact` —o que lo tenía así de antes— quedaba con un caret que `npm update` sí mueve, y
+// entonces el manifiesto, `ops.config.json` y `package.json` podían decir tres versiones distintas.
+// `upgrade` es el momento en que las tres se saben, así que ahí se reponen.
+test('upgrade repone la versión exacta en package.json', () => {
+  const base = tempRoot('cauce-pin-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  const manifest = path.join(target, 'package.json')
+  const version = JSON.parse(fs.readFileSync(manifest, 'utf8')).devDependencies['@ingeniomaps/cauce']
+  assert.doesNotMatch(version, /^[\^~]/, 'init lo declara exacto')
+
+  // Como lo deja `npm install --save-dev @ingeniomaps/cauce@latest`, que es lo que el README decía.
+  const loose = JSON.parse(fs.readFileSync(manifest, 'utf8'))
+  loose.devDependencies['@ingeniomaps/cauce'] = `^${version}`
+  fs.writeFileSync(manifest, `${JSON.stringify(loose, null, 2)}\n`)
+
+  const upgraded = run(['upgrade', target])
+  assert.equal(upgraded.status, 0, upgraded.stderr)
+  assert.equal(JSON.parse(fs.readFileSync(manifest, 'utf8')).devDependencies['@ingeniomaps/cauce'], version)
+  assert.match(upgraded.stdout, /package\.json/, 'y lo dice, porque cambió un archivo del proyecto')
+
+  // Lo demás del manifiesto es del repo anfitrión y no se toca.
+  const conScripts = JSON.parse(fs.readFileSync(manifest, 'utf8'))
+  conScripts.scripts = { test: 'echo acme' }
+  conScripts.devDependencies['@ingeniomaps/cauce'] = `^${version}`
+  fs.writeFileSync(manifest, `${JSON.stringify(conScripts, null, 2)}\n`)
+  assert.equal(run(['upgrade', target]).status, 0)
+  const final = JSON.parse(fs.readFileSync(manifest, 'utf8'))
+  assert.deepEqual(final.scripts, { test: 'echo acme' })
+  assert.equal(final.devDependencies['@ingeniomaps/cauce'], version)
+})
+
+// Una instancia sin `package.json` —vendorizada, o instalada de otra forma— no recibe uno nuevo en un
+// upgrade: reponer un pin es reparar lo que declaramos, y crear el manifiesto es otra cosa.
+test('upgrade no crea un package.json donde no había', () => {
+  const base = tempRoot('cauce-sin-manifiesto-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  fs.rmSync(path.join(target, 'package.json'))
+  assert.equal(run(['upgrade', target]).status, 0)
+  assert.equal(fs.existsSync(path.join(target, 'package.json')), false)
 })
