@@ -14,6 +14,21 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.58.0] - 2026-09-03
+
+### Corregido
+
+- **`upgrade` te trae los archivos propios que una versión agrega.** `upgrade` reemplaza lo del toolkit
+  y no toca lo tuyo, que es lo correcto — pero cuando una versión **agrega** un archivo del proyecto, la
+  instancia que actualiza no lo recibía nunca. Pasó con 0.57.0: `organization/workspace.md` llegaba a
+  una instancia nueva y no a una que actualizaba, que quedaba con un `AGENTS.md` nombrándolo tres veces
+  y el archivo sin existir. Ahora se crea y se dice: `+ organization/workspace.md: lo agrega esta
+  versión, completalo`.
+
+  **Lo que no hace, a propósito**: reponer cualquier archivo del molde que falte. Borrar uno que no usás
+  es legítimo y devolvértelo en cada actualización sería peor que el problema, así que se crea sólo lo
+  que cada versión declara que agrega. Lo que ya tenés no se pisa nunca.
+
 ## [0.57.0] - 2026-09-03
 
 ### Agregado
