@@ -472,4 +472,5 @@ module.exports = {
   listHooks,
   runnerManifest,
   runnerPaths,
+  blockStart,
 }
