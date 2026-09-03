@@ -414,6 +414,13 @@ function install(root, name, output = console, options = {}) {
         output.log(`✓ ${name}: sus instrucciones quedaron dentro de ${resolved.item.target}`)
       }
       deliveredPaths[deliveryKey(name, resolved.item.target)] = M.digest(resolved.target)
+      // Y en la otra sección, porque este archivo está en las dos: `AGENTS.md` es del sistema y es
+      // donde este runner deja su bloque. Anotarlo sólo acá dejaba a `localChanges` comparando contra
+      // el digest previo al bloque, así que el `upgrade` siguiente se detenía echándole a la empresa
+      // una edición que había hecho el comando de al lado. Lo que la empresa escriba alrededor cambia
+      // el digest igual, así que se sigue viendo.
+      const own = path.relative(root, resolved.target).split(path.sep).join('/')
+      if (O.SYSTEM_FILES.includes(own)) M.write(root, M.recordPaths(root, [own], M.read(root)))
       continue
     }
     if (status === 'ajeno' && ownFile) {
