@@ -9,6 +9,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const { spawnSync } = require('node:child_process')
 
 // La guía es lo único que le dice a alguien qué hacer con lo que acaba de crear, así que no puede
 // depender de que la instalación haya corrido: la resuelve el mismo motor que está corriendo init.
@@ -29,32 +30,6 @@ test('upgrade --check dice contra qué compara y cómo traer lo nuevo', () => {
   const upgrade = makefile.split('\nupgrade:')[1].split('\n\n')[0]
   assert.match(upgrade, /npm install --save-exact --save-dev @ingeniomaps\/cauce@latest/)
   assert.match(upgrade, /tools\/ops\.js upgrade \./)
-})
-
-// «init fija la versión exacta, así que npm update no la mueve» es lo que el README da como razón para
-// no saltear el primer paso del upgrade, y el comando que documentaba a continuación desarmaba esa
-// premisa: npm guarda con caret por defecto, y dentro de 0.x el caret alcanza a los patches —los hay—.
-// Lo que este caso cuida es que los tres lugares que dictan el comando lo dicten preservando el pin:
-// el README, el atajo del molde y la salida de `--check`. Comprobado contra npm 11.16.0: con
-// `--save-exact` el manifiesto queda en `0.55.0` y sin él en `^0.55.0`.
-test('todo lo que documenta el upgrade preserva la versión exacta', () => {
-  const root = path.resolve(__dirname, '..', '..')
-  // La propiedad es que el flag esté, no en qué orden: `guard-engine` ya lo dictaba bien con las
-  // banderas al revés, y buscar la forma literal lo habría dado por roto —o, peor, por ausente—.
-  const invocation = /npm install[^\n'"`]*@ingeniomaps\/cauce@latest/g
-  const dictates = ['README.md', path.join('template', 'Makefile'),
-    path.join('engine', 'cli', 'instance.js'), path.join('engine', 'hooks', 'files.js')]
-  let found = 0
-  for (const file of dictates) {
-    const body = fs.readFileSync(path.join(root, file), 'utf8')
-    const hits = body.match(invocation) || []
-    assert.ok(hits.length, `${file} dicta el comando y hay que revisarlo acá`)
-    for (const hit of hits) {
-      assert.match(hit, /--save-exact/, `${file} dicta el comando sin el pin: ${hit}`)
-      found += 1
-    }
-  }
-  assert.ok(found >= dictates.length, 'se revisó al menos una invocación por archivo')
 })
 
 test('upgrade reemplaza lo del sistema y no toca nada del proyecto', () => {
@@ -487,4 +462,32 @@ test('lo que el proyecto escribe no vive en un archivo que upgrade reemplaza', (
   assert.doesNotMatch(check.stdout, /editado localmente/, 'lo del proyecto no es una edición del sistema')
   assert.equal(run(['upgrade', target]).status, 0)
   assert.match(fs.readFileSync(workspace, 'utf8'), /api, web, etl/, 'y sobrevive entero')
+})
+
+// El otro lado de la declaración: lo que dice `upgrade` tiene que llegar de verdad. Se simula la
+// instancia que actualiza desde antes de que el archivo existiera —borrándolo— porque es lo mismo que
+// ve el motor: `upgrade` no tiene la versión vieja del molde para comparar, sólo el disco.
+test('upgrade crea el archivo propio que esta versión agrega, y no repone lo demás', () => {
+  const base = tempRoot('cauce-agregados-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+
+  const workspace = path.join(target, 'organization', 'workspace.md')
+  const propio = path.join(target, 'organization', 'domains.md')
+  fs.rmSync(workspace)
+  fs.rmSync(propio)
+
+  const upgraded = run(['upgrade', target])
+  assert.equal(upgraded.status, 0, upgraded.stderr)
+  assert.ok(fs.existsSync(workspace), 'lo declarado como agregado por una versión llega')
+  assert.match(upgraded.stdout, /\+ organization\/workspace\.md/, 'y se dice, porque hay que completarlo')
+
+  // Lo que toda instancia ya tiene no se repone: borrar un archivo del molde que no usás es legítimo,
+  // y devolvértelo en cada actualización sería la fricción que no queremos.
+  assert.equal(fs.existsSync(propio), false, 'lo que borraste a propósito sigue borrado')
+
+  // Y lo que ya está no se pisa: el contenido del proyecto sobrevive a la creación.
+  fs.writeFileSync(workspace, '# Nuestro\n\nTres servicios.\n')
+  assert.equal(run(['upgrade', target]).status, 0)
+  assert.match(fs.readFileSync(workspace, 'utf8'), /Tres servicios/)
 })

@@ -381,6 +381,29 @@ function upgrade(dir, cli) {
     )
   }
 
+  // Lo que una versión agrega y es del proyecto: se crea si falta y nunca se pisa. `systemPaths` no lo
+  // incluye a propósito —lo reemplazaría en cada actualización, que es lo que un archivo del proyecto
+  // no debe sufrir— así que sin este paso no llega por ninguna vía, y la instancia queda leyendo una
+  // instrucción que apunta a un archivo que no tiene.
+  const settings = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
+  const added = []
+  for (const relative of O.addedPaths()) {
+    const target = path.join(root, relative)
+    if (fs.existsSync(target)) continue
+    const origin = path.join(PROJECT_ROOT, O.sourceOf(relative))
+    if (!fs.existsSync(origin)) continue
+    F.assertNoSymlinkPath(root, target)
+    fs.mkdirSync(path.dirname(target), { recursive: true })
+    let content = fs.readFileSync(origin, 'utf8')
+    for (const [key, value] of Object.entries({
+      '{{PROJECT_NAME}}': settings.project || path.basename(root),
+      '{{MODE}}': O.mode(root),
+      '{{WORKSPACE_PATH}}': O.mode(root) === 'embedded' ? '.' : '..',
+    })) content = content.replaceAll(key, value)
+    F.atomicWrite(target, content)
+    added.push(relative)
+  }
+
   for (const relative of [...system, ...O.RUNTIME_PATHS]) {
     const origin = path.join(PROJECT_ROOT, O.sourceOf(relative))
     if (!fs.existsSync(origin)) continue
@@ -433,6 +456,9 @@ function upgrade(dir, cli) {
   // que es la evidencia que el protocolo pide para cualquier cambio.
   for (const file of changed) console.log(`− descartado tu cambio en ${file}`)
   for (const relative of retired) console.log(`− retirado ${relative}: Cauce ya no lo distribuye`)
+  // Nombrarlos importa tanto como crearlos: existen para que los completes, y uno que aparece sin
+  // aviso no lo completa nadie.
+  for (const relative of added) console.log(`+ ${relative}: lo agrega esta versión, completalo`)
   // Se dice porque explica un diff en un archivo que la empresa versiona, y que si no aparecería sin
   // autor.
   if (pinned === 'ilegible') console.log('  ⚠ package.json no se pudo leer: su versión quedó como estaba')

@@ -171,6 +171,52 @@ function overrides(root) {
 
 // Rutas que el toolkit dejó de materializar. Sin esto una instancia arrastra para siempre lo que
 // alguna versión suya copió: `upgrade` agrega y reemplaza, pero nunca quitaba nada.
+// Cada archivo propio del molde, con cómo llega a una instancia que **ya existe**. `upgrade` sólo
+// reemplaza lo del sistema y el runtime, así que un archivo del proyecto no llega por ninguna otra vía:
+// o toda instancia lo tiene desde su `init` —`init`— o una versión lo agrega y hay que crearlo
+// —`upgrade`—. Es el simétrico de `RETIRED`, que dice qué dejamos de distribuir.
+//
+// Se declara archivo por archivo en vez de copiar del molde todo lo que falte, y la diferencia importa:
+// borrar un archivo del molde que no se usa es legítimo —`check` da verde sin él— y reponerlo en cada
+// actualización sería la fricción recurrente que sacar `AGENTS.md` de las manos del proyecto vino a
+// evitar. En disco «lo borré» y «nunca llegó» se ven igual, y para un archivo del proyecto no hay
+// registro que los separe: el manifiesto anota lo que entrega el toolkit.
+//
+// La puerta compara estas claves contra el árbol del molde, así que agregar un archivo allá obliga a
+// decidir acá. Una entrada pasa de `upgrade` a `init` cuando ninguna versión soportada puede no
+// tenerlo; que se quede de más no rompe nada, porque el archivo ya está y se conserva.
+const TEMPLATE_OWN = {
+  'README.md': 'init',
+  'gitignore': 'init',
+  'integrations/config.json': 'init',
+  'integrations/jira/README.md': 'init',
+  'integrations/jira/config.json': 'init',
+  'integrations/jira/proposed/README.md': 'init',
+  'integrations/jira/staging/.gitkeep': 'init',
+  'integrations/jira/staging/README.md': 'init',
+  'ops.config.json': 'init',
+  'organization/company.md': 'init',
+  'organization/domains.md': 'init',
+  'organization/product.md': 'init',
+  // 0.57.0. `AGENTS.md` lo nombra tres veces y se reemplaza en cada actualización, así que sin esto
+  // una instancia que actualiza queda leyendo una instrucción que apunta a un archivo que no tiene.
+  'organization/workspace.md': 'upgrade',
+  'planning/BACKLOG.md': 'init',
+  'planning/DONE.md': 'init',
+  'planning/HUMAN_ACTIONS.md': 'init',
+  'planning/INBOX.md': 'init',
+  'planning/WIP.md': 'init',
+  'planning/delivery/project.md': 'init',
+  'planning/done/.gitkeep': 'init',
+  'planning/reports/README.md': 'init',
+}
+
+// Lo que `upgrade` crea si falta, derivado de la declaración de arriba para que no haya dos listas que
+// puedan decir cosas distintas.
+function addedPaths() {
+  return Object.entries(TEMPLATE_OWN).filter(([, via]) => via === 'upgrade').map(([file]) => file)
+}
+
 const RETIRED = [
   'agents/roles/system',
   'flows/system',
@@ -248,6 +294,8 @@ function localChanges(root) {
 
 module.exports = {
   RETIRED,
+  TEMPLATE_OWN,
+  addedPaths,
   trackedPaths,
   packageDir,
   RUNTIME_PATHS,
