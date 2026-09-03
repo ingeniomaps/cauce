@@ -121,3 +121,34 @@ test('la línea de comandos se parsea una vez y se puede probar sin proceso', ()
   assert.deepEqual(parse(['check', '--json']).unknown('check'), [])
   assert.deepEqual(parse(['archive', 'planning', '001']).unknown('archive'), [])
 })
+
+// `implicitTarget` ya sabe que una carpeta llamada `ops` o terminada en `-ops` **es** la instancia, y
+// resuelve `.` para ella. El modo, en cambio, se decidía por la presencia del argumento: en el mismo
+// directorio, `init` daba sidecar e `init .` daba embedded. No es cosmético — en embedded la raíz del
+// workspace pasa a ser la carpeta ops misma, así que los repos hermanos dejan de reconocerse y el
+// wiring del runner se escribe adentro en vez de al lado, donde el dev abre su herramienta.
+test('init e init . eligen el mismo modo en el mismo directorio', () => {
+  const base = tempRoot('cauce-punto-')
+  const modo = (nombre, args) => {
+    const dir = path.join(base, nombre, 'acme-ops')
+    fs.mkdirSync(dir, { recursive: true })
+    const result = run(['init', ...args, '--no-install'], dir)
+    assert.equal(result.status, 0, result.stderr)
+    return JSON.parse(fs.readFileSync(path.join(dir, 'ops.config.json'), 'utf8'))
+  }
+  const implicito = modo('sin-punto', [])
+  const explicito = modo('con-punto', ['.'])
+  assert.equal(implicito.mode, 'sidecar')
+  assert.equal(explicito.mode, implicito.mode, 'escribir el punto no cambia el modo')
+  assert.equal(explicito.workspaceRoots[0].path, implicito.workspaceRoots[0].path)
+
+  // Y el caso embebido sigue disponible donde el README lo documenta: pedido explícito.
+  const forzado = modo('forzado', ['.', '--mode', 'embedded'])
+  assert.equal(forzado.mode, 'embedded')
+
+  // Una carpeta que no nombra al toolkit sigue siendo embedded por defecto, igual que antes.
+  const dir = path.join(base, 'apps', 'web')
+  fs.mkdirSync(dir, { recursive: true })
+  assert.equal(run(['init', dir, '--name', 'Web', '--no-install']).status, 0)
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'ops.config.json'), 'utf8')).mode, 'embedded')
+})
