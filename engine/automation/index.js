@@ -471,4 +471,5 @@ module.exports = {
   render,
   listHooks,
   runnerManifest,
+  runnerPaths,
 }

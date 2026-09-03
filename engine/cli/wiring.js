@@ -214,7 +214,11 @@ function automation(action, rootArg, runnerName, cli) {
   if (action === 'list') {
     for (const name of A.RUNNER_NAMES) {
       const runner = A.runnerManifest(root, name)
-      const installed = fs.existsSync(path.join(root, runner.config.target))
+      // La misma resolución que usan `install`, `doctor` y `uninstall`: en `sidecar` el wiring vive
+      // en el padre, donde el dev abre su herramienta. Componer la ruta contra la instancia sólo
+      // acierta en `embedded`, y dejaba a los cuatro adaptadores marcados como no instalados en el
+      // modo por defecto, con `doctor` diciendo lo contrario dos líneas después.
+      const installed = fs.existsSync(A.runnerPaths(root, name, runner).configTarget)
       const capabilities = Object.entries(runner.capabilities)
         .filter(([, enabled]) => enabled)
         .map(([capability]) => capability)
