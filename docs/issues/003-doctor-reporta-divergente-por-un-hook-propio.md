@@ -1,15 +1,15 @@
 ---
 caso: 003
 titulo: doctor reporta la configuración como divergente por agregar un hook propio
-estado: abierto
+estado: resuelto
 prioridad: media
 version-detectada: 0.54.0
-resuelto-en:
+resuelto-en: 0.55.0
 ---
 
 # 003 — `doctor` llama divergente a una configuración completa
 
-**🔴 abierto** · detectado en 0.54.0 · prioridad **media** — diagnóstico falso, no rompe nada
+**🟢 resuelto en 0.55.0** · detectado en 0.54.0 · prioridad **media** — diagnóstico falso, no rompe nada
 
 ## Resumen
 
