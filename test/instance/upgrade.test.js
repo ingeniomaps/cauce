@@ -240,13 +240,9 @@ test('la guía de entrega llega a una instancia y su project.md no', () => {
   assert.equal(O.SYSTEM_FILES.includes('planning/delivery/project.md'), false,
     'lo que el proyecto declara sobre su entrega es suyo')
 
-  // Y cada clase de archivo editado recibe su salida, no la de otra: antes, todo lo que no vivía bajo
-  // `system/` respondía con cómo desactivar un guard, incluido el protocolo.
-  const fuente = fs.readFileSync(path.resolve(__dirname, '..', '..', 'engine', 'cli', 'instance.js'), 'utf8')
-  for (const clase of ['const ruleFiles = changed.filter', 'const runtime = changed.filter',
-    'const docs = changed.filter']) {
-    assert.ok(fuente.includes(clase), `upgrade distingue ${clase}`)
-  }
+  // Que cada clase de archivo editado reciba su salida y no la de otra lo mide `adviceFor` ejercitando
+  // la clasificación, no leyendo el fuente: acá se afirmaba sobre las tres líneas que la escriben, y
+  // eso quedaba verde con la clasificación rota y rojo al mover la función de archivo.
 })
 
 // El `AGENTS.md` de una instancia describe qué se puede editar y qué no, y envejecido miente: decía que
@@ -401,7 +397,7 @@ test('upgrade no crea un package.json donde no había', () => {
 // configuración que no existe: quien editó el protocolo recibía cómo desactivar un guard. Se prueba
 // sin tocar el disco porque la clasificación es lo que puede equivocarse, no el upgrade que la imprime.
 test('el consejo de upgrade corresponde a quién posee cada archivo', () => {
-  const { adviceFor } = require('../../engine/cli/instance')
+  const { adviceFor } = require('../../engine/cli/upgrade-report')
 
   const regla = adviceFor(['planning/rules/system/process.md'])
   assert.match(regla, /escribí la tuya al/, 'una regla del sistema se sobrescribe al lado')

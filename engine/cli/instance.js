@@ -17,6 +17,7 @@ const ST = require('../planning/state')
 const A = require('../automation')
 const { fail } = require('./io')
 const { declareEngine, pinEngine, undeclareEngine } = require('./dependency')
+const { adviceFor, printChangelog, reportUpgrade } = require('./upgrade-report')
 
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..')
 
@@ -132,17 +133,6 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
   config.$schema = 'node_modules/@ingeniomaps/cauce/engine/schemas/ops-config.schema.json'
   F.atomicWriteJson(configFile, config)
   return root
-}
-
-// Qué trae la versión nueva, leído del paquete: sin esto el reemplazo de system/ es a ciegas.
-function printChangelog(from, to) {
-  const notes = CL.between(CL.read(PROJECT_ROOT), from, to)
-  if (!notes.length) return
-  for (const note of notes) {
-    console.log(`\n  ── ${note.version} ──`)
-    for (const line of note.body.split('\n')) if (line.trim()) console.log(`  ${line}`)
-  }
-  console.log('')
 }
 
 function instanceVersion(root) {
@@ -262,53 +252,6 @@ function renameTeamsToFlows(root) {
   return moved
 }
 
-// Qué hacer en vez de haber editado, según a quién pertenece cada archivo que se perdería. Vive
-// aparte de `upgrade` porque su reloj es el de la frontera de propiedad y el de la redacción del
-// consejo, no el del procedimiento que lo imprime, y porque así se puede probar sin tocar el disco.
-//
-// Tres clases distintas, y antes eran dos: todo lo que no vivía bajo `system/` recibía el consejo del
-// runtime, así que editar el protocolo respondía con cómo desactivar un guard. Decirle a alguien la
-// salida ajena lo manda a buscar una configuración que no existe.
-function adviceFor(changed) {
-  const ruleFiles = changed.filter((file) => file.includes('/system/'))
-  const runtime = changed.filter((file) => !file.includes('/system/')
-    && O.RUNTIME_PATHS.some((base) => file.startsWith(`${base}/`)))
-  const docs = changed.filter((file) => !ruleFiles.includes(file) && !runtime.includes(file))
-  const advice = []
-  if (ruleFiles.length) {
-    advice.push(
-      'Las ruleFiles y decisiones bajo system/ son del toolkit. Para cambiar una, escribí la tuya al\n'
-      + 'lado con el mismo ID: el proyecto manda y `check` lo reporta como override explícito.',
-    )
-  }
-  if (runtime.length) {
-    advice.push(
-      'El runtime es del toolkit: en vez de editarlo, agregá lo tuyo al lado con otro nombre —un\n'
-      + 'guard propio sobrevive a cada actualización— y registralo en la configuración de tu runner,\n'
-      + 'que sí es del proyecto. Para desactivar un guard alcanza con quitarlo de esa configuración.',
-    )
-  }
-  if (docs.length) {
-    advice.push(
-      'Esos docs son del toolkit y no llevan una línea de la empresa: se reemplazan enteros en\n'
-      + 'cada actualización para que las mejoras lleguen. Lo que tu proyecto decide distinto va donde sí\n'
-      + 'es suyo —una ADR propia, una regla propia, o `planning/delivery/project.md` para la entrega—.',
-    )
-  }
-  // `AGENTS.md` se lo gana aparte porque hasta ahora el README mandaba completarlo, así que el consejo
-  // genérico de arriba —«no llevan una línea de la empresa»— le miente justo a quien le hizo caso.
-  if (docs.includes('AGENTS.md')) {
-    advice.push(
-      'En `AGENTS.md` en particular: el mapa real, las integraciones y las excepciones de autonomía\n'
-      + 'ahora van en `organization/workspace.md`, que es del proyecto y no se reemplaza. Movelos ahí\n'
-      + 'antes de repetir con --force, o los vas a tener que fusionar de nuevo en cada versión.',
-    )
-  }
-  return advice.join('\n\n')
-}
-
-// Actualiza sólo lo que el toolkit declara suyo. Todo lo demás —planning, organization, reglas
-// propias, agentes editados— queda intacto por construcción, no por comparación.
 function upgrade(dir, cli) {
   const root = path.resolve(dir || '.')
   if (!fs.existsSync(path.join(root, 'ops.config.json'))) {
@@ -404,6 +347,21 @@ function upgrade(dir, cli) {
     added.push(relative)
   }
 
+  // Qué bloque de runner se lleva puesto el reemplazo. `AGENTS.md` es del toolkit y se reemplaza
+  // entero, con el bloque que `automation install` dejó adentro: la instancia lo recupera reinstalando
+  // —el recordatorio de abajo ya lo pide— pero sin decir esto ese recordatorio no tiene causa visible,
+  // y quien mire su archivo ve el bloque desaparecido sin explicación.
+  const droppedBlocks = []
+  for (const runner of [...new Set(Object.keys(M.readRunners(root)).map((key) => key.split('/')[0]))]) {
+    // Sólo los archivos sueltos: `system` trae también colecciones, y un bloque de runner vive en un
+    // archivo de instrucciones —hoy `AGENTS.md`—, nunca dentro de un directorio del sistema.
+    for (const relative of O.SYSTEM_FILES) {
+      const file = path.join(root, relative)
+      if (!fs.existsSync(file) || !fs.statSync(file).isFile()) continue
+      if (fs.readFileSync(file, 'utf8').includes(A.blockStart(runner))) droppedBlocks.push({ runner, relative })
+    }
+  }
+
   for (const relative of [...system, ...O.RUNTIME_PATHS]) {
     const origin = path.join(PROJECT_ROOT, O.sourceOf(relative))
     if (!fs.existsSync(origin)) continue
@@ -451,44 +409,7 @@ function upgrade(dir, cli) {
   // Acá es donde las tres versiones se saben a la vez, así que es donde pueden quedar diciendo lo mismo.
   const pinned = pinEngine(root, to)
 
-  console.log(`✓ Cauce ${from || '(previa)'} → ${to}`)
-  // Descartar con --force es legítimo; hacerlo sin dejar rastro no. Queda en la salida del comando,
-  // que es la evidencia que el protocolo pide para cualquier cambio.
-  for (const file of changed) console.log(`− descartado tu cambio en ${file}`)
-  for (const relative of retired) console.log(`− retirado ${relative}: Cauce ya no lo distribuye`)
-  // Nombrarlos importa tanto como crearlos: existen para que los completes, y uno que aparece sin
-  // aviso no lo completa nadie.
-  for (const relative of added) console.log(`+ ${relative}: lo agrega esta versión, completalo`)
-  // Se dice porque explica un diff en un archivo que la empresa versiona, y que si no aparecería sin
-  // autor.
-  if (pinned === 'ilegible') console.log('  ⚠ package.json no se pudo leer: su versión quedó como estaba')
-  else if (pinned) console.log(`  package.json: ${pinned} → ${to}, la versión exacta que acabás de aplicar`)
-  printChangelog(from, to)
-  console.log(`  ${system.length} ruta(s) del sistema y ${O.RUNTIME_PATHS.length} del runtime actualizadas`)
-  for (const override of overrides) {
-    console.log(`= conservado ${override.collection}/${override.project}: sobrescribe ${override.system}`)
-  }
-  // Sólo cuando es cierto: llegar acá con algo en `changed` es haber descartado contenido de la
-  // empresa con --force, que las líneas de arriba enumeran.
-  if (!changed.length) console.log('  planning, organization y todo lo propio quedaron intactos')
-  // No se borra: sin la dependencia declarada, quitarle `.ops/` la dejaría sin motor. Se avisa y
-  // decide una persona.
-  if (fs.existsSync(path.join(root, '.ops', 'engine'))) {
-    console.log('\n⚠ esta instancia tiene el motor vendorizado en .ops/, que Cauce ya no distribuye.')
-    console.log('  Corré "npm install" para tenerlo como dependencia y después borrá .ops/ a mano.')
-  }
-  // El wiring del runner no se actualiza solo: vive fuera de la instancia y lo escribe otro comando.
-  // Sin este recordatorio, una mejora en un workflow o en el catálogo se queda en el paquete.
-  const runners = Object.keys(M.readRunners(root))
-    .map((key) => key.split('/')[0])
-    .filter((name, index, all) => all.indexOf(name) === index)
-  for (const name of runners) {
-    console.log(`  reinstalá tu runner para que el wiring quede al día: make install-${name}`)
-  }
-  // Después de aplicar, no antes: recién acá el paquete tiene la versión nueva y la comparación dice
-  // algo. Es además el momento en que alguien está mirando qué le trajo la actualización.
-  const FK = require('../agents/fork')
-  for (const entry of FK.drift(root)) console.log(`  ⚠ ${FK.driftLine(entry)}`)
+  reportUpgrade({ root, from, to, system, changed, retired, added, overrides, pinned, droppedBlocks })
 }
 
-module.exports = { copyTemplate, scaffold, providerNames, adviceFor, upgrade, destroy, PROJECT_ROOT }
+module.exports = { copyTemplate, scaffold, providerNames, upgrade, destroy, PROJECT_ROOT }
