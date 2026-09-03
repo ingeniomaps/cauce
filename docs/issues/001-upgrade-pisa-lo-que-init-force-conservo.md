@@ -124,6 +124,16 @@ autonomía, mientras informaba que no había tocado nada propio.
 En esa migración se sorteó copiando los archivos a un lado antes de correr `upgrade`. Alguien que siga
 el README sin ensayar primero los pierde.
 
+## Resolución
+
+**Resuelto en 0.55.0.** `scaffold` graba el digest de lo que el molde habría escrito, no el del disco,
+así que un archivo conservado se ve como una edición local. Es el fix propuesto acá.
+
+Verificado el 2026-09-03 con el repro de arriba: `upgrade` se detiene nombrando `AGENTS.md` y
+`planning/PROTOCOL.md`, y los dos sobreviven. `upgrade --force` los reemplaza **enumerando** lo que
+descarta (`− descartado tu cambio en AGENTS.md`), que no estaba en la propuesta y cubre el hueco que
+dejaba el mensaje fijo de antes.
+
 ## Relacionados
 
 - [002](002-automation-install-desregistra-guards-propios.md) — misma causa de fondo: el toolkit

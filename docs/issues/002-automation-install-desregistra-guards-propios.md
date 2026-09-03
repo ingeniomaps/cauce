@@ -105,6 +105,20 @@ Se sorteó sacándolo de `automatization/hooks/`: vive en `automatization/venota
 con un README al lado explicando por qué no está donde la documentación dice. Funciona, pero es
 justamente el lugar que `AGENTS.md` desaconseja.
 
+## Resolución
+
+**Resuelto en 0.55.0.** Lo entregado se reconoce por lo que el motor efectivamente trae, no por la
+carpeta. La implementación va más allá de lo propuesto acá: el manifiesto suma una entrada por runner
+con el wiring que dejó puesto, así que una entrada nuestra se sigue retirando el día que el motor deje
+de traer ese guard — el borde que quedaba abierto en «Tradeoffs».
+
+Verificado el 2026-09-03: `guard-mio.sh` sobrevive a `automation install`, y un `guard-destructive.sh`
+registrado suelto se sigue retirando con el mensaje correcto (`reemplazado guard-destructive.sh por
+guard-shell.sh`, ya no «entrada obsoleta»).
+
+En `venotal-ops`, `guard-prisma-drift.sh` volvió de `automatization/venotal/` a
+`automatization/hooks/`, y sobrevive a la reinstalación de los dos runners.
+
 ## Relacionados
 
 - [001](001-upgrade-pisa-lo-que-init-force-conservo.md) — misma causa de fondo: decidir qué es del

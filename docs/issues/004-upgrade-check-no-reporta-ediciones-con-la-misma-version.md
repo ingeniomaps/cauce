@@ -101,6 +101,14 @@ Migrando `venotal-ops` a Cauce 0.54.0 el 2026-09-02, verificando qué iba a pasa
 actualización con un `AGENTS.md` lleno de contenido del proyecto. `--check` dijo que todo estaba al
 día; el `upgrade` de verdad se detuvo nombrando el archivo.
 
+## Resolución
+
+**Resuelto en 0.55.0.** Lo editado se informa antes de comparar versiones. Es el fix propuesto acá.
+
+Verificado el 2026-09-03: con la misma versión y `planning/PROTOCOL.md` editado, `--check` imprime
+`editado localmente: planning/PROTOCOL.md` y sale 1. Sobre una instancia limpia sigue saliendo 0, así
+que no hay falsa alarma.
+
 ## Relacionados
 
 - [001](001-upgrade-pisa-lo-que-init-force-conservo.md) — el mismo `upgrade`, ahí sin la protección
