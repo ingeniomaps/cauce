@@ -411,3 +411,33 @@ test('upgrade no crea un package.json donde no había', () => {
   assert.equal(run(['upgrade', target]).status, 0)
   assert.equal(fs.existsSync(path.join(target, 'package.json')), false)
 })
+
+// Cada clase de archivo tiene una salida distinta, y decirle a alguien la ajena lo manda a buscar una
+// configuración que no existe: quien editó el protocolo recibía cómo desactivar un guard. Se prueba
+// sin tocar el disco porque la clasificación es lo que puede equivocarse, no el upgrade que la imprime.
+test('el consejo de upgrade corresponde a quién posee cada archivo', () => {
+  const { adviceFor } = require('../../engine/cli/instance')
+
+  const regla = adviceFor(['planning/rules/system/process.md'])
+  assert.match(regla, /escribí la tuya al/, 'una regla del sistema se sobrescribe al lado')
+  assert.doesNotMatch(regla, /configuración de tu runner/, 'y no recibe el consejo del runtime')
+
+  const guard = adviceFor(['automatization/hooks/guard-verify.sh'])
+  assert.match(guard, /configuración de tu runner/)
+  assert.doesNotMatch(guard, /override explícito/)
+
+  const doc = adviceFor(['planning/PROTOCOL.md'])
+  assert.match(doc, /delivery\/project\.md/, 'un doc del toolkit manda a donde sí es del proyecto')
+  assert.doesNotMatch(doc, /configuración de tu runner/)
+
+  // Y las tres juntas llegan las tres: es el caso que dejaba a alguien sin su salida.
+  const todas = adviceFor([
+    'planning/rules/system/process.md',
+    'automatization/hooks/guard-verify.sh',
+    'planning/PROTOCOL.md',
+  ])
+  for (const parte of [/override explícito/, /configuración de tu runner/, /delivery\/project\.md/]) {
+    assert.match(todas, parte)
+  }
+  assert.equal(adviceFor([]), '')
+})

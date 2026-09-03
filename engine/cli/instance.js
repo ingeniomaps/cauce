@@ -30,10 +30,8 @@ function providerNames() {
   } catch { return [] }
 }
 
-// Devuelve, por archivo conservado, el digest de lo que el molde **habría** escrito. Adoptar Cauce en
-// un repositorio con contenido es `init --force`, y lo que se conserva ahí lo escribió la empresa: si
-// el manifiesto lo registra hasheando el disco queda declarado como entregado por Cauce con contenido
-// que Cauce nunca entregó, y el `upgrade` siguiente no ve ninguna edición local y lo reemplaza.
+// Devuelve, por archivo conservado, el digest de lo que **habría** escrito. Quien registra la entrega
+// necesita esos dos contenidos distintos, y el que quedó en disco no es uno de ellos.
 function copyTemplate(source, target, replacements, force, skip = [], quiet = false) {
   F.assertNoSymlinkPath(path.dirname(target), target)
   fs.mkdirSync(target, { recursive: true })
@@ -115,10 +113,13 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
     if (fs.existsSync(dir)) deliveredPaths = M.record(root, relative, O.treeFiles(dir), deliveredPaths)
   }
   deliveredPaths = M.recordPaths(root, O.SYSTEM_FILES, deliveredPaths)
-  // Lo conservado entra con el digest del molde, no con el del disco: la diferencia entre los dos es
-  // justamente lo que `localChanges` tiene que ver para que `upgrade` se detenga antes de pisar el
-  // archivo de la empresa. Sólo se pisan claves que ya están: el manifiesto declara lo que Cauce
-  // rastrea, y un archivo propio fuera de esa frontera no le incumbe.
+  // Adoptar Cauce en un repositorio con contenido es `init --force`, y lo que se conserva ahí lo
+  // escribió la empresa. Registrarlo hasheando el disco lo declaraba entregado por Cauce con contenido
+  // que Cauce nunca entregó, así que `localChanges` no veía ninguna edición y el `upgrade` siguiente lo
+  // reemplazaba: entra con el digest del molde, y esa diferencia es lo que detiene al upgrade.
+  //
+  // Sólo se pisan claves que ya están: el manifiesto declara lo que Cauce rastrea, y un archivo propio
+  // fuera de esa frontera no le incumbe.
   for (const [file, hash] of Object.entries(preserved)) {
     const relative = path.relative(root, file).split(path.sep).join('/')
     if (relative in deliveredPaths) deliveredPaths[relative] = hash
@@ -261,6 +262,42 @@ function renameTeamsToFlows(root) {
   return moved
 }
 
+// Qué hacer en vez de haber editado, según a quién pertenece cada archivo que se perdería. Vive
+// aparte de `upgrade` porque su reloj es el de la frontera de propiedad y el de la redacción del
+// consejo, no el del procedimiento que lo imprime, y porque así se puede probar sin tocar el disco.
+//
+// Tres clases distintas, y antes eran dos: todo lo que no vivía bajo `system/` recibía el consejo del
+// runtime, así que editar el protocolo respondía con cómo desactivar un guard. Decirle a alguien la
+// salida ajena lo manda a buscar una configuración que no existe.
+function adviceFor(changed) {
+  const ruleFiles = changed.filter((file) => file.includes('/system/'))
+  const runtime = changed.filter((file) => !file.includes('/system/')
+    && O.RUNTIME_PATHS.some((base) => file.startsWith(`${base}/`)))
+  const docs = changed.filter((file) => !ruleFiles.includes(file) && !runtime.includes(file))
+  const advice = []
+  if (ruleFiles.length) {
+    advice.push(
+      'Las ruleFiles y decisiones bajo system/ son del toolkit. Para cambiar una, escribí la tuya al\n'
+      + 'lado con el mismo ID: el proyecto manda y `check` lo reporta como override explícito.',
+    )
+  }
+  if (runtime.length) {
+    advice.push(
+      'El runtime es del toolkit: en vez de editarlo, agregá lo tuyo al lado con otro nombre —un\n'
+      + 'guard propio sobrevive a cada actualización— y registralo en la configuración de tu runner,\n'
+      + 'que sí es del proyecto. Para desactivar un guard alcanza con quitarlo de esa configuración.',
+    )
+  }
+  if (docs.length) {
+    advice.push(
+      'Esos docs son del toolkit y no llevan una línea de la empresa: se reemplazan enteros en\n'
+      + 'cada actualización para que las mejoras lleguen. Lo que tu proyecto decide distinto va donde sí\n'
+      + 'es suyo —una ADR propia, una regla propia, o `planning/delivery/project.md` para la entrega—.',
+    )
+  }
+  return advice.join('\n\n')
+}
+
 // Actualiza sólo lo que el toolkit declara suyo. Todo lo demás —planning, organization, reglas
 // propias, agentes editados— queda intacto por construcción, no por comparación.
 function upgrade(dir, cli) {
@@ -288,19 +325,17 @@ function upgrade(dir, cli) {
   const overrides = O.overrides(root)
 
   if (dry) {
-    // Lo editado localmente se informa siempre, antes de mirar versiones: son dos preguntas distintas
-    // —«¿hay algo más nuevo?» y «¿qué tengo editado que se perdería?»— y la segunda tiene respuesta
-    // útil aunque la primera sea que no. Sin esto, el único modo que no toca nada era también el único
-    // que no podía avisar del conflicto, justo en el estado normal entre actualizaciones: `init` fija
-    // la versión exacta, así que instancia y motor coinciden casi todo el tiempo.
+    // Antes de mirar versiones, porque son dos preguntas distintas —«¿hay algo más nuevo?» y «¿qué
+    // tengo editado que se perdería?»— y la segunda tiene respuesta útil aunque la primera sea que no.
+    // Adentro del `if` de abajo, el único modo que no toca nada era el único que no podía avisar.
     for (const file of changed) console.log(`  editado localmente: ${file}`)
     if (from === to) {
       // Contra el motor instalado, no contra lo publicado: la comparación es local y sin red. Decirlo
       // importa porque `init` fija la versión exacta, así que el motor no se mueve solo y esta línea,
       // a secas, se leía como «no hay nada nuevo» durante todas las versiones siguientes.
       console.log(`= ${to}: la instancia está al día con el motor instalado`)
-      // Con `--save-exact` porque npm guarda con caret por defecto, y el caret es lo que volvería
-      // falsa la línea de arriba: dentro de 0.x alcanza a los patches, y Cauce publica patches.
+      // Con `--save-exact`, sin el cual el caret de npm vuelve falsa la línea de arriba. Por qué, y por
+      // qué no alcanza con documentarlo, en `pinEngine`.
       console.log('  para traer una versión más nueva:'
         + ' npm install --save-exact --save-dev @ingeniomaps/cauce@latest')
       if (changed.length) process.exit(1)
@@ -331,37 +366,9 @@ function upgrade(dir, cli) {
 
   if (changed.length && !force) {
     for (const file of changed) console.error(`✗ ${file}`)
-    // Tres clases distintas, y antes eran dos: todo lo que no vivía bajo `system/` recibía el consejo
-    // del runtime, así que editar el protocolo respondía con cómo desactivar un guard. Cada una tiene
-    // su salida y decirle la ajena manda a buscar una configuración que no existe.
-    const ruleFiles = changed.filter((file) => file.includes('/system/'))
-    const runtime = changed.filter((file) => !file.includes('/system/')
-      && O.RUNTIME_PATHS.some((base) => file.startsWith(`${base}/`)))
-    const docs = changed.filter((file) => !ruleFiles.includes(file) && !runtime.includes(file))
-    const advice = []
-    if (ruleFiles.length) {
-      advice.push(
-        'Las ruleFiles y decisiones bajo system/ son del toolkit. Para cambiar una, escribí la tuya al\n'
-        + 'lado con el mismo ID: el proyecto manda y `check` lo reporta como override explícito.',
-      )
-    }
-    if (runtime.length) {
-      advice.push(
-        'El runtime es del toolkit: en vez de editarlo, agregá lo tuyo al lado con otro nombre —un\n'
-        + 'guard propio sobrevive a cada actualización— y registralo en la configuración de tu runner,\n'
-        + 'que sí es del proyecto. Para desactivar un guard alcanza con quitarlo de esa configuración.',
-      )
-    }
-    if (docs.length) {
-      advice.push(
-        'Esos docs son del toolkit y no llevan una línea de la empresa: se reemplazan enteros en\n'
-        + 'cada actualización para que las mejoras lleguen. Lo que tu proyecto decide distinto va donde sí\n'
-        + 'es suyo —una ADR propia, una regla propia, o `planning/delivery/project.md` para la entrega—.',
-      )
-    }
     fail(
       `\n${changed.length} archivo(s) que mantiene Cauce fueron editados y se perderían.\n\n` +
-      `${advice.join('\n\n')}\n\nSi el cambio ya no te sirve, repetí con --force para descartarlo.`,
+      `${adviceFor(changed)}\n\nSi el cambio ya no te sirve, repetí con --force para descartarlo.`,
     )
   }
 
@@ -417,8 +424,8 @@ function upgrade(dir, cli) {
   // que es la evidencia que el protocolo pide para cualquier cambio.
   for (const file of changed) console.log(`− descartado tu cambio en ${file}`)
   for (const relative of retired) console.log(`− retirado ${relative}: Cauce ya no lo distribuye`)
-  // Se dice porque cambia un archivo que la empresa versiona, y porque explica un diff que si no
-  // aparecería sin autor. Ilegible se avisa y no se toca: el manifiesto es del repo anfitrión.
+  // Se dice porque explica un diff en un archivo que la empresa versiona, y que si no aparecería sin
+  // autor.
   if (pinned === 'ilegible') console.log('  ⚠ package.json no se pudo leer: su versión quedó como estaba')
   else if (pinned) console.log(`  package.json: ${pinned} → ${to}, la versión exacta que acabás de aplicar`)
   printChangelog(from, to)
@@ -426,9 +433,8 @@ function upgrade(dir, cli) {
   for (const override of overrides) {
     console.log(`= conservado ${override.collection}/${override.project}: sobrescribe ${override.system}`)
   }
-  // Sólo cuando es cierto. Llegar acá con algo en `changed` significa que se corrió con --force y se
-  // descartó contenido de la empresa: las líneas de arriba lo enumeran, y afirmar a continuación que
-  // todo lo propio quedó intacto contradice a la única señal que recibe quien corrió el comando.
+  // Sólo cuando es cierto: llegar acá con algo en `changed` es haber descartado contenido de la
+  // empresa con --force, que las líneas de arriba enumeran.
   if (!changed.length) console.log('  planning, organization y todo lo propio quedaron intactos')
   // No se borra: sin la dependencia declarada, quitarle `.ops/` la dejaría sin motor. Se avisa y
   // decide una persona.
@@ -450,4 +456,4 @@ function upgrade(dir, cli) {
   for (const entry of FK.drift(root)) console.log(`  ⚠ ${FK.driftLine(entry)}`)
 }
 
-module.exports = { copyTemplate, scaffold, providerNames, upgrade, destroy, PROJECT_ROOT }
+module.exports = { copyTemplate, scaffold, providerNames, adviceFor, upgrade, destroy, PROJECT_ROOT }
