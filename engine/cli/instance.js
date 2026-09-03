@@ -295,6 +295,15 @@ function adviceFor(changed) {
       + 'es suyo —una ADR propia, una regla propia, o `planning/delivery/project.md` para la entrega—.',
     )
   }
+  // `AGENTS.md` se lo gana aparte porque hasta ahora el README mandaba completarlo, así que el consejo
+  // genérico de arriba —«no llevan una línea de la empresa»— le miente justo a quien le hizo caso.
+  if (docs.includes('AGENTS.md')) {
+    advice.push(
+      'En `AGENTS.md` en particular: el mapa real, las integraciones y las excepciones de autonomía\n'
+      + 'ahora van en `organization/workspace.md`, que es del proyecto y no se reemplaza. Movelos ahí\n'
+      + 'antes de repetir con --force, o los vas a tener que fusionar de nuevo en cada versión.',
+    )
+  }
   return advice.join('\n\n')
 }
 

@@ -439,6 +439,13 @@ test('el consejo de upgrade corresponde a quién posee cada archivo', () => {
   const doc = adviceFor(['planning/PROTOCOL.md'])
   assert.match(doc, /delivery\/project\.md/, 'un doc del toolkit manda a donde sí es del proyecto')
   assert.doesNotMatch(doc, /configuración de tu runner/)
+  assert.doesNotMatch(doc, /organization\/workspace\.md/, 'y no le habla de un archivo que no editó')
+
+  // A quien completó AGENTS.md porque el README se lo mandaba, el consejo genérico le miente: le dice
+  // que ese archivo no lleva una línea de la empresa. Lleva la suya, y hay que decirle a dónde va.
+  const agents = adviceFor(['AGENTS.md'])
+  assert.match(agents, /organization\/workspace\.md/)
+  assert.match(agents, /antes de repetir con --force/, 'y cuándo moverlo, que es antes de perderlo')
 
   // Y las tres juntas llegan las tres: es el caso que dejaba a alguien sin su salida.
   const todas = adviceFor([
@@ -450,4 +457,34 @@ test('el consejo de upgrade corresponde a quién posee cada archivo', () => {
     assert.match(todas, parte)
   }
   assert.equal(adviceFor([]), '')
+})
+
+// El README mandaba completar `AGENTS.md`, que es del toolkit y `upgrade` reemplaza entero. No era
+// pérdida de datos desde 0.55.0 —se detiene y lo nombra—, pero el trabajo de fusión era inevitable y
+// recurrente por diseño, sobre el único archivo garantizado a entrar en conflicto en cada versión. La
+// separación es la que el toolkit ya usa en los otros dos lugares donde el choque aparece:
+// `rules/system/` junto a las propias, `delivery/project.md` junto a las seis guías.
+test('lo que el proyecto escribe no vive en un archivo que upgrade reemplaza', () => {
+  const base = tempRoot('cauce-workspace-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+
+  const workspace = path.join(target, 'organization', 'workspace.md')
+  assert.ok(fs.existsSync(workspace), 'la instancia recibe dónde escribir lo suyo')
+  const molde = fs.readFileSync(workspace, 'utf8')
+  for (const seccion of ['## Mapa real', '## Integraciones y ambientes', '## Excepciones de autonomía']) {
+    assert.ok(molde.includes(seccion), `${seccion} vive donde el proyecto escribe`)
+  }
+
+  // Y AGENTS.md ya no pide completarlo: enlaza a donde sí corresponde.
+  const agents = fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8')
+  assert.doesNotMatch(agents, /Completar antes de la primera tarea/)
+  assert.match(agents, /organization\/workspace\.md/, 'y dice dónde está lo del proyecto')
+
+  // Lo que importa: el proyecto escribe su mapa y el upgrade no se detiene ni lo pisa.
+  fs.writeFileSync(workspace, '# Nuestro workspace\n\n## Mapa real\n\nTres servicios: api, web, etl.\n')
+  const check = run(['upgrade', target, '--check'])
+  assert.doesNotMatch(check.stdout, /editado localmente/, 'lo del proyecto no es una edición del sistema')
+  assert.equal(run(['upgrade', target]).status, 0)
+  assert.match(fs.readFileSync(workspace, 'utf8'), /api, web, etl/, 'y sobrevive entero')
 })
