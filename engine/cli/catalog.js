@@ -96,7 +96,12 @@ function evaluationBench(root, agent, caso, force, kind) {
     fail(`${dir} tiene trabajo sin recoger. Guardá el registro de esa corrida antes de rehacerlo, `
       + 'o usá --force si ya lo tenés.', 2)
   }
-  fs.rmSync(dir, { recursive: true, force: true })
+  // Con reintentos: el banco es un árbol grande y versionado —hay un `git status` dos líneas arriba— y
+  // borrarlo entero falla a veces con ENOTEMPTY, que es transitorio. Pasó en CI rehaciendo un banco que
+  // se acababa de crear: `ENOTEMPTY, Directory not empty: .cauce-eval/product-manager/11-otro`. Sin los
+  // reintentos, rehacer un banco es una operación que falla de vez en cuando y deja la corrida sin
+  // empezar.
+  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 })
   IN.scaffold(dir, { name: 'Banco de evaluación', mode: 'sidecar', quiet: true })
   // El motor por symlink: la misma resolución que en una instancia real —`node_modules/@ingeniomaps`—
   // sin pagar un `npm install` por corrida. El cargo llega a un banco donde el CLI funciona.
