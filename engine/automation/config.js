@@ -32,21 +32,17 @@ function mergeConfig(current, incoming) {
   return incoming
 }
 
-// Una entrada de hook que puso Cauce se reconoce por el guard al que apunta, y lo nuestro es lo que
-// efectivamente entregamos, no todo lo que vive en nuestra carpeta. Reconocer por directorio
-// desregistraba el guard propio del proyecto en cada reinstalación: `template/AGENTS.md` invita a
-// ponerlo justo ahí y promete que sobrevive a cada actualización, el archivo quedaba en disco, y lo
-// único que se veía era una línea diciendo que se había quitado una entrada obsoleta.
-// Se saca del archivo del usuario antes de fusionar para que el merge deje exactamente las de esta
-// versión, ni una más.
 const HOOK_PATH = /automatization\/hooks\/([a-z0-9-]+\.sh)(?:\s|$)/
 
-// Dos fuentes, y la segunda es la que cierra el borde. `expectedHooks()` dice qué entrega el motor de
-// hoy y alcanza para una instancia que nunca instaló; `delivered` es lo que esta instancia registró
-// haber recibido la última vez, y es lo único que reconoce un guard que entregamos en una versión y
-// retiramos en la siguiente: su nombre ya no está en la lista de hoy, así que sin el registro quedaría
-// vivo en la configuración llamando a un guard que Cauce ya no mantiene. Un guard propio del proyecto
-// no está en ninguna de las dos, que es exactamente por lo que sobrevive.
+// Si una entrada de hook la puso Cauce. Lo nuestro es lo que efectivamente entregamos, no todo lo que
+// vive en nuestra carpeta: `template/AGENTS.md` invita al proyecto a poner su guard justo ahí y le
+// promete que sobrevive a cada actualización, así que reconocer por directorio lo desregistraba en
+// cada reinstalación —el archivo quedaba en disco y el guard dejaba de correr—.
+//
+// Por eso son dos fuentes y no una. `expectedHooks()` es lo que entrega el motor de hoy, y alcanza
+// para una instancia que nunca instaló; `delivered` es lo que ésta registró haber recibido, y es lo
+// único que reconoce un guard que entregamos en una versión y retiramos en la siguiente, cuyo nombre
+// ya no está en la primera. Un guard del proyecto no está en ninguna de las dos, y sobrevive.
 function isDelivered(command, delivered) {
   const hit = String(command).match(HOOK_PATH)
   if (!hit) return false
@@ -58,6 +54,8 @@ function deliveredHookCommands(commands) {
   return [...commands].filter((command) => HOOK_PATH.test(String(command)))
 }
 
+// Saca del archivo del usuario lo que pusimos nosotros, para que el merge deje exactamente las
+// entradas de esta versión y ni una más.
 function withoutDeliveredHooks(config, live, delivered = new Set()) {
   const dropped = []
   const walk = (node) => {
@@ -105,12 +103,10 @@ function reportRemoved(name, dropped, live, output) {
 function includesConfig(actual, expected) {
   if (Array.isArray(expected)) {
     return Array.isArray(actual) && expected.every((item) => actual.some((value) => {
-      // Un grupo de hooks se compara por su contenido, no por su forma serializada. La comprobación es
-      // «contiene», que es lo correcto, pero con el ítem entero como unidad un grupo `{matcher, hooks}`
-      // con un hook de más dejaba de ser el mismo objeto y contaba como ausente: `doctor` llamaba
-      // divergente a una configuración que tenía todo lo esperado, y el anidamiento —donde vive la
-      // diferencia real— no se miraba nunca. La instalación promete conservar lo que el proyecto ya
-      // tenía, así que sumar un hook propio a un grupo nuestro es exactamente lo que permite.
+      // Un grupo de hooks se compara por su contenido y no por su forma serializada, porque la
+      // instalación promete conservar lo que el proyecto ya tenía: con el ítem entero como unidad, un
+      // grupo con un hook propio de más contaba como ausente y `doctor` llamaba divergente a una
+      // configuración completa.
       if (item && typeof item === 'object' && Array.isArray(item.hooks)) {
         return value && typeof value === 'object'
           && value.matcher === item.matcher
