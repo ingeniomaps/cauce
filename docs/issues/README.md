@@ -4,10 +4,20 @@ Un archivo por problema encontrado en Cauce, con su estado. Es la cola de trabaj
 sabe que está mal, escrito con suficiente detalle para que alguien lo arregle sin volver a
 investigarlo.
 
-No reemplaza a los [issues de GitHub](https://github.com/ingeniomaps/cauce/issues), que siguen siendo
-la puerta pública que nombra `CONTRIBUTING.md`. Un caso de acá puede publicarse allá tal cual; lo que
-esta carpeta agrega es que el detalle no se pierda entre encontrarlo y publicarlo, y que quede a la
-vista de quien abra el repositorio con un agente.
+Los [issues de GitHub](https://github.com/ingeniomaps/cauce/issues) son la puerta de entrada de
+terceros, que es lo que nombra `CONTRIBUTING.md`; esta carpeta es el registro del proyecto. **Son dos
+cosas distintas y no se sincronizan**: un reporte externo llega como issue y, si se toma, nace su caso
+acá. Un caso puede publicarse allá cuando convenga —para que alguien lo siga o lo tome—, y no hace
+falta que lo haga.
+
+Antes decía que un caso «puede publicarse allá tal cual», y eso pedía mantener dos lugares al día. No
+se hizo nunca: al escribir esta línea había dieciocho casos y ningún issue abierto. Un contrato que
+nadie cumple envejece peor que uno que no promete nada, y lo que la carpeta aporta no dependía de esa
+promesa: que el detalle no se pierda entre encontrar el problema y arreglarlo, y que quede a la vista
+de quien abra el repositorio con un agente.
+
+No viaja en el paquete —`files` de `package.json` no la incluye—, así que no le cuesta nada a quien
+instala Cauce.
 
 ## Cómo se nombra
 
