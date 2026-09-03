@@ -14,6 +14,15 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.60.1] - 2026-09-03
+
+### Corregido
+
+- **Rehacer un banco de evaluación ya no falla de vez en cuando.** `evaluate --bench --force` borra el
+  banco antes de recrearlo, y sobre un árbol grande y versionado ese borrado da `ENOTEMPTY` a veces —es
+  transitorio—. La corrida moría antes de empezar, sin haber evaluado nada. Ahora reintenta, que es lo
+  que `rmSync` ofrece para eso. Sólo afecta al toolkit: en una instancia `--bench` no corre.
+
 ## [0.60.0] - 2026-09-03
 
 ### Corregido

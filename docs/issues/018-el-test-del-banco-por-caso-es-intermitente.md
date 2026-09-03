@@ -1,15 +1,15 @@
 ---
 caso: 018
 titulo: el test "cada caso recibe su propio banco" falla a veces y su salida no dice por qué
-estado: abierto
+estado: resuelto
 prioridad: media
 version-detectada: 0.60.0
-resuelto-en:
+resuelto-en: 0.60.1
 ---
 
 # 018 — Un test de bancos falla a veces y no deja ver la causa
 
-**🔴 abierto** · detectado en 0.60.0 · prioridad **media** — la puerta se pone roja sin explicar nada
+**🟢 resuelto en 0.60.1** · detectado en 0.60.0 · prioridad **media** — la puerta se pone roja sin explicar nada
 
 ## Resumen
 
@@ -124,9 +124,10 @@ en verde dos minutos antes, en el PR del fix. Descartar las hipótesis de la tab
 cualquiera de los tres arreglos que ese release publicaba, y todo ese tiempo se gastó por no tener una
 línea de `stderr`.
 
-## Resolución parcial
+## Resolución
 
-**El punto 1 entró en 0.60.1.** La aserción pasa el `stderr`, como sus dos vecinas:
+**El punto 1 destapó la causa en la primera corrida siguiente**, que era exactamente para lo que
+servía. La aserción pasa el `stderr`, como sus dos vecinas:
 
 ```js
 const rehecho = run(['evaluate', 'product-manager', '--bench', '11-otro', '--force'], toolkit)
@@ -137,9 +138,26 @@ Comprobado forzando el fallo del comando: antes el rojo decía `1 !== 0` y ahora
 —`AssertionError: el banco no se pudo rehacer: motivo de prueba`—, que es lo que faltaba en el log de
 la corrida que originó el caso.
 
-**El caso queda abierto** porque su punto 2 no se resolvió, y no se puede resolver todavía: falta ver un
-fallo real con su causa. Cuando ocurra, el `stderr` va a decir si hay que aislar el banco o si el
-problema era otro. Hasta entonces, este caso está esperando evidencia, no trabajo.
+Y el fallo real llegó al primer merge posterior, en el CI de `main`, ya con la causa adentro:
+
+```text
+AssertionError [ERR_ASSERTION]: ENOTEMPTY, Directory not empty:
+  .cauce-eval/product-manager/11-otro
+```
+
+**No era lo que la hipótesis suponía.** No hay colisión entre tests ni entre archivos: lo que falla es
+**borrar el banco para rehacerlo**. `fs.rmSync(dir, { recursive: true, force: true })`
+(`engine/cli/catalog.js:99`) sobre un árbol grande y versionado —hay un `git status` dos líneas arriba—
+da `ENOTEMPTY` de vez en cuando, que es transitorio. Se resolvió con los reintentos que `rmSync` ya
+acepta: `maxRetries: 5, retryDelay: 50`, comprobados como opciones válidas en Node v24.18.0.
+
+**El punto 2 no se hizo, y ya no corresponde.** Sacar el banco del repositorio no habría arreglado
+nada: un `ENOTEMPTY` al borrar ocurre igual en cualquier directorio, y el test habría quedado midiendo
+el mecanismo donde ese mecanismo no vive. La hipótesis por eliminación —una carrera de directorios—
+era falsa, y aislar el banco habría sido pagar un tradeoff sin comprar la solución.
+
+Y no era sólo del test: `evaluate --bench --force` es lo que falla, así que rehacer un banco en una
+corrida real de evaluación tenía la misma chance de morir antes de empezar.
 
 ## Relacionados
 
