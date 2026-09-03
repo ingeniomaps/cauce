@@ -14,6 +14,49 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.55.0] - 2026-09-02
+
+### Corregido
+
+- **`upgrade` ya no pisa lo que `init --force` conservó.** Adoptar Cauce en un repositorio que ya tiene
+  contenido es `init --force` y después `upgrade`. El primero conserva tus archivos y lo cumple; el
+  segundo los reemplazaba sin avisar e imprimía que no había tocado nada propio. El registro se grababa
+  hasheando el disco, así que un archivo conservado quedaba anotado como entregado por Cauce con **tu**
+  contenido, y la comparación no veía ninguna diferencia. Ahora se anota el digest de lo que el molde
+  habría escrito: tu archivo se ve como lo que es —una edición local— y `upgrade` se detiene
+  nombrándolo. **Qué cambia para vos**: el primer `upgrade` después de una adopción con `--force` se
+  detiene listando esos archivos. Resolvelos a mano, o repetí con `--force` para descartarlos, que
+  ahora además los enumera en la salida.
+- **Tu guard propio sobrevive a `automation install`.** `AGENTS.md` te dice que lo pongas en
+  `automatization/hooks/guard-<nombre>.sh` y promete que sobrevive a cada actualización. Sobrevivía al
+  `upgrade` y no a la reinstalación del runner: lo nuestro se reconocía por la carpeta, así que
+  cualquier `guard-*.sh` de ahí se desregistraba antes de fusionar. El archivo quedaba en disco, el
+  guard dejaba de correr y lo único que se veía era una línea diciendo que se había quitado una entrada
+  obsoleta. Ahora se reconoce por lo que efectivamente entregamos: los guards que el motor trae, más
+  los que esta instancia anotó haber recibido —el manifiesto gana una entrada por runner con el wiring
+  que dejó puesto, y por eso una entrada nuestra se sigue retirando el día que el motor deje de traer
+  ese guard—. **Si moviste tu guard fuera de esa carpeta para sortearlo, ya podés devolverlo.**
+- **`automation doctor` deja de llamar divergente a una configuración completa.** Un hook propio sumado
+  *dentro* de un grupo que escribió el toolkit dejaba a `doctor` en rojo aunque estuvieran todas las
+  entradas esperadas: comparaba el grupo entero serializado, así que uno con un hook de más contaba
+  como ausente. Ahora compara por `matcher` y contenido. Lo que falta se sigue reportando igual.
+- **`upgrade --check` avisa de lo que tenés editado aunque la versión coincida.** Salía por un camino
+  corto que informaba «al día» sin llegar a listarlo, que es el estado normal entre actualizaciones
+  —`init` fija la versión exacta—: el único modo que no toca nada era también el único que no podía
+  anticipar el conflicto. **Qué cambia para vos**: `--check` ahora sale 1 cuando hay archivos del
+  sistema editados, un caso donde antes salía 0. Si lo tenés en un script, revisá esa condición.
+
+### Cambiado
+
+- **`init` e `init .` eligen el mismo modo en el mismo directorio.** El default salía de si escribiste
+  el argumento, no de a dónde apunta: en `acme-ops/`, `init` daba `sidecar` e `init .` daba `embedded`.
+  No es cosmético — en `embedded` la raíz del workspace pasa a ser la carpeta ops misma, así que
+  `guard-workspace-boundary` deja de reconocer los repos hermanos y el wiring del runner se escribe
+  adentro en vez de al lado, donde abrís tu herramienta. Ahora lo decide el destino resuelto, con la
+  misma regla que ya elegía dónde aterrizar: una carpeta llamada `ops` o terminada en `-ops` **es** la
+  instancia. **Qué cambia para vos**: `init .` en una carpeta así ahora da `sidecar`, donde antes daba
+  `embedded`. El caso embebido sigue disponible pidiéndolo: `init . --mode embedded`.
+
 ## [0.54.0] - 2026-09-02
 
 ### Agregado
