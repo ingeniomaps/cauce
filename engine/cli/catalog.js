@@ -189,8 +189,12 @@ function evaluate(agent, caso, cli) {
   // adoptado— y su `planning/` ya es el lugar legítimo donde trabajar.
   if (cli.has('--bench')) {
     if (O.mode(root) !== 'toolkit') {
-      fail('--bench es del toolkit. En una instancia, el cargo trabaja sobre tu planning/: si es del '
-        + `catálogo, adoptalo primero con "ops agents fork ${agent}".`, 2)
+      // Lo que decide es el modo de la instancia, así que el consejo tiene que ser una salida y no una
+      // condición: mandaba a adoptar el cargo, y adoptarlo no habilita nada —quien seguía el consejo
+      // forkeaba, repetía el comando y recibía el mismo mensaje diciéndole que forkeara—.
+      fail('--bench es del toolkit. En una instancia, el cargo trabaja sobre tu planning/: corré '
+        + `"ops evaluate ${agent}" sin la bandera, que valida sus controles, casos y propuestas `
+        + 'contra este proyecto.', 2)
     }
     // El caso es el posicional que sigue al cargo: `evaluate <cargo> --bench <caso>`. Sin él se arma
     // un banco suelto, para mirarlo a mano; una corrida real pide uno por caso.

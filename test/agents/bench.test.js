@@ -4,7 +4,7 @@
 // vocabulario propio —se crea, se recrea entera, se versiona, se niega a pisar trabajo sin recoger— y
 // estaba dentro de la suite del CLI, que prueba otra cosa.
 
-const { MIN_ROLES, tempRoot, run } = require('../support/environment')
+const { MIN_ROLES, tempRoot, run, linkEngine } = require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -140,5 +140,31 @@ test('el banco es del toolkit; una instancia recibe la salida que le corresponde
   const result = run(['evaluate', 'product-manager', '--bench'], target)
   assert.equal(result.status, 2)
   assert.match(result.stderr, /--bench es del toolkit/)
-  assert.match(result.stderr, /agents fork product-manager/, 'y nombra la salida real')
+  assert.match(result.stderr, /evaluate product-manager/, 'y nombra la salida real')
+})
+
+// El banco es del toolkit y en una instancia se niega, que es correcto. Lo que no era correcto es qué
+// recomendaba: adoptar el cargo. El guard mira el modo de la instancia y nada más, así que quien
+// seguía el consejo forkeaba, repetía el comando y recibía el mismo mensaje diciéndole que forkeara.
+//
+// La asimetría que lo delató: `learn` sí cambia de comportamiento con el fork —falla antes, escribe el
+// informe después— y por eso su mensaje puede hablar de adoptar. Éste no.
+test('el error de --bench dice qué hacer, no un fork que no cambia nada', () => {
+  const base = tempRoot('cauce-bench-consejo-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  linkEngine(target)
+
+  const negado = run(['evaluate', 'backend-engineer', '--bench'], target)
+  assert.equal(negado.status, 2)
+  const dicho = negado.stderr + negado.stdout
+  assert.match(dicho, /--bench es del toolkit/)
+  assert.doesNotMatch(dicho, /agents fork/, 'adoptarlo no habilita el banco: el guard mira el modo')
+  assert.match(dicho, /evaluate backend-engineer/, 'y dice el comando que sí corresponde acá')
+
+  // Y adoptarlo no cambia la respuesta, que es justamente lo que el consejo viejo prometía.
+  assert.equal(run(['agents', 'fork', 'backend-engineer'], target).status, 0)
+  const trasFork = run(['evaluate', 'backend-engineer', '--bench'], target)
+  assert.equal(trasFork.status, 2)
+  assert.doesNotMatch(trasFork.stderr + trasFork.stdout, /agents fork/)
 })
