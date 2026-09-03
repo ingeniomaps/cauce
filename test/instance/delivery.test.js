@@ -77,3 +77,29 @@ test('cada archivo propio del molde declara cómo llega a una instancia que ya e
   }
   assert.deepEqual(rotas, [])
 })
+
+// El Makefile es la superficie que el dev escribe a mano, y un rename del CLI no lo alcanza solo. Pasó
+// con `teams/` → `flows/`: el cambio llegó al motor, al README y al CHANGELOG —que hasta le pide a cada
+// usuario renombrar sus propias automatizaciones— y dejó `make team-check` y `make team-show` llamando
+// a un comando que ya no existe, en toda instancia nueva o actualizada.
+//
+// Se compara contra el despacho del CLI y no contra una lista escrita acá: la lista envejecería con el
+// mismo silencio que el Makefile.
+test('ningún atajo del molde llama a un comando que el CLI no tiene', () => {
+  const root = path.resolve(__dirname, '..', '..')
+  const makefile = fs.readFileSync(path.join(root, 'template', 'Makefile'), 'utf8')
+  const help = spawnSync(process.execPath, [path.join(root, 'engine', 'cli', 'ops.js'), '--help'],
+    { encoding: 'utf8' })
+  const acepta = new Set((`${help.stdout}${help.stderr}`.match(/^ {2}ops ([a-z-]+)/gm) || [])
+    .map((line) => line.trim().split(' ')[1]))
+  assert.ok(acepta.size > 8, 'el uso del CLI tiene que listar sus comandos')
+
+  const rotos = []
+  let mirados = 0
+  for (const hit of makefile.matchAll(/ops\.js ([a-z-]+)/g)) {
+    mirados += 1
+    if (!acepta.has(hit[1])) rotos.push(`template/Makefile llama a "ops ${hit[1]}", que el CLI no tiene`)
+  }
+  assert.ok(mirados > 10, 'el molde envuelve varios comandos y hay que verlos todos')
+  assert.deepEqual([...new Set(rotos)], [], `atajos rotos:\n  ${[...new Set(rotos)].join('\n  ')}`)
+})
