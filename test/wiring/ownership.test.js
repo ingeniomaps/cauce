@@ -144,3 +144,20 @@ test('el bloque que install escribe en AGENTS.md no queda como edición de la em
   fs.appendFileSync(path.join(target, 'AGENTS.md'), '\n## Mapa real\n\nTres servicios.\n')
   assert.match(run(['upgrade', target, '--check']).stdout, /editado localmente: AGENTS\.md/)
 })
+
+// `list` es el comando que informa si un runner está instalado, y componía la ruta contra la instancia
+// en vez de resolverla como sus tres hermanos —`install`, `doctor` y `uninstall` usan `runnerPaths`—.
+// En `sidecar`, que es el modo por defecto, el wiring vive en el padre: los cuatro adaptadores salían
+// sin instalar aunque `doctor` los diera operativos dos líneas después, así que el glifo no distinguía
+// ningún caso del otro.
+test('automation list ve el runner instalado también en sidecar', () => {
+  const { workspace, target, runCli } = installedProject('cauce-list-sidecar-', 'claude')
+  assert.ok(fs.existsSync(path.join(workspace, '.claude', 'settings.json')), 'el wiring va al padre')
+  assert.equal(fs.existsSync(path.join(target, '.claude', 'settings.json')), false, 'y no a la instancia')
+
+  const listado = runCli(['automation', 'list', target])
+  assert.equal(listado.status, 0, listado.stderr)
+  assert.match(listado.stdout, /● claude \[instalado\]/)
+  // Y lo que no está sigue sin estar: el glifo tiene que distinguir, no decir que sí a todo.
+  assert.match(listado.stdout, /○ codex/)
+})

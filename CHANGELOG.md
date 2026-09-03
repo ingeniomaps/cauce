@@ -14,6 +14,28 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.59.0] - 2026-09-03
+
+### Corregido
+
+- **Los atajos `team-check` y `team-show` del Makefile pasan a `flow-check` y `flow-show`.** El rename
+  de `teams/` a `flows/` llegó al motor y al README en 0.45.0 —esa entrada hasta te pedía renombrar los
+  `ops team check|list|show` que tuvieras automatizados— y el Makefile que te entregamos se quedó
+  llamando al comando viejo, así que los dos atajos fallaban con el banner de uso en toda instancia.
+  La variable ahora es `FLOW=<slug>`, y se suma `flow-list`, que no tenía atajo. **Qué cambia para
+  vos**: si automatizaste alguno de los dos, renombralo — hoy no funcionan, así que nada que ande deja
+  de andar.
+
+- **`automation list` marca instalado lo que está instalado, también en `sidecar`.** Buscaba el wiring
+  dentro de la instancia, y en `sidecar` —el modo por defecto— vive en el repo del que abrís tu
+  herramienta. Los cuatro adaptadores salían `○` aunque `doctor` los diera operativos dos líneas
+  después, así que el glifo no distinguía ningún caso del otro.
+
+- **El error de `evaluate --bench` en una instancia dice qué hacer.** Recomendaba adoptar el cargo, y
+  adoptarlo no habilita nada: lo que decide es el modo de la instancia. Quien seguía el consejo
+  forkeaba, repetía el comando y recibía el mismo mensaje. Ahora nombra la salida real: `ops evaluate
+  <cargo>` sin la bandera.
+
 ## [0.58.0] - 2026-09-03
 
 ### Corregido

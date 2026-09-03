@@ -2,7 +2,7 @@
 
 .PHONY: help check tree context upgrade destroy automation-check
 .PHONY: integration-check integration-sync require-key integration-promote
-.PHONY: require-agent agent-learn agent-propose agent-evaluate require-team team-check team-show
+.PHONY: require-agent agent-learn agent-propose agent-evaluate require-flow flow-list flow-check flow-show
 .PHONY: install-claude install-codex install-gemini install-antigravity
 .PHONY: uninstall-claude uninstall-codex uninstall-gemini uninstall-antigravity
 .PHONY: doctor-claude doctor-codex doctor-gemini doctor-antigravity
@@ -59,14 +59,17 @@ agent-propose: require-agent ## Consolida una propuesta para AGENT=<slug>
 agent-evaluate: require-agent ## Evalúa controles y casos de AGENT=<slug>
 	@node tools/ops.js evaluate "$(AGENT)"
 
-require-team:
-	@test -n "$(TEAM)" || (echo "Falta TEAM=<slug>" >&2; exit 2)
+require-flow:
+	@test -n "$(FLOW)" || (echo "Falta FLOW=<slug>" >&2; exit 2)
 
-team-check: require-team ## Valida contrato, agentes y etapas de TEAM=<slug>
-	@node tools/ops.js team check "$(TEAM)"
+flow-list: ## Lista los recorridos disponibles
+	@node tools/ops.js flow list
 
-team-show: require-team ## Muestra el recorrido de TEAM=<slug>
-	@node tools/ops.js team show "$(TEAM)"
+flow-check: require-flow ## Valida contrato, agentes y etapas de FLOW=<slug>
+	@node tools/ops.js flow check "$(FLOW)"
+
+flow-show: require-flow ## Muestra el recorrido de FLOW=<slug>
+	@node tools/ops.js flow show "$(FLOW)"
 
 install-claude: ## Instala hooks y workflows para Claude
 	@node tools/ops.js automation install . claude
