@@ -39,12 +39,22 @@ test('upgrade --check dice contra qué compara y cómo traer lo nuevo', () => {
 // `--save-exact` el manifiesto queda en `0.55.0` y sin él en `^0.55.0`.
 test('todo lo que documenta el upgrade preserva la versión exacta', () => {
   const root = path.resolve(__dirname, '..', '..')
-  const suelto = /npm install --save-dev @ingeniomaps\/cauce@latest/
-  for (const file of ['README.md', path.join('template', 'Makefile'), path.join('engine', 'cli', 'instance.js')]) {
+  // La propiedad es que el flag esté, no en qué orden: `guard-engine` ya lo dictaba bien con las
+  // banderas al revés, y buscar la forma literal lo habría dado por roto —o, peor, por ausente—.
+  const invocation = /npm install[^\n'"`]*@ingeniomaps\/cauce@latest/g
+  const dictates = ['README.md', path.join('template', 'Makefile'),
+    path.join('engine', 'cli', 'instance.js'), path.join('engine', 'hooks', 'files.js')]
+  let found = 0
+  for (const file of dictates) {
     const body = fs.readFileSync(path.join(root, file), 'utf8')
-    assert.ok(body.includes('--save-exact --save-dev @ingeniomaps/cauce@latest'), `${file} lo dicta con el pin`)
-    assert.doesNotMatch(body, suelto, `${file} no deja la forma que rompe el pin`)
+    const hits = body.match(invocation) || []
+    assert.ok(hits.length, `${file} dicta el comando y hay que revisarlo acá`)
+    for (const hit of hits) {
+      assert.match(hit, /--save-exact/, `${file} dicta el comando sin el pin: ${hit}`)
+      found += 1
+    }
   }
+  assert.ok(found >= dictates.length, 'se revisó al menos una invocación por archivo')
 })
 
 test('upgrade reemplaza lo del sistema y no toca nada del proyecto', () => {
