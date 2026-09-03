@@ -1,5 +1,5 @@
 // Arranque de una instancia recién creada: convierte un repositorio que nadie le explicó al toolkit en
-// contexto escrito —`organization/`, el mapa real de `AGENTS.md`, las raíces de código— y en la primera
+// contexto escrito —`organization/`, el mapa real en `organization/workspace.md`, las raíces— y en la primera
 // épica.
 //
 // El orden importa y se pagó caro: la primera versión le pedía a un agente que «inventariara el
@@ -153,7 +153,8 @@ phase('Draft')
 const drafted = await agent(
   `${BASE}\n\n${EVIDENCE}\n\nEscribí de una sola pasada el contexto de esta instancia, reemplazando el ` +
   `molde en vez de comentarlo:\n` +
-  `1. ${ORG}/company.md y ${ORG}/product.md: lo que la persona contó y los nombres del repositorio ` +
+  `1. ${ORG}/company.md, ${ORG}/product.md y ${ORG}/domains.md: lo que la persona contó y los nombres ` +
+  `del repositorio ` +
   `permiten afirmar. Lo que nada sostiene queda "Por definir" y su pregunta va a openQuestions. Una ` +
   `dimensión que no llegaste a preguntar no se completa deduciéndola: queda "Por definir" con su ` +
   `pregunta en openQuestions, aunque puedas imaginar la respuesta. Y lo que sí deducís de otra ` +
@@ -161,9 +162,14 @@ const drafted = await agent(
   `lo que alguien dijo. No des ` +
   `por sentado que el proyecto vende algo: puede sostenerse con donaciones, presupuesto interno o ` +
   `trabajo voluntario, y una sección que no aplica se dice, no se completa con algo plausible.\n` +
-  `2. La sección "## Mapa real" de ${ROOT}/AGENTS.md: una entrada por servicio con su ruta, su runtime y ` +
-  `sus comandos **tal como los declara**, diciendo de qué archivo salió cada uno. No afirmes que ` +
-  `funcionan: nadie los corrió. Un servicio sin comandos declarados se escribe así, que es información.\n` +
+  `2. ${ORG}/workspace.md, que es donde vive lo que sólo sabe este proyecto y \`upgrade\` no toca, con ` +
+  `sus tres secciones. En "## Mapa real", una entrada por servicio con su ruta, su runtime y sus ` +
+  `comandos **tal como los declara**, diciendo de qué archivo salió cada uno. No afirmes que ` +
+  `funcionan: nadie los corrió. Un servicio sin comandos declarados se escribe así, que es ` +
+  `información. En "## Integraciones y ambientes", las credenciales que cada una necesita, porque ` +
+  `\`check\` cruza ese archivo para avisar de las que nadie carga. Y "## Excepciones de autonomía" ` +
+  `sólo si el proyecto declaró alguna: lo que nada sostiene queda "Por definir" con su pregunta en ` +
+  `openQuestions.\n` +
   `3. ${ROOT}/ops.config.json: dejá en workspaceRoots las raíces de código reales, que es lo que un guard ` +
   `usa para bloquear una escritura fuera de lugar. Una raíz de más lo apaga.\n` +
   `${services.length ? '' : 'Sin servicios, el mapa queda declarado como pendiente, diciendo qué lo ' +

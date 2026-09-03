@@ -240,13 +240,9 @@ test('la guía de entrega llega a una instancia y su project.md no', () => {
   assert.equal(O.SYSTEM_FILES.includes('planning/delivery/project.md'), false,
     'lo que el proyecto declara sobre su entrega es suyo')
 
-  // Y cada clase de archivo editado recibe su salida, no la de otra: antes, todo lo que no vivía bajo
-  // `system/` respondía con cómo desactivar un guard, incluido el protocolo.
-  const fuente = fs.readFileSync(path.resolve(__dirname, '..', '..', 'engine', 'cli', 'instance.js'), 'utf8')
-  for (const clase of ['const ruleFiles = changed.filter', 'const runtime = changed.filter',
-    'const docs = changed.filter']) {
-    assert.ok(fuente.includes(clase), `upgrade distingue ${clase}`)
-  }
+  // Que cada clase de archivo editado reciba su salida y no la de otra lo mide `adviceFor` ejercitando
+  // la clasificación, no leyendo el fuente: acá se afirmaba sobre las tres líneas que la escriben, y
+  // eso quedaba verde con la clasificación rota y rojo al mover la función de archivo.
 })
 
 // El `AGENTS.md` de una instancia describe qué se puede editar y qué no, y envejecido miente: decía que
@@ -397,43 +393,6 @@ test('upgrade no crea un package.json donde no había', () => {
   assert.equal(fs.existsSync(path.join(target, 'package.json')), false)
 })
 
-// Cada clase de archivo tiene una salida distinta, y decirle a alguien la ajena lo manda a buscar una
-// configuración que no existe: quien editó el protocolo recibía cómo desactivar un guard. Se prueba
-// sin tocar el disco porque la clasificación es lo que puede equivocarse, no el upgrade que la imprime.
-test('el consejo de upgrade corresponde a quién posee cada archivo', () => {
-  const { adviceFor } = require('../../engine/cli/instance')
-
-  const regla = adviceFor(['planning/rules/system/process.md'])
-  assert.match(regla, /escribí la tuya al/, 'una regla del sistema se sobrescribe al lado')
-  assert.doesNotMatch(regla, /configuración de tu runner/, 'y no recibe el consejo del runtime')
-
-  const guard = adviceFor(['automatization/hooks/guard-verify.sh'])
-  assert.match(guard, /configuración de tu runner/)
-  assert.doesNotMatch(guard, /override explícito/)
-
-  const doc = adviceFor(['planning/PROTOCOL.md'])
-  assert.match(doc, /delivery\/project\.md/, 'un doc del toolkit manda a donde sí es del proyecto')
-  assert.doesNotMatch(doc, /configuración de tu runner/)
-  assert.doesNotMatch(doc, /organization\/workspace\.md/, 'y no le habla de un archivo que no editó')
-
-  // A quien completó AGENTS.md porque el README se lo mandaba, el consejo genérico le miente: le dice
-  // que ese archivo no lleva una línea de la empresa. Lleva la suya, y hay que decirle a dónde va.
-  const agents = adviceFor(['AGENTS.md'])
-  assert.match(agents, /organization\/workspace\.md/)
-  assert.match(agents, /antes de repetir con --force/, 'y cuándo moverlo, que es antes de perderlo')
-
-  // Y las tres juntas llegan las tres: es el caso que dejaba a alguien sin su salida.
-  const todas = adviceFor([
-    'planning/rules/system/process.md',
-    'automatization/hooks/guard-verify.sh',
-    'planning/PROTOCOL.md',
-  ])
-  for (const parte of [/override explícito/, /configuración de tu runner/, /delivery\/project\.md/]) {
-    assert.match(todas, parte)
-  }
-  assert.equal(adviceFor([]), '')
-})
-
 // El README mandaba completar `AGENTS.md`, que es del toolkit y `upgrade` reemplaza entero. No era
 // pérdida de datos desde 0.55.0 —se detiene y lo nombra—, pero el trabajo de fusión era inevitable y
 // recurrente por diseño, sobre el único archivo garantizado a entrar en conflicto en cada versión. La
@@ -491,3 +450,4 @@ test('upgrade crea el archivo propio que esta versión agrega, y no repone lo de
   assert.equal(run(['upgrade', target]).status, 0)
   assert.match(fs.readFileSync(workspace, 'utf8'), /Tres servicios/)
 })
+

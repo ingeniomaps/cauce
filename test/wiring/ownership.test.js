@@ -161,3 +161,28 @@ test('automation list ve el runner instalado también en sidecar', () => {
   // Y lo que no está sigue sin estar: el glifo tiene que distinguir, no decir que sí a todo.
   assert.match(listado.stdout, /○ codex/)
 })
+
+// Que la pérdida del bloque se diga, y sólo cuando ocurre. El porqué vive donde se decide, en
+// `upgrade`; acá se mide que lo diga nombrando archivo y runner, junto al paso que lo repone.
+test('upgrade dice que se llevó el bloque del runner', () => {
+  const base = tempRoot('cauce-bloque-perdido-')
+  const target = path.join(base, 'acme')
+  fs.mkdirSync(target, { recursive: true })
+  assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'embedded', '--no-install']).status, 0)
+  linkEngine(target)
+  assert.equal(run(['automation', 'install', target, 'codex']).status, 0)
+  assert.match(fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8'), /cauce:codex inicio/)
+
+  const upgraded = run(['upgrade', target])
+  assert.equal(upgraded.status, 0, upgraded.stderr)
+  const dicho = upgraded.stdout.split('\n').filter((line) => /instrucciones de codex/.test(line))
+  assert.equal(dicho.length, 1, 'una vez, no una por archivo que el runner tenga registrado')
+  assert.match(dicho[0], /AGENTS\.md/, 'nombra el archivo que lo llevaba')
+  assert.match(upgraded.stdout, /reinstalá tu runner/, 'junto al paso que lo repone')
+  assert.doesNotMatch(fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8'), /cauce:codex inicio/)
+
+  // Una instancia sin runner instalado no recibe un aviso sobre un bloque que nunca tuvo.
+  const limpia = path.join(base, 'otra')
+  assert.equal(run(['init', limpia, '--name', 'Otra', '--mode', 'sidecar', '--no-install']).status, 0)
+  assert.doesNotMatch(run(['upgrade', limpia]).stdout, /bloque/)
+})

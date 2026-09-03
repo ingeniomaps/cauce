@@ -22,19 +22,23 @@ test('todo lo que documenta el upgrade preserva la versión exacta', () => {
   // La propiedad es que el flag esté, no en qué orden: `guard-engine` ya lo dictaba bien con las
   // banderas al revés, y buscar la forma literal lo habría dado por roto —o, peor, por ausente—.
   const invocation = /npm install[^\n'"`]*@ingeniomaps\/cauce@latest/g
-  const dictates = ['README.md', path.join('template', 'Makefile'),
-    path.join('engine', 'cli', 'instance.js'), path.join('engine', 'hooks', 'files.js')]
+  // Los archivos se buscan, no se listan: una lista se rompe al mover código de lugar —pasó— y lo que
+  // se cuida es que ninguno dicte el comando sin el flag, esté donde esté. El CHANGELOG queda afuera
+  // porque es un histórico: nombra a propósito la forma vieja al contar que cambió.
+  const tracked = spawnSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' })
+    .stdout.trim().split('\n')
+    .filter((file) => /\.(js|md|sh|json)$/.test(file) || file.endsWith('Makefile'))
+    .filter((file) => file !== 'CHANGELOG.md' && !file.startsWith('docs/issues/') && !file.startsWith('test/'))
   let found = 0
-  for (const file of dictates) {
-    const body = fs.readFileSync(path.join(root, file), 'utf8')
-    const hits = body.match(invocation) || []
-    assert.ok(hits.length, `${file} dicta el comando y hay que revisarlo acá`)
-    for (const hit of hits) {
-      assert.match(hit, /--save-exact/, `${file} dicta el comando sin el pin: ${hit}`)
+  const sueltos = []
+  for (const file of tracked) {
+    for (const hit of fs.readFileSync(path.join(root, file), 'utf8').match(invocation) || []) {
       found += 1
+      if (!/--save-exact/.test(hit)) sueltos.push(`${file}: ${hit}`)
     }
   }
-  assert.ok(found >= dictates.length, 'se revisó al menos una invocación por archivo')
+  assert.ok(found >= 4, 'el comando se dicta en varios lugares y hay que verlos todos')
+  assert.deepEqual(sueltos, [], `dictan el comando sin el pin:\n  ${sueltos.join('\n  ')}`)
 })
 
 // `upgrade` sólo reemplaza lo del sistema y el runtime, así que un archivo propio del molde no llega a
@@ -102,4 +106,37 @@ test('ningún atajo del molde llama a un comando que el CLI no tiene', () => {
   }
   assert.ok(mirados > 10, 'el molde envuelve varios comandos y hay que verlos todos')
   assert.deepEqual([...new Set(rotos)], [], `atajos rotos:\n  ${[...new Set(rotos)].join('\n  ')}`)
+})
+
+// Un workflow le dice a un agente dónde escribir, y esa instrucción envejece con el molde sin que nada
+// falle: `/onboard` siguió mandando el mapa real a `AGENTS.md` después de que 0.57.0 lo sacara de ahí,
+// así que el primer recorrido de una instancia nueva deshacía el arreglo. Es la misma clase que el
+// Makefile llamando a un comando retirado, en la superficie que ejecuta un agente en vez de un dev.
+//
+// Se comprueba el par archivo-sección, no el archivo solo: lo que engaña es la ruta que existe con la
+// sección que ya no.
+test('ningún workflow manda a escribir en una sección que el molde no tiene', () => {
+  const root = path.resolve(__dirname, '..', '..')
+  const dir = path.join(root, 'automatization', 'workflows')
+  const seccionesDe = (file) => {
+    try {
+      return new Set((fs.readFileSync(path.join(root, 'template', file), 'utf8')
+        .match(/^##\s+(.+)$/gm) || []).map((line) => line.replace(/^##\s+/, '').trim()))
+    } catch { return null }
+  }
+
+  const perdidas = []
+  let miradas = 0
+  for (const name of fs.readdirSync(dir).filter((file) => file.endsWith('.js'))) {
+    const text = fs.readFileSync(path.join(dir, name), 'utf8')
+    // `"## X" de ${ALGO}/ruta.md` y `${ALGO}/ruta.md … "## X"`: las dos formas que usan los recorridos.
+    for (const hit of text.matchAll(/"##\s+([^"]+)"\s+de\s+\$\{[A-Z]+\}\/([a-zA-Z0-9/_.-]+\.md)/g)) {
+      const [, seccion, ruta] = hit
+      const secciones = seccionesDe(ruta) || seccionesDe(path.join('organization', ruta))
+      if (!secciones) continue
+      miradas += 1
+      if (!secciones.has(seccion)) perdidas.push(`${name}: manda a "## ${seccion}" de ${ruta}, que no la tiene`)
+    }
+  }
+  assert.deepEqual(perdidas, [], `secciones que el molde no tiene:\n  ${perdidas.join('\n  ')}`)
 })

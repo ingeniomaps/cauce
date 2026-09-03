@@ -14,6 +14,43 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.60.0] - 2026-09-03
+
+### Corregido
+
+- **La épica que promueve una integración pasa `check`.** La descripción remota trae sus propios
+  encabezados —el fixture de Jira trae `## Criterios de aceptación`— y quedaban compitiendo con los que
+  escribe la promoción, así que el parser leía la sección importada, que no tiene ningún criterio, y el
+  planning quedaba en rojo apenas promovías. Ahora lo importado baja un nivel al entrar, el parser
+  prefiere la coincidencia exacta cuando existe —`## Historias (Tareas)` sigue resolviendo— y el
+  criterio sale sin el guión de la viñeta pegado.
+
+- **Curar un draft ya no deja la integración en rojo.** El README manda editar el draft y correr
+  `check`, y ese `check` fallaba: editar deja obsoleto un flag de `remote.json` que sólo se recalcula en
+  `sync`, `rebase` y `reconcile`. Dejó de exigirse porque no protegía nada: se leía en un único lugar,
+  la validación que lo comparaba consigo mismo, y lo que decide qué vuelve al remoto compara el
+  contenido. **Qué cambia para vos**: el recorrido documentado funciona sin pasos intermedios.
+
+- **`/onboard` escribe el mapa donde vive desde 0.57.0.** Seguía mandándolo a `AGENTS.md`, así que el
+  primer recorrido de una instancia nueva deshacía el arreglo que sacó de ahí lo que sólo sabe tu
+  proyecto. Ahora escribe las tres secciones de `organization/workspace.md` —incluidas integraciones y
+  excepciones de autonomía, que ningún recorrido llenaba— y suma `organization/domains.md`, que no
+  nombraba.
+
+- **`upgrade` te dice cuando se lleva las instrucciones de tu runner.** `AGENTS.md` es del toolkit y se
+  reemplaza entero, con el bloque que `automation install` dejó adentro. Lo recuperás reinstalando —el
+  propio `upgrade` te lo recuerda— pero ese recordatorio no tenía causa visible, y el bloque desaparecía
+  sin explicación. Ahora se nombra el archivo y el runner, una sola vez.
+
+- **`check` avisa cuando dos secciones de una épica compiten por el mismo rol.** El parser prefiere la
+  exacta, así que resuelve — en silencio, y quien escribió las dos no se entera de que una se ignora
+  entera. Un título con sufijo como `## Historias (Tareas)` no dispara nada: es el único de su rol.
+
+- **`/autobuild` ve las excepciones de autonomía de tu proyecto.** Armaba sus límites leyendo sólo
+  `AGENTS.md`, y desde 0.57.0 los tuyos están en `organization/workspace.md`. Lo que viajaba a cada
+  subagente como «Límites del proyecto» eran los genéricos del toolkit. Ahora ese archivo entra en la
+  lectura única de Triage; si no existe o su sección sigue como la trae el molde, no se inventa ninguno.
+
 ## [0.59.0] - 2026-09-03
 
 ### Corregido

@@ -104,6 +104,11 @@
     "branches": 49,
     "functions": 88
   },
+  "engine/cli/upgrade-report.js": {
+    "lines": 95,
+    "branches": 78,
+    "functions": 100
+  },
   "engine/cli/wiring.js": {
     "lines": 85,
     "branches": 45,

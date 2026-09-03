@@ -177,6 +177,31 @@ function ruleIds(file) {
 // veía es la consecuencia, porque la advertencia nombraba el par de archivos y no la diferencia. El
 // caso caro es una regla que el motor sigue exigiendo —R17 lo hace—: queda exigida y sin estar escrita
 // en ningún lado, y quien la vea fallar la va a buscar en `rules/`, donde ya no está.
+// Dos secciones de una épica que compiten por el mismo rol. El parser prefiere la exacta, así que
+// resuelve —y en silencio: quien escribió las dos no se entera de que una se ignora entera. La
+// promoción dejó de generarlas cuando lo importado empezó a bajar un nivel; a mano se siguen pudiendo
+// escribir, y ahí el aviso es lo único que lo dice.
+function competingSections(dir) {
+  const roadmap = path.join(dir, 'roadmap')
+  const avisos = []
+  let files = []
+  try { files = fs.readdirSync(roadmap).filter((file) => /^epic-\d{3}-/.test(file)) } catch { return [] }
+  for (const file of files.sort()) {
+    const text = P.read(path.join(roadmap, file))
+    const titles = [...text.matchAll(/^##\s+(.+)$/gm)].map((hit) => hit[1].trim())
+    for (const role of [/Criterios/i, /Historias/i]) {
+      const casan = titles.filter((title) => role.test(title))
+      if (casan.length < 2) continue
+      const exact = new RegExp(`^${role.source}$`, role.flags)
+      const gana = casan.find((title) => exact.test(title)) || casan[0]
+      const ignoradas = casan.filter((title) => title !== gana)
+      avisos.push(`roadmap/${file}: "## ${gana}" convive con "## ${ignoradas.join('", "## ')}"; `
+        + 'sólo se lee la primera y el resto se ignora entero')
+    }
+  }
+  return avisos
+}
+
 function retiredByOverride(dir, name) {
   const rules = path.join(dir, 'rules')
   const system = path.join(rules, 'system', name)
@@ -432,6 +457,7 @@ module.exports = {
   validateAdr,
   validateRules,
   retiredByOverride,
+  competingSections,
   validateBacklogStructure,
   validCommitTrace,
   validDecisionTrace,
