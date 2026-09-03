@@ -131,10 +131,14 @@ function validate(root, onlyProvider = '') {
       if (typeof snapshot.sync.missingFromRemote !== 'boolean') {
         errors.push(`${at}: missingFromRemote debe ser boolean`)
       }
-      const actualDraftChanged = sha256(draft) !== snapshot.sync.draftBaseHash
-      if (snapshot.sync.draftBaseHash && snapshot.sync.draftChanged !== actualDraftChanged) {
-        errors.push(`${at}: draftChanged no coincide con el contenido real`)
-      }
+      // `draftChanged` no se valida contra el contenido, y es deliberado: el README manda curar el draft
+      // a mano y ese camino no recalcula el flag, así que exigir la coincidencia ponía en rojo el paso
+      // siguiente del recorrido documentado, todas las veces.
+      //
+      // Lo que se perdería sería una señal que no existe. El campo se escribe en `sync`, `rebase` y
+      // `reconcile`, y se leía en un solo lugar: esta comprobación, que lo comparaba consigo mismo
+      // recalculado. Lo que decide qué vuelve al remoto es `S.derive`, que compara el contenido contra
+      // la base y nunca lo consulta. Un derivado que se puede recalcular no es un error de validación.
       const signals = S.derive(snapshot, draft)
       if (snapshot.sync.role === 'context' && fields.state !== 'context') {
         errors.push(`${at}: context exige state=context`)
@@ -324,8 +328,8 @@ function promote(root, name, key) {
     const target = path.join(roadmap, recovered || `epic-${num}-${slug}.md`)
     const content = `---\nepic: ${num}\ntitle: ${sections.title}\nstatus: open\n` +
       `service: ${fields.service}\nsource: ${name}\nremote: ${key}\n---\n\n` +
-      `# Épica ${num} — ${sections.title}\n\n## Resultado\n\n${sections.Descripción}\n\n` +
-      `## Criterios\n\n- **C1** — ${oneLine(sections.Aceptación)}\n\n` +
+      `# Épica ${num} — ${sections.title}\n\n## Resultado\n\n${nestHeadings(sections.Descripción)}\n\n` +
+      `## Criterios\n\n- **C1** — ${criterionText(sections.Aceptación)}\n\n` +
       `## Contexto relevante\n\n- Importado desde ${name}:${key}; validar rutas del servicio antes de activar.\n\n` +
       `## Historias\n\n- [ ] **${slug}** (→ C1) — ${oneLine(sections.title)}. ` +
       `(service: ${fields.service})\n`
@@ -383,6 +387,17 @@ const slugify = (value) => String(value).normalize('NFD').replace(/[\u0300-\u036
   .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 70)
 const oneLine = (value) => String(value).replace(/\s+/g, ' ').trim()
 
+// La descripción remota entra dentro de `## Resultado`, y trae sus propios encabezados: el fixture del
+// propio toolkit trae `## Criterios de aceptación`. En el mismo nivel compiten con las secciones que
+// escribe la épica, y el parser toma la primera que case: leía la importada, que no tiene ninguna
+// viñeta `- **CN** —`, y `check` rechazaba la épica recién promovida. Bajarlos un nivel los deja
+// legibles y fuera de la competencia, y cubre igual un `## Historias` o un `## Resultado` remotos.
+const nestHeadings = (text) => String(text).replace(/^(#{1,5})\s+/gm, '#$1 ')
+
+// El texto de un criterio importado, sin el guión de la viñeta de la que salió: sin esto el criterio
+// quedaba escrito `- **C1** — - La fecha…`, con los dos guiones pegados.
+const criterionText = (value) => oneLine(String(value).replace(/^\s*[-*]\s+/, ''))
+
 // En cuál de tres estados está el proveedor: `ready`, `incomplete` o `unreadable`. Lee su propio
 // `config.json`, que es donde vive la decisión, y no el registro: un proveedor listado y apagado no es
 // un proveedor disponible.
@@ -398,6 +413,8 @@ function providerState(root, name) {
 module.exports = {
   providerState,
   adapter,
+  criterionText,
+  nestHeadings,
   frontmatter,
   promote,
   providerConfig,

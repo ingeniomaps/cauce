@@ -46,9 +46,17 @@ function frontmatter(text) {
   return (key) => values[key] || ''
 }
 
+// La coincidencia exacta gana sobre la parcial, y sólo si no hay exacta se acepta la parcial. Con
+// `find` a secas, `## Criterios de aceptación` le ganaba a `## Criterios` por estar antes: la épica que
+// promovía una integración traía la sección importada primero y el parser leía esa, que no tiene
+// ninguna viñeta `- **CN** —`. Anclar del todo habría roto lo contrario —`## Historias (Tareas)` es un
+// título real de una migración—, así que la parcial sigue valiendo cuando es la única.
 function section(text, heading) {
   const parts = text.split(/^##\s+/m)
-  return parts.find((part) => heading.test(part.split('\n')[0])) || ''
+  const titles = parts.map((part) => part.split('\n')[0].trim())
+  const exact = parts.findIndex((part, i) => new RegExp(`^${heading.source}$`, heading.flags).test(titles[i]))
+  if (exact >= 0) return parts[exact]
+  return parts.find((part, i) => heading.test(titles[i])) || ''
 }
 
 function withoutComments(text) {

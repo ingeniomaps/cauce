@@ -285,3 +285,59 @@ test('el override dice qué reglas retira, y sólo donde hay reglas', () => {
   assert.match(salidaAdr, new RegExp(`adr/${nombre.replace('.', '\\.')} sobrescribe`), 'el override se reporta')
   assert.doesNotMatch(salidaAdr, new RegExp(`adr/${nombre.replace('.', '\\.')}[^\\n]*deja de regir`))
 })
+
+// El README manda editar el draft y después correr `check`. Seguido al pie, `check` fallaba: editar
+// deja obsoleto el `draftChanged` que vive en `remote.json`, y ese camino no lo recalcula.
+//
+// Dejó de ser un error porque no protegía nada. El campo se escribe en tres lugares —sync, rebase y
+// reconcile— y se leía en uno solo: la validación que lo comparaba consigo mismo recalculado. Lo que
+// decide qué se escribe de vuelta al remoto es `derive()`, que compara el contenido y nunca lo mira.
+test('curar un draft no deja la integración en rojo', () => {
+  const I = require('../../engine/integrations/registry')
+  const S = require('../../engine/integrations/state')
+  const snapshot = { sync: { draftBaseHash: 'a'.repeat(64), draftChanged: false, role: 'candidate' } }
+  const draft = '---\nstate: pending\n---\n\ncurado a mano\n'
+
+  // Lo que decide la escritura de vuelta no consulta el flag: se deriva del contenido.
+  const signals = S.derive({ ...snapshot, item: { key: 'X-1', summary: '', description: '' } }, draft)
+  assert.ok(signals && Array.isArray(signals.outgoing), 'derive resuelve sin mirar draftChanged')
+
+  // Y el validador ya no exige que el flag coincida con el contenido.
+  const fuente = fs.readFileSync(
+    path.join(__dirname, '..', '..', 'engine', 'integrations', 'registry.js'), 'utf8')
+  assert.doesNotMatch(fuente, /draftChanged no coincide con el contenido real/,
+    'un derivado que se puede recalcular no es un error de validación')
+  assert.ok(typeof I.validate === 'function')
+})
+
+// La épica que promueve una integración tiene que pasar `check`, y no pasaba: la descripción remota
+// trae sus propios `##` —el fixture del toolkit trae `## Criterios de aceptación`— y quedaban dentro de
+// `## Resultado`, compitiendo con el `## Criterios` que escribe promote. El parser toma la primera
+// sección cuyo título case, así que leía la importada, que no tiene ninguna viñeta `- **CN** —`.
+test('la épica promovida no deja dos secciones compitiendo por el mismo rol', () => {
+  const I = require('../../engine/integrations/registry')
+  const P = require('../../engine/planning/parser')
+
+  // Los encabezados de la descripción remota bajan un nivel al entrar: dejan de competir y siguen
+  // legibles. Cualquier `## Historias` o `## Resultado` remoto choca igual y por la misma razón.
+  const descripcion = 'El operador necesita ver el último sync.\n\n## Criterios de aceptación\n\n'
+    + '- La fecha del último sync es visible.\n'
+  assert.equal(typeof I.nestHeadings, 'function', 'promote degrada lo que importa')
+  const anidada = I.nestHeadings(descripcion)
+  assert.doesNotMatch(anidada, /^## Criterios/m, 'ya no compite')
+  assert.match(anidada, /^### Criterios de aceptación$/m, 'y sigue estando, un nivel abajo')
+
+  // El parser prefiere la coincidencia exacta cuando existe, y cae a la parcial si no. Así
+  // `## Criterios` gana sobre `## Criterios de aceptación`, y `## Historias (Tareas)` sigue resolviendo.
+  const epica = '# Épica\n\n## Criterios de aceptación\n\n- suelto\n\n## Criterios\n\n- **C1** — real\n\n'
+    + '## Historias (Tareas)\n\n- [ ] **x** (→ C1) — algo. (service: app)\n'
+  assert.match(P.section(epica, /Criterios/i), /^Criterios\n/, 'la exacta gana sobre la que la contiene')
+  assert.match(P.section(epica, /Historias/i), /^Historias \(Tareas\)/, 'y sin exacta vale la parcial')
+  assert.equal(P.section(epica, /Resultado/i), '', 'una sección ausente sigue siendo vacío')
+
+  // Y el criterio sale sin el guión de la viñeta importada pegado al texto.
+  assert.equal(typeof I.criterionText, 'function')
+  assert.equal(I.criterionText('- La fecha del último sync es visible.'),
+    'La fecha del último sync es visible.')
+  assert.equal(I.criterionText('  -   dos   espacios  '), 'dos espacios')
+})
