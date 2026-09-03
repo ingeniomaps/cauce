@@ -21,8 +21,14 @@ const DEFAULT_TARGET = 'ops'
 // de otra— y el proyecto quedaba llamándose «acme-ops». La carpeta que ya nombra al toolkit es la
 // instancia; no hay una segunda adentro.
 function implicitTarget(cwd) {
-  const base = path.basename(cwd)
-  return base === DEFAULT_TARGET || base.endsWith('-ops') ? '.' : DEFAULT_TARGET
+  return isInstanceDir(cwd) ? '.' : DEFAULT_TARGET
+}
+
+// La misma heurística, aplicada al destino ya resuelto: una carpeta que ya nombra al toolkit **es** la
+// instancia, y el código de la empresa vive al lado.
+function isInstanceDir(dir) {
+  const base = path.basename(dir)
+  return base === DEFAULT_TARGET || base.endsWith('-ops')
 }
 
 // El nombre sale de la carpeta del proyecto, no de la que aloja la instancia: `ops/` y `acme-ops/`
@@ -73,7 +79,12 @@ async function init(target, cli) {
   // install` ya asume —el wiring del runner va al padre, donde se abre la herramienta—, así que lo
   // único que faltaba era que fuera lo que pasa cuando no se elige nada.
   const root = path.resolve(target || implicitTarget(process.cwd()))
-  const mode = cli.value('--mode', target ? 'embedded' : 'sidecar')
+  // El modo lo decide a dónde apunta el destino, no si alguien escribió el argumento. `init` e `init .`
+  // resuelven el mismo directorio y elegían modos opuestos: escribir el punto —la forma más natural de
+  // decir «acá»— daba embedded, y ahí la raíz del workspace pasa a ser la carpeta ops misma, así que
+  // `guard-workspace-boundary` deja de reconocer los repos hermanos y el wiring del runner se escribe
+  // adentro en vez de al lado, donde el dev abre su herramienta.
+  const mode = cli.value('--mode', isInstanceDir(root) ? 'sidecar' : 'embedded')
   if (!['embedded', 'sidecar'].includes(mode)) fail('--mode debe ser embedded o sidecar.', 2)
   const name = cli.value('--name', defaultName(root))
   const force = cli.has('--force')

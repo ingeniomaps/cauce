@@ -17,7 +17,7 @@ const {
   legacyGuardWiring, staleHooks, listHooks,
 } = require('./hooks')
 const {
-  blockStart, mergeConfig, withoutDeliveredHooks, reportRemoved, includesConfig, hasHooks,
+  blockStart, mergeConfig, withoutDeliveredHooks, deliveredHookCommands, reportRemoved, includesConfig, hasHooks,
   unmergeConfig, isSharedFile, withoutBlock, mergeInstruction, blockUpToDate,
 } = require('./config')
 
@@ -226,6 +226,11 @@ function deliveryKey(name, target) {
   return `${name}/${target.split(path.sep).join('/')}`
 }
 
+// La sección `runners` del manifiesto anota archivo → digest; ésta es la única entrada que guarda una
+// lista, porque lo que registra no es un archivo sino las entradas que dejamos dentro del archivo de
+// configuración del usuario. No colisiona con ningún `target`: ninguno se llama así.
+const HOOKS_KEY = 'config.hooks'
+
 // En qué estado quedó un archivo que este adaptador entregó alguna vez.
 //
 //   nuevo          no existe todavía
@@ -277,6 +282,7 @@ function uninstall(root, name, output = console) {
 
   const items = [...(runner.instructions || []), ...(runner.artifacts || [])]
   const deliveredPaths = { ...recorded }
+  delete deliveredPaths[deliveryKey(name, HOOKS_KEY)]
   for (const item of items) {
     const resolved = { item, ...resolveItem(paths, root, name, item) }
     const key = deliveryKey(name, item.target)
@@ -378,7 +384,12 @@ function install(root, name, output = console, options = {}) {
   // guard que el runner intenta ejecutar y falla. Se quitan las nuestras y las vuelve a poner el merge.
   const live = new Set((JSON.stringify(incoming).match(/"command":"[^"]*"/g) || [])
     .map((entry) => JSON.parse(`{${entry}}`).command))
-  const clean = runner.config.owned ? { config: {}, dropped: [] } : withoutDeliveredHooks(current, live)
+  // Lo que este adaptador anotó haber entregado la última vez. Es lo único que reconoce una entrada
+  // nuestra cuyo guard el motor ya no trae: por nombre no se distingue de la que agregó el proyecto.
+  const previous = new Set(recorded[deliveryKey(name, HOOKS_KEY)] || [])
+  const clean = runner.config.owned
+    ? { config: {}, dropped: [] }
+    : withoutDeliveredHooks(current, live, previous)
   reportRemoved(name, clean.dropped, live, output)
   F.atomicWriteJson(paths.configTarget, mergeConfig(clean.config, incoming))
   // Dónde aterrizó, no sólo qué archivo: en sidecar el destino no es el repo desde el que se corrió
@@ -388,6 +399,12 @@ function install(root, name, output = console, options = {}) {
   }
   output.log(`✓ ${name}: configuración instalada en ${runner.config.target}`)
   const deliveredPaths = { ...recorded }
+  // Qué wiring de guards dejamos puesto, para poder retirarlo el día que el motor deje de traerlo. Se
+  // anota lo que instalamos y no lo que quedó en el archivo: ahí conviven las entradas del proyecto, y
+  // registrarlas nos autorizaría a borrar lo ajeno en la instalación siguiente.
+  const ourHooks = deliveredHookCommands(live)
+  if (ourHooks.length) deliveredPaths[deliveryKey(name, HOOKS_KEY)] = ourHooks
+  else delete deliveredPaths[deliveryKey(name, HOOKS_KEY)]
   for (const resolved of resolvedItems) {
     const status = state.get(resolved)
     const ownFile = runner.instructions.includes(resolved.item)

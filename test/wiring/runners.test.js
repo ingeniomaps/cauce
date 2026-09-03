@@ -6,7 +6,7 @@
 // Dos vecinos se le parecen y no lo son: `hooks.test.js` prueba qué decide un guard, no dónde aterriza
 // su wiring; `workflows.test.js` prueba el recorrido, no el formato en que cada runner lo ofrece.
 
-const { MIN_ROLES, tempRoot, linkEngine } = require('../support/environment')
+const { MIN_ROLES, tempRoot, linkEngine, installedProject } = require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -16,25 +16,6 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 
 const root = path.resolve(__dirname, '..', '..', 'automatization', 'runners')
-
-// Una instancia sidecar con el motor enganchado y el adaptador puesto: es el montaje de casi todo lo
-// que se prueba acá, y estaba copiado en cuatro tests. Devuelve también `runCli`, porque el entorno
-// limpio es parte del montaje: heredar `OPS_ROOT` o `CLAUDE_PROJECT_DIR` hace que el CLI mida este
-// repositorio en vez de la instancia recién creada.
-function installedProject(name, runner) {
-  const base = tempRoot(name)
-  const workspace = path.join(base, 'repo')
-  const target = path.join(workspace, 'ops')
-  fs.mkdirSync(workspace)
-  const cli = path.resolve(__dirname, '..', '..', 'engine', 'cli', 'ops.js')
-  const env = { ...process.env }
-  for (const key of ['NODE_TEST_CONTEXT', 'OPS_ROOT', 'CLAUDE_PROJECT_DIR']) delete env[key]
-  const runCli = (args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', env })
-  assert.equal(runCli(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
-  linkEngine(target)
-  if (runner) assert.equal(runCli(['automation', 'install', target, runner]).status, 0)
-  return { base, workspace, target, runCli, env }
-}
 
 test('cada runner declara un manifest instalable y fuentes existentes', () => {
   for (const name of ['claude', 'codex', 'gemini', 'antigravity']) {

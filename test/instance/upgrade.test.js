@@ -300,3 +300,54 @@ test('upgrade mueve los recorridos propios de teams/ a flows/', () => {
   assert.match(fs.readFileSync(path.join(target, 'flows', 'README.md'), 'utf8'), /^# Recorridos/)
   assert.match(salida.stdout, /teams\/ → flows\//, 'y la migración se dice, no ocurre en silencio')
 })
+
+// Adoptar Cauce en un repositorio que ya tiene contenido es `init --force`: los archivos propios que
+// chocan con una ruta del toolkit se conservan, y eso funciona. Lo que no funcionaba era el registro:
+// el manifiesto se grababa hasheando el disco, así que un archivo conservado quedaba anotado como
+// entregado por Cauce con el contenido de la empresa. `upgrade` comparaba, no veía ninguna diferencia
+// y lo reemplazaba, informando que no había tocado nada propio. La protección existía y era ciega
+// justo en el caso que `--force` está para cubrir.
+test('upgrade no pisa lo que init --force conservó', () => {
+  const base = tempRoot('cauce-adopcion-')
+  const target = path.join(base, 'acme-ops')
+  fs.mkdirSync(path.join(target, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(target, 'AGENTS.md'), '# Reglas de Acme\n')
+  fs.writeFileSync(path.join(target, 'planning', 'PROTOCOL.md'), '# Protocolo propio de Acme\n')
+
+  const init = run(['init', target, '--name', 'Acme', '--mode', 'sidecar', '--force', '--no-install'])
+  assert.equal(init.status, 0, init.stderr)
+  assert.match(fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8'), /Reglas de Acme/, 'init conserva')
+
+  // El paso siguiente que documenta el README, sobre lo que init acaba de conservar.
+  const upgraded = run(['upgrade', target])
+  assert.notEqual(upgraded.status, 0, 'upgrade se detiene en vez de reemplazar lo conservado')
+  assert.match(upgraded.stderr, /AGENTS\.md/)
+  assert.match(upgraded.stderr, /planning\/PROTOCOL\.md/)
+  assert.equal(fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8'), '# Reglas de Acme\n')
+  assert.equal(fs.readFileSync(path.join(target, 'planning', 'PROTOCOL.md'), 'utf8'),
+    '# Protocolo propio de Acme\n')
+
+  // Y con --force se aplica, que es la salida: lo descartado queda en la salida del comando y la
+  // frase que afirma que no se tocó nada propio no aparece cuando sí se tocó.
+  const forced = run(['upgrade', target, '--force'])
+  assert.equal(forced.status, 0, forced.stderr)
+  assert.match(forced.stdout, /descartado tu cambio en AGENTS\.md/)
+  assert.doesNotMatch(forced.stdout, /todo lo propio quedaron intactos/)
+  assert.match(fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8'), /Reglas de construcción/)
+})
+
+// `--check` existe para mirar antes de aplicar, y salía por un camino corto cuando la versión
+// coincidía: informaba «al día» sin llegar a listar lo editado localmente. Es el estado normal entre
+// actualizaciones —`init` fija la versión exacta—, así que el único modo que no toca nada era también
+// el único que no podía avisar del conflicto: había que correr el que sí toca para enterarse.
+test('upgrade --check reporta lo editado localmente aunque la versión coincida', () => {
+  const base = tempRoot('cauce-check-editado-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  fs.appendFileSync(path.join(target, 'planning', 'PROTOCOL.md'), '\nmi edición local\n')
+
+  const check = run(['upgrade', target, '--check'])
+  assert.match(check.stdout, /al día con el motor instalado/, 'sigue diciendo contra qué compara')
+  assert.match(check.stdout, /editado localmente: planning\/PROTOCOL\.md/)
+  assert.equal(check.status, 1, 'hay algo que resolver antes de la próxima actualización')
+})

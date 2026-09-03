@@ -1,5 +1,6 @@
 'use strict'
 
+const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
@@ -119,6 +120,29 @@ function opsConfig() {
 // ninguna de ellas mide eso. Estaba copiado como `40` en diez lugares, sin nada que dijera por qué.
 const MIN_ROLES = 40
 
+// Una instancia sidecar con el motor enganchado y el adaptador puesto: es el montaje de casi todo lo
+// que prueba el wiring de un runner. Devuelve también `runCli`, porque el entorno limpio es parte del
+// montaje: heredar `OPS_ROOT` o `CLAUDE_PROJECT_DIR` hace que el CLI mida este repositorio en vez de
+// la instancia recién creada.
+//
+// Vive acá y no en `runners.test.js` desde que lo comparten dos suites: quién puede sumar wiring propio
+// se prueba aparte de qué instala cada adaptador, y copiar el montaje lo dejaría divergir sin que nada
+// fallara.
+function installedProject(name, runner) {
+  const base = tempRoot(name)
+  const workspace = path.join(base, 'repo')
+  const target = path.join(workspace, 'ops')
+  fs.mkdirSync(workspace)
+  const env = { ...process.env }
+  for (const key of ['NODE_TEST_CONTEXT', 'OPS_ROOT', 'CLAUDE_PROJECT_DIR']) delete env[key]
+  const runCli = (args) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8', env })
+  assert.equal(runCli(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
+  linkEngine(target)
+  if (runner) assert.equal(runCli(['automation', 'install', target, runner]).status, 0)
+  return { base, workspace, target, runCli, env }
+}
+
 module.exports = {
-  MIN_ROLES, opsConfig, filesBelow, tempRoot, CLI, run, linkEngine, workflow, workflowStep, workflowCommand,
+  MIN_ROLES, opsConfig, filesBelow, tempRoot, CLI, run, linkEngine, installedProject,
+  workflow, workflowStep, workflowCommand,
 }

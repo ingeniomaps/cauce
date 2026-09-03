@@ -8,7 +8,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const F = require('../core/files')
-const { supersededGuards } = require('./hooks')
+const { supersededGuards, expectedHooks } = require('./hooks')
 
 function mergeConfig(current, incoming) {
   if (Array.isArray(incoming)) {
@@ -32,19 +32,40 @@ function mergeConfig(current, incoming) {
   return incoming
 }
 
-// Una entrada de hook que puso Cauce se reconoce por el guard al que apunta: `automatization/hooks/`
-// es nuestro y ninguna empresa escribe ahí. Se saca del archivo del usuario antes de fusionar para que
-// el merge deje exactamente las de esta versión, ni una más.
-const DELIVERED = /automatization\/hooks\/guard-[a-z-]+\.sh/
+// Una entrada de hook que puso Cauce se reconoce por el guard al que apunta, y lo nuestro es lo que
+// efectivamente entregamos, no todo lo que vive en nuestra carpeta. Reconocer por directorio
+// desregistraba el guard propio del proyecto en cada reinstalación: `template/AGENTS.md` invita a
+// ponerlo justo ahí y promete que sobrevive a cada actualización, el archivo quedaba en disco, y lo
+// único que se veía era una línea diciendo que se había quitado una entrada obsoleta.
+// Se saca del archivo del usuario antes de fusionar para que el merge deje exactamente las de esta
+// versión, ni una más.
+const HOOK_PATH = /automatization\/hooks\/([a-z0-9-]+\.sh)(?:\s|$)/
 
-function withoutDeliveredHooks(config, live) {
+// Dos fuentes, y la segunda es la que cierra el borde. `expectedHooks()` dice qué entrega el motor de
+// hoy y alcanza para una instancia que nunca instaló; `delivered` es lo que esta instancia registró
+// haber recibido la última vez, y es lo único que reconoce un guard que entregamos en una versión y
+// retiramos en la siguiente: su nombre ya no está en la lista de hoy, así que sin el registro quedaría
+// vivo en la configuración llamando a un guard que Cauce ya no mantiene. Un guard propio del proyecto
+// no está en ninguna de las dos, que es exactamente por lo que sobrevive.
+function isDelivered(command, delivered) {
+  const hit = String(command).match(HOOK_PATH)
+  if (!hit) return false
+  return expectedHooks().includes(hit[1]) || delivered.has(String(command))
+}
+
+// Lo que de un conjunto de comandos es wiring de guards nuestro, para anotarlo como entregado.
+function deliveredHookCommands(commands) {
+  return [...commands].filter((command) => HOOK_PATH.test(String(command)))
+}
+
+function withoutDeliveredHooks(config, live, delivered = new Set()) {
   const dropped = []
   const walk = (node) => {
     if (Array.isArray(node)) {
       return node
         .filter((item) => {
           const command = item && typeof item === 'object' ? String(item.command || '') : ''
-          if (!DELIVERED.test(command)) return true
+          if (!isDelivered(command, delivered)) return true
           // Sólo se anuncia lo que ya no vuelve: una entrada que el merge repone quedó igual, y decir
           // que se quitó y se puso la misma línea es ruido que esconde el caso que sí importa.
           if (!live.has(command)) dropped.push(command)
@@ -83,9 +104,20 @@ function reportRemoved(name, dropped, live, output) {
 
 function includesConfig(actual, expected) {
   if (Array.isArray(expected)) {
-    return Array.isArray(actual) && expected.every((item) => {
-      return actual.some((value) => JSON.stringify(value) === JSON.stringify(item))
-    })
+    return Array.isArray(actual) && expected.every((item) => actual.some((value) => {
+      // Un grupo de hooks se compara por su contenido, no por su forma serializada. La comprobación es
+      // «contiene», que es lo correcto, pero con el ítem entero como unidad un grupo `{matcher, hooks}`
+      // con un hook de más dejaba de ser el mismo objeto y contaba como ausente: `doctor` llamaba
+      // divergente a una configuración que tenía todo lo esperado, y el anidamiento —donde vive la
+      // diferencia real— no se miraba nunca. La instalación promete conservar lo que el proyecto ya
+      // tenía, así que sumar un hook propio a un grupo nuestro es exactamente lo que permite.
+      if (item && typeof item === 'object' && Array.isArray(item.hooks)) {
+        return value && typeof value === 'object'
+          && value.matcher === item.matcher
+          && includesConfig(value.hooks, item.hooks)
+      }
+      return JSON.stringify(value) === JSON.stringify(item)
+    }))
   }
   if (expected && typeof expected === 'object') {
     return actual && typeof actual === 'object' && Object.entries(expected).every(([key, value]) => {
@@ -170,6 +202,6 @@ function blockUpToDate(file, name, content) {
 
 module.exports = {
   blockStart,
-  mergeConfig, withoutDeliveredHooks, reportRemoved, includesConfig, hasHooks,
+  mergeConfig, withoutDeliveredHooks, deliveredHookCommands, reportRemoved, includesConfig, hasHooks,
   unmergeConfig, isSharedFile, withoutBlock, mergeInstruction, blockUpToDate,
 }
