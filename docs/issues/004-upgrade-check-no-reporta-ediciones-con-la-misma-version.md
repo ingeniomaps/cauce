@@ -1,15 +1,15 @@
 ---
 caso: 004
 titulo: upgrade --check no reporta ediciones locales cuando la versión coincide
-estado: abierto
+estado: resuelto
 prioridad: media
 version-detectada: 0.54.0
-resuelto-en:
+resuelto-en: 0.55.0
 ---
 
 # 004 — `upgrade --check` es ciego justo cuando más se lo consulta
 
-**🔴 abierto** · detectado en 0.54.0 · prioridad **media** — el modo seguro no puede avisar
+**🟢 resuelto en 0.55.0** · detectado en 0.54.0 · prioridad **media** — el modo seguro no puede avisar
 
 ## Resumen
 

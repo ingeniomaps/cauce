@@ -1,15 +1,15 @@
 ---
 caso: 001
 titulo: upgrade pisa en silencio lo que init --force conservó
-estado: abierto
+estado: resuelto
 prioridad: alta
 version-detectada: 0.54.0
-resuelto-en:
+resuelto-en: 0.55.0
 ---
 
 # 001 — `upgrade` pisa en silencio lo que `init --force` conservó
 
-**🔴 abierto** · detectado en 0.54.0 · prioridad **alta** — pérdida de contenido sin señal
+**🟢 resuelto en 0.55.0** · detectado en 0.54.0 · prioridad **alta** — pérdida de contenido sin señal
 
 ## Resumen
 

@@ -1,15 +1,15 @@
 ---
 caso: 005
 titulo: cauce init y cauce init . producen modos distintos en el mismo directorio
-estado: abierto
+estado: resuelto
 prioridad: media
 version-detectada: 0.54.0
-resuelto-en:
+resuelto-en: 0.55.0
 ---
 
 # 005 — Escribir el punto cambia el modo en silencio
 
-**🔴 abierto** · detectado en 0.54.0 · prioridad **media** — ergonomía con consecuencia estructural
+**🟢 resuelto en 0.55.0** · detectado en 0.54.0 · prioridad **media** — ergonomía con consecuencia estructural
 
 ## Resumen
 

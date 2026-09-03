@@ -1,15 +1,15 @@
 ---
 caso: 002
 titulo: automation install borra el registro de un guard propio y lo llama obsoleto
-estado: abierto
+estado: resuelto
 prioridad: alta
 version-detectada: 0.54.0
-resuelto-en:
+resuelto-en: 0.55.0
 ---
 
 # 002 — `automation install` desregistra los guards propios
 
-**🔴 abierto** · detectado en 0.54.0 · prioridad **alta** — apaga una protección sin que se note
+**🟢 resuelto en 0.55.0** · detectado en 0.54.0 · prioridad **alta** — apaga una protección sin que se note
 
 ## Resumen
 
