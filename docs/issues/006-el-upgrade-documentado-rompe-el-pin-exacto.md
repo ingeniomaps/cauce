@@ -96,22 +96,26 @@ notó al comparar el `package.json` antes y después. Se corrigió a mano volvie
 
 ## Resolución
 
-**Resuelto en 0.56.0**, por los dos caminos que proponía el caso, que no se pisan.
+**Resuelto en 0.56.0**, por los dos caminos que proponía este caso en vez de por uno.
 
-Los tres lugares que dictan el comando —`README.md`, el `upgrade` del `Makefile` del molde y la salida
-de `upgrade --check`— llevan `--save-exact`, y una prueba los recorre para que no vuelva a divergir
-uno solo. Y `upgrade` repone el pin al terminar, que es lo que vuelve la propiedad independiente de
-cómo se haya instalado: una instancia que ya quedó con caret se repara sola en la próxima
-actualización, sin que nadie tenga que enterarse.
+El comando lleva `--save-exact` en los tres lugares que lo dictan —`README.md:269`, el `make upgrade`
+del molde y la salida de `upgrade --check`—. Hay un cuarto, el mensaje de `guard-engine`
+(`engine/hooks/files.js:154`), que **ya lo llevaba** con las banderas en el otro orden
+—`--save-dev --save-exact`— y por eso el barrido inicial no lo encontró. No hizo falta cambiarlo; sí
+hizo falta que la prueba lo mire, porque afirmaba cubrir todos los lugares y recorría tres.
 
-El párrafo del README que daba la garantía ahora dice también por qué el flag está ahí, así que la
-razón y el comando dejan de contradecirse.
+Y `upgrade` repone la versión exacta al terminar, así que una instancia que ya quedó con un rango se
+repara sola.
 
-Verificado el 2026-09-03: con `^0.55.0` a mano en `package.json`, `upgrade` lo devuelve a `0.55.0`
-diciéndolo en su salida —`package.json: ^0.55.0 → 0.55.0`—, deja intactos los `scripts` del repo
-anfitrión, y no crea un `package.json` en una instancia que no lo tenía. `--save-exact` comprobado
-contra npm 11.16.0, y el alcance del caret contra semver 7.8.1: `^0.55.0` satisface `0.55.1` y no
-`0.56.0`.
+Verificado el 2026-09-03:
+
+- Una instancia de 0.55.0 llevada a `^0.56.0` con el comando viejo queda en `0.56.0` exacto tras el
+  `upgrade`, y lo anuncia: `package.json: ^0.56.0 → 0.56.0, la versión exacta que acabás de aplicar`.
+- El resto del manifiesto sobrevive: `name`, `scripts` y `dependencies` propios quedan como estaban.
+- Una instancia sin `package.json` no recibe uno.
+- Los cinco casos anteriores siguen arreglados: barrido de regresión completo contra 0.56.0.
+
+En `venotal-ops`, `package.json`, el lockfile y `ops.config.json` dicen los tres `0.56.0`.
 
 ## Relacionados
 
