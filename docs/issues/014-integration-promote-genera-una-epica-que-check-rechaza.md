@@ -142,8 +142,16 @@ Verificado el 2026-09-03 sobre el recorrido completo del README de Jira con el f
 `✓ planning válido: 1 épica(s)`, con `### Criterios de aceptación` anidado, `## Criterios` con su
 `- **C1** — La fecha del último sync es visible.` y las historias resolviendo.
 
-**No entró** el aviso de `check` cuando dos secciones compiten: con el frente 1 la épica ya no las
-genera, y con el 2 el parser resuelve la ambigüedad. Si aparece por otra vía, es un caso nuevo.
+El aviso de `check` entró en 0.60.0. Los frentes 1 y 2 hacen que la promoción no genere el conflicto y
+que el parser lo resuelva, pero una épica escrita a mano todavía puede traer las dos secciones, y ahí
+la resolución es silenciosa: quien las escribió no se entera de que una se ignora entera.
+
+```text
+⚠ roadmap/epic-001-demo.md: "## Criterios" convive con "## Criterios de aceptación"; sólo se lee la
+  primera y el resto se ignora entero
+```
+
+Un título con sufijo no dispara nada: es el único de su rol.
 
 ## Relacionados
 

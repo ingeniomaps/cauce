@@ -100,9 +100,18 @@ caso demostró: `assert.match(result.stderr, /agents fork product-manager/, 'y n
 Ahora asercia la salida que sí lo es, y una prueba nueva cubre lo que ninguna cubría: que adoptar el
 cargo no cambia la respuesta.
 
-**No entró** la segunda mitad de la propuesta —llevar la pista del fork al error de `learn`—. El
-mensaje actual de `learn` no menciona el fork: manda a `organization/roles/<slug>.md`. Sería agregar
-algo nuevo y no mover lo que estaba, así que es otra decisión y no parte de este arreglo.
+La segunda mitad de la propuesta —llevar la pista del fork al error de `learn`— **ya estaba hecha**, y
+esta resolución dijo lo contrario en su primera versión: afirmó que ese mensaje no menciona el fork, a
+partir de una salida truncada a dos líneas. Menciona las tres cosas, y la tercera es exactamente eso:
+
+```text
+product-manager es un cargo que trae Cauce y su aprendizaje se hace en el toolkit, no acá.
+  Lo que este cargo debe saber de esta empresa va en organization/roles/product-manager.md.
+  Para tener una versión propia del cargo, adoptalo: ops agents fork product-manager.
+```
+
+Comprobado el 2026-09-03 corriendo el comando entero. No hacía falta agregar nada: la pista vive donde
+sí resuelve, que es lo que el caso pedía.
 
 Verificado el 2026-09-03 sobre un cargo adoptado: el mensaje no nombra el fork ni antes ni después.
 

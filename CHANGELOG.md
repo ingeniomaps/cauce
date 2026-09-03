@@ -37,6 +37,15 @@ diseño — eso vive en el commit y en el código.
   excepciones de autonomía, que ningún recorrido llenaba— y suma `organization/domains.md`, que no
   nombraba.
 
+- **`upgrade` te dice cuando se lleva las instrucciones de tu runner.** `AGENTS.md` es del toolkit y se
+  reemplaza entero, con el bloque que `automation install` dejó adentro. Lo recuperás reinstalando —el
+  propio `upgrade` te lo recuerda— pero ese recordatorio no tenía causa visible, y el bloque desaparecía
+  sin explicación. Ahora se nombra el archivo y el runner, una sola vez.
+
+- **`check` avisa cuando dos secciones de una épica compiten por el mismo rol.** El parser prefiere la
+  exacta, así que resuelve — en silencio, y quien escribió las dos no se entera de que una se ignora
+  entera. Un título con sufijo como `## Historias (Tareas)` no dispara nada: es el único de su rol.
+
 - **`/autobuild` ve las excepciones de autonomía de tu proyecto.** Armaba sus límites leyendo sólo
   `AGENTS.md`, y desde 0.57.0 los tuyos están en `organization/workspace.md`. Lo que viajaba a cada
   subagente como «Límites del proyecto» eran los genéricos del toolkit. Ahora ese archivo entra en la

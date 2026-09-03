@@ -130,10 +130,17 @@ escribimos nosotros.
 Verificado el 2026-09-03 con el repro de arriba: tras `automation install . codex`, `upgrade --check`
 sale 0 y no nombra `AGENTS.md`; agregándole una sección propia, vuelve a nombrarlo.
 
-Queda **sin hacer** lo que el «Fix propuesto» dejaba por decidir: `upgrade` sigue reemplazando
-`AGENTS.md` entero, así que se lleva el bloque del runner hasta el `automation install` siguiente —que
-el README ya manda correr y que `upgrade` recuerda al terminar—. Es aceptable y no está dicho en la
-salida; si molesta, es un caso nuevo.
+Lo que el «Fix propuesto» dejaba por decidir se cerró en 0.60.0. `upgrade` sigue reemplazando
+`AGENTS.md` entero —es del toolkit y así se actualiza— y ahora lo dice:
+
+```text
+− AGENTS.md: se reemplazó entero y con él las instrucciones de codex
+  reinstalá tu runner para que el wiring quede al día: make install-codex
+```
+
+Sin esa línea el recordatorio de abajo no tenía causa visible, y quien mirara su archivo veía el bloque
+desaparecido sin explicación. Una vez por runner y no una por archivo registrado, y ninguna en una
+instancia que no tenga runner instalado.
 
 ## Relacionados
 
