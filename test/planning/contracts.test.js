@@ -135,3 +135,28 @@ x
   escribir('001-otra.md', cuerpo('Aceptado'))
   assert.deepEqual(PC.validateAdr(root), ['adr/001-otra.md: 001 ya lo usa adr/001-algo.md'])
 })
+
+// Un override por nombre reemplaza el archivo entero, no las reglas que uno menciona: lo que el
+// archivo propio no redefine deja de regir para el proyecto. La advertencia nombraba el par de
+// archivos y no eso, así que se leía como benigna — y el motor sigue exigiendo alguna de las que
+// acaban de salir de circulación, que queda exigida y sin estar escrita en ningún lado.
+test('un override por nombre dice qué reglas deja de regir', () => {
+  const root = tempRoot('ops-override-ids-')
+  const rules = path.join(root, 'rules', 'system')
+  fs.mkdirSync(rules, { recursive: true })
+  fs.writeFileSync(path.join(rules, 'process.md'),
+    '# Proceso\n\n## R1 — Pensar\n\nTexto.\n\n## R2 — Ejecutar\n\nTexto.\n\n## R17 — Partir\n\nTexto.\n')
+
+  // El override redefine una sola y se lleva puestas las otras dos.
+  fs.writeFileSync(path.join(root, 'rules', 'process.md'), '# Proceso\n\n## R1 — Lo nuestro\n\nTexto.\n')
+  assert.deepEqual(PC.retiredByOverride(root, 'process.md'), ['R2', 'R17'])
+
+  // Uno que las redefine todas no retira nada, que es el override sano.
+  fs.writeFileSync(path.join(root, 'rules', 'process.md'),
+    '# Proceso\n\n## R1 — Lo nuestro\n\nTexto.\n\n## R2 — Lo nuestro\n\nTexto.\n\n## R17 — Lo nuestro\n\nTexto.\n')
+  assert.deepEqual(PC.retiredByOverride(root, 'process.md'), [])
+
+  // Y un archivo que no sobrescribe a ninguno del sistema no retira nada tampoco.
+  fs.writeFileSync(path.join(root, 'rules', 'acme.md'), '# Acme\n\n## P1 — Lo nuestro\n\nTexto.\n')
+  assert.deepEqual(PC.retiredByOverride(root, 'acme.md'), [])
+})

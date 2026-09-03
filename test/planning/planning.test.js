@@ -257,3 +257,31 @@ ${plan}
   fs.writeFileSync(path.join(planning, 'WIP.md'), 'status: IDLE\n')
   assert.deepEqual(errores(), [], 'el WIP inactivo no tiene plan que contar')
 })
+
+// La advertencia de override nombra los IDs que el archivo propio deja de definir, y eso sólo tiene
+// sentido en `rules/`: un ADR o una regla de negocio se sobrescriben enteros y no definen números que
+// otro archivo pueda seguir exigiendo. Decirle «deja de regir» a un ADR sería inventar una pérdida.
+test('el override dice qué reglas retira, y sólo donde hay reglas', () => {
+  const base = tempRoot('cauce-override-check-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  const planning = path.join(target, 'planning')
+
+  fs.writeFileSync(path.join(planning, 'rules', 'process.md'),
+    '# Proceso\n\n## R1 — Lo nuestro\n\nTexto.\n')
+  const conReglas = run(['check', planning])
+  assert.equal(conReglas.status, 0, 'sigue siendo advertencia y no error')
+  const salida = conReglas.stdout + conReglas.stderr
+  assert.match(salida, /rules\/process\.md sobrescribe process\.md \(override explícito\); deja de regir R2/)
+  assert.doesNotMatch(salida, /deja de regir[^\n]*R1\b/, 'la que sí redefine no se reporta perdida')
+
+  // Un ADR propio con el número de uno del sistema es override igual, y no retira ninguna regla.
+  const adr = path.join(planning, 'adr')
+  const molde = fs.readFileSync(path.join(adr, 'system', fs.readdirSync(path.join(adr, 'system'))[0]), 'utf8')
+  const nombre = fs.readdirSync(path.join(adr, 'system'))[0]
+  fs.writeFileSync(path.join(adr, nombre), molde)
+  const conAdr = run(['check', planning])
+  const salidaAdr = conAdr.stdout + conAdr.stderr
+  assert.match(salidaAdr, new RegExp(`adr/${nombre.replace('.', '\\.')} sobrescribe`), 'el override se reporta')
+  assert.doesNotMatch(salidaAdr, new RegExp(`adr/${nombre.replace('.', '\\.')}[^\\n]*deja de regir`))
+})

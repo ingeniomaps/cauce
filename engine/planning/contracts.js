@@ -172,6 +172,19 @@ function ruleIds(file) {
   return [...P.read(file).matchAll(/^##\s+([A-Z]\d+)\s+[—-]/gm)].map((match) => match[1])
 }
 
+// Qué IDs deja de regir un override por nombre: los que definía el archivo del sistema y el propio no
+// redefine. Reemplazar el archivo entero es la función del override y está documentada; lo que no se
+// veía es la consecuencia, porque la advertencia nombraba el par de archivos y no la diferencia. El
+// caso caro es una regla que el motor sigue exigiendo —R17 lo hace—: queda exigida y sin estar escrita
+// en ningún lado, y quien la vea fallar la va a buscar en `rules/`, donde ya no está.
+function retiredByOverride(dir, name) {
+  const rules = path.join(dir, 'rules')
+  const system = path.join(rules, 'system', name)
+  if (!fs.existsSync(system)) return []
+  const redefined = ruleIds(path.join(rules, name))
+  return ruleIds(system).filter((id) => !redefined.includes(id))
+}
+
 function validateRules(dir) {
   const rules = path.join(dir, 'rules')
   const owner = new Map()
@@ -418,6 +431,7 @@ module.exports = {
   oversizedUnits,
   validateAdr,
   validateRules,
+  retiredByOverride,
   validateBacklogStructure,
   validCommitTrace,
   validDecisionTrace,
