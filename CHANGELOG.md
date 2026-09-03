@@ -14,6 +14,34 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.57.0] - 2026-09-03
+
+### Agregado
+
+- **`organization/workspace.md`: dónde va lo que sólo sabe tu proyecto.** El mapa real, las
+  integraciones con su entorno concreto y las excepciones de autonomía. Es tuyo y `upgrade` no lo toca.
+  Hasta ahora el paso 2 del README te mandaba completar `AGENTS.md`, que es del toolkit y se reemplaza
+  entero: no perdías nada —desde 0.55.0 el `upgrade` se detiene y lo nombra— pero te tocaba fusionar a
+  mano en cada versión, sobre el único archivo garantizado a entrar en conflicto. Es la separación que
+  el toolkit ya usa en `planning/rules/system/` y en `planning/delivery/project.md`.
+
+  **Si ya llenaste tu `AGENTS.md`**: movés esas secciones a `organization/workspace.md` y listo. El
+  `upgrade` te lo dice cuando se detenga, antes de que puedas descartarlas con `--force`.
+
+### Corregido
+
+- **`check` te dice qué reglas deja de regir un override.** Un archivo propio con el nombre de uno de
+  `system/` lo reemplaza entero, no las reglas que mencionás: las que ese archivo definía y el tuyo no
+  redefine dejan de existir para tu proyecto. La advertencia nombraba el par de archivos y se leía como
+  benigna. El caso caro es una regla que el motor **sigue exigiendo** —R17 lo hace—: quedaba exigida sin
+  estar escrita en ningún lado. Ahora dice cuáles: `deja de regir R2, R17…`. Sigue siendo advertencia.
+
+- **Instalar un runner ya no hace que `upgrade` te acuse de editar `AGENTS.md`.** En modo `embedded`,
+  `automation install` con Codex escribe sus instrucciones dentro de ese archivo, entre marcas. El
+  registro anotaba el bloque en un solo lado, así que el `upgrade` siguiente se detenía sobre un archivo
+  que nadie había tocado —lo había escrito el comando que el README manda correr justo después—. Lo que
+  vos escribas alrededor se sigue detectando igual.
+
 ## [0.56.0] - 2026-09-03
 
 ### Corregido
