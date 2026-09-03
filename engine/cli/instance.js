@@ -9,7 +9,6 @@ const fs = require('node:fs')
 const path = require('node:path')
 const F = require('../core/files')
 const O = require('../core/ownership')
-const CL = require('../core/changelog')
 const M = require('../core/manifest')
 const OB = require('../core/onboarding')
 const P = require('../planning/parser')
@@ -17,7 +16,7 @@ const ST = require('../planning/state')
 const A = require('../automation')
 const { fail } = require('./io')
 const { declareEngine, pinEngine, undeclareEngine } = require('./dependency')
-const { adviceFor, printChangelog, reportUpgrade } = require('./upgrade-report')
+const { adviceFor, previewUpgrade, reportUpgrade } = require('./upgrade-report')
 
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..')
 
@@ -276,34 +275,12 @@ function upgrade(dir, cli) {
   const changed = O.localChanges(root)
   const overrides = O.overrides(root)
 
+  // El código de salida lo aplica acá y no adentro: `--check` mira y cuenta, y quien decide qué hacer
+  // con lo que vio es el comando. Escondido en la función que informa, el corte del flujo no se ve.
   if (dry) {
-    // Antes de mirar versiones, porque son dos preguntas distintas —«¿hay algo más nuevo?» y «¿qué
-    // tengo editado que se perdería?»— y la segunda tiene respuesta útil aunque la primera sea que no.
-    // Adentro del `if` de abajo, el único modo que no toca nada era el único que no podía avisar.
-    for (const file of changed) console.log(`  editado localmente: ${file}`)
-    if (from === to) {
-      // Contra el motor instalado, no contra lo publicado: la comparación es local y sin red. Decirlo
-      // importa porque `init` fija la versión exacta, así que el motor no se mueve solo y esta línea,
-      // a secas, se leía como «no hay nada nuevo» durante todas las versiones siguientes.
-      console.log(`= ${to}: la instancia está al día con el motor instalado`)
-      // Con `--save-exact`, sin el cual el caret de npm vuelve falsa la línea de arriba. Por qué, y por
-      // qué no alcanza con documentarlo, en `pinEngine`.
-      console.log('  para traer una versión más nueva:'
-        + ' npm install --save-exact --save-dev @ingeniomaps/cauce@latest')
-      if (changed.length) process.exit(1)
-      return
-    }
-    // Hacia atrás también es legítimo —una versión rompió algo y se vuelve—, pero anunciarlo como «hay
-    // una versión más nueva» era mentir con el número a la vista. Y lo que corresponde imprimir es lo
-    // contrario: no lo que se gana, sino lo que se deja.
-    if (CL.compare(to, from) < 0) {
-      console.log(`↩ volvés a ${to} desde ${from}. Esto es lo que dejás de tener:`)
-      printChangelog(to, from)
-    } else {
-      console.log(`⚠ hay una versión más nueva: ${to} (la instancia tiene ${from || 'una previa'})`)
-      printChangelog(from, to)
-    }
-    process.exit(1)
+    const code = previewUpgrade({ from, to, changed })
+    if (code) process.exit(code)
+    return
   }
 
   // Antes de retirar nada, comprobar que no se lleve puesto aprendizaje acumulado.
@@ -328,7 +305,7 @@ function upgrade(dir, cli) {
   // incluye a propósito —lo reemplazaría en cada actualización, que es lo que un archivo del proyecto
   // no debe sufrir— así que sin este paso no llega por ninguna vía, y la instancia queda leyendo una
   // instrucción que apunta a un archivo que no tiene.
-  const settings = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
   const added = []
   for (const relative of O.addedPaths()) {
     const target = path.join(root, relative)
@@ -339,7 +316,7 @@ function upgrade(dir, cli) {
     fs.mkdirSync(path.dirname(target), { recursive: true })
     let content = fs.readFileSync(origin, 'utf8')
     for (const [key, value] of Object.entries({
-      '{{PROJECT_NAME}}': settings.project || path.basename(root),
+      '{{PROJECT_NAME}}': config.project || path.basename(root),
       '{{MODE}}': O.mode(root),
       '{{WORKSPACE_PATH}}': O.mode(root) === 'embedded' ? '.' : '..',
     })) content = content.replaceAll(key, value)
@@ -403,7 +380,6 @@ function upgrade(dir, cli) {
   ))
   M.write(root, M.prune(root, record), null, kept)
 
-  const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
   config.cauceVersion = to
   F.atomicWriteJson(path.join(root, 'ops.config.json'), config)
   // Acá es donde las tres versiones se saben a la vez, así que es donde pueden quedar diciendo lo mismo.

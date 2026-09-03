@@ -115,4 +115,36 @@ function printChangelog(from, to) {
   console.log('')
 }
 
-module.exports = { adviceFor, printChangelog, reportUpgrade }
+// Mirar sin tocar: qué traería la actualización y qué se perdería si se aplicara. Devuelve el código de
+// salida en vez de cortar el proceso, para que el corte se vea donde se decide.
+//
+// Lo editado localmente va antes de mirar versiones, porque son dos preguntas distintas —«¿hay algo más
+// nuevo?» y «¿qué tengo editado que se perdería?»— y la segunda tiene respuesta útil aunque la primera
+// sea que no. Adentro del `if` de abajo, el único modo que no toca nada era el único que no podía avisar.
+function previewUpgrade({ from, to, changed }) {
+  for (const file of changed) console.log(`  editado localmente: ${file}`)
+  if (from === to) {
+    // Contra el motor instalado, no contra lo publicado: la comparación es local y sin red. Decirlo
+    // importa porque `init` fija la versión exacta, así que el motor no se mueve solo y esta línea,
+    // a secas, se leía como «no hay nada nuevo» durante todas las versiones siguientes.
+    console.log(`= ${to}: la instancia está al día con el motor instalado`)
+    // Con `--save-exact`, sin el cual el caret de npm vuelve falsa la línea de arriba. Por qué, y por
+    // qué no alcanza con documentarlo, en `pinEngine`.
+    console.log('  para traer una versión más nueva:'
+      + ' npm install --save-exact --save-dev @ingeniomaps/cauce@latest')
+    return changed.length ? 1 : 0
+  }
+  // Hacia atrás también es legítimo —una versión rompió algo y se vuelve—, pero anunciarlo como «hay
+  // una versión más nueva» era mentir con el número a la vista. Y lo que corresponde imprimir es lo
+  // contrario: no lo que se gana, sino lo que se deja.
+  if (CL.compare(to, from) < 0) {
+    console.log(`↩ volvés a ${to} desde ${from}. Esto es lo que dejás de tener:`)
+    printChangelog(to, from)
+  } else {
+    console.log(`⚠ hay una versión más nueva: ${to} (la instancia tiene ${from || 'una previa'})`)
+    printChangelog(from, to)
+  }
+  return 1
+}
+
+module.exports = { adviceFor, previewUpgrade, reportUpgrade }

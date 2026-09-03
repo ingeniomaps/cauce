@@ -22,19 +22,23 @@ test('todo lo que documenta el upgrade preserva la versión exacta', () => {
   // La propiedad es que el flag esté, no en qué orden: `guard-engine` ya lo dictaba bien con las
   // banderas al revés, y buscar la forma literal lo habría dado por roto —o, peor, por ausente—.
   const invocation = /npm install[^\n'"`]*@ingeniomaps\/cauce@latest/g
-  const dictates = ['README.md', path.join('template', 'Makefile'),
-    path.join('engine', 'cli', 'instance.js'), path.join('engine', 'hooks', 'files.js')]
+  // Los archivos se buscan, no se listan: una lista se rompe al mover código de lugar —pasó— y lo que
+  // se cuida es que ninguno dicte el comando sin el flag, esté donde esté. El CHANGELOG queda afuera
+  // porque es un histórico: nombra a propósito la forma vieja al contar que cambió.
+  const tracked = spawnSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' })
+    .stdout.trim().split('\n')
+    .filter((file) => /\.(js|md|sh|json)$/.test(file) || file.endsWith('Makefile'))
+    .filter((file) => file !== 'CHANGELOG.md' && !file.startsWith('docs/issues/') && !file.startsWith('test/'))
   let found = 0
-  for (const file of dictates) {
-    const body = fs.readFileSync(path.join(root, file), 'utf8')
-    const hits = body.match(invocation) || []
-    assert.ok(hits.length, `${file} dicta el comando y hay que revisarlo acá`)
-    for (const hit of hits) {
-      assert.match(hit, /--save-exact/, `${file} dicta el comando sin el pin: ${hit}`)
+  const sueltos = []
+  for (const file of tracked) {
+    for (const hit of fs.readFileSync(path.join(root, file), 'utf8').match(invocation) || []) {
       found += 1
+      if (!/--save-exact/.test(hit)) sueltos.push(`${file}: ${hit}`)
     }
   }
-  assert.ok(found >= dictates.length, 'se revisó al menos una invocación por archivo')
+  assert.ok(found >= 4, 'el comando se dicta en varios lugares y hay que verlos todos')
+  assert.deepEqual(sueltos, [], `dictan el comando sin el pin:\n  ${sueltos.join('\n  ')}`)
 })
 
 // `upgrade` sólo reemplaza lo del sistema y el runtime, así que un archivo propio del molde no llega a
