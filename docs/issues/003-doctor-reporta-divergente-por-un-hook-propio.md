@@ -110,6 +110,15 @@ primera forma de hacerlo —sumarlo al grupo `Bash` existente— dejó a `doctor
 qué. La segunda —un grupo nuevo con el mismo matcher— pasó. Las dos configuraciones son equivalentes
 para el runner.
 
+## Resolución
+
+**Resuelto en 0.55.0.** `includesConfig` compara los grupos de hooks por `matcher` y contenido en vez
+de por el objeto serializado. Es el fix propuesto acá.
+
+Verificado el 2026-09-03: con un hook propio dentro del grupo `Bash`, `doctor` reporta
+`✓ adaptador operativo`. Y no regresionó: borrando el grupo `Edit|Write` que registra `guard-files.sh`,
+vuelve a reportar la configuración como incompleta.
+
 ## Relacionados
 
 - [002](002-automation-install-desregistra-guards-propios.md) — el mismo hook propio, visto desde la

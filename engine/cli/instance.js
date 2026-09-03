@@ -16,6 +16,7 @@ const P = require('../planning/parser')
 const ST = require('../planning/state')
 const A = require('../automation')
 const { fail } = require('./io')
+const { declareEngine, pinEngine, undeclareEngine } = require('./dependency')
 
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..')
 
@@ -84,47 +85,6 @@ function copyRuntime(source, target, preserve = false, boundary = target, skip =
     }
   }
   return preserved
-}
-
-// Declara el motor como dependencia exacta: el lockfile decide qué versión corre, no una copia.
-// Conserva el manifiesto existente porque el repo anfitrión puede tener el suyo.
-function declareEngine(manifest, version) {
-  let pkg = { name: path.basename(path.dirname(manifest)), private: true, version: '0.0.0' }
-  if (fs.existsSync(manifest)) {
-    try { pkg = JSON.parse(fs.readFileSync(manifest, 'utf8')) } catch (error) {
-      fail(`package.json inválido en ${manifest}: ${error.message}`)
-    }
-  }
-  pkg.devDependencies = { ...pkg.devDependencies, '@ingeniomaps/cauce': version }
-  F.atomicWriteJson(manifest, pkg)
-}
-
-// La inversa exacta de `declareEngine`: saca la clave que puso y nada más. El resto del manifiesto es
-// del repo anfitrión aunque hoy no tenga otra cosa —un `package.json` vacío puede ser lo que alguien
-// escribió para tener scripts— así que el archivo se borra sólo si es idéntico al que `declareEngine`
-// habría creado desde cero, sin dependencias, sin scripts y con su `version: 0.0.0`.
-//
-// Lo que no se toca nunca es `node_modules/` ni el lockfile: los escribe npm, pueden tener dependencias
-// del proyecto y borrarlos por nuestra cuenta destruye trabajo ajeno. Se nombran en la salida, que es
-// la mitad que faltaba: `destroy` decía «tu repositorio queda donde está» y dejaba un `package.json`
-// cuya única dependencia era Cauce. En un repo Rust eso es basura conspicua y nadie avisaba.
-function undeclareEngine(manifest) {
-  if (!fs.existsSync(manifest)) return []
-  let pkg
-  try { pkg = JSON.parse(fs.readFileSync(manifest, 'utf8')) } catch { return [] }
-  const dev = pkg.devDependencies || {}
-  if (!('@ingeniomaps/cauce' in dev)) return []
-  delete dev['@ingeniomaps/cauce']
-  pkg.devDependencies = dev
-  const ours = !Object.keys(dev).length && !Object.keys(pkg.dependencies || {}).length
-    && !Object.keys(pkg.scripts || {}).length && pkg.private === true && pkg.version === '0.0.0'
-  if (ours) {
-    fs.rmSync(manifest, { force: true })
-    return ['package.json (lo había creado init: sin dependencias ni scripts propios)']
-  }
-  if (!Object.keys(dev).length) delete pkg.devDependencies
-  F.atomicWriteJson(manifest, pkg)
-  return ['package.json: se quitó la dependencia del motor y el resto queda como estaba']
 }
 
 // El andamiaje de una instancia, sin leer argv. `init` es la cáscara que traduce banderas a esto, y
@@ -339,7 +299,10 @@ function upgrade(dir, cli) {
       // importa porque `init` fija la versión exacta, así que el motor no se mueve solo y esta línea,
       // a secas, se leía como «no hay nada nuevo» durante todas las versiones siguientes.
       console.log(`= ${to}: la instancia está al día con el motor instalado`)
-      console.log('  para traer una versión más nueva: npm install --save-dev @ingeniomaps/cauce@latest')
+      // Con `--save-exact` porque npm guarda con caret por defecto, y el caret es lo que volvería
+      // falsa la línea de arriba: dentro de 0.x alcanza a los patches, y Cauce publica patches.
+      console.log('  para traer una versión más nueva:'
+        + ' npm install --save-exact --save-dev @ingeniomaps/cauce@latest')
       if (changed.length) process.exit(1)
       return
     }
@@ -446,12 +409,18 @@ function upgrade(dir, cli) {
   const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
   config.cauceVersion = to
   F.atomicWriteJson(path.join(root, 'ops.config.json'), config)
+  // Acá es donde las tres versiones se saben a la vez, así que es donde pueden quedar diciendo lo mismo.
+  const pinned = pinEngine(root, to)
 
   console.log(`✓ Cauce ${from || '(previa)'} → ${to}`)
   // Descartar con --force es legítimo; hacerlo sin dejar rastro no. Queda en la salida del comando,
   // que es la evidencia que el protocolo pide para cualquier cambio.
   for (const file of changed) console.log(`− descartado tu cambio en ${file}`)
   for (const relative of retired) console.log(`− retirado ${relative}: Cauce ya no lo distribuye`)
+  // Se dice porque cambia un archivo que la empresa versiona, y porque explica un diff que si no
+  // aparecería sin autor. Ilegible se avisa y no se toca: el manifiesto es del repo anfitrión.
+  if (pinned === 'ilegible') console.log('  ⚠ package.json no se pudo leer: su versión quedó como estaba')
+  else if (pinned) console.log(`  package.json: ${pinned} → ${to}, la versión exacta que acabás de aplicar`)
   printChangelog(from, to)
   console.log(`  ${system.length} ruta(s) del sistema y ${O.RUNTIME_PATHS.length} del runtime actualizadas`)
   for (const override of overrides) {

@@ -93,6 +93,15 @@ Preparando la migración de `venotal-ops` a Cauce 0.54.0 el 2026-09-02. El prime
 sidecar que coordina tres repos hermanos es el modo equivocado. Hubo que descartar el ensayo y
 repetirlo sin el punto.
 
+## Resolución
+
+**Resuelto en 0.55.0.** El modo lo decide el destino resuelto, con la misma heurística que ya elegía
+dónde aterrizar. Es el fix propuesto acá.
+
+Verificado el 2026-09-03: en `acme-ops/`, `init` e `init .` dan los dos `sidecar` con raíz `..`;
+`init . --mode embedded` sigue dando `embedded`; y en una carpeta que no termina en `-ops`, `init .`
+sigue dando `embedded`.
+
 ## Relacionados
 
 Ninguno.
