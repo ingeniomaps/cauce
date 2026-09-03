@@ -29,9 +29,14 @@ function providerNames() {
   } catch { return [] }
 }
 
+// Devuelve, por archivo conservado, el digest de lo que el molde **habría** escrito. Adoptar Cauce en
+// un repositorio con contenido es `init --force`, y lo que se conserva ahí lo escribió la empresa: si
+// el manifiesto lo registra hasheando el disco queda declarado como entregado por Cauce con contenido
+// que Cauce nunca entregó, y el `upgrade` siguiente no ve ninguna edición local y lo reemplaza.
 function copyTemplate(source, target, replacements, force, skip = [], quiet = false) {
   F.assertNoSymlinkPath(path.dirname(target), target)
   fs.mkdirSync(target, { recursive: true })
+  const preserved = {}
   for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
     if (skip.includes(entry.name)) continue
     const from = path.join(source, entry.name)
@@ -39,11 +44,14 @@ function copyTemplate(source, target, replacements, force, skip = [], quiet = fa
     // 11.16.0: lo deja afuera en la raíz y en subdirectorios—, así que viaja sin punto y se restituye
     // acá. Sin esto el archivo existe en el repo del toolkit y desaparece para todo consumidor real.
     const to = path.join(target, entry.name === 'gitignore' ? '.gitignore' : entry.name)
-    if (entry.isDirectory()) copyTemplate(from, to, replacements, force, skip, quiet)
+    if (entry.isDirectory()) Object.assign(preserved, copyTemplate(from, to, replacements, force, skip, quiet))
     else {
       if (fs.existsSync(to)) {
         if (!force) fail(`El destino contiene ${to}. Usa un directorio vacío o --force.`)
         if (!quiet) console.log(`= conservado ${to}`)
+        let would = fs.readFileSync(from, 'utf8')
+        for (const [key, value] of Object.entries(replacements)) would = would.replaceAll(key, value)
+        preserved[to] = M.digestText(would)
         continue
       }
       let content = fs.readFileSync(from, 'utf8')
@@ -53,22 +61,29 @@ function copyTemplate(source, target, replacements, force, skip = [], quiet = fa
       if (!quiet) console.log(`+ ${to}`)
     }
   }
+  return preserved
 }
 
+// Devuelve lo conservado igual que `copyTemplate`, y por la misma razón: acá el runtime no lleva
+// reemplazos, así que lo que habríamos escrito es el archivo del paquete tal cual.
 function copyRuntime(source, target, preserve = false, boundary = target, skip = []) {
   F.assertNoSymlinkPath(boundary, target)
   fs.mkdirSync(target, { recursive: true })
+  const preserved = {}
   for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
     if (skip.includes(entry.name)) continue
     const from = path.join(source, entry.name)
     const to = path.join(target, entry.name)
-    if (entry.isDirectory()) copyRuntime(from, to, preserve, boundary, skip)
-    else if (preserve && fs.existsSync(to)) console.log(`= conservado ${to}`)
-    else {
+    if (entry.isDirectory()) Object.assign(preserved, copyRuntime(from, to, preserve, boundary, skip))
+    else if (preserve && fs.existsSync(to)) {
+      console.log(`= conservado ${to}`)
+      preserved[to] = M.digest(from)
+    } else {
       F.assertNoSymlinkPath(boundary, to)
       fs.copyFileSync(from, to)
     }
   }
+  return preserved
 }
 
 // Declara el motor como dependencia exacta: el lockfile decide qué versión corre, no una copia.
@@ -116,7 +131,7 @@ function undeclareEngine(manifest) {
 // el banco de evaluación lo llama directo: crear una instancia programáticamente no puede depender de
 // cómo venga escrita la línea de comandos.
 function scaffold(root, { name, mode, force = false, quiet = false }) {
-  copyTemplate(path.join(PROJECT_ROOT, 'template'), root, {
+  const preserved = copyTemplate(path.join(PROJECT_ROOT, 'template'), root, {
     '{{PROJECT_NAME}}': name,
     '{{MODE}}': mode,
     '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
@@ -124,12 +139,12 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
   // No se copia `.github/`: `ci.yml` valida el toolkit con `npm run ci` —que una instancia no tiene— y
   // el ciclo de aprendizaje dejó de distribuirse en 0.4.0. Copiar salteando lo que no aplica dejaba
   // `.github/workflows/` vacío en cada instancia.
-  copyRuntime(
+  Object.assign(preserved, copyRuntime(
     path.join(PROJECT_ROOT, 'automatization', 'hooks'),
     path.join(root, 'automatization', 'hooks'),
     force,
     root,
-  )
+  ))
   const version = require(path.join(PROJECT_ROOT, 'package.json')).version
   // El motor llega como dependencia para que el lockfile fije su versión. El repo ops es un sidecar:
   // declarar npm acá no convierte en Node al servicio de Go de al lado.
@@ -140,6 +155,14 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
     if (fs.existsSync(dir)) deliveredPaths = M.record(root, relative, O.treeFiles(dir), deliveredPaths)
   }
   deliveredPaths = M.recordPaths(root, O.SYSTEM_FILES, deliveredPaths)
+  // Lo conservado entra con el digest del molde, no con el del disco: la diferencia entre los dos es
+  // justamente lo que `localChanges` tiene que ver para que `upgrade` se detenga antes de pisar el
+  // archivo de la empresa. Sólo se pisan claves que ya están: el manifiesto declara lo que Cauce
+  // rastrea, y un archivo propio fuera de esa frontera no le incumbe.
+  for (const [file, hash] of Object.entries(preserved)) {
+    const relative = path.relative(root, file).split(path.sep).join('/')
+    if (relative in deliveredPaths) deliveredPaths[relative] = hash
+  }
   M.write(root, deliveredPaths)
   // La instancia recuerda de qué versión salió: sin esto no hay actualización posible.
   const configFile = path.join(root, 'ops.config.json')
@@ -305,12 +328,20 @@ function upgrade(dir, cli) {
   const overrides = O.overrides(root)
 
   if (dry) {
+    // Lo editado localmente se informa siempre, antes de mirar versiones: son dos preguntas distintas
+    // —«¿hay algo más nuevo?» y «¿qué tengo editado que se perdería?»— y la segunda tiene respuesta
+    // útil aunque la primera sea que no. Sin esto, el único modo que no toca nada era también el único
+    // que no podía avisar del conflicto, justo en el estado normal entre actualizaciones: `init` fija
+    // la versión exacta, así que instancia y motor coinciden casi todo el tiempo.
+    for (const file of changed) console.log(`  editado localmente: ${file}`)
     if (from === to) {
       // Contra el motor instalado, no contra lo publicado: la comparación es local y sin red. Decirlo
       // importa porque `init` fija la versión exacta, así que el motor no se mueve solo y esta línea,
       // a secas, se leía como «no hay nada nuevo» durante todas las versiones siguientes.
       console.log(`= ${to}: la instancia está al día con el motor instalado`)
-      return console.log('  para traer una versión más nueva: npm install --save-dev @ingeniomaps/cauce@latest')
+      console.log('  para traer una versión más nueva: npm install --save-dev @ingeniomaps/cauce@latest')
+      if (changed.length) process.exit(1)
+      return
     }
     // Hacia atrás también es legítimo —una versión rompió algo y se vuelve—, pero anunciarlo como «hay
     // una versión más nueva» era mentir con el número a la vista. Y lo que corresponde imprimir es lo
@@ -322,7 +353,6 @@ function upgrade(dir, cli) {
       console.log(`⚠ hay una versión más nueva: ${to} (la instancia tiene ${from || 'una previa'})`)
       printChangelog(from, to)
     }
-    for (const file of changed) console.log(`  editado localmente: ${file}`)
     process.exit(1)
   }
 
@@ -427,7 +457,10 @@ function upgrade(dir, cli) {
   for (const override of overrides) {
     console.log(`= conservado ${override.collection}/${override.project}: sobrescribe ${override.system}`)
   }
-  console.log('  planning, organization y todo lo propio quedaron intactos')
+  // Sólo cuando es cierto. Llegar acá con algo en `changed` significa que se corrió con --force y se
+  // descartó contenido de la empresa: las líneas de arriba lo enumeran, y afirmar a continuación que
+  // todo lo propio quedó intacto contradice a la única señal que recibe quien corrió el comando.
+  if (!changed.length) console.log('  planning, organization y todo lo propio quedaron intactos')
   // No se borra: sin la dependencia declarada, quitarle `.ops/` la dejaría sin motor. Se avisa y
   // decide una persona.
   if (fs.existsSync(path.join(root, '.ops', 'engine'))) {
