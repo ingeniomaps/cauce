@@ -14,6 +14,24 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.56.0] - 2026-09-03
+
+### Corregido
+
+- **El upgrade que documentaba el README rompía el pin exacto que puso `init`.** La razón para no
+  saltear su primer paso es que «`init` fija la versión exacta, así que `npm update` no la mueve», y
+  el comando de al lado la desarmaba: npm guarda con caret por defecto, así que
+  `npm install --save-dev @ingeniomaps/cauce@latest` dejaba `^0.55.0`, y dentro de `0.x` ese caret
+  alcanza a los patches —que Cauce publica—. Un `npm install` en otra máquina podía dejar el motor en
+  una versión que `ops.config.json` no decía.
+
+  Se arregla por los dos lados. El comando lleva `--save-exact` en los tres lugares que lo dictan —el
+  README, el `make upgrade` de tu instancia y la salida de `upgrade --check`—, y además **`upgrade`
+  repone la versión exacta al terminar**, así que una instancia que ya quedó con un rango se repara
+  sola en la próxima actualización. **Qué cambia para vos**: `upgrade` puede tocar ahora una línea de
+  tu `package.json`, y lo dice cuando lo hace. El resto del manifiesto queda como estaba, y una
+  instancia sin `package.json` no recibe uno.
+
 ## [0.55.0] - 2026-09-02
 
 ### Corregido
