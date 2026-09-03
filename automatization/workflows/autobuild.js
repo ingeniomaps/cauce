@@ -29,6 +29,7 @@ export const meta = {
 {{INCLUDE:shared/workflow-root.js}}
 const CONFIG = `${ROOT}/ops.config.json`
 const P = `${ROOT}/planning`
+const ORG = `${ROOT}/organization`
 const BACKLOG = `${P}/BACKLOG.md`
 const DONE = `${P}/DONE.md`
 const WIP = `${P}/WIP.md`
@@ -263,15 +264,23 @@ phase = (name) => { ran.push(name); announce(name) }
 
 phase('Triage')
 // El contrato se lee una sola vez por corrida y viaja como texto: ningún subagente relee AGENTS.md,
-// ops.config.json ni PROTOCOL.md. `ops check` y el guard planning-drift siguen validando el resultado.
+// workspace.md, ops.config.json ni PROTOCOL.md. `ops check` y el guard planning-drift siguen validando
+// el resultado.
+//
+// `organization/workspace.md` está en esa lista desde que 0.57.0 sacó del `AGENTS.md` lo que sólo sabe
+// el proyecto: los límites que éste amplía o restringe viven ahí, y sin leerlo lo que viaja a cada
+// subagente como «Límites del proyecto» eran sólo los genéricos del toolkit.
 const contract = await agent(
-  `${BASE}\n\nLeé ${ROOT}/AGENTS.md, ${CONFIG} y ${P}/PROTOCOL.md una sola vez y no leas nada más. Reportá los ` +
+  `${BASE}\n\nLeé ${ROOT}/AGENTS.md, ${ORG}/workspace.md, ${CONFIG} y ${P}/PROTOCOL.md una sola vez y no ` +
+  `leas nada más. Reportá los ` +
   `valores de configuración textualmente: project, workspaceRoots como entradas "nombre → ruta", ` +
   `runner.maxTaskHours, runner.commitPerTask y runner.humanCheckpointBetweenMilestones como humanCheckpoint. ` +
   `En gates poné una entrada "ruta → comando" por cada workspaceRoot que declare \`verify\`, y ninguna por ` +
   `las que no lo declaren: la lista vacía significa que el proyecto no dice con qué se verifica. ` +
   `Copiá la sección "## Contratos" de PROTOCOL.md dentro de contracts tal cual, sin reformular, resumir ni ` +
-  `reordenar. En boundaries listá sólo los límites que AGENTS.md enuncia y que restringen la ejecución autónoma.`,
+  `reordenar. En boundaries listá los límites que AGENTS.md enuncia y las "Excepciones de autonomía" que ` +
+  `declare ${ORG}/workspace.md, que son las de este proyecto: si ese archivo no existe o su sección sigue ` +
+  `como la trae el molde, no inventes ninguna.`,
   { schema: CONTRACT, label: 'contract-digest' },
 )
 if (!contract) return stop('contract-unavailable', `no se pudo leer ${CONFIG} ni ${P}/PROTOCOL.md`)
@@ -281,7 +290,7 @@ const limits = bounds.length ? ` Límites del proyecto: ${bounds.join('; ')}.` :
 // Alcance de escritura: para subagentes que tocan código o ejecutan gates del producto.
 const SCOPE = `${BASE}\n\nProyecto ${contract.project}. workspaceRoots es el límite completo de escritura del ` +
   `producto: ${contract.workspaceRoots.join('; ')}.${limits} Este preámbulo ya trae el contrato; no vuelvas a leer ` +
-  `${ROOT}/AGENTS.md, ${CONFIG} ni ${P}/PROTOCOL.md.`
+  `${ROOT}/AGENTS.md, ${ORG}/workspace.md, ${CONFIG} ni ${P}/PROTOCOL.md.`
 // Formatos de planning: sólo para subagentes que escriben roadmap, BACKLOG, WIP, DONE o gates.
 const LEDGER = `${SCOPE}\n\nContratos de planning, textuales de ${P}/PROTOCOL.md:\n${contract.contracts}`
 

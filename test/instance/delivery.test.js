@@ -103,3 +103,36 @@ test('ningún atajo del molde llama a un comando que el CLI no tiene', () => {
   assert.ok(mirados > 10, 'el molde envuelve varios comandos y hay que verlos todos')
   assert.deepEqual([...new Set(rotos)], [], `atajos rotos:\n  ${[...new Set(rotos)].join('\n  ')}`)
 })
+
+// Un workflow le dice a un agente dónde escribir, y esa instrucción envejece con el molde sin que nada
+// falle: `/onboard` siguió mandando el mapa real a `AGENTS.md` después de que 0.57.0 lo sacara de ahí,
+// así que el primer recorrido de una instancia nueva deshacía el arreglo. Es la misma clase que el
+// Makefile llamando a un comando retirado, en la superficie que ejecuta un agente en vez de un dev.
+//
+// Se comprueba el par archivo-sección, no el archivo solo: lo que engaña es la ruta que existe con la
+// sección que ya no.
+test('ningún workflow manda a escribir en una sección que el molde no tiene', () => {
+  const root = path.resolve(__dirname, '..', '..')
+  const dir = path.join(root, 'automatization', 'workflows')
+  const seccionesDe = (file) => {
+    try {
+      return new Set((fs.readFileSync(path.join(root, 'template', file), 'utf8')
+        .match(/^##\s+(.+)$/gm) || []).map((line) => line.replace(/^##\s+/, '').trim()))
+    } catch { return null }
+  }
+
+  const perdidas = []
+  let miradas = 0
+  for (const name of fs.readdirSync(dir).filter((file) => file.endsWith('.js'))) {
+    const text = fs.readFileSync(path.join(dir, name), 'utf8')
+    // `"## X" de ${ALGO}/ruta.md` y `${ALGO}/ruta.md … "## X"`: las dos formas que usan los recorridos.
+    for (const hit of text.matchAll(/"##\s+([^"]+)"\s+de\s+\$\{[A-Z]+\}\/([a-zA-Z0-9/_.-]+\.md)/g)) {
+      const [, seccion, ruta] = hit
+      const secciones = seccionesDe(ruta) || seccionesDe(path.join('organization', ruta))
+      if (!secciones) continue
+      miradas += 1
+      if (!secciones.has(seccion)) perdidas.push(`${name}: manda a "## ${seccion}" de ${ruta}, que no la tiene`)
+    }
+  }
+  assert.deepEqual(perdidas, [], `secciones que el molde no tiene:\n  ${perdidas.join('\n  ')}`)
+})
