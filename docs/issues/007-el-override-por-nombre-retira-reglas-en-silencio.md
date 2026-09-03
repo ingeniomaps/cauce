@@ -1,15 +1,15 @@
 ---
 caso: 007
 titulo: un override por nombre retira las reglas del sistema que no redefine, y check no dice cuáles
-estado: abierto
+estado: resuelto
 prioridad: alta
 version-detectada: 0.56.0
-resuelto-en:
+resuelto-en: 0.57.0
 ---
 
 # 007 — El override por nombre retira reglas del sistema en silencio
 
-**🔴 abierto** · detectado en 0.56.0 · prioridad **alta** — deja al proyecto con reglas exigidas y no documentadas
+**🟢 resuelto en 0.57.0** · detectado en 0.56.0 · prioridad **alta** — deja al proyecto con reglas exigidas y no documentadas
 
 ## Resumen
 
@@ -107,6 +107,29 @@ quedaron como overrides por nombre sin que nadie lo decidiera. Consecuencias rea
 Se resolvió retirando los dos overrides y dejando lo que era genuinamente del proyecto como anexo
 `P8..P9`, que es lo que R7 y R4 delegan explícitamente. Las advertencias estuvieron a la vista desde el
 primer día y se leyeron como benignas, que es exactamente lo que el texto actual invita a hacer.
+
+## Resolución
+
+**Resuelto en 0.57.0.** La advertencia nombra los IDs que el override deja de definir, que es el dato
+que separa una decisión de un descuido:
+
+```text
+⚠ planning/rules/process.md sobrescribe process.md (override explícito); deja de regir R2, R3, R4,
+  R16, R17, R20, R21, R22
+```
+
+Sale de `retiredByOverride` (`engine/planning/contracts.js`), que compara los IDs de los dos archivos
+con el `ruleIds` que ya existía. Sigue siendo advertencia y no error, como proponía el caso.
+
+Sólo aplica a `planning/rules`: un ADR o una regla de negocio se sobrescriben enteros y no definen
+números que otro archivo siga exigiendo, así que decirle «deja de regir» a un ADR sería inventar una
+pérdida. Hay una prueba para cada lado.
+
+El complemento también entró: `template/planning/rules/README.md` ahora dice que el override reemplaza
+el archivo entero y no las reglas que uno menciona, y que si lo tuyo era una regla nueva va al lado
+como `P1..Pn` sin llevarse nada puesto.
+
+Verificado el 2026-09-03 con el repro de arriba.
 
 ## Relacionados
 

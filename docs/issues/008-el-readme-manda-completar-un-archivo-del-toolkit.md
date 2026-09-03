@@ -1,15 +1,15 @@
 ---
 caso: 008
 titulo: el README manda completar AGENTS.md, que es del toolkit y upgrade reemplaza
-estado: abierto
+estado: resuelto
 prioridad: media
 version-detectada: 0.56.0
-resuelto-en:
+resuelto-en: 0.57.0
 ---
 
 # 008 — El README manda completar un archivo que el toolkit reemplaza
 
-**🔴 abierto** · detectado en 0.56.0 · prioridad **media** — fricción garantizada en cada versión
+**🟢 resuelto en 0.57.0** · detectado en 0.56.0 · prioridad **media** — fricción garantizada en cada versión
 
 ## Resumen
 
@@ -94,6 +94,35 @@ README pide. En las tres actualizaciones hubo que respaldarlo, correr `upgrade -
 
 Las tres veces el molde de `AGENTS.md` venía idéntico, así que la fusión no aportó nada: fue trabajo
 puro de ceremonia.
+
+## Resolución
+
+**Resuelto en 0.57.0 por el primer camino**, separando las dos naturalezas.
+
+Nace `organization/workspace.md` con el mapa real, las integraciones y ambientes, y las excepciones de
+autonomía. Es del proyecto y `upgrade` no lo toca. `AGENTS.md` queda entero del toolkit, pierde esas
+secciones y las enlaza en los tres lugares donde se las nombra. El paso 2 del README, la guía de
+arranque y el README de `organization/` apuntan al archivo nuevo.
+
+El segundo camino —el bloque delimitado— **se descartó al comprobarlo**, y por una razón que no estaba
+en este caso: ese mecanismo ya está en uso sobre `AGENTS.md` —lo escribe `automation install` con
+Codex— y ya chocaba con la propiedad por archivo. Es el caso
+[009](009-el-bloque-del-runner-marca-agents-md-como-editado.md), que se arregló aparte.
+
+Quien ya llenó su `AGENTS.md` recibe en el `upgrade` a dónde mover lo suyo, antes de perderlo:
+
+```text
+En `AGENTS.md` en particular: el mapa real, las integraciones y las excepciones de autonomía
+ahora van en `organization/workspace.md`, que es del proyecto y no se reemplaza. Movelos ahí
+antes de repetir con --force, o los vas a tener que fusionar de nuevo en cada versión.
+```
+
+El motor lo acompañó donde leía el archivo viejo: `orphanCredentials` busca las credenciales en
+`workspace.md` —y sigue mirando `AGENTS.md`, para no reportar como huérfana una que ya estaba
+declarada—, y `missingSections` vigila que el molde nuevo no pierda secciones.
+
+Verificado el 2026-09-03: una instancia nueva trae `workspace.md`, escribir el mapa ahí no produce
+ninguna edición local, y el `upgrade` pasa sin detenerse.
 
 ## Relacionados
 
