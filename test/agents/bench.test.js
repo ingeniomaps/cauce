@@ -122,7 +122,10 @@ test('cada caso recibe su propio banco', () => {
   assert.equal(vecino.includes('el primer caso'), false, 'y no se leen entre sí')
 
   // Preparar el banco de un caso no puede borrar el del vecino, que quizá esté a mitad de corrida.
-  assert.equal(run(['evaluate', 'product-manager', '--bench', '11-otro', '--force'], toolkit).status, 0)
+  // El `stderr` va en la aserción como en las dos de arriba: sin él, un rojo en CI dice `1 !== 0` y
+  // nada más, y distinguir una intermitencia de una regresión cuesta descartar hipótesis a mano.
+  const rehecho = run(['evaluate', 'product-manager', '--bench', '11-otro', '--force'], toolkit)
+  assert.equal(rehecho.status, 0, rehecho.stderr)
   assert.match(fs.readFileSync(path.join(one, 'planning', 'INBOX.md'), 'utf8'), /el primer caso/)
 
   // El nombre entra en una ruta: no puede escaparse del directorio de bancos.

@@ -124,6 +124,23 @@ en verde dos minutos antes, en el PR del fix. Descartar las hipótesis de la tab
 cualquiera de los tres arreglos que ese release publicaba, y todo ese tiempo se gastó por no tener una
 línea de `stderr`.
 
+## Resolución parcial
+
+**El punto 1 entró en 0.60.1.** La aserción pasa el `stderr`, como sus dos vecinas:
+
+```js
+const rehecho = run(['evaluate', 'product-manager', '--bench', '11-otro', '--force'], toolkit)
+assert.equal(rehecho.status, 0, rehecho.stderr)
+```
+
+Comprobado forzando el fallo del comando: antes el rojo decía `1 !== 0` y ahora encabeza con la causa
+—`AssertionError: el banco no se pudo rehacer: motivo de prueba`—, que es lo que faltaba en el log de
+la corrida que originó el caso.
+
+**El caso queda abierto** porque su punto 2 no se resolvió, y no se puede resolver todavía: falta ver un
+fallo real con su causa. Cuando ocurra, el `stderr` va a decir si hay que aislar el banco o si el
+problema era otro. Hasta entonces, este caso está esperando evidencia, no trabajo.
+
 ## Relacionados
 
 Ninguno.
