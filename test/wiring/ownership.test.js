@@ -8,7 +8,7 @@
 // Las dos pruebas salieron de la misma migración real —un repositorio con meses de planning propio
 // adoptando Cauce—, donde lo que el toolkit promete conservar se desregistraba en cada reinstalación.
 
-const { installedProject } = require('../support/environment')
+const { installedProject, tempRoot, run, linkEngine } = require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -115,4 +115,32 @@ test('reinstalar retira un guard que el toolkit entregó y ya no trae', () => {
   assert.ok(Array.isArray(anotado) && anotado.length, 'la instalación anota lo que puso')
   assert.equal(anotado.includes(retirado), false)
   assert.equal(anotado.includes(propio), false, 'lo que no pusimos no entra en el registro')
+})
+
+// `AGENTS.md` vive en las dos secciones del manifiesto: es un archivo del sistema y es donde un runner
+// como Codex deja sus instrucciones, entre marcas. `install` anotaba el bloque sólo en la sección de
+// runners, así que `localChanges` —que lee la de archivos— comparaba contra el digest previo al bloque
+// y `upgrade` se detenía acusando a la empresa de una edición que había hecho el comando de al lado.
+test('el bloque que install escribe en AGENTS.md no queda como edición de la empresa', () => {
+  const base = tempRoot('cauce-bloque-agents-')
+  const target = path.join(base, 'acme')
+  fs.mkdirSync(target, { recursive: true })
+  assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'embedded', '--no-install']).status, 0)
+  linkEngine(target)
+
+  const limpio = run(['upgrade', target, '--check'])
+  assert.equal(limpio.status, 0, 'recién creada no tiene nada editado')
+
+  assert.equal(run(['automation', 'install', target, 'codex']).status, 0)
+  const body = fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8')
+  assert.match(body, /<!-- cauce:codex inicio/, 'el bloque quedó adentro, que es lo que install hace')
+
+  const check = run(['upgrade', target, '--check'])
+  assert.doesNotMatch(check.stdout, /editado localmente: AGENTS\.md/, 'lo escribimos nosotros')
+  assert.equal(check.status, 0)
+  assert.equal(run(['upgrade', target]).status, 0, 'y el upgrade no se detiene')
+
+  // Lo que sí es una edición de la empresa se sigue viendo: el registro no ciega al archivo entero.
+  fs.appendFileSync(path.join(target, 'AGENTS.md'), '\n## Mapa real\n\nTres servicios.\n')
+  assert.match(run(['upgrade', target, '--check']).stdout, /editado localmente: AGENTS\.md/)
 })

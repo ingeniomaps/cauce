@@ -16,19 +16,18 @@ const BOOT = require('./bootstrap')
 // Dónde aterriza una instancia cuando nadie eligió: una carpeta propia junto al código.
 const DEFAULT_TARGET = 'ops'
 
-// Dónde va la instancia cuando nadie eligió destino. Parada frecuente: el dev ya creó `acme-ops/` y
-// corre `init` adentro. Sin esto la instancia caía en `acme-ops/ops/` —una carpeta del toolkit dentro
-// de otra— y el proyecto quedaba llamándose «acme-ops». La carpeta que ya nombra al toolkit es la
-// instancia; no hay una segunda adentro.
-function implicitTarget(cwd) {
-  return isInstanceDir(cwd) ? '.' : DEFAULT_TARGET
-}
-
-// La misma heurística, aplicada al destino ya resuelto: una carpeta que ya nombra al toolkit **es** la
-// instancia, y el código de la empresa vive al lado.
+// Una carpeta que ya nombra al toolkit **es** la instancia; no hay una segunda adentro, y el código de
+// la empresa vive al lado. Es la única regla, y de ella salen las dos decisiones que `init` toma sin
+// que nadie las escriba: dónde aterriza y en qué modo.
 function isInstanceDir(dir) {
   const base = path.basename(dir)
   return base === DEFAULT_TARGET || base.endsWith('-ops')
+}
+
+// Parada frecuente: el dev ya creó `acme-ops/` y corre `init` adentro. Sin esto la instancia caía en
+// `acme-ops/ops/` y el proyecto quedaba llamándose «acme-ops».
+function implicitTarget(cwd) {
+  return isInstanceDir(cwd) ? '.' : DEFAULT_TARGET
 }
 
 // El nombre sale de la carpeta del proyecto, no de la que aloja la instancia: `ops/` y `acme-ops/`
@@ -79,11 +78,9 @@ async function init(target, cli) {
   // install` ya asume —el wiring del runner va al padre, donde se abre la herramienta—, así que lo
   // único que faltaba era que fuera lo que pasa cuando no se elige nada.
   const root = path.resolve(target || implicitTarget(process.cwd()))
-  // El modo lo decide a dónde apunta el destino, no si alguien escribió el argumento. `init` e `init .`
-  // resuelven el mismo directorio y elegían modos opuestos: escribir el punto —la forma más natural de
-  // decir «acá»— daba embedded, y ahí la raíz del workspace pasa a ser la carpeta ops misma, así que
-  // `guard-workspace-boundary` deja de reconocer los repos hermanos y el wiring del runner se escribe
-  // adentro en vez de al lado, donde el dev abre su herramienta.
+  // Del destino resuelto y no de si alguien escribió el argumento: `init` e `init .` apuntan al mismo
+  // directorio y elegían modos opuestos, así que escribir el punto daba el layout contrario al de
+  // arriba sin que nadie lo pidiera.
   const mode = cli.value('--mode', isInstanceDir(root) ? 'sidecar' : 'embedded')
   if (!['embedded', 'sidecar'].includes(mode)) fail('--mode debe ser embedded o sidecar.', 2)
   const name = cli.value('--name', defaultName(root))

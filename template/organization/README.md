@@ -7,6 +7,8 @@ Con molde, y `check` avisa si a alguno le faltan secciones del original:
 - `company.md`: misión, modelo de negocio, objetivos, estructura y derechos de decisión.
 - `product.md`: problema, usuarios, propuesta de valor y límites.
 - `domains.md`: lenguaje ubicuo, dominios y dueños.
+- `workspace.md`: el mapa real, las integraciones con su entorno y las excepciones de autonomía.
+  Es lo que `AGENTS.md` no puede llevar: ese archivo lo mantiene Cauce y se reemplaza al actualizar.
 
 Recomendados, sin molde: escribilos con la forma que le sirva a este proyecto.
 

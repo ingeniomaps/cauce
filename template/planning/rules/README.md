@@ -19,4 +19,10 @@ fuera de él para que no existan dos reglas con el mismo nombre.
 Para cambiar una regla del sistema, escribí la tuya **con el mismo nombre de archivo**: ahí redefinir
 sus números es la función, la del proyecto manda, y `check` reporta el override en vez de fallar.
 
+Lo que reemplaza es **el archivo entero, no las reglas que mencionás**: las que ese archivo del sistema
+definía y el tuyo no redefine dejan de regir para tu proyecto. Alguna la sigue exigiendo el motor —R17
+lo hace—, y ahí queda exigida sin estar escrita en ningún lado. Por eso `check` te dice cuáles son
+—«deja de regir R2, R17…»— y por eso conviene, antes de sobrescribir un archivo, mirar si lo tuyo era
+una regla nueva: si lo era, va acá al lado como `P1..Pn` y no se lleva nada puesto.
+
 Las convenciones específicas de lenguaje viven junto al servicio que usa ese lenguaje.

@@ -80,7 +80,13 @@ function check(dir, cli) {
   // Sobrescribir una entrada de system/ es legítimo y esperado; lo que no puede pasar es que
   // ocurra en silencio, porque esa entrada deja de recibir las mejoras del toolkit.
   for (const override of O.overrides(path.resolve(root, '..'))) {
-    warnings.push(`${override.collection}/${override.project} sobrescribe ${override.system} (override explícito)`)
+    // Y con qué se queda el proyecto: un override sano redefine lo que reemplaza, y el que deja IDs
+    // afuera los retira sin decirlo. Nombrarlos es lo único que separa una decisión de un descuido.
+    const retired = override.collection === 'planning/rules'
+      ? PC.retiredByOverride(root, override.project)
+      : []
+    warnings.push(`${override.collection}/${override.project} sobrescribe ${override.system} `
+      + `(override explícito)${retired.length ? `; deja de regir ${retired.join(', ')}` : ''}`)
   }
   // Misma regla para los cargos, que es donde más caro sale: un fork se hace una vez y se olvida.
   const FK = require('../agents/fork')

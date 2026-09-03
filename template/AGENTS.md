@@ -2,24 +2,18 @@
 
 Este archivo gobierna el qué y el cuándo. `planning/PROTOCOL.md` gobierna el flujo y
 `planning/rules/` el cómo: sus reglas rigen cada tarea y se leen antes de empezar, no cuando algo sale
-mal. Ahí está la conducta que no depende de este proyecto —trato con sistemas externos, qué se debe
-entregar aun al negarse—; acá, lo que sí depende.
+mal. Los tres los mantiene Cauce y valen para cualquier proyecto. Lo que este proyecto tiene de propio
+—su mapa, sus integraciones, hasta dónde llega la autonomía acá— vive en `organization/workspace.md`.
 
-## Mapa real
+## Qué sabe este proyecto y no este archivo
 
-Completar antes de la primera tarea:
+El mapa real —qué se construye, qué repos existen, qué está fuera de alcance—, las integraciones con su
+entorno concreto y las excepciones de autonomía viven en **`organization/workspace.md`**, que es del
+proyecto y `upgrade` no toca. Acá no: este archivo lo mantiene Cauce y se reemplaza entero en cada
+actualización, así que lo que escribieras se perdería o te haría fusionar a mano todas las veces.
 
-- Qué producto se construye.
-- Qué repos o servicios existen y dónde viven.
-- Dónde documenta cada servicio sus comandos de test, lint y build.
-- Qué directorios son legacy o están fuera de alcance.
-
-El mapa no debe duplicar documentación técnica: enlaza a la fuente de verdad de cada servicio.
-
-## Integraciones y ambientes
-
-R12 fija el trato con todo sistema externo: real y de sólo lectura mientras no se lo nombre como
-sandbox. Las excepciones de este proyecto —y sólo ellas— van acá, con el entorno concreto.
+Es la misma separación que `planning/rules/system/` con las reglas propias y que `planning/delivery/`
+con `project.md`: lo que el toolkit mejora, aparte de lo que sólo vos podés escribir.
 
 ## Cargos disponibles
 
@@ -129,6 +123,9 @@ Registra la acción exacta en `planning/HUMAN_ACTIONS.md` y, si bloquea todo, cr
 
 Nunca amplía el alcance, promueve sus propias ideas, reescribe el proceso durante una tarea, usa
 `git add .`/`git add -A`, hace push/force/amend, ni afirma éxito sin evidencia real.
+
+Eso rige sin que nadie escriba nada. Lo que este proyecto amplíe o restrinja va en
+`organization/workspace.md`, con su razón; los cuatro límites del párrafo anterior no se amplían ahí.
 
 ## Definición de terminado
 

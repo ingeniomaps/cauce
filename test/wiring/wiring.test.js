@@ -80,7 +80,7 @@ test('en embebido las instrucciones del runner conviven con las de la empresa', 
 
   const agents = path.join(repo, 'AGENTS.md')
   const withBlock = fs.readFileSync(agents, 'utf8')
-  assert.match(withBlock, /## Mapa real/, 'lo de la empresa sigue')
+  assert.match(withBlock, /## Cargos disponibles/, 'lo que ya estaba sigue')
   assert.match(withBlock, /## El arranque/, 'y lo del runner llegó')
 
   // Reinstalar no duplica, y lo que la empresa escriba sobrevive.
@@ -104,7 +104,7 @@ test('en embebido las instrucciones del runner conviven con las de la empresa', 
   assert.equal(run(['automation', 'uninstall', repo, 'codex']).status, 0)
   const after = fs.readFileSync(agents, 'utf8')
   assert.doesNotMatch(after, /## El arranque/)
-  assert.match(after, /## Mapa real/)
+  assert.match(after, /## Cargos disponibles/)
   assert.match(after, /Nuestra sección/)
 })
 

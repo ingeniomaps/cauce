@@ -74,7 +74,7 @@ function guide(root, services = []) {
 function missingSections(root) {
   const warnings = []
   const template = path.join(PACKAGE_ROOT, 'template', 'organization')
-  for (const name of ['company.md', 'product.md', 'domains.md']) {
+  for (const name of ['company.md', 'product.md', 'domains.md', 'workspace.md']) {
     const written = path.join(root, 'organization', name)
     if (!fs.existsSync(written) || !fs.existsSync(path.join(template, name))) continue
     const headings = (text) => new Set((text.match(/^##\s+(.+)$/gm) || []).map((line) => line.trim()))
@@ -99,7 +99,11 @@ function missingSections(root) {
 // Sólo cuando la instancia ya tiene contexto escrito: antes del arranque no hay dónde estuvieran.
 function orphanCredentials(root) {
   if (guide(root).fresh) return []
-  const contracts = ['AGENTS.md', path.join('planning', 'HUMAN_ACTIONS.md')]
+  // El mapa del proyecto vive en `organization/workspace.md` desde que `AGENTS.md` pasó a ser del
+  // toolkit entero; el viejo se sigue mirando porque una instancia anterior lo tiene ahí y una
+  // credencial ya declarada no debería volver a reportarse como huérfana por haber mudado el archivo.
+  const contracts = [path.join('organization', 'workspace.md'), 'AGENTS.md',
+    path.join('planning', 'HUMAN_ACTIONS.md')]
     .map((file) => { try { return fs.readFileSync(path.join(root, file), 'utf8') } catch { return '' } })
     .join('\n')
   if (!contracts) return []

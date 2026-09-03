@@ -224,7 +224,9 @@ equivalentes.
 Después de inicializar:
 
 1. Edita `ops.config.json`: nombre, modo y raíces de código.
-2. Completa `AGENTS.md`: límites de autonomía e integraciones reales.
+2. Completa `organization/workspace.md`: el mapa real, las integraciones con su entorno y las
+   excepciones de autonomía. Es del proyecto y `upgrade` no lo toca; `AGENTS.md`, en cambio, lo
+   mantiene Cauce entero.
 3. Completa `organization/company.md` y `organization/product.md` con el contexto estable de la empresa.
 4. Copia `planning/roadmap/epic-000-template.md` a `epic-001-<slug>.md`.
 5. Ejecuta `node tools/ops.js check planning` antes de activar cualquier runner.

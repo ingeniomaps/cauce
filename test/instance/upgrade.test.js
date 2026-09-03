@@ -39,12 +39,22 @@ test('upgrade --check dice contra qué compara y cómo traer lo nuevo', () => {
 // `--save-exact` el manifiesto queda en `0.55.0` y sin él en `^0.55.0`.
 test('todo lo que documenta el upgrade preserva la versión exacta', () => {
   const root = path.resolve(__dirname, '..', '..')
-  const suelto = /npm install --save-dev @ingeniomaps\/cauce@latest/
-  for (const file of ['README.md', path.join('template', 'Makefile'), path.join('engine', 'cli', 'instance.js')]) {
+  // La propiedad es que el flag esté, no en qué orden: `guard-engine` ya lo dictaba bien con las
+  // banderas al revés, y buscar la forma literal lo habría dado por roto —o, peor, por ausente—.
+  const invocation = /npm install[^\n'"`]*@ingeniomaps\/cauce@latest/g
+  const dictates = ['README.md', path.join('template', 'Makefile'),
+    path.join('engine', 'cli', 'instance.js'), path.join('engine', 'hooks', 'files.js')]
+  let found = 0
+  for (const file of dictates) {
     const body = fs.readFileSync(path.join(root, file), 'utf8')
-    assert.ok(body.includes('--save-exact --save-dev @ingeniomaps/cauce@latest'), `${file} lo dicta con el pin`)
-    assert.doesNotMatch(body, suelto, `${file} no deja la forma que rompe el pin`)
+    const hits = body.match(invocation) || []
+    assert.ok(hits.length, `${file} dicta el comando y hay que revisarlo acá`)
+    for (const hit of hits) {
+      assert.match(hit, /--save-exact/, `${file} dicta el comando sin el pin: ${hit}`)
+      found += 1
+    }
   }
+  assert.ok(found >= dictates.length, 'se revisó al menos una invocación por archivo')
 })
 
 test('upgrade reemplaza lo del sistema y no toca nada del proyecto', () => {
@@ -410,4 +420,71 @@ test('upgrade no crea un package.json donde no había', () => {
   fs.rmSync(path.join(target, 'package.json'))
   assert.equal(run(['upgrade', target]).status, 0)
   assert.equal(fs.existsSync(path.join(target, 'package.json')), false)
+})
+
+// Cada clase de archivo tiene una salida distinta, y decirle a alguien la ajena lo manda a buscar una
+// configuración que no existe: quien editó el protocolo recibía cómo desactivar un guard. Se prueba
+// sin tocar el disco porque la clasificación es lo que puede equivocarse, no el upgrade que la imprime.
+test('el consejo de upgrade corresponde a quién posee cada archivo', () => {
+  const { adviceFor } = require('../../engine/cli/instance')
+
+  const regla = adviceFor(['planning/rules/system/process.md'])
+  assert.match(regla, /escribí la tuya al/, 'una regla del sistema se sobrescribe al lado')
+  assert.doesNotMatch(regla, /configuración de tu runner/, 'y no recibe el consejo del runtime')
+
+  const guard = adviceFor(['automatization/hooks/guard-verify.sh'])
+  assert.match(guard, /configuración de tu runner/)
+  assert.doesNotMatch(guard, /override explícito/)
+
+  const doc = adviceFor(['planning/PROTOCOL.md'])
+  assert.match(doc, /delivery\/project\.md/, 'un doc del toolkit manda a donde sí es del proyecto')
+  assert.doesNotMatch(doc, /configuración de tu runner/)
+  assert.doesNotMatch(doc, /organization\/workspace\.md/, 'y no le habla de un archivo que no editó')
+
+  // A quien completó AGENTS.md porque el README se lo mandaba, el consejo genérico le miente: le dice
+  // que ese archivo no lleva una línea de la empresa. Lleva la suya, y hay que decirle a dónde va.
+  const agents = adviceFor(['AGENTS.md'])
+  assert.match(agents, /organization\/workspace\.md/)
+  assert.match(agents, /antes de repetir con --force/, 'y cuándo moverlo, que es antes de perderlo')
+
+  // Y las tres juntas llegan las tres: es el caso que dejaba a alguien sin su salida.
+  const todas = adviceFor([
+    'planning/rules/system/process.md',
+    'automatization/hooks/guard-verify.sh',
+    'planning/PROTOCOL.md',
+  ])
+  for (const parte of [/override explícito/, /configuración de tu runner/, /delivery\/project\.md/]) {
+    assert.match(todas, parte)
+  }
+  assert.equal(adviceFor([]), '')
+})
+
+// El README mandaba completar `AGENTS.md`, que es del toolkit y `upgrade` reemplaza entero. No era
+// pérdida de datos desde 0.55.0 —se detiene y lo nombra—, pero el trabajo de fusión era inevitable y
+// recurrente por diseño, sobre el único archivo garantizado a entrar en conflicto en cada versión. La
+// separación es la que el toolkit ya usa en los otros dos lugares donde el choque aparece:
+// `rules/system/` junto a las propias, `delivery/project.md` junto a las seis guías.
+test('lo que el proyecto escribe no vive en un archivo que upgrade reemplaza', () => {
+  const base = tempRoot('cauce-workspace-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+
+  const workspace = path.join(target, 'organization', 'workspace.md')
+  assert.ok(fs.existsSync(workspace), 'la instancia recibe dónde escribir lo suyo')
+  const molde = fs.readFileSync(workspace, 'utf8')
+  for (const seccion of ['## Mapa real', '## Integraciones y ambientes', '## Excepciones de autonomía']) {
+    assert.ok(molde.includes(seccion), `${seccion} vive donde el proyecto escribe`)
+  }
+
+  // Y AGENTS.md ya no pide completarlo: enlaza a donde sí corresponde.
+  const agents = fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8')
+  assert.doesNotMatch(agents, /Completar antes de la primera tarea/)
+  assert.match(agents, /organization\/workspace\.md/, 'y dice dónde está lo del proyecto')
+
+  // Lo que importa: el proyecto escribe su mapa y el upgrade no se detiene ni lo pisa.
+  fs.writeFileSync(workspace, '# Nuestro workspace\n\n## Mapa real\n\nTres servicios: api, web, etl.\n')
+  const check = run(['upgrade', target, '--check'])
+  assert.doesNotMatch(check.stdout, /editado localmente/, 'lo del proyecto no es una edición del sistema')
+  assert.equal(run(['upgrade', target]).status, 0)
+  assert.match(fs.readFileSync(workspace, 'utf8'), /api, web, etl/, 'y sobrevive entero')
 })

@@ -179,7 +179,8 @@ function onboard(rootArg, cli, runner = '') {
   console.log(runner
     ? `\n→ Abrí ${runner} acá y contestale esa pregunta.`
     : '\n→ Contestá esa pregunta cuando corras el arranque.')
-  console.log('  Con tus respuestas escribe organization/, el mapa real de AGENTS.md y la primera épica.')
+  console.log('  Con tus respuestas escribe organization/, el mapa real en'
+    + ' organization/workspace.md y la primera épica.')
 }
 
 // El registro de proveedores, leído igual por todos los que lo tocan. `list` lo parseaba suelto y un
