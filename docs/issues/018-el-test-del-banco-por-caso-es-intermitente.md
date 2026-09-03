@@ -51,7 +51,7 @@ gh run view 33802758197                # completed success
 
   1 !== 0
 
-      at TestContext.<anonymous> (/home/runner/work/cauce/cauce/test/agents/bench.test.js:125:10)
+      at TestContext.<anonymous> (test/agents/bench.test.js:125:10)
     actual: 1,
 ```
 
