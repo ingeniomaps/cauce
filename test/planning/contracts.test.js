@@ -160,3 +160,28 @@ test('un override por nombre dice qué reglas deja de regir', () => {
   fs.writeFileSync(path.join(root, 'rules', 'acme.md'), '# Acme\n\n## P1 — Lo nuestro\n\nTexto.\n')
   assert.deepEqual(PC.retiredByOverride(root, 'acme.md'), [])
 })
+
+// El parser resuelve la ambigüedad prefiriendo la coincidencia exacta, pero en silencio: quien escribe
+// una épica con `## Criterios de aceptación` y `## Criterios` no se entera de que una de las dos se
+// ignora entera. La promoción ya no las genera; a mano se siguen pudiendo escribir.
+test('check avisa cuando dos secciones de una épica compiten por el mismo rol', () => {
+  const root = tempRoot('ops-secciones-')
+  const roadmap = path.join(root, 'roadmap')
+  fs.mkdirSync(roadmap, { recursive: true })
+  const epica = (cuerpo) => `---\nepic: 001\ntitle: Demo\nstatus: open\nservice: app\n---\n\n`
+    + `# Épica 001 — Demo\n\n## Resultado\n\nAlgo.\n\n${cuerpo}`
+
+  fs.writeFileSync(path.join(roadmap, 'epic-001-demo.md'), epica(
+    '## Criterios de aceptación\n\n- suelto\n\n## Criterios\n\n- **C1** — real\n\n'
+    + '## Historias\n\n- [ ] **x** (→ C1) — algo. (service: app)\n'))
+  const avisos = PC.competingSections(root)
+  assert.equal(avisos.length, 1, 'una épica con dos secciones de criterios se reporta')
+  assert.match(avisos[0], /epic-001-demo\.md/)
+  assert.match(avisos[0], /Criterios de aceptación/, 'nombra la que se ignora, no la que gana')
+
+  // Una épica sana no dice nada, y un título con sufijo tampoco: es la única de su rol.
+  fs.writeFileSync(path.join(roadmap, 'epic-001-demo.md'), epica(
+    '## Criterios\n\n- **C1** — real\n\n'
+    + '## Historias (Tareas)\n\n- [ ] **x** (→ C1) — algo. (service: app)\n'))
+  assert.deepEqual(PC.competingSections(root), [])
+})

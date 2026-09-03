@@ -77,6 +77,7 @@ function check(dir, cli) {
   errors.push(...integration.errors)
   warnings.push(...integration.warnings)
 
+  warnings.push(...PC.competingSections(root))
   // Sobrescribir una entrada de system/ es legítimo y esperado; lo que no puede pasar es que
   // ocurra en silencio, porque esa entrada deja de recibir las mejoras del toolkit.
   for (const override of O.overrides(path.resolve(root, '..'))) {
