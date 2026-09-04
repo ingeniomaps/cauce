@@ -1,0 +1,42 @@
+# arch-lint — control de direcciones de dependencia entre componentes.
+#
+# Esquema: cada entrada de `rules` puede declarar su propia `severity`. La que no la declara toma
+# `defaults.severity`. El comando imprime todos los hallazgos y termina en código distinto de cero
+# sólo si encontró alguno con severidad mayor o igual a `fail_on`.
+version: 1
+
+fail_on: error
+
+defaults:
+  severity: warning
+
+components:
+  domain:         internal/core/domain/**
+  ports:          internal/core/ports/**
+  service:        internal/core/service/**
+  adapters:       internal/adapters/**
+  infrastructure: internal/infrastructure/**
+  vendor:         [github.com/jackc/pgx/**, github.com/labstack/echo/**, github.com/rabbitmq/**, github.com/aws/**]
+
+rules:
+  domain:
+    deny: [ports, service, adapters, infrastructure, vendor]
+    severity: error
+
+  ports:
+    allow: [domain]
+    severity: error
+
+  service:
+    deny: [adapters, infrastructure, vendor]
+
+  adapters:
+    allow: [domain, ports, vendor]
+
+  infrastructure:
+    allow: [domain, ports, service, adapters, vendor]
+    severity: error
+
+exclude:
+  - "**/*_test.go"
+  - "mocks/**"
