@@ -118,6 +118,18 @@ test('la documentación de agentes no cita rutas del toolkit ni rutas inexistent
   }
 })
 
+test('el material adjunto a un caso no se lee como documentación del cargo', () => {
+  // Un fixture es lo que el cargo **recibe** —la guía del proveedor, el diff del PR—, y adentro puede
+  // haber un `make` de otra empresa o una ruta de un árbol que acá no existe. Exigirle las reglas de
+  // un documento que alguien sigue es el mismo error de categoría que `agentDocs` ya evita con
+  // `results/`, y lo destapó un fixture que cita `make arch-lint`: el guard lo pidió en este Makefile.
+  const fixture = path.join(REPO, 'agents', 'roles', 'system', 'software-architect',
+    'evaluations', 'cases', '08-ci-enforcement-assumed', 'guia-arquitectura-go.md')
+  assert.ok(fs.existsSync(fixture), 'la prueba necesita un fixture con un comando ajeno adentro')
+  assert.match(fs.readFileSync(fixture, 'utf8'), /`make arch-lint`/)
+  assert.equal(agentDocs().includes(fixture), false, 'el fixture entró como documento del cargo')
+})
+
 test('los comandos make citados por los agentes existen en ambos Makefiles', () => {
   const targets = new Set()
   for (const file of agentDocs()) {

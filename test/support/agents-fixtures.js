@@ -37,12 +37,19 @@ function writeSkill(dir, name, description) {
 // Los documentos de un cargo, sin las transcripciones: `evaluations/results/` registra lo que el cargo
 // respondió un día —comandos propuestos incluidos—, y exigirle las reglas de un documento que alguien
 // sigue es un error de categoría. Corregirlo falsearía la evidencia.
+//
+// Por lo mismo queda afuera el material adjunto a un caso —`evaluations/cases/<id>/`—: es lo que el
+// cargo recibe, no lo que escribe, y adentro vive el `make` de otra empresa o una ruta de un árbol
+// que acá no existe. Un fixture que citaba `make arch-lint` hizo que el guard lo pidiera en este
+// Makefile; falsearlo para que pase sería escribir la guía de la empresa ficticia al revés.
 function agentDocs() {
   const found = []
   const walk = (dir) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const file = path.join(dir, entry.name)
-      if (entry.isDirectory()) { if (entry.name !== 'results') walk(file) } else if (entry.name.endsWith('.md')) {
+      if (entry.isDirectory()) {
+        if (entry.name !== 'results' && path.basename(dir) !== 'cases') walk(file)
+      } else if (entry.name.endsWith('.md')) {
         found.push(file)
       }
     }
