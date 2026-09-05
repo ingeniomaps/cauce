@@ -371,6 +371,72 @@ test('el resumen dice qué comando se negó, no sólo que fue Bash',
   assert.match(escrito, /npm ls --depth=0 \\\| head/, 'con el pipe escapado, o la fila se rompe')
 })
 
+// De una investigación se sabía lo que costó, no cuánto de ese costo es salir a buscar, y sin ese
+// número dimensionar un buscador externo es adivinar. Se ejecuta el paso en vez de mirar el fuente
+// porque lo que puede romperse es de dónde sale el dato: el agregado que uno esperaría —el
+// `server_tool_use` del `usage`— vuelve en cero aunque el modelo haya buscado, y una aserción sobre
+// el YAML da ese cero por bueno.
+test('el resumen dice cuántas búsquedas hizo, sumadas por submodelo',
+  { skip: process.platform === 'win32' }, () => {
+  const paso = workflowStep(workflow('agent-learning'), 'id: research')
+  const dir = tempRoot('cauce-busquedas-')
+  const resumen = path.join(dir, 'step-summary')
+  fs.writeFileSync(resumen, '')
+
+  // La forma que devuelve claude-code 2.1.261: la cuenta la lleva el submodelo que resuelve WebSearch
+  // y el agregado de arriba queda en cero. Dos entradas porque se reparte entre los modelos que
+  // corrieron, así que leer una sola devuelve una parte y parece un número entero.
+  const salidaJson = JSON.stringify({
+    total_cost_usd: 1.31,
+    usage: { input_tokens: 42, output_tokens: 17364, server_tool_use: { web_search_requests: 0 } },
+    duration_ms: 231000, num_turns: 33,
+    modelUsage: {
+      'claude-haiku-4-5-20251001': { webSearchRequests: 11 },
+      'claude-opus-5': { webSearchRequests: 1 },
+    },
+  })
+  fs.writeFileSync(path.join(dir, 'claude'), `#!/usr/bin/env bash\ncat <<'JSON'\n${salidaJson}\nJSON\n`,
+    { mode: 0o755 })
+
+  const hecho = spawnSync('bash', ['-c', paso], {
+    cwd: dir, encoding: 'utf8',
+    env: {
+      ...process.env, RUNNER_TEMP: dir, PATH: `${dir}:${process.env.PATH}`,
+      AGENT: 'probe', OAUTH: 'tok', APIKEY: '', GITHUB_STEP_SUMMARY: resumen,
+    },
+  })
+  assert.equal(hecho.status, 0, hecho.stderr)
+
+  const escrito = fs.readFileSync(resumen, 'utf8')
+  assert.match(escrito, /\| búsquedas web \| 12 /, 'la suma de los submodelos, no la de uno')
+  assert.doesNotMatch(escrito, /\| búsquedas web \| 0 /, 'y no el cero del agregado que no las cuenta')
+  // El número mide búsquedas y no accesos a la web. Sin la aclaración se lee como el total, y quien
+  // dimensione con él se lleva otro número — es la forma que R15 nombra: completo de apariencia.
+  assert.match(escrito, /WebFetch no vuelven/, 'con el hueco dicho en la misma fila')
+
+  // El job pinnea 2.1.233 y la forma de arriba se comprobó contra 2.1.261. Si esa versión no trae el
+  // campo, un cero se lee como «no buscó» y el resumen da por medido lo que no se midió — que es el
+  // fallo que esta fila vino a arreglar, reaparecido un escalón más abajo.
+  fs.writeFileSync(resumen, '')
+  const sinCampo = JSON.stringify({
+    total_cost_usd: 1.31, usage: { input_tokens: 42, output_tokens: 17364 },
+    duration_ms: 231000, num_turns: 33,
+    modelUsage: { 'claude-opus-5': { inputTokens: 42, outputTokens: 17364 } },
+  })
+  fs.writeFileSync(path.join(dir, 'claude'), `#!/usr/bin/env bash\ncat <<'JSON'\n${sinCampo}\nJSON\n`,
+    { mode: 0o755 })
+  const mudo = spawnSync('bash', ['-c', paso], {
+    cwd: dir, encoding: 'utf8',
+    env: {
+      ...process.env, RUNNER_TEMP: dir, PATH: `${dir}:${process.env.PATH}`,
+      AGENT: 'probe', OAUTH: 'tok', APIKEY: '', GITHUB_STEP_SUMMARY: resumen,
+    },
+  })
+  assert.equal(mudo.status, 0, mudo.stderr)
+  assert.match(fs.readFileSync(resumen, 'utf8'), /\| búsquedas web \| sin dato /,
+    'sin el campo la fila lo dice, en vez de afirmar que no buscó')
+})
+
 // El cargo que juzga si un aviso aplica necesita las versiones reales, y la allowlist no se las puede
 // dar: `security-engineer` gastó seis denegaciones pidiendo `node -v`, `npm -v` y `npm --version` en
 // una sola corrida, y las tres del 2026-08-31 terminaron con el informe vacío. Se le dan hechas en el
