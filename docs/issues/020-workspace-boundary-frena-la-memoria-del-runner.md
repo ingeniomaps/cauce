@@ -1,14 +1,15 @@
 ---
 caso: 020
 titulo: workspace-boundary bloquea el directorio de memoria del runner y no tiene salida declarada
-estado: abierto
+estado: resuelto
 prioridad: media
 version-detectada: 0.60.1
+resuelto-en: 0.61.0
 ---
 
 # 020 — El guard de límites frena la memoria del propio runner
 
-**🔴 abierto** · detectado en 0.60.1 · prioridad **media** — frena el camino honesto y deja pasar el rodeo
+**🟢 resuelto en 0.61.0** · detectado en 0.60.1 · prioridad **media** — frena el camino honesto y deja pasar el rodeo
 
 ## Resumen
 
