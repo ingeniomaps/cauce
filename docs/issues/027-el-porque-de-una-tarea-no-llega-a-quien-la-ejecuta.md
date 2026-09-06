@@ -90,6 +90,12 @@ y una línea más en la salida de texto, debajo de `EPIC`. En `readEpics`, `hasC
 texto —`section(text, /Contexto relevante/i)`, que es la función que ya usa para Criterios e Historias—
 y `contracts.js:339` sigue preguntando lo mismo con `!epic.context`.
 
+> **Lo que salió en 0.61.0 se apartó de esa última parte**, a propósito: `hasContext` se quedó y
+> `context` se sumó al lado. Contestan distinto —uno dice si el encabezado está, que es lo que `check`
+> exige hoy; el otro trae el cuerpo, que puede estar vacío debajo de un encabezado presente— y
+> unificarlos convertiría una sección vacía en un error nuevo para cada consumidor, que es otra decisión
+> y no ésta. La razón vive en `readEpics`, al lado de los dos campos.
+
 Queda por decidir una cosa que este caso no cierra: **si viaja entera o cortada**. `## Contexto
 relevante` es una lista de viñetas —«estado actual y rutas reales… los ADR y las invariantes que rigen
 este resultado»— y puede ser larga. Cortar «por el primer párrafo» funciona en prosa y no en una lista:

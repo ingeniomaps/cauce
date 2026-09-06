@@ -99,6 +99,19 @@ llama a `validateDoneEntry`. Tres propiedades que conviene conservar:
 - **No admite entradas nuevas**: si un slug aparece en el baseline y su entrada se escribió después de
   la fecha declarada, eso es un error propio.
 
+> **Lo que salió en 0.61.0 fueron las dos primeras.** La tercera **no se implementó**: el motor no lee la
+> fecha del encabezado y nada compara un slug contra cuándo se escribió su entrada. Saber eso exige
+> fechar una entrada de DONE —`git blame` sobre el archivo, o el commit que la trajo—, y en un
+> repositorio que adoptó Cauce ese archivo puede haberse reescrito entero, así que el dato es caro y
+> poco confiable justo donde haría falta.
+>
+> Lo que cubre el propósito mientras tanto: `adopt` se niega sobre un baseline que ya existe, así que la
+> lista no crece por herramienta, y `check` muestra la cuenta en cada corrida, así que una que creció se
+> ve. Lo que queda descubierto es agrandarla a mano.
+>
+> Lo que cerraría la dimensión: una forma barata y confiable de fechar una entrada de DONE. Hasta
+> entonces la propiedad queda enunciada acá y sin mecanismo, que es distinto de haberla cumplido.
+
 Lo que la exención **no** puede ser es «perdonar campos ausentes». Una entrada vieja que sí trae
 `commit:` con el formato de otro sistema dispara `commit debe apuntar a <sha> <asunto>`
 (`contracts.js:58-59`), y `tests:` con una traza ajena dispara `tests debe rastrear A/CN → prueba`
