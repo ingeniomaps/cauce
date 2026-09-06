@@ -146,6 +146,7 @@ function usage() {
   ops upgrade <ops-root> [--check] [--force]
   ops destroy <ops-root> [--force]
   ops archive <planning-dir> <NNN|human-actions>
+  ops adopt <planning-dir>
   ops integration list <ops-root>
   ops integration enable <ops-root> <provider>
   ops integration disable <ops-root> <provider>
@@ -198,6 +199,7 @@ async function run(cli) {
   else if (command === 'destroy') IN.destroy(arg[1], cli)
   else if (command === 'agents') CAT.agents(arg[1], arg[2], arg[3], cli)
   else if (command === 'archive') PL.archive(arg[1], arg[2])
+  else if (command === 'adopt') PL.adopt(arg[1])
   else if (command === 'integration') {
     await W.integration(arg[1], arg[2], arg[3], arg[4], cli)
   }

@@ -64,6 +64,25 @@ function validateDoneEntry(entry, cited = []) {
   return errors
 }
 
+// Los cinco juicios que recibe una entrada de DONE, juntos. Estaban repartidos entre el bucle que las
+// recorre y `validateDoneEntry`, y ese reparto no se nota hasta que algo tiene que preguntar «¿a esta
+// entrada le falta *algo*?»: la primera versión de la exención por adopción se escribió en una de las
+// dos mitades y las otras cuatro comprobaciones seguían fallando.
+//
+// Los criterios que la historia declaró cubrir los cita el roadmap y no la entrada, así que el cruce
+// sólo existe si la entrada dice de qué épica viene.
+function doneEntryErrors(entry, epics = []) {
+  const at = `${entry.source} ${entry.slug}`
+  const errors = []
+  if (!entry.acceptance) errors.push(`${at}: falta acept:`)
+  if (!entry.done) errors.push(`${at}: falta done:`)
+  if (!entry.qa) errors.push(`${at}: falta qa:`)
+  if (!entry.commit) errors.push(`${at}: falta commit:`)
+  const story = epics.find((epic) => epic.num === entry.epic)?.stories
+    .find((candidate) => candidate.slug === entry.slug)
+  return [...errors, ...validateDoneEntry(entry, story ? story.criteria : [])]
+}
+
 function duplicates(values) {
   return [...new Set(values.filter((value, index) => values.indexOf(value) !== index))]
 }
@@ -299,7 +318,9 @@ function validateAdr(dir) {
 // humanas. Vive acá y no en el CLI porque es de la misma clase que sus vecinas —`validateEpic`,
 // `validateDoneEntry`, `validateRules`— y estaba creciendo del otro lado sólo porque ahí era más
 // rápido escribirla. No lee nada: recibe el estado, así que se prueba sin tocar disco.
-function validateState({ epics, milestones, done, wip, roles = new Set(), humanActions = [] }) {
+function validateState({
+  epics, milestones, done, wip, roles = new Set(), humanActions = [], adopted = new Set(),
+}) {
   const errors = []
   const epicNums = new Set()
   const storySlugs = new Set()
@@ -396,15 +417,11 @@ function validateState({ epics, milestones, done, wip, roles = new Set(), humanA
   }
 
   for (const entry of done.entries) {
-    if (!entry.acceptance) errors.push(`${entry.source} ${entry.slug}: falta acept:`)
-    if (!entry.done) errors.push(`${entry.source} ${entry.slug}: falta done:`)
-    if (!entry.qa) errors.push(`${entry.source} ${entry.slug}: falta qa:`)
-    if (!entry.commit) errors.push(`${entry.source} ${entry.slug}: falta commit:`)
-    // Los criterios que la historia declaró cubrir: los cita el roadmap, no la entrada de DONE, así que
-    // el cruce sólo existe si la entrada dice de qué épica viene.
-    const story = epics.find((epic) => epic.num === entry.epic)?.stories
-      .find((candidate) => candidate.slug === entry.slug)
-    errors.push(...validateDoneEntry(entry, story ? story.criteria : []))
+    // La entrada exenta por adopción se saltea entera. Es por entrada y no por campo ausente: una
+    // historia escrita bajo otro contrato puede traer un `commit:` con formato ajeno, y perdonar sólo
+    // «falta X» la dejaría fallando por lo que sí escribió.
+    if (adopted.has(entry.slug)) continue
+    errors.push(...doneEntryErrors(entry, epics))
   }
   return errors
 }
@@ -453,6 +470,7 @@ function oversizedUnits({ epics = [], milestones = [] }) {
 
 module.exports = {
   validateState,
+  doneEntryErrors,
   oversizedUnits,
   validateAdr,
   validateRules,

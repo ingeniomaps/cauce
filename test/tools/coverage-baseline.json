@@ -209,6 +209,11 @@
     "branches": 78,
     "functions": 100
   },
+  "engine/planning/adoption.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/planning/business-rules.js": {
     "lines": 95,
     "branches": 73,

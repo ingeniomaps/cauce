@@ -9,6 +9,7 @@ const P = require('../planning/parser')
 const B = require('../planning/business-rules')
 const PC = require('../planning/contracts')
 const ST = require('../planning/state')
+const AD = require('../planning/adoption')
 const I = require('../integrations/registry')
 const O = require('../core/ownership')
 const OB = require('../core/onboarding')
@@ -77,10 +78,12 @@ function check(dir, cli) {
 
   const roles = new Set(AG.list(path.resolve(root, '..')).map((role) => role.slug))
   const wip = P.readWip(root)
+  const adopted = AD.read(root)
   errors.push(...PC.oversizedUnits({ epics, milestones }))
   errors.push(...PC.validateState({
-    epics, milestones, done, wip, roles, humanActions: P.readHumanActions(root),
+    epics, milestones, done, wip, roles, humanActions: P.readHumanActions(root), adopted: new Set(adopted),
   }))
+  warnings.push(...AD.report({ done, epics, adopted }))
 
   const integration = I.validate(path.resolve(root, '..'))
   errors.push(...integration.errors)
@@ -249,6 +252,31 @@ function context(dir, cli) {
 // El historial de acciones humanas se acumula en un solo archivo y no por épica: una fila no pertenece
 // a ninguna, y esperar el cierre de una épica dejaría sin archivar las de un planning que todavía no
 // cerró ninguna —que es justo cuando el archivo se vuelve ilegible—.
+// Adoptar es declarar de una vez qué historia llegó con el proyecto. Se genera con lo que hoy no cumple
+// y no se vuelve a correr: un baseline que se regenera perdona de nuevo lo que alguien ya se tomó el
+// trabajo de arreglar, y uno que crece a mano deja de ser una lista de perdones para ser una amnistía.
+// Achicarlo sí es a mano, borrando el renglón que `check` señala.
+function adopt(dir) {
+  const root = path.resolve(dir || '.')
+  const target = path.join(root, AD.BASELINE)
+  if (fs.existsSync(target)) {
+    fail(`${AD.BASELINE} ya existe: se genera una vez. Para achicarlo, borrá los renglones que `
+      + '`check` marca como cumplidos.')
+  }
+  const epics = P.readEpics(root)
+  const pending = P.readDone(root).entries.filter((entry) => PC.doneEntryErrors(entry, epics).length)
+  if (!pending.length) {
+    return console.log('= no hay nada que exentar: todas las entradas de DONE cumplen el contrato')
+  }
+  const today = new Date().toISOString().slice(0, 10)
+  F.atomicWrite(target, `# Entradas anteriores a la adopción de Cauce (${today}). No se agregan nuevas:\n`
+    + '# desde esa fecha rige el contrato completo, y `check` avisa cuando una de éstas pasa a\n'
+    + '# cumplirlo para que se borre su renglón.\n'
+    + `${pending.map((entry) => entry.slug).join('\n')}\n`)
+  console.log(`✓ ${pending.length} entrada(s) exentas en ${AD.BASELINE}`)
+  return console.log('  revisá la lista: lo que sí cumple el contrato no tiene por qué estar ahí')
+}
+
 function archiveHumanActions(root) {
   const source = path.join(root, 'HUMAN_ACTIONS.md')
   const rows = P.readHumanActions(root).filter((row) => row.resolved)
@@ -296,4 +324,4 @@ function archive(dir, rawNum) {
   console.log(`✓ epic-${num}: ${entries.length} entrada(s) archivadas`)
 }
 
-module.exports = { check, tree, context, archive }
+module.exports = { check, tree, context, archive, adopt }

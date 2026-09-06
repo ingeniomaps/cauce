@@ -22,6 +22,7 @@ const FLAGS = {
   upgrade: ['--check', '--force'],
   destroy: ['--force'],
   archive: [],
+  adopt: [],
   agents: ['--json', '--own', '--system'],
   integration: ['--fixture'],
   automation: ['--force'],
