@@ -60,6 +60,16 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`AGENTS.md` dice cuál de sus límites puede habilitar tu proyecto, y cuál no.** Enumeraba seis cosas
+  que el runner nunca hace y dos párrafos después las llamaba «los cuatro límites del párrafo anterior»,
+  que son los que no se amplían. Aparte del conteo, entre esas seis estaba **publicar**, que el motor
+  hace configurable a propósito con `runner.allowPush`. Un proyecto que lo leyera al pie concluía que su
+  `allowPush: true` era ilegítimo, o que podía ampliar cualquiera de las seis y elegía mal. **Qué cambia
+  para vos**: el conteo desapareció, y el texto dice que publicar es lo único que se habilita y con qué
+  llave. Dice además algo incómodo y comprobado: con `allowPush` en `true` pasa también un
+  `push --force`, porque el guard mira `git push` y no distingue la forma. Eso no lo autoriza —R8 lo
+  prohíbe igual—; significa que ahí el límite lo sostiene la regla y no el motor.
+
 - **R12 manda las excepciones sobre sistemas externos donde `upgrade` no las borra.** La regla cerraba
   diciendo que se documentan en el `AGENTS.md` del proyecto, y ese archivo es del toolkit: se reemplaza
   entero en cada actualización. Quien obedecía la regla escribía su excepción donde la siguiente
