@@ -30,9 +30,9 @@ diseño — eso vive en el commit y en el código.
 - **Un guard nuevo, `shell-boundary`: el destino de un comando también se juzga.** El límite de raíces
   sólo se disparaba con `Edit` y `Write`, así que el archivo que una herramienta no dejaba escribir se
   escribía sin obstáculo con un heredoc por `Bash`: frenaba a quien actuaba de buena fe y no a quien
-  quería pasar. **Qué cambia para vos**: se leen las redirecciones y `tee`, `cp`, `mv`, `install` y
-  `rsync`, y el bloqueo nombra la salida —declarar la ruta en `writableOutsideRoots`— en vez de sólo
-  decir que no. `/dev/null` y el temporal del sistema no se juzgan, y un destino armado con una variable
+  quería pasar. **Qué cambia para vos**: se leen las redirecciones, `tee`, `truncate`, `cp`, `mv`,
+  `install`, `rsync` y `sed -i` —sin `-i`, `sed` lee y no se juzga—, y el bloqueo nombra la salida
+  —declarar la ruta en `writableOutsideRoots`— en vez de sólo decir que no. `/dev/null` y el temporal del sistema no se juzgan, y un destino armado con una variable
   que no sea `$HOME` tampoco: adivinar su valor sería inventar un límite. **No es completo y no se
   presenta como si lo fuera**: `eval`, un heredoc dentro de `bash -c` o un script propio escriben igual
   y ningún patrón los ve. Frena la forma habitual, como el resto de `destructive`.
