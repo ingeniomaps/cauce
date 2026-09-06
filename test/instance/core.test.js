@@ -91,8 +91,14 @@ test('no declarar ninguna ruta exenta es el caso normal', () => {
 // forma de que la próxima llave que se documente entre sin atadura.
 test('las llaves de runner que el molde nombra existen en el schema', () => {
   const schema = require('../../engine/schemas/ops-config.schema.json')
-  const molde = fs.readFileSync(path.resolve(__dirname, '..', '..', 'template', 'AGENTS.md'), 'utf8')
-  const nombradas = [...molde.matchAll(/`runner\.([a-zA-Z]+)`/g)].map((match) => match[1])
+  const template = path.resolve(__dirname, '..', '..', 'template')
+  // También las reglas: R10 nombra la llave al decir qué mitad de la publicación comprueba el motor, y
+  // una regla viaja a cada consumidor igual que `AGENTS.md`. Mirar sólo uno de los dos dejaba la mitad
+  // de las mencionas sin atar, que es la forma en que este hueco vuelve.
+  const rules = path.join(template, 'planning', 'rules', 'system')
+  const textos = [fs.readFileSync(path.join(template, 'AGENTS.md'), 'utf8')]
+    .concat(fs.readdirSync(rules).map((file) => fs.readFileSync(path.join(rules, file), 'utf8')))
+  const nombradas = textos.flatMap((text) => [...text.matchAll(/`runner\.([a-zA-Z]+)`/g)].map((m) => m[1]))
 
   assert.ok(nombradas.length, 'si el molde deja de nombrar llaves, esta atadura ya no cuida nada')
   assert.deepEqual(

@@ -34,3 +34,13 @@ producción, lo que prueba tampoco: queda verde para siempre sobre algo que nadi
 ## R10 — Publicación humana por defecto
 
 Push, PR, merge, tags, deploy y rollback requieren la autorización configurada para el proyecto.
+
+De esos seis, el motor comprueba uno: el push, contra `runner.allowPush`. Reescribir historia publicada
+no entra en esa autorización y se frena siempre, igual que `--amend`. Los otros cinco no tienen una
+forma reconocible en un comando —un deploy es `kubectl`, `terraform`, un script o un botón— y los
+sostiene esta regla y el review, no un guard.
+
+Decirlo es parte de la regla y no una nota al pie. Una norma que se presenta como comprobada donde no
+lo está enseña a no creerle al resto: quien descubre que puede mergear sin que nada lo frene concluye
+que la línea de arriba es decorativa, y esa conclusión se lleva puesto también lo que sí se comprueba.
+Que el límite lo sostenga una persona no lo hace más blando; lo hace visible.
