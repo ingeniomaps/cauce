@@ -1,14 +1,15 @@
 ---
 caso: 028
 titulo: Tres reglas de destructive anclan en espacio o fin, así que una comilla o un punto y coma las desarman
-estado: abierto
+estado: resuelto
 prioridad: alta
 version-detectada: 0.61.0
+resuelto-en: 0.62.0
 ---
 
 # 028 — `rm -rf /; echo` pasa por el guard que existe para frenarlo
 
-**🔴 abierto** · detectado en 0.61.0 · prioridad **alta** — tres reglas destructivas se esquivan sin herramientas
+**🟢 resuelto en 0.62.0** · detectado en 0.61.0 · prioridad **alta** — tres reglas destructivas se esquivan sin herramientas
 
 ## Resumen
 
