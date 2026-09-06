@@ -27,6 +27,16 @@ diseño — eso vive en el commit y en el código.
   razón repetida apenas por debajo del umbral y el comentario que no repite a ningún otro porque repite
   el nombre que tiene al lado, y bajar el umbral hasta agarrarlas empieza a marcar lo que está bien.
 
+- **Un guard nuevo, `shell-boundary`: el destino de un comando también se juzga.** El límite de raíces
+  sólo se disparaba con `Edit` y `Write`, así que el archivo que una herramienta no dejaba escribir se
+  escribía sin obstáculo con un heredoc por `Bash`: frenaba a quien actuaba de buena fe y no a quien
+  quería pasar. **Qué cambia para vos**: se leen las redirecciones y `tee`, `cp`, `mv`, `install` y
+  `rsync`, y el bloqueo nombra la salida —declarar la ruta en `writableOutsideRoots`— en vez de sólo
+  decir que no. `/dev/null` y el temporal del sistema no se juzgan, y un destino armado con una variable
+  que no sea `$HOME` tampoco: adivinar su valor sería inventar un límite. **No es completo y no se
+  presenta como si lo fuera**: `eval`, un heredoc dentro de `bash -c` o un script propio escriben igual
+  y ningún patrón los ve. Frena la forma habitual, como el resto de `destructive`.
+
 - **`ops adopt` — adoptar Cauce en un proyecto que ya tiene historia.** `check` le exigía a toda entrada
   de `DONE.md` los mismos campos, incluida la que se escribió bajo otro contrato o bajo ninguno, y las
   únicas salidas eran escribir `tests: n/a — razón` en cada una vieja —que deja la exención adentro del
