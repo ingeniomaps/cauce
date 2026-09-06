@@ -14,6 +14,39 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.61.0] - 2026-09-06
+
+### Agregado
+
+- **`R11` se recorre antes de entregar, como `R14` y `R15`.** Antes de dar por terminado un cambio se
+  repasan los comentarios que agrega, uno por uno, y de cada uno se contesta si alguien lo preguntaría,
+  si su razón ya está escrita en otro lado y si está en el destino que le toca. Es la tercera regla de
+  la misma familia —algo que releer no encuentra, porque quien lo escribió ya sabe por qué y la copia se
+  lee bien precisamente porque lo que dice es cierto— y era la única sin la pasada. La regla dice
+  también que una puerta que mida esto ayuda y no la reemplaza: las dos formas que más aparecen son la
+  razón repetida apenas por debajo del umbral y el comentario que no repite a ningún otro porque repite
+  el nombre que tiene al lado, y bajar el umbral hasta agarrarlas empieza a marcar lo que está bien.
+
+- **`writableOutsideRoots` — declarar rutas escribibles que no son raíces de código.** El guard de
+  límites bloquea todo lo que caiga fuera de la raíz de ops y de `workspaceRoots`, y ahí cae el
+  directorio donde tu runner guarda su memoria entre sesiones, que no es código de tu proyecto.
+  Declararlo raíz para que pasara metía un árbol ajeno en `scan` y en el inventario de credenciales, y
+  era el único guard que bloqueaba por política sin salida declarada. **Qué cambia para vos**: una lista
+  opcional de rutas en `ops.config.json` —`~` se expande a tu casa, el resto se resuelve contra la raíz
+  de ops— y `check` te las muestra resueltas en cada corrida, porque una exención que no se ve es un
+  límite que ya no existe. No declarar ninguna sigue siendo el caso normal: al actualizar no hay nada
+  que agregar.
+
+### Corregido
+
+- **Un campo de `DONE.md` que se envuelve se lee entero.** Cada campo —`acept:`, `done:`, `qa:`,
+  `tests:`, `decisions:`, `commit:`— se leía de una sola línea física, y sus valores son prosa que se
+  envuelve como cualquier otra línea. Cuando la envoltura partía una cita, `check` respondía «decisions
+  debe citar» sobre un campo que **sí** citaba: el mensaje nombraba una ausencia que no era la que
+  había, y mandaba a revisar lo único que sí estaba. **Qué cambia para vos**: las entradas que venías
+  reescribiendo hasta que entraran en un renglón pasan como están, y `tests:` y `commit:` dejan de
+  perder lo que quedaba debajo del salto.
+
 ## [0.60.1] - 2026-09-03
 
 ### Corregido
