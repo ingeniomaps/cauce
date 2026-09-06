@@ -60,6 +60,15 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **El «Contexto relevante» de la épica llega a quien construye la tarea.** `ops context` resolvía la
+  épica y mandaba número, título y estado; la sección que dice contra qué se construye se quedaba en el
+  archivo, y `/autobuild` le dice al ejecutor que lea cuatro archivos «una sola vez y no leas nada más»,
+  entre los cuales el roadmap no está. Recibía el resultado a lograr y la condición que lo cierra, nunca
+  la razón por la que existe. **Qué cambia para vos**: `ops context` imprime la sección en líneas `CTX`
+  y la trae en `--json` bajo `epic.context`, y la fase Plan de `/autobuild` la recibe —ya la pedía en su
+  prompt y nunca le llegaba—. Viaja entera: nada en esa salida se recorta, y una lista de viñetas no
+  tiene primer párrafo que resuma al resto. Si en tu proyecto esa sección es enorme, se va a notar acá.
+
 - **La barra de cinco condiciones de R17 también cuenta la aceptación que la tarea escribe.** Contaba
   sólo los criterios heredados con `(→ CN)`, así que una tarea con su aceptación en la línea —la forma
   que el molde muestra primero— contaba cero y nunca cruzaba el umbral; la salida que R17 describe,
