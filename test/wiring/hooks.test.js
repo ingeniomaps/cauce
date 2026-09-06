@@ -97,6 +97,38 @@ test('guard-destructive respeta runner.allowPush del proyecto', () => {
 // Las tres escrituras del force, el amend, y las dos banderas que apenas se les parecen: lo que decide
 // es la forma y no la palabra suelta. Y las dos posiciones de la llave, porque de las tres reglas que
 // tocan `git push` sólo una la consulta — `destructive` dice por qué.
+// Las nueve formas envueltas y las diez corrientes en la misma corrida, que es lo único que separa
+// arreglar un anclaje de haber ablandado el guard: medir sólo la primera mitad deja verde un patrón que
+// frena todo. `destructive` dice por qué son dos cierres y no uno.
+test('guard-destructive reconoce el comando aunque venga envuelto, y sólo ése', () => {
+  const corre = (command) => execute('destructive', { tool_input: { command } })
+
+  for (const [command, motivo] of [
+    // Sin una sola comilla: lo que decidía era el espacio antes del punto y coma.
+    ['rm -rf /; echo listo', /catastrófico/],
+    ['bash -c "rm -rf /"', /catastrófico/],
+    ["sh -c 'rm -rf ~'", /catastrófico/],
+    ['eval "rm -rf .."', /catastrófico/],
+    ['(rm -rf ~)', /catastrófico/],
+    ['bash -c "git checkout -- ."', /revierte todo lo no commiteado/],
+    ['(git restore .)', /revierte todo lo no commiteado/],
+    ['bash -c "mkfs.ext4 /dev/sda1"', /disco o dispositivo/],
+    ['(shred /dev/sda)', /disco o dispositivo/],
+  ]) {
+    blocked('destructive', { tool_input: { command } }, motivo)
+  }
+
+  // La otra mitad, que es la que decide si el guard sobrevive a su primera semana. `-- ` seguido de un
+  // espacio significa que viene un archivo nombrado, y eso la regla no lo toca desde siempre.
+  for (const command of [
+    'rm -rf /srv/cache', 'rm -r build/cache', 'rm -rf ./tmp', 'rm archivo.txt',
+    'git checkout -- src/app.js', 'git checkout rama-nueva', 'git restore src/app.js',
+    'echo mkfsdocs', 'cat informe-shredder.md', 'docker compose up -d',
+  ]) {
+    assert.doesNotThrow(() => corre(command), `frenó lo corriente: ${command}`)
+  }
+})
+
 test('guard-destructive separa publicar de reescribir historia', () => {
   const root = tempRoot('ops-hook-force-')
   fs.mkdirSync(path.join(root, 'planning'))
