@@ -221,9 +221,6 @@ test('guard-workspace-boundary limita escrituras a las raíces declaradas', () =
   blocked('workspace-boundary', { cwd: root, tool_input: { file_path: '../outside.txt' } }, /fuera de las raíces/)
 })
 
-// El guard alcanzaba la memoria del runner —`~/.claude/projects/<proyecto>/memory/`— y no tenía salida
-// declarada: para escribir ahí había que declararla raíz de código, que la mete en `scan` y en el
-// inventario de credenciales, o rodear el guard escribiendo por `Bash`. Frenaba el camino honesto.
 test('guard-workspace-boundary deja pasar lo que el proyecto declaró escribible', () => {
   const root = tempRoot('ops-hook-exempt-')
   fs.mkdirSync(path.join(root, 'planning'))

@@ -193,10 +193,9 @@ test('un campo de DONE que se envuelve se lee entero', () => {
   assert.equal(entry.commit, 'abc1234 feat(x): subject')
 })
 
-// El último campo no tiene otro campo que lo cierre, así que acumular sin más lo deja tragarse lo que
-// venga después. Y se lo traga en silencio: `abc1234 feat(x): subject Nota suelta` sigue pasando
-// `validCommitTrace`, porque el prefijo es válido. Un valor contaminado que ningún contrato rechaza es
-// peor que el recorte que esto vino a arreglar, así que el corte por línea en blanco no es opcional.
+// Por qué el corte por línea en blanco existe lo cuenta `doneField`. Acá se fija lo que pasa si no
+// está, que ningún contrato iba a decir: la entrada queda con una nota suelta debajo y `commit` la
+// absorbe sin que `check` se queje.
 test('el último campo de una entrada no se traga lo que viene después', () => {
   const root = tempRoot('ops-done-tail-')
   fs.writeFileSync(path.join(root, 'DONE.md'), `# Done activo

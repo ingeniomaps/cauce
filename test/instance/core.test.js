@@ -58,9 +58,6 @@ test('una puerta declarada vacía se rechaza diciendo qué falta', () => {
   assert.match(errors[0], /workspaceRoots\[0\]\.verify debe ser el comando, o no estar/)
 })
 
-// La memoria del runner no es código del proyecto y no puede declararse raíz sin arrastrar un árbol
-// ajeno a `scan` y al inventario de credenciales. Sin este campo, el único guard que bloqueaba por
-// política no tenía salida declarada y se rodeaba escribiendo por `Bash`.
 test('una ruta escribible fuera de las raíces pasa el validador, y una vacía no', () => {
   const config = opsConfig()
   config.writableOutsideRoots = ['~/.claude/projects/demo/memory', '../salidas']
