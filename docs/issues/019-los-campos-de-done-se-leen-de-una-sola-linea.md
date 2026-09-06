@@ -1,14 +1,15 @@
 ---
 caso: 019
 titulo: Los campos de una entrada de DONE se leen de una sola línea física, y el mensaje culpa a otra cosa
-estado: abierto
+estado: resuelto
 prioridad: alta
 version-detectada: 0.60.1
+resuelto-en: 0.61.0
 ---
 
 # 019 — Un campo de DONE que se envuelve pierde la mitad de su valor
 
-**🔴 abierto** · detectado en 0.60.1 · prioridad **alta** — rechaza entradas correctas y el error señala el lugar equivocado
+**🟢 resuelto en 0.61.0** · detectado en 0.60.1 · prioridad **alta** — rechaza entradas correctas y el error señala el lugar equivocado
 
 ## Resumen
 

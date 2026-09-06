@@ -1,14 +1,15 @@
 ---
 caso: 024
 titulo: AGENTS.md llama "los cuatro límites" a una lista de seis, y uno de ellos lo configura el motor
-estado: abierto
+estado: resuelto
 prioridad: media
 version-detectada: 0.60.1
+resuelto-en: 0.61.0
 ---
 
 # 024 — El párrafo que dice qué no se puede ampliar no deja saber cuáles son
 
-**🔴 abierto** · detectado en 0.60.1 · prioridad **media** — un proyecto no puede saber si su configuración es legítima
+**🟢 resuelto en 0.61.0** · detectado en 0.60.1 · prioridad **media** — un proyecto no puede saber si su configuración es legítima
 
 ## Resumen
 

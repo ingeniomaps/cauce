@@ -1,14 +1,15 @@
 ---
 caso: 022
 titulo: pre-shell no mira a dónde escribe un comando y el límite de raíces se esquiva con Bash
-estado: abierto
+estado: resuelto
 prioridad: media
 version-detectada: 0.60.1
+resuelto-en: 0.61.0
 ---
 
 # 022 — El límite de raíces sólo existe para `Edit` y `Write`
 
-**🔴 abierto** · detectado en 0.60.1 · prioridad **media** — el límite sólo existe para `Edit` y `Write`
+**🟢 resuelto en 0.61.0** · detectado en 0.60.1 · prioridad **media** — el límite sólo existe para `Edit` y `Write`
 
 ## Resumen
 

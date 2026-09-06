@@ -1,14 +1,15 @@
 ---
 caso: 025
 titulo: R10 enumera seis actos de publicación y el guard gobierna uno; amend no lo mira nadie
-estado: abierto
+estado: resuelto
 prioridad: alta
 version-detectada: 0.60.1
+resuelto-en: 0.61.0
 ---
 
 # 025 — La autorización de publicación cubre `push` y nada más
 
-**🔴 abierto** · detectado en 0.60.1 · prioridad **alta** — se autoriza publicar y se habilita reescribir historia
+**🟢 resuelto en 0.61.0** · detectado en 0.60.1 · prioridad **alta** — se autoriza publicar y se habilita reescribir historia
 
 ## Resumen
 

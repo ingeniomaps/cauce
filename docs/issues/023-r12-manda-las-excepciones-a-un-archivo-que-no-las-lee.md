@@ -1,14 +1,15 @@
 ---
 caso: 023
 titulo: R12 manda las excepciones de sistemas externos a AGENTS.md, y AGENTS.md las manda a workspace.md
-estado: abierto
+estado: resuelto
 prioridad: alta
 version-detectada: 0.60.1
+resuelto-en: 0.61.0
 ---
 
 # 023 — Dos archivos del toolkit señalan lugares distintos para la misma excepción
 
-**🔴 abierto** · detectado en 0.60.1 · prioridad **alta** — quien siga la regla escribe donde `upgrade` borra
+**🟢 resuelto en 0.61.0** · detectado en 0.60.1 · prioridad **alta** — quien siga la regla escribe donde `upgrade` borra
 
 ## Resumen
 

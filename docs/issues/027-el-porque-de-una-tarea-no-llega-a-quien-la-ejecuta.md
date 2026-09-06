@@ -1,14 +1,15 @@
 ---
 caso: 027
 titulo: El contexto de la épica no viaja al ejecutor, que además tiene prohibido ir a buscarlo
-estado: abierto
+estado: resuelto
 prioridad: media
 version-detectada: 0.60.1
+resuelto-en: 0.61.0
 ---
 
 # 027 — La tarea llega con su qué y sin su porqué
 
-**🔴 abierto** · detectado en 0.60.1 · prioridad **media** — se construye la letra del criterio
+**🟢 resuelto en 0.61.0** · detectado en 0.60.1 · prioridad **media** — se construye la letra del criterio
 
 ## Resumen
 

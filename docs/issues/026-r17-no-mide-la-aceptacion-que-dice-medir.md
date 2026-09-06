@@ -1,14 +1,15 @@
 ---
 caso: 026
 titulo: R17 dice medir las condiciones de aceptación de una tarea y sólo cuenta los criterios heredados
-estado: abierto
+estado: resuelto
 prioridad: alta
 version-detectada: 0.60.1
+resuelto-en: 0.61.0
 ---
 
 # 026 — La barra de cinco condiciones no ve la aceptación escrita en prosa
 
-**🔴 abierto** · detectado en 0.60.1 · prioridad **alta** — el modo de falla que la regla describe es el que no mide
+**🟢 resuelto en 0.61.0** · detectado en 0.60.1 · prioridad **alta** — el modo de falla que la regla describe es el que no mide
 
 ## Resumen
 

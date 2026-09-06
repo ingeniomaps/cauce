@@ -1,14 +1,15 @@
 ---
 caso: 021
 titulo: No hay forma de adoptar una historia anterior al contrato de evidencia
-estado: abierto
+estado: resuelto
 prioridad: media
 version-detectada: 0.60.1
+resuelto-en: 0.61.0
 ---
 
 # 021 — Adoptar un proyecto con historia obliga a escribir la exención entrada por entrada
 
-**🔴 abierto** · detectado en 0.60.1 · prioridad **media** — la fricción cae justo en el primer día
+**🟢 resuelto en 0.61.0** · detectado en 0.60.1 · prioridad **media** — la fricción cae justo en el primer día
 
 ## Resumen
 
