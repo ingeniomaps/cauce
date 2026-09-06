@@ -60,6 +60,13 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **R10 dice cuál de sus seis actos comprueba el motor.** La regla prometía «la autorización
+  configurada para el proyecto» para push, PR, merge, tags, deploy y rollback, y el motor comprueba uno.
+  Medido con `allowPush` apagado: `gh pr merge`, `gh release create`, `gh workflow run`, `git tag` y un
+  `kubectl apply` pasan todos. **Qué cambia para vos**: nada de lo que hoy funciona deja de funcionar —
+  lo que cambia es que la regla ya no promete lo que no comprueba, y dice que a esos cinco los sostiene
+  ella y el review. Un deploy no tiene forma reconocible en un comando; un guard tendría que adivinarla.
+
 - **`--force` y `--amend` se frenan por su cuenta.** R10 enumera seis actos de publicación y el guard
   comprobaba uno, sin distinguir lo que la prosa distingue: `git push` y `git push --force` caían en el
   mismo patrón, así que `allowPush: true` habilitaba también reescribir historia ya publicada. Y
