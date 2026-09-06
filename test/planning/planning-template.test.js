@@ -14,6 +14,34 @@ const path = require('node:path')
 // las descripciones del PROTOCOL, y dos schemas más el prompt del clasificador en el workflow. Un
 // workflow corre en sandbox y no puede importar el motor, así que la única atadura posible es ésta:
 // el motor manda y el test falla cuando una copia se despega.
+// Una regla que nombra un archivo del toolkit manda a escribir donde `upgrade` pasa por encima: lo que
+// el proyecto escriba ahí desaparece en la siguiente actualización y nada lo avisa. R12 lo hacía —las
+// excepciones sobre sistemas externos iban al `AGENTS.md` del proyecto, que el propio `AGENTS.md` dice
+// que se reemplaza entero— y no fue un descuido suelto: el día que el mapa se mudó a
+// `organization/workspace.md` quedaron tres archivos apuntando al lugar viejo, y éste fue el tercero en
+// aparecer, con meses de diferencia entre uno y otro. Lo que faltaba era que el cuarto no dependiera de
+// que alguien volviera a leer las reglas enteras.
+//
+// La lista sale de `SYSTEM_FILES`, que es la misma con la que `upgrade` decide qué reemplaza: escrita a
+// mano acá, una de las dos copias envejecería y esta prueba pasaría a cuidar un archivo que ya no es del
+// toolkit. Si alguna vez una regla necesita nombrar uno para *leerlo*, esto se pone rojo y se decide;
+// hoy ninguna lo hace.
+test('ninguna regla del sistema manda a escribir en un archivo que `upgrade` reemplaza', () => {
+  const dir = path.resolve(__dirname, '..', '..', 'template', 'planning', 'rules', 'system')
+  const O = require('../../engine/core/ownership')
+  // Por nombre de archivo y sin repetir: tres rutas de `SYSTEM_FILES` terminan en `AGENTS.md`, y
+  // nombrarlas todas convertía un hallazgo en tres líneas que señalan archivos que la regla no nombró.
+  const owned = new Set(O.SYSTEM_FILES.map((one) => path.basename(one)))
+  const nombrados = []
+
+  for (const file of fs.readdirSync(dir)) {
+    const text = fs.readFileSync(path.join(dir, file), 'utf8')
+    for (const name of owned) if (text.includes(name)) nombrados.push(`${file} nombra ${name}`)
+  }
+
+  assert.deepEqual(nombrados, [], `una regla manda a un archivo del toolkit:\n  ${nombrados.join('\n  ')}`)
+})
+
 test('el vocabulario de lanes tiene un dueño y las copias no se despegan', () => {
   const P = require('../../engine/planning/parser')
   assert.deepEqual(P.LANES, ['express', 'directo', 'lite', 'full'], 'en orden de ceremonia creciente')

@@ -10,7 +10,9 @@ sandbox. Sin aprobación humana explícita:
 - no editar secretos, credenciales, DNS, permisos o cuentas;
 - no borrar datos ni ejecutar migraciones irreversibles.
 
-Las excepciones se documentan en el `AGENTS.md` del proyecto, nombrando el entorno concreto.
+Las excepciones se documentan en la sección «Integraciones y ambientes» de
+`organization/workspace.md`, nombrando el entorno concreto: ese archivo es del proyecto y
+`upgrade` no lo toca.
 
 ## R13 — Negarse no es entregar
 
