@@ -51,6 +51,19 @@ nada falla.
 
 Un comentario que cuesta escribir suele estar señalando el código, no la falta de palabras.
 
+Y como en R14 y R15, no se detecta releyendo: quien lo escribió ya sabe por qué, y la copia se lee bien
+precisamente porque lo que dice es cierto. Antes de entregar se recorren los comentarios que el cambio
+agrega, uno por uno, y de cada uno se contesta si alguien lo preguntaría, si su razón ya está escrita en
+otro lado y si está en el destino que le toca. Es mecánico y barato, y encuentra lo que releer no
+encuentra: el que sobra por repetir lo que el nombre de al lado ya dice, y la razón que quedó en dos
+lugares sin que ninguno de los dos se vea mal solo.
+
+Una puerta que mida esto ayuda y no reemplaza a la pasada. Comparar textos encuentra la copia literal y
+deja pasar las dos formas que más aparecen: la razón repetida apenas por debajo del umbral, y el
+comentario que no repite a ningún otro porque repite el nombre que tiene al lado. Bajar el umbral hasta
+que las agarre empieza a marcar lo que está bien, así que el número se elige para no molestar y la pasada
+se hace igual.
+
 ## R18 — Un doble se justifica y los datos salen de una fábrica
 
 Todo doble de prueba —mock, stub, fake, spy— declara en una línea por qué existe, y se busca en el lugar
