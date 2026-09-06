@@ -6,8 +6,10 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
-const { patchOf, filesOf, contentOf, cwdOf, block, configOf, findOpsRoot } = require('./input')
-const { writableOutsideRoots } = require('../config/paths')
+const {
+  patchOf, filesOf, contentOf, cwdOf, block, configOf, findOpsRoot,
+  writableRoots, outsideRoots, DECLARE_IT,
+} = require('./input')
 
 function secrets(input) {
   for (const file of filesOf(input)) {
@@ -96,22 +98,12 @@ function testEvidence(input) {
 }
 
 function workspaceBoundary(input) {
-  const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
-  if (!root) return
-  const config = configOf(root)
-  // Las raíces de código, más lo que el proyecto declaró escribible sin serlo. Son dos listas porque son
-  // dos preguntas: `workspaceRoots` es qué código gobierna esta instancia —lo recorren `scan` y el
-  // inventario de credenciales—, y la exención es sólo dónde se puede escribir. Meter la memoria del
-  // runner en la primera para conseguir la segunda arrastraba un árbol ajeno a todo lo demás.
-  const allowed = [
-    root,
-    ...(config.workspaceRoots || []).map((entry) => path.resolve(root, entry.path)),
-    ...writableOutsideRoots(root, config).map((entry) => entry.path),
-  ]
+  const allowed = writableRoots(input)
+  if (!allowed) return
   for (const raw of filesOf(input)) {
     const file = path.resolve(cwdOf(input), raw)
-    if (!allowed.some((base) => file === base || file.startsWith(`${base}${path.sep}`))) {
-      block(`${file} está fuera de las raíces declaradas en ops.config.json.`)
+    if (outsideRoots(file, allowed)) {
+      block(`${file} está fuera de las raíces declaradas en ops.config.json. ${DECLARE_IT}`)
     }
   }
 }

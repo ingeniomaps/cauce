@@ -242,6 +242,74 @@ test('guard-workspace-boundary deja pasar lo que el proyecto declaró escribible
   blocked('workspace-boundary', { cwd: root, tool_input: { file_path: '../outside.txt' } }, /fuera de las raíces/)
 })
 
+// Las cinco escrituras que el guard reconoce y las seis que no le tocan. Por qué existe y hasta dónde
+// llega lo cuenta `shellBoundary`; acá lo que importa es que las dos listas se midan juntas, porque un
+// guard sólo se puede juzgar por lo que frena y lo que deja pasar a la vez.
+test('guard-shell-boundary mira el destino de un comando, sin morder lo corriente', () => {
+  const root = tempRoot('ops-hook-shell-boundary-')
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({
+    workspaceRoots: [{ name: 'main', path: '.' }],
+    writableOutsideRoots: ['~/.claude/projects/demo/memory'],
+  }))
+  const corre = (command) => execute('shell-boundary', { cwd: root, tool_input: { command } })
+  const afuera = path.join(os.homedir(), 'afuera')
+
+  for (const command of [
+    `echo x > ${afuera}/nota.md`,
+    'cat > ~/afuera/nota.md <<EOF',
+    'echo x > $HOME/afuera/nota.md',
+    `printf x | tee ${afuera}/nota.md`,
+    `cp nota.md ${afuera}/nota.md`,
+  ]) {
+    blocked('shell-boundary', { cwd: root, tool_input: { command } }, /fuera de las raíces/)
+  }
+
+  for (const command of [
+    'npm test > /dev/null 2>&1',
+    'make build >> logs/build.log 2>&1',
+    'node x.js > salidas/informe.json',
+    'git status --short',
+    'grep -rn "escribe > /etc/passwd" src/',
+    'printf x | tee ~/.claude/projects/demo/memory/nota.md',
+  ]) {
+    assert.doesNotThrow(() => corre(command), `frenó lo corriente: ${command}`)
+  }
+})
+
+// La misma ruta por las dos herramientas, exenta y prohibida. Es lo único que comprueba que
+// `writableRoots` sigue siendo el único lugar donde se contesta: si alguien la vuelve a escribir en uno
+// de los dos guards, los cuatro veredictos de acá dejan de coincidir.
+test('los dos guards de límites responden lo mismo sobre la misma ruta', () => {
+  const root = tempRoot('ops-hook-boundary-par-')
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({
+    workspaceRoots: [{ name: 'main', path: '.' }],
+    writableOutsideRoots: ['~/.claude/projects/demo/memory'],
+  }))
+  const exenta = path.join(os.homedir(), '.claude', 'projects', 'demo', 'memory', 'nota.md')
+  const prohibida = path.join(os.homedir(), '.claude', 'projects', 'demo', 'otra.md')
+
+  assert.doesNotThrow(() => execute('workspace-boundary', { cwd: root, tool_input: { file_path: exenta } }))
+  assert.doesNotThrow(() => execute('shell-boundary', { cwd: root, tool_input: { command: `echo x > ${exenta}` } }))
+  blocked('workspace-boundary', { cwd: root, tool_input: { file_path: prohibida } }, /fuera de las raíces/)
+  blocked('shell-boundary', { cwd: root, tool_input: { command: `echo x > ${prohibida}` } }, /fuera de las raíces/)
+})
+
+// El agujero declarado, fijado para que se note si alguien lo «arregla»: `writeTargets` dice por qué un
+// destino que no se puede resolver no se juzga, y este caso es lo que se pone rojo el día que alguien
+// decida adivinarlo.
+test('guard-shell-boundary no juzga un destino que no puede resolver', () => {
+  const root = tempRoot('ops-hook-shell-boundary-var-')
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ workspaceRoots: [{ name: 'main', path: '.' }] }))
+
+  for (const command of ['echo x > $SALIDA/nota.md', 'echo x > "$HOME/afuera/nota.md"']) {
+    assert.doesNotThrow(() => execute('shell-boundary', { cwd: root, tool_input: { command } }))
+  }
+})
+
 test('guard-engine protege el motor instalado y deja trabajar al toolkit', () => {
   const root = tempRoot('ops-hook-engine-')
   const pkg = path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine')

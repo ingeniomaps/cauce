@@ -8,6 +8,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { writableOutsideRoots } = require('../config/paths')
 
 // Sin stdin no hay nada que leer y los guards caen a las variables de entorno; con stdin ilegible sí
 // hay algo y no se entiende, que es otra cosa. Devolver `{}` ahí dejaba a cada guard sin comando ni
@@ -123,7 +124,38 @@ function findOpsRoot(start) {
   }
 }
 
+// Lo que un proyecto declaró que puede escribirse: su raíz de ops, las raíces de código y las rutas que
+// exentó sin que sean código. Lo preguntan los dos guards de límites —el que mira un `Write` y el que
+// mira el destino de un comando— y tienen que responder lo mismo: con dos copias, una herramienta
+// escribiría donde la otra bloquea, que es exactamente el agujero que el segundo vino a cerrar.
+//
+// Sin raíz legible no hay lista, y quien pregunta se abstiene: el guard que no sabe dónde está no
+// inventa un límite.
+function writableRoots(input) {
+  const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
+  if (!root) return null
+  const config = configOf(root)
+  return [
+    root,
+    ...(config.workspaceRoots || []).map((entry) => path.resolve(root, entry.path)),
+    ...writableOutsideRoots(root, config).map((entry) => entry.path),
+  ]
+}
+
+// La pregunta exacta y nada más. Las excepciones viven en quien las necesita: un `>` a `/dev/null` es
+// corriente y una escritura de `Write` ahí no lo es, así que perdonarlas acá le habría cambiado en
+// silencio el alcance a `workspace-boundary`, que no es lo que se vino a hacer.
+function outsideRoots(file, allowed) {
+  return !allowed.some((base) => file === base || file.startsWith(`${base}${path.sep}`))
+}
+
+// Va en los dos bloqueos y no en uno: un límite que sólo dice «no» enseña a rodearlo, y el rodeo que
+// este mensaje evita es cambiar de herramienta, que es por donde el límite se perdía entero.
+const DECLARE_IT = 'Si el proyecto necesita escribir ahí, declaralo en writableOutsideRoots de '
+  + 'ops.config.json; cambiar de herramienta no lo autoriza.'
+
 module.exports = {
   readInput, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
   gitDirectory, isCommit, stagedFiles, pushAllowed, findOpsRoot,
+  writableRoots, outsideRoots, DECLARE_IT,
 }

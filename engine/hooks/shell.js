@@ -5,10 +5,12 @@
 // ahí que vayan juntos—, y son el grupo `pre-shell` que el registro ya declaraba.
 
 const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const {
   commandOf, cwdOf, block, gitDirectory, isCommit, stagedFiles, pushAllowed,
+  writableRoots, outsideRoots, DECLARE_IT,
 } = require('./input')
 
 function destructive(input) {
@@ -106,6 +108,56 @@ function dependencies(input) {
   }
 }
 
+// El destino de una escritura se juzgaba sólo en `Edit`/`Write`, así que el mismo archivo se escribía
+// sin obstáculo con un heredoc por `Bash`: frenaba a quien actuaba de buena fe y no a quien quería pasar.
+// Registrar `workspace-boundary` en este grupo no alcanzaba —lee `filesOf`, que en un comando no
+// devuelve nada—, así que lo que faltaba era leer el comando.
+//
+// **Esto no puede ser completo y no se presenta como si lo fuera.** `eval`, una variable armada dos
+// líneas antes, un heredoc dentro de `bash -c`, un `python -c "open(...)"` o un script propio escriben
+// igual y ningún patrón los ve. Frena la forma habitual, como el resto de `destructive`; quien quiera
+// pasar, pasa. Presentarlo como un límite invitaría a confiar en él más de lo que aguanta.
+const REDIRECT = /(?:^|[\s(])&?\d*>>?\s*(?![&(])([^\s;|&<>()]+)/g
+const WRITERS = /(?:^|[\s;|&(])(tee|cp|mv|install|rsync)\s+([^;|&<>()]+)/g
+
+// Un `>` adentro de una cadena no redirige nada: se vacían las comilladas antes de mirar. Pierde el
+// destino entrecomillado, que es un falso negativo — el error barato en un guard que ya es incompleto,
+// porque el caro es frenar un comando legítimo y que alguien apague el guard entero.
+//
+// `$HOME` y `~` se expanden porque son como se escribe el destino que esto vino a ver; el incidente que
+// lo originó decía `> $HOME/.claude/...`. Cualquier otra variable queda sin resolver y no se juzga:
+// adivinar su valor sería inventarlo, y un límite inventado frena lo que nadie pidió frenar.
+function writeTargets(command) {
+  const clean = String(command).replace(/'[^']*'|"[^"]*"/g, '\u0000')
+  const found = new Set()
+  for (const match of clean.matchAll(REDIRECT)) found.add(match[1])
+  for (const match of clean.matchAll(WRITERS)) {
+    const args = match[2].trim().split(/\s+/).filter((one) => one && !one.startsWith('-'))
+    if (match[1] === 'tee') for (const arg of args) found.add(arg)
+    else if (args.length > 1) found.add(args[args.length - 1])
+  }
+  return [...found]
+    .map((one) => one.replace(/^~(?=$|\/)/, os.homedir()).replace(/^\$\{?HOME\}?(?=$|\/)/, os.homedir()))
+    .filter((one) => !/[$`\u0000]/.test(one))
+}
+
+// Los destinos que no son de nadie y aparecen en cualquier comando legítimo: los descriptores del
+// sistema y el temporal, que es donde el propio runner deja lo que no va al repositorio. Sin esta lista
+// el guard frena `> /dev/null 2>&1`, y lo primero que hace quien lo sufre es apagarlo entero.
+const NEUTRAL = [/^\/dev\/(?:null|stdout|stderr|tty|fd\/)/, new RegExp(`^${os.tmpdir()}(?:/|$)`)]
+
+function shellBoundary(input) {
+  const allowed = writableRoots(input)
+  if (!allowed) return
+  for (const raw of writeTargets(commandOf(input))) {
+    const file = path.resolve(cwdOf(input), raw)
+    if (NEUTRAL.some((pattern) => pattern.test(file))) continue
+    if (outsideRoots(file, allowed)) {
+      block(`el comando escribe en ${file}, fuera de las raíces declaradas en ops.config.json. ${DECLARE_IT}`)
+    }
+  }
+}
+
 function governance(input) {
   if (process.env.OPS_GOVERNANCE_OVERRIDE === '1') return
   const command = commandOf(input)
@@ -194,4 +246,4 @@ function verify(input) {
   if (failures.length) block(`Verify falló en ${path.basename(dir)}: ${failures.join(', ')}. No se commitea en rojo.`)
 }
 
-module.exports = { destructive, gitAdd, dependencies, governance, verify, run }
+module.exports = { destructive, gitAdd, dependencies, governance, verify, shellBoundary, run }

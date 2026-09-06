@@ -38,6 +38,7 @@ const guards = {
   dependencies: shell.dependencies,
   governance: shell.governance,
   verify: shell.verify,
+  'shell-boundary': shell.shellBoundary,
   secrets: files.secrets,
   generated: files.generated,
   'workspace-boundary': files.workspaceBoundary,
@@ -50,7 +51,7 @@ const guards = {
 
 // Grupos por evento: un runner corre el grupo entero en un solo proceso en lugar de un guard por hook.
 const hookGroups = {
-  'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'verify'],
+  'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'verify', 'shell-boundary'],
   'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
     'integration-snapshot', 'test-evidence'],
   stop: ['planning-drift'],
@@ -81,6 +82,11 @@ const hookMetadata = [
     name: 'verify',
     event: 'PreToolUse · shell',
     purpose: 'Ejecuta los gates del stack y comprueba drift generado antes de un commit.',
+  },
+  {
+    name: 'shell-boundary',
+    event: 'PreToolUse · shell',
+    purpose: 'Frena el destino evidente de un comando que escribe fuera de las raíces declaradas.',
   },
   {
     name: 'secrets',
