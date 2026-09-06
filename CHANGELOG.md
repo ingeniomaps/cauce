@@ -60,15 +60,27 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`--force` y `--amend` se frenan por su cuenta.** R10 enumera seis actos de publicación y el guard
+  comprobaba uno, sin distinguir lo que la prosa distingue: `git push` y `git push --force` caían en el
+  mismo patrón, así que `allowPush: true` habilitaba también reescribir historia ya publicada. Y
+  `git commit --amend` no lo miraba nadie, con la llave prendida o apagada, aunque R8 lo prohíbe sin
+  excepción. **Qué cambia para vos**: si tu proyecto publica con `allowPush`, un `--force` ahora se
+  frena igual —con su propio mensaje, que dice que la llave no lo desbloquea—, y un `--amend` también.
+  Si venías usando alguno de los dos, lo vas a notar; la salida es un push normal o un commit nuevo.
+
+- **Un mensaje de commit ya no dispara los guards que nombra.** `git commit -m "fix: bloquear git push
+  --force"` caía por el guard de publicación, y nombrar `rm -rf` dentro de una explicación caía por el
+  de destrucción; con el heredoc que se usa para un mensaje largo, el cuerpo entero viaja adentro del
+  comando. Ahora lo entrecomillado se lee como dato **sólo** cuando el comando es un commit: en
+  cualquier otro, lo que va entre comillas se ejecuta y se sigue juzgando.
+
 - **`AGENTS.md` dice cuál de sus límites puede habilitar tu proyecto, y cuál no.** Enumeraba seis cosas
   que el runner nunca hace y dos párrafos después las llamaba «los cuatro límites del párrafo anterior»,
   que son los que no se amplían. Aparte del conteo, entre esas seis estaba **publicar**, que el motor
   hace configurable a propósito con `runner.allowPush`. Un proyecto que lo leyera al pie concluía que su
   `allowPush: true` era ilegítimo, o que podía ampliar cualquiera de las seis y elegía mal. **Qué cambia
   para vos**: el conteo desapareció, y el texto dice que publicar es lo único que se habilita y con qué
-  llave. Dice además algo incómodo y comprobado: con `allowPush` en `true` pasa también un
-  `push --force`, porque el guard mira `git push` y no distingue la forma. Eso no lo autoriza —R8 lo
-  prohíbe igual—; significa que ahí el límite lo sostiene la regla y no el motor.
+  llave, y que reescribir historia publicada no entra en ese trato.
 
 - **R12 manda las excepciones sobre sistemas externos donde `upgrade` no las borra.** La regla cerraba
   diciendo que se documentan en el `AGENTS.md` del proyecto, y ese archivo es del toolkit: se reemplaza
