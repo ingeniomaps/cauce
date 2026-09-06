@@ -255,6 +255,20 @@ listo para mergear.
   0.22: lo propio no debería aparecer por encima de lo preexistente.
 - El CLI se invoca con `node engine/cli/ops.js` o `npm run ops -- <comando>`; `make help` lista los
   atajos frecuentes.
+- **En `main` no se trabaja.** El ruleset del repositorio exige pull request y dos status checks, y el
+  trabajo entra por rama y PR — también el de una sesión de agente. Que el checkout esté en `main` al
+  abrir no la convierte en rama de trabajo: ahí se crea una y se abre el PR.
+
+  **Y el push a `main` no falla, avisa después.** El dueño está en la lista de bypass a propósito, como
+  vidrio a romper si algo se rompe, así que `git push origin main` **sale bien** y lo único que queda es
+  una línea en la respuesta del remoto: `Bypassed rule violations for refs/heads/main`. Verificado el
+  2026-09-06 empujando 32 commits sin querer. O sea que acá el límite no lo sostiene el mecanismo: lo
+  sostiene esta línea, y usar el bypass es una decisión que se dice, no un default.
+
+  El tag queda afuera: el ruleset apunta a `~DEFAULT_BRANCH` y no cubre `refs/tags/`, así que empujar
+  `v*` para publicar no lo toca. Y para el bump de versión no hace falta ir a `main`: `release-pr.yml`
+  abre solo el PR que sincroniza `package.json` con el encabezado más nuevo del CHANGELOG.
+
 - **Se publica por tag y OIDC; el `NPM_TOKEN` es el respaldo.** El push de un tag `v*` dispara
   `release.yml`, que corre con `id-token: write` y publica con `npm publish --provenance`: no hay
   ninguna credencial de npm guardada en el repositorio, y no guardarla es la mitad del punto. La vía
