@@ -27,6 +27,17 @@ diseño — eso vive en el commit y en el código.
   razón repetida apenas por debajo del umbral y el comentario que no repite a ningún otro porque repite
   el nombre que tiene al lado, y bajar el umbral hasta agarrarlas empieza a marcar lo que está bien.
 
+- **`ops adopt` — adoptar Cauce en un proyecto que ya tiene historia.** `check` le exigía a toda entrada
+  de `DONE.md` los mismos campos, incluida la que se escribió bajo otro contrato o bajo ninguno, y las
+  únicas salidas eran escribir `tests: n/a — razón` en cada una vieja —que deja la exención adentro del
+  campo de evidencia, donde alguien la va a copiar a una entrada nueva— o dejar `check` en rojo
+  permanente. **Qué cambia para vos**: `ops adopt <planning-dir>` genera una vez
+  `planning/.adoption-baseline` con las entradas que hoy no cumplen, y `check` deja de juzgarlas. El
+  perdón es por entrada y no por campo, así que una historia vieja con un `commit:` de otro formato
+  también queda afuera. `check` muestra la cuenta en cada corrida y avisa cuando una exenta ya cumple el
+  contrato o cuando nombra una entrada que no existe, para que la lista se achique en vez de envejecer;
+  achicarla es borrar el renglón. `adopt` no se vuelve a correr sobre un baseline que ya existe.
+
 - **`writableOutsideRoots` — declarar rutas escribibles que no son raíces de código.** El guard de
   límites bloquea todo lo que caiga fuera de la raíz de ops y de `workspaceRoots`, y ahí cae el
   directorio donde tu runner guarda su memoria entre sesiones, que no es código de tu proyecto.
