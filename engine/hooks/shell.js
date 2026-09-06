@@ -25,6 +25,11 @@ const {
 function destructive(input) {
   const raw = commandOf(input)
   const command = isCommit(raw) ? unquoted(raw) : raw
+  // Ninguna de estas dos ramas tiene override, y la pregunta merece respuesta escrita porque cuatro
+  // guards del motor sí lo tienen. R8 no admite excepción configurable para `force` ni para `amend`, y
+  // el precedente es `git-add`, que hace cumplir la misma regla sin escapatoria. Lo que corresponde
+  // cuando de verdad hace falta es una acción humana, que deja rastro; una variable de entorno no.
+  //
   // Publicar se autoriza; reescribir historia publicada, no. Eran el mismo interruptor: `\bgit\s+push\b`
   // matchea igual las dos formas, así que `allowPush` habilitaba el force-push sin que nadie lo decidiera
   // y el párrafo de autonomía de `AGENTS.md` tenía que confesarlo. R8 prohíbe `force` sin excepción
