@@ -307,6 +307,8 @@ test('guard-shell-boundary mira el destino de un comando, sin morder lo corrient
     'echo x > $HOME/afuera/nota.md',
     `printf x | tee ${afuera}/nota.md`,
     `cp nota.md ${afuera}/nota.md`,
+    `sed -i 's/a/b/' ${afuera}/nota.md`,
+    `truncate -s 0 ${afuera}/registro.log`,
   ]) {
     blocked('shell-boundary', { cwd: root, tool_input: { command } }, /fuera de las raíces/)
   }
@@ -318,6 +320,11 @@ test('guard-shell-boundary mira el destino de un comando, sin morder lo corrient
     'git status --short',
     'grep -rn "escribe > /etc/passwd" src/',
     'printf x | tee ~/.claude/projects/demo/memory/nota.md',
+    // `sed` sin `-i` lee y manda a stdout: el destino de afuera es el archivo que abre, no uno que
+    // escriba. Va con una ruta fuera de las raíces a propósito — con una de adentro el caso pasaría
+    // aunque el guard dejara de exigir el flag.
+    `sed 's/a/b/' ${afuera}/entrada.txt`,
+    'cp solo',
   ]) {
     assert.doesNotThrow(() => corre(command), `frenó lo corriente: ${command}`)
   }

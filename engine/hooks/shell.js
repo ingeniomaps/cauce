@@ -142,8 +142,19 @@ function dependencies(input) {
 // líneas antes, un heredoc dentro de `bash -c`, un `python -c "open(...)"` o un script propio escriben
 // igual y ningún patrón los ve. Frena la forma habitual, como el resto de `destructive`; quien quiera
 // pasar, pasa. Presentarlo como un límite invitaría a confiar en él más de lo que aguanta.
+// Tres familias, porque los comandos no nombran su destino igual: `tee` y `truncate` escriben en cada
+// argumento, `cp` y sus hermanos en el último, y `sed` sólo escribe con `-i` —sin él lee y manda a
+// stdout, y esa redirección la ve REDIRECT—.
 const REDIRECT = /(?:^|[\s(])&?\d*>>?\s*(?![&(])([^\s;|&<>()]+)/g
-const WRITERS = /(?:^|[\s;|&(])(tee|cp|mv|install|rsync)\s+([^;|&<>()]+)/g
+const EVERY_ARG = /(?:^|[\s;|&(])(tee|truncate)\s+([^;|&<>()]+)/g
+const LAST_ARG = /(?:^|[\s;|&(])(cp|mv|install|rsync)\s+([^;|&<>()]+)/g
+const SED = /(?:^|[\s;|&(])sed\s+([^;|&<>()]+)/g
+const IN_PLACE = /(?:^|\s)-{1,2}i/
+
+// Los argumentos que no son flags. El valor de un flag se cuela —`truncate -s 0 log` trae el `0`— y no
+// hace falta sacarlo: un token así resuelve contra el cwd, que está adentro de la raíz, así que nunca
+// decide un bloqueo. Filtrarlo sería una rama que ninguna prueba puede ver caer.
+const positional = (text) => text.trim().split(/\s+/).filter((one) => one && !one.startsWith('-'))
 
 // Vacía lo que va entre comillas, dejando una marca que ningún patrón confunde con una ruta ni con un
 // comando. Lo usan dos guards por razones distintas, y cada uno explica la suya donde lo llama.
@@ -160,10 +171,15 @@ function writeTargets(command) {
   const clean = unquoted(command)
   const found = new Set()
   for (const match of clean.matchAll(REDIRECT)) found.add(match[1])
-  for (const match of clean.matchAll(WRITERS)) {
-    const args = match[2].trim().split(/\s+/).filter((one) => one && !one.startsWith('-'))
-    if (match[1] === 'tee') for (const arg of args) found.add(arg)
-    else if (args.length > 1) found.add(args[args.length - 1])
+  for (const match of clean.matchAll(EVERY_ARG)) for (const one of positional(match[2])) found.add(one)
+  for (const match of clean.matchAll(LAST_ARG)) {
+    const args = positional(match[2])
+    // Con un solo argumento no hay destino: `cp solo` está a medio escribir, no escribe en `solo`.
+    if (args.length > 1) found.add(args[args.length - 1])
+  }
+  for (const match of clean.matchAll(SED)) {
+    const args = positional(match[1])
+    if (IN_PLACE.test(match[1]) && args.length) found.add(args[args.length - 1])
   }
   return [...found]
     .map((one) => one.replace(/^~(?=$|\/)/, os.homedir()).replace(/^\$\{?HOME\}?(?=$|\/)/, os.homedir()))
