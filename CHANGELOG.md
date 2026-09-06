@@ -14,6 +14,21 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.62.0] - 2026-09-06
+
+### Corregido
+
+- **Tres reglas de `destructive` reconocen el comando aunque venga envuelto.** Decidían dónde termina
+  una palabra admitiendo sólo un espacio, el principio o el fin, y en un shell una palabra también
+  termina en `;`, `&`, `|`, `)` y en una comilla. Con eso `rm -rf /; echo listo` **pasaba** —sin una
+  sola comilla: lo que decidía era el espacio antes del punto y coma— y las tres se esquivaban dentro de
+  `bash -c`, `sh -c`, `eval` o un subshell, donde lo de adentro sí se ejecuta. Las tres son `rm -rf`
+  sobre `/`, home o `..`; `git checkout -- .` y su `restore`; y `mkfs`/`shred`. Las otras cinco de la
+  tabla ya estaban sanas. **Qué cambia para vos**: algún comando que ayer pasaba ahora se frena, y es el
+  que la regla siempre dijo que frenaba. Lo que **no** cambia es lo corriente: `rm -rf /srv/cache`,
+  `rm -r build/cache` y `git checkout -- src/app.js` siguen pasando — revertir un archivo nombrado
+  nunca fue lo que esta regla toca.
+
 ## [0.61.0] - 2026-09-06
 
 ### Agregado

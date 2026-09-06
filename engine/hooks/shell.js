@@ -13,6 +13,23 @@ const {
   writableRoots, outsideRoots, DECLARE_IT,
 } = require('./input')
 
+// Dónde empieza y dónde termina una palabra dentro de un comando. Tres reglas de la tabla de abajo lo
+// decidían por su cuenta admitiendo sólo un espacio, el principio o el fin, y en un shell una palabra
+// también termina en `;`, `&`, `|`, `)` y en una comilla. Con eso `rm -rf /; echo listo` pasaba —sin una
+// sola comilla, porque lo que decidía era el espacio antes del punto y coma— y las tres se esquivaban
+// envueltas en `bash -c`, `sh -c`, `eval` o un subshell, donde lo de adentro sí se ejecuta.
+//
+// Son dos cierres y no uno, y la diferencia es lo que evita frenar de más. PALABRA termina una palabra:
+// el espacio cuenta, porque después de una ruta un espacio la termina. COMANDO termina el comando: ahí
+// el espacio **no** cuenta, porque `--` seguido de un espacio significa que viene un archivo nombrado, y
+// revertir un archivo nombrado es trabajo corriente que la regla no toca.
+//
+// Y el `\s*` va adentro del lookahead. Afuera, el cuantificador retrocede a vacío y el lookahead ve el
+// espacio que él mismo habría consumido, así que `git checkout -- src/app.js` empieza a caer.
+const ANTES = String.raw`(?:^|[\s;&|('"\`])`
+const PALABRA = String.raw`$|[\s;&|)'"\`]`
+const COMANDO = String.raw`$|[;&|)'"\`]`
+
 // Un mensaje de commit es dato, no código. `git commit -m "fix: bloquear git push --force"` disparaba
 // el guard de publicación, y lo mismo `rm -rf /` nombrado en una explicación; con el heredoc que se usa
 // para un mensaje largo, el cuerpo entero entra en el comando, así que la línea que arregla esto no se
@@ -61,7 +78,8 @@ function destructive(input) {
     [
       // `git restore .` no lleva `--` y destruye igual: comprobado en `git restore --help` (git 2.43.0),
       // que restaura el working tree por defecto y toma el pathspec sin separador.
-      /\bgit\s+(?:checkout|restore)\s+(?:[^;&|]*?\s)?(?:--\s*(?:$|[;&|])|(?:--\s+)?(?:\.|\*|:\/)\s*(?:$|[;&|]))/,
+      new RegExp(String.raw`\bgit\s+(?:checkout|restore)\s+(?:[^;&|]*?\s)?`
+        + String.raw`(?:--(?=\s*(?:${COMANDO}))|(?:--\s+)?(?:\.|\*|:\/)(?=\s*(?:${COMANDO})))`),
       "'git checkout -- .' revierte todo lo no commiteado del directorio, no sólo lo que estás mirando. "
       + 'Nombrá el archivo, o commiteá lo que quieras conservar antes.',
     ],
@@ -74,11 +92,12 @@ function destructive(input) {
       'Detener un stack Compose puede interrumpir servicios compartidos.',
     ],
     [
-      /(?:^|\s)(?:mkfs\S*|shred)\s|\bdd\s+[^;&|]*\bof=\/dev\/|>\s*\/dev\/(?:sd|nvme|disk)/,
+      new RegExp(ANTES + String.raw`(?:mkfs\S*|shred)\s`
+        + String.raw`|\bdd\s+[^;&|]*\bof=\/dev\/|>\s*\/dev\/(?:sd|nvme|disk)`),
       'Operación destructiva sobre disco o dispositivo.',
     ],
     [
-      /\brm\s+(?:-[^\s]*r[^\s]*\s+)+(?:\/\*?|~\/?|\$HOME|\.\.)(?:\s|$)/,
+      new RegExp(String.raw`\brm\s+(?:-[^\s]*r[^\s]*\s+)+(?:\/\*?|~\/?|\$HOME|\.\.)(?=${PALABRA})`),
       "'rm -r' sobre /, home o el directorio padre es catastrófico.",
     ],
   ]
