@@ -82,6 +82,26 @@ test('no declarar ninguna ruta exenta es el caso normal', () => {
   assert.deepEqual(validateOpsConfig(config), [])
 })
 
+// El molde le dice al proyecto que `runner.allowPush` es la autorización que R10 pide, así que ese
+// nombre pasó a vivir en dos lugares que nadie ataba: la prosa que alguien lee para decidir y el schema
+// contra el que el motor valida. Renombrar la llave dejaría a `AGENTS.md` mandando a escribir una que
+// el validador rechaza, y el error saldría en `check` sin decir de dónde salió el nombre.
+//
+// Vale para la que haya: se leen del molde y se cruzan, en vez de fijar `allowPush` a mano, que es la
+// forma de que la próxima llave que se documente entre sin atadura.
+test('las llaves de runner que el molde nombra existen en el schema', () => {
+  const schema = require('../../engine/schemas/ops-config.schema.json')
+  const molde = fs.readFileSync(path.resolve(__dirname, '..', '..', 'template', 'AGENTS.md'), 'utf8')
+  const nombradas = [...molde.matchAll(/`runner\.([a-zA-Z]+)`/g)].map((match) => match[1])
+
+  assert.ok(nombradas.length, 'si el molde deja de nombrar llaves, esta atadura ya no cuida nada')
+  assert.deepEqual(
+    nombradas.filter((key) => !(key in schema.properties.runner.properties)),
+    [],
+    'el molde nombra una llave de runner que el schema no declara',
+  )
+})
+
 // La misma atadura que la de abajo, un nivel más arriba, que es donde no existía: `verify` se probó como
 // propiedad de una raíz, y el campo siguiente entró en el primer nivel, donde nada ataba las dos listas.
 test('el validador conoce todas las propiedades que el schema declara en el primer nivel', () => {

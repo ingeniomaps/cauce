@@ -122,10 +122,17 @@ Registra la acción exacta en `planning/HUMAN_ACTIONS.md` y, si bloquea todo, cr
 `planning/AWAITING_REVIEW.md`.
 
 Nunca amplía el alcance, promueve sus propias ideas, reescribe el proceso durante una tarea, usa
-`git add .`/`git add -A`, hace push/force/amend, ni afirma éxito sin evidencia real.
+`git add .`/`git add -A`, reescribe historia con `--force` o `--amend`, ni afirma éxito sin evidencia
+real. Tampoco publica: sin autorización no hay `push`.
+
+Publicar es lo único de todo eso que este proyecto puede habilitar, y `runner.allowPush` en
+`ops.config.json` es la autorización que R10 pide. Habilitarla deja pasar también un `push --force`,
+porque el guard mira `git push` y no distingue la forma; eso no lo autoriza —R8 lo prohíbe igual—, sólo
+significa que ahí el límite lo sostiene la regla y no el motor.
 
 Eso rige sin que nadie escriba nada. Lo que este proyecto amplíe o restrinja va en
-`organization/workspace.md`, con su razón; los cuatro límites del párrafo anterior no se amplían ahí.
+`organization/workspace.md`, con su razón; ninguna de esas prohibiciones se amplía ahí, y la
+publicación tampoco se decide ahí: la decide `allowPush`.
 
 ## Definición de terminado
 
