@@ -126,9 +126,8 @@ Nunca amplía el alcance, promueve sus propias ideas, reescribe el proceso duran
 real. Tampoco publica: sin autorización no hay `push`.
 
 Publicar es lo único de todo eso que este proyecto puede habilitar, y `runner.allowPush` en
-`ops.config.json` es la autorización que R10 pide. Habilitarla deja pasar también un `push --force`,
-porque el guard mira `git push` y no distingue la forma; eso no lo autoriza —R8 lo prohíbe igual—, sólo
-significa que ahí el límite lo sostiene la regla y no el motor.
+`ops.config.json` es la autorización que R10 pide. Reescribir historia publicada no entra en el trato:
+un `push --force` se frena con la llave prendida o apagada.
 
 Eso rige sin que nadie escriba nada. Lo que este proyecto amplíe o restrinja va en
 `organization/workspace.md`, con su razón; ninguna de esas prohibiciones se amplía ahí, y la

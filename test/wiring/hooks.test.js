@@ -94,10 +94,38 @@ test('guard-destructive respeta runner.allowPush del proyecto', () => {
   blocked('destructive', { cwd: root, tool_input: { command: 'git reset --hard HEAD' } }, /destruye cambios locales/)
 })
 
-// Lo que un commit dice no es lo que un commit hace. `git commit -m "fix: bloquear git push --force"`
-// caía por el guard de publicación, y con el heredoc de un mensaje largo el cuerpo entero viaja adentro
-// del comando: el arreglo de este guard no se podía commitear sin apagarlo. `destructive` explica por
-// qué el perdón es sólo para un commit.
+// Las tres escrituras del force, el amend, y las dos banderas que apenas se les parecen: lo que decide
+// es la forma y no la palabra suelta. Y las dos posiciones de la llave, porque de las tres reglas que
+// tocan `git push` sólo una la consulta — `destructive` dice por qué.
+test('guard-destructive separa publicar de reescribir historia', () => {
+  const root = tempRoot('ops-hook-force-')
+  fs.mkdirSync(path.join(root, 'planning'))
+  const config = (allowPush) => fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({
+    project: 'demo', mode: 'sidecar', workspaceRoots: [{ name: 'main', path: '.' }], runner: { allowPush },
+  }))
+  const entrada = (command) => ({ cwd: root, tool_input: { command } })
+
+  config(true)
+  assert.doesNotThrow(() => execute('destructive', entrada('git push origin main')), 'la llave sigue habilitando')
+  for (const forma of ['--force', '--force-with-lease', '-f']) {
+    blocked('destructive', entrada(`git push ${forma} origin main`), /reescribe historia ya publicada/)
+  }
+  blocked('destructive', entrada('git commit --amend -m x'), /reescribe un commit ya creado/)
+
+  // Ni una bandera que apenas se le parece ni un commit corriente: el permiso lo decide la forma, no la
+  // palabra suelta.
+  assert.doesNotThrow(() => execute('destructive', entrada('git push --set-upstream origin rama')))
+  assert.doesNotThrow(() => execute('destructive', entrada('git commit --fixup abc1234')))
+
+  // Y con la llave apagada el force cae por su propia rama, no por la de publicación: el mensaje es lo
+  // único que le dice a quien lo recibe que prender `allowPush` no lo va a desbloquear.
+  config(false)
+  blocked('destructive', entrada('git push --force origin main'), /R8 lo prohíbe y runner.allowPush no lo/)
+})
+
+// Los dos lados del perdón en una sola corrida, que es lo único que lo distingue de haber ablandado el
+// guard: tres mensajes que nombran comandos y tres comandos que de verdad los ejecutan. `destructive`
+// dice por qué el perdón llega hasta ahí.
 test('guard-destructive lee el mensaje de un commit como dato y el resto como comando', () => {
   const corre = (command) => execute('destructive', { tool_input: { command } })
 

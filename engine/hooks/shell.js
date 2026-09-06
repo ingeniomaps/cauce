@@ -25,11 +25,26 @@ const {
 function destructive(input) {
   const raw = commandOf(input)
   const command = isCommit(raw) ? unquoted(raw) : raw
+  // Publicar se autoriza; reescribir historia publicada, no. Eran el mismo interruptor: `\bgit\s+push\b`
+  // matchea igual las dos formas, así que `allowPush` habilitaba el force-push sin que nadie lo decidiera
+  // y el párrafo de autonomía de `AGENTS.md` tenía que confesarlo. R8 prohíbe `force` sin excepción
+  // configurable, así que esta rama va antes del permiso y no lo consulta.
+  if (/\bgit\s+push\b[^;&|]*\s(?:-f|--force(?:-with-lease|-if-includes)?)\b/.test(command)) {
+    block("'git push --force' reescribe historia ya publicada. R8 lo prohíbe y runner.allowPush no lo "
+      + 'habilita: publicá con un push normal, o registrá una acción humana.')
+  }
   if (/\bgit\s+push\b/.test(command) && !pushAllowed(input)) {
     block("'git push' publica cambios y requiere una acción humana. Se habilita con runner.allowPush.")
   }
   const rules = [
     [/\bgit\s+reset\s+--hard\b/, "'git reset --hard' destruye cambios locales."],
+    // R8 lo prohíbe sin excepción configurable y ningún guard lo miraba: `grep -rn amend engine/hooks/`
+    // no devolvía una línea. Se bloquea por política y no por daño —un `--amend` sobre algo que nadie vio
+    // no rompe nada—, así que el mensaje manda a lo que sí corresponde: otro commit.
+    [
+      /\bgit\s+commit\b[^;&|]*\s--amend\b/,
+      "'git commit --amend' reescribe un commit ya creado. R8 pide uno nuevo en su lugar.",
+    ],
     [/\bgit\s+clean\s+-[^\s]*f/, "'git clean -f' borra archivos sin seguimiento."],
     // `git checkout -- .` destruye lo mismo que `reset --hard` y sin recuperación, pero se escribe como
     // una limpieza. Se bloquea sólo la forma ancha —`.`, `*`, `:/`, o sin ruta—: revertir un archivo
