@@ -102,7 +102,15 @@ function evaluationBench(root, agent, caso, force, kind) {
   // reintentos, rehacer un banco es una operación que falla de vez en cuando y deja la corrida sin
   // empezar.
   fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 })
-  IN.scaffold(dir, { name: 'Banco de evaluación', mode: 'sidecar', quiet: true })
+  // Con `force`: el banco es desechable y se acaba de borrar, así que lo que sobreviva al `rmSync` se
+  // pisa en vez de cortar la corrida. Sin esto, `copyTemplate` se niega ante cualquier archivo que
+  // quede —«El destino contiene …/AGENTS.md»— y el mismo test falló así tres veces en un día, en las
+  // dos patas de la matriz. Por qué algo sobrevive a un borrado que no lanzó no está establecido.
+  //
+  // No ablanda ninguna protección: la pregunta «¿acá alguien trabajó?» la contesta el `git status` de
+  // arriba, que exige `--force` explícito para seguir. Esta segunda puerta no la eligió nadie y sólo
+  // se cerraba a veces, que es la clase de freno que enseña a re-correr sin leer.
+  IN.scaffold(dir, { name: 'Banco de evaluación', mode: 'sidecar', quiet: true, force: true })
   // El motor por symlink: la misma resolución que en una instancia real —`node_modules/@ingeniomaps`—
   // sin pagar un `npm install` por corrida. El cargo llega a un banco donde el CLI funciona.
   const scope = path.join(dir, 'node_modules', '@ingeniomaps')
