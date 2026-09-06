@@ -13,8 +13,18 @@ const {
   writableRoots, outsideRoots, DECLARE_IT,
 } = require('./input')
 
+// Un mensaje de commit es dato, no código. `git commit -m "fix: bloquear git push --force"` disparaba
+// el guard de publicación, y lo mismo `rm -rf /` nombrado en una explicación; con el heredoc que se usa
+// para un mensaje largo, el cuerpo entero entra en el comando, así que la línea que arregla esto no se
+// podía commitear sin apagar el guard.
+//
+// Se vacía **sólo** en un commit. En cualquier otro comando lo que va entre comillas sí se ejecuta:
+// `bash -c "git push origin main"` y `eval "git reset --hard"` siguen cayendo, comprobado. Queda afuera
+// la sustitución dentro del propio mensaje —`git commit -m "$(...)"` corre y ya no se ve—, que es
+// evasión y no la forma habitual.
 function destructive(input) {
-  const command = commandOf(input)
+  const raw = commandOf(input)
+  const command = isCommit(raw) ? unquoted(raw) : raw
   if (/\bgit\s+push\b/.test(command) && !pushAllowed(input)) {
     block("'git push' publica cambios y requiere una acción humana. Se habilita con runner.allowPush.")
   }
@@ -120,15 +130,19 @@ function dependencies(input) {
 const REDIRECT = /(?:^|[\s(])&?\d*>>?\s*(?![&(])([^\s;|&<>()]+)/g
 const WRITERS = /(?:^|[\s;|&(])(tee|cp|mv|install|rsync)\s+([^;|&<>()]+)/g
 
-// Un `>` adentro de una cadena no redirige nada: se vacían las comilladas antes de mirar. Pierde el
-// destino entrecomillado, que es un falso negativo — el error barato en un guard que ya es incompleto,
-// porque el caro es frenar un comando legítimo y que alguien apague el guard entero.
+// Vacía lo que va entre comillas, dejando una marca que ningún patrón confunde con una ruta ni con un
+// comando. Lo usan dos guards por razones distintas, y cada uno explica la suya donde lo llama.
+const unquoted = (command) => String(command).replace(/'[^']*'|"[^"]*"/g, '\u0000')
+
+// Un `>` adentro de una cadena no redirige nada. Pierde el destino entrecomillado, que es un falso
+// negativo — el error barato en un guard que ya es incompleto, porque el caro es frenar un comando
+// legítimo y que alguien apague el guard entero.
 //
 // `$HOME` y `~` se expanden porque son como se escribe el destino que esto vino a ver; el incidente que
 // lo originó decía `> $HOME/.claude/...`. Cualquier otra variable queda sin resolver y no se juzga:
 // adivinar su valor sería inventarlo, y un límite inventado frena lo que nadie pidió frenar.
 function writeTargets(command) {
-  const clean = String(command).replace(/'[^']*'|"[^"]*"/g, '\u0000')
+  const clean = unquoted(command)
   const found = new Set()
   for (const match of clean.matchAll(REDIRECT)) found.add(match[1])
   for (const match of clean.matchAll(WRITERS)) {

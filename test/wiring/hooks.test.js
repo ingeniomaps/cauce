@@ -94,6 +94,24 @@ test('guard-destructive respeta runner.allowPush del proyecto', () => {
   blocked('destructive', { cwd: root, tool_input: { command: 'git reset --hard HEAD' } }, /destruye cambios locales/)
 })
 
+// Lo que un commit dice no es lo que un commit hace. `git commit -m "fix: bloquear git push --force"`
+// caía por el guard de publicación, y con el heredoc de un mensaje largo el cuerpo entero viaja adentro
+// del comando: el arreglo de este guard no se podía commitear sin apagarlo. `destructive` explica por
+// qué el perdón es sólo para un commit.
+test('guard-destructive lee el mensaje de un commit como dato y el resto como comando', () => {
+  const corre = (command) => execute('destructive', { tool_input: { command } })
+
+  assert.doesNotThrow(() => corre('git commit -m "fix: bloquear git push --force"'))
+  assert.doesNotThrow(() => corre('git commit -m "docs: no corras rm -rf / nunca"'))
+  assert.doesNotThrow(() => corre('git commit -m "chore: dejar de usar git reset --hard"'))
+
+  // Y nada de eso ablanda el resto: lo entrecomillado de un comando que no es un commit se ejecuta, y
+  // lo que va fuera de las comillas de un commit también.
+  blocked('destructive', { tool_input: { command: 'bash -c "git push origin main"' } }, /publica cambios/)
+  blocked('destructive', { tool_input: { command: 'eval "git reset --hard"' } }, /destruye cambios/)
+  blocked('destructive', { tool_input: { command: 'git commit -m "x" && git reset --hard' } }, /destruye/)
+})
+
 test('guard-git-add exige stage explícito', () => {
   for (const command of ['git add .', 'git add -A', 'git add --all']) blocked('git-add', { tool_input: { command } },
     /Stagea rutas explícitas/)
