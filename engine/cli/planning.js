@@ -8,6 +8,7 @@ const path = require('node:path')
 const P = require('../planning/parser')
 const B = require('../planning/business-rules')
 const PC = require('../planning/contracts')
+const SZ = require('../planning/sizing')
 const ST = require('../planning/state')
 const AD = require('../planning/adoption')
 const I = require('../integrations/registry')
@@ -79,7 +80,7 @@ function check(dir, cli) {
   const roles = new Set(AG.list(path.resolve(root, '..')).map((role) => role.slug))
   const wip = P.readWip(root)
   const adopted = AD.read(root)
-  errors.push(...PC.oversizedUnits({ epics, milestones }))
+  errors.push(...SZ.oversizedUnits({ epics, milestones }))
   errors.push(...PC.validateState({
     epics, milestones, done, wip, roles, humanActions: P.readHumanActions(root), adopted: new Set(adopted),
   }))

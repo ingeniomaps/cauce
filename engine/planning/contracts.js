@@ -441,37 +441,9 @@ function validateState({
 // cuando está funcionando— y queda silenciado para todos sin que nadie lo decida caso por caso. R7 sí
 // deja los suyos al proyecto, pero con su razón: dependen del lenguaje y de la superficie. Cinco
 // condiciones que un plan tiene que satisfacer a la vez no dependen de ninguna de las dos.
-const R17 = { taskCriteria: 5, epicCriteria: 7, milestoneTasks: 9 }
-
-// Se cuenta lo que está estructurado: criterios de la épica, criterios que hereda una tarea, tareas del
-// hito. Quedan afuera las dos cosas que no son un conteo: la aceptación escrita en prosa —cuántas
-// condiciones tiene una frase es una lectura, y un número inventado ahí sería peor que ninguno— y la
-// segunda barra de R17, las cuatro horas de esfuerzo, que no está en el artefacto. Las dos las mira el
-// review, que para eso está R3, y la de esfuerzo es la que R17 dice que encuentra lo que ésta deja pasar.
-function oversizedUnits({ epics = [], milestones = [] }) {
-  const errors = []
-  const undecided = (what, count, limit) =>
-    `${what}: ${count} (umbral ${limit} de R17). Revisá si son dos resultados con vidas distintas y `
-    + 'partilo; si es uno solo, partirlo lo empeora — dejalo entero agregando "(sin partir: <razón>)"'
-  const judge = (unit, what, count, limit) => {
-    if (count > limit && !unit.noSplit) errors.push(undecided(what, count, limit))
-  }
-  for (const epic of epics) {
-    judge(epic, `roadmap/${epic.file}: criterios`, epic.criteria.length, R17.epicCriteria)
-  }
-  for (const milestone of milestones) {
-    judge(milestone, `hito ${milestone.slug}: tareas`, milestone.tasks.length, R17.milestoneTasks)
-    for (const task of milestone.tasks) {
-      judge(task, `BACKLOG ${task.slug}: criterios`, task.criteria.length, R17.taskCriteria)
-    }
-  }
-  return errors
-}
-
 module.exports = {
   validateState,
   doneEntryErrors,
-  oversizedUnits,
   validateAdr,
   validateRules,
   retiredByOverride,

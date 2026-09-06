@@ -167,6 +167,22 @@ function readCast(rest) {
 // lo está—. Cierra el `_` que markdown cerraría: el que no está entre caracteres de palabra.
 const ACCEPTANCE = /_Aceptaci[oó]n:\s*(.*?\S)_(?![A-Za-z0-9])/i
 
+// Cuántas condiciones tiene una aceptación escrita en prosa. Estuvo mucho tiempo sin contarse con una
+// razón buena —contar condiciones en una frase es una lectura, y un número inventado es peor que
+// ninguno—, y lo que la resuelve es no leer: se cuenta lo que el autor marcó. Los `(N)` cuando hay más
+// de uno, y si no los hay, los tramos que él mismo separó con `;`.
+//
+// Sub-cuenta a propósito. Una frase larga con comas vale 1, y un solo `(1)` suelto también: un umbral
+// que salta cuando no debe convierte la escapatoria de R17 en trámite, y ahí la razón se escribe para
+// callar el mensaje en vez de para que alguien la lea. Un falso negativo deja las cosas como estaban.
+function acceptanceConditions(value) {
+  const text = String(value || '').trim()
+  if (!text) return 0
+  const marcadas = (text.match(/\(\d+\)/g) || []).length
+  if (marcadas >= 2) return marcadas
+  return text.split(';').map((one) => one.trim()).filter(Boolean).length
+}
+
 function readBacklog(dir) {
   const text = withoutComments(read(path.join(dir, 'BACKLOG.md')))
   const milestones = []
@@ -185,11 +201,13 @@ function readBacklog(dir) {
     const task = line.match(TASK_LINE)
     if (!task || !current) continue
     const rest = task[3]
+    const acceptance = ((rest.match(ACCEPTANCE) || [])[1] || '').trim()
     current.tasks.push({
       slug: task[1].trim(), tier: task[2] || '', cast: readCast(rest),
       epic: ((rest.match(/\(epic:\s*(\d{3})\)/) || [])[1] || ''),
       service: ((rest.match(/\(service:\s*([^)]+)\)/) || [])[1] || '').trim(),
-      acceptance: ((rest.match(ACCEPTANCE) || [])[1] || '').trim(),
+      acceptance,
+      conditions: acceptanceConditions(acceptance),
       criteria: criteriaRefs(rest),
       noSplit: noSplitReason(rest),
     })
@@ -310,5 +328,6 @@ module.exports = {
   EPIC_STATES, HUMAN_ACTION_STATES, LANES, MILESTONE_HEADING, STOP_REASONS,
   TASK_LINE, TASK_LINE_ANY_LANE,
   read, section, withoutComments, frontmatter, readEpics, readBacklog, readDone, readWip,
+  acceptanceConditions,
   readInbox, readHumanActions,
 }
