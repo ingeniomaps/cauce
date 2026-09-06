@@ -51,8 +51,11 @@ printf '{"tool_name":"Write","tool_input":{"file_path":"%s/.claude/projects/x/me
 ## Síntoma
 
 ```
-BLOQUEADO: /home/manuel/.claude/projects/-home-manuel-Code-gouduet/memory/nota.md está fuera de las raíces declaradas en ops.config.json.
+BLOQUEADO: $HOME/.claude/projects/<proyecto>/memory/nota.md está fuera de las raíces declaradas en ops.config.json.
 ```
+
+El mensaje real trae la ruta ya resuelta —el guard compara absolutos—; acá va con `$HOME` porque el
+repositorio no acepta rutas absolutas de una máquina en un archivo trackeado.
 
 No hay variable que lo levante. Los overrides que existen son cuatro y ninguno alcanza a este guard:
 `OPS_TEST_EVIDENCE_OVERRIDE` (`engine/hooks/files.js:77`), `OPS_MIGRATIONS_OVERRIDE`

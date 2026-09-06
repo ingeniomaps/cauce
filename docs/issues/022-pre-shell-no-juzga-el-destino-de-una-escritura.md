@@ -48,7 +48,7 @@ printf '{"tool_name":"Bash","tool_input":{"command":"echo x > $HOME/afuera/nota.
 ## Síntoma
 
 ```
-BLOQUEADO: /home/manuel/afuera/nota.md está fuera de las raíces declaradas en ops.config.json.
+BLOQUEADO: $HOME/afuera/nota.md está fuera de las raíces declaradas en ops.config.json.
 exit=2      # Write
 
 exit=0      # echo >
