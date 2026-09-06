@@ -60,6 +60,15 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **La barra de cinco condiciones de R17 también cuenta la aceptación que la tarea escribe.** Contaba
+  sólo los criterios heredados con `(→ CN)`, así que una tarea con su aceptación en la línea —la forma
+  que el molde muestra primero— contaba cero y nunca cruzaba el umbral; la salida que R17 describe,
+  `(sin partir: <razón>)`, no se le pedía jamás. **Qué cambia para vos**: es probable que aparezcan
+  mensajes en tareas que hoy pasan, y en un proyecto recién adoptado pueden ser varias a la vez; la
+  salida es la misma de siempre. Se cuenta lo que vos marcaste —los `(1)`, `(2)`… cuando hay más de uno,
+  y si no, lo que separaste con `;`— y sub-cuenta a propósito: una frase larga con comas vale una. El
+  mensaje dice cuál de los dos contó, para que «8» no mande a buscar ocho referencias que no existen.
+
 - **R10 dice cuál de sus seis actos comprueba el motor.** La regla prometía «la autorización
   configurada para el proyecto» para push, PR, merge, tags, deploy y rollback, y el motor comprueba uno.
   Medido con `allowPush` apagado: `gh pr merge`, `gh release create`, `gh workflow run`, `git tag` y un
