@@ -163,3 +163,54 @@ test('una acción humana cuya tarea no está en el backlog no rompe check ni blo
   assert.equal(task.slug, 'uno', 'no bloquea a nadie: sólo se saltea lo que está en la cola')
   assert.deepEqual(skipped, [], 'y no se anuncia como salteada, porque no lo está')
 })
+
+// Los campos de una entrada son prosa y se envuelven a 120 columnas como cualquier otra línea. Leídos
+// de a una línea física, `check` rechazaba entradas correctas culpando a otra cosa: una cita que cerraba
+// abajo se reportaba como cita ausente, y el mensaje mandaba a revisar lo único que sí estaba. Costó
+// cuatro tropiezos en días distintos, porque el error nombra una ausencia que no es la que hay.
+test('un campo de DONE que se envuelve se lee entero', () => {
+  const root = tempRoot('ops-done-wrap-')
+  fs.writeFileSync(path.join(root, 'DONE.md'), `# Done activo
+
+## Hito ejemplo — Un hito cualquiera
+
+- [x] **tarea-envuelta** — Resultado construido.
+  acept: criterio observable
+  done: lo que se hizo
+  qa: lo que se observó por el camino real
+  tests: A → make test
+  decisions: se eligió A y no B porque el borde que C describe lo exige [fuente:
+  planning/adr/001-decision.md]
+  commit: abc1234 feat(x): subject
+`)
+
+  const [entry] = P.readDone(root).entries
+
+  assert.equal(entry.decisions, 'se eligió A y no B porque el borde que C describe lo exige '
+    + '[fuente: planning/adr/001-decision.md]')
+  assert.equal(PC.validDecisionTrace(entry.decisions), true, 'la cita está: cierra una línea más abajo')
+  assert.equal(entry.acceptance, 'criterio observable', 'el campo anterior no se lleva al siguiente')
+  assert.equal(entry.commit, 'abc1234 feat(x): subject')
+})
+
+// El último campo no tiene otro campo que lo cierre, así que acumular sin más lo deja tragarse lo que
+// venga después. Y se lo traga en silencio: `abc1234 feat(x): subject Nota suelta` sigue pasando
+// `validCommitTrace`, porque el prefijo es válido. Un valor contaminado que ningún contrato rechaza es
+// peor que el recorte que esto vino a arreglar, así que el corte por línea en blanco no es opcional.
+test('el último campo de una entrada no se traga lo que viene después', () => {
+  const root = tempRoot('ops-done-tail-')
+  fs.writeFileSync(path.join(root, 'DONE.md'), `# Done activo
+
+## Hito ejemplo — Un hito cualquiera
+
+- [x] **tarea-con-cola** — Otro resultado.
+  done: lo que se hizo
+  commit: abc1234 feat(x): subject
+
+  Nota suelta que alguien dejó debajo de la entrada.
+`)
+
+  const [entry] = P.readDone(root).entries
+
+  assert.equal(entry.commit, 'abc1234 feat(x): subject')
+})

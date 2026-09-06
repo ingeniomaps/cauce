@@ -207,6 +207,25 @@ function doneFiles(dir) {
   return files
 }
 
+const DONE_FIELDS = 'acept|done|qa|tests|decisions|commit'
+
+// Un campo vale hasta el próximo campo, una línea en blanco o el fin de la entrada. Mismo corte que ya
+// se arregló para los criterios y las historias, con el mismo síntoma: el valor es prosa y se envuelve a
+// 120 columnas, así que leer sólo la primera línea dejaba afuera lo que el autor escribió y `check`
+// reportaba una ausencia que no existía —«decisions debe citar» sobre un campo cuya cita cerraba abajo—.
+//
+// El corte por línea en blanco no es simetría: el último campo es el único que no tiene otro campo
+// detrás, y sin él se traga lo que venga después dentro de la entrada. En silencio, además, porque
+// `validCommitTrace` sigue aprobando un `commit` contaminado mientras el prefijo sea válido.
+//
+// La sangría es `[^\S\n]` y no `\s`: `\s` incluye el salto, así que el match puede empezar en la línea
+// anterior y arrastrar una línea en blanco adentro del valor.
+function doneField(body, name) {
+  const pattern = new RegExp(`^[^\\S\\n]+${name}:[^\\S\\n]*([\\s\\S]*?)`
+    + `(?=\\n[^\\S\\n]+(?:${DONE_FIELDS}):|\\n[^\\S\\n]*\\n|(?![\\s\\S]))`, 'mi')
+  return ((body.match(pattern) || [])[1] || '').replace(/\s+/g, ' ').trim()
+}
+
 function readDone(dir) {
   const entries = []
   for (const file of doneFiles(dir)) {
@@ -215,7 +234,7 @@ function readDone(dir) {
     const matches = [...text.matchAll(donePattern)]
     for (const match of matches) {
       const body = match[3]
-      const field = (name) => ((body.match(new RegExp(`^\\s+${name}:\\s*(.+)$`, 'mi')) || [])[1] || '').trim()
+      const field = (name) => doneField(body, name)
       entries.push({
         slug: match[1].trim(),
         epic: ((match[2].match(/\(epic:\s*(\d{3})\)/) || [])[1] || ''),
