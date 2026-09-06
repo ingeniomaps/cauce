@@ -229,6 +229,21 @@ test('ningún workflow usa un nombre que no declaró', () => {
 // reintento vuelve a copiarlo: se acaba el retry cap y la corrida muere sin haber hecho nada. Pasó con
 // `dependsOn`, que está en las etapas de los seis contratos, en dos de cuatro corridas — dos, porque
 // depende de que el agente adivine que tiene que tirar un campo que está en la fuente.
+// El mismo par, un recorrido más abajo: `autobuild` lee el estado de planning por `planning.<campo>` y
+// lo recibe validado contra un schema con `additionalProperties: false`, así que un campo que el código
+// lee y el schema no declara llega siempre vacío. El arnés no valida —le entrega la respuesta armada—,
+// de modo que un olvido ahí pasa entero por la suite: éste es el único lugar donde se ve.
+test('el schema de planning-context declara los campos que autobuild le lee', () => {
+  const source = fs.readFileSync(path.join(WF, 'autobuild.js'), 'utf8')
+  const block = source.slice(source.indexOf('const CONTEXT'), source.indexOf('const EXPANSION'))
+  const declared = new Set([...block.matchAll(/([a-zA-Z]+): \{/g)].map((hit) => hit[1]))
+  const read = [...new Set([...source.matchAll(/planning\.([a-zA-Z]+)/g)].map((hit) => hit[1]))]
+
+  assert.ok(read.length > 5, 'no se leyó ningún campo del contexto')
+  assert.deepEqual(read.filter((field) => !declared.has(field)), [],
+    'autobuild lee un campo que el schema no acepta, y lo va a recibir vacío para siempre')
+})
+
 test('el schema del manifiesto acepta los campos que los contratos de recorrido tienen', () => {
   const flowWf = fs.readFileSync(path.join(WF, 'flow.js'), 'utf8')
   const stageBlock = flowWf.match(/stages: \{ type: 'array', items: \{[\s\S]*?\n {4}\} \} \},/)

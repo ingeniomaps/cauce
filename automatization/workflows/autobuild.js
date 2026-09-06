@@ -45,6 +45,10 @@ const CONTEXT = {
     blocked: { type: 'string' }, hasTask: { type: 'boolean' }, wipActive: { type: 'boolean' },
     queued: { type: 'integer' }, slug: { type: 'string' }, hito: { type: 'string' },
     service: { type: 'string' }, acceptance: { type: 'string' }, epic: { type: 'string' },
+    // Sin declararlo acá no llega: `additionalProperties: false` lo descartaría, y el aplanado de la
+    // épica a su número —dos líneas arriba— hace fácil creer que ya viene. La fase Plan lo pedía en su
+    // prompt y planificaba contra el título; `readEpics` cuenta de dónde sale.
+    epicContext: { type: 'string' },
     lane: { type: 'string', enum: ['', 'express', 'directo', 'lite', 'full'] },
     // Quién entrega y quiénes miran, decidido al clasificar la tarea y escrito en su línea. Viene
     // siempre, aunque venga vacío: preguntar si el campo existe antes de leerlo es la clase de borde
@@ -308,7 +312,8 @@ const write = (prompt, options = {}) => agent(`${LEDGER}\n\n${prompt}`, options)
 const readContext = () => read(
   `Corré "node tools/ops.js context ${P} --json" desde ${ROOT} y reportá sólo lo que imprimió. Derivá hasTask ` +
   `de si task es null, wipActive de si wip es null y lane de task.tier; copiá slug, hito, service, acceptance, ` +
-  `epic y cast de task. El comando es la fuente de verdad: no abras archivos de planning para completarlo.`,
+  `epic y cast de task, y epicContext de epic.context —vacío si no hay épica—. El comando es la fuente de ` +
+  `verdad: no abras archivos de planning para completarlo.`,
   { schema: CONTEXT, label: 'planning-context' },
 )
 
@@ -344,7 +349,7 @@ while (rounds++ < MAX_TASKS) {
   if (!planning.hasTask || (currentMilestone && planning.hito !== currentMilestone)) break
   const task = {
     id: planning.slug, hito: planning.hito, service: planning.service,
-    acceptance: planning.acceptance, epic: planning.epic,
+    acceptance: planning.acceptance, epic: planning.epic, epicContext: planning.epicContext || '',
   }
   currentMilestone = task.hito
 
@@ -455,7 +460,9 @@ while (rounds++ < MAX_TASKS) {
     phase('Plan')
     plan = await run(
       `${asRole(OWNERS.plan)}Inspeccioná el código real, las instrucciones del repositorio, las convenciones ` +
-      `vecinas, el contexto de la épica y el git status de ${task.id}. Producí el plan más chico que satisfaga ` +
+      `vecinas y el git status de ${task.id}.` +
+      `${task.epicContext ? ` Contexto de la épica: ${task.epicContext}` : ''}` +
+      ` Producí el plan más chico que satisfaga ` +
       `${task.acceptance}. Un archivo de planning no puede ser un archivo de implementación. El plan cubre ` +
       `sólo el cambio dentro de ${task.service}: correr los gates del repositorio, hacer QA, commitear y ` +
       `cerrar la tarea son fases posteriores de este recorrido, cada una con su dueño, así que no van como ` +

@@ -209,7 +209,10 @@ function context(dir, cli) {
       epic: task.epic,
     },
     criteria,
-    epic: epic ? { num: epic.num, title: epic.title, status: epic.status } : null,
+    // El título nombra el tema; el contexto dice contra qué se construye, que es lo que separa cumplir
+    // un criterio de cumplir su letra. Viaja acá porque el ejecutor tiene prohibido ir a buscarlo:
+    // `autobuild` le dice que lea cuatro archivos una sola vez y nada más, y el roadmap no es ninguno.
+    epic: epic ? { num: epic.num, title: epic.title, status: epic.status, context: epic.context } : null,
     wip: state.wip ? { phase: state.wip.phase, complete: state.wip.complete, pending: state.wip.pending } : null,
     queued: state.milestones.reduce((total, milestone) => total + milestone.tasks.length, 0),
     blockedTasks: skipped,
@@ -242,6 +245,12 @@ function context(dir, cli) {
     console.log(`CAST   ${report.task.cast.build}${review.length ? ` → ${review.join(', ')}` : ''}`)
   }
   if (report.epic) console.log(`EPIC   ${report.epic.num} ${report.epic.title} [${report.epic.status}]`)
+  // Entera y sin recortar, que es lo que hace el resto de esta salida con la aceptación y los criterios.
+  // Recortar sería la conducta nueva, y no hay dónde cortar: la sección es una lista de viñetas y la
+  // primera no resume a las otras. Si crece de más, el que tiene que ponerle techo es el molde.
+  for (const line of (report.epic?.context || '').split('\n')) {
+    if (line.trim()) console.log(`CTX    ${line.trim()}`)
+  }
   if (report.task.acceptance) console.log(`ACEPT  ${report.task.acceptance}`)
   for (const criterion of criteria) console.log(`${criterion.id.padEnd(6)} ${criterion.text}`)
   const wip = report.wip ? `${report.wip.phase} · ${report.wip.complete}✓/${report.wip.pending}○` : 'idle'

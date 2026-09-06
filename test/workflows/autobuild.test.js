@@ -19,6 +19,28 @@ test('autobuild cierra una tarea cuando todo está en su lugar', async () => {
   }
 })
 
+// La fase Plan pedía «el contexto de la épica» en su propio texto y nunca lo recibía: el esquema de
+// `planning-context` aplanaba la épica a su número. Acá se mide el viaje entero —lo que `ops context`
+// resuelve tiene que aparecer en el prompt que planifica—, porque es el único punto donde se nota que
+// llegó: el ejecutor tiene prohibido abrir el roadmap para buscarlo.
+test('el contexto de la épica llega al prompt que planifica', async () => {
+  const guion = baseScript()
+  const { prompts } = await runFlow({
+    [KEY.context]: { ...guion[KEY.context], epicContext: '- Sin esa marca el ruteo no distingue.' },
+  })
+  const plan = prompts.find((entry) => entry.key.startsWith('Plan|')).prompt
+
+  assert.match(plan, /Contexto de la épica: - Sin esa marca el ruteo no distingue\./)
+})
+
+// Y sin épica el prompt no cambia de forma: una tarea suelta no arrastra un rótulo vacío.
+test('una tarea sin épica planifica sin contexto pegado', async () => {
+  const { prompts } = await runFlow()
+  const plan = prompts.find((entry) => entry.key.startsWith('Plan|')).prompt
+
+  assert.doesNotMatch(plan, /Contexto de la épica/)
+})
+
 test('sin WIP activo no se entra a construir', async () => {
   const { result, asked } = await runFlow({
     [KEY.wip]: { wipActive: false, note: 'quedó en IDLE' },

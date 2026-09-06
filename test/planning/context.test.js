@@ -175,6 +175,50 @@ test('la línea de tarea lleva su lane y su cast, y los dos siguen siendo opcion
   assert.match(ghost.stderr, /frontend-enginer/)
 })
 
+// Las cuatro cosas que hay que ver de una sección que viaja: que salga en el texto, que salga en el
+// JSON, que no arrastre su encabezado y que termine donde termina. Las dos últimas son las que un
+// `section()` mal recortado rompe sin que nada más se note. `readEpics` dice por qué viaja.
+test('el contexto de la épica llega a quien ejecuta la tarea', () => {
+  const base = tempRoot('cauce-ctx-epica-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  const planning = path.join(target, 'planning')
+  fs.writeFileSync(path.join(planning, 'roadmap', 'epic-001-catalogo.md'), `---
+epic: 001
+title: Catálogo canónico
+status: active
+service: api
+---
+
+# Épica 001 — Catálogo canónico
+
+## Resultado
+
+El proveedor puede marcar si su oferta compite.
+
+## Criterios
+
+- **C1** — Cuando el proveedor cambia la marca, la oferta queda marcada.
+
+## Contexto relevante
+
+- Sin esa marca el ruteo no distingue a quién ofrecerle una orden ajena.
+
+## Historias
+
+- [ ] **marcar-oferta** (→ C1) — Incremento. _Aceptación: la oferta declara si compite._ (service: api)
+`)
+  fs.appendFileSync(path.join(planning, 'BACKLOG.md'), '\n## Hito catalogo — Catálogo\n\n'
+    + '- [ ] **marcar-oferta** [lite] — La oferta declara si compite. (→ C1) (epic: 001) (service: api)\n')
+
+  const salida = run(['context', planning]).stdout
+  assert.match(salida, /CTX\s+- Sin esa marca el ruteo no distingue/, 'la sección viaja en la salida de texto')
+  const json = JSON.parse(run(['context', planning, '--json']).stdout)
+  assert.match(json.epic.context, /Sin esa marca el ruteo/)
+  assert.doesNotMatch(json.epic.context, /Contexto relevante/, 'el encabezado no es contenido')
+  assert.doesNotMatch(json.epic.context, /Historias|Criterios/, 'y la sección termina donde termina')
+})
+
 test('context no muta archivos de estado', () => {
   const planning = path.resolve(__dirname, '..', '..', 'template', 'planning')
   const before = filesBelow(planning).map((file) => fs.readFileSync(file, 'utf8'))

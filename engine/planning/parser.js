@@ -138,6 +138,16 @@ function readEpics(dir) {
       criteria,
       stories,
       hasContext: /^##\s+Contexto relevante/im.test(text),
+      // El molde describe esta sección como «lo que el ejecutor lee antes de decidir el cómo», y `check`
+      // da error si falta. Hasta acá se comprobaba que estuviera y se tiraba el texto en el mismo
+      // renglón, así que quien tenía que leerla nunca la recibía: `context` la resuelve por él, que
+      // además tiene prohibido ir a buscarla.
+      //
+      // Son dos campos y no uno porque contestan distinto: `hasContext` dice si el encabezado está
+      // —que es lo que `check` exige hoy— y `context` trae el cuerpo, que puede estar vacío debajo de
+      // un encabezado presente. Unificarlos convertiría una sección vacía en un error nuevo, que es
+      // otra decisión y no ésta.
+      context: section(text, /Contexto relevante/i).split('\n').slice(1).join('\n').trim(),
       noSplit: noSplitReason(text),
       // Las líneas que todavía no decidieron nada. Se guardan enteras y no como un booleano porque el
       // error tiene que decir cuál es: «tiene un marcador» manda a releer la épica entera.
