@@ -409,6 +409,10 @@ const JUSTIFIED = {
   'automatization/workflows/autobuild.js':
     'Un recorrido crece de a una fase, y su schema y su paso cambian juntos: separarlos parte por la '
     + 'mitad lo que es una sola cosa.',
+  'test/wiring/hooks.test.js':
+    'El registro de guards suma un caso por guard, y cada caso prueba los dos lados de la misma '
+    + 'decisión: qué bloquea y qué deja pasar. Partirlo por grupo separaría casos que comparten el '
+    + 'montaje de una raíz ops y el helper que exige el motivo del bloqueo.',
   'test/agents/learning.test.js':
     'Las pruebas de un ciclo suman una por conducta y comparten el montaje —un cargo con su propuesta '
     + 'aplicada y su registro sin sellar—. Partirlas por tema separaría de qué material se abre una '

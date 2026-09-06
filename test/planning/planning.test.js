@@ -8,6 +8,7 @@ const { tempRoot, run } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
 
 test('la plantilla canónica pasa el validador', () => {
@@ -256,6 +257,28 @@ ${plan}
 
   fs.writeFileSync(path.join(planning, 'WIP.md'), 'status: IDLE\n')
   assert.deepEqual(errores(), [], 'el WIP inactivo no tiene plan que contar')
+})
+
+// Las dos mitades: sin nada declarado la salida queda limpia, y con algo declarado avisa sin fallar.
+// El porqué vive en `check`; acá se fija que el aviso exista y que traiga la ruta ya expandida.
+test('check muestra cada ruta exenta del límite de raíces, ya resuelta', () => {
+  const base = tempRoot('cauce-exempt-check-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  const planning = path.join(target, 'planning')
+  assert.doesNotMatch(run(['check', planning]).stderr, /exenta del límite/, 'sin exenciones no avisa nada')
+
+  const configPath = path.join(target, 'ops.config.json')
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+  config.writableOutsideRoots = ['~/.claude/projects/demo/memory']
+  fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+
+  const result = run(['check', planning])
+  assert.equal(result.status, 0, 'la exención es legítima: avisa, no falla')
+  const salida = result.stdout + result.stderr
+  assert.match(salida, /~\/\.claude\/projects\/demo\/memory está exenta del límite de raíces/)
+  assert.ok(salida.includes(path.join(os.homedir(), '.claude', 'projects', 'demo', 'memory')),
+    'y la ruta resuelta al lado, que es la que el guard compara')
 })
 
 // La advertencia de override nombra los IDs que el archivo propio deja de definir, y eso sólo tiene

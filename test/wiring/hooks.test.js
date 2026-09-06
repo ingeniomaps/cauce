@@ -221,6 +221,30 @@ test('guard-workspace-boundary limita escrituras a las raíces declaradas', () =
   blocked('workspace-boundary', { cwd: root, tool_input: { file_path: '../outside.txt' } }, /fuera de las raíces/)
 })
 
+// El guard alcanzaba la memoria del runner —`~/.claude/projects/<proyecto>/memory/`— y no tenía salida
+// declarada: para escribir ahí había que declararla raíz de código, que la mete en `scan` y en el
+// inventario de credenciales, o rodear el guard escribiendo por `Bash`. Frenaba el camino honesto.
+test('guard-workspace-boundary deja pasar lo que el proyecto declaró escribible', () => {
+  const root = tempRoot('ops-hook-exempt-')
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.mkdirSync(path.join(root, 'service'))
+  const memoria = path.join(os.homedir(), '.claude', 'projects', 'demo', 'memory')
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({
+    workspaceRoots: [{ name: 'service', path: 'service' }],
+    writableOutsideRoots: ['~/.claude/projects/demo/memory', '../salidas'],
+  }))
+  const escribe = (file) => execute('workspace-boundary', { cwd: root, tool_input: { file_path: file } })
+
+  assert.doesNotThrow(() => escribe(path.join(memoria, 'nota.md')), '`~` se expande a la casa del usuario')
+  assert.doesNotThrow(() => escribe('../salidas/informe.csv'), 'y lo relativo se resuelve contra la raíz')
+
+  // Exentar una ruta no exenta a su padre ni a su vecina: es una lista de rutas, no un permiso de zona.
+  // Sin esto, `startsWith` sobre la ruta escrita habría dejado pasar media casa por una sola línea.
+  blocked('workspace-boundary', { cwd: root, tool_input: { file_path: path.join(os.homedir(), '.claude', 'otro.md') } },
+    /fuera de las raíces/)
+  blocked('workspace-boundary', { cwd: root, tool_input: { file_path: '../outside.txt' } }, /fuera de las raíces/)
+})
+
 test('guard-engine protege el motor instalado y deja trabajar al toolkit', () => {
   const root = tempRoot('ops-hook-engine-')
   const pkg = path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine')
@@ -431,6 +455,15 @@ test('un guard que no puede leer la configuración bloquea, no permite', () => {
   }))
   blocked('workspace-boundary', afuera, /fuera de las raíces/)
   blocked('engine', engine, /pertenece al motor de Cauce/)
+
+  // Una configuración que parsea pero trae un tipo cambiado no es «no se puede leer»: el guard sigue
+  // juzgando con lo que entiende, y lo que no entiende no exenta nada. Un `.filter` sobre un string sale
+  // como TypeError, que no es un bloqueo — y en `check`, dentro del try, se leía como «JSON inválido».
+  fs.writeFileSync(config, JSON.stringify({
+    project: 'x', mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }],
+    writableOutsideRoots: '/etc', runner: {},
+  }))
+  blocked('workspace-boundary', afuera, /fuera de las raíces/)
 
   fs.writeFileSync(config, '{"project":"x",,"mode":"embedded"}')
   for (const guard of ['workspace-boundary', 'engine']) {

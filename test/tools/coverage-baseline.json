@@ -114,6 +114,11 @@
     "branches": 45,
     "functions": 77
   },
+  "engine/config/paths.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/config/validate.js": {
     "lines": 73,
     "branches": 52,

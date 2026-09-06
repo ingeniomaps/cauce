@@ -13,6 +13,7 @@ const I = require('../integrations/registry')
 const O = require('../core/ownership')
 const OB = require('../core/onboarding')
 const C = require('../config/validate')
+const CP = require('../config/paths')
 const AG = require('../agents/catalog')
 const F = require('../core/files')
 const { fail } = require('./io')
@@ -44,6 +45,14 @@ function check(dir, cli) {
               errors.push(`ops.config.json: no existe la raíz ${workspace.name} (${workspace.path})`)
             }
           }
+        }
+        // Es la única parte de la configuración que le levanta el límite a un guard, y quien la escribió
+        // no es quien la lee dentro de seis meses: va como advertencia permanente, igual que un override.
+        // Y se muestra resuelta porque resuelta es como la compara el guard — un `~` escrito solo exenta
+        // la casa entera, y escrito no se nota.
+        for (const exempt of CP.writableOutsideRoots(path.dirname(configPath), config)) {
+          warnings.push(`ops.config.json: ${exempt.declared} está exenta del límite `
+            + `de raíces (${exempt.path})`)
         }
       }
     } catch (error) {

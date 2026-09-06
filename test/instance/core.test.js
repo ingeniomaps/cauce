@@ -58,6 +58,45 @@ test('una puerta declarada vacía se rechaza diciendo qué falta', () => {
   assert.match(errors[0], /workspaceRoots\[0\]\.verify debe ser el comando, o no estar/)
 })
 
+// La memoria del runner no es código del proyecto y no puede declararse raíz sin arrastrar un árbol
+// ajeno a `scan` y al inventario de credenciales. Sin este campo, el único guard que bloqueaba por
+// política no tenía salida declarada y se rodeaba escribiendo por `Bash`.
+test('una ruta escribible fuera de las raíces pasa el validador, y una vacía no', () => {
+  const config = opsConfig()
+  config.writableOutsideRoots = ['~/.claude/projects/demo/memory', '../salidas']
+  assert.deepEqual(validateOpsConfig(config), [])
+
+  config.writableOutsideRoots = ['   ']
+  const errors = validateOpsConfig(config)
+  assert.equal(errors.length, 1, 'un solo error, no uno por lista')
+  assert.match(errors[0], /writableOutsideRoots\[0\] debe ser una ruta no vacía/)
+
+  config.writableOutsideRoots = '~/memoria'
+  assert.match(validateOpsConfig(config)[0], /writableOutsideRoots debe ser una lista de rutas/)
+})
+
+// Ausente y vacía son lo mismo: casi ningún proyecto exenta nada, y reclamar el campo obligaría a todas
+// las instancias que ya existen a escribir una lista vacía en su próximo `upgrade`.
+test('no declarar ninguna ruta exenta es el caso normal', () => {
+  const config = opsConfig()
+  delete config.writableOutsideRoots
+  assert.deepEqual(validateOpsConfig(config), [])
+  config.writableOutsideRoots = []
+  assert.deepEqual(validateOpsConfig(config), [])
+})
+
+// La misma atadura que la de abajo, un nivel más arriba, que es donde no existía: `verify` se probó como
+// propiedad de una raíz, y el campo siguiente entró en el primer nivel, donde nada ataba las dos listas.
+test('el validador conoce todas las propiedades que el schema declara en el primer nivel', () => {
+  const schema = require('../../engine/schemas/ops-config.schema.json')
+  for (const field of Object.keys(schema.properties)) {
+    const config = opsConfig()
+    if (config[field] === undefined) config[field] = 'algo'
+    const unknown = validateOpsConfig(config).filter((error) => error.includes('propiedad desconocida'))
+    assert.deepEqual(unknown, [], `el schema declara ${field} y el validador no lo conoce`)
+  }
+})
+
 // Lo que ató las dos listas. Sin esto, el próximo campo que entre al schema repite el hueco de #110 sin
 // que nada lo diga: el editor lo acepta y `check` lo rechaza.
 test('el validador acepta todo lo que el schema declara para una raíz', () => {

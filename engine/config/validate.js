@@ -19,7 +19,7 @@ function validateOpsConfig(config) {
   }
   // `cauceVersion` la escribe el toolkit, no la persona: registra de qué versión salió la instancia.
   const allowed = new Set([
-    '$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoots', 'runner',
+    '$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoots', 'writableOutsideRoots', 'runner',
   ])
   for (const key of Object.keys(config)) {
     if (RETIRED[key]) errors.push(`ops.config.json: ${key} ya no se usa: ${RETIRED[key]}`)
@@ -30,6 +30,7 @@ function validateOpsConfig(config) {
   }
   if (!MODES.includes(config.mode)) errors.push('ops.config.json: mode inválido')
   validateWorkspaces(config.workspaceRoots, errors)
+  validateWritable(config.writableOutsideRoots, errors)
   validateRunner(config.runner, errors)
   return errors
 }
@@ -59,6 +60,22 @@ function validateWorkspaces(workspaces, errors) {
     }
     if (typeof workspace.path !== 'string' || !workspace.path.trim()) {
       errors.push(`ops.config.json: workspaceRoots[${index}].path es obligatorio`)
+    }
+  }
+}
+
+// Opcional de verdad: la mayoría de los proyectos no exenta nada, así que ausente y vacía son lo mismo
+// y ninguna de las dos se reclama. Lo que sí se exige es que cada entrada sea una ruta escrita — un
+// número o un objeto se resolvería igual a *algo*, y ese algo quedaría exento sin que nadie lo eligiera.
+function validateWritable(paths, errors) {
+  if (paths === undefined) return
+  if (!Array.isArray(paths)) {
+    errors.push('ops.config.json: writableOutsideRoots debe ser una lista de rutas')
+    return
+  }
+  for (const [index, entry] of paths.entries()) {
+    if (typeof entry !== 'string' || !entry.trim()) {
+      errors.push(`ops.config.json: writableOutsideRoots[${index}] debe ser una ruta no vacía`)
     }
   }
 }
