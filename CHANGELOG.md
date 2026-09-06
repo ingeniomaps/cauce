@@ -60,6 +60,13 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **R12 manda las excepciones sobre sistemas externos donde `upgrade` no las borra.** La regla cerraba
+  diciendo que se documentan en el `AGENTS.md` del proyecto, y ese archivo es del toolkit: se reemplaza
+  entero en cada actualización. Quien obedecía la regla escribía su excepción donde la siguiente
+  actualización se la iba a llevar, sin que nada lo avisara. **Qué cambia para vos**: ahora apuntan a la
+  sección «Integraciones y ambientes» de `organization/workspace.md`, que ya nombraba a R12 y reclamaba
+  esas excepciones. Si tenías alguna escrita en `AGENTS.md`, movela: ahí no sobrevive.
+
 - **Un campo de `DONE.md` que se envuelve se lee entero.** Cada campo —`acept:`, `done:`, `qa:`,
   `tests:`, `decisions:`, `commit:`— se leía de una sola línea física, y sus valores son prosa que se
   envuelve como cualquier otra línea. Cuando la envoltura partía una cita, `check` respondía «decisions
