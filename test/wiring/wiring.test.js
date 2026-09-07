@@ -13,6 +13,27 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { hookMetadata } = require('../../engine/hooks/run')
 
+// Un interruptor que apaga un guard y que la documentación no nombra deja al lector en un punto muerto:
+// el bloqueo le ofrece una llave y no hay dónde leer dónde va. Pasó con el de gobernanza, y se descubrió
+// recién cuando otro arreglo hizo que el guard empezara a correr —hasta entonces la forma equivocada de
+// escribirlo parecía funcionar, porque apagaba el guard en vez de autorizarlo.
+//
+// El patrón busca la comparación contra `'1'`, que es la forma de un interruptor: `OPS_ROOT` y las otras
+// variables de entrada del hook no matchean, y no tienen por qué estar documentadas.
+test('toda variable que apague un guard está nombrada en el molde', () => {
+  const hooks = path.resolve(__dirname, '..', '..', 'engine', 'hooks')
+  const molde = fs.readFileSync(path.resolve(__dirname, '..', '..', 'template', 'AGENTS.md'), 'utf8')
+  const interruptores = new Set()
+  for (const file of fs.readdirSync(hooks).filter((one) => one.endsWith('.js'))) {
+    const source = fs.readFileSync(path.join(hooks, file), 'utf8')
+    for (const hit of source.matchAll(/process\.env\.(OPS_[A-Z_]+)\s*===\s*'1'/g)) interruptores.add(hit[1])
+  }
+
+  assert.ok(interruptores.size >= 4, `sólo se encontraron ${interruptores.size} interruptores`)
+  assert.deepEqual([...interruptores].filter((one) => !molde.includes(one)), [],
+    'el motor apaga un guard con una variable que el molde no nombra')
+})
+
 test('automation list-hooks explica los guards disponibles', () => {
   const result = run(['automation', 'list-hooks', path.resolve(__dirname, '..', '..')])
   assert.equal(result.status, 0, result.stderr)

@@ -98,6 +98,34 @@ siquiera están acá — los lee el motor desde el paquete.
 Un guard existente **no se edita**: `upgrade` detecta el cambio y se detiene antes de pisarlo, y con
 `--force` deja registrado qué descartó.
 
+### Cuando un guard te frena con razón
+
+Algunos bloqueos tienen salida, y conviene saber cuál antes de necesitarla — el momento en que un guard
+te frena es el peor para elegir bien.
+
+**Un commit que toca gobernanza** —reglas, ADRs, el contrato de un cargo o lo que lo mide— se autoriza
+escribiendo las rutas en `planning/.governance-approval`, una por línea, con `#` para lo que no sea una
+ruta. Vale para ese conjunto y para ningún otro: si después sumás un archivo, ese archivo no está
+aprobado y el guard lo nombra. No se borra sola —así un commit frenado por otra cosa no te obliga a
+rehacerla—, así que `check` te avisa mientras exista, y borrarla es parte de terminar.
+
+**Las demás salidas son variables de entorno**, y hay que decir su alcance
+porque no es el que uno espera: el guard la lee de **su propio proceso**, no del comando. Escribirla
+delante —`VAR=1 git commit`— no llega. La forma que sí funciona es exportarla en el entorno desde el que
+arranca tu runner, y eso deja el guard apagado **hasta que cierres la sesión**, no para un comando.
+
+| variable | qué abre |
+|---|---|
+| `OPS_GOVERNANCE_OVERRIDE=1` | lo mismo que la aprobación de arriba, pero para toda la sesión |
+| `OPS_MIGRATIONS_OVERRIDE=1` | escribir SQL destructivo en una migración |
+| `OPS_TEST_EVIDENCE_OVERRIDE=1` | borrar o apagar una prueba |
+| `OPS_DEPENDENCIES_OVERRIDE=1` | tocar manifiestos y lockfiles, publicar o instalar global |
+| `OPS_SKIP_VERIFY=1` | saltear los gates del stack antes de un commit |
+
+Son de sesión y no de operación, que es exactamente lo que la aprobación de gobernanza vino a corregir.
+Mientras sigan así, lo que corresponde es prenderlas para lo que hacía falta y apagarlas después — y que
+la razón quede escrita donde alguien la lea, no sólo en la memoria de quien la prendió.
+
 ## Cómo leer el estado
 
 Antes de abrir un archivo de `planning/`, preguntarle al CLI: es determinista, no gasta contexto y no
