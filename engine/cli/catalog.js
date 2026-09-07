@@ -129,7 +129,14 @@ function evaluationBench(root, agent, caso, force, kind) {
   // uno contestó un resumen y escribió el contrato entero en su `INBOX.md`, y el juez —que sólo leía
   // la respuesta— lo dio por ausente. Con git, `status` y `diff` muestran qué produjo, separado del
   // andamiaje. Se ignora `node_modules`: es un symlink al toolkit, no obra del cargo.
-  const git = (...args) => spawnSync('git', ['-C', dir, ...args], { stdio: 'ignore' })
+  // `-C` dice dónde mirar y `GIT_DIR` gana igual —comprobado: con `GIT_DIR` puesto,
+  // `git -C otro rev-parse --absolute-git-dir` contesta el de la variable—, así que sin limpiarla el
+  // banco commitea en el repositorio que la haya exportado. Es lo que hizo el caso 045 antes de
+  // arreglarse en `hooks/shell.js`: el banco de una evaluación dejó sus commits en la rama del usuario.
+  const env = { ...process.env }
+  delete env.GIT_DIR
+  delete env.GIT_WORK_TREE
+  const git = (...args) => spawnSync('git', ['-C', dir, ...args], { stdio: 'ignore', env })
   fs.appendFileSync(path.join(dir, '.gitignore'), '\nnode_modules/\n')
   git('init', '-q')
   git('config', 'user.email', 'banco@cauce.local')

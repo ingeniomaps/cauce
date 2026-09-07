@@ -171,6 +171,44 @@ absolutas, después como suciedad preexistente del checkout. Nada en la salida d
 la corrida escribió en el repositorio, y ése es el costo real del caso — no los commits, que se
 deshacen con un `reset`, sino que se leen como estado que ya estaba.
 
+## Arreglo aplicado
+
+**Mergeado y sin publicar.** El caso sigue `abierto` a propósito: se marca `resuelto` cuando salga la
+versión que lo lleva, porque hasta entonces sigue mordiendo a todo el que instale. El recorrido de lo
+que este caso enumeró, ítem por ítem:
+
+- **Materializar el `.git` en vez de apuntar al real — hecho, y distinto de como estaba propuesto.** No
+  se clona: la copia se vuelve un repositorio propio con `git init` y `git add --all`, así que su índice
+  sale de lo que se acaba de materializar. Eso resuelve de paso la pregunta abierta que el propio caso
+  dejaba en Tradeoffs —un clon contesta sobre `HEAD` y no sobre el índice— sin tener que medirla: no hay
+  clon. Los dos gates que necesitaban git adentro del temporal (`git ls-files` en `test/repo/repo.test.js`)
+  siguen contestando sobre lo que el commit va a grabar.
+- **Limpiar el entorno donde se lanza git — hecho, y en otro lugar.** No en el ayudante de la suite sino
+  en `engine/cli/catalog.js`, la creación del banco de evaluación: es el sitio que hizo el daño y es
+  código del motor, así que protege a cualquier consumidor en vez de sólo a esta suite. Los ayudantes de
+  prueba que **leen** con git quedaron como están: con la variable filtrada leen el repo equivocado y
+  fallan ruidosamente, no escriben.
+- **El costo del clon, sin medir — no se paga.** Se cambió por un `init` + `add` sobre un árbol que ya
+  está en disco.
+- **«Limpiar el entorno puede tapar un caso legítimo» — no hay ninguno.** Ninguna prueba de hoy quiere
+  `GIT_DIR` puesto; la nueva de `test/agents/bench.test.js` lo pone a propósito y comprueba que el banco
+  commitea igual en el banco.
+- **«Un proyecto con gates que escriben con git sigue expuesto» — dejó de estarlo.** El motor ya no
+  exporta ninguna de las dos variables, así que no hay nada que heredar.
+
+**Lo que el caso no preveía y hay que saber**: `-C` no le gana a `GIT_DIR`. Verificado corriendo
+`git -C <otro> rev-parse --absolute-git-dir` con la variable puesta, que contesta el de la variable. Por
+eso el banco escribía afuera aunque cada comando nombrara su directorio, y por eso limpiar el entorno es
+lo único que lo cierra.
+
+**Y lo que se pierde a cambio, dicho para que no sorprenda**: la copia materializada no tiene historia.
+Un gate que lea una etiqueta o un `git log` no la encuentra ahí. Es un límite conocido que falla y se ve,
+en vez de una escritura silenciosa en el repositorio de otro. Si aparece un proyecto cuyo gate lo
+necesite, es un caso nuevo con un usuario real detrás.
+
+Las dos mitades se vieron rojas antes de arreglarse: quitar el `init` y volver a exportar `GIT_DIR`
+rompe la prueba de la fuga; quitar la limpieza del entorno rompe la del banco.
+
 ## Relacionados
 
 - [040](040-verify-corre-los-gates-sobre-el-arbol-y-el-commit-graba-el-indice.md) — introdujo

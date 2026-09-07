@@ -171,3 +171,29 @@ test('el error de --bench dice qué hacer, no un fork que no cambia nada', () =>
   assert.equal(trasFork.status, 2)
   assert.doesNotMatch(trasFork.stderr + trasFork.stdout, /agents fork/)
 })
+
+// Se mide por el efecto: con la variable puesta a propósito, ni el señuelo gana el commit del banco ni
+// el banco se queda sin el suyo. Por qué `-C` no alcanza lo dice `engine/cli/catalog.js`.
+test('el banco commitea en el banco aunque el entorno traiga GIT_DIR', () => {
+  const toolkit = path.resolve(__dirname, '..', '..')
+  const señuelo = tempRoot('cauce-senuelo-')
+  spawnSync('git', ['-C', señuelo, 'init', '-q'], { encoding: 'utf8' })
+
+  const antes = process.env.GIT_DIR
+  process.env.GIT_DIR = path.join(señuelo, '.git')
+  let bench
+  try {
+    bench = run(['evaluate', 'product-manager', '--bench', '09-git-dir', '--force'], toolkit)
+  } finally {
+    if (antes === undefined) delete process.env.GIT_DIR
+    else process.env.GIT_DIR = antes
+  }
+  assert.equal(bench.status, 0, bench.stderr)
+
+  const señueloLog = spawnSync('git', ['-C', señuelo, 'log', '--oneline'], { encoding: 'utf8' }).stdout
+  assert.equal(/banco limpio/.test(señueloLog), false, 'el banco commiteó en el repositorio del entorno')
+
+  const dir = path.resolve(toolkit, bench.stdout.trim())
+  const propio = spawnSync('git', ['-C', dir, 'log', '--oneline'], { encoding: 'utf8' }).stdout
+  assert.match(propio, /banco limpio/, 'y el banco quedó sin su propio commit')
+})

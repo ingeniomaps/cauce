@@ -1412,3 +1412,29 @@ test('el contraste de evidencia separa lo que existe de lo que no se puede busca
   // Sin raíces declaradas no hay dónde mirar, y afirmar ausencia ahí sería inventar el hallazgo.
   assert.deepEqual(EV.contrast('C1 → TestAltaResponde201', []).map((t) => t.verdict), ['inbuscable'])
 })
+
+// La fuga que el caso 045 nombra: `verify` corría los gates con `GIT_DIR` del repositorio real, así que
+// un gate que escribe con git —la suite de un proyecto levantando repos de prueba, típicamente— escribía
+// en el repositorio que el guard estaba juzgando. Se mide por el efecto y no por el entorno: lo que
+// importa no es qué variable se exporta sino que el repo de verdad no gane nada.
+test('verify no deja que un gate escriba en el repositorio que juzga', () => {
+  const root = tempRoot('ops-hook-fuga-')
+  initRepo(root)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+    scripts: { test: 'git commit --allow-empty -m fuga-desde-el-gate || true' },
+  }))
+  fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = true\n')
+  git(['add', 'package.json', 'app.js'], root)
+  // Sin esto el árbol está limpio, `commitTree` no materializa nada y la fuga no se puede ejercer.
+  fs.writeFileSync(path.join(root, 'sucio.txt'), 'algo sin stagear\n')
+
+  assert.doesNotThrow(() => execute('verify', { cwd: root, tool_input: { command: 'git commit -m x' } }))
+
+  const log = spawnSync('git', ['log', '--oneline'], { cwd: root, encoding: 'utf8' }).stdout
+  assert.equal(/fuga-desde-el-gate/.test(log), false, 'el gate commiteó en el repositorio de verdad')
+  const config = spawnSync('git', ['config', '--local', '--get', 'core.worktree'],
+    { cwd: root, encoding: 'utf8' }).stdout.trim()
+  assert.equal(config, '', 'el repositorio quedó apuntando a un árbol que ya no existe')
+})
