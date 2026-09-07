@@ -109,8 +109,11 @@ llama a `validateDoneEntry`. Tres propiedades que conviene conservar:
 > lista no crece por herramienta, y `check` muestra la cuenta en cada corrida, así que una que creció se
 > ve. Lo que queda descubierto es agrandarla a mano.
 >
-> Lo que cerraría la dimensión: una forma barata y confiable de fechar una entrada de DONE. Hasta
-> entonces la propiedad queda enunciada acá y sin mecanismo, que es distinto de haberla cumplido.
+> Lo que cerraría la dimensión tiene su propio caso desde el 2026-09-07:
+> [037](037-el-baseline-de-adopcion-puede-crecer-a-mano-sin-que-nada-lo-note.md). Y con una corrección:
+> el camino que este párrafo daba por necesario —fechar una entrada de DONE— no era la pregunta. Lo que
+> hay que saber no es cuándo se escribió la entrada sino si el slug estaba cuando `adopt` generó la
+> lista, y eso lo contesta el propio archivo sin tocar git.
 
 Lo que la exención **no** puede ser es «perdonar campos ausentes». Una entrada vieja que sí trae
 `commit:` con el formato de otro sistema dispara `commit debe apuntar a <sha> <asunto>`
@@ -157,3 +160,5 @@ Al migrar, esa distinción no tenía dónde ir.
 - [019](019-los-campos-de-done-se-leen-de-una-sola-linea.md) — el otro caso que salió de la misma
   migración, también sobre las entradas de DONE. No comparten causa: acá falta una pieza al lado de la
   validación, allá el defecto es de lectura.
+- [037](037-el-baseline-de-adopcion-puede-crecer-a-mano-sin-que-nada-lo-note.md) — la tercera propiedad
+  que este caso enunció y no implementó, ya con un camino que no depende de git.
