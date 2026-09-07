@@ -110,6 +110,11 @@ Es más trabajo que documentar una variable, y es lo que separa una llave de una
 Lo que **no** conviene es volver a leer un prefijo del texto del comando: eso es exactamente lo que 030
 acaba de cerrar, y un guard que se desactiva con algo que el propio comando declara no protege de nada.
 
+> **Salió sólo para `governance`.** Los otros cuatro interruptores —migraciones, evidencia de pruebas,
+> dependencias y `verify`— quedaron con su única salida de sesión, que es la mitad de este caso que no se
+> cerró. Tiene caso propio desde el 2026-09-07:
+> [038](038-las-otras-cuatro-salidas-siguen-siendo-de-sesion.md).
+
 ## Tradeoffs
 
 Documentar sin resolver el alcance es barato y deja el problema: quien lea la documentación va a
@@ -140,3 +145,5 @@ leyendo el mensaje, no chocando con él.
   por el defecto que 030 corrigió.
 - [024](024-los-cuatro-limites-son-seis-y-uno-es-configurable.md) — el mismo género: un mecanismo del
   motor que la documentación del proyecto no reflejaba, y un lector que concluía mal por eso.
+- [038](038-las-otras-cuatro-salidas-siguen-siendo-de-sesion.md) — la mitad que quedó abierta: extender
+  la aprobación a los cuatro guards que hoy sólo se abren por sesión.
