@@ -19,6 +19,18 @@ test('autobuild cierra una tarea cuando todo está en su lugar', async () => {
   }
 })
 
+// Dos corridas en paralelo preguntan y reservan por separado, así que entre las dos cosas otra puede
+// haber tomado la tarea. Perder esa carrera no es un error del recorrido: se relee y se sigue con lo que
+// quedó libre. Sin esta prueba, la rama que lo maneja se ve igual escrita bien que escrita mal — las dos
+// terminan la corrida sin romper, y sólo una deja de construir lo que otro ya está construyendo.
+test('perder la carrera por una tarea no rompe la corrida ni la construye igual', async () => {
+  const { result, phases } = await runFlow({ [KEY.claim]: { claimed: false, details: 'la tomó otro' } })
+  assert.equal(result.stopped, undefined, `frenó: ${JSON.stringify(result)}`)
+  assert.deepEqual(result.done, [], 'no cerró ninguna tarea')
+  assert.ok(phases.includes('Claim'), 'llegó a reservar')
+  assert.ok(!phases.includes('Build'), 'y no construyó lo que otro ya tenía tomado')
+})
+
 // La fase Plan pedía «el contexto de la épica» en su propio texto y nunca lo recibía: el esquema de
 // `planning-context` aplanaba la épica a su número. Acá se mide el viaje entero —lo que `ops context`
 // resuelve tiene que aparecer en el prompt que planifica—, porque es el único punto donde se nota que

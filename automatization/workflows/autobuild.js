@@ -58,7 +58,15 @@ const CONTEXT = {
       properties: { build: { type: 'string' }, review: { type: 'array', items: { type: 'string' } } },
     },
     blockedTasks: { type: 'array', items: { type: 'string' } },
+    // Si la tarea que `context` devolvió ya está reservada a nombre de este runner. Libre no significa
+    // que sea nuestra: significa que todavía la puede tomar cualquiera, y dos corridas en paralelo la
+    // reciben las dos.
+    claimed: { type: 'boolean' },
   },
+}
+const CLAIM = {
+  type: 'object', additionalProperties: false, required: ['claimed'],
+  properties: { claimed: { type: 'boolean' }, details: { type: 'string' } },
 }
 const EXPANSION = {
   type: 'object', additionalProperties: false, required: ['expanded'],
@@ -311,7 +319,8 @@ const write = (prompt, options = {}) => agent(`${LEDGER}\n\n${prompt}`, options)
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
 const readContext = () => read(
   `Corré "node tools/ops.js context ${P} --json" desde ${ROOT} y reportá sólo lo que imprimió. Derivá hasTask ` +
-  `de si task es null, wipActive de si wip es null y lane de task.tier; copiá slug, hito, service, acceptance, ` +
+  `de si task es null, wipActive de si wip es null, claimed del campo claimed y lane de task.tier; copiá slug, ` +
+  `hito, service, acceptance, ` +
   `epic y cast de task, y epicContext de epic.context —vacío si no hay épica—. El comando es la fuente de ` +
   `verdad: no abras archivos de planning para completarlo.`,
   { schema: CONTEXT, label: 'planning-context' },
@@ -350,6 +359,24 @@ while (rounds++ < MAX_TASKS) {
   const task = {
     id: planning.slug, hito: planning.hito, service: planning.service,
     acceptance: planning.acceptance, epic: planning.epic, epicContext: planning.epicContext || '',
+  }
+  // Reservar antes de construir, y antes de fijar el hito de la corrida. Sin esto dos corridas en
+  // paralelo trabajan la misma tarea: `context` sólo puede saltear lo que alguien ya reclamó, y el
+  // primero en preguntar todavía no reclamó nada. La ventana entre preguntar y reservar existe igual, y
+  // por eso perder la carrera no es un error: se relee y se sigue con la que quedó libre.
+  if (!planning.claimed && !planning.wipActive) {
+    phase('Claim')
+    const reserva = await write(
+      `Corré "node tools/ops.js claim ${P} ${task.id}" desde ${ROOT}. No escribas ningún archivo vos: lo ` +
+      `escribe el comando. claimed=true sólo con exit 0; si falla porque la tomó otro, claimed=false y ` +
+      `copiá el mensaje en details.`,
+      { schema: CLAIM, label: `claim:${task.id}` },
+    )
+    if (!reserva || !reserva.claimed) {
+      planning = await readContext()
+      if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
+      continue
+    }
   }
   currentMilestone = task.hito
 
@@ -695,7 +722,8 @@ while (rounds++ < MAX_TASKS) {
   await write(
     `Cerrá ${task.id} de forma atómica: agregala bajo su hito en ${DONE} con evidencia de acept, done, qa, ` +
     `tests y commit; sacala junto con sus notas indentadas de ${BACKLOG}; cerrá su épica sólo si no queda ` +
-    `ninguna tarea etiquetada; y dejá ${WIP} en status IDLE. En decisions no nombres una fase ni un cargo ` +
+    `ninguna tarea etiquetada; dejá ${WIP} en status IDLE; y soltá la reserva corriendo ` +
+    `"node tools/ops.js release ${P} ${task.id}". En decisions no nombres una fase ni un cargo ` +
     `que no figure en estos hechos. Hechos: lane=${planning.lane || 'sin clasificar'}; ` +
     `review=${reviewFact}; fases=${ran.join(' → ')}; build=${build.summary}; ` +
     `verify=${JSON.stringify(verified.commands)}; qa=${qa.evidence}; commit=${commit.hash || commit.reason}.`,

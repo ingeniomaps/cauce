@@ -32,6 +32,10 @@ diseño — eso vive en el commit y en el código.
   **Lo que te pide algo**: el reclamo hay que commitearlo y empujarlo. Sin eso, el otro runner lee lo que
   hay en su copia y la reserva no existe para nadie más.
 
+- **`autobuild` reserva la tarea antes de construirla y la suelta al cerrarla.** Es lo que hace que dos
+  corridas en paralelo dejen de trabajar lo mismo: entre preguntar qué toca y reservarlo hay una ventana, y
+  perder esa carrera no frena la corrida — relee y sigue con la que quedó libre.
+
 - **`.gitattributes`: `DONE.md` y `HUMAN_ACTIONS.md` se concatenan en vez de conflictuar.** Dos personas
   cerrando trabajo el mismo día chocaban siempre, y ese conflicto no significaba nada: las dos entradas son
   buenas y van las dos. Lo que `union` no hace es deduplicar, y esa falla ya la atrapa `DONE duplicado`.

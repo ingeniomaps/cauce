@@ -67,6 +67,18 @@ Dos cosas que el mecanismo no reemplaza:
 - **Repartir por hito.** Cada persona toma de un `## Hito` distinto. No lo pide nada, y hace que los dos
   avisos de arriba casi nunca aparezcan.
 
+## Pasar una tarea a otra persona
+
+El plan es local, así que no viaja: quien recibe la tarea ve el reclamo y no cómo venía pensada. Eso está
+bien casi siempre —nadie necesita el plan de otro— y falla justo cuando hace falta.
+
+Por eso el traspaso es un acto y tiene tres pasos: quien deja **publica su plan** donde el otro lo lea —una
+nota en la tarea, un mensaje, lo que el equipo use—, suelta el reclamo, y quien toma lo reclama. El costo
+de compartir el plan se paga entonces, que es cuando sirve.
+
+Lo que no hay que hacer es empujar el `WIP.md`: sería devolver a git el archivo que más cambia, todos los
+días, para resolver algo que pasa una vez cada tanto.
+
 ## Cuando el equipo crece o se achica
 
 **No se escala por archivo: se escala por instancia.** Los umbrales no son leyes; son el momento de mirar.
@@ -75,7 +87,7 @@ Dos cosas que el mecanismo no reemplaza:
 |---|---|---|
 | 1 | todo tal cual | nada |
 | 2 a 8 | un `planning/`, un árbol por persona, reparto por hito | `DONE.md` en conflicto, y de eso se ocupa `.gitattributes` |
-| 8 a 20 | lo mismo, con la cola filtrada por hito y por cast | el `BACKLOG` se vuelve **ilegible** antes que contencioso: nadie lee sesenta tareas para elegir la suya |
+| 8 a 20 | lo mismo, con el trabajo repartido por hito | el `BACKLOG` se vuelve **ilegible** antes que contencioso: nadie lee sesenta tareas para elegir la suya, y el CLI todavía no sabe filtrarlo por vos |
 | 20+ | una instancia por equipo o por dominio | la coordinación pasa a ser entre instancias, que es `multi-repo.md` |
 
 Achicarse parece más fácil y tiene una trampa: **lo que tomó quien se fue no se libera solo.** `ops check`
