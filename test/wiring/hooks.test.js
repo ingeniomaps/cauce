@@ -1362,3 +1362,53 @@ test('guard-plan-first se abre por aprobación, por variable y donde no hay inst
   assert.doesNotThrow(() => execute('plan-first', { cwd: suelto, tool_input: { file_path: 'src/altas.js' } }))
 })
 
+// El registro que deja `verify` y el contraste que lo lee. Las dos mitades juntas porque el valor está
+// en que sean independientes del autor: la corrida la escribe el guard al commitear, no quien redacta
+// después la entrada de DONE.
+test('verify deja registrado qué gate corrió y con qué código de salida', () => {
+  const EV = require('../../engine/core/evidence')
+  const root = tempRoot('ops-hook-evidencia-')
+  initRepo(root)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node -e ""' } }))
+  fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = true\n')
+  git(['add', 'package.json', 'app.js'], root)
+  const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
+
+  assert.equal(EV.runs(root).length, 0, 'sin corridas, el registro está vacío')
+  assert.doesNotThrow(() => execute('verify', commit))
+  const runs = EV.runs(root)
+  assert.equal(runs.length, 1, 'el gate que corrió quedó registrado')
+  assert.equal(runs[0].gate, 'test')
+  assert.equal(runs[0].status, 0)
+
+  fs.writeFileSync(path.join(root, 'package.json'),
+    JSON.stringify({ scripts: { test: 'node -e "process.exit(1)"' } }))
+  git(['add', 'package.json'], root)
+  blocked('verify', commit, /Verify falló/)
+  assert.equal(EV.runs(root).slice(-1)[0].status, 1, 'y con su código de salida real')
+
+  // Rodante: lo que interesa es el trabajo en curso, no la historia entera.
+  for (let i = 0; i < EV.MAX_RUNS + 5; i += 1) EV.record(root, 'test', 0)
+  assert.equal(EV.runs(root).length, EV.MAX_RUNS)
+})
+
+test('el contraste de evidencia separa lo que existe de lo que no se puede buscar', () => {
+  const EV = require('../../engine/core/evidence')
+  const root = tempRoot('ops-hook-contraste-')
+  fs.mkdirSync(path.join(root, 'api'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'api', 'alta_test.go'), 'func TestAltaResponde201(t *testing.T) {}\n')
+  const roots = [path.join(root, 'api')]
+
+  const veredicto = (tests) => EV.contrast(tests, roots).map((trace) => trace.verdict)
+  assert.deepEqual(veredicto('C1 → TestAltaResponde201'), ['encontrado'])
+  // La prueba inventada es lo que este contraste existe para atrapar.
+  assert.deepEqual(veredicto('C1 → TestQueNoExiste'), ['ausente'])
+  // Y la descrita en prosa no se da por ausente: el molde admite «nombre de prueba o comando», así que
+  // confundir «no lo encontré» con «no existe» convertiría la forma documentada en un error.
+  assert.deepEqual(veredicto('C1 → prueba de alta de cliente'), ['inbuscable'])
+  assert.deepEqual(veredicto('n/a — no hay superficie ejecutable'), [])
+  // Sin raíces declaradas no hay dónde mirar, y afirmar ausencia ahí sería inventar el hallazgo.
+  assert.deepEqual(EV.contrast('C1 → TestAltaResponde201', []).map((t) => t.verdict), ['inbuscable'])
+})

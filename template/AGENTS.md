@@ -154,7 +154,14 @@ muta nada.
   aceptación y sus criterios. Es la entrada correcta para empezar a trabajar.
 - `node tools/ops.js tree planning` — panorama de roadmap, backlog, WIP, inbox y done.
 - `node tools/ops.js check planning` — validación de contratos y trazabilidad.
-Los tres aceptan `--json`. Leer `BACKLOG.md`, `WIP.md` o `HUMAN_ACTIONS.md` completos sólo cuando haga
+- `node tools/ops.js evidence planning [--task <slug>]` — contrasta la evidencia de una entrada de DONE
+  contra lo que no escribió su autor: si el artefacto que `tests:` nombra existe en las raíces de
+  código, y qué gates corrió `verify` al commitear, con su código de salida. Al cerrar una tarea, es la
+  única parte de esa evidencia que no sale de la misma mano que la afirma. No dice que la prueba
+  nombrada haya corrido —eso depende del runner, y varios no la nombran al pasar— ni reemplaza a leer
+  su fuente, que es lo que R9 pide.
+
+Los cuatro aceptan `--json`. Leer `BACKLOG.md`, `WIP.md` o `HUMAN_ACTIONS.md` completos sólo cuando haga
 falta editarlos o cuando el CLI no responda la pregunta.
 
 ## Autonomía

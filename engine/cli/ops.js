@@ -143,6 +143,7 @@ function usage() {
   ops check <planning-dir> [--json]
   ops tree <planning-dir> [--no-color] [--json]
   ops context <planning-dir> [--json]
+  ops evidence <planning-dir> [--task <slug>] [--json]
   ops upgrade <ops-root> [--check] [--force]
   ops destroy <ops-root> [--force]
   ops archive <planning-dir> <NNN|human-actions>
@@ -195,6 +196,7 @@ async function run(cli) {
   else if (command === 'check') PL.check(arg[1], cli)
   else if (command === 'tree') PL.tree(arg[1], cli)
   else if (command === 'context') PL.context(arg[1], cli)
+  else if (command === 'evidence') PL.evidence(arg[1], cli)
   else if (command === 'upgrade') IN.upgrade(arg[1], cli)
   else if (command === 'destroy') IN.destroy(arg[1], cli)
   else if (command === 'agents') CAT.agents(arg[1], arg[2], arg[3], cli)

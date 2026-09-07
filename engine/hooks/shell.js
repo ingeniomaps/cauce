@@ -13,6 +13,7 @@ const {
   writableRoots, outsideRoots, DECLARE_IT, unquoted, findOpsRoot, withoutGitGlobals,
 } = require('./input')
 const AP = require('./approval')
+const EV = require('../core/evidence')
 
 // Dónde empieza y dónde termina una palabra dentro de un comando. Tres reglas de la tabla de abajo lo
 // decidían por su cuenta admitiendo sólo un espacio, el principio o el fin, y en un shell una palabra
@@ -429,7 +430,7 @@ function verify(input) {
   if (!staged.some((file) => /\.(?:ts|tsx|js|jsx|mjs|cjs|go|py|html|css|scss|prisma)$/.test(file))) return
   const { root, temp, env } = commitTree(dir)
   try {
-    verifyGates(root, dir, aprobado, env)
+    verifyGates(root, dir, aprobado, env, opsRoot(input))
   } finally {
     if (temp) fs.rmSync(temp, { recursive: true, force: true })
   }
@@ -438,7 +439,11 @@ function verify(input) {
 // Corre lo que el stack declare y bloquea si algo sale en rojo. `root` es dónde corre —el índice
 // materializado o el árbol, que ahí son lo mismo— y `dir` es el repositorio, que es el nombre que le
 // dice algo a quien lee el mensaje.
-function verifyGates(root, dir, aprobado, env) {
+//
+// Cada gate deja su rastro en `ops`; para qué sirve ese registro lo dice `core/evidence.js`. Lo que se
+// decide acá es que el rojo se anota igual que el verde: un gate que falló y se commiteó con
+// aprobación es exactamente lo que alguien va a querer ver después.
+function verifyGates(root, dir, aprobado, env, ops) {
   const failures = []
   if (fs.existsSync(path.join(root, 'package.json'))) {
     const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
@@ -448,16 +453,19 @@ function verifyGates(root, dir, aprobado, env) {
     for (const script of ['test', 'lint', 'typecheck', 'build']) {
       if (!pkg.scripts || !pkg.scripts[script]) continue
       const result = run(pm, ['run', script], root, env)
+      EV.record(ops, script, result.status)
       if (!result.ok) failures.push(`${script} (exit ${result.status})`)
     }
   } else if (fs.existsSync(path.join(root, 'go.mod'))) {
     const makefile = path.join(root, 'Makefile')
     if (fs.existsSync(makefile) && /^ci:/m.test(fs.readFileSync(makefile, 'utf8'))) {
       const result = run('make', ['ci'], root, env)
+      EV.record(ops, 'make ci', result.status)
       if (!result.ok) failures.push(`make ci (exit ${result.status})`)
     } else {
       for (const args of [['test', './...'], ['build', './...']]) {
         const result = run('go', args, root, env)
+        EV.record(ops, `go ${args[0]}`, result.status)
         if (!result.ok) failures.push(`go ${args[0]} (exit ${result.status})`)
       }
     }
@@ -465,6 +473,7 @@ function verifyGates(root, dir, aprobado, env) {
     const makefile = path.join(root, 'Makefile')
     if (fs.existsSync(makefile) && /^test:/m.test(fs.readFileSync(makefile, 'utf8'))) {
       const result = run('make', ['test'], root, env)
+      EV.record(ops, 'make test', result.status)
       if (!result.ok) failures.push(`make test (exit ${result.status})`)
     }
   }
