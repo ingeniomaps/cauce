@@ -1,14 +1,15 @@
 ---
 caso: 042
 titulo: la tabla de acciones humanas se parte por todo `|` e ignora el escape de markdown
-estado: abierto
+estado: resuelto
+resuelto-en: 0.67.0
 prioridad: alta
 version-detectada: 0.66.0
 ---
 
 # 042 — Un pipe escapado corre las columnas de `HUMAN_ACTIONS.md`
 
-**🔴 abierto** · detectado en 0.66.0 · prioridad **alta** — la cara silenciosa le entrega al runner una acción que no es la de la fila
+**🟢 resuelto en 0.67.0** · detectado en 0.66.0 · prioridad **alta** — la cara silenciosa le entrega al runner una acción que no es la de la fila
 
 ## Resumen
 
@@ -145,10 +146,9 @@ las filas. Al comparar las dos formas de partir contra el archivo real dieron el
 86 —el único `\|` vivía en la columna 4, pasada la última que el parser mira—, así que ahí no mordió.
 La sonda de arriba es la que lo aisló.
 
-## Arreglo aplicado
+## Cierre
 
-**Mergeado y sin publicar.** El caso sigue `abierto` hasta que salga la versión que lo lleva. El
-recorrido de lo que enumeró, ítem por ítem:
+**Resuelto en 0.67.0.** El recorrido de lo que enumeró, ítem por ítem:
 
 - **El `split` que respeta el escape — hecho**, tal cual el diff propuesto: `line.split(/(?<!\\)\|/)`.
 - **La decisión que el caso dejaba abierta —conservar o quitar el `\`— tomada: se quita.** La razón es

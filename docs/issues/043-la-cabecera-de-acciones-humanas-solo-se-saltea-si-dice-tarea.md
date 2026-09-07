@@ -1,14 +1,15 @@
 ---
 caso: 043
 titulo: la cabecera de `HUMAN_ACTIONS.md` sólo se saltea si la primera celda dice exactamente `Tarea`
-estado: abierto
+estado: resuelto
+resuelto-en: 0.67.0
 prioridad: baja
 version-detectada: 0.66.0
 ---
 
 # 043 — La fila de encabezado se lee como dato y `check` la reporta como una acción rota
 
-**🔴 abierto** · detectado en 0.66.0 · prioridad **baja** — ruido con diagnóstico equivocado, no pérdida
+**🟢 resuelto en 0.67.0** · detectado en 0.66.0 · prioridad **baja** — ruido con diagnóstico equivocado, no pérdida
 
 ## Resumen
 
@@ -101,10 +102,9 @@ Migrando `roax-ops` a Cauce 0.66.0 el 2026-09-07. Su tabla usaba `| Tarea Requer
 tiene tres tablas, así que fueron tres errores de este tipo mezclados con 87 reales de vocabulario. Se
 resolvió renombrando las tres cabeceras a `Tarea`.
 
-## Arreglo aplicado
+## Cierre
 
-**Mergeado y sin publicar.** El caso sigue `abierto` hasta que salga la versión que lo lleva. El
-recorrido de lo que enumeró, ítem por ítem:
+**Resuelto en 0.67.0.** El recorrido de lo que enumeró, ítem por ítem:
 
 - **Reconocer la cabecera por su forma — hecho.** La fila anterior a la de separadores es el encabezado,
   diga lo que diga su primera celda. Con una tabla propia —`Tarea Requerida`, `Bloqueo`— la fila deja de

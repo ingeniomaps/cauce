@@ -1,14 +1,15 @@
 ---
 caso: 044
 titulo: `upgrade` no tiene resolución por archivo y un proyecto adoptante queda entre no actualizar nunca y descartarlo todo
-estado: abierto
+estado: resuelto
+resuelto-en: 0.67.0
 prioridad: media
 version-detectada: 0.66.0
 ---
 
 # 044 — `upgrade` es todo o nada, y el consejo que da no cubre `PROTOCOL`, `METHODOLOGY` ni el `Makefile`
 
-**🔴 abierto** · detectado en 0.66.0 · prioridad **media** — no hay pérdida silenciosa; hay un camino de actualización que se cierra
+**🟢 resuelto en 0.67.0** · detectado en 0.66.0 · prioridad **media** — no hay pérdida silenciosa; hay un camino de actualización que se cierra
 
 ## Resumen
 
@@ -145,10 +146,9 @@ sobre la mesa fue exactamente ésta: no actualizar nunca, o reescribir el proces
 primero, y adoptar el `PROTOCOL` de Cauce quedó como trabajo propio para más adelante — se puede, porque
 resultó ser la misma máquina de fases, pero es un proyecto, no un flag.
 
-## Arreglo aplicado
+## Cierre
 
-**Mergeado y sin publicar.** El caso sigue `abierto` hasta que salga la versión que lo lleva. El
-recorrido de lo que enumeró, ítem por ítem:
+**Resuelto en 0.67.0.** El recorrido de lo que enumeró, ítem por ítem:
 
 - **Resolución por archivo — hecha, y es lo que destraba el caso.** `upgrade` deja de abortar: conserva
   cada archivo editado, actualiza todo lo demás y nombra lo que congeló. Un proyecto que adoptó Cauce

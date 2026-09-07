@@ -1,14 +1,15 @@
 ---
 caso: 045
 titulo: Los gates corren con GIT_DIR del repo real y la suite commitea ahí
-estado: abierto
+estado: resuelto
+resuelto-en: 0.67.0
 prioridad: alta
 version-detectada: 0.66.0
 ---
 
 # 045 — Committear por partes deja commits de las pruebas en el repositorio
 
-**🔴 abierto** · detectado en 0.66.0 · prioridad **alta** — escribe historia en el repo del usuario y no avisa
+**🟢 resuelto en 0.67.0** · detectado en 0.66.0 · prioridad **alta** — escribe historia en el repo del usuario y no avisa
 
 ## Resumen
 
@@ -171,10 +172,9 @@ absolutas, después como suciedad preexistente del checkout. Nada en la salida d
 la corrida escribió en el repositorio, y ése es el costo real del caso — no los commits, que se
 deshacen con un `reset`, sino que se leen como estado que ya estaba.
 
-## Arreglo aplicado
+## Cierre
 
-**Mergeado y sin publicar.** El caso sigue `abierto` a propósito: se marca `resuelto` cuando salga la
-versión que lo lleva, porque hasta entonces sigue mordiendo a todo el que instale. El recorrido de lo
+**Resuelto en 0.67.0.** El recorrido de lo
 que este caso enumeró, ítem por ítem — incluidos los tres daños del Resumen, que no son uno solo:
 
 - **Commits ajenos en la rama — cerrado y con prueba.** `engine/hooks/shell.js` ya no exporta
