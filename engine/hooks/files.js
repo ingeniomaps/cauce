@@ -139,6 +139,10 @@ function migrations(input) {
   //
   // El mensaje nombra el archivo por lo mismo: un falso positivo se lee igual que un bloqueo correcto
   // mientras no diga sobre qué está decidiendo.
+  //
+  // El precio de compartir el filtro es que una migración escrita fuera de un directorio con ese nombre
+  // deja de frenarse. Es deliberado: el otro chequeo ya vivía con esa convención, y dos condiciones de
+  // la misma función con dos alcances distintos es lo que hizo falta arreglar acá.
   for (const raw of filesOf(input)) {
     const normalized = raw.replace(/\\/g, '/')
     if (!/(?:^|\/)(?:migrations?|migrate)\/.*\.sql$/i.test(normalized)) continue
