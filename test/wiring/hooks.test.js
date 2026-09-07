@@ -33,6 +33,16 @@ function git(args, cwd) {
   assert.equal(result.status, 0, result.stderr)
 }
 
+// Un repositorio de prueba en el que además se commitea. La identidad es lo que lo separa de un `init`
+// a secas: `git commit` la exige, acá la toma de la configuración global de quien corre las pruebas y
+// en CI no hay ninguna, así que sin esto la prueba pasa en la máquina y falla en la puerta — que es la
+// peor forma de fallar, porque el veredicto local dice lo contrario del que decide.
+function initRepo(root) {
+  initRepo(root)
+  git(['config', 'user.email', 'prueba@ejemplo'], root)
+  git(['config', 'user.name', 'Prueba'], root)
+}
+
 test('guard-destructive bloquea pérdida o publicación y permite lecturas', () => {
   blocked('destructive', { tool_input: { command: 'git push origin main' } }, /publica cambios/)
   blocked('destructive', { tool_input: { command: 'git reset --hard HEAD' } }, /destruye cambios locales/)
@@ -281,7 +291,7 @@ test('guard-test-evidence no deja apagar ni borrar la prueba que juzga el cambio
 
 test('guard-governance bloquea commits con reglas staged', () => {
   const root = tempRoot('ops-hook-gov-')
-  git(['init', '-q'], root)
+  initRepo(root)
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'planning', 'PROTOCOL.md'), '# protocol\n')
   git(['add', 'planning/PROTOCOL.md'], root)
@@ -290,7 +300,7 @@ test('guard-governance bloquea commits con reglas staged', () => {
 
 test('guard-verify ejecuta gates reales antes del commit', () => {
   const root = tempRoot('ops-hook-verify-')
-  git(['init', '-q'], root)
+  initRepo(root)
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "process.exit(1)"' } }))
   fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = true\n')
   git(['add', 'package.json', 'app.js'], root)
@@ -299,7 +309,7 @@ test('guard-verify ejecuta gates reales antes del commit', () => {
 
 test('guard-verify exige regenerar después de cambiar OpenAPI o SQL fuente', () => {
   const root = tempRoot('ops-hook-generated-drift-')
-  git(['init', '-q'], root)
+  initRepo(root)
   fs.mkdirSync(path.join(root, 'openapi'))
   fs.writeFileSync(path.join(root, 'openapi', 'api.yaml'), 'openapi: 3.0.0\n')
   git(['add', 'openapi/api.yaml'], root)
@@ -679,7 +689,7 @@ test('guard-dependencies exige consistencia y bloquea publicación', () => {
   blocked('dependencies', { tool_input: { command: 'npm publish' } }, /Publicar paquetes/)
   blocked('dependencies', { tool_input: { command: 'pnpm add -g typescript' } }, /Publicar paquetes/)
   const root = tempRoot('ops-hook-deps-')
-  git(['init', '-q'], root)
+  initRepo(root)
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ dependencies: { example: '1.0.0' } }))
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n')
   git(['add', 'package.json'], root)
@@ -702,7 +712,7 @@ test('guard-dependencies exige consistencia y bloquea publicación', () => {
   // Y dos lockfiles conviviendo: cuál manda lo decide el gestor que corra, así que el árbol ya no dice
   // qué versiones se instalan. Se mira lo que hay en disco, no lo que se stageó.
   const dos = tempRoot('ops-hook-deps-dos-locks-')
-  git(['init', '-q'], dos)
+  initRepo(dos)
   fs.writeFileSync(path.join(dos, 'package.json'), JSON.stringify({ dependencies: { example: '1.0.0' } }))
   fs.writeFileSync(path.join(dos, 'package-lock.json'), '{}\n')
   fs.writeFileSync(path.join(dos, 'pnpm-lock.yaml'), 'lockfileVersion: 9\n')
@@ -924,7 +934,7 @@ test('git-add no lee el mensaje de un commit como si fuera un comando', () => {
 
 test('un comando que stagea y commitea a la vez no se puede juzgar, y se dice', () => {
   const root = tempRoot('ops-hook-blind-')
-  git(['init', '-q'], root)
+  initRepo(root)
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'planning', 'PROTOCOL.md'), '# protocol\n')
   // El índice queda vacío a propósito: es el estado en que el guard no ve nada y concluía que no había
@@ -980,7 +990,7 @@ test('el SQL destructivo se juzga sobre una migración, no sobre cualquier archi
 // mira lo decide qué guard esté juzgando esa ruta.
 test('la aprobación por operación abre los guards que deciden sobre una ruta', () => {
   const root = tempRoot('ops-hook-approval-todos-')
-  git(['init', '-q'], root)
+  initRepo(root)
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
   const aprobar = (...rutas) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
@@ -1032,7 +1042,7 @@ test('publicar un paquete no se aprueba por ruta, porque no hay ruta', () => {
 // cosa más lo invalida, que es lo que lo vuelve una operación y no un permiso abierto.
 test('verify se aprueba por el conjunto staged, no por un archivo', () => {
   const root = tempRoot('ops-hook-approval-verify-')
-  git(['init', '-q'], root)
+  initRepo(root)
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
   fs.writeFileSync(path.join(root, 'package.json'),
@@ -1074,7 +1084,7 @@ test('verify se aprueba por el conjunto staged, no por un archivo', () => {
 // encima, el gate pasa y el commit graba lo roto con un verde escrito al lado.
 test('verify mide el índice y no el árbol de trabajo', () => {
   const root = tempRoot('ops-hook-verify-indice-')
-  git(['init', '-q'], root)
+  initRepo(root)
   fs.writeFileSync(path.join(root, '.gitignore'), 'node_modules\n')
   // El gate necesita un módulo instalado: es entorno que el commit no lleva y sin él no corre nada.
   fs.mkdirSync(path.join(root, 'node_modules', 'marca'), { recursive: true })
@@ -1109,7 +1119,7 @@ test('verify mide el índice y no el árbol de trabajo', () => {
   // `.git`. Sin el contexto apuntado al repositorio real, el guard frenaría un commit correcto porque
   // su propia copia no es un repositorio — pasó con la suite de este repositorio al probarlo.
   const conGit = tempRoot('ops-hook-verify-git-')
-  git(['init', '-q'], conGit)
+  initRepo(conGit)
   fs.writeFileSync(path.join(conGit, 'package.json'), JSON.stringify({ scripts: {
     test: 'node -e "const r=require(\'child_process\').spawnSync(\'git\',[\'ls-files\'],'
       + '{encoding:\'utf8\'}); process.exit(r.status === 0 && r.stdout.trim() ? 0 : 1)"',
@@ -1146,7 +1156,7 @@ test('verify mide el índice y no el árbol de trabajo', () => {
   // Y el olvido de siempre: el fuente nuevo que nadie agregó. El gate local pasa porque el archivo está
   // en disco; sobre el índice no está, que es lo que va a pasar en cualquier otra máquina.
   const limpio = tempRoot('ops-hook-verify-olvido-')
-  git(['init', '-q'], limpio)
+  initRepo(limpio)
   fs.writeFileSync(path.join(limpio, 'package.json'), JSON.stringify({ scripts: {
     test: 'node -e "require(\'./extra.js\')"',
   } }))
@@ -1168,7 +1178,7 @@ test('verify mide el índice y no el árbol de trabajo', () => {
 // Lo que hay que mirar es el índice, que es lo que el commit va a grabar.
 test('dependencies mira el índice para saber qué lockfiles va a haber', () => {
   const root = tempRoot('ops-hook-deps-indice-')
-  git(['init', '-q'], root)
+  initRepo(root)
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'x' }))
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}')
   git(['add', 'package.json', 'package-lock.json'], root)
@@ -1191,7 +1201,7 @@ test('dependencies mira el índice para saber qué lockfiles va a haber', () => 
   // La otra mitad, que es la que se rompe si se unifican las dos preguntas: uno que sigue en el índice
   // pero ya no está en disco no convive con nadie. Por qué esa mira sólo el disco, en `dependencies`.
   const dos = tempRoot('ops-hook-deps-dos-')
-  git(['init', '-q'], dos)
+  initRepo(dos)
   fs.writeFileSync(path.join(dos, 'package.json'), JSON.stringify({ name: 'y' }))
   fs.writeFileSync(path.join(dos, 'package-lock.json'), '{}')
   fs.writeFileSync(path.join(dos, 'pnpm-lock.yaml'), 'lockfileVersion: 9\n')
