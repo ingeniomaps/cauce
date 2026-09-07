@@ -18,6 +18,17 @@ diseño — eso vive en el commit y en el código.
 
 ### Cambiado
 
+- **R15 ahora cubre la enumeración que escribió la propia unidad de trabajo.** Decía que una entrega se
+  contrasta contra lo que el contrato enumera; le faltaba el caso donde la enumeración la escribió el
+  ticket, el diagnóstico o el caso: ahí lo que es código se tacha solo —hay un diff, hay una prueba— y
+  una revisión pendiente, una decisión o un borde que hay que mirar no dejan rastro de haberse hecho ni
+  de no haberse hecho. Cerrar por el diff los deja adentro, cerrados, y vuelven como defecto nuevo.
+
+  **Qué cambia para vos**: una línea del tipo «vale la pena mirar si…» pasa a tener dos destinos y
+  ninguno es el silencio — se hace y se dice qué encontró, también cuando no encontró nada, o sale como
+  unidad propia antes de cerrar. Y cerrar deja de ser la consecuencia de que el código esté listo: es un
+  acto con su propio recorrido, ítem por ítem, sobre lo que la unidad enumeró.
+
 - **La aprobación por operación ahora abre todos los guards, y el archivo cambió de nombre.** Era
   `planning/.governance-approval` y sólo la miraba el guard de gobernanza; ahora es
   `planning/.ops-approval` y la consultan también los de migraciones, evidencia de pruebas,
