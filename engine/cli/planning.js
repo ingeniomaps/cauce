@@ -144,6 +144,15 @@ function check(dir, cli) {
       + '`upgrade` los conserva y no les trae mejoras')
   }
 
+  // Y lo que `upgrade` no retiró porque no pudo demostrar que fuera suyo: queda ahí, sin colgar de
+  // ningún mecanismo, hasta que alguien lo mueva o lo borre. Se cuenta por lo mismo que los congelados
+  // — un resto que no se ve se vuelve permanente.
+  const restos = O.RETIRED_COMPARTIDO.filter((relative) => fs.existsSync(path.join(root, '..', relative)))
+  if (restos.length) {
+    warnings.push(`${restos.length} ruta(s) retiradas siguen en disco con contenido tuyo `
+      + `(${restos.join(', ')}); Cauce ya no las distribuye ni las toca`)
+  }
+
   const integration = I.validate(path.resolve(root, '..'))
   errors.push(...integration.errors)
   warnings.push(...integration.warnings)

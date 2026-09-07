@@ -72,12 +72,23 @@ function adviceFor(changed) {
 // propias, agentes editados— queda intacto por construcción, no por comparación.
 // Qué le pasó a la instancia en esta actualización, contado a quien la corrió. Recibe el resultado
 // entero en vez de recalcular nada: lo que se informa es exactamente lo que ocurrió.
-function reportUpgrade({ root, from, to, system, changed, retired, added, overrides, pinned, droppedBlocks }) {
+function reportUpgrade({
+  root, from, to, system, retired, added, overrides, pinned, droppedBlocks,
+  descartados, conservados, pendientes,
+}) {
   console.log(`✓ Cauce ${from || '(previa)'} → ${to}`)
   // Descartar con --force es legítimo; hacerlo sin dejar rastro no. Queda en la salida del comando,
-  // que es la evidencia que el protocolo pide para cualquier cambio.
-  for (const file of changed) console.log(`− descartado tu cambio en ${file}`)
+  // que es la evidencia que el protocolo pide para cualquier cambio. Y lo que se conservó no se vuelve
+  // a enumerar acá: ya salió con su consejo antes de escribir nada, y repetirlo con el glifo del
+  // descarte es lo que volvía ilegible el bloque.
+  for (const file of descartados) console.log(`− descartado tu cambio en ${file}`)
+  if (conservados.length) console.log(`= ${conservados.length} archivo(s) conservados por tu edición`)
   for (const relative of retired) console.log(`− retirado ${relative}: Cauce ya no lo distribuye`)
+  // Sin glifo de acción porque no hubo ninguna: la ruta sigue ahí y el contenido también.
+  for (const { relative, files } of pendientes) {
+    console.log(`  ${relative}: ${files.length} archivo(s) que Cauce no entregó; la ruta se retiró y `
+      + 'el contenido queda. Movelo adonde lo quieras y borrala, o repetí con --force.')
+  }
   // Nombrarlos importa tanto como crearlos: existen para que los completes, y uno que aparece sin
   // aviso no lo completa nadie.
   for (const relative of added) console.log(`+ ${relative}: lo agrega esta versión, completalo`)
@@ -90,9 +101,9 @@ function reportUpgrade({ root, from, to, system, changed, retired, added, overri
   for (const override of overrides) {
     console.log(`= conservado ${override.collection}/${override.project}: sobrescribe ${override.system}`)
   }
-  // Sólo cuando es cierto: llegar acá con algo en `changed` es haber descartado contenido de la
-  // empresa con --force, que las líneas de arriba enumeran.
-  if (!changed.length) console.log('  planning, organization y todo lo propio quedaron intactos')
+  // Sólo cuando es cierto, y ahora lo decide lo que pasó y no una condición: se dice justo cuando no
+  // se descartó nada, que incluye la corrida que conservó veinte archivos.
+  if (!descartados.length) console.log('  planning, organization y todo lo propio quedaron intactos')
   // No se borra: sin la dependencia declarada, quitarle `.ops/` la dejaría sin motor. Se avisa y
   // decide una persona.
   if (fs.existsSync(path.join(root, '.ops', 'engine'))) {

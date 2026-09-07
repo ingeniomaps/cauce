@@ -370,10 +370,19 @@ function upgrade(dir, cli) {
 
   // Retirar lo que el toolkit ya no distribuye, después de haber actualizado lo que sí.
   const retired = []
+  const pendientes = []
   for (const relative of O.RETIRED) {
     const target = path.join(root, relative)
     if (!fs.existsSync(target)) continue
     F.assertNoSymlinkPath(root, target)
+    // Retirar una ruta no vuelve al toolkit dueño de lo que hay adentro. En las dos que un proyecto
+    // también usa para lo suyo, borrar el directorio entero se llevaba puesto contenido que nadie
+    // había entregado —un `autobuild.js` propio, los workflows de una empresa— sin confirmación y sin
+    // vuelta atrás. Se conserva y se nombra; `--force` es la salida, igual que para una edición local.
+    const contenido = O.RETIRED_COMPARTIDO.includes(relative) && fs.statSync(target).isDirectory()
+      ? O.treeFiles(target)
+      : []
+    if (contenido.length && !force) { pendientes.push({ relative, files: contenido }); continue }
     fs.rmSync(target, { recursive: true, force: true })
     retired.push(relative)
   }
@@ -404,7 +413,13 @@ function upgrade(dir, cli) {
   // Acá es donde las tres versiones se saben a la vez, así que es donde pueden quedar diciendo lo mismo.
   const pinned = pinEngine(root, to)
 
-  reportUpgrade({ root, from, to, system, changed, retired, added, overrides, pinned, droppedBlocks })
+  // El informe recibe qué pasó y no una condición de la que deducirlo: `changed` es «lo que estaba
+  // editado», y sin `--force` eso se conserva. Deducirlo hizo que 0.67.0 afirmara diecinueve descartes
+  // que no ocurrieron (caso 048).
+  reportUpgrade({
+    root, from, to, system, retired, added, overrides, pinned, droppedBlocks,
+    descartados: force ? changed : [], conservados: [...conservados], pendientes,
+  })
 }
 
 module.exports = { copyTemplate, scaffold, providerNames, upgrade, destroy, PROJECT_ROOT }

@@ -14,6 +14,36 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.68.0] - 2026-09-07
+
+### Cambiado
+
+- **`upgrade` deja de borrar una ruta retirada cuyo contenido no puede probar suyo.** Retirar una ruta
+  nunca volvió al toolkit dueño de lo que hay adentro, y hasta acá se borraba el directorio entero: quien
+  tenía sus propios workflows en `automatization/workflows` los perdía sin confirmación y sin vuelta
+  atrás. De las seis rutas retiradas, cuatro viven bajo `system/` o son un archivo con nombre del
+  toolkit y se siguen retirando igual; las dos que un proyecto también usa para lo suyo
+  —`automatization/runners` y `automatization/workflows`— se conservan.
+
+  **Lo que te pide algo**: esas dos rutas quedan en disco con lo que tengas adentro, la corrida te dice
+  cuántos archivos son, y `check` las cuenta en cada corrida hasta que las muevas o las borres. Si lo
+  que tenés ahí son restos viejos del toolkit y querés limpiarlos, `--force` las retira.
+
+- **La regla R9 dice cómo se prueba una quita.** Una prueba que comprueba que aparece lo nuevo no
+  comprueba que desapareció lo viejo, y lo que se quita tiene dependientes que no se anuncian —el
+  mensaje que afirmaba la invariante, la condición que la deducía—. Sale de una regresión de 0.67.0 que
+  entró exactamente por ahí.
+
+### Corregido
+
+- **El informe de `upgrade` afirmaba descartes que no ocurrieron.** 0.67.0 pasó a conservar los archivos
+  editados y la salida siguió enumerándolos como `− descartado tu cambio en …`, uno por uno, después de
+  la línea que anuncia que terminó bien. En una instancia real fueron diecinueve renglones falsos, y
+  entre ellos iba la única línea destructiva verdadera de esa corrida, indistinguible. Ahora el informe
+  recibe qué pasó —descartado, conservado, pendiente— en vez de deducirlo de una condición que dejó de
+  valer, y la línea «planning, organization y todo lo propio quedaron intactos» sale justo cuando es
+  cierto, que es cuando se conservó algo.
+
 ## [0.67.0] - 2026-09-07
 
 ### Agregado
