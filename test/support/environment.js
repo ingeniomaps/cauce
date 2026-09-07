@@ -34,6 +34,20 @@ function tempRoot(name) {
   return fs.mkdtempSync(path.join(ROOT, name))
 }
 
+// Un banco para lo que se mide **fuera** del temporal del sistema. `shell-boundary` exime `os.tmpdir()`
+// por diseño —es donde el runner deja lo que no va al repositorio—, así que una prueba suya montada con
+// `tempRoot` mide la exención y no la regla: pasa siempre y parece que el defecto no existe. Ya pasó al
+// reproducir el 033, y volvió a pasar con el 041.
+//
+// Cuelga de `~/.cache`, que es scratch por convención, y se borra al salir igual que el otro.
+const OUTSIDE = fs.mkdtempSync(path.join(os.homedir(), '.cache', `cauce-test-${process.pid}-`))
+
+process.on('exit', () => fs.rmSync(OUTSIDE, { recursive: true, force: true }))
+
+function outsideTempRoot(name) {
+  return fs.mkdtempSync(path.join(OUTSIDE, name))
+}
+
 const CLI = path.resolve(__dirname, '..', '..', 'engine', 'cli', 'ops.js')
 
 // El CLI se corre en un proceso aparte, que es como lo corre quien lo usa. `NODE_TEST_CONTEXT` no
@@ -143,6 +157,6 @@ function installedProject(name, runner) {
 }
 
 module.exports = {
-  MIN_ROLES, opsConfig, filesBelow, tempRoot, CLI, run, linkEngine, installedProject,
+  MIN_ROLES, opsConfig, filesBelow, tempRoot, outsideTempRoot, CLI, run, linkEngine, installedProject,
   workflow, workflowStep, workflowCommand,
 }
