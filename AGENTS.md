@@ -214,11 +214,12 @@ listo para mergear.
 ## Cerrar un caso de `docs/issues/`
 
 **Cerrar es un acto con su propio contraste, no la consecuencia de que el código esté listo.** Un caso
-enumera en su «Fix propuesto» qué haría falta, y ahí conviven dos clases de cosa: la que es código se
-tacha sola —hay un diff, hay una prueba, hay una puerta en verde— y la que es una revisión, una decisión
-o un borde que hay que mirar no deja rastro de haberse hecho ni de no haberse hecho. Cerrar por el diff
-las deja adentro del caso, cerrado, y vuelven como un defecto nuevo. Pasó, y por eso existe el párrafo
-de R15 que lo nombra; acá está sólo qué hacer.
+enumera qué haría falta —y no sólo en «Fix propuesto»: contra qué se recorre lo dice el README de esa
+carpeta—, y ahí conviven dos clases de cosa: la que es código se tacha sola —hay un diff, hay una
+prueba, hay una puerta en verde— y la que es una revisión, una decisión o un borde que hay que mirar no
+deja rastro de haberse hecho ni de no haberse hecho. Cerrar por el diff las deja adentro del caso,
+cerrado, y vuelven como un defecto nuevo. Pasó, y por eso existe el párrafo de R15 que lo nombra; acá
+está sólo qué hacer.
 
 Un caso resuelto lleva una sección `## Cierre` que recorre su propia enumeración, **ítem por ítem**, con
 qué pasó con cada uno. Los cuatro destinos posibles son: se hizo; se hizo distinto, con la razón; se

@@ -53,6 +53,22 @@ Las secciones del molde, en este orden. La que no aplique se saca; ninguna se de
   si el caso es un borde raro o el camino principal.
 - **Relacionados** — otros casos que comparten causa.
 
+## Contra qué se recorre el cierre
+
+`AGENTS.md` dice por qué cerrar es un acto con su propio contraste; acá está contra qué. **El recorrido
+es contra el caso entero, no contra su «Fix propuesto».** Esa sección se lee como la lista de cosas por
+hacer, así que es la que uno tacha y da por completa, y lo que falta queda en las otras tres:
+
+- **Tradeoffs** suele traer una predicción —«esto puede empezar a fallar», «no está medido»—, y una
+  predicción sin comprobar es una dimensión abierta, no un comentario.
+- **Prioridad** suele traer una condición de escalada —«sube a alta el día que…»—. Un arreglo que la
+  vuelve imposible cerró algo, y decirlo es parte del cierre.
+- **Resumen** suele enumerar más de un daño. Cerrar el primero y probar sólo ése deja los otros adentro.
+
+No es una hipótesis: de los cuatro casos cerrados el 2026-09-07, los tres ítems que se dieron por
+cerrados sin estarlo en el 045, y los dos del 044, vivían todos fuera de «Fix propuesto». Los dos casos
+que se recorrieron por las cuatro secciones desde el principio salieron completos a la primera.
+
 ## Uno por archivo
 
 Aunque dos bugs compartan área o causa raíz, van separados: se arreglan, se prueban y se cierran por
