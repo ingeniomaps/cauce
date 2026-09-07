@@ -12,6 +12,7 @@ declara en `project.md` qué partes existen, cuáles aplican y qué deuda separa
 | `environments.md` | Pregunta, datos y ciclo de vida de cada ambiente. | Sistemas desplegables. |
 | `flags.md` | Release toggles temporales. | Productos con activación gradual. |
 | `multi-repo.md` | Versionado y compatibilidad entre repos. | Solo workspaces multi-repo. |
+| `teamwork.md` | Qué comparte el equipo, qué no, y cómo crece. | Más de una persona o más de un agente. |
 | `project.md` | Estado real, decisiones adoptadas y evolución. | Obligatorio personalizar. |
 
 Un proyecto puede adoptar una parte sin fingir que adoptó las demás. Una desviación durable se documenta en

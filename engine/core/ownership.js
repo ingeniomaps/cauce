@@ -32,6 +32,7 @@ const SYSTEM_FILES = [
   'planning/delivery/environments.md',
   'planning/delivery/flags.md',
   'planning/delivery/multi-repo.md',
+  'planning/delivery/teamwork.md',
   'organization/roles/README.md',
   'flows/000-template.md',
   'flows/README.md',
@@ -75,9 +76,12 @@ const TEMPLATE_PREFIXES = [
   'tools/',
 ]
 
-// Archivos que la instancia recibe en su raíz y que el paquete tiene por duplicado: el propio del
-// toolkit y el de la plantilla. Gana el de la plantilla, que es el que le habla a la instancia.
-const TEMPLATE_FILES = new Set(['AGENTS.md', 'Makefile'])
+// Archivos que la instancia recibe en su raíz y cuyo original vive en `template/`. Dos de ellos el
+// paquete los tiene por duplicado —el propio del toolkit y el de la plantilla— y gana el de la
+// plantilla, que es el que le habla a la instancia; `.gitattributes` existe sólo del lado del molde y
+// entra por la misma puerta, porque sin esto `sourceOf` lo busca en la raíz del paquete y `upgrade` lo
+// saltea en silencio.
+const TEMPLATE_FILES = new Set(['AGENTS.md', 'Makefile', '.gitattributes'])
 
 function sourceOf(relative) {
   if (TEMPLATE_FILES.has(relative)) return path.join('template', relative)
@@ -186,6 +190,9 @@ function overrides(root) {
 // decidir acá. Una entrada pasa de `upgrade` a `init` cuando ninguna versión soportada puede no
 // tenerlo; que se quede de más no rompe nada, porque el archivo ya está y se conserva.
 const TEMPLATE_OWN = {
+  // 0.70.0. Le dice a git que los dos archivos que sólo crecen se concatenan en vez de
+  // conflictuar, así que hace falta en la instancia que ya existe y no sólo en la nueva.
+  '.gitattributes': 'upgrade',
   'README.md': 'init',
   'gitignore': 'init',
   'integrations/config.json': 'init',

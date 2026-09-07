@@ -106,6 +106,21 @@ test('una copia de la plantilla de épica se activa tal cual', () => {
   assert.deepEqual(errores, [], 'la copia no arrastra nada que haya que borrar')
 })
 
+// Una regla de merge que nombra un archivo que el molde ya no trae no falla: deja de aplicarse, y el
+// conflicto que evitaba vuelve sin que nadie relacione una cosa con la otra. Es la misma clase de
+// silencio que el `continue` de `upgrade`, un nivel más abajo.
+test('las reglas de merge del molde apuntan a archivos que el molde trae', () => {
+  const molde = path.resolve(__dirname, '..', '..', 'template')
+  const reglas = fs.readFileSync(path.join(molde, '.gitattributes'), 'utf8')
+    .split('\n')
+    .filter((line) => line.trim() && !line.startsWith('#'))
+    .map((line) => line.trim().split(/\s+/)[0])
+
+  assert.ok(reglas.length, 'el molde declara al menos una regla de merge')
+  const rotas = reglas.filter((ruta) => !fs.existsSync(path.join(molde, ruta)))
+  assert.deepEqual(rotas, [], `el molde no trae: ${rotas.join(', ')}`)
+})
+
 // El README declara qué rango vive en cada archivo para no tener que grepear, y un rango que envejece
 // es peor que ninguno: manda a buscar una regla donde ya no está. Se contrasta contra los archivos.
 test('los rangos que declara el README de reglas son los que hay', () => {
