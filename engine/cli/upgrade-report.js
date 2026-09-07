@@ -44,6 +44,18 @@ function adviceFor(changed) {
       + 'es suyo —una ADR propia, una regla propia, o `planning/delivery/project.md` para la entrega—.',
     )
   }
+  // El consejo de arriba manda mudar lo propio a donde sí es del proyecto, y para estos cuatro no hay
+  // adónde: no existe un PROTOCOL de la empresa que le gane al del toolkit como sí lo hay en `rules/`.
+  // Sin decirlo, quien adoptó Cauce sobre su propio proceso lee un consejo que no puede seguir.
+  const SIN_CONTRAPARTE = ['planning/PROTOCOL.md', 'planning/METHODOLOGY.md', 'planning/FLOW.md', 'Makefile']
+  const propios = docs.filter((file) => SIN_CONTRAPARTE.includes(file))
+  if (propios.length) {
+    advice.push(
+      `${propios.join(', ')} no tienen contraparte propia adónde mudarse: son del toolkit y no hay\n`
+      + 'una versión del proyecto que le gane. Quedan congelados con tu versión y el resto se actualiza\n'
+      + 'igual. Adoptar el del toolkit es trabajo propio —comparar los dos procesos y decidir—, no un flag.',
+    )
+  }
   // `AGENTS.md` se lo gana aparte porque hasta ahora el README mandaba completarlo, así que el consejo
   // genérico de arriba —«no llevan una línea de la empresa»— le miente justo a quien le hizo caso.
   if (docs.includes('AGENTS.md')) {

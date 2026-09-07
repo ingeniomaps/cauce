@@ -135,6 +135,15 @@ function check(dir, cli) {
       + 'el archivo sigue autorizándolas')
   }
 
+  // Lo que `upgrade` conserva por estar editado deja de recibir mejoras, y eso es una deuda que no
+  // avisa sola: la instancia queda con medio molde viejo y todo se ve normal. Sale acá para que se vea
+  // en cada corrida y no sólo el día que alguien actualiza.
+  const congelados = O.localChanges(path.resolve(root, '..'))
+  if (congelados.length) {
+    warnings.push(`${congelados.length} archivo(s) del molde congelados por edición local; `
+      + '`upgrade` los conserva y no les trae mejoras')
+  }
+
   const integration = I.validate(path.resolve(root, '..'))
   errors.push(...integration.errors)
   warnings.push(...integration.warnings)

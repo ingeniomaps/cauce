@@ -65,7 +65,10 @@ function copyTemplate(source, target, replacements, force, skip = [], quiet = fa
 
 // Devuelve lo conservado igual que `copyTemplate`, y por la misma razón: acá el runtime no lleva
 // reemplazos, así que lo que habríamos escrito es el archivo del paquete tal cual.
-function copyRuntime(source, target, preserve = false, boundary = target, skip = []) {
+// `preserve` conserva todo lo que ya exista —es lo que `init` necesita— y `conservar` conserva sólo lo
+// que responda que sí, que es lo que `upgrade` necesita para saltear una edición local sin congelar el
+// resto del directorio. Son dos preguntas distintas y por eso no se unifican en una.
+function copyRuntime(source, target, preserve = false, boundary = target, skip = [], conservar = () => false) {
   F.assertNoSymlinkPath(boundary, target)
   fs.mkdirSync(target, { recursive: true })
   const preserved = {}
@@ -73,7 +76,8 @@ function copyRuntime(source, target, preserve = false, boundary = target, skip =
     if (skip.includes(entry.name)) continue
     const from = path.join(source, entry.name)
     const to = path.join(target, entry.name)
-    if (entry.isDirectory()) Object.assign(preserved, copyRuntime(from, to, preserve, boundary, skip))
+    if (!entry.isDirectory() && conservar(to)) continue
+    if (entry.isDirectory()) Object.assign(preserved, copyRuntime(from, to, preserve, boundary, skip, conservar))
     else if (preserve && fs.existsSync(to)) {
       console.log(`= conservado ${to}`)
       preserved[to] = M.digest(from)
@@ -293,12 +297,19 @@ function upgrade(dir, cli) {
     )
   }
 
-  if (changed.length && !force) {
-    for (const file of changed) console.error(`✗ ${file}`)
-    fail(
-      `\n${changed.length} archivo(s) que mantiene Cauce fueron editados y se perderían.\n\n` +
-      `${adviceFor(changed)}\n\nSi el cambio ya no te sirve, repetí con --force para descartarlo.`,
-    )
+  // Lo que el 001 protege es que una edición local no se pierda, y abortar la corrida entera era una
+  // forma cara de conseguirlo: dejaba a quien adoptó Cauce sobre un proceso propio eligiendo entre no
+  // actualizar nunca y descartar su corpus. Se conserva archivo por archivo y se actualiza el resto,
+  // que es donde viven las reglas que los agentes leen.
+  //
+  // El aviso sale en **cada** corrida y no sólo la primera: una instancia con medio molde congelado y
+  // sin enterarse es el otro modo de fallo, y es silencioso.
+  const conservados = force ? new Set() : new Set(changed)
+  if (conservados.size) {
+    for (const file of conservados) console.log(`= conservado ${file} (editado localmente)`)
+    console.log(`\n${conservados.size} archivo(s) del molde quedan congelados por tu edición.`)
+    console.log(`${adviceFor([...conservados])}\n`)
+    console.log('Para tomar la versión nueva y descartar la tuya, repetí con --force.\n')
   }
 
   // Lo que una versión agrega y es del proyecto: se crea si falta y nunca se pisa. `systemPaths` no lo
@@ -339,13 +350,15 @@ function upgrade(dir, cli) {
     }
   }
 
+  const conservar = (file) => conservados.has(path.relative(root, file).replace(/\\/g, '/'))
   for (const relative of [...system, ...O.RUNTIME_PATHS]) {
     const origin = path.join(PROJECT_ROOT, O.sourceOf(relative))
     if (!fs.existsSync(origin)) continue
     const target = path.join(root, relative)
+    if (conservados.has(relative)) continue
     // Sobrescribe lo que trae el paquete y deja intacto lo demás: un guard propio de la empresa,
     // o un adaptador de runner que el toolkit no conoce, sobreviven a la actualización.
-    if (fs.statSync(origin).isDirectory()) copyRuntime(origin, target, false, root)
+    if (fs.statSync(origin).isDirectory()) copyRuntime(origin, target, false, root, [], conservar)
     else {
       F.assertNoSymlinkPath(root, target)
       F.atomicWrite(target, fs.readFileSync(origin, 'utf8'))
@@ -368,11 +381,17 @@ function upgrade(dir, cli) {
   // Dejar registrado lo que se entregó, para poder distinguir después una edición local de una
   // mejora del toolkit.
   let record = M.read(root)
+  // Lo que el toolkit entregó la última vez, antes de re-registrar. Un archivo conservado tiene que
+  // conservar **ese** digest: registrar el de disco lo volvería idéntico a lo entregado, dejaría de
+  // detectarse como editado y la corrida siguiente lo pisaría sin decir nada. Es el 001 de vuelta por
+  // la puerta de atrás, y no se ve mirando el archivo — se ve dos upgrades después.
+  const entregado = { ...record }
   for (const relative of O.trackedPaths()) {
     const dir = path.join(root, relative)
     if (fs.existsSync(dir)) record = M.record(root, relative, O.treeFiles(dir), record)
   }
   record = M.recordPaths(root, O.SYSTEM_FILES, record)
+  for (const file of conservados) if (entregado[file]) record[file] = entregado[file]
   // El registro de forks se poda igual que el de archivos: un cargo devuelto al catálogo deja su
   // entrada, y una entrada sin copia sólo puede producir avisos sobre algo que no está.
   const kept = Object.fromEntries(Object.entries(M.readForks(root)).filter(

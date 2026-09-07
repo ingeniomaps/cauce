@@ -65,19 +65,35 @@ test('upgrade reemplaza lo del sistema y no toca nada del proyecto', () => {
   assert.equal(run(['check', path.join(target, 'planning')]).status, 0)
 })
 
-test('upgrade se niega a pisar una edición del runtime sin --force', () => {
+// Lo que el 001 protege es que una edición local no se pierda, y eso se cumple mejor conservándola que
+// abortando: antes había que elegir entre no actualizar nunca y descartarlo todo, y quien adopta Cauce
+// sobre un proceso propio se quedaba con la primera. Ahora se actualiza lo intacto, se conserva lo
+// editado y se dice cuál en cada corrida.
+test('upgrade conserva lo editado, actualiza el resto y lo dice', () => {
   const base = tempRoot('cauce-upgrade-edit-')
   const target = path.join(base, 'acme')
   assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
 
   const guard = path.join(target, 'automatization', 'hooks', 'guard-verify.sh')
   fs.writeFileSync(guard, '#!/usr/bin/env bash\n# lo edité a mano\n')
+  // Borrado y no editado: lo editado se conserva, así que para ver que el resto sí se actualiza hace
+  // falta un archivo que el molde tenga que reponer.
+  const repuesto = path.join(target, 'automatization', 'hooks', 'guard-secrets.sh')
+  fs.rmSync(repuesto)
 
-  const refused = run(['upgrade', target])
-  assert.notEqual(refused.status, 0, 'no puede perder el cambio en silencio')
-  assert.match(refused.stderr, /guard-verify\.sh/)
-  assert.match(refused.stderr, /--force/)
-  assert.match(fs.readFileSync(guard, 'utf8'), /lo edité a mano/, 'el archivo sigue intacto')
+  const hecho = run(['upgrade', target])
+  assert.equal(hecho.status, 0, hecho.stderr)
+  assert.match(fs.readFileSync(guard, 'utf8'), /lo edité a mano/, 'lo editado sigue intacto')
+  assert.match(hecho.stdout, /conservado automatization\/hooks\/guard-verify\.sh/)
+  assert.equal(fs.existsSync(repuesto), true, 'y lo que nadie editó sí se actualiza')
+
+  // La deuda no se paga sola: sigue siendo una edición local en la corrida siguiente. Sin esto el
+  // registro guardaría el digest de lo local y el próximo upgrade lo pisaría en silencio, que es
+  // exactamente lo que el 001 vino a impedir.
+  const otra = run(['upgrade', target])
+  assert.equal(otra.status, 0, otra.stderr)
+  assert.match(otra.stdout, /conservado automatization\/hooks\/guard-verify\.sh/)
+  assert.match(fs.readFileSync(guard, 'utf8'), /lo edité a mano/)
 
   const forced = run(['upgrade', target, '--force'])
   assert.equal(forced.status, 0, forced.stderr)
@@ -98,10 +114,10 @@ test('upgrade explica cómo personalizar el runtime sin editarlo, y deja rastro 
   // Editar uno del toolkit sí se detiene, y la salida tiene que decir algo que realmente funcione.
   const guard = path.join(target, 'automatization', 'hooks', 'guard-verify.sh')
   fs.writeFileSync(guard, '#!/usr/bin/env bash\n# editado\n')
-  const refused = run(['upgrade', target])
-  assert.notEqual(refused.status, 0)
-  assert.match(refused.stderr, /agregá lo tuyo al lado con otro nombre/)
-  assert.equal(/junto a system\//.test(refused.stderr), false, 'hooks no tiene system/: no puede sugerirlo')
+  const conservado = run(['upgrade', target])
+  assert.equal(conservado.status, 0, conservado.stderr)
+  assert.match(conservado.stdout, /agregá lo tuyo al lado con otro nombre/)
+  assert.equal(/junto a system\//.test(conservado.stdout), false, 'hooks no tiene system/: no puede sugerirlo')
 
   // Descartar es legítimo; hacerlo en silencio no.
   const forced = run(['upgrade', target, '--force'])
@@ -170,15 +186,16 @@ test('upgrade distingue una edición local de una mejora del toolkit', () => {
   // Nada editado: el upgrade pasa aunque el paquete traiga cambios.
   assert.equal(run(['upgrade', target]).status, 0)
 
-  // Editado por la empresa: se detiene, y distingue de qué naturaleza es cada cosa.
+  // Editado por la empresa: se conserva, y el consejo distingue de qué naturaleza es cada cosa.
   fs.appendFileSync(guard, '# mío\n')
   fs.appendFileSync(rule, '\nmía\n')
-  const refused = run(['upgrade', target])
-  assert.notEqual(refused.status, 0)
-  assert.match(refused.stderr, /guard-verify\.sh/)
-  assert.match(refused.stderr, /BR-OPS-001/)
-  assert.match(refused.stderr, /mismo ID/, 'la guía para una regla es el override')
-  assert.match(refused.stderr, /guard propio sobrevive/, 'y para el runtime, agregar al lado')
+  const conservado = run(['upgrade', target])
+  assert.equal(conservado.status, 0, conservado.stderr)
+  assert.match(conservado.stdout, /guard-verify\.sh/)
+  assert.match(conservado.stdout, /BR-OPS-001/)
+  assert.match(conservado.stdout, /mismo ID/, 'la guía para una regla es el override')
+  assert.match(conservado.stdout, /guard propio sobrevive/, 'y para el runtime, agregar al lado')
+  assert.match(fs.readFileSync(guard, 'utf8'), /# mío/, 'y lo editado sigue ahí')
 
   // Con --force se reemplazan y el registro vuelve a reflejar lo entregado.
   assert.equal(run(['upgrade', target, '--force']).status, 0)
@@ -190,9 +207,10 @@ test('upgrade distingue una edición local de una mejora del toolkit', () => {
   const contract = path.join(target, 'AGENTS.md')
   assert.ok(M.read(target)['AGENTS.md'], 'el archivo suelto queda registrado')
   fs.appendFileSync(contract, '\nlínea de la empresa\n')
-  const stopped = run(['upgrade', target])
-  assert.notEqual(stopped.status, 0, 'editar un archivo del sistema detiene la actualización')
-  assert.match(stopped.stderr, /AGENTS\.md/)
+  const suelto = run(['upgrade', target])
+  assert.equal(suelto.status, 0, suelto.stderr)
+  assert.match(suelto.stdout, /conservado AGENTS\.md/, 'el archivo suelto se conserva como los demás')
+  assert.match(fs.readFileSync(contract, 'utf8'), /línea de la empresa/)
   assert.equal(run(['upgrade', target, '--force']).status, 0)
   assert.equal(/línea de la empresa/.test(fs.readFileSync(contract, 'utf8')), false)
 })
@@ -317,9 +335,9 @@ test('upgrade no pisa lo que init --force conservó', () => {
 
   // El paso siguiente que documenta el README, sobre lo que init acaba de conservar.
   const upgraded = run(['upgrade', target])
-  assert.notEqual(upgraded.status, 0, 'upgrade se detiene en vez de reemplazar lo conservado')
-  assert.match(upgraded.stderr, /AGENTS\.md/)
-  assert.match(upgraded.stderr, /planning\/PROTOCOL\.md/)
+  assert.equal(upgraded.status, 0, upgraded.stderr)
+  assert.match(upgraded.stdout, /conservado AGENTS\.md/)
+  assert.match(upgraded.stdout, /conservado planning\/PROTOCOL\.md/)
   assert.equal(fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8'), '# Reglas de Acme\n')
   assert.equal(fs.readFileSync(path.join(target, 'planning', 'PROTOCOL.md'), 'utf8'),
     '# Protocolo propio de Acme\n')
@@ -451,3 +469,25 @@ test('upgrade crea el archivo propio que esta versión agrega, y no repone lo de
   assert.match(fs.readFileSync(workspace, 'utf8'), /Tres servicios/)
 })
 
+// La contracara de conservar: una instancia puede quedar con medio molde viejo y no enterarse, que es
+// el otro modo de fallo y es silencioso. Por eso la deuda se cuenta en cada `check` y no sólo el día
+// que alguien actualiza.
+test('check cuenta los archivos del molde congelados por una edición local', () => {
+  const base = tempRoot('cauce-congelados-')
+  const target = path.join(base, 'acme')
+  assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar']).status, 0)
+
+  const limpio = run(['check', path.join(target, 'planning')])
+  assert.equal(limpio.status, 0, limpio.stderr)
+  assert.equal(/congelados/.test(limpio.stderr), false, 'sin ediciones no hay deuda que contar')
+
+  fs.appendFileSync(path.join(target, 'planning', 'PROTOCOL.md'), '\n# fase propia\n')
+  const conDeuda = run(['check', path.join(target, 'planning')])
+  assert.equal(conDeuda.status, 0, 'la deuda es una advertencia, no un error')
+  // Las advertencias de `check` van por stderr; el ✓ del final es lo único que va por stdout.
+  assert.match(conDeuda.stderr, /1 archivo\(s\) del molde congelados/)
+
+  // Y sigue contándose después de actualizar: conservar no salda la deuda, la difiere.
+  assert.equal(run(['upgrade', target]).status, 0)
+  assert.match(run(['check', path.join(target, 'planning')]).stderr, /1 archivo\(s\) del molde congelados/)
+})
