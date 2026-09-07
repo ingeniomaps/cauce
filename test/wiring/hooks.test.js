@@ -38,7 +38,7 @@ function git(args, cwd) {
 // en CI no hay ninguna, así que sin esto la prueba pasa en la máquina y falla en la puerta — que es la
 // peor forma de fallar, porque el veredicto local dice lo contrario del que decide.
 function initRepo(root) {
-  initRepo(root)
+  git(['init', '-q'], root)
   git(['config', 'user.email', 'prueba@ejemplo'], root)
   git(['config', 'user.name', 'Prueba'], root)
 }
