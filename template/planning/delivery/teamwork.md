@@ -10,8 +10,8 @@ choques entre dos personas —o entre dos agentes— salen de tratarlas igual.
 | Anillo | Qué vive ahí | Escritores | Frecuencia |
 |---|---|---|---|
 | **Compartido** | `roadmap/`, `BACKLOG.md`, `INBOX.md`, `HUMAN_ACTIONS.md`, `DONE.md`, reglas y ADR | cualquiera, en actos humanos | baja |
-| **Coordinación** | qué tarea tomó cada quien | uno por persona | dos veces por tarea |
-| **Local** | el plan en curso, `.verify-log`, el árbol de trabajo | vos | continua |
+| **Coordinación** | `claims/`, un archivo por tarea tomada | uno por tarea | dos veces por tarea |
+| **Local** | `WIP.md`, `.verify-log`, el árbol de trabajo | vos | continua |
 
 La regla que los separa: **un archivo con más de un escritor tiene que cambiar poco; uno que cambia mucho
 tiene que tener un solo escritor.** Cuando uno viola las dos a la vez, el equipo se pisa en cada commit.
@@ -43,17 +43,29 @@ La rama por tarea y su ciclo viven en `branches.md`; acá se agrega que el árbo
 
 ## Tomar una tarea sin pisarse
 
-`ops context` entrega la primera tarea pendiente y no bloqueada de la cola. **Con dos personas entrega la
-misma a las dos**, y ninguna se entera. Hoy no hay mecanismo que lo impida: se sostiene por convención, y
-decirlo es parte de la guía — presentarlo como resuelto sería peor que no tenerlo.
+Tomar es un acto y tiene comando:
 
-Lo que funciona mientras tanto, de más barato a más fuerte:
+```bash
+node tools/ops.js claim planning dashboard-filtros
+node tools/ops.js release planning dashboard-filtros
+```
 
-- **Repartir por hito.** Cada persona toma de un `## Hito` distinto. Cuesta cero y corta la colisión.
+`ops context` no ofrece una tarea con reclamo ajeno y nombra quién la tiene, así que dos runners
+preguntando a la vez ya no reciben la misma. Y devuelve antes lo que vos reclamaste que lo que está
+libre: es lo que dijiste que ibas a hacer. El contrato completo está en `../claims/README.md`.
+
+Lo que el comando **no** hace, y hay que saberlo: un reclamo sin empujar no reserva nada, porque el otro
+runner lee lo que hay en su copia. Entre `claim` y el push hay una ventana, y es de minutos sólo si se
+commitea el reclamo enseguida.
+
+Dos cosas que el mecanismo no reemplaza:
+
 - **Mirar el `service:`.** Es el dominio de colisión y ya está declarado en cada tarea: dos tareas de
-  servicios distintos no se pueden pisar en el código. Dos del mismo servicio pueden, y conviene saberlo
-  antes y no al mergear.
-- **Decirlo donde el equipo mire.** Un canal, una reunión de diez minutos, lo que ya usen.
+  servicios distintos no se pueden pisar en el código, dos del mismo pueden. `ops check` avisa cuando hay
+  dos reclamos sobre el mismo servicio, y avisa nada más — frenar serializaría a un equipo entero sobre
+  un servicio, que es peor que la colisión que evita.
+- **Repartir por hito.** Cada persona toma de un `## Hito` distinto. No lo pide nada, y hace que los dos
+  avisos de arriba casi nunca aparezcan.
 
 ## Cuando el equipo crece o se achica
 
@@ -66,9 +78,10 @@ Lo que funciona mientras tanto, de más barato a más fuerte:
 | 8 a 20 | lo mismo, con la cola filtrada por hito y por cast | el `BACKLOG` se vuelve **ilegible** antes que contencioso: nadie lee sesenta tareas para elegir la suya |
 | 20+ | una instancia por equipo o por dominio | la coordinación pasa a ser entre instancias, que es `multi-repo.md` |
 
-Achicarse parece más fácil y tiene una trampa: **lo que tomó quien se fue no se libera solo.** Al bajar de
-tamaño se recorren las tareas tomadas para devolverlas a la cola o reasignarlas, igual que las filas de
-`HUMAN_ACTIONS.md` que esperaban a esa persona.
+Achicarse parece más fácil y tiene una trampa: **lo que tomó quien se fue no se libera solo.** `ops check`
+avisa a los tres días, pero soltarlo es borrar el archivo de `claims/` a mano — `ops release` se niega a
+hacerlo por vos—. Al bajar de tamaño se recorren esos reclamos igual que las filas de `HUMAN_ACTIONS.md`
+que esperaban a esa persona.
 
 ## Dónde va cada cosa que el equipo se dice
 
@@ -79,7 +92,8 @@ tamaño se recorren las tareas tomadas para devolverlas a la cola o reasignarlas
 | Algo que sólo puede hacer una persona | `HUMAN_ACTIONS.md` | frena su tarea hasta que se resuelva |
 | Una idea, una deuda, una lección | `INBOX.md` | espera promoción humana |
 | Lo que una tarea entregó, con su evidencia | `DONE.md` | es lo que se audita |
-| «Tomo ésta», «salgo a almorzar», «está lento el CI» | el canal del equipo | no es durable y no se audita |
+| Qué tarea estoy haciendo | `claims/` | para que nadie la tome dos veces |
+| «Salgo a almorzar», «está lento el CI» | el canal del equipo | no es durable y no se audita |
 
 La última fila pesa tanto como las otras: meter conversación en el repositorio lo vuelve ilegible, y sacar
 decisiones del repositorio las pierde.

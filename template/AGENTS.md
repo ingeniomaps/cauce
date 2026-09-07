@@ -166,6 +166,21 @@ muta nada.
 Los cinco aceptan `--json`. Leer `BACKLOG.md`, `WIP.md`, `HUMAN_ACTIONS.md` o `RECURRING.md` completos
 sólo cuando haga falta editarlos o cuando el CLI no responda la pregunta.
 
+## Cómo tomar trabajo
+
+Con equipo, la tarea que `context` devuelve puede estar libre o ya ser tuya, y la salida lo dice. Libre
+se toma antes de empezar:
+
+- `node tools/ops.js claim planning <tarea>` — la reserva a tu nombre y escribe `planning/claims/<tarea>.md`.
+- `node tools/ops.js release planning <tarea>` — la devuelve a la cola.
+
+Tomar no es promover: la tarea ya estaba aprobada en `BACKLOG.md` y esto sólo dice quién la hace, así que
+entra en la autonomía del runner. Lo que no entra es tocar el reclamo de otro — ni tomarlo, ni soltarlo—,
+y `context` directamente no ofrece una tarea reclamada.
+
+El reclamo hay que **commitearlo y empujarlo**: sin eso el otro runner lee lo que hay en su copia y la
+reserva no existe para nadie más.
+
 ## Autonomía
 
 El runner puede implementar una tarea promovida dentro del servicio declarado, crear pruebas y hacer

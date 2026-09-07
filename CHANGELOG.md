@@ -14,6 +14,49 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.70.0] - 2026-09-07
+
+### Agregado
+
+- **`planning/claims/`: quién tomó qué, para que dos runners no construyan lo mismo.** Un archivo por tarea
+  tomada, con el slug de la tarea como nombre: `ops claim planning <tarea>` lo crea y `ops release` lo borra.
+  `ops context` deja de ofrecer una tarea con reclamo ajeno —antes le entregaba la misma a los dos y ninguno
+  se enteraba—, nombra quién la tiene y devuelve antes lo que vos reclamaste que lo que está libre.
+
+  Es un archivo por tarea y no uno por persona a propósito: así dos personas en tareas distintas no tocan
+  nunca el mismo archivo, y dos que toman la misma chocan en git, que es donde el choque significa algo.
+  `check` rechaza el reclamo que nombra una tarea que no existe, avisa a los tres días de tomada y avisa
+  cuando hay dos reclamos sobre el mismo `service:` — avisa y no frena, porque frenar serializaría a un
+  equipo entero sobre un servicio.
+
+  **Lo que te pide algo**: el reclamo hay que commitearlo y empujarlo. Sin eso, el otro runner lee lo que
+  hay en su copia y la reserva no existe para nadie más.
+
+- **`.gitattributes`: `DONE.md` y `HUMAN_ACTIONS.md` se concatenan en vez de conflictuar.** Dos personas
+  cerrando trabajo el mismo día chocaban siempre, y ese conflicto no significaba nada: las dos entradas son
+  buenas y van las dos. Lo que `union` no hace es deduplicar, y esa falla ya la atrapa `DONE duplicado`.
+
+- **`planning/delivery/teamwork.md`**: qué comparte el equipo y qué no, por qué dos agentes necesitan un
+  `git worktree` cada uno, cómo repartir trabajo, y qué se rompe primero según el tamaño del equipo.
+
+- **BR-OPS-005 — una tarea, un runner.** La contracara de BR-OPS-001: aquélla impide que un runner lleve dos
+  tareas, ésta que dos runners lleven la misma.
+
+### Cambiado
+
+- **`planning/WIP.md` pasa a ser local y deja de viajar por git.** Existe para recuperar la sesión de quien
+  lo escribió —nadie más puede retomarla— y cambia en cada paso, así que compartirlo era un conflicto por
+  commit a cambio de nada. `check` deja de exigir que exista: ausente se lee como IDLE, que es lo que
+  significa, y un clon nuevo ya no falla por no traerlo.
+
+  **Lo que te pide algo**: el molde nuevo lo gitignorea, pero tu `.gitignore` es tuyo y `upgrade` no lo toca.
+  Para aprovecharlo, agregale `planning/WIP.md` y sacalo del índice con `git rm --cached planning/WIP.md`.
+  Sin hacer nada, todo sigue funcionando como antes.
+
+- **BR-OPS-001 se acota al runner.** Decía que WIP es el mutex sin decir de quién, y con equipo eso se leía
+  como «trabaja uno por vez». Ahora dice que un runner no toma dos tareas; que dos runners no tomen la misma
+  es BR-OPS-005.
+
 ## [0.69.0] - 2026-09-07
 
 ### Agregado
