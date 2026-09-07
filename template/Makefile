@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help check tree context upgrade destroy automation-check
+.PHONY: help check tree context recurring upgrade destroy automation-check
 .PHONY: integration-check integration-sync require-key integration-promote
 .PHONY: require-agent agent-learn agent-propose agent-evaluate require-flow flow-list flow-check flow-show
 .PHONY: install-claude install-codex install-gemini install-antigravity
@@ -22,6 +22,9 @@ tree: ## Muestra roadmap, backlog, WIP y Done
 
 context: ## Muestra el contexto mínimo de la tarea vigente
 	@node tools/ops.js context planning
+
+recurring: ## Muestra qué trabajo recurrente vence y con qué línea se promueve
+	@node tools/ops.js recurring planning
 
 # `init` fija la versión exacta del motor, así que `npm update` no la mueve: hay que pedir @latest.
 # Sin este primer paso `upgrade` compara contra el motor instalado y contesta «al día» para siempre.

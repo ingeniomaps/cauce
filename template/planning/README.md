@@ -19,6 +19,7 @@ Se decide antes de ejecutar y no cambia dentro de una tarea.
 | Pieza | Responsabilidad |
 |---|---|
 | `INBOX.md` | Ideas y deuda sin autorización de ejecución. |
+| `RECURRING.md` | Trabajo que vuelve cada tanto; declarado, nunca encolado solo. |
 | `roadmap/` | Especificaciones de épicas y criterios del QUÉ. |
 | `adr/` | Decisiones arquitectónicas durables. |
 | `business-rules/` | Invariantes observables de negocio y operación. |

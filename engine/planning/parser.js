@@ -193,6 +193,26 @@ function acceptanceConditions(value) {
   return text.split(';').map((one) => one.trim()).filter(Boolean).length
 }
 
+// Una línea de tarea, leída en un solo lugar: `readBacklog` la usa para armar la cola y `recurring.js`
+// para juzgar la línea que va a emitir. Es el mismo motivo por el que `TASK_LINE` no está duplicado —
+// lo que emite una y lee la otra tiene que ser la misma forma, o el emisor produce lo que el lector
+// descarta.
+function taskFromLine(line) {
+  const task = line.match(TASK_LINE)
+  if (!task) return null
+  const rest = task[3]
+  const acceptance = ((rest.match(ACCEPTANCE) || [])[1] || '').trim()
+  return {
+    slug: task[1].trim(), tier: task[2] || '', cast: readCast(rest),
+    epic: ((rest.match(/\(epic:\s*(\d{3})\)/) || [])[1] || ''),
+    service: ((rest.match(/\(service:\s*([^)]+)\)/) || [])[1] || '').trim(),
+    acceptance,
+    conditions: acceptanceConditions(acceptance),
+    criteria: criteriaRefs(rest),
+    noSplit: noSplitReason(rest),
+  }
+}
+
 function readBacklog(dir) {
   const text = withoutComments(read(path.join(dir, 'BACKLOG.md')))
   const milestones = []
@@ -208,19 +228,8 @@ function readBacklog(dir) {
       continue
     }
     if (/^##\s+/.test(line)) current = null
-    const task = line.match(TASK_LINE)
-    if (!task || !current) continue
-    const rest = task[3]
-    const acceptance = ((rest.match(ACCEPTANCE) || [])[1] || '').trim()
-    current.tasks.push({
-      slug: task[1].trim(), tier: task[2] || '', cast: readCast(rest),
-      epic: ((rest.match(/\(epic:\s*(\d{3})\)/) || [])[1] || ''),
-      service: ((rest.match(/\(service:\s*([^)]+)\)/) || [])[1] || '').trim(),
-      acceptance,
-      conditions: acceptanceConditions(acceptance),
-      criteria: criteriaRefs(rest),
-      noSplit: noSplitReason(rest),
-    })
+    const task = current ? taskFromLine(line) : null
+    if (task) current.tasks.push(task)
   }
   return milestones
 }
@@ -302,16 +311,24 @@ const SEPARADORES = /^\|\s*:?-+/
 // afectada —`archive` reescribe `raw`, la línea original, no las celdas—, así que quitarlo no pierde nada.
 const celda = (cell) => cell.trim().replace(/\\\|/g, '|')
 
-function readHumanActions(dir) {
-  const lineas = withoutComments(read(path.join(dir, 'HUMAN_ACTIONS.md'))).split('\n')
-  // En markdown la cabecera es la fila anterior a la de separadores, diga lo que diga su primera celda.
-  // Se marcan todas y no la primera: un archivo con una tabla por sección tiene una cabecera por tabla,
-  // y con `findIndex` la segunda y la tercera vuelven a leerse como datos. Nada más se mueve, porque una
-  // fila de datos nunca está inmediatamente antes de los guiones.
+// Las filas de datos de las tablas de un texto, con las celdas ya normalizadas. Vive acá y no en cada
+// lector porque el escape del pipe tiene que leerse igual en los dos archivos que traen tabla: escrito
+// dos veces, una de las dos copias se pudre sin que nada falle.
+//
+// En markdown la cabecera es la fila anterior a la de separadores, diga lo que diga su primera celda.
+// Se marcan todas y no la primera: un archivo con una tabla por sección tiene una cabecera por tabla,
+// y con `findIndex` la segunda y la tercera vuelven a leerse como datos. Nada más se mueve, porque una
+// fila de datos nunca está inmediatamente antes de los guiones.
+function tableRows(text) {
+  const lineas = text.split('\n')
   const cabeceras = new Set(lineas.map((line, i) => (SEPARADORES.test(line) ? i - 1 : -1)))
-  const rows = lineas
+  return lineas
     .filter((line, i) => /^\|/.test(line) && !SEPARADORES.test(line) && !cabeceras.has(i))
     .map((line) => ({ line, cells: line.split(SEPARADOR).slice(1, -1).map(celda) }))
+}
+
+function readHumanActions(dir) {
+  const rows = tableRows(withoutComments(read(path.join(dir, 'HUMAN_ACTIONS.md'))))
   // El literal queda como resguardo de la tabla escrita sin su fila de separadores: markdown no la
   // renderiza como tabla, y este parser lee sus filas igual.
   return rows.filter(({ cells }) => cells.length >= 4 && !/^tarea$/i.test(cells[0]))
@@ -362,6 +379,6 @@ module.exports = {
   EPIC_STATES, HUMAN_ACTION_STATES, LANES, MILESTONE_HEADING, STOP_REASONS,
   TASK_LINE, TASK_LINE_ANY_LANE,
   read, section, withoutComments, frontmatter, readEpics, readBacklog, readDone, readWip,
-  acceptanceConditions,
+  acceptanceConditions, tableRows, taskFromLine,
   readInbox, readHumanActions,
 }

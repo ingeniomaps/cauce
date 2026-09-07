@@ -153,6 +153,8 @@ muta nada.
 - `node tools/ops.js context planning` — gate, mutex de WIP y la tarea que corresponde ahora, con su
   aceptación y sus criterios. Es la entrada correcta para empezar a trabajar.
 - `node tools/ops.js tree planning` — panorama de roadmap, backlog, WIP, inbox y done.
+- `node tools/ops.js recurring planning [--promote <qué>]` — qué trabajo recurrente venció y con
+  qué línea se promueve. Emite esa línea; escribirla en `BACKLOG.md` es de una persona.
 - `node tools/ops.js check planning` — validación de contratos y trazabilidad.
 - `node tools/ops.js evidence planning [--task <slug>]` — contrasta la evidencia de una entrada de DONE
   contra lo que no escribió su autor: si el artefacto que `tests:` nombra existe en las raíces de
@@ -161,8 +163,8 @@ muta nada.
   nombrada haya corrido —eso depende del runner, y varios no la nombran al pasar— ni reemplaza a leer
   su fuente, que es lo que R9 pide.
 
-Los cuatro aceptan `--json`. Leer `BACKLOG.md`, `WIP.md` o `HUMAN_ACTIONS.md` completos sólo cuando haga
-falta editarlos o cuando el CLI no responda la pregunta.
+Los cinco aceptan `--json`. Leer `BACKLOG.md`, `WIP.md`, `HUMAN_ACTIONS.md` o `RECURRING.md` completos
+sólo cuando haga falta editarlos o cuando el CLI no responda la pregunta.
 
 ## Autonomía
 
@@ -177,6 +179,11 @@ Registra la acción exacta en `planning/HUMAN_ACTIONS.md` y, si bloquea todo, cr
 Nunca amplía el alcance, promueve sus propias ideas, reescribe el proceso durante una tarea, usa
 `git add .`/`git add -A`, reescribe historia con `--force` o `--amend`, ni afirma éxito sin evidencia
 real. Tampoco publica: sin autorización no hay `push`.
+
+Una recurrencia vencida tampoco la promueve, y ésta es la que más se parece a una excepción: la
+aceptación ya está escrita, la fecha la calculó el CLI y `context` la nombra sola. Nada de eso es la
+aprobación que pide BR-OPS-002 — `context` la nombra para que la vea una persona, y quien la pega en
+`BACKLOG.md` es esa persona.
 
 Publicar es lo único de todo eso que este proyecto puede habilitar, y `runner.allowPush` en
 `ops.config.json` es la autorización que R10 pide. Reescribir historia publicada no entra en el trato:

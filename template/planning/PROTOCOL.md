@@ -20,6 +20,11 @@ invariantes.
   en el vocabulario cerrado `pendiente | resuelta` —la fecha puede ir detrás—. Mientras la fila no
   esté resuelta, su tarea no se toma; un estado fuera del vocabulario es un error de `check` y no un
   bloqueo silencioso.
+- Recurrencia: fila `| qué | cada | desde | tarea y aceptación |` bajo `## Recurrencias`, con `cada` en
+  el vocabulario cerrado `mensual | trimestral | semestral | anual` y la celda de tarea escrita como la
+  cola de su línea de BACKLOG. Vencer no bloquea: cada vuelta se promueve con el período en el slug
+  —`<qué>-AAAA-MM`— y esa promoción la escribe una persona. Postergar se registra bajo
+  `## Postergaciones` con `- **qué** AAAA-MM-DD — razón`.
 - WIP activo: frontmatter y checklist; inactivo: `status: IDLE`.
 
 ## Gates de arranque
