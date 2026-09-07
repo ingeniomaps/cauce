@@ -145,6 +145,43 @@ sobre la mesa fue exactamente ésta: no actualizar nunca, o reescribir el proces
 primero, y adoptar el `PROTOCOL` de Cauce quedó como trabajo propio para más adelante — se puede, porque
 resultó ser la misma máquina de fases, pero es un proyecto, no un flag.
 
+## Arreglo aplicado
+
+**Mergeado y sin publicar.** El caso sigue `abierto` hasta que salga la versión que lo lleva. El
+recorrido de lo que enumeró, ítem por ítem:
+
+- **Resolución por archivo — hecha, y es lo que destraba el caso.** `upgrade` deja de abortar: conserva
+  cada archivo editado, actualiza todo lo demás y nombra lo que congeló. Un proyecto que adoptó Cauce
+  sobre su propio proceso recibe `rules/system/` y `adr/system/` frescos —donde viven las reglas que los
+  agentes leen— y conserva su corpus.
+- **El aviso en cada corrida y no sólo la primera — hecho**, y tiene su prueba: dos `upgrade` seguidos y
+  el segundo vuelve a decir qué conservó.
+- **`check` cuenta los congelados — hecho.** Sale como advertencia en cada corrida, no sólo el día que
+  alguien actualiza, que es lo que evita que la deuda desaparezca de la vista.
+- **El renglón del consejo para los docs sin contraparte propia — hecho.** `PROTOCOL.md`,
+  `METHODOLOGY.md`, `FLOW.md` y el `Makefile` no tienen adónde mudarse, y el consejo genérico —«lo tuyo
+  va a una ADR, una regla o `delivery/project.md`»— les mentía. Ahora se los nombra y se dice qué pasa:
+  quedan congelados con la versión del proyecto, el resto se actualiza igual, y adoptar el del toolkit es
+  trabajo propio, no un flag.
+- **`--keep` / `--replace` por ruta — no se implementa, y es una decisión.** Con la resolución por
+  archivo, conservar ya es el default y reemplazar todo sigue siendo `--force`. Lo único que queda sin
+  cubrir es «reemplazá sólo este archivo», que hoy no lo pidió nadie: agregar dos flags para un caso
+  hipotético es infraestructura especulativa. Lo que lo activaría: alguien con una instancia donde una
+  parte de lo editado sí quiere devolverla al molde y otra no.
+
+**Lo que el caso no preveía y era lo que podía arruinarlo todo**: el registro. Después de conservar un
+archivo, el paso que regraba el manifiesto lo digiere **desde disco**, así que el archivo conservado
+habría quedado idéntico a «lo entregado», habría dejado de detectarse como editado, y la corrida
+siguiente lo habría pisado sin decir nada — el 001 de vuelta por la puerta de atrás. No se ve mirando el
+archivo: se ve dos `upgrade` después. Se arregla conservando el digest previo de cada archivo congelado,
+y hay una prueba que falla si se quita.
+
+**El contrato cambia para quien ya lo usa, y hay que decirlo**: `upgrade` ya no aborta ni devuelve
+código distinto de cero por una edición local. Tres pruebas que afirmaban lo contrario se reescribieron
+—no para acomodarlas al código nuevo, sino porque afirmaban el mecanismo y no la garantía—: lo que el
+001 protege es que la edición no se pierda, y conservarla lo cumple mejor que abortar. Las aserciones
+que comprueban que el contenido local sobrevive quedaron intactas en las tres.
+
 ## Relacionados
 
 - [001](001-upgrade-pisa-lo-que-init-force-conservo.md) — la protección que este caso quiere destrabar
