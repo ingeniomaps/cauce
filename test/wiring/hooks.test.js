@@ -554,10 +554,9 @@ test('un índice que no se puede leer no autoriza el commit', () => {
   }))
 })
 
-// La salida que había era una variable de entorno, y una variable es por sesión: prendida antes de
-// lanzar el runner apaga el guard hasta que la sesión cierre. Lo que se mide acá es que la aprobación
-// valga para lo que nombra **y para nada más** — sin eso sería la misma puerta abierta con otra forma.
-// `approval` cuenta por qué se coteja en vez de consumirse.
+// Lo que se mide acá es que la aprobación valga para lo que nombra **y para nada más**: sin eso sería
+// la misma puerta abierta que vino a cerrar, con otra forma. Por qué existe y por qué se coteja en vez
+// de consumirse, en `approval`.
 test('una aprobación de gobernanza vale para lo que nombra y deja de valer al cambiar', () => {
   const root = tempRoot('ops-hook-aprobacion-')
   git(['init'], root)
@@ -576,7 +575,7 @@ test('una aprobación de gobernanza vale para lo que nombra y deja de valer al c
     return relative
   }
   // Con cabecera: quien lo escribe a mano va a explicar qué autorizó y cuándo, y eso no es una ruta.
-  const aprobar = (...rutas) => fs.writeFileSync(path.join(root, 'planning', '.governance-approval'),
+  const aprobar = (...rutas) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
     `# Aprobado por X el 2026-09-06 para el commit de la propuesta 2026-08.\n${rutas.join('\n')}\n`)
   const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
 
@@ -969,4 +968,102 @@ test('el SQL destructivo se juzga sobre una migración, no sobre cualquier archi
   assert.doesNotThrow(() => execute('migrations', {
     cwd: root, tool_input: { file_path: 'sql/004_drop.sql', content: 'DROP TABLE pedidos;' },
   }))
+})
+
+// La aprobación por operación existía y la usaba un guard solo; los otros cuatro que se pueden abrir
+// tenían una única salida, una variable de entorno, que es **por sesión**: se lee del proceso del
+// runner, así que la forma que funciona deja el guard apagado hasta que la sesión cierre.
+//
+// Aprobar el conjunto exacto es lo que expresa «autorizo esta operación» en los cuatro: en cuanto
+// cambia lo que se está por escribir o commitear, la aprobación deja de valer. Por eso el archivo es
+// uno solo y ya no se llama de gobernanza — una aprobación escrita a mano nombra rutas, y quién las
+// mira lo decide qué guard esté juzgando esa ruta.
+test('la aprobación por operación abre los guards que deciden sobre una ruta', () => {
+  const root = tempRoot('ops-hook-approval-todos-')
+  git(['init', '-q'], root)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  const aprobar = (...rutas) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
+    `# Aprobado por X el 2026-09-07.\n${rutas.join('\n')}\n`)
+  const limpiar = () => fs.rmSync(path.join(root, 'planning', '.ops-approval'), { force: true })
+
+  // En `migrations` lo que se decide es la ruta del archivo que se está por escribir.
+  fs.mkdirSync(path.join(root, 'migrations'), { recursive: true })
+  const sql = { file_path: 'migrations/010_drop.sql', content: 'DROP TABLE pedidos;' }
+  limpiar()
+  blocked('migrations', { cwd: root, tool_input: sql }, /SQL destructivo/)
+  aprobar('migrations/010_drop.sql')
+  assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: sql }))
+  // Y vale para lo que nombra y nada más.
+  aprobar('migrations/999_otra.sql')
+  blocked('migrations', { cwd: root, tool_input: sql }, /SQL destructivo/)
+
+  // En `test-evidence` es la ruta de la prueba que se borra.
+  const borrado = { patch: '*** Begin Patch\n*** Delete File: test/pagos.test.js\n*** End Patch' }
+  limpiar()
+  blocked('test-evidence', { cwd: root, tool_input: borrado }, /borra una prueba/)
+  aprobar('test/pagos.test.js')
+  assert.doesNotThrow(() => execute('test-evidence', { cwd: root, tool_input: borrado }))
+
+  // En `dependencies` es el manifiesto staged que va sin su lockfile.
+  fs.writeFileSync(path.join(root, 'package.json'), '{}\n')
+  fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n')
+  git(['add', 'package.json'], root)
+  const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
+  limpiar()
+  blocked('dependencies', commit, /lockfile/i)
+  aprobar('package.json')
+  assert.doesNotThrow(() => execute('dependencies', commit))
+})
+
+// La que no encaja, dicha donde se decide y no en una nota al pie: publicar un paquete o instalar algo
+// global no tiene ninguna ruta sobre la cual aprobar, así que ahí la variable sigue siendo la salida.
+// Declararlo es lo que evita que alguien busque la forma angosta y no la encuentre.
+test('publicar un paquete no se aprueba por ruta, porque no hay ruta', () => {
+  const root = tempRoot('ops-hook-approval-sin-ruta-')
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), 'package.json\n')
+  blocked('dependencies', { cwd: root, tool_input: { command: 'npm publish' } }, /acción humana/)
+})
+
+// `verify` es el único cuyo objeto no es un archivo sino el commit entero: lo que se aprueba es el
+// conjunto staged, o sea «autorizo commitear exactamente esto aunque el gate esté en rojo». Stagear una
+// cosa más lo invalida, que es lo que lo vuelve una operación y no un permiso abierto.
+test('verify se aprueba por el conjunto staged, no por un archivo', () => {
+  const root = tempRoot('ops-hook-approval-verify-')
+  git(['init', '-q'], root)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  fs.writeFileSync(path.join(root, 'package.json'),
+    JSON.stringify({ scripts: { test: 'node -e "process.exit(1)"' } }))
+  fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = true\n')
+  git(['add', 'package.json', 'app.js'], root)
+  const aprobar = (...rutas) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
+    `${rutas.join('\n')}\n`)
+  const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
+
+  blocked('verify', commit, /Verify falló/)
+  // Aprobar una parte no alcanza: el objeto es el conjunto, no cada archivo por separado.
+  aprobar('app.js')
+  blocked('verify', commit, /Verify falló/)
+  aprobar('app.js', 'package.json')
+  assert.doesNotThrow(() => execute('verify', commit), 'el conjunto entero aprobado pasa')
+  // Y en cuanto se suma un archivo, la aprobación deja de cubrirlo.
+  fs.writeFileSync(path.join(root, 'otro.js'), 'module.exports = 1\n')
+  git(['add', 'otro.js'], root)
+  blocked('verify', commit, /Verify falló/)
+
+  // La otra mitad del guard, que también es sobre el conjunto: una fuente cambiada sin regenerar.
+  const api = tempRoot('ops-hook-approval-verify-api-')
+  git(['init', '-q'], api)
+  fs.mkdirSync(path.join(api, 'planning'), { recursive: true })
+  fs.mkdirSync(path.join(api, 'openapi'), { recursive: true })
+  fs.writeFileSync(path.join(api, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  fs.writeFileSync(path.join(api, 'openapi', 'api.yaml'), 'openapi: 3.0.0\n')
+  git(['add', 'openapi/api.yaml'], api)
+  const commitApi = { cwd: api, tool_input: { command: 'git commit -m x' } }
+  blocked('verify', commitApi, /OpenAPI\/Swagger/)
+  fs.writeFileSync(path.join(api, 'planning', '.ops-approval'), 'openapi/api.yaml\n')
+  assert.doesNotThrow(() => execute('verify', commitApi))
 })

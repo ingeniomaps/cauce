@@ -40,6 +40,12 @@ const COMANDO = String.raw`$|[;&|)'"\`]`
 // `bash -c "git push origin main"` y `eval "git reset --hard"` siguen cayendo, comprobado. Queda afuera
 // la sustitución dentro del propio mensaje —`git commit -m "$(...)"` corre y ya no se ve—, que es
 // evasión y no la forma habitual.
+// La raíz donde vive `planning/`, que es donde se busca la aprobación. Los cuatro guards que la
+// consultan la resuelven igual, así que se resuelve una vez.
+function opsRoot(input) {
+  return findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
+}
+
 function destructive(input) {
   const raw = commandOf(input)
   // Las opciones globales de `git` se sacan acá y no en cada regla: toda regla de abajo que mire un
@@ -161,16 +167,24 @@ function dependencies(input) {
     state[manifests.has(base) ? 'manifests' : 'locks'].push(base)
     byDir.set(parent, state)
   }
+  // Lo que se juzga acá es el archivo staged, así que la aprobación por ruta lo expresa: autorizar
+  // `package.json` dice «este manifiesto va sin su lock a propósito» y deja de valer en cuanto el
+  // conjunto cambie. La rama de publicar no pasa por acá y no tiene ruta: sigue arriba, con su variable.
+  const sinAprobar = (parent, names) => AP.pending(opsRoot(input),
+    names.map((name) => path.posix.join(parent === '.' ? '' : parent, name))).length
   for (const [parent, state] of byDir) {
     const existingLocks = [...locks].filter((name) => fs.existsSync(path.join(dir, parent, name)))
     if (existingLocks.length > 1) {
       block(`${parent}: hay varios lockfiles (${existingLocks.join(', ')}). Conserva uno solo.`)
     }
-    if (state.manifests.length && existingLocks.length && !state.locks.length) {
-      block(`${parent}: cambió ${state.manifests.join(', ')} sin actualizar su lockfile.`)
+    if (state.manifests.length && existingLocks.length && !state.locks.length
+      && sinAprobar(parent, state.manifests)) {
+      block(`${parent}: cambió ${state.manifests.join(', ')} sin actualizar su lockfile.\n`
+        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE'))
     }
-    if (state.locks.length && !state.manifests.length) {
-      block(`${parent}: cambió ${state.locks.join(', ')} sin un cambio explícito en el manifest.`)
+    if (state.locks.length && !state.manifests.length && sinAprobar(parent, state.locks)) {
+      block(`${parent}: cambió ${state.locks.join(', ')} sin un cambio explícito en el manifest.\n`
+        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE'))
     }
   }
 }
@@ -272,15 +286,10 @@ function governance(input) {
   // La aprobación vale para lo que nombra y para nada más: lo que quede sin cubrir es lo que se
   // reporta. Así una aprobación vieja no autoriza el archivo que se sumó después, que es la diferencia
   // entre una llave por operación y una puerta que quedó abierta.
-  const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
-  const aprobados = new Set(root ? AP.read(root) : [])
-  const pendientes = governed.filter((file) => !aprobados.has(file))
+  const pendientes = AP.pending(opsRoot(input), governed)
   if (!pendientes.length) return
   const files = pendientes.map((file) => `  - ${file}`).join('\n')
-  block(`El commit toca gobernanza protegida:\n${files}\n`
-    + `Aprobalo escribiendo esas rutas en planning/${AP.APPROVAL}, una por línea: vale para ese `
-    + 'conjunto y deja de valer en cuanto cambie. La variable OPS_GOVERNANCE_OVERRIDE=1 sigue '
-    + 'existiendo y apaga el guard para toda la sesión, que es por lo que no es la vía recomendada.')
+  block(`El commit toca gobernanza protegida:\n${files}\n${AP.HOW('OPS_GOVERNANCE_OVERRIDE')}`)
 }
 
 function run(program, args, cwd) {
@@ -304,11 +313,17 @@ function verify(input) {
   const changedSqlSource = staged.some((file) => /^(?:db\/queries|queries)\/.*\.sql$/i.test(file))
   const hasApiGenerated = staged.some((file) => /(?:^|\/)[^/]*(?:generated|\.gen)\.(?:go|ts|js|py)$/i.test(file))
   const hasSqlGenerated = staged.some((file) => /(?:^|\/)(?:sqlc|generated)(?:\/|.*\.(?:go|ts|js|py)$)/i.test(file))
-  if (changedOpenApi && !hasApiGenerated) {
-    block('Cambió una fuente OpenAPI/Swagger sin incluir código regenerado. Ejecuta el generador y stagea su salida.')
+  // Acá lo aprobado es el conjunto staged entero: decir «autorizo commitear exactamente estas rutas»
+  // es lo que un gate en rojo necesita, y cambia en cuanto se stagea una más. La lista sale del índice
+  // y no de una regla, que es lo que la vuelve una operación y no un permiso.
+  const aprobado = !AP.pending(opsRoot(input), staged).length
+  if (changedOpenApi && !hasApiGenerated && !aprobado) {
+    block('Cambió una fuente OpenAPI/Swagger sin incluir código regenerado. Ejecuta el generador y '
+      + `stagea su salida.\n${AP.HOW('OPS_SKIP_VERIFY')}`)
   }
-  if (changedSqlSource && !hasSqlGenerated) {
-    block('Cambió una consulta SQL fuente sin artefactos regenerados. Ejecuta el generador.')
+  if (changedSqlSource && !hasSqlGenerated && !aprobado) {
+    block('Cambió una consulta SQL fuente sin artefactos regenerados. Ejecuta el generador.\n'
+      + AP.HOW('OPS_SKIP_VERIFY'))
   }
   if (!staged.some((file) => /\.(?:ts|tsx|js|jsx|mjs|cjs|go|py|html|css|scss|prisma)$/.test(file))) return
   const failures = []
@@ -340,7 +355,10 @@ function verify(input) {
       if (!result.ok) failures.push(`make test (exit ${result.status})`)
     }
   }
-  if (failures.length) block(`Verify falló en ${path.basename(dir)}: ${failures.join(', ')}. No se commitea en rojo.`)
+  if (failures.length && !aprobado) {
+    block(`Verify falló en ${path.basename(dir)}: ${failures.join(', ')}. No se commitea en rojo.\n`
+      + AP.HOW('OPS_SKIP_VERIFY'))
+  }
 }
 
 module.exports = { destructive, gitAdd, dependencies, governance, verify, shellBoundary, run }

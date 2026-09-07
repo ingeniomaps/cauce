@@ -10,6 +10,17 @@ const {
   patchOf, filesOf, contentOf, cwdOf, block, configOf, findOpsRoot,
   writableRoots, outsideRoots, DECLARE_IT,
 } = require('./input')
+const AP = require('./approval')
+
+// La raíz donde vive `planning/`, que es donde se busca la aprobación por operación.
+function opsRoot(input) {
+  return findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
+}
+
+// Si la ruta que este guard está por bloquear está aprobada, no hay nada que decir. Es la salida
+// angosta: vale para esa ruta y deja de valer en cuanto cambie, a diferencia de la variable, que apaga
+// el guard hasta que cierre la sesión.
+const approved = (input, file) => !AP.pending(opsRoot(input), [file]).length
 
 function secrets(input) {
   for (const file of filesOf(input)) {
@@ -82,15 +93,15 @@ function testEvidence(input) {
     'decir que el comportamiento está y pasa a decir que nadie lo miró.\n' +
     'Si la aserción está mal, corregila; si el comportamiento cambió, cambialo junto con la prueba que ' +
     'lo fija. Si tiene que quedar afuera igual —flake conocido, entorno que acá no existe—, es una ' +
-    'decisión con dueño: OPS_TEST_EVIDENCE_OVERRIDE=1 y que conste en el commit.'
+    'decisión con dueño.\n' + AP.HOW('OPS_TEST_EVIDENCE_OVERRIDE')
   for (const match of patchOf(input).matchAll(/^\*\*\* Delete File:\s*(.+)$/gm)) {
     const removed = match[1].trim()
-    if (isTestFile(removed)) block(`${removed} borra una prueba.\n${why}`)
+    if (isTestFile(removed) && !approved(input, removed)) block(`${removed} borra una prueba.\n${why}`)
   }
   const content = contentOf(input)
   if (!content) return
   for (const raw of filesOf(input)) {
-    if (!isTestFile(raw)) continue
+    if (!isTestFile(raw) || approved(input, raw)) continue
     for (const [marca, nombre] of TEST_OFF) {
       if (marca.test(content)) block(`${raw} apaga una prueba con ${nombre}.\n${why}`)
     }
@@ -131,8 +142,9 @@ function migrations(input) {
   for (const raw of filesOf(input)) {
     const normalized = raw.replace(/\\/g, '/')
     if (!/(?:^|\/)(?:migrations?|migrate)\/.*\.sql$/i.test(normalized)) continue
+    if (approved(input, normalized)) continue
     if (destructiveSql.test(contentOf(input))) {
-      block(`${raw} contiene SQL destructivo. Requiere revisión y OPS_MIGRATIONS_OVERRIDE=1.`)
+      block(`${raw} contiene SQL destructivo.\n${AP.HOW('OPS_MIGRATIONS_OVERRIDE')}`)
     }
     const file = path.resolve(cwdOf(input), raw)
     if (fs.existsSync(file)) {
