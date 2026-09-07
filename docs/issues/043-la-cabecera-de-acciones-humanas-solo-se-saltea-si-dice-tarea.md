@@ -104,6 +104,6 @@ resolvió renombrando las tres cabeceras a `Tarea`.
 ## Relacionados
 
 - [042](042-la-tabla-de-acciones-humanas-se-parte-por-todo-pipe.md) — mismo parser, misma función; los
-  dos salieron de la misma migración. **Va primero aquél**: los dos diffs reescriben líneas contiguas
-  del mismo encadenado, así que el que entre segundo no aplica tal cual. Si éste entra después, su
-  `-` tiene que incluir el `split` ya corregido por 042, no el de hoy.
+  dos salieron de la misma migración. **042 ya entró**, y el orden que ambos casos anunciaban resultó
+  más caro de lo que era: lo único que cambió fue la línea del `.map`, y el diff de acá toca el `read` y
+  el `.filter`, que quedaron igual. Aplica literal.

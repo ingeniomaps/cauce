@@ -145,6 +145,39 @@ las filas. Al comparar las dos formas de partir contra el archivo real dieron el
 86 —el único `\|` vivía en la columna 4, pasada la última que el parser mira—, así que ahí no mordió.
 La sonda de arriba es la que lo aisló.
 
+## Arreglo aplicado
+
+**Mergeado y sin publicar.** El caso sigue `abierto` hasta que salga la versión que lo lleva. El
+recorrido de lo que enumeró, ítem por ítem:
+
+- **El `split` que respeta el escape — hecho**, tal cual el diff propuesto: `line.split(/(?<!\\)\|/)`.
+- **La decisión que el caso dejaba abierta —conservar o quitar el `\`— tomada: se quita.** La razón es
+  para quién existe esa columna: una persona lee ahí qué tiene que hacer, y `\|` no es parte de lo que
+  el autor quiso decir, es cómo markdown escribe un pipe. Comprobado que no rompe el otro consumidor:
+  `archive` reescribe la fila desde `row.raw` —la línea original— en `engine/cli/planning.js:360`, no
+  desde las celdas, así que la fila archivada conserva su escape.
+- **Las dos caras que el caso separa — cada una con su aserción.** La ruidosa: el pipe en `Tarea` y la
+  fila bien escrita ya no se rechaza. La silenciosa: el pipe en `Estado` detrás de la palabra del
+  vocabulario, y la acción de desbloqueo que llega es la de la fila y no el contenido de `Origen`.
+- **«Tradeoffs: ninguno visible» — se sostiene.** `npm run ci` en verde, 555 pruebas. Una fila que hoy
+  se lee bien no tiene pipes escapados, así que el nuevo `split` la parte idéntico; hay una aserción que
+  lo fija con una fila normal.
+- **La predicción del mismo Tradeoffs —«un archivo que venía pasando `check` puede empezar a fallar»—
+  estaba sin comprobar y ahora está comprobada.** Con el pipe escapado en `Tarea`, `pendiente` caía en la
+  posición del estado y la fila pasaba; leída bien, el estado es `hecho`, fuera del vocabulario. O sea
+  que antes desbloqueaba una tarea que nadie resolvió. Va en su propia prueba a propósito: junta con las
+  otras, la primera aserción falla antes y ésta no se ejercería nunca.
+- **Lo que el arreglo no cubre y el caso no preveía**: una celda que termine en una barra invertida
+  literal. En markdown eso se escribe `\\` y acá se leería como escape del separador. Es un borde que
+  nadie escribe y taparlo pedía un parser de verdad; queda dicho en el código en vez de supuesto.
+- **El orden con [043](043-la-cabecera-de-acciones-humanas-solo-se-saltea-si-dice-tarea.md) — corregido.**
+  Los dos casos decían que el segundo en entrar no aplicaría tal cual. Con 042 puesto resulta falso: lo
+  único que cambió es la línea del `.map`, y el diff de 043 toca el `read` y el `.filter`, que quedaron
+  igual. Sigue aplicando literal.
+
+Las dos piezas se vieron rojas antes de arreglarse: quitar el mirar-atrás rompe las dos pruebas, cada
+una por su lado, y quitar el desescape rompe la primera.
+
 ## Relacionados
 
 - [043](043-la-cabecera-de-acciones-humanas-solo-se-saltea-si-dice-tarea.md) — mismo parser, misma
