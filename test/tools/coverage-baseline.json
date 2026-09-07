@@ -239,6 +239,11 @@
     "branches": 74,
     "functions": 100
   },
+  "engine/planning/recurring.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/planning/sizing.js": {
     "lines": 100,
     "branches": 100,

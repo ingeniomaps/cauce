@@ -68,8 +68,10 @@ entera.
 La salida definitiva es borrar la fila. «Esto ya no lo hacemos» es un diff que alguien revisa; un estado
 `retirada` es una línea que nadie vuelve a leer.
 
-Sólo se agrega al final. Una línea escrita acá no se edita ni se borra.
+Cada una se escribe con el nombre de su fila en negrita, la fecha y la razón —`- **qué** AAAA-MM-DD —
+razón`—, igual que un ítem del INBOX y por el mismo motivo: el nombre es con lo que se cita la fila.
+Sólo se agrega al final; una línea escrita acá no se edita ni se borra.
 
 <!--
-- 2026-10-02 · deps — Esperando el release de la 2.0; subir dependencias antes lo ensucia.
+- **deps** 2026-10-02 — Esperando el release de la 2.0; subir dependencias antes lo ensucia.
 -->

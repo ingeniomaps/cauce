@@ -9,6 +9,7 @@ const P = require('../planning/parser')
 const B = require('../planning/business-rules')
 const PC = require('../planning/contracts')
 const SZ = require('../planning/sizing')
+const RC = require('../planning/recurring')
 const ST = require('../planning/state')
 const AD = require('../planning/adoption')
 const AP = require('../hooks/approval')
@@ -65,6 +66,10 @@ function evidence(dir, cli) {
   console.log('Este contraste dice si el artefacto existe y qué gates corrieron al commitear. No dice '
     + 'que la prueba nombrada haya corrido: eso depende del runner, y varios no la nombran al pasar.')
 }
+
+// La fecha de hoy, en un solo lugar: los comandos que la usan tienen que estar mirando el mismo día, y
+// el módulo que calcula vencimientos la recibe en vez de preguntarla.
+const TODAY = () => new Date().toISOString().slice(0, 10)
 
 function check(dir, cli) {
   const root = path.resolve(dir || '.')
@@ -125,6 +130,12 @@ function check(dir, cli) {
     epics, milestones, done, wip, roles, humanActions: P.readHumanActions(root), adopted: new Set(adopted),
   }))
   warnings.push(...AD.report({ done, epics, adopted }))
+  // Sin `RECURRING.md` no dice una palabra: una instancia que actualiza y no declara trabajo recurrente
+  // no tiene por qué enterarse de que el contrato existe. Vencida avisa y no frena — lo que frena vive
+  // en `HUMAN_ACTIONS.md`, y un aviso que salta siempre se termina apagando.
+  const recurring = RC.read(root)
+  errors.push(...RC.validate(recurring))
+  warnings.push(...RC.warnings(RC.status({ ...recurring, done, today: TODAY() })))
   warnings.push(...AD.sealWarnings(root))
   // Una aprobación vale para el conjunto que nombra, así que olvidada sigue autorizando
   // esas mismas rutas la próxima vez que alguien las stagee. No caduca sola: lo que la cierra es que se
@@ -284,6 +295,11 @@ function context(dir, cli) {
     queued: state.milestones.reduce((total, milestone) => total + milestone.tasks.length, 0),
     blockedTasks: skipped,
     humanActions,
+    // Sólo las vencidas: la fila que todavía no vence no tiene nada que decirle a quien va a tomar una
+    // tarea, y una recurrencia que hablara siempre sería ruido en el único comando que se corre en cada
+    // vuelta. Que aparezca es la señal.
+    recurring: RC.status({ ...RC.read(root), done: state.done, today: TODAY() })
+      .filter((one) => one.overdue),
   }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
 
@@ -299,9 +315,16 @@ function context(dir, cli) {
   // que una instancia recién arrancada —`onboard` deja filas pendientes y ninguna tarea todavía—
   // respondía «sin tarea disponible» y se tragaba las siete cosas que una persona tenía que desbloquear.
   // Es el comando que existe para decir qué toca ahora, contestando «nada» cuando lo que toca es eso.
+  const due = () => {
+    for (const one of report.recurring) {
+      const when = one.overdueDays === 0 ? 'vence hoy' : `vencida hace ${one.overdueDays} día(s)`
+      console.log(`DUE    ${one.id}: ${when}`)
+    }
+  }
   if (!report.task) {
     console.log('TASK   (sin tarea disponible)')
     for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
+    due()
     return
   }
   console.log(`TASK   ${report.task.slug}${report.task.tier ? ` [${report.task.tier}]` : ''}` +
@@ -324,6 +347,36 @@ function context(dir, cli) {
   console.log(`WIP    ${wip}`)
   if (report.blockedTasks.length) console.log(`SKIP   ${report.blockedTasks.join(', ')} (acción humana abierta)`)
   for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
+  due()
+}
+
+// Qué trabajo recurrente vence, y la línea con la que se promueve. Emite esa línea y no la escribe:
+// `BACKLOG.md` es la cola de lo aprobado y la escribe una persona — ningún comando del motor la toca,
+// ni siquiera `integration promote`, que aterriza en el roadmap. Pegarla es el acto de promoción.
+function recurring(dir, cli) {
+  const root = path.resolve(dir || '.')
+  const file = RC.read(root)
+  if (!file.exists) return console.log(`= este planning no declara trabajo recurrente (${RC.FILE})`)
+  const state = RC.status({ ...file, done: P.readDone(root), today: TODAY() })
+  const promote = cli.value('--promote')
+  if (promote) {
+    const one = state.find((candidate) => candidate.id === promote)
+    if (!one) return fail(`${RC.FILE} no declara ${promote}`, 2)
+    // La línea sale sola por stdout para que se pueda pegar o redirigir sin recortar nada; el destino,
+    // que es lo único que falta decidir, va por stderr.
+    console.error(`Pegala en el hito que corresponda de BACKLOG.md:`)
+    return console.log(RC.taskLine(one, TODAY().slice(0, 7)))
+  }
+  if (cli.has('--json')) return console.log(JSON.stringify(state))
+  if (!state.length) return console.log(`= ${RC.FILE} no declara ninguna fila legible`)
+  for (const one of state) {
+    const when = one.overdue
+      ? (one.overdueDays === 0 ? 'vence hoy' : `vencida hace ${one.overdueDays} día(s)`)
+      : `vence ${one.due}`
+    const last = one.last ? `última ${one.last}` : 'nunca corrió'
+    const held = one.postponed ? `, postergada ${one.postponed}` : ''
+    console.log(`${one.overdue ? 'DUE' : 'OK '}  ${one.id.padEnd(16)} ${when}  (${last}${held})`)
+  }
 }
 
 // El historial de acciones humanas se acumula en un solo archivo y no por épica: una fila no pertenece
@@ -355,7 +408,7 @@ function adopt(dir) {
   if (!pending.length) {
     return console.log('= no hay nada que exentar: todas las entradas de DONE cumplen el contrato')
   }
-  const today = new Date().toISOString().slice(0, 10)
+  const today = TODAY()
   const slugs = pending.map((entry) => entry.slug)
   F.atomicWrite(target, `# Entradas anteriores a la adopción de Cauce (${today}). No se agregan nuevas:\n`
     + '# desde esa fecha rige el contrato completo, y `check` avisa cuando una de éstas pasa a\n'
@@ -413,4 +466,4 @@ function archive(dir, rawNum) {
   console.log(`✓ epic-${num}: ${entries.length} entrada(s) archivadas`)
 }
 
-module.exports = { check, evidence, tree, context, archive, adopt }
+module.exports = { check, evidence, tree, context, archive, adopt, recurring }

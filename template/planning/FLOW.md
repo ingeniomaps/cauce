@@ -15,6 +15,8 @@ INBOX ──promoción humana──▶ roadmap ──historias listas──▶ B
 
 ## Preparar
 
+0. Si `ops recurring planning` nombra una recurrencia vencida, decidir si esta vuelta se promueve —el
+   comando emite su línea— o se posterga con su razón.
 1. Curar una idea desde INBOX.
 2. Escribir una épica con resultados observables, contexto actual y criterios `C1..CN`.
 3. Descomponerla en historias de máximo cuatro horas, cada una rastreada a uno o más criterios.

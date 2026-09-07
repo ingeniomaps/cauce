@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 
 # Los gates delegan en `package.json`: ese nombre lo tienen fijo `ci.yml`, `verify` y `prepublishOnly`.
-.PHONY: help check tree context test coverage coverage-update ci automation-check integration-check
+.PHONY: help check tree context recurring test coverage coverage-update ci automation-check integration-check
 .PHONY: release-check dead-code
 .PHONY: require-agent agent-learn agent-propose agent-evaluate require-flow flow-check flow-show
 .PHONY: eval-workflows
@@ -18,6 +18,9 @@ tree: ## Muestra el estado de la planificación
 
 context: ## Muestra el contexto mínimo de la tarea vigente
 	@node engine/cli/ops.js context template/planning
+
+recurring: ## Muestra qué trabajo recurrente vence y con qué línea se promueve
+	@node engine/cli/ops.js recurring template/planning
 
 test: ## Ejecuta todas las pruebas del toolkit
 	@npm run --silent test
