@@ -9,6 +9,8 @@ el contexto de cada empresa vive en su propia instancia.
 - Una tarea tiene una sola fuente de verdad durante todo su ciclo de vida.
 - Una sesión interrumpida se recupera desde `WIP.md`, sin reconstruir la intención.
 - Las ideas del agente no entran solas a la cola: quedan en `INBOX.md` hasta promoción humana.
+- El trabajo que vuelve cada tanto se declara una vez en `RECURRING.md`; el CLI dice cuándo venció y
+  nadie lo encola solo.
 - Épicas, criterios, tareas y evidencia son validados de forma determinista.
 - Vive en su propia carpeta `ops/` dentro del repo, como sidecar `proyecto-ops` para varios repos, o
   embebido en la raíz.
@@ -174,6 +176,11 @@ idea → INBOX → roadmap → BACKLOG → WIP → DONE → done/epic-NNN.md
 4. Un runner toma una sola tarea y persiste su plan en `WIP.md`.
 5. Tras Build, Review, Verify y QA, mueve la entrada a `DONE.md` con evidencia.
 6. Al cerrar la épica, ejecuta `ops archive` para mover su evidencia a un histórico inmutable.
+
+Lo que vuelve cada tanto —actualizar dependencias, revisar accesos, mirar el gasto del mes— entra por
+un costado: se declara una vez en `RECURRING.md` con su cadencia, y `ops recurring planning` dice qué
+venció y emite la línea de esa vuelta. Nada se dispara; pegarla en `BACKLOG.md` es el paso 3 de
+arriba, hecho por una persona.
 
 Lee [template/planning/PROTOCOL.md](template/planning/PROTOCOL.md) para el contrato completo y
 [template/planning/FLOW.md](template/planning/FLOW.md) para operar el ciclo.
