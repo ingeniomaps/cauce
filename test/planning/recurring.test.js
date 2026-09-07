@@ -167,6 +167,30 @@ test('las dos listas se leen de su sección, y la viñeta que no encaja se ve', 
   assert.equal(state[0].due, '2026-02-01')
 })
 
+// El contrato no le sirve a una empresa si sólo lo reciben las instancias nuevas, y en el mapa de
+// propiedad las dos vías se ven igual de razonables. Lo que las separa es esto: una instancia anterior
+// a la versión que agrega el archivo no lo tiene, y `init` no vuelve a correr nunca.
+test('una instancia que ya existe recibe el contrato al actualizar', () => {
+  const base = tempRoot('cauce-recurring-upgrade-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  const file = path.join(target, 'planning', RC.FILE)
+  fs.rmSync(file)
+
+  const upgraded = run(['upgrade', target])
+  assert.equal(upgraded.status, 0, upgraded.stderr)
+  assert.ok(fs.existsSync(file), 'la instancia anterior a esta versión lo recibe')
+  assert.match(upgraded.stdout, new RegExp(`\\+ planning/${RC.FILE}`), 'y se dice, porque hay que llenarlo')
+
+  // Llega vacío, así que no le cambia el estado a nadie: `check` sigue igual de verde que antes.
+  assert.equal(JSON.parse(run(['check', path.join(target, 'planning'), '--json']).stdout).ok, true)
+
+  // Y lo que la empresa escriba adentro sobrevive a la próxima actualización.
+  fs.writeFileSync(file, '# Nuestras\n\n## Recurrencias\n\n| Qué | Cada | Desde | Tarea |\n|---|---|---|---|\n')
+  assert.equal(run(['upgrade', target]).status, 0)
+  assert.match(fs.readFileSync(file, 'utf8'), /Nuestras/)
+})
+
 test('sin el archivo, ni check ni context dicen una palabra', () => {
   const planning = path.join(tempRoot('cauce-recurring-mudo-'), 'planning')
   fs.cpSync(MOLDE, planning, { recursive: true })
