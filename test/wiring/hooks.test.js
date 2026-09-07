@@ -554,6 +554,55 @@ test('un índice que no se puede leer no autoriza el commit', () => {
   }))
 })
 
+// La salida que había era una variable de entorno, y una variable es por sesión: prendida antes de
+// lanzar el runner apaga el guard hasta que la sesión cierre. Lo que se mide acá es que la aprobación
+// valga para lo que nombra **y para nada más** — sin eso sería la misma puerta abierta con otra forma.
+// `approval` cuenta por qué se coteja en vez de consumirse.
+test('una aprobación de gobernanza vale para lo que nombra y deja de valer al cambiar', () => {
+  const root = tempRoot('ops-hook-aprobacion-')
+  git(['init'], root)
+  git(['config', 'user.email', 'x@y.z'], root)
+  git(['config', 'user.name', 'x'], root)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  // La aprobación se busca desde la raíz ops, que es lo que `findOpsRoot` reconoce por tener
+  // `ops.config.json` y `planning/`. Sin el archivo de configuración no hay raíz y no hay aprobación
+  // que leer — el guard bloquea igual, que es la dirección correcta de fallar.
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  const write = (relative) => {
+    const file = path.join(root, relative)
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, 'contenido\n')
+    git(['add', relative], root)
+    return relative
+  }
+  // Con cabecera: quien lo escribe a mano va a explicar qué autorizó y cuándo, y eso no es una ruta.
+  const aprobar = (...rutas) => fs.writeFileSync(path.join(root, 'planning', '.governance-approval'),
+    `# Aprobado por X el 2026-09-06 para el commit de la propuesta 2026-08.\n${rutas.join('\n')}\n`)
+  const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
+
+  const regla = write('planning/rules/system/conduct.md')
+  const cargo = write('agents/roles/system/qa-engineer/SKILL.md')
+  blocked('governance', commit, /gobernanza protegida/)
+
+  // Parcial no alcanza, y el mensaje nombra sólo lo que falta: mandar a revisar lo ya aprobado es lo
+  // que hace que la próxima vez nadie lea el mensaje.
+  aprobar(regla)
+  assert.throws(() => execute('governance', commit), (error) => {
+    assert.match(error.message, new RegExp(cargo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    assert.doesNotMatch(error.message, /conduct\.md/, 'lo aprobado no se vuelve a reportar')
+    return true
+  })
+
+  aprobar(regla, cargo)
+  assert.doesNotThrow(() => execute('governance', commit), 'lo aprobado entero pasa')
+
+  // Y la propiedad que la hace de un solo uso sin borrarse: con la misma aprobación puesta, un archivo
+  // que se suma después no está cubierto. Es lo que separa una llave por operación de una puerta.
+  git(['reset'], root)
+  write('planning/rules/system/process.md')
+  blocked('governance', commit, /process\.md/)
+})
+
 test('guard-governance protege el contrato de un cargo, su medición y su firma', () => {
   const root = tempRoot('ops-hook-gov-')
   git(['init'], root)
