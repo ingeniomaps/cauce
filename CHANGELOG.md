@@ -14,6 +14,59 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.65.0] - 2026-09-07
+
+### Cambiado
+
+- **La aprobación por operación ahora abre todos los guards, y el archivo cambió de nombre.** Era
+  `planning/.governance-approval` y sólo la miraba el guard de gobernanza; ahora es
+  `planning/.ops-approval` y la consultan también los de migraciones, evidencia de pruebas,
+  dependencias y el que corre los gates. **Si tenías una aprobación escrita, renombrá el archivo**; si
+  no tenías ninguna —lo normal—, no hay nada que hacer.
+
+  Lo que se aprueba sigue siendo una lista de rutas, y sigue valiendo para ese conjunto y para ningún
+  otro. Cada guard lee la ruta sobre la que está decidiendo: la migración, la prueba que se borra, el
+  manifiesto que va sin su lockfile. `verify` es la excepción y aprueba **todo lo que está en el
+  índice**, porque lo que juzga es el commit entero: stagear una cosa más invalida la aprobación, que
+  es lo que hace que autorizar un commit en rojo sea para ese commit y no para la sesión.
+
+  Publicar un paquete o instalar algo global no se puede aprobar así, porque no hay ninguna ruta sobre
+  la cual decidir. Esa sigue siendo una acción humana con su variable, y `AGENTS.md` lo dice donde
+  estás mirando cuando el guard te frena.
+
+- **`check` avisa si el baseline de adopción creció.** `ops adopt` ahora sella el archivo con una
+  huella de lo que generó, y `check` la recalcula: una entrada agregada a mano se nombra en vez de
+  sumar en silencio a una cuenta. **Retirar un renglón cambió**: en vez de borrarlo, ponele `#~`
+  delante. Así la lista activa se achica igual y el conjunto original queda entero, que es contra lo
+  que se compara.
+
+  Un baseline generado por una versión anterior no tiene huella. `check` te lo dice y `ops adopt`
+  sobre ese planning se la agrega sin regenerar la lista; con huella puesta se sigue negando a
+  rehacerla, que es para lo que existe.
+
+### Corregido
+
+- **Una opción global de `git` desactivaba la regla que miraba el subcomando.** `git` admite `-C`,
+  `-c`, `-P` y las demás entre el verbo y el subcomando, y los patrones los esperaban pegados. Con
+  cualquiera en el medio pasaban sin decir nada la prohibición de stagear todo, el force-push, el push
+  a secas, `reset --hard`, `commit --amend`, `clean -f` y la forma ancha de `checkout`. Ahora las
+  opciones se sacan una sola vez y cada regla vuelve a ver el verbo.
+
+- **Un comando que stagea y commitea a la vez dejaba ciegos a tres guards.** Gobernanza, dependencias
+  y el de los gates deciden mirando el índice, y un hook corre antes que el comando: con
+  `git add … && git commit` o con `git commit -a` encontraban cero archivos y concluían que no había
+  nada que revisar. Ahora `commit -a` se rechaza —es stagear todo con otra ortografía, que R8 ya
+  prohíbe— y encadenar el `add` con el `commit` se frena pidiendo dos comandos.
+
+- **El guard de migraciones frenaba cualquier archivo que mencionara SQL destructivo.** Miraba el
+  contenido sin consultar la ruta, así que un ADR que citaba la migración o un comentario que advertía
+  que eso no se hace se bloqueaban con el mensaje «La migración contiene SQL destructivo». Ahora el
+  chequeo comparte el filtro por ruta con el otro, y el mensaje nombra el archivo.
+
+- **La prohibición de stagear todo leía el mensaje de un commit como si fuera un comando**, así que el
+  commit que explica la regla no se podía escribir. Y no veía la bandera cuando venía seguida de una
+  comilla, o sea dentro de `bash -c` o `eval`.
+
 ## [0.64.0] - 2026-09-06
 
 ### Agregado
