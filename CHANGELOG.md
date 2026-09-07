@@ -14,6 +14,23 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.66.0] - 2026-09-07
+
+### Corregido
+
+- **`shell-boundary` ignoraba el `cd` del propio comando.** Resolvía las rutas relativas contra el
+  directorio que le entrega tu runner, no contra el que el comando elige antes de escribir, así que
+  juzgaba una ruta que nadie iba a escribir. Fallaba para los dos lados: `cd <fuera de tus raíces> &&
+  echo x > nota.md` pasaba sin decir nada y el archivo se escribía afuera; y con el runner abierto en
+  otro directorio, un `cd` a un lugar legítimo se frenaba nombrando una ruta que no estaba en el
+  comando.
+
+  Ahora cada escritura se juzga contra el `cd` que la precede. **Lo que te pide algo**: un `cd` cuyo
+  destino no se puede saber acá —`cd $TRABAJO`, `cd -`— deja sin juzgar a toda ruta relativa que venga
+  después, y eso se bloquea pidiendo la ruta absoluta o el `cd` en un comando aparte. Es deliberado y
+  es el criterio que ya regía para el índice: un guard que no puede verificar no autoriza. Una ruta
+  absoluta no depende del `cd` y se sigue juzgando igual.
+
 ## [0.65.0] - 2026-09-07
 
 ### Cambiado
