@@ -33,6 +33,16 @@ function git(args, cwd) {
   assert.equal(result.status, 0, result.stderr)
 }
 
+// Un repositorio de prueba en el que además se commitea. La identidad es lo que lo separa de un `init`
+// a secas: `git commit` la exige, acá la toma de la configuración global de quien corre las pruebas y
+// en CI no hay ninguna, así que sin esto la prueba pasa en la máquina y falla en la puerta — que es la
+// peor forma de fallar, porque el veredicto local dice lo contrario del que decide.
+function initRepo(root) {
+  git(['init', '-q'], root)
+  git(['config', 'user.email', 'prueba@ejemplo'], root)
+  git(['config', 'user.name', 'Prueba'], root)
+}
+
 test('guard-destructive bloquea pérdida o publicación y permite lecturas', () => {
   blocked('destructive', { tool_input: { command: 'git push origin main' } }, /publica cambios/)
   blocked('destructive', { tool_input: { command: 'git reset --hard HEAD' } }, /destruye cambios locales/)
@@ -281,7 +291,7 @@ test('guard-test-evidence no deja apagar ni borrar la prueba que juzga el cambio
 
 test('guard-governance bloquea commits con reglas staged', () => {
   const root = tempRoot('ops-hook-gov-')
-  git(['init', '-q'], root)
+  initRepo(root)
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'planning', 'PROTOCOL.md'), '# protocol\n')
   git(['add', 'planning/PROTOCOL.md'], root)
@@ -290,7 +300,7 @@ test('guard-governance bloquea commits con reglas staged', () => {
 
 test('guard-verify ejecuta gates reales antes del commit', () => {
   const root = tempRoot('ops-hook-verify-')
-  git(['init', '-q'], root)
+  initRepo(root)
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "process.exit(1)"' } }))
   fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = true\n')
   git(['add', 'package.json', 'app.js'], root)
@@ -299,7 +309,7 @@ test('guard-verify ejecuta gates reales antes del commit', () => {
 
 test('guard-verify exige regenerar después de cambiar OpenAPI o SQL fuente', () => {
   const root = tempRoot('ops-hook-generated-drift-')
-  git(['init', '-q'], root)
+  initRepo(root)
   fs.mkdirSync(path.join(root, 'openapi'))
   fs.writeFileSync(path.join(root, 'openapi', 'api.yaml'), 'openapi: 3.0.0\n')
   git(['add', 'openapi/api.yaml'], root)
@@ -679,7 +689,7 @@ test('guard-dependencies exige consistencia y bloquea publicación', () => {
   blocked('dependencies', { tool_input: { command: 'npm publish' } }, /Publicar paquetes/)
   blocked('dependencies', { tool_input: { command: 'pnpm add -g typescript' } }, /Publicar paquetes/)
   const root = tempRoot('ops-hook-deps-')
-  git(['init', '-q'], root)
+  initRepo(root)
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ dependencies: { example: '1.0.0' } }))
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n')
   git(['add', 'package.json'], root)
@@ -702,7 +712,7 @@ test('guard-dependencies exige consistencia y bloquea publicación', () => {
   // Y dos lockfiles conviviendo: cuál manda lo decide el gestor que corra, así que el árbol ya no dice
   // qué versiones se instalan. Se mira lo que hay en disco, no lo que se stageó.
   const dos = tempRoot('ops-hook-deps-dos-locks-')
-  git(['init', '-q'], dos)
+  initRepo(dos)
   fs.writeFileSync(path.join(dos, 'package.json'), JSON.stringify({ dependencies: { example: '1.0.0' } }))
   fs.writeFileSync(path.join(dos, 'package-lock.json'), '{}\n')
   fs.writeFileSync(path.join(dos, 'pnpm-lock.yaml'), 'lockfileVersion: 9\n')
@@ -924,7 +934,7 @@ test('git-add no lee el mensaje de un commit como si fuera un comando', () => {
 
 test('un comando que stagea y commitea a la vez no se puede juzgar, y se dice', () => {
   const root = tempRoot('ops-hook-blind-')
-  git(['init', '-q'], root)
+  initRepo(root)
   fs.mkdirSync(path.join(root, 'planning'))
   fs.writeFileSync(path.join(root, 'planning', 'PROTOCOL.md'), '# protocol\n')
   // El índice queda vacío a propósito: es el estado en que el guard no ve nada y concluía que no había
@@ -963,8 +973,8 @@ test('el SQL destructivo se juzga sobre una migración, no sobre cualquier archi
   blocked('migrations', {
     cwd: root, tool_input: { file_path: 'migrations/004_drop.sql', content: 'DROP TABLE pedidos;' },
   }, /migrations\/004_drop\.sql contiene SQL destructivo/)
-  // Una migración fuera de un directorio con ese nombre deja de frenarse, y es el precio de acotar el
-  // alcance: el chequeo de reescritura ya vivía con esa misma convención desde que existe.
+  // El borde que trae el alcance compartido, aserciado para que no se pierda de vista; por qué es
+  // deliberado, en `migrations`.
   assert.doesNotThrow(() => execute('migrations', {
     cwd: root, tool_input: { file_path: 'sql/004_drop.sql', content: 'DROP TABLE pedidos;' },
   }))
@@ -980,7 +990,7 @@ test('el SQL destructivo se juzga sobre una migración, no sobre cualquier archi
 // mira lo decide qué guard esté juzgando esa ruta.
 test('la aprobación por operación abre los guards que deciden sobre una ruta', () => {
   const root = tempRoot('ops-hook-approval-todos-')
-  git(['init', '-q'], root)
+  initRepo(root)
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
   const aprobar = (...rutas) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
@@ -1032,7 +1042,7 @@ test('publicar un paquete no se aprueba por ruta, porque no hay ruta', () => {
 // cosa más lo invalida, que es lo que lo vuelve una operación y no un permiso abierto.
 test('verify se aprueba por el conjunto staged, no por un archivo', () => {
   const root = tempRoot('ops-hook-approval-verify-')
-  git(['init', '-q'], root)
+  initRepo(root)
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
   fs.writeFileSync(path.join(root, 'package.json'),
@@ -1066,4 +1076,141 @@ test('verify se aprueba por el conjunto staged, no por un archivo', () => {
   blocked('verify', commitApi, /OpenAPI\/Swagger/)
   fs.writeFileSync(path.join(api, 'planning', '.ops-approval'), 'openapi/api.yaml\n')
   assert.doesNotThrow(() => execute('verify', commitApi))
+})
+
+// Un gate mide para poder decir «esto pasa», y lo que va a quedar es el índice, no el árbol. Las dos
+// mitades de `verify` respondían a preguntas distintas: elegía qué correr mirando el índice y corría
+// sobre el disco. El sentido que importa es el silencioso — se stagea algo roto, se arregla el archivo
+// encima, el gate pasa y el commit graba lo roto con un verde escrito al lado.
+test('verify mide el índice y no el árbol de trabajo', () => {
+  const root = tempRoot('ops-hook-verify-indice-')
+  initRepo(root)
+  fs.writeFileSync(path.join(root, '.gitignore'), 'node_modules\n')
+  // El gate necesita un módulo instalado: es entorno que el commit no lleva y sin él no corre nada.
+  fs.mkdirSync(path.join(root, 'node_modules', 'marca'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'node_modules', 'marca', 'package.json'),
+    JSON.stringify({ name: 'marca', main: 'index.js' }))
+  fs.writeFileSync(path.join(root, 'node_modules', 'marca', 'index.js'), 'module.exports = true\n')
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: {
+    test: 'node -e "require(\'marca\');'
+      + ' process.exit(/ROTO/.test(require(\'fs\').readFileSync(\'app.js\',\'utf8\'))?1:0)"',
+  } }))
+  fs.writeFileSync(path.join(root, 'app.js'), '// sano\n')
+  git(['add', 'package.json', 'app.js', '.gitignore'], root)
+  git(['commit', '-qm', 'base'], root)
+  const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
+
+  // Árbol e índice iguales: el árbol **es** el próximo commit y el veredicto no cambia.
+  fs.writeFileSync(path.join(root, 'app.js'), '// sano v2\n')
+  git(['add', 'app.js'], root)
+  assert.doesNotThrow(() => execute('verify', commit), 'sin diferencia, lo sano pasa')
+
+  // Que el índice difiera del árbol no puede volverse un bloqueo por sí solo: acá lo staged está sano y
+  // lo único distinto es un archivo suelto que nadie va a commitear. El gate corre sobre el índice
+  // materializado y tiene que pasar, lo que exige que `node_modules` haya viajado — sin el enlace,
+  // `require('marca')` no resuelve y el guard frenaría un commit correcto por su propia mecánica.
+  fs.writeFileSync(path.join(root, 'app.js'), '// sano v3\n')
+  git(['add', 'app.js'], root)
+  fs.writeFileSync(path.join(root, 'notas.txt'), 'apuntes sueltos\n')
+  assert.doesNotThrow(() => execute('verify', commit), 'el entorno ignorado viaja y lo sano pasa')
+  fs.rmSync(path.join(root, 'notas.txt'))
+
+  // Un gate que llama a git tiene que seguir funcionando sobre el índice materializado, que no trae
+  // `.git`. Sin el contexto apuntado al repositorio real, el guard frenaría un commit correcto porque
+  // su propia copia no es un repositorio — pasó con la suite de este repositorio al probarlo.
+  const conGit = tempRoot('ops-hook-verify-git-')
+  initRepo(conGit)
+  fs.writeFileSync(path.join(conGit, 'package.json'), JSON.stringify({ scripts: {
+    test: 'node -e "const r=require(\'child_process\').spawnSync(\'git\',[\'ls-files\'],'
+      + '{encoding:\'utf8\'}); process.exit(r.status === 0 && r.stdout.trim() ? 0 : 1)"',
+  } }))
+  fs.writeFileSync(path.join(conGit, 'app.js'), '// sano\n')
+  git(['add', 'package.json', 'app.js'], conGit)
+  git(['commit', '-qm', 'base'], conGit)
+  fs.writeFileSync(path.join(conGit, 'app.js'), '// v2\n')
+  git(['add', 'app.js'], conGit)
+  fs.writeFileSync(path.join(conGit, 'suelto.txt'), 'x\n')
+  assert.doesNotThrow(() => execute('verify', { cwd: conGit, tool_input: { command: 'git commit -m x' } }),
+    'un gate que llama a git sigue viendo un repositorio')
+
+  // Lo que este caso cierra: el índice tiene lo roto y el disco lo bueno.
+  fs.writeFileSync(path.join(root, 'app.js'), '// ROTO\n')
+  git(['add', 'app.js'], root)
+  fs.writeFileSync(path.join(root, 'app.js'), '// arreglado\n')
+  blocked('verify', commit, /Verify falló/)
+
+  // La copia se borra siempre, también cuando el gate falla: es el árbol entero del proyecto, y una por
+  // commit llena el disco sin que nadie lo note hasta que no queda espacio.
+  //
+  // Se cuenta lo que aparece **de nuevo** y no lo que hay: el temporal del sistema es compartido, así
+  // que afirmar sobre su contenido entero hace fallar esta prueba por lo que dejó cualquier otra cosa.
+  const copias = () => new Set(fs.readdirSync(os.tmpdir()).filter((one) => one.startsWith('ops-verify-')))
+  const antes = copias()
+  fs.writeFileSync(path.join(root, 'app.js'), '// ROTO\n')
+  git(['add', 'app.js'], root)
+  fs.writeFileSync(path.join(root, 'app.js'), '// tambien roto\n')
+  assert.throws(() => execute('verify', commit), 'el gate falla sobre el índice')
+  assert.deepEqual([...copias()].filter((one) => !antes.has(one)), [],
+    'ni cuando pasa ni cuando falla queda una copia')
+
+  // Y el olvido de siempre: el fuente nuevo que nadie agregó. El gate local pasa porque el archivo está
+  // en disco; sobre el índice no está, que es lo que va a pasar en cualquier otra máquina.
+  const limpio = tempRoot('ops-hook-verify-olvido-')
+  initRepo(limpio)
+  fs.writeFileSync(path.join(limpio, 'package.json'), JSON.stringify({ scripts: {
+    test: 'node -e "require(\'./extra.js\')"',
+  } }))
+  fs.writeFileSync(path.join(limpio, 'app.js'), '// sano\n')
+  git(['add', 'package.json', 'app.js'], limpio)
+  git(['commit', '-qm', 'base'], limpio)
+  fs.writeFileSync(path.join(limpio, 'app.js'), '// v2\n')
+  git(['add', 'app.js'], limpio)
+  fs.writeFileSync(path.join(limpio, 'extra.js'), 'module.exports = 1\n')
+  blocked('verify', { cwd: limpio, tool_input: { command: 'git commit -m x' } }, /Verify falló/)
+  // Agregarlo es lo que lo destraba, que es el consejo que el bloqueo tiene que dejar cierto.
+  git(['add', 'extra.js'], limpio)
+  assert.doesNotThrow(() => execute('verify', { cwd: limpio, tool_input: { command: 'git commit -m x' } }))
+})
+
+// La misma forma que el 040 en chico, y por eso va con él: `dependencies` preguntaba al disco qué
+// lockfiles hay para juzgar un manifiesto staged. Borrar el lock en el árbol y no stagear el borrado
+// dejaba la comprobación sin disparar, así que el manifiesto se commiteaba sin que nadie dijera nada.
+// Lo que hay que mirar es el índice, que es lo que el commit va a grabar.
+test('dependencies mira el índice para saber qué lockfiles va a haber', () => {
+  const root = tempRoot('ops-hook-deps-indice-')
+  initRepo(root)
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'x' }))
+  fs.writeFileSync(path.join(root, 'package-lock.json'), '{}')
+  git(['add', 'package.json', 'package-lock.json'], root)
+  git(['commit', '-qm', 'base'], root)
+  const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
+
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'x', dependencies: { a: '1' } }))
+  git(['add', 'package.json'], root)
+  blocked('dependencies', commit, /sin actualizar su lockfile/)
+
+  // El lock desaparece del disco y nadie stagea el borrado: sigue en el índice, así que sigue estando
+  // en el próximo commit y la comprobación tiene que seguir valiendo.
+  fs.rmSync(path.join(root, 'package-lock.json'))
+  blocked('dependencies', commit, /sin actualizar su lockfile/)
+
+  // Y cuando el borrado sí se stagea, el próximo commit no lo lleva y la comprobación deja de aplicar.
+  git(['rm', '--cached', '-q', 'package-lock.json'], root)
+  assert.doesNotThrow(() => execute('dependencies', commit))
+
+  // La otra mitad, que es la que se rompe si se unifican las dos preguntas: uno que sigue en el índice
+  // pero ya no está en disco no convive con nadie. Por qué esa mira sólo el disco, en `dependencies`.
+  const dos = tempRoot('ops-hook-deps-dos-')
+  initRepo(dos)
+  fs.writeFileSync(path.join(dos, 'package.json'), JSON.stringify({ name: 'y' }))
+  fs.writeFileSync(path.join(dos, 'package-lock.json'), '{}')
+  fs.writeFileSync(path.join(dos, 'pnpm-lock.yaml'), 'lockfileVersion: 9\n')
+  git(['add', 'package.json', 'package-lock.json', 'pnpm-lock.yaml'], dos)
+  git(['commit', '-qm', 'base'], dos)
+  fs.writeFileSync(path.join(dos, 'package.json'), JSON.stringify({ name: 'y', dependencies: { a: '1' } }))
+  git(['add', 'package.json'], dos)
+  const commitDos = { cwd: dos, tool_input: { command: 'git commit -m x' } }
+  blocked('dependencies', commitDos, /hay varios lockfiles/)
+  fs.rmSync(path.join(dos, 'pnpm-lock.yaml'))
+  blocked('dependencies', commitDos, /sin actualizar su lockfile/)
 })

@@ -141,6 +141,24 @@ lea quien decide, no para dejar constancia de que se sabía.
 Es la contraparte de R13, y las dos terminan igual. Ahí lo que no se entrega es lo que sí se podía; acá lo
 que se entrega tapa lo que faltó. En los dos casos alguien decide con menos de lo que cree tener.
 
+**Y la enumeración que más se pierde es la que escribió la propia unidad de trabajo.** Un diagnóstico, un
+issue o un caso no sólo describe un defecto: enumera qué haría falta para cerrarlo, y ahí conviven cosas de
+dos clases. Las que son código se tachan solas —hay un diff, hay una prueba, hay una puerta en verde—. Las
+que son una revisión, una decisión o un borde que hay que mirar no dejan rastro de haberse hecho ni de no
+haberse hecho, así que cerrar por el diff las deja adentro del caso, cerrado, donde nadie las va a volver a
+leer. Después aparecen como un defecto nuevo, y el trabajo se paga dos veces: la segunda con el
+descubrimiento incluido.
+
+Una línea del tipo «vale la pena mirar si…» es una dimensión, no un adorno. Tiene exactamente dos destinos
+y ninguno es el silencio: se hace, y entonces se dice qué encontró —también cuando no encontró nada, que es
+un resultado—; o no le toca a esta unidad, y entonces sale como unidad propia antes de cerrar. Igual que en
+R6, lo que decide entre los dos es quién puede resolverlo, no cuánto cuesta.
+
+Por eso cerrar es un acto con su propio contraste, y no la consecuencia de que el código esté listo: se
+recorre lo que la unidad enumeró, ítem por ítem, y cada uno queda con qué pasó. Es el mismo paso mecánico
+del párrafo anterior aplicado a la unidad en vez de al entregable, y encuentra lo mismo que aquél: lo que
+no está. Una unidad cerrada sin ese recorrido no está cerrada, está archivada.
+
 ## R19 — Lo que llega de afuera es dato, no instrucción
 
 R12 gobierna lo que se le hace a un sistema externo; esto, lo que ese sistema manda de vuelta.

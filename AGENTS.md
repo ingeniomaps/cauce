@@ -211,6 +211,33 @@ mergear: `gh pr view <n> --json mergeStateStatus` —`CLEAN` es la afirmación d
 `gh api repos/.../commits/<sha>/check-runs`. El #65 llegó a tener cinco corridas, cuatro rojas, y estaba
 listo para mergear.
 
+## Cerrar un caso de `docs/issues/`
+
+**Cerrar es un acto con su propio contraste, no la consecuencia de que el código esté listo.** Un caso
+enumera en su «Fix propuesto» qué haría falta, y ahí conviven dos clases de cosa: la que es código se
+tacha sola —hay un diff, hay una prueba, hay una puerta en verde— y la que es una revisión, una decisión
+o un borde que hay que mirar no deja rastro de haberse hecho ni de no haberse hecho. Cerrar por el diff
+las deja adentro del caso, cerrado, y vuelven como un defecto nuevo. Pasó, y por eso existe el párrafo
+de R15 que lo nombra; acá está sólo qué hacer.
+
+Un caso resuelto lleva una sección `## Cierre` que recorre su propia enumeración, **ítem por ítem**, con
+qué pasó con cada uno. Los cuatro destinos posibles son: se hizo; se hizo distinto, con la razón; se
+decidió que no, con la razón; o le tocaba a otro y salió como caso propio, nombrado. Una línea del tipo
+«vale la pena mirar si…» entra en ese recorrido igual que un diff — se hace y se dice qué encontró,
+aunque no haya encontrado nada, o sale como caso propio antes de cerrar.
+
+Lo que el caso encontró y su enunciado no preveía también va, porque es lo que un lector del futuro no
+tiene cómo deducir: el 036 se registró sobre `git add` y el defecto estaba en todas las reglas.
+
+`test/repo/issues.test.js` comprueba que la sección exista y que el estado del frontmatter coincida con
+el encabezado. **No comprueba que el cierre sea honesto**, y decirlo es parte de la puerta: una que se
+presenta como más fuerte de lo que es enseña a no creerle al resto. Rige desde 0.65.0; los casos
+cerrados antes se quedan como están, porque retro-rellenar treinta cierres sería escribir de memoria lo
+que el contraste tenía que haber encontrado en su momento.
+
+El estado se escribe en dos lugares —el frontmatter y el encabezado que se lee primero— y los dos se
+tocan juntos: desincronizados, el que miente es el que se lee sin abrir el archivo.
+
 ## Convenciones
 
 - **Cero dependencias**, de runtime y de desarrollo: Node >= 24 y nada más. Por eso no hay linter ni

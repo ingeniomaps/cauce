@@ -1,14 +1,15 @@
 ---
 caso: 035
 titulo: Los guards que leen el índice lo leen antes de que el comando lo llene, así que stagear y commitear juntos los evade
-estado: abierto
+estado: resuelto
+resuelto-en: 0.65.0
 prioridad: alta
 version-detectada: 0.64.0
 ---
 
 # 035 — `git commit -a` pasa por encima de gobernanza, dependencias y generados
 
-**🔴 abierto** · detectado en 0.64.0 · prioridad **alta** — falla abierto, sin registro, con un comando de una línea
+**🟢 resuelto en 0.65.0** · detectado en 0.64.0 · prioridad **alta** — falla abierto, sin registro, con un comando de una línea
 
 ## Resumen
 
@@ -120,6 +121,23 @@ La línea base de la prueba —dejar un archivo de gobernanza en el índice y co
 frena— se escribió con el `add` y el `commit` en el mismo comando, y salió exit 0. Al principio pareció
 una regresión de 0.64.0; al separar los pasos, el guard bloqueó como debía. Lo que había fallado no era
 el guard sino el momento en que se le pregunta, y de ahí salió `-a`.
+
+## Cierre
+
+**🟢 resuelto en 0.65.0.** Lo que este caso enumeró, ítem por ítem:
+
+- **Prohibir `-a` / `-am` en un commit** → hecho, en el guard de `git-add`, que es donde vive la regla
+  que viola: stagear sin nombrar rutas. El diff propuesto acá no se usó tal cual porque traía su propio
+  ancla, que era exactamente lo que el 036 pedía dejar de hacer.
+- **Frenar un comando que stagee y commitee a la vez** → hecho, en `stagedForCommit`, que es por donde
+  pasan los tres guards que leen el índice. No se intentó reconstruir el índice futuro, por lo que este
+  caso ya decía.
+- **«Vale la pena mirar si algún otro guard depende de estado que su propio comando cambia»** → se hizo
+  **después de cerrar el código y antes de publicar**, y encontró uno: `verify` corría los gates sobre
+  el árbol mientras el commit graba el índice. Salió como
+  [040](040-verify-corre-los-gates-sobre-el-arbol-y-el-commit-graba-el-indice.md) y se arregló junto con
+  éste. Que esta línea se hubiera quedado sin recorrer es lo que motivó el párrafo nuevo de R15.
+- **El orden: primero el 036** → se respetó.
 
 ## Relacionados
 

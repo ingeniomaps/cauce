@@ -1,14 +1,15 @@
 ---
 caso: 037
 titulo: El baseline de adopción puede crecer a mano y nada lo distingue de haberse generado así
-estado: abierto
+estado: resuelto
+resuelto-en: 0.65.0
 prioridad: media
 version-detectada: 0.64.0
 ---
 
 # 037 — La lista de perdones no admite entradas nuevas, y nada lo comprueba
 
-**🔴 abierto** · detectado en 0.64.0 · prioridad **media** — la propiedad está enunciada y no tiene mecanismo
+**🟢 resuelto en 0.65.0** · detectado en 0.64.0 · prioridad **media** — la propiedad está enunciada y no tiene mecanismo
 
 ## Resumen
 
@@ -117,6 +118,21 @@ Contrastando los casos cerrados contra lo que de verdad se construyó, el 2026-0
 mismo ejercicio encontrara dos desacuerdos en 021 y 027. La propiedad quedó anotada en el 021 como
 dimensión sin cubrir; al volver sobre ella para decidir si valía la pena, apareció que el planteo que
 tenía escrito —fechar la entrada— no era la pregunta.
+
+## Cierre
+
+**🟢 resuelto en 0.65.0.** Lo que este caso enumeró, ítem por ítem:
+
+- **Que `adopt` firme lo que generó y `check` recalcule** → hecho: `# huella: N entradas · sha256:…`.
+- **Achicarla no puede ser un error** → resuelto, y cambiando el planteo: retirar un renglón pasa a
+  marcarse con `#~` en vez de borrarlo. Con el borrado, la huella no podía distinguir «creció» de «se
+  achicó» sin guardar el conjunto original, que es el archivo mismo. El precio, dicho: la lista nunca
+  se acorta.
+- **Sin git** → hecho: es aritmética sobre el archivo.
+- **Advertencia, no error** → hecho.
+- **El tradeoff de reordenar** → cubierto: la huella va sobre el conjunto ordenado, con su caso.
+- **Lo que este caso no previó**: un baseline generado antes de que la huella existiera. `check` lo dice
+  y `adopt` lo sella sin regenerar la lista, que es la única salida que ese aviso podía tener.
 
 ## Relacionados
 
