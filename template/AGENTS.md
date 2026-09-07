@@ -139,6 +139,7 @@ y eso lo deja apagado **hasta que cierres la sesión**, no para un comando.
 | `OPS_MIGRATIONS_OVERRIDE=1` | el de migraciones |
 | `OPS_TEST_EVIDENCE_OVERRIDE=1` | el de evidencia de pruebas |
 | `OPS_DEPENDENCIES_OVERRIDE=1` | el de dependencias, incluido publicar e instalar global |
+| `OPS_PLAN_FIRST_OVERRIDE=1` | el que exige plan antes de cambiar el producto |
 | `OPS_SKIP_VERIFY=1` | el que corre los gates |
 
 Por eso la aprobación es la vía recomendada y esto es lo que queda cuando no alcanza: prendela para lo
@@ -153,7 +154,6 @@ muta nada.
   aceptación y sus criterios. Es la entrada correcta para empezar a trabajar.
 - `node tools/ops.js tree planning` — panorama de roadmap, backlog, WIP, inbox y done.
 - `node tools/ops.js check planning` — validación de contratos y trazabilidad.
-
 Los tres aceptan `--json`. Leer `BACKLOG.md`, `WIP.md` o `HUMAN_ACTIONS.md` completos sólo cuando haga
 falta editarlos o cuando el CLI no responda la pregunta.
 

@@ -1269,3 +1269,96 @@ test('shell-boundary resuelve las rutas contra el cd del propio comando', () => 
   assert.doesNotThrow(() => execute('shell-boundary',
     desde(root, `cd ${afuera} && cd ${root} && echo a > uno.md`)))
 })
+
+// Las dos mitades de `plan-first`: qué frena —el cambio de producto sin plan— y, sobre todo, qué deja
+// pasar. La segunda es la que decide si el guard sirve: si frenara la escritura del propio WIP sería un
+// candado con la llave adentro, y si frenara a `onboard` o a una evaluación, quien lo sufra lo apaga.
+const BACKLOG_CON_TAREA = '# Backlog promovido\n\n## Hito primero — Primer resultado\n\n'
+  + '- [ ] **alta-de-cliente** [lite] — Alta. _Aceptación: responde 201._ (service: api)\n'
+const BACKLOG_VACIO = '# Backlog promovido\n'
+
+function planFirstRoot(prefijo, wip, backlog = BACKLOG_CON_TAREA) {
+  const root = tempRoot(prefijo)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }] }))
+  fs.writeFileSync(path.join(root, 'planning', 'WIP.md'), wip)
+  fs.writeFileSync(path.join(root, 'planning', 'BACKLOG.md'), backlog)
+  return root
+}
+
+const WIP_IDLE = 'status: IDLE\n'
+const WIP_CON_PLAN = '---\ntask: alta-de-cliente\nphase: Build\nservice: api\n---\n\n'
+  + '## Plan aprobado\n1. [ ] Escribir el handler\n'
+const WIP_SIN_PLAN = '---\ntask: alta-de-cliente\nphase: Build\nservice: api\n---\n\n## Plan aprobado\n'
+
+test('guard-plan-first exige el plan antes de cambiar el producto', () => {
+  const root = planFirstRoot('ops-hook-plan-', WIP_IDLE)
+  const escribe = (file) => ({ cwd: root, tool_input: { file_path: file } })
+
+  blocked('plan-first', escribe('src/altas.js'), /sin plan/)
+  // Nombrar el estado es la mitad del mensaje: «IDLE» y «tarea sin pasos» piden cosas distintas.
+  blocked('plan-first', escribe('src/altas.js'), /IDLE/)
+
+  const conTarea = planFirstRoot('ops-hook-plan-sinpasos-', WIP_SIN_PLAN)
+  blocked('plan-first', { cwd: conTarea, tool_input: { file_path: 'src/altas.js' } },
+    /alta-de-cliente y ningún paso/)
+
+  const conPlan = planFirstRoot('ops-hook-plan-ok-', WIP_CON_PLAN)
+  assert.doesNotThrow(() => execute('plan-first', { cwd: conPlan, tool_input: { file_path: 'src/altas.js' } }))
+})
+
+test('guard-plan-first no juzga lo que la instancia posee', () => {
+  const root = planFirstRoot('ops-hook-plan-exento-', WIP_IDLE)
+  const escribe = (file) => execute('plan-first', { cwd: root, tool_input: { file_path: file } })
+
+  // El plan se escribe acá: sin esta exención, escribirlo exigiría haberlo escrito.
+  assert.doesNotThrow(() => escribe('planning/WIP.md'))
+  assert.doesNotThrow(() => escribe('planning/roadmap/epic-001-alta.md'))
+  // Y los recorridos que no pasan por la máquina de tareas tampoco tienen un WIP que mostrar.
+  assert.doesNotThrow(() => escribe('organization/workspace.md'))
+  assert.doesNotThrow(() => escribe('agents/roles/tech-lead/SKILL.md'))
+  assert.doesNotThrow(() => escribe('integrations/jira/staging/draft.md'))
+  // Un directorio que sólo empieza igual no es la raíz exenta.
+  blocked('plan-first', { cwd: root, tool_input: { file_path: 'planningtool/app.js' } }, /sin plan/)
+})
+
+test('guard-plan-first queda inerte mientras el planning no declara tareas', () => {
+  // El día uno no hay trabajo de producto que cuidar, hay instalación: `onboard` deja el roadmap vacío
+  // y pide que alguien lo llene. Un bloqueo ahí es un candado delante de la puerta.
+  const nuevo = planFirstRoot('ops-hook-plan-nuevo-', WIP_IDLE, BACKLOG_VACIO)
+  assert.doesNotThrow(() => execute('plan-first', { cwd: nuevo, tool_input: { file_path: 'src/altas.js' } }))
+
+  // Y muerde en cuanto hay de dónde sacar una tarea, que es la mitad que vuelve útil a la otra.
+  fs.writeFileSync(path.join(nuevo, 'planning', 'BACKLOG.md'), BACKLOG_CON_TAREA)
+  blocked('plan-first', { cwd: nuevo, tool_input: { file_path: 'src/altas.js' } }, /sin plan/)
+
+  // Una tarea ya terminada cuenta igual: el BACKLOG vacío de una instancia con historia no la devuelve
+  // al día uno.
+  const conHistoria = planFirstRoot('ops-hook-plan-historia-', WIP_IDLE, BACKLOG_VACIO)
+  fs.writeFileSync(path.join(conHistoria, 'planning', 'DONE.md'),
+    '# Done activo\n\n## Hito primero — Primer resultado\n\n- [x] **alta-de-cliente** — Alta\n')
+  blocked('plan-first', { cwd: conHistoria, tool_input: { file_path: 'src/altas.js' } }, /sin plan/)
+})
+
+test('guard-plan-first se abre por aprobación, por variable y donde no hay instancia', () => {
+  const root = planFirstRoot('ops-hook-plan-llaves-', WIP_IDLE)
+  const escribe = { cwd: root, tool_input: { file_path: 'src/altas.js' } }
+
+  fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), 'src/altas.js\n')
+  assert.doesNotThrow(() => execute('plan-first', escribe))
+  // La aprobación vale para la ruta que nombra y para ninguna otra.
+  blocked('plan-first', { cwd: root, tool_input: { file_path: 'src/bajas.js' } }, /sin plan/)
+  fs.unlinkSync(path.join(root, 'planning', '.ops-approval'))
+  blocked('plan-first', escribe, /sin plan/)
+
+  process.env.OPS_PLAN_FIRST_OVERRIDE = '1'
+  try { assert.doesNotThrow(() => execute('plan-first', escribe)) } finally {
+    delete process.env.OPS_PLAN_FIRST_OVERRIDE
+  }
+
+  // Sin `planning/` no hay instancia que gobernar: es el estado de este mismo repositorio.
+  const suelto = tempRoot('ops-hook-plan-suelto-')
+  assert.doesNotThrow(() => execute('plan-first', { cwd: suelto, tool_input: { file_path: 'src/altas.js' } }))
+})
+

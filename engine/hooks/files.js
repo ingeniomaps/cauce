@@ -11,6 +11,9 @@ const {
   writableRoots, outsideRoots, DECLARE_IT,
 } = require('./input')
 const AP = require('./approval')
+const { readWip } = require('../planning/parser')
+const { hasTasks } = require('../planning/state')
+const { TEMPLATE_PREFIXES } = require('../core/ownership')
 
 // La raíz donde vive `planning/`, que es donde se busca la aprobación por operación.
 function opsRoot(input) {
@@ -108,6 +111,54 @@ function testEvidence(input) {
   }
 }
 
+// Lo que la instancia recibe del molde, más los cargos que forkeó. `plan-first` no lo juzga, y no es una
+// concesión: el plan se escribe en `planning/`, así que exigirlo ahí sería un candado cuya llave está
+// adentro. Los recorridos que no pasan por la máquina de tareas escriben en las otras raíces —`onboard`
+// en `organization/`, una evaluación en `agents/`, el sincronizador en `integrations/`— y tampoco tienen
+// un WIP que mostrar. Sale de `ownership` para que una raíz nueva del molde quede exenta sola; `agents/`
+// se suma acá porque no viene del molde, la escribe `fork` en la instancia.
+const OPS_OWNED = [...TEMPLATE_PREFIXES, 'agents/']
+
+function opsOwned(root, file) {
+  const relative = path.relative(root, file).replace(/\\/g, '/')
+  if (!relative || relative.startsWith('../') || path.isAbsolute(relative)) return false
+  return OPS_OWNED.some((prefix) => relative.startsWith(prefix))
+}
+
+// R1 y el paso 7 del protocolo piden el plan antes del primer cambio, y hasta acá nadie lo comprobaba:
+// tocar el archivo primero y redactar después la aceptación que lo justifica sale igual de verde que
+// hacerlo al revés, y se lee igual en DONE. Lo que se exige es lo mínimo que separa un plan de una
+// intención —WIP activo con al menos un paso escrito—, no que el paso sea bueno; eso lo mira Critique.
+//
+// El conteo sale del mismo parser que `check` y `context`, así que lo que el guard llama plan es lo que
+// el resto del motor llama plan. Un WIP con frontmatter y sin pasos es el estado intermedio que esto
+// vigila: la tarea ya está nombrada y el plan todavía no existe.
+function planFirst(input) {
+  if (process.env.OPS_PLAN_FIRST_OVERRIDE === '1') return
+  const root = opsRoot(input)
+  if (!root) return
+  const planning = path.join(root, 'planning')
+  const wip = readWip(planning)
+  if (wip && wip.complete + wip.pending > 0) return
+  // Una instancia recién creada no tiene de dónde sacar una tarea: `onboard` deja el roadmap vacío y
+  // dice que alguien lo llene. Exigir el plan ahí es un candado delante de la puerta, y la salida que
+  // enseña es apagar el guard en el entorno, que lo deja sin morder para siempre. Se pregunta recién
+  // acá: en una instancia con trabajo el camino común sale por el WIP de arriba y no paga esta lectura.
+  // Que el guard quede inerte lo dice `automation check`, porque una condición invisible es peor que
+  // no tenerla.
+  if (!hasTasks(planning)) return
+  const estado = wip ? `WIP tiene la tarea ${wip.task} y ningún paso` : 'WIP está en IDLE'
+  const why = `${estado}, así que el plan todavía no está escrito.\n`
+    + 'Escribí en planning/WIP.md la tarea y su plan aprobado —pasos numerados, cada uno con un estado '
+    + 'verificable— y volvé al cambio. Si esto no es trabajo de una tarea, aprobá la ruta.\n'
+    + AP.HOW('OPS_PLAN_FIRST_OVERRIDE')
+  for (const raw of filesOf(input)) {
+    if (opsOwned(root, path.resolve(cwdOf(input), raw))) continue
+    if (approved(input, raw)) continue
+    block(`${raw} cambia el producto sin plan. ${why}`)
+  }
+}
+
 function workspaceBoundary(input) {
   const allowed = writableRoots(input)
   if (!allowed) return
@@ -182,4 +233,7 @@ function engineWrites(input) {
   }
 }
 
-module.exports = { secrets, integrationSnapshot, generated, testEvidence, workspaceBoundary, migrations, engineWrites }
+module.exports = {
+  secrets, integrationSnapshot, generated, testEvidence, planFirst, workspaceBoundary,
+  migrations, engineWrites,
+}

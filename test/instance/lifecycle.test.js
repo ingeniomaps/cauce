@@ -80,6 +80,10 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
       input: JSON.stringify({ tool_input: { file_path: file }, cwd: workspace }) },
   )
   assert.match(guard('/tmp/fuera-de-todo.txt').stderr, /BLOQUEADO/, 'lo de afuera no pasa')
+  // Y el día uno deja pasar el cambio de producto pese al WIP en IDLE: `plan-first` está inerte
+  // mientras el planning no declare tareas, que es el estado de una instancia recién creada. Que
+  // muerde en cuanto hay una tarea lo mide `hooks.test.js`; acá importa que la instalación no
+  // arranque frenada.
   assert.equal(guard(path.join(workspace, 'service-a', 'main.go')).stderr, '', 'lo de adentro sí')
 
   // Codex lee `AGENTS.md` de la raíz —no existe un `CODEX.md`— y sin él sólo recibiría guards: podría

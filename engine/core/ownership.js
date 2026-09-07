@@ -295,6 +295,7 @@ function localChanges(root) {
 module.exports = {
   RETIRED,
   TEMPLATE_OWN,
+  TEMPLATE_PREFIXES,
   addedPaths,
   trackedPaths,
   packageDir,

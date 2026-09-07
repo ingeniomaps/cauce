@@ -50,4 +50,14 @@ function currentTask({ milestones, done, wip }, blockers = []) {
 }
 
 
-module.exports = { snapshot, pendingHumanActions, currentTask }
+// Si el planning declara trabajo, en cualquiera de sus dos estados. Lo preguntan dos: el guard
+// `plan-first`, para no exigir un plan donde todavía no hay de dónde sacar una tarea, y
+// `automation check`, para poder decir que ese guard está inerte. Vive acá y no en el guard porque con
+// dos copias una se pudre y el reporte anuncia una condición distinta de la que el guard aplica.
+function hasTasks(root) {
+  return P.readBacklog(root).some((milestone) => milestone.tasks.length > 0)
+    || P.readDone(root).entries.length > 0
+}
+
+
+module.exports = { snapshot, pendingHumanActions, currentTask, hasTasks }
