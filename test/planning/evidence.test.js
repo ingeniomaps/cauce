@@ -273,3 +273,51 @@ test('leer bien la fila destapa el estado que la fila corrida escondía', () => 
   assert.equal(fila.valid, false, 'el estado real estaba fuera del vocabulario y ahora se ve')
   assert.equal(fila.resolved, false)
 })
+
+// La cabecera de una tabla markdown es la fila anterior a la de separadores, diga lo que diga su primera
+// celda. Reconocerla por el literal `tarea` sólo funciona con el encabezado del molde: quien llega con
+// una tabla propia recibe un error que nombra las etiquetas de sus columnas como si fueran datos.
+test('la cabecera se reconoce por su forma y no por lo que dice su primera celda', () => {
+  const root = tempRoot('ops-human-cabecera-')
+  const leer = (texto) => {
+    fs.writeFileSync(path.join(root, 'HUMAN_ACTIONS.md'), texto)
+    return P.readHumanActions(root)
+  }
+
+  const propia = leer(`# Acciones humanas
+
+| Tarea Requerida | Estado | Origen | Descripción / Instrucciones |
+| :--- | :---: | :---: | :--- |
+| sembrar-el-flag | pendiente | Ready | Sembrar \`FLAG\` en Infisical. |
+`)
+  assert.equal(propia.length, 1, 'la cabecera propia no es una acción humana')
+  assert.equal(propia[0].task, 'sembrar-el-flag')
+
+  // El caso que el propio 043 anticipa en Tradeoffs: con varias tablas hay que saltear la cabecera de
+  // cada una. El archivo real que lo destapó tenía tres, una por sección.
+  const varias = leer(`# Acciones humanas
+
+## Infraestructura
+
+| Tarea Requerida | Estado | Origen | Detalle |
+|---|---|---|---|
+| sembrar-el-flag | pendiente | Ready | Sembrar el flag. |
+
+## Accesos
+
+| Bloqueo | Estado | Origen | Detalle |
+| :--- | :--- | :--- | :--- |
+| dar-acceso | resuelta | Ready | Dar el acceso. |
+`)
+  assert.deepEqual(varias.map((fila) => fila.task), ['sembrar-el-flag', 'dar-acceso'])
+  assert.deepEqual(varias.map((fila) => fila.valid), [true, true])
+
+  // Y sin fila de separadores no hay forma que reconocer, así que el literal del molde sigue siendo la
+  // única defensa. Markdown no renderiza eso como tabla; el parser lee las filas igual.
+  const sinGuiones = leer(`# Acciones humanas
+
+| Tarea | Estado | Origen | Detalle |
+| sembrar-el-flag | pendiente | Ready | Sembrar el flag. |
+`)
+  assert.deepEqual(sinGuiones.map((fila) => fila.task), ['sembrar-el-flag'])
+})
