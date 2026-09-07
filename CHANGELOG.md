@@ -14,6 +14,25 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.63.0] - 2026-09-06
+
+### Corregido
+
+- **Una variable delante de `git commit` ya no apaga tres guards.** `dependencies`, `governance` y el
+  control de generados de `verify` sólo corren sobre un commit, y decidían si lo era con un ancla que
+  no contempla lo que un shell admite antes del verbo. Con `VAR=1 git commit` dejaban de correr **sin
+  decir nada**, y con la ironía de que el prefijo que se escribe para un commit de gobernanza es una
+  asignación: `OPS_GOVERNANCE_OVERRIDE=1 git commit` no leía el override, hacía que el guard no se
+  ejecutara. **Qué cambia para vos**: si venías escribiendo ese prefijo, ahora el guard corre y te va a
+  frenar. La variable se lee del entorno del guard, no del comando, y el mensaje ahora lo dice.
+
+- **Un índice que no se puede leer deja de autorizar el commit.** `stagedFiles` devolvía una lista vacía
+  tanto si el índice estaba vacío como si no se pudo leer, y los tres guards de arriba leen esa
+  respuesta: una lectura fallida se les presentaba como «no hay nada que revisar». Llegar a una es
+  fácil, porque el guard no expande variables: `git -C $OPS commit` resuelve la ruta literal `$OPS`.
+  **Qué cambia para vos**: ese comando ahora se frena con un mensaje que nombra la causa. Escribí la
+  ruta literal en `git -C`.
+
 ## [0.62.0] - 2026-09-06
 
 ### Corregido
