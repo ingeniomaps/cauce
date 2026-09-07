@@ -841,15 +841,9 @@ test('guard-files lee el sobre de apply_patch aunque llegue como command', () =>
   }))
 })
 
-// `git` admite opciones globales entre `git` y el subcomando —las lista su propia línea de uso—, y un
-// patrón que los espera pegados deja de ver el verbo cuando hay una en el medio. No falla: deja pasar
-// sin decir nada, que sobre una prohibición sin excepción es lo peor que puede hacer.
-//
-// Se prueban todas las reglas contra todas las formas, y no una regla contra una forma, porque el
-// defecto no estaba en un patrón sino en que cada uno resolvía la posición por su cuenta: con `-C`,
-// `-c` o `-P` delante pasaban las cinco de `destructive` y la de `git-add`. `--git-dir /tmp/.git` era
-// la única que bloqueaba, y por la razón equivocada — la ruta termina en `.git`, así que el patrón leía
-// el verbo dentro de `/tmp/.git push`. Una forma que bloquea por accidente no es una forma cubierta.
+// Se cruzan todas las reglas contra todas las formas, y no una contra una, porque lo que falló no fue
+// un patrón sino que cada uno resolvía la posición por su cuenta —el porqué, en `withoutGitGlobals`—.
+// Con una sola pareja, el próximo patrón que se escriba pegado vuelve a entrar sin que nada lo note.
 test('una opción global de git no desactiva la regla que mira el subcomando', () => {
   // La lista es la de `git --help` entera y no una muestra: una opción que el patrón nombra y ningún
   // caso ejercita se puede borrar sin que nada se ponga rojo —comprobado sacando `--bare` y
@@ -891,4 +885,62 @@ test('sacar las opciones globales no inventa un bloqueo', () => {
     assert.doesNotThrow(() => execute('destructive', { tool_input: { command: fine } }), fine)
     assert.doesNotThrow(() => execute('git-add', { tool_input: { command: fine } }), fine)
   }
+})
+
+// `git commit -a` stagea al commitear, o sea **después** de este hook, y `git add … && git commit` lo
+// stagea dentro del mismo comando: en los dos casos los guards que juzgan mirando el índice leen el de
+// antes y concluyen que no hay nada que revisar. No fallan, dejan pasar.
+//
+// Se separan porque las razones son distintas y viven en lugares distintos. `-a` viola R8 por escrito
+// —stagear rutas explícitas— y por eso lo frena el guard de esa regla; encadenar `add` y `commit` no
+// viola ninguna, sólo rompe el momento en que se pregunta, y lo frena quien lee el índice.
+test('git-add frena `commit -a`, que es stagear todo con otra ortografía', () => {
+  for (const command of ['git commit -a -m sonda', 'git commit -am sonda', 'git commit --all -m sonda',
+    'git -C /tmp commit -am sonda', 'git commit -v -a -m sonda']) {
+    blocked('git-add', { tool_input: { command } }, /stagea al commitear/)
+  }
+  // `--amend` no es `-a`: lo frena `destructive` por otra razón, y confundirlos daría el mensaje
+  // equivocado sobre la regla equivocada.
+  assert.doesNotThrow(() => execute('git-add', { tool_input: { command: 'git commit --amend -m x' } }))
+  for (const fine of ['git commit -m sonda', 'git commit -v -m sonda', 'git commit -s -m sonda']) {
+    assert.doesNotThrow(() => execute('git-add', { tool_input: { command: fine } }), fine)
+  }
+})
+
+// El mensaje de un commit es dato, no código: `destructive` ya lo resolvía y este guard no. Bloqueaba
+// el commit que explica la prohibición, que es exactamente el que hay que poder escribir — y frenó
+// tres veces la sesión que escribió este arreglo.
+test('git-add no lee el mensaje de un commit como si fuera un comando', () => {
+  for (const command of [
+    `git commit -m 'no usar git add -A nunca'`,
+    `git commit -m "prohibido git add -A"`,
+  ]) {
+    assert.doesNotThrow(() => execute('git-add', { tool_input: { command } }), command)
+  }
+  // Y lo que va entre comillas fuera de un commit sí se ejecuta, así que ahí sigue cayendo. Las dos
+  // formas pasaban hasta este arreglo, por dónde terminaba la palabra: el límite, en `gitAdd`.
+  blocked('git-add', { tool_input: { command: `bash -c "git add -A"` } }, /está prohibido/)
+  blocked('git-add', { tool_input: { command: `eval 'git add -A'` } }, /está prohibido/)
+})
+
+test('un comando que stagea y commitea a la vez no se puede juzgar, y se dice', () => {
+  const root = tempRoot('ops-hook-blind-')
+  git(['init', '-q'], root)
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.writeFileSync(path.join(root, 'planning', 'PROTOCOL.md'), '# protocol\n')
+  // El índice queda vacío a propósito: es el estado en que el guard no ve nada y concluía que no había
+  // nada que revisar. Con el índice ya lleno el bloqueo podría venir de la regla de gobernanza y la
+  // prueba no distinguiría cuál de las dos actuó.
+  const command = 'git add planning/PROTOCOL.md && git commit -m sonda'
+  for (const guard of ['governance', 'dependencies', 'verify']) {
+    blocked(guard, { cwd: root, tool_input: { command } }, /stagea y commitea a la vez/)
+  }
+  // Un commit que no stagea nada se juzga como siempre: con el índice vacío no hay nada que reportar.
+  for (const guard of ['governance', 'dependencies', 'verify']) {
+    assert.doesNotThrow(() => execute(guard, { cwd: root, tool_input: { command: 'git commit -m sonda' } }))
+  }
+  // Y el mensaje que cita un `add` no es un `add`.
+  assert.doesNotThrow(() => execute('governance', {
+    cwd: root, tool_input: { command: `git commit -m 'sin git add adentro'` },
+  }))
 })

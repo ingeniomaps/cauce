@@ -186,6 +186,32 @@ function stagedFiles(dir) {
 // R10 pide «la autorización configurada para el proyecto» y `runner.allowPush` es esa configuración:
 // sin esto era un interruptor que nadie leía, y un cargo que lo leyó dio por imposible un push que el
 // guard bloqueaba igual. Sin raíz legible no hay permiso que verificar, así que no se autoriza.
+// El índice que un hook de pre-ejecución lee es el de **antes** del comando, y el comando puede ser
+// justamente el que lo llene. Ahí los tres guards que juzgan mirando el índice no fallan: leen bien,
+// encuentran cero archivos y concluyen que no hay nada que revisar.
+//
+// Reconstruir el índice futuro desde el texto del `add` sería peor: tendría que resolver globs, `-u`,
+// `-p` y el alias que esconde otro `add`, o sea acertar en los casos fáciles y fallar callado en los
+// difíciles, que es el modo de fallo que esto viene a cerrar. Pedir dos comandos cuesta una línea.
+//
+// El mensaje se vacía antes de mirar porque un commit que explica esta misma regla lo nombra, y
+// bloquearlo dejaría sin escribir el commit que la documenta — pasó con la prohibición de stagear todo.
+//
+// La otra forma de llenar el índice tarde es `git commit -a`, y la frena `git-add`: además de cegar a
+// estos guards viola R8 por escrito, así que su razón vive con esa regla y no acá.
+//
+// Devuelve también el directorio porque dos de los tres guards siguen leyendo del repositorio después
+// —el lockfile que está al lado del manifiesto, el `package.json` que dice qué gate correr—, y
+// resolverlo dos veces sería preguntar dos veces lo mismo.
+function stagedForCommit(command, cwd) {
+  if (/\bgit\s+add\b/.test(withoutGitGlobals(unquoted(command)))) {
+    block('El comando stagea y commitea a la vez, así que este guard lee el índice de antes de stagear '
+      + 'y no puede ver qué se commitea. Stageá las rutas en un comando y commiteá en otro.')
+  }
+  const dir = gitDirectory(command, cwd)
+  return { dir, staged: stagedFiles(dir) }
+}
+
 function pushAllowed(input) {
   const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
   if (!root) return false
@@ -238,6 +264,7 @@ const DECLARE_IT = 'Si el proyecto necesita escribir ahí, declaralo en writable
 
 module.exports = {
   readInput, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
-  gitDirectory, isCommit, withoutGitGlobals, stagedFiles, pushAllowed, findOpsRoot,
+  gitDirectory, isCommit, withoutGitGlobals, stagedFiles, stagedForCommit, pushAllowed,
+  findOpsRoot,
   writableRoots, outsideRoots, DECLARE_IT, unquoted,
 }
