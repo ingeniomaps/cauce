@@ -153,6 +153,12 @@ gate que llama a git falle en el temporal— es volver a lo que 040 encontró ro
 - Mientras el motor no cambie, un proyecto con gates que escriben con git —un `make ci` que taggea, un
   script que commitea un lockfile regenerado— sigue expuesto aunque limpie su propia suite.
 
+## Prioridad
+
+**Alta.** Escribe historia en el repositorio de quien lo usa, sin anunciarlo y por el camino que el
+proceso recomienda. Se deshace con `git reset --mixed` y `git config --unset core.worktree` cuando
+alguien lo descubre, y el costo real es que hasta entonces se lee como estado que ya estaba.
+
 ## Contexto de descubrimiento
 
 Apareció committeando trabajo propio en este repositorio, partido en dos commits por naturaleza como
