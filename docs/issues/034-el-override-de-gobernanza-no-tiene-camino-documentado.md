@@ -1,14 +1,15 @@
 ---
 caso: 034
 titulo: El override de gobernanza no está documentado en ninguna parte y su única vía practicable es de sesión
-estado: abierto
+estado: resuelto
 prioridad: media
 version-detectada: 0.63.0
+resuelto-en: 0.64.0
 ---
 
 # 034 — El guard manda a usar una llave y no dice dónde está
 
-**🔴 abierto** · detectado en 0.63.0 · prioridad **media** — la salida existe y no hay cómo tomarla
+**🟢 resuelto en 0.64.0** · detectado en 0.63.0 · prioridad **media** — la salida existe y no hay cómo tomarla
 
 ## Resumen
 
