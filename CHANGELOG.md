@@ -14,6 +14,21 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.64.0] - 2026-09-06
+
+### Agregado
+
+- **Un commit de gobernanza se aprueba por operación, no por sesión.** El guard ofrecía como salida
+  `OPS_GOVERNANCE_OVERRIDE=1`, que se lee del entorno del proceso: prendida antes de lanzar tu runner
+  deja el guard apagado hasta que la sesión cierre. Eso convierte «aprobado este commit» en «apagado
+  hasta que me vaya», y el `Makefile` de este proyecto ya decía cuál es el alcance correcto — «la
+  autorización de R10 es por operación y humana». **Qué cambia para vos**: escribís las rutas
+  autorizadas en `planning/.governance-approval`, una por línea, y el commit pasa. Vale para ese
+  conjunto y para ningún otro: si después sumás un archivo, ese archivo no está aprobado. No se consume
+  ni se borra sola —así un commit frenado por otra razón no te obliga a rehacerla—, así que `check` te
+  avisa mientras exista para que la borres. La variable sigue funcionando y el mensaje del guard ahora
+  dice por qué no es la vía recomendada.
+
 ## [0.63.0] - 2026-09-06
 
 ### Corregido

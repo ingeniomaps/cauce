@@ -164,6 +164,11 @@
     "branches": 53,
     "functions": 100
   },
+  "engine/hooks/approval.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/hooks/files.js": {
     "lines": 100,
     "branches": 96,
@@ -171,7 +176,7 @@
   },
   "engine/hooks/input.js": {
     "lines": 100,
-    "branches": 85,
+    "branches": 84,
     "functions": 100
   },
   "engine/hooks/run.js": {

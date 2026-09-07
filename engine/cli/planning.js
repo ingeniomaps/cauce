@@ -11,6 +11,7 @@ const PC = require('../planning/contracts')
 const SZ = require('../planning/sizing')
 const ST = require('../planning/state')
 const AD = require('../planning/adoption')
+const AP = require('../hooks/approval')
 const I = require('../integrations/registry')
 const O = require('../core/ownership')
 const OB = require('../core/onboarding')
@@ -85,6 +86,14 @@ function check(dir, cli) {
     epics, milestones, done, wip, roles, humanActions: P.readHumanActions(root), adopted: new Set(adopted),
   }))
   warnings.push(...AD.report({ done, epics, adopted }))
+  // Una aprobación de gobernanza vale para el conjunto que nombra, así que olvidada sigue autorizando
+  // esas mismas rutas la próxima vez que alguien las stagee. No caduca sola: lo que la cierra es que se
+  // vea en cada corrida y alguien la borre.
+  const aprobadas = AP.read(path.resolve(root, '..'))
+  if (aprobadas.length) {
+    warnings.push(`planning/${AP.APPROVAL}: ${aprobadas.length} ruta(s) de gobernanza aprobadas y sin `
+      + 'borrar; el archivo sigue autorizándolas')
+  }
 
   const integration = I.validate(path.resolve(root, '..'))
   errors.push(...integration.errors)

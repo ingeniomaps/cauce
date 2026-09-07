@@ -261,6 +261,25 @@ ${plan}
 
 // Las dos mitades: sin nada declarado la salida queda limpia, y con algo declarado avisa sin fallar.
 // El porqué vive en `check`; acá se fija que el aviso exista y que traiga la ruta ya expandida.
+// Una aprobación de gobernanza no caduca sola: vale para el conjunto que nombra, así que olvidada
+// sigue autorizando esas rutas la próxima vez que alguien las stagee. Lo único que la cierra es que se
+// vea, y que la cuenta sea la de rutas y no la de renglones — un archivo escrito a mano lleva cabecera.
+test('check muestra una aprobación de gobernanza sin borrar, contando rutas', () => {
+  const base = tempRoot('cauce-aprobacion-check-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  const planning = path.join(target, 'planning')
+  assert.doesNotMatch(run(['check', planning]).stderr, /governance-approval/, 'sin archivo no avisa nada')
+
+  fs.writeFileSync(path.join(planning, '.governance-approval'),
+    '# Aprobado por X el 2026-09-06.\n# Vale para el commit de la propuesta.\nplanning/rules/system/conduct.md\n')
+  const avisado = run(['check', planning])
+
+  assert.equal(avisado.status, 0, 'es advertencia: la aprobación es legítima, lo que no puede es esconderse')
+  assert.match(avisado.stderr + avisado.stdout, /governance-approval: 1 ruta\(s\)/,
+    'una ruta y dos comentarios son una ruta')
+})
+
 test('check muestra cada ruta exenta del límite de raíces, ya resuelta', () => {
   const base = tempRoot('cauce-exempt-check-')
   const target = path.join(base, 'demo-ops')

@@ -10,8 +10,9 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const {
   commandOf, cwdOf, block, gitDirectory, isCommit, stagedFiles, pushAllowed,
-  writableRoots, outsideRoots, DECLARE_IT, unquoted,
+  writableRoots, outsideRoots, DECLARE_IT, unquoted, findOpsRoot,
 } = require('./input')
+const AP = require('./approval')
 
 // Dónde empieza y dónde termina una palabra dentro de un comando. Tres reglas de la tabla de abajo lo
 // decidían por su cuenta admitiendo sólo un espacio, el principio o el fin, y en un shell una palabra
@@ -250,12 +251,19 @@ function governance(input) {
       String.raw`|evaluations\/(?:cases\/|expected-behaviors\.yaml)|learning\/proposals\/))`,
   )
   const governed = stagedFiles(dir).filter((file) => governedPattern.test(file))
-  if (governed.length) {
-    const files = governed.map((file) => `  - ${file}`).join('\n')
-    block(`El commit toca gobernanza protegida:\n${files}\n` +
-      'Usa OPS_GOVERNANCE_OVERRIDE=1 solo con aprobación, en el entorno del guard: escrita delante '
-      + 'del comando no llega hasta acá.')
-  }
+  if (!governed.length) return
+  // La aprobación vale para lo que nombra y para nada más: lo que quede sin cubrir es lo que se
+  // reporta. Así una aprobación vieja no autoriza el archivo que se sumó después, que es la diferencia
+  // entre una llave por operación y una puerta que quedó abierta.
+  const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
+  const aprobados = new Set(root ? AP.read(root) : [])
+  const pendientes = governed.filter((file) => !aprobados.has(file))
+  if (!pendientes.length) return
+  const files = pendientes.map((file) => `  - ${file}`).join('\n')
+  block(`El commit toca gobernanza protegida:\n${files}\n`
+    + `Aprobalo escribiendo esas rutas en planning/${AP.APPROVAL}, una por línea: vale para ese `
+    + 'conjunto y deja de valer en cuanto cambie. La variable OPS_GOVERNANCE_OVERRIDE=1 sigue '
+    + 'existiendo y apaga el guard para toda la sesión, que es por lo que no es la vía recomendada.')
 }
 
 function run(program, args, cwd) {
