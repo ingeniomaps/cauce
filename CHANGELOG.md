@@ -18,6 +18,14 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Las salidas de los guards están documentadas, y con su alcance real.** Cinco guards se pueden abrir
+  y ninguna de las cinco llaves estaba escrita en un archivo que alguien fuera a abrir: el bloqueo te
+  nombraba una variable y no había dónde leer dónde va. `AGENTS.md` ahora las lista en «Qué se puede
+  editar y qué no», con lo incómodo dicho: el guard lee la variable de **su propio proceso**, así que
+  escribirla delante del comando no llega, y la forma que sí funciona —exportarla en el entorno desde
+  el que arranca tu runner— deja el guard apagado hasta que cierres la sesión. La única con alcance de
+  operación es la aprobación de gobernanza.
+
 - **Un commit de gobernanza se aprueba por operación, no por sesión.** El guard ofrecía como salida
   `OPS_GOVERNANCE_OVERRIDE=1`, que se lee del entorno del proceso: prendida antes de lanzar tu runner
   deja el guard apagado hasta que la sesión cierre. Eso convierte «aprobado este commit» en «apagado
