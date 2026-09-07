@@ -46,6 +46,7 @@ const guards = {
   migrations: files.migrations,
   'integration-snapshot': files.integrationSnapshot,
   'test-evidence': files.testEvidence,
+  'plan-first': files.planFirst,
   'planning-drift': planningDrift,
 }
 
@@ -53,7 +54,7 @@ const guards = {
 const hookGroups = {
   'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'verify', 'shell-boundary'],
   'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
-    'integration-snapshot', 'test-evidence'],
+    'integration-snapshot', 'test-evidence', 'plan-first'],
   stop: ['planning-drift'],
 }
 
@@ -118,6 +119,11 @@ const hookMetadata = [
     name: 'test-evidence',
     event: 'PreToolUse · files',
     purpose: 'Impide apagar o borrar la prueba que juzga el cambio.',
+  },
+  {
+    name: 'plan-first',
+    event: 'PreToolUse · files',
+    purpose: 'Exige WIP activo con plan escrito antes de cambiar el producto.',
   },
   {
     name: 'planning-drift',

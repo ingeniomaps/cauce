@@ -14,6 +14,7 @@ const AD = require('../planning/adoption')
 const AP = require('../hooks/approval')
 const I = require('../integrations/registry')
 const O = require('../core/ownership')
+const EV = require('../core/evidence')
 const OB = require('../core/onboarding')
 const C = require('../config/validate')
 const CP = require('../config/paths')
@@ -27,6 +28,44 @@ const { fail } = require('./io')
 //
 // Va como advertencia y no como error: la empresa es dueña de esos archivos y puede reestructurarlos a
 // propósito. Lo que no puede pasar es que una dimensión desaparezca sin que se vea.
+// El contraste de la evidencia de una entrada de DONE contra lo que no lo escribió su autor. No es una
+// puerta y por eso no vive en `check`: `check` juzga todo DONE, y el registro de gates es rodante —una
+// entrada de hace tres meses no tiene con qué cruzarse—. Acá se pregunta por una entrada, que es como
+// se cierra una tarea: se escribe la evidencia y se la mira contra el árbol y contra lo que corrió.
+function evidence(dir, cli) {
+  const root = path.resolve(dir || '.')
+  const opsDir = path.join(root, '..')
+  const entries = P.readDone(root).entries
+  const slug = cli.value('--task')
+  const entry = slug ? entries.find((one) => one.slug === slug) : entries[entries.length - 1]
+  if (!entry) return fail(slug ? `DONE no tiene la entrada ${slug}` : 'DONE no tiene ninguna entrada', 2)
+
+  let config = {}
+  try { config = JSON.parse(fs.readFileSync(path.join(opsDir, 'ops.config.json'), 'utf8')) } catch { /* sin raíces */ }
+  const roots = (Array.isArray(config.workspaceRoots) ? config.workspaceRoots : [])
+    .filter((workspace) => workspace && workspace.path)
+    .map((workspace) => path.resolve(opsDir, workspace.path))
+    .filter((one) => fs.existsSync(one))
+  const traces = EV.contrast(entry.tests, roots)
+  const runs = EV.runs(opsDir)
+  const report = { task: entry.slug, epic: entry.epic, traces, runs }
+  if (cli.has('--json')) return console.log(JSON.stringify(report))
+
+  console.log(`TAREA  ${entry.slug}${entry.epic ? ` (epic: ${entry.epic})` : ''}`)
+  if (!traces.length) console.log('TESTS  (la entrada no rastrea ningún criterio)')
+  for (const trace of traces) {
+    const nota = trace.verdict === 'inbuscable'
+      ? (roots.length ? 'describe la prueba en vez de nombrarla' : 'el proyecto no declara raíces de código')
+      : ''
+    console.log(`  ${trace.criterion} → ${trace.artifact}  [${trace.verdict}]${nota ? ` — ${nota}` : ''}`)
+  }
+  if (!runs.length) console.log('GATES  (sin corridas registradas; `verify` todavía no corrió acá)')
+  for (const run of runs) console.log(`GATES  ${run.at}  ${run.gate} (exit ${run.status})`)
+  // Un contraste que no dice qué no puede ver se lee como si lo hubiera visto todo.
+  console.log('Este contraste dice si el artefacto existe y qué gates corrieron al commitear. No dice '
+    + 'que la prueba nombrada haya corrido: eso depende del runner, y varios no la nombran al pasar.')
+}
+
 function check(dir, cli) {
   const root = path.resolve(dir || '.')
   const errors = []
@@ -356,4 +395,4 @@ function archive(dir, rawNum) {
   console.log(`✓ epic-${num}: ${entries.length} entrada(s) archivadas`)
 }
 
-module.exports = { check, tree, context, archive, adopt }
+module.exports = { check, evidence, tree, context, archive, adopt }

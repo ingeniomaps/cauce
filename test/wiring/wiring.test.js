@@ -59,6 +59,22 @@ test('automation list-hooks explica los guards disponibles', () => {
   assert.match(report.stdout, new RegExp(`${Object.keys(guards).length} guards`), 'y es lo que informa')
 })
 
+// Un guard que a veces no corre tiene que decir cuándo, o el conteo de arriba promete una cobertura que
+// no está. Se mide contra una instancia recién creada —el estado en que `plan-first` queda inerte— y
+// contra la misma con una tarea, porque decir siempre lo mismo no informa nada.
+test('automation check avisa cuando plan-first está inerte', () => {
+  const target = path.join(tempRoot('cauce-inerte-'), 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar']).status, 0)
+  linkEngine(target)
+  assert.match(run(['automation', 'check', target]).stdout, /plan-first: inerte/)
+
+  const backlog = path.join(target, 'planning', 'BACKLOG.md')
+  fs.appendFileSync(backlog, '\n## Hito primero — Primer resultado\n\n'
+    + '- [ ] **alta-de-cliente** [lite] — Alta. _Aceptación: responde 201._ (service: api)\n')
+  const conTarea = run(['automation', 'check', target])
+  assert.equal(conTarea.stdout.includes('plan-first: inerte'), false, 'con una tarea deja de estarlo')
+})
+
 // La lista de scripts que `check` exige se deriva del registro de guards, no se copia a mano: una
 // copia comprueba lo que nombra y un guard nuevo del motor no entra en la cuenta. Y se mira en una
 // sola dirección a propósito — un `.sh` de más es cómo una empresa agrega el suyo, que es justo lo

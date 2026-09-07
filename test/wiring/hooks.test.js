@@ -1269,3 +1269,146 @@ test('shell-boundary resuelve las rutas contra el cd del propio comando', () => 
   assert.doesNotThrow(() => execute('shell-boundary',
     desde(root, `cd ${afuera} && cd ${root} && echo a > uno.md`)))
 })
+
+// Las dos mitades de `plan-first`: qué frena —el cambio de producto sin plan— y, sobre todo, qué deja
+// pasar. La segunda es la que decide si el guard sirve: si frenara la escritura del propio WIP sería un
+// candado con la llave adentro, y si frenara a `onboard` o a una evaluación, quien lo sufra lo apaga.
+const BACKLOG_CON_TAREA = '# Backlog promovido\n\n## Hito primero — Primer resultado\n\n'
+  + '- [ ] **alta-de-cliente** [lite] — Alta. _Aceptación: responde 201._ (service: api)\n'
+const BACKLOG_VACIO = '# Backlog promovido\n'
+
+function planFirstRoot(prefijo, wip, backlog = BACKLOG_CON_TAREA) {
+  const root = tempRoot(prefijo)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }] }))
+  fs.writeFileSync(path.join(root, 'planning', 'WIP.md'), wip)
+  fs.writeFileSync(path.join(root, 'planning', 'BACKLOG.md'), backlog)
+  return root
+}
+
+const WIP_IDLE = 'status: IDLE\n'
+const WIP_CON_PLAN = '---\ntask: alta-de-cliente\nphase: Build\nservice: api\n---\n\n'
+  + '## Plan aprobado\n1. [ ] Escribir el handler\n'
+const WIP_SIN_PLAN = '---\ntask: alta-de-cliente\nphase: Build\nservice: api\n---\n\n## Plan aprobado\n'
+
+test('guard-plan-first exige el plan antes de cambiar el producto', () => {
+  const root = planFirstRoot('ops-hook-plan-', WIP_IDLE)
+  const escribe = (file) => ({ cwd: root, tool_input: { file_path: file } })
+
+  blocked('plan-first', escribe('src/altas.js'), /sin plan/)
+  // Nombrar el estado es la mitad del mensaje: «IDLE» y «tarea sin pasos» piden cosas distintas.
+  blocked('plan-first', escribe('src/altas.js'), /IDLE/)
+
+  const conTarea = planFirstRoot('ops-hook-plan-sinpasos-', WIP_SIN_PLAN)
+  blocked('plan-first', { cwd: conTarea, tool_input: { file_path: 'src/altas.js' } },
+    /alta-de-cliente y ningún paso/)
+
+  const conPlan = planFirstRoot('ops-hook-plan-ok-', WIP_CON_PLAN)
+  assert.doesNotThrow(() => execute('plan-first', { cwd: conPlan, tool_input: { file_path: 'src/altas.js' } }))
+})
+
+test('guard-plan-first no juzga lo que la instancia posee', () => {
+  const root = planFirstRoot('ops-hook-plan-exento-', WIP_IDLE)
+  const escribe = (file) => execute('plan-first', { cwd: root, tool_input: { file_path: file } })
+
+  // El plan se escribe acá: sin esta exención, escribirlo exigiría haberlo escrito.
+  assert.doesNotThrow(() => escribe('planning/WIP.md'))
+  assert.doesNotThrow(() => escribe('planning/roadmap/epic-001-alta.md'))
+  // Y los recorridos que no pasan por la máquina de tareas tampoco tienen un WIP que mostrar.
+  assert.doesNotThrow(() => escribe('organization/workspace.md'))
+  assert.doesNotThrow(() => escribe('agents/roles/tech-lead/SKILL.md'))
+  assert.doesNotThrow(() => escribe('integrations/jira/staging/draft.md'))
+  // Un directorio que sólo empieza igual no es la raíz exenta.
+  blocked('plan-first', { cwd: root, tool_input: { file_path: 'planningtool/app.js' } }, /sin plan/)
+})
+
+test('guard-plan-first queda inerte mientras el planning no declara tareas', () => {
+  // El día uno no hay trabajo de producto que cuidar, hay instalación: `onboard` deja el roadmap vacío
+  // y pide que alguien lo llene. Un bloqueo ahí es un candado delante de la puerta.
+  const nuevo = planFirstRoot('ops-hook-plan-nuevo-', WIP_IDLE, BACKLOG_VACIO)
+  assert.doesNotThrow(() => execute('plan-first', { cwd: nuevo, tool_input: { file_path: 'src/altas.js' } }))
+
+  // Y muerde en cuanto hay de dónde sacar una tarea, que es la mitad que vuelve útil a la otra.
+  fs.writeFileSync(path.join(nuevo, 'planning', 'BACKLOG.md'), BACKLOG_CON_TAREA)
+  blocked('plan-first', { cwd: nuevo, tool_input: { file_path: 'src/altas.js' } }, /sin plan/)
+
+  // Una tarea ya terminada cuenta igual: el BACKLOG vacío de una instancia con historia no la devuelve
+  // al día uno.
+  const conHistoria = planFirstRoot('ops-hook-plan-historia-', WIP_IDLE, BACKLOG_VACIO)
+  fs.writeFileSync(path.join(conHistoria, 'planning', 'DONE.md'),
+    '# Done activo\n\n## Hito primero — Primer resultado\n\n- [x] **alta-de-cliente** — Alta\n')
+  blocked('plan-first', { cwd: conHistoria, tool_input: { file_path: 'src/altas.js' } }, /sin plan/)
+})
+
+test('guard-plan-first se abre por aprobación, por variable y donde no hay instancia', () => {
+  const root = planFirstRoot('ops-hook-plan-llaves-', WIP_IDLE)
+  const escribe = { cwd: root, tool_input: { file_path: 'src/altas.js' } }
+
+  fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), 'src/altas.js\n')
+  assert.doesNotThrow(() => execute('plan-first', escribe))
+  // La aprobación vale para la ruta que nombra y para ninguna otra.
+  blocked('plan-first', { cwd: root, tool_input: { file_path: 'src/bajas.js' } }, /sin plan/)
+  fs.unlinkSync(path.join(root, 'planning', '.ops-approval'))
+  blocked('plan-first', escribe, /sin plan/)
+
+  process.env.OPS_PLAN_FIRST_OVERRIDE = '1'
+  try { assert.doesNotThrow(() => execute('plan-first', escribe)) } finally {
+    delete process.env.OPS_PLAN_FIRST_OVERRIDE
+  }
+
+  // Sin `planning/` no hay instancia que gobernar: es el estado de este mismo repositorio.
+  const suelto = tempRoot('ops-hook-plan-suelto-')
+  assert.doesNotThrow(() => execute('plan-first', { cwd: suelto, tool_input: { file_path: 'src/altas.js' } }))
+})
+
+// El registro que deja `verify` y el contraste que lo lee. Las dos mitades juntas porque el valor está
+// en que sean independientes del autor: la corrida la escribe el guard al commitear, no quien redacta
+// después la entrada de DONE.
+test('verify deja registrado qué gate corrió y con qué código de salida', () => {
+  const EV = require('../../engine/core/evidence')
+  const root = tempRoot('ops-hook-evidencia-')
+  initRepo(root)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node -e ""' } }))
+  fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = true\n')
+  git(['add', 'package.json', 'app.js'], root)
+  const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
+
+  assert.equal(EV.runs(root).length, 0, 'sin corridas, el registro está vacío')
+  assert.doesNotThrow(() => execute('verify', commit))
+  const runs = EV.runs(root)
+  assert.equal(runs.length, 1, 'el gate que corrió quedó registrado')
+  assert.equal(runs[0].gate, 'test')
+  assert.equal(runs[0].status, 0)
+
+  fs.writeFileSync(path.join(root, 'package.json'),
+    JSON.stringify({ scripts: { test: 'node -e "process.exit(1)"' } }))
+  git(['add', 'package.json'], root)
+  blocked('verify', commit, /Verify falló/)
+  assert.equal(EV.runs(root).slice(-1)[0].status, 1, 'y con su código de salida real')
+
+  // Rodante: lo que interesa es el trabajo en curso, no la historia entera.
+  for (let i = 0; i < EV.MAX_RUNS + 5; i += 1) EV.record(root, 'test', 0)
+  assert.equal(EV.runs(root).length, EV.MAX_RUNS)
+})
+
+test('el contraste de evidencia separa lo que existe de lo que no se puede buscar', () => {
+  const EV = require('../../engine/core/evidence')
+  const root = tempRoot('ops-hook-contraste-')
+  fs.mkdirSync(path.join(root, 'api'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'api', 'alta_test.go'), 'func TestAltaResponde201(t *testing.T) {}\n')
+  const roots = [path.join(root, 'api')]
+
+  const veredicto = (tests) => EV.contrast(tests, roots).map((trace) => trace.verdict)
+  assert.deepEqual(veredicto('C1 → TestAltaResponde201'), ['encontrado'])
+  // La prueba inventada es lo que este contraste existe para atrapar.
+  assert.deepEqual(veredicto('C1 → TestQueNoExiste'), ['ausente'])
+  // Y la descrita en prosa no se da por ausente: el molde admite «nombre de prueba o comando», así que
+  // confundir «no lo encontré» con «no existe» convertiría la forma documentada en un error.
+  assert.deepEqual(veredicto('C1 → prueba de alta de cliente'), ['inbuscable'])
+  assert.deepEqual(veredicto('n/a — no hay superficie ejecutable'), [])
+  // Sin raíces declaradas no hay dónde mirar, y afirmar ausencia ahí sería inventar el hallazgo.
+  assert.deepEqual(EV.contrast('C1 → TestAltaResponde201', []).map((t) => t.verdict), ['inbuscable'])
+})

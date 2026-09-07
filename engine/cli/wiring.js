@@ -12,6 +12,7 @@ const A = require('../automation')
 const SC = require('../core/scan')
 const OB = require('../core/onboarding')
 const IN = require('./instance')
+const ST = require('../planning/state')
 const { fail, opsRoot } = require('./io')
 
 // Cuántos servicios se listan en pantalla antes de recortar. El resto sigue en `--json`, que es lo que
@@ -234,6 +235,13 @@ function automation(action, rootArg, runnerName, cli) {
     console.log(
       `✓ automatización válida: ${A.GUARD_NAMES.length} guards, ${A.RUNNER_NAMES.length} adaptadores`,
     )
+    // De los guards instalados hay uno que no siempre corre, y un guard que a veces no corre tiene que
+    // decir cuándo. `plan-first` queda inerte mientras el planning no declare ninguna tarea; sin esta
+    // línea la condición sería invisible y el conteo de arriba prometería una cobertura que no está.
+    const planning = path.join(root, 'planning')
+    if (fs.existsSync(planning) && !ST.hasTasks(planning)) {
+      console.log('  plan-first: inerte, el planning todavía no declara tareas')
+    }
     return
   }
   if (action === 'doctor') {

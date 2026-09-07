@@ -7,6 +7,7 @@ Los hooks convierten invariantes comprobables en gates mecánicos. La base recom
 - edición manual de código generado y drift respecto a OpenAPI/SQL;
 - commits sin Verify aplicable;
 - apagado o borrado de la prueba que juzga el cambio;
+- cambio de producto sin un WIP activo que traiga el plan;
 - cierre de sesión con planning o integraciones inválidas;
 - modificación del protocolo durante una tarea de producto.
 - escrituras fuera de las raíces declaradas del workspace;
