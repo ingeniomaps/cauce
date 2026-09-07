@@ -14,6 +14,26 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.69.0] - 2026-09-07
+
+### Agregado
+
+- **`planning/RECURRING.md`: el trabajo que vuelve se declara una vez.** Actualizar dependencias, revisar
+  quién tiene acceso a producción, mirar el gasto del mes: una fila con su cadencia —`mensual`,
+  `trimestral`, `semestral` o `anual`— y la celda de tarea escrita como la cola de su línea de BACKLOG,
+  así que la aceptación se decide una vez y no se improvisa en cada vuelta.
+
+  **Nada se dispara.** No hay cron ni cola: el vencimiento se calcula cuando alguien corre el CLI, y rueda
+  desde el período que cerró la última vuelta en `DONE.md` en vez de una celda que haya que acordarse de
+  actualizar. `node tools/ops.js recurring planning` dice qué venció, y `--promote <qué>` emite la línea de
+  esa vuelta —la emite y no la escribe: pegarla en `BACKLOG.md` es el acto de promoción—. `check` rechaza
+  la fila ilegible y avisa la vencida sin frenar nada; `context` la nombra con `DUE`. Postergar se escribe
+  a mano con su razón, compra un período, y tres seguidas se avisan porque ahí lo que falla es la cadencia.
+
+  **Lo que te pide algo**: el archivo llega vacío con esta actualización y, hasta que declares una fila, el
+  motor no dice una palabra. Y si tu runner ya está andando, la regla nueva que necesita está en
+  `AGENTS.md`: una recurrencia vencida no la promueve él, por más que `context` la nombre sola.
+
 ## [0.68.0] - 2026-09-07
 
 ### Cambiado
