@@ -264,11 +264,47 @@ function writeTargets(command) {
 // el guard frena `> /dev/null 2>&1`, y lo primero que hace quien lo sufre es apagarlo entero.
 const NEUTRAL = [/^\/dev\/(?:null|stdout|stderr|tty|fd\/)/, new RegExp(`^${os.tmpdir()}(?:/|$)`)]
 
+// A dónde deja parado un `cd`. `null` significa que no se sabe, que no es lo mismo que la raíz: un
+// destino con variable o un `cd -` dependen de un estado que este proceso no tiene.
+function cdTarget(argument, base) {
+  if (argument === undefined) return os.homedir()
+  if (argument === '-' || /[$`\u0000]/.test(argument)) return null
+  if (/^~(?=$|\/)/.test(argument)) return argument.replace(/^~/, os.homedir())
+  return path.resolve(base, argument)
+}
+
+// Las escrituras de un comando, cada una con el directorio contra el que hay que resolverla. El `cd`
+// del propio comando cambia eso para todo lo que viene después y es lo primero que el shell ejecuta;
+// sin mirarlo, el guard juzgaba una ruta que nadie iba a escribir, y fallaba en los dos sentidos.
+//
+// Se recorre por tramos y se lleva la cuenta, en vez de mirar sólo el primero como hace `gitDirectory`.
+// Ahí alcanza porque un comando elige un repositorio; acá cada escritura puede caer bajo un `cd`
+// distinto, y juzgar la primera contra el último sería cambiar un error de lugar en vez de arreglarlo.
+//
+// Los tramos salen del texto ya sin comillas, así que un `;` adentro de una cadena no parte nada.
+function writesWithBase(command, cwd) {
+  const found = []
+  let base = cwd
+  for (const segment of unquoted(command).split(/[;&|\n]+/)) {
+    const cd = segment.match(/^\s*cd(?:\s+(\S+))?\s*$/)
+    if (cd) { base = base === null ? null : cdTarget(cd[1], base); continue }
+    for (const raw of writeTargets(segment)) found.push({ raw, base })
+  }
+  return found
+}
+
 function shellBoundary(input) {
   const allowed = writableRoots(input)
   if (!allowed) return
-  for (const raw of writeTargets(commandOf(input))) {
-    const file = path.resolve(cwdOf(input), raw)
+  for (const { raw, base } of writesWithBase(commandOf(input), cwdOf(input))) {
+    // Una ruta absoluta no depende del `cd`, así que un destino que no se sabe no la vuelve injuzgable.
+    // Al revés sí: sin saber desde dónde se resuelve, una relativa no se puede verificar, y un guard que
+    // no puede verificar no autoriza —el criterio que fijó el 031 para el índice—.
+    if (!path.isAbsolute(raw) && base === null) {
+      block(`el comando hace \`cd\` a un destino que no se puede resolver acá, así que no hay contra qué `
+        + `resolver ${raw}. Escribí la ruta absoluta, o hacé el \`cd\` en un comando aparte.`)
+    }
+    const file = path.resolve(base, raw)
     if (NEUTRAL.some((pattern) => pattern.test(file))) continue
     if (outsideRoots(file, allowed)) {
       block(`el comando escribe en ${file}, fuera de las raíces declaradas en ops.config.json. ${DECLARE_IT}`)

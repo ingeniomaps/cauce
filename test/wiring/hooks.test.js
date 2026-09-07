@@ -5,7 +5,7 @@
 //
 // Acá se ejecuta la decisión. Dónde aterriza el wiring que la invoca es de `runners.test.js`.
 
-const { tempRoot } = require('../support/environment')
+const { tempRoot, outsideTempRoot } = require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -1213,4 +1213,59 @@ test('dependencies mira el índice para saber qué lockfiles va a haber', () => 
   blocked('dependencies', commitDos, /hay varios lockfiles/)
   fs.rmSync(path.join(dos, 'pnpm-lock.yaml'))
   blocked('dependencies', commitDos, /sin actualizar su lockfile/)
+})
+
+// Los dos sentidos del mismo defecto van juntos y en la misma prueba: con uno solo, el arreglo se
+// puede «cumplir» bloqueando todo o dejando pasar todo. Por qué el `cd` cambia la respuesta, en
+// `writesWithBase`.
+test('shell-boundary resuelve las rutas contra el cd del propio comando', () => {
+  const base = outsideTempRoot('ops-hook-cd-')
+  const root = path.join(base, 'proyecto')
+  const afuera = path.join(base, 'afuera')
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.mkdirSync(afuera, { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ workspaceRoots: [{ name: 'main', path: '.' }] }))
+  const desde = (cwd, command) => ({ cwd, tool_input: { command } })
+
+  // El sentido silencioso: la ruta real sale de las raíces y la resuelta contra el cwd caía adentro.
+  blocked('shell-boundary', desde(root, `cd ${afuera} && echo x > nota.md`), /fuera de las raíces/)
+  // Y el bloqueo nombra la ruta que se iba a escribir, no la que el guard había supuesto.
+  assert.throws(() => execute('shell-boundary', desde(root, `cd ${afuera} && echo x > nota.md`)),
+    (error) => {
+      assert.match(error.message, new RegExp(path.join(afuera, 'nota.md').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+      return true
+    })
+
+  // La cara de falso positivo, que llega cuando el runner está abierto fuera de las raíces: el destino
+  // real es el temporal del sistema, que este guard no juzga por diseño, y la resolución equivocada lo
+  // sacaba de esa exención para mandarlo a una ruta que nadie iba a escribir.
+  const antes = process.env.CLAUDE_PROJECT_DIR
+  process.env.CLAUDE_PROJECT_DIR = root
+  try {
+    assert.doesNotThrow(() => execute('shell-boundary',
+      desde(afuera, `cd ${os.tmpdir()} && echo v1 > sonda.txt`)))
+    assert.doesNotThrow(() => execute('shell-boundary', desde(afuera, `cd ${root} && echo v1 > sonda.txt`)))
+    // Sin `cd` sigue bloqueando, que es lo correcto: ahí la ruta resuelta sí es la que se escribe.
+    blocked('shell-boundary', desde(afuera, 'echo v1 > sonda.txt'), /fuera de las raíces/)
+  } finally {
+    if (antes === undefined) delete process.env.CLAUDE_PROJECT_DIR
+    else process.env.CLAUDE_PROJECT_DIR = antes
+  }
+
+  // Un `cd` que no se puede resolver, con su contraparte inmediata: lo que no puede convertirse es en
+  // una excusa para bloquear lo que sí se sabe juzgar.
+  blocked('shell-boundary', desde(root, 'cd $TRABAJO && echo x > nota.md'), /no se puede resolver/)
+  // Pero no se bloquea de más: con la ruta absoluta escrita, el `cd` deja de importar.
+  assert.doesNotThrow(() => execute('shell-boundary',
+    desde(root, `cd $TRABAJO && echo x > ${path.join(root, 'nota.md')}`)))
+
+  // `cd` a secas va a HOME, y eso también cambia contra qué se resuelve lo que sigue.
+  blocked('shell-boundary', desde(root, 'cd && echo x > nota.md'), /fuera de las raíces/)
+
+  // Y cada escritura se juzga contra el `cd` que la precede, no contra el primero del comando.
+  blocked('shell-boundary',
+    desde(root, `cd ${root} && echo a > uno.md && cd ${afuera} && echo b > dos.md`), /fuera de las raíces/)
+  assert.doesNotThrow(() => execute('shell-boundary',
+    desde(root, `cd ${afuera} && cd ${root} && echo a > uno.md`)))
 })
