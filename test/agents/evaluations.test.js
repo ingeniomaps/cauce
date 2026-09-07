@@ -9,6 +9,7 @@ require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
 const catalog = require('../../engine/agents/catalog')
 const evaluations = require('../../engine/agents/evaluations')
@@ -36,19 +37,28 @@ test('un caso adversarial entrega el artefacto, no lo describe', () => {
     }
   }
   // El control gatea: si el artefacto falta, es error y no advertencia. Como advertencia es como
-  // estuvo faltando en los 47 sin que nada lo dijera. Se comprueba escondiendo el artefacto de un caso
-  // real y devolviéndolo: afirmar sobre un objeto armado a mano probaría el objeto, no el control.
+  // estuvo faltando en los 47 sin que nada lo dijera. Se comprueba sacándole el artefacto a un caso
+  // real: afirmar sobre un objeto armado a mano probaría el objeto, no el control.
+  //
+  // El caso real se copia antes de tocarlo, y eso no es prolijidad. Escondiéndolo en el árbol del
+  // repositorio, el archivo desaparecía de disco durante la llamada a `validate` mientras otro archivo
+  // de pruebas —`instance/delivery`, que recorre todo lo que `git ls-files` devuelve— lo leía desde
+  // otro proceso: `node --test` corre los archivos en paralelo. Daba `ENOENT` en un test que no toca
+  // nada de esto, 10 corridas de cada 12, y culpaba a la puerta en vez de a este renombre.
   assert.equal(evaluations.validate(REPO, 'qa-engineer').errors.length, 0, 'el catálogo está completo')
-  const one = evaluations.list(REPO, 'qa-engineer').find((one) => one.id.includes('adversarial'))
-  const dir = evaluations.fixtures(REPO, 'qa-engineer', one.id).dir
-  const hidden = `${dir}.oculto`
-  fs.renameSync(dir, hidden)
+  const copy = fs.mkdtempSync(path.join(os.tmpdir(), 'cauce-eval-'))
+  fs.mkdirSync(path.join(copy, 'agents', 'roles', 'system'), { recursive: true })
+  fs.cpSync(catalog.resolve(REPO, 'qa-engineer'),
+    path.join(copy, 'agents', 'roles', 'system', 'qa-engineer'), { recursive: true })
   try {
-    const errors = evaluations.validate(REPO, 'qa-engineer').errors
+    assert.equal(evaluations.validate(copy, 'qa-engineer').errors.length, 0, 'la copia arranca completa')
+    const one = evaluations.list(copy, 'qa-engineer').find((one) => one.id.includes('adversarial'))
+    fs.rmSync(evaluations.fixtures(copy, 'qa-engineer', one.id).dir, { recursive: true })
+    const errors = evaluations.validate(copy, 'qa-engineer').errors
     assert.equal(errors.length, 1, 'falta el artefacto y se dice')
     assert.match(errors[0], /sin artefacto/)
   } finally {
-    fs.renameSync(hidden, dir)
+    fs.rmSync(copy, { recursive: true, force: true })
   }
 })
 
