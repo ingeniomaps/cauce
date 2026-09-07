@@ -269,14 +269,14 @@ test('check muestra una aprobación de gobernanza sin borrar, contando rutas', (
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
   const planning = path.join(target, 'planning')
-  assert.doesNotMatch(run(['check', planning]).stderr, /governance-approval/, 'sin archivo no avisa nada')
+  assert.doesNotMatch(run(['check', planning]).stderr, /ops-approval/, 'sin archivo no avisa nada')
 
-  fs.writeFileSync(path.join(planning, '.governance-approval'),
+  fs.writeFileSync(path.join(planning, '.ops-approval'),
     '# Aprobado por X el 2026-09-06.\n# Vale para el commit de la propuesta.\nplanning/rules/system/conduct.md\n')
   const avisado = run(['check', planning])
 
   assert.equal(avisado.status, 0, 'es advertencia: la aprobación es legítima, lo que no puede es esconderse')
-  assert.match(avisado.stderr + avisado.stdout, /governance-approval: 1 ruta\(s\)/,
+  assert.match(avisado.stderr + avisado.stdout, /ops-approval: 1 ruta\(s\)/,
     'una ruta y dos comentarios son una ruta')
 })
 

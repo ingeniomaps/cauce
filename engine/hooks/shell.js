@@ -9,8 +9,8 @@ const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const {
-  commandOf, cwdOf, block, gitDirectory, isCommit, stagedFiles, pushAllowed,
-  writableRoots, outsideRoots, DECLARE_IT, unquoted, findOpsRoot,
+  commandOf, cwdOf, block, isCommit, stagedForCommit, pushAllowed,
+  writableRoots, outsideRoots, DECLARE_IT, unquoted, findOpsRoot, withoutGitGlobals,
 } = require('./input')
 const AP = require('./approval')
 
@@ -40,9 +40,18 @@ const COMANDO = String.raw`$|[;&|)'"\`]`
 // `bash -c "git push origin main"` y `eval "git reset --hard"` siguen cayendo, comprobado. Queda afuera
 // la sustitución dentro del propio mensaje —`git commit -m "$(...)"` corre y ya no se ve—, que es
 // evasión y no la forma habitual.
+// La raíz donde vive `planning/`, que es donde se busca la aprobación. Los cuatro guards que la
+// consultan la resuelven igual, así que se resuelve una vez.
+function opsRoot(input) {
+  return findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
+}
+
 function destructive(input) {
   const raw = commandOf(input)
-  const command = isCommit(raw) ? unquoted(raw) : raw
+  // Las opciones globales de `git` se sacan acá y no en cada regla: toda regla de abajo que mire un
+  // subcomando lo escribe pegado a `git`, y con una en el medio dejaba de matchear. Por qué, en
+  // `withoutGitGlobals`.
+  const command = withoutGitGlobals(isCommit(raw) ? unquoted(raw) : raw)
   // Ninguna de estas dos ramas tiene override, y la pregunta merece respuesta escrita porque cuatro
   // guards del motor sí lo tienen. R8 no admite excepción configurable para `force` ni para `amend`, y
   // el precedente es `git-add`, que hace cumplir la misma regla sin escapatoria. Lo que corresponde
@@ -106,9 +115,24 @@ function destructive(input) {
 }
 
 function gitAdd(input) {
-  const command = commandOf(input)
-  if (/\bgit\s+add\s+(?:[^;&|]*\s)?(?:-A\b|--all\b|\.)(?:\s|$|[;&|])/.test(command)) {
+  const raw = commandOf(input)
+  // El mensaje de un commit es dato, igual que en `destructive` y por lo mismo: el commit que explica
+  // esta prohibición la nombra, y sin esto no se podía escribir. Fuera de un commit lo entrecomillado
+  // sí se ejecuta, así que ahí no se vacía.
+  const command = withoutGitGlobals(isCommit(raw) ? unquoted(raw) : raw)
+  // Dónde termina la palabra lo decide PALABRA y no un espacio: `bash -c "git add -A"` y
+  // `eval 'git add -A'` pasaban porque después de la bandera venía una comilla. Es el hueco que 028
+  // cerró en las reglas de `destructive`, y esta regla se quedó afuera de aquel arreglo.
+  if (new RegExp(String.raw`\bgit\s+add\s+(?:[^;&|]*\s)?(?:-A|--all|\.)(?=${PALABRA})`)
+    .test(command)) {
     block("'git add -A/--all/.' está prohibido. Stagea rutas explícitas.")
+  }
+  // La misma regla con otra ortografía: `-a` stagea todo lo seguido sin nombrar una ruta, y encima lo
+  // hace al commitear —después de este hook—, así que los guards que leen el índice tampoco lo ven.
+  // `--amend` queda afuera: empieza con dos guiones y lo frena `destructive`, por otra razón.
+  if (/\bgit\s+commit\b[^;&|]*\s(?:-[a-z]*a[a-z]*|--all)\b/.test(command)) {
+    block("'git commit -a' stagea al commitear, después de este guard: nadie llega a revisar el diff "
+      + 'staged, ni vos ni los guards que lo miran. Stageá las rutas por nombre y commiteá aparte.')
   }
 }
 
@@ -121,8 +145,7 @@ function dependencies(input) {
     block('Publicar paquetes o instalar dependencias globales requiere una acción humana explícita.')
   }
   if (!isCommit(command)) return
-  const dir = gitDirectory(command, cwdOf(input))
-  const staged = stagedFiles(dir)
+  const { dir, staged } = stagedForCommit(command, cwdOf(input))
   const manifests = new Set(['package.json', 'pyproject.toml', 'requirements.txt', 'go.mod', 'Cargo.toml'])
   const locks = new Set([
     'package-lock.json',
@@ -144,16 +167,24 @@ function dependencies(input) {
     state[manifests.has(base) ? 'manifests' : 'locks'].push(base)
     byDir.set(parent, state)
   }
+  // Lo que se juzga acá es el archivo staged, así que la aprobación por ruta lo expresa: autorizar
+  // `package.json` dice «este manifiesto va sin su lock a propósito» y deja de valer en cuanto el
+  // conjunto cambie. La rama de publicar no pasa por acá y no tiene ruta: sigue arriba, con su variable.
+  const sinAprobar = (parent, names) => AP.pending(opsRoot(input),
+    names.map((name) => path.posix.join(parent === '.' ? '' : parent, name))).length
   for (const [parent, state] of byDir) {
     const existingLocks = [...locks].filter((name) => fs.existsSync(path.join(dir, parent, name)))
     if (existingLocks.length > 1) {
       block(`${parent}: hay varios lockfiles (${existingLocks.join(', ')}). Conserva uno solo.`)
     }
-    if (state.manifests.length && existingLocks.length && !state.locks.length) {
-      block(`${parent}: cambió ${state.manifests.join(', ')} sin actualizar su lockfile.`)
+    if (state.manifests.length && existingLocks.length && !state.locks.length
+      && sinAprobar(parent, state.manifests)) {
+      block(`${parent}: cambió ${state.manifests.join(', ')} sin actualizar su lockfile.\n`
+        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE'))
     }
-    if (state.locks.length && !state.manifests.length) {
-      block(`${parent}: cambió ${state.locks.join(', ')} sin un cambio explícito en el manifest.`)
+    if (state.locks.length && !state.manifests.length && sinAprobar(parent, state.locks)) {
+      block(`${parent}: cambió ${state.locks.join(', ')} sin un cambio explícito en el manifest.\n`
+        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE'))
     }
   }
 }
@@ -235,7 +266,6 @@ function governance(input) {
   if (process.env.OPS_GOVERNANCE_OVERRIDE === '1') return
   const command = commandOf(input)
   if (!isCommit(command)) return
-  const dir = gitDirectory(command, cwdOf(input))
   // El contrato de un cargo y lo que lo mide son gobernanza, igual que un ADR o una regla. La firma de
   // «Aprobación humana» sólo estaba protegida por una frase en un prompt; `SKILL.md` y `references/`
   // son lo que la propuesta cambia, y editarlos directo saltea el ciclo entero; y `evaluations/` es el
@@ -250,20 +280,16 @@ function governance(input) {
       String.raw`|agents\/[a-z0-9-]+\/(?:system\/)?[a-z0-9-]+\/(?:SKILL\.md|references\/` +
       String.raw`|evaluations\/(?:cases\/|expected-behaviors\.yaml)|learning\/proposals\/))`,
   )
-  const governed = stagedFiles(dir).filter((file) => governedPattern.test(file))
+  const governed = stagedForCommit(command, cwdOf(input))
+    .staged.filter((file) => governedPattern.test(file))
   if (!governed.length) return
   // La aprobación vale para lo que nombra y para nada más: lo que quede sin cubrir es lo que se
   // reporta. Así una aprobación vieja no autoriza el archivo que se sumó después, que es la diferencia
   // entre una llave por operación y una puerta que quedó abierta.
-  const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
-  const aprobados = new Set(root ? AP.read(root) : [])
-  const pendientes = governed.filter((file) => !aprobados.has(file))
+  const pendientes = AP.pending(opsRoot(input), governed)
   if (!pendientes.length) return
   const files = pendientes.map((file) => `  - ${file}`).join('\n')
-  block(`El commit toca gobernanza protegida:\n${files}\n`
-    + `Aprobalo escribiendo esas rutas en planning/${AP.APPROVAL}, una por línea: vale para ese `
-    + 'conjunto y deja de valer en cuanto cambie. La variable OPS_GOVERNANCE_OVERRIDE=1 sigue '
-    + 'existiendo y apaga el guard para toda la sesión, que es por lo que no es la vía recomendada.')
+  block(`El commit toca gobernanza protegida:\n${files}\n${AP.HOW('OPS_GOVERNANCE_OVERRIDE')}`)
 }
 
 function run(program, args, cwd) {
@@ -281,18 +307,23 @@ function verify(input) {
   if (process.env.OPS_SKIP_VERIFY === '1') return
   const command = commandOf(input)
   if (!isCommit(command)) return
-  const dir = gitDirectory(command, cwdOf(input))
-  const staged = stagedFiles(dir)
+  const { dir, staged } = stagedForCommit(command, cwdOf(input))
   const changedOpenApi = staged.some((file) => /^(?:openapi|api|spec)(?:\/.*)?\/[^/]+\.ya?ml$/i.test(file))
     || staged.some((file) => /^(?:openapi|swagger)\.ya?ml$/i.test(file))
   const changedSqlSource = staged.some((file) => /^(?:db\/queries|queries)\/.*\.sql$/i.test(file))
   const hasApiGenerated = staged.some((file) => /(?:^|\/)[^/]*(?:generated|\.gen)\.(?:go|ts|js|py)$/i.test(file))
   const hasSqlGenerated = staged.some((file) => /(?:^|\/)(?:sqlc|generated)(?:\/|.*\.(?:go|ts|js|py)$)/i.test(file))
-  if (changedOpenApi && !hasApiGenerated) {
-    block('Cambió una fuente OpenAPI/Swagger sin incluir código regenerado. Ejecuta el generador y stagea su salida.')
+  // Acá lo aprobado es el conjunto staged entero: decir «autorizo commitear exactamente estas rutas»
+  // es lo que un gate en rojo necesita, y cambia en cuanto se stagea una más. La lista sale del índice
+  // y no de una regla, que es lo que la vuelve una operación y no un permiso.
+  const aprobado = !AP.pending(opsRoot(input), staged).length
+  if (changedOpenApi && !hasApiGenerated && !aprobado) {
+    block('Cambió una fuente OpenAPI/Swagger sin incluir código regenerado. Ejecuta el generador y '
+      + `stagea su salida.\n${AP.HOW('OPS_SKIP_VERIFY')}`)
   }
-  if (changedSqlSource && !hasSqlGenerated) {
-    block('Cambió una consulta SQL fuente sin artefactos regenerados. Ejecuta el generador.')
+  if (changedSqlSource && !hasSqlGenerated && !aprobado) {
+    block('Cambió una consulta SQL fuente sin artefactos regenerados. Ejecuta el generador.\n'
+      + AP.HOW('OPS_SKIP_VERIFY'))
   }
   if (!staged.some((file) => /\.(?:ts|tsx|js|jsx|mjs|cjs|go|py|html|css|scss|prisma)$/.test(file))) return
   const failures = []
@@ -324,7 +355,10 @@ function verify(input) {
       if (!result.ok) failures.push(`make test (exit ${result.status})`)
     }
   }
-  if (failures.length) block(`Verify falló en ${path.basename(dir)}: ${failures.join(', ')}. No se commitea en rojo.`)
+  if (failures.length && !aprobado) {
+    block(`Verify falló en ${path.basename(dir)}: ${failures.join(', ')}. No se commitea en rojo.\n`
+      + AP.HOW('OPS_SKIP_VERIFY'))
+  }
 }
 
 module.exports = { destructive, gitAdd, dependencies, governance, verify, shellBoundary, run }

@@ -554,10 +554,9 @@ test('un índice que no se puede leer no autoriza el commit', () => {
   }))
 })
 
-// La salida que había era una variable de entorno, y una variable es por sesión: prendida antes de
-// lanzar el runner apaga el guard hasta que la sesión cierre. Lo que se mide acá es que la aprobación
-// valga para lo que nombra **y para nada más** — sin eso sería la misma puerta abierta con otra forma.
-// `approval` cuenta por qué se coteja en vez de consumirse.
+// Lo que se mide acá es que la aprobación valga para lo que nombra **y para nada más**: sin eso sería
+// la misma puerta abierta que vino a cerrar, con otra forma. Por qué existe y por qué se coteja en vez
+// de consumirse, en `approval`.
 test('una aprobación de gobernanza vale para lo que nombra y deja de valer al cambiar', () => {
   const root = tempRoot('ops-hook-aprobacion-')
   git(['init'], root)
@@ -576,7 +575,7 @@ test('una aprobación de gobernanza vale para lo que nombra y deja de valer al c
     return relative
   }
   // Con cabecera: quien lo escribe a mano va a explicar qué autorizó y cuándo, y eso no es una ruta.
-  const aprobar = (...rutas) => fs.writeFileSync(path.join(root, 'planning', '.governance-approval'),
+  const aprobar = (...rutas) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
     `# Aprobado por X el 2026-09-06 para el commit de la propuesta 2026-08.\n${rutas.join('\n')}\n`)
   const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
 
@@ -839,4 +838,232 @@ test('guard-files lee el sobre de apply_patch aunque llegue como command', () =>
     cwd: root,
     tool_input: { command: 'grep -r "*** Update File: migrations/001_init.sql" .' },
   }))
+})
+
+// Se cruzan todas las reglas contra todas las formas, y no una contra una, porque lo que falló no fue
+// un patrón sino que cada uno resolvía la posición por su cuenta —el porqué, en `withoutGitGlobals`—.
+// Con una sola pareja, el próximo patrón que se escriba pegado vuelve a entrar sin que nada lo note.
+test('una opción global de git no desactiva la regla que mira el subcomando', () => {
+  // La lista es la de `git --help` entera y no una muestra: una opción que el patrón nombra y ningún
+  // caso ejercita se puede borrar sin que nada se ponga rojo —comprobado sacando `--bare` y
+  // `--no-replace-objects`, que pasaba en verde—, y entonces no está cubierta, está escrita.
+  const GLOBALS = [
+    '-C /tmp', '-c core.pager=cat', '-p', '-P', '--paginate', '--no-pager',
+    '--git-dir /tmp/.git', '--git-dir=/tmp/.git', '--work-tree /tmp', '--work-tree=/tmp',
+    '--namespace ns', '--namespace=ns', '--config-env=k=V', '--exec-path=/usr/lib/git-core',
+    '--no-replace-objects', '--bare', '--no-optional-locks',
+    '--literal-pathspecs', '--glob-pathspecs', '--noglob-pathspecs', '--icase-pathspecs',
+    '-c a=b -C /tmp',
+  ]
+  const forms = (command) => [command, ...GLOBALS.map((one) => command.replace('git ', `git ${one} `))]
+  const rules = [
+    ['git-add', 'git add -A', /está prohibido/],
+    ['destructive', 'git push origin main --force', /reescribe historia ya publicada/],
+    ['destructive', 'git push origin main', /publica cambios/],
+    ['destructive', 'git reset --hard HEAD', /destruye cambios locales/],
+    ['destructive', 'git commit --amend -m x', /reescribe un commit ya creado/],
+    ['destructive', 'git clean -fd', /sin seguimiento/],
+    ['destructive', 'git checkout -- .', /no sólo lo que estás mirando/],
+  ]
+  for (const [guard, command, motivo] of rules) {
+    for (const form of forms(command)) blocked(guard, { tool_input: { command: form } }, motivo)
+  }
+})
+
+// La contracara, que es la que evita que el arreglo se cumpla bloqueando de más: sacar las opciones
+// globales no puede convertir en prohibido lo que no lo era, y `-C` después del subcomando es otra
+// cosa —`git commit -C <commit>` reusa el mensaje de otro commit— que no se toca.
+test('sacar las opciones globales no inventa un bloqueo', () => {
+  for (const fine of [
+    'git -C /tmp status --short',
+    'git -c core.pager=cat log --oneline -5',
+    'git -P diff --staged --name-only',
+    'git checkout -- src/main.js',
+    'git -C /tmp checkout -- src/main.js',
+  ]) {
+    assert.doesNotThrow(() => execute('destructive', { tool_input: { command: fine } }), fine)
+    assert.doesNotThrow(() => execute('git-add', { tool_input: { command: fine } }), fine)
+  }
+})
+
+// `git commit -a` stagea al commitear, o sea **después** de este hook, y `git add … && git commit` lo
+// stagea dentro del mismo comando: en los dos casos los guards que juzgan mirando el índice leen el de
+// antes y concluyen que no hay nada que revisar. No fallan, dejan pasar.
+//
+// Se separan porque las razones son distintas y viven en lugares distintos. `-a` viola R8 por escrito
+// —stagear rutas explícitas— y por eso lo frena el guard de esa regla; encadenar `add` y `commit` no
+// viola ninguna, sólo rompe el momento en que se pregunta, y lo frena quien lee el índice.
+test('git-add frena `commit -a`, que es stagear todo con otra ortografía', () => {
+  for (const command of ['git commit -a -m sonda', 'git commit -am sonda', 'git commit --all -m sonda',
+    'git -C /tmp commit -am sonda', 'git commit -v -a -m sonda']) {
+    blocked('git-add', { tool_input: { command } }, /stagea al commitear/)
+  }
+  // `--amend` no es `-a`: lo frena `destructive` por otra razón, y confundirlos daría el mensaje
+  // equivocado sobre la regla equivocada.
+  assert.doesNotThrow(() => execute('git-add', { tool_input: { command: 'git commit --amend -m x' } }))
+  for (const fine of ['git commit -m sonda', 'git commit -v -m sonda', 'git commit -s -m sonda']) {
+    assert.doesNotThrow(() => execute('git-add', { tool_input: { command: fine } }), fine)
+  }
+})
+
+// El mensaje de un commit es dato, no código: `destructive` ya lo resolvía y este guard no. Bloqueaba
+// el commit que explica la prohibición, que es exactamente el que hay que poder escribir — y frenó
+// tres veces la sesión que escribió este arreglo.
+test('git-add no lee el mensaje de un commit como si fuera un comando', () => {
+  for (const command of [
+    `git commit -m 'no usar git add -A nunca'`,
+    `git commit -m "prohibido git add -A"`,
+  ]) {
+    assert.doesNotThrow(() => execute('git-add', { tool_input: { command } }), command)
+  }
+  // Y lo que va entre comillas fuera de un commit sí se ejecuta, así que ahí sigue cayendo. Las dos
+  // formas pasaban hasta este arreglo, por dónde terminaba la palabra: el límite, en `gitAdd`.
+  blocked('git-add', { tool_input: { command: `bash -c "git add -A"` } }, /está prohibido/)
+  blocked('git-add', { tool_input: { command: `eval 'git add -A'` } }, /está prohibido/)
+})
+
+test('un comando que stagea y commitea a la vez no se puede juzgar, y se dice', () => {
+  const root = tempRoot('ops-hook-blind-')
+  git(['init', '-q'], root)
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.writeFileSync(path.join(root, 'planning', 'PROTOCOL.md'), '# protocol\n')
+  // El índice queda vacío a propósito: es el estado en que el guard no ve nada y concluía que no había
+  // nada que revisar. Con el índice ya lleno el bloqueo podría venir de la regla de gobernanza y la
+  // prueba no distinguiría cuál de las dos actuó.
+  const command = 'git add planning/PROTOCOL.md && git commit -m sonda'
+  for (const guard of ['governance', 'dependencies', 'verify']) {
+    blocked(guard, { cwd: root, tool_input: { command } }, /stagea y commitea a la vez/)
+  }
+  // Un commit que no stagea nada se juzga como siempre: con el índice vacío no hay nada que reportar.
+  for (const guard of ['governance', 'dependencies', 'verify']) {
+    assert.doesNotThrow(() => execute(guard, { cwd: root, tool_input: { command: 'git commit -m sonda' } }))
+  }
+  // Y el mensaje que cita un `add` no es un `add`.
+  assert.doesNotThrow(() => execute('governance', {
+    cwd: root, tool_input: { command: `git commit -m 'sin git add adentro'` },
+  }))
+})
+
+// Los tres de afuera son las formas en que el SQL aparece sin ser una migración: el ADR que la cita, el
+// comentario que advierte que eso no se hace, el runbook que lo lista. Van los tres porque lo que se
+// cuida no es una extensión sino el alcance —el porqué, en `migrations`—, y con un solo caso el próximo
+// que se escriba entra igual.
+test('el SQL destructivo se juzga sobre una migración, no sobre cualquier archivo', () => {
+  const root = tempRoot('ops-hook-migrations-alcance-')
+  fs.mkdirSync(path.join(root, 'migrations'))
+  for (const fuera of [
+    { file_path: 'docs/adr/003-particionar-pedidos.md', content: 'La migración corre `DROP TABLE pedidos;`.' },
+    { file_path: 'src/repo.js', content: '// nunca hacer DELETE FROM pedidos;' },
+    { file_path: 'docs/runbook.md', content: 'Paso 4: TRUNCATE sesiones;' },
+  ]) {
+    assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: fuera }), fuera.file_path)
+  }
+  // Y el guard sigue haciendo su trabajo donde le toca. Se asercia el nombre del archivo dentro del
+  // mensaje y no sólo el motivo: es lo que separa este bloqueo de los tres de arriba.
+  blocked('migrations', {
+    cwd: root, tool_input: { file_path: 'migrations/004_drop.sql', content: 'DROP TABLE pedidos;' },
+  }, /migrations\/004_drop\.sql contiene SQL destructivo/)
+  // Una migración fuera de un directorio con ese nombre deja de frenarse, y es el precio de acotar el
+  // alcance: el chequeo de reescritura ya vivía con esa misma convención desde que existe.
+  assert.doesNotThrow(() => execute('migrations', {
+    cwd: root, tool_input: { file_path: 'sql/004_drop.sql', content: 'DROP TABLE pedidos;' },
+  }))
+})
+
+// La aprobación por operación existía y la usaba un guard solo; los otros cuatro que se pueden abrir
+// tenían una única salida, una variable de entorno, que es **por sesión**: se lee del proceso del
+// runner, así que la forma que funciona deja el guard apagado hasta que la sesión cierre.
+//
+// Aprobar el conjunto exacto es lo que expresa «autorizo esta operación» en los cuatro: en cuanto
+// cambia lo que se está por escribir o commitear, la aprobación deja de valer. Por eso el archivo es
+// uno solo y ya no se llama de gobernanza — una aprobación escrita a mano nombra rutas, y quién las
+// mira lo decide qué guard esté juzgando esa ruta.
+test('la aprobación por operación abre los guards que deciden sobre una ruta', () => {
+  const root = tempRoot('ops-hook-approval-todos-')
+  git(['init', '-q'], root)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  const aprobar = (...rutas) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
+    `# Aprobado por X el 2026-09-07.\n${rutas.join('\n')}\n`)
+  const limpiar = () => fs.rmSync(path.join(root, 'planning', '.ops-approval'), { force: true })
+
+  // En `migrations` lo que se decide es la ruta del archivo que se está por escribir.
+  fs.mkdirSync(path.join(root, 'migrations'), { recursive: true })
+  const sql = { file_path: 'migrations/010_drop.sql', content: 'DROP TABLE pedidos;' }
+  limpiar()
+  blocked('migrations', { cwd: root, tool_input: sql }, /SQL destructivo/)
+  aprobar('migrations/010_drop.sql')
+  assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: sql }))
+  // Y vale para lo que nombra y nada más.
+  aprobar('migrations/999_otra.sql')
+  blocked('migrations', { cwd: root, tool_input: sql }, /SQL destructivo/)
+
+  // En `test-evidence` es la ruta de la prueba que se borra.
+  const borrado = { patch: '*** Begin Patch\n*** Delete File: test/pagos.test.js\n*** End Patch' }
+  limpiar()
+  blocked('test-evidence', { cwd: root, tool_input: borrado }, /borra una prueba/)
+  aprobar('test/pagos.test.js')
+  assert.doesNotThrow(() => execute('test-evidence', { cwd: root, tool_input: borrado }))
+
+  // En `dependencies` es el manifiesto staged que va sin su lockfile.
+  fs.writeFileSync(path.join(root, 'package.json'), '{}\n')
+  fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n')
+  git(['add', 'package.json'], root)
+  const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
+  limpiar()
+  blocked('dependencies', commit, /lockfile/i)
+  aprobar('package.json')
+  assert.doesNotThrow(() => execute('dependencies', commit))
+})
+
+// La que no encaja, dicha donde se decide y no en una nota al pie: publicar un paquete o instalar algo
+// global no tiene ninguna ruta sobre la cual aprobar, así que ahí la variable sigue siendo la salida.
+// Declararlo es lo que evita que alguien busque la forma angosta y no la encuentre.
+test('publicar un paquete no se aprueba por ruta, porque no hay ruta', () => {
+  const root = tempRoot('ops-hook-approval-sin-ruta-')
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), 'package.json\n')
+  blocked('dependencies', { cwd: root, tool_input: { command: 'npm publish' } }, /acción humana/)
+})
+
+// `verify` es el único cuyo objeto no es un archivo sino el commit entero: lo que se aprueba es el
+// conjunto staged, o sea «autorizo commitear exactamente esto aunque el gate esté en rojo». Stagear una
+// cosa más lo invalida, que es lo que lo vuelve una operación y no un permiso abierto.
+test('verify se aprueba por el conjunto staged, no por un archivo', () => {
+  const root = tempRoot('ops-hook-approval-verify-')
+  git(['init', '-q'], root)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  fs.writeFileSync(path.join(root, 'package.json'),
+    JSON.stringify({ scripts: { test: 'node -e "process.exit(1)"' } }))
+  fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = true\n')
+  git(['add', 'package.json', 'app.js'], root)
+  const aprobar = (...rutas) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
+    `${rutas.join('\n')}\n`)
+  const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
+
+  blocked('verify', commit, /Verify falló/)
+  // Aprobar una parte no alcanza: el objeto es el conjunto, no cada archivo por separado.
+  aprobar('app.js')
+  blocked('verify', commit, /Verify falló/)
+  aprobar('app.js', 'package.json')
+  assert.doesNotThrow(() => execute('verify', commit), 'el conjunto entero aprobado pasa')
+  // Y en cuanto se suma un archivo, la aprobación deja de cubrirlo.
+  fs.writeFileSync(path.join(root, 'otro.js'), 'module.exports = 1\n')
+  git(['add', 'otro.js'], root)
+  blocked('verify', commit, /Verify falló/)
+
+  // La otra mitad del guard, que también es sobre el conjunto: una fuente cambiada sin regenerar.
+  const api = tempRoot('ops-hook-approval-verify-api-')
+  git(['init', '-q'], api)
+  fs.mkdirSync(path.join(api, 'planning'), { recursive: true })
+  fs.mkdirSync(path.join(api, 'openapi'), { recursive: true })
+  fs.writeFileSync(path.join(api, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  fs.writeFileSync(path.join(api, 'openapi', 'api.yaml'), 'openapi: 3.0.0\n')
+  git(['add', 'openapi/api.yaml'], api)
+  const commitApi = { cwd: api, tool_input: { command: 'git commit -m x' } }
+  blocked('verify', commitApi, /OpenAPI\/Swagger/)
+  fs.writeFileSync(path.join(api, 'planning', '.ops-approval'), 'openapi/api.yaml\n')
+  assert.doesNotThrow(() => execute('verify', commitApi))
 })

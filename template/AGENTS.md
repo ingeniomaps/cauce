@@ -103,28 +103,46 @@ Un guard existente **no se edita**: `upgrade` detecta el cambio y se detiene ant
 Algunos bloqueos tienen salida, y conviene saber cuál antes de necesitarla — el momento en que un guard
 te frena es el peor para elegir bien.
 
-**Un commit que toca gobernanza** —reglas, ADRs, el contrato de un cargo o lo que lo mide— se autoriza
-escribiendo las rutas en `planning/.governance-approval`, una por línea, con `#` para lo que no sea una
-ruta. Vale para ese conjunto y para ningún otro: si después sumás un archivo, ese archivo no está
-aprobado y el guard lo nombra. No se borra sola —así un commit frenado por otra cosa no te obliga a
-rehacerla—, así que `check` te avisa mientras exista, y borrarla es parte de terminar.
+**La salida de todos ellos es la misma**: escribir en `planning/.ops-approval` las rutas que autorizás,
+una por línea, con `#` para lo que no sea una ruta. Es un solo archivo para todos los guards, porque lo
+que escribís son rutas y quién las mira lo decide qué guard esté juzgando esa ruta.
 
-**Las demás salidas son variables de entorno**, y hay que decir su alcance
-porque no es el que uno espera: el guard la lee de **su propio proceso**, no del comando. Escribirla
-delante —`VAR=1 git commit`— no llega. La forma que sí funciona es exportarla en el entorno desde el que
-arranca tu runner, y eso deja el guard apagado **hasta que cierres la sesión**, no para un comando.
-
-| variable | qué abre |
+| lo que te frena | qué ruta aprobás |
 |---|---|
-| `OPS_GOVERNANCE_OVERRIDE=1` | lo mismo que la aprobación de arriba, pero para toda la sesión |
-| `OPS_MIGRATIONS_OVERRIDE=1` | escribir SQL destructivo en una migración |
-| `OPS_TEST_EVIDENCE_OVERRIDE=1` | borrar o apagar una prueba |
-| `OPS_DEPENDENCIES_OVERRIDE=1` | tocar manifiestos y lockfiles, publicar o instalar global |
-| `OPS_SKIP_VERIFY=1` | saltear los gates del stack antes de un commit |
+| un commit que toca gobernanza —reglas, ADRs, el contrato de un cargo o lo que lo mide— | cada archivo gobernado que va en el commit |
+| SQL destructivo en una migración | la migración |
+| borrar o apagar una prueba | la prueba |
+| un manifiesto que va sin su lockfile, o al revés | el archivo que cambió |
+| los gates del stack en rojo, o una fuente sin regenerar | **todo** lo que está en el índice |
 
-Son de sesión y no de operación, que es exactamente lo que la aprobación de gobernanza vino a corregir.
-Mientras sigan así, lo que corresponde es prenderlas para lo que hacía falta y apagarlas después — y que
-la razón quede escrita donde alguien la lea, no sólo en la memoria de quien la prendió.
+**Vale para ese conjunto y para ningún otro.** Si después sumás un archivo, ese archivo no está aprobado
+y el guard vuelve a frenarte nombrándolo. Eso es lo que la hace por operación sin fecha ni contador: no
+caduca, deja de coincidir. En la última fila es más visible —aprobás el índice entero, así que stagear
+una cosa más la invalida—, y es a propósito: commitear en rojo se autoriza para un commit concreto.
+
+No se borra sola, así que un commit frenado por otra cosa no te obliga a rehacerla. `check` te avisa
+mientras exista, y borrarla es parte de terminar.
+
+**Publicar un paquete o instalar algo global no se aprueba así**, porque ahí no hay ninguna ruta sobre
+la cual decidir. Esa sigue siendo una acción humana y su única llave es la variable de abajo.
+
+### Las variables siguen existiendo, y son de sesión
+
+Cada guard se puede apagar entero con su variable. Hay que decir su alcance porque no es el que uno
+espera: el guard la lee de **su propio proceso**, no del comando. Escribirla delante —`VAR=1 git
+commit`— no llega. La forma que sí funciona es exportarla en el entorno desde el que arranca tu runner,
+y eso lo deja apagado **hasta que cierres la sesión**, no para un comando.
+
+| variable | qué apaga |
+|---|---|
+| `OPS_GOVERNANCE_OVERRIDE=1` | el guard de gobernanza |
+| `OPS_MIGRATIONS_OVERRIDE=1` | el de migraciones |
+| `OPS_TEST_EVIDENCE_OVERRIDE=1` | el de evidencia de pruebas |
+| `OPS_DEPENDENCIES_OVERRIDE=1` | el de dependencias, incluido publicar e instalar global |
+| `OPS_SKIP_VERIFY=1` | el que corre los gates |
+
+Por eso la aprobación es la vía recomendada y esto es lo que queda cuando no alcanza: prendela para lo
+que hacía falta, apagala después, y que la razón quede escrita donde alguien la lea.
 
 ## Cómo leer el estado
 

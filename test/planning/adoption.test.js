@@ -111,3 +111,85 @@ test('adopt no escribe nada cuando no hay historia que exentar', () => {
   assert.match(result.stdout, /no hay nada que exentar/)
   assert.equal(fs.existsSync(path.join(planning, AD.BASELINE)), false, 'ni siquiera vacío')
 })
+
+// La tercera propiedad que el caso 021 enunció y no implementó: la lista no admite entradas nuevas, y
+// nada lo comprobaba. Agregar un slug a mano perdonaba esa entrada para siempre y `check` sólo mostraba
+// una cuenta más alta, que nadie recuerda.
+//
+// La huella se calcula sobre el conjunto **generado**, y por eso retirar un renglón no la rompe: lo que
+// ya cumple el contrato se marca con `#~` en vez de borrarse. Sin eso la huella no distinguiría «creció»
+// de «se achicó» —achicar es el camino que el propio `check` recomienda— y el aviso de una cosa
+// contradiría al de la otra. El precio es un archivo que no se acorta; es un registro histórico, y para
+// eso está bien.
+test('la huella distingue una lista que creció de una que se achicó', () => {
+  const root = tempRoot('ops-adoption-huella-')
+  const escribir = (cuerpo) => fs.writeFileSync(path.join(root, AD.BASELINE), cuerpo)
+  const sellar = (...slugs) => `# Entradas anteriores a la adopción de Cauce (2026-09-07).\n`
+    + `# huella: ${slugs.length} entradas · sha256:${AD.digest(slugs)}\n${slugs.join('\n')}\n`
+
+  escribir(sellar('vieja-a', 'vieja-b'))
+  assert.deepEqual(AD.sealWarnings(root), [], 'intacta no dice nada')
+
+  // Retirar es el camino recomendado y no puede sonar a alarma.
+  escribir(sellar('vieja-a', 'vieja-b').replace('\nvieja-b', '\n#~ vieja-b'))
+  assert.deepEqual(AD.sealWarnings(root), [], 'retirar un renglón deja la huella intacta')
+  assert.deepEqual(AD.read(root), ['vieja-a'], 'y lo retirado deja de estar exento')
+
+  // Lo que este caso vino a cerrar: un slug que nadie generó.
+  escribir(`${sellar('vieja-a', 'vieja-b')}nueva\n`)
+  const crecio = AD.sealWarnings(root)
+  assert.equal(crecio.length, 1)
+  assert.match(crecio[0], /creció/)
+  assert.match(crecio[0], /nueva/, 'nombra la entrada que sobra')
+
+  // Reordenar no es cambiar: la huella va sobre el conjunto y no sobre el texto, así que una
+  // herramienta que ordene los renglones no puede disparar un aviso sobre algo que nadie hizo.
+  escribir(sellar('vieja-a', 'vieja-b').replace('vieja-a\nvieja-b', 'vieja-b\nvieja-a'))
+  assert.deepEqual(AD.sealWarnings(root), [], 'reordenar deja la huella intacta')
+
+  // Cambiar un slug por otro conserva la cuenta y rompe la huella igual.
+  escribir(sellar('vieja-a', 'vieja-b').replace('vieja-b', 'otra-cosa'))
+  assert.match(AD.sealWarnings(root).join(' '), /no coincide/)
+
+  // La lista sin huella se avisa en vez de callarse: no hay con qué comprobarla.
+  escribir('# Entradas anteriores (2026-09-03)\nvieja-a\n')
+  assert.match(AD.sealWarnings(root).join(' '), /sin huella/)
+  assert.deepEqual(AD.sealWarnings(tempRoot('ops-adoption-vacio-')), [], 'sin archivo no hay nada que decir')
+})
+
+// El recorrido del sellado por el CLI, que es donde se ve si sirve: `adopt` deja la huella, `check`
+// avisa cuando alguien agrega un renglón, y un baseline de una versión anterior tiene una salida.
+test('la huella viaja en el archivo y check la comprueba', () => {
+  const base = tempRoot('cauce-adopt-huella-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  const planning = path.join(target, 'planning')
+  const baseline = path.join(planning, AD.BASELINE)
+  fs.appendFileSync(path.join(planning, 'DONE.md'), '\n## Hito viejo — Antes de la adopción\n\n'
+    + '- [x] **tarea-de-2024** — Lo que se construyó entonces.\n'
+    + '  done: lo único que aquel proceso registraba\n')
+  assert.equal(run(['adopt', planning]).status, 0)
+  assert.match(fs.readFileSync(baseline, 'utf8'), /^# huella: 1 entradas · sha256:[0-9a-f]{12}$/m)
+  assert.equal(run(['check', planning]).status, 0, 'recién sellado no dice nada de la huella')
+
+  // Lo que este caso vino a cerrar. Se agrega una entrada de verdad a DONE.md y su slug a mano: sin la
+  // huella, `check` quedaba verde y sólo subía una cuenta que nadie recuerda.
+  fs.appendFileSync(path.join(planning, 'DONE.md'),
+    '- [x] **agregada-a-mano** — Trabajo de hoy.\n  done: a medias\n')
+  fs.appendFileSync(baseline, 'agregada-a-mano\n')
+  const crecido = run(['check', planning])
+  assert.match(crecido.stdout + crecido.stderr, /la lista creció/)
+  assert.match(crecido.stdout + crecido.stderr, /agregada-a-mano/)
+
+  // Y la salida de ese aviso, que es la mitad que importa: sin ella el aviso no tendría qué hacer.
+  // Por qué `adopt` acepta sellar y sigue negándose a regenerar, en `adopt`.
+  fs.writeFileSync(baseline, '# Entradas anteriores (2026-09-03)\ntarea-de-2024\nagregada-a-mano\n')
+  const sinHuella = run(['check', planning])
+  assert.match(sinHuella.stdout + sinHuella.stderr, /sin huella/)
+  const sellado = run(['adopt', planning])
+  assert.equal(sellado.status, 0, sellado.stderr)
+  assert.match(sellado.stdout, /sellado con 2 entrada\(s\)/)
+  assert.match(fs.readFileSync(baseline, 'utf8'), /^tarea-de-2024$/m, 'la lista quedó como estaba')
+  assert.equal(run(['check', planning]).status, 0)
+  assert.match(run(['adopt', planning]).stderr, /ya existe/, 'con huella se sigue negando')
+})
