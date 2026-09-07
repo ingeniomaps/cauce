@@ -39,8 +39,12 @@ function tempRoot(name) {
 // `tempRoot` mide la exención y no la regla: pasa siempre y parece que el defecto no existe. Ya pasó al
 // reproducir el 033, y volvió a pasar con el 041.
 //
-// Cuelga de `~/.cache`, que es scratch por convención, y se borra al salir igual que el otro.
-const OUTSIDE = fs.mkdtempSync(path.join(os.homedir(), '.cache', `cauce-test-${process.pid}-`))
+// Cuelga de `~/.cache`, que es scratch por convención, y se borra al salir igual que el otro. Se crea
+// antes de usarlo porque en una máquina recién hecha no existe: en CI la suite entera fallaba con
+// `ENOENT` sobre un directorio que en cualquier escritorio ya está.
+const OUTSIDE_BASE = path.join(os.homedir(), '.cache')
+fs.mkdirSync(OUTSIDE_BASE, { recursive: true })
+const OUTSIDE = fs.mkdtempSync(path.join(OUTSIDE_BASE, `cauce-test-${process.pid}-`))
 
 process.on('exit', () => fs.rmSync(OUTSIDE, { recursive: true, force: true }))
 

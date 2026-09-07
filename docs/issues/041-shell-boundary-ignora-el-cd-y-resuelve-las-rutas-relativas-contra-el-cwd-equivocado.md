@@ -31,23 +31,32 @@ la pregunta en un guard y no en el otro.
 
 Con `../api` declarada como raíz y el runner abierto en el directorio de arriba:
 
+El banco **no puede colgar de `/tmp`**: el guard exime el temporal del sistema por diseño, así que una
+sonda montada ahí mide la exención y no la regla. Acá `$BANCO` es cualquier directorio fuera de él.
+
 ```bash
-# La ruta real queda fuera de toda raíz; la resuelta contra el cwd del runner, adentro.
-mkdir -p /home/manuel/Code/personal/api
-cd /home/manuel/Code/personal && echo sonda > api/sonda.txt
-#   → exit 0, sin bloqueo
-ls -l /home/manuel/Code/personal/api/sonda.txt
-#   → -rw-rw-r-- … el archivo existe, fuera de las raíces
+BANCO=~/.cache/sonda-041 && mkdir -p "$BANCO/proyecto/planning" "$BANCO/afuera"
+printf '{"workspaceRoots":[{"name":"main","path":"."}]}' > "$BANCO/proyecto/ops.config.json"
+
+# Desde la raíz declarada, con el cd saliendo de ella.
+cd "$BANCO/proyecto" && echo sonda > ../afuera/nota.md   # BLOQUEADO, correcto: la ruta lo dice
+cd "$BANCO/proyecto" && cd "$BANCO/afuera" && echo sonda > nota.md
+#   → exit 0, sin bloqueo, y el archivo queda en $BANCO/afuera/nota.md
 ```
 
 *Verificado* el 2026-09-07 sobre 0.65.0. El archivo se escribió realmente: no es que el comando fallara
 por otra razón, el guard no dijo nada y la escritura ocurrió.
 
-La cara de falso positivo, con el mismo mecanismo al revés:
+La cara de falso positivo, con el mismo mecanismo al revés. **Pide una condición más**, que es que el
+runner esté abierto fuera de las raíces y la raíz llegue por `CLAUDE_PROJECT_DIR`; con el runner adentro
+la ruta resuelta cae en la raíz y no hay bloqueo:
 
 ```bash
-cd /tmp/<scratchpad-de-la-sesion> && echo v1 > sonda.txt
-#   → BLOQUEADO: «escribe en <cwd-del-runner>/sonda.txt, fuera de las raíces»
+cd "$BANCO/afuera"                          # el runner, abierto acá
+export CLAUDE_PROJECT_DIR="$BANCO/proyecto" # y la raíz, declarada por variable
+cd /tmp/lo-que-sea && echo v1 > sonda.txt
+#   → BLOQUEADO: «escribe en $BANCO/afuera/sonda.txt, fuera de las raíces»
+#   El destino real era el temporal del sistema, que este guard no juzga.
 ```
 
 Ahí el destino real estaba en el temporal del sistema, que el guard no juzga por diseño. La
