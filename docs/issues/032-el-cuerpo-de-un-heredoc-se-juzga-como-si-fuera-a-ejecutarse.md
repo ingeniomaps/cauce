@@ -71,6 +71,12 @@ línea que los abre —que sí es comando y sí tiene que juzgarse, incluido su 
 Vale para todas las reglas de contenido, no sólo para las tres de `destructive`: el guard de
 publicación tiene el mismo falso positivo.
 
+Un borde que apareció al implementarlo y que el diff de arriba no cubre: el cuerpo empieza en el salto
+de línea, **no en el delimitador**. `cat <<FIN > salida` es una forma válida y su destino va después del
+`<<`; recortando desde ahí se pierde, y no lo nota nadie porque en la forma común el destino va antes.
+Lo encontró una mutación que sobrevivía —quitar la apertura entera no rompía ninguna prueba—, que es la
+señal de que faltaba el caso, no de que la línea sobrara.
+
 Lo que **no** hay que hacer es extender la exención de commits a cualquier comillado. Ahí la decisión
 de 0.62.0 es correcta y este caso no la toca: `bash -c "…"` ejecuta su argumento, un heredoc no.
 

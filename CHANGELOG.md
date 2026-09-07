@@ -18,6 +18,15 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **El cuerpo de un heredoc es texto, no un comando.** Escribir un archivo con
+  `cat > nota.md <<'FIN' … FIN` juzgaba cada línea del documento como si fuera a ejecutarse, así que no
+  se podía documentar lo que los guards vigilan: un párrafo que explica por qué no se borra la raíz se
+  bloqueaba por nombrarlo, y la salida era cambiar de herramienta para escribir un archivo. Un heredoc
+  es entrada estándar y no se ejecuta nunca. **Qué cambia para vos**: el cuerpo deja de juzgarse y la
+  línea que lo abre se sigue juzgando entera, con su redirección —también si la escribís después del
+  delimitador, como en `cat <<FIN > salida`—. Lo que se pierde a cambio: un cuerpo que después alguien
+  ejecuta; al escribirse no ejecuta nada, y cuando se corra el guard verá el comando de verdad.
+
 - **Una variable delante de `git commit` ya no apaga tres guards.** `dependencies`, `governance` y el
   control de generados de `verify` sólo corren sobre un commit, y decidían si lo era con un ancla que
   no contempla lo que un shell admite antes del verbo. Con `VAR=1 git commit` dejaban de correr **sin

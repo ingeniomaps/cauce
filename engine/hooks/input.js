@@ -22,10 +22,27 @@ function readInput() {
   }
 }
 
+// El cuerpo de un heredoc es entrada estándar: no se ejecuta, se escribe. Juzgarlo como comando frenaba
+// documentar lo que los guards vigilan — escribir un archivo que explica por qué borrar la raíz es
+// catastrófico se bloqueaba por nombrarlo—, y la salida era cambiar de herramienta, que es el rodeo que
+// un guard no debería enseñar.
+//
+// La línea de apertura se conserva **entera**, porque sí es comando y `shell-boundary` tiene que seguir
+// viendo dónde escribe. Entera incluye lo que va después del delimitador: `cat <<FIN > salida` es una
+// forma válida y su destino está ahí. El cuerpo empieza en el salto de línea, no en el delimitador —
+// recortar desde el delimitador se llevaba esa redirección, y nada lo notaba porque en la forma común
+// el destino va antes del `<<`.
+//
+// Lo que se pierde: un cuerpo que después alguien ejecuta. `cat > script.sh <<EOF` no ejecuta nada al
+// escribirse y el guard verá el comando de verdad cuando alguien corra el script; el borde filoso es
+// `$(cat <<EOF …)`, donde el cuerpo sí corre y ya no se mira. Es el mismo trato que con el mensaje de un
+// commit: se frena la forma habitual, no al que quiere pasar.
+const HEREDOC = /<<(-?)\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\2([^\n]*)\n[\s\S]*?^\s*\3\s*$/gm
+
 function commandOf(input) {
   const value = input.tool_input && (input.tool_input.command || input.tool_input.cmd)
     || input.command || input.input && input.input.command || process.env.OPS_HOOK_COMMAND || ''
-  return Array.isArray(value) ? value.join(' ') : String(value)
+  return String(Array.isArray(value) ? value.join(' ') : value).replace(HEREDOC, '<<$1$2$3$2$4')
 }
 
 function fileOf(input) {

@@ -100,6 +100,37 @@ test('guard-destructive respeta runner.allowPush del proyecto', () => {
 // Las nueve formas envueltas y las diez corrientes en la misma corrida, que es lo único que separa
 // arreglar un anclaje de haber ablandado el guard: medir sólo la primera mitad deja verde un patrón que
 // frena todo. `destructive` dice por qué son dos cierres y no uno.
+// Escribir un documento que menciona lo que los guards vigilan se bloqueaba por mencionarlo, y la
+// salida era cambiar de herramienta para escribir un archivo. Se miden las dos mitades: el cuerpo deja
+// de juzgarse y la línea que lo abre sigue juzgándose entera. `commandOf` dice qué se pierde a cambio.
+test('el cuerpo de un heredoc es texto, y su línea de apertura sigue siendo comando', () => {
+  const root = tempRoot('ops-hook-heredoc-')
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ workspaceRoots: [{ name: 'main', path: '.' }] }))
+  const entrada = (command) => ({ cwd: root, tool_input: { command } })
+  const documento = (cuerpo) => `cat > nota.md <<'FIN'\n${cuerpo}\nFIN`
+
+  for (const [guard, cuerpo] of [
+    ['destructive', 'Este documento explica por qué rm -rf / es catastrófico.'],
+    ['destructive', 'Y por qué no se hace git push --force, ni git reset --hard.'],
+    ['git-add', 'Ni stagear con git add ., que exige rutas explícitas.'],
+  ]) {
+    assert.doesNotThrow(() => execute(guard, entrada(documento(cuerpo))), `frenó un documento: ${cuerpo}`)
+  }
+
+  // La apertura no se toca: sigue siendo comando y su destino se sigue mirando.
+  blocked('shell-boundary', entrada(documento('hola').replace('nota.md', path.join(os.homedir(), 'x'))),
+    /fuera de las raíces/)
+  // La redirección escrita *después* del delimitador también sobrevive: `cat <<FIN > salida` es válido y
+  // su destino está ahí. Recortando desde el delimitador se perdía, y no lo notaba nadie porque en la
+  // forma común el destino va antes del `<<`.
+  blocked('shell-boundary', entrada(`cat <<FIN > ${path.join(os.homedir(), 'y')}\nhola\nFIN`),
+    /fuera de las raíces/)
+  // Y lo que va después del cierre tampoco: el recorte se lleva el cuerpo, no el resto del comando.
+  blocked('destructive', entrada(`${documento('hola')}\nrm -rf /`), /catastrófico/)
+})
+
 test('guard-destructive reconoce el comando aunque venga envuelto, y sólo ése', () => {
   const corre = (command) => execute('destructive', { tool_input: { command } })
 
