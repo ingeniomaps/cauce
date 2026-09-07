@@ -169,6 +169,16 @@ recorrido de lo que enumeró, ítem por ítem:
   hipotético es infraestructura especulativa. Lo que lo activaría: alguien con una instancia donde una
   parte de lo editado sí quiere devolverla al molde y otra no.
 
+- **«El otro riesgo es una instancia incoherente» — sigue en pie tal como el caso lo dejó.** Un
+  `PROTOCOL.md` viejo puede describir contratos que el motor nuevo ya no acepta, y conservarlo no lo
+  arregla. El propio caso lo resolvía: eso pasa igual hoy, sólo que con el `upgrade` entero trabado, y
+  ahora al menos el resto se actualiza. Lo que cambia es que la incoherencia deja de ser invisible: el
+  conteo de `check` la nombra en cada corrida, así que quien la tenga la ve antes de tropezarse con ella.
+- **La condición de escalada que declaraba «Prioridad» —«sube a alta el día que alguien, para
+  destrabarlo, corra `--force` sin leer la lista»— deja de existir.** Ya no hay que destrabar nada:
+  `--force` pasa de ser la única salida a ser una decisión deliberada de tomar la versión del molde. El
+  camino que empujaba a usarlo sin leer es el que se cerró.
+
 **Lo que el caso no preveía y era lo que podía arruinarlo todo**: el registro. Después de conservar un
 archivo, el paso que regraba el manifiesto lo digiere **desde disco**, así que el archivo conservado
 habría quedado idéntico a «lo entregado», habría dejado de detectarse como editado, y la corrida
