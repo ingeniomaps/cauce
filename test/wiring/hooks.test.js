@@ -28,8 +28,14 @@ function blocked(name, input, motivo) {
   })
 }
 
+// Este ayudante escribe —`init`, `config`, y sus llamadores `add` y `commit`—, y `-C`/`cwd` no le ganan
+// a `GIT_DIR`: heredada, cada uno de esos comandos opera sobre el repositorio que la haya exportado. El
+// motor ya no la exporta (caso 045), así que esto es el segundo cierre y no el único.
 function git(args, cwd) {
-  const result = spawnSync('git', args, { cwd, encoding: 'utf8' })
+  const env = { ...process.env }
+  delete env.GIT_DIR
+  delete env.GIT_WORK_TREE
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', env })
   assert.equal(result.status, 0, result.stderr)
 }
 
@@ -1430,10 +1436,20 @@ test('verify no deja que un gate escriba en el repositorio que juzga', () => {
   // Sin esto el árbol está limpio, `commitTree` no materializa nada y la fuga no se puede ejercer.
   fs.writeFileSync(path.join(root, 'sucio.txt'), 'algo sin stagear\n')
 
+  // El caso enumera tres daños y el commit es sólo uno: también aparecieron archivos trackeados que
+  // nadie agregó, y un `git add` sin commit no toca el log. Se compara el estado entero contra el de
+  // antes en vez de enumerar lo esperado: enumerar deja pasar lo que uno no pensó en escribir.
+  // Se descuenta `planning/`: es donde `verify` deja su propio registro de gates, que sí es una
+  // escritura suya y esperada. Todo lo demás tiene que quedar idéntico.
+  const estado = () => spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' })
+    .stdout.split('\n').filter((line) => !/planning\//.test(line)).join('\n')
+  const antes = estado()
+
   assert.doesNotThrow(() => execute('verify', { cwd: root, tool_input: { command: 'git commit -m x' } }))
 
   const log = spawnSync('git', ['log', '--oneline'], { cwd: root, encoding: 'utf8' }).stdout
   assert.equal(/fuga-desde-el-gate/.test(log), false, 'el gate commiteó en el repositorio de verdad')
+  assert.equal(estado(), antes, 'el índice o el árbol del repositorio de verdad cambiaron durante el gate')
   const config = spawnSync('git', ['config', '--local', '--get', 'core.worktree'],
     { cwd: root, encoding: 'utf8' }).stdout.trim()
   assert.equal(config, '', 'el repositorio quedó apuntando a un árbol que ya no existe')

@@ -405,9 +405,11 @@ function commitTree(dir) {
   // esos commits caían en la rama del usuario junto con un `core.worktree` apuntando a un temporal ya
   // borrado. Nada lo anunciaba (caso 045).
   //
-  // Lo que se pierde a cambio: la copia no tiene historia. Un gate que lea una etiqueta o un `git log`
-  // no la encuentra acá. Es un límite conocido y ruidoso —falla y se ve— en vez de una escritura
-  // silenciosa en el repositorio ajeno.
+  // Lo que se pierde a cambio, y son dos cosas. La copia no tiene historia, así que un gate que lea una
+  // etiqueta o un `git log` no la encuentra: falla y se ve. Y un gate cuyo efecto ES una escritura de
+  // git —taggear, commitear un lockfile regenerado— la hace sobre la copia, que se borra: ese efecto se
+  // pierde en silencio. Se elige el silencio de acá sobre el de antes, que era escribir en la rama de
+  // quien commitea; un proyecto con un gate así tiene que sacar esa escritura del gate.
   const started = run('git', ['init', '--quiet'], temp)
   if (started.ok) run('git', ['add', '--all'], temp)
   return { root: temp, temp, env: {} }
