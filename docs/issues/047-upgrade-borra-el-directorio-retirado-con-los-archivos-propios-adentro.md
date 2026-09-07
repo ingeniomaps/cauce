@@ -1,14 +1,15 @@
 ---
 caso: 047
 titulo: `upgrade` borra un directorio retirado entero, con los archivos propios del proyecto adentro
-estado: abierto
+estado: resuelto
+resuelto-en: 0.68.0
 prioridad: alta
 version-detectada: 0.67.0
 ---
 
 # 047 — Lo retirado se borra entero: `automatization/workflows/` se lleva el loop del proyecto
 
-**🔴 abierto** · detectado en 0.67.0 · prioridad **alta** — pérdida de contenido propio, irrecuperable sin backup
+**🟢 resuelto en 0.68.0** · detectado en 0.67.0 · prioridad **alta** — pérdida de contenido propio, irrecuperable sin backup
 
 ## Resumen
 
@@ -176,10 +177,9 @@ corrida informó los diecinueve archivos conservados —el arreglo funcionando�
 `automatization/workflows/`. Se detectó diffeando contra un snapshot previo, no leyendo la salida: la
 línea del retiro estaba, pero enterrada entre veinte renglones de un preview hipotético.
 
-## Arreglo aplicado
+## Cierre
 
-**Mergeado y sin publicar.** El caso sigue `abierto` hasta que salga la versión que lo lleva. El
-recorrido de lo que enumeró, por las cuatro secciones:
+**Resuelto en 0.68.0.** El recorrido de lo que enumeró, por las cuatro secciones:
 
 - **El fix preferido —«borrar lo que Cauce entregó y conservar el resto»— no es implementable, y eso es
   un hallazgo del arreglo.** El manifiesto no puede desempatar: `trackedPaths()` son `automatization/hooks`

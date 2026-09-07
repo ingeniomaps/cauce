@@ -31,6 +31,18 @@ y la cobertura no lo va a decir: mide qué líneas se ejecutan, no qué defectos
 La precondición del caso también cuenta. Si el estado en que arranca no puede ocurrir por el camino de
 producción, lo que prueba tampoco: queda verde para siempre sobre algo que nadie va a vivir.
 
+**Y quitar un comportamiento se prueba al revés que agregarlo.** Una prueba que comprueba que aparece lo
+nuevo no comprueba que desapareció lo viejo: los dos pueden convivir, y ahí el verde dice que la mitad
+del cambio ocurrió. La aserción que hace falta es de ausencia —que la salida vieja ya no esté, que la
+rama vieja ya no corra—, y es la que no se escribe sola porque nadie la extraña.
+
+Lo que se quita, además, tiene dependientes, y no se anuncian. Una invariante que deja de valer se lleva
+puesto a quien la daba por cierta: el mensaje que la afirmaba, la condición que la deducía, el comentario
+que la explicaba. Suelen vivir en otro archivo, que es donde una premisa vieja se pudre sin que nada
+falle. Antes de entregar una quita se busca quién dependía de ella —qué la afirmaba, qué la deducía— y
+cada uno se corrige o se declara. Recorrer la enumeración de la tarea no encuentra esto: la enumeración
+dice qué había que hacer, no qué se apoyaba en lo que había.
+
 ## R10 — Publicación humana por defecto
 
 Push, PR, merge, tags, deploy y rollback requieren la autorización configurada para el proyecto.

@@ -1,14 +1,15 @@
 ---
 caso: 048
 titulo: `upgrade` dice «descartado tu cambio» sobre los archivos que acaba de conservar
-estado: abierto
+estado: resuelto
+resuelto-en: 0.68.0
 prioridad: alta
 version-detectada: 0.67.0
 ---
 
 # 048 — La salida afirma un descarte que no ocurrió, y con eso tapa el borrado que sí
 
-**🔴 abierto** · detectado en 0.67.0 · prioridad **alta** — la salida miente sobre lo que hizo, y esconde la única línea destructiva real
+**🟢 resuelto en 0.68.0** · detectado en 0.67.0 · prioridad **alta** — la salida miente sobre lo que hizo, y esconde la única línea destructiva real
 
 ## Resumen
 
@@ -142,9 +143,9 @@ que obligó a comprobarlos con `cmp` uno por uno —estaban todos intactos—. E
 Se recuperó de un snapshot previo. Sin esa contradicción en la salida el retiro se habría visto de
 entrada; con ella, se encontró diffeando y no leyendo.
 
-## Arreglo aplicado
+## Cierre
 
-**Mergeado y sin publicar.** El recorrido de lo que enumeró:
+**Resuelto en 0.68.0.** El recorrido de lo que enumeró:
 
 - **El informe recibe lo que pasó en vez de deducirlo — hecho, y con el hecho y no con la bandera.**
   `reportUpgrade` ya no ve `changed`: recibe `descartados` —vacío salvo con `--force`—, `conservados` y
