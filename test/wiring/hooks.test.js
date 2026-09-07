@@ -1188,9 +1188,8 @@ test('dependencies mira el índice para saber qué lockfiles va a haber', () => 
   git(['rm', '--cached', '-q', 'package-lock.json'], root)
   assert.doesNotThrow(() => execute('dependencies', commit))
 
-  // La otra mitad, que es la que se rompe si se unifican las dos preguntas: «hay varios lockfiles» es
-  // sobre el disco y sólo sobre el disco, porque lo que decide cuál manda es el gestor que corra y ése
-  // lee el árbol. Uno que sigue en el índice pero ya no está en disco no convive con nadie.
+  // La otra mitad, que es la que se rompe si se unifican las dos preguntas: uno que sigue en el índice
+  // pero ya no está en disco no convive con nadie. Por qué esa mira sólo el disco, en `dependencies`.
   const dos = tempRoot('ops-hook-deps-dos-')
   git(['init', '-q'], dos)
   fs.writeFileSync(path.join(dos, 'package.json'), JSON.stringify({ name: 'y' }))
