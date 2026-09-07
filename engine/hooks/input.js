@@ -108,6 +108,30 @@ function configOf(root) {
 // la llama.
 const unquoted = (command) => String(command).replace(/'[^']*'|"[^"]*"/g, '\u0000')
 
+// Lo que `git` admite entre el verbo y el subcomando. La lista sale de su propia línea de uso
+// —`git --help`, 2.43.0—, y las que llevan el valor en un token aparte se consumen de a dos:
+// comprobado ahí mismo que `--git-dir`, `--work-tree` y `--namespace` aceptan la forma separada y no
+// sólo la que lleva `=`.
+//
+// Existe porque cada patrón resolvía la posición por su cuenta y cada arreglo puntual dejaba el
+// siguiente: primero el prefijo de entorno en `isCommit`, después el `-C` en `isCommit` y en
+// `gitDirectory`. Lo que quedaba era todo lo demás — con `-C`, `-c` o `-P` delante pasaban las reglas
+// de `destructive` que miran un subcomando y la prohibición de stagear todo, sin decir nada.
+//
+// `--git-dir /tmp/.git` era la única forma que igual bloqueaba, y por la razón equivocada: la ruta
+// termina en `.git`, así que el patrón encontraba el verbo dentro de `/tmp/.git push`. Una regla que
+// acierta por dónde termina una ruta ajena no está cubriendo nada.
+const GIT_GLOBAL = String.raw`(?:-[Cc]\s+\S+`
+  + String.raw`|--(?:git-dir|work-tree|namespace|config-env)(?:=\S*|\s+\S+)`
+  + String.raw`|--exec-path=\S*`
+  + String.raw`|-[pP]|--paginate|--no-pager|--no-replace-objects|--bare`
+  + String.raw`|--(?:literal|glob|noglob|icase)-pathspecs|--no-optional-locks)`
+const GIT_GLOBALS = new RegExp(String.raw`\bgit(?:\s+${GIT_GLOBAL})+`, 'g')
+
+// Sólo se sacan las que van **antes** del subcomando: después significan otra cosa —`git commit -C
+// <commit>` reusa el mensaje de otro commit— y el ancla en `git` es lo que las deja afuera.
+const withoutGitGlobals = (command) => String(command).replace(GIT_GLOBALS, 'git')
+
 // Sobre qué repositorio se lee el índice. En un commit se mira el comando con el mensaje vaciado, por
 // la misma razón por la que `destructive` lo hace: un mensaje que menciona `git -C $VAR` no está
 // eligiendo un repositorio, lo está citando. Sin esto, el commit que explica este arreglo se bloquea a
@@ -118,7 +142,8 @@ const unquoted = (command) => String(command).replace(/'[^']*'|"[^"]*"/g, '\u000
 // suele ser el repositorio correcto; el caso contrario deja al guard leyendo un índice ajeno.
 function gitDirectory(command, cwd) {
   const text = isCommit(command) ? unquoted(command) : command
-  const flag = text.match(/(?:^|\s)git\s+-C\s+(['"]?)([^\s'";&|]+)\1/)
+  const run = text.match(new RegExp(String.raw`(?:^|\s)git(?:\s+${GIT_GLOBAL})+`))
+  const flag = run && run[0].match(/-C\s+(['"]?)([^\s'";&|]+)\1/)
   const cd = text.match(/(?:^|[;&|]\s*)cd\s+(['"]?)([^\s'";&|]+)\1/)
   return path.resolve(cwd, flag ? flag[2] : cd ? cd[2] : '.')
 }
@@ -134,10 +159,10 @@ function gitDirectory(command, cwd) {
 // `OPS_GOVERNANCE_OVERRIDE=1`: escrito ahí, el guard no lee el override, directamente no se ejecuta.
 const PREFIX = String.raw`(?:^|[;&|]\s*)(?:(?:env|sudo)\s+)*`
   + String.raw`(?:[A-Za-z_][A-Za-z0-9_]*=(?:'[^']*'|"[^"]*"|\S*)\s+)*`
-const COMMIT = new RegExp(PREFIX + String.raw`git(?:\s+-C\s+\S+)?\s+commit(?:\s|$)`)
+const COMMIT = new RegExp(PREFIX + String.raw`git\s+commit(?:\s|$)`)
 
 function isCommit(command) {
-  return COMMIT.test(command)
+  return COMMIT.test(withoutGitGlobals(command))
 }
 
 // Un índice vacío y un índice ilegible no son la misma respuesta: la primera autoriza a seguir, la
@@ -213,6 +238,6 @@ const DECLARE_IT = 'Si el proyecto necesita escribir ahí, declaralo en writable
 
 module.exports = {
   readInput, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
-  gitDirectory, isCommit, stagedFiles, pushAllowed, findOpsRoot,
+  gitDirectory, isCommit, withoutGitGlobals, stagedFiles, pushAllowed, findOpsRoot,
   writableRoots, outsideRoots, DECLARE_IT, unquoted,
 }

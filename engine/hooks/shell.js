@@ -10,7 +10,7 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const {
   commandOf, cwdOf, block, gitDirectory, isCommit, stagedFiles, pushAllowed,
-  writableRoots, outsideRoots, DECLARE_IT, unquoted, findOpsRoot,
+  writableRoots, outsideRoots, DECLARE_IT, unquoted, findOpsRoot, withoutGitGlobals,
 } = require('./input')
 const AP = require('./approval')
 
@@ -42,7 +42,10 @@ const COMANDO = String.raw`$|[;&|)'"\`]`
 // evasión y no la forma habitual.
 function destructive(input) {
   const raw = commandOf(input)
-  const command = isCommit(raw) ? unquoted(raw) : raw
+  // Las opciones globales de `git` se sacan acá y no en cada regla: toda regla de abajo que mire un
+  // subcomando lo escribe pegado a `git`, y con una en el medio dejaba de matchear. Por qué, en
+  // `withoutGitGlobals`.
+  const command = withoutGitGlobals(isCommit(raw) ? unquoted(raw) : raw)
   // Ninguna de estas dos ramas tiene override, y la pregunta merece respuesta escrita porque cuatro
   // guards del motor sí lo tienen. R8 no admite excepción configurable para `force` ni para `amend`, y
   // el precedente es `git-add`, que hace cumplir la misma regla sin escapatoria. Lo que corresponde
@@ -106,7 +109,7 @@ function destructive(input) {
 }
 
 function gitAdd(input) {
-  const command = commandOf(input)
+  const command = withoutGitGlobals(commandOf(input))
   if (/\bgit\s+add\s+(?:[^;&|]*\s)?(?:-A\b|--all\b|\.)(?:\s|$|[;&|])/.test(command)) {
     block("'git add -A/--all/.' está prohibido. Stagea rutas explícitas.")
   }

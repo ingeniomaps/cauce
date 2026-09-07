@@ -840,3 +840,55 @@ test('guard-files lee el sobre de apply_patch aunque llegue como command', () =>
     tool_input: { command: 'grep -r "*** Update File: migrations/001_init.sql" .' },
   }))
 })
+
+// `git` admite opciones globales entre `git` y el subcomando —las lista su propia línea de uso—, y un
+// patrón que los espera pegados deja de ver el verbo cuando hay una en el medio. No falla: deja pasar
+// sin decir nada, que sobre una prohibición sin excepción es lo peor que puede hacer.
+//
+// Se prueban todas las reglas contra todas las formas, y no una regla contra una forma, porque el
+// defecto no estaba en un patrón sino en que cada uno resolvía la posición por su cuenta: con `-C`,
+// `-c` o `-P` delante pasaban las cinco de `destructive` y la de `git-add`. `--git-dir /tmp/.git` era
+// la única que bloqueaba, y por la razón equivocada — la ruta termina en `.git`, así que el patrón leía
+// el verbo dentro de `/tmp/.git push`. Una forma que bloquea por accidente no es una forma cubierta.
+test('una opción global de git no desactiva la regla que mira el subcomando', () => {
+  // La lista es la de `git --help` entera y no una muestra: una opción que el patrón nombra y ningún
+  // caso ejercita se puede borrar sin que nada se ponga rojo —comprobado sacando `--bare` y
+  // `--no-replace-objects`, que pasaba en verde—, y entonces no está cubierta, está escrita.
+  const GLOBALS = [
+    '-C /tmp', '-c core.pager=cat', '-p', '-P', '--paginate', '--no-pager',
+    '--git-dir /tmp/.git', '--git-dir=/tmp/.git', '--work-tree /tmp', '--work-tree=/tmp',
+    '--namespace ns', '--namespace=ns', '--config-env=k=V', '--exec-path=/usr/lib/git-core',
+    '--no-replace-objects', '--bare', '--no-optional-locks',
+    '--literal-pathspecs', '--glob-pathspecs', '--noglob-pathspecs', '--icase-pathspecs',
+    '-c a=b -C /tmp',
+  ]
+  const forms = (command) => [command, ...GLOBALS.map((one) => command.replace('git ', `git ${one} `))]
+  const rules = [
+    ['git-add', 'git add -A', /está prohibido/],
+    ['destructive', 'git push origin main --force', /reescribe historia ya publicada/],
+    ['destructive', 'git push origin main', /publica cambios/],
+    ['destructive', 'git reset --hard HEAD', /destruye cambios locales/],
+    ['destructive', 'git commit --amend -m x', /reescribe un commit ya creado/],
+    ['destructive', 'git clean -fd', /sin seguimiento/],
+    ['destructive', 'git checkout -- .', /no sólo lo que estás mirando/],
+  ]
+  for (const [guard, command, motivo] of rules) {
+    for (const form of forms(command)) blocked(guard, { tool_input: { command: form } }, motivo)
+  }
+})
+
+// La contracara, que es la que evita que el arreglo se cumpla bloqueando de más: sacar las opciones
+// globales no puede convertir en prohibido lo que no lo era, y `-C` después del subcomando es otra
+// cosa —`git commit -C <commit>` reusa el mensaje de otro commit— que no se toca.
+test('sacar las opciones globales no inventa un bloqueo', () => {
+  for (const fine of [
+    'git -C /tmp status --short',
+    'git -c core.pager=cat log --oneline -5',
+    'git -P diff --staged --name-only',
+    'git checkout -- src/main.js',
+    'git -C /tmp checkout -- src/main.js',
+  ]) {
+    assert.doesNotThrow(() => execute('destructive', { tool_input: { command: fine } }), fine)
+    assert.doesNotThrow(() => execute('git-add', { tool_input: { command: fine } }), fine)
+  }
+})
