@@ -1,14 +1,15 @@
 ---
 caso: 030
 titulo: `isCommit` ancla a principio de comando, y con eso relaja de más y protege de menos
-estado: abierto
+estado: resuelto
 prioridad: alta
 version-detectada: 0.62.0
+resuelto-en: 0.63.0
 ---
 
 # 030 — Una asignación de entorno delante de `git commit` apaga tres guards
 
-**🔴 abierto** · detectado en 0.62.0 · prioridad **alta** — el mismo regex falla en los dos sentidos, y uno es silencioso
+**🟢 resuelto en 0.63.0** · detectado en 0.62.0 · prioridad **alta** — el mismo regex falla en los dos sentidos, y uno es silencioso
 
 ## Resumen
 
