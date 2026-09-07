@@ -213,3 +213,63 @@ test('el último campo de una entrada no se traga lo que viene después', () => 
 
   assert.equal(entry.commit, 'abc1234 feat(x): subject')
 })
+
+// En markdown un pipe dentro de una celda se escribe `\|` —es la única forma— y partir por todo `|`
+// corre las columnas de esa fila. Se miden las dos caras que el caso 042 separa, porque tienen daños
+// distintos: la ruidosa rechaza una fila bien escrita culpando a la columna equivocada, y la silenciosa
+// pasa `check` y le entrega al runner el contenido de `Origen` como si fuera la acción de desbloqueo.
+test('un pipe escapado pertenece a su celda y no corre las columnas', () => {
+  const root = tempRoot('ops-human-pipe-')
+  const tabla = (fila) => `# Acciones humanas
+
+| Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |
+|---|---|---|---|
+${fila}
+`
+  const leer = (fila) => {
+    fs.writeFileSync(path.join(root, 'HUMAN_ACTIONS.md'), tabla(fila))
+    return P.readHumanActions(root)[0]
+  }
+
+  // Cara ruidosa: el pipe cae en `Tarea` y el estado real nunca se lee.
+  const ruidosa = leer('| poner el flag `<COP \\| USD>` | pendiente | Ready | Pedir el valor a Ops. |')
+  assert.equal(ruidosa.task, 'poner el flag `<COP | USD>`', 'la tarea se lee entera')
+  assert.equal(ruidosa.state, 'pendiente')
+  assert.equal(ruidosa.valid, true, 'la fila está bien escrita y no se rechaza')
+
+  // Cara silenciosa: el pipe cae en `Estado`, detrás de la palabra del vocabulario. `valid` sigue en
+  // true —por eso no deja rastro— y lo que se corrompe es la acción, que es a quien sirve la columna.
+  const silenciosa = leer('| sembrar-el-flag | pendiente — mide A \\| B | Ready | Sembrar FLAG y avisar. |')
+  assert.equal(silenciosa.state, 'pendiente — mide A | B')
+  assert.equal(silenciosa.resolved, false)
+  assert.equal(silenciosa.origin, 'Ready')
+  assert.equal(silenciosa.action, 'Sembrar FLAG y avisar.', 'la acción de desbloqueo llega entera')
+
+  // El separador sin escapar sigue siendo separador: el arreglo no puede volver ilegible una fila normal.
+  const normal = leer('| tarea-uno | resuelta | Ready | Detalle |')
+  assert.deepEqual(
+    [normal.task, normal.state, normal.origin, normal.action],
+    ['tarea-uno', 'resuelta', 'Ready', 'Detalle'],
+  )
+})
+
+// Va aparte y no dentro de la prueba de arriba para que se pueda ver caer sola: junta con las otras,
+// la primera aserción falla antes y ésta nunca se ejerce.
+test('leer bien la fila destapa el estado que la fila corrida escondía', () => {
+  const root = tempRoot('ops-human-aflora-')
+  fs.writeFileSync(path.join(root, 'HUMAN_ACTIONS.md'), `# Acciones humanas
+
+| Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |
+|---|---|---|---|
+| dar acceso \\| pendiente | hecho | Ready | Pedir el permiso. |
+`)
+  // El caso lo anticipaba en Tradeoffs y no estaba comprobado: el pipe escapado empujaba `pendiente` a
+  // la posición del estado, así que la fila pasaba `check` y desbloqueaba una tarea que nadie resolvió.
+  // Leída bien, el estado es `hecho`, que está fuera del vocabulario. Empezar a fallar acá es el defecto
+  // saliendo a la luz, no una regresión.
+  const fila = P.readHumanActions(root)[0]
+  assert.equal(fila.task, 'dar acceso | pendiente')
+  assert.equal(fila.state, 'hecho')
+  assert.equal(fila.valid, false, 'el estado real estaba fuera del vocabulario y ahora se ve')
+  assert.equal(fila.resolved, false)
+})

@@ -286,10 +286,25 @@ const HUMAN_ACTION_STATES = ['pendiente', 'resuelta']
 // («resuelta 2026-08-17») siga valiendo sin que una palabra suelta dentro de un texto largo resuelva
 // una fila que sigue abierta. `valid` distingue la fila mal escrita de la fila pendiente: las dos
 // bloquean, pero sólo una es un error que hay que reportar.
+// En markdown un pipe dentro de una celda se escribe `\|` —es la única forma que hay— así que partir
+// por todo `|` abre esa celda en dos y corre las columnas de la fila. El daño peor es silencioso: con el
+// pipe detrás de la palabra del vocabulario, el estado sigue leyéndose bien, `check` pasa y lo que se
+// entrega como acción de desbloqueo es el contenido de `Origen`.
+//
+// Lo que no cubre: una celda que termine en una barra invertida literal. En markdown eso se escribe
+// `\\` y acá se leería como escape del separador. Es un borde que nadie escribe y taparlo pedía un
+// parser de verdad; queda dicho en vez de supuesto.
+const SEPARADOR = /(?<!\\)\|/
+
+// El escape se quita al normalizar. Esta columna existe para que una persona lea qué tiene que hacer, y
+// `\|` no es parte de lo que quiso decir: es cómo markdown escribe un pipe. La fila archivada no se ve
+// afectada —`archive` reescribe `raw`, la línea original, no las celdas—, así que quitarlo no pierde nada.
+const celda = (cell) => cell.trim().replace(/\\\|/g, '|')
+
 function readHumanActions(dir) {
   const rows = withoutComments(read(path.join(dir, 'HUMAN_ACTIONS.md'))).split('\n')
     .filter((line) => /^\|/.test(line) && !/^\|\s*:?-+/.test(line))
-    .map((line) => ({ line, cells: line.split('|').slice(1, -1).map((cell) => cell.trim()) }))
+    .map((line) => ({ line, cells: line.split(SEPARADOR).slice(1, -1).map(celda) }))
   return rows.filter(({ cells }) => cells.length >= 4 && !/^tarea$/i.test(cells[0]))
     .map(({ line, cells }) => {
       const state = (cells[1].match(new RegExp(`^(${HUMAN_ACTION_STATES.join('|')})\\b`, 'i')) || [])[1] || ''
