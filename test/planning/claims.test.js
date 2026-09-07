@@ -138,6 +138,18 @@ test('dos personas no reciben la misma tarea, y la segunda no puede pisar a la p
   assert.match(despues.stdout, /^TASK {3}dashboard/m, 'soltada, vuelve a la cola')
 })
 
+test('la cola tomada entera no se anuncia como cola vacía', () => {
+  const dir = planning('cauce-tomada-')
+  for (const slug of ['dashboard', 'boton', 'reportes']) {
+    assert.equal(como('ana@acme.com', () => run(['claim', dir, slug])).status, 0)
+  }
+  const luis = como('luis@acme.com', () => run(['context', dir]))
+  assert.match(luis.stdout, /sin tarea disponible/)
+  // Sin esto, «no hay trabajo» y «el trabajo lo tiene tu compañera» se leen igual, y la respuesta
+  // correcta a cada una es distinta: buscar otra cosa, o hablar con ella.
+  assert.match(luis.stdout, /^TAKEN {2}dashboard \(ana@acme\.com\)$/m)
+})
+
 test('sin reclamos y sin WIP en disco, check no dice nada de ninguno de los dos', () => {
   const dir = planning('cauce-sin-estado-')
   fs.rmSync(path.join(dir, 'claims'), { recursive: true })

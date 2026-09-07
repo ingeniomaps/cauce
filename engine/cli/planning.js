@@ -339,6 +339,9 @@ function context(dir, cli) {
   }
   if (!report.task) {
     console.log('TASK   (sin tarea disponible)')
+    // Una cola entera tomada por el equipo no es lo mismo que una cola vacía, y decir lo segundo manda a
+    // buscar trabajo que no existe en vez de a hablar con quien lo tiene. Mismo motivo que `blocked`.
+    for (const one of report.taken) console.log(`TAKEN  ${one.slug} (${one.owner})`)
     for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
     due()
     return
