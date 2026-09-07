@@ -86,19 +86,59 @@ function configOf(root) {
   }
 }
 
+// Vacía lo que va entre comillas, dejando una marca que ningún patrón confunde con una ruta ni con un
+// comando. Vive acá porque la usan tres lugares por razones distintas, y cada uno explica la suya donde
+// la llama.
+const unquoted = (command) => String(command).replace(/'[^']*'|"[^"]*"/g, '\u0000')
+
+// Sobre qué repositorio se lee el índice. En un commit se mira el comando con el mensaje vaciado, por
+// la misma razón por la que `destructive` lo hace: un mensaje que menciona `git -C $VAR` no está
+// eligiendo un repositorio, lo está citando. Sin esto, el commit que explica este arreglo se bloquea a
+// sí mismo — pasó al escribirlo.
+//
+// El precio es una ruta entrecomillada en el propio `-C` de un commit —`git -C "mi carpeta" commit`—,
+// que se pierde y cae al cwd. Es más raro que un mensaje que cita un comando, y el cwd de un commit
+// suele ser el repositorio correcto; el caso contrario deja al guard leyendo un índice ajeno.
 function gitDirectory(command, cwd) {
-  const flag = command.match(/(?:^|\s)git\s+-C\s+(['"]?)([^\s'";&|]+)\1/)
-  const cd = command.match(/(?:^|[;&|]\s*)cd\s+(['"]?)([^\s'";&|]+)\1/)
+  const text = isCommit(command) ? unquoted(command) : command
+  const flag = text.match(/(?:^|\s)git\s+-C\s+(['"]?)([^\s'";&|]+)\1/)
+  const cd = text.match(/(?:^|[;&|]\s*)cd\s+(['"]?)([^\s'";&|]+)\1/)
   return path.resolve(cwd, flag ? flag[2] : cd ? cd[2] : '.')
 }
 
+// Lo que un shell admite delante del verbo: asignaciones de entorno, `env` y `sudo`. `VAR=1 git commit`
+// empieza por la asignación, así que un ancla que sólo acepta el principio del comando o un separador
+// no ve el `git` que viene después.
+//
+// Falla en los dos sentidos y uno no avisa. Del lado ruidoso, el mensaje del commit vuelve a juzgarse
+// como comando. Del silencioso —el que importa— los tres guards que sólo corren sobre un commit dejan
+// de correr: gobernanza, dependencias y generados. Cualquier variable delante alcanza, y la ironía es
+// que el prefijo que el procedimiento manda escribir para un commit de gobernanza es
+// `OPS_GOVERNANCE_OVERRIDE=1`: escrito ahí, el guard no lee el override, directamente no se ejecuta.
+const PREFIX = String.raw`(?:^|[;&|]\s*)(?:(?:env|sudo)\s+)*`
+  + String.raw`(?:[A-Za-z_][A-Za-z0-9_]*=(?:'[^']*'|"[^"]*"|\S*)\s+)*`
+const COMMIT = new RegExp(PREFIX + String.raw`git(?:\s+-C\s+\S+)?\s+commit(?:\s|$)`)
+
 function isCommit(command) {
-  return /(?:^|[;&|]\s*)git(?:\s+-C\s+\S+)?\s+commit(?:\s|$)/.test(command)
+  return COMMIT.test(command)
 }
 
+// Un índice vacío y un índice ilegible no son la misma respuesta: la primera autoriza a seguir, la
+// segunda no autoriza nada. Devolviendo `[]` en los dos casos, los tres guards que preguntan acá se
+// apagaban en silencio ante cualquier lectura fallida — y llegar a una es fácil, porque `gitDirectory`
+// no expande variables: `git -C $OPS commit` resuelve la ruta literal `$OPS`, que no existe.
+//
+// Es la regla que el propio shim ya tiene escrita —«Un guard que no encuentra su motor bloquea, nunca
+// permite»—, aplicada donde faltaba. Bloquear desde acá es seguro: los tres llamadores son guards, así
+// que no hay ningún consumidor que sólo quiera consultar el índice.
 function stagedFiles(dir) {
   const result = spawnSync('git', ['-C', dir, 'diff', '--cached', '--name-only'], { encoding: 'utf8' })
-  return result.status === 0 ? result.stdout.trim().split('\n').filter(Boolean) : []
+  if (result.status !== 0) {
+    const why = (result.stderr || '').trim() || (result.error && result.error.message) || 'git falló'
+    block(`no se pudo leer el índice de ${dir} (${why}). Un guard que no puede verificar no autoriza. `
+      + 'Si usaste una variable en `git -C`, escribí la ruta literal.')
+  }
+  return result.stdout.trim().split('\n').filter(Boolean)
 }
 
 // R10 pide «la autorización configurada para el proyecto» y `runner.allowPush` es esa configuración:
@@ -157,5 +197,5 @@ const DECLARE_IT = 'Si el proyecto necesita escribir ahí, declaralo en writable
 module.exports = {
   readInput, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
   gitDirectory, isCommit, stagedFiles, pushAllowed, findOpsRoot,
-  writableRoots, outsideRoots, DECLARE_IT,
+  writableRoots, outsideRoots, DECLARE_IT, unquoted,
 }

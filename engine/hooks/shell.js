@@ -10,7 +10,7 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const {
   commandOf, cwdOf, block, gitDirectory, isCommit, stagedFiles, pushAllowed,
-  writableRoots, outsideRoots, DECLARE_IT,
+  writableRoots, outsideRoots, DECLARE_IT, unquoted,
 } = require('./input')
 
 // Dónde empieza y dónde termina una palabra dentro de un comando. Tres reglas de la tabla de abajo lo
@@ -180,10 +180,6 @@ const IN_PLACE = /(?:^|\s)-{1,2}i/
 // decide un bloqueo. Filtrarlo sería una rama que ninguna prueba puede ver caer.
 const positional = (text) => text.trim().split(/\s+/).filter((one) => one && !one.startsWith('-'))
 
-// Vacía lo que va entre comillas, dejando una marca que ningún patrón confunde con una ruta ni con un
-// comando. Lo usan dos guards por razones distintas, y cada uno explica la suya donde lo llama.
-const unquoted = (command) => String(command).replace(/'[^']*'|"[^"]*"/g, '\u0000')
-
 // Un `>` adentro de una cadena no redirige nada. Pierde el destino entrecomillado, que es un falso
 // negativo — el error barato en un guard que ya es incompleto, porque el caro es frenar un comando
 // legítimo y que alguien apague el guard entero.
@@ -250,7 +246,8 @@ function governance(input) {
   if (governed.length) {
     const files = governed.map((file) => `  - ${file}`).join('\n')
     block(`El commit toca gobernanza protegida:\n${files}\n` +
-      'Usa OPS_GOVERNANCE_OVERRIDE=1 solo con aprobación.')
+      'Usa OPS_GOVERNANCE_OVERRIDE=1 solo con aprobación, en el entorno del guard: escrita delante '
+      + 'del comando no llega hasta acá.')
   }
 }
 

@@ -12,8 +12,8 @@ version-detectada: 0.62.0
 
 ## Resumen
 
-Los tres guards que corren sobre un commit —gobernanza, dependencias y generados— preguntan qué hay en
-el índice llamando a `stagedFiles(dir)`. Si esa lectura falla, la función devuelve una lista vacía, y
+Los tres guards que corren sobre un commit —`governance`, `dependencies` y `verify`, éste último por su
+control de OpenAPI y SQL generados— preguntan qué hay en el índice llamando a `stagedFiles(dir)`. Si esa lectura falla, la función devuelve una lista vacía, y
 una lista vacía se lee exactamente igual que «no hay nada que revisar»: los tres pasan.
 
 Hacer que falle no requiere astucia. Basta con que el directorio no se resuelva, y la forma más común
@@ -87,8 +87,8 @@ El mensaje tiene que nombrar la variable, porque es la causa que quien lo lea va
 va a sospechar.
 
 Bloquear desde adentro de `stagedFiles` es seguro y conviene decir por qué: sus tres llamadores son
-guards —`shell.js:124`, `:249` y `:273`—, así que no hay ningún consumidor que sólo quiera consultar el
-índice y al que un bloqueo le caiga encima.
+guards —`shell.js:124` en `dependencies`, `:249` en `governance` y `:273` en `verify`—, así que no hay
+ningún consumidor que sólo quiera consultar el índice y al que un bloqueo le caiga encima.
 
 Aparte, y por separado: `gitDirectory` puede detectar que capturó algo que empieza con `$` y decirlo,
 en vez de resolverlo como nombre de carpeta. Es el mismo criterio con que `shell-boundary` decide no
