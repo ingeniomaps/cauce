@@ -944,3 +944,29 @@ test('un comando que stagea y commitea a la vez no se puede juzgar, y se dice', 
     cwd: root, tool_input: { command: `git commit -m 'sin git add adentro'` },
   }))
 })
+
+// Los tres de afuera son las formas en que el SQL aparece sin ser una migración: el ADR que la cita, el
+// comentario que advierte que eso no se hace, el runbook que lo lista. Van los tres porque lo que se
+// cuida no es una extensión sino el alcance —el porqué, en `migrations`—, y con un solo caso el próximo
+// que se escriba entra igual.
+test('el SQL destructivo se juzga sobre una migración, no sobre cualquier archivo', () => {
+  const root = tempRoot('ops-hook-migrations-alcance-')
+  fs.mkdirSync(path.join(root, 'migrations'))
+  for (const fuera of [
+    { file_path: 'docs/adr/003-particionar-pedidos.md', content: 'La migración corre `DROP TABLE pedidos;`.' },
+    { file_path: 'src/repo.js', content: '// nunca hacer DELETE FROM pedidos;' },
+    { file_path: 'docs/runbook.md', content: 'Paso 4: TRUNCATE sesiones;' },
+  ]) {
+    assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: fuera }), fuera.file_path)
+  }
+  // Y el guard sigue haciendo su trabajo donde le toca. Se asercia el nombre del archivo dentro del
+  // mensaje y no sólo el motivo: es lo que separa este bloqueo de los tres de arriba.
+  blocked('migrations', {
+    cwd: root, tool_input: { file_path: 'migrations/004_drop.sql', content: 'DROP TABLE pedidos;' },
+  }, /migrations\/004_drop\.sql contiene SQL destructivo/)
+  // Una migración fuera de un directorio con ese nombre deja de frenarse, y es el precio de acotar el
+  // alcance: el chequeo de reescritura ya vivía con esa misma convención desde que existe.
+  assert.doesNotThrow(() => execute('migrations', {
+    cwd: root, tool_input: { file_path: 'sql/004_drop.sql', content: 'DROP TABLE pedidos;' },
+  }))
+})

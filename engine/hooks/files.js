@@ -120,12 +120,20 @@ function migrations(input) {
       String.raw`|\bdelete\s+from\s+\S+\s*(?:;|$)`,
     'i',
   )
-  if (destructiveSql.test(contentOf(input))) {
-    block('La migración contiene SQL destructivo. Requiere revisión y OPS_MIGRATIONS_OVERRIDE=1.')
-  }
+  // Las dos condiciones deciden sobre el mismo alcance, y por eso comparten el filtro. El bloqueo por
+  // SQL destructivo corría antes de este bucle, o sea sobre el contenido y sin mirar la ruta que ya
+  // tenía a mano: frenaba un ADR que citaba la migración o un comentario que advertía que eso no se
+  // hace, y encima afirmaba «La migración contiene…» sobre un archivo que no lo era. Un guard que
+  // frena donde no corresponde enseña a apagarlo, que es la salida más ancha que hay.
+  //
+  // El mensaje nombra el archivo por lo mismo: un falso positivo se lee igual que un bloqueo correcto
+  // mientras no diga sobre qué está decidiendo.
   for (const raw of filesOf(input)) {
     const normalized = raw.replace(/\\/g, '/')
     if (!/(?:^|\/)(?:migrations?|migrate)\/.*\.sql$/i.test(normalized)) continue
+    if (destructiveSql.test(contentOf(input))) {
+      block(`${raw} contiene SQL destructivo. Requiere revisión y OPS_MIGRATIONS_OVERRIDE=1.`)
+    }
     const file = path.resolve(cwdOf(input), raw)
     if (fs.existsSync(file)) {
       block(`${raw} es una migración existente. Crea una nueva en vez de reescribir historial.`)
