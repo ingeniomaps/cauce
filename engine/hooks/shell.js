@@ -292,8 +292,8 @@ function governance(input) {
   block(`El commit toca gobernanza protegida:\n${files}\n${AP.HOW('OPS_GOVERNANCE_OVERRIDE')}`)
 }
 
-function run(program, args, cwd) {
-  const env = { ...process.env }
+function run(program, args, cwd, extra = {}) {
+  const env = { ...process.env, ...extra }
   delete env.NODE_TEST_CONTEXT
   const result = spawnSync(program, args, { cwd, encoding: 'utf8', stdio: 'pipe', env })
   return {
@@ -301,6 +301,57 @@ function run(program, args, cwd) {
     status: result.status,
     output: `${result.stdout || ''}${result.stderr || ''}`.trim(),
   }
+}
+
+// Dónde tiene que correr un gate: sobre lo que el commit va a grabar, que es el índice y no el árbol.
+// El árbol se le parece casi siempre y por eso el error no se veía — puede tener encima otra versión de
+// un archivo staged, y puede tener uno sin trackear que el commit no lleva, que es el olvido de
+// `git add` de toda la vida. En los dos casos el verde se calcula sobre un código que nadie va a
+// commitear, y queda escrito como si fuera el del commit.
+//
+// Cuando árbol e índice coinciden, el árbol **es** el próximo commit y correr donde está no cuesta nada.
+// Sólo cuando difieren se materializa el índice: `checkout-index` sobre un temporal, medido en 157 ms
+// para las mil quinientas rutas de este repositorio, contra los segundos que tarda cualquier gate.
+//
+// Lo ignorado viaja por enlace y lo sin trackear no, y esa distinción es la mitad del arreglo:
+// `node_modules` o `.venv` son entorno que el commit no lleva y sin ellos no corre ningún gate, mientras
+// que un fuente sin agregar es justamente lo que hay que ver fallar. `git status --ignored` ya los
+// separa en `!!` y `??`, así que no hay que adivinar cuál es cuál.
+//
+// No se usa `git stash --keep-index`, que sería más corto: toca el árbol de quien está trabajando, y un
+// gate que muere a la mitad le deja el stash puesto.
+function commitTree(dir) {
+  const status = run('git', ['-C', dir, 'status', '--porcelain', '--ignored'], dir)
+  if (!status.ok) {
+    block(`no se pudo leer el estado de ${dir}, así que no hay cómo saber qué va a grabar el commit.`)
+  }
+  const lines = status.output.split('\n').filter(Boolean)
+  if (!lines.some((line) => !line.startsWith('!!') && line[1] !== ' ')) {
+    return { root: dir, temp: null, env: {} }
+  }
+
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ops-verify-'))
+  const written = run('git', ['-C', dir, 'checkout-index', '-a', `--prefix=${temp}${path.sep}`], dir)
+  if (!written.ok) {
+    fs.rmSync(temp, { recursive: true, force: true })
+    block(`no se pudo materializar el índice de ${dir} para correr los gates: ${written.output}`)
+  }
+  for (const line of lines) {
+    if (!line.startsWith('!! ')) continue
+    const name = line.slice(3).trim().replace(/\/$/, '')
+    const link = path.join(temp, name)
+    if (fs.existsSync(link)) continue
+    fs.mkdirSync(path.dirname(link), { recursive: true })
+    fs.symlinkSync(path.join(dir, name), link, 'junction')
+  }
+  // Un índice materializado no trae `.git`, y un gate que llama a git —listar lo trackeado, leer una
+  // etiqueta— falla ahí por no encontrarlo: el guard frenaría un commit correcto por su propia
+  // mecánica. Comprobado sobre la suite de este repositorio, que pasa de dos fallos a ninguno con estas
+  // dos variables. Apuntan al repositorio de verdad con el árbol puesto en la copia, así que `git`
+  // contesta sobre lo que se va a commitear.
+  const gitDir = run('git', ['-C', dir, 'rev-parse', '--absolute-git-dir'], dir)
+  const env = gitDir.ok ? { GIT_DIR: gitDir.output.trim(), GIT_WORK_TREE: temp } : {}
+  return { root: temp, temp, env }
 }
 
 function verify(input) {
@@ -326,39 +377,54 @@ function verify(input) {
       + AP.HOW('OPS_SKIP_VERIFY'))
   }
   if (!staged.some((file) => /\.(?:ts|tsx|js|jsx|mjs|cjs|go|py|html|css|scss|prisma)$/.test(file))) return
+  const { root, temp, env } = commitTree(dir)
+  try {
+    verifyGates(root, dir, aprobado, env)
+  } finally {
+    if (temp) fs.rmSync(temp, { recursive: true, force: true })
+  }
+}
+
+// Corre lo que el stack declare y bloquea si algo sale en rojo. `root` es dónde corre —el índice
+// materializado o el árbol, que ahí son lo mismo— y `dir` es el repositorio, que es el nombre que le
+// dice algo a quien lee el mensaje.
+function verifyGates(root, dir, aprobado, env) {
   const failures = []
-  if (fs.existsSync(path.join(dir, 'package.json'))) {
-    const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'))
-    const usesPnpm = fs.existsSync(path.join(dir, 'pnpm-lock.yaml'))
-      && !fs.existsSync(path.join(dir, 'package-lock.json'))
+  if (fs.existsSync(path.join(root, 'package.json'))) {
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
+    const usesPnpm = fs.existsSync(path.join(root, 'pnpm-lock.yaml'))
+      && !fs.existsSync(path.join(root, 'package-lock.json'))
     const pm = usesPnpm ? 'pnpm' : 'npm'
     for (const script of ['test', 'lint', 'typecheck', 'build']) {
       if (!pkg.scripts || !pkg.scripts[script]) continue
-      const result = run(pm, ['run', script], dir)
+      const result = run(pm, ['run', script], root, env)
       if (!result.ok) failures.push(`${script} (exit ${result.status})`)
     }
-  } else if (fs.existsSync(path.join(dir, 'go.mod'))) {
-    const makefile = path.join(dir, 'Makefile')
+  } else if (fs.existsSync(path.join(root, 'go.mod'))) {
+    const makefile = path.join(root, 'Makefile')
     if (fs.existsSync(makefile) && /^ci:/m.test(fs.readFileSync(makefile, 'utf8'))) {
-      const result = run('make', ['ci'], dir)
+      const result = run('make', ['ci'], root, env)
       if (!result.ok) failures.push(`make ci (exit ${result.status})`)
     } else {
       for (const args of [['test', './...'], ['build', './...']]) {
-        const result = run('go', args, dir)
+        const result = run('go', args, root, env)
         if (!result.ok) failures.push(`go ${args[0]} (exit ${result.status})`)
       }
     }
-  } else if (fs.existsSync(path.join(dir, 'pyproject.toml')) || fs.existsSync(path.join(dir, 'requirements.txt'))) {
-    const makefile = path.join(dir, 'Makefile')
+  } else if (fs.existsSync(path.join(root, 'pyproject.toml')) || fs.existsSync(path.join(root, 'requirements.txt'))) {
+    const makefile = path.join(root, 'Makefile')
     if (fs.existsSync(makefile) && /^test:/m.test(fs.readFileSync(makefile, 'utf8'))) {
-      const result = run('make', ['test'], dir)
+      const result = run('make', ['test'], root, env)
       if (!result.ok) failures.push(`make test (exit ${result.status})`)
     }
   }
-  if (failures.length && !aprobado) {
-    block(`Verify falló en ${path.basename(dir)}: ${failures.join(', ')}. No se commitea en rojo.\n`
-      + AP.HOW('OPS_SKIP_VERIFY'))
-  }
+  if (!failures.length || aprobado) return
+  // Se dice sobre qué corrió cuando no fue el árbol: un fallo que no se reproduce escribiendo el mismo
+  // comando a mano se lee como que el guard miente, y lo que pasó es que midió lo que se va a grabar.
+  const donde = root === dir ? '' : '\nCorrió sobre el índice, que es lo que el commit graba: si en tu '
+    + 'directorio pasa, es que en disco tenés algo que no está staged.'
+  block(`Verify falló en ${path.basename(dir)}: ${failures.join(', ')}. No se commitea en rojo.${donde}\n`
+    + AP.HOW('OPS_SKIP_VERIFY'))
 }
 
 module.exports = { destructive, gitAdd, dependencies, governance, verify, shellBoundary, run }
