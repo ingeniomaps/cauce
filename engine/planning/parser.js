@@ -295,6 +295,7 @@ const HUMAN_ACTION_STATES = ['pendiente', 'resuelta']
 // `\\` y acá se leería como escape del separador. Es un borde que nadie escribe y taparlo pedía un
 // parser de verdad; queda dicho en vez de supuesto.
 const SEPARADOR = /(?<!\\)\|/
+const SEPARADORES = /^\|\s*:?-+/
 
 // El escape se quita al normalizar. Esta columna existe para que una persona lea qué tiene que hacer, y
 // `\|` no es parte de lo que quiso decir: es cómo markdown escribe un pipe. La fila archivada no se ve
@@ -302,9 +303,17 @@ const SEPARADOR = /(?<!\\)\|/
 const celda = (cell) => cell.trim().replace(/\\\|/g, '|')
 
 function readHumanActions(dir) {
-  const rows = withoutComments(read(path.join(dir, 'HUMAN_ACTIONS.md'))).split('\n')
-    .filter((line) => /^\|/.test(line) && !/^\|\s*:?-+/.test(line))
+  const lineas = withoutComments(read(path.join(dir, 'HUMAN_ACTIONS.md'))).split('\n')
+  // En markdown la cabecera es la fila anterior a la de separadores, diga lo que diga su primera celda.
+  // Se marcan todas y no la primera: un archivo con una tabla por sección tiene una cabecera por tabla,
+  // y con `findIndex` la segunda y la tercera vuelven a leerse como datos. Nada más se mueve, porque una
+  // fila de datos nunca está inmediatamente antes de los guiones.
+  const cabeceras = new Set(lineas.map((line, i) => (SEPARADORES.test(line) ? i - 1 : -1)))
+  const rows = lineas
+    .filter((line, i) => /^\|/.test(line) && !SEPARADORES.test(line) && !cabeceras.has(i))
     .map((line) => ({ line, cells: line.split(SEPARADOR).slice(1, -1).map(celda) }))
+  // El literal queda como resguardo de la tabla escrita sin su fila de separadores: markdown no la
+  // renderiza como tabla, y este parser lee sus filas igual.
   return rows.filter(({ cells }) => cells.length >= 4 && !/^tarea$/i.test(cells[0]))
     .map(({ line, cells }) => {
       const state = (cells[1].match(new RegExp(`^(${HUMAN_ACTION_STATES.join('|')})\\b`, 'i')) || [])[1] || ''

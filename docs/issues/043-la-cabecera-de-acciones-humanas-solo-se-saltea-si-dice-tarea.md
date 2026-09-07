@@ -101,6 +101,30 @@ Migrando `roax-ops` a Cauce 0.66.0 el 2026-09-07. Su tabla usaba `| Tarea Requer
 tiene tres tablas, así que fueron tres errores de este tipo mezclados con 87 reales de vocabulario. Se
 resolvió renombrando las tres cabeceras a `Tarea`.
 
+## Arreglo aplicado
+
+**Mergeado y sin publicar.** El caso sigue `abierto` hasta que salga la versión que lo lleva. El
+recorrido de lo que enumeró, ítem por ítem:
+
+- **Reconocer la cabecera por su forma — hecho.** La fila anterior a la de separadores es el encabezado,
+  diga lo que diga su primera celda. Con una tabla propia —`Tarea Requerida`, `Bloqueo`— la fila deja de
+  leerse como dato y el `check` ya no señala las etiquetas de las columnas.
+- **«Con varias tablas hay que saltear la cabecera de cada una» — atendido, y era lo que el diff del caso
+  no cubría.** El `findIndex` que proponía resuelve una sola; se marcan todos los índices que preceden a
+  una fila de separadores. Hay una prueba con dos tablas, y con `findIndex` puesto en su lugar falla: la
+  segunda cabecera vuelve a leerse como dato.
+- **La alternativa barata que el caso ofrecía —dejar el literal y mejorar el mensaje— no se tomó.** El
+  mensaje mejor sigue describiendo mal la fila; la forma la reconoce markdown y no hace falta adivinarla.
+- **El literal `^tarea$` se conserva, y ahora con una razón.** Es el resguardo de la tabla escrita sin su
+  fila de separadores: markdown no la renderiza como tabla y este parser lee sus filas igual. Tiene su
+  prueba, y quitarlo la rompe — la cabecera `Tarea` se cuela como acción humana.
+- **«Nada más se mueve» — se sostiene.** Una fila de datos nunca está inmediatamente antes de los
+  guiones. `npm run ci` en verde, 557 pruebas, y la tabla normal del molde sigue leyéndose igual.
+
+Entró después de [042](042-la-tabla-de-acciones-humanas-se-parte-por-todo-pipe.md), como los dos casos
+decían, y su diff aplicó literal: la advertencia que ambos traían sobre líneas contiguas resultó falsa y
+quedó corregida en los dos archivos antes de este arreglo.
+
 ## Relacionados
 
 - [042](042-la-tabla-de-acciones-humanas-se-parte-por-todo-pipe.md) — mismo parser, misma función; los
