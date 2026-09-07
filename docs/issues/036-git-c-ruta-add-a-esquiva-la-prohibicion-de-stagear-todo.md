@@ -1,14 +1,15 @@
 ---
 caso: 036
 titulo: `git -C <ruta> add -A` esquiva la prohibición de stagear todo
-estado: abierto
+estado: resuelto
+resuelto-en: 0.65.0
 prioridad: alta
 version-detectada: 0.64.0
 ---
 
 # 036 — La prohibición de `git add -A` no ve el `-C` en el medio
 
-**🔴 abierto** · detectado en 0.64.0 · prioridad **alta** — falla abierto sobre una prohibición dura
+**🟢 resuelto en 0.65.0** · detectado en 0.64.0 · prioridad **alta** — falla abierto sobre una prohibición dura
 
 ## Resumen
 
@@ -102,6 +103,22 @@ En `gouduet`, el 2026-09-06, mientras se armaba la reproducción de
 comprobar que `git add -A` sí estuviera prohibido para poder apoyar en eso el argumento sobre
 `git commit -a`; se escribió con `git -C <ruta>` porque la sesión trabajaba desde el directorio de
 arriba, y stageó seis archivos sin decir nada.
+
+## Cierre
+
+**🟢 resuelto en 0.65.0.** Lo que este caso enumeró, ítem por ítem:
+
+- **Normalizar una sola vez** → hecho: `withoutGitGlobals` en `engine/hooks/input.js`, con la lista que
+  imprime `git --help`. Los tres lugares que resolvían la posición por su cuenta —`isCommit`,
+  `gitDirectory` y el patrón de `git add`— pasan por ahí.
+- **Una prueba por forma: sin prefijos, con asignación de entorno, con `-C`, con `-c`, con las dos
+  juntas** → hecho, y ampliado: se cruza cada regla contra **todas** las opciones que la lista nombra,
+  porque una opción escrita en el patrón y sin ningún caso se puede borrar sin que nada se ponga rojo.
+- **La prueba cubre cada guard contra cada forma, no la función aislada** (del Tradeoffs) → hecho.
+- **El alcance era mayor que el que este caso registró.** Acá se documentó para `git add`; al medirlo,
+  el mismo hueco estaba en todas las reglas que leen un subcomando —force-push, push, `reset --hard`,
+  `commit --amend`, `clean -f` y la forma ancha de `checkout`—. Y `--git-dir /tmp/.git`, que este caso
+  daba por una forma más, bloqueaba por accidente: la ruta termina en `.git`.
 
 ## Relacionados
 

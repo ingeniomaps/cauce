@@ -1,14 +1,15 @@
 ---
 caso: 039
 titulo: El guard de migraciones bloquea cualquier archivo cuyo contenido mencione SQL destructivo
-estado: abierto
+estado: resuelto
+resuelto-en: 0.65.0
 prioridad: media
 version-detectada: 0.64.0
 ---
 
 # 039 — Una nota que menciona `DROP TABLE` se bloquea como si fuera una migración
 
-**🔴 abierto** · detectado en 0.64.0 · prioridad **media** — el guard mira el contenido y no la ruta que ya tiene
+**🟢 resuelto en 0.65.0** · detectado en 0.64.0 · prioridad **media** — el guard mira el contenido y no la ruta que ya tiene
 
 ## Resumen
 
@@ -102,6 +103,17 @@ resuelve apagando el guard entero, y ese es el camino que no queremos enseñar.
 Comprobando la causa raíz del [038](038-las-otras-cuatro-salidas-siguen-siendo-de-sesion.md), el
 2026-09-07. Ese caso afirmaba que `migrations` trabaja con `filesOf(input)`; al verificarlo antes de
 commitear apareció que su chequeo principal no, y de ahí salió esto. La afirmación quedó corregida allá.
+
+## Cierre
+
+**🟢 resuelto en 0.65.0.** Lo que este caso enumeró, ítem por ítem:
+
+- **Mover el chequeo adentro del bucle que filtra por ruta** → hecho.
+- **El mensaje nombra el archivo** → hecho, y aserciado por nombre y no sólo por motivo.
+- **La prueba en rojo primero** → hecho: el caso negativo —un `.md` con `DROP TABLE` adentro— se escribió
+  contra el código anterior y falló.
+- **El borde que había que decidir a propósito**: una migración escrita fuera de un directorio
+  `migrations/` deja de frenarse. Se aceptó, y la razón quedó en el código y no sólo en el commit.
 
 ## Relacionados
 

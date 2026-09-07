@@ -46,6 +46,23 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Los gates corrían sobre tu directorio y el commit graba el índice.** Son dos cosas distintas cuando
+  stageás algo y después seguís editando, y también cuando un archivo nuevo todavía no está agregado: el
+  gate pasaba porque el archivo estaba en disco, y el commit salía sin él. Ahora, cuando el árbol y el
+  índice difieren, `verify` materializa el índice en un temporal y corre ahí; cuando coinciden corre
+  donde está, que es lo mismo y no cuesta nada.
+
+  **Esto puede empezar a frenarte commits que antes pasaban, y es lo que tiene que hacer**: si el gate
+  falla y en tu directorio pasa, es que en disco tenés algo que no está staged. Lo ignorado —
+  `node_modules`, `.venv`— viaja a la copia, así que los gates siguen encontrando lo que necesitan; lo
+  sin trackear no viaja, que es justamente cómo aparece el `git add` que faltaba.
+
+- **El guard de dependencias preguntaba al disco qué lockfiles hay.** Borrar el lock del directorio sin
+  stagear el borrado dejaba de disparar la comprobación, aunque el commit siguiera llevándolo. Ahora un
+  lock cuenta si está en disco **o** si el commit lo va a llevar; el aviso de «hay varios lockfiles»
+  sigue siendo sobre el disco, porque lo que elige cuál manda es el gestor que corras.
+
+
 - **Una opción global de `git` desactivaba la regla que miraba el subcomando.** `git` admite `-C`,
   `-c`, `-P` y las demás entre el verbo y el subcomando, y los patrones los esperaban pegados. Con
   cualquiera en el medio pasaban sin decir nada la prohibición de stagear todo, el force-push, el push

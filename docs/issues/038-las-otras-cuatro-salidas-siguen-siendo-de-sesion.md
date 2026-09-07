@@ -1,14 +1,15 @@
 ---
 caso: 038
 titulo: Cuatro guards siguen abriéndose por sesión, y la aprobación por operación ya les encaja
-estado: abierto
+estado: resuelto
+resuelto-en: 0.65.0
 prioridad: media
 version-detectada: 0.64.0
 ---
 
 # 038 — La aprobación por operación existe y sólo la usa un guard
 
-**🔴 abierto** · detectado en 0.64.0 · prioridad **media** — la salida ancha es la única que queda en cuatro guards
+**🟢 resuelto en 0.65.0** · detectado en 0.64.0 · prioridad **media** — la salida ancha es la única que queda en cuatro guards
 
 ## Resumen
 
@@ -107,6 +108,23 @@ Al cerrar el [034](034-el-override-de-gobernanza-no-tiene-camino-documentado.md)
 que la aprobación no encajaba en los guards de archivos. Al revisar esa afirmación para contestar si
 convenía atender el hilo o esperar, resultó equivocada: un guard de archivos conoce su objetivo tan bien
 como uno de commits conoce el índice.
+
+## Cierre
+
+**🟢 resuelto en 0.65.0.** Lo que este caso enumeró, ítem por ítem:
+
+- **Que los cuatro consulten la aprobación** → hecho para todo lo que decide sobre una ruta. `verify`
+  aprueba el conjunto staged entero, porque lo que juzga es el commit y no un archivo.
+- **La única que no encajó**: publicar un paquete o instalar global no tiene ninguna ruta sobre la cual
+  decidir. Queda con su variable, y se dice en el molde donde el lector está mirando cuando lo frenan.
+- **¿Un archivo o cuatro?** → uno, y renombrado a `.ops-approval`, porque con un solo archivo el nombre
+  de gobernanza dejaba de describir lo que hace. La contracara —una lista autoriza a los dos guards que
+  miren esas rutas— queda escrita en `approval`.
+- **¿La variable se queda?** → sí, con su alcance dicho.
+- **La que no había que tomar: extender el cotejo a `git-add`** → no se tomó.
+- **El tradeoff de esperar** («conviene que salga junto con lo que enseñe el uso») → no se esperó, y es
+  una decisión, no un olvido: la superficie sale ahora porque la alternativa era dejar cuatro guards con
+  una sola salida de sesión durante otra versión entera.
 
 ## Relacionados
 

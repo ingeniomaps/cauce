@@ -1,14 +1,15 @@
 ---
 caso: 040
 titulo: Verify corre los gates sobre el árbol de trabajo y el commit graba el índice
-estado: abierto
+estado: resuelto
+resuelto-en: 0.65.0
 prioridad: alta
 version-detectada: 0.65.0
 ---
 
 # 040 — El gate mide un código y el commit guarda otro
 
-**🔴 abierto** · detectado en 0.65.0 · prioridad **alta** — falla abierto y el verde queda escrito
+**🟢 resuelto en 0.65.0** · detectado en 0.65.0 · prioridad **alta** — falla abierto y el verde queda escrito
 
 ## Resumen
 
@@ -125,6 +126,25 @@ cerrados de verdad, se hizo: `verify` es el otro.
 `dependencies` tiene la misma forma en chico y por eso no lleva caso aparte: mira con `existsSync` qué
 lockfiles hay en el árbol para juzgar un manifiesto staged. Es menos grave —lo que decide es si existe
 un lockfile, no su contenido— y se arregla junto con esto o no se arregla.
+
+## Cierre
+
+**🟢 resuelto en 0.65.0.** Lo que este caso enumeró, ítem por ítem:
+
+- **Opción 1, materializar el índice** → elegida, con `checkout-index` sobre un temporal y sin
+  `git stash`, por lo que este caso ya decía. El costo medido acá —157 ms para 1500 rutas— resultó
+  chico al lado de cualquier gate, y sólo se paga cuando el árbol y el índice difieren.
+- **Opción 2, exigir que no haya diferencia** → descartada: prohíbe el staging parcial, que es un flujo
+  legítimo.
+- **Opción 3, decirlo en el mensaje** → incluida igual, porque un fallo que no se reproduce a mano se
+  lee como que el guard miente.
+- **Lo que no sirve, comparar fechas** → verificado que `git add` no toca el mtime, así que se descartó.
+- **Lo que apareció al implementarlo**: un índice materializado no trae `.git`, y un gate que llama a
+  git falla ahí. La suite de este repositorio pasa de dos fallos a ninguno con `GIT_DIR` y
+  `GIT_WORK_TREE` apuntados al repositorio real. Sin eso el arreglo frenaba commits correctos.
+- **`dependencies`, la misma forma en chico** → este caso decía «se arregla junto con esto o no se
+  arregla», y se arregló: un lock cuenta si está en disco **o** si el commit lo va a llevar. La regla de
+  «varios lockfiles» se quedó mirando sólo el disco, que es lo correcto y estaba documentado.
 
 ## Relacionados
 
