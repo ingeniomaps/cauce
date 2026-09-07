@@ -14,6 +14,76 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.67.0] - 2026-09-07
+
+### Agregado
+
+- **Guard `plan-first`: no se cambia el producto sin un plan escrito.** R1 y el paso 7 del protocolo lo
+  piden desde siempre y nada lo comprobaba: tocar el archivo primero y redactar después la aceptación
+  que lo justifica salía igual de verde y se leía igual en DONE. Ahora una escritura de producto exige
+  un WIP activo con al menos un paso numerado.
+
+  No juzga lo que tu instancia posee —`planning/`, `organization/`, `agents/`, `flows/`,
+  `integrations/`, `automatization/`, `tools/`—: el plan se escribe en `planning/`, y exigirlo ahí sería
+  un candado con la llave adentro. Y queda **inerte mientras tu planning no declare ninguna tarea**, que
+  es una instancia recién creada; `automation check` te lo dice cuando lo está.
+
+  **Lo que te pide algo**: si el cambio no es trabajo de una tarea, aprobá la ruta en
+  `planning/.ops-approval`. La variable `OPS_PLAN_FIRST_OVERRIDE=1` lo apaga para toda la sesión.
+
+- **`ops evidence <planning-dir>`: contrasta la evidencia de una entrada de DONE contra lo que no
+  escribió su autor.** Los dos lados de `tests: CN → prueba` los escribía la misma mano en el mismo
+  acto, así que compararlos medía prosa. Ahora se comprueban dos cosas independientes: si el artefacto
+  que el rastro nombra existe en tus raíces de código, y qué gates corrió `verify` al commitear con su
+  código de salida. Dice también lo que **no** puede contestar —que la prueba nombrada haya corrido
+  depende del runner— y no reemplaza a leer su fuente, que es lo que R9 pide.
+
+  **Lo que te pide algo**: `verify` deja ese registro en `planning/.verify-log`. Tu `.gitignore` no se
+  actualiza con el molde —es de `init`—, así que agregale esa línea o el archivo te va a aparecer sin
+  trackear en cada commit.
+
+### Cambiado
+
+- **`upgrade` conserva lo editado y actualiza el resto, en vez de abortar.** Antes cortaba si algún
+  archivo del molde estaba editado, y el único flag que lo destrababa descartaba todos tus cambios de
+  una: quien adoptó Cauce sobre un proceso propio quedaba eligiendo entre no actualizar nunca y perder
+  su corpus. Ahora recibís `rules/system/` y `adr/system/` frescos y conservás lo tuyo, y la corrida
+  nombra qué congeló — en cada corrida, no sólo la primera.
+
+  `check` cuenta esos archivos como advertencia para que la deuda no desaparezca entre actualización y
+  actualización. Y el consejo nombra los cuatro que no tienen contraparte propia adónde mudarse
+  —`PROTOCOL.md`, `METHODOLOGY.md`, `FLOW.md` y el `Makefile`—, en vez de mandarte a mudarlos.
+
+  **Lo que te pide algo**: `upgrade` ya no devuelve código distinto de cero por una edición local. Si lo
+  llamás desde un script que esperaba ese fallo, ese script cambia. `--force` sigue reemplazando todo.
+
+### Corregido
+
+- **Un pipe escapado en `HUMAN_ACTIONS.md` corría las columnas de su fila.** En markdown un pipe dentro
+  de una celda se escribe `\|` —es la única forma— y el parser lo tomaba como separador. La cara que
+  importa era silenciosa: con el pipe detrás de la palabra del vocabulario, `check` pasaba y el runner
+  recibía el contenido de `Origen` como si fuera la acción de desbloqueo. El escape ya no parte la
+  celda, y se quita al leerla porque esa columna existe para que una persona la lea.
+
+  **Puede que empieces a ver un error nuevo**, y es correcto: una fila con las columnas corridas podía
+  esconder un estado fuera del vocabulario y desbloquear una tarea que nadie resolvió. Leída bien, ese
+  estado se ve.
+
+- **La cabecera de `HUMAN_ACTIONS.md` sólo se salteaba si decía exactamente `Tarea`.** Cualquier otro
+  encabezado —`Tarea Requerida`, `Bloqueo`— caía del lado de los datos y `check` reportaba las etiquetas
+  de tus columnas como una acción rota. Ahora la cabecera se reconoce por su forma —es la fila anterior
+  a la de separadores— y se saltea la de **cada** tabla del archivo, no sólo la primera.
+
+- **Los gates de `verify` corrían con el `GIT_DIR` de tu repositorio.** Un gate que escribe con git
+  —una suite que levanta repositorios de prueba y les commitea— escribía entonces en el tuyo: commits
+  ajenos en tu rama, archivos trackeados que nadie agregó y un `core.worktree` apuntando a un temporal
+  ya borrado, sin que nada lo anunciara. Se disparaba al committear una naturaleza por vez, que es lo
+  que R8 pide. Ahora la copia que `verify` materializa es un repositorio propio.
+
+  **Lo que te pide algo**: esa copia no tiene historia. Un gate que lea una etiqueta o un `git log` no
+  la encuentra, y un gate cuyo efecto **es** una escritura de git —taggear, commitear un lockfile
+  regenerado— la hace sobre la copia, que se borra. Si tenés un gate así, sacá esa escritura del gate.
+
 ## [0.66.0] - 2026-09-07
 
 ### Corregido
