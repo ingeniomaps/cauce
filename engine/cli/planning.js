@@ -10,6 +10,7 @@ const B = require('../planning/business-rules')
 const PC = require('../planning/contracts')
 const SZ = require('../planning/sizing')
 const RC = require('../planning/recurring')
+const CL = require('../planning/claims')
 const ST = require('../planning/state')
 const AD = require('../planning/adoption')
 const AP = require('../hooks/approval')
@@ -75,7 +76,9 @@ function check(dir, cli) {
   const root = path.resolve(dir || '.')
   const errors = []
   const warnings = []
-  const required = ['BACKLOG.md', 'WIP.md', 'DONE.md', 'INBOX.md', 'HUMAN_ACTIONS.md', 'PROTOCOL.md']
+  // `WIP.md` no está: es local y gitignoreado, así que un clon nuevo no lo tiene y eso no es un error.
+  // Ausente se lee como IDLE, que es lo que significa.
+  const required = ['BACKLOG.md', 'DONE.md', 'INBOX.md', 'HUMAN_ACTIONS.md', 'PROTOCOL.md']
   for (const file of required) if (!fs.existsSync(path.join(root, file))) errors.push(`falta ${file}`)
 
   const configPath = path.join(root, '..', 'ops.config.json')
@@ -133,6 +136,11 @@ function check(dir, cli) {
   // Sin `RECURRING.md` no dice una palabra: una instancia que actualiza y no declara trabajo recurrente
   // no tiene por qué enterarse de que el contrato existe. Vencida avisa y no frena — lo que frena vive
   // en `HUMAN_ACTIONS.md`, y un aviso que salta siempre se termina apagando.
+  // Un reclamo que nombra una tarea que no existe bloquea la cola sin que nada lo explique, y uno viejo
+  // la bloquea para siempre. Lo primero es error; lo segundo avisa, porque abandonar no es un defecto.
+  const claims = CL.read(root)
+  errors.push(...CL.validate({ claims, milestones, done }))
+  warnings.push(...CL.warnings({ claims, done, today: TODAY() }))
   const recurring = RC.read(root)
   errors.push(...RC.validate(recurring))
   warnings.push(...RC.warnings(RC.status({ ...recurring, done, today: TODAY() })))
@@ -211,7 +219,7 @@ function check(dir, cli) {
 }
 
 // Estado observable de planning sin mutar nada; base común de `tree` y de sus salidas.
-function treeJson({ epics, milestones, done, wip, inbox, queued }) {
+function treeJson({ epics, milestones, done, wip, inbox, queued, claims }) {
   const state = (slug) => done.set.has(slug) ? 'done' : queued.has(slug) ? 'queued' : 'pending'
   console.log(JSON.stringify({
     roadmap: epics.map((epic) => ({
@@ -226,6 +234,7 @@ function treeJson({ epics, milestones, done, wip, inbox, queued }) {
     })),
     wip: wip ? { task: wip.task, phase: wip.phase, complete: wip.complete, pending: wip.pending } : null,
     inbox: { deuda: inbox.deuda, ideas: inbox.ideas, propuestas: inbox.propuestas, lecciones: inbox.lecciones },
+    claims: claims.map((one) => ({ slug: one.slug, owner: one.owner, started: one.started })),
     done: done.entries.length,
   }))
 }
@@ -234,7 +243,7 @@ function tree(dir, cli) {
   const root = path.resolve(dir || '.')
   const state = ST.snapshot(root)
   if (cli.has('--json')) return treeJson(state)
-  const { epics, milestones, done, wip, inbox, queued } = state
+  const { epics, milestones, done, wip, inbox, queued, claims } = state
   const color = process.stdout.isTTY && !cli.has('--no-color')
   const paint = (code, text) => color ? `\x1b[${code}m${text}\x1b[0m` : text
   console.log(`\n${paint('1', 'CAUCE')}\n`)
@@ -264,6 +273,9 @@ function tree(dir, cli) {
       // Sin esto, doce viñetas sin nombre se veían como un inbox vacío y nadie se enteraba.
       (inbox.skipped ? `  (${inbox.skipped} sin contar: falta el nombre en **negrita**)` : ''),
   )
+  if (claims.length) {
+    console.log(`${paint('1', 'CLAIM')}  ${claims.map((one) => `${one.slug} · ${one.owner}`).join('  ')}`)
+  }
   console.log(`${paint('1', 'DONE')}   ${done.entries.length} tareas\n`)
 }
 
@@ -273,7 +285,8 @@ function context(dir, cli) {
   const state = ST.snapshot(root)
   const gate = path.join(root, 'AWAITING_REVIEW.md')
   const humanActions = ST.pendingHumanActions(root)
-  const { task, skipped } = ST.currentTask(state, humanActions)
+  const me = CL.owner(root)
+  const { task, skipped, claimed, taken } = ST.currentTask(state, humanActions, me)
   const epic = task ? state.epics.find((candidate) => candidate.num === task.epic) : null
   const criteria = epic ? epic.criteria.filter((criterion) => task.criteria.includes(criterion.id)) : []
   const report = {
@@ -295,6 +308,9 @@ function context(dir, cli) {
     queued: state.milestones.reduce((total, milestone) => total + milestone.tasks.length, 0),
     blockedTasks: skipped,
     humanActions,
+    owner: me,
+    claimed,
+    taken,
     // Sólo las vencidas: la fila que todavía no vence no tiene nada que decirle a quien va a tomar una
     // tarea, y una recurrencia que hablara siempre sería ruido en el único comando que se corre en cada
     // vuelta. Que aparezca es la señal.
@@ -345,6 +361,10 @@ function context(dir, cli) {
   for (const criterion of criteria) console.log(`${criterion.id.padEnd(6)} ${criterion.text}`)
   const wip = report.wip ? `${report.wip.phase} · ${report.wip.complete}✓/${report.wip.pending}○` : 'idle'
   console.log(`WIP    ${wip}`)
+  console.log(report.claimed
+    ? `CLAIM  tuya desde el reclamo (${report.owner})`
+    : `CLAIM  libre — tomala con \`ops claim <planning> ${report.task.slug}\``)
+  for (const one of report.taken) console.log(`TAKEN  ${one.slug} (${one.owner})`)
   if (report.blockedTasks.length) console.log(`SKIP   ${report.blockedTasks.join(', ')} (acción humana abierta)`)
   for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
   due()

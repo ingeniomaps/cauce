@@ -21,6 +21,8 @@ const FLAGS = {
   tree: ['--json', '--no-color'],
   context: ['--json'],
   recurring: ['--json', '--promote'],
+  claim: ['--json'],
+  release: [],
   evidence: ['--json', '--task'],
   upgrade: ['--check', '--force'],
   destroy: ['--force'],

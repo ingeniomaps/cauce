@@ -9,5 +9,10 @@ node_modules/
 # máquina. Committearlo sería historia que nadie lee y un conflicto por commit.
 planning/.verify-log
 
+# El plan de la sesión en curso. Es de la máquina que la corre —existe para recuperar una ejecución
+# interrumpida, y nadie más puede retomarla— y cambia en cada paso, así que compartirlo es un conflicto
+# por commit a cambio de nada. Lo que el equipo sí necesita saber vive en `planning/claims/`.
+planning/WIP.md
+
 *.tgz
 .DS_Store

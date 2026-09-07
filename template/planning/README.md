@@ -7,7 +7,8 @@ Se lee y se escribe en cada tarea.
 | Pieza | Responsabilidad |
 |---|---|
 | `BACKLOG.md` | Única cola de tareas promovidas y listas. |
-| `WIP.md` | Única tarea en vuelo; recuperación y mutex. |
+| `WIP.md` | Tarea en vuelo del runner local; recuperación y mutex por runner. No viaja por git. |
+| `claims/` | Qué tarea tomó cada quien; un archivo por tarea. |
 | `DONE.md` | Evidencia activa de tareas terminadas. |
 | `HUMAN_ACTIONS.md` | Acciones externas que requieren una persona. |
 | `AWAITING_REVIEW.md` | Gate efímero; mientras existe no inicia trabajo. |
