@@ -67,9 +67,14 @@ delante, `git` viene precedido de un espacio y no matchea.
 Los tres consumidores que se apagan, todos en `engine/hooks/shell.js`, todos con la misma forma
 `if (!isCommit(command)) return`:
 
-- **`:122`** — dependencias: manifiesto tocado sin su lockfile.
-- **`:233`** — gobernanza: reglas, ADRs, contratos de cargo y evaluaciones.
-- **`:271`** — generados: OpenAPI o SQL fuente sin su código generado.
+- **`:122`**, en `dependencies` — manifiesto tocado sin su lockfile.
+- **`:233`**, en `governance` — reglas, ADRs, contratos de cargo y evaluaciones.
+- **`:271`**, en **`verify`** — OpenAPI o SQL fuente sin su código regenerado.
+
+El tercero no es el guard llamado `generated`: ése vive en el grupo de archivos, no lee el índice y no
+depende de `isCommit`. Nombrarlo por lo que hace y no por su guard manda a medir el que no era —pasó al
+escribir la prueba de este caso, y el guard equivocado pasó en verde, que se lee como «el arreglo no
+llegó»—.
 
 Y el consumidor que se relaja de más, `:44`:
 

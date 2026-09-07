@@ -437,6 +437,60 @@ test('guard-engine indica un camino de actualización que funciona', () => {
 // `agent-promote` se niega si «Aprobación humana» no está firmada, pero lo único que impedía que la
 // escribiera un agente era una frase en un prompt. Alrededor de la firma van las otras piezas del
 // mismo acto: el contrato que la propuesta cambia y el denominador con que se lo juzga.
+// Cinco formas de escribir el mismo commit y las dos direcciones en la misma corrida. Van juntas porque
+// `isCommit` decide dos cosas opuestas —qué se deja de juzgar y qué se empieza a juzgar— y medir una
+// sola deja la otra libre para romperse. `isCommit` dice qué admite un shell delante del verbo.
+test('un prefijo de entorno no apaga los guards que sólo corren sobre un commit', () => {
+  const root = tempRoot('ops-hook-prefijo-')
+  git(['init'], root)
+  git(['config', 'user.email', 'x@y.z'], root)
+  git(['config', 'user.name', 'x'], root)
+  const gobernado = 'agents/roles/system/qa-engineer/SKILL.md'
+  fs.mkdirSync(path.join(root, path.dirname(gobernado)), { recursive: true })
+  fs.writeFileSync(path.join(root, gobernado), 'contenido\n')
+  git(['add', gobernado], root)
+
+  for (const prefijo of ['', 'FOO=1 ', 'OPS_GOVERNANCE_OVERRIDE=1 ', 'env FOO=1 ', 'sudo ']) {
+    blocked('governance', { cwd: root, tool_input: { command: `${prefijo}git commit -m x` } },
+      /gobernanza protegida/)
+  }
+
+  // La otra dirección: con el prefijo, el mensaje volvía a juzgarse como comando. Es la mitad ruidosa,
+  // la que sí se ve, y la que hace notar que algo anda mal antes de que importe la silenciosa.
+  assert.doesNotThrow(() => execute('destructive', {
+    cwd: root, tool_input: { command: 'FOO=1 git commit -m "build: no usar git push --force"' },
+  }))
+})
+
+// Los tres consumidores contra la misma lectura fallida, y el mensaje aparte: es lo único que comprueba
+// que el bloqueo llega por los tres caminos y no sólo por el primero que uno prueba. `stagedFiles`
+// cuenta por qué una lectura fallida no autoriza.
+test('un índice que no se puede leer no autoriza el commit', () => {
+  const root = tempRoot('ops-hook-indice-')
+  git(['init'], root)
+  git(['config', 'user.email', 'x@y.z'], root)
+  git(['config', 'user.name', 'x'], root)
+
+  // Los tres son `dependencies`, `governance` y `verify` — el tercero es el que mira OpenAPI y SQL
+  // generados, y no es el guard llamado `generated`, que vive en el grupo de archivos y no lee el
+  // índice. Confundirlos manda a medir el que no era y a concluir que el arreglo no llegó.
+  for (const guard of ['governance', 'dependencies', 'verify']) {
+    blocked(guard, { cwd: root, tool_input: { command: 'git -C $OPS commit -m x' } },
+      /no se pudo leer el índice/)
+  }
+
+  // Y el mensaje nombra la causa que quien lo lea va a tener delante y no va a sospechar.
+  assert.throws(() => execute('governance', { cwd: root, tool_input: { command: 'git -C $OPS commit -m x' } }),
+    /escribí la ruta literal/)
+
+  // La contracara, que este mismo arreglo estuvo a punto de romper: un commit cuyo **mensaje** cita ese
+  // comando no está eligiendo repositorio, lo está citando. El commit que explica todo esto se bloqueó
+  // a sí mismo hasta que `gitDirectory` empezó a leer el mensaje como dato.
+  assert.doesNotThrow(() => execute('governance', {
+    cwd: root, tool_input: { command: 'git commit -m "no escribas git -C $OPS commit"' },
+  }))
+})
+
 test('guard-governance protege el contrato de un cargo, su medición y su firma', () => {
   const root = tempRoot('ops-hook-gov-')
   git(['init'], root)
