@@ -142,6 +142,29 @@ que obligó a comprobarlos con `cmp` uno por uno —estaban todos intactos—. E
 Se recuperó de un snapshot previo. Sin esa contradicción en la salida el retiro se habría visto de
 entrada; con ella, se encontró diffeando y no leyendo.
 
+## Arreglo aplicado
+
+**Mergeado y sin publicar.** El recorrido de lo que enumeró:
+
+- **El informe recibe lo que pasó en vez de deducirlo — hecho, y con el hecho y no con la bandera.**
+  `reportUpgrade` ya no ve `changed`: recibe `descartados` —vacío salvo con `--force`—, `conservados` y
+  `pendientes`. Deducir de una condición fue lo que dejó la afirmación viva cuando la condición dejó de
+  valer; pasarle la bandera habría dejado la misma deducción un nivel más abajo.
+- **La línea de tranquilidad — corregida.** «planning, organization y todo lo propio quedaron intactos»
+  sale cuando no se descartó nada, que incluye la corrida que conservó veinte archivos. Antes se
+  suprimía justo ahí.
+- **La duplicación que el Tradeoffs anticipaba — resuelta eligiendo cuál fase informa.** Los `= conservado`
+  por archivo salen una sola vez, en la fase que además trae el consejo; el informe cierra con el conteo.
+- **El glifo compartido entre retiro y descarte — no se separa**, y la razón está en el cierre del
+  [047](047-upgrade-borra-el-directorio-retirado-con-los-archivos-propios-adentro.md).
+
+**Cómo se escapó, que es lo que importa acá**: fue una regresión del arreglo del 044, y la prueba que se
+escribió entonces comprobó que **apareciera** `= conservado` y nunca que **desapareciera** `− descartado`.
+Las pruebas de este arreglo son de ausencia: que la línea vieja no esté sin `--force`, y que sí esté con
+él. Y el cierre del 044 recorrió la enumeración del caso sin preguntar qué otra cosa dependía de la
+invariante que estaba quitando —la premisa vivía como comentario en otro archivo—, que es una pregunta
+distinta de recorrer la enumeración.
+
 ## Relacionados
 
 - [047](047-upgrade-borra-el-directorio-retirado-con-los-archivos-propios-adentro.md) — la acción real que

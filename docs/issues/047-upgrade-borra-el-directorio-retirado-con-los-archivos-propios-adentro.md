@@ -176,6 +176,39 @@ corrida informó los diecinueve archivos conservados —el arreglo funcionando�
 `automatization/workflows/`. Se detectó diffeando contra un snapshot previo, no leyendo la salida: la
 línea del retiro estaba, pero enterrada entre veinte renglones de un preview hipotético.
 
+## Arreglo aplicado
+
+**Mergeado y sin publicar.** El caso sigue `abierto` hasta que salga la versión que lo lleva. El
+recorrido de lo que enumeró, por las cuatro secciones:
+
+- **El fix preferido —«borrar lo que Cauce entregó y conservar el resto»— no es implementable, y eso es
+  un hallazgo del arreglo.** El manifiesto no puede desempatar: `trackedPaths()` son `automatization/hooks`
+  y las tres colecciones `system/`, así que ninguna de las rutas retiradas se registró nunca. Comprobado
+  contra una instancia de 0.66.0 recién creada: cero entradas para `automatization/workflows` y cero para
+  `automatization/runners`. Sin registro no hay nada contra qué comparar.
+- **Se tomó la alternativa que el propio caso ofrecía, acotada.** De las seis rutas retiradas, cuatro
+  viven bajo `system/` o son un archivo con nombre propio del toolkit, y ahí no escribe nadie más: ésas
+  se siguen retirando como siempre. Las dos que un proyecto también usa para lo suyo —`automatization/runners`
+  y `automatization/workflows`— no se borran sin `--force`: se conservan y la corrida dice cuántos
+  archivos hay y qué hacer con ellos. El mecanismo no se apaga entero, que era el otro modo de fallo.
+- **«El retiro no debería compartir glifo con el descarte» — no se hace, y es una decisión.** Con el 048
+  arreglado, todo lo que lleva `−` ocurrió de verdad; el problema no era el glifo sino los diecinueve
+  renglones falsos que lo precedían. Las rutas que quedan pendientes se imprimen **sin glifo de acción**,
+  porque no hubo ninguna. Lo que activaría separarlos es que el bloque vuelva a mezclar cosas de peso
+  distinto.
+- **«`check` debería contar esos restos» — hecho.** Sale como advertencia en cada corrida, junto al
+  conteo de archivos congelados, para que un resto que nadie mira no se vuelva permanente.
+- **El costo que el caso anticipaba —«un directorio retirado que sobrevive a medias»— se paga, y se
+  eligió a sabiendas.** Es el ruido que la lista `RETIRED` venía a evitar. Se acepta porque el ruido se
+  limpia mirándolo y el contenido borrado no vuelve, que es el argumento que el caso ya traía.
+
+**Lo que el caso no preveía**: la prueba del ciclo completo afirmaba que la copia vieja de
+`automatization/workflows` se retiraba, y su fixture escribe ahí un `autobuild.js` — el mismo nombre que
+el proyecto real perdió. Esa aserción cambió de sentido, y el cambio es el arreglo: **el toolkit deja de
+limpiar una ruta que no puede probar suya, a cambio de no llevarse puesto lo ajeno.** Quien tenga ahí
+sólo restos del toolkit ahora los conserva y tiene que borrarlos a mano; la corrida y `check` se lo
+dicen.
+
 ## Relacionados
 
 - [044](044-upgrade-no-tiene-resolucion-por-archivo.md) — el arreglo que volvió `upgrade` corrible sin

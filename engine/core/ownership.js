@@ -231,6 +231,14 @@ const RETIRED = [
 
 // Aprendizaje que quedó dentro de una ruta retirada. Es lo único ahí que no se puede reponer, así
 // que se detecta antes de borrar nada: perderlo en silencio sería peor que dejar el directorio.
+// De las rutas retiradas, las que un proyecto también usa para lo suyo. El resto de la lista vive bajo
+// `system/` o es un archivo con nombre propio del toolkit, y ahí nadie más escribe; éstas dos se llaman
+// como el concepto general, así que quien adoptó Cauce cuando se distribuían tiene los suyos justo ahí.
+//
+// El manifiesto no las puede desempatar: `trackedPaths()` nunca las registró, así que para el toolkit
+// todo su contenido es igual de ajeno. Sin poder demostrar que lo entregó, no lo borra.
+const RETIRED_COMPARTIDO = ['automatization/runners', 'automatization/workflows']
+
 function retiredWithLearning(root) {
   const found = []
   for (const relative of RETIRED) {
@@ -294,6 +302,7 @@ function localChanges(root) {
 
 module.exports = {
   RETIRED,
+  RETIRED_COMPARTIDO,
   TEMPLATE_OWN,
   TEMPLATE_PREFIXES,
   addedPaths,

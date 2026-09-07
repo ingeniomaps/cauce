@@ -186,10 +186,14 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   assert.match(fs.readFileSync(path.join(planning, 'INBOX.md'), 'utf8'), /propia/)
   assert.match(fs.readFileSync(path.join(ownRole, 'SKILL.md'), 'utf8'), /PM de Acme/)
   assert.equal(fs.existsSync(ownGuard), true, 'el guard propio sobrevive al refresco del runtime')
-  assert.equal(fs.existsSync(legacy), false, 'la copia vieja de workflows se retira')
+  // El toolkit no puede demostrar que ese `autobuild.js` sea suyo: `automatization/workflows` nunca
+  // estuvo en el manifiesto, y es el nombre que una empresa usa para los propios. Desde el caso 047 no
+  // se borra lo que no se puede probar entregado — se deja de limpiar una ruta a cambio de no llevarse
+  // puesto contenido ajeno, y la corrida dice cómo limpiarla.
+  assert.equal(fs.existsSync(legacy), true, 'lo que no se puede probar del toolkit no se borra')
   // El shim tiene shebang: el upgrade no puede dejarlo sin permiso de ejecución.
   assert.ok(fs.statSync(path.join(consumer, 'tools', 'ops.js')).mode & 0o111, 'el shim sigue ejecutable')
-  assert.match(upgraded.stdout, /retirado automatization\/workflows/)
+  assert.match(upgraded.stdout, /automatization\/workflows: 1 archivo\(s\) que Cauce no entregó/)
   const automationReadme = path.join(consumer, 'automatization', 'README.md')
   assert.match(fs.readFileSync(automationReadme, 'utf8'), /Nota nueva/, 'y la prosa se pone al día')
   // El registro de entrega olvida lo retirado en vez de acumularlo.
