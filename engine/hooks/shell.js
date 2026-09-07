@@ -169,10 +169,17 @@ function dependencies(input) {
 // Tres familias, porque los comandos no nombran su destino igual: `tee` y `truncate` escriben en cada
 // argumento, `cp` y sus hermanos en el último, y `sed` sólo escribe con `-i` —sin él lee y manda a
 // stdout, y esa redirección la ve REDIRECT—.
+//
+// El salto de línea termina una lista de argumentos igual que `;`. Sin excluirlo, la de un `cp` seguía
+// leyendo la línea de abajo y el destino terminaba siendo el comando siguiente: un bloqueo que nombraba
+// `…/python3`, una ruta que no aparecía en el comando. Se veía con un heredoc debajo, pero el heredoc no
+// era la causa —sólo hacía que la lectura frenara en un token que sobrevive—: sin él la lista cruzaba
+// igual y el último token era la marca de lo entrecomillado, que el filtro final descarta. O sea que
+// pasaba de casualidad, y aserciar que pasa no fijaba nada.
 const REDIRECT = /(?:^|[\s(])&?\d*>>?\s*(?![&(])([^\s;|&<>()]+)/g
-const EVERY_ARG = /(?:^|[\s;|&(])(tee|truncate)\s+([^;|&<>()]+)/g
-const LAST_ARG = /(?:^|[\s;|&(])(cp|mv|install|rsync)\s+([^;|&<>()]+)/g
-const SED = /(?:^|[\s;|&(])sed\s+([^;|&<>()]+)/g
+const EVERY_ARG = /(?:^|[\s;|&(])(tee|truncate)\s+([^;|&<>()\n]+)/g
+const LAST_ARG = /(?:^|[\s;|&(])(cp|mv|install|rsync)\s+([^;|&<>()\n]+)/g
+const SED = /(?:^|[\s;|&(])sed\s+([^;|&<>()\n]+)/g
 const IN_PLACE = /(?:^|\s)-{1,2}i/
 
 // Los argumentos que no son flags. El valor de un flag se cuela —`truncate -s 0 log` trae el `0`— y no

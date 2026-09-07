@@ -412,6 +412,38 @@ test('los dos guards de límites responden lo mismo sobre la misma ruta', () => 
   blocked('shell-boundary', { cwd: root, tool_input: { command: `echo x > ${prohibida}` } }, /fuera de las raíces/)
 })
 
+// El salto de línea no terminaba una lista de argumentos, así que el destino de un `cp` se leía de la
+// línea de abajo y el bloqueo nombraba una ruta que no estaba en el comando. Se asercia **qué destino
+// lee**, no si pasa: con la clase vieja la variante sin heredoc también leía mal y pasaba igual, porque
+// el último token era la marca de lo entrecomillado. `writeTargets` cuenta por qué el heredoc no era la
+// causa.
+test('el salto de línea termina la lista de argumentos de un comando', () => {
+  const root = tempRoot('ops-hook-salto-')
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.mkdirSync(path.join(root, 'api'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ workspaceRoots: [{ name: 'api', path: 'api' }] }))
+  const entrada = (command) => ({ cwd: root, tool_input: { command } })
+  const afuera = path.join(os.homedir(), 'afuera', 'x')
+
+  // Las dos formas de segunda línea, con heredoc y sin él, contra las tres familias que leen argumentos:
+  // la que toma el último (`cp`), la que toma todos (`tee`) y la que exige `-i` (`sed`). Cambiar una
+  // sola y probar una sola deja las otras dos leyendo la línea de abajo.
+  // El intérprete va con ruta absoluta a propósito: si el token de la segunda línea resolviera adentro
+  // de la raíz, leerlo mal no bloquearía y el caso pasaría con el defecto puesto.
+  for (const segunda of ["/usr/bin/python3 - <<'PY'\nprint(1)\nPY", '/usr/bin/python3 -c "print(1)"']) {
+    for (const primera of ['cp /etc/hostname api/h', 'printf x | tee api/log', "sed -i 's/a/b/' api/f"]) {
+      assert.doesNotThrow(() => execute('shell-boundary', entrada(`${primera}\n${segunda}`)),
+        `acusó una escritura que no está en el comando: ${primera}`)
+    }
+  }
+
+  // Y la dirección contraria, que es la que se rompe si uno corta de más: un destino real de la primera
+  // línea se sigue viendo aunque haya otra línea debajo.
+  blocked('shell-boundary', entrada(`cp /etc/hostname ${afuera}\npython3 -c "print(1)"`), /fuera de las raíces/)
+  blocked('shell-boundary', entrada(`echo hola\ncp /etc/hostname ${afuera}`), /fuera de las raíces/)
+})
+
 // El agujero declarado, fijado para que se note si alguien lo «arregla»: `writeTargets` dice por qué un
 // destino que no se puede resolver no se juzga, y este caso es lo que se pone rojo el día que alguien
 // decida adivinarlo.

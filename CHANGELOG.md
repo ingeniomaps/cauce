@@ -18,6 +18,14 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **El salto de línea termina la lista de argumentos de un comando.** `shell-boundary` leía los
+  argumentos de un `cp`, un `tee` o un `sed -i` cruzando a la línea siguiente, así que el destino que
+  acusaba podía ser el comando de abajo: un bloqueo que hablaba de una escritura en `…/python3`, una
+  ruta que no aparecía en el comando. Falla hacia el lado seguro —frena de más— pero señala algo que no
+  existe, y un guard que señala mal es el que se termina apagando. **Qué cambia para vos**: si escribís
+  scripts de varias líneas en un solo comando, dejás de ver bloqueos por rutas inventadas; lo que sí
+  escribe fuera de las raíces se sigue frenando igual.
+
 - **El cuerpo de un heredoc es texto, no un comando.** Escribir un archivo con
   `cat > nota.md <<'FIN' … FIN` juzgaba cada línea del documento como si fuera a ejecutarse, así que no
   se podía documentar lo que los guards vigilan: un párrafo que explica por qué no se borra la raíz se
