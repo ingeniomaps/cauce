@@ -1161,3 +1161,47 @@ test('verify mide el índice y no el árbol de trabajo', () => {
   git(['add', 'extra.js'], limpio)
   assert.doesNotThrow(() => execute('verify', { cwd: limpio, tool_input: { command: 'git commit -m x' } }))
 })
+
+// La misma forma que el 040 en chico, y por eso va con él: `dependencies` preguntaba al disco qué
+// lockfiles hay para juzgar un manifiesto staged. Borrar el lock en el árbol y no stagear el borrado
+// dejaba la comprobación sin disparar, así que el manifiesto se commiteaba sin que nadie dijera nada.
+// Lo que hay que mirar es el índice, que es lo que el commit va a grabar.
+test('dependencies mira el índice para saber qué lockfiles va a haber', () => {
+  const root = tempRoot('ops-hook-deps-indice-')
+  git(['init', '-q'], root)
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'x' }))
+  fs.writeFileSync(path.join(root, 'package-lock.json'), '{}')
+  git(['add', 'package.json', 'package-lock.json'], root)
+  git(['commit', '-qm', 'base'], root)
+  const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
+
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'x', dependencies: { a: '1' } }))
+  git(['add', 'package.json'], root)
+  blocked('dependencies', commit, /sin actualizar su lockfile/)
+
+  // El lock desaparece del disco y nadie stagea el borrado: sigue en el índice, así que sigue estando
+  // en el próximo commit y la comprobación tiene que seguir valiendo.
+  fs.rmSync(path.join(root, 'package-lock.json'))
+  blocked('dependencies', commit, /sin actualizar su lockfile/)
+
+  // Y cuando el borrado sí se stagea, el próximo commit no lo lleva y la comprobación deja de aplicar.
+  git(['rm', '--cached', '-q', 'package-lock.json'], root)
+  assert.doesNotThrow(() => execute('dependencies', commit))
+
+  // La otra mitad, que es la que se rompe si se unifican las dos preguntas: «hay varios lockfiles» es
+  // sobre el disco y sólo sobre el disco, porque lo que decide cuál manda es el gestor que corra y ése
+  // lee el árbol. Uno que sigue en el índice pero ya no está en disco no convive con nadie.
+  const dos = tempRoot('ops-hook-deps-dos-')
+  git(['init', '-q'], dos)
+  fs.writeFileSync(path.join(dos, 'package.json'), JSON.stringify({ name: 'y' }))
+  fs.writeFileSync(path.join(dos, 'package-lock.json'), '{}')
+  fs.writeFileSync(path.join(dos, 'pnpm-lock.yaml'), 'lockfileVersion: 9\n')
+  git(['add', 'package.json', 'package-lock.json', 'pnpm-lock.yaml'], dos)
+  git(['commit', '-qm', 'base'], dos)
+  fs.writeFileSync(path.join(dos, 'package.json'), JSON.stringify({ name: 'y', dependencies: { a: '1' } }))
+  git(['add', 'package.json'], dos)
+  const commitDos = { cwd: dos, tool_input: { command: 'git commit -m x' } }
+  blocked('dependencies', commitDos, /hay varios lockfiles/)
+  fs.rmSync(path.join(dos, 'pnpm-lock.yaml'))
+  blocked('dependencies', commitDos, /sin actualizar su lockfile/)
+})

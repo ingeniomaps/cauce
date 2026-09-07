@@ -172,10 +172,24 @@ function dependencies(input) {
   // conjunto cambie. La rama de publicar no pasa por acá y no tiene ruta: sigue arriba, con su variable.
   const sinAprobar = (parent, names) => AP.pending(opsRoot(input),
     names.map((name) => path.posix.join(parent === '.' ? '' : parent, name))).length
+  // Un lock cuenta si está en disco **o** si el commit lo va a llevar, y la unión no es un detalle: el
+  // disco solo perdía el que alguien borró del árbol sin stagear el borrado —sigue en el índice, sigue
+  // en el próximo commit— y ahí la comprobación dejaba de dispararse justo cuando más hacía falta. Es
+  // la misma forma que `verify` en chico. El índice se lee una vez y sólo si hay algo que decidir.
+  const index = byDir.size ? run('git', ['-C', dir, 'ls-files'], dir) : { ok: true, output: '' }
+  if (!index.ok) {
+    block(`no se pudo leer el índice de ${dir}, así que no hay cómo saber qué lockfiles va a llevar el `
+      + 'commit.')
+  }
+  const enElIndice = new Set(index.output.split('\n').filter(Boolean))
   for (const [parent, state] of byDir) {
-    const existingLocks = [...locks].filter((name) => fs.existsSync(path.join(dir, parent, name)))
-    if (existingLocks.length > 1) {
-      block(`${parent}: hay varios lockfiles (${existingLocks.join(', ')}). Conserva uno solo.`)
+    const enParent = (name) => (parent === '.' ? name : path.posix.join(parent, name))
+    // La regla de «varios lockfiles» sí es sobre el disco y sólo sobre el disco: lo que rompe ahí es que
+    // el gestor que corra elija uno, y el que corre lee el árbol.
+    const onDisk = [...locks].filter((name) => fs.existsSync(path.join(dir, parent, name)))
+    const existingLocks = [...new Set([...onDisk, ...[...locks].filter((n) => enElIndice.has(enParent(n)))])]
+    if (onDisk.length > 1) {
+      block(`${parent}: hay varios lockfiles (${onDisk.join(', ')}). Conserva uno solo.`)
     }
     if (state.manifests.length && existingLocks.length && !state.locks.length
       && sinAprobar(parent, state.manifests)) {
