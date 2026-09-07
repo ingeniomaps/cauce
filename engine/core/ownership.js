@@ -205,6 +205,7 @@ const TEMPLATE_OWN = {
   'planning/DONE.md': 'init',
   'planning/HUMAN_ACTIONS.md': 'init',
   'planning/INBOX.md': 'init',
+  'planning/RECURRING.md': 'init',
   'planning/WIP.md': 'init',
   'planning/delivery/project.md': 'init',
   'planning/done/.gitkeep': 'init',
