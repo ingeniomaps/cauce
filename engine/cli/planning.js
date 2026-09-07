@@ -86,6 +86,7 @@ function check(dir, cli) {
     epics, milestones, done, wip, roles, humanActions: P.readHumanActions(root), adopted: new Set(adopted),
   }))
   warnings.push(...AD.report({ done, epics, adopted }))
+  warnings.push(...AD.sealWarnings(root))
   // Una aprobación vale para el conjunto que nombra, así que olvidada sigue autorizando
   // esas mismas rutas la próxima vez que alguien las stagee. No caduca sola: lo que la cierra es que se
   // vea en cada corrida y alguien la borre.
@@ -279,8 +280,18 @@ function adopt(dir) {
   const root = path.resolve(dir || '.')
   const target = path.join(root, AD.BASELINE)
   if (fs.existsSync(target)) {
-    fail(`${AD.BASELINE} ya existe: se genera una vez. Para achicarlo, borrá los renglones que `
-      + '`check` marca como cumplidos.')
+    // Un baseline que ya trae huella no se toca: regenerarlo es exactamente lo que la huella impide.
+    // Uno sin huella lo generó una versión anterior, y sellarlo no es regenerar nada — se calcula sobre
+    // lo que ya está—, así que es la única salida de un aviso que si no no tendría ninguna.
+    const existing = fs.readFileSync(target, 'utf8')
+    if (!AD.sealWarnings(root).some((one) => /sin huella/.test(one))) {
+      fail(`${AD.BASELINE} ya existe: se genera una vez. Para retirar un renglón, ponele \`#~\` `
+        + 'delante; `check` marca los que ya cumplen.')
+    }
+    const slugs = AD.declared(existing)
+    F.atomicWrite(target, existing.replace(/\n?$/, `\n# huella: ${slugs.length} entradas · `
+      + `sha256:${AD.digest(slugs)}\n`))
+    return console.log(`✓ ${AD.BASELINE} sellado con ${slugs.length} entrada(s); la lista no cambió`)
   }
   const epics = P.readEpics(root)
   const pending = P.readDone(root).entries.filter((entry) => PC.doneEntryErrors(entry, epics).length)
@@ -288,10 +299,12 @@ function adopt(dir) {
     return console.log('= no hay nada que exentar: todas las entradas de DONE cumplen el contrato')
   }
   const today = new Date().toISOString().slice(0, 10)
+  const slugs = pending.map((entry) => entry.slug)
   F.atomicWrite(target, `# Entradas anteriores a la adopción de Cauce (${today}). No se agregan nuevas:\n`
     + '# desde esa fecha rige el contrato completo, y `check` avisa cuando una de éstas pasa a\n'
-    + '# cumplirlo para que se borre su renglón.\n'
-    + `${pending.map((entry) => entry.slug).join('\n')}\n`)
+    + '# cumplirlo para que le pongas `#~` delante y quede retirada.\n'
+    + `# huella: ${slugs.length} entradas · sha256:${AD.digest(slugs)}\n`
+    + `${slugs.join('\n')}\n`)
   console.log(`✓ ${pending.length} entrada(s) exentas en ${AD.BASELINE}`)
   return console.log('  revisá la lista: lo que sí cumple el contrato no tiene por qué estar ahí')
 }
