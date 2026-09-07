@@ -1,14 +1,15 @@
 ---
 caso: 033
 titulo: El destino de una escritura se lee cruzando el salto de línea cuando más abajo hay un heredoc
-estado: abierto
+estado: resuelto
 prioridad: media
 version-detectada: 0.62.0
+resuelto-en: 0.63.0
 ---
 
 # 033 — `shell-boundary` acusa una escritura en una ruta que no está en el comando
 
-**🔴 abierto** · detectado en 0.62.0 · prioridad **media** — el parser pierde el borde entre comandos
+**🟢 resuelto en 0.63.0** · detectado en 0.62.0 · prioridad **media** — el parser pierde el borde entre comandos
 
 ## Resumen
 

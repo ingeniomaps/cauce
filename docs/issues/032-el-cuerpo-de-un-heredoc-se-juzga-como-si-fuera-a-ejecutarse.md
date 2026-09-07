@@ -1,14 +1,15 @@
 ---
 caso: 032
 titulo: El cuerpo de un heredoc se juzga como comando, y un heredoc nunca se ejecuta
-estado: abierto
+estado: resuelto
 prioridad: media
 version-detectada: 0.62.0
+resuelto-en: 0.63.0
 ---
 
 # 032 — Escribir un documento que menciona un comando peligroso se bloquea
 
-**🔴 abierto** · detectado en 0.62.0 · prioridad **media** — falso positivo sobre datos, no sobre comandos
+**🟢 resuelto en 0.63.0** · detectado en 0.62.0 · prioridad **media** — falso positivo sobre datos, no sobre comandos
 
 ## Resumen
 

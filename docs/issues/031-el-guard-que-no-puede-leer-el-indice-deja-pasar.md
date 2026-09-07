@@ -1,14 +1,15 @@
 ---
 caso: 031
 titulo: Un guard que no puede leer el índice deja pasar el commit en vez de frenarlo
-estado: abierto
+estado: resuelto
 prioridad: alta
 version-detectada: 0.62.0
+resuelto-en: 0.63.0
 ---
 
 # 031 — `git -C $VAR` apaga los mismos tres guards, por otro camino
 
-**🔴 abierto** · detectado en 0.62.0 · prioridad **alta** — falla abierto y no deja rastro
+**🟢 resuelto en 0.63.0** · detectado en 0.62.0 · prioridad **alta** — falla abierto y no deja rastro
 
 ## Resumen
 

@@ -1,14 +1,15 @@
 ---
 caso: 029
 titulo: Al rehacer un banco, el borrado no lanza pero el scaffold encuentra restos y se niega
-estado: abierto
+estado: resuelto
 prioridad: media
 version-detectada: 0.62.0
+resuelto-en: 0.63.0
 ---
 
 # 029 — El banco se borra, y el que lo recrea encuentra que todavía está
 
-**🔴 abierto** · detectado en 0.62.0 · prioridad **media** — el mismo test vuelve a fallar a veces, con otro mensaje
+**🟢 resuelto en 0.63.0** · detectado en 0.62.0 · prioridad **media** — el mismo test vuelve a fallar a veces, con otro mensaje
 
 ## Resumen
 
