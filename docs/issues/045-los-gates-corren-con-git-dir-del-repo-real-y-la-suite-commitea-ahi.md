@@ -171,6 +171,62 @@ absolutas, después como suciedad preexistente del checkout. Nada en la salida d
 la corrida escribió en el repositorio, y ése es el costo real del caso — no los commits, que se
 deshacen con un `reset`, sino que se leen como estado que ya estaba.
 
+## Arreglo aplicado
+
+**Mergeado y sin publicar.** El caso sigue `abierto` a propósito: se marca `resuelto` cuando salga la
+versión que lo lleva, porque hasta entonces sigue mordiendo a todo el que instale. El recorrido de lo
+que este caso enumeró, ítem por ítem — incluidos los tres daños del Resumen, que no son uno solo:
+
+- **Commits ajenos en la rama — cerrado y con prueba.** `engine/hooks/shell.js` ya no exporta
+  `GIT_DIR` ni `GIT_WORK_TREE`: la copia materializada se vuelve un repositorio propio con `git init` y
+  `git add --all`, así que su índice sale de lo que se acaba de materializar y lo que escriba escribe
+  ahí. `test/wiring/hooks.test.js` corre un gate que commitea y comprueba que el repo de verdad no lo
+  gana.
+- **Archivos trackeados que nadie agregó — cerrado, y se había quedado afuera.** Un `git add` sin commit
+  no toca el `git log`, así que mirar el log no lo veía. La prueba compara el `git status --porcelain`
+  entero de antes contra el de después, y se comprobó por separado que esa aserción cae: con la fuga
+  puesta y un gate que sólo stagea, el repo de verdad aparece con `AD filtrado.txt`.
+- **`core.worktree` roto — cerrado.** La misma prueba lo comprueba vacío al terminar.
+- **Materializar el `.git` en vez de apuntar al real — hecho, y distinto de como estaba propuesto.** No
+  se clona. Eso resuelve de paso la pregunta abierta que el propio caso dejaba en Tradeoffs —un clon
+  contesta sobre `HEAD` y no sobre el índice— sin tener que medirla. Los dos gates que necesitaban git
+  adentro del temporal (`git ls-files` en `test/repo/repo.test.js`) siguen contestando sobre lo que el
+  commit va a grabar.
+- **El costo, que el caso pedía medir antes de fijar la forma — medido.** Sobre este repositorio, 1549
+  archivos: `init` 4 ms y `add --all` ~385 ms, tres corridas, contra 2 ms del `rev-parse` que costaba
+  antes. O sea **~0,39 s por commit con árbol sucio**, al lado de gates que tardan segundos o minutos.
+  Escala con la cantidad de archivos, así que un repositorio diez veces más grande pagaría unos cuatro
+  segundos. Se acepta; queda el número para que nadie tenga que volver a estimarlo.
+- **Limpiar el entorno donde se lanza git — hecho en dos lugares, y uno de ellos lo había descartado mal.**
+  En `engine/cli/catalog.js`, la creación del banco de evaluación: es el sitio que hizo el daño y es
+  código del motor, así que protege a cualquier consumidor. Y en el ayudante que el caso nombraba,
+  `test/wiring/hooks.test.js`: la primera vuelta lo salteó diciendo que sólo leía, y **no es cierto** —
+  hace `init`, `config`, y sus llamadores `add` y `commit`—. Está limpiado.
+- **«Limpiar el entorno puede tapar un caso legítimo» — no hay ninguno.** Ninguna prueba de hoy quiere
+  `GIT_DIR` puesto; la de `test/agents/bench.test.js` lo pone a propósito y comprueba que el banco
+  commitea igual en el banco.
+- **«Un proyecto con gates que escriben con git sigue expuesto» — dejó de estarlo, y a cambio pierde el
+  efecto.** El motor ya no exporta nada, así que no hay qué heredar. Pero un gate cuyo efecto **es** una
+  escritura de git —los dos ejemplos que el caso daba, un `make ci` que taggea y un script que commitea
+  un lockfile regenerado— la hace ahora sobre la copia, que se borra. Ese efecto se pierde **en
+  silencio**. Se elige ese silencio sobre el anterior, que era escribir en la rama de quien commitea; un
+  proyecto con un gate así tiene que sacar esa escritura del gate, y conviene que lo sepa antes de
+  actualizar.
+
+**Lo que el caso no preveía y hay que saber**: `-C` no le gana a `GIT_DIR`. Verificado corriendo
+`git -C <otro> rev-parse --absolute-git-dir` con la variable puesta, que contesta el de la variable. Por
+eso el banco escribía afuera aunque cada comando nombrara su directorio, y por eso limpiar el entorno es
+lo único que lo cierra.
+
+Las tres piezas se vieron rojas antes de arreglarse, cada una por lo suyo: volver a exportar `GIT_DIR`
+rompe la prueba de la fuga por commit; con la fuga puesta y un gate que sólo stagea, rompe la del
+estado; y quitar la limpieza del entorno rompe la del banco.
+
+**Y este cierre se rehízo.** La primera versión daba por cerrados tres ítems que no lo estaban: el daño
+por `git add` sin commit no tenía prueba, el ayudante que el caso nombraba se había salteado con una
+razón falsa, y el costo que el caso mandaba medir se había afirmado barato sin medirlo. Salió de que
+alguien preguntara si de verdad estaba cerrado.
+
 ## Relacionados
 
 - [040](040-verify-corre-los-gates-sobre-el-arbol-y-el-commit-graba-el-indice.md) — introdujo

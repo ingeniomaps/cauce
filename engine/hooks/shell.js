@@ -395,14 +395,24 @@ function commitTree(dir) {
     fs.mkdirSync(path.dirname(link), { recursive: true })
     fs.symlinkSync(path.join(dir, name), link, 'junction')
   }
-  // Un índice materializado no trae `.git`, y un gate que llama a git —listar lo trackeado, leer una
-  // etiqueta— falla ahí por no encontrarlo: el guard frenaría un commit correcto por su propia
-  // mecánica. Comprobado sobre la suite de este repositorio, que pasa de dos fallos a ninguno con estas
-  // dos variables. Apuntan al repositorio de verdad con el árbol puesto en la copia, así que `git`
-  // contesta sobre lo que se va a commitear.
-  const gitDir = run('git', ['-C', dir, 'rev-parse', '--absolute-git-dir'], dir)
-  const env = gitDir.ok ? { GIT_DIR: gitDir.output.trim(), GIT_WORK_TREE: temp } : {}
-  return { root: temp, temp, env }
+  // Un índice materializado no trae `.git`, y un gate que llama a git —listar lo trackeado— falla ahí
+  // por no encontrarlo: el guard frenaría un commit correcto por su propia mecánica. La copia se vuelve
+  // un repositorio propio, con su índice cargado desde lo que se acaba de materializar, así que `git`
+  // contesta sobre lo que el commit va a grabar.
+  //
+  // Antes esto se resolvía exportando `GIT_DIR` del repositorio de verdad, y ahí el gate que **escribe**
+  // con git escribía en él: la suite de un proyecto levanta repositorios de prueba y les commitea, y
+  // esos commits caían en la rama del usuario junto con un `core.worktree` apuntando a un temporal ya
+  // borrado. Nada lo anunciaba (caso 045).
+  //
+  // Lo que se pierde a cambio, y son dos cosas. La copia no tiene historia, así que un gate que lea una
+  // etiqueta o un `git log` no la encuentra: falla y se ve. Y un gate cuyo efecto ES una escritura de
+  // git —taggear, commitear un lockfile regenerado— la hace sobre la copia, que se borra: ese efecto se
+  // pierde en silencio. Se elige el silencio de acá sobre el de antes, que era escribir en la rama de
+  // quien commitea; un proyecto con un gate así tiene que sacar esa escritura del gate.
+  const started = run('git', ['init', '--quiet'], temp)
+  if (started.ok) run('git', ['add', '--all'], temp)
+  return { root: temp, temp, env: {} }
 }
 
 function verify(input) {

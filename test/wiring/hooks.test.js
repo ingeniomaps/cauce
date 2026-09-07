@@ -28,8 +28,14 @@ function blocked(name, input, motivo) {
   })
 }
 
+// Este ayudante escribe —`init`, `config`, y sus llamadores `add` y `commit`—, y `-C`/`cwd` no le ganan
+// a `GIT_DIR`: heredada, cada uno de esos comandos opera sobre el repositorio que la haya exportado. El
+// motor ya no la exporta (caso 045), así que esto es el segundo cierre y no el único.
 function git(args, cwd) {
-  const result = spawnSync('git', args, { cwd, encoding: 'utf8' })
+  const env = { ...process.env }
+  delete env.GIT_DIR
+  delete env.GIT_WORK_TREE
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', env })
   assert.equal(result.status, 0, result.stderr)
 }
 
@@ -1411,4 +1417,40 @@ test('el contraste de evidencia separa lo que existe de lo que no se puede busca
   assert.deepEqual(veredicto('n/a — no hay superficie ejecutable'), [])
   // Sin raíces declaradas no hay dónde mirar, y afirmar ausencia ahí sería inventar el hallazgo.
   assert.deepEqual(EV.contrast('C1 → TestAltaResponde201', []).map((t) => t.verdict), ['inbuscable'])
+})
+
+// La fuga que el caso 045 nombra: `verify` corría los gates con `GIT_DIR` del repositorio real, así que
+// un gate que escribe con git —la suite de un proyecto levantando repos de prueba, típicamente— escribía
+// en el repositorio que el guard estaba juzgando. Se mide por el efecto y no por el entorno: lo que
+// importa no es qué variable se exporta sino que el repo de verdad no gane nada.
+test('verify no deja que un gate escriba en el repositorio que juzga', () => {
+  const root = tempRoot('ops-hook-fuga-')
+  initRepo(root)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+    scripts: { test: 'git commit --allow-empty -m fuga-desde-el-gate || true' },
+  }))
+  fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = true\n')
+  git(['add', 'package.json', 'app.js'], root)
+  // Sin esto el árbol está limpio, `commitTree` no materializa nada y la fuga no se puede ejercer.
+  fs.writeFileSync(path.join(root, 'sucio.txt'), 'algo sin stagear\n')
+
+  // El caso enumera tres daños y el commit es sólo uno: también aparecieron archivos trackeados que
+  // nadie agregó, y un `git add` sin commit no toca el log. Se compara el estado entero contra el de
+  // antes en vez de enumerar lo esperado: enumerar deja pasar lo que uno no pensó en escribir.
+  // Se descuenta `planning/`: es donde `verify` deja su propio registro de gates, que sí es una
+  // escritura suya y esperada. Todo lo demás tiene que quedar idéntico.
+  const estado = () => spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' })
+    .stdout.split('\n').filter((line) => !/planning\//.test(line)).join('\n')
+  const antes = estado()
+
+  assert.doesNotThrow(() => execute('verify', { cwd: root, tool_input: { command: 'git commit -m x' } }))
+
+  const log = spawnSync('git', ['log', '--oneline'], { cwd: root, encoding: 'utf8' }).stdout
+  assert.equal(/fuga-desde-el-gate/.test(log), false, 'el gate commiteó en el repositorio de verdad')
+  assert.equal(estado(), antes, 'el índice o el árbol del repositorio de verdad cambiaron durante el gate')
+  const config = spawnSync('git', ['config', '--local', '--get', 'core.worktree'],
+    { cwd: root, encoding: 'utf8' }).stdout.trim()
+  assert.equal(config, '', 'el repositorio quedó apuntando a un árbol que ya no existe')
 })
