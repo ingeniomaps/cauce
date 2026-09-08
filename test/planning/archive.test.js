@@ -49,11 +49,7 @@ service: app
   assert.equal(run(['check', planning]).status, 0)
 
   fs.writeFileSync(path.join(planning, 'BACKLOG.md'), '# Backlog\n')
-  fs.writeFileSync(path.join(planning, 'DONE.md'), `# Done
-
-## Hito demo — Demo
-
-- [x] **demostrar-ciclo** (epic: 001) — Entregado
+  fs.writeFileSync(path.join(planning, 'done', 'demostrar-ciclo.md'), `- [x] **demostrar-ciclo** (epic: 001) — Entregado
   acept: el resultado se observa
   fecha: 2026-09-08
   done: node --test terminó con exit code 0
@@ -63,16 +59,14 @@ service: app
 `)
   const epicPath = path.join(planning, 'roadmap', 'epic-001-demo.md')
   fs.writeFileSync(epicPath, fs.readFileSync(epicPath, 'utf8').replace('status: active', 'status: closed'))
-  assert.equal(run(['check', planning]).status, 0)
-  assert.equal(run(['archive', planning, '001']).status, 0)
-  assert.equal(fs.existsSync(path.join(planning, 'done', 'epic-001.md')), true)
-  assert.doesNotMatch(fs.readFileSync(path.join(planning, 'DONE.md'), 'utf8'), /demostrar-ciclo/)
+  assert.equal(run(['check', planning]).status, 0, 'la épica cierra con la evidencia en su propio archivo')
 
-  const archived = fs.readFileSync(path.join(planning, 'done', 'epic-001.md'), 'utf8')
-  const recoveredEntry = archived.match(/- \[x\] \*\*demostrar-ciclo\*\*[\s\S]*$/m)[0]
-  fs.appendFileSync(path.join(planning, 'DONE.md'), `\n${recoveredEntry}\n`)
-  assert.equal(run(['archive', planning, '001']).status, 0)
-  assert.doesNotMatch(fs.readFileSync(path.join(planning, 'DONE.md'), 'utf8'), /demostrar-ciclo/)
+  // Archivar una épica se retiró: no hay nada que descongestionar cuando cada tarea trae su archivo. Y
+  // el comando lo dice, en vez de contestar «la épica debe ser NNN» sobre algo que dejó de existir.
+  const retirado = run(['archive', planning, '001'])
+  assert.equal(retirado.status, 2)
+  assert.match(retirado.stderr, /Sólo se archiva `human-actions`/)
+  assert.equal(fs.existsSync(path.join(planning, 'done', 'epic-001.md')), false)
 })
 
 // Las filas resueltas nunca llegan a un modelo —`ops context` ya las excluye—, así que archivarlas no

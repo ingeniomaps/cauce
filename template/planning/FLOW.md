@@ -5,7 +5,7 @@ INBOX ──promoción humana──▶ roadmap ──historias listas──▶ B
   ▲                                                           │
   │                                                        Pick/Plan
   │                                                           ▼
-  │      done/ ◀── archive ◀── DONE ◀── Verify/QA ◀────────── WIP
+  │        done/<tarea>.md ◀── evidencia ◀── Verify/QA ◀───── WIP
   │                                                           │
   └───────────── deuda adyacente ─────────────────────────────┤
                                                               │

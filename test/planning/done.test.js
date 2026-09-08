@@ -1,9 +1,8 @@
 'use strict'
 
 // La evidencia de una tarea cerrada vive en su propio archivo dentro de `done/`. Lo que se comprueba acá
-// es que el lector la encuentre venga de donde venga y que el contrato la juzgue igual: mientras dure la
-// transición conviven el archivo por tarea y el `DONE.md` de antes, y una entrada no puede valer distinto
-// según en cuál esté.
+// es que el lector la encuentre, que el contrato la juzgue, y que el `DONE.md` de antes —que ya no se
+// lee— no desaparezca en silencio si alguien lo tiene todavía.
 
 const { tempRoot, run } = require('../support/environment')
 const test = require('node:test')
@@ -29,14 +28,13 @@ function planning(nombre) {
   return dir
 }
 
-test('una tarea cerrada se lee esté en su archivo o en DONE.md', () => {
+test('una tarea cerrada se lee desde su propio archivo', () => {
   const dir = planning('cauce-done-')
   fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta'))
   fs.writeFileSync(path.join(dir, 'done', 'baja.md'), entrada('baja'))
-  fs.writeFileSync(path.join(dir, 'DONE.md'), `# Done activo\n\n${entrada('vieja')}`)
 
   const done = P.readDone(dir)
-  assert.deepEqual(done.entries.map((one) => one.slug).sort(), ['alta', 'baja', 'vieja'])
+  assert.deepEqual(done.entries.map((one) => one.slug).sort(), ['alta', 'baja'])
   const alta = done.entries.find((one) => one.slug === 'alta')
   assert.equal(alta.fecha, '2026-09-08')
   // Un campo vale hasta el próximo campo **conocido**, así que `fecha` tiene que estar en el vocabulario
@@ -61,11 +59,11 @@ test('lo que hay en done/ y no es una entrada no se lee como una', () => {
   assert.deepEqual(P.readDone(dir).entries.map((one) => one.slug), ['alta'])
 })
 
-test('check juzga una entrada igual en los dos lugares, y exige la fecha', () => {
+test('check exige la fecha, y nombra el DONE.md que quedó en vez de ignorarlo', () => {
   const dir = planning('cauce-done-check-')
   fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta'))
   const verde = JSON.parse(run(['check', dir, '--json']).stdout).errors.filter((one) => /alta/.test(one))
-  assert.deepEqual(verde, [], 'una entrada completa en su archivo pasa igual que en DONE.md')
+  assert.deepEqual(verde, [], 'una entrada completa en su archivo pasa')
 
   // Sin fecha no hay forma de saber cuál se cerró antes: con un archivo por tarea, el orden dejó de
   // estar en la posición dentro del archivo y no quedó nada que lo reemplace.
@@ -74,18 +72,18 @@ test('check juzga una entrada igual en los dos lugares, y exige la fecha', () =>
   assert.equal(sinFecha.length, 1, JSON.stringify(sinFecha))
   assert.match(sinFecha[0], /done\/alta\.md alta: falta fecha: AAAA-MM-DD/)
 
-  // Y la misma entrada incompleta en DONE.md falla igual: el contrato es de la entrada, no del lugar.
-  fs.rmSync(path.join(dir, 'done', 'alta.md'))
-  fs.writeFileSync(path.join(dir, 'DONE.md'), `# Done activo\n\n${entrada('alta').replace(/ {2}fecha: .*\n/, '')}`)
-  const enViejo = JSON.parse(run(['check', dir, '--json']).stdout).errors.filter((one) => /alta/.test(one))
-  assert.equal(enViejo.length, 1, JSON.stringify(enViejo))
-  assert.match(enViejo[0], /DONE\.md alta: falta fecha/)
+  // Un `DONE.md` que sobrevivió a la mudanza ya no lo lee nadie, y ésa es la forma cara del error: sus
+  // épicas no pueden cerrar y sus historias figuran sin evidencia, igual que si nunca se hubieran hecho.
+  fs.writeFileSync(path.join(dir, 'DONE.md'), `# Done activo\n\n${entrada('vieja')}`)
+  const errors = JSON.parse(run(['check', dir, '--json']).stdout).errors
+  assert.ok(errors.some((one) => /DONE\.md ya no se lee/.test(one)), JSON.stringify(errors))
+  assert.equal(P.readDone(dir).set.has('vieja'), false, 'y efectivamente no cuenta como cerrada')
 })
 
 test('la misma tarea cerrada dos veces sigue siendo un error, ahora entre archivos', () => {
   const dir = planning('cauce-done-dup-')
   fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta'))
-  fs.writeFileSync(path.join(dir, 'DONE.md'), `# Done activo\n\n${entrada('alta')}`)
+  fs.writeFileSync(path.join(dir, 'done', 'alta-otra-vez.md'), entrada('alta'))
 
   const errors = JSON.parse(run(['check', dir, '--json']).stdout).errors
   assert.ok(errors.some((one) => /DONE duplicado: alta/.test(one)), JSON.stringify(errors))

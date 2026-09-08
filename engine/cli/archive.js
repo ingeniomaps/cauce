@@ -71,36 +71,17 @@ function archiveHumanActions(root) {
   F.atomicWrite(source, `${kept.join('\n').trimEnd()}\n`)
   return console.log(`✓ ${rows.length} fila(s) archivadas`)
 }
-
+// Archivar una épica se retiró en 0.71.0. Existía para descongestionar un `DONE.md` que se hinchaba con
+// una entrada por tarea; con un archivo por tarea no hay nada que descongestionar, y mover esos archivos
+// a una carpeta por épica sería reintroducir el movimiento que la mudanza vino a sacar.
+//
+// El comando se queda para lo que sí sigue archivándose, y para decirle a quien escriba el número que ya
+// no hace falta: sin esto contestaría «La épica debe ser NNN», que manda a corregir la forma de algo que
+// no existe.
 function archive(dir, rawNum) {
-  const root = path.resolve(dir || '.')
-  if (String(rawNum || '') === 'human-actions') return archiveHumanActions(root)
-  const num = String(rawNum || '').padStart(3, '0')
-  if (!/^\d{3}$/.test(num)) fail('La épica debe ser NNN, o human-actions.', 2)
-  const epic = P.readEpics(root).find((candidate) => candidate.num === num)
-  if (!epic) fail(`No existe epic-${num}.`, 2)
-  if (epic.status !== 'closed') fail(`epic-${num} no está cerrada (status: ${epic.status}).`)
-  const target = path.join(root, 'done', `epic-${num}.md`)
-  const source = path.join(root, 'DONE.md')
-  const content = P.read(source)
-  const slugs = new Set(epic.stories.map((story) => story.slug))
-  const entries = P.readDone(root).entries.filter((entry) => entry.source === 'DONE.md' && slugs.has(entry.slug))
-  if (!entries.length) {
-    if (fs.existsSync(target)) return console.log(`= epic-${num} ya estaba archivada`)
-    fail(`No hay entradas de epic-${num} en DONE.md.`)
-  }
-  let updated = content
-  for (const entry of entries) updated = updated.replace(entry.raw, '').replace(/\n{3,}/g, '\n\n')
-  fs.mkdirSync(path.dirname(target), { recursive: true })
-  if (!fs.existsSync(target)) {
-    F.atomicWrite(
-      target,
-      `---\nepic: ${num}\nstatus: archived\n---\n\n# DONE — ${epic.title}\n\n` +
-        `${entries.map((entry) => entry.raw).join('\n\n')}\n`,
-    )
-  }
-  F.atomicWrite(source, `${updated.trimEnd()}\n`)
-  console.log(`✓ epic-${num}: ${entries.length} entrada(s) archivadas`)
+  if (String(rawNum || '') === 'human-actions') return archiveHumanActions(path.resolve(dir || '.'))
+  return fail('Sólo se archiva `human-actions`. La evidencia de una tarea ya vive en su propio archivo '
+    + 'de `done/`, así que archivar una épica dejó de tener sentido.', 2)
 }
 
 module.exports = { archive, adopt }

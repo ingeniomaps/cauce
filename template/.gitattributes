@@ -1,17 +1,15 @@
 # Cómo mergea git lo que el equipo escribe a la vez.
 #
-# `union` concatena los dos lados en vez de marcar conflicto. Vale para un archivo que sólo crece por
-# el final, que es lo que hacen estos dos cuando dos personas cierran trabajo el mismo día: las dos
-# entradas son buenas y van las dos, así que el conflicto no significa nada y hay que resolverlo igual.
+# `union` concatena los dos lados en vez de marcar conflicto. Vale para un archivo que sólo crece por el
+# final, que es lo que hacen estos dos cuando dos personas registran un bloqueo el mismo día: las dos
+# filas son buenas y van las dos, así que el conflicto no significa nada y hay que resolverlo igual.
 #
-# Lo que union no hace es deduplicar, y ésa es justo la falla que sí hay que ver: dos entradas con el
-# mismo slug. Ya tiene puerta —`DONE duplicado` es error de `ops check`—, así que el merge nunca frena
-# y el único resultado malo lo atrapa la validación.
+# La evidencia de una tarea cerrada no está acá porque no la necesita: vive en su propio `done/<slug>.md`
+# y nadie escribe el archivo de nadie.
 #
-# El borde: `ops archive` **quita** entradas de los dos al mover una épica o una fila resuelta al
-# histórico, y eso no es crecer por el final. Archivar mientras otro cierra puede devolver a la vida lo
-# archivado. Es un acto raro y deliberado: se hace con el árbol limpio y sin nadie más cerrando.
-planning/DONE.md merge=union
+# El borde: `ops archive human-actions` **quita** filas de la tabla activa al mover las resueltas al
+# histórico, y eso no es crecer por el final. Archivar mientras otro registra un bloqueo puede devolver a
+# la vida una fila resuelta. Es un acto raro y deliberado: se hace con el árbol limpio.
 planning/HUMAN_ACTIONS.md merge=union
 planning/done/human-actions.md merge=union
 

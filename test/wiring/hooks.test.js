@@ -1342,8 +1342,9 @@ test('guard-plan-first queda inerte mientras el planning no declara tareas', () 
   // Una tarea ya terminada cuenta igual: el BACKLOG vacío de una instancia con historia no la devuelve
   // al día uno.
   const conHistoria = planFirstRoot('ops-hook-plan-historia-', WIP_IDLE, BACKLOG_VACIO)
-  fs.writeFileSync(path.join(conHistoria, 'planning', 'DONE.md'),
-    '# Done activo\n\n## Hito primero — Primer resultado\n\n- [x] **alta-de-cliente** — Alta\n')
+  fs.mkdirSync(path.join(conHistoria, 'planning', 'done'), { recursive: true })
+  fs.writeFileSync(path.join(conHistoria, 'planning', 'done', 'alta-de-cliente.md'),
+    '- [x] **alta-de-cliente** — Alta\n')
   blocked('plan-first', { cwd: conHistoria, tool_input: { file_path: 'src/altas.js' } }, /sin plan/)
 })
 

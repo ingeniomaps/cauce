@@ -9,7 +9,6 @@ Se lee y se escribe en cada tarea.
 | `BACKLOG.md` | Única cola de tareas promovidas y listas. |
 | `WIP.md` | Tarea en vuelo del runner local; recuperación y mutex por runner. No viaja por git. |
 | `claims/` | Qué tarea tomó cada quien; un archivo por tarea. |
-| `DONE.md` | Evidencia activa de tareas terminadas. |
 | `HUMAN_ACTIONS.md` | Acciones externas que requieren una persona. |
 | `AWAITING_REVIEW.md` | Gate efímero; mientras existe no inicia trabajo. |
 
@@ -33,7 +32,7 @@ Evidencia que no se reescribe.
 
 | Pieza | Responsabilidad |
 |---|---|
-| `done/` | Historial inmutable: una épica cerrada por archivo, más las acciones humanas resueltas. |
+| `done/` | Evidencia de lo terminado: una tarea cerrada por archivo, más las acciones humanas resueltas. |
 | `reports/` | Informes de recorridos de equipo. |
 
 El protocolo exacto está en `PROTOCOL.md`, la explicación visual en `FLOW.md` y los principios que

@@ -170,11 +170,8 @@ test('una acción humana cuya tarea no está en el backlog no rompe check ni blo
 // cuatro tropiezos en días distintos, porque el error nombra una ausencia que no es la que hay.
 test('un campo de DONE que se envuelve se lee entero', () => {
   const root = tempRoot('ops-done-wrap-')
-  fs.writeFileSync(path.join(root, 'DONE.md'), `# Done activo
-
-## Hito ejemplo — Un hito cualquiera
-
-- [x] **tarea-envuelta** — Resultado construido.
+  fs.mkdirSync(path.join(root, 'done'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'done', 'tarea-envuelta.md'), `- [x] **tarea-envuelta** — Resultado construido.
   acept: criterio observable
   fecha: 2026-09-08
   done: lo que se hizo
@@ -199,11 +196,8 @@ test('un campo de DONE que se envuelve se lee entero', () => {
 // absorbe sin que `check` se queje.
 test('el último campo de una entrada no se traga lo que viene después', () => {
   const root = tempRoot('ops-done-tail-')
-  fs.writeFileSync(path.join(root, 'DONE.md'), `# Done activo
-
-## Hito ejemplo — Un hito cualquiera
-
-- [x] **tarea-con-cola** — Otro resultado.
+  fs.mkdirSync(path.join(root, 'done'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'done', 'tarea-con-cola.md'), `- [x] **tarea-con-cola** — Otro resultado.
   done: lo que se hizo
   commit: abc1234 feat(x): subject
 

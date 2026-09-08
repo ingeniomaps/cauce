@@ -153,7 +153,7 @@ function usage() {
   ops evidence <planning-dir> [--task <slug>] [--json]
   ops upgrade <ops-root> [--check] [--force]
   ops destroy <ops-root> [--force]
-  ops archive <planning-dir> <NNN|human-actions>
+  ops archive <planning-dir> human-actions
   ops adopt <planning-dir>
   ops integration list <ops-root>
   ops integration enable <ops-root> <provider>

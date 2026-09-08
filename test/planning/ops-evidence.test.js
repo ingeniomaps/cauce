@@ -27,12 +27,12 @@ const ENTRADA = `
 function instancia(prefijo) {
   const root = tempRoot(prefijo)
   const ops = path.join(root, 'demo-ops')
-  fs.mkdirSync(path.join(ops, 'planning'), { recursive: true })
+  fs.mkdirSync(path.join(ops, 'planning', 'done'), { recursive: true })
   fs.mkdirSync(path.join(root, 'api'), { recursive: true })
   fs.writeFileSync(path.join(root, 'api', 'alta_test.go'), 'func TestAltaResponde201(t *testing.T) {}\n')
   fs.writeFileSync(path.join(ops, 'ops.config.json'),
     JSON.stringify({ project: 'Demo', mode: 'sidecar', workspaceRoots: [{ name: 'api', path: '../api' }] }))
-  fs.writeFileSync(path.join(ops, 'planning', 'DONE.md'), `# Done activo\n${ENTRADA}`)
+  fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta-de-cliente.md'), ENTRADA)
   return ops
 }
 
@@ -57,8 +57,8 @@ test('evidence lee el registro de gates y elige la entrada que se le pide', () =
   const ops = instancia('cauce-evidence-gates-')
   fs.writeFileSync(path.join(ops, 'planning', '.verify-log'),
     `${JSON.stringify({ at: '2026-09-07T10:00:00Z', gate: 'test', status: 0 })}\n`)
-  fs.appendFileSync(path.join(ops, 'planning', 'DONE.md'),
-    '\n- [x] **baja-de-cliente** (epic: 001) — Baja\n  fecha: 2026-09-09\n  tests: C1 → TestBaja\n')
+  fs.writeFileSync(path.join(ops, 'planning', 'done', 'baja-de-cliente.md'),
+    '- [x] **baja-de-cliente** (epic: 001) — Baja\n  fecha: 2026-09-09\n  tests: C1 → TestBaja\n')
 
   // Sin `--task` responde por la más reciente. Qué la decide —la fecha, no la posición— lo prueba
   // `done.test.js`, donde las dos se contradicen; acá sólo se comprueba que elija sin que se le pida.
@@ -78,16 +78,17 @@ test('evidence lee el registro de gates y elige la entrada que se le pide', () =
 test('evidence no afirma ausencia donde no hay dónde mirar', () => {
   const root = tempRoot('cauce-evidence-sinraices-')
   const ops = path.join(root, 'demo-ops')
-  fs.mkdirSync(path.join(ops, 'planning'), { recursive: true })
+  fs.mkdirSync(path.join(ops, 'planning', 'done'), { recursive: true })
   fs.writeFileSync(path.join(ops, 'ops.config.json'), JSON.stringify({ project: 'Demo', mode: 'sidecar' }))
-  fs.writeFileSync(path.join(ops, 'planning', 'DONE.md'), `# Done activo\n${ENTRADA}`)
+  fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta-de-cliente.md'), ENTRADA)
   const result = run(['evidence', path.join(ops, 'planning')])
   assert.equal(result.status, 0, result.stderr)
   assert.match(result.stdout, /el proyecto no declara raíces de código/)
   assert.equal(result.stdout.includes('[ausente]'), false, 'sin raíces, nada se da por ausente')
 
   // Y una entrada sin nada que rastrear se dice, en vez de salir en blanco.
-  fs.writeFileSync(path.join(ops, 'planning', 'DONE.md'),
-    '# Done activo\n\n- [x] **sin-rastro** — Algo\n  tests: n/a — no hay superficie ejecutable\n')
+  fs.rmSync(path.join(ops, 'planning', 'done', 'alta-de-cliente.md'))
+  fs.writeFileSync(path.join(ops, 'planning', 'done', 'sin-rastro.md'),
+    '- [x] **sin-rastro** — Algo\n  tests: n/a — no hay superficie ejecutable\n')
   assert.match(run(['evidence', path.join(ops, 'planning')]).stdout, /no rastrea ningún criterio/)
 })

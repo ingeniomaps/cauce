@@ -82,7 +82,13 @@ function check(dir, cli) {
   const warnings = []
   // `WIP.md` no está: es local y gitignoreado, así que un clon nuevo no lo tiene y eso no es un error.
   // Ausente se lee como IDLE, que es lo que significa.
-  const required = ['BACKLOG.md', 'DONE.md', 'INBOX.md', 'HUMAN_ACTIONS.md', 'PROTOCOL.md']
+  const required = ['BACKLOG.md', 'INBOX.md', 'HUMAN_ACTIONS.md', 'PROTOCOL.md']
+  // `DONE.md` se retiró: la evidencia vive en un archivo por tarea. Un `DONE.md` que quede en disco
+  // ya no lo lee nadie, y eso no se nota — las épicas dejan de poder cerrar y sus historias figuran
+  // sin evidencia, que es lo mismo que se vería si nunca se hubieran hecho.
+  if (fs.existsSync(path.join(root, 'DONE.md'))) {
+    errors.push('DONE.md ya no se lee: pasá cada entrada a su propio `done/<slug>.md` y borralo')
+  }
   for (const file of required) if (!fs.existsSync(path.join(root, file))) errors.push(`falta ${file}`)
 
   const configPath = path.join(root, '..', 'ops.config.json')

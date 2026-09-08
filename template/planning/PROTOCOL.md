@@ -58,7 +58,8 @@ invariantes.
 10. Verify: ejecutar los gates declarados por el servicio y registrar exit codes.
 11. QA: probar la aceptación por el camino que usa un consumidor real.
 12. Commit: stage explícito y commits verificables, uno por naturaleza del diff.
-13. Done: mover la tarea, registrar evidencia, limpiar WIP y cerrar/archivar la épica si corresponde.
+13. Done: sacar la tarea de la cola, escribir su evidencia en `done/<slug>.md`, limpiar WIP, soltar
+    el reclamo y cerrar la épica si no le queda ninguna historia abierta.
 14. Cierre: check verde, deuda residual al INBOX y checkpoint entre hitos.
 
 ## Lanes

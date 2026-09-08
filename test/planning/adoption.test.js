@@ -11,7 +11,7 @@ const path = require('node:path')
 const AD = require('../../engine/planning/adoption')
 const PC = require('../../engine/planning/contracts')
 
-const vieja = (slug) => ({ source: 'DONE.md', slug, done: 'lo único que aquel proceso registraba' })
+const vieja = (slug) => ({ source: `done/${slug}.md`, slug, done: 'lo único que aquel proceso registraba' })
 const estado = (entries, adopted) => ({
   epics: [],
   milestones: [{ slug: 'h', title: 'H', tasks: [] }],
@@ -52,7 +52,7 @@ test('exentar una entrada no exenta a las demás', () => {
 // todavía hace falta no dice nada. Qué gana cada aviso lo cuenta `report`.
 test('el informe señala la exención que sobra y la que nombra a un fantasma', () => {
   const cumple = {
-    source: 'DONE.md',
+    source: 'done/ya-reescrita.md',
     slug: 'ya-reescrita',
     acceptance: 'el resultado se observa',
     fecha: '2026-09-08',
@@ -66,7 +66,7 @@ test('el informe señala la exención que sobra y la que nombra a un fantasma', 
   const avisos = AD.report({ done, adopted: ['sigue-vieja', 'ya-reescrita', 'nunca-existio'] })
 
   assert.ok(avisos.some((one) => /ya-reescrita ya cumple el contrato/.test(one)))
-  assert.ok(avisos.some((one) => /nunca-existio no está en DONE\.md/.test(one)))
+  assert.ok(avisos.some((one) => /nunca-existio no está en done\//.test(one)))
   assert.deepEqual(avisos.filter((one) => /sigue-vieja/.test(one)), [], 'la que todavía hace falta no molesta')
   assert.match(avisos[avisos.length - 1], /3 entrada\(s\) exenta\(s\)/, 'y la cuenta se ve siempre')
   assert.deepEqual(AD.report({ done, adopted: [] }), [], 'sin exenciones no hay nada que mostrar')
@@ -79,8 +79,8 @@ test('adopt exenta la historia que llegó con el proyecto, y sólo se corre una 
   const target = path.join(base, 'demo-ops')
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
   const planning = path.join(target, 'planning')
-  fs.appendFileSync(path.join(planning, 'DONE.md'), '\n## Hito viejo — Antes de la adopción\n\n'
-    + '- [x] **tarea-de-2024** — Lo que se construyó entonces.\n'
+  fs.writeFileSync(path.join(planning, 'done', 'tarea-de-2024.md'),
+    '- [x] **tarea-de-2024** — Lo que se construyó entonces.\n'
     + '  done: lo único que aquel proceso registraba\n')
 
   assert.equal(run(['check', planning]).status, 1, 'una entrada vieja deja el planning en rojo')
@@ -166,16 +166,16 @@ test('la huella viaja en el archivo y check la comprueba', () => {
   assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
   const planning = path.join(target, 'planning')
   const baseline = path.join(planning, AD.BASELINE)
-  fs.appendFileSync(path.join(planning, 'DONE.md'), '\n## Hito viejo — Antes de la adopción\n\n'
-    + '- [x] **tarea-de-2024** — Lo que se construyó entonces.\n'
+  fs.writeFileSync(path.join(planning, 'done', 'tarea-de-2024.md'),
+    '- [x] **tarea-de-2024** — Lo que se construyó entonces.\n'
     + '  done: lo único que aquel proceso registraba\n')
   assert.equal(run(['adopt', planning]).status, 0)
   assert.match(fs.readFileSync(baseline, 'utf8'), /^# huella: 1 entradas · sha256:[0-9a-f]{12}$/m)
   assert.equal(run(['check', planning]).status, 0, 'recién sellado no dice nada de la huella')
 
-  // Lo que este caso vino a cerrar. Se agrega una entrada de verdad a DONE.md y su slug a mano: sin la
-  // huella, `check` quedaba verde y sólo subía una cuenta que nadie recuerda.
-  fs.appendFileSync(path.join(planning, 'DONE.md'),
+  // Lo que este caso vino a cerrar. Se agrega una entrada de verdad y su slug a mano: sin la huella,
+  // `check` quedaba verde y sólo subía una cuenta que nadie recuerda.
+  fs.writeFileSync(path.join(planning, 'done', 'agregada-a-mano.md'),
     '- [x] **agregada-a-mano** — Trabajo de hoy.\n  done: a medias\n')
   fs.appendFileSync(baseline, 'agregada-a-mano\n')
   const crecido = run(['check', planning])

@@ -210,7 +210,6 @@ const TEMPLATE_OWN = {
   // una instancia que actualiza queda leyendo una instrucción que apunta a un archivo que no tiene.
   'organization/workspace.md': 'upgrade',
   'planning/BACKLOG.md': 'init',
-  'planning/DONE.md': 'init',
   'planning/HUMAN_ACTIONS.md': 'init',
   'planning/INBOX.md': 'init',
   // 0.69.0. El contrato nace con esta versión, así que ninguna instancia anterior lo tiene: por `init`

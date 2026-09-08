@@ -245,14 +245,11 @@ function readBacklog(dir) {
 const NOT_ENTRIES = new Set(['human-actions.md', 'README.md'])
 
 function doneFiles(dir) {
-  const files = [path.join(dir, 'DONE.md')]
-  const archive = path.join(dir, 'done')
   try {
-    files.unshift(...fs.readdirSync(archive)
+    return fs.readdirSync(path.join(dir, 'done'))
       .filter((file) => file.endsWith('.md') && !NOT_ENTRIES.has(file)).sort()
-      .map((file) => path.join(archive, file)))
-  } catch { /* no archive yet */ }
-  return files
+      .map((file) => path.join(dir, 'done', file))
+  } catch { return [] }
 }
 
 // `fecha` entra al vocabulario porque un campo que no esté acá no corta al anterior: sin nombrarlo, el
