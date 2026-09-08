@@ -13,7 +13,7 @@ function snapshot(root) {
     epics: P.readEpics(root),
     milestones,
     done: P.readDone(root),
-    wip: P.readWip(root),
+    wips: P.readWips(root),
     inbox: P.readInbox(root),
     claims: C.read(root),
     queued: new Set(milestones.flatMap((m) => m.tasks.map((t) => t.slug))),
@@ -40,7 +40,10 @@ function pendingHumanActions(root) {
 //
 // Quién soy acá es el runner y no la persona: dos agentes en la misma máquina comparten la identidad de
 // git, así que comparar por owner le devolvería a cada uno la tarea del otro como propia.
-function currentTask({ milestones, done, wip, claims = [] }, blockers = [], runner = '') {
+function currentTask({ milestones, done, wips = [], claims = [] }, blockers = [], runner = '') {
+  // El plan de otro runner no es asunto de éste: leerlo como propio era lo que le entregaba a un agente
+  // la tarea que otro estaba construyendo, con el WIP ajeno adentro y diciéndole que estaba libre.
+  const wip = wips.find((one) => one.runner === P.wipName(runner)) || null
   const queue = milestones.flatMap((milestone) => milestone.tasks.map((task) => ({ ...task, hito: milestone.slug })))
   const mine = new Set(claims.filter((one) => runner && one.runner === runner).map((one) => one.slug))
   const others = new Map(claims.filter((one) => !mine.has(one.slug)).map((one) => [one.slug, one.owner]))

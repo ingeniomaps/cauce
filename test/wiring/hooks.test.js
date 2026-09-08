@@ -5,13 +5,14 @@
 //
 // Acá se ejecuta la decisión. Dónde aterriza el wiring que la invoca es de `runners.test.js`.
 
-const { tempRoot, outsideTempRoot } = require('../support/environment')
+const { tempRoot, outsideTempRoot, writeWip } = require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
+
 const { spawnSync } = require('node:child_process')
 const { execute, executeAll, guards, hookGroups } = require('../../engine/hooks/run')
 
@@ -1288,7 +1289,7 @@ function planFirstRoot(prefijo, wip, backlog = BACKLOG_CON_TAREA) {
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'),
     JSON.stringify({ mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }] }))
-  fs.writeFileSync(path.join(root, 'planning', 'WIP.md'), wip)
+  writeWip(path.join(root, 'planning'), wip)
   fs.writeFileSync(path.join(root, 'planning', 'BACKLOG.md'), backlog)
   return root
 }

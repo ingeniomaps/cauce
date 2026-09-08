@@ -61,6 +61,15 @@ function claim(dir, slug, cli) {
     // microsegundos y aun así tiene respuesta, porque la alternativa es reventar con un TypeError.
     if (!dueño) return fail(`${slug} cambió de manos mientras la pedías; volvé a intentarlo.`)
     if (dueño.runner === from) return console.log(`= ${slug} ya era tuya desde ${dueño.started}`)
+    // Mismo dueño y otro runner son dos situaciones que se ven idénticas desde acá —vos retomando la
+    // sesión de ayer, o un segundo agente tuyo— y ninguna se puede distinguir mirando el archivo.
+    // Retomarla sola le sacaría la tarea al otro agente; crear un runner nuevo dejaría dos trabajando lo
+    // mismo. Las dos rompen trabajo, así que decide una persona y acá sólo se dice cuál es cuál.
+    if (dueño.owner === me) {
+      return fail(`${slug} la tenés vos, tomada el ${dueño.started} desde otro runner (${dueño.runner}). `
+        + `Si estás retomando esa sesión, exportá CAUCE_RUNNER=${dueño.runner} y seguí donde la dejaste; `
+        + 'si sos otro agente tuyo corriendo a la vez, tomá otra tarea.')
+    }
     return fail(`${slug} la tomó ${dueño.owner} el ${dueño.started}. Si se abandonó, borrá `
       + `${CL.DIR}/${slug}.md a mano: soltar lo de otro es una decisión, no un comando.`)
   }

@@ -12,6 +12,7 @@ const {
 } = require('./input')
 const AP = require('./approval')
 const { readWip } = require('../planning/parser')
+const { runner } = require('../planning/claims')
 const { hasTasks } = require('../planning/state')
 const { TEMPLATE_PREFIXES } = require('../core/ownership')
 
@@ -138,7 +139,7 @@ function planFirst(input) {
   const root = opsRoot(input)
   if (!root) return
   const planning = path.join(root, 'planning')
-  const wip = readWip(planning)
+  const wip = readWip(planning, runner())
   if (wip && wip.complete + wip.pending > 0) return
   // Una instancia recién creada no tiene de dónde sacar una tarea: `onboard` deja el roadmap vacío y
   // dice que alguien lo llene. Exigir el plan ahí es un candado delante de la puerta, y la salida que
@@ -149,7 +150,7 @@ function planFirst(input) {
   if (!hasTasks(planning)) return
   const estado = wip ? `WIP tiene la tarea ${wip.task} y ningún paso` : 'WIP está en IDLE'
   const why = `${estado}, así que el plan todavía no está escrito.\n`
-    + 'Escribí en planning/WIP.md la tarea y su plan aprobado —pasos numerados, cada uno con un estado '
+    + 'Escribí en tu planning/wip/<runner>.md la tarea y su plan aprobado —pasos numerados, cada uno con un estado '
     + 'verificable— y volvé al cambio. Si esto no es trabajo de una tarea, aprobá la ruta.\n'
     + AP.HOW('OPS_PLAN_FIRST_OVERRIDE')
   for (const raw of filesOf(input)) {

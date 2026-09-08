@@ -4,11 +4,12 @@
 // el estado a la vista, y el vocabulario con que se nombra una parada. Ninguno de los dos escribe
 // nada, y eso también se comprueba: leer el estado no puede cambiarlo.
 
-const { tempRoot, run, linkEngine, filesBelow } = require('../support/environment')
+const { tempRoot, run, linkEngine, filesBelow, wipPath, writeWip } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+
 
 test('tree --json refleja el mismo estado que la salida de texto', () => {
   const planning = path.resolve(__dirname, '..', '..', 'template', 'planning')
@@ -16,7 +17,7 @@ test('tree --json refleja el mismo estado que la salida de texto', () => {
   assert.equal(result.status, 0, result.stderr)
   const state = JSON.parse(result.stdout)
   for (const field of ['roadmap', 'backlog']) assert.ok(Array.isArray(state[field]))
-  assert.equal(state.wip, null)
+  assert.deepEqual(state.wip, [], 'sin ningún runner trabajando, la lista de planes va vacía')
   assert.equal(typeof state.done, 'number')
   for (const bucket of ['deuda', 'ideas', 'propuestas', 'lecciones']) {
     assert.equal(typeof state.inbox[bucket], 'number')
@@ -68,7 +69,7 @@ service: app
   assert.equal(queued.wip, null)
   assert.equal(queued.blocked, '')
 
-  fs.writeFileSync(path.join(planning, 'WIP.md'), `---
+  writeWip(planning, `---
 task: segunda
 hito: "demo — Demo"
 epic: 001
@@ -114,7 +115,7 @@ service: app
     'y mientras tanto sigue bloqueando: no se da por resuelta una fila que no se entiende',
   )
 
-  fs.writeFileSync(path.join(planning, 'WIP.md'), 'status: IDLE\n')
+  fs.rmSync(wipPath(planning), { force: true })
   fs.writeFileSync(path.join(planning, 'HUMAN_ACTIONS.md'), `# Acciones humanas
 
 | Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |
@@ -229,10 +230,13 @@ test('context no muta archivos de estado', () => {
 
 test('tree no muta archivos de estado', () => {
   const planning = path.resolve(__dirname, '..', '..', 'template', 'planning')
-  const before = fs.readFileSync(path.join(planning, 'WIP.md'), 'utf8')
+  // La cola, que es el archivo de estado que el molde sí trae: los planes viven en `wip/` y no viajan,
+  // así que en el molde no hay ninguno que mirar.
+  const cola = path.join(planning, 'BACKLOG.md')
+  const before = fs.readFileSync(cola, 'utf8')
   const result = run(['tree', planning, '--no-color'])
   assert.equal(result.status, 0, result.stderr)
-  assert.equal(fs.readFileSync(path.join(planning, 'WIP.md'), 'utf8'), before)
+  assert.equal(fs.readFileSync(cola, 'utf8'), before)
 })
 
 // Una parada sin nombre obliga a leer el estado entero para saber qué pasó, y en la salida de texto

@@ -152,13 +152,13 @@ test('una acción humana cuya tarea no está en el backlog no rompe check ni blo
 
   const errores = PC.validateState({
     epics: [], milestones: [{ slug: 'h', title: 'H', tasks: [] }],
-    done: { entries: [], set: new Set(), duplicates: [] }, wip: null, humanActions: [fila],
+    done: { entries: [], set: new Set(), duplicates: [] }, wips: [], humanActions: [fila],
   })
   assert.deepEqual(errores, [], 'check sólo juzga el Estado de la fila, nunca su tarea')
 
   const tarea = (slug) => ({ slug, tier: 'lite', cast: { build: '', review: [] }, service: 'api' })
   const { task, skipped } = ST.currentTask({
-    milestones: [{ slug: 'h', tasks: [tarea('uno')] }], done: { set: new Set() }, wip: null,
+    milestones: [{ slug: 'h', tasks: [tarea('uno')] }], done: { set: new Set() }, wips: [],
   }, [fila])
   assert.equal(task.slug, 'uno', 'no bloquea a nadie: sólo se saltea lo que está en la cola')
   assert.deepEqual(skipped, [], 'y no se anuncia como salteada, porque no lo está')

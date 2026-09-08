@@ -161,7 +161,7 @@ function dependencyErrors(milestones, done) {
 // `validateDoneEntry`, `validateRules`— y estaba creciendo del otro lado sólo porque ahí era más
 // rápido escribirla. No lee nada: recibe el estado, así que se prueba sin tocar disco.
 function validateState({
-  epics, milestones, done, wip, roles = new Set(), humanActions = [], adopted = new Set(),
+  epics, milestones, done, wips = [], roles = new Set(), humanActions = [], adopted = new Set(),
 }) {
   const errors = []
   const epicNums = new Set()
@@ -243,15 +243,18 @@ function validateState({
 
   errors.push(...dependencyErrors(milestones, done))
 
-  if (wip && !backlogSlugs.has(wip.task) && !done.set.has(wip.task)) {
-    errors.push(`WIP ${wip.task}: no existe en BACKLOG ni DONE`)
-  }
+  for (const wip of wips) {
+    const at = `wip/${wip.runner}.md`
+    if (!backlogSlugs.has(wip.task) && !done.set.has(wip.task)) {
+      errors.push(`${at}: ${wip.task} no existe en BACKLOG ni DONE`)
+    }
   // El WIP es el punto de retorno tras una interrupción, y el protocolo manda seguir desde el primer
   // paso sin tildar. Un plan que el motor no puede contar se lee como un plan terminado, así que la
   // recuperación se queda sin de dónde retomar justo cuando es lo único que quedó del trabajo.
-  if (wip && !wip.complete && !wip.pending) {
-    errors.push(`WIP ${wip.task}: el plan no tiene pasos que el motor pueda contar; `
-      + 'se escriben `1. [ ] paso`')
+    if (!wip.complete && !wip.pending) {
+      errors.push(`${at}: el plan de ${wip.task} no tiene pasos que el motor pueda contar; `
+        + 'se escriben `1. [ ] paso`')
+    }
   }
   for (const row of humanActions) {
     if (!row.valid) {

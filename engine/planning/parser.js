@@ -352,17 +352,45 @@ function readHumanActions(dir) {
     })
 }
 
-function readWip(dir) {
-  const text = read(path.join(dir, 'WIP.md'))
+// El plan de un runner vive en su propio archivo, y el nombre sale de su id. Con una instancia sidecar
+// hay un solo `planning/` por máquina, así que un archivo compartido lo escriben todos los agentes que
+// corren ahí: el segundo pisaba el plan del primero y `context` le entregaba su tarea.
+//
+// El id es una ruta, así que se aplana para poder ser un nombre. Queda largo y legible a propósito —
+// el directorio no viaja por git y sirve para mirar de quién es cada plan cuando algo quedó a medias.
+function wipName(runner) {
+  return String(runner || '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase()
+    || 'sin-runner'
+}
+
+function parseWip(text, runner) {
   if (/^status:\s*IDLE/m.test(text)) return null
   const field = frontmatter(text)
   const task = field('task')
   if (!task) return null
   return {
-    task, phase: field('phase') || '?', service: field('service'),
+    task, runner, phase: field('phase') || '?', service: field('service'),
     complete: (text.match(/^\d+\.\s+\[[xX]\]/gm) || []).length,
     pending: (text.match(/^\d+\.\s+\[\s\]/gm) || []).length,
   }
+}
+
+// El de un runner: el único que le corresponde continuar. El `runner` que devuelve es el nombre
+// aplanado, que es la identidad que hay en disco — devolver el id crudo dejaba a quien compara dos
+// lecturas comparando formas distintas de lo mismo, y no coincidían nunca.
+function readWip(dir, runner) {
+  const name = wipName(runner)
+  return parseWip(read(path.join(dir, 'wip', `${name}.md`)), name)
+}
+
+// Todos los que hay. Lo pregunta `check`, que juzga si cada plan apunta a una tarea que existe, y `tree`,
+// que muestra qué está en vuelo: las dos son preguntas sobre la instancia y no sobre quien pregunta.
+function readWips(dir) {
+  let names = []
+  try { names = fs.readdirSync(path.join(dir, 'wip')) } catch { return [] }
+  return names.filter((name) => name.endsWith('.md')).sort()
+    .map((name) => parseWip(read(path.join(dir, 'wip', name)), name.replace(/\.md$/, '')))
+    .filter(Boolean)
 }
 
 // Un ítem se cuenta cuando empieza con su nombre en negrita, y el nombre existe para poder citarlo
@@ -389,7 +417,7 @@ function readInbox(dir) {
 module.exports = {
   EPIC_STATES, HUMAN_ACTION_STATES, LANES, MILESTONE_HEADING, STOP_REASONS,
   TASK_LINE, TASK_LINE_ANY_LANE,
-  read, section, withoutComments, frontmatter, readEpics, readBacklog, readDone, readWip,
+  read, section, withoutComments, frontmatter, readEpics, readBacklog, readDone, readWip, readWips, wipName,
   acceptanceConditions, tableRows, taskFromLine,
   readInbox, readHumanActions,
 }

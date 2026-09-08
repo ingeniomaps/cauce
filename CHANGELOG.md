@@ -56,6 +56,23 @@ diseño — eso vive en el commit y en el código.
   igual—, y un hito mal escrito lo dice en vez de contestar «sin tarea disponible», que es indistinguible
   de un hito terminado.
 
+- **El plan en vuelo es uno por runner: `planning/wip/<runner>.md`.** Con `mode: sidecar` hay un solo
+  `planning/` por máquina, así que un plan compartido lo escribían todos los agentes que corren ahí: el
+  segundo pisaba el del primero, y `ops context` le entregaba la tarea que el primero estaba construyendo
+  —con el plan ajeno adentro y diciéndole que estaba libre—. `context` honra sólo el tuyo y `check` los
+  recorre todos.
+
+  **Lo que te pide algo**: `planning/WIP.md` se retiró. Mové tu plan a `planning/wip/<runner>.md` —el
+  nombre sale de tu `CAUCE_RUNNER`, aplanado; `ops context --json` lo dice en `wipFile`— y borrá el
+  archivo viejo, que mientras esté `ops check` lo nombra. El `.gitignore` nuevo excluye `planning/wip/*.md`
+  y conserva su README; si venías con la línea de `planning/WIP.md`, cambiala.
+
+- **Tu propio reclamo desde otro runner se reconoce en vez de resolverse solo.** Volver al día siguiente
+  sin reponer `CAUCE_RUNNER` y correr un segundo agente tuyo se ven idénticos desde el archivo, y las dos
+  salidas automáticas rompen trabajo: retomar sola le saca la tarea al otro agente, y crear un runner
+  nuevo deja dos construyendo lo mismo. `ops claim` dice cuál es cuál y con qué id se retoma; `ops context`
+  marca esas tareas como «vos, desde otro runner».
+
 - **La evidencia de una tarea cerrada vive en su propio archivo: `planning/done/<slug>.md`.** Cerrar es lo
   que más se hace, y mientras la evidencia se acumulaba en un `DONE.md` compartido, cerrar era agregarle
   una entrada a algo que otro también estaba tocando. Ahora dos personas —o dos agentes— que cierran a la

@@ -32,13 +32,14 @@ invariantes.
   archivo es el slug que reserva, y por eso un `task` que diga otra cosa es un error. `owner` dice a
   quién preguntarle y `runner` decide de quién es: con varios agentes en una máquina la persona es
   la misma y el árbol de trabajo no.
-- WIP activo: frontmatter y checklist; inactivo: `status: IDLE` o ausente. Es local y no viaja por
-  git: existe para recuperar la sesión de quien lo escribió.
+- WIP activo: frontmatter y checklist en `wip/<runner>.md`; inactivo cuando el archivo no está. Es
+  local y no viaja por git: existe para recuperar la sesión de quien lo escribió, y es uno por runner
+  porque una instancia sidecar la comparten todos los agentes de esa máquina.
 
 ## Gates de arranque
 
 1. Si existe `AWAITING_REVIEW.md`, parar y mostrar la acción que contiene.
-2. Si WIP está activo, la tarea es ésa: es el mutex del runner, y siendo local siempre es propio.
+2. Si tu WIP está activo, la tarea es ésa: es el mutex del runner, y sólo se lee el propio.
 3. Si WIP está activo tras una interrupción confirmada, verificar los pasos `[x]` en disco y continuar
    desde el primer `[ ]`; no replanear.
 4. Si WIP apunta a una tarea ya en DONE y fuera de BACKLOG, reparar el cierre dejando WIP en IDLE.

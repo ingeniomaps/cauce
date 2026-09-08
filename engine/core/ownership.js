@@ -22,6 +22,7 @@ const SYSTEM_FILES = [
   'planning/rules/README.md',
   'planning/claims/README.md',
   'planning/done/README.md',
+  'planning/wip/README.md',
   'planning/roadmap/README.md',
   'planning/roadmap/epic-000-template.md',
   // La guía de entrega no tiene una línea de la empresa: describe el camino que Cauce recomienda, y lo
@@ -216,7 +217,6 @@ const TEMPLATE_OWN = {
   // 0.69.0. El contrato nace con esta versión, así que ninguna instancia anterior lo tiene: por `init`
   // no llegaría nunca a la que ya existe, que es justo la que iba a usarlo.
   'planning/RECURRING.md': 'upgrade',
-  'planning/WIP.md': 'init',
   'planning/delivery/project.md': 'init',
   'planning/done/.gitkeep': 'init',
   'planning/reports/README.md': 'init',

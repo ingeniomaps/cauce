@@ -16,7 +16,7 @@ const estado = (entries, adopted) => ({
   epics: [],
   milestones: [{ slug: 'h', title: 'H', tasks: [] }],
   done: { entries, set: new Set(entries.map((entry) => entry.slug)), duplicates: [] },
-  wip: null,
+  wips: [],
   adopted: new Set(adopted),
 })
 

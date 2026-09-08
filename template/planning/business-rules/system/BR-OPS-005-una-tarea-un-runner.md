@@ -7,7 +7,7 @@ El reclamo protege la exclusión mutua entre runners y hace visible quién sosti
 
 Es la contracara de `BR-OPS-001-una-sola-tarea-activa.md`, y las dos juntas son el invariante 2 de
 `../../PROTOCOL.md`. Se parecen y no son la misma: aquélla impide que un runner lleve dos tareas y vive
-en su `WIP.md`, que es local; ésta impide que dos runners lleven la misma y vive en `claims/`, que es
+en su `wip/<runner>.md`, que es local; ésta impide que dos runners lleven la misma y vive en `claims/`, que es
 compartido. Con una sola, un equipo trabaja una tarea por vez o duplica trabajo sin enterarse.
 
 ## Reglas

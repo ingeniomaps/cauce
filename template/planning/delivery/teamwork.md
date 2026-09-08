@@ -11,7 +11,7 @@ choques entre dos personas —o entre dos agentes— salen de tratarlas igual.
 |---|---|---|---|
 | **Compartido** | `roadmap/`, `BACKLOG.md`, `INBOX.md`, `HUMAN_ACTIONS.md`, `done/`, reglas y ADR | cualquiera, en actos humanos | baja |
 | **Coordinación** | `claims/`, un archivo por tarea tomada | uno por tarea | dos veces por tarea |
-| **Local** | `WIP.md`, `.verify-log`, el árbol de trabajo | vos | continua |
+| **Local** | `wip/<runner>.md`, `.verify-log`, el árbol de trabajo | vos | continua |
 
 La regla que los separa: **un archivo con más de un escritor tiene que cambiar poco; uno que cambia mucho
 tiene que tener un solo escritor.** Cuando uno viola las dos a la vez, el equipo se pisa en cada commit.
@@ -115,8 +115,8 @@ Por eso el traspaso es un acto y tiene tres pasos: quien deja **publica su plan*
 nota en la tarea, un mensaje, lo que el equipo use—, suelta el reclamo, y quien toma lo reclama. El costo
 de compartir el plan se paga entonces, que es cuando sirve.
 
-Lo que no hay que hacer es empujar el `WIP.md`: sería devolver a git el archivo que más cambia, todos los
-días, para resolver algo que pasa una vez cada tanto.
+Lo que no hay que hacer es empujar tu `wip/<runner>.md`: sería devolver a git el archivo que más cambia,
+todos los días, para resolver algo que pasa una vez cada tanto.
 
 ## Cuando el equipo crece o se achica
 

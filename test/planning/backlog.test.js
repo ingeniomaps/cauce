@@ -210,7 +210,7 @@ test('validateState juzga el estado ya leído, sin tocar disco', () => {
   })
   const estado = (extra = {}) => ({
     epics: [epica()], milestones: [{ slug: 'h', title: 'H', tasks: [tarea()] }],
-    done: { entries: [], set: new Set(), duplicates: [] }, wip: null, ...extra,
+    done: { entries: [], set: new Set(), duplicates: [] }, wips: [], ...extra,
   })
   const errores = (extra) => PC.validateState(estado(extra))
 
@@ -257,10 +257,10 @@ test('validateState juzga el estado ya leído, sin tocar disco', () => {
   ['BACKLOG h-uno: el cast nombra inventado, que no está en el catálogo'])
 
   // WIP y evidencia.
-  assert.match(errores({ wip: { task: 'ajena', complete: 1, pending: 0 } }).join('|'),
-    /WIP ajena: no existe en BACKLOG ni DONE/)
-  assert.match(errores({ wip: { task: 'h-uno', complete: 0, pending: 0 } }).join('|'),
-    /el plan no tiene pasos que el motor pueda contar/)
+  assert.match(errores({ wips: [{ task: 'ajena', runner: 'w-uno', complete: 1, pending: 0 }] }).join('|'),
+    /wip\/w-uno\.md: ajena no existe en BACKLOG ni DONE/)
+  assert.match(errores({ wips: [{ task: 'h-uno', runner: 'w-uno', complete: 0, pending: 0 }] }).join('|'),
+    /el plan de h-uno no tiene pasos que el motor pueda contar/)
   assert.match(errores({ done: { entries: [], set: new Set(), duplicates: ['h-uno'] } })[0],
     /DONE duplicado: h-uno/)
 
@@ -276,19 +276,21 @@ test('currentTask aplica la precedencia del protocolo sobre el estado ya leído'
   const tarea = (slug) => ({ slug, tier: 'lite', cast: { build: '', review: [] }, service: 'api' })
   const estado = (extra = {}) => ({
     milestones: [{ slug: 'h', tasks: [tarea('uno'), tarea('dos'), tarea('tres')] }],
-    done: { set: new Set() }, wip: null, ...extra,
+    done: { set: new Set() }, wips: [], ...extra,
   })
 
   assert.equal(ST.currentTask(estado()).task.slug, 'uno', 'la primera del primer hito')
   assert.deepEqual(ST.currentTask(estado()).skipped, [])
 
   // El WIP manda aunque su tarea tenga una acción humana abierta: es el mutex.
-  const conWip = ST.currentTask(estado({ wip: { task: 'dos', service: 'api' } }), [{ task: 'dos' }])
+  const conWip = ST.currentTask(
+    estado({ wips: [{ task: 'dos', runner: 'w-uno', service: 'api' }] }), [{ task: 'dos' }], '/w/uno',
+  )
   assert.equal(conWip.task.slug, 'dos')
   assert.deepEqual(conWip.skipped, [], 'con WIP no se salta nada: hay una sola tarea posible')
 
   // Un WIP que apunta fuera del backlog igual se entrega, para poder cerrarlo.
-  const huerfano = ST.currentTask(estado({ wip: { task: 'ajena', service: 'api' } }))
+  const huerfano = ST.currentTask(estado({ wips: [{ task: 'ajena', runner: 'w-uno', service: 'api' }] }), [], '/w/uno')
   assert.equal(huerfano.task.slug, 'ajena')
   assert.equal(huerfano.task.hito, '', 'sin hito, porque no está en la cola')
 

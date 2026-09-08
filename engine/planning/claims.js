@@ -6,7 +6,7 @@
 // personas en tareas distintas no tocan el mismo archivo nunca, y dos que reclaman la misma chocan en
 // git — que es exactamente donde el choque significa algo y donde conviene verlo.
 //
-// El plan de la ejecución no vive acá. Eso es `WIP.md`, que es local y cambia en cada paso; acá va lo
+// El plan de la ejecución no vive acá. Eso es `wip/<runner>.md`, que es local y cambia en cada paso; acá va lo
 // poco que el resto del equipo necesita saber, que cambia dos veces por tarea. Son dos responsabilidades
 // distintas y por eso son dos archivos: el reclamo evita que dos runners tomen la misma tarea, y el WIP
 // evita que un runner lleve dos.
@@ -86,7 +86,7 @@ function read(root) {
 // cambio, que es de lo que este archivo vino a separarse.
 function content({ task, owner, runner: from, started, service }) {
   return `---\ntask: ${task}\nowner: ${owner}\nrunner: ${from}\nstarted: ${started}\n`
-    + `service: ${service || ''}\n---\n\nTomada. El plan vive en el \`WIP.md\` de quien la tomó.\n`
+    + `service: ${service || ''}\n---\n\nTomada. El plan vive en el \`wip/\` de quien la tomó.\n`
 }
 
 function validate({ claims, milestones, done }) {

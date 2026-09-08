@@ -74,7 +74,7 @@ test('lo reclamado por otro no se ofrece, y lo propio va antes que lo libre', ()
   const state = {
     milestones: cola('a', 'b', 'c'),
     done: done(),
-    wip: null,
+    wips: [],
     claims: [
       { slug: 'a', owner: 'luis@x', runner: 'wt-luis' },
       { slug: 'b', owner: 'ana@x', runner: 'wt-ana' },
@@ -98,7 +98,7 @@ test('una tarea que espera algo que nadie tomó espera igual, y sin dueño', () 
   const state = {
     milestones: [{ slug: 'uno', tasks: [{ slug: 'cabeza', depends: [] }, { slug: 'sigue', depends: ['cabeza'] }] }],
     done: done(),
-    wip: null,
+    wips: [],
     claims: [],
   }
   const libre = ST.currentTask(state, [], 'wt-uno')
@@ -261,8 +261,8 @@ test('dos reclamos simultáneos de la misma tarea los gana uno solo', async () =
 test('sin reclamos y sin WIP en disco, check no dice nada de ninguno de los dos', () => {
   const dir = planning('cauce-sin-estado-')
   fs.rmSync(path.join(dir, 'claims'), { recursive: true })
-  // Un clon nuevo no trae el WIP: es local y gitignoreado, y ausente significa IDLE.
-  fs.rmSync(path.join(dir, 'WIP.md'))
+  // Un clon nuevo no trae ningún plan: `wip/` es local y gitignoreado, y sin archivo el runner está IDLE.
+  assert.equal(fs.existsSync(path.join(dir, 'wip', 'cualquiera.md')), false)
 
   const check = JSON.parse(run(['check', dir, '--json']).stdout)
   const suyo = (one) => /claims|WIP/.test(one)
@@ -407,4 +407,68 @@ test('acotar por hito no esconde la tarea que ya tenés', () => {
   const libre = como('ana@acme.com', () => run(['context', dir, '--hito', 'frontend']), '/w/ana')
   assert.match(libre.stdout, /^TASK {3}boton/m)
   assert.doesNotMatch(libre.stdout, /^HITO/m)
+})
+
+// Volver al día siguiente y volver como un segundo agente se ven idénticos desde el archivo, y las dos
+// salidas automáticas rompen trabajo: retomar sola le saca la tarea al otro agente, y crear un runner
+// nuevo deja dos construyendo lo mismo. Lo único correcto es decir cuál es cuál y que decida una persona.
+test('tu propio reclamo desde otro runner se reconoce, no se resuelve solo', () => {
+  const dir = planning('cauce-retomar-')
+  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ayer').status, 0)
+
+  // Ana vuelve sin reponer su id: la tarea sigue siendo suya y el mensaje lo dice, con el id que repone.
+  const hoy = como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/hoy')
+  assert.equal(hoy.status, 1)
+  assert.match(hoy.stderr, /la tenés vos, tomada el \d{4}-\d{2}-\d{2} desde otro runner \(\/w\/ayer\)/)
+  assert.match(hoy.stderr, /exportá CAUCE_RUNNER=\/w\/ayer/, 'y cómo retomar')
+  assert.match(hoy.stderr, /si sos otro agente tuyo corriendo a la vez, tomá otra tarea/, 'y el otro caso')
+
+  const visto = como('ana@acme.com', () => run(['context', dir]), '/w/hoy')
+  assert.match(visto.stdout, /^TAKEN {2}dashboard \(ana@acme\.com — vos, desde otro runner\)$/m)
+
+  // Con el id repuesto, retoma sin ceremonia.
+  const retomada = como('ana@acme.com', () => run(['context', dir]), '/w/ayer')
+  assert.match(retomada.stdout, /^TASK {3}dashboard/m)
+  assert.match(retomada.stdout, /^CLAIM {2}tuya desde el reclamo/m)
+
+  // Y el reclamo de otra persona sigue diciéndose como lo que es.
+  const ajeno = como('luis@acme.com', () => run(['claim', dir, 'dashboard']), '/w/luis')
+  assert.match(ajeno.stderr, /la tomó ana@acme\.com/)
+  assert.doesNotMatch(ajeno.stderr, /vos/)
+})
+
+// El bug que apareció preguntando qué pasa al volver al día siguiente: con `mode: sidecar` hay un solo
+// `planning/` por máquina, así que un plan compartido lo escriben todos los agentes que corren ahí. El
+// segundo recibía la tarea que el primero estaba construyendo, con el plan ajeno adentro y diciéndole
+// que estaba libre. Ninguna prueba lo veía porque todas corrían con un solo runner.
+test('el plan de otro runner no se lee como propio', () => {
+  const state = {
+    milestones: [{ slug: 'uno', tasks: [{ slug: 'modelo', depends: [] }, { slug: 'grilla', depends: [] }] }],
+    done: done(),
+    wips: [{ task: 'modelo', runner: 'w-ana', phase: 'Build', complete: 1, pending: 1 }],
+    claims: [{ slug: 'modelo', owner: 'ana@x', runner: '/w/ana' }],
+  }
+
+  const ana = ST.currentTask(state, [], '/w/ana')
+  assert.equal(ana.task.slug, 'modelo', 'ana continúa el suyo, que es lo que el WIP existe para permitir')
+
+  const luis = ST.currentTask(state, [], '/w/luis')
+  assert.equal(luis.task.slug, 'grilla', 'y luis recibe otra, no la que ana está construyendo')
+  assert.deepEqual(luis.taken, [{ slug: 'modelo', owner: 'ana@x' }], 'con el reclamo de ana a la vista')
+})
+
+test('dos agentes en una instancia sidecar no comparten el plan', () => {
+  const dir = planning('cauce-wip-sidecar-')
+  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana').status, 0)
+  fs.mkdirSync(path.join(dir, 'wip'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'wip', 'w-ana.md'),
+    '---\ntask: dashboard\nphase: Build\nservice: web\n---\n\n## Plan aprobado\n1. [x] Uno\n2. [ ] Dos\n')
+
+  const suyo = como('ana@acme.com', () => run(['context', dir]), '/w/ana')
+  assert.match(suyo.stdout, /^TASK {3}dashboard/m)
+  assert.match(suyo.stdout, /^WIP {4}Build · 1✓\/1○$/m, 'ana retoma su plan donde lo dejó')
+
+  const otro = como('luis@acme.com', () => run(['context', dir]), '/w/luis')
+  assert.doesNotMatch(otro.stdout, /^TASK {3}dashboard/m, 'luis no recibe la tarea que ana construye')
+  assert.match(otro.stdout, /^WIP {4}idle$/m, 'ni el plan de ana como si fuera suyo')
 })

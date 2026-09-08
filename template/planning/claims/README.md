@@ -43,7 +43,7 @@ poner. `ops worktree` la imprime hecha.
 
 ## Qué no va acá
 
-El plan, los pasos tildados y las decisiones en curso viven en `WIP.md`, que es local y no viaja por
+El plan, los pasos tildados y las decisiones en curso viven en `wip/<runner>.md`, que es local y no viaja por
 git: cambian en cada paso y no le sirven a nadie más. Acá va lo poco que el equipo necesita —qué está
 tomado y por quién—, que cambia dos veces por tarea.
 

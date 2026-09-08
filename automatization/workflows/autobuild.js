@@ -21,7 +21,7 @@ export const meta = {
     { title: 'Verify', detail: 'Los gates del servicio y la aceptación que ninguna prueba codifica' },
     { title: 'QA', detail: 'El comportamiento ejercitado como lo ve quien lo usa' },
     { title: 'Commit', detail: 'Conventional Commits, uno por naturaleza del diff, sin push' },
-    { title: 'Done', detail: 'Cierre atómico en DONE con el WIP en IDLE' },
+    { title: 'Done', detail: 'Cierre atómico: evidencia escrita, cola y plan limpios, reserva suelta' },
     { title: 'Closing', detail: 'Check de planning y checkpoint humano del hito' },
   ],
 }
@@ -33,7 +33,6 @@ const ORG = `${ROOT}/organization`
 const BACKLOG = `${P}/BACKLOG.md`
 // Una tarea cerrada escribe su propio archivo, así que dos corridas en paralelo no comparten ninguno.
 const doneFile = (slug) => `${P}/done/${slug}.md`
-const WIP = `${P}/WIP.md`
 const HUMAN = `${P}/HUMAN_ACTIONS.md`
 const GATE = `${P}/AWAITING_REVIEW.md`
 const ROADMAP = `${P}/roadmap`
@@ -65,6 +64,9 @@ const CONTEXT = {
     claimed: { type: 'boolean' },
     // La fecha de hoy según el motor. Este recorrido no tiene reloj propio a propósito.
     today: { type: 'string' },
+    // Dónde va el plan de este runner. El nombre sale de su id y el recorrido no lo deriva: lo
+    // pregunta, igual que la fecha.
+    wipFile: { type: 'string' },
   },
 }
 const CLAIM = {
@@ -322,7 +324,8 @@ const write = (prompt, options = {}) => agent(`${LEDGER}\n\n${prompt}`, options)
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
 const readContext = () => read(
   `Corré "node tools/ops.js context ${P} --json" desde ${ROOT} y reportá sólo lo que imprimió. Derivá hasTask ` +
-  `de si task es null, wipActive de si wip es null, claimed del campo claimed, today del campo today y lane ` +
+  `de si task es null, wipActive de si wip es null, claimed del campo claimed, today y wipFile de sus ` +
+  `campos, y lane ` +
   `de task.tier; copiá slug, ` +
   `hito, service, acceptance, ` +
   `epic y cast de task, y epicContext de epic.context —vacío si no hay épica—. El comando es la fuente de ` +
@@ -727,7 +730,7 @@ while (rounds++ < MAX_TASKS) {
     `Cerrá ${task.id} de forma atómica: escribí ${doneFile(task.id)} con su evidencia —acept, ` +
     `fecha: ${planning.today}, done, qa, tests y commit, en el formato de entrada que trae este preámbulo—; ` +
     `sacala junto con sus notas indentadas de ${BACKLOG}; cerrá su épica sólo si no queda ` +
-    `ninguna tarea etiquetada; dejá ${WIP} en status IDLE; y soltá la reserva corriendo ` +
+    `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE; y soltá la reserva corriendo ` +
     `"node tools/ops.js release ${P} ${task.id}". En decisions no nombres una fase ni un cargo ` +
     `que no figure en estos hechos. Hechos: lane=${planning.lane || 'sin clasificar'}; ` +
     `review=${reviewFact}; fases=${ran.join(' → ')}; build=${build.summary}; ` +

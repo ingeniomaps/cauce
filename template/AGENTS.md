@@ -164,8 +164,8 @@ muta nada.
   nombrada haya corrido —eso depende del runner, y varios no la nombran al pasar— ni reemplaza a leer
   su fuente, que es lo que R9 pide.
 
-Los cinco aceptan `--json`. Leer `BACKLOG.md`, `WIP.md`, `HUMAN_ACTIONS.md` o `RECURRING.md` completos
-sólo cuando haga falta editarlos o cuando el CLI no responda la pregunta.
+Los cinco aceptan `--json`. Leer `BACKLOG.md`, tu `wip/<runner>.md`, `HUMAN_ACTIONS.md` o `RECURRING.md`
+completos sólo cuando haga falta editarlos o cuando el CLI no responda la pregunta.
 
 ## Cómo tomar trabajo
 

@@ -13,7 +13,7 @@ en conversaciones, tickets y memoria del runner hace imposible saber qué está 
 ## Decisión
 
 **La instancia usa `planning/` como fuente de verdad operativa, legible y validable.** `INBOX.md` recibe ideas,
-el roadmap define resultados, `BACKLOG.md` contiene trabajo promovido, `WIP.md` conserva una única ejecución y
+el roadmap define resultados, `BACKLOG.md` contiene trabajo promovido, `wip/<runner>.md` conserva la ejecución de cada runner y
 y `done/<slug>.md` registra la evidencia de cada tarea cerrada, un archivo por tarea. El protocolo
 define las transiciones permitidas.
 

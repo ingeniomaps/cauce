@@ -111,8 +111,8 @@
   },
   "engine/cli/planning.js": {
     "lines": 92,
-    "branches": 58,
-    "functions": 85
+    "branches": 60,
+    "functions": 82
   },
   "engine/cli/upgrade-report.js": {
     "lines": 95,
@@ -196,7 +196,7 @@
   },
   "engine/hooks/files.js": {
     "lines": 100,
-    "branches": 96,
+    "branches": 97,
     "functions": 100
   },
   "engine/hooks/input.js": {
@@ -261,7 +261,7 @@
   },
   "engine/planning/parser.js": {
     "lines": 100,
-    "branches": 74,
+    "branches": 93,
     "functions": 100
   },
   "engine/planning/recurring.js": {
