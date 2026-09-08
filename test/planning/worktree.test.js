@@ -186,3 +186,32 @@ test('preparar un árbol en modo embedded avisa que la instancia se duplica', ()
   assert.match(hecho.stdout, /los reclamos no se ven entre árboles hasta mergear/)
   assert.match(hecho.stdout, /Para varios agentes, mode: sidecar/)
 })
+
+// Las dos mitades de la ambigüedad, que `reposFor` explica: que se nombre en vez de elegirse, y que no
+// quede un árbol a medio crear del que después nadie sepa el origen.
+test('un servicio que existe en dos repositorios se nombra en vez de elegirse', () => {
+  const { base, repo, planning } = montar('cauce-wt-multi-')
+  // Un segundo repositorio con el mismo nombre de servicio adentro.
+  const otro = path.join(base, 'segundo')
+  fs.mkdirSync(path.join(otro, 'api'), { recursive: true })
+  fs.writeFileSync(path.join(otro, 'api', 'main.go'), 'package main\n')
+  git(otro, 'init', '-q', '-b', 'main')
+  git(otro, 'config', 'user.email', 'test@test'); git(otro, 'config', 'user.name', 'test')
+  git(otro, 'add', 'api/main.go'); git(otro, 'commit', '-q', '-m', 'base')
+
+  const config = path.join(planning, '..', 'ops.config.json')
+  const leido = JSON.parse(fs.readFileSync(config, 'utf8'))
+  fs.writeFileSync(config, JSON.stringify({
+    ...leido, workspaceRoots: [{ name: 'main', path: '../producto' }, { name: 'otro', path: '../segundo' }],
+  }, null, 2))
+
+  const ambiguo = como('/w/uno', () => run(['worktree', planning, 'alta']))
+  assert.equal(ambiguo.status, 2)
+  assert.match(ambiguo.stderr, /api existe en más de un repositorio/)
+  assert.match(ambiguo.stderr, new RegExp(`${repo}.*${otro}`), 'y nombra los dos candidatos')
+  assert.equal(fs.existsSync(`${repo}-alta`), false, 'sin haber creado ninguno')
+
+  // Y la degradación del aviso de avance: sin poder resolver el repositorio, no inventa una fecha.
+  assert.equal(R.repoOf(path.join(planning, '..'), 'api'), '')
+  assert.deepEqual(R.reposFor(path.join(planning, '..'), 'api').sort(), [otro, repo].sort())
+})

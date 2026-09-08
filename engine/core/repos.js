@@ -11,21 +11,38 @@ const { spawnSync } = require('node:child_process')
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
 
-// La raíz de trabajo que contiene el servicio, resuelta como la resuelve `check` para juzgar si existe.
-// Devuelve la raíz del repositorio git, que no siempre es la raíz declarada: `workspaceRoots` puede
+// Los repositorios cuyo árbol contiene el servicio, resuelto como lo resuelve `check` para juzgar si
+// existe. Devuelve la raíz git de cada uno, que no siempre es la raíz declarada: `workspaceRoots` puede
 // apuntar a un subdirectorio.
-function repoOf(opsRoot, service) {
+//
+// Devuelve una lista y no el primero porque con varias raíces la respuesta puede ser ambigua: un
+// `service: .` existe en todas, y un `src` puede existir en dos. Elegir el primero da una respuesta
+// plausible y equivocada —un árbol de trabajo en el repositorio que no era— sin que nada lo diga.
+function reposFor(opsRoot, service) {
   let config = {}
   try {
     config = JSON.parse(fs.readFileSync(path.join(opsRoot, 'ops.config.json'), 'utf8'))
-  } catch { return '' }
-  const roots = (Array.isArray(config.workspaceRoots) ? config.workspaceRoots : [])
+  } catch { return [] }
+  return (Array.isArray(config.workspaceRoots) ? config.workspaceRoots : [])
     .filter((one) => one && one.path)
     .map((one) => path.resolve(opsRoot, one.path))
-  const found = roots.find((root) => fs.existsSync(path.join(root, service || '.')))
-  if (!found) return ''
-  const top = git(found, 'rev-parse', '--show-toplevel')
-  return top.status === 0 ? top.stdout.trim() : ''
+    .filter((root) => fs.existsSync(path.join(root, service || '.')))
+    .map((root) => {
+      const top = git(root, 'rev-parse', '--show-toplevel')
+      return top.status === 0 ? top.stdout.trim() : ''
+    })
+    .filter(Boolean)
+    // Dos raíces del mismo repositorio son un solo repositorio: lo ambiguo es a cuál pertenece el
+    // servicio, no cuántas rutas lo contienen.
+    .filter((repo, index, todos) => todos.indexOf(repo) === index)
+}
+
+// El repositorio del servicio cuando no hay duda. Sin ninguno o con varios devuelve vacío, y quien
+// pregunta decide qué decir: para `check` es la degradación ya declarada —mirar sólo la fecha—, y para
+// `worktree` es un error que tiene que nombrar los candidatos.
+function repoOf(opsRoot, service) {
+  const repos = reposFor(opsRoot, service)
+  return repos.length === 1 ? repos[0] : ''
 }
 
 // La fecha del último commit **propio** de una rama, en AAAA-MM-DD, o vacío si no tiene ninguno. Vacío no
@@ -47,4 +64,4 @@ function lastCommit(repo, branch) {
   return shown.status === 0 ? shown.stdout.trim() : ''
 }
 
-module.exports = { repoOf, lastCommit }
+module.exports = { reposFor, repoOf, lastCommit }

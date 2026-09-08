@@ -69,6 +69,11 @@ diseño — eso vive en el commit y en el código.
   archivo viejo, que mientras esté `ops check` lo nombra. El `.gitignore` nuevo excluye `planning/wip/*.md`
   y conserva su README; si venías con la línea de `planning/WIP.md`, cambiala.
 
+- **Un `service:` ambiguo entre varias raíces se nombra en vez de elegirse.** Con más de un
+  `workspaceRoots`, un servicio que existe en dos —`.` existe en todas— resolvía al primero: el árbol de
+  trabajo terminaba en el repositorio que no era, y el aviso de avance miraba las ramas de otro. Ahora
+  `ops worktree` nombra los candidatos y se niega, y el aviso degrada a mirar sólo la fecha.
+
 - **`ops worktree` avisa cuando la instancia está embebida.** Con `mode: embedded` cada árbol se lleva su
   propia copia de `planning/`, así que los reclamos de un agente no los ve el otro hasta mergear y la
   coordinación entre varios deja de existir sin que nada falle. No lo frena: un árbol por rama con un solo

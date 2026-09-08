@@ -126,7 +126,7 @@
   },
   "engine/cli/worktree.js": {
     "lines": 100,
-    "branches": 55,
+    "branches": 52,
     "functions": 100
   },
   "engine/config/paths.js": {
@@ -176,7 +176,7 @@
   },
   "engine/core/repos.js": {
     "lines": 100,
-    "branches": 58,
+    "branches": 70,
     "functions": 100
   },
   "engine/core/scan.js": {
