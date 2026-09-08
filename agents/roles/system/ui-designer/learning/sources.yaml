@@ -14,11 +14,11 @@ sources:
     topics: [contrast, focus, targets, responsive, accessibility]
   - name: Apple Human Interface Guidelines
     url: https://developer.apple.com/design/human-interface-guidelines/
-    tier: platform
+    tier: standard
     topics: [layout, typography, color, components, accessibility]
   - name: Material Design
     url: https://m3.material.io/
-    tier: platform
+    tier: standard
     topics: [tokens, components, color, typography, motion]
   - name: GOV.UK Design System
     url: https://design-system.service.gov.uk/

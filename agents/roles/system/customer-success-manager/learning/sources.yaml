@@ -23,5 +23,5 @@ sources:
     topics: [customer-satisfaction, monitoring, measurement]
   - name: Gainsight Customer Success Guide
     url: https://www.gainsight.com/guides/the-essential-guide-to-customer-success/
-    tier: platform
+    tier: standard
     topics: [outcomes, onboarding, adoption, health, risk]
