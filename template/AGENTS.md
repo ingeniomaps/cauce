@@ -174,6 +174,10 @@ se toma antes de empezar:
 - `node tools/ops.js claim planning <tarea>` — la reserva a tu nombre y escribe `planning/claims/<tarea>.md`.
 - `node tools/ops.js release planning <tarea>` — la devuelve a la cola.
 
+Una tarea que declara `(depende: slug)` no se ofrece ni se puede tomar hasta que eso esté en DONE, y
+`context` la muestra con una línea `WAIT`. No hay que adelantarse: lo que sigue es trabajo de quien tiene
+la tarea de la que depende.
+
 Tomar no es promover: la tarea ya estaba aprobada en `BACKLOG.md` y esto sólo dice quién la hace, así que
 entra en la autonomía del runner. Lo que no entra es tocar el reclamo de otro — ni tomarlo, ni soltarlo—,
 y `context` directamente no ofrece una tarea reclamada.

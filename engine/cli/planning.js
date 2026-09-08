@@ -21,7 +21,6 @@ const OB = require('../core/onboarding')
 const C = require('../config/validate')
 const CP = require('../config/paths')
 const AG = require('../agents/catalog')
-const F = require('../core/files')
 const { fail } = require('./io')
 
 // Qué dimensiones enumera el molde de `organization/` y cuáles dejaron de estar. Un agente que reescribe
@@ -286,7 +285,7 @@ function context(dir, cli) {
   const gate = path.join(root, 'AWAITING_REVIEW.md')
   const humanActions = ST.pendingHumanActions(root)
   const me = CL.owner(root)
-  const { task, skipped, claimed, taken } = ST.currentTask(state, humanActions, CL.runner())
+  const { task, skipped, claimed, taken, waiting } = ST.currentTask(state, humanActions, CL.runner())
   const epic = task ? state.epics.find((candidate) => candidate.num === task.epic) : null
   const criteria = epic ? epic.criteria.filter((criterion) => task.criteria.includes(criterion.id)) : []
   const report = {
@@ -311,6 +310,7 @@ function context(dir, cli) {
     owner: me,
     claimed,
     taken,
+    waiting,
     // Sólo las vencidas: la fila que todavía no vence no tiene nada que decirle a quien va a tomar una
     // tarea, y una recurrencia que hablara siempre sería ruido en el único comando que se corre en cada
     // vuelta. Que aparezca es la señal.
@@ -331,6 +331,11 @@ function context(dir, cli) {
   // que una instancia recién arrancada —`onboard` deja filas pendientes y ninguna tarea todavía—
   // respondía «sin tarea disponible» y se tragaba las siete cosas que una persona tenía que desbloquear.
   // Es el comando que existe para decir qué toca ahora, contestando «nada» cuando lo que toca es eso.
+  const espera = () => {
+    for (const one of report.waiting) {
+      console.log(`WAIT   ${one.slug}: espera a ${one.dep}${one.owner ? ` (${one.owner})` : ''}`)
+    }
+  }
   const due = () => {
     for (const one of report.recurring) {
       const when = one.overdueDays === 0 ? 'vence hoy' : `vencida hace ${one.overdueDays} día(s)`
@@ -339,9 +344,10 @@ function context(dir, cli) {
   }
   if (!report.task) {
     console.log('TASK   (sin tarea disponible)')
-    // Una cola entera tomada por el equipo no es lo mismo que una cola vacía, y decir lo segundo manda a
-    // buscar trabajo que no existe en vez de a hablar con quien lo tiene. Mismo motivo que `blocked`.
+    // Mismo motivo que `blocked` arriba, con otra causa: acá la cola no la traba una persona, la tiene
+    // el equipo, y lo que corresponde es hablar con quien la tiene.
     for (const one of report.taken) console.log(`TAKEN  ${one.slug} (${one.owner})`)
+    espera()
     for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
     due()
     return
@@ -368,6 +374,7 @@ function context(dir, cli) {
     ? `CLAIM  tuya desde el reclamo (${report.owner})`
     : `CLAIM  libre — tomala con \`ops claim <planning> ${report.task.slug}\``)
   for (const one of report.taken) console.log(`TAKEN  ${one.slug} (${one.owner})`)
+  espera()
   if (report.blockedTasks.length) console.log(`SKIP   ${report.blockedTasks.join(', ')} (acción humana abierta)`)
   for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
   due()
@@ -402,91 +409,4 @@ function recurring(dir, cli) {
   }
 }
 
-// El historial de acciones humanas se acumula en un solo archivo y no por épica: una fila no pertenece
-// a ninguna, y esperar el cierre de una épica dejaría sin archivar las de un planning que todavía no
-// cerró ninguna —que es justo cuando el archivo se vuelve ilegible—.
-// Adoptar es declarar de una vez qué historia llegó con el proyecto. Se genera con lo que hoy no cumple
-// y no se vuelve a correr: un baseline que se regenera perdona de nuevo lo que alguien ya se tomó el
-// trabajo de arreglar, y uno que crece a mano deja de ser una lista de perdones para ser una amnistía.
-// Achicarlo sí es a mano, borrando el renglón que `check` señala.
-function adopt(dir) {
-  const root = path.resolve(dir || '.')
-  const target = path.join(root, AD.BASELINE)
-  if (fs.existsSync(target)) {
-    // Un baseline que ya trae huella no se toca: regenerarlo es exactamente lo que la huella impide.
-    // Uno sin huella lo generó una versión anterior, y sellarlo no es regenerar nada — se calcula sobre
-    // lo que ya está—, así que es la única salida de un aviso que si no no tendría ninguna.
-    const existing = fs.readFileSync(target, 'utf8')
-    if (!AD.sealWarnings(root).some((one) => /sin huella/.test(one))) {
-      fail(`${AD.BASELINE} ya existe: se genera una vez. Para retirar un renglón, ponele \`#~\` `
-        + 'delante; `check` marca los que ya cumplen.')
-    }
-    const slugs = AD.declared(existing)
-    F.atomicWrite(target, existing.replace(/\n?$/, `\n# huella: ${slugs.length} entradas · `
-      + `sha256:${AD.digest(slugs)}\n`))
-    return console.log(`✓ ${AD.BASELINE} sellado con ${slugs.length} entrada(s); la lista no cambió`)
-  }
-  const epics = P.readEpics(root)
-  const pending = P.readDone(root).entries.filter((entry) => PC.doneEntryErrors(entry, epics).length)
-  if (!pending.length) {
-    return console.log('= no hay nada que exentar: todas las entradas de DONE cumplen el contrato')
-  }
-  const today = TODAY()
-  const slugs = pending.map((entry) => entry.slug)
-  F.atomicWrite(target, `# Entradas anteriores a la adopción de Cauce (${today}). No se agregan nuevas:\n`
-    + '# desde esa fecha rige el contrato completo, y `check` avisa cuando una de éstas pasa a\n'
-    + '# cumplirlo para que le pongas `#~` delante y quede retirada.\n'
-    + `# huella: ${slugs.length} entradas · sha256:${AD.digest(slugs)}\n`
-    + `${slugs.join('\n')}\n`)
-  console.log(`✓ ${pending.length} entrada(s) exentas en ${AD.BASELINE}`)
-  return console.log('  revisá la lista: lo que sí cumple el contrato no tiene por qué estar ahí')
-}
-
-function archiveHumanActions(root) {
-  const source = path.join(root, 'HUMAN_ACTIONS.md')
-  const rows = P.readHumanActions(root).filter((row) => row.resolved)
-  if (!rows.length) return console.log('= no hay filas resueltas')
-  const target = path.join(root, 'done', 'human-actions.md')
-  const header = '| Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |\n|---|---|---|---|'
-  const previous = P.read(target).trimEnd()
-  const head = previous || `---\nstatus: archived\n---\n\n# Acciones humanas resueltas\n\n${header}`
-  fs.mkdirSync(path.dirname(target), { recursive: true })
-  F.atomicWrite(target, `${head}\n${rows.map((row) => row.raw).join('\n')}\n`)
-  const drop = new Set(rows.map((row) => row.raw))
-  const kept = P.read(source).split('\n').filter((line) => !drop.has(line))
-  F.atomicWrite(source, `${kept.join('\n').trimEnd()}\n`)
-  return console.log(`✓ ${rows.length} fila(s) archivadas`)
-}
-
-function archive(dir, rawNum) {
-  const root = path.resolve(dir || '.')
-  if (String(rawNum || '') === 'human-actions') return archiveHumanActions(root)
-  const num = String(rawNum || '').padStart(3, '0')
-  if (!/^\d{3}$/.test(num)) fail('La épica debe ser NNN, o human-actions.', 2)
-  const epic = P.readEpics(root).find((candidate) => candidate.num === num)
-  if (!epic) fail(`No existe epic-${num}.`, 2)
-  if (epic.status !== 'closed') fail(`epic-${num} no está cerrada (status: ${epic.status}).`)
-  const target = path.join(root, 'done', `epic-${num}.md`)
-  const source = path.join(root, 'DONE.md')
-  const content = P.read(source)
-  const slugs = new Set(epic.stories.map((story) => story.slug))
-  const entries = P.readDone(root).entries.filter((entry) => entry.source === 'DONE.md' && slugs.has(entry.slug))
-  if (!entries.length) {
-    if (fs.existsSync(target)) return console.log(`= epic-${num} ya estaba archivada`)
-    fail(`No hay entradas de epic-${num} en DONE.md.`)
-  }
-  let updated = content
-  for (const entry of entries) updated = updated.replace(entry.raw, '').replace(/\n{3,}/g, '\n\n')
-  fs.mkdirSync(path.dirname(target), { recursive: true })
-  if (!fs.existsSync(target)) {
-    F.atomicWrite(
-      target,
-      `---\nepic: ${num}\nstatus: archived\n---\n\n# DONE — ${epic.title}\n\n` +
-        `${entries.map((entry) => entry.raw).join('\n\n')}\n`,
-    )
-  }
-  F.atomicWrite(source, `${updated.trimEnd()}\n`)
-  console.log(`✓ epic-${num}: ${entries.length} entrada(s) archivadas`)
-}
-
-module.exports = { check, evidence, tree, context, archive, adopt, recurring }
+module.exports = { check, evidence, tree, context, recurring }

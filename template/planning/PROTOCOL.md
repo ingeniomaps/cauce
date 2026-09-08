@@ -9,8 +9,9 @@ invariantes.
   `(service: ruta)`.
 - Hito: `## Hito slug — Título`.
 - Tarea: `- [ ] **slug** [express|directo|lite|full] — descripción. _Aceptación: observable._ (service: ruta) (cast: quien-entrega → quien-revisa, otro)`;
-  puede heredar aceptación usando `(→ CN) (epic: NNN)`. Lane y cast son opcionales: sin ellos la tarea
-  está sin clasificar, que es un estado y no un error.
+  puede heredar aceptación usando `(→ CN) (epic: NNN)` y declarar `(depende: slug, otro)`. Lane y cast son
+  opcionales: sin ellos la tarea está sin clasificar, que es un estado y no un error. Una tarea con
+  dependencias no se ofrece ni se toma hasta que todas estén en DONE.
 - DONE: entrada `[x]` con `acept:`, `done:`, `qa:`, `tests:` y `commit:`. `tests:` enlaza cada criterio
   mediante `CN → prueba`; usa `A → prueba` cuando no hay épica o `n/a — razón` si no existe una
   superficie ejecutable. `decisions:` es opcional y, si aparece, cita `[fuente: ...]` o

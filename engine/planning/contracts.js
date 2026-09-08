@@ -314,6 +314,43 @@ function validateAdr(dir) {
   return errors
 }
 
+// Las dependencias declaradas, contra lo que existe y contra sí mismas. Dos errores distintos y los dos
+// dejan tareas que no se le ofrecen a nadie: una que depende de algo que no existe no está lista nunca, y
+// un ciclo se traba entero. Las dos se ven como una cola que no avanza y sin causa visible.
+function dependencyErrors(milestones, done) {
+  const errors = []
+  const tasks = milestones.flatMap((milestone) => milestone.tasks)
+  const queued = new Map(tasks.map((task) => [task.slug, task.depends || []]))
+  for (const task of tasks) {
+    for (const dep of task.depends || []) {
+      if (dep === task.slug) errors.push(`BACKLOG ${task.slug}: depende de sí misma`)
+      else if (!queued.has(dep) && !done.set.has(dep)) {
+        errors.push(`BACKLOG ${task.slug}: depende de ${dep}, que no existe en BACKLOG ni DONE`)
+      }
+    }
+  }
+  // Recorrido en profundidad con el camino a cuestas: al reencontrar un slug que sigue en el camino,
+  // ese camino **es** el ciclo, y nombrarlo entero es lo que lo hace reparable — decir sólo que hay uno
+  // deja el trabajo de encontrarlo del lado de quien lee.
+  const estado = new Map()
+  const visitar = (slug, camino) => {
+    if (estado.get(slug) === 'listo') return
+    const desde = camino.indexOf(slug)
+    if (desde >= 0) {
+      const ciclo = [...camino.slice(desde), slug]
+      errors.push(`BACKLOG: ciclo de dependencias ${ciclo.join(' → ')}`)
+      return
+    }
+    for (const dep of queued.get(slug) || []) {
+      // La que se depende a sí misma ya tiene su error, más claro que un ciclo de un solo paso.
+      if (dep !== slug && queued.has(dep)) visitar(dep, [...camino, slug])
+    }
+    estado.set(slug, 'listo')
+  }
+  for (const slug of queued.keys()) visitar(slug, [])
+  return [...new Set(errors)]
+}
+
 // Todo lo que se juzga sobre el estado ya leído: épicas, hitos, tareas, WIP, evidencia y acciones
 // humanas. Vive acá y no en el CLI porque es de la misma clase que sus vecinas —`validateEpic`,
 // `validateDoneEntry`, `validateRules`— y estaba creciendo del otro lado sólo porque ahí era más
@@ -398,6 +435,8 @@ function validateState({
       if (done.set.has(task.slug)) errors.push(`${task.slug}: está en BACKLOG y DONE`)
     }
   }
+
+  errors.push(...dependencyErrors(milestones, done))
 
   if (wip && !backlogSlugs.has(wip.task) && !done.set.has(wip.task)) {
     errors.push(`WIP ${wip.task}: no existe en BACKLOG ni DONE`)

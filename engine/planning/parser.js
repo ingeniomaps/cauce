@@ -209,6 +209,11 @@ function taskFromLine(line) {
     acceptance,
     conditions: acceptanceConditions(acceptance),
     criteria: criteriaRefs(rest),
+    // De qué otras tareas depende. El orden del BACKLOG alcanzaba mientras hubiera un runner: con dos,
+    // el segundo toma la que sigue mientras el primero construye la de la que depende, y el orden deja
+    // de decir nada.
+    depends: ((rest.match(/\(depende:\s*([^)]+)\)/i) || [])[1] || '')
+      .split(',').map((one) => one.trim()).filter(Boolean),
     noSplit: noSplitReason(rest),
   }
 }

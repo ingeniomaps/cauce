@@ -19,6 +19,11 @@ function claim(dir, slug, cli) {
   const task = state.milestones.flatMap((milestone) => milestone.tasks).find((one) => one.slug === slug)
   if (!task) return fail(`${slug} no está en BACKLOG: sólo se toma trabajo ya promovido.`, 2)
 
+  // No se reserva lo que todavía no se puede empezar: una tarea tomada con su dependencia en vuelo
+  // bloquea la cola sin que nadie pueda avanzarla, y el runner que la tomó se queda sin poder tomar otra.
+  const falta = (task.depends || []).find((dep) => !state.done.set.has(dep))
+  if (falta) return fail(`${slug} depende de ${falta}, que todavía no está en DONE.`)
+
   const me = CL.owner(root)
   const from = CL.runner()
   const taken = state.claims.find((one) => one.slug === slug)

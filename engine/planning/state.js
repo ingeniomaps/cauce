@@ -50,13 +50,17 @@ function currentTask({ milestones, done, wip, claims = [] }, blockers = [], runn
         slug: wip.task, hito: '', tier: '', cast: { build: '', review: [] },
         service: wip.service, acceptance: '', epic: '', criteria: [],
       }
-    return { task: active, claimed: mine.has(wip.task), skipped: [], taken: [] }
+    return { task: active, claimed: mine.has(wip.task), skipped: [], taken: [], waiting: [] }
   }
   const blocked = new Set(blockers.map((action) => action.task))
   const pending = queue.filter((task) => !done.set.has(task.slug) && !blocked.has(task.slug))
+  // Una tarea está lista cuando todo lo que declaró depender ya está en DONE. Mientras no lo esté no se
+  // le ofrece a nadie, y en particular no a otro runner: lo que sigue a una tarea en vuelo es trabajo
+  // del que la tiene, y dárselo a otro produce dos ramas que se van a pisar al integrar.
+  const ready = (task) => (task.depends || []).every((dep) => done.set.has(dep))
   const claimed = pending.find((task) => mine.has(task.slug))
   return {
-    task: claimed || pending.find((task) => !others.has(task.slug)) || null,
+    task: claimed || pending.find((task) => !others.has(task.slug) && ready(task)) || null,
     // Que la tarea devuelta ya sea mía o esté libre cambia lo que corresponde hacer con ella, y desde
     // afuera las dos se ven igual.
     claimed: Boolean(claimed),
@@ -64,6 +68,14 @@ function currentTask({ milestones, done, wip, claims = [] }, blockers = [], runn
       .map((task) => task.slug),
     taken: pending.filter((task) => others.has(task.slug))
       .map((task) => ({ slug: task.slug, owner: others.get(task.slug) })),
+    // Lo que espera a otra tarea, con cuál y quién la tiene: la tercera causa por la que una cola puede
+    // no ofrecer nada, y `context` las distingue por la misma razón que distingue las otras dos.
+    // El filtro garantiza que hay dependencias y que al menos una no está cerrada —sin eso la tarea
+    // estaría lista y no acá—, así que buscarla no puede fallar y no lleva defensa.
+    waiting: pending.filter((task) => !others.has(task.slug) && !ready(task)).map((task) => {
+      const dep = task.depends.find((one) => !done.set.has(one))
+      return { slug: task.slug, dep, owner: others.get(dep) || (mine.has(dep) ? 'vos' : '') }
+    }),
   }
 }
 

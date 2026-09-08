@@ -94,6 +94,24 @@ test('lo reclamado por otro no se ofrece, y lo propio va antes que lo libre', ()
   assert.equal(ST.currentTask({ ...state, claims: [] }, [], 'wt-ana').task.slug, 'a')
 })
 
+test('una tarea que espera algo que nadie tomó espera igual, y sin dueño', () => {
+  const state = {
+    milestones: [{ slug: 'uno', tasks: [{ slug: 'cabeza', depends: [] }, { slug: 'sigue', depends: ['cabeza'] }] }],
+    done: done(),
+    wip: null,
+    claims: [],
+  }
+  const libre = ST.currentTask(state, [], 'wt-uno')
+  assert.equal(libre.task.slug, 'cabeza', 'se ofrece la que no espera nada')
+  // Sin nadie que la tenga, el dueño va vacío: no está reservada para otro, está sin empezar.
+  assert.deepEqual(libre.waiting, [{ slug: 'sigue', dep: 'cabeza', owner: '' }])
+
+  // Y con la cabeza cerrada deja de esperar.
+  const cerrada = ST.currentTask({ ...state, done: done('cabeza') }, [], 'wt-uno')
+  assert.equal(cerrada.task.slug, 'sigue')
+  assert.deepEqual(cerrada.waiting, [])
+})
+
 test('check rechaza el reclamo que miente y el que reserva algo que no existe', () => {
   const errors = CL.validate({
     claims: [
@@ -273,4 +291,46 @@ test('solo se toma trabajo promovido, y sin identidad no se toma nada', () => {
   process.env.GIT_CONFIG_SYSTEM = previo.GIT_CONFIG_SYSTEM || ''
   assert.equal(anonima.status, 2, anonima.stdout)
   assert.match(anonima.stderr, /No sé quién sos/)
+})
+
+// Lo que sigue a una tarea en vuelo es trabajo de quien la tiene. El orden del BACKLOG lo decía solo
+// mientras hubiera un runner; con dos, el segundo toma la que sigue y las dos ramas se pisan al integrar.
+test('lo que depende de una tarea en vuelo no se le ofrece a otro runner', () => {
+  const dir = planning('cauce-depende-')
+  fs.writeFileSync(path.join(dir, 'BACKLOG.md'), `# Backlog promovido
+
+## Hito uno — Primero
+
+- [ ] **modelo** [lite] — Modelo. _Aceptación: guarda._ (service: web)
+- [ ] **pantalla** [lite] — Pantalla. _Aceptación: muestra._ (service: web) (depende: modelo)
+- [ ] **suelta** [lite] — Otra. _Aceptación: anda._ (service: api)
+`)
+  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'modelo']), '/w/ana').status, 0)
+
+  const luis = como('luis@acme.com', () => run(['context', dir]), '/w/luis')
+  assert.match(luis.stdout, /^TASK {3}suelta/m, 'recibe la que no depende de nada')
+  assert.match(luis.stdout, /^WAIT {3}pantalla: espera a modelo \(ana@acme\.com\)$/m,
+    'y sabe por qué la que sigue no está disponible, y de quién es')
+
+  // Tampoco puede reservarla saltándose el orden: reservar lo que no se puede empezar traba la cola y
+  // deja a ese runner sin poder tomar otra cosa.
+  const adelantarse = como('luis@acme.com', () => run(['claim', dir, 'pantalla']), '/w/luis')
+  assert.equal(adelantarse.status, 1)
+  assert.match(adelantarse.stderr, /depende de modelo, que todavía no está en DONE/)
+})
+
+test('check nombra la dependencia que no existe y el ciclo entero', () => {
+  const dir = planning('cauce-ciclos-')
+  fs.writeFileSync(path.join(dir, 'BACKLOG.md'), `# Backlog promovido
+
+## Hito uno — Primero
+
+- [ ] **a** [lite] — A. _Aceptación: x._ (service: web) (depende: b)
+- [ ] **b** [lite] — B. _Aceptación: x._ (service: web) (depende: a)
+- [ ] **c** [lite] — C. _Aceptación: x._ (service: web) (depende: fantasma)
+`)
+  const errors = JSON.parse(run(['check', dir, '--json']).stdout).errors.join('\n')
+  assert.match(errors, /BACKLOG c: depende de fantasma, que no existe en BACKLOG ni DONE/)
+  // El ciclo se nombra entero: decir sólo que hay uno deja el trabajo de encontrarlo del otro lado.
+  assert.match(errors, /ciclo de dependencias a → b → a/)
 })

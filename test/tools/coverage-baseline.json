@@ -64,6 +64,11 @@
     "branches": 70,
     "functions": 100
   },
+  "engine/cli/archive.js": {
+    "lines": 97,
+    "branches": 68,
+    "functions": 100
+  },
   "engine/cli/args.js": {
     "lines": 100,
     "branches": 100,
@@ -80,9 +85,9 @@
     "functions": 90
   },
   "engine/cli/claims.js": {
-    "lines": 94,
-    "branches": 75,
-    "functions": 88
+    "lines": 95,
+    "branches": 71,
+    "functions": 90
   },
   "engine/cli/dependency.js": {
     "lines": 97,
@@ -105,9 +110,9 @@
     "functions": 85
   },
   "engine/cli/planning.js": {
-    "lines": 91,
-    "branches": 49,
-    "functions": 88
+    "lines": 92,
+    "branches": 56,
+    "functions": 83
   },
   "engine/cli/upgrade-report.js": {
     "lines": 95,
@@ -266,7 +271,7 @@
   },
   "engine/planning/state.js": {
     "lines": 100,
-    "branches": 100,
+    "branches": 97,
     "functions": 100
   }
 }

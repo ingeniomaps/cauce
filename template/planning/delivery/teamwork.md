@@ -58,6 +58,12 @@ Lo que el comando **no** hace, y hay que saberlo: un reclamo sin empujar no rese
 runner lee lo que hay en su copia. Entre `claim` y el push hay una ventana, y es de minutos sólo si se
 commitea el reclamo enseguida.
 
+**Lo que sigue a una tarea en vuelo no se le ofrece a nadie más.** Una tarea puede declarar
+`(depende: slug)`, y mientras eso no esté en DONE no se ofrece ni se puede tomar: el trabajo que sigue es
+de quien tiene la cabeza, y dárselo a otro produce dos ramas que se pisan al integrar. `context` lo dice
+con una línea `WAIT` que nombra la dependencia y quién la tiene, para que la cola trabada no se lea como
+una cola vacía. `check` rechaza una dependencia que no existe y nombra el ciclo entero cuando lo hay.
+
 Dos cosas que el mecanismo no reemplaza:
 
 - **Mirar el `service:`.** Es el dominio de colisión y ya está declarado en cada tarea: dos tareas de

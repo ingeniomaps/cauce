@@ -9,6 +9,7 @@ const { FLAGS, parse } = require('./args')
 const { fail } = require('./io')
 const IN = require('./instance')
 const PL = require('./planning')
+const AR = require('./archive')
 const CLM = require('./claims')
 const WT = require('./worktree')
 const CAT = require('./catalog')
@@ -210,8 +211,8 @@ async function run(cli) {
   else if (command === 'upgrade') IN.upgrade(arg[1], cli)
   else if (command === 'destroy') IN.destroy(arg[1], cli)
   else if (command === 'agents') CAT.agents(arg[1], arg[2], arg[3], cli)
-  else if (command === 'archive') PL.archive(arg[1], arg[2])
-  else if (command === 'adopt') PL.adopt(arg[1])
+  else if (command === 'archive') AR.archive(arg[1], arg[2])
+  else if (command === 'adopt') AR.adopt(arg[1])
   else if (command === 'integration') {
     await W.integration(arg[1], arg[2], arg[3], arg[4], cli)
   }
