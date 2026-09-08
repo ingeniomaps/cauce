@@ -413,6 +413,11 @@ const JUSTIFIED = {
     'El registro de guards suma un caso por guard, y cada caso prueba los dos lados de la misma '
     + 'decisión: qué bloquea y qué deja pasar. Partirlo por grupo separaría casos que comparten el '
     + 'montaje de una raíz ops y el helper que exige el motivo del bloqueo.',
+  'test/planning/claims.test.js':
+    'La coordinación de un equipo suma un caso por conducta y las comparte todas: una instancia con su '
+    + 'cola, dos runners y un reclamo entre ellos. Partirla por tema separaría el reclamo de lo que el '
+    + 'reclamo decide —a quién se le ofrece cada tarea—, que son las dos mitades de la misma decisión y '
+    + 'que en esta rama cambiaron siempre juntas.',
   'test/agents/learning.test.js':
     'Las pruebas de un ciclo suman una por conducta y comparten el montaje —un cargo con su propuesta '
     + 'aplicada y su registro sin sellar—. Partirlas por tema separaría de qué material se abre una '

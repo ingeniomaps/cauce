@@ -147,6 +147,7 @@ function usage() {
   ops tree <planning-dir> [--no-color] [--json]
   ops context <planning-dir> [--hito <slug>] [--json]
   ops recurring <planning-dir> [--promote <qué>] [--json]
+  ops runners <planning-dir> [--json]
   ops claim <planning-dir> <tarea>
   ops release <planning-dir> <tarea>
   ops worktree <planning-dir> <tarea> [--json]
@@ -204,6 +205,7 @@ async function run(cli) {
   else if (command === 'tree') PL.tree(arg[1], cli)
   else if (command === 'context') PL.context(arg[1], cli)
   else if (command === 'recurring') PL.recurring(arg[1], cli)
+  else if (command === 'runners') CLM.runners(arg[1], cli)
   else if (command === 'claim') CLM.claim(arg[1], arg[2], cli)
   else if (command === 'release') CLM.release(arg[1], arg[2])
   else if (command === 'worktree') WT.worktree(arg[1], arg[2], cli)

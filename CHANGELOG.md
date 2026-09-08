@@ -67,6 +67,15 @@ diseño — eso vive en el commit y en el código.
   archivo viejo, que mientras esté `ops check` lo nombra. El `.gitignore` nuevo excluye `planning/wip/*.md`
   y conserva su README; si venías con la línea de `planning/WIP.md`, cambiala.
 
+- **`ops runners <planning>`: qué runners tienen trabajo abierto, para que un agente pueda preguntar.**
+  Elegir con qué runner se arranca es lo primero de una sesión y `ops context` no lo contesta: responde
+  «qué hago» para un runner ya elegido. Sin esa lista, un agente se inventa un id y deja huérfano el
+  trabajo de ayer, o se lo pisa a otro que sigue corriendo.
+
+  **Lo que te pide algo**: nada, y es el punto. `AGENTS.md` le dice al runner que mire esa lista al abrir
+  la sesión, que **pregunte** cuál se retoma o si arranca uno nuevo, y que **exporte el id él mismo**. A
+  una persona no se le pide que escriba una variable de entorno.
+
 - **Tu propio reclamo desde otro runner se reconoce en vez de resolverse solo.** Volver al día siguiente
   sin reponer `CAUCE_RUNNER` y correr un segundo agente tuyo se ven idénticos desde el archivo, y las dos
   salidas automáticas rompen trabajo: retomar sola le saca la tarea al otro agente, y crear un runner

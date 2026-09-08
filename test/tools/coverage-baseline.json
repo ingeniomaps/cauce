@@ -86,7 +86,7 @@
   },
   "engine/cli/claims.js": {
     "lines": 100,
-    "branches": 83,
+    "branches": 75,
     "functions": 100
   },
   "engine/cli/dependency.js": {

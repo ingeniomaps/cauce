@@ -96,9 +96,10 @@ propia copia de `planning/` y los reclamos de un agente no los ve el otro hasta 
 justo la coordinación que en una máquina tendría que ser instantánea. Con `mode: sidecar` la instancia es
 una, al lado de los repos, y los reclamos se ven al momento y sin git de por medio.
 
-**Un id por agente.** `export CAUCE_RUNNER=<ruta de su árbol>` en cada sesión. Sin eso los dos resuelven
-la misma identidad de git y el segundo toma por propia la tarea del primero. El contrato está en
-`../claims/README.md`.
+**Un id por agente.** Sin eso los dos resuelven la misma identidad de git y el segundo toma por propia la
+tarea del primero. Al abrir una sesión, `ops runners planning` dice qué runners tienen trabajo abierto;
+el agente pregunta cuál se retoma o si arranca uno nuevo, y **exporta el id él mismo**. A una persona no
+se le pide que escriba una variable de entorno. El contrato está en `../claims/README.md`.
 
 **Recursos propios.** Puertos, contenedores y base por agente. Dos sesiones levantando el mismo entorno
 en el mismo puerto fallan antes que cualquier archivo de planning.

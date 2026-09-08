@@ -419,9 +419,11 @@ test('tu propio reclamo desde otro runner se reconoce, no se resuelve solo', () 
   // Ana vuelve sin reponer su id: la tarea sigue siendo suya y el mensaje lo dice, con el id que repone.
   const hoy = como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/hoy')
   assert.equal(hoy.status, 1)
-  assert.match(hoy.stderr, /la tenés vos, tomada el \d{4}-\d{2}-\d{2} desde otro runner \(\/w\/ayer\)/)
-  assert.match(hoy.stderr, /exportá CAUCE_RUNNER=\/w\/ayer/, 'y cómo retomar')
-  assert.match(hoy.stderr, /si sos otro agente tuyo corriendo a la vez, tomá otra tarea/, 'y el otro caso')
+  assert.match(hoy.stderr, /la tenés vos, tomada el \d{4}-\d{2}-\d{2} desde el runner \/w\/ayer/)
+  // Y manda a preguntar, no a decidir: las dos salidas automáticas rompen trabajo.
+  assert.match(hoy.stderr, /Preguntá si se retoma esa sesión/)
+  assert.match(hoy.stderr, /o si es otro agente en paralelo, que toma otra tarea/)
+  assert.match(hoy.stderr, /ops runners/, 'y dice dónde ver lo que hay abierto')
 
   const visto = como('ana@acme.com', () => run(['context', dir]), '/w/hoy')
   assert.match(visto.stdout, /^TAKEN {2}dashboard \(ana@acme\.com — vos, desde otro runner\)$/m)
@@ -471,4 +473,30 @@ test('dos agentes en una instancia sidecar no comparten el plan', () => {
   const otro = como('luis@acme.com', () => run(['context', dir]), '/w/luis')
   assert.doesNotMatch(otro.stdout, /^TASK {3}dashboard/m, 'luis no recibe la tarea que ana construye')
   assert.match(otro.stdout, /^WIP {4}idle$/m, 'ni el plan de ana como si fuera suyo')
+})
+
+// Las tres respuestas que un agente necesita para preguntar bien: ninguno, varios con su tarea, y —la que
+// se olvida— que lo cerrado desaparezca. Un runner que figura por una tarea ya terminada haría preguntar
+// por trabajo que no existe, y esa pregunta se contesta mal sin que nada falle.
+test('runners dice quién tiene trabajo abierto, y calla cuando no hay', () => {
+  const dir = planning('cauce-runners-')
+  assert.match(run(['runners', dir]).stdout, /ningún runner tiene trabajo abierto/)
+
+  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/uno').status, 0)
+  assert.equal(como('luis@acme.com', () => run(['claim', dir, 'boton']), '/w/dos').status, 0)
+
+  const lista = run(['runners', dir])
+  assert.match(lista.stdout, /^\/w\/uno\s+dashboard\s+\(ana@acme\.com, desde \d{4}-\d{2}-\d{2}; sin commits/m)
+  assert.match(lista.stdout, /^\/w\/dos\s+boton\s+\(luis@acme\.com/m)
+  assert.match(lista.stdout, /2 runner\(s\) con trabajo abierto/)
+
+  const json = JSON.parse(run(['runners', dir, '--json']).stdout)
+  assert.deepEqual(json.map((one) => one.runner).sort(), ['/w/dos', '/w/uno'])
+  assert.deepEqual(json.map((one) => one.task).sort(), ['boton', 'dashboard'])
+
+  // Cerrada la tarea, su runner deja de figurar: lo que se lista es trabajo abierto, no historia.
+  fs.writeFileSync(path.join(dir, 'done', 'dashboard.md'), '- [x] **dashboard** — Hecha\n'
+    + '  acept: x\n  fecha: 2026-09-08\n  done: y\n  qa: z\n'
+    + '  tests: A → make test\n  commit: abc1234 feat: d\n')
+  assert.deepEqual(JSON.parse(run(['runners', dir, '--json']).stdout).map((one) => one.task), ['boton'])
 })

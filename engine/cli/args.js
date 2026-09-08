@@ -22,6 +22,7 @@ const FLAGS = {
   context: ['--json', '--hito'],
   recurring: ['--json', '--promote'],
   claim: ['--json'],
+  runners: ['--json'],
   worktree: ['--json'],
   release: [],
   evidence: ['--json', '--task'],

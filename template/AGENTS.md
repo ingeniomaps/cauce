@@ -186,9 +186,23 @@ y `context` directamente no ofrece una tarea reclamada.
 El reclamo hay que **commitearlo y empujarlo**: sin eso el otro runner lee lo que hay en su copia y la
 reserva no existe para nadie más.
 
-Si corrés junto a otros agentes en la misma máquina, exportá `CAUCE_RUNNER` con un valor propio —la ruta
-de tu árbol de trabajo sirve—. Sin eso todos resuelven la misma identidad de git y el segundo se lleva la
-tarea del primero creyéndola suya.
+## Con qué runner arrancás
+
+Antes de pedir trabajo hay que saber quién lo tiene. Dos sesiones en la misma máquina resuelven la misma
+identidad de git, así que lo que las distingue es el `CAUCE_RUNNER` de cada una.
+
+`node tools/ops.js runners planning [--json]` dice qué runners tienen una tarea abierta, cuál, desde
+cuándo y si su rama avanzó. Según lo que devuelva:
+
+- **Ninguno** — arrancá con un id propio y no preguntes nada. No hay trabajo que retomar.
+- **Uno o más** — **preguntale a la persona** cuál retoma o si arranca uno nuevo, nombrando la tarea de
+  cada uno, desde cuándo y si avanzó. Retomar el id de un agente que sigue corriendo le saca la tarea, y
+  arrancar uno nuevo cuando había trabajo a medias lo deja huérfano: las dos rompen algo, y por eso la
+  elección no es tuya.
+
+Elegido el id, **exportalo vos** y usalo en cada `ops` de la sesión. **Nunca le pidas a una persona que
+escriba una variable de entorno**: no es el idioma en el que trabaja, y el runner es cómo el toolkit
+distingue dos sesiones, no una decisión de producto. Lo suyo es elegir; la mecánica es tuya.
 
 - `node tools/ops.js worktree planning <tarea>` — prepara el árbol de trabajo de esa tarea y te devuelve
   la ruta con el `export CAUCE_RUNNER` hecho. No clona nada: `git worktree` comparte el mismo `.git`, y
