@@ -321,3 +321,38 @@ test('la aceptación con un identificador adentro llega entera', () => {
     + '_Aceptación: el tope lo fija MAX_ATTEMPTS_ (service: app)')
   assert.equal(acceptance(), 'el tope lo fija MAX_ATTEMPTS')
 })
+
+// Por qué una ausencia no puede contestar como una cola vacía está en `assertPlanning`. Acá se mide que
+// los dos comandos que leen el planning sin validarlo fallen y digan cuál es la ruta: `check` y
+// `evidence` ya fallaban cada uno por su cuenta, así que no entran.
+test('un planning que no se puede leer no contesta como uno vacío', () => {
+  const base = tempRoot('cauce-context-ausente-')
+
+  for (const comando of ['context', 'tree']) {
+    // La ruta que no existe, que es el caso que originó esto: en sidecar, `<empresa>-ops/planning`
+    // escrito desde adentro de la raíz resuelve a `<empresa>-ops/<empresa>-ops/planning`.
+    const ausente = path.join(base, 'ops', 'ops', 'planning')
+    const noExiste = run([comando, ausente, '--json'])
+    assert.notEqual(noExiste.status, 0, `${comando} sobre una ruta inexistente tiene que fallar`)
+    assert.equal(noExiste.stdout.trim(), '', `${comando} no imprime un estado que se lea como válido`)
+    // La ruta **resuelta**, porque el error que esto ataca es de resolución: decir la que se escribió
+    // devuelve la pregunta a quien ya la hizo mal.
+    assert.match(noExiste.stderr, new RegExp(path.resolve(ausente).replace(/[\\^$*+?.()|[\]{}]/g, '\\$&')),
+      `${comando} nombra la ruta resuelta: ${noExiste.stderr}`)
+
+    // Y existir no alcanza: un directorio cualquiera contestaba cola vacía igual de bien.
+    const vacio = path.join(base, `dir-${comando}`)
+    fs.mkdirSync(vacio, { recursive: true })
+    const sinBacklog = run([comando, vacio, '--json'])
+    assert.notEqual(sinBacklog.status, 0, `${comando} sobre un directorio sin BACKLOG.md tiene que fallar`)
+    assert.match(sinBacklog.stderr, /BACKLOG\.md/, `y decir qué falta: ${sinBacklog.stderr}`)
+  }
+
+  // Lo que no debe cambiar: un planning de verdad y sin trabajo en cola sigue contestando cola vacía,
+  // que es la mitad legítima de la distinción.
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Ausente', '--mode', 'sidecar']).status, 0)
+  const bueno = run(['context', path.join(target, 'planning'), '--json'])
+  assert.equal(bueno.status, 0, `un planning recién creado se lee sin error: ${bueno.stderr}`)
+  assert.equal(JSON.parse(bueno.stdout).queued, 0, 'y su cola está vacía, que es un estado válido')
+})
