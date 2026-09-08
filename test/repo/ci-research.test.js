@@ -12,7 +12,6 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 
-
 // La primera corrida real con credencial duró tres minutos y devolvió el informe vacío: «every tool
 // this task needs is currently denied in this session». `claude -p` corre sin permisos declarados, así
 // que no puede correr un comando ni salir a la web — que es todo lo que una investigación hace. El

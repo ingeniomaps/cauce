@@ -13,7 +13,6 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { execFileSync } = require('node:child_process')
 
-
 // Que el informe exista no alcanza: `learn` lo crea vacío y el modelo puede devolverlo tal cual. Así
 // salió la primera corrida y `research-pr` lo publicó igual — un lunes eso son 29 PRs en blanco y nada
 // lo dice. Es la forma que R15 nombra: se lee entero y no lo está.
@@ -89,7 +88,9 @@ test('un título renombrado no pasa por una recomendación ausente', { skip: pro
   bash('git init -q . && git add README.md && git -c user.email=t@t -c user.name=t commit -qm base')
 
   const stamp = new Date().toISOString().slice(0, 10)
-  const informe = (recomendacion) => ['---', 'agent: probe', '---', '',
+  // El frontmatter va completo porque el mismo paso valida `status` y `propone`; romperlos es lo que
+  // mide el test de al lado, que es donde se lee qué se está midiendo.
+  const informe = (recomendacion) => ['---', 'agent: probe', 'status: draft', 'propone: si', '---', '',
     '## Fuentes consultadas', '', '1. Una fuente.', '',
     '## Hallazgos', '', 'H1. Algo cambió.', '', recomendacion, '', '## Preguntas abiertas', '', 'Ninguna.',
   ].join('\n')
@@ -185,4 +186,61 @@ test('el primer informe de un cargo no aborta su publicación', () => {
   fs.writeFileSync(path.join(repo, rol, 'SKILL.md'), 'reescrito por el agente\n')
   const conIntruso = bash(`dest=${JSON.stringify(dest)}\n${workflowCommand(source, 'otros')}\nprintf '%s' "$otros"`)
   assert.match(conIntruso, /SKILL\.md/, 'un archivo ajeno sigue abortando la publicación')
+})
+
+// Los dos campos del frontmatter que el ciclo lee después de publicar, y que fallan callados: el informe
+// se publica igual, la puerta pasa, y lo que se pierde no deja rastro en ningún lado. `status` pisado
+// costó cuatro recomendaciones el 2026-09-07 y no se vio hasta comparar los veinte frontmatters.
+test('el frontmatter que vuelve se comprueba, no se supone', { skip: process.platform === 'win32' }, () => {
+  const source = workflow('agent-learning')
+  const paso = workflowStep(source, 'id: collect')
+
+  const repo = tempRoot('cauce-frontmatter-')
+  const dir = path.join(repo, 'agents', 'roles', 'system', 'probe', 'learning', 'reports')
+  fs.mkdirSync(dir, { recursive: true })
+  const bash = (script, env) => spawnSync('bash', ['-c', script], {
+    cwd: repo, encoding: 'utf8', env: { ...process.env, AGENT: 'probe', ...env },
+  })
+  fs.writeFileSync(path.join(repo, 'README.md'), 'base\n')
+  bash('git init -q . && git add README.md && git -c user.email=t@t -c user.name=t commit -qm base')
+
+  const stamp = new Date().toISOString().slice(0, 10)
+  const correr = (frente) => {
+    fs.writeFileSync(path.join(dir, `${stamp}.md`), ['---', 'agent: probe', ...frente, '---', '',
+      '## Fuentes consultadas', '', '1. Una fuente.', '',
+      '## Hallazgos', '', 'H1. Algo cambió.', '',
+      '## Recomendación', '', 'Nada que tocar.', '', '## Preguntas abiertas', '', 'Ninguna.'].join('\n'))
+    const salida = path.join(repo, 'github-output')
+    fs.writeFileSync(salida, '')
+    return bash(paso, { GITHUB_OUTPUT: salida })
+  }
+
+  for (const propone of ['si', 'no']) {
+    const hecho = correr(['status: draft', `propone: ${propone}`])
+    assert.equal(hecho.status, 0, `«propone: ${propone}» es una respuesta válida: ${hecho.stderr}`)
+  }
+
+  // Un informe sellado de entrada no entra a ninguna propuesta: `pendingReports` saltea lo consolidado.
+  const sellado = correr(['status: consolidated', 'propone: si'])
+  assert.notEqual(sellado.status, 0, 'un informe que vuelve sellado tiene que frenar')
+  assert.match(sellado.stderr, /status: draft/, `y decir cuál es el campo: ${sellado.stderr}`)
+
+  // Sin contestar no se puede decidir si el PR se mergea solo, y el default del molde es no contestarlo.
+  for (const sin of [['status: draft', 'propone: por-completar'], ['status: draft'],
+    ['status: draft', 'propone: quizás']]) {
+    const hecho = correr(sin)
+    assert.notEqual(hecho.status, 0, `«${sin.join(', ')}» tiene que frenar`)
+    assert.match(hecho.stderr, /propone/, `y nombrar el campo: ${hecho.stderr}`)
+  }
+})
+
+// El ahorro que ese campo compra, y por qué es un PR por cargo y no uno agrupado.
+test('un informe que no propone nada se mergea sin revisión humana', () => {
+  const paso = workflowStep(workflow('agent-learning'), 'Open research pull request')
+
+  assert.match(paso, /grep -qx 'propone: no'/, 'el auto-merge se decide por el campo, no por el texto')
+  assert.match(paso, /gh pr merge .*--auto/, 'y se arma con auto-merge, no con un merge directo')
+  // Lo que no debe pasar: que un informe que sí propone algo se mergee sin que nadie lo mire.
+  const rama = paso.slice(paso.indexOf("grep -qx 'propone: no'"))
+  assert.equal(/propone: si/.test(rama), false, 'el «si» no dispara ningún merge')
 })
