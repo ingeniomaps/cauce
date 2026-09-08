@@ -90,3 +90,14 @@ test('la misma tarea cerrada dos veces sigue siendo un error, ahora entre archiv
   const errors = JSON.parse(run(['check', dir, '--json']).stdout).errors
   assert.ok(errors.some((one) => /DONE duplicado: alta/.test(one)), JSON.stringify(errors))
 })
+
+// El orden de cierre no lo puede dar el recorrido del directorio: es alfabético, y la respuesta
+// equivocada se lee igual de bien que la correcta. Por eso la entrada declara su fecha.
+test('sin --task, la más reciente la decide la fecha y no el nombre del archivo', () => {
+  const dir = planning('cauce-done-orden-')
+  // Alfabéticamente `alta` va antes que `baja`; por fecha es al revés.
+  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta').replace('2026-09-08', '2026-09-10'))
+  fs.writeFileSync(path.join(dir, 'done', 'baja.md'), entrada('baja').replace('2026-09-08', '2026-09-09'))
+
+  assert.equal(JSON.parse(run(['evidence', dir, '--json']).stdout).task, 'alta')
+})

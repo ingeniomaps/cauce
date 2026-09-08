@@ -58,9 +58,10 @@ test('evidence lee el registro de gates y elige la entrada que se le pide', () =
   fs.writeFileSync(path.join(ops, 'planning', '.verify-log'),
     `${JSON.stringify({ at: '2026-09-07T10:00:00Z', gate: 'test', status: 0 })}\n`)
   fs.appendFileSync(path.join(ops, 'planning', 'DONE.md'),
-    '\n- [x] **baja-de-cliente** (epic: 001) — Baja\n  tests: C1 → TestBaja\n')
+    '\n- [x] **baja-de-cliente** (epic: 001) — Baja\n  fecha: 2026-09-09\n  tests: C1 → TestBaja\n')
 
-  // Sin `--task` responde por la última entrada, que es la que se acaba de cerrar.
+  // Sin `--task` responde por la más reciente. Qué la decide —la fecha, no la posición— lo prueba
+  // `done.test.js`, donde las dos se contradicen; acá sólo se comprueba que elija sin que se le pida.
   const ultima = run(['evidence', path.join(ops, 'planning'), '--json'])
   assert.equal(JSON.parse(ultima.stdout).task, 'baja-de-cliente')
 

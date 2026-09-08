@@ -46,7 +46,7 @@ function baseScript() {
     // Primera lectura: hay tarea. La segunda sale de `options.contexts`, ya sin tarea, para que el
     // bucle cierre en vez de repetir la misma para siempre.
     [KEY.context]: {
-      blocked: '', hasTask: true, wipActive: false, queued: 1, lane: 'full',
+      blocked: '', hasTask: true, wipActive: false, queued: 1, lane: 'full', today: '2026-09-08',
       cast: { build: 'backend-engineer', review: [] },
       slug: 'T-1', hito: 'H1', service: './api', acceptance: 'el alta rechaza un duplicado', epic: 'E1',
     },

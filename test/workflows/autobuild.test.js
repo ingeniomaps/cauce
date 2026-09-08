@@ -31,6 +31,18 @@ test('perder la carrera por una tarea no rompe la corrida ni la construye igual'
   assert.ok(!phases.includes('Build'), 'y no construyó lo que otro ya tenía tomado')
 })
 
+// El cierre escribe un archivo por tarea y no agrega a uno compartido: es lo que hace que dos corridas
+// en paralelo no se pisen al terminar. Y la fecha la trae el motor —un workflow no tiene reloj, hay una
+// puerta que se lo impide— así que el prompt tiene que llevarla ya resuelta, no pedírsela al modelo.
+test('el cierre escribe el archivo de la tarea, con la fecha que dio el motor', async () => {
+  const { prompts } = await runFlow()
+  const cierre = prompts.find((one) => one.key.startsWith('Done|'))
+  assert.ok(cierre, 'la fase Done pidió algo')
+  assert.match(cierre.prompt, /escribí \.\/planning\/done\/T-1\.md/)
+  assert.match(cierre.prompt, /fecha: 2026-09-08/)
+  assert.doesNotMatch(cierre.prompt, /planning\/DONE\.md/, 'y no manda a tocar el archivo compartido')
+})
+
 // La fase Plan pedía «el contexto de la épica» en su propio texto y nunca lo recibía: el esquema de
 // `planning-context` aplanaba la épica a su número. Acá se mide el viaje entero —lo que `ops context`
 // resuelve tiene que aparecer en el prompt que planifica—, porque es el único punto donde se nota que

@@ -31,7 +31,8 @@ const CONFIG = `${ROOT}/ops.config.json`
 const P = `${ROOT}/planning`
 const ORG = `${ROOT}/organization`
 const BACKLOG = `${P}/BACKLOG.md`
-const DONE = `${P}/DONE.md`
+// Una tarea cerrada escribe su propio archivo, así que dos corridas en paralelo no comparten ninguno.
+const doneFile = (slug) => `${P}/done/${slug}.md`
 const WIP = `${P}/WIP.md`
 const HUMAN = `${P}/HUMAN_ACTIONS.md`
 const GATE = `${P}/AWAITING_REVIEW.md`
@@ -62,6 +63,8 @@ const CONTEXT = {
     // que sea nuestra: significa que todavía la puede tomar cualquiera, y dos corridas en paralelo la
     // reciben las dos.
     claimed: { type: 'boolean' },
+    // La fecha de hoy según el motor. Este recorrido no tiene reloj propio a propósito.
+    today: { type: 'string' },
   },
 }
 const CLAIM = {
@@ -319,7 +322,8 @@ const write = (prompt, options = {}) => agent(`${LEDGER}\n\n${prompt}`, options)
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
 const readContext = () => read(
   `Corré "node tools/ops.js context ${P} --json" desde ${ROOT} y reportá sólo lo que imprimió. Derivá hasTask ` +
-  `de si task es null, wipActive de si wip es null, claimed del campo claimed y lane de task.tier; copiá slug, ` +
+  `de si task es null, wipActive de si wip es null, claimed del campo claimed, today del campo today y lane ` +
+  `de task.tier; copiá slug, ` +
   `hito, service, acceptance, ` +
   `epic y cast de task, y epicContext de epic.context —vacío si no hay épica—. El comando es la fuente de ` +
   `verdad: no abras archivos de planning para completarlo.`,
@@ -562,7 +566,7 @@ while (rounds++ < MAX_TASKS) {
     `dio; recién después implementá. Un test que pasa antes de que exista el código no asercia lo que dice ` +
     `aserciar: endurecelo y volvé a correr hasta verlo fallar. Corré las pruebas que necesites para ver ese ` +
     `rojo y ese verde, y nada más: los gates completos, el QA, el commit y el cierre son fases posteriores, ` +
-    `así que no toques ${DONE} ni ${BACKLOG} ni el status del WIP. Lo que el plan no previó va en discovered y ` +
+    `así que no toques ${P}/done/ ni ${BACKLOG} ni el status del WIP. Lo que el plan no previó va en discovered y ` +
     `no en el código a secas: kind=edge si esta tarea lo puede fijar —y entonces entra con su prueba, que ` +
     `nombrás en test y anotás en redFirst—, kind=open si lo notaste y no impide entregar la aceptación: se ` +
     `registra para que lo decida quien corresponde y el recorrido sigue. Si de verdad no podés entregar sin ` +
@@ -720,8 +724,9 @@ while (rounds++ < MAX_TASKS) {
 
   phase('Done')
   await write(
-    `Cerrá ${task.id} de forma atómica: agregala bajo su hito en ${DONE} con evidencia de acept, done, qa, ` +
-    `tests y commit; sacala junto con sus notas indentadas de ${BACKLOG}; cerrá su épica sólo si no queda ` +
+    `Cerrá ${task.id} de forma atómica: escribí ${doneFile(task.id)} con su evidencia —acept, ` +
+    `fecha: ${planning.today}, done, qa, tests y commit, en el formato de entrada que trae este preámbulo—; ` +
+    `sacala junto con sus notas indentadas de ${BACKLOG}; cerrá su épica sólo si no queda ` +
     `ninguna tarea etiquetada; dejá ${WIP} en status IDLE; y soltá la reserva corriendo ` +
     `"node tools/ops.js release ${P} ${task.id}". En decisions no nombres una fase ni un cargo ` +
     `que no figure en estos hechos. Hechos: lane=${planning.lane || 'sin clasificar'}; ` +

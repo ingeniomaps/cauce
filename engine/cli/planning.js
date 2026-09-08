@@ -40,7 +40,10 @@ function evidence(dir, cli) {
   const opsDir = path.join(root, '..')
   const entries = P.readDone(root).entries
   const slug = cli.value('--task')
-  const entry = slug ? entries.find((one) => one.slug === slug) : entries[entries.length - 1]
+  // Sin `--task`, la más reciente. «Reciente» era la última del archivo mientras las entradas vivían
+  // en uno solo; con un archivo por tarea el orden lo da la fecha de cierre, que por eso se declara.
+  const reciente = [...entries].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).pop()
+  const entry = slug ? entries.find((one) => one.slug === slug) : reciente
   if (!entry) return fail(slug ? `DONE no tiene la entrada ${slug}` : 'DONE no tiene ninguna entrada', 2)
 
   let config = {}
@@ -332,6 +335,10 @@ function context(dir, cli) {
     blockedTasks: skipped,
     humanActions,
     owner: me,
+    // El día de hoy, para quien no tiene reloj. Un workflow no puede llamar a `new Date` —una puerta se
+    // lo impide, porque su salida dejaría de ser reproducible— y necesita la fecha para cerrar una tarea.
+    // Sale de acá y no del modelo: es un dato mecánico, y pedírselo a un agente es invitarlo a inventarlo.
+    today: TODAY(),
     claimed,
     taken,
     waiting,
