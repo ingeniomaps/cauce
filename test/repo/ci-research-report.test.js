@@ -240,6 +240,9 @@ test('un informe que no propone nada se mergea sin revisión humana', () => {
 
   assert.match(paso, /grep -qx 'propone: no'/, 'el auto-merge se decide por el campo, no por el texto')
   assert.match(paso, /gh pr merge .*--auto/, 'y se arma con auto-merge, no con un merge directo')
+  // `delete_branch_on_merge` del repositorio no alcanza: el PR #277 se mergeó solo y dejó su rama viva.
+  // Quien mergea a mano pasa la opción, así que el hueco sólo aparece por esta vía.
+  assert.match(paso, /gh pr merge .*--delete-branch/, 'y borra la rama, que nadie más va a borrar')
   // Lo que no debe pasar: que un informe que sí propone algo se mergee sin que nadie lo mire.
   const rama = paso.slice(paso.indexOf("grep -qx 'propone: no'"))
   assert.equal(/propone: si/.test(rama), false, 'el «si» no dispara ningún merge')

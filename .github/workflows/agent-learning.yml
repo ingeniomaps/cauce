@@ -592,8 +592,12 @@ jobs:
           # en `action_required` y esperan autorización, así que el auto-merge queda armado y espera a
           # que alguien la dé. Aun así ahorra la mitad del trabajo —una autorización en vez de una
           # autorización y un merge— y se dispara solo el día que esas corridas arranquen solas.
+          # `--delete-branch` va explícito aunque el repositorio tenga `delete_branch_on_merge`: la
+          # corrida de prueba del 2026-09-08 mergeó el PR #277 sola y dejó su rama viva. Quien mergea a
+          # mano pasa la opción y por eso no se notaba; con auto-merge no la pasa nadie, y sin esto el
+          # ciclo acumula una rama muerta por cargo y por semana.
           if grep -qx 'propone: no' "$report"; then
-            gh pr merge "$branch" --auto --merge
+            gh pr merge "$branch" --auto --merge --delete-branch
             echo "::notice::$AGENT no propone cambios: auto-merge armado."
           fi
 
