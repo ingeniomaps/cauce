@@ -45,12 +45,19 @@ function montar(nombre) {
   return { base, repo, planning: path.join(ops, 'planning') }
 }
 
-function como(runner, fn) {
-  const previo = process.env.CAUCE_RUNNER
+// Fija las dos identidades y no sólo el runner. Sin el owner, `ops claim` lo deduce de `git config
+// user.email` — y ahí la prueba pasa a depender de cómo esté configurada la máquina: verde en una con
+// identidad global y roja en CI, que no tiene ninguna. Es el mismo tropiezo que ya documenta el helper
+// `git` de esta suite, un nivel más arriba.
+function como(runner, fn, owner = 'prueba@acme.com') {
+  const previo = { runner: process.env.CAUCE_RUNNER, owner: process.env.CAUCE_OWNER }
   process.env.CAUCE_RUNNER = runner
+  process.env.CAUCE_OWNER = owner
   try { return fn() } finally {
-    if (previo === undefined) delete process.env.CAUCE_RUNNER
-    else process.env.CAUCE_RUNNER = previo
+    for (const [clave, valor] of [['CAUCE_RUNNER', previo.runner], ['CAUCE_OWNER', previo.owner]]) {
+      if (valor === undefined) delete process.env[clave]
+      else process.env[clave] = valor
+    }
   }
 }
 
