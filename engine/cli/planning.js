@@ -286,7 +286,7 @@ function context(dir, cli) {
   const gate = path.join(root, 'AWAITING_REVIEW.md')
   const humanActions = ST.pendingHumanActions(root)
   const me = CL.owner(root)
-  const { task, skipped, claimed, taken } = ST.currentTask(state, humanActions, me)
+  const { task, skipped, claimed, taken } = ST.currentTask(state, humanActions, CL.runner())
   const epic = task ? state.epics.find((candidate) => candidate.num === task.epic) : null
   const criteria = epic ? epic.criteria.filter((criterion) => task.criteria.includes(criterion.id)) : []
   const report = {

@@ -25,8 +25,10 @@ invariantes.
   cola de su línea de BACKLOG. Vencer no bloquea: cada vuelta se promueve con el período en el slug
   —`<qué>-AAAA-MM`— y esa promoción la escribe una persona. Postergar se registra bajo
   `## Postergaciones` con `- **qué** AAAA-MM-DD — razón`.
-- Reclamo: `claims/<tarea>.md` con frontmatter `task/owner/started/service`; el nombre del archivo es
-  el slug que reserva, y por eso un `task` que diga otra cosa es un error.
+- Reclamo: `claims/<tarea>.md` con frontmatter `task/owner/runner/started/service`; el nombre del
+  archivo es el slug que reserva, y por eso un `task` que diga otra cosa es un error. `owner` dice a
+  quién preguntarle y `runner` decide de quién es: con varios agentes en una máquina la persona es
+  la misma y el árbol de trabajo no.
 - WIP activo: frontmatter y checklist; inactivo: `status: IDLE` o ausente. Es local y no viaja por
   git: existe para recuperar la sesión de quien lo escribió.
 

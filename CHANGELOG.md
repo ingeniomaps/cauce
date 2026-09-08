@@ -29,8 +29,15 @@ diseño — eso vive en el commit y en el código.
   cuando hay dos reclamos sobre el mismo `service:` — avisa y no frena, porque frenar serializaría a un
   equipo entero sobre un servicio.
 
-  **Lo que te pide algo**: el reclamo hay que commitearlo y empujarlo. Sin eso, el otro runner lee lo que
-  hay en su copia y la reserva no existe para nadie más.
+  El reclamo distingue `owner` —la persona, a quién preguntarle— de `runner` —el agente que la hace—, y
+  lo segundo es lo que decide de quién es una tarea. Con varios agentes en una máquina la persona es la
+  misma y el árbol de trabajo no: sin esa distinción, el segundo agente tomaría por propia la tarea del
+  primero. Se crea con exclusión —el archivo se abre en modo exclusivo, así que dos reclamos simultáneos
+  no se pisan— y un runner lleva una tarea a la vez.
+
+  **Lo que te pide algo**: el reclamo hay que commitearlo y empujarlo — sin eso, el otro runner lee lo
+  que hay en su copia y la reserva no existe para nadie más—. Y si corrés varios agentes en la misma
+  máquina, cada uno exporta `CAUCE_RUNNER` con un valor propio.
 
 - **`autobuild` reserva la tarea antes de construirla y la suelta al cerrarla.** Es lo que hace que dos
   corridas en paralelo dejen de trabajar lo mismo: entre preguntar qué toca y reservarlo hay una ventana, y

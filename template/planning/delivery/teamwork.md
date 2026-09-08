@@ -67,6 +67,35 @@ Dos cosas que el mecanismo no reemplaza:
 - **Repartir por hito.** Cada persona toma de un `## Hito` distinto. No lo pide nada, y hace que los dos
   avisos de arriba casi nunca aparezcan.
 
+## Varios agentes en una misma máquina
+
+Una tarea larga deja horas muertas, y ese hueco alcanza para poner otro agente a trabajar. Cuatro cosas
+lo hacen posible, y ninguna pide clonar el repositorio dos veces.
+
+**Un clon, varios árboles de trabajo.** `git worktree` no clona: comparte el mismo `.git`, el mismo
+historial y los mismos objetos, y sólo materializa un segundo directorio de archivos. Cada árbol queda
+fijado a su rama, así que **nadie hace `checkout` nunca** — que es lo que pisaría el trabajo del otro.
+
+```bash
+git worktree add ../repo-dashboard  task/dashboard-filtros
+git worktree add ../repo-exportar   task/boton-exportar
+```
+
+**La instancia, una sola y compartida.** Si `ops/` vive dentro del repositorio, cada árbol se lleva su
+propia copia de `planning/` y los reclamos de un agente no los ve el otro hasta commitear y empujar —
+justo la coordinación que en una máquina tendría que ser instantánea. Con `mode: sidecar` la instancia es
+una, al lado de los repos, y los reclamos se ven al momento y sin git de por medio.
+
+**Un id por agente.** `export CAUCE_RUNNER=<ruta de su árbol>` en cada sesión. Sin eso los dos resuelven
+la misma identidad de git y el segundo toma por propia la tarea del primero. El contrato está en
+`../claims/README.md`.
+
+**Recursos propios.** Puertos, contenedores y base por agente. Dos sesiones levantando el mismo entorno
+en el mismo puerto fallan antes que cualquier archivo de planning.
+
+Sirve igual para dos agentes de la misma herramienta o de herramientas distintas: la reserva es del CLI,
+no del runner que la invoca.
+
 ## Pasar una tarea a otra persona
 
 El plan es local, así que no viaja: quien recibe la tarea ve el reclamo y no cómo venía pensada. Eso está

@@ -35,6 +35,22 @@ function owner(root) {
   return result.status === 0 ? (result.stdout || '').trim() : ''
 }
 
+// Qué runner soy, que no es lo mismo que quién soy. En una máquina con varios agentes la identidad de
+// git es la misma para todos —`git config user.email` no distingue una sesión de otra—, así que si lo
+// que decide «esto es mío» fuera el owner, el segundo agente tomaría por propia la tarea del primero y
+// los dos construirían lo mismo. La unidad es el árbol de trabajo: uno por agente.
+//
+// `CAUCE_RUNNER` es la vía explícita y la que deja `ops worktree`. Sin ella se deduce del árbol donde
+// corre el proceso, que acierta cuando el agente invoca desde el suyo y falla —devolviendo el mismo id
+// para todos— cuando invoca desde una instancia sidecar compartida. Esa falla no queda en silencio:
+// `claim` se niega a darle una segunda tarea a un runner que ya tiene una, y ese es el mensaje que
+// manda a poner la variable.
+function runner() {
+  if (process.env.CAUCE_RUNNER) return process.env.CAUCE_RUNNER.trim()
+  const result = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' })
+  return result.status === 0 ? (result.stdout || '').trim() : process.cwd()
+}
+
 function file(root, slug) {
   return path.join(root, DIR, `${slug}.md`)
 }
@@ -49,6 +65,7 @@ function read(root) {
         slug: name.replace(/\.md$/, ''),
         task: field('task'),
         owner: field('owner'),
+        runner: field('runner'),
         started: field('started'),
         service: field('service'),
         at: `${DIR}/${name}`,
@@ -58,8 +75,8 @@ function read(root) {
 
 // El cuerpo de un reclamo. Es corto a propósito: todo lo que crezca acá vuelve a viajar por git en cada
 // cambio, que es de lo que este archivo vino a separarse.
-function content({ task, owner, started, service }) {
-  return `---\ntask: ${task}\nowner: ${owner}\nstarted: ${started}\n`
+function content({ task, owner, runner: from, started, service }) {
+  return `---\ntask: ${task}\nowner: ${owner}\nrunner: ${from}\nstarted: ${started}\n`
     + `service: ${service || ''}\n---\n\nTomada. El plan vive en el \`WIP.md\` de quien la tomó.\n`
 }
 
@@ -74,6 +91,7 @@ function validate({ claims, milestones, done }) {
       errors.push(`${at}: declara task "${claim.task}" y el archivo reserva ${claim.slug}`)
     }
     if (!claim.owner) errors.push(`${at}: falta owner`)
+    if (!claim.runner) errors.push(`${at}: falta runner`)
     if (!DATE.test(claim.started)) errors.push(`${at}: started debe ser AAAA-MM-DD`)
     if (!queued.has(claim.slug) && !done.set.has(claim.slug)) {
       errors.push(`${at}: ${claim.slug} no existe en BACKLOG ni DONE`)
@@ -111,4 +129,4 @@ function warnings({ claims, done, today }) {
   return lines
 }
 
-module.exports = { DIR, STALE_DAYS, owner, file, read, content, validate, warnings }
+module.exports = { DIR, STALE_DAYS, owner, runner, file, read, content, validate, warnings }

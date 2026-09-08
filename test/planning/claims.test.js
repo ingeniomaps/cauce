@@ -18,12 +18,18 @@ const cola = (...slugs) => [{ slug: 'uno', tasks: slugs.map((slug) => ({ slug })
 
 // El CLI hereda el entorno del proceso, así que la identidad se fija por variable y se restituye: sin
 // esto, una prueba le presta su dueño a la siguiente.
-function como(email, fn) {
-  const previo = process.env.CAUCE_OWNER
+//
+// Son dos y no una: `owner` es la persona y `runner` el árbol donde corre el agente. Por default van
+// juntas —una persona, una máquina—, y los casos que miden varios agentes las separan.
+function como(email, fn, runner = email) {
+  const previo = { owner: process.env.CAUCE_OWNER, runner: process.env.CAUCE_RUNNER }
   process.env.CAUCE_OWNER = email
+  process.env.CAUCE_RUNNER = runner
   try { return fn() } finally {
-    if (previo === undefined) delete process.env.CAUCE_OWNER
-    else process.env.CAUCE_OWNER = previo
+    for (const [clave, valor] of [['CAUCE_OWNER', previo.owner], ['CAUCE_RUNNER', previo.runner]]) {
+      if (valor === undefined) delete process.env[clave]
+      else process.env[clave] = valor
+    }
   }
 }
 
@@ -52,34 +58,52 @@ test('el plazo que el contrato promete es el que el motor aplica', () => {
     `el README no promete los ${CL.STALE_DAYS} días que avisa \`warnings\``)
 })
 
+test('el runner sale de la variable y, sin ella, del árbol donde corre el proceso', () => {
+  const previo = process.env.CAUCE_RUNNER
+  process.env.CAUCE_RUNNER = '/w/propio'
+  assert.equal(CL.runner(), '/w/propio')
+  // Sin variable se deduce, y lo que importa es que devuelva algo: un runner sin id no distingue a nadie
+  // de nadie, y ahí el reclamo deja de reservar sin que nada falle.
+  delete process.env.CAUCE_RUNNER
+  assert.match(CL.runner(), /^\/.+/)
+  if (previo === undefined) delete process.env.CAUCE_RUNNER
+  else process.env.CAUCE_RUNNER = previo
+})
+
 test('lo reclamado por otro no se ofrece, y lo propio va antes que lo libre', () => {
   const state = {
     milestones: cola('a', 'b', 'c'),
     done: done(),
     wip: null,
-    claims: [{ slug: 'a', owner: 'luis@x' }, { slug: 'b', owner: 'ana@x' }],
+    claims: [
+      { slug: 'a', owner: 'luis@x', runner: 'wt-luis' },
+      { slug: 'b', owner: 'ana@x', runner: 'wt-ana' },
+    ],
   }
 
-  const ana = ST.currentTask(state, [], 'ana@x')
+  const ana = ST.currentTask(state, [], 'wt-ana')
   assert.equal(ana.task.slug, 'b', 'lo que ya reclamé va antes que la primera libre')
   assert.equal(ana.claimed, true)
   assert.deepEqual(ana.taken, [{ slug: 'a', owner: 'luis@x' }])
 
-  const tercero = ST.currentTask(state, [], 'otro@x')
+  const tercero = ST.currentTask(state, [], 'wt-otro')
   assert.equal(tercero.task.slug, 'c', 'las dos tomadas se saltean')
   assert.equal(tercero.claimed, false, 'y la que recibe está libre, que no es lo mismo que ser suya')
 
   // Sin reclamos la conducta es la de siempre: esto no cambia nada para quien trabaja solo.
-  assert.equal(ST.currentTask({ ...state, claims: [] }, [], 'ana@x').task.slug, 'a')
+  assert.equal(ST.currentTask({ ...state, claims: [] }, [], 'wt-ana').task.slug, 'a')
 })
 
 test('check rechaza el reclamo que miente y el que reserva algo que no existe', () => {
   const errors = CL.validate({
     claims: [
-      { slug: 'a', task: 'otra-tarea', owner: 'ana@x', started: '2026-09-01', at: 'claims/a.md' },
-      { slug: 'b', task: 'b', owner: '', started: '2026-09-01', at: 'claims/b.md' },
-      { slug: 'c', task: 'c', owner: 'ana@x', started: 'ayer', at: 'claims/c.md' },
-      { slug: 'fantasma', task: 'fantasma', owner: 'ana@x', started: '2026-09-01', at: 'claims/fantasma.md' },
+      { slug: 'a', task: 'otra-tarea', owner: 'ana@x', runner: 'w', started: '2026-09-01', at: 'claims/a.md' },
+      { slug: 'b', task: 'b', owner: '', runner: '', started: '2026-09-01', at: 'claims/b.md' },
+      { slug: 'c', task: 'c', owner: 'ana@x', runner: 'w', started: 'ayer', at: 'claims/c.md' },
+      {
+        slug: 'fantasma', task: 'fantasma', owner: 'ana@x', runner: 'w',
+        started: '2026-09-01', at: 'claims/fantasma.md',
+      },
     ],
     milestones: cola('a', 'b', 'c'),
     done: done(),
@@ -88,6 +112,7 @@ test('check rechaza el reclamo que miente y el que reserva algo que no existe', 
   // El nombre del archivo es lo que reserva, así que un `task` distinto bloquea una tarea y nombra otra.
   assert.ok(dice(/declara task "otra-tarea" y el archivo reserva a/))
   assert.ok(dice(/claims\/b\.md: falta owner/))
+  assert.ok(dice(/claims\/b\.md: falta runner/))
   assert.ok(dice(/started debe ser AAAA-MM-DD/))
   assert.ok(dice(/fantasma no existe en BACKLOG ni DONE/))
 })
@@ -141,13 +166,65 @@ test('dos personas no reciben la misma tarea, y la segunda no puede pisar a la p
 test('la cola tomada entera no se anuncia como cola vacía', () => {
   const dir = planning('cauce-tomada-')
   for (const slug of ['dashboard', 'boton', 'reportes']) {
-    assert.equal(como('ana@acme.com', () => run(['claim', dir, slug])).status, 0)
+    // Un runner lleva una tarea, así que tres tareas tomadas son tres runners.
+    const tomada = como('ana@acme.com', () => run(['claim', dir, slug]), `wt-${slug}`)
+    assert.equal(tomada.status, 0, tomada.stderr)
   }
   const luis = como('luis@acme.com', () => run(['context', dir]))
   assert.match(luis.stdout, /sin tarea disponible/)
   // Sin esto, «no hay trabajo» y «el trabajo lo tiene tu compañera» se leen igual, y la respuesta
   // correcta a cada una es distinta: buscar otra cosa, o hablar con ella.
   assert.match(luis.stdout, /^TAKEN {2}dashboard \(ana@acme\.com\)$/m)
+})
+
+// El caso que motivó separar runner de owner. Dos sesiones en la misma máquina resuelven el mismo
+// `git config user.email`, así que si lo que decidiera «esto es mío» fuera la persona, el segundo agente
+// recibiría la tarea del primero como propia y los dos construirían lo mismo — sin que nada falle.
+test('dos agentes en la misma máquina no se llevan la tarea del otro', () => {
+  const dir = planning('cauce-dos-agentes-')
+  const mismaPersona = 'manuel@acme.com'
+
+  const primera = como(mismaPersona, () => run(['claim', dir, 'dashboard']), '/w/dashboard')
+  assert.equal(primera.status, 0, primera.stderr)
+
+  const segundo = como(mismaPersona, () => run(['context', dir]), '/w/boton')
+  assert.match(segundo.stdout, /^TASK {3}boton/m, 'el segundo agente no recibe lo del primero')
+  assert.match(segundo.stdout, /^CLAIM {2}libre/m, 'y sabe que todavía no es suya')
+  assert.match(segundo.stdout, /^TAKEN {2}dashboard/m)
+
+  // Y compartir el id —porque nadie puso CAUCE_RUNNER— deja de ser silencioso: en vez de llevarse la
+  // tarea del otro, el segundo intento choca contra el mutex del runner y el mensaje dice qué hacer.
+  const mismoId = como(mismaPersona, () => run(['claim', dir, 'boton']), '/w/dashboard')
+  assert.equal(mismoId.status, 1)
+  assert.match(mismoId.stderr, /este runner ya tiene dashboard/)
+  assert.match(mismoId.stderr, /CAUCE_RUNNER/)
+})
+
+// La carrera de verdad: dos procesos pidiendo la misma tarea a la vez. No se puede escenificar desde
+// adentro —entre leer «libre» y escribir no hay dónde interponerse—, así que se corre de verdad y se
+// asercia lo único que tiene que valer siempre: gana exactamente uno. Cuál de los dos frenos lo atrapa
+// —la lectura previa o la creación exclusiva— depende de cómo caigan, y las dos respuestas son buenas.
+test('dos reclamos simultáneos de la misma tarea los gana uno solo', async () => {
+  const dir = planning('cauce-carrera-')
+  const { spawn } = require('node:child_process')
+  const cli = path.resolve(__dirname, '..', '..', 'engine', 'cli', 'ops.js')
+
+  const pedir = (runner) => new Promise((resolve) => {
+    const env = { ...process.env, CAUCE_OWNER: 'manuel@acme.com', CAUCE_RUNNER: runner }
+    delete env.NODE_TEST_CONTEXT
+    const hijo = spawn(process.execPath, [cli, 'claim', dir, 'dashboard'], { env, encoding: 'utf8' })
+    let err = ''
+    hijo.stderr.on('data', (chunk) => { err += chunk })
+    hijo.on('close', (code) => resolve({ code, err }))
+  })
+
+  const [a, b] = await Promise.all([pedir('/w/uno'), pedir('/w/dos')])
+  const ganadores = [a, b].filter((one) => one.code === 0)
+  assert.equal(ganadores.length, 1, `ganaron ${ganadores.length}: ${JSON.stringify([a, b])}`)
+
+  const reclamo = fs.readFileSync(path.join(dir, 'claims', 'dashboard.md'), 'utf8')
+  const runners = ['/w/uno', '/w/dos'].filter((one) => reclamo.includes(`runner: ${one}`))
+  assert.equal(runners.length, 1, 'y el archivo quedó con un solo runner adentro')
 })
 
 test('sin reclamos y sin WIP en disco, check no dice nada de ninguno de los dos', () => {

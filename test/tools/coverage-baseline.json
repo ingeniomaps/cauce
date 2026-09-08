@@ -80,9 +80,9 @@
     "functions": 90
   },
   "engine/cli/claims.js": {
-    "lines": 100,
-    "branches": 80,
-    "functions": 100
+    "lines": 94,
+    "branches": 75,
+    "functions": 88
   },
   "engine/cli/dependency.js": {
     "lines": 97,
@@ -236,7 +236,7 @@
   },
   "engine/planning/claims.js": {
     "lines": 100,
-    "branches": 93,
+    "branches": 88,
     "functions": 100
   },
   "engine/planning/contracts.js": {

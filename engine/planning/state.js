@@ -37,9 +37,12 @@ function pendingHumanActions(root) {
 // Con equipo se agrega un escalón entre los dos: lo que ya reclamé va antes que lo libre, porque es lo
 // que dije que iba a hacer. Y lo que reclamó otro no se ofrece — sin eso, dos runners preguntando a la
 // vez reciben la misma tarea y ninguno se entera, que es la colisión que no se ve.
-function currentTask({ milestones, done, wip, claims = [] }, blockers = [], owner = '') {
+//
+// Quién soy acá es el runner y no la persona: dos agentes en la misma máquina comparten la identidad de
+// git, así que comparar por owner le devolvería a cada uno la tarea del otro como propia.
+function currentTask({ milestones, done, wip, claims = [] }, blockers = [], runner = '') {
   const queue = milestones.flatMap((milestone) => milestone.tasks.map((task) => ({ ...task, hito: milestone.slug })))
-  const mine = new Set(claims.filter((one) => owner && one.owner === owner).map((one) => one.slug))
+  const mine = new Set(claims.filter((one) => runner && one.runner === runner).map((one) => one.slug))
   const others = new Map(claims.filter((one) => !mine.has(one.slug)).map((one) => [one.slug, one.owner]))
   if (wip) {
     const active = queue.find((task) => task.slug === wip.task)

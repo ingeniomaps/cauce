@@ -20,6 +20,27 @@ significa algo y donde alguien lo va a ver.
 Un archivo por persona invierte las dos propiedades: dos agentes de la misma persona pelean por su
 archivo, y dos personas que tomaron lo mismo no chocan hasta que alguien lo nota a mano.
 
+## Quién es «yo»: el runner, no la persona
+
+El archivo declara dos cosas distintas. `owner` es la persona —a quién preguntarle— y sale de
+`git config user.email`. `runner` es **el agente que la está haciendo**, y es lo que decide si una tarea
+es tuya.
+
+La diferencia sólo se nota con varios agentes en la misma máquina, y ahí es decisiva: dos sesiones tuyas
+resuelven el mismo email, así que si lo que decidiera «esto es mío» fuera la persona, el segundo agente
+tomaría por propia la tarea del primero y los dos construirían lo mismo sin que nada fallara.
+
+Cada agente exporta el suyo:
+
+```bash
+export CAUCE_RUNNER=/ruta/de/su/arbol-de-trabajo
+```
+
+Sin la variable se deduce del árbol donde corre el proceso, lo que acierta si el agente invoca desde el
+suyo y devuelve el mismo id para todos si invocan desde una instancia compartida. Eso **no queda en
+silencio**: un runner lleva una tarea a la vez, así que el segundo reclamo choca y el mensaje dice qué
+poner. `ops worktree` la imprime hecha.
+
 ## Qué no va acá
 
 El plan, los pasos tildados y las decisiones en curso viven en `WIP.md`, que es local y no viaja por

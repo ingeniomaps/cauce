@@ -181,6 +181,10 @@ y `context` directamente no ofrece una tarea reclamada.
 El reclamo hay que **commitearlo y empujarlo**: sin eso el otro runner lee lo que hay en su copia y la
 reserva no existe para nadie más.
 
+Si corrés junto a otros agentes en la misma máquina, exportá `CAUCE_RUNNER` con un valor propio —la ruta
+de tu árbol de trabajo sirve—. Sin eso todos resuelven la misma identidad de git y el segundo se lleva la
+tarea del primero creyéndola suya.
+
 ## Autonomía
 
 El runner puede implementar una tarea promovida dentro del servicio declarado, crear pruebas y hacer
