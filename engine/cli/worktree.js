@@ -13,23 +13,10 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const ST = require('../planning/state')
 const CL = require('../planning/claims')
+const R = require('../core/repos')
 const { fail } = require('./io')
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
-
-// La raíz de workspace que contiene el servicio de la tarea, que es la misma resolución que `check` usa
-// para juzgar si un servicio existe. Sin esto habría que adivinar en qué repositorio vive la tarea.
-function repoOf(opsRoot, service) {
-  let config = {}
-  try { config = JSON.parse(fs.readFileSync(path.join(opsRoot, 'ops.config.json'), 'utf8')) } catch { /* sin raíces */ }
-  const roots = (Array.isArray(config.workspaceRoots) ? config.workspaceRoots : [])
-    .filter((one) => one && one.path)
-    .map((one) => path.resolve(opsRoot, one.path))
-  const found = roots.find((root) => fs.existsSync(path.join(root, service || '.')))
-  if (!found) return ''
-  const top = git(found, 'rev-parse', '--show-toplevel')
-  return top.status === 0 ? top.stdout.trim() : ''
-}
 
 // El árbol que ya existe para esa rama, si existe. `--porcelain` lista bloques de `worktree <ruta>` y
 // `branch refs/heads/<nombre>`, y se lee así para no depender del formato humano, que cambia.
@@ -58,13 +45,13 @@ function worktree(dir, slug, cli) {
     return fail(`${slug} la tomó ${taken.owner}; preparar un árbol para su tarea no ayuda a nadie.`)
   }
 
-  const repo = repoOf(path.join(root, '..'), task.service)
+  const repo = R.repoOf(path.join(root, '..'), task.service)
   if (!repo) {
     return fail(`no encontré el repositorio de ${task.service || '(sin service)'}: revisá workspaceRoots `
       + 'en ops.config.json y que la ruta del servicio exista.', 2)
   }
 
-  const branch = `task/${slug}`
+  const branch = CL.branchOf(slug)
   const already = existing(repo, branch)
   const target = already || path.join(path.dirname(repo), `${path.basename(repo)}-${slug}`)
   if (!already) {

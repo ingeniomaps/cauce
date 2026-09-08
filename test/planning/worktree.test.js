@@ -1,8 +1,10 @@
 'use strict'
 
-// Dónde trabaja cada agente. Lo que se comprueba no es que `git worktree` funcione —eso es de git— sino
-// que el comando resuelva el repositorio correcto desde el `service:` de la tarea, no monte sobre lo de
-// otro, y entregue el id de runner hecho, que es el dato cuyo olvido deja a dos agentes indistinguibles.
+// Cómo se resuelve el repositorio de una tarea desde su `service:`, y qué se hace con él. Lo usan dos
+// cosas que no se conocen entre sí: preparar el árbol de trabajo de un agente, y mirar si la rama de un
+// reclamo se movió para saber si sigue vivo. Lo que se comprueba no es que `git worktree` funcione —eso
+// es de git— sino esa resolución, que el comando no monte sobre lo de otro, y que entregue el id de
+// runner hecho, que es el dato cuyo olvido deja a dos agentes indistinguibles.
 
 const { tempRoot, run } = require('../support/environment')
 const test = require('node:test')
@@ -115,4 +117,33 @@ test('sin repositorio para el servicio, lo dice en vez de adivinar', () => {
   const roto = como('/w/uno', () => run(['worktree', planning, 'alta']))
   assert.equal(roto.status, 2)
   assert.match(roto.stderr, /no encontré el repositorio/)
+})
+
+// Lo que separa una tarea larga de una abandonada no es cuánto hace que se tomó: es si su rama se movió.
+// Acá se corre contra un repositorio de verdad, porque lo que se prueba es justamente el puente entre el
+// reclamo y git — el mapa de actividad lo arma `check`, y sin este caso la única prueba sería la que le
+// pasa el mapa ya hecho.
+test('un reclamo viejo cuya rama avanzó no se avisa; uno sin commits sí', () => {
+  const { repo, planning } = montar('cauce-vivo-')
+  const viejo = '2020-01-01'
+  fs.mkdirSync(path.join(planning, 'claims'), { recursive: true })
+  fs.writeFileSync(path.join(planning, 'claims', 'alta.md'),
+    `---\ntask: alta\nowner: ana@acme.com\nrunner: /w/ana\nstarted: ${viejo}\nservice: api\n---\n`)
+
+  const sinRama = JSON.parse(run(['check', planning, '--json']).stdout).warnings
+    .filter((one) => /alta/.test(one))
+  assert.equal(sinRama.length, 1, `esperaba un aviso: ${JSON.stringify(sinRama)}`)
+  assert.match(sinRama[0], /la rama de la tarea no tiene commits/)
+
+  // La misma tarea, con trabajo de hoy en su rama: deja de avisar aunque el reclamo sea de 2020.
+  git(repo, 'branch', 'task/alta')
+  const arbol = `${repo}-alta`
+  git(repo, 'worktree', 'add', '-q', arbol, 'task/alta')
+  fs.writeFileSync(path.join(arbol, 'api', 'nuevo.go'), 'package main\n')
+  git(arbol, 'add', 'api/nuevo.go')
+  git(arbol, 'commit', '-q', '-m', 'avance')
+
+  const conAvance = JSON.parse(run(['check', planning, '--json']).stdout).warnings
+    .filter((one) => /alta/.test(one))
+  assert.deepEqual(conAvance, [], 'una tarea que avanza no se apura por llevar tiempo tomada')
 })

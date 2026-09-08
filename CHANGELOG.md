@@ -43,6 +43,13 @@ diseño — eso vive en el commit y en el código.
   corridas en paralelo dejen de trabajar lo mismo: entre preguntar qué toca y reservarlo hay una ventana, y
   perder esa carrera no frena la corrida — relee y sigue con la que quedó libre.
 
+- **El aviso de reclamo viejo mira si la rama avanzó, no cuánto hace que se tomó.** El tiempo transcurrido
+  no distingue una tarea larga de una abandonada, y equivocarse cuesta en los dos sentidos: apurar a quien
+  está trabajando, o dejar bloqueada para siempre la tarea de quien se fue. Ahora `check` mira el último
+  commit de `task/<tarea>`: tres días sin ninguno avisan, y una tarea que recibe commits no se apura nunca
+  aunque lleve semanas tomada. Sin repositorio resoluble el aviso vuelve a mirar sólo la fecha — degrada a
+  lo que había, no rompe.
+
 - **`ops context --hito <slug>` acota la cola a un hito.** Es la forma más barata de que dos personas o dos
   agentes no se crucen: en hitos distintos casi nunca dependen entre sí ni tocan los mismos archivos. Lo
   que se acota es qué se ofrece, no qué se sabe — una dependencia que vive en otro hito se sigue juzgando

@@ -57,7 +57,13 @@ haberla tomado, y por eso `ops claim` lo recuerda al terminar.
 
 ## Cuando alguien se va
 
-Un reclamo abandonado bloquea su tarea para siempre, y `ops check` avisa a los tres días —una tarea dura
-menos de cuatro horas, así que a los tres días no es que sea larga: es que pasó algo—. Soltarlo es borrar
-el archivo a mano, y `ops release` se niega a hacerlo por vos: liberar el trabajo de otro es una
-decisión, no un comando.
+Un reclamo abandonado bloquea su tarea para siempre. `ops check` avisa a los tres días **sin señales de
+avance**, que no es lo mismo que tres días desde que se tomó: lo que mira es si la rama `task/<tarea>` se
+movió. Una tarea larga que sigue recibiendo commits no se apura nunca; una que se detuvo se ve aunque el
+reclamo sea de anteayer.
+
+Sin repositorio resoluble —el `service:` no cae en ninguna raíz declarada, o el proyecto nombra sus ramas
+de otra forma— el aviso vuelve a mirar sólo la fecha. Degrada a lo que había antes, no rompe.
+
+Soltarlo es borrar el archivo a mano, y `ops release` se niega a hacerlo por vos: liberar el trabajo de
+otro es una decisión, no un comando.

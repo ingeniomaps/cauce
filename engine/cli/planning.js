@@ -11,6 +11,7 @@ const PC = require('../planning/contracts')
 const SZ = require('../planning/sizing')
 const RC = require('../planning/recurring')
 const CL = require('../planning/claims')
+const R = require('../core/repos')
 const ST = require('../planning/state')
 const AD = require('../planning/adoption')
 const AP = require('../hooks/approval')
@@ -139,7 +140,15 @@ function check(dir, cli) {
   // la bloquea para siempre. Lo primero es error; lo segundo avisa, porque abandonar no es un defecto.
   const claims = CL.read(root)
   errors.push(...CL.validate({ claims, milestones, done }))
-  warnings.push(...CL.warnings({ claims, done, today: TODAY() }))
+  // Si la rama de cada tarea tomada se movió, que es lo único barato que distingue una tarea larga de
+  // una abandonada. Sin repositorio resoluble el mapa queda vacío y el aviso vuelve a mirar sólo la
+  // fecha, que es lo que había antes: degrada, no rompe.
+  const activity = new Map()
+  for (const claim of claims.filter((one) => !done.set.has(one.slug))) {
+    const at = R.lastCommit(R.repoOf(path.join(root, '..'), claim.service), CL.branchOf(claim.slug))
+    if (at) activity.set(claim.slug, at)
+  }
+  warnings.push(...CL.warnings({ claims, done, today: TODAY(), activity }))
   const recurring = RC.read(root)
   errors.push(...RC.validate(recurring))
   warnings.push(...RC.warnings(RC.status({ ...recurring, done, today: TODAY() })))

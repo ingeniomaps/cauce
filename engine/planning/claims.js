@@ -19,8 +19,13 @@ const P = require('./parser')
 const DIR = 'claims'
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 
-// Tres días. Una tarea dura menos de `maxTaskHours` —cuatro por default—, así que a los tres días no es
-// que sea larga: es que pasó algo. El número no frena nada, sólo decide cuándo el aviso deja de ser ruido.
+// Tres días **sin ninguna señal de avance**, que no es lo mismo que tres días desde que se tomó. El
+// tiempo transcurrido solo no distingue una tarea larga de una abandonada, y equivocarse en esa
+// distinción es caro en los dos sentidos: apurar a alguien que está trabajando, o dejar bloqueada para
+// siempre la tarea de quien se fue.
+//
+// Lo que sí distingue es si la rama de la tarea se movió. Con esa señal, tres días sin un solo commit no
+// es una tarea larga: es una que se detuvo, y el aviso manda a mirar y no a soltar.
 const STALE_DAYS = 3
 
 // Quién soy. Sale de la identidad de git porque ya está configurada, es por máquina y es la que va a
@@ -50,6 +55,10 @@ function runner() {
   const result = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' })
   return result.status === 0 ? (result.stdout || '').trim() : process.cwd()
 }
+
+// La rama donde vive el trabajo de una tarea. La escriben `worktree` al crearla y `check` al buscar si
+// se movió, y son la misma o el segundo mira una rama que nadie usa.
+const branchOf = (slug) => `task/${slug}`
 
 function file(root, slug) {
   return path.join(root, DIR, `${slug}.md`)
@@ -100,7 +109,14 @@ function validate({ claims, milestones, done }) {
   return errors
 }
 
-function warnings({ claims, done, today }) {
+const days = (from, to) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`))
+  / 86400000)
+
+// `activity` mapea el slug de una tarea a la fecha del último commit de su rama. Llega de afuera porque
+// resolverlo exige git y la configuración del proyecto, y este módulo se prueba sin ninguna de las dos.
+// Vacío es un estado legítimo —una tarea recién tomada no tiene rama— y entonces la única señal que
+// queda es cuándo se tomó.
+function warnings({ claims, done, today, activity = new Map() }) {
   const lines = []
   for (const claim of claims) {
     if (done.set.has(claim.slug)) {
@@ -108,10 +124,15 @@ function warnings({ claims, done, today }) {
       continue
     }
     if (!DATE.test(claim.started)) continue
-    const days = Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${claim.started}T00:00:00Z`))
-      / 86400000)
-    if (days > STALE_DAYS) {
-      lines.push(`${claim.at}: tomada hace ${days} días por ${claim.owner}; si se abandonó, soltala`)
+    const commit = activity.get(claim.slug) || ''
+    const ultima = commit && commit > claim.started ? commit : claim.started
+    const quieta = days(ultima, today)
+    if (quieta > STALE_DAYS) {
+      const senal = commit
+        ? `último commit hace ${days(commit, today)} días`
+        : 'la rama de la tarea no tiene commits'
+      lines.push(`${claim.at}: ${claim.slug} sin avanzar hace ${quieta} días `
+        + `(${claim.owner}, tomada hace ${days(claim.started, today)}; ${senal}); mirá si sigue viva`)
     }
   }
   // Dos tareas del mismo servicio pueden tocar los mismos archivos, y eso no se puede saber antes de
@@ -129,4 +150,4 @@ function warnings({ claims, done, today }) {
   return lines
 }
 
-module.exports = { DIR, STALE_DAYS, owner, runner, file, read, content, validate, warnings }
+module.exports = { DIR, STALE_DAYS, owner, runner, branchOf, file, read, content, validate, warnings }

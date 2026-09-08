@@ -142,9 +142,22 @@ test('check avisa lo viejo, lo terminado y dos tareas sobre el mismo servicio', 
     { slug: 'c', owner: 'ana@x', started: '2026-09-10', service: 'api', at: 'claims/c.md' },
   ]
   const lines = CL.warnings({ claims, done: done(), today: '2026-09-10' }).join('\n')
-  assert.match(lines, /tomada hace 9 días por ana@x/)
+  assert.match(lines, /a sin avanzar hace 9 días \(ana@x, tomada hace 9; la rama de la tarea no tiene commits\)/)
   assert.match(lines, /2 tareas tomadas sobre web/)
   assert.doesNotMatch(lines, /sobre api/, 'una sola tarea en un servicio no es un aviso')
+
+  // El tiempo desde que se tomó no distingue una tarea larga de una abandonada; la rama sí. Con commits
+  // de ayer no hay nada que avisar, aunque la tarea lleve nueve días tomada.
+  const viva = CL.warnings({
+    claims, done: done(), today: '2026-09-10', activity: new Map([['a', '2026-09-09']]),
+  }).join('\n')
+  assert.doesNotMatch(viva, /sin avanzar/, 'una tarea que avanza no se apura')
+
+  // Y una que se movió hace tiempo avisa con ese número, no con el de cuándo se tomó.
+  const quieta = CL.warnings({
+    claims, done: done(), today: '2026-09-10', activity: new Map([['a', '2026-09-02']]),
+  }).join('\n')
+  assert.match(quieta, /a sin avanzar hace 8 días \(ana@x, tomada hace 9; último commit hace 8 días\)/)
 
   // Terminada, el reclamo sobra: avisa una sola vez y no vuelve a contar su antigüedad.
   const cerrada = CL.warnings({ claims, done: done('a'), today: '2026-09-10' }).join('\n')

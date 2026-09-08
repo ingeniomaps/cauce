@@ -130,7 +130,8 @@ días, para resolver algo que pasa una vez cada tanto.
 | 20+ | una instancia por equipo o por dominio | la coordinación pasa a ser entre instancias, que es `multi-repo.md` |
 
 Achicarse parece más fácil y tiene una trampa: **lo que tomó quien se fue no se libera solo.** `ops check`
-avisa a los tres días, pero soltarlo es borrar el archivo de `claims/` a mano — `ops release` se niega a
+avisa a los tres días sin que la rama de la tarea se mueva —una tarea larga que avanza no se apura—, pero
+soltarlo es borrar el archivo de `claims/` a mano — `ops release` se niega a
 hacerlo por vos—. Al bajar de tamaño se recorren esos reclamos igual que las filas de `HUMAN_ACTIONS.md`
 que esperaban a esa persona.
 
