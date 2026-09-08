@@ -55,6 +55,7 @@ service: app
 
 - [x] **demostrar-ciclo** (epic: 001) — Entregado
   acept: el resultado se observa
+  fecha: 2026-09-08
   done: node --test terminó con exit code 0
   qa: recorrido real observado con exit code 0
   tests: C1 → node --test test/demo.test.js

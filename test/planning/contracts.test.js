@@ -11,6 +11,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const B = require('../../engine/planning/business-rules')
 const PC = require('../../engine/planning/contracts')
+const SR = require('../../engine/planning/structure')
 
 test('business rules exige contrato y detecta IDs duplicados', () => {
   const root = tempRoot('ops-business-rules-')
@@ -51,25 +52,25 @@ test('un número de regla tiene una sola definición', () => {
   fs.writeFileSync(path.join(rules, 'README.md'), '# Reglas\n\n## R99 — no es una regla, es prosa del índice\n')
   const propia = (name, body) => fs.writeFileSync(path.join(rules, name), body)
 
-  assert.deepEqual(PC.validateRules(root), [], 'sólo system/, y el README no cuenta')
+  assert.deepEqual(SR.validateRules(root), [], 'sólo system/, y el README no cuenta')
 
   // El override declarado: mismo nombre de archivo, y por eso puede redefinir sus números.
   propia('commits.md', '# Mis commits\n\n## R8 — Lo hacemos distinto\n\nx\n')
-  assert.deepEqual(PC.validateRules(root), [])
+  assert.deepEqual(SR.validateRules(root), [])
 
   // Un archivo nuevo que usa R crea una segunda definición que nadie declaró.
   fs.rmSync(path.join(rules, 'commits.md'))
   propia('mias.md', '# Mías\n\n## R8 — Otra cosa distinta\n\nx\n')
-  assert.deepEqual(PC.validateRules(root), [
+  assert.deepEqual(SR.validateRules(root), [
     'rules/mias.md: R8 ya lo define rules/system/commits.md; una regla propia se numera P1..Pn, '
     + 'o vive en un archivo con el mismo nombre para declarar el override',
   ])
 
   // Numerada como propia, pasa; repetida entre dos archivos propios, no.
   propia('mias.md', '# Mías\n\n## P1 — Lo nuestro\n\nx\n')
-  assert.deepEqual(PC.validateRules(root), [])
+  assert.deepEqual(SR.validateRules(root), [])
   propia('otras.md', '# Otras\n\n## P1 — Lo nuestro también\n\nx\n')
-  assert.deepEqual(PC.validateRules(root), ['rules/otras.md: P1 ya lo define rules/mias.md'])
+  assert.deepEqual(SR.validateRules(root), ['rules/otras.md: P1 ya lo define rules/mias.md'])
 })
 
 // Dieciséis ADR reales y ninguna aserción: tres se publicaron con el menú de estado sin elegir, así que
@@ -103,29 +104,29 @@ x
   const escribir = (name, texto) => fs.writeFileSync(path.join(adr, name), texto)
 
   escribir('001-algo.md', cuerpo('Aceptado'))
-  assert.deepEqual(PC.validateAdr(root), [])
+  assert.deepEqual(SR.validateAdr(root), [])
   for (const estado of ['Propuesto', 'Obsoleto', 'Reemplazada por [002](002-otra.md)',
     'Reemplazada por [ADR-007](007-otra.md) (2026-07-31)']) {
     escribir('001-algo.md', cuerpo(estado))
-    assert.deepEqual(PC.validateAdr(root), [], estado)
+    assert.deepEqual(SR.validateAdr(root), [], estado)
   }
 
   // El menú de la plantilla, publicado tal cual: es el caso medido.
   escribir('001-algo.md', cuerpo('Propuesto | Aceptado | Obsoleto | Reemplazada por [NNN](./NNN-slug.md)'))
-  assert.deepEqual(PC.validateAdr(root),
+  assert.deepEqual(SR.validateAdr(root),
     ['adr/001-algo.md: el estado sigue siendo el menú de la plantilla; elegí uno'])
 
   escribir('001-algo.md', cuerpo('Vigente'))
-  assert.match(PC.validateAdr(root)[0], /estado "Vigente" fuera de Propuesto \| Aceptado \| Obsoleto/)
+  assert.match(SR.validateAdr(root)[0], /estado "Vigente" fuera de Propuesto \| Aceptado \| Obsoleto/)
 
   // Una sección que falta deja la decisión sin lo que la sostiene.
   escribir('001-algo.md', cuerpo('Aceptado').replace('## Consecuencias\n\nx\n', ''))
-  assert.deepEqual(PC.validateAdr(root), ['adr/001-algo.md: falta ## Consecuencias'])
+  assert.deepEqual(SR.validateAdr(root), ['adr/001-algo.md: falta ## Consecuencias'])
 
   // Y el nombre lleva el id, que es de lo que depende reconocer un override.
   escribir('001-algo.md', cuerpo('Aceptado'))
   escribir('decision-sobre-cache.md', cuerpo('Aceptado'))
-  assert.deepEqual(PC.validateAdr(root), [
+  assert.deepEqual(SR.validateAdr(root), [
     'adr/decision-sobre-cache.md: nadie lo lee como decisión. Una ADR se nombra NNN-<slug>.md, '
     + 'y la del sistema <ID>-NNN-<slug>.md en system/.',
   ])
@@ -133,7 +134,7 @@ x
 
   // Dos decisiones con el mismo número dejan de poder citarse.
   escribir('001-otra.md', cuerpo('Aceptado'))
-  assert.deepEqual(PC.validateAdr(root), ['adr/001-otra.md: 001 ya lo usa adr/001-algo.md'])
+  assert.deepEqual(SR.validateAdr(root), ['adr/001-otra.md: 001 ya lo usa adr/001-algo.md'])
 })
 
 // Un override por nombre reemplaza el archivo entero, no las reglas que uno menciona: lo que el
@@ -149,16 +150,16 @@ test('un override por nombre dice qué reglas deja de regir', () => {
 
   // El override redefine una sola y se lleva puestas las otras dos.
   fs.writeFileSync(path.join(root, 'rules', 'process.md'), '# Proceso\n\n## R1 — Lo nuestro\n\nTexto.\n')
-  assert.deepEqual(PC.retiredByOverride(root, 'process.md'), ['R2', 'R17'])
+  assert.deepEqual(SR.retiredByOverride(root, 'process.md'), ['R2', 'R17'])
 
   // Uno que las redefine todas no retira nada, que es el override sano.
   fs.writeFileSync(path.join(root, 'rules', 'process.md'),
     '# Proceso\n\n## R1 — Lo nuestro\n\nTexto.\n\n## R2 — Lo nuestro\n\nTexto.\n\n## R17 — Lo nuestro\n\nTexto.\n')
-  assert.deepEqual(PC.retiredByOverride(root, 'process.md'), [])
+  assert.deepEqual(SR.retiredByOverride(root, 'process.md'), [])
 
   // Y un archivo que no sobrescribe a ninguno del sistema no retira nada tampoco.
   fs.writeFileSync(path.join(root, 'rules', 'acme.md'), '# Acme\n\n## P1 — Lo nuestro\n\nTexto.\n')
-  assert.deepEqual(PC.retiredByOverride(root, 'acme.md'), [])
+  assert.deepEqual(SR.retiredByOverride(root, 'acme.md'), [])
 })
 
 // El parser resuelve la ambigüedad prefiriendo la coincidencia exacta, pero en silencio: quien escribe
@@ -174,7 +175,7 @@ test('check avisa cuando dos secciones de una épica compiten por el mismo rol',
   fs.writeFileSync(path.join(roadmap, 'epic-001-demo.md'), epica(
     '## Criterios de aceptación\n\n- suelto\n\n## Criterios\n\n- **C1** — real\n\n'
     + '## Historias\n\n- [ ] **x** (→ C1) — algo. (service: app)\n'))
-  const avisos = PC.competingSections(root)
+  const avisos = SR.competingSections(root)
   assert.equal(avisos.length, 1, 'una épica con dos secciones de criterios se reporta')
   assert.match(avisos[0], /epic-001-demo\.md/)
   assert.match(avisos[0], /Criterios de aceptación/, 'nombra la que se ignora, no la que gana')
@@ -183,5 +184,5 @@ test('check avisa cuando dos secciones de una épica compiten por el mismo rol',
   fs.writeFileSync(path.join(roadmap, 'epic-001-demo.md'), epica(
     '## Criterios\n\n- **C1** — real\n\n'
     + '## Historias (Tareas)\n\n- [ ] **x** (→ C1) — algo. (service: app)\n'))
-  assert.deepEqual(PC.competingSections(root), [])
+  assert.deepEqual(SR.competingSections(root), [])
 })

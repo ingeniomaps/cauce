@@ -17,6 +17,7 @@ const ENTRADA = `
 
 - [x] **alta-de-cliente** (epic: 001) — Alta de cliente
   acept: responde 201
+  fecha: 2026-09-08
   done: npm test (exit 0)
   qa: probado por el camino real
   tests: C1 → TestAltaResponde201; C2 → prueba de alta; A → TestQueNoExiste

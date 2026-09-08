@@ -9,6 +9,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const PC = require('../../engine/planning/contracts')
+const SR = require('../../engine/planning/structure')
 const SZ = require('../../engine/planning/sizing')
 const P = require('../../engine/planning/parser')
 
@@ -69,7 +70,7 @@ status: open
 test('una línea de BACKLOG que nadie puede leer es un error, no un silencio', () => {
   const root = tempRoot('ops-backlog-')
   const escribir = (cuerpo) => fs.writeFileSync(path.join(root, 'BACKLOG.md'), cuerpo)
-  const errores = () => PC.validateBacklogStructure(root)
+  const errores = () => SR.validateBacklogStructure(root)
 
   escribir(`# Backlog promovido
 

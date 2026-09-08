@@ -8,6 +8,7 @@ const path = require('node:path')
 const P = require('../planning/parser')
 const B = require('../planning/business-rules')
 const PC = require('../planning/contracts')
+const SR = require('../planning/structure')
 const SZ = require('../planning/sizing')
 const RC = require('../planning/recurring')
 const CL = require('../planning/claims')
@@ -116,10 +117,10 @@ function check(dir, cli) {
   const milestones = P.readBacklog(root)
   const done = P.readDone(root)
   errors.push(...B.validate(path.join(root, 'business-rules')))
-  errors.push(...PC.validateRoadmapStructure(root))
-  errors.push(...PC.validateBacklogStructure(root))
-  errors.push(...PC.validateRules(root))
-  errors.push(...PC.validateAdr(root))
+  errors.push(...SR.validateRoadmapStructure(root))
+  errors.push(...SR.validateBacklogStructure(root))
+  errors.push(...SR.validateRules(root))
+  errors.push(...SR.validateAdr(root))
   const backlog = milestones.flatMap((milestone) => milestone.tasks)
   const backlogSlugs = new Set(backlog.map((task) => task.slug))
   const epicNums = new Set()
@@ -184,14 +185,14 @@ function check(dir, cli) {
   errors.push(...integration.errors)
   warnings.push(...integration.warnings)
 
-  warnings.push(...PC.competingSections(root))
+  warnings.push(...SR.competingSections(root))
   // Sobrescribir una entrada de system/ es legítimo y esperado; lo que no puede pasar es que
   // ocurra en silencio, porque esa entrada deja de recibir las mejoras del toolkit.
   for (const override of O.overrides(path.resolve(root, '..'))) {
     // Y con qué se queda el proyecto: un override sano redefine lo que reemplaza, y el que deja IDs
     // afuera los retira sin decirlo. Nombrarlos es lo único que separa una decisión de un descuido.
     const retired = override.collection === 'planning/rules'
-      ? PC.retiredByOverride(root, override.project)
+      ? SR.retiredByOverride(root, override.project)
       : []
     warnings.push(`${override.collection}/${override.project} sobrescribe ${override.system} `
       + `(override explícito)${retired.length ? `; deja de regir ${retired.join(', ')}` : ''}`)

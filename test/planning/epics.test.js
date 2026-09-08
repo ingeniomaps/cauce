@@ -10,6 +10,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const PC = require('../../engine/planning/contracts')
+const SR = require('../../engine/planning/structure')
 const P = require('../../engine/planning/parser')
 
 test('parser acepta historias legadas y múltiples referencias de criterio', () => {
@@ -73,7 +74,7 @@ test('roadmap valida trazabilidad, cierre y estructura de épicas grandes', () =
   const large = path.join(roadmap, 'epic-001-grande')
   fs.mkdirSync(large, { recursive: true })
   fs.writeFileSync(path.join(large, 'draft.md'), '# Archivo desconocido\n')
-  const structure = PC.validateRoadmapStructure(root)
+  const structure = SR.validateRoadmapStructure(root)
   assert.ok(structure.some((error) => error.includes('falta spec.md')))
   assert.ok(structure.some((error) => error.includes('draft.md: archivo auxiliar no permitido')))
 })

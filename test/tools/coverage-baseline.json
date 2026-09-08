@@ -255,8 +255,8 @@
     "functions": 100
   },
   "engine/planning/contracts.js": {
-    "lines": 95,
-    "branches": 79,
+    "lines": 99,
+    "branches": 95,
     "functions": 100
   },
   "engine/planning/parser.js": {
@@ -277,6 +277,11 @@
   "engine/planning/state.js": {
     "lines": 100,
     "branches": 97,
+    "functions": 100
+  },
+  "engine/planning/structure.js": {
+    "lines": 100,
+    "branches": 88,
     "functions": 100
   }
 }

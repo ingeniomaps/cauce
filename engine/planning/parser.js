@@ -239,17 +239,25 @@ function readBacklog(dir) {
   return milestones
 }
 
+// Lo que hay en `done/` y no es una entrada: una tabla de acciones humanas resueltas y la prosa que
+// explica el formato. Se nombran acá porque el lector recorre el directorio entero — una tarea cerrada
+// es un archivo suyo, y cualquier nombre sirve mientras el slug de adentro sea el que manda.
+const NOT_ENTRIES = new Set(['human-actions.md', 'README.md'])
+
 function doneFiles(dir) {
   const files = [path.join(dir, 'DONE.md')]
   const archive = path.join(dir, 'done')
   try {
-    files.unshift(...fs.readdirSync(archive).filter((file) => /^epic-\d{3}\.md$/.test(file)).sort()
+    files.unshift(...fs.readdirSync(archive)
+      .filter((file) => file.endsWith('.md') && !NOT_ENTRIES.has(file)).sort()
       .map((file) => path.join(archive, file)))
   } catch { /* no archive yet */ }
   return files
 }
 
-const DONE_FIELDS = 'acept|done|qa|tests|decisions|commit'
+// `fecha` entra al vocabulario porque un campo que no esté acá no corta al anterior: sin nombrarlo, el
+// `done:` de la entrada se lo tragaría entero como parte de su propio texto.
+const DONE_FIELDS = 'acept|fecha|done|qa|tests|decisions|commit'
 
 // Un campo vale hasta el próximo campo, una línea en blanco o el fin de la entrada. Mismo corte que ya
 // se arregló para los criterios y las historias, con el mismo síntoma: el valor es prosa y se envuelve a
@@ -280,7 +288,8 @@ function readDone(dir) {
       entries.push({
         slug: match[1].trim(),
         epic: ((match[2].match(/\(epic:\s*(\d{3})\)/) || [])[1] || ''),
-        acceptance: field('acept'), done: field('done'), qa: field('qa'), tests: field('tests'),
+        acceptance: field('acept'), fecha: field('fecha'),
+        done: field('done'), qa: field('qa'), tests: field('tests'),
         decisions: field('decisions'), commit: field('commit'),
         source: path.relative(dir, file), raw: match[0].trimEnd(),
       })

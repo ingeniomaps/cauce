@@ -5,6 +5,7 @@
 
 - [x] **slug-de-tarea** (epic: 001) — Resultado
   acept: comportamiento aceptado
+  fecha: 2026-08-17
   done: cambios y comandos de verificación con exit codes
   qa: comportamiento observado por el camino real
   tests: C1 → nombre de prueba o comando; C2 → nombre de prueba o comando

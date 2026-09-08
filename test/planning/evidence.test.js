@@ -176,6 +176,7 @@ test('un campo de DONE que se envuelve se lee entero', () => {
 
 - [x] **tarea-envuelta** — Resultado construido.
   acept: criterio observable
+  fecha: 2026-09-08
   done: lo que se hizo
   qa: lo que se observó por el camino real
   tests: A → make test
