@@ -13,6 +13,7 @@
 # archivado. Es un acto raro y deliberado: se hace con el árbol limpio y sin nadie más cerrando.
 planning/DONE.md merge=union
 planning/HUMAN_ACTIONS.md merge=union
+planning/done/human-actions.md merge=union
 
 # INBOX, BACKLOG y RECURRING quedan afuera a propósito. En los tres, quitar una línea es una operación
 # normal y frecuente —promover una idea, sacar una tarea de la cola, retirar una recurrencia— y union
