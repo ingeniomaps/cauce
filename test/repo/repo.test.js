@@ -477,8 +477,12 @@ test('ningún archivo del repositorio nombra la ruta absoluta de una máquina', 
   ]
   const names = (text) => ABSOLUTE.some((pattern) => pattern.test(text))
   // Dos comentarios de `workflows.test.js` cuentan qué dejaban pasar cuatro chequeos de Windows, y para
-  // nombrarlo tienen que escribirlo. Se declara en vez de perdonarse.
-  const DECLARED = new Set(['test/workflows/workflows.test.js'])
+  // nombrarlo tienen que escribirlo. Se declara en vez de perdonarse. El caso 050 documenta esta misma
+  // prueba y pega la línea que la disparó, así que cae por lo mismo.
+  const DECLARED = new Set([
+    'test/workflows/workflows.test.js',
+    'docs/issues/050-la-puerta-de-rutas-absolutas-corre-sobre-informes-generados.md',
+  ])
   const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
   const found = []
   for (const file of tracked) {
