@@ -171,3 +171,18 @@ test('un commit del tronco no cuenta como avance de la tarea', () => {
   git(repo, 'commit', '-q', '-m', 'avance del tronco')
   assert.equal(R.lastCommit(repo, 'task/main-no-existe'), '', 'y una rama que no existe no inventa fecha')
 })
+
+// El aviso, no la conducta: lo que se comprueba es que aparezca y nombre la salida —`mode: sidecar`—,
+// porque un modo que rompe la coordinación en silencio es indistinguible de uno que funciona. El porqué
+// vive en `worktree.js`, donde se decide.
+test('preparar un árbol en modo embedded avisa que la instancia se duplica', () => {
+  const { planning } = montar('cauce-wt-embedded-')
+  const config = path.join(planning, '..', 'ops.config.json')
+  const leido = JSON.parse(fs.readFileSync(config, 'utf8'))
+  fs.writeFileSync(config, JSON.stringify({ ...leido, mode: 'embedded' }, null, 2))
+
+  const hecho = como('/w/uno', () => run(['worktree', planning, 'alta']))
+  assert.equal(hecho.status, 0, hecho.stderr)
+  assert.match(hecho.stdout, /los reclamos no se ven entre árboles hasta mergear/)
+  assert.match(hecho.stdout, /Para varios agentes, mode: sidecar/)
+})

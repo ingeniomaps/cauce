@@ -69,6 +69,11 @@ diseño — eso vive en el commit y en el código.
   archivo viejo, que mientras esté `ops check` lo nombra. El `.gitignore` nuevo excluye `planning/wip/*.md`
   y conserva su README; si venías con la línea de `planning/WIP.md`, cambiala.
 
+- **`ops worktree` avisa cuando la instancia está embebida.** Con `mode: embedded` cada árbol se lleva su
+  propia copia de `planning/`, así que los reclamos de un agente no los ve el otro hasta mergear y la
+  coordinación entre varios deja de existir sin que nada falle. No lo frena: un árbol por rama con un solo
+  agente es un uso legítimo.
+
 - **`ops runners <planning>`: qué runners tienen trabajo abierto, para que un agente pueda preguntar.**
   Elegir con qué runner se arranca es lo primero de una sesión y `ops context` no lo contesta: responde
   «qué hago» para un runner ya elegido. Sin esa lista, un agente se inventa un id y deja huérfano el

@@ -14,6 +14,7 @@ const { spawnSync } = require('node:child_process')
 const ST = require('../planning/state')
 const CL = require('../planning/claims')
 const R = require('../core/repos')
+const O = require('../core/ownership')
 const { fail } = require('./io')
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
@@ -66,6 +67,14 @@ function worktree(dir, slug, cli) {
     return console.log(JSON.stringify({ path: target, branch, repo, runner: target, reused: Boolean(already) }))
   }
   console.log(`${already ? '=' : '✓'} ${target}  (${branch})`)
+  // En `embedded` la instancia vive dentro del repo, así que cada árbol se lleva su propia copia de
+  // `planning/` — o ninguna, si todavía no se commiteó—. Para un agente solo eso funciona; para varios
+  // deja de haber coordinación, porque los reclamos de uno no los ve el otro hasta mergear. Se avisa y no
+  // se frena: usar un árbol por rama sin equipo es legítimo.
+  if (O.mode(path.join(root, '..')) === 'embedded') {
+    console.log('  ⚠ la instancia vive dentro del repo, así que este árbol lleva su propia copia de '
+      + 'planning/: los reclamos no se ven entre árboles hasta mergear. Para varios agentes, mode: sidecar.')
+  }
   // El id del runner y la ruta son la misma cosa a propósito: el árbol es lo que distingue a un agente
   // de otro en una máquina, así que darlo hecho evita el modo de fallo que deja a los dos con el mismo.
   console.log(`  export CAUCE_RUNNER=${target}`)

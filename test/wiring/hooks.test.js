@@ -1349,6 +1349,24 @@ test('guard-plan-first queda inerte mientras el planning no declara tareas', () 
   blocked('plan-first', { cwd: conHistoria, tool_input: { file_path: 'src/altas.js' } }, /sin plan/)
 })
 
+// Con `mode: sidecar` hay un solo `planning/` por máquina, así que el plan de un agente está al alcance
+// del otro. Si el guard leyera cualquiera, el segundo escribiría producto amparado en el plan del primero
+// y quedaría inerte justo donde más hace falta: dos agentes construyendo a la vez.
+test('el plan de un runner no le sirve a otro para saltear plan-first', () => {
+  const root = planFirstRoot('ops-hook-plan-por-runner-', WIP_IDLE)
+  writeWip(path.join(root, 'planning'), '---\ntask: alta-de-cliente\nphase: Build\n---\n'
+    + '\n## Plan aprobado\n1. [ ] Montar el alta\n')
+  const escribir = { cwd: root, tool_input: { file_path: 'src/altas.js' } }
+
+  assert.doesNotThrow(() => execute('plan-first', escribir), 'con su propio plan, escribe')
+
+  const previo = process.env.CAUCE_RUNNER
+  process.env.CAUCE_RUNNER = '/w/otro-agente'
+  try {
+    blocked('plan-first', escribir, /sin plan/)
+  } finally { process.env.CAUCE_RUNNER = previo }
+})
+
 test('guard-plan-first se abre por aprobación, por variable y donde no hay instancia', () => {
   const root = planFirstRoot('ops-hook-plan-llaves-', WIP_IDLE)
   const escribe = { cwd: root, tool_input: { file_path: 'src/altas.js' } }

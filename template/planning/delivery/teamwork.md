@@ -91,10 +91,14 @@ Resuelve en qué repositorio vive el `service:` de la tarea, crea la rama `task/
 lado, y devuelve la ruta con el `export CAUCE_RUNNER` ya escrito. Correrlo dos veces devuelve el árbol que
 ya existe en vez de crear otro.
 
-**La instancia, una sola y compartida.** Si `ops/` vive dentro del repositorio, cada árbol se lleva su
-propia copia de `planning/` y los reclamos de un agente no los ve el otro hasta commitear y empujar —
-justo la coordinación que en una máquina tendría que ser instantánea. Con `mode: sidecar` la instancia es
-una, al lado de los repos, y los reclamos se ven al momento y sin git de por medio.
+**La instancia, una sola y compartida.** Si `ops/` vive dentro del repositorio (`mode: embedded`), cada
+árbol se lleva su propia copia de `planning/` — o ninguna, si todavía no se commiteó— y los reclamos de un
+agente no los ve el otro hasta mergear: justo la coordinación que en una máquina tendría que ser
+instantánea. Con `mode: sidecar` la instancia es una, al lado de los repos, y los reclamos se ven al
+momento y sin git de por medio.
+
+`ops worktree` lo avisa cuando prepara un árbol sobre una instancia embebida. No lo frena: un árbol por
+rama con un solo agente es un uso legítimo, y lo que se rompe es la coordinación entre varios.
 
 **Un id por agente.** Sin eso los dos resuelven la misma identidad de git y el segundo toma por propia la
 tarea del primero. Al abrir una sesión, `ops runners planning` dice qué runners tienen trabajo abierto;
