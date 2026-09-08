@@ -40,15 +40,21 @@ function prepareReport(root, agent, now = new Date()) {
   // Los sellos de estado de este módulo escriben atómico y esto no, y la diferencia es qué se pierde
   // si la escritura se corta: allá el archivo ya existía y quedaría truncado, acá no había nada. Un
   // documento nuevo a medio escribir se ve; uno viejo a medio pisar se lee como si estuviera entero.
+  // `propone` nace sin contestar y lo completa quien escribe el informe. No se deduce del texto de
+  // «Recomendación»: los veinte informes del 2026-09-07 tenían texto ahí y once no proponían ningún
+  // cambio —explicaban por qué, que es lo correcto—, así que «sección vacía» no distingue nada. Con
+  // el campo, un informe que no cambia ningún contrato se mergea solo en vez de gastar una revisión
+  // humana que no puede decidir nada.
   fs.writeFileSync(file, `---
 agent: ${agent}
 date: ${isoDate(now)}
 status: draft
+propone: por-completar
 ---
 
 # Investigación semanal — ${isoDate(now)}
 
-<!-- Dos convenciones que el ciclo necesita y que nada más sostiene:
+<!-- Tres convenciones que el ciclo necesita y que nada más sostiene:
 
   · Etiquetá cada hallazgo H1, H2, … en el orden en que aparecen. «Evidencia» y «Recomendación» se
     refieren a ellos por esa clave, y la propuesta mensual la cita para decir de qué hallazgo sale
@@ -56,6 +62,12 @@ status: draft
 
   · No renombres los títulos. «## Recomendación» se lee con un patrón exacto y es lo único que la
     propuesta consolida de cada informe: renombrarlo no da error, deja la propuesta vacía.
+
+  · Contestá «propone» en el frontmatter, con «si» o con «no». Es «si» cuando el informe pide tocar
+    algún archivo del cargo —SKILL.md, sources.yaml, references/, un caso— y «no» cuando lo hallado
+    no cambia ningún contrato, aunque «Recomendación» explique largamente por qué. Un «no» se
+    mergea sin revisión humana: no hay nada que decidir. Ante la duda va «si», que sólo cuesta una
+    mirada.
 
 Este comentario vive fuera de toda sección a propósito — dentro de «Recomendación» viajaría a cada
 propuesta consolidada. -->

@@ -1,16 +1,16 @@
 'use strict'
 
-// El job que investiga: qué herramientas recibe, qué hace cuando no encuentra nada, y qué anuncia
-// cuando le falta la credencial en vez de quedar en verde. A quién le toca y cuándo es la pregunta
-// de al lado, en `ci-schedule.test.js`.
+// Qué se le pide al modelo que investiga: qué herramientas recibe, con qué credencial corre, qué lleva
+// su prompt y qué deja dicho de lo que costó. Lo que se valida de lo que devuelve —el informe y su
+// publicación— es la pregunta de al lado, en `ci-research-report.test.js`; a quién le toca y cuándo,
+// en `ci-schedule.test.js`.
 
-const { tempRoot, workflow, workflowStep, workflowCommand } = require('../support/environment')
+const { tempRoot, workflow, workflowStep } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
-const { execFileSync } = require('node:child_process')
 
 // La primera corrida real con credencial duró tres minutos y devolvió el informe vacío: «every tool
 // this task needs is currently denied in this session». `claude -p` corre sin permisos declarados, así
@@ -76,21 +76,6 @@ test('la investigación late mientras corre y deja dicho lo que costó', () => {
   assert.match(source, /permission_denials/, 'y lo que se le negó, que es como se ve un permiso roto')
 })
 
-// Que el informe exista no alcanza: `learn` lo crea vacío y el modelo puede devolverlo tal cual. Así
-// salió la primera corrida y `research-pr` lo publicó igual — un lunes eso son 29 PRs en blanco y nada
-// lo dice. Es la forma que R15 nombra: se lee entero y no lo está.
-test('un informe sin contenido no abre PR', () => {
-  const file = path.resolve(__dirname, '..', '..', '.github', 'workflows', 'agent-learning.yml')
-  const source = fs.readFileSync(file, 'utf8')
-
-  // Se mira contenido, y de las secciones que la propuesta mensual consolida.
-  assert.match(source, /for seccion in 'Fuentes consultadas' 'Hallazgos'/)
-  assert.match(source, /quedó sin contenido en:/, 'y dice cuáles quedaron vacías')
-  assert.match(source, /No se abre PR/, 'en vez de publicar un insumo que no existe')
-  // El diagnóstico que ahorra la próxima media hora: la causa suele ser un permiso, no el modelo.
-  assert.match(source, /una herramienta denegada, no el modelo/)
-})
-
 // Sin credencial la corrida no falla —`research` se saltea— así que termina en verde, y el aviso vivía
 // en un `echo` suelto entre miles de líneas de log. Eso ya dejó al ciclo parado una semana sin que nada
 // lo dijera: el secret faltó en la corrida del 2026-08-24 y estaba de vuelta el 28, pero el hueco se
@@ -122,164 +107,6 @@ test('una semana sin credencial se anuncia, en vez de quedar en verde y en silen
     assert.match(con.escrito, /^ready=true$/m, `con ${Object.keys(env)[0]} se investiga`)
     assert.equal(/::warning/.test(con.stdout), false, 'y no se avisa de una falta que no existe')
   }
-})
-
-// Lo que el ciclo de aprendizaje produce son archivos NUEVOS —el informe de la semana, la propuesta
-// del mes—, y `git diff` no ve lo que no está trackeado. Con él, los dos jobs evaluaban su propio
-// paso de publicación como «sin cambios» y terminaban en verde sin haber producido nada: el informe
-// moría en el runner y la propuesta nunca salía. Es la falla que no se denuncia sola.
-//
-// Se prueba ejecutando los comandos contra un repositorio de verdad y no leyendo el YAML: el defecto
-// no era el texto sino lo que ese texto hace, y otra redacción igual de ciega volvería a pasar.
-// `Download report` tolera no encontrar nada —sin eso un cargo roto se lleva los PR de los demás— y
-// esa tolerancia no distingue dos cosas muy distintas: el cargo cuya investigación falló, que ya se ve
-// en rojo, y el informe que se hizo, se subió y no llegó, que no se ve en ningún lado y expira a los
-// siete días. Lo que separa una de la otra es el agregado de la matriz: `research` no puede salir
-// verde sin haber subido —`Prepare report` escribe el informe siempre, así que `Collect report` corre
-// siempre y falla ruidoso si quedó vacío—, así que con la investigación entera en verde un download
-// que falla es pérdida real.
-test('un informe que se hizo y no llegó se anuncia; uno que nunca existió no', () => {
-  const source = workflow('agent-learning')
-  const bloque = source.split(/^  research-pr:$/m)[1].split(/^  [a-z-]+:$/m)[0]
-
-  // Las dos mitades. Sin la primera avisaría también por cada cargo que ya está en rojo, y un aviso
-  // que repite lo que otro job grita se termina ignorando igual que el rojo semanal.
-  assert.match(bloque, /needs\.research\.result == 'success'\s*&&\s*steps\.fetch\.outcome == 'failure'/,
-    'el aviso mira que la investigación entera haya salido bien, no sólo que este download falle')
-  assert.match(bloque, /::warning title=/, 'y sale como anotación, no como una línea más de log')
-
-  // La tolerancia sigue en pie: es lo que impide que un cargo roto bloquee a los otros.
-  assert.match(bloque, /continue-on-error: true/, 'un cargo que falla no se lleva los PR de los demás')
-  assert.match(bloque, /if: steps\.fetch\.outcome == 'success'/, 'y el PR sigue abriéndose sólo con informe')
-
-  // Lo que vuelve cierta la implicación de arriba, y por eso se afirma acá: si `Prepare report`
-  // dependiera de una condición, `research` podría salir verde sin subir nada y el aviso mentiría.
-  const research = source.split(/^  research:$/m)[1].split(/^  [a-z-]+:$/m)[0]
-  const prepare = research.split('- name: Prepare report')[1].split('- name:')[0]
-  assert.equal(/^\s+if:/m.test(prepare), false, 'Prepare report corre siempre, que es lo que ata verde a subido')
-})
-
-// `reportSummary` lee «## Recomendación» con un patrón exacto y, cuando no lo encuentra, escribe
-// «Sin recomendación registrada». O sea que un título renombrado sale **idéntico** a una ausencia
-// genuina: una recomendación de diez líneas se pierde y la propuesta la reporta como un informe que no
-// tenía nada que proponer. Entre trescientas líneas nadie lo ve leyendo el PR, y es lo único de un
-// informe que ninguna revisión humana caza.
-//
-// Por eso se exige el título y no su contenido: encontrar cosas y no proponer ningún cambio es un
-// resultado legítimo —el informe queda como histórico y nada del contrato del cargo se toca— y exigir
-// contenido lo tiraría. Se ejecuta el paso, no se cita: una redacción distinta del mismo chequeo roto
-// pasaría igual una aserción sobre el texto.
-test('un título renombrado no pasa por una recomendación ausente', { skip: process.platform === 'win32' }, () => {
-  const source = workflow('agent-learning')
-  const paso = workflowStep(source, 'id: collect')
-  assert.ok(paso.includes('Recomendación'), 'no se encontró el paso que valida el informe')
-
-  const repo = tempRoot('cauce-collect-')
-  const dir = path.join(repo, 'agents', 'roles', 'system', 'probe', 'learning', 'reports')
-  fs.mkdirSync(dir, { recursive: true })
-  const bash = (script, env) => spawnSync('bash', ['-c', script], {
-    cwd: repo, encoding: 'utf8', env: { ...process.env, AGENT: 'probe', ...env },
-  })
-  fs.writeFileSync(path.join(repo, 'README.md'), 'base\n')
-  bash('git init -q . && git add README.md && git -c user.email=t@t -c user.name=t commit -qm base')
-
-  const stamp = new Date().toISOString().slice(0, 10)
-  const informe = (recomendacion) => ['---', 'agent: probe', '---', '',
-    '## Fuentes consultadas', '', '1. Una fuente.', '',
-    '## Hallazgos', '', 'H1. Algo cambió.', '', recomendacion, '', '## Preguntas abiertas', '', 'Ninguna.',
-  ].join('\n')
-  const correr = (texto) => {
-    fs.writeFileSync(path.join(dir, `${stamp}.md`), texto)
-    const salida = path.join(repo, 'github-output')
-    fs.writeFileSync(salida, '')
-    const hecho = bash(paso, { GITHUB_OUTPUT: salida })
-    return { ...hecho, escrito: fs.readFileSync(salida, 'utf8') }
-  }
-
-  const bueno = correr(informe('## Recomendación\n\n1. Cambiar algo (cierra H1).'))
-  assert.equal(bueno.status, 0, `un informe completo tiene que pasar: ${bueno.stderr}`)
-  assert.match(bueno.escrito, /^path=agents\/.*\.md$/m, 'y deja la ruta para el artifact')
-
-  // El caso legítimo, que es la mitad de la decisión: sin nada que proponer, el informe igual entra.
-  const sinNada = correr(informe('## Recomendación'))
-  assert.equal(sinNada.status, 0,
-    `encontrar cosas y no proponer cambios es un resultado, no un error: ${sinNada.stderr}`)
-  assert.match(sinNada.escrito, /^path=/m, 'el histórico se guarda igual')
-
-  // Y el defecto, que hoy salía indistinguible del caso de arriba.
-  for (const roto of ['## Recomendaciones', '## Recomendación final', '### Recomendación']) {
-    const hecho = correr(informe(roto))
-    assert.notEqual(hecho.status, 0, `«${roto}» tiene que frenar el PR`)
-    assert.match(hecho.stderr, /Recomendación/, `y decir por qué: ${hecho.stderr}`)
-  }
-})
-
-test('el workflow de aprendizaje ve los archivos que el ciclo crea', { skip: process.platform === 'win32' }, () => {
-  const source = workflow('agent-learning')
-
-  // El repositorio donde se ejecuta: un commit, y encima lo que el ciclo acaba de escribir.
-  const repo = tempRoot('cauce-ci-')
-  const role = path.join(repo, 'agents', 'roles', 'system', 'probe', 'learning')
-  fs.mkdirSync(path.join(role, 'reports'), { recursive: true })
-  fs.mkdirSync(path.join(role, 'proposals'), { recursive: true })
-  const bash = (script) => execFileSync('bash', ['-c', script], { cwd: repo, encoding: 'utf8' })
-  fs.writeFileSync(path.join(repo, 'README.md'), 'base\n')
-  bash('git init -q . && git add README.md && git -c user.email=t@t -c user.name=t commit -qm base')
-  fs.writeFileSync(path.join(role, 'reports', '2099-01-07.md'), 'informe\n')
-  // Una revisión, que es el caso que el filtro por período dejaba afuera: una propuesta ya aplicada
-  // se corrige abriendo `<período>-rN.md`, y el paso la leía como un archivo ajeno y no abría PR.
-  fs.writeFileSync(path.join(role, 'proposals', '2099-01-r2.md'), 'propuesta\n')
-
-  // El paso que decide si hay algo que publicar. Si dice que no, nada de lo que sigue corre.
-  const detect = workflowStep(source, 'changes')
-  assert.ok(detect.length, 'no se encontró el paso de detección')
-  const output = path.join(repo, 'github-output')
-  bash(`GITHUB_OUTPUT=${JSON.stringify(output)}\nexport GITHUB_OUTPUT\n${detect}`)
-  assert.match(fs.readFileSync(output, 'utf8'), /^changed=true$/m, 'un archivo nuevo es un cambio')
-
-  // Y los dos comandos que después buscan el archivo por su ruta.
-  const found = (name, vars) => bash(`${vars}\n${workflowCommand(source, name)}\nprintf '%s' "$${name}"`)
-  assert.equal(
-    found('report', 'AGENT=probe; stamp=2099-01-07'),
-    'agents/roles/system/probe/learning/reports/2099-01-07.md',
-    'el informe de la semana',
-  )
-  // La propuesta ya no se busca con su propio pathspec: sale de filtrar lo que cambió, que es lo que
-  // hace que el sello viaje al PR junto con ella. Por eso el caso monta las dos líneas.
-  assert.equal(
-    found('proposal', `AGENT=probe; period=2099-01\n${workflowCommand(source, 'changed')}`),
-    'agents/roles/system/probe/learning/proposals/2099-01-r2.md',
-    'y la revisión, que no se llama como el período',
-  )
-})
-
-// `reports/` nace con el primer informe del cargo, así que para casi todos no existe en git todavía.
-// El chequeo que exige «exactamente el informe y nada más» comparaba contra la salida por defecto de
-// `git status`, que colapsa un directorio sin trackear en una sola línea: veía `.../learning/reports/`
-// donde esperaba la ruta del archivo, y abortaba la publicación del primer informe de cada cargo.
-test('el primer informe de un cargo no aborta su publicación', () => {
-  const source = workflow('agent-learning')
-
-  // Un cargo como los del catálogo: `learning/` versionado por sus fuentes, y `reports/` estrenándose.
-  const repo = tempRoot('cauce-first-')
-  const rol = 'agents/roles/system/probe'
-  fs.mkdirSync(path.join(repo, rol, 'learning', 'reports'), { recursive: true })
-  fs.writeFileSync(path.join(repo, rol, 'SKILL.md'), 'x\n')
-  fs.writeFileSync(path.join(repo, rol, 'learning', 'sources.yaml'), 'version: 1\n')
-  const bash = (script) => execFileSync('bash', ['-c', script], { cwd: repo, encoding: 'utf8' })
-  bash(`git init -q . && git add ${rol}/SKILL.md ${rol}/learning/sources.yaml`
-    + ' && git -c user.email=t@t -c user.name=t commit -qm base')
-  const dest = `${rol}/learning/reports/2099-01-07.md`
-  fs.writeFileSync(path.join(repo, dest), 'informe\n')
-
-  // La línea real del workflow: lo que sobra además del informe, que tiene que ser nada.
-  const sobra = bash(`dest=${JSON.stringify(dest)}\n${workflowCommand(source, 'otros')}\nprintf '%s' "$otros"`)
-  assert.equal(sobra, '', 'el informe recién creado es lo único que hay, y el chequeo lo reconoce')
-
-  // Y sigue detectando lo que de verdad sobra: el freno existe para que un agente no cuele otro archivo.
-  fs.writeFileSync(path.join(repo, rol, 'SKILL.md'), 'reescrito por el agente\n')
-  const conIntruso = bash(`dest=${JSON.stringify(dest)}\n${workflowCommand(source, 'otros')}\nprintf '%s' "$otros"`)
-  assert.match(conIntruso, /SKILL\.md/, 'un archivo ajeno sigue abortando la publicación')
 })
 
 // La suscripción primero, la API key como respaldo. No alcanza con poner las dos en el entorno: el
