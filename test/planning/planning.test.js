@@ -4,12 +4,13 @@
 // contrato se mira desde afuera — los parsers y validadores que lo sostienen se prueban directo en
 // `contracts.test.js` y sus hermanas, donde se ve *por qué* falla; acá, *que* falle.
 
-const { tempRoot, run } = require('../support/environment')
+const { tempRoot, run, TEST_RUNNER, wipPath, writeWip } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
+
 
 test('la plantilla canónica pasa el validador', () => {
   const result = run(['check', path.resolve(__dirname, '..', '..', 'template', 'planning')])
@@ -229,7 +230,7 @@ test('un WIP activo sin pasos contables es un error', () => {
 
 - [ ] **alta-email-nuevo** [lite] — Crear la cuenta. _Aceptación: 201 y login._ (service: api)
 `)
-  const wip = (plan) => fs.writeFileSync(path.join(planning, 'WIP.md'), `---
+  const wip = (plan) => writeWip(planning, `---
 task: alta-email-nuevo
 hito: "alta — Alta de cuenta"
 epic: 001
@@ -243,19 +244,20 @@ acceptance: "201 y login"
 ${plan}
 `)
   const errores = () => JSON.parse(run(['check', planning, '--json']).stdout).errors
-    .filter((error) => /^WIP /.test(error))
+    .filter((error) => /^wip\//.test(error))
 
   wip('1. [x] Prueba roja\n2. [ ] Implementar')
   assert.deepEqual(errores(), [], 'el plan numerado pasa')
 
   wip('- [x] Prueba roja\n- [ ] Implementar')
   assert.deepEqual(errores(),
-    ['WIP alta-email-nuevo: el plan no tiene pasos que el motor pueda contar; se escriben `1. [ ] paso`'])
+    [`${path.relative(planning, wipPath(planning))}: el plan de alta-email-nuevo no tiene pasos `
+      + 'que el motor pueda contar; se escriben `1. [ ] paso`'])
 
   wip('El plan es obvio.')
   assert.equal(errores().length, 1, 'un plan sin pasos tampoco sirve para retomar')
 
-  fs.writeFileSync(path.join(planning, 'WIP.md'), 'status: IDLE\n')
+  fs.rmSync(wipPath(planning), { force: true })
   assert.deepEqual(errores(), [], 'el WIP inactivo no tiene plan que contar')
 })
 

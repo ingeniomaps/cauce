@@ -14,6 +14,145 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.70.0] - 2026-09-08
+
+### Agregado
+
+- **`planning/claims/`: quién tomó qué, para que dos runners no construyan lo mismo.** Un archivo por tarea
+  tomada, con el slug de la tarea como nombre: `ops claim planning <tarea>` lo crea y `ops release` lo borra.
+  `ops context` deja de ofrecer una tarea con reclamo ajeno —antes le entregaba la misma a los dos y ninguno
+  se enteraba—, nombra quién la tiene y devuelve antes lo que vos reclamaste que lo que está libre.
+
+  Es un archivo por tarea y no uno por persona a propósito: así dos personas en tareas distintas no tocan
+  nunca el mismo archivo, y dos que toman la misma chocan en git, que es donde el choque significa algo.
+  `check` rechaza el reclamo que nombra una tarea que no existe, avisa a los tres días de tomada y avisa
+  cuando hay dos reclamos sobre el mismo `service:` — avisa y no frena, porque frenar serializaría a un
+  equipo entero sobre un servicio.
+
+  El reclamo distingue `owner` —la persona, a quién preguntarle— de `runner` —el agente que la hace—, y
+  lo segundo es lo que decide de quién es una tarea. Con varios agentes en una máquina la persona es la
+  misma y el árbol de trabajo no: sin esa distinción, el segundo agente tomaría por propia la tarea del
+  primero. Se crea con exclusión —el archivo se abre en modo exclusivo, así que dos reclamos simultáneos
+  no se pisan— y un runner lleva una tarea a la vez.
+
+  **Lo que te pide algo**: el reclamo hay que commitearlo y empujarlo — sin eso, el otro runner lee lo
+  que hay en su copia y la reserva no existe para nadie más—. Y si corrés varios agentes en la misma
+  máquina, cada uno exporta `CAUCE_RUNNER` con un valor propio.
+
+- **`autobuild` reserva la tarea antes de construirla y la suelta al cerrarla.** Es lo que hace que dos
+  corridas en paralelo dejen de trabajar lo mismo: entre preguntar qué toca y reservarlo hay una ventana, y
+  perder esa carrera no frena la corrida — relee y sigue con la que quedó libre.
+
+- **El aviso de reclamo viejo mira si la rama avanzó, no cuánto hace que se tomó.** El tiempo transcurrido
+  no distingue una tarea larga de una abandonada, y equivocarse cuesta en los dos sentidos: apurar a quien
+  está trabajando, o dejar bloqueada para siempre la tarea de quien se fue. Ahora `check` mira el último
+  commit **propio** de `task/<tarea>` —los que no están en el tronco, porque una rama recién creada hereda
+  su historia entera y sin esa distinción toda rama parecería haber avanzado el día que se creó—: tres días
+  sin ninguno avisan, y una tarea que recibe commits no se apura nunca
+  aunque lleve semanas tomada. Sin repositorio resoluble el aviso vuelve a mirar sólo la fecha — degrada a
+  lo que había, no rompe.
+
+- **`ops context --hito <slug>` acota la cola a un hito.** Es la forma más barata de que dos personas o dos
+  agentes no se crucen: en hitos distintos casi nunca dependen entre sí ni tocan los mismos archivos. Lo
+  que se acota es qué se ofrece, no qué se sabe — una dependencia que vive en otro hito se sigue juzgando
+  igual—, y un hito mal escrito lo dice en vez de contestar «sin tarea disponible», que es indistinguible
+  de un hito terminado.
+
+- **El plan en vuelo es uno por runner: `planning/wip/<runner>.md`.** Con `mode: sidecar` hay un solo
+  `planning/` por máquina, así que un plan compartido lo escribían todos los agentes que corren ahí: el
+  segundo pisaba el del primero, y `ops context` le entregaba la tarea que el primero estaba construyendo
+  —con el plan ajeno adentro y diciéndole que estaba libre—. `context` honra sólo el tuyo y `check` los
+  recorre todos.
+
+  **Lo que te pide algo**: `planning/WIP.md` se retiró. Mové tu plan a `planning/wip/<runner>.md` —el
+  nombre sale de tu `CAUCE_RUNNER`, aplanado; `ops context --json` lo dice en `wipFile`— y borrá el
+  archivo viejo, que mientras esté `ops check` lo nombra. El `.gitignore` nuevo excluye `planning/wip/*.md`
+  y conserva su README; si venías con la línea de `planning/WIP.md`, cambiala.
+
+- **Un `service:` ambiguo entre varias raíces se nombra en vez de elegirse.** Con más de un
+  `workspaceRoots`, un servicio que existe en dos —`.` existe en todas— resolvía al primero: el árbol de
+  trabajo terminaba en el repositorio que no era, y el aviso de avance miraba las ramas de otro. Ahora
+  `ops worktree` nombra los candidatos y se niega, y el aviso degrada a mirar sólo la fecha.
+
+- **`ops worktree` avisa cuando la instancia está embebida.** Con `mode: embedded` cada árbol se lleva su
+  propia copia de `planning/`, así que los reclamos de un agente no los ve el otro hasta mergear y la
+  coordinación entre varios deja de existir sin que nada falle. No lo frena: un árbol por rama con un solo
+  agente es un uso legítimo.
+
+- **`ops runners <planning>`: qué runners tienen trabajo abierto, para que un agente pueda preguntar.**
+  Elegir con qué runner se arranca es lo primero de una sesión y `ops context` no lo contesta: responde
+  «qué hago» para un runner ya elegido. Sin esa lista, un agente se inventa un id y deja huérfano el
+  trabajo de ayer, o se lo pisa a otro que sigue corriendo.
+
+  **Lo que te pide algo**: nada, y es el punto. `AGENTS.md` le dice al runner que mire esa lista al abrir
+  la sesión, que **pregunte** cuál se retoma o si arranca uno nuevo, y que **exporte el id él mismo**. A
+  una persona no se le pide que escriba una variable de entorno.
+
+- **Tu propio reclamo desde otro runner se reconoce en vez de resolverse solo.** Volver al día siguiente
+  sin reponer `CAUCE_RUNNER` y correr un segundo agente tuyo se ven idénticos desde el archivo, y las dos
+  salidas automáticas rompen trabajo: retomar sola le saca la tarea al otro agente, y crear un runner
+  nuevo deja dos construyendo lo mismo. `ops claim` dice cuál es cuál y con qué id se retoma; `ops context`
+  marca esas tareas como «vos, desde otro runner».
+
+- **La evidencia de una tarea cerrada vive en su propio archivo: `planning/done/<slug>.md`.** Cerrar es lo
+  que más se hace, y mientras la evidencia se acumulaba en un `DONE.md` compartido, cerrar era agregarle
+  una entrada a algo que otro también estaba tocando. Ahora dos personas —o dos agentes— que cierran a la
+  vez escriben archivos distintos: no hay conflicto que resolver ni regla de merge que aplicar.
+
+  La entrada declara `fecha:`, la del cierre. Mientras vivían en un archivo, «la última» era la última del
+  archivo; con archivos sueltos el orden lo daría el listado del directorio, que es alfabético, y la
+  respuesta equivocada se leería igual de bien que la correcta. `ops evidence` sin `--task` ordena por ese
+  campo, y el contrato de una entrada está en `planning/done/README.md`.
+
+  **Lo que te pide algo**: `planning/DONE.md` se retiró. Pasá cada entrada a su propio
+  `planning/done/<slug>.md` con su `fecha:` y borrá el archivo — mientras esté, `ops check` lo dice en vez
+  de ignorarlo, porque un `DONE.md` que ya nadie lee deja a sus épicas sin poder cerrar y a sus historias
+  figurando sin evidencia.
+
+- **`ops archive <NNN>` se retiró; `ops archive human-actions` se queda.** Archivar una épica existía para
+  descongestionar un `DONE.md` que se hinchaba con una entrada por tarea; con un archivo por tarea no hay
+  nada que descongestionar, y mover esos archivos a una carpeta por épica sería reintroducir el movimiento
+  que esto vino a sacar. El comando lo dice, en vez de contestar «la épica debe ser NNN».
+
+- **`(depende: slug)` en una línea de tarea: lo que sigue no se le ofrece a otro.** El orden del BACKLOG
+  era la dependencia y alcanzaba mientras hubiera un runner; con dos, el segundo toma la que sigue mientras
+  el primero construye aquella de la que depende, y las dos ramas se pisan al integrar. Una tarea con
+  dependencias sin cerrar no se ofrece ni se puede tomar, y `context` la muestra con una línea `WAIT` que
+  nombra la dependencia y quién la tiene — una cola trabada no se lee como una cola vacía. `check` rechaza
+  la dependencia que no existe y nombra el ciclo entero cuando lo hay.
+
+- **`ops worktree <planning> <tarea>`: un árbol de trabajo por agente, sin clonar el repositorio.** Resuelve
+  en qué raíz de `workspaceRoots` vive el `service:` de la tarea, crea la rama `task/<slug>` y el árbol al
+  lado, y devuelve la ruta con el `export CAUCE_RUNNER` ya escrito. `git worktree` comparte el mismo `.git`
+  y el mismo historial, así que no hay una segunda copia del repositorio: lo que hay es un segundo
+  directorio de archivos fijado a su rama, y por eso **ningún agente hace `checkout`** sobre el trabajo de
+  otro. Repetirlo devuelve el árbol que ya existe.
+
+- **`.gitattributes`: `DONE.md` y `HUMAN_ACTIONS.md` se concatenan en vez de conflictuar.** Dos personas
+  cerrando trabajo el mismo día chocaban siempre, y ese conflicto no significaba nada: las dos entradas son
+  buenas y van las dos. Lo que `union` no hace es deduplicar, y esa falla ya la atrapa `DONE duplicado`.
+
+- **`planning/delivery/teamwork.md`**: qué comparte el equipo y qué no, por qué dos agentes necesitan un
+  `git worktree` cada uno, cómo repartir trabajo, y qué se rompe primero según el tamaño del equipo.
+
+- **BR-OPS-005 — una tarea, un runner.** La contracara de BR-OPS-001: aquélla impide que un runner lleve dos
+  tareas, ésta que dos runners lleven la misma.
+
+### Cambiado
+
+- **`planning/WIP.md` pasa a ser local y deja de viajar por git.** Existe para recuperar la sesión de quien
+  lo escribió —nadie más puede retomarla— y cambia en cada paso, así que compartirlo era un conflicto por
+  commit a cambio de nada. `check` deja de exigir que exista: ausente se lee como IDLE, que es lo que
+  significa, y un clon nuevo ya no falla por no traerlo.
+
+  **Lo que te pide algo**: el molde nuevo lo gitignorea, pero tu `.gitignore` es tuyo y `upgrade` no lo toca.
+  Para aprovecharlo, agregale `planning/WIP.md` y sacalo del índice con `git rm --cached planning/WIP.md`.
+  Sin hacer nada, todo sigue funcionando como antes.
+
+- **BR-OPS-001 se acota al runner.** Decía que WIP es el mutex sin decir de quién, y con equipo eso se leía
+  como «trabaja uno por vez». Ahora dice que un runner no toma dos tareas; que dos runners no tomen la misma
+  es BR-OPS-005.
+
 ## [0.69.0] - 2026-09-07
 
 ### Agregado

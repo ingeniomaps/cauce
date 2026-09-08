@@ -19,6 +19,17 @@ manifiesto es evidencia del pipeline, no una lista que una persona edita manualm
 - Bases de datos y APIs aplican expand/contract durante la ventana de convivencia.
 - Una entrega cross-repo registra qué PR y versión satisface cada lado del contrato.
 
+## El `service:` de una tarea tiene que resolver a un solo repositorio
+
+Con varias raíces declaradas, un `service:` que existe en más de una es ambiguo: `.` existe en todas, y un
+`src` puede existir en dos. `ops worktree` lo nombra y se niega en vez de elegir la primera, porque elegir
+da una respuesta plausible y equivocada —el árbol de trabajo en el repositorio que no era— sin que nada lo
+diga. El aviso de avance de un reclamo degrada por lo mismo: sin poder resolver el repositorio, mira sólo
+la fecha en que se tomó.
+
+La salida es escribir servicios que sólo existan en una raíz. Si dos repositorios tienen un directorio con
+el mismo nombre y los dos son servicios de verdad, conviene una instancia por repositorio.
+
 ## Cuándo coordinar
 
 Coordinar solo cuando una propiedad no puede preservarse mediante compatibilidad temporal, por ejemplo una

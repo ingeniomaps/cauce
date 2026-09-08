@@ -238,7 +238,7 @@ test('la corrida devuelve por qué fases pasó, y el cierre las recibe', async (
   assert.ok(!result.phases.includes('Review'), 'nombra una fase que su carril saltea')
   assert.ok(result.phases.includes('Build'), 'se olvidó de una que sí corrió')
   assert.match(prompts.find((one) => one.key === 'Done|').prompt,
-    /fases=Triage → Pick → Classify → Pick → WIP → Build → Verify → Commit → Done/,
+    /fases=Triage → Pick → Claim → Classify → Pick → Claim → WIP → Build → Verify → Commit → Done/,
     'el cierre no recibe por dónde pasó la tarea')
 })
 

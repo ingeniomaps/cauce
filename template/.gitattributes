@@ -1,0 +1,19 @@
+# Cómo mergea git lo que el equipo escribe a la vez.
+#
+# `union` concatena los dos lados en vez de marcar conflicto. Vale para un archivo que sólo crece por el
+# final, que es lo que hacen estos dos cuando dos personas registran un bloqueo el mismo día: las dos
+# filas son buenas y van las dos, así que el conflicto no significa nada y hay que resolverlo igual.
+#
+# La evidencia de una tarea cerrada no está acá porque no la necesita: vive en su propio `done/<slug>.md`
+# y nadie escribe el archivo de nadie.
+#
+# El borde: `ops archive human-actions` **quita** filas de la tabla activa al mover las resueltas al
+# histórico, y eso no es crecer por el final. Archivar mientras otro registra un bloqueo puede devolver a
+# la vida una fila resuelta. Es un acto raro y deliberado: se hace con el árbol limpio.
+planning/HUMAN_ACTIONS.md merge=union
+planning/done/human-actions.md merge=union
+
+# INBOX, BACKLOG y RECURRING quedan afuera a propósito. En los tres, quitar una línea es una operación
+# normal y frecuente —promover una idea, sacar una tarea de la cola, retirar una recurrencia— y union
+# la desharía sin que nada lo dijera. Ahí el conflicto es la respuesta correcta: significa que dos
+# personas decidieron sobre lo mismo, y eso se lee.

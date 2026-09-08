@@ -150,8 +150,9 @@ que hacía falta, apagala después, y que la razón quede escrita donde alguien 
 Antes de abrir un archivo de `planning/`, preguntarle al CLI: es determinista, no gasta contexto y no
 muta nada.
 
-- `node tools/ops.js context planning` — gate, mutex de WIP y la tarea que corresponde ahora, con su
-  aceptación y sus criterios. Es la entrada correcta para empezar a trabajar.
+- `node tools/ops.js context planning [--hito <slug>]` — gate, mutex de WIP y la tarea que corresponde
+  ahora, con su aceptación y sus criterios. Es la entrada correcta para empezar a trabajar. Con `--hito`
+  la cola se acota a ese hito, que es como un equipo se reparte trabajo sin coordinarse.
 - `node tools/ops.js tree planning` — panorama de roadmap, backlog, WIP, inbox y done.
 - `node tools/ops.js recurring planning [--promote <qué>]` — qué trabajo recurrente venció y con
   qué línea se promueve. Emite esa línea; escribirla en `BACKLOG.md` es de una persona.
@@ -163,8 +164,49 @@ muta nada.
   nombrada haya corrido —eso depende del runner, y varios no la nombran al pasar— ni reemplaza a leer
   su fuente, que es lo que R9 pide.
 
-Los cinco aceptan `--json`. Leer `BACKLOG.md`, `WIP.md`, `HUMAN_ACTIONS.md` o `RECURRING.md` completos
-sólo cuando haga falta editarlos o cuando el CLI no responda la pregunta.
+Los cinco aceptan `--json`. Leer `BACKLOG.md`, tu `wip/<runner>.md`, `HUMAN_ACTIONS.md` o `RECURRING.md`
+completos sólo cuando haga falta editarlos o cuando el CLI no responda la pregunta.
+
+## Cómo tomar trabajo
+
+Con equipo, la tarea que `context` devuelve puede estar libre o ya ser tuya, y la salida lo dice. Libre
+se toma antes de empezar:
+
+- `node tools/ops.js claim planning <tarea>` — la reserva a tu nombre y escribe `planning/claims/<tarea>.md`.
+- `node tools/ops.js release planning <tarea>` — la devuelve a la cola.
+
+Una tarea que declara `(depende: slug)` no se ofrece ni se puede tomar hasta que eso esté en DONE, y
+`context` la muestra con una línea `WAIT`. No hay que adelantarse: lo que sigue es trabajo de quien tiene
+la tarea de la que depende.
+
+Tomar no es promover: la tarea ya estaba aprobada en `BACKLOG.md` y esto sólo dice quién la hace, así que
+entra en la autonomía del runner. Lo que no entra es tocar el reclamo de otro — ni tomarlo, ni soltarlo—,
+y `context` directamente no ofrece una tarea reclamada.
+
+El reclamo hay que **commitearlo y empujarlo**: sin eso el otro runner lee lo que hay en su copia y la
+reserva no existe para nadie más.
+
+## Con qué runner arrancás
+
+Antes de pedir trabajo hay que saber quién lo tiene. Dos sesiones en la misma máquina resuelven la misma
+identidad de git, así que lo que las distingue es el `CAUCE_RUNNER` de cada una.
+
+`node tools/ops.js runners planning [--json]` dice qué runners tienen una tarea abierta, cuál, desde
+cuándo y si su rama avanzó. Según lo que devuelva:
+
+- **Ninguno** — arrancá con un id propio y no preguntes nada. No hay trabajo que retomar.
+- **Uno o más** — **preguntale a la persona** cuál retoma o si arranca uno nuevo, nombrando la tarea de
+  cada uno, desde cuándo y si avanzó. Retomar el id de un agente que sigue corriendo le saca la tarea, y
+  arrancar uno nuevo cuando había trabajo a medias lo deja huérfano: las dos rompen algo, y por eso la
+  elección no es tuya.
+
+Elegido el id, **exportalo vos** y usalo en cada `ops` de la sesión. **Nunca le pidas a una persona que
+escriba una variable de entorno**: no es el idioma en el que trabaja, y el runner es cómo el toolkit
+distingue dos sesiones, no una decisión de producto. Lo suyo es elegir; la mecánica es tuya.
+
+- `node tools/ops.js worktree planning <tarea>` — prepara el árbol de trabajo de esa tarea y te devuelve
+  la ruta con el `export CAUCE_RUNNER` hecho. No clona nada: `git worktree` comparte el mismo `.git`, y
+  cada árbol queda fijado a su rama, así que ningún agente hace `checkout` sobre el trabajo de otro.
 
 ## Autonomía
 
@@ -200,5 +242,5 @@ publicación tampoco se decide ahí: la decide `allowPush`.
 3. QA valida el comportamiento por el camino real, no por un atajo interno.
 4. La deuda residual va a `planning/INBOX.md`.
 5. El cambio se commitea en el repo del servicio —uno por naturaleza del diff, y una tarea suele
-   tener una sola— y el hash real queda en `DONE.md`.
+   tener una sola— y el hash real queda en la evidencia de la tarea, `planning/done/<slug>.md`.
 6. `node tools/ops.js check planning` queda verde.

@@ -64,6 +64,11 @@
     "branches": 70,
     "functions": 100
   },
+  "engine/cli/archive.js": {
+    "lines": 97,
+    "branches": 68,
+    "functions": 100
+  },
   "engine/cli/args.js": {
     "lines": 100,
     "branches": 100,
@@ -78,6 +83,11 @@
     "lines": 82,
     "branches": 38,
     "functions": 90
+  },
+  "engine/cli/claims.js": {
+    "lines": 100,
+    "branches": 75,
+    "functions": 100
   },
   "engine/cli/dependency.js": {
     "lines": 97,
@@ -100,9 +110,9 @@
     "functions": 85
   },
   "engine/cli/planning.js": {
-    "lines": 91,
-    "branches": 49,
-    "functions": 88
+    "lines": 92,
+    "branches": 60,
+    "functions": 82
   },
   "engine/cli/upgrade-report.js": {
     "lines": 95,
@@ -113,6 +123,11 @@
     "lines": 85,
     "branches": 45,
     "functions": 77
+  },
+  "engine/cli/worktree.js": {
+    "lines": 100,
+    "branches": 52,
+    "functions": 100
   },
   "engine/config/paths.js": {
     "lines": 100,
@@ -159,6 +174,11 @@
     "branches": 86,
     "functions": 100
   },
+  "engine/core/repos.js": {
+    "lines": 100,
+    "branches": 70,
+    "functions": 100
+  },
   "engine/core/scan.js": {
     "lines": 100,
     "branches": 83,
@@ -176,7 +196,7 @@
   },
   "engine/hooks/files.js": {
     "lines": 100,
-    "branches": 96,
+    "branches": 97,
     "functions": 100
   },
   "engine/hooks/input.js": {
@@ -229,14 +249,19 @@
     "branches": 73,
     "functions": 100
   },
+  "engine/planning/claims.js": {
+    "lines": 100,
+    "branches": 88,
+    "functions": 100
+  },
   "engine/planning/contracts.js": {
-    "lines": 95,
-    "branches": 79,
+    "lines": 99,
+    "branches": 95,
     "functions": 100
   },
   "engine/planning/parser.js": {
     "lines": 100,
-    "branches": 74,
+    "branches": 93,
     "functions": 100
   },
   "engine/planning/recurring.js": {
@@ -251,7 +276,12 @@
   },
   "engine/planning/state.js": {
     "lines": 100,
-    "branches": 100,
+    "branches": 97,
+    "functions": 100
+  },
+  "engine/planning/structure.js": {
+    "lines": 100,
+    "branches": 88,
     "functions": 100
   }
 }

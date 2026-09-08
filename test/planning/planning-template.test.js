@@ -106,6 +106,39 @@ test('una copia de la plantilla de épica se activa tal cual', () => {
   assert.deepEqual(errores, [], 'la copia no arrastra nada que haya que borrar')
 })
 
+// Una regla de merge que nombra un archivo que el molde ya no trae no falla: deja de aplicarse, y el
+// conflicto que evitaba vuelve sin que nadie relacione una cosa con la otra. Es la misma clase de
+// silencio que el `continue` de `upgrade`, un nivel más abajo.
+// Rutas que una regla de merge nombra y el molde no puede traer porque no existen hasta que alguien las
+// usa. Cada una con su razón, porque la exención es lo que le saca fuerza a la comprobación: sin la
+// lista, la salida barata sería aflojar el guard para todos.
+const CREADAS_EN_USO = {
+  'planning/done/human-actions.md':
+    'La escribe `ops archive human-actions` la primera vez que hay una fila resuelta. El molde trae el '
+    + 'directorio y no el archivo, porque un histórico vacío no es un histórico.',
+}
+
+test('las reglas de merge del molde apuntan a archivos que el molde trae', () => {
+  const molde = path.resolve(__dirname, '..', '..', 'template')
+  const reglas = fs.readFileSync(path.join(molde, '.gitattributes'), 'utf8')
+    .split('\n')
+    .filter((line) => line.trim() && !line.startsWith('#'))
+    .map((line) => line.trim().split(/\s+/)[0])
+
+  assert.ok(reglas.length, 'el molde declara al menos una regla de merge')
+  const rotas = reglas.filter((ruta) => !CREADAS_EN_USO[ruta] && !fs.existsSync(path.join(molde, ruta)))
+  assert.deepEqual(rotas, [], `el molde no trae: ${rotas.join(', ')}`)
+
+  // Y una exención que ya no hace falta se retira: si el molde pasa a traer el archivo, la lista queda
+  // cuidando algo que nadie necesita y esconde el próximo caso real.
+  for (const ruta of Object.keys(CREADAS_EN_USO)) {
+    assert.ok(reglas.includes(ruta), `${ruta}: exenta y ninguna regla la nombra`)
+    assert.equal(fs.existsSync(path.join(molde, ruta)), false, `${ruta}: el molde ya la trae; sacala`)
+    // El directorio sí tiene que estar: si no, la ruta está mal escrita y nadie se entera.
+    assert.ok(fs.existsSync(path.join(molde, path.dirname(ruta))), `${ruta}: su directorio no existe`)
+  }
+})
+
 // El README declara qué rango vive en cada archivo para no tener que grepear, y un rango que envejece
 // es peor que ninguno: manda a buscar una regla donde ya no está. Se contrasta contra los archivos.
 test('los rangos que declara el README de reglas son los que hay', () => {

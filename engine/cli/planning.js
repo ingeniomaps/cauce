@@ -8,8 +8,11 @@ const path = require('node:path')
 const P = require('../planning/parser')
 const B = require('../planning/business-rules')
 const PC = require('../planning/contracts')
+const SR = require('../planning/structure')
 const SZ = require('../planning/sizing')
 const RC = require('../planning/recurring')
+const CL = require('../planning/claims')
+const R = require('../core/repos')
 const ST = require('../planning/state')
 const AD = require('../planning/adoption')
 const AP = require('../hooks/approval')
@@ -20,7 +23,6 @@ const OB = require('../core/onboarding')
 const C = require('../config/validate')
 const CP = require('../config/paths')
 const AG = require('../agents/catalog')
-const F = require('../core/files')
 const { fail } = require('./io')
 
 // Qué dimensiones enumera el molde de `organization/` y cuáles dejaron de estar. Un agente que reescribe
@@ -38,7 +40,9 @@ function evidence(dir, cli) {
   const opsDir = path.join(root, '..')
   const entries = P.readDone(root).entries
   const slug = cli.value('--task')
-  const entry = slug ? entries.find((one) => one.slug === slug) : entries[entries.length - 1]
+  // Sin `--task`, la más reciente, y la decide `fecha:` — por qué ese campo existe lo dice el contrato.
+  const reciente = [...entries].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).pop()
+  const entry = slug ? entries.find((one) => one.slug === slug) : reciente
   if (!entry) return fail(slug ? `DONE no tiene la entrada ${slug}` : 'DONE no tiene ninguna entrada', 2)
 
   let config = {}
@@ -75,7 +79,21 @@ function check(dir, cli) {
   const root = path.resolve(dir || '.')
   const errors = []
   const warnings = []
-  const required = ['BACKLOG.md', 'WIP.md', 'DONE.md', 'INBOX.md', 'HUMAN_ACTIONS.md', 'PROTOCOL.md']
+  // El plan no está: `wip/` es local y gitignoreado, así que un clon nuevo no lo trae y eso no es un
+  // error. Ausente se lee como IDLE, que es lo que significa.
+  const required = ['BACKLOG.md', 'INBOX.md', 'HUMAN_ACTIONS.md', 'PROTOCOL.md']
+  // `DONE.md` se retiró: la evidencia vive en un archivo por tarea. Un `DONE.md` que quede en disco
+  // ya no lo lee nadie, y eso no se nota — las épicas dejan de poder cerrar y sus historias figuran
+  // sin evidencia, que es lo mismo que se vería si nunca se hubieran hecho.
+  // `WIP.md` se retiró por lo mismo que `DONE.md`: era uno solo y lo escribían todos los que corren sobre
+  // una instancia sidecar. Uno que quede en disco ya no lo lee nadie, y su plan a medias se pierde sin
+  // que nada lo diga.
+  if (fs.existsSync(path.join(root, 'WIP.md'))) {
+    errors.push('WIP.md ya no se lee: el plan de cada runner vive en `wip/<runner>.md`; movelo y borralo')
+  }
+  if (fs.existsSync(path.join(root, 'DONE.md'))) {
+    errors.push('DONE.md ya no se lee: pasá cada entrada a su propio `done/<slug>.md` y borralo')
+  }
   for (const file of required) if (!fs.existsSync(path.join(root, file))) errors.push(`falta ${file}`)
 
   const configPath = path.join(root, '..', 'ops.config.json')
@@ -113,26 +131,39 @@ function check(dir, cli) {
   const milestones = P.readBacklog(root)
   const done = P.readDone(root)
   errors.push(...B.validate(path.join(root, 'business-rules')))
-  errors.push(...PC.validateRoadmapStructure(root))
-  errors.push(...PC.validateBacklogStructure(root))
-  errors.push(...PC.validateRules(root))
-  errors.push(...PC.validateAdr(root))
+  errors.push(...SR.validateRoadmapStructure(root))
+  errors.push(...SR.validateBacklogStructure(root))
+  errors.push(...SR.validateRules(root))
+  errors.push(...SR.validateAdr(root))
   const backlog = milestones.flatMap((milestone) => milestone.tasks)
   const backlogSlugs = new Set(backlog.map((task) => task.slug))
   const epicNums = new Set()
   const storySlugs = new Set()
 
   const roles = new Set(AG.list(path.resolve(root, '..')).map((role) => role.slug))
-  const wip = P.readWip(root)
+  const wips = P.readWips(root)
   const adopted = AD.read(root)
   errors.push(...SZ.oversizedUnits({ epics, milestones }))
   errors.push(...PC.validateState({
-    epics, milestones, done, wip, roles, humanActions: P.readHumanActions(root), adopted: new Set(adopted),
+    epics, milestones, done, wips, roles, humanActions: P.readHumanActions(root), adopted: new Set(adopted),
   }))
   warnings.push(...AD.report({ done, epics, adopted }))
   // Sin `RECURRING.md` no dice una palabra: una instancia que actualiza y no declara trabajo recurrente
   // no tiene por qué enterarse de que el contrato existe. Vencida avisa y no frena — lo que frena vive
   // en `HUMAN_ACTIONS.md`, y un aviso que salta siempre se termina apagando.
+  // Un reclamo que nombra una tarea que no existe bloquea la cola sin que nada lo explique, y uno viejo
+  // la bloquea para siempre. Lo primero es error; lo segundo avisa, porque abandonar no es un defecto.
+  const claims = CL.read(root)
+  errors.push(...CL.validate({ claims, milestones, done }))
+  // Si la rama de cada tarea tomada se movió, que es lo único barato que distingue una tarea larga de
+  // una abandonada. Sin repositorio resoluble el mapa queda vacío y el aviso vuelve a mirar sólo la
+  // fecha, que es lo que había antes: degrada, no rompe.
+  const activity = new Map()
+  for (const claim of claims.filter((one) => !done.set.has(one.slug))) {
+    const at = R.lastCommit(R.repoOf(path.join(root, '..'), claim.service), CL.branchOf(claim.slug))
+    if (at) activity.set(claim.slug, at)
+  }
+  warnings.push(...CL.warnings({ claims, done, today: TODAY(), activity }))
   const recurring = RC.read(root)
   errors.push(...RC.validate(recurring))
   warnings.push(...RC.warnings(RC.status({ ...recurring, done, today: TODAY() })))
@@ -168,14 +199,14 @@ function check(dir, cli) {
   errors.push(...integration.errors)
   warnings.push(...integration.warnings)
 
-  warnings.push(...PC.competingSections(root))
+  warnings.push(...SR.competingSections(root))
   // Sobrescribir una entrada de system/ es legítimo y esperado; lo que no puede pasar es que
   // ocurra en silencio, porque esa entrada deja de recibir las mejoras del toolkit.
   for (const override of O.overrides(path.resolve(root, '..'))) {
     // Y con qué se queda el proyecto: un override sano redefine lo que reemplaza, y el que deja IDs
     // afuera los retira sin decirlo. Nombrarlos es lo único que separa una decisión de un descuido.
     const retired = override.collection === 'planning/rules'
-      ? PC.retiredByOverride(root, override.project)
+      ? SR.retiredByOverride(root, override.project)
       : []
     warnings.push(`${override.collection}/${override.project} sobrescribe ${override.system} `
       + `(override explícito)${retired.length ? `; deja de regir ${retired.join(', ')}` : ''}`)
@@ -193,7 +224,7 @@ function check(dir, cli) {
       epics: epics.length,
       queued: backlog.length,
       done: done.entries.length,
-      wip: wip ? wip.task : null,
+      wips: wips.map((one) => one.task),
       errors,
       warnings,
     }))
@@ -211,7 +242,7 @@ function check(dir, cli) {
 }
 
 // Estado observable de planning sin mutar nada; base común de `tree` y de sus salidas.
-function treeJson({ epics, milestones, done, wip, inbox, queued }) {
+function treeJson({ epics, milestones, done, wips, inbox, queued, claims }) {
   const state = (slug) => done.set.has(slug) ? 'done' : queued.has(slug) ? 'queued' : 'pending'
   console.log(JSON.stringify({
     roadmap: epics.map((epic) => ({
@@ -224,8 +255,11 @@ function treeJson({ epics, milestones, done, wip, inbox, queued }) {
       slug: milestone.slug,
       tasks: milestone.tasks.map((task) => ({ slug: task.slug, tier: task.tier || '' })),
     })),
-    wip: wip ? { task: wip.task, phase: wip.phase, complete: wip.complete, pending: wip.pending } : null,
+    wip: wips.map((one) => ({
+      task: one.task, runner: one.runner, phase: one.phase, complete: one.complete, pending: one.pending,
+    })),
     inbox: { deuda: inbox.deuda, ideas: inbox.ideas, propuestas: inbox.propuestas, lecciones: inbox.lecciones },
+    claims: claims.map((one) => ({ slug: one.slug, owner: one.owner, started: one.started })),
     done: done.entries.length,
   }))
 }
@@ -234,7 +268,7 @@ function tree(dir, cli) {
   const root = path.resolve(dir || '.')
   const state = ST.snapshot(root)
   if (cli.has('--json')) return treeJson(state)
-  const { epics, milestones, done, wip, inbox, queued } = state
+  const { epics, milestones, done, wips, inbox, queued, claims } = state
   const color = process.stdout.isTTY && !cli.has('--no-color')
   const paint = (code, text) => color ? `\x1b[${code}m${text}\x1b[0m` : text
   console.log(`\n${paint('1', 'CAUCE')}\n`)
@@ -254,8 +288,8 @@ function tree(dir, cli) {
     console.log(`  ${milestone.heading}`)
     for (const task of milestone.tasks) console.log(`      ☐ ${task.slug}${task.tier ? ` [${task.tier}]` : ''}`)
   }
-  const wipText = wip
-    ? `▶ ${wip.task} · ${wip.phase} · ${wip.complete}✓/${wip.pending}○`
+  const wipText = wips.length
+    ? wips.map((one) => `▶ ${one.task} · ${one.phase} · ${one.complete}✓/${one.pending}○ (${one.runner})`).join('  ')
     : 'idle'
   console.log(`\n${paint('1', 'WIP')}  ${wipText}`)
   console.log(
@@ -264,6 +298,9 @@ function tree(dir, cli) {
       // Sin esto, doce viñetas sin nombre se veían como un inbox vacío y nadie se enteraba.
       (inbox.skipped ? `  (${inbox.skipped} sin contar: falta el nombre en **negrita**)` : ''),
   )
+  if (claims.length) {
+    console.log(`${paint('1', 'CLAIM')}  ${claims.map((one) => `${one.slug} · ${one.owner}`).join('  ')}`)
+  }
   console.log(`${paint('1', 'DONE')}   ${done.entries.length} tareas\n`)
 }
 
@@ -271,9 +308,32 @@ function tree(dir, cli) {
 function context(dir, cli) {
   const root = path.resolve(dir || '.')
   const state = ST.snapshot(root)
+  // Acotar la cola a un hito es como un equipo se reparte trabajo sin coordinarse: dos personas en hitos
+  // distintos casi nunca dependen entre sí ni tocan los mismos archivos. Lo que se acota es qué se
+  // ofrece, no qué se sabe: `done` sigue siendo global, así que una dependencia que vive en otro hito se
+  // juzga igual de bien.
+  const from = CL.runner()
+  const mio = state.wips.find((one) => one.runner === P.wipName(from)) || null
+  const hito = cli.value('--hito')
+  // Un filtro elige dónde buscar trabajo **nuevo**; no puede esconder el que ya tenés. Sin esto, pedir
+  // otro hito mientras sostenías una tarea ofrecía una segunda que `claim` después se niega a dar: el
+  // comando que dice qué hacer y el que lo autoriza contestaban distinto, y sólo se veía al reclamar.
+  const propio = state.claims.find((one) => one.runner === from && !state.done.set.has(one.slug))
+  let hitoOmitido = ''
+  if (hito) {
+    const existe = state.milestones.some((one) => one.slug === hito)
+    // Un hito mal escrito devolvería «sin tarea disponible», que es indistinguible de un hito terminado.
+    if (!existe) {
+      const hay = state.milestones.map((one) => one.slug).join(', ') || '(ninguno)'
+      return fail(`el hito ${hito} no existe. Hay: ${hay}`, 2)
+    }
+    if (propio) hitoOmitido = `${hito} no se aplica: ya tenés ${propio.slug} tomada`
+    else state.milestones = state.milestones.filter((one) => one.slug === hito)
+  }
   const gate = path.join(root, 'AWAITING_REVIEW.md')
   const humanActions = ST.pendingHumanActions(root)
-  const { task, skipped } = ST.currentTask(state, humanActions)
+  const me = CL.owner(root)
+  const { task, skipped, claimed, taken, waiting } = ST.currentTask(state, humanActions, from)
   const epic = task ? state.epics.find((candidate) => candidate.num === task.epic) : null
   const criteria = epic ? epic.criteria.filter((criterion) => task.criteria.includes(criterion.id)) : []
   const report = {
@@ -291,10 +351,22 @@ function context(dir, cli) {
     // un criterio de cumplir su letra. Viaja acá porque el ejecutor tiene prohibido ir a buscarlo:
     // `autobuild` le dice que lea cuatro archivos una sola vez y nada más, y el roadmap no es ninguno.
     epic: epic ? { num: epic.num, title: epic.title, status: epic.status, context: epic.context } : null,
-    wip: state.wip ? { phase: state.wip.phase, complete: state.wip.complete, pending: state.wip.pending } : null,
+    // El WIP que este runner tiene, no el de la instancia: es lo único que le corresponde continuar.
+    wip: mio ? { phase: mio.phase, complete: mio.complete, pending: mio.pending } : null,
+    // Dónde va su plan. Lo dice el motor porque el nombre sale del id del runner, y quien escribe el
+    // plan —un workflow— no tiene por qué saber cómo se deriva.
+    wipFile: `wip/${P.wipName(from)}.md`,
     queued: state.milestones.reduce((total, milestone) => total + milestone.tasks.length, 0),
     blockedTasks: skipped,
     humanActions,
+    owner: me,
+    // El día de hoy, para quien no tiene reloj. Un workflow no puede llamar a `new Date` —una puerta se
+    // lo impide, porque su salida dejaría de ser reproducible— y necesita la fecha para cerrar una tarea.
+    // Sale de acá y no del modelo: es un dato mecánico, y pedírselo a un agente es invitarlo a inventarlo.
+    today: TODAY(),
+    claimed,
+    taken,
+    waiting,
     // Sólo las vencidas: la fila que todavía no vence no tiene nada que decirle a quien va a tomar una
     // tarea, y una recurrencia que hablara siempre sería ruido en el único comando que se corre en cada
     // vuelta. Que aparezca es la señal.
@@ -315,6 +387,14 @@ function context(dir, cli) {
   // que una instancia recién arrancada —`onboard` deja filas pendientes y ninguna tarea todavía—
   // respondía «sin tarea disponible» y se tragaba las siete cosas que una persona tenía que desbloquear.
   // Es el comando que existe para decir qué toca ahora, contestando «nada» cuando lo que toca es eso.
+  // Tu propio nombre en una tarea «ajena» es la señal de que sos vos desde otro runner, y sin decirlo se
+  // lee como que alguien te ganó la tarea.
+  const dueño = (one) => (one.owner === report.owner ? `${one.owner} — vos, desde otro runner` : one.owner)
+  const espera = () => {
+    for (const one of report.waiting) {
+      console.log(`WAIT   ${one.slug}: espera a ${one.dep}${one.owner ? ` (${one.owner})` : ''}`)
+    }
+  }
   const due = () => {
     for (const one of report.recurring) {
       const when = one.overdueDays === 0 ? 'vence hoy' : `vencida hace ${one.overdueDays} día(s)`
@@ -323,6 +403,10 @@ function context(dir, cli) {
   }
   if (!report.task) {
     console.log('TASK   (sin tarea disponible)')
+    // Mismo motivo que `blocked` arriba, con otra causa: acá la cola no la traba una persona, la tiene
+    // el equipo, y lo que corresponde es hablar con quien la tiene.
+    for (const one of report.taken) console.log(`TAKEN  ${one.slug} (${dueño(one)})`)
+    espera()
     for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
     due()
     return
@@ -345,6 +429,12 @@ function context(dir, cli) {
   for (const criterion of criteria) console.log(`${criterion.id.padEnd(6)} ${criterion.text}`)
   const wip = report.wip ? `${report.wip.phase} · ${report.wip.complete}✓/${report.wip.pending}○` : 'idle'
   console.log(`WIP    ${wip}`)
+  if (hitoOmitido) console.log(`HITO   ${hitoOmitido}`)
+  console.log(report.claimed
+    ? `CLAIM  tuya desde el reclamo (${report.owner})`
+    : `CLAIM  libre — tomala con \`ops claim <planning> ${report.task.slug}\``)
+  for (const one of report.taken) console.log(`TAKEN  ${one.slug} (${dueño(one)})`)
+  espera()
   if (report.blockedTasks.length) console.log(`SKIP   ${report.blockedTasks.join(', ')} (acción humana abierta)`)
   for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
   due()
@@ -379,91 +469,4 @@ function recurring(dir, cli) {
   }
 }
 
-// El historial de acciones humanas se acumula en un solo archivo y no por épica: una fila no pertenece
-// a ninguna, y esperar el cierre de una épica dejaría sin archivar las de un planning que todavía no
-// cerró ninguna —que es justo cuando el archivo se vuelve ilegible—.
-// Adoptar es declarar de una vez qué historia llegó con el proyecto. Se genera con lo que hoy no cumple
-// y no se vuelve a correr: un baseline que se regenera perdona de nuevo lo que alguien ya se tomó el
-// trabajo de arreglar, y uno que crece a mano deja de ser una lista de perdones para ser una amnistía.
-// Achicarlo sí es a mano, borrando el renglón que `check` señala.
-function adopt(dir) {
-  const root = path.resolve(dir || '.')
-  const target = path.join(root, AD.BASELINE)
-  if (fs.existsSync(target)) {
-    // Un baseline que ya trae huella no se toca: regenerarlo es exactamente lo que la huella impide.
-    // Uno sin huella lo generó una versión anterior, y sellarlo no es regenerar nada — se calcula sobre
-    // lo que ya está—, así que es la única salida de un aviso que si no no tendría ninguna.
-    const existing = fs.readFileSync(target, 'utf8')
-    if (!AD.sealWarnings(root).some((one) => /sin huella/.test(one))) {
-      fail(`${AD.BASELINE} ya existe: se genera una vez. Para retirar un renglón, ponele \`#~\` `
-        + 'delante; `check` marca los que ya cumplen.')
-    }
-    const slugs = AD.declared(existing)
-    F.atomicWrite(target, existing.replace(/\n?$/, `\n# huella: ${slugs.length} entradas · `
-      + `sha256:${AD.digest(slugs)}\n`))
-    return console.log(`✓ ${AD.BASELINE} sellado con ${slugs.length} entrada(s); la lista no cambió`)
-  }
-  const epics = P.readEpics(root)
-  const pending = P.readDone(root).entries.filter((entry) => PC.doneEntryErrors(entry, epics).length)
-  if (!pending.length) {
-    return console.log('= no hay nada que exentar: todas las entradas de DONE cumplen el contrato')
-  }
-  const today = TODAY()
-  const slugs = pending.map((entry) => entry.slug)
-  F.atomicWrite(target, `# Entradas anteriores a la adopción de Cauce (${today}). No se agregan nuevas:\n`
-    + '# desde esa fecha rige el contrato completo, y `check` avisa cuando una de éstas pasa a\n'
-    + '# cumplirlo para que le pongas `#~` delante y quede retirada.\n'
-    + `# huella: ${slugs.length} entradas · sha256:${AD.digest(slugs)}\n`
-    + `${slugs.join('\n')}\n`)
-  console.log(`✓ ${pending.length} entrada(s) exentas en ${AD.BASELINE}`)
-  return console.log('  revisá la lista: lo que sí cumple el contrato no tiene por qué estar ahí')
-}
-
-function archiveHumanActions(root) {
-  const source = path.join(root, 'HUMAN_ACTIONS.md')
-  const rows = P.readHumanActions(root).filter((row) => row.resolved)
-  if (!rows.length) return console.log('= no hay filas resueltas')
-  const target = path.join(root, 'done', 'human-actions.md')
-  const header = '| Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |\n|---|---|---|---|'
-  const previous = P.read(target).trimEnd()
-  const head = previous || `---\nstatus: archived\n---\n\n# Acciones humanas resueltas\n\n${header}`
-  fs.mkdirSync(path.dirname(target), { recursive: true })
-  F.atomicWrite(target, `${head}\n${rows.map((row) => row.raw).join('\n')}\n`)
-  const drop = new Set(rows.map((row) => row.raw))
-  const kept = P.read(source).split('\n').filter((line) => !drop.has(line))
-  F.atomicWrite(source, `${kept.join('\n').trimEnd()}\n`)
-  return console.log(`✓ ${rows.length} fila(s) archivadas`)
-}
-
-function archive(dir, rawNum) {
-  const root = path.resolve(dir || '.')
-  if (String(rawNum || '') === 'human-actions') return archiveHumanActions(root)
-  const num = String(rawNum || '').padStart(3, '0')
-  if (!/^\d{3}$/.test(num)) fail('La épica debe ser NNN, o human-actions.', 2)
-  const epic = P.readEpics(root).find((candidate) => candidate.num === num)
-  if (!epic) fail(`No existe epic-${num}.`, 2)
-  if (epic.status !== 'closed') fail(`epic-${num} no está cerrada (status: ${epic.status}).`)
-  const target = path.join(root, 'done', `epic-${num}.md`)
-  const source = path.join(root, 'DONE.md')
-  const content = P.read(source)
-  const slugs = new Set(epic.stories.map((story) => story.slug))
-  const entries = P.readDone(root).entries.filter((entry) => entry.source === 'DONE.md' && slugs.has(entry.slug))
-  if (!entries.length) {
-    if (fs.existsSync(target)) return console.log(`= epic-${num} ya estaba archivada`)
-    fail(`No hay entradas de epic-${num} en DONE.md.`)
-  }
-  let updated = content
-  for (const entry of entries) updated = updated.replace(entry.raw, '').replace(/\n{3,}/g, '\n\n')
-  fs.mkdirSync(path.dirname(target), { recursive: true })
-  if (!fs.existsSync(target)) {
-    F.atomicWrite(
-      target,
-      `---\nepic: ${num}\nstatus: archived\n---\n\n# DONE — ${epic.title}\n\n` +
-        `${entries.map((entry) => entry.raw).join('\n\n')}\n`,
-    )
-  }
-  F.atomicWrite(source, `${updated.trimEnd()}\n`)
-  console.log(`✓ epic-${num}: ${entries.length} entrada(s) archivadas`)
-}
-
-module.exports = { check, evidence, tree, context, archive, adopt, recurring }
+module.exports = { check, evidence, tree, context, recurring }

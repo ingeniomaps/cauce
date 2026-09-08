@@ -15,7 +15,7 @@ Los cinco recorridos llegan como skills en `.agents/skills/` y se invocan con `$
 acá —son referencia, no un runtime compatible—, así que cada recorrido se ejecuta fase por fase
 siguiendo el protocolo.
 
-`{{OPS_DIR}}planning/WIP.md` es el mutex: una sola tarea activa. `{{OPS_DIR}}planning/AWAITING_REVIEW.md`
+`{{OPS_DIR}}planning/wip/<runner>.md` es el mutex: una sola tarea activa. `{{OPS_DIR}}planning/AWAITING_REVIEW.md`
 bloquea una corrida nueva hasta que un humano revise. Nada se promueve desde `INBOX.md` sin aprobación.
 
 Antes de cerrar, corré `node {{OPS_DIR}}tools/ops.js check {{OPS_DIR}}planning`.

@@ -9,9 +9,12 @@ invariantes.
   `(service: ruta)`.
 - Hito: `## Hito slug — Título`.
 - Tarea: `- [ ] **slug** [express|directo|lite|full] — descripción. _Aceptación: observable._ (service: ruta) (cast: quien-entrega → quien-revisa, otro)`;
-  puede heredar aceptación usando `(→ CN) (epic: NNN)`. Lane y cast son opcionales: sin ellos la tarea
-  está sin clasificar, que es un estado y no un error.
-- DONE: entrada `[x]` con `acept:`, `done:`, `qa:`, `tests:` y `commit:`. `tests:` enlaza cada criterio
+  puede heredar aceptación usando `(→ CN) (epic: NNN)` y declarar `(depende: slug, otro)`. Lane y cast son
+  opcionales: sin ellos la tarea está sin clasificar, que es un estado y no un error. Una tarea con
+  dependencias no se ofrece ni se toma hasta que todas estén en DONE.
+- DONE: un archivo por tarea cerrada, `done/<slug>.md`, con su entrada `[x]` y los campos `acept:`,
+  `fecha:` en AAAA-MM-DD, `done:`, `qa:`, `tests:` y `commit:`. La fecha es la del cierre, y es lo que
+  ordena una evidencia que ya no depende de su posición dentro de un archivo. `tests:` enlaza cada criterio
   mediante `CN → prueba`; usa `A → prueba` cuando no hay épica o `n/a — razón` si no existe una
   superficie ejecutable. `decisions:` es opcional y, si aparece, cita `[fuente: ...]` o
   `[supuesto: ...]`. `commit:` apunta a `<sha> <asunto>`, o a `n/a — razón` cuando la tarea no
@@ -25,12 +28,18 @@ invariantes.
   cola de su línea de BACKLOG. Vencer no bloquea: cada vuelta se promueve con el período en el slug
   —`<qué>-AAAA-MM`— y esa promoción la escribe una persona. Postergar se registra bajo
   `## Postergaciones` con `- **qué** AAAA-MM-DD — razón`.
-- WIP activo: frontmatter y checklist; inactivo: `status: IDLE`.
+- Reclamo: `claims/<tarea>.md` con frontmatter `task/owner/runner/started/service`; el nombre del
+  archivo es el slug que reserva, y por eso un `task` que diga otra cosa es un error. `owner` dice a
+  quién preguntarle y `runner` decide de quién es: con varios agentes en una máquina la persona es
+  la misma y el árbol de trabajo no.
+- WIP activo: frontmatter y checklist en `wip/<runner>.md`; inactivo cuando el archivo no está. Es
+  local y no viaja por git: existe para recuperar la sesión de quien lo escribió, y es uno por runner
+  porque una instancia sidecar la comparten todos los agentes de esa máquina.
 
 ## Gates de arranque
 
 1. Si existe `AWAITING_REVIEW.md`, parar y mostrar la acción que contiene.
-2. Si WIP está activo y puede pertenecer a otro runner, parar: es el mutex.
+2. Si tu WIP está activo, la tarea es ésa: es el mutex del runner, y sólo se lee el propio.
 3. Si WIP está activo tras una interrupción confirmada, verificar los pasos `[x]` en disco y continuar
    desde el primer `[ ]`; no replanear.
 4. Si WIP apunta a una tarea ya en DONE y fuera de BACKLOG, reparar el cierre dejando WIP en IDLE.
@@ -38,7 +47,8 @@ invariantes.
 ## Máquina por tarea
 
 1. Triage: inspeccionar estado y cambios existentes.
-2. Pick: primera tarea no bloqueada del primer hito.
+2. Pick: primera tarea no bloqueada ni reclamada por otro runner, recorriendo los hitos en orden;
+   reclamarla antes de empezar y empujar ese reclamo, que sin empujar no reserva nada.
 3. Classify: si la tarea no declara lane y cast, decidirlos y escribirlos en su línea.
 4. Ready: exigir aceptación concreta y decisiones resueltas.
 5. Decompose: dividir trabajo mayor a `maxTaskHours` o con más de cinco condiciones de aceptación.
@@ -49,7 +59,8 @@ invariantes.
 10. Verify: ejecutar los gates declarados por el servicio y registrar exit codes.
 11. QA: probar la aceptación por el camino que usa un consumidor real.
 12. Commit: stage explícito y commits verificables, uno por naturaleza del diff.
-13. Done: mover la tarea, registrar evidencia, limpiar WIP y cerrar/archivar la épica si corresponde.
+13. Done: sacar la tarea de la cola, escribir su evidencia en `done/<slug>.md`, limpiar WIP, soltar
+    el reclamo y cerrar la épica si no le queda ninguna historia abierta.
 14. Cierre: check verde, deuda residual al INBOX y checkpoint entre hitos.
 
 ## Lanes
@@ -73,7 +84,8 @@ chequeo de permisos es `full`, y un componente entero de presentación puede ser
 ## Invariantes
 
 1. Una tarea tiene un dueño de estado: roadmap → BACKLOG → overlay WIP → DONE.
-2. Un solo runner a la vez; WIP activo es mutex — `business-rules/system/BR-OPS-001`.
+2. Un runner lleva una tarea a la vez —WIP, que es local: `business-rules/system/BR-OPS-001`— y una
+   tarea la lleva un runner —el reclamo, que es compartido: `business-rules/system/BR-OPS-005`—.
 3. INBOX nunca se ejecuta automáticamente — `business-rules/system/BR-OPS-002`.
 4. No declarar éxito sin comandos, resultados y exit codes reales — `business-rules/system/BR-OPS-004`.
 5. No inventar credenciales ni decisiones; registrar HUMAN_ACTIONS.

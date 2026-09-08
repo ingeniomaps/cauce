@@ -237,6 +237,14 @@ test('toda ruta declarada del sistema existe en el paquete', () => {
     .filter(({ source }) => !fs.existsSync(path.join(repoRoot, source)))
   assert.deepEqual(lost, [], 'hay rutas del sistema que no resuelven contra el paquete')
 
+  // Lo mismo para lo que una versión agrega, que entra por el mismo `continue` silencioso y no estaba
+  // cubierto: `.gitattributes` vive sólo en el molde, así que sin su entrada en `TEMPLATE_FILES` la
+  // instancia que actualiza no lo recibía y `upgrade` terminaba en verde igual.
+  const perdidos = O.addedPaths()
+    .map((file) => ({ file, source: O.sourceOf(file) }))
+    .filter(({ source }) => !fs.existsSync(path.join(repoRoot, source)))
+  assert.deepEqual(perdidos, [], 'una versión agrega rutas que no resuelven contra el paquete')
+
   for (const relative of O.RUNTIME_PATHS.concat(O.SYSTEM_COLLECTIONS)) {
     const source = O.sourceOf(relative)
     // `.ops/*` sólo existe en una instancia en modo copia; en el paquete es su origen real.

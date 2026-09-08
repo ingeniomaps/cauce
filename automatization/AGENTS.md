@@ -65,6 +65,6 @@ cambia instalación o materialización, valida `ops init` en un directorio tempo
 
 ## Límites
 
-No edites `planning/BACKLOG.md`, `WIP.md` o `DONE.md` desde hooks o instaladores. No hagas que `ops init` active
+No edites `planning/BACKLOG.md`, `planning/wip/` ni `planning/done/` desde hooks o instaladores. No hagas que `ops init` active
 un runner silenciosamente. No agregues lógica de negocio, nombres de servicios de un proyecto, tokens, rutas
 personales ni modelos concretos a esta capa reusable.

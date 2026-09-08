@@ -5,13 +5,14 @@
 //
 // Acá se ejecuta la decisión. Dónde aterriza el wiring que la invoca es de `runners.test.js`.
 
-const { tempRoot, outsideTempRoot } = require('../support/environment')
+const { tempRoot, outsideTempRoot, writeWip } = require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
+
 const { spawnSync } = require('node:child_process')
 const { execute, executeAll, guards, hookGroups } = require('../../engine/hooks/run')
 
@@ -1288,7 +1289,7 @@ function planFirstRoot(prefijo, wip, backlog = BACKLOG_CON_TAREA) {
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'),
     JSON.stringify({ mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }] }))
-  fs.writeFileSync(path.join(root, 'planning', 'WIP.md'), wip)
+  writeWip(path.join(root, 'planning'), wip)
   fs.writeFileSync(path.join(root, 'planning', 'BACKLOG.md'), backlog)
   return root
 }
@@ -1342,9 +1343,28 @@ test('guard-plan-first queda inerte mientras el planning no declara tareas', () 
   // Una tarea ya terminada cuenta igual: el BACKLOG vacío de una instancia con historia no la devuelve
   // al día uno.
   const conHistoria = planFirstRoot('ops-hook-plan-historia-', WIP_IDLE, BACKLOG_VACIO)
-  fs.writeFileSync(path.join(conHistoria, 'planning', 'DONE.md'),
-    '# Done activo\n\n## Hito primero — Primer resultado\n\n- [x] **alta-de-cliente** — Alta\n')
+  fs.mkdirSync(path.join(conHistoria, 'planning', 'done'), { recursive: true })
+  fs.writeFileSync(path.join(conHistoria, 'planning', 'done', 'alta-de-cliente.md'),
+    '- [x] **alta-de-cliente** — Alta\n')
   blocked('plan-first', { cwd: conHistoria, tool_input: { file_path: 'src/altas.js' } }, /sin plan/)
+})
+
+// Con `mode: sidecar` hay un solo `planning/` por máquina, así que el plan de un agente está al alcance
+// del otro. Si el guard leyera cualquiera, el segundo escribiría producto amparado en el plan del primero
+// y quedaría inerte justo donde más hace falta: dos agentes construyendo a la vez.
+test('el plan de un runner no le sirve a otro para saltear plan-first', () => {
+  const root = planFirstRoot('ops-hook-plan-por-runner-', WIP_IDLE)
+  writeWip(path.join(root, 'planning'), '---\ntask: alta-de-cliente\nphase: Build\n---\n'
+    + '\n## Plan aprobado\n1. [ ] Montar el alta\n')
+  const escribir = { cwd: root, tool_input: { file_path: 'src/altas.js' } }
+
+  assert.doesNotThrow(() => execute('plan-first', escribir), 'con su propio plan, escribe')
+
+  const previo = process.env.CAUCE_RUNNER
+  process.env.CAUCE_RUNNER = '/w/otro-agente'
+  try {
+    blocked('plan-first', escribir, /sin plan/)
+  } finally { process.env.CAUCE_RUNNER = previo }
 })
 
 test('guard-plan-first se abre por aprobación, por variable y donde no hay instancia', () => {

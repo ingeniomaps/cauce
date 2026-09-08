@@ -21,7 +21,7 @@ export const meta = {
     { title: 'Verify', detail: 'Los gates del servicio y la aceptación que ninguna prueba codifica' },
     { title: 'QA', detail: 'El comportamiento ejercitado como lo ve quien lo usa' },
     { title: 'Commit', detail: 'Conventional Commits, uno por naturaleza del diff, sin push' },
-    { title: 'Done', detail: 'Cierre atómico en DONE con el WIP en IDLE' },
+    { title: 'Done', detail: 'Cierre atómico: evidencia escrita, cola y plan limpios, reserva suelta' },
     { title: 'Closing', detail: 'Check de planning y checkpoint humano del hito' },
   ],
 }
@@ -31,8 +31,8 @@ const CONFIG = `${ROOT}/ops.config.json`
 const P = `${ROOT}/planning`
 const ORG = `${ROOT}/organization`
 const BACKLOG = `${P}/BACKLOG.md`
-const DONE = `${P}/DONE.md`
-const WIP = `${P}/WIP.md`
+// Una tarea cerrada escribe su propio archivo, así que dos corridas en paralelo no comparten ninguno.
+const doneFile = (slug) => `${P}/done/${slug}.md`
 const HUMAN = `${P}/HUMAN_ACTIONS.md`
 const GATE = `${P}/AWAITING_REVIEW.md`
 const ROADMAP = `${P}/roadmap`
@@ -58,7 +58,20 @@ const CONTEXT = {
       properties: { build: { type: 'string' }, review: { type: 'array', items: { type: 'string' } } },
     },
     blockedTasks: { type: 'array', items: { type: 'string' } },
+    // Si la tarea que `context` devolvió ya está reservada a nombre de este runner. Libre no significa
+    // que sea nuestra: significa que todavía la puede tomar cualquiera, y dos corridas en paralelo la
+    // reciben las dos.
+    claimed: { type: 'boolean' },
+    // La fecha de hoy según el motor. Este recorrido no tiene reloj propio a propósito.
+    today: { type: 'string' },
+    // Dónde va el plan de este runner. El nombre sale de su id y el recorrido no lo deriva: lo
+    // pregunta, igual que la fecha.
+    wipFile: { type: 'string' },
   },
+}
+const CLAIM = {
+  type: 'object', additionalProperties: false, required: ['claimed'],
+  properties: { claimed: { type: 'boolean' }, details: { type: 'string' } },
 }
 const EXPANSION = {
   type: 'object', additionalProperties: false, required: ['expanded'],
@@ -311,7 +324,10 @@ const write = (prompt, options = {}) => agent(`${LEDGER}\n\n${prompt}`, options)
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
 const readContext = () => read(
   `Corré "node tools/ops.js context ${P} --json" desde ${ROOT} y reportá sólo lo que imprimió. Derivá hasTask ` +
-  `de si task es null, wipActive de si wip es null y lane de task.tier; copiá slug, hito, service, acceptance, ` +
+  `de si task es null, wipActive de si wip es null, claimed del campo claimed, today y wipFile de sus ` +
+  `campos, y lane ` +
+  `de task.tier; copiá slug, ` +
+  `hito, service, acceptance, ` +
   `epic y cast de task, y epicContext de epic.context —vacío si no hay épica—. El comando es la fuente de ` +
   `verdad: no abras archivos de planning para completarlo.`,
   { schema: CONTEXT, label: 'planning-context' },
@@ -350,6 +366,24 @@ while (rounds++ < MAX_TASKS) {
   const task = {
     id: planning.slug, hito: planning.hito, service: planning.service,
     acceptance: planning.acceptance, epic: planning.epic, epicContext: planning.epicContext || '',
+  }
+  // Reservar antes de construir, y antes de fijar el hito de la corrida. Sin esto dos corridas en
+  // paralelo trabajan la misma tarea: `context` sólo puede saltear lo que alguien ya reclamó, y el
+  // primero en preguntar todavía no reclamó nada. La ventana entre preguntar y reservar existe igual, y
+  // por eso perder la carrera no es un error: se relee y se sigue con la que quedó libre.
+  if (!planning.claimed && !planning.wipActive) {
+    phase('Claim')
+    const reserva = await write(
+      `Corré "node tools/ops.js claim ${P} ${task.id}" desde ${ROOT}. No escribas ningún archivo vos: lo ` +
+      `escribe el comando. claimed=true sólo con exit 0; si falla porque la tomó otro, claimed=false y ` +
+      `copiá el mensaje en details.`,
+      { schema: CLAIM, label: `claim:${task.id}` },
+    )
+    if (!reserva || !reserva.claimed) {
+      planning = await readContext()
+      if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
+      continue
+    }
   }
   currentMilestone = task.hito
 
@@ -535,7 +569,7 @@ while (rounds++ < MAX_TASKS) {
     `dio; recién después implementá. Un test que pasa antes de que exista el código no asercia lo que dice ` +
     `aserciar: endurecelo y volvé a correr hasta verlo fallar. Corré las pruebas que necesites para ver ese ` +
     `rojo y ese verde, y nada más: los gates completos, el QA, el commit y el cierre son fases posteriores, ` +
-    `así que no toques ${DONE} ni ${BACKLOG} ni el status del WIP. Lo que el plan no previó va en discovered y ` +
+    `así que no toques ${P}/done/ ni ${BACKLOG} ni el status del WIP. Lo que el plan no previó va en discovered y ` +
     `no en el código a secas: kind=edge si esta tarea lo puede fijar —y entonces entra con su prueba, que ` +
     `nombrás en test y anotás en redFirst—, kind=open si lo notaste y no impide entregar la aceptación: se ` +
     `registra para que lo decida quien corresponde y el recorrido sigue. Si de verdad no podés entregar sin ` +
@@ -693,9 +727,11 @@ while (rounds++ < MAX_TASKS) {
 
   phase('Done')
   await write(
-    `Cerrá ${task.id} de forma atómica: agregala bajo su hito en ${DONE} con evidencia de acept, done, qa, ` +
-    `tests y commit; sacala junto con sus notas indentadas de ${BACKLOG}; cerrá su épica sólo si no queda ` +
-    `ninguna tarea etiquetada; y dejá ${WIP} en status IDLE. En decisions no nombres una fase ni un cargo ` +
+    `Cerrá ${task.id} de forma atómica: escribí ${doneFile(task.id)} con su evidencia —acept, ` +
+    `fecha: ${planning.today}, done, qa, tests y commit, en el formato de entrada que trae este preámbulo—; ` +
+    `sacala junto con sus notas indentadas de ${BACKLOG}; cerrá su épica sólo si no queda ` +
+    `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE; y soltá la reserva corriendo ` +
+    `"node tools/ops.js release ${P} ${task.id}". En decisions no nombres una fase ni un cargo ` +
     `que no figure en estos hechos. Hechos: lane=${planning.lane || 'sin clasificar'}; ` +
     `review=${reviewFact}; fases=${ran.join(' → ')}; build=${build.summary}; ` +
     `verify=${JSON.stringify(verified.commands)}; qa=${qa.evidence}; commit=${commit.hash || commit.reason}.`,

@@ -64,6 +64,21 @@ function run(args, cwd = path.dirname(CLI)) {
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', env })
 }
 
+// El plan de un runner vive en `wip/<runner>.md`, así que una prueba tiene que fijar su runner y escribir
+// donde el CLI lo va a buscar: sin fijarlo, el nombre saldría del árbol donde corre la prueba y cambiaría
+// según dónde se la corra. Se fija acá y no en cada archivo porque son tres, y una razón repetida en tres
+// lugares se pudre en dos de ellos.
+const TEST_RUNNER = '/w/prueba'
+process.env.CAUCE_RUNNER = TEST_RUNNER
+
+const wipPath = (planning) => path.join(planning, 'wip',
+  `${require('../../engine/planning/parser').wipName(TEST_RUNNER)}.md`)
+
+function writeWip(planning, texto) {
+  fs.mkdirSync(path.join(planning, 'wip'), { recursive: true })
+  fs.writeFileSync(wipPath(planning), texto)
+}
+
 // Este repositorio puesto donde una instancia busca el paquete, que es de donde le llegan el motor y
 // el catálogo. Lo que el enlace no prueba —que el tarball lleve todo— lo cubre `lifecycle.test.js`.
 function linkEngine(target) {
@@ -161,6 +176,9 @@ function installedProject(name, runner) {
 }
 
 module.exports = {
+  TEST_RUNNER,
+  wipPath,
+  writeWip,
   MIN_ROLES, opsConfig, filesBelow, tempRoot, outsideTempRoot, CLI, run, linkEngine, installedProject,
   workflow, workflowStep, workflowCommand,
 }

@@ -152,13 +152,13 @@ test('una acción humana cuya tarea no está en el backlog no rompe check ni blo
 
   const errores = PC.validateState({
     epics: [], milestones: [{ slug: 'h', title: 'H', tasks: [] }],
-    done: { entries: [], set: new Set(), duplicates: [] }, wip: null, humanActions: [fila],
+    done: { entries: [], set: new Set(), duplicates: [] }, wips: [], humanActions: [fila],
   })
   assert.deepEqual(errores, [], 'check sólo juzga el Estado de la fila, nunca su tarea')
 
   const tarea = (slug) => ({ slug, tier: 'lite', cast: { build: '', review: [] }, service: 'api' })
   const { task, skipped } = ST.currentTask({
-    milestones: [{ slug: 'h', tasks: [tarea('uno')] }], done: { set: new Set() }, wip: null,
+    milestones: [{ slug: 'h', tasks: [tarea('uno')] }], done: { set: new Set() }, wips: [],
   }, [fila])
   assert.equal(task.slug, 'uno', 'no bloquea a nadie: sólo se saltea lo que está en la cola')
   assert.deepEqual(skipped, [], 'y no se anuncia como salteada, porque no lo está')
@@ -170,12 +170,10 @@ test('una acción humana cuya tarea no está en el backlog no rompe check ni blo
 // cuatro tropiezos en días distintos, porque el error nombra una ausencia que no es la que hay.
 test('un campo de DONE que se envuelve se lee entero', () => {
   const root = tempRoot('ops-done-wrap-')
-  fs.writeFileSync(path.join(root, 'DONE.md'), `# Done activo
-
-## Hito ejemplo — Un hito cualquiera
-
-- [x] **tarea-envuelta** — Resultado construido.
+  fs.mkdirSync(path.join(root, 'done'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'done', 'tarea-envuelta.md'), `- [x] **tarea-envuelta** — Resultado construido.
   acept: criterio observable
+  fecha: 2026-09-08
   done: lo que se hizo
   qa: lo que se observó por el camino real
   tests: A → make test
@@ -198,11 +196,8 @@ test('un campo de DONE que se envuelve se lee entero', () => {
 // absorbe sin que `check` se queje.
 test('el último campo de una entrada no se traga lo que viene después', () => {
   const root = tempRoot('ops-done-tail-')
-  fs.writeFileSync(path.join(root, 'DONE.md'), `# Done activo
-
-## Hito ejemplo — Un hito cualquiera
-
-- [x] **tarea-con-cola** — Otro resultado.
+  fs.mkdirSync(path.join(root, 'done'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'done', 'tarea-con-cola.md'), `- [x] **tarea-con-cola** — Otro resultado.
   done: lo que se hizo
   commit: abc1234 feat(x): subject
 

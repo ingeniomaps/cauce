@@ -115,7 +115,15 @@ function evaluationBench(root, agent, caso, force, kind) {
   // sin pagar un `npm install` por corrida. El cargo llega a un banco donde el CLI funciona.
   const scope = path.join(dir, 'node_modules', '@ingeniomaps')
   fs.mkdirSync(scope, { recursive: true })
-  fs.symlinkSync(IN.PROJECT_ROOT, path.join(scope, 'cauce'), 'dir')
+  // El enlace se pisa por lo mismo que el andamiaje de arriba: a veces sobrevive al borrado del banco, y
+  // entonces crearlo corta la corrida con `EEXIST` en vez de rehacerlo. Es el único paso que no seguía esa
+  // regla, y el que falló en CI rehaciendo el mismo `11-otro` que ya tiene reintentos por esto.
+  //
+  // `rmSync` sobre un enlace lo quita a él y no a lo que apunta —que acá es la raíz del toolkit—, así que
+  // esto no puede llevarse por delante el repositorio.
+  const link = path.join(scope, 'cauce')
+  fs.rmSync(link, { force: true })
+  fs.symlinkSync(IN.PROJECT_ROOT, link, 'dir')
 
   // El artefacto del caso, si lo tiene: la guía del proveedor que el pedido manda implementar, el CSV
   // con instrucciones adentro. Entra antes del commit limpio a propósito — si entrara después, `status`

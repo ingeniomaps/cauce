@@ -18,6 +18,7 @@ const { compileWorkflow } = require('./workflow')
 const KEY = {
   contract: 'Triage|contract-digest',
   context: 'Triage|planning-context',
+  claim: 'Claim|claim:T-1',
   classify: 'Classify|classified',
   ready: 'Ready|ready,needsHuman',
   decompose: 'Decompose|hours,needsSplit',
@@ -46,9 +47,12 @@ function baseScript() {
     // bucle cierre en vez de repetir la misma para siempre.
     [KEY.context]: {
       blocked: '', hasTask: true, wipActive: false, queued: 1, lane: 'full',
+      today: '2026-09-08', wipFile: 'wip/w-uno.md',
       cast: { build: 'backend-engineer', review: [] },
       slug: 'T-1', hito: 'H1', service: './api', acceptance: 'el alta rechaza un duplicado', epic: 'E1',
     },
+    // La reserva sale bien en el camino feliz; el escenario que la pierde la contesta al revés.
+    [KEY.claim]: { claimed: true },
     [KEY.classify]: { classified: [{ slug: 'T-1', lane: 'full', build: 'backend-engineer', review: [] }] },
     [KEY.ready]: { ready: true, needsHuman: false },
     [KEY.decompose]: { hours: 2, needsSplit: false },
