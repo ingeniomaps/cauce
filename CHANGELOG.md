@@ -46,7 +46,9 @@ diseño — eso vive en el commit y en el código.
 - **El aviso de reclamo viejo mira si la rama avanzó, no cuánto hace que se tomó.** El tiempo transcurrido
   no distingue una tarea larga de una abandonada, y equivocarse cuesta en los dos sentidos: apurar a quien
   está trabajando, o dejar bloqueada para siempre la tarea de quien se fue. Ahora `check` mira el último
-  commit de `task/<tarea>`: tres días sin ninguno avisan, y una tarea que recibe commits no se apura nunca
+  commit **propio** de `task/<tarea>` —los que no están en el tronco, porque una rama recién creada hereda
+  su historia entera y sin esa distinción toda rama parecería haber avanzado el día que se creó—: tres días
+  sin ninguno avisan, y una tarea que recibe commits no se apura nunca
   aunque lleve semanas tomada. Sin repositorio resoluble el aviso vuelve a mirar sólo la fecha — degrada a
   lo que había, no rompe.
 

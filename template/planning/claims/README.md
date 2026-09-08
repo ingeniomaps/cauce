@@ -58,8 +58,9 @@ haberla tomado, y por eso `ops claim` lo recuerda al terminar.
 ## Cuando alguien se va
 
 Un reclamo abandonado bloquea su tarea para siempre. `ops check` avisa a los tres días **sin señales de
-avance**, que no es lo mismo que tres días desde que se tomó: lo que mira es si la rama `task/<tarea>` se
-movió. Una tarea larga que sigue recibiendo commits no se apura nunca; una que se detuvo se ve aunque el
+avance**, que no es lo mismo que tres días desde que se tomó: lo que mira es si la rama `task/<tarea>`
+tiene commits **propios**, los que no están en el tronco. Una rama recién creada hereda la historia
+entera, así que sin esa distinción toda rama parecería haber avanzado el día que se creó. Una tarea larga que sigue recibiendo commits no se apura nunca; una que se detuvo se ve aunque el
 reclamo sea de anteayer.
 
 Sin repositorio resoluble —el `service:` no cae en ninguna raíz declarada, o el proyecto nombra sus ramas

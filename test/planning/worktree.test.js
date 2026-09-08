@@ -12,6 +12,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const R = require('../../engine/core/repos')
 
 const MOLDE = path.resolve(__dirname, '..', '..', 'template', 'planning')
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
@@ -146,4 +147,27 @@ test('un reclamo viejo cuya rama avanzó no se avisa; uno sin commits sí', () =
   const conAvance = JSON.parse(run(['check', planning, '--json']).stdout).warnings
     .filter((one) => /alta/.test(one))
   assert.deepEqual(conAvance, [], 'una tarea que avanza no se apura por llevar tiempo tomada')
+})
+
+// El defecto que apareció corriendo una sesión de equipo, no en una prueba: una rama recién creada hereda
+// la historia del tronco, así que preguntar por «su último commit» a secas devuelve el del tronco y toda
+// rama parece haber avanzado el día que se creó. Es la señal que separa una tarea larga de una abandonada,
+// y sin excluir el tronco no separaba nada — no avisaba nunca sobre una tarea que ya tiene worktree.
+test('un commit del tronco no cuenta como avance de la tarea', () => {
+  const { repo, planning } = montar('cauce-avance-')
+  assert.equal(como('/w/ana', () => run(['worktree', planning, 'alta'])).status, 0)
+  const arbol = `${repo}-alta`
+
+  assert.equal(R.lastCommit(repo, 'task/alta'), '', 'la rama recién creada no avanzó nada')
+
+  fs.writeFileSync(path.join(arbol, 'api', 'nuevo.go'), 'package main\n')
+  git(arbol, 'add', 'api/nuevo.go')
+  git(arbol, 'commit', '-q', '-m', 'avance de la tarea')
+  assert.match(R.lastCommit(repo, 'task/alta'), /^\d{4}-\d{2}-\d{2}$/, 'un commit propio sí')
+
+  // Y un commit nuevo en el tronco tampoco: avanzó el proyecto, no la tarea.
+  fs.writeFileSync(path.join(repo, 'api', 'otro.go'), 'package main\n')
+  git(repo, 'add', 'api/otro.go')
+  git(repo, 'commit', '-q', '-m', 'avance del tronco')
+  assert.equal(R.lastCommit(repo, 'task/main-no-existe'), '', 'y una rama que no existe no inventa fecha')
 })
