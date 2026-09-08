@@ -280,6 +280,10 @@ test('solo se toma trabajo promovido, y sin identidad no se toma nada', () => {
     const sinSlug = como('ana@acme.com', () => run([comando, dir]))
     assert.equal(sinSlug.status, 2, `${comando} sin tarea`)
     assert.match(sinSlug.stderr, /Falta el slug/)
+    // Y sin decir dónde: los dos toman el directorio actual, que es como se los corre parado adentro.
+    const sinDir = como('ana@acme.com', () => run([comando], dir))
+    assert.equal(sinDir.status, 2, `${comando} desde adentro del planning`)
+    assert.match(sinDir.stderr, /Falta el slug/)
   }
   const sueltaLibre = como('ana@acme.com', () => run(['release', dir, 'dashboard']))
   assert.equal(sueltaLibre.status, 2)

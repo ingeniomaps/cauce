@@ -21,17 +21,11 @@ function claim(dir, slug, cli) {
 
   // No se reserva lo que todavía no se puede empezar: una tarea tomada con su dependencia en vuelo
   // bloquea la cola sin que nadie pueda avanzarla, y el runner que la tomó se queda sin poder tomar otra.
-  const falta = (task.depends || []).find((dep) => !state.done.set.has(dep))
+  const falta = task.depends.find((dep) => !state.done.set.has(dep))
   if (falta) return fail(`${slug} depende de ${falta}, que todavía no está en DONE.`)
 
   const me = CL.owner(root)
   const from = CL.runner()
-  const taken = state.claims.find((one) => one.slug === slug)
-  if (taken && taken.runner !== from) {
-    return fail(`${slug} la tomó ${taken.owner} el ${taken.started}. Si se abandonó, `
-      + `borrá ${taken.at} a mano: soltar lo de otro es una decisión, no un comando.`)
-  }
-  if (taken) return console.log(`= ${slug} ya era tuya desde ${taken.started}`)
   if (!me) {
     return fail('No sé quién sos. Configurá `git config user.email` o exportá CAUCE_OWNER: '
       + 'un reclamo anónimo no dice a quién preguntarle.', 2)
@@ -39,7 +33,10 @@ function claim(dir, slug, cli) {
   // Un runner lleva una tarea a la vez (BR-OPS-001), y exigirlo acá hace ruidosa la única forma en que
   // este contrato falla en silencio: dos agentes de la misma máquina compartiendo id porque nadie puso
   // `CAUCE_RUNNER`. Sin esto, el segundo se llevaría la tarea del primero creyéndola suya.
-  const ocupado = state.claims.find((one) => one.runner === from && !state.done.set.has(one.slug))
+  //
+  // La que se está pidiendo queda afuera del conteo: volver a pedir la propia es reintentar, no llevar dos.
+  const ocupado = state.claims
+    .find((one) => one.runner === from && one.slug !== slug && !state.done.set.has(one.slug))
   if (ocupado) {
     return fail(`este runner ya tiene ${ocupado.slug}. Cerrala o soltala primero; y si sos otro agente `
       + 'en la misma máquina, exportá CAUCE_RUNNER con un valor propio.')
@@ -49,14 +46,23 @@ function claim(dir, slug, cli) {
   fs.mkdirSync(path.dirname(target), { recursive: true })
   const cuerpo = CL.content({ task: slug, owner: me, runner: from, started: TODAY(), service: task.service })
   try {
-    // Exclusivo a propósito: entre leer «libre» y escribir hay una ventana, y dos agentes que arrancan
-    // con segundos de diferencia la cruzan. `atomicWrite` renombra encima y el último ganaría sin que
-    // ninguno se entere; `wx` falla en el segundo, que es lo que hace del archivo una reserva.
+    // Reservar **es** crear el archivo, así que el único juez de quién la tiene es el archivo. `wx` falla
+    // si ya está, y de ahí sale la respuesta entera: propia, ajena o perdida en la carrera.
+    //
+    // Sin `wx` no habría reserva: `atomicWrite` renombra encima, y dos agentes que arrancan con segundos
+    // de diferencia ganarían los dos sin que ninguno se entere. Y una comprobación previa tampoco
+    // alcanzaría —entre mirar y escribir queda la misma ventana—, así que sería un segundo juez que
+    // adelanta un veredicto que este bloque tiene que volver a dar igual.
     fs.writeFileSync(target, cuerpo, { flag: 'wx' })
   } catch (error) {
     if (error.code !== 'EEXIST') throw error
-    const ganador = CL.read(root).find((one) => one.slug === slug)
-    return fail(`${slug} la tomó ${(ganador && ganador.owner) || 'otro runner'} mientras la pedías.`)
+    const dueño = CL.read(root).find((one) => one.slug === slug)
+    // Existía al crear y ya no está: alguien la soltó entre las dos operaciones. Es una ventana de
+    // microsegundos y aun así tiene respuesta, porque la alternativa es reventar con un TypeError.
+    if (!dueño) return fail(`${slug} cambió de manos mientras la pedías; volvé a intentarlo.`)
+    if (dueño.runner === from) return console.log(`= ${slug} ya era tuya desde ${dueño.started}`)
+    return fail(`${slug} la tomó ${dueño.owner} el ${dueño.started}. Si se abandonó, borrá `
+      + `${CL.DIR}/${slug}.md a mano: soltar lo de otro es una decisión, no un comando.`)
   }
   console.log(`✓ ${slug} tomada por ${me}`)
   // Un reclamo sin empujar no protege de nada: el otro runner lee lo que hay en su copia. Decirlo acá
