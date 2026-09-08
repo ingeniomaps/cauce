@@ -379,3 +379,32 @@ test('context puede acotarse a un hito, y avisa si el hito no existe', () => {
   assert.equal(roto.status, 2)
   assert.match(roto.stderr, /el hito bakend no existe\. Hay: frontend, backend/)
 })
+
+// Encontrado corriendo un equipo de verdad, no en una prueba: `--hito` sobre otro hito le ofrecía a
+// quien ya sostenía una tarea una segunda que `ops claim` después se niega a dar. El comando que dice
+// qué hacer y el que lo autoriza contestaban distinto, y la contradicción sólo se veía al reclamar.
+test('acotar por hito no esconde la tarea que ya tenés', () => {
+  const dir = planning('cauce-hito-propio-')
+  fs.writeFileSync(path.join(dir, 'BACKLOG.md'), `# Backlog promovido
+
+## Hito backend — Servicios
+
+- [ ] **endpoint** [lite] — Endpoint. _Aceptación: responde._ (service: api)
+
+## Hito frontend — Pantallas
+
+- [ ] **boton** [lite] — Botón. _Aceptación: exporta._ (service: web)
+`)
+  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'endpoint']), '/w/ana').status, 0)
+
+  const acotado = como('ana@acme.com', () => run(['context', dir, '--hito', 'frontend']), '/w/ana')
+  assert.match(acotado.stdout, /^TASK {3}endpoint/m, 'devuelve la suya, no una del hito pedido')
+  assert.match(acotado.stdout, /^HITO {3}frontend no se aplica: ya tenés endpoint tomada$/m,
+    'y dice por qué el filtro no se aplicó, en vez de ignorarlo en silencio')
+
+  // Sin reclamo abierto el filtro sí acota: lo que no puede es taparte lo que ya sostenés.
+  assert.equal(como('ana@acme.com', () => run(['release', dir, 'endpoint']), '/w/ana').status, 0)
+  const libre = como('ana@acme.com', () => run(['context', dir, '--hito', 'frontend']), '/w/ana')
+  assert.match(libre.stdout, /^TASK {3}boton/m)
+  assert.doesNotMatch(libre.stdout, /^HITO/m)
+})

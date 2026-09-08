@@ -40,8 +40,7 @@ function evidence(dir, cli) {
   const opsDir = path.join(root, '..')
   const entries = P.readDone(root).entries
   const slug = cli.value('--task')
-  // Sin `--task`, la más reciente. «Reciente» era la última del archivo mientras las entradas vivían
-  // en uno solo; con un archivo por tarea el orden lo da la fecha de cierre, que por eso se declara.
+  // Sin `--task`, la más reciente, y la decide `fecha:` — por qué ese campo existe lo dice el contrato.
   const reciente = [...entries].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).pop()
   const entry = slug ? entries.find((one) => one.slug === slug) : reciente
   if (!entry) return fail(slug ? `DONE no tiene la entrada ${slug}` : 'DONE no tiene ninguna entrada', 2)
@@ -305,7 +304,13 @@ function context(dir, cli) {
   // distintos casi nunca dependen entre sí ni tocan los mismos archivos. Lo que se acota es qué se
   // ofrece, no qué se sabe: `done` sigue siendo global, así que una dependencia que vive en otro hito se
   // juzga igual de bien.
+  const from = CL.runner()
   const hito = cli.value('--hito')
+  // Un filtro elige dónde buscar trabajo **nuevo**; no puede esconder el que ya tenés. Sin esto, pedir
+  // otro hito mientras sostenías una tarea ofrecía una segunda que `claim` después se niega a dar: el
+  // comando que dice qué hacer y el que lo autoriza contestaban distinto, y sólo se veía al reclamar.
+  const propio = state.claims.find((one) => one.runner === from && !state.done.set.has(one.slug))
+  let hitoOmitido = ''
   if (hito) {
     const existe = state.milestones.some((one) => one.slug === hito)
     // Un hito mal escrito devolvería «sin tarea disponible», que es indistinguible de un hito terminado.
@@ -313,12 +318,13 @@ function context(dir, cli) {
       const hay = state.milestones.map((one) => one.slug).join(', ') || '(ninguno)'
       return fail(`el hito ${hito} no existe. Hay: ${hay}`, 2)
     }
-    state.milestones = state.milestones.filter((one) => one.slug === hito)
+    if (propio) hitoOmitido = `${hito} no se aplica: ya tenés ${propio.slug} tomada`
+    else state.milestones = state.milestones.filter((one) => one.slug === hito)
   }
   const gate = path.join(root, 'AWAITING_REVIEW.md')
   const humanActions = ST.pendingHumanActions(root)
   const me = CL.owner(root)
-  const { task, skipped, claimed, taken, waiting } = ST.currentTask(state, humanActions, CL.runner())
+  const { task, skipped, claimed, taken, waiting } = ST.currentTask(state, humanActions, from)
   const epic = task ? state.epics.find((candidate) => candidate.num === task.epic) : null
   const criteria = epic ? epic.criteria.filter((criterion) => task.criteria.includes(criterion.id)) : []
   const report = {
@@ -407,6 +413,7 @@ function context(dir, cli) {
   for (const criterion of criteria) console.log(`${criterion.id.padEnd(6)} ${criterion.text}`)
   const wip = report.wip ? `${report.wip.phase} · ${report.wip.complete}✓/${report.wip.pending}○` : 'idle'
   console.log(`WIP    ${wip}`)
+  if (hitoOmitido) console.log(`HITO   ${hitoOmitido}`)
   console.log(report.claimed
     ? `CLAIM  tuya desde el reclamo (${report.owner})`
     : `CLAIM  libre — tomala con \`ops claim <planning> ${report.task.slug}\``)
