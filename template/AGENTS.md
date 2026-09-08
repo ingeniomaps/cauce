@@ -150,8 +150,9 @@ que hacía falta, apagala después, y que la razón quede escrita donde alguien 
 Antes de abrir un archivo de `planning/`, preguntarle al CLI: es determinista, no gasta contexto y no
 muta nada.
 
-- `node tools/ops.js context planning` — gate, mutex de WIP y la tarea que corresponde ahora, con su
-  aceptación y sus criterios. Es la entrada correcta para empezar a trabajar.
+- `node tools/ops.js context planning [--hito <slug>]` — gate, mutex de WIP y la tarea que corresponde
+  ahora, con su aceptación y sus criterios. Es la entrada correcta para empezar a trabajar. Con `--hito`
+  la cola se acota a ese hito, que es como un equipo se reparte trabajo sin coordinarse.
 - `node tools/ops.js tree planning` — panorama de roadmap, backlog, WIP, inbox y done.
 - `node tools/ops.js recurring planning [--promote <qué>]` — qué trabajo recurrente venció y con
   qué línea se promueve. Emite esa línea; escribirla en `BACKLOG.md` es de una persona.

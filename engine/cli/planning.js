@@ -282,6 +282,20 @@ function tree(dir, cli) {
 function context(dir, cli) {
   const root = path.resolve(dir || '.')
   const state = ST.snapshot(root)
+  // Acotar la cola a un hito es como un equipo se reparte trabajo sin coordinarse: dos personas en hitos
+  // distintos casi nunca dependen entre sí ni tocan los mismos archivos. Lo que se acota es qué se
+  // ofrece, no qué se sabe: `done` sigue siendo global, así que una dependencia que vive en otro hito se
+  // juzga igual de bien.
+  const hito = cli.value('--hito')
+  if (hito) {
+    const existe = state.milestones.some((one) => one.slug === hito)
+    // Un hito mal escrito devolvería «sin tarea disponible», que es indistinguible de un hito terminado.
+    if (!existe) {
+      const hay = state.milestones.map((one) => one.slug).join(', ') || '(ninguno)'
+      return fail(`el hito ${hito} no existe. Hay: ${hay}`, 2)
+    }
+    state.milestones = state.milestones.filter((one) => one.slug === hito)
+  }
   const gate = path.join(root, 'AWAITING_REVIEW.md')
   const humanActions = ST.pendingHumanActions(root)
   const me = CL.owner(root)

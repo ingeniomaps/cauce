@@ -70,8 +70,9 @@ Dos cosas que el mecanismo no reemplaza:
   servicios distintos no se pueden pisar en el código, dos del mismo pueden. `ops check` avisa cuando hay
   dos reclamos sobre el mismo servicio, y avisa nada más — frenar serializaría a un equipo entero sobre
   un servicio, que es peor que la colisión que evita.
-- **Repartir por hito.** Cada persona toma de un `## Hito` distinto. No lo pide nada, y hace que los dos
-  avisos de arriba casi nunca aparezcan.
+- **Repartir por hito.** Cada persona toma de un `## Hito` distinto, y `ops context planning --hito <slug>`
+  acota la cola a ése. Dos personas en hitos distintos casi nunca dependen entre sí ni tocan los mismos
+  archivos, así que los dos avisos de arriba casi no aparecen.
 
 ## Varios agentes en una misma máquina
 
@@ -125,7 +126,7 @@ días, para resolver algo que pasa una vez cada tanto.
 |---|---|---|
 | 1 | todo tal cual | nada |
 | 2 a 8 | un `planning/`, un árbol por persona, reparto por hito | `DONE.md` en conflicto, y de eso se ocupa `.gitattributes` |
-| 8 a 20 | lo mismo, con el trabajo repartido por hito | el `BACKLOG` se vuelve **ilegible** antes que contencioso: nadie lee sesenta tareas para elegir la suya, y el CLI todavía no sabe filtrarlo por vos |
+| 8 a 20 | lo mismo, con la cola acotada por hito (`--hito`) | el `BACKLOG` se vuelve **ilegible** antes que contencioso: nadie lee sesenta tareas para elegir la suya, y acotar por hito ayuda sólo si los hitos están bien cortados |
 | 20+ | una instancia por equipo o por dominio | la coordinación pasa a ser entre instancias, que es `multi-repo.md` |
 
 Achicarse parece más fácil y tiene una trampa: **lo que tomó quien se fue no se libera solo.** `ops check`

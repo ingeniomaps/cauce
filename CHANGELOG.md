@@ -43,6 +43,12 @@ diseño — eso vive en el commit y en el código.
   corridas en paralelo dejen de trabajar lo mismo: entre preguntar qué toca y reservarlo hay una ventana, y
   perder esa carrera no frena la corrida — relee y sigue con la que quedó libre.
 
+- **`ops context --hito <slug>` acota la cola a un hito.** Es la forma más barata de que dos personas o dos
+  agentes no se crucen: en hitos distintos casi nunca dependen entre sí ni tocan los mismos archivos. Lo
+  que se acota es qué se ofrece, no qué se sabe — una dependencia que vive en otro hito se sigue juzgando
+  igual—, y un hito mal escrito lo dice en vez de contestar «sin tarea disponible», que es indistinguible
+  de un hito terminado.
+
 - **`(depende: slug)` en una línea de tarea: lo que sigue no se le ofrece a otro.** El orden del BACKLOG
   era la dependencia y alcanzaba mientras hubiera un runner; con dos, el segundo toma la que sigue mientras
   el primero construye aquella de la que depende, y las dos ramas se pisan al integrar. Una tarea con

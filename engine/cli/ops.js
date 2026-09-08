@@ -145,7 +145,7 @@ function usage() {
   ops onboard [ops-root] [--json]
   ops check <planning-dir> [--json]
   ops tree <planning-dir> [--no-color] [--json]
-  ops context <planning-dir> [--json]
+  ops context <planning-dir> [--hito <slug>] [--json]
   ops recurring <planning-dir> [--promote <qué>] [--json]
   ops claim <planning-dir> <tarea>
   ops release <planning-dir> <tarea>

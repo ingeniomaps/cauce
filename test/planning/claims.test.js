@@ -334,3 +334,31 @@ test('check nombra la dependencia que no existe y el ciclo entero', () => {
   // El ciclo se nombra entero: decir sólo que hay uno deja el trabajo de encontrarlo del otro lado.
   assert.match(errors, /ciclo de dependencias a → b → a/)
 })
+
+// Repartir por hito es la forma más barata de que dos agentes no se crucen, y sin esto había que
+// coordinarlo por fuera: `context` entregaba la primera tarea libre de toda la cola, viniera del hito que
+// viniera.
+test('context puede acotarse a un hito, y avisa si el hito no existe', () => {
+  const dir = planning('cauce-hitos-')
+  fs.writeFileSync(path.join(dir, 'BACKLOG.md'), `# Backlog promovido
+
+## Hito frontend — Pantallas
+
+- [ ] **grilla** [lite] — Grilla. _Aceptación: filtra._ (service: web)
+
+## Hito backend — Servicios
+
+- [ ] **endpoint** [lite] — Endpoint. _Aceptación: responde._ (service: api)
+`)
+  const global = como('ana@acme.com', () => run(['context', dir]), '/w/ana')
+  assert.match(global.stdout, /^TASK {3}grilla/m, 'sin acotar manda la primera de la cola entera')
+
+  const acotado = como('luis@acme.com', () => run(['context', dir, '--hito', 'backend']), '/w/luis')
+  assert.match(acotado.stdout, /^TASK {3}endpoint/m)
+  assert.doesNotMatch(acotado.stdout, /grilla/, 'y no cuenta lo que pasa en el otro hito')
+
+  // Un hito mal escrito devolvería «sin tarea disponible», indistinguible de un hito terminado.
+  const roto = como('luis@acme.com', () => run(['context', dir, '--hito', 'bakend']), '/w/luis')
+  assert.equal(roto.status, 2)
+  assert.match(roto.stderr, /el hito bakend no existe\. Hay: frontend, backend/)
+})
