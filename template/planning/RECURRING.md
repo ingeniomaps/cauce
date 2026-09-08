@@ -26,7 +26,7 @@ vencimiento se calcula cuando alguien corre el CLI. Promover sigue siendo un act
 Se cuenta desde la última vez que se cerró, no desde un día fijo del calendario: una recurrencia
 atrasada no debe tres vueltas, debe una, la que no se hizo.
 
-La fecha de ese último cierre **no se escribe acá**. Sale de `DONE.md` — la entrada más nueva cuyo slug
+La fecha de ese último cierre **no se escribe acá**. Sale de `done/` — la entrada más nueva cuyo slug
 sea `<qué>-AAAA-MM`—, que es la evidencia de que efectivamente se hizo y no la afirmación de que se
 hizo. Una celda que alguien tiene que acordarse de actualizar miente a los tres meses, y el estado no se
 copia para representar progreso.

@@ -9,7 +9,7 @@ choques entre dos personas —o entre dos agentes— salen de tratarlas igual.
 
 | Anillo | Qué vive ahí | Escritores | Frecuencia |
 |---|---|---|---|
-| **Compartido** | `roadmap/`, `BACKLOG.md`, `INBOX.md`, `HUMAN_ACTIONS.md`, `DONE.md`, reglas y ADR | cualquiera, en actos humanos | baja |
+| **Compartido** | `roadmap/`, `BACKLOG.md`, `INBOX.md`, `HUMAN_ACTIONS.md`, `done/`, reglas y ADR | cualquiera, en actos humanos | baja |
 | **Coordinación** | `claims/`, un archivo por tarea tomada | uno por tarea | dos veces por tarea |
 | **Local** | `WIP.md`, `.verify-log`, el árbol de trabajo | vos | continua |
 
@@ -125,7 +125,7 @@ días, para resolver algo que pasa una vez cada tanto.
 | Tamaño | Qué alcanza | Qué se rompe primero |
 |---|---|---|
 | 1 | todo tal cual | nada |
-| 2 a 8 | un `planning/`, un árbol por persona, reparto por hito | `DONE.md` en conflicto, y de eso se ocupa `.gitattributes` |
+| 2 a 8 | un `planning/`, un árbol por persona, reparto por hito | sacar la tarea de `BACKLOG.md` al cerrarla, que es lo único que dos personas se disputan |
 | 8 a 20 | lo mismo, con la cola acotada por hito (`--hito`) | el `BACKLOG` se vuelve **ilegible** antes que contencioso: nadie lee sesenta tareas para elegir la suya, y acotar por hito ayuda sólo si los hitos están bien cortados |
 | 20+ | una instancia por equipo o por dominio | la coordinación pasa a ser entre instancias, que es `multi-repo.md` |
 
@@ -143,7 +143,7 @@ que esperaban a esa persona.
 | Una norma que hay que cumplir siempre | `business-rules/` o `rules/` | la lee un agente en cada tarea |
 | Algo que sólo puede hacer una persona | `HUMAN_ACTIONS.md` | frena su tarea hasta que se resuelva |
 | Una idea, una deuda, una lección | `INBOX.md` | espera promoción humana |
-| Lo que una tarea entregó, con su evidencia | `DONE.md` | es lo que se audita |
+| Lo que una tarea entregó, con su evidencia | `done/<slug>.md` | es lo que se audita |
 | Qué tarea estoy haciendo | `claims/` | para que nadie la tome dos veces |
 | «Salgo a almorzar», «está lento el CI» | el canal del equipo | no es durable y no se audita |
 
@@ -152,5 +152,6 @@ decisiones del repositorio las pierde.
 
 ## Lo que git tiene que saber
 
-`.gitattributes` declara que `DONE.md` y `HUMAN_ACTIONS.md` se concatenan en vez de conflictuar cuando dos
-personas cierran trabajo el mismo día. Llega con la instancia y sus bordes están escritos ahí adentro.
+`.gitattributes` declara que `HUMAN_ACTIONS.md` y su histórico se concatenan en vez de conflictuar cuando
+dos personas registran un bloqueo el mismo día. Llega con la instancia y sus bordes están escritos ahí
+adentro. La evidencia de una tarea no lo necesita: vive en su propio archivo y nadie escribe el de nadie.

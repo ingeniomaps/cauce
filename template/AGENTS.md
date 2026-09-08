@@ -228,5 +228,5 @@ publicación tampoco se decide ahí: la decide `allowPush`.
 3. QA valida el comportamiento por el camino real, no por un atajo interno.
 4. La deuda residual va a `planning/INBOX.md`.
 5. El cambio se commitea en el repo del servicio —uno por naturaleza del diff, y una tarea suele
-   tener una sola— y el hash real queda en `DONE.md`.
+   tener una sola— y el hash real queda en la evidencia de la tarea, `planning/done/<slug>.md`.
 6. `node tools/ops.js check planning` queda verde.

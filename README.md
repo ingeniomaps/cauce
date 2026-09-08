@@ -164,8 +164,8 @@ cualquiera de esas formas.
 ## Flujo
 
 ```text
-idea → INBOX → roadmap → BACKLOG → WIP → DONE → done/epic-NNN.md
-                    aprobación     ejecución      archivo histórico
+idea → INBOX → roadmap → BACKLOG → claim → WIP → done/<tarea>.md
+                    aprobación      reserva  ejecución    evidencia
 ```
 
 1. Captura ideas, deuda o lecciones en `INBOX.md`.
@@ -173,9 +173,9 @@ idea → INBOX → roadmap → BACKLOG → WIP → DONE → done/epic-NNN.md
    un recorrido —una etapa por dueño de decisión, con su exit gate— y dejar la épica candidata escrita;
    si falta evidencia o autoridad, para y registra la acción humana en vez de suponer.
 3. Promueve historias listas a un `## Hito` de `BACKLOG.md`.
-4. Un runner toma una sola tarea y persiste su plan en `WIP.md`.
-5. Tras Build, Review, Verify y QA, mueve la entrada a `DONE.md` con evidencia.
-6. Al cerrar la épica, ejecuta `ops archive` para mover su evidencia a un histórico inmutable.
+4. Un runner reclama la tarea con `ops claim`, para que otro no la tome, y persiste su plan en `WIP.md`.
+5. Tras Build, Review, Verify y QA, escribe la evidencia en `done/<slug>.md` y suelta el reclamo.
+6. Al cerrar la última historia, la épica pasa a `closed`.
 
 Lo que vuelve cada tanto —actualizar dependencias, revisar accesos, mirar el gasto del mes— entra por
 un costado: se declara una vez en `RECURRING.md` con su cadencia, y `ops recurring planning` dice qué

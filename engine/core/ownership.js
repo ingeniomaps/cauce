@@ -21,6 +21,7 @@ const SYSTEM_FILES = [
   'planning/business-rules/README.md',
   'planning/rules/README.md',
   'planning/claims/README.md',
+  'planning/done/README.md',
   'planning/roadmap/README.md',
   'planning/roadmap/epic-000-template.md',
   // La guía de entrega no tiene una línea de la empresa: describe el camino que Cauce recomienda, y lo

@@ -56,6 +56,26 @@ diseño — eso vive en el commit y en el código.
   igual—, y un hito mal escrito lo dice en vez de contestar «sin tarea disponible», que es indistinguible
   de un hito terminado.
 
+- **La evidencia de una tarea cerrada vive en su propio archivo: `planning/done/<slug>.md`.** Cerrar es lo
+  que más se hace, y mientras la evidencia se acumulaba en un `DONE.md` compartido, cerrar era agregarle
+  una entrada a algo que otro también estaba tocando. Ahora dos personas —o dos agentes— que cierran a la
+  vez escriben archivos distintos: no hay conflicto que resolver ni regla de merge que aplicar.
+
+  La entrada declara `fecha:`, la del cierre. Mientras vivían en un archivo, «la última» era la última del
+  archivo; con archivos sueltos el orden lo daría el listado del directorio, que es alfabético, y la
+  respuesta equivocada se leería igual de bien que la correcta. `ops evidence` sin `--task` ordena por ese
+  campo, y el contrato de una entrada está en `planning/done/README.md`.
+
+  **Lo que te pide algo**: `planning/DONE.md` se retiró. Pasá cada entrada a su propio
+  `planning/done/<slug>.md` con su `fecha:` y borrá el archivo — mientras esté, `ops check` lo dice en vez
+  de ignorarlo, porque un `DONE.md` que ya nadie lee deja a sus épicas sin poder cerrar y a sus historias
+  figurando sin evidencia.
+
+- **`ops archive <NNN>` se retiró; `ops archive human-actions` se queda.** Archivar una épica existía para
+  descongestionar un `DONE.md` que se hinchaba con una entrada por tarea; con un archivo por tarea no hay
+  nada que descongestionar, y mover esos archivos a una carpeta por épica sería reintroducir el movimiento
+  que esto vino a sacar. El comando lo dice, en vez de contestar «la épica debe ser NNN».
+
 - **`(depende: slug)` en una línea de tarea: lo que sigue no se le ofrece a otro.** El orden del BACKLOG
   era la dependencia y alcanzaba mientras hubiera un runner; con dos, el segundo toma la que sigue mientras
   el primero construye aquella de la que depende, y las dos ramas se pisan al integrar. Una tarea con
