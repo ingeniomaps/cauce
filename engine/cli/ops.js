@@ -10,6 +10,7 @@ const { fail } = require('./io')
 const IN = require('./instance')
 const PL = require('./planning')
 const CLM = require('./claims')
+const WT = require('./worktree')
 const CAT = require('./catalog')
 const W = require('./wiring')
 const BOOT = require('./bootstrap')
@@ -147,6 +148,7 @@ function usage() {
   ops recurring <planning-dir> [--promote <qué>] [--json]
   ops claim <planning-dir> <tarea>
   ops release <planning-dir> <tarea>
+  ops worktree <planning-dir> <tarea> [--json]
   ops evidence <planning-dir> [--task <slug>] [--json]
   ops upgrade <ops-root> [--check] [--force]
   ops destroy <ops-root> [--force]
@@ -203,6 +205,7 @@ async function run(cli) {
   else if (command === 'recurring') PL.recurring(arg[1], cli)
   else if (command === 'claim') CLM.claim(arg[1], arg[2], cli)
   else if (command === 'release') CLM.release(arg[1], arg[2])
+  else if (command === 'worktree') WT.worktree(arg[1], arg[2], cli)
   else if (command === 'evidence') PL.evidence(arg[1], cli)
   else if (command === 'upgrade') IN.upgrade(arg[1], cli)
   else if (command === 'destroy') IN.destroy(arg[1], cli)

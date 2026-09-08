@@ -43,6 +43,13 @@ diseño — eso vive en el commit y en el código.
   corridas en paralelo dejen de trabajar lo mismo: entre preguntar qué toca y reservarlo hay una ventana, y
   perder esa carrera no frena la corrida — relee y sigue con la que quedó libre.
 
+- **`ops worktree <planning> <tarea>`: un árbol de trabajo por agente, sin clonar el repositorio.** Resuelve
+  en qué raíz de `workspaceRoots` vive el `service:` de la tarea, crea la rama `task/<slug>` y el árbol al
+  lado, y devuelve la ruta con el `export CAUCE_RUNNER` ya escrito. `git worktree` comparte el mismo `.git`
+  y el mismo historial, así que no hay una segunda copia del repositorio: lo que hay es un segundo
+  directorio de archivos fijado a su rama, y por eso **ningún agente hace `checkout`** sobre el trabajo de
+  otro. Repetirlo devuelve el árbol que ya existe.
+
 - **`.gitattributes`: `DONE.md` y `HUMAN_ACTIONS.md` se concatenan en vez de conflictuar.** Dos personas
   cerrando trabajo el mismo día chocaban siempre, y ese conflicto no significaba nada: las dos entradas son
   buenas y van las dos. Lo que `union` no hace es deduplicar, y esa falla ya la atrapa `DONE duplicado`.

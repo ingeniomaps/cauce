@@ -119,6 +119,11 @@
     "branches": 45,
     "functions": 77
   },
+  "engine/cli/worktree.js": {
+    "lines": 100,
+    "branches": 53,
+    "functions": 100
+  },
   "engine/config/paths.js": {
     "lines": 100,
     "branches": 100,

@@ -77,9 +77,12 @@ historial y los mismos objetos, y sólo materializa un segundo directorio de arc
 fijado a su rama, así que **nadie hace `checkout` nunca** — que es lo que pisaría el trabajo del otro.
 
 ```bash
-git worktree add ../repo-dashboard  task/dashboard-filtros
-git worktree add ../repo-exportar   task/boton-exportar
+node tools/ops.js worktree planning dashboard-filtros
 ```
+
+Resuelve en qué repositorio vive el `service:` de la tarea, crea la rama `task/<slug>` y el árbol al
+lado, y devuelve la ruta con el `export CAUCE_RUNNER` ya escrito. Correrlo dos veces devuelve el árbol que
+ya existe en vez de crear otro.
 
 **La instancia, una sola y compartida.** Si `ops/` vive dentro del repositorio, cada árbol se lleva su
 propia copia de `planning/` y los reclamos de un agente no los ve el otro hasta commitear y empujar —

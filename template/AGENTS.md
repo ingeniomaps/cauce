@@ -185,6 +185,10 @@ Si corrés junto a otros agentes en la misma máquina, exportá `CAUCE_RUNNER` c
 de tu árbol de trabajo sirve—. Sin eso todos resuelven la misma identidad de git y el segundo se lleva la
 tarea del primero creyéndola suya.
 
+- `node tools/ops.js worktree planning <tarea>` — prepara el árbol de trabajo de esa tarea y te devuelve
+  la ruta con el `export CAUCE_RUNNER` hecho. No clona nada: `git worktree` comparte el mismo `.git`, y
+  cada árbol queda fijado a su rama, así que ningún agente hace `checkout` sobre el trabajo de otro.
+
 ## Autonomía
 
 El runner puede implementar una tarea promovida dentro del servicio declarado, crear pruebas y hacer
