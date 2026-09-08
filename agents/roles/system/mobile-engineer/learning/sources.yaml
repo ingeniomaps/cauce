@@ -15,7 +15,7 @@ sources:
     topics: [quality, compatibility, performance, security]
   - name: Apple Human Interface Guidelines
     url: https://developer.apple.com/design/human-interface-guidelines/
-    tier: platform
+    tier: standard
     topics: [interaction, accessibility, privacy, platform-conventions]
   - name: OWASP Mobile Application Security
     url: https://mas.owasp.org/MASVS/
