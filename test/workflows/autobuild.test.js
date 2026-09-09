@@ -244,3 +244,32 @@ test('sin cola, el recorrido no promueve una épica: la nombra y para', async ()
   )
   assert.equal(/EXPANSION|expanded/.test(fuente), false, 'ni queda el esquema de la expansión')
 })
+
+// Por qué la raíz puede llegar ilegible está en el schema del contrato. Acá se mide que el recorrido pare
+// **en Triage**, antes de gastar nada, y que el motivo nombre la raíz y no el planning: parar más abajo
+// mandaba a revisar un planning que está bien.
+test('una raíz que no se pudo leer para en Triage y lo dice', async () => {
+  const { result, phases, asked } = await runFlow({
+    [KEY.contract]: {
+      rootOk: false, project: '', workspaceRoots: ['x'], contracts: '',
+      maxTaskHours: 4, commitPerTask: true, humanCheckpoint: false, boundaries: [],
+    },
+  })
+  assert.equal(result.reason, 'root-unreadable', `tenía que parar: ${JSON.stringify(result)}`)
+  assert.match(result.detail, /relativa a la carpeta/, 'y decir qué comprobar')
+  assert.equal(/planning/.test(result.detail), false, 'sin mandar a revisar el planning, que está bien')
+  assert.deepEqual(phases, ['Triage'], 'para en la primera fase, sin gastar las que siguen')
+  assert.equal(asked.some((key) => key.startsWith('Pick|')), false, 'ni llega a elegir tarea')
+})
+
+// El modo de fallo que importa cuando un campo lo completa un modelo: que lo omita. Sin esto, un contrato
+// sin `rootOk` seguiría de largo, que es exactamente lo que este arreglo vino a cerrar.
+test('un contrato sin rootOk se trata como raíz ilegible', async () => {
+  const { result } = await runFlow({
+    [KEY.contract]: {
+      project: 'acme', workspaceRoots: ['api → ./api'], contracts: '## Contratos',
+      maxTaskHours: 4, commitPerTask: true, humanCheckpoint: false, boundaries: [],
+    },
+  })
+  assert.equal(result.reason, 'root-unreadable', 'el campo ausente para igual')
+})
