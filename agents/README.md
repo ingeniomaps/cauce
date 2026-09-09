@@ -25,6 +25,29 @@ mejor que repetirla en cada instalación.
 Por eso `learn` falla si lo corrés sobre un cargo del catálogo dentro de una instancia: escribiría en el
 paquete y se perdería. El ciclo de aprendizaje de esos cargos tampoco se distribuye.
 
+## Las URLs que un cargo cita
+
+Un cargo cita URLs en dos lugares y los dos se comprueban cada semana: `sources.yaml`, que es lo que
+investiga, y `references/` más `SKILL.md`, que es el método que sigue. Las de `evaluations/` **no** —los
+casos adversariales inventan dominios a propósito—, y las de `learning/reports` tampoco, porque son
+evidencia fechada de lo que una corrida encontró.
+
+Cuando una responde 403, casi nunca está muerta. Tres cosas que conviene probar antes de darla por
+perdida, todas encontradas midiendo el catálogo:
+
+- **El documento en vez de la página.** Cloudflare protege el HTML y no el PDF: `acm.org/code-of-ethics`
+  bloquea y `acm.org/binaries/.../acm-code-of-ethics-booklet.pdf` no; lo mismo con los instrumentos de la
+  OCDE, que se leen enteros bajo `legalinstruments.oecd.org/public/doc/<n>/<n>.en.pdf`.
+- **Otro sitio del mismo organismo.** `oecd.org/en/topics/ai-principles.html` bloquea y `oecd.ai` no;
+  `projectdelivery.gov.uk` bloquea y la misma norma está publicada en `gov.uk`.
+- **La forma publicada del dato.** El catálogo KEV de CISA bloquea en HTML y su feed JSON, que la propia
+  CISA distribuye, no.
+
+Si aun así no hay ninguna que responda —`pmi.org`, `fatf-gafi.org`—, la fuente **se queda en
+`sources.yaml`**, porque sigue siendo lo que la profesión publica y el chequeo semanal tiene algo que
+decir sobre ella; lo que sale es el enlace en `references/`, donde un 403 sólo le hace perder un clic a
+quien lee. El nombre se conserva.
+
 ## Por qué las normas no se citan en `iso.org`
 
 `sources.yaml` cita cada norma por una ficha de catálogo, y para ISO esa ficha **no es la de

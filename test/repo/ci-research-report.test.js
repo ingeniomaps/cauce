@@ -254,96 +254,96 @@ test('un informe que no propone nada se mergea sin revisión humana', () => {
 //
 // Se ejecuta el paso con un `curl` falso en vez de salir a la red: lo que se mide es qué hace con los
 // códigos que recibe, y depender de internet haría que la prueba fallara por razones ajenas.
-test('el ciclo anota qué fuentes declaradas no pudo abrir', { skip: process.platform === 'win32' }, () => {
+test('el ciclo anota qué URLs del cargo no pudo abrir', { skip: process.platform === 'win32' }, () => {
   const paso = workflowStep(workflow('agent-learning'), 'Check declared sources are reachable')
-  assert.ok(paso.includes('sourceUrls'), 'lee las fuentes del motor y no con un grep propio')
+  assert.ok(paso.includes('sourceUrls') && paso.includes('documentUrls'),
+    'lee las URLs del motor y no con un grep propio')
 
   const dir = tempRoot('cauce-fuentes-')
   const repo = path.resolve(__dirname, '..', '..')
-  // Las tres clases que la medición del catálogo separó: un dominio que bloquea, uno que contesta 202
-  // —«aceptado, vuelve más tarde»— y una cáscara que responde 200 con casi nada. El cuerpo va antes del
-  // código porque así lo pide `curl -w`, y es lo que el paso separa para contar palabras.
-  //
-  // Los dominios son inventados a propósito. El patrón decía `*iso.org*` y el cargo real que la prueba
-  // usaba lo citaba, así que el día que el catálogo cambió de ficha —caso 063— esto se puso rojo sin que
-  // el paso hubiera cambiado: la prueba afirmaba algo sobre el catálogo, no sobre el paso.
-  const falso = (cuerpo403, extra = '') => '#!/usr/bin/env bash\n'
-    + 'for arg in "$@"; do url="$arg"; done\n'
-    + 'case "$url" in\n'
-    + `  *bloqueado*) printf '%s\\n403' ${JSON.stringify(cuerpo403)} ;;\n`
-    + "  *eur-lex*) printf '\\n202' ;;\n"
-    + "  *cascara*) printf '<html><title>x</title></html>\\n200' ;;\n"
-    + `  *) printf '%s\\n200' ${JSON.stringify('palabra '.repeat(80))} ;;\n`
-    + 'esac\n' + extra
-  fs.writeFileSync(path.join(dir, 'curl'), falso('sin acceso'), { mode: 0o755 })
-
-  // Dos fuentes, una que responde y otra que no: es la mezcla lo que se mide, porque contar sólo la rota
-  // no distingue el paso que las separa del que reporta todo.
-  const mezcla = path.join(dir, 'mezcla.yaml')
-  fs.writeFileSync(mezcla, 'version: 1\nsources:\n'
+  // Un cargo falso con las cuatro carpetas que importan. Los dominios son inventados a propósito: el
+  // patrón decía `*iso.org*` y el cargo real que la prueba usaba lo citaba, así que el día que el catálogo
+  // cambió de ficha —caso 063— esto se puso rojo sin que el paso hubiera cambiado.
+  const cargo = path.join(dir, 'cargo')
+  fs.mkdirSync(path.join(cargo, 'learning'), { recursive: true })
+  fs.mkdirSync(path.join(cargo, 'references'), { recursive: true })
+  fs.mkdirSync(path.join(cargo, 'evaluations', 'cases'), { recursive: true })
+  const fuentes = (cuerpo) => fs.writeFileSync(path.join(cargo, 'learning', 'sources.yaml'), cuerpo)
+  fuentes('version: 1\nsources:\n'
     + '  - name: Sana\n    url: https://sana.example/x\n    tier: standard\n'
     + '  - name: Bloqueada\n    url: https://bloqueado.example/x\n    tier: standard\n')
+  fs.writeFileSync(path.join(cargo, 'references', 'metodo.md'), '[m](https://muerta.example/x)\n')
+  fs.writeFileSync(path.join(cargo, 'SKILL.md'), 'ver https://otra-sana.example/x\n')
+  fs.writeFileSync(path.join(cargo, 'evaluations', 'cases', 'uno.md'), 'https://inventado.example/x\n')
 
+  // Las clases que la medición del catálogo separó: un dominio que bloquea a un bot y no a un navegador,
+  // una página que se movió, un 202 —«vuelve más tarde»— y una cáscara que responde 200 con casi nada. El
+  // cuerpo va antes del código porque así lo pide `curl -w`.
+  const falso = '#!/usr/bin/env bash\n'
+    + 'todo="$*"\n'
+    + 'for arg in "$@"; do url="$arg"; done\n'
+    + `const='${'palabra '.repeat(80)}'\n`
+    + 'case "$url" in\n'
+    + '  *bloqueado*)\n'
+    + '    case "$todo" in\n'
+    + "      *Mozilla*) printf '%s\\n200' \"$const\" ;;\n"
+    + "      *) printf 'sin acceso\\n403' ;;\n"
+    + '    esac ;;\n'
+    + "  *muerta*) printf 'no está\\n404' ;;\n"
+    + "  *eur-lex*) printf '\\n202' ;;\n"
+    + "  *cascara*) printf '<html><title>x</title></html>\\n200' ;;\n"
+    + "  *inventado*) printf 'ESTA URL NO DEBIO PEDIRSE\\n200' ;;\n"
+    + '  *) printf \'%s\\n200\' "$const" ;;\n'
+    + 'esac\n'
+  fs.writeFileSync(path.join(dir, 'curl'), falso, { mode: 0o755 })
+
+  // El paso resuelve el directorio del cargo con `agents list`; se lo deja resolver y después se apunta
+  // al falso, así el camino real sigue ejercitándose y las URLs son las de la prueba.
+  const conCargo = (texto) => texto.replace('[ -n "$dir" ] || exit 0',
+    `[ -n "$dir" ] || exit 0\n          dir=${JSON.stringify(cargo)}`)
   const summary = path.join(dir, 'summary.txt')
-  fs.writeFileSync(summary, '')
-  const salida = spawnSync('bash', ['-c', paso.replace('"$dir/learning/sources.yaml"',
-    JSON.stringify(mezcla))], {
-    cwd: repo,
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      PATH: `${dir}:${process.env.PATH}`,
-      OPS: 'engine/cli/ops.js',
-      AGENT: 'cloud-architect',
-      GITHUB_STEP_SUMMARY: summary,
-    },
-  })
-  assert.equal(salida.status, 0, `avisa y no falla la corrida: ${salida.stderr}`)
-
-  const escrito = fs.readFileSync(summary, 'utf8')
-  assert.match(escrito, /\| fuentes declaradas \| 2 \|/, 'cuenta las que el cargo declara')
-  assert.match(escrito, /\| sin contenido legible \| 1 \|/, 'y cuántas no sirven, que no son las mismas')
-  assert.match(escrito, /bloqueado\.example.*→ 403/, 'nombrando cuál y con qué código')
-  assert.match(salida.stdout, /^::warning title=/m, 'sale como anotación, no como una línea de log')
-
-  // Las otras dos clases, que un chequeo por código solo daría por buenas.
-  const conUrl = (slug) => {
-    const propio = path.join(dir, 'sources.yaml')
-    fs.writeFileSync(propio, `version: 1\nsources:\n  - name: F\n    url: https://${slug}/x\n    tier: standard\n`)
-    return propio
-  }
-  for (const [slug, esperado, porque] of [
-    ['eur-lex.europa.eu', /202\(sin-contenido\)/, 'un 202 es «vuelve más tarde», no contenido'],
-    ['cascara.example', /200\(\d+-palabras\)/, 'y un 200 con una cáscara tampoco sirve'],
-  ]) {
+  const correr = (texto) => {
     fs.writeFileSync(summary, '')
-    const script = paso.replace('"$dir/learning/sources.yaml"', JSON.stringify(conUrl(slug)))
-    const corrida = spawnSync('bash', ['-c', script], {
+    return spawnSync('bash', ['-c', conCargo(texto)], {
       cwd: repo,
       encoding: 'utf8',
       env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, OPS: 'engine/cli/ops.js',
         AGENT: 'cloud-architect', GITHUB_STEP_SUMMARY: summary },
     })
+  }
+
+  const salida = correr(paso)
+  assert.equal(salida.status, 0, `avisa y no falla la corrida: ${salida.stderr}`)
+  const escrito = fs.readFileSync(summary, 'utf8')
+  assert.match(escrito, /\| URLs declaradas \| 4 \|/, 'cuenta sources.yaml, references/ y SKILL.md')
+  assert.match(escrito, /\| necesitaron un segundo intento \| 1 \|/,
+    'y dice cuántas sólo respondieron al reintento, aunque hayan terminado sanas')
+  assert.match(escrito, /\| sin contenido legible \| 1 \|/, 'la bloqueada no cuenta: el reintento la abrió')
+  assert.match(escrito, /muerta\.example.*→ 404 · references\/metodo\.md/,
+    'nombrando cuál, con qué código y en qué archivo está escrita')
+  assert.match(salida.stdout, /^::warning title=/m, 'sale como anotación, no como una línea de log')
+
+  // Un caso adversarial necesita una URL que no resuelva, así que comprobarla mide el fixture. Es una
+  // aserción de ausencia porque `evaluations/` no aparece en ninguna salida cuando se lo saltea bien.
+  assert.equal(/inventado\.example/.test(escrito + salida.stdout), false,
+    'las URLs que un caso inventa no se comprueban')
+
+  // Las dos clases que un chequeo por código solo daría por buenas.
+  for (const [host, esperado, porque] of [
+    ['eur-lex.europa.eu', /202\(sin-contenido\)/, 'un 202 es «vuelve más tarde», no contenido'],
+    ['cascara.example', /200\(\d+-palabras\)/, 'y un 200 con una cáscara tampoco sirve'],
+  ]) {
+    fuentes(`version: 1\nsources:\n  - name: F\n    url: https://${host}/x\n    tier: standard\n`)
+    const corrida = correr(paso)
     assert.equal(corrida.status, 0, corrida.stderr)
     assert.match(fs.readFileSync(summary, 'utf8'), esperado, porque)
   }
 
   // Sin ninguna rota no hay nada que anunciar: un aviso que sale siempre se termina ignorando.
-  fs.writeFileSync(path.join(dir, 'curl'),
-    `#!/usr/bin/env bash\nprintf '%s\\n200' ${JSON.stringify('palabra '.repeat(80))}\n`, { mode: 0o755 })
-  fs.writeFileSync(summary, '')
-  const limpio = spawnSync('bash', ['-c', paso], {
-    cwd: repo,
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      PATH: `${dir}:${process.env.PATH}`,
-      OPS: 'engine/cli/ops.js',
-      AGENT: 'cloud-architect',
-      GITHUB_STEP_SUMMARY: summary,
-    },
-  })
+  fuentes('version: 1\nsources:\n  - name: F\n    url: https://sana.example/x\n    tier: standard\n')
+  fs.writeFileSync(path.join(cargo, 'references', 'metodo.md'), '[m](https://otra-sana.example/y)\n')
+  const limpio = correr(paso)
   assert.equal(limpio.status, 0)
-  assert.equal(/no alcanzables/.test(fs.readFileSync(summary, 'utf8')), false)
+  assert.equal(/sin contenido legible/.test(fs.readFileSync(summary, 'utf8')), false)
   assert.equal(/::warning/.test(limpio.stdout), false, 'y no se avisa de una falta que no existe')
 })

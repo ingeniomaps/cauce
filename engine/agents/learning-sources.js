@@ -115,6 +115,42 @@ function sourceUrls(text) {
   return out
 }
 
+// Todo lo que un cargo cita y alguien va a abrir. `sources.yaml` es lo que investiga; `references/` y
+// `SKILL.md` son el método que sigue, y hasta 0.71.0 nadie las miraba: 29 de las 207 URLs de esos
+// documentos no servían, entre ellas dos 404 de páginas que se habían movido.
+//
+// `evaluations/` queda afuera y no por costo: los casos adversariales **inventan** dominios a propósito
+// —veintiuna URLs bajo `.example` y marcas que no existen— y comprobarlas reportaría rotas las que están
+// bien escritas. `learning/reports` y `learning/proposals` también, por lo contrario: son evidencia
+// fechada de que algo dio 403 el día que se consultó, y eso no se arregla.
+const DOC_URL = /https?:\/\/[^\s)>"`\]]+/g
+function documentUrls(dir) {
+  const out = []
+  const seen = new Set()
+  const add = (raw, origin) => {
+    const url = raw.replace(/[.,;:]+$/, '')
+    if (seen.has(url)) return
+    seen.add(url)
+    out.push({ url, origin })
+  }
+  const below = (base, relative) => {
+    let entries = []
+    try { entries = fs.readdirSync(path.join(base, relative), { withFileTypes: true }) } catch { return }
+    for (const entry of entries) {
+      const next = relative ? `${relative}/${entry.name}` : entry.name
+      if (entry.isDirectory()) { below(base, next); continue }
+      if (!entry.name.endsWith('.md')) continue
+      for (const hit of fs.readFileSync(path.join(base, next), 'utf8').match(DOC_URL) || []) add(hit, next)
+    }
+  }
+  below(dir, 'references')
+  const skill = path.join(dir, 'SKILL.md')
+  if (fs.existsSync(skill)) {
+    for (const hit of fs.readFileSync(skill, 'utf8').match(DOC_URL) || []) add(hit, 'SKILL.md')
+  }
+  return out
+}
+
 function evaluate(root, agent) {
   const target = catalog.resolve(root, agent)
   const errors = []
@@ -201,4 +237,4 @@ function evaluate(root, agent) {
   return { errors, warnings, proposals: proposals.length, pending, cases }
 }
 
-module.exports = { SOURCE_TIERS, cadence, evaluate, evaluateTeam, sourceUrls }
+module.exports = { SOURCE_TIERS, cadence, documentUrls, evaluate, evaluateTeam, sourceUrls }

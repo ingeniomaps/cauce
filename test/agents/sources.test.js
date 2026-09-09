@@ -11,7 +11,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const learning = require('../../engine/agents/learning')
-const { sourceUrls } = require('../../engine/agents/learning-sources')
+const { documentUrls, sourceUrls } = require('../../engine/agents/learning-sources')
 const { REPO, installedProject, writeSkill } = require('../support/agents-fixtures')
 
 const CONTRATOS_EN_LA_REFERENCIA = [
@@ -85,6 +85,31 @@ test('ninguna fuente del catálogo se cita en www.iso.org', () => {
     }
   }
   assert.deepEqual(bloqueadas, [], 'la ficha legible es la del IEC Webstore o la de committee.iso.org')
+})
+
+// Las URLs que un cargo cita fuera de `sources.yaml`. Lo que se cuida es la exclusión —el porqué lo
+// explica `documentUrls`—, y se comprueba por ausencia: que las URLs de `references/` aparezcan no dice
+// nada sobre si además se coló alguna de las que un caso inventa.
+test('el lector de documentos toma references y SKILL, y deja afuera lo inventado', () => {
+  const qa = path.resolve(__dirname, '..', '..', 'agents', 'roles', 'system', 'qa-engineer')
+  const leidas = documentUrls(qa)
+  assert.ok(leidas.length > 5, `leyó ${leidas.length} URLs de qa-engineer`)
+  assert.ok(leidas.some((one) => one.origin.startsWith('references/')), 'entra references/')
+  assert.deepEqual(leidas.filter((one) => /evaluations|learning/.test(one.origin)), [],
+    'y no entra ni lo inventado ni la evidencia')
+
+  // El origen viaja con la URL porque decide quién la arregla, y la prueba lo fija: sin él el aviso
+  // semanal nombra una URL y no el archivo donde está escrita.
+  const dir = tempRoot('cauce-docs-')
+  fs.mkdirSync(path.join(dir, 'references', 'hondo'), { recursive: true })
+  fs.mkdirSync(path.join(dir, 'evaluations', 'cases'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'SKILL.md'), 'ver https://ej.test/skill\n')
+  fs.writeFileSync(path.join(dir, 'references', 'hondo', 'metodo.md'), '[m](https://ej.test/hondo).\n')
+  fs.writeFileSync(path.join(dir, 'evaluations', 'cases', 'uno.md'), 'https://inventado.example/x\n')
+  assert.deepEqual(documentUrls(dir).sort((a, b) => a.url.localeCompare(b.url)), [
+    { url: 'https://ej.test/hondo', origin: 'references/hondo/metodo.md' },
+    { url: 'https://ej.test/skill', origin: 'SKILL.md' },
+  ], 'recorre subcarpetas, corta el punto final y nombra el archivo')
 })
 
 test('el inventario de contratos en las referencias es el que está declarado', () => {
