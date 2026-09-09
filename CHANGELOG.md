@@ -32,6 +32,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`autobuild` ya no expande el hito siguiente para descartarlo.** La corrida corta cuando la tarea que
+  sigue es de otro hito, y expandía justo antes de llegar a ese corte: escribía el hito nuevo en el
+  BACKLOG y acto seguido decidía no tocarlo. Ahora sólo expande mientras no haya fijado su hito, que es
+  cuando lo expandido se ejecuta en la misma vuelta. Una corrida que termina su hito pasa de una expansión
+  a ninguna, y las tareas que construye no cambian.
+
 - **El ciclo semanal comprueba que las fuentes declaradas de un cargo respondan, y anota las que no.** Una
   fuente ilegible y una que no cambió producían el mismo informe —«sin novedades»— y no son lo mismo: la
   primera no se comprobó. Ahora el resumen del job dice cuántas fuentes declara el cargo y cuáles no
