@@ -363,7 +363,13 @@ while (rounds++ < MAX_TASKS) {
   // `git checkout`: pide la lectura afirmada, no la ausencia de tarea. Una cola vacía porque no se
   // pudo leer se ve idéntica a una cola terminada, y sobre la primera esto promovía trabajo que nadie
   // aprobó — lo que BR-OPS-002 prohíbe.
-  if (planning.readOk && !planning.hasTask && !planning.queued) {
+  //
+  // Y sólo mientras la corrida no haya elegido su hito. Con uno ya fijado, el `break` de tres líneas más
+  // abajo es inevitable —lo expandido es de otro hito, que es donde esta corrida no sigue— así que
+  // expandir ahí escribía el hito siguiente un instante antes de decidir no tocarlo. La expansión que sí
+  // se usa es la de una corrida que arranca con la cola vacía: ahí `currentMilestone` está sin fijar y lo
+  // expandido se ejecuta en la misma vuelta.
+  if (planning.readOk && !currentMilestone && !planning.hasTask && !planning.queued) {
     const expansion = await write(
       `Leé ${ROADMAP}. Expandí sólo la próxima épica abierta y aprobada en un hito nuevo de ${BACKLOG}, ` +
       `conservando el slug de cada historia, sus referencias a criterios y su servicio. Nunca promuevas ` +
