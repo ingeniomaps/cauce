@@ -211,3 +211,35 @@ test('el lector no se saltea ninguna fuente del catálogo', () => {
   assert.ok(total > 200, `el recorrido tiene que ver el catálogo entero, vio ${total}`)
   assert.deepEqual(desajustes, [], `fuentes que el lector no ve:\n  ${desajustes.join('\n  ')}`)
 })
+
+// `learning/HISTORY.md` es el mismo artefacto en los 53 cargos y su encabezado llegó a decir trece cosas
+// distintas, nueve de ellas contradiciendo la tabla que llevan debajo: «registrar únicamente cambios
+// aprobados», cuando la columna se llama «Decisión» y hay dos —aplicar y archivar—.
+//
+// Nadie generó estos archivos desde un molde: cada uno se escribió a mano al entrar su cargo al catálogo.
+// Sin algo que lo mida, vuelven a divergir con el próximo.
+test('el historial dice lo mismo en todos los cargos, y coincide con su tabla', () => {
+  const raiz = path.resolve(__dirname, '..', '..', 'agents', 'roles', 'system')
+  const encabezados = new Map()
+  const sinTabla = []
+  let vistos = 0
+  for (const slug of fs.readdirSync(raiz)) {
+    const file = path.join(raiz, slug, 'learning', 'HISTORY.md')
+    if (!fs.existsSync(file)) continue
+    vistos += 1
+    const texto = fs.readFileSync(file, 'utf8')
+    const linea = texto.split('\n')[2] || ''
+    encabezados.set(linea, [...(encabezados.get(linea) || []), slug])
+    if (!/^\| Fecha \| Propuesta \| Decisión \| Aprobó \| Cambio aplicado \|$/m.test(texto)) sinTabla.push(slug)
+  }
+  assert.ok(vistos > 40, `el recorrido tiene que ver el catálogo entero, vio ${vistos}`)
+  assert.equal(encabezados.size, 1,
+    `el encabezado dice ${encabezados.size} cosas distintas:\n  ${[...encabezados.keys()].join('\n  ')}`)
+  assert.deepEqual(sinTabla, [], `sin la tabla que su encabezado describe:\n  ${sinTabla.join('\n  ')}`)
+
+  // Lo que la unificación no puede borrar: una exigencia propia del cargo va como línea aparte, así que
+  // el encabezado común sigue siendo uno solo y lo suyo no se pierde.
+  const propia = (slug) => fs.readFileSync(path.join(raiz, slug, 'learning', 'HISTORY.md'), 'utf8')
+  assert.match(propia('kyc-aml-specialist'), /país alcanzado/, 'kyc-aml conserva el país')
+  assert.match(propia('legal-counsel'), /jurisdicción/, 'legal-counsel conserva la jurisdicción')
+})
