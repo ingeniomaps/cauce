@@ -52,8 +52,33 @@ test('el banco se recrea entero en cada corrida', () => {
     run(['evaluate', 'product-manager', '--bench', '07-recreado', '--force'], toolkit).stdout.trim())
   const rastro = path.join(dir, 'planning', 'rastro-de-la-corrida-anterior.md')
   fs.writeFileSync(rastro, 'lo que escribió el cargo la vez pasada\n')
-  run(['evaluate', 'product-manager', '--bench', '07-recreado', '--force'], toolkit)
+  // El resultado de la segunda corrida se mira. Descartarlo era lo que volvía mudo este caso: **toda**
+  // falla del comando —`EACCES`, `ENOTEMPTY`, `EEXIST`— terminaba en el mismo `true !== false` sobre el
+  // rastro, con el stderr tirado. Tres investigaciones dejaron escrito «no está establecido por qué» y
+  // ésta es la razón: el instrumento borraba la evidencia justo cuando importaba (caso 066).
+  const rehecho = run(['evaluate', 'product-manager', '--bench', '07-recreado', '--force'], toolkit)
+  assert.equal(rehecho.status, 0, `rehacer el banco falló: ${rehecho.stderr}`)
   assert.equal(fs.existsSync(rastro), false, 'la corrida anterior no contamina la siguiente')
+})
+
+// Un banco que no se puede rehacer corta la corrida nombrando la ruta, en vez de seguir sobre un árbol
+// que no es nuevo. Se mide quitando permiso de escritura, que es la única forma reproducible de que el
+// borrado no complete; la otra —`rmSync` volviendo sin lanzar y dejando archivos— ocurrió tres veces en
+// CI y **no se pudo reproducir**, así que la guarda que la cubre no tiene caso propio y el caso 066 lo
+// dice. Lo que esta prueba fija es que el fallo hable: mudo era lo que impedía diagnosticarlo.
+test('un banco que no se puede rehacer lo dice, en vez de seguir', { skip: process.getuid?.() === 0 }, () => {
+  const toolkit = path.resolve(__dirname, '..', '..')
+  const dir = path.resolve(toolkit,
+    run(['evaluate', 'product-manager', '--bench', '13-sin-permiso', '--force'], toolkit).stdout.trim())
+  fs.chmodSync(dir, 0o500)
+  try {
+    const negado = run(['evaluate', 'product-manager', '--bench', '13-sin-permiso', '--force'], toolkit)
+    assert.notEqual(negado.status, 0, 'no sigue como si el banco fuera nuevo')
+    assert.match(negado.stderr, /13-sin-permiso/, 'y nombra la ruta, que es lo que permite diagnosticar')
+  } finally {
+    fs.chmodSync(dir, 0o755)
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
 })
 
 // La respuesta de un cargo puede no ser toda su entrega: `backend-engineer` contestó un resumen del
