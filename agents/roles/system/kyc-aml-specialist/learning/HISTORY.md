@@ -1,7 +1,8 @@
 # Historial de aprendizaje
 
-Registrar únicamente cambios aprobados por una persona responsable, con fecha, país alcanzado, evidencia,
-evaluación y quién aprobó.
+Una fila por propuesta cerrada: cuándo, cuál, qué se decidió —aplicarla o archivarla—, quién lo decidió y qué cambió.
+
+Para este cargo, la fila nombra además el país alcanzado.
 
 | Fecha | Propuesta | Decisión | Aprobó | Cambio aplicado |
 |---|---|---|---|---|

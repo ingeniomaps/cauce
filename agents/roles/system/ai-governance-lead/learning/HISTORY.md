@@ -1,3 +1,8 @@
 # Historial de aprendizaje
 
-Registrar fecha, propuesta, fuentes/versiones/estado, revisión humana/Legal, cambios aplicados, evaluaciones y responsable.
+Una fila por propuesta cerrada: cuándo, cuál, qué se decidió —aplicarla o archivarla—, quién lo decidió y qué cambió.
+
+Para este cargo, la fila dice además si hubo revisión de Legal.
+
+| Fecha | Propuesta | Decisión | Aprobó | Cambio aplicado |
+|---|---|---|---|---|
