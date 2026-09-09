@@ -1,14 +1,15 @@
 ---
 caso: 050
 titulo: La puerta de rutas absolutas corre sobre informes generados, y una ruta citada bloquea el PR
-estado: abierto
+estado: resuelto
+resuelto-en: 0.71.0
 prioridad: media
 version-detectada: 0.70.0
 ---
 
 # 050 — Un informe que cita una ruta rompe su propio PR
 
-**🔴 abierto** · detectado en 0.70.0 · prioridad **media** — bloquea el merge y el arreglo es editar evidencia
+**🟢 resuelto en 0.71.0** · detectado en 0.70.0 · prioridad **media** — bloquea el merge y el arreglo es editar evidencia
 
 ## Resumen
 
@@ -109,3 +110,34 @@ Aprobando la CI de los veinte PR de la tanda del 2026-09-07. Diecinueve pasaron 
 
 - [049](049-nada-valida-el-status-del-informe-y-puede-autoexcluirse.md) — el otro cruce entre una
   validación del repositorio y un artefacto que escribe el ciclo.
+
+## Cierre
+
+**Resuelto en 0.71.0.** El recorrido de lo que enumeró, contra las cuatro secciones que enumeran algo:
+
+- **El fix propuesto se hizo tal cual.** Los informes de `learning/reports/` salen del corpus por
+  directorio. Se exime el directorio y no cada archivo porque crece solo, una vez por semana y por cargo,
+  y una lista que hay que mantener a mano deja de mantenerse.
+- **Tradeoff «se abre un hueco real» — se paga, y queda acotado.** Si un informe trajera la ruta de la
+  máquina de alguien, la puerta ya no lo diría. Lo que sostiene que el riesgo sea bajo es dónde corre el
+  ciclo: un runner efímero, sin la carpeta de nadie. Lo que lo reabriría es que los informes empiecen a
+  escribirse desde una máquina personal.
+- **Tradeoff «la alternativa —editar cada informe que cite una ruta— es peor» — se confirma.** Es lo que
+  hubo que hacer con el de `security-engineer` el 2026-09-07, y significó tocar la prosa que sostiene un
+  hallazgo por una razón ajena a lo que ese cargo investigó.
+- **Tradeoff «no medido: no sé con qué frecuencia un cargo necesita citar rutas» — sigue sin medirse.**
+  Hoy es un caso en tres tandas, que es un punto y no una tasa. No cambia la decisión: el costo del
+  arreglo es una línea y el de no tenerlo es un PR bloqueado cada vez.
+- **La nota del propio caso —«un dato más a favor de eximir la prosa en vez de perdonarla archivo por
+  archivo»— se siguió sólo hasta donde alcanza el argumento.** Se eximieron los informes; **no** los casos
+  de `docs/issues/`, y este archivo sigue en `DECLARED`. La diferencia es quién escribe: un informe lo
+  produce el ciclo sin que nadie lo revise antes de publicarlo, y un caso lo escribe alguien que elige qué
+  pegar — y ahí pegar un log con la ruta de su máquina es un error de verdad, no una cita.
+- **La exención se comprueba contra el árbol, no contra sí misma.** Un patrón que dejara de coincidir con
+  dónde viven los informes se vería igual que uno que funciona: los dos terminan sin eximir nada. La
+  aserción falla si el patrón queda huérfano, y esa mutación está verificada.
+
+Lo que el caso no preveía: el arreglo empujó a `repo.test.js` sobre las 500 líneas, y la revisión que ese
+umbral dispara encontró que el archivo mezcla dos sujetos —la forma del código y qué se le exige a un
+comentario—. La partición quedó anotada en `PENDING_SPLIT` con su forma exacta, en vez de hacerse a medias
+como cola de este cambio: se intentó, tres constantes y dos imports viajaron mal, y se revirtió.
