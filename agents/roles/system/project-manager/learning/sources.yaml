@@ -21,6 +21,6 @@ sources:
     tier: standard
     topics: [scrum, empirical, iterative, product-delivery]
   - name: Government Functional Standard GovS 002
-    url: https://projectdelivery.gov.uk/govs-002-project-delivery-functional-standard/
+    url: https://www.gov.uk/government/publications/project-delivery-functional-standard
     tier: regulation
     topics: [governance, assurance, planning, control, benefits, change]

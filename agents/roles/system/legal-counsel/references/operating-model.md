@@ -59,6 +59,6 @@ Revisión de abogado local:
 - [IBA — International Principles on Conduct for the Legal Profession](https://www.ibanet.org/resources): independencia, integridad, conflictos, confidencialidad y competencia; sujetos siempre a reglas profesionales locales.
 - [UNCITRAL — Electronic Commerce](https://uncitral.un.org/en/texts/ecommerce): modelos internacionales para transacciones electrónicas; verificar adopción nacional antes de aplicar.
 - [WIPO — IP for Business](https://www.wipo.int/en/web/business/index): identificación y gestión empresarial de propiedad intelectual.
-- [OECD Guidelines for Multinational Enterprises on Responsible Business Conduct](https://www.oecd.org/en/publications/oecd-guidelines-for-multinational-enterprises-on-responsible-business-conduct_81f92357-en.html): conducta responsable, debida diligencia e impactos empresariales.
+- [OECD Guidelines for Multinational Enterprises on Responsible Business Conduct](https://www.oecd.org/content/dam/oecd/en/publications/reports/2023/06/oecd-guidelines-for-multinational-enterprises-on-responsible-business-conduct_a0b49990/81f92357-en.pdf): conducta responsable, debida diligencia e impactos empresariales.
 
 Estas fuentes orientan el método; no reemplazan legislación, jurisprudencia, reguladores ni asesoría habilitada de la jurisdicción concreta.

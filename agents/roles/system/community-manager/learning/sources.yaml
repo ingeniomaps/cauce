@@ -21,7 +21,7 @@ sources:
     url: https://www.w3.org/TR/WCAG22/
     tier: standard
     topics: [accessibility, inclusion, web, conformance]
-  - name: OECD privacy principles
-    url: https://www.oecd.org/en/topics/privacy-principles.html
+  - name: OECD Privacy Guidelines
+    url: https://legalinstruments.oecd.org/public/doc/188/188.en.pdf
     tier: standard
     topics: [privacy, collection, purpose, use, accountability]

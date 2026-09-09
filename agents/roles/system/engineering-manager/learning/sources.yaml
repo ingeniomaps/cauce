@@ -21,6 +21,6 @@ sources:
     tier: profession
     topics: [psychological-safety, effectiveness]
   - name: ACM Code of Ethics
-    url: https://www.acm.org/code-of-ethics
+    url: https://www.acm.org/binaries/content/assets/about/acm-code-of-ethics-booklet.pdf
     tier: profession
     topics: [ethics, fairness, privacy, leadership]

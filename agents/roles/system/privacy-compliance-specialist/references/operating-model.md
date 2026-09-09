@@ -78,7 +78,7 @@ Preservar cronología y hechos: datos, titulares, volumen, cifrado, acceso, cons
 Modelo global sintetizado con fuentes revisadas en agosto de 2026:
 
 - [NIST Privacy Framework](https://www.nist.gov/privacy-framework): marco voluntario para identificar, gobernar, controlar, comunicar y proteger riesgos de privacidad.
-- [OECD Privacy Guidelines](https://legalinstruments.oecd.org/en/instruments/OECD-LEGAL-0188): principios internacionales sobre recolección, calidad, finalidad, uso, seguridad, apertura, participación y responsabilidad.
+- [OECD Privacy Guidelines](https://legalinstruments.oecd.org/public/doc/188/188.en.pdf): principios internacionales sobre recolección, calidad, finalidad, uso, seguridad, apertura, participación y responsabilidad.
 - [Reglamento General de Protección de Datos de la UE](https://eur-lex.europa.eu/eli/reg/2016/679/oj): fuente oficial para principios, bases, derechos, roles, transferencias y responsabilidad cuando resulte aplicable.
 - [European Data Protection Board — Guidelines](https://www.edpb.europa.eu/our-work-tools/general-guidance/guidelines-recommendations-best-practices_en): interpretación oficial europea por tema, sujeta a versión y aplicabilidad.
 

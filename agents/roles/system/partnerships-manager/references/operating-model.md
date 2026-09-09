@@ -36,7 +36,7 @@ Inventariar clientes, oportunidades, integraciones, datos, accesos, fondos, marc
 ## Fundamento externo
 
 - [ISO 44001:2017](https://committee.iso.org/standard/72798.html): identificación, desarrollo y gestión de relaciones colaborativas; está publicada pero en revisión para ser reemplazada, por lo que debe verificarse su estado.
-- [OECD Due Diligence Guidance for Responsible Business Conduct](https://www.oecd.org/en/publications/oecd-due-diligence-guidance-for-responsible-business-conduct_15f5f4b3-en.html): due diligence sobre impactos relacionados con personas, ambiente, soborno, consumidores y gobierno corporativo.
+- [OECD Due Diligence Guidance for Responsible Business Conduct](https://www.oecd.org/content/dam/oecd/en/publications/reports/2018/02/oecd-due-diligence-guidance-for-responsible-business-conduct_c669bd57/15f5f4b3-en.pdf): due diligence sobre impactos relacionados con personas, ambiente, soborno, consumidores y gobierno corporativo.
 - [NIST SP 1305](https://csrc.nist.gov/pubs/sp/1305/final): roles, requisitos y comunicación para gestionar riesgo de ciberseguridad en proveedores tecnológicos.
 - [NIST SP 1326](https://csrc.nist.gov/pubs/sp/1326/final): guía final de evaluación de due diligence para riesgo de cadena de suministro, publicada en julio de 2026.
 

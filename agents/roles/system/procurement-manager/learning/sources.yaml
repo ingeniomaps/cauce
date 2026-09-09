@@ -14,7 +14,7 @@ sources:
     tier: standard
     topics: [procurement, sustainability, governance, lifecycle]
   - name: OECD due diligence for responsible business conduct
-    url: https://www.oecd.org/en/topics/sub-issues/due-diligence-guidance-for-responsible-business-conduct.html
+    url: https://www.oecd.org/content/dam/oecd/en/publications/reports/2018/02/oecd-due-diligence-guidance-for-responsible-business-conduct_c669bd57/15f5f4b3-en.pdf
     tier: standard
     topics: [due-diligence, supply-chain, human-rights, integrity, environment]
   - name: UNCITRAL Model Law on Public Procurement

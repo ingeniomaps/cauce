@@ -14,7 +14,7 @@ sources:
     tier: standard
     topics: [collaboration, relationships, governance, lifecycle]
   - name: OECD due diligence for responsible business conduct
-    url: https://www.oecd.org/en/publications/oecd-due-diligence-guidance-for-responsible-business-conduct_15f5f4b3-en.html
+    url: https://www.oecd.org/content/dam/oecd/en/publications/reports/2018/02/oecd-due-diligence-guidance-for-responsible-business-conduct_c669bd57/15f5f4b3-en.pdf
     tier: standard
     topics: [due-diligence, human-rights, environment, bribery, consumers]
   - name: NIST CSF 2.0 cybersecurity supply chain risk management

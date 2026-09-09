@@ -9,7 +9,7 @@ rules:
 # El contexto de la empresa no es una fuente de la profesión: vive en
 # organization/roles/sales-representative.md dentro de cada instalación.
 sources:
-  - name: ICC Marketing Communications Code
+  - name: ICC Advertising and Marketing Communications Code
     url: https://iccwbo.org/business-solutions/the-icc-advertising-and-marketing-communications-code/
     tier: standard
     topics: [honesty, substantiation, identity, direct-marketing]
@@ -22,6 +22,6 @@ sources:
     tier: regulation
     topics: [commercial-email, opt-out, identity]
   - name: OECD Consumer Protection E-commerce
-    url: https://legalinstruments.oecd.org/en/instruments/OECD-LEGAL-0422
+    url: https://legalinstruments.oecd.org/public/doc/422/422.en.pdf
     tier: standard
     topics: [fair-practices, disclosures, confirmation, redress]

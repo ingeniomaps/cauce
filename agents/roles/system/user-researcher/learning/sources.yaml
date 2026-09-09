@@ -17,7 +17,7 @@ sources:
     tier: profession
     topics: [methods, usability, synthesis]
   - name: UK Government Social Research Ethics
-    url: https://www.gov.uk/government/publications/government-social-research-framework-for-research-ethics
+    url: https://www.gov.uk/government/publications/ethical-assurance-guidance-for-social-research-in-government
     tier: regulation
     topics: [ethics, harm, consent]
   - name: Interaction Design Foundation

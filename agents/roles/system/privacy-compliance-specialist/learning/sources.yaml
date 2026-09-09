@@ -14,7 +14,7 @@ sources:
     tier: standard
     topics: [privacy-risk, governance, controls]
   - name: OECD Privacy Guidelines
-    url: https://legalinstruments.oecd.org/en/instruments/OECD-LEGAL-0188
+    url: https://legalinstruments.oecd.org/public/doc/188/188.en.pdf
     tier: standard
     topics: [privacy-principles, accountability, transborder-data]
   - name: EUR-Lex GDPR
