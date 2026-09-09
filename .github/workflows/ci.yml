@@ -10,9 +10,23 @@ on:
 permissions:
   contents: read
 
+# Un grupo por commit en `main`, y por rama en todo lo demás. Agrupar `main` por rama deja a cada push
+# esperando detrás del anterior, y **una pendiente la desaloja la siguiente**: «any existing pending job
+# or workflow in the same concurrency group will be canceled and the new queued job or workflow will take
+# its place» —docs.github.com, «Workflow syntax for GitHub Actions», `concurrency`—.
+#
+# Eso no lo gobierna `cancel-in-progress`, y por eso apagarlo no alcanzaba: el 2026-09-08 murieron así
+# quince corridas de `main` con la cancelación ya desactivada, y la que estaba **corriendo** sobrevivió
+# cada vez. Hacen falta tres solapadas para verlo —con dos nunca hay una pendiente que desalojar—, que es
+# lo que lo hacía parecer intermitente.
+#
+# Medido en una rama de descarte con este mismo bloque: con el grupo por rama, cinco corridas a diez
+# segundos de distancia dejaron viva la primera y la última y cancelaron **las tres del medio**; con el
+# grupo por commit, las cuatro siguientes terminaron en verde y solapándose entre sí.
 concurrency:
-  group: ci-${{ github.ref }}
-  # Cancelar en `main` dejaba una release sin señal cuando el commit siguiente llegaba antes.
+  group: ci-${{ github.ref }}${{ github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' }}
+  # En `main` el grupo tiene un solo miembro, así que esto ya no decide nada sobre otro push: cuida el
+  # caso que queda, un `workflow_dispatch` sobre el commit de una release mientras su corrida va.
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:

@@ -63,6 +63,22 @@ test('quien corre el agente no puede escribir, y quien escribe no tiene la crede
 
 // Un tag de acción es mutable: quien controle el repositorio de la acción puede moverlo a otro commit,
 // y el workflow que lo usa ejecuta código nuevo sin que cambie una línea acá.
+// Sólo una corrida puede estar pendiente por grupo de concurrencia, y la que llega desaloja a la que
+// esperaba —comportamiento por defecto de GitHub, que `cancel-in-progress` no gobierna—. Agrupando
+// `main` por rama, una tanda de merges deja sin señal a todo lo que no sea el primero ni el último: el
+// 2026-09-08 fueron quince corridas.
+//
+// Esto no lo puede ver ninguna corrida: hacen falta tres pushes solapados para que exista una pendiente
+// que desalojar, y con dos siempre sale verde. Por eso la invariante se fija acá, donde una
+// simplificación del grupo a `ci-${github.ref}` se ve, en vez de esperar a la próxima tanda semanal.
+test('en `main` cada commit tiene su propio grupo de concurrencia', () => {
+  const ci = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'ci.yml'), 'utf8')
+  const grupo = ci.match(/^concurrency:\n\s*group:\s*(.+)$/m)
+  assert.ok(grupo, 'ci.yml declara un grupo de concurrencia')
+  assert.match(grupo[1], /github\.sha/, 'sin el sha, dos merges seguidos comparten grupo y uno pierde su corrida')
+  assert.match(grupo[1], /refs\/heads\/main/, 'y sólo en main: en una rama, cancelar la vieja es lo que se quiere')
+})
+
 test('las acciones están fijadas por SHA, no por tag', () => {
   const dir = path.resolve(__dirname, '..', '..', '.github', 'workflows')
   for (const name of fs.readdirSync(dir)) {
