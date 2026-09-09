@@ -106,6 +106,12 @@ nada cambie. Por eso un rojo aislado no autoriza a concluir; y por eso repetir l
 número no es medir. Lo que distingue una varianza de un defecto es que el defecto se repite **por la
 misma razón**, no que se repita el rojo.
 
+Hay un cuarto que no es ninguno de los tres y sólo le pasa a un caso recién escrito: **el rojo de su
+primera corrida no lo calibra**. Prueba que el caso puede fallar, no que falle por lo que dice medir —
+es la misma distinción que R9 hace para una prueba, aplicada al caso. Lo que lo calibra es una corrida
+donde se rompa a propósito la conducta que el caso cuida, con el contrato puesto, y verlo ponerse rojo
+**por eso**. Hasta entonces su veredicto no sostiene una conclusión sobre el cargo.
+
 Lo que un rojo nunca significa es que el paquete venga fallado. El cargo es un contrato y el caso es la
 medición: que la medición encuentre algo es para lo que existe, y un cargo con un caso en rojo se sigue
 usando mientras se sepa por qué.

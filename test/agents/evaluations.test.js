@@ -224,6 +224,26 @@ test('un registro anterior al último cambio del contrato se declara viejo', () 
   const aviso = evaluations.validate(target, 'probe').warnings.join('\n')
   assert.match(aviso, /el contrato cambió el \d{4}-\d{2}-\d{2} y la última corrida es del 2020-01-01/)
   assert.match(aviso, /mide una versión anterior/)
+
+  // Y el mismo árbol clonado a profundidad 1, que es lo que hace el checkout por defecto de Actions.
+  // Git ve un solo commit y le atribuye todo lo que hay adentro, así que la fecha que devolvía era la
+  // del clon y **todos** los cargos parecían haber cambiado hoy. La aserción que importa es la de
+  // ausencia: que aparezca el aviso nuevo no dice que el falso haya dejado de salir, y los dos podrían
+  // convivir. Tres informes de dos cargos gastaron un hallazgo cada uno en esto — caso 052.
+  // El commit de arriba lleva sólo el contrato, que es lo que la aserción de la fecha mide. El clon
+  // necesita además los casos y el veredicto, o `validate` no llega a preguntar por el contrato.
+  git('add', '-A')
+  git('commit', '-q', '-m', 'casos y veredictos')
+  const otro = installedProject('Contrato truncado')
+  const clon = path.join(otro, 'agents', 'roles', 'probe')
+  fs.mkdirSync(path.dirname(clon), { recursive: true })
+  const clonar = require('node:child_process').spawnSync(
+    'git', ['clone', '-q', '--depth', '1', `file://${own}`, clon], { encoding: 'utf8' })
+  assert.equal(clonar.status, 0, `el clon shallow es la precondición del caso: ${clonar.stderr}`)
+
+  const dicho = evaluations.validate(otro, 'probe').warnings.join('\n')
+  assert.match(dicho, /checkout está truncado/, 'dice que no puede saberlo, en vez de callarse')
+  assert.equal(/el contrato cambió el/.test(dicho), false, 'y no anuncia un cambio que no ocurrió')
 })
 
 // Inventario de los bloques que se presentan como el contrato del entregable, no cola de trabajo. La

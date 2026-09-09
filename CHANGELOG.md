@@ -14,6 +14,28 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.72.0]
+
+### Corregido
+
+- **`agent evaluate` deja de anunciar que el contrato cambió hoy cuando no cambió.** La fecha sale de
+  `git log` sobre el `SKILL.md` del cargo, y un checkout de un solo commit —el que hace `actions/checkout`
+  por defecto— no tiene con qué contestarla: git le atribuye el árbol entero a ese commit, así que
+  **todos** los contratos parecían haber cambiado el día de la corrida. En un repositorio truncado el
+  aviso ahora dice que no se puede saber, en vez de inventar una fecha, y el job que evalúa se lleva la
+  historia completa para que sí se pueda.
+
+  **Lo que te pide algo**: si corrés `agent evaluate` en un pipeline con clon superficial, vas a ver el
+  aviso nuevo. Se destraba con `fetch-depth: 0` en el checkout; sin eso el chequeo no puede correr y
+  decirlo es la mitad del arreglo.
+
+### Cambiado
+
+- **El README del catálogo dice qué calibra un caso de evaluación recién escrito.** El rojo de su primera
+  corrida prueba que puede fallar, no que falle por lo que dice medir: eso lo prueba una corrida donde se
+  rompa a propósito la conducta que cuida. Es lo que R9 ya pedía para una prueba, dicho donde se leen los
+  veredictos.
+
 ## [0.71.0] - 2026-09-09
 
 ### Cambiado

@@ -109,6 +109,27 @@ test('una semana sin credencial se anuncia, en vez de quedar en verde y en silen
   }
 })
 
+// Quién corre `agent-evaluate` decide quién necesita la historia. Con el checkout por defecto —un solo
+// commit— git le atribuye el árbol entero a ese commit y `agent-evaluate` anuncia que el contrato de
+// cada cargo cambió hoy. El motor dejó de inventar la fecha (caso 052) y eso deja la pregunta sin
+// contestar, así que el job que la hace es el que tiene que traer con qué.
+//
+// Se busca el job por lo que concede y no por su nombre: atarlo a `research` haría pasar la prueba el
+// día que la evaluación se mude a otro job sin su historia, que es exactamente el fallo que cuida.
+test('el job que evalúa contratos se lleva la historia entera', () => {
+  const texto = workflow('agent-learning')
+  const jobs = texto.split(/\n  (?=[a-z][a-z-]*:\n)/)
+  const evalua = jobs.filter((job) => /Bash\(make agent-evaluate/.test(job))
+  assert.equal(evalua.length, 1, `se esperaba un job que corra agent-evaluate, hay ${evalua.length}`)
+  assert.match(evalua[0], /actions\/checkout@[^\n]*\n\s*with:\n\s*fetch-depth: 0/,
+    'sin historia, la fecha del contrato no se puede leer y el aviso se apaga entero')
+
+  // Y los demás siguen con el checkout barato: la historia completa de este repositorio son 76 MB
+  // contra 8, y ninguno de los otros tres jobs pregunta nada que la necesite.
+  const conHistoria = jobs.filter((job) => /fetch-depth: 0/.test(job))
+  assert.equal(conHistoria.length, 1, 'sólo el que evalúa la pide')
+})
+
 // La suscripción primero, la API key como respaldo. No alcanza con poner las dos en el entorno: el
 // CLI antepone `ANTHROPIC_API_KEY` al token de suscripción y en `-p` la usa siempre que esté, así que
 // tenerlas juntas paga API en silencio. Se ejecuta el paso real contra un `claude` de mentira que
