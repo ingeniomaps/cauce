@@ -18,6 +18,16 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Un merge a `main` ya no le quita la corrida de CI al merge anterior.** Todos los pushes a `main`
+  compartían grupo de concurrencia, y sólo una corrida puede estar pendiente por grupo: la que llega
+  desaloja a la que esperaba. En una tanda de merges sobrevivían la primera y la última y morían todas
+  las del medio — el 2026-09-08, quince corridas. No lo causaba `cancel-in-progress`, que ya estaba
+  apagado en `main` y funciona: la corrida **en curso** sobrevivió cada vez. Ahora cada commit de `main`
+  tiene su propio grupo, así que ninguna espera detrás de otra.
+
+  **Lo que te pide algo**: si mergeás varios PR seguidos, ahora corre la suite completa una vez por
+  merge en vez de una por tanda. Lo que se compra es saber cuál rompió `main` sin bisect.
+
 - **`agent evaluate` deja de anunciar que el contrato cambió hoy cuando no cambió.** La fecha sale de
   `git log` sobre el `SKILL.md` del cargo, y un checkout de un solo commit —el que hace `actions/checkout`
   por defecto— no tiene con qué contestarla: git le atribuye el árbol entero a ese commit, así que
