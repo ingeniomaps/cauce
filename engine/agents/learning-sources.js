@@ -86,8 +86,17 @@ function cadence(root, agent) {
 // Basta con las líneas `tier:`: el archivo es del catálogo, no de un tercero, y agregar un parser de
 // YAML por un campo rompería la regla de cero dependencias.
 function sourceTiers(text) {
-  const body = text.includes('sources:') ? text.slice(text.indexOf('sources:')) : ''
-  return [...body.matchAll(/tier:\s*([A-Za-z-]+)/g)].map((hit) => hit[1])
+  return [...sourcesBody(text).matchAll(/tier:\s*([A-Za-z-]+)/g)].map((hit) => hit[1])
+}
+
+// El cuerpo de `sources:` termina donde empieza `pending:`. Sin este corte, una pendiente entraba como
+// fuente declarada y el chequeo semanal la reportaba rota todas las semanas — que es exactamente el
+// aviso permanente que la lista existe para no producir.
+function sourcesBody(text) {
+  if (!text.includes('sources:')) return ''
+  const body = text.slice(text.indexOf('sources:'))
+  const corte = body.search(/^pending:/m)
+  return corte === -1 ? body : body.slice(0, corte)
 }
 
 // Una entrada escrita en una sola línea: seis cargos del catálogo la escriben así y cuarenta y siete la
@@ -101,7 +110,7 @@ const quitar = (value) => value.replace(/^['"]|['"]$/g, '')
 // `...latest published` y `...3.2.0`— así que arreglarle el `tier` a un cargo no se lo arreglaba a los
 // otros, y quien leyera el informe vería la misma página citada como si fueran tres.
 function sourceUrls(text) {
-  const body = text.includes('sources:') ? text.slice(text.indexOf('sources:')) : ''
+  const body = sourcesBody(text)
   const out = []
   let name = ''
   for (const line of body.split('\n')) {
@@ -151,6 +160,45 @@ function documentUrls(dir) {
   return out
 }
 
+// Lo que el cargo probó, no pudo abrir y va a volver a necesitar. Cinco cargos lo escribían ya como
+// comentario en su propio archivo —el steward hasta puso «Registrar cuando exista una ficha legible»,
+// que es un recordatorio que nadie iba a revisar—, así que la forma existía y lo que faltaba era que
+// alguien la mirara.
+//
+// `url` es opcional a propósito: la mitad de esas entradas están pendientes **porque no hay ninguna URL
+// que responda** —ISO/IEC/IEEE 24765, la ley federal mexicana—, y exigirla habría dejado fuera
+// justamente las que más cuesta resolver. Lo que no es opcional es `why`: sin la razón, la lista es un
+// cementerio de enlaces que nadie sabe por qué están.
+//
+// La continuación de línea se une en vez de prohibirse: `why` es una frase y una frase se envuelve. La
+// primera versión la cortaba en el primer salto y **no avisaba** —cuatro razones quedaron a media
+// oración sin que nada fallara—, y prohibir la forma no evita que la próxima persona la escriba.
+const PENDING_FIELD = /^\s{4}(name|url|why|since):\s*(.+?)\s*$/
+function pendingSources(text) {
+  const corte = text.search(/^pending:/m)
+  if (corte === -1) return []
+  const out = []
+  let one = null
+  let last = ''
+  for (const line of text.slice(corte).split('\n').slice(1)) {
+    if (/^\S/.test(line)) break
+    if (/^\s{2}-\s/.test(line)) {
+      if (one) out.push(one)
+      one = {}
+      last = ''
+      const primero = line.match(/^\s{2}-\s*(name|url|why|since):\s*(.+?)\s*$/)
+      if (primero) { one[primero[1]] = quitar(primero[2]); last = primero[1] }
+      continue
+    }
+    const campo = line.match(PENDING_FIELD)
+    if (campo && one) { one[campo[1]] = quitar(campo[2]); last = campo[1]; continue }
+    const sigue = line.match(/^\s{6,}(\S.*?)\s*$/)
+    if (sigue && one && last) one[last] += ` ${sigue[1]}`
+  }
+  if (one) out.push(one)
+  return out
+}
+
 function evaluate(root, agent) {
   const target = catalog.resolve(root, agent)
   const errors = []
@@ -188,6 +236,20 @@ function evaluate(root, agent) {
         errors.push(`sources.yaml: ${one.url} está dos veces, como "${previous}" y como "${one.name}"`)
       }
       byUrl.set(one.url, one.name)
+    }
+    // Una pendiente sin razón es un enlace muerto con fecha, y sin fecha no se puede ver que lleva
+    // meses ahí. Los dos campos son la mitad del valor de la lista: lo que la vuelve revisable.
+    for (const one of pendingSources(fs.readFileSync(sourcesFile, 'utf8'))) {
+      const falta = ['name', 'why', 'since'].filter((campo) => !one[campo])
+      if (falta.length) {
+        errors.push(`sources.yaml: una pendiente no declara ${falta.join(' ni ')}`
+          + `${one.name ? ` (${one.name})` : ''}`)
+      }
+      // Declarada y pendiente a la vez es una contradicción que el chequeo semanal no puede resolver:
+      // la reportaría rota como fuente y recuperada como pendiente en la misma corrida.
+      if (one.url && byUrl.has(one.url)) {
+        errors.push(`sources.yaml: ${one.url} está declarada como fuente y también como pendiente`)
+      }
     }
   }
   const skill = fs.readFileSync(path.join(target, 'SKILL.md'), 'utf8').toLowerCase()
@@ -237,4 +299,6 @@ function evaluate(root, agent) {
   return { errors, warnings, proposals: proposals.length, pending, cases }
 }
 
-module.exports = { SOURCE_TIERS, cadence, documentUrls, evaluate, evaluateTeam, sourceUrls }
+module.exports = {
+  SOURCE_TIERS, cadence, documentUrls, evaluate, evaluateTeam, pendingSources, sourceUrls,
+}
