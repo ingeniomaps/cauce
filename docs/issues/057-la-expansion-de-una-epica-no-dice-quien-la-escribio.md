@@ -1,14 +1,15 @@
 ---
 caso: 057
 titulo: Un hito que expandió el runner se lee igual que uno que escribió una persona
-estado: abierto
+estado: resuelto
+resuelto-en: 0.71.0
 prioridad: media
 version-detectada: 0.70.0
 ---
 
 # 057 — La expansión de una épica no deja dicho quién la escribió
 
-**🔴 abierto** · detectado en 0.70.0 · prioridad **media** — no produce trabajo falso, pero borra de dónde vino el que hay
+**🟢 resuelto en 0.71.0** · detectado en 0.70.0 · prioridad **media** — no produce trabajo falso, pero borra de dónde vino el que hay
 
 ## Resumen
 
@@ -98,3 +99,38 @@ dos, y sale como caso propio en vez de quedar adentro de uno cerrado.
 - [056](056-un-planning-inexistente-se-lee-como-cola-vacia.md) — de donde sale. Allá se impidió expandir
   sobre una lectura fallida; acá falta firmar la que sí corresponde.
 - [058](058-autobuild-no-comprueba-su-raiz-antes-de-empezar.md) — el otro que salió del mismo cierre.
+
+## Cierre
+
+**Resuelto en 0.71.0.** El recorrido de lo que enumeró:
+
+- **Se tomó la primera de las dos vías: la marca en el BACKLOG.** El prompt de expansión pide una línea
+  debajo del encabezado del hito, con quién la escribió, cuándo y de qué épica sale.
+- **La elección se decidió con la frecuencia medida, que es lo que este caso dejaba abierto.** Su tradeoff
+  decía que «esa frecuencia cambia cuál de las dos vías conviene», y medirla refutó la suposición de que
+  expandir era raro: ocurría al menos una vez por corrida que terminara su hito, y la última siempre se
+  descartaba. Eso salió como caso [061](061-autobuild-expande-el-hito-siguiente-y-corta-sin-usarlo.md) y,
+  arreglado, la expansión volvió a ser rara **por una razón**: a lo sumo una por corrida, y sólo cuando lo
+  escrito se ejecuta en esa misma vuelta.
+- **La segunda vía —una fila en `HUMAN_ACTIONS.md`— se descartó, con su razón.** Resuelve un problema más
+  grande que el que este caso enuncia: obligar a que alguien revise antes de seguir. Lo enunciado es de
+  trazabilidad —«quien revisa no tiene cómo saber cuál merece una segunda lectura»— y eso lo cierra la
+  marca. La fila, además, frenaría la corrida siguiente cada vez, para trabajo que la anterior ya ejecutó
+  y que salió de una épica aprobada. Lo que la activaría es ver una expansión que no debió ocurrir.
+- **Tradeoff «marcar dentro del BACKLOG mete metadatos de proceso en un archivo de contenido» — se paga, y
+  se acotó dónde.** La línea va **debajo** del encabezado y no en el título: el parser lee el encabezado
+  con un patrón exacto, así que ahí adentro se la comería el título. Comprobado sobre una instancia de
+  verdad: con la marca puesta, `check` sale en 0 y `context` devuelve la tarea igual.
+- **Tradeoff «la vía de HUMAN_ACTIONS frena el encadenado desatendido» — no se paga, porque no se tomó.**
+- **Tradeoff «sin medir: no se sabe con qué frecuencia se expande» — medido, y fue lo que decidió el
+  caso.** No en producción —el `journal.jsonl` no se commitea— sino sobre el arnés, que establece qué
+  puede pasar. Para elegir entre las dos vías alcanzaba con eso.
+- **La sección «Y dónde está la línea de la autonomía» no se hizo, y sale como caso propio: el 062.** Al ir
+  a escribir esa aclaración apareció que `AGENTS.md` ya trata el caso análogo —una recurrencia vencida
+  tampoco la promueve el runner, aunque esté aprobada y escrita— y lo resuelve **al revés**. Eso no es una
+  redacción que faltaba: son dos casos análogos con salidas opuestas, y elegir cuál manda es política.
+
+Lo que apareció al escribir la prueba: **la razón de este cambio no puede vivir en el test y en el código
+a la vez.** La primera versión repetía en el test el porqué que ya estaba junto al prompt, y la puerta de
+razones repetidas lo marcó. El test dice ahora sólo lo suyo — por qué se afirma sobre el prompt y no
+sobre un BACKLOG resultante.
