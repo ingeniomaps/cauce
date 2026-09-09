@@ -409,6 +409,11 @@ const JUSTIFIED = {
   'automatization/workflows/autobuild.js':
     'Un recorrido crece de a una fase, y su schema y su paso cambian juntos: separarlos parte por la '
     + 'mitad lo que es una sola cosa.',
+  'engine/hooks/shell.js':
+    'Suma una regla por peligro del shell y las siete comparten la misma aproximación de parseo —dónde '
+    + 'empieza una palabra, dónde termina un comando—. El caso 067 lo mostró al revés: el defecto vivía '
+    + 'en esa forma compartida y arreglarlo en un lugar arregló las siete, así que partirlo por grupo '
+    + 'dejaría siete copias del mismo corte y seis se pudrirían sin que nada falle.',
   'test/wiring/hooks.test.js':
     'El registro de guards suma un caso por guard, y cada caso prueba los dos lados de la misma '
     + 'decisión: qué bloquea y qué deja pasar. Partirlo por grupo separaría casos que comparten el '
