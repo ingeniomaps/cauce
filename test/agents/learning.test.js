@@ -643,3 +643,38 @@ test('archivar se puede invocar desde el CLI, no sólo desde el motor', () => {
   assert.match(hecho.stdout, /queda archivada/)
   assert.match(fs.readFileSync(propuesta.file, 'utf8'), /^status: archived$/m)
 })
+
+// Archivar dejaba el documento diciendo «Responsable: por definir» y ninguna fila en el historial, así
+// que una propuesta mirada y descartada se leía igual que una que nadie miró. Lo pagaban los informes
+// siguientes: dos cargos de la tanda del 2026-09-07 gastaron su recomendación explicando ese estado.
+test('archivar deja quién lo decidió, en el documento y en el historial', () => {
+  const target = installedProject('Archivar con responsable')
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe4'), 'probe4', 'x')
+  const reports = path.join(own, 'learning', 'reports')
+  fs.mkdirSync(reports, { recursive: true })
+  fs.writeFileSync(path.join(reports, '2099-01-07.md'),
+    '---\nagent: probe4\ndate: 2099-01-07\nstatus: draft\n---\n\n## Recomendación\n\nAlgo.\n')
+  const history = path.join(own, 'learning', 'HISTORY.md')
+  fs.writeFileSync(history, '# Historial\n\n| Fecha | Propuesta | Decisión | Aprobó | Cambio aplicado |\n'
+    + '|---|---|---|---|---|\n')
+  const propuesta = learning.prepareProposal(target, 'probe4', new Date('2099-02-01T13:17:00Z'), '2099-01')
+
+  const hecho = run(['learn', 'probe4', '--archived', '--period', '2099-01'], target,
+    { CAUCE_OWNER: 'quien.decide@acme.test' })
+  assert.equal(hecho.status, 0, `${hecho.stdout}${hecho.stderr}`)
+
+  const doc = fs.readFileSync(propuesta.file, 'utf8')
+  assert.match(doc, /^- Responsable: quien\.decide@acme\.test$/m, 'el documento dice quién la archivó')
+  assert.equal(/por definir/.test(doc), false, `no queda nada sin decidir: ${doc}`)
+
+  // La columna de la tabla se llama «Decisión» y hay dos: aplicar y archivar. La segunda no dejaba fila.
+  const filas = fs.readFileSync(history, 'utf8').split('\n').filter((one) => /^\| 2\d{3}-/.test(one))
+  assert.equal(filas.length, 1, `una fila por propuesta cerrada: ${JSON.stringify(filas)}`)
+  assert.match(filas[0], /\| archivada \|/, 'y dice cuál de las dos decisiones fue')
+  assert.match(filas[0], /quien\.decide@acme\.test/, 'con quién la tomó')
+
+  // Archivar dos veces no duplica la fila: la segunda vuelta sale por «ya estaba archivada».
+  run(['learn', 'probe4', '--archived', '--period', '2099-01'], target, { CAUCE_OWNER: 'otro@acme.test' })
+  assert.equal(fs.readFileSync(history, 'utf8').split('\n').filter((one) => /^\| 2\d{3}-/.test(one)).length, 1,
+    'el historial no crece por volver a archivar lo ya archivado')
+})
