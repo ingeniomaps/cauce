@@ -32,6 +32,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`autobuild` comprueba su raíz en la primera fase, y lo dice nombrándola.** `ROOT` viaja escrito en
+  el workflow y es relativo a la carpeta donde se abre la herramienta: si la sesión abrió en otra, todas
+  las rutas resuelven a `<raíz>/<raíz>/…` y ninguna existe. Nada lo comprobaba, así que la corrida
+  gastaba Triage entero sobre archivos ausentes y paraba más abajo mandando a revisar el planning — que
+  está bien; lo que no existe es la carpeta de la que cuelga.
+
 - **`learning/HISTORY.md` dice lo mismo en los 53 cargos, y su fila entra en una tabla.** El encabezado
   tenía trece redacciones distintas y nueve contradecían la tabla que llevan debajo —«registrar únicamente
   cambios aprobados», cuando la columna se llama «Decisión» y hay dos—. Y dieciséis archivos no tenían
