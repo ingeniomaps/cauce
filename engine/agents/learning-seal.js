@@ -12,6 +12,8 @@ const path = require('node:path')
 const { atomicWrite } = require('../core/files')
 const { isoDate, proposalFiles, proposalState, assertWritable, lastOfPeriod } = require('./learning-files')
 const { section } = require('../planning/parser')
+// La misma identidad con la que se reclama una tarea: quién es la persona, no qué runner corre.
+const { owner } = require('../planning/claims')
 
 // El cuerpo sin sellar, en los dos estados que produce el ciclo: «pendiente» lo escribe el molde y
 // «aprobada» la firma. Lo lee la guarda de más abajo y lo reemplaza el sello, así que vive una vez.
@@ -102,20 +104,41 @@ function archive(root, agent, period = '', kind = 'agent') {
       + 'Archivar es para lo que se miró y no cambia nada.',
     )
   }
+  // Quién archivó, que es la mitad que faltaba. Sellar saca el responsable del documento —lo escribió la
+  // firma— y archivar no pasa por firma, así que sale de la identidad de quien corre el comando: la misma
+  // que `claim` usa para decir de quién es una tarea. Sin esto la propuesta quedaba en «por definir» y no
+  // había forma de distinguir una decisión de un olvido.
+  const responsible = owner(root) || 'sin identificar'
   atomicWrite(file, text
     .replace(/^status:\s*\S+\s*$/m, 'status: archived')
     .replace(/^-[ \t]*Estado:[ \t]*pendiente[ \t]*$/mi, '- Estado: archivada')
+    .replace(/^-[ \t]*Responsable:[ \t]*por definir[ \t]*$/mi, `- Responsable: ${responsible}`)
     .replace(/^-[ \t]*Fecha:[ \t]*por definir[ \t]*$/mi, `- Fecha: ${isoDate(new Date())}`))
+  // La fila va para los dos tipos, y no sólo para los recorridos como en `seal`: allá los cargos los
+  // registra `agent-promote` al aplicar, y archivar no pasa por ningún workflow que lo haga.
+  // La raíz del cargo, que es `<cargo>/learning/proposals/<archivo>` sin sus tres últimos tramos:
+  // `appendHistory` agrega `learning/` por su cuenta.
+  //
+  // La celda del cambio lleva el criterio y no queda vacía. Es el único que este comando admite —archivar
+  // *es* decidir que no cambia nada— así que decirlo evita que la fila se lea como un registro a medias.
+  // Archivar por otra razón, como posponer, necesitaría un campo que hoy no existe.
+  appendHistory(path.dirname(path.dirname(path.dirname(file))), file, responsible,
+    'Se miró y no cambia nada.', 'archivada')
   return { file, already: false }
 }
 
-// Una fila por propuesta aplicada. El cambio va en una línea: el documento entero está a un enlace, y
-// una tabla que lo repite entero deja de leerse.
-function appendHistory(target, file, responsible, change) {
+// Una fila por propuesta cerrada, cualquiera sea el destino. El cambio va en una línea: el documento
+// entero está a un enlace, y una tabla que lo repite entero deja de leerse.
+//
+// La decisión es un parámetro y no la constante `aplicada` porque la columna de la tabla se llama
+// «Decisión» y hay dos: aplicar y archivar. Archivar no dejaba fila, así que una propuesta mirada y
+// descartada era indistinguible de una que nadie miró — y eso lo pagaban los informes siguientes, que
+// gastaban su recomendación explicando el estado en vez de su profesión.
+function appendHistory(target, file, responsible, change, decision = 'aplicada') {
   const history = path.join(target, 'learning', 'HISTORY.md')
   if (!fs.existsSync(history)) return
   const line = change.split('\n').map((one) => one.trim()).filter(Boolean)[0] || ''
-  const row = `| ${isoDate(new Date())} | \`${path.basename(file)}\` | aplicada | ${responsible} `
+  const row = `| ${isoDate(new Date())} | \`${path.basename(file)}\` | ${decision} | ${responsible} `
     + `| ${line.slice(0, 160)} |\n`
   fs.appendFileSync(history, `${fs.readFileSync(history, 'utf8').endsWith('\n') ? '' : '\n'}${row}`)
 }

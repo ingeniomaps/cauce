@@ -58,8 +58,10 @@ const CLI = path.resolve(__dirname, '..', '..', 'engine', 'cli', 'ops.js')
 // viaja: un hijo que carga `node:test` con esa variable puesta emite el reporte binario del runner en
 // vez de su salida, y `verify` llega a correr el `npm run test` de la instancia que montó la prueba
 // —`engine/hooks/run.js`, la rama de `package.json`—.
-function run(args, cwd = path.dirname(CLI)) {
-  const env = { ...process.env }
+// `extra` existe para lo que el CLI lee del entorno y no de sus argumentos —hoy `CAUCE_OWNER` y
+// `CAUCE_RUNNER`—: fijarlo desde el proceso de prueba lo dejaría puesto para todas las demás.
+function run(args, cwd = path.dirname(CLI), extra = {}) {
+  const env = { ...process.env, ...extra }
   delete env.NODE_TEST_CONTEXT
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', env })
 }
