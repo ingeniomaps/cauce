@@ -226,3 +226,26 @@ test('una tarea que vuelve a quedar elegible para siempre corta con su motivo', 
   assert.equal(result.reason, 'milestone-too-long')
   assert.match(result.detail, /50/)
 })
+
+// La corrida corta cuando la tarea que sigue es de otro hito —el corte que evita encadenar hitos sin que
+// nadie mire—, y expandía justo antes de llegar ahí: escribía el hito siguiente en el BACKLOG y acto
+// seguido decidía no tocarlo. Escribir en el BACKLOG es lo único de este recorrido que no se revierte con
+// un `git checkout`, así que hacerlo para descartarlo deja trabajo cuyo autor nadie puede reconstruir.
+test('terminar el hito no expande el siguiente para descartarlo', async () => {
+  const conTarea = baseScript()[KEY.context]
+  const vacio = {
+    blocked: '', hasTask: false, wipActive: false, queued: 0, lane: '', readOk: true,
+    cast: { build: '', review: [] },
+  }
+  const { result, asked, written } = await runFlow(
+    { [KEY.pick]: { expanded: true, hito: 'H2' } },
+    { contexts: [conTarea, vacio, { ...conTarea, slug: 'T-9', hito: 'H2' }] },
+  )
+  ranToEnd(result)
+  assert.deepEqual(result.done, ['T-1'], 'la tarea del hito propio sí se construye')
+  assert.ok(!asked.includes(KEY.pick), 'y al quedarse sin cola no se expande lo que no va a usar')
+  // Por el texto del prompt de expansión y no por «BACKLOG»: Classify y Done lo nombran de forma
+  // legítima, así que buscar la palabra mide otra cosa y pasa a rojo por el motivo equivocado.
+  assert.equal(written.some((text) => text.includes('Expandí sólo la próxima épica')), false,
+    'ninguna escritura fue la expansión')
+})
