@@ -179,6 +179,11 @@ bloques de «Fix propuesto» y las dos predicciones de «Tradeoffs» — no sól
 - **La prioridad alta, «escribe en `BACKLOG.md` trabajo que ninguna persona aprobó» — cerrada por las dos
   vías.** El comando falla y la fase exige la lectura afirmada. Ninguna se apoya en la otra a propósito,
   porque el caso mostró que la primera sola no bastaba.
+- **«Relacionados» dejaba una acción sin destino y no se pierde.** El caso cierra diciendo que la
+  expansión de épicas «vive en la frontera» de la regla de autonomía de `AGENTS.md` y que «convendría que
+  el texto dijera dónde está la línea». Eso no se hizo acá: el texto vive en `template/`, así que tocarlo
+  baja a todos los consumidores en su próximo `upgrade` y es una decisión, no una redacción. Entra al
+  alcance del **057**, que ya trata sobre la expansión, en vez de abrir un caso más.
 - **Lo que el caso no preveía y apareció al arreglarlo.** `tree` tenía el mismo defecto y nadie lo había
   mirado. Y el harness de pruebas de `autobuild` **codificaba la confusión**: su fixture de «sin tarea»
   servía igual para «no pude leer», así que la suite entera venía dando por bueno el estado ambiguo.

@@ -63,6 +63,21 @@ cerrar— por una garantía mayor: nadie la descubre tarde.
 **No se propone una de las dos acá**: la primera es más barata y la segunda es más fuerte, y elegir
 depende de cuánto se confíe en la expansión desatendida, que es una decisión del mantenedor.
 
+## Y dónde está la línea de la autonomía
+
+Viene del 056, que lo dejó planteado en «Relacionados» sin destino: `AGENTS.md` dice que el runner «nunca
+amplía el alcance ni promueve sus propias ideas», y expandir una épica **aprobada** a un hito nuevo vive
+en la frontera de esa frase — no es una idea propia, y sí es escribir trabajo que nadie pidió en esa
+corrida.
+
+Hoy la regla se lee como una prohibición absoluta y el recorrido hace algo que la roza, así que quien la
+lea de un lado o del otro llega a conclusiones distintas sobre si el ciclo la respeta. Decirlo en el texto
+es parte de este caso y no de otro: firmar la expansión y declarar que es legítima son la misma decisión
+vista de los dos lados.
+
+**Toca `template/`**, así que baja a todos los consumidores en su próximo `upgrade`. No es una redacción:
+es fijar hasta dónde llega la autonomía del runner, y lo decide quien mantiene el toolkit.
+
 ## Tradeoffs
 
 - Marcar dentro del BACKLOG mete metadatos de proceso en un archivo que se lee como contenido, y eso
