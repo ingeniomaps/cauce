@@ -263,19 +263,31 @@ test('el ciclo anota qué fuentes declaradas no pudo abrir', { skip: process.pla
   // Las tres clases que la medición del catálogo separó: un dominio que bloquea, uno que contesta 202
   // —«aceptado, vuelve más tarde»— y una cáscara que responde 200 con casi nada. El cuerpo va antes del
   // código porque así lo pide `curl -w`, y es lo que el paso separa para contar palabras.
+  //
+  // Los dominios son inventados a propósito. El patrón decía `*iso.org*` y el cargo real que la prueba
+  // usaba lo citaba, así que el día que el catálogo cambió de ficha —caso 063— esto se puso rojo sin que
+  // el paso hubiera cambiado: la prueba afirmaba algo sobre el catálogo, no sobre el paso.
   const falso = (cuerpo403, extra = '') => '#!/usr/bin/env bash\n'
     + 'for arg in "$@"; do url="$arg"; done\n'
     + 'case "$url" in\n'
-    + `  *iso.org*) printf '%s\\n403' ${JSON.stringify(cuerpo403)} ;;\n`
+    + `  *bloqueado*) printf '%s\\n403' ${JSON.stringify(cuerpo403)} ;;\n`
     + "  *eur-lex*) printf '\\n202' ;;\n"
     + "  *cascara*) printf '<html><title>x</title></html>\\n200' ;;\n"
     + `  *) printf '%s\\n200' ${JSON.stringify('palabra '.repeat(80))} ;;\n`
     + 'esac\n' + extra
   fs.writeFileSync(path.join(dir, 'curl'), falso('sin acceso'), { mode: 0o755 })
 
+  // Dos fuentes, una que responde y otra que no: es la mezcla lo que se mide, porque contar sólo la rota
+  // no distingue el paso que las separa del que reporta todo.
+  const mezcla = path.join(dir, 'mezcla.yaml')
+  fs.writeFileSync(mezcla, 'version: 1\nsources:\n'
+    + '  - name: Sana\n    url: https://sana.example/x\n    tier: standard\n'
+    + '  - name: Bloqueada\n    url: https://bloqueado.example/x\n    tier: standard\n')
+
   const summary = path.join(dir, 'summary.txt')
   fs.writeFileSync(summary, '')
-  const salida = spawnSync('bash', ['-c', paso], {
+  const salida = spawnSync('bash', ['-c', paso.replace('"$dir/learning/sources.yaml"',
+    JSON.stringify(mezcla))], {
     cwd: repo,
     encoding: 'utf8',
     env: {
@@ -289,9 +301,9 @@ test('el ciclo anota qué fuentes declaradas no pudo abrir', { skip: process.pla
   assert.equal(salida.status, 0, `avisa y no falla la corrida: ${salida.stderr}`)
 
   const escrito = fs.readFileSync(summary, 'utf8')
-  assert.match(escrito, /\| fuentes declaradas \| [1-9]/, 'cuenta las que el cargo declara')
-  assert.match(escrito, /\| sin contenido legible \| [1-9]/, 'y cuántas no sirven')
-  assert.match(escrito, /iso\.org.*→ 403/, 'nombrando cuál y con qué código')
+  assert.match(escrito, /\| fuentes declaradas \| 2 \|/, 'cuenta las que el cargo declara')
+  assert.match(escrito, /\| sin contenido legible \| 1 \|/, 'y cuántas no sirven, que no son las mismas')
+  assert.match(escrito, /bloqueado\.example.*→ 403/, 'nombrando cuál y con qué código')
   assert.match(salida.stdout, /^::warning title=/m, 'sale como anotación, no como una línea de log')
 
   // Las otras dos clases, que un chequeo por código solo daría por buenas.

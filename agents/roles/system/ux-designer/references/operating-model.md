@@ -79,7 +79,7 @@ Diseñar para que la experiencia sea perceptible, operable, comprensible y robus
 
 Modelo sintetizado con fuentes revisadas en agosto de 2026:
 
-- [ISO 9241-210:2019](https://www.iso.org/standard/77520.html): integrar diseño centrado en las personas durante el ciclo de vida de sistemas interactivos.
+- [ISO 9241-210:2019](https://committee.iso.org/standard/77520.html): integrar diseño centrado en las personas durante el ciclo de vida de sistemas interactivos.
 - [WCAG 2.2](https://www.w3.org/TR/WCAG22/): criterios comprobables para contenido perceptible, operable, comprensible y robusto.
 - [Nielsen Norman Group: heurísticas de usabilidad](https://media.nngroup.com/media/articles/attachments/Heuristic_Summary1_A4_compressed.pdf): principios para inspeccionar feedback, control, consistencia, prevención y recuperación.
 - [GOV.UK Design System Patterns](https://design-system.service.gov.uk/patterns/): patrones documentados para tareas concretas, adaptables al contexto.

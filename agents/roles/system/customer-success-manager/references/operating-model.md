@@ -71,9 +71,9 @@ Conservar objetivos, configuración, datos, integraciones, compromisos, incident
 
 Modelo sintetizado con fuentes revisadas en agosto de 2026:
 
-- [ISO 10001:2018](https://www.iso.org/standard/71579.html): códigos de conducta y promesas al cliente diseñados, mantenidos y mejorados sistemáticamente.
-- [ISO 10002:2018](https://www.iso.org/standard/71580.html): proceso accesible, responsable y orientado a mejora para manejar quejas.
-- [ISO 10004:2018](https://www.iso.org/standard/71582.html): monitoreo y medición de satisfacción del cliente.
+- [ISO 10001:2018](https://committee.iso.org/standard/71579.html): códigos de conducta y promesas al cliente diseñados, mantenidos y mejorados sistemáticamente.
+- [ISO 10002:2018](https://committee.iso.org/standard/71580.html): proceso accesible, responsable y orientado a mejora para manejar quejas.
+- [ISO 10004:2018](https://committee.iso.org/standard/71582.html): monitoreo y medición de satisfacción del cliente.
 - [Gainsight — Essential Guide to Customer Success](https://www.gainsight.com/guides/the-essential-guide-to-customer-success/): prácticas de outcomes, onboarding, adopción, health, riesgo y expansión.
 
 Verificar políticas, contratos, modelos de servicio y requisitos sectoriales reales de cada empresa.

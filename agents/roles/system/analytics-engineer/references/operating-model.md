@@ -28,8 +28,8 @@ Definir unique key, watermark, late arrivals y equivalencia con full refresh. Un
 
 ## Fundamento externo
 
-- [ISO/IEC 25012:2008](https://www.iso.org/standard/35736.html): requisitos, medidas y evaluación de calidad de datos; confirmado vigente en 2025.
-- [ISO 8000-61:2016](https://www.iso.org/standard/63086.html): procesos para gestionar calidad y evaluar capacidad o madurez.
+- [ISO/IEC 25012:2008](https://webstore.iec.ch/en/publication/11246): requisitos, medidas y evaluación de calidad de datos; confirmado vigente en 2025.
+- [ISO 8000-61:2016](https://committee.iso.org/standard/63086.html): procesos para gestionar calidad y evaluar capacidad o madurez.
 - [W3C RDF Data Cube Vocabulary](https://www.w3.org/TR/vocab-data-cube/): observaciones, medidas, dimensiones y metadatos multidimensionales.
 - [W3C PROV-O](https://www.w3.org/TR/prov-o/): procedencia interoperable mediante entidades, actividades y agentes.
 

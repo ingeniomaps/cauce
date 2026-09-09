@@ -87,7 +87,7 @@ Modelo global sintetizado con fuentes revisadas en agosto de 2026:
 
 - [IFRS Accounting Standards](https://www.ifrs.org/issued-standards/list-of-standards/): fuente oficial de estándares IFRS cuando el marco resulte aplicable.
 - [COSO Internal Control—Integrated Framework](https://www.coso.org/guidance-on-ic): principios de ambiente, riesgo, actividades de control, información y monitoreo.
-- [ISO 31000 Risk Management](https://www.iso.org/iso-31000-risk-management.html): principios y proceso para integrar decisiones y riesgo.
+- [ISO 31000 Risk Management](https://committee.iso.org/standard/65694.html): principios y proceso para integrar decisiones y riesgo.
 - [IAASB Standards](https://www.iaasb.org/publications-resources): estándares y materiales oficiales sobre auditoría, evidencia, estimaciones y escepticismo profesional.
 
 Añadir el marco contable, regulación, impuestos, políticas y autoridades oficiales de cada entidad y jurisdicción real.

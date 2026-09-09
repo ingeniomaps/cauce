@@ -34,8 +34,8 @@ Contener herramientas/tráfico o volver al fallback mediante owner autorizado; p
 
 - [NIST AI RMF 1.0](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10): marco voluntario y agnóstico al caso para Map, Measure, Manage y Govern; NIST indica que está en revisión.
 - [NIST AI 600-1 — Generative AI Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence): riesgos y acciones adicionales para IA generativa dentro del AI RMF.
-- [ISO/IEC 23894:2023](https://www.iso.org/standard/77304.html): guía adaptable para integrar gestión de riesgos de IA en desarrollo, producción, despliegue y uso.
-- [ISO/IEC 42001:2023](https://www.iso.org/standard/81230.html): requisitos de un sistema de gestión de IA y mejora continua; no demuestra que un modelo concreto sea seguro o conforme.
-- [ISO/IEC 42005:2025](https://www.iso.org/standard/44545.html): guía para evaluar y documentar impactos de sistemas de IA sobre personas, grupos y sociedad durante todo el lifecycle.
+- [ISO/IEC 23894:2023](https://webstore.iec.ch/en/publication/82914): guía adaptable para integrar gestión de riesgos de IA en desarrollo, producción, despliegue y uso.
+- [ISO/IEC 42001:2023](https://webstore.iec.ch/en/publication/90574): requisitos de un sistema de gestión de IA y mejora continua; no demuestra que un modelo concreto sea seguro o conforme.
+- [ISO/IEC 42005:2025](https://webstore.iec.ch/en/publication/107659): guía para evaluar y documentar impactos de sistemas de IA sobre personas, grupos y sociedad durante todo el lifecycle.
 
 Las fuentes orientan gobernanza. La evidencia del caso de uso, políticas, derechos, jurisdicción y autoridades reales determinan si un sistema puede operar.

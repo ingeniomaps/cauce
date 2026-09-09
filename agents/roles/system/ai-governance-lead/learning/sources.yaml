@@ -13,12 +13,12 @@ sources:
     url: https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10
     tier: standard
     topics: [ai-risk, govern, map, measure, manage]
-  - name: ISO IEC 42001 AI management system
-    url: https://www.iso.org/standard/81230.html
+  - name: ISO IEC 42001:2023 AI management system
+    url: https://webstore.iec.ch/en/publication/90574
     tier: standard
     topics: [ai-governance, management-system, accountability, improvement]
-  - name: ISO IEC 42005 AI system impact assessment
-    url: https://www.iso.org/standard/44545.html
+  - name: ISO IEC 42005:2025 AI system impact assessment
+    url: https://webstore.iec.ch/en/publication/107659
     tier: standard
     topics: [impact-assessment, individuals, groups, society, lifecycle]
   - name: OECD AI Principles updated 2024

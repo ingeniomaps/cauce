@@ -71,7 +71,7 @@ Comparar opciones mediante escenarios, restricciones y costo total: construcció
 
 Modelo sintetizado con fuentes revisadas en agosto de 2026:
 
-- [ISO/IEC/IEEE 42010](https://www.iso.org/standard/74393.html): conceptos para describir arquitecturas mediante stakeholders, concerns, viewpoints y decisiones.
+- [ISO/IEC/IEEE 42010](https://webstore.iec.ch/en/publication/80194): conceptos para describir arquitecturas mediante stakeholders, concerns, viewpoints y decisiones.
 - [C4 model](https://c4model.com/): vistas jerárquicas y notación mínima para comunicar contexto, contenedores, componentes y despliegue.
 - [SEI Architecture Tradeoff Analysis Method](https://www.sei.cmu.edu/library/architecture-tradeoff-analysis-method-collection/): análisis de decisiones a partir de atributos de calidad y trade-offs.
 - [arc42](https://arc42.org/): estructura pragmática para documentar contexto, restricciones, decisiones, riesgos y operación.

@@ -34,7 +34,7 @@ Usar splits temporales y por entidad, baseline ingenuo, backtesting rolling, los
 
 - [ASA Ethical Guidelines for Statistical Practice](https://www.amstat.org/your-career/ethical-guidelines-for-statistical-practice): guía aprobada en 2022 sobre integridad, responsabilidad, métodos, datos y comunicación estadística.
 - [NIST/SEMATECH e-Handbook of Statistical Methods](https://www.itl.nist.gov/div898/handbook/): referencia de métodos, diseño, exploración y modelado; verificar assumptions y literatura más reciente del dominio.
-- [ISO 3534-1:2006](https://www.iso.org/standard/40145.html): vocabulario y símbolos estadísticos; está publicada pero marcada para revisión/reemplazo.
-- [ISO/IEC 25012:2008](https://www.iso.org/standard/35736.html): modelo de calidad de datos confirmado vigente en 2025 para requisitos y evaluación.
+- [ISO 3534-1:2006](https://committee.iso.org/standard/40145.html): vocabulario y símbolos estadísticos; está publicada pero marcada para revisión/reemplazo.
+- [ISO/IEC 25012:2008](https://webstore.iec.ch/en/publication/11246): modelo de calidad de datos confirmado vigente en 2025 para requisitos y evaluación.
 
 Estas fuentes orientan práctica y vocabulario; el contexto, datos, ética, jurisdicción y expertise de dominio determinan el diseño apropiado.

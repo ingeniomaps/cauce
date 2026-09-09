@@ -9,8 +9,8 @@ rules:
 # El contexto de la empresa no es una fuente de la profesión: vive en
 # organization/roles/database-administrator.md dentro de cada instalación.
 sources:
-  - {name: ISO IEC 27040 storage security, url: "https://www.iso.org/standard/80194.html", tier: standard, topics: [storage, security, lifecycle]}
-  - {name: ISO 22301 business continuity, url: "https://www.iso.org/standard/75106.html", tier: standard, topics: [continuity, resilience, recovery]}
+  - {name: ISO IEC 27040:2024 storage security, url: "https://webstore.iec.ch/en/publication/91476", tier: standard, topics: [storage, security, lifecycle]}
+  - {name: ISO 22301 business continuity, url: "https://committee.iso.org/standard/75106.html", tier: standard, topics: [continuity, resilience, recovery]}
   - {name: NIST SP 800-34 Rev 1 contingency planning, url: "https://csrc.nist.gov/pubs/sp/800/34/r1/upd1/final", tier: standard, topics: [contingency, backup, recovery, exercises]}
   - {name: NIST NICE Framework SP 800-181 Rev 1, url: "https://csrc.nist.gov/pubs/sp/800/181/r1/final", tier: standard, topics: [database-administration, tasks, knowledge, skills]}
   - {name: PostgreSQL security advisories, url: "https://www.postgresql.org/support/security/", tier: advisory, topics: [cve, parches, versiones afectadas]}

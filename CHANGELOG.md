@@ -60,6 +60,21 @@ diseño — eso vive en el commit y en el código.
   **Lo que te pide algo**: si usabas `autobuild` desatendido esperando que encadenara épicas, ahora se
   detiene al terminar el hito y hay que pegar el siguiente en `BACKLOG.md`. `context` te dice cuál es.
 
+- **Las normas ISO del catálogo se citan por una ficha que se puede leer.** `www.iso.org` devuelve 403,
+  y 41 entradas de 22 cargos apuntaban ahí: para todas ellas la investigación semanal producía el mismo
+  informe «sin novedades» que produciría una norma que no cambió. Ahora una ISO/IEC se cita por su ficha
+  del IEC Webstore y una ISO sola por la de `committee.iso.org`, que sirve el mismo número de catálogo.
+
+  La edición pasó al nombre de las ISO/IEC —`ISO IEC 25010:2023 product quality model`— porque la ficha
+  del webstore es de una edición concreta: buscar «ISO/IEC 25010» ahí devuelve primero la de 2011.
+  Cada ficha se comprobó contra su `<title>` antes de anotarla, y `cloud-architect` pasó a declarar la
+  edición 2 de ISO/IEC 27017, publicada el 2026-07-27 — su modelo operativo decía «no tratarla como
+  publicada» y eso dejó de ser cierto. Los `references/` de esos cargos enlazaban las mismas normas a las
+  mismas URLs muertas y también se cambiaron: 40 enlaces en 22 archivos.
+
+  **Lo que te pide algo**: si forkeaste alguno de esos 22 cargos, tu copia sigue con las URLs viejas y
+  `check` te avisa que el original cambió río arriba. Vale traerlas: las viejas no responden.
+
 - **El ciclo semanal comprueba que las fuentes declaradas de un cargo respondan, y anota las que no.** Una
   fuente ilegible y una que no cambió producían el mismo informe —«sin novedades»— y no son lo mismo: la
   primera no se comprobó. Ahora el resumen del job dice cuántas fuentes declara el cargo y cuáles no

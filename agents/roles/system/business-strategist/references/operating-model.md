@@ -73,7 +73,7 @@ Modelo sintetizado con fuentes revisadas en agosto de 2026:
 
 - [OECD Strategic Foresight](https://www.oecd.org/strategic-foresight/): escenarios y anticipación para decisiones robustas bajo incertidumbre.
 - [UK Government Green Book](https://www.gov.uk/government/publications/the-green-book-appraisal-and-evaluation-in-central-government): definición de objetivos, opciones, costos, beneficios, riesgos y evaluación.
-- [ISO 56002 Innovation management](https://www.iso.org/standard/68221.html): enfoque sistemático para oportunidades, innovación, aprendizaje y mejora.
+- [ISO 56002 Innovation management](https://committee.iso.org/standard/68221.html): enfoque sistemático para oportunidades, innovación, aprendizaje y mejora.
 - [Strategyzer Business Model Canvas](https://www.strategyzer.com/library/the-business-model-canvas): lenguaje para relacionar propuesta de valor, clientes, canales, recursos, actividades, socios, ingresos y costos.
 
 Verificar siempre fuentes primarias del sector, datos internos y contexto real de cada empresa.

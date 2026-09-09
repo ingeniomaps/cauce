@@ -54,8 +54,8 @@ Teardown, borrado y handoff:
 
 ## Fundamento externo
 
-- [ISO/IEC/IEEE 42010:2022](https://www.iso.org/standard/74393.html): conceptos y estructura para describir arquitectura desde concerns y viewpoints; verificar aplicabilidad y acceso a la edición vigente.
-- [ISO/IEC 25010:2023](https://www.iso.org/standard/78176.html): modelo de nueve características para especificar y evaluar calidad de productos ICT.
+- [ISO/IEC/IEEE 42010:2022](https://webstore.iec.ch/en/publication/80194): conceptos y estructura para describir arquitectura desde concerns y viewpoints; verificar aplicabilidad y acceso a la edición vigente.
+- [ISO/IEC 25010:2023](https://webstore.iec.ch/en/publication/90024): modelo de nueve características para especificar y evaluar calidad de productos ICT.
 - [NIST Cybersecurity Framework 2.0](https://www.nist.gov/publications/nist-cybersecurity-framework-csf-20): lenguaje de outcomes para entender y comunicar riesgo de ciberseguridad; no certifica una solución.
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html): contrato agnóstico al lenguaje para describir APIs HTTP; comprobar la versión soportada por producto y tooling.
 

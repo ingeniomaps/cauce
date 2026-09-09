@@ -10,7 +10,7 @@ rules:
 # organization/roles/partnerships-manager.md dentro de cada instalación.
 sources:
   - name: ISO 44001 collaborative business relationships
-    url: https://www.iso.org/standard/72798.html
+    url: https://committee.iso.org/standard/72798.html
     tier: standard
     topics: [collaboration, relationships, governance, lifecycle]
   - name: OECD due diligence for responsible business conduct

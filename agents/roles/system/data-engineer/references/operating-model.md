@@ -23,8 +23,8 @@ Contener propagación y preservar evidencia; identificar primera partición/vers
 
 ## Fundamento externo
 
-- [ISO/IEC 25012:2008](https://www.iso.org/standard/35736.html): modelo general con quince características para requisitos y evaluación de calidad de datos; confirmado vigente en 2025.
-- [ISO 8000-61:2016](https://www.iso.org/standard/63086.html): procesos de gestión de calidad de datos y evaluación de capacidad; confirmado vigente en 2022.
+- [ISO/IEC 25012:2008](https://webstore.iec.ch/en/publication/11246): modelo general con quince características para requisitos y evaluación de calidad de datos; confirmado vigente en 2025.
+- [ISO 8000-61:2016](https://committee.iso.org/standard/63086.html): procesos de gestión de calidad de datos y evaluación de capacidad; confirmado vigente en 2022.
 - [W3C PROV-O](https://www.w3.org/TR/prov-o/): modelo interoperable de entidades, actividades, agentes y relaciones de provenance; adaptar a la implementación real de lineage.
 - [NIST Privacy Framework 1.0](https://csrc.nist.gov/pubs/cswp/10/nist-privacy-framework-version-10/final): gestión voluntaria de riesgo de privacidad en el ecosistema de procesamiento; comprobar futuras versiones y ley aplicable.
 
