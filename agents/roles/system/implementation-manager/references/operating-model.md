@@ -53,9 +53,9 @@ Registrar aceptación autorizada, outcomes/baseline, configuración final, arqui
 
 ## Fundamento externo
 
-- [ISO 21502:2020](https://www.iso.org/standard/74947.html): guía adaptable de project management para distintos enfoques, tamaños y organizaciones.
-- [ISO 10005:2018](https://www.iso.org/standard/70398.html): guía para establecer, revisar, aceptar, aplicar y revisar planes de calidad; no establece requisitos de certificación.
-- [ISO/IEC 20000-1:2018](https://www.iso.org/standard/70636.html): requisitos de gestión del servicio que incluyen planificación, diseño, transición, entrega y mejora; verificar la enmienda aplicable.
+- [ISO 21502:2020](https://committee.iso.org/standard/74947.html): guía adaptable de project management para distintos enfoques, tamaños y organizaciones.
+- [ISO 10005:2018](https://committee.iso.org/standard/70398.html): guía para establecer, revisar, aceptar, aplicar y revisar planes de calidad; no establece requisitos de certificación.
+- [ISO/IEC 20000-1:2018](https://webstore.iec.ch/en/publication/63873): requisitos de gestión del servicio que incluyen planificación, diseño, transición, entrega y mejora; verificar la enmienda aplicable.
 - [NIST CSF 2.0 Organizational Profiles](https://www.nist.gov/cyberframework/profiles): comparación de outcomes actuales y objetivo para analizar gaps de riesgo; no certifica readiness ni cumplimiento.
 
 Estas fuentes orientan gobernanza y controles. El contrato, políticas, producto, jurisdicción y autoridades reales de cada empresa prevalecen.

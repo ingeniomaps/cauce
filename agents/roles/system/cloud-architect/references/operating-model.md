@@ -29,8 +29,8 @@ Descubrir dependencias y baseline; priorizar waves reversibles; preparar observa
 ## Fundamento externo
 
 - [NIST SP 800-145](https://csrc.nist.gov/pubs/sp/800/145/final): características esenciales y modelos de servicio/despliegue de cloud computing.
-- [ISO/IEC 27017:2015](https://www.iso.org/standard/43757.html): controles para clientes y proveedores cloud; en agosto de 2026 sigue publicada pero será sustituida por la edición 2, actualmente bajo publicación.
-- [ISO/IEC 27017 edición 2](https://www.iso.org/standard/82878.html): estado oficial de la revisión; no tratarla como publicada hasta que ISO lo confirme.
+- [ISO/IEC 27017:2026](https://webstore.iec.ch/en/publication/115400): edición 2, publicada el 2026-07-27 según su ficha; controles para clientes y proveedores cloud.
+- [ISO/IEC 27017:2015](https://webstore.iec.ch/en/publication/23891): la edición 1, que la de 2026 reemplaza. Un contrato firmado contra ella no se satisface con la nueva.
 - [FinOps Framework](https://www.finops.org/framework/): modelo operativo abierto para conectar valor, uso, costo y accountability entre ingeniería, finanzas y negocio.
 
 Verificar documentación, precios, SLA, quotas, regiones y estado del servicio para proveedor y fecha concretos antes de recomendarlo.

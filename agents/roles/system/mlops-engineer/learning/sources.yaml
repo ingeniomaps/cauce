@@ -11,7 +11,7 @@ rules:
 sources:
   - {name: NIST AI RMF 1.0, url: "https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10", tier: standard, topics: [ai-risk, lifecycle, monitoring, governance]}
   - {name: NIST SP 800-218A, url: "https://csrc.nist.gov/pubs/sp/800/218/a/final", tier: standard, topics: [secure-development, ai-models, supply-chain]}
-  - {name: ISO IEC 42001 AI management systems, url: "https://www.iso.org/standard/42001", tier: standard, topics: [ai-management, governance, improvement]}
-  - {name: ISO IEC 23894 AI risk management, url: "https://www.iso.org/standard/77304.html", tier: standard, topics: [ai-risk, integration, lifecycle]}
+  - {name: ISO IEC 42001:2023 AI management systems, url: "https://webstore.iec.ch/en/publication/90574", tier: standard, topics: [ai-management, governance, improvement]}
+  - {name: ISO IEC 23894:2023 AI risk management, url: "https://webstore.iec.ch/en/publication/82914", tier: standard, topics: [ai-risk, integration, lifecycle]}
   - {name: MLflow documentation, url: "https://mlflow.org/docs/latest/index.html", tier: platform, topics: [registro, alias, serving]}
   - {name: MLflow releases, url: "https://github.com/mlflow/mlflow/releases", tier: project, topics: [versiones, cambios incompatibles]}

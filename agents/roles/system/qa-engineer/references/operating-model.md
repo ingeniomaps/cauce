@@ -109,12 +109,12 @@ Comunicar hechos, inferencias y desconocidos por separado. La recomendación pue
 Modelo sintetizado con fuentes revisadas en agosto de 2026:
 
 - [ISTQB Certified Tester Foundation Level](https://www.istqb.org/certifications/certified-tester-foundation-level-ctfl-v4-0/): principios, proceso, técnicas, pruebas basadas en riesgo y gestión de defectos.
-- [ISO/IEC 25010](https://www.iso.org/standard/78176.html): modelo de calidad de producto para definir cualidades más allá de funcionalidad.
+- [ISO/IEC 25010](https://webstore.iec.ch/en/publication/90024): modelo de calidad de producto para definir cualidades más allá de funcionalidad.
 - [OWASP Web Security Testing Guide](https://owasp.org/www-project-web-security-testing-guide/): estructura y escenarios para pruebas de seguridad web autorizadas.
 - [W3C WCAG 2.2](https://www.w3.org/TR/WCAG22/): criterios verificables de accesibilidad para contenido web.
 - [OWASP Top 10:2025](https://owasp.org/Top10/2025/0x00_2025-Introduction/): modelo de riesgo
   web vigente, incluidas cadena de suministro y manejo de condiciones excepcionales.
-- [ISO/IEC 25059](https://www.iso.org/standard/80655.html): extensión del modelo de calidad
+- [ISO/IEC 25059](https://webstore.iec.ch/en/publication/86756): extensión del modelo de calidad
   para sistemas basados en IA.
 - [ISTQB CT-AI v2.0](https://istqb.org/istqb-releases-certified-tester-ai-testing-ct-ai-syllabus-version-2-0/):
   pruebas de datos, modelo y sistema; dificultad de definir oráculos en sistemas probabilísticos.

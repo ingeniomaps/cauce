@@ -17,16 +17,16 @@ sources:
     url: https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence
     tier: standard
     topics: [generative-ai, risks, evaluation, governance]
-  - name: ISO IEC 23894 AI risk management
-    url: https://www.iso.org/standard/77304.html
+  - name: ISO IEC 23894:2023 AI risk management
+    url: https://webstore.iec.ch/en/publication/82914
     tier: standard
     topics: [ai, risk, lifecycle, integration]
-  - name: ISO IEC 42001 AI management system
-    url: https://www.iso.org/standard/81230.html
+  - name: ISO IEC 42001:2023 AI management system
+    url: https://webstore.iec.ch/en/publication/90574
     tier: standard
     topics: [ai-governance, management-system, accountability, improvement]
-  - name: ISO IEC 42005 AI system impact assessment
-    url: https://www.iso.org/standard/44545.html
+  - name: ISO IEC 42005:2025 AI system impact assessment
+    url: https://webstore.iec.ch/en/publication/107659
     tier: standard
     topics: [ai-impact, people, society, lifecycle, assessment]
   - name: scikit-learn changelog

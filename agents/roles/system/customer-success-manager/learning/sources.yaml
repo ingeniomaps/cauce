@@ -10,15 +10,15 @@ rules:
 # organization/roles/customer-success-manager.md dentro de cada instalación.
 sources:
   - name: ISO 10001
-    url: https://www.iso.org/standard/71579.html
+    url: https://committee.iso.org/standard/71579.html
     tier: standard
     topics: [customer-promises, codes-of-conduct]
   - name: ISO 10002
-    url: https://www.iso.org/standard/71580.html
+    url: https://committee.iso.org/standard/71580.html
     tier: standard
     topics: [complaints, handling, improvement]
   - name: ISO 10004
-    url: https://www.iso.org/standard/71582.html
+    url: https://committee.iso.org/standard/71582.html
     tier: standard
     topics: [customer-satisfaction, monitoring, measurement]
   - name: Gainsight Customer Success Guide

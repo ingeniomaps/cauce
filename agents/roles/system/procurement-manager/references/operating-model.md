@@ -74,7 +74,7 @@ Traducir contrato en registro de obligaciones con owner, evidencia, frecuencia y
 
 ## Fundamento externo
 
-- [ISO 20400:2017](https://www.iso.org/standard/63026.html): integración de sostenibilidad en compras para organizaciones de cualquier tamaño; versión confirmada en 2023.
+- [ISO 20400:2017](https://committee.iso.org/standard/63026.html): integración de sostenibilidad en compras para organizaciones de cualquier tamaño; versión confirmada en 2023.
 - [OECD — Due diligence for responsible business conduct](https://www.oecd.org/en/topics/sub-issues/due-diligence-guidance-for-responsible-business-conduct.html): debida diligencia proporcional a impactos en operaciones y cadenas de suministro.
 - [UNCITRAL Model Law on Public Procurement](https://uncitral.un.org/en/texts/procurement/modellaw/public_procurement): objetividad, competencia, integridad y transparencia; usar como referencia y verificar adopción local.
 - [NIST SP 800-161 Rev. 1](https://csrc.nist.gov/pubs/sp/800/161/r1/upd1/final): gestión del riesgo de ciberseguridad en cadenas tecnológicas; adaptar al contexto y jurisdicción.

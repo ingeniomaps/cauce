@@ -90,8 +90,8 @@ Owner y fecha de revisión:
 
 Modelo sintetizado con fuentes revisadas en agosto de 2026:
 
-- [ISO 10002:2018](https://www.iso.org/standard/71580.html): accesibilidad, objetividad, confidencialidad, responsabilidad y mejora en manejo de quejas.
-- [ISO 18295-1:2017](https://www.iso.org/standard/64739.html): requisitos para centros de contacto orientados a experiencia consistente y medición.
+- [ISO 10002:2018](https://committee.iso.org/standard/71580.html): accesibilidad, objetividad, confidencialidad, responsabilidad y mejora en manejo de quejas.
+- [ISO 18295-1:2017](https://committee.iso.org/standard/64739.html): requisitos para centros de contacto orientados a experiencia consistente y medición.
 - [ITIL 4 Incident Management](https://www.peoplecert.org/browse-certifications/it-governance-and-service-management/ITIL-1): restauración del servicio, coordinación y prácticas de gestión; verificar materiales licenciados aplicables.
 - [W3C Writing for Web Accessibility](https://www.w3.org/WAI/tips/writing/): instrucciones, headings, enlaces y mensajes comprensibles.
 

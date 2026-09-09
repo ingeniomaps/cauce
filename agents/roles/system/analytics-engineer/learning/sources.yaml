@@ -9,8 +9,8 @@ rules:
 # El contexto de la empresa no es una fuente de la profesión: vive en
 # organization/roles/analytics-engineer.md dentro de cada instalación.
 sources:
-  - {name: ISO IEC 25012 data quality model, url: "https://www.iso.org/standard/35736.html", tier: standard, topics: [data-quality, measures, evaluation]}
-  - {name: ISO 8000-61 data quality management, url: "https://www.iso.org/standard/63086.html", tier: standard, topics: [data-quality, process, maturity]}
+  - {name: ISO IEC 25012:2008 data quality model, url: "https://webstore.iec.ch/en/publication/11246", tier: standard, topics: [data-quality, measures, evaluation]}
+  - {name: ISO 8000-61 data quality management, url: "https://committee.iso.org/standard/63086.html", tier: standard, topics: [data-quality, process, maturity]}
   - {name: W3C RDF Data Cube Vocabulary, url: "https://www.w3.org/TR/vocab-data-cube/", tier: standard, topics: [measures, dimensions, metadata]}
   - {name: W3C PROV-O, url: "https://www.w3.org/TR/prov-o/", tier: standard, topics: [provenance, lineage]}
   - {name: dbt Core upgrade notes, url: "https://docs.getdbt.com/docs/dbt-versions/core-upgrade", tier: platform, topics: [materializaciones, incremental, cambios incompatibles]}

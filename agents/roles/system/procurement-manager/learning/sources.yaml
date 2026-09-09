@@ -10,7 +10,7 @@ rules:
 # organization/roles/procurement-manager.md dentro de cada instalación.
 sources:
   - name: ISO 20400 sustainable procurement
-    url: https://www.iso.org/standard/63026.html
+    url: https://committee.iso.org/standard/63026.html
     tier: standard
     topics: [procurement, sustainability, governance, lifecycle]
   - name: OECD due diligence for responsible business conduct

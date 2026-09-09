@@ -17,8 +17,8 @@ sources:
     url: https://www.coso.org/guidance-on-ic
     tier: standard
     topics: [internal-control, risk, control-activities, monitoring]
-  - name: ISO 31000
-    url: https://www.iso.org/iso-31000-risk-management.html
+  - name: ISO 31000 risk management
+    url: https://committee.iso.org/standard/65694.html
     tier: standard
     topics: [risk-management, governance, decisions]
   - name: IAASB Standards and resources

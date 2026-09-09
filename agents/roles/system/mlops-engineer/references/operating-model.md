@@ -34,7 +34,7 @@ Confirmar alcance, versión, tráfico, usuarios, datos y síntomas. Contener de 
 
 - [NIST AI RMF 1.0](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10): marco transversal y voluntario para riesgos de AI; NIST indica que está en revisión.
 - [NIST SP 800-218A](https://csrc.nist.gov/pubs/sp/800/218/a/final): prácticas de desarrollo seguro específicas para modelos generativos y foundation models, complementarias al SSDF.
-- [ISO/IEC 42001:2023](https://www.iso.org/standard/42001): sistema de gestión para desarrollo y uso responsable de AI, con mejora continua.
-- [ISO/IEC 23894:2023](https://www.iso.org/standard/77304.html): guía para integrar gestión de riesgos de AI en actividades y funciones organizacionales.
+- [ISO/IEC 42001:2023](https://webstore.iec.ch/en/publication/90574): sistema de gestión para desarrollo y uso responsable de AI, con mejora continua.
+- [ISO/IEC 23894:2023](https://webstore.iec.ch/en/publication/82914): guía para integrar gestión de riesgos de AI en actividades y funciones organizacionales.
 
 Verificar versión y estado antes de proponer cambios. Estas fuentes no reemplazan evaluaciones del dominio, documentación de plataforma, obligaciones ni autoridad empresarial.

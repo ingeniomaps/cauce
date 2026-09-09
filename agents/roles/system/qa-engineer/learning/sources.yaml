@@ -13,11 +13,10 @@ sources:
     url: https://www.istqb.org/certifications/certified-tester-foundation-level-ctfl-v4-0/
     tier: profession
     topics: [testing-principles, techniques, risk, defects]
-  # iso.org devuelve 403 desde el 2026-08-16; la ficha legible es la del IEC Webstore
-  # —https://webstore.iec.ch/en/publication/90024—. Es ficha de catálogo: el texto de la norma no se
-  # leyó (informe 2026-08-22, H1 y H2).
-  - name: ISO IEC 25010 product quality model
-    url: https://www.iso.org/standard/78176.html
+  # Es ficha de catálogo: dice qué norma es y de qué edición, y el texto de la norma no se leyó
+  # (informe 2026-08-22, H1 y H2).
+  - name: ISO IEC 25010:2023 product quality model
+    url: https://webstore.iec.ch/en/publication/90024
     tier: standard
     topics: [product-quality-model]
   - name: OWASP Web Security Testing Guide
@@ -47,20 +46,19 @@ sources:
   # Edición 2.0 del 2025-09-24, que **reemplaza** a ISO/IEC 40500:2012 — la identidad ISO de
   # WCAG 2.0—. Por eso el nombre lleva el año: «ISO/IEC 40500» a secas es ambiguo entre dos
   # documentos que dicen cosas distintas, y un contrato que exige uno no se satisface con el otro.
-  # iso.org devuelve 403 desde el 2026-08-16, así que lo legible es la ficha del IEC Webstore
-  # —https://webstore.iec.ch/en/publication/109927—, corroborada contra el anuncio de W3C del
-  # 2025-10-21. Es ficha de catálogo: el texto de la norma no se leyó (informe 2026-08-22, H1).
+  # La edición que declara la ficha está corroborada contra el anuncio de W3C del 2025-10-21. Es ficha
+  # de catálogo: el texto de la norma no se leyó (informe 2026-08-22, H1).
   - name: ISO IEC 40500:2025
-    url: https://www.iso.org/standard/91029.html
+    url: https://webstore.iec.ch/en/publication/109927
     tier: standard
     topics: [accessibility, conformance, iso-identity]
   # Extensión de 25010 para sistemas de IA. La única edición publicada es la de 2023 y su comité
-  # es SC 42 —no SC 7—; ficha legible en https://webstore.iec.ch/en/publication/86756.
+  # es SC 42 —no SC 7—.
   # El estado de la revisión en curso **no está corroborado en fuente primaria** y no se afirma.
   # Cuidado al buscarlo: el «ISO/IEC DIS 25059:2022» que aparece en catálogos de revendedores es el
   # DIS de la primera edición, no el de la revisión (informe 2026-08-22, H2).
   - name: ISO IEC 25059:2023
-    url: https://www.iso.org/standard/80655.html
+    url: https://webstore.iec.ch/en/publication/86756
     tier: standard
     topics: [ai-quality-model, product-quality-model]
   # Página de la certificación, no el anuncio: el syllabus vigente es v2.0 GA del 2026-04-17, y

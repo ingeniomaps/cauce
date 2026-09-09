@@ -69,8 +69,8 @@ lección—: cuál es su registro, contra qué versión, y qué la falsaría.
 
 ## Fundamento externo
 
-- [ISO/IEC 27040:2024](https://www.iso.org/standard/80194.html): requisitos y guía para seguridad del almacenamiento durante su ciclo de vida.
-- [ISO 22301:2019](https://www.iso.org/standard/75106.html): marco publicado de continuidad y recuperación; está en revisión para una edición futura.
+- [ISO/IEC 27040:2024](https://webstore.iec.ch/en/publication/91476): requisitos y guía para seguridad del almacenamiento durante su ciclo de vida.
+- [ISO 22301:2019](https://committee.iso.org/standard/75106.html): marco publicado de continuidad y recuperación; está en revisión para una edición futura.
 - [NIST SP 800-34 Rev. 1](https://csrc.nist.gov/pubs/sp/800/34/r1/upd1/final): planificación de contingencia, análisis de impacto, recuperación y ejercicios.
 - [NIST NICE Framework SP 800-181 Rev. 1](https://csrc.nist.gov/pubs/sp/800/181/r1/final): referencia de tareas, conocimientos y habilidades, incluido Database Administrator.
 

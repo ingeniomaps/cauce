@@ -11,6 +11,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const learning = require('../../engine/agents/learning')
+const { sourceUrls } = require('../../engine/agents/learning-sources')
 const { REPO, installedProject, writeSkill } = require('../support/agents-fixtures')
 
 const CONTRATOS_EN_LA_REFERENCIA = [
@@ -68,6 +69,22 @@ test('el catálogo no repite una fuente bajo dos nombres', () => {
     }
   }
   assert.deepEqual([...new Set(repetidas)], [], 'una URL, un nombre en todo el catálogo')
+})
+
+// `www.iso.org` devuelve 403 al catálogo entero; por qué la ficha de una norma vive en otro host lo
+// explica `agents/README.md`. Lo que se cuida acá es que no vuelva, y por eso la aserción es de
+// ausencia: ver que las 41 entradas apuntan a otro lado no dice que ninguna haya vuelto a éste.
+test('ninguna fuente del catálogo se cita en www.iso.org', () => {
+  const dir = path.resolve(__dirname, '..', '..', 'agents', 'roles', 'system')
+  const bloqueadas = []
+  for (const slug of fs.readdirSync(dir)) {
+    const file = path.join(dir, slug, 'learning', 'sources.yaml')
+    if (!fs.existsSync(file)) continue
+    for (const one of sourceUrls(fs.readFileSync(file, 'utf8'))) {
+      if (/^https?:\/\/(www\.)?iso\.org\//.test(one.url)) bloqueadas.push(`${slug}: ${one.name} → ${one.url}`)
+    }
+  }
+  assert.deepEqual(bloqueadas, [], 'la ficha legible es la del IEC Webstore o la de committee.iso.org')
 })
 
 test('el inventario de contratos en las referencias es el que está declarado', () => {

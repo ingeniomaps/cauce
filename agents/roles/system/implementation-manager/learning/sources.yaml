@@ -10,15 +10,15 @@ rules:
 # organization/roles/implementation-manager.md dentro de cada instalación.
 sources:
   - name: ISO 21502 project management guidance
-    url: https://www.iso.org/standard/74947.html
+    url: https://committee.iso.org/standard/74947.html
     tier: standard
     topics: [projects, governance, delivery, outcomes]
   - name: ISO 10005 quality plans
-    url: https://www.iso.org/standard/70398.html
+    url: https://committee.iso.org/standard/70398.html
     tier: standard
     topics: [quality, plans, acceptance, revision]
-  - name: ISO IEC 20000-1 service management
-    url: https://www.iso.org/standard/70636.html
+  - name: ISO IEC 20000-1:2018 service management
+    url: https://webstore.iec.ch/en/publication/63873
     tier: standard
     topics: [service, transition, delivery, improvement]
   - name: NIST CSF 2.0 Organizational Profiles

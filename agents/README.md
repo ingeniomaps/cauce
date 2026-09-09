@@ -25,6 +25,21 @@ mejor que repetirla en cada instalación.
 Por eso `learn` falla si lo corrés sobre un cargo del catálogo dentro de una instancia: escribiría en el
 paquete y se perdería. El ciclo de aprendizaje de esos cargos tampoco se distribuye.
 
+## Por qué las normas no se citan en `iso.org`
+
+`sources.yaml` cita cada norma por una ficha de catálogo, y para ISO esa ficha **no es la de
+`iso.org`**: ese dominio devuelve 403 a todo el catálogo —31 URLs, ninguna legible— y una fuente que no
+se puede abrir produce el mismo informe «sin novedades» que una que no cambió. Las dos que sí responden:
+
+- **`webstore.iec.ch/en/publication/<n>`** para una ISO/IEC, que los dos organismos co-publican.
+- **`committee.iso.org/standard/<n>.html`** para una ISO sola. Es el mismo número de catálogo que
+  llevaba la URL vieja, servido por un host que no bloquea.
+
+La diferencia entre las dos importa al escribir una entrada nueva: el número del IEC Webstore es
+**suyo** y nombra una edición concreta —buscar «ISO/IEC 25010» ahí devuelve primero la ficha de 2011,
+no la de 2023—, así que se comprueba contra el `<title>` de la ficha antes de anotarla. El de
+`committee.iso.org` es el mismo de ISO y no hay edición que equivocar.
+
 ## Quedarse con una versión propia
 
 ```bash

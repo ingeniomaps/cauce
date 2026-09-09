@@ -14,11 +14,11 @@ sources:
     tier: standard
     topics: [rights, discrimination, collective-bargaining, safety]
   - name: ISO 30405 recruitment guidelines
-    url: https://www.iso.org/standard/79488.html
+    url: https://committee.iso.org/standard/79488.html
     tier: standard
     topics: [recruitment, assessment, candidate-experience, learning]
   - name: ISO 30414 human capital reporting and disclosure
-    url: https://www.iso.org/standard/30414
+    url: https://committee.iso.org/standard/86106.html
     tier: standard
     topics: [reporting, governance, workforce, wellbeing, development]
   - name: EEOC artificial intelligence publications

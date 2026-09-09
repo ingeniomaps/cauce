@@ -9,8 +9,8 @@ rules:
 # El contexto de la empresa no es una fuente de la profesión: vive en
 # organization/roles/software-architect.md dentro de cada instalación.
 sources:
-  - name: ISO IEC IEEE 42010 architecture description
-    url: https://www.iso.org/standard/74393.html
+  - name: ISO IEC IEEE 42010:2022 architecture description
+    url: https://webstore.iec.ch/en/publication/80194
     tier: standard
     topics: [architecture-description, stakeholders, viewpoints]
   - name: C4 model

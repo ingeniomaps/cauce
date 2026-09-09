@@ -34,8 +34,8 @@ Mantener fuente primaria, instrumento, artículo/sección, jurisdicción, actor/
 ## Fundamento externo
 
 - [NIST AI RMF 1.0](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10): marco voluntario y agnóstico con Govern, Map, Measure y Manage; NIST indica que está en revisión en 2026.
-- [ISO/IEC 42001:2023](https://www.iso.org/standard/81230.html): requisitos para establecer y mejorar un AI management system; certificación organizacional no aprueba cada sistema.
-- [ISO/IEC 42005:2025](https://www.iso.org/standard/44545.html): evaluación de impactos sobre individuos, grupos y sociedad durante el lifecycle.
+- [ISO/IEC 42001:2023](https://webstore.iec.ch/en/publication/90574): requisitos para establecer y mejorar un AI management system; certificación organizacional no aprueba cada sistema.
+- [ISO/IEC 42005:2025](https://webstore.iec.ch/en/publication/107659): evaluación de impactos sobre individuos, grupos y sociedad durante el lifecycle.
 - [OECD AI Principles](https://oecd.ai/en/ai-principles): principios intergubernamentales actualizados en mayo de 2024 sobre IA innovadora, trustworthy y respetuosa de derechos.
 - [EU AI Act — fuente oficial](https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai): ejemplo jurisdiccional con obligaciones y calendario cambiante; verificar EUR-Lex, rol, alcance, modificaciones y fecha aplicable con Legal.
 

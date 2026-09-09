@@ -59,8 +59,8 @@ Mantener inventario, finalidad, fuente, exactitud, clasificación, owner, permis
 ## Fundamento externo
 
 - [ILO — Fundamental Principles and Rights at Work](https://www.ilo.org/topics-and-sectors/fundamental-principles-and-rights-work): derechos fundamentales, no discriminación y entorno seguro.
-- [ISO 30405:2023](https://www.iso.org/standard/79488.html): planificación, ejecución y aprendizaje en reclutamiento, aplicable a organizaciones de cualquier tamaño.
-- [ISO 30414:2025](https://www.iso.org/standard/30414): reporte y divulgación de capital humano con alcance global.
+- [ISO 30405:2023](https://committee.iso.org/standard/79488.html): planificación, ejecución y aprendizaje en reclutamiento, aplicable a organizaciones de cualquier tamaño.
+- [ISO 30414:2025](https://committee.iso.org/standard/86106.html): reporte y divulgación de capital humano con alcance global.
 - [EEOC — Artificial Intelligence publications](https://www.eeoc.gov/eeoc-publications): riesgos de discriminación y accesibilidad en decisiones de empleo; aplicar sólo cuando corresponda a EE. UU.
 - [ICO — Employment information](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/employment/): datos laborales y monitoreo; aplicar sólo bajo su alcance jurídico.
 - [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework): gobierno y gestión de riesgos de IA, no sustituto de ley laboral.

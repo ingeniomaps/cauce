@@ -9,12 +9,12 @@ rules:
 # El contexto de la empresa no es una fuente de la profesión: vive en
 # organization/roles/solutions-engineer.md dentro de cada instalación.
 sources:
-  - name: ISO IEC IEEE 42010 architecture description
-    url: https://www.iso.org/standard/74393.html
+  - name: ISO IEC IEEE 42010:2022 architecture description
+    url: https://webstore.iec.ch/en/publication/80194
     tier: standard
     topics: [architecture, concerns, viewpoints, decisions]
-  - name: ISO IEC 25010 product quality model
-    url: https://www.iso.org/standard/78176.html
+  - name: ISO IEC 25010:2023 product quality model
+    url: https://webstore.iec.ch/en/publication/90024
     tier: standard
     topics: [quality, requirements, evaluation, acceptance]
   - name: NIST Cybersecurity Framework 2.0

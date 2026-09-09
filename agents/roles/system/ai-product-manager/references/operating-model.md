@@ -30,7 +30,7 @@ Verificar outcome, evals, data rights, privacy, security, accessibility, transpa
 
 - [NIST AI RMF 1.0](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10): marco voluntario y agnóstico al sector para gestionar riesgos durante el ciclo de vida; NIST indica que está en revisión.
 - [NIST AI 600-1 Generative AI Profile](https://www.nist.gov/itl/ai-risk-management-framework): perfil 2024 para riesgos y acciones específicos de IA generativa.
-- [ISO/IEC 42001:2023](https://www.iso.org/standard/42001): sistema de gestión para desarrollar y usar IA responsablemente con mejora continua.
+- [ISO/IEC 42001:2023](https://webstore.iec.ch/en/publication/90574): sistema de gestión para desarrollar y usar IA responsablemente con mejora continua.
 - [OECD AI Principles](https://www.oecd.org/en/topics/ai-principles.html): principios intergubernamentales centrados en derechos, actualizados en 2024 para IA general-purpose y generativa.
 
 Estas fuentes no sustituyen investigación de usuarios, evaluación técnica, expertise de dominio, obligaciones aplicables ni autoridad empresarial.
