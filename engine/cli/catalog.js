@@ -102,6 +102,29 @@ function evaluationBench(root, agent, caso, force, kind) {
   // reintentos, rehacer un banco es una operación que falla de vez en cuando y deja la corrida sin
   // empezar.
   fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 })
+  // Y se comprueba que haya borrado. `rmSync` puede volver sin lanzar y dejar cosas —pasó en CI y no
+  // está establecido por qué—, y hasta acá cada síntoma se rodeaba por separado: `force` en el
+  // andamiaje, un `rm` antes del enlace. Rodearlo deja la corrida siguiendo sobre un banco que no es
+  // nuevo, y lo que falla después no dice nada del borrado: el test que lo destapó reportaba
+  // `true !== false` sobre un archivo de la corrida anterior, sin nombrar de dónde salía.
+  //
+  // Falla en vez de seguir, porque un banco a medio borrar contamina la medición que viene, que es lo
+  // que la recreación existe para evitar. Y nombra lo que sobrevivió: es lo único que va a permitir
+  // establecer la causa la próxima vez que ocurra.
+  if (fs.existsSync(dir)) {
+    const sobreviven = []
+    const recorrer = (base, relative = '') => {
+      for (const entry of fs.readdirSync(base, { withFileTypes: true })) {
+        if (sobreviven.length >= 5) return
+        const next = relative ? `${relative}/${entry.name}` : entry.name
+        if (entry.isDirectory()) recorrer(path.join(base, entry.name), next)
+        else sobreviven.push(next)
+      }
+    }
+    try { recorrer(dir) } catch { /* el listado es la explicación, no la comprobación */ }
+    fail(`${dir} no se pudo borrar entero y el banco tiene que ser nuevo. Sobrevivieron al borrado: `
+      + `${sobreviven.join(', ') || '(sólo directorios)'}. Borralo a mano y volvé a correr.`, 2)
+  }
   // Con `force`: el banco es desechable y se acaba de borrar, así que lo que sobreviva al `rmSync` se
   // pisa en vez de cortar la corrida. Sin esto, `copyTemplate` se niega ante cualquier archivo que
   // quede —«El destino contiene …/AGENTS.md»— y el mismo test falló así tres veces en un día, en las

@@ -14,6 +14,22 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.73.0]
+
+### Corregido
+
+- **Un banco de evaluación que no se puede rehacer lo dice, en vez de seguir sobre uno que no es nuevo.**
+  El borrado ahora se comprueba, y si algo sobrevive la corrida corta nombrando qué. Hasta acá el mismo
+  hecho se venía rodeando por síntoma —reintentos en el borrado, `force` en el andamiaje, un `rm` antes
+  del enlace—, y cada rodeo dejaba la medición siguiente corriendo sobre restos de la anterior.
+
+  La prueba que lo destapaba, además, **descartaba el resultado de la corrida que fallaba**: cualquier
+  causa terminaba en el mismo `true !== false` con el `stderr` tirado, y por eso tres investigaciones
+  dejaron escrito «no está establecido por qué». Ahora la falla llega con su código y su ruta.
+
+  **Lo que te pide algo**: si rehacer un banco te corta con «no se pudo borrar entero», borralo a mano y
+  volvé a correr. Antes eso seguía en silencio y fallaba más adelante, en otro lado.
+
 ## [0.72.0] - 2026-09-09
 
 ### Corregido
