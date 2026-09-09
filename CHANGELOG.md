@@ -32,6 +32,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Un hito que expandió `autobuild` ahora lo dice.** Antes se leía igual que uno redactado por una
+  persona, así que quien revisaba el BACKLOG no tenía cómo saber cuál merecía una segunda lectura y quien
+  auditaba tenía que reconstruirlo desde el registro de la corrida, que no se commitea. La marca va en una
+  línea debajo del encabezado del hito —no en el título, donde el parser se la comería— y no cambia nada
+  de lo que `check` o `context` ven.
+
 - **`autobuild` ya no expande el hito siguiente para descartarlo.** La corrida corta cuando la tarea que
   sigue es de otro hito, y expandía justo antes de llegar a ese corte: escribía el hito nuevo en el
   BACKLOG y acto seguido decidía no tocarlo. Ahora sólo expande mientras no haya fijado su hito, que es
