@@ -260,10 +260,18 @@ test('el ciclo anota qué fuentes declaradas no pudo abrir', { skip: process.pla
 
   const dir = tempRoot('cauce-fuentes-')
   const repo = path.resolve(__dirname, '..', '..')
-  // Devuelve 403 para iso.org y 200 para el resto, que es el reparto real que originó esto.
-  fs.writeFileSync(path.join(dir, 'curl'), '#!/usr/bin/env bash\n'
+  // Las tres clases que la medición del catálogo separó: un dominio que bloquea, uno que contesta 202
+  // —«aceptado, vuelve más tarde»— y una cáscara que responde 200 con casi nada. El cuerpo va antes del
+  // código porque así lo pide `curl -w`, y es lo que el paso separa para contar palabras.
+  const falso = (cuerpo403, extra = '') => '#!/usr/bin/env bash\n'
     + 'for arg in "$@"; do url="$arg"; done\n'
-    + 'case "$url" in *iso.org*) echo -n 403 ;; *) echo -n 200 ;; esac\n', { mode: 0o755 })
+    + 'case "$url" in\n'
+    + `  *iso.org*) printf '%s\\n403' ${JSON.stringify(cuerpo403)} ;;\n`
+    + "  *eur-lex*) printf '\\n202' ;;\n"
+    + "  *cascara*) printf '<html><title>x</title></html>\\n200' ;;\n"
+    + `  *) printf '%s\\n200' ${JSON.stringify('palabra '.repeat(80))} ;;\n`
+    + 'esac\n' + extra
+  fs.writeFileSync(path.join(dir, 'curl'), falso('sin acceso'), { mode: 0o755 })
 
   const summary = path.join(dir, 'summary.txt')
   fs.writeFileSync(summary, '')
@@ -282,12 +290,35 @@ test('el ciclo anota qué fuentes declaradas no pudo abrir', { skip: process.pla
 
   const escrito = fs.readFileSync(summary, 'utf8')
   assert.match(escrito, /\| fuentes declaradas \| [1-9]/, 'cuenta las que el cargo declara')
-  assert.match(escrito, /\| no alcanzables \| [1-9]/, 'y cuántas no respondieron')
+  assert.match(escrito, /\| sin contenido legible \| [1-9]/, 'y cuántas no sirven')
   assert.match(escrito, /iso\.org.*→ 403/, 'nombrando cuál y con qué código')
   assert.match(salida.stdout, /^::warning title=/m, 'sale como anotación, no como una línea de log')
 
+  // Las otras dos clases, que un chequeo por código solo daría por buenas.
+  const conUrl = (slug) => {
+    const propio = path.join(dir, 'sources.yaml')
+    fs.writeFileSync(propio, `version: 1\nsources:\n  - name: F\n    url: https://${slug}/x\n    tier: standard\n`)
+    return propio
+  }
+  for (const [slug, esperado, porque] of [
+    ['eur-lex.europa.eu', /202\(sin-contenido\)/, 'un 202 es «vuelve más tarde», no contenido'],
+    ['cascara.example', /200\(\d+-palabras\)/, 'y un 200 con una cáscara tampoco sirve'],
+  ]) {
+    fs.writeFileSync(summary, '')
+    const script = paso.replace('"$dir/learning/sources.yaml"', JSON.stringify(conUrl(slug)))
+    const corrida = spawnSync('bash', ['-c', script], {
+      cwd: repo,
+      encoding: 'utf8',
+      env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, OPS: 'engine/cli/ops.js',
+        AGENT: 'cloud-architect', GITHUB_STEP_SUMMARY: summary },
+    })
+    assert.equal(corrida.status, 0, corrida.stderr)
+    assert.match(fs.readFileSync(summary, 'utf8'), esperado, porque)
+  }
+
   // Sin ninguna rota no hay nada que anunciar: un aviso que sale siempre se termina ignorando.
-  fs.writeFileSync(path.join(dir, 'curl'), '#!/usr/bin/env bash\necho -n 200\n', { mode: 0o755 })
+  fs.writeFileSync(path.join(dir, 'curl'),
+    `#!/usr/bin/env bash\nprintf '%s\\n200' ${JSON.stringify('palabra '.repeat(80))}\n`, { mode: 0o755 })
   fs.writeFileSync(summary, '')
   const limpio = spawnSync('bash', ['-c', paso], {
     cwd: repo,

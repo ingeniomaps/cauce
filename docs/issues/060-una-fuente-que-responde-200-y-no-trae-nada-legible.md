@@ -1,14 +1,15 @@
 ---
 caso: 060
 titulo: Una fuente que responde 200 y devuelve una cáscara vacía cuenta como alcanzable
-estado: abierto
+estado: resuelto
+resuelto-en: 0.71.0
 prioridad: baja
 version-detectada: 0.71.0
 ---
 
 # 060 — Alcanzable no es lo mismo que legible, y el chequeo sólo mira lo primero
 
-**🔴 abierto** · detectado en 0.71.0 · prioridad **baja** — la mitad del problema que el 051 vino a cerrar sigue sin señal
+**🟢 resuelto en 0.71.0** · detectado en 0.71.0 · prioridad **baja** — la mitad del problema que el 051 vino a cerrar sigue sin señal
 
 ## Resumen
 
@@ -145,3 +146,47 @@ este caso.
 
 - [051](051-una-fuente-que-el-entorno-no-puede-leer-no-la-detecta-nadie.md) — de donde sale, y que cubre
   la otra mitad: la fuente que directamente no responde.
+
+## Cierre
+
+**Resuelto en 0.71.0**, y el caso se cierra distinto de como se enunció porque medirlo lo partió en tres.
+
+- **Se tomó la primera vía —un umbral— y la medición le quitó lo arbitrario, que era su objeción.** El
+  corte va en **50 palabras** porque ahí lo puso el catálogo: de las 255 fuentes, catorce caen por debajo y
+  sólo dos entre 50 y 200, así que el número no parte ningún grupo. El caso decía «un piso es barato y
+  arbitrario»; con los datos, es barato y no arbitrario.
+- **Se cuentan palabras fuera de etiquetas y no bytes.** Un piso de bytes habría dejado pasar
+  `nodejs.org/en/blog/vulnerability` con 832 KB y también a Apple HIG con 17 KB: el tamaño no distingue la
+  cáscara.
+- **La segunda vía —contar texto— es la que se implementó**; la tercera —un campo del frontmatter que el
+  cargo complete— no hizo falta, y era la que el caso prefería «porque no inventa umbrales». Con el umbral
+  medido, mover el juicio al modelo compraba menos de lo que costaba.
+- **Apareció una clase que el caso no tenía: el `202`.** Las seis fuentes de eur-lex —GDPR, la ley de IA,
+  PSD2— contestan «aceptado, vuelve más tarde», que no es contenido y **tampoco es una cáscara**: no llega
+  cuerpo que medir. Se separa por código, antes del umbral, y se nombra distinto en el resumen.
+- **Tradeoff «un umbral mal puesto es peor que no medir» — se acota con el dato.** Ninguna de las 255
+  fuentes sanas queda cerca del corte, así que el falso positivo semanal que el caso temía no tiene de
+  dónde salir hoy. Lo que lo reabriría es una fuente legítima y corta que empiece a marcarse.
+- **Tradeoff «mueve el juicio al modelo» — no se pagó**, porque no se tomó esa vía.
+- **Tradeoff «no medido» — medido**, y estaba errado por un factor de siete: la sección de arriba tiene los
+  números.
+- **La tercera clase que este caso agregó —las URLs que un cargo prueba y nadie declaró— sigue sin
+  cubrirse, y sigue siendo cierto.** El chequeo mira lo declarado. Lo que la activaría es que un informe
+  vuelva a reportar un 404 sobre una URL derivada y eso cueste algo; hoy no hay dónde anotarlo.
+
+**Probado con el paso ejecutado de verdad** contra fuentes reales del catálogo, una por clase:
+
+```
+ui-designer         Apple HIG → 200(26-palabras) · m3.material.io → 200(6-palabras)
+fraud-risk-analyst  tres eur-lex → 202(sin-contenido)
+qa-engineer         tres iso.org → 403
+```
+
+`ui-designer` **antes daba «ninguna»** mientras sus informes decían desde hacía semanas que no podía leer
+dos de sus cuatro fuentes. Dos mutaciones comprobadas: devolver el `202` a alcanzable, y bajar el umbral a
+cero.
+
+**Lo que este arreglo no arregla, y es la mayor parte.** De las 63 fuentes inservibles, **47 son `403`** y
+31 de ellas son `iso.org`. Eso no lo cierra un umbral: pide cambiar la fuente por su equivalente en
+`webstore.iec.ch` —comprobado: 824 palabras contra un 403— en 31 entradas del catálogo, y eso baja a todos
+los consumidores. Queda como decisión abierta, no como parte de este caso.

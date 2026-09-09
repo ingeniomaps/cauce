@@ -519,20 +519,39 @@ jobs:
           while IFS= read -r url; do
             [ -n "$url" ] || continue
             total=$((total + 1))
-            code="$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 20 \
-              -A 'cauce-learning/1.0 (+https://github.com/ingeniomaps/cauce)' "$url" || echo 000)"
+            respuesta="$(curl -s -L --max-time 20 -w '\n%{http_code}' \
+              -A 'cauce-learning/1.0 (+https://github.com/ingeniomaps/cauce)' "$url" || printf '\n000')"
+            code="$(printf '%s' "$respuesta" | tail -n 1)"
+            # Palabras fuera de etiquetas, que es lo que un cargo puede leer de verdad. Se cuenta con node
+            # y no con `sed`: un `.*` codicioso sobre varias líneas se come la página entera —midiendo así,
+            # una con 301 palabras daba 0 y otra con 26 daba 58, erraba en las dos direcciones—.
+            palabras="$(printf '%s' "$respuesta" | sed '$d' | node -e '
+              let s = ""
+              process.stdin.on("data", (d) => { s += d }).on("end", () => {
+                const limpio = s.replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, "").replace(/<[^>]*>/g, " ")
+                console.log(limpio.split(/\s+/).filter(Boolean).length)
+              })')"
             case "$code" in
-              2*|3*) ;;
+              # `202` es «aceptado, vuelve más tarde», no contenido: eur-lex contesta eso a las seis normas
+              # que el catálogo cita —GDPR, la ley de IA, PSD2— y contarlo como alcanzable decía que un
+              # cargo podía leer un reglamento que nunca recibió.
+              202) rotas="$rotas$url $code(sin-contenido)"$'\n' ;;
+              2*|3*)
+                # Cincuenta palabras separan la cáscara de la página corta y sana: medido sobre las 255
+                # fuentes del catálogo, catorce caen por debajo y sólo dos entre 50 y 200, así que el corte
+                # no parte ningún grupo. Una aplicación renderizada por cliente devuelve su `<title>` y poco
+                # más, y para quien investiga eso es tan inútil como un 403.
+                [ "${palabras:-0}" -ge 50 ] || rotas="$rotas$url $code($palabras-palabras)"$'\n' ;;
               *) rotas="$rotas$url $code"$'\n' ;;
             esac
           done <<< "$urls"
           echo "| fuentes declaradas | $total |" >> "$GITHUB_STEP_SUMMARY"
           if [ -n "$rotas" ]; then
-            echo "| no alcanzables | $(printf '%s' "$rotas" | grep -c .) |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| sin contenido legible | $(printf '%s' "$rotas" | grep -c .) |" >> "$GITHUB_STEP_SUMMARY"
             printf '%s' "$rotas" | while read -r url code; do
               echo "| | \`$url\` → $code |" >> "$GITHUB_STEP_SUMMARY"
             done
-            echo "::warning title=Fuentes no alcanzables de $AGENT::$(printf '%s' "$rotas" | tr '\n' ' ')"
+            echo "::warning title=Fuentes sin contenido legible de $AGENT::$(printf '%s' "$rotas" | tr '\n' ' ')"
           fi
 
       - name: Upload report

@@ -66,8 +66,11 @@ diseño — eso vive en el commit y en el código.
   respondieron, con su código, y sale una anotación cuando hay alguna. Avisa y no falla: un 403 de una
   semana puede ser temporal, y lo que decide una cadencia es el patrón sostenido.
 
-  Mira el **código de respuesta**, así que atrapa un 403 o un 404 y da por buena una página que conteste
-  200 con una cáscara vacía. Esa mitad queda sin cubrir y está registrada aparte.
+  Mide además **el texto que la página trae**, no sólo que responda: por debajo de 50 palabras fuera de
+  etiquetas se reporta igual que un 403, porque una aplicación renderizada por cliente devuelve su título y
+  poco más. El umbral sale de medir las 255 fuentes del catálogo — catorce caen debajo y sólo dos entre 50
+  y 200, así que no parte ningún grupo. Y un `202` se reporta aparte: es «aceptado, vuelve más tarde», que
+  es lo que contestan las seis normas europeas que el catálogo cita.
 
 - **El lector de fuentes era ciego para uno de los dos formatos del catálogo.** `sources.yaml` admite la
   entrada repartida en varias líneas y la escrita en una sola, y sólo se leía la primera: en los seis
