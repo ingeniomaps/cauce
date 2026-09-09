@@ -190,3 +190,7 @@ cero.
 31 de ellas son `iso.org`. Eso no lo cierra un umbral: pide cambiar la fuente por su equivalente en
 `webstore.iec.ch` —comprobado: 824 palabras contra un 403— en 31 entradas del catálogo, y eso baja a todos
 los consumidores. Queda como decisión abierta, no como parte de este caso.
+
+**Tomada en 0.71.0**, y salió más grande: eran 41 entradas, no 31, y la mitad no tiene ficha en el IEC
+Webstore sino en `committee.iso.org`. Vive en el
+[063](063-el-catalogo-cita-las-normas-en-un-dominio-que-lo-bloquea.md).
