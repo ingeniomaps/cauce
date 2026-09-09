@@ -1,14 +1,15 @@
 ---
 caso: 062
 titulo: Una recurrencia vencida no la promueve el runner y una épica aprobada sí, y el texto sólo prohíbe
-estado: abierto
+estado: resuelto
+resuelto-en: 0.71.0
 prioridad: media
 version-detectada: 0.71.0
 ---
 
 # 062 — Dos casos análogos resueltos al revés, y la regla escrita cubre uno solo
 
-**🔴 abierto** · detectado en 0.71.0 · prioridad **media** — quien lea la regla y quien mire el recorrido sacan conclusiones opuestas
+**🟢 resuelto en 0.71.0** · detectado en 0.71.0 · prioridad **media** — quien lea la regla y quien mire el recorrido sacan conclusiones opuestas
 
 ## Resumen
 
@@ -84,3 +85,41 @@ escribirlo apareció que la línea ya está escrita para el caso análogo — y 
   el runner expande; acá queda si debería expandirlo.
 - [061](061-autobuild-expande-el-hito-siguiente-y-corta-sin-usarlo.md) — redujo cuándo ocurre la
   expansión, sin tocar si corresponde.
+
+## Cierre
+
+**Resuelto en 0.71.0.** Se tomó la segunda salida: `autobuild` dejó de expandir, y `context` nombra la
+próxima épica sin promover igual que nombra una recurrencia vencida.
+
+- **La asimetría no tenía fundamento, y averiguarlo invirtió la recomendación.** Se iba a proponer lo
+  contrario —admitir la expansión— con este argumento: BR-OPS-002 existe para «impedir que el mismo actor
+  que genera una idea amplíe el alcance autorizado», y `autobuild` no genera la épica. Ese argumento se
+  cae contra la otra mitad de la regla: «una propuesta queda fuera de la cola hasta aprobación humana
+  explícita».
+- **Lo que decidió fue el vocabulario del propio roadmap.** `template/planning/roadmap/README.md` define
+  `open` como **«candidata editable que aún no fue promovida al backlog»**, con el flujo
+  `roadmap (open) → BACKLOG (active) → DONE`. Pegar una épica `open` en la cola **es** promoverla.
+- **Y «aprobada» no correspondía a ningún dato.** El prompt pedía «la próxima épica abierta y aprobada»;
+  una épica declara `epic`, `title`, `status` y `service`, y ninguno registra una aprobación. La palabra
+  no tenía referente, así que lo único comprobable era `status: open` — es decir, lo contrario.
+- **Lo retirado se probó al revés que un agregado**, que es lo que R9 pide: la aserción es de **ausencia**
+  —que ninguna escritura pida expandir y que no quede el esquema— porque una que comprobara que la
+  corrida termina pasaría igual con la expansión puesta, ya que también terminaba. Verificado devolviendo
+  la expansión: la prueba se pone roja.
+- **Los dependientes se buscaron antes de quitar, no después.** El esquema `EXPANSION`, la clave `pick`
+  del arnés, tres pruebas y dos entradas del CHANGELOG. Los casos
+  [057](057-la-expansion-de-una-epica-no-dice-quien-la-escribio.md) y
+  [061](061-autobuild-expande-el-hito-siguiente-y-corta-sin-usarlo.md) llevan ahora una nota de retiro:
+  su cierre sigue siendo correcto sobre lo que se hizo, y ya no describe algo vigente.
+- **Tradeoff «toca `template/`» — no se pagó.** No hizo falta reescribir `AGENTS.md`: el texto ya decía lo
+  correcto, y lo que estaba fuera de la regla era el recorrido.
+- **Tradeoff «invalida parte de lo que 0.71.0 acaba de construir» — se pagó, y era la razón de decidirlo
+  antes.** La marca del 057 y el acote del 061 quedan sin sujeto. Ninguno era incorrecto: dejaron de tener
+  a qué aplicarse.
+- **Tradeoff «no medido: nadie reportó haberse confundido» — sigue sin medirse.** No cambió la decisión,
+  porque lo que la sostiene no es la confusión de alguien sino que el vocabulario y el comportamiento
+  decían cosas opuestas.
+
+Lo que apareció al escribir la prueba: **`context` no acepta `--no-color`**. La primera versión leía la
+salida de texto con esa bandera, y el comando la rechaza — otra afirmación de mecanismo que sólo se cayó
+al correrla.

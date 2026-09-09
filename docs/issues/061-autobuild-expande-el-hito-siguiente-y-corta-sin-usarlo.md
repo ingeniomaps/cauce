@@ -132,3 +132,14 @@ Lo que apareció al escribir la prueba y no estaba en el enunciado: **medir «se
 buscando esa palabra en las escrituras mide otra cosa.** Classify y Done la nombran de forma legítima en
 sus prompts, así que la primera versión de la aserción se ponía roja por el motivo equivocado. Lo que
 distingue a la expansión es el texto de su propio prompt.
+
+## Retirado en 0.71.0
+
+Lo que este caso construyó **ya no existe**: `autobuild` dejó de promover épicas al BACKLOG, así que no
+hay expansión que firmar ni que acotar. La razón está en el
+[062](062-la-recurrencia-no-se-promueve-y-la-epica-si.md): el roadmap llama `open` a «candidata editable
+que aún no fue promovida», así que pegarla en la cola es promoverla, y BR-OPS-002 la deja fuera hasta que
+la apruebe una persona.
+
+El cierre de arriba queda como está —describe lo que se hizo y por qué, y era correcto mientras la
+expansión existía—. Esta nota está para que nadie lo lea como vigente.

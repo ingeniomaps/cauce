@@ -32,17 +32,19 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
-- **Un hito que expandió `autobuild` ahora lo dice.** Antes se leía igual que uno redactado por una
-  persona, así que quien revisaba el BACKLOG no tenía cómo saber cuál merecía una segunda lectura y quien
-  auditaba tenía que reconstruirlo desde el registro de la corrida, que no se commitea. La marca va en una
-  línea debajo del encabezado del hito —no en el título, donde el parser se la comería— y no cambia nada
-  de lo que `check` o `context` ven.
+- **`autobuild` ya no promueve épicas: nombra la que sigue y para.** Cuando se le acababa la cola,
+  expandía la próxima épica del roadmap al BACKLOG. El roadmap llama `open` a «candidata editable que aún
+  no fue promovida al backlog», así que pegarla en la cola es promoverla — y BR-OPS-002 deja una propuesta
+  fuera de la cola hasta que la apruebe una persona. El prompt pedía «la próxima épica abierta y
+  aprobada», y «aprobada» no correspondía a ningún dato: una épica declara `epic`, `title`, `status` y
+  `service`, y ninguno registra una aprobación.
 
-- **`autobuild` ya no expande el hito siguiente para descartarlo.** La corrida corta cuando la tarea que
-  sigue es de otro hito, y expandía justo antes de llegar a ese corte: escribía el hito nuevo en el
-  BACKLOG y acto seguido decidía no tocarlo. Ahora sólo expande mientras no haya fijado su hito, que es
-  cuando lo expandido se ejecuta en la misma vuelta. Una corrida que termina su hito pasa de una expansión
-  a ninguna, y las tareas que construye no cambian.
+  Ahora `ops context` nombra la próxima épica sin promover —`EPIC 003: … — sin promover`, y el campo
+  `nextEpic` en `--json`— igual que ya nombraba una recurrencia vencida, y por el mismo motivo: la máquina
+  calcula, la persona encola.
+
+  **Lo que te pide algo**: si usabas `autobuild` desatendido esperando que encadenara épicas, ahora se
+  detiene al terminar el hito y hay que pegar el siguiente en `BACKLOG.md`. `context` te dice cuál es.
 
 - **El ciclo semanal comprueba que las fuentes declaradas de un cargo respondan, y anota las que no.** Una
   fuente ilegible y una que no cambió producían el mismo informe —«sin novedades»— y no son lo mismo: la
