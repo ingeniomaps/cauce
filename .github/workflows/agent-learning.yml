@@ -203,7 +203,14 @@ jobs:
       matrix:
         agent: ${{ fromJSON(needs.discover.outputs.agents) }}
     steps:
+      # Historia entera, que es lo único que este job pide distinto de los otros tres. `agent-evaluate`
+      # contesta cuándo cambió el contrato mirando `git log` del `SKILL.md`, y con el checkout de a un
+      # commit no hay nada que mirar: git le atribuye el árbol entero a ese commit y todos los cargos
+      # parecen haber cambiado hoy. Sin esto el motor lo dice —no inventa la fecha— pero la pregunta se
+      # queda sin contestar, que es la que decide si un veredicto mide una versión vieja.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'

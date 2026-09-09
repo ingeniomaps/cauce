@@ -132,10 +132,21 @@ function behaviors(root, agent, kind) {
 // tiene `SKILL.md`— así que se le podía agregar una dimensión al gate y sus veredictos anteriores
 // seguían leyéndose vigentes. Pasó el mismo día que esto se escribió: `change-review` ganó la pregunta
 // por las superficies críticas y sus tres casos aprobados no dijeron una palabra.
+//
+// Y hay un entorno donde git **no puede** contestar: un clon `--depth 1` tiene un solo commit y le
+// atribuye todo el árbol, así que `log -1 -- <archivo>` devuelve la fecha del checkout para cualquier
+// archivo. Comprobado con git 2.43.0 clonando este repositorio a profundidad 1: el `SKILL.md` de
+// `site-reliability-engineer` daba el día del clon contra el 2026-09-02, que es cuando se editó.
+//
+// Ahí la respuesta no es una fecha vieja sino ninguna, y **se dice**: un aviso que anuncia un cambio
+// que no ocurrió se lee igual que uno verdadero, y tres informes de dos cargos gastaron un hallazgo
+// cada uno investigándolo antes de que saliera como el caso 052.
 function contractChangedAt(dir, kind) {
   const file = kind === 'flow' ? 'flow.json' : 'SKILL.md'
+  const shallow = spawnSync('git', ['-C', dir, 'rev-parse', '--is-shallow-repository'], { encoding: 'utf8' })
+  if ((shallow.stdout || '').trim() === 'true') return { date: '', truncated: true }
   const git = spawnSync('git', ['-C', dir, 'log', '-1', '--format=%cs', '--', file], { encoding: 'utf8' })
-  return git.status === 0 ? (git.stdout || '').trim() : ''
+  return { date: git.status === 0 ? (git.stdout || '').trim() : '', truncated: false }
 }
 
 function resultsDir(root, agent, kind) {
@@ -264,10 +275,13 @@ function validate(root, agent, kind) {
   if (state.failed.length) {
     warnings.push(`${state.failed.length} caso(s) no pasan: ${state.failed.join(', ')}`)
   }
-  const changedAt = contractChangedAt(subject(root, agent, kind), kind)
-  if (changedAt && changedAt > state.oldest) {
+  const contract = contractChangedAt(subject(root, agent, kind), kind)
+  if (contract.truncated) {
+    warnings.push('no se puede saber si el contrato cambió después de estos veredictos: el checkout '
+      + 'está truncado y git le atribuye todo a su único commit (se destraba con fetch-depth: 0)')
+  } else if (contract.date && contract.date > state.oldest) {
     const which = state.oldest === state.newest ? 'la última corrida es' : 'el veredicto más viejo es'
-    warnings.push(`el contrato cambió el ${changedAt} y ${which} del ${state.oldest}: `
+    warnings.push(`el contrato cambió el ${contract.date} y ${which} del ${state.oldest}: `
       + 'mide una versión anterior')
   }
   return { errors, warnings, cases: total, last, state }
