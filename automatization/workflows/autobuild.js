@@ -9,7 +9,7 @@ export const meta = {
   // la primera fase. Escribirlas también les da un detalle propio, que es lo que se lee al autorizar.
   phases: [
     { title: 'Triage', detail: 'Contrato del proyecto y estado de planning' },
-    { title: 'Pick', detail: 'La próxima tarea, o la épica que falta expandir' },
+    { title: 'Pick', detail: 'La próxima tarea del hito, y la reserva antes de construirla' },
     { title: 'Classify', detail: 'Carril y reparto de la tarea que no los declara' },
     { title: 'Ready', detail: 'Aceptación concreta y sin decisiones pendientes' },
     { title: 'Decompose', detail: 'Partir la tarea que no entra en el tope de horas' },

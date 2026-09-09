@@ -116,6 +116,13 @@ próxima épica sin promover igual que nombra una recurrencia vencida.
 - **Tradeoff «invalida parte de lo que 0.71.0 acaba de construir» — se pagó, y era la razón de decidirlo
   antes.** La marca del 057 y el acote del 061 quedan sin sujeto. Ninguno era incorrecto: dejaron de tener
   a qué aplicarse.
+- **Un dependiente de la quita se escapó, y se encontró el 2026-09-09.** `meta.phases` seguía
+  anunciando la fase como «La próxima tarea, o la épica que falta expandir» — el único texto de ese
+  archivo que una persona lee **antes** de autorizar la corrida. La aserción que este caso dejó buscaba
+  `EXPANSION|expanded`, en inglés, y ese detalle está en castellano como todo lo que se lee. Lo destapó
+  probar cada caso de la sesión contra su conducta en vez de contra su archivo; la aserción ahora cubre
+  también `meta.phases`.
+
 - **Tradeoff «no medido: nadie reportó haberse confundido» — sigue sin medirse.** No cambió la decisión,
   porque lo que la sostiene no es la confusión de alguien sino que el vocabulario y el comportamiento
   decían cosas opuestas.

@@ -147,6 +147,10 @@ declaró explícitamente fuera de alcance: «eso no lo cierra un umbral».
 - **Dos cargos citaban ISO 31000 por dos URLs distintas y la puerta no lo veía.** Al converger en una
   sola ficha, «una URL, un nombre» empezó a aplicar y hubo que unificar: `ISO 31000` de
   `financial-controller` pasó a `ISO 31000 risk management`. Es un hallazgo del cambio, no del enunciado.
+- **Tradeoff «se depende de dos hosts en vez de uno» — se paga y no es una pérdida.** Antes se dependía
+  de uno que no responde; ahora de dos que sí, y el chequeo semanal mide los dos igual. Lo que lo
+  reabriría es que uno de ellos empiece a bloquear: ahí el aviso lo dice y la ficha alternativa existe.
+
 - **La razón se escribió una sola vez**, en `agents/README.md`, y los tres comentarios de
   `qa-engineer` que la repetían se recortaron: decían «iso.org devuelve 403, lo legible es esta ficha» y
   nombraban la URL que ahora está en la línea de abajo. Lo que esos comentarios sí aportaban —que es

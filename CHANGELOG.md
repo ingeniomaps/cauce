@@ -18,6 +18,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **La fase `Pick` de `autobuild` deja de prometer una expansión que ya no existe.** Su descripción
+  —lo único del recorrido que se lee **antes** de autorizar la corrida— seguía diciendo «o la épica que
+  falta expandir» después de que la promoción de épicas se quitara. Lo que el recorrido hace hoy es
+  tomar la próxima tarea del hito y reservarla.
+
 - **Un merge a `main` ya no le quita la corrida de CI al merge anterior.** Todos los pushes a `main`
   compartían grupo de concurrencia, y sólo una corrida puede estar pendiente por grupo: la que llega
   desaloja a la que esperaba. En una tanda de merges sobrevivían la primera y la última y morían todas

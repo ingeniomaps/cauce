@@ -243,6 +243,15 @@ test('sin cola, el recorrido no promueve una épica: la nombra y para', async ()
     path.resolve(__dirname, '..', '..', 'automatization', 'workflows', 'autobuild.js'), 'utf8',
   )
   assert.equal(/EXPANSION|expanded/.test(fuente), false, 'ni queda el esquema de la expansión')
+
+  // Y tampoco lo promete `meta`, que es lo único de este archivo que una persona lee **antes** de
+  // autorizar la corrida. El detalle de `Pick` siguió diciendo «o la épica que falta expandir» después
+  // de que la expansión se quitara: la aserción de arriba no lo vio porque busca dos palabras en inglés
+  // y ese texto está en castellano, que es el idioma de todo lo que se lee. Se acota a `phases` porque
+  // el cuerpo sí nombra la expansión, a propósito, para explicar por qué ya no está.
+  const fases = fuente.match(/phases: \[[\s\S]*?\n  \]/)
+  assert.ok(fases, 'meta declara sus fases')
+  assert.equal(/expand/i.test(fases[0]), false, 'ninguna fase promete expandir una épica')
 })
 
 // Por qué la raíz puede llegar ilegible está en el schema del contrato. Acá se mide que el recorrido pare
