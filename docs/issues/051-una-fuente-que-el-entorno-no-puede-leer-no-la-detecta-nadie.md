@@ -1,14 +1,15 @@
 ---
 caso: 051
 titulo: Una fuente que el entorno no puede leer se consulta igual cada semana y nada lo detecta
-estado: abierto
+estado: resuelto
+resuelto-en: 0.71.0
 prioridad: media
 version-detectada: 0.70.0
 ---
 
 # 051 — El ciclo paga por fuentes ilegibles y no tiene cómo saberlo
 
-**🔴 abierto** · detectado en 0.70.0 · prioridad **media** — gasto recurrente sin señal
+**🟢 resuelto en 0.71.0** · detectado en 0.70.0 · prioridad **media** — gasto recurrente sin señal
 
 ## Resumen
 
@@ -116,3 +117,42 @@ tres cargos cuya cadencia semanal la sostiene una fuente que no se lee.
 ## Relacionados
 
 - Ninguno todavía.
+
+## Cierre
+
+**Resuelto en 0.71.0, y a medias a propósito.** El recorrido de lo que enumeró:
+
+- **No se hizo el fix propuesto sino el que este caso descartaba, y la razón es que el argumento para
+  descartarlo era falso.** El caso decía que un chequeo de alcanzabilidad «mete red en el ciclo». No la
+  mete: el ciclo **ya sale a la red** —investigar es leer esas mismas fuentes—, así que lo único que
+  agrega es un pedido más por fuente. Lo que sí se evitó es el `grep` que este caso proponía, y por la
+  razón que él mismo escribió: medía menciones, no fuentes, y dependía de cómo redactara cada cargo.
+- **Tradeoff «contar por grep es frágil» — no se paga, porque no se contó por grep.** El dato sale del
+  código de respuesta, que es el mismo para todos los cargos.
+- **Tradeoff «la alternativa mete falsos positivos» — se paga, y se acota.** Un 403 de una semana puede
+  ser un bloqueo temporal, así que el paso **avisa y no falla**: lo que decide un `tier` es el patrón
+  sostenido, y fallar la corrida tiraría la investigación por algo que no la invalida.
+- **Tradeoff «bajar el tier no vuelve legible la fuente» — sigue cierto y sin cambios.** Reemplazar o
+  retirar una fuente ilegible sigue siendo otra decisión.
+- **La mitad del síntoma que este arreglo NO cubre sale como caso propio, el 060.** El chequeo mira el
+  código de respuesta, así que atrapa un 403 y da por buena una página que contesta 200 con una cáscara
+  vacía. De las cuatro fuentes de la tabla del síntoma, cubre `iso.org` y el `whats-new` de Apple —403 y
+  404— y **no** cubre `m3.material.io` ni la raíz de Apple HIG, que responden 200 y no traen nada legible.
+  Corrido de verdad sobre `ui-designer`, sus cuatro fuentes dan alcanzables mientras sus informes dicen
+  desde hace semanas que no puede leer dos.
+
+**Probado con el paso ejecutado de verdad, no sólo con la suite**, contra las fuentes reales del catálogo:
+
+```
+cloud-architect  | fuentes declaradas | 6 |  no alcanzables | 2 |  iso.org → 403 (×2)
+mlops-engineer   | fuentes declaradas | 6 |  no alcanzables | 2 |  iso.org → 403 (×2)
+ui-designer      | fuentes declaradas | 4 |  (ninguna)
+```
+
+Lo que el caso no preveía y apareció al arreglarlo: **el lector de fuentes era ciego para uno de los dos
+formatos del catálogo.** `sourceUrls` sólo entendía la entrada repartida en varias líneas, así que en los
+seis cargos que la escriben en una sola veía **cero fuentes** — `mlops-engineer` declaraba seis y se leían
+cero. Eso no era cosmético: de ahí sale la validación de URL duplicada, que es un **error** de `check`, y
+esos seis nunca la tuvieron. No fallaba nada porque no encontrar duplicados y no mirar producen el mismo
+silencio. Se arregló acá porque el chequeo nuevo lo necesitaba, y con la prueba que recorre el catálogo
+entero: 299 fuentes declaradas, 299 leídas.

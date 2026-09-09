@@ -32,6 +32,21 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **El ciclo semanal comprueba que las fuentes declaradas de un cargo respondan, y anota las que no.** Una
+  fuente ilegible y una que no cambió producían el mismo informe —«sin novedades»— y no son lo mismo: la
+  primera no se comprobó. Ahora el resumen del job dice cuántas fuentes declara el cargo y cuáles no
+  respondieron, con su código, y sale una anotación cuando hay alguna. Avisa y no falla: un 403 de una
+  semana puede ser temporal, y lo que decide una cadencia es el patrón sostenido.
+
+  Mira el **código de respuesta**, así que atrapa un 403 o un 404 y da por buena una página que conteste
+  200 con una cáscara vacía. Esa mitad queda sin cubrir y está registrada aparte.
+
+- **El lector de fuentes era ciego para uno de los dos formatos del catálogo.** `sources.yaml` admite la
+  entrada repartida en varias líneas y la escrita en una sola, y sólo se leía la primera: en los seis
+  cargos que usan la segunda se veían **cero** fuentes. De ahí sale la validación que rechaza una URL
+  declarada dos veces con nombres distintos, así que esos seis nunca la tuvieron — y no fallaba nada,
+  porque no encontrar duplicados y no mirar producen el mismo silencio.
+
 - **Archivar una propuesta ahora deja quién lo decidió y cuándo.** Antes quedaba con «Responsable: por
   definir» y ninguna fila en `learning/HISTORY.md`, así que una propuesta que alguien miró y descartó se
   leía igual que una que nadie tocó. El responsable sale de `CAUCE_OWNER` o de `git config user.email` —la
