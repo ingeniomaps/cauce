@@ -16,6 +16,20 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.71.0] - 2026-09-08
 
+### Cambiado
+
+- **`planning/PROTOCOL.md` pide contrastar la línea de una tarea contra su propia descripción.** La línea
+  declara cuatro cosas —qué hace, en qué carril, quién entrega y revisa, con qué se comprueba— y las
+  cuatro las escribe la misma mano en el mismo acto, así que nada las cruzaba después. Releerlas no
+  encuentra el hueco: una aceptación incompleta se lee perfecta porque todo lo que dice es cierto.
+
+  La pasada vive al escribir la tarea y no en una fase, y la razón es que cualquier fase donde viviera es
+  una que el carril puede saltar — una tarea mal marcada `express` es justamente la que se salta la fase
+  donde alguien lo notaría.
+
+  **Lo que te pide algo**: cuesta minutos por tarea al promover un hito. En el caso que originó esto, seis
+  correcciones sobre cinco tareas, todas antes de escribir una línea de código.
+
 ### Corregido
 
 - **`ops context` y `ops tree` sobre un planning que no existe ahora fallan, en vez de contestar como una
