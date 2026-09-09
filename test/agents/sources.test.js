@@ -110,6 +110,18 @@ test('el lector de documentos toma references y SKILL, y deja afuera lo inventad
     { url: 'https://ej.test/hondo', origin: 'references/hondo/metodo.md' },
     { url: 'https://ej.test/skill', origin: 'SKILL.md' },
   ], 'recorre subcarpetas, corta el punto final y nombra el archivo')
+
+  // Lo que no es markdown no se lee, y una URL repetida se comprueba una vez: el paso paga una vuelta de
+  // red por cada línea que sale de acá, así que repetirla cuesta y no dice nada nuevo.
+  fs.writeFileSync(path.join(dir, 'references', 'notas.txt'), 'https://ej.test/txt\n')
+  fs.writeFileSync(path.join(dir, 'references', 'otra.md'), 'https://ej.test/hondo otra vez\n')
+  const otra = documentUrls(dir).map((one) => one.url)
+  assert.equal(otra.filter((url) => url === 'https://ej.test/hondo').length, 1, 'una vez, no dos')
+  assert.equal(otra.includes('https://ej.test/txt'), false, 'y el .txt no se lee')
+
+  // Un cargo a medio escribir todavía no tiene ninguna de las dos cosas, y eso no es un error: se está
+  // escribiendo. Devolver vacío es lo que deja que el paso siga con sus fuentes.
+  assert.deepEqual(documentUrls(tempRoot('cauce-vacio-')), [], 'sin references/ ni SKILL.md, ninguna')
 })
 
 test('el inventario de contratos en las referencias es el que está declarado', () => {

@@ -137,7 +137,7 @@ function documentUrls(dir) {
     let entries = []
     try { entries = fs.readdirSync(path.join(base, relative), { withFileTypes: true }) } catch { return }
     for (const entry of entries) {
-      const next = relative ? `${relative}/${entry.name}` : entry.name
+      const next = `${relative}/${entry.name}`
       if (entry.isDirectory()) { below(base, next); continue }
       if (!entry.name.endsWith('.md')) continue
       for (const hit of fs.readFileSync(path.join(base, next), 'utf8').match(DOC_URL) || []) add(hit, next)
