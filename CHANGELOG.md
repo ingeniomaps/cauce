@@ -14,6 +14,31 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.71.0] - 2026-09-08
+
+### Corregido
+
+- **`ops context` y `ops tree` sobre un planning que no existe ahora fallan, en vez de contestar como una
+  cola terminada.** Antes devolvían `queued: 0` con código 0, así que una ruta equivocada se propagaba
+  como dato y no como error. Ahora salen con código 2 y nombran la **ruta resuelta**, que es la que hace
+  falta para ver el problema: en `sidecar`, `<empresa>-ops/planning` escrito desde adentro de la raíz
+  apunta a `<empresa>-ops/<empresa>-ops/planning`, y las dos formas se ven razonables.
+
+  **Lo que te pide algo**: si tenías un script que trataba la salida vacía como «nada que hacer», ahora
+  recibe un error. Es deliberado y va en la misma dirección que el cambio de código de salida de
+  `upgrade` en 0.67.0 — un comando que no pudo leer no responde como si hubiera leído.
+
+- **`autobuild` no expande una épica sobre una lectura que falló.** La fase Pick tomaba «sin tarea y cola
+  en cero» como permiso para promover la próxima épica al BACKLOG, y ese es exactamente el estado que
+  devolvía un planning ilegible. Una corrida real escribió seis historias que ninguna persona aprobó
+  —lo que BR-OPS-002 prohíbe— y el `check` posterior dio verde, porque once tareas en cola es un estado
+  válido.
+
+  El arreglo del CLI no alcanzaba solo: el esquema se completa igual, y ceros es lo que un modelo escribe
+  cuando no tiene qué poner. Así que el informe de estado ahora declara si de verdad leyó, y expandir
+  exige esa lectura afirmada en vez de la ausencia de tarea. Parar cuesta una corrida; promover escribe en
+  el repositorio.
+
 ## [0.70.0] - 2026-09-08
 
 ### Agregado

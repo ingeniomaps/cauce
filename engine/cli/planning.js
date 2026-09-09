@@ -266,6 +266,9 @@ function treeJson({ epics, milestones, done, wips, inbox, queued, claims }) {
 
 function tree(dir, cli) {
   const root = path.resolve(dir || '.')
+  // Mismo motivo que en `context`, y por eso comparten la comprobación: sin ella un planning ausente
+  // dibujaba un árbol vacío, que se lee como un roadmap sin épicas en vez de como una ruta equivocada.
+  assertPlanning(root)
   const state = ST.snapshot(root)
   if (cli.has('--json')) return treeJson(state)
   const { epics, milestones, done, wips, inbox, queued, claims } = state
@@ -304,9 +307,29 @@ function tree(dir, cli) {
   console.log(`${paint('1', 'DONE')}   ${done.entries.length} tareas\n`)
 }
 
+// Lo que no se pudo leer no contesta como si se hubiera leído: la misma regla que `stagedFiles` aplica
+// sobre el índice de git, y que esta familia ya aplicaba al `--hito` inexistente. Faltaba la raíz, y ahí
+// pesa más, porque el consumidor no siempre es una persona: `autobuild` toma la cola vacía como permiso
+// para expandir una épica, así que un error de ruta promovía trabajo en vez de fallar.
+//
+// La ruta va **resuelta** y no como se escribió, porque el error que ataca es de resolución: en sidecar
+// `<empresa>-ops/planning` desde adentro de la raíz apunta a `<empresa>-ops/<empresa>-ops/planning`.
+function assertPlanning(root) {
+  if (!fs.existsSync(root)) {
+    return fail(`no existe el planning en ${root} (ruta resuelta). Comprobá desde dónde estás invocando.`, 2)
+  }
+  // Existir no alcanza: un directorio cualquiera contestaría cola vacía igual. `BACKLOG.md` es el archivo
+  // del que sale la cola, así que sin él la respuesta no significa nada.
+  if (!fs.existsSync(path.join(root, 'BACKLOG.md'))) {
+    return fail(`${root} (ruta resuelta) no es un planning: falta BACKLOG.md.`, 2)
+  }
+  return null
+}
+
 // Contexto mínimo suficiente para ejecutar una tarea, en lugar de releer roadmap, BACKLOG y WIP enteros.
 function context(dir, cli) {
   const root = path.resolve(dir || '.')
+  assertPlanning(root)
   const state = ST.snapshot(root)
   // Acotar la cola a un hito es como un equipo se reparte trabajo sin coordinarse: dos personas en hitos
   // distintos casi nunca dependen entre sí ni tocan los mismos archivos. Lo que se acota es qué se

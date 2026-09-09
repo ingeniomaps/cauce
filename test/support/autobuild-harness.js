@@ -46,7 +46,7 @@ function baseScript() {
     // Primera lectura: hay tarea. La segunda sale de `options.contexts`, ya sin tarea, para que el
     // bucle cierre en vez de repetir la misma para siempre.
     [KEY.context]: {
-      blocked: '', hasTask: true, wipActive: false, queued: 1, lane: 'full',
+      blocked: '', hasTask: true, wipActive: false, queued: 1, lane: 'full', readOk: true,
       today: '2026-09-08', wipFile: 'wip/w-uno.md',
       cast: { build: 'backend-engineer', review: [] },
       slug: 'T-1', hito: 'H1', service: './api', acceptance: 'el alta rechaza un duplicado', epic: 'E1',
@@ -89,7 +89,12 @@ function ranToEnd(result) {
   assert.equal(result.stopped, undefined, `frenó en ${result.reason || ''}: ${result.detail || ''}`)
 }
 
-const NO_TASK = { blocked: '', hasTask: false, wipActive: false, queued: 0, lane: '', cast: { build: '', review: [] } }
+// Lleva `readOk: true` porque el escenario es una cola de verdad terminada. El planning que no se pudo
+// leer es otro y contesta al revés: sin ese campo los dos se veían igual, que es lo que el campo cierra.
+const NO_TASK = {
+  blocked: '', hasTask: false, wipActive: false, queued: 0, lane: '', readOk: true,
+  cast: { build: '', review: [] },
+}
 
 // Ejecuta el recorrido y devuelve lo que devolvió, más las fases y las claves que pidió. La clave sale
 // de la fase y del `label` o de los campos obligatorios del schema: es lo que distingue una crítica de

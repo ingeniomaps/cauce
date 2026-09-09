@@ -40,8 +40,12 @@ const ROADMAP = `${P}/roadmap`
 // Estado de planning tal como lo emite `ops context --json`; ningún modelo parsea BACKLOG ni WIP.
 const CONTEXT = {
   type: 'object', additionalProperties: false,
-  required: ['blocked', 'hasTask', 'wipActive', 'queued', 'cast'],
+  required: ['blocked', 'hasTask', 'wipActive', 'queued', 'cast', 'readOk'],
   properties: {
+    // Si el comando salió con error no hay estado que reportar, y `hasTask: false, queued: 0` es
+    // exactamente lo que un modelo completa cuando no tiene qué poner. Sin este campo esa invención se
+    // lee igual que una cola terminada, y Pick la toma como permiso para promover.
+    readOk: { type: 'boolean' },
     blocked: { type: 'string' }, hasTask: { type: 'boolean' }, wipActive: { type: 'boolean' },
     queued: { type: 'integer' }, slug: { type: 'string' }, hito: { type: 'string' },
     service: { type: 'string' }, acceptance: { type: 'string' }, epic: { type: 'string' },
@@ -329,12 +333,17 @@ const readContext = () => read(
   `de task.tier; copiá slug, ` +
   `hito, service, acceptance, ` +
   `epic y cast de task, y epicContext de epic.context —vacío si no hay épica—. El comando es la fuente de ` +
-  `verdad: no abras archivos de planning para completarlo.`,
+  `verdad: no abras archivos de planning para completarlo. Poné readOk en true sólo si el comando salió ` +
+  `con código 0 y devolvió JSON; si falló, readOk en false y el resto en sus valores vacíos, sin ` +
+  `deducir el estado de ninguna otra fuente.`,
   { schema: CONTEXT, label: 'planning-context' },
 )
 
 let planning = await readContext()
 if (!planning) return stop('context-unavailable', `no se pudo leer el estado de ${P}`)
+// Que el agente conteste no significa que haya leído: el schema se completa igual con ceros. Parar acá
+// cuesta una corrida; seguir sobre una lectura fallida escribe en el BACKLOG, y eso no se revierte solo.
+if (!planning.readOk) return stop('context-unavailable', `${P} no se pudo leer; revisá la ruta y el cwd`)
 if (planning.blocked) return stop('awaiting-human-review', `${GATE} tiene un checkpoint humano sin resolver`)
 
 let currentMilestone = planning.wipActive ? planning.hito : ''
@@ -350,7 +359,11 @@ const classified = new Set()
 
 while (rounds++ < MAX_TASKS) {
   phase('Pick')
-  if (!planning.hasTask && !planning.queued) {
+  // Expandir escribe en el BACKLOG, así que es lo único de este recorrido que no se revierte con un
+  // `git checkout`: pide la lectura afirmada, no la ausencia de tarea. Una cola vacía porque no se
+  // pudo leer se ve idéntica a una cola terminada, y sobre la primera esto promovía trabajo que nadie
+  // aprobó — lo que BR-OPS-002 prohíbe.
+  if (planning.readOk && !planning.hasTask && !planning.queued) {
     const expansion = await write(
       `Leé ${ROADMAP}. Expandí sólo la próxima épica abierta y aprobada en un hito nuevo de ${BACKLOG}, ` +
       `conservando el slug de cada historia, sus referencias a criterios y su servicio. Nunca promuevas ` +
@@ -361,6 +374,7 @@ while (rounds++ < MAX_TASKS) {
     if (!expansion.expanded) break
     planning = await readContext()
     if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
+    if (!planning.readOk) return stop('context-unavailable', `${P} dejó de leerse tras expandir`)
   }
   if (!planning.hasTask || (currentMilestone && planning.hito !== currentMilestone)) break
   const task = {
