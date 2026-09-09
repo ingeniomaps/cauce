@@ -57,12 +57,20 @@ sources:
     url: https://www.upu.int/en/universal-postal-union/about-upu/acts
     tier: regulation
     topics: [cross-border-postal, convention, claims]
-  # Pendientes de registrar en 2026-09, con lo que impidió verificarlas el 2026-08-22:
-  #   - ISO 10002 (gestión de quejas): iso.org devuelve 403 y no se encontró ficha legible en el
-  #     IEC Webstore. Sin URL comprobada no entra: `require_primary_source` exige fuente abierta, no
-  #     número de norma.
-  #   - Ley Federal de Protección al Consumidor (México): diputados.gob.mx rechazó la conexión.
-  #   - ASCM SCOR DS (procesos Deliver y Return, métricas de orden perfecta): la página del modelo
-  #     devolvió contenido vacío y el modelo es de acceso pago.
-  #   - 49 CFR Part 370 (reclamaciones de pérdida y daño ante transportistas, EE. UU.): eCFR redirige a
-  #     un portal de desbloqueo y no entrega el texto.
+pending:
+  - name: ISO 10002 gestión de quejas
+    url: https://committee.iso.org/standard/71580.html
+    why: iso.org devuelve 403 y no se encontró ficha en el IEC Webstore; queda por comprobar si este
+      host la sirve, que es donde otras normas ISO sí se leen
+    since: 2026-08-22
+  - name: Ley Federal de Protección al Consumidor (México)
+    url: https://www.diputados.gob.mx/LeyesBiblio/pdf/LFPC.pdf
+    why: diputados.gob.mx rechazó la conexión
+    since: 2026-08-22
+  - name: ASCM SCOR DS procesos Deliver y Return
+    why: la página del modelo devolvió contenido vacío y el modelo es de acceso pago, así que puede
+      no llegar a ser una fuente registrable nunca
+    since: 2026-08-22
+  - name: 49 CFR Part 370 reclamaciones ante transportistas (EE. UU.)
+    why: eCFR redirige a un portal de desbloqueo y no entrega el texto
+    since: 2026-08-22

@@ -66,11 +66,12 @@ sources:
     tier: standard
     topics: [architecture-description, architecture-decisions, scope-boundary]
 
-# Pendiente de verificar en la próxima corrida, y por eso todavía no es una fuente:
-#
-# - IEEE 1028 (Software Reviews and Audits). https://standards.ieee.org/ieee/1028/4266/ devuelve 200
-#   pero la ficha se arma con JavaScript y el título servido es el genérico del sitio, así que la
-#   corrida no pudo confirmar ni el número ni la edición vigente. Falta abrirla con un cliente que
-#   ejecute la página, o encontrar una ficha estática equivalente.
-# - ISO/IEC/IEEE 24765 (vocabulario de ingeniería de software), para fijar los términos de «revisión
-#   técnica» y «auditoría». Falta una URL primaria que responda; la de iso.org está bloqueada.
+pending:
+  - name: IEEE 1028 Software Reviews and Audits
+    url: https://standards.ieee.org/ieee/1028/4266/
+    why: responde 200 pero la ficha se arma con JavaScript y sirve el título genérico del sitio, así
+      que no se pudo confirmar ni el número ni la edición vigente
+    since: 2026-08-22
+  - name: ISO IEC IEEE 24765 vocabulario de ingeniería de software
+    why: fijaría los términos «revisión técnica» y «auditoría»; falta una URL primaria que responda
+    since: 2026-08-22

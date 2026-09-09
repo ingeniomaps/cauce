@@ -110,8 +110,10 @@ sources:
     status: expired
     topics: [idempotency-key, not-a-standard]
 
-# Pendiente de registrar: AWS Builders' Library, «Timeouts, retries, and backoff with jitter», que es
-# la fuente habitual para la dispersión del backoff. La URL de aws.amazon.com redirige a
-# builder.aws.com y esa página devolvió sólo el encabezado el 2026-08-22, así que **no se leyó** y no
-# se cita. Mientras tanto, la dispersión del backoff queda sin fuente registrada en este archivo y no
-# se afirma como recomendación de nadie.
+# Mientras esto siga pendiente, la dispersión del backoff queda sin fuente registrada acá y no se
+# afirma como recomendación de nadie.
+pending:
+  - name: AWS Builders Library — Timeouts, retries, and backoff with jitter
+    url: https://builder.aws.com/content/timeouts-retries-and-backoff-with-jitter
+    why: aws.amazon.com redirige acá y la página devolvió sólo el encabezado, así que no se leyó
+    since: 2026-08-22

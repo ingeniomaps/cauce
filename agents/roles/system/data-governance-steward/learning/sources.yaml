@@ -62,10 +62,20 @@ sources:
     tier: project
     topics: [lineage, events, dataset-identity, facets]
 
-# Pendientes por falta de URL verificada, no por falta de relevancia. `require_primary_source: true`
-# exige fuente primaria comprobada, no número de norma:
-#   - ISO/IEC 38505-1:2026 — la edición vigente; su ficha no se pudo abrir en esta corrida.
-#   - ISO/IEC 38505-2 (implicaciones del gobierno del dato en la gestión) — no verificada.
-#   - ISO 8000-61 (gestión de calidad de datos) e ISO 15489-1 (gestión de documentos: retención,
-#     disposición y bloqueo por litigio) — de comités ISO sin ficha en el IEC Webstore, y `iso.org`
-#     devuelve 403 desde este entorno. Registrar cuando exista una ficha legible.
+# Pendientes por falta de URL verificada, no por falta de relevancia: `require_primary_source: true`
+# exige fuente primaria comprobada, no número de norma.
+pending:
+  - name: ISO IEC 38505-1:2026 gobierno del dato
+    url: https://www.iso.org/standard/87195.html
+    why: es la edición vigente y su ficha no se pudo abrir; iso.org devuelve 403 desde este entorno
+    since: 2026-09-07
+  - name: ISO IEC 38505-2 implicaciones en la gestión
+    why: no se encontró ninguna ficha legible que permita verificar edición ni vigencia
+    since: 2026-09-07
+  - name: ISO 8000-61 gestión de calidad de datos
+    url: https://committee.iso.org/standard/63086.html
+    why: es de un comité ISO sin ficha en el IEC Webstore; queda por comprobar si este host la sirve
+    since: 2026-09-07
+  - name: ISO 15489-1 gestión de documentos
+    why: retención, disposición y bloqueo por litigio; sin ficha en el IEC Webstore y iso.org bloquea
+    since: 2026-09-07
