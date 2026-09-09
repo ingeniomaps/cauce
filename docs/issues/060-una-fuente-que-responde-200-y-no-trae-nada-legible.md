@@ -97,9 +97,43 @@ por su cuenta es un hecho de esa corrida, no del contrato de fuentes.
   ignorar el aviso, y entonces también se ignora el 403 que sí importa.
 - La vía del frontmatter mueve el juicio al modelo, que es lo que el chequeo de alcanzabilidad
   deliberadamente evitó.
-- **No medido**: no se sabe cuántas fuentes del catálogo son cáscaras. Se conocen dos, las dos del mismo
-  cargo, y las dos ya bajaron de cadencia por otro camino — así que el costo que esto ahorraría hoy es
-  cercano a cero.
+- ~~**No medido**: no se sabe cuántas fuentes del catálogo son cáscaras.~~ **Medido el 2026-09-09, y era
+  siete veces más**: ver la sección de abajo. La suposición de que ahorraría cerca de cero era falsa.
+
+## Medición del 2026-09-09
+
+Las 255 URLs únicas que declara el catálogo, con `curl` y contando palabras fuera de etiquetas. Sin
+agentes y en minutos — no hacía falta esperar una corrida.
+
+| | |
+|---|---|
+| Responden `200` | 198 |
+| Responden `202` | 6 |
+| Responden `403` | 47 |
+| Responden `404` | 2 |
+| Sin respuesta | 2 |
+| **De las que responden, con menos de 50 palabras legibles** | **14** |
+
+**63 de 255 —una de cada cuatro— no le sirven al ciclo.** Y no son un solo problema:
+
+- **47 dan `403`, y 31 de ellas son `iso.org`.** No es una fuente ilegible: es un dominio que bloquea el
+  catálogo entero. Y **tiene alternativa**: `webstore.iec.ch/en/publication/90024` devuelve 200 con 824
+  palabras donde `iso.org/standard/78176.html` da 403 con 9. El informe de `qa-engineer` del 2026-08-22 ya
+  lo había anotado en un comentario de su `sources.yaml`, y nadie lo llevó a las otras 30.
+- **Los 6 `202` son todos `eur-lex`**, y `202` no es «alcanzable»: es «aceptado, vuelve más tarde». Son los
+  textos de GDPR, la ley de IA y PSD2 — un cargo que cite «el Reglamento» no puede leerlo. Las dos formas
+  de URL de la misma norma dan lo mismo, así que no es un enlace mal escrito.
+- **8 son cáscaras de verdad**: `m3.material.io` (6 palabras), Apple HIG (26), la lista SDN de OFAC (28),
+  `kafka.apache.org/downloads` (1), dos de `legalinstruments.oecd.org` (12), el handbook de NIST (22) y
+  una guía de Google (39).
+
+Y el umbral que este caso llamaba arbitrario tiene ahora dónde apoyarse: hay un corte natural entre esas
+39 palabras y lo que sigue, con sólo dos fuentes entre 50 y 200.
+
+**La medición corrigió su propio método antes de dar el número.** El primer intento extraía texto con
+`sed`, y el `.*` greedy se comía páginas enteras: `nodejs.org/en/blog/vulnerability` daba 0 palabras y
+tiene 301. Erraba en las dos direcciones —Apple HIG daba 58 y tiene 26— así que la primera tabla era
+inservible y hubo que rehacer las 255.
 
 ## Contexto de descubrimiento
 
