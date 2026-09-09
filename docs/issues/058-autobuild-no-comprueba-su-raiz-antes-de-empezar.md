@@ -20,10 +20,11 @@ ops, que es lo natural: ahí viven `tools/ops.js` y el `Makefile`.
 Nada comprueba esa raíz al arrancar. Triage lee `AGENTS.md`, `workspace.md`, `ops.config.json` y
 `PROTOCOL.md` con un agente, y un agente que no encuentra un archivo lo reporta y sigue.
 
-Desde 0.71.0 esto ya **no produce daño**: la corrida para en Pick con `context-unavailable` en vez de
-promover una épica. Lo que queda es que para **tarde** —después de gastar Triage— y con un mensaje que
-habla del planning, así que manda a revisar la ruta de `planning` cuando lo que está mal es el `ROOT` del
-que esa ruta cuelga.
+Desde 0.71.0 esto ya **no produce daño**: la corrida para en Pick con `context-unavailable`, y el
+recorrido tampoco promueve nada —el [062](062-la-recurrencia-no-se-promueve-y-la-epica-si.md) le quitó la
+expansión—, así que lo peor que puede pasar es una corrida perdida. Lo que queda es que para **tarde**
+—después de gastar Triage— y con un mensaje que habla del planning, así que manda a revisar la ruta de
+`planning` cuando lo que está mal es el `ROOT` del que esa ruta cuelga.
 
 ## Reproducción
 
@@ -35,7 +36,8 @@ que esa ruta cuelga.
 
 ## Síntoma
 
-De la corrida del 2026-09-08, antes del arreglo del 056 —cuando además promovía—:
+De la corrida del 2026-09-08, antes de los arreglos del 056 y el 062 —cuando además promovía una
+épica—:
 
 ```
 Triage → planning-context   hasTask: false, queued: 0
@@ -89,6 +91,9 @@ Cerrando el caso 056. Es su «Causa raíz 0», la única capa que ese arreglo no
 —ya no promueve— y quedó pendiente que el recorrido falle temprano y con el nombre correcto.
 
 ## Relacionados
+
+- [062](062-la-recurrencia-no-se-promueve-y-la-epica-si.md) — le quitó al recorrido la expansión, así que
+  el daño que esta capa habilitaba pasó de «promueve trabajo que nadie aprobó» a «gasta una corrida».
 
 - [056](056-un-planning-inexistente-se-lee-como-cola-vacia.md) — de donde sale, y quien cerró el daño que
   esta capa habilitaba.
