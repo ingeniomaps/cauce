@@ -247,3 +247,60 @@ test('un informe que no propone nada se mergea sin revisión humana', () => {
   const rama = paso.slice(paso.indexOf("grep -qx 'propone: no'"))
   assert.equal(/propone: si/.test(rama), false, 'el «si» no dispara ningún merge')
 })
+
+// Una fuente que no se pudo abrir y una que no cambió producen el mismo informe —«sin novedades»— y no
+// son lo mismo: la primera no se comprobó. La diferencia vivía sólo en la prosa del informe, donde nadie
+// la agrega, así que la cadencia seguía siendo la de una fuente rápida que hacía dos meses no se leía.
+//
+// Se ejecuta el paso con un `curl` falso en vez de salir a la red: lo que se mide es qué hace con los
+// códigos que recibe, y depender de internet haría que la prueba fallara por razones ajenas.
+test('el ciclo anota qué fuentes declaradas no pudo abrir', { skip: process.platform === 'win32' }, () => {
+  const paso = workflowStep(workflow('agent-learning'), 'Check declared sources are reachable')
+  assert.ok(paso.includes('sourceUrls'), 'lee las fuentes del motor y no con un grep propio')
+
+  const dir = tempRoot('cauce-fuentes-')
+  const repo = path.resolve(__dirname, '..', '..')
+  // Devuelve 403 para iso.org y 200 para el resto, que es el reparto real que originó esto.
+  fs.writeFileSync(path.join(dir, 'curl'), '#!/usr/bin/env bash\n'
+    + 'for arg in "$@"; do url="$arg"; done\n'
+    + 'case "$url" in *iso.org*) echo -n 403 ;; *) echo -n 200 ;; esac\n', { mode: 0o755 })
+
+  const summary = path.join(dir, 'summary.txt')
+  fs.writeFileSync(summary, '')
+  const salida = spawnSync('bash', ['-c', paso], {
+    cwd: repo,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      PATH: `${dir}:${process.env.PATH}`,
+      OPS: 'engine/cli/ops.js',
+      AGENT: 'cloud-architect',
+      GITHUB_STEP_SUMMARY: summary,
+    },
+  })
+  assert.equal(salida.status, 0, `avisa y no falla la corrida: ${salida.stderr}`)
+
+  const escrito = fs.readFileSync(summary, 'utf8')
+  assert.match(escrito, /\| fuentes declaradas \| [1-9]/, 'cuenta las que el cargo declara')
+  assert.match(escrito, /\| no alcanzables \| [1-9]/, 'y cuántas no respondieron')
+  assert.match(escrito, /iso\.org.*→ 403/, 'nombrando cuál y con qué código')
+  assert.match(salida.stdout, /^::warning title=/m, 'sale como anotación, no como una línea de log')
+
+  // Sin ninguna rota no hay nada que anunciar: un aviso que sale siempre se termina ignorando.
+  fs.writeFileSync(path.join(dir, 'curl'), '#!/usr/bin/env bash\necho -n 200\n', { mode: 0o755 })
+  fs.writeFileSync(summary, '')
+  const limpio = spawnSync('bash', ['-c', paso], {
+    cwd: repo,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      PATH: `${dir}:${process.env.PATH}`,
+      OPS: 'engine/cli/ops.js',
+      AGENT: 'cloud-architect',
+      GITHUB_STEP_SUMMARY: summary,
+    },
+  })
+  assert.equal(limpio.status, 0)
+  assert.equal(/no alcanzables/.test(fs.readFileSync(summary, 'utf8')), false)
+  assert.equal(/::warning/.test(limpio.stdout), false, 'y no se avisa de una falta que no existe')
+})

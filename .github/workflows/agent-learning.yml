@@ -483,6 +483,58 @@ jobs:
           fi
           echo "path=$report" >> "$GITHUB_OUTPUT"
           echo "stamp=$stamp" >> "$GITHUB_OUTPUT"
+      # Qué fuentes de las que el cargo declara no se pudieron abrir esta semana. Una fuente ilegible y
+      # una que no cambió producen el mismo informe —«sin novedades»— pero no son lo mismo: la primera no
+      # se comprobó. Sin esto la diferencia sólo vivía en la prosa, donde nadie la agrega, y la cadencia
+      # seguía siendo la de una fuente rápida que hacía dos meses no se leía.
+      #
+      # Va acá y no en `npm run ci`: la puerta no puede depender de la red. Y no lo cuenta un `grep` sobre
+      # el informe, que mediría menciones y dependería de cómo redacte cada cargo — lo dice el código de
+      # respuesta, que es el mismo dato para todos.
+      #
+      # Avisa y no falla: un 403 de una semana puede ser un bloqueo temporal, y lo que decide un `tier` es
+      # el patrón sostenido. Fallar acá tiraría la investigación por algo que no la invalida.
+      - name: Check declared sources are reachable
+        if: steps.collect.outputs.path != ''
+        continue-on-error: true
+        env:
+          AGENT: ${{ matrix.agent }}
+        run: |
+          dir="$(node "$OPS" agents list --json | node -e '
+            let s = ""
+            process.stdin.on("data", (d) => { s += d }).on("end", () => {
+              const found = JSON.parse(s).find((role) => role.slug === process.env.AGENT)
+              console.log(found ? found.path : "")
+            })')"
+          [ -n "$dir" ] || exit 0
+          urls="$(node -e '
+            const { sourceUrls } = require("./engine/agents/learning-sources.js")
+            const fs = require("node:fs")
+            const file = process.argv[1]
+            if (!fs.existsSync(file)) process.exit(0)
+            for (const one of sourceUrls(fs.readFileSync(file, "utf8"))) console.log(one.url)
+          ' "$dir/learning/sources.yaml")"
+          total=0
+          rotas=""
+          while IFS= read -r url; do
+            [ -n "$url" ] || continue
+            total=$((total + 1))
+            code="$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 20 \
+              -A 'cauce-learning/1.0 (+https://github.com/ingeniomaps/cauce)' "$url" || echo 000)"
+            case "$code" in
+              2*|3*) ;;
+              *) rotas="$rotas$url $code"$'\n' ;;
+            esac
+          done <<< "$urls"
+          echo "| fuentes declaradas | $total |" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$rotas" ]; then
+            echo "| no alcanzables | $(printf '%s' "$rotas" | grep -c .) |" >> "$GITHUB_STEP_SUMMARY"
+            printf '%s' "$rotas" | while read -r url code; do
+              echo "| | \`$url\` → $code |" >> "$GITHUB_STEP_SUMMARY"
+            done
+            echo "::warning title=Fuentes no alcanzables de $AGENT::$(printf '%s' "$rotas" | tr '\n' ' ')"
+          fi
+
       - name: Upload report
         if: steps.collect.outputs.path != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
