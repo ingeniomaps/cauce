@@ -134,13 +134,21 @@ function archive(root, agent, period = '', kind = 'agent') {
 // «Decisión» y hay dos: aplicar y archivar. Archivar no dejaba fila, así que una propuesta mirada y
 // descartada era indistinguible de una que nadie miró — y eso lo pagaban los informes siguientes, que
 // gastaban su recomendación explicando el estado en vez de su profesión.
+const HISTORY_HEADER = '| Fecha | Propuesta | Decisión | Aprobó | Cambio aplicado |\n|---|---|---|---|---|\n'
+
 function appendHistory(target, file, responsible, change, decision = 'aplicada') {
   const history = path.join(target, 'learning', 'HISTORY.md')
   if (!fs.existsSync(history)) return
+  const previous = fs.readFileSync(history, 'utf8')
   const line = change.split('\n').map((one) => one.trim()).filter(Boolean)[0] || ''
   const row = `| ${isoDate(new Date())} | \`${path.basename(file)}\` | ${decision} | ${responsible} `
     + `| ${line.slice(0, 160)} |\n`
-  fs.appendFileSync(history, `${fs.readFileSync(history, 'utf8').endsWith('\n') ? '' : '\n'}${row}`)
+  // Dieciséis de los cincuenta y tres cargos tienen el archivo sin la tabla, sólo con su párrafo de
+  // encabezado, y la fila quedaba pegada ahí: en markdown eso no es una tabla sino texto con barras, y
+  // nadie lo veía porque el archivo se lee dos veces al año. Se agrega la cabecera antes de la primera
+  // fila en vez de exigir que ya esté, que es pedirle a cada cargo que se acuerde.
+  const cabecera = /^\|\s*Fecha\s*\|/m.test(previous) ? '' : `\n${HISTORY_HEADER}`
+  fs.appendFileSync(history, `${previous.endsWith('\n') ? '' : '\n'}${cabecera}${row}`)
 }
 
 module.exports = { seal, archive }

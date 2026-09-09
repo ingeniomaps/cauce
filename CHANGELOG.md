@@ -32,6 +32,14 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`learning/HISTORY.md` dice lo mismo en los 53 cargos, y su fila entra en una tabla.** El encabezado
+  tenía trece redacciones distintas y nueve contradecían la tabla que llevan debajo —«registrar únicamente
+  cambios aprobados», cuando la columna se llama «Decisión» y hay dos—. Y dieciséis archivos no tenían
+  tabla: la fila que escribe el ciclo quedaba pegada al párrafo, que en markdown es texto con barras.
+
+  Los tres cargos con una exigencia propia —país, jurisdicción, revisión de Legal— la conservan como línea
+  aparte. Ninguna se cumplía, y aun así no se borraron: dos son de cargos regulatorios.
+
 - **`autobuild` ya no promueve épicas: nombra la que sigue y para.** Cuando se le acababa la cola,
   expandía la próxima épica del roadmap al BACKLOG. El roadmap llama `open` a «candidata editable que aún
   no fue promovida al backlog», así que pegarla en la cola es promoverla — y BR-OPS-002 deja una propuesta

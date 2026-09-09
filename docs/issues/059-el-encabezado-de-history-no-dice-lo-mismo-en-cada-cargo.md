@@ -1,14 +1,15 @@
 ---
 caso: 059
 titulo: El encabezado de `HISTORY.md` dice trece cosas distintas, y nueve contradicen a su propia tabla
-estado: abierto
+estado: resuelto
+resuelto-en: 0.71.0
 prioridad: baja
 version-detectada: 0.71.0
 ---
 
 # 059 — Cada cargo declara un contrato distinto para el mismo archivo
 
-**🔴 abierto** · detectado en 0.71.0 · prioridad **baja** — nada falla; lo que se rompe es poder decir qué va en ese archivo
+**🟢 resuelto en 0.71.0** · detectado en 0.71.0 · prioridad **baja** — nada falla; lo que se rompe es poder decir qué va en ese archivo
 
 ## Resumen
 
@@ -85,3 +86,36 @@ encabezados no coinciden entre sí ni con su tabla.
 
 - [053](053-una-propuesta-se-archiva-sin-que-quede-la-decision.md) — de donde sale. Allá se agregó la
   segunda decisión que la tabla ya preveía; acá queda que nueve encabezados digan que no existe.
+
+## Cierre
+
+**Resuelto en 0.71.0.** El recorrido de lo que enumeró:
+
+- **Una sola redacción para los 53, derivada de la tabla**, como pedía el fix: «una fila por propuesta
+  cerrada: cuándo, cuál, qué se decidió —aplicarla o archivarla—, quién lo decidió y qué cambió». Nombra
+  las dos decisiones que la columna admite, que es lo que nueve encabezados contradecían.
+- **El texto lo eligió el mantenedor, que era la decisión que este caso no tomaba.**
+- **Tradeoff «unificar borra las variantes propias» — se evitó, y comprobando primero si valía la pena.**
+  Las tres —país en `kyc-aml-specialist`, jurisdicción en `legal-counsel`, revisión de Legal en
+  `ai-governance-lead`— resultaron **letra muerta**: los dos últimos tienen **cero filas**, y la única de
+  `kyc-aml` no registra el país que su encabezado pedía. Ninguna tiene columna donde ponerlo. Aun así no
+  se borraron: quedan como línea aparte, porque dos son de cargos regulatorios y borrar un requisito que
+  no se cumple no es lo mismo que arreglar una redacción.
+- **Tradeoff «`HISTORY.md` viaja en el paquete» — se paga.** Los 53 bajan a cada consumidor en su próximo
+  `upgrade`. Es cambio visible sin tocar código.
+- **Tradeoff «no medido: nadie reportó confundirse» — sigue sin medirse, y no cambió la decisión**, porque
+  lo que la sostiene no es la confusión de alguien sino que nueve archivos decían lo contrario de su
+  propia tabla.
+- **La segunda mitad del fix —«que lo cree el mismo comando que lo escribe»— se hizo distinto y por una
+  razón que el caso no tenía.** No era que el archivo faltara: **dieciséis de los 53 lo tenían sin tabla**,
+  sólo con su párrafo, y `appendHistory` pegaba la fila ahí. En markdown eso no es una tabla sino texto
+  con barras. Ahora la cabecera se agrega antes de la primera fila, una sola vez.
+
+**Probado con el comando real** sobre una instancia creada con `init`, antes y después: antes la fila
+quedaba pegada al párrafo; después entra bajo su cabecera, y un segundo archivado no la repite —una
+cabecera, dos filas—. Tres mutaciones comprobadas: no agregar la cabecera, agregarla siempre, y hacer
+divergir un encabezado.
+
+Lo que el caso no preveía y apareció al medirlo: **el problema no eran trece redacciones sino dieciséis
+archivos rotos.** El enunciado contaba las variantes de texto, que es lo que se ve leyendo; lo que sólo se
+ve corriendo es que en casi un tercio del catálogo la fila no entraba en ninguna tabla.

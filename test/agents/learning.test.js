@@ -678,3 +678,35 @@ test('archivar deja quién lo decidió, en el documento y en el historial', () =
   assert.equal(fs.readFileSync(history, 'utf8').split('\n').filter((one) => /^\| 2\d{3}-/.test(one)).length, 1,
     'el historial no crece por volver a archivar lo ya archivado')
 })
+
+// Por qué un historial puede llegar sin su tabla está en `appendHistory`. Acá se mide que la fila entre
+// igual, y que la cabecera vaya antes y una sola vez.
+test('una fila entra en su tabla aunque el historial no la traiga', () => {
+  const target = installedProject('Historial sin tabla')
+  const own = writeSkill(path.join(target, 'agents', 'roles', 'probe5'), 'probe5', 'x')
+  const reports = path.join(own, 'learning', 'reports')
+  fs.mkdirSync(reports, { recursive: true })
+  fs.writeFileSync(path.join(reports, '2099-01-07.md'),
+    '---\nagent: probe5\ndate: 2099-01-07\nstatus: draft\n---\n\n## Recomendación\n\nAlgo.\n')
+  const history = path.join(own, 'learning', 'HISTORY.md')
+  fs.writeFileSync(history, '# Historial de aprendizaje\n\nUna fila por propuesta cerrada.\n')
+  learning.prepareProposal(target, 'probe5', new Date('2099-02-01T13:17:00Z'), '2099-01')
+
+  assert.equal(run(['learn', 'probe5', '--archived', '--period', '2099-01'], target,
+    { CAUCE_OWNER: 'quien@acme.test' }).status, 0)
+
+  const escrito = fs.readFileSync(history, 'utf8')
+  assert.match(escrito, /^\| Fecha \| Propuesta \| Decisión \| Aprobó \| Cambio aplicado \|$/m,
+    'la cabecera se agrega antes de la primera fila')
+  assert.match(escrito, /^\|---\|---\|---\|---\|---\|$/m, 'con su separador, o no es una tabla')
+  assert.ok(escrito.indexOf('| Fecha |') < escrito.indexOf('| 2'), 'y antes de la fila, no después')
+
+  // Y no se repite: el segundo cierre encuentra la tabla que dejó el primero.
+  fs.writeFileSync(path.join(reports, '2099-02-07.md'),
+    '---\nagent: probe5\ndate: 2099-02-07\nstatus: draft\n---\n\n## Recomendación\n\nOtra.\n')
+  learning.prepareProposal(target, 'probe5', new Date('2099-03-01T13:17:00Z'), '2099-02')
+  run(['learn', 'probe5', '--archived', '--period', '2099-02'], target, { CAUCE_OWNER: 'quien@acme.test' })
+  const dos = fs.readFileSync(history, 'utf8')
+  assert.equal((dos.match(/^\| Fecha \|/gm) || []).length, 1, 'una sola cabecera')
+  assert.equal((dos.match(/^\| 2\d{3}-/gm) || []).length, 2, 'y las dos filas')
+})
