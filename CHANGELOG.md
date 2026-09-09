@@ -18,6 +18,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Archivar una propuesta ahora deja quién lo decidió y cuándo.** Antes quedaba con «Responsable: por
+  definir» y ninguna fila en `learning/HISTORY.md`, así que una propuesta que alguien miró y descartó se
+  leía igual que una que nadie tocó. El responsable sale de `CAUCE_OWNER` o de `git config user.email` —la
+  misma identidad con la que se reclama una tarea— y la fila usa la columna «Decisión» que la tabla ya
+  tenía, con el valor `archivada`.
+
 - **`ops context` y `ops tree` sobre un planning que no existe ahora fallan, en vez de contestar como una
   cola terminada.** Antes devolvían `queued: 0` con código 0, así que una ruta equivocada se propagaba
   como dato y no como error. Ahora salen con código 2 y nombran la **ruta resuelta**, que es la que hace
