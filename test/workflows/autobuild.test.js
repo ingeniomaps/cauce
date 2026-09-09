@@ -6,6 +6,8 @@
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
 const { KEY, baseScript, ranToEnd, runFlow, reached } = require('../support/autobuild-harness')
 
 // Lo primero que hay que saber es que el recorrido llega al final, porque un freno que dispara siempre
@@ -157,17 +159,6 @@ test('una tarea que no entra en el tope de horas se parte y no se construye', as
   assert.ok(written.some((text) => text.includes('BACKLOG')), 'las subtareas reemplazan a la original')
 })
 
-test('sin tarea en cola se expande la próxima épica y se sigue con ella', async () => {
-  const withTask = baseScript()[KEY.context]
-  const { result, asked } = await runFlow(
-    { [KEY.pick]: { expanded: true, hito: 'H1' } },
-    { contexts: [{ blocked: '', hasTask: false, wipActive: false, queued: 0, lane: 'full', readOk: true }, withTask] },
-  )
-  ranToEnd(result)
-  assert.deepEqual(result.done, ['T-1'], 'lo expandido se ejecuta en la misma corrida')
-  assert.ok(asked.includes(KEY.pick), 'y pasó por la expansión, no por una tarea que ya estaba')
-})
-
 test('sin nada que expandir el recorrido termina sin inventar trabajo', async () => {
   const { result, asked } = await runFlow({}, { contexts: [] })
   ranToEnd(result)
@@ -227,47 +218,29 @@ test('una tarea que vuelve a quedar elegible para siempre corta con su motivo', 
   assert.match(result.detail, /50/)
 })
 
-// La corrida corta cuando la tarea que sigue es de otro hito —el corte que evita encadenar hitos sin que
-// nadie mire—, y expandía justo antes de llegar ahí: escribía el hito siguiente en el BACKLOG y acto
-// seguido decidía no tocarlo. Escribir en el BACKLOG es lo único de este recorrido que no se revierte con
-// un `git checkout`, así que hacerlo para descartarlo deja trabajo cuyo autor nadie puede reconstruir.
-test('terminar el hito no expande el siguiente para descartarlo', async () => {
-  const conTarea = baseScript()[KEY.context]
+// La quita se prueba al revés que un agregado: lo que hace falta es una aserción de **ausencia**, porque
+// una que compruebe que la corrida termina pasaría igual con la expansión puesta —también terminaba—.
+//
+// Lo retirado es promover una épica del roadmap al BACKLOG. `open` es «candidata editable que aún no fue
+// promovida», así que pegarla en la cola es promoverla, y BR-OPS-002 la deja fuera hasta que la apruebe
+// una persona. `context` la nombra para que lo haga.
+test('sin cola, el recorrido no promueve una épica: la nombra y para', async () => {
   const vacio = {
     blocked: '', hasTask: false, wipActive: false, queued: 0, lane: '', readOk: true,
     cast: { build: '', review: [] },
   }
-  const { result, asked, written } = await runFlow(
-    { [KEY.pick]: { expanded: true, hito: 'H2' } },
-    { contexts: [conTarea, vacio, { ...conTarea, slug: 'T-9', hito: 'H2' }] },
-  )
+  const { result, asked, written } = await runFlow({}, { contexts: [vacio] })
   ranToEnd(result)
-  assert.deepEqual(result.done, ['T-1'], 'la tarea del hito propio sí se construye')
-  assert.ok(!asked.includes(KEY.pick), 'y al quedarse sin cola no se expande lo que no va a usar')
-  // Por el texto del prompt de expansión y no por «BACKLOG»: Classify y Done lo nombran de forma
-  // legítima, así que buscar la palabra mide otra cosa y pasa a rojo por el motivo equivocado.
-  assert.equal(written.some((text) => text.includes('Expandí sólo la próxima épica')), false,
-    'ninguna escritura fue la expansión')
-})
+  assert.deepEqual(result.done, [], 'no construye nada')
+  assert.equal(written.some((text) => /expand/i.test(text)), false,
+    'y ninguna escritura pide expandir una épica')
+  assert.equal(asked.some((key) => key.startsWith('Pick|')), false,
+    'la fase Pick ya no consulta a nadie: sin cola, termina')
 
-// Se afirma sobre el prompt y no sobre un BACKLOG resultante porque quien escribe es el modelo: lo único
-// que este recorrido controla es qué le pide. Que la marca no rompa el parser se comprobó aparte,
-// corriendo `check` sobre un BACKLOG con ella puesta.
-test('lo que el runner expande queda firmado en el BACKLOG', async () => {
-  const { prompts } = await runFlow(
-    { [KEY.pick]: { expanded: true, hito: 'H1' } },
-    {
-      contexts: [
-        { blocked: '', hasTask: false, wipActive: false, queued: 0, lane: '', readOk: true,
-          cast: { build: '', review: [] } },
-        baseScript()[KEY.context],
-      ],
-    },
+  // Y el recorrido no conserva la maquinaria de lo retirado, que es lo que un `break` bien puesto deja
+  // pasar: el schema y su campo seguirían compilando sin que nada los use.
+  const fuente = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'automatization', 'workflows', 'autobuild.js'), 'utf8',
   )
-  const expansion = prompts.find((one) => one.prompt.includes('Expandí sólo la próxima épica'))
-  assert.ok(expansion, 'la corrida pasó por la expansión')
-  assert.match(expansion.prompt, /debajo del encabezado del hito/i, 'la marca va donde el parser la ignora')
-  assert.match(expansion.prompt, /expandió autobuild/i, 'y dice quién la escribió')
-  assert.match(expansion.prompt, /fecha de hoy/i, 'con cuándo')
-  assert.match(expansion.prompt, /épica de la que sale|número de la épica/i, 'y de dónde sale')
+  assert.equal(/EXPANSION|expanded/.test(fuente), false, 'ni queda el esquema de la expansión')
 })

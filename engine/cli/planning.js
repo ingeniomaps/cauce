@@ -395,6 +395,10 @@ function context(dir, cli) {
     // vuelta. Que aparezca es la señal.
     recurring: RC.status({ ...RC.read(root), done: state.done, today: TODAY() })
       .filter((one) => one.overdue),
+    // La próxima sin promover: se nombra, no se encola, igual que la recurrencia de arriba y por su
+    // mismo criterio. Por qué no la encola una máquina está en la fase Pick de `autobuild`.
+    nextEpic: (!task && [...state.epics].filter((one) => one.status === 'open')
+      .sort((a, b) => String(a.num).localeCompare(String(b.num)))[0]) || null,
   }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
 
@@ -426,6 +430,8 @@ function context(dir, cli) {
   }
   if (!report.task) {
     console.log('TASK   (sin tarea disponible)')
+    const { nextEpic: next } = report
+    if (next) console.log(`EPIC   ${next.num}: ${next.title} — sin promover`)
     // Mismo motivo que `blocked` arriba, con otra causa: acá la cola no la traba una persona, la tiene
     // el equipo, y lo que corresponde es hablar con quien la tiene.
     for (const one of report.taken) console.log(`TAKEN  ${one.slug} (${dueño(one)})`)

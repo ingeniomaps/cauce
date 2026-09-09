@@ -356,3 +356,38 @@ test('un planning que no se puede leer no contesta como uno vacío', () => {
   assert.equal(bueno.status, 0, `un planning recién creado se lee sin error: ${bueno.stderr}`)
   assert.equal(JSON.parse(bueno.stdout).queued, 0, 'y su cola está vacía, que es un estado válido')
 })
+
+// `autobuild` dejó de promover una épica al BACKLOG —`open` es «candidata editable que aún no fue
+// promovida», así que pegarla es promoverla, y BR-OPS-002 la deja fuera hasta que la apruebe una
+// persona—. Lo que queda es nombrarla, igual que se nombra una recurrencia vencida: sin esto, quien
+// corre el recorrido ve «sin tarea disponible» y no sabe que lo que sigue es promover.
+test('sin cola, context nombra la próxima épica sin promover', () => {
+  const base = tempRoot('cauce-next-epic-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Next', '--mode', 'sidecar']).status, 0)
+  const planning = path.join(target, 'planning')
+  fs.mkdirSync(path.join(target, 'app'))
+  const epica = (num, status) => fs.writeFileSync(
+    path.join(planning, 'roadmap', `epic-${num}-demo.md`),
+    `---\nepic: ${num}\ntitle: Épica ${num}\nstatus: ${status}\nservice: app\n---\n\n`
+    + `# Épica ${num} — Épica ${num}\n\n## Criterios\n\n- **C1** — Se observa.\n\n`
+    + `## Contexto relevante\n\n- Vive en app/.\n\n## Historias\n\n`
+    + `- [ ] **h-${num}** (→ C1) — Hacer algo. (service: app)\n`,
+  )
+  epica('003', 'open')
+  epica('002', 'closed')
+
+  const sinCola = JSON.parse(run(['context', planning, '--json']).stdout)
+  assert.equal(sinCola.task, null, 'el escenario es sin tarea en cola')
+  assert.equal(sinCola.nextEpic && sinCola.nextEpic.num, '003', 'la próxima open, no la cerrada')
+  assert.match(run(['context', planning]).stdout, /^EPIC\s+003:.*sin promover$/m,
+    'y se ve sin pedir --json, que es como se lee en una corrida')
+
+  // Con trabajo en cola no dice nada: la épica que sigue no le habla a quien va a tomar una tarea, y un
+  // aviso que sale siempre deja de leerse. Que aparezca es la señal.
+  fs.writeFileSync(path.join(planning, 'BACKLOG.md'),
+    '# Backlog\n\n## Hito demo — Demo\n\n- [ ] **h-003** [full] — Hacer algo. (→ C1) (service: app) (epic: 003)\n')
+  const conCola = JSON.parse(run(['context', planning, '--json']).stdout)
+  assert.equal(conCola.task.slug, 'h-003', 'ahora sí hay tarea')
+  assert.equal(conCola.nextEpic, null, 'y la épica deja de nombrarse')
+})

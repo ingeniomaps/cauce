@@ -77,10 +77,6 @@ const CLAIM = {
   type: 'object', additionalProperties: false, required: ['claimed'],
   properties: { claimed: { type: 'boolean' }, details: { type: 'string' } },
 }
-const EXPANSION = {
-  type: 'object', additionalProperties: false, required: ['expanded'],
-  properties: { expanded: { type: 'boolean' }, hito: { type: 'string' }, reason: { type: 'string' } },
-}
 const READY = {
   type: 'object', additionalProperties: false, required: ['ready', 'needsHuman'],
   properties: {
@@ -359,38 +355,15 @@ const classified = new Set()
 
 while (rounds++ < MAX_TASKS) {
   phase('Pick')
-  // Expandir escribe en el BACKLOG, así que es lo único de este recorrido que no se revierte con un
-  // `git checkout`: pide la lectura afirmada, no la ausencia de tarea. Una cola vacía porque no se
-  // pudo leer se ve idéntica a una cola terminada, y sobre la primera esto promovía trabajo que nadie
-  // aprobó — lo que BR-OPS-002 prohíbe.
+  // Sin tarea y con la cola vacía, la corrida termina. **No expande la próxima épica**, y eso no es una
+  // limitación sino la regla: el roadmap llama `open` a «candidata editable que aún no fue promovida al
+  // backlog», así que pegarla en la cola es promoverla — y BR-OPS-002 deja una propuesta fuera de la cola
+  // hasta que la apruebe una persona. El prompt que hacía esto pedía «la próxima épica abierta y
+  // aprobada», y «aprobada» no correspondía a ningún dato: una épica declara `epic`, `title`, `status` y
+  // `service`, y ninguno registra una aprobación.
   //
-  // Y lo que sí expande queda firmado. Un hito que emitió el runner se leía igual que uno que redactó una
-  // persona, así que quien revisa el BACKLOG no tenía cómo saber cuál merece una segunda lectura y quien
-  // audita después de un incidente tenía que reconstruirlo desde el `journal.jsonl`, que no se commitea.
-  // La línea va debajo del encabezado y no en el título: el parser lee el encabezado con un patrón
-  // exacto, así que ahí adentro se la comería el título, y suelta la ignora — comprobado con `check` en
-  // verde y `context` devolviendo la tarea igual.
-  //
-  // Y sólo mientras la corrida no haya elegido su hito. Con uno ya fijado, el `break` de tres líneas más
-  // abajo es inevitable —lo expandido es de otro hito, que es donde esta corrida no sigue— así que
-  // expandir ahí escribía el hito siguiente un instante antes de decidir no tocarlo. La expansión que sí
-  // se usa es la de una corrida que arranca con la cola vacía: ahí `currentMilestone` está sin fijar y lo
-  // expandido se ejecuta en la misma vuelta.
-  if (planning.readOk && !currentMilestone && !planning.hasTask && !planning.queued) {
-    const expansion = await write(
-      `Leé ${ROADMAP}. Expandí sólo la próxima épica abierta y aprobada en un hito nuevo de ${BACKLOG}, ` +
-      `conservando el slug de cada historia, sus referencias a criterios y su servicio. Nunca promuevas ` +
-      `${P}/INBOX.md. Debajo del encabezado del hito, y antes de la primera tarea, escribí una sola línea ` +
-      `en cursiva que diga que lo expandió autobuild, con la fecha de hoy y el número de la épica de la ` +
-      `que sale. Reportá si escribiste algo.`,
-      { schema: EXPANSION },
-    )
-    if (!expansion) return stop('agent-unavailable', 'Pick no devolvió resultado')
-    if (!expansion.expanded) break
-    planning = await readContext()
-    if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
-    if (!planning.readOk) return stop('context-unavailable', `${P} dejó de leerse tras expandir`)
-  }
+  // `context` nombra la que sigue, igual que nombra una recurrencia vencida y por el mismo motivo: la
+  // máquina calcula y la persona encola.
   if (!planning.hasTask || (currentMilestone && planning.hito !== currentMilestone)) break
   const task = {
     id: planning.slug, hito: planning.hito, service: planning.service,
