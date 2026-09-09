@@ -60,6 +60,27 @@ diseño — eso vive en el commit y en el código.
   **Lo que te pide algo**: si usabas `autobuild` desatendido esperando que encadenara épicas, ahora se
   detiene al terminar el hito y hay que pegar el siguiente en `BACKLOG.md`. `context` te dice cuál es.
 
+- **El chequeo semanal de fuentes mira también `references/` y `SKILL.md`, y deja de dar por rotas las
+  páginas sanas.** Miraba sólo `sources.yaml`: las 207 URLs que un cargo cita en su método no las
+  comprobaba nadie, y 29 no servían —dos de ellas 404 de páginas movidas hacía meses—. `evaluations/`
+  queda afuera a propósito: un caso adversarial inventa dominios y comprobarlos mide el fixture.
+
+  Y el chequeo se equivocaba en las dos direcciones sobre lo que sí miraba. Se identificaba como
+  `cauce-learning/1.0`, que no es con lo que el cargo lee: las tres páginas de `ftc.gov` del catálogo dan
+  403 a ese `User-Agent` y 200 con miles de palabras a uno de navegador. Y veinte segundos no alcanzan
+  para un PDF grande —el instrumento de la OCDE que cita `sales-representative` llega pasados los
+  treinta—. Ahora lo que falla se reintenta una vez, con más tiempo y como navegador, y el resumen dice
+  cuántas lo necesitaron: que un dominio nos rechace es un dato suyo y se pierde si el reintento lo tapa.
+
+  El aviso nombra además el archivo donde está escrita cada URL, porque eso decide quién la arregla.
+
+- **Las URLs rotas del catálogo se arreglaron, no sólo se reportaron.** Veintitrés reemplazos
+  comprobados uno por uno. Casi ninguna estaba muerta: cuando un dominio bloquea suele haber otra forma
+  publicada del mismo documento —el PDF donde el HTML tiene Cloudflare (`acm.org`, los instrumentos de la
+  OCDE), otro sitio del mismo organismo (`oecd.ai`, `gov.uk`), o el feed que la propia CISA distribuye—.
+  Las cuatro que no tienen ninguna —`pmi.org`, `fatf-gafi.org`— se quedan como fuente y pierden el enlace
+  en `references/`, conservando el nombre: un 403 ahí sólo le hace perder un clic a quien lee.
+
 - **Las normas ISO del catálogo se citan por una ficha que se puede leer.** `www.iso.org` devuelve 403,
   y 41 entradas de 22 cargos apuntaban ahí: para todas ellas la investigación semanal producía el mismo
   informe «sin novedades» que produciría una norma que no cambió. Ahora una ISO/IEC se cita por su ficha
