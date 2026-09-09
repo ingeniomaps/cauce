@@ -63,14 +63,17 @@ sources:
     tier: standard
     topics: [payment-fraud, beneficiary-verification, out-of-band-verification]
 
-# Pendientes: no entran porque no pude abrirlas en esta corrida, y `require_primary_source: true`
-# exige fuente primaria comprobada, no el número de la norma.
-#   - ISO 20022, mensajería de pagos: iso20022.org y swift.com/standards/iso-20022 agotaron el
-#     tiempo de espera dos veces el 2026-08-22. Sin la ficha del Registration Authority no se
-#     registra, y por eso el contrato no cita nombres de mensaje (pain, pacs, camt).
-#   - GAFI/FATF Recomendación 16, transferencias electrónicas: fatf-gafi.org devolvió 403 en dos
-#     rutas el 2026-08-22. La obligación de datos de originador y beneficiario queda sin fuente
-#     propia; hasta tenerla, el contrato no afirma qué exige esa recomendación.
-#   - Norma local de cada país donde opera la empresa —custodia de fondos de terceros, límites de
-#     dispersión, horarios bancarios—. No es una fuente de la profesión: la registra cada
-#     instalación en organization/roles/treasury-analyst.md.
+# La norma local de cada país donde opera la empresa —custodia de fondos de terceros, límites de
+# dispersión, horarios bancarios— no entra ni como pendiente: no es una fuente de la profesión, la
+# registra cada instalación en organization/roles/treasury-analyst.md.
+pending:
+  - name: ISO 20022 mensajería de pagos
+    url: https://www.iso20022.org/
+    why: agotó el tiempo de espera dos veces, igual que swift.com/standards/iso-20022; sin la ficha
+      del Registration Authority el contrato no cita nombres de mensaje (pain, pacs, camt)
+    since: 2026-08-22
+  - name: GAFI FATF Recomendación 16 transferencias electrónicas
+    url: https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Fatf-recommendations.html
+    why: devolvió 403 en dos rutas; la obligación de datos de originador y beneficiario queda sin
+      fuente propia y el contrato no afirma qué exige esa recomendación
+    since: 2026-08-22

@@ -48,6 +48,35 @@ Si aun así no hay ninguna que responda —`pmi.org`, `fatf-gafi.org`—, la fue
 decir sobre ella; lo que sale es el enlace en `references/`, donde un 403 sólo le hace perder un clic a
 quien lee. El nombre se conserva.
 
+### Lo que no se pudo abrir va en `pending:`, no en un comentario
+
+Una fuente que el cargo necesita y no pudo verificar no es una fuente: `require_primary_source` exige
+una ficha comprobada, no un número de norma. Pero tampoco es nada, y hasta 0.72.0 terminaba en un
+comentario del propio archivo — cinco cargos lo escribían así, y uno dejó un «registrar cuando exista
+una ficha legible» que nadie iba a revisar.
+
+```yaml
+pending:
+  - name: IEEE 1028 Software Reviews and Audits
+    url: https://standards.ieee.org/ieee/1028/4266/
+    why: responde 200 pero la ficha se arma con JavaScript y sirve el título genérico del sitio
+    since: 2026-08-22
+  - name: ISO IEC IEEE 24765 vocabulario de ingeniería de software
+    why: falta una URL primaria que responda
+    since: 2026-08-22
+```
+
+`url` es opcional, y ésa es la mitad del punto: muchas están pendientes **porque no hay ninguna URL que
+responda**, y exigirla dejaría fuera justo las que más cuestan. `why` y `since` no lo son — sin la razón
+la lista es un cementerio de enlaces, y sin la fecha no se ve que una lleva meses ahí.
+
+El chequeo semanal las prueba y reporta **sólo la que volvió a servir el documento**: «ya se puede
+declarar». Una que sigue sin abrir es lo esperado y no se anuncia, porque un aviso que sale siempre es
+el que enseña a ignorar el resto. Y no alcanza con que el host conteste: se pide además que la página
+traiga la marca del documento —el primer número del nombre—, porque un sitio grande devuelve cientos de
+palabras de navegación sin una línea de la norma. Eso pasó con la ficha de IEEE 1028 en la primera
+corrida de este chequeo.
+
 ## Por qué las normas no se citan en `iso.org`
 
 `sources.yaml` cita cada norma por una ficha de catálogo, y para ISO esa ficha **no es la de

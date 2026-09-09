@@ -18,6 +18,20 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Una fuente que el cargo no pudo abrir se declara en `pending:`, y el ciclo avisa cuando vuelve a
+  servir.** Antes eso terminaba en un comentario del propio `sources.yaml` —cinco cargos lo escribían
+  así, y uno dejó un «registrar cuando exista una ficha legible» que nadie iba a revisar—. Ahora es una
+  lista con `name`, `why` y `since`, y `url` cuando hay una candidata; el chequeo semanal reporta **sólo
+  la que volvió a servir el documento**, porque una que sigue cerrada es lo esperado.
+
+  No alcanza con que el host conteste: se pide que la página traiga la marca del documento, el primer
+  número del nombre. Un sitio grande devuelve cientos de palabras de navegación sin una línea de la
+  norma, y así fue como la primera versión de esto dio por recuperada una ficha de IEEE que seguía
+  siendo una cáscara.
+
+  **Lo que te pide algo**: si tenías pendientes anotadas como comentario en un cargo propio, moverlas a
+  `pending:` es lo que hace que alguien se entere cuando la URL empiece a funcionar.
+
 - **La fase `Pick` de `autobuild` deja de prometer una expansión que ya no existe.** Su descripción
   —lo único del recorrido que se lee **antes** de autorizar la corrida— seguía diciendo «o la épica que
   falta expandir» después de que la promoción de épicas se quitara. Lo que el recorrido hace hoy es

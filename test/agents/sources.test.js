@@ -57,7 +57,9 @@ test('el catálogo no repite una fuente bajo dos nombres', () => {
     const file = path.join(dir, slug, 'learning', 'sources.yaml')
     if (!fs.existsSync(file)) continue
     let name = ''
-    for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+    const texto = fs.readFileSync(file, 'utf8')
+    const corte = texto.search(/^pending:/m)
+    for (const line of (corte === -1 ? texto : texto.slice(0, corte)).split('\n')) {
       const nombre = line.match(/^\s*-\s*name:\s*(.+?)\s*$/)
       if (nombre) { name = nombre[1].replace(/^['"]|['"]$/g, ''); continue }
       const url = line.match(/^\s*url:\s*(\S+)/)
@@ -257,13 +259,65 @@ test('el lector no se saltea ninguna fuente del catálogo', () => {
     const file = path.join(raiz, slug, 'learning', 'sources.yaml')
     if (!fs.existsSync(file)) continue
     const text = fs.readFileSync(file, 'utf8')
-    const declaradas = (text.slice(text.indexOf('sources:')).match(/url:/g) || []).length
+    // El corte en `pending:` se transcribe acá en vez de reusar el del motor: si las dos cuentas
+    // salieran del mismo código, la prueba no comprobaría nada.
+    const cuerpo = text.slice(text.indexOf('sources:'))
+    const hasta = cuerpo.search(/^pending:/m)
+    const declaradas = ((hasta === -1 ? cuerpo : cuerpo.slice(0, hasta)).match(/url:/g) || []).length
     const vistas = sourceUrls(text).length
     total += declaradas
     if (vistas !== declaradas) desajustes.push(`${slug}: declara ${declaradas} y se leen ${vistas}`)
   }
   assert.ok(total > 200, `el recorrido tiene que ver el catálogo entero, vio ${total}`)
   assert.deepEqual(desajustes, [], `fuentes que el lector no ve:\n  ${desajustes.join('\n  ')}`)
+})
+
+// Una pendiente no es una fuente y confundirlas cuesta en las dos direcciones: leída como fuente, el
+// chequeo semanal la reporta rota para siempre; ignorada del todo, vuelve a ser el comentario que nadie
+// mira. Se comprueba por ausencia en la primera dirección, que es la que no deja rastro.
+// Lo que un cargo probó, no pudo abrir y va a volver a necesitar. `url` es opcional porque la mitad de
+// esas entradas están pendientes justamente porque no hay ninguna URL que responda; `why` no lo es.
+test('una pendiente se lee con o sin URL, y su razón sobrevive al salto de línea', () => {
+  const { pendingSources } = require('../../engine/agents/learning-sources')
+  const texto = 'version: 1\nsources:\n  - name: A\n    url: https://a.test\n    tier: standard\n'
+    + 'pending:\n'
+    + '  - name: IEEE 1028\n    url: https://ieee.test/1028\n'
+    + '    why: la ficha se arma con JavaScript y sirve el título genérico, así\n'
+    + '      que no se pudo confirmar la edición\n    since: 2026-08-22\n'
+    + '  - name: ISO 24765\n    why: no hay URL primaria que responda\n    since: 2026-08-22\n'
+  assert.deepEqual(pendingSources(texto), [
+    {
+      name: 'IEEE 1028',
+      url: 'https://ieee.test/1028',
+      why: 'la ficha se arma con JavaScript y sirve el título genérico, así que no se pudo confirmar la edición',
+      since: '2026-08-22',
+    },
+    { name: 'ISO 24765', why: 'no hay URL primaria que responda', since: '2026-08-22' },
+  ], 'las dos formas, y la razón entera')
+
+  // La aserción que importa es de ausencia: la pendiente no puede salir por el lector de fuentes. Si
+  // saliera, el chequeo semanal la reportaría rota para siempre — el aviso permanente que esto evita.
+  assert.deepEqual(sourceUrls(texto), [{ name: 'A', url: 'https://a.test' }],
+    'y ninguna de las dos aparece como fuente')
+})
+
+test('las pendientes no entran como fuentes declaradas', () => {
+  const { pendingSources, sourceUrls } = require('../../engine/agents/learning-sources')
+  const raiz = path.resolve(__dirname, '..', '..', 'agents', 'roles', 'system')
+  const coladas = []
+  let pendientes = 0
+  for (const slug of fs.readdirSync(raiz)) {
+    const file = path.join(raiz, slug, 'learning', 'sources.yaml')
+    if (!fs.existsSync(file)) continue
+    const text = fs.readFileSync(file, 'utf8')
+    const declaradas = new Set(sourceUrls(text).map((one) => one.url))
+    for (const one of pendingSources(text)) {
+      pendientes += 1
+      if (one.url && declaradas.has(one.url.replace(/\/+$/, ''))) coladas.push(`${slug}: ${one.url}`)
+    }
+  }
+  assert.ok(pendientes > 0, 'el catálogo declara alguna pendiente, o esta prueba no mide nada')
+  assert.deepEqual(coladas, [], 'una pendiente leída como fuente se reporta rota todas las semanas')
 })
 
 // `learning/HISTORY.md` es el mismo artefacto en los 53 cargos y su encabezado llegó a decir trece cosas

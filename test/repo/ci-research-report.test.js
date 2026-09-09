@@ -271,7 +271,11 @@ test('el ciclo anota qué URLs del cargo no pudo abrir', { skip: process.platfor
   const fuentes = (cuerpo) => fs.writeFileSync(path.join(cargo, 'learning', 'sources.yaml'), cuerpo)
   fuentes('version: 1\nsources:\n'
     + '  - name: Sana\n    url: https://sana.example/x\n    tier: standard\n'
-    + '  - name: Bloqueada\n    url: https://bloqueado.example/x\n    tier: standard\n')
+    + '  - name: Bloqueada\n    url: https://bloqueado.example/x\n    tier: standard\n'
+    + 'pending:\n'
+    + '  - name: Norma 4242\n    url: https://revive.example/4242\n    why: r\n    since: 2026-01-01\n'
+    + '  - name: Norma 7777\n    url: https://corta.example/7777\n    why: r\n    since: 2026-01-01\n'
+    + '  - name: Norma 8888\n    url: https://cromo.example/8888\n    why: r\n    since: 2026-01-01\n')
   fs.writeFileSync(path.join(cargo, 'references', 'metodo.md'), '[m](https://muerta.example/x)\n')
   fs.writeFileSync(path.join(cargo, 'SKILL.md'), 'ver https://otra-sana.example/x\n')
   fs.writeFileSync(path.join(cargo, 'evaluations', 'cases', 'uno.md'), 'https://inventado.example/x\n')
@@ -290,6 +294,9 @@ test('el ciclo anota qué URLs del cargo no pudo abrir', { skip: process.platfor
     + "      *) printf 'sin acceso\\n403' ;;\n"
     + '    esac ;;\n'
     + "  *muerta*) printf 'no está\\n404' ;;\n"
+    + `  *revive*) printf '%s\\n200' "Norma 4242 $const" ;;\n`
+    + `  *cromo*) printf '%s\\n200' "$const" ;;\n`
+    + "  *corta*) printf 'Norma 7777\\n200' ;;\n"
     + "  *eur-lex*) printf '\\n202' ;;\n"
     + "  *cascara*) printf '<html><title>x</title></html>\\n200' ;;\n"
     + "  *inventado*) printf 'ESTA URL NO DEBIO PEDIRSE\\n200' ;;\n"
@@ -327,6 +334,18 @@ test('el ciclo anota qué URLs del cargo no pudo abrir', { skip: process.platfor
   // aserción de ausencia porque `evaluations/` no aparece en ninguna salida cuando se lo saltea bien.
   assert.equal(/inventado\.example/.test(escrito + salida.stdout), false,
     'las URLs que un caso inventa no se comprueban')
+
+  // Una pendiente se reporta **sólo** cuando vuelve a servir el documento, no cuando el host contesta:
+  // las tres responden y una sola lo trae. `cromo` es el caso que la primera versión daba por bueno
+  // —cientos de palabras de navegación sin la marca del documento, que fue lo que pasó de verdad con la
+  // ficha de IEEE 1028— y `cascara` el que ni llega al umbral. Las dos son aserciones de ausencia: un
+  // aviso de más acá es el que enseña a ignorar el resto.
+  assert.match(escrito, /\| pendientes que ya responden \| 1 \|/, 'una sola vuelve a servir')
+  assert.match(escrito, /revive\.example\/4242.*ya se puede declarar/, 'y dice cuál y qué hacer')
+  assert.equal(/corta\.example\/7777/.test(escrito), false,
+    'la que trae su marca y nada más no llega al umbral, y no se anuncia')
+  assert.equal(/cromo\.example\/8888/.test(escrito), false,
+    'ni la que responde con el armazón del sitio y no con el documento')
 
   // Las dos clases que un chequeo por código solo daría por buenas.
   for (const [host, esperado, porque] of [

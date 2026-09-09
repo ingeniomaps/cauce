@@ -556,6 +556,15 @@ jobs:
           # y la sustitución de orden los descarta avisando por stderr en cada corrida. No cambia ningún
           # veredicto; saca del log un aviso que se lee como un problema y no lo es.
           traer() { { curl -s -L --max-time "$2" -w '\n%{http_code}' -A "$1" "$3" || printf '\n000'; } | tr -d '\0'; }
+          # Palabras fuera de etiquetas, que es lo que un cargo puede leer de verdad. Se cuenta con node
+          # y no con `sed`: un `.*` codicioso sobre varias líneas se come la página entera —midiendo así,
+          # una con 301 palabras daba 0 y otra con 26 daba 58, erraba en las dos direcciones—.
+          legibles() { node -e '
+            let s = ""
+            process.stdin.on("data", (d) => { s += d }).on("end", () => {
+              const limpio = s.replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, "").replace(/<[^>]*>/g, " ")
+              console.log(limpio.split(/\s+/).filter(Boolean).length)
+            })'; }
           while IFS="$(printf '\t')" read -r url origen; do
             [ -n "$url" ] || continue
             total=$((total + 1))
@@ -579,12 +588,7 @@ jobs:
             # Palabras fuera de etiquetas, que es lo que un cargo puede leer de verdad. Se cuenta con node
             # y no con `sed`: un `.*` codicioso sobre varias líneas se come la página entera —midiendo así,
             # una con 301 palabras daba 0 y otra con 26 daba 58, erraba en las dos direcciones—.
-            palabras="$(printf '%s' "$respuesta" | sed '$d' | node -e '
-              let s = ""
-              process.stdin.on("data", (d) => { s += d }).on("end", () => {
-                const limpio = s.replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, "").replace(/<[^>]*>/g, " ")
-                console.log(limpio.split(/\s+/).filter(Boolean).length)
-              })')"
+            palabras="$(printf '%s' "$respuesta" | sed '$d' | legibles)"
             case "$code" in
               # `202` es «aceptado, vuelve más tarde», no contenido: eur-lex contesta eso a las seis normas
               # que el catálogo cita —GDPR, la ley de IA, PSD2— y contarlo como alcanzable decía que un
@@ -599,7 +603,51 @@ jobs:
               *) rotas="$rotas$url $code$marca $origen"$'\n' ;;
             esac
           done <<< "$urls"
+          # Las que el cargo anotó como pendientes: no se pudieron abrir cuando las probó, y por eso no son
+          # fuentes. Acá se reporta **sólo la que ya responde**, que es la única noticia — una que sigue
+          # sin abrir es lo esperado y decirlo cada semana sería el aviso permanente que nadie lee. Sin
+          # esto la nota quedaba en un comentario del propio archivo: cinco cargos lo escribían así y uno
+          # hasta puso «Registrar cuando exista una ficha legible», que nadie iba a revisar.
+          pendientes="$(node -e '
+            const { pendingSources } = require("./engine/agents/learning-sources.js")
+            const fs = require("node:fs")
+            const file = `${process.argv[1]}/learning/sources.yaml`
+            if (!fs.existsSync(file)) process.exit(0)
+            for (const one of pendingSources(fs.readFileSync(file, "utf8"))) {
+              if (one.url) console.log(`${one.url}\t${one.name}`)
+            }
+          ' "$dir")"
+          recuperadas=""
+          while IFS="$(printf '\t')" read -r url nombre; do
+            [ -n "$url" ] || continue
+            cuerpo="$(traer "$NAVEGADOR" 60 "$url")"
+            code="$(printf '%s' "$cuerpo" | tail -n 1)"
+            palabras="$(printf '%s' "$cuerpo" | sed '$d' | legibles)"
+            # Las cincuenta palabras separan una ficha de catálogo de una cáscara, y **no** separan una
+            # ficha del armazón de un sitio grande: la primera corrida de esto dio por recuperada
+            # `standards.ieee.org/ieee/1028/4266/` con 652 palabras de navegación, título genérico y la
+            # cadena «1028» cero veces — que es justo lo que el cargo había anotado como impedimento.
+            # Así que además se pide la marca del documento: el primer token con un dígito del nombre,
+            # que en una norma es su número. Sin dígito no hay marca y decide sólo el umbral.
+            marca="$(printf '%s' "$nombre" | tr ' ' '\n' | grep -m1 '[0-9]' || true)"
+            case "$code" in
+              2*|3*)
+                [ "${palabras:-0}" -ge 50 ] || continue
+                if [ -n "$marca" ]; then
+                  printf '%s' "$cuerpo" | grep -qiF -- "$marca" || continue
+                fi
+                recuperadas="$recuperadas$url $nombre"$'\n'
+                ;;
+            esac
+          done <<< "$pendientes"
           echo "| URLs declaradas | $total |" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$recuperadas" ]; then
+            echo "| pendientes que ya responden | $(printf '%s' "$recuperadas" | grep -c .) |" >> "$GITHUB_STEP_SUMMARY"
+            printf '%s' "$recuperadas" | while read -r url nombre; do
+              echo "| | \`$url\` → $nombre, ya se puede declarar |" >> "$GITHUB_STEP_SUMMARY"
+            done
+            echo "::notice title=Pendientes que ya responden en $AGENT::$(printf '%s' "$recuperadas" | tr '\n' ' ')"
+          fi
           # Se cuenta aunque la URL haya terminado sana: sin esta línea el reintento tapa que hizo falta, y
           # un dominio que empieza a rechazarnos se vería igual que uno que nunca lo hizo.
           [ "$navegador" -eq 0 ] || echo "| necesitaron un segundo intento | $navegador |" >> "$GITHUB_STEP_SUMMARY"
