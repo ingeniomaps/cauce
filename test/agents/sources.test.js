@@ -152,3 +152,62 @@ test('la cadencia de investigación se deriva de las fuentes, no de una lista', 
   fs.writeFileSync(path.join(own, 'learning', 'sources.yaml'), 'version: 1\n')
   assert.equal(learning.cadence(target, 'probe'), '')
 })
+
+// El catálogo escribe una entrada de dos formas —seis cargos la ponen en una línea y cuarenta y siete la
+// reparten— y el lector sólo veía la segunda. Lo que se perdía no era cosmético: la validación de URL
+// duplicada es un **error**, y esos seis nunca la tuvieron. No fallaba nada porque no encontrar
+// duplicados y no mirar producen el mismo silencio.
+test('una fuente se lee escrita en una línea o repartida en varias', () => {
+  const { sourceUrls } = require('../../engine/agents/learning-sources')
+
+  const repartida = `version: 1
+sources:
+  - name: Repartida
+    url: https://example.org/a
+    tier: standard
+`
+  assert.deepEqual(sourceUrls(repartida), [{ name: 'Repartida', url: 'https://example.org/a' }])
+
+  const enLinea = `version: 1
+sources:
+  - {name: En Linea, url: "https://example.org/b", tier: standard, topics: [x, y]}
+  - {name: Sin Comillas, url: https://example.org/c, tier: platform}
+`
+  assert.deepEqual(sourceUrls(enLinea), [
+    { name: 'En Linea', url: 'https://example.org/b' },
+    { name: 'Sin Comillas', url: 'https://example.org/c' },
+  ])
+
+  // Mezcladas en el mismo archivo, que es lo que hace un cargo al que se le agrega una fuente a mano.
+  assert.equal(sourceUrls(`${repartida}  - {name: Tercera, url: "https://example.org/d", tier: project}\n`).length, 2)
+
+  // Y la validación que dependía de esto vuelve a ver a los que no miraba.
+  const duplicada = `version: 1
+sources:
+  - {name: Uno, url: "https://example.org/z", tier: standard}
+  - {name: Otro, url: "https://example.org/z", tier: platform}
+`
+  const urls = sourceUrls(duplicada)
+  assert.equal(urls.length, 2, 'las dos entradas se ven')
+  assert.equal(urls[0].url, urls[1].url, 'y comparten URL, que es lo que evaluate rechaza')
+})
+
+// Todo cargo del catálogo declara sus fuentes de una de las dos formas, y el lector tiene que verlas
+// todas: una entrada que no se ve no se valida ni se comprueba, y eso no deja rastro.
+test('el lector no se saltea ninguna fuente del catálogo', () => {
+  const { sourceUrls } = require('../../engine/agents/learning-sources')
+  const raiz = path.resolve(__dirname, '..', '..', 'agents', 'roles', 'system')
+  const desajustes = []
+  let total = 0
+  for (const slug of fs.readdirSync(raiz)) {
+    const file = path.join(raiz, slug, 'learning', 'sources.yaml')
+    if (!fs.existsSync(file)) continue
+    const text = fs.readFileSync(file, 'utf8')
+    const declaradas = (text.slice(text.indexOf('sources:')).match(/url:/g) || []).length
+    const vistas = sourceUrls(text).length
+    total += declaradas
+    if (vistas !== declaradas) desajustes.push(`${slug}: declara ${declaradas} y se leen ${vistas}`)
+  }
+  assert.ok(total > 200, `el recorrido tiene que ver el catálogo entero, vio ${total}`)
+  assert.deepEqual(desajustes, [], `fuentes que el lector no ve:\n  ${desajustes.join('\n  ')}`)
+})

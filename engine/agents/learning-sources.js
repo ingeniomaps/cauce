@@ -90,6 +90,12 @@ function sourceTiers(text) {
   return [...body.matchAll(/tier:\s*([A-Za-z-]+)/g)].map((hit) => hit[1])
 }
 
+// Una entrada escrita en una sola línea: seis cargos del catálogo la escriben así y cuarenta y siete la
+// reparten en varias. Leyendo sólo la segunda forma, esos seis no tenían el chequeo de URL duplicada que
+// hay más abajo, y nada lo decía porque no encontrar duplicados y no mirar se ven igual.
+const FLOW_ENTRY = /^\s*-\s*\{[^}]*\bname:\s*([^,}]+?)\s*,[^}]*\burl:\s*"?([^",}\s]+)/
+const quitar = (value) => value.replace(/^['"]|['"]$/g, '')
+
 // Las fuentes de un cargo, por su URL. La misma URL con dos nombres es una sola fuente contada dos
 // veces: el catálogo llegó a tener la especificación OpenAPI bajo tres —`OpenAPI Specification`,
 // `...latest published` y `...3.2.0`— así que arreglarle el `tier` a un cargo no se lo arreglaba a los
@@ -99,8 +105,10 @@ function sourceUrls(text) {
   const out = []
   let name = ''
   for (const line of body.split('\n')) {
+    const flow = line.match(FLOW_ENTRY)
+    if (flow) { out.push({ name: quitar(flow[1]), url: flow[2].replace(/\/+$/, '') }); continue }
     const declared = line.match(/^\s*-\s*name:\s*(.+?)\s*$/)
-    if (declared) { name = declared[1].replace(/^['"]|['"]$/g, ''); continue }
+    if (declared) { name = quitar(declared[1]); continue }
     const url = line.match(/^\s*url:\s*(\S+)/)
     if (url && name) out.push({ name, url: url[1].replace(/\/+$/, '') })
   }
@@ -193,4 +201,4 @@ function evaluate(root, agent) {
   return { errors, warnings, proposals: proposals.length, pending, cases }
 }
 
-module.exports = { SOURCE_TIERS, cadence, evaluate, evaluateTeam }
+module.exports = { SOURCE_TIERS, cadence, evaluate, evaluateTeam, sourceUrls }
