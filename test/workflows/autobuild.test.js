@@ -248,6 +248,7 @@ test('terminar el hito no expande el siguiente para descartarlo', async () => {
   // legítima, así que buscar la palabra mide otra cosa y pasa a rojo por el motivo equivocado.
   assert.equal(written.some((text) => text.includes('Expandí sólo la próxima épica')), false,
     'ninguna escritura fue la expansión')
+})
 
 // Se afirma sobre el prompt y no sobre un BACKLOG resultante porque quien escribe es el modelo: lo único
 // que este recorrido controla es qué le pide. Que la marca no rompa el parser se comprobó aparte,
