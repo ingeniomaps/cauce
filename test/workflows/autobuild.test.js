@@ -161,7 +161,7 @@ test('sin tarea en cola se expande la próxima épica y se sigue con ella', asyn
   const withTask = baseScript()[KEY.context]
   const { result, asked } = await runFlow(
     { [KEY.pick]: { expanded: true, hito: 'H1' } },
-    { contexts: [{ blocked: '', hasTask: false, wipActive: false, queued: 0, lane: 'full' }, withTask] },
+    { contexts: [{ blocked: '', hasTask: false, wipActive: false, queued: 0, lane: 'full', readOk: true }, withTask] },
   )
   ranToEnd(result)
   assert.deepEqual(result.done, ['T-1'], 'lo expandido se ejecuta en la misma corrida')
@@ -175,9 +175,23 @@ test('sin nada que expandir el recorrido termina sin inventar trabajo', async ()
   assert.ok(!reached(asked, 'Build'), 'no se construye sin tarea')
 })
 
+// Un planning que no se pudo leer contesta lo mismo que uno terminado —sin tarea, cola en cero— y sobre
+// esa confusión la expansión escribe en el BACKLOG, que es lo único de este recorrido que no se revierte
+// con un `git checkout`. Pasó el 2026-09-08: seis historias que nadie aprobó, y el `check` posterior en
+// verde porque once tareas en cola es un estado válido.
+test('una lectura fallida no se toma como cola vacía ni expande nada', async () => {
+  const { result, asked } = await runFlow(
+    { [KEY.pick]: { expanded: true, hito: 'H1' } },
+    { contexts: [{ blocked: '', hasTask: false, wipActive: false, queued: 0, lane: '', readOk: false }] },
+  )
+  assert.equal(result.reason, 'context-unavailable', `tenía que frenar: ${JSON.stringify(result)}`)
+  assert.ok(!asked.includes(KEY.pick), 'y no llegar a la expansión, que es lo que escribe')
+  assert.ok(!reached(asked, 'Build'), 'ni construir sobre un estado que no se leyó')
+})
+
 test('un checkpoint humano sin resolver corta antes de tocar nada', async () => {
   const { result, asked } = await runFlow({}, {
-    contexts: [{ blocked: 'hito anterior sin revisar', hasTask: true, wipActive: false, queued: 1 }],
+    contexts: [{ blocked: 'hito anterior sin revisar', hasTask: true, wipActive: false, queued: 1, readOk: true }],
   })
   assert.equal(result.reason, 'awaiting-human-review')
   assert.ok(!reached(asked, 'Plan'), 'ni se planifica')
