@@ -425,6 +425,13 @@ const JUSTIFIED = {
 }
 
 const PENDING_SPLIT = {
+  'test/repo/repo.test.js':
+    'Mezcla dos sujetos: la forma del código —largo de línea, tamaño de archivo, rutas absolutas— y qué '
+    + 'se le exige a un comentario, que son cuatro pruebas y la mitad del archivo. La partición es sacar '
+    + 'esas cuatro a `comments.test.js` y llevar `sourceFiles` a `test/support/`, porque lo comparten los '
+    + 'dos lados y copiarlo es lo que R7 llama peor que el archivo largo. Se intentó al cruzar el umbral '
+    + 'y se revirtió: tres constantes y dos imports viven entre las pruebas y viajan mal en una división '
+    + 'automática, así que hacerlo bien es un cambio propio y no la cola de otro.',
 }
 
 test('ningún archivo de código pasa las 500 líneas sin decir por qué', () => {
@@ -483,10 +490,17 @@ test('ningún archivo del repositorio nombra la ruta absoluta de una máquina', 
     'test/workflows/workflows.test.js',
     'docs/issues/050-la-puerta-de-rutas-absolutas-corre-sobre-informes-generados.md',
   ])
+  // El informe semanal es prosa que escribe un cargo, no fuente del proyecto, y uno que cita una ruta
+  // para explicar su hallazgo rompía el PR de su propio informe: el arreglo era editar la evidencia por
+  // una razón ajena a lo que investigó. Lo que esta prueba cuida sigue cubierto —el ciclo corre en un
+  // runner efímero, así que la carpeta de nadie se escribe ahí—, y se exime el directorio y no cada
+  // archivo porque crece solo, una vez por semana y por cargo. Los casos de `docs/issues/` no se eximen:
+  // los escribe alguien que elige qué pegar.
+  const GENERADO = /^agents\/roles\/system\/[^/]+\/learning\/reports\//
   const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
   const found = []
   for (const file of tracked) {
-    if (DECLARED.has(file)) continue
+    if (DECLARED.has(file) || GENERADO.test(file)) continue
     read(file).split('\n').forEach((line, i) => {
       if (names(line)) found.push(`${file}:${i + 1}: ${line.trim().slice(0, 80)}`)
     })
@@ -495,4 +509,9 @@ test('ningún archivo del repositorio nombra la ruta absoluta de una máquina', 
   // Una excepción que dejó de hacer falta manda a cuidar algo que ya nadie escribe, así que se retira
   // igual que un par aceptado que quedó huérfano.
   assert.deepEqual([...DECLARED].filter((file) => !names(read(file))), [], 'declarado y ya sin ruta')
+  // La exención se mide contra el árbol: un patrón que dejó de coincidir con dónde viven los informes
+  // se ve igual que uno que funciona, porque las dos formas terminan sin eximir nada.
+  const eximidos = tracked.filter((file) => GENERADO.test(file))
+  assert.ok(eximidos.length > 0, 'el patrón ya no alcanza ningún informe: la exención quedó huérfana')
+  assert.deepEqual(eximidos.filter((one) => !/\/reports\/[\d-]+\.md$/.test(one)), [], 'sólo informes')
 })
