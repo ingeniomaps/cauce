@@ -61,7 +61,7 @@ Otros tres, en la misma tanda del 2026-09-07 y verificados con `curl` el 2026-09
 | Fuente | Cargos | Estado |
 |---|---|---|
 | `developer.apple.com/design/human-interface-guidelines/whats-new` | ui-designer | HTTP 404 |
-| `www.gainsight.com/guides/…` | customer-success-manager | HTTP 403 |
+| `www.gainsight.com/guides/…` | customer-success-manager | ~~HTTP 403~~ → **200**, ver el Cierre |
 | `m3.material.io/` | ui-designer | HTTP 200, cuerpo renderizado por cliente |
 | `www.iso.org/…` | analytics-engineer, cloud-architect, data-governance-steward | HTTP 403 sostenido |
 
@@ -136,10 +136,23 @@ tres cargos cuya cadencia semanal la sostiene una fuente que no se lee.
   retirar una fuente ilegible sigue siendo otra decisión.
 - **La mitad del síntoma que este arreglo NO cubre sale como caso propio, el 060.** El chequeo mira el
   código de respuesta, así que atrapa un 403 y da por buena una página que contesta 200 con una cáscara
-  vacía. De las cuatro fuentes de la tabla del síntoma, cubre `iso.org` y el `whats-new` de Apple —403 y
-  404— y **no** cubre `m3.material.io` ni la raíz de Apple HIG, que responden 200 y no traen nada legible.
-  Corrido de verdad sobre `ui-designer`, sus cuatro fuentes dan alcanzables mientras sus informes dicen
-  desde hace semanas que no puede leer dos.
+  vacía. Corrido de verdad sobre `ui-designer`, sus cuatro fuentes dan alcanzables mientras sus informes
+  dicen desde hace semanas que no puede leer dos.
+- **Y la tabla del síntoma de este caso tenía dos errores, que el arreglo destapó al correrse de verdad.**
+  El chequeo mira **las fuentes declaradas** en `sources.yaml`, y el `whats-new` de Apple no lo declara
+  ningún cargo: era una URL que el agente probó por su cuenta durante la investigación, así que ni antes
+  ni ahora entra en ningún inventario. Y el **403 de Gainsight era artefacto del `User-Agent`**: con el
+  `Mozilla/5.0` a secas que se usó al escribir la tabla devuelve 403, y con el de este chequeo o con uno
+  de navegador completo devuelve **200**. Se tacha en la tabla en vez de borrarse, porque el dato viajó a
+  una decisión —ver abajo— y borrarlo escondería de dónde salió.
+- **Esa corrección alcanza a una decisión ya tomada, y hay que decirlo.** El commit `96786bc` bajó a
+  mensual la cadencia de `customer-success-manager` citando dos razones: que la guía de Gainsight no
+  publica fechas de revisión —de `bf8bdfc`, y sigue en pie— y ese 403, que era falso. La decisión se
+  sostiene por la primera; el segundo dato no debió haberse usado.
+- **La dependencia del `User-Agent` queda como limitación del chequeo, no como defecto.** Un sitio puede
+  contestar 403 a lo que parece un bot, así que el código depende de con qué se pregunta. Lo que se mide
+  es si **este** ciclo puede abrir la fuente, que es la pregunta que importa; lo que no se puede concluir
+  de un 403 es que la fuente esté caída. Por eso avisa y no falla.
 
 **Probado con el paso ejecutado de verdad, no sólo con la suite**, contra las fuentes reales del catálogo:
 

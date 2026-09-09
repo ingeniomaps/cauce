@@ -81,6 +81,16 @@ Ninguno cerrado, y por eso esto es un caso y no una línea más en el otro. Las 
 
 La tercera es la que menos inventa umbrales y la que más se parece a lo que ya funcionó.
 
+## Y una tercera clase, que tampoco se cubre
+
+El chequeo mira **las fuentes declaradas** en `sources.yaml`. Durante la investigación un cargo prueba
+además URLs derivadas —`…/whats-new`, un changelog, la página de una release— y si ésas fallan no queda
+registro en ningún inventario: no están declaradas, así que nadie las mira después. El `whats-new` de
+Apple, que aparece en varios informes como 404, es exactamente ese caso.
+
+No es lo mismo que el problema de arriba y probablemente no se arregla igual: una URL que el cargo probó
+por su cuenta es un hecho de esa corrida, no del contrato de fuentes.
+
 ## Tradeoffs
 
 - Un umbral mal puesto es peor que no medir: un falso positivo semanal sobre una fuente sana enseña a
