@@ -226,6 +226,36 @@ test('guard-git-add exige stage explícito', () => {
   assert.doesNotThrow(() => execute('git-add', { tool_input: { command: 'git add src/app.js' } }))
 })
 
+// El salto de línea separa comandos igual que `;`, `&` y `|`, y las siete reglas que acotan «dentro de
+// este comando» sólo excluían los tres primeros. Cualquier bandera de una línea posterior se leía como
+// parte del comando de arriba: `git commit -m "x"` seguido de `ls -a` se bloqueaba como si stageara al
+// commitear, y `git push origin main` seguido de `rm -f /tmp/x` como si fuera un force push — un mensaje
+// que además nombraba una violación que no estaba.
+//
+// Se mide en las dos direcciones a propósito. Sólo lo primero pasaría con las reglas apagadas, y sólo lo
+// segundo pasaría con el `[^;&|]` de antes: es el par lo que fija el corte donde va.
+test('un guard no cruza el salto de línea, que también separa comandos', () => {
+  const dosLineas = (primero, segundo) => ({ tool_input: { command: `${primero}\n${segundo}` } })
+
+  // Sigue bloqueando lo que le toca, escrito en una sola línea.
+  blocked('git-add', { tool_input: { command: 'git commit -am "x"' } }, /stagea al commitear/)
+  blocked('destructive', { tool_input: { command: 'git push --force origin main' } }, /reescribe historia/)
+  blocked('dependencies', { tool_input: { command: 'npm install -g cosa' } }, /acción humana/)
+
+  // Y deja pasar lo que vive en la línea de abajo y no es asunto suyo.
+  assert.doesNotThrow(() => execute('git-add', dosLineas('git commit -q -m "x"', 'set -a; . ./.env; set +a')))
+  assert.doesNotThrow(() => execute('git-add', dosLineas('git commit -m "x"', 'ls -a')))
+  assert.doesNotThrow(() => execute('git-add', dosLineas('git add uno.js', 'ls .')))
+  assert.doesNotThrow(() => execute('dependencies', dosLineas('npm install', 'grep -g x archivo')))
+
+  // El push de la línea de arriba sigue frenado, pero por lo que de verdad es: publicar pide una acción
+  // humana (R10). Lo que dejó de decir es que fuera un force push.
+  const push = dosLineas('git push origin main', 'rm -f /tmp/x.log')
+  blocked('destructive', push, /requiere una acción humana/)
+  assert.throws(() => execute('destructive', push), (error) => !/reescribe historia/.test(String(error)),
+    'y ya no lo anuncia como una reescritura de historia publicada')
+})
+
 test('guards de archivos protegen secretos y snapshots, pero permiten plantillas y drafts', () => {
   blocked('secrets', { tool_input: { file_path: '/project/.env.production' } }, /parece contener secretos/)
   blocked('secrets', { tool_input: { patch: '*** Begin Patch\n*** Add File: .env\n+TOKEN=x\n*** End Patch' } },

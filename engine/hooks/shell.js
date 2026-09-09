@@ -31,6 +31,13 @@ const EV = require('../core/evidence')
 const ANTES = String.raw`(?:^|[\s;&|('"\`])`
 const PALABRA = String.raw`$|[\s;&|)'"\`]`
 const COMANDO = String.raw`$|[;&|)'"\`]`
+// Lo que puede haber **entre** un comando y su bandera sin salir de ese comando. El salto de línea va
+// adentro de lo excluido porque también separa comandos, exactamente igual que `;`, `&` y `|`: sin él,
+// una bandera escrita en una línea posterior se leía como parte del primer comando. Es la causa de los
+// falsos positivos del caso 067, en siete reglas a la vez — `git push origin main` seguido de
+// `rm -f /tmp/x` se bloqueaba anunciando «`git push --force` reescribe historia publicada», que además
+// de frenar trabajo legítimo nombraba una violación que no estaba.
+const MISMO = String.raw`[^;&|\n]`
 
 // Un mensaje de commit es dato, no código. `git commit -m "fix: bloquear git push --force"` disparaba
 // el guard de publicación, y lo mismo `rm -rf /` nombrado en una explicación; con el heredoc que se usa
@@ -62,7 +69,8 @@ function destructive(input) {
   // matchea igual las dos formas, así que `allowPush` habilitaba el force-push sin que nadie lo decidiera
   // y el párrafo de autonomía de `AGENTS.md` tenía que confesarlo. R8 prohíbe `force` sin excepción
   // configurable, así que esta rama va antes del permiso y no lo consulta.
-  if (/\bgit\s+push\b[^;&|]*\s(?:-f|--force(?:-with-lease|-if-includes)?)\b/.test(command)) {
+  if (new RegExp(String.raw`\bgit\s+push\b${MISMO}*\s(?:-f|--force(?:-with-lease|-if-includes)?)\b`)
+    .test(command)) {
     block("'git push --force' reescribe historia ya publicada. R8 lo prohíbe y runner.allowPush no lo "
       + 'habilita: publicá con un push normal, o registrá una acción humana.')
   }
@@ -75,7 +83,7 @@ function destructive(input) {
     // no devolvía una línea. Se bloquea por política y no por daño —un `--amend` sobre algo que nadie vio
     // no rompe nada—, así que el mensaje manda a lo que sí corresponde: otro commit.
     [
-      /\bgit\s+commit\b[^;&|]*\s--amend\b/,
+      new RegExp(String.raw`\bgit\s+commit\b${MISMO}*\s--amend\b`),
       "'git commit --amend' reescribe un commit ya creado. R8 pide uno nuevo en su lugar.",
     ],
     [/\bgit\s+clean\s+-[^\s]*f/, "'git clean -f' borra archivos sin seguimiento."],
@@ -89,7 +97,7 @@ function destructive(input) {
     [
       // `git restore .` no lleva `--` y destruye igual: comprobado en `git restore --help` (git 2.43.0),
       // que restaura el working tree por defecto y toma el pathspec sin separador.
-      new RegExp(String.raw`\bgit\s+(?:checkout|restore)\s+(?:[^;&|]*?\s)?`
+      new RegExp(String.raw`\bgit\s+(?:checkout|restore)\s+(?:${MISMO}*?\s)?`
         + String.raw`(?:--(?=\s*(?:${COMANDO}))|(?:--\s+)?(?:\.|\*|:\/)(?=\s*(?:${COMANDO})))`),
       "'git checkout -- .' revierte todo lo no commiteado del directorio, no sólo lo que estás mirando. "
       + 'Nombrá el archivo, o commiteá lo que quieras conservar antes.',
@@ -104,7 +112,7 @@ function destructive(input) {
     ],
     [
       new RegExp(ANTES + String.raw`(?:mkfs\S*|shred)\s`
-        + String.raw`|\bdd\s+[^;&|]*\bof=\/dev\/|>\s*\/dev\/(?:sd|nvme|disk)`),
+        + String.raw`|\bdd\s+${MISMO}*\bof=\/dev\/|>\s*\/dev\/(?:sd|nvme|disk)`),
       'Operación destructiva sobre disco o dispositivo.',
     ],
     [
@@ -124,14 +132,14 @@ function gitAdd(input) {
   // Dónde termina la palabra lo decide PALABRA y no un espacio: `bash -c "git add -A"` y
   // `eval 'git add -A'` pasaban porque después de la bandera venía una comilla. Es el hueco que 028
   // cerró en las reglas de `destructive`, y esta regla se quedó afuera de aquel arreglo.
-  if (new RegExp(String.raw`\bgit\s+add\s+(?:[^;&|]*\s)?(?:-A|--all|\.)(?=${PALABRA})`)
+  if (new RegExp(String.raw`\bgit\s+add\s+(?:${MISMO}*\s)?(?:-A|--all|\.)(?=${PALABRA})`)
     .test(command)) {
     block("'git add -A/--all/.' está prohibido. Stagea rutas explícitas.")
   }
   // La misma regla con otra ortografía: `-a` stagea todo lo seguido sin nombrar una ruta, y encima lo
   // hace al commitear —después de este hook—, así que los guards que leen el índice tampoco lo ven.
   // `--amend` queda afuera: empieza con dos guiones y lo frena `destructive`, por otra razón.
-  if (/\bgit\s+commit\b[^;&|]*\s(?:-[a-z]*a[a-z]*|--all)\b/.test(command)) {
+  if (new RegExp(String.raw`\bgit\s+commit\b${MISMO}*\s(?:-[a-z]*a[a-z]*|--all)\b`).test(command)) {
     block("'git commit -a' stagea al commitear, después de este guard: nadie llega a revisar el diff "
       + 'staged, ni vos ni los guards que lo miran. Stageá las rutas por nombre y commiteá aparte.')
   }
@@ -141,7 +149,8 @@ function dependencies(input) {
   if (process.env.OPS_DEPENDENCIES_OVERRIDE === '1') return
   const command = commandOf(input)
   const unsafePackageCommand = /\b(?:npm|pnpm|yarn|bun)\s+publish\b/.test(command)
-    || /\b(?:npm|pnpm|yarn)\s+(?:install|add)\b[^;&|]*(?:\s-g\b|\s--global\b)/.test(command)
+    || new RegExp(String.raw`\b(?:npm|pnpm|yarn)\s+(?:install|add)\b${MISMO}*(?:\s-g\b|\s--global\b)`)
+      .test(command)
   if (unsafePackageCommand) {
     block('Publicar paquetes o instalar dependencias globales requiere una acción humana explícita.')
   }

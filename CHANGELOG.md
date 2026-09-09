@@ -18,6 +18,16 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Los guards dejan de frenar trabajo legítimo escrito en varias líneas.** Siete reglas acotaban
+  «dentro de este comando» con `[^;&|]`, y el salto de línea —que también separa comandos— no estaba en
+  esa lista: cualquier bandera de una línea posterior se leía como parte del comando de arriba. `git
+  commit -m "x"` seguido de `ls -a` se bloqueaba como si stageara al commitear, y `git push origin main`
+  seguido de `rm -f /tmp/x` como un force push, que además nombraba una violación que no estaba.
+
+  Lo que frena sigue frenando: `commit -am`, `add -A`, `push --force`, `--amend` e `install -g` en una
+  línea siguen bloqueados, y un `git push` seguido de otra cosa sigue pidiendo la acción humana que R10
+  exige — sólo que ya no lo llama reescritura de historia.
+
 - **Un banco de evaluación que no se puede rehacer lo dice, en vez de seguir sobre uno que no es nuevo.**
   El borrado ahora se comprueba, y si algo sobrevive la corrida corta nombrando qué. Hasta acá el mismo
   hecho se venía rodeando por síntoma —reintentos en el borrado, `force` en el andamiaje, un `rm` antes
