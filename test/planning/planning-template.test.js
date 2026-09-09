@@ -42,6 +42,28 @@ test('ninguna regla del sistema manda a escribir en un archivo que `upgrade` ree
   assert.deepEqual(nombrados, [], `una regla manda a un archivo del toolkit:\n  ${nombrados.join('\n  ')}`)
 })
 
+// La pasada que contrasta la línea de una tarea contra su propia descripción es prosa, así que se borra
+// sin que nada falle — y es justo lo que no puede pasar: `check` valida la forma de la línea y ninguna
+// fase la revisa después, porque cualquiera donde viviera es una que su propio carril puede saltar.
+//
+// Se afirman los tres ejes que la vuelven accionable y no la redacción: reescribirla conservándolos deja
+// la regla viva, que es lo que hay que cuidar. Perder uno la deja pareciendo completa y cubriendo menos,
+// que es la forma que R15 nombra.
+test('el protocolo manda contrastar la línea de una tarea contra su descripción', () => {
+  const raiz = path.resolve(__dirname, '..', '..')
+  const protocolo = fs.readFileSync(path.join(raiz, 'template', 'planning', 'PROTOCOL.md'), 'utf8')
+  const lanes = protocolo.split(/^##\s+/m).find((parte) => /^Lanes/.test(parte))
+  assert.ok(lanes, 'la sección Lanes existe')
+
+  for (const [eje, patron] of [
+    ['la aceptación cubre lo que la descripción promete', /descripción frase por frase/],
+    ['el carril se lee contra la superficie', /carril contra la superficie/],
+    ['el cast entrega a quien construye', /cast entregue a quien construye/],
+  ]) {
+    assert.match(lanes, patron, `la pasada perdió el eje: ${eje}`)
+  }
+})
+
 test('el vocabulario de lanes tiene un dueño y las copias no se despegan', () => {
   const P = require('../../engine/planning/parser')
   assert.deepEqual(P.LANES, ['express', 'directo', 'lite', 'full'], 'en orden de ceremonia creciente')
