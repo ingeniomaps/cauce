@@ -101,7 +101,7 @@ sources:
   # cargos alcanzados—. URL del documento tomada del listado oficial de circulares de la UAF, abierto
   # el 2026-09-01; el PDF en sí no se leyó desde acá.
   - name: UAF Chile — Circular N°62
-    url: https://uaf.cl/media/documentos/Circular_N62.pdf
+    url: https://www.uaf.cl/media/documentos/Circular_N62.pdf
     tier: standard
     topics: [pep-definition, risk-based-approach]
   # Firmada el 9 de febrero de 2026 por el CNE y la UIAF, dirigida a partidos, movimientos políticos,

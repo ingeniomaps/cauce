@@ -67,8 +67,8 @@ Revalidar outcome y facts, detener trabajo que no protege valor, reconstruir for
 ## Fundamento externo
 
 - [ISO 21502:2020](https://committee.iso.org/sites/tc258/home/projects/published/iso-21502.html): guía aplicable a cualquier tipo de proyecto y enfoque predictivo, iterativo, adaptativo o híbrido.
-- [PMI — PMBOK Guide](https://www.pmi.org/standards/pmbok): principios, dominios, valor, adaptación y accountability; verificar edición vigente.
+- **PMI — PMBOK Guide** (sin enlace: `pmi.org` bloquea): principios, dominios, valor, adaptación y accountability; verificar edición vigente.
 - [Official Scrum Guide](https://scrumguides.org/download.html): Scrum cuando el contexto justifique ese framework; la versión oficial vigente indicada es noviembre de 2020.
-- [Government Functional Standard GovS 002](https://projectdelivery.gov.uk/govs-002-project-delivery-functional-standard/): gobierno, planificación, control, assurance y entrega; aplicar sólo dentro de su alcance o como referencia.
+- [Government Functional Standard GovS 002](https://www.gov.uk/government/publications/project-delivery-functional-standard): gobierno, planificación, control, assurance y entrega; aplicar sólo dentro de su alcance o como referencia.
 
 Adaptar el método a la empresa; ninguna fuente sustituye gobierno, políticas ni autoridad reales.

@@ -35,6 +35,6 @@ Sintetizar tema, necesidad, segmento/contexto, frecuencia, severidad, impacto, e
 - [Contributor Covenant 3.0](https://www.contributor-covenant.org/version/3/0/code_of_conduct/): ejemplo adaptable de conductas, reporte, investigación privada y escala de medidas; requiere completar y aprobar el proceso propio.
 - [GitHub — Community management and moderation](https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/about-community-management-and-moderation): herramientas y prácticas específicas de esa plataforma; verificar equivalentes en cada canal.
 - [W3C WCAG 2.2](https://www.w3.org/TR/WCAG22/): criterios de accesibilidad para superficies web; complementar con necesidades de eventos, idiomas y discapacidades no cubiertas totalmente.
-- [OECD Privacy Guidelines](https://www.oecd.org/en/topics/privacy-principles.html): limitación de recolección, propósito, uso, calidad, seguridad, apertura, participación y accountability.
+- [OECD Privacy Guidelines](https://legalinstruments.oecd.org/public/doc/188/188.en.pdf): limitación de recolección, propósito, uso, calidad, seguridad, apertura, participación y accountability.
 
 Estas fuentes orientan diseño y controles; las políticas aprobadas, plataforma, comunidad y jurisdicción reales determinan las acciones permitidas.

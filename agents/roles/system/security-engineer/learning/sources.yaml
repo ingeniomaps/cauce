@@ -22,7 +22,7 @@ sources:
     tier: advisory
     topics: [weaknesses, causes, mitigations]
   - name: CISA Known Exploited Vulnerabilities
-    url: https://www.cisa.gov/known-exploited-vulnerabilities-catalog
+    url: https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
     tier: advisory
     topics: [known-exploitation, prioritization]
   - name: Node.js Security Releases

@@ -74,6 +74,6 @@ Modelo sintetizado con fuentes revisadas en agosto de 2026:
 - [ICC Advertising and Marketing Communications Code](https://iccwbo.org/business-solutions/the-icc-advertising-and-marketing-communications-code/): identidad, honestidad, sustento, datos y marketing directo responsable.
 - [UK ICO Direct Marketing Guidance](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/): llamadas, email, mensajes, preferencias y protección de datos; aplicar según jurisdicción.
 - [FTC CAN-SPAM Compliance Guide](https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business): requisitos oficiales estadounidenses para email comercial; aplicar donde corresponda.
-- [OECD Recommendation on Consumer Protection in E-commerce](https://legalinstruments.oecd.org/en/instruments/OECD-LEGAL-0422): prácticas comerciales justas, información, confirmación y resolución.
+- [OECD Recommendation on Consumer Protection in E-commerce](https://legalinstruments.oecd.org/public/doc/422/422.en.pdf): prácticas comerciales justas, información, confirmación y resolución.
 
 Añadir autoridades, políticas comerciales y reglas sectoriales de cada geografía y canal real.

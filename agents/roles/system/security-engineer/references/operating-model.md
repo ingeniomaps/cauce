@@ -86,7 +86,7 @@ Modelo sintetizado con fuentes revisadas en agosto de 2026:
 - [NIST Secure Software Development Framework](https://csrc.nist.gov/pubs/sp/800/218/final): prácticas de preparación, protección, producción y respuesta a vulnerabilidades.
 - [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/): requisitos verificables de seguridad para aplicaciones y servicios.
 - [MITRE CWE](https://cwe.mitre.org/): taxonomía de debilidades para describir causas y mitigaciones sin confundirlas con vulnerabilidades concretas.
-- [CISA Known Exploited Vulnerabilities Catalog](https://www.cisa.gov/known-exploited-vulnerabilities-catalog): evidencia de explotación conocida para priorización basada en riesgo.
+- [CISA Known Exploited Vulnerabilities Catalog](https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json): evidencia de explotación conocida para priorización basada en riesgo.
 - [OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/): riesgos de sistemas autónomos —uso de herramientas, identidad, ejecución de código y agencia excesiva—. Citado como marco: el documento no fue leído, así que no se atribuye ningún identificador de categoría a un hallazgo.
 
 Verificar siempre versiones, avisos oficiales y contexto real de cada empresa.

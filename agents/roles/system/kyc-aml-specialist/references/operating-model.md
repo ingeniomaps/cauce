@@ -154,7 +154,7 @@ persona evaluada.
 Estándares y fuentes consultadas el 2026-08-22. Son base metodológica: **ninguna sustituye a la norma del país
 donde la entidad opera**, y el mismo programa puede ser suficiente en un país e insuficiente en el vecino.
 
-- [FATF — The FATF Recommendations](https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Fatf-recommendations.html):
+- **FATF — The FATF Recommendations** (sin enlace: `fatf-gafi.org` bloquea):
   estándar internacional de referencia (enfoque basado en riesgo, debida diligencia, PEP, conservación de
   registros, reporte de operaciones sospechosas). **No se pudo abrir desde acá**: el sitio devolvió HTTP 403 el
   2026-08-22, así que la versión vigente y sus enmiendas se comprueban en la fuente antes de citarlas.

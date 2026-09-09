@@ -494,6 +494,10 @@ jobs:
       #
       # Avisa y no falla: un 403 de una semana puede ser un bloqueo temporal, y lo que decide un `tier` es
       # el patrón sostenido. Fallar acá tiraría la investigación por algo que no la invalida.
+      #
+      # Mira `sources.yaml` y también `references/` y `SKILL.md`, que es lo que el cargo sigue para
+      # trabajar. Durante un tiempo miró sólo lo primero, y las 207 URLs de los segundos acumularon 29
+      # inservibles —dos de ellas 404 de páginas que se movieron— sin que nada lo dijera.
       - name: Check declared sources are reachable
         if: steps.collect.outputs.path != ''
         continue-on-error: true
@@ -508,20 +512,63 @@ jobs:
             })')"
           [ -n "$dir" ] || exit 0
           urls="$(node -e '
-            const { sourceUrls } = require("./engine/agents/learning-sources.js")
+            const { documentUrls, sourceUrls } = require("./engine/agents/learning-sources.js")
             const fs = require("node:fs")
-            const file = process.argv[1]
-            if (!fs.existsSync(file)) process.exit(0)
-            for (const one of sourceUrls(fs.readFileSync(file, "utf8"))) console.log(one.url)
-          ' "$dir/learning/sources.yaml")"
+            const dir = process.argv[1]
+            const file = `${dir}/learning/sources.yaml`
+            const vistas = new Set()
+            const decir = (url, origen) => {
+              if (vistas.has(url)) return
+              vistas.add(url)
+              console.log(`${url}\t${origen}`)
+            }
+            if (fs.existsSync(file)) {
+              for (const one of sourceUrls(fs.readFileSync(file, "utf8"))) decir(one.url, "sources.yaml")
+            }
+            for (const one of documentUrls(dir)) decir(one.url, one.origin)
+          ' "$dir")"
           total=0
           rotas=""
-          while IFS= read -r url; do
+          # Una pasada rápida y una paciente sólo para lo que falló, que es lo que separa «no sirve» de «no
+          # llegamos». Dos cosas la hacían falsear:
+          #
+          # El cargo lee con la herramienta de fetch del modelo, no con este `curl`, así que un 403 contra
+          # un UA de bot no predice lo que el cargo va a poder abrir: los tres `ftc.gov` del catálogo dan
+          # 403 acá y 200 con miles de palabras a un navegador. Se intenta primero identificándose —que es
+          # lo correcto y lo que la mayoría acepta— y el resumen dice cuántas necesitaron lo otro, porque
+          # «este dominio rechaza a un bot identificado» es un dato del dominio.
+          #
+          # Y veinte segundos no alcanzan para un PDF grande: el instrumento de la OCDE que cita
+          # `sales-representative` son 57 mil palabras y llega recién pasados los treinta. Sin el segundo
+          # intento se reportaba muerto un documento sano, que es el falso positivo que enseña a ignorar
+          # el aviso.
+          BOT='cauce-learning/1.0 (+https://github.com/ingeniomaps/cauce)'
+          NAVEGADOR='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+          navegador=0
+          # `tr -d '\0'` porque dos respuestas del catálogo traen bytes nulos —un PDF y una ficha de ISO—
+          # y la sustitución de orden los descarta avisando por stderr en cada corrida. No cambia ningún
+          # veredicto; saca del log un aviso que se lee como un problema y no lo es.
+          traer() { { curl -s -L --max-time "$2" -w '\n%{http_code}' -A "$1" "$3" || printf '\n000'; } | tr -d '\0'; }
+          while IFS="$(printf '\t')" read -r url origen; do
             [ -n "$url" ] || continue
             total=$((total + 1))
-            respuesta="$(curl -s -L --max-time 20 -w '\n%{http_code}' \
-              -A 'cauce-learning/1.0 (+https://github.com/ingeniomaps/cauce)' "$url" || printf '\n000')"
+            respuesta="$(traer "$BOT" 20 "$url")"
             code="$(printf '%s' "$respuesta" | tail -n 1)"
+            marca=""
+            case "$code" in
+              403|000)
+                otra="$(traer "$NAVEGADOR" 60 "$url")"
+                otro="$(printf '%s' "$otra" | tail -n 1)"
+                case "$otro" in
+                  2*|3*)
+                    [ "$code" = 403 ] && marca=" sólo-con-navegador" || marca=" lenta"
+                    respuesta="$otra"
+                    code="$otro"
+                    navegador=$((navegador + 1))
+                    ;;
+                esac
+                ;;
+            esac
             # Palabras fuera de etiquetas, que es lo que un cargo puede leer de verdad. Se cuenta con node
             # y no con `sed`: un `.*` codicioso sobre varias líneas se come la página entera —midiendo así,
             # una con 301 palabras daba 0 y otra con 26 daba 58, erraba en las dos direcciones—.
@@ -535,21 +582,27 @@ jobs:
               # `202` es «aceptado, vuelve más tarde», no contenido: eur-lex contesta eso a las seis normas
               # que el catálogo cita —GDPR, la ley de IA, PSD2— y contarlo como alcanzable decía que un
               # cargo podía leer un reglamento que nunca recibió.
-              202) rotas="$rotas$url $code(sin-contenido)"$'\n' ;;
+              202) rotas="$rotas$url $code(sin-contenido) $origen"$'\n' ;;
               2*|3*)
                 # Cincuenta palabras separan la cáscara de la página corta y sana: medido sobre las 255
                 # fuentes del catálogo, catorce caen por debajo y sólo dos entre 50 y 200, así que el corte
                 # no parte ningún grupo. Una aplicación renderizada por cliente devuelve su `<title>` y poco
                 # más, y para quien investiga eso es tan inútil como un 403.
-                [ "${palabras:-0}" -ge 50 ] || rotas="$rotas$url $code($palabras-palabras)"$'\n' ;;
-              *) rotas="$rotas$url $code"$'\n' ;;
+                [ "${palabras:-0}" -ge 50 ] || rotas="$rotas$url $code($palabras-palabras)$marca $origen"$'\n' ;;
+              *) rotas="$rotas$url $code$marca $origen"$'\n' ;;
             esac
           done <<< "$urls"
-          echo "| fuentes declaradas | $total |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| URLs declaradas | $total |" >> "$GITHUB_STEP_SUMMARY"
+          # Se cuenta aunque la URL haya terminado sana: sin esta línea el reintento tapa que hizo falta, y
+          # un dominio que empieza a rechazarnos se vería igual que uno que nunca lo hizo.
+          [ "$navegador" -eq 0 ] || echo "| necesitaron un segundo intento | $navegador |" >> "$GITHUB_STEP_SUMMARY"
           if [ -n "$rotas" ]; then
             echo "| sin contenido legible | $(printf '%s' "$rotas" | grep -c .) |" >> "$GITHUB_STEP_SUMMARY"
-            printf '%s' "$rotas" | while read -r url code; do
-              echo "| | \`$url\` → $code |" >> "$GITHUB_STEP_SUMMARY"
+            # El archivo va en el aviso porque decide quién lo arregla: en `sources.yaml` lo toma el ciclo
+            # de aprendizaje del cargo, y en `references/` es una edición del método que nadie va a hacer
+            # si el aviso no dice dónde.
+            printf '%s' "$rotas" | while read -r url code origen; do
+              echo "| | \`$url\` → $code · $origen |" >> "$GITHUB_STEP_SUMMARY"
             done
             echo "::warning title=Fuentes sin contenido legible de $AGENT::$(printf '%s' "$rotas" | tr '\n' ' ')"
           fi
