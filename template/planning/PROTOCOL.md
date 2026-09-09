@@ -81,6 +81,20 @@ El lane reduce ceremonia, nunca seguridad, aceptación ni evidencia: Verify y el
 cuatro. Lo que decide el carril es la superficie del cambio y no su tamaño en líneas — un `if` en el
 chequeo de permisos es `full`, y un componente entero de presentación puede ser `directo`.
 
+Escribir la línea es también contrastarla. Declara cuatro cosas —qué hace, en qué carril, quién entrega y
+revisa, con qué se comprueba— y las cuatro salen de la misma mano en el mismo acto, así que nada las cruza
+después. Releerlas no encuentra el hueco: una aceptación incompleta se lee perfecta, porque todo lo que
+dice es cierto.
+
+Antes de dar la tarea por escrita se recorre su descripción frase por frase y se contesta, por cada cosa
+que promete, cuál condición de aceptación la comprueba; se lee el carril contra la superficie que toca y
+no contra su tamaño; y se comprueba que el cast entregue a quien construye. Lo que quede sin condición se
+agrega o se declara fuera de alcance en la línea.
+
+Es el único momento en que las cuatro se pueden mirar juntas, y por eso la pasada vive acá y no en una
+fase: después el carril ya decide cuáles corren, y la que revisaría es una de las que ese carril puede
+saltar. Una tarea mal marcada `express` es justamente la que se salta la fase donde alguien lo notaría.
+
 ## Invariantes
 
 1. Una tarea tiene un dueño de estado: roadmap → BACKLOG → overlay WIP → DONE.
