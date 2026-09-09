@@ -1,14 +1,15 @@
 ---
 caso: 049
 titulo: Nada valida el `status` de un informe, que puede auto-excluirse de la propuesta
-estado: abierto
+estado: resuelto
+resuelto-en: 0.71.0
 prioridad: alta
 version-detectada: 0.70.0
 ---
 
 # 049 — Un informe con el `status` pisado no entra a ninguna propuesta, y nada lo dice
 
-**🔴 abierto** · detectado en 0.70.0 · prioridad **alta** — el hallazgo se pierde en silencio
+**🟢 resuelto en 0.71.0** · detectado en 0.70.0 · prioridad **alta** — el hallazgo se pierde en silencio
 
 ## Resumen
 
@@ -115,3 +116,34 @@ frontmatter de todos contra el molde. No apareció leyendo el informe: apareció
 
 - [050](050-la-puerta-de-rutas-absolutas-corre-sobre-informes-generados.md) — el otro caso donde una
   puerta y un informe generado se cruzan sin que el ciclo lo prevea.
+
+## Cierre
+
+**Resuelto en 0.71.0.** El recorrido de lo que enumeró, contra las tres secciones que enumeran algo:
+
+- **El fix propuesto — el guard en el paso `collect` — se hizo tal cual.** Un informe que no vuelve con
+  `status: draft` frena la publicación de ese cargo y dice por qué. Entró junto con el campo `propone`,
+  que valida el mismo paso: los dos campos del frontmatter que el ciclo lee después son ahora los dos que
+  comprueba antes.
+- **La alternativa —«que el motor reescriba el frontmatter en vez de confiar en lo que volvió»— no se
+  tomó, y es una decisión.** Es más fuerte y más cara, y sobre todo taparía la causa en vez de mostrarla:
+  con el guard, un informe que vuelve sellado deja un fallo con nombre; reescribiéndolo, nadie se entera
+  nunca de que volvió mal. Lo que activaría cambiar de opinión es que esto se repita: un fallo que salta
+  todas las semanas es un guard que no sirve.
+- **Tradeoff «el guard nuevo falla la corrida de ese cargo, que es ruidoso» — se confirmó y es el punto.**
+  Ningún informe lo disparó todavía, así que el ruido previsto es hasta hoy cero.
+- **Tradeoff «no cubre el resto del frontmatter (`agent`, `date`)» — sigue sin cubrirse, y sigue
+  correcto.** Ninguno de los dos decide nada después: `agent` y `date` los usa el propio nombre del
+  archivo y su ubicación. `status` y `propone` sí deciden —si el informe entra a una propuesta y si el PR
+  se mergea solo—, y por eso son los dos que se comprueban.
+- **Tradeoff «sin comprobar: no sé si el sello lo pisó el agente» — comprobado, y no cambia el fix.** La
+  corrida de un solo cargo del 2026-09-08 devolvió el informe con `status: draft` intacto y `propone`
+  contestado, o sea que quien lo escribe puede respetar el frontmatter. Sobre 21 informes observados
+  —los 20 del 2026-09-07 más ése— el sello se pisó **una vez**. El guard comprueba el resultado y no la
+  causa, así que vale igual para las dos explicaciones posibles; lo que la comprobación descarta es que
+  fuera sistemático, que era la duda que importaba.
+
+Lo que el caso no preveía: el mismo paso terminó validando **dos** campos y no uno. Que el frontmatter no
+se comprobara no era un descuido sobre `status` sino sobre el frontmatter entero, y eso sólo se vio al
+necesitar un segundo campo ahí — `propone`, del cambio que hace que los informes sin propuesta se mergeen
+solos.
