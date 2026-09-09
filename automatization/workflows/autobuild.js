@@ -364,6 +364,13 @@ while (rounds++ < MAX_TASKS) {
   // pudo leer se ve idéntica a una cola terminada, y sobre la primera esto promovía trabajo que nadie
   // aprobó — lo que BR-OPS-002 prohíbe.
   //
+  // Y lo que sí expande queda firmado. Un hito que emitió el runner se leía igual que uno que redactó una
+  // persona, así que quien revisa el BACKLOG no tenía cómo saber cuál merece una segunda lectura y quien
+  // audita después de un incidente tenía que reconstruirlo desde el `journal.jsonl`, que no se commitea.
+  // La línea va debajo del encabezado y no en el título: el parser lee el encabezado con un patrón
+  // exacto, así que ahí adentro se la comería el título, y suelta la ignora — comprobado con `check` en
+  // verde y `context` devolviendo la tarea igual.
+  //
   // Y sólo mientras la corrida no haya elegido su hito. Con uno ya fijado, el `break` de tres líneas más
   // abajo es inevitable —lo expandido es de otro hito, que es donde esta corrida no sigue— así que
   // expandir ahí escribía el hito siguiente un instante antes de decidir no tocarlo. La expansión que sí
@@ -373,7 +380,9 @@ while (rounds++ < MAX_TASKS) {
     const expansion = await write(
       `Leé ${ROADMAP}. Expandí sólo la próxima épica abierta y aprobada en un hito nuevo de ${BACKLOG}, ` +
       `conservando el slug de cada historia, sus referencias a criterios y su servicio. Nunca promuevas ` +
-      `${P}/INBOX.md. Reportá si escribiste algo.`,
+      `${P}/INBOX.md. Debajo del encabezado del hito, y antes de la primera tarea, escribí una sola línea ` +
+      `en cursiva que diga que lo expandió autobuild, con la fecha de hoy y el número de la épica de la ` +
+      `que sale. Reportá si escribiste algo.`,
       { schema: EXPANSION },
     )
     if (!expansion) return stop('agent-unavailable', 'Pick no devolvió resultado')

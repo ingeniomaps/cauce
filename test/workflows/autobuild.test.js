@@ -248,4 +248,25 @@ test('terminar el hito no expande el siguiente para descartarlo', async () => {
   // legítima, así que buscar la palabra mide otra cosa y pasa a rojo por el motivo equivocado.
   assert.equal(written.some((text) => text.includes('Expandí sólo la próxima épica')), false,
     'ninguna escritura fue la expansión')
+
+// Se afirma sobre el prompt y no sobre un BACKLOG resultante porque quien escribe es el modelo: lo único
+// que este recorrido controla es qué le pide. Que la marca no rompa el parser se comprobó aparte,
+// corriendo `check` sobre un BACKLOG con ella puesta.
+test('lo que el runner expande queda firmado en el BACKLOG', async () => {
+  const { prompts } = await runFlow(
+    { [KEY.pick]: { expanded: true, hito: 'H1' } },
+    {
+      contexts: [
+        { blocked: '', hasTask: false, wipActive: false, queued: 0, lane: '', readOk: true,
+          cast: { build: '', review: [] } },
+        baseScript()[KEY.context],
+      ],
+    },
+  )
+  const expansion = prompts.find((one) => one.prompt.includes('Expandí sólo la próxima épica'))
+  assert.ok(expansion, 'la corrida pasó por la expansión')
+  assert.match(expansion.prompt, /debajo del encabezado del hito/i, 'la marca va donde el parser la ignora')
+  assert.match(expansion.prompt, /expandió autobuild/i, 'y dice quién la escribió')
+  assert.match(expansion.prompt, /fecha de hoy/i, 'con cuándo')
+  assert.match(expansion.prompt, /épica de la que sale|número de la épica/i, 'y de dónde sale')
 })
