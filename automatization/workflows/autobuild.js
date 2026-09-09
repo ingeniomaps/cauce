@@ -229,8 +229,16 @@ const CLASSIFICATION = {
 
 const CONTRACT = {
   type: 'object', additionalProperties: false,
-  required: ['project', 'workspaceRoots', 'maxTaskHours', 'commitPerTask', 'humanCheckpoint', 'contracts'],
+  required: ['project', 'workspaceRoots', 'maxTaskHours', 'commitPerTask', 'humanCheckpoint', 'contracts',
+    'rootOk'],
   properties: {
+    // `ROOT` viaja escrito en el workflow y es relativo al cwd de los agentes: si la sesión abrió en otra
+    // carpeta, todas las rutas resuelven a `<raíz>/<raíz>/…` y ninguna existe. Nada lo comprobaba, y el
+    // recorrido gastaba Triage entero sobre archivos ausentes antes de parar más abajo por otra causa,
+    // nombrando el planning en vez de la raíz de la que ese planning cuelga.
+    //
+    // Se pregunta acá porque acá ya se leen los cuatro archivos: cuesta un campo y ningún agente más.
+    rootOk: { type: 'boolean' },
     project: { type: 'string' }, workspaceRoots: { type: 'array', minItems: 1, items: { type: 'string' } },
     // La puerta que el proyecto declara, si la declara. Viaja con la raíz porque es de la base de código
     // y no del runner: un monorepo tiene una por servicio, y uno solo tiene una sola.
@@ -289,7 +297,9 @@ phase('Triage')
 // subagente como «Límites del proyecto» eran sólo los genéricos del toolkit.
 const contract = await agent(
   `${BASE}\n\nLeé ${ROOT}/AGENTS.md, ${ORG}/workspace.md, ${CONFIG} y ${P}/PROTOCOL.md una sola vez y no ` +
-  `leas nada más. Reportá los ` +
+  `leas nada más. Poné rootOk en true sólo si los cuatro existieron y los pudiste leer; si alguno no ` +
+  `estaba, rootOk en false y el resto en sus valores vacíos, sin deducirlos de otra fuente. ` +
+  `Reportá los ` +
   `valores de configuración textualmente: project, workspaceRoots como entradas "nombre → ruta", ` +
   `runner.maxTaskHours, runner.commitPerTask y runner.humanCheckpointBetweenMilestones como humanCheckpoint. ` +
   `En gates poné una entrada "ruta → comando" por cada workspaceRoot que declare \`verify\`, y ninguna por ` +
@@ -301,6 +311,12 @@ const contract = await agent(
   { schema: CONTRACT, label: 'contract-digest' },
 )
 if (!contract) return stop('contract-unavailable', `no se pudo leer ${CONFIG} ni ${P}/PROTOCOL.md`)
+// Falla acá y nombrando la raíz, que es lo que hace falta para arreglarlo: parar más abajo mandaba a
+// revisar el planning, y el planning está bien — lo que no existe es la carpeta de la que cuelga.
+if (!contract.rootOk) {
+  return stop('root-unreadable', `${ROOT} no se pudo leer entero. Es una ruta relativa a la carpeta `
+    + `donde se abre la herramienta: comprobá desde dónde estás corriendo el recorrido.`)
+}
 
 const bounds = contract.boundaries || []
 const limits = bounds.length ? ` Límites del proyecto: ${bounds.join('; ')}.` : ''

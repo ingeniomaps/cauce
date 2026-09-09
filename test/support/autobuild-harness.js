@@ -40,6 +40,9 @@ const KEY = {
 function baseScript() {
   return {
     [KEY.contract]: {
+      // `rootOk: true` porque el camino feliz arranca con la raíz legible. El escenario que no la
+      // encuentra lo contesta al revés, y ahí el recorrido tiene que parar antes de gastar nada más.
+      rootOk: true,
       project: 'acme', workspaceRoots: ['api → ./api'], contracts: '## Contratos',
       maxTaskHours: 4, commitPerTask: true, humanCheckpoint: false, boundaries: [],
     },
