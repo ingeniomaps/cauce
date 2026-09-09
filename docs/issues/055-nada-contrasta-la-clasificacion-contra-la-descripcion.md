@@ -128,9 +128,11 @@ relacionados:
 
 - **El fix se hizo, y en otro lugar del que proponía.** El caso lo ponía en Ready y dejaba la ubicación
   abierta entre Ready y Classify. Ninguna de las dos sirve, y el propio caso tenía la mitad del
-  argumento: Ready no corre en `express` ni en `directo`. La otra mitad es que **Classify tampoco**, y a
-  propósito — su prompt dice «no toques […] las tareas que ya declaran las dos cosas», así que poner la
-  pasada ahí lo obligaría a reescribir clasificaciones humanas, que es lo que evita.
+  argumento: Ready no corre en `express` ni en `directo`. La otra mitad es **Classify, que no corre para
+  una tarea que ya trae carril** —`autobuild.js`: `const unclassified = !planning.lane ||
+  !planning.cast.build`, y eso vale en los cuatro carriles, no sólo en los mecánicos—. Es a propósito: su
+  prompt dice «no toques […] las tareas que ya declaran las dos cosas», así que poner la pasada ahí lo
+  obligaría a reescribir clasificaciones humanas, que es lo que evita.
 - **Lo que decidió el lugar fue la circularidad.** Cualquier fase donde viva la revisión del carril es una
   fase que ese carril puede saltar, y la tarea mal marcada `express` es justamente la que se salta todo.
   No existe **ninguna** fase que corra para una tarea que llegó con `[express]` escrito a mano. Por eso la
