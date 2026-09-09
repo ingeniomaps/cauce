@@ -163,5 +163,12 @@ alcanzó y el aval humano deja de valer.
 sigue verde. Y una instancia creada **antes** del cambio lo recibe al correr `upgrade`, porque
 `planning/PROTOCOL.md` está en `SYSTEM_FILES`. La primera versión de esa prueba estaba mal diseñada
 —editar el archivo local hace que `upgrade` lo conserve como edición del usuario— y dio el resultado
-opuesto: eso es un dato del cierre, no del enunciado. **Un consumidor que editó su `PROTOCOL.md` no va a
-recibir esta regla**, y no hay nada que lo avise.
+opuesto: eso es un dato del cierre, no del enunciado.
+
+**Un consumidor que editó su `PROTOCOL.md` no va a recibir esta regla.** Eso no es un defecto: el archivo
+está en `SYSTEM_FILES`, cuyo comentario dice que un proyecto que necesite cambiarlos «no los edita: agrega
+una regla propia junto a las de `system/`». Conservar lo editado es la protección funcionando.
+
+Y sí se avisa, contra lo que este cierre afirmó primero: `upgrade --check` nombra el archivo —«editado
+localmente: planning/PROTOCOL.md»— y `upgrade` cuenta los conservados. La primera redacción decía que no
+avisaba nada; se comprobó después de escribirla y era falso.
