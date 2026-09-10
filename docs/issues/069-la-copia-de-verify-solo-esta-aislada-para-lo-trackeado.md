@@ -26,23 +26,62 @@ O sea que la copia está aislada **para lo trackeado y para nada más**.
 
 ## Reproducción
 
-Pendiente de escribir como comando. Lo que hay es la lectura del código —el bucle de enlaces en
-`engine/hooks/shell.js:399-406` enlaza toda entrada que `git status --ignored` marca con `!!`— y el
-hecho de que los gates de `verifyGates` incluyen `build`.
+```bash
+git clone https://github.com/ingeniomaps/cauce && cd cauce
 
-Escribirla es barato: un proyecto con un `build` que escriba en un directorio ignorado, un commit con
-algo sin stagear, y comprobar la marca de tiempo del directorio real antes y después.
+node -e '
+const fs = require("node:fs"), path = require("node:path")
+const { tempRoot } = require("./test/support/environment")
+const { execFileSync } = require("node:child_process")
+const root = tempRoot("d069-")
+const git = (a) => execFileSync("git", a, { cwd: root })
+execFileSync("git", ["init", "-q", "."], { cwd: root })
+git(["config", "user.email", "t@t"]); git(["config", "user.name", "t"])
+fs.mkdirSync(path.join(root, "planning"), { recursive: true })
+fs.writeFileSync(path.join(root, "planning", ".keep"), "")
+fs.writeFileSync(path.join(root, "ops.config.json"), JSON.stringify({ project: "x", mode: "embedded" }))
+fs.writeFileSync(path.join(root, ".gitignore"), "dist/
+")
+fs.writeFileSync(path.join(root, "build.js"),
+  `const fs=require("node:fs");fs.mkdirSync("dist",{recursive:true});fs.copyFileSync("app.js","dist/app.js")
+`)
+fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ scripts: { build: "node build.js" } }))
+fs.writeFileSync(path.join(root, "app.js"), `VERSION = "staged"
+`)
+git(["add", "-A"])
+fs.writeFileSync(path.join(root, "app.js"), `VERSION = "lo-que-estoy-editando"
+`)   // seguís editando
+fs.mkdirSync(path.join(root, "dist"), { recursive: true })                            // y ya buildeaste
+fs.copyFileSync(path.join(root, "app.js"), path.join(root, "dist", "app.js"))
+console.log("dist ANTES :", fs.readFileSync(path.join(root, "dist", "app.js"), "utf8").trim())
+try { require("./engine/hooks/shell.js").verify({ cwd: root, tool_input: { command: "git commit -m x" } }) } catch {}
+console.log("dist DESPUÉS:", fs.readFileSync(path.join(root, "dist", "app.js"), "utf8").trim())
+console.log("app.js      :", fs.readFileSync(path.join(root, "app.js"), "utf8").trim())'
+```
 
 ## Síntoma
 
-Ninguno visible, y eso es lo que lo vuelve interesante. Quien commitea termina con su `.next/`
-regenerado, que es lo mismo que habría pasado corriendo el build a mano. El efecto no se distingue del
-trabajo normal.
+Medido el 2026-09-10:
 
-Se vuelve visible sólo cuando lo que escribe **destruye** en vez de regenerar, que es el caso que
-reportó el [068](068-verify-sobre-el-indice-y-pnpm-quiere-borrar-node-modules.md): pnpm 11 decide
+```
+dist ANTES del commit : VERSION = "lo-que-estoy-editando"
+dist DESPUÉS          : VERSION = "staged"
+app.js en el árbol    : VERSION = "lo-que-estoy-editando"
+```
+
+**No es regeneración inocua, y este caso lo suponía.** ~~Ninguno visible… el efecto no se distingue del
+trabajo normal.~~ El gate corre sobre el índice, así que lo que deja en tu salida de build es **la
+versión staged**, no la que estás editando. Tu fuente en disco dice una cosa y tu `dist/` dice otra, y
+nada lo anuncia. Si corrés la app después de commitear, corrés algo que no es lo que estás mirando.
+
+Se vuelve **destructivo** —y no sólo confuso— cuando lo que escribe borra en vez de regenerar, que es lo
+que reportó el [068](068-verify-sobre-el-indice-y-pnpm-quiere-borrar-node-modules.md): pnpm 11 decide
 reinstalar y empieza borrando el `node_modules` del proyecto. Ahí el 068 puso `CI=true` y cerró **ese**
-camino; el de abajo sigue abierto.
+camino; éste sigue abierto.
+
+**Y sólo pasa con lo que ya existe.** Un `dist/` que no existe no lo lista `git status --ignored`, así
+que no se enlaza y el gate lo crea adentro de la copia, donde se descarta con ella. El daño es
+exactamente sobre lo que ya habías construido.
 
 ## Causa raíz
 
@@ -67,8 +106,9 @@ Ninguno cerrado, y es una decisión con costo de plataforma:
 ## Tradeoffs
 
 - **La opción más completa es la menos portable**, y este toolkit corre en las tres plataformas.
-- **No medido cuánto daño hace hoy.** El único caso conocido de escritura destructiva es el de pnpm, ya
-  cerrado por otra vía. Lo demás es regeneración, que no se distingue del trabajo normal.
+- ~~**No medido cuánto daño hace hoy.**~~ **Medido el 2026-09-10, y no era regeneración**: la salida de
+  build queda con la versión del índice mientras el fuente en disco tiene otra. Lo que sigue sin medirse
+  es la **frecuencia** —cuántos commits reales pasan por ahí—, y eso decide si conviene la vía cara.
 - **Aislar de más rompe gates legítimos**: un gate que necesita escribir un caché para terminar en un
   tiempo razonable dejaría de poder hacerlo, y ahí el guard pasa de correcto a insoportable.
 
