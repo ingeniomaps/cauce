@@ -1,15 +1,16 @@
 ---
 caso: 077
 titulo: El guard de migraciones sólo ve `.sql` y no dice nada donde no cubre
-estado: abierto
+estado: resuelto
+resuelto-en: 0.77.0
 prioridad: media
 version-detectada: 0.75.0
 ---
 
 # 077 — `migrations` es inerte en todo proyecto cuyas migraciones no sean `.sql`
 
-**🔴 abierto** · detectado en 0.75.0 · prioridad **media** — un guard que se cree cubriendo algo y no
-lo cubre es peor que no tenerlo, y éste aparece en verde sin proteger una sola migración
+**🟢 resuelto en 0.77.0** · detectado en 0.75.0 · prioridad **media** — un guard que se cree cubriendo algo
+y no lo cubre es peor que no tenerlo, y éste aparecía en verde sin proteger una sola migración
 
 ## Resumen
 
@@ -108,3 +109,68 @@ instancia para que nadie le atribuyera la cobertura que no tiene.
 
 - [039](./039-el-guard-de-migraciones-bloquea-cualquier-archivo-con-sql-destructivo.md) — el filtro
   compartido nació ahí. Este caso es su contracara: aquél era el falso positivo, éste el falso negativo.
+
+## Cierre
+
+**Resuelto en 0.77.0**, y con **las dos** vías que este caso ofrecía, porque cada una sola deja la mitad
+del defecto en pie.
+
+### El recorrido de lo que este caso enumeró
+
+- **Opción 1 —«que el filtro salga de la configuración»— se hizo, acotada a la extensión.** `ops.config.json`
+  acepta `migrations.extensions`, con `["sql"]` de default. La ruta sigue fijada por el motor
+  —`migrations/`, `migration/`, `migrate/`—, y eso es una decisión: el hueco medido eran 409 migraciones
+  TypeORM **bajo `migrations/`**, así que la ruta no era el problema. Lo que reabriría esa mitad es
+  Alembic, que las pone en `alembic/versions/` y sigue sin cubrirse.
+- **Opción 2 —«que el guard lo diga»— también se hizo, y no como alternativa sino como complemento.** La
+  descripción decía «Protege migraciones existentes y bloquea SQL destructivo» a secas; ahora nombra el
+  campo que amplía la cobertura y el default de quien no lo declara. Sin esto, un proyecto que no
+  configura nada seguiría leyendo una promesa que no se le cumple — que es el defecto, no su síntoma.
+- **«No ampliar el regex a `.ts`/`.py`/`.rb` sin más» — se respetó, y es lo que hace que esto sea opt-in.**
+  Ampliar el default reintroduciría el falso positivo del [039](039-el-guard-de-migraciones-bloquea-cualquier-archivo-con-sql-destructivo.md)
+  por otra puerta. Quien sabe si sus migraciones son de lenguaje es el proyecto, y así el costo lo elige
+  quien lo paga. Hay una mutación que lo comprueba.
+- **Tradeoff «opción 1 agrega un campo y su validación» — se pagó**, y la validación resultó ser lo más
+  cargado de razón: la extensión entra en una expresión regular, así que un valor con metacaracteres la
+  ampliaría a todo. Se valida contra `[a-z0-9]+` en `validateOpsConfig` **y** se filtra en el guard, que
+  cae al default en vez de construir un patrón que no se pidió.
+- **Tradeoff «un proyecto declara `.ts` y vuelve el falso positivo del 039» — se acepta, acotado a su
+  propio alcance**, con la aprobación por ruta como salida. Es la misma que ya existía.
+- **Tradeoff «opción 2 no cambia ninguna conducta» — dejó de ser un costo** al tomarse junto con la 1: lo
+  que se declara ahora es cierto.
+
+### Qué se corrió
+
+**El falso negativo, reproducido antes de tocar nada**, con el mismo `DROP TABLE users` en la misma
+carpeta y cuatro extensiones:
+
+```
+1700000000000-Foo.ts        exit=0     ← TypeORM
+0001-foo.sql                exit=2
+0002_add_users.py           exit=0     ← Django / Alembic
+20230101_create_users.rb    exit=0     ← Rails
+```
+
+**Y el mismo guard después**, sobre el mismo directorio:
+
+```
+sin declarar nada                       .ts → exit 0 · .sql → exit 2
+con extensions: ["sql", "ts"]           .ts → exit 2 · .sql → exit 2 · .md → exit 0
+```
+
+**Seis mutaciones, las seis en rojo**: el guard dejando de leer lo que el proyecto declara; el default
+ampliándose solo —el falso positivo del 039—; el guard aceptando cualquier cadena en la expresión regular;
+la ruta dejando de decidir; la descripción volviendo a prometer de más; y el validador aceptando una
+extensión inválida.
+
+**Todas en un clon desechable bajo `/tmp`**, con el árbol de trabajo comprobado intacto (R23). Dos de
+ellas —la del guard y la del validador— **sobrevivieron en su primera versión** y obligaron a escribir los
+casos que las ejercen; la del validador ni siquiera se estaba aplicando, por la indentación del reemplazo.
+
+**La puerta entera**: 659 pruebas, 0 fallos.
+
+### Lo que no se pudo correr, y se dice
+
+La medición que originó el caso —64 `.sql` cubiertas contra 409 `.ts` invisibles— es de la instancia
+sidecar y no se puede rehacer desde acá. Lo que sí se reprodujo es la causa: el mismo contenido, la misma
+carpeta, y sólo una extensión juzgada.
