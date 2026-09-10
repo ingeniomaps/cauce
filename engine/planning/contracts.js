@@ -9,9 +9,26 @@ const TEST_TRACE = /^(?:n\/a\s*[—-]\s*.+|(?:A|C\d+)\s*(?:→|->)\s*\S.+)$/i
 const DECISION_TRACE = /\[(?:fuente|supuesto):\s*[^\]]+\]/i
 const COMMIT_TRACE = /^(?:n\/a\s*[—-]\s*.+|[0-9a-f]{7,40}\s+\S.*)$/i
 
+// Se corta en `;` sólo cuando detrás **empieza otra traza**. Es la misma decisión que `validCommitTrace`
+// toma unas líneas más abajo para el sha, y por el mismo motivo: el `;` es el separador que R8 fija y a
+// la vez el signo más común de la prosa española, y este campo pide las dos cosas — el contrato pide
+// `CN → prueba` y R9 pide decir cómo se vio fallar esa prueba.
+//
+// Con el corte a secas, una sola traza con prosa se partía en tres y el campo se rechazaba entero: el
+// mensaje mandaba a revisar la traza, que era lo único que estaba bien, y la salida fácil era acortar la
+// prosa hasta que pasara — o sea empobrecer justo la evidencia que R9 exige. Pasó dos veces en dos días
+// en una instancia real (caso 072).
+//
+// Lo comparten `validTestTrace` y `testedCriteria` porque «dónde termina una traza» es una sola decisión
+// y no dos. Con los datos de hoy las dos formas de partir dan el mismo resultado —un `;` que no abre
+// traza no produce un fragmento que empiece por `Cn →`, así que el rastreo no cambia—, y por eso ninguna
+// prueba lo distingue: comprobado con una mutación que hace partir distinto a cada uno y sobrevive. Se
+// comparte igual, para que no se separen el día que una de las dos cambie.
+const TRACE_SPLIT = /\s*;(?=\s*(?:(?:A|C\d+)\s*(?:→|->)|n\/a\s*[—-]))\s*/i
+const splitTraces = (value) => String(value || '').split(TRACE_SPLIT).map((one) => one.trim()).filter(Boolean)
+
 function validTestTrace(value) {
-  return String(value || '').split(/\s*;\s*/).filter(Boolean)
-    .every((item) => TEST_TRACE.test(item))
+  return splitTraces(value).every((item) => TEST_TRACE.test(item))
 }
 
 function validDecisionTrace(value) {
@@ -34,7 +51,7 @@ function validCommitTrace(value) {
 // Los criterios que la evidencia realmente rastrea. `n/a — razón` no rastrea ninguno a propósito: es
 // la salida explícita, y como lleva su razón escrita se lee en el propio DONE sin que nadie la cruce.
 function testedCriteria(value) {
-  return String(value || '').split(/\s*;\s*/).filter(Boolean)
+  return splitTraces(value)
     .map((item) => ((item.match(/^(C\d+)\s*(?:→|->)/i) || [])[1] || '').toUpperCase())
     .filter(Boolean)
 }
