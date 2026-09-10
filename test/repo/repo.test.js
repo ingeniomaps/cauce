@@ -594,3 +594,28 @@ test('los detectores de borrado y de home ven lo que tienen que ver', () => {
   assert.equal(CREA.test("assert.ok(salida.includes(path.join(os.homedir(), '.claude')))"), false,
     'nombrar la casa para que un guard decida sobre ella no es crear nada ahí')
 })
+
+// El nombre de un banco decide si una prueba pasa, porque la suite aísla lo que cada una mide filtrando
+// la salida de `check` por substring y esa salida empieza con la ruta absoluta del banco. Con el sufijo
+// aleatorio que agregaba mkdtemp esa decisión era del azar: `/adr\//` casó `…-w1cadr/` y un error de
+// `integrations` entró a una prueba de ADR (caso 085). Lo que se comprueba es la propiedad que lo
+// impide —el nombre es el pedido más un número y nada más—, no la ausencia de aquel fallo, que no se
+// puede volver a provocar a voluntad.
+test('el nombre de un banco no trae nada que la prueba no haya pedido', () => {
+  const { tempRoot, outsideTempRoot } = require('../support/environment')
+  for (const [donde, hacer] of [['tempRoot', tempRoot], ['outsideTempRoot', outsideTempRoot]]) {
+    const uno = hacer('cauce-nombre-de-banco-')
+    const otro = hacer('cauce-nombre-de-banco-')
+    for (const dir of [uno, otro]) {
+      assert.match(path.basename(dir), /^cauce-nombre-de-banco-\d+$/,
+        `${donde}: el nombre trae algo que nadie pidió — ${path.basename(dir)}`)
+    }
+    assert.notEqual(uno, otro, `${donde}: dos bancos con el mismo prefijo tienen que ser distintos`)
+    assert.ok(fs.existsSync(uno) && fs.existsSync(otro), `${donde}: el banco existe en disco`)
+  }
+
+  // Y la forma concreta que costó una corrida: el filtro que una prueba de ADR usa para quedarse con lo
+  // suyo no puede casar el nombre del banco.
+  assert.equal(/adr\//.test(`${tempRoot('cauce-plantilla-adr-')}/integrations/config.json`), false,
+    'un error ajeno no puede entrar por el nombre del banco')
+})
