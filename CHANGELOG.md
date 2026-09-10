@@ -14,6 +14,28 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.79.0] - 2026-09-10
+
+### Corregido
+
+- **El guard de migraciones frena por haber viajado, no por estar en disco.** Escribir una migración son
+  dos pasos —crearla y completarla— y el segundo se bloqueaba: el chequeo preguntaba si el archivo
+  existía, que no es la pregunta. Un stub de hace dos segundos y una migración publicada hace un año
+  daban la misma respuesta, y **ninguna herramienta lo esquivaba** —`Write`, `Edit` y `MultiEdit` se
+  bloqueaban igual—, así que lo único que quedaba a la vista era apagar el guard entero, incluida la
+  protección contra SQL destructivo.
+
+  Ahora se le pregunta a git si el archivo está en `HEAD`. En el índice no alcanza: un archivo apenas
+  agregado no viajó a ninguna parte. Y sin repositorio con el que contestar —un proyecto sin git— se
+  conserva la conducta anterior en vez de dejar pasar, que es el lado correcto para equivocarse cuando
+  no se puede saber.
+
+  **Qué cambia para vos**: completar una migración recién creada deja de frenarse. El mensaje del
+  bloqueo pasa a decir el hecho que lo sostiene —que está en el historial, o que existe y acá no hay con
+  qué saberlo— y a nombrar cómo aprobar esa ruta puntual en `planning/.ops-approval`, que es lo que el
+  bloqueo hermano ya hacía. Si tenías `OPS_MIGRATIONS_OVERRIDE=1` puesto para poder trabajar, ya no hace
+  falta y conviene sacarlo: apagaba también lo que sí te cuida.
+
 ## [0.78.0] - 2026-09-10
 
 ### Corregido
