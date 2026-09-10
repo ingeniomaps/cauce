@@ -38,6 +38,11 @@ const GATE = `${P}/AWAITING_REVIEW.md`
 const ROADMAP = `${P}/roadmap`
 
 // Estado de planning tal como lo emite `ops context --json`; ningún modelo parsea BACKLOG ni WIP.
+// De a pares, y sin regex: una comilla dentro de un literal de regex desincroniza a las dos puertas que
+// leen este archivo sin parsearlo —caso 084—, y de a pares es además lo correcto, porque una comilla
+// suelta no es un envoltorio. Por eso también la escapada en vez de alternar el estilo de comillas.
+const QUOTES = ['\'', '"']
+
 const CONTEXT = {
   type: 'object', additionalProperties: false,
   required: ['blocked', 'hasTask', 'wipActive', 'queued', 'cast', 'readOk'],
@@ -46,7 +51,13 @@ const CONTEXT = {
     // exactamente lo que un modelo completa cuando no tiene qué poner. Sin este campo esa invención se
     // lee igual que una cola terminada, y Pick la toma como permiso para promover.
     readOk: { type: 'boolean' },
-    blocked: { type: 'string' }, hasTask: { type: 'boolean' }, wipActive: { type: 'boolean' },
+    // Vocabulario cerrado, igual que `lane` acá abajo, y por la misma razón: el motor emite tres valores
+    // y nada más —`ops context` los decide con un `existsSync` y un conteo—, así que dejarlo como texto
+    // libre le pedía a quien lo transcribe que acertara una convención invisible. Un modelo que rellena
+    // «el valor vacío» puede escribir la cadena vacía o **escribir las comillas**, y las dos satisfacían
+    // el esquema: medido en una instancia real, 3 de 24 lecturas llegaron como `"\"\""` (caso 083).
+    blocked: { type: 'string', enum: ['', 'awaiting-review', 'blocked-on-human'] },
+    hasTask: { type: 'boolean' }, wipActive: { type: 'boolean' },
     queued: { type: 'integer' }, slug: { type: 'string' }, hito: { type: 'string' },
     service: { type: 'string' }, acceptance: { type: 'string' }, epic: { type: 'string' },
     // Sin declararlo acá no llega: `additionalProperties: false` lo descartaría, y el aplanado de la
@@ -364,7 +375,28 @@ if (!planning) return stop('context-unavailable', `no se pudo leer el estado de 
 // Que el agente conteste no significa que haya leído: el schema se completa igual con ceros. Parar acá
 // cuesta una corrida; seguir sobre una lectura fallida escribe en el BACKLOG, y eso no se revierte solo.
 if (!planning.readOk) return stop('context-unavailable', `${P} no se pudo leer; revisá la ruta y el cwd`)
-if (planning.blocked) return stop('awaiting-human-review', `${GATE} tiene un checkpoint humano sin resolver`)
+// `blocked` se lee por su valor y no por su verdad. Como verdad, **cualquier** cadena no vacía frenaba la
+// corrida con el mismo motivo, y eso mentía dos veces: con `blocked-on-human` —la cola trabada por
+// acciones humanas, que es otra cosa— mandaba a mirar un gate que no existe, y eso no era intermitente;
+// y con la cadena `""` que a veces llega del transcriptor, frenaba sin que hubiera nada que resolver.
+//
+// El vacío se normaliza antes porque sus formas equivocadas no son ambiguas: dos comillas o unos espacios
+// no son ningún bloqueo legítimo. Lo que no se reconoce **no se adivina**: para diciendo que el contexto
+// llegó fuera del vocabulario, que es lo que esta familia de casos —056, 074, 075— pide para lo que no se
+// pudo determinar.
+let blocker = String(planning.blocked || '').trim()
+while (blocker.length > 1 && QUOTES.includes(blocker[0]) && blocker[blocker.length - 1] === blocker[0]) {
+  blocker = blocker.slice(1, -1).trim()
+}
+if (blocker === 'awaiting-review') {
+  return stop('awaiting-human-review', `${GATE} tiene un checkpoint humano sin resolver`)
+}
+if (blocker === 'blocked-on-human') {
+  return stop('blocked-on-human', `toda la cola espera una acción humana. Está en ${HUMAN}`
+    + `${(planning.blockedTasks || []).length ? `, sobre ${planning.blockedTasks.join(', ')}` : ''}`)
+}
+if (blocker) return stop('context-unavailable', `${P} contestó blocked=${JSON.stringify(planning.blocked)}, `
+  + 'que no es del vocabulario. No se sabe si hay bloqueo, así que no se sigue como si no lo hubiera.')
 
 let currentMilestone = planning.wipActive ? planning.hito : ''
 const completed = []
