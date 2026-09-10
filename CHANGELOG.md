@@ -37,6 +37,16 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **La entrada declara también `review:`, y `check` cruza los dos.** El carril dice cuánta ceremonia
+  **merecía** la tarea; `review:` dice cuánta **recibió** —el veredicto y quién revisó, o `n/a — razón`
+  cuando no corrió—. Es la dimensión que la propia ADR OPS-006 nombraba como la que falta: «se sabría
+  comparando hallazgos de review por carril, y hoy no se registra esa dimensión en DONE».
+
+  Con los dos campos, `check` avisa lo que hasta ahora no tenía cómo ver: una entrada cuyo carril convoca
+  revisor —`directo`, `lite`, `full`— y cuya revisión no corrió. `express` queda afuera porque es el único
+  que legítimamente no convoca a nadie. Avisa y no falla: es un hecho del pasado que no se arregla
+  editando la entrada, y el único camino al verde sería reescribir el registro.
+
 - **La entrada de una tarea cerrada declara `lane:`, el carril con el que corrió.** El carril decide qué
   fases recibe una tarea —`express` se saltea Ready, Plan y QA; `full` las corre todas— y viajaba sólo en
   la línea del BACKLOG, que **se borra al cerrar**. Con eso, «¿esta tarea recibió la ceremonia que su
