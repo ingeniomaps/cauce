@@ -39,6 +39,11 @@ archivo y sin parsearlo:
 Un caso se marca `resuelto` **cuando la versión que lo arregla está publicada**, no cuando el PR
 mergea: mientras tanto sigue mordiendo a todo el que instale.
 
+Y no se marca sin haberlo probado corriendo. El `## Cierre` nombra qué se corrió y qué devolvió —la
+salida, la mutación vista en rojo, el número medido—; «la suite pasa» no cuenta, porque dice que nada de
+lo que ya había se rompió y no que esto funcione. Vale igual si se decidió no arreglarlo: ahí se prueba
+el dato que sostiene la decisión. El porqué vive en el `AGENTS.md` de la raíz.
+
 ## Qué lleva adentro
 
 Las secciones del molde, en este orden. La que no aplique se saca; ninguna se deja vacía.

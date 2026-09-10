@@ -16,6 +16,27 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.75.0]
 
+### Cambiado
+
+- **R9 dice ahora que una quita casi nunca se ve como una quita, y que eso no admite excepción.** Se
+  escribe como un agregado —una bandera que se pone, una variable que se exporta— y lo que la delata es
+  la frase que la justifica: «lo agrego **para que** deje de …». Silenciar un aviso, saltear una rama o
+  desarmar una confirmación son quitas, y una quita no se entrega sin su aserción de ausencia vista en
+  rojo devolviendo lo quitado.
+
+  Con un renglón propio para el caso que más se disfraza: **una confirmación que estorba casi siempre
+  está cuidando algo**, y si no sabés qué, eso es el resultado de la medición y no un permiso para
+  seguir. Lo que corresponde es quitarle a la herramienta el motivo de preguntar, no la pregunta.
+
+  **Lo que te pide algo**: es una regla del sistema, así que baja a tu `planning/` en el próximo
+  `upgrade` y aplica a todo cambio, no sólo a los del toolkit.
+
+- **Un caso no se cierra sin haberlo probado corriendo.** El `## Cierre` nombra qué se corrió y qué
+  devolvió —la salida, la mutación vista en rojo, el número medido—; «la suite pasa» no cuenta, porque
+  dice que nada de lo que ya había se rompió y no que esto funcione. Vale igual cuando se decide no
+  arreglar: ahí se prueba el dato que sostiene la decisión. La puerta lo comprueba desde esta versión y
+  no hacia atrás, por lo mismo que el contraste rige desde 0.65.0.
+
 ### Corregido
 
 - **Un gate ya no puede borrar el `node_modules` de tu proyecto, y se revierte el `CI=true` de 0.74.0.**

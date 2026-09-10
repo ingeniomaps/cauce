@@ -16,8 +16,11 @@ const ISSUES = path.resolve(__dirname, '..', '..', 'docs', 'issues')
 const DESDE = [0, 65, 0]
 
 const version = (raw) => String(raw || '').trim().split('.').map(Number)
-const alcanzado = (v) => v.length === 3 && !v.some(Number.isNaN)
-  && (v[0] !== DESDE[0] ? v[0] > DESDE[0] : v[1] !== DESDE[1] ? v[1] > DESDE[1] : v[2] >= DESDE[2])
+// El piso es un parámetro porque las dos exigencias no empezaron el mismo día: el contraste rige desde
+// 0.65.0 y la prueba nombrada desde 0.75.0. Retro-rellenar cualquiera de las dos sería escribir de
+// memoria lo que en su momento no se hizo.
+const alcanzado = (v, desde = DESDE) => v.length === 3 && !v.some(Number.isNaN)
+  && (v[0] !== desde[0] ? v[0] > desde[0] : v[1] !== desde[1] ? v[1] > desde[1] : v[2] >= desde[2])
 
 function cases() {
   return fs.readdirSync(ISSUES).filter((name) => /^\d{3}-.*\.md$/.test(name)).sort().map((name) => {
@@ -46,6 +49,34 @@ test('un caso resuelto trae el contraste contra lo que enumeró', () => {
   }
   assert.ok(mirados > 0, 'ningún caso alcanzó la convención: el recorrido no está midiendo nada')
   assert.deepEqual(faltan, [], `casos cerrados sin contraste:\n  ${faltan.join('\n  ')}`)
+})
+
+// Cerrar un caso es afirmar que algo que no funcionaba ahora funciona, y eso es una afirmación de
+// mecanismo: lleva su registro. El cierre tiene que nombrar qué se corrió —la salida, la mutación vista
+// en rojo, el número medido—, no sólo qué se decidió.
+//
+// Lo que atrapa es la mitad de arriba: que la sección exista y recorra su enumeración no dice que nadie
+// haya ejecutado nada. Un arreglo comprobado a medias —se midió que lo nuevo aparecía y no que lo viejo
+// se hubiera ido— pasó ese contraste, se publicó, y volvió como el caso siguiente.
+//
+// Y lo que **no** atrapa hay que decirlo: mide que la palabra esté, no que sea cierta. Igual que el
+// contraste de arriba, la honestidad la sostiene quien cierra. Rige desde 0.75.0 y no antes, por lo
+// mismo que el contraste rige desde 0.65.0: retro-rellenarlo sería escribir de memoria la prueba que en
+// su momento no se corrió.
+const NOMBRA_SU_PRUEBA = /mutaci[óo]n|comprobad|medid|probad|se corrió|corrida real|ejecutad|en rojo/i
+test('un caso resuelto dice qué se corrió para saber que funciona', () => {
+  const faltan = []
+  let mirados = 0
+  for (const one of cases()) {
+    if (one.estado !== 'resuelto' || !alcanzado(version(one.resueltoEn), [0, 75, 0])) continue
+    mirados += 1
+    const cierre = (one.text.match(/\n## Cierre\n([\s\S]*?)(?=\n## |$)/) || [])[1] || ''
+    if (!NOMBRA_SU_PRUEBA.test(cierre)) {
+      faltan.push(`${one.name}: el cierre no nombra qué se corrió`)
+    }
+  }
+  assert.ok(mirados > 0, 'ningún caso alcanzó la convención: el recorrido no está midiendo nada')
+  assert.deepEqual(faltan, [], `casos cerrados sin decir cómo se supo que funciona:\n  ${faltan.join('\n  ')}`)
 })
 
 // Un caso dice su estado en dos lugares —el frontmatter y el encabezado que se lee primero— y quien
