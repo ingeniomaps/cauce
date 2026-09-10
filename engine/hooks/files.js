@@ -171,6 +171,35 @@ function workspaceBoundary(input) {
   }
 }
 
+// Qué archivos son migraciones para este proyecto. La ruta la fija el motor —`migrations/`, `migration/`
+// o `migrate/`, que es donde las ponen todas las herramientas— y **la extensión la declara el proyecto**,
+// con `sql` de default.
+//
+// Sin esto el guard sólo veía `.sql`, así que en TypeORM, Prisma, Django, Rails o Alembic no miraba nada:
+// ni frenaba el SQL destructivo, ni protegía una migración existente de ser reescrita. Y no lo decía —
+// aparecía cableado y en verde—. Medido en una instancia real: 64 migraciones `.sql` cubiertas y **409
+// TypeORM `.ts` invisibles** (caso 077).
+//
+// No se amplía el default a `.ts`/`.py`/`.rb` por su cuenta: eso reintroduciría el falso positivo del
+// caso 039 —un archivo de lenguaje que menciona `DROP TABLE` en un comentario o en un string— por otra
+// puerta. Declararlo es opt-in porque el que sabe si sus migraciones son de lenguaje es el proyecto, y
+// porque así el costo lo elige quien lo paga.
+//
+// La extensión inválida no se descarta en silencio: descartarla dejaría al proyecto creyendo que declaró
+// una cobertura que no tiene, que es exactamente el defecto que este helper vino a cerrar. La valida
+// `validateOpsConfig`, y acá se ignora lo que no pasa ese filtro porque el guard no es el lugar donde se
+// enseña a escribir la configuración.
+const DEFAULT_MIGRATION_EXTENSIONS = ['sql']
+
+function migrationPattern(input) {
+  const root = opsRoot(input)
+  const declared = root ? (configOf(root).migrations || {}).extensions : null
+  const extensions = (Array.isArray(declared) ? declared : DEFAULT_MIGRATION_EXTENSIONS)
+    .filter((one) => typeof one === 'string' && /^[a-z0-9]+$/.test(one))
+  const usable = extensions.length ? extensions : DEFAULT_MIGRATION_EXTENSIONS
+  return new RegExp(`(?:^|/)(?:migrations?|migrate)/.*\\.(?:${usable.join('|')})$`, 'i')
+}
+
 function migrations(input) {
   if (process.env.OPS_MIGRATIONS_OVERRIDE === '1') return
   // Cada rama cierra su propio límite. Cuando el `\b` estaba al final del grupo se aplicaba a las tres, y
@@ -195,9 +224,10 @@ function migrations(input) {
   // El precio de compartir el filtro es que una migración escrita fuera de un directorio con ese nombre
   // deja de frenarse. Es deliberado: el otro chequeo ya vivía con esa convención, y dos condiciones de
   // la misma función con dos alcances distintos es lo que hizo falta arreglar acá.
+  const esMigracion = migrationPattern(input)
   for (const raw of filesOf(input)) {
     const normalized = raw.replace(/\\/g, '/')
-    if (!/(?:^|\/)(?:migrations?|migrate)\/.*\.sql$/i.test(normalized)) continue
+    if (!esMigracion.test(normalized)) continue
     if (approved(input, normalized)) continue
     if (destructiveSql.test(contentOf(input))) {
       block(`${raw} contiene SQL destructivo.\n${AP.HOW('OPS_MIGRATIONS_OVERRIDE')}`)

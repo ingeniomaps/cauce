@@ -86,6 +86,22 @@
         }
       },
       "additionalProperties": false
+    },
+    "migrations": {
+      "type": "object",
+      "description": "Qué cuenta como migración para el guard `migrations`. Sin esto sólo juzga `.sql`, así que en un proyecto TypeORM, Prisma, Django, Rails o Alembic el guard no mira nada.",
+      "additionalProperties": false,
+      "properties": {
+        "extensions": {
+          "type": "array",
+          "description": "Extensiones, sin el punto y en minúscula. Por defecto [\"sql\"].",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+$"
+          },
+          "minItems": 1
+        }
+      }
     }
   },
   "additionalProperties": false

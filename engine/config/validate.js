@@ -20,6 +20,7 @@ function validateOpsConfig(config) {
   // `cauceVersion` la escribe el toolkit, no la persona: registra de qué versión salió la instancia.
   const allowed = new Set([
     '$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoots', 'writableOutsideRoots', 'runner',
+    'migrations',
   ])
   for (const key of Object.keys(config)) {
     if (RETIRED[key]) errors.push(`ops.config.json: ${key} ya no se usa: ${RETIRED[key]}`)
@@ -32,7 +33,39 @@ function validateOpsConfig(config) {
   validateWorkspaces(config.workspaceRoots, errors)
   validateWritable(config.writableOutsideRoots, errors)
   validateRunner(config.runner, errors)
+  validateMigrations(config.migrations, errors)
   return errors
+}
+
+// Qué cuenta como migración para el guard. Sin declararlo, sólo `.sql` — y ése es el default que hace
+// falta decir, porque un proyecto TypeORM, Prisma, Django o Rails tiene el guard cableado y en verde sin
+// que mire una sola migración (caso 077).
+//
+// La extensión se valida contra `[a-z0-9]+` por dos razones que se juntan: entra en una expresión
+// regular, así que un valor con metacaracteres la rompería o la ampliaría sin que nadie lo pidiera; y
+// declarar `.SQL` o `sql;` es un error de tipeo que conviene que se vea acá y no como cobertura que no
+// existe.
+function validateMigrations(migrations, errors) {
+  if (migrations === undefined) return
+  if (!migrations || typeof migrations !== 'object' || Array.isArray(migrations)) {
+    errors.push('ops.config.json: migrations debe ser un objeto')
+    return
+  }
+  for (const key of Object.keys(migrations)) {
+    if (key !== 'extensions') errors.push(`ops.config.json: migrations.${key} no está permitido`)
+  }
+  if (!('extensions' in migrations)) return
+  const declaradas = migrations.extensions
+  if (!Array.isArray(declaradas) || !declaradas.length) {
+    errors.push('ops.config.json: migrations.extensions debe listar al menos una extensión, o no estar')
+    return
+  }
+  for (const one of declaradas) {
+    if (typeof one !== 'string' || !/^[a-z0-9]+$/.test(one)) {
+      errors.push(`ops.config.json: migrations.extensions "${one}" debe ser la extensión sin el punto `
+        + 'y en minúscula, como "sql" o "ts"')
+    }
+  }
 }
 
 function validateWorkspaces(workspaces, errors) {

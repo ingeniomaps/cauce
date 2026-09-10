@@ -14,7 +14,7 @@ const os = require('node:os')
 const path = require('node:path')
 
 const { spawnSync } = require('node:child_process')
-const { execute, executeAll, guards, hookGroups } = require('../../engine/hooks/run')
+const { execute, executeAll, guards, hookGroups, hookMetadata } = require('../../engine/hooks/run')
 
 // Que un guard frene no alcanza: tiene que frenar por lo que corresponde, y el motivo es lo único que
 // el usuario recibe. Sin exigirlo, cambiarle a un bloqueo el mensaje de otra regla dejaba la suite entera
@@ -720,6 +720,58 @@ test('guard-migrations protege historial y SQL destructivo', () => {
   assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: acotado }))
   const renombre = { file_path: 'migrations/003_ren.sql', content: 'ALTER TABLE users RENAME COLUMN a TO b;' }
   assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: renombre }))
+})
+
+// La extensión es del proyecto y el default no cambió: sin declarar nada sigue viendo sólo `.sql`, así
+// que una migración TypeORM con el mismo `DROP TABLE` pasa. Las dos mitades van juntas porque cualquiera
+// sola deja pasar la otra — un guard que mirara todo reintroduciría el falso positivo del caso 039, y uno
+// que no mirara nada es el 077.
+test('guard-migrations juzga las extensiones que el proyecto declara, y `.sql` si no declara ninguna', () => {
+  const root = tempRoot('ops-hook-migrations-ext-')
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.mkdirSync(path.join(root, 'migrations'), { recursive: true })
+  const config = (extra) => fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({
+    project: 'x', mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }], ...extra,
+  }))
+  const escribe = (file) => ({
+    cwd: root, tool_input: { file_path: `migrations/${file}`, content: 'DROP TABLE users' },
+  })
+
+  // Sin declarar: el default es `.sql` y nada más. Es lo que hacía que 409 migraciones TypeORM de una
+  // instancia real fueran invisibles para un guard que aparecía cableado y en verde.
+  config({})
+  blocked('migrations', escribe('001.sql'), /SQL destructivo/)
+  assert.doesNotThrow(() => execute('migrations', escribe('1700000000000-Foo.ts')),
+    'sin declararlo, el guard no mira una migración de lenguaje')
+
+  // Declarándolas, las mira — y sigue sin mirar lo que no es una migración, que es el falso positivo que
+  // el 039 vino a cerrar.
+  config({ migrations: { extensions: ['sql', 'ts'] } })
+  blocked('migrations', escribe('1700000000000-Foo.ts'), /SQL destructivo/)
+  blocked('migrations', escribe('001.sql'), /SQL destructivo/)
+  assert.doesNotThrow(() => execute('migrations', escribe('notas.md')), 'un archivo que no es migración')
+
+  // Y la ruta sigue decidiendo: un `.ts` fuera de una carpeta de migraciones no lo juzga nadie, aunque el
+  // proyecto haya declarado esa extensión.
+  assert.doesNotThrow(() => execute('migrations', {
+    cwd: root, tool_input: { file_path: 'src/repositorio.ts', content: 'DROP TABLE users' },
+  }))
+
+  // Una extensión que el validador rechaza no llega a la expresión regular: con metacaracteres la
+  // ampliaría a todo, que es peor que el defecto que el campo vino a cerrar. El guard cae al default en
+  // vez de construirla — quien enseña a escribir la configuración es `check`, no un bloqueo.
+  config({ migrations: { extensions: ['.*'] } })
+  assert.doesNotThrow(() => execute('migrations', escribe('notas.md')), 'no se amplía a cualquier cosa')
+  blocked('migrations', escribe('001.sql'), /SQL destructivo/)
+})
+
+// El guard dice qué cubre. La descripción prometía «protege migraciones» a secas, y un proyecto TypeORM la
+// leía como cobertura que no tenía: eso es lo que vuelve a un guard peor que no tenerlo.
+test('la descripción del guard de migraciones nombra su alcance real', () => {
+  const migraciones = hookMetadata.find((one) => one.name === 'migrations')
+  assert.ok(migraciones, hookMetadata.map((one) => one.name).join(', '))
+  assert.match(migraciones.purpose, /migrations\.extensions/, 'nombra el campo que amplía la cobertura')
+  assert.match(migraciones.purpose, /\.sql/, 'y el default de quien no lo declara')
 })
 
 test('guard-dependencies exige consistencia y bloquea publicación', () => {
