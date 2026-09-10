@@ -1497,6 +1497,39 @@ test('el gate que corre sobre la copia la ve como no interactiva, y sobre el ár
   }
 })
 
+// La copia mide el índice, así que lo que un gate escriba en lo enlazado queda con la versión **staged**
+// mientras el fuente en disco tiene otra — y nada lo dice. Medido con un `dist/` que pasaba de lo que el
+// usuario editaba a lo que estaba en el índice (caso 069). Las dos mitades importan y por eso van
+// juntas: dejar de enlazar la salida no vale nada si además se deja de enlazar la dependencia.
+test('un gate no pisa lo que el usuario ya construyó, y sigue viendo sus dependencias', () => {
+  const root = tempRoot('ops-hook-aislado-')
+  initRepo(root)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'planning', '.keep'), '')
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  fs.writeFileSync(path.join(root, '.gitignore'), 'dist/\nnode_modules/\n')
+  fs.writeFileSync(path.join(root, 'build.js'), 'const fs = require("node:fs")\n'
+    + 'if (!fs.existsSync("node_modules/dep/marca.txt")) { console.error("falta la dependencia"); process.exit(1) }\n'
+    + 'fs.mkdirSync("dist", { recursive: true })\n'
+    + 'fs.copyFileSync("app.js", "dist/app.js")\n')
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { build: 'node build.js' } }))
+  fs.writeFileSync(path.join(root, 'app.js'), 'VERSION = "staged"\n')
+  fs.mkdirSync(path.join(root, 'node_modules', 'dep'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'node_modules', 'dep', 'marca.txt'), 'soy la dependencia\n')
+  git(['add', '-A'], root)
+
+  // El usuario sigue editando y ya había construido con lo suyo.
+  fs.writeFileSync(path.join(root, 'app.js'), 'VERSION = "lo-que-estoy-editando"\n')
+  fs.mkdirSync(path.join(root, 'dist'), { recursive: true })
+  fs.copyFileSync(path.join(root, 'app.js'), path.join(root, 'dist', 'app.js'))
+
+  // Que pase es la mitad que prueba que la dependencia sigue enlazada: sin ella el build sale en rojo.
+  assert.doesNotThrow(() => execute('verify', { cwd: root, tool_input: { command: 'git commit -m x' } }),
+    'la dependencia se enlaza igual, que es lo que el gate no puede fabricar')
+  assert.equal(fs.readFileSync(path.join(root, 'dist', 'app.js'), 'utf8').trim(),
+    'VERSION = "lo-que-estoy-editando"', 'y la salida de build del usuario queda como estaba')
+})
+
 // El mensaje decía `test (exit 1)` y tiraba la salida de la herramienta, así que una suite en rojo y un
 // gestor que se negó a arrancar el script llegaban con el mismo texto — y la salida que el guard ofrece
 // empuja a aprobar el commit como «rojo conocido». Es la misma forma de fallar que el caso 066 encontró
