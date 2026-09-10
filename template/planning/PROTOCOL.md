@@ -13,7 +13,11 @@ invariantes.
   opcionales: sin ellos la tarea está sin clasificar, que es un estado y no un error. Una tarea con
   dependencias no se ofrece ni se toma hasta que todas estén en DONE.
 - DONE: un archivo por tarea cerrada, `done/<slug>.md`, con su entrada `[x]` y los campos `acept:`,
-  `fecha:` en AAAA-MM-DD, `done:`, `qa:`, `tests:` y `commit:`. La fecha es la del cierre, y es lo que
+  `fecha:` en AAAA-MM-DD, `done:`, `qa:`, `tests:`, `commit:` y `lane:`. `lane:` repite el carril con el
+  que la tarea corrió —`express`, `directo`, `lite`, `full`— o `sin clasificar` si su línea no lo
+  declaraba, y existe porque el carril decide qué fases corren y su línea del BACKLOG se borra al cerrar:
+  sin él, si una tarea recibió la ceremonia que le tocaba sólo lo sabe quien estuvo en la sesión.
+  `check` avisa cuántas entradas no lo traen y falla si trae un valor que no existe. La fecha es la del cierre, y es lo que
   ordena una evidencia que ya no depende de su posición dentro de un archivo. `tests:` enlaza cada criterio
   mediante `CN → prueba`; usa `A → prueba` cuando no hay épica o `n/a — razón` si no existe una
   superficie ejecutable. `decisions:` es opcional y, si aparece, cita `[fuente: ...]` o

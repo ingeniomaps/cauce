@@ -99,3 +99,47 @@ test('sin --task, la más reciente la decide la fecha y no el nombre del archivo
 
   assert.equal(JSON.parse(run(['evidence', dir, '--json']).stdout).task, 'alta')
 })
+
+// El carril decide qué fases corre una tarea y su línea del BACKLOG se borra al cerrar, así que sin este
+// campo la pregunta «¿recibió la ceremonia que le tocaba?» sólo la contesta quien estuvo en la sesión
+// (caso 074). Las tres mitades van juntas porque cualquiera sola deja pasar a las otras dos: se lee, se
+// avisa cuando falta y se falla cuando está mal.
+test('el carril con el que corrió la tarea sobrevive en su entrada de DONE', () => {
+  const dir = planning('cauce-done-lane-')
+  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta', '  lane: express'))
+  const alta = P.readDone(dir).entries.find((one) => one.slug === 'alta')
+  assert.equal(alta.lane, 'express', 'el campo se lee')
+
+  const salida = JSON.parse(run(['check', dir, '--json']).stdout)
+  assert.deepEqual(salida.errors.filter((one) => /alta/.test(one)), [], 'y el contrato la acepta')
+  assert.deepEqual(salida.warnings.filter((one) => /sin lane:/.test(one)), [],
+    'con el campo puesto no avisa nada')
+})
+
+// Falta y avisa; no falla — el porqué está en `doneEntryErrors`, junto a la decisión. Lo que se fija acá
+// es que las dos mitades no se confundan: que el aviso exista **y** que el `check` siga pasando. Una sola
+// de las dos deja pasar el error opuesto, y los dos ya ocurrieron en este repositorio: un aviso que en
+// realidad frenaba, y una comprobación que se convirtió en aviso y nadie notó que había dejado de frenar.
+test('una entrada sin carril avisa con su cuenta y no frena el check', () => {
+  const dir = planning('cauce-done-sin-lane-')
+  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta'))
+  fs.writeFileSync(path.join(dir, 'done', 'baja.md'), entrada('baja'))
+
+  const salida = JSON.parse(run(['check', dir, '--json']).stdout)
+  assert.deepEqual(salida.errors.filter((one) => /lane "/.test(one)), [], 'avisar no es fallar')
+  assert.equal(salida.warnings.filter((one) => /2 entrada\(s\) sin lane:/.test(one)).length, 1,
+    `dice cuántas son, que es lo que se mira bajar: ${JSON.stringify(salida.warnings)}`)
+})
+
+// Escrito mal sí frena, porque eso es un valor que alguien puso y de él depende leer si la ceremonia fue
+// la que correspondía. Es el mismo trato que recibe un lane inventado en la línea del BACKLOG.
+test('un carril que no existe en la entrada de DONE frena el check', () => {
+  const dir = planning('cauce-done-lane-mal-')
+  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta', '  lane: rapido'))
+
+  const errors = JSON.parse(run(['check', dir, '--json']).stdout).errors.filter((one) => /lane "/.test(one))
+  assert.equal(errors.length, 1, JSON.stringify(errors))
+  assert.match(errors[0], /lane "rapido" no existe/)
+  assert.match(errors[0], /sin clasificar/,
+    'y nombra el vocabulario entero, incluido el que dice que la línea no lo declaraba')
+})

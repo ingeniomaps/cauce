@@ -607,7 +607,8 @@ while (rounds++ < MAX_TASKS) {
       `Escribí el WIP y nada más: no toques código, no corras pruebas, no cierres la tarea y no escribas ` +
       `en DONE. Los pasos van sin tildar porque todavía no ocurrieron. task=${task.id}, ` +
       `hito=${JSON.stringify(task.hito)}, phase=Build, service=${task.service}, ` +
-      `acceptance=${JSON.stringify(task.acceptance)}, pasos sin tildar=${JSON.stringify(plan.steps)}. ` +
+      `acceptance=${JSON.stringify(task.acceptance)}, lane=${planning.lane || 'sin clasificar'}, ` +
+      `pasos sin tildar=${JSON.stringify(plan.steps)}. ` +
       `Registrá el reparto de cargos ${JSON.stringify(cast)} en las decisiones del WIP, para que después se ` +
       `pueda auditar quién revisó qué. Seguí el contrato de WIP exactamente y reportá con qué status quedó.`,
       { label: 'wip', schema: {
@@ -790,7 +791,8 @@ while (rounds++ < MAX_TASKS) {
   phase('Done')
   await write(
     `Cerrá ${task.id} de forma atómica: escribí ${doneFile(task.id)} con su evidencia —acept, ` +
-    `fecha: ${planning.today}, done, qa, tests y commit, en el formato de entrada que trae este preámbulo—; ` +
+    `fecha: ${planning.today}, done, qa, tests, commit y lane, en el formato de entrada que trae este ` +
+    `preámbulo—; ` +
     `sacala junto con sus notas indentadas de ${BACKLOG}; cerrá su épica sólo si no queda ` +
     `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE; y soltá la reserva corriendo ` +
     `"node tools/ops.js release ${P} ${task.id}". En decisions no nombres una fase ni un cargo ` +

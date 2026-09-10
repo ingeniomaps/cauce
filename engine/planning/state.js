@@ -50,7 +50,7 @@ function currentTask({ milestones, done, wips = [], claims = [] }, blockers = []
   if (wip) {
     const active = queue.find((task) => task.slug === wip.task)
       || {
-        slug: wip.task, hito: '', tier: '', cast: { build: '', review: [] },
+        slug: wip.task, hito: '', tier: wip.lane || '', cast: { build: '', review: [] },
         service: wip.service, acceptance: '', epic: '', criteria: [],
       }
     return { task: active, claimed: mine.has(wip.task), skipped: [], taken: [], waiting: [] }

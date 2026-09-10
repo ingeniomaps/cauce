@@ -124,6 +124,18 @@ test('si el BACKLOG no cambió tras partir la tarea, el recorrido para', async (
   assert.match(result.detail, /la escritura no ocurrió como se pidió/)
 })
 
+// Los dos destinos en un solo caso, porque el recorrido los escribe en fases distintas y separarlos deja
+// medio arreglo pasando por entero: con el carril sólo en el cierre, una corrida reanudada lo perdió mucho
+// antes; con el carril sólo en el WIP, nadie lo copia al registro. Qué cuida cada destino lo dicen
+// `parseWip` y el contrato de DONE.
+test('el carril con el que corre la tarea viaja al WIP y al cierre', async () => {
+  const { prompts } = await runFlow({}, { lane: 'lite', vouched: true })
+  const wip = prompts.find((one) => one.key === KEY.wip).prompt
+  assert.match(wip, /lane=lite/, 'el plan en vuelo lo conserva para quien reanude')
+  const cierre = prompts.find((one) => one.key.startsWith('Done|')).prompt
+  assert.match(cierre, /tests, commit y lane/, 'y el cierre lo pide como un campo más de la evidencia')
+})
+
 // El cierre escribe un archivo por tarea y no agrega a uno compartido: es lo que hace que dos corridas
 // en paralelo no se pisen al terminar. Y la fecha la trae el motor —un workflow no tiene reloj, hay una
 // puerta que se lo impide— así que el prompt tiene que llevarla ya resuelta, no pedírsela al modelo.

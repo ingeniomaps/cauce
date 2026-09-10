@@ -87,6 +87,12 @@ function validateDoneEntry(entry, cited = []) {
 //
 // Los criterios que la historia declaró cubrir los cita el roadmap y no la entrada, así que el cruce
 // sólo existe si la entrada dice de qué épica viene.
+// El vocabulario del carril tal como se escribe en una entrada de DONE: los cuatro de la línea del
+// BACKLOG más el que dice que la línea no lo declaraba. `sin clasificar` no es un hueco disimulado — es
+// el estado que `PROTOCOL.md` ya llama estado y no error, y escribirlo distingue «corrió sin carril» de
+// «nadie escribió el campo», que es justo lo que este campo vino a poder contestar.
+const LANE_VALUES = [...P.LANES, 'sin clasificar']
+
 function doneEntryErrors(entry, epics = []) {
   const at = `${entry.source} ${entry.slug}`
   const errors = []
@@ -97,9 +103,26 @@ function doneEntryErrors(entry, epics = []) {
   if (!entry.done) errors.push(`${at}: falta done:`)
   if (!entry.qa) errors.push(`${at}: falta qa:`)
   if (!entry.commit) errors.push(`${at}: falta commit:`)
+  // El carril con el que la tarea corrió. Ausente **avisa** y no frena, porque toda entrada escrita antes
+  // de que el campo existiera lo está y no hay de dónde sacárselo: exigirlo pondría en rojo el `check` de
+  // cada instancia que actualiza, por algo que nadie puede arreglar. Escrito mal sí frena, porque eso es
+  // un valor que alguien puso y de él depende leer si la ceremonia fue la que correspondía (OPS-006).
+  if (entry.lane && !LANE_VALUES.includes(entry.lane)) {
+    errors.push(`${at}: lane "${entry.lane}" no existe; usá ${LANE_VALUES.join(' | ')}`)
+  }
   const story = epics.find((epic) => epic.num === entry.epic)?.stories
     .find((candidate) => candidate.slug === entry.slug)
   return [...errors, ...validateDoneEntry(entry, story ? story.criteria : [])]
+}
+
+// Cuántas entradas cerradas no dicen con qué carril corrieron. Avisa en vez de fallar por lo que dice
+// `doneEntryErrors`, y cuenta en vez de listar porque al principio son todas: lo que se lee es que el
+// número baje. Cuando llegue a cero, exigirlo deja de costarle nada a nadie y ahí se puede decidir.
+function doneLaneWarnings(done, adopted = new Set()) {
+  const sin = done.entries.filter((entry) => !adopted.has(entry.slug) && !entry.lane)
+  if (!sin.length) return []
+  return [`planning/done: ${sin.length} entrada(s) sin lane:, así que no se puede comprobar sobre el `
+    + 'registro que la ceremonia que recibieron fue la que su superficie pedía (OPS-006)']
 }
 
 function duplicates(values) {
@@ -308,6 +331,7 @@ function validateState({
 module.exports = {
   validateState,
   doneEntryErrors,
+  doneLaneWarnings,
   validCommitTrace,
   validDecisionTrace,
   validTestTrace,

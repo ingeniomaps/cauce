@@ -287,7 +287,7 @@ function readDone(dir) {
         epic: ((match[2].match(/\(epic:\s*(\d{3})\)/) || [])[1] || ''),
         acceptance: field('acept'), fecha: field('fecha'),
         done: field('done'), qa: field('qa'), tests: field('tests'),
-        decisions: field('decisions'), commit: field('commit'),
+        decisions: field('decisions'), commit: field('commit'), lane: field('lane'),
         source: path.relative(dir, file), raw: match[0].trimEnd(),
       })
     }
@@ -370,6 +370,10 @@ function parseWip(text, runner) {
   if (!task) return null
   return {
     task, runner, phase: field('phase') || '?', service: field('service'),
+    // El carril viaja en el WIP porque la línea del BACKLOG deja de existir al cerrar, y sin esto una
+    // corrida que se reanuda llega al cierre con el carril ya perdido: `currentTask` arma la tarea desde
+    // el WIP y le pone `tier` vacío. Medido — la tarea reanudada devolvía `""` (caso 074).
+    lane: field('lane'),
     complete: (text.match(/^\d+\.\s+\[[xX]\]/gm) || []).length,
     pending: (text.match(/^\d+\.\s+\[\s\]/gm) || []).length,
   }
