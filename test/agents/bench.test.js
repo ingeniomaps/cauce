@@ -332,3 +332,40 @@ test('la ruta de un banco no sale de una salida vacía ni de fuera de .cauce-eva
   assert.ok(dir.includes(`${path.sep}.cauce-eval${path.sep}`), 'y un banco de verdad pasa')
   discard(dir)
 })
+
+// La guarda que corta cuando el banco sobrevivió a su propio borrado, por fin ejercida. Desde el 066
+// existía sin una sola prueba, y comprobado: borrar su línea no ponía nada en rojo. No se puede provocar
+// con el sistema de archivos real —ése es el caso 078—, así que se inyecta un borrado que no borra.
+//
+// Nada de acá le pasa a algo que destruya una ruta que importe: el objetivo es un temporal que la prueba
+// acaba de crear, y el que se rechaza no existe (R23).
+test('un banco que sobrevive a su borrado corta la corrida, y sólo se borra dentro del banco', () => {
+  const scratch = tempRoot('cauce-clear-')
+  const dir = path.join(scratch, 'product-manager', '01-caso')
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, 'quedo.txt'), 'lo que el borrado no se llevó')
+
+  // El borrado que no borra: es la única forma de ejercer la rama, y por eso la función lo recibe.
+  const dicho = CAT.clearBench(dir, scratch, () => {})
+  assert.match(dicho, /no se pudo borrar entero/, 'la guarda habla')
+  assert.match(dicho, /quedo\.txt/, 'y nombra lo que sobrevivió')
+
+  // Y el destino se comprueba antes de destruir: una ruta que no cuelga del banco se rechaza nombrando
+  // las dos. El objetivo es inventado y el borrado inyectado no borra, así que ni mutando la comprobación
+  // esta prueba puede llevarse nada.
+  const afuera = CAT.clearBench(path.join(scratch, '..', 'no-es-un-banco'), scratch, () => {})
+  assert.match(afuera, /no cuelga de/, 'se niega')
+  assert.match(afuera, /no-es-un-banco/, 'y dice qué ruta iba a borrar')
+  assert.ok(afuera.includes(path.resolve(scratch)), 'y contra qué la comparó')
+
+  // Descendiente estricto, y las dos formas en que eso importa: el banco no se borra a sí mismo, y un
+  // vecino que empieza igual no se cuela. Sin el separador las dos pasarían, y ninguna de las aserciones
+  // de arriba lo notaría — se comprobó mutándolo.
+  assert.match(CAT.clearBench(scratch, scratch, () => {}), /no cuelga de/, 'el banco no se borra a sí mismo')
+  assert.match(CAT.clearBench(`${scratch}-vecino/algo`, scratch, () => {}), /no cuelga de/,
+    'y un vecino con el mismo prefijo tampoco')
+
+  // Con el borrado de verdad, sobre el temporal que esta prueba creó, no queda nada y no hay motivo.
+  assert.equal(CAT.clearBench(dir, scratch), null)
+  assert.equal(fs.existsSync(dir), false)
+})

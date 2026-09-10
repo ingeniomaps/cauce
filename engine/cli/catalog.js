@@ -105,6 +105,35 @@ function benchSurvived(dir, since) {
     + `${sample.join(', ') || '(sólo directorios)'}. ${again}. Borralo a mano y volvé a correr.`
 }
 
+// Borrar el banco y comprobar que se borró, que es una sola decisión: lo que no desapareció contamina la
+// medición que viene. Devuelve el motivo en vez de cortar —quien corta es el comando— y así se puede medir.
+//
+// **El destino se comprueba antes de destruir** (R23). `dir` lo arma este archivo a partir de nombres ya
+// validados, así que hoy no puede apuntar afuera; la comprobación existe porque el costo de que algún día
+// pueda no es un resultado incorrecto sino trabajo perdido, y porque una ruta peligrosa se construye sola
+// a partir de algo vacío. Se niega nombrando la ruta y contra qué la comparó.
+//
+// `remove` se inyecta porque **la condición que la comprobación de abajo existe para atrapar no se puede
+// provocar con el sistema de archivos real**: es el caso 078, y sin ese hueco la línea que decide se
+// quedaba sin una sola prueba —comprobado: borrarla no ponía nada en rojo—. Con un borrado que no borra,
+// la rama se ejerce en milisegundos y sobre un temporal que la prueba acaba de crear.
+function clearBench(dir, scratch, remove = fs.rmSync) {
+  const target = path.resolve(dir)
+  const banco = path.resolve(scratch)
+  if (!target.startsWith(banco + path.sep)) {
+    return `no se borra ${target}: no cuelga de ${banco}, así que no es un banco de evaluación.`
+  }
+  // El instante de arranque, para poder fechar lo que sobreviva: es lo único que separa un archivo que el
+  // borrado no tocó de uno que alguien reescribió mientras borrábamos.
+  const since = Date.now()
+  // Con reintentos. Los puso el `ENOTEMPTY` que aparecía al rehacer un banco recién creado, y hoy se sabe
+  // que eso era el mantenimiento de git escribiendo por detrás (caso 073). Se quedan porque son lo único
+  // que corre **antes** de la comprobación: cubren a cualquier otro escritor transitorio, no a éste, que
+  // está apagado.
+  remove(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 })
+  return fs.existsSync(target) ? benchSurvived(target, since) : null
+}
+
 // Un banco de trabajo desechable donde un cargo del catálogo puede realmente trabajar.
 //
 // Hace falta porque el toolkit no es una raíz ops: el único `planning/` que vive acá es
@@ -135,48 +164,27 @@ function evaluationBench(root, agent, caso, force, kind) {
     fail(`${dir} tiene trabajo sin recoger. Guardá el registro de esa corrida antes de rehacerlo, `
       + 'o usá --force si ya lo tenés.', 2)
   }
-  // El instante de arranque, para poder fechar lo que sobreviva: es lo único que separa un archivo que
-  // el borrado no tocó de uno que alguien reescribió mientras borrábamos.
-  const since = Date.now()
-  // Con reintentos. Los puso el `ENOTEMPTY` que aparecía al rehacer un banco recién creado, y hoy se
-  // sabe que eso era el mantenimiento de git escribiendo por detrás —la causa está apagada quince líneas
-  // más abajo, en la creación—. Se quedan porque cubren a cualquier otro escritor transitorio, no porque
-  // sigan tapando éste; sacarlos es una decisión aparte y lo que la activaría es que nunca más disparen.
-  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 })
-  // Y se comprueba que haya borrado. `rmSync` puede volver sin lanzar y dejar cosas, y hasta acá cada
-  // síntoma se rodeaba por separado: `force` en el andamiaje, un `rm` antes del enlace. Rodearlo deja la
-  // corrida siguiendo sobre un banco que no es nuevo, y lo que falla después no dice nada del borrado: el
-  // test que lo destapó reportaba `true !== false` sobre un archivo de la corrida anterior, sin nombrar
-  // de dónde salía.
+  // Rodear un borrado a medias deja la corrida siguiendo sobre un banco que no es nuevo, y lo que falla
+  // después no dice nada del borrado: el test que lo destapó reportaba `true !== false` sobre un archivo
+  // de la corrida anterior, sin nombrar de dónde salía. Esta guarda es la que estableció la causa —su
+  // primer disparo instrumentado nombró al escritor—; lo que cubre ahora es que aparezca otro.
   //
-  // Esta guarda es la que estableció la causa: fue su primer disparo instrumentado el que nombró al
-  // escritor. Se queda igual —lo que cubre ahora es que aparezca otro—.
-  //
-  // Falla en vez de seguir, porque un banco a medio borrar contamina la medición que viene, que es lo
-  // que la recreación existe para evitar. Qué trae el mensaje y por qué, en `benchSurvived`.
-  if (fs.existsSync(dir)) fail(benchSurvived(dir, since), 2)
-  // Con `force`: el banco es desechable y se acaba de borrar, así que lo que sobreviva al `rmSync` se
-  // pisa en vez de cortar la corrida. Sin esto, `copyTemplate` se niega ante cualquier archivo que
-  // quede —«El destino contiene …/AGENTS.md»— y el mismo test falló así tres veces en un día, en las
-  // dos patas de la matriz.
-  //
-  // No ablanda ninguna protección: la pregunta «¿acá alguien trabajó?» la contesta el `git status` de
-  // arriba, que exige `--force` explícito para seguir. Esta segunda puerta no la eligió nadie y sólo
-  // se cerraba a veces, que es la clase de freno que enseña a re-correr sin leer. Ese «a veces» era el
-  // mismo escritor de fondo; con la causa apagada, esto cubre el residuo.
-  IN.scaffold(dir, { name: 'Banco de evaluación', mode: 'sidecar', quiet: true, force: true })
+  // **Y de acá para abajo el directorio no existe.** Eso es lo que sostiene que el andamiaje y el enlace
+  // se escriban sin defensas: hasta el 073, los dos llevaban una por si algo sobrevivía al borrado.
+  const problema = clearBench(dir, path.join(root, '.cauce-eval'))
+  if (problema) fail(problema, 2)
+  // Sin `force`, y eso es lo que hay que poder decir: sólo servía si algún archivo sobrevivía al borrado,
+  // y la comprobación de arriba garantiza que no queda ninguno. Lo llevaba porque el mismo test falló tres
+  // veces en un día con «El destino contiene …/AGENTS.md», y eso era el escritor de fondo que apagó el 073.
+  IN.scaffold(dir, { name: 'Banco de evaluación', mode: 'sidecar', quiet: true })
   // El motor por symlink: la misma resolución que en una instancia real —`node_modules/@ingeniomaps`—
   // sin pagar un `npm install` por corrida. El cargo llega a un banco donde el CLI funciona.
   const scope = path.join(dir, 'node_modules', '@ingeniomaps')
   fs.mkdirSync(scope, { recursive: true })
-  // El enlace se pisa por lo mismo que el andamiaje de arriba: a veces sobrevive al borrado del banco, y
-  // entonces crearlo corta la corrida con `EEXIST` en vez de rehacerlo. Es el único paso que no seguía esa
-  // regla, y el que falló en CI rehaciendo el mismo `11-otro` que ya tiene reintentos por esto.
-  //
-  // `rmSync` sobre un enlace lo quita a él y no a lo que apunta —que acá es la raíz del toolkit—, así que
-  // esto no puede llevarse por delante el repositorio.
+  // Y el enlace se crea sin borrarlo antes, por lo mismo: `scope` acaba de nacer dentro de un directorio
+  // que no existía, así que no puede haber un enlace que pisar. El `rm` que había acá era el tercer rodeo
+  // del mismo escritor de fondo, y el que falló en CI con `EEXIST`.
   const link = path.join(scope, 'cauce')
-  fs.rmSync(link, { force: true })
   fs.symlinkSync(IN.PROJECT_ROOT, link, 'dir')
 
   // El artefacto del caso, si lo tiene: la guía del proveedor que el pedido manda implementar, el CSV
@@ -398,4 +406,4 @@ function flow(action, slug, cli) {
   } catch (error) { fail(error.message, 2) }
 }
 
-module.exports = { agents, learn, evaluate, flow, benchSurvived }
+module.exports = { agents, learn, evaluate, flow, benchSurvived, clearBench }
