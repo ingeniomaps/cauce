@@ -18,6 +18,21 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Un gate ya no pisa lo que vos construiste.** Al medir el índice, lo ignorado se enlazaba al árbol
+  real: el gate corría sobre lo staged y te dejaba la salida de build con **esa** versión, mientras tu
+  fuente en disco tenía otra y nada lo decía. Si corrías la app después de commitear, corrías algo que
+  no era lo que estabas mirando. Ahora lo que un gate puede fabricar —`dist`, `build`, `out`,
+  `coverage`, `.next`, `.nuxt`, `.svelte-kit`, `.turbo`, `.output`, `.parcel-cache`, `__pycache__`,
+  `.pytest_cache`— se construye adentro de la copia y se descarta con ella. Lo que no puede fabricar
+  —`node_modules`, un `.env`— se le sigue enlazando.
+
+  Arregla también algo del propio gate: construía sobre restos de tu corrida anterior, así que su
+  veredicto dependía de un estado que nadie declaró.
+
+  **Lo que te pide algo**: el build del gate deja de ser incremental, así que ese commit tarda más. Y si
+  tu proyecto genera en un directorio ignorado que no está en esa lista, seguí reportándolo: el nombre
+  se agrega.
+
 - **Los gates corren sobre una copia que se declara no interactiva, y un gate que falla dice qué dijo.**
   `verify` mide el índice en un temporal y enlaza ahí lo ignorado, `node_modules` incluido, apuntando al
   original. En un proyecto pnpm eso no corre: el gestor ve que el árbol enlazado no fue instalado ahí y

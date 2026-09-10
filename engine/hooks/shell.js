@@ -365,6 +365,12 @@ function run(program, args, cwd, extra = {}) {
   }
 }
 
+// Salidas de build y cachés que cualquier gate rehace solo. Se comparan contra el nombre entero de la
+// entrada para que valga también anidado —`packages/app/dist`—, y con el separador de `git status`, que
+// siempre usa `/`.
+const RECREABLE = new RegExp('(^|/)(?:dist|build|out|coverage|__pycache__'
+  + '|\\.next|\\.nuxt|\\.svelte-kit|\\.turbo|\\.output|\\.parcel-cache|\\.pytest_cache)$')
+
 // Dónde tiene que correr un gate: sobre lo que el commit va a grabar, que es el índice y no el árbol.
 // El árbol se le parece casi siempre y por eso el error no se veía — puede tener encima otra versión de
 // un archivo staged, y puede tener uno sin trackear que el commit no lleva, que es el olvido de
@@ -401,6 +407,19 @@ function commitTree(dir) {
   for (const line of lines) {
     if (!line.startsWith('!! ')) continue
     const name = line.slice(3).trim().replace(/\/$/, '')
+    // Lo que el gate puede fabricar no se le enlaza: lo construye adentro de la copia y se descarta con
+    // ella. Enlazarlo hacía dos daños a la vez. Uno es del usuario: el gate corre sobre el índice, así
+    // que le dejaba la salida de build con la versión **staged** mientras su fuente en disco tenía otra,
+    // y nada lo decía —medido con un `dist/` que pasó de «lo-que-estoy-editando» a «staged» (caso 069)—.
+    // El otro es del propio gate: construía sobre restos de la corrida anterior del usuario, así que su
+    // veredicto dependía de un estado que nadie declaró.
+    //
+    // La lista envejece y eso pesa menos de lo que parece, porque sólo se aplica a rutas que git ya
+    // marcó como ignoradas: un `dist/` ignorado es generado por definición. Errarle por defecto —que
+    // falte un nombre— deja el comportamiento de antes; errarle por exceso hace que un gate reconstruya,
+    // que es más lento y no incorrecto. Lo que **sí** se enlaza es lo que un gate no puede fabricar:
+    // `node_modules`, un `.env`, las credenciales de una herramienta.
+    if (RECREABLE.test(name)) continue
     const link = path.join(temp, name)
     if (fs.existsSync(link)) continue
     fs.mkdirSync(path.dirname(link), { recursive: true })
