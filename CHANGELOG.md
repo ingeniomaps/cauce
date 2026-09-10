@@ -14,6 +14,25 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.77.0]
+
+### Agregado
+
+- **R23: un borrado se lee resuelto antes de correrlo, y sólo alcanza lo desechable.** Antes de destruir
+  —`rm -rf`, un borrado recursivo, un `DROP`, un `reset --hard`— se resuelve el objetivo y **se lee la
+  ruta final**, no la variable que la contiene. El destino tiene que colgar de algo desechable, y eso se
+  comprueba: la raíz de un repositorio, un directorio de trabajo, el home de nadie y `/` no lo son.
+
+  Con dos cosas que la regla dice y que son menos obvias. Las pruebas **no montan nada bajo el home**: un
+  banco ahí pone la carpeta personal de quien las corre dentro del alcance de todo lo que la suite borra.
+  Y **decidir se separa de destruir**: la función que juzga si algo se puede borrar no borra, así que
+  probarla con `/` o con la raíz de un repositorio no puede destruir nada. Mezcladas, la prueba que
+  ejerce la defensa tiene que apuntarle a rutas reales, y ahí apagar la defensa **es** el desastre.
+
+  **Lo que te pide algo**: es una regla del sistema, así que baja a tu `planning/` en el próximo
+  `upgrade`. Si tenés pruebas o scripts que borran, la pregunta que contesta es «¿de dónde salió esta
+  ruta?», no «¿está bien escrita esta línea?».
+
 ## [0.76.0] - 2026-09-10
 
 ### Corregido

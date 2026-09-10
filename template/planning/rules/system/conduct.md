@@ -52,6 +52,47 @@ cargo no tenga (R17). La pide elegir el objetivo, que es lo único que no se pue
 Esto no afloja ningún límite: no promover, no prometer fechas, no inventar evidencia y no exceder la
 autoridad del cargo siguen siendo absolutos. Lo que se cierra es la salida de cumplirlos sin entregar.
 
+## R23 — Un borrado se lee resuelto antes de correrlo, y sólo alcanza lo desechable
+
+Antes de ejecutar algo que destruye —un `rm -rf`, un borrado recursivo, un `DROP`, un `prune`, un
+`reset --hard`— se **resuelve el objetivo y se lee**. No la variable que lo contiene ni el patrón que lo
+arma: la ruta final, la que el sistema va a recibir.
+
+**El destino cuelga de algo desechable, y eso se comprueba.** Desechable es el temporal del sistema, un
+scratch declarado, un banco que se recrea en cada corrida. No lo son la raíz de un repositorio, un
+directorio de trabajo, **el home de nadie**, ni `/`. Cuando el borrado lo hace código propio la
+comprobación va en el código, y se niega **nombrando la ruta que iba a borrar y contra qué la comparó**:
+un rechazo mudo deja sin saber de qué se salvó ni por qué la ruta salió mal.
+
+Y las pruebas no son la excepción: **no montan nada bajo el home**. Un banco ahí pone la carpeta personal
+de quien las corre dentro del alcance de todo lo que la suite borra, y ahí un defecto no cuesta una
+corrida — cuesta el trabajo de alguien.
+
+**Dónde se prueba importa tanto como qué se prueba.** Un cambio que puede hacer fallar la herramienta que
+las pruebas invocan se ejercita en una copia, nunca en el árbol que contiene el trabajo. Y una mutación
+que apaga una defensa se corre en una copia **siempre**: es, literalmente, ejecutar el código sin lo que
+lo hace seguro.
+
+De ahí sale la única forma que sostiene todo lo anterior cuando falla: **decidir y destruir se separan**.
+La función que decide si algo se puede borrar no borra —recibe rutas y devuelve un motivo—, así que
+probarla con `/`, con un home o con la raíz de un repositorio no puede destruir nada. Mezcladas, la
+prueba que ejerce la defensa tiene que pasarle rutas reales y peligrosas a la función que borra, y ahí
+apagar la defensa **es** el desastre. Con eso, la propiedad que hay que poder afirmar es ésta: *ninguna
+prueba le pasa a la función que borra una ruta que no quiera perder*.
+
+Lo que vuelve traicionera a esta clase es que la ruta peligrosa **se construye sola** a partir de algo
+vacío. `path.resolve(raíz, '')` es la raíz. `rm -rf "$DIR/"*` con `DIR` sin definir es `/*`. `cd $X && rm
+-rf .` con `X` inexistente borra donde estabas. Cada línea es correcta por separado y el desastre sale de
+una salida que vino en blanco porque algo, más arriba, falló — que es exactamente lo que una prueba está
+ahí para provocar. Por eso la comprobación es del destino y no de la intención: la intención siempre es
+correcta.
+
+El costo de equivocarse no es simétrico con nada. Un borrado mal apuntado no da un resultado incorrecto
+que alguien pueda revisar: se lleva el trabajo, y con él la posibilidad de revisarlo. Sobrevive lo que
+estaba empujado; lo que nunca viaja —credenciales locales, notas, lo que todavía no se commiteó— no
+vuelve. Por eso esto no admite «pero acá es obvio que apunta bien»: si es obvio, leer la ruta resuelta
+cuesta un segundo y confirma; si no lo es, acaba de salvarte.
+
 ## R14 — Una afirmación de mecanismo lleva su registro
 
 El comportamiento de una herramienta, un motor, un formato, una norma o un sistema de terceros es material
