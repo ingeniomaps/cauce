@@ -108,7 +108,8 @@ const hookMetadata = [
   {
     name: 'migrations',
     event: 'PreToolUse · files',
-    purpose: 'Protege migraciones existentes y bloquea SQL destructivo sin override.',
+    purpose: 'Protege migraciones existentes y bloquea SQL destructivo, sobre las extensiones que el '
+      + 'proyecto declare en migrations.extensions — sólo .sql si no declara ninguna.',
   },
   {
     name: 'integration-snapshot',

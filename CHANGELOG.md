@@ -18,6 +18,29 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **El guard de migraciones deja de ser inerte en todo proyecto cuyas migraciones no sean `.sql`.** Filtraba
+  por ruta **y por extensión**, así que en TypeORM, Prisma, Django, Rails o Alembic no miraba nada: ni
+  frenaba el SQL destructivo, ni protegía una migración existente de ser reescrita. Y no lo decía — aparecía
+  cableado y en verde. Medido en una instancia real: **64 migraciones `.sql` cubiertas y 409 TypeORM `.ts`
+  invisibles**.
+
+  Ahora la extensión la declara el proyecto:
+
+  ```json
+  "migrations": { "extensions": ["sql", "ts"] }
+  ```
+
+  El default sigue siendo `["sql"]`, así que nada cambia para quien no lo declare — y ampliarlo por
+  nuestra cuenta reintroduciría el falso positivo que 0.63.0 vino a cerrar: un archivo de lenguaje que
+  menciona `DROP TABLE` en un comentario. La ruta la sigue fijando el motor: `migrations/`, `migration/`
+  o `migrate/`.
+
+  Y la descripción del guard dejó de prometer de más: nombra el campo que amplía la cobertura y el
+  default de quien no lo declara.
+
+  **Lo que te pide algo**: si tus migraciones no son `.sql`, declaralas. Hasta que lo hagas, ese guard
+  no las mira — y ahora `automation list-hooks` te lo dice.
+
 - **La tabla que dice qué ruta aprobar cuando un guard te frena estaba ofreciendo la salida ancha para el
   freno más común.** `plan-first` —el que exige un plan escrito antes de cambiar el producto— no figuraba
   entre las aprobaciones por ruta, y sí en la tabla de variables que apagan un guard **para toda la

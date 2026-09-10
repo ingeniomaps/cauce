@@ -110,6 +110,27 @@ test('las llaves de runner que el molde nombra existen en el schema', () => {
 
 // La misma atadura que la de abajo, un nivel más arriba, que es donde no existía: `verify` se probó como
 // propiedad de una raíz, y el campo siguiente entró en el primer nivel, donde nada ataba las dos listas.
+// La extensión entra en una expresión regular, así que un valor con metacaracteres la rompería o la
+// ampliaría sin que nadie lo pidiera. Y `.ts` o `SQL` son tipeos que conviene ver acá y no como cobertura
+// que el proyecto cree tener y no tiene, que es el defecto que el campo vino a cerrar (caso 077).
+test('migrations.extensions se valida, y no declararlo es válido', () => {
+  const con = (migrations) => validateOpsConfig({ ...opsConfig(), migrations })
+    .filter((error) => error.includes('migrations'))
+
+  assert.deepEqual(validateOpsConfig(opsConfig()).filter((e) => e.includes('migrations')), [],
+    'no declararlo es el caso normal y no es un error')
+  assert.deepEqual(con({ extensions: ['sql', 'ts'] }), [], 'lo declarado bien pasa')
+
+  for (const malo of ['.ts', 'SQL', 'sql;', '*', '']) {
+    const errores = con({ extensions: [malo] })
+    assert.equal(errores.length, 1, `"${malo}" tiene que rechazarse: ${JSON.stringify(errores)}`)
+    assert.match(errores[0], /sin el punto y en minúscula/)
+  }
+  assert.match(con({ extensions: [] })[0], /al menos una extensión/, 'declararlo vacío promete y no da')
+  assert.match(con({ paths: ['x'] })[0], /no está permitido/, 'y la clave que no existe se nombra')
+  assert.match(con('sql')[0], /debe ser un objeto/)
+})
+
 test('el validador conoce todas las propiedades que el schema declara en el primer nivel', () => {
   const schema = require('../../engine/schemas/ops-config.schema.json')
   for (const field of Object.keys(schema.properties)) {
