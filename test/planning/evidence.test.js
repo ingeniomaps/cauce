@@ -12,6 +12,31 @@ const path = require('node:path')
 const PC = require('../../engine/planning/contracts')
 const P = require('../../engine/planning/parser')
 
+// Por qué el corte mira lo que viene detrás lo explica `TRACE_SPLIT` en el motor. Acá se fijan las dos
+// direcciones, y van juntas porque separadas no dicen nada: que la prosa deje de partir **y** que un
+// separador de verdad siga partiendo. Sólo lo primero pasaría con un validador que acepta todo.
+test('el punto y coma de la prosa no parte una traza, y el que separa sí', () => {
+  const conProsa = 'A → `runtime.test.ts`, con los rojos por mutación: quitar el HEALTHCHECK pone rojos '
+    + 'tres casos; `--start-period=1m` pone rojo el techo de 30 s; y un `USER root` posterior pone rojo '
+    + 'el caso del usuario'
+  assert.equal(PC.validTestTrace(conProsa), true, 'una sola traza con prosa adentro es una traza')
+  assert.equal(PC.validTestTrace('C1 → uno.js; C2 → dos.js; n/a — el tercero no tiene superficie'), true,
+    'y tres trazas separadas siguen siendo tres')
+  assert.equal(PC.validTestTrace('esto no es una traza'), false, 'lo que no traza sigue sin trazar')
+  assert.equal(PC.validTestTrace('A → uno.js; esto tampoco'), true,
+    'el `;` que no abre otra traza es puntuación, así que el campo entero es la primera')
+
+  // El rastreo de criterios usa el mismo corte, y sigue cazando lo que tiene que cazar a los dos lados
+  // de un separador de verdad. Que **comparta** el corte no lo prueba ninguna aserción y está dicho en el
+  // fuente: hoy las dos formas de partir dan el mismo resultado.
+  const entrada = (tests) => ({ source: 'done/x.md', slug: 'x', tests, decisions: '[fuente: x]' })
+  assert.deepEqual(PC.validateDoneEntry(entrada('C1 → uno.js, y algo; C2 → dos.js'), ['C1', 'C2']), [],
+    'los dos criterios se rastrean a través del separador de verdad')
+  assert.deepEqual(PC.validateDoneEntry(entrada('C1 → uno.js'), ['C1', 'C2']),
+    ['done/x.md x: la historia cita C2 y tests: no lo rastrea'],
+    'y el criterio citado que nadie rastrea se sigue cazando')
+})
+
 test('contratos de evidencia rastrean pruebas y decisiones duraderas', () => {
   assert.equal(PC.validTestTrace('C1 → test:create; C2 -> npm test'), true)
   assert.equal(PC.validTestTrace('A → make lint'), true)
