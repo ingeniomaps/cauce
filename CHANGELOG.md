@@ -14,6 +14,27 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.78.0] - 2026-09-10
+
+### Corregido
+
+- **`autobuild` lee `blocked` por su valor y no por su verdad.** El campo del contexto es un vocabulario
+  de tres valores —vacío, `awaiting-review` y `blocked-on-human`—, y el recorrido lo probaba con un `if`
+  a secas. Dos consecuencias, y la que más costaba no era intermitente: una cola trabada por acciones
+  humanas frenaba con el motivo del checkpoint de hito y mandaba a mirar `AWAITING_REVIEW.md`, un archivo
+  que en ese escenario no existe. Ahora cada bloqueo para con su motivo y nombra su archivo:
+  `AWAITING_REVIEW.md` para el checkpoint, `HUMAN_ACTIONS.md` —con las tareas trabadas— para la cola.
+
+  La otra es la que se ve al azar: el agente que transcribe el contexto a veces entrega el vacío como la
+  cadena de dos comillas, y eso frenaba la corrida en la fase 1 sin que hubiera nada que resolver. Medido
+  sobre siete corridas de una instancia real: 3 de 24 lecturas llegaron así, y una de cada siete cayó en
+  la única lectura que consulta el campo. Las formas equivocadas del vacío se desenvuelven antes de leer.
+
+  Y lo que no está en el vocabulario ya no se adivina en ninguna de las dos direcciones: no se sigue como
+  si no hubiera bloqueo ni se inventa cuál es — para diciendo que el contexto llegó fuera del
+  vocabulario. El esquema declara los tres valores, igual que `lane`; eso documenta el contrato, y lo que
+  sostiene el arreglo es la lectura.
+
 ## [0.77.0] - 2026-09-10
 
 ### Corregido

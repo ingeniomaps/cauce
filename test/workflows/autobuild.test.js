@@ -284,9 +284,47 @@ test('una lectura fallida no se toma como cola vacía ni expande nada', async ()
   assert.ok(!reached(asked, 'Build'), 'ni construir sobre un estado que no se leyó')
 })
 
+// `blocked` es un vocabulario de tres valores y se lee por su valor, no por su verdad. Las cuatro
+// direcciones van juntas porque cada una sola deja pasar a las otras: un recorrido que frenara siempre
+// pasaría las dos primeras filas, y uno que no frenara nunca pasaría las dos últimas.
+//
+// La fila de las comillas es la que costó una corrida —3 de 24 lecturas de una instancia real llegaron
+// así—, y la de `blocked-on-human` es la que mentía **siempre**: nombraba el gate de hito sobre una cola
+// trabada por acciones humanas, que es otra cosa y otro archivo (caso 083).
+test('blocked se lee por su valor, y lo que no es del vocabulario no se adivina', async () => {
+  const base = baseScript()[KEY.context]
+  const conBlocked = async (valor) => {
+    const { result } = await runFlow({}, {
+      contexts: [{ ...base, blocked: valor, blockedTasks: ['T-9'] }],
+    })
+    return result
+  }
+
+  for (const vacio of ['', '""', "''", '  ']) {
+    assert.equal((await conBlocked(vacio)).reason, undefined,
+      `${JSON.stringify(vacio)} significa que no hay bloqueo, y sus formas equivocadas no son ambiguas`)
+  }
+
+  const gate = await conBlocked('awaiting-review')
+  assert.equal(gate.reason, 'awaiting-human-review')
+  assert.match(gate.detail, /AWAITING_REVIEW\.md/)
+
+  const humanas = await conBlocked('blocked-on-human')
+  assert.equal(humanas.reason, 'blocked-on-human', 'tiene motivo propio: no es el checkpoint de hito')
+  assert.match(humanas.detail, /HUMAN_ACTIONS\.md/, 'y manda al archivo que sí tiene la causa')
+  assert.match(humanas.detail, /T-9/, 'nombrando qué está trabado')
+  assert.doesNotMatch(humanas.detail, /AWAITING_REVIEW/, 'nunca al gate, que acá no existe')
+
+  // Lo que no se reconoce no se adivina en ninguna de las dos direcciones: ni se sigue como si no
+  // hubiera bloqueo, ni se inventa cuál es.
+  const raro = await conBlocked('otra-cosa')
+  assert.equal(raro.reason, 'context-unavailable')
+  assert.match(raro.detail, /no es del vocabulario/)
+})
+
 test('un checkpoint humano sin resolver corta antes de tocar nada', async () => {
   const { result, asked } = await runFlow({}, {
-    contexts: [{ blocked: 'hito anterior sin revisar', hasTask: true, wipActive: false, queued: 1, readOk: true }],
+    contexts: [{ blocked: 'awaiting-review', hasTask: true, wipActive: false, queued: 1, readOk: true }],
   })
   assert.equal(result.reason, 'awaiting-human-review')
   assert.ok(!reached(asked, 'Plan'), 'ni se planifica')
