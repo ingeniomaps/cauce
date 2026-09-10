@@ -9,12 +9,12 @@ const path = require('node:path')
 const CL = require('../planning/claims')
 const R = require('../core/repos')
 const ST = require('../planning/state')
-const { fail } = require('./io')
+const { fail, planningRoot } = require('./io')
 
 const TODAY = () => new Date().toISOString().slice(0, 10)
 
 function claim(dir, slug, cli) {
-  const root = path.resolve(dir || '.')
+  const root = planningRoot(dir)
   if (!slug) return fail('Falta el slug. `ops claim <planning-dir> <tarea>`', 2)
   const state = ST.snapshot(root)
   const task = state.milestones.flatMap((milestone) => milestone.tasks).find((one) => one.slug === slug)
@@ -82,7 +82,7 @@ function claim(dir, slug, cli) {
 }
 
 function release(dir, slug) {
-  const root = path.resolve(dir || '.')
+  const root = planningRoot(dir)
   if (!slug) return fail('Falta el slug. `ops release <planning-dir> <tarea>`', 2)
   const from = CL.runner()
   const taken = CL.read(root).find((one) => one.slug === slug)
@@ -103,7 +103,7 @@ function release(dir, slug) {
 // La persona elige; el agente exporta. Pedirle a una persona que escriba una variable de entorno para
 // retomar su propio trabajo es hacerle hacer de intérprete.
 function runners(dir, cli) {
-  const root = path.resolve(dir || '.')
+  const root = planningRoot(dir)
   const done = ST.snapshot(root).done
   const abiertos = CL.read(root).filter((one) => !done.set.has(one.slug))
   const hoy = TODAY()

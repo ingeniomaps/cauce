@@ -15,7 +15,7 @@ const ST = require('../planning/state')
 const CL = require('../planning/claims')
 const R = require('../core/repos')
 const O = require('../core/ownership')
-const { fail } = require('./io')
+const { fail, planningRoot } = require('./io')
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
 
@@ -33,7 +33,7 @@ function existing(repo, branch) {
 }
 
 function worktree(dir, slug, cli) {
-  const root = path.resolve(dir || '.')
+  const root = planningRoot(dir)
   if (!slug) return fail('Falta el slug. `ops worktree <planning-dir> <tarea>`', 2)
   const state = ST.snapshot(root)
   const task = state.milestones.flatMap((milestone) => milestone.tasks).find((one) => one.slug === slug)

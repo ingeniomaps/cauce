@@ -11,7 +11,7 @@ const P = require('../planning/parser')
 const PC = require('../planning/contracts')
 const AD = require('../planning/adoption')
 const F = require('../core/files')
-const { fail } = require('./io')
+const { fail, planningRoot } = require('./io')
 
 // La fecha de hoy, la misma que usan los comandos que leen.
 const TODAY = () => new Date().toISOString().slice(0, 10)
@@ -24,7 +24,7 @@ const TODAY = () => new Date().toISOString().slice(0, 10)
 // trabajo de arreglar, y uno que crece a mano deja de ser una lista de perdones para ser una amnistía.
 // Achicarlo sí es a mano, borrando el renglón que `check` señala.
 function adopt(dir) {
-  const root = path.resolve(dir || '.')
+  const root = planningRoot(dir)
   const target = path.join(root, AD.BASELINE)
   if (fs.existsSync(target)) {
     // Un baseline que ya trae huella no se toca: regenerarlo es exactamente lo que la huella impide.
@@ -79,7 +79,7 @@ function archiveHumanActions(root) {
 // no hace falta: sin esto contestaría «La épica debe ser NNN», que manda a corregir la forma de algo que
 // no existe.
 function archive(dir, rawNum) {
-  if (String(rawNum || '') === 'human-actions') return archiveHumanActions(path.resolve(dir || '.'))
+  if (String(rawNum || '') === 'human-actions') return archiveHumanActions(planningRoot(dir))
   return fail('Sólo se archiva `human-actions`. La evidencia de una tarea ya vive en su propio archivo '
     + 'de `done/`, así que archivar una épica dejó de tener sentido.', 2)
 }

@@ -16,6 +16,25 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.76.0]
 
+### Corregido
+
+- **Un comando que no encuentra tu planning lo dice, en vez de contestar un hecho sobre un directorio que
+  no existe.** `context` y `tree` ya lo hacían desde 0.71.0; los otros nueve no. `claim` contestaba «no
+  está en BACKLOG», `release` «no está tomada por nadie», `evidence` «DONE no tiene ninguna entrada»,
+  `runners` «ningún runner tiene trabajo abierto» — todos hechos concretos sobre lo que no pudieron leer.
+  **Cuatro de ellos salían con exit 0**, así que un script veía éxito.
+
+  El daño no es el mensaje sino lo que induce: en una corrida real, `claim` dijo «no está en BACKLOG»
+  sobre una tarea que **sí** estaba, y el recorrido mandó a una persona a promover lo único que ya estaba
+  bien, citando la regla correcta con la conclusión al revés. Ahora los once comandos que reciben un
+  planning fallan igual, con la ruta **resuelta** puesta — que es lo que hace falta cuando el error es de
+  resolución: en sidecar, `<empresa>-ops/planning` escrito desde adentro de la raíz apunta a
+  `<empresa>-ops/<empresa>-ops/planning`.
+
+  **Lo que te pide algo**: si tenías un script que trataba ese vacío como «nada que hacer», ahora falla.
+  Es la misma dirección que 0.63.0 y 0.71.0 ya tomaron. Y `ops check` sobre una ruta que no existe pasa a
+  decir eso en vez de «falta BACKLOG.md»: sale con 2 y nombra la ruta.
+
 ### Agregado
 
 - **La entrada de una tarea cerrada declara `lane:`, el carril con el que corrió.** El carril decide qué

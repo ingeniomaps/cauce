@@ -322,28 +322,41 @@ test('la aceptación con un identificador adentro llega entera', () => {
   assert.equal(acceptance(), 'el tope lo fija MAX_ATTEMPTS')
 })
 
-// Por qué una ausencia no puede contestar como una cola vacía está en `assertPlanning`. Acá se mide que
-// los dos comandos que leen el planning sin validarlo fallen y digan cuál es la ruta: `check` y
-// `evidence` ya fallaban cada uno por su cuenta, así que no entran.
+// Por qué una ausencia no puede contestar como una cola vacía está en `planningRoot`. Acá se mide sobre
+// **todos** los comandos que reciben un planning, y ésa es la diferencia con la primera versión de esta
+// prueba: cubría dos, el arreglo vivía en esos dos, y los otros nueve siguieron contestando un hecho del
+// dominio sobre un directorio que no existe —cuatro de ellos con exit 0— hasta que costó una corrida
+// (caso 075). La lista se escribe entera para que agregar un comando y olvidarse se vea acá.
+const RECIBEN_PLANNING = [
+  ['context'], ['tree'], ['check'], ['evidence'], ['recurring'], ['runners'], ['adopt'],
+  ['claim', 'una-tarea'], ['release', 'una-tarea'], ['worktree', 'una-tarea'], ['archive', 'human-actions'],
+]
+
 test('un planning que no se puede leer no contesta como uno vacío', () => {
   const base = tempRoot('cauce-context-ausente-')
 
-  for (const comando of ['context', 'tree']) {
-    // La ruta que no existe, que es el caso que originó esto: en sidecar, `<empresa>-ops/planning`
-    // escrito desde adentro de la raíz resuelve a `<empresa>-ops/<empresa>-ops/planning`.
+  for (const [comando, ...resto] of RECIBEN_PLANNING) {
+    // Se arma con la raíz repetida a propósito: es la forma que toma el error real, y la que hace que la
+    // ruta escrita y la resuelta no coincidan. Por qué eso pasa, en `planningRoot`.
     const ausente = path.join(base, 'ops', 'ops', 'planning')
-    const noExiste = run([comando, ausente, '--json'])
+    const noExiste = run([comando, ausente, ...resto])
     assert.notEqual(noExiste.status, 0, `${comando} sobre una ruta inexistente tiene que fallar`)
     assert.equal(noExiste.stdout.trim(), '', `${comando} no imprime un estado que se lea como válido`)
-    // La ruta **resuelta**, porque el error que esto ataca es de resolución: decir la que se escribió
-    // devuelve la pregunta a quien ya la hizo mal.
+    // Contra `path.resolve` y no contra lo que se escribió: es la única forma de que la aserción falle si
+    // el mensaje vuelve a nombrar la ruta cruda, que es lo que no sirve.
     assert.match(noExiste.stderr, new RegExp(path.resolve(ausente).replace(/[\\^$*+?.()|[\]{}]/g, '\\$&')),
       `${comando} nombra la ruta resuelta: ${noExiste.stderr}`)
+    // Y dice **cuál** de las dos cosas pasó. Sin esto la comprobación de existencia era inobservable: un
+    // directorio que no existe tampoco tiene BACKLOG.md, así que la segunda tapaba a la primera y sacar
+    // la primera no ponía nada en rojo. Son diagnósticos distintos —una ruta mal resuelta contra un
+    // directorio que no es un planning— y el primero es el que este caso vino a nombrar.
+    assert.match(noExiste.stderr, /no existe el planning/,
+      `${comando} dice que la ruta no existe, no que le falte un archivo: ${noExiste.stderr}`)
 
     // Y existir no alcanza: un directorio cualquiera contestaba cola vacía igual de bien.
     const vacio = path.join(base, `dir-${comando}`)
     fs.mkdirSync(vacio, { recursive: true })
-    const sinBacklog = run([comando, vacio, '--json'])
+    const sinBacklog = run([comando, vacio, ...resto])
     assert.notEqual(sinBacklog.status, 0, `${comando} sobre un directorio sin BACKLOG.md tiene que fallar`)
     assert.match(sinBacklog.stderr, /BACKLOG\.md/, `y decir qué falta: ${sinBacklog.stderr}`)
   }

@@ -430,12 +430,6 @@ const JUSTIFIED = {
 }
 
 const PENDING_SPLIT = {
-  'engine/cli/planning.js':
-    'Mezcla validar y leer: `check` recorre los contratos del planning y decide si están bien escritos, '
-    + 'y `context`/`tree` sólo componen lo que hay para que alguien lo lea. Cambian por razones distintas '
-    + '—una regla nueva contra un campo nuevo en el reporte— y no se necesitan entre sí. La partición es '
-    + 'sacar `check` y sus ayudantes a `planning-check.js`. Cruzó el umbral al agregar `nextEpic`, que son '
-    + 'seis líneas: partirlo ahí habría metido un refactor de doscientas dentro de una quita.',
   'test/repo/repo.test.js':
     'Mezcla dos sujetos: la forma del código —largo de línea, tamaño de archivo, rutas absolutas— y qué '
     + 'se le exige a un comentario, que son cuatro pruebas y la mitad del archivo. La partición es sacar '
