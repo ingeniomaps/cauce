@@ -18,6 +18,24 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`check` dice cuánto del trabajo que entró al repositorio quedó registrado.** Cuenta, por raíz de
+  trabajo, los commits que **ninguna entrada de DONE nombra** desde la última tarea cerrada. Es un aviso,
+  no un error: es un hecho del pasado que no se arregla editando nada.
+
+  El número no existía y sacarlo pedía cruzar a mano los `commit:` contra la historia de cada
+  repositorio. Hecho así sobre una instancia real: **312 commits, 75 registrados**. Y el desglose de los
+  que faltaban no era trabajo suelto — **69 `feat` y 51 `fix` de 173**—, ni tareas que produjeron varios
+  commits: de 80 entradas, una sola registra más de uno.
+
+  La ventana arranca en la última tarea cerrada y no en la primera, y esa decisión es la que hace que
+  sirva: contar toda la historia da una deuda que nunca baja y se lee como decorado. Así vuelve a cero
+  cada vez que el flujo se cierra, y lo que queda a la vista es la deriva de ahora.
+
+  **Lo que te pide algo**: si el número no es cero, ese trabajo no está en `planning/` y `OPS-001` dice
+  que ahí está la fuente de verdad. Qué hacer con él es tuyo — el aviso no propone cerrar nada
+  retroactivamente, porque escribir entradas de memoria sería inventar la evidencia que el registro
+  existe para tener.
+
 - **Un plan que ninguna crítica aprueba deja de reintentarse a ciegas.** `autobuild` cortaba con
   `plan-rejected` sin dejar rastro, así que relanzar repetía **la corrida entera** sobre la misma tarea:
   Ready y Decompose la volvían a dejar pasar —su criterio no cambió y la tarea tampoco— y Critique la
