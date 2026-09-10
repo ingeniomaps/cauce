@@ -12,6 +12,7 @@ phase: Build
 started: AAAA-MM-DD
 service: ruta
 acceptance: "criterio observable"
+lane: full
 ---
 
 ## Plan aprobado
@@ -23,6 +24,10 @@ acceptance: "criterio observable"
 ## Bloqueos
 - (ninguno)
 ```
+
+`lane:` viaja acá por la misma razón por la que existe en DONE: la línea del BACKLOG se borra al
+cerrar, y una corrida que se reanuda arma la tarea desde este archivo. Sin el campo, el cierre de una
+corrida reanudada escribe `sin clasificar` sobre una tarea que sí tenía carril.
 
 Sin archivo, el runner está en IDLE: un clon nuevo no trae ninguno y eso no es un error.
 

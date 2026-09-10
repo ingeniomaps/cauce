@@ -12,6 +12,7 @@ tarea entregó y con qué se comprueba.
   tests: C1 → nombre de prueba o comando; C2 → nombre de prueba o comando
   decisions: decisión no obvia [fuente: ruta/archivo] o [supuesto: motivo verificable]
   commit: abc1234 feat(scope): subject (repo@branch)
+  lane: full
 ```
 
 El contrato completo de esos campos está en `../PROTOCOL.md`; acá va por qué el archivo es uno por tarea.
@@ -26,6 +27,16 @@ regla de merge que aplicar.
 El nombre del archivo es una conveniencia; lo que identifica la tarea es el slug de la viñeta. Renombrar
 el archivo no cambia de qué tarea habla, y cerrar dos veces la misma sigue siendo un error que `check`
 rechaza, ahora entre archivos.
+
+## Por qué el carril
+
+El carril decide qué fases corre una tarea: `express` se saltea Ready, Plan y QA; `full` las corre
+todas. Ese dato vive en la línea del BACKLOG, y la línea **se borra al cerrar** — así que la pregunta
+«¿esta tarea recibió la ceremonia que su superficie pedía?» dejaba de tener dónde contestarse, y quedaba
+en la memoria de quien estuvo en la sesión. `lane:` la devuelve al registro.
+
+Se escribe aunque sea `sin clasificar`, que es distinto de no escribirlo: uno dice que la tarea corrió
+sin carril declarado y el otro, que nadie llenó el campo.
 
 ## Por qué la fecha
 

@@ -391,3 +391,43 @@ test('sin cola, context nombra la próxima épica sin promover', () => {
   assert.equal(conCola.task.slug, 'h-003', 'ahora sí hay tarea')
   assert.equal(conCola.nextEpic, null, 'y la épica deja de nombrarse')
 })
+
+// Por qué el WIP lleva el carril, en `parseWip`. Acá se fijan las dos direcciones, que separadas no
+// dicen nada: que declarado sobreviva, y que **sin** declarar siga vacío. Sin la segunda, un default
+// cualquiera —el primero de la lista, el de la tarea de al lado— pasaría la primera y estaría inventando
+// un dato que después se lee como registro.
+test('el carril sobrevive a reanudar una corrida sobre el WIP', () => {
+  const planning = path.join(tempRoot('cauce-lane-wip-'), 'planning')
+  fs.cpSync(path.resolve(__dirname, '..', '..', 'template', 'planning'), planning, { recursive: true })
+  linkEngine(path.dirname(planning))
+  // La tarea ya no está en la cola, que es exactamente el estado en el que se cierra: la línea se borró.
+  fs.writeFileSync(path.join(planning, 'BACKLOG.md'), '# Backlog\n\n## Hito demo — Demo\n')
+
+  writeWip(planning, `---
+task: alta
+hito: "demo — Demo"
+phase: Done
+service: app
+lane: express
+---
+
+## Plan aprobado
+1. [x] Implementar
+`)
+  const conCarril = JSON.parse(run(['context', planning, '--json']).stdout)
+  assert.equal(conCarril.task.slug, 'alta')
+  assert.equal(conCarril.task.tier, 'express', 'el cierre todavía sabe con qué carril corrió')
+
+  writeWip(planning, `---
+task: alta
+hito: "demo — Demo"
+phase: Done
+service: app
+---
+
+## Plan aprobado
+1. [x] Implementar
+`)
+  assert.equal(JSON.parse(run(['context', planning, '--json']).stdout).task.tier, '',
+    'y un WIP que no lo declara no estrena carril: vacío es "no se sabe"')
+})

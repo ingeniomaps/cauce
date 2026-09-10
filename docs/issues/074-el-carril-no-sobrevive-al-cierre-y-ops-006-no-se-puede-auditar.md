@@ -1,14 +1,15 @@
 ---
 caso: 074
 titulo: El carril no sobrevive al cierre, así que OPS-006 no se puede auditar sobre el registro
-estado: abierto
+estado: resuelto
+resuelto-en: 0.76.0
 prioridad: media
 version-detectada: 0.74.0
 ---
 
 # 074 — La entrada de DONE no registra el carril, y es el dato que decidió qué fases corrieron
 
-**🔴 abierto** · detectado en 0.74.0 · prioridad **media** — no rompe nada hoy; hace que la ADR que gobierna cuánta ceremonia recibe cada tarea sea la única que no se puede comprobar después
+**🟢 resuelto en 0.76.0** · detectado en 0.74.0 · prioridad **media** — no rompía nada; hacía que la ADR que gobierna cuánta ceremonia recibe cada tarea fuera la única que no se puede comprobar después
 
 ## Resumen
 
@@ -93,3 +94,59 @@ incumpliendo: porque el registro no guarda el dato con el que se comprueba.
 - **OPS-001** — dice que `planning/` es la fuente de verdad operativa. Un dato que sólo vive en la
   memoria de la sesión o en la historia de git no está en esa fuente.
 - **R15** — la entrada de DONE se lee entera y no lo está. Es el modo de fallo que esa regla nombra.
+
+## Cierre
+
+**Resuelto en 0.76.0.** El campo es el que este caso proponía; lo que cambió al implementarlo es dónde se
+pierde el carril, que no era un lugar sino tres.
+
+### El recorrido de lo que este caso enumeró
+
+- **`lane:` en el contrato de DONE — se hizo**, con el vocabulario que el caso proponía: los cuatro
+  carriles más `sin clasificar`. Está en `PROTOCOL.md`, en el molde de `done/README.md` y en el parser.
+- **«Opcional al principio para no invalidar lo ya escrito» — se hizo, y de una forma que el caso no
+  precisaba.** Ausente **avisa con su cuenta** y no frena; escrito mal **sí** frena. Son dos cosas
+  distintas y sólo la segunda es un valor que alguien puso: exigir el campo pondría en rojo el `check` de
+  cada instancia que actualiza por algo que nadie puede arreglar, y un aviso que cuenta se lee bajar.
+- **«`check` puede además avisar lo que hoy nadie ve: una entrada `full` sin verificación, una `express`
+  con cinco condiciones» — no se hizo, y sale como su propia unidad.** Es un juicio sobre el contenido de
+  la entrada, no sobre su forma, y necesita el campo poblado para no ser ruido: hoy toda entrada existente
+  cae en `sin clasificar`. **Sale como el
+  [076](076-el-carril-registrado-no-se-contrasta-contra-lo-que-recibio.md)**, que es lo que corresponde:
+  una dimensión que le toca a otra unidad no se queda adentro de un caso cerrado.
+- **Tradeoff «un campo más que se puede olvidar» — se paga, y menos de lo que parecía.** `autobuild` ya
+  tenía el dato en la mano al cerrar —pasaba `lane=` al agente como un hecho— y no tenía dónde ponerlo;
+  ahora lo pide como campo. Quien cierra a mano sí puede olvidarlo, y para eso está el aviso.
+- **Tradeoff «las entradas existentes quedan sin el campo» — se acepta tal cual**, y por eso el aviso
+  cuenta en vez de listar: al principio son todas.
+- **La analogía con `fecha:` que este caso usó no se sostiene, y conviene decirlo.** `fecha:` no llegó
+  «opcional al principio»: llegó **obligatoria**, dentro de la mudanza de `DONE.md` a `done/<slug>.md` que
+  ya obligaba a reescribir cada entrada a mano. Acá no hay migración que lo acompañe, así que el precedente
+  no existía y hubo que decidirlo de nuevo.
+
+### Lo que apareció y el caso no preveía: el carril se pierde en tres lugares, no en uno
+
+1. **El contrato de DONE no tiene el campo** — el que el caso nombra.
+2. **El WIP tampoco lo tenía.** Una corrida que se reanuda arma la tarea desde `wip/<runner>.md`, y
+   `currentTask` le ponía `tier: ''`. **Medido**: con la tarea fuera de la cola y sólo el WIP, el carril
+   que veía el cierre era `""`. O sea que el campo en DONE, solo, habría escrito `sin clasificar` sobre
+   tareas que sí tenían carril, exactamente en el caso en que más importa saberlo.
+3. **Y el productor ya lo tenía.** `autobuild` le pasaba `lane=` al agente que cierra, dentro de los
+   hechos. No faltaba el dato: faltaba dónde ponerlo.
+
+El 3 es lo que vuelve barato el arreglo, y el 2 es lo que lo vuelve correcto.
+
+### Qué se corrió
+
+- **La pérdida al reanudar, medida contra el motor** antes de tocar nada: `currentTask` con la tarea fuera
+  de la cola y sólo el WIP devolvía `tier: ""`. Con el WIP declarándolo, devuelve `"express"`.
+- **`ops check` corrido de verdad** sobre un `planning/` desechable, en las tres formas: con el campo
+  puesto no dice nada; con dos entradas sin él avisa «2 entrada(s) sin lane:» y **sale en 0**; con
+  `lane: rapido` falla nombrando el vocabulario entero.
+- **Siete mutaciones, las siete en rojo**: que la entrada de DONE deje de leer el campo; que el WIP deje
+  de leerlo; que reanudar vuelva a perder el carril —la regresión exacta—; que un carril inventado deje de
+  frenar; que el aviso deje de contar; que el WIP se escriba sin carril; y que el cierre deje de pedirlo.
+- **La puerta entera**: 648 pruebas, 0 fallos.
+- **Lo que no se pudo correr, y se dice**: la medición que originó el caso —0 de 79 entradas— es de la
+  instancia sidecar y no se puede rehacer desde acá. Lo que sí se comprobó es lo estructural, que es de
+  donde salía ese cero: el campo no existía en ningún contrato ni en ningún parser.
