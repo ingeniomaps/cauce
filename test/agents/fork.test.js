@@ -2,7 +2,7 @@
 
 // Adoptar un cargo del catálogo y la deriva que se abre después.
 
-const { tempRoot } = require('../support/environment')
+const { tempRoot, discard } = require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -82,7 +82,7 @@ test('un cargo devuelto al catálogo no deja avisos sobre una copia que no exist
   assert.equal(drift(root).length, 1)
 
   // Devuelta al catálogo, el registro queda pero ya no describe nada.
-  fs.rmSync(forked.dir, { recursive: true })
+  discard(forked.dir)
   assert.deepEqual(drift(root), [], 'sin copia no hay deriva')
 })
 

@@ -5,7 +5,7 @@
 // termina, cuando una empresa lo adopta. Lo que le pasa a su contrato con el tiempo está en
 // `learning.test.js`, y lo que lo mide en `evaluations.test.js`.
 
-const { tempRoot, run } = require('../support/environment')
+const { tempRoot, run, discard } = require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -164,7 +164,7 @@ test('un cargo propio reemplaza al del sistema y el runner apunta al que gana', 
   assert.ok(generated.includes('La versión del proyecto.'))
   assert.match(generated, /agents\/roles\/demo\/SKILL\.md/)
 
-  fs.rmSync(own, { recursive: true, force: true })
+  discard(own)
   assert.equal(catalog.resolve(root, 'demo'), system, 'al quitarlo vuelve el del sistema')
 })
 

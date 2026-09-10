@@ -4,7 +4,7 @@
 // pisarse y cómo llega el motor. `upgrade.test.js` sigue desde la versión siguiente y
 // `destroy.test.js` desde el final; la unidad que decide la propiedad se prueba en `core.test.js`.
 
-const { MIN_ROLES, filesBelow, tempRoot, CLI, run, linkEngine } = require('../support/environment')
+const { MIN_ROLES, filesBelow, tempRoot, CLI, run, linkEngine, discard } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -110,7 +110,7 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   fs.mkdirSync(extra, { recursive: true })
   fs.writeFileSync(path.join(extra, 'SKILL.md'), '---\nname: probe\ndescription: x\n---\n')
   assert.ok(catalog.list(target).some((role) => role.type === 'specialists'), 'un tipo nuevo se reconoce solo')
-  fs.rmSync(path.join(target, 'agents', 'specialists'), { recursive: true, force: true })
+  discard(path.join(target, 'agents', 'specialists'))
   // Los equipos, como los cargos, son definiciones que consume el motor: viajan con el paquete.
   assert.equal(fs.existsSync(path.join(target, 'flows', 'system')), false)
   assert.ok(require('../../engine/flows/registry').list(target).length >= 2, 'y aun así se resuelven')
@@ -307,7 +307,7 @@ test('el shim falla con instrucciones cuando no encuentra el motor', () => {
   const base = tempRoot('cauce-shim-')
   const target = path.join(base, 'huerfano')
   assert.equal(run(['init', target, '--name', 'H', '--mode', 'sidecar']).status, 0)
-  fs.rmSync(path.join(target, '.ops'), { recursive: true, force: true })
+  discard(path.join(target, '.ops'))
 
   const orphan = spawnSync(process.execPath, [path.join(target, 'tools', 'ops.js'), 'check'], {
     cwd: target, encoding: 'utf8',

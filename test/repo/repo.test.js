@@ -520,3 +520,77 @@ test('ningún archivo del repositorio nombra la ruta absoluta de una máquina', 
   assert.ok(eximidos.length > 0, 'el patrón ya no alcanza ningún informe: la exención quedó huérfana')
   assert.deepEqual(eximidos.filter((one) => !/\/reports\/[\d-]+\.md$/.test(one)), [], 'sólo informes')
 })
+
+// Ninguna prueba borra por su cuenta. El 2026-09-10 una lo hizo sobre la raíz de este repositorio —
+// resolvió contra ella una salida que vino vacía y se la pasó a `rmSync` recursivo— y el repositorio
+// entero desapareció de la máquina. Lo que se salvó estaba empujado; lo gitignoreado, no.
+//
+// Se comprueba la forma y no la intención, porque la intención era correcta: aquella prueba creía estar
+// borrando su banco. Lo que falló fue de dónde salió la ruta, y eso no se ve leyendo la línea del
+// borrado. `discard` es el único que borra, y sólo dentro de lo desechable.
+//
+// Dos archivos quedan afuera del barrido, por razones distintas: `environment.js` implementa `discard` y
+// desmonta sus raíces al salir, y este mismo archivo escribe las líneas de ejemplo con las que se prueban
+// los detectores. El costo de la segunda exención es nulo hoy y conviene decirlo: acá no hay una sola
+// llamada real que escriba o borre — sólo se lee y se compara.
+const SIN_BARRER = [path.join('test', 'support', 'environment.js'), path.join('test', 'repo', 'repo.test.js')]
+
+// El argumento de un borrado puede traer paréntesis —`path.join(...)`— así que el corte no puede ser el
+// primer `)`: con esa forma, la primera versión de este detector veía tres de siete.
+const BORRA_RECURSIVO = /\brmSync\(.*recursive\s*:\s*true/
+
+test('ninguna prueba borra recursivamente por su cuenta', () => {
+  const root = path.resolve(__dirname, '..', '..')
+  const propias = []
+  for (const file of sourceFiles().filter((one) => one.includes(`${path.sep}test${path.sep}`))) {
+    const name = path.relative(root, file)
+    if (SIN_BARRER.includes(name)) continue
+    fs.readFileSync(file, 'utf8').split('\n').forEach((line, index) => {
+      if (BORRA_RECURSIVO.test(line)) propias.push(`${name}:${index + 1}`)
+    })
+  }
+  assert.deepEqual(propias, [], `usan \`discard\` de test/support/environment.js:\n  ${propias.join('\n  ')}`)
+})
+
+// Ninguna prueba **crea** nada bajo el home de quien la corre. Por qué eso importa lo dice el banco de
+// `environment.js`, que es donde se decidió; acá se comprueba que nadie vuelva a abrirlo por su cuenta.
+//
+// Nombrar el home no es escribir en él: cuatro pruebas se lo pasan a un guard para que decida sobre esa
+// ruta, y ninguna la crea. Por eso la condición mira las dos cosas juntas —la casa y una función que
+// escribe— en vez de prohibir la palabra, que habría marcado lo correcto y enseñado a apagar la puerta.
+const CREA = /\b(?:mkdtempSync|mkdirSync|cpSync|writeFileSync|copyFileSync)\s*\(/
+test('ninguna prueba crea su banco bajo el home de quien la corre', () => {
+  const root = path.resolve(__dirname, '..', '..')
+  const caseros = []
+  for (const file of sourceFiles().filter((one) => one.includes(`${path.sep}test${path.sep}`))) {
+    const name = path.relative(root, file)
+    if (SIN_BARRER.includes(name)) continue
+    fs.readFileSync(file, 'utf8').split('\n').forEach((line, index) => {
+      if (/\bhomedir\(\)/.test(line) && CREA.test(line) && !/^\s*\/\//.test(line)) {
+        caseros.push(`${name}:${index + 1}`)
+      }
+    })
+  }
+  assert.deepEqual(caseros, [], `crean su banco en el home:\n  ${caseros.join('\n  ')}`)
+})
+
+// Los dos detectores de arriba, contra líneas fabricadas. Un detector que deja de detectar convierte a su
+// puerta en decorado sin que nada lo diga, y acá ya pasó: la primera versión de `BORRA_RECURSIVO` cortaba
+// en el primer paréntesis y veía tres de las siete que había. Las dos direcciones van juntas porque un
+// detector que marca todo pasaría la primera mitad y volvería inútil a la puerta.
+test('los detectores de borrado y de home ven lo que tienen que ver', () => {
+  const borran = [
+    "fs.rmSync(dir, { recursive: true, force: true })",
+    "fs.rmSync(path.join(target, 'flows'), { recursive: true, force: true })",
+    "  await fs.promises.rmSync(x, { force: true, recursive: true })",
+  ]
+  for (const line of borran) assert.ok(BORRA_RECURSIVO.test(line), `no vio: ${line}`)
+  for (const line of ["fs.rmSync(archivo)", "discard(path.join(dir, 'claims'))", "// habla de rmSync"]) {
+    assert.equal(BORRA_RECURSIVO.test(line), false, `marcó de más: ${line}`)
+  }
+
+  assert.ok(CREA.test("const base = fs.mkdtempSync(path.join(os.homedir(), '.cache'))"))
+  assert.ok(CREA.test("fs.writeFileSync(path.join(os.homedir(), 'x'), 'y')"))
+  assert.equal(CREA.test("assert.ok(salida.includes(path.join(os.homedir(), '.claude')))"), false,
+    'nombrar la casa para que un guard decida sobre ella no es crear nada ahí')
+})

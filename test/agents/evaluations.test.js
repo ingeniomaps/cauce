@@ -4,7 +4,7 @@
 // ve quien juzga, y cuándo un veredicto deja de estar vigente. Ejecutarlos exige un modelo y eso no
 // pasa acá: lo que se comprueba es que se puedan leer, entregar y contar.
 
-require('../support/environment')
+const { discard } = require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -53,12 +53,12 @@ test('un caso adversarial entrega el artefacto, no lo describe', () => {
   try {
     assert.equal(evaluations.validate(copy, 'qa-engineer').errors.length, 0, 'la copia arranca completa')
     const one = evaluations.list(copy, 'qa-engineer').find((one) => one.id.includes('adversarial'))
-    fs.rmSync(evaluations.fixtures(copy, 'qa-engineer', one.id).dir, { recursive: true })
+    discard(evaluations.fixtures(copy, 'qa-engineer', one.id).dir)
     const errors = evaluations.validate(copy, 'qa-engineer').errors
     assert.equal(errors.length, 1, 'falta el artefacto y se dice')
     assert.match(errors[0], /sin artefacto/)
   } finally {
-    fs.rmSync(copy, { recursive: true, force: true })
+    discard(copy)
   }
 })
 

@@ -39,10 +39,11 @@ function tempRoot(name) {
 // `tempRoot` mide la exención y no la regla: pasa siempre y parece que el defecto no existe. Ya pasó al
 // reproducir el 033, y volvió a pasar con el 041.
 //
-// Cuelga de `~/.cache`, que es scratch por convención, y se borra al salir igual que el otro. Se crea
-// antes de usarlo porque en una máquina recién hecha no existe: en CI la suite entera fallaba con
-// `ENOENT` sobre un directorio que en cualquier escritorio ya está.
-const OUTSIDE_BASE = path.join(os.homedir(), '.cache')
+// Cuelga de `/var/tmp` y **no del home**, que es donde colgaba. Un scratch bajo `$HOME` pone la carpeta
+// personal de quien corre las pruebas dentro del alcance de todo lo que la suite borra, y ahí un defecto
+// no cuesta una corrida: cuesta el trabajo de alguien. `/var/tmp` cumple lo único que hacía falta —no ser
+// `os.tmpdir()`— sin quedar en ninguna ruta que a alguien le importe (caso 080).
+const OUTSIDE_BASE = '/var/tmp'
 fs.mkdirSync(OUTSIDE_BASE, { recursive: true })
 const OUTSIDE = fs.mkdtempSync(path.join(OUTSIDE_BASE, `cauce-test-${process.pid}-`))
 
@@ -50,6 +51,37 @@ process.on('exit', () => fs.rmSync(OUTSIDE, { recursive: true, force: true }))
 
 function outsideTempRoot(name) {
   return fs.mkdtempSync(path.join(OUTSIDE, name))
+}
+
+// Qué se puede borrar, decidido **sin tocar el disco**. Es una función de cadenas a propósito, y ésa es
+// la parte que importa: probarla con las rutas que jamás hay que borrar —`/`, la raíz de un repositorio,
+// un home— no puede borrar nada, porque no hay `rmSync` en ninguna parte de este camino.
+//
+// La versión anterior de esta comprobación vivía adentro del borrado, así que la prueba que la ejercía le
+// pasaba rutas reales y peligrosas a la función que borra. Con la comprobación apagada por una mutación,
+// esa prueba **borró el repositorio**. Dos veces, el 2026-09-10. Separar decidir de borrar es lo que hace
+// que apagar el decisor no destruya nada: lo peor que pasa es que una aserción falle (caso 080).
+//
+// Devuelve el motivo en vez de un booleano porque quien se niega tiene que poder decir qué iba a borrar y
+// contra qué lo comparó: un rechazo mudo deja sin saber de qué se salvó ni por qué la ruta salió mal.
+function undeletable(target, roots) {
+  const resolved = path.resolve(String(target || ''))
+  // Descendiente estricto: con el separador puesto, ninguna raíz desechable se borra a sí misma, y
+  // `/tmp-de-otro` deja de parecer parte de `/tmp`.
+  if (roots.some((base) => resolved.startsWith(path.resolve(base) + path.sep))) return null
+  return `borrado abortado: ${resolved} no cuelga de ningún banco desechable.\n`
+    + `Desechables: ${roots.join(' · ')}`
+}
+
+// Las raíces desechables de esta suite. Ninguna es un árbol de trabajo: el temporal del sistema, el
+// scratch de `/var/tmp` y el banco que se recrea en cada corrida.
+const DISPOSABLE = [os.tmpdir(), OUTSIDE, path.join(path.resolve(__dirname, '..', '..'), '.cauce-eval')]
+
+// Y el borrado, que es la otra mitad y no decide nada.
+function discard(target) {
+  const negativa = undeletable(target, DISPOSABLE)
+  if (negativa) throw new Error(negativa)
+  fs.rmSync(path.resolve(target), { recursive: true, force: true })
 }
 
 const CLI = path.resolve(__dirname, '..', '..', 'engine', 'cli', 'ops.js')
@@ -181,6 +213,7 @@ module.exports = {
   TEST_RUNNER,
   wipPath,
   writeWip,
-  MIN_ROLES, opsConfig, filesBelow, tempRoot, outsideTempRoot, CLI, run, linkEngine, installedProject,
+  MIN_ROLES, opsConfig, filesBelow, tempRoot, outsideTempRoot, undeletable, discard, CLI, run,
+  linkEngine, installedProject,
   workflow, workflowStep, workflowCommand,
 }

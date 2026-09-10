@@ -4,7 +4,7 @@
 //
 // Las primeras no tocan disco —el selector recibe el estado— y por eso pueden fijar quién es quién.
 
-const { tempRoot, run } = require('../support/environment')
+const { tempRoot, run, discard } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -260,7 +260,7 @@ test('dos reclamos simultáneos de la misma tarea los gana uno solo', async () =
 
 test('sin reclamos y sin WIP en disco, check no dice nada de ninguno de los dos', () => {
   const dir = planning('cauce-sin-estado-')
-  fs.rmSync(path.join(dir, 'claims'), { recursive: true })
+  discard(path.join(dir, 'claims'))
   // Un clon nuevo no trae ningún plan: `wip/` es local y gitignoreado, y sin archivo el runner está IDLE.
   assert.equal(fs.existsSync(path.join(dir, 'wip', 'cualquiera.md')), false)
 
