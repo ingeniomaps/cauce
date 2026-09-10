@@ -244,8 +244,9 @@ que hace una vez lanzado. Es la misma forma que el [070](070-el-ci-true-de-la-co
 - **Los tres rodeos anteriores se quedan, y se dice por qué.** Los reintentos del `rmSync`, el `force` del
   andamiaje y el `rm` antes del enlace ya no tapan esta causa —está apagada— pero cubren a cualquier otro
   escritor transitorio. Sacarlos es una decisión aparte; lo que la activaría es que dejen de disparar
-  durante varias versiones. Queda dicho acá y en el comentario de cada uno, que ya no afirma que la causa
-  se desconoce.
+  durante varias versiones. **Esa espera y el desconocido que la sostiene salen como el
+  [078](078-por-que-rmsync-vuelve-sin-lanzar-sigue-sin-establecerse.md)**: dicho sólo acá, adentro de un
+  caso cerrado, era la forma en que R15 dice que una dimensión se pierde.
 
 ### Dos afirmaciones mías que este disparo desmiente
 
@@ -266,7 +267,8 @@ que hace una vez lanzado. Es la misma forma que el [070](070-el-ci-true-de-la-co
   `rmSync` falla en **17 de 20** vueltas bajo Node 24 y **19 de 20** bajo Node 26. Reproduce la cara
   ruidosa —`ENOTEMPTY`, que es literalmente el síntoma que los reintentos vinieron a tapar— y **no** la
   silenciosa, así que el modo exacto en que `rmSync` vuelve sin lanzar bajo esta carrera **sigue sin
-  establecerse**. No hace falta para el arreglo: lo que se quita es el escritor.
+  establecerse**. No hace falta para el arreglo —lo que se quita es el escritor— y sí para decidir sobre
+  los rodeos, así que vive en el [078](078-por-que-rmsync-vuelve-sin-lanzar-sigue-sin-establecerse.md).
 - **La prueba de ausencia**: un commit dentro del banco creado no lanza ningún mantenimiento. Dos
   mutaciones, las dos en rojo: sacar la línea —la regresión exacta— y cambiarla por `gc.auto=0`.
 - **La puerta entera**: 643 pruebas, 0 fallos.
