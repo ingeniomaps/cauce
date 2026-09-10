@@ -114,6 +114,7 @@ que escribís son rutas y quién las mira lo decide qué guard esté juzgando es
 | borrar o apagar una prueba | la prueba |
 | un manifiesto que va sin su lockfile, o al revés | el archivo que cambió |
 | los gates del stack en rojo, o una fuente sin regenerar | **todo** lo que está en el índice |
+| un cambio del producto sin plan escrito —el WIP en IDLE, o con la tarea puesta y ningún paso— | el archivo que vas a tocar |
 
 **Vale para ese conjunto y para ningún otro.** Si después sumás un archivo, ese archivo no está aprobado
 y el guard vuelve a frenarte nombrándolo. Eso es lo que la hace por operación sin fecha ni contador: no
@@ -125,6 +126,16 @@ mientras exista, y borrarla es parte de terminar.
 
 **Publicar un paquete o instalar algo global no se aprueba así**, porque ahí no hay ninguna ruta sobre
 la cual decidir. Esa sigue siendo una acción humana y su única llave es la variable de abajo.
+
+**Y la última fila tiene una pregunta antes**: ¿esto es trabajo de una tarea? Si lo es —aunque sea
+chico—, la salida no es aprobar la ruta sino escribir el WIP con su plan, y aprobar sería saltarse la
+fase que iba a mirarlo. Si no lo es —un typo en un README, un umbral que corregís de paso, «esto lo
+arreglo en dos minutos»—, aprobar la ruta **es** la respuesta correcta y no un rodeo.
+
+Lo que conviene saber antes de tomarla: ese cambio entra **sin entrada de DONE**, así que no tiene
+aceptación, ni evidencia, ni carril, ni revisión, y `planning/` no lo registra. Para un typo eso está
+bien y para lo demás casi nunca; el día que empiece a pasar seguido, el que está mal es el flujo y no
+quien aprueba la ruta.
 
 ### Las variables siguen existiendo, y son de sesión
 
