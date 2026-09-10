@@ -137,6 +137,9 @@ const BUILTINS = new Set([
 ])
 const KEYWORDS = new Set([
   'if', 'for', 'while', 'switch', 'catch', 'return', 'typeof', 'function', 'await', 'new', 'do',
+  // `async (a, b) => …` pone la palabra justo antes de un paréntesis, igual que `await (…)`, así que
+  // sin declararla una flecha asíncrona se lee como una llamada a algo inexistente. Caso 087.
+  'async',
 ])
 
 // Recibe el fuente ya renderizado y devuelve los nombres que se llaman sin existir. Se desnuda con el
@@ -182,6 +185,8 @@ test('la puerta de llamadas ve lo que se esconde detrás de un literal', () => {
     'y detrás de un arreglo que mezcla los dos estilos de comilla')
   assert.deepEqual(undeclaredCalls('const y = String(1) + agent(2)\n'), [],
     'lo que el runtime da y los built-ins no se reportan')
+  assert.deepEqual(undeclaredCalls('const f = async (a, b) => agent(a + b)\n'), [],
+    'una flecha asíncrona no es una llamada a `async`')
 })
 
 test('ningún workflow usa un nombre que no declaró', () => {
