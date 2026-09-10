@@ -189,3 +189,27 @@ test('un plan que ninguna crítica aprueba queda pedido por escrito, no reintent
   assert.match(fila, /sigue mezclando dos resultados/, 'y lleva el motivo, que es lo que se lee después')
   assert.ok(!reached(segunda.asked, 'Build'), 'y no se construye sobre un plan que nadie aprobó')
 })
+
+// La fila es el único rastro de la parada, así que se espera y se comprueba. Hasta 0.79.0 se lanzaba y
+// el recorrido volvía en la línea siguiente: en una corrida real el resumen contó diez agentes, el
+// journal nueve, y el décimo era el que escribía la fila. Se reportaba la parada correcta sobre un
+// registro que no la tenía, y relanzar repetía la planificación entera (caso 087).
+//
+// Que la suite no lo viera no fue por falta de caso —el de arriba lo aserciaba— sino por el arnés, que
+// anotaba la llamada en el mismo tick: una que nadie espera se veía igual que una esperada.
+test('la fila que registra la parada se espera, y si no ocurre la parada lo dice', async () => {
+  const bloqueado = {
+    verdict: 'bloqueado', consulted: ['api/alta.go'],
+    concerns: [{ detail: 'la aceptación mezcla dos resultados', blocking: true }],
+  }
+  const { result, wrote } = await runFlow({ [KEY.critique]: bloqueado })
+  assert.ok(wrote.includes('Critique|plan-human'),
+    `la escritura terminó antes de que el recorrido volviera: ${JSON.stringify(wrote)}`)
+  assert.doesNotMatch(result.detail, /no se pudo registrar/, 'y cuando ocurre, no hay nada que avisar')
+
+  // Y al revés: si el agente que la escribe no contesta, el motivo de la parada no cambia —sigue siendo
+  // el que la causó— y el detalle dice que hay que escribirla a mano, en vez de dar por hecho que está.
+  const mudo = await runFlow({ [KEY.critique]: bloqueado }, { silent: ['plan-human'] })
+  assert.equal(mudo.result.reason, 'plan-blocked', 'el motivo es el de la parada, no el de la escritura')
+  assert.match(mudo.result.detail, /no se pudo registrar: escribila a mano/)
+})
