@@ -140,12 +140,29 @@ async function runFlow(changes = {}, options = {}) {
   const contexts = options.contexts || [script[KEY.context]]
   let reads = 0
 
-  const agent = async (prompt, options = {}) => {
+  const silent = options.silent || []
+
+  const agent = async (prompt, callOptions = {}) => {
+    const options = { ...callOptions, silent }
     if (!options.label) throw new Error(`la fase ${phase} llamó a un agente sin label`)
     const key = `${phase}|${options.label}`
+    // Un agente de verdad tarda, y el arnés tiene que tardar también. Registrando la llamada en el mismo
+    // tick en que se la hace, **una llamada que nadie espera se ve idéntica a una esperada**: el
+    // recorrido la lanza, vuelve en la línea siguiente y el arnés ya la anotó. Así fue como una prueba
+    // en verde aserció durante una versión entera la fila de HUMAN_ACTIONS que en una corrida real nunca
+    // llegaba al disco — la precondición que medía no ocurre por el camino de producción, que es lo que
+    // R9 nombra en su último párrafo. Caso 087.
+    await new Promise((resolve) => { setImmediate(resolve) })
     asked.push(key)
     prompts.push({ key, prompt })
-    if (!options.schema) { written.push(prompt); wrote.push(key); return { ok: true } }
+    // `silent` simula el agente que se lanza y no contesta. Sin él no hay forma de medir qué hace el
+    // recorrido cuando la escritura que deja el rastro de una parada no ocurre, que es la mitad del
+    // caso 087 que no se ve mirando la corrida feliz.
+    if (!options.schema) {
+      written.push(prompt)
+      wrote.push(key)
+      return (options.silent || []).includes(options.label) ? null : { ok: true }
+    }
     if (options.label === 'planning-context') {
       const answer = reads < contexts.length ? contexts[reads] : NO_TASK
       reads += 1
