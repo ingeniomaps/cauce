@@ -205,6 +205,13 @@ volvieron en rojo, y la sospecha empezó por el tiempo, no por el mensaje. El co
 **Resuelto en 0.74.0 en dos de sus tres capas**, y la tercera sale como caso propio en vez de quedarse
 adentro de éste.
 
+> **Superado en 0.75.0.** La capa 1 de este cierre —`CI=true`— **era una regresión** y la corrigió el
+> [070](070-el-ci-true-de-la-copia-deja-que-pnpm-reescriba-el-node-modules-real.md): desarmaba la
+> confirmación con la que pnpm frena antes de purgar, y esa confirmación era lo único que protegía al
+> `node_modules` del proyecto. Hoy la copia lleva `npm_config_verify_deps_before_run=false`, que le
+> quita a pnpm el motivo de querer sincronizar en vez de callarle la pregunta. Lo que este cierre dice
+> de la capa 3 sigue vigente.
+
 - **Capa 1, la copia se marca no interactiva.** `commitTree` devuelve `env: { CI: 'true' }`, y sólo en
   el `return` de la copia: por el otro los gates corren en el árbol del usuario y ahí cambiarle el
   entorno no tiene razón. Medido por lo que el gate **recibe** y no por lo que la función devuelve,

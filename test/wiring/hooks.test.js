@@ -1450,14 +1450,29 @@ test('verify deja registrado qué gate corrió y con qué código de salida', ()
   assert.equal(EV.runs(root).length, EV.MAX_RUNS)
 })
 
-// Un gate no sólo lee su entorno: escribe en él, y lo ignorado se le enlaza al original. pnpm 11 lo
-// lleva al extremo —ve que el árbol enlazado no fue instalado ahí y reinstala, borrando primero el
-// `node_modules` del proyecto— y lo único que lo detiene es que el hijo no ve una terminal. `CI` es la
-// variable que ese mismo gestor nombra para no preguntar (caso 068).
+// Qué entorno recibe un gate según dónde corra. Se mide por lo que el gate **recibe** y no por lo que
+// devuelve `commitTree`, porque lo que importa es que llegue: entre una cosa y la otra está `run`, que
+// mezcla el objeto sobre el entorno del proceso.
 //
-// Se mide por lo que el gate recibe y no por lo que devuelve `commitTree`, porque lo que importa es que
-// llegue: entre una cosa y la otra está `run`, que mezcla el objeto sobre el entorno del proceso.
-test('el gate que corre sobre la copia la ve como no interactiva, y sobre el árbol no', () => {
+// Las dos mitades importan y la segunda es de ausencia. Acá estuvo `CI=true` y fue la regresión del caso
+// 070: desarmaba la confirmación de cualquier herramienta en vez de quitarle a pnpm el motivo de
+// preguntar. Comprobar que llega la palanca nueva no comprueba que la vieja se fue —las dos podrían
+// convivir, y ahí el verde diría que ocurrió la mitad del cambio—.
+// El error que produjo el 070 no fue elegir mal una variable: fue no ver que ponerla era una **quita**.
+// `CI=true` no agregaba una conducta, sacaba la confirmación con la que pnpm frena antes de purgar — y
+// una confirmación que estorba casi siempre está cuidando algo. R9 pide que una quita se pruebe por
+// ausencia, y esa prueba no se escribió porque nadie extrañaba lo que se estaba sacando.
+//
+// La lista atrapa lo que conocemos y nada más, que es el límite honesto de una lista. Lo que agrega es
+// que la próxima vez la decisión se tome a la vista y no dentro de un comentario.
+const DESARMAN = {
+  CI: 'pnpm deja de confirmar antes de purgar el node_modules, y npm y yarn cambian de modo (caso 070)',
+  CONTINUOUS_INTEGRATION: 'el mismo efecto que CI en varias herramientas',
+  npm_config_yes: 'npx deja de preguntar antes de bajar y ejecutar un paquete',
+  npm_config_confirm_modules_purge: 'apaga exactamente la confirmación que protegía al proyecto',
+}
+
+test('la copia recibe la palanca que apaga la sincronización, y ya no la que desarma confirmaciones', () => {
   const root = tempRoot('ops-hook-ci-')
   initRepo(root)
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
@@ -1466,7 +1481,10 @@ test('el gate que corre sobre la copia la ve como no interactiva, y sobre el ár
   // y anota fuera del árbol que se juzga para que las dos corridas escriban en el mismo lugar.
   const visto = path.join(tempRoot('ops-hook-ci-visto-'), 'visto.txt')
   fs.writeFileSync(path.join(root, 'gate.js'),
-    `require('node:fs').appendFileSync(${JSON.stringify(visto)}, 'CI=' + (process.env.CI || 'vacio') + '\\n')\n`)
+    `const d = ${JSON.stringify(DESARMAN)}\n`
+    + `require('node:fs').appendFileSync(${JSON.stringify(visto)}, `
+    + `'verify=' + (process.env.npm_config_verify_deps_before_run || 'vacio') `
+    + `+ ' desarmadas=' + Object.keys(d).filter((k) => process.env[k]).join(',') + '\\n')\n`)
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node gate.js' } }))
   fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = 1\n')
   fs.writeFileSync(path.join(root, 'planning', '.keep'), '')
@@ -1479,22 +1497,76 @@ test('el gate que corre sobre la copia la ve como no interactiva, y sobre el ár
   // `CI` se despeja a mano para las dos mitades: Actions la exporta, así que sin esto la mitad de
   // «no hay copia» pasaría en una laptop y afirmaría en CI algo que ahí no es cierto. Lo que se mide es
   // qué agrega el guard, no qué traía el entorno — y eso hay que aislarlo para poder verlo.
+  // `CI` se despeja a mano: Actions la exporta, así que sin esto la mitad de ausencia pasaría en una
+  // laptop y afirmaría en CI algo que ahí no es cierto. Lo que se mide es qué agrega el guard.
   const antes = process.env.CI
   try {
     delete process.env.CI
     assert.doesNotThrow(() => execute('verify', commit))
-    assert.match(fs.readFileSync(visto, 'utf8'), /^CI=vacio$/m,
+    assert.match(fs.readFileSync(visto, 'utf8'), /^verify=vacio desarmadas=$/m,
       'sin copia no se le cambia el entorno a nadie')
 
     // Y ahora sí hay copia, por lo más barato que la dispara.
     fs.writeFileSync(visto, '')
     fs.writeFileSync(path.join(root, 'suelto.txt'), 'no trackeado\n')
     assert.doesNotThrow(() => execute('verify', commit))
-    assert.match(fs.readFileSync(visto, 'utf8'), /^CI=true$/m, 'sobre la copia sí')
+    const enLaCopia = fs.readFileSync(visto, 'utf8')
+    assert.match(enLaCopia, /^verify=false/m, 'la copia no sincroniza nada antes de correr el gate')
+    assert.match(enLaCopia, /desarmadas=$/m,
+      `y ninguna de éstas llega al gate:\n${Object.entries(DESARMAN)
+        .map(([k, why]) => `  ${k}: ${why}`).join('\n')}`)
   } finally {
     if (antes === undefined) delete process.env.CI
     else process.env.CI = antes
   }
+})
+
+// La regresión del caso 070, medida como R9 pide que se mida una quita: por ausencia de daño. Poner
+// `CI=true` en la copia no agregaba una conducta, **quitaba** una —la confirmación con la que pnpm frena
+// antes de purgar—, y esa confirmación era lo único que protegía al `node_modules` del proyecto. Sin
+// ella la reinstalación avanza y borra por el enlace; el gate igual termina en verde, así que nada lo
+// dice.
+//
+// Se usa un `pnpm` de mentira porque el de verdad exige una instalación real y salir a la red, y lo que
+// hay que fijar no es qué hace pnpm sino **qué le pedimos**: con la comprobación previa apagada no toca
+// nada, y con cualquier otro valor empieza borrando. Es la conducta documentada de `verify-deps-before-run`,
+// reproducida a mano con pnpm 10.30.2 antes de escribir esto.
+test('un gate no puede purgar el node_modules del proyecto por el enlace', () => {
+  const root = tempRoot('ops-hook-purga-')
+  initRepo(root)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  fs.writeFileSync(path.join(root, '.gitignore'), 'node_modules/\n')
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node -e ""' } }))
+  fs.writeFileSync(path.join(root, 'pnpm-lock.yaml'), "lockfileVersion: '9.0'\n")
+  fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = 1\n')
+  fs.mkdirSync(path.join(root, 'node_modules'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'node_modules', 'marca.txt'), 'el árbol del proyecto\n')
+  git(['add', 'package.json', 'app.js', '.gitignore', 'pnpm-lock.yaml'], root)
+
+  // El `pnpm` de mentira: reinstala —o sea, empieza borrando— salvo que se le haya apagado la
+  // comprobación previa. Sigue el enlace, que es exactamente por donde ocurrió el daño.
+  const falso = tempRoot('ops-hook-purga-bin-')
+  fs.writeFileSync(path.join(falso, 'pnpm'), '#!/usr/bin/env bash\n'
+    + 'if [ "${npm_config_verify_deps_before_run:-}" != "false" ]; then\n'
+    + '  rm -f node_modules/marca.txt\n'
+    + 'fi\n'
+    + 'exit 0\n', { mode: 0o755 })
+
+  // Árbol e índice difieren, que es cuando se materializa la copia y aparece el enlace.
+  fs.writeFileSync(path.join(root, 'suelto.txt'), 'no trackeado\n')
+  const antes = process.env.PATH
+  try {
+    process.env.PATH = `${falso}${path.delimiter}${antes}`
+    assert.doesNotThrow(() => execute('verify', { cwd: root, tool_input: { command: 'git commit -m x' } }))
+  } finally {
+    process.env.PATH = antes
+  }
+
+  // La aserción es de ausencia de daño: que el gate haya pasado no dice nada: en la regresión también
+  // pasaba, y el árbol del proyecto ya no estaba.
+  assert.equal(fs.existsSync(path.join(root, 'node_modules', 'marca.txt')), true,
+    'el node_modules del proyecto sigue entero')
 })
 
 // La copia mide el índice, así que lo que un gate escriba en lo enlazado queda con la versión **staged**
