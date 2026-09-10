@@ -79,7 +79,7 @@ test('un criterio sin cubrir va a una persona o vuelve a quien construye, según
   })
   ranToEnd(bounce.result)
   assert.equal(turn, 2, 'Verify tiene que volver a correr después del rebote')
-  assert.equal(writesTo(bounce.asked, 'Verify'), 1, 'y el rebote va a quien construye, en una sola vuelta')
+  assert.equal(writesTo(bounce.wrote, 'Verify'), 1, 'y el rebote va a quien construye, en una sola vuelta')
 })
 
 test('un criterio que sigue sin prueba después del rebote frena', async () => {

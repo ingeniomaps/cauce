@@ -332,6 +332,14 @@ const LEDGER = `${SCOPE}\n\nContratos de planning, textuales de ${P}/PROTOCOL.md
 // con un TypeError en la fase que sea, y lo que quedó a medias es una tarea con WIP escrito y código
 // sin revisar. Cada llamada corta con su etapa puesta: «no contestó» no es lo mismo que «dijo que no»,
 // y sólo la segunda significa que alguien juzgó algo.
+//
+// Y cada llamada lleva su `label`. Sin él el runtime muestra el arranque del prompt, que acá es el
+// preámbulo compartido: en cinco corridas reales el journal repitió treinta veces la misma cadena
+// —«Nunca inventes credenciales ni decisiones; registrá »— y un bucle de veintiocho agentes pidiendo
+// la misma tarea se vio igual que trabajo. Al revés que `phase`, esto no se puede envolver: el nombre
+// de la fase no alcanza —Critique planifica y critica, Review revisa y manda a corregir— y esa es
+// justo la distinción que hace falta. Lo que evita el olvido es el arnés, que rechaza la llamada sin
+// etiqueta en las cuatro suites del recorrido.
 const read = (prompt, options = {}) => agent(`${BASE}\n\n${prompt}`, options)
 const run = (prompt, options = {}) => agent(`${SCOPE}\n\n${prompt}`, options)
 const write = (prompt, options = {}) => agent(`${LEDGER}\n\n${prompt}`, options)
@@ -365,6 +373,9 @@ const completed = []
 // para siempre. Se corta con motivo porque agotarlo en silencio se lee igual que haber terminado.
 const MAX_TASKS = 50
 let rounds = 0
+// Lo dicen las dos vueltas que cambian de tarea a mitad de corrida —la carrera perdida y la partición—,
+// que no son errores y por eso no salen por `stop`.
+const nextUp = (state) => (state.hasTask ? state.slug : '(nada más en cola)')
 // Tareas que ya pasaron por el clasificador en esta corrida. Sin esto, una que vuelve sin lane
 // —porque la escritura falló o el modelo la salteó— se reclasifica en cada vuelta del bucle.
 const classified = new Set()
@@ -400,6 +411,28 @@ while (rounds++ < MAX_TASKS) {
     if (!reserva || !reserva.claimed) {
       planning = await readContext()
       if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
+      // Perder la carrera es legítimo y se ve en que la cola pasa a ofrecer **otra** tarea: quien la
+      // tomó ya la reclamó, así que `context` la saltea. Que vuelva a ofrecer la misma significa lo
+      // contrario — que nadie la tiene y el reclamo falló por su cuenta—, y eso no mejora repitiendo.
+      //
+      // Reintentar igual costó 28 de los 50 agentes de una corrida real, trece sobre un slug y quince
+      // sobre otro, sin construir nada y sin que nada lo dijera: el único tope es `MAX_TASKS`, así que
+      // el presupuesto de reintentos **es** el de tareas y una tarea irreclamable se lleva la corrida
+      // (caso 071).
+      //
+      // La parada nombra las dos cosas que hacen falta para saber cuál de los dos defectos fue: el slug
+      // que `context` entregó y lo que el reclamo contestó. Si el mensaje dice que ese slug no está en
+      // BACKLOG, los dos comandos discrepan sobre la misma cola; si dice otra cosa, el comando se compuso
+      // distinto del que se pidió.
+      if (planning.hasTask && planning.slug === task.id && !planning.claimed) {
+        return stop('claim-stuck', `${task.id} sigue siendo la próxima tarea y no se pudo reclamar. `
+          + `context la ofrece y claim la rechaza, así que repetir no cambia nada. `
+          + `El reclamo contestó: ${(reserva && reserva.details) || '(sin detalle)'}`)
+      }
+      // Con qué sigue, que es lo que cambia respecto de lo que esperaba quien autorizó la corrida: se
+      // pidió un hito y se va a construir otra tarea de ese hito. Sin decirlo, el cambio sólo aparece al
+      // final, en un cierre que nombra algo que nadie mandó a hacer.
+      log(`${task.id} la tomó otro: la corrida sigue con ${nextUp(planning)}`)
       continue
     }
   }
@@ -424,7 +457,7 @@ while (rounds++ < MAX_TASKS) {
       `corchetes después del slug y el reparto al final de la línea, con la forma ` +
       `"(cast: quien-entrega → quien-revisa, otro)". No toques nada más de la línea, ni el orden del hito, ` +
       `ni las tareas que ya declaran las dos cosas. Reportá lo que escribiste.`,
-      { schema: CLASSIFICATION },
+      { schema: CLASSIFICATION, label: 'classify' },
     )
     if (classification && classification.classified.length) {
       log(`Clasificadas: ${classification.classified
@@ -479,11 +512,12 @@ while (rounds++ < MAX_TASKS) {
         `${asRole(OWNERS.ready)}Revisá que ${task.id} tenga aceptación concreta, dependencias resueltas y ` +
         `ninguna decisión pendiente: ${task.acceptance}. Aclará la redacción y nada más; nunca amplíes el ` +
         `alcance.`,
-        { schema: READY },
+        { schema: READY, label: 'ready' },
       )
       if (!ready) return stop('agent-unavailable', 'Ready no devolvió resultado')
       if (!ready.ready) {
-        await write(`Registrá ${task.id} en ${HUMAN} con el motivo y una acción humana exacta: ${ready.reason}.`)
+        await write(`Registrá ${task.id} en ${HUMAN} con el motivo y una acción humana exacta: ${ready.reason}.`,
+          { label: 'ready-human' })
         return stop('not-ready', ready.reason)
       }
       if (ready.refinedAcceptance) task.acceptance = ready.refinedAcceptance
@@ -493,14 +527,22 @@ while (rounds++ < MAX_TASKS) {
       phase('Decompose')
       const estimate = await run(
         `Inspeccioná ${task.service} y estimá ${task.id}. Partila sólo si supera ${contract.maxTaskHours} horas.`,
-        { schema: ESTIMATE },
+        { schema: ESTIMATE, label: 'estimate' },
       )
       if (!estimate) return stop('agent-unavailable', 'Decompose no devolvió resultado')
       if (estimate.needsSplit) {
         await write(`Reemplazá sólo ${task.id} en ${BACKLOG} por subtareas ordenadas y verificables de forma ` +
-          `independiente: ${JSON.stringify(estimate.subtasks)}.`)
+          `independiente: ${JSON.stringify(estimate.subtasks)}.`, { label: 'split' })
         planning = await readContext()
         if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
+        // Misma forma que en Claim: si la cola sigue ofreciendo lo mismo, el estado no cambió y repetir
+        // no lo va a cambiar. Acá lo que no cambió es una escritura que se le pidió a un agente, y darla
+        // por hecha manda al bucle a partir la misma tarea otra vez.
+        if (planning.hasTask && planning.slug === task.id) {
+          return stop('split-not-applied', `se pidió reemplazar ${task.id} en ${BACKLOG} por sus `
+            + 'subtareas y la cola sigue ofreciéndola: la escritura no ocurrió como se pidió.')
+        }
+        log(`${task.id} quedó partida: la corrida sigue con ${nextUp(planning)}`)
         continue
       }
     }
@@ -519,7 +561,7 @@ while (rounds++ < MAX_TASKS) {
       `sólo el cambio dentro de ${task.service}: correr los gates del repositorio, hacer QA, commitear y ` +
       `cerrar la tarea son fases posteriores de este recorrido, cada una con su dueño, así que no van como ` +
       `pasos.`,
-      { schema: PLAN },
+      { schema: PLAN, label: 'plan' },
     )
     if (!plan) return stop('agent-unavailable', 'Plan no devolvió resultado')
     if (!lite) {
@@ -527,7 +569,7 @@ while (rounds++ < MAX_TASKS) {
       let critique = await read(
         `Atacá este plan por correctitud, alcance, seguridad, pruebas y conflictos con el código ` +
         `existente.${MANIFEST}${VERDICT} Plan: ${JSON.stringify(plan)}`,
-        { schema: DECISION },
+        { schema: DECISION, label: 'critique' },
       )
       if (!critique) return stop('agent-unavailable', 'Critique no devolvió resultado')
       // Un plan bloqueado no se corrige: lo que lo bloquea está fuera de lo que una segunda pasada puede
@@ -538,12 +580,12 @@ while (rounds++ < MAX_TASKS) {
       if (blockers(critique).length) {
         plan = await read(
           `Corregí el plan una vez por: ${blockers(critique).join('; ')}. Plan: ${JSON.stringify(plan)}`,
-          { schema: PLAN },
+          { schema: PLAN, label: 'replan' },
         )
         critique = await read(
           `Volvé a criticar el plan corregido contra ${task.acceptance}.${MANIFEST}${VERDICT} ` +
           `Plan: ${JSON.stringify(plan)}`,
-          { schema: DECISION },
+          { schema: DECISION, label: 'critique' },
         )
         if (!plan || !critique) return stop('agent-unavailable', 'la revisión del plan no devolvió resultado')
         if (critique.verdict === 'bloqueado' || blockers(critique).length) {
@@ -568,7 +610,7 @@ while (rounds++ < MAX_TASKS) {
       `acceptance=${JSON.stringify(task.acceptance)}, pasos sin tildar=${JSON.stringify(plan.steps)}. ` +
       `Registrá el reparto de cargos ${JSON.stringify(cast)} en las decisiones del WIP, para que después se ` +
       `pueda auditar quién revisó qué. Seguí el contrato de WIP exactamente y reportá con qué status quedó.`,
-      { schema: {
+      { label: 'wip', schema: {
         type: 'object', additionalProperties: false, required: ['wipActive'],
         properties: { wipActive: { type: 'boolean' }, note: { type: 'string' } },
       } },
@@ -593,7 +635,7 @@ while (rounds++ < MAX_TASKS) {
     `registra para que lo decida quien corresponde y el recorrido sigue. Si de verdad no podés entregar sin ` +
     `esa decisión, eso no va en discovered: es completed=false con su blocker. ` +
     `Aceptación: ${task.acceptance}.`,
-    { schema: BUILD },
+    { schema: BUILD, label: 'build' },
   )
   if (!build) return stop('agent-unavailable', 'Build no devolvió resultado')
   if (!build.completed) return stop('build-blocked', (build.blockers || []).join('; ') || build.summary)
@@ -615,7 +657,7 @@ while (rounds++ < MAX_TASKS) {
   if (openDecisions.length) {
     await write(`Registrá en ${HUMAN} una fila por cada decisión que ${task.id} dejó abierta, con qué la ` +
       `cierra y quién puede tomarla. No inventes responsables ni fechas: ` +
-      `${JSON.stringify(openDecisions.map((entry) => entry.detail))}`)
+      `${JSON.stringify(openDecisions.map((entry) => entry.detail))}`, { label: 'open-decisions' })
   }
   // Y un caso que sí se fijó acá entra con su prueba o no entró: sin ella el comportamiento nuevo queda
   // sin nada que lo sostenga, y nadie sabe después que debía existir.
@@ -639,16 +681,17 @@ while (rounds++ < MAX_TASKS) {
       `${asRole(cast.review)}Revisá el diff real por aceptación, regresiones, seguridad, arquitectura, código ` +
       `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.${MANIFEST}` +
       `${VERDICT}`,
-      { schema: DECISION },
+      { schema: DECISION, label: 'review' },
     )
     if (!review) return stop('agent-unavailable', 'Review no devolvió resultado')
     if (review.verdict === 'bloqueado') {
       return stop('review-blocked', blockers(review).join('; ') || 'sin condiciones nombradas')
     }
     if (blockers(review).length) {
-      await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${blockers(review).join('; ')}`)
+      await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${blockers(review).join('; ')}`,
+        { label: 'review-fix' })
       review = await run(`Volvé a revisar el diff corregido de ${task.id}.${MANIFEST}${VERDICT}`,
-        { schema: DECISION })
+        { schema: DECISION, label: 'review' })
       if (!review) return stop('agent-unavailable', 'la re-revisión no devolvió resultado')
       if (review.verdict === 'bloqueado' || blockers(review).length) {
         return stop('review-failed', blockers(review).join('; ') || 'sin condiciones nombradas')
@@ -664,7 +707,7 @@ while (rounds++ < MAX_TASKS) {
     const noted = review.concerns.filter((one) => !one.blocking).map((one) => one.detail)
     if (noted.length) {
       await write(`Registrá en la sección Propuestas de ${P}/INBOX.md lo que la revisión de ${task.id} dejó ` +
-        `anotado sin frenar la entrega, sin promover ninguna: ${JSON.stringify(noted)}`)
+        `anotado sin frenar la entrega, sin promover ninguna: ${JSON.stringify(noted)}`, { label: 'review-noted' })
     }
   }
 
@@ -687,7 +730,7 @@ while (rounds++ < MAX_TASKS) {
     `passed=true exige comandos corridos y ninguna regresión causada por la tarea. Marcá ranTests en el ` +
     `comando que haya corrido las pruebas, sea cual sea su nombre. ` +
     `Aceptación: ${task.acceptance}.`
-  let verified = await run(VERIFY_ASK, { schema: VERIFY })
+  let verified = await run(VERIFY_ASK, { schema: VERIFY, label: 'verify' })
   if (!verified) return stop('agent-unavailable', 'Verify no devolvió resultado')
   // Un criterio que nadie sabe cómo aserciar no es trabajo que falta sino una definición que falta, y
   // definirla acá sería inventarla. Escribir la prueba que falta, en cambio, es trabajo del recorrido:
@@ -695,13 +738,14 @@ while (rounds++ < MAX_TASKS) {
   const ambiguous = verified.uncovered.find((entry) => entry.cause === 'ambiguous')
   if (ambiguous) {
     await write(`Registrá ${task.id} en ${HUMAN}: el criterio "${ambiguous.criterion}" no dice qué habría ` +
-      `que aserciar, y hace falta la decisión que lo fija.`)
+      `que aserciar, y hace falta la decisión que lo fija.`, { label: 'verify-human' })
     return stop('acceptance-ambiguous', ambiguous.criterion)
   }
   if (verified.uncovered.length) {
     await run(`${asRole(cast.build)}Escribí sólo las pruebas que faltan en ${task.id}, con el mismo rojo ` +
-      `previo, y no toques el código de producción: ${verified.uncovered.map((e) => e.criterion).join('; ')}`)
-    verified = await run(VERIFY_ASK, { schema: VERIFY })
+      `previo, y no toques el código de producción: ${verified.uncovered.map((e) => e.criterion).join('; ')}`,
+      { label: 'missing-tests' })
+    verified = await run(VERIFY_ASK, { schema: VERIFY, label: 'verify' })
     if (!verified) return stop('agent-unavailable', 'la segunda pasada de Verify no devolvió resultado')
   }
   if (!verified.passed || !verified.commands.length) return stop('verify-failed', verified.details)
@@ -726,7 +770,7 @@ while (rounds++ < MAX_TASKS) {
         : 'Ejercitá el comportamiento real que ve quien lo usa'} para ` +
       `${task.id}. Las pruebas unitarias solas no son QA. Levantá el mínimo runtime necesario y bajalo ` +
       `después. Aceptación: ${task.acceptance}.`,
-      { schema: QA },
+      { schema: QA, label: 'qa' },
     )
     if (!qa) return stop('agent-unavailable', 'QA no devolvió resultado')
     if (!qa.passed) return stop('qa-failed', qa.evidence)
@@ -738,7 +782,7 @@ while (rounds++ < MAX_TASKS) {
     `stageá por nombre los archivos de la tarea, creá un solo Conventional Commit con el footer ` +
     `"Task: ${task.id}" y después verificá log y status. Nunca amend ni push; reportá lo que quedó suelto ` +
     `y no era de la tarea.`,
-    { schema: COMMIT },
+    { schema: COMMIT, label: 'commit' },
   ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
   if (!commit) return stop('agent-unavailable', 'Commit no devolvió resultado')
   if (!commit.committed) return stop('commit-failed', commit.reason)
@@ -753,6 +797,7 @@ while (rounds++ < MAX_TASKS) {
     `que no figure en estos hechos. Hechos: lane=${planning.lane || 'sin clasificar'}; ` +
     `review=${reviewFact}; fases=${ran.join(' → ')}; build=${build.summary}; ` +
     `verify=${JSON.stringify(verified.commands)}; qa=${qa.evidence}; commit=${commit.hash || commit.reason}.`,
+    { label: 'done' },
   )
   completed.push(task.id)
   planning = await readContext()
@@ -767,6 +812,7 @@ phase('Closing')
 const closing = await write(
   `Corré "node tools/ops.js check ${P}" desde ${ROOT}. Si sale en rojo, reparás sólo estado derivado ` +
   `determinista; nunca reescribas aceptación ni decisiones para forzar el verde.`, {
+    label: 'closing',
     schema: {
       type: 'object', required: ['passed', 'details'],
       properties: { passed: { type: 'boolean' }, details: { type: 'string' } },
@@ -778,5 +824,6 @@ if (!closing.passed) return stop('planning-check-failed', closing.details)
 if (completed.length && contract.humanCheckpoint) await write(
   `Creá ${GATE} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones humanas ` +
   `pendientes y las instrucciones exactas para continuar. Nunca hagas push ni deploy.`,
+  { label: 'human-checkpoint' },
 )
 return finish({ done: completed, count: completed.length, hito: currentMilestone, phases: ran })

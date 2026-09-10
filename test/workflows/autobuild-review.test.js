@@ -71,7 +71,7 @@ test('un veredicto bloqueado frena sin gastar una corrección', async () => {
     },
   })
   assert.equal(review.result.reason, 'review-blocked')
-  assert.equal(writesTo(review.asked, 'Review'), 0, 'no se manda a corregir lo que la corrección no arregla')
+  assert.equal(writesTo(review.wrote, 'Review'), 0, 'no se manda a corregir lo que la corrección no arregla')
 
   const critique = await runFlow({
     [KEY.critique]: {
@@ -85,7 +85,7 @@ test('un veredicto bloqueado frena sin gastar una corrección', async () => {
 
 // Y un hallazgo que no impide entregar deja de costar una vuelta de código: se anota y la tarea cierra.
 test('lo que no bloquea se anota y no manda a tocar código', async () => {
-  const { result, written, asked } = await runFlow({
+  const { result, written, wrote } = await runFlow({
     [KEY.review]: {
       verdict: 'con-condiciones', consulted: ['api/alta.go'],
       concerns: [{ detail: 'el nombre del handler podría ser más claro', blocking: false }],
@@ -93,7 +93,7 @@ test('lo que no bloquea se anota y no manda a tocar código', async () => {
   })
   ranToEnd(result)
   assert.deepEqual(result.done, ['T-1'])
-  assert.equal(writesTo(asked, 'Review'), 1, 'una sola escritura en Review: la del registro, no una corrección')
+  assert.equal(writesTo(wrote, 'Review'), 1, 'una sola escritura en Review: la del registro, no una corrección')
   assert.ok(
     written.some((text) => text.includes('INBOX') && text.includes('nombre del handler')),
     'lo anotado queda donde alguien lo decide después, sin promover',
