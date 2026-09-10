@@ -1,15 +1,16 @@
 ---
 caso: 079
 titulo: El trabajo que no es una tarea no tiene camino, así que sale por la escotilla de excepción
-estado: abierto
+estado: resuelto
+resuelto-en: 0.77.0
 prioridad: media
 version-detectada: 0.76.0
 ---
 
 # 079 — «Voy a mejorar esto rápido» no tiene carril, y lo que queda es apagar un guard
 
-**🔴 abierto** · detectado en 0.76.0 · prioridad **media** — el camino ya está nombrado desde 0.77.0; lo
-que sigue abierto es que ese trabajo no deja registro, y elegir cómo pide un número que está en la instancia
+**🟢 resuelto en 0.77.0** · detectado en 0.76.0 · prioridad **media** — medido, la escotilla no se usa nunca
+y el 76 % del trabajo entra sin registro por un camino donde ningún guard mira
 
 ## Resumen
 
@@ -139,3 +140,82 @@ ninguno, y se buscó en el protocolo y tampoco.
 - **OPS-001** — `planning/` como fuente de verdad operativa: es la que el trabajo suelto deja incompleta.
 - **R13** — «negarse no es entregar». Un guard que frena sin nombrar el camino correcto deja el pedido
   donde estaba, y acá el camino correcto no está escrito en ningún lado.
+
+## Cierre
+
+**Resuelto en 0.77.0**, y el caso se cierra con una decisión de no construir, sostenida por dos números que
+se midieron en instancias reales y que desmienten su propia hipótesis.
+
+### La escotilla no se usa. Nunca.
+
+El caso decía que la salida de excepción se estaba volviendo el camino habitual. Medido sobre dos
+instancias reales —`venotal-ops`, en 0.76.0 y con `guard-files` cableado, y `gouduet-ops` en 0.66.0—:
+
+```
+commits que tocaron planning/.ops-approval:  0   ·  0
+```
+
+Y el cero es visible, no invisible: `git check-ignore` confirma que el archivo **no está gitignoreado** en
+ninguna de las dos, así que si se hubiera usado estaría en la historia.
+
+### Por qué no se usa, y es lo que el caso no vio
+
+**`plan-first` corre en `PreToolUse`.** Gobierna las llamadas de herramienta **del agente**, y nada más.
+Verificado en el `settings.json` de la instancia: los guards de archivos cuelgan de `PreToolUse` y
+`planning-drift` de `Stop`.
+
+O sea que una persona que abre su editor, corrige el typo y commitea **no se topa con ningún guard**. El
+escenario que originó este caso —«alguien dice voy a hacer esto, lo hace y lo sube»— no sale por la
+escotilla: no pasa cerca de ella. La escotilla es del agente, y el agente casi siempre trabaja desde una
+tarea, que es por lo que nunca la necesitó.
+
+### El registro que falta es mucho más grande que el trabajo suelto
+
+Si el problema fuera la escotilla, sería de cero. Medido por el otro lado —cuántos commits quedan
+registrados en una entrada de DONE, cruzando los `commit:` de `planning/done/` contra la historia de cada
+repositorio de trabajo:
+
+| repositorio | commits | registrados en DONE |
+|---|---|---|
+| `dashboard` | 248 | **75** |
+| `venotal-storefront` | 43 | **0** |
+| `creative-studio` | 21 | **0** |
+| **total** | **312** | **75 (24 %)** |
+
+Los 248 de `dashboard` son **todos** posteriores a la primera entrada de DONE —2026-07-09— y ninguno es un
+merge, así que no es historia previa a la adopción. Y el contrato dice que una tarea registra **todos** sus
+commits separados por `;`: de 80 entradas, **una sola** lo hace, así que la brecha tampoco se explica por
+tareas que produjeron varios commits.
+
+**Tres cuartas partes del trabajo de una instancia real no dejan entrada en `planning/`.**
+
+### Qué se decide, y por qué no es ninguna de las dos vías que quedaban
+
+- **«Una entrada de DONE sin tarea previa» — se decide que no.** Está pensada para el trabajo que sale por
+  la escotilla, y por ahí no sale nada. Construirla resolvería un caso con cero ocurrencias.
+- **«Un carril propio» — se decide que no, y con más razón.** Es el más caro de los tres y atacaría el
+  mismo cero. Un quinto contrato entre la prosa, el motor y el workflow para una situación que no ocurre.
+- **Lo que sí se hizo —nombrar el camino— era lo correcto y alcanza para lo que este caso podía cubrir.**
+  La fila del `plan-first` está en la tabla de aprobaciones, con la pregunta que va antes y con lo que
+  cuesta. Si algún día la escotilla empieza a usarse, ahora se ve en git y `check` lo avisa.
+
+### Lo que este caso encontró y no le tocaba arreglar
+
+El 76 % de arriba es otro problema, más grande y de otra clase: no es que el trabajo suelto no tenga
+camino, es que **el flujo entero se saltea en la mayoría de los commits**, y ningún guard mira ahí porque
+`PreToolUse` no ve a una persona. Eso no se arregla con un carril ni con un campo: pide decidir si el
+registro tiene que cubrir todo lo que entra al repositorio, y con qué mecanismo —el commit, no la edición—.
+
+**Sale como el [082](082-tres-de-cada-cuatro-commits-no-dejan-entrada-en-planning.md)**, con estos números
+adentro. Dejarlo escrito acá, dentro de un caso cerrado, es la forma en que R15 dice que una dimensión se
+pierde.
+
+### Qué se corrió
+
+- **La historia de `.ops-approval`** en dos instancias reales: cero commits, y el archivo no gitignoreado.
+- **El evento de los guards**, leído del `settings.json` de la instancia: `PreToolUse` y `Stop`.
+- **El cruce de 312 commits contra 80 entradas de DONE**, con los tres descartes hechos: ninguno es merge,
+  todos son posteriores a la adopción, y una sola entrada registra más de un commit.
+- **Lo que no se pudo medir, y se dice**: cuánto de esos 237 commits sin registro es trabajo que debía
+  tener tarea y cuánto es el arreglo suelto que este caso describe. Distinguirlos pide leer los mensajes
+  de commit uno por uno, y es parte de lo que el 082 tiene que hacer.
