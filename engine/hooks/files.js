@@ -6,6 +6,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { spawnSync } = require('node:child_process')
 const {
   patchOf, filesOf, contentOf, cwdOf, block, configOf, findOpsRoot,
   writableRoots, outsideRoots, DECLARE_IT,
@@ -25,6 +26,29 @@ function opsRoot(input) {
 // angosta: vale para esa ruta y deja de valer en cuanto cambie, a diferencia de la variable, que apaga
 // el guard hasta que cierre la sesión.
 const approved = (input, file) => !AP.pending(opsRoot(input), [file]).length
+
+// Si la migración ya viajó a otra copia, que es lo que el bloqueo de abajo quiere saber y `existsSync`
+// no contesta. Devuelve el motivo del bloqueo o cadena vacía.
+//
+// **`HEAD` y no el índice**: un archivo apenas `git add`eado no viajó a ninguna parte, y `git ls-files`
+// lo daría por historial. Y **resolver la raíz es una pregunta aparte** de si el archivo está en `HEAD`:
+// las dos fallan con 128 y confundirlas repite el error que este caso arregla —decidir por la respuesta
+// equivocada—. Sin raíz resoluble se degrada a la conducta de antes, que bloquea de más, porque cuando
+// no se puede saber ése es el lado correcto para equivocarse. Es la degradación que `check` ya declara
+// cuando no puede resolver el repositorio de un servicio. Caso 086.
+function alreadyShipped(file) {
+  if (!fs.existsSync(file)) return ''
+  const cwd = path.dirname(file)
+  const top = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd, encoding: 'utf8' })
+  if (top.status !== 0) {
+    return 'existe, y acá no hay repositorio con el que saber si ya viajó a otra copia'
+  }
+  const rel = path.relative(top.stdout.trim(), file).split(path.sep).join('/')
+  return spawnSync('git', ['cat-file', '-e', `HEAD:${rel}`], { cwd }).status === 0
+    ? 'ya está en el historial del repositorio'
+    : ''
+}
+
 
 function secrets(input) {
   for (const file of filesOf(input)) {
@@ -232,9 +256,15 @@ function migrations(input) {
     if (destructiveSql.test(contentOf(input))) {
       block(`${raw} contiene SQL destructivo.\n${AP.HOW('OPS_MIGRATIONS_OVERRIDE')}`)
     }
+    // El mensaje nombra el hecho que sostiene el bloqueo y no su interpretación: «historial» era una
+    // lectura que `existsSync` no podía dar, y se la daba igual sobre stubs de la misma sesión. Y lleva
+    // la salida angosta, que hasta 0.79.0 sólo tenía el bloqueo hermano: éste es el que aparece en el
+    // flujo normal de escribir una migración, así que era justo el que no podía quedarse sin decirla.
     const file = path.resolve(cwdOf(input), raw)
-    if (fs.existsSync(file)) {
-      block(`${raw} es una migración existente. Crea una nueva en vez de reescribir historial.`)
+    const shipped = alreadyShipped(file)
+    if (shipped) {
+      block(`${raw} ${shipped}. Crea una nueva en vez de reescribirla.\n`
+        + AP.HOW('OPS_MIGRATIONS_OVERRIDE'))
     }
   }
 }

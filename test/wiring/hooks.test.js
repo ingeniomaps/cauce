@@ -696,7 +696,9 @@ test('guard-migrations protege historial y SQL destructivo', () => {
   fs.mkdirSync(path.join(root, 'migrations'))
   fs.writeFileSync(path.join(root, 'migrations', '001_init.sql'), 'CREATE TABLE users (id int);\n')
   const rewrite = { file_path: 'migrations/001_init.sql', new_string: 'ALTER TABLE users ADD name text;' }
-  blocked('migrations', { cwd: root, tool_input: rewrite }, /migración existente/)
+  // Sin repositorio —el banco no lo es— el guard se degrada a la conducta de antes y bloquea, y lo
+  // dice tal cual: que existe y que acá no hay con qué saber si viajó. Caso 086.
+  blocked('migrations', { cwd: root, tool_input: rewrite }, /no hay repositorio con el que saber/)
   const destructive = { file_path: 'migrations/002_drop.sql', content: 'DROP TABLE users;' }
   blocked('migrations', { cwd: root, tool_input: destructive }, /SQL destructivo/)
   const additive = { file_path: 'migrations/002_add.sql', content: 'ALTER TABLE users ADD name text;' }
@@ -720,6 +722,50 @@ test('guard-migrations protege historial y SQL destructivo', () => {
   assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: acotado }))
   const renombre = { file_path: 'migrations/003_ren.sql', content: 'ALTER TABLE users RENAME COLUMN a TO b;' }
   assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: renombre }))
+})
+
+// Escribir una migración son dos pasos —crearla y completarla— y hasta 0.79.0 el segundo se bloqueaba:
+// el guard preguntaba `existsSync`, que contesta «hay un archivo ahí» y no «esto ya viajó a otra copia».
+// Ninguna herramienta lo esquivaba, así que la única salida a la vista apagaba el guard entero, incluida
+// la protección contra SQL destructivo (caso 086).
+//
+// Los cuatro estados del mismo archivo —recién creado, completado, staged y commiteado— se recorren en
+// orden porque lo que se mide es dónde cae la frontera, y ninguno solo la ubica.
+test('una migración se frena por haber viajado, no por estar en disco', () => {
+  const root = tempRoot('ops-hook-migrations-git-')
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.mkdirSync(path.join(root, 'migrations'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'embedded' }))
+  const git = (...args) => spawnSync('git', args, { cwd: root, encoding: 'utf8' })
+  git('init', '-q', '.')
+  git('config', 'user.email', 'p@p')
+  git('config', 'user.name', 'p')
+
+  const escribir = (name, content) => ({ cwd: root, tool_input: { file_path: `migrations/${name}`, content } })
+  const archivo = (name, texto) => fs.writeFileSync(path.join(root, 'migrations', name), texto)
+
+  // 1. Crear: no hay nada en disco y no se le pregunta nada a git.
+  assert.doesNotThrow(() => execute('migrations', escribir('001_init.sql', 'create table users (id int);')))
+  archivo('001_init.sql', 'create table users (id int);\n')
+
+  // 2. Completar, acto seguido y sin commitear: es el paso que costó una corrida.
+  assert.doesNotThrow(() => execute('migrations', escribir('001_init.sql', 'create table users (id int, n text);')),
+    'un stub de esta misma sesión no es historial de nadie')
+
+  // 3. Staged y sin commitear: tampoco viajó. `git ls-files` lo daría por historial y por eso no se usa.
+  git('add', 'migrations/001_init.sql')
+  assert.doesNotThrow(() => execute('migrations', escribir('001_init.sql', 'create table users (id int, m text);')),
+    'estar en el índice no es haber viajado')
+
+  // 4. Commiteada: ahora sí, y el mensaje afirma el hecho que lo sostiene en vez de interpretarlo.
+  git('commit', '-qm', 'la migración')
+  blocked('migrations', escribir('001_init.sql', 'create table users (id int, z text);'),
+    /ya está en el historial del repositorio/)
+  // Y nombra la salida angosta, que es la mitad que faltaba: sin ella el único camino a la vista apaga
+  // el guard entero.
+  blocked('migrations', escribir('001_init.sql', 'create table users (id int, z text);'), /ops-approval/)
+  blocked('migrations', escribir('001_init.sql', 'create table users (id int, z text);'),
+    /OPS_MIGRATIONS_OVERRIDE/)
 })
 
 // La extensión es del proyecto y el default no cambió: sin declarar nada sigue viendo sólo `.sql`, así
@@ -928,7 +974,7 @@ test('guard-files lee el sobre de apply_patch aunque llegue como command', () =>
     tool_input: { command: `*** Begin Patch\n${cuerpo}\n*** End Patch` },
   })
   blocked('migrations', sobre('*** Update File: migrations/001_init.sql\n@@\n+alter table pedidos add column x int;'),
-    /migración existente/)
+    /no hay repositorio con el que saber/)
   blocked('secrets', sobre('*** Add File: .env\n+AWS_SECRET_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE'),
     /parece contener secretos/)
 
