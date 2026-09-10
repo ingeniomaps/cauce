@@ -18,6 +18,19 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Un plan que ninguna crítica aprueba deja de reintentarse a ciegas.** `autobuild` cortaba con
+  `plan-rejected` sin dejar rastro, así que relanzar repetía **la corrida entera** sobre la misma tarea:
+  Ready y Decompose la volvían a dejar pasar —su criterio no cambió y la tarea tampoco— y Critique la
+  volvía a rechazar. Medido en dos corridas consecutivas: idénticas, **9 agentes y ~780 k tokens cada
+  una, sin escribir una línea de código**.
+
+  Ahora la tarea queda registrada en `HUMAN_ACTIONS.md` con el motivo, y eso hace las dos cosas de una
+  vez: `context` deja de ofrecerla —una acción pendiente saca esa tarea de la cola y ofrece la siguiente,
+  sin frenar la corrida— y alguien ve la fila. Vale igual para `plan-blocked`, que cortaba igual de mudo.
+
+  **Lo que te pide algo**: esa fila es tuya. Lo que pide R17 es mirar si la unidad son dos resultados con
+  vidas distintas y partirla, o dejarla entera con la razón escrita.
+
 - **El guard de migraciones deja de ser inerte en todo proyecto cuyas migraciones no sean `.sql`.** Filtraba
   por ruta **y por extensión**, así que en TypeORM, Prisma, Django, Rails o Alembic no miraba nada: ni
   frenaba el SQL destructivo, ni protegía una migración existente de ser reescrita. Y no lo decía — aparecía
@@ -54,6 +67,20 @@ diseño — eso vive en el commit y en el código.
 
   **Lo que te pide algo**: si venías apagando ese guard con la variable, la aprobación por ruta hace lo
   mismo para el archivo que vas a tocar y se apaga sola en cuanto el conjunto cambia.
+
+### Cambiado
+
+- **R17 gana un tercer disparador de división: un plan que ninguna crítica aprueba.** Los dos que ya
+  tenía —cinco condiciones de aceptación, cuatro horas de esfuerzo— miran la unidad **escrita**. Éste mira
+  lo que pasó al intentarla, y por eso es la evidencia más directa de las tres y la única que no se puede
+  tener de antemano.
+
+  Lo que lo hace fácil de perder es que llega **después** de que las otras dos dieron el visto bueno, y
+  las dos acertaron: la aceptación era concreta y las condiciones no cruzaban el umbral. Una unidad puede
+  estar bien escrita y no ser planificable, y eso sólo se sabe habiéndolo intentado.
+
+  **Lo que te pide algo**: es una regla del sistema, así que baja a tu `planning/` en el próximo
+  `upgrade`. Como las otras dos, dispara una revisión y no una partición automática.
 
 ### Agregado
 
