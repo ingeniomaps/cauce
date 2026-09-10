@@ -63,10 +63,10 @@ test('el banco se recrea entero en cada corrida', () => {
 })
 
 // Un banco que no se puede rehacer corta la corrida nombrando la ruta, en vez de seguir sobre un árbol
-// que no es nuevo. Se mide quitando permiso de escritura, que es la única forma reproducible de que el
-// borrado no complete; la otra —`rmSync` volviendo sin lanzar y dejando archivos— ocurrió tres veces en
-// CI y **no se pudo reproducir**, así que la guarda que la cubre no tiene caso propio y el caso 066 lo
-// dice. Lo que esta prueba fija es que el fallo hable: mudo era lo que impedía diagnosticarlo.
+// que no es nuevo. Se mide quitando permiso de escritura, que hace fallar el borrado de forma
+// reproducible — y **no** pasa por la guarda: sin permiso `rmSync` lanza, así que lo que corta es el
+// error y no la comprobación. Lo que esta prueba fija es que el fallo hable con la ruta puesta, que es
+// lo único que separa una intermitencia de una regresión cuando llega desde CI.
 test('un banco que no se puede rehacer lo dice, en vez de seguir', { skip: process.getuid?.() === 0 }, () => {
   const toolkit = path.resolve(__dirname, '..', '..')
   const dir = path.resolve(toolkit,
@@ -249,4 +249,27 @@ test('la guarda del banco trae con qué diagnosticar, no una muestra', () => {
   // respuesta «era transitorio». Sin este dato, «quedó» y «quedó para siempre» se leen igual.
   assert.match(dicho, /un segundo borrado sí lo sacó/)
   assert.equal(fs.existsSync(dir), false, 'y efectivamente lo sacó')
+})
+
+// La aserción es de **ausencia**, que es como se prueba una quita: lo que se sacó es un proceso que ya no
+// tiene que aparecer. Comprobar que el banco commitea no comprueba que dejó de lanzar nada — las dos
+// cosas convivían, y ahí el verde decía que ocurrió la mitad.
+//
+// Se mide sobre un commit real hecho dentro del banco ya creado, con `GIT_TRACE=1`, porque el escritor no
+// deja rastro en el árbol cuando no encuentra trabajo: lo único que se ve siempre es que git lo lanzó.
+// Por qué importa que no lo lance, en `engine/cli/catalog.js`.
+test('el banco no deja un mantenimiento de git escribiendo por detrás', () => {
+  const toolkit = path.resolve(__dirname, '..', '..')
+  const bench = run(['evaluate', 'product-manager', '--bench', '14-sin-mantenimiento', '--force'], toolkit)
+  assert.equal(bench.status, 0, bench.stderr)
+  const dir = path.resolve(toolkit, bench.stdout.trim())
+
+  fs.writeFileSync(path.join(dir, 'planning', 'INBOX.md'), '- algo que commitear\n')
+  const git = (...args) => spawnSync('git', ['-C', dir, ...args],
+    { encoding: 'utf8', env: { ...process.env, GIT_TRACE: '1' } })
+  git('add', 'planning/INBOX.md')
+  const commit = git('commit', '-q', '-m', 'una entrega del cargo')
+  assert.equal(commit.status, 0, commit.stderr)
+  assert.equal((commit.stderr.match(/run_command: git maintenance/g) || []).length, 0,
+    `el commit del banco lanzó mantenimiento de fondo:\n${commit.stderr}`)
 })
