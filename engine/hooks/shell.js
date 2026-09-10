@@ -355,10 +355,12 @@ function governance(input) {
 function run(program, args, cwd, extra = {}) {
   const env = { ...process.env, ...extra }
   delete env.NODE_TEST_CONTEXT
+  const started = Date.now()
   const result = spawnSync(program, args, { cwd, encoding: 'utf8', stdio: 'pipe', env })
   return {
     ok: result.status === 0,
     status: result.status,
+    ms: Date.now() - started,
     output: `${result.stdout || ''}${result.stderr || ''}`.trim(),
   }
 }
@@ -421,7 +423,17 @@ function commitTree(dir) {
   // quien commitea; un proyecto con un gate así tiene que sacar esa escritura del gate.
   const started = run('git', ['init', '--quiet'], temp)
   if (started.ok) run('git', ['add', '--all'], temp)
-  return { root: temp, temp, env: {} }
+  // Un gate no sólo lee su entorno: escribe en él. Lo ignorado se enlaza al original —eso es a
+  // propósito y está arriba—, así que lo que el gate escriba cae en el árbol de quien commitea. Un
+  // gestor de paquetes que se sincroniza antes de correr un script lo lleva al extremo: pnpm 11 ve que
+  // el árbol enlazado no fue instalado acá y su reacción es reinstalar, que empieza borrando el
+  // `node_modules` **del proyecto**. Lo único que hoy lo detiene es que `run` lanza con `stdio: 'pipe'`
+  // y el hijo no ve una terminal (caso 068).
+  //
+  // `CI` es la variable que el propio pnpm nombra para no preguntar, y la que cualquier gate razonable
+  // ya espera. Va sólo acá: por el `return` de arriba los gates corren en el directorio del usuario, y
+  // ahí cambiarle el entorno no tiene ninguna razón.
+  return { root: temp, temp, env: { CI: 'true' } }
 }
 
 function verify(input) {
@@ -462,6 +474,41 @@ function verify(input) {
 // Cada gate deja su rastro en `ops`; para qué sirve ese registro lo dice `core/evidence.js`. Lo que se
 // decide acá es que el rojo se anota igual que el verde: un gate que falló y se commiteó con
 // aprobación es exactamente lo que alguien va a querer ver después.
+// Lo que se sabe de un gate que falló, en la forma en que se va a leer. El mensaje decía sólo
+// `test (exit 1)` y tiraba la salida de la herramienta: cualquier causa —una suite en rojo, un gestor
+// que se negó a arrancar el script, un binario que no está— llegaba con el mismo texto. Es la misma
+// forma de fallar que el caso 066 encontró en una prueba, acá en el mensaje que lee una persona.
+//
+// Se muestra **una** línea y acotada: la salida de un gate puede traer cualquier cosa del entorno, y lo
+// que hace falta para diagnosticar es la primera línea de error, no el volcado.
+const ERROR_LINE = /error|err[_!]|fail|abort|not found|cannot|no such/i
+const MAX_LINE = 160
+function fallo(gate, result) {
+  // La línea que empieza con `>` es el eco del script que npm y pnpm imprimen antes de correrlo, así
+  // que lleva el comando entero y no dice nada de qué falló. Descartarla es lo que hace que la primera
+  // coincidencia sea el error y no el comando — con el eco adentro, un script que **menciona** una
+  // palabra de error gana siempre.
+  const lines = (result.output || '').split('\n').map((one) => one.trim())
+    .filter((one) => one && !one.startsWith('>'))
+  const line = lines.find((one) => ERROR_LINE.test(one)) || lines[0] || ''
+  return { gate, status: result.status, ms: result.ms, line: line.slice(0, MAX_LINE) }
+}
+
+// Un gate que vuelve en menos de esto no corrió una suite. No se afirma que **no** haya corrido —un
+// lint puede fallar rápido y de verdad— y por eso lo que se agrega es el número, no un veredicto: los
+// tres gates del caso 068 volvieron a un segundo uno de otro contra los trece de la corrida real.
+const DEMASIADO_RAPIDO = 2000
+function comoSeLee(failures) {
+  const texto = failures
+    .map((one) => `${one.gate} (exit ${one.status}, ${(one.ms / 1000).toFixed(1)} s)`
+      + `${one.line ? `: ${one.line}` : ''}`)
+    .join('; ')
+  if (!failures.every((one) => one.ms < DEMASIADO_RAPIDO)) return texto
+  const cuantos = failures.length === 1 ? 'Volvió' : `Los ${failures.length} volvieron`
+  return `${texto}\n${cuantos} en menos de ${DEMASIADO_RAPIDO / 1000} s: eso no alcanza para correr `
+    + 'una suite, así que mirá si llegaron a ejecutarse antes de aprobar esto como un rojo conocido.'
+}
+
 function verifyGates(root, dir, aprobado, env, ops) {
   const failures = []
   if (fs.existsSync(path.join(root, 'package.json'))) {
@@ -472,28 +519,28 @@ function verifyGates(root, dir, aprobado, env, ops) {
     for (const script of ['test', 'lint', 'typecheck', 'build']) {
       if (!pkg.scripts || !pkg.scripts[script]) continue
       const result = run(pm, ['run', script], root, env)
-      EV.record(ops, script, result.status)
-      if (!result.ok) failures.push(`${script} (exit ${result.status})`)
+      EV.record(ops, script, result.status, result.ms)
+      if (!result.ok) failures.push(fallo(script, result))
     }
   } else if (fs.existsSync(path.join(root, 'go.mod'))) {
     const makefile = path.join(root, 'Makefile')
     if (fs.existsSync(makefile) && /^ci:/m.test(fs.readFileSync(makefile, 'utf8'))) {
       const result = run('make', ['ci'], root, env)
-      EV.record(ops, 'make ci', result.status)
-      if (!result.ok) failures.push(`make ci (exit ${result.status})`)
+      EV.record(ops, 'make ci', result.status, result.ms)
+      if (!result.ok) failures.push(fallo('make ci', result))
     } else {
       for (const args of [['test', './...'], ['build', './...']]) {
         const result = run('go', args, root, env)
-        EV.record(ops, `go ${args[0]}`, result.status)
-        if (!result.ok) failures.push(`go ${args[0]} (exit ${result.status})`)
+        EV.record(ops, `go ${args[0]}`, result.status, result.ms)
+        if (!result.ok) failures.push(fallo(`go ${args[0]}`, result))
       }
     }
   } else if (fs.existsSync(path.join(root, 'pyproject.toml')) || fs.existsSync(path.join(root, 'requirements.txt'))) {
     const makefile = path.join(root, 'Makefile')
     if (fs.existsSync(makefile) && /^test:/m.test(fs.readFileSync(makefile, 'utf8'))) {
       const result = run('make', ['test'], root, env)
-      EV.record(ops, 'make test', result.status)
-      if (!result.ok) failures.push(`make test (exit ${result.status})`)
+      EV.record(ops, 'make test', result.status, result.ms)
+      if (!result.ok) failures.push(fallo('make test', result))
     }
   }
   if (!failures.length || aprobado) return
@@ -501,7 +548,7 @@ function verifyGates(root, dir, aprobado, env, ops) {
   // comando a mano se lee como que el guard miente, y lo que pasó es que midió lo que se va a grabar.
   const donde = root === dir ? '' : '\nCorrió sobre el índice, que es lo que el commit graba: si en tu '
     + 'directorio pasa, es que en disco tenés algo que no está staged.'
-  block(`Verify falló en ${path.basename(dir)}: ${failures.join(', ')}. No se commitea en rojo.${donde}\n`
+  block(`Verify falló en ${path.basename(dir)}: ${comoSeLee(failures)}\nNo se commitea en rojo.${donde}\n`
     + AP.HOW('OPS_SKIP_VERIFY'))
 }
 

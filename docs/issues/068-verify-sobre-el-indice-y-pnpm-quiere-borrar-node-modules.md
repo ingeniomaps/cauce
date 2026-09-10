@@ -1,18 +1,20 @@
 ---
 caso: 068
 titulo: El índice materializado de `verify` hace que pnpm quiera borrar el `node_modules` real del proyecto
-estado: abierto
+estado: resuelto
+resuelto-en: 0.74.0
 prioridad: alta
 version-detectada: 0.73.0
 ---
 
 # 068 — `verify` enlaza el `node_modules` del proyecto y pnpm intenta purgarlo; lo frena que no haya TTY
 
-**🔴 abierto** · detectado en 0.73.0 · prioridad **alta** — bloquea todo commit parcial en un proyecto pnpm, y el único motivo por el que no borró nada es una comprobación de terminal que no está ahí para esto
+**🟢 resuelto en 0.74.0** · detectado en 0.73.0 · prioridad **alta** — bloquea todo commit parcial en un proyecto pnpm, y el único motivo por el que no borró nada es una comprobación de terminal que no está ahí para esto
 
 ## Resumen
 
-Cuando el árbol y el índice difieren —o sea, en **todo commit parcial**, que es lo que R8 pide—, `verify`
+Cuando el árbol y el índice difieren —o sea, en **todo commit parcial**, que es lo que R8 pide, y
+también con **un solo archivo sin trackear**, que es lo que este caso no había visto—, `verify`
 materializa el índice en un temporal y enlaza ahí lo ignorado, `node_modules` incluido. El enlace apunta
 al `node_modules` **real** del proyecto.
 
@@ -168,6 +170,7 @@ tomarlo. Queda dicho qué se sostuvo y qué no, porque quien lo arregle va a lee
 | Las dos salidas del guard reabren el borrado | **corregido**: `OPS_SKIP_VERIFY` no corre nada; `.ops-approval` sí corre los gates |
 | El problema es de pnpm y de herramientas que se auto-sincronizan | **incompleto**: se enlaza todo lo ignorado, y `build` ya escribe en la salida real |
 | El tiempo hay que deducirlo | **incompleto**: `EV.record` ya guarda `at` por gate |
+| Se dispara en todo commit parcial | **más ancho**: cualquier archivo sin trackear también lo dispara (`:391`) |
 
 Ninguna corrección baja la prioridad. La mitad que bloquea —todo commit parcial en un proyecto pnpm,
 con un mensaje que dice lo contrario de lo que pasó— no depende de ninguna de ellas.
@@ -196,3 +199,45 @@ volvieron en rojo, y la sospecha empezó por el tiempo, no por el mensaje. El co
   contemplar es que un gate escriba sobre lo que se le enlaza.
 - **R8** — un commit por naturaleza del diff. Es lo que garantiza que árbol e índice difieran, así que
   este caso se dispara justamente cuando alguien sigue la regla.
+
+## Cierre
+
+**Resuelto en 0.74.0 en dos de sus tres capas**, y la tercera sale como caso propio en vez de quedarse
+adentro de éste.
+
+- **Capa 1, la copia se marca no interactiva.** `commitTree` devuelve `env: { CI: 'true' }`, y sólo en
+  el `return` de la copia: por el otro los gates corren en el árbol del usuario y ahí cambiarle el
+  entorno no tiene razón. Medido por lo que el gate **recibe** y no por lo que la función devuelve,
+  porque entre una cosa y la otra está `run`, que mezcla el objeto sobre el entorno del proceso.
+- **Capa 3, el bloqueo deja de ser mudo, y salió distinto de como este caso lo proponía.** No hizo falta
+  ninguna heurística de duración para clasificar: lo que faltaba era **mostrar lo que la herramienta
+  dijo**. El mensaje tiraba la salida, así que una suite en rojo y un gestor que se negó a arrancar el
+  script llegaban con el mismo `test (exit 1)`. Ahora llega
+  `test (exit 1, 0.1 s): ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`, y nadie tiene que inferir nada.
+- **La duración se agregó igual, como hecho y no como veredicto.** Va en el registro —`ms` por gate— y
+  en el mensaje; y cuando **todos** los gates fallaron por debajo de dos segundos se agrega una línea
+  con ese número, sin afirmar que no corrieron: un lint puede fallar rápido y de verdad.
+- **Capa 2, el enlace de sólo lectura, no se hizo y sale como el [069](069-la-copia-de-verify-solo-esta-aislada-para-lo-trackeado.md).**
+  No es una postergación por costo: es que este caso reportó el síntoma de pnpm y la capa 2 ataca una
+  propiedad más ancha que apareció al leer el código —los gates escriben en el árbol del usuario a
+  través de los enlaces, y `build` ya lo hace hoy en cada corrida—. Meterla acá la dejaría cerrada
+  dentro de un caso que habla de otra cosa.
+- **Tradeoff «`CI=true` cambia el comportamiento de algunas herramientas» — se paga, acotado.** Sólo lo
+  ve la copia; un proyecto donde árbol e índice coinciden y no hay nada suelto nunca lo ve. La prueba
+  fija las dos mitades.
+- **Tradeoff «distinguir “no corrió” de “falló” pide clasificar salidas ajenas, que es frágil» — no se
+  pagó, porque no se clasifica.** Se muestra la línea de error y el número; quien lee decide.
+
+**Lo que apareció y el enunciado no preveía: se dispara más seguido de lo que el caso creía.** La
+condición mira cualquier diferencia entre lo que `git status` lista y el índice, así que **un archivo
+sin trackear alcanza**. Medido: con todo staged y nada suelto el gate ve `CI=vacio`; agregando un solo
+`suelto.txt` ve `CI=true`. O sea que la materialización —y con ella el intento de purga— no es sólo del
+commit parcial: es de casi cualquier commit en un árbol de trabajo normal.
+
+**Y una precisión sobre la primera línea de error que conviene registrar**, porque costó dos intentos:
+npm y pnpm imprimen el eco del script antes de correrlo, y esa línea lleva el comando entero. Con el
+eco adentro, un script que **menciona** una palabra de error gana siempre la búsqueda — pasó en la
+primera corrida de esta prueba. Se descartan las líneas que empiezan con `>`.
+
+Cuatro mutaciones comprobadas: quitar el `CI` de la copia, quitar la línea de error, quitar el aviso de
+tiempo, y quitar la duración del registro. Las cuatro ponen su prueba en rojo.
