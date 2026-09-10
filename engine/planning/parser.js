@@ -254,7 +254,7 @@ function doneFiles(dir) {
 
 // `fecha` entra al vocabulario porque un campo que no esté acá no corta al anterior: sin nombrarlo, el
 // `done:` de la entrada se lo tragaría entero como parte de su propio texto.
-const DONE_FIELDS = 'acept|fecha|done|qa|tests|decisions|commit'
+const DONE_FIELDS = 'acept|fecha|done|qa|tests|decisions|commit|lane|review'
 
 // Un campo vale hasta el próximo campo, una línea en blanco o el fin de la entrada. Mismo corte que ya
 // se arregló para los criterios y las historias, con el mismo síntoma: el valor es prosa y se envuelve a
@@ -288,6 +288,7 @@ function readDone(dir) {
         acceptance: field('acept'), fecha: field('fecha'),
         done: field('done'), qa: field('qa'), tests: field('tests'),
         decisions: field('decisions'), commit: field('commit'), lane: field('lane'),
+        review: field('review'),
         source: path.relative(dir, file), raw: match[0].trimEnd(),
       })
     }

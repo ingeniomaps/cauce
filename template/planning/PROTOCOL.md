@@ -17,7 +17,10 @@ invariantes.
   que la tarea corrió —`express`, `directo`, `lite`, `full`— o `sin clasificar` si su línea no lo
   declaraba, y existe porque el carril decide qué fases corren y su línea del BACKLOG se borra al cerrar:
   sin él, si una tarea recibió la ceremonia que le tocaba sólo lo sabe quien estuvo en la sesión.
-  `check` avisa cuántas entradas no lo traen y falla si trae un valor que no existe. La fecha es la del cierre, y es lo que
+  `check` avisa cuántas entradas no lo traen y falla si trae un valor que no existe. `review:` dice qué
+  pasó con la revisión —el veredicto y quién revisó— o `n/a — razón` cuando no corrió; es la dimensión con
+  la que OPS-006 dice que se mide si el carril elegido fue el correcto, y `check` cruza los dos: un carril
+  que convoca revisor con una revisión que no corrió es la ADR incumplida, escrita en el propio registro. La fecha es la del cierre, y es lo que
   ordena una evidencia que ya no depende de su posición dentro de un archivo. `tests:` enlaza cada criterio
   mediante `CN → prueba`; usa `A → prueba` cuando no hay épica o `n/a — razón` si no existe una
   superficie ejecutable. `decisions:` es opcional y, si aparece, cita `[fuente: ...]` o
