@@ -162,3 +162,30 @@ test('un plan que no sobrevive a la segunda crítica no llega a construirse', as
   assert.equal(result.reason, 'plan-rejected')
   assert.ok(!reached(asked, 'Build'), 'no se construye sobre un plan rechazado')
 })
+
+// Por qué la fila reemplaza al reintento está en `planRejected`. Acá se miden las dos salidas juntas,
+// porque son la misma decisión por dos caminos —el veredicto bloqueado en la primera crítica, y el que
+// sigue bloqueado tras la corrección— y cubrir una sola deja la otra reintentándose en silencio.
+test('un plan que ninguna crítica aprueba queda pedido por escrito, no reintentado', async () => {
+  const bloqueado = {
+    verdict: 'bloqueado', consulted: ['api/alta.go'],
+    concerns: [{ detail: 'la aceptación mezcla dos resultados', blocking: true }],
+  }
+  const primera = await runFlow({ [KEY.critique]: bloqueado })
+  assert.equal(primera.result.reason, 'plan-blocked')
+  assert.ok(primera.written.some((text) => text.includes('HUMAN_ACTIONS') && text.includes('R17')),
+    `la fila dice qué mirar: ${JSON.stringify(primera.written)}`)
+
+  const segunda = await runFlow({
+    [KEY.critique]: {
+      verdict: 'con-condiciones', consulted: ['api/alta.go'],
+      concerns: [{ detail: 'sigue mezclando dos resultados', blocking: true }],
+    },
+    [KEY.replan]: { approach: 'otro intento', steps: ['1'], files: ['api/alta.go'], testStrategy: 'unit' },
+  })
+  assert.equal(segunda.result.reason, 'plan-rejected')
+  const fila = segunda.written.find((text) => text.includes('HUMAN_ACTIONS'))
+  assert.ok(fila, `también por este camino: ${JSON.stringify(segunda.written)}`)
+  assert.match(fila, /sigue mezclando dos resultados/, 'y lleva el motivo, que es lo que se lee después')
+  assert.ok(!reached(segunda.asked, 'Build'), 'y no se construye sobre un plan que nadie aprobó')
+})

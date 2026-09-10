@@ -505,6 +505,29 @@ while (rounds++ < MAX_TASKS) {
       `\`<path>/SKILL.md\`.\n\n`
     : '')
 
+  // Un plan que no sobrevive a la crítica deja de reintentarse a ciegas. Se registra la tarea como acción
+  // humana, y eso hace dos cosas con un solo acto: `context` deja de ofrecerla —una acción pendiente saca
+  // esa tarea de la cola y ofrece la siguiente, sin frenar la corrida— y alguien ve la fila.
+  //
+  // Antes, relanzar repetía **la corrida entera**: Ready y Decompose volvían a pasarla, porque su criterio
+  // no cambió y la tarea tampoco, y Critique volvía a rechazarla. Medido en dos corridas consecutivas
+  // sobre la misma tarea: idénticas, 9 agentes y ~780 k tokens cada una, sin escribir una línea (caso 081).
+  //
+  // Es el razonamiento de `claim-stuck`: si repetir no puede cambiar el resultado, no se repite. Y la
+  // evidencia ya está completa dentro de una corrida —el rechazo llega después de una crítica, una
+  // corrección y una segunda crítica—, así que no hace falta contar entre corridas ni inventar dónde
+  // guardar ese contador: cuando esto ocurre, el WIP todavía no existe.
+  //
+  // Lo que la fila le pide a una persona lo dice R17: dos rechazos sobre lo mismo son el disparador
+  // posterior de división. No se parte acá porque partir es una decisión, y ésa no le toca al recorrido.
+  const planRejected = (reason, unit, found) => {
+    const detail = found.join('; ') || 'sin condiciones nombradas'
+    write(`Registrá ${unit.id} en ${HUMAN}: nadie pudo escribir un plan que sobreviva a la crítica. `
+      + `Motivo: ${detail}. La acción humana es revisar si la unidad son dos resultados con vidas `
+      + `distintas y partirla —R17—, o dejarla entera con la razón escrita.`, { label: 'plan-human' })
+    return stop(reason, detail)
+  }
+
   if (!planning.wipActive) {
     if (!mechanical || !vouched) {
       phase('Ready')
@@ -575,7 +598,7 @@ while (rounds++ < MAX_TASKS) {
       // Un plan bloqueado no se corrige: lo que lo bloquea está fuera de lo que una segunda pasada puede
       // tocar, así que insistir gasta dos llamadas para llegar al mismo lugar.
       if (critique.verdict === 'bloqueado') {
-        return stop('plan-blocked', blockers(critique).join('; ') || 'sin condiciones nombradas')
+        return planRejected('plan-blocked', task, blockers(critique))
       }
       if (blockers(critique).length) {
         plan = await read(
@@ -589,7 +612,7 @@ while (rounds++ < MAX_TASKS) {
         )
         if (!plan || !critique) return stop('agent-unavailable', 'la revisión del plan no devolvió resultado')
         if (critique.verdict === 'bloqueado' || blockers(critique).length) {
-          return stop('plan-rejected', blockers(critique).join('; ') || 'sin condiciones nombradas')
+          return planRejected('plan-rejected', task, blockers(critique))
         }
       }
       // Acá el plan ya está aprobado por los dos caminos posibles, así que el contraste va una sola vez.

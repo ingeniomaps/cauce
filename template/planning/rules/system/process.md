@@ -48,7 +48,21 @@ Dos barras, y cada una encuentra lo que la otra deja pasar: **cinco condiciones 
 tarea, y **cuatro horas de esfuerzo humano**. Arriba de la tarea el conteo sigue: siete criterios en una
 épica, nueve tareas en un hito.
 
-Ninguna de las dos decide la división: la dispara. Al cruzarla se revisa si la unidad mezcla dos
+Y hay una tercera que no se mide antes sino después: **un plan que ninguna crítica aprueba**. Las dos
+primeras miran la unidad escrita; ésta mira lo que pasó al intentarla, y por eso es la evidencia más
+directa de las tres — y la única que no se puede tener de antemano. Cuando nadie pudo escribir un plan
+que sobreviva, lo que sigue no es escribir un tercero: es mirar la unidad.
+
+Dos rechazos sobre lo mismo dicen más que dos rechazos sobre cosas distintas. Si los dos señalan la misma
+dimensión de la aceptación, ahí está la costura por donde parte. En el caso que originó esto, una crítica
+objetó cómo se probaba un número con unidades y la otra un estado que ya se cumplía: dos formas de
+comprobar dentro de una sola aceptación, que es la definición de dos resultados con vidas distintas.
+
+Lo que la hace fácil de perder es que llega **después** de que las otras dos dieron el visto bueno, y las
+dos acertaron: la aceptación era concreta y las condiciones no cruzaban el umbral. Una unidad puede estar
+bien escrita y no ser planificable, y eso sólo se sabe habiéndolo intentado.
+
+Ninguna de las tres decide la división: la dispara. Al cruzarla se revisa si la unidad mezcla dos
 resultados con vidas distintas, y recién ahí se parte, o se deja con la razón escrita —igual que R7 con
 el código—. Un número usado como límite se cumple partiendo por la mitad lo que era una sola cosa.
 
