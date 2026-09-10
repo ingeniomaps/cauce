@@ -18,6 +18,14 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **El nombre de un banco de pruebas no trae nada que la prueba no haya pedido.** La suite aísla lo que
+  cada prueba mide filtrando la salida de `check`, y esa salida empieza con la ruta del banco: cuando el
+  sufijo aleatorio del directorio terminó en `adr`, un error ajeno entró a una prueba de plantillas de
+  ADR y la puso en rojo. Falla una vez cada muchas corridas y se lee como un hipo del entorno.
+
+  **Qué cambia para vos**: nada — es la suite del toolkit, no algo que recibas. Va acá porque una puerta
+  que falla al azar enseña a relanzar en vez de a mirar, y eso sí llega a quien la usa.
+
 - **`autobuild` lee `blocked` por su valor y no por su verdad.** El campo del contexto es un vocabulario
   de tres valores —vacío, `awaiting-review` y `blocked-on-human`—, y el recorrido lo probaba con un `if`
   a secas. Dos consecuencias, y la que más costaba no era intermitente: una cola trabada por acciones
