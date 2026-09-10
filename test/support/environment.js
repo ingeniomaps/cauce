@@ -30,8 +30,27 @@ const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), `cauce-test-${process.pid}-`)
 
 process.on('exit', () => fs.rmSync(ROOT, { recursive: true, force: true }))
 
+// El nombre del banco es el que pidió la prueba más un contador, y **no** el sufijo aleatorio que
+// agrega mkdtemp. La aleatoriedad no le servía a nadie —`ROOT` ya es único por proceso y el contador
+// alcanza para no chocar dentro de él— y sí decidía si una prueba pasaba: la suite aísla lo que cada
+// prueba mide filtrando la salida de `check` por substring, y esa salida empieza con la ruta del banco.
+// `/adr\//` casó `…/cauce-test-3343382-w1cadr/` y dejó entrar un error de `integrations` a una prueba de
+// ADR. Falla una vez cada muchas corridas y se lee como un hipo del entorno, que es lo caro: el error de
+// `integrations` sale **siempre** en un banco que sólo copia `planning/`, y lo azaroso era el filtro.
+//
+// Lo que esto no cierra, y es visible: un nombre que la prueba elija y que contenga lo que ella misma
+// filtra colisiona igual. Determinista y a la vista de quien lo escribe, que es otra cosa. Caso 085.
+let banks = 0
+
+function bank(base, name) {
+  banks += 1
+  const dir = path.join(base, `${name}${banks}`)
+  fs.mkdirSync(dir)
+  return dir
+}
+
 function tempRoot(name) {
-  return fs.mkdtempSync(path.join(ROOT, name))
+  return bank(ROOT, name)
 }
 
 // Un banco para lo que se mide **fuera** del temporal del sistema. `shell-boundary` exime `os.tmpdir()`
@@ -50,7 +69,7 @@ const OUTSIDE = fs.mkdtempSync(path.join(OUTSIDE_BASE, `cauce-test-${process.pid
 process.on('exit', () => fs.rmSync(OUTSIDE, { recursive: true, force: true }))
 
 function outsideTempRoot(name) {
-  return fs.mkdtempSync(path.join(OUTSIDE, name))
+  return bank(OUTSIDE, name)
 }
 
 // Qué se puede borrar, decidido **sin tocar el disco**. Es una función de cadenas a propósito, y ésa es
