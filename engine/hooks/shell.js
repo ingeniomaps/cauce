@@ -442,17 +442,27 @@ function commitTree(dir) {
   // quien commitea; un proyecto con un gate así tiene que sacar esa escritura del gate.
   const started = run('git', ['init', '--quiet'], temp)
   if (started.ok) run('git', ['add', '--all'], temp)
-  // Un gate no sólo lee su entorno: escribe en él. Lo ignorado se enlaza al original —eso es a
-  // propósito y está arriba—, así que lo que el gate escriba cae en el árbol de quien commitea. Un
-  // gestor de paquetes que se sincroniza antes de correr un script lo lleva al extremo: pnpm 11 ve que
-  // el árbol enlazado no fue instalado acá y su reacción es reinstalar, que empieza borrando el
-  // `node_modules` **del proyecto**. Lo único que hoy lo detiene es que `run` lanza con `stdio: 'pipe'`
-  // y el hijo no ve una terminal (caso 068).
+  // Un gate no sólo lee su entorno: escribe en él. Lo ignorado se enlaza al original —eso es a propósito
+  // y está arriba—, así que lo que el gate escriba cae en el árbol de quien commitea. Un gestor que se
+  // sincroniza antes de correr un script lo lleva al extremo: ve que el árbol enlazado no coincide con
+  // el lockfile de la copia y reinstala, lo que **empieza borrando** el `node_modules` del proyecto.
   //
-  // `CI` es la variable que el propio pnpm nombra para no preguntar, y la que cualquier gate razonable
-  // ya espera. Va sólo acá: por el `return` de arriba los gates corren en el directorio del usuario, y
-  // ahí cambiarle el entorno no tiene ninguna razón.
-  return { root: temp, temp, env: { CI: 'true' } }
+  // Lo que se apaga es esa comprobación previa, que es el motivo por el que quiere tocar nada.
+  // `verify-deps-before-run` la gobierna y tiene tres valores: `install` reinstala solo —el que trae
+  // pnpm 11 y el que hace el daño—, `error` se niega y frena el gate cuando el lockfile de la copia
+  // difiere de lo instalado, que es justo lo que pasa al commitear un cambio de lockfile por partes, y
+  // `false` corre el script sin mirar. La copia no tiene que sincronizar nada: tiene que medir el
+  // código.
+  //
+  // Acá estuvo `CI: 'true'` y fue una regresión (caso 070). Resolvía el síntoma del 068 —pnpm dejaba de
+  // preguntar antes de purgar— desarmando la confirmación en vez de quitarle el motivo, y esa
+  // confirmación era lo único que protegía al `node_modules` del proyecto: sin ella la reinstalación
+  // avanza y borra por el enlace. Además encendía `frozen-lockfile`, que el propio pnpm anuncia al
+  // fallar, así que la variable armaba y desarmaba guardas distintas a la vez.
+  //
+  // La regla que queda: no se desarma la confirmación de una herramienta, se le quita el motivo de
+  // preguntar. Una confirmación que estorba casi siempre está cuidando algo.
+  return { root: temp, temp, env: { npm_config_verify_deps_before_run: 'false' } }
 }
 
 function verify(input) {
