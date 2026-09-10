@@ -11,6 +11,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const CAT = require('../../engine/cli/catalog')
 
 // Que el banco sea una instancia de verdad y no un directorio: `check` pasa adentro, el catálogo
 // resuelve y `planning/` está escribible. Para qué hace falta, en `evaluationBench`.
@@ -221,4 +222,31 @@ test('el banco commitea en el banco aunque el entorno traiga GIT_DIR', () => {
   const dir = path.resolve(toolkit, bench.stdout.trim())
   const propio = spawnSync('git', ['-C', dir, 'log', '--oneline'], { encoding: 'utf8' }).stdout
   assert.match(propio, /banco limpio/, 'y el banco quedó sin su propio commit')
+})
+
+// Se prueba la función y no el comando porque **no se sabe cómo provocar el fallo**: es el caso 073, y
+// bajo Node 26 —la única versión donde ocurrió— doce corridas de la suite entera no lo reprodujeron. La
+// guarda que esto cubre estuvo dos meses sin prueba por eso mismo, y lo que costó fue caro: sólo se la
+// pudo mirar cuando disparó en CI, ya tarde para corregir lo que no traía. Qué trae y por qué, en
+// `benchSurvived`; acá se fija que efectivamente lo traiga.
+test('la guarda del banco trae con qué diagnosticar, no una muestra', () => {
+  const dir = tempRoot('cauce-sobrevivio-')
+  const antiguo = path.join(dir, 'viejo.txt')
+  fs.mkdirSync(path.join(dir, 'hondo', 'mas'), { recursive: true })
+  fs.writeFileSync(antiguo, 'lo que el borrado no tocó')
+  fs.writeFileSync(path.join(dir, 'hondo', 'mas', 'nuevo.txt'), 'lo que se escribió después')
+  // El corte va entre los dos archivos: el primero queda con fecha anterior y el segundo, posterior.
+  const since = fs.statSync(path.join(dir, 'hondo', 'mas', 'nuevo.txt')).mtimeMs
+  fs.utimesSync(antiguo, new Date(since - 10_000), new Date(since - 10_000))
+
+  const dicho = CAT.benchSurvived(dir, since)
+  assert.match(dicho, /Sobrevivieron 2 archivo\(s\) en 2 directorio\(s\)/, 'cuántos, no una muestra')
+  assert.match(dicho, /viejo\.txt \(anterior al borrado\)/, 'lo que el borrado no tocó se ve como tal')
+  assert.match(dicho, /nuevo\.txt \(escrito durante el borrado\)/, 'y lo que alguien reescribió, también')
+  assert.match(dicho, new RegExp(process.version.replace(/\./g, '\\.')),
+    'con la versión de Node, que es la única correlación que las dos fallas tienen')
+  // El segundo borrado no rodea nada —quien la llama corta igual— y acá sí puede sacarlo, que es la
+  // respuesta «era transitorio». Sin este dato, «quedó» y «quedó para siempre» se leen igual.
+  assert.match(dicho, /un segundo borrado sí lo sacó/)
+  assert.equal(fs.existsSync(dir), false, 'y efectivamente lo sacó')
 })

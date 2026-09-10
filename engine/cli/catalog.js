@@ -66,6 +66,45 @@ function agents(action, dir, extra, cli) {
   }
 }
 
+// Qué decir cuando el banco sobrevivió a su propio borrado, que es lo único que va a permitir
+// establecer la causa. Devuelve el mensaje en vez de escribirlo donde ocurre, y eso es lo que lo hace
+// medible sin provocar el fallo; por qué eso importa acá lo dice su prueba.
+//
+// Tres cosas que el listado anterior no traía, y cada una separa dos diagnósticos distintos:
+//
+// - **Cuánto**, y no una muestra. Cortaba en cinco, así que «borró casi todo y quedaron cuatro objetos»
+//   y «no borró nada» se leían idénticos, y son problemas opuestos.
+// - **Si lo que quedó es anterior al borrado o se escribió durante.** Posterior significa que alguien
+//   reescribió mientras borrábamos; anterior, que el borrado no lo tocó. Es la pregunta central del
+//   caso y la contesta la fecha de modificación.
+// - **Qué hace un segundo borrado.** No lo rodea: quien lo llama corta igual.
+//   Distingue lo transitorio de lo permanente, que se arreglan distinto.
+function benchSurvived(dir, since) {
+  let files = 0
+  let dirs = 0
+  const sample = []
+  const walk = (base, relative = '') => {
+    for (const entry of fs.readdirSync(base, { withFileTypes: true })) {
+      const next = relative ? `${relative}/${entry.name}` : entry.name
+      if (entry.isDirectory()) { dirs += 1; walk(path.join(base, entry.name), next); continue }
+      files += 1
+      if (sample.length >= 5) continue
+      const stat = fs.statSync(path.join(base, entry.name), { throwIfNoEntry: false })
+      sample.push(`${next} (${!stat ? 'ya no está'
+        : stat.mtimeMs >= since ? 'escrito durante el borrado' : 'anterior al borrado'})`)
+    }
+  }
+  try { walk(dir) } catch { /* el listado es la explicación, no la comprobación */ }
+  let again = 'no se pudo reintentar'
+  try {
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 })
+    again = fs.existsSync(dir) ? 'un segundo borrado tampoco lo sacó' : 'un segundo borrado sí lo sacó'
+  } catch (error) { again = `un segundo borrado lanzó ${error.code || error.message}` }
+  return `${dir} no se pudo borrar entero y el banco tiene que ser nuevo. Sobrevivieron ${files} `
+    + `archivo(s) en ${dirs} directorio(s), con Node ${process.version}: `
+    + `${sample.join(', ') || '(sólo directorios)'}. ${again}. Borralo a mano y volvé a correr.`
+}
+
 // Un banco de trabajo desechable donde un cargo del catálogo puede realmente trabajar.
 //
 // Hace falta porque el toolkit no es una raíz ops: el único `planning/` que vive acá es
@@ -96,10 +135,13 @@ function evaluationBench(root, agent, caso, force, kind) {
     fail(`${dir} tiene trabajo sin recoger. Guardá el registro de esa corrida antes de rehacerlo, `
       + 'o usá --force si ya lo tenés.', 2)
   }
-  // Con reintentos: el banco es un árbol grande y versionado —hay un `git status` dos líneas arriba— y
-  // borrarlo entero falla a veces con ENOTEMPTY, que es transitorio. Pasó en CI rehaciendo un banco que
-  // se acababa de crear: `ENOTEMPTY, Directory not empty: .cauce-eval/product-manager/11-otro`. Sin los
-  // reintentos, rehacer un banco es una operación que falla de vez en cuando y deja la corrida sin
+  // El instante de arranque, para poder fechar lo que sobreviva: es lo único que separa un archivo que
+  // el borrado no tocó de uno que alguien reescribió mientras borrábamos.
+  const since = Date.now()
+  // Con reintentos: el banco es un árbol grande y versionado —hay un `git status` cuatro líneas arriba—
+  // y borrarlo entero falla a veces con ENOTEMPTY, que es transitorio. Pasó en CI rehaciendo un banco
+  // que se acababa de crear: `ENOTEMPTY, Directory not empty: .cauce-eval/product-manager/11-otro`. Sin
+  // los reintentos, rehacer un banco es una operación que falla de vez en cuando y deja la corrida sin
   // empezar.
   fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 })
   // Y se comprueba que haya borrado. `rmSync` puede volver sin lanzar y dejar cosas —pasó en CI y no
@@ -109,22 +151,8 @@ function evaluationBench(root, agent, caso, force, kind) {
   // `true !== false` sobre un archivo de la corrida anterior, sin nombrar de dónde salía.
   //
   // Falla en vez de seguir, porque un banco a medio borrar contamina la medición que viene, que es lo
-  // que la recreación existe para evitar. Y nombra lo que sobrevivió: es lo único que va a permitir
-  // establecer la causa la próxima vez que ocurra.
-  if (fs.existsSync(dir)) {
-    const sobreviven = []
-    const recorrer = (base, relative = '') => {
-      for (const entry of fs.readdirSync(base, { withFileTypes: true })) {
-        if (sobreviven.length >= 5) return
-        const next = relative ? `${relative}/${entry.name}` : entry.name
-        if (entry.isDirectory()) recorrer(path.join(base, entry.name), next)
-        else sobreviven.push(next)
-      }
-    }
-    try { recorrer(dir) } catch { /* el listado es la explicación, no la comprobación */ }
-    fail(`${dir} no se pudo borrar entero y el banco tiene que ser nuevo. Sobrevivieron al borrado: `
-      + `${sobreviven.join(', ') || '(sólo directorios)'}. Borralo a mano y volvé a correr.`, 2)
-  }
+  // que la recreación existe para evitar. Qué trae el mensaje y por qué, en `benchSurvived`.
+  if (fs.existsSync(dir)) fail(benchSurvived(dir, since), 2)
   // Con `force`: el banco es desechable y se acaba de borrar, así que lo que sobreviva al `rmSync` se
   // pisa en vez de cortar la corrida. Sin esto, `copyTemplate` se niega ante cualquier archivo que
   // quede —«El destino contiene …/AGENTS.md»— y el mismo test falló así tres veces en un día, en las
@@ -353,4 +381,4 @@ function flow(action, slug, cli) {
   } catch (error) { fail(error.message, 2) }
 }
 
-module.exports = { agents, learn, evaluate, flow }
+module.exports = { agents, learn, evaluate, flow, benchSurvived }
