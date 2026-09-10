@@ -233,6 +233,11 @@ señal de que la variable resuelve lo que se veía y no lo que estaba pasando.
 - **Tradeoff «quitar `CI=true` cambia lo que ve cualquier gate» — se paga y va en el CHANGELOG.** Vuelve
   el color y vuelven los prompts de otras herramientas; un prompt en un proceso sin terminal aborta, que
   es exactamente la barrera que se quiere de vuelta.
+- **Tradeoff «un bind mount de sólo lectura puede romper gates legítimos» — no se paga, porque no se
+  tomó esa vía.** Y el «conviene medir antes de cerrarlo del todo» que lo acompañaba no queda huérfano:
+  le toca a quien tome la vía, y esa decisión ya está tomada y pagada en el
+  [069](069-la-copia-de-verify-solo-esta-aislada-para-lo-trackeado.md) —«se pagó eligiendo la
+  portable»—. Acá no había nada que medir porque acá no se montó nada.
 
 **Lo que este caso deja además del arreglo, y vale más: la prueba que faltaba.** R9 pide que una quita se
 pruebe **por ausencia**, y poner `CI=true` era una quita —sacaba la confirmación de pnpm— disfrazada de
