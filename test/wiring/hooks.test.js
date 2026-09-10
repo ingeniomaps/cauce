@@ -1476,15 +1476,25 @@ test('el gate que corre sobre la copia la ve como no interactiva, y sobre el ár
   git(['add', '-A'], root)
   const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
 
-  assert.doesNotThrow(() => execute('verify', commit))
-  assert.match(fs.readFileSync(visto, 'utf8'), /^CI=vacio$/m,
-    'sin copia no se le cambia el entorno a nadie')
+  // `CI` se despeja a mano para las dos mitades: Actions la exporta, así que sin esto la mitad de
+  // «no hay copia» pasaría en una laptop y afirmaría en CI algo que ahí no es cierto. Lo que se mide es
+  // qué agrega el guard, no qué traía el entorno — y eso hay que aislarlo para poder verlo.
+  const antes = process.env.CI
+  try {
+    delete process.env.CI
+    assert.doesNotThrow(() => execute('verify', commit))
+    assert.match(fs.readFileSync(visto, 'utf8'), /^CI=vacio$/m,
+      'sin copia no se le cambia el entorno a nadie')
 
-  // Y ahora sí hay copia, por lo más barato que la dispara.
-  fs.writeFileSync(visto, '')
-  fs.writeFileSync(path.join(root, 'suelto.txt'), 'no trackeado\n')
-  assert.doesNotThrow(() => execute('verify', commit))
-  assert.match(fs.readFileSync(visto, 'utf8'), /^CI=true$/m, 'sobre la copia sí')
+    // Y ahora sí hay copia, por lo más barato que la dispara.
+    fs.writeFileSync(visto, '')
+    fs.writeFileSync(path.join(root, 'suelto.txt'), 'no trackeado\n')
+    assert.doesNotThrow(() => execute('verify', commit))
+    assert.match(fs.readFileSync(visto, 'utf8'), /^CI=true$/m, 'sobre la copia sí')
+  } finally {
+    if (antes === undefined) delete process.env.CI
+    else process.env.CI = antes
+  }
 })
 
 // El mensaje decía `test (exit 1)` y tiraba la salida de la herramienta, así que una suite en rojo y un
