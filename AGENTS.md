@@ -230,11 +230,26 @@ aunque no haya encontrado nada, o sale como caso propio antes de cerrar.
 Lo que el caso encontró y su enunciado no preveía también va, porque es lo que un lector del futuro no
 tiene cómo deducir: el 036 se registró sobre `git add` y el defecto estaba en todas las reglas.
 
-`test/repo/issues.test.js` comprueba que la sección exista y que el estado del frontmatter coincida con
-el encabezado. **No comprueba que el cierre sea honesto**, y decirlo es parte de la puerta: una que se
-presenta como más fuerte de lo que es enseña a no creerle al resto. Rige desde 0.65.0; los casos
-cerrados antes se quedan como están, porque retro-rellenar treinta cierres sería escribir de memoria lo
-que el contraste tenía que haber encontrado en su momento.
+**Y no se cierra sin haberlo probado corriendo.** Un caso se abre porque algo no funciona, así que
+cerrarlo es afirmar que ahora sí — y esa afirmación es de mecanismo: lleva su registro (R14). El cierre
+nombra qué se corrió y qué devolvió: la salida real, la mutación que se vio en rojo, la medición con su
+número. «La suite pasa» no es eso; dice que nada de lo que ya había se rompió, que es otra pregunta.
+
+Vale para las tres formas en que un caso se cierra. Si se arregló, se prueba el arreglo. Si se decidió
+que no, se prueba el dato que sostiene la decisión —el 069 se resolvió al revés de lo que él mismo
+proponía porque medirlo mostró que el daño no era el que decía—. Y si el defecto no se reprodujo, eso
+también se corrió y se dice cómo, que es lo que separa «no ocurre» de «esta vez no tocó».
+
+Lo que esta exigencia evita es concreto y ya pasó: un arreglo comprobado a medias —se midió que lo nuevo
+aparecía y no que lo viejo se hubiera ido— se cerró, se publicó y volvió como el caso siguiente. Por qué
+esa mitad no alcanza vive en R9; acá está sólo cuándo se aplica.
+
+`test/repo/issues.test.js` comprueba que la sección exista, que el estado del frontmatter coincida con el
+encabezado y —desde 0.75.0— que el cierre nombre su prueba. **No comprueba que el cierre sea honesto**, y
+decirlo es parte de la puerta: una que se presenta como más fuerte de lo que es enseña a no creerle al
+resto. El contraste rige desde 0.65.0 y la prueba nombrada desde 0.75.0; los casos cerrados antes se
+quedan como están, porque retro-rellenar treinta cierres sería escribir de memoria lo que el contraste
+tenía que haber encontrado en su momento.
 
 El estado se escribe en dos lugares —el frontmatter y el encabezado que se lee primero— y los dos se
 tocan juntos: desincronizados, el que miente es el que se lee sin abrir el archivo.

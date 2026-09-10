@@ -36,6 +36,24 @@ nuevo no comprueba que desapareció lo viejo: los dos pueden convivir, y ahí el
 del cambio ocurrió. La aserción que hace falta es de ausencia —que la salida vieja ya no esté, que la
 rama vieja ya no corra—, y es la que no se escribe sola porque nadie la extraña.
 
+**Y lo más caro es que una quita casi nunca se ve como una quita.** Se escribe como un agregado: una
+bandera que se pone, una variable que se exporta, una condición que se añade. Lo que la delata es la
+frase que la justifica — «lo agrego **para que** deje de …». Ahí el sujeto es lo que entra y el objeto es
+lo que desaparece, y lo que desaparece es lo que hay que probar. Silenciar un aviso, saltear una rama,
+desarmar una confirmación: los tres se escriben sumando y los tres son quitas.
+
+Esto no admite excepción y por eso se dice acá y no en una guía: **una quita no se entrega sin su
+aserción de ausencia, y esa aserción se vio en rojo devolviendo lo quitado.** Sin ese rojo no está
+probado que la aserción mire lo que dice mirar — es el mismo rojo previo del párrafo de arriba, aplicado
+al revés.
+
+Y hay un caso particular que merece su renglón porque es el que más se disfraza: **una confirmación que
+estorba casi siempre está cuidando algo.** Antes de callarla se establece qué protege. Si la respuesta es
+«no sé», eso **es** el resultado de la medición y no un permiso para seguir: lo que corresponde es
+quitarle a la herramienta el motivo de preguntar, no la pregunta. Poner `CI=true` para que un gestor de
+paquetes dejara de confirmar antes de purgar borró el árbol de dependencias de un proyecto real, y el
+cambio se había probado —el gate arrancaba— midiendo sólo lo que aparecía.
+
 Lo que se quita, además, tiene dependientes, y no se anuncian. Una invariante que deja de valer se lleva
 puesto a quien la daba por cierta: el mensaje que la afirmaba, la condición que la deducía, el comentario
 que la explicaba. Suelen vivir en otro archivo, que es donde una premisa vieja se pudre sin que nada
