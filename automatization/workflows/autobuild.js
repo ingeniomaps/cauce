@@ -355,6 +355,14 @@ const read = (prompt, options = {}) => agent(`${BASE}\n\n${prompt}`, options)
 const run = (prompt, options = {}) => agent(`${SCOPE}\n\n${prompt}`, options)
 const write = (prompt, options = {}) => agent(`${LEDGER}\n\n${prompt}`, options)
 
+// Las tres paradas que dejan una fila en HUMAN_ACTIONS delegan esa escritura a un agente, y esa fila es
+// el único rastro de la parada: sin ella el recorrido informa un estado que el disco no tiene. Por eso
+// se espera —lanzarla y volver en la línea siguiente la abandona— y por eso se mira si contestó.
+// Devuelve lo que hay que agregarle al detalle, vacío cuando la fila quedó pedida. Caso 087.
+const registerHuman = async (prompt, label) => (await write(prompt, { label })
+  ? ''
+  : ` — la fila en ${HUMAN} no se pudo registrar: escribila a mano`)
+
 // Gate, mutex de WIP y selección de tarea salen de un comando determinista: AWAITING_REVIEW, BACKLOG,
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
 const readContext = () => read(
@@ -552,12 +560,13 @@ while (rounds++ < MAX_TASKS) {
   //
   // Lo que la fila le pide a una persona lo dice R17: dos rechazos sobre lo mismo son el disparador
   // posterior de división. No se parte acá porque partir es una decisión, y ésa no le toca al recorrido.
-  const planRejected = (reason, unit, found) => {
+  const planRejected = async (reason, unit, found) => {
     const detail = found.join('; ') || 'sin condiciones nombradas'
-    write(`Registrá ${unit.id} en ${HUMAN}: nadie pudo escribir un plan que sobreviva a la crítica. `
+    const nota = await registerHuman(
+      `Registrá ${unit.id} en ${HUMAN}: nadie pudo escribir un plan que sobreviva a la crítica. `
       + `Motivo: ${detail}. La acción humana es revisar si la unidad son dos resultados con vidas `
-      + `distintas y partirla —R17—, o dejarla entera con la razón escrita.`, { label: 'plan-human' })
-    return stop(reason, detail)
+      + `distintas y partirla —R17—, o dejarla entera con la razón escrita.`, 'plan-human')
+    return stop(reason, `${detail}${nota}`)
   }
 
   if (!planning.wipActive) {
@@ -571,9 +580,10 @@ while (rounds++ < MAX_TASKS) {
       )
       if (!ready) return stop('agent-unavailable', 'Ready no devolvió resultado')
       if (!ready.ready) {
-        await write(`Registrá ${task.id} en ${HUMAN} con el motivo y una acción humana exacta: ${ready.reason}.`,
-          { label: 'ready-human' })
-        return stop('not-ready', ready.reason)
+        const nota = await registerHuman(
+          `Registrá ${task.id} en ${HUMAN} con el motivo y una acción humana exacta: ${ready.reason}.`,
+          'ready-human')
+        return stop('not-ready', `${ready.reason}${nota}`)
       }
       if (ready.refinedAcceptance) task.acceptance = ready.refinedAcceptance
     }
@@ -793,9 +803,10 @@ while (rounds++ < MAX_TASKS) {
   // hacer parar a una persona por eso le cobra una interrupción por algo que se resolvía solo.
   const ambiguous = verified.uncovered.find((entry) => entry.cause === 'ambiguous')
   if (ambiguous) {
-    await write(`Registrá ${task.id} en ${HUMAN}: el criterio "${ambiguous.criterion}" no dice qué habría ` +
-      `que aserciar, y hace falta la decisión que lo fija.`, { label: 'verify-human' })
-    return stop('acceptance-ambiguous', ambiguous.criterion)
+    const nota = await registerHuman(
+      `Registrá ${task.id} en ${HUMAN}: el criterio "${ambiguous.criterion}" no dice qué habría ` +
+      `que aserciar, y hace falta la decisión que lo fija.`, 'verify-human')
+    return stop('acceptance-ambiguous', `${ambiguous.criterion}${nota}`)
   }
   if (verified.uncovered.length) {
     await run(`${asRole(cast.build)}Escribí sólo las pruebas que faltan en ${task.id}, con el mismo rojo ` +
