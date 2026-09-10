@@ -1,14 +1,14 @@
 ---
 caso: 084
 titulo: Las dos puertas que analizan un workflow sin parsearlo se desincronizan con una comilla dentro de un literal de regex
-estado: abierto
+estado: resuelto
 prioridad: media
 version-detectada: 0.77.0
 ---
 
 # 084 — Una comilla dentro de un regex desincroniza a las dos puertas que leen un workflow sin parsearlo
 
-**🔴 abierto** · detectado en 0.77.0 · prioridad **media** — falla ruidosa, no silenciosa, y hoy no hay
+**🟢 resuelto en 0.78.0** · detectado en 0.77.0 · prioridad **media** — falla ruidosa, no silenciosa, y hoy no hay
 ningún workflow que la dispare: lo que cuesta es la próxima media hora de quien escriba el primero
 
 ## Resumen
@@ -97,3 +97,99 @@ una comilla suelta no es un envoltorio—, así que **no depende de este caso**.
 - **083** — el caso que lo encontró; su arreglo esquiva el agujero en vez de taparlo.
 - **R14** — que estas dos puertas comprueban lo que dicen comprobar es, ella misma, una afirmación de
   mecanismo: hoy es cierta salvo para un archivo con un regex, y eso no estaba escrito en ningún lado.
+
+## Cierre
+
+**🟢 resuelto en 0.78.0** · `test/support/lexer.js` (nuevo), `test/workflows/workflows.test.js`,
+`test/workflows/lexer.test.js` (nuevo)
+
+### El caso se equivocaba en tres cosas, y medirlo es lo que las encontró
+
+Está escrito arriba y no se borra, porque lo que el caso afirmó es parte de lo que pasó.
+
+**«Las dos puertas»: son tres.** Además de las dos que analizan el archivo entero —la de los nombres y
+la de las llamadas—, la del `meta` desnuda su bloque con una cadena de `.replace()` propia. Tres
+recortes distintos del mismo problema, cada uno equivocándose a su manera.
+
+**«Hoy no hay ningún workflow que la dispare»: hay cuarenta literales de regex en los nueve
+recorridos**, y `agent-eval.js:179`, `agent-eval.js:182`, `flow-eval.js:169` y `flow-eval.js:172` ya se
+leían mal. El regex es `/[A-Za-z0-9_./~-]*\/\.cauce-eval\//g`: la barra escapada del final deja un `//`
+literal, que el lexer tomaba por el arranque de un comentario.
+
+**«Falla ruidosa, no silenciosa»: la forma que ya pasaba es silenciosa y hacia abajo.** Comerse el resto
+de la línea no reporta nada — deja de ver. Medido con el lexer viejo:
+
+```
+codeOnly("const p = u.replace(/x\//g, '') + noExiste(1)\n")
+→ "const p = u.replace(/x\\\n"
+```
+
+`noExiste(1)` es exactamente lo que la puerta de llamadas existe para atrapar, y era invisible. La
+cadena de `.replace()` de esa puerta devuelve lo mismo. La forma ruidosa —la comilla adentro del
+regex— es la que encontré primero porque me tocó escribirla; la que estaba viva era la otra.
+
+### Las tres salidas que el caso proponía
+
+**1. Reconocer el literal de regex en los lexers** — hecha, y es la que va en las dos puertas que leen
+el archivo entero. La decisión de si un `/` abre un regex o divide se toma por el carácter anterior, con
+las palabras clave que terminan en letra y aun así abren uno (`return`, `typeof`, `case`…) en una lista.
+Los dos bordes conocidos quedan escritos en el módulo, y los dos van hacia el falso positivo.
+
+**2. Fallar a propósito ante un regex** — hecha, y en el único lugar donde corresponde: el `meta`. Ahí
+un regex nunca es legítimo, y el lexer compartido tampoco sirve, porque se come el `${` que esa puerta
+busca. La barra entra a su lista de patrones prohibidos.
+
+**3. Prohibir la comilla dentro de un regex** — se decidió que no. No arregla nada de lo que está vivo
+—las cuatro líneas de hoy no tienen comillas, tienen `//`— y prohíbe algo legítimo.
+
+El caso decía «vale la pena decidir entre 1 y 2 midiendo qué tan seguido un workflow necesita un
+regex». Se midió: **40 en 9 recorridos**, con 0 comillas, 0 backticks y 2 con `//` adentro. Con ese
+número la 3 se cae sola y la 1 deja de ser opcional.
+
+### El tradeoff que el caso anticipaba
+
+**«Un lexer con un bug propio miente en la dirección contraria»** — es cierto y por eso el lexer salió
+de la prueba a `test/support/lexer.js`: a través de una puerta que corre sobre los nueve recorridos que
+hoy existen no se puede ejercitar la regla que decide entre regex y división. Ahora se mide sola, con
+ocho formas —incluidas las tres divisiones que un lexer demasiado ansioso se comería—.
+
+### Lo que apareció y el caso no preveía
+
+**La regla de interpolación del `meta` nunca pudo dispararse.** El desnudado recorta los templates antes
+de buscar `${`, y `${` sólo existe adentro de un template: la condición era inalcanzable desde que se
+escribió. No lo encontró leerla — la encontró la prueba de detectores, al pasarle el bloque que tenía
+que atrapar y ver que no lo atrapaba. Es lo que R9 dice de una aserción que nadie vio en rojo. Ahora el
+`${` sobrevive al recorte y la regla funciona.
+
+### Qué se corrió
+
+`node --test test/workflows/lexer.test.js test/workflows/workflows.test.js` — 15 en verde, con tres
+pruebas nuevas: las ocho formas del lexer, los cinco detectores del `meta` y las cuatro de la puerta de
+llamadas.
+
+Las dos pruebas de detectores existen porque **sobre los nueve recorridos de hoy las tres puertas dan
+verde con cualquier lexer**: ese verde no dice que lean bien. Hay que pasarles lo que tienen que
+atrapar, y es ahí donde apareció lo de la interpolación.
+
+Y la comprobación sobre los recorridos reales no cuenta líneas —un template multilínea se va entero y
+con razón— sino que mide el **balance de paréntesis y corchetes**, que es lo que el modo de fallo rompe:
+comerse el resto de una línea deja abierto lo que esa línea cerraba. Los nueve dan `{"(":0,"[":0}`.
+
+**Ocho mutaciones, en un clon desechable bajo `/tmp` (R23), todas en rojo:**
+
+```
+M1 el lexer vuelve a no conocer literales de regex:  fail 3 → ROJA
+M2 toda barra abre un regex:                         fail 1 → ROJA
+M3 ninguna palabra clave abre un regex:              fail 1 → ROJA
+M4 una barra dentro de una clase cierra el regex:    fail 1 → ROJA
+M5 el regex puede cruzar líneas:                     fail 1 → ROJA
+M6 la barra vuelve a ser legal en un meta:           fail 1 → ROJA
+M7 la puerta de llamadas vuelve a su cadena:         fail 1 → ROJA
+M8 el ${ vuelve a irse con el template:              fail 1 → ROJA
+```
+
+Las ocho se comprobaron aplicadas antes de contar. Cuatro de ellas sobrevivieron en la primera vuelta
+—M2, M5, M6 y M7— y las cuatro decían lo mismo: faltaba el caso. Los cuatro que faltaban son los que
+hoy son las dos pruebas de detectores y las dos divisiones del lexer.
+
+`npm run ci`: 668 pruebas, 668 en verde.
