@@ -115,14 +115,44 @@ function doneEntryErrors(entry, epics = []) {
   return [...errors, ...validateDoneEntry(entry, story ? story.criteria : [])]
 }
 
-// Cuántas entradas cerradas no dicen con qué carril corrieron. Avisa en vez de fallar por lo que dice
-// `doneEntryErrors`, y cuenta en vez de listar porque al principio son todas: lo que se lee es que el
-// número baje. Cuando llegue a cero, exigirlo deja de costarle nada a nadie y ahí se puede decidir.
-function doneLaneWarnings(done, adopted = new Set()) {
-  const sin = done.entries.filter((entry) => !adopted.has(entry.slug) && !entry.lane)
-  if (!sin.length) return []
-  return [`planning/done: ${sin.length} entrada(s) sin lane:, así que no se puede comprobar sobre el `
-    + 'registro que la ceremonia que recibieron fue la que su superficie pedía (OPS-006)']
+// Un carril declara **cuánta ceremonia** merecía la tarea; `n/a` en `review:` dice que la revisión no
+// corrió. `express` es el único que no convoca revisor, así que en los otros tres esa combinación es la
+// ADR incumplida, escrita en el propio registro.
+const CONVOCAN_REVISOR = ['directo', 'lite', 'full']
+const SIN_REVISION = /^n\/a\b/i
+
+// Lo que el registro puede decir sobre la ceremonia, y lo que todavía no. Los dos campos avisan en vez de
+// fallar por lo que dice `doneEntryErrors`, y cuentan en vez de listar porque al principio son todas: lo
+// que se lee es que el número baje. Cuando llegue a cero, exigirlos deja de costarle nada a nadie.
+//
+// El cruce sí nombra las tareas, porque son pocas y cada una es una pregunta concreta para una persona.
+// Y también avisa en vez de fallar, por una razón distinta de la de los campos: es un hecho del pasado
+// que no se arregla editando la entrada, así que el único camino al verde sería reescribir el registro.
+// Un gate que se apaga mintiendo es peor que no tenerlo.
+//
+// `sin clasificar` queda afuera del cruce a propósito: el recorrido corre esas tareas por el carril
+// completo, pero eso lo sabe el recorrido y no la entrada. Avisar sobre lo que hay que deducir es lo que
+// llena de ruido un aviso que después nadie mira.
+function doneCeremonyWarnings(done, adopted = new Set()) {
+  const propias = done.entries.filter((entry) => !adopted.has(entry.slug))
+  const warnings = []
+  const sinLane = propias.filter((entry) => !entry.lane)
+  if (sinLane.length) {
+    warnings.push(`planning/done: ${sinLane.length} entrada(s) sin lane:, así que no se puede comprobar `
+      + 'sobre el registro que la ceremonia que recibieron fue la que su superficie pedía (OPS-006)')
+  }
+  const sinReview = propias.filter((entry) => !entry.review)
+  if (sinReview.length) {
+    warnings.push(`planning/done: ${sinReview.length} entrada(s) sin review:, que es la dimensión con la `
+      + 'que OPS-006 dice que se mide si el carril elegido fue el correcto')
+  }
+  const saltadas = propias.filter((entry) => CONVOCAN_REVISOR.includes(entry.lane)
+    && entry.review && SIN_REVISION.test(entry.review))
+  if (saltadas.length) {
+    warnings.push(`planning/done: ${saltadas.map((entry) => entry.slug).join(', ')} declara(n) un carril `
+      + 'que convoca revisor y una revisión que no corrió: el carril reduce ceremonia, nunca evidencia')
+  }
+  return warnings
 }
 
 function duplicates(values) {
@@ -331,7 +361,7 @@ function validateState({
 module.exports = {
   validateState,
   doneEntryErrors,
-  doneLaneWarnings,
+  doneCeremonyWarnings,
   validCommitTrace,
   validDecisionTrace,
   validTestTrace,

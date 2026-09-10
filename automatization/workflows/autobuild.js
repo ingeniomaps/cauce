@@ -791,8 +791,8 @@ while (rounds++ < MAX_TASKS) {
   phase('Done')
   await write(
     `Cerrá ${task.id} de forma atómica: escribí ${doneFile(task.id)} con su evidencia —acept, ` +
-    `fecha: ${planning.today}, done, qa, tests, commit y lane, en el formato de entrada que trae este ` +
-    `preámbulo—; ` +
+    `fecha: ${planning.today}, done, qa, tests, commit, lane y review, en el formato de entrada que trae ` +
+    `este preámbulo—; ` +
     `sacala junto con sus notas indentadas de ${BACKLOG}; cerrá su épica sólo si no queda ` +
     `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE; y soltá la reserva corriendo ` +
     `"node tools/ops.js release ${P} ${task.id}". En decisions no nombres una fase ni un cargo ` +

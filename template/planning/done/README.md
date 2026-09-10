@@ -13,6 +13,7 @@ tarea entregó y con qué se comprueba.
   decisions: decisión no obvia [fuente: ruta/archivo] o [supuesto: motivo verificable]
   commit: abc1234 feat(scope): subject (repo@branch)
   lane: full
+  review: aprobado por tech-lead, sobre api/alta.go
 ```
 
 El contrato completo de esos campos está en `../PROTOCOL.md`; acá va por qué el archivo es uno por tarea.
@@ -37,6 +38,17 @@ en la memoria de quien estuvo en la sesión. `lane:` la devuelve al registro.
 
 Se escribe aunque sea `sin clasificar`, que es distinto de no escribirlo: uno dice que la tarea corrió
 sin carril declarado y el otro, que nadie llenó el campo.
+
+## Por qué la revisión
+
+El carril dice cuánta ceremonia **merecía** la tarea; `review:` dice cuánta **recibió**. Con los dos, la
+pregunta que OPS-006 dejó pendiente —«¿el carril elegido fue el correcto?»— se contesta desde el registro
+en vez de desde la memoria de la sesión.
+
+`express` es el único carril que no convoca revisor, así que ahí `n/a — razón` es lo correcto. En
+`directo`, `lite` y `full` una revisión que no corrió es la ADR incumplida, y `check` lo avisa nombrando
+la tarea. Avisa y no falla: es un hecho del pasado que no se arregla editando la entrada, y el único
+camino al verde sería reescribir el registro.
 
 ## Por qué la fecha
 

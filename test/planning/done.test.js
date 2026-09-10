@@ -109,6 +109,11 @@ test('el carril con el que corrió la tarea sobrevive en su entrada de DONE', ()
   fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta', '  lane: express'))
   const alta = P.readDone(dir).entries.find((one) => one.slug === 'alta')
   assert.equal(alta.lane, 'express', 'el campo se lee')
+  // Y no se lo come el de arriba. Un campo vale hasta el próximo campo **conocido**, así que agregar uno
+  // sin sumarlo al vocabulario lo deja adentro del valor anterior: `commit:` leía «abc1234 feat: alta
+  // lane: express» y nada fallaba, porque sigue siendo texto no vacío. Es el mismo borde que la prueba de
+  // `fecha:` fija más arriba, y se rompió al agregar este campo.
+  assert.equal(alta.commit, 'abc1234 feat: alta', 'y el campo de arriba no se lo traga')
 
   const salida = JSON.parse(run(['check', dir, '--json']).stdout)
   assert.deepEqual(salida.errors.filter((one) => /alta/.test(one)), [], 'y el contrato la acepta')
@@ -142,4 +147,44 @@ test('un carril que no existe en la entrada de DONE frena el check', () => {
   assert.match(errors[0], /lane "rapido" no existe/)
   assert.match(errors[0], /sin clasificar/,
     'y nombra el vocabulario entero, incluido el que dice que la línea no lo declaraba')
+})
+
+// El carril dice cuánta ceremonia **merecía** la tarea; `review:` dice cuánta **recibió**. Es la dimensión
+// que la propia ADR nombra como la que falta —«se sabría comparando hallazgos de review por carril, y hoy
+// no se registra esa dimensión en DONE»—, así que sin ella el campo del 074 sabe con qué carril corrió y
+// no si le correspondía (caso 076).
+test('la entrada dice qué pasó con la revisión, y su ausencia se cuenta', () => {
+  const dir = planning('cauce-done-review-')
+  fs.writeFileSync(path.join(dir, 'done', 'alta.md'),
+    entrada('alta', '  lane: full\n  review: aprobado por tech-lead, sobre api/alta.go'))
+  const alta = P.readDone(dir).entries.find((one) => one.slug === 'alta')
+  assert.equal(alta.review, 'aprobado por tech-lead, sobre api/alta.go', 'el campo se lee')
+
+  const conCampo = JSON.parse(run(['check', dir, '--json']).stdout)
+  assert.deepEqual(conCampo.warnings.filter((one) => /sin review:/.test(one)), [], 'con el campo no avisa')
+
+  fs.writeFileSync(path.join(dir, 'done', 'baja.md'), entrada('baja', '  lane: full'))
+  const sinCampo = JSON.parse(run(['check', dir, '--json']).stdout)
+  assert.equal(sinCampo.warnings.filter((one) => /1 entrada\(s\) sin review:/.test(one)).length, 1,
+    `cuenta las que no lo traen: ${JSON.stringify(sinCampo.warnings)}`)
+})
+
+// El cruce que el campo habilita, medido en sus dos direcciones dentro del mismo `check`: sin la segunda,
+// un aviso que saltara siempre pasaría la primera y estaría marcando como incumplimiento el carril que
+// hace lo que tiene que hacer. Contra qué se cruza y por qué esos tres carriles, en `CONVOCAN_REVISOR`.
+test('un carril que convoca revisor y no la tuvo se avisa; express no', () => {
+  const dir = planning('cauce-done-cruce-')
+  fs.writeFileSync(path.join(dir, 'done', 'saltada.md'),
+    entrada('saltada', '  lane: lite\n  review: n/a — nadie la miró'))
+  fs.writeFileSync(path.join(dir, 'done', 'mecanica.md'),
+    entrada('mecanica', '  lane: express\n  review: n/a — el carril express no convoca revisor'))
+
+  const salida = JSON.parse(run(['check', dir, '--json']).stdout)
+  const cruce = salida.warnings.filter((one) => /convoca revisor/.test(one))
+  assert.equal(cruce.length, 1, `un solo aviso: ${JSON.stringify(salida.warnings)}`)
+  assert.match(cruce[0], /saltada/, 'y nombra la tarea, que es la pregunta concreta para una persona')
+  assert.doesNotMatch(cruce[0], /mecanica/, 'express no convoca revisor: ahí n/a es lo correcto')
+  // Y que sea aviso se asercia, no se supone: es la diferencia entre esto y `doneEntryErrors`, y quien
+  // mueva el cruce de lugar puede convertirlo en error sin notarlo. Por qué avisa, en `doneCeremonyWarnings`.
+  assert.deepEqual(salida.errors.filter((one) => /revisor/.test(one)), [])
 })

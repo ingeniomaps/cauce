@@ -133,7 +133,8 @@ test('el carril con el que corre la tarea viaja al WIP y al cierre', async () =>
   const wip = prompts.find((one) => one.key === KEY.wip).prompt
   assert.match(wip, /lane=lite/, 'el plan en vuelo lo conserva para quien reanude')
   const cierre = prompts.find((one) => one.key.startsWith('Done|')).prompt
-  assert.match(cierre, /tests, commit y lane/, 'y el cierre lo pide como un campo más de la evidencia')
+  assert.match(cierre, /tests, commit, lane y review/,
+    'y el cierre lo pide como un campo más de la evidencia')
 })
 
 // El cierre escribe un archivo por tarea y no agrega a uno compartido: es lo que hace que dos corridas
