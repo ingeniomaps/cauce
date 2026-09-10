@@ -31,6 +31,18 @@ diseño — eso vive en el commit y en el código.
   **Lo que te pide algo**: es una regla del sistema, así que baja a tu `planning/` en el próximo
   `upgrade` y aplica a todo cambio, no sólo a los del toolkit.
 
+- **Un punto y coma dentro de la prosa de `tests:` ya no parte la traza.** El `;` es el separador que R8
+  fija y a la vez el signo más común de la prosa española, y ese campo pide las dos cosas: el contrato
+  pide `CN → prueba` y R9 pide decir cómo se vio fallar esa prueba. Una sola traza con prosa se partía en
+  tres y `check` rechazaba el campo entero mandando a revisar la traza, que era lo único que estaba bien
+  — y la salida fácil era acortar la prosa hasta que pasara, o sea empobrecer justo la evidencia.
+
+  Ahora se corta sólo cuando detrás **empieza otra traza**, que es la misma decisión que `commit:` ya
+  tomaba para el sha. Las entradas con varias trazas siguen valiendo igual.
+
+  **Lo que te pide algo**: si tu prosa contiene literalmente `; A → algo`, se va a partir ahí — desde
+  afuera es indistinguible de dos trazas. Es la misma concesión que `commit:` aceptó.
+
 - **Un caso no se cierra sin haberlo probado corriendo.** El `## Cierre` nombra qué se corrió y qué
   devolvió —la salida, la mutación vista en rojo, el número medido—; «la suite pasa» no cuenta, porque
   dice que nada de lo que ya había se rompió y no que esto funcione. Vale igual cuando se decide no
