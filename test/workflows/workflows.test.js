@@ -14,6 +14,8 @@ const { compileWorkflow } = require('../support/workflow')
 
 const WF = path.resolve(__dirname, '..', '..', 'automatization', 'workflows')
 
+const { codeOnly } = require('../support/lexer')
+
 function workflowFiles() {
   const found = []
   for (const entry of fs.readdirSync(WF, { withFileTypes: true, recursive: true })) {
@@ -22,52 +24,6 @@ function workflowFiles() {
   return found
 }
 
-function codeOnly(src) {
-  let out = ''
-  let i = 0
-  let mode = 'code'
-  // Pila explícita: `tpl` es un template abierto, `expr` una interpolación adentro de uno. Sin
-  // distinguirlas, cerrar un template anidado dentro de un `${}` devolvía a modo texto cuando todavía
-  // se estaba en código, y la prosa de ese tramo entraba al análisis como si fueran identificadores.
-  const stack = []
-  while (i < src.length) {
-    const c = src[i]
-    const d = src[i + 1]
-    if (mode === 'code') {
-      if (c === '/' && d === '/') { while (i < src.length && src[i] !== '\n') i++; continue }
-      if (c === '/' && d === '*') { i = src.indexOf('*/', i + 2) + 2; continue }
-      if (c === "'" || c === '"') {
-        const quote = c
-        i++
-        while (i < src.length && src[i] !== quote) i += src[i] === '\\' ? 2 : 1
-        i++
-        out += ' '
-        continue
-      }
-      if (c === '`') { stack.push({ type: 'tpl' }); mode = 'template'; i++; out += ' '; continue }
-      const top = stack[stack.length - 1]
-      if (c === '}' && top && top.type === 'expr') {
-        if (top.braces === 0) { stack.pop(); mode = 'template'; i++; continue }
-        top.braces--
-      }
-      if (c === '{' && top && top.type === 'expr') top.braces++
-      out += c
-      i++
-      continue
-    }
-    if (c === '\\') { i += 2; continue }
-    if (c === '`') {
-      stack.pop()
-      const top = stack[stack.length - 1]
-      mode = top && top.type === 'tpl' ? 'template' : 'code'
-      i++
-      continue
-    }
-    if (c === '$' && d === '{') { stack.push({ type: 'expr', braces: 0 }); mode = 'code'; i += 2; out += ' '; continue }
-    i++
-  }
-  return out
-}
 
 // Lo primero que el runtime le pide a un recorrido, y lo único que nadie comprobaba: que compile. El
 // render es sustitución de texto, así que un archivo roto se escribe igual en `.claude/workflows/` y el
@@ -91,20 +47,47 @@ test('todos los workflows compilan, que es lo primero que el runtime les pide', 
 // El runtime exige que `meta` sea un literal puro y rechaza el archivo entero antes de la primera fase
 // si no lo es. Nada lo comprobaba: `autobuild` derivaba sus catorce fases con un `.map` y no arrancaba,
 // cosa que ningún test veía porque todos leen el cuerpo y el arnés lo evalúa sin pasar por esa validación.
+// La barra entra a la lista en vez de enseñarle a leer regex a este desnudado: en un literal puro no
+// hay división, así que la única barra posible abre uno. Y el lexer compartido no sirve acá porque se
+// come el `${` que esta lista busca —lo lee como interpolación, que es su trabajo—. Caso 084.
+const META_PROHIBIDO = [
+  [/\w\s*\(/, 'una llamada'], [/\.\.\./, 'un spread'], [/\$\{/, 'interpolación'],
+  [/\//, 'una barra, que en un literal puro sólo abre un regex'],
+]
+
+// Sin comentarios ni literales de texto: adentro hay prosa con paréntesis y flechas.
+const bareMeta = (block) => block
+  .replace(/\/\/[^\n]*/g, '')
+  .replace(/'(?:\\[\s\S]|[^'\\])*'/g, "''")
+  .replace(/"(?:\\[\s\S]|[^"\\])*"/g, '""')
+  // El `${` sobrevive al recorte del template porque es lo único que se busca adentro de uno, y el
+  // orden lo escondía: hasta 0.78.0 el template se iba entero y la regla de interpolación no podía
+  // dispararse nunca —`${` sólo existe adentro de uno—. Lo encontró la prueba de detectores de abajo,
+  // que es exactamente lo que R9 dice de una aserción que nadie vio en rojo. Caso 084.
+  .replace(/`(?:\\[\s\S]|[^`\\])*`/g, (t) => `\`\`${(t.match(/\$\{/g) || []).join('')}`)
+
+const metaOffences = (block) => META_PROHIBIDO
+  .filter(([patron]) => patron.test(bareMeta(block))).map(([, queEs]) => queEs)
+
 test('el meta de cada workflow es un literal puro, que es lo que el runtime acepta', () => {
   for (const file of workflowFiles()) {
     const bloque = (fs.readFileSync(file, 'utf8').match(/export const meta = \{[\s\S]*?\n\}/) || [])[0]
     assert.ok(bloque, `${path.relative(WF, file)}: sin bloque meta`)
-    // Sin comentarios ni literales de texto: adentro hay prosa con paréntesis y flechas.
-    const desnudo = bloque
-      .replace(/\/\/[^\n]*/g, '')
-      .replace(/'(?:\\[\s\S]|[^'\\])*'/g, "''")
-      .replace(/"(?:\\[\s\S]|[^"\\])*"/g, '""')
-      .replace(/`(?:\\[\s\S]|[^`\\])*`/g, '``')
-    for (const [patron, queEs] of [[/\w\s*\(/, 'una llamada'], [/\.\.\./, 'un spread'], [/\$\{/, 'interpolación']]) {
-      assert.equal(patron.test(desnudo), false, `${path.relative(WF, file)}: el meta tiene ${queEs}`)
-    }
+    assert.deepEqual(metaOffences(bloque), [], `${path.relative(WF, file)}: el meta tiene lo que no va`)
   }
+})
+
+// Una lista de patrones se lee bien esté vacía o llena, así que se le pasa lo que tiene que atrapar. El
+// del regex es el que este caso agrega y el que nadie iba a escribir: hasta 0.78.0 un `meta` con un
+// literal de regex pasaba en verde, porque las tres reglas de antes no lo nombraban.
+test('los detectores del meta ven lo que tienen que ver', () => {
+  const limpio = 'export const meta = {\n  name: \'x\',\n  description: \'hace algo (y algo más)\',\n}'
+  assert.deepEqual(metaOffences(limpio), [], 'la prosa entrecomillada no dispara nada')
+  assert.deepEqual(metaOffences(limpio.replace('\'x\'', 'slug(1)')), ['una llamada'])
+  assert.deepEqual(metaOffences(limpio.replace('\'x\'', '...otros')), ['un spread'])
+  assert.deepEqual(metaOffences(limpio.replace('\'x\'', '`${n}`')), ['interpolación'])
+  assert.deepEqual(metaOffences(limpio.replace('\'x\'', '/re/')),
+    ['una barra, que en un literal puro sólo abre un regex'])
 })
 
 // La misma comprobación estaba repartida en cuatro tests, con dos listas distintas: dos miraban rutas
@@ -146,38 +129,59 @@ test('un workflow sólo usa lo que el runtime le da', () => {
 // Un identificador que el runtime no da y el archivo no define revienta el workflow, y lo hace en el
 // momento en que se lo llama: `finish` estaba en la línea de cierre, así que el recorrido gastaba
 // cada etapa y moría al final. Leer estos archivos como texto no alcanza para verlo.
+// Lo que el runtime inyecta, más los built-ins y las palabras del lenguaje que van seguidas de `(`.
+const RUNTIME = new Set(['agent', 'parallel', 'pipeline', 'log', 'phase', 'workflow'])
+const BUILTINS = new Set([
+  'String', 'Number', 'Boolean', 'Array', 'Object', 'JSON', 'Math', 'Promise', 'Set', 'Map',
+  'RegExp', 'Error', 'parseInt', 'parseFloat', 'isNaN', 'encodeURIComponent', 'decodeURIComponent',
+])
+const KEYWORDS = new Set([
+  'if', 'for', 'while', 'switch', 'catch', 'return', 'typeof', 'function', 'await', 'new', 'do',
+])
+
+// Recibe el fuente ya renderizado y devuelve los nombres que se llaman sin existir. Se desnuda con el
+// lexer compartido y no con una cadena de `.replace()`, que hasta 0.78.0 leía cada clase de literal por
+// separado: `['\'', '"']` le hacía casar la comilla simple desde la primera hasta la tercera, por
+// encima de la doble, y `finish` —declarado en un `{{INCLUDE:}}`— aparecía como inexistente. Caso 084.
+function undeclaredCalls(rendered) {
+  const source = codeOnly(rendered)
+  const declared = new Set(
+    [...source.matchAll(/(?:function|const|let|var)\s+([A-Za-z_$][\w$]*)/g)].map((hit) => hit[1]),
+  )
+  const missing = []
+  for (const hit of source.matchAll(/(?:^|[^.\w$])([a-zA-Z_$][\w$]*)\s*\(/gm)) {
+    const name = hit[1]
+    if (RUNTIME.has(name) || BUILTINS.has(name) || KEYWORDS.has(name) || declared.has(name)) continue
+    missing.push(name)
+  }
+  return [...new Set(missing)]
+}
+
 test('un workflow no llama a nada que no exista', () => {
-  // Lo que el runtime inyecta, más los built-ins del lenguaje.
-  const runtime = new Set(['agent', 'parallel', 'pipeline', 'log', 'phase', 'workflow'])
-  const builtins = new Set([
-    'String', 'Number', 'Boolean', 'Array', 'Object', 'JSON', 'Math', 'Promise', 'Set', 'Map',
-    'RegExp', 'Error', 'parseInt', 'parseFloat', 'isNaN', 'encodeURIComponent', 'decodeURIComponent',
-  ])
-  const keywords = new Set([
-    'if', 'for', 'while', 'switch', 'catch', 'return', 'typeof', 'function', 'await', 'new', 'do',
-  ])
   const faltantes = []
   const A = require('../../engine/automation')
   const automation = path.resolve(__dirname, '..', '..', 'automatization')
   for (const file of workflowFiles()) {
     // Renderizado: `finish`, `stop` y `ROOT` llegan por `{{INCLUDE:}}`, así que el archivo crudo no
     // los declara y cada uno parecería una llamada a algo inexistente.
-    // Sin comentarios ni literales: adentro hay prosa en castellano que parece una llamada.
-    const source = A.render(file, '{{OPS_DIR}}', automation)
-      .replace(/\/\/[^\n]*/g, '')
-      .replace(/`(?:\\[\s\S]|[^`\\])*`/g, '``')
-      .replace(/'(?:\\[\s\S]|[^'\\])*'/g, "''")
-      .replace(/"(?:\\[\s\S]|[^"\\])*"/g, '""')
-    const declared = new Set(
-      [...source.matchAll(/(?:function|const|let|var)\s+([A-Za-z_$][\w$]*)/g)].map((hit) => hit[1]),
-    )
-    for (const hit of source.matchAll(/(?:^|[^.\w$])([a-zA-Z_$][\w$]*)\s*\(/gm)) {
-      const name = hit[1]
-      if (runtime.has(name) || builtins.has(name) || keywords.has(name) || declared.has(name)) continue
-      faltantes.push(`${path.relative(WF, file)} → ${name}`)
-    }
+    const rendered = A.render(file, '{{OPS_DIR}}', automation)
+    faltantes.push(...undeclaredCalls(rendered).map((name) => `${path.relative(WF, file)} → ${name}`))
   }
   assert.deepEqual([...new Set(faltantes)], [])
+})
+
+// Sobre los nueve recorridos de hoy la puerta da verde con cualquier lexer, así que ese verde no dice
+// que lea bien: hay que pasarle lo que tiene que atrapar. Las dos formas de abajo son las que la cadena
+// de `.replace()` dejaba pasar, y las dos son silenciosas —se comía el resto de la línea, así que la
+// llamada inexistente desaparecía en vez de reportarse—.
+test('la puerta de llamadas ve lo que se esconde detrás de un literal', () => {
+  assert.deepEqual(undeclaredCalls('const x = noExiste(1)\n'), ['noExiste'], 'el caso simple')
+  assert.deepEqual(undeclaredCalls("const p = u.replace(/x\\//g, '') + noExiste(1)\n"), ['noExiste'],
+    'detrás de un regex con // adentro, que es la forma que hoy tienen dos recorridos')
+  assert.deepEqual(undeclaredCalls('const Q = [\'\\\'\', \'"\']\nconst y = noExiste(2)\n'), ['noExiste'],
+    'y detrás de un arreglo que mezcla los dos estilos de comilla')
+  assert.deepEqual(undeclaredCalls('const y = String(1) + agent(2)\n'), [],
+    'lo que el runtime da y los built-ins no se reportan')
 })
 
 test('ningún workflow usa un nombre que no declaró', () => {

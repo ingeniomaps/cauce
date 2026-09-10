@@ -18,6 +18,16 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Las puertas que revisan un recorrido leen los literales de regex.** Tres pruebas analizan cada
+  workflow como texto —que su `meta` sea un literal puro, que no llame a nada inexistente y que no use un
+  nombre que no declaró— y ninguna sabía qué es un regex. La barra escapada que cierra uno deja un `//`
+  literal, que se leía como el arranque de un comentario: a partir de ahí se perdía el resto de la línea,
+  en silencio. Dos recorridos del catálogo tenían cuatro líneas así.
+
+  **Qué cambia para vos**: nada en lo que recibís, y sí en lo que se puede confiar. Un recorrido propio
+  con un regex adentro ahora se revisa entero en vez de a medias, y un `meta` con un regex o con una
+  interpolación —que hasta acá pasaba siempre, porque esa regla no podía dispararse— se rechaza.
+
 - **`autobuild` lee `blocked` por su valor y no por su verdad.** El campo del contexto es un vocabulario
   de tres valores —vacío, `awaiting-review` y `blocked-on-human`—, y el recorrido lo probaba con un `if`
   a secas. Dos consecuencias, y la que más costaba no era intermitente: una cola trabada por acciones
