@@ -14,6 +14,27 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.74.0]
+
+### Corregido
+
+- **Los gates corren sobre una copia que se declara no interactiva, y un gate que falla dice qué dijo.**
+  `verify` mide el índice en un temporal y enlaza ahí lo ignorado, `node_modules` incluido, apuntando al
+  original. En un proyecto pnpm eso no corre: el gestor ve que el árbol enlazado no fue instalado ahí y
+  su reacción es reinstalar, que empieza borrando el `node_modules` **del proyecto**. Lo único que lo
+  detenía es que el hijo no ve una terminal. Ahora la copia lleva `CI=true`, que es la variable que el
+  propio pnpm nombra — y sólo la copia: si árbol e índice coinciden, los gates corren en tu directorio y
+  ahí no se te cambia nada.
+
+  Y el bloqueo dejaba de decir por qué: `test (exit 1)` era el mismo texto para una suite en rojo y para
+  un gestor que se negó a arrancar el script, así que empujaba a aprobar el commit como «rojo conocido»
+  sin que nada se hubiera medido. Ahora llega con la duración y con la primera línea de error de la
+  herramienta, y cuando todos los gates fallan por debajo de dos segundos lo dice — sin afirmar que no
+  corrieron, que es algo que no se puede saber desde acá.
+
+  **Lo que te pide algo**: si tenías un gate que se comportaba distinto bajo `CI`, ahora lo va a hacer
+  al commitear con algo sin stagear o sin trackear.
+
 ## [0.73.0] - 2026-09-09
 
 ### Corregido
