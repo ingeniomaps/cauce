@@ -14,6 +14,24 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.76.0]
+
+### Agregado
+
+- **La entrada de una tarea cerrada declara `lane:`, el carril con el que corrió.** El carril decide qué
+  fases recibe una tarea —`express` se saltea Ready, Plan y QA; `full` las corre todas— y viajaba sólo en
+  la línea del BACKLOG, que **se borra al cerrar**. Con eso, «¿esta tarea recibió la ceremonia que su
+  superficie pedía?» dejaba de tener dónde contestarse: en una instancia real, **0 de 79 entradas de DONE
+  registraban el carril**. Ahora queda en el registro, y `sin clasificar` es un valor y no un hueco — dice
+  que la línea no lo declaraba, que es distinto de que nadie llenara el campo.
+
+  El plan en vuelo también lo lleva: una corrida que se reanuda arma la tarea desde `wip/<runner>.md`, y
+  sin el campo ahí llegaba al cierre con el carril ya perdido aunque la tarea sí lo tuviera.
+
+  **Lo que te pide algo**: `ops check` **avisa** cuántas entradas no lo traen y **no falla** — las
+  escritas antes de esta versión no lo tienen y no hay de dónde sacárselo. Lo que sí falla es un valor
+  inventado. Si cerrás a mano, agregá `lane:` a la entrada; si cerrás con `autobuild`, ya lo escribe.
+
 ## [0.75.0] - 2026-09-10
 
 ### Cambiado
