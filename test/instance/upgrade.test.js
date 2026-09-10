@@ -4,7 +4,7 @@
 // edición de la empresa y qué se niega a pisar. La propiedad que lo decide vive en `core.test.js`;
 // acá se mide lo que queda en el disco después.
 
-const { MIN_ROLES, tempRoot, run, linkEngine } = require('../support/environment')
+const { MIN_ROLES, tempRoot, run, linkEngine, discard } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -296,7 +296,7 @@ test('upgrade mueve los recorridos propios de teams/ a flows/', () => {
   linkEngine(target)
 
   // La instancia como la dejó una versión anterior: la carpeta vieja, con un recorrido propio adentro.
-  fs.rmSync(path.join(target, 'flows'), { recursive: true, force: true })
+  discard(path.join(target, 'flows'))
   const mio = path.join(target, 'teams', 'mi-recorrido')
   fs.mkdirSync(mio, { recursive: true })
   fs.writeFileSync(path.join(mio, 'team.json'), '{"slug":"mi-recorrido"}')
