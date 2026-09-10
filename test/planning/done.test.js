@@ -10,6 +10,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const P = require('../../engine/planning/parser')
+const { spawnSync } = require('node:child_process')
 
 const MOLDE = path.resolve(__dirname, '..', '..', 'template', 'planning')
 
@@ -187,4 +188,76 @@ test('un carril que convoca revisor y no la tuvo se avisa; express no', () => {
   // Y que sea aviso se asercia, no se supone: es la diferencia entre esto y `doneEntryErrors`, y quien
   // mueva el cruce de lugar puede convertirlo en error sin notarlo. Por qué avisa, en `doneCeremonyWarnings`.
   assert.deepEqual(salida.errors.filter((one) => /revisor/.test(one)), [])
+})
+
+// Cuánto del trabajo que entró al repositorio quedó registrado. Se mide sobre un repositorio de verdad
+// porque lo que se cruza son shas: un doble de git no probaría el cruce, que es lo único que puede
+// fallar. Las dos direcciones van juntas: sin la segunda, un aviso que saltara siempre pasaría la
+// primera y volvería inútil el número (caso 082).
+test('check avisa por los commits que ninguna entrada de DONE nombra', () => {
+  const ops = tempRoot('cauce-cobertura-')
+  const repo = path.join(ops, 'app')
+  fs.mkdirSync(repo, { recursive: true })
+  fs.cpSync(MOLDE, path.join(ops, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(ops, 'ops.config.json'), JSON.stringify({
+    project: 'x', mode: 'sidecar', workspaceRoots: [{ name: 'app', path: 'app' }],
+  }))
+  const git = (...args) => spawnSync('git', ['-C', repo, ...args], { encoding: 'utf8' })
+  git('init', '-q', '-b', 'main')
+  git('config', 'user.email', 'a@b')
+  git('config', 'user.name', 'a')
+  const commitear = (nombre) => {
+    fs.writeFileSync(path.join(repo, nombre), 'x')
+    git('add', nombre)
+    git('commit', '-q', '-m', `feat: ${nombre}`)
+    return git('rev-parse', '--short', 'HEAD').stdout.trim()
+  }
+  const registrado = commitear('uno.js')
+  commitear('dos.js')
+  commitear('tres.js')
+
+  const cerrar = (sha) => fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta.md'),
+    `${entrada('alta').replace(/commit: .*/, `commit: ${sha} feat: uno.js`)}`)
+
+  cerrar(registrado)
+  const salida = JSON.parse(run(['check', path.join(ops, 'planning'), '--json']).stdout)
+  const aviso = salida.warnings.filter((one) => /entrada de DONE nombra/.test(one))
+  assert.equal(aviso.length, 1, `los dos que nadie nombra se cuentan: ${JSON.stringify(salida.warnings)}`)
+  assert.match(aviso[0], /2 commit\(s\)/)
+  assert.match(aviso[0], /app/, 'y dice en qué repositorio')
+  assert.deepEqual(salida.errors.filter((one) => /entrada de DONE nombra/.test(one)), [],
+    'avisa y no falla: es un hecho del pasado que no se arregla editando nada')
+
+  // La ventana arranca en la entrada **más reciente** y no en la primera: contar toda la historia da una
+  // deuda que nunca baja. Un commit anterior a la última tarea cerrada queda afuera, y eso no se ve con
+  // una sola entrada — con una, las dos anclas son la misma fecha y la diferencia es inobservable.
+  const antiguo = { ...process.env, GIT_AUTHOR_DATE: '2021-01-01T00:00:00', GIT_COMMITTER_DATE: '2021-01-01T00:00:00' }
+  fs.writeFileSync(path.join(repo, 'viejo.js'), 'x')
+  spawnSync('git', ['-C', repo, 'add', 'viejo.js'], { encoding: 'utf8' })
+  spawnSync('git', ['-C', repo, 'commit', '-q', '-m', 'feat: viejo'], { encoding: 'utf8', env: antiguo })
+  // Una entrada vieja, para que la primera y la última fecha dejen de ser la misma: con una sola, las dos
+  // anclas coinciden y elegir mal cuál se usa es inobservable.
+  fs.writeFileSync(path.join(ops, 'planning', 'done', 'vieja.md'),
+    entrada('vieja').replace(/fecha: .*/, 'fecha: 2020-01-01'))
+  // Y un merge sin registrar: no es trabajo, es la forma de integrarlo, así que no cuenta.
+  spawnSync('git', ['-C', repo, 'checkout', '-q', '-b', 'rama'], { encoding: 'utf8' })
+  fs.writeFileSync(path.join(repo, 'rama.js'), 'x')
+  git('add', 'rama.js')
+  git('commit', '-q', '-m', 'feat: rama')
+  git('checkout', '-q', 'main')
+  git('merge', '--no-ff', '-q', '-m', 'merge: rama', 'rama')
+  const conViejo = JSON.parse(run(['check', path.join(ops, 'planning'), '--json']).stdout)
+    .warnings.filter((one) => /entrada de DONE nombra/.test(one))
+  assert.match(conViejo[0] || '(sin aviso)', /3 commit\(s\)/,
+    `dos.js, tres.js y rama.js — el de 2021 queda fuera de la ventana y el merge no es trabajo: `
+    + `${JSON.stringify(conViejo)}`)
+
+  // La otra dirección: con todo registrado, el aviso desaparece. Sin esto, un aviso que contara mal —o
+  // que contara siempre— pasaría la mitad de arriba igual.
+  const todos = git('log', '--format=%h').stdout.trim().split('\n').join(' ; ')
+  fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta.md'),
+    entrada('alta').replace(/commit: .*/, `commit: ${todos}`))
+  const limpio = JSON.parse(run(['check', path.join(ops, 'planning'), '--json']).stdout)
+  assert.deepEqual(limpio.warnings.filter((one) => /entrada de DONE nombra/.test(one)), [],
+    'con todo registrado no dice nada')
 })

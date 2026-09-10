@@ -149,6 +149,7 @@ function check(dir, cli) {
   }))
   warnings.push(...AD.report({ done, epics, adopted }))
   warnings.push(...PC.doneCeremonyWarnings(done, new Set(adopted)))
+  warnings.push(...R.coverageWarnings(path.resolve(root, '..'), done))
   // Sin `RECURRING.md` no dice una palabra: una instancia que actualiza y no declara trabajo recurrente
   // no tiene por qué enterarse de que el contrato existe. Vencida avisa y no frena — lo que frena vive
   // en `HUMAN_ACTIONS.md`, y un aviso que salta siempre se termina apagando.

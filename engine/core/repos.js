@@ -64,4 +64,59 @@ function lastCommit(repo, branch) {
   return shown.status === 0 ? shown.stdout.trim() : ''
 }
 
-module.exports = { reposFor, repoOf, lastCommit }
+// Cuánto del trabajo que entró al repositorio quedó registrado. Devuelve, por raíz, los commits que
+// ninguna entrada de DONE nombra desde la fecha que se le pase.
+//
+// Existe porque el número no se podía tener: sacarlo pedía cruzar a mano los `commit:` de `planning/done`
+// contra la historia de cada repositorio. Hecho así sobre una instancia real dio **312 commits y 75
+// registrados**, y el desglose de los que faltaban no era trabajo suelto: 69 `feat` y 51 `fix` de 173
+// (caso 082).
+//
+// Se cuenta desde una fecha y no desde el principio a propósito: contar toda la historia da una deuda que
+// nunca baja y que se termina leyendo como decorado. Desde la última tarea cerrada, en cambio, el número
+// vuelve a cero cada vez que el flujo se cierra, y lo que queda visible es la deriva de ahora.
+//
+// Los merges quedan afuera: no son trabajo, son la forma de integrarlo.
+function unrecordedCommits(repo, since, recorded) {
+  if (!repo || !since) return []
+  // La fecha se compara acá y no con `--since`, y eso lo encontró una prueba: `--since` **poda la
+  // caminata**, así que un commit con fecha vieja en la punta esconde todo lo que tiene detrás. Con un
+  // historial reescrito o un `commit --date` la cuenta daba cero sobre un repositorio lleno.
+  const log = git(repo, 'log', '--no-merges', '--date=short', '--format=%h %ad %s')
+  if (log.status !== 0) return []
+  const conocidos = new Set([...recorded].map((sha) => String(sha).slice(0, 7)))
+  return log.stdout.split('\n').map((line) => line.trim()).filter(Boolean)
+    .filter((line) => line.slice(8, 18) >= since)
+    .filter((line) => !conocidos.has(line.slice(0, 7)))
+}
+
+// Cuánto del trabajo que entró a los repositorios quedó registrado, desde la última tarea cerrada. Avisa
+// y no falla, por lo mismo que el resto de esta familia: es un hecho del pasado que no se arregla
+// editando nada, y el único camino al verde sería escribir entradas de memoria.
+//
+// La ventana arranca en la entrada más reciente y no en la primera: contar toda la historia da una deuda
+// que nunca baja y que se lee como decorado. Así el número vuelve a cero cada vez que se cierra una tarea,
+// y lo que queda a la vista es la deriva de ahora. Comprobado sobre una instancia real: **0 desde la
+// última tarea cerrada, 54 desde dos semanas antes** — el día que tuvo 64 commits y ninguna entrada.
+//
+// Y no dice cuántos *deberían* tener entrada, porque eso no se sabe desde acá: lo dice el desglose, y en
+// la instancia medida 120 de 173 eran `feat` o `fix` (caso 082).
+function coverageWarnings(opsRoot, done) {
+  const fechas = done.entries.map((entry) => entry.fecha).filter(Boolean).sort()
+  const desde = fechas[fechas.length - 1]
+  if (!desde) return []
+  const recorded = new Set()
+  for (const entry of done.entries) {
+    for (const sha of String(entry.commit || '').matchAll(/\b[0-9a-f]{7,40}\b/g)) recorded.add(sha[0])
+  }
+  const warnings = []
+  for (const repo of reposFor(opsRoot, '.')) {
+    const sueltos = unrecordedCommits(repo, desde, recorded)
+    if (!sueltos.length) continue
+    warnings.push(`${path.basename(repo)}: ${sueltos.length} commit(s) desde ${desde} que ninguna `
+      + 'entrada de DONE nombra, así que ese trabajo no está en planning/ (OPS-001)')
+  }
+  return warnings
+}
+
+module.exports = { reposFor, repoOf, lastCommit, coverageWarnings }
