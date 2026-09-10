@@ -16,6 +16,22 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.77.0]
 
+### Corregido
+
+- **La tabla que dice qué ruta aprobar cuando un guard te frena estaba ofreciendo la salida ancha para el
+  freno más común.** `plan-first` —el que exige un plan escrito antes de cambiar el producto— no figuraba
+  entre las aprobaciones por ruta, y sí en la tabla de variables que apagan un guard **para toda la
+  sesión**. Quien se topaba con ese bloqueo encontraba documentado `OPS_PLAN_FIRST_OVERRIDE=1` y no la
+  aprobación acotada, que es la vía recomendada.
+
+  Ahora está la fila, con la pregunta que va antes —**¿esto es trabajo de una tarea?**— y con lo que
+  cuesta: si lo es, la salida no es aprobar la ruta sino escribir el WIP con su plan; si no lo es —un
+  typo, un umbral que corregís de paso—, aprobar es la respuesta correcta, y ese cambio entra **sin
+  entrada de DONE**, así que `planning/` no lo registra.
+
+  **Lo que te pide algo**: si venías apagando ese guard con la variable, la aprobación por ruta hace lo
+  mismo para el archivo que vas a tocar y se apaga sola en cuanto el conjunto cambia.
+
 ### Agregado
 
 - **R23: un borrado se lee resuelto antes de correrlo, y sólo alcanza lo desechable.** Antes de destruir

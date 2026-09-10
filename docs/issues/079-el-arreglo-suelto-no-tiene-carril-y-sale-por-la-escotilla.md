@@ -8,8 +8,8 @@ version-detectada: 0.76.0
 
 # 079 — «Voy a mejorar esto rápido» no tiene carril, y lo que queda es apagar un guard
 
-**🔴 abierto** · detectado en 0.76.0 · prioridad **media** — no rompe nada; convierte la salida de
-excepción en el camino habitual, que es como una escotilla se termina apagando
+**🔴 abierto** · detectado en 0.76.0 · prioridad **media** — el camino ya está nombrado desde 0.77.0; lo
+que sigue abierto es que ese trabajo no deja registro, y elegir cómo pide un número que está en la instancia
 
 ## Resumen
 
@@ -84,7 +84,35 @@ Ninguno cerrado, y por eso esto es un caso. Lo que se ve, de menos a más invasi
 
 **Antes de elegir hay que medir una cosa que hoy no se sabe**: cuántas veces se usa la escotilla en una
 instancia real, y sobre qué archivos. Si son dos por mes, nombrar el camino alcanza; si son veinte, el
-carril se paga solo. El dato está en `planning/.ops-approval` y en su historia de git.
+carril se paga solo.
+
+El dato está en la historia de git de `planning/.ops-approval`, y el comando exacto es éste —desde la raíz
+ops de la instancia:
+
+```sh
+git log --follow --format='%ad' --date=short -- planning/.ops-approval | sort | uniq -c
+git log --follow -p -- planning/.ops-approval | grep -E '^\+[^+#]' | sort | uniq -c | sort -rn | head -20
+```
+
+El primero da cuántas veces se tocó y cuándo; el segundo, qué rutas se aprobaron y cuáles se repiten. Una
+ruta que aparece muchas veces no es trabajo suelto: es una tarea que nadie escribió.
+
+## Lo que se hizo en 0.77.0, y lo que no cerró
+
+**Se nombró el camino, y apareció que la documentación ofrecía el peor.** `template/AGENTS.md` tiene una
+sección entera —«Cuando un guard te frena con razón»— con la tabla de qué ruta aprobar según qué te frenó.
+`plan-first` **no estaba en esa tabla**. Sí estaba, en cambio, en la tabla de abajo: la de las variables
+que apagan un guard **para toda la sesión**.
+
+O sea que quien se topaba con este freno encontraba documentada la escotilla ancha y no la angosta. Es
+exactamente el desenlace que este caso predecía en su último tradeoff, escrito en el propio molde.
+
+Ahora la fila está, con la pregunta que va antes —«¿esto es trabajo de una tarea?»— y con lo que cuesta
+tomarla: el cambio entra **sin entrada de DONE**, así que no tiene aceptación, ni evidencia, ni carril, ni
+revisión.
+
+**Lo que no cierra**: eso último. El trabajo suelto sigue sin dejar registro, y cuál de las dos vías que
+quedan —una entrada de DONE sin tarea previa, o un carril propio— depende del número de arriba.
 
 ## Tradeoffs
 
