@@ -11,28 +11,30 @@
 const assert = require('node:assert/strict')
 const { compileWorkflow } = require('./workflow')
 
-// Las claves del guion, tal como las arma `runFlow`: la fase y, sin `label`, los campos obligatorios
-// del schema. Nombrarlas es lo que hace que un tipeo se note: escrita a mano y mal, la clave se suma
-// sin pisar nada y el guion base contesta el camino feliz, así que un escenario que espera que el
-// recorrido siga queda verde sin haber cambiado lo que dice cambiar.
+// Las claves del guion, tal como las arma `runFlow`: la fase y el `label` de la llamada. Nombrarlas es
+// lo que hace que un tipeo se note: escrita a mano y mal, la clave se suma sin pisar nada y el guion
+// base contesta el camino feliz, así que un escenario que espera que el recorrido siga queda verde sin
+// haber cambiado lo que dice cambiar.
 const KEY = {
   contract: 'Triage|contract-digest',
   context: 'Triage|planning-context',
   claim: 'Claim|claim:T-1',
-  classify: 'Classify|classified',
-  ready: 'Ready|ready,needsHuman',
-  decompose: 'Decompose|hours,needsSplit',
-  plan: 'Plan|approach,steps,files,testStrategy',
-  critique: 'Critique|verdict,concerns,consulted',
-  wip: 'WIP|wipActive',
-  replan: 'Critique|approach,steps,files,testStrategy',
-  build: 'Build|completed,summary,redFirst,discovered,closedTask',
-  review: 'Review|verdict,concerns,consulted',
-  verify: 'Verify|passed,commands,details,uncovered',
-  qa: 'QA|passed,evidence',
-  commit: 'Commit|committed',
-  pick: 'Pick|expanded',
-  closing: 'Closing|passed,details',
+  classify: 'Classify|classify',
+  ready: 'Ready|ready',
+  decompose: 'Decompose|estimate',
+  plan: 'Plan|plan',
+  critique: 'Critique|critique',
+  wip: 'WIP|wip',
+  replan: 'Critique|replan',
+  build: 'Build|build',
+  review: 'Review|review',
+  verify: 'Verify|verify',
+  qa: 'QA|qa',
+  commit: 'Commit|commit',
+  // La única que no corresponde a ninguna llamada: `autobuild` dejó de expandir la próxima épica en
+  // 0.72.0 y un caso comprueba que nunca vuelva a pedirse. Sale del guion cuando salga ese caso.
+  pick: 'Pick|expand-epic',
+  closing: 'Closing|closing',
 }
 
 // Respuestas del camino que llega hasta el final. Cada escenario cambia una sola y asercia el efecto:
@@ -81,11 +83,11 @@ function baseScript() {
   }
 }
 
-// Las dos preguntas que se le hacen a `asked`. Una llamada con schema deja `Fase|<campos>`; una
-// escritura, que no lleva schema ni label, deja `Fase|` a secas — por eso una se busca por prefijo y
-// la otra por igualdad, y confundirlas cuenta las escrituras como si fueran consultas.
+// Las dos preguntas que se le hacen al recorrido. `reached` mira todo lo que se pidió; `writesTo`
+// cuenta sólo las escrituras, que ahora también llevan etiqueta y por la clave ya no se distinguen de
+// una consulta — por eso `runFlow` devuelve sus claves aparte, en `wrote`.
 const reached = (asked, phase) => asked.some((key) => key.startsWith(`${phase}|`))
-const writesTo = (asked, phase) => asked.filter((key) => key === `${phase}|`).length
+const writesTo = (wrote, phase) => wrote.filter((key) => key.startsWith(`${phase}|`)).length
 
 // Un escenario que espera que el recorrido llegue al final. Si frenó, lo que hay que ver es dónde.
 function ranToEnd(result) {
@@ -100,8 +102,10 @@ const NO_TASK = {
 }
 
 // Ejecuta el recorrido y devuelve lo que devolvió, más las fases y las claves que pidió. La clave sale
-// de la fase y del `label` o de los campos obligatorios del schema: es lo que distingue una crítica de
-// un review, que comparten schema y sólo se diferencian por dónde ocurren.
+// de la fase y del `label`, y una llamada sin etiqueta se rechaza acá: es lo que sostiene que el
+// journal de una corrida real diga qué hace cada agente en vez del arranque del preámbulo compartido,
+// que es igual en todas. Las cuatro suites del recorrido pasan por este arnés, así que el olvido en
+// cualquiera de las veinticuatro llamadas se ve en la primera que la ejerza.
 async function runFlow(changes = {}, options = {}) {
   const script = { ...baseScript(), ...changes }
   if (options.lane) {
@@ -127,6 +131,8 @@ async function runFlow(changes = {}, options = {}) {
   const phases = []
   const asked = []
   const written = []
+  const wrote = []
+  const said = []
   const prompts = []
   let phase = ''
   // Cada lectura de planning devuelve el siguiente de la lista, y al agotarse ya no hay tarea. Es lo
@@ -135,10 +141,11 @@ async function runFlow(changes = {}, options = {}) {
   let reads = 0
 
   const agent = async (prompt, options = {}) => {
-    const key = `${phase}|${options.label || (options.schema && options.schema.required || []).join(',')}`
+    if (!options.label) throw new Error(`la fase ${phase} llamó a un agente sin label`)
+    const key = `${phase}|${options.label}`
     asked.push(key)
     prompts.push({ key, prompt })
-    if (!options.schema) { written.push(prompt); return { ok: true } }
+    if (!options.schema) { written.push(prompt); wrote.push(key); return { ok: true } }
     if (options.label === 'planning-context') {
       const answer = reads < contexts.length ? contexts[reads] : NO_TASK
       reads += 1
@@ -151,11 +158,11 @@ async function runFlow(changes = {}, options = {}) {
   }
 
   const result = await compileWorkflow('autobuild')(
-    agent, (title) => { phase = title; phases.push(title) }, () => {},
+    agent, (title) => { phase = title; phases.push(title) }, (text) => said.push(text),
     async (thunks) => Promise.all(thunks.map((t) => t())), async () => [], async () => ({}),
     {}, { total: null, spent: () => 0, remaining: () => Infinity },
   )
-  return { result, phases, asked, written, prompts }
+  return { result, phases, asked, written, wrote, said, prompts }
 }
 
 module.exports = { KEY, baseScript, ranToEnd, NO_TASK, runFlow, reached, writesTo }

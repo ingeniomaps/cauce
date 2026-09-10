@@ -51,6 +51,20 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`autobuild` deja de reintentar un reclamo que no puede salir bien.** Cuando la cola vuelve a ofrecer
+  la misma tarea después de un `claim` fallido, nadie la tomó: el reclamo falló por su cuenta y repetirlo
+  no cambia nada. Antes se repetía hasta agotar el cupo de tareas de la corrida — en una corrida real
+  **28 de 50 agentes** se fueron ahí, sin construir nada y sin que nada lo dijera. Ahora para con
+  `claim-stuck`, y el motivo lleva el slug que la cola ofreció y lo que contestó el reclamo. Perder la
+  carrera de verdad sigue sin frenar: ahí la cola pasa a ofrecer otra tarea, y ahora la corrida dice con
+  cuál sigue. Lo mismo en Decompose: si tras pedir la partición la cola sigue ofreciendo la tarea sin
+  partir, la escritura no ocurrió y para con `split-not-applied`.
+
+- **El registro de una corrida dice qué hace cada agente.** Las llamadas sin nombre se veían como el
+  arranque del preámbulo compartido, que es igual en todas: la misma cadena repetida treinta veces, y un
+  bucle de veintiocho agentes indistinguible de trabajo. Las veintisiete llamadas del recorrido llevan
+  etiqueta propia.
+
 - **Un gate ya no puede borrar el `node_modules` de tu proyecto, y se revierte el `CI=true` de 0.74.0.**
   Esa variable resolvía el síntoma del caso anterior —pnpm dejaba de preguntar antes de purgar—
   desarmando la confirmación en vez de quitarle el motivo. Y esa confirmación era lo único que protegía

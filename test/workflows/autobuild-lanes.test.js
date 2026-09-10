@@ -86,9 +86,9 @@ test('una tarea sin clasificar se clasifica y la clasificación se escribe donde
   })
   ranToEnd(result)
   assert.ok(phases.includes('Classify'), 'la tarea sin lane pasa por el clasificador')
-  assert.ok(asked.indexOf('Classify|classified') < asked.indexOf('Ready|ready,needsHuman'),
+  assert.ok(asked.indexOf(KEY.classify) < asked.indexOf(KEY.ready),
     'y antes de que nada más se gaste en ella')
-  const orden = prompts.find((entry) => entry.key === 'Classify|classified').prompt
+  const orden = prompts.find((entry) => entry.key === KEY.classify).prompt
   assert.match(orden, /BACKLOG\.md/, 'la clasificación se escribe donde vive la tarea')
   assert.match(orden, /\(cast:/, 'con el reparto en la línea, no sólo el carril')
 })
@@ -97,7 +97,7 @@ test('una tarea ya clasificada no vuelve a clasificarse', async () => {
   const { result, phases, asked } = await runFlow()
   ranToEnd(result)
   assert.ok(!phases.includes('Classify'), 'lo que ya está decidido no se vuelve a decidir')
-  assert.ok(!asked.includes('Classify|classified'))
+  assert.ok(!asked.includes(KEY.classify))
 })
 
 // Lo que se fija no es el carril sino que la corrida llegue al final: sin clasificación las cuatro
@@ -212,7 +212,7 @@ test('el proyecto que no la declara sigue descubriéndola', async () => {
 // esa entrada es la evidencia de aceptación que alguien lee cuando ya nadie recuerda la corrida—.
 // El carril alcanza como hecho porque es lo que decide qué fases corren.
 test('el cierre recibe el carril y el veredicto de la revisión, o que no hubo', async () => {
-  const done = (prompts) => prompts.find((one) => one.key === 'Done|').prompt
+  const done = (prompts) => prompts.find((one) => one.key === 'Done|done').prompt
 
   const express = await runFlow({}, { lane: 'express' })
   ranToEnd(express.result)
@@ -237,7 +237,7 @@ test('la corrida devuelve por qué fases pasó, y el cierre las recibe', async (
   assert.deepEqual(result.phases, phases, 'lo devuelto no es lo que efectivamente corrió')
   assert.ok(!result.phases.includes('Review'), 'nombra una fase que su carril saltea')
   assert.ok(result.phases.includes('Build'), 'se olvidó de una que sí corrió')
-  assert.match(prompts.find((one) => one.key === 'Done|').prompt,
+  assert.match(prompts.find((one) => one.key === 'Done|done').prompt,
     /fases=Triage → Pick → Claim → Classify → Pick → Claim → WIP → Build → Verify → Commit → Done/,
     'el cierre no recibe por dónde pasó la tarea')
 })
