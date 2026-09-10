@@ -14,7 +14,7 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
-## [0.77.0]
+## [0.77.0] - 2026-09-10
 
 ### Corregido
 
