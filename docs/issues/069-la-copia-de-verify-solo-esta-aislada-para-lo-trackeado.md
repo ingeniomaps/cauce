@@ -173,3 +173,9 @@ rojo, y hacen falta las dos: la primera sola pasaría con un guard que no enlaza
 **Lo que este arreglo no garantiza, y queda declarado.** Una ruta ignorada que un gate escriba y que no
 esté en la lista sigue cayendo en el árbol del usuario. Lo que lo reabriría es que aparezca una: ahí se
 agrega el nombre, y si aparecen varias, la pregunta vuelve a ser la del bind mount.
+
+**Apareció al día siguiente, y es `node_modules`** — que está fuera de la lista con razón, porque un gate
+no puede fabricarlo. Se atendió en el
+[070](070-el-ci-true-de-la-copia-deja-que-pnpm-reescriba-el-node-modules-real.md) por otra vía: quitarle
+al gestor el motivo de querer escribir ahí. La grieta que este caso declara sigue abierta para cualquier
+otra ruta; lo que se cerró es la única instancia conocida.

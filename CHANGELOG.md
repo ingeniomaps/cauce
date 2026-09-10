@@ -14,6 +14,24 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.75.0]
+
+### Corregido
+
+- **Un gate ya no puede borrar el `node_modules` de tu proyecto, y se revierte el `CI=true` de 0.74.0.**
+  Esa variable resolvía el síntoma del caso anterior —pnpm dejaba de preguntar antes de purgar—
+  desarmando la confirmación en vez de quitarle el motivo. Y esa confirmación era lo único que protegía
+  al árbol enlazado: sin ella la reinstalación avanza y **borra por el enlace**. Medido: `require()`
+  dejaba de encontrar las dependencias del proyecto, y la instalación ni siquiera necesita completarse
+  para hacerlo — en la corrida medida abortó por `frozen-lockfile` y para entonces ya había borrado.
+
+  Ahora la copia lleva `verify-deps-before-run=false`, que le dice a pnpm que no sincronice nada antes de
+  correr el script. No hay purga que confirmar, así que no hay confirmación que desarmar.
+
+  **Lo que te pide algo**: si tenías un gate que se portaba distinto bajo `CI`, deja de verla. Vuelven el
+  color y los prompts de otras herramientas — y un prompt en un proceso sin terminal aborta, que es la
+  barrera que se quiere de vuelta.
+
 ## [0.74.0] - 2026-09-10
 
 ### Corregido

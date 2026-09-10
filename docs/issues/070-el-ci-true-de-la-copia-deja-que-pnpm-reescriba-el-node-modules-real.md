@@ -1,14 +1,15 @@
 ---
 caso: 070
 titulo: El `CI=true` que arregló el 068 quita el aborto y deja que pnpm reescriba el `node_modules` real por el enlace
-estado: abierto
+estado: resuelto
+resuelto-en: 0.75.0
 prioridad: alta
 version-detectada: 0.74.0
 ---
 
 # 070 — El aborto era lo único que protegía al `node_modules` del proyecto, y 0.74.0 lo quitó
 
-**🔴 abierto** · detectado en 0.74.0 · prioridad **alta** — cambia un bloqueo ruidoso por una escritura silenciosa sobre el entorno del proyecto, y quien la sufre no tiene cómo relacionarla con el commit que la causó
+**🟢 resuelto en 0.75.0** · detectado en 0.74.0 · prioridad **alta** — cambia un bloqueo ruidoso por una escritura silenciosa sobre el entorno del proyecto, y quien la sufre no tiene cómo relacionarla con el commit que la causó
 
 ## Resumen
 
@@ -208,3 +209,46 @@ señal de que la variable resuelve lo que se veía y no lo que estaba pasando.
 - [069](069-la-copia-de-verify-solo-esta-aislada-para-lo-trackeado.md) — cerró declarando exactamente
   esta grieta: «una ruta ignorada que un gate escriba y que no esté en la lista sigue cayendo en el árbol
   del usuario. Lo que lo reabriría es que aparezca una». Apareció, y es `node_modules`.
+
+## Cierre
+
+**Resuelto en 0.75.0.** El recorrido de lo que enumeró:
+
+- **Se apagó la comprobación previa en la copia** —`npm_config_verify_deps_before_run=false`— y **se
+  quitó `CI=true`**, que es lo que este caso enseñaba. Las dos cosas juntas: la primera le saca a pnpm el
+  motivo de querer sincronizar; la segunda devuelve la confirmación que protege a cualquier otra
+  herramienta.
+- **La vía «copiar `.modules.yaml`» que el caso proponía como el cambio más chico no se tomó**, y hoy se
+  ve por qué no alcanzaba: la reinstalación no toca sólo ese archivo, **borra el árbol**. Copiar la
+  metadata habría dejado el original quieto y el resto igual de destruido.
+- **El bind mount de sólo lectura sigue sin hacerse, y es lo único que cerraría la clase.** Lo descartó
+  el [069](069-la-copia-de-verify-solo-esta-aislada-para-lo-trackeado.md) por portabilidad y ese
+  argumento no cambió. Queda declarado ahí, no acá.
+- **La red de «comprobar después del gate que lo enlazado no cambió» tampoco se hizo.** Con la causa
+  cerrada mide algo que ya no debería ocurrir; lo que la activaría es que aparezca otra herramienta que
+  escriba por el enlace.
+- **Tradeoff «es específico de pnpm» — se paga.** Otro gestor que decida sincronizar antes de correr
+  vuelve a abrir esto, y lo que lo detendría es la confirmación que ahora sí está de vuelta: ruidosa,
+  visible y en el momento.
+- **Tradeoff «quitar `CI=true` cambia lo que ve cualquier gate» — se paga y va en el CHANGELOG.** Vuelve
+  el color y vuelven los prompts de otras herramientas; un prompt en un proceso sin terminal aborta, que
+  es exactamente la barrera que se quiere de vuelta.
+
+**Lo que este caso deja además del arreglo, y vale más: la prueba que faltaba.** R9 pide que una quita se
+pruebe **por ausencia**, y poner `CI=true` era una quita —sacaba la confirmación de pnpm— disfrazada de
+agregado. Nadie escribió esa aserción porque nadie extrañaba lo que se estaba sacando. Ahora hay dos:
+
+- **Ausencia de daño**: un gate corriendo en la copia no puede purgar el `node_modules` del proyecto por
+  el enlace. Con un `pnpm` de mentira que hace lo que el real hace documentado, porque el real exige una
+  instalación y salir a la red.
+- **Ausencia de la variable**, y de toda su clase: el entorno que el motor le arma a un gate no lleva
+  ninguna variable cuyo propósito sea que una herramienta deje de preguntar. La lista atrapa lo que
+  conocemos —`CI`, `CONTINUOUS_INTEGRATION`, `npm_config_yes`, `npm_config_confirm_modules_purge`— y
+  nada más, que es el límite honesto de una lista.
+
+Tres mutaciones comprobadas: volver a poner `CI=true` —la regresión exacta—, colarla junto a la palanca
+buena, y colar otra de la lista. Las tres ponen la prueba en rojo.
+
+**Y la lección, que es de proceso y no de código:** una confirmación que estorba casi siempre está
+cuidando algo. Antes de callarla hay que preguntarse qué protege — y si la respuesta es «no sé», eso
+**es** el resultado de la medición, no un permiso para seguir.
