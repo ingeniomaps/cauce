@@ -18,6 +18,20 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **La fila que registra una parada se escribe antes de parar.** Cuando ningún plan sobrevive a la
+  crítica, el recorrido pide que la tarea quede en `HUMAN_ACTIONS.md` con su motivo —así `context` deja
+  de ofrecerla y alguien la ve—. Esa escritura se lanzaba y el recorrido volvía en la línea siguiente,
+  así que el agente que la escribía se quedaba a mitad de camino: en una corrida real el resumen contó
+  diez agentes y el registro nueve. La parada se informaba bien y el disco no la tenía.
+
+  Ahora se espera. Y en las tres paradas que dejan fila —plan rechazado, tarea que no está lista,
+  criterio que no dice qué aserciar— si el agente no contesta, el detalle de la parada lo dice: el
+  motivo sigue siendo el que la causó, y se agrega que la fila hay que escribirla a mano.
+
+  **Qué cambia para vos**: relanzar después de un plan rechazado deja de repetir la planificación
+  entera, porque la tarea queda registrada. Si venías viendo que `context` te ofrecía otra vez la tarea
+  que acababa de rechazarse, era esto.
+
 - **El guard de migraciones frena por haber viajado, no por estar en disco.** Escribir una migración son
   dos pasos —crearla y completarla— y el segundo se bloqueaba: el chequeo preguntaba si el archivo
   existía, que no es la pregunta. Un stub de hace dos segundos y una migración publicada hace un año
