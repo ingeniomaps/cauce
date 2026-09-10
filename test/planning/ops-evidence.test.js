@@ -28,6 +28,7 @@ function instancia(prefijo) {
   const root = tempRoot(prefijo)
   const ops = path.join(root, 'demo-ops')
   fs.mkdirSync(path.join(ops, 'planning', 'done'), { recursive: true })
+  fs.writeFileSync(path.join(ops, 'planning', 'BACKLOG.md'), '# Backlog\n')
   fs.mkdirSync(path.join(root, 'api'), { recursive: true })
   fs.writeFileSync(path.join(root, 'api', 'alta_test.go'), 'func TestAltaResponde201(t *testing.T) {}\n')
   fs.writeFileSync(path.join(ops, 'ops.config.json'),
@@ -79,6 +80,7 @@ test('evidence no afirma ausencia donde no hay dónde mirar', () => {
   const root = tempRoot('cauce-evidence-sinraices-')
   const ops = path.join(root, 'demo-ops')
   fs.mkdirSync(path.join(ops, 'planning', 'done'), { recursive: true })
+  fs.writeFileSync(path.join(ops, 'planning', 'BACKLOG.md'), '# Backlog\n')
   fs.writeFileSync(path.join(ops, 'ops.config.json'), JSON.stringify({ project: 'Demo', mode: 'sidecar' }))
   fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta-de-cliente.md'), ENTRADA)
   const result = run(['evidence', path.join(ops, 'planning')])

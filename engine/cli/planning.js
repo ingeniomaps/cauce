@@ -23,7 +23,7 @@ const OB = require('../core/onboarding')
 const C = require('../config/validate')
 const CP = require('../config/paths')
 const AG = require('../agents/catalog')
-const { fail } = require('./io')
+const { fail, planningRoot } = require('./io')
 
 // Qué dimensiones enumera el molde de `organization/` y cuáles dejaron de estar. Un agente que reescribe
 // esos archivos tiende a quedarse con el contenido y perder la estructura: el resultado se lee entero y
@@ -36,7 +36,7 @@ const { fail } = require('./io')
 // entrada de hace tres meses no tiene con qué cruzarse—. Acá se pregunta por una entrada, que es como
 // se cierra una tarea: se escribe la evidencia y se la mira contra el árbol y contra lo que corrió.
 function evidence(dir, cli) {
-  const root = path.resolve(dir || '.')
+  const root = planningRoot(dir)
   const opsDir = path.join(root, '..')
   const entries = P.readDone(root).entries
   const slug = cli.value('--task')
@@ -76,7 +76,7 @@ function evidence(dir, cli) {
 const TODAY = () => new Date().toISOString().slice(0, 10)
 
 function check(dir, cli) {
-  const root = path.resolve(dir || '.')
+  const root = planningRoot(dir)
   const errors = []
   const warnings = []
   // El plan no está: `wip/` es local y gitignoreado, así que un clon nuevo no lo trae y eso no es un
@@ -266,10 +266,9 @@ function treeJson({ epics, milestones, done, wips, inbox, queued, claims }) {
 }
 
 function tree(dir, cli) {
-  const root = path.resolve(dir || '.')
+  const root = planningRoot(dir)
   // Mismo motivo que en `context`, y por eso comparten la comprobación: sin ella un planning ausente
   // dibujaba un árbol vacío, que se lee como un roadmap sin épicas en vez de como una ruta equivocada.
-  assertPlanning(root)
   const state = ST.snapshot(root)
   if (cli.has('--json')) return treeJson(state)
   const { epics, milestones, done, wips, inbox, queued, claims } = state
@@ -308,29 +307,9 @@ function tree(dir, cli) {
   console.log(`${paint('1', 'DONE')}   ${done.entries.length} tareas\n`)
 }
 
-// Lo que no se pudo leer no contesta como si se hubiera leído: la misma regla que `stagedFiles` aplica
-// sobre el índice de git, y que esta familia ya aplicaba al `--hito` inexistente. Faltaba la raíz, y ahí
-// pesa más, porque el consumidor no siempre es una persona: `autobuild` toma la cola vacía como permiso
-// para expandir una épica, así que un error de ruta promovía trabajo en vez de fallar.
-//
-// La ruta va **resuelta** y no como se escribió, porque el error que ataca es de resolución: en sidecar
-// `<empresa>-ops/planning` desde adentro de la raíz apunta a `<empresa>-ops/<empresa>-ops/planning`.
-function assertPlanning(root) {
-  if (!fs.existsSync(root)) {
-    return fail(`no existe el planning en ${root} (ruta resuelta). Comprobá desde dónde estás invocando.`, 2)
-  }
-  // Existir no alcanza: un directorio cualquiera contestaría cola vacía igual. `BACKLOG.md` es el archivo
-  // del que sale la cola, así que sin él la respuesta no significa nada.
-  if (!fs.existsSync(path.join(root, 'BACKLOG.md'))) {
-    return fail(`${root} (ruta resuelta) no es un planning: falta BACKLOG.md.`, 2)
-  }
-  return null
-}
-
 // Contexto mínimo suficiente para ejecutar una tarea, en lugar de releer roadmap, BACKLOG y WIP enteros.
 function context(dir, cli) {
-  const root = path.resolve(dir || '.')
-  assertPlanning(root)
+  const root = planningRoot(dir)
   const state = ST.snapshot(root)
   // Acotar la cola a un hito es como un equipo se reparte trabajo sin coordinarse: dos personas en hitos
   // distintos casi nunca dependen entre sí ni tocan los mismos archivos. Lo que se acota es qué se
@@ -474,7 +453,7 @@ function context(dir, cli) {
 // `BACKLOG.md` es la cola de lo aprobado y la escribe una persona — ningún comando del motor la toca,
 // ni siquiera `integration promote`, que aterriza en el roadmap. Pegarla es el acto de promoción.
 function recurring(dir, cli) {
-  const root = path.resolve(dir || '.')
+  const root = planningRoot(dir)
   const file = RC.read(root)
   if (!file.exists) return console.log(`= este planning no declara trabajo recurrente (${RC.FILE})`)
   const state = RC.status({ ...file, done: P.readDone(root), today: TODAY() })
