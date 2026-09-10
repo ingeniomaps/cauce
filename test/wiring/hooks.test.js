@@ -1450,6 +1450,67 @@ test('verify deja registrado qué gate corrió y con qué código de salida', ()
   assert.equal(EV.runs(root).length, EV.MAX_RUNS)
 })
 
+// Un gate no sólo lee su entorno: escribe en él, y lo ignorado se le enlaza al original. pnpm 11 lo
+// lleva al extremo —ve que el árbol enlazado no fue instalado ahí y reinstala, borrando primero el
+// `node_modules` del proyecto— y lo único que lo detiene es que el hijo no ve una terminal. `CI` es la
+// variable que ese mismo gestor nombra para no preguntar (caso 068).
+//
+// Se mide por lo que el gate recibe y no por lo que devuelve `commitTree`, porque lo que importa es que
+// llegue: entre una cosa y la otra está `run`, que mezcla el objeto sobre el entorno del proceso.
+test('el gate que corre sobre la copia la ve como no interactiva, y sobre el árbol no', () => {
+  const root = tempRoot('ops-hook-ci-')
+  initRepo(root)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  // El gate va en un archivo y no inline: tiene que quedar trackeado para que la copia lo materialice,
+  // y anota fuera del árbol que se juzga para que las dos corridas escriban en el mismo lugar.
+  const visto = path.join(tempRoot('ops-hook-ci-visto-'), 'visto.txt')
+  fs.writeFileSync(path.join(root, 'gate.js'),
+    `require('node:fs').appendFileSync(${JSON.stringify(visto)}, 'CI=' + (process.env.CI || 'vacio') + '\\n')\n`)
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node gate.js' } }))
+  fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = 1\n')
+  fs.writeFileSync(path.join(root, 'planning', '.keep'), '')
+  // Todo staged y nada suelto: es la única forma de que no haya copia, y cuesta decirlo porque un solo
+  // archivo sin trackear ya la dispara — `git status` lo lista y la condición mira cualquier diferencia,
+  // no sólo un cambio sin stagear.
+  git(['add', '-A'], root)
+  const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
+
+  assert.doesNotThrow(() => execute('verify', commit))
+  assert.match(fs.readFileSync(visto, 'utf8'), /^CI=vacio$/m,
+    'sin copia no se le cambia el entorno a nadie')
+
+  // Y ahora sí hay copia, por lo más barato que la dispara.
+  fs.writeFileSync(visto, '')
+  fs.writeFileSync(path.join(root, 'suelto.txt'), 'no trackeado\n')
+  assert.doesNotThrow(() => execute('verify', commit))
+  assert.match(fs.readFileSync(visto, 'utf8'), /^CI=true$/m, 'sobre la copia sí')
+})
+
+// El mensaje decía `test (exit 1)` y tiraba la salida de la herramienta, así que una suite en rojo y un
+// gestor que se negó a arrancar el script llegaban con el mismo texto — y la salida que el guard ofrece
+// empuja a aprobar el commit como «rojo conocido». Es la misma forma de fallar que el caso 066 encontró
+// en una prueba, acá en lo que lee una persona.
+test('un gate que falla dice cuánto tardó y qué dijo la herramienta', () => {
+  const EV = require('../../engine/core/evidence')
+  const root = tempRoot('ops-hook-mudo-')
+  initRepo(root)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+    scripts: { test: 'node -e "console.error(\'ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY\');process.exit(1)"' },
+  }))
+  fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = 1\n')
+  git(['add', 'package.json', 'app.js'], root)
+  const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
+
+  blocked('verify', commit, /ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY/)
+  blocked('verify', commit, /test \(exit 1, \d+\.\d s\)/)
+  // Y el número va con el hecho, no con un veredicto: un lint puede fallar rápido y de verdad.
+  blocked('verify', commit, /no alcanza para correr una suite/)
+  assert.equal(typeof EV.runs(root).slice(-1)[0].ms, 'number', 'la duración queda en el registro')
+})
+
 test('el contraste de evidencia separa lo que existe de lo que no se puede buscar', () => {
   const EV = require('../../engine/core/evidence')
   const root = tempRoot('ops-hook-contraste-')
