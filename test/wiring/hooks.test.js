@@ -2100,6 +2100,25 @@ test('un «dale» aprueba exactamente lo que quedó frenado, y nada más', () =>
   } finally { chat.close() }
 })
 
+// Nombrar no es pedir (caso 109): la frase del nombre tiene que pedir algo. Una pregunta o un comentario al
+// pasar no autorizan; un pedido con verbo sí, también con el pronombre pegado o en inglés.
+test('mencionar algo en el chat no lo autoriza: la frase tiene que pedirlo', () => {
+  const root = planFirstRoot('ops-hook-chat-pide-', WIP_CON_PLAN)
+  const lee = (call, file) => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
+  const chat = chatSession()
+  try {
+    for (const [mensaje, archivo] of [
+      ['el deploy falla por las credentials de AWS, revisá el pipeline', 'credentials'],
+      ['¿para qué sirven las credentials?', 'credentials'],
+      ['el .env tiene algo raro? no sé', '.env'],
+    ]) blocked('secrets-read', lee(chat.says(mensaje), archivo), /leerla/)
+    for (const [mensaje, archivo] of [
+      ['leé el archivo credentials', 'credentials'], ['abrime el .env', '.env'],
+      ['mostrame el .npmrc', '.npmrc'], ['please read the .env', '.env'], ['¿el .env lo podés abrir?', '.env'],
+    ]) assert.doesNotThrow(() => execute('secrets-read', lee(chat.says(mensaje), archivo)), mensaje)
+  } finally { chat.close() }
+})
+
 test('plan-first no frena lo que la persona pidió en el chat, y sí el trabajo del agente', () => {
   const root = planFirstRoot('ops-hook-chat-plan-', WIP_IDLE)
   const escribe = (call) => call({ cwd: root, tool_input: { file_path: path.join(root, 'src', 'altas.js') } })

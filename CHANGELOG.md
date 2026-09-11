@@ -14,6 +14,18 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.82.0] - 2026-09-11
+
+### Corregido
+
+- **Nombrar algo en el chat ya no lo autoriza: hay que pedirlo.** Desde 0.81.0, lo que nombrabas en el chat
+  pasaba los guards aunque no lo pidieras: «¿para qué sirven las credentials?» dejaba leer `credentials`, y
+  «el .env tiene algo raro?» dejaba leer el `.env`. Ahora la frase que lo nombra tiene que pedir una acción
+  —«leé», «abrime», «borrá», «read»…—, y la negación sigue frenando como antes.
+
+  **Qué cambia para vos**: si pedís algo sin un verbo que Cauce reconozca, el agente te dice qué se frenó y
+  con un «dale» pasa.
+
 ## [0.81.0] - 2026-09-11
 
 ### Cambiado
