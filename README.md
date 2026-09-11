@@ -315,9 +315,11 @@ La sincronización solo lee Jira. `writeback-plan` calcula intención local, no 
 `writeBack` permanece en `false`. Consulta el [recorrido de Jira](template/integrations/jira/README.md) antes
 de conectar una instancia real.
 
-Para añadir otra herramienta se crea un adaptador en `engine/integrations/providers/` con `validateConfig`,
-`fetchItems` y `normalizeFixture`, y se registra en `engine/integrations/registry.js`. Staging, revisión,
-promoción y validación no se reimplementan. Consulta [integrations/README.md](integrations/README.md).
+Para añadir otra herramienta no hace falta tocar Cauce: el adaptador se escribe en la instancia, se
+registra con una ruta en el campo `adapter` y cumple el contrato —`contract: 1`, `validateConfig`,
+`fetchItems` y `normalizeFixture`—. Staging, revisión, promoción y validación no se reimplementan. El
+recorrido está en [template/integrations/README.md](template/integrations/README.md) y el contrato en
+[integrations/README.md](integrations/README.md).
 
 ## Hooks y runners
 
