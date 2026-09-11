@@ -196,11 +196,48 @@ recorrido por su cuenta.
   rojo.
 - **`agent-eval.js:228`: si llega a una instancia** — llega: el manifiesto de Claude lo instala como
   `.claude/workflows/agent-eval.js`. Se arregló acá.
-- **Una corrida real de `autobuild` muestra que Plan o Review nombra `security.md`** — **no se corrió**. Una corrida real
-  necesita una tarea promovida sobre el banco y cuesta del orden de 780 k tokens (lo medido en el 081). Lo que sí se
-  corrió es el recorrido renderizado de verdad, con los agentes simulados por el arnés: los prompts que reciben Plan,
-  Build y Review traen las rutas, y un Review que no nombra reglas frena. Que un modelo las **lea** queda sin medir; lo
-  cierra una corrida real cuyo journal traiga `Review contra: … planning/rules/security.md`.
+- **Una corrida real de `autobuild` muestra que Plan o Review nombra `security.md`** — **sigue sin correrse**, y el
+  2026-09-11 se intentó: el banco quedó armado y la corrida no se pudo lanzar. Lo que sí se corrió es el recorrido
+  renderizado de verdad, con los agentes simulados por el arnés: los prompts que reciben Plan, Build y Review traen las
+  rutas, y un Review que no nombra reglas frena. Que un modelo las **lea** sigue sin medir, y con él la parada
+  `review-unbacked` vista fuera del arnés. Del intento quedó esto:
+
+  - **El banco es el que el caso pide.** Instancia embedded con runner Claude bajo el scratch, hecha con `npm pack` del
+    worktree e instalada desde el `.tgz` —0.82.0 no está publicado—, con una regla propia (`planning/rules/security.md`,
+    testigo `TALAMPAYA-7731`), un `process.md` propio que sobrescribe al del sistema (testigo `LAPACHO-3312`), el testigo
+    `NOGAL-5508` dentro de la retirada, y una tarea `[full]` en cola:
+
+    ```
+    $ node tools/ops.js check planning                                      # código 0
+    ⚠ planning/rules/process.md sobrescribe process.md (override explícito); deja de regir R17, R99
+    ✓ planning válido: 0 épica(s), 1 tarea(s) en cola, 0 terminada(s)
+    $ node tools/ops.js context planning --json   → .rules
+    planning/rules/system/code-shape.md, planning/rules/system/commits.md, planning/rules/system/conduct.md,
+    planning/rules/process.md, planning/rules/security.md
+    $ grep -c -- '—R17—' .claude/workflows/autobuild.js                     # 0
+    ```
+
+  - **Lo que frenó no es el arreglo ni el banco: es el permiso para abrir la sesión que corre el recorrido.**
+    `/autobuild` se carga con la herramienta `Skill`, y una sesión sin superficie de aprobación la deniega:
+
+    ```
+    $ claude -p "/autobuild" --setting-sources project --permission-prompts none \
+        --output-format stream-json --verbose                               # código 0
+    "permission_denials":[{"tool_name":"Skill","tool_input":{"skill":"autobuild"}}, …]
+    → «The `autobuild` skill couldn't be loaded (permission denied, no approval surface in this session).
+       I'll run the same protocol manually»
+    ```
+
+    Esa corrida no mide nada —el modelo improvisó el protocolo a mano, sin workflow, y ninguna fase existió— y costó
+    USD 1,04. Las dos formas que sí le daban los permisos que el recorrido necesita —`--permission-mode
+    bypassPermissions`, y un `--settings` con `allow` acotado a `Skill`, `Bash`, `Edit` y `Task`— las rechazó el
+    clasificador del harness antes de ejecutarlas, las dos con «Permission for this action was denied by the Claude Code
+    auto mode classifier. Reason: [Create Unsafe Agents]».
+
+  - **Qué la cierra y quién la revisa.** Correr `/autobuild` desde una sesión **interactiva** abierta en el banco, donde
+    una persona aprueba los permisos, y traer su journal con la línea `Review contra: … planning/rules/security.md`.
+    Sigue valiendo el orden de magnitud del 081: ~780 k tokens. Una sesión de agente no alcanza, y eso no es del arreglo:
+    es que no puede abrir una sesión anidada con permisos para cargar el workflow.
 - **La decisión queda escrita** — arriba.
 
 ### Lo que el caso no preveía
