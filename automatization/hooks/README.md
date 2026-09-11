@@ -47,17 +47,23 @@ una cadena — permisos del runner, alcance del token, aprobación de un PR.
 
 ### Leer una credencial
 
-`secrets-read` frena leer, con la herramienta de lectura del runner, un archivo que `secrets` frenaría al
-escribir —los nombres conocidos y las identidades que declara `organization/secrets.json`—. Qué alcanza en
-cada runner es distinto, y conviene saberlo:
+Dos guards frenan leer un archivo que `secrets` frenaría al escribir —los nombres conocidos y las
+identidades que declara `organization/secrets.json`—: `secrets-read` en las herramientas de lectura y de
+búsqueda del runner (`Read` y `Grep` en Claude, `read_file` y `grep_search` en Gemini) y `secrets-shell` en
+el shell de los cuatro runners, cuando un comando la muestra —`cat`, `head`, `grep`, `sed`, `source`, una
+redirección `<`, un intérprete en línea—. Un comodín que la nombra —`rg -g '.env*'`, `--include='*.env'`—
+cuenta igual. Lo que sólo la nombra —`ls`, `test -f`, `rm`, `cp .env.example .env`— pasa, y lo que la
+persona pidió en el chat también.
 
-- **Claude Code**: el guard corre en `Read`, y además la instalación agrega reglas `permissions.deny`
-  `Read(...)` por los nombres conocidos. Esas reglas las aplica el propio Claude Code a `Read`, a `cat`,
-  `head`, `tail`, `sed` y a las redirecciones, pero no a un `grep -r` ni a un subproceso que abra el archivo
-  por su cuenta. Van por nombre exacto: `.env.*` también negaría `.env.example`.
-- **Gemini CLI**: el guard corre en `read_file`. Un `cat` por `run_shell_command` no lo ve.
-- **Codex y Antigravity**: sin guard de lectura. Sus adaptadores sólo enganchan shell y edición, y leer por
-  shell no pasa por ningún matcher de archivo.
+Lo que no ve ninguno, comprobado en sesiones reales: una búsqueda sobre la carpeta que no nombra el archivo
+—un `rg` de todo el árbol—, un nombre armado en una variable, y en Gemini el propio entorno del runner,
+que carga el `.env` de la carpeta al arrancar (documentado en geminicli.com/docs/reference/configuration):
+un `env` muestra sus valores sin leer ningún archivo.
+
+Hasta 0.80.0 Claude traía además reglas nativas `permissions.deny` `Read(...)`. Las aplica Claude mismo, sin
+pasar por ningún hook, así que frenaban también lo que la persona pedía, mientras en los otros runners el
+shell no tenía freno (caso 104). `automation install` las retira de una instalación anterior y conserva las
+que escribió la empresa: quien quiera un bloqueo nativo total lo escribe como regla propia.
 
 ### Lo que pide la persona
 
@@ -78,10 +84,6 @@ marca con `agent_id`. En Claude y Codex cada llamada trae el identificador del m
 Gemini no lo manda, y ahí vale el último mensaje. El registro vive en el temporal del sistema, uno por
 sesión, y los guards de límites lo cuidan junto con `planning/.ops-approval`: el agente no puede
 escribirse ninguno de los dos. Como todo lo de esta página, frena la forma habitual y no un script decidido.
-
-En Claude Code queda una excepción que no depende de Cauce: las reglas `permissions.deny` de la instalación
-las aplica Claude mismo, sin consultar a ningún hook, así que leer un `.env` o una clave se frena ahí aunque
-la persona lo pida. Comprobado en una sesión real con Claude Code 2.1.268.
 
 ## Cómo se ejecutan
 

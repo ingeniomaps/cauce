@@ -20,7 +20,8 @@ instalación vieja, `.gemini/commands/ops/` queda huérfano y se borra a mano.
 Gemini CLI tiene hooks nativos y el adaptador los usa: `BeforeTool`, `BeforeAgent` y `AfterAgent` en
 `.gemini/settings.json`, declarados en `manifest.json`. Sólo corren si la carpeta está marcada como
 confiable —`GEMINI.md` explica qué avisa Gemini cuando no lo está—. `read_file` pasa por
-`guard-secrets-read.sh`, que frena leer una credencial; un `cat` por `run_shell_command` no lo ve.
+`guard-secrets-read.sh`, que frena leer una credencial; un `cat` por `run_shell_command` lo frena
+`secrets-shell`, en el grupo de shell.
 `BeforeAgent` registra el mensaje de la persona, para que lo que pidió en el chat pase sin aprobarlo a
 mano; Gemini no le pasa a cada herramienta de qué mensaje viene, así que ahí vale el último.
 
