@@ -90,6 +90,9 @@ function validateWorkspaces(workspaces, errors) {
     errors.push('ops.config.json: workspaceRoots debe contener al menos una raíz')
     return
   }
+  // El `name` de una raíz es con lo que el inventario nombra a sus servicios, así que dos iguales dejan
+  // dos servicios indistinguibles y una credencial que no se puede atribuir a ninguno (caso 113).
+  const seen = new Map()
   for (const [index, workspace] of workspaces.entries()) {
     if (!workspace || typeof workspace !== 'object' || Array.isArray(workspace)) {
       errors.push(`ops.config.json: workspaceRoots[${index}] debe ser un objeto`)
@@ -105,8 +108,15 @@ function validateWorkspaces(workspaces, errors) {
     if ('verify' in workspace && (typeof workspace.verify !== 'string' || !workspace.verify.trim())) {
       errors.push(`ops.config.json: workspaceRoots[${index}].verify debe ser el comando, o no estar`)
     }
-    if (typeof workspace.name !== 'string' || !workspace.name.trim()) {
+    const name = typeof workspace.name === 'string' ? workspace.name.trim() : ''
+    if (!name) {
       errors.push(`ops.config.json: workspaceRoots[${index}].name es obligatorio`)
+    } else if (seen.has(name)) {
+      errors.push(`ops.config.json: workspaceRoots[${index}].name "${name}" es el mismo que el de `
+        + `workspaceRoots[${seen.get(name)}]: el nombre de la raíz es el que nombra a sus servicios, así `
+        + 'que dos iguales los vuelven indistinguibles. Renombrá una')
+    } else {
+      seen.set(name, index)
     }
     if (typeof workspace.path !== 'string' || !workspace.path.trim()) {
       errors.push(`ops.config.json: workspaceRoots[${index}].path es obligatorio`)

@@ -171,16 +171,27 @@ function scan(root, skip = '') {
   }
 }
 
-// Dónde puede mirar una instancia: exactamente las raíces que declara, y nada por encima de ellas. Sale
+// Dónde puede mirar una instancia: exactamente las raíces que declara, con el nombre que les puso. Sale
 // de `ops.config.json` en vez de suponerse —el sidecar declara `..`, el embebido `.`— para que acotar las
 // raíces acote también el escaneo, y para que nadie termine recorriendo la carpeta de al lado.
-function workspaceRoots(root) {
+//
+// El nombre cae a la carpeta cuando la raíz no lo declara: `check` lo exige, pero `scan` y `onboard`
+// corren igual sobre una configuración que nunca pasó por ahí, y ahí el prefijo saldría `undefined`.
+function declaredRoots(root) {
+  const fallback = [{ name: path.basename(root), dir: root }]
   try {
     const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
-    const declared = (config.workspaceRoots || []).map((entry) => path.resolve(root, entry.path || '.'))
-    return declared.length ? declared : [root]
-  } catch { return [root] }
+    const declared = (config.workspaceRoots || []).map((entry) => {
+      const dir = path.resolve(root, entry.path || '.')
+      return { name: String(entry.name || '').trim() || path.basename(dir), dir }
+    })
+    return declared.length ? declared : fallback
+  } catch { return fallback }
 }
+
+// Sólo las rutas. Es lo que mira quien acota una escritura, y `onboard --json` las emite tal cual en
+// `roots`: darles forma de objeto habría cambiado ese contrato para quien no necesita el nombre.
+const workspaceRoots = (root) => declaredRoots(root).map((one) => one.dir)
 
 // Qué hay en las raíces declaradas, antes de que nadie razone sobre ello. La raíz ops se saltea: no es
 // un servicio del proyecto, y su `package.json` sólo declara el motor.
@@ -197,12 +208,15 @@ function candidates(workspace, skip = '') {
 // Con varias raíces, cada repositorio es la raíz de su propio escaneo y su candidato principal se llama
 // `.`: tres servicios con el mismo nombre y nada que los distinga. El prefijo los vuelve nombrables, que
 // es la única forma de que una credencial pueda atribuirse a un servicio en vez de quedar suelta.
+//
+// El prefijo es el `name` declarado y no la carpeta, que es lo que dejaba a `gouduet/keycloak` y
+// `hypixo/keycloak` llamándose las dos `keycloak` (caso 113). Que no se repita lo exige el validador.
 function inventory(root) {
-  const roots = workspaceRoots(root)
-  if (roots.length === 1) return candidates(roots[0], root)
-  return roots.flatMap((workspace) => candidates(workspace, root).map((service) => ({
+  const roots = declaredRoots(root)
+  if (roots.length === 1) return candidates(roots[0].dir, root)
+  return roots.flatMap(({ name, dir }) => candidates(dir, root).map((service) => ({
     ...service,
-    path: service.path === '.' ? path.basename(workspace) : `${path.basename(workspace)}/${service.path}`,
+    path: service.path === '.' ? name : `${name}/${service.path}`,
   })))
 }
 

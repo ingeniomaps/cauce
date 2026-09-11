@@ -94,6 +94,30 @@ test('la clave cuenta como secreto sólo como palabra propia', () => {
   assert.equal(sensitivePath({ auth: { API_KEY: 'x' } }), 'auth.API_KEY')
 })
 
+// El aviso nombra el servicio, y el servicio lo nombraba la carpeta de su raíz: con dos repositorios
+// `…/keycloak` salía `KC_DB_PASSWORD (keycloak), KC_DB_PASSWORD (keycloak)`, dos secretos distintos con
+// la misma etiqueta y ninguno atribuible (caso 113).
+test('el aviso distingue dos raíces que terminan en la misma carpeta', () => {
+  const { ops } = instance('cauce-113-', 'sidecar', 'PORT=3000\n')
+  const base = path.dirname(ops)
+  for (const org of ['gouduet', 'hypixo']) {
+    const dir = path.join(base, org, 'keycloak')
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, 'package.json'), '{"name":"keycloak"}')
+    fs.writeFileSync(path.join(dir, '.env.example'), 'KC_DB_PASSWORD=\n')
+  }
+  const file = path.join(ops, 'ops.config.json')
+  const config = JSON.parse(fs.readFileSync(file, 'utf8'))
+  config.workspaceRoots = [
+    { name: 'gouduet', path: '../gouduet/keycloak' },
+    { name: 'hypixo', path: '../hypixo/keycloak' },
+  ]
+  fs.writeFileSync(file, JSON.stringify(config, null, 2))
+  const line = orphanLine(ops)
+  assert.match(line, /en gouduet, hypixo\): KC_DB_PASSWORD \(gouduet\), KC_DB_PASSWORD \(hypixo\)/)
+  assert.doesNotMatch(line, /\(keycloak\)/, 'la carpeta ya no nombra a ninguna de las dos')
+})
+
 test('lo que pasa del tope del escaneo se dice en vez de callarlo', () => {
   const config = Array.from({ length: 40 }, (_, index) => `CONFIG_${index}=`).join('\n')
   const { ops } = instance('cauce-102-tope-', 'embedded', `${config}\nDB_PASSWORD=\n`)
