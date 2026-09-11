@@ -16,6 +16,17 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.82.0] - 2026-09-11
 
+### Cambiado
+
+- **`allowPush: true` ya no publica en la rama viva ni desde un subagente.** La llave dejaba pasar cualquier
+  push, `main` incluido, y el de un subagente igual que el tuyo. Ahora no alcanza a `main`, `master` ni a la
+  rama por defecto del remoto, y un subagente no publica con ningún permiso. Tampoco la alcanza una orden en
+  el chat.
+
+  **Qué cambia para vos**: si publicabas en la rama viva con `allowPush: true`, agregá
+  `"pushToLiveBranches": ["main"]` en `runner` de `ops.config.json`, o pegá `push origin main` en
+  `planning/.ops-approval` para un push puntual.
+
 ### Corregido
 
 - **Nombrar algo en el chat ya no lo autoriza: hay que pedirlo.** Desde 0.81.0, lo que nombrabas en el chat
@@ -58,6 +69,15 @@ diseño — eso vive en el commit y en el código.
 
   **Qué cambia para vos**: puede aparecer en el aviso una credencial que antes quedaba tapada; escribí su
   dueño y se va.
+
+- **Un push que pedís en el chat ya no se frena.** Con `allowPush: false`, `git push` se frenaba aunque lo
+  hubieras pedido con todas las letras. Ahora pasa si tu mensaje nombra el remoto y la rama —«subí feat/x a
+  origin», `git push origin feat/x`—, y si no los nombra, el agente te dice qué se frenó y con un «dale»
+  pasa ese push y ningún otro. `planning/.ops-approval` también acepta la línea `push <remoto> <rama>`, tal
+  cual y sin patrones. Un `git push origin +rama` ahora se frena como el `--force` que es.
+
+  **Qué cambia para vos**: para publicar una rama de trabajo alcanza con pedirlo nombrando remoto y rama, o
+  con contestar «dale».
 
 ## [0.81.0] - 2026-09-11
 
