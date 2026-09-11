@@ -1,14 +1,15 @@
 ---
 caso: 105
 titulo: El contrato de `autobuild` no trae `planning/rules/`, y sus prompts citan por número reglas que el proyecto retiró
-estado: abierto
+estado: resuelto
+resuelto-en: 0.82.0
 prioridad: alta
 version-detectada: 0.80.0
 ---
 
 # 105 — El recorrido trabaja sin las reglas del proyecto y le cita al humano una que el proyecto dio de baja
 
-**🔴 abierto** · detectado en 0.80.0 · prioridad **alta** — cada subagente de `autobuild` planifica, construye y
+**🟢 resuelto en 0.82.0** · detectado en 0.80.0, reproducido en 0.81.0 · prioridad **alta** — cada subagente de `autobuild` planifica, construye y
 revisa sin haber leído una sola regla del proyecto, y el mismo recorrido le escribe a una persona «partirla
 —R17—» aunque `check` diga que R17 dejó de regir ahí
 
@@ -141,3 +142,96 @@ recorrido por su cuenta.
   sale en el 099, éste lo consume.
 - **007** — hizo que `check` nombre lo que un override retira; acá el recorrido sigue citando lo retirado.
 - **023** — la misma familia: una regla que manda a un archivo que el agente no lee.
+
+## Cierre
+
+**🟢 resuelto en 0.82.0** · `engine/cli/planning.js`, `automatization/workflows/autobuild.js`,
+`automatization/workflows/agent-eval.js`; consume el `effectiveRules` del 099, con el que se cierra
+
+### La decisión
+
+- **¿Lista o texto?** — la lista, decidida por el usuario, con la obligación de que Review nombre contra qué reglas
+  revisó. Viajan rutas y no contenido, así que el costo no se multiplica por cada subagente; y la lectura deja rastro
+  en la respuesta de Review, que es lo que hoy no había.
+
+### Contra lo que el caso enumeró
+
+**Fix propuesto**
+
+1. **`context` informa el conjunto efectivo** — hecho: campo `rules` en `--json` y línea `RULES` en texto, con lo que
+   resuelve `effectiveRules`. `autobuild` lo copia de la lectura que ya hacía (`rules` en el esquema `CONTEXT`), así que
+   el agente del contrato sigue sin leer nada más.
+2. **`SCOPE` y `LEDGER` nombran las reglas** — hecho: `SCOPE` lleva la lista, relativa a la raíz ops, desde que vuelve
+   la primera lectura de `context`, y `LEDGER` la hereda. Llega a Decompose, Plan, Build, Review, Verify, QA, Commit y a
+   cada escritura de planning. **No** llega a lo que corre con el preámbulo invariante —Ready, Critique y la propia
+   lectura de `context`—: ese preámbulo existe para no obligar a leer ningún archivo, y Critique ataca un plan que ya se
+   escribió con las reglas a la vista. Si una crítica que las ignore resulta un problema, se agrega ahí; hoy no hay
+   evidencia de que lo sea.
+3. **Ningún prompt cita una regla del sistema por número** — hecho: sale «—R17—» de la fila de `planRejected`, que ya
+   describía la conducta, y sale «R12» del juez de `agent-eval.js`, que dice ahora lo que esa regla pedía. No se
+   resolvió la cita contra el conjunto efectivo: describir la conducta vale igual rija o no la regla.
+
+**Tradeoffs**
+
+- **La lista no garantiza lectura** — lo que la vuelve visible es el campo `rules` del esquema `REVIEWED`: Review
+  nombra contra qué reglas revisó, y si hay reglas que rigen y no nombra ninguna, la corrida para con
+  `review-unbacked`, igual que cuando aprueba sin decir qué abrió. Lo que nombró va al journal (`Review contra: …`).
+  **No** se sumó a la línea `review=` de la entrada de DONE: está pegada al volcado a INBOX que otro cambio está tocando en
+  paralelo, y queda como seguimiento —se cierra agregando `review.rules` a `reviewFact`—.
+- **Sacar el número pierde la trazabilidad** — asumido: el texto dice la conducta, que es lo que la fila le pide a una
+  persona, y la regla, si rige, está en la lista.
+- **R17 sigue exigida por el motor** — sin cambios, como el caso decía: `planning/rules/README.md` lo dice y este cambio
+  no lo toca.
+
+**Qué tiene que probar el cierre**
+
+- **La reproducción devuelve una línea `RULES` con `process.md` y `security.md` propias y sin `system/process.md`, vista
+  en rojo** — corrida tal como la escribe el caso (abajo), y `context dice qué reglas rigen, en texto y en --json`, que
+  asercia la ausencia de la sobrescrita; roja sobre la base (`context --json no trae rules`) y verde ahora.
+- **Sacar las reglas de `SCOPE` pone una prueba en rojo** — M11: `las reglas que lista context llegan a Plan, Build y
+  Review` en rojo.
+- **`grep -- '—R17—'` sobre el workflow instalado no devuelve nada, y una prueba que falla si vuelve una `R` por número
+  se ve en rojo** — el `grep` corrido abajo; `ningún texto que un runner instala cita una regla por número` recorre todo
+  lo que instalan los cuatro adaptadores con los includes resueltos, y devolver «—R17—» (M13) o «R12» (M14) la pone en
+  rojo.
+- **`agent-eval.js:228`: si llega a una instancia** — llega: el manifiesto de Claude lo instala como
+  `.claude/workflows/agent-eval.js`. Se arregló acá.
+- **Una corrida real de `autobuild` muestra que Plan o Review nombra `security.md`** — **no se corrió**. Una corrida real
+  necesita una tarea promovida sobre el banco y cuesta del orden de 780 k tokens (lo medido en el 081). Lo que sí se
+  corrió es el recorrido renderizado de verdad, con los agentes simulados por el arnés: los prompts que reciben Plan,
+  Build y Review traen las rutas, y un Review que no nombra reglas frena. Que un modelo las **lea** queda sin medir; lo
+  cierra una corrida real cuyo journal traiga `Review contra: … planning/rules/security.md`.
+- **La decisión queda escrita** — arriba.
+
+### Lo que el caso no preveía
+
+- **`autobuild-review.test.js` aserciaba la cita**: la prueba de la fila de un plan rechazado buscaba `R17` en el texto.
+  Ahora busca la conducta —«vidas distintas» y «partirla»—, que es lo que la fila tiene que decir.
+- **El `grep -c 'planning/rules'` de la reproducción sigue en 0, y es correcto**: la lista no está escrita en el workflow
+  sino que llega por `context` en cada corrida. Lo que pasa de 0 a 1 es `context --json | grep -ci rules`.
+- **`template/AGENTS.md` cita «R13»** al presentar los cargos («Su contraparte es R13: el que se niega bien y no deja nada
+  tampoco cumplió»). No es un prompt de recorrido, y dice la conducta al lado del número, así que no depende de que R13
+  rija; queda como está y se nombra para que lo decida quien mantiene ese archivo.
+
+### Qué se corrió
+
+- **La reproducción del caso**, con el CLI del checkout y el motor enlazado del mismo árbol:
+
+  ```
+  base (HEAD)                                   rama
+  grep -c 'planning/rules' → 0                  → 0
+  grep -n -- '—R17—' → 582: … partirla —R17— …  → (nada)
+  check → … deja de regir R17                   → … deja de regir R17
+  context --json | grep -ci rules → 0           → 1
+  RULES → (sin línea)                           → RULES  planning/rules/system/code-shape.md,
+                                                  planning/rules/system/commits.md, planning/rules/system/conduct.md,
+                                                  planning/rules/process.md, planning/rules/security.md
+  ```
+- **El rojo previo** de las pruebas nuevas sobre la base: el recorrido (`Plan|plan no recibió
+  planning/rules/system/commits.md`), el Review sin reglas (la corrida terminaba en vez de parar), `context` y la
+  búsqueda de citas por número (dos: la de R17 y la de R12).
+- **Mutaciones**, en copias desechables bajo el scratch (R23): M9 a M14, las seis rojas —`context` sin la lista o sin la
+  línea, `SCOPE` sin las reglas, Review sin la parada, y las dos citas devueltas—. Las otras doce de la tanda son del 099.
+- **La instancia real y la sesión real** del 099 corrieron sobre el mismo paquete: `context` ahí devuelve la misma
+  línea `RULES`, y el `autobuild.js` instalado tiene cero «—R17—».
+- `npm run ci`, con los archivos nuevos en el índice y `TMPDIR` propio: código 0, 710 de 710, cobertura de 62 archivos en su piso o por encima —`engine/automation/rules.js` entra con 100/84/100—, ningún export sin uso. Sin el `TMPDIR` propio, «verify mide el índice y no el árbol de trabajo» falló una vez por un `ops-verify-*` de otra sesión en el `/tmp` compartido; no es de este cambio.
