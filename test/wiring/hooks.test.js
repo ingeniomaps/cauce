@@ -1445,15 +1445,22 @@ test('verify mide el índice y no el árbol de trabajo', () => {
   // La copia se borra siempre, también cuando el gate falla: es el árbol entero del proyecto, y una por
   // commit llena el disco sin que nadie lo note hasta que no queda espacio.
   //
-  // Se cuenta lo que aparece **de nuevo** y no lo que hay: el temporal del sistema es compartido, así
-  // que afirmar sobre su contenido entero hace fallar esta prueba por lo que dejó cualquier otra cosa.
-  const copias = () => new Set(fs.readdirSync(os.tmpdir()).filter((one) => one.startsWith('ops-verify-')))
-  const antes = copias()
-  fs.writeFileSync(path.join(root, 'app.js'), '// ROTO\n')
-  git(['add', 'app.js'], root)
-  fs.writeFileSync(path.join(root, 'app.js'), '// tambien roto\n')
-  assert.throws(() => execute('verify', commit), 'el gate falla sobre el índice')
-  assert.deepEqual([...copias()].filter((one) => !antes.has(one)), [],
+  // Se cuenta en un temporal propio y no en el del sistema, que es compartido: la suite de otra sesión
+  // corriendo a la vez deja ahí sus copias mientras ésta mira, y contar sólo las nuevas no alcanzaba —
+  // la de la otra también es nueva—. Falló así al commitear con tres sesiones corriendo suites.
+  const propio = tempRoot('ops-hook-verify-tmp-')
+  const previo = process.env.TMPDIR
+  process.env.TMPDIR = propio
+  try {
+    fs.writeFileSync(path.join(root, 'app.js'), '// ROTO\n')
+    git(['add', 'app.js'], root)
+    fs.writeFileSync(path.join(root, 'app.js'), '// tambien roto\n')
+    assert.throws(() => execute('verify', commit), 'el gate falla sobre el índice')
+  } finally {
+    if (previo === undefined) delete process.env.TMPDIR
+    else process.env.TMPDIR = previo
+  }
+  assert.deepEqual(fs.readdirSync(propio).filter((one) => one.startsWith('ops-verify-')), [],
     'ni cuando pasa ni cuando falla queda una copia')
 
   // Y el olvido de siempre: el fuente nuevo que nadie agregó. El gate local pasa porque el archivo está
