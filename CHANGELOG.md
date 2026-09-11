@@ -34,6 +34,16 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`plan-first` deja de frenar la configuración y los archivos de la instancia.** Frenaba
+  `ops.config.json` —justo el archivo que el límite de raíces manda a editar para declarar una ruta— y,
+  en sidecar, también `AGENTS.md`, `CLAUDE.md`, `package.json` y `.gitignore` de la instancia, como si
+  fueran producto. Ahora producto es el código de una raíz declarada: la instancia sidecar no lo es
+  aunque viva dentro de su raíz (`..`), y lo que queda fuera de toda raíz —lo declarado en
+  `writableOutsideRoots`— tampoco. En embedded, el `package.json` de la raíz sigue siendo producto.
+
+  **Qué cambia para vos**: si aprobabas esas rutas a mano en `.ops-approval` o exportabas
+  `OPS_PLAN_FIRST_OVERRIDE` para poder tocarlas, ya no hace falta.
+
 - **`verify` deja afuera del índice de su copia lo que enlaza.** Cuando el árbol difiere del índice, el
   guard corre los gates sobre una copia del índice con lo ignorado enlazado —`node_modules`, `.env`—. Si
   tu `.gitignore` escribe ese directorio con barra final (`node_modules/`), el enlace entraba al índice de
