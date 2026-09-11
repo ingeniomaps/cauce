@@ -73,6 +73,23 @@ test('una puerta declarada vacía se rechaza diciendo qué falta', () => {
   assert.match(errors[0], /workspaceRoots\[0\]\.verify debe ser el comando, o no estar/)
 })
 
+// Que el error nombre las dos entradas es la mitad que se olvida: con diez raíces declaradas, «hay un
+// nombre repetido» deja a quien actualiza buscando cuál a mano (caso 113).
+test('dos raíces con el mismo name se rechazan, y el error nombra a las dos', () => {
+  const config = opsConfig()
+  config.workspaceRoots = [
+    { name: 'keycloak', path: '../gouduet/keycloak' },
+    { name: 'keycloak', path: '../hypixo/keycloak' },
+  ]
+  const errors = validateOpsConfig(config)
+  assert.equal(errors.length, 1, 'un solo error, no uno por entrada')
+  assert.match(errors[0], /workspaceRoots\[1\]\.name "keycloak"/, 'nombra la que repite')
+  assert.match(errors[0], /workspaceRoots\[0\]/, 'y contra cuál choca')
+
+  config.workspaceRoots[1].name = 'hypixo'
+  assert.deepEqual(validateOpsConfig(config), [], 'dos nombres distintos pasan')
+})
+
 test('una ruta escribible fuera de las raíces pasa el validador, y una vacía no', () => {
   const config = opsConfig()
   config.writableOutsideRoots = ['~/.claude/projects/demo/memory', '../salidas']

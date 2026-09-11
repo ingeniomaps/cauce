@@ -1,14 +1,15 @@
 ---
 caso: 113
 titulo: Dos raíces cuya carpeta se llama igual dan servicios con el mismo nombre
-estado: abierto
+estado: resuelto
+resuelto-en: 0.82.0
 prioridad: baja
 version-detectada: 0.81.0
 ---
 
 # 113 — `inventory` nombra cada raíz por su carpeta, y `gouduet/keycloak` y `hypixo/keycloak` salen los dos `keycloak`
 
-**🔴 abierto** · detectado en 0.81.0 · prioridad **baja**. No se pierde ningún aviso, pero nombra un servicio
+**🟢 resuelto en 0.82.0** · detectado en 0.81.0 · prioridad **baja**. No se pierde ningún aviso, pero nombra un servicio
 que no se puede ubicar: para saber de qué repositorio es la credencial hay que abrirlos todos.
 
 ## Resumen
@@ -106,3 +107,95 @@ dice el Síntoma sobre la última carpeta.
 ## Relacionados
 
 - **102**: cambió qué avisa y agregó el aviso de tope. Los dos muestran el nombre que este caso rompe.
+
+## Cierre
+
+Resuelto en 0.82.0, en `fix/113-nombre-de-raiz`. El prefijo del inventario pasa a ser el `name` declarado de
+cada raíz, y el validador exige que no se repita.
+
+Recorrido de lo que el caso enumeró:
+
+- **Resumen** — cierto tal como estaba escrito: el `name` ya existía, `ops.config.json` ya lo exigía y nadie
+  lo leía. `declaredRoots`, en `engine/core/scan.js`, es lo que lo empieza a leer.
+- **Reproducción** — se corrió literal, en un banco desechable bajo el scratchpad, contra un `git archive` de
+  `main` (`41673984`) y contra el arreglo. Las dos salidas, abajo.
+- **Síntoma** — reproducido línea por línea sobre `main`, y no sólo sobre la rama del 102 donde se registró.
+- **Causa raíz** — las citas se contrastaron contra el fuente, una por una, y las siete daban: `scan.js:205`
+  era el `path.basename(workspace)`, `scan.js:177` `workspaceRoots`, `scan.js:200` `inventory`,
+  `validate.js:71` `validateWorkspaces`, `onboarding.js:125` el bucle del aviso, `wiring.js:175` el listado
+  de `onboard` y `wiring.js:139` el de `scan`. `c9b6e4bf` es del 2026-08-22, como decía.
+- **Fix propuesto, «que `workspaceRoots` devuelva `{name, dir}`»** — hecho distinto, por lo que el propio
+  caso anticipaba en su segundo tradeoff: se agregó `declaredRoots`, que devuelve `{ name, dir }`, y
+  `workspaceRoots` quedó como su proyección a rutas. Así `inventory` tiene el nombre y el contrato de
+  `onboard --json` no se mueve.
+- **Fix propuesto, «el prefijo es el `name`»** — hecho tal cual.
+- **Fix propuesto, «un error si dos entradas repiten `name`»** — hecho en `validateWorkspaces`, con el
+  índice de las dos entradas adentro del mensaje: `ops.config.json: workspaceRoots[1].name "keycloak" es el
+  mismo que el de workspaceRoots[0]: el nombre de la raíz es el que nombra a sus servicios, así que dos
+  iguales los vuelven indistinguibles. Renombrá una`. Compara el nombre sin espacios a los lados, que es lo
+  mismo que ya miraba la validación de obligatoriedad.
+- **Tradeoff «cambia el nombre que se ve cuando la carpeta y el `name` difieren»** — se asume: es el punto
+  del cambio. Donde coinciden, que es la forma más común, no cambia nada, y la prueba con `../api` y
+  `../web` que ya existía lo fija.
+- **Tradeoff «`workspaceRoots` tiene más consumidores»** — se comprobó cuáles, y son dos:
+  `engine/cli/wiring.js:164`, que es el campo `roots` de `onboard --json`, y el propio `inventory`. Ningún
+  otro archivo del repositorio lo llama. Con `declaredRoots` aparte, `roots` sigue emitiendo rutas; lo fijan
+  una aserción propia y la mutación M5.
+- **Tradeoff «la unicidad rompe la validación de una instancia que hoy repite `name`»** — se asume tal como
+  el caso lo escribió: el `check` de esa instancia pasa a fallar y el arreglo es renombrar una raíz. Va al
+  CHANGELOG como lo que hay que hacer, que es donde lo lee quien actualiza.
+- **Contexto de descubrimiento** — el aviso de tope del 102 (`keycloak (21 de 61), keycloak (16 de 56)`)
+  sale del mismo `service.path` que el de credenciales, así que se arregla con esto y no había un segundo
+  defecto que tocar. Comprobado leyendo `orphanCredentials`: `cut` y `orphans` usan el mismo campo.
+- **Relacionados, 102** — las dos salidas que el 102 agregó nombran ahora la raíz declarada.
+
+Lo que el enunciado no preveía: **una raíz sin `name` sólo la rechaza `check`, y `scan` y `onboard` corren
+igual sobre esa configuración**. Tomando `entry.name` a secas el prefijo habría salido `undefined`, peor que
+el defecto que se estaba arreglando. `declaredRoots` cae a la carpeta cuando el `name` falta o está en
+blanco —que es exactamente cómo se nombraba antes—, y la mutación M2 lo cubre.
+
+### Qué se corrió
+
+La reproducción del caso, literal. Antes, sobre `git archive 41673984`:
+
+```
+⚠ credenciales por nombre sin dueño (2, en keycloak): KC_DB_PASSWORD (keycloak), KC_DB_PASSWORD (keycloak) — …
+Mientras tanto, esto es lo que hay: keycloak, keycloak
+keycloak [raíz] — sin comandos declarados
+    espera KC_DB_PASSWORD (.env.example)
+keycloak [raíz] — sin comandos declarados
+    espera KC_DB_PASSWORD (.env.example)
+```
+
+Después, sobre el arreglo:
+
+```
+⚠ credenciales por nombre sin dueño (2, en gouduet, hypixo): KC_DB_PASSWORD (gouduet), KC_DB_PASSWORD (hypixo) — …
+Mientras tanto, esto es lo que hay: gouduet, hypixo
+gouduet [raíz] — sin comandos declarados
+    espera KC_DB_PASSWORD (.env.example)
+hypixo [raíz] — sin comandos declarados
+    espera KC_DB_PASSWORD (.env.example)
+```
+
+El `grep keycloak` del paso de `onboard` de la reproducción ahora no devuelve nada, y ésa es la mitad que
+faltaba comprobar: no que aparezca el nombre nuevo, sino que el viejo se haya ido.
+
+- **Rojo previo.** Las tres pruebas nuevas sobre `git archive 41673984`: 3 rojas de 31. «dos raíces que
+  terminan en la misma carpeta se distinguen por el name declarado» falla con `actual: [ 'keycloak',
+  'keycloak' ]` contra `expected: [ 'gouduet', 'hypixo' ]`; «el aviso distingue dos raíces que terminan en
+  la misma carpeta», con la línea de `check` diciendo `KC_DB_PASSWORD (keycloak), KC_DB_PASSWORD
+  (keycloak)`; y «dos raíces con el mismo name se rechazan, y el error nombra a las dos», con `actual: 0`
+  errores contra `expected: 1`. Sobre el arreglo, 31 de 31 en verde.
+- **Mutaciones.** Cada parte del fix apagada a mano en su propia copia desechable —nunca en el árbol de
+  trabajo—, comprobando que el texto mutado estuviera antes de correr:
+
+  | Mutación | Qué se apagó | Prueba que se puso roja |
+  |---|---|---|
+  | M1 | el prefijo vuelve a ser `path.basename(dir)` | «…se distinguen por el name declarado» y «el aviso distingue…» |
+  | M2 | la raíz sin `name` deja de caer a la carpeta | «…se distinguen por el name declarado» |
+  | M3 | el validador deja de exigir que el `name` sea único | «dos raíces con el mismo name se rechazan…» |
+  | M4 | el error no dice contra cuál entrada choca | «dos raíces con el mismo name se rechazan…» |
+  | M5 | `workspaceRoots` emite objetos en vez de rutas | «…se distinguen por el name declarado» |
+
+  Ninguna sobrevivió.
