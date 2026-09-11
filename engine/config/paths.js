@@ -10,7 +10,9 @@ const path = require('node:path')
 
 // `~` se expande sólo cuando es el prefijo entero. `~datos` es un nombre de directorio válido y no la
 // casa de nadie; expandirlo ahí convertiría una ruta relativa en una absoluta que el autor no escribió.
-function resolve(root, entry) {
+// La usa también el contrato de secretos para las rutas de sus identidades, por la misma razón que
+// arriba: una ruta declarada en un archivo del proyecto se resuelve igual la lea quien la lea.
+function resolvePath(root, entry) {
   return path.resolve(root, String(entry).replace(/^~(?=$|[/\\])/, os.homedir()))
 }
 
@@ -21,7 +23,7 @@ function resolve(root, entry) {
 function writableOutsideRoots(root, config) {
   const declared = config && Array.isArray(config.writableOutsideRoots) ? config.writableOutsideRoots : []
   return declared.filter((entry) => typeof entry === 'string' && entry.trim())
-    .map((entry) => ({ declared: entry, path: resolve(root, entry) }))
+    .map((entry) => ({ declared: entry, path: resolvePath(root, entry) }))
 }
 
-module.exports = { writableOutsideRoots }
+module.exports = { writableOutsideRoots, resolvePath }

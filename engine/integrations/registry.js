@@ -420,6 +420,7 @@ module.exports = {
   providerConfig,
   reconcile,
   safeSegment,
+  sensitivePath,
   sync,
   validate,
   writebackPlan,
