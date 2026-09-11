@@ -216,6 +216,7 @@ Lee [template/planning/PROTOCOL.md](template/planning/PROTOCOL.md) para el contr
 | `ops integration rebase <ops-root> jira KEY` | Recalcula el borrador canónico sin avanzar la base remota. |
 | `ops integration reconcile <ops-root> jira KEY` | Conserva curación sobre la nueva base remota. |
 | `ops integration writeback-plan <ops-root> jira` | Muestra escrituras posibles sin ejecutarlas. |
+| `ops secrets check <ops-root>` | Compara el contrato de secretos compartido contra cada servicio, sin conectarse. |
 | `ops automation list <ops-root>` | Lista adaptadores y su instalación. |
 | `ops automation list-hooks <ops-root>` | Describe los guards portables disponibles. |
 | `ops automation check <ops-root>` | Valida guards, permisos y configuraciones. |

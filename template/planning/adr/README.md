@@ -47,3 +47,4 @@ archivo lo mantiene Cauce, así que una fila agregada acá se perdería en el pr
 - [OPS-004](system/OPS-004-promocion-humana-y-evidencia-verificable.md): promoción controlada y verificable.
 - [OPS-005](system/OPS-005-catalogo-en-el-paquete.md): el catálogo viaja dentro del paquete.
 - [OPS-006](system/OPS-006-ceremonia-por-superficie.md): la ceremonia escala con la superficie del cambio.
+- [OPS-007](system/OPS-007-contrato-de-secretos-compartido.md): un contrato de secretos compartido, sin gestor.
