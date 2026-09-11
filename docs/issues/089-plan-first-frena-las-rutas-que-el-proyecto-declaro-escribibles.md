@@ -112,7 +112,8 @@ lo staged—. Pegar lo que el mensaje dice pasa a destrabar siempre, sin cambiar
 proponía. En sidecar rompe las aprobaciones de commit que hoy funcionan: el archivo se lee de la raíz de ops
 (`approval.js:33`, `read(root)` con `root = opsRoot(input)`), pero las rutas del índice son relativas al
 repositorio de producto, que en sidecar es otro. Una línea `openapi/api.yaml` se resolvería a
-`<ops>/openapi/api.yaml` y dejaría de coincidir. Registro: **leído en el código, no corrido**. Normalizar de
+`<ops>/openapi/api.yaml` y dejaría de coincidir. Registro: se leyó en el código y después se corrió —el cierre
+dice cómo—. Normalizar de
 verdad obliga a resolver cada línea contra **cada** base que el guard tenga a mano, y una aprobación
 relativa pasa a valer en dos lugares a la vez, que es una ampliación de alcance a decidir aparte.
 
@@ -167,7 +168,11 @@ commit —ésa era la forma en que se vio—: `verify` y `dependencies` no muest
 - **Lo que el arreglo no cambia, dicho para que no se lea de más**: el cotejo sigue aceptando una sola forma
   por guard. La reproducción del punto 2 da hoy lo mismo que antes, y es lo esperado: lo que cambió es que
   el mensaje dice cuál forma, y eso es lo que la prueba mide.
-- **Normalizar** — se decidió que no, con la razón que el caso ya tenía.
+- **Normalizar** — se decidió que no, y el dato que lo sostiene se corrió en la revisión de huecos previa al
+  merge. En un banco sidecar con el repositorio de producto aparte, `governance` frena sin aprobación y pasa
+  con `engine/x.js` en el `planning/.ops-approval` de la instancia; esa misma línea resuelta contra la raíz de
+  ops da `<banco>/acme-ops/engine/x.js`, y el archivo que el commit lleva es `<banco>/producto/engine/x.js`.
+  Normalizar así rompería la aprobación que hoy funciona.
 - **Tradeoff «el mensaje crece una línea por ruta»** — se cumple.
 - **Tradeoff «las rutas absolutas quedan a la vista»** — se cumple.
 - **Cada ítem de «Qué tiene que probar el cierre»** — hechos los cuatro, con las pruebas y mutaciones de

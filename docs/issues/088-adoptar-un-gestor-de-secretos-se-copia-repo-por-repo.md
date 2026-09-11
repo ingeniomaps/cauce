@@ -411,8 +411,9 @@ declaración en `organization/secrets.json`.
   M11 una clave desconocida pasa                 fail 1 → ROJA
   ```
 
-  Quitar `GIT_DIR` del entorno de `inRepository` no tiene mutación: ninguna prueba corre con esa
-  variable puesta, y esa rama queda sin observar.
+  Quitar `GIT_DIR` del entorno de `inRepository` no tenía mutación al cerrar. La revisión de huecos antes
+  del merge le agregó una prueba —el chequeo da lo mismo con y sin un `GIT_DIR` heredado que apunta a otro
+  repositorio— y la mutación que deja de quitarlo la pone en rojo (`fail 1`).
 - **Piloto real**: una instancia con los dieciséis repositorios como raíces y la copia arreglada como
   canónica. `node engine/cli/ops.js secrets check <piloto>` salió con código 1 y esto, recortado el `cp`
   de cada línea:

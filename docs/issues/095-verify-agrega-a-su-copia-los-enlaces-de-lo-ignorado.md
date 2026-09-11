@@ -102,8 +102,9 @@ línea (094). Las reproducciones hechas a mano no lo mostraban porque stageaban 
 
 - **Fix propuesto** — hecho: `commitTree` anota cada nombre que enlaza y lo escribe en `.git/info/exclude`
   de la copia, anclado a la raíz, antes del `add --all`.
-- **Tradeoff «un nombre con caracteres de glob»** — hecho: `*`, `?`, `[`, `]` y `\` se escapan. **No tiene
-  prueba**: ninguna prueba enlaza un ignorado con esos caracteres, así que esa rama queda sin observar.
+- **Tradeoff «un nombre con caracteres de glob»** — hecho: `*`, `?`, `[`, `]` y `\` se escapan. Al cerrar no
+  tenía prueba; la revisión de huecos previa al merge le agregó una —un ignorado llamado `cache[1]`, que sin
+  escapar sería un patrón que nombra `cache1`— y la mutación que quita el escape la pone en rojo (`fail 1`).
 - **Tradeoff «nada cambia para lo que el commit lleva»** — se cumple: la exclusión lista sólo lo enlazado, y
   la suite entera pasa bajo el guard con el arreglo (abajo).
 - **Relacionados** — el 093 se cierra en el mismo commit, porque ninguno pasa la puerta sin el otro; el 094
