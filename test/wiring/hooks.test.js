@@ -256,6 +256,29 @@ test('un guard no cruza el salto de línea, que también separa comandos', () =>
     'y ya no lo anuncia como una reescritura de historia publicada')
 })
 
+// Qué frenan los dos guards de credenciales, con los nombres conocidos y con una identidad declarada (caso 092).
+test('secrets y secrets-read frenan una credencial conocida o declarada, al escribirla y al leerla', () => {
+  const root = tempRoot('ops-hook-secretos-')
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.mkdirSync(path.join(root, 'organization'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded',
+    workspaceRoots: [{ name: 'main', path: '.' }] }))
+  const identity = path.join(tempRoot('ops-hook-secretos-casa-'), 'local-dev.env')
+  fs.writeFileSync(path.join(root, 'organization', 'secrets.json'), JSON.stringify({ schemaVersion: 1,
+    identities: { 'local-dev': { account: 'principal', source: 'file', file: identity } } }))
+  const at = (file) => ({ cwd: root, tool_input: { file_path: file } })
+
+  blocked('secrets', at(identity), /identidad declarada/)
+  for (const file of [path.join(root, '.env'), path.join(root, 'id_ed25519'), identity]) {
+    blocked('secrets-read', at(file), /leerla/)
+  }
+  assert.doesNotThrow(() => execute('secrets-read', at(path.join(root, '.env.example'))))
+  assert.doesNotThrow(() => execute('secrets-read', at(path.join(root, 'src', 'app.js'))))
+  // Sin declaración, un nombre que no parece credencial vuelve a ser un archivo cualquiera.
+  fs.rmSync(path.join(root, 'organization', 'secrets.json'))
+  assert.doesNotThrow(() => execute('secrets', at(identity)))
+})
+
 test('guards de archivos protegen secretos y snapshots, pero permiten plantillas y drafts', () => {
   blocked('secrets', { tool_input: { file_path: '/project/.env.production' } }, /parece contener secretos/)
   blocked('secrets', { tool_input: { patch: '*** Begin Patch\n*** Add File: .env\n+TOKEN=x\n*** End Patch' } },

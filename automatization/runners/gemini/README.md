@@ -19,6 +19,7 @@ instalación vieja, `.gemini/commands/ops/` queda huérfano y se borra a mano.
 
 Gemini CLI tiene hooks nativos y el adaptador los usa: `BeforeTool` y `AfterAgent` en
 `.gemini/settings.json`, declarados en `manifest.json`. Sólo corren si la carpeta está marcada como
-confiable —`GEMINI.md` explica qué avisa Gemini cuando no lo está—.
+confiable —`GEMINI.md` explica qué avisa Gemini cuando no lo está—. `read_file` pasa por
+`guard-secrets-read.sh`, que frena leer una credencial; un `cat` por `run_shell_command` no lo ve.
 
 Comprueba la instalación con `node tools/ops.js automation doctor . gemini`.

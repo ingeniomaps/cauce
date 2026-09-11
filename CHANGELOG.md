@@ -18,6 +18,19 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Leer una credencial también se frena, y las identidades declaradas cuentan como credencial.** Un guard
+  nuevo, `secrets-read`, corre en la herramienta de lectura de Claude (`Read`) y de Gemini (`read_file`) y
+  frena los mismos archivos que `secrets` frena al escribir. Esos archivos ahora incluyen las identidades
+  `source: file` de `organization/secrets.json`, que antes pasaban por no tener nombre de credencial. En
+  Claude, además, la instalación agrega reglas `permissions.deny` `Read(...)` que el propio Claude aplica
+  también a `cat`, `head`, `tail`, `sed` y redirecciones.
+
+  **Qué cambia para vos**: el agente deja de poder leer `.env`, claves y tokens conocidos; `.env.example`
+  sigue legible. Si una lectura hace falta, aprobá la ruta en `planning/.ops-approval`. Corré
+  `automation install` para que tu `.claude/settings.json` reciba las reglas: se suman a las tuyas. No es un
+  límite de seguridad —un `grep -r` o un script propio siguen leyendo—, y en Codex y Antigravity no hay guard
+  de lectura.
+
 - **Un proveedor de integraciones propio, sin tocar Cauce.** El registro de `integrations/config.json`
   ya tenía un campo `adapter` que nadie leía: ahora `"adapter": "./adapter.js"` carga el adaptador de la
   empresa desde `integrations/<nombre>/`, e `integration enable` lo conecta sin exigir un molde de Cauce.
