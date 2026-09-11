@@ -1,14 +1,15 @@
 ---
 caso: 108
 titulo: `allowPush: true` deja pasar cualquier push: a la rama viva, y de un subagente igual que de la persona
-estado: abierto
+estado: resuelto
+resuelto-en: 0.82.0
 prioridad: media
 version-detectada: 0.80.0
 ---
 
 # 108 — Prender `allowPush` para un push habilita todos, incluido `main` desde un subagente
 
-**🔴 abierto** · detectado en 0.80.0, sigue en 0.81.0 · prioridad **media** — el único permiso que hay para
+**🟢 resuelto en 0.82.0** · detectado en 0.80.0 · prioridad **media** — el único permiso que hay para
 publicar no mira a dónde ni quién, así que un proyecto que lo prende para que el loop suba ramas de trabajo
 también deja que cualquier agente publique en la rama viva
 
@@ -130,3 +131,86 @@ sonda sobre 0.81.0 mostró lo contrario (E), además del subagente (G).
   `allowPush`.
 - **109** — se abre en paralelo sobre «nombrar no es pedir»; relevante si P2 deja que la orden del chat
   alcance la rama viva.
+
+## Cierre
+
+**🟢 resuelto en 0.82.0** · `engine/hooks/push.js` (nuevo), `engine/hooks/shell.js`, `engine/config/validate.js`,
+`engine/schemas/ops-config.schema.json`, `template/AGENTS.md`, R10
+
+### Contra lo que el caso enumeró
+
+- **Fix 1, la rama viva** — hecho. Son vivas `main`, `master` y la rama por defecto de cada remoto, que se lee
+  de `refs/remotes/<remoto>/HEAD`: la escribe el `clone` y la cambia `git remote set-head`, así que el proyecto
+  la declara sin un campo nuevo. Verificado con git 2.43.0: clonar un bare cuya rama es `develop` deja
+  `origin/HEAD` en `origin/develop`. `main` y `master` cuentan siempre porque un remoto agregado a mano no
+  anota nada. Publicar todas las ramas (`--all`, `--branches`, `--mirror`) y borrar la viva (`:main`,
+  `--delete main`) cuentan como publicar en ella.
+- **Fix 2, un subagente** — hecho, y absoluto: con `agent_id` el push se frena antes de mirar cualquier
+  permiso, incluida una línea de `.ops-approval`.
+- **P2** — el usuario eligió que ni la orden del chat ni `allowPush` alcanzan la rama viva sin un permiso por
+  rama. Es `runner.pushToLiveBranches`, una lista de nombres exactos, opcional —las configuraciones de hoy
+  siguen siendo válidas— y validada sin patrones. Una rama nombrada ahí queda como una de trabajo: la alcanzan
+  `allowPush`, la orden del chat o el «dale». La línea exacta de `.ops-approval` alcanza la viva aun sin la
+  lista, como recomendaba el propio caso: la escribe una persona a mano, y los guards de límites no dejan que
+  el agente se la escriba.
+- **P4** — le tocaba a otro: salió como **112**.
+- **Tradeoff «rompe a quien usa `allowPush: true` para publicar en `main`»** — se cumple, y es un cambio de
+  conducta: el mensaje nombra `runner.pushToLiveBranches` y la línea exacta, y la entrada del CHANGELOG lo
+  declara así.
+- **Tradeoff «qué es la rama viva»** — decidido arriba: lo que git ya anota del remoto, más `main` y `master`,
+  sin consultar al remoto desde un guard.
+- **Tradeoff «frenar al subagente»** — se cumple: el mensaje manda a devolverle el resultado a la sesión
+  principal, que es la que publica.
+- **Cada ítem de «Qué tiene que probar el cierre»**:
+  - E en `exit=2` con un mensaje que nombra qué lo habilita, y `git push origin feat/x` con `allowPush: true`
+    en `exit=0`; la quita tiene su aserción de ausencia y se vio en rojo devolviendo el permiso ancho (M4);
+  - G en `exit=2`, y sin `agent_id` sobre una rama de trabajo pasa (W); ignorar `agent_id` sale rojo (M3);
+  - F sigue en `exit=2` con el mensaje de R8;
+  - el permiso por rama y la línea destraban `main` (E2, E4) y la orden del chat sola no (L1); con la rama
+    nombrada, la orden sí (E3);
+  - los dependientes de la quita: se repitió `grep -rn allowPush` sobre `template/`, `automatization/hooks/`,
+    `automatization/workflows/` y `engine/hooks/run.js`. Los dos que el caso nombraba se corrigieron
+    —`template/AGENTS.md` y R10 ahora dicen hasta dónde llega la llave—; `template/ops.config.json`
+    (`"allowPush": false`) y `onboard.js` («hoy declara runner.allowPush=false») siguen siendo ciertos, y no
+    apareció un tercero.
+
+### Lo que el caso no preveía
+
+- **El agente puede escribirse el permiso.** Ningún guard mira `ops.config.json`: en el banco, un `Edit` del
+  archivo y un `sed -i` sobre él pasan los dos (`exit=0` en `pre-files` y en `pre-shell`). Con `allowPush` ya
+  era así —el 103 lo dejaba en la conducta del agente—, y ahora el bloqueo de la rama viva le nombra la llave
+  exacta. Protegerlo es una decisión de producto —el mismo archivo lleva `workspaceRoots` y
+  `writableOutsideRoots`, que se editan como trabajo corriente— y no le toca a este caso: queda para que el
+  usuario decida si sale como caso propio. Lo que sí se hizo acá es que el mensaje deje el permiso como cosa
+  de la persona.
+- **El `+rama` del refspec era un force que `allowPush` dejaba pasar**; lo cuenta el cierre del 103.
+
+### Qué se corrió
+
+- **El rojo previo**: 8 de 97 sobre `git archive` de `437170a8`, entre ellas las dos pruebas de antes que
+  aserciaban que `allowPush: true` publicaba en `main`, ahora con su aserción de ausencia.
+- **La reproducción del propio caso** con el arreglo, ampliada:
+
+  ```
+  E allowPush true, push main                               : exit=2 BLOQUEADO: 'git push' publica cambios en main, la rama viva, y requiere una acción humana:
+  F allowPush true, push --force                            : exit=2 BLOQUEADO: 'git push --force' reescribe historia ya publicada. R8 lo prohíbe y runner.allo
+  F2 allowPush true, push +feat/x                           : exit=2 BLOQUEADO: 'git push --force' reescribe historia ya publicada. R8 lo prohíbe y runner.allo
+  G allowPush true, agent_id=sub, push main                 : exit=2 BLOQUEADO: 'git push' desde un subagente no se publica, con ningún permiso: publicar lo de
+  G2 allowPush true, agent_id=sub, push feat/x              : exit=2 BLOQUEADO: 'git push' desde un subagente no se publica, con ningún permiso: publicar lo de
+  W allowPush true, push feat/x                             : exit=0
+  E2 allowPush true + pushToLiveBranches [main], main       : exit=0
+  E3 allowPush false + [main] + «subí main a origin»        : exit=0
+  E4 .ops-approval «push origin main», sin lista            : exit=0
+  L1 «subí main a origin», allowPush false                  : exit=2 BLOQUEADO: 'git push' publica cambios en main, la rama viva, y requiere una acción humana:
+  ```
+
+  Sobre el código de antes, E, F2, G y G2 daban `exit=0`.
+- **Las mutaciones** son las diecisiete del 103, una sola tanda; las de este caso son M3, M4, M5, M8, M14,
+  M15 y M16, todas rojas.
+- **En vivo**, en el mismo banco del 103: «Subí main a origin.» → `git push origin main` BLOQUEADO, y el
+  «dale» de la misma sesión no lo destraba; el `main` del remoto quedó en `694c314` en las dos corridas. La
+  primera, con el mensaje anterior, terminó con el agente intentando escribirse la aprobación; la segunda,
+  con el mensaje nuevo, le pidió a la persona que la escriba. La segunda arrancó con un `package-lock.json`
+  modificado por la reinstalación del paquete, y el agente frenó por eso antes del «dale»; no cambia lo que
+  se medía, que es el push.
+- `npm run ci`: la misma corrida que la del 103, código 0 y 708 de 708.
