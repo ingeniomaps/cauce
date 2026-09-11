@@ -34,6 +34,13 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **El bloqueo de `verify` cita la prueba que falló.** Mostraba la primera línea de la salida que dijera
+  «error», y en un reporte de pruebas ésa puede ser una verde cuyo nombre lo dice. Ahora, con la salida de
+  `node --test` —spec y TAP— y de `go test`, cita la primera prueba en rojo; con otras herramientas sigue
+  buscando por palabra, pero ya no elige una línea marcada como verde.
+
+  **Qué cambia para vos**: el mensaje apunta a la prueba que hay que mirar.
+
 - **Cada bloqueo con salida angosta dice qué líneas pegar.** Aprobar en `planning/.ops-approval` sólo
   funciona si la ruta está escrita en la forma que ese guard coteja —absoluta la de un `Write`, relativa
   al repositorio la de un commit—, y el mensaje decía «escribí esa(s) ruta(s)» sin nombrarlas. `verify`

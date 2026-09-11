@@ -522,6 +522,11 @@ function verify(input) {
 // Se muestra **una** línea y acotada: la salida de un gate puede traer cualquier cosa del entorno, y lo
 // que hace falta para diagnosticar es la primera línea de error, no el volcado.
 const ERROR_LINE = /error|err[_!]|fail|abort|not found|cannot|no such/i
+// Cómo marca un reporte de pruebas cada resultado: `node --test` en spec y en TAP, y `go test`. Van sólo
+// las comprobadas contra la herramienta (caso 094): el nombre de una prueba verde puede decir «error», y
+// sin mirar la marca la búsqueda por palabra se quedaba con ella y el mensaje escondía la roja.
+const FAILED_TEST = /^(?:✖|not ok\b|--- FAIL:)/
+const PASSED_TEST = /^(?:✔|ok\b|--- PASS:)/
 const MAX_LINE = 160
 function fallo(gate, result) {
   // La línea que empieza con `>` es el eco del script que npm y pnpm imprimen antes de correrlo, así
@@ -530,7 +535,8 @@ function fallo(gate, result) {
   // palabra de error gana siempre.
   const lines = (result.output || '').split('\n').map((one) => one.trim())
     .filter((one) => one && !one.startsWith('>'))
-  const line = lines.find((one) => ERROR_LINE.test(one)) || lines[0] || ''
+  const line = lines.find((one) => FAILED_TEST.test(one))
+    || lines.find((one) => !PASSED_TEST.test(one) && ERROR_LINE.test(one)) || lines[0] || ''
   return { gate, status: result.status, ms: result.ms, line: line.slice(0, MAX_LINE) }
 }
 
