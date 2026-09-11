@@ -1477,6 +1477,39 @@ test('guard-plan-first no juzga lo que la instancia posee', () => {
   assert.doesNotThrow(() => escribe('integrations/jira/staging/draft.md'))
   // Un directorio que sólo empieza igual no es la raíz exenta.
   blocked('plan-first', { cwd: root, tool_input: { file_path: 'planningtool/app.js' } }, /sin plan/)
+  // En embedded la raíz de ops es la del producto: su configuración no es producto, su `package.json` sí.
+  assert.doesNotThrow(() => escribe('ops.config.json'))
+  blocked('plan-first', { cwd: root, tool_input: { file_path: 'package.json' } }, /sin plan/)
+})
+
+test('guard-plan-first no juzga la instancia sidecar ni lo que queda fuera de las raíces', () => {
+  const base = tempRoot('ops-hook-plan-sidecar-')
+  const root = path.join(base, 'acme-ops')
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  writeWip(path.join(root, 'planning'), WIP_IDLE)
+  fs.writeFileSync(path.join(root, 'planning', 'BACKLOG.md'), BACKLOG_CON_TAREA)
+  const declare = (workspaceRoots) => fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ mode: 'sidecar', workspaceRoots }))
+  const write = (file) => ({ cwd: root, tool_input: { file_path: file } })
+  const instance = ['ops.config.json', 'AGENTS.md', 'CLAUDE.md', 'package.json', '.gitignore']
+    .map((name) => path.join(root, name))
+  const service = path.join(base, 'app', 'src', 'a.js')
+
+  // La raíz que escribe `init` en sidecar deja a la instancia adentro, y eso no la vuelve producto.
+  declare([{ name: 'main', path: '..' }])
+  for (const file of instance) assert.doesNotThrow(() => execute('plan-first', write(file)), file)
+  blocked('plan-first', write(service), /sin plan/)
+
+  // Con una raíz más angosta, lo que queda fuera de ella tampoco: es lo que el proyecto declaró escribible.
+  declare([{ name: 'app', path: '../app' }])
+  for (const file of instance) assert.doesNotThrow(() => execute('plan-first', write(file)), file)
+  assert.doesNotThrow(() => execute('plan-first', write(path.join(base, 'otra-herramienta', 'caso.md'))))
+  blocked('plan-first', write(service), /sin plan/)
+
+  // Sin raíces legibles no hay contra qué comparar: frena como antes, que es el lado de errar.
+  declare(undefined)
+  blocked('plan-first', write(path.join(root, 'AGENTS.md')), /sin plan/)
+  blocked('plan-first', write(service), /sin plan/)
 })
 
 test('guard-plan-first queda inerte mientras el planning no declara tareas', () => {
