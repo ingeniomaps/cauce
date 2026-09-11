@@ -138,6 +138,19 @@ test('un proveedor propio se declara con una ruta y es el que corre', async () =
   await assert.rejects(I.sync(root, 'tablero', { fixture }), /normalizó el adaptador de tablero/)
 })
 
+// El README promete que el adaptador puede ser ESM, y lo cumple Node cargando ESM con `require`: esta
+// prueba fija esa promesa en la suite en vez de dejarla en una sonda (caso 091).
+test('un adaptador propio escrito en ESM se carga igual', () => {
+  const root = ownProvider('./adapter.mjs')
+  fs.writeFileSync(path.join(root, 'integrations', 'tablero', 'adapter.mjs'), [
+    'export const contract = 1',
+    'export function validateConfig() {}',
+    'export async function fetchItems() { return [] }',
+    'export function normalizeFixture() { return [] }',
+  ].join('\n'))
+  assert.deepEqual(I.validate(root).errors, [])
+})
+
 // Los errores de `check` sobre un proveedor, para comparar contra el que se espera y mostrarlos si no está.
 const checkErrors = (root) => I.validate(root).errors
 
