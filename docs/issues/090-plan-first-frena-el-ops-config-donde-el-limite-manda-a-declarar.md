@@ -225,3 +225,31 @@ El operador eligió B con A adentro el 2026-09-11, antes de construir.
   M6 el llamador vuelve a opsOwned               fail 2 → ROJA
   ```
 - `npm run ci`: código 0, 680 de 680, cobertura de 58 archivos en su piso o por encima.
+
+## Después del cierre: el argumento de `upgrade`, medido (2026-09-11)
+
+El cierre dejó sin tomar el argumento de frenar `AGENTS.md` y `Makefile` porque «son del molde y `upgrade` los
+reescribe», sin abrir caso y sin medirlo. La premisa es una afirmación de mecanismo, así que se corrió.
+
+Una instancia sidecar hecha con el paquete publicado 0.80.0 (`npx @ingeniomaps/cauce@0.80.0 init …`) y
+actualizada con el paquete empaquetado de `main` = `efd22905`, cuyo `AGENTS.md` del molde cambió con el 098.
+Cada escenario, sobre su propia copia de la instancia:
+
+```
+U1 sin ediciones        upgrade → exit 0; AGENTS.md trae el molde nuevo
+U2 AGENTS.md y Makefile editados
+   upgrade --check      → exit 1: «editado localmente: AGENTS.md», «editado localmente: Makefile»
+   upgrade              → exit 0: «= 2 archivo(s) conservados por tu edición», ofrece --force;
+                          las dos ediciones siguen ahí y AGENTS.md no recibe el molde nuevo
+U3 las mismas ediciones
+   upgrade --force      → exit 0: «− descartado tu cambio en AGENTS.md», «− descartado tu cambio en Makefile»
+```
+
+`upgrade` sólo reescribe la copia que nadie tocó. Una editada la conserva y lo dice, y la única forma de
+perderla es pedirlo con `--force`, que deja escrito qué descartó. El costo real de editar esos archivos es
+otro, y ya está dicho: dejan de recibir las mejoras del molde, y `upgrade` avisa en cada corrida y dice
+adónde mover lo propio.
+
+**Se decidió que no**: un guard que frenara editar `AGENTS.md` o `Makefile` con «esto lo pisa el próximo
+upgrade» protegería contra algo que no pasa, y limitaría a quien edita a propósito. El dato que sostiene la
+decisión son las tres corridas de arriba.
