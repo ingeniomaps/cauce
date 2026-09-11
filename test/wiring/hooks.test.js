@@ -1327,6 +1327,27 @@ test('lo que verify enlaza a la copia no entra a su índice', () => {
   assert.ok(!tracked.includes('cache'), `el enlace entró al índice de la copia: ${tracked.join(', ')}`)
 })
 
+test('lo que verify enlaza se excluye por su nombre literal, aunque tenga caracteres de glob', () => {
+  const root = tempRoot('ops-hook-verify-glob-')
+  initRepo(root)
+  // `cache[1]` sin escapar es un patrón que nombra cache1, no este directorio.
+  fs.writeFileSync(path.join(root, '.gitignore'), 'cache\\[1\\]/\n')
+  fs.mkdirSync(path.join(root, 'cache[1]'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'cache[1]', 'dato.txt'), 'entorno\n')
+  const visto = path.join(tempRoot('ops-hook-verify-glob-visto-'), 'trackeado.txt')
+  fs.writeFileSync(path.join(root, 'gate.js'), `require('node:fs').writeFileSync(${JSON.stringify(visto)}, `
+    + `require('node:child_process').execSync('git ls-files', { encoding: 'utf8' }))\n`)
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node gate.js' } }))
+  fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = 1\n')
+  git(['add', '.gitignore', 'gate.js', 'package.json', 'app.js'], root)
+  fs.writeFileSync(path.join(root, 'notas.txt'), 'suelto: obliga a materializar la copia\n')
+
+  assert.doesNotThrow(() => execute('verify', { cwd: root, tool_input: { command: 'git commit -m x' } }))
+  const tracked = fs.readFileSync(visto, 'utf8').split('\n').filter(Boolean)
+  assert.ok(tracked.includes('app.js'), `el gate no corrió sobre la copia: ${tracked.join(', ')}`)
+  assert.ok(!tracked.includes('cache[1]'), `el enlace entró al índice de la copia: ${tracked.join(', ')}`)
+})
+
 // Un gate mide para poder decir «esto pasa», y lo que va a quedar es el índice, no el árbol. Las dos
 // mitades de `verify` respondían a preguntas distintas: elegía qué correr mirando el índice y corría
 // sobre el disco. El sentido que importa es el silencioso — se stagea algo roto, se arregla el archivo
