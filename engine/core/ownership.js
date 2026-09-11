@@ -8,6 +8,9 @@
 const fs = require('node:fs')
 const path = require('node:path')
 
+// El paquete que corre: contra él se decide qué del runtime es una entrega de Cauce (casos 100 y 110).
+const PACKAGE_ROOT = path.resolve(__dirname, '..', '..')
+
 // Archivos de los que el toolkit es único autor. Un proyecto que necesite cambiarlos no los
 // edita: agrega una regla propia junto a las de `system/`, que sí sobrevive al upgrade.
 const SYSTEM_FILES = [
@@ -302,7 +305,7 @@ function localChanges(root) {
   for (const target of trackedPaths()) {
     const dir = path.join(root, target)
     if (!fs.existsSync(dir)) continue
-    for (const file of manifest.edited(root, target, treeFiles(dir))) changed.push(`${target}/${file}`)
+    for (const file of manifest.edited(root, target, deliveredFiles(root, target))) changed.push(`${target}/${file}`)
   }
   // Los archivos sueltos del sistema entran por la misma puerta. Quedaban afuera, así que `upgrade`
   // los reemplazaba en silencio: un cargo escribió el índice de ADR que el propio README le pedía
@@ -311,8 +314,46 @@ function localChanges(root) {
   return changed
 }
 
+// Lo que el paquete que corre trae en una ruta del runtime. El resto de esa carpeta es de la empresa —un
+// guard propio—, y no es una entrega: registrado, pasaba a «editado» en cuanto la empresa lo tocaba, y
+// `upgrade --check` salía con 1 por algo que nunca fue de Cauce (caso 100).
+function shippedFiles(relative) {
+  return new Set(treeFiles(path.join(PACKAGE_ROOT, sourceOf(relative))))
+}
+
+// Lo que de una ruta rastreada cuenta como entregado: todo, salvo en el runtime, donde sólo lo que el
+// paquete trae. Lo usan el registro de `init` y de `upgrade` y la detección de ediciones, que tienen que
+// contar lo mismo.
+function deliveredFiles(root, relative) {
+  const files = treeFiles(path.join(root, relative))
+  return RUNTIME_PATHS.includes(relative) ? files.filter((file) => shippedFiles(relative).has(file)) : files
+}
+
+// Lo que el paquete empieza a traer con un nombre que la instancia ya usaba para algo suyo: un guard propio
+// que se llama como uno nuevo del toolkit (caso 110). Sin huella en el registro no cuenta como edición, así
+// que copiar encima lo borraba sin decirlo. Sólo si el registro ya conoce la ruta: en una instancia
+// anterior al registro, «sin huella» también es «lo entregó una versión vieja».
+function collisions(root) {
+  const manifest = require('./manifest')
+  const recorded = manifest.read(root)
+  const found = []
+  for (const relative of RUNTIME_PATHS) {
+    if (!Object.keys(recorded).some((key) => key.startsWith(`${relative}/`))) continue
+    for (const file of shippedFiles(relative)) {
+      const local = path.join(root, relative, file)
+      if (recorded[`${relative}/${file}`] || !fs.existsSync(local)) continue
+      const shipped = path.join(PACKAGE_ROOT, sourceOf(relative), file)
+      if (manifest.digest(local) !== manifest.digest(shipped)) found.push(`${relative}/${file}`)
+    }
+  }
+  return found
+}
+
 module.exports = {
   RETIRED,
+  collisions,
+  deliveredFiles,
+  shippedFiles,
   RETIRED_COMPARTIDO,
   TEMPLATE_OWN,
   TEMPLATE_PREFIXES,

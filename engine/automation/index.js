@@ -51,7 +51,15 @@ function check(root) {
       errors.push(`falta automatization/workflows/${name}: corré "npm install" en la raíz del repo ops`)
     }
   }
+  // Un choque que `upgrade` conservó (caso 110) también queda distinto del paquete, y mandarlo a correr
+  // `upgrade` era una vuelta sin salida: lo conservaría otra vez. Se dice qué es y qué hacer.
+  const choques = new Set(O.collisions(root))
   for (const { file, edited } of staleHooks(root)) {
+    if (choques.has(`automatization/hooks/${file}`)) {
+      errors.push(`automatization/hooks/${file}: es tuyo y se llama como uno que trae el paquete, así que el `
+        + "del paquete no está instalado; renombrá el tuyo y corré `cauce upgrade`")
+      continue
+    }
     errors.push(edited
       ? `automatization/hooks/${file}: lo editaste y es del toolkit; agregá un guard propio al lado `
         + 'o descartá tu cambio con `cauce upgrade --force`'
