@@ -1,14 +1,15 @@
 ---
 caso: 106
 titulo: El INBOX no tiene salida más que el borrado a mano, y descomentar su recurrencia deja check en rojo
-estado: abierto
+estado: resuelto
+resuelto-en: 0.82.0
 prioridad: media
 version-detectada: 0.80.0
 ---
 
 # 106 — Del INBOX se sale sólo a mano, y la recurrencia que lo recordaría no pasa `check`
 
-**🔴 abierto** · detectado en 0.80.0, reproducido en 0.81.0 · prioridad **media** — nada se rompe; lo
+**🟢 resuelto en 0.82.0** · detectado en 0.80.0, reproducido en 0.81.0 · prioridad **media** — nada se rompe; lo
 promovido y lo resuelto se queda en el INBOX hasta que alguien se acuerde, y la única ayuda que trae el
 molde falla `check` el día que se la activa
 
@@ -202,3 +203,101 @@ de `init`» también nacía vencida.
   un INBOX más largo.
 - **062** — la recurrencia vencida no la promueve el runner: el vencimiento avisa, y promover sigue siendo
   de una persona. Es lo que hace que activar la fila no limite a nadie.
+
+## Cierre
+
+**🟢 resuelto en 0.82.0** · `template/planning/RECURRING.md`, `engine/planning/recurring.js`,
+`engine/cli/instance.js`, `engine/planning/inbox.js`; cerrado junto con el 101
+
+### Contra lo que el caso enumeró
+
+**Las dos decisiones**, tomadas por el usuario el 2026-09-11:
+
+- **Pregunta 1 — A: una entrada del INBOX no tiene estado.** Sale borrándola, como hoy; `git log -p` es el
+  archivo. No se construye `archive inbox` y su mensaje no cambia (abajo, `archive-exit=2` con el mismo texto
+  en la rama).
+- **Pregunta 2 — la recurrencia viene activa.**
+
+**Fix propuesto**, con las dos recomendaciones:
+
+1. **La fila `inbox` fuera del comentario, con `Desde` = día de `init` + 3 meses y `(service: planning)`** —
+   hecho, y el «`init` la escribe» se hizo distinto: el molde lleva `Desde` como marcador,
+   `{{INBOX_SINCE}}`, y lo reemplazan `init` y también `upgrade` cuando crea el archivo que falta, con los
+   mismos reemplazos que ya hacían para `{{PROJECT_NAME}}`. La fecha sale de `RC.sinceValues`, un solo lugar
+   para los dos. `upgrade` no toca un `RECURRING.md` que ya existe: es `upgrade` en `TEMPLATE_OWN`, que crea
+   si falta y nunca pisa.
+2. **Las otras tres filas de ejemplo declaran `(service: …)`** — hecho: `deps` y `costos` con `.`, `accesos`
+   con `organization`, que es donde vive lo que su aceptación mira. Descomentadas, `check` sale 0. Siguen
+   naciendo vencidas —una advertencia— porque sus `Desde` son fechas de ejemplo; se decidió dejarlas así, y
+   que lo que cambie sea la prosa: la descripción de **Desde** dice ahora que es la primera fecha en que vence,
+   no el día en que se escribe la fila, que es el dato que el caso midió y que el molde no decía.
+3. **`check` avisa una entrada cuyo nombre es el slug de un `done/<slug>.md`** — hecho, como advertencia, en
+   `engine/planning/inbox.js`, junto al aviso de tamaño del 101.
+4. **No hay `archive inbox`** — confirmado, por la decisión 1.
+
+**Tradeoffs**: los cuatro valen como estaban descritos. El cuarto se comprobó leyendo `upgrade`: una instancia
+con `RECURRING.md` no recibe la fila, así que el CHANGELOG dice cómo agregarla a mano.
+
+**Qué tiene que probar el cierre**
+
+- **Recién creada: fila activa y `check` en 0 sin aviso de vencimiento, roja con `Desde` = día de `init`** —
+  prueba nueva en `recurring.test.js`; M16 (`sinceValues` devuelve el día de hoy) la pone roja.
+- **Descomentar cada fila de ejemplo deja `check` en 0** — prueba nueva, una instancia por fila; M19 (`deps`
+  sin `service`) la pone roja. Y la reproducción del caso, abajo.
+- **`check` advierte el nombre que coincide con `done/`, sale 0 y calla ante uno que no coincide** — prueba
+  nueva en `planning.test.js`, roja con M13 (sin aviso) y con M14 (avisa cualquier nombre).
+- **La decisión 1 queda escrita en el cierre** — arriba: A.
+
+### Lo que el caso no preveía
+
+- **El molde es además el planning del toolkit**, y `npm run check` lo valida: un marcador en `Desde` es un
+  error para `validate`. `validate` tolera ahora un `Desde` que sea exactamente un marcador `{{…}}` —el mismo
+  criterio con que `check` saltea un `ops.config.json` que todavía tiene `{{`—, y `status` lo descarta por
+  fecha, así que en el molde no vence. M23 (sin esa tolerancia) pone roja «la plantilla canónica pasa el
+  validador». Una prueba unitaria fija que una fecha mal escrita sigue siendo error.
+- **Un marcador sin resolver no se vería nunca** en una instancia, justamente por esa tolerancia. Por eso
+  `instance.test.js`, que ya buscaba marcadores sin resolver después de `init`, busca también
+  `{{INBOX_SINCE}}` —M17 la pone roja—, y la prueba del `upgrade` que crea el archivo comprueba la fecha
+  resuelta —M18 la pone roja—.
+
+### Qué se corrió
+
+- **La reproducción del caso** —`b106.sh`: `init`, `archive inbox`, `check`, `recurring` y cada fila de
+  ejemplo descomentada por separado— sobre `git archive HEAD`:
+
+  ```
+  archive-exit=2
+  55:| inbox | trimestral | 2026-08-01 | Recorrer el INBOX entero. _Aceptación: …_ |
+  check=0
+  = RECURRING.md no declara ninguna fila legible
+  ✗ RECURRING.md deps: la tarea no declara (service: <ruta>)          check-deps=1
+  ✗ RECURRING.md accesos: la tarea no declara (service: <ruta>)       check-accesos=1
+  ✗ RECURRING.md costos: la tarea no declara (service: <ruta>)        check-costos=1
+  ```
+
+  Sobre la rama, el 2026-09-11:
+
+  ```
+  Sólo se archiva `human-actions`. La evidencia de una tarea ya vive en su propio archivo de `done/`, así que archivar una épica dejó de tener sentido.
+  archive-exit=2
+  51:| inbox | trimestral | 2026-12-11 | Recorrer el INBOX entero. _Aceptación: ninguna viñeta queda sin decisión de promover, dejar o borrar._ (service: planning) |
+  ✓ planning válido: 0 épica(s), 0 tarea(s) en cola, 0 terminada(s)
+  check=0
+  OK   inbox            vence 2026-12-11  (nunca corrió)
+  ⚠ RECURRING.md: deps vencida hace 10 día(s) (2026-09-01)           check-deps=0
+  ⚠ RECURRING.md: accesos vencida hace 72 día(s) (2026-07-01)        check-accesos=0
+  ⚠ RECURRING.md: costos vencida hace 10 día(s) (2026-09-01)         check-costos=0
+  ```
+
+  Y `npm run check` sobre el molde, con el marcador sin resolver: `✓ planning válido`, código 0.
+- **El rojo previo**: las pruebas nuevas sobre `git archive HEAD` fallan —la fila no está, los ejemplos
+  rompen `check`, `sinceValues` no existe—.
+- **Mutaciones**, en una copia desechable y todas rojas: M13 (sin aviso por nombre en `done/`), M14 (avisa
+  todo nombre), M16 (`Desde` = día de `init`), M17 (`init` no resuelve la fecha), M18 (`upgrade` no la
+  resuelve), M19 (ejemplo sin `service`), M23 (`validate` sin tolerar el marcador). Las del 101, en su cierre.
+- **La cobertura de `recurring.js`**: con el cambio, las ramas bajaron de 100% a 96% sin que ninguna línea
+  nueva quedara afuera —medido con el reporte lcov de `recurring.test.js` sola: 49/49 en la base, 50/52 en la
+  rama—. Las dos que ya no se recorrían son anteriores al caso —la fila sin nombre y la celda que no arma
+  línea—; por qué la cobertura empezó a contarlas no se estableció. Se fijaron con una prueba de esa conducta,
+  que pasa también sobre la base, y el piso quedó en 100.
+- **La puerta**: `npm run ci`, código 0 — 717 pruebas, 0 fallas, 62 archivos en su piso de cobertura.
