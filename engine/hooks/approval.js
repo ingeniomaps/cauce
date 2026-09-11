@@ -20,9 +20,14 @@
 //
 // Queda a la vista porque `check` avisa mientras exista. Sin eso, un archivo olvidado sigue autorizando
 // esas mismas rutas la próxima vez que alguien las stagee, que es la puerta abierta que esto evitaba.
+//
+// El archivo es la vía de cuando no hay chat. Con una persona hablando, lo que ella pidió ya está
+// aprobado —cómo se sabe, en `chat.js`—, y escribir el archivo deja de ser necesario (caso 098).
 
 const path = require('node:path')
 const fs = require('node:fs')
+const { opsRoot, cwdOf } = require('./input')
+const CHAT = require('./chat')
 
 const APPROVAL = '.ops-approval'
 
@@ -35,10 +40,23 @@ function read(root) {
 }
 
 // Qué queda sin aprobar de lo que un guard está por bloquear. Se reporta sólo eso: mandar a revisar lo
-// que ya se aprobó es lo que hace que la próxima vez nadie lea el mensaje.
-function pending(root, files) {
+// que ya se aprobó es lo que hace que la próxima vez nadie lea el mensaje. Cuenta también lo que la
+// persona pidió en el chat.
+function pending(root, files, input) {
   const approved = new Set(root ? read(root) : [])
-  return files.filter((file) => !approved.has(file))
+  return CHAT.unauthorized(input, files.filter((file) => !approved.has(file)))
+}
+
+// El archivo que el guard va a leer, nombrado desde la carpeta en la que está la sesión. En sidecar la
+// sesión se abre en el workspace y la instancia es una subcarpeta, así que `planning/` a secas nombraba
+// otro directorio y pegar ahí no destrababa nada (caso 097).
+function where(input) {
+  const root = opsRoot(input)
+  if (!root) return `planning/${APPROVAL}`
+  const file = path.join(root, 'planning', APPROVAL)
+  const session = process.env.CLAUDE_PROJECT_DIR || process.env.GEMINI_PROJECT_DIR || cwdOf(input)
+  const relative = path.relative(session, file)
+  return relative && !relative.startsWith('..') && !path.isAbsolute(relative) ? relative : file
 }
 
 // Cómo se toma la salida angosta, dicho una vez porque lo dicen todos los bloqueos que la tienen. Lleva
@@ -46,9 +64,21 @@ function pending(root, files) {
 // de un Write, relativa al repositorio la que sale del índice— y una línea en la otra forma no pega: sin
 // decirla, lo que quedaba a mano era la variable (caso 089). Nombra también la variable: sigue
 // existiendo, y esconderla haría que quien la necesite la descubra sin saber su alcance.
-const HOW = (variable, lines) => `Aprobalo pegando tal cual en planning/${APPROVAL} estas líneas:\n`
-  + lines.map((line) => `  ${line}\n`).join('')
-  + `Valen para ese conjunto y dejan de valer en cuanto cambie. La variable ${variable}=1 sigue existiendo `
-  + 'y apaga el guard para toda la sesión, que es por lo que no es la vía recomendada.'
+//
+// Con una persona en el chat, además, deja anotado lo que se frenó —para eso llama a `hold`— y lo dice
+// primero: contestar es más corto que editar un archivo, y es lo que la persona ya está haciendo. El
+// archivo queda como cosa de ella: dicho en imperativo, el agente leía «aprobalo» como una orden para él
+// e intentaba escribírselo en vez de reintentar, medido en una sesión real de Claude Code.
+function HOW(variable, lines, input) {
+  const chat = CHAT.hold(input, lines)
+  return (chat
+    ? 'Decile a la persona qué se frenó y por qué, y esperá: si contesta «dale», reintentá el mismo cambio y '
+      + 'pasa. Si prefiere aprobarlo a mano, que pegue ella tal cual en'
+    : 'Aprobalo pegando tal cual en')
+    + ` ${where(input)} estas líneas:\n`
+    + lines.map((line) => `  ${line}\n`).join('')
+    + `Valen para ese conjunto y dejan de valer en cuanto cambie. La variable ${variable}=1 sigue existiendo `
+    + 'y apaga el guard para toda la sesión, que es por lo que no es la vía recomendada.'
+}
 
 module.exports = { APPROVAL, read, pending, HOW }

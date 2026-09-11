@@ -262,9 +262,15 @@ function outsideRoots(file, allowed) {
 const DECLARE_IT = 'Si el proyecto necesita escribir ahí, declaralo en writableOutsideRoots de '
   + 'ops.config.json; cambiar de herramienta no lo autoriza.'
 
+// La raíz donde vive `planning/`, que es donde se busca la aprobación. La resuelven igual los guards de
+// archivos, los de shell y la aprobación misma, así que se resuelve en un solo lugar.
+function opsRoot(input) {
+  return findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
+}
+
 module.exports = {
   readInput, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
   gitDirectory, isCommit, withoutGitGlobals, stagedFiles, stagedForCommit, pushAllowed,
-  findOpsRoot,
+  findOpsRoot, opsRoot,
   writableRoots, outsideRoots, DECLARE_IT, unquoted,
 }

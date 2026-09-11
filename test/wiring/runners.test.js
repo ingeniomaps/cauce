@@ -88,6 +88,13 @@ test('las capacidades declaradas coinciden con los artefactos reales', () => {
   const deny = claudeSettings.permissions.deny
   for (const rule of ['Read(.env)', 'Read(.env.local)', 'Read(id_ed25519)']) assert.ok(deny.includes(rule), rule)
   assert.equal(deny.some((rule) => /\.env\.\*\)/.test(rule)), false, 'ninguna regla niega .env.* entero')
+
+  // El hook de mensaje, en el evento propio de cada runner que tiene uno (caso 098).
+  const codexHooks = JSON.parse(fs.readFileSync(path.join(root, 'codex', 'hooks.json'), 'utf8')).hooks
+  const chats = (events) => (events || []).filter((group) => /guard-chat\.sh/.test(JSON.stringify(group.hooks)))
+  assert.equal(chats(claudeSettings.hooks.UserPromptSubmit).length, 1)
+  assert.equal(chats(codexHooks.UserPromptSubmit).length, 1)
+  assert.equal(chats(geminiSettings.hooks.BeforeAgent).length, 1)
 })
 
 test('el bridge de Antigravity traduce decisiones al protocolo nativo', () => {

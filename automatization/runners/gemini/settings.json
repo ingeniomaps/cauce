@@ -38,6 +38,16 @@
         ]
       }
     ],
+    "BeforeAgent": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$GEMINI_PROJECT_DIR/{{OPS_DIR}}automatization/hooks/guard-chat.sh"
+          }
+        ]
+      }
+    ],
     "AfterAgent": [
       {
         "hooks": [
