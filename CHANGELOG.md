@@ -121,6 +121,18 @@ diseño — eso vive en el commit y en el código.
   `| inbox | trimestral | AAAA-MM-DD | Recorrer el INBOX entero. _Aceptación: ninguna viñeta queda sin decisión de promover, dejar o borrar._ (service: planning) |`
   con una fecha futura: `Desde` es cuándo vence por primera vez, no el día en que escribís la fila.
 
+- **Dos repositorios que terminan en una carpeta con el mismo nombre ya no salen con el mismo nombre.** Con
+  varias raíces declaradas, el inventario nombraba cada servicio por la **carpeta** de su raíz, así que
+  `../gouduet/keycloak` y `../hypixo/keycloak` salían los dos `keycloak` en `check`, en `onboard` y en
+  `scan`, y no había con qué saber de qué repositorio era cada credencial. Ahora los nombra el `name` que
+  cada raíz declara en `ops.config.json`, y `check` rechaza dos raíces que se llamen igual diciendo cuáles
+  son las dos.
+
+  **Qué cambia para vos**: si dos raíces de tu `ops.config.json` comparten `name`, `check` falla hasta que
+  renombres una. Y donde el `name` y la carpeta difieren, los servicios pasan a listarse con el `name` —el
+  que escribiste vos— en vez de con la carpeta; `onboard --json` sigue emitiendo `roots` como lista de
+  rutas.
+
 ## [0.81.0] - 2026-09-11
 
 ### Cambiado
