@@ -1,14 +1,15 @@
 ---
 caso: 110
 titulo: Cuando el paquete empieza a traer un guard con el nombre de uno propio, `upgrade` lo pisa sin decir nada
-estado: abierto
+estado: resuelto
+resuelto-en: 0.82.0
 prioridad: media
 version-detectada: 0.81.0
 ---
 
 # 110 — `upgrade` reemplaza el guard propio de la empresa por uno nuevo del toolkit con el mismo nombre
 
-**🔴 abierto** · detectado en 0.81.0 · prioridad **media** — pisa contenido de la empresa sin una línea que lo
+**🟢 resuelto en 0.82.0** · detectado en 0.81.0 · prioridad **media** — pisa contenido de la empresa sin una línea que lo
 diga, y el guard que ella había escrito deja de correr; hace falta que el nombre coincida, lo que hoy es raro.
 Sube a **alta** el día que se arregle el 100: ahí deja de haber cualquier caso en que se conserve
 
@@ -172,3 +173,60 @@ nombres que agregó 0.81.0 (`guard-secrets-shell.sh` entró en `938f5364`).
   su línea tiene que decir lo que pasó.
 - `template/AGENTS.md:93` y la entrada 0.55.0 del CHANGELOG (`CHANGELOG.md:1359-1367`), que prometen que un
   guard propio en esa carpeta sobrevive.
+
+## Cierre
+
+**🟢 resuelto en 0.82.0** · `engine/core/ownership.js` (`collisions`), `engine/cli/instance.js`,
+`engine/automation/index.js`, cerrado junto con el 100
+
+### Contra lo que el caso enumeró
+
+- **Decisión pendiente** — el usuario eligió (a): conservarlo y nombrarlo.
+- **La forma de (a)** — hecha como se propuso: `collisions` junta los archivos del runtime que el paquete trae,
+  que están en disco sin huella y con contenido distinto. `upgrade` los saltea al copiar, los nombra, no los
+  registra —así la corrida siguiente los vuelve a ver— y `--check` los cuenta y sale con 1. Sin huella e
+  idéntico al del paquete no es choque: se registra en silencio.
+- **Tradeoff «instancias anteriores al registro»** — hecho como se propuso: sólo cuenta si el registro ya
+  conoce la ruta; si no, se actualiza como antes, sin ninguna línea.
+- **Tradeoff «mientras no se resuelva, el guard nuevo no está instalado»** — se cumple, y la línea lo dice.
+- **Tradeoff «choca con el 100»** — resuelto: salen en el mismo cambio.
+- **Cada ítem de «Qué tiene que probar el cierre»**:
+  - la reproducción conserva el guard y nombra el choque, vista en rojo con el `upgrade` de antes: hecho;
+  - con el 100 puesto, la variante registrada y editada se sigue conservando: hecho, con prueba propia;
+  - un guard sin huella e idéntico no produce línea, y uno registrado sin editar se actualiza en silencio:
+    hecho, lo segundo con las pruebas de `upgrade.test.js` que siguen en verde;
+  - `--force` lo reemplaza, lo dice, y lo que dice coincide con el disco: hecho;
+  - el ítem sobre (b) o (c) no aplica: la decisión fue (a), y `template/AGENTS.md:93` sigue siendo cierto.
+
+### Lo que el caso no preveía
+
+- **`automation check` mandaba a una vuelta sin salida.** Con el choque conservado, decía
+  «`guard-chat.sh`: quedó atrás del paquete […]; corré `cauce upgrade` antes de instalar el runner», y
+  `upgrade` lo conservaba otra vez: el runner no se podía instalar. Ahora, para un choque, dice «es tuyo y se
+  llama como uno que trae el paquete […]; renombrá el tuyo y corré `cauce upgrade`». Comprobado en la
+  instancia real antes del arreglo, y con prueba.
+
+### Qué se corrió
+
+- **El rojo previo**: la prueba nueva sobre la base, en rojo.
+- **Una instancia real**, hecha con el 0.80.0 publicado, con un `guard-chat.sh` propio, y actualizada con el
+  paquete empaquetado de la rama:
+
+  ```
+  --- upgrade --check
+    choca con uno tuyo: automatization/hooks/guard-chat.sh
+  exit=1
+  --- upgrade
+  = conservado automatization/hooks/guard-chat.sh: ya existía y Cauce no lo entregó, así que el del paquete no
+    se instaló. Renombrá el tuyo y repetí, o repetí con --force para reemplazarlo.
+  guard-chat conserva el de ACME: 1
+  --- upgrade --force
+  − reemplazado automatization/hooks/guard-chat.sh, que era tuyo y se llamaba como uno del paquete
+  guard-chat conserva el de ACME tras --force: 0
+  ```
+- **Mutaciones, en una copia desechable (R23)**, las seis del 110 rojas: sin detección de choques, el choque
+  conservado queda registrado, choca aunque el registro no conozca la ruta, `--check` no los cuenta, un
+  archivo idéntico sin huella cuenta como choque, y `automation check` vuelve a mandar a correr `upgrade`.
+- **La pasada de comentarios** en 0.22 contra la base: ningún par nuevo.
+- `npm run ci`, con los archivos nuevos ya en el índice: código 0, 702 de 702, cobertura de 61 archivos en su
+  piso o por encima, ningún export sin uso.

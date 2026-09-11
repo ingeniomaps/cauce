@@ -26,6 +26,21 @@ diseño — eso vive en el commit y en el código.
   **Qué cambia para vos**: si pedís algo sin un verbo que Cauce reconozca, el agente te dice qué se frenó y
   con un «dale» pasa.
 
+- **`upgrade` ya no pisa un guard tuyo que se llama como uno nuevo del paquete.** Cuando una versión empezaba
+  a traer un nombre que ya usabas en `automatization/hooks/`, lo reemplazaba sin decir nada: 0.81.0 lo hizo
+  con `guard-chat.sh`. Ahora lo conserva y lo avisa; `--check` lo cuenta, y `--force` lo reemplaza diciéndolo.
+
+  **Qué cambia para vos**: si ves «ya existía y Cauce no lo entregó», renombrá tu guard y repetí `upgrade`;
+  mientras tanto, el guard del paquete con ese nombre no está instalado.
+
+- **Un guard propio ya no aparece como «editado localmente».** `upgrade` registraba todo lo que había en
+  `automatization/hooks/`, así que editar un guard tuyo lo volvía una edición del molde: `upgrade --check`
+  salía con 1, `check` lo contaba como congelado, y `--force` anunciaba que lo descartaba sin tocarlo. Ahora
+  sólo registra lo que trae el paquete, y el primer `upgrade` suelta lo que una versión anterior registró de
+  más.
+
+  **Qué cambia para vos**: nada que hacer; tus guards dejan de aparecer en esos avisos.
+
 ## [0.81.0] - 2026-09-11
 
 ### Cambiado

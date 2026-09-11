@@ -1,14 +1,15 @@
 ---
 caso: 100
 titulo: El registro del runtime guarda la huella de los guards propios, y editarlos los deja «editados localmente» hasta que un `--force` miente que los descartó
-estado: abierto
+estado: resuelto
+resuelto-en: 0.82.0
 prioridad: media
 version-detectada: 0.80.0
 ---
 
 # 100 — Un guard propio en `automatization/hooks/` aparece como archivo del toolkit editado
 
-**🔴 abierto** · detectado en 0.80.0, reproducido en 0.81.0 · prioridad **media** — no pisa nada; ensucia la
+**🟢 resuelto en 0.82.0** · detectado en 0.80.0, reproducido en 0.81.0 · prioridad **media** — no pisa nada; ensucia la
 lista de lo que la empresa editó del molde, que es justo la lista que hay que poder creerle, y la única salida
 que ofrece anuncia un descarte que no hace
 
@@ -162,3 +163,52 @@ de `--force`, que la versión original no nombraba y decía que el aviso «no se
 - **044** — `upgrade` sin resolución por archivo; el mismo registro decide qué se conserva.
 - El CHANGELOG (entrada 0.55.0, `CHANGELOG.md:1359-1367`) que manda los guards propios a esa carpeta: este
   caso es lo que le falta para que la recomendación no tenga costo.
+
+## Cierre
+
+**🟢 resuelto en 0.82.0** · `engine/core/ownership.js`, `engine/cli/instance.js`, cerrado junto con el 110
+
+### Contra lo que el caso enumeró
+
+- **Registrar sólo lo que trae el paquete, en las dos llamadas** — hecho: `deliveredFiles` (`ownership.js`)
+  cuenta del runtime sólo lo que el paquete que corre trae en esa ruta, y la usan el registro de `scaffold`
+  —la adopción con `init --force`— y el de `upgrade`.
+- **`localChanges` filtra contra el paquete** — hecho con la misma función, así que la migración ocurre en el
+  primer `upgrade`: el guard propio con huella vieja no se lista, no se conserva y no le vuelve la huella en
+  `:403`. Además `upgrade` suelta del registro las entradas del runtime que el paquete no trae.
+- **El «descartado» falso de `--force`** — se va con el mismo filtro: `descartados` sale de `changed`, y un
+  guard propio ya no está ahí.
+- **Tradeoff «un archivo que el paquete deja de traer»** — se cumple como estaba descrito: pasa a contar como
+  de la empresa. Hoy no hay casos; el día que se retire un guard, va a `RETIRED` con su nombre.
+- **Tradeoff «se va la protección accidental del 110»** — no se va: el 110 se cierra en el mismo cambio, y un
+  guard propio que el paquete empieza a traer se conserva y se nombra, registrado o no.
+- **Cada ítem de «Qué tiene que probar el cierre»** — hechos los cinco: la reproducción sin «editado», con
+  `--check` en 0 y sin congelados; `--force` sin «descartado»; la adopción con `init --force`; la huella vieja
+  limpia en un solo `upgrade`; y un guard del paquete editado sigue conservado —la prueba `upgrade conserva lo
+  editado, actualiza el resto y lo dice`, que sigue en verde—.
+
+### Lo que el caso no preveía
+
+- **La prueba nueva llevaba `upgrade.test.js` a 554 líneas**, arriba del límite de 500. Fue a su propio
+  archivo, `test/instance/upgrade-own-guards.test.js`: lo que no es de Cauce es otro sujeto que lo que el
+  toolkit reemplaza.
+
+### Qué se corrió
+
+- **El rojo previo**: la prueba nueva sobre la base, 0 de 1 —el registro traía el guard propio,
+  `d5caa92a1cad4f05`—.
+- **Una instancia real**, hecha con el 0.80.0 publicado y actualizada con el paquete empaquetado de la rama.
+  El `upgrade` de 0.80.0 había registrado el guard propio (`true`); después de editarlo:
+
+  ```
+  --- upgrade --check
+    choca con uno tuyo: automatization/hooks/guard-chat.sh      ← del 110; guard-propio no aparece
+  --- después de upgrade
+  guard-propio conserva su ajuste: 1
+  registro guard-propio: false
+  ```
+- **Mutaciones, en una copia desechable (R23)**: registrar todo lo que hay en el runtime y no soltar lo
+  registrado de más, las dos rojas. Las otras seis de la tanda son del 110.
+- **La pasada de comentarios** en 0.22 contra la base: ningún par nuevo.
+- `npm run ci`, con los archivos nuevos ya en el índice: código 0, 702 de 702, cobertura de 61 archivos en su
+  piso o por encima, ningún export sin uso.

@@ -113,8 +113,9 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
   declareEngine(path.join(root, 'package.json'), version)
   let deliveredPaths = {}
   for (const relative of O.trackedPaths()) {
-    const dir = path.join(root, relative)
-    if (fs.existsSync(dir)) deliveredPaths = M.record(root, relative, O.treeFiles(dir), deliveredPaths)
+    if (fs.existsSync(path.join(root, relative))) {
+      deliveredPaths = M.record(root, relative, O.deliveredFiles(root, relative), deliveredPaths)
+    }
   }
   deliveredPaths = M.recordPaths(root, O.SYSTEM_FILES, deliveredPaths)
   // Adoptar Cauce en un repositorio con contenido es `init --force`, y lo que se conserva ahí lo
@@ -277,12 +278,14 @@ function upgrade(dir, cli) {
   const to = require(path.join(PROJECT_ROOT, 'package.json')).version
   const system = O.systemPaths(root)
   const changed = O.localChanges(root)
+  const colliding = O.collisions(root)
   const overrides = O.overrides(root)
 
   // El código de salida lo aplica acá y no adentro: `--check` mira y cuenta, y quien decide qué hacer
   // con lo que vio es el comando. Escondido en la función que informa, el corte del flujo no se ve.
   if (dry) {
-    const code = previewUpgrade({ from, to, changed })
+    for (const file of colliding) console.log(`  choca con uno tuyo: ${file}`)
+    const code = previewUpgrade({ from, to, changed }) || (colliding.length ? 1 : 0)
     if (code) process.exit(code)
     return
   }
@@ -310,6 +313,16 @@ function upgrade(dir, cli) {
     console.log(`\n${conservados.size} archivo(s) del molde quedan congelados por tu edición.`)
     console.log(`${adviceFor([...conservados])}\n`)
     console.log('Para tomar la versión nueva y descartar la tuya, repetí con --force.\n')
+  }
+  // Un archivo propio que se llama como uno que el paquete empieza a traer (caso 110): se conserva y se
+  // dice, igual que una edición local, y `--force` lo reemplaza diciéndolo.
+  const choques = new Set(force ? [] : colliding)
+  for (const file of choques) {
+    console.log(`= conservado ${file}: ya existía y Cauce no lo entregó, así que el del paquete no se `
+      + 'instaló. Renombrá el tuyo y repetí, o repetí con --force para reemplazarlo.')
+  }
+  if (force) {
+    for (const file of colliding) console.log(`− reemplazado ${file}, que era tuyo y se llamaba como uno del paquete`)
   }
 
   // Lo que una versión agrega y es del proyecto: se crea si falta y nunca se pisa. `systemPaths` no lo
@@ -350,7 +363,10 @@ function upgrade(dir, cli) {
     }
   }
 
-  const conservar = (file) => conservados.has(path.relative(root, file).replace(/\\/g, '/'))
+  const conservar = (file) => {
+    const relative = path.relative(root, file).replace(/\\/g, '/')
+    return conservados.has(relative) || choques.has(relative)
+  }
   for (const relative of [...system, ...O.RUNTIME_PATHS]) {
     const origin = path.join(PROJECT_ROOT, O.sourceOf(relative))
     if (!fs.existsSync(origin)) continue
@@ -396,11 +412,21 @@ function upgrade(dir, cli) {
   // la puerta de atrás, y no se ve mirando el archivo — se ve dos upgrades después.
   const entregado = { ...record }
   for (const relative of O.trackedPaths()) {
-    const dir = path.join(root, relative)
-    if (fs.existsSync(dir)) record = M.record(root, relative, O.treeFiles(dir), record)
+    if (fs.existsSync(path.join(root, relative))) {
+      record = M.record(root, relative, O.deliveredFiles(root, relative), record)
+    }
+  }
+  // Migración: una versión anterior pudo haber registrado un guard propio —qué cuenta, en `deliveredFiles`—.
+  // Se olvida acá. Y un choque que se conservó no se registra, para que la corrida siguiente lo vuelva a ver.
+  for (const relative of O.RUNTIME_PATHS) {
+    const shipped = O.shippedFiles(relative)
+    for (const key of Object.keys(record)) {
+      if (key.startsWith(`${relative}/`) && !shipped.has(key.slice(relative.length + 1))) delete record[key]
+    }
   }
   record = M.recordPaths(root, O.SYSTEM_FILES, record)
   for (const file of conservados) if (entregado[file]) record[file] = entregado[file]
+  for (const file of choques) delete record[file]
   // El registro de forks se poda igual que el de archivos: un cargo devuelto al catálogo deja su
   // entrada, y una entrada sin copia sólo puede producir avisos sobre algo que no está.
   const kept = Object.fromEntries(Object.entries(M.readForks(root)).filter(
