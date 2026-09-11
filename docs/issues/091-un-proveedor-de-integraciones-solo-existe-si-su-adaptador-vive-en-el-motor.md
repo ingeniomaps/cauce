@@ -154,9 +154,11 @@ dependía del molde; y no sabía que el README del contrato no viaja en el paque
   de decir que agregar un proveedor exige tocar el motor.
 - **Tradeoff «el motor ejecuta código de la instancia»** — dicho en el README del molde, con la frase de
   que la contención es de ruta y no de capacidad.
-- **Tradeoff «ESM y CommonJS»** — la afirmación sale de la sonda del 2026-09-11 con Node 24.18.0 (un `.mjs` y
-  un `.js` en un paquete `module`, los dos cargados con `require`). **Ninguna prueba de la suite carga un
-  adaptador ESM**: la afirmación del README descansa en esa sonda, no en una prueba que la sostenga.
+- **Tradeoff «ESM y CommonJS»** — la afirmación salió de una sonda con Node 24.18.0 (un `.mjs` y un `.js` en
+  un paquete `module`, los dos cargados con `require`), y la revisión de huecos antes del merge la llevó a la
+  suite: `un adaptador propio escrito en ESM se carga igual` pasa con `node --test`, y con
+  `--no-experimental-require-module` —que apaga cargar ESM con `require`— da 0 de 1. Lo que no se prueba es
+  un `.js` dentro de un paquete `"type": "module"`; ése sigue descansando en la sonda.
 - **Tradeoff «la versión cuesta una línea»** — se cumple.
 - **Cada ítem de «Qué tiene que probar el cierre»** — hechos los seis, con las pruebas de abajo. El de Jira
   lo muestra la mutación M6: sin `contract` en `jira.js`, seis pruebas de Jira caen, así que pasan por la
