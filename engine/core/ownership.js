@@ -179,6 +179,27 @@ function overrides(root) {
   return found
 }
 
+// Las reglas que rigen una instancia, relativas a su raíz: cada `planning/rules/*.md` del proyecto y cada una de
+// `system/` que el proyecto no sobrescribió. `overrides()` ya sabía cuál reemplaza a cuál y sólo servía para
+// avisar; esto es lo que se entrega a quien trabaja (casos 099 y 105). Sólo el primer nivel, igual que `check`.
+function effectiveRules(root) {
+  const dir = path.join(root, 'planning', 'rules')
+  const markdown = (sub) => {
+    try {
+      return fs.readdirSync(path.join(dir, sub), { withFileTypes: true })
+        .filter((entry) => entry.isFile() && entry.name.endsWith('.md') && entry.name !== 'README.md'
+          && !entry.name.startsWith('.'))
+        .map((entry) => entry.name).sort()
+    } catch { return [] }
+  }
+  const replaced = new Set(overrides(root).filter((one) => one.collection === 'planning/rules')
+    .map((one) => one.system))
+  return [
+    ...markdown('system').filter((name) => !replaced.has(name)).map((name) => `planning/rules/system/${name}`),
+    ...markdown('').map((name) => `planning/rules/${name}`),
+  ]
+}
+
 // Rutas que el toolkit dejó de materializar. Sin esto una instancia arrastra para siempre lo que
 // alguna versión suya copió: `upgrade` agrega y reemplaza, pero nunca quitaba nada.
 // Cada archivo propio del molde, con cómo llega a una instancia que **ya existe**. `upgrade` sólo
@@ -353,6 +374,7 @@ module.exports = {
   RETIRED,
   collisions,
   deliveredFiles,
+  effectiveRules,
   shippedFiles,
   RETIRED_COMPARTIDO,
   TEMPLATE_OWN,

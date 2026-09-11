@@ -23,6 +23,7 @@ const OB = require('../core/onboarding')
 const C = require('../config/validate')
 const CP = require('../config/paths')
 const AG = require('../agents/catalog')
+const RL = require('../automation/rules')
 const { fail, planningRoot } = require('./io')
 
 // Qué dimensiones enumera el molde de `organization/` y cuáles dejaron de estar. Un agente que reescribe
@@ -213,6 +214,8 @@ function check(dir, cli) {
     warnings.push(`${override.collection}/${override.project} sobrescribe ${override.system} `
       + `(override explícito)${retired.length ? `; deja de regir ${retired.join(', ')}` : ''}`)
   }
+  // Y lo que instaló cada runner, contra esas mismas reglas (caso 099).
+  warnings.push(...RL.staleLines(path.resolve(root, '..')))
   // Misma regla para los cargos, que es donde más caro sale: un fork se hace una vez y se olvida.
   const FK = require('../agents/fork')
   for (const entry of FK.drift(path.resolve(root, '..'))) warnings.push(FK.driftLine(entry))
@@ -380,8 +383,12 @@ function context(dir, cli) {
     // mismo criterio. Por qué no la encola una máquina está en la fase Pick de `autobuild`.
     nextEpic: (!task && [...state.epics].filter((one) => one.status === 'open')
       .sort((a, b) => String(a.num).localeCompare(String(b.num)))[0]) || null,
+    // Las reglas que rigen, con los overrides resueltos. Van acá porque `autobuild` ya lee este comando y
+    // tiene prohibido abrir otros archivos para completar su contrato (caso 105).
+    rules: O.effectiveRules(path.resolve(root, '..')),
   }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
+  const reglas = () => console.log(`RULES  ${report.rules.join(', ') || '(ninguna)'}`)
 
   if (report.blocked === 'awaiting-review') {
     const first = P.read(gate).split('\n').find((line) => line.trim() && !line.startsWith('#')) || ''
@@ -419,7 +426,7 @@ function context(dir, cli) {
     espera()
     for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
     due()
-    return
+    return reglas()
   }
   console.log(`TASK   ${report.task.slug}${report.task.tier ? ` [${report.task.tier}]` : ''}` +
     `${report.task.service ? `  service: ${report.task.service}` : ''}` +
@@ -448,6 +455,7 @@ function context(dir, cli) {
   if (report.blockedTasks.length) console.log(`SKIP   ${report.blockedTasks.join(', ')} (acción humana abierta)`)
   for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
   due()
+  reglas()
 }
 
 // Qué trabajo recurrente vence, y la línea con la que se promueve. Emite esa línea y no la escribe:
