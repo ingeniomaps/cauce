@@ -17,9 +17,11 @@ Antes vivían bajo `/ops:` y eran tres: el arranque y el recorrido de equipo le 
 así que alguien que venía de otro runner los buscaba en la lista y no estaban. Si actualizás una
 instalación vieja, `.gemini/commands/ops/` queda huérfano y se borra a mano.
 
-Gemini CLI tiene hooks nativos y el adaptador los usa: `BeforeTool` y `AfterAgent` en
+Gemini CLI tiene hooks nativos y el adaptador los usa: `BeforeTool`, `BeforeAgent` y `AfterAgent` en
 `.gemini/settings.json`, declarados en `manifest.json`. Sólo corren si la carpeta está marcada como
 confiable —`GEMINI.md` explica qué avisa Gemini cuando no lo está—. `read_file` pasa por
 `guard-secrets-read.sh`, que frena leer una credencial; un `cat` por `run_shell_command` no lo ve.
+`BeforeAgent` registra el mensaje de la persona, para que lo que pidió en el chat pase sin aprobarlo a
+mano; Gemini no le pasa a cada herramienta de qué mensaje viene, así que ahí vale el último.
 
 Comprueba la instalación con `node tools/ops.js automation doctor . gemini`.

@@ -1,6 +1,6 @@
 # Claude Code
 
-Adaptador nativo mediante `PreToolUse` y `Stop`. Instalar con:
+Adaptador nativo mediante `PreToolUse`, `UserPromptSubmit` y `Stop`. Instalar con:
 
 ```bash
 node tools/ops.js automation install . claude

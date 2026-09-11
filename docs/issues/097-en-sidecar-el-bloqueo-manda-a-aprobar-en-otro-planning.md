@@ -1,14 +1,15 @@
 ---
 caso: 097
 titulo: En sidecar, el bloqueo manda a aprobar en `planning/.ops-approval`, y desde la sesión ése es otro planning
-estado: abierto
+estado: resuelto
+resuelto-en: 0.81.0
 prioridad: media
 version-detectada: 0.80.0
 ---
 
 # 097 — En sidecar, pegar la aprobación donde el bloqueo dice no destraba nada
 
-**🔴 abierto** · detectado en 0.80.0 · prioridad **media** — cada bloqueo con salida angosta, en toda instancia
+**🟢 resuelto en 0.81.0** · detectado en 0.80.0 · prioridad **media** — cada bloqueo con salida angosta, en toda instancia
 sidecar, manda a un archivo que el guard no lee; quien pegue ahí sigue bloqueado y lo que le queda a mano es
 la variable que apaga el guard para toda la sesión, que es lo que el 089 vino a evitar
 
@@ -97,3 +98,40 @@ la sesión. No llegó a escribirla porque la sesión no interactiva no tenía pe
 
 - **089** — agregó las líneas exactas al mensaje y registró que en sidecar el archivo se lee de la raíz de ops.
 - **092** — se encontró probándolo.
+
+## Cierre
+
+**🟢 resuelto en 0.81.0** · `engine/hooks/approval.js`, y los once bloqueos que ahora le pasan la entrada de la
+llamada
+
+### Contra lo que el caso enumeró
+
+- **Fix propuesto** — hecho en su variante relativa: `HOW` recibe la entrada de la llamada y nombra el archivo
+  que el guard lee desde la carpeta de la sesión —`CLAUDE_PROJECT_DIR`, `GEMINI_PROJECT_DIR` o el `cwd`—. Si la
+  instancia no cuelga de esa carpeta, como una sesión abierta en un proyecto hermano, va la ruta absoluta.
+- **Tradeoff «en embebido la absoluta es más larga»** — evitado: en embebido sigue diciendo
+  `planning/.ops-approval`, y la prueba lo afirma.
+- **Tradeoff «`HOW` cambia de firma y tiene once llamadores»** — se cumple: los once pasan la entrada, y un
+  `grep` de llamadas a la aprobación sin ella no devuelve ninguna.
+- **Cada ítem de «Qué tiene que probar el cierre»** — hechos los tres: pegar donde el mensaje dice destraba en
+  sidecar, la mutación que devuelve la ruta fija se pone roja, y embebido sigue igual.
+
+### Lo que el caso no preveía
+
+- Con una persona en el chat, el archivo pasa a segundo plano: el bloqueo dice primero que alcanza con que
+  conteste «dale», y el archivo queda como algo que pega ella (caso 098).
+
+### Qué se corrió
+
+- **El rojo previo**: la prueba nueva sobre el código de antes, en rojo junto con las seis del 098 (7 de 90).
+- **La prueba**: en sidecar, con Claude y con Gemini, el mensaje dice `acme-ops/planning/.ops-approval`; el
+  `planning/` de la carpeta de la sesión no destraba y el que nombra sí; desde un proyecto hermano sale la ruta
+  absoluta; en embebido y sin instancia, `planning/.ops-approval`.
+- **La mutación** que vuelve a `planning/` a secas, en una copia desechable (R23): roja.
+- **En vivo**, sobre un banco sidecar con el paquete empaquetado de la rama y Claude Code 2.1.268, el bloqueo
+  de `test-evidence` dijo:
+
+  ```
+  …que pegue ella tal cual en acme-ops/planning/.ops-approval estas líneas
+  ```
+- `npm run ci`: código 0, 696 de 696, cobertura de 60 archivos en su piso o por encima.

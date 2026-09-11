@@ -194,6 +194,11 @@
     "branches": 100,
     "functions": 100
   },
+  "engine/hooks/chat.js": {
+    "lines": 100,
+    "branches": 88,
+    "functions": 100
+  },
   "engine/hooks/files.js": {
     "lines": 100,
     "branches": 97,
@@ -208,6 +213,11 @@
     "lines": 91,
     "branches": 70,
     "functions": 97
+  },
+  "engine/hooks/self-approval.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
   },
   "engine/hooks/shell.js": {
     "lines": 91,

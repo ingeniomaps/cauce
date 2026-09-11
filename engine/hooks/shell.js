@@ -10,9 +10,10 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const {
   commandOf, cwdOf, block, isCommit, stagedForCommit, pushAllowed,
-  writableRoots, outsideRoots, DECLARE_IT, unquoted, findOpsRoot, withoutGitGlobals,
+  writableRoots, outsideRoots, DECLARE_IT, unquoted, opsRoot, withoutGitGlobals,
 } = require('./input')
 const AP = require('./approval')
+const { selfApproval } = require('./self-approval')
 const EV = require('../core/evidence')
 
 // Dónde empieza y dónde termina una palabra dentro de un comando. Tres reglas de la tabla de abajo lo
@@ -48,12 +49,6 @@ const MISMO = String.raw`[^;&|\n]`
 // `bash -c "git push origin main"` y `eval "git reset --hard"` siguen cayendo, comprobado. Queda afuera
 // la sustitución dentro del propio mensaje —`git commit -m "$(...)"` corre y ya no se ve—, que es
 // evasión y no la forma habitual.
-// La raíz donde vive `planning/`, que es donde se busca la aprobación. Los cuatro guards que la
-// consultan la resuelven igual, así que se resuelve una vez.
-function opsRoot(input) {
-  return findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
-}
-
 function destructive(input) {
   const raw = commandOf(input)
   // Las opciones globales de `git` se sacan acá y no en cada regla: toda regla de abajo que mire un
@@ -181,7 +176,7 @@ function dependencies(input) {
   // `package.json` dice «este manifiesto va sin su lock a propósito» y deja de valer en cuanto el
   // conjunto cambie. La rama de publicar no pasa por acá y no tiene ruta: sigue arriba, con su variable.
   const sinAprobar = (parent, names) => AP.pending(opsRoot(input),
-    names.map((name) => path.posix.join(parent === '.' ? '' : parent, name)))
+    names.map((name) => path.posix.join(parent === '.' ? '' : parent, name)), input)
   // Un lock cuenta si está en disco **o** si el commit lo va a llevar, y la unión no es un detalle: el
   // disco solo perdía el que alguien borró del árbol sin stagear el borrado —sigue en el índice, sigue
   // en el próximo commit— y ahí la comprobación dejaba de dispararse justo cuando más hacía falta. Es
@@ -204,12 +199,12 @@ function dependencies(input) {
     const manifests = sinAprobar(parent, state.manifests)
     if (state.manifests.length && existingLocks.length && !state.locks.length && manifests.length) {
       block(`${parent}: cambió ${state.manifests.join(', ')} sin actualizar su lockfile.\n`
-        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE', manifests))
+        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE', manifests, input))
     }
     const lockfiles = sinAprobar(parent, state.locks)
     if (state.locks.length && !state.manifests.length && lockfiles.length) {
       block(`${parent}: cambió ${state.locks.join(', ')} sin un cambio explícito en el manifest.\n`
-        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE', lockfiles))
+        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE', lockfiles, input))
     }
   }
 }
@@ -306,17 +301,21 @@ function writesWithBase(command, cwd) {
 
 function shellBoundary(input) {
   const allowed = writableRoots(input)
-  if (!allowed) return
   for (const { raw, base } of writesWithBase(commandOf(input), cwdOf(input))) {
     // Una ruta absoluta no depende del `cd`, así que un destino que no se sabe no la vuelve injuzgable.
     // Al revés sí: sin saber desde dónde se resuelve, una relativa no se puede verificar, y un guard que
     // no puede verificar no autoriza —el criterio que fijó el 031 para el índice—.
     if (!path.isAbsolute(raw) && base === null) {
+      if (!allowed) continue
       block(`el comando hace \`cd\` a un destino que no se puede resolver acá, así que no hay contra qué `
         + `resolver ${raw}. Escribí la ruta absoluta, o hacé el \`cd\` en un comando aparte.`)
     }
-    const file = path.resolve(base, raw)
-    if (NEUTRAL.some((pattern) => pattern.test(file))) continue
+    const file = path.resolve(base || '/', raw)
+    // El canal por el que la persona aprueba no es un destino más: se juzga aunque no haya raíces
+    // declaradas y aunque caiga en el temporal, que el resto de este guard deja pasar (caso 098).
+    const own = selfApproval(input, file)
+    if (own) block(own)
+    if (!allowed || NEUTRAL.some((pattern) => pattern.test(file))) continue
     if (outsideRoots(file, allowed)) {
       block(`el comando escribe en ${file}, fuera de las raíces declaradas en ops.config.json. ${DECLARE_IT}`)
     }
@@ -347,9 +346,9 @@ function governance(input) {
   // La aprobación vale para lo que nombra y para nada más: lo que quede sin cubrir es lo que se
   // reporta. Así una aprobación vieja no autoriza el archivo que se sumó después, que es la diferencia
   // entre una llave por operación y una puerta que quedó abierta.
-  const pendientes = AP.pending(opsRoot(input), governed)
+  const pendientes = AP.pending(opsRoot(input), governed, input)
   if (!pendientes.length) return
-  block(`El commit toca gobernanza protegida.\n${AP.HOW('OPS_GOVERNANCE_OVERRIDE', pendientes)}`)
+  block(`El commit toca gobernanza protegida.\n${AP.HOW('OPS_GOVERNANCE_OVERRIDE', pendientes, input)}`)
 }
 
 function run(program, args, cwd, extra = {}) {
@@ -488,20 +487,20 @@ function verify(input) {
   // Acá lo aprobado es el conjunto staged entero: decir «autorizo commitear exactamente estas rutas»
   // es lo que un gate en rojo necesita, y cambia en cuanto se stagea una más. La lista sale del índice
   // y no de una regla, que es lo que la vuelve una operación y no un permiso.
-  const sinAprobar = AP.pending(opsRoot(input), staged)
+  const sinAprobar = AP.pending(opsRoot(input), staged, input)
   const aprobado = !sinAprobar.length
   if (changedOpenApi && !hasApiGenerated && !aprobado) {
     block('Cambió una fuente OpenAPI/Swagger sin incluir código regenerado. Ejecuta el generador y '
-      + `stagea su salida.\n${AP.HOW('OPS_SKIP_VERIFY', sinAprobar)}`)
+      + `stagea su salida.\n${AP.HOW('OPS_SKIP_VERIFY', sinAprobar, input)}`)
   }
   if (changedSqlSource && !hasSqlGenerated && !aprobado) {
     block('Cambió una consulta SQL fuente sin artefactos regenerados. Ejecuta el generador.\n'
-      + AP.HOW('OPS_SKIP_VERIFY', sinAprobar))
+      + AP.HOW('OPS_SKIP_VERIFY', sinAprobar, input))
   }
   if (!staged.some((file) => /\.(?:ts|tsx|js|jsx|mjs|cjs|go|py|html|css|scss|prisma)$/.test(file))) return
   const { root, temp, env } = commitTree(dir)
   try {
-    verifyGates(root, dir, sinAprobar, env, opsRoot(input))
+    verifyGates(root, dir, sinAprobar, env, input)
   } finally {
     if (temp) fs.rmSync(temp, { recursive: true, force: true })
   }
@@ -555,7 +554,8 @@ function comoSeLee(failures) {
     + 'una suite, así que mirá si llegaron a ejecutarse antes de aprobar esto como un rojo conocido.'
 }
 
-function verifyGates(root, dir, sinAprobar, env, ops) {
+function verifyGates(root, dir, sinAprobar, env, input) {
+  const ops = opsRoot(input)
   const failures = []
   if (fs.existsSync(path.join(root, 'package.json'))) {
     const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
@@ -595,7 +595,7 @@ function verifyGates(root, dir, sinAprobar, env, ops) {
   const donde = root === dir ? '' : '\nCorrió sobre el índice, que es lo que el commit graba: si en tu '
     + 'directorio pasa, es que en disco tenés algo que no está staged.'
   block(`Verify falló en ${path.basename(dir)}: ${comoSeLee(failures)}\nNo se commitea en rojo.${donde}\n`
-    + AP.HOW('OPS_SKIP_VERIFY', sinAprobar))
+    + AP.HOW('OPS_SKIP_VERIFY', sinAprobar, input))
 }
 
 module.exports = { destructive, gitAdd, dependencies, governance, verify, shellBoundary, run }

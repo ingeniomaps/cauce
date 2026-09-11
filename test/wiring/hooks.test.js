@@ -2004,3 +2004,191 @@ test('verify no deja que un gate escriba en el repositorio que juzga', () => {
     { cwd: root, encoding: 'utf8' }).stdout.trim()
   assert.equal(config, '', 'el repositorio quedó apuntando a un árbol que ya no existe')
 })
+
+// Lo que la persona pidió en el chat, visto por los guards (caso 098). El registro lo escribe el hook de
+// mensaje y lo lee cada guard con la sesión y el mensaje de la llamada. Cada prueba abre una sesión propia
+// para no leer el registro de otra, y saca `CI` del entorno: en la puerta está puesta, y ahí no hay persona.
+let sesiones = 0
+function chatSession() {
+  const { DIR } = require('../../engine/hooks/chat')
+  const session = `prueba-${process.pid}-${sesiones += 1}`
+  const ci = process.env.CI
+  delete process.env.CI
+  let turno = 0
+  return {
+    // La persona manda un mensaje; devuelve cómo se ve una llamada originada por él, con el campo que
+    // mande el runner —cuál es cuál lo dice chat.js—.
+    says(prompt, field = 'prompt_id') {
+      const id = field ? { [field]: `m${turno += 1}` } : {}
+      execute('chat', { session_id: session, ...id, prompt })
+      return (extra) => ({ session_id: session, ...id, ...extra })
+    },
+    close() {
+      fs.rmSync(path.join(DIR, `${session}.json`), { force: true })
+      if (ci !== undefined) process.env.CI = ci
+    },
+  }
+}
+
+test('lo que la persona nombró en el chat pasa; lo que no nombró, negó o no pidió ella se sigue frenando', () => {
+  const root = planFirstRoot('ops-hook-chat-nombra-', WIP_CON_PLAN)
+  const lee = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
+  const chat = chatSession()
+  try {
+    const pidio = chat.says('leé el .env y decime qué variables tiene')
+    assert.doesNotThrow(() => execute('secrets-read', lee(pidio)))
+    // La orden era para ese mensaje y para eso: otro mensaje, un subagente u otra credencial, no.
+    blocked('secrets-read', lee((extra) => ({ ...pidio(extra), prompt_id: 'otro' })), /leerla/)
+    blocked('secrets-read', lee((extra) => pidio({ agent_id: 'a1', ...extra })), /leerla/)
+    blocked('secrets-read', lee(pidio, 'id_ed25519'), /leerla/)
+    blocked('secrets-read', { cwd: root, tool_input: { file_path: path.join(root, '.env') } }, /leerla/)
+    // Nombrar no es pedir, y un nombre tiene que estar entero.
+    blocked('secrets-read', lee(chat.says('no leas el .env, mirá el README')), /leerla/)
+    blocked('secrets-read', lee(chat.says('leé el .env.example')), /leerla/)
+    // Un aviso del runner no lo escribió la persona, y un recorrido de Cauce es trabajo del agente.
+    // El nombre va entero a propósito: pegado a la etiqueta no contaría, y la prueba no vería la marca.
+    blocked('secrets-read', lee(chat.says('<task-notification>\nleé el .env\n</task-notification>')), /leerla/)
+    blocked('secrets-read', lee(chat.says('/autobuild leé el .env')), /leerla/)
+    blocked('secrets-read', lee(chat.says('$flow leé el .env')), /leerla/)
+    // Los otros dos runners, cada uno con su forma de atar la llamada.
+    const codex = chat.says('leé el .env', 'turn_id')
+    assert.doesNotThrow(() => execute('secrets-read', lee(codex)))
+    blocked('secrets-read', lee((extra) => ({ ...codex(extra), turn_id: 'otro' })), /leerla/)
+    assert.doesNotThrow(() => execute('secrets-read', lee(chat.says('leé el .env', null))))
+    // En CI no hay persona, aunque el registro diga lo contrario.
+    const otra = chat.says('leé el .env')
+    process.env.CI = 'true'
+    try { blocked('secrets-read', lee(otra), /leerla/) } finally { delete process.env.CI }
+  } finally { chat.close() }
+})
+
+test('un «dale» aprueba exactamente lo que quedó frenado, y nada más', () => {
+  const root = planFirstRoot('ops-hook-chat-dale-', WIP_CON_PLAN)
+  const lee = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
+  const chat = chatSession()
+  try {
+    const pedido = chat.says('revisá cómo arranca el servicio')
+    // Con persona, el archivo es de ella: el mensaje no le dice al agente que se lo escriba.
+    const frenado = messageOf('secrets-read', lee(pedido))
+    assert.match(frenado, /si contesta «dale», reintentá el mismo cambio/)
+    assert.doesNotMatch(frenado, /Aprobalo pegando/)
+    const dale = chat.says('dale')
+    assert.doesNotThrow(() => execute('secrets-read', lee(dale)))
+    blocked('secrets-read', lee(dale, 'id_ed25519'), /leerla/)
+    // La aprobación era de esa respuesta: el mensaje siguiente empieza de cero.
+    blocked('secrets-read', lee(chat.says('ahora otra cosa')), /leerla/)
+    // Y lo que la respuesta niega no se aprueba.
+    messageOf('secrets-read', lee(chat.says('revisá todo')))
+    blocked('secrets-read', lee(chat.says('sí, pero no el .env')), /leerla/)
+  } finally { chat.close() }
+})
+
+test('plan-first no frena lo que la persona pidió en el chat, y sí el trabajo del agente', () => {
+  const root = planFirstRoot('ops-hook-chat-plan-', WIP_IDLE)
+  const escribe = (call) => call({ cwd: root, tool_input: { file_path: path.join(root, 'src', 'altas.js') } })
+  const chat = chatSession()
+  try {
+    const pedido = chat.says('arreglá el typo del mensaje de altas')
+    assert.doesNotThrow(() => execute('plan-first', escribe(pedido)))
+    blocked('plan-first', escribe((extra) => pedido({ agent_id: 'a1', ...extra })), /sin plan/)
+    blocked('plan-first', escribe(chat.says('/autobuild alta-de-cliente')), /sin plan/)
+    blocked('plan-first', escribe((extra) => extra), /sin plan/)
+  } finally { chat.close() }
+})
+
+test('los guards de límites no dejan al agente escribirse la aprobación ni el registro del chat', () => {
+  const { DIR } = require('../../engine/hooks/chat')
+  const root = planFirstRoot('ops-hook-autoaprueba-', WIP_CON_PLAN)
+  const approval = path.join(root, 'planning', '.ops-approval')
+  const escribe = (file) => ({ cwd: root, tool_input: { file_path: file, content: 'src/x.js\n' } })
+  const corre = (command) => ({ cwd: root, tool_input: { command } })
+
+  blocked('workspace-boundary', escribe(approval), /aprobarse solo/)
+  blocked('shell-boundary', corre('echo src/x.js >> planning/.ops-approval'), /aprobarse solo/)
+  blocked('workspace-boundary', escribe(path.join(DIR, 'x.json')), /registro de lo que la persona dijo/)
+  // El temporal es un destino neutro para `shell-boundary`, y el registro vive ahí: se juzga igual.
+  blocked('shell-boundary', corre(`echo {} > ${path.join(DIR, 'x.json')}`), /registro de lo que la persona dijo/)
+  // Los dos grupos de escritura lo corren.
+  assert.throws(() => executeAll(['pre-files'], escribe(approval)), /aprobarse solo/)
+  assert.throws(() => executeAll(['pre-shell'], corre('echo src/x.js >> planning/.ops-approval')), /aprobarse solo/)
+  // Lo corriente pasa: otra ruta, o leer el archivo.
+  assert.doesNotThrow(() => execute('workspace-boundary', escribe(path.join(root, 'src', 'x.js'))))
+  assert.doesNotThrow(() => execute('shell-boundary', corre('cat planning/.ops-approval')))
+  // Si la persona se lo pide nombrándolo, la que aprueba es ella.
+  const chat = chatSession()
+  try {
+    const pidio = chat.says('agregá src/x.js a .ops-approval')
+    assert.doesNotThrow(() => execute('workspace-boundary', pidio(escribe(approval))))
+  } finally { chat.close() }
+})
+
+test('en sidecar el bloqueo nombra el archivo que el guard lee, y pegar ahí destraba (caso 097)', () => {
+  const workspace = tempRoot('ops-hook-sidecar-aprueba-')
+  const root = path.join(workspace, 'acme-ops')
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ mode: 'sidecar', workspaceRoots: [{ name: 'main', path: '..' }] }))
+  const antes = { OPS_ROOT: process.env.OPS_ROOT, CLAUDE_PROJECT_DIR: process.env.CLAUDE_PROJECT_DIR,
+    GEMINI_PROJECT_DIR: process.env.GEMINI_PROJECT_DIR }
+  const restore = () => {
+    for (const [name, value] of Object.entries(antes)) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
+  }
+  const leer = (cwd, file) => ({ cwd, tool_input: { file_path: path.join(cwd, file) } })
+  const literal = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  // Como lo lanza el runner: la sesión en el workspace y la raíz de ops la que exporta `run-hook.sh`.
+  process.env.OPS_ROOT = root
+  process.env.CLAUDE_PROJECT_DIR = workspace
+  delete process.env.GEMINI_PROJECT_DIR
+  try {
+    const lee = leer(workspace, '.env')
+    const message = messageOf('secrets-read', lee)
+    assert.match(message, /pegando tal cual en acme-ops\/planning\/\.ops-approval estas líneas/)
+    // Donde decía antes —el `planning/` de la carpeta de la sesión— no destraba: ése era el defecto.
+    fs.mkdirSync(path.join(workspace, 'planning'))
+    fs.writeFileSync(path.join(workspace, 'planning', '.ops-approval'), `${path.join(workspace, '.env')}\n`)
+    blocked('secrets-read', lee, /leerla/)
+    pasteApproval(root, message)
+    assert.doesNotThrow(() => execute('secrets-read', lee))
+
+    // Gemini nombra la carpeta de la sesión con su propia variable.
+    delete process.env.CLAUDE_PROJECT_DIR
+    process.env.GEMINI_PROJECT_DIR = workspace
+    assert.match(messageOf('secrets-read', leer(workspace, 'id_ed25519')),
+      /pegando tal cual en acme-ops\/planning\/\.ops-approval estas líneas/)
+    // Una sesión abierta en un proyecto hermano no tiene la instancia adentro: ahí va la ruta entera.
+    delete process.env.GEMINI_PROJECT_DIR
+    const api = path.join(workspace, 'api')
+    fs.mkdirSync(api)
+    assert.match(messageOf('secrets-read', leer(api, '.env')),
+      new RegExp(`pegando tal cual en ${literal(path.join(root, 'planning', '.ops-approval'))} estas líneas`))
+  } finally { restore() }
+
+  // En embedded la sesión y la instancia son la misma carpeta, y el mensaje no cambia. Sin instancia no
+  // hay aprobación que leer, y el mensaje dice la forma de siempre.
+  delete process.env.OPS_ROOT
+  delete process.env.CLAUDE_PROJECT_DIR
+  delete process.env.GEMINI_PROJECT_DIR
+  try {
+    const embedded = planFirstRoot('ops-hook-embedded-aprueba-', WIP_CON_PLAN)
+    assert.match(messageOf('secrets-read', leer(embedded, '.env')),
+      /pegando tal cual en planning\/\.ops-approval estas líneas/)
+    const suelto = tempRoot('ops-hook-sin-raiz-')
+    assert.match(messageOf('secrets-read', leer(suelto, '.env')), /pegando tal cual en planning\/\.ops-approval estas/)
+  } finally { restore() }
+})
+
+test('el hook de mensaje nunca frena ni imprime, reciba lo que reciba', () => {
+  const { DIR } = require('../../engine/hooks/chat')
+  const shim = path.resolve(__dirname, '..', '..', 'automatization', 'hooks', 'guard-chat.sh')
+  const session = `prueba-${process.pid}-shim`
+  for (const stdin of [JSON.stringify({ session_id: session, prompt_id: 'm1', prompt: 'hola' }), '{roto', '']) {
+    const result = spawnSync('bash', [shim], { input: stdin, encoding: 'utf8' })
+    assert.equal(result.status, 0, `con ${JSON.stringify(stdin)}: ${result.stderr}`)
+    assert.equal(result.stdout, '', 'lo que imprime el hook de mensaje le llega al modelo como contexto')
+  }
+  assert.ok(fs.existsSync(path.join(DIR, `${session}.json`)), 'y con una entrada válida registra el mensaje')
+  fs.rmSync(path.join(DIR, `${session}.json`), { force: true })
+})

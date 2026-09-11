@@ -12,6 +12,7 @@ const path = require('node:path')
 const { readInput, cwdOf, block, findOpsRoot } = require('./input')
 const shell = require('./shell')
 const files = require('./files')
+const chat = require('./chat')
 
 function planningDrift(input) {
   const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
@@ -48,6 +49,7 @@ const guards = {
   'test-evidence': files.testEvidence,
   'plan-first': files.planFirst,
   'secrets-read': files.secretsRead,
+  chat: chat.record,
   'planning-drift': planningDrift,
 }
 
@@ -57,6 +59,7 @@ const hookGroups = {
   'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
     'integration-snapshot', 'test-evidence', 'plan-first'],
   'pre-read': ['secrets-read'],
+  prompt: ['chat'],
   stop: ['planning-drift'],
 }
 
@@ -89,7 +92,8 @@ const hookMetadata = [
   {
     name: 'shell-boundary',
     event: 'PreToolUse · shell',
-    purpose: 'Frena el destino evidente de un comando que escribe fuera de las raíces declaradas.',
+    purpose: 'Frena el destino evidente de un comando que escribe fuera de las raíces declaradas, o en la '
+      + 'aprobación de la persona.',
   },
   {
     name: 'secrets',
@@ -105,7 +109,8 @@ const hookMetadata = [
   {
     name: 'workspace-boundary',
     event: 'PreToolUse · files',
-    purpose: 'Limita escrituras a las raíces declaradas en ops.config.json.',
+    purpose: 'Limita escrituras a las raíces declaradas en ops.config.json, y no deja al agente escribirse '
+      + 'la aprobación de la persona.',
   },
   {
     name: 'engine',
@@ -132,6 +137,12 @@ const hookMetadata = [
     name: 'plan-first',
     event: 'PreToolUse · files',
     purpose: 'Exige WIP activo con plan escrito antes de cambiar el producto.',
+  },
+  {
+    name: 'chat',
+    event: 'UserPromptSubmit / BeforeAgent',
+    purpose: 'Registra el mensaje de la persona: lo que nombró o aprobó en el chat pasa sin archivo. Nunca '
+      + 'bloquea.',
   },
   {
     name: 'planning-drift',
