@@ -29,8 +29,16 @@ diseño — eso vive en el commit y en el código.
   **Qué cambia para vos**: corré `automation install` para que tu runner registre el hook nuevo
   (`UserPromptSubmit` en Claude y Codex, `BeforeAgent` en Gemini); en Codex, confialo con `/hooks`. Tu
   mensaje se guarda en el temporal del sistema, no en el repositorio, y sólo el último de cada sesión.
-  Antigravity sigue con el archivo de aprobación. En Claude Code, leer un `.env` o una clave lo sigue
-  frenando la regla `permissions.deny` del propio Claude, que no pasa por Cauce.
+  Antigravity sigue con el archivo de aprobación.
+
+- **Leer una credencial por shell se frena en los cuatro runners, y en Claude ya no te frena a vos.** Un
+  guard nuevo, `secrets-shell`, frena el comando que muestra una credencial —`cat .env`, `head`, `grep`,
+  `source`, una redirección `<`, un `node -e`— en Claude, Codex, Gemini y Antigravity. Hasta ahora sólo
+  Claude lo frenaba, con reglas nativas `permissions.deny` que tampoco dejaban pasar tu pedido; esas reglas
+  se retiran, y como con el resto de los guards, si lo pedís en el chat, pasa.
+
+  **Qué cambia para vos**: corré `automation install`; en Claude quita las reglas que Cauce había puesto y
+  conserva las tuyas. Si querés un bloqueo nativo total, escribilo como regla propia.
 
 ### Corregido
 

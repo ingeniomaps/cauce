@@ -210,7 +210,8 @@ test('install reemplaza el wiring por guard suelto y conserva lo que no es suyo'
       ],
     },
     env: { MI_VARIABLE: 'no-tocar' },
-    permissions: { deny: ['Read(./privado/**)'] },
+    // Dos de las reglas que Cauce entregaba hasta 0.80.0, junto a una de la empresa.
+    permissions: { deny: ['Read(./privado/**)', 'Read(.env)', 'Read(id_rsa)'] },
   }))
 
   const result = run(['automation', 'install', target, 'claude'])
@@ -226,9 +227,9 @@ test('install reemplaza el wiring por guard suelto y conserva lo que no es suyo'
   assert.match(commands, /guard-files\.sh/)
   assert.match(commands, /mi-hook\.sh/, 'el hook del usuario sobrevive')
   assert.equal(config.env.MI_VARIABLE, 'no-tocar', 'la configuración ajena no se toca')
-  // Las reglas de lectura de Cauce se suman a las de la empresa, no las reemplazan (caso 092).
-  assert.ok(config.permissions.deny.includes('Read(./privado/**)'), 'la regla del usuario sobrevive')
-  assert.ok(config.permissions.deny.includes('Read(.env)'), 'y se suma la nuestra')
+  // Reinstalar retira las reglas de lectura que Cauce entregaba y conserva la de la empresa (caso 104).
+  assert.deepEqual(config.permissions.deny, ['Read(./privado/**)'], 'se van las nuestras y queda la del usuario')
+  assert.match(result.stdout, /quitadas las reglas que Cauce ya no entrega/)
   // `doctor` también comprueba que el CLI del runner esté en PATH, que es un hecho de la máquina y no
   // del wiring: acá pasaba porque el dev tiene `claude` instalado y fallaba en el runner de CI, que no.
   // Lo que este test mide es que la instalación no dejara nada que reportar.

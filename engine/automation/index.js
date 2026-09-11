@@ -322,7 +322,7 @@ function uninstall(root, name, output = console) {
 
   if (fs.existsSync(paths.configTarget)) {
     const current = JSON.parse(fs.readFileSync(paths.configTarget, 'utf8'))
-    const clean = unmergeConfig(current, runnerConfig(paths, root))
+    const clean = unmergeConfig(unmergeConfig(current, runnerConfig(paths, root)), runner.config.retired || {})
     if (clean && Object.keys(clean).length) F.atomicWriteJson(paths.configTarget, clean)
     else { removeFile(paths.configTarget, paths.install); removed += 1 }
     output.log(`✓ ${name}: ${runner.config.target} sin las entradas de Cauce`)
@@ -389,6 +389,14 @@ function install(root, name, output = console, options = {}) {
     ? { config: {}, dropped: [] }
     : withoutDeliveredHooks(current, live, previous)
   reportRemoved(name, clean.dropped, live, output)
+  // Lo que Cauce entregó en una versión y retiró en otra sin ser un hook, que el merge no saca: las reglas
+  // `permissions.deny` que puso el 092 y sacó el 104. Se va exactamente lo que el adaptador declara como
+  // retirado; una regla de la empresa que no coincide letra por letra se queda.
+  if (runner.config.retired) {
+    const before = JSON.stringify(clean.config)
+    clean.config = unmergeConfig(clean.config, runner.config.retired) || {}
+    if (JSON.stringify(clean.config) !== before) output.log(`− ${name}: quitadas las reglas que Cauce ya no entrega`)
+  }
   F.atomicWriteJson(paths.configTarget, mergeConfig(clean.config, incoming))
   // Dónde aterrizó, no sólo qué archivo: en sidecar el destino no es el repo desde el que se corrió
   // el comando, y descubrirlo por sorpresa es la diferencia entre confiar y adivinar.

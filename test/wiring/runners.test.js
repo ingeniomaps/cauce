@@ -82,12 +82,14 @@ test('las capacidades declaradas coinciden con los artefactos reales', () => {
   const claudeSettings = JSON.parse(fs.readFileSync(path.join(root, 'claude', 'settings.json'), 'utf8'))
   const readers = (events) => events.filter((group) => /guard-secrets-read\.sh/.test(JSON.stringify(group.hooks)))
     .map((group) => group.matcher)
-  assert.deepEqual(readers(claudeSettings.hooks.PreToolUse), ['Read'])
-  assert.deepEqual(readers(geminiSettings.hooks.BeforeTool), ['read_file'])
-  // Y la regla nativa de Claude niega nombres exactos: `.env.*` negaría también `.env.example`.
-  const deny = claudeSettings.permissions.deny
-  for (const rule of ['Read(.env)', 'Read(.env.local)', 'Read(id_ed25519)']) assert.ok(deny.includes(rule), rule)
-  assert.equal(deny.some((rule) => /\.env\.\*\)/.test(rule)), false, 'ninguna regla niega .env.* entero')
+  // Y a la de búsqueda, que nombra por comodín lo que lee (caso 104).
+  assert.deepEqual(readers(claudeSettings.hooks.PreToolUse), ['Read|Grep'])
+  assert.deepEqual(readers(geminiSettings.hooks.BeforeTool), ['read_file|grep_search'])
+  // Claude ya no trae reglas nativas de lectura: frenaban también lo que la persona pedía, y el shell lo cubre
+  // `secrets-shell` en los cuatro runners (caso 104). Las que entregó antes quedan declaradas como retiradas.
+  assert.equal(claudeSettings.permissions, undefined, 'sin permissions.deny propias')
+  const retiradas = claude.config.retired.permissions.deny
+  for (const rule of ['Read(.env)', 'Read(.env.local)', 'Read(id_ed25519)']) assert.ok(retiradas.includes(rule), rule)
 
   // El hook de mensaje, en el evento propio de cada runner que tiene uno (caso 098).
   const codexHooks = JSON.parse(fs.readFileSync(path.join(root, 'codex', 'hooks.json'), 'utf8')).hooks

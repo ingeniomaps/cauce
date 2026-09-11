@@ -29,7 +29,7 @@
         ]
       },
       {
-        "matcher": "read_file",
+        "matcher": "read_file|grep_search",
         "hooks": [
           {
             "type": "command",

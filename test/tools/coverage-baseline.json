@@ -214,6 +214,11 @@
     "branches": 70,
     "functions": 97
   },
+  "engine/hooks/secrets-shell.js": {
+    "lines": 100,
+    "branches": 87,
+    "functions": 100
+  },
   "engine/hooks/self-approval.js": {
     "lines": 100,
     "branches": 100,

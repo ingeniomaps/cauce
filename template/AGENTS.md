@@ -110,8 +110,6 @@ pedido no lo nombraba y algo se frena, el agente te dice qué y por qué: contes
 eso. Y `plan-first` no te pide un plan cuando el cambio lo pediste vos: el plan es para el trabajo que va
 por tareas. Funciona en Claude Code, Codex y Gemini, que le avisan a Cauce cuando mandás un mensaje; en
 Antigravity, y cuando nadie está en el chat —CI, un recorrido, un subagente—, queda el archivo de abajo.
-Una excepción que no es de Cauce: en Claude Code, leer lo que su regla `permissions.deny` niega —`.env`,
-claves, tokens— lo frena Claude mismo aunque lo pidas.
 
 **Sin chat, la salida de todos ellos es la misma**: escribir en `planning/.ops-approval` las rutas que
 autorizás, una por línea, con `#` para lo que no sea una ruta. En sidecar es el `planning/` de la

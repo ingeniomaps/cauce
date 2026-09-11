@@ -274,6 +274,11 @@ test('secrets y secrets-read frenan una credencial conocida o declarada, al escr
   }
   assert.doesNotThrow(() => execute('secrets-read', at(path.join(root, '.env.example'))))
   assert.doesNotThrow(() => execute('secrets-read', at(path.join(root, 'src', 'app.js'))))
+  // Las herramientas de búsqueda nombran por comodín: el `glob` del Grep de Claude y el `include_pattern`
+  // del `grep_search` de Gemini (caso 104).
+  blocked('secrets-read', { cwd: root, tool_input: { pattern: '.', glob: '.env*' } }, /leerla/)
+  blocked('secrets-read', { cwd: root, tool_input: { pattern: '.', include_pattern: '.env' } }, /leerla/)
+  assert.doesNotThrow(() => execute('secrets-read', { cwd: root, tool_input: { pattern: '.', glob: '*.md' } }))
   // Sin declaración, un nombre que no parece credencial vuelve a ser un archivo cualquiera.
   fs.rmSync(path.join(root, 'organization', 'secrets.json'))
   assert.doesNotThrow(() => execute('secrets', at(identity)))
@@ -2203,4 +2208,36 @@ test('el hook de mensaje nunca frena ni imprime, reciba lo que reciba', () => {
   }
   assert.ok(fs.existsSync(path.join(DIR, `${session}.json`)), 'y con una entrada válida registra el mensaje')
   fs.rmSync(path.join(DIR, `${session}.json`), { force: true })
+})
+
+// Leer una credencial por shell, en cualquier runner (caso 104): lo que la muestra se frena, lo que sólo la
+// nombra pasa, y lo que la persona pidió en el chat también.
+test('secrets-shell frena leer una credencial por shell y deja pasar lo demás', () => {
+  const root = planFirstRoot('ops-hook-lee-shell-', WIP_CON_PLAN)
+  const corre = (command) => ({ cwd: root, tool_input: { command } })
+  for (const command of ['cat .env', 'head -3 ./.env', 'grep TOKEN .env', 'sed -n 1p .env', 'source .env',
+    '. .env', 'wc -l < .env', 'cat id_ed25519 | base64', 'X=1 cat .env', 'echo $(cat .npmrc)',
+    `node -e "console.log(require('node:fs').readFileSync('.env','utf8'))"`,
+    `python3 -c "print(open('.env').read())"`,
+    // Las dos formas con que un agente lo leyó en una sesión real, cuando el guard no las veía.
+    'nl -ba .env', "rg -n KEY -g '.env*'", "grep -rn KEY --include='*.env' .",
+    // El verbo se busca detrás de prefijos con sus banderas, con ruta, dentro de un subshell y entre tramos vacíos.
+    'xargs -0 cat .env', '/bin/cat .env', '(cat .env)', 'true; ; cat .env']) {
+    blocked('secrets-shell', corre(command), /lee .*credencial/)
+  }
+  for (const command of ['cat .env.example', 'ls -la .env', 'test -f .env', 'rm .env', 'cp .env.example .env',
+    'git add .env.example', 'git commit -m "no leer el .env; cat .env"', 'grep -r TOKEN src', 'ls .env*',
+    'cat *.md']) {
+    assert.doesNotThrow(() => execute('secrets-shell', corre(command)), command)
+  }
+  assert.throws(() => executeAll(['pre-shell'], corre('cat .env')), /lee .*credencial/)
+  // Sin chat queda la aprobación por archivo; con chat, pasa lo que la persona nombró.
+  pasteApproval(root, messageOf('secrets-shell', corre('cat .env')))
+  assert.doesNotThrow(() => execute('secrets-shell', corre('cat .env')))
+  const chat = chatSession()
+  try {
+    const pidio = chat.says('mostrame qué hay en el .npmrc')
+    assert.doesNotThrow(() => execute('secrets-shell', pidio(corre('cat .npmrc'))))
+    blocked('secrets-shell', corre('cat .npmrc'), /lee .*credencial/)
+  } finally { chat.close() }
 })

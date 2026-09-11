@@ -13,6 +13,7 @@ const { readInput, cwdOf, block, findOpsRoot } = require('./input')
 const shell = require('./shell')
 const files = require('./files')
 const chat = require('./chat')
+const { secretsShell } = require('./secrets-shell')
 
 function planningDrift(input) {
   const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
@@ -40,6 +41,7 @@ const guards = {
   governance: shell.governance,
   verify: shell.verify,
   'shell-boundary': shell.shellBoundary,
+  'secrets-shell': secretsShell,
   secrets: files.secrets,
   generated: files.generated,
   'workspace-boundary': files.workspaceBoundary,
@@ -55,7 +57,8 @@ const guards = {
 
 // Grupos por evento: un runner corre el grupo entero en un solo proceso en lugar de un guard por hook.
 const hookGroups = {
-  'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'verify', 'shell-boundary'],
+  'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'verify', 'shell-boundary',
+    'secrets-shell'],
   'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
     'integration-snapshot', 'test-evidence', 'plan-first'],
   'pre-read': ['secrets-read'],
@@ -104,6 +107,12 @@ const hookMetadata = [
     name: 'secrets-read',
     event: 'PreToolUse · read',
     purpose: 'Bloquea leer con la herramienta del runner una credencial conocida o declarada.',
+  },
+  {
+    name: 'secrets-shell',
+    event: 'PreToolUse · shell',
+    purpose: 'Bloquea leer por shell una credencial conocida o declarada; lo que la persona pidió en el chat '
+      + 'pasa.',
   },
   { name: 'generated', event: 'PreToolUse · files', purpose: 'Impide editar código generado manualmente.' },
   {

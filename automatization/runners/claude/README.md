@@ -6,9 +6,10 @@ Adaptador nativo mediante `PreToolUse`, `UserPromptSubmit` y `Stop`. Instalar co
 node tools/ops.js automation install . claude
 ```
 
-El instalador fusiona la sección `hooks` en `.claude/settings.json` y conserva otras claves. También
-suma a `permissions.deny` reglas `Read(...)` por los nombres de credencial conocidos, junto a las que el
-proyecto ya tenga; una que Cauce retire en una versión futura no se quita sola. Si ya
+El instalador fusiona la sección `hooks` en `.claude/settings.json` y conserva otras claves. Las reglas
+`permissions.deny` `Read(...)` que Cauce sumaba hasta 0.80.0 las retira al reinstalar —las declara
+`config.retired` en `manifest.json`— y deja las que el proyecto haya escrito: leer una credencial lo frenan
+ahora los guards, y lo que la persona pide en el chat pasa (caso 104). Si ya
 existe una versión distinta de un archivo, se detiene sin sobrescribirla para no destruir
 personalizaciones del proyecto. También crea `CLAUDE.md` cuando no existe y conserva uno existente.
 
