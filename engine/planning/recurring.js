@@ -19,6 +19,10 @@ const CADENCES = { mensual: 1, trimestral: 3, semestral: 6, anual: 12 }
 
 const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const DATE = /^\d{4}-\d{2}-\d{2}$/
+// La fila que el molde trae activa escribe su `Desde` como marcador, porque la fecha depende del día en
+// que se crea la instancia y la reemplazan `init` y `upgrade`. Sin resolver sólo existe en el molde
+// mismo —el que `npm run check` valida en el toolkit—, y ahí no vence: `status` la descarta por fecha.
+const PLACEHOLDER = /^\{\{[A-Z_]+\}\}$/
 // `- **qué** AAAA-MM-DD — razón`. El nombre en negrita adelante es la misma convención del INBOX, y por
 // el mismo motivo: es con lo que se cita la fila desde otro lado.
 const POSTPONEMENT = /^-\s+\*\*([^*]+)\*\*\s+(\S+)\s+[—-]\s+(.+)$/
@@ -77,7 +81,7 @@ function validate({ exists, rows, postponements }) {
     if (!CADENCES[row.cadence]) {
       errors.push(`${at}: cadencia "${row.cadence}" fuera de ${Object.keys(CADENCES).join(' | ')}`)
     }
-    if (!DATE.test(row.since)) errors.push(`${at}: Desde debe ser AAAA-MM-DD`)
+    if (!DATE.test(row.since) && !PLACEHOLDER.test(row.since)) errors.push(`${at}: Desde debe ser AAAA-MM-DD`)
     // Se juzga la línea armada y no la celda suelta: lo que se promueve es esa línea, y quien la va a
     // leer es el mismo lector de BACKLOG. Una celda que pasa acá y una línea que BACKLOG rechaza es el
     // error que aparece un mes después, con la tarea ya pegada.
@@ -145,4 +149,11 @@ function warnings(state) {
   return lines
 }
 
-module.exports = { FILE, read, validate, status, warnings, taskLine }
+// Los marcadores de fecha del molde, resueltos para una instancia que nace hoy. `Desde` es la primera
+// fecha de vencimiento y no el día en que se declara la fila, así que va un período después: con la
+// fecha de hoy la fila nacía «vence hoy» (caso 106). Trimestral es la cadencia de la fila del molde.
+function sinceValues(today) {
+  return { '{{INBOX_SINCE}}': addMonths(today, CADENCES.trimestral) }
+}
+
+module.exports = { FILE, read, validate, status, warnings, taskLine, sinceValues }

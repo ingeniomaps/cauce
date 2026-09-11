@@ -405,18 +405,31 @@ function readWips(dir) {
 // La plantilla no traía ningún ejemplo, así que quien escribía viñetas planas veía cero ítems sobre un
 // archivo con doce y nada se lo decía. `skipped` es lo que vuelve visible esa diferencia.
 function readInbox(dir) {
-  const result = { deuda: 0, ideas: 0, propuestas: 0, lecciones: 0, skipped: 0 }
+  const { heads, skipped } = inboxSections(dir)
+  return { ...Object.fromEntries(Object.entries(heads).map(([key, names]) => [key, names.length])), skipped }
+}
+
+// Los nombres en negrita de cada sección, que es lo que un recorrido necesita para no volver a escribir
+// lo que ya está: el nombre y no la entrada, porque pasar el archivo entero a cada tarea cuesta lo que
+// el INBOX pesa (caso 101).
+function inboxHeads(dir) {
+  return inboxSections(dir).heads
+}
+
+function inboxSections(dir) {
+  const heads = { deuda: [], ideas: [], propuestas: [], lecciones: [] }
+  let skipped = 0
   for (const part of read(path.join(dir, 'INBOX.md')).split(/^##\s+/m)) {
     const title = part.split('\n')[0]
     const bullets = (part.match(/^[-*]\s+(?:\[[ xX]\]\s+)?/gm) || []).length
-    const count = (part.match(/^[-*]\s+(?:\[[ xX]\]\s+)?\*\*/gm) || []).length
-    if (/Deuda|Ideas|Visi[oó]n|Propuestas|Lecciones/i.test(title)) result.skipped += bullets - count
-    if (/Deuda/i.test(title)) result.deuda = count
-    if (/Ideas|Visi[oó]n/i.test(title)) result.ideas = count
-    if (/Propuestas/i.test(title)) result.propuestas = count
-    if (/Lecciones/i.test(title)) result.lecciones = count
+    const names = [...part.matchAll(/^[-*]\s+(?:\[[ xX]\]\s+)?\*\*([^*\n]*)/gm)].map((hit) => hit[1].trim())
+    if (/Deuda|Ideas|Visi[oó]n|Propuestas|Lecciones/i.test(title)) skipped += bullets - names.length
+    if (/Deuda/i.test(title)) heads.deuda = names
+    if (/Ideas|Visi[oó]n/i.test(title)) heads.ideas = names
+    if (/Propuestas/i.test(title)) heads.propuestas = names
+    if (/Lecciones/i.test(title)) heads.lecciones = names
   }
-  return result
+  return { heads, skipped }
 }
 
 module.exports = {
@@ -424,5 +437,5 @@ module.exports = {
   TASK_LINE, TASK_LINE_ANY_LANE,
   read, section, withoutComments, frontmatter, readEpics, readBacklog, readDone, readWip, readWips, wipName,
   acceptanceConditions, tableRows, taskFromLine,
-  readInbox, readHumanActions,
+  readInbox, inboxHeads, readHumanActions,
 }

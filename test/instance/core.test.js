@@ -317,3 +317,15 @@ test('el manifiesto ausente se lee vacío y el ilegible se niega a ser leído', 
   assert.deepEqual(MF.read(root), { 'AGENTS.md': 'abc' })
   assert.deepEqual(MF.readRunners(root), {})
 })
+
+// Caso 101. Por qué sólo un entero positivo está en `validateInbox`.
+test('inbox.warnLines se valida, y no declararlo es válido', () => {
+  const con = (inbox) => validateOpsConfig({ ...opsConfig(), inbox }).filter((error) => error.includes('inbox'))
+  assert.deepEqual(con(undefined), [], 'no declararlo es el caso normal')
+  assert.deepEqual(con({ warnLines: 500 }), [])
+  for (const malo of [0, -1, 2.5, '300']) {
+    assert.match(con({ warnLines: malo })[0] || '', /entero mayor que cero/, `${JSON.stringify(malo)} se rechaza`)
+  }
+  assert.match(con({ lines: 3 })[0], /no está permitido/)
+  assert.match(con([])[0], /debe ser un objeto/)
+})

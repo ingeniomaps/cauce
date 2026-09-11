@@ -155,7 +155,8 @@ test('las dos listas se leen de su sección, y la viñeta que no encaja se ve', 
 
   const read = RC.read(planning)
   assert.equal(read.exists, true)
-  assert.deepEqual(read.rows.map((row) => row.id), ['deps'], 'la prosa de arriba no entra como fila')
+  // `inbox` es la fila que el molde trae activa desde el caso 106; la prosa sigue sin entrar.
+  assert.deepEqual(read.rows.map((row) => row.id), ['deps', 'inbox'], 'la prosa de arriba no entra como fila')
   assert.deepEqual(read.postponements.map((one) => one.id), ['deps', ''],
     'y las viñetas que explican las columnas no entran como postergaciones')
   assert.equal(read.postponements[0].reason, 'Esperando el release.')
@@ -181,6 +182,9 @@ test('una instancia que ya existe recibe el contrato al actualizar', () => {
   assert.equal(upgraded.status, 0, upgraded.stderr)
   assert.ok(fs.existsSync(file), 'la instancia anterior a esta versión lo recibe')
   assert.match(upgraded.stdout, new RegExp(`\\+ planning/${RC.FILE}`), 'y se dice, porque hay que llenarlo')
+  // Con la fecha de la fila del INBOX resuelta: sin resolver, el marcador no vence nunca y nadie lo ve.
+  assert.match(RC.read(path.join(target, 'planning')).rows.find((one) => one.id === 'inbox').since,
+    /^\d{4}-\d{2}-\d{2}$/)
 
   // Llega vacío, así que no le cambia el estado a nadie: `check` sigue igual de verde que antes.
   assert.equal(JSON.parse(run(['check', path.join(target, 'planning'), '--json']).stdout).ok, true)
@@ -224,4 +228,57 @@ test('context nombra la recurrencia vencida, y sólo la vencida', () => {
   const promote = run(['recurring', planning, '--promote', 'deps'])
   assert.match(promote.stdout, /^- \[ \] \*\*deps-\d{4}-\d{2}\*\* — Actualizar\./m)
   assert.equal(promote.status, 0)
+})
+
+// Caso 106, sobre una instancia de verdad. Por qué la fecha va un período después está en `sinceValues`.
+test('una instancia recién creada trae la recurrencia del INBOX activa y sin vencer', () => {
+  const target = path.join(tempRoot('cauce-recurring-inbox-'), 'acme')
+  assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'embedded', '--no-install']).status, 0)
+  const planning = path.join(target, 'planning')
+  const row = RC.read(planning).rows.find((one) => one.id === 'inbox')
+  assert.ok(row, 'la fila está fuera del comentario')
+  assert.match(row.since, /^\d{4}-\d{2}-\d{2}$/, 'con la fecha resuelta')
+  assert.ok(row.since > new Date().toISOString().slice(0, 10), 'y posterior al día de init')
+  const check = JSON.parse(run(['check', planning, '--json']).stdout)
+  assert.equal(check.ok, true, JSON.stringify(check.errors))
+  assert.deepEqual(check.warnings.filter((one) => /RECURRING/.test(one)), [], 'y no nace vencida')
+})
+
+// Las filas de ejemplo existen para descomentarlas, y descomentadas rompían `check` porque no declaraban
+// dónde se trabaja: lo que se promueve es una línea de BACKLOG, y BACKLOG exige `service` (caso 106).
+test('cada fila de ejemplo del molde, descomentada, deja check sin errores', () => {
+  for (const id of ['deps', 'accesos', 'costos']) {
+    const planning = path.join(tempRoot(`cauce-recurring-ejemplo-${id}-`), 'planning')
+    fs.cpSync(MOLDE, planning, { recursive: true })
+    const file = path.join(planning, RC.FILE)
+    const text = fs.readFileSync(file, 'utf8')
+    const row = text.match(new RegExp(`^\\| ${id} .*$`, 'm'))[0]
+    fs.writeFileSync(file, text.replace(`${row}\n`, '').replace('|---|---|---|---|\n', `|---|---|---|---|\n${row}\n`))
+    // Sólo las de RECURRING: la copia suelta del molde no trae `integrations/`, y eso es del montaje.
+    const check = JSON.parse(run(['check', planning, '--json']).stdout)
+    assert.deepEqual(check.errors.filter((one) => /RECURRING/.test(one)), [], `${id} descomentada no rompe check`)
+  }
+})
+
+// El marcador del molde se tolera sólo como marcador: una fecha mal escrita sigue siendo un error. Y la
+// fecha que lo reemplaza recorta el día al último del mes, como cualquier vencimiento.
+test('Desde admite el marcador del molde y nada más, y se resuelve un trimestre después', () => {
+  const task = 'Recorrer. _Aceptación: nada sin decidir._ (service: planning)'
+  const row = (since) => ({ id: 'inbox', cadence: 'trimestral', since, task })
+  assert.deepEqual(RC.validate({ exists: true, rows: [row('{{INBOX_SINCE}}')], postponements: [] }), [])
+  assert.match(RC.validate({ exists: true, rows: [row('pronto')], postponements: [] })[0], /Desde debe ser AAAA-MM-DD/)
+  assert.equal(RC.sinceValues('2026-11-30')['{{INBOX_SINCE}}'], '2027-02-28')
+})
+
+// Las dos salidas de `validate` que ninguna fila del archivo alcanza: la fila sin nombre se nombra igual,
+// y la celda vacía no arma línea. Conducta anterior al caso 106; se fija acá porque desde ese cambio la
+// cobertura las cuenta como ramas y ninguna prueba las recorría.
+test('una fila sin nombre y una celda vacía se rechazan diciendo cuál es', () => {
+  const task = 'Recorrer. _Aceptación: nada sin decidir._ (service: planning)'
+  const errors = (row) => RC.validate({
+    exists: true, rows: [{ id: 'x', cadence: 'mensual', since: '2026-01-01', task, ...row }], postponements: [],
+  })
+  assert.deepEqual(errors({ id: '' }),
+    ['RECURRING.md (fila sin nombre): el identificador va en minúsculas, sin espacios'])
+  assert.deepEqual(errors({ task: '' }), ['RECURRING.md x: la celda no arma una línea de tarea'])
 })

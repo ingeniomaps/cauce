@@ -16,6 +16,7 @@ export const meta = {
 }
 
 {{INCLUDE:shared/workflow-root.js}}
+{{INCLUDE:shared/inbox.js}}
 
 // Dónde trabaja el recorrido. Normalmente es la raíz donde se lo invocó; `args.root` existe para
 // correrlo sobre otra instancia —el banco desechable con el que `flow-eval` lo mide—, porque un
@@ -58,6 +59,8 @@ const MANIFEST = {
     // `dependsOn`, que se arregló mirando sólo las claves de las etapas.
     completion: { type: 'array', items: { type: 'string' } },
     conditionalAgents: { type: 'array', items: { type: 'string' } },
+    // Con los nombres que ya hay en el INBOX, lo que el recorrido escribe al final no repite uno.
+    inbox: INBOX_HEADS,
     owners: { type: 'array', items: { type: 'object', additionalProperties: false, properties: {
       domain: { type: 'string' }, agent: { type: 'string' },
     } } },
@@ -161,6 +164,7 @@ const contract = await agent(
   `only ran on failure the destination came out of memory.\n` +
   `   If command 1 failed, set exists=false, report flows, and stop.\n` +
   `3. "node tools/ops.js agents list --json", which gives each role its resolved path.\n` +
+  `4. "node tools/ops.js context planning --json" — copy only its inbox field into inbox, verbatim.\n` +
   `Report exists=true and these manifest fields: name, purpose, outcome, entryAgent, facilitator, ` +
   `guardrails, decisionOwners flattened into owners as domain/agent pairs, and stages with id, phase, ` +
   `agent, produces, dependsOn and exitGate. Drop every other field the command printed — the schema ` +
@@ -398,17 +402,38 @@ if (contract.outcome === 'report') {
     `sólo llevaba lo que la siguiente necesitaba para decidir.\n\n` +
     `Escribí el informe en ${REPORTS} como ` +
     `<AAAA-MM-DD>-<slug>.md: qué pasó, qué se sabe con evidencia, qué se supone, qué se decidió y qué ` +
-    `queda abierto. Separá causa de síntoma y no atribuyas responsabilidad a personas. Registrá cada ` +
-    `seguimiento en ${INBOX} sin promoverlo, en la sección que le toca por su sujeto: un cambio del ` +
-    `producto con su evidencia va a Propuestas, lo aprendido sobre cómo trabajamos va a Lecciones. ` +
+    `queda abierto. Separá causa de síntoma y no atribuyas responsabilidad a personas. Cada seguimiento ` +
+    `va en lo que queda abierto del informe y además en followUps, del más al menos importante, con la ` +
+    `sección que le toca por su sujeto: un cambio del producto va a Propuestas, lo aprendido sobre cómo ` +
+    `trabajamos va a Lecciones. No escribas en ${INBOX}: eso lo hace el paso siguiente. ` +
     `Toda acción que requiera una persona, en ${HUMAN}.`,
     { schema: { type: 'object', required: ['file', 'followUps'], properties: {
-      file: { type: 'string' }, followUps: { type: 'integer' }, summary: { type: 'string' },
+      file: { type: 'string' }, summary: { type: 'string' },
+      followUps: { type: 'array', items: { type: 'object', additionalProperties: false,
+        required: ['section', 'entry'], properties: {
+          section: { type: 'string', enum: ['Propuestas', 'Lecciones'] }, entry: { type: 'string' },
+        } } },
     } }, label: 'report-write' },
   )
   if (!report) return stop('report-unavailable', 'el informe no devolvió resultado')
-  log(`Informe en ${report.file}. ${report.followUps} seguimiento(s) en el INBOX, sin promover.`)
-  return finish({ flow: FLOW, stages: handoffs.length, report: report.file, promoted: false })
+  // El tope lo aplica el recorrido y no quien escribe, y lo que pasa de él ya está en el informe: al
+  // INBOX va lo que alguien tiene que decidir, no todo lo que el informe dejó abierto (caso 101).
+  const followUps = report.followUps || []
+  const listed = followUps.slice(0, INBOX_CAP).map((one) => ({ section: one.section, entry: oneLine(one.entry) }))
+  if (listed.length) {
+    await agent(
+      `${RULES}\n\nRegistrá en ${INBOX} estos seguimientos del informe ${report.file}, cada uno en su ` +
+      `sección y sin promover ninguno. ${inboxAsk(['Propuestas', 'Lecciones'], contract.inbox)} ` +
+      `Seguimientos: ${JSON.stringify(listed)}`,
+      { label: 'report-inbox' },
+    )
+  }
+  const unlisted = followUps.length - listed.length
+  log(`Informe en ${report.file}. ${listed.length} seguimiento(s) en el INBOX, sin promover` +
+    `${unlisted ? `; ${unlisted} más quedan sólo en el informe, por el tope de ${INBOX_CAP} por corrida` : ''}.`)
+  return finish({
+    flow: FLOW, stages: handoffs.length, report: report.file, followUps: listed.length, unlisted, promoted: false,
+  })
 }
 
 const epic = await agent(
@@ -431,7 +456,7 @@ if (!epic) return stop('draft-unavailable', 'la propuesta de épica no devolvió
 if (epic.outcome === 'no-hacer') {
   await agent(
     `${RULES}\n\nRegistrá la conclusión en la sección Lecciones de ${INBOX}: por qué esta intención no ` +
-    `es viable hoy y qué la haría viable. Motivo: ${epic.reason}`,
+    `es viable hoy y qué la haría viable. ${inboxAsk(['Lecciones'], contract.inbox)} Motivo: ${epic.reason}`,
     { label: 'inbox-lesson' },
   )
   return stop('no-viable', epic.reason)
@@ -442,7 +467,7 @@ if (epic.outcome === 'investigar') {
   await agent(
     `${RULES}\n\nRegistrá en ${HUMAN} qué hay que averiguar antes de poder decidir esta intención y quién ` +
     `puede hacerlo, sin inventar responsables ni fechas, y dejá la conclusión en la sección Ideas de ` +
-    `${INBOX} sin promoverla. Qué falta averiguar: ${epic.reason}`,
+    `${INBOX} sin promoverla. ${inboxAsk(['Ideas'], contract.inbox)} Qué falta averiguar: ${epic.reason}`,
     { label: 'investigar' },
   )
   return finish({ flow: FLOW, stages: handoffs.length, investigate: epic.reason, promoted: false })

@@ -102,6 +102,18 @@
           "minItems": 1
         }
       }
+    },
+    "inbox": {
+      "type": "object",
+      "description": "El aviso de tamaño del INBOX. `check` advierte —nunca falla— cuando `planning/INBOX.md` pasa de este número de líneas: el INBOX es de la persona, y lo que el aviso pide es recorrerlo, no dejar de escribir.",
+      "additionalProperties": false,
+      "properties": {
+        "warnLines": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Líneas a partir de las cuales `check` avisa. Por defecto 300."
+        }
+      }
     }
   },
   "additionalProperties": false
