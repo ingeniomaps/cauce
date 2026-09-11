@@ -6,7 +6,7 @@
 // Tiene su propio reloj y por eso vive aparte: cambia cuando cambia Jira, no cuando cambia el protocolo.
 // `wiring.test.js` cubre la otra altura, los comandos `integration` corridos por el CLI.
 
-const { opsConfig, tempRoot } = require('../support/environment')
+const { opsConfig, tempRoot, run } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -103,6 +103,82 @@ test('las rutas de proveedores no pueden escapar de integrations', () => {
     JSON.stringify({ providers: { jira: { config: '../../outside.json' } } }),
   )
   assert.throws(() => providerConfig(root, 'jira'), /fuera de la raíz permitida/)
+})
+
+// Un proveedor de la empresa vive en su instancia: se declara con una ruta en `adapter` y cumple el
+// contrato del README con su versión (caso 091). `normalizeFixture` lanza a propósito: es la forma de ver
+// que `sync` usó este adaptador y no otro, sin depender del modelo normalizado.
+const OWN_ADAPTER = [
+  'module.exports = {',
+  '  contract: 1,',
+  "  validateConfig(config, errors) { if (config.enabled !== true) errors.push('tablero: falta enabled') },",
+  "  async fetchItems() { throw new Error('sin red en la prueba') },",
+  "  normalizeFixture() { throw new Error('normalizó el adaptador de tablero') },",
+  '}',
+].join('\n')
+
+function ownProvider(adapter = './adapter.js', source = OWN_ADAPTER, enabled = true) {
+  const root = tempRoot('ops-integration-own-')
+  fs.mkdirSync(path.join(root, 'integrations', 'tablero'), { recursive: true })
+  fs.mkdirSync(path.join(root, 'planning', 'roadmap'), { recursive: true })
+  fs.mkdirSync(path.join(root, 'app'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify(opsConfig()))
+  fs.writeFileSync(path.join(root, 'integrations', 'config.json'), JSON.stringify({ schemaVersion: 1,
+    providers: { tablero: { adapter, enabled, config: 'tablero/config.json' } } }))
+  fs.writeFileSync(path.join(root, 'integrations', 'tablero', 'config.json'), JSON.stringify({ enabled: true }))
+  fs.writeFileSync(path.join(root, 'integrations', 'tablero', 'adapter.js'), source)
+  return root
+}
+
+test('un proveedor propio se declara con una ruta y es el que corre', async () => {
+  const root = ownProvider()
+  assert.deepEqual(I.validate(root).errors, [])
+  const fixture = path.join(root, 'payload.json')
+  fs.writeFileSync(fixture, '{}')
+  await assert.rejects(I.sync(root, 'tablero', { fixture }), /normalizó el adaptador de tablero/)
+})
+
+// El README promete que el adaptador puede ser ESM, y lo cumple Node cargando ESM con `require`: esta
+// prueba fija esa promesa en la suite en vez de dejarla en una sonda (caso 091).
+test('un adaptador propio escrito en ESM se carga igual', () => {
+  const root = ownProvider('./adapter.mjs')
+  fs.writeFileSync(path.join(root, 'integrations', 'tablero', 'adapter.mjs'), [
+    'export const contract = 1',
+    'export function validateConfig() {}',
+    'export async function fetchItems() { return [] }',
+    'export function normalizeFixture() { return [] }',
+  ].join('\n'))
+  assert.deepEqual(I.validate(root).errors, [])
+})
+
+// Los errores de `check` sobre un proveedor, para comparar contra el que se espera y mostrarlos si no está.
+const checkErrors = (root) => I.validate(root).errors
+
+test('un adaptador propio sin la versión del contrato o sin una función no pasa check', () => {
+  const otherVersion = checkErrors(ownProvider('./adapter.js', OWN_ADAPTER.replace('contract: 1', 'contract: 2')))
+  assert.ok(otherVersion.some((error) => /tablero: .*contract 1.*2/.test(error)), otherVersion.join('\n'))
+  const missingFunction = checkErrors(ownProvider('./adapter.js', OWN_ADAPTER.replace(/ {2}async fetchItems.*\n/, '')))
+  assert.ok(missingFunction.some((error) => /tablero: .*fetchItems/.test(error)), missingFunction.join('\n'))
+})
+
+test('un adaptador propio no sale de su carpeta, y un nombre desconocido dice qué hay', () => {
+  const escaping = checkErrors(ownProvider('./../../fuera.js'))
+  assert.ok(escaping.some((error) => /fuera de la raíz permitida/.test(error)), escaping.join('\n'))
+  const unknownName = checkErrors(ownProvider('infisical'))
+  assert.ok(unknownName.some((error) => /No existe adaptador para infisical.*jira.*\.\//.test(error)),
+    unknownName.join('\n'))
+})
+
+test('enable conecta un proveedor propio sin el molde de Cauce', () => {
+  const root = ownProvider('./adapter.js', OWN_ADAPTER, false)
+  const result = run(['integration', 'enable', root, 'tablero'])
+  assert.equal(result.status, 0, result.stderr)
+  const registry = JSON.parse(fs.readFileSync(path.join(root, 'integrations', 'config.json'), 'utf8'))
+  assert.equal(registry.providers.tablero.enabled, true)
+  // Uno que no está registrado ni tiene carpeta sigue sin poder conectarse, y el error dice cómo se hace.
+  const unregistered = run(['integration', 'enable', root, 'infisical'])
+  assert.notEqual(unregistered.status, 0)
+  assert.match(unregistered.stderr, /"adapter": "\.\/adapter\.js"/)
 })
 
 test('Jira pagina con timeout y termina correctamente', async () => {
@@ -402,5 +478,17 @@ test('el README de integraciones declara las firmas que el adaptador tiene', () 
   const jira = require('../../engine/integrations/providers/jira')
   for (const nombre of ['validateConfig', 'fetchItems', 'normalizeFixture']) {
     assert.equal(typeof jira[nombre], 'function', `el adaptador exporta ${nombre}`)
+  }
+  assert.equal(jira.contract, 1, 'el de Cauce declara la versión que exige a los de la empresa')
+})
+
+// El README de arriba no viaja en el paquete; el que llega a cada instancia es el del molde, y es el que
+// lee quien escribe un adaptador propio (caso 091).
+test('el README de integraciones que viaja documenta el contrato con su versión', () => {
+  const raiz = path.resolve(__dirname, '..', '..')
+  const readme = fs.readFileSync(path.join(raiz, 'template', 'integrations', 'README.md'), 'utf8')
+  for (const firma of ['`contract: 1`', '`validateConfig(config, errors)`', '`fetchItems(config, options)`',
+    '`normalizeFixture(payload, config)`', '"adapter": "./adapter.js"']) {
+    assert.ok(readme.includes(firma), `el README del molde declara ${firma}`)
   }
 })

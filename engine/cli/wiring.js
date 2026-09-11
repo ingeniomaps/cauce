@@ -39,11 +39,18 @@ const INTEGRATION = {
     missing: 'Falta <provider>.',
     run: (root, provider) => {
       const source = path.join(IN.PROJECT_ROOT, 'template', 'integrations', provider)
-      if (!fs.existsSync(source)) fail(`Cauce no trae un adaptador para ${provider}.`, 2)
+      const fromCauce = fs.existsSync(source)
+      // Sin molde en Cauce no hay andamiaje que reponer: habilitar un proveedor propio es sólo el interruptor.
+      const own = !fromCauce && (providerRegistry(root).config.providers || {})[provider]
+        && fs.existsSync(path.join(root, 'integrations', provider))
+      if (!fromCauce && !own) {
+        fail(`Cauce no trae un adaptador para ${provider}. Uno propio vive en integrations/${provider}/ y se `
+          + `registra en integrations/config.json con "adapter": "./adapter.js"; con eso, enable lo conecta.`, 2)
+      }
       // Habilitar no es inicializar: repone lo que falte y conserva lo que ya esté. Una instancia que
       // trae el andamiaje de una versión anterior —o que ya tiene snapshots— sólo quiere el interruptor.
       providerRegistry(root)
-      IN.copyTemplate(source, path.join(root, 'integrations', provider), {}, true)
+      if (fromCauce) IN.copyTemplate(source, path.join(root, 'integrations', provider), {}, true)
       switchProvider(root, provider, true)
       console.log(`✓ ${provider}: conectado al proyecto y andamiaje en integrations/${provider}/.`)
       // Sólo se pide lo que falta: reencender un proveedor ya configurado no debería mandar a

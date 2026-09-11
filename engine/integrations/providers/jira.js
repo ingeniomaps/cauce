@@ -161,4 +161,4 @@ async function fetchItems(config, options = {}) {
   return issues.map((issue) => normalizeIssue(issue, config))
 }
 
-module.exports = { fetchItems, normalizeFixture, validateConfig }
+module.exports = { contract: 1, fetchItems, normalizeFixture, validateConfig }

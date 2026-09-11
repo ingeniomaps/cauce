@@ -18,6 +18,15 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Un proveedor de integraciones propio, sin tocar Cauce.** El registro de `integrations/config.json`
+  ya tenía un campo `adapter` que nadie leía: ahora `"adapter": "./adapter.js"` carga el adaptador de la
+  empresa desde `integrations/<nombre>/`, e `integration enable` lo conecta sin exigir un molde de Cauce.
+  El adaptador declara `contract: 1` y las tres funciones del contrato, y `check` rechaza el que no
+  cumpla.
+
+  **Qué cambia para vos**: nada si sólo usás Jira. Para otra herramienta, `integrations/README.md` de tu
+  instancia trae el recorrido.
+
 - **Un contrato de secretos compartido entre repositorios, y un chequeo sin red.** Si tus servicios
   usan un gestor de secretos, los scripts y workflows que lo conectan terminan copiados en cada
   repositorio, y el arreglo que alguien hizo en uno no llega a los demás. `organization/secrets.json`
