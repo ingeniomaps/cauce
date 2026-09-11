@@ -79,6 +79,27 @@ diseño — eso vive en el commit y en el código.
   **Qué cambia para vos**: para publicar una rama de trabajo alcanza con pedirlo nombrando remoto y rama, o
   con contestar «dale».
 
+- **La sesión carga las reglas que rigen tu proyecto, no las cuatro de `system/` fijas.** El archivo de
+  instrucciones de cada runner importaba siempre `planning/rules/system/`: cargaba la regla que tu proyecto
+  había sobrescrito y ninguna de las tuyas. Ahora `automation install` pone las vigentes —las tuyas y las de
+  `system/` que no sobrescribiste— en Claude, Gemini, Codex y Antigravity, y un `CLAUDE.md` que editaste
+  recibe el bloque nuevo sin perder lo tuyo. Como `upgrade` no reinstala, `check` y `automation doctor`
+  avisan cuando lo instalado quedó atrás. `AGENTS.md` dice ahora que, donde una regla tuya y una del
+  sistema chocan, rige la tuya.
+
+  **Qué cambia para vos**: después de actualizar, o cada vez que escribas o sobrescribas una regla,
+  reinstalá el adaptador (`make install-claude`, o el de tu runner); `check` te dice cuándo hace falta. Si
+  tu `CLAUDE.md` es tuyo y no tiene nada de Cauce, poné las marcas `<!-- cauce:reglas inicio -->` y
+  `<!-- cauce:reglas fin -->` donde quieras el bloque y reinstalá.
+
+- **`autobuild` trabaja con las reglas de tu proyecto y ya no cita una que retiraste.** Los subagentes
+  planificaban, construían y revisaban sin conocer tus reglas, y la fila que pedía partir una tarea citaba
+  R17 aunque la hubieras retirado. Ahora `context` dice qué reglas rigen —línea `RULES`, campo `rules` en
+  `--json`—, cada fase recibe esa lista, y Review tiene que nombrar contra cuáles revisó o la corrida para
+  con `review-unbacked`. Ningún prompt cita una regla por número.
+
+  **Qué cambia para vos**: nada que hacer.
+
 ## [0.81.0] - 2026-09-11
 
 ### Cambiado

@@ -1,8 +1,12 @@
 # Cauce para Codex
 
-`{{OPS_DIR}}AGENTS.md` tiene las reglas del sistema, `{{OPS_DIR}}planning/PROTOCOL.md` es la fuente de
-verdad del proceso y `{{OPS_DIR}}planning/rules/system/` son las reglas que rigen cada tarea. Leelos
-antes de trabajar —los tres, no cuando algo sale mal—: acá sólo está lo específico de este runner.
+`{{OPS_DIR}}AGENTS.md` tiene las reglas del sistema y `{{OPS_DIR}}planning/PROTOCOL.md` es la fuente de
+verdad del proceso. Las reglas que rigen cada tarea en este proyecto son éstas —las propias y las de
+`system/` que el proyecto no sobrescribió—, y donde una propia contradice a una del sistema, rige la propia:
+
+{{RULES:list}}
+
+Leé todo eso antes de trabajar, no cuando algo sale mal: acá sólo está lo específico de este runner.
 
 > Codex lee el `AGENTS.md` de la raíz, que es un nombre compartido entre herramientas. Cuando el repo
 > ops **es** la raíz, este archivo no se instala: el `AGENTS.md` de la empresa ya está ahí y manda.

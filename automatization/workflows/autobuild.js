@@ -85,6 +85,8 @@ const CONTEXT = {
     wipFile: { type: 'string' },
     // Con los nombres que ya hay en el INBOX, Review no vuelve a anotar uno.
     inbox: { ...INBOX_HEADS },
+    // Las reglas que rigen el proyecto, con los overrides ya resueltos por el motor (caso 105).
+    rules: { type: 'array', items: { type: 'string' } },
   },
 }
 const CLAIM = {
@@ -135,6 +137,10 @@ const DECISION = {
     consulted: { type: 'array', items: { type: 'string' } },
   },
 }
+// Review nombra contra qué reglas revisó (caso 105): recibir las rutas no garantiza abrirlas, y esto es lo único
+// que deja rastro de que se hizo. Critique no lo lleva porque no recibe la lista.
+const REVIEWED = { ...DECISION, required: [...DECISION.required, 'rules'],
+  properties: { ...DECISION.properties, rules: { type: 'array', items: { type: 'string' } } } }
 // Un exit code dice que el test corrió, no que pruebe lo que la tarea prometió: un test que asercia de
 // menos —o que ni existe— sale verde igual, y el guard de verify tampoco lo ve porque también mira exit
 // codes. Por eso `uncovered` se contrasta contra la aceptación leyendo el fuente, no la salida (R9).
@@ -277,6 +283,8 @@ const VERDICT = ' Cerrá con verdict=aprobado si no queda nada por corregir ante
   'si algo no se resuelve acá —el diseño no lo cubre, falta una decisión ajena, o la corrección excede el ' +
   'alcance—. Marcá blocking=true sólo en el hallazgo que impide entregar: el resto queda registrado y no ' +
   'manda a tocar código.'
+// Acompaña a todo prompt con schema REVIEWED.
+const RULED = ' En rules nombrá, por su ruta, cada una de las reglas que rigen contra la que revisaste el diff.'
 // Lo que hay que corregir antes de entregar. El resto de los hallazgos no desaparece: se registra.
 const blockers = (verdict) => verdict.concerns.filter((one) => one.blocking).map((one) => one.detail)
 // Atajo para reconocer un gate que corrió pruebas sin preguntarle a nadie. No alcanza solo y no
@@ -334,12 +342,19 @@ if (!contract.rootOk) {
 
 const bounds = contract.boundaries || []
 const limits = bounds.length ? ` Límites del proyecto: ${bounds.join('; ')}.` : ''
+// Las reglas que rigen el proyecto (caso 105). Las lista `context`, que se lee después del contrato, así que
+// entran al preámbulo cuando esa lectura vuelve. Viajan las rutas y no el texto: el preámbulo se reenvía a cada
+// subagente que toca código, y el texto de las reglas multiplicaría su tamaño por cada uno.
+let governing = []
 // Alcance de escritura: para subagentes que tocan código o ejecutan gates del producto.
-const SCOPE = `${BASE}\n\nProyecto ${contract.project}. workspaceRoots es el límite completo de escritura del ` +
-  `producto: ${contract.workspaceRoots.join('; ')}.${limits} Este preámbulo ya trae el contrato; no vuelvas a leer ` +
-  `${ROOT}/AGENTS.md, ${ORG}/workspace.md, ${CONFIG} ni ${P}/PROTOCOL.md.`
+const SCOPE = () => `${BASE}\n\nProyecto ${contract.project}. workspaceRoots es el límite completo de escritura ` +
+  `del producto: ${contract.workspaceRoots.join('; ')}.${limits} Este preámbulo ya trae el contrato; ` +
+  `no vuelvas a leer ${ROOT}/AGENTS.md, ${ORG}/workspace.md, ${CONFIG} ni ${P}/PROTOCOL.md.` +
+  (governing.length ? ` Las reglas que rigen este proyecto son éstas, relativas a ${ROOT}: ${governing.join(', ')}. ` +
+    'Leé las que toquen tu fase antes de planificar, construir o revisar; donde una propia contradice a una del ' +
+    'sistema, rige la propia.' : '')
 // Formatos de planning: sólo para subagentes que escriben roadmap, BACKLOG, WIP, DONE o gates.
-const LEDGER = `${SCOPE}\n\nContratos de planning, textuales de ${P}/PROTOCOL.md:\n${contract.contracts}`
+const LEDGER = () => `${SCOPE()}\n\nContratos de planning, textuales de ${P}/PROTOCOL.md:\n${contract.contracts}`
 
 // Un subagente puede morir —error terminal tras reintentos, o alguien que lo saltea— y entonces el
 // runtime devuelve `null`. Sin comprobarlo, la primera propiedad que se le pide revienta el recorrido
@@ -355,8 +370,8 @@ const LEDGER = `${SCOPE}\n\nContratos de planning, textuales de ${P}/PROTOCOL.md
 // justo la distinción que hace falta. Lo que evita el olvido es el arnés, que rechaza la llamada sin
 // etiqueta en las cuatro suites del recorrido.
 const read = (prompt, options = {}) => agent(`${BASE}\n\n${prompt}`, options)
-const run = (prompt, options = {}) => agent(`${SCOPE}\n\n${prompt}`, options)
-const write = (prompt, options = {}) => agent(`${LEDGER}\n\n${prompt}`, options)
+const run = (prompt, options = {}) => agent(`${SCOPE()}\n\n${prompt}`, options)
+const write = (prompt, options = {}) => agent(`${LEDGER()}\n\n${prompt}`, options)
 
 // Las tres paradas que dejan una fila en HUMAN_ACTIONS delegan esa escritura a un agente, y esa fila es
 // el único rastro de la parada: sin ella el recorrido informa un estado que el disco no tiene. Por eso
@@ -371,7 +386,7 @@ const registerHuman = async (prompt, label) => (await write(prompt, { label })
 const readContext = () => read(
   `Corré "node tools/ops.js context ${P} --json" desde ${ROOT} y reportá sólo lo que imprimió. Derivá hasTask ` +
   `de si task es null, wipActive de si wip es null, claimed del campo claimed, today y wipFile de sus ` +
-  `campos, y lane ` +
+  `campos, rules del campo rules tal cual, y lane ` +
   `de task.tier; copiá slug, ` +
   `hito, service, acceptance, ` +
   `epic y cast de task, epicContext de epic.context —vacío si no hay épica— e inbox tal cual. El comando es ` +
@@ -409,6 +424,7 @@ if (blocker === 'blocked-on-human') {
 }
 if (blocker) return stop('context-unavailable', `${P} contestó blocked=${JSON.stringify(planning.blocked)}, `
   + 'que no es del vocabulario. No se sabe si hay bloqueo, así que no se sigue como si no lo hubiera.')
+governing = planning.rules || []
 
 let currentMilestone = planning.wipActive ? planning.hito : ''
 const completed = []
@@ -569,7 +585,7 @@ while (rounds++ < MAX_TASKS) {
     const nota = await registerHuman(
       `Registrá ${unit.id} en ${HUMAN}: nadie pudo escribir un plan que sobreviva a la crítica. `
       + `Motivo: ${detail}. La acción humana es revisar si la unidad son dos resultados con vidas `
-      + `distintas y partirla —R17—, o dejarla entera con la razón escrita.`, 'plan-human')
+      + `distintas y partirla, o dejarla entera con la razón escrita.`, 'plan-human')
     return stop(reason, `${detail}${nota}`)
   }
 
@@ -750,8 +766,8 @@ while (rounds++ < MAX_TASKS) {
     let review = await run(
       `${asRole(cast.review)}Revisá el diff real por aceptación, regresiones, seguridad, arquitectura, código ` +
       `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.${MANIFEST}` +
-      `${VERDICT}`,
-      { schema: DECISION, label: 'review' },
+      `${VERDICT}${RULED}`,
+      { schema: REVIEWED, label: 'review' },
     )
     if (!review) return stop('agent-unavailable', 'Review no devolvió resultado')
     if (review.verdict === 'bloqueado') {
@@ -760,13 +776,18 @@ while (rounds++ < MAX_TASKS) {
     if (blockers(review).length) {
       await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${blockers(review).join('; ')}`,
         { label: 'review-fix' })
-      review = await run(`Volvé a revisar el diff corregido de ${task.id}.${MANIFEST}${VERDICT}`,
-        { schema: DECISION, label: 'review' })
+      review = await run(`Volvé a revisar el diff corregido de ${task.id}.${MANIFEST}${VERDICT}${RULED}`,
+        { schema: REVIEWED, label: 'review' })
       if (!review) return stop('agent-unavailable', 'la re-revisión no devolvió resultado')
       if (review.verdict === 'bloqueado' || blockers(review).length) {
         return stop('review-failed', blockers(review).join('; ') || 'sin condiciones nombradas')
       }
     }
+    // Con reglas que rigen, aprobar sin nombrar contra cuáles es la misma falla que la de abajo en otro eje.
+    if (governing.length && !(review.rules || []).length) {
+      return stop('review-unbacked', 'aprobó el diff sin nombrar contra qué reglas revisó')
+    }
+    if (governing.length) log(`Review contra: ${review.rules.join(', ')}`)
     // Aprobar sin declarar qué se abrió no se arregla mandando a tocar código: falló quien revisó.
     if (!review.consulted.length) return stop('review-unbacked', 'aprobó el diff sin declarar qué inspeccionó')
     reviewFact = `${review.verdict} por ${cast.review}, sobre ${review.consulted.join(', ')}`
