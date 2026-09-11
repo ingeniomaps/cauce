@@ -211,6 +211,26 @@ mergear: `gh pr view <n> --json mergeStateStatus` —`CLEAN` es la afirmación d
 `gh api repos/.../commits/<sha>/check-runs`. El #65 llegó a tener cinco corridas, cuatro rojas, y estaba
 listo para mergear.
 
+## El recorrido de un caso de `docs/issues/`
+
+Un caso pasa por cuatro pasos, en este orden, y ninguno se saltea porque el anterior parezca haber
+dejado claro el siguiente:
+
+1. **Mejorar el caso antes de arreglarlo.** Cada cita `archivo:línea` se contrasta contra el fuente, el
+   defecto se reproduce corriendo —en un banco desechable, con la salida real pegada— y se revisa si el
+   fix propuesto cierra la reproducción del propio caso. Lo que mezcla dos defectos sale como caso propio;
+   lo que pide una decisión que cambia el producto se pregunta antes de construir, no a mitad de camino.
+2. **Arreglarlo en una rama propia**, nunca en `main` —ver Convenciones—.
+3. **Cerrarlo sin huecos y con prueba real**, que es la sección siguiente. Sin una prueba corrida que
+   muestre que el defecto se fue, el caso sigue abierto aunque el diff esté completo.
+4. **Commits por naturaleza y PR** desde esa rama, contra `main` de este repositorio.
+
+El primer paso es el que se saltea, porque el caso ya parece listo: lo escribió la sesión que sufrió el
+defecto, con su diagnóstico adentro. El 2026-09-10, correrlos mostró que el 088 proponía un arreglo que
+no alcanzaba la divergencia que lo había originado y que el 089 mezclaba dos escrituras en un solo paso
+de su reproducción; los dos se leían bien, y de ahí salieron tres casos nuevos. Arreglar sobre el
+diagnóstico sin correrlo habría cerrado lo que el caso decía, no lo que pasaba.
+
 ## Cerrar un caso de `docs/issues/`
 
 **Cerrar es un acto con su propio contraste, no la consecuencia de que el código esté listo.** Un caso
