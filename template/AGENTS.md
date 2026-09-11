@@ -103,9 +103,21 @@ Un guard existente **no se edita**: `upgrade` detecta el cambio y se detiene ant
 Algunos bloqueos tienen salida, y conviene saber cuál antes de necesitarla — el momento en que un guard
 te frena es el peor para elegir bien.
 
-**La salida de todos ellos es la misma**: escribir en `planning/.ops-approval` las rutas que autorizás,
-una por línea, con `#` para lo que no sea una ruta. Es un solo archivo para todos los guards, porque lo
-que escribís son rutas y quién las mira lo decide qué guard esté juzgando esa ruta.
+**Si lo pediste vos en el chat, no hace falta nada.** Los guards contienen al agente cuando decide solo o
+cuando trabaja dentro de un recorrido; lo que vos pedís directo no se frena. Nombrá lo que querés que
+toque —«borrá la prueba de altas», «reescribí la migración 004»— y pasa sin preguntarte de nuevo. Si tu
+pedido no lo nombraba y algo se frena, el agente te dice qué y por qué: contestá «dale» y pasa exactamente
+eso. Y `plan-first` no te pide un plan cuando el cambio lo pediste vos: el plan es para el trabajo que va
+por tareas. Funciona en Claude Code, Codex y Gemini, que le avisan a Cauce cuando mandás un mensaje; en
+Antigravity, y cuando nadie está en el chat —CI, un recorrido, un subagente—, queda el archivo de abajo.
+Una excepción que no es de Cauce: en Claude Code, leer lo que su regla `permissions.deny` niega —`.env`,
+claves, tokens— lo frena Claude mismo aunque lo pidas.
+
+**Sin chat, la salida de todos ellos es la misma**: escribir en `planning/.ops-approval` las rutas que
+autorizás, una por línea, con `#` para lo que no sea una ruta. En sidecar es el `planning/` de la
+instancia y no una carpeta al lado de tus proyectos; el bloqueo dice la ruta exacta. Es un solo archivo
+para todos los guards, porque lo que escribís son rutas y quién las mira lo decide qué guard esté
+juzgando esa ruta. Lo escribís vos: si el agente intenta escribírselo, un guard lo frena.
 
 | lo que te frena | qué ruta aprobás |
 |---|---|

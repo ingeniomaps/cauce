@@ -59,6 +59,30 @@ cada runner es distinto, y conviene saberlo:
 - **Codex y Antigravity**: sin guard de lectura. Sus adaptadores sólo enganchan shell y edición, y leer por
   shell no pasa por ningún matcher de archivo.
 
+### Lo que pide la persona
+
+Un guard ve la llamada a la herramienta y nada de la conversación, así que frenaba igual lo que la persona
+pidió con todas las letras y lo que el agente decidió solo. `chat` corre sobre el mensaje de la persona —el
+runner lo dispara cuando ella manda algo, nunca por el resultado de una herramienta— y lo deja donde los
+guards lo leen:
+
+- lo que la persona **nombró** en su mensaje pasa: «leé el `.env`» autoriza leer el `.env`, y «no toques
+  el `.env`» no;
+- lo que se frenó sin que lo nombrara queda anotado, y un «dale» en el mensaje siguiente aprueba
+  exactamente eso;
+- `plan-first` no aplica: el plan es del trabajo que va por tareas.
+
+No cuenta cuando no hay persona —CI, o un aviso del runner como el de un subagente que terminó—, cuando lo
+que pidió es un recorrido de Cauce (`/autobuild`, `$flow`…), ni en la llamada de un subagente, que Claude
+marca con `agent_id`. En Claude y Codex cada llamada trae el identificador del mensaje que la originó;
+Gemini no lo manda, y ahí vale el último mensaje. El registro vive en el temporal del sistema, uno por
+sesión, y los guards de límites lo cuidan junto con `planning/.ops-approval`: el agente no puede
+escribirse ninguno de los dos. Como todo lo de esta página, frena la forma habitual y no un script decidido.
+
+En Claude Code queda una excepción que no depende de Cauce: las reglas `permissions.deny` de la instalación
+las aplica Claude mismo, sin consultar a ningún hook, así que leer un `.env` o una clave se frena ahí aunque
+la persona lo pida. Comprobado en una sesión real con Claude Code 2.1.268.
+
 ## Cómo se ejecutan
 
 ```text
@@ -85,7 +109,11 @@ runner, mientras la lógica se prueba y mantiene una sola vez en `engine/hooks/r
 | `pre-shell` | destructive, git-add, dependencies, governance, verify, shell-boundary | `guard-shell.sh` |
 | `pre-files` | secrets, generated, workspace-boundary, engine, migrations, integration-snapshot, test-evidence, plan-first | `guard-files.sh` |
 | `pre-read` | secrets-read | `guard-secrets-read.sh` |
+| `prompt` | chat | `guard-chat.sh` |
 | `stop` | planning-drift | `guard-planning-drift.sh` |
+
+`prompt` corre sobre el mensaje de la persona —`UserPromptSubmit` en Claude y Codex, `BeforeAgent` en
+Gemini— y no sobre una herramienta, y su shim sale siempre con 0.
 
 Registrar el grupo gasta un proceso por herramienta en lugar de cinco, con el mismo orden y la misma
 semántica: el primer guard que bloquea corta la ejecución. Un runner que necesite granularidad fina puede

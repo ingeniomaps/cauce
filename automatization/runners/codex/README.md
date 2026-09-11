@@ -18,6 +18,10 @@ porque cambia el hash. No se usa `--dangerously-bypass-hook-trust`.
 Los `matcher` filtran el **nombre de la herramienta**: los comandos de shell llegan como `Bash` y las
 ediciones como `apply_patch`, `Edit` o `Write`. No son los nombres internos del protocolo.
 
+`UserPromptSubmit` registra el mensaje de la persona, para que lo que pidió en el chat pase sin aprobarlo
+a mano. Codex le pasa a cada herramienta el `turn_id` del mensaje que la originó, que es lo que ata la
+llamada al pedido.
+
 Si actualizás una instalación anterior a este cambio, `.codex/hooks/hooks.json` queda huérfano —Codex
 nunca lo leyó— y se borra a mano.
 
