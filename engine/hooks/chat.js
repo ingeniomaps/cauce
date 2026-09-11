@@ -45,10 +45,33 @@ function load(session) {
 // Nombrar no es pedir: «no toques el .env» nombra el .env. Cuenta la negación que está en la misma frase y
 // antes del nombre; la coma corta, porque «leé el config, no el .env» son dos pedidos.
 const NEGATION = /(?:^|[^\p{L}])(?:no|nunca|jam[aá]s|ni|sin|not|never|don'?t)(?![\p{L}])/iu
-const CLAUSE = /[.,;:!?\n]/
+// Un punto corta sólo si cierra la oración: el de `x.js` es parte del nombre, y cortar ahí dejaba el verbo de
+// «agregá src/x.js a .ops-approval» en otra frase que la del archivo.
+const CLAUSE = /[,;:!?\n]|\.(?=\s|$)/
 
-// Cada aparición del nombre en el texto y si va negada. Un nombre tiene que estar entero: `.env` no
-// aparece en «el .env.example», y un punto sólo lo cierra si termina la frase.
+// Y no negarlo tampoco alcanza: «¿para qué sirven las credentials?» o «el .env tiene algo raro» nombran el
+// archivo sin pedir nada (caso 109). La frase del nombre tiene que traer un verbo que pida una acción, en
+// español o en inglés; se compara sin tildes y sin el pronombre pegado —«leelo», «abrime»—. La lista va a
+// quedar corta, y lo que no reconoce no se pierde: se frena, y un «dale» lo aprueba.
+const ASKS = new Set(('lee leer abri abre abrir mostra muestra mostrar ensena edita editar cambia cambiar borra '
+  + 'borrar elimina eliminar escribi escribe escribir corre correr ejecuta ejecutar desactiva desactivar apaga '
+  + 'apagar reescribi reescribe reescribir agrega agregar anadi anade anadir saca sacar quita quitar actualiza '
+  + 'actualizar modifica modificar revisa revisar mira mirar fijate chequea verifica verificar instala instalar '
+  + 'subi sube subir pushea pushear commitea commitear usa usar crea crear arregla arreglar carga cargar copia '
+  + 'copiar toca tocar aproba aprueba aprobar habilita habilitar reemplaza reemplazar renombra renombrar mueve '
+  + 'mover restaura restaurar imprimi imprime imprimir deci dime proba probar '
+  + 'read open show print display edit change delete remove write run execute disable rewrite add update modify '
+  + 'check review inspect look cat commit push install use create fix load copy touch approve enable replace '
+  + 'rename move restore skip').split(' '))
+const ENCLITIC = /(?:selo|sela|melo|mela|telo|tela|los|las|lo|la|le|me)$/
+
+function asks(clause) {
+  const words = clause.normalize('NFD').replace(/[̀-ͯ]/g, '').match(/[a-z]+/g) || []
+  return words.some((word) => ASKS.has(word) || ASKS.has(word.replace(ENCLITIC, '')))
+}
+
+// Cada aparición del nombre en el texto: si va negada y si su frase pide algo. Un nombre tiene que estar
+// entero: `.env` no aparece en «el .env.example», y un punto sólo lo cierra si termina la frase.
 function mentions(text, item) {
   const lower = String(text).toLowerCase()
   const found = []
@@ -59,10 +82,11 @@ function mentions(text, item) {
       const rest = lower.slice(at + name.length)
       if (before && !/[\s'"`(/]/.test(before)) continue
       if (rest && !/^(?:[\s'"`),;:!?]|\.(?:\s|$)|$)/.test(rest)) continue
-      found.push(NEGATION.test(lower.slice(0, at).split(CLAUSE).pop()))
+      const clause = lower.slice(0, at).split(CLAUSE).pop()
+      found.push({ denied: NEGATION.test(clause), asked: asks(`${clause} ${rest.split(CLAUSE)[0]}`) })
     }
   }
-  return { named: found.includes(false), denied: found.includes(true) }
+  return { named: found.some((one) => one.asked && !one.denied), denied: found.some((one) => one.denied) }
 }
 
 // Quien contesta a un bloqueo que quedó pendiente. Sólo el principio del mensaje: «dale» es la respuesta
