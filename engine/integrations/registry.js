@@ -37,9 +37,31 @@ function providerConfig(root, name) {
   return { registry, entry, config: readJson(configFile), configFile }
 }
 
-function adapter(name) {
-  if (name === 'jira') return require('./providers/jira')
-  throw new Error(`No existe adaptador para ${name}`)
+// Los adaptadores que trae Cauce. Uno de la empresa no va acá: se declara con una ruta en el registro de
+// la instancia y vive en la carpeta de su proveedor (caso 091).
+const BUILTIN = { jira: () => require('./providers/jira') }
+// La versión del contrato que el motor sabe llamar. A un adaptador de la empresa no lo toca `upgrade`, así
+// que sin esto un cambio de interfaz lo rompería en silencio.
+const CONTRACT = 1
+const CONTRACT_FUNCTIONS = ['validateConfig', 'fetchItems', 'normalizeFixture']
+
+function adapter(root, name, entry = {}) {
+  const declared = String(entry.adapter || '')
+  let impl
+  if (Object.hasOwn(BUILTIN, declared)) impl = BUILTIN[declared]()
+  else if (declared.startsWith('./')) {
+    const base = path.join(root, 'integrations', name)
+    impl = require(F.assertWithin(base, path.resolve(base, declared), `${name}: adapter`))
+  } else {
+    throw new Error(`No existe adaptador para ${declared || name}: usá uno de Cauce `
+      + `(${Object.keys(BUILTIN).join(', ')}) o una ruta ./ dentro de integrations/${name}/`)
+  }
+  if (impl.contract !== CONTRACT) {
+    throw new Error(`el motor sabe llamar contract ${CONTRACT} y el adaptador declara ${impl.contract}`)
+  }
+  const missing = CONTRACT_FUNCTIONS.filter((fn) => typeof impl[fn] !== 'function')
+  if (missing.length) throw new Error(`al adaptador le falta ${missing.join(', ')}`)
+  return impl
 }
 
 function sensitivePath(value, trail = '') {
@@ -91,7 +113,7 @@ function validate(root, onlyProvider = '') {
     const secret = sensitivePath(loaded.config)
     if (secret) errors.push(`${name}: ${secret} no puede contener secretos; usa una variable de entorno`)
     try {
-      adapter(name).validateConfig(loaded.config, errors)
+      adapter(root, name, loaded.entry).validateConfig(loaded.config, errors)
     } catch (error) {
       errors.push(`${name}: ${error.message}`)
     }
@@ -185,7 +207,7 @@ async function sync(root, name, options = {}) {
   // Son dos interruptores y se exigen los dos: el del registro dice que el proveedor está conectado
   // al proyecto, y el suyo que hay a dónde apuntar.
   if (!entry.enabled || !config.enabled) throw new Error(`${name} está deshabilitado`)
-  const provider = adapter(name)
+  const provider = adapter(root, name, entry)
   const items = options.fixture
     ? provider.normalizeFixture(readJson(path.resolve(options.fixture)), config)
     : await provider.fetchItems(config)
