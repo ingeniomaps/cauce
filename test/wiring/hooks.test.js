@@ -1213,6 +1213,99 @@ test('verify se aprueba por el conjunto staged, no por un archivo', () => {
   assert.doesNotThrow(() => execute('verify', commitApi))
 })
 
+// Lo que un bloqueo dice pegar se pega tal cual, y de ahí lo saca la prueba: una ruta armada aparte
+// mediría la forma que eligió la prueba, no la que el guard coteja (caso 089). Se agrega al archivo en vez
+// de pisarlo, porque `verify` aprueba el conjunto entero y lo que ya aprobaron los otros sigue contando.
+function pasteApproval(root, message) {
+  const lines = message.split('\n')
+  const start = lines.findIndex((line) => line.startsWith('Aprobalo pegando tal cual'))
+  assert.ok(start >= 0, `el bloqueo no dice qué pegar:\n${message}`)
+  const paste = []
+  for (const line of lines.slice(start + 1)) {
+    if (!line.startsWith('  ')) break
+    paste.push(line.slice(2))
+  }
+  assert.ok(paste.length, `el bloqueo no nombra ninguna línea:\n${message}`)
+  assert.doesNotMatch(message, /esa\(s\) ruta\(s\)/, 'nombra las rutas en vez de aludirlas')
+  fs.appendFileSync(path.join(root, 'planning', '.ops-approval'), `${paste.join('\n')}\n`)
+  return paste
+}
+
+function messageOf(name, input) {
+  try { execute(name, input) } catch (error) {
+    if (error.blocked) return error.message
+    throw error
+  }
+  return assert.fail(`${name} no bloqueó`)
+}
+
+test('lo que un bloqueo dice pegar destraba ese mismo bloqueo', () => {
+  // `plan-first` coteja la ruta que manda Write, que es absoluta.
+  const plan = planFirstRoot('ops-hook-pegar-plan-', WIP_IDLE)
+  const write = { cwd: plan, tool_input: { file_path: path.join(plan, 'src', 'altas.js') } }
+  assert.deepEqual(pasteApproval(plan, messageOf('plan-first', write)), [path.join(plan, 'src', 'altas.js')])
+  assert.doesNotThrow(() => execute('plan-first', write))
+
+  // `test-evidence` tiene dos bloqueos con dos rutas: la del archivo que apaga una prueba y la del patch
+  // que la borra.
+  const skip = {
+    cwd: plan, tool_input: { file_path: path.join(plan, 'alta.test.ts'), content: "describe.skip('a', () => {})" },
+  }
+  assert.deepEqual(pasteApproval(plan, messageOf('test-evidence', skip)), [path.join(plan, 'alta.test.ts')])
+  assert.doesNotThrow(() => execute('test-evidence', skip))
+  const removal = {
+    cwd: plan, tool_input: { patch: '*** Begin Patch\n*** Delete File: tests/alta_test.go\n*** End Patch' },
+  }
+  assert.deepEqual(pasteApproval(plan, messageOf('test-evidence', removal)), ['tests/alta_test.go'])
+  assert.doesNotThrow(() => execute('test-evidence', removal))
+
+  // Los de commit cotejan rutas relativas al repositorio; el manifiesto va dentro de una carpeta, que es
+  // donde `dependencies` mostraba la carpeta y el nombre por separado y la línea no aparecía en ningún lado.
+  const repo = tempRoot('ops-hook-pegar-commit-')
+  initRepo(repo)
+  fs.mkdirSync(path.join(repo, 'planning'), { recursive: true })
+  fs.mkdirSync(path.join(repo, 'engine'))
+  fs.mkdirSync(path.join(repo, 'packages', 'app'), { recursive: true })
+  fs.writeFileSync(path.join(repo, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  fs.writeFileSync(path.join(repo, 'engine', 'x.js'), 'module.exports = 1\n')
+  fs.writeFileSync(path.join(repo, 'packages', 'app', 'package.json'), JSON.stringify({ dependencies: { a: '1' } }))
+  fs.writeFileSync(path.join(repo, 'packages', 'app', 'package-lock.json'), '{}\n')
+  git(['add', 'engine/x.js', 'packages/app/package.json'], repo)
+  const commit = { cwd: repo, tool_input: { command: 'git commit -m x' } }
+  assert.deepEqual(pasteApproval(repo, messageOf('governance', commit)), ['engine/x.js'])
+  assert.doesNotThrow(() => execute('governance', commit))
+  assert.deepEqual(pasteApproval(repo, messageOf('dependencies', commit)), ['packages/app/package.json'])
+  assert.doesNotThrow(() => execute('dependencies', commit))
+
+  // `verify` aprueba el conjunto staged, y su bloqueo no nombraba ninguna ruta.
+  fs.mkdirSync(path.join(repo, 'openapi'))
+  fs.writeFileSync(path.join(repo, 'openapi', 'api.yaml'), 'openapi: 3.0.0\n')
+  git(['add', 'openapi/api.yaml'], repo)
+  assert.deepEqual(pasteApproval(repo, messageOf('verify', commit)), ['openapi/api.yaml'])
+  assert.doesNotThrow(() => execute('verify', commit))
+
+  // Y el bloqueo de un gate en rojo, que es el otro camino de `verify` y el que más se ve.
+  const gate = tempRoot('ops-hook-pegar-gate-')
+  initRepo(gate)
+  fs.mkdirSync(path.join(gate, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(gate, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  fs.writeFileSync(path.join(gate, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "process.exit(1)"' } }))
+  fs.writeFileSync(path.join(gate, 'app.js'), 'module.exports = true\n')
+  git(['add', 'package.json', 'app.js'], gate)
+  const commitGate = { cwd: gate, tool_input: { command: 'git commit -m x' } }
+  assert.deepEqual(pasteApproval(gate, messageOf('verify', commitGate)).sort(), ['app.js', 'package.json'])
+  assert.doesNotThrow(() => execute('verify', commitGate))
+
+  // `migrations` coteja la ruta con las barras normalizadas, y lo que muestra tiene que ser ésa: con una
+  // ruta que llega con `\`, la cruda no pegaría.
+  const mig = planFirstRoot('ops-hook-pegar-mig-', WIP_CON_PLAN)
+  const destructive = {
+    cwd: mig, tool_input: { file_path: 'migrations\\001_init.sql', content: 'DROP TABLE users;\n' },
+  }
+  assert.deepEqual(pasteApproval(mig, messageOf('migrations', destructive)), ['migrations/001_init.sql'])
+  assert.doesNotThrow(() => execute('migrations', destructive))
+})
+
 test('lo que verify enlaza a la copia no entra a su índice', () => {
   const root = tempRoot('ops-hook-verify-enlace-')
   initRepo(root)
