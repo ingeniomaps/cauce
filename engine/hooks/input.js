@@ -183,9 +183,6 @@ function stagedFiles(dir) {
   return result.stdout.trim().split('\n').filter(Boolean)
 }
 
-// R10 pide «la autorización configurada para el proyecto» y `runner.allowPush` es esa configuración:
-// sin esto era un interruptor que nadie leía, y un cargo que lo leyó dio por imposible un push que el
-// guard bloqueaba igual. Sin raíz legible no hay permiso que verificar, así que no se autoriza.
 // El índice que un hook de pre-ejecución lee es el de **antes** del comando, y el comando puede ser
 // justamente el que lo llene. Ahí los tres guards que juzgan mirando el índice no fallan: leen bien,
 // encuentran cero archivos y concluyen que no hay nada que revisar.
@@ -210,13 +207,6 @@ function stagedForCommit(command, cwd) {
   }
   const dir = gitDirectory(command, cwd)
   return { dir, staged: stagedFiles(dir) }
-}
-
-function pushAllowed(input) {
-  const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
-  if (!root) return false
-  const runner = configOf(root).runner
-  return Boolean(runner && runner.allowPush === true)
 }
 
 function findOpsRoot(start) {
@@ -270,7 +260,7 @@ function opsRoot(input) {
 
 module.exports = {
   readInput, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
-  gitDirectory, isCommit, withoutGitGlobals, stagedFiles, stagedForCommit, pushAllowed,
+  gitDirectory, isCommit, withoutGitGlobals, stagedFiles, stagedForCommit,
   findOpsRoot, opsRoot,
   writableRoots, outsideRoots, DECLARE_IT, unquoted,
 }
