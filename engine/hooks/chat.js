@@ -119,4 +119,4 @@ function hold(input, items) {
   } catch { return false }
 }
 
-module.exports = { DIR, record, said, unauthorized, hold, mentions }
+module.exports = { DIR, record, said, unauthorized, hold }
