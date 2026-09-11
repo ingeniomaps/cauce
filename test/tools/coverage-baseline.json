@@ -59,6 +59,11 @@
     "branches": 81,
     "functions": 100
   },
+  "engine/automation/rules.js": {
+    "lines": 100,
+    "branches": 84,
+    "functions": 100
+  },
   "engine/automation/runners.js": {
     "lines": 96,
     "branches": 70,

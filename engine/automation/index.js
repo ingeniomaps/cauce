@@ -7,6 +7,7 @@ const F = require('../core/files')
 const catalog = require('../agents/catalog')
 const O = require('../core/ownership')
 const M = require('../core/manifest')
+const RL = require('./rules')
 const {
   RUNNER_NAMES, OPS_DIR, OPS_ROOT, packagedAutomation, runnerManifest, installRoot, opsPrefix,
   runnerPaths, resolveItem, inline, render, runnerConfig, activated,
@@ -153,6 +154,10 @@ function doctor(root, name, output = console) {
   } catch (error) {
     errors.push(`${runner.config.target}: ${error.message}`)
   }
+  // Una regla nueva cambia el render: se dice cuál, y calla el genérico, que mandaba a buscar un cambio de Cauce.
+  const ruled = RL.drift(root, name)
+  warnings.push(...ruled.map((one) => RL.driftLine(name, one)))
+  const quiet = (item) => ruled.some((one) => one.target === item.target)
   for (const item of runner.instructions || []) {
     const resolved = { item, ...resolveItem(paths, root, name, item) }
     // El archivo compartido no se compara entero: alrededor del bloque vive el texto de la empresa, así
@@ -163,7 +168,7 @@ function doctor(root, name, output = console) {
       if (!fs.existsSync(resolved.target)) errors.push(`falta ${item.target}`)
       else if (!fs.readFileSync(resolved.target, 'utf8').includes(blockStart(name))) {
         errors.push(`${item.target}: no tiene las instrucciones de Cauce; reinstalá el adaptador`)
-      } else if (!blockUpToDate(resolved.target, name, content)) {
+      } else if (!quiet(item) && !blockUpToDate(resolved.target, name, content)) {
         warnings.push(`${item.target}: su bloque de Cauce quedó viejo; reinstalá el adaptador`)
       }
       continue
@@ -176,7 +181,7 @@ function doctor(root, name, output = console) {
     else if (!ownFile && !fs.readFileSync(resolved.target, 'utf8').includes('AGENTS.md')) {
       warnings.push(`${item.target}: no referencia AGENTS.md; verifica las reglas globales`)
     }
-    if (deliveryState(M.readRunners(root), name, resolved, opsPrefix(root)) === 'desactualizado') {
+    if (!quiet(item) && deliveryState(M.readRunners(root), name, resolved, opsPrefix(root)) === 'desactualizado') {
       warnings.push(`${item.target}: Cauce trae una versión más nueva y vos no lo tocaste; reinstalá`)
     }
   }
@@ -187,7 +192,7 @@ function doctor(root, name, output = console) {
     const resolved = { item, ...resolveItem(paths, root, name, item) }
     const status = deliveryState(recorded, name, resolved, opsPrefix(root))
     if (status === 'nuevo') errors.push(`falta ${item.target}`)
-    else if (status === 'desactualizado') {
+    else if (status === 'desactualizado' && !quiet(item)) {
       warnings.push(`${item.target}: hay una versión más nueva en Cauce; reinstalá el adaptador`)
     } else if (status === 'ajeno') {
       warnings.push(`${item.target}: lo editaste y es del toolkit; `
@@ -440,7 +445,9 @@ function install(root, name, output = console, options = {}) {
       continue
     }
     if (status === 'ajeno' && ownFile) {
-      output.log(`= ${name}: conservado ${resolved.item.target} (tiene cambios tuyos)`)
+      output.log(RL.refresh(resolved.target, render(resolved.source, prefix, resolved.automationRoot, resolved.opsRoot))
+        ? `✓ ${name}: ${resolved.item.target} conserva tus cambios y recibió las reglas vigentes`
+        : `= ${name}: conservado ${resolved.item.target} (tiene cambios tuyos)`)
     } else if (status === 'al día') {
       output.log(`= ${name}: ${resolved.item.target} ya está al día`)
     } else {

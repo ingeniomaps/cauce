@@ -225,7 +225,7 @@ const verdicts = await pipeline(
     `normas o sistemas de terceros. Enumeralas con el registro que cada una lleva —verificado, ` +
     `documentado, hipótesis, o ninguno— y comprobá las que se puedan comprobar barato: abrí el archivo ` +
     `que cita y leé si dice eso, reproducí la invocación inocua que declara (\`--help\`, \`--version\`, ` +
-    `un comando de sólo lectura), consultá la fuente pública que nombra. Llegá hasta donde R12 permite: ` +
+    `un comando de sólo lectura), consultá la fuente pública que nombra. Sin salirte de la lectura: ` +
     `nunca conectarte a un sistema real ni ejecutar la operación cuyo efecto se describe.\n\n` +
     `Empezá por la afirmación de la que depende la recomendación del cargo, no por la que parezca más ` +
     `discutible: son distintas, y la segunda suele estar bien rotulada porque el cargo esperaba que se la ` +

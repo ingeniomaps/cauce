@@ -6,7 +6,28 @@
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { KEY, ranToEnd, runFlow, reached, writesTo } = require('../support/autobuild-harness')
+const { KEY, baseScript, ranToEnd, runFlow, reached, writesTo } = require('../support/autobuild-harness')
+
+// La lista que trae `context` en su campo `rules` (caso 105); por qué Review la nombra está en `REVIEWED`.
+const RULES = ['planning/rules/system/commits.md', 'planning/rules/security.md']
+const withRules = (changes = {}) => ({ [KEY.context]: { ...baseScript()[KEY.context], rules: RULES }, ...changes })
+
+test('las reglas que lista context llegan a Plan, Build y Review', async () => {
+  const { result, prompts } = await runFlow(withRules({
+    [KEY.review]: { verdict: 'aprobado', concerns: [], consulted: ['api/alta.go'], rules: [RULES[1]] },
+  }))
+  ranToEnd(result)
+  for (const key of [KEY.plan, KEY.build, KEY.review]) {
+    const { prompt } = prompts.find((one) => one.key === key)
+    for (const rule of RULES) assert.ok(prompt.includes(rule), `${key} no recibió ${rule}`)
+  }
+})
+
+test('con reglas que rigen, Review no aprueba sin nombrar contra cuáles revisó', async () => {
+  const { result } = await runFlow(withRules())
+  assert.equal(result.reason, 'review-unbacked')
+  assert.match(result.detail, /reglas/)
+})
 
 // Una decisión que quedó abierta se registra y no frena lo que sí se entregó. Frenaba, y en tres corridas
 // reales frenó las tres veces con la tarea completa: toda aceptación en prosa tiene un borde indefinido, así
@@ -173,8 +194,9 @@ test('un plan que ninguna crítica aprueba queda pedido por escrito, no reintent
   }
   const primera = await runFlow({ [KEY.critique]: bloqueado })
   assert.equal(primera.result.reason, 'plan-blocked')
-  assert.ok(primera.written.some((text) => text.includes('HUMAN_ACTIONS') && text.includes('R17')),
-    `la fila dice qué mirar: ${JSON.stringify(primera.written)}`)
+  // Qué mirar se dice con la conducta y no con el número de la regla: el proyecto puede haberla retirado.
+  assert.ok(primera.written.some((text) => text.includes('HUMAN_ACTIONS') && text.includes('vidas distintas')
+    && text.includes('partirla')), `la fila dice qué mirar: ${JSON.stringify(primera.written)}`)
 
   const segunda = await runFlow({
     [KEY.critique]: {

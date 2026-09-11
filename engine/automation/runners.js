@@ -10,6 +10,7 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const F = require('../core/files')
 const O = require('../core/ownership')
+const { fill } = require('./rules')
 
 const RUNNER_NAMES = ['claude', 'codex', 'gemini', 'antigravity']
 
@@ -126,8 +127,9 @@ function inline(text, automationRoot) {
 // archivo se rompe si el proyecto se mueve, así que la lleva sólo el que se queda sin alternativa.
 const OPS_ROOT = '{{OPS_ROOT}}'
 
+// `{{RULES:…}}` va antes que `{{OPS_DIR}}` por lo mismo que el include: las rutas que escribe llevan el prefijo.
 function render(file, prefix, automationRoot, opsRoot = '') {
-  return inline(fs.readFileSync(file, 'utf8'), automationRoot)
+  return fill(inline(fs.readFileSync(file, 'utf8'), automationRoot), opsRoot)
     .split(OPS_ROOT).join(opsRoot)
     .split(OPS_DIR).join(prefix)
 }

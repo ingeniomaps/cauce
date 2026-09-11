@@ -2,7 +2,9 @@
 
 Este archivo gobierna el qué y el cuándo. `planning/PROTOCOL.md` gobierna el flujo y
 `planning/rules/` el cómo: sus reglas rigen cada tarea y se leen antes de empezar, no cuando algo sale
-mal. Los tres los mantiene Cauce y valen para cualquier proyecto. Lo que este proyecto tiene de propio
+mal. Este archivo, el protocolo y `planning/rules/system/` los mantiene Cauce y valen para cualquier
+proyecto; las reglas propias viven junto a `system/`, y donde una de ellas sobrescribe, contradice o
+restringe una del sistema, rige la del proyecto. Lo que este proyecto tiene de propio
 —su mapa, sus integraciones, hasta dónde llega la autonomía acá— vive en `organization/workspace.md`.
 
 ## Qué sabe este proyecto y no este archivo

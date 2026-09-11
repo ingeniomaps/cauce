@@ -2,10 +2,7 @@
 
 @{{OPS_DIR}}AGENTS.md
 @{{OPS_DIR}}planning/PROTOCOL.md
-@{{OPS_DIR}}planning/rules/system/process.md
-@{{OPS_DIR}}planning/rules/system/code-shape.md
-@{{OPS_DIR}}planning/rules/system/commits.md
-@{{OPS_DIR}}planning/rules/system/conduct.md
+{{RULES:imports}}
 
 `{{OPS_DIR}}planning/PROTOCOL.md` es la fuente de verdad. Ejecuta `/cauce:autobuild` fase por fase; los
 workflows JS de Claude son referencia, no un runtime compatible. `{{OPS_DIR}}planning/wip/<runner>.md` es el mutex

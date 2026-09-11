@@ -2,10 +2,7 @@
 
 @{{OPS_DIR}}AGENTS.md
 @{{OPS_DIR}}planning/PROTOCOL.md
-@{{OPS_DIR}}planning/rules/system/process.md
-@{{OPS_DIR}}planning/rules/system/code-shape.md
-@{{OPS_DIR}}planning/rules/system/commits.md
-@{{OPS_DIR}}planning/rules/system/conduct.md
+{{RULES:imports}}
 
 Los hooks de `.claude/settings.json` son obligatorios. En una instancia recién creada, empezá corriendo
 `node {{OPS_DIR}}tools/ops.js onboard`: es instantáneo, y lo primero que imprime es la pregunta con la que
