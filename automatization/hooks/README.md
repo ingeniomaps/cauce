@@ -72,8 +72,8 @@ pidió con todas las letras y lo que el agente decidió solo. `chat` corre sobre
 runner lo dispara cuando ella manda algo, nunca por el resultado de una herramienta— y lo deja donde los
 guards lo leen:
 
-- lo que la persona **nombró** en su mensaje pasa: «leé el `.env`» autoriza leer el `.env`, y «no toques
-  el `.env`» no;
+- lo que la persona **pidió nombrándolo** pasa: «leé el `.env`» autoriza leer el `.env`; «no toques el
+  `.env`» no, y tampoco una pregunta o un comentario que sólo lo nombra —«¿qué tiene el `.env`?»—;
 - lo que se frenó sin que lo nombrara queda anotado, y un «dale» en el mensaje siguiente aprueba
   exactamente eso;
 - `plan-first` no aplica: el plan es del trabajo que va por tareas.
