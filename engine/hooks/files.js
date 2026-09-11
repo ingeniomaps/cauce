@@ -150,6 +150,28 @@ function opsOwned(root, file) {
   return OPS_OWNED.some((prefix) => relative.startsWith(prefix))
 }
 
+// Producto es el código de una raíz declarada, y la instancia sidecar no lo es aunque viva dentro de una:
+// `init` escribe `..` como raíz en sidecar, así que la carpeta de la instancia cae adentro. En embedded la
+// raíz de ops **es** una raíz de producto, y ahí sólo se exime lo que la instancia posee. Lo que queda
+// fuera de toda raíz tampoco es producto: el límite de raíces ya lo juzgó, y si pasó es porque el proyecto
+// lo declaró en `writableOutsideRoots` (casos 089 y 090).
+//
+// `ops.config.json` se exime por nombre porque es la llave del límite de raíces: su mensaje manda a
+// editarlo, y frenar esa edición era el candado de arriba con otra forma.
+const INSTANCE_CONFIG = 'ops.config.json'
+
+function isProduct(root, file) {
+  if (opsOwned(root, file) || file === path.join(root, INSTANCE_CONFIG)) return false
+  const declared = configOf(root).workspaceRoots
+  const roots = (Array.isArray(declared) ? declared : [])
+    .filter((entry) => entry && typeof entry.path === 'string')
+    .map((entry) => path.resolve(root, entry.path))
+  // Sin raíces legibles no hay contra qué comparar, y se juzga como antes: frenar de más.
+  if (!roots.length) return true
+  if (outsideRoots(file, roots)) return false
+  return outsideRoots(file, [root]) || roots.includes(root)
+}
+
 // R1 y el paso 7 del protocolo piden el plan antes del primer cambio, y hasta acá nadie lo comprobaba:
 // tocar el archivo primero y redactar después la aceptación que lo justifica sale igual de verde que
 // hacerlo al revés, y se lee igual en DONE. Lo que se exige es lo mínimo que separa un plan de una
@@ -178,7 +200,7 @@ function planFirst(input) {
     + 'verificable— y volvé al cambio. Si esto no es trabajo de una tarea, aprobá la ruta.\n'
     + AP.HOW('OPS_PLAN_FIRST_OVERRIDE')
   for (const raw of filesOf(input)) {
-    if (opsOwned(root, path.resolve(cwdOf(input), raw))) continue
+    if (!isProduct(root, path.resolve(cwdOf(input), raw))) continue
     if (approved(input, raw)) continue
     block(`${raw} cambia el producto sin plan. ${why}`)
   }

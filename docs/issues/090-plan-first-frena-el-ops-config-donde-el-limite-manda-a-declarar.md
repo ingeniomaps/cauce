@@ -1,14 +1,15 @@
 ---
 caso: 090
 titulo: plan-first frena ops.config.json de la instancia, que es justo donde el límite de raíces manda a declarar la salida
-estado: abierto
+estado: resuelto
+resuelto-en: 0.80.0
 prioridad: media
 version-detectada: 0.79.0
 ---
 
 # 090 — El mensaje de `workspace-boundary` manda a editar un archivo que `plan-first` no deja editar
 
-**🔴 abierto** · detectado en 0.79.0 · prioridad **media** — no deja pasar nada que no deba; convierte la
+**🟢 resuelto en 0.80.0** · detectado en 0.79.0 · prioridad **media** — no deja pasar nada que no deba; convierte la
 salida que un guard recomienda en un bloqueo del siguiente. Sube a **alta** si una instancia recién
 creada con roadmap cargado no puede declarar su primera ruta sin aprobar a mano
 
@@ -54,6 +55,9 @@ for (const f of ['ops.config.json', 'AGENTS.md', 'CLAUDE.md', 'package.json', '.
 EOF
 ```
 
+La variante que importa es la raíz que escribe `init` en sidecar: cambiar `{ name: 'app', path: '../app' }`
+por `{ name: 'main', path: '..' }` (`engine/cli/instance.js:99`).
+
 ## Síntoma
 
 Salida real de la reproducción, 2026-09-10, sobre 0.79.0:
@@ -75,6 +79,11 @@ La primera línea recomienda editar `ops.config.json`; la segunda frena esa edic
 producto sin plan»*. La última es la conducta correcta —`app/` es un `workspaceRoot`, es producto— y
 sirve de contraste: el guard trata igual el código del servicio y la configuración de la instancia.
 
+Con la raíz por defecto, `..`, vuelta a correr el 2026-09-11 sobre la rama del 088: `plan-first` frena
+los mismos cinco archivos de la instancia y deja pasar los mismos tres. Falta la línea de `boundary`
+porque `notas/x.md` ya cae dentro de `..`; el bloqueo de `ops.config.json` aparece igual en cuanto la ruta
+que se quiere declarar está fuera del directorio padre, que es el caso del 089.
+
 La salida que queda es aprobar `ops.config.json` en `.ops-approval`, y sólo pega escrita absoluta (089).
 
 ## Causa raíz
@@ -87,32 +96,37 @@ no viene del molde, ni los que sí vienen (`TEMPLATE_FILES`, `ownership.js:87`: 
 
 ## Fix propuesto
 
-Dos formas, y no son excluyentes:
+Dos piezas, y la segunda tiene un borde que la primera redacción de este caso no vio.
 
-**A. Mínima: `ops.config.json` nunca es producto.** Se exime por nombre en `opsOwned`, relativo a la
-raíz de ops. Vale en los dos modos: en embedded la raíz de ops es también la del producto, pero el
-config de la instancia sigue sin ser código del servicio.
+**A. `ops.config.json` nunca es producto.** Se exime por nombre, relativo a la raíz de ops. Vale en los
+dos modos: en embedded la raíz de ops es también la del producto, pero la configuración de la instancia no
+es código de ningún servicio.
 
-**B. General: `plan-first` juzga sólo lo que cae dentro de un `workspaceRoot`.** Producto es el código
-de una raíz declarada; lo demás no tiene plan de tarea que exigirle.
+**B. `plan-first` juzga sólo lo que es código de una raíz declarada, y la instancia sidecar no lo es.**
+Un archivo es producto si cae dentro de algún `workspaceRoot` **y** no está dentro de la raíz de ops —salvo
+que la raíz de ops sea ella misma una de esas raíces, que es lo que pasa en embedded—.
 
-- En **sidecar** la raíz de ops no es un `workspaceRoot`, así que `AGENTS.md`, `CLAUDE.md`,
-  `package.json` y `.gitignore` de la instancia dejan de frenarse, y también lo declarado en
-  `writableOutsideRoots` — cierra el punto 1 del 089 sin nombrarlo.
-- En **embedded** el `workspaceRoot` suele ser `.` (así lo arma el fixture de `plan-first`,
-  `hooks.test.js:1415-1421`), y un `package.json` en la raíz sigue siendo producto, que es lo correcto.
-  Por eso B no reemplaza a A: en embedded `ops.config.json` cae dentro de `.` y necesita la exención por
-  nombre igual.
-- Lo que queda fuera de toda raíz y no está declarado ya lo frena `workspace-boundary` (la primera línea
-  del síntoma), así que B no abre escrituras nuevas: quita un segundo bloqueo sobre lo que el primero ya
-  juzgó.
+- **La condición es doble por la raíz por defecto.** `init` escribe `path: '..'` en sidecar y `'.'` en
+  embedded (`engine/cli/instance.js:99` y `:332`), así que en la instancia sidecar más común la carpeta de
+  la instancia está **dentro** de su raíz. La primera redacción decía «en sidecar la raíz de ops no es un
+  `workspaceRoot`» y lo medía con `../app`; con `..`, «juzgar sólo lo que cae en una raíz» no destraba
+  nada.
+- En **sidecar**, con `..` o con raíces más angostas: `AGENTS.md`, `CLAUDE.md`, `package.json` y
+  `.gitignore` de la instancia dejan de frenarse. Y lo declarado en `writableOutsideRoots`, que por
+  definición cae fuera de toda raíz, también: cierra el punto 1 del 089 sin nombrarlo.
+- En **embedded**, con `'.'` —así lo arma también el fixture de `plan-first`, `hooks.test.js:1436-1443`—,
+  la raíz de ops es un `workspaceRoot`: un `package.json` en la raíz sigue siendo producto, que es lo
+  correcto, y `ops.config.json` necesita A.
+- Lo que queda fuera de toda raíz y no está declarado ya lo frena `workspace-boundary`, así que B no abre
+  escrituras nuevas: saca un segundo bloqueo sobre lo que el primero ya juzgó.
 - Borde: sin `workspaceRoots` legibles no hay contra qué comparar, y el guard corre sin validar la
-  config (`engine/config/paths.js:16-19`). Ahí se degrada a la conducta de hoy, que frena de más. Una
-  config validada no llega a ese estado: `validateOpsConfig` exige al menos una raíz (comprobado
-  llamándola con `workspaceRoots: []`: *«workspaceRoots debe contener al menos una raíz»*).
+  config (`engine/config/paths.js:18-21`). Ahí se degrada a la conducta de hoy, que frena de más. Una
+  config validada no llega a ese estado: `validateOpsConfig` exige al menos una raíz
+  (`engine/config/validate.js:73`).
 
-**Propuesta:** B con A adentro. A sola deja el resto de la raíz sidecar frenado por un mensaje que dice
-«producto» sobre archivos que no lo son.
+**Propuesta:** B con A adentro. A sola deja el resto de la raíz sidecar frenado con un mensaje que dice
+«producto» sobre archivos que no lo son. Es una decisión del operador, porque cambia qué llama producto
+`plan-first` en toda instancia.
 
 ## Tradeoffs
 
@@ -121,16 +135,22 @@ de una raíz declarada; lo demás no tiene plan de tarea que exigirle.
   pierde. Hay un argumento para frenar `AGENTS.md` y `Makefile`, que son del molde y `upgrade` los
   reescribe; pero ése es otro motivo con otro mensaje —«esto lo pisa el próximo upgrade»—, no «cambia el
   producto sin plan». No le toca a este caso decidirlo; si se quiere, sale como caso propio.
+- **Un archivo del directorio padre que no es de ningún servicio** —notas sueltas junto a los repos, con
+  la raíz en `..`— sigue siendo producto para B, como hoy. B no lo empeora; tampoco lo arregla.
 - **Una lectura más de config por escritura** en `plan-first`, sólo en el camino que ya iba a bloquear
   (con WIP activo el guard retorna antes, `files.js:167`).
 
 ## Qué tiene que probar el cierre
 
 - Con WIP en IDLE y tareas: `ops.config.json` pasa en sidecar **y** en embedded.
-- En sidecar pasan los archivos sueltos de la raíz de ops, y un archivo dentro de un `workspaceRoot`
-  sigue frenado — la última línea del síntoma, que es el contraste que dice que el guard no quedó
-  inerte.
-- Es una quita: la aserción de que `ops.config.json` pasa se ve en rojo devolviendo el `opsOwned` de hoy.
+- En sidecar con la raíz por defecto, `..`, pasan los archivos sueltos de la instancia; es la condición que
+  la primera redacción no miraba, y la mutación que saca la segunda mitad de la condición tiene que ponerla
+  en rojo.
+- Un archivo dentro de un `workspaceRoot` y fuera de la instancia sigue frenado —la última línea del
+  síntoma—, que es el contraste que dice que el guard no quedó inerte. En embedded, un `package.json` en la
+  raíz sigue frenado.
+- Una ruta declarada en `writableOutsideRoots` pasa, que es el punto 1 del 089.
+- Es una quita: cada aserción de «pasa» se ve en rojo devolviendo el `opsOwned` de hoy.
 
 ## Contexto de descubrimiento
 
@@ -139,9 +159,69 @@ de una raíz declarada; lo demás no tiene plan de tarea que exigirle.
 distintas frenadas por el mismo guard, y ésta es la que cualquiera encuentra primero, porque es la que
 el mensaje del límite de raíces manda a hacer.
 
+2026-09-11, al mejorarlo antes de arreglarlo: la reproducción usaba `../app` como raíz, que no es la que
+escribe `init`, y el fix que proponía no alcanzaba a la instancia sidecar por defecto.
+
 ## Relacionados
 
 - **089** — la ruta que se quería declarar. Los dos preguntan qué es producto para `plan-first`, y B
   de acá cierra el punto 1 de allá.
 - **`engine/hooks/files.js:139-144`** — el comentario de `OPS_OWNED` ya nombra el candado con la llave
   adentro; este caso es una instancia que se le escapó.
+
+## Cierre
+
+**🟢 resuelto en 0.80.0** · `engine/hooks/files.js`, `test/wiring/hooks.test.js`
+
+El operador eligió B con A adentro el 2026-09-11, antes de construir.
+
+### Contra lo que el caso enumeró
+
+- **A, `ops.config.json` nunca es producto** — hecho: se exime por nombre en `isProduct`, relativo a la raíz
+  de ops, en los dos modos.
+- **B, la condición doble** — hecho: `isProduct` devuelve producto sólo si el archivo cae dentro de algún
+  `workspaceRoot` y fuera de la raíz de ops, salvo que la raíz de ops sea ella misma una raíz. Reusa
+  `outsideRoots`, la misma comparación que usa el límite de raíces, en vez de escribir otra.
+- **El borde sin raíces legibles** — hecho como decía: se degrada a la conducta de hoy y frena. Tiene
+  prueba propia, que no estaba en la enumeración y salió de una mutación que sobrevivía (abajo).
+- **Tradeoff «B cambia la definición de producto»** — se cumple y queda en el CHANGELOG, con qué dejar de
+  hacer. El argumento de frenar `AGENTS.md` y `Makefile` por `upgrade` no se tomó: es otro motivo y no se
+  abrió caso, porque nadie lo pidió y hoy el guard no lo decía.
+- **Tradeoff «un archivo suelto del directorio padre sigue siendo producto»** — se cumple: no se tocó.
+- **Tradeoff «una lectura más de config»** — se cumple: `configOf` se lee dentro de `isProduct`, que sólo
+  corre después de que el WIP activo ya retornó.
+- **Relacionados, el 089** — su punto 1 queda cerrado por este arreglo, y está anotado en el 089. Su
+  punto 2, la forma de la aprobación, sigue abierto ahí.
+
+### Qué se corrió
+
+- **El rojo previo**: con `isProduct` escrito y el llamador todavía en `opsOwned`, `node --test
+  test/wiring/hooks.test.js` dio 61 de 63, con las dos pruebas nuevas en rojo por `ops.config.json`.
+- **Después del arreglo**: 63 de 63.
+- **La reproducción del propio caso**, con las dos raíces: los cinco archivos de la instancia pasan y
+  `../app/src/a.js` sigue frenado.
+
+  ```
+  plan-first PASA  ops.config.json
+  plan-first PASA  AGENTS.md
+  plan-first PASA  CLAUDE.md
+  plan-first PASA  package.json
+  plan-first PASA  .gitignore
+  plan-first PASA  tools/ops.js
+  plan-first PASA  organization/workspace.md
+  plan-first PASA  planning/BACKLOG.md
+  plan-first FRENA ../app/src/a.js
+  ```
+- **Seis mutaciones, en una copia desechable del repositorio (R23)**, comprobadas aplicadas antes de
+  contar. En la primera tanda sobrevivió M5 —sin raíces legibles, dejar pasar—: ninguna prueba miraba ese
+  borde. Se agregó y la tanda final quedó toda en rojo:
+
+  ```
+  M1 la instancia dentro de la raíz es producto  fail 1 → ROJA
+  M2 ops.config.json no se exime                 fail 1 → ROJA
+  M3 lo de afuera de las raíces es producto      fail 1 → ROJA
+  M4 en embedded la raíz se exime entera         fail 5 → ROJA
+  M5 sin raíces legibles deja pasar              fail 1 → ROJA
+  M6 el llamador vuelve a opsOwned               fail 2 → ROJA
+  ```
+- `npm run ci`: código 0, 680 de 680, cobertura de 58 archivos en su piso o por encima.
