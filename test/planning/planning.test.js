@@ -47,7 +47,7 @@ test('check avisa por las credenciales que nadie se llevó', () => {
   const target = path.join(workspace, 'ops')
   fs.mkdirSync(workspace)
   fs.writeFileSync(path.join(workspace, 'package.json'), '{"scripts":{"test":"x"}}')
-  fs.writeFileSync(path.join(workspace, '.env.example'), 'DATABASE_URL=\nSENTRY_DSN=\n')
+  fs.writeFileSync(path.join(workspace, '.env.example'), 'DB_PASSWORD=\nSENTRY_DSN=\n')
   assert.equal(run(['init', target, '--name', 'R', '--mode', 'sidecar', '--no-install']).status, 0)
 
   // Con la instancia sin arrancar no hay dónde tendrían que estar, así que no se avisa nada.
@@ -55,11 +55,11 @@ test('check avisa por las credenciales que nadie se llevó', () => {
 
   // Escrita a medias: una nombrada, la otra no.
   fs.writeFileSync(path.join(target, 'organization', 'company.md'), '# Organización\n\nAlgo real.\n')
-  fs.appendFileSync(path.join(target, 'AGENTS.md'), '\n- DATABASE_URL: la carga el equipo de infra.\n')
+  fs.appendFileSync(path.join(target, 'AGENTS.md'), '\n- DB_PASSWORD: la carga el equipo de infra.\n')
   const half = run(['check', path.join(target, 'planning')])
   assert.equal(half.status, 0, 'es advertencia: no rompe el gate')
-  assert.match(half.stderr + half.stdout, /declara SENTRY_DSN/)
-  assert.doesNotMatch(half.stderr + half.stdout, /DATABASE_URL/, 'la que sí tiene dueño no se nombra')
+  assert.match(half.stderr + half.stdout, /credenciales por nombre sin dueño \(1, en [^)]*\): SENTRY_DSN/)
+  assert.doesNotMatch(half.stderr + half.stdout, /DB_PASSWORD/, 'la que sí tiene dueño no se nombra')
 
   fs.appendFileSync(path.join(target, 'planning', 'HUMAN_ACTIONS.md'),
     '| sentry | pendiente | onboard | Cargar SENTRY_DSN en el entorno |\n')

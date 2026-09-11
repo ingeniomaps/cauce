@@ -9,6 +9,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { inventory } = require('./scan')
+const { sensitiveKey } = require('../integrations/registry')
 
 // La raíz del paquete: el molde contra el que se compara lo que una instancia escribió.
 const PACKAGE_ROOT = path.resolve(__dirname, '..', '..')
@@ -91,10 +92,22 @@ function missingSections(root) {
   return warnings
 }
 
+// Una aparición cuenta sólo si lo que la rodea no puede ser parte de otro nombre de variable: buscada
+// como subcadena, API_SECRET_ROTATION daba por cargada a API_SECRET (caso 111). El escaneo sólo deja
+// pasar identificadores, así que el nombre entra a la expresión sin nada que escapar.
+function named(text, name) {
+  return new RegExp(`(?<![A-Za-z0-9_])${name}(?![A-Za-z0-9_])`).test(text)
+}
+
 // Credenciales que el proyecto declara y que no aparecen en ningún contrato. El arranque tiene que
 // dejar una fila por cada una —quién la carga y dónde— y en la práctica cubre las que se hablaron en la
 // conversación: las que sólo estaban en el inventario se pierden, y con ellas el servicio externo que
 // hay detrás. Una variable sin dueño no rompe nada hoy; rompe el día que alguien tiene que desplegar.
+//
+// Credencial es lo que tiene nombre de secreto según `sensitiveKey`, la misma regla con la que la
+// declaración de secretos y la configuración de una integración rechazan un valor. Contando cualquier
+// variable, el aviso listaba ciento ocho nombres de build y la única credencial quedaba en «y 1 más»
+// (caso 102). El precio es el secreto con nombre de configuración, y el aviso lo dice.
 //
 // Sólo cuando la instancia ya tiene contexto escrito: antes del arranque no hay dónde estuvieran.
 function orphanCredentials(root) {
@@ -108,16 +121,33 @@ function orphanCredentials(root) {
     .join('\n')
   if (!contracts) return []
   const orphans = []
+  const cut = []
   for (const service of inventory(root)) {
-    for (const name of (service.env || {}).names || []) {
-      if (!contracts.includes(name)) orphans.push(`${name} (${service.path})`)
+    const env = service.env || {}
+    for (const name of env.names || []) {
+      if (sensitiveKey(name) && !named(contracts, name)) orphans.push({ name, service: service.path })
     }
+    if (env.truncated) cut.push(`${service.path} (${env.truncated} de ${env.names.length + env.truncated})`)
   }
-  if (!orphans.length) return []
-  const summary = orphans.length > 4
-    ? `${orphans.slice(0, 4).join(', ')} y ${orphans.length - 4} más`
-    : orphans.join(', ')
-  return [`el proyecto declara ${summary} y no aparecen en el mapa ni en HUMAN_ACTIONS: nadie las carga`]
+  const warnings = []
+  if (orphans.length) {
+    const listed = orphans.map((one) => `${one.name} (${one.service})`)
+    const summary = listed.length > 4
+      ? `${listed.slice(0, 4).join(', ')} y ${listed.length - 4} más`
+      : listed.join(', ')
+    const services = [...new Set(orphans.map((one) => one.service))].join(', ')
+    warnings.push(`credenciales por nombre sin dueño (${orphans.length}, en ${services}): ${summary} — no `
+      + 'aparecen en el mapa ni en HUMAN_ACTIONS: nadie las carga. El dueño se escribe en '
+      + 'organization/workspace.md o en una fila de planning/HUMAN_ACTIONS.md; el criterio es el nombre, así '
+      + 'que una credencial con nombre de configuración no aparece acá')
+  }
+  // El escaneo corta cada ejemplo en un tope, y lo que quedó afuera no se miró: con el filtro, puede ser
+  // justo la credencial.
+  if (cut.length) {
+    warnings.push(`sin revisar por credenciales sin dueño, pasado el tope de variables por servicio: `
+      + `${cut.join(', ')} — lo que quedó afuera puede incluir una credencial que nadie carga`)
+  }
+  return warnings
 }
 
 module.exports = {

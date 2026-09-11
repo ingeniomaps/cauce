@@ -64,11 +64,22 @@ function adapter(root, name, entry = {}) {
   return impl
 }
 
+// Qué nombre tiene forma de secreto. Es una sola regla para los tres que la necesitan: la configuración
+// de una integración, la declaración de secretos y el aviso de credenciales sin dueño de «ops check».
+// La clave cuenta sólo como palabra propia —API_KEY sí, projectKey no—, porque el campo de Jira con la
+// clave del proyecto está en instancias reales y rechazarlo les rompería la validación (caso 102, donde
+// está la medición).
+const SENSITIVE = /(password|secret|token|authorization|cookie|dsn|credentials?|(?:^|_)key)$/i
+
+function sensitiveKey(key) {
+  return SENSITIVE.test(key)
+}
+
 function sensitivePath(value, trail = '') {
   if (!value || typeof value !== 'object') return ''
   for (const [key, child] of Object.entries(value)) {
     const next = trail ? `${trail}.${key}` : key
-    if (/(password|secret|token|authorization|cookie)$/i.test(key) && !/Env$/i.test(key)) return next
+    if (sensitiveKey(key)) return next
     const nested = sensitivePath(child, next)
     if (nested) return nested
   }
@@ -442,6 +453,7 @@ module.exports = {
   providerConfig,
   reconcile,
   safeSegment,
+  sensitiveKey,
   sensitivePath,
   sync,
   validate,
