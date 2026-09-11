@@ -102,12 +102,14 @@ test('guard-destructive respeta runner.allowPush del proyecto', () => {
     path.join(root, 'ops.config.json'),
     JSON.stringify({ mode: 'embedded', runner: { allowPush } }),
   )
-  const push = { cwd: root, tool_input: { command: 'git push origin main' } }
+  const push = { cwd: root, tool_input: { command: 'git push origin feat/x' } }
 
   declara(false)
   blocked('destructive', push, /publica cambios/)
   declara(true)
   assert.doesNotThrow(() => execute('destructive', push))
+  // La llave es para las ramas de trabajo: la viva necesita su permiso propio (caso 108).
+  blocked('destructive', { ...push, tool_input: { command: 'git push origin main' } }, /main, la rama viva/)
   blocked('destructive', { cwd: root, tool_input: { command: 'git reset --hard HEAD' } }, /destruye cambios locales/)
 })
 
@@ -186,10 +188,13 @@ test('guard-destructive separa publicar de reescribir historia', () => {
   const entrada = (command) => ({ cwd: root, tool_input: { command } })
 
   config(true)
-  assert.doesNotThrow(() => execute('destructive', entrada('git push origin main')), 'la llave sigue habilitando')
+  assert.doesNotThrow(() => execute('destructive', entrada('git push origin rama')), 'la llave sigue habilitando')
   for (const forma of ['--force', '--force-with-lease', '-f']) {
     blocked('destructive', entrada(`git push ${forma} origin main`), /reescribe historia ya publicada/)
   }
+  // El `+` del refspec es el mismo force, y con la llave prendida pasaba como un push normal.
+  blocked('destructive', entrada('git push origin +rama'), /reescribe historia ya publicada/)
+  blocked('destructive', entrada('git push origin +HEAD:rama'), /reescribe historia ya publicada/)
   blocked('destructive', entrada('git commit --amend -m x'), /reescribe un commit ya creado/)
 
   // Ni una bandera que apenas se le parece ni un commit corriente: el permiso lo decide la forma, no la
@@ -2258,5 +2263,156 @@ test('secrets-shell frena leer una credencial por shell y deja pasar lo demás',
     const pidio = chat.says('mostrame qué hay en el .npmrc')
     assert.doesNotThrow(() => execute('secrets-shell', pidio(corre('cat .npmrc'))))
     blocked('secrets-shell', corre('cat .npmrc'), /lee .*credencial/)
+  } finally { chat.close() }
+})
+
+// Publicar (casos 103 y 108). Una raíz sin git, así que las ramas vivas son `main` y `master`; la rama por
+// defecto de un remoto se prueba aparte, con un repositorio de verdad.
+function pushRoot(prefijo, runner = {}) {
+  const root = tempRoot(prefijo)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ mode: 'embedded', runner: { allowPush: false, ...runner } }))
+  return root
+}
+const WORK = /publica cambios y requiere una acción humana/
+const LIVE = /la rama viva/
+
+test('un push que la persona ordena con su remoto y su rama pasa, y ningún otro', () => {
+  const root = pushRoot('ops-hook-push-orden-')
+  const push = (call, command) => call({ cwd: root, tool_input: { command } })
+  const chat = chatSession()
+  try {
+    const pidio = chat.says('Subí la rama: git push origin feat/x')
+    assert.doesNotThrow(() => execute('destructive', push(pidio, 'git push origin feat/x')))
+    blocked('destructive', push(pidio, 'git push origin feat/y'), WORK)
+    blocked('destructive', push(pidio, 'git push upstream feat/x'), WORK)
+    blocked('destructive', push(pidio, 'git push origin feat/x feat/y'), WORK)
+    const conBandera = push(chat.says('subí feat/x a origin'), 'git push -u origin feat/x')
+    assert.doesNotThrow(() => execute('destructive', conBandera))
+    // Nombrar no es ordenar: sin verbo de publicar, con otro verbo, negado, o un nombre dentro de otro. Y el
+    // basename no cuenta, que es por lo que esto no pasa por `mentions`.
+    for (const [mensaje, command] of [
+      ['Arreglá el login y no subas nada', 'git push origin feat/login'],
+      ['revisá feat/x en origin', 'git push origin feat/x'],
+      ['no subas feat/x a origin', 'git push origin feat/x'],
+      // Con el verbo presente, lo único que frena es la negación.
+      ['no hay que subir feat/x a origin', 'git push origin feat/x'],
+      ["don't push feat/x to origin", 'git push origin feat/x'],
+      ['¿qué tiene origin feat/x?', 'git push origin feat/x'],
+      ['subí feat/xy a origin2', 'git push origin feat/x'],
+    ]) blocked('destructive', push(chat.says(mensaje), command), WORK)
+    // Sin persona no hay orden: un subagente, CI o el registro de otro mensaje.
+    const orden = chat.says('subí feat/x a origin')
+    blocked('destructive', push((extra) => orden({ ...extra, agent_id: 'sub' }), 'git push origin feat/x'),
+      /desde un subagente/)
+    blocked('destructive', push((extra) => orden({ ...extra, prompt_id: 'otro' }), 'git push origin feat/x'), WORK)
+    process.env.CI = '1'
+    try { blocked('destructive', push(orden, 'git push origin feat/x'), WORK) } finally { delete process.env.CI }
+    // La orden no habilita el force, ni un push sin destino que comparar.
+    blocked('destructive', push(chat.says('git push --force origin feat/x'), 'git push --force origin feat/x'),
+      /R8 lo prohíbe/)
+    blocked('destructive', push(chat.says('pusheá'), 'git push'), /nombralos/)
+  } finally { chat.close() }
+})
+
+test('un «dale» a un push frenado aprueba ese push y ningún otro', () => {
+  const root = pushRoot('ops-hook-push-dale-')
+  const push = (call, command) => call({ cwd: root, tool_input: { command } })
+  const chat = chatSession()
+  try {
+    const frenado = messageOf('destructive', push(chat.says('subí la rama'), 'git push origin feat/x'))
+    assert.match(frenado, /si contesta «dale», reintentá el mismo push/)
+    assert.match(frenado, /\n {2}push origin feat\/x\n/)
+    const dale = chat.says('dale')
+    assert.doesNotThrow(() => execute('destructive', push(dale, 'git push origin feat/x')))
+    blocked('destructive', push(dale, 'git push origin feat/y'), WORK)
+    // Un push sin destino que resolver también queda pendiente: no hay línea que aprobar, pero sí «dale».
+    messageOf('destructive', push(chat.says('pusheá'), 'git push'))
+    assert.doesNotThrow(() => execute('destructive', push(chat.says('dale'), 'git push')))
+  } finally { chat.close() }
+})
+
+test('.ops-approval aprueba un push por su línea exacta, sin patrones', () => {
+  const root = pushRoot('ops-hook-push-archivo-')
+  const push = (command) => ({ cwd: root, tool_input: { command } })
+  fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
+    'push origin feat/x\npush origin main\npush origin feat/*\ngit push\n')
+  assert.doesNotThrow(() => execute('destructive', push('git push origin feat/x')))
+  blocked('destructive', push('git push origin feat/y'), WORK)
+  // La línea exacta alcanza la rama viva: la escribe una persona a mano, y el agente no puede.
+  assert.doesNotThrow(() => execute('destructive', push('git push origin main')))
+  blocked('destructive', push('git push origin master'), LIVE)
+  // Una línea sin destino sería un permiso para cualquier rama.
+  blocked('destructive', push('git push'), /nombralos/)
+})
+
+test('allowPush no alcanza la rama viva sin su permiso, ni a un subagente con ningún permiso', () => {
+  const root = pushRoot('ops-hook-push-viva-', { allowPush: true })
+  const push = (command, extra = {}) => ({ cwd: root, tool_input: { command }, ...extra })
+  const declara = (runner) => fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ mode: 'embedded', runner }))
+  assert.doesNotThrow(() => execute('destructive', push('git push origin feat/x')))
+  for (const command of ['git push origin main', 'git push origin master', 'git push origin HEAD:main',
+    'git push origin :main', 'git push origin --delete main', 'git push --all origin',
+    'git push origin feat/x refs/heads/main']) {
+    blocked('destructive', push(command), LIVE)
+  }
+  const frenado = messageOf('destructive', push('git push origin main'))
+  assert.match(frenado, /runner\.pushToLiveBranches/)
+  assert.match(frenado, /\n {2}push origin main\n/)
+  blocked('destructive', push('git push origin feat/x', { agent_id: 'sub' }), /desde un subagente/)
+
+  // Nombrada, la rama viva queda como una de trabajo: la alcanza la llave, y la otra sigue afuera.
+  declara({ allowPush: true, pushToLiveBranches: ['main'] })
+  assert.doesNotThrow(() => execute('destructive', push('git push origin main')))
+  blocked('destructive', push('git push origin master'), LIVE)
+  blocked('destructive', push('git push origin main', { agent_id: 'sub' }), /desde un subagente/)
+  fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), 'push origin feat/x\n')
+  blocked('destructive', push('git push origin feat/x', { agent_id: 'sub' }), /desde un subagente/)
+  fs.rmSync(path.join(root, 'planning', '.ops-approval'))
+
+  // La orden del chat sola tampoco la alcanza; con la rama nombrada, sí.
+  const chat = chatSession()
+  try {
+    declara({ allowPush: false })
+    blocked('destructive', chat.says('subí main a origin')(push('git push origin main')), LIVE)
+    declara({ allowPush: false, pushToLiveBranches: ['main'] })
+    assert.doesNotThrow(() => execute('destructive', chat.says('subí main a origin')(push('git push origin main'))))
+  } finally { chat.close() }
+})
+
+test('la rama por defecto del remoto es viva, y un push sin argumentos se resuelve por su upstream', () => {
+  const base = tempRoot('ops-hook-push-git-')
+  git(['init', '-q', '--bare', '-b', 'develop', 'remote.git'], base)
+  const root = path.join(base, 'work')
+  git(['clone', '-q', 'remote.git', 'work'], base)
+  git(['config', 'user.email', 'prueba@ejemplo'], root)
+  git(['config', 'user.name', 'Prueba'], root)
+  git(['commit', '-q', '--allow-empty', '-m', 'x'], root)
+  // Publicar de verdad, contra un remoto que es un directorio del banco: es lo que deja el upstream puesto.
+  git(['push', '-q', '-u', 'origin', 'HEAD:develop'], root)
+  git(['remote', 'set-head', 'origin', 'develop'], root)
+  git(['switch', '-q', '-c', 'feat/x'], root)
+  git(['push', '-q', '-u', 'origin', 'feat/x'], root)
+  fs.mkdirSync(path.join(root, 'planning'))
+  const declara = (allowPush) => fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ mode: 'embedded', runner: { allowPush } }))
+  declara(true)
+  const push = (command, call = (one) => one) => call({ cwd: root, tool_input: { command } })
+
+  blocked('destructive', push('git push origin develop'), /develop, la rama viva/)
+  assert.doesNotThrow(() => execute('destructive', push('git push')), 'en feat/x publica en origin feat/x')
+  assert.doesNotThrow(() => execute('destructive', push('git push origin')))
+  git(['switch', '-q', 'develop'], root)
+  blocked('destructive', push('git push'), /develop, la rama viva/)
+  blocked('destructive', push('git push origin HEAD'), /develop, la rama viva/)
+
+  git(['switch', '-q', 'feat/x'], root)
+  declara(false)
+  const chat = chatSession()
+  try {
+    assert.doesNotThrow(() => execute('destructive', push('git push', chat.says('subí feat/x a origin'))))
+    blocked('destructive', push('git push', chat.says('subí feat/y a origin')), WORK)
   } finally { chat.close() }
 })

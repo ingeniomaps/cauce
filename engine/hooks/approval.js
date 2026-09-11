@@ -32,7 +32,8 @@ const CHAT = require('./chat')
 const APPROVAL = '.ops-approval'
 
 // Una ruta por línea, `#` para lo demás. El archivo ausente y el vacío son lo mismo: no hay nada
-// aprobado, que es el estado normal.
+// aprobado, que es el estado normal. Un push se aprueba igual, con la línea `push <remoto> <rama>`
+// tal cual y sin patrones: `feat/*` convertiría una aprobación puntual en un permiso (caso 103).
 function read(root) {
   let text = ''
   try { text = fs.readFileSync(path.join(root, 'planning', APPROVAL), 'utf8') } catch { return [] }
@@ -81,4 +82,4 @@ function HOW(variable, lines, input) {
     + 'y apaga el guard para toda la sesión, que es por lo que no es la vía recomendada.'
 }
 
-module.exports = { APPROVAL, read, pending, HOW }
+module.exports = { APPROVAL, read, pending, where, HOW }
