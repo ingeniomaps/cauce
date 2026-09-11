@@ -85,10 +85,18 @@ function secrets(input) {
 
 // Leer una credencial la deja en el contexto de la sesión, y de ahí en los transcripts. Corre en su propio
 // grupo porque los guards de escritura frenarían leer fuera de las raíces o con el WIP vacío.
+// Un comodín también nombra: `rg -g '.env*'`, el `glob` del Grep de Claude o el `include_pattern` del
+// `grep_search` de Gemini recorren la carpeta buscando justo eso, y así leyeron el `.env` dos agentes en
+// sesiones reales (caso 104). Se prueba el nombre con el comodín vacío, la forma más corta que el patrón
+// acepta.
+const patternNames = (token) => (/[*?]/.test(token) ? [token.replace(/[*?]/g, '')] : [token]).filter(Boolean)
+
 function secretsRead(input) {
   if (process.env.OPS_SECRETS_READ_OVERRIDE === '1') return
-  for (const file of filesOf(input)) {
-    if (!credential(input, file) || approved(input, file)) continue
+  const fields = input.tool_input || {}
+  const patterns = [fields.glob, fields.include_pattern].filter((one) => typeof one === 'string')
+  for (const file of [...filesOf(input), ...patterns]) {
+    if (!patternNames(file).some((name) => credential(input, name)) || approved(input, file)) continue
     block(`${file} es una credencial: leerla la deja en el contexto de la sesión. Si hace falta un valor, `
       + `pedíselo a una persona.\n${AP.HOW('OPS_SECRETS_READ_OVERRIDE', [file], input)}`)
   }
@@ -345,6 +353,7 @@ function engineWrites(input) {
 }
 
 module.exports = {
+  credential, patternNames,
   secrets, secretsRead, integrationSnapshot, generated, testEvidence, planFirst, workspaceBoundary,
   migrations, engineWrites,
 }
