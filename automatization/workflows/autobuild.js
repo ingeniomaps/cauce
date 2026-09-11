@@ -27,6 +27,7 @@ export const meta = {
 }
 
 {{INCLUDE:shared/workflow-root.js}}
+{{INCLUDE:shared/inbox.js}}
 const CONFIG = `${ROOT}/ops.config.json`
 const P = `${ROOT}/planning`
 const ORG = `${ROOT}/organization`
@@ -82,6 +83,8 @@ const CONTEXT = {
     // Dónde va el plan de este runner. El nombre sale de su id y el recorrido no lo deriva: lo
     // pregunta, igual que la fecha.
     wipFile: { type: 'string' },
+    // Con los nombres que ya hay en el INBOX, Review no vuelve a anotar uno.
+    inbox: { ...INBOX_HEADS },
     // Las reglas que rigen el proyecto, con los overrides ya resueltos por el motor (caso 105).
     rules: { type: 'array', items: { type: 'string' } },
   },
@@ -386,7 +389,8 @@ const readContext = () => read(
   `campos, rules del campo rules tal cual, y lane ` +
   `de task.tier; copiá slug, ` +
   `hito, service, acceptance, ` +
-  `epic y cast de task, y epicContext de epic.context —vacío si no hay épica—. El comando es la fuente de ` +
+  `epic y cast de task, epicContext de epic.context —vacío si no hay épica— e inbox tal cual. El comando es ` +
+  `la fuente de ` +
   `verdad: no abras archivos de planning para completarlo. Poné readOk en true sólo si el comando salió ` +
   `con código 0 y devolvió JSON; si falló, readOk en false y el resto en sus valores vacíos, sin ` +
   `deducir el estado de ninguna otra fuente.`,
@@ -789,12 +793,21 @@ while (rounds++ < MAX_TASKS) {
     reviewFact = `${review.verdict} por ${cast.review}, sobre ${review.consulted.join(', ')}`
     // Lo que no impide entregar no manda a tocar código, y tampoco desaparece: la mejora opinable que se
     // corrige a las apuradas cuesta una vuelta y un riesgo que nadie pidió. Va a Propuestas y no a
-    // Lecciones porque lo que la revisión anotó es un cambio del producto con su evidencia; Lecciones es
-    // sobre cómo trabajamos, y ahí el hallazgo queda esperando una promoción que nadie va a hacer.
-    const noted = review.concerns.filter((one) => !one.blocking).map((one) => one.detail)
-    if (noted.length) {
+    // Lecciones porque lo que la revisión anotó es un cambio del producto —su evidencia es la de la
+    // tarea, que queda en `done/`—; Lecciones es sobre cómo trabajamos, y ahí el hallazgo queda
+    // esperando una promoción que nadie va a hacer.
+    const noted = review.concerns.filter((one) => !one.blocking).map((one) => oneLine(one.detail))
+    const kept = noted.slice(0, INBOX_CAP)
+    // Lo que pasa del tope no se escribe y tampoco desaparece: queda contado en el hecho de revisión, que
+    // viaja a `done/`. Una revisión que anota treinta y seis cosas no está priorizando, y el INBOX no las
+    // iba a leer (caso 101).
+    if (noted.length > kept.length) {
+      reviewFact += ` · ${noted.length - kept.length} anotado(s) sin volcar al INBOX`
+    }
+    if (kept.length) {
       await write(`Registrá en la sección Propuestas de ${P}/INBOX.md lo que la revisión de ${task.id} dejó ` +
-        `anotado sin frenar la entrega, sin promover ninguna: ${JSON.stringify(noted)}`, { label: 'review-noted' })
+        `anotado sin frenar la entrega, sin promover ninguna. ${inboxAsk(['Propuestas'], planning.inbox)} ` +
+        `Lo anotado: ${JSON.stringify(kept)}`, { label: 'review-noted' })
     }
   }
 

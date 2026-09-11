@@ -47,7 +47,7 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.equal(fs.existsSync(path.join(target, 'integrations', 'jira')), false)
   assert.equal(run(['integration', 'enable', target, 'jira']).status, 0)
   assert.equal(run(['integration', 'check', target, 'jira']).status, 0)
-  const templateToken = /\{\{(?:PROJECT_NAME|MODE|PLANNING_DIR|WORKSPACE_PATH)\}\}/
+  const templateToken = /\{\{(?:PROJECT_NAME|MODE|PLANNING_DIR|WORKSPACE_PATH|INBOX_SINCE)\}\}/
   const unresolved = filesBelow(target)
     .filter((file) => !file.includes(`${path.sep}node_modules${path.sep}`))
     .filter((file) => templateToken.test(fs.readFileSync(file, 'utf8')))

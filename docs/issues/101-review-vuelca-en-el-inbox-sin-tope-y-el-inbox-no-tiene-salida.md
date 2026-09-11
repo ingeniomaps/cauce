@@ -1,14 +1,15 @@
 ---
 caso: 101
 titulo: Review y los recorridos vuelcan en el INBOX sin tope, sin la forma de una entrada y sin mirar lo que ya está
-estado: abierto
+estado: resuelto
+resuelto-en: 0.82.0
 prioridad: media
 version-detectada: 0.80.0
 ---
 
 # 101 — El INBOX lo llenan los workflows sin tope
 
-**🔴 abierto** · detectado en 0.80.0, reproducido en 0.81.0 · prioridad **media** — no rompe nada un día
+**🟢 resuelto en 0.82.0** · detectado en 0.80.0, reproducido en 0.81.0 · prioridad **media** — no rompe nada un día
 dado; en un mes de uso real convierte el INBOX en un archivo que nadie lee, y lo que sí importaba queda
 enterrado ahí
 
@@ -199,3 +200,141 @@ una entrada, y el molde la define desde 0.80.0.
   llegar.
 - **019** — resuelto en 0.61.0: los campos de `done/` se leen con sus continuaciones, que es lo que deja
   a la evidencia de QA quedarse en `done/`.
+
+## Cierre
+
+**🟢 resuelto en 0.82.0** · `automatization/shared/inbox.js`, `autobuild.js`, `flow.js`, `onboard.js`,
+`engine/planning/parser.js`, `engine/planning/inbox.js`, `engine/cli/planning.js`, `engine/config/validate.js`,
+`template/planning/INBOX.md`; cerrado junto con el 106
+
+### Contra lo que el caso enumeró
+
+**Fix propuesto**
+
+1. **Tope en código en `autobuild`** — hecho: `noted.slice(0, INBOX_CAP)`, con `INBOX_CAP = 3` en un
+   fragmento compartido, `automatization/shared/inbox.js`, que incluyen los tres recorridos. Lo que sobra se
+   cuenta en el hecho de revisión —«· N anotado(s) sin volcar al INBOX»—, que la fase Done escribe en
+   `done/`. Cada `detail` se recorta a su primera línea y a 240 caracteres antes de llegar al agente.
+2. **La forma y las cabeceras en `review-noted`** — hecho: el pedido nombra la forma del molde
+   (`INBOX_ENTRY`, atada al molde por una prueba que se pone roja si cualquiera de los dos cambia) y los
+   nombres que ya hay en Propuestas. Los nombres llegan por `ops context --json`, que gana el campo `inbox`
+   —los nombres por sección—: un recorrido no tiene disco, y la lectura de planning ya corre ese comando en
+   cada vuelta. `parser.inboxHeads` es la variante del recorrido de `readInbox`, y `readInbox` pasó a
+   apoyarse en ella: sigue habiendo un solo lector del INBOX.
+3. **El mismo pedido en los otros recorridos** — hecho, y distinto en dos de los cuatro puntos:
+   - `flow` en modo informe: el caso proponía pedir el tope y comparar `followUps` contra él. Comparar un
+     número que devuelve el mismo agente que ya escribió no contiene nada, así que se hizo determinista: el
+     agente del informe devuelve los seguimientos —sección y entrada— sin escribir en el INBOX, y un paso
+     aparte (`report-inbox`) escribe los tres primeros con forma y nombres. Lo que pasa del tope queda en el
+     informe —el pedido dice que todos van también en lo que queda abierto— y se cuenta en el resultado
+     (`unlisted`) y en el log. Cuesta un agente más por informe que deje seguimientos.
+   - `flow` en `no-hacer` e `investigar`: forma y nombres de Lecciones e Ideas. Escriben una entrada por
+     corrida, así que el tope ya era uno.
+   - `onboard`: el paso de borradores dejó de escribir en Ideas y devuelve las preguntas en `openQuestions`,
+     como ya pedía su schema; las escribe el paso de la épica —siguen siendo tres agentes— con tope, forma y
+     los nombres de Ideas, que el Scan lee con `ops context --json`. Las que no entran se nombran en el log
+     y en el resultado (`unlistedQuestions`): el arranque lo corre una persona, y es ahí donde las lee.
+4. **El molde deja de invitar evidencia** — hecho: Propuestas pasa a «un cambio concreto del producto y su
+   fix propuesto. La evidencia no se copia acá: se cita dónde vive». El comentario de `autobuild.js` se
+   ajustó igual, y el pedido del informe de `flow` dejó de decir «un cambio del producto con su evidencia».
+   `INBOX.md` es del proyecto (`init` en `TEMPLATE_OWN`): lo reciben las instancias nuevas, y las que ya
+   existen se enteran por el CHANGELOG.
+5. **Aviso de tamaño en `check`** — hecho, como advertencia y nunca error, en `engine/planning/inbox.js`:
+   300 líneas por defecto, que la instancia cambia en `inbox.warnLines` de `ops.config.json` (schema y
+   validador; sólo un entero positivo).
+
+Lo que el caso ya dejaba afuera se quedó afuera: el formato `[servicio][slug]` no se tocó, y deduplicar
+sigue siendo el segundo filtro, detrás del tope en código. Lo que es salida del INBOX fue al 106.
+
+**Tradeoffs**
+
+- **«N conviene que viva en `ops.config.json`»** — se decidió que no. Un recorrido no lee archivos: un N
+  configurable llegaría por el agente que transcribe la configuración (`contract-digest`), que es
+  justamente de lo que un tope en código viene a no depender. Queda como constante en el fragmento
+  compartido; si una instancia necesita otro, es un caso propio.
+- **«Pasar cabeceras cuesta contexto»** — acotado: viajan sólo los nombres de la sección donde se escribe,
+  no las entradas. Con 36 hallazgos el pedido pasó de 13284 a 1811 caracteres (abajo).
+- **«Un tope pierde hallazgos del INBOX»** y **«deduplicar por nombre deja pasar otro nombre»** — siguen
+  valiendo como estaban descritos; el conteo en `done/` es lo que evita que lo primero sea silencioso.
+
+**Qué tiene que probar el cierre**
+
+- **Tope y conteo en `done/`, rojo quitando el `slice`** — prueba nueva en `autobuild-review.test.js`;
+  M1 (sin `slice`) y M2 (sin conteo) la ponen roja. La ausencia —dentro del tope no se cuenta nada— tiene
+  su propia prueba, roja con M4 (contar siempre).
+- **Forma y cabeceras en `review-noted`** — la misma prueba, roja con M3.
+- **`flow.js:402`, `:433`, `:445` y `onboard.js:183`, cada uno con su aserción** — cuatro pruebas, una por
+  punto, rojas con M6, M7, M8 y M9/M10. La de `:402` mide el tope aplicado, no una comparación: ver el
+  punto 3.
+- **El molde y el comentario ya no dicen que una propuesta lleva su evidencia adentro** — comprobado con
+  `grep -rn "con su evidencia" template/planning/INBOX.md automatization/workflows/ automatization/shared/`:
+  nada en el molde, y quedan tres coincidencias que no son del INBOX y están bien donde están —el cierre de
+  `done/` en `autobuild.js:870` y el veredicto de `agent-eval.js:18` y `flow-eval.js:18`—.
+- **`check` sale 0 con el INBOX pasado del umbral y el aviso a la vista** — prueba nueva en
+  `planning.test.js`, roja con M11 y M12 (el umbral de la instancia ignorado).
+- **Los relatos de QA: de qué vía vinieron** — no se estableció, y no se abre caso todavía. Hace falta la
+  historia del `INBOX.md` de la instancia —`git log -p` sobre ese archivo, allá—, que no viaja con el caso y
+  no está en este repositorio. El disparador que el caso fijó para abrir uno propio es «vinieron de fuera de
+  los workflows **y** el punto 4 no alcanza», y ninguna de las dos mitades se puede evaluar desde acá. Lo que
+  sí cambió son las dos vías que el caso nombraba: `detail` llega recortado a una línea y el molde ya no pide
+  evidencia. Lo puede cerrar quien tenga la instancia, corriendo ese `git log`.
+
+### Lo que el caso no preveía
+
+- **`flow.js` pasaba las 500 líneas** (502) con el schema de los nombres copiado de `autobuild`. Fue al
+  fragmento compartido como `INBOX_HEADS`, que además sacó el literal duplicado entre los dos recorridos.
+  En `autobuild` se declara `inbox: { ...INBOX_HEADS }` y no el nombre pelado, porque la prueba que ata el
+  schema de `planning-context` con lo que el recorrido lee reconoce un campo por la forma `campo: {`.
+- **El fragmento va inmediatamente después de `workflow-root.js`**, y no con `workflow-finish.js`: los
+  schemas que lo usan se evalúan antes, y una constante incluida más abajo no existiría todavía.
+
+### Qué se corrió
+
+- **La reproducción del caso sobre el código nuevo.** `r101.js` corre el arnés de `autobuild` del árbol que
+  se le pase con 36 hallazgos no bloqueantes de dos líneas y 300 caracteres. Sobre `git archive HEAD`:
+
+  ```
+  concerns=36 volcados=36 prompt=13284 caracteres
+  segundas líneas en el pedido: 36
+  forma del molde en el pedido: false
+  cabeceras de Propuestas en el pedido: false
+  hecho de revisión en done/: review=aprobado por software-architect, sobre api/alta.go
+  ```
+
+  Sobre la rama:
+
+  ```
+  concerns=36 volcados=3 prompt=1811 caracteres
+  segundas líneas en el pedido: 0
+  forma del molde en el pedido: true
+  cabeceras de Propuestas en el pedido: true
+  hecho de revisión en done/: review=aprobado por software-architect, sobre api/alta.go · 33 anotado(s) sin volcar al INBOX
+  ```
+
+- **El rojo previo**: las pruebas nuevas copiadas sobre `git archive HEAD` fallan todas —las del tope, las
+  de forma y nombres en los tres recorridos, las de `check`, `context --json` y el validador—; las dos
+  existentes cuya expectativa cambió a propósito también.
+- **Mutaciones**, cada una en una copia desechable y todas rojas:
+
+  | | Mutación | Prueba que se puso roja |
+  |---|---|---|
+  | M1 | `autobuild` sin `slice` | lo anotado entra al INBOX con tope… |
+  | M2 | sin sumar lo no volcado al hecho de revisión | ídem |
+  | M3 | `review-noted` sin forma ni nombres | ídem |
+  | M4 | sumar el conteo siempre | lo anotado dentro del tope no deja nada contado sin volcar |
+  | M5 | `detail` sin recortar a una línea | lo anotado entra al INBOX con tope… |
+  | M6 | informe de `flow` sin tope | los seguimientos de un informe entran al INBOX con tope… |
+  | M7 | `no-hacer` sin forma ni nombres | la lección de una intención no viable… |
+  | M8 | `investigar` sin forma ni nombres | la idea de lo que falta averiguar… |
+  | M9 | `onboard` sin tope | onboard lleva al INBOX tres preguntas abiertas… |
+  | M10 | `onboard` calla las que no entran | ídem |
+  | M11 | `check` sin aviso de tamaño | check avisa un INBOX pasado de tamaño… |
+  | M12 | `check` ignora `inbox.warnLines` | ídem |
+  | M15 | `context --json` sin `inbox` | context --json trae los nombres del INBOX por sección |
+  | M20 | el validador acepta cualquier `warnLines` | inbox.warnLines se valida… |
+  | M21 | el molde cambia la forma de entrada | los recorridos piden la misma forma de entrada… |
+  | M22 | los nombres ignoran una viñeta con casilla | context --json trae los nombres… |
+
+  M13, M14, M16–M19 y M23 son del 106.
+- **La puerta**: `npm run ci`, código 0 — 717 pruebas, 0 fallas, 62 archivos en su piso de cobertura.
+  `engine/planning/inbox.js` entró al registro de pisos con 100/80/100.

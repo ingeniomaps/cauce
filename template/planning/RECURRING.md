@@ -16,7 +16,8 @@ vencimiento se calcula cuando alguien corre el CLI. Promover sigue siendo un act
 - **Cada** — vocabulario cerrado: `mensual`, `trimestral`, `semestral`, `anual`. No hay expresiones de
   cron, y esa ausencia es el enunciado: si hiciera falta una, lo que estarías declarando es otra cosa.
   Tampoco hay `semanal`, porque el slug de cada vuelta tiene grano de mes.
-- **Desde** — `AAAA-MM-DD`. Ancla la primera vuelta y después no se toca.
+- **Desde** — `AAAA-MM-DD`. Ancla la primera vuelta y después no se toca. Es la primera fecha en que
+  vence, no el día en que se escribe la fila: con la fecha de hoy nace vencida.
 - **Tarea y aceptación** — lo que se va a promover, con su aceptación observable escrita una sola vez y
   con calma. Improvisada en cada vuelta, la misma recurrencia termina significando cosas distintas sin
   que nadie lo decida.
@@ -47,12 +48,12 @@ slug son un error de `check`, y ese error llega un mes tarde.
 
 | Qué | Cada | Desde | Tarea y aceptación observable |
 |---|---|---|---|
+| inbox | trimestral | {{INBOX_SINCE}} | Recorrer el INBOX entero. _Aceptación: ninguna viñeta queda sin decisión de promover, dejar o borrar._ (service: planning) |
 
 <!--
-| deps | mensual | 2026-09-01 | Actualizar dependencias. _Aceptación: `npm outdated` no deja una versión mayor sin decisión escrita y la puerta queda verde._ |
-| accesos | trimestral | 2026-07-01 | Revisar quién tiene acceso a producción. _Aceptación: cada cuenta activa figura en `organization/`, y las demás están dadas de baja._ |
-| costos | mensual | 2026-09-01 | Revisar el gasto de infraestructura del mes. _Aceptación: cada línea que subió más de 20% tiene una razón escrita._ |
-| inbox | trimestral | 2026-08-01 | Recorrer el INBOX entero. _Aceptación: ninguna viñeta queda sin decisión de promover, dejar o borrar._ |
+| deps | mensual | 2026-09-01 | Actualizar dependencias. _Aceptación: `npm outdated` no deja una versión mayor sin decisión escrita y la puerta queda verde._ (service: .) |
+| accesos | trimestral | 2026-07-01 | Revisar quién tiene acceso a producción. _Aceptación: cada cuenta activa figura en `organization/`, y las demás están dadas de baja._ (service: organization) |
+| costos | mensual | 2026-09-01 | Revisar el gasto de infraestructura del mes. _Aceptación: cada línea que subió más de 20% tiene una razón escrita._ (service: .) |
 -->
 
 ## Postergaciones

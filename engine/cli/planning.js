@@ -11,6 +11,7 @@ const PC = require('../planning/contracts')
 const SR = require('../planning/structure')
 const SZ = require('../planning/sizing')
 const RC = require('../planning/recurring')
+const IB = require('../planning/inbox')
 const CL = require('../planning/claims')
 const R = require('../core/repos')
 const ST = require('../planning/state')
@@ -98,10 +99,11 @@ function check(dir, cli) {
   for (const file of required) if (!fs.existsSync(path.join(root, file))) errors.push(`falta ${file}`)
 
   const configPath = path.join(root, '..', 'ops.config.json')
+  let config = null
   if (fs.existsSync(configPath)) {
     try {
       const raw = fs.readFileSync(configPath, 'utf8')
-      const config = JSON.parse(raw)
+      config = JSON.parse(raw)
       if (!raw.includes('{{')) {
         errors.push(...C.validateOpsConfig(config))
         if (Array.isArray(config.workspaceRoots)) {
@@ -170,6 +172,7 @@ function check(dir, cli) {
   const recurring = RC.read(root)
   errors.push(...RC.validate(recurring))
   warnings.push(...RC.warnings(RC.status({ ...recurring, done, today: TODAY() })))
+  warnings.push(...IB.warnings(root, done, config))
   warnings.push(...AD.sealWarnings(root))
   // Una aprobación vale para el conjunto que nombra, así que olvidada sigue autorizando
   // esas mismas rutas la próxima vez que alguien las stagee. No caduca sola: lo que la cierra es que se
@@ -383,6 +386,8 @@ function context(dir, cli) {
     // mismo criterio. Por qué no la encola una máquina está en la fase Pick de `autobuild`.
     nextEpic: (!task && [...state.epics].filter((one) => one.status === 'open')
       .sort((a, b) => String(a.num).localeCompare(String(b.num)))[0]) || null,
+    // Sólo en el JSON: lo leen los recorridos que escriben en el INBOX, para no repetir un nombre.
+    inbox: P.inboxHeads(root),
     // Las reglas que rigen, con los overrides resueltos. Van acá porque `autobuild` ya lee este comando y
     // tiene prohibido abrir otros archivos para completar su contrato (caso 105).
     rules: O.effectiveRules(path.resolve(root, '..')),

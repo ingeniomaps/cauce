@@ -235,3 +235,32 @@ test('la fila que registra la parada se espera, y si no ocurre la parada lo dice
   assert.equal(mudo.result.reason, 'plan-blocked', 'el motivo es el de la parada, no el de la escritura')
   assert.match(mudo.result.detail, /no se pudo registrar: escribila a mano/)
 })
+
+// Caso 101. El tope lo aplica el recorrido sobre lo que le pasa al agente: cinco hallazgos no
+// bloqueantes llegan como tres, en una línea cada uno, y los dos que no entran quedan contados en el
+// hecho de revisión, que es lo que viaja a `done/`.
+test('lo anotado entra al INBOX con tope, con la forma del molde y sin repetir nombres', async () => {
+  const { baseScript } = require('../support/autobuild-harness')
+  const concerns = ['uno', 'dos\nsegunda línea que no viaja', 'tres', 'cuatro', 'cinco']
+    .map((detail) => ({ detail: `hallazgo ${detail}`, blocking: false }))
+  const { result, prompts } = await runFlow({
+    [KEY.review]: { verdict: 'aprobado', consulted: ['api/alta.go'], concerns },
+    [KEY.context]: { ...baseScript()[KEY.context], inbox: { propuestas: ['ya-anotado'] } },
+  })
+  ranToEnd(result)
+  const noted = prompts.find((one) => one.key === 'Review|review-noted').prompt
+  assert.match(noted, /hallazgo uno.*hallazgo dos.*hallazgo tres/)
+  assert.doesNotMatch(noted, /hallazgo cuatro|hallazgo cinco/, 'el cuarto y el quinto no llegan al agente')
+  assert.doesNotMatch(noted, /segunda línea/, 'y cada hallazgo llega en una línea')
+  assert.match(noted, /- \*\*slug-del-item\*\* — /, 'nombra la forma de entrada del molde')
+  assert.match(noted, /en Propuestas ya están ya-anotado/, 'y lleva los nombres que ya hay en Propuestas')
+  const done = prompts.find((one) => one.key === 'Done|done').prompt
+  assert.match(done, /review=[^;]*· 2 anotado\(s\) sin volcar al INBOX/, 'lo que no entró queda contado en done/')
+})
+
+test('lo anotado dentro del tope no deja nada contado sin volcar', async () => {
+  const { prompts } = await runFlow({
+    [KEY.review]: { verdict: 'aprobado', consulted: ['api/alta.go'], concerns: [{ detail: 'uno', blocking: false }] },
+  })
+  assert.doesNotMatch(prompts.find((one) => one.key === 'Done|done').prompt, /sin volcar/)
+})

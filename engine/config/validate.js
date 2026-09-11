@@ -20,7 +20,7 @@ function validateOpsConfig(config) {
   // `cauceVersion` la escribe el toolkit, no la persona: registra de qué versión salió la instancia.
   const allowed = new Set([
     '$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoots', 'writableOutsideRoots', 'runner',
-    'migrations',
+    'migrations', 'inbox',
   ])
   for (const key of Object.keys(config)) {
     if (RETIRED[key]) errors.push(`ops.config.json: ${key} ya no se usa: ${RETIRED[key]}`)
@@ -34,7 +34,24 @@ function validateOpsConfig(config) {
   validateWritable(config.writableOutsideRoots, errors)
   validateRunner(config.runner, errors)
   validateMigrations(config.migrations, errors)
+  validateInbox(config.inbox, errors)
   return errors
+}
+
+// El umbral del aviso de tamaño del INBOX. Sólo un entero positivo: un cero o un texto se leerían como
+// «avisá siempre» o «nunca», y ninguno de los dos es algo que alguien escriba a propósito.
+function validateInbox(inbox, errors) {
+  if (inbox === undefined) return
+  if (!inbox || typeof inbox !== 'object' || Array.isArray(inbox)) {
+    errors.push('ops.config.json: inbox debe ser un objeto')
+    return
+  }
+  for (const key of Object.keys(inbox)) {
+    if (key !== 'warnLines') errors.push(`ops.config.json: inbox.${key} no está permitido`)
+  }
+  if ('warnLines' in inbox && !(Number.isInteger(inbox.warnLines) && inbox.warnLines > 0)) {
+    errors.push('ops.config.json: inbox.warnLines debe ser un entero mayor que cero, o no estar')
+  }
 }
 
 // Qué cuenta como migración para el guard. Sin declararlo, sólo `.sql` — y ése es el default que hace

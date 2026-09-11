@@ -85,3 +85,43 @@ test('workflows de integración usan el registro general y no escriben remoto', 
     assert.match(source, /Nunca|never|Never/)
   }
 })
+
+// Caso 101, corriendo el recorrido: de cinco preguntas llegan tres al paso que escribe, y las otras dos
+// salen en el resultado y en el log. Por qué las escribe ese paso está en `onboard.js`.
+test('onboard lleva al INBOX tres preguntas abiertas y cuenta las demás', async () => {
+  const { compileWorkflow } = require('../support/workflow')
+  const prompts = []
+  const said = []
+  const script = {
+    inventario: { fresh: true, services: [], inboxIdeas: ['ya-preguntada'] },
+    contexto: { files: [], openQuestions: ['p1', 'p2', 'p3', 'p4\ncon detalle', 'p5'] },
+    'epica-001': { file: 'planning/roadmap/epic-001-x.md', passed: true },
+  }
+  const agent = async (prompt, options = {}) => {
+    prompts.push({ key: options.label, prompt })
+    return script[options.label]
+  }
+  const result = await compileWorkflow('onboard')(
+    agent, () => {}, (text) => said.push(text), async (thunks) => Promise.all(thunks.map((t) => t())),
+    async () => [], async () => ({}), { context: 'vendemos ruteo' },
+    { total: null, spent: () => 0, remaining: () => Infinity },
+  )
+  const draft = prompts.find((one) => one.key === 'contexto').prompt
+  assert.doesNotMatch(draft, /en la sección Ideas/, 'quien redacta ya no escribe en el INBOX')
+  const epic = prompts.find((one) => one.key === 'epica-001').prompt
+  assert.match(epic, /"p1","p2","p3"/)
+  assert.doesNotMatch(epic, /"p4|"p5"/, 'la cuarta y la quinta no llegan al INBOX')
+  assert.match(epic, /- \*\*slug-del-item\*\* — /, 'nombra la forma de entrada del molde')
+  assert.match(epic, /en Ideas ya están ya-preguntada/, 'y los nombres que ya hay')
+  assert.deepEqual(result.unlistedQuestions, ['p4', 'p5'])
+  assert.ok(said.some((text) => /2 pregunta\(s\) abierta\(s\) más no entraron/.test(text)), 'y se dicen')
+})
+
+// La forma de una entrada vive en el molde y el fragmento que la manda a cada recorrido la copia: si
+// una cambia sin la otra, los recorridos piden una forma que el molde ya no declara (caso 101).
+test('los recorridos piden la misma forma de entrada que declara el molde del INBOX', () => {
+  const root = path.resolve(__dirname, '..', '..')
+  const shared = fs.readFileSync(path.join(root, 'automatization', 'shared', 'inbox.js'), 'utf8')
+  const form = shared.match(/const INBOX_ENTRY = '([^']+)'/)[1]
+  assert.ok(fs.readFileSync(path.join(root, 'template', 'planning', 'INBOX.md'), 'utf8').includes(form), form)
+})

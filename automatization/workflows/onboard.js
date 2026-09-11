@@ -59,6 +59,7 @@ const BASE = `Nunca inventes clientes, métricas, ingresos, plazos ni responsabl
   `retrasa el único momento en que la herramienta todavía no sirve para nada.`
 
 {{INCLUDE:shared/workflow-finish.js}}
+{{INCLUDE:shared/inbox.js}}
 
 const SCAN = {
   type: 'object', additionalProperties: false, required: ['fresh', 'services'],
@@ -86,6 +87,8 @@ const SCAN = {
       } } },
     externals: { type: 'array', items: { type: 'string' } },
     secrets: { type: 'array', items: { type: 'string' } },
+    // Los nombres que ya hay en Ideas: con `force` el arranque reescribe una instancia que ya tiene INBOX.
+    inboxIdeas: { type: 'array', items: { type: 'string' } },
   },
 }
 
@@ -104,13 +107,14 @@ phase('Scan')
 // Una sola llamada, y todo lo que hace es correr dos comandos y mirar dos archivos. Lo que sigue depende
 // de lo que devuelva, así que gastar más antes de saberlo es gastar a ciegas.
 const state = await agent(
-  `${BASE}\n\nFrom ${ROOT}, run exactly these two commands and report what they printed. Explore nothing ` +
+  `${BASE}\n\nFrom ${ROOT}, run exactly these three commands and report what they printed. Explore nothing ` +
   `else and open no file other than .env.example at the workspace root.\n` +
   `1. "node tools/ops.js onboard --json": the instance state, the workspace inventory, the opening ` +
   `question and the dimensions still uncovered. Copy fresh, opening, followUps, the "need" of each ` +
   `dimension, and every service with its path, its runtimes, its declared commands keeping the source ` +
   `file each command came from, and the variable names its "env" carries. Add nothing it did not print.\n` +
   `2. "node tools/ops.js check planning".\n` +
+  `3. "node tools/ops.js context planning --json": copy its inbox.ideas into inboxIdeas, verbatim.\n` +
   `The inventory already names every credential each service expects: never open a .env file to look for ` +
   `more. Report those names in secrets and the services they point at in externals. A name the inventory ` +
   `carries is declared, and saying otherwise is a claim the repository contradicts.`,
@@ -180,16 +184,28 @@ const drafted = await agent(
   `que no pidas declararlo de nuevo: lo que falta es dónde se carga el valor y quién lo hace, y ningún ` +
   `valor se propone acá. Además, una por cada sistema externo o MCP a conectar, y una por la autoridad ` +
   `del runner, que hoy declara runner.allowPush=false.\n` +
-  `5. Las preguntas que queden abiertas, en la sección Ideas de ${INBOX}, sin promover.\n` +
-  `Devolvé en files cada archivo que tocaste y en assumptions cada supuesto que dejaste marcado.`,
+  `Devolvé en files cada archivo que tocaste, en assumptions cada supuesto que dejaste marcado y en ` +
+  `openQuestions las preguntas que quedaron abiertas, de la más a la menos importante. No las escribas en ` +
+  `${INBOX}: eso lo hace el paso siguiente.`,
   { schema: WRITTEN, label: 'contexto' },
 )
 if (!drafted) return stop('draft-unavailable', 'los borradores no devolvieron resultado')
 
 phase('Epic')
 
+// Las preguntas abiertas van al INBOX con tope, y el tope lo aplica el recorrido: por eso las escribe
+// este paso con lo que el anterior devolvió, y no el anterior mientras las redactaba (caso 101). Las que
+// no entran se dicen al cerrar, que es donde la persona que arrancó la instancia las lee.
+const questions = (drafted.openQuestions || []).map(oneLine)
+const inboxed = questions.slice(0, INBOX_CAP)
+const INBOX_ASK = inboxed.length
+  ? `Registrá además en la sección Ideas de ${INBOX}, sin promover, estas preguntas abiertas: ` +
+    `${JSON.stringify(inboxed)}. ${inboxAsk(['Ideas'], { ideas: state.inboxIdeas || [] })}\n\n`
+  : ''
+
 const epic = await agent(
   `${BASE}\n\n${EVIDENCE}\n\nSupuestos que quedaron escritos: ${JSON.stringify(drafted.assumptions || [])}\n\n` +
+  INBOX_ASK +
   `Escribí en ${ROADMAP} la épica epic-001-<slug>.md siguiendo el contrato de ${P}/PROTOCOL.md: ` +
   `frontmatter epic/title/status/service con status open, criterios **CN** observables, "## Contexto ` +
   `relevante" con rutas reales e historias con (→ CN) y (service: ruta), cada una de menos de cuatro ` +
@@ -223,11 +239,17 @@ const assumptions = (drafted.assumptions || []).length
 const humanActions = (drafted.humanActions || []).length
 log(`Contexto escrito con ${assumptions} supuesto(s) por confirmar y ${humanActions} acción(es) humana(s) en ${HUMAN}.`)
 log(`Épica en ${epic.file}, sin promover: revisala, promoví una historia a un hito del BACKLOG y corré /autobuild.`)
+const unlisted = questions.slice(INBOX_CAP)
+if (unlisted.length) {
+  log(`${unlisted.length} pregunta(s) abierta(s) más no entraron al INBOX (tope de ${INBOX_CAP}): ` +
+    unlisted.join(' · '))
+}
 
 return finish({
   services: services.length,
   assumptions,
   humanActions,
   epic: epic.file,
+  unlistedQuestions: unlisted,
   promoted: false,
 })

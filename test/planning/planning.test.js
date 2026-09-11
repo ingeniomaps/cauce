@@ -385,3 +385,55 @@ test('la épica promovida no deja dos secciones compitiendo por el mismo rol', (
     'La fecha del último sync es visible.')
   assert.equal(I.criterionText('  -   dos   espacios  '), 'dos espacios')
 })
+
+// Casos 101 y 106: los dos avisos de `check` sobre el INBOX, sobre una instancia recién creada, y que
+// ninguno cambie el exit code. Por qué son advertencias está en `engine/planning/inbox.js`.
+function inboxInstance(name) {
+  const target = path.join(tempRoot(name), 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  return { target, planning: path.join(target, 'planning') }
+}
+const checkJson = (planning) => JSON.parse(run(['check', planning, '--json']).stdout)
+
+test('check avisa un INBOX pasado de tamaño, con el umbral que fije la instancia', () => {
+  const { target, planning } = inboxInstance('cauce-inbox-tam-')
+  assert.deepEqual(checkJson(planning).warnings.filter((one) => /INBOX/.test(one)), [], 'el molde no avisa')
+
+  fs.appendFileSync(path.join(planning, 'INBOX.md'),
+    `${Array.from({ length: 300 }, (_, i) => `- **item-${i}** — algo.`).join('\n')}\n`)
+  const big = checkJson(planning)
+  assert.equal(big.ok, true, 'es advertencia: el INBOX es de la persona')
+  assert.ok(big.warnings.some((one) => /INBOX\.md: \d+ líneas, más que el umbral de 300/.test(one)),
+    JSON.stringify(big.warnings))
+
+  const configPath = path.join(target, 'ops.config.json')
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+  fs.writeFileSync(configPath, JSON.stringify({ ...config, inbox: { warnLines: 1000 } }))
+  const raised = checkJson(planning)
+  assert.equal(raised.ok, true, JSON.stringify(raised.errors))
+  assert.deepEqual(raised.warnings.filter((one) => /líneas, más que el umbral/.test(one)), [],
+    'la instancia sube el umbral y el aviso se calla')
+})
+
+test('check avisa una entrada del INBOX que se llama como una tarea cerrada, y sólo ésa', () => {
+  const { planning } = inboxInstance('cauce-inbox-done-')
+  fs.writeFileSync(path.join(planning, 'done', 'alta.md'), '- [x] **alta** — Resultado\n'
+    + '  acept: el resultado se observa\n  fecha: 2026-09-08\n  done: se construyó y `make test` salió 0\n'
+    + '  qa: observado por el camino real\n  tests: A → make test\n  commit: abc1234 feat: alta\n')
+  const inbox = path.join(planning, 'INBOX.md')
+  fs.writeFileSync(inbox, fs.readFileSync(inbox, 'utf8')
+    .replace('## Propuestas\n', '## Propuestas\n\n- **alta** — ya se promovió.\n- **otra** — sigue abierta.\n'))
+  const result = checkJson(planning)
+  assert.equal(result.ok, true, JSON.stringify(result.errors))
+  const named = result.warnings.filter((one) => /INBOX\.md: \*\*/.test(one))
+  assert.deepEqual(named, ['INBOX.md: **alta** se llama como done/alta.md; si ya se promovió, borrala'])
+})
+
+test('context --json trae los nombres del INBOX por sección', () => {
+  const { planning } = inboxInstance('cauce-inbox-context-')
+  const inbox = path.join(planning, 'INBOX.md')
+  fs.writeFileSync(inbox, fs.readFileSync(inbox, 'utf8')
+    .replace('## Propuestas\n', '## Propuestas\n\n- **uno** — a.\n- sin nombre\n- [ ] **dos** — b.\n'))
+  const report = JSON.parse(run(['context', planning, '--json']).stdout)
+  assert.deepEqual(report.inbox, { deuda: [], ideas: [], propuestas: ['uno', 'dos'], lecciones: [] })
+})

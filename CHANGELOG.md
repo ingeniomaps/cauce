@@ -100,6 +100,27 @@ diseño — eso vive en el commit y en el código.
 
   **Qué cambia para vos**: nada que hacer.
 
+- **Los recorridos ya no llenan el INBOX sin medida.** `autobuild` volcaba en Propuestas todo lo que Review
+  anotaba sin frenar, entero, y `flow` y `onboard` escribían sin tope ni forma. Ahora cada recorrido escribe
+  como mucho tres entradas por tarea o por corrida, de una línea, con la forma del molde y sin repetir un
+  nombre que ya está. Lo que pasa del tope no se pierde: `autobuild` lo cuenta en el `done/` de la tarea,
+  `flow` lo deja en el informe y `onboard` lo nombra al cerrar. Y `check` avisa, sin fallar, cuando
+  `INBOX.md` pasa de 300 líneas.
+
+  **Qué cambia para vos**: nada que hacer. Si querés otro umbral para el aviso, poné
+  `"inbox": { "warnLines": N }` en `ops.config.json`. El molde de `INBOX.md` ya no pide la evidencia dentro
+  de una propuesta; tu `INBOX.md` no se toca.
+
+- **La recurrencia que recorre el INBOX viene activa, y descomentar los ejemplos de `RECURRING.md` ya no
+  rompe `check`.** Una instancia nueva trae la fila `inbox`, trimestral, que vence por primera vez tres meses
+  después de `init`. Las filas de ejemplo declaran el `(service: …)` que `check` exige. Y `check` avisa una
+  entrada del INBOX que se llama como una tarea de `done/`: probablemente se promovió y quedó ahí.
+
+  **Qué cambia para vos**: `RECURRING.md` es tuyo y `upgrade` no lo toca. Para tener la recurrencia en una
+  instancia que ya existe, agregá debajo de la tabla
+  `| inbox | trimestral | AAAA-MM-DD | Recorrer el INBOX entero. _Aceptación: ninguna viñeta queda sin decisión de promover, dejar o borrar._ (service: planning) |`
+  con una fecha futura: `Desde` es cuándo vence por primera vez, no el día en que escribís la fila.
+
 ## [0.81.0] - 2026-09-11
 
 ### Cambiado

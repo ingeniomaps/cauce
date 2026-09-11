@@ -212,7 +212,7 @@ test('flow acepta la intención suelta, con prefijo de equipo o estructurada', (
 test('flow declara qué deja cada recorrido y ramifica según eso', () => {
   assert.match(flowWorkflow, /outcome === 'report'/, 'un informe no propone trabajo')
   assert.match(flowWorkflow, /REPORTS/)
-  assert.match(flowWorkflow, /sin promoverlo/, 'los seguimientos no se promueven solos')
+  assert.match(flowWorkflow, /sin promover ninguno/, 'los seguimientos no se promueven solos')
   assert.match(flowWorkflow, /flow list/, 'el equipo se confirma contra los que existen')
   // Se afirma por la negativa —que la instrucción no esté— porque lo que se retiró fue una lectura, y
   // una lectura que no ocurre no deja nada que aserciar del lado positivo.

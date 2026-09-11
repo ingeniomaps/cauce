@@ -352,3 +352,41 @@ test('lo que una etapa posterior habría hecho, pero el material ya sostiene, se
   assert.match(parcial, /salida para «no se pudo»/, 'la salida de no poder es una salida, no un hueco')
   assert.match(parcial, /Frenar no exime/)
 })
+
+// Caso 101. Los seguimientos de un informe los escribe un paso aparte con lo que el informe devolvió,
+// así que el tope es del recorrido y no de quien redacta: de cinco entran tres, y los otros dos quedan
+// en el informe y en el resultado.
+test('los seguimientos de un informe entran al INBOX con tope, forma y nombres', async () => {
+  const contract = { ...baseScript()['flow-contract'], outcome: 'report', inbox: { lecciones: ['ya-aprendido'] } }
+  const followUps = ['a', 'b', 'c', 'd', 'e'].map((one) => ({ section: 'Lecciones', entry: `seguir-${one}` }))
+  const { result, prompts } = await runFlow({
+    'flow-contract': contract, 'report-write': { file: 'planning/reports/x.md', followUps },
+  })
+  const inbox = prompts.find((one) => one.key === 'report-inbox').prompt
+  assert.match(inbox, /seguir-a.*seguir-b.*seguir-c/)
+  assert.doesNotMatch(inbox, /seguir-d|seguir-e/, 'el cuarto y el quinto no llegan al INBOX')
+  assert.match(inbox, /- \*\*slug-del-item\*\* — /, 'nombra la forma de entrada del molde')
+  assert.match(inbox, /en Lecciones ya están ya-aprendido/, 'y los nombres que ya hay')
+  assert.equal(result.followUps, 3)
+  assert.equal(result.unlisted, 2, 'lo que no entró se cuenta')
+})
+
+test('la lección de una intención no viable lleva la forma y los nombres de Lecciones', async () => {
+  const contract = { ...baseScript()['flow-contract'], inbox: { lecciones: ['leccion-previa'] } }
+  const { prompts } = await runFlow({
+    'flow-contract': contract, 'epic-draft': { outcome: 'no-hacer', title: 'x', reason: 'nadie lo pide' },
+  })
+  const lesson = prompts.find((one) => one.key === 'inbox-lesson').prompt
+  assert.match(lesson, /- \*\*slug-del-item\*\* — /)
+  assert.match(lesson, /en Lecciones ya están leccion-previa/)
+})
+
+test('la idea de lo que falta averiguar lleva la forma y los nombres de Ideas', async () => {
+  const contract = { ...baseScript()['flow-contract'], inbox: { ideas: ['idea-previa'] } }
+  const { prompts } = await runFlow({
+    'flow-contract': contract, 'epic-draft': { outcome: 'investigar', title: 'x', reason: 'no se sabe dónde corre' },
+  })
+  const idea = prompts.find((one) => one.key === 'investigar').prompt
+  assert.match(idea, /- \*\*slug-del-item\*\* — /)
+  assert.match(idea, /en Ideas ya están idea-previa/)
+})

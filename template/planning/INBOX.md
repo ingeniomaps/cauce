@@ -14,7 +14,8 @@ Lo que separa a las cuatro secciones es el sujeto del ítem, no su tamaño ni su
 
 - **Deuda** — un costo que ya estamos cargando en código nuestro, conocido y no bloqueante.
 - **Ideas** — una pregunta abierta, sin respuesta propuesta.
-- **Propuestas** — un cambio concreto del producto, con su evidencia y su fix propuesto.
+- **Propuestas** — un cambio concreto del producto y su fix propuesto. La evidencia no se copia acá: se
+  cita dónde vive —el `done/` de la tarea, el informe—.
 - **Lecciones** — sobre cómo trabajamos; es lo que alimenta reglas y propuestas de cargo.
 
 Ideas y Propuestas se separan por si hay una respuesta propuesta. Deuda y Propuestas, por si el costo

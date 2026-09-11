@@ -284,6 +284,11 @@
     "branches": 95,
     "functions": 100
   },
+  "engine/planning/inbox.js": {
+    "lines": 100,
+    "branches": 80,
+    "functions": 100
+  },
   "engine/planning/parser.js": {
     "lines": 100,
     "branches": 93,
