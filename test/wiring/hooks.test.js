@@ -1213,6 +1213,27 @@ test('verify se aprueba por el conjunto staged, no por un archivo', () => {
   assert.doesNotThrow(() => execute('verify', commitApi))
 })
 
+test('lo que verify enlaza a la copia no entra a su índice', () => {
+  const root = tempRoot('ops-hook-verify-enlace-')
+  initRepo(root)
+  // Con la barra final, que es la forma corriente de ignorar un directorio y la que el enlace no cumple.
+  fs.writeFileSync(path.join(root, '.gitignore'), 'cache/\n')
+  fs.mkdirSync(path.join(root, 'cache'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'cache', 'dato.txt'), 'entorno\n')
+  const visto = path.join(tempRoot('ops-hook-verify-enlace-visto-'), 'trackeado.txt')
+  fs.writeFileSync(path.join(root, 'gate.js'), `require('node:fs').writeFileSync(${JSON.stringify(visto)}, `
+    + `require('node:child_process').execSync('git ls-files', { encoding: 'utf8' }))\n`)
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node gate.js' } }))
+  fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = 1\n')
+  git(['add', '.gitignore', 'gate.js', 'package.json', 'app.js'], root)
+  fs.writeFileSync(path.join(root, 'notas.txt'), 'suelto: es lo que obliga a materializar la copia\n')
+
+  assert.doesNotThrow(() => execute('verify', { cwd: root, tool_input: { command: 'git commit -m x' } }))
+  const tracked = fs.readFileSync(visto, 'utf8').split('\n').filter(Boolean)
+  assert.ok(tracked.includes('app.js'), `el gate no corrió sobre la copia: ${tracked.join(', ')}`)
+  assert.ok(!tracked.includes('cache'), `el enlace entró al índice de la copia: ${tracked.join(', ')}`)
+})
+
 // Un gate mide para poder decir «esto pasa», y lo que va a quedar es el índice, no el árbol. Las dos
 // mitades de `verify` respondían a preguntas distintas: elegía qué correr mirando el índice y corría
 // sobre el disco. El sentido que importa es el silencioso — se stagea algo roto, se arregla el archivo
@@ -1592,14 +1613,15 @@ test('la copia recibe la palanca que apaga la sincronización, y ya no la que de
   git(['add', '-A'], root)
   const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
 
-  // `CI` se despeja a mano para las dos mitades: Actions la exporta, así que sin esto la mitad de
-  // «no hay copia» pasaría en una laptop y afirmaría en CI algo que ahí no es cierto. Lo que se mide es
-  // qué agrega el guard, no qué traía el entorno — y eso hay que aislarlo para poder verlo.
-  // `CI` se despeja a mano: Actions la exporta, así que sin esto la mitad de ausencia pasaría en una
-  // laptop y afirmaría en CI algo que ahí no es cierto. Lo que se mide es qué agrega el guard.
-  const antes = process.env.CI
+  // Se despejan a mano para las dos mitades, porque lo que se mide es qué agrega el guard y no qué traía
+  // el entorno. `CI` la exporta Actions: sin despejarla, la mitad de «no hay copia» pasaría en una laptop
+  // y afirmaría en CI algo que ahí no es cierto. La otra la exporta el propio `verify` cuando esta suite
+  // corre dentro de una copia, y sin despejarla la prueba frenaba todo commit con algo sin trackear
+  // (caso 093).
+  const ISOLATED = ['CI', 'npm_config_verify_deps_before_run']
+  const antes = Object.fromEntries(ISOLATED.map((name) => [name, process.env[name]]))
   try {
-    delete process.env.CI
+    for (const name of ISOLATED) delete process.env[name]
     assert.doesNotThrow(() => execute('verify', commit))
     assert.match(fs.readFileSync(visto, 'utf8'), /^verify=vacio desarmadas=$/m,
       'sin copia no se le cambia el entorno a nadie')
@@ -1614,8 +1636,10 @@ test('la copia recibe la palanca que apaga la sincronización, y ya no la que de
       `y ninguna de éstas llega al gate:\n${Object.entries(DESARMAN)
         .map(([k, why]) => `  ${k}: ${why}`).join('\n')}`)
   } finally {
-    if (antes === undefined) delete process.env.CI
-    else process.env.CI = antes
+    for (const name of ISOLATED) {
+      if (antes[name] === undefined) delete process.env[name]
+      else process.env[name] = antes[name]
+    }
   }
 })
 
