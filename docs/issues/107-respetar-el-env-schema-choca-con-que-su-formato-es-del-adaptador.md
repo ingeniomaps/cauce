@@ -1,16 +1,16 @@
 ---
 caso: 107
 titulo: El aviso de credenciales sin dueño no lee el `.env.schema`, y leerlo choca con que su formato es del adaptador
-estado: abierto
+estado: descartado
 prioridad: baja
 version-detectada: 0.80.0
 ---
 
 # 107 — El `.env.schema` dice qué variable es sensible, y Cauce decidió no saber leerlo
 
-**🔴 abierto** · detectado en 0.80.0, reproducido en 0.81.0 · prioridad **baja** — pide una decisión antes que
-un arreglo; con el 102 cerrado, lo que queda es el secreto con nombre de configuración, y cuántos hay no está
-medido
+**⚪ descartado** · detectado en 0.80.0, reproducido en 0.81.0 · prioridad **baja** — se eligió C: el schema
+queda fuera de Cauce, el aviso juzga por el nombre y lo dice, y el secreto con nombre de configuración quedó
+medido: 16 de 72
 
 ## Resumen
 
@@ -134,6 +134,104 @@ Vale para las tres formas, y lo de la opción elegida además:
   que el parser o el adaptador no entienden produce un aviso propio, no el silencio.
 - **C**: el caso se cierra `descartado`; la reproducción, con el 102 aplicado, no lista nada, y el texto del
   aviso dice que el criterio es el nombre.
+
+## Cierre
+
+**Descartado con la opción C**, decidida por el usuario el 2026-09-11. Cauce no lee el `.env.schema`. El
+aviso de credenciales sin dueño juzga por el nombre —el **102**, resuelto en 0.82.0— y lo dice en su propio
+texto.
+
+Recorrido de lo que el caso enumeró:
+
+- **Decisión pendiente** — tomada: C. A y B no se construyen.
+- **Fix propuesto, C** — hecho, y no lleva código en este caso: el texto del aviso que dejó el 102 termina en
+  «el criterio es el nombre, así que una credencial con nombre de configuración no aparece acá».
+- **Fix propuesto, A y B** — no se hacen: quedan descartados con C. El 088 sigue diciendo lo que decía y
+  su Fix 3 sigue cerrado.
+- **Tradeoff de A** (un parser en el camino de `ops check`) y **tradeoff de B** (dos avisos distintos para
+  el mismo servicio) — no aplican: no hay parser ni adaptador.
+- **Tradeoff de C** («deja escrito un límite que nadie ve, y para siempre si nadie lo mide») — el límite
+  ahora lo dice el aviso, y quedó medido; es el ítem siguiente.
+- **La medición que decide** — hecha en solo lectura sobre los trece `.env.schema` de los repositorios
+  reales de la empresa donde se vio: `conorbi/*` (diez), `gouduet/keycloak`, `hypixo/keycloak` y
+  `venotal/platform`. El lector que la hizo vive en el scratch de la sesión, no en Cauce. Resultados:
+  - Hay **377** variables, **72** declaradas `sensitive: true`. El filtro por nombre del 102 reconoce
+    **56**; con `sensitivePath` sin extender reconocía **40**. Las **16** que no reconoce son
+    `ACCESS_SERVER`, `AUTOMATION_PAT`, `DB_AUDIT_SSL_CA`, `DB_MAIN_SSL_CA`, `GITHUB_PAT_ORIGIN`,
+    `GITHUB_PAT_TEMPLATE`, `LOGIN_CLIENT_PAT`, `MAILPIT_UI_AUTH`, `MASTERKEY`, `OTEL_EXPORTER_OTLP_HEADERS`,
+    `PLAUSIBLE_SECRET_KEY_BASE`, `RECONCILE_INFISICAL_CLIENT_ID`, `REDIS_URL`, `ROAX_CLIENT_ID`,
+    `ZITADEL_AUDIENCE` y `ZITADEL_CLIENT_ID`.
+  - Hay **0** variables declaradas `sensitive: false`: esos schemas marcan sólo lo sensible. De las **305**
+    sin marca, el filtro avisa **5** filas de tres nombres —`NEXT_PUBLIC_SENTRY_DSN`, `RECAPTCHA_SITE_KEY`
+    y `SENTRY_DSN`—, las tres `type: requires_admin`, que igual necesitan alguien que las cargue.
+  - `venotal/platform/.env.schema` es el tercer dialecto que nombra el 088 (`CLAVE=requerida|opcional`), y
+    el lector del subconjunto YAML le lee **0** variables. Un formato fijado por Cauce (A) no lo cubre.
+
+  Qué dice el número. La mitad del reporte original que era ruido —configuración listada como credencial—
+  la resuelve el nombre: de 305 variables sin marca se avisan 5. La mitad que era silencio queda: 16 de 72
+  declaradas sensibles (22 %) no se ven. Sólo dos de esas se alcanzarían con otra palabra en la regla
+  (`AUTOMATION_PAT` y `LOGIN_CLIENT_PAT`, con `_pat`, y eso lo mide el cierre del 102). Las demás no
+  tienen forma de secreto en el nombre. Ése es el número que justificaría reabrir A o B, y queda escrito
+  acá para quien lo haga.
+- **«A o B: la reproducción lista sólo `STRIPE`, y un schema ilegible produce un aviso propio»** — no
+  aplica: se descartaron.
+- **«C: se cierra `descartado`, la reproducción con el 102 aplicado no lista nada y el texto del aviso dice
+  que el criterio es el nombre»** — hecho. La reproducción está en «Qué se corrió», y el texto del aviso,
+  en la salida del 102.
+- **El dato que sostiene la decisión**: que el formato del `.env.schema` es de la empresa y que Cauce sólo
+  comprueba que exista (088, `:229` y `:371`). Se corrió, no sólo se leyó. Sobre una instancia desechable
+  con `organization/secrets.json` declarando un servicio, `ops secrets check` da el servicio **al día**
+  con un `.env.schema` que no es de ningún formato, y el error aparece recién cuando se borra el archivo.
+
+Lo que la reproducción muestra distinto de su enunciado: `grep -rln 'sensitive' engine` ahora devuelve
+también `engine/core/onboarding.js`. Es por el nombre `sensitiveKey`, la regla del 102 que el aviso
+importa, no porque algo lea el schema. `.env.schema` sigue en una sola línea del motor.
+
+### Qué se corrió
+
+La reproducción del caso, literal, contra el worktree con el 102 aplicado:
+
+```
+grep del aviso: 1
+IMAGE_NAME ""
+STRIPE ""
+engine/integrations/registry.js
+engine/secrets/index.js
+engine/core/onboarding.js
+engine/secrets/index.js:115:    const schema = service.schema || '.env.schema'
+```
+
+El dato del 088, corrido sobre un banco desechable (sidecar, raíz declarada `main`, servicio `api` con
+`schema: api/.env.schema`; la ruta del banco, abreviada a `<banco>`):
+
+```
+--- con un .env.schema ilegible
+✓ contrato de secretos: 1 servicio(s) al día
+exit=0
+--- sin .env.schema
+✗ services.api: falta api/.env.schema en <banco>/w107
+1 error(es) en el contrato de secretos
+exit=1
+```
+
+La medición, con la regla del motor y no con una copia. Se corrió el mismo lector importando
+`sensitivePath` del `git archive HEAD` y del worktree. La columna «hoy marca» es la regla del motor; la
+columna «extendido» es la variante con `key` suelta, que no se adoptó (el 102 dice por qué):
+
+```
+=== HEAD 437170a8
+variables: 377 en 13 schemas
+sensitive true: 72 | hoy marca 40 | extendido marca 57
+sensitive false: 0 | hoy marca 0 | extendido marca 0
+sensitive ausente: 305 | hoy marca 0 | extendido marca 5
+=== worktree
+variables: 377 en 13 schemas
+sensitive true: 72 | hoy marca 56 | extendido marca 57
+sensitive false: 0 | hoy marca 0 | extendido marca 0
+sensitive ausente: 305 | hoy marca 5 | extendido marca 5
+true que hoy NO marca: ACCESS_SERVER AUTOMATION_PAT DB_AUDIT_SSL_CA DB_MAIN_SSL_CA GITHUB_PAT_ORIGIN GITHUB_PAT_TEMPLATE LOGIN_CLIENT_PAT MAILPIT_UI_AUTH MASTERKEY OTEL_EXPORTER_OTLP_HEADERS PLAUSIBLE_SECRET_KEY_BASE RECONCILE_INFISICAL_CLIENT_ID REDIS_URL ROAX_CLIENT_ID ZITADEL_AUDIENCE ZITADEL_CLIENT_ID
+no-true que hoy marca: NEXT_PUBLIC_SENTRY_DSN[ausente] RECAPTCHA_SITE_KEY[ausente] SENTRY_DSN[ausente]
+```
 
 ## Contexto de descubrimiento
 
