@@ -41,6 +41,24 @@ diseño — eso vive en el commit y en el código.
 
   **Qué cambia para vos**: nada que hacer; tus guards dejan de aparecer en esos avisos.
 
+- **El aviso de credenciales sin dueño avisa sólo credenciales.** `check` listaba toda variable que el
+  proyecto declaraba y ningún contrato nombraba: en un proyecto real fueron ciento ocho nombres de build, y
+  la única credencial quedó en «y 1 más». Ahora cuenta las que tienen nombre de secreto —`…_PASSWORD`,
+  `…_TOKEN`, `…_KEY`, `…_DSN`…—, dice en qué servicio está cada una y dónde se escribe su dueño, y avisa
+  aparte cuando un servicio pasó el tope de variables que se revisan.
+
+  **Qué cambia para vos**: la declaración de secretos y la configuración de una integración ahora también
+  rechazan una clave que termine en `_key`, `dsn` o `credentials`, igual que ya rechazaban `…token`. Si
+  tenés una, cambiala por la referencia a una variable de entorno. Y una credencial con nombre de
+  configuración —`STRIPE_LIVE`— no aparece en el aviso: el criterio es el nombre.
+
+- **Una variable ya no se da por cargada porque otra la contiene en su nombre.** Con `API_SECRET_ROTATION`
+  escrita en `organization/workspace.md`, `API_SECRET` dejaba de avisarse aunque nadie la nombrara. Ahora
+  cuenta sólo el nombre entero.
+
+  **Qué cambia para vos**: puede aparecer en el aviso una credencial que antes quedaba tapada; escribí su
+  dueño y se va.
+
 ## [0.81.0] - 2026-09-11
 
 ### Cambiado
