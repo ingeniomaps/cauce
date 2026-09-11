@@ -34,6 +34,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **El bloqueo de `verify` cita la prueba que falló también con jest, vitest, mocha y pytest.** Con esas
+  herramientas citaba el archivo, el resumen o —con `pytest -v`— una prueba verde cuyo nombre decía «error».
+  Ahora reconoce cómo marca cada una la prueba que falla, comprobado contra la salida real de cada una.
+
+  **Qué cambia para vos**: el mensaje apunta a la prueba que hay que mirar.
+
 - **El agente ya no puede escribirse la aprobación.** `planning/.ops-approval` se escribía con la misma
   herramienta que usa el agente y ningún guard lo miraba, así que una aprobación suya destrababa igual que
   una tuya. Los guards de límites lo frenan ahora —por la herramienta de escritura y por el destino evidente
