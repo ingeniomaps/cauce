@@ -50,25 +50,50 @@ function alreadyShipped(file) {
 }
 
 
+// Qué archivo es una credencial, para los dos guards que la cuidan: `secrets`, que frena escribirla, y
+// `secrets-read`, que frena leerla. Devuelve el motivo, o vacío.
+function credential(input, raw) {
+  const base = path.basename(raw)
+  if (/^(?:\.env|\.env\..+)$/.test(base) && !/\.(?:example|sample|template|schema|dist|tpl)$/.test(base)) {
+    return 'parece contener secretos. Edita una plantilla o registra una acción humana.'
+  }
+  if (/^(?:accesos\.md|credenciales.*|credentials.*\.json|.*service-account.*\.json|.*\.(?:pem|key))$/i.test(base)) {
+    return 'parece un archivo de credenciales en texto plano.'
+  }
+  // Nombres de credencial que la herramienta escribe sola y que la lista anterior no cubría:
+  // `.npmrc` guarda el token de publicación, `.netrc` el de cualquier host, `id_rsa` y sus tres
+  // hermanas una clave privada de SSH, y `credentials` las de AWS. Los cuatro son estándar, no
+  // exóticos — y las claves SSH van por nombre de algoritmo, no por prefijo.
+  //
+  // Esto tapa un caso conocido; no vuelve completo al guard. La forma de decidir sigue siendo el
+  // nombre del archivo, así que otro formato pasa igual — ver «Qué son y qué no son» en el README.
+  if (/^(?:\.npmrc|\.netrc|_netrc|\.pypirc|\.dockercfg|id_(?:rsa|dsa|ecdsa|ed25519)|credentials)$/i.test(base)) {
+    return 'es un archivo de credenciales que su herramienta mantiene. No lo edites a mano.'
+  }
+  // Lo que ningún nombre delata: una identidad de máquina que el 088 declara puede llamarse
+  // `local-dev.env` (caso 092). Se lee sólo si la declaración existe, para no cargarla en cada hook.
+  const root = opsRoot(input)
+  if (!root || !fs.existsSync(path.join(root, 'organization', 'secrets.json'))) return ''
+  return require('../secrets').identityFiles(root).includes(path.resolve(cwdOf(input), raw))
+    ? 'es una identidad declarada en organization/secrets.json: la carga una persona.'
+    : ''
+}
+
 function secrets(input) {
   for (const file of filesOf(input)) {
-    const base = path.basename(file)
-    if (/^(?:\.env|\.env\..+)$/.test(base) && !/\.(?:example|sample|template|schema|dist|tpl)$/.test(base)) {
-      block(`${file} parece contener secretos. Edita una plantilla o registra una acción humana.`)
-    }
-    if (/^(?:accesos\.md|credenciales.*|credentials.*\.json|.*service-account.*\.json|.*\.(?:pem|key))$/i.test(base)) {
-      block(`${file} parece un archivo de credenciales en texto plano.`)
-    }
-    // Nombres de credencial que la herramienta escribe sola y que la lista anterior no cubría:
-    // `.npmrc` guarda el token de publicación, `.netrc` el de cualquier host, `id_rsa` y sus tres
-    // hermanas una clave privada de SSH, y `credentials` las de AWS. Los cuatro son estándar, no
-    // exóticos — y las claves SSH van por nombre de algoritmo, no por prefijo.
-    //
-    // Esto tapa un caso conocido; no vuelve completo al guard. La forma de decidir sigue siendo el
-    // nombre del archivo, así que otro formato pasa igual — ver «Qué son y qué no son» en el README.
-    if (/^(?:\.npmrc|\.netrc|_netrc|\.pypirc|\.dockercfg|id_(?:rsa|dsa|ecdsa|ed25519)|credentials)$/i.test(base)) {
-      block(`${file} es un archivo de credenciales que su herramienta mantiene. No lo edites a mano.`)
-    }
+    const reason = credential(input, file)
+    if (reason) block(`${file} ${reason}`)
+  }
+}
+
+// Leer una credencial la deja en el contexto de la sesión, y de ahí en los transcripts. Corre en su propio
+// grupo porque los guards de escritura frenarían leer fuera de las raíces o con el WIP vacío.
+function secretsRead(input) {
+  if (process.env.OPS_SECRETS_READ_OVERRIDE === '1') return
+  for (const file of filesOf(input)) {
+    if (!credential(input, file) || approved(input, file)) continue
+    block(`${file} es una credencial: leerla la deja en el contexto de la sesión. Si hace falta un valor, `
+      + `pedíselo a una persona.\n${AP.HOW('OPS_SECRETS_READ_OVERRIDE', [file])}`)
   }
 }
 
@@ -317,6 +342,6 @@ function engineWrites(input) {
 }
 
 module.exports = {
-  secrets, integrationSnapshot, generated, testEvidence, planFirst, workspaceBoundary,
+  secrets, secretsRead, integrationSnapshot, generated, testEvidence, planFirst, workspaceBoundary,
   migrations, engineWrites,
 }

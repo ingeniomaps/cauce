@@ -47,6 +47,7 @@ const guards = {
   'integration-snapshot': files.integrationSnapshot,
   'test-evidence': files.testEvidence,
   'plan-first': files.planFirst,
+  'secrets-read': files.secretsRead,
   'planning-drift': planningDrift,
 }
 
@@ -55,6 +56,7 @@ const hookGroups = {
   'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'verify', 'shell-boundary'],
   'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
     'integration-snapshot', 'test-evidence', 'plan-first'],
+  'pre-read': ['secrets-read'],
   stop: ['planning-drift'],
 }
 
@@ -93,6 +95,11 @@ const hookMetadata = [
     name: 'secrets',
     event: 'PreToolUse · files',
     purpose: 'Bloquea escribir secretos, claves privadas y credenciales en texto plano.',
+  },
+  {
+    name: 'secrets-read',
+    event: 'PreToolUse · read',
+    purpose: 'Bloquea leer con la herramienta del runner una credencial conocida o declarada.',
   },
   { name: 'generated', event: 'PreToolUse · files', purpose: 'Impide editar código generado manualmente.' },
   {

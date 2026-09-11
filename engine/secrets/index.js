@@ -186,4 +186,16 @@ function check(root) {
   return done()
 }
 
-module.exports = { DECLARATION, check }
+// Las rutas de las identidades que la declaración pone en disco, resueltas como las resuelve el chequeo.
+// Las lee el guard de secretos (caso 092); una declaración ausente o ilegible no aporta ninguna, porque
+// decir qué está mal es trabajo del chequeo.
+function identityFiles(root) {
+  const read = readJson(path.join(root, DECLARATION))
+  if (read.error || !isObject(read.value) || !isObject(read.value.identities)) return []
+  return Object.values(read.value.identities)
+    .filter((identity) => isObject(identity) && identity.source === 'file')
+    .filter((identity) => typeof identity.file === 'string' && identity.file.trim())
+    .map((identity) => resolvePath(root, identity.file))
+}
+
+module.exports = { DECLARATION, check, identityFiles }

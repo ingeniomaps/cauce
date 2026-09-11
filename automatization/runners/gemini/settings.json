@@ -27,6 +27,15 @@
             "command": "$GEMINI_PROJECT_DIR/{{OPS_DIR}}automatization/hooks/guard-files.sh"
           }
         ]
+      },
+      {
+        "matcher": "read_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$GEMINI_PROJECT_DIR/{{OPS_DIR}}automatization/hooks/guard-secrets-read.sh"
+          }
+        ]
       }
     ],
     "AfterAgent": [

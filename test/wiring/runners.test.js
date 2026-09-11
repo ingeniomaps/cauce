@@ -77,6 +77,17 @@ test('las capacidades declaradas coinciden con los artefactos reales', () => {
   assert.ok(geminiSettings.hooks.BeforeTool.length)
   assert.ok(geminiSettings.hooks.AfterAgent.length)
   assert.match(JSON.stringify(geminiSettings.hooks), /\$GEMINI_PROJECT_DIR/)
+
+  // A qué herramienta de lectura engancha cada runner el guard de credenciales, y a ninguna otra (caso 092).
+  const claudeSettings = JSON.parse(fs.readFileSync(path.join(root, 'claude', 'settings.json'), 'utf8'))
+  const readers = (events) => events.filter((group) => /guard-secrets-read\.sh/.test(JSON.stringify(group.hooks)))
+    .map((group) => group.matcher)
+  assert.deepEqual(readers(claudeSettings.hooks.PreToolUse), ['Read'])
+  assert.deepEqual(readers(geminiSettings.hooks.BeforeTool), ['read_file'])
+  // Y la regla nativa de Claude niega nombres exactos: `.env.*` negaría también `.env.example`.
+  const deny = claudeSettings.permissions.deny
+  for (const rule of ['Read(.env)', 'Read(.env.local)', 'Read(id_ed25519)']) assert.ok(deny.includes(rule), rule)
+  assert.equal(deny.some((rule) => /\.env\.\*\)/.test(rule)), false, 'ninguna regla niega .env.* entero')
 })
 
 test('el bridge de Antigravity traduce decisiones al protocolo nativo', () => {
