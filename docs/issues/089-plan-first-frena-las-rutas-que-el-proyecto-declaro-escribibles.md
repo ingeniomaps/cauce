@@ -171,6 +171,9 @@ del caso—; al reproducirlo en un banco se separaron, y la del config salió co
 
 - **088** — se descubrió escribiéndolo.
 - **090** — la edición de `ops.config.json` que declara la ruta la frena el mismo guard. Comparten la
-  pregunta de qué es producto para `plan-first`, y el fix general de allá cerraría el punto 1 de acá.
+  pregunta de qué es producto para `plan-first`, y el arreglo del 090 cierra el punto 1 de acá: con él,
+  una ruta fuera de toda raíz ya no es producto (probado en `guard-plan-first no juzga la instancia
+  sidecar ni lo que queda fuera de las raíces`). A este caso le queda el punto 2, la forma de la
+  aprobación.
 - **`engine/hooks/approval.js`** — su encabezado ya dice que *«quién las mira lo decide qué guard esté
   juzgando esa ruta»*; lo que falta es que la forma de la ruta no dependa también de eso.
