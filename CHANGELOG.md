@@ -34,6 +34,15 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Cada bloqueo con salida angosta dice qué líneas pegar.** Aprobar en `planning/.ops-approval` sólo
+  funciona si la ruta está escrita en la forma que ese guard coteja —absoluta la de un `Write`, relativa
+  al repositorio la de un commit—, y el mensaje decía «escribí esa(s) ruta(s)» sin nombrarlas. `verify`
+  y `dependencies` ni siquiera mostraban la línea. Ahora cada bloqueo imprime las líneas exactas, y
+  pegarlas tal cual destraba ese mismo bloqueo.
+
+  **Qué cambia para vos**: si una aprobación no pegaba y terminabas exportando la variable del guard,
+  pegá lo que dice el mensaje.
+
 - **`plan-first` deja de frenar la configuración y los archivos de la instancia.** Frenaba
   `ops.config.json` —justo el archivo que el límite de raíces manda a editar para declarar una ruta— y,
   en sidecar, también `AGENTS.md`, `CLAUDE.md`, `package.json` y `.gitignore` de la instancia, como si
