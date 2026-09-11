@@ -14,6 +14,34 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.80.0] - 2026-09-10
+
+### Agregado
+
+- **Un contrato de secretos compartido entre repositorios, y un chequeo sin red.** Si tus servicios
+  usan un gestor de secretos, los scripts y workflows que lo conectan terminan copiados en cada
+  repositorio, y el arreglo que alguien hizo en uno no llega a los demás. `organization/secrets.json`
+  declara qué cuenta, qué identidad y qué archivos comparte cada servicio, y
+  `node tools/ops.js secrets check .` compara cada copia contra la canónica que guarda la instancia:
+  dice cuál quedó atrás y el `cp` que la pone al día. También falla si una credencial vive dentro de un
+  repositorio o si la declaración guarda un valor en vez de una referencia.
+
+  **Qué cambia para vos**: nada si no lo usás. Para adoptarlo, `organization/README.md` trae el formato
+  y el recorrido. Cauce no se conecta a ningún gestor ni trae adaptadores: lo que habla con el gestor
+  sigue siendo tuyo. Si tus proyectos tienen instancias separadas, el chequeo sólo compara dentro de
+  cada una: para que un esqueleto y sus derivados se midan contra lo mismo, van como raíces de la misma
+  instancia.
+
+### Corregido
+
+- **`verify` deja afuera del índice de su copia lo que enlaza.** Cuando el árbol difiere del índice, el
+  guard corre los gates sobre una copia del índice con lo ignorado enlazado —`node_modules`, `.env`—. Si
+  tu `.gitignore` escribe ese directorio con barra final (`node_modules/`), el enlace entraba al índice de
+  la copia, y un gate que recorre lo trackeado —`git ls-files`— lo recibía como si fuera parte del commit.
+
+  **Qué cambia para vos**: si una suite que pasa a mano fallaba bajo `verify` sólo cuando tenías archivos
+  sin trackear, podía ser esto.
+
 ## [0.79.0] - 2026-09-10
 
 ### Corregido
