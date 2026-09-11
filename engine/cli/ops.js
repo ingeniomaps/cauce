@@ -95,11 +95,6 @@ async function init(target, cli) {
   if (existing.length && !force) {
     fail(`El destino no está vacío: ${root}. Usa --force para agregar solo archivos faltantes.`)
   }
-  IN.scaffold(root, { name, mode, force })
-  const relative = path.relative(process.cwd(), root)
-  const enter = relative && relative !== '.' ? `cd ${relative} && ` : ''
-  console.log(`\n✓ ${name}: sistema ops creado en ${root} (modo ${mode})`)
-
   // Preguntar exige una terminal, e instalar baja un paquete y escribe `node_modules`: las dos cosas
   // pasan cuando hay alguien mirando. Una corrida automatizada —CI, un contenedor, estas pruebas—
   // recibe la instancia materializada y decide por bandera, sin descargas ni preguntas implícitas.
@@ -112,6 +107,13 @@ async function init(target, cli) {
     interactive,
     install: cli.has('--install') || (interactive && !cli.has('--no-install')),
   }
+  // Se valida antes de escribir: un runner o una integración que no existen no pueden dejar una
+  // instancia hecha con el comando en error (caso 096). `BOOT.run` vuelve a validar con la misma función.
+  try { BOOT.validate(options) } catch (error) { fail(error.message, 2) }
+  IN.scaffold(root, { name, mode, force })
+  const relative = path.relative(process.cwd(), root)
+  const enter = relative && relative !== '.' ? `cd ${relative} && ` : ''
+  console.log(`\n✓ ${name}: sistema ops creado en ${root} (modo ${mode})`)
   let result
   try {
     result = await BOOT.run(root, options, {

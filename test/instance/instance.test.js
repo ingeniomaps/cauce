@@ -267,6 +267,12 @@ test('init rechaza un runner que no existe', () => {
   const result = run(['init', target, '--mode', 'sidecar', '--runner', 'emacs'])
   assert.equal(result.status, 2)
   assert.match(result.stderr, /--runner debe ser/)
+  // Rechazar es no escribir nada: el código de salida solo no lo decía (caso 096).
+  assert.equal(fs.existsSync(target), false, 'el runner mal escrito no deja la instancia creada')
+  const integration = run(['init', target, '--mode', 'sidecar', '--integration', 'trello'])
+  assert.equal(integration.status, 2)
+  assert.match(integration.stderr, /--integration debe ser/)
+  assert.equal(fs.existsSync(target), false, 'la integración mal escrita tampoco')
 })
 
 test('init rechaza destinos atravesados por symlinks', () => {
