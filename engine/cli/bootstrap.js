@@ -97,4 +97,4 @@ async function run(root, opciones, deps) {
   return { runner, provider, installed: true }
 }
 
-module.exports = { run, NO_RUNNER, NO_PROVIDER }
+module.exports = { run, validate, NO_RUNNER, NO_PROVIDER }

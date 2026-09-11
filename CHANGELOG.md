@@ -56,6 +56,13 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`init` rechaza un runner mal escrito sin crear la instancia.** Con `--runner none` —el valor es
+  `ninguno`— o una `--integration` que no existe, `init` escribía la instancia entera y recién después
+  salía con error: el código de salida decía que no había pasado nada y el segundo intento encontraba la
+  carpeta creada. Ahora valida los dos valores antes de escribir.
+
+  **Qué cambia para vos**: nada con un valor correcto. Con uno mal escrito, el destino queda como estaba.
+
 - **El bloqueo de `verify` cita la prueba que falló.** Mostraba la primera línea de la salida que dijera
   «error», y en un reporte de pruebas ésa puede ser una verde cuyo nombre lo dice. Ahora, con la salida de
   `node --test` —spec y TAP— y de `go test`, cita la primera prueba en rojo; con otras herramientas sigue
