@@ -404,6 +404,7 @@ function commitTree(dir) {
     fs.rmSync(temp, { recursive: true, force: true })
     block(`no se pudo materializar el índice de ${dir} para correr los gates: ${written.output}`)
   }
+  const linked = []
   for (const line of lines) {
     if (!line.startsWith('!! ')) continue
     const name = line.slice(3).trim().replace(/\/$/, '')
@@ -424,6 +425,7 @@ function commitTree(dir) {
     if (fs.existsSync(link)) continue
     fs.mkdirSync(path.dirname(link), { recursive: true })
     fs.symlinkSync(path.join(dir, name), link, 'junction')
+    linked.push(name)
   }
   // Un índice materializado no trae `.git`, y un gate que llama a git —listar lo trackeado— falla ahí
   // por no encontrarlo: el guard frenaría un commit correcto por su propia mecánica. La copia se vuelve
@@ -441,7 +443,15 @@ function commitTree(dir) {
   // pierde en silencio. Se elige el silencio de acá sobre el de antes, que era escribir en la rama de
   // quien commitea; un proyecto con un gate así tiene que sacar esa escritura del gate.
   const started = run('git', ['init', '--quiet'], temp)
-  if (started.ok) run('git', ['add', '--all'], temp)
+  // Lo enlazado es entorno y no entra al índice de la copia, y el `.gitignore` no alcanza para eso: un
+  // patrón con barra final sólo cubre directorios, y un enlace no lo es para git. `add --all` lo agregaba
+  // y un gate que recorre lo trackeado lo leía como archivo del commit (caso 095).
+  if (started.ok) {
+    fs.mkdirSync(path.join(temp, '.git', 'info'), { recursive: true })
+    fs.appendFileSync(path.join(temp, '.git', 'info', 'exclude'),
+      linked.map((name) => `/${name.replace(/[\\*?[\]]/g, '\\$&')}\n`).join(''))
+    run('git', ['add', '--all'], temp)
+  }
   // Un gate no sólo lee su entorno: escribe en él. Lo ignorado se enlaza al original —eso es a propósito
   // y está arriba—, así que lo que el gate escriba cae en el árbol de quien commitea. Un gestor que se
   // sincroniza antes de correr un script lo lleva al extremo: ve que el árbol enlazado no coincide con

@@ -166,6 +166,7 @@ function usage() {
   ops integration rebase <ops-root> <provider> <remote-key>
   ops integration reconcile <ops-root> <provider> <remote-key>
   ops integration writeback-plan <ops-root> <provider>
+  ops secrets check <ops-root>
   ops automation list <ops-root>
   ops automation list-hooks <ops-root>
   ops automation check <ops-root>
@@ -218,6 +219,7 @@ async function run(cli) {
   else if (command === 'integration') {
     await W.integration(arg[1], arg[2], arg[3], arg[4], cli)
   }
+  else if (command === 'secrets') W.secrets(arg[1], arg[2])
   else if (command === 'automation') W.automation(arg[1], arg[2], arg[3], cli)
   else if (command === 'learn') CAT.learn(arg[1], cli)
   else if (command === 'evaluate') CAT.evaluate(arg[1], arg[2], cli)

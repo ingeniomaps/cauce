@@ -283,5 +283,10 @@
     "lines": 100,
     "branches": 88,
     "functions": 100
+  },
+  "engine/secrets/index.js": {
+    "lines": 93,
+    "branches": 80,
+    "functions": 100
   }
 }

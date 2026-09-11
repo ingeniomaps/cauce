@@ -8,6 +8,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const F = require('../core/files')
 const I = require('../integrations/registry')
+const SE = require('../secrets')
 const A = require('../automation')
 const SC = require('../core/scan')
 const OB = require('../core/onboarding')
@@ -277,8 +278,18 @@ function automation(action, rootArg, runnerName, cli) {
   fail(`Acción de automatización desconocida: ${action || '(vacía)'}`, 2)
 }
 
+function secrets(action, rootArg) {
+  if (action !== 'check') fail(`Acción de secretos desconocida: ${action || '(vacía)'}`, 2)
+  const result = SE.check(opsRoot(rootArg))
+  if (!result.declared) return console.log(`Sin ${SE.DECLARATION}: no hay contrato de secretos que comprobar.`)
+  for (const warning of result.warnings) console.log(`⚠ ${warning}`)
+  for (const error of result.errors) console.error(`✗ ${error}`)
+  if (result.errors.length) fail(`${result.errors.length} error(es) en el contrato de secretos`)
+  console.log(`✓ contrato de secretos: ${result.current} servicio(s) al día`)
+}
+
 // `init` enciende un proveedor en la misma corrida en que crea la instancia, y ésta es la operación
 // que lo hace: se expone para que la composición no tenga que conocer la tabla entera.
 const enableProvider = (root, provider) => INTEGRATION.enable.run(root, provider)
 
-module.exports = { scan, onboard, integration, automation, enableProvider }
+module.exports = { scan, onboard, integration, automation, secrets, enableProvider }

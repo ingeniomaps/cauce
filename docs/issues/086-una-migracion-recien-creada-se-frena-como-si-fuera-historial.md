@@ -2,6 +2,7 @@
 caso: 086
 titulo: Una migración recién creada se frena como si fuera historial, y ninguna herramienta la completa
 estado: resuelto
+resuelto-en: 0.79.0
 prioridad: alta
 version-detectada: 0.78.0
 ---
@@ -174,18 +175,16 @@ reescribirse.
 
 ### Las tres piezas del fix
 
-**1. Preguntar por `HEAD` y no por el índice** — hecha. `alreadyShipped()` resuelve la raíz con
-`rev-parse --show-toplevel`, arma la ruta relativa y pregunta `cat-file -e HEAD:<ruta>`. La mutación que
-la cambia por `ls-files --error-unmatch` se pone en rojo sobre el estado *staged*, que es exactamente el
-que distingue las dos preguntas.
-
-**2. Distinguir «git no pudo contestar» de «no está en HEAD»** — hecha, y es lo que mantiene verdes las
-dos pruebas cuyos bancos no son repositorios: sin raíz resoluble se bloquea igual que antes. La mutación
-que devuelve vacío ahí tira dos pruebas.
-
-**3. El mensaje dice lo que se puede afirmar, y cómo salir** — hecha, en sus dos formas: «ya está en el
-historial del repositorio» cuando hay repositorio, y «existe, y acá no hay repositorio con el que saber
-si ya viajó a otra copia» cuando no. Los dos llevan `AP.HOW('OPS_MIGRATIONS_OVERRIDE')`.
+- **1. Preguntar por `HEAD` y no por el índice** — hecha. `alreadyShipped()` resuelve la raíz con
+  `rev-parse --show-toplevel`, arma la ruta relativa y pregunta `cat-file -e HEAD:<ruta>`. La mutación
+  que la cambia por `ls-files --error-unmatch` se pone en rojo sobre el estado *staged*, que es
+  exactamente el que distingue las dos preguntas.
+- **2. Distinguir «git no pudo contestar» de «no está en HEAD»** — hecha, y es lo que mantiene verdes
+  las dos pruebas cuyos bancos no son repositorios: sin raíz resoluble se bloquea igual que antes. La
+  mutación que devuelve vacío ahí tira dos pruebas.
+- **3. El mensaje dice lo que se puede afirmar, y cómo salir** — hecha, en sus dos formas: «ya está en
+  el historial del repositorio» cuando hay repositorio, y «existe, y acá no hay repositorio con el que
+  saber si ya viajó a otra copia» cuando no. Los dos llevan `AP.HOW('OPS_MIGRATIONS_OVERRIDE')`.
 
 Vale registrar que **el mensaje viejo no era falso, era interpretativo**: «es una migración existente»
 describía el hecho correctamente y «en vez de reescribir historial» era la lectura que el dato no
@@ -193,20 +192,17 @@ sostenía. Lo que se quitó es la interpretación, no un error.
 
 ### Los tradeoffs, contrastados
 
-**«Dos `spawnSync` por archivo»** — se cumple, y sólo para los que ya existen en disco: `existsSync`
-quedó como primera compuerta dentro de `alreadyShipped`. La mutación que la saca se pone en rojo, que
-es lo que prueba que la compuerta está y no es decorativa.
-
-**«Una migración que ya está en `HEAD` sigue frenándose»** — comprobado en el cuarto estado del test.
-
-**«Un repositorio sin ningún commit deja pasar»** — es la consecuencia de la pieza 2 y está cubierta por
-el segundo estado del test: entre `git init` y el primer commit, `HEAD` no existe, la raíz sí resuelve y
-la reescritura pasa.
-
-**«Un proyecto sin git conserva la conducta de hoy»** — es lo que miden las dos pruebas preexistentes,
-que ahora afirman el mensaje nuevo. Cambiarles la expectativa es una quita, y por eso el mensaje viejo
-tiene su aserción de ausencia: ninguna prueba busca ya «migración existente», y la mutación M1 —volver a
-decidir por `existsSync`— tira tres.
+- **«Dos `spawnSync` por archivo»** — se cumple, y sólo para los que ya existen en disco: `existsSync`
+  quedó como primera compuerta dentro de `alreadyShipped`. La mutación que la saca se pone en rojo, que
+  es lo que prueba que la compuerta está y no es decorativa.
+- **«Una migración que ya está en `HEAD` sigue frenándose»** — comprobado en el cuarto estado del test.
+- **«Un repositorio sin ningún commit deja pasar»** — es la consecuencia de la pieza 2 y está cubierta
+  por el segundo estado del test: entre `git init` y el primer commit, `HEAD` no existe, la raíz sí
+  resuelve y la reescritura pasa.
+- **«Un proyecto sin git conserva la conducta de hoy»** — es lo que miden las dos pruebas
+  preexistentes, que ahora afirman el mensaje nuevo. Cambiarles la expectativa es una quita, y por eso
+  el mensaje viejo tiene su aserción de ausencia: ninguna prueba busca ya «migración existente», y la
+  mutación M1 —volver a decidir por `existsSync`— tira tres.
 
 ### Qué se corrió
 
