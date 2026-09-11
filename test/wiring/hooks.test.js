@@ -1874,6 +1874,38 @@ test('un gate que falla dice cuánto tardó y qué dijo la herramienta', () => {
   assert.equal(typeof EV.runs(root).slice(-1)[0].ms, 'number', 'la duración queda en el registro')
 })
 
+// Qué cita el bloqueo cuando el reporte trae pruebas verdes y rojas, en cada formato comprobado (caso 094).
+test('el bloqueo de verify cita la prueba que falló, no una verde que dice error', () => {
+  const root = tempRoot('ops-hook-cita-')
+  initRepo(root)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+  fs.writeFileSync(path.join(root, 'alta.test.js'), "const test = require('node:test')\n"
+    + "const assert = require('node:assert')\n"
+    + "test('el error de validación se informa', () => assert.ok(true))\n"
+    + "test('el alta guarda el cliente', () => assert.equal(1, 2))\n")
+  const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
+  const cites = (script, expected) => {
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: script } }))
+    git(['add', 'package.json', 'alta.test.js'], root)
+    const cited = messageOf('verify', commit).split('\n')[0]
+    assert.match(cited, expected)
+    assert.doesNotMatch(cited, /✔|: ok \d|--- PASS/, 'no cita una prueba en verde')
+  }
+  const prints = (...lines) => `node -e "${lines.map((line) => `console.log('${line}')`).join(';')};process.exit(1)"`
+
+  cites('node --test', /✖ el alta guarda el cliente/)
+  cites('node --test --test-reporter=tap', /not ok 2 - el alta guarda el cliente/)
+  // La salida de `go test -v`, copiada de una corrida real con go 1.26, la escribe un script: la suite no
+  // puede suponer que go esté instalado. La primera línea no tiene marca y dice «Error», así que es la
+  // marca de fallo lo que evita citarla.
+  cites(prints('=== RUN   TestElErrorSeInforma', '--- PASS: TestElErrorSeInforma (0.00s)',
+    '=== RUN   TestElAltaGuarda', '    a_test.go:4: no', '--- FAIL: TestElAltaGuarda (0.00s)', 'FAIL'),
+  /--- FAIL: TestElAltaGuarda/)
+  // Sin marca de fallo sigue la búsqueda por palabra, que ya no puede quedarse con una verde.
+  cites(prints('✔ el error se informa', 'Error: cannot connect'), /Error: cannot connect/)
+})
+
 test('el contraste de evidencia separa lo que existe de lo que no se puede buscar', () => {
   const EV = require('../../engine/core/evidence')
   const root = tempRoot('ops-hook-contraste-')
