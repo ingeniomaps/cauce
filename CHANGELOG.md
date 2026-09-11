@@ -14,6 +14,41 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.81.0] - 2026-09-11
+
+### Cambiado
+
+- **Lo que pedís en el chat ya no te frena.** Los guards veían la herramienta y nada de la conversación,
+  así que frenaban igual lo que pediste con todas las letras y lo que el agente decidía solo. Ahora, en
+  Claude Code, Codex y Gemini, un hook registra tu mensaje y los guards lo leen: si nombraste lo que se
+  iba a frenar —«borrá la prueba de altas», «reescribí la migración 004»—, pasa; si no, el agente te dice
+  qué se frenó y un «dale» aprueba exactamente eso. `plan-first` deja de pedir un plan cuando el cambio lo
+  pediste vos. Lo que el agente hace por su cuenta, dentro de un recorrido o en un subagente, se sigue
+  frenando igual.
+
+  **Qué cambia para vos**: corré `automation install` para que tu runner registre el hook nuevo
+  (`UserPromptSubmit` en Claude y Codex, `BeforeAgent` en Gemini); en Codex, confialo con `/hooks`. Tu
+  mensaje se guarda en el temporal del sistema, no en el repositorio, y sólo el último de cada sesión.
+  Antigravity sigue con el archivo de aprobación. En Claude Code, leer un `.env` o una clave lo sigue
+  frenando la regla `permissions.deny` del propio Claude, que no pasa por Cauce.
+
+### Corregido
+
+- **El agente ya no puede escribirse la aprobación.** `planning/.ops-approval` se escribía con la misma
+  herramienta que usa el agente y ningún guard lo miraba, así que una aprobación suya destrababa igual que
+  una tuya. Los guards de límites lo frenan ahora —por la herramienta de escritura y por el destino evidente
+  de un comando—, salvo que se lo hayas pedido nombrándolo en el chat.
+
+  **Qué cambia para vos**: nada si el archivo lo editás vos. Si el agente lo escribía por pedido tuyo,
+  ahora se lo pedís en el chat.
+
+- **En sidecar, el bloqueo dice en qué archivo aprobar.** Mandaba a `planning/.ops-approval`, y desde la
+  carpeta del workspace, donde se abre la sesión, ése no es el `planning/` de la instancia: pegar donde
+  decía no destrababa nada. Ahora nombra la ruta que el guard lee —`acme-ops/planning/.ops-approval`—; en
+  modo embebido sigue diciendo `planning/.ops-approval`.
+
+  **Qué cambia para vos**: nada que hacer; el mensaje dice dónde.
+
 ## [0.80.0] - 2026-09-10
 
 ### Agregado
