@@ -9,10 +9,11 @@ const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const {
-  commandOf, cwdOf, block, isCommit, stagedForCommit, pushAllowed,
+  commandOf, cwdOf, block, isCommit, stagedForCommit,
   writableRoots, outsideRoots, DECLARE_IT, unquoted, opsRoot, withoutGitGlobals,
 } = require('./input')
 const AP = require('./approval')
+const { publish } = require('./push')
 const { selfApproval } = require('./self-approval')
 const EV = require('../core/evidence')
 
@@ -64,14 +65,15 @@ function destructive(input) {
   // matchea igual las dos formas, así que `allowPush` habilitaba el force-push sin que nadie lo decidiera
   // y el párrafo de autonomía de `AGENTS.md` tenía que confesarlo. R8 prohíbe `force` sin excepción
   // configurable, así que esta rama va antes del permiso y no lo consulta.
-  if (new RegExp(String.raw`\bgit\s+push\b${MISMO}*\s(?:-f|--force(?:-with-lease|-if-includes)?)\b`)
+  //
+  // El `+` delante de una rama es el mismo force escrito en el refspec —`git push origin +main`—, y
+  // pasaba como un push normal: la regla miraba sólo las banderas (caso 103).
+  if (new RegExp(String.raw`\bgit\s+push\b${MISMO}*\s(?:(?:-f|--force(?:-with-lease|-if-includes)?)\b|\+\S)`)
     .test(command)) {
     block("'git push --force' reescribe historia ya publicada. R8 lo prohíbe y runner.allowPush no lo "
       + 'habilita: publicá con un push normal, o registrá una acción humana.')
   }
-  if (/\bgit\s+push\b/.test(command) && !pushAllowed(input)) {
-    block("'git push' publica cambios y requiere una acción humana. Se habilita con runner.allowPush.")
-  }
+  publish(input, command)
   const rules = [
     [/\bgit\s+reset\s+--hard\b/, "'git reset --hard' destruye cambios locales."],
     // R8 lo prohíbe sin excepción configurable y ningún guard lo miraba: `grep -rn amend engine/hooks/`

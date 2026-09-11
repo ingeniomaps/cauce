@@ -25,6 +25,21 @@ test('valida el contrato completo de ops.config.json', () => {
   assert.ok(errors.some((error) => error.includes('allowPush debe ser boolean')))
 })
 
+// El permiso por rama viva (caso 108) compara nombres tal cual, así que un patrón no publicaría en ninguna
+// rama y parecería que en todas: se rechaza acá, donde se ve, y no se descubre al primer push frenado.
+test('runner.pushToLiveBranches acepta nombres exactos y rechaza patrones', () => {
+  const con = (value) => {
+    const config = opsConfig()
+    config.runner.pushToLiveBranches = value
+    return validateOpsConfig(config).filter((error) => error.includes('pushToLiveBranches'))
+  }
+  assert.deepEqual(con(['main', 'release/2026']), [])
+  assert.deepEqual(con([]), [])
+  for (const malo of [['release/*'], ['ma in'], [''], ['rel?'], [3], 'main']) {
+    assert.equal(con(malo).length, 1, `${JSON.stringify(malo)} tiene que rechazarse`)
+  }
+})
+
 // Toda instancia creada antes de 0.16 lleva `planningDir`, y el campo nunca hizo nada. Al actualizar
 // tiene que llegar la instrucción —«borrá la línea»— y no un «propiedad desconocida» que deja a la
 // persona averiguando si perdió una función.

@@ -89,6 +89,29 @@ function mentions(text, item) {
   return { named: found.some((one) => one.asked && !one.denied), denied: found.some((one) => one.denied) }
 }
 
+// Una orden de publicar se lee aparte, porque `mentions` compara también el basename: para el ítem
+// `push origin feat/login` eso es `login`, y «arreglá el login y no subas nada» publicaba (caso 103). Acá
+// el remoto y la rama tienen que aparecer tal cual, como palabras enteras, en una frase que pida publicar
+// —un verbo de publicar, no cualquiera: «revisá feat/x en origin» no pide un push— y sin una negación
+// antes del último de los dos.
+const PUSHES = new Set('subi sube subir pushea pushear push publica publicar publish empuja empujar'.split(' '))
+function ordersPush(text, item) {
+  const [verb, remote, branch] = item.split(' ')
+  if (verb !== 'push' || !remote || !branch) return false
+  return String(text).split(CLAUSE).some((clause) => {
+    // La comilla simple se saca de los bordes y no se corta en ella: partida, «don't» dejaba de ser una
+    // negación.
+    const words = clause.split(/[\s"`()]+/)
+      .map((word) => word.replace(/^'+/, '').replace(/\.$/, '').replace(/'+$/, ''))
+    const last = Math.max(words.indexOf(remote), words.indexOf(branch))
+    if (words.indexOf(remote) < 0 || words.indexOf(branch) < 0) return false
+    const plain = clause.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .match(/[a-z]+/g) || []
+    return plain.some((word) => PUSHES.has(word) || PUSHES.has(word.replace(ENCLITIC, '')))
+      && !NEGATION.test(words.slice(0, last + 1).join(' '))
+  })
+}
+
 // Quien contesta a un bloqueo que quedó pendiente. Sólo el principio del mensaje: «dale» es la respuesta
 // entera o su primera palabra, no algo que aparece en medio de otra frase.
 const YES = new RegExp(String.raw`^\s*(?:s[ií]|dale|ok(?:ay)?|hac[eé]lo|hazlo|adelante|aprobado|apruebo`
@@ -123,12 +146,14 @@ function said(input) {
   return current && saved.id && current !== saved.id ? null : saved
 }
 
-// Lo que la persona no autorizó de lo que un guard está por frenar: ni lo nombró en su mensaje ni lo
-// aprobó contestando.
-function unauthorized(input, items) {
+// Lo que la persona no autorizó de lo que un guard está por frenar: ni lo pidió en su mensaje ni lo
+// aprobó contestando. Qué cuenta como pedirlo depende de qué se frena: un archivo se nombra, un push se
+// ordena con su remoto y su rama.
+const named = (text, item) => mentions(text, item).named
+function unauthorized(input, items, asked = named) {
   const saved = said(input)
   if (!saved) return items
-  return items.filter((item) => !saved.approved.includes(item) && !mentions(saved.text, item).named)
+  return items.filter((item) => !saved.approved.includes(item) && !asked(saved.text, item))
 }
 
 // Lo que quedó frenado, para que un «dale» en el mensaje siguiente apruebe exactamente eso y nada más.
@@ -143,4 +168,4 @@ function hold(input, items) {
   } catch { return false }
 }
 
-module.exports = { DIR, record, said, unauthorized, hold }
+module.exports = { DIR, record, said, unauthorized, hold, ordersPush }

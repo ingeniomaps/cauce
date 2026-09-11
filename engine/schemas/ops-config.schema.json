@@ -83,6 +83,15 @@
         },
         "allowPush": {
           "type": "boolean"
+        },
+        "pushToLiveBranches": {
+          "type": "array",
+          "description": "Las ramas vivas —main, master y la rama por defecto de cada remoto— en las que se puede publicar. Sin nombrarla acá, ni allowPush ni una orden en el chat llegan a una rama viva. Nombres exactos, sin patrones.",
+          "items": {
+            "type": "string",
+            "pattern": "^[^\\s*?\\[]+$"
+          },
+          "uniqueItems": true
         }
       },
       "additionalProperties": false
