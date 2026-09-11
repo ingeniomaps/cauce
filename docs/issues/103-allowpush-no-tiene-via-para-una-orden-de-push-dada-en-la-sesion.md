@@ -1,14 +1,15 @@
 ---
 caso: 103
 titulo: Un push que la persona ordena en la sesión no tiene vía: la salida del 098 no llega al guard de publicación
-estado: abierto
+estado: resuelto
+resuelto-en: 0.82.0
 prioridad: media
 version-detectada: 0.80.0
 ---
 
 # 103 — Publicar lo pidió la persona, y el guard sólo sabe leer un interruptor del proyecto
 
-**🔴 abierto** · detectado en 0.80.0, sigue en 0.81.0 · prioridad **media** — frena una orden explícita del
+**🟢 resuelto en 0.82.0** · detectado en 0.80.0 · prioridad **media** — frena una orden explícita del
 usuario, que es lo que el 098 dice que Cauce no tiene que hacer nunca, y la única salida que no pasa por la
 persona corriendo el comando es prender un permiso para todo el proyecto (caso 108)
 
@@ -187,3 +188,120 @@ Revisado el 2026-09-11 sobre 0.81.0: el 098 ya estaba y el push siguió igual (B
   push, y lo que se decida allá sobre `mentions` puede cambiar el paso 2 de acá.
 - **097** — la aprobación en sidecar se nombra desde la carpeta de la sesión; si P3 sale que sí, el push
   hereda ese arreglo.
+
+## Cierre
+
+**🟢 resuelto en 0.82.0** · `engine/hooks/push.js` (nuevo), `engine/hooks/chat.js`, `engine/hooks/shell.js`,
+`engine/hooks/approval.js`
+
+### Contra lo que el caso enumeró
+
+- **Fix 1, extraer `push <remoto> <rama>`** — hecho en `push.js`. Lee el remoto y cada refspec; del refspec
+  vale el destino —lo que va después de `:`—, `HEAD` es la rama actual y `refs/heads/` se saca. Un push con
+  dos refspecs da dos ítems, y los dos tienen que estar autorizados.
+- **Fix 2, `said` y comparación exacta** — hecho: `ordersPush` en `chat.js`. El remoto y la rama tienen que
+  aparecer como palabras enteras en una frase que traiga un verbo **de publicar** —no cualquiera: «revisá
+  feat/x en origin» no pide un push— y sin negación antes. No pasa por `mentions`, así que el basename no
+  cuenta. Todo pasa por `CHAT.said`.
+- **Fix 3, salida angosta** — hecho distinto: `CHAT.hold` sí, `AP.HOW` no, porque su texto nombra una
+  variable de entorno que el push no tiene. El mensaje del push es propio y dice lo mismo: esperá, un
+  «dale» lo destraba, y si prefiere que la persona pegue la línea.
+- **Fix 4, el `--force` no se toca** — su rama sigue antes y sin override. Se amplió a `+rama`, que es el
+  mismo force escrito en el refspec: ver «Lo que el caso no preveía».
+- **Fix 5, `git push` sin argumentos** — hecho distinto, por decisión del usuario: se resuelve con
+  `@{push}`, una lectura local que ya aplica `push.default`. Si no resuelve —sin upstream—, queda frenado con
+  el «dale» disponible y sin línea para `.ops-approval`, porque no nombra ninguna rama.
+- **Sesiones automáticas** — por construcción, como decía el caso; probado con `CI`, `agent_id` y un
+  `prompt_id` de otro mensaje. Un subagente además se frena antes, con cualquier permiso (108).
+- **P1** — el usuario eligió remoto y rama exactos, o el «dale». Hecho así.
+- **P3** — el usuario eligió que sí: la línea exacta `push <remoto> <rama>`, sin patrones. `push origin feat/*`
+  y `git push` escritos en el archivo no aprueban nada, con prueba.
+- **Tradeoff «comparar exacto cansa»** — se cumple: «publicala así abro el PR» terminó en un «dale», en vivo.
+- **Tradeoff «un "dale" por push»** — se cumple, sin patrones de rama.
+- **Tradeoff «el rastro de la aprobación consumida»** — le tocaba a otro: salió como **112**.
+- **Relacionado 109** — lo que se decidió allá, que la frase tiene que pedir, se aplicó acá más estricto: el
+  verbo tiene que ser de publicar.
+- **Relacionado 097** — la línea del push se nombra con el mismo `where` que las demás aprobaciones, desde la
+  carpeta de la sesión.
+- **Cada ítem de «Qué tiene que probar el cierre»**:
+  - «push a origin feat/x» pasa y `origin feat/y` en la misma llamada no, y la mutación que compara sólo el
+    remoto sale roja (M1);
+  - B y D en `exit=0`, A en `exit=2`: la sonda, abajo;
+  - R queda pendiente, y volver a `mentions` sale rojo (M2);
+  - el recorrido del «dale»: el bloqueo deja `pending: ["push origin feat/x"]` —se ve en el caso 112, que
+    corrió el mismo recorrido— y el «dale» aprueba ése y no `feat/z` (D2);
+  - el chat nombrando `git push --force origin feat/x`: sigue en `exit=2` con el mensaje de R8;
+  - `CI=1`, `agent_id` y otro `prompt_id`: no autorizan (S1-S3);
+  - `git push` sin argumentos con «pusheá»: sigue en `exit=2` (H) cuando no hay upstream que resolver;
+  - la línea `push origin feat/q` destraba ese push y no `feat/r` (P3, P3b);
+  - en vivo, «Subí feat/x a origin.» publicó sin pedir nada más, contra un remoto bare del banco (V1).
+
+### Lo que el caso no preveía
+
+- **`git push origin +rama` era un force que pasaba como push normal.** La regla del force miraba sólo las
+  banderas, y con `allowPush: true` el `+` del refspec publicaba reescribiendo: en la sonda sobre el código de
+  antes, `F2 allowPush true, push +feat/x : exit=0`. Ahora cae en la rama de R8 (M12).
+- **«don't» no negaba.** Partir las palabras en la comilla simple lo dejaba en «don t», que la negación no
+  reconoce. Lo encontró el caso que se agregó cuando la mutación de la negación sobrevivió (M10, abajo).
+- **El bloqueo de la rama viva le hablaba al agente como si la línea fuera cosa suya.** En la primera sesión
+  real, contestado «dale», el agente intentó escribirse `push origin main` en `.ops-approval`; lo frenó
+  `shell-boundary`. Es lo mismo que el 098 corrigió para los otros bloqueos. El mensaje ahora le dice que
+  espere y deja el permiso como cosa de la persona, y en la segunda corrida le pidió a ella que lo escriba.
+
+### Qué se corrió
+
+- **El rojo previo**: las pruebas nuevas y las dos que cambiaron, sobre `git archive` de `437170a8`: 8 de 97
+  en rojo; con el arreglo, 97 de 97.
+- **La reproducción del propio caso** con el arreglo, ampliada:
+
+  ```
+  A allowPush false, push feat/x, sin chat                  : exit=2 BLOQUEADO: 'git push' publica cambios y requiere una acción humana. Lo destraba una person
+  B el chat nombra "git push origin feat/x" (mismo prompt_id): exit=0
+  B2 mismo mensaje, push a origin feat/y                    : exit=2 BLOQUEADO: 'git push' publica cambios y requiere una acción humana. Decile a la persona qu
+  D «dale» en el mensaje siguiente al bloqueo               : exit=0
+  D2 el «dale» no aprueba otro push                         : exit=2 BLOQUEADO: 'git push' publica cambios y requiere una acción humana. Decile a la persona qu
+  C gh pr create                                            : exit=0
+  H git push sin argumentos, chat «pusheá»                  : exit=2 BLOQUEADO: 'git push' publica cambios y requiere una acción humana. Decile a la persona qu
+  R «Arreglá el login y no subas nada» → feat/login         : exit=2 BLOQUEADO: 'git push' publica cambios y requiere una acción humana. Decile a la persona qu
+  F el chat nombra el --force                               : exit=2 BLOQUEADO: 'git push --force' reescribe historia ya publicada. R8 lo prohíbe y runner.allo
+  S1 «subí feat/x a origin», agent_id                       : exit=2 BLOQUEADO: 'git push' desde un subagente no se publica, con ningún permiso: publicar lo de
+  S2 mismo, con CI=1                                        : exit=2 BLOQUEADO: 'git push' publica cambios y requiere una acción humana. Lo destraba una person
+  S3 mismo, prompt_id de otro mensaje                       : exit=2 BLOQUEADO: 'git push' publica cambios y requiere una acción humana. Lo destraba una person
+  S4 mismo, sesión principal                                : exit=0
+  P3 .ops-approval «push origin feat/q»                     : exit=0
+  P3b .ops-approval no aprueba feat/r                       : exit=2 BLOQUEADO: 'git push' publica cambios y requiere una acción humana. Decile a la persona qu
+  ```
+
+  La misma sonda sobre el código de antes da `exit=2` en B, D, S4 y P3.
+- **Diecisiete mutaciones, en una copia desechable (R23)**, comprobadas aplicadas antes de contar, las diecisiete
+  rojas. La de la negación (M10) sobrevivió la primera vez: «no subas» no trae un verbo de la lista, así que el
+  caso frenaba por otra razón. Se agregaron dos mensajes con verbo y negación, que encontraron lo de «don't», y
+  con eso salió roja.
+
+  ```
+  M1 la orden compara sólo el remoto                   ROJA    M10 la negación no cuenta en la orden        ROJA
+  M2 el push vuelve a pasar por mentions (basename)    ROJA    M11 cualquier frase con remoto y rama ordena ROJA
+  M3 un subagente cuenta como la sesión                ROJA    M12 el + del refspec no es force             ROJA
+  M4 allowPush alcanza la rama viva                    ROJA    M13 el nombre vale dentro de otro            ROJA
+  M5 la orden del chat alcanza la rama viva            ROJA    M14 la validación acepta patrones            ROJA
+  M6 .ops-approval acepta la línea sin destino         ROJA    M15 el refspec toma el origen y no el destino ROJA
+  M7 el bloqueo no deja anotado el push                ROJA    M16 pushToLiveBranches se ignora             ROJA
+  M8 la rama por defecto del remoto no cuenta          ROJA    M17 el «dale» vale para cualquier push       ROJA
+  M9 git push sin argumentos no se resuelve            ROJA
+  ```
+- **En vivo**, Claude Code 2.1.269 con `--model haiku`, sobre un banco con la instancia instalada desde el
+  paquete de la rama (`npm pack` → `npm install`, `automation install . claude`), `allowPush: false` y un remoto
+  bare que es un directorio del banco. Lo que cuenta es qué ramas tiene el remoto después:
+
+  ```
+  V1  «Subí feat/x a origin.»                        → git push origin feat/x pasó;  remoto: feat/x main
+  V2  «Ya terminé con esta rama, publicala así abro el PR.»
+                                                     → git push -u origin feat/y BLOQUEADO; remoto sin feat/y
+  V2b «dale» (--resume de la misma sesión)           → reintentó el mismo push, pasó; remoto: feat/x feat/y main
+  ```
+- **La pasada de comentarios** en 0.22 contra la base: ningún par que escriba este cambio. Aparece uno
+  «nuevo», `input.js:186 ↔ hooks.test.js:1067` a 0.36, y es preexistente: sacar el comentario de
+  `pushAllowed`, que estaba pegado a ese párrafo sin línea en blanco, lo dejó solo y subió su solapamiento.
+- `npm run ci`: código 0, 708 de 708, cobertura de 62 archivos en su piso o por encima. La primera corrida dio
+  707 de 708: una prueba de `verify` que cuenta copias en el temporal compartido se cruzó con la suite de otra
+  sesión que corría a la vez; sola pasa, y la puerta repetida con un temporal propio pasó entera.

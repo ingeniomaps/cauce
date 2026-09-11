@@ -252,12 +252,16 @@ aprobación que pide BR-OPS-002 — `context` la nombra para que la vea una pers
 `BACKLOG.md` es esa persona.
 
 Publicar es lo único de todo eso que este proyecto puede habilitar, y `runner.allowPush` en
-`ops.config.json` es la autorización que R10 pide. Reescribir historia publicada no entra en el trato:
-un `push --force` se frena con la llave prendida o apagada.
+`ops.config.json` es la autorización que R10 pide para las ramas de trabajo. La rama viva —`main`,
+`master` o la rama por defecto del remoto— no la alcanza si el proyecto no la nombra en
+`runner.pushToLiveBranches`, y un subagente no publica con ningún permiso. Sin la llave, pasa el push
+que la persona pide en el chat nombrando el remoto y la rama, o el que ella aprueba contestando «dale».
+Reescribir historia publicada no entra en el trato: un `push --force` se frena con la llave prendida o
+apagada.
 
 Eso rige sin que nadie escriba nada. Lo que este proyecto amplíe o restrinja va en
 `organization/workspace.md`, con su razón; ninguna de esas prohibiciones se amplía ahí, y la
-publicación tampoco se decide ahí: la decide `allowPush`.
+publicación tampoco se decide ahí: la deciden `allowPush` y `pushToLiveBranches`.
 
 ## Definición de terminado
 

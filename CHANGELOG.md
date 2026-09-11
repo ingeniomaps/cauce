@@ -16,6 +16,17 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.82.0] - 2026-09-11
 
+### Cambiado
+
+- **`allowPush: true` ya no publica en la rama viva ni desde un subagente.** La llave dejaba pasar cualquier
+  push, `main` incluido, y el de un subagente igual que el tuyo. Ahora no alcanza a `main`, `master` ni a la
+  rama por defecto del remoto, y un subagente no publica con ningún permiso. Tampoco la alcanza una orden en
+  el chat.
+
+  **Qué cambia para vos**: si publicabas en la rama viva con `allowPush: true`, agregá
+  `"pushToLiveBranches": ["main"]` en `runner` de `ops.config.json`, o pegá `push origin main` en
+  `planning/.ops-approval` para un push puntual.
+
 ### Corregido
 
 - **Nombrar algo en el chat ya no lo autoriza: hay que pedirlo.** Desde 0.81.0, lo que nombrabas en el chat
@@ -40,6 +51,33 @@ diseño — eso vive en el commit y en el código.
   más.
 
   **Qué cambia para vos**: nada que hacer; tus guards dejan de aparecer en esos avisos.
+
+- **El aviso de credenciales sin dueño avisa sólo credenciales.** `check` listaba toda variable que el
+  proyecto declaraba y ningún contrato nombraba: en un proyecto real fueron ciento ocho nombres de build, y
+  la única credencial quedó en «y 1 más». Ahora cuenta las que tienen nombre de secreto —`…_PASSWORD`,
+  `…_TOKEN`, `…_KEY`, `…_DSN`…—, dice en qué servicio está cada una y dónde se escribe su dueño, y avisa
+  aparte cuando un servicio pasó el tope de variables que se revisan.
+
+  **Qué cambia para vos**: la declaración de secretos y la configuración de una integración ahora también
+  rechazan una clave que termine en `_key`, `dsn` o `credentials`, igual que ya rechazaban `…token`. Si
+  tenés una, cambiala por la referencia a una variable de entorno. Y una credencial con nombre de
+  configuración —`STRIPE_LIVE`— no aparece en el aviso: el criterio es el nombre.
+
+- **Una variable ya no se da por cargada porque otra la contiene en su nombre.** Con `API_SECRET_ROTATION`
+  escrita en `organization/workspace.md`, `API_SECRET` dejaba de avisarse aunque nadie la nombrara. Ahora
+  cuenta sólo el nombre entero.
+
+  **Qué cambia para vos**: puede aparecer en el aviso una credencial que antes quedaba tapada; escribí su
+  dueño y se va.
+
+- **Un push que pedís en el chat ya no se frena.** Con `allowPush: false`, `git push` se frenaba aunque lo
+  hubieras pedido con todas las letras. Ahora pasa si tu mensaje nombra el remoto y la rama —«subí feat/x a
+  origin», `git push origin feat/x`—, y si no los nombra, el agente te dice qué se frenó y con un «dale»
+  pasa ese push y ningún otro. `planning/.ops-approval` también acepta la línea `push <remoto> <rama>`, tal
+  cual y sin patrones. Un `git push origin +rama` ahora se frena como el `--force` que es.
+
+  **Qué cambia para vos**: para publicar una rama de trabajo alcanza con pedirlo nombrando remoto y rama, o
+  con contestar «dale».
 
 ## [0.81.0] - 2026-09-11
 

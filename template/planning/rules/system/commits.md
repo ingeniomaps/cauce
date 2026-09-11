@@ -65,7 +65,9 @@ dice qué había que hacer, no qué se apoyaba en lo que había.
 
 Push, PR, merge, tags, deploy y rollback requieren la autorización configurada para el proyecto.
 
-De esos seis, el motor comprueba uno: el push, contra `runner.allowPush`. Reescribir historia publicada
+De esos seis, el motor comprueba uno: el push, contra `runner.allowPush` —que no llega a la rama viva
+sin `runner.pushToLiveBranches`, ni a un subagente— o contra la orden que la persona da en el chat
+nombrando el remoto y la rama. Reescribir historia publicada
 no entra en esa autorización y se frena siempre, igual que `--amend`. Los otros cinco no tienen una
 forma reconocible en un comando —un deploy es `kubectl`, `terraform`, un script o un botón— y los
 sostiene esta regla y el review, no un guard.

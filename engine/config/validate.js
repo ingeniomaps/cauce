@@ -119,9 +119,17 @@ function validateRunner(runner, errors) {
     return
   }
   const booleans = ['humanCheckpointBetweenMilestones', 'commitPerTask', 'allowPush']
-  const allowed = new Set(['maxTaskHours', ...booleans])
+  const allowed = new Set(['maxTaskHours', 'pushToLiveBranches', ...booleans])
   for (const key of Object.keys(runner)) {
     if (!allowed.has(key)) errors.push(`ops.config.json: runner.${key} no está permitido`)
+  }
+  // Un patrón haría de un permiso por rama un permiso por familia, que es lo que el campo vino a evitar
+  // (caso 108): el guard compara el nombre tal cual, y `release/*` no publicaría en ninguna.
+  const live = runner.pushToLiveBranches
+  if (live !== undefined && (!Array.isArray(live)
+    || live.some((branch) => typeof branch !== 'string' || !/^[^\s*?[]+$/.test(branch)))) {
+    errors.push('ops.config.json: runner.pushToLiveBranches debe ser una lista de nombres de rama exactos, '
+      + 'sin espacios ni patrones')
   }
   if (typeof runner.maxTaskHours !== 'number' || runner.maxTaskHours <= 0) {
     errors.push('ops.config.json: runner.maxTaskHours debe ser mayor que cero')
