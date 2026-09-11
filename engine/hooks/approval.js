@@ -41,10 +41,14 @@ function pending(root, files) {
   return files.filter((file) => !approved.has(file))
 }
 
-// Cómo se toma la salida angosta, dicho una vez porque ahora lo dicen cinco bloqueos. Nombra también la
-// variable: sigue existiendo, y esconderla haría que quien la necesite la descubra sin saber su alcance.
-const HOW = (variable) => `Aprobalo escribiendo esa(s) ruta(s) en planning/${APPROVAL}, una por línea: `
-  + `vale para ese conjunto y deja de valer en cuanto cambie. La variable ${variable}=1 sigue existiendo `
+// Cómo se toma la salida angosta, dicho una vez porque lo dicen todos los bloqueos que la tienen. Lleva
+// las líneas exactas porque cada guard coteja la ruta en la forma que tiene a mano —absoluta la que llega
+// de un Write, relativa al repositorio la que sale del índice— y una línea en la otra forma no pega: sin
+// decirla, lo que quedaba a mano era la variable (caso 089). Nombra también la variable: sigue
+// existiendo, y esconderla haría que quien la necesite la descubra sin saber su alcance.
+const HOW = (variable, lines) => `Aprobalo pegando tal cual en planning/${APPROVAL} estas líneas:\n`
+  + lines.map((line) => `  ${line}\n`).join('')
+  + `Valen para ese conjunto y dejan de valer en cuanto cambie. La variable ${variable}=1 sigue existiendo `
   + 'y apaga el guard para toda la sesión, que es por lo que no es la vía recomendada.'
 
 module.exports = { APPROVAL, read, pending, HOW }

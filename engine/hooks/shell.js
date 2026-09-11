@@ -181,7 +181,7 @@ function dependencies(input) {
   // `package.json` dice «este manifiesto va sin su lock a propósito» y deja de valer en cuanto el
   // conjunto cambie. La rama de publicar no pasa por acá y no tiene ruta: sigue arriba, con su variable.
   const sinAprobar = (parent, names) => AP.pending(opsRoot(input),
-    names.map((name) => path.posix.join(parent === '.' ? '' : parent, name))).length
+    names.map((name) => path.posix.join(parent === '.' ? '' : parent, name)))
   // Un lock cuenta si está en disco **o** si el commit lo va a llevar, y la unión no es un detalle: el
   // disco solo perdía el que alguien borró del árbol sin stagear el borrado —sigue en el índice, sigue
   // en el próximo commit— y ahí la comprobación dejaba de dispararse justo cuando más hacía falta. Es
@@ -201,14 +201,15 @@ function dependencies(input) {
     if (onDisk.length > 1) {
       block(`${parent}: hay varios lockfiles (${onDisk.join(', ')}). Conserva uno solo.`)
     }
-    if (state.manifests.length && existingLocks.length && !state.locks.length
-      && sinAprobar(parent, state.manifests)) {
+    const manifests = sinAprobar(parent, state.manifests)
+    if (state.manifests.length && existingLocks.length && !state.locks.length && manifests.length) {
       block(`${parent}: cambió ${state.manifests.join(', ')} sin actualizar su lockfile.\n`
-        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE'))
+        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE', manifests))
     }
-    if (state.locks.length && !state.manifests.length && sinAprobar(parent, state.locks)) {
+    const lockfiles = sinAprobar(parent, state.locks)
+    if (state.locks.length && !state.manifests.length && lockfiles.length) {
       block(`${parent}: cambió ${state.locks.join(', ')} sin un cambio explícito en el manifest.\n`
-        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE'))
+        + AP.HOW('OPS_DEPENDENCIES_OVERRIDE', lockfiles))
     }
   }
 }
@@ -348,8 +349,7 @@ function governance(input) {
   // entre una llave por operación y una puerta que quedó abierta.
   const pendientes = AP.pending(opsRoot(input), governed)
   if (!pendientes.length) return
-  const files = pendientes.map((file) => `  - ${file}`).join('\n')
-  block(`El commit toca gobernanza protegida:\n${files}\n${AP.HOW('OPS_GOVERNANCE_OVERRIDE')}`)
+  block(`El commit toca gobernanza protegida.\n${AP.HOW('OPS_GOVERNANCE_OVERRIDE', pendientes)}`)
 }
 
 function run(program, args, cwd, extra = {}) {
@@ -488,19 +488,20 @@ function verify(input) {
   // Acá lo aprobado es el conjunto staged entero: decir «autorizo commitear exactamente estas rutas»
   // es lo que un gate en rojo necesita, y cambia en cuanto se stagea una más. La lista sale del índice
   // y no de una regla, que es lo que la vuelve una operación y no un permiso.
-  const aprobado = !AP.pending(opsRoot(input), staged).length
+  const sinAprobar = AP.pending(opsRoot(input), staged)
+  const aprobado = !sinAprobar.length
   if (changedOpenApi && !hasApiGenerated && !aprobado) {
     block('Cambió una fuente OpenAPI/Swagger sin incluir código regenerado. Ejecuta el generador y '
-      + `stagea su salida.\n${AP.HOW('OPS_SKIP_VERIFY')}`)
+      + `stagea su salida.\n${AP.HOW('OPS_SKIP_VERIFY', sinAprobar)}`)
   }
   if (changedSqlSource && !hasSqlGenerated && !aprobado) {
     block('Cambió una consulta SQL fuente sin artefactos regenerados. Ejecuta el generador.\n'
-      + AP.HOW('OPS_SKIP_VERIFY'))
+      + AP.HOW('OPS_SKIP_VERIFY', sinAprobar))
   }
   if (!staged.some((file) => /\.(?:ts|tsx|js|jsx|mjs|cjs|go|py|html|css|scss|prisma)$/.test(file))) return
   const { root, temp, env } = commitTree(dir)
   try {
-    verifyGates(root, dir, aprobado, env, opsRoot(input))
+    verifyGates(root, dir, sinAprobar, env, opsRoot(input))
   } finally {
     if (temp) fs.rmSync(temp, { recursive: true, force: true })
   }
@@ -548,7 +549,7 @@ function comoSeLee(failures) {
     + 'una suite, así que mirá si llegaron a ejecutarse antes de aprobar esto como un rojo conocido.'
 }
 
-function verifyGates(root, dir, aprobado, env, ops) {
+function verifyGates(root, dir, sinAprobar, env, ops) {
   const failures = []
   if (fs.existsSync(path.join(root, 'package.json'))) {
     const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
@@ -582,13 +583,13 @@ function verifyGates(root, dir, aprobado, env, ops) {
       if (!result.ok) failures.push(fallo('make test', result))
     }
   }
-  if (!failures.length || aprobado) return
+  if (!failures.length || !sinAprobar.length) return
   // Se dice sobre qué corrió cuando no fue el árbol: un fallo que no se reproduce escribiendo el mismo
   // comando a mano se lee como que el guard miente, y lo que pasó es que midió lo que se va a grabar.
   const donde = root === dir ? '' : '\nCorrió sobre el índice, que es lo que el commit graba: si en tu '
     + 'directorio pasa, es que en disco tenés algo que no está staged.'
   block(`Verify falló en ${path.basename(dir)}: ${comoSeLee(failures)}\nNo se commitea en rojo.${donde}\n`
-    + AP.HOW('OPS_SKIP_VERIFY'))
+    + AP.HOW('OPS_SKIP_VERIFY', sinAprobar))
 }
 
 module.exports = { destructive, gitAdd, dependencies, governance, verify, shellBoundary, run }

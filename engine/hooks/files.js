@@ -121,17 +121,18 @@ function testEvidence(input) {
     'decir que el comportamiento está y pasa a decir que nadie lo miró.\n' +
     'Si la aserción está mal, corregila; si el comportamiento cambió, cambialo junto con la prueba que ' +
     'lo fija. Si tiene que quedar afuera igual —flake conocido, entorno que acá no existe—, es una ' +
-    'decisión con dueño.\n' + AP.HOW('OPS_TEST_EVIDENCE_OVERRIDE')
+    'decisión con dueño.\n'
+  const how = (file) => AP.HOW('OPS_TEST_EVIDENCE_OVERRIDE', [file])
   for (const match of patchOf(input).matchAll(/^\*\*\* Delete File:\s*(.+)$/gm)) {
     const removed = match[1].trim()
-    if (isTestFile(removed) && !approved(input, removed)) block(`${removed} borra una prueba.\n${why}`)
+    if (isTestFile(removed) && !approved(input, removed)) block(`${removed} borra una prueba.\n${why}${how(removed)}`)
   }
   const content = contentOf(input)
   if (!content) return
   for (const raw of filesOf(input)) {
     if (!isTestFile(raw) || approved(input, raw)) continue
     for (const [marca, nombre] of TEST_OFF) {
-      if (marca.test(content)) block(`${raw} apaga una prueba con ${nombre}.\n${why}`)
+      if (marca.test(content)) block(`${raw} apaga una prueba con ${nombre}.\n${why}${how(raw)}`)
     }
   }
 }
@@ -198,11 +199,10 @@ function planFirst(input) {
   const why = `${estado}, así que el plan todavía no está escrito.\n`
     + 'Escribí en tu planning/wip/<runner>.md la tarea y su plan aprobado —pasos numerados, cada uno con un estado '
     + 'verificable— y volvé al cambio. Si esto no es trabajo de una tarea, aprobá la ruta.\n'
-    + AP.HOW('OPS_PLAN_FIRST_OVERRIDE')
   for (const raw of filesOf(input)) {
     if (!isProduct(root, path.resolve(cwdOf(input), raw))) continue
     if (approved(input, raw)) continue
-    block(`${raw} cambia el producto sin plan. ${why}`)
+    block(`${raw} cambia el producto sin plan. ${why}${AP.HOW('OPS_PLAN_FIRST_OVERRIDE', [raw])}`)
   }
 }
 
@@ -276,7 +276,7 @@ function migrations(input) {
     if (!esMigracion.test(normalized)) continue
     if (approved(input, normalized)) continue
     if (destructiveSql.test(contentOf(input))) {
-      block(`${raw} contiene SQL destructivo.\n${AP.HOW('OPS_MIGRATIONS_OVERRIDE')}`)
+      block(`${raw} contiene SQL destructivo.\n${AP.HOW('OPS_MIGRATIONS_OVERRIDE', [normalized])}`)
     }
     // El mensaje nombra el hecho que sostiene el bloqueo y no su interpretación: «historial» era una
     // lectura que `existsSync` no podía dar, y se la daba igual sobre stubs de la misma sesión. Y lleva
@@ -286,7 +286,7 @@ function migrations(input) {
     const shipped = alreadyShipped(file)
     if (shipped) {
       block(`${raw} ${shipped}. Crea una nueva en vez de reescribirla.\n`
-        + AP.HOW('OPS_MIGRATIONS_OVERRIDE'))
+        + AP.HOW('OPS_MIGRATIONS_OVERRIDE', [normalized]))
     }
   }
 }
