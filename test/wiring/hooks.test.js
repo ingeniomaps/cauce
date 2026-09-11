@@ -1934,7 +1934,7 @@ test('el bloqueo de verify cita la prueba que falló, no una verde que dice erro
     git(['add', 'package.json', 'alta.test.js'], root)
     const cited = messageOf('verify', commit).split('\n')[0]
     assert.match(cited, expected)
-    assert.doesNotMatch(cited, /✔|: ok \d|--- PASS/, 'no cita una prueba en verde')
+    assert.doesNotMatch(cited, /✔|: ok \d|--- PASS| PASSED/, 'no cita una prueba en verde')
   }
   const prints = (...lines) => `node -e "${lines.map((line) => `console.log('${line}')`).join(';')};process.exit(1)"`
 
@@ -1946,8 +1946,20 @@ test('el bloqueo de verify cita la prueba que falló, no una verde que dice erro
   cites(prints('=== RUN   TestElErrorSeInforma', '--- PASS: TestElErrorSeInforma (0.00s)',
     '=== RUN   TestElAltaGuarda', '    a_test.go:4: no', '--- FAIL: TestElAltaGuarda (0.00s)', 'FAIL'),
   /--- FAIL: TestElAltaGuarda/)
+  // Jest, vitest, mocha y pytest, copiados de corridas reales entubadas —las versiones, en `shell.js`—. La
+  // primera línea de cada uno es la que se citaba antes: el archivo, el resumen o la verde.
+  cites(prints('FAIL ./alta.test.js', '  ● el alta guarda el cliente', '    expect(received).toBe(expected)'),
+    /● el alta guarda el cliente/)
+  cites(prints(' ❯ alta.test.mjs (2 tests | 1 failed) 7ms', '   × el alta guarda el cliente 4ms'),
+    /× el alta guarda el cliente/)
+  cites(prints('  ✔ el error de validación se informa al usuario', '  1) el alta guarda el cliente', '  1 failing'),
+    /1\) el alta guarda el cliente/)
+  cites(prints('test_alta.py::test_el_error_de_validacion_se_informa PASSED [ 50%]',
+    'test_alta.py::test_el_alta_guarda_el_cliente FAILED [100%]', '=== FAILURES ===',
+    'FAILED test_alta.py::test_el_alta_guarda_el_cliente - assert 1 == 2'), /FAILED test_alta\.py::test_el_alta/)
   // Sin marca de fallo sigue la búsqueda por palabra, que ya no puede quedarse con una verde.
   cites(prints('✔ el error se informa', 'Error: cannot connect'), /Error: cannot connect/)
+  cites(prints('test_a.py::test_el_error_se_informa PASSED [ 50%]', 'ERROR: file not found'), /ERROR: file not found/)
 })
 
 test('el contraste de evidencia separa lo que existe de lo que no se puede buscar', () => {

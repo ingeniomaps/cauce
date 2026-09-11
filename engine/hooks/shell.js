@@ -521,11 +521,15 @@ function verify(input) {
 // Se muestra **una** línea y acotada: la salida de un gate puede traer cualquier cosa del entorno, y lo
 // que hace falta para diagnosticar es la primera línea de error, no el volcado.
 const ERROR_LINE = /error|err[_!]|fail|abort|not found|cannot|no such/i
-// Cómo marca un reporte de pruebas cada resultado: `node --test` en spec y en TAP, y `go test`. Van sólo
-// las comprobadas contra la herramienta (caso 094): el nombre de una prueba verde puede decir «error», y
-// sin mirar la marca la búsqueda por palabra se quedaba con ella y el mensaje escondía la roja.
-const FAILED_TEST = /^(?:✖|not ok\b|--- FAIL:)/
-const PASSED_TEST = /^(?:✔|ok\b|--- PASS:)/
+// Cómo marca un reporte de pruebas cada resultado. Van sólo las comprobadas contra la herramienta (caso
+// 094): el nombre de una prueba verde puede decir «error», y sin mirar la marca la búsqueda por palabra se
+// quedaba con ella y el mensaje escondía la roja. Comprobadas con la salida entubada, como la ve un gate:
+// `node --test` en spec y en TAP (Node 24.18.0), `go test` (go 1.26.3), jest 30.5.1 (`● nombre`, y
+// `● Test suite failed to run`), vitest 5.0.0 (`× nombre`), mocha 12.0.1 (`1) nombre`; la verde es `✔`) y
+// pytest 9.1.1 (`FAILED archivo::prueba` en el resumen; `::prueba PASSED` la verde con `-v`). Jest y vitest
+// no imprimen las verdes sin `--verbose`, así que de ellos no hay marca de éxito.
+const FAILED_TEST = /^(?:✖|not ok\b|--- FAIL:|● |× |\d+\) |FAILED )/
+const PASSED_TEST = /^(?:✔|ok\b|--- PASS:)|::\S+ PASSED\b/
 const MAX_LINE = 160
 function fallo(gate, result) {
   // La línea que empieza con `>` es el eco del script que npm y pnpm imprimen antes de correrlo, así

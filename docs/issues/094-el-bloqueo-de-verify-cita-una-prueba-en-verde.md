@@ -162,3 +162,48 @@ marca evita citarla. Se reemplazó por la salida real de `go test -v` con go 1.2
   M5 sin la marca ✖ de spec            fail 1 → ROJA
   ```
 - `npm run ci`: código 0, 682 de 682, cobertura de 58 archivos en su piso o por encima.
+
+## Después del cierre: las herramientas que quedaron sin comprobar (2026-09-11)
+
+El cierre dejó declarado que pytest, jest, vitest y mocha no estaban instalados y seguían con la búsqueda por
+palabra. Se comprobaron en un banco desechable —las herramientas instaladas ahí, no en este repositorio—, con la
+misma suite de la reproducción en cada una: una verde que nombra «error» y una roja, entubada como la corre un
+gate, y `verify` sobre el commit.
+
+- **Lo que citaba antes**, sobre `main` = `6dbf03e0`:
+
+  ```
+  jest 30.5.1       FAIL ./alta.test.js
+  vitest 5.0.0      ❯ alta.test.mjs (2 tests | 1 failed) 6ms
+  mocha 12.0.1      1 failing
+  pytest 9.1.1      =================================== FAILURES ===================================
+  pytest 9.1.1 -v   test_alta.py::test_el_error_de_validacion_se_informa PASSED              [ 50%]
+  ```
+
+  Ninguna nombraba la prueba que falló, y con `pytest -v` volvía el defecto de este caso: citaba la verde.
+- **Las marcas, leídas de esas corridas**: jest `● nombre` —y `● Test suite failed to run` cuando la suite no
+  compila; la consola la encabeza `console.log`, no `●`—, vitest `× nombre`, mocha `1) nombre` con `✔` la
+  verde, pytest `FAILED archivo::prueba` en el resumen y `archivo::prueba PASSED` la verde con `-v`. Jest y
+  vitest no imprimen las verdes sin `--verbose`, así que de ellos no entra marca de éxito.
+- **Después del arreglo**, las mismas corridas:
+
+  ```
+  jest 30.5.1       ● el alta guarda el cliente
+  vitest 5.0.0      × el alta guarda el cliente 4ms
+  mocha 12.0.1      1) el alta guarda el cliente
+  pytest 9.1.1      FAILED test_alta.py::test_el_alta_guarda_el_cliente - assert 1 == 2
+  pytest 9.1.1 -v   FAILED test_alta.py::test_el_alta_guarda_el_cliente - assert 1 == 2
+  ```
+- **La prueba** suma las cuatro salidas reales —la suite no puede suponer esas herramientas instaladas— y un
+  caso de pytest sin marca de fallo, donde la verde dice «error»: se cita el error. Sobre el código de antes,
+  en rojo con `FAIL ./alta.test.js`.
+- **Cinco mutaciones, en una copia desechable (R23)**, una por marca nueva:
+
+  ```
+  M1 sin la marca ● de jest             fail 1 → ROJA
+  M2 sin la marca × de vitest           fail 1 → ROJA
+  M3 sin la marca 1) de mocha           fail 1 → ROJA
+  M4 sin la marca FAILED de pytest      fail 1 → ROJA
+  M5 sin la marca PASSED de pytest -v   fail 1 → ROJA
+  ```
+- `npm run ci`: código 0, 696 de 696, cobertura de 60 archivos en su piso o por encima.
