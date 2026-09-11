@@ -111,6 +111,28 @@ test('una credencial vive fuera de todo repositorio', () => {
   })
   assert.ok(errorsOf(insideGit.root).some((error) => /dentro de un repositorio de git/.test(error)))
 
+  // Un `GIT_DIR` heredado responde por su repositorio y no por el directorio de la credencial. Se compara
+  // con y sin él, y no contra un veredicto fijo, porque el temporal de la máquina podría caer en un repo.
+  const inherited = instance('ops-secrets-cred-gitdir-', (declaration, base) => {
+    fs.mkdirSync(path.join(base, 'fuera'))
+    declaration.identities['local-dev'].file = path.join(base, 'fuera', 'local-dev.env')
+  })
+  const plain = errorsOf(inherited.root)
+  const other = path.join(inherited.base, 'otro-repo')
+  fs.mkdirSync(other)
+  const clean = { ...process.env }
+  delete clean.GIT_DIR
+  delete clean.GIT_WORK_TREE
+  assert.equal(spawnSync('git', ['init', '-q'], { cwd: other, env: clean }).status, 0)
+  const before = process.env.GIT_DIR
+  process.env.GIT_DIR = path.join(other, '.git')
+  try {
+    assert.deepEqual(errorsOf(inherited.root), plain, 'el GIT_DIR heredado no cambia el veredicto')
+  } finally {
+    if (before === undefined) delete process.env.GIT_DIR
+    else process.env.GIT_DIR = before
+  }
+
   const absent = instance('ops-secrets-cred-ausente-', (declaration, base) => {
     declaration.identities['local-dev'].file = path.join(base, 'nunca-cargada', 'local-dev.env')
   })
