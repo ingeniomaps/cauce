@@ -19,7 +19,7 @@ un verbo de la lista cerrada: dos de las cuatro vueltas de la sesión real segui
 ```
 Decile a la persona qué se frenó y por qué, y esperá: si contesta «dale», reintentá el mismo cambio y pasa.
 Si prefiere aprobarlo a mano, que pegue ella tal cual en venotal-ops/planning/.ops-approval estas líneas:
-  /home/manuel/Code/venotal/venotal-ops/.env.infisical
+  …/venotal/venotal-ops/.env.infisical
 Valen para ese conjunto y dejan de valer en cuanto cambie. La variable OPS_SECRETS_READ_OVERRIDE=1 …
 ```
 
@@ -40,7 +40,7 @@ Infisical usando la identidad declarada en `venotal-ops/.env.infisical`.
 | 1 | «autorizo la lectura del .env.infisical para que llenes todos los campos…» | el comando, con la ruta en una variable de shell | **frenado**, y el mensaje citó la ruta **sin expandir**: `venotal-ops/$O/.env.infisical` |
 | 2 | (la misma autorización seguía en pie) | el mismo comando con la ruta absoluta literal | **frenado** |
 | 3 | «dale» | el mismo comando, sin cambios | **frenado** |
-| 4 | «te doy aprobacion para revisar y usar /home/manuel/Code/venotal/venotal-ops/.env.infisical» | el mismo comando | **frenado** |
+| 4 | «te doy aprobacion para revisar y usar …/venotal/venotal-ops/.env.infisical» | el mismo comando | **frenado** |
 
 Recién la quinta vuelta pasó, y porque el operador pegó la línea a mano en `.ops-approval`.
 
@@ -66,7 +66,7 @@ nada y el bloqueo habría seguido, sin que nada explicara por qué.
 
 No es wiring: el hook está registrado y el shim es correcto.
 
-- `/home/manuel/Code/venotal/.claude/settings.json:51-56` registra `UserPromptSubmit` →
+- `…/venotal/.claude/settings.json:51-56` registra `UserPromptSubmit` →
   `automatization/hooks/guard-chat.sh`.
 - `guard-chat.sh` delega en `run-hook.sh chat`, descarta su salida y **sale siempre con 0**, que es lo
   documentado: sobre el mensaje de una persona un 2 no tendría a qué frenar.
