@@ -13,6 +13,7 @@ const {
   writableRoots, outsideRoots, DECLARE_IT, unquoted, opsRoot, withoutGitGlobals,
 } = require('./input')
 const AP = require('./approval')
+const CHAT = require('./chat')
 const { publish } = require('./push')
 const { selfApprovalShell } = require('./self-approval')
 const EV = require('../core/evidence')
@@ -346,6 +347,16 @@ function governance(input) {
   if (process.env.OPS_GOVERNANCE_OVERRIDE === '1') return
   const command = commandOf(input)
   if (!isCommit(command)) return
+  // Con una persona conduciendo el turno, este guard no pregunta nada. Frena por **política** —qué archivos
+  // toca un commit— y no por un defecto de hecho, y esa pregunta a quien está dando instrucciones no le
+  // corresponde: lo que el guard contiene es al agente decidiendo solo (caso 126). `said` ya distingue las
+  // dos cosas —devuelve nada para un subagente, para un recorrido de Cauce y en CI—, así que la exención no
+  // alcanza a nada de eso. Es la misma forma que usa `plan-first` en `files.js`.
+  //
+  // Sus dos vecinos de gate no llevan esta exención y la diferencia no es quién pidió el commit: `verify` y
+  // `dependencies` frenan por algo que está mal —una verificación que falla, un manifiesto sin su lockfile—
+  // y callarlos porque hay alguien hablando sería tapar un rojo.
+  if (CHAT.said(input)) return
   // El contrato de un cargo y lo que lo mide son gobernanza, igual que un ADR o una regla. La firma de
   // «Aprobación humana» sólo estaba protegida por una frase en un prompt; `SKILL.md` y `references/`
   // son lo que la propuesta cambia, y editarlos directo saltea el ciclo entero; y `evaluations/` es el

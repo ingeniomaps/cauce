@@ -2374,8 +2374,13 @@ test('la aprobación sólo recibe las líneas que la persona nombró en su mensa
 
 // Lo que un guard deja pasar porque la persona lo pidió queda concedido y vale mientras dure la sesión
 // (caso 116). Eso alcanzaba también a los gates de commit y nadie lo había decidido: ahí se pregunta cada
-// vez, como en la publicación (caso 119). Van los tres porque cada uno es un sitio que se puede olvidar.
-test('lo concedido no abre un gate de commit: los tres preguntan cada vez', () => {
+// vez, como en la publicación (caso 119).
+//
+// Eran tres. `governance` salió de esa regla con el 126: frena por política sobre qué archivos toca un
+// commit, y eso no se le pregunta a quien está dando instrucciones. Los dos que quedan se prueban juntos
+// porque comparten el motivo de seguir preguntando —frenan por un defecto de hecho— y cada uno es un sitio
+// que se puede olvidar.
+test('lo concedido no abre un gate de commit, y gobernanza no interroga a la persona', () => {
   const bench = (prefijo, files, add) => {
     const root = tempRoot(prefijo)
     initRepo(root)
@@ -2390,9 +2395,11 @@ test('lo concedido no abre un gate de commit: los tres preguntan cada vez', () =
   }
   // El lockfile de `dependencies` está en disco y sin stagear a propósito: es lo que hace que el
   // manifiesto staged cuente como uno que va sin su lock.
+  // `governance` sale de esta lista: frena por **política** sobre qué archivos toca un commit, y eso a una
+  // persona que está dando instrucciones no se le pregunta (caso 126). Los dos que quedan frenan por un
+  // **defecto de hecho** —un manifiesto sin su lockfile, una verificación que falla—, y silenciarlos porque
+  // hay alguien hablando sería tapar un rojo. La diferencia es qué frena cada uno, no quién lo pidió.
   const casos = [
-    ['governance', bench('ops-hook-gate-gob-', { 'planning/rules/process.md': '# regla\n' },
-      ['planning/rules/process.md']), 'commiteá planning/rules/process.md', /gobernanza protegida/],
     ['dependencies', bench('ops-hook-gate-deps-', { 'package.json': '{}\n', 'package-lock.json': '{}\n' },
       ['package.json']), 'commiteá package.json', /lockfile/i],
     ['verify', bench('ops-hook-gate-verify-', { 'openapi/api.yaml': 'openapi: 3.0.0\n' },
@@ -2403,12 +2410,23 @@ test('lo concedido no abre un gate de commit: los tres preguntan cada vez', () =
   try {
     for (const [guard, root, pedido, motivo] of casos) {
       assert.doesNotThrow(() => execute(guard, chat.says(pedido)(commit(root))), guard)
-      // Acá pasaba con lo concedido, que es el defecto: un commit de gobernanza salía en verde con
-      // cualquier otro mensaje en curso.
+      // Acá pasaba con lo concedido, que es el defecto: un commit salía en verde con cualquier otro
+      // mensaje en curso.
       blocked(guard, chat.says('seguí con la tarea')(commit(root)), motivo)
       // Y el «dale» que contesta a ese bloqueo sigue siendo la salida corta que el bloqueo ofrece.
       assert.doesNotThrow(() => execute(guard, chat.says('dale')(commit(root))), `${guard} con un dale`)
     }
+    // Gobernanza con una persona conduciendo: pase lo que pase el mensaje, no se frena ni se le pide que
+    // pegue nada. Lo que la contiene es que el agente trabaje solo, no que la persona nombre el archivo.
+    const gob = bench('ops-hook-gate-gob-', { 'planning/rules/process.md': '# regla\n' },
+      ['planning/rules/process.md'])
+    for (const dicho of ['commiteá planning/rules/process.md', 'seguí con la tarea', 'dale', 'gracias']) {
+      assert.doesNotThrow(() => execute('governance', chat.says(dicho)(commit(gob))), `governance: ${dicho}`)
+    }
+    // Y sin persona —un subagente, un recorrido, CI— sigue frenando igual que antes.
+    blocked('governance', commit(gob), /gobernanza protegida/)
+    const sub = chat.says('commiteá planning/rules/process.md')
+    blocked('governance', ((extra) => sub({ agent_id: 'a1', ...extra }))(commit(gob)), /gobernanza protegida/)
     // Lo que no es un gate de commit sigue valiendo mientras la sesión siga: eso no se tocó (caso 116).
     const lector = planFirstRoot('ops-hook-gate-contraste-', WIP_CON_PLAN)
     const lee = (call) => call({ cwd: lector, tool_input: { file_path: path.join(lector, '.env') } })
