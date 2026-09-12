@@ -1,16 +1,18 @@
 ---
 caso: 117
 titulo: No hay forma de registrar una autorización que la persona ya dio, ni de concederla con alcance
-estado: abierto
+estado: resuelto
+resuelto-en: 0.86.0
 prioridad: media
 version-detectada: 0.81.0
 ---
 
 # 117 — La aprobación existe en dos formas y falta la del medio: por operación, o por sesión entera
 
-**🔴 abierto** · detectado en 0.81.0 · prioridad **media** —se mantiene el 2026-09-11 y lo que la sostiene
-cambió, ver «Contra 0.83.0»— 0.83.0 sacó la fricción que caía sobre la persona, y dejó en su lugar una
-exención por sesión sin alcance, sin procedencia y que `check` no muestra
+**🟢 resuelto en 0.86.0** · detectado en 0.81.0 · prioridad **media** — 0.83.0 sacó la fricción que caía
+sobre la persona y dejó en su lugar una exención por sesión sin alcance, sin procedencia y que `check` no
+mostraba; 0.86.0 cierra la mitad que lo sostenía —la visibilidad— y el alcance y la procedencia salen como
+caso **127**
 
 ## Resumen
 
@@ -62,6 +64,28 @@ aprobando a cada rato cuando ya te di aprobacion».
 - **El agente borra lo que la persona concedió.** La guía le pide limpiar «como parte de terminar», y no
   distingue una línea que él pidió para una operación de una que la persona dejó puesta a propósito.
 
+### Medido en una sesión, 2026-09-11/12
+
+**Seis pegadas de la persona, todas para permisos que ya había dado.** En orden, cada una tras un bloqueo
+distinto: la identidad de Infisical, el respaldo `.env.bak`, el `.env` del servicio, el `.env` de la raíz
+del workspace, el `package.json` que cambió sin lockfile, y siete rutas de gobernanza que traía la propia
+actualización de Cauce. Ninguna fue una decisión nueva: todas estaban autorizadas en el chat desde antes.
+
+**El aviso de `check` no se puede silenciar.** Sale de `engine/cli/planning.js:183`, que lo empuja a la
+lista de advertencias sin consultar configuración alguna: no hay opción, ni archivo, ni variable. Una
+concesión que la persona dejó puesta **a propósito** queda reportada como riesgo en cada corrida —
+incluidas las de `autobuild`—, así que el operador aprende a ignorar las advertencias de `check`, que es
+el peor resultado posible para una herramienta cuyo valor es avisar.
+
+**Y el principio que el operador nombró, textual**: «si te digo haz o acepto, tú deberías poder poner los
+archivos y ejecutar». Su lectura del sistema fue que «Cauce ha estado dañando en vez de mejorando». Vale
+registrar las dos mitades, porque la respuesta honesta no es darle la razón entera: en esa misma sesión el
+guard de secretos impidió que el agente escribiera credenciales en archivos, el de lectura evitó que tres
+tokens entraran en el contexto de la conversación —y por eso siguen siendo rotables sin sospechar de ese
+transcript—, y el de gobernanza frenó un commit que incluía **las reglas y los guards que limitan al
+agente**. Esos tres límites son correctos y ninguno se discute acá. Lo que sobra es que ejercerlos cueste
+una pegada manual por archivo cuando la autorización ya existía.
+
 ## Causa raíz
 
 `approval.read()` devuelve una lista de rutas y `pending()` compara contra ella
@@ -98,6 +122,12 @@ cerrar la tarea las de alcance `task:` caducan solas.
 **3. Que la guía deje de pedirle al agente que borre lo que no escribió.** La regla correcta es: borra las
 líneas que él pidió para una operación terminada; no toca las que tienen procedencia de chat ni las de
 `.ops-grants`.
+
+**4. Que `check` liste la concesión durable como estado y no como advertencia.** Hoy toda ruta aprobada y
+sin borrar es un `warning` (`engine/cli/planning.js:183`), sin forma de distinguir la que quedó olvidada
+de la que alguien dejó puesta con alcance. Con `.ops-grants` la distinción existe: lo de alcance declarado
+se informa —«estas rutas están concedidas hasta X»— y lo que sigue en `.ops-approval` después de cerrar la
+operación sigue avisando, que es el caso que el aviso vino a cazar.
 
 ## Tradeoffs
 
@@ -161,3 +191,102 @@ auditoría es nuevo y nadie lo va a notar solo.
   desde la auditoría.
 - **089** — la aprobación por ruta también falla cuando la forma de la ruta no coincide; 0.80 lo mejoró
   imprimiendo la línea exacta.
+- **127** — lo que este caso pedía y no se construyó: alcance declarado y procedencia.
+
+## Cierre
+
+**🟢 resuelto en 0.86.0** · `engine/hooks/chat.js`, `engine/hooks/approval.js`, `engine/cli/planning.js`,
+`template/AGENTS.md`, `test/planning/grants.test.js`
+
+La decisión del dueño fue **hacer visible lo concedido**. Eso cierra lo que sostenía al caso y **no** cierra
+el caso entero, así que lo que queda se nombra abajo en vez de quedarse adentro.
+
+### Contra lo que el caso enumeró
+
+**Punto 1, «procedencia en la línea, escrita por el hook que oyó a la persona» — no se construyó.** Sale
+como caso **127**. Lo que sí se hizo es la mitad que lo volvía urgente: lo concedido ya no es invisible.
+
+**Punto 2, «una concesión con alcance, en un archivo aparte» — no se construyó.** Sale como caso **127**.
+El registro sigue siendo un array plano de rutas, así que «vale mientras dure esta tarea» sigue sin poder
+escribirse.
+
+**Punto 3, «que la guía deje de pedirle al agente que borre lo que no escribió» — hecho.**
+`template/AGENTS.md` decía «borrarla es parte de terminar»; ahora dice que se borra **la línea que el agente
+pidió para una operación ya terminada**, y que la que dejó puesta la persona no se toca.
+
+**Punto 4, «que `check` liste la concesión durable como estado y no como advertencia» — hecho a medias, y
+la mitad que falta es por una razón y no por olvido.** `check` ahora lista lo concedido en el chat, que es
+lo que no existía. Sigue saliendo como advertencia y no como estado aparte, porque la distinción que el
+punto pedía —«la que quedó olvidada» contra «la que alguien dejó puesta con alcance»— **no se puede hacer
+mientras el alcance no exista**: es el punto 2, y está en el 127. Distinguirlas hoy sería inventar una
+categoría sin dato que la sostenga.
+
+**Síntoma «la fricción no cae sobre el agente, cae sobre la persona»** — ya se había ido en 0.83.0 con el
+116, y el propio caso lo registra. No se tocó nada de eso.
+
+**Síntoma «la salida que queda a mano es la peor: apagar el guard por sesión»** — sin cambios acá. Lo que sí
+cambió, y fue en 0.85.0 por el 124, es que los guards que no ofrecían ninguna salida angosta ahora la
+ofrecen, que ataca la misma causa por el otro lado.
+
+**Síntoma «el agente borra lo que la persona concedió»** — cerrado con el punto 3.
+
+**«El aviso de `check` no se puede silenciar», y este cambio agrega un aviso más.** Es la objeción más
+seria contra lo que acabo de hacer y por eso va dicha: el caso denuncia que el operador aprende a ignorar
+las advertencias de `check`, y yo sumé una. Lo que las distingue es que la nueva **no se acumula**: lo
+concedido vive en el registro de la sesión, así que desaparece cuando la sesión termina, mientras que una
+línea olvidada en `.ops-approval` sigue ahí para siempre. Y no aparece en las corridas automáticas:
+`said()` devuelve nada en CI, en un recorrido de Cauce y en un subagente, así que ahí no se concede nada y
+no hay qué listar. O sea que el aviso nuevo sólo lo ve la persona que está conduciendo, sobre permisos que
+ella misma acaba de dar. Silenciar el viejo sigue sin poder hacerse y sigue sin decidirse.
+
+**Tradeoff «un permiso durable es menos estricto; se compensa con alcance explícito y visibilidad en
+`check`»** — de las dos compensaciones se entregó una. La otra es el 127, y hasta que exista el permiso
+sigue durando lo que dura la sesión.
+
+**Tradeoff «la procedencia se puede falsificar si la escribe el proceso equivocado»** — no aplica todavía:
+no hay procedencia. Cuando la haya, la escribe el hook del mensaje, y eso viaja al 127.
+
+**Tradeoff «dos archivos en vez de uno es superficie nueva»** — no se pagó: este cambio no agrega ningún
+archivo. `granted` ya existía desde el 116; lo único nuevo es que se lee desde `check`.
+
+**«Contra 0.83.0», punto 1 — cerrado en su mitad de auditoría.** Aquella medición decía que `granted` «no se
+ve: `ops check` no dice nada de lo concedido, mientras que por una sola línea en `.ops-approval` avisa».
+Ahora avisa por las dos, desde el mismo lugar.
+
+**«Contra 0.83.0», punto 2 —la forma deíctica y la persistencia— sin cambios.** «Usá ese archivo» sigue sin
+resolverse, porque `mentions()` compara el nombre del ítem contra el texto. Es del 118 y del 127, no de
+acá.
+
+**«Contra 0.83.0», punto 3 — cerrado.** Era el punto 3 de arriba.
+
+**Prioridad** — el caso la sostenía explícitamente en «una exención que vale por toda la sesión y que no
+aparece en ninguna corrida de `check`». Eso es justamente lo que se cerró, y por eso el caso se cierra acá
+y el resto baja a **baja** en el 127.
+
+### Lo que apareció y el caso no preveía
+
+**El registro de chat no sabía a qué instancia pertenecía.** Vive en el temporal del sistema, que es uno
+solo por máquina, así que leerlo desde `check` sin más habría hecho que una instancia reportara las
+exenciones de la de al lado — un aviso que dice algo falso, que es peor que no avisar. Hubo que anotar la
+raíz en el registro para poder filtrar, y la prueba monta **dos** instancias justamente para fijar eso.
+
+**Un registro viejo no trae la raíz y queda afuera a propósito.** Decir «concedido» sin saber dónde es lo
+que el filtro existe para evitar, así que se calla en vez de adivinar.
+
+### Qué se corrió
+
+- **Rojo previo**, con el motor sin tocar: la concesión ocurría —`CHAT.unauthorized(...)` devolvía `[]`, o
+  sea que el guard la dejaba pasar y la anotaba— y `check` no mostraba nada: `actual []`. Es el agujero de
+  auditoría del caso, reproducido.
+- **Verde**: `tests 2, pass 2, fail 0`, y la suite entera en **770 de 770** con `npm run ci` en 0. Que la
+  puerta no se moviera importa acá más que de costumbre: `chat.js` lo consultan siete guards, y
+  `test/wiring/hooks.test.js` quedó en **98 de 98**.
+- **Mutaciones**, en copia desechable bajo el scratchpad de la sesión (R23), con la copia verificada verde
+  antes de mutar:
+  - que el registro deje de anotar la instancia → `pass 0, fail 1`;
+  - quitar el filtro por instancia → `pass 0, fail 1`. Ésta es la que importa: sin ella el verde no diría
+    nada sobre la mitad que evita el aviso falso, porque una lista sin filtrar también contiene la ruta
+    correcta.
+- **Los comentarios que se ajustaron después de esa corrida** se contrastaron contra la copia certificada:
+  **0 líneas ejecutables** de diferencia en los dos archivos tocados, así que el verde sigue valiendo sin
+  rehacerlo.

@@ -1,14 +1,15 @@
 ---
 caso: 121
 titulo: La puerta barata no ve ninguno de los defectos de enunciado que Ready rechaza, así que se pagan con una corrida entera de agentes
-estado: abierto
+estado: resuelto
+resuelto-en: 0.86.0
 prioridad: alta
 version-detectada: 0.82.0
 ---
 
 # 121 — `check` sale en verde sobre la tarea que el recorrido va a rechazar tres fases más tarde
 
-**🔴 abierto**
+**🟢 resuelto en 0.86.0**
 
 ## Resumen
 
@@ -124,3 +125,63 @@ que R15 describe.
 - **105** — de donde salió; su cierre tiene los tres defectos de enunciado y los números de cada parada.
 - **087** — el precedente de que una parada mal registrada hace repetir la planificación entera.
 - **122** y **123** — los otros dos ítems que el mismo contraste encontró sin registrar.
+
+## Cierre
+
+**🟢 resuelto en 0.86.0** · `engine/core/repos.js`, `engine/cli/planning.js`,
+`test/planning/human-actions.test.js`
+
+### Contra lo que el caso enumeró
+
+**Opción 1, «sólo la tercera» — elegida por el dueño del producto y hecha.** `check` avisa cuando una fila
+de `HUMAN_ACTIONS.md` figura `resuelta` y ningún commit la registró. Se pregunta con el pickaxe de `git log`
+sobre la **línea entera** y no por la palabra `resuelta`: lo que hay que establecer es que esa fila, con ese
+estado, existió alguna vez en un commit. Una que pasó a resuelta sólo en el árbol de trabajo no aparece en
+ninguno, que es exactamente el caso que Ready leyó como aprobación autoservida.
+
+**Opción 2, «un aviso de aceptación sospechosa» — decidida que no, por ahora.** El propio caso pone la
+condición: no está medido cuántas aceptaciones legítimas marcaría, y hace falta pasarla por las tareas de
+`done/` de una instancia real antes de fijar el umbral. Esa medición no se hizo, así que construir la
+heurística ahora sería elegir un umbral a ciegas — y una puerta ruidosa se termina apagando, que es el modo
+de fallo que este mismo caso denuncia. **La reactiva** haber corrido las heurísticas contra el `done/` de
+una instancia real y tener el número de falsos positivos.
+
+**Opción 3, «una fase de crítica de enunciado antes de Pick» — decidida que no.** Cambia el recorrido, que
+es una decisión de producto y no la cola de este caso; el propio enunciado la marca como «la que hay que
+pensar más». **La reactiva** que, con la opción 1 puesta, sigan apareciendo paradas en Ready por defectos
+de enunciado: eso diría que lo mecanizable no alcanzaba.
+
+**«Lo que no es el fix: hacer que `check` falle»** — respetado. Es `warning`, `check` sigue saliendo 0, y la
+prueba lo fija.
+
+**Tradeoff «la opción 1 necesita un repositorio, y una instancia recién creada no lo tiene: hay que degradar
+sin avisar de más, como hizo el 086»** — hecho y aserciado en los dos bordes: sin repositorio no dice nada,
+y con el archivo todavía sin commitear tampoco. La prueba arranca justamente por ahí, antes de crear el
+repositorio, para que la degradación no sea una rama que nadie ejecuta.
+
+**Tradeoff «el riesgo es creer que la puerta ahora sí cubre el enunciado»** — es el ítem más importante de
+este cierre y por eso va dicho y no sobreentendido: **`check` sigue sin ver dos de los tres defectos**. La
+aceptación que deja sin decidir qué cuenta como «nombre vacío» y la condición inasercible por construcción
+pasan la puerta igual que antes. Lo que bajó es el costo del tercero, no la cobertura del enunciado.
+
+**Los dos daños, por separado.** El **costo** queda cubierto sólo para el defecto mecanizable — uno de los
+tres de aquella corrida. La **señal equivocada** sigue viva: `check` en verde se sigue leyendo como «la
+tarea está lista», y sigue sin decirlo. Cerrar esto sin nombrarlo habría archivado la mitad del caso dentro
+de un caso cerrado, que es el defecto que lo originó.
+
+**Prioridad «baja a media si una corrida posterior con enunciados endurecidos no vuelve a parar en Ready»** —
+no se midió: no se corrió ningún recorrido después del arreglo. Queda como estaba.
+
+### Qué se corrió
+
+- **Rojo previo**, con el motor sin tocar: la prueba pasa su primera aserción —sin repositorio no avisa— y
+  falla en la segunda, `actual []` contra el aviso esperado. O sea que el montaje —`git init`, la fila
+  commiteada como `pendiente`, el volcado a `resuelta`— sí se ejercitó, y lo único que faltaba era la
+  comprobación.
+- **Verde**: `tests 2, pass 2, fail 0` con `test/planning/grants.test.js`, y `npm test` entero en **770 de
+  770**, con `npm run ci` en 0.
+- **Mutaciones**, en copia desechable bajo el scratchpad de la sesión (R23), con la copia verificada en
+  verde antes de mutar:
+  - quitar la llamada en `check` → `pass 0, fail 1`;
+  - invertir el pickaxe —confundir «registrada» con «no registrada»— → `pass 0, fail 1`. Ésta es la que
+    importa: sin ella el verde sólo diría que el aviso aparece, no que desaparece cuando el commit existe.

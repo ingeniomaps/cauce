@@ -1,14 +1,15 @@
 ---
 caso: 125
 titulo: Una instancia anterior al manifiesto pierde su guard propio en el primer upgrade, sin aviso y sin recuperación
-estado: abierto
+estado: resuelto
+resuelto-en: 0.86.0
 prioridad: alta
 version-detectada: 0.83.0
 ---
 
 # 125 — `collisions()` se saltea el directorio entero cuando el registro no lo conoce
 
-**🔴 abierto**
+**🟢 resuelto en 0.86.0**
 
 ## Resumen
 
@@ -142,3 +143,68 @@ rellena y el problema converge solo— resultó falsa: se rellena, pero **despu�
 
 - **110** — de donde salió; su mitigación es la causa de este caso, y su cierre ahora lo nombra.
 - **100** — el otro caso del registro del runtime; su arreglo no alcanza a esta rama.
+
+## Cierre
+
+**🟢 resuelto en 0.86.0** · `engine/core/ownership.js`, `test/instance/upgrade-own-guards.test.js`
+
+### Contra lo que el caso enumeró
+
+**Opción 1, «invertir la duda» — elegida por el dueño del producto y hecha tal cual.** El arreglo resultó
+ser **retirar** una línea, no escribir lógica nueva: el bucle interno de `collisions()` ya comparaba contra
+`shippedFiles()` y ya exigía que el contenido difiriera. Lo único que impedía que se ejecutara era el
+`continue` de afuera, que descartaba el directorio entero. El acote que el propio caso proponía para
+limitar el ruido —«comparar sólo contra los nombres que el paquete trae hoy»— ya estaba puesto.
+
+**Opción 2, «sembrar el manifiesto antes de comparar» — decidida que no.** Escribe en la instancia antes de
+que nadie lo pida, y el propio caso marcaba el problema: `--check` tendría que hacerlo también o pasaría a
+medir distinto que `upgrade`. La opción 1 consigue lo mismo sin efectos.
+
+**Opción 3, «frenar y pedirlo» — decidida que no.** `upgrade` ya conserva y avisa archivo por archivo, que
+es el mecanismo del 110; frenar la corrida entera por esto la haría más cara sin proteger más, y el 001 ya
+había establecido que abortar entero es una forma cara de conseguirlo.
+
+**Los tres pasos del daño, uno por uno.** Los tres quedaron cubiertos por aserciones:
+
+1. «no avisa nada, `--check` dice que está al día» → `--check` ahora sale **1** y nombra el archivo.
+2. «reemplaza el guard propio sin nombrarlo» → ahora imprime `conservado …: ya existía` y el contenido de
+   la empresa sigue en disco.
+3. «después lo registra como entregado por Cauce» → aserciado que la entrada **no** queda en el manifiesto,
+   que es lo que volvía irrecuperable la pérdida.
+
+**Tradeoff «puede volverse ruidosa, y no está medido cuántos avisos serían»** — medido acá: **cero avisos
+nuevos** en las 94 pruebas de instancia y ownership. La razón es la que el propio caso dejó anotada en su
+tabla: `init` registra 24 entradas de hooks, así que una instancia normal nunca cae en esta rama. El ruido
+sólo alcanza a la instancia sin manifiesto, que es exactamente la que el caso quería proteger.
+
+**Tradeoff de la opción 2** — no aplica: no se eligió.
+
+**Prioridad «baja a media el día que se establezca que no quedan instancias sin manifiesto»** — no se
+estableció y no se tocó. Contarlas sigue sin poder hacerse desde este repositorio; lo que este arreglo
+cambia es que ya no importa cuántas sean, porque ninguna pierde el archivo.
+
+### Lo que apareció y el caso no preveía
+
+**Había una prueba que aseveraba el defecto como si fuera lo correcto.**
+`test/instance/upgrade-own-guards.test.js` terminaba con «En una instancia anterior al registro, "sin
+huella" no dice nada: se actualiza como antes», y aserciaba que el guard propio quedaba pisado
+(`assert.equal(fs.readFileSync(chat, 'utf8'), shipped)`). O sea que el comportamiento estaba fijado por
+contrato, no sólo tolerado. Se invirtió esa aserción y se le escribió el porqué al lado.
+
+Vale decir cómo casi se pasa por alto: buscar `collisions` en `test/` no devuelve **nada**: ese archivo
+habla de «sin huella» y de «conservado», nunca de la función. Es la misma clase de contrato cruzado que
+hizo fallar CI entre el 114 y el 116, y la misma que el 126 encontró contra el 119.
+
+### Qué se corrió
+
+- **Rojo previo**, con el motor sin tocar: `tests 5, pass 3, fail 2`. Las dos fallas, por su motivo:
+  - el caso 110 devolvía `✓ Cauce 0.84.0 → 0.84.0 … planning, organization y todo lo propio quedaron
+    intactos` mientras pisaba el guard — la afirmación falsa que el caso denuncia, capturada literal;
+  - el caso 125 fallaba en su **primera** aserción: `upgrade --check` salía `0` en vez de `1`, que es el
+    paso 1 del daño.
+- **Verde**: `tests 94, pass 94, fail 0` sobre `test/instance/*.test.js` más `test/wiring/ownership.test.js`
+  —las dos pruebas antes rojas incluidas—. Se corrió el radio entero y no sólo el archivo tocado porque
+  `collisions()` lo consumen además `engine/automation/index.js:57` y `engine/cli/instance.js:283`.
+- **Mutación** (en copia desechable bajo el scratchpad de la sesión, R23): devolver el `continue` retirado
+  —una sola ocurrencia, verificada— deja `tests 5, pass 3, fail 2`, las mismas dos. Sin eso, el verde sólo
+  diría que las pruebas corren.
