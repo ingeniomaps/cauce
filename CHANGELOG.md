@@ -61,6 +61,25 @@ diseño — eso vive en el commit y en el código.
   `upgrade` no puede tocar ese archivo porque es tuyo, así que la línea sólo llega a las instancias nuevas;
   sin ella, el rastro te va a aparecer en `git status`. Es lo mismo que pasó con `planning/.push-log`.
 
+- **`check` te avisa si git no está ignorando los rastros locales de Cauce.** Son tres —
+  `planning/.verify-log`, `planning/.push-log` y `planning/.grant-log`— y no deben viajar: son evidencia de
+  una corrida tuya, de tu máquina. La línea que los cubre la trae el `.gitignore` que se escribe **al crear**
+  la instancia, y `upgrade` no lo toca porque ese archivo es tuyo y puede tener líneas propias. Así que una
+  instancia anterior a cada rastro nuevo se quedaba sin su línea para siempre y el archivo aparecía en
+  `git status` listo para commitearse.
+
+  Ahora `check` lo dice y nombra las rutas, que es lo que hay que pegar. Pregunta si git **los ignora**, no
+  si la línea está escrita: si ya los cubrís con una regla propia, no te molesta. Sin repositorio se calla.
+
+  **Si tu instancia ya existía, pegá estas tres líneas en tu `.gitignore`** — o dejá que `check` te diga
+  cuáles te faltan:
+
+  ```
+  planning/.verify-log
+  planning/.push-log
+  planning/.grant-log
+  ```
+
 ### Cambiado
 
 - **La guía dejó de pedirle al agente que borre una autorización que no escribió él.** `AGENTS.md` decía que
