@@ -1,14 +1,15 @@
 ---
 caso: 114
 titulo: Las dos llaves que deciden un push viven en un archivo que el agente puede escribir
-estado: abierto
+estado: resuelto
+resuelto-en: 0.83.0
 prioridad: media
 version-detectada: 0.82.0
 ---
 
 # 114 — `ops.config.json` no tiene guard, así que el permiso de push vale mientras el agente decida no tocarlo
 
-**🔴 abierto** · detectado en 0.82.0 · prioridad **media** — el push es lo único de los seis actos de R10 que
+**🟢 resuelto en 0.83.0** · detectado en 0.82.0 · prioridad **media** — el push es lo único de los seis actos de R10 que
 el motor comprueba, y lo comprueba contra un archivo que el agente escribe sin que nada se lo diga
 
 ## Resumen
@@ -130,8 +131,10 @@ Tres cosas, en orden:
   `workspace-boundary` lo da por bueno porque está **dentro** de la raíz declarada.
 - `engine/hooks/shell.js:339-346` — el guard `governance` frena commitear gobernanza, y su `governedPattern`
   no incluye `ops.config.json`: cubre `planning/rules/`, `adr/`, `PROTOCOL.md`, `METHODOLOGY.md`, `FLOW.md`,
-  `automatization/`, `engine/` y los contratos de cargo. Leído del fuente, sin correr: la reproducción de
-  arriba mide la escritura, no el commit.
+  `automatization/`, `engine/` y los contratos de cargo. La reproducción de arriba mide la escritura y no el
+  commit, así que esto se corrió aparte el 2026-09-11, sobre un banco nuevo con el archivo en el índice:
+  `governance` sale `exit=0` con `ops.config.json` staged y `exit=2` con `planning/rules/propia.md` staged.
+  El segundo es el contraste que separa «no lo cubre» de «el guard no llegó a ejecutarse».
 
 ## Fix propuesto
 
@@ -209,3 +212,130 @@ pasa con las llaves puestas.
   por rama» es exactamente lo que acá se puede escribir solo.
 - **112** — una aprobación consumida no deja rastro. Si el permiso se lo escribe el agente, no hay ni rastro
   ni aprobación: los dos casos se leen juntos el día que haya que reconstruir quién publicó qué.
+
+## Cierre
+
+**🟢 resuelto en 0.83.0** · `engine/hooks/ops-config.js` (nuevo), `engine/hooks/run.js`,
+`engine/hooks/shell.js`, `automatization/hooks/guard-ops-config.sh`,
+`automatization/hooks/guard-ops-config-shell.sh`, `automatization/hooks/README.md`,
+`test/wiring/hooks.test.js`, `test/tools/coverage-baseline.json`
+
+El dueño del repositorio eligió la opción **C** antes de construir. El guard salió en dos nombres sobre un
+solo módulo: `ops-config` mira lo que escribe una herramienta y `ops-config-shell` el destino de un comando.
+Son dos porque cada grupo cubre a cada guard una vez —lo exige una prueba que ya existía— y uno solo porque
+lo que deciden —cuál es el archivo, qué llave cambió y cómo se dice— es lo mismo.
+
+### Contra lo que el caso enumeró
+
+- **Resumen, «las dos llaves viven en un archivo que ningún guard mira»** — hecho: ahora lo mira
+  `ops-config`, que compara el contenido entrante contra el del disco y frena si cambian `runner.allowPush`
+  o `runner.pushToLiveBranches`.
+- **Resumen, «por `Write` o por `sed -i`»** — hecho por las dos vías: los pasos 2 y 3 de la reproducción
+  pasan de `exit=0` a `exit=2`.
+- **Reproducción y síntoma** — se corrieron tal cual están escritos, sobre un banco nuevo y antes de tocar
+  el motor: los seis pasos dan exactamente lo que el caso había pegado, `runner final` incluido. No hubo
+  nada que corregir.
+- **Causa raíz, las citas `archivo:línea`** — las diez líneas citadas se contrastaron contra el fuente y
+  todas resuelven a lo que el caso dice.
+- **Causa raíz, «`governance` no cubre `ops.config.json`, leído del fuente y sin correr»** — se corrió, y la
+  sección quedó actualizada con la salida y su contraste. Era lo único del caso afirmado sin ejecutar.
+- **Fix propuesto A, mover `pushToLiveBranches` a `.ops-approval`** — se decidió que no: el dueño eligió C.
+  A convierte un permiso permanente en una línea de un archivo que «se coteja, no se consume» y que `check`
+  avisa mientras exista, y deja `allowPush` —la otra llave— donde estaba.
+- **Fix propuesto B, proteger el archivo entero** — se decidió que no, y es justo lo que C evita:
+  repondría el candado que el 090 sacó, en el mismo archivo al que el límite de raíces manda a declarar la
+  ruta. Que no ocurrió tiene prueba: tres escrituras que cambian `workspaceRoots`, agregan
+  `writableOutsideRoots` y tocan otro campo pasan, y una prueba las fija.
+- **Fix propuesto C, proteger sólo los dos campos** — es lo construido. Su costo declarado, «decidir qué
+  hacer cuando el contenido entrante no es JSON válido», se decidió **frenando**, con la razón escrita en el
+  módulo: un `Edit` manda el fragmento que reemplaza y no el archivo, así que dejar pasar lo ilegible
+  apagaría el guard con la herramienta más común de todas, mientras que frenarlo deja una salida más cara
+  pero escrita —mandar el archivo entero, que sí se compara—.
+- **Fix propuesto C, «por shell no hay contenido que comparar»** — así quedó: `ops-config-shell` frena toda
+  escritura sobre el archivo, y por qué las dos mitades deciden distinto está escrito en el módulo, que es
+  donde se lee.
+- **Fix propuesto D, dejarlo como está y decirlo** — se decidió que no como salida, y su parte cierta se
+  conserva: R10 sigue diciendo que de sus seis actos el motor comprueba uno. No hizo falta acotar esa frase,
+  porque lo que la acotaba —que el archivo contra el que se comprueba se pudiera escribir solo— dejó de ser
+  cierto.
+- **El borde que las cuatro opciones dejaban abierto: «el mensaje del bloqueo nombra el campo»** — se miró,
+  y se cierra por mecanismo y no por redacción. El mensaje de `push.js` sigue nombrando
+  `runner.pushToLiveBranches`, que es correcto para la persona a quien le habla; lo que cambió es que el
+  agente que lea esa instrucción y la ejecute ahora se frena, que es exactamente lo que el caso decía que no
+  estaba medido. Los dos mensajes nuevos siguen la redacción de `HOW`: dejan el permiso como cosa de la
+  persona en vez de decirle al agente qué escribir.
+- **Tradeoff «cerrar esta vía no cierra las otras cinco de R10»** — se cumple y no se tocó nada de eso:
+  merge, deploy, tags y rollback siguen sin guard y R10 lo sigue diciendo. Esto cierra una vía de la única
+  que el motor comprueba; no promueve al conjunto.
+- **Tradeoff «B y C le cobran a la persona lo que le quitan al agente»** — se cumple acotado, y el acote
+  tiene prueba de los dos lados: lo que se cobra son dos cosas nombrables —cambiar esas dos llaves, y
+  escribir el archivo por shell—, y el resto del archivo pasa. La salida que el 089 y el 090 abrieron sigue
+  abierta por la herramienta de escritura.
+- **Tradeoff «A cambia dónde vive un permiso permanente»** — no aplica: no se tomó A, y `.ops-approval`
+  sigue siendo por operación.
+- **Tradeoff «ninguna opción alcanza a una instancia ya creada hasta que corra `upgrade`»** — se cumple a
+  medias, y la mitad que no conviene decirla: los runners registran el **grupo** —`guard-shell.sh` y
+  `guard-files.sh` delegan `pre-shell` y `pre-files`, y el grupo se expande dentro del motor—, así que una
+  instancia empieza a tener el guard en cuanto actualiza el paquete, sin shims nuevos. Lo que sí espera al
+  `upgrade` son los dos `guard-ops-config*.sh`, que `automation check` reclama hasta que estén. Verificado
+  leyendo los dos wrappers y corriendo la reproducción, que invoca los grupos y no los guards.
+- **Prioridad, «sube a alta el día que una instancia corra recorridos sin una persona mirando»** — esa
+  condición deja de aplicar a esta vía: el permiso ya no se escribe desde la sesión, haya alguien mirando o
+  no. Sigue aplicando a lo que este caso no cubre, que es el resto de R10.
+- **Relacionados, 103 y 108** — no se tocaron: la vía del chat y el permiso por rama siguen igual, y lo que
+  se cerró es que el agente pudiera escribirse el permiso que aquéllos introdujeron.
+- **Relacionados, 112** — sigue abierto y este arreglo no lo mueve: una aprobación consumida sigue sin dejar
+  rastro. Lo que sí cambia es que ahora no hay un permiso que el agente se haya escrito solo.
+
+### Qué se corrió
+
+- **La reproducción del caso, antes del arreglo**, sobre un banco nuevo creado con `init`: los seis pasos
+  reprodujeron la salida pegada en «Síntoma», con los pasos 2 y 3 en `exit=0`.
+- **La misma reproducción, después**, sobre otro banco nuevo:
+
+  ```
+  1 push a main, config intacta             : exit=2
+  2 Write sobre ops.config.json             : exit=2
+      BLOQUEADO: …/ops.config.json lleva las dos llaves que deciden qué push se publica,
+      runner.allowPush y runner.pushToLiveBranches, y este cambio las toca. Lo decide una persona (R10)…
+  3 sed -i sobre ops.config.json            : exit=2
+      BLOQUEADO: el comando escribe en …/ops.config.json, donde viven las dos llaves que deciden qué push
+      se publica… Un comando no dice con qué va a quedar el archivo…
+  4 Write sobre planning/.ops-approval      : exit=2
+  5 push a main, ya con pushToLiveBranches  : exit=2
+  6 push a main, con allowPush ademas       : exit=0
+  ```
+
+  Los pasos 5 y 6 siguen igual a propósito: la reproducción escribe la config con `fs` para medir el push,
+  y lo que este caso cierra es que llegue ahí por una herramienta del agente.
+- **`governance` sobre un commit**, que era lo que el caso afirmaba sin correr:
+
+  ```
+  commit con ops.config.json staged             : exit=0
+  commit con planning/rules/propia.md staged    : exit=2
+      BLOQUEADO: El commit toca gobernanza protegida.
+  ```
+- **El rojo previo**: las cuatro pruebas nuevas contra un `git archive` del commit base `2a651ad4`, con el
+  motor sin el guard: `tests 84, pass 80, fail 4`, las cuatro con `Hook desconocido: ops-config` y
+  `Hook desconocido: ops-config-shell`.
+- **Ocho mutaciones**, cada una en una copia desechable del árbol y comprobada aplicada antes de contar.
+  Ninguna sobrevivió:
+
+  ```
+  M1 la escritura nunca se compara   fail 3 → ROJA
+  M2 el contenido ilegible pasa      fail 1 → ROJA
+  M3 el comando no se frena          fail 2 → ROJA
+  M4 protege una sola llave          fail 4 → ROJA
+  M5 juzga cualquier archivo         fail 1 → ROJA
+  M6 el chat no exime                fail 1 → ROJA
+  M7 sale del grupo pre-files        fail 2 → ROJA
+  M8 sale del grupo pre-shell        fail 2 → ROJA
+  ```
+- **`npm test`**: 744 de 744, código 0. **`npm run ci`**: código 0, con 65 archivos en su piso de cobertura
+  o por encima.
+- **Cobertura del módulo nuevo**, medida dos veces con el mismo resultado y registrada como piso:
+  `engine/hooks/ops-config.js` 100 % de líneas, 96 % de ramas, 100 % de funciones.
+- **La pasada de comentarios de R11**, con la sonda al 0.22 que la convención describe: ningún párrafo del
+  código nuevo aparece por encima del umbral, ni contra el resto del repositorio ni contra sí mismo. El
+  único par que sí apareció lo atrapó la puerta en 0.45 —el comentario de la prueba nueva repetía la razón
+  del módulo— y se corrigió antes de seguir.

@@ -89,6 +89,8 @@ const SCAN = {
     secrets: { type: 'array', items: { type: 'string' } },
     // Los nombres que ya hay en Ideas: con `force` el arranque reescribe una instancia que ya tiene INBOX.
     inboxIdeas: { type: 'array', items: { type: 'string' } },
+    // La fecha que lleva la procedencia de lo que se escriba en Ideas (caso 115).
+    today: { type: 'string' },
   },
 }
 
@@ -114,7 +116,8 @@ const state = await agent(
   `dimension, and every service with its path, its runtimes, its declared commands keeping the source ` +
   `file each command came from, and the variable names its "env" carries. Add nothing it did not print.\n` +
   `2. "node tools/ops.js check planning".\n` +
-  `3. "node tools/ops.js context planning --json": copy its inbox.ideas into inboxIdeas, verbatim.\n` +
+  `3. "node tools/ops.js context planning --json": copy its inbox.ideas into inboxIdeas and its today ` +
+  `into today, both verbatim.\n` +
   `The inventory already names every credential each service expects: never open a .env file to look for ` +
   `more. Report those names in secrets and the services they point at in externals. A name the inventory ` +
   `carries is declared, and saying otherwise is a claim the repository contradicts.`,
@@ -196,11 +199,15 @@ phase('Epic')
 // Las preguntas abiertas van al INBOX con tope, y el tope lo aplica el recorrido: por eso las escribe
 // este paso con lo que el anterior devolvió, y no el anterior mientras las redactaba (caso 101). Las que
 // no entran se dicen al cerrar, que es donde la persona que arrancó la instancia las lee.
+// De qué vía salieron: este recorrido y la fecha del motor. Un arranque no tiene ni tarea ni informe que
+// nombrar, así que su procedencia son esas dos partes y nada más (caso 115). El log de las que no entran
+// se queda sin ella: quien lo lee está mirando la corrida que las produjo.
+const ORIGIN = inboxOrigin('onboard', state.today)
 const questions = (drafted.openQuestions || []).map(oneLine)
-const inboxed = questions.slice(0, INBOX_CAP)
+const inboxed = questions.slice(0, INBOX_CAP).map((one) => withOrigin(one, ORIGIN))
 const INBOX_ASK = inboxed.length
   ? `Registrá además en la sección Ideas de ${INBOX}, sin promover, estas preguntas abiertas: ` +
-    `${JSON.stringify(inboxed)}. ${inboxAsk(['Ideas'], { ideas: state.inboxIdeas || [] })}\n\n`
+    `${JSON.stringify(inboxed)}. ${inboxAsk(['Ideas'], { ideas: state.inboxIdeas || [] }, ORIGIN)}\n\n`
   : ''
 
 const epic = await agent(

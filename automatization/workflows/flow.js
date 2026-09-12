@@ -61,6 +61,8 @@ const MANIFEST = {
     conditionalAgents: { type: 'array', items: { type: 'string' } },
     // Con los nombres que ya hay en el INBOX, lo que el recorrido escribe al final no repite uno.
     inbox: INBOX_HEADS,
+    // La fecha, del mismo comando que trae los nombres (caso 115).
+    today: { type: 'string' },
     owners: { type: 'array', items: { type: 'object', additionalProperties: false, properties: {
       domain: { type: 'string' }, agent: { type: 'string' },
     } } },
@@ -164,7 +166,8 @@ const contract = await agent(
   `only ran on failure the destination came out of memory.\n` +
   `   If command 1 failed, set exists=false, report flows, and stop.\n` +
   `3. "node tools/ops.js agents list --json", which gives each role its resolved path.\n` +
-  `4. "node tools/ops.js context planning --json" — copy only its inbox field into inbox, verbatim.\n` +
+  `4. "node tools/ops.js context planning --json" — copy its inbox field into inbox and its today field ` +
+  `into today, both verbatim, and nothing else it printed.\n` +
   `Report exists=true and these manifest fields: name, purpose, outcome, entryAgent, facilitator, ` +
   `guardrails, decisionOwners flattened into owners as domain/agent pairs, and stages with id, phase, ` +
   `agent, produces, dependsOn and exitGate. Drop every other field the command printed — the schema ` +
@@ -200,6 +203,11 @@ const RULES = `${BASE}\n\nRecorrido ${contract.name}: ${contract.purpose}\n` +
   `${catalog.length ? `Recorridos que existen además de éste: ${catalog.join(', ')}. Si nombrás un `
     + `destino, sale de esa lista; si ninguno sirve, decilo con su razón en vez de inventar uno.\n` : ''}` +
   `Contexto de la empresa en ${WORKDIR}/organization/. Intención a evaluar: ${GOAL}`
+
+// De qué vía sale lo que este recorrido escriba en el INBOX: el recorrido, el equipo que lo corrió y la
+// fecha que dio el motor. En modo informe la unidad es el informe y esa rama arma la suya, porque es
+// donde queda la evidencia de lo que se anotó.
+const ORIGIN = inboxOrigin('flow', FLOW, contract.today)
 
 phase('Stages')
 
@@ -419,11 +427,13 @@ if (contract.outcome === 'report') {
   // El tope lo aplica el recorrido y no quien escribe, y lo que pasa de él ya está en el informe: al
   // INBOX va lo que alguien tiene que decidir, no todo lo que el informe dejó abierto (caso 101).
   const followUps = report.followUps || []
-  const listed = followUps.slice(0, INBOX_CAP).map((one) => ({ section: one.section, entry: oneLine(one.entry) }))
+  const reportOrigin = inboxOrigin('flow', report.file, contract.today)
+  const listed = followUps.slice(0, INBOX_CAP)
+    .map((one) => ({ section: one.section, entry: withOrigin(one.entry, reportOrigin) }))
   if (listed.length) {
     await agent(
       `${RULES}\n\nRegistrá en ${INBOX} estos seguimientos del informe ${report.file}, cada uno en su ` +
-      `sección y sin promover ninguno. ${inboxAsk(['Propuestas', 'Lecciones'], contract.inbox)} ` +
+      `sección y sin promover ninguno. ${inboxAsk(['Propuestas', 'Lecciones'], contract.inbox, reportOrigin)} ` +
       `Seguimientos: ${JSON.stringify(listed)}`,
       { label: 'report-inbox' },
     )
@@ -456,7 +466,8 @@ if (!epic) return stop('draft-unavailable', 'la propuesta de épica no devolvió
 if (epic.outcome === 'no-hacer') {
   await agent(
     `${RULES}\n\nRegistrá la conclusión en la sección Lecciones de ${INBOX}: por qué esta intención no ` +
-    `es viable hoy y qué la haría viable. ${inboxAsk(['Lecciones'], contract.inbox)} Motivo: ${epic.reason}`,
+    `es viable hoy y qué la haría viable. ${inboxAsk(['Lecciones'], contract.inbox, ORIGIN)} ` +
+    `Motivo: ${withOrigin(epic.reason, ORIGIN)}`,
     { label: 'inbox-lesson' },
   )
   return stop('no-viable', epic.reason)
@@ -467,7 +478,8 @@ if (epic.outcome === 'investigar') {
   await agent(
     `${RULES}\n\nRegistrá en ${HUMAN} qué hay que averiguar antes de poder decidir esta intención y quién ` +
     `puede hacerlo, sin inventar responsables ni fechas, y dejá la conclusión en la sección Ideas de ` +
-    `${INBOX} sin promoverla. ${inboxAsk(['Ideas'], contract.inbox)} Qué falta averiguar: ${epic.reason}`,
+    `${INBOX} sin promoverla. ${inboxAsk(['Ideas'], contract.inbox, ORIGIN)} ` +
+    `Qué falta averiguar: ${withOrigin(epic.reason, ORIGIN)}`,
     { label: 'investigar' },
   )
   return finish({ flow: FLOW, stages: handoffs.length, investigate: epic.reason, promoted: false })
