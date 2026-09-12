@@ -95,8 +95,8 @@
     "functions": 100
   },
   "engine/cli/dependency.js": {
-    "lines": 97,
-    "branches": 36,
+    "lines": 100,
+    "branches": 100,
     "functions": 100
   },
   "engine/cli/instance.js": {
