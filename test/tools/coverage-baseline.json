@@ -244,6 +244,11 @@
     "branches": 89,
     "functions": 100
   },
+  "engine/hooks/trail.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/integrations/proposals.js": {
     "lines": 100,
     "branches": 89,

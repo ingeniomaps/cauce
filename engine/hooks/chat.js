@@ -17,6 +17,13 @@ const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 const { opsRoot } = require('./input')
+const { readWip } = require('../planning/parser')
+const { runner } = require('../planning/claims')
+const TRAIL = require('./trail')
+
+// Dónde queda anotado lo que se concedió. Por qué el archivo es así y por qué no viaja, en `trail.js` y
+// en `template/gitignore`.
+const LOG = path.join('planning', '.grant-log')
 
 // El temporal y no la instancia: el texto de la persona no tiene por qué terminar en un commit, y una
 // orden dura lo que dura la sesión.
@@ -81,6 +88,16 @@ const ASKS = new Set(('lee leer abri abre abrir mostra muestra mostrar ensena ed
   + 'authorize authorized allow allowed permit permitted grant granted approved').split(' '))
 const ENCLITIC = /(?:selo|sela|melo|mela|telo|tela|los|las|lo|la|le|me)$/
 
+// El alcance que la persona ya escribe al conceder: «escribí X mientras dure la tarea t-014». Medido, de
+// esa frase sobrevivía la ruta y el acote se tiraba, así que la concesión valía la sesión entera aunque
+// alguien hubiera dicho hasta cuándo (caso 127).
+//
+// Exige la palabra `tarea` o `task` a propósito. Sin ella —«mientras dure esto», «for now»— no hay contra
+// qué comparar, y adivinar un alcance que nadie nombró concede de menos por una lectura propia. La lista
+// es corta por lo mismo que la de verbos: lo que no se reconoce no se pierde, vale lo de antes.
+const SCOPE = new RegExp(String.raw`(?:mientras dure|mientras siga|durante|s[oó]lo para|solo para|only for)`
+  + String.raw`\s+(?:la\s+|the\s+)?(?:tarea|task)\s+([\p{L}\p{N}][\p{L}\p{N}._-]*)`, 'iu')
+
 function asks(clause) {
   const words = clause.normalize('NFD').replace(/[̀-ͯ]/g, '').match(/[a-z]+/g) || []
   return words.some((word) => ASKS.has(word) || ASKS.has(word.replace(ENCLITIC, '')))
@@ -99,10 +116,22 @@ function mentions(text, item) {
       if (before && !/[\s'"`(/]/.test(before)) continue
       if (rest && !/^(?:[\s'"`),;:!?]|\.(?:\s|$)|$)/.test(rest)) continue
       const clause = lower.slice(0, at).split(CLAUSE).pop()
-      found.push({ denied: NEGATION.test(clause), asked: asks(`${clause} ${rest.split(CLAUSE)[0]}`) })
+      const frase = `${clause} ${rest.split(CLAUSE)[0]}`
+      found.push({
+        denied: NEGATION.test(clause),
+        asked: asks(frase),
+        // El alcance se lee de la misma frase que decide si la ruta fue pedida, y no del mensaje entero:
+        // un «mientras dure la tarea t-014» que hable de otra cosa, en otra oración, no acota a ésta.
+        scope: (frase.match(SCOPE) || [])[1] || '',
+      })
     }
   }
-  return { named: found.some((one) => one.asked && !one.denied), denied: found.some((one) => one.denied) }
+  const pedidas = found.filter((one) => one.asked && !one.denied)
+  return {
+    named: pedidas.length > 0,
+    denied: found.some((one) => one.denied),
+    scope: (pedidas.find((one) => one.scope) || {}).scope || '',
+  }
 }
 
 // Una orden de publicar se lee aparte, porque `mentions` compara también el basename: para el ítem
@@ -150,12 +179,16 @@ function record(input) {
       ? previous.pending.filter((item) => !mentions(text, item).denied)
       : []
     const granted = previous ? (previous.granted || []).filter((one) => !mentions(text, one).denied) : []
+    // El acote viaja con lo concedido: lo que se negó pierde las dos cosas a la vez, y nada queda con un
+    // alcance que ya no acota a nadie.
+    const scopes = {}
+    for (const one of granted) if (previous.scopes && previous.scopes[one]) scopes[one] = previous.scopes[one]
     fs.mkdirSync(DIR, { recursive: true })
     // Sobre qué instancia se está hablando, que es lo que después deja filtrar lo concedido: por qué hace
     // falta, en `grantedIn`.
     fs.writeFileSync(recordPath(input.session_id), JSON.stringify(
       { id: idOf(input), text, human, flow: flowCommand(text), root: opsRoot(input), approved, granted,
-        pending: [] }))
+        scopes, pending: [] }))
   } catch { /* registrar es un extra: si falla, los guards siguen frenando lo que frenaban */ }
 }
 
@@ -174,11 +207,35 @@ function said(input) {
 // había quedado frenado, o se lo concedieron antes en esta sesión. Qué cuenta como pedirlo depende de qué
 // se frena: un archivo se nombra, un push se ordena con su remoto y su rama.
 const named = (text, item) => mentions(text, item).named
+
+// Si el acote que la persona puso sigue en pie. Sin alcance no hay nada que comprobar y vale lo de
+// siempre —la sesión—, que es lo que decidió el 116; con alcance, vale mientras esa tarea sea la del WIP,
+// y `readWip` devuelve nada con el WIP en IDLE, así que «se cerró» se lee sin mecanismo nuevo.
+//
+// El orden importa y es el mismo que toma `files.js` con el plan: primero lo barato. Una concesión sin
+// alcance —el caso común— no paga ninguna lectura del planning.
+//
+// Sin WIP legible el alcance venció, y son el mismo caso tres cosas que parecen distintas: el WIP en
+// IDLE, el archivo que no está y el `planning` que no se puede leer. `readWip` las devuelve todas como
+// nada —su lectura traga el error—, así que acá no hay ninguna rama de excepción que atender, y vencer es
+// la dirección de la que se vuelve: quien lo necesite lo vuelve a pedir.
+//
+// Sin instancia resoluble no hay WIP contra el cual comparar, y eso no es lo mismo: el alcance se respeta,
+// porque revocar ahí sería castigar a quien trabaja fuera de una instancia por algo que no dijo.
+function scopeAlive(saved, item) {
+  const scope = (saved.scopes || {})[item]
+  if (!scope) return true
+  if (!saved.root) return true
+  const wip = readWip(path.join(saved.root, 'planning'), runner())
+  return Boolean(wip && String(wip.task).toLowerCase() === String(scope).toLowerCase())
+}
+
 function why(saved, item, asked, inherit) {
   if (asked(saved.text, item)) return 'orden'
   if (saved.approved.includes(item)) return 'dale'
   if (!inherit) return ''
-  return (saved.granted || []).includes(item) ? 'concedido' : ''
+  if (!(saved.granted || []).includes(item)) return ''
+  return scopeAlive(saved, item) ? 'concedido' : ''
 }
 
 // Lo que un guard dejó pasar queda anotado, que es la contracara de `hold`: hasta 0.82.0 sólo se anotaba
@@ -189,14 +246,22 @@ function why(saved, item, asked, inherit) {
 // Se anota el ítem **como el guard lo nombró** —la ruta en la forma que ese guard tiene a mano— y no el
 // archivo que hay detrás: es el mismo alcance que tiene una línea de `.ops-approval`, angosto de más
 // antes que de menos.
-function grant(input, saved, items) {
+function grant(input, saved, entries) {
   const before = saved.granted || []
-  const granted = [...new Set([...before, ...items])]
-  if (granted.length === before.length) return
+  const nuevas = entries.filter((one) => !before.includes(one.item))
+  if (!nuevas.length) return
+  const grantedAt = new Date().toISOString()
   try {
-    saved.granted = granted
+    saved.granted = [...before, ...nuevas.map((one) => one.item)]
+    saved.scopes = { ...(saved.scopes || {}) }
+    for (const one of nuevas) if (one.scope) saved.scopes[one.item] = one.scope
     fs.writeFileSync(recordPath(input.session_id), JSON.stringify(saved))
   } catch { /* sin anotarlo, se vuelve a pedir */ }
+  // Y queda el rastro, que es lo que el registro de la sesión no puede dar: muere con ella, y lo que una
+  // auditoría pregunta es quién concedió qué y con qué alcance, meses después (caso 127).
+  TRAIL.append(saved.root, LOG, nuevas.map((one) => ({
+    grantedAt, item: one.item, scope: one.scope || null, via: one.via, session: input.session_id || null,
+  })))
 }
 
 // Con qué autorización pasa cada uno de los que pasan. Lo pregunta quien necesita el porqué y no sólo el
@@ -217,9 +282,15 @@ function authorized(input, items, { asked = named, inherit = true } = {}) {
 function unauthorized(input, items) {
   const saved = said(input)
   if (!saved) return items
-  const passed = items.filter((item) => why(saved, item, named, true))
-  grant(input, saved, passed)
-  return items.filter((item) => !passed.includes(item))
+  const passed = items.map((item) => ({ item, via: why(saved, item, named, true) })).filter((one) => one.via)
+  // El alcance sale del mensaje cuando es éste el que lo concede, y del registro cuando se hereda: una
+  // orden vieja no se reinterpreta contra un texto que no la nombraba.
+  grant(input, saved, passed.map((one) => ({
+    ...one,
+    scope: one.via === 'orden' ? mentions(saved.text, one.item).scope : (saved.scopes || {})[one.item] || '',
+  })))
+  const cleared = new Set(passed.map((one) => one.item))
+  return items.filter((item) => !cleared.has(item))
 }
 
 // Lo mismo sin conceder y sin heredar: lo que no está en el mensaje en curso queda pendiente aunque la
