@@ -1,14 +1,15 @@
 ---
 caso: 116
 titulo: Lo que autorizás en el chat deja de valer en cuanto mandás el mensaje siguiente
-estado: abierto
+estado: resuelto
 prioridad: alta
 version-detectada: 0.82.0
+resuelto-en: 0.83.0
 ---
 
 # 116 — La autorización del chat dura un mensaje, así que lo mismo se frena una y otra vez
 
-**🔴 abierto** · detectado en 0.82.0 · prioridad **alta** — es fricción en el camino principal, y la salida
+**🟢 resuelto en 0.83.0** · detectado en 0.82.0 · prioridad **alta** — es fricción en el camino principal, y la salida
 barata que deja es la insegura: apagar el guard para toda la sesión con una variable de entorno
 
 ## Resumen
@@ -126,3 +127,83 @@ falla es que deje de valer al mensaje siguiente.
   duele porque el permiso se pierde, allá porque no se puede reconstruir quién lo dio.
 - **114** — el permiso de push vive en un archivo sin guard. Los tres dibujan el mismo mapa: dónde vive un
   permiso, cuánto dura y qué rastro deja.
+
+## Cierre
+
+Recorrido contra el caso entero, no contra «Fix propuesto».
+
+- **Resumen, «la autorización no sobrevive al mensaje siguiente»** — arreglado. La reproducción del caso,
+  corrida tal cual en un banco desechable, antes y después del arreglo:
+
+      antes (main 2a651ad4)              después (esta rama)
+      D) vuelve a leer el .env : exit=2  D) vuelve a leer el .env : exit=0
+
+  El paso D es el que el caso señalaba como el defecto, y es el único de los seis que cambió.
+
+- **Resumen, «te obliga a repetir la frase exacta o a contestar dale cada vez»** — ya no: en la misma
+  corrida, los pasos C y D muestran que un mensaje cualquiera en el medio deja de frenar lo autorizado.
+  Lo que no cambió es lo que la persona no pidió: eso se sigue frenando igual.
+
+- **Resumen, «contradice lo que el proyecto declara»** — cerrado por el mismo arreglo: lo que ella pide
+  directo en el chat no se vuelve a frenar mientras la sesión siga y ella no lo niegue.
+
+- **Reproducción** — se corrió tal cual. Se le agregaron dos pasos que el caso no traía —G, «no toques el
+  .env», y H, el reintento— porque la decisión incluía que la negación revoque y sin ellos eso no se medía.
+  Con el arreglo puesto, H da `exit=2`: la negación revoca y lo revocado no vuelve solo.
+
+- **Síntoma** — la salida pegada en el caso se reprodujo idéntica. El caso la había medido sobre `main`
+  4a60e24f y acá se volvió a medir sobre 2a651ad4, la base de esta rama: mismo resultado.
+
+- **Causa raíz** — las cuatro citas se contrastaron contra el fuente de la base y las cuatro son exactas:
+  `chat.js:123-136` (`record`), `chat.js:161-169` (`hold`), `chat.js:141-147` (`said`) y
+  `approval.js:46-49` (`pending`). Ninguna necesitó corrección.
+
+- **Fix propuesto, opción 1** — es la que el dueño decidió y la que se construyó: lo que un guard deja
+  pasar queda anotado como `granted` y se hereda mensaje a mensaje. Las otras tres quedan descartadas:
+  la 2 («vigencia por tarea») pedía inventar un concepto de tarea que el chat no tiene; la 3 («lista por
+  sesión sin revocación») es lo mismo que la 1 pero sin poder revocar, que es justo lo que el tradeoff
+  del acote pedía; la 4 («mejorar el mensaje») no cierra nada, como el propio caso dice.
+
+- **El detalle fino que el caso dejaba abierto** — decidido acá, y escrito en el código:
+  - **Qué se anota**: el ítem *tal como el guard lo nombró*, que es la ruta en la forma que ese guard
+    tiene a mano. Es el mismo alcance que ya tiene una línea de `.ops-approval`; la misma credencial
+    nombrada de dos formas son dos concesiones, y se prefirió angosto de más antes que de menos.
+  - **Cuándo deja de valer**: al cerrarse la sesión —el registro vive en el temporal y es por sesión—, o
+    cuando la persona lo niega. Además no vale nunca para un subagente, para CI ni para un recorrido de
+    Cauce, porque eso ya lo decidía `said` y no se tocó.
+  - **Qué lo revoca**: la negación, leída con `mentions`, que es lo que el caso proponía. Se hereda aun
+    cuando el mensaje no lo escribió una persona —un aviso del runner en el medio no le quita a nadie lo
+    que autorizó— y la negación se aplica venga de donde venga, porque revocar es la dirección segura.
+  - **Qué no se concede**: la publicación. Volver a leer lo que ya se leyó no agrega consecuencia y volver
+    a publicar sí, así que una orden de push vale para esa operación (R10). Es una decisión mía sobre el
+    alcance, no sobre el mecanismo, y está probada por su propio caso.
+
+- **Tradeoff «lo que se gana en fluidez se pierde en acote»** — es el que gobernó las cuatro decisiones de
+  arriba: el permiso sigue siendo por ítem, por sesión, revocable, y sin alcanzar a publicar.
+
+- **Tradeoff «la fricción empuja a la salida peor»** — la fricción que empujaba a
+  `OPS_SECRETS_READ_OVERRIDE=1` se fue. La variable **no se tocó**: sigue existiendo y sigue apagando el
+  guard para toda la sesión. Sacarla es otra decisión y no la pedía este caso.
+
+- **Tradeoff «lo que se anote hay que poder auditarlo»** — es el **112**, resuelto en esta misma versión y
+  sobre este mismo mecanismo: lo que acá se anota como concedido es lo que allá alimenta el rastro.
+
+- **Prioridad** — se mantuvo alta y lo que la sostenía era el segundo tradeoff, que es el que cerró.
+
+- **Relacionados** — el **112** cierra junto a éste. El **114** (el permiso de push vive en un archivo sin
+  guard) **sigue abierto**: este arreglo no lo toca y no lo empeora, porque la publicación no se concede.
+  El **098** y el **109** quedan como estaban: este cambio no toca qué cuenta como pedir algo.
+
+- **Lo que el caso no preveía** — dos cosas, y las dos son parte del arreglo:
+  - Una prueba existente afirmaba el comportamiento viejo con todas las letras («la aprobación era de esa
+    respuesta: el mensaje siguiente empieza de cero»). No se borró: se reescribió al contrato nuevo, que
+    es lo único que hace visible que lo que cambió fue una decisión y no un descuido.
+  - `self-approval` también preguntaba por esta vía, y conceder ahí habría convertido «agregá src/x.js a
+    .ops-approval» en permiso para escribirle después cualquier otra línea a la aprobación —aprobarse solo
+    por la puerta de al lado—. Se lo movió a preguntar sin conceder.
+
+- **Cómo se probó** — cinco mutaciones sobre copias desechables, cada una apagando a mano una parte del
+  arreglo, y todas en rojo: no heredar lo concedido (2 pruebas), heredar sin filtrar la negación (3), que
+  lo que pasa no quede concedido (2), que lo concedido no cuente como autorización (2) y que preguntar
+  también conceda —o sea, que la publicación heredara— (3). Las pruebas nuevas se vieron en rojo contra un
+  `git archive` de la base antes del arreglo. `npm test` 747/747 y `npm run ci` en 0.
