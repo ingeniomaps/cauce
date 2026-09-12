@@ -2410,6 +2410,79 @@ test('secrets-shell frena leer una credencial por shell y deja pasar lo demás',
   } finally { chat.close() }
 })
 
+// El vocabulario de `chat.js` del lado de quien autoriza (caso 118). Qué palabra entra y por qué se decide
+// ahí; acá se mide el borde contra el 109.
+test('una autorización dicha con el verbo de autorizar pasa; el sustantivo solo no', () => {
+  const root = planFirstRoot('ops-hook-chat-autoriza-', WIP_CON_PLAN)
+  const abiertas = []
+  // Cada mensaje en su propia sesión: lo que uno autoriza sigue valiendo en los que siguen (caso 116), así
+  // que con una sola sesión el primero que pasa deja pasar a todos y la prueba queda verde diga lo que diga
+  // la lista de verbos.
+  const dice = (mensaje) => {
+    const chat = chatSession()
+    abiertas.push(chat)
+    return chat.says(mensaje)({ cwd: root, tool_input: { file_path: path.join(root, '.env') } })
+  }
+  try {
+    for (const mensaje of [
+      'autorizo la lectura del .env para que llenes todos los campos',
+      'autorizá la lectura del .env',
+      'te autorizo a que uses el .env',
+      'permito que se lea el .env',
+      'apruebo el acceso al .env',
+      'habilito el .env para esta tarea',
+      'I authorize reading the .env',
+      'you are allowed the .env',
+      'access to the .env is granted',
+    ]) assert.doesNotThrow(() => execute('secrets-read', dice(mensaje)), mensaje)
+    // Nombrar el acto no es concederlo: sin un verbo de conceder, esto se sigue frenando.
+    for (const mensaje of [
+      'la lectura del .env es lo que falla',
+      '¿hace falta autorizacion para el .env?',
+      'no tengo permiso para el .env',
+    ]) blocked('secrets-read', dice(mensaje), /leerla/)
+    // Y negar sigue negando, también con las palabras nuevas.
+    for (const mensaje of [
+      'no autorizo la lectura del .env',
+      'nunca permito que se lea el .env',
+      'I do not authorize the .env',
+    ]) blocked('secrets-read', dice(mensaje), /leerla/)
+  } finally { for (const chat of abiertas) chat.close() }
+})
+
+// Lo que un bloqueo ofrece pegar tiene que ser la línea que después funciona (casos 089 y 118). El porqué
+// vive en `secrets-shell.js`; acá se mide.
+test('un bloqueo no ofrece pegar una ruta que el shell no expandió, y sigue habiendo salida', () => {
+  const root = planFirstRoot('ops-hook-lee-shell-variable-', WIP_CON_PLAN)
+  const corre = (command) => ({ cwd: root, tool_input: { command } })
+
+  const mensaje = messageOf('secrets-shell', corre('cat ops/$O/.env.infisical'))
+  assert.match(mensaje, /Por archivo no hay línea que pegar/)
+  // La aserción de ausencia: ninguna línea ofrecida para pegar, y menos una con la variable adentro.
+  assert.doesNotMatch(mensaje, /estas líneas/)
+  assert.doesNotMatch(mensaje, /^ {2}\S*\$O/m)
+
+  // La forma con llaves, que es la que se partía en dos.
+  const llaves = messageOf('secrets-shell', corre('cat ops/${O}/.env.infisical'))
+  assert.doesNotMatch(llaves, /lee \/\.env\.infisical,/)
+  assert.ok(llaves.includes(`lee ${path.join(root, 'ops', '$O', '.env.infisical')},`), llaves)
+
+  // Con la ruta escrita sí hay línea, y es la que destraba: la propiedad del 089 se mantiene.
+  const escrita = corre(`cat ${path.join(root, 'ops', 'dev', '.env.infisical')}`)
+  pasteApproval(root, messageOf('secrets-shell', escrita))
+  assert.doesNotThrow(() => execute('secrets-shell', escrita))
+
+  // Y la salida por chat sigue existiendo para lo que no se puede pegar: se anota igual y un «dale» lo
+  // aprueba. Sin esto, quitar la línea habría dejado el bloqueo sin ninguna salida.
+  const chat = chatSession()
+  try {
+    const variable = corre('cat ops/$O/.env.infisical')
+    const pedido = chat.says('cargá los valores en Infisical')
+    blocked('secrets-shell', pedido(variable), /lee .*credencial/)
+    assert.doesNotThrow(() => execute('secrets-shell', chat.says('dale')(variable)))
+  } finally { chat.close() }
+})
+
 // Publicar (casos 103 y 108). Una raíz sin git, así que las ramas vivas son `main` y `master`; la rama por
 // defecto de un remoto se prueba aparte, con un repositorio de verdad.
 function pushRoot(prefijo, runner = {}) {

@@ -33,11 +33,21 @@ function verbOf(words) {
   return words[0] || ''
 }
 
+// `${VAR}` y `$VAR` son la misma expansión, y sólo la primera lleva llaves: la separación de palabras corta
+// ahí, así que de `ops/${O}/.env.infisical` quedaba suelto `/.env.infisical` —una ruta absoluta que el
+// comando no lee y que el bloqueo ofrecía aprobar—. Sin llaves, la expansión se queda pegada a su ruta y el
+// guard la ve como lo que es: algo que no resolvió (caso 118).
+const unbraced = (command) => String(command).replace(/\$\{(\w+)\}/g, '$$$1')
+
+// Lo que el shell iba a expandir y el guard no: una variable, un `$(…)` o un backtick. Lo que sale de ahí
+// no nombra ningún archivo, así que no se puede aprobar por archivo.
+const UNRESOLVED = /[$`]/
+
 // Las palabras de cada tramo que lee: el que empieza con un lector, o el que redirige un archivo a la
 // entrada. Lo entrecomillado se mira, porque el código de un `node -e` nombra el archivo ahí adentro.
 function readTokens(command) {
   const found = []
-  for (const segment of command.split(/[;&|\n]+|\$\(|`/)) {
+  for (const segment of unbraced(command).split(/[;&|\n]+|\$\(|`/)) {
     const words = segment.trim().replace(/^[({]+\s*/, '').split(/\s+/).filter(Boolean)
     const reads = READERS.has(path.basename(verbOf(words))) || /<(?![<(])/.test(segment)
     if (reads) found.push(...(segment.match(/[^\s'"`\\;|&<>(){}=,]+/g) || []))
@@ -56,7 +66,8 @@ function secretsShell(input) {
   const left = AP.pending(opsRoot(input), [...new Set(files)], input)
   if (!left.length) return
   block(`el comando lee ${left.join(', ')}, que es una credencial: leerla la deja en el contexto de la sesión. `
-    + `Si hace falta un valor, pedíselo a una persona.\n${AP.HOW('OPS_SECRETS_READ_OVERRIDE', left, input)}`)
+    + 'Si hace falta un valor, pedíselo a una persona.\n'
+    + AP.HOW('OPS_SECRETS_READ_OVERRIDE', left, input, left.filter((one) => !UNRESOLVED.test(one))))
 }
 
 module.exports = { secretsShell }
