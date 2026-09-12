@@ -214,6 +214,11 @@
     "branches": 84,
     "functions": 100
   },
+  "engine/hooks/ops-config.js": {
+    "lines": 100,
+    "branches": 96,
+    "functions": 100
+  },
   "engine/hooks/push.js": {
     "lines": 100,
     "branches": 97,

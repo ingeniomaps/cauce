@@ -604,4 +604,4 @@ function verifyGates(root, dir, sinAprobar, env, input) {
     + AP.HOW('OPS_SKIP_VERIFY', sinAprobar, input))
 }
 
-module.exports = { destructive, gitAdd, dependencies, governance, verify, shellBoundary, run }
+module.exports = { destructive, gitAdd, dependencies, governance, verify, shellBoundary, run, writesWithBase }
