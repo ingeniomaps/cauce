@@ -85,14 +85,36 @@ function validateMigrations(migrations, errors) {
   }
 }
 
+// Lo que la configuración tiene de dudoso y no de inválido. Va aparte de `validateOpsConfig` porque lo que
+// aquélla devuelve son errores y la leen también los guards: una advertencia ahí sería un rechazo.
+//
+// Hoy sólo el nombre repetido: dos raíces con el mismo `name` dejan dos servicios indistinguibles en
+// `check`, `onboard` y `scan`, y una credencial que no se puede atribuir a ninguno (caso 113). Avisa y no
+// falla porque nadie eligió su `name` pensando que fuera único, así que rechazarlo le rompería la puerta a
+// una instancia que hoy funciona, y lo que está en juego es un nombre ambiguo, no algo que se pierda.
+function configWarnings(config) {
+  const roots = Array.isArray(config && config.workspaceRoots) ? config.workspaceRoots : []
+  const found = []
+  const named = new Map()
+  for (const workspace of roots) {
+    const name = workspace && typeof workspace.name === 'string' ? workspace.name.trim() : ''
+    if (!name) continue
+    if (named.has(name)) {
+      found.push(`ops.config.json: ${name} nombra dos raíces (${named.get(name)} y ${workspace.path}): `
+        + 'sus servicios salen con el mismo nombre. Renombrá una')
+    } else named.set(name, workspace.path)
+  }
+  return found
+}
+
 function validateWorkspaces(workspaces, errors) {
   if (!Array.isArray(workspaces) || !workspaces.length) {
     errors.push('ops.config.json: workspaceRoots debe contener al menos una raíz')
     return
   }
-  // El `name` de una raíz es con lo que el inventario nombra a sus servicios, así que dos iguales dejan
-  // dos servicios indistinguibles y una credencial que no se puede atribuir a ninguno (caso 113).
-  const seen = new Map()
+  // El nombre repetido no se rechaza acá: lo avisa `check`, que es quien puede hacerlo sin romperle la
+  // puerta a una instancia que hoy funciona (caso 113). Este validador lo leen también los guards, y lo
+  // que devuelve son errores: meterlo acá era decidir que la configuración es inválida.
   for (const [index, workspace] of workspaces.entries()) {
     if (!workspace || typeof workspace !== 'object' || Array.isArray(workspace)) {
       errors.push(`ops.config.json: workspaceRoots[${index}] debe ser un objeto`)
@@ -108,15 +130,8 @@ function validateWorkspaces(workspaces, errors) {
     if ('verify' in workspace && (typeof workspace.verify !== 'string' || !workspace.verify.trim())) {
       errors.push(`ops.config.json: workspaceRoots[${index}].verify debe ser el comando, o no estar`)
     }
-    const name = typeof workspace.name === 'string' ? workspace.name.trim() : ''
-    if (!name) {
+    if (typeof workspace.name !== 'string' || !workspace.name.trim()) {
       errors.push(`ops.config.json: workspaceRoots[${index}].name es obligatorio`)
-    } else if (seen.has(name)) {
-      errors.push(`ops.config.json: workspaceRoots[${index}].name "${name}" es el mismo que el de `
-        + `workspaceRoots[${seen.get(name)}]: el nombre de la raíz es el que nombra a sus servicios, así `
-        + 'que dos iguales los vuelven indistinguibles. Renombrá una')
-    } else {
-      seen.set(name, index)
     }
     if (typeof workspace.path !== 'string' || !workspace.path.trim()) {
       errors.push(`ops.config.json: workspaceRoots[${index}].path es obligatorio`)
@@ -168,4 +183,4 @@ function validateRunner(runner, errors) {
   }
 }
 
-module.exports = { validateOpsConfig }
+module.exports = { configWarnings, validateOpsConfig }
