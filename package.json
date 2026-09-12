@@ -34,8 +34,7 @@
     "coverage": "bash test/tools/coverage.sh",
     "coverage:update": "bash test/tools/coverage.sh --update",
     "dead-code": "node test/tools/dead-code.js",
-    "dead-code:engine": "node test/tools/dead-code.js --engine",
-    "ci": "npm run check && npm run automation:check && npm run integration:check && npm run dead-code:engine && npm run coverage",
+    "ci": "npm run check && npm run automation:check && npm run integration:check && npm run dead-code && npm run coverage",
     "prepublishOnly": "npm run ci"
   },
   "engines": {

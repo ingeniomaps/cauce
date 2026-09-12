@@ -24,15 +24,22 @@
 // documento que alguien siga, y nombra de paso lo que el cargo leyó. Misma razón por la que
 // `repo.test.js` lo excluye de su propio barrido.
 //
-// Y el costo, que es lo que decide qué entra en `ci`. Una suite se corre sola, así que un import suyo
-// cuesta una corrida chica: 332 corridas, varios minutos, y por eso ese modo queda fuera. El motor no
-// tiene suite propia —cualquier archivo de `test/` puede ejercerlo—, así que confirmar exige la suite
-// entera: 21 s por binding y 192 bindings, más de una hora. De ahí el lote: si sacar todos los
+// Y el costo, que es lo que decide qué entra en `ci`. Los dos modos de import cuentan primero y confirman
+// después: el conteo propone y la corrida decide, así que en un repositorio sano no se paga ninguna.
+// Medido el 2026-09-12 sobre las suites: **522 bindings, 0 candidatos**. Confirmar uno cuesta distinto de
+// cada lado y por eso el motor va en lote: una suite se corre sola —0,88 s—, mientras que el motor no
+// tiene suite propia y confirmar un binding suyo exige la entera, 45 s. De ahí el lote: si sacar todos los
 // candidatos juntos deja la suite verde, entonces cada uno por separado también, porque sacar menos es
 // un subconjunto de sacar todos.
 //
-// En el caso normal no hay ninguna corrida. Sin candidatos no hay nada que confirmar y los dos escaneos
-// terminan en milisegundos: ése es el caso que corre en cada `ci`.
+// Hasta 0.86.0 el modo de suites confirmaba **los 522** y por eso quedaba fuera de `ci`: seis minutos que
+// nadie iba a pagar en cada corrida. El precio de que quedara fuera era que no corría nunca, y así
+// entraron tres imports muertos que se encontraron a mano (caso 128). Contar antes lo vuelve gratis.
+//
+// Lo que se cede, y conviene saberlo: el conteo es una expresión regular, así que un nombre escrito
+// dentro de un string lo da por usado —pasó con `run` adentro de `--dry-run`— y ese import muerto se
+// escapa. Es un barrido que corre siempre y puede perder alguno, en vez de uno exhaustivo que no corre:
+// contrastado contra el árbol anterior al arreglo del 128, el conteo marca los tres que había.
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -298,23 +305,25 @@ function checkExports(sources) {
   return { dead, runs, scope }
 }
 
+// Cada candidato se confirma contra **su propia suite** y no contra todas: es lo que separa este modo del
+// del motor, donde un binding puede usarlo cualquier archivo de `test/`. Acá el consumidor es el archivo
+// mismo, así que la corrida que decide es la suya y cuesta menos de un segundo.
 function checkSuites() {
   const files = walk(SUITES, (name) => name.endsWith('.test.js'))
+  const found = candidates(files)
+  const scope = `${found.length} candidato(s) en ${files.length} suite(s)`
+  if (!found.length) return { dead: [], runs: 0, scope }
+
   const dead = []
   let runs = 0
-  for (const file of files) {
-    const found = bindings(fs.readFileSync(path.join(ROOT, file), 'utf8').split('\n'))
-    // Una línea por suite y no un indicador con \r: la salida se lee igual en terminal que en un log.
-    console.log(`  ${file.padEnd(34)} ${found.length} binding(s)`)
-    for (const binding of found) {
-      strip([{ file, ...binding }])
-      const ok = green(path.join(ROOT, file))
-      restoreAll()
-      runs++
-      if (ok) dead.push(label({ file, ...binding }))
-    }
+  for (const binding of found) {
+    strip([binding])
+    const ok = green(path.join(ROOT, binding.file))
+    restoreAll()
+    runs++
+    if (ok) dead.push(label(binding))
   }
-  return { dead, runs, scope: `${runs} binding(s) en ${files.length} suite(s)` }
+  return { dead, runs, scope }
 }
 
 function checkEngine() {
@@ -354,10 +363,10 @@ function repoSources() {
   return sources
 }
 
-const engineOnly = process.argv.includes('--engine')
-const results = engineOnly
-  ? [checkEngine(), checkExports(repoSources())]
-  : [checkSuites(), checkEngine(), checkExports(repoSources())]
+// Los tres barridos, siempre. Hubo un modo `--engine` que salteaba las suites, y existía porque ésas
+// costaban seis minutos; con el conteo por delante la diferencia quedó en once milisegundos —medido—, así
+// que mantener dos caminos ya no compraba nada.
+const results = [checkSuites(), checkEngine(), checkExports(repoSources())]
 const dead = results.flatMap((result) => result.dead)
 for (const result of results) console.log(`${result.scope}, ${result.runs} corrida(s).`)
 if (!dead.length) {

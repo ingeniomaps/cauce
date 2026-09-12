@@ -74,5 +74,6 @@ importa. Un import se confirma sacándolo y corriendo; un export se decide busc�
 entero, porque su uso vive en otro archivo y tiene que nombrarlo. De ahí que lo que se quiere público
 alcance con documentarlo: mencionarlo es lo que lo salva del barrido.
 
-La mitad del motor entra en `ci` —sin candidatos no corre nada y termina en milisegundos—; la de las
-suites tarda minutos, una corrida por binding, y se corre a mano cuando se mueven imports.
+**Las dos mitades entran en `ci`** desde 0.86.0: sin candidatos no corre ninguna suite y termina en
+milisegundos, así que no hace falta acordarse de correrlo. Qué cuesta cada confirmación y qué se cede al
+contar antes de confirmar está en el encabezado de `dead-code.js`, que es donde se decide.
