@@ -43,6 +43,9 @@ diseño — eso vive en el commit y en el código.
   push. La fecha se llama `authorizedAt` y no `at` a propósito: el hook corre antes del comando, así que la
   línea dice que el push **se autorizó**, no que se haya publicado.
 
+  El anillo «Local» de `planning/delivery/teamwork.md` lo nombra junto al resto de lo que no viaja por git.
+  Ese archivo lo mantiene Cauce, así que `upgrade` te lo reemplaza: si lo editaste, mirá el diff antes.
+
   **Qué cambia para vos**: si necesitás responder quién autorizó un push y cuándo, ahora hay de dónde
   sacarlo, en la máquina donde corrió la sesión —el rastro dice la sesión y la vía, no el nombre de la
   persona: Cauce no tiene identidad de usuario—. Las instancias nuevas lo traen gitignoreado; si ya tenés
@@ -61,6 +64,20 @@ diseño — eso vive en el commit y en el código.
   caracteres más por entrada: el tope de 240 pasó a medir la línea entera, así que lo que cede es el texto
   del hallazgo y nunca el origen.
 
+### Cambiado
+
+- **Lo que autorizás en el chat no alcanza a los gates de un commit.** Lo que un guard deja pasar porque
+  vos lo pediste sigue valiendo mientras dure la sesión, con dos excepciones: publicar, y los gates de un
+  commit —`governance`, `verify` y `dependencies`—, que preguntan cada vez. Lo que autoriza un commit no
+  dice nada del siguiente, porque el índice ya es otro. Por el mismo motivo, nombrar `ops.config.json` una
+  vez ya no deja escribir `runner.allowPush` ni `runner.pushToLiveBranches` por el resto de la sesión: ahí
+  también se pregunta cada vez.
+
+  **Qué cambia para vos**: si commiteás varias veces seguidas tocando gobernanza, con un gate en rojo o con
+  un manifiesto sin su lockfile, vas a decir «dale» en cada commit en vez de una vez por sesión. Lo que no
+  es un gate de commit —leer un `.env`, reescribir una migración, borrar una prueba— sigue valiendo toda la
+  sesión.
+
 ### Corregido
 
 - **Lo que autorizás en el chat ya no deja de valer con el mensaje siguiente.** Hasta 0.82.0 el permiso
@@ -69,14 +86,28 @@ diseño — eso vive en el commit y en el código.
   pediste queda anotado y sigue valiendo mientras la sesión siga. Lo revoca decirlo: «no toques el .env» lo
   saca, y lo revocado no vuelve solo.
 
-  El permiso sigue siendo angosto: vale para el ítem tal como el guard lo nombra, no cruza de sesión, no
-  alcanza a un subagente ni a un recorrido de Cauce, y **no alcanza a publicar** — una orden de push vale
-  para esa operación y no para el mensaje siguiente, porque volver a leer lo que ya se leyó no agrega
-  consecuencia y volver a publicar sí.
+  El permiso sigue siendo angosto: vale para el ítem tal como el guard lo nombra, no cruza de sesión y no
+  alcanza a un subagente ni a un recorrido de Cauce. Y **no alcanza a lo que vuelve a tener consecuencia
+  cada vez**: publicar y los gates de un commit, que preguntan siempre —ver la entrada de abajo—. Volver a
+  leer lo que ya se leyó no agrega consecuencia; volver a publicar, o commitear otra vez con otro índice,
+  sí.
 
   **Qué cambia para vos**: si trabajás con credenciales o con rutas que los guards vigilan, alcanza con
   pedirlo una vez por sesión en lugar de repetir la frase o contestar «dale» a cada rato. Si querés cortar
   un permiso antes de cerrar la sesión, decilo nombrando el archivo.
+
+- **El agente no puede escribir en tu aprobación una línea que vos no pediste.** `planning/.ops-approval`
+  sólo lo podía escribir el agente si vos nombrabas el archivo en el chat, y ahí se terminaba el control:
+  pedías agregar `src/login.js` y podía escribir `push origin main`, que es la línea que autoriza publicar
+  en la rama viva. Ahora lo que se escribe se compara línea por línea con lo que pediste: pasan las que
+  nombraste, y cualquier otra frena la escritura mostrándote cuál era. Las que ya estaban en el archivo no
+  hay que volver a nombrarlas, y quitar líneas no pide permiso. Por shell —un `echo >>`, un `sed -i`— el
+  archivo queda cerrado: un comando no dice con qué va a quedar, así que no hay contenido que comparar.
+
+  **Qué cambia para vos**: si le pedís al agente que te agregue rutas, nombralas en el mismo mensaje
+  —«agregá `src/login.js` y `src/altas.js` a `.ops-approval`»—; si frena, te dice exactamente qué línea
+  quería escribir y un «dale» aprueba esa y nada más. Vos seguís editando el archivo a mano como siempre,
+  que ningún guard mira. Esto venía desde 0.82.0, así que si actualizás desde ahí, cerrás de paso esa vía.
 
 ## [0.82.0] - 2026-09-11
 
