@@ -14,6 +14,10 @@ planning/.verify-log
 # la sesión que publicó.
 planning/.push-log
 
+# El rastro de lo que se concedió en el chat, por lo mismo que el de arriba: una concesión se consume sin
+# dejar nada, y quién la dio y con qué alcance se pregunta en la máquina donde ocurrió la conversación.
+planning/.grant-log
+
 # El plan de cada runner. Es de la máquina que lo corre —existe para recuperar una ejecución
 # interrumpida, y nadie más puede retomarla— y cambia en cada paso, así que compartirlo es un conflicto
 # por commit a cambio de nada. Lo que el equipo sí necesita saber vive en `planning/claims/`.

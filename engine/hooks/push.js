@@ -19,12 +19,12 @@
 //
 // El `--force` no llega hasta acá: lo frena `destructive` antes, sin override (R8).
 
-const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { block, cwdOf, gitDirectory, opsRoot, configOf } = require('./input')
 const AP = require('./approval')
 const CHAT = require('./chat')
+const TRAIL = require('./trail')
 
 // Lo que va entre `git push` y el fin del comando. El salto de línea corta igual que `;`, por lo que
 // `destructive` explica en MISMO.
@@ -130,28 +130,16 @@ function workMessage(items, input) {
 // El rastro de las aprobaciones que publicaron: una línea por push que pasó porque alguien lo autorizó.
 // Una aprobación se consume sin dejar nada —un «dale» publica y al mensaje siguiente ya no queda quién lo
 // autorizó— y un push no vuelve atrás, así que «quién, a qué rama y cuándo» no tenía de dónde salir
-// (caso 112).
+// (caso 112). Qué garantiza el archivo —que sólo agrega, que no frena si falla— está en `trail.js`.
 //
-// Sólo agrega, a diferencia del registro de gates, que es rodante: lo que una auditoría pregunta es
-// justamente la entrada vieja.
-//
-// No guarda el texto de la persona. La vía y la sesión alcanzan para reconstruir qué pasó, y el texto se
-// queda en el temporal, que es donde el 098 decidió dejarlo.
-//
-// Y anota la autorización, no el resultado: este hook corre antes del comando, así que un push que después
-// falla queda registrado igual. Por eso la fecha se llama `authorizedAt` y no `at`: leer la línea como
-// «esto se publicó» afirmaría algo que el hook no puede saber.
+// Acá se decide una sola cosa, y es del push: anota la autorización, no el resultado. Este hook corre
+// antes del comando, así que un push que después falla queda registrado igual. Por eso la fecha se llama
+// `authorizedAt` y no `at`: leer la línea como «esto se publicó» afirmaría algo que el hook no puede saber.
 const LOG = path.join('planning', '.push-log')
 
 function trail(root, session, entries) {
-  if (!root) return
-  try {
-    const authorizedAt = new Date().toISOString()
-    const file = path.join(root, LOG)
-    fs.mkdirSync(path.dirname(file), { recursive: true })
-    fs.appendFileSync(file, `${entries
-      .map((one) => JSON.stringify({ authorizedAt, ...one, session: session || null })).join('\n')}\n`)
-  } catch { /* el push ya estaba autorizado: no lo frena un registro que no se pudo escribir */ }
+  const authorizedAt = new Date().toISOString()
+  TRAIL.append(root, LOG, entries.map((one) => ({ authorizedAt, ...one, session: session || null })))
 }
 
 // Un destino en la forma en que se anota. Sin remoto ni rama resolubles va `null`, que es exactamente lo

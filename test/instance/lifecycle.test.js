@@ -55,6 +55,7 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   assert.match(ignore, /node_modules\//, 'la dependencia no entra a la historia de la empresa')
   assert.match(ignore, /\.env/, 'ni sus credenciales')
   assert.match(ignore, /planning\/\.push-log/, 'ni el rastro local de lo que se autorizó publicar')
+  assert.match(ignore, /planning\/\.grant-log/, 'ni el de lo que se concedió en el chat')
   const version = () => JSON.parse(fs.readFileSync(path.join(consumer, 'ops.config.json'), 'utf8')).cauceVersion
   const born = version()
   assert.ok(born, 'la instancia recuerda de qué versión salió')

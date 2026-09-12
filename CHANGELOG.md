@@ -45,6 +45,22 @@ diseño — eso vive en el commit y en el código.
   avisaba, y por una concesión que vale toda la sesión no decía nada. Ahora lista las dos. Lo que concediste
   trabajando en otra instancia no se le cuenta a ésta.
 
+- **Podés acotar una concesión diciendo hasta cuándo vale, y Cauce te hace caso.** Si al autorizar algo
+  escribís «mientras dure la tarea t-014», esa concesión deja de valer en cuanto esa tarea ya no sea la de
+  tu WIP, en vez de durar toda la sesión. Ya lo escribías y se perdía: de esa frase sobrevivía la ruta y el
+  acote se tiraba.
+
+  Hace falta la palabra `tarea` o `task` —«mientras dure la tarea t-014», «only for task t-014»—, porque sin
+  ella no hay contra qué comparar. Lo que no se reconoce no se pierde: vale lo de antes, la sesión entera.
+
+- **Lo que concedés en el chat deja un rastro local en `planning/.grant-log`.** Una línea por concesión, con
+  la fecha, el alcance, la vía y la sesión; **no guarda lo que escribiste**. Es el mismo molde que
+  `planning/.push-log`: sólo agrega, y sirve para contestar meses después quién autorizó qué.
+
+  **Si tu instancia ya existía, agregale a mano esta línea a tu `.gitignore`:** `planning/.grant-log`.
+  `upgrade` no puede tocar ese archivo porque es tuyo, así que la línea sólo llega a las instancias nuevas;
+  sin ella, el rastro te va a aparecer en `git status`. Es lo mismo que pasó con `planning/.push-log`.
+
 ### Cambiado
 
 - **La guía dejó de pedirle al agente que borre una autorización que no escribió él.** `AGENTS.md` decía que
