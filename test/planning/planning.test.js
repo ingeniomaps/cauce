@@ -4,7 +4,7 @@
 // contrato se mira desde afuera — los parsers y validadores que lo sostienen se prueban directo en
 // `contracts.test.js` y sus hermanas, donde se ve *por qué* falla; acá, *que* falle.
 
-const { tempRoot, run, TEST_RUNNER, wipPath, writeWip } = require('../support/environment')
+const { tempRoot, run, wipPath, writeWip } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
