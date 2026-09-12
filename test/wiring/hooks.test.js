@@ -2625,10 +2625,22 @@ test('lo que la persona pide nombrando ops.config.json pasa por las dos vías', 
       pidio({ cwd: root, tool_input: { file_path: file, content: conLlave } })))
     assert.doesNotThrow(() => execute('ops-config-shell',
       pidio({ cwd: root, tool_input: { command: `sed -i s/false/true/ ${file}` } })))
-    // Otro mensaje, que no lo nombra, no alcanza.
+    // Un mensaje cualquiera en el medio **no** lo revoca: lo que la persona autorizó sigue valiendo
+    // mientras la sesión siga (caso 116). Esta prueba nació antes de eso y afirmaba lo contrario; el
+    // cruce apareció en CI, con las dos ramas mergeadas y no en ninguna de las dos sola.
     const otro = chat.says('seguí con la tarea')
-    blocked('ops-config', otro({ cwd: root, tool_input: { file_path: file, content: conLlave } }), LLAVES)
+    assert.doesNotThrow(() => execute('ops-config',
+      otro({ cwd: root, tool_input: { file_path: file, content: conLlave } })))
+    // Lo que sí frena: que ella lo niegue, y que otra sesión no haya pedido nada. Las dos mitades son las
+    // que este guard existe para sostener —sin pedido de una persona, las llaves no se escriben—.
+    const nego = chat.says('no toques ops.config.json')
+    blocked('ops-config', nego({ cwd: root, tool_input: { file_path: file, content: conLlave } }), LLAVES)
   } finally { chat.close() }
+  const ajena = chatSession()
+  try {
+    const nadaPidio = ajena.says('seguí con la tarea')
+    blocked('ops-config', nadaPidio({ cwd: root, tool_input: { file_path: file, content: conLlave } }), LLAVES)
+  } finally { ajena.close() }
 })
 
 test('el guard de ops.config.json corre en los dos grupos, que es por donde llegan las dos vías', () => {
