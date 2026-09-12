@@ -18,6 +18,20 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Autorizar en el chat ahora se dice como se dice.** Un guard dejaba pasar lo que pedías con un verbo de
+  acción —«leé el .env», «usá esa ruta»— y se seguía frenando si lo decías autorizando: «autorizo la
+  lectura del .env» no traía ninguna palabra que Cauce reconociera, así que había que repetirlo con otras
+  palabras, contestar «dale», o escribir la línea a mano. Entran las formas con que una persona concede, en
+  español y en inglés: `autorizo`, `autorizá`, `te autorizo`, `permito`, `apruebo`, `habilito`,
+  `authorize`, `allow`, `grant`, `approved`.
+
+  Lo que **no** cambia es la línea de siempre: nombrar algo no lo autoriza. Los sustantivos que nombran el
+  acto —«la lectura del .env», «¿hace falta autorizacion?»— siguen sin autorizar nada, porque aparecen
+  igual en una pregunta que no pide nada. Y negar sigue negando, también con las palabras nuevas.
+
+  **Qué cambia para vos**: si autorizás algo diciendo que lo autorizás, pasa a la primera. Antes eso
+  costaba una vuelta, y a veces terminaba en la variable que apaga el guard para toda la sesión.
+
 - **El permiso de push ya no se lo puede escribir el agente.** `runner.allowPush` y
   `runner.pushToLiveBranches` deciden qué push se publica y viven en `ops.config.json`, que hasta ahora
   ningún guard miraba: el bloqueo que dice «esto lo decide una persona» se levantaba editando ese mismo
@@ -79,6 +93,17 @@ diseño — eso vive en el commit y en el código.
   sesión.
 
 ### Corregido
+
+- **Un bloqueo ya no te ofrece pegar una ruta que el shell no expandió.** Cuando el comando nombra la
+  credencial a través de una variable —`cat ops/$O/.env.infisical`—, Cauce no puede saber qué archivo es:
+  esa variable la expande tu shell, que es otro proceso. Antes el bloqueo ofrecía igual esa línea para
+  `planning/.ops-approval`, y pegarla no servía: sólo volvía a valer si el comando se repetía escrito
+  igual, y dejaba de valer apenas alguien escribía la ruta de verdad. Con la forma `${O}` era peor, porque
+  la línea ofrecida ni siquiera era el archivo que el comando lee. Ahora no la ofrece, dice por qué y qué
+  hacer.
+
+  **Qué cambia para vos**: lo que un bloqueo te ofrece pegar es siempre una línea que después funciona. Si
+  armás la ruta con variables, escribila entera en ese comando —o contestá «dale», que destraba igual—.
 
 - **Lo que autorizás en el chat ya no deja de valer con el mensaje siguiente.** Hasta 0.82.0 el permiso
   duraba un mensaje: pedías leer el `.env`, el agente lo leía, y apenas escribías cualquier otra cosa
