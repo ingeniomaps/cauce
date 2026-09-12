@@ -27,6 +27,15 @@ diseño — eso vive en el commit y en el código.
   `"pushToLiveBranches": ["main"]` en `runner` de `ops.config.json`, o pegá `push origin main` en
   `planning/.ops-approval` para un push puntual.
 
+- **R10 y el párrafo de publicación de `AGENTS.md` se reescribieron.** Los dos decían que el push se
+  comprueba contra `runner.allowPush` y nada más; ahora dicen lo que de verdad comprueba el motor: esa llave
+  —que no llega a la rama viva sin `runner.pushToLiveBranches`, ni a un subagente— o la orden que la persona
+  da en el chat nombrando el remoto y la rama. Los dos archivos los mantiene Cauce, así que `upgrade` los
+  reemplaza enteros.
+
+  **Qué cambia para vos**: nada que hacer. Si tu equipo cita R10 en algún documento propio, el texto que
+  baja ahora es más largo y dice qué sostiene un guard y qué sostiene una persona.
+
 ### Corregido
 
 - **Nombrar algo en el chat ya no lo autoriza: hay que pedirlo.** Desde 0.81.0, lo que nombrabas en el chat
