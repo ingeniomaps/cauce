@@ -76,10 +76,14 @@ function credential(input, raw) {
     : ''
 }
 
+// Escribir una credencial se autoriza igual que leerla. `secrets-read` consulta la aprobación desde 0.80.0
+// y éste frenaba sin ofrecer nada, así que la misma persona podía aprobar leer su `.env` y no podía aprobar
+// escribirlo. La asimetría no la decidió nadie (caso 117).
 function secrets(input) {
   for (const file of filesOf(input)) {
     const reason = credential(input, file)
-    if (reason) block(`${file} ${reason}`)
+    if (!reason || approved(input, file)) continue
+    block(`${file} ${reason}\n${AP.HOW(null, [file], input)}`)
   }
 }
 
@@ -105,9 +109,10 @@ function secretsRead(input) {
 function integrationSnapshot(input) {
   for (const raw of filesOf(input)) {
     const file = raw.replace(/\\/g, '/')
-    if (/(?:^|\/)integrations\/[^/]+\/staging\/(?:.+\/remote\.json|sync-state\.json)$/.test(file)) {
-      block(`${file} pertenece al sincronizador. Cura draft.md; no edites snapshots a mano.`)
-    }
+    if (!/(?:^|\/)integrations\/[^/]+\/staging\/(?:.+\/remote\.json|sync-state\.json)$/.test(file)) continue
+    if (approved(input, raw)) continue
+    block(`${file} pertenece al sincronizador. Cura draft.md; no edites snapshots a mano.\n`
+      + AP.HOW(null, [raw], input))
   }
 }
 
@@ -115,9 +120,10 @@ function generated(input) {
   for (const raw of filesOf(input)) {
     const file = raw.replace(/\\/g, '/')
     const base = path.basename(file)
-    if (/(?:^|[._-])generated\.[^.]+$/i.test(base) || /(?:^|[._-])gen\.(?:go|ts|js|py)$/i.test(base)) {
-      block(`${file} parece código generado. Modifica su fuente y ejecuta el generador; no lo edites a mano.`)
-    }
+    if (!/(?:^|[._-])generated\.[^.]+$/i.test(base) && !/(?:^|[._-])gen\.(?:go|ts|js|py)$/i.test(base)) continue
+    if (approved(input, raw)) continue
+    block(`${file} parece código generado. Modifica su fuente y ejecuta el generador; no lo edites a mano.\n`
+      + AP.HOW(null, [raw], input))
   }
 }
 
@@ -342,6 +348,7 @@ function engineWrites(input) {
   for (const raw of filesOf(input)) {
     const file = path.resolve(cwdOf(input), raw)
     if (file !== pkg && !file.startsWith(`${pkg}${path.sep}`)) continue
+    if (approved(input, raw)) continue
     block(`${raw} pertenece al motor de Cauce, que llega por npm.\n` +
       'Un cambio acá lo borra el próximo install y mientras tanto corrés un motor que no coincide ' +
       'con la versión que declarás. Para traer una versión nueva son dos pasos —el motor y después ' +

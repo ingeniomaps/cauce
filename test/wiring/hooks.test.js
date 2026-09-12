@@ -71,6 +71,44 @@ test('guard-destructive bloquea pérdida o publicación y permite lecturas', () 
   }
 })
 
+// Hasta 0.83.0 estas reglas no tenían ninguna salida —ni variable, ni línea en el archivo, ni «dale»—, así
+// que `docker compose down` pedido con todas las letras se frenaba igual que si lo hubiera decidido el
+// agente (caso 117). Las de R8 no entran acá: reescribir historia publicada y `rm -r` sobre la raíz o el
+// home siguen sin salida, y por qué está escrito en `destructive`.
+test('destructive deja pasar lo que la persona pidió, y sigue cerrado en lo que R8 prohíbe', () => {
+  const corre = (command) => ({ tool_input: { command } })
+  const chat = chatSession()
+  try {
+    for (const [command, motivo] of [
+      ['git reset --hard', /destruye cambios locales/],
+      ['git clean -fd', /borra archivos sin seguimiento/],
+      ['docker compose down', /stack Compose/],
+      ['docker system prune', /limpieza global de Docker/],
+      ['git restore .', /no sólo lo que estás mirando/],
+    ]) {
+      // Sin nadie que lo haya pedido se frena como siempre: lo que cambia es que ahora hay salida.
+      blocked('destructive', corre(command), motivo)
+      assert.doesNotThrow(() => execute('destructive', chat.says(`corré ${command}`)(corre(command))), command)
+    }
+  } finally { chat.close() }
+
+  // Los negativos van en una sesión nueva y no es cosmético: lo que un guard deja pasar queda concedido y
+  // se hereda (caso 116), así que en la sesión de arriba `git reset --hard` ya estaría autorizado y esta
+  // prueba pasaría diga lo que diga el guard. Es el mismo recaudo que toma la prueba del 118.
+  const otra = chatSession()
+  try {
+    // Nombrarlo sin pedirlo no autoriza, igual que en el resto de los guards (caso 109).
+    blocked('destructive', otra.says('¿qué hace git reset --hard?')(corre('git reset --hard')),
+      /destruye cambios locales/)
+    // Y lo que R8 prohíbe no se abre ni pidiéndolo: son las dos ramas que el comentario de arriba exceptúa.
+    blocked('destructive', otra.says('corré git push --force origin main')(corre('git push --force origin main')),
+      /reescribe historia ya publicada/)
+    blocked('destructive', otra.says('corré git commit --amend')(corre('git commit --amend')),
+      /reescribe un commit ya creado/)
+    blocked('destructive', otra.says('corré rm -rf /')(corre('rm -rf /')), /catastrófico/)
+  } finally { otra.close() }
+})
+
 // La mitad que importa es que `true` deje pasar: `allowPush` existía sólo para el validador, el guard
 // bloqueaba igual, y un cargo que lo leyó dio por imposible un push que nadie había configurado.
 // Sin raíz —lo que pasa en este mismo repositorio, que no tiene `planning/`— no hay permiso que leer.
@@ -321,6 +359,39 @@ test('guards de archivos protegen secretos y snapshots, pero permiten plantillas
   assert.doesNotThrow(() => execute('generated', { tool_input: { file_path: '/project/src/client.go' } }))
 })
 
+// Los tres tenían la misma forma que `secrets-read` y ninguna de sus salidas: `secrets-read` consultaba la
+// aprobación desde 0.80.0 y estos frenaban sin ofrecer nada, así que escribir una credencial no se podía
+// autorizar ni pidiéndolo, mientras que leerla sí (caso 117).
+test('los guards de archivo dejan pasar el archivo que la persona nombró', () => {
+  const at = (file) => ({ tool_input: { file_path: file } })
+
+  // Y su bloqueo no ofrece ninguna variable, porque no tienen apagado por sesión: anunciar el permiso más
+  // ancho cuando alcanza el angosto es lo que hizo que la variable quedara como la vía a mano (caso 089).
+  // El contraste con `secrets-read`, que sí tiene una, es lo que prueba que el cambio es condicional.
+  assert.doesNotMatch(messageOf('secrets', at('/project/.env.production')), /La variable/)
+  assert.match(messageOf('secrets-read', at('/project/.env')), /OPS_SECRETS_READ_OVERRIDE/)
+  const chat = chatSession()
+  try {
+    for (const [guard, file] of [
+      ['secrets', '/project/.env.production'],
+      ['generated', '/project/api/client_generated.go'],
+      ['integration-snapshot', '/project/integrations/jira/staging/KEY-1/remote.json'],
+    ]) {
+      assert.doesNotThrow(() => execute(guard, chat.says(`editá ${file}`)(at(file))), guard)
+    }
+  } finally { chat.close() }
+
+  // En sesión nueva, por lo mismo que en `destructive`: lo concedido arriba se hereda y taparía el negativo.
+  const otra = chatSession()
+  try {
+    // Nombrar sin pedir no autoriza, y la negación revoca: las dos mitades que el 109 y el 116 fijaron.
+    blocked('secrets', otra.says('¿el /project/.env.production tiene algo raro?')(at('/project/.env.production')),
+      /parece contener secretos/)
+    blocked('secrets', otra.says('no toques /project/.env.production')(at('/project/.env.production')),
+      /parece contener secretos/)
+  } finally { otra.close() }
+})
+
 // El guard decide sobre el contenido entrante, así que hay dos ejes que se pueden romper por separado:
 // reconocer el archivo como prueba y reconocer la marca que la apaga. Se prueban los dos, y sobre todo
 // que un archivo que no es de prueba pueda decir "skip" sin que nadie lo frene.
@@ -551,6 +622,15 @@ test('guard-engine protege el motor instalado y deja trabajar al toolkit', () =>
     /pertenece al motor de Cauce/)
   // Lo que sí es suyo sigue abierto: el guard no puede volverse un candado general.
   assert.doesNotThrow(() => execute('engine', { cwd: root, tool_input: { file_path: 'agents/roles/mio.md' } }))
+
+  // Y si la persona lo pide, pasa: el guard cuida que el agente no parchee el motor por su cuenta, no que
+  // ella no pueda tocarlo a sabiendas (caso 117).
+  const motor = 'node_modules/@ingeniomaps/cauce/engine/cli/ops.js'
+  const chat = chatSession()
+  try {
+    assert.doesNotThrow(() => execute('engine',
+      chat.says(`editá ${motor}`)({ cwd: root, tool_input: { file_path: motor } })))
+  } finally { chat.close() }
 
   // En el toolkit el motor es el producto: acá editarlo es el trabajo, no una infracción.
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ mode: 'toolkit' }))
