@@ -129,11 +129,18 @@ Recorrido de lo que el caso enumeró:
   `workspaceRoots` quedó como su proyección a rutas. Así `inventory` tiene el nombre y el contrato de
   `onboard --json` no se mueve.
 - **Fix propuesto, «el prefijo es el `name`»** — hecho tal cual.
-- **Fix propuesto, «un error si dos entradas repiten `name`»** — hecho en `validateWorkspaces`, con el
-  índice de las dos entradas adentro del mensaje: `ops.config.json: workspaceRoots[1].name "keycloak" es el
-  mismo que el de workspaceRoots[0]: el nombre de la raíz es el que nombra a sus servicios, así que dos
-  iguales los vuelven indistinguibles. Renombrá una`. Compara el nombre sin espacios a los lados, que es lo
-  mismo que ya miraba la validación de obligatoriedad.
+- **Fix propuesto, «un error si dos entradas repiten `name`»** — **hecho distinto: avisa, no falla.** Se
+  hizo primero como el caso lo proponía, en `validateWorkspaces`, y el 2026-09-11 el dueño del repositorio
+  lo cambió antes de publicar: el choque salió de `validateOpsConfig` —que devuelve errores y lo leen
+  también los guards— y pasó a ser una advertencia de `check`
+  (`engine/cli/planning.js`): `ops.config.json: keycloak nombra dos raíces (../gouduet/keycloak y
+  ../hypixo/keycloak): sus servicios salen con el mismo nombre. Renombrá una`.
+
+  La razón es la del tradeoff siguiente, mirada desde quien actualiza: nadie eligió su `name` pensando que
+  fuera único, así que fallar convierte la primera señal de 0.82.0 en una puerta en rojo, y lo que está en
+  juego —un servicio con nombre ambiguo— no pierde nada mientras tanto. Lo fija una prueba de `check` que
+  asercia las dos mitades, que avisa y que **no** falla; sin esa segunda mitad, devolverlo a `errors`
+  pasaría la suite entera.
 - **Tradeoff «cambia el nombre que se ve cuando la carpeta y el `name` difieren»** — se asume: es el punto
   del cambio. Donde coinciden, que es la forma más común, no cambia nada, y la prueba con `../api` y
   `../web` que ya existía lo fija.
@@ -141,9 +148,10 @@ Recorrido de lo que el caso enumeró:
   `engine/cli/wiring.js:164`, que es el campo `roots` de `onboard --json`, y el propio `inventory`. Ningún
   otro archivo del repositorio lo llama. Con `declaredRoots` aparte, `roots` sigue emitiendo rutas; lo fijan
   una aserción propia y la mutación M5.
-- **Tradeoff «la unicidad rompe la validación de una instancia que hoy repite `name`»** — se asume tal como
-  el caso lo escribió: el `check` de esa instancia pasa a fallar y el arreglo es renombrar una raíz. Va al
-  CHANGELOG como lo que hay que hacer, que es donde lo lee quien actualiza.
+- **Tradeoff «la unicidad rompe la validación de una instancia que hoy repite `name`»** — **no se asume: se
+  evitó.** Era el costo de la forma propuesta, y por eso el choque quedó como advertencia. El `check` de una
+  instancia que hoy repite un nombre sigue pasando, con el aviso adentro, y el CHANGELOG dice que se
+  renombre cuando se pueda en vez de mandar a arreglarlo para poder actualizar.
 - **Contexto de descubrimiento** — el aviso de tope del 102 (`keycloak (21 de 61), keycloak (16 de 56)`)
   sale del mismo `service.path` que el de credenciales, así que se arregla con esto y no había un segundo
   defecto que tocar. Comprobado leyendo `orphanCredentials`: `cut` y `orphans` usan el mismo campo.
