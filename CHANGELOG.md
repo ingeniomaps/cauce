@@ -14,6 +14,70 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.83.0] - 2026-09-11
+
+### Agregado
+
+- **El permiso de push ya no se lo puede escribir el agente.** `runner.allowPush` y
+  `runner.pushToLiveBranches` deciden qué push se publica y viven en `ops.config.json`, que hasta ahora
+  ningún guard miraba: el bloqueo que dice «esto lo decide una persona» se levantaba editando ese mismo
+  archivo, con la herramienta de escritura o con un `sed -i`. Lo cierran dos guards nuevos: `ops-config`
+  compara lo que se va a escribir contra lo que hay en disco y frena si cambia alguna de esas dos llaves,
+  y `ops-config-shell` frena toda escritura por shell sobre el archivo, porque un comando no dice con qué
+  va a quedar.
+
+  **Qué cambia para vos**: el resto de `ops.config.json` —`workspaceRoots`, `writableOutsideRoots`,
+  `migrations`, lo que sea— se sigue editando igual que siempre; sólo esas dos llaves pasan a necesitar una
+  persona, que las pone editando el archivo ella o pidiéndoselo al agente en el chat nombrando
+  `ops.config.json`. Por shell el archivo queda cerrado entero: ese cambio va por la herramienta de
+  escritura y con el archivo completo, que es lo único que el guard puede comparar. Si tu runner registra
+  los guards de a uno en vez de por grupo, corré `automation install` para que aparezcan
+  `guard-ops-config.sh` y `guard-ops-config-shell.sh`.
+
+- **Un push aprobado deja constancia en `planning/.push-log`.** Cuando Cauce deja pasar un `git push` por
+  una aprobación —la orden en el chat, un «dale», o la línea exacta en `planning/.ops-approval`— anexa una
+  línea con la fecha en que se autorizó, el remoto, la rama, por qué vía y la sesión. Por
+  `runner.allowPush` no anota nada: esa autorización ya está escrita en `ops.config.json`.
+
+  El archivo sólo agrega, no guarda el texto de lo que escribiste, y si no se puede escribir no frena el
+  push. La fecha se llama `authorizedAt` y no `at` a propósito: el hook corre antes del comando, así que la
+  línea dice que el push **se autorizó**, no que se haya publicado.
+
+  **Qué cambia para vos**: si necesitás responder quién autorizó un push y cuándo, ahora hay de dónde
+  sacarlo, en la máquina donde corrió la sesión —el rastro dice la sesión y la vía, no el nombre de la
+  persona: Cauce no tiene identidad de usuario—. Las instancias nuevas lo traen gitignoreado; si ya tenés
+  una, agregá `planning/.push-log` a tu `.gitignore`.
+
+- **Lo que un recorrido deja en el INBOX dice ahora de qué vía entró.** Cada línea que `autobuild`, `flow` y
+  `onboard` le pasan al agente que escribe viene con su procedencia al final —`(autobuild · t-012 ·
+  2026-09-11)`, `(flow · planning/reports/2026-09-11-alta.md · 2026-09-11)`, `(onboard · 2026-09-11)`—: el
+  recorrido, la unidad de la que salió y la fecha. La arma el recorrido y el pedido dice que se copie tal
+  cual, en vez de confiar en que el agente se acuerde de escribirla. El formato de una entrada no cambió ni
+  el molde tampoco, así que `ops tree`, `check` y `context --json` siguen leyendo exactamente lo mismo.
+
+  **Qué cambia para vos**: nada que hacer. Al recorrer el INBOX vas a ver el origen en lo que se escriba de
+  acá en adelante; lo que ya tenés escrito no lo gana, y una entrada que escribas a mano sigue sin él,
+  porque el INBOX es tuyo. Si en algún lado recortás el ancho de esas líneas, contá entre 20 y 60
+  caracteres más por entrada: el tope de 240 pasó a medir la línea entera, así que lo que cede es el texto
+  del hallazgo y nunca el origen.
+
+### Corregido
+
+- **Lo que autorizás en el chat ya no deja de valer con el mensaje siguiente.** Hasta 0.82.0 el permiso
+  duraba un mensaje: pedías leer el `.env`, el agente lo leía, y apenas escribías cualquier otra cosa
+  —«gracias, seguí»— el mismo archivo volvía a frenarse. Ahora lo que un guard deja pasar porque vos lo
+  pediste queda anotado y sigue valiendo mientras la sesión siga. Lo revoca decirlo: «no toques el .env» lo
+  saca, y lo revocado no vuelve solo.
+
+  El permiso sigue siendo angosto: vale para el ítem tal como el guard lo nombra, no cruza de sesión, no
+  alcanza a un subagente ni a un recorrido de Cauce, y **no alcanza a publicar** — una orden de push vale
+  para esa operación y no para el mensaje siguiente, porque volver a leer lo que ya se leyó no agrega
+  consecuencia y volver a publicar sí.
+
+  **Qué cambia para vos**: si trabajás con credenciales o con rutas que los guards vigilan, alcanza con
+  pedirlo una vez por sesión en lugar de repetir la frase o contestar «dale» a cada rato. Si querés cortar
+  un permiso antes de cerrar la sesión, decilo nombrando el archivo.
+
 ## [0.82.0] - 2026-09-11
 
 ### Cambiado
