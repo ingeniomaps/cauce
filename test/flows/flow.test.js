@@ -22,6 +22,8 @@ function baseScript() {
     'flow-contract': {
       exists: true, name: 'feasibility-review', purpose: 'decidir si vale el esfuerzo',
       outcome: 'epic', entryAgent: 'product-manager', facilitator: 'product-manager',
+      // La fecha, tal como la devuelve el motor.
+      today: '2026-09-12',
       guardrails: ['No promover al BACKLOG.'],
       owners: [{ domain: 'producto', agent: 'product-manager' }],
       stages: [
@@ -369,6 +371,34 @@ test('los seguimientos de un informe entran al INBOX con tope, forma y nombres',
   assert.match(inbox, /en Lecciones ya están ya-aprendido/, 'y los nombres que ya hay')
   assert.equal(result.followUps, 3)
   assert.equal(result.unlisted, 2, 'lo que no entró se cuenta')
+})
+
+// Caso 115. En modo informe la unidad de la que salió el seguimiento es el informe, que es donde quedó
+// la evidencia: quien recorra el INBOX dentro de tres meses tiene qué abrir.
+test('un seguimiento dice de qué informe salió y de cuándo', async () => {
+  const contract = { ...baseScript()['flow-contract'], outcome: 'report' }
+  const { prompts } = await runFlow({
+    'flow-contract': contract,
+    'report-write': { file: 'planning/reports/x.md', followUps: [{ section: 'Lecciones', entry: 'seguir-a' }] },
+  })
+  const inbox = prompts.find((one) => one.key === 'report-inbox').prompt
+  assert.match(inbox, /seguir-a \(flow · planning\/reports\/x\.md · 2026-09-12\)/, 'la línea trae su origen')
+  assert.match(inbox, /tal cual, sin reescribirla/, 'y se pide copiarla, no redactarla')
+})
+
+// Las otras dos salidas no producen informe, así que lo que nombran es el equipo que las corrió.
+test('la lección y la idea nombran el equipo que las escribió y la fecha', async () => {
+  const noHacer = await runFlow({
+    'epic-draft': { outcome: 'no-hacer', title: 'x', reason: 'nadie lo pide' },
+  })
+  const lesson = noHacer.prompts.find((one) => one.key === 'inbox-lesson').prompt
+  assert.match(lesson, /Motivo: nadie lo pide \(flow · product-development · 2026-09-12\)/)
+
+  const averiguar = await runFlow({
+    'epic-draft': { outcome: 'investigar', title: 'x', reason: 'no se sabe dónde corre' },
+  })
+  const idea = averiguar.prompts.find((one) => one.key === 'investigar').prompt
+  assert.match(idea, /averiguar: no se sabe dónde corre \(flow · product-development · 2026-09-12\)/)
 })
 
 test('la lección de una intención no viable lleva la forma y los nombres de Lecciones', async () => {

@@ -1,15 +1,16 @@
 ---
 caso: 115
 titulo: Una entrada del INBOX no dice qué recorrido la escribió ni cuándo, y el motor tampoco lo guarda
-estado: abierto
+estado: resuelto
+resuelto-en: 0.83.0
 prioridad: baja
 version-detectada: 0.82.0
 ---
 
 # 115 — Del INBOX se sabe qué dice cada entrada y no de dónde salió
 
-**🔴 abierto** · detectado en 0.82.0 · prioridad **baja** — no rompe nada; convierte cada recorrido del INBOX
-en una decisión sin datos, y ya impidió cerrar una pregunta del 101
+**🟢 resuelto en 0.83.0** · detectado en 0.82.0 · prioridad **baja** — no rompía nada; convertía cada
+recorrido del INBOX en una decisión sin datos, y ya había impedido cerrar una pregunta del 101
 
 ## Resumen
 
@@ -77,7 +78,8 @@ node "$BANCO/r115.js" "$BANCO/acme" "$REPO"
 ## Síntoma
 
 Salida real, 2026-09-11, sobre `main` 41673984 —con 0.82.0 ya mergeado y `package.json` todavía en 0.81.0—,
-banco recién creado:
+banco recién creado. Se volvió a correr literal el 2026-09-12, sobre `main` 2a651ad4 y con 0.82.0 ya
+publicada, y devolvió lo mismo línea por línea:
 
 ```
 === 1. la forma que el molde define para una entrada ===
@@ -186,3 +188,161 @@ ninguna entrada.
 - **106** — lo que sale del INBOX: la recurrencia trimestral y el aviso de entradas que se llaman como una
   tarea cerrada. Es el recorrido que este caso deja sin datos, y el aviso que aquél agregó es el único indicio
   de origen que hoy existe —por nombre, y sólo para lo promovido—.
+
+## Cierre
+
+**🟢 resuelto en 0.83.0** · `automatization/shared/inbox.js`, `automatization/workflows/autobuild.js`,
+`flow.js` y `onboard.js`, con las cuatro suites que los miden y el registro de tamaño de
+`test/repo/repo.test.js`; en `fix/115-procedencia-del-inbox`
+
+Se tomó la **opción 2**, decidida por el dueño del repositorio: la procedencia la arma el recorrido y el
+pedido dice que se copie tal cual, en vez de pedirle al agente que la redacte. La forma es un paréntesis al
+final de la línea, con el recorrido, la unidad de la que salió y la fecha —`(autobuild · T-012 ·
+2026-09-11)`, `(flow · planning/reports/2026-09-11-alta.md · 2026-09-11)`, `(onboard · 2026-09-11)`—, y las
+partes que un recorrido no tiene se caen en vez de rellenarse.
+
+Tres decisiones de forma, con su razón:
+
+- **Va al final y entre paréntesis**, no adelante. La entrada es de una línea y se recorre por lo que dice:
+  con el sufijo adelante, las primeras palabras de cada renglón son todas iguales y lo que distingue a una
+  entrada de otra empieza en la mitad.
+- **Nombra al recorrido y nunca a un cargo.** Es lo que responde al segundo tradeoff: «lo escribió
+  `autobuild`» dice por qué vía entró, mientras que un nombre de cargo o de persona invita a decidir por
+  quién la escribió en vez de por lo que dice.
+- **El tope de 240 pasa a ser de la línea entera, no del detalle.** Lo que se recorta es el hallazgo —que
+  sigue entero en el informe o en `done/`— y nunca la procedencia, que es la mitad que no se puede
+  reconstruir después.
+
+### Contra lo que el caso enumeró
+
+- **Resumen** — cierto tal como estaba escrito, y se comprobó corriendo: el motor no guarda nada de una
+  entrada salvo su nombre, por las tres vías (`inboxHeads`, `readInbox`, `context --json`). Eso no cambió:
+  lo que cambió es que ahora la línea trae su origen escrito.
+- **Reproducción** — se corrió literal, en un banco desechable bajo el scratchpad, sobre `main` 2a651ad4.
+  Corrió entera y sin tocarle una línea. El único retoque fue de invocación mía: pasándole la ruta del banco
+  en relativo, el paso 3 resuelve `planning` dos veces y falla con «no existe el planning en …/acme/acme»;
+  con la ruta absoluta que el propio caso escribe, da lo que el caso dice.
+- **Síntoma** — reproducido línea por línea. La única diferencia con lo registrado es la base, porque pasó
+  el tiempo: el caso lo tomó sobre 41673984 con `package.json` en 0.81.0 y la re-corrida fue sobre 2a651ad4
+  con 0.82.0 publicada. Las cuatro secciones de la salida son idénticas.
+- **Causa raíz** — las siete citas se contrastaron contra el fuente, una por una. Seis daban exactas:
+  `template/planning/INBOX.md:10` y `:3`, `shared/inbox.js:7` y `:20-27`, los cinco puntos de escritura
+  (`autobuild.js:808-810`, `flow.js:425-427`, `:458-459`, `:470`, `onboard.js:200-203`),
+  `engine/planning/inbox.js:14-33` y `engine/core/ownership.js:240`. **Una estaba corrida**: `inboxSections`
+  termina en la 433 y no en la 437 —`419-437` incluye el `module.exports` de abajo—; `readInbox` (`407-410`)
+  e `inboxHeads` (`415-417`) daban bien.
+- **Fix propuesto, opción 1 (convención del molde)** — **descartada.** Es la misma forma que la 2 escrita en
+  el otro lado del pedido: la redacta el agente, así que una entrada sin sufijo no se distingue de una que
+  nadie decidió marcar. La 2 cuesta lo mismo y deja la línea armada antes de que el modelo la vea.
+- **Fix propuesto, opción 2 (la arma el recorrido)** — **tomada**, y es lo que se construyó. `inboxOrigin`
+  arma el paréntesis con las partes que el recorrido tenga, `withOrigin` pega detalle y procedencia
+  respetando el tope, e `inboxAsk` pide copiarla tal cual. Los cinco puntos de escritura pasaron a mandar la
+  línea ya armada.
+- **Fix propuesto, opción 3 (un campo que el parser lea)** — **descartada**, por lo que el propio caso
+  anticipaba y el 101 ya había decidido: cambia el formato de entrada y con él el lector de toda instancia
+  existente. No se tocó ni el molde ni `engine/planning/parser.js`, y por eso esto sigue siendo una
+  convención y no algo que `check` pueda exigir.
+- **Fix propuesto, opción 4 (leer la historia de git)** — **descartada** para este caso: contesta «cuándo»
+  y no «quién», y sólo donde la instancia esté versionada y nadie reescriba el archivo entero, que es la
+  poda a mano que el 101 vio en la instancia real. Sigue siendo lo único que sirve para lo ya escrito, y el
+  caso ya lo decía.
+- **Tradeoff «cada carácter compite con la línea»** — se asume, acotado. El sufijo mide entre 18 y 60
+  caracteres según la vía, y el tope de 240 pasó a medir la línea entera: una entrada con procedencia no es
+  más larga que una sin ella, es el hallazgo el que cede. Lo fija la prueba del hallazgo largo y la
+  mutación M6.
+- **Tradeoff «se puede leer como una firma»** — se atiende con la forma, no con una advertencia: lo que va
+  es el nombre del recorrido, que es una vía de entrada y no un autor. No se puede medir que nadie lo lea
+  como firma; lo que sí queda fijo es que ahí nunca va un cargo.
+- **Tradeoff «las opciones 1 y 2 no son comprobables»** — **cierto y sigue siendo cierto, y es el límite de
+  lo entregado.** Lo que las pruebas fijan es que el recorrido arma la línea y la manda armada; que el
+  agente la copie sin reescribirla no lo comprueba nada, igual que hoy no se comprueba que respete la forma
+  del molde. Lo mismo vale para la fecha: si el agente no copia `today` del comando, el paréntesis sale sin
+  ella en vez de salir con una inventada.
+- **Tradeoff «la 3 rompe el lector de toda instancia existente»** — no aplica: no se tomó la 3. Queda como
+  la razón escrita de por qué no.
+- **Tradeoff «nada de esto cubre a la persona»** — **se asume tal cual, y es lo que esta decisión deja
+  afuera.** Una entrada escrita a mano sigue sin procedencia, y limitarla no corresponde: el INBOX es de
+  ella. Tampoco hay nada retroactivo — las entradas que ya existen no la ganan, y para ésas lo único que hay
+  sigue siendo la opción 4 sobre la historia que exista.
+- **Prioridad** — la condición de escalada («sube a media cuando la recurrencia trimestral venza por primera
+  vez en una instancia con entradas de varios meses») queda desactivada para lo que se escriba de acá en
+  adelante y **sigue en pie para lo anterior**: cuando esa recurrencia venza por primera vez, las entradas
+  que la esperan son justamente las que se escribieron sin sufijo.
+- **Contexto de descubrimiento** — la pregunta que el 101 dejó abierta —de qué vía entraron ~550 líneas de
+  relatos de QA al INBOX de una instancia real— **sigue sin contestarse y ya no se puede contestar desde
+  acá**: son entradas viejas. Lo que cambia es que la próxima vez la pregunta no se abre.
+- **Relacionados, 101** — su cierre declara esta dimensión abierta; queda cerrada sólo hacia adelante, con
+  el párrafo de arriba.
+- **Relacionados, 106** — el aviso de «se llama como una tarea de `done/`» sigue siendo el único indicio de
+  origen para lo promovido, y no se tocó. Ahora convive con un origen explícito en lo nuevo.
+
+### Lo que el enunciado no preveía
+
+- **`flow.js` cruzó las 500 líneas** (498 → 510). El umbral disparó la decisión que pide R7 y no se resolvió
+  recortando comentarios: `flow.js` quedó registrado en `JUSTIFIED` de `test/repo/repo.test.js` con su
+  razón —un recorrido de equipo crece de a una salida y cada una arma su destino al lado del schema que la
+  valida—, y partirlo bien es un cambio propio y no la cola de éste.
+- **El pedido de `flow` decía «copy only its inbox field»**, así que pedir también la fecha obligaba a
+  reescribir esa línea: quedó «copy its inbox field into inbox and its today field into today, both
+  verbatim, and nothing else it printed», que conserva el «nada más» que esa palabra estaba cuidando —el
+  agente copiando campos de más agota el reintento—.
+- **La fecha no la puede poner el recorrido por su cuenta.** Un workflow no tiene reloj: `new Date(` está
+  prohibido y lo comprueba `test/workflows/workflows.test.js:118`. Sale de `ops context --json`, que ya la
+  emite en `today` y que los tres recorridos ya corrían; `autobuild` ya la pedía, y `flow` y `onboard`
+  tuvieron que sumarla a su schema y a su pedido. Esa mitad el arnés no la ve —no valida schemas—, así que
+  la fijan dos pruebas de fuente y las mutaciones M7 y M8.
+- **El log de lo que no entró al INBOX quedó sin sufijo, a propósito.** En `onboard`, `unlistedQuestions` y
+  su línea de log son para quien está mirando esa misma corrida: ahí la procedencia es ruido. Lo fija una
+  aserción del caso nuevo.
+
+### Qué se corrió
+
+- **La reproducción del caso, literal**, sobre `main` 2a651ad4 y banco recién creado: devolvió las cuatro
+  secciones del Síntoma idénticas, con el paso 4 imprimiendo el pedido sin una palabra sobre el origen.
+
+  Sobre el arreglo, el mismo paso 4 —el fragmento evaluado igual que al renderizar un recorrido— imprime la
+  cláusula nueva, y la línea que el recorrido le entrega al agente sale ya armada:
+
+  ```
+  … Cada línea que te paso termina con su procedencia —(autobuild · t-012 · 2026-09-12)—: va al final de la
+  entrada tal cual, sin reescribirla, resumirla ni completarla. …
+  El webhook de pagos no reintenta; el fix está en el done/ de t-012. (autobuild · t-012 · 2026-09-12)
+  (autobuild · t-012 · 2026-09-12)
+  (flow · planning/reports/2026-09-12-alta.md · 2026-09-12)
+  (onboard · 2026-09-12)
+  ```
+
+  **Con una salvedad que corresponde decir**: el paso 4 del caso llama a `inboxAsk` con dos argumentos y el
+  tercero es ahora la procedencia, así que tal cual está escrito imprime «procedencia —undefined—». No es un
+  camino de producción —los cinco puntos de escritura la pasan siempre, y las mutaciones M1 a M4 lo fijan— y
+  **no** se le puso un valor por defecto al fragmento para que ese llamado se vea bien: taparía justamente
+  al recorrido que se olvidara de pasarla, que es lo que hay que poder ver.
+- **Rojo previo.** Las siete pruebas nuevas y la existente que cambió de expectativa, corridas contra un
+  `git archive` de 2a651ad4 con los cuatro archivos de prueba copiados encima: **8 rojas de 63**. Las ocho:
+  «un seguimiento dice de qué informe salió y de cuándo», «la lección y la idea nombran el equipo que las
+  escribió y la fecha», «lo anotado llega con de qué vía salió: recorrido, tarea y fecha», «un hallazgo
+  largo se recorta y su procedencia llega entera», «flow pide la fecha del motor, que es la que lleva la
+  procedencia», «onboard pide la fecha del motor junto con los nombres del INBOX», «las preguntas que
+  onboard deja en el INBOX dicen de qué vía salieron» y «onboard lleva al INBOX tres preguntas abiertas y
+  cuenta las demás», que es la única que ya existía. Sobre el arreglo, 63 de 63 en verde.
+- **Mutaciones.** Cada parte del arreglo apagada en su propia copia desechable bajo el scratchpad, nunca en
+  el árbol de trabajo, y comprobando que el texto a apagar estuviera antes de correr:
+
+  | Mutación | Qué se apagó | Prueba que se puso roja |
+  |---|---|---|
+  | M1 | `autobuild` no le pone procedencia a lo anotado | «…de qué vía salió: recorrido, tarea y fecha» y «un hallazgo largo…» |
+  | M2 | el seguimiento de un informe pierde la suya | «un seguimiento dice de qué informe salió y de cuándo» |
+  | M3 | la lección y la idea pierden la suya | «la lección y la idea nombran el equipo que las escribió y la fecha» |
+  | M4 | `onboard` no se la pone a las preguntas | «las preguntas que onboard deja…» y «onboard lleva al INBOX tres preguntas…» |
+  | M5 | el pedido deja de exigir que se copie tal cual | las tres de procedencia, una por recorrido |
+  | M6 | el recorte deja de reservarle lugar al sufijo | «un hallazgo largo se recorta y su procedencia llega entera» |
+  | M7 | `flow` deja de declarar la fecha en su manifiesto | «flow pide la fecha del motor…» |
+  | M8 | `onboard` deja de pedirle la fecha al comando | «onboard pide la fecha del motor…» |
+
+  Ninguna sobrevivió.
+- **La pasada de comentarios de R11**, con la sonda al 0.22 contra la base: la primera corrida sacó **siete
+  pares nuevos**, uno de ellos en 1.00 —el comentario de la fecha copiado igual en `flow.js` y
+  `onboard.js`—, y el gate del repositorio marcó dos. Cada razón volvió a un solo lugar, el fragmento
+  compartido, y la sonda quedó en **0 pares nuevos** (216 contra 217 de la base).
+- **Las puertas**: `npm run ci` y `npm test`, las dos con código de salida 0. La cobertura no bajó ningún
+  piso: 64 archivos en su piso o por encima.

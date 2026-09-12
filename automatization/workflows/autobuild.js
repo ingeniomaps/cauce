@@ -796,7 +796,10 @@ while (rounds++ < MAX_TASKS) {
     // Lecciones porque lo que la revisión anotó es un cambio del producto —su evidencia es la de la
     // tarea, que queda en `done/`—; Lecciones es sobre cómo trabajamos, y ahí el hallazgo queda
     // esperando una promoción que nadie va a hacer.
-    const noted = review.concerns.filter((one) => !one.blocking).map((one) => oneLine(one.detail))
+    // De qué vía salió cada una: este recorrido, la tarea que la dejó anotada y la fecha del motor. La
+    // arma el recorrido, que es el único de los dos que sabe las tres cosas (caso 115).
+    const origin = inboxOrigin('autobuild', task.id, planning.today)
+    const noted = review.concerns.filter((one) => !one.blocking).map((one) => withOrigin(one.detail, origin))
     const kept = noted.slice(0, INBOX_CAP)
     // Lo que pasa del tope no se escribe y tampoco desaparece: queda contado en el hecho de revisión, que
     // viaja a `done/`. Una revisión que anota treinta y seis cosas no está priorizando, y el INBOX no las
@@ -806,7 +809,8 @@ while (rounds++ < MAX_TASKS) {
     }
     if (kept.length) {
       await write(`Registrá en la sección Propuestas de ${P}/INBOX.md lo que la revisión de ${task.id} dejó ` +
-        `anotado sin frenar la entrega, sin promover ninguna. ${inboxAsk(['Propuestas'], planning.inbox)} ` +
+        `anotado sin frenar la entrega, sin promover ninguna. ` +
+        `${inboxAsk(['Propuestas'], planning.inbox, origin)} ` +
         `Lo anotado: ${JSON.stringify(kept)}`, { label: 'review-noted' })
     }
   }

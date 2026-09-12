@@ -93,7 +93,7 @@ test('onboard lleva al INBOX tres preguntas abiertas y cuenta las demás', async
   const prompts = []
   const said = []
   const script = {
-    inventario: { fresh: true, services: [], inboxIdeas: ['ya-preguntada'] },
+    inventario: { fresh: true, services: [], inboxIdeas: ['ya-preguntada'], today: '2026-09-12' },
     contexto: { files: [], openQuestions: ['p1', 'p2', 'p3', 'p4\ncon detalle', 'p5'] },
     'epica-001': { file: 'planning/roadmap/epic-001-x.md', passed: true },
   }
@@ -109,12 +109,44 @@ test('onboard lleva al INBOX tres preguntas abiertas y cuenta las demás', async
   const draft = prompts.find((one) => one.key === 'contexto').prompt
   assert.doesNotMatch(draft, /en la sección Ideas/, 'quien redacta ya no escribe en el INBOX')
   const epic = prompts.find((one) => one.key === 'epica-001').prompt
-  assert.match(epic, /"p1","p2","p3"/)
+  assert.match(epic, /"p1 \(onboard · 2026-09-12\)","p2 \(onboard · 2026-09-12\)","p3 /)
   assert.doesNotMatch(epic, /"p4|"p5"/, 'la cuarta y la quinta no llegan al INBOX')
   assert.match(epic, /- \*\*slug-del-item\*\* — /, 'nombra la forma de entrada del molde')
   assert.match(epic, /en Ideas ya están ya-preguntada/, 'y los nombres que ya hay')
   assert.deepEqual(result.unlistedQuestions, ['p4', 'p5'])
   assert.ok(said.some((text) => /2 pregunta\(s\) abierta\(s\) más no entraron/.test(text)), 'y se dicen')
+})
+
+// La otra mitad, la que el arnés no ve: el campo en el schema y el pedido que lo copia del comando.
+test('onboard pide la fecha del motor junto con los nombres del INBOX', () => {
+  assert.match(onboardWorkflow, /today: \{ type: 'string' \}/)
+  assert.match(onboardWorkflow, /its today\b/)
+  assert.match(onboardWorkflow, /inboxOrigin\('onboard'/)
+})
+
+// Caso 115, del lado del arranque. Y su contracara: el log de las que no entraron queda sin sufijo.
+test('las preguntas que onboard deja en el INBOX dicen de qué vía salieron', async () => {
+  const { compileWorkflow } = require('../support/workflow')
+  const prompts = []
+  const script = {
+    inventario: { fresh: true, services: [], inboxIdeas: [], today: '2026-09-12' },
+    contexto: { files: [], openQuestions: ['p1', 'p2', 'p3', 'p4'] },
+    'epica-001': { file: 'planning/roadmap/epic-001-x.md', passed: true },
+  }
+  const agent = async (prompt, options = {}) => {
+    prompts.push({ key: options.label, prompt })
+    return script[options.label]
+  }
+  const result = await compileWorkflow('onboard')(
+    agent, () => {}, () => {}, async (thunks) => Promise.all(thunks.map((t) => t())),
+    async () => [], async () => ({}), { context: 'vendemos ruteo' },
+    { total: null, spent: () => 0, remaining: () => Infinity },
+  )
+  const epic = prompts.find((one) => one.key === 'epica-001').prompt
+  assert.match(epic, /"p1 \(onboard · 2026-09-12\)"/, 'la línea ya viene con su procedencia')
+  assert.match(epic, /procedencia —\(onboard · 2026-09-12\)—/, 'y el pedido la nombra')
+  assert.match(epic, /tal cual, sin reescribirla/, 'pidiendo que se copie, no que se redacte')
+  assert.deepEqual(result.unlistedQuestions, ['p4'], 'lo que no entró se dice sin el sufijo')
 })
 
 // La forma de una entrada vive en el molde y el fragmento que la manda a cada recorrido la copia: si

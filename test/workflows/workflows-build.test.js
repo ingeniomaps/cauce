@@ -168,6 +168,14 @@ test('el recorrido de equipo tiene las tres salidas que el contrato enumera', ()
   assert.match(flowWorkflow, /label: 'epic-write'/, 'hacer')
 })
 
+// Caso 115. El arnés no valida schemas, así que esta mitad se lee acá: sin el campo y sin el pedido que
+// lo copia, la procedencia sale sin fecha y ninguna corrida lo dice.
+test('flow pide la fecha del motor, que es la que lleva la procedencia', () => {
+  assert.match(flowWorkflow, /today: \{ type: 'string' \}/, 'el manifiesto la declara')
+  assert.match(flowWorkflow, /its today field/, 'y el pedido la copia del comando que ya corre')
+  assert.match(flowWorkflow, /inboxOrigin\('flow'/, 'la arma el recorrido, no quien escribe')
+})
+
 test('flow nunca promueve: escribe la épica y para', () => {
   assert.match(flowWorkflow, /ROADMAP/, 'la épica candidata va al roadmap')
   assert.match(flowWorkflow, /No toques BACKLOG\.md/, 'y el BACKLOG queda fuera de su alcance')
