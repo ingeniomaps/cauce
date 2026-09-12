@@ -409,6 +409,11 @@ const JUSTIFIED = {
   'automatization/workflows/autobuild.js':
     'Un recorrido crece de a una fase, y su schema y su paso cambian juntos: separarlos parte por la '
     + 'mitad lo que es una sola cosa.',
+  'automatization/workflows/flow.js':
+    'Un recorrido de equipo crece de a una salida —épica, informe, investigar— y cada una arma su '
+    + 'destino al lado del schema que la valida, así que partirlo por salida separa el manifiesto de '
+    + 'quien lo consume. Cruzó las 500 con la procedencia del INBOX (caso 115), estando en 498, y '
+    + 'partirlo bien es un cambio propio y no la cola de otro.',
   'engine/hooks/shell.js':
     'Suma una regla por peligro del shell y las siete comparten la misma aproximación de parseo —dónde '
     + 'empieza una palabra, dónde termina un comando—. El caso 067 lo mostró al revés: el defecto vivía '

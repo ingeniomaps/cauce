@@ -258,6 +258,38 @@ test('lo anotado entra al INBOX con tope, con la forma del molde y sin repetir n
   assert.match(done, /review=[^;]*· 2 anotado\(s\) sin volcar al INBOX/, 'lo que no entró queda contado en done/')
 })
 
+// Caso 115. Una entrada es un nombre y una línea, y de esa línea no se sabía quién la escribió ni
+// cuándo. La procedencia la arma el recorrido —es el único que sabe las tres partes— y el pedido dice
+// que se copie, en vez de confiar en que el agente se acuerde de agregarla.
+test('lo anotado llega con de qué vía salió: recorrido, tarea y fecha', async () => {
+  const { result, prompts } = await runFlow({
+    [KEY.review]: {
+      verdict: 'aprobado', consulted: ['api/alta.go'],
+      concerns: [{ detail: 'el nombre del handler podría ser más claro', blocking: false }],
+    },
+  })
+  ranToEnd(result)
+  const noted = prompts.find((one) => one.key === 'Review|review-noted').prompt
+  assert.match(noted, /más claro \(autobuild · T-1 · 2026-09-08\)/, 'la línea ya viene con su procedencia')
+  assert.match(noted, /procedencia —\(autobuild · T-1 · 2026-09-08\)—/, 'y el pedido la nombra')
+  assert.match(noted, /tal cual, sin reescribirla/, 'pidiendo que se copie, no que se redacte')
+})
+
+// Y qué cede cuando las dos cosas no entran en la línea. El porqué vive en INBOX_LINE.
+test('un hallazgo largo se recorta y su procedencia llega entera', async () => {
+  const { prompts } = await runFlow({
+    [KEY.review]: {
+      verdict: 'aprobado', consulted: ['api/alta.go'],
+      concerns: [{ detail: `hallazgo ${'largo '.repeat(60)}`, blocking: false }],
+    },
+  })
+  const noted = prompts.find((one) => one.key === 'Review|review-noted').prompt
+  const [entry] = JSON.parse(noted.match(/Lo anotado: (\[[\s\S]*\])$/)[1])
+  assert.ok(entry.endsWith('(autobuild · T-1 · 2026-09-08)'), `la procedencia se perdió: ${entry}`)
+  assert.ok(entry.length <= 240, `la entrada mide ${entry.length} y el tope es 240`)
+  assert.match(entry, /…/, 'y lo que se recortó es el hallazgo')
+})
+
 test('lo anotado dentro del tope no deja nada contado sin volcar', async () => {
   const { prompts } = await runFlow({
     [KEY.review]: { verdict: 'aprobado', consulted: ['api/alta.go'], concerns: [{ detail: 'uno', blocking: false }] },
