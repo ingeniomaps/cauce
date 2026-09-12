@@ -9,6 +9,11 @@ node_modules/
 # máquina. Committearlo sería historia que nadie lee y un conflicto por commit.
 planning/.verify-log
 
+# El rastro de los push que pasaron por una aprobación. Local por lo mismo que el de arriba, y encima
+# sólo crece: lo que contesta —quién autorizó qué rama y cuándo— se pregunta en la máquina donde corrió
+# la sesión que publicó.
+planning/.push-log
+
 # El plan de cada runner. Es de la máquina que lo corre —existe para recuperar una ejecución
 # interrumpida, y nadie más puede retomarla— y cambia en cada paso, así que compartirlo es un conflicto
 # por commit a cambio de nada. Lo que el equipo sí necesita saber vive en `planning/claims/`.

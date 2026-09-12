@@ -120,6 +120,10 @@ const YES = new RegExp(String.raw`^\s*(?:s[ií]|dale|ok(?:ay)?|hac[eé]lo|hazlo|
 // El hook de mensaje. Nunca frena: un mensaje de la persona no se bloquea, y sin registro los guards
 // deciden como antes. Un texto que empieza con una etiqueta no lo escribió una persona —Claude avisa así
 // que terminó un subagente, con `<task-notification>`—, y en CI no hay persona.
+//
+// Lo concedido es lo único que cruza de un mensaje al siguiente, y se hereda aunque este mensaje no lo
+// haya escrito una persona: un aviso del runner en el medio no le quita a nadie lo que ya autorizó. La
+// negación se aplica venga de donde venga, porque revocar es la dirección segura.
 function record(input) {
   try {
     if (!input.session_id) return
@@ -129,9 +133,10 @@ function record(input) {
     const approved = human && previous && YES.test(text)
       ? previous.pending.filter((item) => !mentions(text, item).denied)
       : []
+    const granted = previous ? (previous.granted || []).filter((one) => !mentions(text, one).denied) : []
     fs.mkdirSync(DIR, { recursive: true })
-    fs.writeFileSync(recordPath(input.session_id),
-      JSON.stringify({ id: idOf(input), text, human, flow: flowCommand(text), approved, pending: [] }))
+    fs.writeFileSync(recordPath(input.session_id), JSON.stringify(
+      { id: idOf(input), text, human, flow: flowCommand(text), approved, granted, pending: [] }))
   } catch { /* registrar es un extra: si falla, los guards siguen frenando lo que frenaban */ }
 }
 
@@ -146,14 +151,50 @@ function said(input) {
   return current && saved.id && current !== saved.id ? null : saved
 }
 
-// Lo que la persona no autorizó de lo que un guard está por frenar: ni lo pidió en su mensaje ni lo
-// aprobó contestando. Qué cuenta como pedirlo depende de qué se frena: un archivo se nombra, un push se
-// ordena con su remoto y su rama.
+// Con qué autorización pasa un ítem, o vacío si no pasa: lo pidió este mensaje, un «dale» aprobó lo que
+// había quedado frenado, o se lo concedieron antes en esta sesión. Qué cuenta como pedirlo depende de qué
+// se frena: un archivo se nombra, un push se ordena con su remoto y su rama.
 const named = (text, item) => mentions(text, item).named
-function unauthorized(input, items, asked = named) {
+function why(saved, item, asked) {
+  if (asked(saved.text, item)) return 'orden'
+  if (saved.approved.includes(item)) return 'dale'
+  return (saved.granted || []).includes(item) ? 'concedido' : ''
+}
+
+// Lo que un guard dejó pasar queda anotado, que es la contracara de `hold`: hasta 0.82.0 sólo se anotaba
+// lo frenado, así que una autorización usada moría con el mensaje y lo mismo se frenaba una y otra vez.
+// Ahí la salida barata era apagar el guard para toda la sesión con una variable, o sea el permiso más
+// ancho de los dos (caso 116).
+//
+// Se anota el ítem **como el guard lo nombró** —la ruta en la forma que ese guard tiene a mano— y no el
+// archivo que hay detrás: es el mismo alcance que tiene una línea de `.ops-approval`, angosto de más
+// antes que de menos.
+function grant(input, saved, items) {
+  const before = saved.granted || []
+  const granted = [...new Set([...before, ...items])]
+  if (granted.length === before.length) return
+  try {
+    saved.granted = granted
+    fs.writeFileSync(recordPath(input.session_id), JSON.stringify(saved))
+  } catch { /* sin anotarlo, se vuelve a pedir */ }
+}
+
+// Con qué autorización pasa cada uno de los que pasan. Lo pregunta quien necesita el porqué y no sólo el
+// qué —el rastro de un push lo anota (caso 112)—, y no concede nada: preguntar no cambia qué va a valer
+// en el mensaje siguiente.
+function authorized(input, items, asked = named) {
+  const saved = said(input)
+  if (!saved) return []
+  return items.map((item) => ({ item, via: why(saved, item, asked) })).filter((one) => one.via)
+}
+
+// Lo que la persona no autorizó de lo que un guard está por frenar; lo que sí, queda concedido.
+function unauthorized(input, items) {
   const saved = said(input)
   if (!saved) return items
-  return items.filter((item) => !saved.approved.includes(item) && !asked(saved.text, item))
+  const passed = items.filter((item) => why(saved, item, named))
+  grant(input, saved, passed)
+  return items.filter((item) => !passed.includes(item))
 }
 
 // Lo que quedó frenado, para que un «dale» en el mensaje siguiente apruebe exactamente eso y nada más.
@@ -168,4 +209,4 @@ function hold(input, items) {
   } catch { return false }
 }
 
-module.exports = { DIR, record, said, unauthorized, hold, ordersPush }
+module.exports = { DIR, record, said, authorized, unauthorized, hold, ordersPush }

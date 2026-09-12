@@ -2104,12 +2104,51 @@ test('un «dale» aprueba exactamente lo que quedó frenado, y nada más', () =>
     const dale = chat.says('dale')
     assert.doesNotThrow(() => execute('secrets-read', lee(dale)))
     blocked('secrets-read', lee(dale, 'id_ed25519'), /leerla/)
-    // La aprobación era de esa respuesta: el mensaje siguiente empieza de cero.
-    blocked('secrets-read', lee(chat.says('ahora otra cosa')), /leerla/)
-    // Y lo que la respuesta niega no se aprueba.
+    // Lo que el «dale» aprobó y el guard dejó pasar sigue valiendo en el mensaje siguiente (caso 116); lo
+    // que esa respuesta no cubrió, no.
+    assert.doesNotThrow(() => execute('secrets-read', lee(chat.says('ahora otra cosa'))))
+    blocked('secrets-read', lee(chat.says('ahora otra cosa'), 'id_ed25519'), /leerla/)
+    // Y lo que la respuesta niega no se aprueba, ni sigue valiendo lo que ya se había concedido.
+    blocked('secrets-read', lee(chat.says('no toques el .env por ahora')), /leerla/)
     messageOf('secrets-read', lee(chat.says('revisá todo')))
     blocked('secrets-read', lee(chat.says('sí, pero no el .env')), /leerla/)
   } finally { chat.close() }
+})
+
+// Un pedido de una persona ocupa varios mensajes, y hasta 0.82.0 su autorización moría en el primero: lo
+// que ella acababa de autorizar se volvía a frenar apenas escribía cualquier otra cosa (caso 116).
+test('lo que la persona autorizó sigue valiendo en los mensajes siguientes, hasta que ella lo niegue', () => {
+  const root = planFirstRoot('ops-hook-chat-concede-', WIP_CON_PLAN)
+  const lee = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
+  const chat = chatSession()
+  try {
+    assert.doesNotThrow(() => execute('secrets-read', lee(chat.says('leé el .env y decime qué variables tiene'))))
+    // Los dos mensajes siguientes no repiten el pedido: acá es donde volvía a frenarse.
+    assert.doesNotThrow(() => execute('secrets-read', lee(chat.says('gracias, seguí con eso'))))
+    assert.doesNotThrow(() => execute('secrets-read', lee(chat.says('ahora contame qué encontraste'))))
+    // Lo concedido es ese ítem y ninguno más, y no alcanza a un subagente.
+    blocked('secrets-read', lee(chat.says('seguí'), 'id_ed25519'), /leerla/)
+    const ahora = chat.says('seguí')
+    blocked('secrets-read', lee((extra) => ahora({ agent_id: 'a1', ...extra })), /leerla/)
+    // La negación revoca, y lo revocado no vuelve solo con el mensaje que sigue.
+    blocked('secrets-read', lee(chat.says('no toques el .env, mirá el README')), /leerla/)
+    blocked('secrets-read', lee(chat.says('seguí con lo tuyo')), /leerla/)
+  } finally { chat.close() }
+})
+
+// El registro es por sesión, que es lo que hace que cerrarla alcance para que nada siga concedido.
+test('lo que se concedió en una sesión no vale en otra', () => {
+  const root = planFirstRoot('ops-hook-chat-concede-sesion-', WIP_CON_PLAN)
+  const lee = (call) => call({ cwd: root, tool_input: { file_path: path.join(root, '.env') } })
+  const una = chatSession()
+  const otra = chatSession()
+  try {
+    assert.doesNotThrow(() => execute('secrets-read', lee(una.says('leé el .env'))))
+    blocked('secrets-read', lee(otra.says('seguí con eso')), /leerla/)
+  } finally {
+    una.close()
+    otra.close()
+  }
 })
 
 // Nombrar no es pedir (caso 109): la frase del nombre tiene que pedir algo. Una pregunta o un comentario al
@@ -2352,6 +2391,87 @@ test('.ops-approval aprueba un push por su línea exacta, sin patrones', () => {
   blocked('destructive', push('git push origin master'), LIVE)
   // Una línea sin destino sería un permiso para cualquier rama.
   blocked('destructive', push('git push'), /nombralos/)
+})
+
+// Por qué la publicación es la salvedad de lo que se concede está en `publish`, sobre la llamada que lo
+// decide.
+test('la orden de publicar vale para esa operación y no para el mensaje siguiente', () => {
+  const root = pushRoot('ops-hook-push-no-concede-')
+  const push = (call, command) => call({ cwd: root, tool_input: { command } })
+  const chat = chatSession()
+  try {
+    assert.doesNotThrow(() => execute('destructive',
+      push(chat.says('subí feat/x a origin'), 'git push origin feat/x')))
+    blocked('destructive', push(chat.says('gracias, seguí'), 'git push origin feat/x'), WORK)
+  } finally { chat.close() }
+})
+
+// Una aprobación se consume sin dejar nada: el «dale» publicaba y un mensaje después no quedaba quién lo
+// había autorizado, ni en el registro del chat ni en la instancia (caso 112).
+test('un push que pasa por una aprobación deja su línea en el rastro de la instancia', () => {
+  const root = pushRoot('ops-hook-push-rastro-')
+  const log = path.join(root, 'planning', '.push-log')
+  const rastro = () => fs.readFileSync(log, 'utf8').trim().split('\n').map((one) => JSON.parse(one))
+  const push = (call, command) => call({ cwd: root, tool_input: { command } })
+  const chat = chatSession()
+  try {
+    // Lo que no publica no se anota: hasta que un push pasa, el archivo no existe.
+    blocked('destructive', push(chat.says('revisá el repositorio'), 'git push origin feat/x'), WORK)
+    assert.equal(fs.existsSync(log), false, 'un push frenado no dejó rastro de haberse autorizado')
+    assert.doesNotThrow(() => execute('destructive',
+      push(chat.says('subí feat/x a origin'), 'git push origin feat/x')))
+    const [primera] = rastro()
+    assert.deepEqual(Object.keys(primera), ['authorizedAt', 'remote', 'branch', 'via', 'session'])
+    // La fecha es la de la autorización y el nombre lo dice: el hook corre antes del comando.
+    assert.match(primera.authorizedAt, /^\d{4}-\d{2}-\d{2}T/)
+    assert.equal(primera.remote, 'origin')
+    assert.equal(primera.branch, 'feat/x')
+    assert.ok(primera.session, 'sin la sesión no se puede volver a la conversación que lo autorizó')
+    // Las tres vías se distinguen, y el rastro sólo agrega.
+    messageOf('destructive', push(chat.says('subí la rama'), 'git push origin feat/y'))
+    assert.doesNotThrow(() => execute('destructive', push(chat.says('dale'), 'git push origin feat/y')))
+    fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), 'push origin feat/z\n')
+    assert.doesNotThrow(() => execute('destructive', push(chat.says('seguí'), 'git push origin feat/z')))
+    assert.deepEqual(rastro().map((one) => [one.branch, one.via]),
+      [['feat/x', 'orden'], ['feat/y', 'dale'], ['feat/z', '.ops-approval']])
+    // El texto de la persona no sale del temporal.
+    assert.equal(/subí feat\/x a origin/.test(fs.readFileSync(log, 'utf8')), false)
+  } finally { chat.close() }
+})
+
+test('un push por allowPush no escribe el rastro: esa autorización ya está en la configuración', () => {
+  const root = pushRoot('ops-hook-push-rastro-llave-', { allowPush: true })
+  assert.doesNotThrow(() => execute('destructive',
+    { cwd: root, tool_input: { command: 'git push origin feat/x' } }))
+  assert.equal(fs.existsSync(path.join(root, 'planning', '.push-log')), false)
+})
+
+// Un repositorio sin Cauce no tiene dónde anotar, y eso no cambia lo que se decide.
+test('un push ordenado fuera de una instancia pasa sin rastro que escribir', () => {
+  const fuera = outsideTempRoot('ops-hook-push-sin-raiz-')
+  const chat = chatSession()
+  try {
+    assert.doesNotThrow(() => execute('destructive',
+      chat.says('subí feat/x a origin')({ cwd: fuera, tool_input: { command: 'git push origin feat/x' } })))
+    assert.deepEqual(fs.readdirSync(fuera), [], 'sin raíz no se escribió nada en ningún lado')
+  } finally { chat.close() }
+})
+
+// La garantía de anotar desde un hook que corre antes del comando: cuando el rastro se escribe, el push ya
+// estaba autorizado, así que no poder escribirlo no puede frenarlo.
+test('un rastro que no se puede escribir no frena el push que ya estaba autorizado', () => {
+  const root = tempRoot('ops-hook-push-rastro-roto-')
+  fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ mode: 'embedded', runner: { allowPush: false } }))
+  // `planning` como archivo y no como directorio: la raíz sigue resolviendo —lo que se pregunta es si
+  // existe— y escribir adentro falla, que es lo único que hacía falta montar.
+  fs.writeFileSync(path.join(root, 'planning'), '')
+  const chat = chatSession()
+  try {
+    assert.doesNotThrow(() => execute('destructive',
+      chat.says('subí feat/x a origin')({ cwd: root, tool_input: { command: 'git push origin feat/x' } })))
+    assert.equal(fs.statSync(path.join(root, 'planning')).isFile(), true)
+  } finally { chat.close() }
 })
 
 test('allowPush no alcanza la rama viva sin su permiso, ni a un subagente con ningún permiso', () => {
