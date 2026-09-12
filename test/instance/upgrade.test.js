@@ -9,7 +9,6 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
-const { spawnSync } = require('node:child_process')
 
 // La guía es lo único que le dice a alguien qué hacer con lo que acaba de crear, así que no puede
 // depender de que la instalación haya corrido: la resuelve el mismo motor que está corriendo init.

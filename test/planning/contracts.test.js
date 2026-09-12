@@ -10,7 +10,6 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const B = require('../../engine/planning/business-rules')
-const PC = require('../../engine/planning/contracts')
 const SR = require('../../engine/planning/structure')
 
 test('business rules exige contrato y detecta IDs duplicados', () => {
