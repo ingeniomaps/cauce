@@ -14,6 +14,26 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.85.0] - 2026-09-12
+
+### Corregido
+
+- **Gobernanza ya no te interroga cuando sos vos quien pide el trabajo.** El guard que frena un commit que
+  toca reglas, ADR, `automatization/`, `engine/` o contratos de cargo te pedía **nombrar cada archivo** en
+  tu mensaje, o contestar «dale», o pegar las rutas en `planning/.ops-approval` — y te lo cobraba en cada
+  commit. Ahora, con una persona conduciendo el turno, no pregunta nada.
+
+  Lo que **no** cambia, y es el punto del guard: sigue frenando igual cuando el que commitea es un
+  subagente, un recorrido de Cauce o CI. Ahí nadie está conduciendo, que es exactamente para lo que existe.
+
+  Sus dos vecinos —`verify` y `dependencies`— **siguen preguntando**, y la diferencia no es quién pidió el
+  commit: esos frenan porque algo está mal —una verificación que falla, un manifiesto sin su lockfile— y
+  callarlos porque hay alguien hablando sería taparte un rojo. `OPS_GOVERNANCE_OVERRIDE` sigue existiendo
+  para el caso sin persona.
+
+  **Qué cambia para vos**: nada que hacer. Si venías aprobando commits de gobernanza uno por uno, o pegando
+  rutas a mano para poder trabajar, eso se terminó.
+
 ## [0.84.0] - 2026-09-12
 
 ### Corregido
