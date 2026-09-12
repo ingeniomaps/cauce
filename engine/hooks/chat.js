@@ -21,9 +21,9 @@ const { readWip } = require('../planning/parser')
 const { runner } = require('../planning/claims')
 const TRAIL = require('./trail')
 
-// Dónde queda anotado lo que se concedió. Por qué el archivo es así y por qué no viaja, en `trail.js` y
-// en `template/gitignore`.
-const LOG = path.join('planning', '.grant-log')
+// Dónde queda anotado lo que se concedió. Cómo se escribe un rastro, en `trail.js`; por qué éste no
+// viaja y quién más lo declara, en `core/trails.js`.
+const LOG = require('../core/trails').GRANT
 
 // El temporal y no la instancia: el texto de la persona no tiene por qué terminar en un commit, y una
 // orden dura lo que dura la sesión.

@@ -20,7 +20,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 
-const LOG = path.join('planning', '.verify-log')
+const LOG = require('./trails').VERIFY
 // Rodante: interesa el trabajo en curso, no la historia. Sin tope, el archivo crece con cada commit y
 // nadie lo mira; con tope, lo que queda es lo que todavía se puede cruzar contra una entrada abierta.
 const MAX_RUNS = 20

@@ -19,7 +19,6 @@
 //
 // El `--force` no llega hasta acá: lo frena `destructive` antes, sin override (R8).
 
-const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { block, cwdOf, gitDirectory, opsRoot, configOf } = require('./input')
 const AP = require('./approval')
@@ -135,7 +134,7 @@ function workMessage(items, input) {
 // Acá se decide una sola cosa, y es del push: anota la autorización, no el resultado. Este hook corre
 // antes del comando, así que un push que después falla queda registrado igual. Por eso la fecha se llama
 // `authorizedAt` y no `at`: leer la línea como «esto se publicó» afirmaría algo que el hook no puede saber.
-const LOG = path.join('planning', '.push-log')
+const LOG = require('../core/trails').PUSH
 
 function trail(root, session, entries) {
   const authorizedAt = new Date().toISOString()
