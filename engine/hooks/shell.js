@@ -75,7 +75,7 @@ function destructive(input) {
   }
   publish(input, command)
   const rules = [
-    [/\bgit\s+reset\s+--hard\b/, "'git reset --hard' destruye cambios locales."],
+    [/\bgit\s+reset\s+--hard\b/, "'git reset --hard' destruye cambios locales.", true],
     // R8 lo prohíbe sin excepción configurable y ningún guard lo miraba: `grep -rn amend engine/hooks/`
     // no devolvía una línea. Se bloquea por política y no por daño —un `--amend` sobre algo que nadie vio
     // no rompe nada—, así que el mensaje manda a lo que sí corresponde: otro commit.
@@ -83,7 +83,7 @@ function destructive(input) {
       new RegExp(String.raw`\bgit\s+commit\b${MISMO}*\s--amend\b`),
       "'git commit --amend' reescribe un commit ya creado. R8 pide uno nuevo en su lugar.",
     ],
-    [/\bgit\s+clean\s+-[^\s]*f/, "'git clean -f' borra archivos sin seguimiento."],
+    [/\bgit\s+clean\s+-[^\s]*f/, "'git clean -f' borra archivos sin seguimiento.", true],
     // `git checkout -- .` destruye lo mismo que `reset --hard` y sin recuperación, pero se escribe como
     // una limpieza. Se bloquea sólo la forma ancha —`.`, `*`, `:/`, o sin ruta—: revertir un archivo
     // nombrado es trabajo corriente y no se toca.
@@ -98,14 +98,17 @@ function destructive(input) {
         + String.raw`(?:--(?=\s*(?:${COMANDO}))|(?:--\s+)?(?:\.|\*|:\/)(?=\s*(?:${COMANDO})))`),
       "'git checkout -- .' revierte todo lo no commiteado del directorio, no sólo lo que estás mirando. "
       + 'Nombrá el archivo, o commiteá lo que quieras conservar antes.',
+      true,
     ],
     [
       /\bdocker(?:\s+\w+)*\s+(?:volume\s+(?:rm|prune)|system\s+prune|network\s+prune)\b/,
       'La limpieza global de Docker puede borrar datos compartidos.',
+      true,
     ],
     [
       /\bdocker(?:\s+compose|-compose)\s+(?:\S+\s+)*(?:down|stop|kill|rm)\b/,
       'Detener un stack Compose puede interrumpir servicios compartidos.',
+      true,
     ],
     [
       new RegExp(ANTES + String.raw`(?:mkfs\S*|shred)\s`
@@ -117,7 +120,22 @@ function destructive(input) {
       "'rm -r' sobre /, home o el directorio padre es catastrófico.",
     ],
   ]
-  for (const [pattern, message] of rules) if (pattern.test(command)) block(message)
+  // El tercer elemento dice si la regla tiene salida. Las que no la tienen son las que una persona tampoco
+  // debería poder abrir pidiéndolo: `--amend` y el force-push de arriba, que R8 prohíbe sin excepción
+  // configurable; el borrado de disco; y `rm -r` sobre raíz, home o el padre, que es la clase que gobierna
+  // R23. El resto no tenía salida por omisión y no por decisión: son anteriores al canal de chat de 0.81.0
+  // —por qué ese canal existe y qué distingue, en `chat.js`— y nadie volvió a pasarles por encima (117).
+  //
+  // El ítem que se aprueba es el comando entero tal como llegó, no el pedazo que matcheó: `git clean -f`
+  // no aparece entero dentro de «corré git clean -fd», así que aprobar el fragmento no destrabaría lo que
+  // la persona escribió. Entero es además lo que ella pegaría en el archivo, y lo más angosto: cualquier
+  // otra bandera es otro comando y vuelve a preguntarse.
+  for (const [pattern, message, open] of rules) {
+    if (!pattern.test(command)) continue
+    const item = String(raw).trim()
+    if (open && !AP.pending(opsRoot(input), [item], input).length) continue
+    block(open ? `${message}\n${AP.HOW(null, [item], input)}` : message)
+  }
 }
 
 function gitAdd(input) {

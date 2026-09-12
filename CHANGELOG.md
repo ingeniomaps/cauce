@@ -14,6 +14,31 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.84.0] - 2026-09-12
+
+### Corregido
+
+- **Lo que pedís vos ya no se frena sin ofrecerte ninguna salida.** Siete de los guards que pueden frenar
+  nunca consultaban si lo habías pedido: no tenían variable, ni línea que pegar en
+  `planning/.ops-approval`, ni «dale». Entre ellos estaban las reglas que cubren trabajo de todos los días
+  —`git reset --hard`, `git clean -f`, `git checkout -- .`, `docker compose down`, `docker system prune`—
+  y los que frenan escribir una credencial, un archivo generado, un snapshot del sincronizador o el motor
+  instalado. Pedirlos con todas las letras no servía de nada: se frenaban igual que si los hubiera
+  decidido el agente por su cuenta.
+
+  Ahora preguntan lo mismo que el resto de los guards: si lo pediste en el chat pasa, y si no, el bloqueo
+  te dice qué se frenó y un «dale» lo aprueba. De paso se cierra una asimetría que nadie había decidido:
+  **leer** una credencial se podía aprobar desde 0.80.0 y **escribirla** no.
+
+  **Lo que no cambia, y es a propósito**: reescribir historia publicada —`git push --force`,
+  `git commit --amend`—, el borrado de disco, `rm -r` sobre la raíz, el home o el directorio padre, y
+  `git add -A`. Ésos no se abren ni pidiéndolos, porque R8 y R23 no admiten excepción configurable.
+
+  **Qué cambia para vos**: nada que hacer ni que reinstalar. Lo que antes te obligaba a exportar una
+  variable para poder trabajar —o directamente no tenía salida— ahora se destraba diciéndolo. El permiso
+  es angosto a propósito: vale para el comando entero tal como lo escribiste, así que otra bandera es otro
+  comando y se vuelve a preguntar.
+
 ## [0.83.0] - 2026-09-11
 
 ### Agregado

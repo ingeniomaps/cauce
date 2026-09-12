@@ -111,9 +111,14 @@ function HOW(variable, lines, input, pasteable = lines) {
       + 'sin resolver, y la aprobación compara texto, así que esa línea sólo valdría para un comando escrito '
       + 'igual. Volvé a correrlo con la ruta escrita y el bloqueo va a decir qué pegar. '
     : ''
-  return ask + paste + unresolved
-    + `La variable ${variable}=1 sigue existiendo y apaga el guard para toda la sesión, que es por lo que no `
-    + 'es la vía recomendada.'
+  // Sin variable no se nombra ninguna. Un guard que no tiene apagado por sesión no debería anunciar uno, y
+  // los que estrenan salida angosta con el 117 no lo tienen a propósito: ofrecer el permiso más ancho
+  // cuando alcanza el más angosto es lo que hizo que la variable fuera la vía que quedaba a mano (caso 089).
+  const off = variable
+    ? `La variable ${variable}=1 sigue existiendo y apaga el guard para toda la sesión, que es por lo que no `
+      + 'es la vía recomendada.'
+    : ''
+  return ask + paste + unresolved + off
 }
 
 module.exports = { APPROVAL, lines, read, pending, pendingNow, where, HOW }
