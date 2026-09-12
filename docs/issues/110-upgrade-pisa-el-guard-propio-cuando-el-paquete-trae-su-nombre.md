@@ -241,10 +241,16 @@ Tres ítems que este cierre había dejado sin recorrer.
   guard propio que una versión vieja registró y que el paquete ahora trae, exactamente lo que asevera
   `test/instance/upgrade-own-guards.test.js:98`. La prioridad se queda en **media** por eso, y no por
   omisión.
-- **«No medido cuántas instancias así quedan»** (Tradeoffs) — **sigue sin medirse, y no se puede desde
-  acá**: son instancias instaladas afuera, y este repositorio no tiene forma de contarlas. Lo que lo
-  cerraría es el dato de una empresa: cuántos de sus guards tienen huella en el manifiesto y ninguna
-  entrega detrás. Queda declarado en vez de tachado.
+- **«No medido cuántas instancias así quedan»** (Tradeoffs) — **salió como caso propio: el 125**. Contarlas
+  sigue siendo imposible desde acá, pero la pregunta de abajo sí se pudo medir: **si importa**. Se montaron
+  tres instancias y se corrió el `upgrade` real en cada una — sin manifiesto, con el manifiesto de `init`, y
+  con una huella vieja. En la primera, **el guard propio se perdió**: `--check` dijo «la instancia está al
+  día», el `upgrade` salió 0 sin nombrar el archivo, y quedó el shim del paquete. Las otras dos lo
+  conservaron y lo nombraron, que es lo que este caso arregló.
+
+  O sea que el acote que este cierre eligió —aplicar la regla sólo si el manifiesto ya conoce la ruta— deja
+  afuera justo el caso que más duele, y ante la duda elige sobrescribir. Eso no le toca a este caso, que ya
+  está publicado: va al **125**, con la reproducción y los tres escenarios adentro.
 - **«Un guard del toolkit registrado y sin editar se sigue actualizando en silencio»** — el cierre lo
   sostenía en «las pruebas de `upgrade.test.js` que siguen en verde», que no nombra ninguna. Es
   `upgrade.test.js:72`, «upgrade conserva lo editado, actualiza el resto y lo dice». La cobertura estaba;
