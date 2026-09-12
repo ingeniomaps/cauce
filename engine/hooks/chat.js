@@ -16,6 +16,7 @@
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
+const { opsRoot } = require('./input')
 
 // El temporal y no la instancia: el texto de la persona no tiene por qué terminar en un commit, y una
 // orden dura lo que dura la sesión.
@@ -150,8 +151,11 @@ function record(input) {
       : []
     const granted = previous ? (previous.granted || []).filter((one) => !mentions(text, one).denied) : []
     fs.mkdirSync(DIR, { recursive: true })
+    // Sobre qué instancia se está hablando, que es lo que después deja filtrar lo concedido: por qué hace
+    // falta, en `grantedIn`.
     fs.writeFileSync(recordPath(input.session_id), JSON.stringify(
-      { id: idOf(input), text, human, flow: flowCommand(text), approved, granted, pending: [] }))
+      { id: idOf(input), text, human, flow: flowCommand(text), root: opsRoot(input), approved, granted,
+        pending: [] }))
   } catch { /* registrar es un extra: si falla, los guards siguen frenando lo que frenaban */ }
 }
 
@@ -237,4 +241,24 @@ function hold(input, items) {
   } catch { return false }
 }
 
-module.exports = { DIR, record, said, authorized, unauthorized, unauthorizedNow, hold, ordersPush }
+// Lo que quedó concedido en esta máquina para una instancia, para que `check` pueda mostrarlo. Se filtra
+// por la raíz que anotó el mensaje: el directorio es uno solo por máquina, así que sin filtrar una
+// instancia reportaría las exenciones de la de al lado, que es peor que no reportar ninguna.
+//
+// Un registro anterior a que la raíz se anotara no trae el campo y queda afuera, igual que uno escrito
+// fuera de toda instancia —ahí `opsRoot` devuelve vacío—: decir «concedido» sin saber dónde es exactamente
+// lo que este filtro existe para evitar (caso 117).
+function grantedIn(root) {
+  let names = []
+  try { names = fs.readdirSync(DIR) } catch { return [] }
+  const found = new Set()
+  for (const name of names) {
+    let saved = null
+    try { saved = JSON.parse(fs.readFileSync(path.join(DIR, name), 'utf8')) } catch { continue }
+    if (!saved || !saved.root || saved.root !== root) continue
+    for (const one of saved.granted || []) found.add(one)
+  }
+  return [...found].sort()
+}
+
+module.exports = { DIR, record, said, authorized, unauthorized, unauthorizedNow, hold, ordersPush, grantedIn }

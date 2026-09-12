@@ -121,4 +121,26 @@ function HOW(variable, lines, input, pasteable = lines) {
   return ask + paste + unresolved + off
 }
 
-module.exports = { APPROVAL, lines, read, pending, pendingNow, where, HOW }
+// Las dos exenciones que sobreviven a un bloqueo, para que `check` las muestre juntas: la lista que una
+// persona escribió a mano, y lo que la sesión fue concediendo sola a medida que los guards dejaban pasar.
+// Ninguna de las dos caduca por su cuenta, así que lo único que las cierra es verlas en cada corrida.
+//
+// La segunda no se veía en ninguna parte hasta 0.86.0. El 116 la trajo para que la persona no tuviera que
+// repetir la autorización en cada mensaje —y eso está bien—, pero quedó del lado que nadie audita: vive en
+// el temporal del sistema, mientras que por una sola línea del archivo `check` sí avisaba. Una exención que
+// no se ve es un límite que ya no existe (caso 117).
+function warnings(root) {
+  const out = []
+  const approved = read(root)
+  if (approved.length) {
+    out.push(`planning/${APPROVAL}: ${approved.length} ruta(s) aprobadas y sin borrar; `
+      + 'el archivo sigue autorizándolas')
+  }
+  const granted = CHAT.grantedIn(root)
+  if (granted.length) {
+    out.push(`${granted.length} ruta(s) concedidas en el chat de esta sesión: ${granted.join(', ')}`)
+  }
+  return out
+}
+
+module.exports = { APPROVAL, lines, read, pending, pendingNow, where, HOW, warnings }

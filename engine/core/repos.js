@@ -119,4 +119,32 @@ function coverageWarnings(opsRoot, done) {
   return warnings
 }
 
-module.exports = { reposFor, repoOf, lastCommit, coverageWarnings }
+// La fila de `HUMAN_ACTIONS.md` que figura resuelta sin que ningún commit la haya tocado. Ready la rechaza
+// —una decisión que nadie dejó escrita es una aprobación autoservida— y `check` no la miraba, así que el
+// defecto se descubría en la fase 4 de un recorrido: 1,21 M de tokens en tres paradas, con la puerta en
+// verde las tres veces (caso 121).
+//
+// Se pregunta con el pickaxe sobre la línea entera y no por la palabra `resuelta`: lo que hay que
+// establecer es que **esa** fila, con ese estado, existió alguna vez en un commit. Una que pasó a resuelta
+// sólo en el árbol de trabajo no aparece en ninguno.
+//
+// Sin repositorio, o con el archivo todavía sin commitear, no dice nada: no hay historia contra la cual
+// preguntar y el aviso sería inventado. Degrada como el 086 con las migraciones — antes callar de más que
+// avisar de más, porque un aviso que salta siempre se termina apagando.
+function unrecordedHumanActions(opsRoot, rows) {
+  const file = path.join(opsRoot, 'planning', 'HUMAN_ACTIONS.md')
+  const top = git(path.dirname(file), 'rev-parse', '--show-toplevel')
+  if (top.status !== 0) return []
+  const repo = top.stdout.trim()
+  const relative = path.relative(repo, file)
+  const history = git(repo, 'log', '--format=%h', '--', relative)
+  if (history.status !== 0 || !history.stdout.trim()) return []
+  return rows.filter((row) => row.resolved)
+    .filter((row) => {
+      const found = git(repo, 'log', '--format=%h', `-S${row.raw}`, '--', relative)
+      return found.status === 0 && !found.stdout.trim()
+    })
+    .map((row) => `HUMAN_ACTIONS.md: ${row.task} figura resuelta y ningún commit la registró`)
+}
+
+module.exports = { reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions }

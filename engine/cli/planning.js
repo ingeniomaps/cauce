@@ -175,14 +175,8 @@ function check(dir, cli) {
   warnings.push(...RC.warnings(RC.status({ ...recurring, done, today: TODAY() })))
   warnings.push(...IB.warnings(root, done, config))
   warnings.push(...AD.sealWarnings(root))
-  // Una aprobación vale para el conjunto que nombra, así que olvidada sigue autorizando
-  // esas mismas rutas la próxima vez que alguien las stagee. No caduca sola: lo que la cierra es que se
-  // vea en cada corrida y alguien la borre.
-  const aprobadas = AP.read(path.resolve(root, '..'))
-  if (aprobadas.length) {
-    warnings.push(`planning/${AP.APPROVAL}: ${aprobadas.length} ruta(s) aprobadas y sin borrar; `
-      + 'el archivo sigue autorizándolas')
-  }
+  warnings.push(...R.unrecordedHumanActions(path.resolve(root, '..'), P.readHumanActions(root)))
+  warnings.push(...AP.warnings(path.resolve(root, '..')))
 
   // Lo que `upgrade` conserva por estar editado deja de recibir mejoras, y eso es una deuda que no
   // avisa sola: la instancia queda con medio molde viejo y todo se ve normal. Sale acá para que se vea
