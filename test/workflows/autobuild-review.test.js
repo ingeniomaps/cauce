@@ -23,6 +23,23 @@ test('las reglas que lista context llegan a Plan, Build y Review', async () => {
   }
 })
 
+// Caso 122. Review tiene que nombrar contra qué reglas revisó —si no, la corrida para con
+// `review-unbacked`— y esa lista quedaba en el journal sin llegar a la entrada de DONE, que es el registro
+// que sobrevive a la corrida. La revisión ocurrió y fue contra las reglas correctas; lo que no se podía
+// reconstruir tres meses después, cuando el journal ya no está, es contra cuáles.
+test('las reglas contra las que Review revisó llegan a la entrada de DONE', async () => {
+  const { result, prompts } = await runFlow(withRules({
+    [KEY.review]: { verdict: 'aprobado', concerns: [], consulted: ['api/alta.go'], rules: [RULES[1]] },
+  }))
+  ranToEnd(result)
+  const done = prompts.find((one) => one.key === 'Done|done').prompt
+  assert.match(done, /review=[^;]*reglas: planning\/rules\/security\.md/,
+    'la entrada de DONE nombra contra qué regla se revisó')
+  // Y sigue trayendo lo que ya traía. Sin esta mitad, reemplazar la línea entera por la lista de reglas
+  // daría el mismo verde: la aserción de arriba no distingue agregar de sustituir.
+  assert.match(done, /review=aprobado por [^;]*sobre api\/alta\.go/, 'sin perder el veredicto ni lo inspeccionado')
+})
+
 test('con reglas que rigen, Review no aprueba sin nombrar contra cuáles revisó', async () => {
   const { result } = await runFlow(withRules())
   assert.equal(result.reason, 'review-unbacked')
