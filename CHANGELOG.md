@@ -14,6 +14,43 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.86.0] - 2026-09-12
+
+### Corregido
+
+- **Tu guard propio ya no se pierde al actualizar una instancia vieja.** Si tu instancia es anterior al
+  registro de entregas —no tiene `.cauce/manifest.json`— y tenés un guard tuyo con un nombre que el paquete
+  hoy trae, `upgrade` lo reemplazaba sin nombrarlo, salía con 0 y después lo anotaba como entregado por
+  Cauce. Los tres pasos juntos hacían la pérdida silenciosa **e** irrecuperable: para cuando la notabas, el
+  registro decía que ese archivo siempre había sido nuestro. Y la última línea de la corrida afirmaba lo
+  contrario de lo que había pasado — «planning, organization y todo lo propio quedaron intactos».
+
+  Ahora, sin registro para esa ruta, la duda se resuelve del lado del que se vuelve: el archivo se conserva,
+  `upgrade` lo nombra y `upgrade --check` sale con 1 **antes** de tocar nada. Si el que querés es el del
+  paquete, `--force` lo reemplaza diciéndolo, como ya hacía.
+
+### Agregado
+
+- **`check` te avisa de una fila de `HUMAN_ACTIONS.md` que figura resuelta y que ningún commit registró.**
+  Una decisión que nadie dejó escrita es una aprobación autoservida, y la puerta barata no la miraba: el
+  recorrido la rechazaba recién en Ready, con Triage, Pick, Claim y Decompose ya pagados. En la corrida que
+  lo destapó fueron tres paradas y 1,21 M de tokens, con `check` en verde las tres veces.
+
+  Avisa, no falla —rechazar enunciados por heurística frenaría trabajo legítimo— y **se calla cuando no hay
+  con qué contestar**: sin repositorio, o con el archivo todavía sin commitear, no dice nada.
+
+- **`check` muestra lo que autorizaste en el chat y sigue vigente.** Desde 0.83.0, lo que un guard te deja
+  pasar queda concedido para el resto de la sesión, así no te vuelve a preguntar lo mismo en cada mensaje.
+  Eso está bien, y no se veía en ninguna parte: por una línea olvidada en `planning/.ops-approval` `check` te
+  avisaba, y por una concesión que vale toda la sesión no decía nada. Ahora lista las dos. Lo que concediste
+  trabajando en otra instancia no se le cuenta a ésta.
+
+### Cambiado
+
+- **La guía dejó de pedirle al agente que borre una autorización que no escribió él.** `AGENTS.md` decía que
+  «borrarla es parte de terminar» sin distinguir la línea que el agente pidió para una operación de la que
+  dejaste puesta vos a propósito. Ahora sólo se borra la primera.
+
 ## [0.85.0] - 2026-09-12
 
 ### Corregido
