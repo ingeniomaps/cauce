@@ -18,6 +18,23 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Una frase en inglés que prohíbe ya no autoriza.** Cauce reconoce si le negás algo antes de dejarlo
+  pasar, y en inglés sólo entendía `don't`: «the tool doesn't read the .env» o «we can't read the .env»
+  nombraban el archivo, traían un verbo y ninguna negación reconocida, así que **una frase que prohíbe
+  terminaba autorizando**. Entran ahora las contraídas con auxiliar —`doesn't`, `isn't`, `can't`,
+  `won't`, `wasn't`, `wouldn't`, `shouldn't`…—, con o sin apóstrofo.
+
+  **Qué cambia para vos**: nada que hacer. Si trabajás en inglés, negar algo ahora se respeta; lo que antes
+  pasaba por no entenderse, se frena. Una frase como «I can't tell if the .env is right» deja de autorizar
+  y cuesta un «dale», que es el mismo costo que el español ya tenía.
+
+- **La entrada de DONE dice contra qué reglas se revisó.** `autobuild` exige que Review nombre las reglas
+  contra las que revisó —si no las nombra, la corrida para—, pero esa lista quedaba sólo en el registro de
+  la corrida, que no sobrevive. Ahora va también en la línea `review=` de `DONE.md`, que es lo que queda.
+
+  **Qué cambia para vos**: nada que hacer. Al auditar una entrega vieja vas a poder decir contra qué se
+  revisó sin depender del registro de aquella corrida.
+
 - **Lo que pedís vos ya no se frena sin ofrecerte ninguna salida.** Siete de los guards que pueden frenar
   nunca consultaban si lo habías pedido: no tenían variable, ni línea que pegar en
   `planning/.ops-approval`, ni «dale». Entre ellos estaban las reglas que cubren trabajo de todos los días

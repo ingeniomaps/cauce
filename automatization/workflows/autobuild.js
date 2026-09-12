@@ -790,7 +790,11 @@ while (rounds++ < MAX_TASKS) {
     if (governing.length) log(`Review contra: ${review.rules.join(', ')}`)
     // Aprobar sin declarar qué se abrió no se arregla mandando a tocar código: falló quien revisó.
     if (!review.consulted.length) return stop('review-unbacked', 'aprobó el diff sin declarar qué inspeccionó')
+    // Contra qué reglas se revisó va también a la entrada de DONE, y no sólo al journal: el journal muere
+    // con la corrida y la entrada queda, así que sin esto no había cómo reconstruir contra cuáles se
+    // revisó cuando alguien audita la entrega meses después (caso 122).
     reviewFact = `${review.verdict} por ${cast.review}, sobre ${review.consulted.join(', ')}`
+      + ((review.rules || []).length ? ` · reglas: ${review.rules.join(', ')}` : '')
     // Lo que no impide entregar no manda a tocar código, y tampoco desaparece: la mejora opinable que se
     // corrige a las apuradas cuesta una vuelta y un riesgo que nadie pidió. Va a Propuestas y no a
     // Lecciones porque lo que la revisión anotó es un cambio del producto —su evidencia es la de la

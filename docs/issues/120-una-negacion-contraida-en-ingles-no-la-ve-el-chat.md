@@ -1,14 +1,15 @@
 ---
 caso: 120
 titulo: Una negación contraída en inglés no la ve el registro del chat, así que prohibir algo lo autoriza
-estado: abierto
+estado: resuelto
+resuelto-en: 0.84.0
 prioridad: baja
 version-detectada: 0.83.0
 ---
 
 # 120 — «the tool doesn't read the .env» autoriza leer el `.env`
 
-**🔴 abierto** · detectado en 0.83.0 · prioridad **baja** — la negación de `chat.js` reconoce `not` y
+**🟢 resuelto en 0.84.0** · detectado en 0.83.0 · prioridad **baja** — la negación de `chat.js` reconoce `not` y
 `don't`, y no las contraídas con auxiliar: `doesn't`, `isn't`, `can't`, `won't`. Una frase que prohíbe
 cuenta como pedido
 
@@ -95,3 +96,35 @@ propio en vez de arreglarse ahí.
 - **109** — acotó qué cuenta como pedido con la lista de verbos, y declaró en sus tradeoffs que la negación
   mira sólo lo que va antes del nombre.
 - **118** — lo encontró al medir el vocabulario de autorizar.
+
+## Cierre
+
+**🟢 resuelto en 0.84.0** · `engine/hooks/chat.js`, `test/wiring/hooks.test.js`
+
+### Contra lo que el caso enumeró
+
+**El fix propuesto** — hecho tal cual: la alternancia `(?:do|does|did|is|are|was|were|ca|wo|would|should)n'?t`
+entró en `NEGATION` con el apóstrofo opcional. `don'?t` salió de la lista porque `do` + `n't` ya lo cubre, y
+dos reglas para lo mismo es lo que R11 pide no dejar.
+
+**Tradeoff «la negación sigue mirando sólo lo que va antes del nombre»** — se cumple: este cambio no toca
+dónde se la busca, sólo qué cuenta como negación.
+
+**Tradeoff «toca a todos los guards que pasan por `mentions`»** — se cumple, y se midió: la puerta completa
+quedó en 767 de 767, así que ninguna frase que antes pasaba dejó de pasar en lo que ya estaba probado. La
+dirección sigue siendo la segura: lo que cambia es que algunas frases dejan de autorizar, ninguna pasa a
+autorizar.
+
+**Tradeoff «"I can't tell if the .env is right" costaría un «dale»»** — asumido con la razón del caso: es el
+mismo costo que el 109 aceptó para el español.
+
+### Qué se corrió
+
+- **Rojo previo**: la prueba nueva sobre el motor sin tocar — `tests 98, pass 97, fail 1`, con
+  `Missing expected exception` en `hooks.test.js:2277`. O sea que una frase que prohíbe estaba autorizando.
+- **Verde**: 115 de 115 en las dos suites tocadas; `npm run ci` y `npm test` en 0, **767 de 767**.
+- **Mutación** (M1, en copia desechable, R23): devolver `CONTRACTED` a sólo `don'?t` pone la prueba en rojo.
+  Sin eso el verde sólo diría que la prueba corre.
+- **El control dentro de la prueba** —«the tool does not read the .env», la forma sin contraer, que ya
+  frenaba— está para que lo que mida sea la contracción: sin él, un `NEGATION` roto entero daría el mismo
+  verde.

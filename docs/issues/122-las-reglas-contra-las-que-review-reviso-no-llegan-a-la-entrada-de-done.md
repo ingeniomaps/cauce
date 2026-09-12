@@ -1,14 +1,15 @@
 ---
 caso: 122
 titulo: Las reglas contra las que Review revisó quedan en el journal y no llegan a la línea review= de la entrada de DONE
-estado: abierto
+estado: resuelto
+resuelto-en: 0.84.0
 prioridad: baja
 version-detectada: 0.82.0
 ---
 
 # 122 — `reviewFact` no incluye `review.rules`
 
-**🔴 abierto**
+**🟢 resuelto en 0.84.0**
 
 ## Resumen
 
@@ -91,3 +92,28 @@ Lo encontró la auditoría de 0.79→0.83 del 2026-09-12.
 - **105** — de donde salió.
 - **115** — la procedencia en el INBOX, el cambio que bloqueaba a éste y ya está cerrado.
 - **121** y **123** — los otros dos ítems del mismo contraste.
+
+## Cierre
+
+**🟢 resuelto en 0.84.0** · `automatization/workflows/autobuild.js`, `test/workflows/autobuild-review.test.js`
+
+### Contra lo que el caso enumeró
+
+**El fix propuesto** — hecho donde el caso decía, en `:793`: `reviewFact` suma `· reglas: <lista>` cuando
+Review declaró contra cuáles revisó, y no suma nada cuando no hay.
+
+**Tradeoff «la entrada de DONE se alarga»** — asumido: se eligió nombrar las reglas y no contarlas, porque
+el conteo pierde justo la mitad que importa —cuáles—.
+
+**Tradeoff «comprobar que ninguna puerta mida el ancho de esa línea»** — comprobado, que era el ítem que
+pedía mirar antes de darlo por gratis: la puerta completa quedó en 767 de 767 y `DONE.md` no tiene tope de
+ancho.
+
+### Qué se corrió
+
+- **Rojo previo**: la prueba nueva sobre el motor sin tocar — `tests 17, pass 16, fail 1`, con
+  `la entrada de DONE nombra contra qué regla se revisó` en `autobuild-review.test.js:36`.
+- **Verde**: 115 de 115 en las dos suites; `npm run ci` y `npm test` en 0, **767 de 767**.
+- **Mutación** (M2, en copia desechable, R23): quitar el sufijo de reglas pone la prueba en rojo.
+- **La prueba lleva las dos mitades**: que la línea nombre la regla y que **siga** trayendo el veredicto y
+  lo inspeccionado. Sin la segunda, reemplazar la línea entera por la lista daría el mismo verde.
