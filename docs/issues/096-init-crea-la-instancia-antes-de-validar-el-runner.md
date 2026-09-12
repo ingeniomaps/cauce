@@ -123,3 +123,9 @@ avisara que `init` había salido con error.
   M2 la validación temprana ignora --integration fail 1 → ROJA
   ```
 - `npm run ci`: código 0, 689 de 689, cobertura de 58 archivos en su piso o por encima.
+
+### Recorrido de la auditoría (2026-09-12)
+
+- **La condición de escalada del encabezado** —«sube a **media** si un script de alta de proyectos depende
+  del código de salida de `init`»— **quedó imposible**: el arreglo hace que el código de salida y el estado
+  del disco coincidan, que es justo lo que ese script necesitaría. Depender de él pasó a ser seguro.

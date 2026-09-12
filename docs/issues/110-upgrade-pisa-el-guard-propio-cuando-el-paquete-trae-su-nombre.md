@@ -230,3 +230,22 @@ nombres que agregó 0.81.0 (`guard-secrets-shell.sh` entró en `938f5364`).
 - **La pasada de comentarios** en 0.22 contra la base: ningún par nuevo.
 - `npm run ci`, con los archivos nuevos ya en el índice: código 0, 702 de 702, cobertura de 61 archivos en su
   piso o por encima, ningún export sin uso.
+
+### Recorrido de la auditoría (2026-09-12)
+
+Tres ítems que este cierre había dejado sin recorrer.
+
+- **La condición de escalada del encabezado** —«sube a **alta** el día que se arregle el 100: ahí deja de
+  haber cualquier caso en que se conserve»— **resultó con la premisa falsa, y eso es lo que hay que
+  registrar**. El 100 se arregló en este mismo cambio y **sigue habiendo** un caso en que se conserva: un
+  guard propio que una versión vieja registró y que el paquete ahora trae, exactamente lo que asevera
+  `test/instance/upgrade-own-guards.test.js:98`. La prioridad se queda en **media** por eso, y no por
+  omisión.
+- **«No medido cuántas instancias así quedan»** (Tradeoffs) — **sigue sin medirse, y no se puede desde
+  acá**: son instancias instaladas afuera, y este repositorio no tiene forma de contarlas. Lo que lo
+  cerraría es el dato de una empresa: cuántos de sus guards tienen huella en el manifiesto y ninguna
+  entrega detrás. Queda declarado en vez de tachado.
+- **«Un guard del toolkit registrado y sin editar se sigue actualizando en silencio»** — el cierre lo
+  sostenía en «las pruebas de `upgrade.test.js` que siguen en verde», que no nombra ninguna. Es
+  `upgrade.test.js:72`, «upgrade conserva lo editado, actualiza el resto y lo dice». La cobertura estaba;
+  faltaba la cita, que es lo que permite contrastarla sin rehacer el trabajo.
