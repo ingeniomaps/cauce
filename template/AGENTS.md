@@ -136,7 +136,8 @@ caduca, deja de coincidir. En la última fila es más visible —aprobás el ín
 una cosa más la invalida—, y es a propósito: commitear en rojo se autoriza para un commit concreto.
 
 No se borra sola, así que un commit frenado por otra cosa no te obliga a rehacerla. `check` te avisa
-mientras exista, y borrarla es parte de terminar.
+mientras exista, y borrar **la línea que pediste para una operación ya terminada** es parte de terminar.
+La que dejaste puesta vos no se toca: el agente no borra una autorización que no escribió él.
 
 **Publicar un paquete o instalar algo global no se aprueba así**, porque ahí no hay ninguna ruta sobre
 la cual decidir. Esa sigue siendo una acción humana y su única llave es la variable de abajo.
