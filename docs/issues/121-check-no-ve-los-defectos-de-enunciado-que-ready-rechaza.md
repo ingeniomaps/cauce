@@ -139,12 +139,30 @@ sobre la **línea entera** y no por la palabra `resuelta`: lo que hay que establ
 estado, existió alguna vez en un commit. Una que pasó a resuelta sólo en el árbol de trabajo no aparece en
 ninguno, que es exactamente el caso que Ready leyó como aprobación autoservida.
 
-**Opción 2, «un aviso de aceptación sospechosa» — decidida que no, por ahora.** El propio caso pone la
-condición: no está medido cuántas aceptaciones legítimas marcaría, y hace falta pasarla por las tareas de
-`done/` de una instancia real antes de fijar el umbral. Esa medición no se hizo, así que construir la
-heurística ahora sería elegir un umbral a ciegas — y una puerta ruidosa se termina apagando, que es el modo
-de fallo que este mismo caso denuncia. **La reactiva** haber corrido las heurísticas contra el `done/` de
-una instancia real y tener el número de falsos positivos.
+**Opción 2, «un aviso de aceptación sospechosa» — medida el 2026-09-12, y descartada por lo que la medición
+mostró.** El caso ponía la condición: pasarla por las tareas de `done/` de una instancia real antes de fijar
+el umbral. Se hizo, en sólo lectura, contra las **83 aceptaciones** de `venotal-ops`, y el resultado no es
+un umbral mal elegido sino que **la heurística no mide lo que dice medir**.
+
+- **«Una condición que nombra un único valor literal»** marca **12 de 83**, y las 12 son falsos positivos.
+  Once citan un identificador —`` `FROM` ``, `` `pnpm run build` ``, `` `src/lib/gemini.ts` ``,
+  `` `/diagnostico` ``, `` `global.css` ``— que es lo que hace toda aceptación bien escrita en ese corpus.
+  La más elocuente es «el archivo `dashboard/test-loop.txt` existe y contiene el texto "Loop funciona"»:
+  es **perfectamente asercible** y la heurística la marcaría igual.
+- **«Incluye/contiene sobre un valor que puede ser vacío»** marca **1 de 83** al aplicarle su propio acote
+  —sin él eran 8—, y esa única también es legítima: enumera dos condiciones sobre
+  `product.imageUrls.split(",")`.
+
+O sea que lo que la heurística detecta es «cita un identificador», no «es inasercible por construcción»,
+que era el defecto que Ready rechazó. Bajar el umbral no la arregla y subirlo la apaga. **Lo que la
+reactivaría** ya no es un número: es una forma de reconocer una condición inasercible que no pase por
+contar literales.
+
+Vale registrar cómo casi se cierra mal. La primera pasada dio **36 y 8** con dos greps que aproximaban las
+heurísticas por encima —contaban aceptaciones que *contienen* un literal corto, y las que dicen
+«incluye» ignorando el acote del valor vacío—. Con esos números la conclusión habría sido «es ruidosa, 43 %»,
+que es una razón distinta y más débil que la verdadera. Lo que cambió el diagnóstico no fue afinar el
+regex: fue **leer las 12 marcadas** una por una.
 
 **Opción 3, «una fase de crítica de enunciado antes de Pick» — decidida que no.** Cambia el recorrido, que
 es una decisión de producto y no la cola de este caso; el propio enunciado la marca como «la que hay que
@@ -173,6 +191,18 @@ de un caso cerrado, que es el defecto que lo originó.
 no se midió: no se corrió ningún recorrido después del arreglo. Queda como estaba.
 
 ### Qué se corrió
+
+**La medición de la opción 2**, el 2026-09-12, en sólo lectura sobre `planning/done/` de `venotal-ops`:
+
+- **83 aceptaciones**, todas con línea `acept:`, de 83 entradas cerradas. Es trabajo real de una empresa,
+  no un banco: aparecen condiciones numeradas, gates nombrados y rutas de archivo.
+- **Heurística A** —un solo literal entre comillas y sin enumerar otras condiciones—: **12 de 83**, y se
+  leyeron **las 12**, no una muestra. Las 12 son falsos positivos.
+- **Heurística B** —«incluye/contiene» **y** mención de valor vacío—: **1 de 83**. Sin el acote del valor
+  vacío daba 8, que es lo que contaba la primera pasada.
+- El corpus no viaja con el caso y no está en este repositorio; lo que queda acá es el número y el método.
+
+**Lo que probó la opción 1**, que es la que sí se construyó:
 
 - **Rojo previo**, con el motor sin tocar: la prueba pasa su primera aserción —sin repositorio no avisa— y
   falla en la segunda, `actual []` contra el aviso esperado. O sea que el montaje —`git init`, la fila
