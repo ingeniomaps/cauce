@@ -14,7 +14,7 @@ const {
 } = require('./input')
 const AP = require('./approval')
 const { publish } = require('./push')
-const { selfApproval } = require('./self-approval')
+const { selfApprovalShell } = require('./self-approval')
 const EV = require('../core/evidence')
 
 // Dónde empieza y dónde termina una palabra dentro de un comando. Tres reglas de la tabla de abajo lo
@@ -177,7 +177,7 @@ function dependencies(input) {
   // Lo que se juzga acá es el archivo staged, así que la aprobación por ruta lo expresa: autorizar
   // `package.json` dice «este manifiesto va sin su lock a propósito» y deja de valer en cuanto el
   // conjunto cambie. La rama de publicar no pasa por acá y no tiene ruta: sigue arriba, con su variable.
-  const sinAprobar = (parent, names) => AP.pending(opsRoot(input),
+  const sinAprobar = (parent, names) => AP.pendingNow(opsRoot(input),
     names.map((name) => path.posix.join(parent === '.' ? '' : parent, name)), input)
   // Un lock cuenta si está en disco **o** si el commit lo va a llevar, y la unión no es un detalle: el
   // disco solo perdía el que alguien borró del árbol sin stagear el borrado —sigue en el índice, sigue
@@ -315,7 +315,7 @@ function shellBoundary(input) {
     const file = path.resolve(base || '/', raw)
     // El canal por el que la persona aprueba no es un destino más: se juzga aunque no haya raíces
     // declaradas y aunque caiga en el temporal, que el resto de este guard deja pasar (caso 098).
-    const own = selfApproval(input, file)
+    const own = selfApprovalShell(input, file)
     if (own) block(own)
     if (!allowed || NEUTRAL.some((pattern) => pattern.test(file))) continue
     if (outsideRoots(file, allowed)) {
@@ -348,7 +348,7 @@ function governance(input) {
   // La aprobación vale para lo que nombra y para nada más: lo que quede sin cubrir es lo que se
   // reporta. Así una aprobación vieja no autoriza el archivo que se sumó después, que es la diferencia
   // entre una llave por operación y una puerta que quedó abierta.
-  const pendientes = AP.pending(opsRoot(input), governed, input)
+  const pendientes = AP.pendingNow(opsRoot(input), governed, input)
   if (!pendientes.length) return
   block(`El commit toca gobernanza protegida.\n${AP.HOW('OPS_GOVERNANCE_OVERRIDE', pendientes, input)}`)
 }
@@ -489,7 +489,7 @@ function verify(input) {
   // Acá lo aprobado es el conjunto staged entero: decir «autorizo commitear exactamente estas rutas»
   // es lo que un gate en rojo necesita, y cambia en cuanto se stagea una más. La lista sale del índice
   // y no de una regla, que es lo que la vuelve una operación y no un permiso.
-  const sinAprobar = AP.pending(opsRoot(input), staged, input)
+  const sinAprobar = AP.pendingNow(opsRoot(input), staged, input)
   const aprobado = !sinAprobar.length
   if (changedOpenApi && !hasApiGenerated && !aprobado) {
     block('Cambió una fuente OpenAPI/Swagger sin incluir código regenerado. Ejecuta el generador y '

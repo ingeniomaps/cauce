@@ -109,7 +109,9 @@ te frena es el peor para elegir bien.
 cuando trabaja dentro de un recorrido; lo que vos pedís directo no se frena. Nombrá lo que querés que
 toque —«borrá la prueba de altas», «reescribí la migración 004»— y pasa sin preguntarte de nuevo. Si tu
 pedido no lo nombraba y algo se frena, el agente te dice qué y por qué: contestá «dale» y pasa exactamente
-eso. Y `plan-first` no te pide un plan cuando el cambio lo pediste vos: el plan es para el trabajo que va
+eso. **Con los gates de un commit se pregunta cada vez**, como con publicar: gobernanza, los gates del
+stack y los lockfiles no heredan lo que autorizaste en un mensaje anterior, porque cada commit es otra
+operación. Y `plan-first` no te pide un plan cuando el cambio lo pediste vos: el plan es para el trabajo que va
 por tareas. Funciona en Claude Code, Codex y Gemini, que le avisan a Cauce cuando mandás un mensaje; en
 Antigravity, y cuando nadie está en el chat —CI, un recorrido, un subagente—, queda el archivo de abajo.
 

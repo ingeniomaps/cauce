@@ -155,9 +155,10 @@ function said(input) {
 // había quedado frenado, o se lo concedieron antes en esta sesión. Qué cuenta como pedirlo depende de qué
 // se frena: un archivo se nombra, un push se ordena con su remoto y su rama.
 const named = (text, item) => mentions(text, item).named
-function why(saved, item, asked) {
+function why(saved, item, asked, inherit) {
   if (asked(saved.text, item)) return 'orden'
   if (saved.approved.includes(item)) return 'dale'
+  if (!inherit) return ''
   return (saved.granted || []).includes(item) ? 'concedido' : ''
 }
 
@@ -182,19 +183,31 @@ function grant(input, saved, items) {
 // Con qué autorización pasa cada uno de los que pasan. Lo pregunta quien necesita el porqué y no sólo el
 // qué —el rastro de un push lo anota (caso 112)—, y no concede nada: preguntar no cambia qué va a valer
 // en el mensaje siguiente.
-function authorized(input, items, asked = named) {
+//
+// Conceder y heredar son dos cosas distintas y hasta 0.83.0 se movían juntas: conceder es escribir en el
+// registro, heredar es leer lo que escribió un mensaje anterior. Quien decide algo que vuelve a tener
+// consecuencia cada vez que ocurre apaga lo segundo con `inherit: false`, y ahí vale lo que la persona pidió
+// en el mensaje en curso o aprobó con un «dale» (caso 119).
+function authorized(input, items, { asked = named, inherit = true } = {}) {
   const saved = said(input)
   if (!saved) return []
-  return items.map((item) => ({ item, via: why(saved, item, asked) })).filter((one) => one.via)
+  return items.map((item) => ({ item, via: why(saved, item, asked, inherit) })).filter((one) => one.via)
 }
 
 // Lo que la persona no autorizó de lo que un guard está por frenar; lo que sí, queda concedido.
 function unauthorized(input, items) {
   const saved = said(input)
   if (!saved) return items
-  const passed = items.filter((item) => why(saved, item, named))
+  const passed = items.filter((item) => why(saved, item, named, true))
   grant(input, saved, passed)
   return items.filter((item) => !passed.includes(item))
+}
+
+// Lo mismo sin conceder y sin heredar: lo que no está en el mensaje en curso queda pendiente aunque la
+// sesión lo haya dejado pasar antes.
+function unauthorizedNow(input, items) {
+  const cleared = new Set(authorized(input, items, { inherit: false }).map((one) => one.item))
+  return items.filter((item) => !cleared.has(item))
 }
 
 // Lo que quedó frenado, para que un «dale» en el mensaje siguiente apruebe exactamente eso y nada más.
@@ -209,4 +222,4 @@ function hold(input, items) {
   } catch { return false }
 }
 
-module.exports = { DIR, record, said, authorized, unauthorized, hold, ordersPush }
+module.exports = { DIR, record, said, authorized, unauthorized, unauthorizedNow, hold, ordersPush }

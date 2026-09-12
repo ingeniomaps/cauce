@@ -66,8 +66,10 @@ function commandMessage(file) {
 }
 
 // Lo que la persona pidió nombrando el archivo pasa: ahí quien decide es ella, que es lo que este guard
-// cuida. Lo mismo que hace `self-approval` con la aprobación, y por lo mismo.
-const asked = (input, file) => !CHAT.unauthorized(input, [file]).length
+// cuida. Se pregunta cada vez —sin conceder y sin heredar—, igual que `self-approval`: las dos llaves que
+// viven acá son el permiso de push, y nombrar el archivo una vez no lo deja abierto toda la sesión. El
+// comentario decía «lo mismo» mientras el código concedía (caso 119).
+const asked = (input, file) => !CHAT.unauthorizedNow(input, [file]).length
 
 function judgeWrite(input, root, file) {
   if (!filesOf(input).some((raw) => path.resolve(cwdOf(input), raw) === file)) return

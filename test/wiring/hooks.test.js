@@ -2209,6 +2209,104 @@ test('los guards de límites no dejan al agente escribirse la aprobación ni el 
   } finally { chat.close() }
 })
 
+// Qué líneas entran en la aprobación cuando la persona la nombró: el contenido, que hasta 0.83.0 no se
+// miraba (caso 119). Por qué se compara y contra qué, en `self-approval`.
+// Cada `chat.says` invalida al anterior —la llamada trae el id del mensaje que la originó—, así que el
+// orden de acá no es cosmético: lo que se afirma sobre un mensaje se afirma mientras sea el último.
+test('la aprobación sólo recibe las líneas que la persona nombró en su mensaje', () => {
+  const root = planFirstRoot('ops-hook-aprobacion-contenido-', WIP_CON_PLAN)
+  const approval = path.join(root, 'planning', '.ops-approval')
+  const escribe = (content) => ({ cwd: root, tool_input: { file_path: approval, content } })
+  const chat = chatSession()
+  try {
+    const pidio = chat.says('agregá src/login.js a .ops-approval')
+    assert.doesNotThrow(() => execute('workspace-boundary', pidio(escribe('src/login.js\n'))))
+    // La línea que ella no pidió frena la escritura, vaya sola o acompañada de la que sí.
+    blocked('workspace-boundary', pidio(escribe('push origin main\n')), /no las pidió/)
+    blocked('workspace-boundary', pidio(escribe('src/login.js\npush origin main\n')), /push origin main/)
+    blocked('workspace-boundary', pidio(escribe('src/otro.js\n')), /src\/otro\.js/)
+    // Un comentario no autoriza nada y no hay que pedirlo; quitar líneas autoriza menos, tampoco.
+    assert.doesNotThrow(() => execute('workspace-boundary',
+      pidio(escribe('# aprobado por mí\nsrc/login.js\n'))))
+    assert.doesNotThrow(() => execute('workspace-boundary', pidio(escribe(''))))
+    // Lo que ya estaba en disco no se vuelve a nombrar: sumar una línea no es reescribir el archivo.
+    fs.writeFileSync(approval, 'src/otro.js\n')
+    assert.doesNotThrow(() => execute('workspace-boundary', pidio(escribe('src/otro.js\nsrc/login.js\n'))))
+    fs.rmSync(approval, { force: true })
+    // Por shell no hay contenido que comparar, así que ahí se frena aunque ella lo haya pedido.
+    blocked('shell-boundary', pidio({ cwd: root,
+      tool_input: { command: 'echo src/login.js >> planning/.ops-approval' } }),
+    /no dice con qué va a quedar/)
+
+    // Una línea de push se pregunta como un push y no como una ruta; el porqué está en `isPush`.
+    const ordena = chat.says('agregá push origin main a .ops-approval')
+    assert.doesNotThrow(() => execute('workspace-boundary', ordena(escribe('push origin main\n'))))
+    const soloElLogin = chat.says('agregá src/login.js a .ops-approval y arreglá el login')
+    blocked('workspace-boundary', soloElLogin(escribe('push origin feat/login\n')), /no las pidió/)
+
+    // El «dale» aprueba exactamente lo que el bloqueo mostró, que por eso lleva las líneas adentro.
+    const otraVez = chat.says('agregá src/login.js a .ops-approval')
+    assert.match(messageOf('workspace-boundary', otraVez(escribe('push origin main\n'))),
+      /\n {2}push origin main\n/)
+    const dale = chat.says('dale')
+    assert.doesNotThrow(() => execute('workspace-boundary', dale(escribe('push origin main\n'))))
+
+    // Lo que la sesión concedió por otra vía tampoco entra solo: una ruta que ella autorizó a borrar en
+    // otro mensaje sigue siendo, acá, una línea que nadie pidió. No conceder —lo que este guard ya hacía—
+    // y no heredar son dos cosas distintas, y sin esta mitad la segunda no la ve ninguna prueba.
+    const borra = chat.says('borrá la prueba test/pagos.test.js')
+    assert.doesNotThrow(() => execute('test-evidence', borra({ cwd: root,
+      tool_input: { patch: '*** Begin Patch\n*** Delete File: test/pagos.test.js\n*** End Patch' } })))
+    const otroPedido = chat.says('agregá src/login.js a .ops-approval')
+    blocked('workspace-boundary', otroPedido(escribe('test/pagos.test.js\n')), /test\/pagos\.test\.js/)
+  } finally { chat.close() }
+})
+
+// Lo que un guard deja pasar porque la persona lo pidió queda concedido y vale mientras dure la sesión
+// (caso 116). Eso alcanzaba también a los gates de commit y nadie lo había decidido: ahí se pregunta cada
+// vez, como en la publicación (caso 119). Van los tres porque cada uno es un sitio que se puede olvidar.
+test('lo concedido no abre un gate de commit: los tres preguntan cada vez', () => {
+  const bench = (prefijo, files, add) => {
+    const root = tempRoot(prefijo)
+    initRepo(root)
+    fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+    fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
+    for (const [name, body] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(root, name)), { recursive: true })
+      fs.writeFileSync(path.join(root, name), body)
+    }
+    git(['add', ...add], root)
+    return root
+  }
+  // El lockfile de `dependencies` está en disco y sin stagear a propósito: es lo que hace que el
+  // manifiesto staged cuente como uno que va sin su lock.
+  const casos = [
+    ['governance', bench('ops-hook-gate-gob-', { 'planning/rules/process.md': '# regla\n' },
+      ['planning/rules/process.md']), 'commiteá planning/rules/process.md', /gobernanza protegida/],
+    ['dependencies', bench('ops-hook-gate-deps-', { 'package.json': '{}\n', 'package-lock.json': '{}\n' },
+      ['package.json']), 'commiteá package.json', /lockfile/i],
+    ['verify', bench('ops-hook-gate-verify-', { 'openapi/api.yaml': 'openapi: 3.0.0\n' },
+      ['openapi/api.yaml']), 'commiteá openapi/api.yaml', /OpenAPI\/Swagger/],
+  ]
+  const commit = (root) => ({ cwd: root, tool_input: { command: 'git commit -m x' } })
+  const chat = chatSession()
+  try {
+    for (const [guard, root, pedido, motivo] of casos) {
+      assert.doesNotThrow(() => execute(guard, chat.says(pedido)(commit(root))), guard)
+      // Acá pasaba con lo concedido, que es el defecto: un commit de gobernanza salía en verde con
+      // cualquier otro mensaje en curso.
+      blocked(guard, chat.says('seguí con la tarea')(commit(root)), motivo)
+      // Y el «dale» que contesta a ese bloqueo sigue siendo la salida corta que el bloqueo ofrece.
+      assert.doesNotThrow(() => execute(guard, chat.says('dale')(commit(root))), `${guard} con un dale`)
+    }
+    // Lo que no es un gate de commit sigue valiendo mientras la sesión siga: eso no se tocó (caso 116).
+    const lector = planFirstRoot('ops-hook-gate-contraste-', WIP_CON_PLAN)
+    const lee = (call) => call({ cwd: lector, tool_input: { file_path: path.join(lector, '.env') } })
+    assert.doesNotThrow(() => execute('secrets-read', lee(chat.says('leé el .env'))))
+    assert.doesNotThrow(() => execute('secrets-read', lee(chat.says('seguí con lo tuyo'))))
+  } finally { chat.close() }
+})
+
 test('en sidecar el bloqueo nombra el archivo que el guard lee, y pegar ahí destraba (caso 097)', () => {
   const workspace = tempRoot('ops-hook-sidecar-aprueba-')
   const root = path.join(workspace, 'acme-ops')
@@ -2625,12 +2723,12 @@ test('lo que la persona pide nombrando ops.config.json pasa por las dos vías', 
       pidio({ cwd: root, tool_input: { file_path: file, content: conLlave } })))
     assert.doesNotThrow(() => execute('ops-config-shell',
       pidio({ cwd: root, tool_input: { command: `sed -i s/false/true/ ${file}` } })))
-    // Un mensaje cualquiera en el medio **no** lo revoca: lo que la persona autorizó sigue valiendo
-    // mientras la sesión siga (caso 116). Esta prueba nació antes de eso y afirmaba lo contrario; el
-    // cruce apareció en CI, con las dos ramas mergeadas y no en ninguna de las dos sola.
+    // En el mensaje siguiente vuelve a preguntar: lo que se escribe acá es el permiso de push, así que
+    // vale lo que ella pidió en el mensaje en curso y no lo que la sesión venía concediendo (caso 119).
+    // Esta prueba afirmó lo contrario dos veces —primero porque el permiso moría con el mensaje, después
+    // porque el 116 lo hizo durar la sesión—: lo que decide no es cuánto dura sino qué se escribe.
     const otro = chat.says('seguí con la tarea')
-    assert.doesNotThrow(() => execute('ops-config',
-      otro({ cwd: root, tool_input: { file_path: file, content: conLlave } })))
+    blocked('ops-config', otro({ cwd: root, tool_input: { file_path: file, content: conLlave } }), LLAVES)
     // Lo que sí frena: que ella lo niegue, y que otra sesión no haya pedido nada. Las dos mitades son las
     // que este guard existe para sostener —sin pedido de una persona, las llaves no se escriben—.
     const nego = chat.says('no toques ops.config.json')
