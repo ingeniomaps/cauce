@@ -31,7 +31,7 @@ coverage: ## Ejecuta las pruebas y exige los umbrales de cobertura
 coverage-update: ## Recalcula los pisos de cobertura por archivo
 	@npm run --silent coverage:update
 
-dead-code: ## Busca imports y exports que nadie usa, suites incluidas (minutos)
+dead-code: ## Busca imports y exports que nadie usa, suites incluidas (lo corre `ci`)
 	@npm run --silent dead-code
 
 automation-check: ## Valida guards, workflows y runners del toolkit
