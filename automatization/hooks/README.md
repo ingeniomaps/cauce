@@ -76,14 +76,18 @@ guards lo leen:
   `.env`» no, y tampoco una pregunta o un comentario que sólo lo nombra —«¿qué tiene el `.env`?»—;
 - lo que se frenó sin que lo nombrara queda anotado, y un «dale» en el mensaje siguiente aprueba
   exactamente eso;
+- lo que un guard dejó pasar porque ella lo pidió sigue valiendo mientras dure la sesión, **salvo en los
+  gates de un commit** —`governance`, `verify` y `dependencies`—, que preguntan cada vez: ahí vale lo que
+  pidió el mensaje en curso o un «dale», igual que para publicar;
 - `plan-first` no aplica: el plan es del trabajo que va por tareas.
 
 No cuenta cuando no hay persona —CI, o un aviso del runner como el de un subagente que terminó—, cuando lo
 que pidió es un recorrido de Cauce (`/autobuild`, `$flow`…), ni en la llamada de un subagente, que Claude
 marca con `agent_id`. En Claude y Codex cada llamada trae el identificador del mensaje que la originó;
 Gemini no lo manda, y ahí vale el último mensaje. El registro vive en el temporal del sistema, uno por
-sesión, y los guards de límites lo cuidan junto con `planning/.ops-approval`: el agente no puede
-escribirse ninguno de los dos. Como todo lo de esta página, frena la forma habitual y no un script decidido.
+sesión, y los guards de límites lo cuidan junto con `planning/.ops-approval`: el registro no lo escribe
+nunca una herramienta, y en la aprobación sólo entran las líneas que la persona nombró en ese mismo
+mensaje —por shell, ninguna: un comando no dice con qué va a quedar el archivo—. Como todo lo de esta página, frena la forma habitual y no un script decidido.
 
 ## Cómo se ejecutan
 

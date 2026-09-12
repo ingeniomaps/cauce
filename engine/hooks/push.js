@@ -181,7 +181,7 @@ function publish(input, command) {
   // Se pregunta sin conceder, a diferencia de lo que pasa por `AP.pending`: volver a leer lo que ya se
   // leyó no agrega consecuencia y volver a publicar sí, así que la autorización de un push vale para esa
   // operación y no para el mensaje siguiente (R10).
-  const cleared = CHAT.authorized(input, items, CHAT.ordersPush)
+  const cleared = CHAT.authorized(input, items, { asked: CHAT.ordersPush })
   const unordered = items.filter((item) => !cleared.some((one) => one.item === item))
   if (unordered.length) block(workMessage(unordered, input))
   const destination = new Map(destinations.map((to) => [to.item, to]))

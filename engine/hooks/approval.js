@@ -34,18 +34,37 @@ const APPROVAL = '.ops-approval'
 // Una ruta por línea, `#` para lo demás. El archivo ausente y el vacío son lo mismo: no hay nada
 // aprobado, que es el estado normal. Un push se aprueba igual, con la línea `push <remoto> <rama>`
 // tal cual y sin patrones: `feat/*` convertiría una aprobación puntual en un permiso (caso 103).
+//
+// El texto se lee aparte del archivo porque `self-approval` compara lo que se está por escribir contra lo
+// que ya está en disco: con dos parsers, una línea podría contar de un lado y no del otro (caso 119).
+const lines = (text) => text.split('\n').map((line) => line.replace(/#.*$/, '').trim()).filter(Boolean)
+
 function read(root) {
-  let text = ''
-  try { text = fs.readFileSync(path.join(root, 'planning', APPROVAL), 'utf8') } catch { return [] }
-  return text.split('\n').map((line) => line.replace(/#.*$/, '').trim()).filter(Boolean)
+  try { return lines(fs.readFileSync(path.join(root, 'planning', APPROVAL), 'utf8')) } catch { return [] }
 }
 
 // Qué queda sin aprobar de lo que un guard está por bloquear. Se reporta sólo eso: mandar a revisar lo
 // que ya se aprobó es lo que hace que la próxima vez nadie lea el mensaje. Cuenta también lo que la
 // persona pidió en el chat.
-function pending(root, files, input) {
+const left = (root, files) => {
   const approved = new Set(root ? read(root) : [])
-  return CHAT.unauthorized(input, files.filter((file) => !approved.has(file)))
+  return files.filter((file) => !approved.has(file))
+}
+
+function pending(root, files, input) {
+  return CHAT.unauthorized(input, left(root, files))
+}
+
+// Lo mismo para los gates de commit —`governance`, `verify` y `dependencies`—, que preguntan cada vez: no
+// conceden nada y no heredan lo que la sesión venía concediendo.
+//
+// Commitear está del lado de publicar y no del de leer, y por qué esa diferencia decide quién hereda está
+// en `push.js`. Lo propio de un commit es que el objeto del permiso se mueve solo: lo que autoriza uno no
+// dice nada del siguiente, porque el índice ya es otro. Nadie lo había decidido para los gates —heredaban
+// por venir todos de `pending`—, y se midió: con otro mensaje en curso, un commit de gobernanza pasaba
+// (caso 119).
+function pendingNow(root, files, input) {
+  return CHAT.unauthorizedNow(input, left(root, files))
 }
 
 // El archivo que el guard va a leer, nombrado desde la carpeta en la que está la sesión. En sidecar la
@@ -82,4 +101,4 @@ function HOW(variable, lines, input) {
     + 'y apaga el guard para toda la sesión, que es por lo que no es la vía recomendada.'
 }
 
-module.exports = { APPROVAL, read, pending, where, HOW }
+module.exports = { APPROVAL, lines, read, pending, pendingNow, where, HOW }
