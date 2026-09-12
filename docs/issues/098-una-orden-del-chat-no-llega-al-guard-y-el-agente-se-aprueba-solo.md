@@ -175,6 +175,12 @@ bloqueos que existen para contener al agente.
   la regla nativa `permissions.deny` lo frena igual (variante E1). Queda declarado como excepción en el molde,
   en el README de los guards y en el CHANGELOG. Lo que sí pasa sin pedir nada, verificado en vivo, es el
   cambio de producto nombrado.
+
+  **Esa excepción duró una versión: el 104 retiró las reglas nativas en 0.81.0, la misma en que salió este
+  caso.** `automatization/hooks/README.md` lo dice hoy en pasado y el CHANGELOG de 0.81.0 escribe «esas reglas
+  se retiran». O sea que en Claude «leé el `.env`» pasa pidiéndolo, que es lo que este caso quería. El destino
+  que le tocaba a este ítem era salir como caso propio, y salió —el 104—, pero el cierre no lo nombró: se anota
+  acá en vez de corregirlo en silencio, porque borrar la línea perdería el hallazgo. (auditoría del 2026-09-12)
 - **Un README no autoriza** — por construcción: el registro lo escribe sólo el hook de mensaje, que el runner
   dispara con lo que manda la persona. La prueba cubre el caso vecino, un aviso del runner que no cuenta.
 - **El agente no se escribe la aprobación ni el registro** — hecho: la reproducción de arriba termina ahora en

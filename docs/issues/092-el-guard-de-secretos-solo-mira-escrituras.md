@@ -151,6 +151,12 @@ habría corrido también los guards de escritura.
 - **Claude, regla nativa + guard** — hecho: el `settings.json` del adaptador trae 19 reglas
   `permissions.deny` `Read(...)` por nombre exacto —`.env`, `.env.local`, `.env.*.local`, las claves y los
   archivos de credenciales que `secrets` ya conocía— y un matcher `Read` hacia `guard-secrets-read.sh`.
+
+  **Las 19 reglas ya no se instalan: las retiró el 104 en 0.81.0**, porque frenaban también lo que la persona
+  pedía. Lo que sigue es el enganche —`automatization/runners/claude/settings.json:17` engancha `Read|Grep`
+  hacia `guard-secrets-read.sh`— y el guard, que `engine/hooks/run.js:67` registra en `pre-read`. Hoy el
+  manifiesto de Claude lista esas 19 bajo `retired`, para que `install` las saque de un `settings.json` que
+  las tenga. La medición de más abajo era cierta en 0.80.0 y no se reproduce hoy. (auditoría del 2026-09-12)
 - **Gemini** — hecho: matcher `read_file` hacia el mismo script.
 - **Codex y Antigravity** — hueco declarado en el README de los guards, sección «Leer una credencial». Que
   lean por shell sigue siendo hipótesis: no se afirma, se dice que sus adaptadores sólo enganchan shell y
