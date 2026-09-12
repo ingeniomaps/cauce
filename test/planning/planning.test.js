@@ -302,6 +302,37 @@ test('check muestra cada ruta exenta del límite de raíces, ya resuelta', () =>
     'y la ruta resuelta al lado, que es la que el guard compara')
 })
 
+// Dos raíces con el mismo nombre dejan servicios indistinguibles, y eso **avisa**: una instancia que hoy
+// repite un nombre funciona, y fallar le rompería la puerta al actualizar por algo que no pierde nada
+// (caso 113). La aserción de que no falla es la que sostiene esa decisión: devolverlo a `errors` dejaría
+// pasar el resto de la suite.
+test('dos raíces con el mismo nombre avisan y no rompen check', () => {
+  const base = tempRoot('cauce-raices-repetidas-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  const planning = path.join(target, 'planning')
+  for (const raiz of ['gouduet', 'hypixo']) {
+    fs.mkdirSync(path.join(base, raiz, 'keycloak'), { recursive: true })
+  }
+  const configPath = path.join(target, 'ops.config.json')
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+  config.workspaceRoots = [
+    { name: 'keycloak', path: '../gouduet/keycloak' },
+    { name: 'keycloak', path: '../hypixo/keycloak' },
+  ]
+  fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+
+  const result = run(['check', planning])
+  assert.equal(result.status, 0, 'el nombre repetido avisa, no falla')
+  assert.match(result.stdout + result.stderr,
+    /keycloak nombra dos raíces \(\.\.\/gouduet\/keycloak y \.\.\/hypixo\/keycloak\)/)
+
+  config.workspaceRoots[1].name = 'hypixo'
+  fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  const limpio = run(['check', planning])
+  assert.doesNotMatch(`${limpio.stdout}${limpio.stderr}`, /nombra dos raíces/, 'dos nombres distintos, nada')
+})
+
 // La advertencia de override nombra los IDs que el archivo propio deja de definir, y eso sólo tiene
 // sentido en `rules/`: un ADR o una regla de negocio se sobrescriben enteros y no definen números que
 // otro archivo pueda seguir exigiendo. Decirle «deja de regir» a un ADR sería inventar una pérdida.

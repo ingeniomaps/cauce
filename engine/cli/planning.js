@@ -106,6 +106,7 @@ function check(dir, cli) {
       config = JSON.parse(raw)
       if (!raw.includes('{{')) {
         errors.push(...C.validateOpsConfig(config))
+        warnings.push(...C.configWarnings(config))
         if (Array.isArray(config.workspaceRoots)) {
           for (const workspace of config.workspaceRoots) {
             if (workspace && workspace.name && workspace.path
