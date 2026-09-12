@@ -191,16 +191,23 @@ Recorrido contra el caso entero, no contra «Fix propuesto».
 - **Prioridad** — se mantuvo alta y lo que la sostenía era el segundo tradeoff, que es el que cerró.
 
 - **Relacionados** — el **112** cierra junto a éste. El **114** (el permiso de push vive en un archivo sin
-  guard) **sigue abierto**: este arreglo no lo toca y no lo empeora, porque la publicación no se concede.
-  El **098** y el **109** quedan como estaban: este cambio no toca qué cuenta como pedir algo.
+  guard) se cerró también en 0.83.0, antes que éste, y los dos se cruzaron: ver abajo. Este arreglo no lo
+  empeora, porque la publicación no se concede. El **098** y el **109** quedan como estaban: este cambio no
+  toca qué cuenta como pedir algo.
 
-- **Lo que el caso no preveía** — dos cosas, y las dos son parte del arreglo:
+- **Lo que el caso no preveía** — tres cosas, y las tres son parte del arreglo:
   - Una prueba existente afirmaba el comportamiento viejo con todas las letras («la aprobación era de esa
     respuesta: el mensaje siguiente empieza de cero»). No se borró: se reescribió al contrato nuevo, que
     es lo único que hace visible que lo que cambió fue una decisión y no un descuido.
   - `self-approval` también preguntaba por esta vía, y conceder ahí habría convertido «agregá src/x.js a
     .ops-approval» en permiso para escribirle después cualquier otra línea a la aprobación —aprobarse solo
     por la puerta de al lado—. Se lo movió a preguntar sin conceder.
+  - **El cruce con el 114, que ninguna de las dos ramas podía ver sola.** El guard de `ops.config.json`
+    se cerró en paralelo y su prueba «lo que la persona pide nombrando ops.config.json pasa por las dos
+    vías» terminaba comprobando que un mensaje cualquiera después **volvía a frenar** —el contrato viejo—.
+    Con las dos ramas juntas eso dejó de ser cierto y CI lo marcó: cada rama en verde por separado, roja
+    al mergear. Se reescribió esa prueba a lo que el guard sí sostiene, que es lo que no se escribe solo:
+    una negación revoca, y una sesión que no pidió nada sigue frenada. La conducta del guard no se tocó.
 
 - **Cómo se probó** — cinco mutaciones sobre copias desechables, cada una apagando a mano una parte del
   arreglo, y todas en rojo: no heredar lo concedido (2 pruebas), heredar sin filtrar la negación (3), que
