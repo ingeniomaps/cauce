@@ -89,16 +89,31 @@ function where(input) {
 // primero: contestar es más corto que editar un archivo, y es lo que la persona ya está haciendo. El
 // archivo queda como cosa de ella: dicho en imperativo, el agente leía «aprobalo» como una orden para él
 // e intentaba escribírselo en vez de reintentar, medido en una sesión real de Claude Code.
-function HOW(variable, lines, input) {
+//
+// `pasteable` es lo que se puede aprobar por archivo, y por defecto es todo: un guard lo angosta cuando lo
+// que tiene a mano no sirve para pegar —por qué, en `secrets-shell.js` (caso 118)—. Lo frenado se anota
+// igual, así que el «dale» sigue cubriendo todo.
+function HOW(variable, lines, input, pasteable = lines) {
   const chat = CHAT.hold(input, lines)
-  return (chat
+  const stuck = lines.filter((one) => !pasteable.includes(one))
+  const ask = chat
     ? 'Decile a la persona qué se frenó y por qué, y esperá: si contesta «dale», reintentá el mismo cambio y '
-      + 'pasa. Si prefiere aprobarlo a mano, que pegue ella tal cual en'
-    : 'Aprobalo pegando tal cual en')
-    + ` ${where(input)} estas líneas:\n`
-    + lines.map((line) => `  ${line}\n`).join('')
-    + `Valen para ese conjunto y dejan de valer en cuanto cambie. La variable ${variable}=1 sigue existiendo `
-    + 'y apaga el guard para toda la sesión, que es por lo que no es la vía recomendada.'
+      + 'pasa. '
+    : ''
+  const paste = pasteable.length
+    ? (chat ? 'Si prefiere aprobarlo a mano, que pegue ella tal cual en' : 'Aprobalo pegando tal cual en')
+      + ` ${where(input)} estas líneas:\n`
+      + pasteable.map((line) => `  ${line}\n`).join('')
+      + 'Valen para ese conjunto y dejan de valer en cuanto cambie. '
+    : ''
+  const unresolved = stuck.length
+    ? `Por archivo no hay línea que pegar para ${stuck.join(', ')}: la ruta llegó con una expansión del shell `
+      + 'sin resolver, y la aprobación compara texto, así que esa línea sólo valdría para un comando escrito '
+      + 'igual. Volvé a correrlo con la ruta escrita y el bloqueo va a decir qué pegar. '
+    : ''
+  return ask + paste + unresolved
+    + `La variable ${variable}=1 sigue existiendo y apaga el guard para toda la sesión, que es por lo que no `
+    + 'es la vía recomendada.'
 }
 
 module.exports = { APPROVAL, lines, read, pending, pendingNow, where, HOW }

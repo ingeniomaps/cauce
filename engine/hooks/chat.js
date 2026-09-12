@@ -53,6 +53,12 @@ const CLAUSE = /[,;:!?\n]|\.(?=\s|$)/
 // archivo sin pedir nada (caso 109). La frase del nombre tiene que traer un verbo que pida una acción, en
 // español o en inglés; se compara sin tildes y sin el pronombre pegado —«leelo», «abrime»—. La lista va a
 // quedar corta, y lo que no reconoce no se pierde: se frena, y un «dale» lo aprueba.
+//
+// Autorizar también es pedir, y era lo que faltaba: «autorizo la lectura del .env» es la forma más
+// explícita de decir que sí y se frenaba igual, porque ninguna de sus palabras estaba (caso 118). Entran
+// las formas con que una persona **concede** —primera persona e imperativo— y no los sustantivos que
+// nombran el acto: `lectura`, `permiso` y `autorizacion` aparecen igual en una pregunta que no autoriza
+// nada, y dejarlos afuera es lo que el 109 decidió cuando dijo que nombrar no alcanza.
 const ASKS = new Set(('lee leer abri abre abrir mostra muestra mostrar ensena edita editar cambia cambiar borra '
   + 'borrar elimina eliminar escribi escribe escribir corre correr ejecuta ejecutar desactiva desactivar apaga '
   + 'apagar reescribi reescribe reescribir agrega agregar anadi anade anadir saca sacar quita quitar actualiza '
@@ -60,9 +66,11 @@ const ASKS = new Set(('lee leer abri abre abrir mostra muestra mostrar ensena ed
   + 'subi sube subir pushea pushear commitea commitear usa usar crea crear arregla arreglar carga cargar copia '
   + 'copiar toca tocar aproba aprueba aprobar habilita habilitar reemplaza reemplazar renombra renombrar mueve '
   + 'mover restaura restaurar imprimi imprime imprimir deci dime proba probar '
+  + 'autorizo autoriza autorizar autorizado permito permiti permite permitir apruebo habilito '
   + 'read open show print display edit change delete remove write run execute disable rewrite add update modify '
   + 'check review inspect look cat commit push install use create fix load copy touch approve enable replace '
-  + 'rename move restore skip').split(' '))
+  + 'rename move restore skip '
+  + 'authorize authorized allow allowed permit permitted grant granted approved').split(' '))
 const ENCLITIC = /(?:selo|sela|melo|mela|telo|tela|los|las|lo|la|le|me)$/
 
 function asks(clause) {
