@@ -14,6 +14,7 @@ const shell = require('./shell')
 const files = require('./files')
 const chat = require('./chat')
 const { secretsShell } = require('./secrets-shell')
+const { opsConfig, opsConfigShell } = require('./ops-config')
 
 function planningDrift(input) {
   const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
@@ -42,6 +43,8 @@ const guards = {
   verify: shell.verify,
   'shell-boundary': shell.shellBoundary,
   'secrets-shell': secretsShell,
+  'ops-config-shell': opsConfigShell,
+  'ops-config': opsConfig,
   secrets: files.secrets,
   generated: files.generated,
   'workspace-boundary': files.workspaceBoundary,
@@ -58,9 +61,9 @@ const guards = {
 // Grupos por evento: un runner corre el grupo entero en un solo proceso en lugar de un guard por hook.
 const hookGroups = {
   'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'verify', 'shell-boundary',
-    'secrets-shell'],
+    'secrets-shell', 'ops-config-shell'],
   'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
-    'integration-snapshot', 'test-evidence', 'plan-first'],
+    'integration-snapshot', 'test-evidence', 'plan-first', 'ops-config'],
   'pre-read': ['secrets-read'],
   prompt: ['chat'],
   stop: ['planning-drift'],
@@ -113,6 +116,18 @@ const hookMetadata = [
     event: 'PreToolUse · shell',
     purpose: 'Bloquea leer por shell una credencial conocida o declarada; lo que la persona pidió en el chat '
       + 'pasa.',
+  },
+  {
+    name: 'ops-config',
+    event: 'PreToolUse · files',
+    purpose: 'No deja al agente escribirse el permiso de push: frena la escritura que cambia '
+      + 'runner.allowPush o runner.pushToLiveBranches en ops.config.json. El resto del archivo pasa.',
+  },
+  {
+    name: 'ops-config-shell',
+    event: 'PreToolUse · shell',
+    purpose: 'Frena toda escritura por shell sobre ops.config.json: un comando no dice con qué va a '
+      + 'quedar el archivo, así que no hay contenido que comparar.',
   },
   { name: 'generated', event: 'PreToolUse · files', purpose: 'Impide editar código generado manualmente.' },
   {

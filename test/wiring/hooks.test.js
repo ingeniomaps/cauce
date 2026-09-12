@@ -2423,3 +2423,105 @@ test('la rama por defecto del remoto es viva, y un push sin argumentos se resuel
     blocked('destructive', push('git push', chat.says('subí feat/y a origin')), WORK)
   } finally { chat.close() }
 })
+
+// El permiso de push dentro de `ops.config.json` (caso 114). Qué protege y qué deja pasar a propósito lo
+// explica su módulo.
+const CONFIG_BASE = {
+  mode: 'embedded',
+  workspaceRoots: [{ name: 'app', path: '.' }],
+  runner: { maxTaskHours: 4, allowPush: false },
+}
+const LLAVES = /runner\.allowPush y runner\.pushToLiveBranches/
+
+function configRoot(prefijo, runner = {}) {
+  const root = tempRoot(prefijo)
+  fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
+  const config = { ...CONFIG_BASE, runner: { ...CONFIG_BASE.runner, ...runner } }
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify(config, null, 2))
+  return { root, file: path.join(root, 'ops.config.json'), config }
+}
+
+test('las dos llaves del push no se escriben desde una herramienta, y el resto del archivo sí', () => {
+  const { root, file, config } = configRoot('ops-hook-config-escritura-')
+  const write = (content, target = file) => ({
+    cwd: root, tool_input: { file_path: target, content: JSON.stringify(content, null, 2) },
+  })
+  // Lo que proteger sólo los dos campos conserva: el archivo sigue siendo la salida que el límite de
+  // raíces recomienda, y frenarlo entero repondría el candado que el 090 sacó.
+  const raices = { ...config, workspaceRoots: [{ name: 'app', path: '../app' }] }
+  const afuera = { ...config, writableOutsideRoots: ['../notas'] }
+  assert.doesNotThrow(() => execute('ops-config', write(config)))
+  assert.doesNotThrow(() => execute('ops-config', write(raices)))
+  assert.doesNotThrow(() => execute('ops-config', write(afuera)))
+  assert.doesNotThrow(() => execute('ops-config', write({ x: 1 }, path.join(root, 'package.json'))))
+
+  // Las tres formas de tocarlas: prender la llave, nombrar la rama viva, y sacar lo que estaba puesto.
+  const conLlave = { ...config, runner: { ...config.runner, allowPush: true } }
+  const conRamaViva = { ...config, runner: { ...config.runner, pushToLiveBranches: ['main'] } }
+  blocked('ops-config', write(conLlave), LLAVES)
+  blocked('ops-config', write(conRamaViva), LLAVES)
+  const previo = configRoot('ops-hook-config-quita-', { pushToLiveBranches: ['main'] })
+  blocked('ops-config', {
+    cwd: previo.root,
+    tool_input: { file_path: previo.file, content: JSON.stringify(CONFIG_BASE, null, 2) },
+  }, LLAVES)
+
+  // El mensaje deja el permiso como cosa de la persona y dice qué **no** frena, que es la mitad que
+  // evita que el guard se lea como el candado del 090.
+  const frenado = messageOf('ops-config', write(conLlave))
+  assert.match(frenado, /Lo decide una persona/)
+  assert.match(frenado, /El resto del archivo no lo frena este guard/)
+
+  // Un fragmento no es el archivo, así que no hay dos contenidos que comparar.
+  blocked('ops-config', { cwd: root, tool_input: { file_path: file, new_string: '"allowPush": true' } },
+    /no puede verificar no autoriza/)
+})
+
+test('por shell se frena toda escritura sobre ops.config.json, que es lo único decidible ahí', () => {
+  const { root, file } = configRoot('ops-hook-config-shell-')
+  const sh = (command) => ({ cwd: root, tool_input: { command } })
+  blocked('ops-config-shell', sh(`sed -i 's/"allowPush": false/"allowPush": true/' ${file}`), LLAVES)
+  blocked('ops-config-shell', sh(`echo '{}' > ${file}`), LLAVES)
+  blocked('ops-config-shell', sh(`cp /tmp/otra.json ${file}`), LLAVES)
+  // La ruta relativa se resuelve contra el cwd, igual que en el límite de raíces.
+  blocked('ops-config-shell', sh('sed -i s/false/true/ ops.config.json'), LLAVES)
+  const frenado = messageOf('ops-config-shell', sh(`sed -i s/false/true/ ${file}`))
+  assert.match(frenado, /no dice con qué va a quedar el archivo/)
+
+  // Leerlo, nombrarlo o escribir al lado no es escribirlo: el guard no se come el trabajo corriente.
+  assert.doesNotThrow(() => execute('ops-config-shell', sh(`cat ${file}`)))
+  assert.doesNotThrow(() => execute('ops-config-shell', sh(`grep allowPush ${file}`)))
+  assert.doesNotThrow(() => execute('ops-config-shell', sh(`sed -i s/a/b/ ${path.join(root, 'otro.json')}`)))
+  assert.doesNotThrow(() => execute('ops-config-shell', sh('echo hola')))
+})
+
+test('lo que la persona pide nombrando ops.config.json pasa por las dos vías', () => {
+  const { root, file, config } = configRoot('ops-hook-config-chat-')
+  const conLlave = JSON.stringify({ ...config, runner: { ...config.runner, allowPush: true } }, null, 2)
+  const chat = chatSession()
+  try {
+    const pidio = chat.says('cambiá ops.config.json para habilitar el push')
+    assert.doesNotThrow(() => execute('ops-config',
+      pidio({ cwd: root, tool_input: { file_path: file, content: conLlave } })))
+    assert.doesNotThrow(() => execute('ops-config-shell',
+      pidio({ cwd: root, tool_input: { command: `sed -i s/false/true/ ${file}` } })))
+    // Otro mensaje, que no lo nombra, no alcanza.
+    const otro = chat.says('seguí con la tarea')
+    blocked('ops-config', otro({ cwd: root, tool_input: { file_path: file, content: conLlave } }), LLAVES)
+  } finally { chat.close() }
+})
+
+test('el guard de ops.config.json corre en los dos grupos, que es por donde llegan las dos vías', () => {
+  const { root, file, config } = configRoot('ops-hook-config-grupos-')
+  const conLlave = JSON.stringify({ ...config, runner: { ...config.runner, allowPush: true } }, null, 2)
+  const porGrupo = (group, toolInput) => assert.throws(
+    () => executeAll([group], { cwd: root, tool_input: toolInput }),
+    (error) => {
+      assert.equal(error.blocked, true, `${group} lanzó algo que no es un bloqueo: ${error.message}`)
+      assert.match(error.message, LLAVES, `${group} bloqueó por otro motivo`)
+      return true
+    },
+  )
+  porGrupo('pre-files', { file_path: file, content: conLlave })
+  porGrupo('pre-shell', { command: `sed -i s/false/true/ ${file}` })
+})

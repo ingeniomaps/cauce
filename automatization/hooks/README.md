@@ -108,8 +108,8 @@ runner, mientras la lógica se prueba y mantiene una sola vez en `engine/hooks/r
 
 | Grupo | Guards | Wrapper |
 |---|---|---|
-| `pre-shell` | destructive, git-add, dependencies, governance, verify, shell-boundary | `guard-shell.sh` |
-| `pre-files` | secrets, generated, workspace-boundary, engine, migrations, integration-snapshot, test-evidence, plan-first | `guard-files.sh` |
+| `pre-shell` | destructive, git-add, dependencies, governance, verify, shell-boundary, secrets-shell, ops-config-shell | `guard-shell.sh` |
+| `pre-files` | secrets, generated, workspace-boundary, engine, migrations, integration-snapshot, test-evidence, plan-first, ops-config | `guard-files.sh` |
 | `pre-read` | secrets-read | `guard-secrets-read.sh` |
 | `prompt` | chat | `guard-chat.sh` |
 | `stop` | planning-drift | `guard-planning-drift.sh` |
