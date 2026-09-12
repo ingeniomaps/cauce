@@ -352,14 +352,18 @@ function deliveredFiles(root, relative) {
 
 // Lo que el paquete empieza a traer con un nombre que la instancia ya usaba para algo suyo: un guard propio
 // que se llama como uno nuevo del toolkit (caso 110). Sin huella en el registro no cuenta como edición, así
-// que copiar encima lo borraba sin decirlo. Sólo si el registro ya conoce la ruta: en una instancia
-// anterior al registro, «sin huella» también es «lo entregó una versión vieja».
+// que copiar encima lo borraba sin decirlo.
+//
+// Sin registro para esa ruta la duda no se puede resolver —«sin huella» es tanto «es mío» como «lo entregó
+// una versión vieja»—, así que se elige el lado del que se vuelve: se conserva y se avisa. Mirar sólo las
+// instancias que ya tenían registro dejaba afuera justo a la que más perdía, la anterior al mecanismo, donde
+// el primer `upgrade` pisaba el guard propio sin nombrarlo y después lo registraba como entregado por Cauce
+// (caso 125). Equivocarse ahora cuesta un aviso de más; antes costaba un archivo que no vuelve.
 function collisions(root) {
   const manifest = require('./manifest')
   const recorded = manifest.read(root)
   const found = []
   for (const relative of RUNTIME_PATHS) {
-    if (!Object.keys(recorded).some((key) => key.startsWith(`${relative}/`))) continue
     for (const file of shippedFiles(relative)) {
       const local = path.join(root, relative, file)
       if (recorded[`${relative}/${file}`] || !fs.existsSync(local)) continue
