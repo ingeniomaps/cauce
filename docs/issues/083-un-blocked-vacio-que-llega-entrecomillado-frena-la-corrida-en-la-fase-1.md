@@ -2,6 +2,7 @@
 caso: 083
 titulo: Un `blocked` vacío que el agente re-emite como `""` es truthy y frena la corrida citando un archivo que no existe
 estado: resuelto
+resuelto-en: 0.78.0
 prioridad: alta
 version-detectada: 0.77.0
 ---

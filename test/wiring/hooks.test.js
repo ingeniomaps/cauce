@@ -2101,6 +2101,12 @@ test('un «dale» aprueba exactamente lo que quedó frenado, y nada más', () =>
     const frenado = messageOf('secrets-read', lee(pedido))
     assert.match(frenado, /si contesta «dale», reintentá el mismo cambio/)
     assert.doesNotMatch(frenado, /Aprobalo pegando/)
+    // Y el espejo, que es la mitad que no se escribe sola: sin persona en el chat no se ofrece contestar,
+    // porque no hay a quién (caso 118). La rama existe en `HOW` y hasta acá nadie la fijaba por este lado,
+    // así que invertir el ternario no rompía ninguna prueba.
+    const sinChat = messageOf('secrets-read', lee((one) => one))
+    assert.doesNotMatch(sinChat, /«dale»/, 'sin sesión de chat no se ofrece la salida por chat')
+    assert.match(sinChat, /Aprobalo pegando/, 'y queda la que sí está disponible')
     const dale = chat.says('dale')
     assert.doesNotThrow(() => execute('secrets-read', lee(dale)))
     blocked('secrets-read', lee(dale, 'id_ed25519'), /leerla/)
@@ -2407,6 +2413,12 @@ test('secrets-shell frena leer una credencial por shell y deja pasar lo demás',
     const pidio = chat.says('mostrame qué hay en el .npmrc')
     assert.doesNotThrow(() => execute('secrets-shell', pidio(corre('cat .npmrc'))))
     blocked('secrets-shell', corre('cat .npmrc'), /lee .*credencial/)
+    // Nombrar sin pedir tampoco autoriza por esta vía (caso 109). El 109 lo dio por cubierto porque este
+    // guard coteja por el mismo `unauthorized` que el de lectura, y eso es un argumento: la vía que el
+    // propio caso señaló con nombre y línea no tenía ninguna aserción. Va con un archivo que esta prueba
+    // no aprobó antes —`.env` y `.npmrc` ya están concedidos acá—, porque si no lo dejaría pasar el 116.
+    blocked('secrets-shell', chat.says('¿para qué sirve el id_ed25519?')(corre('cat id_ed25519')),
+      /lee .*credencial/)
   } finally { chat.close() }
 })
 

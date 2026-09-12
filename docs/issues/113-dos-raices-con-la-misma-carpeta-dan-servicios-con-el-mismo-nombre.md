@@ -207,3 +207,20 @@ faltaba comprobar: no que aparezca el nombre nuevo, sino que el viejo se haya id
   | M5 | `workspaceRoots` emite objetos en vez de rutas | «…se distinguen por el name declarado» |
 
   Ninguna sobrevivió.
+
+- **Lo que esa tabla no midió, medido después (2026-09-12).** M3 y M4 apagan el validador que **falla**, que
+  es el diseño que se descartó el 2026-09-11 antes de publicar: la conducta que salió es la advertencia de
+  `check`, y para ella el cierre no registraba ni rojo previo ni mutación. La tabla se leía como evidencia
+  vigente de algo que no se publicó. Corregido acá con dos mutaciones sobre el motor publicado, cada una en
+  su copia desechable:
+
+  | Mutación | Qué se apagó | Prueba que se puso roja |
+  |---|---|---|
+  | M6 | `configWarnings` devuelve `[]` (el aviso desaparece) | «dos raíces con el mismo nombre avisan y no rompen check» |
+  | M7 | el aviso vuelve a `errors` en `engine/cli/planning.js:109` | la misma, por la otra mitad |
+
+  M6 cae con `The input did not match /keycloak nombra dos raíces \(\.\.\/gouduet\/keycloak y
+  \.\.\/hypixo\/keycloak\)/`; M7, con `AssertionError: el nombre repetido avisa, no falla`. La segunda es
+  exactamente lo que el comentario de esa prueba predecía que nadie cuidaba —«devolverlo a `errors` no
+  rompería ninguna otra prueba»—: rompe ésta, que es para lo que está. Las dos, `fail 1` de 18 en
+  `test/planning/planning.test.js`.
