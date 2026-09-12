@@ -196,11 +196,17 @@ recorrido por su cuenta.
   rojo.
 - **`agent-eval.js:228`: si llega a una instancia** — llega: el manifiesto de Claude lo instala como
   `.claude/workflows/agent-eval.js`. Se arregló acá.
-- **Una corrida real de `autobuild` muestra que Plan o Review nombra `security.md`** — **sigue sin correrse**, y el
-  2026-09-11 se intentó: el banco quedó armado y la corrida no se pudo lanzar. Lo que sí se corrió es el recorrido
-  renderizado de verdad, con los agentes simulados por el arnés: los prompts que reciben Plan, Build y Review traen las
-  rutas, y un Review que no nombra reglas frena. Que un modelo las **lea** sigue sin medir, y con él la parada
-  `review-unbacked` vista fuera del arnés. Del intento quedó esto:
+- **Una corrida real de `autobuild` muestra que Plan o Review nombra `security.md`** — **se corrió el 2026-09-11 y
+  cerró la tarea**. Review aprobó nombrando cinco archivos de reglas, entre ellos los **dos propios del proyecto**, y
+  ninguna de las retiradas. La salida está abajo, en «Qué se corrió». Costó cuatro corridas: tres pararon antes de
+  Review por el enunciado del banco —no por el arreglo— y la cuarta completó las dieciséis fases.
+
+  **Lo que la corrida no es**: se lanzó con el runtime de workflows de la sesión que integraba, sobre el
+  `autobuild.js` que `automation install` dejó en el banco y con su `ROOT` apuntado a la ruta absoluta de la
+  instancia. No es una sesión de Claude Code abierta dentro del banco, que es la forma en que lo usa una empresa.
+  El script y los agentes son los reales; el entorno que los invoca, no.
+
+  Del primer intento, que no llegó a correr, quedó esto:
 
   - **El banco es el que el caso pide.** Instancia embedded con runner Claude bajo el scratch, hecha con `npm pack` del
     worktree e instalada desde el `.tgz` —0.82.0 no está publicado—, con una regla propia (`planning/rules/security.md`,
@@ -234,10 +240,23 @@ recorrido por su cuenta.
     clasificador del harness antes de ejecutarlas, las dos con «Permission for this action was denied by the Claude Code
     auto mode classifier. Reason: [Create Unsafe Agents]».
 
-  - **Qué la cierra y quién la revisa.** Correr `/autobuild` desde una sesión **interactiva** abierta en el banco, donde
-    una persona aprueba los permisos, y traer su journal con la línea `Review contra: … planning/rules/security.md`.
-    Sigue valiendo el orden de magnitud del 081: ~780 k tokens. Una sesión de agente no alcanza, y eso no es del arreglo:
-    es que no puede abrir una sesión anidada con permisos para cargar el workflow.
+  - **Cómo se destrabó.** No por una sesión anidada: lanzando el `autobuild.js` instalado con el runtime de workflows
+    de la sesión que integraba, con su `ROOT` en la ruta absoluta del banco. Queda dicho arriba qué no cubre esa
+    forma. Correrlo desde una sesión de Claude Code abierta dentro de la instancia sigue sin hacerse, y es lo único
+    que mediría también el registro de workflows y los skills de cargo tal como los recibe una empresa.
+
+  - **Las tres paradas previas, y qué las causó.** Ninguna fue del arreglo; las tres las produjo Ready sobre el
+    enunciado del banco, y las tres razones eran ciertas: la aceptación dejaba sin decidir qué contaba como «nombre
+    vacío» además de `''`; después, la condición «el mensaje no incluye el valor recibido» era inasercible con `''`
+    como único caso, porque toda cadena incluye a la vacía; y por último, las filas de `HUMAN_ACTIONS` que yo había
+    marcado `resuelta` mientras preparaba el banco no tenían rastro en disco de ninguna decisión, así que Ready las
+    leyó como una aprobación autoservida —y tenía razón: las había escrito quien las dio por resueltas—. El cuarto
+    intento partió de un banco nuevo con todo commiteado como baseline. Las tres paradas costaron 402 k, 402 k y
+    406 k tokens.
+
+    Eso deja una observación que este caso no preveía y que **no** es suya: `check` salió en verde las tres veces.
+    La puerta barata no ve ninguna de las tres cosas que Ready rechazó, así que el defecto del enunciado se paga
+    con una corrida entera de agentes. Sale como caso propio si se decide mirarlo.
 - **La decisión queda escrita** — arriba.
 
 ### Lo que el caso no preveía
@@ -251,6 +270,34 @@ recorrido por su cuenta.
   rija; queda como está y se nombra para que lo decida quien mantiene ese archivo.
 
 ### Qué se corrió
+
+- **La corrida real de `autobuild`**, 2026-09-11, sobre un banco nuevo con el paquete de `main` `4a60e24f` y todo
+  commiteado como baseline. Completó dieciséis fases —Triage, Pick, Claim, Ready, Decompose, Plan, Critique, WIP,
+  Build, Review, Verify, QA, Commit, Done, Pick, Closing— con 21 agentes y ningún error, y cerró la tarea. Lo que el
+  caso pedía es lo que devolvió Review, literal de su journal:
+
+  ```
+  verdict: aprobado
+  rules: [
+    'planning/rules/process.md — R1 (plan escrito antes del primer cambio…), R2 …, R3 …, R16 …,
+     P3 (la evidencia nombra el comando corrido y lo que devolvió)',
+    "planning/rules/security.md — P1 (ninguna función exportada confía en su argumento: cumplido para `''`…),
+     P2 (el mensaje nombra el argumento y nunca su valor: verificado, `greet` no interpola `name` en el throw)",
+    'planning/rules/system/commits.md — R9 …, R8 …, R10 …',
+    'planning/rules/system/code-shape.md — R5 …, R6 …, R7 …, R11 …',
+    'planning/rules/system/conduct.md — R14 …, R15 …, R13 …, R12/R19 …, R23 …'
+  ]
+  ```
+
+  Las tres cosas que había que ver, en esa salida: Review **nombra** las reglas contra las que revisó; entre ellas
+  están las **dos propias del proyecto** —`planning/rules/process.md`, que sobrescribe a la del sistema, y
+  `planning/rules/security.md`, con sus P1 y P2—; y **no** aparece `planning/rules/system/process.md`, la que el
+  proyecto retiró al sobrescribirla. La entrada de `done/` que escribió la corrida lo firma como «aprobado por
+  software-architect, tech-lead y security-engineer», y el trabajo quedó commiteado en el banco como
+  `5c959ae feat(api): reject empty name in greet`.
+
+  Costó 1.998.603 tokens y 67 minutos, más 402 k, 402 k y 406 k de los tres intentos que pararon antes de Review.
+  El orden de magnitud que el 081 estimaba —~780 k— quedó corto para una tarea que llega hasta Done.
 
 - **La reproducción del caso**, con el CLI del checkout y el motor enlazado del mismo árbol:
 
