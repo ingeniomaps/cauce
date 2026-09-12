@@ -75,13 +75,38 @@ test('upgrade no pisa un guard propio cuando el paquete empieza a traer su nombr
   assert.doesNotMatch(run(['upgrade', target]).stdout, /guard-chat/)
   assert.ok(M.read(target)[key('guard-chat.sh')])
 
-  // En una instancia anterior al registro, «sin huella» no dice nada: se actualiza como antes.
+  // En una instancia anterior al registro, «sin huella» tampoco alcanza para pisar: sin con qué
+  // distinguir lo propio de lo que entregó una versión vieja, se conserva y se avisa (caso 125). Acá
+  // antes se actualizaba en silencio, que es el lado del que no se vuelve.
   const files = M.read(target)
   for (const name of Object.keys(files)) if (name.startsWith('automatization/hooks/')) delete files[name]
   M.write(target, files)
   fs.writeFileSync(chat, '#!/usr/bin/env bash\n# viejo\n')
-  assert.doesNotMatch(run(['upgrade', target]).stdout, /guard-chat/)
-  assert.equal(fs.readFileSync(chat, 'utf8'), shipped)
+  const sinRegistro = run(['upgrade', target])
+  assert.match(sinRegistro.stdout, /conservado automatization\/hooks\/guard-chat\.sh: ya existía/)
+  assert.match(fs.readFileSync(chat, 'utf8'), /# viejo/, 'lo propio sobrevive al primer upgrade')
+})
+
+// El acote del 110 dejaba afuera a la instancia sin manifiesto —creada antes de que el registro
+// existiera—, que es la que más duele: `collisions()` se salteaba el directorio entero, así que el primer
+// `upgrade` reemplazaba el guard propio sin nombrarlo, salía 0, y después registraba el archivo como
+// entregado por Cauce. Los tres pasos juntos vuelven la pérdida silenciosa e irrecuperable (caso 125).
+test('una instancia sin manifiesto conserva su guard propio en el primer upgrade (caso 125)', () => {
+  const { target, hooks } = instance('cauce-guard-sin-manifiesto-')
+  fs.rmSync(path.join(target, '.cauce', 'manifest.json'), { force: true })
+  const own = path.join(hooks, 'guard-chat.sh')
+  fs.writeFileSync(own, '#!/usr/bin/env bash\n# guard-chat de ACME\n')
+
+  const check = run(['upgrade', target, '--check'])
+  assert.equal(check.status, 1, 'avisa antes de tocar nada, en vez de decir que está al día')
+  assert.match(check.stdout, /choca con uno tuyo: automatization\/hooks\/guard-chat\.sh/)
+
+  const upgraded = run(['upgrade', target])
+  assert.equal(upgraded.status, 0, upgraded.stderr)
+  assert.match(upgraded.stdout, /conservado automatization\/hooks\/guard-chat\.sh: ya existía/)
+  assert.match(fs.readFileSync(own, 'utf8'), /guard-chat de ACME/, 'el trabajo de la empresa sobrevive')
+  assert.equal(M.read(target)[key('guard-chat.sh')], undefined,
+    'y no queda registrado como entregado por Cauce, que es lo que volvía irrecuperable la pérdida')
 })
 
 test('adoptar con init --force no registra el guard propio que ya estaba (caso 100)', () => {
