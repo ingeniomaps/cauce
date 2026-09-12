@@ -44,7 +44,14 @@ function load(session) {
 
 // Nombrar no es pedir: «no toques el .env» nombra el .env. Cuenta la negación que está en la misma frase y
 // antes del nombre; la coma corta, porque «leé el config, no el .env» son dos pedidos.
-const NEGATION = /(?:^|[^\p{L}])(?:no|nunca|jam[aá]s|ni|sin|not|never|don'?t)(?![\p{L}])/iu
+// En inglés la negación se escribe contraída, y de todas se conocía una sola: `don't`. «the tool doesn't
+// read the .env» nombraba el archivo, traía un verbo de la lista y ninguna negación reconocida, así que una
+// frase que **prohíbe** autorizaba (caso 120). Es el error en la dirección peligrosa, al revés que el 109.
+// El auxiliar entra en la alternancia con el apóstrofo opcional, que es lo que `don'?t` ya hacía para uno;
+// `don't` sale de acá —`do` + `n't`—, así que no quedan dos reglas para lo mismo.
+const CONTRACTED = String.raw`(?:do|does|did|is|are|was|were|ca|wo|would|should)n'?t`
+const NEGATION = new RegExp(
+  String.raw`(?:^|[^\p{L}])(?:no|nunca|jam[aá]s|ni|sin|not|never|${CONTRACTED})(?![\p{L}])`, 'iu')
 // Un punto corta sólo si cierra la oración: el de `x.js` es parte del nombre, y cortar ahí dejaba el verbo de
 // «agregá src/x.js a .ops-approval» en otra frase que la del archivo.
 const CLAUSE = /[,;:!?\n]|\.(?=\s|$)/

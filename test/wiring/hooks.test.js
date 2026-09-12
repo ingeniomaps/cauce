@@ -2256,6 +2256,30 @@ test('mencionar algo en el chat no lo autoriza: la frase tiene que pedirlo', () 
   } finally { chat.close() }
 })
 
+// Caso 120. En inglés la negación se escribe contraída, y `NEGATION` sólo conocía `don't`: «the tool
+// doesn't read the .env» nombra el archivo, trae un verbo de la lista y ninguna negación reconocida, así
+// que una frase que **prohíbe** pasaba a autorizar. Es el error en la dirección peligrosa, al revés que el
+// 109: ahí lo que sobraba era permiso por nombrar; acá, permiso por no entender que se estaba negando.
+test('una negación contraída en inglés revoca igual que la escrita entera', () => {
+  const root = planFirstRoot('ops-hook-chat-negacion-en-', WIP_CON_PLAN)
+  const lee = (call, file) => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
+  const chat = chatSession()
+  try {
+    for (const mensaje of [
+      "the tool doesn't read the .env",
+      "the tool doesn't allow the .env",
+      "we can't read the .env",
+      "it isn't allowed to touch the .env",
+      "we won't open the .env",
+      // El control: la forma sin contraer ya frenaba. Está acá para que lo que mida esta prueba sea la
+      // contracción y no la negación en general — sin él, un `NEGATION` roto entero daría el mismo verde.
+      'the tool does not read the .env',
+    ]) blocked('secrets-read', lee(chat.says(mensaje), '.env'), /leerla/)
+    // Y lo que sí pide sigue pasando: reconocer más negaciones no puede volverse un freno general.
+    assert.doesNotThrow(() => execute('secrets-read', lee(chat.says('please read the .env'), '.env')))
+  } finally { chat.close() }
+})
+
 test('plan-first no frena lo que la persona pidió en el chat, y sí el trabajo del agente', () => {
   const root = planFirstRoot('ops-hook-chat-plan-', WIP_IDLE)
   const escribe = (call) => call({ cwd: root, tool_input: { file_path: path.join(root, 'src', 'altas.js') } })
