@@ -2,6 +2,7 @@
 caso: 087
 titulo: La fila de HUMAN_ACTIONS que cierra el 081 la escribe un agente que el recorrido no espera, y no llega al disco
 estado: resuelto
+resuelto-en: 0.79.0
 prioridad: alta
 version-detectada: 0.78.0
 ---

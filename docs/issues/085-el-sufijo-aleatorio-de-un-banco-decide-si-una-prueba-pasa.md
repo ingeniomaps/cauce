@@ -2,6 +2,7 @@
 caso: 085
 titulo: El sufijo aleatorio del nombre de un banco decide si una prueba de la suite pasa
 estado: resuelto
+resuelto-en: 0.78.0
 prioridad: media
 version-detectada: 0.77.0
 ---

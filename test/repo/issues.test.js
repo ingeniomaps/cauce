@@ -30,6 +30,26 @@ function cases() {
   })
 }
 
+// `resuelto-en` no es decoración: las dos comprobaciones de abajo arrancan comparando esa versión contra el
+// piso desde el que rige cada convención, así que a un caso al que le falte la llave **no lo mira ninguna**
+// —`version('')` da `[NaN]` y `alcanzado` devuelve `false`—. Queda exento de todo sin que nada avise, que es
+// peor que fallar: una puerta que no ve algo no se distingue de una que lo aprobó.
+//
+// Ésta no lleva piso, al revés que las otras dos, y la diferencia está en qué se pide. `resuelto-en` es un
+// dato que se puede mirar —el encabezado del propio caso ya dice en qué versión cerró—, y un cierre es un
+// juicio que había que hacer en su momento. Rellenar el dato es leerlo; rellenar el cierre sería inventarlo.
+test('un caso resuelto declara en qué versión se cerró', () => {
+  const faltan = cases()
+    .filter((one) => one.estado === 'resuelto' && !one.resueltoEn)
+    .map((one) => `${one.name}: estado resuelto y sin «resuelto-en»`)
+  assert.deepEqual(faltan, [], `casos cerrados que ninguna puerta mira:\n  ${faltan.join('\n  ')}`)
+})
+
+// Un ítem del recorrido se escribe de dos formas y las dos dicen lo mismo: la viñeta, y el título en negrita
+// seguido de su destino —«**El `await`** — hecho»—. Contar sólo la viñeta medía el formato y no el contraste:
+// los cierres de 083, 084, 085 y 087 recorren su enumeración entera en la segunda forma y daban cero ítems.
+const ITEM = /^- |^\*\*.+?\*\*\s+—/gm
+
 // R15 dice que la enumeración que más se pierde es la que escribió la propia unidad de trabajo: lo que
 // es código se tacha solo, y la revisión pendiente o el borde que hay que mirar no dejan rastro de
 // haberse hecho ni de no haberse hecho. Cerrar por el diff los deja adentro del caso, cerrado.
@@ -44,7 +64,7 @@ test('un caso resuelto trae el contraste contra lo que enumeró', () => {
     if (one.estado !== 'resuelto' || !alcanzado(version(one.resueltoEn))) continue
     mirados += 1
     const cierre = (one.text.match(/\n## Cierre\n([\s\S]*?)(?=\n## |$)/) || [])[1] || ''
-    const items = (cierre.match(/^- /gm) || []).length
+    const items = (cierre.match(ITEM) || []).length
     if (!items) faltan.push(`${one.name}: sin «## Cierre» con qué pasó con cada cosa que enumeró`)
   }
   assert.ok(mirados > 0, 'ningún caso alcanzó la convención: el recorrido no está midiendo nada')

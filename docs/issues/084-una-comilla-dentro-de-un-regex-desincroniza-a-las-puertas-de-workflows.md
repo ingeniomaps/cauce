@@ -2,6 +2,7 @@
 caso: 084
 titulo: Las dos puertas que analizan un workflow sin parsearlo se desincronizan con una comilla dentro de un literal de regex
 estado: resuelto
+resuelto-en: 0.78.0
 prioridad: media
 version-detectada: 0.77.0
 ---
