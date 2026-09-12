@@ -1,14 +1,15 @@
 ---
 caso: 112
 titulo: Una aprobación consumida no deja rastro: quién aprobó qué push, a qué rama y cuándo
-estado: abierto
+estado: resuelto
 prioridad: media
 version-detectada: 0.81.0
+resuelto-en: 0.83.0
 ---
 
 # 112 — Un «dale» publica una rama y, un mensaje después, no queda nada que diga que alguien lo aprobó
 
-**🔴 abierto** · detectado en 0.81.0, sigue en la rama de 0.82.0 · prioridad **media** — desde 0.82.0 una
+**🟢 resuelto en 0.83.0** · detectado en 0.81.0 · prioridad **media** — desde 0.82.0 una
 aprobación del chat publica (caso 103), y un push no se deshace solo; hoy la única constancia de que una
 persona lo autorizó dura hasta que ella manda el mensaje siguiente
 
@@ -70,14 +71,14 @@ instancia no nombra la rama en ningún archivo.
 
 ## Causa raíz
 
-- `engine/hooks/chat.js:133` (`record`): cada mensaje de la persona reescribe el registro de la sesión con
+- `engine/hooks/chat.js:133-134` (`record`): cada mensaje de la persona reescribe el registro de la sesión con
   `approved` y `pending` nuevos. Es a propósito —una aprobación vale para el mensaje siguiente y ninguno
   más—, y la consecuencia es que el registro es un estado, no una historia.
 - El registro vive en el temporal del sistema (`chat.js:20-22`), también a propósito: el texto de la persona
   no tiene por qué terminar en un commit.
 - `engine/hooks/approval.js:15-19`: `.ops-approval` «se coteja, no se consume», así que tampoco hay un
   momento en que se sepa que una línea se usó.
-- `engine/hooks/push.js:127-144` (`publish`): cuando un push pasa por una aprobación, retorna sin anotar
+- `engine/hooks/push.js:128-145` (`publish`): cuando un push pasa por una aprobación, retorna sin anotar
   nada. Ningún guard lo hace: hoy ninguno escribe en el repositorio salvo el registro de gates
   (`engine/core/evidence.js:38`).
 
@@ -124,3 +125,73 @@ un caso propio. La reproducción de arriba se corrió con el arreglo de esos dos
 - **103** — la vía por la que el chat publica; es la que vuelve caro no tener rastro.
 - **108** — su P4 es este caso.
 - **098** — el mecanismo de aprobaciones entero; el rastro le falta a todas, no sólo al push.
+
+## Cierre
+
+Recorrido contra el caso entero, no contra «Fix propuesto».
+
+- **Resumen, «no hay cómo contestar quién lo aprobó, qué remoto y qué rama, y cuándo»** — ahora hay una
+  línea por push autorizado, con un límite que conviene decir: contesta **en qué sesión y por qué vía** se
+  autorizó, no el nombre de una persona. Cauce no tiene identidad de usuario y el caso pedía el
+  `session_id`, que es lo que se anota; para llegar a una persona hay que ir de la sesión a quién la tenía
+  abierta. La línea real, de la reproducción del caso corrida con el arreglo puesto:
+
+      {"authorizedAt":"2026-09-12T03:34:16.668Z","remote":"origin","branch":"feat/x","via":"dale","session":"s1"}
+
+- **Reproducción** — se corrió tal cual en un banco desechable, antes y después. La última línea es la que
+  cambió:
+
+      antes:   archivos de la instancia que nombran feat/x: (ninguno)
+      después: archivos de la instancia que nombran feat/x: …/acme/planning/.push-log
+
+- **Síntoma** — la salida pegada se reprodujo idéntica sobre la base de esta rama. El registro del chat
+  sigue reescribiéndose entero en cada mensaje, que era correcto y no se tocó: lo que faltaba no era
+  memoria en el temporal sino una línea en la instancia.
+
+- **Causa raíz** — las cuatro citas se contrastaron contra el fuente y **dos estaban corridas**, las dos
+  corregidas en este mismo cambio: `chat.js:133` es la escritura del registro y ocupa `133-134`, y
+  `publish` no está en `push.js:127-144` sino en `128-145`. `approval.js:15-19` y `evidence.js:38` son
+  exactas.
+
+- **Fix propuesto, punto 1** — implementado tal cual: `publish` anexa una línea cuando deja pasar un push
+  **por una aprobación**, con fecha, remoto, rama, vía y sesión. Las tres vías se distinguen: `orden` (el
+  mensaje que lo pidió con su remoto y su rama), `dale` (la respuesta al bloqueo) y `.ops-approval` (la
+  línea exacta del archivo). Por `allowPush` no se anota nada, que es lo que el punto pedía.
+
+- **Fix propuesto, punto 2** — el registro sólo agrega y no guarda el texto de la persona. Las dos mitades
+  están medidas por mutación, no por lectura: sobrescribir en vez de anexar pone en rojo la prueba, y
+  hacer que el rastro guarde el texto del chat también.
+
+- **Decisión pendiente, «dónde vive el registro»** — la instancia, con el formato de la evidencia de gates:
+  una línea JSON por entrada. Queda **gitignoreado**, como `.verify-log`, y eso es una decisión con razón
+  escrita: lo que contesta se pregunta en la máquina donde corrió la sesión que publicó, y committearlo
+  sería un conflicto por push a cambio de nada. Se declaró en `template/gitignore` y en el anillo «Local»
+  de `teamwork.md`, que es donde la instancia enumera sus artefactos locales.
+
+- **Decisión pendiente, «¿todas las aprobaciones o sólo el push?»** — sólo el push, que es lo irreversible
+  y lo que el dueño decidió. Las de archivos siguen sin rastro propio y siguen dejando el diff, que es el
+  argumento del propio caso; el **098** queda con esa dimensión abierta a propósito.
+
+- **Tradeoff «un guard que escribe»** — sostenido y **probado**: el rastro nunca puede frenar un push que
+  ya estaba autorizado. Se montó una raíz donde escribir adentro falla —`planning` como archivo y no como
+  directorio— y el push pasa igual; la mutación que hace que ese fallo se propague pone esa prueba en rojo.
+
+- **Tradeoff «anotar antes de que ocurra»** — esta dimensión casi se cierra sin cumplirse. Pedía que el
+  formato dijera que lo anotado es la autorización y no el resultado, y el campo se llamaba `at`, que es
+  una fecha a secas y se lee como «esto se publicó». Se renombró a `authorizedAt`, y el comentario de
+  `trail` dice por qué. Un push que después falla queda registrado igual, que es correcto y ahora se lee
+  como lo que es.
+
+- **Prioridad** — era media «mientras las aprobaciones del chat puedan publicar», y su condición de
+  escalada —el día que una instancia necesite responder quién autorizó un push— queda contestable, con el
+  alcance del primer ítem: la sesión y la vía, no el nombre.
+
+- **Relacionados** — el **103** y el **108** (su P4) quedan cerrados por este rastro. El **098** no: se
+  decidió arriba que el rastro empieza por el push. El **116** se resolvió junto a éste y comparte el
+  mecanismo: lo que allá se anota como concedido es la materia prima de esta línea.
+
+- **Cómo se probó** — siete mutaciones sobre copias desechables, todas en rojo: no escribir el rastro,
+  anotarlo también por `allowPush`, guardar el texto de la persona, sobrescribir en vez de anexar, anotar
+  todas las vías igual, que un rastro que falla frene el push, y que el archivo deje de estar gitignoreado.
+  Las pruebas nuevas se vieron en rojo contra un `git archive` de la base antes del arreglo. `npm test`
+  747/747 y `npm run ci` en 0.

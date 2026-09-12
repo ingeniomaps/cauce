@@ -19,6 +19,8 @@
 //
 // El `--force` no llega hasta acá: lo frena `destructive` antes, sin override (R8).
 
+const fs = require('node:fs')
+const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { block, cwdOf, gitDirectory, opsRoot, configOf } = require('./input')
 const AP = require('./approval')
@@ -125,6 +127,37 @@ function workMessage(items, input) {
     + 'El permiso permanente es runner.allowPush en ops.config.json, y lo decide una persona.'
 }
 
+// El rastro de las aprobaciones que publicaron: una línea por push que pasó porque alguien lo autorizó.
+// Una aprobación se consume sin dejar nada —un «dale» publica y al mensaje siguiente ya no queda quién lo
+// autorizó— y un push no vuelve atrás, así que «quién, a qué rama y cuándo» no tenía de dónde salir
+// (caso 112).
+//
+// Sólo agrega, a diferencia del registro de gates, que es rodante: lo que una auditoría pregunta es
+// justamente la entrada vieja.
+//
+// No guarda el texto de la persona. La vía y la sesión alcanzan para reconstruir qué pasó, y el texto se
+// queda en el temporal, que es donde el 098 decidió dejarlo.
+//
+// Y anota la autorización, no el resultado: este hook corre antes del comando, así que un push que después
+// falla queda registrado igual. Por eso la fecha se llama `authorizedAt` y no `at`: leer la línea como
+// «esto se publicó» afirmaría algo que el hook no puede saber.
+const LOG = path.join('planning', '.push-log')
+
+function trail(root, session, entries) {
+  if (!root) return
+  try {
+    const authorizedAt = new Date().toISOString()
+    const file = path.join(root, LOG)
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.appendFileSync(file, `${entries
+      .map((one) => JSON.stringify({ authorizedAt, ...one, session: session || null })).join('\n')}\n`)
+  } catch { /* el push ya estaba autorizado: no lo frena un registro que no se pudo escribir */ }
+}
+
+// Un destino en la forma en que se anota. Sin remoto ni rama resolubles va `null`, que es exactamente lo
+// que el comando dejó ver.
+const entryOf = (to, via) => ({ remote: to.remote || null, branch: to.branch || null, via })
+
 function publish(input, command) {
   const pushes = [...command.matchAll(PUSH)]
   if (!pushes.length) return
@@ -135,13 +168,27 @@ function publish(input, command) {
   const listed = new Set(Array.isArray(runner.pushToLiveBranches) ? runner.pushToLiveBranches : [])
   const filed = new Set(root ? AP.read(root) : [])
   const live = liveBranches(dir)
-  const left = pushes.flatMap((match) => destinationsOf(match[1], dir))
-    .filter((to) => !(to.item && to.item.startsWith('push ') && filed.has(to.item)))
+  const destinations = pushes.flatMap((match) => destinationsOf(match[1], dir))
+  const byFile = destinations.filter((to) => to.item && to.item.startsWith('push ') && filed.has(to.item))
+  const left = destinations.filter((to) => !byFile.includes(to))
   const unlisted = left.filter((to) => to.every || (live.has(to.branch) && !listed.has(to.branch)))
   if (unlisted.length) block(liveMessage(unlisted, input))
+  // Con la llave puesta no hizo falta ninguna aprobación, así que no hay ninguna que anotar: la
+  // autorización ya está escrita en `ops.config.json`, y repetirla en cada push sería registrar el archivo
+  // del proyecto contra sí mismo.
   if (runner.allowPush === true) return
-  const unordered = CHAT.unauthorized(input, [...new Set(left.map((to) => to.item))], CHAT.ordersPush)
+  const items = [...new Set(left.map((to) => to.item))]
+  // Se pregunta sin conceder, a diferencia de lo que pasa por `AP.pending`: volver a leer lo que ya se
+  // leyó no agrega consecuencia y volver a publicar sí, así que la autorización de un push vale para esa
+  // operación y no para el mensaje siguiente (R10).
+  const cleared = CHAT.authorized(input, items, CHAT.ordersPush)
+  const unordered = items.filter((item) => !cleared.some((one) => one.item === item))
   if (unordered.length) block(workMessage(unordered, input))
+  const destination = new Map(destinations.map((to) => [to.item, to]))
+  trail(root, input.session_id, [
+    ...new Map(byFile.map((to) => [to.item, entryOf(to, AP.APPROVAL)])).values(),
+    ...cleared.map((one) => entryOf(destination.get(one.item), one.via)),
+  ])
 }
 
 module.exports = { publish }

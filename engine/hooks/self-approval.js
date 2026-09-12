@@ -22,7 +22,10 @@ function selfApproval(input, file) {
   }
   const root = opsRoot(input)
   if (!root || file !== path.join(root, 'planning', AP.APPROVAL)) return ''
-  if (!CHAT.unauthorized(input, [file]).length) return ''
+  // Se pregunta sin conceder: una concesión que sobreviviera al mensaje convertiría «agregá src/x.js a
+  // .ops-approval» en permiso para escribirle después cualquier otra línea, que es aprobarse solo por la
+  // puerta de al lado.
+  if (CHAT.authorized(input, [file]).length) return ''
   return `${file} es la aprobación de una persona, y escribírsela es aprobarse solo. Si la persona quiere `
     + 'autorizar algo, que lo diga en el chat —nombrándolo, o contestando «dale» al bloqueo— o que edite el '
     + 'archivo ella.'
