@@ -432,3 +432,11 @@ declaración en `organization/secrets.json`.
   archivos en su piso o por encima. `engine/secrets/index.js` quedó en 94.71 de líneas, 80.72 de ramas y
   100 de funciones; su piso se registró a mano en 93/80/100, porque `coverage:update` reescribe el
   registro entero y habría movido pisos de archivos que este cambio no toca.
+
+### Recorrido de la auditoría (2026-09-12)
+
+- **La condición de escalada del encabezado** —«sube a **alta** si un segundo proyecto adopta el modelo
+  antes de que haya dónde declararlo»— **quedó imposible con este mismo cambio**: el lugar donde declararlo
+  es `organization/secrets.json`, que salió acá, y el piloto corrió con cuatro proyectos usándolo. No puede
+  volver a darse la situación que la disparaba. La auditoría lo marcó como el único ítem que este cierre
+  había dejado sin recorrer.

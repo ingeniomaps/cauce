@@ -230,3 +230,28 @@ nombres que agregó 0.81.0 (`guard-secrets-shell.sh` entró en `938f5364`).
 - **La pasada de comentarios** en 0.22 contra la base: ningún par nuevo.
 - `npm run ci`, con los archivos nuevos ya en el índice: código 0, 702 de 702, cobertura de 61 archivos en su
   piso o por encima, ningún export sin uso.
+
+### Recorrido de la auditoría (2026-09-12)
+
+Tres ítems que este cierre había dejado sin recorrer.
+
+- **La condición de escalada del encabezado** —«sube a **alta** el día que se arregle el 100: ahí deja de
+  haber cualquier caso en que se conserve»— **resultó con la premisa falsa, y eso es lo que hay que
+  registrar**. El 100 se arregló en este mismo cambio y **sigue habiendo** un caso en que se conserva: un
+  guard propio que una versión vieja registró y que el paquete ahora trae, exactamente lo que asevera
+  `test/instance/upgrade-own-guards.test.js:98`. La prioridad se queda en **media** por eso, y no por
+  omisión.
+- **«No medido cuántas instancias así quedan»** (Tradeoffs) — **salió como caso propio: el 125**. Contarlas
+  sigue siendo imposible desde acá, pero la pregunta de abajo sí se pudo medir: **si importa**. Se montaron
+  tres instancias y se corrió el `upgrade` real en cada una — sin manifiesto, con el manifiesto de `init`, y
+  con una huella vieja. En la primera, **el guard propio se perdió**: `--check` dijo «la instancia está al
+  día», el `upgrade` salió 0 sin nombrar el archivo, y quedó el shim del paquete. Las otras dos lo
+  conservaron y lo nombraron, que es lo que este caso arregló.
+
+  O sea que el acote que este cierre eligió —aplicar la regla sólo si el manifiesto ya conoce la ruta— deja
+  afuera justo el caso que más duele, y ante la duda elige sobrescribir. Eso no le toca a este caso, que ya
+  está publicado: va al **125**, con la reproducción y los tres escenarios adentro.
+- **«Un guard del toolkit registrado y sin editar se sigue actualizando en silencio»** — el cierre lo
+  sostenía en «las pruebas de `upgrade.test.js` que siguen en verde», que no nombra ninguna. Es
+  `upgrade.test.js:72`, «upgrade conserva lo editado, actualiza el resto y lo dice». La cobertura estaba;
+  faltaba la cita, que es lo que permite contrastarla sin rehacer el trabajo.

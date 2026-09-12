@@ -74,7 +74,10 @@ Qué escribe cada herramienta al lado del nombre de una prueba, corrido el 2026-
 | `node --test`, reporter por defecto (spec, también con la salida entubada) | `✔ nombre` | `✖ nombre` | verificado, Node 24.18.0 |
 | `node --test --test-reporter=tap` | `ok 1 - nombre` | `not ok 2 - nombre` | verificado, Node 24.18.0 |
 | `go test` (`-v` para las verdes) | `--- PASS: TestX` | `--- FAIL: TestX` | verificado, go 1.26.3 |
-| `pytest`, `jest`, `vitest`, `mocha` | — | — | no instalados acá: sin comprobar |
+| `jest` | — (no imprime verdes sin `--verbose`) | `● nombre` | verificado, jest 30.5.1 |
+| `vitest` | — (no imprime verdes sin `--verbose`) | `× nombre` | verificado, vitest 5.0.0 |
+| `mocha` | `✔ nombre` | `1) nombre` | verificado, mocha 12.0.1 |
+| `pytest` (`-v` para las verdes) | `archivo::prueba PASSED` | `FAILED archivo::prueba` | verificado, pytest 9.1.1 |
 
 ## Fix propuesto
 
@@ -207,3 +210,13 @@ gate, y `verify` sobre el commit.
   M5 sin la marca PASSED de pytest -v   fail 1 → ROJA
   ```
 - `npm run ci`: código 0, 696 de 696, cobertura de 60 archivos en su piso o por encima.
+
+### Recorrido de la auditoría (2026-09-12)
+
+- **La condición de escalada del encabezado** —«sube a **alta** si otro proyecto con `node --test` o `jest`
+  nombra sus pruebas en lenguaje natural, que es lo común»— **la contestó la sección de arriba**: las cuatro
+  herramientas se comprobaron el 2026-09-11 y sus marcas entraron en la tabla, así que un proyecto con jest
+  ya no cae en la búsqueda por palabra. Estaba hecho y no dicho.
+- **La tabla de marcas quedó al día en esta pasada.** Seguía diciendo «no instalados acá: sin comprobar»
+  cien líneas por encima de la sección que los había comprobado: el dato correcto existía y la parte del
+  archivo que alguien copia decía lo contrario.

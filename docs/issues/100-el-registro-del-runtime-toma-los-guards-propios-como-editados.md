@@ -212,3 +212,11 @@ de `--force`, que la versión original no nombraba y decía que el aviso «no se
 - **La pasada de comentarios** en 0.22 contra la base: ningún par nuevo.
 - `npm run ci`, con los archivos nuevos ya en el índice: código 0, 702 de 702, cobertura de 61 archivos en su
   piso o por encima, ningún export sin uso.
+
+### Recorrido de la auditoría (2026-09-12)
+
+- **El camino sin `--force`, que este caso marcó como el discriminante, sí tiene prueba propia**: es
+  `test/instance/upgrade-own-guards.test.js:98`, que escribe la huella vieja en el manifiesto y corre
+  `run(['upgrade', target])` **pelado** —sin `--force`—, afirmando que el guard se conserva y que lo sigue
+  conservando en la corrida siguiente. La auditoría lo señaló como hueco porque el cierre no la citaba y la
+  prueba vecina usa `--force`; el hueco era de la cita, no de la cobertura.

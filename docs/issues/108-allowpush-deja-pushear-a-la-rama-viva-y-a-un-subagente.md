@@ -214,3 +214,10 @@ sonda sobre 0.81.0 mostró lo contrario (E), además del subagente (G).
   modificado por la reinstalación del paquete, y el agente frenó por eso antes del «dale»; no cambia lo que
   se medía, que es el push.
 - `npm run ci`: la misma corrida que la del 103, código 0 y 708 de 708.
+
+### Recorrido de la auditoría (2026-09-12)
+
+- **El residuo que este cierre dejó «para que el usuario decida si sale como caso propio» salió**: es el
+  **114**, resuelto en 0.83.0, que protege `runner.allowPush` y `runner.pushToLiveBranches` con dos guards
+  —`ops-config` y `ops-config-shell`—. El 114 nombra a este caso; éste no lo nombraba a él, así que quien
+  leyera sólo el 108 no tenía cómo saber que la decisión ya se había tomado.

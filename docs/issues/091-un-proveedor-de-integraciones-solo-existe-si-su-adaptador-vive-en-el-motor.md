@@ -199,3 +199,9 @@ dependía del molde; y no sabía que el README del contrato no viaja en el paque
   M7 el README del molde sin la versión  fail 1 → ROJA
   ```
 - `npm run ci`: código 0, 687 de 687, cobertura de 58 archivos en su piso o por encima.
+
+### Recorrido de la auditoría (2026-09-12)
+
+- **La condición de escalada del encabezado** —«sube a **media** el día que una empresa necesite un
+  proveedor que Cauce no trae»— **quedó imposible**: ése era el defecto, y con `"adapter": "./adapter.js"`
+  la empresa conecta el suyo sin tocar el motor. No hay día en que pueda volver a dispararse.

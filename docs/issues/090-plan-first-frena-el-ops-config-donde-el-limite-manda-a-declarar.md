@@ -253,3 +253,10 @@ adónde mover lo propio.
 **Se decidió que no**: un guard que frenara editar `AGENTS.md` o `Makefile` con «esto lo pisa el próximo
 upgrade» protegería contra algo que no pasa, y limitaría a quien edita a propósito. El dato que sostiene la
 decisión son las tres corridas de arriba.
+
+### Recorrido de la auditoría (2026-09-12)
+
+- **La condición de escalada del encabezado** —«sube a **alta** si una instancia recién creada con roadmap
+  cargado no puede declarar su primera ruta sin aprobar a mano»— **quedó imposible**, y por el fix A de este
+  caso: `ops.config.json` se exime por nombre, que es exactamente el archivo que hay que editar para
+  declarar esa ruta. La condición describía el defecto, así que arreglarlo la anuló.
