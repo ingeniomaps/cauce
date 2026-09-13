@@ -32,6 +32,33 @@ const NOT_COVERED = ['automatization/workflows/', 'automatization/shared/']
 // ningún subproceso daba 61 estable seis veces; sumándole `ops.test.js`, que lanzaba cinco, 64 a 68.
 // Mientras las órdenes terminen en `process.exit` no hay forma de probarlas en proceso, así que ese
 // archivo tolera hasta cuatro puntos de regresión a cambio de que el gate no falle al azar.
+//
+// Lo mismo explica los pisos bajos de `cli/catalog.js`, `cli/wiring.js` y `cli/ops.js` —38, 45 y 47 de
+// ramas—, y conviene decirlo acá porque un número así se lee como deuda y manda a escribir pruebas que
+// no mueven nada: los tres usan `fail()` catorce, quince y ocho veces, y `fail()` es el único
+// `process.exit` del CLI. Sus ramas de error sólo se ejercitan lanzando el comando, y lo que el hijo
+// alcanzó a escribir se atribuye a medias. Están muy probados: los nombran diez, once y cincuenta
+// suites.
+//
+// `runners/antigravity/hook.js` acumula las dos causas, y por eso su piso es el más bajo de todos. La del
+// subproceso vale igual acá: las pruebas que ejercitan sus decisiones de `deny` y de `stop` lanzan el
+// puente con `node -e` —tienen que hacerlo, porque miden cómo resuelve la raíz desde el workspace que
+// Antigravity abre—, así que esas ramas se ejecutan sin que se le atribuyan. Y encima no usa `fail()`:
+// su `main()` corre sólo bajo `require.main`, que al importarlo no se toma nunca, y el resto de lo que
+// figura sin cubrir son guardas defensivas y segundos lados de `&&`/`||` dentro de un mismo `return`.
+//
+// Medido el 2026-09-13: **78,3 % de ramas reales contra un piso de 33**, y estable — 47/60 exacto en
+// cinco corridas seguidas, sin una décima de variación. Un piso cuarenta y cinco puntos por debajo no
+// protege de nada.
+//
+// Se sube a **75**, y el número sale de comprobar dónde muerde en vez de elegirlo con holgura: quitando
+// la prueba que traduce decisiones al protocolo nativo, el archivo cae a 69 %. Con el piso en 70 eso
+// **pasa** —`SLACK` se come el punto— y con 75 **cae**, que es lo que se le pide a un piso. Los tres
+// puntos que quedan sobre 78,3 son para el denominador, que sí se mueve: al quitar esa prueba baja de 60
+// ramas a 42, porque V8 sólo cuenta los bloques que se ejecutan.
+//
+// Lo que sí se cubrió es lo único que era conducta propia sin probar: el evento que `hookGroups` no
+// conoce, que niega toda llamada a herramienta si un manifiesto lo escribe mal.
 const SLACK = 1
 
 function measure(lcov) {

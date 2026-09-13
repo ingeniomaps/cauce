@@ -108,6 +108,13 @@ test('el bridge de Antigravity traduce decisiones al protocolo nativo', () => {
   })
   assert.equal(evaluate('pre-shell', payload('git status')).decision, 'allow')
   assert.equal(evaluate('pre-shell', payload('git push')).decision, 'deny')
+
+  // Un evento que `hookGroups` no conoce niega, y lo dice nombrándolo. Falla cerrado como todo el
+  // puente, y es la única forma de enterarse: un manifiesto que registre un evento mal escrito deja al
+  // agente sin herramientas, que es el modo de fallo que este archivo ya vivió dos veces.
+  const raro = evaluate('evento-que-no-existe', payload('git status'))
+  assert.equal(raro.decision, 'deny')
+  assert.match(raro.reason, /Evento Antigravity desconocido: evento-que-no-existe/)
 })
 
 // Los dos errores en el mismo evento `stop`, porque separados los dos dan `continue` y cualquiera de

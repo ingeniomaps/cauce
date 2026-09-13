@@ -1,7 +1,7 @@
 {
   "automatization/runners/antigravity/hook.js": {
     "lines": 77,
-    "branches": 33,
+    "branches": 75,
     "functions": 62
   },
   "engine/agents/catalog.js": {
