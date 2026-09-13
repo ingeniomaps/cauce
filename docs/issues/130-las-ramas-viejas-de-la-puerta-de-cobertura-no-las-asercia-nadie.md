@@ -1,14 +1,15 @@
 ---
 caso: 130
 titulo: La puerta de cobertura tiene seis avisos y sólo dos están aserciados, así que se pueden silenciar los otros cuatro sin que ninguna prueba lo note
-estado: abierto
+estado: resuelto
+resuelto-en: 0.87.0
 prioridad: media
 version-detectada: 0.86.0
 ---
 
 # 130 — Se puede apagar la mitad de la puerta de cobertura y la suite sigue en verde
 
-**🔴 abierto**
+**🟢 resuelto en 0.87.0**
 
 ## Resumen
 
@@ -133,3 +134,55 @@ y no a lo que el archivo ya tenía, y nadie lo iba a notar — el diff se lee co
 - **129** — el caso que puso la primera prueba de este archivo y que dejó estas cuatro ramas afuera.
 - **131** — `dead-code.js`, la otra herramienta de `ci`, que no tiene ninguna prueba.
 - **132** — `hooks-smoke.sh`, cuya primera comprobación pasa en verde si el guard no llega a correr.
+
+## Cierre
+
+**🟢 resuelto en 0.87.0** · `test/repo/coverage-floors.test.js`
+
+### Contra lo que el caso enumeró
+
+- **Los cuatro avisos sin aserciar** —la regresión, el piso ausente, el piso que ningún test carga y el
+  huérfano— tienen cada uno su caso, y cada uno murió con su mutación. La prueba pasó de 6 casos a 11.
+- **«Conviene además el borde: exactamente `piso - SLACK` pasa»** — hecho, y resultó ser el ítem que más
+  valía. Fija la holgura por los dos lados: sin él, subir `SLACK` a diez no rompería nada y la puerta
+  dejaría de ver una regresión de nueve puntos.
+- **Tradeoff «es barato: el arnés ya está y son cuatro casos declarativos»** — cierto a medias, y la
+  diferencia es el hallazgo de este cierre: tres de los cuatro salieron declarativos, y el cuarto —el
+  piso cuyo archivo ningún test carga— **no se podía montar con el arnés que había**. Ver abajo.
+- **Tradeoff «el arnés sintético puede divergir del lcov real»** — sigue en pie y **no se cerró**. Es una
+  predicción sobre un formato de terceros que no cambió, así que no hay nada que medir todavía; la
+  defensa sigue siendo que `coverage` corre de verdad en `ci` dos pasos más adelante. Se deja dicho para
+  que nadie lo lea como cubierto.
+- **Tradeoff «no cambia la conducta del producto»** — cierto: ningún usuario ve nada y ningún número
+  subió. `test/` no entra en el piso de cobertura.
+- **Prioridad: «sube a alta el día que alguien toque `coverage-files.js` y se lleve puesta una de esas
+  cuatro ramas sin enterarse»** — esa condición queda cerrada por el arreglo, que es lo que este caso
+  perseguía: hoy llevarse cualquiera de las cuatro pone la suite en rojo nombrando la conducta perdida.
+- **Resumen: «los cuatro se pueden silenciar y la suite queda en 6 de 6, verde»** — ya no. Se volvió a
+  medir con las cuatro mutaciones y las cuatro caen.
+
+### Lo que el caso no preveía
+
+- **El arnés necesitaba una segunda costura.** `corrida(cambiar)` muta el registro **después** de escribir
+  el lcov, que es lo que produce una distancia; pero «tiene piso y ningún test lo carga» pide lo contrario
+  —sacar el archivo de lo **medido** sin sacarlo del registro— y eso no se podía expresar. Se agregó
+  `medir`, que corre antes. El caso daba los cuatro por declarativos y uno no lo era.
+- **La puerta del repositorio atrapó un defecto mío.** Escribí un comentario que presentaba el grupo de
+  casos nuevos y quedó separado de su código por una línea en blanco: `repo.test.js` lo marcó como
+  «describe algo que no es la línea siguiente». Tenía razón, y la regla nombra el fallo que existe para
+  atrapar —encabezados que se quedan atrás cuando un archivo se parte—. Un comentario de grupo no es una
+  forma que este repositorio admita: el texto se movió al preámbulo, que es donde la regla dice que un
+  encabezado vive legítimamente.
+- **El caso del borde no muere con la mutación que parecía suya.** Subir `SLACK` a diez no lo mata —una
+  holgura más ancha sigue dejándolo pasar—; lo mata **bajarla a cero**. Las dos mutaciones son necesarias
+  y miden cosas distintas: una que la holgura no se agrande, otra que no desaparezca.
+
+### Qué se corrió
+
+- **Verde**: 11 de 11 casos; `npm run ci` en 0 y la suite en **797 pruebas, 797 en verde** —cinco más—.
+- **Rojo intermedio, real y ajeno al plan**: `ci` salió 1 por el comentario suelto, con el archivo y la
+  línea nombrados. Se arregló y volvió a 0.
+- **Seis mutaciones en copia por `tar`, con verde de control antes y después de cada una.** Silenciar la
+  regresión mata a su caso; silenciar el piso ausente, al suyo; silenciar el piso sin archivo que lo
+  cargue, al suyo; silenciar el huérfano, al suyo; `SLACK = 10` mata al de la regresión; `SLACK = 0` mata
+  al del borde. **Ninguna sobrevivió**, y cada una de las cuatro primeras mató exactamente un caso.
