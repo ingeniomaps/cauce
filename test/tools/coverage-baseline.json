@@ -71,7 +71,7 @@
   },
   "engine/cli/archive.js": {
     "lines": 97,
-    "branches": 68,
+    "branches": 85,
     "functions": 100
   },
   "engine/cli/args.js": {
@@ -101,7 +101,7 @@
   },
   "engine/cli/instance.js": {
     "lines": 95,
-    "branches": 57,
+    "branches": 71,
     "functions": 78
   },
   "engine/cli/io.js": {
@@ -111,7 +111,7 @@
   },
   "engine/cli/ops.js": {
     "lines": 88,
-    "branches": 47,
+    "branches": 67,
     "functions": 85
   },
   "engine/cli/planning.js": {
@@ -271,7 +271,7 @@
   },
   "engine/integrations/state.js": {
     "lines": 97,
-    "branches": 64,
+    "branches": 74,
     "functions": 91
   },
   "engine/integrations/writeback.js": {
