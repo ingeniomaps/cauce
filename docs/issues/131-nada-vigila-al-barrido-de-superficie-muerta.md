@@ -1,14 +1,15 @@
 ---
 caso: 131
 titulo: El barrido de superficie muerta no lo prueba nadie, y desactivarlo se ve exactamente igual que un repositorio limpio
-estado: abierto
+estado: resuelto
+resuelto-en: 0.87.0
 prioridad: media
 version-detectada: 0.86.0
 ---
 
 # 131 — `dead-code.js` decide qué sobra y ninguna prueba lo vigila
 
-**🔴 abierto**
+**🟢 resuelto en 0.87.0**
 
 ## Resumen
 
@@ -115,9 +116,18 @@ una prueba que cuesta un minuto no se corre. Si no se puede, el caso lo dice y s
   ese binding; eso es su diseño y es lo que la hace confiable. Una prueba que la ejercite de punta a
   punta hereda ese costo, así que probablemente haya que probar las funciones puras —`bindings`,
   `candidates`, `exportNames`— por separado de la confirmación.
+
+  **Falso, y medido al arreglarlo.** Lo caro es **confirmar**, y sobre un árbol sano no se confirma
+  ninguno: el barrido entero de este repositorio —71 suites, 81 archivos del motor, 1468 trackeados—
+  tarda **235 ms**, y el de un árbol de juguete ~105 ms. No hizo falta separar nada: los siete casos
+  ejercitan la herramienta de punta a punta.
 - **El archivo hoy corre como script**, así que importarlo ejecuta el barrido entero. Igual que en el
   129 con `--baseline=`, va a hacer falta una costura mínima; a diferencia de aquél, acá probablemente
   sea un `require.main === module`, que es el idioma que ya usa el puente de Antigravity.
+
+  **Tampoco hizo falta, y por una razón que el caso no vio**: `ROOT` cuelga de la ubicación del propio
+  archivo —`path.join(__dirname, '..', '..')`—, así que una copia en `<árbol>/test/tools/` lo resuelve a
+  ese árbol. La prueba lo lanza como proceso, que es como lo lanza `ci`, sin tocar el fuente.
 - **Cubrirlo no sube ningún número.** `test/` no entra en el piso de cobertura, así que esto no lo va a
   reclamar ninguna puerta: lo reclama este caso o no lo reclama nadie.
 
@@ -158,3 +168,71 @@ esta herramienta es fácil de medir mal.
 - **129** — el mismo defecto en la puerta de cobertura: un mecanismo que nadie comprueba que muerda.
 - **130** — las cuatro ramas viejas de `coverage-files.js` que ninguna aserción mira.
 - **132** — `hooks-smoke.sh`, la tercera herramienta de la puerta, con una prueba que no puede fallar.
+
+## Cierre
+
+**🟢 resuelto en 0.87.0** · `test/repo/dead-code.test.js`, `test/tools/dead-code.js`
+
+Siete casos que ejercitan el barrido de punta a punta sobre árboles de juguete, y **un defecto real que
+apareció al escribirlos**: la corrida que decide si un binding estaba vivo heredaba el contexto del runner
+y podía leer «verde» sobre una suite rota.
+
+### Contra lo que el caso enumeró
+
+- **«Que caza lo que tiene que cazar»** — hecho, y en las dos mitades, que se confirman distinto: un import
+  muerto en el motor se acusa con su archivo y su línea, y uno dentro de una suite se confirma contra su
+  propia corrida. Dos casos, no uno.
+- **«Que no acusa lo que sí se usa»** — hecho, y es el que más costó montar bien. Tres formas juntas: usado
+  varias veces, usado una sola vez, y **mencionado únicamente dentro de un string**, que es la conducta que
+  `candidates()` declara en un comentario y que hasta hoy no fijaba nadie.
+- **«Que un export nombrado en otro archivo no se propone»** — hecho.
+- **«Que la ceguera se ve»** — hecho: con la suite rota el barrido dice `⚠ sin confirmar` y no `✓`.
+- **«Vale la pena mirar si el arnés puede montar un árbol chico»** — se miró y **sí puede**, sin ninguna
+  costura. Es lo que volvió barato todo lo demás.
+- **Tradeoff «probar esto es caro por construcción»** — falso, corregido arriba con los dos números.
+- **Tradeoff «va a hacer falta una costura `require.main === module`»** — no hizo falta, corregido arriba.
+- **Tradeoff «cubrirlo no sube ningún número»** — cierto: `test/` no entra en el piso de cobertura, así que
+  esto no lo reclama ninguna puerta. Lo reclamó el caso.
+- **«Lo que además hay que saber»: la heurística del identificador corto** — el caso pedía fijarla con una
+  prueba porque vivía sólo en un comentario, y eso es exactamente el tercer caso de «no acusa lo que sí se
+  usa».
+- **Prioridad: «sube a alta el día que alguien toque `dead-code.js`»** — esa condición queda cerrada por el
+  arreglo: hoy tocarlo y romperlo pone la suite en rojo. Se comprobó tocándolo seis veces a propósito.
+
+### Lo que el caso no preveía
+
+- **`green()` heredaba `NODE_TEST_CONTEXT`, y eso lo hacía mentir.** Con esa variable puesta —que la hereda
+  cualquier hijo lanzado desde `node --test`— el runner emite su reporte binario y **sale con 0 aunque una
+  prueba falle**. Medido sobre el mismo árbol: con la variable, el barrido acusa un export como muerto en 1
+  corrida; sin ella, dice `⚠ sin confirmar` en 2. Es un **falso positivo** —superficie viva dada por
+  muerta—, que es la dirección en la que este barrido está diseñado para no equivocarse.
+
+  Latente, no explotable hoy: `ci` lo corre como paso suelto de npm y ahí la variable no está puesta. Lo
+  despierta llamarlo desde dentro de la suite, que es justamente lo que hace su primera prueba. Nueve
+  lugares del repositorio ya la borran antes de lanzar un hijo —incluido `engine/hooks/shell.js`, que es
+  código de producto y no lo justifica porque es convención—; `dead-code.js` era el único que no.
+- **`walk` no tolera que falte un directorio del universo declarado.** `ENGINE` nombra `engine` y
+  `automatization`, y sin uno de los dos el barrido muere con `ENOENT` antes de mirar nada. **Se decidió no
+  cambiarlo**, con razón medida: `test/` no viaja en el paquete, las dos invocaciones que existen corren
+  con `cwd` en esta raíz, y una instancia ni siquiera tiene la forma que el script asume —recibe
+  `automatization/` pero no `engine/`—. O sea que el universo de raíces donde corre es exactamente una, y
+  ahí los dos existen por construcción. Además es la degradación correcta: si alguna vez desaparecen, un
+  `ENOENT` ruidoso es mejor que un `✓ ninguna superficie muerta`, que es el fallo que la herramienta existe
+  para no cometer. Queda fijado como conducta observada, con el disparador para reconsiderarlo escrito: el
+  día que el barrido deba correr sobre una raíz que no sea este repositorio.
+- **Un directorio que existe y está vacío sí se tolera** —devuelve `[]`—; lo único que revienta es el
+  ausente.
+
+### Qué se corrió
+
+- **Rojo previo**: el caso del contexto falla contra el script sin arreglar, y los otros seis pasan. Ese
+  desglose es lo que descarta que el roto fuera el arnés.
+- **Verde**: 7 de 7; `npm run ci` en 0 y la suite en **804 pruebas, 804 en verde** —siete más—.
+- **Seis mutaciones en copia por `tar`, con verde de control antes y después.** Quitar la limpieza del
+  contexto mata **sólo** al caso nuevo; tolerar el directorio ausente mata **sólo** al que fija esa
+  conducta; `green()` siempre verde mata a los dos que dependen de la corrida; no acusar imports mata a los
+  dos de imports; no acusar exports mata a tres; sin la rama `inconclusive` mueren dos. Ninguna sobrevivió.
+- **Tres hipótesis propias descartadas midiendo**, y conviene decirlo porque cada una parecía la
+  explicación: que el glob de `green()` no se expandía (lo expande Node, y ve la suite rota); que los
+  barridos interferían entre sí por el árbol que `strip` deja tocado (A y B dan idéntico); y que la rama
+  era no determinista (cinco corridas seguidas, las cinco iguales).
