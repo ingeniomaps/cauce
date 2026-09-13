@@ -134,8 +134,15 @@ function strip(list) {
   for (const [file, lines] of byFile) write(path.join(ROOT, file), lines.join('\n'))
 }
 
+// La corrida que **decide** si un binding estaba vivo, así que su código de salida tiene que significar lo
+// que parece. `NODE_TEST_CONTEXT` no viaja: con esa variable puesta —y la hereda cualquier hijo lanzado
+// desde `node --test`— el runner emite su reporte binario y sale con 0 aunque una prueba falle. Acá eso se
+// leería como «la suite quedó verde sin ese binding», o sea superficie viva dada por muerta, que es la
+// dirección en la que este barrido está diseñado para no equivocarse (caso 131).
 function green(target) {
-  return spawnSync(process.execPath, ['--test', target], { cwd: ROOT, encoding: 'utf8' }).status === 0
+  const env = { ...process.env }
+  delete env.NODE_TEST_CONTEXT
+  return spawnSync(process.execPath, ['--test', target], { cwd: ROOT, encoding: 'utf8', env }).status === 0
 }
 
 const label = ({ file, i, local, name }) => (name ? `${file} :: ${name}` : `${file}:${i + 1} ${local}`)
