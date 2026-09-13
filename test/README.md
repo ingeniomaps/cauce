@@ -69,6 +69,13 @@ Los pisos van unos puntos debajo de lo real, para que el trabajo normal no los t
 que varía entre corridas. Se suben con `npm run coverage:update`, que mide tres veces y toma el mínimo:
 una sola corrida deja subir un piso por suerte y el gate queda fallando al azar.
 
+**Y desde 0.86.0 la distancia contra lo real también se mira**, porque un piso lo bastante por debajo deja
+pasar la pérdida de pruebas enteras sin que nada avise: por encima de quince puntos `coverage` la imprime,
+y por encima de veinticinco falla. Un piso que no se puede subir —los que miden bajo porque sus ramas sólo
+se ejercitan lanzando un subproceso— se acepta escribiendo la razón en `far`, al lado del piso que excusa,
+y esa razón falla cuando deja de hacer falta. Los números y con qué se midieron viven en el encabezado de
+`tools/coverage-files.js`, que es donde se deciden.
+
 `make dead-code` busca superficie que nadie usa: imports que ningún archivo lee y exports que nadie
 importa. Un import se confirma sacándolo y corriendo; un export se decide buscándolo en el repositorio
 entero, porque su uso vive en otro archivo y tiene que nombrarlo. De ahí que lo que se quiere público

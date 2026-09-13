@@ -15,7 +15,13 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const ROOT = path.resolve(__dirname, '..', '..')
-const BASELINE = path.join(__dirname, 'coverage-baseline.json')
+// El registro es fijo en la corrida real, y `--baseline=` lo apunta a otro para poder ejercitar esta
+// herramienta con números armados. Sin esa costura, probarla exigía editar el registro del propio
+// repositorio —o sea, romper la puerta para mirarla—, que es por lo que nada la probaba hasta el 129.
+const pointed = process.argv.slice(2).find((one) => one.startsWith('--baseline='))
+const BASELINE = pointed
+  ? path.resolve(pointed.slice('--baseline='.length))
+  : path.join(__dirname, 'coverage-baseline.json')
 // Los workflows no se requieren nunca: los ejecuta el runtime del runner y los tests los leen como
 // texto, así que no aparecen en el lcov. Los fragmentos de `shared/` menos todavía: no son módulos
 // sino texto que `{{INCLUDE:}}` pega dentro de un workflow al instalar. Excluirlos es declarar eso,
@@ -60,6 +66,24 @@ const NOT_COVERED = ['automatization/workflows/', 'automatization/shared/']
 // Lo que sí se cubrió es lo único que era conducta propia sin probar: el evento que `hookGroups` no
 // conoce, que niega toda llamada a herramienta si un manifiesto lo escribe mal.
 const SLACK = 1
+
+// Cuán lejos puede quedar un piso de lo que el archivo mide. Registrar un piso y comprobar que sirve son
+// dos actos distintos, y hasta el 129 sólo el primero tenía mecanismo: el del puente de Antigravity llegó
+// a estar cuarenta y cinco puntos por debajo de lo real, así que quitar una prueba central lo bajaba nueve
+// puntos y la puerta seguía en verde. La distancia crece sola —lo real sube cuando alguien agrega pruebas
+// y el piso se queda donde estaba—, así que lo que hace falta no es un número más alto sino que alguien
+// mire cuando se despega.
+//
+// Veinticinco sale de medir y no de elegir. Medido el 2026-09-13 sobre cinco corridas limpias y con los
+// tres pisos del 129 ya subidos: con 25 no queda ningún par por encima, con 20 quedan dos y con 15 siete.
+// Los dos más cercanos al umbral —`cli/archive.js` a 24 y `cli/ops.js` a 23— no varían ni un punto entre
+// corridas, así que el umbral no puede empezar a fallar al azar, que es lo que apaga una puerta.
+//
+// `SHOW` es más bajo a propósito: por encima de quince la distancia se **muestra** sin fallar —hoy siete
+// líneas, no doscientas—, y por encima de veinticinco falla. Avisar antes de frenar es lo que hace que
+// subir un piso sea trabajo previsto y no una interrupción.
+const MAX_DISTANCE = 25
+const SHOW = 15
 
 function measure(lcov) {
   const found = {}
@@ -129,7 +153,10 @@ if (updating) {
   const couldRise = []
   for (const file of onDisk()) {
     if (!measured[file]) continue
-    record[file] = {}
+    // La razón escrita sobrevive a una actualización. Cada entrada se reconstruye desde cero, así que sin
+    // esto la primera corrida de `--update` borraría en silencio lo que alguien decidió a mano, y la
+    // puerta volvería a pedir lo mismo la vez siguiente.
+    record[file] = (recorded[file] || {}).far ? { far: recorded[file].far } : {}
     for (const [metric, value] of Object.entries(measured[file])) {
       const floor = (recorded[file] || {})[metric]
       if (floor === undefined) {
@@ -156,6 +183,7 @@ if (updating) {
 
 const floors = JSON.parse(fs.readFileSync(BASELINE, 'utf8'))
 const errors = []
+const far = []
 for (const file of onDisk()) {
   const has = measured[file]
   const needs = floors[file]
@@ -167,6 +195,20 @@ for (const file of onDisk()) {
   for (const metric of ['lines', 'branches', 'functions']) {
     if (has[metric] < needs[metric] - SLACK) {
       errors.push(`${file}: ${metric} bajó de ${needs[metric]}% a ${has[metric]}%`)
+      continue
+    }
+    const distance = has[metric] - needs[metric]
+    const excused = (needs.far || {})[metric]
+    if (distance > MAX_DISTANCE && !excused) {
+      errors.push(`${file}: ${metric} está ${distance} puntos por encima de su piso (piso ${needs[metric]}%, `
+        + `mide ${has[metric]}%). Subilo a un número comprobado —con qué pérdida cae— o registrá la razón `
+        + 'por la que no se puede, en "far" al lado del piso')
+    } else if (excused && distance <= MAX_DISTANCE) {
+      errors.push(`${file}: ${metric} ya no está lejos de su piso (${distance} puntos); `
+        + 'sacá la razón del registro')
+    } else if (distance > SHOW) {
+      far.push(`= ${file}: ${metric} mide ${has[metric]}% contra un piso de ${needs[metric]}% `
+        + `(${distance} puntos)${excused ? ' — aceptado' : ''}`)
     }
   }
 }
@@ -174,9 +216,12 @@ for (const file of Object.keys(floors)) {
   if (!onDisk().includes(file)) errors.push(`${file}: tiene piso y ya no existe; sacalo del registro`)
 }
 
+// La distancia se ve en cada corrida y no sólo al actualizar: es el dato que dice si un piso todavía
+// sirve, y hasta el 129 sólo aparecía en `coverage:update`, que se corre cuando alguien se acuerda.
+for (const line of far) console.log(`  ${line}`)
 for (const error of errors) console.error(`✗ ${error}`)
 if (errors.length) {
-  console.error(`\n${errors.length} archivo(s) por debajo de su piso de cobertura.`)
+  console.error(`\n${errors.length} problema(s) de piso de cobertura.`)
   process.exit(1)
 }
 console.log(`✓ cobertura por archivo: ${Object.keys(floors).length} archivo(s) en su piso o por encima`)
