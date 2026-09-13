@@ -36,7 +36,7 @@
   },
   "engine/agents/learning.js": {
     "lines": 98,
-    "branches": 59,
+    "branches": 80,
     "functions": 100
   },
   "engine/automation/config.js": {
@@ -141,7 +141,7 @@
   },
   "engine/config/validate.js": {
     "lines": 73,
-    "branches": 52,
+    "branches": 72,
     "functions": 100
   },
   "engine/core/changelog.js": {
@@ -266,7 +266,7 @@
   },
   "engine/integrations/registry.js": {
     "lines": 79,
-    "branches": 47,
+    "branches": 58,
     "functions": 95
   },
   "engine/integrations/state.js": {
