@@ -14,6 +14,20 @@ const GRANT = 'planning/.grant-log'
 const LOCAL = [VERIFY, PUSH, GRANT]
 
 const { spawnSync } = require('node:child_process')
+const { mode } = require('./ownership')
+
+// A quién le toca esta pregunta. Los rastros los escribe Cauce **dentro de una instancia**, así que en una
+// raíz que no lo es no existen ni van a existir, y avisar ahí es hablar de algo imposible: el molde de este
+// repositorio lo recibía una vez por corrida, con `check template/planning` (caso 133).
+//
+// Se mira el modo declarado y no el nombre de la carpeta, porque las tres formas de no ser una instancia
+// son la misma pregunta: `toolkit` —acá se fabrica Cauce—, `{{MODE}}` sin renderizar —el molde, que es la
+// raíz que dispara el falso positivo— y la ausencia de configuración. Un modo ilegible o fuera del enum
+// también cae del lado silencioso, y eso no esconde nada: `check` ya los denuncia como error y sale 1.
+const INSTANCE = new Set(['embedded', 'sidecar'])
+const forInstance = (root) => {
+  try { return INSTANCE.has(mode(root)) } catch { return false }
+}
 
 // Cuáles de esos rastros **git no está ignorando** en esta instancia.
 //
@@ -43,6 +57,7 @@ function unignored(root) {
 // son exactamente lo que hay que pegar, que es lo único accionable — el archivo es de la empresa y Cauce
 // no lo edita.
 function warnings(root) {
+  if (!forInstance(root)) return []
   const missing = unignored(root)
   if (!missing.length) return []
   return [`${missing.length} rastro(s) local(es) que git no ignora (${missing.join(', ')}); `
