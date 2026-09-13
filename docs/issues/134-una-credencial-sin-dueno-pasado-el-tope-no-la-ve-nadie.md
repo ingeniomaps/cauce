@@ -32,7 +32,7 @@ verlas. Lo único que dice es que cortó.
 
 ```bash
 # Sobre una instancia con un servicio de más de 40 variables en su .env.example:
-node engine/cli/ops.js check /home/manuel/Code/gouduet/gouduet-ops/planning --json \
+node engine/cli/ops.js check <instancia>/planning --json \
   | jq -r '.warnings[] | select(test("credencial"))'
 ```
 
