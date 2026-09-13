@@ -1,14 +1,15 @@
 ---
 caso: 129
 titulo: Un piso de cobertura se registra sin comprobar que muerda, y la distancia contra lo real lo vuelve decorativo sin que nada avise
-estado: abierto
+estado: resuelto
+resuelto-en: 0.86.0
 prioridad: media
 version-detectada: 0.86.0
 ---
 
 # 129 — Nada comprueba que un piso de cobertura sirva para algo
 
-**🔴 abierto**
+**🟢 resuelto en 0.86.0**
 
 ## Resumen
 
@@ -83,10 +84,15 @@ No está decidido. Tres formas, de menos a más ambiciosa:
 
 **Una copia hecha con `git ls-files` no puede correr `npm run coverage` ni la puerta del repositorio.**
 Las dos interrogan a git: `suite.test.js` cuenta pruebas con `git ls-files` y en la copia declara 0 contra
-un piso de 505; `repo.test.js` recorre lo trackeado y muere con `EISDIR`. O sea que el método de mutación
-en copia —el que R23 pide para apagar una defensa— **sirve para una suite concreta y no para estas dos
-puertas**. Comprobar un piso hoy exige medir el lcov a mano, quitando la prueba en el árbol y
-restituyéndola.
+un piso de 505; `repo.test.js` recorre lo trackeado y muere con `EISDIR`.
+
+**Lo que este caso escribió a continuación era falso, y conviene dejarlo dicho**: de ahí se concluyó que
+el método de mutación en copia «sirve para una suite concreta y no para estas dos puertas», y que
+comprobar un piso exigía medir el lcov a mano en el árbol de trabajo. La limitación es **del método, no de
+las copias**. Una copia hecha con `tar` se lleva el `.git` y lo que no está trackeado, así que git
+responde ahí igual que en el original: medido el 2026-09-13, `npm run coverage` y `npm run ci` salen las
+dos en 0 sobre una copia de 76 MB —excluyendo `.claude/worktrees`—, con 1698 archivos trackeados. Las seis
+mutaciones de este cierre se corrieron ahí, que es lo que R23 pide y lo que el caso creía imposible.
 
 ## Prioridad
 
@@ -112,3 +118,83 @@ cuatro archivos dirigidamente, uno por uno.
 - **106** — por qué la cobertura empezó a contar dos ramas tampoco se estableció; misma familia de
   preguntas sobre el instrumento.
 - **082** — la cobertura de trabajo registrado, el otro número que se mira y que nadie contrasta.
+
+## Cierre
+
+**🟢 resuelto en 0.86.0** · `test/tools/coverage-files.js`, `test/tools/coverage-baseline.json`,
+`test/repo/coverage-floors.test.js`, `test/README.md`
+
+Se tomaron las opciones 1 y 3 **juntas**: la distancia se ve en cada corrida por encima de quince puntos y
+falla por encima de veinticinco, con el mismo trato que ya tiene bajar un piso —se acepta a mano y con la
+razón escrita, en `far` al lado del piso que excusa, y esa razón falla cuando deja de hacer falta—. La
+opción 2 no se automatizó y se aplicó a mano a los tres pisos que estaban lejos: de ahí salen sus números.
+
+### Contra lo que el caso enumeró
+
+- **«Nada comprueba que un piso muerda»** — lo comprueba la puerta, y lo comprueban seis casos en
+  `test/repo/coverage-floors.test.js`. Hasta hoy `coverage-files.js` **no tenía ninguna prueba**: la
+  herramienta que juzga la cobertura de los 67 archivos del motor no la miraba nadie, y eso es lo que hacía
+  posible este caso entero. El enunciado no lo preveía y es su hallazgo más grande.
+- **La tabla de cuatro filas** — contrastada contra el registro antes de tocar nada: 75, 38, 54 y 68, las
+  cuatro ciertas. `learning-seal.js` sigue siendo el contraejemplo sano que la tabla prometía.
+- **La reproducción** — se rehízo entera y dio más de lo que decía. Los tres pisos lejanos dejaban pasar la
+  pérdida de una suite completa: quitando `learning.test.js` (22 pruebas) `learning.js` cae a 68 contra un
+  piso de 59; quitando `core.test.js`, `validate.js` cae a 34 contra 52; quitando `integrations.test.js`,
+  `registry.js` cae a 38 contra 47. Los tres con la puerta en verde.
+- **Opción 1, avisar la distancia** — hecha, y en `coverage` y no sólo en `coverage:update`, que es donde
+  el dato ya existía y donde sólo lo ve quien se acuerda de correrlo.
+- **Opción 2, comprobar el corte al registrar** — no se automatizó, y no por lo que el caso suponía: se
+  aplicó a mano a los tres pisos, y el procedimiento quedó escrito acá. Automatizarlo sigue costando una
+  corrida de la suite por piso, que es lo caro.
+- **Opción 3, fijar la distancia máxima** — hecha, con el umbral medido y no elegido.
+- **Tradeoff «la 3 puede volverse ruidosa: no está medido a cuántos archivos alcanzaría con cada N»** —
+  medido, y era la pregunta que decidía. Sobre 201 pares archivo-métrica: con N=25 quedan 3 pares, con 20
+  quedan 5, con 15 nueve y con 30 ninguno. Ya con los tres pisos subidos, N=25 deja **cero**.
+- **Tradeoff «la 1 no cierra nada»** — cierto, y por eso no se eligió sola.
+- **Tradeoff «comprobar el corte no se puede hacer en copia desechable»** — falso; arriba queda corregido.
+- **Prioridad: «sube a alta si alguna vez se pierde una prueba y el piso no lo dice»** — esa condición ya no
+  se puede cumplir en silencio para los tres archivos medidos: perder cualquiera de esas tres suites ahora
+  falla nombrando el archivo. Para el resto la condición sigue viva y por eso el umbral avisa antes de
+  frenar.
+- **Relacionados** — el **106** sigue abierto como pregunta declarada sobre el instrumento y este caso no lo
+  contesta; el **082** no se tocó.
+
+### Lo que el caso no preveía
+
+- **`coverage-files.js` leía su registro desde una ruta fija**, así que no había forma de ejercitarlo sin
+  editar el registro del propio repositorio —romper la puerta para mirarla—. Se le abrió una sola costura,
+  `--baseline=`, y con eso las pruebas arman sus propios números.
+- **`--update` reconstruye cada entrada desde cero**, así que la primera actualización habría borrado en
+  silencio una razón escrita a mano. Nadie la habría extrañado: el diff es de un archivo generado. Se
+  preserva, y tiene su caso y su mutación.
+- **`engine/hooks/push.js` mide 96 contra un piso de 97** y pasa sólo porque `SLACK` se come el punto. Es
+  exactamente el borde para el que `SLACK` existe, no un defecto, pero conviene que quede escrito.
+- **`registry.js` no es estable**: 59, 73, 59, 75 y 59 en cinco corridas limpias. Su piso quedó en 58, por
+  debajo del mínimo observado y no cerca de lo real, porque un piso en 66 —el número «razonable»— habría
+  fallado al azar en tres de cada cinco corridas. Es la misma razón por la que existe `SLACK`.
+- **La puerta del repositorio atrapó dos defectos míos en la prueba nueva**: un `rmSync` recursivo escrito a
+  mano teniendo `discard` al lado —que es R23 hecho mecanismo: `discard` se niega si el destino no cuelga de
+  algo desechable— y una razón repetida de `repo.test.js`, que ahora se cita en vez de reescribirse.
+
+### Qué se corrió
+
+- **Rojo previo**, con la regla ausente: 2 de 5 casos en rojo —la distancia grande y la razón vieja— y 3 en
+  verde. Dos de esos verdes son legítimos (no dependen de la regla) y el tercero, «una razón escrita acepta
+  la distancia», pasaba **vacíamente**: sin regla no falla nada. Quedó probado por mutación, no por el rojo.
+- **Verde**: 6 de 6 casos, y `npm run ci` en 0 con las seis líneas de distancia impresas —`archive.js` a 24
+  y `ops.js` a 23 son las más cercanas al umbral, y no varían ni un punto en cinco corridas—.
+- **Seis mutaciones, en copia por `tar`, con verde de control antes y después de cada una.** Umbral
+  inoperante (`> 999`) mata a la distancia grande; umbral estricto (`>=`) mata al borde; `false` en la rama
+  de la razón vieja mata a su caso; quitar la preservación de `far` mata al de `--update`; quitar
+  `&& !excused` mata a «una razón escrita acepta la distancia»; y `distance > -1` mata a tres, entre ellos
+  el control. **Ninguna sobrevivió y ningún caso quedó sin verse en rojo.**
+- **Los tres pisos nuevos, comprobados uno por uno**: con `learning.js` en 80, quitar su suite lo pone en
+  rojo `bajó de 80% a 68%`; con `validate.js` en 72, `bajó de 72% a 34%`; con `registry.js` en 58, `bajó de
+  58% a 38%`. Los tres con lcov limpio en verde.
+
+### Por qué no lleva entrada en el CHANGELOG
+
+`files` de `package.json` no incluye `test/`, así que nada de esto viaja a una instancia, y el encabezado
+del CHANGELOG dice que lo que sólo se observa desde este repositorio no va porque quien lee no puede actuar
+sobre eso. El precedente es de esta misma versión: meter el barrido de imports muertos en `ci` —`f6ac1896`,
+0.86.0— tampoco dejó entrada, y se documentó en `test/README.md`. Ahí va la regla de distancia.
