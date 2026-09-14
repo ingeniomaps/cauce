@@ -129,6 +129,47 @@ Solo contiene trabajo aprobado y listo. Las ideas viven en \`INBOX.md\`.
 // la línea —la forma que el molde muestra primero— valía cero: una tarea con ocho condiciones pasaba sin
 // que nada la nombrara, y la escapatoria que R17 describe no se le pedía nunca. `acceptanceConditions`
 // dice hasta dónde llega la cuenta y por qué sub-cuenta.
+// La condición que no se puede comprobar cuando se la comprueba. El recorrido ya la frena, pero en Verify:
+// 1,2 M de tokens y once agentes para terminar con el trabajo hecho y sin poder cerrarlo (caso 140). Acá
+// cuesta un regex sobre la cola, y por eso avisa en vez de fallar: el patrón es de texto y una aceptación
+// legítima puede nombrar la palabra sin depender de ella.
+test('una aceptación que nombra el registro se avisa antes de construir', () => {
+  const juzgar = (acceptance) => PC.unverifiableAcceptance(
+    [{ slug: 'h', tasks: [{ slug: 'tarea', acceptance }] }])
+
+  assert.match(juzgar('el borrado aplicado, con las dos corridas registradas en la evidencia')[0],
+    /BACKLOG tarea: una condición nombra la evidencia, que existe después de Verify/)
+  assert.match(juzgar('con su entrada en planning/done/')[0], /nombra planning\/done\//)
+  assert.match(juzgar('el commit apunta al sha')[0], /nombra el commit/)
+  assert.match(juzgar('el reclamo queda liberado')[0], /nombra el reclamo/)
+  // Dice qué hacer, no sólo qué está mal: esa cláusula tiene lugar, y es el registro que DONE ya exige.
+  assert.match(juzgar('con la evidencia registrada')[0], /tests:, qa: o commit: de su entrada de DONE/)
+
+  // Y no dispara sobre lo que se escribe de verdad: las aceptaciones reales son técnicas y nombran el
+  // producto. Si marcara éstas, el aviso se apagaría el primer día.
+  assert.deepEqual(juzgar('`make check-env` sigue frenando y nombrando la requerida que falte'), [])
+  assert.deepEqual(juzgar('`node tools/ops.js secrets check .` termina en 0'), [])
+  assert.deepEqual(juzgar('el test deriva el set desde `db/queries/*.sql`'), [])
+  assert.deepEqual(juzgar(''), [], 'sin aceptación no hay nada que mirar')
+
+  // Por qué la salida es una marca y no una frase reconocida vive en `contracts.js`, junto al criterio.
+  // Acá se fija lo que el aviso promete: que ofrece esa salida y que ponerla alcanza.
+  assert.match(juzgar('con la evidencia registrada')[0], /declaralo con "\(fuera de verify: <razón>\)"/)
+  assert.deepEqual(juzgar('lo comprueba quien revisa (fuera de verify: el commit no existe en Verify)'), [],
+    'declarada, pasa en silencio')
+
+  // Y se juzga condición por condición, que es el grano con el que Verify contrasta: una aceptación real
+  // trae varias, y marcar el párrafo entero señalaría a las que están bien por estar al lado de la que no.
+  const mezcla = 'el borrado aplicado; con su entrada en planning/done/; el conteo baja'
+  assert.equal(juzgar(mezcla).length, 1, 'sólo la condición que lo nombra')
+  assert.equal(
+    juzgar('con la evidencia registrada; y con su entrada en planning/done/').length, 2,
+    'dos condiciones que lo nombran son dos avisos')
+  assert.deepEqual(
+    juzgar('el borrado aplicado; el commit apunta al sha (fuera de verify: lo mira quien revisa)'), [],
+    'excluir una condición no exime a las otras, pero acá la otra está limpia')
+})
+
 test('la aceptación propia de una tarea también cuenta para R17', () => {
   const tarea = (acceptance) => ({
     slug: 'inflada', criteria: [], noSplit: '', acceptance, conditions: P.acceptanceConditions(acceptance),

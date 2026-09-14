@@ -14,6 +14,26 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.89.0] - 2026-09-14
+
+### Agregado
+
+- **`check` te avisa de una condición de aceptación que no se va a poder comprobar, antes de que el
+  recorrido la construya.** Verify corre antes que Commit y que Done, así que una condición que pide ver
+  el commit, el reclamo, `done/` o la evidencia registrada pide algo que todavía no existe cuando se la
+  mira. El recorrido ya lo frenaba —y hace bien—, pero recién en Verify: en la corrida que originó esto
+  fueron **1,2 M de tokens y once agentes** para terminar con el trabajo hecho, sin commit y sin poder
+  cerrar la tarea.
+
+  Ahora sale de `check`, cuesta un regex sobre la cola y corre en los cuatro carriles, incluidos los que
+  saltean Ready. Avisa y no falla.
+
+  El aviso dice qué hacer: esa cláusula va en `tests:`, `qa:` o `commit:` de la entrada de DONE, que ya la
+  exigen, así que repetirla en la aceptación no agrega garantía sino un bloqueo. **Y si de verdad va ahí,
+  se declara y deja de avisarse**: `(fuera de verify: <razón>)` dentro de la propia condición, la misma
+  salida explícita que `(sin partir: …)` y que `n/a — razón`. Se juzga condición por condición, así que
+  declarar una no exime a las demás.
+
 ## [0.88.0] - 2026-09-14
 
 ### Corregido
