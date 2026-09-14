@@ -51,6 +51,34 @@ diseño — eso vive en el commit y en el código.
   correr agent-propose antes de que esto se pueda firmar». Sin esa línea el archivo se ve terminado y no
   lo está.
 
+- **En `mode: sidecar`, `ops context` ya no te esconde tu propio plan.** El id de un runner sale de
+  `CAUCE_RUNNER` y, sin ella, del repositorio git desde el que corrés el comando. Cuando la instancia es su
+  **propio repositorio** —lo habitual: `<empresa>/` y `<empresa>-ops/` al lado— hay dos raíces, y el mismo
+  agente recibe un id distinto según desde cuál invoque. El reclamo queda guardado con uno, el plan se
+  escribe bajo ese mismo, y la sesión que pregunta desde el otro recibe `WIP idle` y `TAKEN … vos, desde
+  otro runner`: el plan existe, con sus pasos ya tildados, y nadie lo nombra.
+
+  Ahora `context` lo nombra. Cuando una tarea tomada es tuya y hay un plan escrito bajo el otro id, agrega
+  una línea `PLAN` con el archivo y con el `export CAUCE_RUNNER` que lo recupera. Y **`ops claim` imprime
+  ese id al tomar la tarea**, que es el momento en que se conoce: hasta ahora sólo lo hacía `ops worktree`,
+  y en sidecar no se crea ningún worktree, así que el dato no quedaba escrito en ninguna parte.
+
+  El id sigue sin ser estable, y eso no cambia: derivarlo de quién sos en vez de dónde corrés le devolvería
+  a cada agente de la máquina la tarea del otro, que es peor que no encontrar la propia. Lo que cambia es
+  que dejó de ser mudo.
+
+- **`automation install` te dice dónde quedaron los recorridos cuando no es donde estás parado.** En
+  sidecar el adaptador se instala en la carpeta de la empresa y no en el repo ops desde el que corrés el
+  comando. Eso es correcto y no cambió —es donde el runner ve el código—; lo que engañaba era la salida.
+  Avisaba «el runner se abre en `<raíz>` — ahí queda su configuración» para un archivo, y a continuación
+  nombraba los recorridos en relativo, `.claude/workflows/autobuild.js`, que leído desde el repo ops apunta
+  a una carpeta vacía. Cerraba en «adaptador operativo (0 advertencia(s))», y todo era cierto.
+
+  Lo que cuesta es que un recorrido se invoca **por nombre**, y el nombre lo resuelve la sesión contra la
+  carpeta en la que se abrió: una sesión abierta en el repo ops no encuentra ninguno y recibe un «no
+  existe» que se lee como instalación fallida. Ahora la salida nombra ese directorio con su raíz puesta y
+  desde dónde hay que abrir la sesión para que los vea.
+
 - **Los recorridos dejan de depender de la carpeta desde la que se abrió la sesión.** La raíz que traen
   escrita —la que usan para nombrar el planning, la configuración y el CLI en cada comando que le dictan a
   un agente— era **relativa** a la carpeta donde se abre la herramienta. Eso vale mientras el agente esté

@@ -9,6 +9,7 @@ const { FLAGS, parse } = require('./args')
 const { fail } = require('./io')
 const IN = require('./instance')
 const PL = require('./planning')
+const VA = require('./validate')
 const AR = require('./archive')
 const CLM = require('./claims')
 const WT = require('./worktree')
@@ -124,7 +125,7 @@ async function init(target, cli) {
     })
   } catch (error) { fail(error.message, 2) }
 
-  if (result.installed) PL.check(path.join(root, 'planning'), NO_FLAGS)
+  if (result.installed) VA.check(path.join(root, 'planning'), NO_FLAGS)
 
   // Una instancia recién instalada funciona y no sabe nada de este proyecto: `organization/` es el molde
   // y el roadmap está vacío. Llenarlo exige leer el repositorio y decidir qué es cada cosa, que es justo
@@ -204,7 +205,7 @@ async function run(cli) {
   if (command === 'init') await init(arg[1], cli)
   else if (command === 'scan') W.scan(arg[1], cli)
   else if (command === 'onboard') W.onboard(arg[1], cli)
-  else if (command === 'check') PL.check(arg[1], cli)
+  else if (command === 'check') VA.check(arg[1], cli)
   else if (command === 'tree') PL.tree(arg[1], cli)
   else if (command === 'context') PL.context(arg[1], cli)
   else if (command === 'recurring') PL.recurring(arg[1], cli)

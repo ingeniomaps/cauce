@@ -84,7 +84,7 @@ test('lo reclamado por otro no se ofrece, y lo propio va antes que lo libre', ()
   const ana = ST.currentTask(state, [], 'wt-ana')
   assert.equal(ana.task.slug, 'b', 'lo que ya reclamé va antes que la primera libre')
   assert.equal(ana.claimed, true)
-  assert.deepEqual(ana.taken, [{ slug: 'a', owner: 'luis@x' }])
+  assert.deepEqual(ana.taken, [{ slug: 'a', owner: 'luis@x', runner: 'wt-luis', wip: '' }])
 
   const tercero = ST.currentTask(state, [], 'wt-otro')
   assert.equal(tercero.task.slug, 'c', 'las dos tomadas se saltean')
@@ -456,7 +456,19 @@ test('el plan de otro runner no se lee como propio', () => {
 
   const luis = ST.currentTask(state, [], '/w/luis')
   assert.equal(luis.task.slug, 'grilla', 'y luis recibe otra, no la que ana está construyendo')
-  assert.deepEqual(luis.taken, [{ slug: 'modelo', owner: 'ana@x' }], 'con el reclamo de ana a la vista')
+  assert.deepEqual(luis.taken, [{ slug: 'modelo', owner: 'ana@x', runner: '/w/ana', wip: 'w-ana.md' }],
+    'con el reclamo de ana a la vista, y el plan que ese id dejó escrito')
+})
+
+// Volver al día siguiente pide reponer el id, y el README del `wip/` lo dice nombrando a `ops worktree`
+// como quien lo imprime. En sidecar no hay worktrees —la instancia es una sola, compartida—, así que ese
+// comando no corre nunca y el id no queda escrito en ninguna parte que una persona vaya a mirar: hay que
+// deducirlo del reclamo, que es justo lo que el reclamo existe para no tener que hacer.
+test('claim deja escrito el id con el que se vuelve', () => {
+  const dir = planning('cauce-claim-id-')
+  const hecho = como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana')
+  assert.equal(hecho.status, 0)
+  assert.match(hecho.stdout, /export CAUCE_RUNNER=\/w\/ana/, 'el id con el que se retoma esta sesión')
 })
 
 test('dos agentes en una instancia sidecar no comparten el plan', () => {

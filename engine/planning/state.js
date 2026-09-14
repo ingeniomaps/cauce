@@ -46,7 +46,9 @@ function currentTask({ milestones, done, wips = [], claims = [] }, blockers = []
   const wip = wips.find((one) => one.runner === P.wipName(runner)) || null
   const queue = milestones.flatMap((milestone) => milestone.tasks.map((task) => ({ ...task, hito: milestone.slug })))
   const mine = new Set(claims.filter((one) => runner && one.runner === runner).map((one) => one.slug))
-  const others = new Map(claims.filter((one) => !mine.has(one.slug)).map((one) => [one.slug, one.owner]))
+  // El reclamo entero y no sólo su dueño: quién lo tomó alcanza para decir que la tarea está ocupada, y
+  // no para decir cómo volver a ella. Eso lo dice el id desde el que se tomó, que vive en el mismo archivo.
+  const others = new Map(claims.filter((one) => !mine.has(one.slug)).map((one) => [one.slug, one]))
   if (wip) {
     const active = queue.find((task) => task.slug === wip.task)
       || {
@@ -69,15 +71,23 @@ function currentTask({ milestones, done, wips = [], claims = [] }, blockers = []
     claimed: Boolean(claimed),
     skipped: queue.filter((task) => !done.set.has(task.slug) && blocked.has(task.slug))
       .map((task) => task.slug),
-    taken: pending.filter((task) => others.has(task.slug))
-      .map((task) => ({ slug: task.slug, owner: others.get(task.slug) })),
+    // Un reclamo hecho desde otro id no siempre es de otro agente: puede ser el mismo, con el id resuelto
+    // distinto porque `runner()` lo deduce del árbol donde corre el proceso y en sidecar hay dos árboles
+    // plausibles. Ahí el plan existe, está escrito y queda invisible para quien lo escribió. Por eso viajan
+    // los dos: el id crudo, que es lo que se exporta para volver, y el plan que ese id dejó, si lo dejó.
+    taken: pending.filter((task) => others.has(task.slug)).map((task) => {
+      const claim = others.get(task.slug)
+      const plan = wips.find((one) => one.task === task.slug && one.runner === P.wipName(claim.runner))
+      return { slug: task.slug, owner: claim.owner, runner: claim.runner, wip: plan ? `${plan.runner}.md` : '' }
+    }),
     // Lo que espera a otra tarea, con cuál y quién la tiene: la tercera causa por la que una cola puede
     // no ofrecer nada, y `context` las distingue por la misma razón que distingue las otras dos.
     // El filtro garantiza que hay dependencias y que al menos una no está cerrada —sin eso la tarea
     // estaría lista y no acá—, así que buscarla no puede fallar y no lleva defensa.
     waiting: pending.filter((task) => !others.has(task.slug) && !ready(task)).map((task) => {
       const dep = task.depends.find((one) => !done.set.has(one))
-      return { slug: task.slug, dep, owner: others.get(dep) || (mine.has(dep) ? 'vos' : '') }
+      const otro = others.get(dep)
+      return { slug: task.slug, dep, owner: otro ? otro.owner : (mine.has(dep) ? 'vos' : '') }
     }),
   }
 }

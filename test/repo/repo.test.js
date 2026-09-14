@@ -423,6 +423,12 @@ const JUSTIFIED = {
     'El registro de guards suma un caso por guard, y cada caso prueba los dos lados de la misma '
     + 'decisión: qué bloquea y qué deja pasar. Partirlo por grupo separaría casos que comparten el '
     + 'montaje de una raíz ops y el helper que exige el motivo del bloqueo.',
+  'test/wiring/runners.test.js':
+    'Suma un caso por runner y, al lado, los que recorren los cuatro a la vez —que ningún comando de hook '
+    + 'quede relativo al workspace, que ninguna ruta dé por sentado dónde se instala—. Partirla por runner '
+    + 'rompe justo ésos, que existen para valer también sobre el adaptador que se agregue después, y todos '
+    + 'los casos comparten el montaje de una raíz ops instalada. Cruzó las 500 con el aviso de sidecar del '
+    + 'caso 138, estando en 491.',
   'test/planning/claims.test.js':
     'La coordinación de un equipo suma un caso por conducta y las comparte todas: una instancia con su '
     + 'cola, dos runners y un reclamo entre ellos. Partirla por tema separaría el reclamo de lo que el '
@@ -435,6 +441,13 @@ const JUSTIFIED = {
 }
 
 const PENDING_SPLIT = {
+  'engine/automation/index.js':
+    'Mezcla cuatro verbos, y medir cuál comparte con cuál corrige lo que esta entrada decía antes. No es '
+    + '«lo que escribe» contra «lo que audita»: `doctor` comparte ocho helpers con `install` —resolución, '
+    + 'render, prefijo, estado de entrega—, mientras `check` no comparte ninguno y su único ayudante, '
+    + '`validateRunnerManifest`, es suyo y de nadie más. La partición es sacar ese par y dejar los tres '
+    + 'verbos que sí se apoyan en los mismos helpers. Cruzó las 500 con el aviso de sidecar del caso 138, '
+    + 'estando en 499, y hacerlo bien es un cambio propio y no la cola de otro.',
   'test/repo/repo.test.js':
     'Mezcla dos sujetos: la forma del código —largo de línea, tamaño de archivo, rutas absolutas— y qué '
     + 'se le exige a un comentario, que son cuatro pruebas y la mitad del archivo. La partición es sacar '
