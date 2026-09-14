@@ -162,3 +162,31 @@ test('un piso de un archivo que ya no existe falla', () => {
   assert.equal(code, 1, out)
   assert.match(out, /engine\/borrado-hace-tiempo\.js: tiene piso y ya no existe/)
 })
+
+// Que `--update` se niegue cuando no midió nada. Por qué esa negativa existe lo explica `coverage-files.js`,
+// junto al `if` que la aplica; acá se fija que ocurra, con el lcov vacío que la dispara.
+test('actualizar sobre un lcov sin archivos se niega en vez de anunciar éxito', () => {
+  const dir = tempRoot('cauce-pisos-vacio-')
+  const lcov = path.join(dir, 'vacio.info')
+  fs.writeFileSync(lcov, '')
+  const baseline = path.join(dir, 'baseline.json')
+  fs.writeFileSync(baseline, `${JSON.stringify(floors(), null, 2)}\n`)
+  const done = spawnSync(process.execPath, [TOOL, lcov, `--baseline=${baseline}`, '--update'], { encoding: 'utf8' })
+  const out = `${done.stdout || ''}${done.stderr || ''}`
+  discard(dir)
+  assert.equal(done.status, 1, out)
+  assert.match(out, /ningún archivo/, 'dice por qué se niega')
+  assert.doesNotMatch(out, /✓ piso registrado/, 'y no se felicita sobre cero archivos')
+})
+
+// La otra mitad del 144, en el script: las corridas de medición existen para producir el lcov y su
+// veredicto no decide, pero eso no puede volverse «ignorar el exit y seguir». Lo que se comprueba es el
+// contenido, que es lo único que distingue una suite que falló de una que no llegó a correr.
+test('coverage.sh mide por el contenido del lcov y no por el exit de la suite', () => {
+  const script = fs.readFileSync(path.join(ROOT, 'test', 'tools', 'coverage.sh'), 'utf8')
+  assert.match(script, /\|\|\s*true|set \+e/, 'el exit de node --test deja de cortar la medición')
+  assert.match(script, /-s\s+"\$lcov"|\[ -s /, 'y en su lugar se exige que el lcov traiga contenido')
+  // El `trap` se lleva los lcov al abortar, así que hoy ni siquiera queda el material para reintentar a
+  // mano desde donde murió. Lo que se conserva es lo que ya se midió.
+  assert.doesNotMatch(script, /trap limpiar EXIT/, 'la limpieza deja de correr en el camino de error')
+})
