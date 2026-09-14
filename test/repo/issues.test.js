@@ -99,17 +99,29 @@ test('un caso resuelto dice qué se corrió para saber que funciona', () => {
   assert.deepEqual(faltan, [], `casos cerrados sin decir cómo se supo que funciona:\n  ${faltan.join('\n  ')}`)
 })
 
+// La tabla de `docs/issues/README.md`: los tres estados con el glifo que a cada uno le toca en el
+// encabezado. Por qué uno fuera de ella se rechaza en vez de ignorarse está escrito allá, al pie de la
+// tabla; acá sólo se comprueba.
+const GLIFOS = {
+  abierto: /^\*\*🔴 abierto\*\*/m,
+  resuelto: /^\*\*🟢 resuelto en ([0-9.]+)\*\*/m,
+  descartado: /^\*\*⚪ descartado\*\*/m,
+}
+
 // Un caso dice su estado en dos lugares —el frontmatter y el encabezado que se lee primero— y quien
 // cierra toca uno de los dos. Desincronizados, el que miente es el que se lee sin abrir el archivo.
 test('el estado del frontmatter y el del encabezado dicen lo mismo', () => {
   const desacuerdos = []
   for (const one of cases()) {
-    const abierto = /^\*\*🔴 abierto\*\*/m.test(one.text)
-    const resuelto = one.text.match(/^\*\*🟢 resuelto en ([0-9.]+)\*\*/m)
-    if (one.estado === 'abierto' && !abierto) desacuerdos.push(`${one.name}: abierto y el encabezado no`)
-    if (one.estado === 'resuelto' && !resuelto) desacuerdos.push(`${one.name}: resuelto y el encabezado no`)
-    if (resuelto && one.resueltoEn && resuelto[1] !== one.resueltoEn) {
-      desacuerdos.push(`${one.name}: resuelto-en ${one.resueltoEn} y el encabezado dice ${resuelto[1]}`)
+    const esperado = GLIFOS[one.estado]
+    if (!esperado) {
+      desacuerdos.push(`${one.name}: estado «${one.estado}», que el README no define`)
+      continue
+    }
+    const encabezado = one.text.match(esperado)
+    if (!encabezado) desacuerdos.push(`${one.name}: ${one.estado} y el encabezado no`)
+    if (one.estado === 'resuelto' && encabezado && one.resueltoEn && encabezado[1] !== one.resueltoEn) {
+      desacuerdos.push(`${one.name}: resuelto-en ${one.resueltoEn} y el encabezado dice ${encabezado[1]}`)
     }
   }
   assert.ok(cases().length > 30, `sólo se leyeron ${cases().length} casos`)
