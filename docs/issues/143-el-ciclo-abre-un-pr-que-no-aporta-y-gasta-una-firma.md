@@ -1,15 +1,16 @@
 ---
 caso: 143
 titulo: El ciclo abre un PR y pide firma sobre una propuesta cuyo «Cambio propuesto» sigue siendo el molde, así que gasta una firma humana sin aportar nada
-estado: abierto
+estado: resuelto
+resuelto-en: 0.89.0
 prioridad: alta
 version-detectada: 0.88.0
 ---
 
 # 143 — Un PR que no aporta cuesta lo mismo que uno que sí
 
-**🔴 abierto** · detectado en 0.88.0 · prioridad **alta** — siete firmas humanas gastadas sobre documentos
-que no decidían nada, y el mecanismo que las produjo sigue igual
+**🟢 resuelto en 0.89.0** · detectado en 0.88.0 · prioridad **alta** — siete firmas humanas gastadas sobre
+documentos que no decidían nada, y el mecanismo que las produjo seguía igual
 
 ## Resumen
 
@@ -114,3 +115,56 @@ quien recibió los siete: «parece que ni siquiera debieron hacer un PR para fir
 
 - **135** — el placeholder que el criterio de «sin decidir» no reconocía.
 - **142** — el callejón que quedó: ni aplicar ni archivar, y bloqueando.
+
+## Cierre
+
+**🟢 resuelto en 0.89.0** · `.github/workflows/agent-learning.yml`, `engine/agents/learning-files.js`,
+`engine/cli/catalog.js`, `test/repo/ci-schedule.test.js`
+
+Se tomó la **opción 1**, y el cabo que el caso dejó anotado resultó no ser un cabo: empujar la rama y
+abrir el PR ya eran dos líneas distintas del mismo paso, así que el sello viaja sin que se pida firma.
+
+### Contra lo que el caso enumeró
+
+- **Opción 1, que el motor lo diga y el job lo lea** — construida. `blankProposal` vive junto a
+  `undecided`, el paso que compone publica `decided` por `GITHUB_OUTPUT` y el que abre el PR lo lee.
+- **«Hay un cabo que resolver: los informes se sellan al componer»** — resuelto sin elegir ninguna de las
+  dos salidas que el caso proponía. No hizo falta ni stagear distinto ni postergar el sello: el paso
+  empuja la rama **antes** del corte, así que el sello queda publicado y sólo la firma se condiciona. El
+  orden es lo que la prueba asercia.
+- **Opción 2, que el ciclo corra `/agent-propose`** — se decidió que no. Sigue siendo el paso que
+  completaría el ciclo solo, y mete un modelo con su credencial y su costo en un job diseñado sin
+  ninguno. Eso es otra unidad, y ahora es menos urgente: lo que dolía era la firma gastada.
+- **Opción 3, que el PR lo declare** — se decidió que no, por lo que el propio caso medía: el 2026-09-14
+  el cuerpo decía «requiere evaluación y aprobación humana» y se firmó igual siete veces.
+- **Tradeoff «la 1 hace que el ciclo produzca menos PRs»** — ocurre, y es lo correcto. Lo que **no**
+  ocurre es que se pierda trabajo: la rama queda empujada con nombre propio y la anotación dice cómo
+  seguirla.
+- **Tradeoff «deja el ciclo incompleto hasta que alguien corra `/agent-propose`»** — cierto, y por eso se
+  dice donde se ve: en la anotación del job y en la salida del CLI, que ahora imprime «sin cambio
+  decidido: falta correr agent-propose antes de que esto se pueda firmar».
+- **Tradeoff «el check `proposal-pr` no es el lugar»** — se respetó: no se tocó.
+
+### Lo que el caso no preveía
+
+- **Tres errores míos que la puerta atrapó, y uno que atrapé midiendo.** Usé `undecided`, después
+  `section` y después `LF` sin importarlos: las tres veces el módulo cargaba y reventaba recién al
+  ejecutarse. Y al pasar la invocación a una tubería, el fallo del CLI dejaba de propagarse —Actions corre
+  `bash -e {0}`, con `errexit` y sin `pipefail`—, así que un `learn` roto habría dejado el paso en verde.
+- **El mecanismo que elegí primero no tenía precedente.** Puse el veredicto en `GITHUB_ENV`, que no
+  aparece en ningún otro workflow del repositorio, mientras `GITHUB_OUTPUT` se usa en seis lugares. Y
+  fuera de Actions la variable llegaba vacía, con lo que el `grep` daba falso y **el PR se abría igual**:
+  el defecto original, ahora silencioso.
+- **Un comentario mío desvió una prueba ajena.** Nombré «Detect changes» en el `env:` global y
+  `workflowStep` busca la primera aparición literal del ancla: pasó a tomar el cuerpo de `discover` y la
+  prueba reventó con un JSON vacío. El texto de un comentario puede romper una prueba que lee el YAML
+  como texto.
+
+### Qué se corrió
+
+- **El paso real, extraído del YAML y ejecutado con bash**, en los dos caminos: sin decidir publica
+  `decided=false`; con el cambio escrito, `decided=true`.
+- **La propagación del fallo**: con un CLI que sale 2, el paso frena en vez de seguir en verde.
+- **Rojo previo, en copia por `tar` con verde de control**: 13/13 intactas. Quitar el corte del paso que
+  abre el PR mata la prueba; quitar la publicación del veredicto también. Ninguna otra cae.
+- **Verde**: `npm run ci` en 0 y **815 pruebas**.

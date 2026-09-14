@@ -141,6 +141,40 @@ test('la consolidación mensual no le nombra un período al CLI', () => {
   assert.equal(/1 day ago/.test(source), false, 'no queda aritmética de fechas en el workflow')
 })
 
+// Por qué el corte va donde va —entre el push y el PR— está escrito en el propio paso, junto al código.
+// Acá se fija que siga ahí: el orden de esas tres cosas es todo lo que separa «se publica la rama y se
+// posterga la firma» de «se gasta una firma por un documento que no decide nada» (caso 143). Se asercia
+// por posiciones y no por texto porque el defecto no era lo que el paso decía sino en qué orden lo hacía.
+test('no se pide una firma por una propuesta que no decide nada', () => {
+  const source = workflow('agent-learning')
+  const cuerpo = (ancla) => {
+    const start = source.indexOf(ancla)
+    const lines = source.slice(source.indexOf('run: |', start)).split('\n').slice(1)
+    const body = []
+    for (const line of lines) {
+      if (line.trim() && !line.startsWith(' '.repeat(10))) break
+      body.push(line.slice(10))
+    }
+    return body.join('\n')
+  }
+
+  const compone = cuerpo('Build monthly proposal from weekly reports')
+  assert.match(compone, /decided=false' >> "\$GITHUB_OUTPUT"/, 'el veredicto sale del paso que compone')
+  assert.match(compone, /decided=true' >> "\$GITHUB_OUTPUT"/)
+  assert.match(source, /id: proposal/, 'y el paso se nombra para que el siguiente lo lea')
+  assert.match(source, /DECIDED: \$\{\{ steps\.proposal\.outputs\.decided \}\}/)
+
+  const abre = cuerpo('Open proposal pull request')
+  const push = abre.indexOf('git push origin')
+  const corte = abre.indexOf('DECIDED')
+  const pr = abre.indexOf('gh pr create')
+  assert.ok(push > 0 && corte > 0 && pr > 0, 'los tres pasos existen')
+  assert.ok(push < corte, 'la rama se empuja igual: lleva el sello de lo que el ciclo consumió')
+  assert.ok(corte < pr, 'y sin cambio decidido no se llega a pedir la firma')
+  assert.equal(/grep -q 'sin cambio decidido'/.test(abre), false,
+    'el paso que abre no vuelve a juzgarlo por su cuenta')
+})
+
 // Cada cron elige su cohorte, y el del ensamblaje no elige ninguna: ese día no se investiga, se
 // consolida. Su cadena no está en `POR_CRON` justo por eso, así que `cadence` queda vacía — y la
 // condición de corte la leía como «no encontré ningún agente» y abortaba `discover`. Los tres jobs

@@ -34,6 +34,23 @@ diseño — eso vive en el commit y en el código.
   salida explícita que `(sin partir: …)` y que `n/a — razón`. Se juzga condición por condición, así que
   declarar una no exime a las demás.
 
+### Corregido
+
+- **El ciclo de aprendizaje ya no te pide una firma por una propuesta que no decide nada.** El documento
+  se compone en dos tiempos: `learn --proposal` lo arma desde los informes y los veredictos, y
+  `/agent-propose` escribe el cambio concreto. El ciclo automático corre el primero y abría el PR ahí
+  mismo, con «Cambio propuesto» todavía en el molde — así se gastaron siete firmas el 2026-09-14, y
+  ninguna de esas propuestas se pudo aplicar.
+
+  Ahora el paso que compone dice si el documento quedó sin decidir y el que publica lo lee. **La rama se
+  empuja igual**, porque lleva el sello de los informes que el ciclo consumió y perderlo haría entrar el
+  mismo material el mes siguiente; lo que se posterga es sólo el PR. La corrida lo deja anotado con el
+  nombre de la rama y qué falta para abrirlo.
+
+  Y `ops learn <cargo> --proposal` lo dice también cuando lo corrés a mano: «sin cambio decidido: falta
+  correr agent-propose antes de que esto se pueda firmar». Sin esa línea el archivo se ve terminado y no
+  lo está.
+
 ## [0.88.0] - 2026-09-14
 
 ### Corregido

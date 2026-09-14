@@ -815,9 +815,35 @@ jobs:
       # **revisión** —el documento que corrige un cambio que la evaluación mostró mal calibrado—
       # vacía y sin que nadie lo hubiera decidido. Corregir es un acto humano, no un paso del cron.
       - name: Build monthly proposal from weekly reports
+        id: proposal
         env:
           AGENT: ${{ matrix.agent }}
-        run: node "$OPS" learn "$AGENT" --proposal
+        # El CLI dice si el documento quedó con el molde, y eso viaja como salida del paso: el que abre el
+        # PR lo lee en vez de volver a calcularlo. Dos greps sobre lo mismo son dos definiciones de «sin
+        # decidir», y de las dos una se pudre sin que nada falle.
+        #
+        # El archivo intermedio va fuera del árbol —la detección posterior mira `git status` entero, así
+        # que uno nuevo acá adentro diría que hubo cambios aunque el ciclo no produjera ninguno— y se
+        # resuelve con el mismo default que el paso que investiga, porque `RUNNER_TEMP` sólo existe dentro
+        # de Actions y la prueba corre estos pasos fuera.
+        #
+        # La invocación queda sola y sin nada detrás: la puerta asercia que la línea termine en
+        # `--proposal`, para que nadie le agregue un `--period` calculado en el workflow. Por eso la
+        # salida se captura con una redirección del bloque y no con una tubería en el mismo renglón.
+        run: |
+          # Sin esto la tubería devuelve el estado de `tee` y no el del CLI: un `learn` que falla dejaba
+          # el paso en verde y el ciclo seguía con un documento a medias. Actions corre `bash -e {0}`,
+          # que trae `errexit` y no `pipefail`.
+          set -o pipefail
+          result="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/proposal-result.txt"
+          {
+            node "$OPS" learn "$AGENT" --proposal
+          } | tee "$result"
+          if grep -q 'sin cambio decidido' "$result"; then
+            echo 'decided=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'decided=true' >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Validate proposal
         env:
@@ -843,10 +869,13 @@ jobs:
         run: |
           echo "::notice title=Nada que proponer::$AGENT no abrió documento este mes: ninguno de sus informes trae recomendación, o no había informes sin consolidar. Lo que haya queda pendiente y entra el mes que alguno proponga algo."
       - name: Open proposal pull request
+        # Corre siempre que haya cambios: la rama se empuja igual, porque lleva el sello de los informes
+        # que el ciclo consumió. Lo que decide el veredicto del paso anterior es si además se pide firma.
         if: steps.changes.outputs.changed == 'true'
         env:
           AGENT: ${{ matrix.agent }}
           GH_TOKEN: ${{ github.token }}
+          DECIDED: ${{ steps.proposal.outputs.decided }}
         run: |
           period="$(date -u +%Y-%m)"
           # Consolidar **sella** lo que consume, así que el diff trae la propuesta y además los informes
@@ -879,6 +908,15 @@ jobs:
           printf '%s\n' "$changed" | xargs git add --
           git commit -m "docs($AGENT): propose $name learning review"
           git push origin "$branch"
+          # Empujar y pedir firma son dos actos, y hasta acá iban juntos. El documento recién compuesto
+          # trae el molde en «Cambio propuesto» —lo llena `/agent-propose`, que este job no corre—, así
+          # que abrir el PR ahí pide una firma por algo que no decide nada: el 2026-09-14 gastó siete
+          # (caso 143). La rama se empuja igual porque el sello de los informes consumidos viaja con
+          # ella, y perderlo haría entrar el mismo material el mes siguiente.
+          if [ "$DECIDED" != 'true' ]; then
+            echo "::notice title=Sin cambio decidido::$AGENT compuso $name y nadie escribió el cambio. La rama $branch queda empujada con los sellos; corré /agent-propose sobre ella y abrí el PR cuando el documento decida algo."
+            exit 0
+          fi
           gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
             --title "$AGENT learning proposal — $name" \
             --body "Propuesta automática construida desde los informes semanales. No modifica SKILL.md y requiere evaluación y aprobación humana."

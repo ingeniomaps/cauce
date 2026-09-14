@@ -7,6 +7,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const L = require('../agents/learning')
+const LF = require('../agents/learning-files')
 const AG = require('../agents/catalog')
 const EV = require('../agents/evaluations')
 const T = require('../flows/registry')
@@ -287,6 +288,13 @@ function learn(agent, cli) {
       console.log(kind === 'flow'
         ? `  ${result.reports} corrida(s) consolidada(s), ${result.findings} hallazgo(s)`
         : `  ${result.reports} informe(s) semanal(es) incluidos`)
+    }
+    // Lo lee quien automatiza el ciclo para no pedir una firma por un documento que no decide nada, y
+    // también quien lo corre a mano: sin esta línea el archivo se ve terminado y no lo está. Se pregunta
+    // sobre el documento y no sobre lo que devolvió el motor, porque `prepareProposal` sale por cinco
+    // lugares y sólo uno compone: puesto en ése, el dato falta en los otros cuatro.
+    if (LF.blankProposal(result.file)) {
+      console.log('  sin cambio decidido: falta correr agent-propose antes de que esto se pueda firmar')
     }
   } catch (error) { fail(error.message, 2) }
 }
