@@ -8,8 +8,8 @@ version-detectada: 0.87.0
 
 # 141 — El contexto de arranque trae todas las reglas, y nada dice lo que eso cuesta
 
-**🔴 abierto** · detectado en 0.87.0 · prioridad **media** — el bloque de reglas viaja en el contexto de
-arranque y nadie mide cuánto pesa; **cuántas veces se paga está sin verificar** y de eso depende el número
+**🔴 abierto** · detectado en 0.87.0 · prioridad **media** — **verificado el 2026-09-14**: el bloque viaja
+en el contexto de **cada** agente, son ~16 K tokens por agente, y nada lo mide
 
 ## Resumen
 
@@ -29,34 +29,57 @@ instancia sidecar limpia con dos reglas propias agregadas:
 ```
 
 Las del sistema son **cuatro**, no doce: las doce de la instancia que originó el caso son esas cuatro más
-ocho propias. El piso que Cauce impone a todos son **39.236 bytes ≈ 10 K tokens**, con `conduct.md`
-llevándose el 41 %; el resto lo agrega cada proyecto, que es donde vive el incentivo torcido del Síntoma.
+ocho propias. Pesan **39.236 bytes**, con `conduct.md` llevándose el 41 %, y el resto lo agrega cada
+proyecto — que es donde vive el incentivo torcido del Síntoma. El bloque no es todo lo que viaja: la
+sección «La cuenta corregida» tiene el piso completo, porque `CLAUDE.md` importa además `AGENTS.md`.
 
-### La afirmación de la que cuelga todo, y está sin verificar
+### La afirmación de la que colgaba todo: **verificada**
 
-> **Hipótesis.** Que **cada subagente** cargue ese bloque depende de si el runner lee su archivo de
-> contexto una vez por sesión o una vez por agente. Eso es mecanismo de una herramienta de terceros y no
-> se puede establecer leyendo este repositorio: el manifiesto sólo declara que `CLAUDE.md` se instala en
-> la raíz. **Si se carga una sola vez, el costo es 10 K tokens por corrida y este caso es menor.**
->
-> Lo resuelve una corrida de `autobuild` mirando el journal: el agente de `ops claim` hace **3 llamadas a
-> herramienta** y no lee ningún archivo, así que su gasto es casi todo contexto de arranque. Decenas de
-> miles de tokens ahí significan que el bloque viaja por agente; unos pocos miles, que no.
+**Verificado el 2026-09-14.** Cada subagente hereda el bloque. Se midió con una sonda barata en vez de una
+corrida de `autobuild`: un subagente lanzado en este mismo repositorio, con la instrucción de **no abrir
+ningún archivo** y contestar sólo desde su contexto de arranque.
 
-### La cuenta corregida
+Devolvió lo que sólo puede devolver quien tiene el texto delante:
 
-El caso sumaba `AGENTS.md`, `PROTOCOL.md` y las reglas en un solo total de 92.910 bytes y lo multiplicaba
-por once agentes, para **~253.000 tokens**. Medido, esas piezas no se pagan igual:
+- citó textualmente `## R17 — Una unidad de trabajo se parte por lo que acumula, y hay dos formas de
+  acumular` y `## R23 — Un borrado se lee resuelto antes de correrlo, y sólo alcanza lo desechable`;
+- enumeró los **23** encabezados `R1`–`R23` agrupados por su archivo de origen;
+- y señaló un detalle de disposición que no se reconstruye de memoria: dentro de `conduct.md`, R23 aparece
+  **entre R13 y R14**, no al final.
+
+**El consumo lo confirma por otro lado: 61.107 tokens con CERO llamadas a herramienta.** Un agente que no
+abrió nada gastó eso, así que es casi todo contexto de arranque — la misma observación que el caso traía
+de la corrida real (86.567 tokens con 3 llamadas), reproducida sin gastar 1,2 M de tokens.
+
+**Alcance de lo medido.** Un subagente `general-purpose` de Claude Code, en este repositorio. Que un agente
+que arranca «fresco» igual lo herede apunta al mecanismo del runner y no al tipo de agente, y por eso este
+resultado positivo vale más que uno negativo. **No** se midieron los agentes que lanza un recorrido, que es
+el escenario que originó el caso.
+
+### La cuenta corregida, y una corrección de la corrección
+
+El caso original sumaba `AGENTS.md`, `PROTOCOL.md` y las reglas en un total de 92.910 bytes y lo
+multiplicaba por once agentes, para **~253.000 tokens**. La primera revisión de este documento sacó a
+`AGENTS.md` de lo que se paga por agente, y **eso estaba mal**: lo delató la misma sonda, que lo tiene en
+su contexto. `CLAUDE.md` lo importa con `@AGENTS.md`, así que viaja con cada agente igual que las reglas.
+Lo que sí se paga una sola vez es `PROTOCOL.md`, que lo lee Triage y se reenvía como texto —«el contrato se
+lee una sola vez por corrida … ningún subagente relee AGENTS.md, workspace.md, ops.config.json ni
+PROTOCOL.md» (`autobuild.js:316-317`)—, y esa frase habla de **releerlo**, no de tenerlo en contexto.
+
+Medido en este repositorio, que instala cuatro reglas del sistema y ninguna propia:
 
 | Qué | Cuánto | Con qué frecuencia |
 | --- | --- | --- |
-| `AGENTS.md` + `PROTOCOL.md` | 33 KB ≈ 8 K tokens | **una vez por corrida** |
-| Bloque de reglas del sistema | 38 KB ≈ 10 K tokens | por agente, **si la hipótesis se sostiene** |
+| `AGENTS.md` | 23,6 KB | **por agente**, vía `@AGENTS.md` |
+| Las cuatro reglas de `system/` | 38,3 KB | **por agente**, vía el bloque |
+| **Total que viaja por agente** | **61,9 KB ≈ 15,9 K tokens** | |
+| `PROTOCOL.md` | 9,4 KB ≈ 2,4 K tokens | una vez por corrida |
 
-`AGENTS.md` y `PROTOCOL.md` **no entran por el bloque** —sólo importa `planning/rules/*.md`— y el propio
-recorrido los lee una vez en Triage y los reenvía como texto: «el contrato se lee una sola vez por corrida
-y viaja como texto: ningún subagente relee AGENTS.md, workspace.md, ops.config.json ni PROTOCOL.md»
-(`autobuild.js:316-317`). Con la hipótesis en pie el piso son **~108 K tokens**, no 253 K.
+Con once agentes son **~175 K tokens** de piso sólo por lo que Cauce pone, sin contar reglas propias.
+
+**Y un techo que acota el arreglo:** la sonda gastó 61.107 tokens de arranque, de los cuales lo de Cauce
+son ~16 K — un **26 %**. El resto lo pone el runner (herramientas, instrucciones del harness). Aunque la
+opción 2 eliminara el bloque entero, tres cuartas partes de ese piso seguirían ahí.
 
 ### Lo que el recorrido ya resuelve, y el caso daba por perdido
 
@@ -77,11 +100,12 @@ Lo que el bloque **contiene** se reproduce en una instancia limpia, y está medi
 2. `automation install . claude` reescribe el bloque con las cuatro del sistema más las dos propias.
 3. Sumar los tamaños de lo que el bloque importa: 39.236 bytes sólo con las del sistema.
 
-Lo que **no** queda reproducido es cuántas veces se paga. La observación que lo sugiere viene de la
-corrida que originó el caso: el agente más barato —el de `ops claim`, con **3 llamadas a herramienta** y
-sin leer ningún archivo— gastó **86.567 tokens**, y no hay prompt ni salida que explique esa cifra. Es
-evidencia fuerte de una sola corrida, no una comprobación: para eso hay que repetir el paso 3 de la
-sección anterior y leer el journal.
+Y cuántas veces se paga se reproduce **sin correr un recorrido**, que es lo que hace esta comprobación
+barata: lanzar un subagente en un repositorio con el bloque instalado, pedirle que no abra ningún archivo,
+y pedirle que cite el encabezado de una regla concreta. Si lo cita, el bloque viaja con él.
+
+La observación que originalmente lo sugería —el agente de `ops claim`, con **3 llamadas a herramienta**,
+gastando **86.567 tokens**— queda confirmada por esa vía y ya no es evidencia de una sola corrida.
 
 ## Síntoma
 
@@ -95,26 +119,32 @@ Nosotros lo vimos sumando los tamaños a mano después de una corrida cara.
 
 ## Fix propuesto
 
-1. **Que el bloque diga cuánto pesa.** Una línea en `install` —«reglas: 6 archivos, 47 KB, ~12 K tokens en
-   el contexto de arranque»— convierte una decisión invisible en una informada. Es lo más barato y ya sería
-   suficiente para que un proyecto decida. El número que declare tiene que ser el del bloque, sin sumarle
-   lo que se lee una vez por corrida.
+1. **Que el bloque diga cuánto pesa.** Una línea en `install` —«contexto de arranque: 5 archivos, 62 KB,
+   ~16 K tokens por agente»— convierte una decisión invisible en una informada. Es lo más barato y ya sería
+   suficiente para que un proyecto decida. El número tiene que cubrir **todo lo que `CLAUDE.md` importa**,
+   no sólo el bloque: `AGENTS.md` entra por un `@` que está fuera de las marcas y pesa más que cualquier
+   regla suelta.
 2. **Reglas por superficie.** Cada regla ya declara de qué habla; las de puertos, identidad de git o
    trampas de un stack no le sirven a un agente que clasifica una tarea. Que el frontmatter pueda declarar
    cuándo aplica, y que el bloque importe siempre las del sistema y las propias marcadas como `siempre`,
    dejando el resto para que el agente las lea cuando toque esa superficie.
 3. **Que `check` avise pasado un umbral**, como ya avisa por las entradas de DONE sin `lane:`. Un aviso a
-   partir de, digamos, 60 KB, nombrando los tres archivos más grandes.
+   partir de, digamos, 60 KB, nombrando los tres archivos más grandes. **El umbral hay que reelegirlo**: lo
+   que Cauce pone sin una sola regla propia ya son 61,9 KB, así que 60 KB avisaría en toda instancia recién
+   creada y el aviso se apagaría por ruido el primer día.
 
-**El orden depende de la medición pendiente, y la 1 no.** Que el bloque no diga lo que pesa es un hueco
-igual si se carga once veces que si se carga una: hoy escribir una regla propia es una decisión sin número
-a la vista, y el 1 lo pone. Se puede hacer sin esperar nada.
+**Con la medición hecha, la 1 sigue siendo lo primero y ahora se puede escribir con el número real.** El
+aviso tiene que declarar lo que viaja por agente —`AGENTS.md` más el bloque— y no sólo el bloque, que es la
+mitad más chica.
 
-El 2 es el arreglo real **sólo si la hipótesis se sostiene**, y hay un dato que la vuelve menos urgente de
-lo que el caso suponía: el recorrido ya entrega rutas en vez de texto a cada subagente que toca código, así
-que lo que la opción 2 ahorraría es el bloque del archivo de contexto, no el preámbulo. Si el bloque se
-carga una sola vez por sesión, cambiar el contrato de las reglas de todas las empresas ahorraría 10 K
-tokens por corrida — y costaría el riesgo que nombran los Tradeoffs.
+**La 2 tiene un techo que conviene mirar antes de construirla.** Lo de Cauce es el 26 % del contexto de
+arranque de un agente; el otro 74 % lo pone el runner y no se toca desde acá. Y el recorrido ya entrega
+rutas en vez de texto a cada subagente que toca código, así que lo que la 2 ahorraría es el bloque del
+archivo de contexto, no el preámbulo. Sigue siendo el arreglo de fondo — 175 K tokens por corrida en este
+repositorio, y más en una instancia con reglas propias— pero no es «el 21 % de la corrida».
+
+**Queda por decidir**, y no lo decide este caso: si la 2 se construye, y con qué contrato. Su tradeoff es
+el de abajo y no cambió.
 
 ## Tradeoffs
 
@@ -129,10 +159,11 @@ tres archivos costó 1,2 M de tokens. El desglose que salió de ahí: 21 % piso 
 de Verify por una aceptación mal escrita (caso **140**), 17 % una fase de clasificación que la propia línea
 de la tarea podía haber evitado, y el resto trabajo real.
 
-Ese 21 % es el número que la sección «La cuenta corregida» revisa: salía de multiplicar por agente algo que
-en parte se paga una vez. Contrastado contra el fuente el 2026-09-14, el piso atribuible al bloque queda en
-~9 % **si** la hipótesis se sostiene, y en una fracción de eso si no. Los otros tres tramos del desglose no
-se volvieron a medir y siguen como estaban.
+Ese 21 % es el número que la sección «La cuenta corregida» revisa. Salía de sumar `PROTOCOL.md` —que se lee
+una vez— con lo que sí viaja por agente, y de una estimación de tokens por byte. Medido el 2026-09-14 sobre
+**este** repositorio, lo que Cauce pone son ~15,9 K tokens por agente; en la instancia que originó el caso,
+con ocho reglas propias más, es bastante más. El porcentaje de aquella corrida no se volvió a calcular
+—haría falta el journal— y los otros tres tramos del desglose tampoco: siguen como estaban.
 
 ## Relacionados
 
