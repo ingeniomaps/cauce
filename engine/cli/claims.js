@@ -76,9 +76,15 @@ function claim(dir, slug, cli) {
       + `${CL.DIR}/${slug}.md a mano: soltar lo de otro es una decisión, no un comando.`)
   }
   console.log(`✓ ${slug} tomada por ${me}`)
-  // Un reclamo sin empujar no protege de nada: el otro runner lee lo que hay en su copia. Decirlo acá
-  // es lo único que separa «tomé la tarea» de «creí que la había tomado».
-  if (!cli.has('--json')) console.log(`  commiteá y empujá ${CL.DIR}/${slug}.md para que el equipo lo vea`)
+  if (!cli.has('--json')) {
+    // Un reclamo sin empujar no protege de nada: el otro runner lee lo que hay en su copia. Decirlo acá
+    // es lo único que separa «tomé la tarea» de «creí que la había tomado».
+    console.log(`  commiteá y empujá ${CL.DIR}/${slug}.md para que el equipo lo vea`)
+    // Y con qué id volver. Este dato lo imprimía `ops worktree` al crear el árbol; en sidecar no se crea
+    // ninguno, así que ese comando no corre nunca y el id no quedaba escrito en el único momento en que
+    // alguien lo tiene delante: ahora, que se acaba de guardar en el reclamo.
+    console.log(`  export CAUCE_RUNNER=${from}`)
+  }
 }
 
 function release(dir, slug) {
