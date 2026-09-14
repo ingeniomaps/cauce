@@ -8,7 +8,7 @@ const { atomicWrite } = require('../core/files')
 // hecho, y una de las dos se pudre sin que nada falle (R11).
 const {
   REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME, assertWritableTeam, assertWritable, lastOfPeriod,
-  isoDate, month, proposalOrder, proposalFiles, frontmatterState, proposalState, reportFiles,
+  isoDate, month, proposalOrder, proposalFiles, frontmatterState, proposalState, reportFiles, CLOSED,
 } = require('./learning-files')
 // Cerrar una propuesta vive en su propio módulo; se reexporta para no mover a cada llamador.
 const { seal, archive } = require('./learning-seal')
@@ -316,11 +316,15 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
   const proposalDir = path.join(target, 'learning', 'proposals')
   fs.mkdirSync(proposalDir, { recursive: true })
 
-  // Una sola propuesta pendiente por período. Si la última todavía no se aplicó, abrir otra partiría
+  // Una sola propuesta pendiente por período. Si la última todavía no se cerró, abrir otra partiría
   // la firma en dos documentos que dicen cosas distintas sobre el mismo contrato.
+  //
+  // Cerrada son las dos: aplicada y archivada. Mirando sólo `applied`, una archivada —que es una decisión
+  // tomada y no espera trabajo— bloqueaba al cargo para siempre, y la única salida era aplicar algo que
+  // se había decidido no aplicar. Es el mismo criterio que `evaluate` usa para no contarla como pendiente.
   const previous = lastOfPeriod(proposalDir, sealing)
-  const unapplied = previous && proposalState(fs.readFileSync(path.join(proposalDir, previous), 'utf8')) !== 'applied'
-  if (unapplied) return { file: path.join(proposalDir, previous), created: false, reports: 0 }
+  const open = previous && !CLOSED.has(proposalState(fs.readFileSync(path.join(proposalDir, previous), 'utf8')))
+  if (open) return { file: path.join(proposalDir, previous), created: false, reports: 0 }
 
   // La misma regla que abajo, y el mismo motivo: un documento que no puede decir qué corregir no
   // produce un cambio de contrato, y cuesta igual la firma humana que uno que sí. Antes se abría uno

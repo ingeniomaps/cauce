@@ -10,19 +10,8 @@ const catalog = require('./catalog')
 const evaluations = require('./evaluations')
 const {
   REQUIRED_SECTIONS, SUMMARY_MAX, frontmatterState, proposalFiles, proposalState, reportFiles,
+  SIGNED, CLOSED,
 } = require('./learning-files')
-
-// Una propuesta firmada y sin aplicar no espera lo mismo que una sin firmar: en la primera la decisión
-// ya se tomó y el trabajo quedó detenido; la segunda está bien quieta hasta que alguien la lea.
-// `proposalState` no las distingue —mira el frontmatter, y la firma la escribe `sign-proposal.yml` en
-// el cuerpo—, así que las dos caían en el mismo `pending` y la que ya tenía autoridad para avanzar se
-// veía igual que la que no. Sin este aviso hay que acordarse, y dos propuestas firmadas el 2026-09-01
-// se habrían quedado ahí sin que nada lo dijera.
-const SIGNED = /^-[ \t]*Estado:[ \t]*aprobada[ \t]*$/mi
-// Los dos destinos que cierran una propuesta. `archived` es «se miró y no cambia nada»: no espera
-// trabajo, así que contarla como pendiente deja al cargo reportando deuda que nadie va a pagar — el
-// mismo defecto que el comentario de abajo describe para una aplicada.
-const CLOSED = new Set(['applied', 'archived'])
 
 // No es un error: firmar y aplicar son actos separados a propósito —OPS-004— y entre uno y otro puede
 // pasar tiempo legítimamente. Lo que no puede es no verse.
