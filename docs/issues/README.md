@@ -30,11 +30,17 @@ Slug en español, como el resto de la documentación del repositorio.
 El frontmatter lo declara y el cuerpo lo repite en la primera línea, para que se vea sin abrir el
 archivo y sin parsearlo:
 
-| `estado` | Qué significa |
-|---|---|
-| `abierto` | Reproducido y sin arreglar. |
-| `resuelto` | Arreglado y publicado. `resuelto-en` dice en qué versión. |
-| `descartado` | Se decidió no arreglarlo. El cuerpo dice por qué; no se borra. |
+| `estado` | Encabezado | Qué significa |
+|---|---|---|
+| `abierto` | `**🔴 abierto**` | Reproducido y sin arreglar. |
+| `resuelto` | `**🟢 resuelto en <versión>**` | Arreglado y publicado. `resuelto-en` dice en qué versión. |
+| `descartado` | `**⚪ descartado**` | Se decidió no arreglarlo. El cuerpo dice por qué; no se borra. |
+
+Son los tres que hay, y la columna del medio es parte del contrato y no una sugerencia de formato:
+`test/repo/issues.test.js` la comprueba, y rechaza además un `estado` que no esté en esta tabla. Sin
+eso, inventar uno dejaba al caso afuera de todas las comprobaciones —las demás preguntan por
+`resuelto`— sin que nada avisara. El glifo de `descartado` nació en el 046 pidiendo que se declarara
+acá; hasta 0.87.0 no estaba, y era convención de hecho.
 
 Un caso se marca `resuelto` **cuando la versión que lo arregla está publicada**, no cuando el PR
 mergea: mientras tanto sigue mordiendo a todo el que instale.
