@@ -129,6 +129,20 @@ diseño — eso vive en el commit y en el código.
   quedaba apuntando a otro lado. Y como los recorridos vienen del paquete, esto llega con el `upgrade`:
   después conviene reinstalar el adaptador para que la raíz nueva quede escrita.
 
+- **Agregar un archivo al motor ya no deja la cobertura en un callejón.** La puerta de pisos fallaba
+  diciendo «corré `npm run coverage:update`», y ese comando no podía completarse **mientras el piso
+  faltara**: corría la suite entera bajo `set -e`, la suite incluía la prueba que estaba en rojo por el
+  piso que faltaba, y el script moría antes de llegar a la línea que lo registra.
+
+  Ahora las corridas de medición no deciden por su código de salida —existen para producir el archivo de
+  cobertura— y en su lugar se exige que ese archivo traiga contenido, que es lo único que distingue una
+  suite que falló de una que no llegó a arrancar. Y al abortar ya no se borran las mediciones que sí se
+  completaron, así que se puede retomar desde donde quedó.
+
+  **Y medir cero dejó de anunciarse como éxito**: `coverage-files.js --update` con un archivo de
+  cobertura vacío imprimía «piso registrado» y salía en 0, dejando el registro vacío sin que nada lo
+  dijera. Ahora se niega y explica por qué.
+
 ## [0.88.0] - 2026-09-14
 
 ### Corregido
