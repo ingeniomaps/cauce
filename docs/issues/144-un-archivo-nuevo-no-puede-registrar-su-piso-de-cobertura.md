@@ -1,15 +1,16 @@
 ---
 caso: 144
 titulo: La puerta de pisos de cobertura bloquea el comando que registra un piso, así que un archivo nuevo del motor no puede pasarla ni actualizarla
-estado: abierto
+estado: resuelto
+resuelto-en: 0.89.0
 prioridad: media
 version-detectada: 0.89.0
 ---
 
 # 144 — El error manda a correr un comando que ese mismo error impide completar
 
-**🔴 abierto** · detectado en 0.89.0 · prioridad **media** — hay salida a mano, pero hay que deducirla
-leyendo el script
+**🟢 resuelto en 0.89.0** · detectado en 0.89.0 · prioridad **media** — el comando que el error recomienda
+ahora se puede completar, y medir cero dejó de anunciarse como éxito
 
 ## Resumen
 
@@ -98,3 +99,62 @@ procedimiento leyendo `coverage.sh`.
 ## Relacionados
 
 - **137**, **138** — el trabajo del que salió, no la causa.
+
+## Cierre
+
+**🟢 resuelto en 0.89.0** · `test/tools/coverage.sh`, `test/tools/coverage-files.js`,
+`test/repo/coverage-floors.test.js`
+
+Se tomó la **opción 1**, con el borde que el propio caso anotaba resuelto de una forma que la medición
+obligó a ampliar: no alcanzaba con comprobar el lcov en el script, porque la herramienta que lo consume
+tampoco distinguía medir nada de medir todo.
+
+### Contra lo que el caso enumeró
+
+- **Opción 1, que las corridas de medición no decidan** — construida. El exit de `node --test` deja de
+  cortar la medición y en su lugar se exige que cada lcov traiga contenido, que es lo único que separa
+  una suite que falló de una que no llegó a arrancar.
+- **«Hay un borde que resolver: ignorar el exit a secas enmascara una suite que no corrió»** — el caso
+  tenía razón, y el borde era **más ancho** de lo que suponía. Medido: `coverage-files.js --update` con un
+  lcov vacío imprimía `✓ piso registrado sobre 1 corrida(s) para 0 archivo(s)` y salía en **0**. O sea que
+  la comprobación en el script sola habría dejado en pie una herramienta que se felicita sobre cero. Se
+  arregló también ahí, con la misma negativa que este repositorio ya aplica cuatro veces en
+  `repo.test.js`, donde un recorrido sin hallazgos falla en vez de dar un verde sobre nada.
+- **Opción 2, que el mensaje diga la salida real** — **se decidió que no**, y el propio caso anticipaba por
+  qué: «deja el defecto en pie y sólo mejora el cartel». Con la 1 construida, el comando que el mensaje
+  recomienda **se puede completar**, así que el cartel dejó de mandar en círculo sin tocarlo.
+- **Opción 3, que `--update` corra sin la puerta de pisos** — **se decidió que no**. El caso pedía
+  comprobar que eso no le bajara el piso a `coverage-files.js`, y la comprobación dio otra cosa: ese
+  archivo **no figura en el baseline**, así que no había piso que bajar. Lo que sí haría es dejar sin medir
+  a la herramienta que decide todos los pisos, justo en la corrida que los registra. No aporta sobre la 1.
+- **Tradeoff, «toca un script con `set -e` puesto a propósito; aflojarlo mal cambia qué fallos se ven»** —
+  se respetó: `set -euo pipefail` sigue en la línea 2 y sólo la invocación de medición tolera su exit. Lo
+  demás —el smoke de hooks, el actualizador— sigue cortando igual.
+- **«Vale la pena mirar si el mismo `set -e` esconde otros finales mudos del script»** — se miró. El script
+  tiene un solo `set -e` y, ahora, dos etapas gobernadas distinto: la medición, que tolera el exit y exige
+  contenido, y el resto, que corta. No quedan finales mudos ahí; el que había era éste.
+
+### Lo que el caso no preveía
+
+- **El `trap` se llevaba el material para reintentar.** `trap limpiar EXIT` corría también al abortar, así
+  que al morir el script borraba los lcov ya medidos: quien quedaba a mitad no podía retomar desde ahí y
+  tenía que regenerarlos enteros. Pasó a `trap limpiar 0`, que limpia sólo en la salida sana.
+- **La primera sonda que escribí no midió nada.** Apuntó `--baseline=` a un archivo inexistente y la
+  herramienta reventó en `readFileSync` antes de mirar el lcov; el resultado se leía como un fallo del
+  sujeto. Rehecha con un baseline real, salió el hallazgo de arriba.
+
+### Qué se corrió
+
+- **Rojo previo**: las dos pruebas nuevas fallan contra el árbol de hoy, una con el mensaje del defecto
+  textual —`✓ piso registrado sobre 1 corrida(s) para 0 archivo(s)`— y la otra en «el exit de node --test
+  deja de cortar la medición».
+- **Los patrones de la prueba del script, validados contra un arreglado simulado** antes de construir:
+  los tres fallan sobre el script de hoy y pasan sobre el corregido, así que ninguno acepta cualquier cosa.
+  Hacía falta porque esa prueba asercia texto y no conducta.
+- **La conducta real, en banco desechable**: se creó un archivo nuevo del motor —el escenario exacto del
+  caso— y `npm run coverage:update` completó las tres corridas y registró `✓ piso registrado sobre 3
+  corrida(s) para 69 archivo(s)`, con el archivo nuevo adentro. Antes moría en la primera.
+- **Mutaciones**, en copia con verde de control 13/13: devolver el `if` de la negativa mata «actualizar
+  sobre un lcov sin archivos se niega»; quitar el `|| true` mata «coverage.sh mide por el contenido».
+- **El `trap` comprobado en la salida sana**: sigue borrando los temporales cuando el script termina bien.
+- **Verde**: `npm run ci` en 0 y **823 pruebas**.

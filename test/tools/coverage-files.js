@@ -172,6 +172,15 @@ if (updating) {
       else if (value < floor) moved.push(`↓ ${file}: ${metric} ${floor}% → ${value}%`)
     }
   }
+  // Medir cero no es medir. Un lcov sin un solo archivo —la corrida que murió antes de escribir nada—
+  // producía «piso registrado» con exit 0 y un registro vacío, que se lee igual que una actualización
+  // sana. Es la misma negativa que las puertas de `repo.test.js` aplican cuando su recorrido no encontró
+  // nada: un verde sobre cero afirma algo sobre lo que no se miró (caso 144).
+  if (!Object.keys(record).length) {
+    console.error('✗ ningún archivo medido: las corridas no dejaron cobertura, así que no hay piso que '
+      + 'registrar. Revisá que la suite haya arrancado.')
+    process.exit(1)
+  }
   fs.writeFileSync(BASELINE, `${JSON.stringify(record, null, 2)}\n`)
   // Nada se mueve en silencio: lo que baja es una regresión aceptada a mano y merece verse al hacerlo,
   // no sólo en el diff.

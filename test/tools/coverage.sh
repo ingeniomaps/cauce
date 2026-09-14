@@ -15,11 +15,21 @@ corridas=1
 
 lcovs=()
 limpiar() { rm -f "${lcovs[@]}"; }
-trap limpiar EXIT
+# Sólo en la salida sana. Al abortar, esto se llevaba los lcov ya medidos, que son el único material con
+# el que se podría reintentar desde donde murió: quien quedaba a mitad tenía que regenerarlos enteros.
+trap limpiar 0
 
 for _ in $(seq "$corridas"); do
   lcov=$(mktemp)
   lcovs+=("$lcov")
+  # El veredicto de estas corridas no decide: existen para producir el lcov. Con `set -e` gobernándolas
+  # como si fueran una puerta, registrar un piso era imposible mientras la puerta de pisos estuviera en
+  # rojo —que es justo cuando hace falta, al agregar un archivo—, y el mensaje mandaba a correr el
+  # comando que ese mismo rojo impedía completar (caso 144).
+  #
+  # Lo que sí decide es el contenido. Ignorar el exit a secas dejaría pasar una suite que no arrancó
+  # —un error de sintaxis— con un lcov vacío detrás, y un lcov vacío no se distingue de uno sano mirando
+  # el código de salida: hay que mirar si trajo algo.
   node --test \
     --experimental-test-coverage \
     --test-coverage-include='engine/**/*.js' \
@@ -30,7 +40,11 @@ for _ in $(seq "$corridas"); do
     --test-coverage-branches=62 \
     --test-reporter=spec --test-reporter-destination=stdout \
     --test-reporter=lcov --test-reporter-destination="$lcov" \
-    "test/**/*.test.js"
+    "test/**/*.test.js" || true
+  if [ ! -s "$lcov" ]; then
+    echo "✗ la corrida no dejó cobertura en $lcov: la suite no llegó a arrancar." >&2
+    exit 1
+  fi
 done
 
 # El total de arriba no ve el reparto: un módulo al 100% tapa a uno flojo. Éste pide que ninguno baje.
