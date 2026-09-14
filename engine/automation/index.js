@@ -423,9 +423,11 @@ function install(root, name, output = console, options = {}) {
   const ourHooks = deliveredHookCommands(live)
   if (ourHooks.length) deliveredPaths[deliveryKey(name, HOOKS_KEY)] = ourHooks
   else delete deliveredPaths[deliveryKey(name, HOOKS_KEY)]
+  const landed = new Set()
   for (const resolved of resolvedItems) {
     const status = state.get(resolved)
     const ownFile = runner.instructions.includes(resolved.item)
+    if (!ownFile) landed.add(path.dirname(resolved.target))
     if (ownFile && isSharedFile(root, resolved.target)) {
       const content = render(resolved.source, opsPrefix(root), resolved.automationRoot, resolved.opsRoot)
       if (blockUpToDate(resolved.target, name, content)) {
@@ -461,6 +463,15 @@ function install(root, name, output = console, options = {}) {
     // entrega, y registrarlo lo volvería indistinguible de uno intacto en la próxima instalación.
     if (!(status === 'ajeno' && ownFile)) {
       deliveredPaths[deliveryKey(name, resolved.item.target)] = M.digest(resolved.target)
+    }
+  }
+  // Dónde quedaron, con la raíz puesta. Arriba ya se dice de la configuración, que es un archivo que nadie
+  // invoca; éstos se invocan **por nombre**, y el nombre lo resuelve la sesión contra la carpeta en la que
+  // se abrió. Nombrados en relativo se leen como si estuvieran acá, así que quien abre la sesión en el repo
+  // ops no encuentra ninguno mientras esta misma salida dice que están todos instalados.
+  if (paths.install !== root) {
+    for (const dir of landed) {
+      output.log(`  ${name}: ${dir} — los encuentra por nombre una sesión abierta en ${paths.install}`)
     }
   }
   installRoleSkills(root, runner, output)

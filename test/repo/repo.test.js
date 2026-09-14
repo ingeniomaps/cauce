@@ -423,6 +423,12 @@ const JUSTIFIED = {
     'El registro de guards suma un caso por guard, y cada caso prueba los dos lados de la misma '
     + 'decisión: qué bloquea y qué deja pasar. Partirlo por grupo separaría casos que comparten el '
     + 'montaje de una raíz ops y el helper que exige el motivo del bloqueo.',
+  'test/wiring/runners.test.js':
+    'Suma un caso por runner y, al lado, los que recorren los cuatro a la vez —que ningún comando de hook '
+    + 'quede relativo al workspace, que ninguna ruta dé por sentado dónde se instala—. Partirla por runner '
+    + 'rompe justo ésos, que existen para valer también sobre el adaptador que se agregue después, y todos '
+    + 'los casos comparten el montaje de una raíz ops instalada. Cruzó las 500 con el aviso de sidecar del '
+    + 'caso 138, estando en 491.',
   'test/planning/claims.test.js':
     'La coordinación de un equipo suma un caso por conducta y las comparte todas: una instancia con su '
     + 'cola, dos runners y un reclamo entre ellos. Partirla por tema separaría el reclamo de lo que el '
@@ -435,6 +441,18 @@ const JUSTIFIED = {
 }
 
 const PENDING_SPLIT = {
+  'engine/cli/planning.js':
+    'Mezcla dos comandos con vidas distintas: `check`, que valida la instancia entera, y `context`, que '
+    + 'responde qué hacer ahora. Son 172 y 163 líneas, y casi no se cruzan: la mitad de los imports del '
+    + 'archivo entra por uno solo de los dos. La partición es sacar `check` a su propio módulo. Cruzó las '
+    + '500 con el aviso de plan ajeno del caso 137, estando en 495, y hacerlo bien es un cambio propio y '
+    + 'no la cola de otro.',
+  'engine/automation/index.js':
+    'Mezcla los cuatro verbos del wiring —`check`, `doctor`, `install` y `uninstall`— sobre los mismos '
+    + 'helpers de resolución, y `install` solo ya son 140 líneas. La partición que se ve es separar el que '
+    + 'escribe la instalación de los que la auditan: `install` y `uninstall` de un lado, `check` y `doctor` '
+    + 'del otro. Cruzó las 500 con el aviso de sidecar del caso 138, estando en 499, y hacerlo bien es un '
+    + 'cambio propio y no la cola de otro.',
   'test/repo/repo.test.js':
     'Mezcla dos sujetos: la forma del código —largo de línea, tamaño de archivo, rutas absolutas— y qué '
     + 'se le exige a un comentario, que son cuatro pruebas y la mitad del archivo. La partición es sacar '

@@ -410,6 +410,18 @@ function context(dir, cli) {
   // Tu propio nombre en una tarea «ajena» es la señal de que sos vos desde otro runner, y sin decirlo se
   // lee como que alguien te ganó la tarea.
   const dueño = (one) => (one.owner === report.owner ? `${one.owner} — vos, desde otro runner` : one.owner)
+  // Que el reclamo sea tuyo desde otro id ya se decía; que además haya un **plan escrito** bajo ese id, no.
+  // Esa es la mitad que cuesta la sesión: los pasos ya hechos están en un archivo que nadie nombra, y el id
+  // que lo recupera es justo el que esta sesión no supo deducir. Los dos datos están en el reclamo.
+  const tomadas = () => {
+    for (const one of report.taken) {
+      console.log(`TAKEN  ${one.slug} (${dueño(one)})`)
+      if (one.owner === report.owner && one.wip) {
+        console.log(`PLAN   ${one.slug}: su plan está en wip/${one.wip} — retomalo con `
+          + `\`export CAUCE_RUNNER=${one.runner}\``)
+      }
+    }
+  }
   const espera = () => {
     for (const one of report.waiting) {
       console.log(`WAIT   ${one.slug}: espera a ${one.dep}${one.owner ? ` (${one.owner})` : ''}`)
@@ -427,7 +439,7 @@ function context(dir, cli) {
     if (next) console.log(`EPIC   ${next.num}: ${next.title} — sin promover`)
     // Mismo motivo que `blocked` arriba, con otra causa: acá la cola no la traba una persona, la tiene
     // el equipo, y lo que corresponde es hablar con quien la tiene.
-    for (const one of report.taken) console.log(`TAKEN  ${one.slug} (${dueño(one)})`)
+    tomadas()
     espera()
     for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)
     due()
@@ -455,7 +467,7 @@ function context(dir, cli) {
   console.log(report.claimed
     ? `CLAIM  tuya desde el reclamo (${report.owner})`
     : `CLAIM  libre — tomala con \`ops claim <planning> ${report.task.slug}\``)
-  for (const one of report.taken) console.log(`TAKEN  ${one.slug} (${dueño(one)})`)
+  tomadas()
   espera()
   if (report.blockedTasks.length) console.log(`SKIP   ${report.blockedTasks.join(', ')} (acción humana abierta)`)
   for (const action of report.humanActions) console.log(`HUMAN  ${action.task}: ${action.action}`)

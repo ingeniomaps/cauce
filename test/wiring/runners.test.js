@@ -455,6 +455,21 @@ test('ningún archivo instalable nombra una invocación que su runner no tiene',
   assert.deepEqual(foreign, [])
 })
 
+// En sidecar `install` escribe en la carpeta de la compañía, que no es desde donde se corrió el comando, y
+// después nombra cada archivo por su ruta relativa —`.claude/workflows/autobuild.js`—, que leída desde la
+// instancia apunta a una carpeta vacía. La configuración ya avisaba dónde aterrizó; los workflows no, y son
+// los que se invocan **por nombre**: una sesión abierta en otra carpeta no encuentra ninguno, y el install
+// que acaba de decir «al día» es lo único que esa persona tiene para saber si se equivocó ella o el toolkit.
+test('en sidecar el install dice dónde quedaron los workflows, no sólo dónde la configuración', () => {
+  const { workspace, target, runCli } = installedProject('cauce-sidecar-workflows-')
+  const hecho = runCli(['automation', 'install', target, 'claude'])
+  assert.equal(hecho.status, 0)
+  const landed = path.join(workspace, '.claude', 'workflows')
+  assert.ok(fs.existsSync(path.join(landed, 'autobuild.js')), 'quedaron en la carpeta de la compañía')
+  assert.ok(hecho.stdout.includes(landed),
+    'y la salida los nombra desde la raíz en la que el runner tiene que estar parado para verlos')
+})
+
 // Cada archivo que un adaptador copia se lee desde donde se abre la herramienta, que en modo sidecar
 // no es la raíz ops. Una ruta sin `{{OPS_DIR}}` apunta a un lugar que no existe, y el modelo que la
 // sigue no encuentra el protocolo ni el catálogo. Se escapó tres veces revisando de a un archivo:
