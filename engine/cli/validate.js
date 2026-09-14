@@ -168,6 +168,10 @@ function check(dir, cli) {
   }
   // Y lo que instaló cada runner, contra esas mismas reglas (caso 099).
   warnings.push(...RL.staleLines(path.resolve(root, '..')))
+  // Y cuánto pesa lo que ese bloque carga, cuando ya se pasó del umbral. Es la contracara de la línea que
+  // `install` imprime al elegir: una instancia suma reglas de a una, cada una razonable, y el total no lo
+  // mira nadie hasta que una corrida sale cara.
+  warnings.push(...RL.heavyRules(path.resolve(root, '..')))
   // Misma regla para los cargos, que es donde más caro sale: un fork se hace una vez y se olvida.
   const FK = require('../agents/fork')
   for (const entry of FK.drift(path.resolve(root, '..'))) warnings.push(FK.driftLine(entry))
