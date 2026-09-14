@@ -6,6 +6,7 @@
 // instalar. Y como `upgrade` no reinstala, `check` y `doctor` comparan lo instalado con lo vigente.
 
 const fs = require('node:fs')
+const path = require('node:path')
 const F = require('../core/files')
 const O = require('../core/ownership')
 
@@ -20,14 +21,55 @@ const START_AT = '<!-- cauce:reglas inicio'
 // Lo que un `CLAUDE.md` o un `GEMINI.md` instalado antes de 0.82.0 trae en el lugar del bloque.
 const LEGACY_IMPORT = /^@\S*planning\/rules\/\S+\.md\s*$/
 
+// Una regla que declara `aplica:` rige igual, y se carga sólo cuando se toca esa superficie. Lo que se
+// ahorra está medido: el contexto de arranque de **cada** agente son ~16 K tokens sólo de lo que Cauce
+// pone, y una regla que importa en una tarea de cada cien se leía cien veces (caso 141).
+//
+// El default es lo que vuelve seguro esto: sin el campo, la regla se carga como siempre. Al revés —pedir
+// que declare `siempre` para seguir cargándose— cada instancia habría perdido sus reglas propias en el
+// próximo `upgrade`, una por una y sin que nada lo dijera.
+//
+// `effectiveRules` no cambia: sigue devolviendo todo lo que rige, que es lo que `ops context` le entrega
+// al recorrido. Acá sólo se decide qué se **carga**, y por eso la partición vive de este lado.
+const SURFACE = /^aplica:[ \t]*(\S.*?)[ \t]*$/m
+function surfaceOf(root, file) {
+  try {
+    const text = fs.readFileSync(path.join(root, file), 'utf8')
+    // Sólo en el frontmatter: un `aplica:` en la prosa de una regla es una frase, no una declaración.
+    if (!text.startsWith('---')) return ''
+    const end = text.indexOf('\n---', 3)
+    return end === -1 ? '' : ((text.slice(0, end).match(SURFACE) || [])[1] || '')
+  } catch { return '' }
+}
+
+// Las que se cargan y las que sólo se nombran. Las dos listas salen de la misma lectura para que el
+// bloque que se escribe y el aviso que lo audita no puedan discrepar: con dos recorridos, `doctor`
+// reportaría como faltante la que a propósito no se carga, para siempre y sin forma de callarlo.
+function split(root) {
+  const loaded = []
+  const named = []
+  for (const file of O.effectiveRules(root)) {
+    const surface = surfaceOf(root, file)
+    if (surface) named.push({ file, surface })
+    else loaded.push(file)
+  }
+  return { loaded, named }
+}
+
 // Sin raíz el marcador queda como está —así lo leen las pruebas que revisan el texto de un adaptador—: un
 // bloque vacío se leería igual que un proyecto sin reglas, y un marcador sin resolver se ve.
 function fill(text, root) {
   if (!root || !text.includes('{{RULES:')) return text
-  const rules = O.effectiveRules(root)
-  return text.replace(MARKER, (_, format) => [START, ...rules.map((file) => (format === 'imports'
-    ? `@{{OPS_DIR}}${file}`
-    : `- \`{{OPS_DIR}}${file}\``)), END].join('\n'))
+  const { loaded, named } = split(root)
+  return text.replace(MARKER, (_, format) => [
+    START,
+    ...loaded.map((file) => (format === 'imports' ? `@{{OPS_DIR}}${file}` : `- \`{{OPS_DIR}}${file}\``)),
+    // Nombrada y no cargada: pesa una línea en vez de su archivo entero, y quien la lea sabe qué la
+    // dispara. Va en el mismo bloque a propósito — fuera de él, una sesión que no corre un recorrido no
+    // se enteraría de que existe, y una regla que nadie sabe que existe es una que no rige.
+    ...named.map((one) => `- \`{{OPS_DIR}}${one.file}\` (aplica: ${one.surface})`),
+    END,
+  ].join('\n'))
 }
 
 function blockOf(text) {
@@ -69,6 +111,13 @@ function drift(root, name) {
   const { runnerManifest, runnerPaths, resolveItem } = require('./runners')
   const runner = runnerManifest(root, name)
   const paths = runnerPaths(root, name, runner)
+  // Contra todo lo que rige, y no contra la partición: una regla declarada por superficie igual aparece
+  // en el bloque —nombrada en vez de importada—, y `listed` extrae la ruta de las dos formas. Así que el
+  // audit la ve y no la extraña, sin que este lado tenga que saber que la partición existe.
+  //
+  // Se intentó filtrar acá por simetría con `fill` y no cambiaba nada: la mutación que lo revertía dejaba
+  // las pruebas en verde. Queda dicho porque la simetría es tentadora y el código que no altera ninguna
+  // conducta se lee como si sostuviera algo.
   const expected = O.effectiveRules(root)
   const found = []
   for (const item of [...(runner.instructions || []), ...(runner.artifacts || [])]) {

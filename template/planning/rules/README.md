@@ -26,3 +26,34 @@ lo hace—, y ahí queda exigida sin estar escrita en ningún lado. Por eso `che
 una regla nueva: si lo era, va acá al lado como `P1..Pn` y no se lleva nada puesto.
 
 Las convenciones específicas de lenguaje viven junto al servicio que usa ese lenguaje.
+
+## Una regla que sólo rige sobre una superficie
+
+Toda regla de este directorio se carga en el contexto de arranque de **cada** agente, y eso cuesta: sólo
+lo que trae Cauce son ~16 K tokens por agente, medido. Una regla propia de dos páginas que importa en una
+tarea de cada cien se lee cien veces.
+
+Una regla puede declarar a qué superficie pertenece, y entonces se **nombra** sin cargarse:
+
+```markdown
+---
+aplica: pagos
+---
+
+# Pagos
+
+## P3 — Conciliar antes de cerrar
+```
+
+Qué cambia: el bloque que `automation install` escribe la lista —`- ruta (aplica: pagos)`— en vez de
+importarla, así que pesa una línea y no su archivo entero. Sigue rigiendo igual: `ops context` la devuelve
+entre las reglas del proyecto, el recorrido se la nombra a cada agente que toca código, y quien trabaje
+sobre esa superficie la lee antes de planificar o construir.
+
+**Sin el campo, la regla se carga siempre.** Es el default a propósito: una regla que no se leyó no existe,
+así que apartarla del arranque es una decisión del proyecto y nunca algo que se deduzca. Por lo mismo el
+valor es libre y lo elige quien escribe la regla —`pagos`, `infraestructura`, `el front`—: lo que tiene que
+hacer es que quien lo lea sepa cuándo le toca.
+
+Conviene para lo que es de un dominio acotado —un proveedor, un stack, una integración— y no para lo que
+gobierna cómo se trabaja: esas se pagan y se cargan.

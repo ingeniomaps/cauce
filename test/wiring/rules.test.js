@@ -132,6 +132,41 @@ test('context dice qué reglas rigen, en texto y en --json', () => {
   assert.match(runCli(['context', planning]).stdout, /^RULES {2}.*planning\/rules\/security\.md/m)
 })
 
+// Las cuatro propiedades de una regla declarada por superficie, y la quinta que protege a las demás: que
+// una sin declarar no cambie. Por qué se decidió así lo explica `engine/automation/rules.js`, junto a la
+// partición; acá se mide que las cinco se cumplan a la vez, que es lo que ninguna sola asegura.
+test('una regla que declara su superficie se nombra sin cargarse, y una sin declarar no cambia', () => {
+  const { workspace, target, runCli } = installedProject('cauce-rules-superficie-', 'claude')
+  const rules = path.join(target, 'planning', 'rules')
+  fs.writeFileSync(path.join(rules, 'pagos.md'),
+    '---\naplica: pagos\n---\n\n# Pagos (propia)\n\n## P3 — Conciliar antes de cerrar\n\nRegla de la empresa.\n')
+  // La vecina sin frontmatter: el default de hoy, que este cambio no puede tocar.
+  fs.writeFileSync(path.join(rules, 'security.md'),
+    '# Seguridad (propia)\n\n## P2 — Autenticación cerrada por defecto\n\nRegla de la empresa.\n')
+  assert.equal(runCli(['automation', 'install', target, 'claude']).status, 0)
+  const text = read(path.join(workspace, 'CLAUDE.md'))
+
+  // 1. No se carga: es el token que se ahorra.
+  assert.doesNotMatch(text, /^@ops\/planning\/rules\/pagos\.md$/m, 'la condicional no entra como import')
+  // 2. Pero se ve, y con qué la dispara: nombrarla es lo único que la separa de no existir.
+  assert.match(text, /^- .*ops\/planning\/rules\/pagos\.md.*\(aplica: pagos\)/m, 'nombrada, con su superficie')
+  // 3. Y la que no declara nada sigue cargándose igual que antes de este cambio.
+  assert.match(text, /^@ops\/planning\/rules\/security\.md$/m, 'sin `aplica:` se carga como siempre')
+
+  // 4. `context` las devuelve las dos: es por donde el recorrido arma qué reglas rigen.
+  const { rules: rigen } = JSON.parse(runCli(['context', path.join(target, 'planning'), '--json']).stdout)
+  assert.ok(rigen.includes('planning/rules/pagos.md'), 'la condicional sigue rigiendo')
+  assert.ok(rigen.includes('planning/rules/security.md'))
+
+  // 5. Y el aviso de deriva calla, que es lo que evita que una instancia con una regla condicional pida
+  // reinstalar para siempre. Lo sostiene `listed`, que lee del bloque tanto los imports como las líneas
+  // nombradas, así que el audit ve la condicional y no la extraña.
+  assert.doesNotMatch(runCli(['check', path.join(target, 'planning')]).stderr, /claude: CLAUDE\.md/,
+    'recién instalado, nada que avisar')
+  assert.doesNotMatch(runCli(['automation', 'doctor', target, 'claude']).stderr, /no carga/,
+    'doctor no reporta como faltante la que a propósito no se carga')
+})
+
 // Un prompt que cita una regla por su número la exige aunque el proyecto la haya retirado, y a quien lee la
 // fila le promete un texto que en su instancia no existe (caso 105). Se mira lo que un runner instala, con los
 // includes resueltos; los comentarios de un workflow quedan afuera porque no los lee ningún agente.
