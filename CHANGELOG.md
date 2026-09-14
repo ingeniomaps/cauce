@@ -34,6 +34,23 @@ diseño — eso vive en el commit y en el código.
   salida explícita que `(sin partir: …)` y que `n/a — razón`. Se juzga condición por condición, así que
   declarar una no exime a las demás.
 
+- **Una regla propia puede declarar sobre qué superficie rige, y entonces se nombra sin cargarse.** Todo
+  lo que `planning/rules/` contiene viaja en el contexto de arranque de **cada** agente —medido: sólo lo
+  que trae Cauce son ~16 K tokens por agente—, así que una regla de dos páginas que importa en una tarea
+  de cada cien se leía cien veces.
+
+  Ahora una regla puede llevar `aplica: <superficie>` en su frontmatter. El bloque que escribe
+  `automation install` la lista —`- ruta (aplica: pagos)`— en lugar de importarla: pesa una línea en vez
+  de su archivo entero. **Sigue rigiendo igual**: `ops context` la devuelve entre las reglas del proyecto
+  y el recorrido se la nombra a cada agente que toca código, para que quien trabaje sobre esa superficie
+  la lea antes de planificar o construir.
+
+  **Sin el campo, la regla se carga como siempre, y por eso este cambio no te pide hacer nada.** El
+  default es ése a propósito: una regla que no se leyó no existe, así que apartarla del arranque es una
+  decisión del proyecto y nunca algo que se deduzca. El valor lo elegís vos —`pagos`,
+  `infraestructura`— y lo único que tiene que lograr es que quien lo lea sepa cuándo le toca. Conviene
+  para lo que es de un dominio acotado; lo que gobierna cómo se trabaja se paga y se carga.
+
 ### Corregido
 
 - **El ciclo de aprendizaje ya no te pide una firma por una propuesta que no decide nada.** El documento
