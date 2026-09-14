@@ -35,8 +35,8 @@ diseño — eso vive en el commit y en el código.
 
   **Si tenés revisiones firmadas con el molde adentro, no se van a poder aplicar**: sellar falla con
   «todavía no la decidió nadie» y el documento se queda en `proposed`. Escribiles el cambio y volvé a
-  firmarlas, o archivalas — archivar no pasa por esta puerta, porque archivar *es* decidir que no cambia
-  nada.
+  firmarlas, o archivalas: archivar sigue siendo una salida incluso para una que ya firmaste, y cómo
+  queda registrada lo explica la entrada de abajo.
 
 - **Los encabezados que un cargo usó en su respuesta ya no se vuelven secciones de su propuesta.** El
   hallazgo de un caso en rojo viaja con el contraste entero —eso es deliberado y no cambió—, y adentro
@@ -47,6 +47,22 @@ diseño — eso vive en el commit y en el código.
   Ahora bajan un nivel al componerse. No se pierde ni una línea del detalle, y las secciones del documento
   vuelven a ser sólo las del molde — que importa además porque sellar y aplicar ubican «Cambio propuesto»
   por su encabezado.
+
+- **Una propuesta que nadie decidió ya no deja al cargo sin salida ni le bloquea la siguiente.** Al frenar
+  el sellado de lo que no decide nada quedó un encierro: una propuesta firmada sobre el molde no se podía
+  aplicar —no decide nada— **ni** archivar —estaba firmada—, y mientras tanto su cargo no volvía a
+  proponer. La única salida era editar el frontmatter a mano, que es justo lo que este ciclo existe para
+  no pedirte.
+
+  Tres cosas cambian. **Archivar acepta una propuesta firmada cuando no decide nada**: lo que la guarda
+  cuida es que no se tire una decisión, y ahí no hay ninguna. **Una archivada deja de retener el
+  período**, así que el cargo puede proponer de nuevo — antes sólo una aplicada lo liberaba. Y **el
+  registro dice cuál de las dos cosas pasó**: archivar lo que alguien miró sigue diciendo «se miró y no
+  cambia nada», y archivar un documento que nadie llegó a llenar dice que se archivó sin decidir, en el
+  historial del cargo y en la salida del comando.
+
+  Una propuesta firmada **que sí decide** se sigue sin poder archivar: ahí la firma autorizó algo y lo
+  que corresponde es aplicarla.
 
 ## [0.87.0] - 2026-09-14
 
