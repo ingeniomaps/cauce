@@ -143,7 +143,13 @@ function scan(target, cli) {
   for (const service of result.services.slice(0, MAX_LISTED)) {
     // El proyecto que vive en la raíz se nombra por su carpeta: `.` a secas no dice de cuál se habla.
     const label = service.path === '.' ? `. (${path.basename(service.root || result.root)})` : service.path
-    const expects = service.env ? `\n    espera ${service.env.names.join(', ')} (${service.env.file})` : ''
+    // La lista llega entera —quien busca credenciales la necesita así, ver `core/scan.js`— y el recorte
+    // de pantalla se aplica acá, junto al de servicios de arriba y por la misma razón.
+    const shown = service.env ? service.env.names.slice(0, service.env.names.length - service.env.truncated) : []
+    const expects = service.env
+      ? `\n    espera ${shown.join(', ')}${service.env.truncated ? ` y ${service.env.truncated} más` : ''} `
+        + `(${service.env.file})`
+      : ''
     console.log(
       `${label} [${(service.runtimes || []).join(', ')}]${SC.commandsLine(service.commands)}${expects}`,
     )

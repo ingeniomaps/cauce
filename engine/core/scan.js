@@ -107,7 +107,12 @@ function manifestsOf(dir) {
 // diciendo «la credencial del proveedor» en vez de nombrarla.
 const ENV_EXAMPLES = ['.env.example', '.env.sample', '.env.template', '.env.dist']
 
-// Un ejemplo con cientos de variables es un archivo generado, no un contrato: se corta y se dice.
+// Un ejemplo con cientos de variables es un archivo generado, no un contrato: se corta lo que **se
+// lista** y se dice cuánto. Lo que no se corta es lo que se **mira**: hasta el 134 este número recortaba
+// las dos cosas, así que una credencial en la posición 41 no existía para quien busca credenciales sin
+// dueño —medido en una instancia real: dos, sobre las 61 variables de un servicio, y el único aviso era
+// que se había cortado—. Quién recorta para imprimir está en `cli/wiring.js`, junto al otro recorte de
+// ese mismo comando.
 const ENV_MAX = 40
 
 function expectedEnv(dir) {
@@ -122,7 +127,7 @@ function expectedEnv(dir) {
       .map((line) => line.replace(/^export\s+/, '').split('=')[0].trim())
       .filter((key) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(key))
     if (!names.length) return null
-    return { file: name, names: names.slice(0, ENV_MAX), truncated: Math.max(0, names.length - ENV_MAX) }
+    return { file: name, names, truncated: Math.max(0, names.length - ENV_MAX) }
   }
   return null
 }

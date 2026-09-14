@@ -1,14 +1,15 @@
 ---
 caso: 134
 titulo: El aviso de credenciales sin dueño corta en cuarenta variables por servicio, y en una instancia real las tres credenciales del servicio quedan del lado que no se mira
-estado: abierto
+estado: resuelto
+resuelto-en: 0.87.0
 prioridad: media
 version-detectada: 0.86.0
 ---
 
 # 134 — Las credenciales sin dueño de un servicio grande caen pasado el tope
 
-**🔴 abierto**
+**🟢 resuelto en 0.87.0**
 
 ## Resumen
 
@@ -133,3 +134,64 @@ instancia, y eso es parte del hallazgo: con un solo ejemplar el aviso se ve corr
 - **107** — midió la otra mitad del criterio: 16 de 72 variables sensibles no tienen forma de secreto en
   el nombre. Aquél es sobre las que el nombre no delata; éste sobre las que sí y no se miran igual.
 - **111** — salió de la misma reproducción del 102.
+
+## Cierre
+
+**🟢 resuelto en 0.87.0** · `engine/core/scan.js`, `engine/core/onboarding.js`, `engine/cli/wiring.js`,
+`test/planning/orphan-credentials.test.js`
+
+Se tomó la **opción 1**: el tope recorta lo que se **lista** y ya no lo que se **mira**. `expectedEnv`
+devuelve los nombres completos, `truncated` sigue contando lo que no se lista, y el recorte de pantalla se
+aplica en `cli/wiring.js`, junto al otro recorte que ese mismo comando ya tenía.
+
+### Contra lo que el caso enumeró
+
+- **Resumen: «hay dos credenciales sin dueño y el aviso no puede verlas»** — arreglado y comprobado contra
+  la misma instancia: `gouduet-ops` ahora acusa `DB_PASSWORD (keycloak), INFISICAL_ADMIN_TOKEN (keycloak)`
+  por nombre. `venotal-ops` sigue sin avisos, así que el cambio no fabricó falsos positivos.
+- **Opción 1, analizar todo y mostrar recortado** — es la construida.
+- **Opción 2, filtrar por `SENSITIVE` antes de recortar** — se decidió que no, y por medición: el costo que
+  la 1 supuestamente tenía no existe. De seis `.env.example` en las dos instancias reales, **uno solo**
+  pasa el tope —`keycloak`, con 61—; el resto va de 2 a 34. Partir el criterio en dos lugares para ahorrar
+  eso no se paga.
+- **Opción 3, subir `ENV_MAX`** — se decidió que no, por lo que el propio caso decía: mueve el problema al
+  siguiente `.env.example` más largo.
+- **«Lo que hoy avisa tiene que seguir avisando»** — sigue, y cambió de sentido con el texto: de «sin
+  revisar… lo que quedó afuera puede incluir una credencial» a «el ejemplo se lista recortado; las
+  credenciales se buscan igual sobre el archivo entero». Un caso lo fija y además asercia que el texto
+  viejo **no** vuelva.
+- **Tradeoff «es un aviso, no un bloqueo»** — sin cambios: sigue siendo advertencia.
+- **Tradeoff «la opción 1 hace leer más»** — medido y descartado arriba.
+- **Tradeoff «la 2 parte el criterio en dos lugares»** — por eso no se tomó.
+- **Tradeoff «ninguna arregla el secreto mal nombrado»** — cierto y sin tocar: el criterio sigue siendo el
+  nombre, y el 107 ya midió esa otra mitad.
+- **Prioridad: «sube a alta si aparece en un servicio cuyas credenciales sean de producción»** — la
+  condición deja de poder cumplirse en silencio: ya no hay credencial que el tope esconda.
+
+### Lo que el caso no preveía
+
+- **`wiring.js` también consumía la lista**, y el caso no lo nombraba. Es quien imprime `espera …` en
+  `scan`, así que devolver los nombres completos sin más habría pasado de listar 40 a listar 61 — justo lo
+  que el tope existe para evitar. Ahí estaba la pista del diseño: ese comando **ya** recorta servicios y lo
+  anuncia, con el comentario que da el principio entero —«un corte que no se anuncia hace pasar lo listado
+  por todo lo que hay»—. El repositorio ya distinguía listar de mirar en un lugar y no en el otro; la
+  opción 1 no inventa un criterio, extiende el que estaba.
+- **Una prueba existente describía el defecto en vez de la conducta.** «Lo que pasa del tope se dice en vez
+  de callarlo» montaba 40 variables de configuración más un `DB_PASSWORD` al final —el caso en miniatura— y
+  pasaba **aceptando** que la credencial no se mirara. Se reescribió para exigir que se acuse.
+- **El arreglo introdujo un defecto y su propia prueba lo atrapó.** Con `names` completo, el conteo del
+  aviso —`names.length + truncated`— pasó a contar dos veces lo mismo: decía «1 de 82» donde eran 61. Lo
+  marcó en rojo la prueba del recorte, que era la única que quedaba mirando ese número.
+
+### Qué se corrió
+
+- **Rojo previo**: 1 de 7 en rojo —la que exige que la credencial de la posición 41 se acuse— y 6 en
+  verde, incluida la que fija que el aviso de recorte sigue. El desglose descarta que el roto fuera el
+  arnés.
+- **Verde**: 7 de 7, `npm run ci` en 0 y la suite en **809 pruebas, 809 en verde**.
+- **Contra lo real, que es lo que originó el caso**: `gouduet-ops` acusa las dos credenciales por nombre;
+  `venotal-ops` sigue en cero. Y `scan` sobre un servicio de 61 variables imprime 40 y dice «y 21 más»,
+  mientras `--json` sigue trayendo las 61.
+- **Tres mutaciones en copia por `tar`, con verde de control antes y después.** Volver a recortar el
+  análisis mata dos casos; devolver el conteo duplicado mata al del recorte; quitar el aviso de recorte
+  mata al suyo. Ninguna sobrevivió.

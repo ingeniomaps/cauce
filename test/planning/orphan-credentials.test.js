@@ -118,9 +118,22 @@ test('el aviso distingue dos raíces que terminan en la misma carpeta', () => {
   assert.doesNotMatch(line, /\(keycloak\)/, 'la carpeta ya no nombra a ninguna de las dos')
 })
 
-test('lo que pasa del tope del escaneo se dice en vez de callarlo', () => {
+// La posición 41, que es donde el 134 encontró dos credenciales invisibles en una instancia real. Por qué
+// el tope recorta la lista y no el análisis está en `core/scan.js`, junto a la constante.
+test('una credencial pasado el tope del escaneo se acusa igual', () => {
   const config = Array.from({ length: 40 }, (_, index) => `CONFIG_${index}=`).join('\n')
   const { ops } = instance('cauce-102-tope-', 'embedded', `${config}\nDB_PASSWORD=\n`)
   const all = warnings(ops).join('\n')
+  assert.match(all, /DB_PASSWORD/, 'la credencial de la posición 41 se nombra')
+  assert.match(all, /credenciales por nombre sin dueño/)
+})
+
+// Y el aviso de recorte sigue existiendo, porque un corte que no se anuncia hace pasar lo listado por
+// todo lo que hay. Lo que cambió es lo que promete: no «no miré esto» sino «no te listo todo».
+test('el recorte de la lista se sigue diciendo', () => {
+  const config = Array.from({ length: 40 }, (_, index) => `CONFIG_${index}=`).join('\n')
+  const { ops } = instance('cauce-102-recorte-', 'embedded', `${config}\nDB_PASSWORD=\n`)
+  const all = warnings(ops).join('\n')
   assert.match(all, /pasado el tope de variables por servicio: api \(1 de 41\)/)
+  assert.doesNotMatch(all, /sin revisar|quedó afuera puede incluir/, 'ya no promete ceguera')
 })
