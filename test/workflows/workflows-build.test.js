@@ -239,3 +239,25 @@ test('un bloqueo conserva lo que las etapas anteriores ya resolvieron', () => {
   assert.match(flow, /ya quedó establecido/, 'y llega al prompt que escribe la acción humana')
   assert.match(flow, /es el trabajo que ya se pagó/)
 })
+
+// La única de este archivo que **renderiza** en vez de leer el fuente, y tiene que ser así: en el fuente
+// `ROOT` es un marcador y se ve idéntico en los tres modos, así que leerlo no dice nada sobre lo que
+// recibe una empresa. Lo que se juzga es el archivo ya instalado, en los tres modos que existen.
+//
+// Por qué tiene que anclar lo explica `shared/workflow-root.js`, donde se decide.
+test('en una instancia instalada, ROOT ancla y no depende de dónde esté parado el agente', () => {
+  const A = require('../../engine/automation')
+  const auto = path.resolve(__dirname, '..', '..', 'automatization')
+  const rootOf = (prefix, opsRoot) => {
+    const linea = A.render(path.join(WF, 'autobuild.js'), prefix, auto, opsRoot)
+      .split('\n').find((one) => one.includes('const ROOT ='))
+    // Se evalúa la línea en vez de compararla como texto: lo que importa es el valor con el que arrancan
+    // los agentes, no cómo está escrita la expresión que lo produce.
+    return new Function(`${linea}; return ROOT`)()
+  }
+
+  assert.equal(rootOf('empresa-ops/', '/abs/empresa/empresa-ops'), '/abs/empresa/empresa-ops',
+    'en sidecar, la raíz que el instalador conoce y no el prefijo relativo al workspace')
+  assert.equal(rootOf('', '/abs/empresa'), '/abs/empresa', 'y en embedded, la raíz de la instancia')
+  assert.equal(rootOf('', ''), '.', 'sin instalar sigue valiendo el directorio actual')
+})

@@ -78,7 +78,7 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
     // El instalado no es una copia literal: lleva resuelto dónde quedó la raíz ops y los fragmentos
     // que comparte con los demás workflows, así que se compara contra el mismo render que lo escribió.
     const automation = path.join(target, 'node_modules', '@ingeniomaps', 'cauce', 'automatization')
-    const rendered = require('../../engine/automation').render(sourceWorkflow, 'demo-ops/', automation)
+    const rendered = require('../../engine/automation').render(sourceWorkflow, 'demo-ops/', automation, target)
     assert.equal(fs.readFileSync(installedWorkflow, 'utf8'), rendered)
   }
   assert.equal(fs.existsSync(path.join(target, 'automatization', 'workflows')), false)

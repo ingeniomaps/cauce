@@ -21,7 +21,7 @@ const unmeasuredNote = (unmeasured) => (unmeasured.length
 // —trabajaron ahí— y el repositorio las rechaza: una ruta bajo el `/home` de alguien no le sirve a nadie
 // más y ata el documento a un directorio que en otra máquina no existe.
 //
-// La raíz no siempre la trae `root`: `{{OPS_DIR}}` lo completa `automation install`, y en el repositorio
+// La raíz no siempre la trae `root`: `{{OPS_ROOT}}` lo completa `automation install`, y en el repositorio
 // del toolkit —que no se instala a sí mismo— queda vacío y `ROOT` vale `.`. Cuando falta, la revela el
 // propio texto: cualquier ruta del banco la lleva adelante. Con ella se recorta también la que apunta a la
 // raíz sin nada detrás, que es la que se escapó el 2026-08-31 después de dos arreglos que cubrían el caso

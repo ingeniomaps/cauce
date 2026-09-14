@@ -252,10 +252,13 @@ const CONTRACT = {
   required: ['project', 'workspaceRoots', 'maxTaskHours', 'commitPerTask', 'humanCheckpoint', 'contracts',
     'rootOk'],
   properties: {
-    // `ROOT` viaja escrito en el workflow y es relativo al cwd de los agentes: si la sesión abrió en otra
-    // carpeta, todas las rutas resuelven a `<raíz>/<raíz>/…` y ninguna existe. Nada lo comprobaba, y el
-    // recorrido gastaba Triage entero sobre archivos ausentes antes de parar más abajo por otra causa,
-    // nombrando el planning en vez de la raíz de la que ese planning cuelga.
+    // `ROOT` viaja escrito en el workflow y lo completa el instalador. Nada comprobaba que esa raíz se
+    // pudiera leer, y el recorrido gastaba Triage entero sobre archivos ausentes antes de parar más abajo
+    // por otra causa, nombrando el planning en vez de la raíz de la que ese planning cuelga.
+    //
+    // Lo que rompía era que fuera relativa: abierta la sesión en otra carpeta, todo resolvía a
+    // `<raíz>/<raíz>/…` y nada existía. Desde 0.89.0 es absoluta y ese modo de fallo se fue, pero el campo
+    // sigue haciendo falta — una raíz absoluta se rompe si alguien mueve el proyecto sin reinstalar.
     //
     // Se pregunta acá porque acá ya se leen los cuatro archivos: cuesta un campo y ningún agente más.
     rootOk: { type: 'boolean' },
@@ -336,8 +339,8 @@ if (!contract) return stop('contract-unavailable', `no se pudo leer ${CONFIG} ni
 // Falla acá y nombrando la raíz, que es lo que hace falta para arreglarlo: parar más abajo mandaba a
 // revisar el planning, y el planning está bien — lo que no existe es la carpeta de la que cuelga.
 if (!contract.rootOk) {
-  return stop('root-unreadable', `${ROOT} no se pudo leer entero. Es una ruta relativa a la carpeta `
-    + `donde se abre la herramienta: comprobá desde dónde estás corriendo el recorrido.`)
+  return stop('root-unreadable', `${ROOT} no se pudo leer entero. Es la raíz absoluta que escribió `
+    + `"automation install": comprobá que exista y, si moviste el proyecto de carpeta, reinstalá el adaptador.`)
 }
 
 const bounds = contract.boundaries || []
