@@ -127,7 +127,9 @@ function orphanCredentials(root) {
     for (const name of env.names || []) {
       if (sensitiveKey(name) && !named(contracts, name)) orphans.push({ name, service: service.path })
     }
-    if (env.truncated) cut.push(`${service.path} (${env.truncated} de ${env.names.length + env.truncated})`)
+    // `names` llega entero desde el 134 —el tope recorta lo que se lista, no lo que se mira—, así que el
+    // total es su largo a secas: sumarle `truncated` contaría dos veces lo mismo.
+    if (env.truncated) cut.push(`${service.path} (${env.truncated} de ${env.names.length})`)
   }
   const warnings = []
   if (orphans.length) {
@@ -141,11 +143,12 @@ function orphanCredentials(root) {
       + 'organization/workspace.md o en una fila de planning/HUMAN_ACTIONS.md; el criterio es el nombre, así '
       + 'que una credencial con nombre de configuración no aparece acá')
   }
-  // El escaneo corta cada ejemplo en un tope, y lo que quedó afuera no se miró: con el filtro, puede ser
-  // justo la credencial.
+  // El tope recorta lo que se **lista**, no lo que se mira: las credenciales de arriba salen del ejemplo
+  // entero. Esto se sigue diciendo porque un corte que no se anuncia hace pasar lo listado por todo lo que
+  // hay —y hasta el 134 además cegaba el análisis, que es de donde viene la redacción vieja—.
   if (cut.length) {
-    warnings.push(`sin revisar por credenciales sin dueño, pasado el tope de variables por servicio: `
-      + `${cut.join(', ')} — lo que quedó afuera puede incluir una credencial que nadie carga`)
+    warnings.push(`pasado el tope de variables por servicio: ${cut.join(', ')} — el ejemplo se lista `
+      + 'recortado; las credenciales se buscan igual sobre el archivo entero')
   }
   return warnings
 }
