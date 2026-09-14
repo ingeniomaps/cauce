@@ -14,6 +14,34 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.88.0] - 2026-09-14
+
+### Corregido
+
+- **Una revisión de propuesta que nadie decidió ya no puede cerrar el ciclo.** Cuando un cargo tiene su
+  propuesta del período aplicada y aparece material nuevo, el ciclo abre una **revisión**, y su sección
+  «Cambio propuesto» llega con el texto del molde hasta que alguien escribe el cambio. Ese texto empezaba
+  con «Una revisión suele no ser aditiva…», y el criterio que detecta una propuesta sin decidir reconoce lo
+  que empieza con «Por definir» o «Pendiente» — así que a las revisiones no las veía.
+
+  El resultado era que una revisión se podía firmar, mergear y **sellar como aplicada** con el molde
+  adentro: el ciclo llegaba a su estado terminal sin que nadie hubiera decidido nada, y el cargo quedaba
+  habilitado a abrir la siguiente como si hubiera aprendido algo. Pasó con siete cargos el 2026-09-14.
+
+  Ahora el molde de una revisión empieza por «Por definir», igual que el de una propuesta nueva y el de un
+  recorrido, y sellar sin decidir falla con «todavía no la decidió nadie». Si tenés revisiones firmadas con
+  el molde adentro, no se van a poder aplicar: escribiles el cambio y volvé a firmarlas, o archivalas.
+
+- **Los encabezados que un cargo usó en su respuesta ya no se vuelven secciones de su propuesta.** El
+  hallazgo de un caso en rojo viaja con el contraste entero —eso es deliberado y no cambió—, y adentro
+  venía la respuesta con la estructura que el cargo eligió. Sus `##` quedaban al mismo nivel que
+  «Hallazgos» o «Cambio propuesto» y pasaban por secciones del documento: dos propuestas del 2026-09
+  llegaron con once y siete secciones que no eran suyas.
+
+  Ahora bajan un nivel al componerse. No se pierde ni una línea del detalle, y las secciones del documento
+  vuelven a ser sólo las del molde — que importa además porque sellar y aplicar ubican «Cambio propuesto»
+  por su encabezado.
+
 ## [0.87.0] - 2026-09-14
 
 ### Corregido
