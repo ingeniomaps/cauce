@@ -479,6 +479,11 @@ function install(root, name, output = console, options = {}) {
   // `autobuild`—; el prefijo lo pone cada uno según su espacio de nombres, y esa diferencia es la que
   // hace que alguien no encuentre en Gemini lo que usó en Claude. Decirlo al instalar cuesta una línea
   // y ahorra buscarlo en una lista tan larga como el catálogo.
+  // Lo que ese bloque va a costar, dicho donde se decide. Escribir una regla propia encarece todas las
+  // corridas futuras de todos los agentes, y hasta acá había que sumar los tamaños a mano después de una
+  // corrida cara para enterarse (caso 141). Se declara siempre, pase o no el umbral: `check` avisa cuando
+  // ya pesa, y esto informa mientras todavía se está eligiendo.
+  output.log(`  ${name}: ${RL.weightLine(root)}`)
   const invocation = runner.commands && runner.commands.invocation
   if (invocation && (runner.commands.names || []).length) {
     const listing = runner.commands.names.map((nombre) => invocation.replace('{name}', nombre))

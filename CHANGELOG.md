@@ -35,9 +35,9 @@ diseño — eso vive en el commit y en el código.
   declarar una no exime a las demás.
 
 - **Una regla propia puede declarar sobre qué superficie rige, y entonces se nombra sin cargarse.** Todo
-  lo que `planning/rules/` contiene viaja en el contexto de arranque de **cada** agente —medido: sólo lo
-  que trae Cauce son ~16 K tokens por agente—, así que una regla de dos páginas que importa en una tarea
-  de cada cien se leía cien veces.
+  lo que `planning/rules/` contiene viaja en el contexto de arranque de **cada** agente —medido: sólo las
+  cuatro reglas que trae Cauce son 38,3 KB por agente—, así que una regla de dos páginas que importa en
+  una tarea de cada cien se leía cien veces.
 
   Ahora una regla puede llevar `aplica: <superficie>` en su frontmatter. El bloque que escribe
   `automation install` la lista —`- ruta (aplica: pagos)`— en lugar de importarla: pesa una línea en vez
@@ -50,6 +50,24 @@ diseño — eso vive en el commit y en el código.
   decisión del proyecto y nunca algo que se deduzca. El valor lo elegís vos —`pagos`,
   `infraestructura`— y lo único que tiene que lograr es que quien lo lea sepa cuándo le toca. Conviene
   para lo que es de un dominio acotado; lo que gobierna cómo se trabaja se paga y se carga.
+
+- **`automation install` te dice lo que ese bloque va a pesar, y `check` avisa cuando ya pesa demasiado.**
+  Escribir una regla propia encarece todas las corridas futuras de todos los agentes, y hasta acá no lo
+  decía nadie: había que sumar los tamaños a mano después de una corrida cara para enterarse.
+
+  Al instalar, una línea declara cuántos archivos carga el bloque, cuánto pesan y cuáles son los dos más
+  grandes —`el bloque de reglas carga 4 archivo(s), 38.3 KB en cada agente (las más grandes: conduct.md,
+  process.md)`—. Y `check` lo repite como advertencia cuando el total pasa de **64 KB**, que es el umbral
+  elegido para dejar unos 26 KB de reglas propias por encima del piso que trae Cauce: más abajo avisaría
+  en toda instancia recién creada y se apagaría por ruido el primer día.
+
+  **El número va en KB y no en tokens** a propósito. Los bytes los mide el motor y se pueden comprobar;
+  la equivalencia en tokens depende del modelo y del tokenizador, y una cifra estimada en una salida que
+  se cita para decidir vale menos que una exacta. Como referencia, en el repositorio de Cauce esos 38,3 KB
+  rondaron los 10 K tokens medidos una vez, pero eso es una observación y no un factor de conversión.
+
+  Una regla declarada con `aplica:` no suma en ninguno de los dos números: es justamente lo que se apartó
+  del arranque, y contarla haría que declararla no sirviera de nada.
 
 ### Corregido
 

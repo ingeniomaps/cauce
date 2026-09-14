@@ -56,6 +56,51 @@ function split(root) {
   return { loaded, named }
 }
 
+// Cuánto pesa lo que el bloque carga, en bytes. En bytes y no en tokens a propósito: los bytes los mide
+// el motor y se pueden comprobar, mientras que la equivalencia en tokens depende del modelo y del
+// tokenizador. Un número estimado en una salida que alguien cita para decidir vale menos que uno exacto.
+//
+// Sólo `loaded`: una regla declarada por superficie no viaja en el arranque, y contarla haría que
+// declararla no sirviera de nada. Vive acá —y no en quien lo imprime— porque lo miran dos, `install` al
+// instalar y `check` en cada corrida, y con dos cuentas separadas se contradicen el día que alguien toque
+// una sola.
+function weight(root) {
+  const { loaded } = split(root)
+  let bytes = 0
+  const files = []
+  for (const file of loaded) {
+    try {
+      const size = fs.statSync(path.join(root, file)).size
+      bytes += size
+      files.push({ file, size })
+    } catch { /* la que no está en disco ya la reporta `check` por su lado */ }
+  }
+  return { count: loaded.length, bytes, files: files.sort((a, b) => b.size - a.size) }
+}
+
+const KB = (bytes) => `${(bytes / 1024).toFixed(1)} KB`
+
+// A partir de dónde el peso deja de ser el costo de arrancar y pasa a ser una decisión que conviene mirar.
+// El piso que Cauce impone —las cuatro reglas del sistema— son 38,3 KB, así que un umbral por debajo de
+// eso avisaría en toda instancia recién creada y se apagaría por ruido el primer día: eso descartó los
+// 60 KB que el caso 141 proponía. 64 KB deja ~26 KB para lo propio, que son varias reglas de tamaño
+// normal, antes de que el aviso hable.
+const HEAVY = 64 * 1024
+
+// La línea que declara el peso, para que la digan igual `install` y `check`. Nombra las dos más grandes
+// porque es lo accionable: saber que el bloque pesa no dice cuál conviene declarar por superficie.
+function weightLine(root) {
+  const { count, bytes, files } = weight(root)
+  const top = files.slice(0, 2).map((one) => path.basename(one.file)).join(', ')
+  return `el bloque de reglas carga ${count} archivo(s), ${KB(bytes)} en cada agente`
+    + (top ? ` (las más grandes: ${top})` : '')
+}
+
+// Sólo cuando pasó el umbral. Devuelve lista porque es lo que `check` empalma con el resto de avisos.
+function heavyRules(root) {
+  return weight(root).bytes > HEAVY ? [weightLine(root)] : []
+}
+
 // Sin raíz el marcador queda como está —así lo leen las pruebas que revisan el texto de un adaptador—: un
 // bloque vacío se leería igual que un proyecto sin reglas, y un marcador sin resolver se ve.
 function fill(text, root) {
@@ -168,4 +213,4 @@ function staleLines(root) {
   return lines
 }
 
-module.exports = { fill, refresh, drift, driftLine, staleLines }
+module.exports = { fill, refresh, drift, driftLine, staleLines, split, weightLine, heavyRules }

@@ -167,6 +167,48 @@ test('una regla que declara su superficie se nombra sin cargarse, y una sin decl
     'doctor no reporta como faltante la que a propósito no se carga')
 })
 
+// Escribir una regla propia encarece todas las corridas futuras de todos los agentes, y hasta acá eso no
+// lo decía nadie: había que sumar los tamaños a mano después de una corrida cara (caso 141). Las dos
+// mitades de decirlo son distintas — `install` lo declara cuando se elige, `check` avisa cuando ya pesa—
+// y las dos cuentan lo mismo: lo que el bloque **carga**. Una regla con `aplica:` no suma, porque si
+// sumara declararla no serviría de nada.
+// ~18,6 KB cada una. El tamaño está elegido para que el banco tenga margen de los dos lados: con las dos
+// el bloque llega a 75,5 KB y cruza, y quitando una queda en 56,9 KB y no. Ajustado más fino —tres de 13
+// KB— quitar una dejaba 64,4 KB, que sigue cruzando por 400 bytes, y la prueba habría culpado al motor.
+const heavyRule = (n) => `# Propia ${n}\n\n## P${n} — Regla de la empresa\n\n${'Texto de la regla. '.repeat(1000)}\n`
+
+test('install declara lo que el bloque de reglas va a pesar en cada agente', () => {
+  const { target, runCli } = installedProject('cauce-rules-peso-')
+  const salida = runCli(['automation', 'install', target, 'claude'])
+  assert.equal(salida.status, 0, salida.stderr)
+  // En bytes y no en tokens: los bytes los mide el motor, y la equivalencia en tokens depende del
+  // modelo. Un número inventado en la salida es peor que uno exacto, porque se cita para decidir.
+  assert.match(salida.stdout, /claude: el bloque de reglas carga 4 archivo\(s\), 3[89]\.\d KB en cada agente/,
+    'declara cuántas y cuánto pesan')
+})
+
+test('check avisa cuando el bloque se pasa del umbral, y calla en una instancia limpia', () => {
+  const { target, runCli } = installedProject('cauce-rules-umbral-', 'claude')
+  const planning = path.join(target, 'planning')
+  assert.doesNotMatch(runCli(['check', planning]).stderr, /bloque de reglas/,
+    'recién creada no avisa: el piso que trae Cauce no es deuda de nadie')
+
+  const rules = path.join(target, 'planning', 'rules')
+  for (const n of [1, 2]) fs.writeFileSync(path.join(rules, `P${n}-propia.md`), heavyRule(n))
+  assert.equal(runCli(['automation', 'install', target, 'claude']).status, 0)
+  const avisa = runCli(['check', planning])
+  assert.equal(avisa.status, 0, 'avisa y no frena: la instancia sigue siendo válida')
+  assert.match(avisa.stderr, /el bloque de reglas carga 6 archivo\(s\), \d+\.\d KB en cada agente/,
+    'dice cuánto pesa')
+  assert.match(avisa.stderr, /P1-propia\.md/, 'y nombra las más grandes, que es lo accionable')
+
+  // Y una regla declarada por superficie no cuenta: es justamente lo que se apartó del arranque.
+  fs.writeFileSync(path.join(rules, 'P1-propia.md'), `---\naplica: pagos\n---\n\n${heavyRule(1)}`)
+  assert.equal(runCli(['automation', 'install', target, 'claude']).status, 0)
+  assert.doesNotMatch(runCli(['check', planning]).stderr, /bloque de reglas/,
+    'declarada por superficie, deja de pesar y el aviso calla')
+})
+
 // Un prompt que cita una regla por su número la exige aunque el proyecto la haya retirado, y a quien lee la
 // fila le promete un texto que en su instancia no existe (caso 105). Se mira lo que un runner instala, con los
 // includes resueltos; los comentarios de un workflow quedan afuera porque no los lee ningún agente.
