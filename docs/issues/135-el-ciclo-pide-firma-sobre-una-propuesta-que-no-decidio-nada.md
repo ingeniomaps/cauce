@@ -151,11 +151,22 @@ changes` (el cambio, escrito aparte), y recién después la firma.
 
 ## Cierre
 
-**🟢 resuelto en 0.88.0** · `engine/agents/learning.js`, `test/agents/learning.test.js`
+**🟢 resuelto en 0.88.0** · `engine/agents/learning.js`, `engine/agents/learning-files.js`,
+`engine/agents/learning-seal.js`, `test/agents/learning.test.js`
 
-Se tomó la **opción 1**: el placeholder de una revisión empieza por «Por definir», como los de una
-propuesta nueva y los de un recorrido. Una línea de prosa, y con ella el criterio único que ya existía
-—`/^(por definir|pendiente)\b/` en `engine/agents/learning-seal.js`— pasa a verla. No se agregó ninguna
+Hicieron falta **dos** cambios, y el segundo apareció porque el primero se comprobó contra lo real en vez
+de darlo por bueno.
+
+El primero es la **opción 1**: el placeholder de una revisión empieza por «Por definir», como los de una
+propuesta nueva y los de un recorrido. Con eso el criterio que ya existía —`/^(por definir|pendiente)\b/`—
+ve lo que se componga de ahora en más. **No alcanzaba**: los documentos ya escritos no cambian, y los
+siete que originaron el caso seguían sellándose. El segundo mueve ese criterio al módulo que comparten el
+que compone y el que sella —`learning-files.js`— y le agrega el molde viejo **por coincidencia exacta**.
+
+Tiene que ser exacta y eso se midió: quien redacta suele continuar la frase del molde en vez de borrarla
+—`qa-engineer/2026-08-r2.md` dice «Una revisión suele no ser aditiva, **y ésta lo es en parte**: …» y
+decide de verdad—, así que comparar por el principio marcaría como vacío lo que está lleno. No se agregó
+ninguna
 puerta nueva ni se acopló `seal` al texto del molde.
 
 ### Contra lo que el caso enumeró
@@ -177,10 +188,14 @@ puerta nueva ni se acopló `seal` al texto del molde.
 - **Opción 3, que el ciclo corra `/agent-propose`** — se decidió que no acá: mete un modelo en un job
   diseñado a propósito sin ninguno, y el defecto se cerraba sin eso. Sigue siendo el paso que falta para
   que el ciclo se complete solo, y eso es trabajo de otra unidad.
-- **«Las siete propuestas ya firmadas hay que resolverlas»** — **sigue pendiente y no le toca a este
-  caso**: son documentos escritos, no código. Con el arreglo puesto ninguna puede sellarse, así que la
-  condición que las bloquea es ahora visible en vez de silenciosa. Se resuelven escribiéndoles el cambio
-  y volviendo a firmar, o archivándolas.
+- **«Las siete propuestas ya firmadas hay que resolverlas»** — **el caso sí tuvo que ocuparse de ellas, y
+  descubrirlo costó una afirmación falsa.** Este cierre decía «con el arreglo puesto ninguna puede
+  sellarse» cuando el arreglo era sólo el del molde, y medirlo contra las siete mostró lo contrario: las
+  siete se sellaban, **exit 0 y `status: applied`**. Es el modo de fallo que R9 nombra —comprobar que lo
+  nuevo aparece y no que lo viejo se fue—: lo había verificado en un banco sintético y no contra los
+  documentos que originaron el caso. De ahí salió el segundo cambio. Escribirles el cambio y volver a
+  firmarlas, o archivarlas, sigue siendo trabajo de quien las tenga; lo que ya no pueden es cerrar el
+  ciclo solas.
 - **Tradeoff «la opción 1 hace que el ciclo produzca menos»** — no ocurrió: no se tocó cuándo se abre un
   PR, así que el ciclo produce lo mismo.
 - **Tradeoff «el placeholder no es el defecto»** — se respetó: el texto conserva entera su instrucción y
@@ -208,4 +223,11 @@ puerta nueva ni se acopló `seal` al texto del molde.
   placeholder y correr `learn probe-engineer --applied --period 2026-09` salía **0** y dejaba
   `status: applied`. Después, sale **2** con «todavía no la decidió nadie» y el documento queda en
   `status: proposed`.
-- **Verde**: `npm run ci` en 0 y la suite entera en verde.
+- **Contra las siete propuestas reales, en copia por `tar`** — la medición que faltaba y que destapó el
+  segundo hueco. Con el primer arreglo: **7 de 7 con exit 0 y `status: applied`**. Con el segundo: **7 de
+  7 con exit 2**, el mensaje «todavía no la decidió nadie» y las siete quedando en `status: proposed`.
+- **El falso positivo, que era el riesgo del segundo arreglo**: una revisión que continúa la frase del
+  molde para decir qué cambia **sigue sellando** —exit 0, `status: applied`—. Marcar de más habría roto
+  trabajo legítimo, y es lo que le pasó a `qa-engineer/2026-08-r2.md` si el criterio mirara el principio.
+- **Verde**: `npm run ci` en 0, **813 pruebas** y la cobertura de `learning-files.js` en 93,94 % de ramas
+  contra un piso de 92 %.
