@@ -1,15 +1,16 @@
 ---
 caso: 141
 titulo: El bloque de reglas viaja entero en el contexto de arranque y nadie mide cuánto pesa, así que escribir una regla propia cobra un peaje que no se ve
-estado: abierto
+estado: resuelto
+resuelto-en: 0.89.0
 prioridad: media
 version-detectada: 0.87.0
 ---
 
 # 141 — El contexto de arranque trae todas las reglas, y nada dice lo que eso cuesta
 
-**🔴 abierto** · detectado en 0.87.0 · prioridad **media** — **verificado el 2026-09-14**: el bloque viaja
-en el contexto de **cada** agente, son ~16 K tokens por agente, y nada lo mide
+**🟢 resuelto en 0.89.0** · detectado en 0.87.0 · prioridad **media** — el bloque viaja en el contexto de
+**cada** agente; ahora se mide, se declara al instalar, se avisa pasado un umbral y se puede apartar
 
 ## Resumen
 
@@ -143,8 +144,9 @@ rutas en vez de texto a cada subagente que toca código, así que lo que la 2 ah
 archivo de contexto, no el preámbulo. Sigue siendo el arreglo de fondo — 175 K tokens por corrida en este
 repositorio, y más en una instancia con reglas propias— pero no es «el 21 % de la corrida».
 
-**Queda por decidir**, y no lo decide este caso: si la 2 se construye, y con qué contrato. Su tradeoff es
-el de abajo y no cambió.
+**Quedaba por decidir** si la 2 se construía y con qué contrato — no lo decidía este caso. **Se decidió
+que sí**, con el contrato que el Cierre detalla: `aplica: <superficie>` aparta, y sin campo la regla se
+carga como siempre. Su tradeoff es el de abajo y no cambió.
 
 ## Tradeoffs
 
@@ -170,3 +172,78 @@ con ocho reglas propias más, es bastante más. El porcentaje de aquella corrida
 - **140** — el otro hallazgo de la misma corrida: la aceptación imposible que se descubre tarde.
 - **OPS-005** — el catálogo vive en el paquete justamente para no copiarse a cada instancia; esto es la
   misma idea aplicada a lo que se inyecta en cada agente.
+
+## Cierre
+
+**🟢 resuelto en 0.89.0** · `engine/automation/rules.js`, `engine/automation/index.js`,
+`engine/cli/validate.js`, `template/planning/rules/README.md`, `test/wiring/rules.test.js`
+
+Las tres opciones se construyeron, en dos entregas: la **2** en su propio cambio y la **1** y la **3**
+juntas después, porque las dos cuentan lo mismo y separarlas habría dejado dos cuentas que se contradicen.
+
+### Contra lo que el caso enumeró
+
+- **Opción 1, que el bloque diga cuánto pesa** — construida, y **se hizo distinto de como la pedía**. El
+  caso exigía que el número cubriera «todo lo que `CLAUDE.md` importa», `AGENTS.md` incluido. Se declara
+  sólo el bloque: es lo que el motor gobierna: `@AGENTS.md` está **fuera** de las marcas y lo escribe el
+  adaptador, así que sumarlo daría un total que `install` no puede cambiar ni el proyecto reducir. El
+  caso tiene razón en que `AGENTS.md` pesa —23,6 KB, más que cualquier regla suelta— y eso quedó en la
+  cuenta del cuerpo, que es donde sirve para entender el costo total.
+- **Opción 1, «~16 K tokens por agente» en la línea** — **se decidió que no**, y es la desviación que más
+  conviene revisar. No hay en este repositorio ninguna base para convertir bytes a tokens: el divisor
+  habría salido de mi memoria, impreso en una salida que alguien cita para decidir. La línea declara
+  **KB**, que el motor mide y cualquiera comprueba. La observación en tokens sobrevive en el cuerpo y en
+  el CHANGELOG, marcada como medición única y no como factor de conversión.
+- **Opción 2, reglas por superficie** — construida, y **con el default invertido respecto del enunciado**.
+  El caso pedía que el bloque importara «las propias marcadas como `siempre`»; eso habría dejado fuera a
+  toda regla sin marcar, o sea que cada instancia habría perdido sus reglas propias del arranque en el
+  próximo `upgrade`, una por una y en silencio. Se marca lo contrario: `aplica: <superficie>` aparta, y
+  sin campo la regla se carga como siempre. Es el mismo criterio que el propio tradeoff del caso exige.
+- **Opción 3, que `check` avise pasado un umbral** — construida, con el umbral **reelegido**, como el
+  propio caso reclamaba. Quedó en **64 KB**: el piso limpio del bloque son 38,3 KB, así que deja ~26 KB de
+  reglas propias antes de hablar. Los 60 KB del enunciado habrían avisado en toda instancia nueva.
+- **Opción 3, «nombrando los tres archivos más grandes»** — se hizo con **dos**. La línea ya es larga y el
+  tercero no cambia ninguna decisión; si hiciera falta, está `ops check` con el bloque a la vista.
+- **Síntoma, «no hay forma de medirlo desde adentro»** — cerrado por los dos lados: `install` lo declara
+  cuando se elige y `check` cuando ya pesa. Y el incentivo torcido que el Síntoma describe no desaparece
+  —escribir una regla propia sigue costando— pero deja de ser invisible, que era lo que lo volvía injusto.
+- **Tradeoff, «una regla que no se leyó no existe»** — se respetó entero. Una regla apartada sigue
+  rigiendo: `ops context` la devuelve, el recorrido se la nombra a cada agente que toca código, y el
+  bloque la lista con su superficie a la vista en vez de omitirla.
+- **«La 2 tiene un techo que conviene mirar antes de construirla»** — se miró y se construyó igual. Lo de
+  Cauce es el 26 % del arranque de un agente y el otro 74 % lo pone el runner, así que esto no se lleva
+  «el 21 % de la corrida»; se lleva lo que un proyecto puede decidir no pagar, que es lo único que estaba
+  a nuestro alcance.
+- **«Lo que el recorrido ya resuelve»** — se respetó: `SCOPE()` sigue entregando rutas y no texto, y nada
+  de esto lo toca. Lo que se agregó actúa una capa antes, sobre el bloque que `install` escribe.
+
+### Lo que el caso no preveía
+
+- **La aritmética de una prueba mía estaba mal, y lo encontró la medición previa.** El banco usaba tres
+  reglas de 13 KB; quitando una quedaban 64,4 KB, que **siguen cruzando** el umbral por 400 bytes, así que
+  la última aserción habría fallado y yo habría culpado al motor. Con dos de 18,6 KB hay margen de los dos
+  lados: 75,5 KB con las dos, 56,9 KB con una.
+- **Código que no cambiaba nada, retirado por la mutación.** Filtré también `drift` por simetría con
+  `fill`; la mutación que lo revertía dejó las pruebas en verde, porque `listed` ya extrae la ruta tanto
+  del import como de la línea nombrada. Se quitó con la razón escrita en su lugar.
+- **Un comentario partido me costó cinco intentos por la razón equivocada.** La puerta de comentarios
+  descarta como muestra de código toda línea con tres o más espacios de sangría, así que veía sólo la
+  primera línea del bloque y la juzgaba sin su continuación. No era la redacción: era la sangría.
+
+### Qué se corrió
+
+- **Rojo previo en las tres**: la prueba de la opción 2 falla en «la condicional no entra como import»; las
+  de la 1 y la 3, en «declara cuántas y cuánto pesan» y «dice cuánto pesa» — mientras su aserción de que
+  una instancia limpia calla ya pasaba, que es lo que separa el silencio de hoy del que se construyó.
+- **Cuatro mutaciones**, en copias por `tar` con verde de control: quitar la partición de `fill` mata «no
+  entra como import»; hacer que `listed` ignore las líneas nombradas mata «recién instalado, nada que
+  avisar»; subir el umbral mata «dice cuánto pesa»; contar las declaradas por superficie mata «declarada
+  por superficie, deja de pesar y el aviso calla».
+- **Corrida real en banco sidecar**: instalación limpia declara `4 archivo(s), 38.3 KB` y `check` calla;
+  con dos reglas propias pesadas declara `6 archivo(s), 75.5 KB` y `check` avisa; declarando una con
+  `aplica:`, el aviso vuelve a callar.
+- **Pasada R11 a 0.22** en las dos entregas: el par que introduje en la primera (0.370) desapareció al
+  dejar la razón en un solo lugar; en la segunda, lo más alto que toca estos archivos es 0.259 contra un
+  fondo preexistente de 0.941.
+- **Autocontención intacta** (12/12): la línea nueva es salida, no contenido instalado.
+- **Verde**: `npm run ci` en 0 y **821 pruebas** (818 antes de este caso).
