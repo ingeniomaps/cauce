@@ -17,9 +17,9 @@ version-detectada: 0.87.0
 En una instancia **sidecar**, el id de runner sale de dónde está parado quien invoca, y hay dos lugares
 que lo resuelven distinto:
 
-- `ops claim` guardó `runner: /home/manuel/Code/venotal` —la raíz del workspace— y el recorrido derivó de
-  ahí el nombre del WIP: `planning/wip/home-manuel-code-venotal.md`.
-- `ops context`, invocado desde `venotal-ops/`, resuelve `home-manuel-code-venotal-venotal-ops` y honra
+- `ops claim` guardó `runner: <workspace>` —la raíz del workspace— y el recorrido derivó de ahí el nombre
+  del WIP: `planning/wip/<workspace-aplanado>.md`.
+- `ops context`, invocado desde `<empresa>-ops/`, resuelve `<workspace-aplanado>-<empresa>-ops` y honra
   **sólo ese** archivo, que estaba en `IDLE`.
 
 Resultado: la misma tarea, en la misma máquina y la misma persona, dejó **dos archivos en `planning/wip/`**
@@ -30,14 +30,15 @@ sidecar todos comparten `planning/`—. Lo que falla es que **el id no es establ
 
 ## Reproducción
 
-Instancia sidecar real, 0.87.0, runner Claude Code. Workspace en `/home/manuel/Code/venotal`, instancia en
-`venotal-ops/`.
+Instancia sidecar real, 0.87.0, runner Claude Code. Workspace en `<workspace>`, instancia en
+`<empresa>-ops/`, **cada uno con su propio repositorio git** — sin eso los dos lados resuelven el mismo id
+y el defecto no aparece.
 
 1. Lanzar el recorrido `autobuild`. Su fase Claim corre `ops claim` y escribe
-   `claims/retirar-guias-mcp-obsoletas.md` con `runner: /home/manuel/Code/venotal`.
-2. La fase WIP deriva el nombre del archivo de ese campo y escribe `wip/home-manuel-code-venotal.md` con
+   `claims/retirar-guias-mcp-obsoletas.md` con `runner: <workspace>`.
+2. La fase WIP deriva el nombre del archivo de ese campo y escribe `wip/<workspace-aplanado>.md` con
    el plan, `phase: Build` y el paso tildado.
-3. Desde `venotal-ops/`, correr `node tools/ops.js context planning`.
+3. Desde `<empresa>-ops/`, correr `node tools/ops.js context planning`.
 
 Devuelve:
 
@@ -49,8 +50,8 @@ TAKEN  retirar-guias-mcp-obsoletas (malpisa1@gmail.com — vos, desde otro runne
 Y `ls planning/wip/` muestra los dos:
 
 ```
-home-manuel-code-venotal.md              ← el plan real, phase: Build
-home-manuel-code-venotal-venotal-ops.md  ← status: IDLE
+<workspace-aplanado>.md                  ← el plan real, phase: Build
+<workspace-aplanado>-<empresa>-ops.md    ← status: IDLE
 ```
 
 ## Síntoma
@@ -160,4 +161,7 @@ volver, y `context` nombra el plan que quedó bajo el otro id.
   no se ofrece»; quitar la línea del `export` mata «claim deja escrito el id con el que se vuelve».
 - **Pasada de comentarios R11 a 0.22**: los 10 párrafos nuevos entraron a la comparación y ninguno superó el
   umbral; los pares que aparecen sobre estos archivos son preexistentes y ajenos al cambio.
-- **Verde**: `npm run ci` en 0 y **817 pruebas** (815 antes).
+- **Verde**: `npm run ci` en 0 y **817 pruebas** (815 antes). Con una corrección: ese verde se obtuvo con
+  este archivo todavía sin trackear, y la puerta de rutas absolutas recorre `git ls-files`. Al commitearlo
+  entró a su corpus y falló en CI por las rutas que el cuerpo del caso ya traía. Se despersonalizaron y se
+  volvió a correr la puerta con todo trackeado, que es la única forma en que ese verde significa algo.

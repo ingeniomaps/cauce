@@ -20,10 +20,9 @@ pero sólo si alguien descubre la ruta absoluta
 = claude: .claude/workflows/autobuild.js ya está al día
 ```
 
-y en modo sidecar los escribe en la **raíz del workspace** —`/home/manuel/Code/venotal/.claude/workflows/`—,
-que es coherente con que el runner se abra ahí. Pero el runner resuelve los workflows por nombre
-**relativos a su directorio de trabajo**, que es la instancia (`venotal-ops/`), y ahí no hay ningún
-`.claude/`. Entonces:
+y en modo sidecar los escribe en la **raíz del workspace** —`<workspace>/.claude/workflows/`—, que es
+coherente con que el runner se abra ahí. Pero el runner resuelve los workflows por nombre **relativos a su
+directorio de trabajo**, que es la instancia (`<empresa>-ops/`), y ahí no hay ningún `.claude/`. Entonces:
 
 ```
 Workflow({ name: "autobuild" })
@@ -34,11 +33,11 @@ El único que aparece es el del propio harness. Los nueve que instaló Cauce son
 
 ## Reproducción
 
-1. Instancia sidecar 0.87.0; el runner se abre en la raíz del workspace y el `ops` vive en `venotal-ops/`.
+1. Instancia sidecar 0.87.0; el runner se abre en la raíz del workspace y el `ops` vive en `<empresa>-ops/`.
 2. `make install-claude` → `✓ claude: adaptador operativo (0 advertencia(s))`.
 3. Invocar el recorrido por nombre. Falla con la lista de arriba.
-4. `Workflow({ scriptPath: "/home/manuel/Code/venotal/.claude/workflows/autobuild.js" })` **sí corre**, y el
-   recorrido completo funciona: once agentes, quince fases declaradas, `meta` aceptado.
+4. `Workflow({ scriptPath: "<workspace>/.claude/workflows/autobuild.js" })` **sí corre**, y el recorrido
+   completo funciona: once agentes, quince fases declaradas, `meta` aceptado.
 
 O sea que el script es correcto y lo único que falla es el descubrimiento por nombre.
 
@@ -124,4 +123,6 @@ carpeta.
   sea que lo que asercia es la salida y no la escritura, que es lo que el caso separa.
 - **Mutación**, en copia con verde de control 39/39: desactivar la recolección del destino mata «en sidecar
   el install dice dónde quedaron los workflows, no sólo dónde la configuración» y ninguna otra.
-- **Verde**: `npm run ci` en 0 y **817 pruebas** (815 antes).
+- **Verde**: `npm run ci` en 0 y **817 pruebas** (815 antes). Con la misma corrección que anota el 137: ese
+  verde se obtuvo con este archivo sin trackear, así que la puerta de rutas absolutas no lo miraba. Se
+  repitió con todo trackeado.
