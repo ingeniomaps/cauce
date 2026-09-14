@@ -19,6 +19,26 @@ const REQUIRED_SECTIONS = [
   'Aprobación humana',
 ]
 
+// El molde que una revisión llevó hasta 0.87.0, cuando todavía no empezaba por «Por definir». Sigue acá
+// porque los documentos ya escritos no cambian: nueve propuestas del repositorio lo tienen intacto, y siete
+// de ellas llegaron firmadas a `main` el 2026-09-14 (caso 135).
+const LEGACY_REVISION = `Una revisión suele **no** ser aditiva: reemplaza texto que la propuesta anterior agregó. Decilo
+explícitamente y decí por qué la aditividad no aplica acá — vale para lo que ya rindió sus casos, no para
+un texto que acaba de fallar su primera medición.`
+
+// Si nadie decidió todavía. Vive acá y no en `learning-seal` porque lo miran los dos lados —el que compone
+// y el que sella— y sin este corte uno tendría que requerir al otro.
+//
+// Son dos criterios y hacen falta los dos. El prefijo cubre los moldes que empiezan por «Por definir», que
+// es como se escriben desde 0.88.0; la coincidencia exacta cubre el molde viejo, que no empieza así y por
+// eso se colaba. Y tiene que ser **exacta**: quien redacta suele continuar la frase del molde en vez de
+// borrarla —`qa-engineer/2026-08-r2.md` dice «Una revisión suele no ser aditiva, **y ésta lo es en
+// parte**: …» y decide de verdad—, así que comparar por el principio marcaría como vacío lo que está lleno.
+const undecided = (value) => {
+  const text = String(value || '').trim()
+  return !text || /^(por definir|pendiente)\b/i.test(text) || text === LEGACY_REVISION
+}
+
 // Un cargo del sistema vive dentro del paquete: escribir ahí perdería el informe en el próximo
 // `npm ci`, y además duplicaría en cada empresa una investigación sobre la profesión que se hace
 // mejor una sola vez. Lo que sí es de esta empresa es su contexto, y ese tiene otro lugar.
@@ -110,7 +130,7 @@ function reportFiles(dir) {
 }
 
 module.exports = {
-  REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME,
+  REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME, undecided,
   assertWritableTeam, assertWritable, isoDate, month,
   proposalOrder, proposalFiles, frontmatterState, proposalState, reportFiles, lastOfPeriod,
 }
