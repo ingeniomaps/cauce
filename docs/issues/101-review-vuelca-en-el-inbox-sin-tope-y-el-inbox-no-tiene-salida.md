@@ -279,6 +279,21 @@ sigue siendo el segundo filtro, detrás del tope en código. Lo que es salida de
   sí cambió son las dos vías que el caso nombraba: `detail` llega recortado a una línea y el molde ya no pide
   evidencia. Lo puede cerrar quien tenga la instancia, corriendo ese `git log`.
 
+> **Establecido el 2026-09-13, y el disparador no se cumple.** Se corrió ese `git log` sobre
+> `venotal-ops`, una instancia real en 0.86.0: su `INBOX.md` tiene 36 commits y 51 entradas, y los **tres**
+> que lo tocaron desde 0.83.0 —`b6c9df4`, `43fe622`, `6af55a7`— los escribió una persona, no un recorrido.
+> Ninguna entrada declara vía, y ésa es la explicación: la procedencia que 0.83.0 agregó la escribe el
+> recorrido al volcar, y acá no hubo volcados de recorrido que la llevaran.
+>
+> El disparador que este caso fijó era «vinieron de fuera de los workflows **y** el punto 4 no alcanza».
+> La primera mitad se cumple —vinieron de fuera— pero no en el sentido que el caso temía: no hay un
+> recorrido volcando sin tope, hay una persona escribiendo a mano, que es el uso previsto. **No sale caso
+> propio.**
+>
+> Lo que queda sin medir es otra cosa y conviene no confundirla con un hueco de este caso: si el tope y la
+> forma de entrada funcionan cuando un recorrido **sí** vuelca. En esta instancia no ocurrió ni una vez en
+> cinco semanas, así que la conducta que 0.83.0 construyó todavía no se ejerció en producción.
+
 ### Lo que el caso no preveía
 
 - **`flow.js` pasaba las 500 líneas** (502) con el schema de los nombres copiado de `autobuild`. Fue al
