@@ -170,6 +170,47 @@ test('un caso en rojo abre la revisión de un cargo, y la corrida queda sellada'
   assert.match(fs.readFileSync(registro, 'utf8'), /^status: consolidated$/m)
 })
 
+// El molde de una revisión empieza por «Por definir» como los otros dos, y eso no es redacción: es lo
+// único que hace que el criterio de «sin decidir» —`/^(por definir|pendiente)\b/` en `learning-seal.js`—
+// la reconozca. Con «Una revisión suele…» pasaba de largo, y una revisión firmada con el molde adentro
+// se sellaba como aplicada: el ciclo cerraba sobre un documento que nadie decidió (caso 135).
+test('una revisión recién compuesta no se puede sellar, porque nadie decidió el cambio', () => {
+  const { target } = cargoConRegistro('Revisión sin decidir',
+    '### 02-dos\n\n- Veredicto: no pasa\n\nFalló por esto.\n')
+
+  const revision = learning.prepareProposal(target, 'probe', new Date('2099-06-30T00:00:00Z'))
+  const cambio = fs.readFileSync(revision.file, 'utf8').split('## Cambio propuesto\n')[1].trim()
+  assert.match(cambio, /^Por definir\b/, 'el molde lo declara como los otros dos')
+
+  // Firmada como firma producción —`sign-proposal.yml` deja «aprobada»— y con el molde intacto, que es
+  // exactamente el documento que llegó a `main` siete veces el 2026-09-14.
+  fs.writeFileSync(revision.file, fs.readFileSync(revision.file, 'utf8')
+    .replace('- Estado: pendiente', '- Estado: aprobada')
+    .replace('- Responsable: por definir', '- Responsable: Quien Firma'))
+  const sellado = run(['learn', 'probe', '--applied', '--period', '2099-06'], target)
+  assert.equal(sellado.status, 2, 'sellar sin decidir no deja terminar el ciclo')
+  assert.match(sellado.stderr, /todavía no la decidió nadie/)
+  assert.match(fs.readFileSync(revision.file, 'utf8'), /^status: proposed$/m, 'y el documento no avanza')
+})
+
+// Por qué el detalle se anida vive donde se cosecha, en `engine/agents/learning.js`. Acá importa cómo se
+// mira: por los títulos y no por el texto, porque el defecto no perdía nada —el detalle viajaba entero—
+// sino que lo ponía donde no iba, y una aserción sobre el contenido pasaba con el defecto puesto.
+test('los encabezados de la respuesta no se vuelven secciones de la propuesta', () => {
+  const { target } = cargoConRegistro('Encabezados del cargo',
+    '### 02-dos\n\n- Veredicto: no pasa\n\nFalló por esto.\n\n'
+    + '## Sección propia\n\nTexto de la respuesta.\n\n### Subsección propia\n\nMás texto.\n')
+
+  const revision = learning.prepareProposal(target, 'probe', new Date('2099-06-30T00:00:00Z'))
+  const texto = fs.readFileSync(revision.file, 'utf8')
+  assert.deepEqual([...texto.matchAll(/^## (.+)$/gm)].map((hit) => hit[1]),
+    ['Hallazgos', 'Evidencia', 'Cambio propuesto', 'Riesgos y regresiones', 'Evaluación',
+      'Aprobación humana'], 'las secciones son las del molde y ninguna más')
+  assert.match(texto, /^### Sección propia$/m, 'la de la respuesta baja un nivel')
+  assert.match(texto, /^#### Subsección propia$/m, 'y lo que colgaba de ella la sigue')
+  assert.match(texto, /Más texto/, 'sin perder una línea del detalle')
+})
+
 // La contraparte del rojo: un caso que pasa también puede traer material. El porqué de que exista esta
 // rama está en `engine/agents/learning.js`, donde se cosecha.
 test('lo que el contrato no cubre entra aunque el caso pase', () => {
