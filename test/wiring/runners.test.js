@@ -493,6 +493,15 @@ test('ninguna ruta de un adaptador da por sentado dónde se instala', () => {
     ]
     for (const relative of copied) {
       const file = path.resolve(dir, relative)
+      // Los `.js` quedan afuera, y por qué **está medido** (caso 145): correr este regex sobre los nueve
+      // recorridos da 52 coincidencias y **ninguna** es un defecto. Se reparten en tres familias, todas
+      // legítimas: prosa de comentarios, comandos dictados que ya anclan —«corré X **desde `${ROOT}`**»,
+      // y desde 0.89.0 esa raíz es absoluta— y código que compara rutas en disco, que no viaja a nadie.
+      //
+      // Lo que este regex sabe buscar es una ruta suelta en prosa. En un `.js` no distingue la que se le
+      // dicta a un agente de la que vive en una expresión, así que incluirlos daría 52 avisos y cero
+      // hallazgos: una puerta que nace apagada. Lo que separa un dictado sano de uno roto no es la ruta
+      // sino si la consigna dice desde dónde, y eso lo cuida `workflows-build.test.js` sobre `ROOT`.
       if (!fs.existsSync(file) || file.endsWith('.js')) continue
       // Renderizado con el marcador por prefijo: resuelve los `INCLUDE` sin tocar los `{{OPS_DIR}}`,
       // así lo compartido se revisa una vez por cada adaptador que lo enmarca y no queda afuera.
@@ -503,4 +512,39 @@ test('ninguna ruta de un adaptador da por sentado dónde se instala', () => {
     }
   }
   assert.deepEqual(looseOnes, [])
+})
+
+// La exclusión de arriba se justificó con un número, y un número envejece. Esto lo vuelve a medir: si
+// algún día un recorrido trae una ruta que el regex marcaría **y** que no sea una de las tres familias
+// inofensivas, este conteo se mueve y hay que volver a mirar si la exclusión sigue valiendo.
+//
+// Cuenta en vez de exigir cero porque cero es imposible: los 52 son legítimos y seguirán ahí. Lo que se
+// vigila es que no crezcan sin que nadie lo note, que es cómo una exclusión medida se vuelve una supuesta.
+test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensivo', () => {
+  const REPO = path.resolve(__dirname, '..', '..')
+  const A = require('../../engine/automation')
+  const automation = path.join(REPO, 'automatization')
+  const root = new RegExp(
+    String.raw`(?<!\{\{OPS_DIR\}\}|\.|\/)\b(planning\/|organization\/|integrations\/`
+    + String.raw`|flows\/|automatization\/|tools\/ops\.js|ops\.config\.json)`,
+    'g',
+  )
+  let hits = 0
+  for (const name of A.RUNNER_NAMES) {
+    const runner = A.runnerManifest(REPO, name)
+    const dir = path.join(automation, 'runners', name)
+    const copied = [
+      runner.config.source,
+      ...(runner.instructions || []).map((item) => item.source),
+      ...(runner.artifacts || []).map((item) => item.source),
+    ]
+    for (const relative of copied) {
+      const file = path.resolve(dir, relative)
+      if (!fs.existsSync(file) || !file.endsWith('.js')) continue
+      hits += [...A.render(file, '{{OPS_DIR}}', automation).matchAll(root)].length
+    }
+  }
+  // El número exacto del 2026-09-14, clasificado a mano una por una. Se mueve al agregar un recorrido o
+  // una consigna, y entonces toca clasificar las nuevas antes de actualizarlo.
+  assert.equal(hits, 52, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })
