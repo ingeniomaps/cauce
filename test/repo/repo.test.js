@@ -441,18 +441,13 @@ const JUSTIFIED = {
 }
 
 const PENDING_SPLIT = {
-  'engine/cli/planning.js':
-    'Mezcla dos comandos con vidas distintas: `check`, que valida la instancia entera, y `context`, que '
-    + 'responde qué hacer ahora. Son 172 y 163 líneas, y casi no se cruzan: la mitad de los imports del '
-    + 'archivo entra por uno solo de los dos. La partición es sacar `check` a su propio módulo. Cruzó las '
-    + '500 con el aviso de plan ajeno del caso 137, estando en 495, y hacerlo bien es un cambio propio y '
-    + 'no la cola de otro.',
   'engine/automation/index.js':
-    'Mezcla los cuatro verbos del wiring —`check`, `doctor`, `install` y `uninstall`— sobre los mismos '
-    + 'helpers de resolución, y `install` solo ya son 140 líneas. La partición que se ve es separar el que '
-    + 'escribe la instalación de los que la auditan: `install` y `uninstall` de un lado, `check` y `doctor` '
-    + 'del otro. Cruzó las 500 con el aviso de sidecar del caso 138, estando en 499, y hacerlo bien es un '
-    + 'cambio propio y no la cola de otro.',
+    'Mezcla cuatro verbos, y medir cuál comparte con cuál corrige lo que esta entrada decía antes. No es '
+    + '«lo que escribe» contra «lo que audita»: `doctor` comparte ocho helpers con `install` —resolución, '
+    + 'render, prefijo, estado de entrega—, mientras `check` no comparte ninguno y su único ayudante, '
+    + '`validateRunnerManifest`, es suyo y de nadie más. La partición es sacar ese par y dejar los tres '
+    + 'verbos que sí se apoyan en los mismos helpers. Cruzó las 500 con el aviso de sidecar del caso 138, '
+    + 'estando en 499, y hacerlo bien es un cambio propio y no la cola de otro.',
   'test/repo/repo.test.js':
     'Mezcla dos sujetos: la forma del código —largo de línea, tamaño de archivo, rutas absolutas— y qué '
     + 'se le exige a un comentario, que son cuatro pruebas y la mitad del archivo. La partición es sacar '

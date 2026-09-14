@@ -10,6 +10,12 @@ function fail(message, code = 1) {
   process.exit(code)
 }
 
+// La fecha de hoy, en un solo lugar: los comandos que la usan tienen que estar mirando el mismo día, y
+// el módulo que calcula vencimientos la recibe en vez de preguntarla. Vive acá desde que la puerta de
+// planning se separó de los comandos que la leen — quedaba en el archivo que se partió, y dejar una copia
+// a cada lado habría roto en silencio lo único que esta función promete.
+const TODAY = () => new Date().toISOString().slice(0, 10)
+
 // La raíz ops de un comando que no la recibe. El shim `tools/ops.js` la exporta porque sabe dónde
 // vive: sin eso, invocarlo desde otra carpeta —lo normal en sidecar— la resolvía contra el cwd.
 function opsRoot(dir) {
@@ -44,4 +50,4 @@ function planningRoot(dir) {
   return root
 }
 
-module.exports = { fail, opsRoot, planningRoot }
+module.exports = { fail, opsRoot, planningRoot, TODAY }
