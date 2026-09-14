@@ -11,7 +11,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { atomicWrite } = require('../core/files')
 const {
-  isoDate, proposalFiles, proposalState, assertWritable, lastOfPeriod, undecided,
+  isoDate, proposalFiles, proposalState, assertWritable, lastOfPeriod, undecided, SIGNED,
 } = require('./learning-files')
 const { section } = require('../planning/parser')
 // La misma identidad con la que se reclama una tarea: quién es la persona, no qué runner corre.
@@ -99,7 +99,13 @@ function archive(root, agent, period = '', kind = 'agent') {
   const state = proposalState(text)
   if (state === 'archived') return { file, already: true }
   if (state === 'applied') throw new Error(`${path.basename(file)} ya está aplicada: archivarla la borraría del ciclo.`)
-  if (/^-[ \t]*Estado:[ \t]*aprobada[ \t]*$/mi.test(text)) {
+  // Una firmada se aplica, no se archiva: la decisión ya se tomó y archivarla la tiraría. Salvo que no
+  // haya ninguna decisión que tirar. Siete propuestas del 2026-09 llegaron firmadas con el molde intacto
+  // y quedaron sin salida —no se podían aplicar porque no deciden nada, ni archivar porque estaban
+  // firmadas— y de paso bloqueaban la siguiente de su cargo (caso 142). Archivar es lo que corresponde:
+  // no hubo nada que aprobar, y la firma se gastó sobre un documento vacío.
+  const change = section(text, /Cambio propuesto/i).split('\n').slice(1).join('\n').trim()
+  if (SIGNED.test(text) && !undecided(change)) {
     throw new Error(
       `${path.basename(file)} está firmada: lo que sigue es aplicarla con agent-promote, no archivarla. `
       + 'Archivar es para lo que se miró y no cambia nada.',
@@ -112,7 +118,10 @@ function archive(root, agent, period = '', kind = 'agent') {
   const responsible = owner(root) || 'sin identificar'
   atomicWrite(file, text
     .replace(/^status:\s*\S+\s*$/m, 'status: archived')
-    .replace(/^-[ \t]*Estado:[ \t]*pendiente[ \t]*$/mi, '- Estado: archivada')
+    // `UNSEALED` y no sólo «pendiente»: desde que se puede archivar una firmada sin decidir, el cuerpo
+    // llega diciendo «aprobada» y se quedaba así con el frontmatter en `archived`. Es la contradicción
+    // que el comentario de `seal` nombra, por el otro destino.
+    .replace(UNSEALED, '- Estado: archivada')
     .replace(/^-[ \t]*Responsable:[ \t]*por definir[ \t]*$/mi, `- Responsable: ${responsible}`)
     .replace(/^-[ \t]*Fecha:[ \t]*por definir[ \t]*$/mi, `- Fecha: ${isoDate(new Date())}`))
   // La fila va para los dos tipos, y no sólo para los recorridos como en `seal`: allá los cargos los
@@ -120,12 +129,18 @@ function archive(root, agent, period = '', kind = 'agent') {
   // La raíz del cargo, que es `<cargo>/learning/proposals/<archivo>` sin sus tres últimos tramos:
   // `appendHistory` agrega `learning/` por su cuenta.
   //
-  // La celda del cambio lleva el criterio y no queda vacía. Es el único que este comando admite —archivar
-  // *es* decidir que no cambia nada— así que decirlo evita que la fila se lea como un registro a medias.
-  // Archivar por otra razón, como posponer, necesitaría un campo que hoy no existe.
+  // La celda del cambio lleva el criterio y no queda vacía, para que la fila no se lea como un registro a
+  // medias. Son dos y dicen cosas distintas: archivar lo que alguien miró **es** decidir que no cambia
+  // nada, y archivar un documento que nadie decidió es tirar el andamio — la firma se gastó sobre el molde
+  // intacto y no hubo nada que aprobar. Escribir el primero sobre el segundo pondría en el historial que se
+  // miró algo que nadie miró, y ese archivo es lo que alguien lee dentro de seis meses.
+  const blank = undecided(change)
   appendHistory(path.dirname(path.dirname(path.dirname(file))), file, responsible,
-    'Se miró y no cambia nada.', 'archivada')
-  return { file, already: false }
+    blank ? 'Se archivó sin decidir: el documento quedó con el molde.' : 'Se miró y no cambia nada.',
+    'archivada')
+  // `blank` sale acá y no lo recalcula quien imprime: son la misma pregunta, y dos lecturas de la misma
+  // sección se separan sin que nada falle.
+  return { file, already: false, blank }
 }
 
 // Una fila por propuesta cerrada, cualquiera sea el destino. El cambio va en una línea: el documento

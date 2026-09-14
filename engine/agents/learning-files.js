@@ -26,6 +26,20 @@ const LEGACY_REVISION = `Una revisión suele **no** ser aditiva: reemplaza texto
 explícitamente y decí por qué la aditividad no aplica acá — vale para lo que ya rindió sus casos, no para
 un texto que acaba de fallar su primera medición.`
 
+// Una propuesta firmada y sin aplicar no espera lo mismo que una sin firmar: en la primera la decisión
+// ya se tomó y el trabajo quedó detenido; la segunda está bien quieta hasta que alguien la lea.
+// `proposalState` no las distingue —mira el frontmatter, y la firma la escribe `sign-proposal.yml` en
+// el cuerpo—, así que las dos caían en el mismo `pending` y la que ya tenía autoridad para avanzar se
+// veía igual que la que no. Sin ese aviso hay que acordarse, y dos propuestas firmadas el 2026-09-01
+// se habrían quedado ahí sin que nada lo dijera.
+const SIGNED = /^-[ \t]*Estado:[ \t]*aprobada[ \t]*$/mi
+
+// Los dos destinos que cierran una propuesta. `archived` es «se miró y no cambia nada»: no espera
+// trabajo, así que contarla como pendiente deja al cargo reportando deuda que nadie va a pagar. Y por lo
+// mismo tampoco puede bloquear la propuesta siguiente, que es lo que hacía mientras el único cerrado era
+// `applied`.
+const CLOSED = new Set(['applied', 'archived'])
+
 // Si nadie decidió todavía. Vive acá y no en `learning-seal` porque lo miran los dos lados —el que compone
 // y el que sella— y sin este corte uno tendría que requerir al otro.
 //
@@ -130,7 +144,7 @@ function reportFiles(dir) {
 }
 
 module.exports = {
-  REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME, undecided,
+  REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME, undecided, SIGNED, CLOSED,
   assertWritableTeam, assertWritable, isoDate, month,
   proposalOrder, proposalFiles, frontmatterState, proposalState, reportFiles, lastOfPeriod,
 }

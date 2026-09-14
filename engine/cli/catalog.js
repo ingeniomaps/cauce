@@ -242,9 +242,15 @@ function learn(agent, cli) {
     if (cli.has('--archived')) {
       const result = L.archive(opsRoot(), agent, cli.value('--period'), kind)
       const relative = path.relative(opsRoot(), result.file)
+      // Los dos archivados no son lo mismo y el mensaje lo dice: uno es una decisión —se miró y no
+      // cambia nada— y el otro es tirar un andamio que nadie llegó a llenar. Afirmar el primero sobre
+      // el segundo le cuenta a quien archiva que hubo una revisión que no hubo.
+      const porque = result.blank
+        ? 'nadie decidió el cambio y el documento quedó con el molde'
+        : 'se miró y no cambia nada'
       return console.log(result.already
         ? `= ${relative} ya estaba archivada`
-        : `✓ ${relative} queda archivada: se miró y no cambia nada`)
+        : `✓ ${relative} queda archivada: ${porque}`)
     }
     if (cli.has('--applied')) {
       const result = L.seal(opsRoot(), agent, cli.value('--period'), kind)

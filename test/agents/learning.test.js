@@ -700,6 +700,16 @@ test('una propuesta se puede archivar, y archivarla no es aplicarla', () => {
 
   assert.equal(learning.evaluate(target, 'probe').pending, 0, 'y deja de reportar trabajo pendiente')
   assert.equal(learning.archive(target, 'probe', '2099-01').already, true, 'archivar dos veces no hace nada')
+
+  // Y no bloquea la siguiente del **mismo** período, que es donde se notaba: mirando sólo `applied`, una
+  // archivada dejaba al cargo sin poder proponer nunca más y la única salida era aplicar lo que se había
+  // decidido no aplicar. Tiene que ser el mismo período: con otro, `lastOfPeriod` no la encuentra y la
+  // comparación ni siquiera ocurre (caso 142).
+  fs.writeFileSync(path.join(reports, '2099-01-21.md'),
+    '---\nagent: probe\ndate: 2099-01-21\nstatus: draft\n---\n\n## Recomendación\n\nOtra cosa.\n')
+  const siguiente = learning.prepareProposal(target, 'probe', new Date('2099-02-01T13:17:00Z'), '2099-01')
+  assert.equal(siguiente.created, true, 'una archivada está cerrada: no retiene el período')
+  assert.equal(path.basename(siguiente.file), '2099-01-r2.md', 'y la que sigue es su revisión')
 })
 
 // La guarda, medida por lo que hace: rechaza y deja el documento intacto.
@@ -714,9 +724,30 @@ test('una propuesta firmada no se puede archivar', () => {
   fs.writeFileSync(propuesta.file, fs.readFileSync(propuesta.file, 'utf8')
     .replace('- Estado: pendiente', '- Estado: aprobada'))
 
-  assert.throws(() => learning.archive(target, 'probe2', '2099-01'), /está firmada/,
-    'lo que sigue a una firma es aplicarla, no archivarla')
-  assert.match(fs.readFileSync(propuesta.file, 'utf8'), /^status: proposed$/m, 'y el documento queda intacto')
+  // Sin decidir todavía: acá archivar es la salida, y es lo que rescata a una propuesta que se firmó
+  // sobre el molde intacto. Pasó siete veces el 2026-09-14 (caso 142).
+  assert.equal(learning.archive(target, 'probe2', '2099-01').already, false,
+    'una firma sobre un documento que no decide nada no obliga a aplicarlo')
+  const archivada = fs.readFileSync(propuesta.file, 'utf8')
+  assert.match(archivada, /^status: archived$/m)
+  // El cuerpo acompaña al frontmatter. Una firmada llega diciendo «aprobada», y la sustitución sólo
+  // miraba «pendiente»: el documento quedaba archivado por arriba y aprobado por abajo, que es la
+  // contradicción que cerrar una propuesta existe para no dejar.
+  assert.match(archivada, /^- Estado: archivada$/m, 'y el cuerpo no se queda en «aprobada»')
+
+  // Y con un cambio escrito, la guarda vuelve: ahí la firma sí autorizó algo, y archivarla lo tiraría.
+  // El período nuevo necesita su propio informe: el anterior quedó sellado al componer la primera, así
+  // que sin esto `prepareProposal` no abre nada y devuelve `file` vacío.
+  fs.writeFileSync(path.join(reports, '2099-02-04.md'),
+    '---\nagent: probe2\ndate: 2099-02-04\nstatus: draft\n---\n\n## Recomendación\n\nOtra cosa.\n')
+  const decidida = learning.prepareProposal(target, 'probe2', new Date('2099-03-01T13:17:00Z'), '2099-02')
+  assert.equal(decidida.created, true, 'la archivada no bloquea la siguiente del cargo')
+  fs.writeFileSync(decidida.file, fs.readFileSync(decidida.file, 'utf8')
+    .replace('- Estado: pendiente', '- Estado: aprobada')
+    .replace(/(\n## Cambio propuesto\n)[\s\S]*?(?=\n## )/, '$1\nAgregar una viñeta a SKILL.md.\n'))
+  assert.throws(() => learning.archive(target, 'probe2', '2099-02'), /está firmada/,
+    'lo que sigue a una firma que decidió algo es aplicarla, no archivarla')
+  assert.match(fs.readFileSync(decidida.file, 'utf8'), /^status: proposed$/m, 'y el documento queda intacto')
 })
 
 // La función y el comando son dos artefactos, y sólo el segundo se usa. `--archived` llegó a existir en
