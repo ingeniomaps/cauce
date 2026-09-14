@@ -9,6 +9,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const catalog = require('./catalog')
 const ownership = require('../core/ownership')
+const { section } = require('../planning/parser')
 
 const REQUIRED_SECTIONS = [
   'Hallazgos',
@@ -51,6 +52,17 @@ const CLOSED = new Set(['applied', 'archived'])
 const undecided = (value) => {
   const text = String(value || '').trim()
   return !text || /^(por definir|pendiente)\b/i.test(text) || text === LEGACY_REVISION
+}
+
+// Lo mismo preguntado sobre el documento, que es como lo necesita quien acaba de componerlo y todavía no
+// leyó su «Cambio propuesto». Vive acá y no en cada `return` de `prepareProposal` —son cinco y sólo uno
+// compone— porque la señal tiene que valer igual en todos: puesta en uno, vuelve `undefined` en los
+// demás y quien la lea creerá que el documento decide algo.
+function blankProposal(file) {
+  try {
+    const body = section(fs.readFileSync(file, 'utf8'), /Cambio propuesto/i)
+    return undecided(body.split('\n').slice(1).join('\n'))
+  } catch { return false }
 }
 
 // Un cargo del sistema vive dentro del paquete: escribir ahí perdería el informe en el próximo
@@ -144,7 +156,7 @@ function reportFiles(dir) {
 }
 
 module.exports = {
-  REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME, undecided, SIGNED, CLOSED,
+  REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME, undecided, blankProposal, SIGNED, CLOSED,
   assertWritableTeam, assertWritable, isoDate, month,
   proposalOrder, proposalFiles, frontmatterState, proposalState, reportFiles, lastOfPeriod,
 }
