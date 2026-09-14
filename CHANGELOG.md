@@ -14,6 +14,26 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.87.0] - 2026-09-14
+
+### Corregido
+
+- **El aviso de credenciales sin dueño mira el `.env.example` entero y ya no sus primeras cuarenta
+  variables.** `check` te avisa de las credenciales que ningún contrato declara, y el escaneo cortaba en
+  cuarenta variables por servicio **antes** de mirar qué era cada una. En un servicio grande eso no
+  recortaba una lista: apagaba el análisis, y qué credencial se veía terminaba dependiendo de en qué línea
+  del archivo había caído.
+
+  El riesgo estaba escrito como aceptado y sin medir desde que el tope existe. Medirlo contra una instancia
+  real lo convirtió en dos nombres: un servicio con 61 variables tenía tres credenciales pasado el corte y
+  **dos que ningún contrato declaraba**, en las líneas 43 y 60. Lo único que salía era el aviso de que había
+  cortado.
+
+  Ahora el tope recorta lo que se **lista** y no lo que se mira: las credenciales se buscan sobre el archivo
+  entero, y `scan` sigue mostrando cuarenta y diciendo cuántas más hay. Si tenés un servicio con más de
+  cuarenta variables, contá con avisos nuevos en el próximo `check` — son credenciales que ya estaban y que
+  nadie estaba mirando.
+
 ## [0.86.0] - 2026-09-12
 
 ### Corregido
