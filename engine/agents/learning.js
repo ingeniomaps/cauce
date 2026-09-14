@@ -127,9 +127,9 @@ mal calibrado, va también la línea del contrato que quedó floja y la del caso
 
 ## Cambio propuesto
 
-Una revisión suele **no** ser aditiva: reemplaza texto que la propuesta anterior agregó. Decilo
-explícitamente y decí por qué la aditividad no aplica acá — vale para lo que ya rindió sus casos, no para
-un texto que acaba de fallar su primera medición.
+Por definir. Una revisión suele **no** ser aditiva: reemplaza texto que la propuesta anterior agregó.
+Decilo explícitamente y decí por qué la aditividad no aplica acá — vale para lo que ya rindió sus casos, no
+para un texto que acaba de fallar su primera medición.
 
 ## Riesgos y regresiones
 
@@ -198,11 +198,19 @@ function verdictFindings(root, dir) {
       latest.set(item.id, { ...item, file, name, failures: (before ? before.failures : 0) + (item.passed ? 0 : 1) })
     }
   }
+  // El detalle viaja entero —eso lo decide el `VERDICT` de arriba— y adentro viene la respuesta del cargo
+  // con la estructura que él eligió. Sus `##` quedaban al mismo nivel que «Hallazgos» o «Cambio propuesto»
+  // y pasaban por secciones del documento: dos de las siete propuestas del 2026-09 llegaron con once y
+  // siete secciones ajenas (caso 136). Bajarlos un nivel conserva el texto y lo devuelve a ser contenido
+  // del hallazgo. Importa más que la estética: `seal` y `agent-promote` ubican «Cambio propuesto» por su
+  // encabezado, así que uno que escape puede hacer que se lea la sección equivocada.
+  const nested = (detail) => detail.replace(/^(#{1,5}) /gm, '#$1 ')
   const findings = [...latest.values()].flatMap((item) => {
     const corrida = `Corrida: \`${path.relative(root, item.file)}\``
     if (!item.passed) {
       return [`### ${item.id} — ${item.name.slice(0, -3)}\n\n${corrida}`
-        + `${item.failures > 1 ? ` — falló en ${item.failures} corridas de esta tanda` : ''}\n\n${item.detail}`]
+        + `${item.failures > 1 ? ` — falló en ${item.failures} corridas de esta tanda` : ''}\n\n`
+        + `${nested(item.detail)}`]
     }
     // Un caso que pasa también trae material, y hasta acá no tenía por dónde entrar. El juez ve el
     // contrato entero mientras juzga y a veces encuentra lo que **no** pide: una conducta que ningún
