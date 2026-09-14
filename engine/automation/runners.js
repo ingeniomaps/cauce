@@ -122,9 +122,13 @@ function inline(text, automationRoot) {
   })
 }
 
-// `{{OPS_ROOT}}` es la raíz absoluta. La necesita quien no puede deducirla de dónde lo ejecutaron
-// —el puente de Antigravity—, y por eso no reemplaza a `{{OPS_DIR}}`: una ruta absoluta escrita en un
-// archivo se rompe si el proyecto se mueve, así que la lleva sólo el que se queda sin alternativa.
+// `{{OPS_ROOT}}` es la raíz absoluta, y la lleva quien no puede deducirla de dónde lo ejecutaron: el
+// puente de Antigravity, los hooks de Codex y —desde 0.89.0— los recorridos, que dictan comandos a un
+// agente cuyo directorio nadie promete (caso 139).
+//
+// No reemplaza a `{{OPS_DIR}}` en general, y el costo dice por qué: un archivo que lleva la raíz escrita
+// se rompe si el proyecto se mueve de carpeta, y se repara reinstalando el adaptador. Lo paga el que no
+// tiene alternativa; lo que se resuelve contra la carpeta donde se abre la herramienta sigue con el otro.
 const OPS_ROOT = '{{OPS_ROOT}}'
 
 // `{{RULES:…}}` va antes que `{{OPS_DIR}}` por lo mismo que el include: las rutas que escribe llevan el prefijo.

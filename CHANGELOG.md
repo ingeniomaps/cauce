@@ -79,6 +79,21 @@ diseño — eso vive en el commit y en el código.
   existe» que se lee como instalación fallida. Ahora la salida nombra ese directorio con su raíz puesta y
   desde dónde hay que abrir la sesión para que los vea.
 
+- **Los recorridos dejan de depender de la carpeta desde la que se abrió la sesión.** La raíz que traen
+  escrita —la que usan para nombrar el planning, la configuración y el CLI en cada comando que le dictan a
+  un agente— era **relativa** a la carpeta donde se abre la herramienta. Eso vale mientras el agente esté
+  parado ahí, y nadie lo promete: una sesión abierta en el repo ops resolvía `<empresa>-ops/planning`
+  contra su propio directorio, el tramo se duplicaba, y el comando contestaba que el planning no existe.
+  En una corrida real de `autobuild` costó una vuelta entera de la fase Claim.
+
+  Ahora esa raíz es **absoluta** y la escribe `automation install`, que es quien la conoce. Ninguna
+  consigna depende ya de dónde arranque la sesión.
+
+  **Lo que tenés que saber**: un archivo que lleva la raíz escrita se rompe si movés el proyecto de
+  carpeta. Se repara con `automation install` del runner, que es lo que ya hacía falta cuando el wiring
+  quedaba apuntando a otro lado. Y como los recorridos vienen del paquete, esto llega con el `upgrade`:
+  después conviene reinstalar el adaptador para que la raíz nueva quede escrita.
+
 ## [0.88.0] - 2026-09-14
 
 ### Corregido

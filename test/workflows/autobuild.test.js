@@ -407,7 +407,7 @@ test('una raíz que no se pudo leer para en Triage y lo dice', async () => {
     },
   })
   assert.equal(result.reason, 'root-unreadable', `tenía que parar: ${JSON.stringify(result)}`)
-  assert.match(result.detail, /relativa a la carpeta/, 'y decir qué comprobar')
+  assert.match(result.detail, /reinstalá el adaptador/, 'y decir qué comprobar')
   assert.equal(/planning/.test(result.detail), false, 'sin mandar a revisar el planning, que está bien')
   assert.deepEqual(phases, ['Triage'], 'para en la primera fase, sin gastar las que siguen')
   assert.equal(asked.some((key) => key.startsWith('Pick|')), false, 'ni llega a elegir tarea')
