@@ -29,8 +29,14 @@ diseño — eso vive en el commit y en el código.
   habilitado a abrir la siguiente como si hubiera aprendido algo. Pasó con siete cargos el 2026-09-14.
 
   Ahora el molde de una revisión empieza por «Por definir», igual que el de una propuesta nueva y el de un
-  recorrido, y sellar sin decidir falla con «todavía no la decidió nadie». Si tenés revisiones firmadas con
-  el molde adentro, no se van a poder aplicar: escribiles el cambio y volvé a firmarlas, o archivalas.
+  recorrido. Y como los documentos ya escritos no cambian, el criterio reconoce además el molde viejo tal
+  cual: completo y sin editar. Si lo continuaste para decir qué cambia —que es como se redacta— cuenta
+  como decidido y se aplica igual; lo que se frena es el molde intacto.
+
+  **Si tenés revisiones firmadas con el molde adentro, no se van a poder aplicar**: sellar falla con
+  «todavía no la decidió nadie» y el documento se queda en `proposed`. Escribiles el cambio y volvé a
+  firmarlas, o archivalas — archivar no pasa por esta puerta, porque archivar *es* decidir que no cambia
+  nada.
 
 - **Los encabezados que un cargo usó en su respuesta ya no se vuelven secciones de su propuesta.** El
   hallazgo de un caso en rojo viaja con el contraste entero —eso es deliberado y no cambió—, y adentro

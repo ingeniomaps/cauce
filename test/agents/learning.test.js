@@ -170,6 +170,59 @@ test('un caso en rojo abre la revisión de un cargo, y la corrida queda sellada'
   assert.match(fs.readFileSync(registro, 'utf8'), /^status: consolidated$/m)
 })
 
+// El predicado se mira también de cerca, y no sólo por el ciclo: sus cuatro caminos deciden si un
+// documento puede cerrar el ciclo, y por el CLI sólo se alcanzan los que traen texto. El caso vacío es el
+// que ninguna corrida real produce —quien firma escribe algo— y es justamente el que no puede fallar.
+test('undecided reconoce lo que nadie decidió, y sólo eso', () => {
+  const { undecided } = require('../../engine/agents/learning-files')
+  const viejo = 'Una revisión suele **no** ser aditiva: reemplaza texto que la propuesta anterior agregó. '
+    + 'Decilo\nexplícitamente y decí por qué la aditividad no aplica acá — vale para lo que ya rindió sus '
+    + 'casos, no para\nun texto que acaba de fallar su primera medición.'
+
+  assert.equal(undecided(''), true, 'vacío')
+  assert.equal(undecided(undefined), true, 'ausente')
+  assert.equal(undecided('   \n  '), true, 'sólo espacios')
+  assert.equal(undecided('Por definir tras revisar los hallazgos.'), true, 'el molde de una propuesta')
+  assert.equal(undecided('Pendiente de la próxima corrida.'), true, 'y el otro prefijo')
+  assert.equal(undecided(viejo), true, 'el molde viejo de una revisión, que no empieza por ninguno')
+  assert.equal(undecided(`${viejo}\n\nY además esto.`), false, 'continuado deja de ser el molde')
+  assert.equal(undecided('Agregar una viñeta a SKILL.md.'), false, 'un cambio concreto')
+  assert.equal(undecided('Por definirse el alcance, agregamos la viñeta X.'), false,
+    'el prefijo pide la palabra entera: «definirse» no es «definir»')
+})
+
+// Arreglar el molde protege lo que se componga de ahora en más y deja pasar lo ya escrito, que era el
+// caso que originó todo: nueve propuestas del repositorio llevan el molde viejo intacto y siete llegaron
+// firmadas a `main`. Por eso el criterio reconoce además ese texto literal —y **completo**, no por su
+// primer renglón: quien redacta suele continuar la frase en vez de borrarla, y un documento así sí decidió.
+test('una revisión con el molde viejo tampoco se sella, y una que lo continuó sí', () => {
+  const viejo = 'Una revisión suele **no** ser aditiva: reemplaza texto que la propuesta anterior agregó. '
+    + 'Decilo\nexplícitamente y decí por qué la aditividad no aplica acá — vale para lo que ya rindió sus '
+    + 'casos, no para\nun texto que acaba de fallar su primera medición.'
+  const componer = (nombre, cambio) => {
+    const { target } = cargoConRegistro(nombre, '### 02-dos\n\n- Veredicto: no pasa\n\nFalló por esto.\n')
+    const revision = learning.prepareProposal(target, 'probe', new Date('2099-06-30T00:00:00Z'))
+    fs.writeFileSync(revision.file, fs.readFileSync(revision.file, 'utf8')
+      .replace(/(\n## Cambio propuesto\n)[\s\S]*?(?=\n## )/, `$1\n${cambio}\n`)
+      .replace('- Estado: pendiente', '- Estado: aprobada')
+      .replace('- Responsable: por definir', '- Responsable: Quien Firma'))
+    return { target, file: revision.file }
+  }
+
+  const intacto = componer('Molde viejo intacto', viejo)
+  const frenado = run(['learn', 'probe', '--applied', '--period', '2099-06'], intacto.target)
+  assert.equal(frenado.status, 2, 'el molde viejo no decide nada, aunque no empiece por «Por definir»')
+  assert.match(fs.readFileSync(intacto.file, 'utf8'), /^status: proposed$/m)
+
+  // La contracara, y es la que importa: marcar de más rompe trabajo legítimo. `qa-engineer/2026-08-r2.md`
+  // continuó la frase del molde para decir qué cambiaba, y se aplicó.
+  const seguido = componer('Molde viejo continuado',
+    'Una revisión suele **no** ser aditiva, y ésta lo es en parte: agrega una viñeta a SKILL.md.')
+  const sellado = run(['learn', 'probe', '--applied', '--period', '2099-06'], seguido.target)
+  assert.equal(sellado.status, 0, `continuar la frase es decidir:\n${sellado.stderr}`)
+  assert.match(fs.readFileSync(seguido.file, 'utf8'), /^status: applied$/m)
+})
+
 // El molde de una revisión empieza por «Por definir» como los otros dos, y eso no es redacción: es lo
 // único que hace que el criterio de «sin decidir» —`/^(por definir|pendiente)\b/` en `learning-seal.js`—
 // la reconozca. Con «Una revisión suele…» pasaba de largo, y una revisión firmada con el molde adentro

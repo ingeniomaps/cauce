@@ -10,7 +10,9 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { atomicWrite } = require('../core/files')
-const { isoDate, proposalFiles, proposalState, assertWritable, lastOfPeriod } = require('./learning-files')
+const {
+  isoDate, proposalFiles, proposalState, assertWritable, lastOfPeriod, undecided,
+} = require('./learning-files')
 const { section } = require('../planning/parser')
 // La misma identidad con la que se reclama una tarea: quién es la persona, no qué runner corre.
 const { owner } = require('../planning/claims')
@@ -44,7 +46,6 @@ function seal(root, agent, period = '', kind = 'agent') {
   // no depende de quién sea el sujeto, y para el cargo la puerta ya la pasó quien firmó.
   const responsible = (text.match(/^-\s*Responsable:\s*(.+)$/m) || [])[1] || ''
   const change = section(text, /Cambio propuesto/i).split('\n').slice(1).join('\n').trim()
-  const undecided = (value) => !value || /^(por definir|pendiente)\b/i.test(value)
   if (undecided(responsible.trim()) || undecided(change)) {
     throw new Error(
       `${path.basename(file)} todavía no la decidió nadie: «Aprobación humana» necesita un responsable `
