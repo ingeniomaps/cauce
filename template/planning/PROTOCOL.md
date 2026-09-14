@@ -12,6 +12,11 @@ invariantes.
   puede heredar aceptación usando `(→ CN) (epic: NNN)` y declarar `(depende: slug, otro)`. Lane y cast son
   opcionales: sin ellos la tarea está sin clasificar, que es un estado y no un error. Una tarea con
   dependencias no se ofrece ni se toma hasta que todas estén en DONE.
+  Una condición se comprueba en Verify, que corre antes que Commit y que Done: la que nombre el commit, el
+  reclamo, `done/` o la evidencia registrada pide algo que todavía no existe cuando se la mira, y su lugar
+  son los campos `tests:`, `qa:` y `commit:` de DONE, que ya lo exigen. `check` lo avisa sobre la cola. Si
+  aun así corresponde dejarla ahí, se declara en la propia condición con `(fuera de verify: <razón>)` —la
+  misma salida explícita que `(sin partir: …)` y que `n/a — razón`— y deja de avisarse.
 - DONE: un archivo por tarea cerrada, `done/<slug>.md`, con su entrada `[x]` y los campos `acept:`,
   `fecha:` en AAAA-MM-DD, `done:`, `qa:`, `tests:`, `commit:` y `lane:`. `lane:` repite el carril con el
   que la tarea corrió —`express`, `directo`, `lite`, `full`— o `sin clasificar` si su línea no lo

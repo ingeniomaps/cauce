@@ -154,6 +154,9 @@ function check(dir, cli) {
   }))
   warnings.push(...AD.report({ done, epics, adopted }))
   warnings.push(...PC.doneCeremonyWarnings(done, new Set(adopted)))
+  // Antes de que el recorrido pague Build para descubrirlo en Verify. Cuesta un regex sobre la cola y
+  // corre en los cuatro carriles, incluidos los que saltean Ready (caso 140).
+  warnings.push(...PC.unverifiableAcceptance(milestones))
   warnings.push(...R.coverageWarnings(path.resolve(root, '..'), done))
   // Sin `RECURRING.md` no dice una palabra: una instancia que actualiza y no declara trabajo recurrente
   // no tiene por qué enterarse de que el contrato existe. Vencida avisa y no frena — lo que frena vive

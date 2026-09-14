@@ -155,6 +155,59 @@ function doneCeremonyWarnings(done, adopted = new Set()) {
   return warnings
 }
 
+// Lo que sólo existe después de Verify: el registro de la tarea, no su producto. `done/<slug>.md` lo
+// escribe Done, el commit lo escribe Commit y el reclamo se libera al cerrar, así que una aceptación que
+// pida verlos pide algo que en Verify todavía no puede estar.
+const POST_VERIFY = [
+  [/\bplanning\/done\b|\bdone\/|\bentrada de DONE\b/i, 'planning/done/'],
+  [/\bla evidencia\b|\bevidencia registrada\b/i, 'la evidencia'],
+  [/\bel commit\b|\bcommitead[oa]\b/i, 'el commit'],
+  [/\bel reclamo\b|\bclaims\//i, 'el reclamo'],
+]
+
+// La salida explícita, con la forma que el repositorio ya usa dos veces: `(sin partir: …)` para el umbral
+// de R17 y `n/a — razón` para `tests:` y `commit:`. Acá vale lo mismo que allá —«como lleva su razón
+// escrita se lee en el propio artefacto sin que nadie la cruce»— y por eso no se intenta adivinar si la
+// prosa excluye a Verify. Adivinarlo es lo que no se puede: la única aceptación real que nombra el commit
+// lo hace justamente para decir que no es condición de Verify, y cualquier lista de frases que la
+// reconociera enseñaría a escribir esa frase exacta para silenciar el aviso.
+const OUT_OF_VERIFY = /\(fuera de verify:\s*[^)]+\)/i
+
+// Una condición de aceptación que nombra el registro en vez del producto no se puede cumplir nunca: se
+// comprueba en Verify, que corre antes que Commit y que Done. El recorrido lo detecta —y hace bien—, pero
+// recién ahí: en la corrida que originó esto fueron 1,2 M de tokens y once agentes para terminar con el
+// trabajo hecho, sin commit y sin poder cerrar (caso 140).
+//
+// Avisa y no falla, por lo mismo que el aviso de HUMAN_ACTIONS resueltas sin commit —que nació del 121,
+// el mismo daño y el mismo tamaño—: el patrón es de texto y una aceptación legítima puede mencionar la
+// palabra sin depender de ella. Un aviso que salta siempre se termina apagando.
+//
+// Se juzga condición por condición y no la aceptación entera, que es el grano con el que Verify contrasta
+// —su `uncovered` enumera criterios—: las aceptaciones reales traen varias y marcar el párrafo completo
+// señala a las que están bien por vecindad. Y la marca se busca en la condición, no en la tarea, para que
+// excluir una no exima a las demás.
+//
+// Lo que corresponde casi siempre no es borrar la cláusula sino moverla: `tests:`, `qa:` y `commit:` de
+// DONE ya exigen ese registro (PROTOCOL), así que repetirlo en la aceptación no agrega garantía — agrega
+// un bloqueo. Cuando sí corresponde dejarla, se declara y pasa en silencio.
+function unverifiableAcceptance(milestones = []) {
+  const warnings = []
+  for (const milestone of milestones) {
+    for (const task of milestone.tasks || []) {
+      for (const condition of String(task.acceptance || '').split(';').map((one) => one.trim())) {
+        if (!condition || OUT_OF_VERIFY.test(condition)) continue
+        const nombra = POST_VERIFY.filter(([pattern]) => pattern.test(condition))
+        if (!nombra.length) continue
+        warnings.push(`BACKLOG ${task.slug}: una condición nombra ${nombra.map(([, what]) => what).join(', ')}`
+          + ', que existe después de Verify, así que no se puede comprobar cuando se la comprueba. Eso va '
+          + 'en tests:, qa: o commit: de su entrada de DONE, que ya lo exigen; si de verdad va acá, '
+          + 'declaralo con "(fuera de verify: <razón>)"')
+      }
+    }
+  }
+  return warnings
+}
+
 function duplicates(values) {
   return [...new Set(values.filter((value, index) => values.indexOf(value) !== index))]
 }
@@ -362,6 +415,7 @@ module.exports = {
   validateState,
   doneEntryErrors,
   doneCeremonyWarnings,
+  unverifiableAcceptance,
   validCommitTrace,
   validDecisionTrace,
   validTestTrace,
