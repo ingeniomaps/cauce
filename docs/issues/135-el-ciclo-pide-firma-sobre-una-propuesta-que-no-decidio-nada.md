@@ -1,15 +1,16 @@
 ---
 caso: 135
-titulo: El ciclo abre el PR y pide la firma humana sobre una propuesta cuyo «Cambio propuesto» sigue siendo el texto del molde, y eso sólo se descubre al aplicar
-estado: abierto
+titulo: El placeholder de una revisión no empieza con «Por definir», así que el único criterio que detecta una propuesta sin decidir no la ve: se firma, se mergea y se sella como aplicada
+estado: resuelto
+resuelto-en: 0.88.0
 prioridad: alta
 version-detectada: 0.87.0
 ---
 
-# 135 — Se firman propuestas que no deciden nada, y el rechazo llega cuando la firma ya se gastó
+# 135 — Una revisión sin decidir pasa todas las puertas, incluida la que existe para frenarla
 
-**🔴 abierto** · detectado en 0.87.0 · prioridad **alta** — el ciclo consumió siete firmas humanas reales
-sobre documentos que `agent-promote` no puede aplicar
+**🟢 resuelto en 0.88.0** · detectado en 0.87.0 · prioridad **alta** — el ciclo consumió siete firmas
+humanas reales sobre documentos que no deciden nada, y el ciclo podía cerrarse sobre ellos
 
 ## Resumen
 
@@ -79,8 +80,18 @@ cambio—. Lo que falta es que alguien note que sigue ahí antes de pedir una fi
   evaluación y aprobación humana». Dice que requiere aprobación; no dice que **todavía no hay nada que
   aprobar**.
 - `automatization/workflows/agent-promote.js:100` — `stop('propuesta-vacia')`, el rechazo que llega tarde.
-- `engine/agents/learning-seal.js:46-51` — **la comprobación ya existe**: `undecided(change)` rechaza
-  «por definir» y «pendiente». Pero corre al **sellar**, que es el último paso del ciclo.
+- `engine/agents/learning-seal.js:46-51` — **acá está el defecto, y no es que la puerta corra tarde: es
+  que no ve este placeholder.** `undecided` es `(value) => !value || /^(por definir|pendiente)\b/i.test(value)`,
+  o sea que reconoce lo que **empieza** con esas dos palabras. El molde de una propuesta nueva empieza con
+  «Por definir tras revisar los hallazgos» (`learning.js:386`) y el de un recorrido con «Por definir. Lo que
+  se corrige es el recorrido» (`:274`): los dos quedan atrapados. El de una revisión empieza con «Una
+  revisión suele **no** ser aditiva» y **pasa**.
+
+  Medido: `undecided()` devuelve `false` sobre la sección «Cambio propuesto» de
+  `qa-engineer/learning/proposals/2026-09-r2.md`. Y corrido de punta a punta sobre un banco desechable, una
+  revisión firmada con el placeholder intacto **se sella**: `ops learn probe-engineer --applied --period
+  2026-09` sale con 0 y deja el documento en `status: applied` con «- Estado: aplicada» y el texto del molde
+  adentro. El ciclo llega a su estado terminal sin que nadie haya decidido nada.
 
 El código ya razonó sobre este daño en otro lugar y por eso duele más: `prepareProposal` se niega a abrir
 documento sin material, y su comentario dice «Que sea un andamio en blanco no la abarata —cuesta la misma
@@ -91,10 +102,10 @@ un paso más adelante: el documento tiene hallazgos y aun así no decide nada.
 
 No está decidido. Tres formas, y la elección cambia quién hace el trabajo.
 
-1. **Que la puerta baje de `seal` a `propose`.** El job comprueba el placeholder antes de abrir el PR y,
-   si sigue ahí, no lo abre: deja la propuesta en la rama y lo dice en una anotación. Reusa
-   `engine/agents/learning-seal.js`, así que el criterio queda en un solo lugar. El costo es que el ciclo automático deja
-   de producir PRs hasta que alguien corra `/agent-propose`, que es la verdad de lo que pasa hoy.
+1. **Que el placeholder de una revisión empiece por «Por definir», como las otras dos ramas.** Es una línea
+   de prosa en `learning.js:130`, y con ella el criterio que ya existe —y que hoy no se cambia— pasa a verla.
+   Deja las tres ramas del molde diciendo lo mismo de la misma forma, que es lo que hace que el criterio
+   único funcione. No agrega puerta ni acopla `seal` al texto del molde.
 2. **Que el PR lo diga.** El cuerpo del PR y el título marcan «sin cambio decidido», y el guard de
    propuestas falla el check. Más barato, y deja la decisión en quien lee — pero sigue pidiendo una firma
    que no sirve.
@@ -137,3 +148,64 @@ changes` (el cambio, escrito aparte), y recién después la firma.
 
 - **136** — la otra mitad de lo que esa misma corrida destapó: el detalle de un veredicto en rojo arrastra
   los encabezados de la respuesta del cargo hacia la propuesta.
+
+## Cierre
+
+**🟢 resuelto en 0.88.0** · `engine/agents/learning.js`, `test/agents/learning.test.js`
+
+Se tomó la **opción 1**: el placeholder de una revisión empieza por «Por definir», como los de una
+propuesta nueva y los de un recorrido. Una línea de prosa, y con ella el criterio único que ya existía
+—`/^(por definir|pendiente)\b/` en `engine/agents/learning-seal.js`— pasa a verla. No se agregó ninguna
+puerta nueva ni se acopló `seal` al texto del molde.
+
+### Contra lo que el caso enumeró
+
+- **Resumen: «quien recibe el PR firma un documento que no decidió nada»** — arreglado en la raíz. El
+  documento sigue llegando al PR, pero ya no puede terminar el ciclo: firmarlo y sellarlo falla con
+  código 2 y el mensaje «todavía no la decidió nadie».
+- **Causa raíz: `undecided` no ve el placeholder de revisión** — es lo que se arregló, y se comprobó por
+  los dos lados: `false` antes, `true` después, sobre el texto literal del molde.
+- **Causa raíz: el job abre el PR sin avisar** — **se decidió que no se toca**, y la razón es que dejó de
+  hacer falta por donde importaba. El PR sigue abriéndose igual, pero el documento ya no puede llegar a
+  `applied` sin que alguien escriba el cambio, que es el daño que este caso perseguía. Cambiar además el
+  cuerpo del PR sería una segunda señal para una condición que ahora se frena sola.
+- **Opción 1** — es la construida, aunque **no como el caso la había escrito**: el caso proponía bajar la
+  puerta de `seal` a `propose` reusando `learning-seal.js`, y medir mostró que ese reuso era imposible
+  porque el criterio **no veía** el placeholder. Arreglar el molde en vez de agregar una puerta resultó
+  más chico y dejó las tres ramas diciendo lo mismo de la misma forma.
+- **Opción 2, que el PR lo diga** — se decidió que no, por lo dicho arriba.
+- **Opción 3, que el ciclo corra `/agent-propose`** — se decidió que no acá: mete un modelo en un job
+  diseñado a propósito sin ninguno, y el defecto se cerraba sin eso. Sigue siendo el paso que falta para
+  que el ciclo se complete solo, y eso es trabajo de otra unidad.
+- **«Las siete propuestas ya firmadas hay que resolverlas»** — **sigue pendiente y no le toca a este
+  caso**: son documentos escritos, no código. Con el arreglo puesto ninguna puede sellarse, así que la
+  condición que las bloquea es ahora visible en vez de silenciosa. Se resuelven escribiéndoles el cambio
+  y volviendo a firmar, o archivándolas.
+- **Tradeoff «la opción 1 hace que el ciclo produzca menos»** — no ocurrió: no se tocó cuándo se abre un
+  PR, así que el ciclo produce lo mismo.
+- **Tradeoff «el placeholder no es el defecto»** — se respetó: el texto conserva entera su instrucción y
+  sólo se le antepuso «Por definir».
+- **Prioridad alta** — sostenida: el daño era que el ciclo llegaba a `applied` sin decisión.
+
+### Lo que el caso no preveía
+
+- **El caso afirmaba que la comprobación existía y «corría tarde», y era falso.** Medido: `undecided()`
+  devuelve `false` sobre el placeholder de revisión, y una revisión firmada con el molde adentro **se
+  sellaba** —`status: applied`, «- Estado: aplicada», salida 0—. No era una puerta tardía: era una puerta
+  que no veía. El caso se corrigió antes de arreglarlo.
+- **El discriminador es cuál de los tres moldes se usa.** Las otras dos ramas —propuesta nueva
+  (`learning.js:386`) y recorrido (`:274`)— empiezan con «Por definir» y siempre estuvieron cubiertas. El
+  defecto era exclusivo de las revisiones, que son las que abre un cargo que ya aplicó su propuesta del
+  período.
+
+### Qué se corrió
+
+- **Rojo previo, en copia por `tar` y con verde de control antes**: 24/24 intactas; al revertir el «Por
+  definir. » del molde, **24 → 23 pass / 1 fail**, y la que muere es «una revisión recién compuesta no se
+  puede sellar, porque nadie decidió el cambio». La otra mutación —revertir `nested()`— **no la toca**, así
+  que cada prueba cuida lo suyo.
+- **Contra el banco desechable, de punta a punta**: antes del arreglo, firmar la revisión con el
+  placeholder y correr `learn probe-engineer --applied --period 2026-09` salía **0** y dejaba
+  `status: applied`. Después, sale **2** con «todavía no la decidió nadie» y el documento queda en
+  `status: proposed`.
+- **Verde**: `npm run ci` en 0 y la suite entera en verde.

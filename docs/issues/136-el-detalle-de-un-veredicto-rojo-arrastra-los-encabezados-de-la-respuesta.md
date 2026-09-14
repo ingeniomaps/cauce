@@ -1,15 +1,16 @@
 ---
 caso: 136
 titulo: El detalle de un veredicto en rojo entra entero a la propuesta y sus encabezados de la respuesta quedan como secciones del documento que se firma
-estado: abierto
+estado: resuelto
+resuelto-en: 0.88.0
 prioridad: media
 version-detectada: 0.87.0
 ---
 
 # 136 — Las secciones de la respuesta de un cargo se cuelan como secciones de su propuesta
 
-**🔴 abierto** · detectado en 0.87.0 · prioridad **media** — el documento que se firma deja de tener la
-estructura que la puerta y quien lo lee esperan
+**🟢 resuelto en 0.88.0** · detectado en 0.87.0 · prioridad **media** — el documento que se firma dejaba
+de tener la estructura que la puerta y quien lo lee esperan
 
 ## Resumen
 
@@ -139,3 +140,57 @@ anterior dio lo mismo). Lo que discrimina es el veredicto **final** por caso, qu
 
 - **135** — la otra mitad de la misma corrida: esas propuestas además llegaron a la firma sin un cambio
   decidido.
+
+## Cierre
+
+**🟢 resuelto en 0.88.0** · `engine/agents/learning.js`, `test/agents/learning.test.js`
+
+Se tomó la **opción 1**: al componer el hallazgo de un caso en rojo, los encabezados del detalle bajan un
+nivel (`/^(#{1,5}) /gm` → `#$1 `). El texto viaja entero, como antes, y deja de competir con las secciones
+del molde.
+
+### Contra lo que el caso enumeró
+
+- **Resumen: «los encabezados entran al documento al mismo nivel que `## Hallazgos`»** — arreglado. En el
+  banco, `## Sección propia de la respuesta` sale ahora como `### Sección propia de la respuesta`, dentro
+  del hallazgo al que pertenece.
+- **La tabla de los siete cargos** — se conserva como medición y no hacía falta rehacerla: describe lo que
+  había, y el arreglo no cambia qué cargos tenían rojos vivos sino cómo se compone su detalle.
+- **Opción 1, bajar un nivel** — es la construida.
+- **Opción 2, encerrar el detalle en una cita** — se decidió que no: prefijar cada línea con `> ` cambia
+  todo el detalle para resolver un problema de los encabezados, y un contraste de varias pantallas dentro
+  de una cita se lee peor. La 1 toca sólo lo que estaba de más.
+- **Opción 3, recortar el detalle** — se decidió que no, por lo que el propio caso decía y por lo que el
+  comentario del `VERDICT` documenta: recortar fue el defecto anterior, con 285 de 774 veredictos
+  truncados.
+- **Tradeoff «es cosmético hasta que no lo es»** — es la razón por la que se arregló, y **queda medido a
+  medias**: que `seal` y `agent-promote` ubican secciones por su encabezado está verificado leyendo
+  `engine/planning/parser.js:54-60`, y **no** se midió si algún resultado real contiene un
+  `## Cambio propuesto` adentro. El arreglo lo vuelve inalcanzable de todos modos: ya no hay `##` que
+  escape del detalle.
+- **Tradeoff «la opción 1 modifica el texto del cargo»** — cierto y asumido. No cambia ninguna palabra:
+  sólo el nivel del encabezado, y el comentario en el código lo dice para quien lo lea después.
+- **Tradeoff «ninguna arregla los documentos ya escritos»** — sigue siendo cierto: las dos propuestas
+  contaminadas del 2026-09 quedan como están salvo que se regeneren.
+- **Prioridad media** — sostenida: no se perdía información y el daño era de legibilidad.
+
+### Lo que el caso no preveía
+
+- **Tres hipótesis mías cayeron antes de dar con el mecanismo**, y quedan escritas en el caso porque el
+  próximo que lo lea las va a pensar igual: no es el número de rojos (los siete tenían), no son los `##`
+  de los resultados (los cinco limpios tenían cientos), y no es el sellado posterior (la reconstrucción
+  sobre el árbol anterior dio lo mismo). El discriminador es el **veredicto final por caso**, que es como
+  `verdictFindings` compone: un rojo pisado por una corrida verde posterior no viaja.
+- **Una cuarta hipótesis falló por un error de medición mío**, y vale decirlo: conté como «sin sellar» dos
+  archivos de `finops-engineer` que sí lo estaban, porque filtré por `^(estado|state):` cuando el campo se
+  llama `status:`. Eso fabricó una discrepancia que no existía.
+
+### Qué se corrió
+
+- **Rojo previo, en copia por `tar` y con verde de control antes**: 24/24 intactas; al revertir `nested()`,
+  **24 → 23 pass / 1 fail**, y la que muere es «los encabezados de la respuesta no se vuelven secciones de
+  la propuesta». La otra mutación —revertir el placeholder del 135— **no la toca**.
+- **Contra el banco desechable**: con un detalle que trae `## Sección propia` y `### Subsección propia`, el
+  documento generado lista exactamente seis `##` —los del molde— y el resto bajó a `###` y `####`, con el
+  texto completo.
+- **Verde**: `npm run ci` en 0 y la suite entera en verde.
