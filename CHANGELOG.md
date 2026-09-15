@@ -16,6 +16,39 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.92.0] - 2026-09-15
 
+### Agregado
+
+- **Una raíz puede declarar qué rutas lee su puerta, y un archivo sucio que el gate no va a abrir deja de
+  forzar la copia del índice.** Al commitear, `verify` corre sobre el árbol cuando árbol e índice
+  coinciden y materializa el índice en un temporal cuando difieren. Hasta ahora alcanzaba **cualquier**
+  archivo sin trackear para materializar: un README a medio escribir, un `tsconfig.json` que dejó otra
+  sesión, o el propio `planning/.ops-approval` que el bloqueo te manda crear para aprobar unas rutas.
+
+  Ahora, junto a `verify`, una raíz puede declarar `scope`:
+
+  ```json
+  "workspaceRoots": [
+    { "name": "web", "path": "apps/web", "verify": "pnpm build",
+      "scope": ["src/**", "package.json", "tsconfig.json"] }
+  ]
+  ```
+
+  Con eso, sólo materializa si alguna ruta que difiere cae dentro de ese alcance. Los patrones son
+  relativos a la raíz —el `scope` de `apps/web` habla de `src/**`, no de `apps/web/src/**`— y admiten
+  `*` dentro de un segmento, `**` cruzando segmentos y `?` por un carácter.
+
+  **Sin `scope` declarado no cambia nada**: cualquier delta sigue forzando la copia, que es el
+  comportamiento de siempre. El campo es opcional y no hay que adoptarlo.
+
+  Lo que se gana no es tiempo. Dentro de la copia `node_modules` viaja por **enlace**, y eso rompe
+  cualquier build de Turbopack sin salida del lado del proyecto: ahí un archivo ajeno al commit no cuesta
+  segundos, deja el gate sin poder pasar. Declarar el alcance es lo que lo destraba.
+
+  Dos bordes que valen la pena saber. Un directorio sin trackear llega colapsado —git reporta `extra/` y
+  no dice qué hay adentro—, así que se materializa igual si algún patrón apunta hacia adentro de él. Y
+  una ruta que no cuelga de **ninguna** raíz declarada también cuenta: puede ser de la instancia o de un
+  servicio que nadie declaró, y suponer que no importa es justo lo que este campo existe para evitar.
+
 ### Corregido
 
 - **El motor se encuentra aunque lo hayas instalado un nivel arriba de tu instancia.** Si corrés
