@@ -15,6 +15,12 @@ siempre que árbol e índice difieran, y a diferencia del **151** no hay ajuste 
 > cerradas —la 2 descartada por medición, la 3 ya existía desde 0.74.0 con su premisa equivocada— y la
 > que queda no es un arreglo sino un cambio de contrato, que salió como **156**. El defecto sigue en pie:
 > por eso esto no se cierra.
+>
+> **Segunda tanda el 2026-09-15**, sobre las dos dimensiones que este caso declaraba sin medir. Las dos
+> se midieron y **las dos corrigen al caso**: el *bind mount* no sirve, y por una razón más fuerte que la
+> portabilidad que se le atribuía; y la línea que el guard muestra **sí** es la de Turbopack, así que la
+> sospecha de que la causa quedaba escondida era falsa. Se midió además una vía que ningún caso
+> contemplaba —`cp -al`— y quedó descartada. Nada de esto destraba el defecto: sigue siendo el **156**.
 
 ## Resumen
 
@@ -44,8 +50,11 @@ Reproducido a mano replicando exactamente lo que hace `commitTree`: `checkout-in
 2. Cualquier archivo sucio en el árbol que no esté en el índice — basta uno ajeno al commit.
 3. Commitear. `test` y `lint` pasan dentro de la copia; `build` vuelve en **2,2 s** con `[ELIFECYCLE]`.
 
-El guard informa sólo el código de salida, así que el mensaje de arriba no se ve: hay que replicar la copia
-para leerlo. En el árbol, el mismo contenido compila en 3,6 s y genera sus 5 páginas estáticas, exit 0.
+~~El guard informa sólo el código de salida, así que el mensaje de arriba no se ve: hay que replicar la
+copia para leerlo.~~ **Falso, medido el 2026-09-15**: el bloqueo muestra la primera línea de error desde
+0.74.0, y con esta salida la que elige es la del `TurbopackInternalError` —el detalle, en la opción 3—. Lo
+que no se ve sin replicar la copia es el resto del volcado, que es otra cosa y es deliberado. En el árbol,
+el mismo contenido compila en 3,6 s y genera sus 5 páginas estáticas, exit 0.
 
 ## Síntoma
 
@@ -83,19 +92,78 @@ raíz del proyecto, y un symlink absoluto hacia afuera no lo está.
 
    Turbopack rechaza por el **destino**, así que el relativo no lo evita. Lo único que deja `node_modules`
    bajo la raíz es copiarlo, que es exactamente lo que `commitTree` evita para no copiar gigabytes por
-   commit. Queda el *bind mount*, que el propio caso ya señala como lo menos portable —y el **069** lo
-   descartó por eso mismo: en dos de las tres plataformas no hay equivalente directo—.
+   commit. ~~Queda el *bind mount*, que el propio caso ya señala como lo menos portable —y el **069** lo
+   descartó por eso mismo: en dos de las tres plataformas no hay equivalente directo—.~~
+
+   **El *bind mount* también está descartado, medido el 2026-09-15, y la razón no es la portabilidad.**
+   Un montaje **vive en el namespace que lo creó**: para que sirviera, `commitTree` tendría que montar y
+   lanzar los gates dentro del mismo namespace, no sólo montar. Y montar no puede: pide privilegios que un
+   guard no tiene. Medido en Linux 6.8.0 (uid 1000, `CapEff: 0000000000000000`):
+
+   | vía | resultado |
+   | --- | --- |
+   | `mount --bind` directo | `debe ser superusuario para utilizar mount` |
+   | `mount -t overlay` | `debe ser superusuario para utilizar mount` |
+   | `mount --bind` dentro de `unshare --user --mount` | el montaje no sobrevive al proceso |
+   | hardlink del directorio | `no se permiten enlaces fuertes para directorios` |
+
+   El **069** lo descartó diciendo «en dos de las tres plataformas no hay equivalente directo», y eso deja
+   creer que en Linux sí lo hay. **En Linux tampoco**, sin privilegios. La corrección importa porque ese
+   «en Linux sí» es lo que mantenía la vía viva en los dos casos.
+
+   Una advertencia para quien repita esto: acá `unshare --map-root-user` falló con `Operación no
+   permitida` al escribir `/proc/self/uid_map`, y **eso fue el entorno de medición, no la plataforma** —
+   `apparmor_restrict_unprivileged_userns=1`—. El kernel sí da user namespaces: `unshare --user true`
+   pasa. Decirlo separa una limitación local de una propiedad del sistema, que es lo que estuvo a punto de
+   escribirse al revés.
+
+4. ~~**Copiar `node_modules` con hardlinks de archivo** (`cp -al`): deja un directorio real bajo la raíz,
+   que es lo que Turbopack exige, sin duplicar los bytes.~~ **Descartada por medición** (2026-09-15).
+   Parecía el hueco entre «enlazar el directorio», que Turbopack rechaza, y «copiar gigabytes», que el
+   caso evita. Falla por dos razones independientes, cada una suficiente:
+
+   - **Los symlinks internos no resuelven dentro de la copia.** Un `node_modules` de pnpm es un bosque de
+     enlaces relativos hacia `.pnpm/`; `cp -al` copia el enlace como enlace, y en la copia la cadena se
+     rompe: `readlink -f dep7` devuelve vacío.
+   - **Escribir en la copia pisa el original.** Un hardlink es el mismo inodo: al escribir el
+     `package.json` de un paquete dentro de la copia, el del proyecto quedó con el contenido nuevo. Es
+     exactamente el daño que el **069** fue a evitar, reintroducido por otra puerta.
+
+   Y el número que faltaba para poder descartar la copia de verdad: sobre un `node_modules` real de esta
+   máquina —3,0 G, 66 420 archivos, 4 180 symlinks—, 2 000 archivos (24 MB) costaron **2,56 s**, o sea
+   **~85 s por commit** extrapolado al árbol entero, contra los **157 ms** que hoy tarda `checkout-index`.
+   El caso decía «gigabytes» sin número; el número es ése.
 3. ~~**Que el guard muestre la salida del gate cuando falla en menos de N segundos.**~~ **Ya existe, y la
    premisa de este punto estaba equivocada.** El bloqueo muestra la primera línea de error del gate desde
    **0.74.0** —`030bd544`, quince versiones antes de la que este caso midió— junto con la duración y el
    aviso de que volver en menos de 2 s no alcanza para correr una suite. La cita a «el 142» era errónea: el
    142 es sobre propuestas firmadas sin salida. El caso de esta familia es el **094**.
 
-   Lo que **no** queda establecido es por qué quien escribió este caso no vio esa línea, y se declara en vez
-   de suponerse: `run()` compone `stdout` entero y después `stderr` entero —no intercalados— y `fallo()`
-   elige la primera línea que matchea `ERROR_LINE` entre las que no empiezan con `>`. Con una salida real de
-   Next, cualquier línea de `stdout` que contenga «error» o «fail» gana antes que el `TurbopackInternalError`
-   de `stderr`. Medirlo pide la salida real de un `next build`, que no se tiene acá.
+   ~~Lo que **no** queda establecido es por qué quien escribió este caso no vio esa línea, y se declara en
+   vez de suponerse: `run()` compone `stdout` entero y después `stderr` entero —no intercalados— y
+   `fallo()` elige la primera línea que matchea `ERROR_LINE` entre las que no empiezan con `>`. Con una
+   salida real de Next, cualquier línea de `stdout` que contenga «error» o «fail» gana antes que el
+   `TurbopackInternalError` de `stderr`. Medirlo pide la salida real de un `next build`, que no se tiene
+   acá.~~
+
+   **Medido el 2026-09-15, y la sospecha era falsa: gana el `TurbopackInternalError`.** No hacía falta un
+   `next build` — lo que había que medir no es Next sino la selección de línea, y la salida de Turbopack
+   está citada literal más arriba en este mismo caso. Ejercido el `fallo()` del motor, extraído del fuente
+   y no reimplementado, sobre esa salida precedida del eco de pnpm, la línea elegida es:
+
+   ```
+   Error [TurbopackInternalError]: Symlink [project]/node_modules is invalid,
+   ```
+
+   Falla la predicción porque ignoraba dos filtros de `engine/hooks/shell.js`. El eco `>` se descarta en
+   `:577`, así que `> next build` no compite; y `:578` busca **primero** una marca de prueba fallada
+   (`FAILED_TEST`), que la salida de Next no tiene, antes de caer al `ERROR_LINE` de `:579`. Para cuando
+   se llega ahí, `stdout` ya no aporta ninguna línea con «error» o «fail» y la primera coincidencia es la
+   de Turbopack.
+
+   **Así que quien commitea sí ve la causa**, y este caso no tiene nada pendiente por acá. Queda en pie lo
+   que el **Síntoma** describe —dos gates en verde hacen que el rojo parezca del cambio—, que es otra cosa
+   y no se arregla mostrando una línea.
 
 El 1 es lo único que queda en pie, y **no es un arreglo sino un cambio de contrato**: salió como caso
 propio, el **156**.
@@ -112,13 +180,29 @@ Turbopack: falla antes, en que sigue resolviendo afuera de la copia. O sea que n
 descartarla, y la predicción de que «su verde no se puede afirmar sin medirlo» era correcta por una razón
 más simple que la prevista.
 
+**Y la otra mitad del 2 se cobró igual, midiéndola.** «Depende de qué acepte cada herramienta» daba por
+sentado que la herramienta llegaría a opinar; no llega, porque el mecanismo no está disponible para quien
+tendría que usarlo. Un tradeoff planteado sobre la compatibilidad se resolvió en la capa de abajo.
+
+**Una corrección de alcance que este caso arrastra.** El texto habla de «lo ignorado» en general, y eso
+hace parecer el problema más ancho de lo que es: `RECREABLE` (`engine/hooks/shell.js:401`) ya excluye
+`.next`, `.turbo`, `dist`, `build` y compañía, así que la salida de Next **no** se enlaza —se reconstruye
+dentro de la copia—. Lo único que viaja por enlace y rompe a Turbopack es `node_modules`. Importa para
+quien vaya a arreglarlo: la superficie es un nombre, no una categoría.
+
 ## Prioridad
 
 **Alta, y ahora con un solo camino.** Sigue bloqueando todo commit de un proyecto Next cuando árbol e índice
 difieren, y lo único que puede destrabarlo es el **156**: mientras `node_modules` viaje por enlace, la copia
 rompe el build, y mientras cualquier archivo sucio fuerce la copia, basta un README suelto para dejar sin
-gate a quien commitea. Baja el día que el 156 se resuelva, o si aparece una vía sobre el enlace que estas
-mediciones no cubrieron —el *bind mount* sigue sin medirse, y sigue siendo lo menos portable—.
+gate a quien commitea. ~~Baja el día que el 156 se resuelva, o si aparece una vía sobre el enlace que estas
+mediciones no cubrieron —el *bind mount* sigue sin medirse, y sigue siendo lo menos portable—.~~
+
+**Baja el día que el 156 se resuelva, y ya no hay una segunda puerta esperando medición.** Las cuatro vías
+que dejarían `node_modules` bajo la raíz de la copia están medidas y descartadas —enlace relativo, bind
+mount, overlay, hardlinks— y la quinta, copiar de verdad, cuesta ~85 s por commit. O sea que el enlace se
+queda, y lo que tiene que cambiar es **cuándo se hace la copia**, no cómo se puebla. Eso es el 156, y esta
+tanda lo deja como única salida por eliminación y no por preferencia.
 
 ## Contexto de descubrimiento
 
