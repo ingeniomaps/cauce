@@ -14,6 +14,24 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.90.0] - 2026-09-15
+
+### Corregido
+
+- **El ciclo de aprendizaje ya no te deja una rama muerta por cada informe que se mergea solo.** Cuando un
+  informe declara `propone: no`, su PR se cierra con auto-merge y su rama quedaba viva para siempre: una
+  por cargo y por semana. La bandera que debía borrarla estaba puesta desde la versión anterior y nunca
+  hizo nada — `gh` borra «after merge», y con auto-merge el comando termina al *armar*, horas antes de que
+  el merge ocurra.
+
+  Ahora lo hace `delete-merged-branch.yml`, que escucha el cierre del PR y borra la rama cuando el merge
+  ya pasó. Vale para cualquier PR mergeado de este repositorio, no sólo los del ciclo: el mismo hueco
+  dejaba vivas las ramas de release. Una rama de un fork no se toca, y un PR cerrado sin mergear tampoco
+  —ahí la rama es trabajo de alguien—.
+
+  **No tenés que hacer nada.** Si tu instancia acumuló ramas `automation/*` de informes ya mergeados, se
+  borran a mano una vez; las nuevas ya no se quedan.
+
 ## [0.89.0] - 2026-09-14
 
 ### Agregado
