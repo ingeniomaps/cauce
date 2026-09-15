@@ -25,8 +25,12 @@ test('autobuild implementa el protocolo completo sin rutas de proyectos fuente',
     'Triage', 'Pick', 'Ready', 'Decompose', 'Plan', 'Critique', 'Build',
     'Review', 'Verify', 'QA', 'Commit', 'Done', 'Closing',
   ]
+  // El nombre puede llegar por una expresión y no por un literal: `Build` se anuncia como
+  // `Build (reanudado)` cuando el WIP no tiene pasos pendientes (caso 154). Lo que esta prueba cuida es
+  // que las trece fases del protocolo existan, no cómo se escribe cada llamada, así que el patrón admite
+  // el ternario y sigue fallando si una fase desaparece.
   for (const phase of phases) {
-    assert.match(workflow, new RegExp(`phase\\('${phase}'\\)`))
+    assert.match(workflow, new RegExp(`phase\\((?:[^)]*\\? )?'${phase}[^']*'`))
   }
   assert.equal(/['"`][^'"`\n]*-ops\//.test(workflow), false, 'directorio de proyecto hardcodeado')
   assert.match(workflow, /workspaceRoots/)
