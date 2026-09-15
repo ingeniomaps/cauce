@@ -18,6 +18,20 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **El ciclo de aprendizaje ya no deja la propuesta mensual en «por definir».** Cada mes, el ciclo
+  consolida lo que recomendaron los informes semanales de un cargo y abre su propuesta. Hasta ahora la
+  dejaba con el molde intacto en «Cambio propuesto», y eso no es aprobable: nadie firma una intención.
+  Medido sobre `2026-09`: de **25** propuestas, **15** se archivaron con el molde y sólo 10 llegaron a
+  algo, las que alguien completó a mano.
+
+  El recorrido que escribe el cambio exacto —archivo por archivo, contrastado contra los casos
+  adversariales vigentes— ya existía; lo que faltaba era que el ciclo lo corriera. Ahora lo corre, y sólo
+  sobre las propuestas que quedaron sin decidir.
+
+  **Sin credencial no se rompe nada**: el paso avisa y el mes queda como quedaba antes, con la rama
+  empujada y sus sellos puestos. Lo mismo si la corrida falla. Lo que decide si se te pide una firma
+  sigue siendo el documento, no quién lo llenó.
+
 - **Tu proyecto puede declarar sus límites en una lista, y `check` avisa del que no llegue a los agentes.**
   Los límites que tu proyecto amplía o restringe viven en `organization/workspace.md`, y de ahí viajan al
   preámbulo de cada subagente. Hasta ahora se reconocían **por cómo arrancaba el párrafo** —«El runner»,

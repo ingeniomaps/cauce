@@ -433,3 +433,46 @@ test('un dispatch puede nombrar una cadencia y arma la misma cohorte que el cron
   const conSlug = correr({ ONLY: 'mensual-uno', CADENCE: 'semanal' })
   assert.match(conSlug.salida, /^agents=\["mensual-uno"\]$/m, 'el slug gana sobre la cadencia')
 })
+
+// El ciclo llegaba hasta la puerta de la decisión y no la cruzaba: `learn --proposal` consolida y deja
+// «Cambio propuesto: por definir», que nadie puede firmar. De 25 propuestas de 2026-09, 15 se archivaron
+// con el molde intacto. El recorrido que escribe el cambio ya existía y este job no lo corría, y dos
+// cierres lo difirieron sin que nadie lo tomara (caso 155).
+test('el job que consolida escribe el cambio concreto, y sólo cuando falta', () => {
+  const source = workflow('agent-learning')
+  const bloque = (job) => source.split(new RegExp(`^  ${job}:$`, 'm'))[1].split(/^  [a-z-]+:$/m)[0]
+  const propose = bloque('propose')
+
+  assert.match(propose, /- name: Write the concrete change/, 'el paso existe en el job que consolida')
+  // Sólo sobre lo que quedó sin decidir, y leyendo el veredicto que ya emitió `learn`: recalcularlo sería
+  // una segunda definición de «sin decidir», y de dos una se pudre sin que nada falle.
+  assert.match(propose, /if: steps\.proposal\.outputs\.decided != 'true'/, 'corre sólo si falta el cambio')
+  assert.equal(/grep -q 'sin cambio decidido'[^\n]*\n[^\n]*agent-propose/.test(propose), false,
+    'no vuelve a juzgar por su cuenta si el documento decidió algo')
+
+  // Antes de `Detect changes`: lo que el recorrido escriba tiene que entrar al mismo `git status` que
+  // arma el PR, o la propuesta completada se queda en el runner y el mes siguiente vuelve a faltar.
+  assert.ok(propose.indexOf('Write the concrete change') < propose.indexOf('- name: Detect changes'),
+    'se escribe antes de mirar qué cambió')
+
+  // El espejo de recorridos no consolida propuestas de cargo, así que no le toca.
+  assert.equal(/Write the concrete change/.test(bloque('propose-flows')), false,
+    'el job de recorridos no lo lleva')
+})
+
+// Sin credencial el ciclo degrada al estado que ya tenía —la propuesta en «por definir»— en vez de
+// romperse. Es el mismo trato que el job que investiga le da a la semana sin credencial: avisar y seguir.
+test('proponer sin credencial avisa y deja el ciclo como estaba', () => {
+  const source = workflow('agent-learning')
+  const start = source.indexOf('- name: Write the concrete change')
+  const cuerpo = source.slice(source.indexOf('run: |', start)).split(/^      - name:/m)[0]
+
+  assert.match(cuerpo, /if \[ -z "\$OAUTH" \] && \[ -z "\$APIKEY" \]; then/, 'mira las dos credenciales')
+  assert.match(cuerpo, /::notice title=Sin credencial para proponer::/, 'y lo dice sin fallar')
+  assert.ok(cuerpo.indexOf('exit 0') > 0, 'sale en cero: el mes queda como antes, no roto')
+  // La misma resolución que el job que investiga, y en el mismo orden: suscripción primero, API key como
+  // respaldo. Es lo que vuelve falsa la objeción que difirió este caso dos veces — el workflow ya corría
+  // un modelo, y lo que faltaba era conectarlo, no decidir de dónde sale la credencial.
+  assert.ok(cuerpo.indexOf('CLAUDE_CODE_OAUTH_TOKEN="$OAUTH"') < cuerpo.indexOf('ANTHROPIC_API_KEY="$APIKEY"'),
+    'la suscripción primero y la API key de respaldo')
+})
