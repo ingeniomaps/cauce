@@ -33,6 +33,21 @@ diseño — eso vive en el commit y en el código.
   aprobar las rutas o `OPS_SKIP_VERIFY=1` —las dos commitean sin haber corrido el gate— ni `CI=true`, que
   desarma justamente la confirmación con la que pnpm frena antes de purgar.
 
+- **`plan-first` decía que no tenías plan cuando lo que pasaba es que no veía el tuyo.** El guard busca el
+  WIP de tu id, y ese id sale del árbol donde corre el proceso mientras no exportes `CAUCE_RUNNER`. Con la
+  instancia al lado de dos repositorios, el mismo cambio se frenaba o pasaba según el directorio desde el
+  que saliera la llamada — y el bloqueo decía «WIP está en IDLE» con el plan escrito y a la vista, así que
+  mandaba a escribir de nuevo algo que ya existía.
+
+  Ahora distingue las dos causas: si hay un plan bajo otro id, lo nombra con su tarea y te manda a volver a
+  ese id —`ops runners <planning>` los lista— o a montar el tuyo con `ops worktree <planning> <tarea>`. Y
+  **deja de ofrecerte aprobar la ruta**, porque con un plan a la vista eso escribe por vos que el cambio no
+  es trabajo de ninguna tarea, que es falso y queda en el registro.
+
+  Lo que no cambia: el plan de otro runner sigue sin autorizarte a escribir. Si van a trabajar en paralelo,
+  cada agente necesita su árbol —`git worktree`, que es lo que `ops worktree` prepara—, y ahí el problema no
+  existe porque no comparten archivos.
+
 ## [0.90.0] - 2026-09-15
 
 ### Corregido
