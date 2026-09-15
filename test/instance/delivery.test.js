@@ -10,6 +10,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { inRepo } = require('../support/environment')
 
 // «init fija la versión exacta, así que npm update no la mueve» es lo que el README da como razón para
 // no saltear el primer paso del upgrade, y el comando que documentaba a continuación desarmaba esa
@@ -17,7 +18,8 @@ const { spawnSync } = require('node:child_process')
 // Lo que este caso cuida es que los tres lugares que dictan el comando lo dicten preservando el pin:
 // el README, el atajo del molde y la salida de `--check`. Comprobado contra npm 11.16.0: con
 // `--save-exact` el manifiesto queda en `0.55.0` y sin él en `^0.55.0`.
-test('todo lo que documenta el upgrade preserva la versión exacta', () => {
+test('todo lo que documenta el upgrade preserva la versión exacta',
+  { skip: !inRepo() && 'sin `.git` no hay índice del que leer lo trackeado' }, () => {
   const root = path.resolve(__dirname, '..', '..')
   // La propiedad es que el flag esté, no en qué orden: `guard-engine` ya lo dictaba bien con las
   // banderas al revés, y buscar la forma literal lo habría dado por roto —o, peor, por ausente—.
@@ -48,7 +50,8 @@ test('todo lo que documenta el upgrade preserva la versión exacta', () => {
 // Sin esto pasó lo que tenía que pasar. 0.57.0 agregó `organization/workspace.md` y lo nombró tres
 // veces desde un `AGENTS.md` que sí se reemplaza: la instancia que actualizaba quedaba leyendo una
 // instrucción hacia un archivo que no tenía, y el arreglo llegaba entero sólo a las instancias nuevas.
-test('cada archivo propio del molde declara cómo llega a una instancia que ya existe', () => {
+test('cada archivo propio del molde declara cómo llega a una instancia que ya existe',
+  { skip: !inRepo() && 'sin `.git` no hay índice del que leer el molde trackeado' }, () => {
   const root = path.resolve(__dirname, '..', '..')
   const O = require('../../engine/core/ownership')
   const tracked = spawnSync('git', ['ls-files', 'template'], { cwd: root, encoding: 'utf8' })

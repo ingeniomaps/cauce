@@ -8,8 +8,8 @@ version-detectada: 0.90.0
 
 # 149 — El guard que cuida el registro mira el caso imposible y no el probable
 
-**🔴 abierto** · detectado en 0.90.0 · prioridad **media** — arreglado y a la espera de **0.91.0**, con el
-recorrido abajo
+**🔴 abierto** · detectado en 0.90.0 · prioridad **media** — arreglado y a la espera de que **0.90.0** se
+publique, con el recorrido abajo
 
 ## Resumen
 
@@ -102,8 +102,13 @@ de 68 archivos a 1 sin que nada avisara. Se detectó mirando `git status`, no po
 
 ## Cierre
 
-**Arreglado en la rama; el estado cambia cuando 0.91.0 llegue a npm** ·
+**Arreglado en la rama; el estado cambia cuando 0.90.0 llegue a npm** ·
 `test/tools/coverage-files.js`, `test/repo/coverage-floors.test.js`, `CHANGELOG.md`
+
+Su entrada entró en la de **0.90.0**, que todavía no se publicó: mientras no haya tag, la versión abierta
+es la que acumula. El primer intento le escribió un encabezado `0.91.0` propio y eso le dio a
+`release-pr.yml` el disparador que busca —encabezado más nuevo distinto de `package.json`—, que abrió una
+rama de release por una versión que nadie había decidido.
 
 Se tomó la **opción 1**, pero **no con el criterio que el caso proponía**. Medir la cantidad era lo obvio
 y es lo que menos protege: un registro de 68 que baja a 67 pasaría, y el defecto seguiría entrando por
