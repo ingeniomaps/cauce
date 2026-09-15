@@ -197,6 +197,15 @@ descartó que hubiera una salida sin construir nada.
 
 ### Qué se corrió
 
+- **El arreglo borrando una rama de verdad, que es la prueba que este caso vino a exigir.** El PR #463 —el
+  que trae el arreglo— se mergeó **sin** `--delete-branch` a propósito: con la bandera la habría borrado
+  `gh` y no se mediría nada. La rama `fix/147-borrar-la-rama-cuando-el-merge-ocurre` desapareció sola. La
+  corrida queda registrada: evento `pull_request`, `completed/success`, y el paso «Delete the head branch»
+  en `success`.
+
+  Es distinta de todo lo demás de esta lista y por eso va primera: las mutaciones prueban que la aserción
+  mira algo, y ésta prueba que el mecanismo hace algo. El caso nació justamente de un arreglo que tenía lo
+  primero y nunca tuvo lo segundo.
 - **La medición del ajuste del repositorio**, que decidió el desenlace: cero borrados atribuibles a
   `delete_branch_on_merge` en todo el historial; el #277 borrado a mano siete minutos después del merge.
 - **Rojo previo**: con `delete-merged-branch.yml` fuera de lugar, la prueba nueva **falla** —`tests 9,
