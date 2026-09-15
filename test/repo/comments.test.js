@@ -201,8 +201,6 @@ const ACCEPTED_PAIRS = {
     { pairs: 1, reason: 'Workflows gemelos: cada uno viaja y se lee solo, y difieren en el verbo que importa.' },
   'automatization/hooks/guard-files.sh::automatization/hooks/guard-shell.sh':
     { pairs: 1, reason: 'Los quince shims son una plantilla; lo que cambia es a qué guard delegan.' },
-  'automatization/hooks/run-hook.sh::automatization/runners/antigravity/hook.js':
-    { pairs: 1, reason: 'Los dos repiten la cascada del motor y lo declaran; ownership.js nombra a los dos.' },
 }
 const SIMILAR = 0.45
 

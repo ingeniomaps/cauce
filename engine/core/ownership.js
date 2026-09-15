@@ -107,10 +107,37 @@ function sourceOf(relative) {
 // Dos caminos, no tres. La copia vendorizada en `.ops/` se retiró en 0.10.0 — ahorraba un
 // `package.json` a cambio de 5 MB en la historia de la empresa y de no poder enterarse de una versión
 // nueva, y Node hace falta igual en los dos casos.
+//
+// Y un tercero, que es el layout que produce el flujo documentado: `npm install @ingeniomaps/cauce` se
+// corre en la carpeta de la empresa y `cauce init ops` deja la instancia adentro, así que el motor queda
+// **arriba** de ella. Sin este candidato, `automation check` daba nueve errores sobre un motor instalado y
+// el consejo mandaba a bajar una segunda copia un nivel más abajo (caso 158).
+//
+// Un nivel y no una búsqueda hacia arriba. Node sube hasta la raíz del disco y eso acá adivina: dentro de
+// un monorepo con varios paquetes encontraría un motor de otra versión, y ese fallo es silencioso. Lo que
+// se mira es la raíz que la instancia **declara** —la misma que `installRoot` usa para el runner—, así que
+// un `<empresa>-ops` con su propio `node_modules` gana en el primer candidato y no cambia nada.
+//
+// Se lee acá y no se importa de `automation/runners`: ese módulo ya importa éste, y al revés se muerden.
+//
+// **Y esta cascada la repiten otros dos**, porque corren antes de poder cargar este módulo: el shim
+// `automatization/hooks/run-hook.sh`, que lanza cada guard, y el bridge
+// `automatization/runners/antigravity/hook.js`. Los tres se cambian juntos o el motor se encuentra desde
+// el CLI y no desde los guards, que es medio arreglo y del lado que no se nota.
+function declaredRoot(root) {
+  try {
+    const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
+    if (config.mode === 'sidecar') return path.resolve(root, '..')
+  } catch { /* sin configuración legible, sólo el propio */ }
+  return ''
+}
+
 function packagePath(root, relative) {
+  const above = declaredRoot(root)
   const candidates = [
     path.join(root, 'node_modules', '@ingeniomaps', 'cauce', relative),
     path.join(root, relative),
+    ...(above ? [path.join(above, 'node_modules', '@ingeniomaps', 'cauce', relative)] : []),
   ]
   return candidates.find((candidate) => fs.existsSync(candidate)) || ''
 }

@@ -140,6 +140,13 @@ function linkEngine(target) {
   fs.symlinkSync(path.resolve(__dirname, '..', '..'), path.join(scope, 'cauce'), 'dir')
 }
 
+// El motor un nivel arriba del target, que es el otro layout que una instancia puede tener. Existe porque
+// `linkEngine` monta sólo el primero, y con un solo fixture posible la mitad de los casos no se puede
+// escribir: cuál es cada layout y por qué hay dos lo dice `packagePath` (caso 158).
+function linkEngineAbove(target) {
+  linkEngine(path.dirname(target))
+}
+
 // Los workflows de GitHub Actions, leídos para poder **ejecutar** lo que declaran. Un paso que se
 // afirma citando su texto vuelve a pasar con otra redacción igual de rota: lo que hay que fijar es
 // qué hace el comando contra un repositorio de verdad.
@@ -262,6 +269,6 @@ module.exports = {
   wipPath,
   writeWip,
   MIN_ROLES, opsConfig, filesBelow, tempRoot, outsideTempRoot, undeletable, discard, CLI, run,
-  linkEngine, installedProject, inRepo, sourceFiles,
+  linkEngine, linkEngineAbove, installedProject, inRepo, sourceFiles,
   workflow, workflowStep, workflowCommand,
 }
