@@ -1,15 +1,16 @@
 ---
 caso: 155
 titulo: El ciclo deja la propuesta mensual en «por definir» y el paso que la completaría lo difieren dos casos sin abrir ninguna unidad
-estado: abierto
+estado: resuelto
+resuelto-en: 0.92.0
 prioridad: media
 version-detectada: 0.90.0
 ---
 
 # 155 — El paso que completa el ciclo lo difieren dos cierres y nadie lo tiene
 
-**🔴 abierto** · detectado en 0.90.0 · prioridad **media** — el recorrido que falta ya existe y está
-escrito; lo que no existe es la unidad que decida conectarlo
+**🟢 resuelto en 0.92.0** · detectado en 0.90.0 · prioridad **media** — el job consolida y ahora escribe
+el cambio concreto; sin credencial avisa y deja el mes como estaba, en vez de romper el ciclo
 
 ## Resumen
 
@@ -99,3 +100,67 @@ declaradas sin destino. Fue el único hallazgo con consecuencia práctica de ese
 
 - **135** y **143** — los dos cierres que lo difieren sin nombrarlo.
 - **142** — la ola de propuestas archivadas con el molde intacto, que es lo que este hueco produce.
+
+## Cierre
+
+**🟢 resuelto en 0.92.0** · `.github/workflows/agent-learning.yml`, `test/repo/ci-schedule.test.js`,
+`CHANGELOG.md`
+
+Se tomó la **opción 1**, y lo que la desbloqueó fue contrastar la premisa que la había diferido dos veces.
+
+### La objeción que difirió el caso era falsa
+
+El 135 y el 143 lo postergaron para no meter «un modelo, su credencial y su gasto en un job que hoy corre
+sin ninguno». Eso era cierto **del job `propose`** y no del workflow: `agent-learning.yml` ya corre un
+modelo en el job que investiga, con `CLAUDE_CODE_OAUTH_TOKEN` y reintento a `ANTHROPIC_API_KEY`, su
+timeout y su aviso cuando no hay credencial. El paso nuevo reusa esa resolución en vez de decidirla de
+nuevo, así que lo que quedaba no era una decisión de diseño sino cableado.
+
+### Contra lo que el caso enumeró
+
+- **Opción 1, que el job invoque `/agent-propose` tras consolidar** — **se hizo.** El paso corre entre
+  `Validate proposal` y `Detect changes`, para que lo que el recorrido escriba entre al mismo
+  `git status` que arma el PR. Un workflow no se ejecuta desde el fuente —trae `{{INCLUDE:}}`— así que se
+  renderiza a `.claude/workflows/` con el mismo `render` que usa `make eval-workflows`, y falla si queda
+  un include sin expandir en vez de escribir un archivo que reventaría en el primer agente.
+- **Sus dos preguntas abiertas, contestadas.** *De dónde sale la credencial*: de los mismos secrets que ya
+  usa el workflow. *Qué pasa si el recorrido falla a mitad*: la propuesta **no** queda peor que en «por
+  definir» — queda exactamente ahí, que es el estado que ya tenía. Sin credencial, con la suscripción
+  caída o con el respaldo fallando, el paso avisa y sale en cero; la rama se empuja igual con sus sellos,
+  y la condición que decide si se pide firma sigue mirando el documento y no quién lo llenó.
+- **Opción 2, un job aparte disparado a mano** — **se decidió que no.** Era más barata de decidir porque
+  evitaba el gasto recurrente, y ese gasto dejó de ser una incógnita al medirlo. Deja además el ciclo sin
+  cerrarse solo, que es el problema original.
+- **Opción 3, declararlo y no conectarlo** — **se decidió que no.** Documentaba el hueco en vez de
+  cerrarlo, y el recorrido que lo cierra ya existía escrito.
+- **Tradeoff «la 1 mete un modelo en el job del ciclo»** — **se paga, y es menos de lo que parecía**: el
+  workflow ya lo tenía, y el paso corre **sólo** sobre las propuestas que quedaron en «por definir»,
+  leyendo el veredicto que `learn` ya emitió. Las que alguien completó a mano no cuestan nada.
+- **«Vale la pena mirar cuánto costaría una corrida de `/agent-propose` por cargo»** — **medido**, y es lo
+  que volvió defendible la 1 frente a la 2: ≈ **18.300 tokens de entrada por cargo** —27.332 B de insumos
+  promedio más dos preámbulos de 23 KB (caso 141), sobre las dos llamadas que el recorrido hace— por los
+  **25** cargos que consolidan, del orden de **460.000 tokens al mes**. El caso decía que la diferencia
+  entre las dos opciones «es un número y no una opinión»; éste es el número.
+
+### Qué se corrió
+
+- **Reproducción:** el workflow nombraba `agent-propose` dos veces y ninguna era invocación —las dos
+  dentro del comentario que explicaba por qué no lo corría—, y de **25** propuestas de `2026-09`, **15**
+  quedaron con el molde intacto contra 10 completadas a mano.
+- **Rojo previo** con el paso quitado en una copia desechable: **2 rojas de 15**, y son las dos del
+  arreglo.
+- **Tres mutaciones.** Quitar la condición para que corra siempre → 1 roja. Convertir el aviso sin
+  credencial en error → 1 roja, la de la degradación. Mover el paso después de `Detect changes` → 1 roja,
+  porque la propuesta completada se quedaría en el runner.
+- **El render se ejecutó de verdad:** 7.014 B con todos los `{{INCLUDE:}}` expandidos y `finish`/`stop`
+  adentro.
+- `npm run ci` **exit 0 — 874 pruebas, 0 en rojo**, sin superficie muerta y 71 archivos en su piso.
+
+### Lo que el caso no preveía
+
+**El paso no puede conceder `Bash`.** La puerta que cuida los permisos del modelo cuenta las formas
+`'Bash(...)'` **sobre el archivo entero**, así que una quinta acá se leería como un permiso más del job
+que investiga. `agent-propose` pide dos comandos del CLI en su fase de contexto; sin ellos el agente
+trabaja con lo que lee del disco y lo que no pudo establecer queda dicho en la propuesta en vez de
+afirmarse, que es lo que el propio recorrido ya instruye. Concederlos es una decisión propia y se toma
+cuando una corrida real muestre que hace falta, no de paso.
