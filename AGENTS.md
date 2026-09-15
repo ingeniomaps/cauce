@@ -157,6 +157,39 @@ se toma sin decidirla.
 La cita de `release-pr.yml` sigue en pie aunque ésta haya envejecido: ahí la afirmación es sobre un
 **tag** empujado con el `GITHUB_TOKEN`, que es otro mecanismo.
 
+#### Destrabar una tanda semanal
+
+Los PR de una tanda se destraban a pedido —«revisá los PR»— y **no hay herramienta que lo haga sola**: el
+caso 146 midió que ninguna es posible sin guardar un PAT, que es la credencial que esta compuerta existe
+para no necesitar. Lo que sí hay es un criterio, y está escrito acá para que el pedido no dependa de que
+alguien se acuerde:
+
+1. **Leer `propone` de cada informe.** Es el campo del frontmatter, y el corte lo da él, no una lectura
+   del texto: `no` es «no hay nada que decidir», `si` pide una mirada.
+2. **Comprobar que el diff sea sólo el informe** —un `.md` bajo `learning/reports/`—. Es lo que vuelve
+   inocuo autorizar: `ci.yml` corre con `contents: read` y sin un solo secreto, así que sobre un PR que no
+   trae código no hay nada que la compuerta esté cuidando. El propio ciclo ya lo garantiza en origen
+   —aborta con «Se esperaba exactamente el informe de $AGENT y nada más»—, y comprobarlo igual es lo que
+   mantiene el criterio en pie el día que un PR entre por otra vía.
+3. **Autorizar la corrida** de los que cumplen las dos. Los `propone: no` los cierra el auto-merge solo,
+   sin review:
+
+       rama=$(gh pr view <n> --json headRefName --jq '.headRefName')
+       rid=$(gh api "repos/ingeniomaps/cauce/actions/runs?branch=$rama" \
+         -q '[.workflow_runs[] | select(.conclusion=="action_required")] | .[0].id')
+       gh api --method POST "repos/ingeniomaps/cauce/actions/runs/$rid/approve"
+
+   El filtro va por `conclusion` y no por `status`: una corrida que espera figura `status=completed` con
+   `conclusion=action_required`, así que buscarla por estado devuelve cero sobre corridas que sí están ahí.
+4. **Dejar abiertos los `propone: si`.** Esos son la mirada que el campo compra, y se mergean igual antes
+   del 1 de cada mes: la consolidación lee los informes de `main`, así que un PR sin mergear no entra a la
+   propuesta mensual y su hallazgo se pierde.
+
+Lo que **no** se hace es autorizar en tanda por estar pendiente. Aprobar por «está esperando» y no por
+«es inocuo» apaga la compuerta el día que algo abra un PR por otra vía —un flow, una propuesta, un cargo
+nuevo—, que es la forma que R9 describe: la confirmación se calla sumando una bandera y lo que desaparece
+es la pregunta, no el riesgo.
+
 **Conviene aprobarlo en los PR de propuesta y es opcional en los de investigación.** El guard que valida
 las rutas que citan los documentos de un cargo exime `learning/reports/` —un informe es evidencia y
 puede citar lo que investigó— y **no** exime `learning/proposals/`, porque una propuesta es un documento
