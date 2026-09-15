@@ -146,8 +146,16 @@ Eso alcanza: no hace falta guardar un PAT —la credencial que `release.yml` evi
 conseguir lo mismo. Lo que **no** conviene es leerlo como que esos PR no corren CI nunca; durante un
 tiempo esta sección lo decía, apoyada en que «events triggered by the `GITHUB_TOKEN` will not create a
 new workflow run» —docs.github.com, «Trigger a workflow»—, y las corridas de arriba no encajan con esa
-lectura. Que la cita sea real y que igual haya corridas creadas sobre esos PR es una tensión sin
-resolver acá: lo verificado es el comportamiento observado, no la explicación.
+lectura.
+
+**Y desde 0.89.0 la explicación ya no falta: la tiene el caso 146**, que la midió y la cita. Acá alcanza
+con lo operativo. Lo que dispara la espera es **quién abre el PR** —no el ruleset, ni que la rama sea de
+este repositorio—, así que ningún ajuste del repositorio la apaga y la única salida documentada es que el
+PR lo abra una identidad de confianza en vez del `GITHUB_TOKEN`. Esa decisión está abierta en el 146; no
+se toma sin decidirla.
+
+La cita de `release-pr.yml` sigue en pie aunque ésta haya envejecido: ahí la afirmación es sobre un
+**tag** empujado con el `GITHUB_TOKEN`, que es otro mecanismo.
 
 **Conviene aprobarlo en los PR de propuesta y es opcional en los de investigación.** El guard que valida
 las rutas que citan los documentos de un cargo exime `learning/reports/` —un informe es evidencia y
