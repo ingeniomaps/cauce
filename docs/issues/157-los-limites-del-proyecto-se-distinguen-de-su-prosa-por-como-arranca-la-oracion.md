@@ -1,15 +1,16 @@
 ---
 caso: 157
 titulo: Qué párrafo de AGENTS.md es un límite y cuál lo explica se deduce de cómo arranca la oración, así que un límite escrito de otra forma no llega a ningún agente
-estado: abierto
+estado: resuelto
+resuelto-en: 0.92.0
 prioridad: media
 version-detectada: 0.91.0
 ---
 
 # 157 — El molde no marca sus límites, y derivarlos obliga a adivinar por gramática
 
-**🔴 abierto** · detectado en 0.91.0 · prioridad **media** — hoy el modo de fallo es perder un límite en
-silencio, que es el que no se ve hasta que un agente hace lo que ese límite prohibía
+**🟢 resuelto en 0.92.0** · detectado en 0.91.0 · prioridad **media** — el molde marca sus límites, la
+gramática vieja sigue contando, y lo que no entra por ninguno de los dos caminos lo reporta `check`
 
 ## Resumen
 
@@ -98,3 +99,62 @@ sujeto de la oración dejó los tres correctos, y dejó a la vista que lo que fa
 - **141** — la decisión de que al preámbulo de cada subagente viajen las rutas de las reglas y no su texto.
   Es el mismo problema de tamaño, resuelto una vez, y el precedente que este caso sigue.
 - **105** — las reglas que rigen el proyecto, con sus overrides resueltos por el motor.
+
+## Cierre
+
+**🟢 resuelto en 0.92.0** · `engine/cli/contract.js`, `engine/cli/validate.js`,
+`template/organization/workspace.md`, `test/planning/contract.test.js`, `CHANGELOG.md`
+
+Se tomaron el 1 y el 3, y juntos se cubren entre sí: el molde marca sus límites bajo `### Límites`, la
+gramática vieja sigue contando, y lo que no entra por ninguno de los dos caminos deja de perderse en
+silencio porque `check` lo nombra.
+
+### Contra lo que el caso enumeró
+
+- **Opción 1, marcar los límites en el molde** — **se hizo, y su tradeoff se disolvió al conservar los dos
+  caminos.** El caso advertía que un molde que marca sus límites «obliga a que quien los amplíe use la
+  misma marca, y lo ya escrito sin ella deja de contar: hay que decidir si se migra, si se avisa o si se
+  acepta perderlo». No hubo que decidirlo: `limits()` lee la lista marcada **y** sigue aceptando `ENUNCIA`,
+  así que nada de lo ya escrito deja de contar y no hay nada que migrar.
+- **Opción 2, avisar cuando no encuentre nada** — **se decidió que no, por la razón que el propio caso
+  escribió**: avisar de cero es fácil y el caso malo es encontrar dos de tres. El aviso que se construyó
+  compara párrafo por párrafo, así que cubre los dos.
+- **Opción 3, que `check` compare y reporte lo que quedó afuera** — **se hizo.** `CT.warnings` contrasta
+  los párrafos de la sección contra los del molde —que viaja en el paquete— y reporta los que el proyecto
+  escribió y no llegaron. Cita el párrafo y no sólo su cantidad: sin la cita, quien lee el aviso no sabe
+  cuál de sus límites se perdió.
+- **Tradeoff «el 1 cambia un archivo que cada instancia recibe»** — **se paga, y es el costo aceptado.**
+  `organization/workspace.md` es del proyecto y `upgrade` no lo pisa, así que la sección nueva llega a las
+  instancias que nacen de acá en adelante; las existentes siguen funcionando por el camino de `ENUNCIA` y
+  reciben el aviso si escriben algo que no entra.
+- **Tradeoff «el 2 y el 3 dejan la deducción en pie»** — **sigue en pie y es deliberado.** Lo que cambió es
+  que el error dejó de ser silencioso, que el caso ya señalaba como «la mitad que más cuesta».
+- **Tradeoff «no medido: cuántas instancias escribieron excepciones y con qué forma»** — **sigue sin medir
+  y se declara, pero dejó de decidir nada.** El caso decía que ese número decidía si migrar lo existente
+  valía la pena; al conservar los dos caminos no hay migración que evaluar. Seguiría importando el día que
+  alguien quiera retirar `ENUNCIA`, y para eso hace falta mirar instancias reales.
+
+### Lo que el caso no preveía
+
+- **Un ejemplo en el molde se obedece.** La primera versión de la marca traía su ejemplo como viñeta viva,
+  y eso lo convertía en un límite real que viajaba al preámbulo de cada subagente de toda instancia nueva
+  — una regla que nadie escribió y que todos cumplirían. Va comentado, y hay una prueba que lo fija.
+- **Leer un solo bloque `### Límites` deja al proyecto sin su límite.** Con el molde trayendo ya esa
+  sección, quien agregue la suya al final del archivo queda con dos, y leer sólo la primera devolvía cero
+  viñetas: el límite no llegaba **y** el aviso tampoco lo veía, porque para la comparación caía dentro de
+  la sección del molde. Se recorren todos los bloques.
+
+### Qué se corrió
+
+- **Reproducción antes de arreglar:** el molde intacto devuelve 3 límites; el proyecto declara «En `api/`
+  no se tocan migraciones sin aprobación del equipo de datos» y la cuenta **sigue en 3**, sin un aviso.
+- **Después:** con la marca, el mismo límite llega y `boundaries` pasa a 4; escrito como prosa suelta, no
+  llega pero `check` lo reporta citando el párrafo.
+- **Rojo previo** con la marca y el aviso revertidos en una copia desechable: **2 rojas de 12**, y son las
+  dos del arreglo.
+- **Tres mutaciones.** Leer un solo bloque → 1 roja, la de la marca. Apagar el aviso → 1 roja, la del
+  aviso. **Y una que sobrevivió:** quitar el filtro de comentarios de `declared()` no puso nada en rojo —
+  porque una viñeta comentada arranca con `<!--` y el filtro de viñetas ya la descarta. Era una defensa
+  que no defendía de nada, así que se retiró en vez de escribirle una prueba.
+- `npm run ci` **exit 0 — 872 pruebas, 0 en rojo**, sin superficie muerta, 71 archivos en su piso y
+  `engine/cli/contract.js` en 100 % de líneas y funciones.
