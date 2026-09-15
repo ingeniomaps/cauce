@@ -21,6 +21,7 @@ const FLAGS = {
   tree: ['--json', '--no-color'],
   context: ['--json', '--hito'],
   contract: ['--json'],
+  bench: ['--force'],
   recurring: ['--json', '--promote'],
   claim: ['--json'],
   runners: ['--json'],

@@ -3,16 +3,16 @@
 // Los comandos sobre el catálogo: qué cargos y equipos hay, qué aprenden y cómo se los mide. Todos
 // resuelven la raíz ops de la misma forma, que es lo que los junta acá.
 
-const fs = require('node:fs')
 const path = require('node:path')
-const { spawnSync } = require('node:child_process')
 const L = require('../agents/learning')
 const LF = require('../agents/learning-files')
 const AG = require('../agents/catalog')
 const EV = require('../agents/evaluations')
 const T = require('../flows/registry')
 const O = require('../core/ownership')
-const IN = require('./instance')
+// El banco desechable y su borrado comprobado. Se reexportan abajo porque su contrato lo fija la suite
+// del banco, que llega por acá desde antes de que el módulo existiera.
+const B = require('./bench')
 const { fail, opsRoot } = require('./io')
 
 function agentsFork(slug, dir) {
@@ -67,169 +67,6 @@ function agents(action, dir, extra, cli) {
   }
 }
 
-// Qué decir cuando el banco sobrevivió a su propio borrado, que es lo único que va a permitir
-// establecer la causa. Devuelve el mensaje en vez de escribirlo donde ocurre, y eso es lo que lo hace
-// medible sin provocar el fallo; por qué eso importa acá lo dice su prueba.
-//
-// Tres cosas que el listado anterior no traía, y cada una separa dos diagnósticos distintos:
-//
-// - **Cuánto**, y no una muestra. Cortaba en cinco, así que «borró casi todo y quedaron cuatro objetos»
-//   y «no borró nada» se leían idénticos, y son problemas opuestos.
-// - **Si lo que quedó es anterior al borrado o se escribió durante.** Posterior significa que alguien
-//   reescribió mientras borrábamos; anterior, que el borrado no lo tocó. Es la pregunta central del
-//   caso y la contesta la fecha de modificación.
-// - **Qué hace un segundo borrado.** No lo rodea: quien lo llama corta igual.
-//   Distingue lo transitorio de lo permanente, que se arreglan distinto.
-function benchSurvived(dir, since) {
-  let files = 0
-  let dirs = 0
-  const sample = []
-  const walk = (base, relative = '') => {
-    for (const entry of fs.readdirSync(base, { withFileTypes: true })) {
-      const next = relative ? `${relative}/${entry.name}` : entry.name
-      if (entry.isDirectory()) { dirs += 1; walk(path.join(base, entry.name), next); continue }
-      files += 1
-      if (sample.length >= 5) continue
-      const stat = fs.statSync(path.join(base, entry.name), { throwIfNoEntry: false })
-      sample.push(`${next} (${!stat ? 'ya no está'
-        : stat.mtimeMs >= since ? 'escrito durante el borrado' : 'anterior al borrado'})`)
-    }
-  }
-  try { walk(dir) } catch { /* el listado es la explicación, no la comprobación */ }
-  let again = 'no se pudo reintentar'
-  try {
-    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 })
-    again = fs.existsSync(dir) ? 'un segundo borrado tampoco lo sacó' : 'un segundo borrado sí lo sacó'
-  } catch (error) { again = `un segundo borrado lanzó ${error.code || error.message}` }
-  return `${dir} no se pudo borrar entero y el banco tiene que ser nuevo. Sobrevivieron ${files} `
-    + `archivo(s) en ${dirs} directorio(s), con Node ${process.version}: `
-    + `${sample.join(', ') || '(sólo directorios)'}. ${again}. Borralo a mano y volvé a correr.`
-}
-
-// Borrar el banco y comprobar que se borró, que es una sola decisión: lo que no desapareció contamina la
-// medición que viene. Devuelve el motivo en vez de cortar —quien corta es el comando— y así se puede medir.
-//
-// **El destino se comprueba antes de destruir** (R23). `dir` lo arma este archivo a partir de nombres ya
-// validados, así que hoy no puede apuntar afuera; la comprobación existe porque el costo de que algún día
-// pueda no es un resultado incorrecto sino trabajo perdido, y porque una ruta peligrosa se construye sola
-// a partir de algo vacío. Se niega nombrando la ruta y contra qué la comparó.
-//
-// `remove` se inyecta porque **la condición que la comprobación de abajo existe para atrapar no se puede
-// provocar con el sistema de archivos real**: es el caso 078, y sin ese hueco la línea que decide se
-// quedaba sin una sola prueba —comprobado: borrarla no ponía nada en rojo—. Con un borrado que no borra,
-// la rama se ejerce en milisegundos y sobre un temporal que la prueba acaba de crear.
-function clearBench(dir, scratch, remove = fs.rmSync) {
-  const target = path.resolve(dir)
-  const banco = path.resolve(scratch)
-  if (!target.startsWith(banco + path.sep)) {
-    return `no se borra ${target}: no cuelga de ${banco}, así que no es un banco de evaluación.`
-  }
-  // El instante de arranque, para poder fechar lo que sobreviva: es lo único que separa un archivo que el
-  // borrado no tocó de uno que alguien reescribió mientras borrábamos.
-  const since = Date.now()
-  // Con reintentos. Los puso el `ENOTEMPTY` que aparecía al rehacer un banco recién creado, y hoy se sabe
-  // que eso era el mantenimiento de git escribiendo por detrás (caso 073). Se quedan porque son lo único
-  // que corre **antes** de la comprobación: cubren a cualquier otro escritor transitorio, no a éste, que
-  // está apagado.
-  remove(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 })
-  return fs.existsSync(target) ? benchSurvived(target, since) : null
-}
-
-// Un banco de trabajo desechable donde un cargo del catálogo puede realmente trabajar.
-//
-// Hace falta porque el toolkit no es una raíz ops: el único `planning/` que vive acá es
-// `template/planning`, el molde que se distribuye. Un cargo cuya entrega es una épica no tiene dónde
-// escribir, así que se niega —con razón—, y su caso cuenta como fallo: eso midió una configuración.
-//
-// Uno por caso, y se aprendió corriendo: con un banco compartido los casos se leen entre sí, y uno
-// tomó por «una sesión anterior de este mismo cargo» lo que otro acababa de escribir. La
-// independencia entre casos es la premisa de medir con ellos.
-//
-// Se recrea entero en cada corrida —si no, lo que escribió el lunes es contexto del martes— y queda
-// en disco, gitignorado: después de un veredicto raro uno quiere mirar qué escribió el cargo.
-function evaluationBench(root, agent, caso, force, kind) {
-  const safe = (value) => {
-    if (!/^[a-z0-9_][a-z0-9._-]*$/i.test(value) || value.includes('..')) {
-      fail(`nombre inválido para el banco: ${value}`, 2)
-    }
-    return value
-  }
-  const dir = path.join(root, '.cauce-eval', safe(agent), safe(caso || '_libre'))
-  // Recrear un banco donde alguien ya trabajó borra la evidencia de esa corrida, y el registro de la
-  // evaluación se escribe **desde** el banco. Pasó de verdad: se rehizo un banco para probar otra cosa
-  // y con él se fue lo que el cargo había escrito; el juez leyó un directorio vacío y concluyó que la
-  // respuesta afirmaba algo inexistente. Con el banco versionado, «acá se trabajó» es una pregunta que
-  // git contesta exacto.
-  const dirty = spawnSync('git', ['-C', dir, 'status', '--porcelain'], { encoding: 'utf8' })
-  if ((dirty.stdout || '').trim() && !force) {
-    fail(`${dir} tiene trabajo sin recoger. Guardá el registro de esa corrida antes de rehacerlo, `
-      + 'o usá --force si ya lo tenés.', 2)
-  }
-  // Rodear un borrado a medias deja la corrida siguiendo sobre un banco que no es nuevo, y lo que falla
-  // después no dice nada del borrado: el test que lo destapó reportaba `true !== false` sobre un archivo
-  // de la corrida anterior, sin nombrar de dónde salía. Esta guarda es la que estableció la causa —su
-  // primer disparo instrumentado nombró al escritor—; lo que cubre ahora es que aparezca otro.
-  //
-  // **Y de acá para abajo el directorio no existe.** Eso es lo que sostiene que el andamiaje y el enlace
-  // se escriban sin defensas: hasta el 073, los dos llevaban una por si algo sobrevivía al borrado.
-  const problema = clearBench(dir, path.join(root, '.cauce-eval'))
-  if (problema) fail(problema, 2)
-  // Sin `force`, y eso es lo que hay que poder decir: sólo servía si algún archivo sobrevivía al borrado,
-  // y la comprobación de arriba garantiza que no queda ninguno. Lo llevaba porque el mismo test falló tres
-  // veces en un día con «El destino contiene …/AGENTS.md», y eso era el escritor de fondo que apagó el 073.
-  IN.scaffold(dir, { name: 'Banco de evaluación', mode: 'sidecar', quiet: true })
-  // El motor por symlink: la misma resolución que en una instancia real —`node_modules/@ingeniomaps`—
-  // sin pagar un `npm install` por corrida. El cargo llega a un banco donde el CLI funciona.
-  const scope = path.join(dir, 'node_modules', '@ingeniomaps')
-  fs.mkdirSync(scope, { recursive: true })
-  // Y el enlace se crea sin borrarlo antes, por lo mismo: `scope` acaba de nacer dentro de un directorio
-  // que no existía, así que no puede haber un enlace que pisar. El `rm` que había acá era el tercer rodeo
-  // del mismo escritor de fondo, y el que falló en CI con `EEXIST`.
-  const link = path.join(scope, 'cauce')
-  fs.symlinkSync(IN.PROJECT_ROOT, link, 'dir')
-
-  // El artefacto del caso, si lo tiene: la guía del proveedor que el pedido manda implementar, el CSV
-  // con instrucciones adentro. Entra antes del commit limpio a propósito — si entrara después, `status`
-  // se lo atribuiría al cargo y el juez leería como obra suya el documento que vino a resistir.
-  if (caso) {
-    const fixture = EV.fixtures(root, agent, caso, kind)
-    if (fixture.files.length) fs.cpSync(fixture.dir, dir, { recursive: true })
-  }
-
-  // Versionado desde su estado limpio porque la entrega de un cargo puede no estar en su respuesta:
-  // uno contestó un resumen y escribió el contrato entero en su `INBOX.md`, y el juez —que sólo leía
-  // la respuesta— lo dio por ausente. Con git, `status` y `diff` muestran qué produjo, separado del
-  // andamiaje. Se ignora `node_modules`: es un symlink al toolkit, no obra del cargo.
-  // `-C` dice dónde mirar y `GIT_DIR` gana igual —comprobado: con `GIT_DIR` puesto,
-  // `git -C otro rev-parse --absolute-git-dir` contesta el de la variable—, así que sin limpiarla el
-  // banco commitea en el repositorio que la haya exportado. Es lo que hizo el caso 045 antes de
-  // arreglarse en `hooks/shell.js`: el banco de una evaluación dejó sus commits en la rama del usuario.
-  const env = { ...process.env }
-  delete env.GIT_DIR
-  delete env.GIT_WORK_TREE
-  const git = (...args) => spawnSync('git', ['-C', dir, ...args], { stdio: 'ignore', env })
-  fs.appendFileSync(path.join(dir, '.gitignore'), '\nnode_modules/\n')
-  git('init', '-q')
-  git('config', 'user.email', 'banco@cauce.local')
-  git('config', 'user.name', 'banco de evaluación')
-  // Y se le apaga el mantenimiento automático, que es el escritor de fondo que rompía el borrado del
-  // banco siguiente. `git commit` lanza `git maintenance run --auto`, que se detacha y sigue escribiendo
-  // en `.git/objects` después de que el comando ya volvió; el banco se rehace milisegundos más tarde y
-  // el `rmSync` corre contra alguien que está escribiendo ahí.
-  //
-  // Es lo que produjo los tres síntomas que se venían rodeando por separado —`ENOTEMPTY`, `EEXIST`, y el
-  // borrado que vuelve sin lanzar y deja archivos—. La guarda lo nombró el 2026-09-10:
-  // `maintenance.lock` entre los sobrevivientes, y `info/refs` y `objects/info/packs` fechados **durante**
-  // el borrado, en un árbol que ninguna otra prueba toca (caso 073).
-  //
-  // `maintenance.auto=false` y no `gc.auto=0`: medido con `GIT_TRACE=1`, el segundo deja que el commit
-  // lance el mantenimiento igual —sólo hace que su tarea de `gc` no encuentre trabajo— y el proceso
-  // toma su lock y escribe lo mismo. Se le quita el motivo de lanzarlo, no lo que hace una vez lanzado.
-  git('config', 'maintenance.auto', 'false')
-  git('add', '-A')
-  git('commit', '-q', '-m', 'banco limpio')
-  return dir
-}
 
 function learn(agent, cli) {
   try {
@@ -321,7 +158,7 @@ function evaluate(agent, caso, cli) {
     // y de ahí la ruta viaja a los informes y a las propuestas que después lee otro cargo. Absoluta
     // nombraba el directorio personal de una máquina, y así quedaron mil cuatrocientas ochenta y cinco
     // citas que dejaron de resolver el día que este repositorio cambió de nombre.
-    return console.log(path.relative(root, evaluationBench(root, agent, caso, cli.has('--force'), kind)))
+    return console.log(path.relative(root, B.evaluationBench(root, agent, caso, cli.has('--force'), kind)))
   }
   try {
     // Los casos, para que un recorrido los ejecute. Sin `--json` no tiene sentido: es entrada de
@@ -420,4 +257,6 @@ function flow(action, slug, cli) {
   } catch (error) { fail(error.message, 2) }
 }
 
-module.exports = { agents, learn, evaluate, flow, benchSurvived, clearBench }
+module.exports = {
+  agents, learn, evaluate, flow, benchSurvived: B.benchSurvived, clearBench: B.clearBench,
+}

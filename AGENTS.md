@@ -67,6 +67,35 @@ veredicto, pero sus respuestas dejaron de ser las que el caso pedía medir.
 
 El veredicto se escribe **junto al cargo**, no en el banco. El banco se borra; el contrato queda.
 
+### El banco de medición
+
+Medir algo de Cauce pide lo mismo que evaluar un cargo —una instancia desechable donde escribir sea
+legítimo— y además que esté **poblada**: un guard que mira la cola no se puede medir sobre un `planning/`
+vacío. Armarla a mano es lo que no salía; por qué no salía está en el encabezado de `engine/cli/bench.js`,
+y acá está sólo cómo se usa.
+
+```bash
+node engine/cli/ops.js bench <suelto|tarea|sidecar> [--force]
+```
+
+Imprime la ruta de un banco que se recrea entero en cada corrida, con las mismas garantías que el de
+evaluación —`check` pasa, el motor viene enlazado, el borrado se comprueba antes—. Los escenarios son las
+tres formas en que una medición necesita el mundo, y se agrega uno cuando hace falta, no antes:
+
+    suelto    la instancia sola, para medir un comando que no depende de la cola.
+    tarea     una tarea en cola, reclamada y con plan, para los guards que miran ese estado.
+    sidecar   instancia y producto en repositorios distintos, para lo que depende de desde qué árbol se
+              pregunte — ahí `runner()` resuelve un id distinto de cada lado.
+
+Dos cosas que muerden si se ignoran. La ruta sale **sola** por `stdout` porque es entrada de otra cosa:
+el escenario `tarea` necesita además que la medición exporte `CAUCE_RUNNER` con el id del banco, y ese
+recordatorio viaja por `stderr` a propósito. Y el banco es del toolkit, igual que `--bench`: en una
+empresa lo que hay que medir es su propia instancia.
+
+**Un banco es una medición, no un lugar de trabajo.** Lo que se mida ahí se escribe donde vive el
+resultado —el caso, el CHANGELOG, la regla—, y el banco se borra. Es lo mismo que con el de evaluación:
+el banco se va, el contrato queda.
+
 ### Escribir un caso que tiente
 
 Un caso mide una conducta prohibida de dos formas, y no son intercambiables.
