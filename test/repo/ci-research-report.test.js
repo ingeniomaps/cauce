@@ -240,9 +240,13 @@ test('un informe que no propone nada se mergea sin revisión humana', () => {
 
   assert.match(paso, /grep -qx 'propone: no'/, 'el auto-merge se decide por el campo, no por el texto')
   assert.match(paso, /gh pr merge .*--auto/, 'y se arma con auto-merge, no con un merge directo')
-  // `delete_branch_on_merge` del repositorio no alcanza: el PR #277 se mergeó solo y dejó su rama viva.
-  // Quien mergea a mano pasa la opción, así que el hueco sólo aparece por esta vía.
-  assert.match(paso, /gh pr merge .*--delete-branch/, 'y borra la rama, que nadie más va a borrar')
+  // Acá no se pide el borrado de la rama, y es a propósito: `--delete-branch` borra «after merge», y
+  // con `--auto` el comando sale al armar —el merge cae horas después, sin `gh`—, así que la bandera
+  // prometía algo que no pasaba. La versión anterior de esta prueba la exigía escrita y quedaba en
+  // verde mientras nueve ramas sobrevivían: comprobaba el texto del workflow, no la rama (caso 147).
+  const merge = paso.match(/^\s*gh pr merge .*$/m)[0]
+  assert.equal(/--delete-branch/.test(merge), false,
+    'no se pide el borrado por una vía que no llega a ejecutarlo')
   // Lo que no debe pasar: que un informe que sí propone algo se mergee sin que nadie lo mire.
   const rama = paso.slice(paso.indexOf("grep -qx 'propone: no'"))
   assert.equal(/propone: si/.test(rama), false, 'el «si» no dispara ningún merge')
@@ -365,4 +369,34 @@ test('el ciclo anota qué URLs del cargo no pudo abrir', { skip: process.platfor
   assert.equal(limpio.status, 0)
   assert.equal(/sin contenido legible/.test(fs.readFileSync(summary, 'utf8')), false)
   assert.equal(/::warning/.test(limpio.stdout), false, 'y no se avisa de una falta que no existe')
+})
+
+// El borrado de la rama vive en su propio workflow porque es el único que corre cuando el merge ya
+// ocurrió. La prueba que había antes exigía `--delete-branch` escrito en `agent-learning.yml` y se
+// quedaba ahí: estuvo en verde mientras nueve ramas sobrevivían, porque comprobaba el texto del
+// workflow y no la rama (caso 147). Ésta mira las tres condiciones que deciden si borra bien.
+test('la rama se borra cuando el merge ocurrió, y sólo entonces', () => {
+  const fuente = workflow('delete-merged-branch')
+
+  // El disparador es lo que arregla el caso: `closed` llega después del merge, venga de auto-merge,
+  // de la web o de alguien sin la bandera. Cualquier otro evento vuelve a llegar demasiado temprano.
+  assert.match(fuente, /on:\s*\n\s*pull_request:\s*\n\s*types:\s*\[closed\]/,
+    'escucha el cierre del PR, que es cuando el merge ya pasó')
+
+  // `closed` también llega cuando el PR se cierra sin mergear: ahí la rama es trabajo vivo.
+  assert.match(fuente, /if:\s*github\.event\.pull_request\.merged == true/,
+    'y no borra nada si el PR se cerró sin mergear')
+
+  // Una rama de un fork no es nuestra, y el token no la alcanza.
+  assert.match(fuente, /head\.repo\.full_name == github\.repository/,
+    'una rama de un fork no se toca')
+
+  // Lo que efectivamente borra. Sin esto el workflow podría cumplir todo lo de arriba y no hacer nada.
+  assert.match(fuente, /--method DELETE .*git\/refs\/heads/,
+    'y borra la ref, que es lo que nadie más hace')
+
+  // Pedir permiso de escritura es parte del arreglo: con el `contents: read` del encabezado, el
+  // borrado devuelve 403 y el workflow terminaría en rojo sin que se vea por qué.
+  assert.match(fuente, /permissions:\s*\n\s*contents: write/,
+    'con permiso para escribir, que es lo que el borrado necesita')
 })
