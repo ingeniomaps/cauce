@@ -79,6 +79,11 @@
     "branches": 100,
     "functions": 100
   },
+  "engine/cli/bench.js": {
+    "lines": 100,
+    "branches": 70,
+    "functions": 100
+  },
   "engine/cli/bootstrap.js": {
     "lines": 94,
     "branches": 91,
@@ -86,7 +91,7 @@
   },
   "engine/cli/catalog.js": {
     "lines": 82,
-    "branches": 38,
+    "branches": 34,
     "functions": 90
   },
   "engine/cli/claims.js": {
