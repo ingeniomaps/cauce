@@ -77,31 +77,57 @@ cargos con ciclo de aprendizaje** y el cron es semanal (`17 13 * * 1`). El costo
 autorizaciones una vez: son hasta 53 por semana cuando el ciclo corra completo, sobre PR que el propio
 repositorio ya clasificó como que no requieren decisión.
 
-Por qué esas corridas nacen bloqueadas **no está establecido acá**. La configuración del repositorio no
-declara una política de aprobación que lo explique —`actions/permissions` devuelve
-`{"enabled":true,"allowed_actions":"all"}` y `actions/permissions/workflow` devuelve
-`{"default_workflow_permissions":"read","can_approve_pull_request_reviews":true}`—, y a nivel
-organización la API responde 404. El `AGENTS.md` ya registra esta tensión sin resolver: la cita de
-GitHub sobre `GITHUB_TOKEN` no encaja con que las corridas existan. **Hipótesis**, no verificado.
+### Por qué nacen bloqueadas — verificado el 2026-09-14
+
+GitHub cambió el comportamiento el **2026-06-11**: «Pull requests created by the `github-actions[bot]`
+are now able to run your CI/CD workflows **with user approval**» —github.blog/changelog, «Bot-created
+pull requests can run workflows if approved»—. Antes esos PR **no podían** correr workflows; desde ese
+cambio corren, esperando a «a user with write access to the repository».
+
+Eso explica las dos mitades a la vez y resuelve la tensión que el `AGENTS.md` declaraba sin resolver: la
+cita «events triggered by the `GITHUB_TOKEN` will not create a new workflow run» describía el
+comportamiento **viejo**, y las corridas que existen igual son el **nuevo**.
+
+Lo que dispara la espera es **quién abre el PR**. Medido sobre 50 corridas de `ci.yml`:
+
+- Toda corrida con `triggering_actor=github-actions[bot]` quedó en `action_required`.
+- Toda la que corrió la disparó una persona.
+- Va del 2026-09-10 al 2026-09-14, en ramas de release y del ciclo por igual: no es del ciclo de
+  aprendizaje ni de esta semana.
+
+Las dos corridas del 2026-09-13 sobre `release/0.86.0` que parecen correr solas no lo contradicen:
+arrancaron `16:31:31`, tres segundos después de crearse el PR #405 (`16:31:28`). Son las corridas del
+push sobre una rama que ya tenía PR abierto, no las de su apertura.
+
+**No es el ruleset ni la configuración del repositorio.** `actions/permissions` devuelve
+`{"enabled":true,"allowed_actions":"all"}` y el ruleset de `main` exige dos checks con cero reviews. Un
+PR empujado desde la cuenta humana sobre el mismo repositorio y el mismo ruleset —el #459, que registró
+este caso— arrancó CI solo.
 
 ## Fix propuesto
 
 No está decidido, y **lo que falta primero es una decisión que cambia el producto**, no código.
 
-1. **Un PAT para el ciclo de aprendizaje.** Un token de una identidad humana abre los PR y sus corridas
-   arrancan solas. Choca de frente con la política declarada en `AGENTS.md`: `release.yml` evita a
-   propósito guardar una credencial de npm, y «no guardarla es la mitad del punto». Guardar un PAT para
-   el ciclo es la misma clase de decisión, con el agravante de que un PAT abarca más que un token de
-   publicación.
-2. **Establecer primero por qué nacen en `action_required`.** Si resulta ser un ajuste del repositorio o
-   de la organización, el arreglo es una casilla y no una credencial. Hoy eso es hipótesis y es lo más
-   barato de despejar.
+**Lo que ya se descartó midiendo:** no hay ajuste que apagarlo. La política de aprobación admite
+`first_time_contributors_new_to_github`, `first_time_contributors` y `all_external_contributors`
+—los tres los enumeró la propia API al rechazar un valor inválido— y **ninguno es un «nunca»**. La vía
+documentada para evitar la espera es una sola: que el PR lo abra una identidad de confianza en vez del
+`GITHUB_TOKEN`.
+
+1. **Una GitHub App propia para el ciclo.** Abre los PR con identidad propia y sus corridas arrancan
+   solas, sin guardar una credencial de larga vida: la App firma tokens efímeros. Es más trabajo que un
+   PAT y es la única opción que no contradice nada de lo ya declarado.
+2. **Un PAT para el ciclo.** Más barato de montar y choca de frente con la política declarada en
+   `AGENTS.md`: `release.yml` evita a propósito guardar una credencial, y «no guardarla es la mitad del
+   punto». Un PAT abarca además más superficie que un token de publicación.
 3. **Aceptarlo como costo documentado.** Es lo que el comentario del workflow ya hace. Registrar el
    número lo vuelve una decisión tomada en vez de un costo que nadie contó.
 
 ## Tradeoffs
 
-- La 1 mete una credencial de larga vida en un repositorio que hoy no tiene ninguna, y la superficie que
+- La 1 cuesta montar y mantener una App —registrarla, instalarla, firmar tokens en cada corrida— para
+  ahorrar una autorización por PR. Es la opción correcta y no la barata.
+- La 2 mete una credencial de larga vida en un repositorio que hoy no tiene ninguna, y la superficie que
   abre un PAT no se limita al ciclo que lo necesita.
 - La 3 deja el costo escalando con los cargos: es aceptable con diecisiete y hay que volver a mirarlo
   con 53, que es el punto de este caso.
