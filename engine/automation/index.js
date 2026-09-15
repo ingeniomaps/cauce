@@ -9,89 +9,22 @@ const O = require('../core/ownership')
 const M = require('../core/manifest')
 const RL = require('./rules')
 const {
-  RUNNER_NAMES, OPS_DIR, OPS_ROOT, packagedAutomation, runnerManifest, installRoot, opsPrefix,
+  RUNNER_NAMES, OPS_DIR, OPS_ROOT, runnerManifest, installRoot, opsPrefix,
   runnerPaths, resolveItem, inline, render, runnerConfig, activated,
 } = require('./runners')
 const { roleCatalog, roleSkill, installRoleSkills } = require('./roles')
 const {
-  GUARD_NAMES, groupWrappers, expectedHooks, supersededGuards,
-  legacyGuardWiring, staleHooks, listHooks,
+  GUARD_NAMES, groupWrappers, supersededGuards,
+  legacyGuardWiring, listHooks,
 } = require('./hooks')
 const {
-  blockStart, mergeConfig, withoutDeliveredHooks, deliveredHookCommands, reportRemoved, includesConfig, hasHooks,
+  blockStart, mergeConfig, withoutDeliveredHooks, deliveredHookCommands, reportRemoved, includesConfig,
   unmergeConfig, isSharedFile, withoutBlock, mergeInstruction, blockUpToDate,
 } = require('./config')
 
-function check(root) {
-  const errors = []
-  const hookDir = path.join(root, 'automatization', 'hooks')
-  if (!fs.existsSync(path.join(root, 'automatization', 'AGENTS.md'))) {
-    errors.push('falta automatization/AGENTS.md')
-  }
-  for (const name of expectedHooks()) {
-    const file = path.join(hookDir, name)
-    if (!fs.existsSync(file)) errors.push(`falta automatization/hooks/${name}`)
-    else if (!(fs.statSync(file).mode & 0o111)) {
-      errors.push(`automatization/hooks/${name} no es ejecutable`)
-    }
-  }
-  // El motor puede venir de la dependencia npm o del propio repositorio, y la cascada la resuelve
-  // `packagePath`. Eran tres: la copia vendorizada se retiró en 0.10.0 y esta línea la sobrevivió.
-  if (!O.engineAt(root, path.join('hooks', 'run.js'))) {
-    errors.push('falta engine/hooks/run.js: corré "npm install" en la raíz del repo ops')
-  }
-  const workflows = [
-    'autobuild.js',
-    'flow.js',
-    path.join('integrations', 'sync.js'),
-    path.join('integrations', 'promote.js'),
-  ]
-  const packaged = packagedAutomation(root)
-  for (const name of workflows) {
-    if (!packaged || !fs.existsSync(path.join(packaged, 'workflows', name))) {
-      errors.push(`falta automatization/workflows/${name}: corré "npm install" en la raíz del repo ops`)
-    }
-  }
-  // Un choque que `upgrade` conservó (caso 110) también queda distinto del paquete, y mandarlo a correr
-  // `upgrade` era una vuelta sin salida: lo conservaría otra vez. Se dice qué es y qué hacer.
-  const choques = new Set(O.collisions(root))
-  for (const { file, edited } of staleHooks(root)) {
-    if (choques.has(`automatization/hooks/${file}`)) {
-      errors.push(`automatization/hooks/${file}: es tuyo y se llama como uno que trae el paquete, así que el `
-        + "del paquete no está instalado; renombrá el tuyo y corré `cauce upgrade`")
-      continue
-    }
-    errors.push(edited
-      ? `automatization/hooks/${file}: lo editaste y es del toolkit; agregá un guard propio al lado `
-        + 'o descartá tu cambio con `cauce upgrade --force`'
-      : `automatization/hooks/${file}: quedó atrás del paquete y ya no protege lo que dice; `
-        + 'corré `cauce upgrade` antes de instalar el runner')
-  }
-  for (const name of RUNNER_NAMES) validateRunnerManifest(root, name, errors)
-  return errors
-}
-
-function validateRunnerManifest(root, name, errors) {
-  try {
-    const runner = runnerManifest(root, name)
-    if (runner.name !== name || runner.schemaVersion !== 1
-      || !runner.config || !runner.capabilities) {
-      errors.push(`${name}: manifest incompleto`)
-      return
-    }
-    const paths = runnerPaths(root, name, runner)
-    const config = runnerConfig(paths, root)
-    if (runner.capabilities.nativeHooks && !hasHooks(config)) {
-      errors.push(`${name}: declara hooks nativos pero no los configura`)
-    }
-    for (const item of [...(runner.instructions || []), ...(runner.artifacts || [])]) {
-      const resolved = resolveItem(paths, root, name, item)
-      if (!fs.existsSync(resolved.source)) errors.push(`${name}: falta ${item.source}`)
-    }
-  } catch (error) {
-    errors.push(`${name}: configuración inválida (${error.message})`)
-  }
-}
+// Qué le falta a la superficie de automatización, que no comparte ayudantes con los tres verbos que
+// escriben. Se reexporta para que sus consumidores sigan pidiéndoselo a este módulo.
+const { check } = require('./check')
 
 // Ejecuta el puente del runner tal como él lo invoca, y desde otra carpeta. Instalado no es lo mismo que
 // operativo: un bridge que el runner no puede lanzar —porque su ruta es relativa y el cwd es otro, o

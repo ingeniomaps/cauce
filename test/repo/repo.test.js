@@ -188,15 +188,8 @@ const JUSTIFIED = {
     + 'propuesta de qué pasa al aplicarla, que son las dos mitades del mismo recorrido.',
 }
 
-const PENDING_SPLIT = {
-  'engine/automation/index.js':
-    'Mezcla cuatro verbos, y medir cuál comparte con cuál corrige lo que esta entrada decía antes. No es '
-    + '«lo que escribe» contra «lo que audita»: `doctor` comparte ocho helpers con `install` —resolución, '
-    + 'render, prefijo, estado de entrega—, mientras `check` no comparte ninguno y su único ayudante, '
-    + '`validateRunnerManifest`, es suyo y de nadie más. La partición es sacar ese par y dejar los tres '
-    + 'verbos que sí se apoyan en los mismos helpers. Cruzó las 500 con el aviso de sidecar del caso 138, '
-    + 'estando en 499, y hacerlo bien es un cambio propio y no la cola de otro.',
-}
+const PENDING_SPLIT = {}
+
 
 test('ningún archivo de código pasa las 500 líneas sin decir por qué', () => {
   const root = path.resolve(__dirname, '..', '..')

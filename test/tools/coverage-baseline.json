@@ -39,6 +39,11 @@
     "branches": 80,
     "functions": 100
   },
+  "engine/automation/check.js": {
+    "lines": 81,
+    "branches": 42,
+    "functions": 100
+  },
   "engine/automation/config.js": {
     "lines": 100,
     "branches": 87,
