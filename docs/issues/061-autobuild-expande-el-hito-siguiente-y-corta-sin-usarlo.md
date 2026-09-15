@@ -119,10 +119,24 @@ parte de esas expansiones son de trabajo que la corrida descarta.
   siguiente arranca con la cola vacía y expande igual, así que lo único que cambia es cuándo se escribe.
 - **Tradeoff «si alguien depende de ese efecto» — comprobado, y no hay nadie.** Ningún documento del
   repositorio lo menciona: el único lugar donde aparecía la frase era este mismo caso al enunciarlo.
-- **Tradeoff «no medido en producción» — sigue sin medirse, y no cambia la decisión.** Lo que el arnés
-  establece es qué **puede** pasar, y con eso alcanza para saber que expandir con el hito fijado nunca
-  sirve. Cuántas corridas por semana terminan su hito necesitaría el `journal.jsonl` de una instancia, que
-  no se commitea — y ese número no cambiaría el arreglo, sólo su tamaño.
+- **Tradeoff «no medido en producción» — el número exacto sigue sin poder medirse, y ahora hay un proxy.**
+  Lo que el arnés establece es qué **puede** pasar, y con eso alcanza para saber que expandir con el hito
+  fijado nunca sirve.
+
+  Cuántas corridas por semana terminan su hito necesitaría el `journal.jsonl`, y se comprobó el
+  2026-09-15: **ninguna instancia de esta máquina lo tiene** —no se commitea, y tampoco quedó en disco—,
+  así que ese número sigue fuera de alcance. Lo que sí se pudo medir es el ritmo de entrega, que acota el
+  tamaño del desperdicio:
+
+  | instancia | tareas terminadas | período | ritmo |
+  | --- | ---: | --- | ---: |
+  | `venotal-ops` | 87 | 2026-07-09 → 2026-09-15 | **9,0 / semana** |
+  | `roax-ops` | 138 | 2026-08-08 → 2026-09-11 | **28,4 / semana** |
+
+  **Es un proxy y no la cifra que el tradeoff pedía**, y conviene decirlo: cuenta tareas cerradas, no
+  corridas que cerraron su hito, y una corrida puede cerrar varias tareas o ninguna. Lo que muestra es que
+  estas instancias entregan de forma sostenida —seis semanas con entrega cada una—, así que la expansión
+  inútil no era un evento raro. Sigue sin cambiar el arreglo, que ya está hecho.
 - **La razón por la que este caso existía —que cambia la frecuencia sobre la que decide el 057— queda
   cerrada.** Con el arreglo puesto, la expansión ocurre a lo sumo una vez por corrida y **sólo cuando lo
   expandido se ejecuta en esa misma vuelta**. Ahora sí es rara, que era la hipótesis que la medición había

@@ -307,8 +307,23 @@ negativo y va a creer que el alcance no funciona.
 - **Tradeoff «el 1 cambia cuándo se confía en el árbol»** — **se paga, y sólo lo paga quien declara el
   campo.** D lo muestra por el otro lado: sin delta, el árbol **es** el próximo commit.
 
-### Lo que sigue sin medir, y ya no decide nada
+### Medido en producción el 2026-09-15, sobre la instancia donde nació
 
-Cuántas instancias reales tienen un delta ajeno al gate con qué frecuencia. Decidía si valía un campo
-nuevo; el campo existe y es opcional, así que la frecuencia sólo mueve cuánto se ahorra, no si el bloqueo
-se puede destrabar.
+`venotal-ops` —sidecar, la tarea `env-schema-yaml`, la misma que el contexto de descubrimiento nombra—
+guardó su rastro de gates, y ahí está el incidente entero. De **7 intentos de commit** registrados,
+**2 (29 %)** llevan la firma de este caso:
+
+| gate | corridas | media en verde | las rojas |
+| --- | --- | --- | --- |
+| `build` | 7 | **14,2 s** | 1,3 s · 2,2 s |
+| `lint` | 7 | 7,3 s | 1,2 s |
+| `test` | 6 | 4,0 s | 1,2 s |
+
+El intento de las **01:39** murió con los **tres** gates en ~1,2 s: la copia rompió todo, no sólo el
+build. El de las **01:51** es el caso del enunciado exacto —`test` verde en 5,4 s, `lint` verde en 7,0 s,
+`build` rojo en **2,19 s**—, y el caso reporta «2,2 s» de memoria: coincide con el registro.
+
+Eso confirma dos cosas que hasta hoy eran razonamiento. La primera, que **el tiempo delata**: 2,2 s contra
+una media de 14,2 s no es un build que falla, es uno que no llegó a compilar. La segunda, que **no es un
+borde**: casi un tercio de los intentos de commit de una instancia real chocaron con esto en los días en
+que la tarea estuvo abierta.

@@ -125,9 +125,20 @@ anotar de la sesión.
 - **Tradeoff «acotar más puede dejar pasar algo» — comprobado y no ocurre.** Las cinco formas peligrosas
   escritas en una línea siguen bloqueadas: `commit -am`, `add -A`, `push --force`, `--amend` e
   `install -g`.
-- **Tradeoff «no medido cuántas veces frenó trabajo legítimo» — sigue sin medirse.** Lo observado son
-  dos veces en una sesión y no hay registro de las anteriores: rodear un guard no deja rastro, que es
-  justamente por qué este defecto duró.
+- **Tradeoff «no medido cuántas veces frenó trabajo legítimo»** — ~~sigue sin medirse~~ **medido en parte
+  el 2026-09-15, y lo que se aprende es que el registro existía en otro lado.** El caso decía que rodear
+  un guard no deja rastro; **aprobarlo sí**, y una instancia real lo guarda.
+
+  `venotal-ops` tiene **5 rutas** en su `planning/.ops-approval` y **1 concesión** registrada en el chat.
+  Cuatro de las cinco son archivos `.env` —`.env`, `.env.bak`, `.env.infisical`— y la quinta un
+  `package.json`. O sea que lo que el guard frenó y una persona destrabó no fue un falso positivo de
+  parseo como el de este caso: fue el guard de secretos haciendo exactamente su trabajo, y alguien
+  decidiendo caso por caso.
+
+  **Lo que eso mide no es la tasa que el tradeoff pedía, y conviene decirlo**: cuenta los frenos que
+  alguien aprobó, no los que rodeó. Pero corrige la premisa de que no hubiera dónde mirar — `.ops-approval`
+  y `.grant-log` son ese registro, y una medición mejor es contarlos en varias instancias con historia.
+  En ésta, cero de los seis frenos registrados vienen del defecto que este caso arregló.
 
 **Lo que apareció y el enunciado no preveía: eran siete reglas, no dos.** El caso se abrió con las dos
 que me habían frenado. Buscando la forma `[^;&|]` en el archivo aparecieron cinco más, y dos de ellas
