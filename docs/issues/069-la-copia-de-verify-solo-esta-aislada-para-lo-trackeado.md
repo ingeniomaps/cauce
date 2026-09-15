@@ -149,6 +149,13 @@ de quién escribe, y que `build` ya escribe por ahí en cada corrida.
 - **La primera vía —bind mount de sólo lectura— no se tomó, y la razón es la que el caso ya decía:** es
   lo único que garantiza que ningún gate escriba, y es lo menos portable. Este toolkit corre en Linux,
   macOS y Windows, y en dos de los tres no hay equivalente directo.
+
+  **Corregido el 2026-09-15, midiéndolo desde el 153: en Linux tampoco lo hay.** Esta línea dejaba creer
+  que la plataforma donde sí existe alcanzaba, y no alcanza — `mount --bind` y `mount -t overlay` piden
+  superusuario, que un guard no tiene, y dentro de un user namespace el montaje **no sobrevive al proceso
+  que lo crea**, así que habría que montar *y* correr los gates dentro del mismo namespace. La vía no está
+  descartada por portabilidad sino por disponibilidad, y eso la cierra en las tres plataformas y no en
+  dos. La medición completa, con la tabla, vive en el **153**.
 - **La segunda —enlazar el almacén y no el árbol— tampoco**: sólo cubre a pnpm, y el daño medido no es
   de pnpm sino de cualquier gate que construya.
 - **La cuarta —declararlo y no cambiar nada— era la salida honesta mientras el daño fuera regeneración.

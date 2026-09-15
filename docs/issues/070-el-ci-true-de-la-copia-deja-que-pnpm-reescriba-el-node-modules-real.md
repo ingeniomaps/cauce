@@ -224,6 +224,13 @@ señal de que la variable resuelve lo que se veía y no lo que estaba pasando.
 - **El bind mount de sólo lectura sigue sin hacerse, y es lo único que cerraría la clase.** Lo descartó
   el [069](069-la-copia-de-verify-solo-esta-aislada-para-lo-trackeado.md) por portabilidad y ese
   argumento no cambió. Queda declarado ahí, no acá.
+
+  **Corregido el 2026-09-15, midiéndolo desde el 153.** «Sigue sin hacerse» daba a entender que estaba
+  disponible y pendiente; **no lo está**: montar pide privilegios que un guard no tiene, y dentro de un
+  user namespace el montaje no sobrevive al proceso que lo crea. O sea que la clase que este ítem deja
+  abierta **no espera una vía, espera otra distinta**, y quien lea esto no debería quedarse esperando
+  ésta. Importa acá y no sólo en el 069 porque este caso está cerrado: nadie iba a volver a abrirlo para
+  revisar la premisa. La medición, con su tabla, vive en el **153**.
 - **La red de «comprobar después del gate que lo enlazado no cambió» tampoco se hizo.** Con la causa
   cerrada mide algo que ya no debería ocurrir; lo que la activaría es que aparezca otra herramienta que
   escriba por el enlace.
