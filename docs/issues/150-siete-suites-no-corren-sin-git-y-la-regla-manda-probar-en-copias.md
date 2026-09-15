@@ -1,15 +1,16 @@
 ---
 caso: 150
 titulo: Cinco pruebas necesitan un `.git` para correr, así que la copia que R23 manda usar no puede ejecutar la suite y sus fallos hablan de otra cosa
-estado: abierto
+estado: resuelto
+resuelto-en: 0.90.0
 prioridad: media
 version-detectada: 0.90.0
 ---
 
 # 150 — La regla manda probar en una copia y la copia no puede correr las pruebas
 
-**🔴 abierto** · detectado en 0.90.0 · prioridad **media** — arreglado y a la espera de que **0.90.0** se
-publique, con el recorrido abajo
+**🟢 resuelto en 0.90.0** · detectado en 0.90.0 · prioridad **media** — las cinco pruebas declaran qué les
+falta en vez de fallar con un mensaje sobre el repositorio
 
 ## Resumen
 
@@ -107,8 +108,8 @@ misma razón y el barrido de versiones publicadas devolvió cinco falsos rojos.
 
 ## Cierre
 
-**Construido · pasa a `resuelto` con la publicación de 0.90.0** · `test/support/environment.js`,
-`test/instance/delivery.test.js`, `test/repo/repo.test.js`, `test/repo/suite.test.js`, `CHANGELOG.md`
+**🟢 resuelto en 0.90.0** · `test/support/environment.js`, `test/instance/delivery.test.js`,
+`test/repo/repo.test.js`, `test/repo/suite.test.js`, `CHANGELOG.md`
 
 Se tomó la **opción 1**, y la **3 quedó cubierta sin escribirla aparte**: la razón vive en el helper, que
 es lo que alguien lee cuando se topa con el salto. La **2** se descartó con un número.

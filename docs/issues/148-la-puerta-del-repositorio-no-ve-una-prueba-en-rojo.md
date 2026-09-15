@@ -1,15 +1,16 @@
 ---
 caso: 148
 titulo: `npm run ci` no corre la suite, así que una prueba en rojo no frena ni un PR ni una publicación
-estado: abierto
+estado: resuelto
+resuelto-en: 0.90.0
 prioridad: alta
 version-detectada: 0.89.0
 ---
 
 # 148 — La puerta que todo el repositorio trata como veredicto sale verde con pruebas fallando
 
-**🔴 abierto** · detectado en 0.89.0 · prioridad **alta** — arreglado y a la espera de **0.90.0**, con el
-recorrido abajo
+**🟢 resuelto en 0.90.0** · detectado en 0.89.0 · prioridad **alta** — la tolerancia que tapaba el rojo
+quedó acotada al modo que la necesita, y la prueba pasó a ejecutar el script en vez de leerlo
 
 ## Resumen
 
@@ -130,7 +131,7 @@ en rojo y la puerta en verde.
 
 ## Cierre
 
-**Construido, a la espera de 0.90.0** · `test/tools/coverage.sh`, `test/repo/coverage-floors.test.js`,
+**🟢 resuelto en 0.90.0** · `test/tools/coverage.sh`, `test/repo/coverage-floors.test.js`,
 `CHANGELOG.md`
 
 Se tomó la **opción 2**, y la eligió el tradeoff que el caso dejó anotado: medir primero cuánto costaría
