@@ -8,8 +8,8 @@ version-detectada: 0.90.0
 
 # 150 — La regla manda probar en una copia y la copia no puede correr las pruebas
 
-**🔴 abierto** · detectado en 0.90.0 · prioridad **media** — arreglado y a la espera de **0.91.0**, con el
-recorrido abajo
+**🔴 abierto** · detectado en 0.90.0 · prioridad **media** — arreglado y a la espera de que **0.90.0** se
+publique, con el recorrido abajo
 
 ## Resumen
 
@@ -107,7 +107,7 @@ misma razón y el barrido de versiones publicadas devolvió cinco falsos rojos.
 
 ## Cierre
 
-**Construido · pasa a `resuelto` con la publicación de 0.91.0** · `test/support/environment.js`,
+**Construido · pasa a `resuelto` con la publicación de 0.90.0** · `test/support/environment.js`,
 `test/instance/delivery.test.js`, `test/repo/repo.test.js`, `test/repo/suite.test.js`, `CHANGELOG.md`
 
 Se tomó la **opción 1**, y la **3 quedó cubierta sin escribirla aparte**: la razón vive en el helper, que

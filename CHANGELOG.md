@@ -14,7 +14,7 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
-## [0.91.0] - 2026-09-15
+## [0.90.0] - 2026-09-15
 
 ### Corregido
 
@@ -41,10 +41,6 @@ diseño — eso vive en el commit y en el código.
 
   **No tenés que hacer nada.** Si corrés la suite sobre un tarball o un árbol sin historia, vas a ver
   cinco `skipped` con su razón donde antes veías cinco rojos.
-
-## [0.90.0] - 2026-09-15
-
-### Corregido
 
 - **El ciclo de aprendizaje ya no te deja una rama muerta por cada informe que se mergea solo.** Cuando un
   informe declara `propone: no`, su PR se cierra con auto-merge y su rama quedaba viva para siempre: una
