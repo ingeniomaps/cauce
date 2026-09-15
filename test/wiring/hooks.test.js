@@ -1869,7 +1869,8 @@ test('la copia recibe la palanca que apaga la sincronización, y ya no la que de
   fs.writeFileSync(path.join(root, 'gate.js'),
     `const d = ${JSON.stringify(DESARMAN)}\n`
     + `require('node:fs').appendFileSync(${JSON.stringify(visto)}, `
-    + `'verify=' + (process.env.npm_config_verify_deps_before_run || 'vacio') `
+    + `'verify=' + (process.env.pnpm_config_verify_deps_before_run || 'vacio') `
+    + `+ ' viejo=' + (process.env.npm_config_verify_deps_before_run || 'vacio') `
     + `+ ' desarmadas=' + Object.keys(d).filter((k) => process.env[k]).join(',') + '\\n')\n`)
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node gate.js' } }))
   fs.writeFileSync(path.join(root, 'app.js'), 'module.exports = 1\n')
@@ -1885,12 +1886,12 @@ test('la copia recibe la palanca que apaga la sincronización, y ya no la que de
   // y afirmaría en CI algo que ahí no es cierto. La otra la exporta el propio `verify` cuando esta suite
   // corre dentro de una copia, y sin despejarla la prueba frenaba todo commit con algo sin trackear
   // (caso 093).
-  const ISOLATED = ['CI', 'npm_config_verify_deps_before_run']
+  const ISOLATED = ['CI', 'npm_config_verify_deps_before_run', 'pnpm_config_verify_deps_before_run']
   const antes = Object.fromEntries(ISOLATED.map((name) => [name, process.env[name]]))
   try {
     for (const name of ISOLATED) delete process.env[name]
     assert.doesNotThrow(() => execute('verify', commit))
-    assert.match(fs.readFileSync(visto, 'utf8'), /^verify=vacio desarmadas=$/m,
+    assert.match(fs.readFileSync(visto, 'utf8'), /^verify=vacio viejo=vacio desarmadas=$/m,
       'sin copia no se le cambia el entorno a nadie')
 
     // Y ahora sí hay copia, por lo más barato que la dispara.
@@ -1898,7 +1899,10 @@ test('la copia recibe la palanca que apaga la sincronización, y ya no la que de
     fs.writeFileSync(path.join(root, 'suelto.txt'), 'no trackeado\n')
     assert.doesNotThrow(() => execute('verify', commit))
     const enLaCopia = fs.readFileSync(visto, 'utf8')
-    assert.match(enLaCopia, /^verify=false/m, 'la copia no sincroniza nada antes de correr el gate')
+    // La segunda mitad es la aserción de ausencia que R9 pide para una quita: el nombre viejo no viaja.
+    // Sin ella, exportar los dos a la vez pasaría, y lo que se quitó fue justamente el que no sirve.
+    assert.match(enLaCopia, /^verify=false viejo=vacio/m,
+      'la copia no sincroniza nada antes de correr el gate, y por el nombre que pnpm sí lee')
     assert.match(enLaCopia, /desarmadas=$/m,
       `y ninguna de éstas llega al gate:\n${Object.entries(DESARMAN)
         .map(([k, why]) => `  ${k}: ${why}`).join('\n')}`)
@@ -1916,10 +1920,14 @@ test('la copia recibe la palanca que apaga la sincronización, y ya no la que de
 // ella la reinstalación avanza y borra por el enlace; el gate igual termina en verde, así que nada lo
 // dice.
 //
-// Se usa un `pnpm` de mentira porque el de verdad exige una instalación real y salir a la red, y lo que
-// hay que fijar no es qué hace pnpm sino **qué le pedimos**: con la comprobación previa apagada no toca
-// nada, y con cualquier otro valor empieza borrando. Es la conducta documentada de `verify-deps-before-run`,
-// reproducida a mano con pnpm 10.30.2 antes de escribir esto.
+// Se usa un `pnpm` de mentira porque el de verdad exige una instalación real, y lo que hay que fijar no es
+// qué hace pnpm sino **qué le pedimos**: con la comprobación previa apagada no toca nada, y con cualquier
+// otro valor empieza borrando.
+//
+// Pero el nombre por el que el falso pregunta no es libre, y ahí estuvo el agujero. Preguntaba por
+// `npm_config_…`, que pnpm ignora, así que fabricaba un mecanismo inexistente y quedaba verde sobre una
+// mitigación que nunca llegaba (caso 151). Pregunta por el mismo nombre que exporta `commitTree`, que es
+// el que pnpm lee de verdad: un falso que preguntara por otro se queda verde haga lo que haga el motor.
 test('un gate no puede purgar el node_modules del proyecto por el enlace', () => {
   const root = tempRoot('ops-hook-purga-')
   initRepo(root)
@@ -1937,7 +1945,7 @@ test('un gate no puede purgar el node_modules del proyecto por el enlace', () =>
   // comprobación previa. Sigue el enlace, que es exactamente por donde ocurrió el daño.
   const falso = tempRoot('ops-hook-purga-bin-')
   fs.writeFileSync(path.join(falso, 'pnpm'), '#!/usr/bin/env bash\n'
-    + 'if [ "${npm_config_verify_deps_before_run:-}" != "false" ]; then\n'
+    + 'if [ "${pnpm_config_verify_deps_before_run:-}" != "false" ]; then\n'
     + '  rm -f node_modules/marca.txt\n'
     + 'fi\n'
     + 'exit 0\n', { mode: 0o755 })

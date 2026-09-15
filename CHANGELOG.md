@@ -14,6 +14,25 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.91.0] - 2026-09-15
+
+### Corregido
+
+- **La protección que evita que un gate te borre el `node_modules` no estaba puesta.** `verify` corre los
+  gates sobre una copia del índice con el `node_modules` enlazado a tu proyecto, y le pedía a pnpm que no
+  sincronizara dependencias antes de correr el script. Se lo pedía con un nombre que pnpm ignora: sus
+  ajustes se leen del entorno con el prefijo `pnpm_config_`, no con el de npm. La petición viajaba y se
+  descartaba en silencio desde 0.75.0, que es cuando entró.
+
+  Con pnpm 11, donde esa comprobación viene encendida, se nota al commitear un cambio de `pnpm-lock.yaml`:
+  pnpm decide reinstalar, la reinstalación **empieza borrando** el directorio de módulos —el tuyo, por el
+  enlace— y sin TTY aborta con `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`. Los gates vuelven en poco más
+  de un segundo, así que se leen como una suite en rojo que no lo es.
+
+  Si te está pasando, alcanza con actualizar. Lo que **no** corresponde, aunque el bloqueo lo sugiera, es
+  aprobar las rutas o `OPS_SKIP_VERIFY=1` —las dos commitean sin haber corrido el gate— ni `CI=true`, que
+  desarma justamente la confirmación con la que pnpm frena antes de purgar.
+
 ## [0.90.0] - 2026-09-15
 
 ### Corregido
