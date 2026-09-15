@@ -2,7 +2,8 @@
 
 // Quién tomó qué: la reserva compartida que evita que dos runners construyan lo mismo sin enterarse.
 //
-// Las primeras no tocan disco —el selector recibe el estado— y por eso pueden fijar quién es quién.
+// Las primeras fijan a quién se le ofrece cada tarea, que es lo que decide el selector y lo único que no
+// se puede leer del disco después: lo que queda escrito es el reclamo, no a quién se le ofreció.
 
 const { tempRoot, run, discard } = require('../support/environment')
 const test = require('node:test')

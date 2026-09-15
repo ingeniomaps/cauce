@@ -23,9 +23,9 @@ function conTarea(prefix, task) {
   return { target, planning }
 }
 
-// La persona ya escribe el alcance —«mientras dure la tarea t-014»— y hasta 0.86.0 se tiraba al guardar:
-// de esa frase sobrevivía la ruta y nada más, así que la concesión valía la sesión entera (caso 127). Lo
-// que se lee es la misma cláusula que ya decide si la ruta fue pedida, no el mensaje entero.
+// Por qué el acote se guarda y de dónde sale lo explica `chat.js`, donde se decidió. Acá se fija lo que
+// sólo se ve corriendo: que la concesión **caduca** al cambiar el WIP. Una que se guardara bien y no
+// venciera se lee igual de correcta en el archivo, y la diferencia recién aparece en la sesión siguiente.
 test('una concesión con alcance caduca cuando la tarea que la limitaba deja de ser la del WIP', () => {
   const { target, planning } = conTarea('cauce-alcance-', 't-014')
   const session = `prueba-alcance-${process.pid}`

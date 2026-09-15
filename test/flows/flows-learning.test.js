@@ -216,10 +216,9 @@ test('la re-corrida del mismo día entra al ciclo, y entra después de la primer
   }
 })
 
-// La forma desnuda de `learn` —la que para un cargo abre el informe de la semana— no tiene qué abrir
-// para un recorrido: su propuesta se compone de `verdictFindings` y nunca lee `learning/reports/`.
-// Antes lo decía buscando un archivo de cargo, «no existe agents/<tipo>/probe/SKILL.md», porque
-// `prepareReport` resuelve con el `kind` por defecto. El error mandaba a crear un cargo que no falta.
+// Por qué un recorrido no tiene informe semanal lo explica `cli/catalog.js`, donde se decide. Acá se fija
+// **qué dice el error**: mandaba a crear un cargo que no falta, y ése es el modo de fallo caro — un
+// mensaje que manda a arreglar lo que no está roto se obedece, y el tiempo se pierde antes de dudarlo.
 test('learn sobre un recorrido sin --proposal dice qué corresponde, y no abre un informe huérfano', () => {
   const root = tempRoot('cauce-flow-learn-desnudo-')
   const dir = path.join(root, 'flows', 'probe')

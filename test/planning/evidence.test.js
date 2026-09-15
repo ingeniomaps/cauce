@@ -332,8 +332,9 @@ test('la cabecera se reconoce por su forma y no por lo que dice su primera celda
   assert.deepEqual(varias.map((fila) => fila.task), ['sembrar-el-flag', 'dar-acceso'])
   assert.deepEqual(varias.map((fila) => fila.valid), [true, true])
 
-  // Y sin fila de separadores no hay forma que reconocer, así que el literal del molde sigue siendo la
-  // única defensa. Markdown no renderiza eso como tabla; el parser lee las filas igual.
+  // Por qué el literal del molde sigue haciendo falta lo explica el parser, donde se decidió. Acá se fija
+  // el caso que lo delataría: una tabla a la que le falta su fila de separadores, que es la forma en que
+  // alguien la escribe mal sin notarlo.
   const sinGuiones = leer(`# Acciones humanas
 
 | Tarea | Estado | Origen | Detalle |

@@ -109,7 +109,8 @@ test('un heredoc que alimenta un shell sí es un comando', () => {
   }
 })
 
-// Y el caso común sigue pasando: el mismo cuerpo, escrito a un archivo, es texto.
+// El control del caso de arriba: si la regla se afinara de más, esto empezaría a fallar y avisaría
+// que lo ganado en precisión se pagó frenando el uso normal.
 test('el mismo cuerpo escrito a un archivo sigue siendo texto', () => {
   const hecho = correr("cat > script.sh <<'EOF'\ngh pr list\nEOF")
   assert.equal(hecho.bloqueado, false, `no debería bloquear:\n${hecho.stderr}`)

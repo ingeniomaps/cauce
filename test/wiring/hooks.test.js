@@ -2114,7 +2114,7 @@ test('el contraste de evidencia separa lo que existe de lo que no se puede busca
   // confundir «no lo encontré» con «no existe» convertiría la forma documentada en un error.
   assert.deepEqual(veredicto('C1 → prueba de alta de cliente'), ['inbuscable'])
   assert.deepEqual(veredicto('n/a — no hay superficie ejecutable'), [])
-  // Sin raíces declaradas no hay dónde mirar, y afirmar ausencia ahí sería inventar el hallazgo.
+  // El tercer veredicto, con su razón en `core/evidence.js`: acá se ejerce la lista vacía de raíces.
   assert.deepEqual(EV.contrast('C1 → TestAltaResponde201', []).map((t) => t.verdict), ['inbuscable'])
 })
 
