@@ -87,6 +87,21 @@ const CONTEXT = {
     inbox: { ...INBOX_HEADS },
     // Las reglas que rigen el proyecto, con los overrides ya resueltos por el motor (caso 105).
     rules: { type: 'array', items: { type: 'string' } },
+    // Cuántos pasos del plan están tildados y cuántos no. Es lo único que separa «esta tarea viene de una
+    // corrida que paró a mitad» de «esta tarea no empezó», y sin eso Build se lanzaba igual con los nueve
+    // pasos hechos: el agente releía el WIP, miraba el disco y contestaba que no había nada pendiente —
+    // medido en 893.000 tokens sobre tres corridas de una sola tarea (caso 154).
+    //
+    // Viene de `ops context --json`, que ya lo emite; acá sólo hacía falta declararlo, porque
+    // `additionalProperties: false` lo descartaba aunque llegara. Es opcional: una instancia sin WIP
+    // activo no lo trae, y pedirlo siempre obligaría a inventar ceros donde no hay plan.
+    wip: {
+      type: 'object', additionalProperties: false, required: ['complete', 'pending'],
+      properties: {
+        phase: { type: 'string' },
+        complete: { type: 'integer' }, pending: { type: 'integer' },
+      },
+    },
   },
 }
 const CLAIM = {
@@ -290,6 +305,22 @@ const VERDICT = ' Cerrá con verdict=aprobado si no queda nada por corregir ante
 const RULED = ' En rules nombrá, por su ruta, cada una de las reglas que rigen contra la que revisaste el diff.'
 // Lo que hay que corregir antes de entregar. El resto de los hallazgos no desaparece: se registra.
 const blockers = (verdict) => verdict.concerns.filter((one) => one.blocking).map((one) => one.detail)
+// El resultado de Build cuando no hubo nada que construir en esta corrida. Devuelve lo que de verdad
+// pasó y nada más: `redFirst` y `discovered` van **vacíos** porque acá no hubo ningún rojo nuevo que
+// mostrar ni ningún borde nuevo que fijar, y rellenarlos para que se parezca a una construcción sería
+// fabricar la evidencia que este recorrido exige justamente para no tener que creerle a nadie.
+//
+// `completed: true` afirma que el plan no tiene pasos pendientes, que es lo que el WIP dice y lo único
+// que se está usando. No afirma que lo construido esté bien: eso lo miran Review, Verify y QA sobre el
+// diff real, que existe en disco venga de la corrida que venga.
+const reusedBuild = (wip) => ({
+  completed: true,
+  closedTask: false,
+  redFirst: [],
+  discovered: [],
+  summary: `sin construir en esta corrida: el WIP traía ${wip.complete} paso(s) tildado(s) y ninguno `
+    + 'pendiente, así que lo que sigue revisa lo que ya estaba en disco',
+})
 // Atajo para reconocer un gate que corrió pruebas sin preguntarle a nadie. No alcanza solo y no
 // pretende hacerlo: `mvn verify`, `gradle build`, `tox`, `bin/rails t` y cualquier `make` con nombre
 // propio corren pruebas y no se parecen a esto, así que el que corrió el comando además lo declara en
@@ -389,7 +420,8 @@ const registerHuman = async (prompt, label) => (await write(prompt, { label })
 const readContext = () => read(
   `Corré "node tools/ops.js context ${P} --json" desde ${ROOT} y reportá sólo lo que imprimió. Derivá hasTask ` +
   `de si task es null, wipActive de si wip es null, claimed del campo claimed, today y wipFile de sus ` +
-  `campos, rules del campo rules tal cual, y lane ` +
+  `campos, rules del campo rules tal cual, wip con sus campos complete y pending tal cual si viene —y ` +
+  `omitilo entero si wip es null, sin inventar ceros—, y lane ` +
   `de task.tier; copiá slug, ` +
   `hito, service, acceptance, ` +
   `epic y cast de task, epicContext de epic.context —vacío si no hay épica— e inbox tal cual. El comando es ` +
@@ -710,8 +742,25 @@ while (rounds++ < MAX_TASKS) {
     }
   }
 
-  phase('Build')
-  const build = await run(
+  // Un WIP que viene de una corrida anterior con todos sus pasos tildados no tiene nada que construir, y
+  // lanzar el agente para que lo confirme cuesta lo mismo que construir. El recorrido delegaba la
+  // reanudación en el prompt —«retomá en el primer paso pendiente»—, así que el agente hacía lo correcto
+  // y lo caro era haberlo llamado (caso 154).
+  //
+  // **La fase no se saltea: se saltea la llamada.** Los cuatro contrastes de abajo —la tarea cerrada en
+  // Build, el rojo sin su fallo literal, el borde sin prueba, las decisiones abiertas— son lo único que
+  // vuelve a mirar el disco, y darlos por buenos porque el WIP dice que está todo hecho camina al modo de
+  // fallo que registra la fase WIP acá arriba: alguien construyó todo y Review, Verify y QA no lo vieron.
+  // Por eso lo que sigue no afirma que la construcción estuvo bien, sólo que en **esta** corrida no hubo
+  // ninguna: lo que ya estaba en disco lo revisan igual las fases siguientes, sobre el diff real.
+  // Y la fase se anuncia distinto, que es la otra mitad del caso: hoy «Build corrió y construyó» y «Build
+  // corrió, miró y no hizo nada» se ven idénticos salvo por el costo, así que R21 —que manda comprobar la
+  // reanudación en vez de suponerla— no se puede cumplir sobre este recorrido sin abrir el `.output` y
+  // sumar tokens a mano. El nombre viaja por el mismo canal que las otras quince fases: entra en `ran`,
+  // que va al resultado de la corrida y a la entrada de DONE.
+  const resumed = planning.wip && planning.wip.pending === 0 && planning.wip.complete > 0
+  phase(resumed ? 'Build (reanudado)' : 'Build')
+  const build = resumed ? reusedBuild(planning.wip) : await run(
     `${asRole(cast.build)}Implementá sólo ${task.id} dentro de ${task.service}. Retomá en el primer paso ` +
     `pendiente del WIP; comprobá en el disco los pasos ya hechos y tildá cada uno que salga bien. Para cada ` +
     `comportamiento escribí primero la prueba, corréla y anotá en redFirst el test y el fallo literal que ` +

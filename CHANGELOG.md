@@ -18,6 +18,21 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Reanudar una tarea dejó de pagar la fase que no tiene nada que hacer, y la corrida dice cuándo lo
+  hizo.** Una tarea que para antes de Commit —una revisión que pidió algo, un gate en rojo— deja su plan
+  en disco con los pasos tildados. Al relanzar, el recorrido entraba igual a Build: el agente releía el
+  WIP, comprobaba el disco y contestaba que no había nada pendiente. Hacía lo correcto; lo que costaba
+  era haberlo llamado — **893.000 tokens sobre tres corridas de una sola tarea**, medido.
+
+  Ahora, si el WIP no tiene pasos pendientes, esa llamada no se hace y la fase se anuncia como
+  `Build (reanudado)`, que viaja al resultado de la corrida y a la entrada de DONE. Antes una corrida
+  reanudada se veía idéntica a una que construyó salvo por el costo, así que comprobar qué se reutilizó
+  exigía abrir la salida cruda y sumar tokens a mano.
+
+  **Lo que no cambia es qué se revisa.** No se saltea la fase, se saltea la llamada: Review, Verify y QA
+  siguen mirando el diff real que quedó en disco, venga de la corrida que venga. Y si tu instancia no
+  emite ese dato, todo se comporta como antes.
+
 - **Una raíz puede declarar qué rutas lee su puerta, y un archivo sucio que el gate no va a abrir deja de
   forzar la copia del índice.** Al commitear, `verify` corre sobre el árbol cuando árbol e índice
   coinciden y materializa el índice en un temporal cuando difieren. Hasta ahora alcanzaba **cualquier**

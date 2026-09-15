@@ -424,3 +424,48 @@ test('un contrato sin rootOk se trata como raíz ilegible', async () => {
   })
   assert.equal(result.reason, 'root-unreadable', 'el campo ausente para igual')
 })
+
+// Los dos lados de la reanudación: que no se pague lo que no hay que hacer, y que se note que no se
+// pagó. Por qué el campo existe y qué costaba no tenerlo está donde se declara, en el schema `CONTEXT`.
+//
+// Van los cuatro escenarios juntos porque sueltos no dicen nada: el ahorro sin la compatibilidad se lee
+// como un recorrido que dejó de construir, y la compatibilidad sin el ahorro, como uno que nunca cambió.
+const reanudado = (wip) => ({
+  contexts: [
+    { ...baseScript()[KEY.context], wipActive: true, ...(wip ? { wip } : {}) },
+    { ...baseScript()[KEY.context], hasTask: false, wipActive: false, queued: 0 },
+  ],
+})
+
+test('un WIP sin pasos pendientes no vuelve a pagar el agente que construye', async () => {
+  const { result, asked } = await runFlow({}, reanudado({ phase: 'Build', complete: 9, pending: 0 }))
+  ranToEnd(result)
+  assert.equal(asked.includes('Build|build'), false, 'no hay nada que construir y no se llama a nadie')
+  assert.ok(reached(asked, 'Review'), 'y lo que ya está en disco se revisa igual')
+})
+
+// La otra mitad del caso, y la que R21 pide poder mirar: hoy «Build construyó» y «Build miró y no hizo
+// nada» se ven idénticos salvo por el costo, así que comprobar la reanudación exigía abrir el `.output`
+// y sumar tokens a mano. El nombre de la fase lo dice, y viaja al resultado y a la entrada de DONE.
+test('una corrida reanudada se distingue de una que construyó', async () => {
+  const { result } = await runFlow({}, reanudado({ phase: 'Build', complete: 9, pending: 0 }))
+  assert.ok(result.phases.includes('Build (reanudado)'), `se anuncia reanudada: ${result.phases}`)
+  assert.equal(result.phases.includes('Build'), false, 'y no además como si hubiera construido')
+})
+
+test('con pasos pendientes se construye como siempre', async () => {
+  const { result, asked } = await runFlow({}, reanudado({ phase: 'Build', complete: 3, pending: 6 }))
+  ranToEnd(result)
+  assert.ok(asked.includes('Build|build'), 'queda trabajo y se paga')
+  assert.ok(result.phases.includes('Build'), 'sin marca de reanudada')
+})
+
+// La compatibilidad: el campo es nuevo y una instancia que no lo emite tiene que comportarse como antes
+// de que existiera. Sin esto, el ahorro se pagaría con un recorrido que deja de construir donde todavía
+// hay que hacerlo.
+test('una instancia que no emite wip construye como antes del campo', async () => {
+  const { result, asked } = await runFlow({}, reanudado(null))
+  ranToEnd(result)
+  assert.ok(asked.includes('Build|build'), 'sin el dato no se supone nada')
+  assert.ok(result.phases.includes('Build'))
+})
