@@ -107,8 +107,16 @@ Ninguno cerrado, y es una decisión con costo de plataforma:
 
 - **La opción más completa es la menos portable**, y este toolkit corre en las tres plataformas.
 - ~~**No medido cuánto daño hace hoy.**~~ **Medido el 2026-09-10, y no era regeneración**: la salida de
-  build queda con la versión del índice mientras el fuente en disco tiene otra. Lo que sigue sin medirse
-  es la **frecuencia** —cuántos commits reales pasan por ahí—, y eso decide si conviene la vía cara.
+  build queda con la versión del índice mientras el fuente en disco tiene otra. ~~Lo que sigue sin medirse
+  es la **frecuencia** —cuántos commits reales pasan por ahí—, y eso decide si conviene la vía cara.~~
+  **Contestado el 2026-09-15: la frecuencia no decide nada, porque la vía cara no se tomó.** El arreglo de
+  0.74.0 eligió la lista `RECREABLE`, que no cuesta por commit —es un regex sobre nombres que git ya marcó
+  como ignorados—, así que no hay un umbral de uso que justifique cambiar de vía. Y en este repositorio la
+  pregunta no tiene sujeto: `lint`, `typecheck` y `build` **no existen** como scripts, y lo que queda
+  ignorado —`node_modules/`, `.env*`, `.npmrc`, `.cauce-eval/`— es exactamente lo que un gate no puede
+  fabricar y se sigue enlazando a propósito. La frecuencia seguiría importando para un proyecto consumidor
+  con un `build` que escriba fuera de la lista, y para ése lo que decide es su propia lista, no un número
+  de acá.
 - **Aislar de más rompe gates legítimos**: un gate que necesita escribir un caché para terminar en un
   tiempo razonable dejaría de poder hacerlo, y ahí el guard pasa de correcto a insoportable.
 

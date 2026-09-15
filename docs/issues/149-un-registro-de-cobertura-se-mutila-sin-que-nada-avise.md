@@ -135,10 +135,14 @@ esta corrida no midió.
   huérfano—.
 - **Tradeoff «la 2 convierte cada retiro en una edición manual»** — no ocurre, por lo mismo.
 - **Tradeoff «la 3 deja en pie un borrado que no avisa»** — ya no aplica.
-- **«Vale la pena mirar si el mismo patrón está en otros registros»** — **queda sin mirar y sale como
-  dimensión pendiente, no como hecho.** No se revisó en esta unidad: el registro de archivos largos de
-  `repo.test.js` y el `SUITE_FLOOR` de `suite.test.js` son los candidatos obvios, y el segundo ya tiene
-  la forma correcta —compara contra un piso escrito—. Quien lo retome empieza por ahí.
+- **«Vale la pena mirar si el mismo patrón está en otros registros»** — **se miró el 2026-09-15, y no hay
+  ningún otro.** El patrón es angosto y por eso el barrido pudo ser exhaustivo: una herramienta que
+  **reescribe entero** un registro contra el que después se juzga. En `engine/`, `automatization/` y
+  `test/tools/` hay **un solo** `writeFileSync` que cumpla eso, y es el de este caso. Los candidatos que
+  este cierre nombraba quedaron descartados: `SUITE_FLOOR`, `JUSTIFIED` y `PENDING_SPLIT` son constantes
+  que edita una persona y ninguna herramienta las toca; ningún runner regenera su `manifest.json` ni su
+  `hooks.json`; `engine/hooks/chat.js` escribe el registro de una sesión, que no es un piso contra el que
+  algo compare; y `atomicWriteJson` de `engine/core/files.js` es el escritor genérico, sin registro propio.
 
 ### Lo que el caso no preveía
 
