@@ -1,16 +1,16 @@
 ---
 caso: 153
 titulo: El `node_modules` enlazado que verify usa rompe cualquier build de Turbopack, y el proyecto no tiene forma de compensarlo
-estado: abierto
+estado: resuelto
+resuelto-en: 0.92.0
 prioridad: media
 version-detectada: 0.89.0
 ---
 
 # 153 — Turbopack rechaza el enlace que `commitTree` necesita, así que el gate de un proyecto Next no puede pasar
 
-**🔴 abierto** · detectado en 0.89.0 · prioridad **media** — desde 0.92.0 el proyecto sí tiene cómo
-evitarlo: declarar `scope` en su raíz hace que un archivo ajeno al commit no fuerce la copia que rompe el
-build. Falta comprobarlo contra un `next build` real, y eso no se puede correr desde este repositorio
+**🟢 resuelto en 0.92.0** · detectado en 0.89.0 · prioridad **media** — declarar `scope` hace que un
+archivo ajeno al commit no fuerce la copia que rompe el build, y se comprobó contra un `next build` real
 
 > **Medido el 2026-09-15 sin arreglarlo.** De las tres opciones que este caso proponía, dos quedaron
 > cerradas —la 2 descartada por medición, la 3 ya existía desde 0.74.0 con su premisa equivocada— y la
@@ -245,3 +245,70 @@ es trabajo de otra persona sino basura propia.
   cambio del contrato que cada instancia recibe y no un arreglo de éste, y por eso vivió aparte. Lo que
   queda acá no es diseño sino una corrida contra un `next build` real.
 - **094** — el caso de la familia de la opción 3, que la cita a «el 142» nombraba mal.
+
+## Cierre
+
+**🟢 resuelto en 0.92.0** · lo resuelve el **156** (`scope` por raíz); acá está la corrida que lo comprueba
+contra Next real, que es lo único que este caso tenía pendiente.
+
+El enlace se queda: las cinco vías para meter `node_modules` bajo la raíz de la copia están medidas y
+descartadas. Lo que cambió es **cuándo** se hace la copia.
+
+### La corrida, sobre Next 16.1.1 de verdad
+
+Banco desechable con `next build` como puerta —producto en `app/`, instancia sidecar en `ops/`,
+`node_modules` real de 298 MB, Turbopack por default—. Línea base: el árbol limpio compila en **4,74 s** y
+genera sus páginas estáticas.
+
+| escenario | `scope` | delta | corrió sobre | veredicto |
+| --- | --- | --- | --- | --- |
+| A | no | `?? NOTAS.md` (ajeno) | **copia** | **BLOQUEADO** — `build (exit 1, 1.9 s)` |
+| B | sí | `?? NOTAS.md` (ajeno) | **árbol** | **PASA** |
+| C | sí | `?? src/app/sucio.ts` (dentro) | **copia** | BLOQUEADO — `build (exit 1, 2.0 s)` |
+| D | sí | nada sucio | **árbol** | PASA |
+
+**A es el defecto de este caso, reproducido por primera vez acá.** Replicando la copia a mano se lee la
+causa entera, que hasta hoy sólo constaba de una sesión ajena:
+
+```
+- Execution of find_package failed
+- Symlink node_modules is invalid, it points out of the filesystem root
+  type: 'TurbopackInternalError'
+```
+
+**B es el cierre**: el mismo commit, el mismo archivo sucio, y el gate pasa. **C y D son los controles que
+lo vuelven legible**: sin ellos, el verde de B no distingue «el alcance decide» de «el guard dejó de
+materializar». C materializa y falla porque el delta sí cae dentro del alcance; D pasa porque no hay delta.
+
+Y el tiempo delata igual que en el enunciado: **1,9 s** contra los **4,74 s** de un build que compila de
+verdad.
+
+### Lo que la corrida encontró y no estaba previsto
+
+**En sidecar, el alcance no se consultaba salvo que `OPS_ROOT` esté declarado.** `findOpsRoot` sube por
+ancestros, y en sidecar la instancia es **hermana** del repositorio del producto: desde `app/` devuelve
+vacío, `staysInTree` recibe cero raíces y —por su default seguro— fuerza la copia. Con `OPS_ROOT` puesto,
+los cuatro escenarios dan lo esperado.
+
+No es un defecto del producto: el shim que lanza cada guard la exporta (`automatization/hooks/run-hook.sh`,
+`export OPS_ROOT="$ops_root"`) y el bridge de Antigravity también. Era mi arnés, que invocaba el guard a
+mano sin ella. Queda escrito porque quien reproduzca esto sin instalar el runner va a ver el mismo falso
+negativo y va a creer que el alcance no funciona.
+
+### Contra lo que el caso enumeró
+
+- **Opción 1, no materializar cuando el delta no puede cambiar el veredicto** — **hecha, y salió como el
+  156**: el campo `scope` por raíz. Esta corrida es su comprobación de punta a punta.
+- **Opción 2, meter `node_modules` bajo la raíz** — **descartada por medición**, las cinco vías: enlace
+  relativo, *bind mount*, overlay, hardlinks de directorio y `cp -al`. La única que queda —copiar de
+  verdad— cuesta ~85 s por commit contra los 157 ms de `checkout-index`.
+- **Opción 3, que el guard muestre la salida del gate** — **ya existía desde 0.74.0**, y la sospecha de que
+  la causa quedaba escondida era falsa. Confirmado otra vez acá: el bloqueo de A cita la línea del gate.
+- **Tradeoff «el 1 cambia cuándo se confía en el árbol»** — **se paga, y sólo lo paga quien declara el
+  campo.** D lo muestra por el otro lado: sin delta, el árbol **es** el próximo commit.
+
+### Lo que sigue sin medir, y ya no decide nada
+
+Cuántas instancias reales tienen un delta ajeno al gate con qué frecuencia. Decidía si valía un campo
+nuevo; el campo existe y es opcional, así que la frecuencia sólo mueve cuánto se ahorra, no si el bloqueo
+se puede destrabar.
