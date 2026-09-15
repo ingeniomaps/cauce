@@ -240,11 +240,28 @@ function inRepo(at = path.resolve(__dirname, '..', '..')) {
   return spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: at, encoding: 'utf8' }).status === 0
 }
 
+// Los archivos de código del repositorio, que varias pruebas recorren igual. Vive acá y no dentro de
+// cada una porque copiado se pudre una de las copias —se queda sin un directorio— y nada falla. Lo
+// comparten `repo.test.js`, que juzga la forma del código, y `comments.test.js`, que juzga lo que se le
+// exige a un comentario: son dos sujetos distintos sobre el mismo corpus.
+function sourceFiles() {
+  const root = path.resolve(__dirname, '..', '..')
+  const below = (dir, out = []) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const file = path.join(dir, entry.name)
+      if (entry.isDirectory()) { if (entry.name !== 'node_modules') below(file, out); continue }
+      if (/\.(js|sh)$/.test(entry.name)) out.push(file)
+    }
+    return out
+  }
+  return ['engine', 'automatization', 'test', 'template'].flatMap((dir) => below(path.join(root, dir)))
+}
+
 module.exports = {
   TEST_RUNNER,
   wipPath,
   writeWip,
   MIN_ROLES, opsConfig, filesBelow, tempRoot, outsideTempRoot, undeletable, discard, CLI, run,
-  linkEngine, installedProject, inRepo,
+  linkEngine, installedProject, inRepo, sourceFiles,
   workflow, workflowStep, workflowCommand,
 }
