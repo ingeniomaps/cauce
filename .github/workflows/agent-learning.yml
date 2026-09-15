@@ -850,6 +850,78 @@ jobs:
           AGENT: ${{ matrix.agent }}
         run: node "$OPS" evaluate "$AGENT"
 
+      # El paso que faltaba para que el ciclo llegue a algo aprobable. `learn --proposal` consolida qué
+      # recomendaron los informes y deja «Cambio propuesto: por definir», que nadie puede firmar: de 25
+      # propuestas de 2026-09, 15 se archivaron con el molde intacto (caso 155). El recorrido que escribe
+      # el cambio exacto ya existía —`agent-propose`— y este job no lo corría.
+      #
+      # Los dos cierres que lo difirieron —135 y 143— lo hicieron para no meter «un modelo, su credencial
+      # y su gasto en un job que hoy corre sin ninguno». Eso era cierto de este job y no del workflow: el
+      # que investiga ya resuelve `CLAUDE_CODE_OAUTH_TOKEN` con reintento a `ANTHROPIC_API_KEY`. Acá se
+      # reusa esa resolución en vez de decidirla de nuevo.
+      #
+      # Corre **sólo** cuando el documento quedó sin decidir, y ese veredicto no se recalcula: lo emitió
+      # `learn` dos pasos más arriba. Dos definiciones de «sin decidir» son dos que se pudren por separado.
+      #
+      # Y sin credencial no falla: avisa y sigue, igual que el job que investiga. Lo que se pierde es que
+      # el mes quede en «por definir», que es lo que pasaba siempre hasta acá — el ciclo degrada al estado
+      # anterior en vez de romperse.
+      #
+      # Va antes de `Detect changes` a propósito: lo que el recorrido escriba tiene que entrar al mismo
+      # `git status` que arma el PR, o la propuesta completada se quedaría en el runner.
+      - name: Write the concrete change
+        if: steps.proposal.outputs.decided != 'true'
+        env:
+          AGENT: ${{ matrix.agent }}
+          OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          APIKEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$OAUTH" ] && [ -z "$APIKEY" ]; then
+            echo "::notice title=Sin credencial para proponer::$AGENT compuso su propuesta y queda en «por definir»: no hay CLAUDE_CODE_OAUTH_TOKEN ni ANTHROPIC_API_KEY. Cargá uno de los dos, o corré /agent-propose a mano sobre la rama."
+            exit 0
+          fi
+          # Un workflow no se ejecuta desde el fuente: trae `{{INCLUDE:}}` y el registro de la sesión sale
+          # de `.claude/workflows/`. Es el mismo render que usa `make eval-workflows`, y falla si queda un
+          # include sin expandir en vez de escribir un archivo que reventaría en el primer agente.
+          mkdir -p .claude/workflows
+          node -e '
+            const { render } = require("./engine/automation")
+            const fs = require("node:fs"), path = require("node:path")
+            const root = process.cwd(), auto = path.join(root, "automatization")
+            const out = render(path.join(auto, "workflows", "agent-propose.js"), "", auto, root)
+            if (out.includes("{{INCLUDE:")) throw new Error("agent-propose: quedaron includes sin expandir")
+            fs.writeFileSync(path.join(root, ".claude/workflows/agent-propose.js"), out)
+          '
+          # Lo que el recorrido necesita y nada más: leer el cargo y escribir su propuesta. **Sin `Bash`**,
+          # ni siquiera acotado — el de investigación concede cuatro formas nombradas y la puerta las
+          # cuenta sobre el archivo entero, así que una quinta acá se leería como un permiso más de aquél.
+          # `agent-propose` pide dos comandos del CLI en su fase de contexto; sin ellos el primer agente
+          # devuelve lo que pueda leer del disco, y lo que no pudo establecer queda dicho en la propuesta
+          # en vez de afirmarse. Concederlos es una decisión propia y se toma cuando una corrida real
+          # muestre que hace falta, no de paso.
+          proponer() {
+            "$@" --permission-mode acceptEdits \
+              --allowedTools 'Read' 'Glob' 'Grep' 'Edit' 'Write' \
+              -p "/agent-propose $AGENT"
+          }
+          if [ -n "$OAUTH" ]; then
+            echo "Credencial: suscripción (CLAUDE_CODE_OAUTH_TOKEN)."
+            if proponer env -u ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN="$OAUTH" claude; then exit 0; fi
+            echo "La corrida con la suscripción falló." >&2
+            if [ -z "$APIKEY" ]; then
+              echo "::notice title=Propuesta sin completar::$AGENT queda en «por definir»: la corrida falló y no hay API key de respaldo."
+              exit 0
+            fi
+            echo "Reintento con ANTHROPIC_API_KEY, que se factura por token." >&2
+          else
+            echo "Credencial: API key (ANTHROPIC_API_KEY). Se factura por token."
+          fi
+          # El fallo del respaldo tampoco frena: la rama se empuja igual con sus sellos, que es lo que
+          # evita que el mismo material entre de nuevo el mes siguiente.
+          if ! proponer env -u CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_API_KEY="$APIKEY" claude; then
+            echo "::notice title=Propuesta sin completar::$AGENT queda en «por definir»: la corrida de /agent-propose falló. La rama se empuja igual con los sellos."
+          fi
+
       - name: Detect changes
         id: changes
         run: |
@@ -908,13 +980,15 @@ jobs:
           printf '%s\n' "$changed" | xargs git add --
           git commit -m "docs($AGENT): propose $name learning review"
           git push origin "$branch"
-          # Empujar y pedir firma son dos actos, y hasta acá iban juntos. El documento recién compuesto
-          # trae el molde en «Cambio propuesto» —lo llena `/agent-propose`, que este job no corre—, así
-          # que abrir el PR ahí pide una firma por algo que no decide nada: el 2026-09-14 gastó siete
-          # (caso 143). La rama se empuja igual porque el sello de los informes consumidos viaja con
-          # ella, y perderlo haría entrar el mismo material el mes siguiente.
+          # Empujar y pedir firma son dos actos, y hasta acá iban juntos. Un documento que sigue diciendo
+          # «por definir» en «Cambio propuesto» no decide nada, y abrir el PR ahí pide una firma por eso:
+          # el 2026-09-14 gastó siete (caso 143). El paso de arriba corre `/agent-propose` para que deje
+          # de ser el estado normal, pero puede no haber corrido —sin credencial— o no haberlo
+          # completado, así que la condición se queda: lo que decide es el documento, no quién lo llenó.
+          # La rama se empuja igual porque el sello de los informes consumidos viaja con ella, y perderlo
+          # haría entrar el mismo material el mes siguiente.
           if [ "$DECIDED" != 'true' ]; then
-            echo "::notice title=Sin cambio decidido::$AGENT compuso $name y nadie escribió el cambio. La rama $branch queda empujada con los sellos; corré /agent-propose sobre ella y abrí el PR cuando el documento decida algo."
+            echo "::notice title=Sin cambio decidido::$AGENT compuso $name y el cambio quedó sin escribir: /agent-propose no corrió o no lo completó, y el paso de arriba dice cuál de las dos. La rama $branch queda empujada con los sellos; corré /agent-propose sobre ella y abrí el PR cuando el documento decida algo."
             exit 0
           fi
           gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
