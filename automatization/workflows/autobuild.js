@@ -36,7 +36,6 @@ const BACKLOG = `${P}/BACKLOG.md`
 const doneFile = (slug) => `${P}/done/${slug}.md`
 const HUMAN = `${P}/HUMAN_ACTIONS.md`
 const GATE = `${P}/AWAITING_REVIEW.md`
-const ROADMAP = `${P}/roadmap`
 
 // Estado de planning tal como lo emite `ops context --json`; ningún modelo parsea BACKLOG ni WIP.
 // De a pares, y sin regex: una comilla dentro de un literal de regex desincroniza a las dos puertas que
