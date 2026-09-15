@@ -54,14 +54,87 @@ const ENUNCIA = /^(?:El runner\b|Debe\b|Nunca\b)/
 // Un límite que el proyecto escriba con otra forma no entra, y eso no se ve — la lista sale más corta y se
 // lee igual de completa. Sobre `AGENTS.md` casi no puede pasar porque `upgrade` lo reemplaza entero; sobre
 // `organization/workspace.md`, que lo escribe una persona, pasa siempre que no imite esta gramática.
+// Y el camino declarado, que es el que no adivina: una viñeta bajo `### Límites`. El molde lo trae desde
+// 0.92.0 para que quien escriba una excepción tenga dónde ponerla en vez de tener que imitar la gramática
+// de arriba (caso 157).
+//
+// Los dos caminos conviven a propósito. Quitar `ENUNCIA` al agregar la marca dejaría de contar lo ya
+// escrito en instancias vivas —que es la decisión que el caso pedía tomar sobre lo existente—, y así no
+// hay nada que migrar: lo viejo sigue entrando, lo nuevo entra mejor, y lo que no entra por ninguno lo
+// reporta `warnings`.
+const MARKED = /^###\s+Límites\s*$/m
+
+// Se recorren **todos** los bloques `### Límites`, no el primero. El molde ya trae uno con su ejemplo,
+// así que quien agregue el suyo al final del archivo —que es lo que hace cualquiera— queda con dos, y
+// leer sólo el primero devolvía cero viñetas: el límite del proyecto no llegaba y el aviso tampoco lo
+// veía, porque para la comparación caía dentro de la sección del molde.
+//
+// No filtra comentarios y no hace falta: una viñeta comentada arranca con `<!--`, así que el filtro de
+// viñetas ya la descarta. Sacar `withoutComments` de acá fue el resultado de una mutación que sobrevivió
+// —apagarlo no ponía nada en rojo—, que es como se ve una defensa que no defiende de nada.
+function declared(raw) {
+  const out = []
+  let rest = raw
+  for (let start = rest.search(MARKED); start >= 0; start = rest.search(MARKED)) {
+    const after = rest.slice(start).split('\n').slice(1)
+    const end = after.findIndex((line) => /^#{1,3}\s/.test(line))
+    const block = end < 0 ? after : after.slice(0, end)
+    out.push(...block
+      .filter((line) => /^\s*[-*]\s+/.test(line))
+      .map((line) => line.replace(/^\s*[-*]\s+/, '').trim())
+      .filter(Boolean))
+    rest = (end < 0 ? '' : after.slice(end).join('\n'))
+  }
+  return out
+}
+
 function limits(text) {
-  return text.split(/\n\s*\n/)
+  const prose = text.split(/\n\s*\n/)
     .map((block) => block.split('\n')
       .map((line) => line.replace(/^[-*]\s+/, '').trim())
       .filter((line) => line && !line.startsWith('#') && !line.startsWith('|'))
       .join(' ')
       .trim())
     .filter((block) => ENUNCIA.test(block))
+  return [...declared(text), ...prose]
+}
+
+// Lo que el proyecto escribió en su sección de excepciones y **no** llegó a `boundaries`. Existe porque
+// perder un límite acá no se ve: la lista sale más corta y se lee igual de completa, y el preámbulo de
+// cada subagente sigue afirmando «Límites del proyecto: …» con los que sí matcharon (caso 157).
+//
+// Lo que cuenta como «escrito por el proyecto» no se deduce de la gramática —sería el mismo defecto con
+// otra cara—: se compara contra el molde, que viaja en el paquete. Un párrafo que el molde no trae lo
+// puso alguien de este proyecto, y si además no enuncia, es exactamente lo que se está perdiendo.
+//
+// No avisa de la sección vacía, que es el caso fácil y el que menos importa: el caro es encontrar dos de
+// tres, y ése sólo se ve comparando párrafo por párrafo.
+const TEMPLATE_WORKSPACE = path.join(__dirname, '..', '..', 'template', 'organization', 'workspace.md')
+
+const paragraphs = (text) => text.split(/\n\s*\n/)
+  .map((block) => block.split('\n')
+    .map((line) => line.replace(/^[-*]\s+/, '').trim())
+    .filter((line) => line && !line.startsWith('#') && !line.startsWith('|'))
+    .join(' ')
+    .trim())
+  .filter(Boolean)
+
+function warnings(root) {
+  const mine = P.section(readIfAny(path.join(root, 'organization', 'workspace.md')),
+    /Excepciones de autonom/)
+  if (!mine.trim()) return []
+  // Sin comentarios de los dos lados: el ejemplo del molde viene comentado, y contarlo como párrafo lo
+  // volvería un aviso permanente sobre algo que nadie escribió.
+  const fromTemplate = new Set(paragraphs(
+    P.withoutComments(P.section(readIfAny(TEMPLATE_WORKSPACE), /Excepciones de autonom/)),
+  ))
+  const declaredHere = new Set(declared(mine))
+  const lost = paragraphs(P.withoutComments(mine))
+    .filter((one) => !fromTemplate.has(one) && !ENUNCIA.test(one) && !declaredHere.has(one))
+  if (!lost.length) return []
+  return [`organization/workspace.md: ${lost.length} párrafo(s) de "## Excepciones de autonomía" no llegan `
+    + 'a los agentes porque no arrancan con «El runner», «Debe» o «Nunca»: '
+    + `${lost.map((one) => `"${one.slice(0, 60)}…"`).join(', ')}`]
 }
 
 function contract(dir, cli) {
@@ -124,4 +197,4 @@ function contract(dir, cli) {
   console.log(`límites    ${report.boundaries.length} · contratos ${report.contracts.length} caracteres`)
 }
 
-module.exports = { contract }
+module.exports = { contract, warnings }

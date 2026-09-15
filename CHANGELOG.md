@@ -18,6 +18,28 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Tu proyecto puede declarar sus límites en una lista, y `check` avisa del que no llegue a los agentes.**
+  Los límites que tu proyecto amplía o restringe viven en `organization/workspace.md`, y de ahí viajan al
+  preámbulo de cada subagente. Hasta ahora se reconocían **por cómo arrancaba el párrafo** —«El runner»,
+  «Debe», «Nunca»—, que es la gramática del molde: un límite escrito de cualquier otra forma, que es como
+  lo escribiría cualquiera, no llegaba a ningún agente y nada lo decía. La lista salía más corta y se leía
+  igual de completa.
+
+  Ahora esa sección trae un `### Límites` con una viñeta por límite:
+
+  ```markdown
+  ### Límites
+
+  - En `api/` no se tocan migraciones sin aprobación de quien administra la base.
+  ```
+
+  **Lo que ya tenías escrito sigue contando**: la gramática vieja se lee igual, así que no hay nada que
+  migrar. Y lo que no entra por ninguno de los dos caminos ya no se pierde callado — `ops check` lo
+  reporta citando el párrafo, para que sepas cuál de tus límites se quedó afuera.
+
+  El ejemplo del molde viene comentado a propósito: un límite de ejemplo que se obedece es peor que
+  ninguno, porque nadie lo escribió y todos lo cumplirían.
+
 - **Reanudar una tarea dejó de pagar la fase que no tiene nada que hacer, y la corrida dice cuándo lo
   hizo.** Una tarea que para antes de Commit —una revisión que pidió algo, un gate en rojo— deja su plan
   en disco con los pasos tildados. Al relanzar, el recorrido entraba igual a Build: el agente releía el

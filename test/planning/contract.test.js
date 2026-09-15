@@ -143,3 +143,66 @@ test('contract no escribe nada', () => {
   assert.equal(despues.stdout, antes.stdout, 'dos lecturas seguidas dan lo mismo')
   assert.equal(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'), huella)
 })
+
+// Un límite que el proyecto escribe y ningún agente recibe es el modo de fallo caro de este comando: la
+// lista sale más corta y se lee igual de completa, así que nadie lo nota hasta que un agente hace lo que
+// ese límite prohibía (caso 157). Se cierra por dos lados —una marca que se lee en vez de deducirse, y un
+// aviso para lo que no entre por ninguno— y los dos se prueban acá.
+const conExcepcion = (root, texto) => {
+  const file = path.join(root, 'organization', 'workspace.md')
+  fs.writeFileSync(file, `${fs.readFileSync(file, 'utf8')}\n${texto}\n`)
+}
+
+test('un límite declarado bajo ### Límites llega sin imitar la gramática del molde', () => {
+  const root = instance('cauce-contract-marcado-')
+  const antes = contractOf(root).value.boundaries.length
+  conExcepcion(root, '### Límites\n\n- En `api/` no se tocan migraciones sin aprobación de datos.')
+  const { value } = contractOf(root)
+  assert.equal(value.boundaries.length, antes + 1, `llegó: ${value.boundaries.join(' | ')}`)
+  assert.ok(value.boundaries.some((one) => /migraciones/.test(one)), 'y es el que el proyecto escribió')
+})
+
+// Un ejemplo que viaja al preámbulo de cada subagente como límite real es peor que no traer ninguno:
+// nadie escribió esa regla y todos la obedecerían. Lo que lo evita es que el molde lo deje comentado, así
+// que lo que se fija es eso —que el molde no declare ninguno vivo— y no el filtro que lo implementa.
+test('el molde no declara ningún límite vivo, para que su ejemplo no se obedezca', () => {
+  const root = instance('cauce-contract-ejemplo-')
+  const { value } = contractOf(root)
+  assert.equal(value.boundaries.some((one) => /migraciones/.test(one)), false,
+    `el ejemplo se filtró: ${value.boundaries.join(' | ')}`)
+  assert.equal(value.boundaries.length, 3, 'siguen siendo los tres que enuncia AGENTS.md')
+  // Y el archivo del molde lo tiene comentado, que es lo único que lo sostiene: descomentarlo lo
+  // convierte en un límite de verdad, y eso tiene que ser una decisión de quien lo escribe.
+  const texto = fs.readFileSync(path.join(root, 'organization', 'workspace.md'), 'utf8')
+  assert.match(texto, /<!--\s*-\s+En `api\/`/, 'el ejemplo vive comentado en el molde')
+})
+
+// La rama que nadie ejercía: un `ops.config.json` ilegible tiene que nombrar el error de JSON en vez de
+// contestar un contrato a medias, que es lo que hace el resto del comando cuando algo falta.
+test('contract dice qué tiene de malo un ops.config.json ilegible', () => {
+  const root = instance('cauce-contract-json-')
+  fs.writeFileSync(path.join(root, 'ops.config.json'), '{ "project": ')
+  const { result } = contractOf(root)
+  assert.notEqual(result.status, 0, 'no contesta un contrato sobre un archivo que no pudo leer')
+  assert.match(result.stderr, /ops\.config\.json no se pudo leer como JSON/, result.stderr)
+})
+
+// Lo que no entra por ninguno de los dos caminos deja de perderse en silencio. Se asercia el párrafo
+// citado y no sólo que haya un aviso: sin la cita, quien lo lee no sabe cuál de sus límites se perdió.
+test('check nombra el párrafo del proyecto que no llega a los agentes', () => {
+  const root = instance('cauce-contract-aviso-')
+  conExcepcion(root, 'En `api/` no se tocan migraciones sin aprobación de datos.')
+  // Los avisos de `check` salen por `stderr` —`console.warn`—, no por `stdout`, que lleva el veredicto.
+  // Buscarlos en el canal equivocado deja la prueba en rojo sobre un aviso que sí se emitió.
+  const hecho = run(['check', path.join(root, 'planning')])
+  assert.match(hecho.stderr, /workspace\.md/, hecho.stderr)
+  assert.match(hecho.stderr, /migraciones/, 'cita el párrafo perdido, no sólo su cantidad')
+})
+
+// Y no avisa del molde intacto, que es lo que lo vuelve un aviso y no ruido: uno que salta siempre se
+// termina apagando, y con él se apaga el día que de verdad había algo.
+test('check no avisa sobre la prosa que el molde trae', () => {
+  const root = instance('cauce-contract-silencio-')
+  const hecho = run(['check', path.join(root, 'planning')])
+  assert.equal(/no llegan a los agentes/.test(hecho.stderr), false, hecho.stderr)
+})
