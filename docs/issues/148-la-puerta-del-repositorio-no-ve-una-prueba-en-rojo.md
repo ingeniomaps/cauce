@@ -8,8 +8,8 @@ version-detectada: 0.89.0
 
 # 148 — La puerta que todo el repositorio trata como veredicto sale verde con pruebas fallando
 
-**🔴 abierto** · detectado en 0.89.0 · prioridad **alta** — es la puerta que corre CI, la que exige
-`prepublishOnly`, y la que el `AGENTS.md` llama «la puerta real»
+**🔴 abierto** · detectado en 0.89.0 · prioridad **alta** — arreglado y a la espera de **0.90.0**, con el
+recorrido abajo
 
 ## Resumen
 
@@ -123,3 +123,78 @@ en rojo y la puerta en verde.
 - **147** — el caso que lo destapó, y el mismo modo de fallo un nivel más abajo: una prueba que afirma
   más de lo que mide.
 - **144** — el `|| true` de `coverage.sh` es suyo y es correcto; la opción 2 tiene que respetarlo.
+- **149** — salió de acá: su guard se niega con cero archivos y no con uno, así que un registro se puede
+  mutilar sin que nada avise.
+- **150** — salió de acá: siete suites no corren sin `.git`, y eso choca con la regla que manda ejercitar
+  en una copia.
+
+## Cierre
+
+**Construido, a la espera de 0.90.0** · `test/tools/coverage.sh`, `test/repo/coverage-floors.test.js`,
+`CHANGELOG.md`
+
+Se tomó la **opción 2**, y la eligió el tradeoff que el caso dejó anotado: medir primero cuánto costaría
+la 1.
+
+### Contra lo que el caso enumeró
+
+- **«Vale la pena mirar cuánto tardaría `ci` con la suite adentro»** — **se midió, y decidió.** La suite
+  sola tarda **45 s** y la puerta entera **50 s**; de esos 50, `check`, `automation:check` e
+  `integration:check` tardan 0 s y `dead-code` 1 s, o sea que `coverage` es prácticamente toda la puerta.
+  Encadenar `npm test` la llevaría a ~95 s corriendo la misma suite dos veces, y de paso `hooks-smoke.sh`
+  otra vez, porque está en `npm test` y en la línea 9 de `coverage.sh`.
+- **Opción 1, encadenar `npm run test` en `ci`** — **se decidió que no**: casi el doble de tiempo para
+  ejecutar dos veces lo mismo, cuando la 2 cuesta cuatro líneas.
+- **Opción 2, que `coverage.sh` falle si hubo pruebas en rojo sin perder lo del 144** — **construida.** El
+  exit de `node --test` se captura en `estado` en vez de tirarse, y el corte se aplica sólo fuera de
+  `--update`. El `|| true` no se «arregló»: se acotó al modo que lo necesita, que es lo que el 144 pedía
+  desde el principio —su opción 1 dice «**en `--update`**, el exit no debería cortar» y el arreglo de
+  entonces lo aplicó a los dos caminos.
+- **Opción 3, dejarlo y corregir el `AGENTS.md`** — **se decidió que no**, por lo que el propio caso decía:
+  deja el CI sin veredicto real.
+- **«Falta una prueba que asercie qué encadena `ci`»** — **se hizo distinto, y mejor.** Una aserción sobre
+  el texto de `package.json` es la misma clase de prueba que dejó pasar el 147: mira la forma, no la
+  conducta. En su lugar la prueba **ejecuta** `coverage.sh` con el exit de la suite bajo control y
+  comprueba los tres caminos. Si mañana alguien reordena `ci`, lo que protege es que la pieza que sí
+  corre la suite tiene veredicto.
+- **Tradeoff «la 1 corre la suite dos veces»** — confirmado con números, y es lo que la descartó.
+- **Tradeoff «la 2 toca el arreglo del 144»** — se respetó y está probado: con la suite en rojo,
+  `--update` **sigue registrando**. Es una de las tres aserciones de la prueba nueva.
+- **Tradeoff «la 3 deja el CI sin veredicto real»** — ya no aplica.
+- **«Vale la pena mirar si alguna versión se publicó con pruebas en rojo»** — **se miró, y la respuesta es
+  no.** Clonadas y corridas de verdad: v0.86.0 da 788 pruebas y **0 fallos**, v0.88.0 da 813 y **0**,
+  v0.89.0 da 824 y **0**. Y acá hay un aviso que vale más que el resultado: el primer barrido usó
+  `git archive` y dio **5 fallos en las cinco versiones**. Eran las pruebas que necesitan `.git`, que
+  `git archive` no incluye. Estuve a punto de reportar que se habían publicado versiones en rojo.
+
+### Lo que el caso no preveía
+
+- **Rompí el registro de cobertura dos veces, y lo digo porque R22 lo exige.** `coverage-baseline.json`
+  pasó de **68 archivos a 1** en dos ocasiones el 2026-09-14: primero una sonda que corrió
+  `coverage.sh --update` con el `node` falso y `cwd` en el repositorio, después la propia prueba nueva,
+  que hacía lo mismo. Las dos veces se restauró con `git checkout -- test/tools/coverage-baseline.json` y
+  se comprobó el resultado —68 archivos, idéntico a HEAD—. La prueba ahora corre dentro de una copia, así
+  que el registro real queda fuera de su alcance.
+- **El guard del 144 no ve una mutilación, sólo un vaciado.** `coverage-files.js` se niega con
+  `if (!Object.keys(record).length)`, o sea con **cero** archivos. Con **uno** fabricado registra, borra
+  los otros 67 y anuncia «piso registrado» con exit 0. Sale como caso **149**.
+- **Siete suites no corren sin `.git`.** Es lo que hizo fallar dos arneses de esta sesión y lo que produjo
+  el falso «cinco versiones en rojo». Choca con `conduct.md`, que manda ejercitar en una copia lo que las
+  pruebas invocan. Sale como caso **150**.
+
+### Qué se corrió
+
+- **El rojo previo del defecto**, dos veces: con una prueba rota a propósito, `node --test` reporta
+  **6 fallos sobre 826** y `npm run ci` sale **exit 0**. Reproducido dos veces con el mismo resultado.
+- **Rojo previo de la prueba nueva**: contra el `coverage.sh` de HEAD —sin el arreglo— el archivo pasa de
+  14/14 a **8 pass, 6 fail**.
+- **Cuatro mutaciones, las cuatro en rojo**, sobre un clon con `.git` que arranca en 14/14: quitar el
+  corte en modo comprobación, aplicarlo también en `--update`, volver a `|| true`, y no marcar el modo.
+  Ninguna quedó verde, y el clon vuelve a 14/14 al restaurar.
+- **La puerta viendo un rojo por primera vez**: con `ci-schedule.test.js` en rojo por el workflow nuevo
+  del 147, `npm run ci` **falló**. Antes del arreglo, ese mismo estado daba exit 0.
+- **El costo de cada pieza**: suite 45 s, `coverage` 50 s, puerta entera 50 s, `check` /
+  `automation:check` / `integration:check` 0 s, `dead-code` 1 s.
+- **Las cinco versiones publicadas**, clonadas y corridas: 0 fallos en todas.
+- **Verde final**: `npm test` → **826 pruebas, 826 pass, fail 0**; `npm run ci` exit 0; registro de
+  cobertura intacto en 68 archivos.
