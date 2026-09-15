@@ -1,15 +1,16 @@
 ---
 caso: 146
 titulo: Cada PR del ciclo de aprendizaje cuesta una autorización de CI aunque el informe declare que no hay nada que decidir
-estado: abierto
+estado: descartado
 prioridad: media
 version-detectada: 0.89.0
 ---
 
 # 146 — El auto-merge que evita la revisión no evita la autorización, y el costo escala con los cargos
 
-**🔴 abierto** · detectado en 0.89.0 · prioridad **media** — el mecanismo que decide si un informe
-necesita una persona ya existe y funciona; lo que no se puede evitar es destrabar la corrida
+**⚪ descartado** · detectado en 0.89.0 · prioridad **media** — el costo es real y las tres salidas que el
+caso proponía se cayeron al medirlas: no hay ninguna que un workflow pueda tomar sin guardar la
+credencial que la compuerta existe para no necesitar
 
 ## Resumen
 
@@ -127,8 +128,8 @@ documentada para evitar la espera es una sola: que el PR lo abra una identidad d
 
 - La 1 cuesta montar y mantener una App —registrarla, instalarla, firmar tokens en cada corrida— para
   ahorrar una autorización por PR. Es la opción correcta y no la barata.
-- La 2 mete una credencial de larga vida en un repositorio que hoy no tiene ninguna, y la superficie que
-  abre un PAT no se limita al ciclo que lo necesita.
+- La 2 mete una credencial de larga vida cuya superficie no se limita al ciclo que la necesita. (Este
+  tradeoff decía además «en un repositorio que hoy no tiene ninguna», y **era falso**: ver el cierre.)
 - La 3 deja el costo escalando con los cargos: es aceptable con diecisiete y hay que volver a mirarlo
   con 53, que es el punto de este caso.
 - **Vale la pena mirar si la autorización se puede dar en tanda**, por API sobre todas las corridas
@@ -154,3 +155,81 @@ nada que decidir costaron una autorización cada uno, igual que los ocho que sí
   decidir.
 - **142** — la propuesta sobre el molde, cuyo arreglo dejó la ola de propuestas `2026-09` archivadas que
   los informes de esta tanda repiten.
+
+## Cierre
+
+**⚪ descartado el 2026-09-14** · `AGENTS.md` · sin cambio de código
+
+El costo que el caso denuncia es real y está medido: hasta 53 autorizaciones por semana. Lo que se cayó
+son **las tres salidas**, cada una por una razón distinta, y ninguna se descartó por opinión. Lo que queda
+es un procedimiento, y por eso el caso se cierra en vez de quedar esperando una decisión que no existe.
+
+### Contra lo que el caso enumeró
+
+- **Opción 1, una GitHub App** — **se decidió que no**, y el argumento con que la propuse era débil. La
+  sostenía que «no guarda credencial de larga vida en un repositorio que hoy no tiene ninguna». Falso: el
+  repositorio guarda `ANTHROPIC_API_KEY` y `CLAUDE_CODE_OAUTH_TOKEN` desde agosto de 2026. La política que
+  invoqué es `AGENTS.md:344` y dice «no hay ninguna credencial **de npm** guardada» —es sobre `release.yml`
+  y el trusted publishing—, así que estiré una regla angosta para cubrir todo el repositorio. Sin ese
+  argumento, montar y mantener una App para ahorrar una autorización por PR no se paga.
+- **Opción 2, un PAT** — **se decidió que no**, y por lo que la compuerta significa, no por la política que
+  cité mal. Guardar el PAT sería darle al repositorio la credencial para autorizarse a sí mismo, que es
+  exactamente lo que el gate existe para impedir.
+- **Opción 3, aceptarlo como costo documentado** — **es lo que se hizo**, con el agregado que faltaba: el
+  procedimiento quedó escrito en `AGENTS.md`, sección «Destrabar una tanda semanal». Sin eso, «revisá los
+  PR» dependía de que alguien recordara el criterio.
+- **Tradeoff «la 1 cuesta montar y mantener una App»** — confirmado, y terminó siendo decisivo una vez que
+  su contrapartida resultó falsa.
+- **Tradeoff «la 2 mete una credencial de larga vida»** — la mitad que decía «en un repositorio que hoy no
+  tiene ninguna» está **corregida en el propio tradeoff**, no borrada: la afirmación equivocada se deja
+  visible porque es el hallazgo.
+- **Tradeoff «la 3 deja el costo escalando con los cargos»** — vigente y sin resolver. Con 53 cargos son
+  hasta 53 autorizaciones semanales, y eso no cambió: lo que cambió es que no hay forma de evitarlo que no
+  cueste más que el costo.
+- **«Vale la pena mirar si la autorización se puede dar en tanda»** — **se miró, y la respuesta es doble.**
+  Técnicamente **no es posible** desde un workflow: la doc del `GITHUB_TOKEN` declara que sus eventos no
+  crean corridas nuevas «with the following exceptions», y los `pull_request` de tipo `opened` /
+  `synchronize` / `reopened` son la excepción que nace **requiriendo aprobación de una persona con permiso
+  de escritura**. La otra vía tampoco existe: el `bypass_actors` del ruleset tiene un único actor
+  —`ingeniomaps`, id 6892023, tipo `User`— y no el bot, así que un workflow tampoco puede saltear los
+  checks. Un action manual haría falta correrlo con un PAT guardado, que es la opción 2 con otro nombre.
+  Y aun si fuera posible, **no convendría**: aprobar por «está pendiente» en vez de por «es inocuo» es la
+  quita que R9 describe —se escribe sumando una bandera y lo que desaparece es la pregunta, no el riesgo—.
+
+### Lo que el caso no preveía
+
+- **La premisa de su propia recomendación era falsa, y la corrigió quien la leyó.** El caso afirmaba que el
+  repositorio no guarda credenciales. Comprobarlo llevó una llamada a la API de secretos, y no la hice
+  antes de escribir la recomendación: es el modo de fallo de R14 —afirmar de memoria lo que se establece
+  con una invocación inocua— cometido dentro de un caso que trata justamente sobre verificar.
+- **Lo que vuelve inocuo autorizar no es una coincidencia: está comprobado en origen.** Antes de commitear,
+  `agent-learning.yml` corre `git status --porcelain -uall` y aborta si aparece algo que no sea el informe
+  —«Se esperaba exactamente el informe de $AGENT y nada más»—. Y `ci.yml` declara `permissions: contents:
+  read` sin referenciar un solo secreto. O sea que en este repositorio la compuerta cuida bastante menos de
+  lo que el caso general de GitHub supone, y eso es lo que hace defendible autorizar sin leer el diff
+  entero — no la costumbre.
+- **El auto-merge nunca mergeó sin autorización, y el recuerdo de que sí lo hizo era la mitad del cuadro.**
+  El PR #277 del 2026-09-08, el primer auto-merge del ciclo, tiene una sola corrida y figura con
+  `triggering_actor=ingeniomaps`: también se autorizó. Lo que ahorró fue la **review**, no la autorización,
+  que es exactamente la mitad que el comentario del workflow promete.
+
+### Qué se corrió
+
+- **Los tres valores legales de la política de aprobación**, enumerados por la propia API al rechazar uno
+  inválido: `first_time_contributors_new_to_github`, `first_time_contributors`,
+  `all_external_contributors`. Ninguno es un «nunca», así que la salida por configuración no existe.
+- **El barrido de 50 corridas de `ci.yml`**: toda corrida con `triggering_actor=github-actions[bot]` quedó
+  en `action_required`; toda la que corrió la disparó una persona. Del 2026-09-10 al 2026-09-14, en ramas
+  de release y del ciclo por igual.
+- **La búsqueda del contraejemplo, en tres páginas de historial**: las únicas tres corridas del bot que
+  llegaron a correr sin autorización son de `release/0.75.0` y `release/0.86.0`, y son corridas de *push*
+  sobre ramas que ya tenían PR abierto —la del #405 arrancó `16:31:31`, tres segundos después de crearse el
+  PR a las `16:31:28`—, no de la apertura de un PR.
+- **El descarte de que el disparador fuera el cron**: las corridas de `agent-learning.yml` figuran todas
+  con `actor=ingeniomaps`, tanto las de `schedule` como las de `workflow_dispatch`. Lanzarlo a mano no
+  cambia nada.
+- **Los secretos del repositorio**, que refutaron la premisa de la opción 1.
+- **Los archivos de los 17 PR de la tanda**: un `.md` cada uno, cero fuera de `learning/reports/`.
+- **La tanda entera destrabada con el procedimiento**: 17 autorizaciones, los 9 `propone: no` cerrados por
+  auto-merge sin una sola review.
+- **Verde**: `npm run ci` en 0.
