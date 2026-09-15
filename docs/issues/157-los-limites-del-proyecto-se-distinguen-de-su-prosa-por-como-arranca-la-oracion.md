@@ -129,10 +129,27 @@ silencio porque `check` lo nombra.
   reciben el aviso si escriben algo que no entra.
 - **Tradeoff «el 2 y el 3 dejan la deducción en pie»** — **sigue en pie y es deliberado.** Lo que cambió es
   que el error dejó de ser silencioso, que el caso ya señalaba como «la mitad que más cuesta».
-- **Tradeoff «no medido: cuántas instancias escribieron excepciones y con qué forma»** — **sigue sin medir
-  y se declara, pero dejó de decidir nada.** El caso decía que ese número decidía si migrar lo existente
-  valía la pena; al conservar los dos caminos no hay migración que evaluar. Seguiría importando el día que
-  alguien quiera retirar `ENUNCIA`, y para eso hace falta mirar instancias reales.
+- **Tradeoff «no medido: cuántas instancias escribieron excepciones y con qué forma»** — ~~sigue sin
+  medir~~ **medido el 2026-09-15 sobre cuatro instancias reales, y el resultado es peor que la hipótesis
+  del caso.** Decía que ese número decidía si migrar lo existente valía la pena; al conservar los dos
+  caminos no hay migración que evaluar, pero el número importa igual porque dice cuánto se estaba
+  perdiendo.
+
+  **Tres de tres instancias que declararon excepciones lo hicieron sin la gramática del molde, y ninguna
+  llegaba a ningún agente**: `contract` devolvía exactamente los 3 límites de `AGENTS.md` en las tres.
+
+  | instancia | párrafos propios | llegaban | lo que se perdía |
+  | --- | ---: | ---: | --- |
+  | `venotal-ops` | 3 | **0** | que un runner no escriba en la tienda Shopify productiva |
+  | `gouduet-ops` | 2 | **0** | que sí puede publicar, y qué push dispara un deploy |
+  | `roax-ops` | 14 | **0** | que las reglas de la organización se leen siempre y ganan siempre |
+
+  No eran matices: son las restricciones más fuertes que cada proyecto escribió, y la deducción por
+  gramática no recogía **ninguna**. El aviso nuevo las nombra las 19.
+
+  Lo que esto sí decide es el retiro de `ENUNCIA`: con cero instancias usándolo para sus propios límites
+  —sólo lo usa el molde de `AGENTS.md`, que `upgrade` reemplaza entero— quitarlo dejaría de costar lo que
+  el caso temía. No se hace acá porque no hace falta, y porque cuatro instancias no son el universo.
 
 ### Lo que el caso no preveía
 

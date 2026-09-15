@@ -168,12 +168,16 @@ campo baja a cada consumidor en su próximo `upgrade` y ninguno lo declara todav
   con las tres salidas sobre la mesa.
 - **Tradeoff «la 2 es exactamente lo que el 153 desaconseja»** — **se cobró solo**: fue la razón de
   descartarla, no una objeción que hubiera que sopesar después.
-- **Tradeoff «no medido: con qué frecuencia el delta es ajeno al gate»** — **sigue sin medir, y se
-  declara en vez de tacharse.** El caso decía que ese número decide si esto vale un campo nuevo; no
-  decidió, porque lo que lo justificó fue otra cosa: el 153 no tiene salida del lado del proyecto, así
-  que la frecuencia sólo movería el tamaño del ahorro, no la existencia del bloqueo. Sigue sin poder
-  sacarse de este repositorio —acá no hay `build` ni `lint`— y lo que lo contestaría es una instancia
-  real. Queda abierto como medición pendiente, no como deuda de este caso.
+- **Tradeoff «no medido: con qué frecuencia el delta es ajeno al gate»** — ~~sigue sin medir~~ **medido
+  el 2026-09-15 sobre una instancia real, y salió más alto de lo que «media» sugería.** El caso decía que
+  ese número decide si esto vale un campo nuevo. No llegó a decidirlo —lo justificó el bloqueo del 153,
+  que no tiene salida del lado del proyecto— pero ahora existe.
+
+  `venotal-ops` guardó **7 intentos de commit** en su rastro de gates y **2 (29 %)** corrieron sobre la
+  copia y murieron ahí: los tres gates en ~1,2 s en un intento, y `build` en 2,19 s con `test` y `lint`
+  verdes en el otro, contra una media de **14,2 s** para un `build` que sí corre. El delta ajeno no es un
+  borde raro: casi un tercio de los commits de esa instancia chocaron con él mientras la tarea estuvo
+  abierta. El detalle vive en el cierre del **153**.
 - **Prioridad** — el caso decía «sube a **alta** si el 153 se resuelve por esta vía en lugar de por el
   enlace». Eso es exactamente lo que pasó: las vías del enlace se midieron y ninguna sirve, así que
   ésta pasó a ser la única, y el caso se resolvió en vez de subir de prioridad.

@@ -125,9 +125,19 @@ Aprobando la CI de los veinte PR de la tanda del 2026-09-07. Diecinueve pasaron 
 - **Tradeoff «la alternativa —editar cada informe que cite una ruta— es peor» — se confirma.** Es lo que
   hubo que hacer con el de `security-engineer` el 2026-09-07, y significó tocar la prosa que sostiene un
   hallazgo por una razón ajena a lo que ese cargo investigó.
-- **Tradeoff «no medido: no sé con qué frecuencia un cargo necesita citar rutas» — sigue sin medirse.**
-  Hoy es un caso en tres tandas, que es un punto y no una tasa. No cambia la decisión: el costo del
-  arreglo es una línea y el de no tenerlo es un PR bloqueado cada vez.
+- **Tradeoff «no medido: no sé con qué frecuencia un cargo necesita citar rutas»** — ~~sigue sin
+  medirse~~ **medido el 2026-09-15, con 71 informes acumulados**, que ya es una tasa y no un punto.
+
+  **Ninguno cita la ruta absoluta de una máquina: 0 de 71.** Trece sí citan rutas del repositorio
+  —`engine/`, `automatization/`, `docs/issues/`—, que es lo que un hallazgo necesita nombrar y que la
+  puerta nunca frenó.
+
+  Eso corrige la forma en que este caso se leía. El que rompió la puerta no necesitaba citar la carpeta de
+  nadie: `security-engineer` enumeró lo que el guard bloquea y la yuxtaposición compuso la secuencia. O
+  sea que la tasa relevante no es «cuántos cargos citan rutas» sino «cuántos escriben sobre rutas», y en
+  71 informes ocurrió **una vez**. Sigue sin cambiar la decisión —eximir la prosa cuesta una línea— pero
+  ahora se sabe que el hueco que se abrió es más angosto de lo que el tradeoff temía: en 71 informes
+  escritos por un runner efímero, cero rutas personales.
 - **La nota del propio caso —«un dato más a favor de eximir la prosa en vez de perdonarla archivo por
   archivo»— se siguió sólo hasta donde alcanza el argumento.** Se eximieron los informes; **no** los casos
   de `docs/issues/`, y este archivo sigue en `DECLARED`. La diferencia es quién escribe: un informe lo
