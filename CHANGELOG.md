@@ -16,6 +16,23 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.91.0] - 2026-09-15
 
+### Agregado
+
+- **`ops contract <ops-root> [--json]`: el contrato de tu proyecto sin pasarlo por un modelo.** Devuelve lo
+  que un recorrido necesita antes de la primera fase —cómo se llama el proyecto, dónde puede escribir, con
+  qué se verifica, qué límites rigen y qué formatos exige `planning/`—, derivado de `ops.config.json`,
+  `AGENTS.md`, `organization/workspace.md` y `planning/PROTOCOL.md`.
+
+  Los diez campos salen de parsear, así que el comando no inventa nada y cuesta cero tokens. `autobuild` los
+  derivaba con un agente que leía esos cuatro archivos y los transcribía; el comando existe para que deje de
+  hacerlo, aunque el recorrido todavía no lo use.
+
+  **Falla en vez de contestar a medias.** Si falta uno de los cuatro archivos, o si `AGENTS.md` o
+  `PROTOCOL.md` perdieron la sección de la que sale el contrato, se niega nombrando cuál y manda a correr
+  `ops upgrade`, que es quien los repone: entregar límites vacíos es peor que parar, porque un límite que no
+  llega se lee igual que uno que no existe. Que `organization/workspace.md` no declare excepciones **no** es
+  un error: es tuyo y puede no tenerlas.
+
 ### Corregido
 
 - **La protección que evita que un gate te borre el `node_modules` no estaba puesta.** `verify` corre los

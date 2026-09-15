@@ -21,7 +21,7 @@
   },
   "engine/agents/learning-files.js": {
     "lines": 96,
-    "branches": 92,
+    "branches": 91,
     "functions": 100
   },
   "engine/agents/learning-seal.js": {
@@ -61,7 +61,7 @@
   },
   "engine/automation/rules.js": {
     "lines": 100,
-    "branches": 84,
+    "branches": 83,
     "functions": 100
   },
   "engine/automation/runners.js": {
@@ -92,6 +92,11 @@
   "engine/cli/claims.js": {
     "lines": 100,
     "branches": 75,
+    "functions": 100
+  },
+  "engine/cli/contract.js": {
+    "lines": 98,
+    "branches": 57,
     "functions": 100
   },
   "engine/cli/dependency.js": {

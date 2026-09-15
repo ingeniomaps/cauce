@@ -9,6 +9,7 @@ const { FLAGS, parse } = require('./args')
 const { fail } = require('./io')
 const IN = require('./instance')
 const PL = require('./planning')
+const CT = require('./contract')
 const VA = require('./validate')
 const AR = require('./archive')
 const CLM = require('./claims')
@@ -149,6 +150,7 @@ function usage() {
   ops check <planning-dir> [--json]
   ops tree <planning-dir> [--no-color] [--json]
   ops context <planning-dir> [--hito <slug>] [--json]
+  ops contract <ops-root> [--json]
   ops recurring <planning-dir> [--promote <qué>] [--json]
   ops runners <planning-dir> [--json]
   ops claim <planning-dir> <tarea>
@@ -208,6 +210,7 @@ async function run(cli) {
   else if (command === 'check') VA.check(arg[1], cli)
   else if (command === 'tree') PL.tree(arg[1], cli)
   else if (command === 'context') PL.context(arg[1], cli)
+  else if (command === 'contract') CT.contract(arg[1], cli)
   else if (command === 'recurring') PL.recurring(arg[1], cli)
   else if (command === 'runners') CLM.runners(arg[1], cli)
   else if (command === 'claim') CLM.claim(arg[1], arg[2], cli)

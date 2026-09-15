@@ -20,6 +20,7 @@ const FLAGS = {
   check: ['--json'],
   tree: ['--json', '--no-color'],
   context: ['--json', '--hito'],
+  contract: ['--json'],
   recurring: ['--json', '--promote'],
   claim: ['--json'],
   runners: ['--json'],
