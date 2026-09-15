@@ -1,15 +1,16 @@
 ---
 caso: 154
 titulo: Un recorrido relanzado rehace Build y Triage sobre trabajo que ya está en disco, y nada dice qué reutilizó
-estado: abierto
+estado: resuelto
+resuelto-en: 0.92.0
 prioridad: alta
 version-detectada: 0.90.0
 ---
 
 # 154 — Reanudar cuesta casi lo mismo que empezar, y no hay forma de saberlo sin sumar a mano
 
-**🔴 abierto** · detectado en 0.90.0 · prioridad **alta** — 1,7 M de tokens medidos en rehacer trabajo ya
-hecho sobre una sola tarea, y R21 manda comprobar la reutilización que acá no se puede observar
+**🟢 resuelto en 0.92.0** · detectado en 0.90.0 · prioridad **alta** — un WIP sin pasos pendientes ya no
+paga el agente que construye, y la corrida se anuncia reanudada en vez de verse igual que la primera
 
 > **Medido el 2026-09-15, con una mitad construida y el cableado sin hacer.** `ops contract` existe y deriva
 > el contrato sin modelo, que es lo que la opción 2 pedía por su mitad buena. Falta cablearlo, y no por
@@ -145,3 +146,55 @@ contra eso sería comparar mi comando contra mi propio fixture. Hace falta el `.
 - **157** — lo que salió de construir la opción 2: el molde no marca cuáles de sus párrafos son límites, así
   que derivarlos obliga a deducirlo por gramática, y un límite escrito de otra forma no llega a ningún
   agente.
+
+## Cierre
+
+**🟢 resuelto en 0.92.0** · `automatization/workflows/autobuild.js`, `test/workflows/autobuild.test.js`,
+`CHANGELOG.md`
+
+Los puntos 1 y 3 se hicieron y son los que el caso llamaba baratos. El 2 sigue sin cablear, y **no se
+tacha**: su bloqueo no es trabajo, es un número que no sale de este repositorio.
+
+### Contra lo que el caso enumeró
+
+- **Punto 1, que Build no corra sin pasos pendientes** — **se hizo, y más chico de lo que el caso creía,
+  tal como él mismo había corregido.** `CONTEXT` declara `wip: { phase, complete, pending }` y
+  `readContext()` se los pide al transcriptor; `ops context --json` ya los emitía. Medido: el campo pesa
+  **42 B sobre una salida de 620 B**, así que declararlo no mueve el contexto de nadie.
+- **Y su advertencia —«sigue sin ser seguro por sí solo»— se respetó: no se saltea la fase, se saltea la
+  llamada.** El caso avisaba que saltear Build camina al modo de fallo donde alguien construyó todo y
+  Review, Verify y QA nunca lo vieron. Los cuatro contrastes de la fase —tarea cerrada en Build, rojo sin
+  su fallo literal, borde sin prueba, decisiones abiertas— siguen corriendo, y lo que las fases siguientes
+  miran es el diff real en disco, venga de la corrida que venga. `reusedBuild()` devuelve `redFirst` y
+  `discovered` **vacíos** en vez de rellenarlos: no hubo rojo nuevo que mostrar, y fingirlo sería fabricar
+  la evidencia que este recorrido exige para no tener que creerle a nadie.
+- **Punto 3, que la corrida diga qué reutilizó** — **se hizo, y sin el canal nuevo que el caso imaginaba.**
+  La fase se anuncia `Build (reanudado)`, y como `ran` ya viaja al resultado de la corrida y a la entrada
+  de DONE como `fases=…`, el dato llega a los dos lados sin inventar una línea final.
+- **Punto 2, derivar el contrato sin modelo** — **construido a medias y sin cablear, declarado y no
+  tachado.** `ops contract --json` existe desde 0.92.0 y deriva los diez campos. Lo que falta no es
+  trabajo: falta saber cuánto transcribe de verdad un modelo en `contract-digest`, y eso pide el `.output`
+  de una corrida real. Medir contra el arnés sería comparar el comando contra su propio fixture. Y el
+  propio caso midió por qué el cableado no es automático: `SCOPE()` reinyecta el contrato en **cada**
+  subagente y `LEDGER()` suma `contracts` a **11** llamadas, así que derivarlo ahorra una llamada y puede
+  multiplicar el contexto. Queda como trabajo con su condición escrita, no como deuda de este cierre.
+- **Tradeoff «saltear Build confía en que los tildes reflejan el disco»** — **se paga, y el caso ya había
+  establecido que no pierde una garantía que exista**: hoy Build lee los mismos tildes. Lo que pedía era
+  que la corrida lo dijera, y eso es exactamente lo que hace `Build (reanudado)`.
+- **Tradeoff «cachear el digest tiene el riesgo del contrato que cambia a mitad de sesión»** — **no se
+  paga, porque no se cacheó.** El caso ya lo había resuelto al revés: un comando determinista no tiene qué
+  invalidar.
+
+### Qué se corrió
+
+- **Reproducción antes de arreglar**, con el arnés del recorrido: con `wipActive: true` el recorrido
+  saltea Claim, Classify, Ready, Decompose, Plan, Critique y WIP, y **entra igual a `Build|build`**.
+- **Rojo previo** con la condición revertida en una copia desechable: **2 rojas de 34**, y son las dos del
+  ahorro y de la marca; las otras 32 quedan verdes.
+- **Tres mutaciones**, una por decisión: dejar de mirar `pending` → 1 roja, la de los pasos pendientes;
+  anunciar siempre `Build` → 1 roja, la de la corrida reanudada; invertir el default seguro para que una
+  instancia sin el campo reanude → **8 rojas** preexistentes, porque romper la compatibilidad rompe el
+  camino feliz entero.
+- **Medición del efecto**: con `complete: 9, pending: 0` no se pide `Build|build` y las fases quedan
+  `Triage → Pick → Build (reanudado) → Review → …`; con `complete: 3, pending: 6` se pide como siempre; sin
+  `wip` declarado, también.
