@@ -121,7 +121,7 @@ function validateWorkspaces(workspaces, errors) {
       continue
     }
     for (const key of Object.keys(workspace)) {
-      if (!['name', 'path', 'verify'].includes(key)) {
+      if (!['name', 'path', 'verify', 'scope'].includes(key)) {
         errors.push(`ops.config.json: workspaceRoots[${index}].${key} no está permitido`)
       }
     }
@@ -129,6 +129,18 @@ function validateWorkspaces(workspaces, errors) {
     // Declararlo vacío es peor que no declararlo —promete una puerta y no la da—, así que se rechaza.
     if ('verify' in workspace && (typeof workspace.verify !== 'string' || !workspace.verify.trim())) {
       errors.push(`ops.config.json: workspaceRoots[${index}].verify debe ser el comando, o no estar`)
+    }
+    // Qué rutas lee esa puerta, y se rechaza vacío por lo que dice la línea de arriba. Lo propio de acá
+    // es que ausente **no** es lo mismo que vacío: sin el campo cuenta cualquier delta, que es lo que
+    // mantiene válida a toda instancia escrita antes de que existiera, mientras que una lista vacía diría
+    // que la puerta no lee nada y ningún delta la alcanzaría nunca.
+    if ('scope' in workspace) {
+      const scope = workspace.scope
+      if (!Array.isArray(scope) || !scope.length) {
+        errors.push(`ops.config.json: workspaceRoots[${index}].scope debe ser una lista de rutas, o no estar`)
+      } else if (scope.some((one) => typeof one !== 'string' || !one.trim())) {
+        errors.push(`ops.config.json: workspaceRoots[${index}].scope: cada entrada es un patrón de ruta`)
+      }
     }
     if (typeof workspace.name !== 'string' || !workspace.name.trim()) {
       errors.push(`ops.config.json: workspaceRoots[${index}].name es obligatorio`)

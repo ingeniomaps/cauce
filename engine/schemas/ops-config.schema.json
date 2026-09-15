@@ -49,6 +49,15 @@
           "verify": {
             "type": "string",
             "description": "Comando que corre la puerta de esta raíz —pruebas, lint, typecheck, build—, tal como se invoca desde ella. Sin él, quien verifica tiene que descubrirlo leyendo el repositorio en cada tarea, y eso es trabajo de modelo repetido para siempre sobre una respuesta que no cambia."
+          },
+          "scope": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Qué rutas lee la puerta de esta raíz, relativas a ella, con * ? y **. Sirve para que un archivo sucio que el gate no va a abrir no fuerce la copia del índice. Sin él, cualquier diferencia entre árbol e índice la fuerza, que es el comportamiento de siempre."
           }
         },
         "additionalProperties": false
