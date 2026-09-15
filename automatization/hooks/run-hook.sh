@@ -14,12 +14,12 @@ if [ -z "$hook_name" ]; then
   exit 2
 fi
 
-# La misma cascada que `packagePath` en engine/core/ownership.js, repetida acá porque el shim corre
-# antes de poder cargar el motor: si cambia allá, cambia acá.
+# Copia de `packagePath`; su porqué vive allá. Son tres los que la repiten y el motor los nombra.
 runner=""
 for candidate in \
   "$ops_root/node_modules/@ingeniomaps/cauce/engine/hooks/run.js" \
-  "$ops_root/engine/hooks/run.js"
+  "$ops_root/engine/hooks/run.js" \
+  "$ops_root/../node_modules/@ingeniomaps/cauce/engine/hooks/run.js"
 do
   if [ -f "$candidate" ]; then runner="$candidate"; break; fi
 done
@@ -27,7 +27,7 @@ done
 # Un guard que no encuentra su motor bloquea, nunca permite.
 if [ -z "$runner" ]; then
   echo "BLOQUEADO [$hook_name]: no se encontró el motor de hooks de Cauce." >&2
-  echo "  Buscado en node_modules/@ingeniomaps/cauce y engine/ bajo $ops_root" >&2
+  echo "  Buscado en node_modules/@ingeniomaps/cauce y engine/ bajo $ops_root y su carpeta padre" >&2
   exit 2
 fi
 

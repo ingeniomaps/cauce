@@ -14,6 +14,27 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.92.0] - 2026-09-15
+
+### Corregido
+
+- **El motor se encuentra aunque lo hayas instalado un nivel arriba de tu instancia.** Si corrés
+  `npm install @ingeniomaps/cauce` en la carpeta de tu empresa y después `cauce init ops`, la instancia
+  queda adentro y el motor arriba. Ese es el árbol que el propio comando sugiere, y hasta ahora
+  `automation check` devolvía **nueve errores** sobre un motor que estaba instalado, cada uno mandándote a
+  correr `npm install` otra vez un nivel más abajo — o sea a bajar una segunda copia del paquete.
+
+  Ahora se busca también en la raíz que tu `ops.config.json` declara, que es la misma que el motor ya usa
+  para decidir dónde instalar el runner. Si tu `<empresa>-ops` tiene su propio `node_modules`, ése sigue
+  ganando y nada cambia.
+
+  **No se adivina el layout, se lee el declarado**: no se sube por el árbol como hace Node —en un monorepo
+  podría encontrar un motor de otra versión, en silencio— ni se mira si hay repositorio git, porque tener
+  la instancia sin versionar es un uso legítimo.
+
+  Vale para los tres caminos, no sólo para el CLI: el shim que lanza cada guard y el bridge de Antigravity
+  repiten esa búsqueda porque corren antes de poder cargar el motor, y los tres se actualizaron juntos.
+
 ## [0.91.0] - 2026-09-15
 
 ### Agregado

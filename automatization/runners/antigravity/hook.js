@@ -82,9 +82,9 @@ function runtimeAt(root) {
   const candidates = [
     path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine', 'hooks', 'run.js'),
     path.join(root, 'engine', 'hooks', 'run.js'),
+    path.join(root, '..', 'node_modules', '@ingeniomaps', 'cauce', 'engine', 'hooks', 'run.js'),
   ]
-  // El bridge corre antes de poder cargar el motor, así que repite la cascada de
-  // engine/core/ownership.js en vez de requerirla. Si cambia una, cambian las dos.
+  // Copia de `packagePath`; su porqué vive allá. Son tres los que la repiten y el motor los nombra.
   const runtime = candidates.find(fs.existsSync)
   if (!runtime) throw new Error('No se encontró el runtime engine/hooks/run.js.')
   return require(runtime)

@@ -4,7 +4,9 @@
 // pisarse y cómo llega el motor. `upgrade.test.js` sigue desde la versión siguiente y
 // `destroy.test.js` desde el final; la unidad que decide la propiedad se prueba en `core.test.js`.
 
-const { MIN_ROLES, filesBelow, tempRoot, CLI, run, linkEngine, discard } = require('../support/environment')
+const {
+  MIN_ROLES, filesBelow, tempRoot, CLI, run, linkEngine, linkEngineAbove, discard,
+} = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -331,4 +333,21 @@ test('el $schema de la instancia apunta al motor de la dependencia', () => {
   assert.match(schema, /node_modules\/@ingeniomaps\/cauce/)
   linkEngine(target)
   assert.equal(fs.existsSync(path.join(target, schema)), true, 'la ruta resuelve de verdad')
+})
+
+// Lo que esta prueba exige y las demás de este archivo no: que el motor se encuentre sin bajar una
+// segunda copia. Los fixtures de acá lo enlazan dentro del target, así que miden el layout que siempre
+// funcionó — el verde era cierto y no cubría el otro. Cuál es el otro lo dice `linkEngineAbove`.
+//
+// Se asercia sobre `automation check` y no sobre `packagePath` a propósito: lo que se rompía no era la
+// resolución en abstracto sino lo primero que ve quien instala Cauce (caso 158).
+test('el motor se encuentra cuando la instancia vive dentro del repo que lo instaló', () => {
+  const base = tempRoot('cauce-motor-arriba-')
+  const target = path.join(base, 'ops')
+  assert.equal(run(['init', target, '--name', 'Acme', '--mode', 'sidecar', '--no-install']).status, 0)
+  linkEngineAbove(target)
+  assert.equal(fs.existsSync(path.join(target, 'node_modules')), false, 'la instancia no lo tiene adentro')
+
+  const check = run(['automation', 'check', target])
+  assert.equal(check.status, 0, `el motor está arriba y se encontró:\n${check.stdout}${check.stderr}`)
 })
