@@ -181,6 +181,23 @@ if (updating) {
       + 'registrar. Revisá que la suite haya arrancado.')
     process.exit(1)
   }
+  // Y medir **uno** tampoco es medir todo. La negativa de arriba mira el caso imposible —cero— y deja
+  // pasar el probable: una corrida que arrancó y murió temprano deja un lcov corto, y como el registro
+  // se reconstruye desde cero, los archivos que no llegó a medir **desaparecen**. El registro queda
+  // plausible, sale en 0 y anuncia éxito. Pasó dos veces el 2026-09-14: de 68 pisos a 1 (caso 149).
+  //
+  // Lo que delata la pérdida no es la cantidad sino la combinación: un archivo que **sigue en disco**,
+  // que **tenía piso** y que esta corrida **no midió**. El retiro legítimo no cae acá —un archivo
+  // borrado del motor ya no está en `onDisk()`—, así que la negativa no necesita escapatoria: no hay
+  // caso sano al que molestar.
+  const lost = Object.keys(recorded).filter((file) => onDisk().includes(file) && !measured[file])
+  if (lost.length) {
+    console.error(`✗ ${lost.length} archivo(s) con piso registrado siguen en disco y esta corrida no los `
+      + 'midió, así que registrar ahora los borraría del registro. La corrida quedó corta: revisá que la '
+      + `suite haya terminado.\n  ${lost.slice(0, 5).join('\n  ')}`
+      + (lost.length > 5 ? `\n  … y ${lost.length - 5} más` : ''))
+    process.exit(1)
+  }
   fs.writeFileSync(BASELINE, `${JSON.stringify(record, null, 2)}\n`)
   // Nada se mueve en silencio: lo que baja es una regresión aceptada a mano y merece verse al hacerlo,
   // no sólo en el diff.
