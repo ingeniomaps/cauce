@@ -157,7 +157,7 @@
   "engine/config/validate.js": {
     "lines": 73,
     "branches": 72,
-    "functions": 100
+    "functions": 88
   },
   "engine/core/changelog.js": {
     "lines": 100,
@@ -203,6 +203,11 @@
     "lines": 100,
     "branches": 83,
     "functions": 92
+  },
+  "engine/core/scope.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
   },
   "engine/core/trails.js": {
     "lines": 100,

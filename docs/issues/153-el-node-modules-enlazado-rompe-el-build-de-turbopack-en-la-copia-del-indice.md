@@ -2,14 +2,15 @@
 caso: 153
 titulo: El `node_modules` enlazado que verify usa rompe cualquier build de Turbopack, y el proyecto no tiene forma de compensarlo
 estado: abierto
-prioridad: alta
+prioridad: media
 version-detectada: 0.89.0
 ---
 
 # 153 — Turbopack rechaza el enlace que `commitTree` necesita, así que el gate de un proyecto Next no puede pasar
 
-**🔴 abierto** · detectado en 0.89.0 · prioridad **alta** — bloquea todo commit de un proyecto Next moderno
-siempre que árbol e índice difieran, y a diferencia del **151** no hay ajuste del proyecto que lo evite
+**🔴 abierto** · detectado en 0.89.0 · prioridad **media** — desde 0.92.0 el proyecto sí tiene cómo
+evitarlo: declarar `scope` en su raíz hace que un archivo ajeno al commit no fuerce la copia que rompe el
+build. Falta comprobarlo contra un `next build` real, y eso no se puede correr desde este repositorio
 
 > **Medido el 2026-09-15 sin arreglarlo.** De las tres opciones que este caso proponía, dos quedaron
 > cerradas —la 2 descartada por medición, la 3 ya existía desde 0.74.0 con su premisa equivocada— y la
@@ -198,11 +199,22 @@ rompe el build, y mientras cualquier archivo sucio fuerce la copia, basta un REA
 gate a quien commitea. ~~Baja el día que el 156 se resuelva, o si aparece una vía sobre el enlace que estas
 mediciones no cubrieron —el *bind mount* sigue sin medirse, y sigue siendo lo menos portable—.~~
 
-**Baja el día que el 156 se resuelva, y ya no hay una segunda puerta esperando medición.** Las cuatro vías
-que dejarían `node_modules` bajo la raíz de la copia están medidas y descartadas —enlace relativo, bind
-mount, overlay, hardlinks— y la quinta, copiar de verdad, cuesta ~85 s por commit. O sea que el enlace se
-queda, y lo que tiene que cambiar es **cuándo se hace la copia**, no cómo se puebla. Eso es el 156, y esta
-tanda lo deja como única salida por eliminación y no por preferencia.
+~~**Baja el día que el 156 se resuelva, y ya no hay una segunda puerta esperando medición.**~~ Las cuatro
+vías que dejarían `node_modules` bajo la raíz de la copia están medidas y descartadas —enlace relativo,
+bind mount, overlay, hardlinks— y la quinta, copiar de verdad, cuesta ~85 s por commit. O sea que el
+enlace se queda, y lo que tiene que cambiar es **cuándo se hace la copia**, no cómo se puebla. Eso es el
+156, y esta tanda lo deja como única salida por eliminación y no por preferencia.
+
+**Y el 156 se resolvió en 0.92.0, así que esto baja a media: la vía existe y falta comprobarla acá.** Una
+raíz puede declarar `scope` junto a `verify` y un archivo que el gate no va a abrir deja de forzar la
+copia, que es lo que dejaba a un proyecto Next sin poder commitear. Lo que **no** está comprobado es el
+final del recorrido: que con `scope` declarado un `next build` real pase dentro del gate. Eso pide un
+proyecto Next y no se puede correr desde este repositorio, así que el caso sigue abierto — lo que cambió
+es que ya no espera una decisión de diseño sino una corrida.
+
+Queda cerrado el día que alguien declare el alcance en una instancia con Next y commitee con el árbol
+sucio. Si ahí el gate pasa, se cierra citando esa corrida; si no pasa, lo que aparezca es un caso nuevo y
+no este mismo, porque la causa ya no sería el enlace.
 
 ## Contexto de descubrimiento
 
@@ -228,7 +240,8 @@ es trabajo de otra persona sino basura propia.
   tocar.
 - **152** — la tercera del día sobre la misma superficie: el guard que decide con un id de runner distinto
   del que escribió el plan.
-- **156** — lo que salió de medir este caso, y **lo único que lo destraba**: hoy cualquier archivo sucio
-  fuerza la copia, aunque el gate no lo vaya a leer. Acotarlo es un cambio del contrato que cada instancia
-  recibe, no un arreglo de este caso, y por eso vive aparte.
+- **156** — lo que salió de medir este caso, y lo que lo destrababa. **Resuelto en 0.92.0**: una raíz
+  declara `scope` junto a `verify` y un archivo que el gate no va a abrir deja de forzar la copia. Era un
+  cambio del contrato que cada instancia recibe y no un arreglo de éste, y por eso vivió aparte. Lo que
+  queda acá no es diseño sino una corrida contra un `next build` real.
 - **094** — el caso de la familia de la opción 3, que la cita a «el 142» nombraba mal.

@@ -1,15 +1,16 @@
 ---
 caso: 156
 titulo: verify materializa el índice ante cualquier archivo sucio, incluso uno que el gate no va a leer, y nada declara qué rutas alcanza un gate
-estado: abierto
+estado: resuelto
+resuelto-en: 0.92.0
 prioridad: media
 version-detectada: 0.91.0
 ---
 
 # 156 — Un archivo ajeno al commit fuerza la copia, y con ella todo lo que la copia arrastra
 
-**🔴 abierto** · detectado en 0.91.0 · prioridad **media** — por sí solo cuesta tiempo; lo que lo vuelve
-bloqueante es lo que la copia arrastra, que es el **153**
+**🟢 resuelto en 0.92.0** · detectado en 0.91.0 · prioridad **media** — una raíz declara qué rutas lee su
+puerta, y lo que ninguna puerta lee deja de forzar la copia; sin el campo, nada cambia
 
 ## Resumen
 
@@ -131,3 +132,76 @@ un arreglo, así que sale como caso propio en vez de entrar de contrabando en el
   al commit deja sin gate a un proyecto Next.
 - **069**, **045**, **095** — las decisiones de `commitTree` que sí funcionan; esto no propone tocarlas.
 - **151** — el otro fallo del mismo mecanismo, ya resuelto.
+
+## Cierre
+
+**🟢 resuelto en 0.92.0** · `engine/core/scope.js`, `engine/hooks/shell.js`, `engine/config/validate.js`,
+`engine/schemas/ops-config.schema.json`, `test/repo/scope.test.js`, `test/wiring/verify-scope.test.js`,
+`CHANGELOG.md`
+
+Una raíz puede declarar `scope` junto a `verify`, y `commitTree` pasó de preguntarse *si hay* delta a
+preguntarse *qué* delta: lo que ninguna puerta lee no puede cambiar su veredicto, así que el árbol vuelve
+a servir. **Sin `scope` declarado no cambia nada**, y esa mitad es la que se probó con más cuidado: el
+campo baja a cada consumidor en su próximo `upgrade` y ninguno lo declara todavía.
+
+### Contra lo que el caso enumeró
+
+- **Opción 1, declarar el alcance del gate por raíz** — **se hizo, tal como estaba escrita.** Campo
+  `scope` con globs, su validación en `validate.js`, su `description` en el esquema y su entrada de
+  CHANGELOG. El molde **no** lo trae: `verify` tampoco está ahí, y los dos son opcionales — meterlos en
+  el molde los convertiría en ceremonia para todos.
+- **Opción 2, acotar sin contrato nuevo** — **se decidió que no, por la razón que el propio caso
+  escribió**: es la heurística que el 153 desaconseja en su tradeoff, «lo honesto es por ruta declarada
+  en `ops.config.json` y no por heurística». Decidir cuándo se confía en el árbol sin que nadie lo
+  declare es exactamente lo que envejece mal.
+- **Opción 3, atacar lo que la copia arrastra** — **le tocaba al 153 y ya está medida y cerrada ahí.**
+  Las cuatro vías que dejarían `node_modules` bajo la raíz de la copia —enlace relativo, *bind mount*,
+  overlay, hardlinks— quedaron descartadas el 2026-09-15, y la quinta, copiar de verdad, cuesta ~85 s por
+  commit. O sea que el enlace se queda y lo que tenía que cambiar era **cuándo** se hace la copia.
+- **Tradeoff «la 1 y la 2 aflojan la garantía que `commitTree` fue a construir»** — **se paga, y sólo lo
+  paga quien declara el campo.** Está fijado por prueba y por mutación: con el cableado revertido, las
+  tres pruebas que describen el comportamiento de siempre siguen verdes y sólo caen las dos del alcance;
+  y apagando el default seguro —que una raíz sin `scope` deje de forzar— caen exactamente las dos que
+  prometen la compatibilidad.
+- **Tradeoff «la 1 agrega superficie al contrato que cada empresa recibe»** — **se paga, y se decidió
+  antes de construir, no a mitad de camino.** La alternativa era una heurística sin campo, y se preguntó
+  con las tres salidas sobre la mesa.
+- **Tradeoff «la 2 es exactamente lo que el 153 desaconseja»** — **se cobró solo**: fue la razón de
+  descartarla, no una objeción que hubiera que sopesar después.
+- **Tradeoff «no medido: con qué frecuencia el delta es ajeno al gate»** — **sigue sin medir, y se
+  declara en vez de tacharse.** El caso decía que ese número decide si esto vale un campo nuevo; no
+  decidió, porque lo que lo justificó fue otra cosa: el 153 no tiene salida del lado del proyecto, así
+  que la frecuencia sólo movería el tamaño del ahorro, no la existencia del bloqueo. Sigue sin poder
+  sacarse de este repositorio —acá no hay `build` ni `lint`— y lo que lo contestaría es una instancia
+  real. Queda abierto como medición pendiente, no como deuda de este caso.
+- **Prioridad** — el caso decía «sube a **alta** si el 153 se resuelve por esta vía en lugar de por el
+  enlace». Eso es exactamente lo que pasó: las vías del enlace se midieron y ninguna sirve, así que
+  ésta pasó a ser la única, y el caso se resolvió en vez de subir de prioridad.
+
+### Lo que el caso no preveía
+
+**El bucle lo cerraba el propio guard.** Cuando un gate falla, el bloqueo manda escribir las rutas en
+`planning/.ops-approval` para aprobarlas. Ese archivo queda **sin trackear** —y a propósito: `check` avisa
+mientras exista, así que no es un olvido del molde— y con él cada commit siguiente materializaba. O sea
+que seguir la instrucción del guard para destrabar un gate garantizaba que el gate siguiente corriera
+sobre la copia, que en un proyecto Next es el gate que no puede pasar. Está medido y tiene su prueba.
+
+**Y la superficie del 153 es más angosta de lo que ese caso sugiere**: `RECREABLE` ya excluye `.next` y
+`.turbo`, así que la salida de Next se reconstruye dentro de la copia. Lo único que viaja por enlace y
+rompe a Turbopack es `node_modules`.
+
+### Qué se corrió
+
+- **Reproducción antes de arreglar**, con el gate registrando su propio `cwd` fuera del repositorio:
+  árbol limpio → árbol; `?? NOTAS.md` → copia (`/tmp/ops-verify-GNafr2`); se borra → árbol;
+  `?? planning/.ops-approval` → copia. El mensaje «Corrió sobre el índice» no sirve como discriminador:
+  `verifyGates` vuelve sin bloquear cuando lo staged está aprobado, así que su ausencia significa «no
+  bloqueó» y no «corrió sobre el árbol».
+- **Rojo previo** sobre las pruebas definitivas, con el cableado revertido en una copia desechable: 3
+  verdes y **2 rojas**, y las dos rojas son las del alcance. Las tres que describen el comportamiento de
+  siempre siguen verdes, que es la evidencia de compatibilidad.
+- **Tres mutaciones**, cada una sobre una decisión distinta: apagar el conservadurismo del directorio → 1
+  roja, la del directorio; hacer que el alcance no acote nunca → 9 rojas; romper el default seguro → 2
+  rojas, las dos de la compatibilidad.
+- `npm run ci` **exit 0: 863 pruebas, 0 en rojo**, sin superficie muerta, 71 archivos en su piso y
+  `engine/core/scope.js` en 100 % de líneas, ramas y funciones.

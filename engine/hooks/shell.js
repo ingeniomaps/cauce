@@ -10,13 +10,14 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const {
   commandOf, cwdOf, block, isCommit, stagedForCommit,
-  writableRoots, outsideRoots, DECLARE_IT, unquoted, opsRoot, withoutGitGlobals,
+  writableRoots, outsideRoots, DECLARE_IT, unquoted, opsRoot, withoutGitGlobals, configOf,
 } = require('./input')
 const AP = require('./approval')
 const CHAT = require('./chat')
 const { publish } = require('./push')
 const { selfApprovalShell } = require('./self-approval')
 const EV = require('../core/evidence')
+const SC = require('../core/scope')
 
 // Dónde empieza y dónde termina una palabra dentro de un comando. Tres reglas de la tabla de abajo lo
 // decidían por su cuenta admitiendo sólo un espacio, el principio o el fin, y en un shell una palabra
@@ -418,13 +419,25 @@ const RECREABLE = new RegExp('(^|/)(?:dist|build|out|coverage|__pycache__'
 //
 // No se usa `git stash --keep-index`, que sería más corto: toca el árbol de quien está trabajando, y un
 // gate que muere a la mitad le deja el stash puesto.
-function commitTree(dir) {
+function commitTree(dir, input) {
   const status = run('git', ['-C', dir, 'status', '--porcelain', '--ignored'], dir)
   if (!status.ok) {
     block(`no se pudo leer el estado de ${dir}, así que no hay cómo saber qué va a grabar el commit.`)
   }
   const lines = status.output.split('\n').filter(Boolean)
-  if (!lines.some((line) => !line.startsWith('!!') && line[1] !== ' ')) {
+  const delta = lines.filter((line) => !line.startsWith('!!') && line[1] !== ' ')
+  if (!delta.length) {
+    return { root: dir, temp: null, env: {} }
+  }
+  // La de arriba pregunta *si hay* delta; ésta, *qué* delta: lo que ninguna puerta lee no puede cambiar
+  // su veredicto, y ahí el árbol vuelve a servir. Las reglas y el porqué viven en `core/scope.js`; sin
+  // una raíz que declare su alcance esto no cambia nada (caso 156).
+  //
+  // La raíz ops no es `dir` —una instancia sidecar las tiene separadas—, así que se resuelve como en el
+  // resto de los guards en vez de suponer un `ops.config.json` colgando del repositorio: deducir el
+  // layout en lugar de leer el declarado es lo que costó el caso 158.
+  const ops = opsRoot(input)
+  if (SC.staysInTree(ops ? configOf(ops).workspaceRoots : [], dir, delta)) {
     return { root: dir, temp: null, env: {} }
   }
 
@@ -535,7 +548,7 @@ function verify(input) {
       + AP.HOW('OPS_SKIP_VERIFY', sinAprobar, input))
   }
   if (!staged.some((file) => /\.(?:ts|tsx|js|jsx|mjs|cjs|go|py|html|css|scss|prisma)$/.test(file))) return
-  const { root, temp, env } = commitTree(dir)
+  const { root, temp, env } = commitTree(dir, input)
   try {
     verifyGates(root, dir, sinAprobar, env, input)
   } finally {
