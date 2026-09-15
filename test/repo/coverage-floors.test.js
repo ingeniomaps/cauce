@@ -163,6 +163,73 @@ test('un piso de un archivo que ya no existe falla', () => {
   assert.match(out, /engine\/borrado-hace-tiempo\.js: tiene piso y ya no existe/)
 })
 
+// El 149, cuya razón vive en `coverage-files.js` junto al guard. Acá sólo lo que el caso mide: se saca
+// **un** archivo del lcov y se deja todo lo demás intacto, porque con la cantidad como criterio un
+// registro de 68 que baja a 67 pasaría y el defecto seguiría entrando por ahí.
+test('actualizar con un archivo sin medir se niega en vez de borrarlo del registro', () => {
+  const dir = tempRoot('cauce-pisos-perdido-')
+  const registro = floors()
+  const medido = floors()
+  const perdido = 'engine/cli/ops.js'
+  delete medido[perdido]
+  const lcov = path.join(dir, 'medido.info')
+  fs.writeFileSync(lcov, lcovOf(medido))
+  const baseline = path.join(dir, 'baseline.json')
+  fs.writeFileSync(baseline, `${JSON.stringify(registro, null, 2)}\n`)
+
+  const done = spawnSync(process.execPath, [TOOL, lcov, `--baseline=${baseline}`, '--update'], { encoding: 'utf8' })
+  const out = `${done.stdout || ''}${done.stderr || ''}`
+  const after = JSON.parse(fs.readFileSync(baseline, 'utf8'))
+  discard(dir)
+
+  assert.equal(done.status, 1, out)
+  assert.match(out, new RegExp(perdido.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'y nombra el archivo perdido')
+  assert.doesNotMatch(out, /✓ piso registrado/, 'sin anunciar un registro que habría perdido pisos')
+  // Lo que de verdad importa: el registro sigue entero. Negarse y escribir igual sería peor que no mirar.
+  assert.equal(Object.keys(after).length, Object.keys(registro).length,
+    'el registro no se tocó: la negativa ocurre antes de escribir')
+})
+
+// La otra mitad del guard, y la que decide que no necesite escapatoria: un archivo que tenía piso y ya
+// **no está en disco** es un retiro legítimo, así que registrar tiene que seguir funcionando. Sin el
+// filtro por `onDisk()` esta negativa se volvería imposible de satisfacer al borrar un archivo del motor.
+test('actualizar tras retirar un archivo del motor sigue registrando', () => {
+  const dir = tempRoot('cauce-pisos-retiro-')
+  const registro = floors()
+  // Un piso de un archivo que no existe en `engine/` ni en `automatization/`: el retiro ya ocurrido.
+  registro['engine/se-retiro-de-verdad.js'] = { lines: 90, branches: 80, functions: 90 }
+  const medido = floors()
+  const lcov = path.join(dir, 'medido.info')
+  fs.writeFileSync(lcov, lcovOf(medido))
+  const baseline = path.join(dir, 'baseline.json')
+  fs.writeFileSync(baseline, `${JSON.stringify(registro, null, 2)}\n`)
+
+  const done = spawnSync(process.execPath, [TOOL, lcov, `--baseline=${baseline}`, '--update'], { encoding: 'utf8' })
+  const out = `${done.stdout || ''}${done.stderr || ''}`
+  const after = JSON.parse(fs.readFileSync(baseline, 'utf8'))
+  discard(dir)
+  assert.equal(done.status, 0, out)
+  assert.equal(after['engine/se-retiro-de-verdad.js'], undefined,
+    'y el piso huérfano sale del registro, que es para lo que se corre --update tras un retiro')
+})
+
+// El contraste, que es lo que separa una negativa útil de una que molesta siempre: una corrida completa
+// —cada archivo del registro medido— sigue registrando sin ruido.
+test('actualizar con todo medido sigue registrando', () => {
+  const dir = tempRoot('cauce-pisos-completo-')
+  const registro = floors()
+  const lcov = path.join(dir, 'medido.info')
+  fs.writeFileSync(lcov, lcovOf(registro))
+  const baseline = path.join(dir, 'baseline.json')
+  fs.writeFileSync(baseline, `${JSON.stringify(registro, null, 2)}\n`)
+
+  const done = spawnSync(process.execPath, [TOOL, lcov, `--baseline=${baseline}`, '--update'], { encoding: 'utf8' })
+  const out = `${done.stdout || ''}${done.stderr || ''}`
+  discard(dir)
+  assert.equal(done.status, 0, out)
+  assert.match(out, /✓ piso registrado/, 'la corrida sana no se ve afectada por el guard nuevo')
+})
+
 // Que `--update` se niegue cuando no midió nada. Por qué esa negativa existe lo explica `coverage-files.js`,
 // junto al `if` que la aplica; acá se fija que ocurra, con el lcov vacío que la dispara.
 test('actualizar sobre un lcov sin archivos se niega en vez de anunciar éxito', () => {
@@ -219,7 +286,12 @@ const conSuite = (repo, salida) => {
     '  case "$a" in --test-reporter-destination=*) dest="${a#*=}";; esac',
     '  prev="$a"',
     'done',
-    `[ -n "$dest" ] && printf 'SF:engine/cli/ops.js\\nDA:1,1\\nLF:1\\nLH:1\\nend_of_record\\n' > "$dest"`,
+    // El lcov tiene que cubrir **todo** el registro, no un archivo suelto: desde el 149, registrar con
+    // archivos sin medir se niega, y un lcov corto haría fallar a `--update` por esa otra razón. Lo que
+    // esta prueba controla es el exit de la suite, así que todo lo demás se deja sano.
+    `[ -n "$dest" ] && cat > "$dest" <<'LCOV'`,
+    lcovOf(floors()).trimEnd(),
+    'LCOV',
     `exit ${salida}`,
     '',
   ].join('\n'), { mode: 0o755 })
@@ -266,7 +338,8 @@ test('una prueba en rojo frena la puerta, y al registrar un piso no', { skip: pr
   // Suite en verde: el corte nuevo no se mete en el camino y la puerta de pisos decide como siempre.
   const verde = correr(0)
   assert.doesNotMatch(salida(verde), /pruebas en rojo/, 'una suite verde no dispara el corte')
-  assert.match(salida(verde), /piso de cobertura/, 'y el veredicto vuelve a ser el de los pisos')
+  assert.match(salida(verde), /cobertura por archivo/, 'y el veredicto vuelve a ser el de los pisos')
+  assert.equal(verde.status, 0, `con la suite verde y los pisos en su lugar, la puerta pasa: ${salida(verde)}`)
 
   // La mitad que el 144 ganó y que este arreglo no puede perder: registrar sigue siendo posible con la
   // suite en rojo, que es justo cuando hace falta —al agregar un archivo sin piso—.

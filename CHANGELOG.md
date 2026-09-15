@@ -14,6 +14,23 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.91.0] - 2026-09-15
+
+### Corregido
+
+- **Registrar un piso de cobertura dejó de poder borrar los demás.** `coverage:update` reconstruye el
+  registro entero desde lo que midió, y se negaba a escribir sólo cuando no había medido **nada**. Una
+  corrida que arrancaba y moría temprano dejaba un lcov corto: los archivos que no llegó a medir
+  desaparecían del registro, y la actualización salía en 0 anunciando éxito. El registro mutilado se lee
+  igual que uno sano, y con él la puerta de cobertura deja de cuidar lo que perdió.
+
+  Ahora se niega cuando un archivo que **sigue en disco** y **tenía piso** no fue medido, nombrando
+  cuáles. Retirar un archivo del motor sigue funcionando igual —ya no está en disco, así que no cuenta
+  como pérdida— y no hace falta ninguna excepción que recordar.
+
+  **No tenés que hacer nada.** Si al correr `coverage:update` te frena, la corrida quedó corta: revisá que
+  la suite haya terminado antes de volver a intentarlo.
+
 ## [0.90.0] - 2026-09-15
 
 ### Corregido
