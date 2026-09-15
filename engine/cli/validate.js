@@ -29,6 +29,7 @@ const C = require('../config/validate')
 const CP = require('../config/paths')
 const AG = require('../agents/catalog')
 const RL = require('../automation/rules')
+const CT = require('./contract')
 const { fail, planningRoot, TODAY } = require('./io')
 
 function check(dir, cli) {
@@ -131,6 +132,7 @@ function check(dir, cli) {
   warnings.push(...R.unrecordedHumanActions(path.resolve(root, '..'), P.readHumanActions(root)))
   warnings.push(...AP.warnings(path.resolve(root, '..')))
   warnings.push(...TR.warnings(path.resolve(root, '..')))
+  warnings.push(...CT.warnings(path.resolve(root, '..')))
 
   // Lo que `upgrade` conserva por estar editado deja de recibir mejoras, y eso es una deuda que no
   // avisa sola: la instancia queda con medio molde viejo y todo se ve normal. Sale acá para que se vea

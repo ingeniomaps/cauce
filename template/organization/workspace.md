@@ -32,3 +32,15 @@ migraciones, un repo donde sí puede commitear directo, un entorno de pruebas qu
 
 Lo que no se puede ampliar acá: promover trabajo propio, prometer fechas, inventar evidencia o exceder
 la autoridad de un cargo. Eso no depende del proyecto.
+
+### Límites
+
+Una línea por límite, y cada una tiene que poder obedecerse sola: es lo que viaja al preámbulo de cada
+agente, sin el párrafo que la rodea. El ejemplo va comentado a propósito — un ejemplo que se obedece es
+peor que ninguno, así que descomentalo recién cuando sea tuyo de verdad.
+
+<!-- - En `api/` no se tocan migraciones sin aprobación de quien administra la base. -->
+
+Fuera de esta lista también cuenta lo que arranque con «El runner», «Debe» o «Nunca», que es como estaba
+escrito antes de que esta sección existiera. `ops check` avisa de cualquier párrafo que no entre por
+ninguno de los dos caminos, porque un límite perdido no se ve: la lista sale más corta y se lee igual.
