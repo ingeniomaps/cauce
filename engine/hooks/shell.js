@@ -488,11 +488,17 @@ function commitTree(dir) {
   // el lockfile de la copia y reinstala, lo que **empieza borrando** el `node_modules` del proyecto.
   //
   // Lo que se apaga es esa comprobación previa, que es el motivo por el que quiere tocar nada.
-  // `verify-deps-before-run` la gobierna y tiene tres valores: `install` reinstala solo —el que trae
-  // pnpm 11 y el que hace el daño—, `error` se niega y frena el gate cuando el lockfile de la copia
-  // difiere de lo instalado, que es justo lo que pasa al commitear un cambio de lockfile por partes, y
-  // `false` corre el script sin mirar. La copia no tiene que sincronizar nada: tiene que medir el
-  // código.
+  // `verify-deps-before-run` la gobierna y tiene cinco valores —`install`, `warn`, `prompt`, `error` y
+  // `false`—. El que hace el daño es `install`, que reinstala solo y es el default desde pnpm 11. `error`
+  // tampoco serviría: frena el gate cuando el lockfile de la copia difiere de lo instalado, que es justo
+  // lo que pasa al commitear un cambio de lockfile por partes. La copia no tiene que sincronizar nada:
+  // tiene que medir el código.
+  //
+  // El prefijo es `pnpm_config_` y no `npm_config_`, y esa sola palabra es la diferencia entre apagar la
+  // comprobación y no apagar nada: pnpm lee sus ajustes del entorno con su propio prefijo, así que con el
+  // de npm la variable llega igual y se ignora en silencio. Acá estuvo `npm_config_` desde el arreglo del
+  // 070 y no surtió efecto nunca (caso 151), con lo cual la protección que ese arreglo creyó poner no
+  // estuvo puesta. Medido sobre pnpm 10.30.2 y 11.20.0, iguales las dos.
   //
   // Acá estuvo `CI: 'true'` y fue una regresión (caso 070). Resolvía el síntoma del 068 —pnpm dejaba de
   // preguntar antes de purgar— desarmando la confirmación en vez de quitarle el motivo, y esa
@@ -502,7 +508,7 @@ function commitTree(dir) {
   //
   // La regla que queda: no se desarma la confirmación de una herramienta, se le quita el motivo de
   // preguntar. Una confirmación que estorba casi siempre está cuidando algo.
-  return { root: temp, temp, env: { npm_config_verify_deps_before_run: 'false' } }
+  return { root: temp, temp, env: { pnpm_config_verify_deps_before_run: 'false' } }
 }
 
 function verify(input) {
