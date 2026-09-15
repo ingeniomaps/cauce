@@ -11,6 +11,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { inRepo } = require('../support/environment')
 
 // Los archivos de código del repositorio, que dos pruebas recorren igual. Vive acá y no dentro de cada
 // una porque copiado se pudre una de las dos copias —se queda sin un directorio— y nada falla.
@@ -275,7 +276,8 @@ test('ningún comentario quedó separado del código que describe', () => {
 const CITED = /`([a-z][A-Za-z0-9]{3,})(?:\(\))?`/g
 const CITED_AT = /`([A-Za-z][A-Za-z0-9]*)`\s*\(([a-z][a-zA-Z0-9_/-]*\.(?:js|sh))\)/g
 
-test('ningún comentario cita algo que dejó de existir', () => {
+test('ningún comentario cita algo que dejó de existir',
+  { skip: !inRepo() && 'sin `.git` no hay corpus trackeado que recorrer' }, () => {
   const root = path.resolve(__dirname, '..', '..')
   const tracked = spawnSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).stdout.trim().split('\n')
   // Los registros de evaluación transcriben lo que un cargo escribió y pueden nombrar cualquier cosa,
@@ -487,7 +489,8 @@ test('ningún archivo de código pasa las 500 líneas sin decir por qué', () =>
 // No queda exento el registro de evaluación: los ciento sesenta y nueve archivos que lo tenían se
 // barrieron, así que la regla es una sola y nadie tiene que recordar dónde no rige. El porqué del
 // lookbehind está en el vecino y no se repite acá.
-test('ningún archivo del repositorio nombra la ruta absoluta de una máquina', () => {
+test('ningún archivo del repositorio nombra la ruta absoluta de una máquina',
+  { skip: !inRepo() && 'sin `.git` no hay corpus trackeado que recorrer' }, () => {
   const root = path.resolve(__dirname, '..', '..')
   const tracked = spawnSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).stdout.trim().split('\n')
   // Los dos bordes son distintos porque este corpus es más ancho que el del vecino. El de la carpeta

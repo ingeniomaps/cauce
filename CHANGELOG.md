@@ -31,6 +31,17 @@ diseño — eso vive en el commit y en el código.
   **No tenés que hacer nada.** Si al correr `coverage:update` te frena, la corrida quedó corta: revisá que
   la suite haya terminado antes de volver a intentarlo.
 
+- **Las pruebas que juzgan el repositorio dicen cuándo no pueden correr, en vez de fallar.** Cinco de
+  ellas preguntan qué está trackeado —lo que define al árbol es el índice de git, no lo que haya en el
+  disco— y en una copia sin `.git` fallaban con mensajes que hablaban del repositorio: «la suite declara
+  0 pruebas y el piso es 505». Se leían como defectos reales y no lo eran.
+
+  Importa porque R23 manda ejercitar en una copia lo que las pruebas invocan, y la copia barata
+  —`git ls-files | tar`, `git archive`— no lleva `.git`. Ahora se saltean declarando qué les falta.
+
+  **No tenés que hacer nada.** Si corrés la suite sobre un tarball o un árbol sin historia, vas a ver
+  cinco `skipped` con su razón donde antes veías cinco rojos.
+
 ## [0.90.0] - 2026-09-15
 
 ### Corregido

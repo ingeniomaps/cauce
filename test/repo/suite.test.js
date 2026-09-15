@@ -9,6 +9,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { inRepo } = require('../support/environment')
 
 // Cuántas pruebas declara la suite. No es una métrica de calidad —agregar una no mejora nada por sí
 // sola— sino un detector de la forma silenciosa de perderlas: un archivo sobreescrito, una suite pisada
@@ -27,7 +28,7 @@ const { spawnSync } = require('node:child_process')
 // veces, así que el total ejecutado es mayor y se mueve por razones que no son perder una prueba.
 const SUITE_FLOOR = 505
 
-test('la suite no encoge sin que se vea', () => {
+test('la suite no encoge sin que se vea', { skip: !inRepo() && 'sin `.git` no hay índice que contar' }, () => {
   const root = path.resolve(__dirname, '..', '..')
   const files = spawnSync('git', ['ls-files', 'test/**/*.test.js'], { cwd: root, encoding: 'utf8' })
     .stdout.trim().split('\n').filter(Boolean)

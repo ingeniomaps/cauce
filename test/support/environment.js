@@ -228,11 +228,23 @@ function installedProject(name, runner) {
   return { base, workspace, target, runCli, env }
 }
 
+// Hay pruebas que juzgan **el repositorio** y para eso preguntan qué está trackeado: lo que define al
+// árbol es el índice de git, no lo que haya en el disco —ahí conviven los temporales de otras pruebas—.
+// Corridas donde no hay `.git` no pueden contestar esa pregunta, y hasta el caso 150 fallaban con un
+// mensaje que hablaba del repositorio en vez del entorno: «la suite declara 0 pruebas y el piso es 505».
+//
+// El caso más común no es exótico: R23 manda ejercitar en una copia lo que las pruebas invocan, y la
+// copia barata —`git ls-files | tar`, `git archive`— no lleva `.git`. Con esto el salto se declara, que
+// es lo que separa «acá no se puede medir» de «esto está roto».
+function inRepo(at = path.resolve(__dirname, '..', '..')) {
+  return spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: at, encoding: 'utf8' }).status === 0
+}
+
 module.exports = {
   TEST_RUNNER,
   wipPath,
   writeWip,
   MIN_ROLES, opsConfig, filesBelow, tempRoot, outsideTempRoot, undeletable, discard, CLI, run,
-  linkEngine, installedProject,
+  linkEngine, installedProject, inRepo,
   workflow, workflowStep, workflowCommand,
 }
