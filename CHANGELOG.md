@@ -32,6 +32,20 @@ diseño — eso vive en el commit y en el código.
   **No tenés que hacer nada.** Si tu instancia acumuló ramas `automation/*` de informes ya mergeados, se
   borran a mano una vez; las nuevas ya no se quedan.
 
+- **La puerta del toolkit dejó de dar verde con pruebas en rojo.** `npm run ci` encadena cinco
+  comprobaciones y ninguna miraba el veredicto de la suite: entraba sólo por la de cobertura, que ignora
+  a propósito el exit de `node --test` para poder registrar un piso cuando la puerta está en rojo. Esa
+  tolerancia valía para los dos caminos, así que seis pruebas fallando terminaban en exit 0 — y eso es lo
+  que corre en CI y lo que exige `prepublishOnly`.
+
+  Ahora la tolerancia es del modo que la necesita: al **registrar** (`coverage:update`) el exit de la
+  suite sigue sin decidir, y al **comprobar** una suite en rojo corta la corrida antes de mirar
+  cobertura, diciendo que el rojo es de las pruebas y no de los pisos.
+
+  **No tenés que hacer nada, pero puede que veas rojo donde antes veías verde:** si tu proyecto tenía
+  pruebas fallando, la puerta las muestra en vez de taparlas. Ninguna versión publicada de este toolkit
+  llegó a npm con la suite en rojo — se comprobó clonando y corriendo las cinco últimas.
+
 ## [0.89.0] - 2026-09-14
 
 ### Agregado

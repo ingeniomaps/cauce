@@ -179,14 +179,99 @@ test('actualizar sobre un lcov sin archivos se niega en vez de anunciar éxito',
   assert.doesNotMatch(out, /✓ piso registrado/, 'y no se felicita sobre cero archivos')
 })
 
-// La otra mitad del 144, en el script: las corridas de medición existen para producir el lcov y su
-// veredicto no decide, pero eso no puede volverse «ignorar el exit y seguir». Lo que se comprueba es el
-// contenido, que es lo único que distingue una suite que falló de una que no llegó a correr.
-test('coverage.sh mide por el contenido del lcov y no por el exit de la suite', () => {
+// La otra mitad del 144, en el script: al **registrar** un piso las corridas existen para producir el
+// lcov y su veredicto no decide, pero eso no puede volverse «ignorar el exit y seguir». Lo que se
+// comprueba es el contenido, que es lo único que distingue una suite que falló de una que no llegó a
+// correr.
+//
+// Esta prueba miraba el texto del script y por eso no vio el 148: exigía el `|| true` escrito, que es
+// justo lo que dejaba `npm run ci` en verde con la suite en rojo. Lo que se mira ahora es que la
+// tolerancia esté **acotada al modo que la necesita**; que el veredicto sea el correcto en cada uno lo
+// mide la prueba de abajo, ejecutando el script.
+test('coverage.sh mide por el contenido del lcov, y sólo al registrar ignora el exit', () => {
   const script = fs.readFileSync(path.join(ROOT, 'test', 'tools', 'coverage.sh'), 'utf8')
-  assert.match(script, /\|\|\s*true|set \+e/, 'el exit de node --test deja de cortar la medición')
-  assert.match(script, /-s\s+"\$lcov"|\[ -s /, 'y en su lugar se exige que el lcov traiga contenido')
+  assert.match(script, /\|\|\s*estado=\$\?|set \+e/, 'el exit de node --test se captura en vez de cortar')
+  assert.match(script, /-s\s+"\$lcov"|\[ -s /, 'y se exige que el lcov traiga contenido')
+  assert.match(script, /-z "\$registrando" \] && \[ "\$estado" -ne 0/,
+    'y fuera de --update una suite en rojo corta la corrida')
   // El `trap` se lleva los lcov al abortar, así que hoy ni siquiera queda el material para reintentar a
   // mano desde donde murió. Lo que se conserva es lo que ya se midió.
   assert.doesNotMatch(script, /trap limpiar EXIT/, 'la limpieza deja de correr en el camino de error')
+})
+
+// Lo que se controla es el exit de la suite, que es la única variable que este arreglo mira. Un `node`
+// interpuesto en el `PATH` lo finge y escribe un lcov mínimo; todo lo que no es `--test` lo delega al
+// node real, así que la puerta de pisos que corre después sigue siendo la de verdad y no una maqueta.
+//
+// La otra forma era un banco de juguete, y se descartó con números: `coverage.sh` abre con
+// `hooks-smoke.sh`, que baja por `run-hook.sh` a `engine/hooks/run.js` y sus seis módulos —unas 1.900
+// líneas del motor— sólo para que la línea 9 no reviente. Mediría peor y costaría más.
+const conSuite = (repo, salida) => {
+  const bin = path.join(repo, 'bin')
+  fs.mkdirSync(bin, { recursive: true })
+  fs.writeFileSync(path.join(bin, 'node'), [
+    '#!/usr/bin/env bash',
+    'for a in "$@"; do [ "$a" = "--test" ] && suite=1; done',
+    `if [ -z "\${suite:-}" ]; then exec ${JSON.stringify(process.execPath)} "$@"; fi`,
+    'dest=""; prev=""',
+    'for a in "$@"; do',
+    '  case "$prev" in --test-reporter-destination) dest="$a";; esac',
+    '  case "$a" in --test-reporter-destination=*) dest="${a#*=}";; esac',
+    '  prev="$a"',
+    'done',
+    `[ -n "$dest" ] && printf 'SF:engine/cli/ops.js\\nDA:1,1\\nLF:1\\nLH:1\\nend_of_record\\n' > "$dest"`,
+    `exit ${salida}`,
+    '',
+  ].join('\n'), { mode: 0o755 })
+  return `${bin}${path.delimiter}${process.env.PATH}`
+}
+
+// El 148: `npm run ci` salía en verde con seis pruebas en rojo, porque la suite entra a la puerta sólo
+// por acá y el `|| true` la tapaba. Esto ejecuta el script en vez de leerlo — el defecto no era el texto
+// sino lo que ese texto hace, y otra redacción igual de ciega volvería a pasar.
+//
+// Se distingue por el **mensaje** y no por el código de salida: con la suite en verde el script sigue de
+// largo hasta la puerta de pisos, que sobre un lcov de un solo archivo falla por su cuenta. Los dos
+// caminos terminan en 1 y lo que los separa es cuál de los dos rojos se anuncia.
+test('una prueba en rojo frena la puerta, y al registrar un piso no', { skip: process.platform === 'win32' }, () => {
+  // Se corre dentro de una copia y no sobre el árbol de trabajo (R23): el script resuelve todo por rutas
+  // relativas al cwd y sólo propaga su primer argumento, así que no hay forma de apuntarle un registro
+  // desechable desde acá y `--update` escribiría el del repositorio. Sin la copia, esta prueba mutila
+  // `coverage-baseline.json` de 68 archivos a 1 y las otras cuatro de este archivo empiezan a fallar por
+  // un registro que nadie tocó a mano.
+  //
+  // Y la copia se arma con `git ls-files`, que es lo que define el árbol, así que hace falta un `.git`:
+  // corrida dentro de una copia que no lo tenga no hay de dónde copiar, y el salto lo dice en vez de
+  // fallar por el entorno. Son **siete** las suites de este repositorio que no corren sin `.git`, ésta
+  // incluida, y es la única que lo declara: las otras seis fallan con un mensaje que habla de otra cosa.
+  const enRepo = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: ROOT, encoding: 'utf8' })
+  if (enRepo.status !== 0) return
+  const repo = tempRoot('cauce-148-')
+  const copiado = spawnSync('bash', ['-c',
+    `cd ${JSON.stringify(enRepo.stdout.trim())} && git ls-files -z | xargs -0 tar cf - `
+    + `| (cd ${JSON.stringify(repo)} && tar xf -)`],
+  { encoding: 'utf8' })
+  assert.equal(copiado.status, 0, `no se pudo copiar el árbol trackeado: ${copiado.stderr}`)
+  const correr = (salida, ...args) => spawnSync('bash', ['test/tools/coverage.sh', ...args], {
+    cwd: repo, encoding: 'utf8', env: { ...process.env, PATH: conSuite(repo, salida) },
+  })
+  const salida = (hecho) => `${hecho.stdout || ''}${hecho.stderr || ''}`
+
+  // Suite en rojo, comprobando: corta antes de mirar cobertura, y dice de qué es el rojo.
+  const rojo = correr(1)
+  assert.notEqual(rojo.status, 0, 'con la suite en rojo la puerta tiene que frenar')
+  assert.match(salida(rojo), /pruebas en rojo/, 'y nombrar la suite, no la cobertura')
+  assert.doesNotMatch(salida(rojo), /piso de cobertura/, 'sin llegar a juzgar pisos sobre una suite rota')
+
+  // Suite en verde: el corte nuevo no se mete en el camino y la puerta de pisos decide como siempre.
+  const verde = correr(0)
+  assert.doesNotMatch(salida(verde), /pruebas en rojo/, 'una suite verde no dispara el corte')
+  assert.match(salida(verde), /piso de cobertura/, 'y el veredicto vuelve a ser el de los pisos')
+
+  // La mitad que el 144 ganó y que este arreglo no puede perder: registrar sigue siendo posible con la
+  // suite en rojo, que es justo cuando hace falta —al agregar un archivo sin piso—.
+  const registrando = correr(1, '--update')
+  assert.equal(registrando.status, 0, `registrar un piso con la suite en rojo: ${salida(registrando)}`)
+  assert.match(salida(registrando), /piso registrado/, 'y el registro ocurre de verdad')
+  discard(repo)
 })

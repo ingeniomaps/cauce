@@ -11,7 +11,8 @@ bash test/tools/hooks-smoke.sh
 # suerte —hay archivos que se mueven varios puntos según cómo caigan los tests en paralelo— y el gate
 # queda fallando al azar. Comprobar sí necesita una sola.
 corridas=1
-[ "${1:-}" = "--update" ] && corridas=3
+registrando=''
+[ "${1:-}" = "--update" ] && { corridas=3; registrando=1; }
 
 lcovs=()
 limpiar() { rm -f "${lcovs[@]}"; }
@@ -22,14 +23,19 @@ trap limpiar 0
 for _ in $(seq "$corridas"); do
   lcov=$(mktemp)
   lcovs+=("$lcov")
-  # El veredicto de estas corridas no decide: existen para producir el lcov. Con `set -e` gobernándolas
-  # como si fueran una puerta, registrar un piso era imposible mientras la puerta de pisos estuviera en
-  # rojo —que es justo cuando hace falta, al agregar un archivo—, y el mensaje mandaba a correr el
-  # comando que ese mismo rojo impedía completar (caso 144).
+  # **Al registrar** (`--update`) el veredicto de estas corridas no decide: existen para producir el
+  # lcov. Con `set -e` gobernándolas como si fueran una puerta, registrar un piso era imposible mientras
+  # la puerta de pisos estuviera en rojo —que es justo cuando hace falta, al agregar un archivo—, y el
+  # mensaje mandaba a correr el comando que ese mismo rojo impedía completar (caso 144).
   #
-  # Lo que sí decide es el contenido. Ignorar el exit a secas dejaría pasar una suite que no arrancó
-  # —un error de sintaxis— con un lcov vacío detrás, y un lcov vacío no se distingue de uno sano mirando
-  # el código de salida: hay que mirar si trajo algo.
+  # **Al comprobar, sí decide**, y el `|| true` estaba en los dos caminos: por eso `npm run ci` salía en
+  # verde con la suite en rojo —seis pruebas fallando y exit 0— y ninguna prueba roja frenaba un PR ni
+  # una publicación (caso 148). La tolerancia es del modo que la necesita, no del script.
+  #
+  # Lo que decide en los dos modos es el contenido. Ignorar el exit a secas dejaría pasar una suite que
+  # no arrancó —un error de sintaxis— con un lcov vacío detrás, y un lcov vacío no se distingue de uno
+  # sano mirando el código de salida: hay que mirar si trajo algo.
+  estado=0
   node --test \
     --experimental-test-coverage \
     --test-coverage-include='engine/**/*.js' \
@@ -40,10 +46,14 @@ for _ in $(seq "$corridas"); do
     --test-coverage-branches=62 \
     --test-reporter=spec --test-reporter-destination=stdout \
     --test-reporter=lcov --test-reporter-destination="$lcov" \
-    "test/**/*.test.js" || true
+    "test/**/*.test.js" || estado=$?
   if [ ! -s "$lcov" ]; then
     echo "✗ la corrida no dejó cobertura en $lcov: la suite no llegó a arrancar." >&2
     exit 1
+  fi
+  if [ -z "$registrando" ] && [ "$estado" -ne 0 ]; then
+    echo "✗ la suite terminó en $estado: hay pruebas en rojo. La cobertura no se mira hasta que pasen." >&2
+    exit "$estado"
   fi
 done
 
