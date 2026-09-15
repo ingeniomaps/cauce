@@ -1,16 +1,16 @@
 ---
 caso: 147
 titulo: La rama sobrevive al auto-merge porque `--delete-branch` no viaja con `--auto`, y la prueba que lo cuida mira la bandera en vez de la rama
-estado: abierto
+estado: resuelto
+resuelto-en: 0.90.0
 prioridad: media
 version-detectada: 0.89.0
 ---
 
 # 147 — Un arreglo que nunca funcionó, con una prueba en verde encima
 
-**🔴 abierto** · detectado en 0.89.0 · prioridad **media** — el arreglo está construido y su cierre
-escrito abajo; se marca `resuelto` al publicar **0.90.0**, porque hasta entonces sigue mordiendo a todo
-el que instale (`docs/issues/README.md`)
+**🟢 resuelto en 0.90.0** · detectado en 0.89.0 · prioridad **media** — el borrado pasó a ocurrir cuando
+el merge ocurre, y la prueba que lo cuida se vio en rojo antes de creerle
 
 ## Resumen
 
@@ -144,13 +144,12 @@ patrón era «auto-merge sí, manual no» al revés de lo que era; el listado co
 
 ## Cierre
 
-**Construido, a la espera de 0.90.0** · `.github/workflows/delete-merged-branch.yml`,
+**🟢 resuelto en 0.90.0** · `.github/workflows/delete-merged-branch.yml`,
 `.github/workflows/agent-learning.yml`, `test/repo/ci-research-report.test.js`,
 `test/repo/ci-schedule.test.js`
 
-El estado sigue en `abierto` a propósito: un caso se marca `resuelto` cuando la versión que lo arregla
-está publicada, no cuando el PR mergea. Lo de abajo es el recorrido, que se hace cuando se hace el
-trabajo y no al taguear.
+El recorrido se escribió al hacer el trabajo; el estado pasó a `resuelto` el 2026-09-15, cuando 0.90.0
+llegó a npm.
 
 Se tomó la **opción 1**, y el tradeoff que el caso dejó anotado es lo que la eligió: medirlo primero
 descartó que hubiera una salida sin construir nada.
