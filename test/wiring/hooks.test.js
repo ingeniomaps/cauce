@@ -1783,6 +1783,38 @@ test('el plan de un runner no le sirve a otro para saltear plan-first', () => {
   } finally { process.env.CAUCE_RUNNER = previo }
 })
 
+// Lo que ésta fija y las otras de `plan-first` no: que el bloqueo distinga sus dos causas. En las dos
+// frenar es correcto —que el plan ajeno no autorice lo fija la prueba de arriba—, así que lo único que
+// queda observable es a dónde manda el mensaje, y por eso acá se afirma sobre su texto y no sobre si
+// frenó. Afirmar también lo que **no** dice es la mitad que importa: el bloqueo que ofrece la salida
+// equivocada se ve igual de verde que el que ofrece la correcta (caso 152).
+test('plan-first distingue no tener plan de no ver el plan de otro id', () => {
+  const root = planFirstRoot('ops-hook-plan-otro-id-', WIP_IDLE)
+  // Con pasos y bajo un nombre que no es el del runner de las pruebas: es un plan real y ajeno.
+  fs.writeFileSync(path.join(root, 'planning', 'wip', 'w-otro-agente.md'),
+    '---\ntask: alta-de-cliente\nphase: Build\nservice: api\n---\n\n## Plan aprobado\n1. [ ] Montar el alta\n')
+  const escribir = { cwd: root, tool_input: { file_path: 'src/altas.js' } }
+  const motivoDe = (input) => {
+    try { execute('plan-first', input); return '' } catch (error) { return error.message }
+  }
+
+  blocked('plan-first', escribir, /sin plan/)
+  const motivo = motivoDe(escribir)
+  assert.doesNotMatch(motivo, /IDLE/,
+    'el plan está escrito: decir IDLE manda a escribir de nuevo lo que ya existe')
+  assert.match(motivo, /w-otro-agente/, 'nombra el id que sí tiene el plan')
+  assert.match(motivo, /alta-de-cliente/, 'y con qué tarea, que es lo que permite reconocerlo como propio')
+  assert.match(motivo, /CAUCE_RUNNER/, 'y cómo volver a ese id, que es la acción que destraba')
+  // La aprobación por ruta escribe «esto no es trabajo de una tarea», y acá eso es falso: hay plan y hay
+  // tarea. Ofrecerla es lo que convierte un bloqueo en una afirmación falsa firmada.
+  assert.doesNotMatch(motivo, /Aprobalo pegando/,
+    'con un plan a la vista, aprobar la ruta declara por escrito algo que no es cierto')
+
+  // Y sin ningún plan ajeno el mensaje sigue siendo el de antes: son dos situaciones distintas.
+  const solo = planFirstRoot('ops-hook-plan-sin-ninguno-', WIP_IDLE)
+  assert.match(motivoDe({ cwd: solo, tool_input: { file_path: 'src/altas.js' } }), /IDLE/)
+})
+
 test('guard-plan-first se abre por aprobación, por variable y donde no hay instancia', () => {
   const root = planFirstRoot('ops-hook-plan-llaves-', WIP_IDLE)
   const escribe = { cwd: root, tool_input: { file_path: 'src/altas.js' } }

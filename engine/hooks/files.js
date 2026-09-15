@@ -14,7 +14,7 @@ const {
 const AP = require('./approval')
 const CHAT = require('./chat')
 const { selfApproval } = require('./self-approval')
-const { readWip } = require('../planning/parser')
+const { readWip, readWips } = require('../planning/parser')
 const { runner } = require('../planning/claims')
 const { hasTasks } = require('../planning/state')
 const { TEMPLATE_PREFIXES } = require('../core/ownership')
@@ -235,14 +235,33 @@ function planFirst(input) {
   // Que el guard quede inerte lo dice `automation check`, porque una condición invisible es peor que
   // no tenerla.
   if (!hasTasks(planning)) return
+  // No tener plan y no ver el propio piden cosas opuestas: escribirlo, o volver al id desde el que ya se
+  // escribió. `runner()` sale del árbol donde corre el proceso, así que con una instancia al lado de dos
+  // repositorios el mismo cambio cae de un lado o del otro según el directorio, y el mensaje mandaba a
+  // escribir un plan que estaba a la vista (caso 152).
+  //
+  // Se lista recién acá, después de las dos salidas de arriba: quien tiene su plan sale por la primera y
+  // no paga esta lectura, que es la misma razón por la que `hasTasks` se pregunta donde se pregunta.
+  const ajenos = readWips(planning).filter((one) => one.complete + one.pending > 0)
   const estado = wip ? `WIP tiene la tarea ${wip.task} y ningún paso` : 'WIP está en IDLE'
-  const why = `${estado}, así que el plan todavía no está escrito.\n`
-    + 'Escribí en tu planning/wip/<runner>.md la tarea y su plan aprobado —pasos numerados, cada uno con un estado '
-    + 'verificable— y volvé al cambio. Si esto no es trabajo de una tarea, aprobá la ruta.\n'
+  const why = ajenos.length
+    ? `hay plan escrito, pero bajo otro id: ${ajenos.map((one) => `${one.runner} (${one.task})`).join(', ')}.\n`
+      + 'Si ese plan es tuyo, volvé a su id con `export CAUCE_RUNNER=<id>` —`ops runners <planning>` los lista '
+      + 'con su tarea y su avance— y repetí el cambio. Si vas a trabajar en paralelo, montá tu propio árbol '
+      + 'con `ops worktree <planning> <tarea>`, que te devuelve el id hecho.\n'
+    : `${estado}, así que el plan todavía no está escrito.\n`
+      + 'Escribí en tu planning/wip/<runner>.md la tarea y su plan aprobado —pasos numerados, cada uno con '
+      + 'un estado verificable— y volvé al cambio. Si esto no es trabajo de una tarea, aprobá la ruta.\n'
   for (const raw of filesOf(input)) {
     if (!isProduct(root, path.resolve(cwdOf(input), raw))) continue
     if (approved(input, raw)) continue
-    block(`${raw} cambia el producto sin plan. ${why}${AP.HOW('OPS_PLAN_FIRST_OVERRIDE', [raw], input)}`)
+    // Con un plan a la vista no se ofrece ninguna de las dos salidas: aprobar la ruta escribe «esto no es
+    // trabajo de una tarea», que ahí es falso, y anunciar la variable ofrece el permiso más ancho cuando
+    // la acción correcta es angosta y concreta —el mismo criterio con que `HOW` decide no nombrarla—.
+    const how = ajenos.length
+      ? AP.HOW(null, [], input, [])
+      : AP.HOW('OPS_PLAN_FIRST_OVERRIDE', [raw], input)
+    block(`${raw} cambia el producto sin plan. ${why}${how}`)
   }
 }
 
