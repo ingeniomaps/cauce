@@ -25,6 +25,16 @@ instala Cauce.
 casos resueltos **no se borran**, se marcan, así que `ls` alcanza y no hace falta un contador aparte.
 Slug en español, como el resto de la documentación del repositorio.
 
+El número **es** el identificador: lo citan los cierres, los mensajes de commit, los cuerpos de los PR y
+el CHANGELOG. Por eso `issues.test.js` comprueba que no haya dos casos con el mismo, y que el número del
+nombre y el del frontmatter digan lo mismo — igual que con el estado, el que se lee sin abrir el archivo
+es el del nombre.
+
+Y esa colisión ocurre: dos sesiones que trabajan a la vez ven árboles distintos, así que las dos leen el
+mismo «más alto». Pasó el 2026-09-16 con el 164. Cuando la puerta la reporta, **el que se mueve es el que
+todavía no se publicó**: si un número ya está citado en un CHANGELOG o en un PR mergeado, renumerarlo
+rompe referencias que están afuera.
+
 ## Estado
 
 El frontmatter lo declara y el cuerpo lo repite en la primera línea, para que se vea sin abrir el
