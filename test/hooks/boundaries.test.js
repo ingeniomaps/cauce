@@ -90,6 +90,33 @@ test('guard-shell-boundary mira el destino de un comando, sin morder lo corrient
 // La misma ruta por las dos herramientas, exenta y prohibida. Es lo único que comprueba que
 // `writableRoots` sigue siendo el único lugar donde se contesta: si alguien la vuelve a escribir en uno
 // de los dos guards, los cuatro veredictos de acá dejan de coincidir.
+// `>|` es el override de `noclobber` —escribe aunque el shell esté configurado para no pisar— y el
+// guard no lo veía: `REDIRECT` cortaba antes del `|`, que además está fuera de la clase del destino. Como
+// `writesWithBase` es la única fuente de los tres guards de escritura, se perdían los tres a la vez.
+//
+// El caso concreto que lo vuelve grave y no una curiosidad de parseo: lo que un agente se escribe con eso
+// es su propia `.ops-approval`, o sea la aprobación que después le habilita el push a la rama viva. Es lo
+// que cerraron el 098 y el 119, reabierto por una barra (caso 164).
+test('el override de noclobber no es una puerta de atrás al destino', () => {
+  const root = tempRoot('ops-hook-noclobber-')
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({
+    workspaceRoots: [{ name: 'main', path: '.' }],
+  }))
+  const afuera = path.join(os.homedir(), 'afuera', 'nota.md')
+
+  // Las tres formas de redirigir escriben lo mismo, así que las tres tienen que contestar lo mismo.
+  for (const redirect of ['>', '>>', '>|']) {
+    blocked('shell-boundary', { cwd: root, tool_input: { command: `echo x ${redirect} ${afuera}` } },
+      /fuera de las raíces/)
+  }
+
+  // Y la otra mitad: adentro de la raíz sigue pasando, con la misma forma. Sin esto, «bloquea `>|`» se
+  // cumple bloqueando todo comando que lo lleve.
+  assert.doesNotThrow(() => execute('shell-boundary',
+    { cwd: root, tool_input: { command: `echo x >| ${path.join(root, 'nota.md')}` } }))
+})
+
 test('los dos guards de límites responden lo mismo sobre la misma ruta', () => {
   const root = tempRoot('ops-hook-boundary-par-')
   fs.mkdirSync(path.join(root, 'planning'))
