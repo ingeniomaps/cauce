@@ -18,6 +18,16 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Un veredicto se lee de una sola forma, así que las dos cuentas de un registro coinciden.** El registro
+  de una evaluación transcribe la respuesta literal del cargo —es la evidencia de la corrida—, así que su
+  cuerpo puede traer cualquier cosa, incluida una línea con forma de veredicto. La cuenta de la última
+  corrida las tomaba todas y la cuenta compuesta sólo las que cuelgan de un `### <caso>`: dos números
+  distintos sobre el mismo archivo y ninguna forma de saber cuál valía.
+
+  Con un registro de dos casos cuya respuesta citaba un veredicto ajeno, la última corrida decía «2 de 3»
+  sobre una corrida que midió dos y pasó las dos. Ahora un veredicto es un caso con su línea —sin
+  encabezado no hay a qué atribuirlo— y las dos lecturas salen del mismo lugar.
+
 - **Un `agents fork` que se corta a la mitad se retira en vez de quedarse puesto.** Si el copiado fallaba
   —un archivo ilegible, disco lleno— quedaba medio cargo en `agents/`, y lo caro no es perder la copia: es
   dejarla. El catálogo pasa a resolver el slug contra esa copia, así que el intento siguiente ya no dice
