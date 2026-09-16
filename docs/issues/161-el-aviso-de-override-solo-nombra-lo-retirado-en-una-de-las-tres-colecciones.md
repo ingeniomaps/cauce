@@ -1,15 +1,16 @@
 ---
 caso: 161
 titulo: El aviso de override nombra lo que deja de regir sólo en `planning/rules`, y en las otras dos colecciones del sistema calla
-estado: abierto
+estado: resuelto
+resuelto-en: 0.94.0
 prioridad: media
 version-detectada: 0.94.0
 ---
 
 # 161 — El aviso de override calla en dos de las tres colecciones
 
-**🔴 abierto** · detectado en 0.94.0 · prioridad **media** — sobrescribir un ADR o una business rule del
-sistema retira lo que ese archivo definía y el aviso no lo dice
+**🟢 resuelto en 0.94.0** · detectado en 0.94.0 · prioridad **media** — reproducirlo mostró que no hay
+defecto: en esas dos colecciones el archivo es la unidad, así que no queda nada retirado que nombrar
 
 ## Resumen
 
@@ -79,3 +80,43 @@ dice porque es de dónde vino.
 
 - **007** — el override retira en silencio; cerró el aviso para `planning/rules`, y éste es el resto.
 - **160** — el override se lleva puesto lo que nadie reemplazó; el mismo mecanismo, otra arista.
+
+## Cierre
+
+**Resuelto en 0.94.0, y al revés: no había defecto.** Reproducirlo era el primer paso del recorrido y es
+lo que lo dio vuelta.
+
+- **La reproducción — hecha, y contesta el caso.** Sobre un banco `suelto`, copiando
+  `business-rules/system/BR-OPS-001-una-sola-tarea-activa.md` a la carpeta del proyecto, `check` dice:
+
+  ```
+  planning/business-rules/BR-OPS-001-una-sola-tarea-activa.md sobrescribe
+  BR-OPS-001-una-sola-tarea-activa.md (override explícito)
+  ```
+
+  No nombra nada retirado, y es correcto: **no se retira nada**.
+
+- **La premisa del caso era falsa, y es una diferencia de forma entre las colecciones.** En
+  `planning/rules/` un archivo define **muchos** ids —`## R1`, `## R2`…—, así que reemplazarlo retira los
+  que el propio no redefine, y por eso `retiredByOverride` existe. En `adr/` y `business-rules/` **el
+  archivo es la unidad**: el id vive en el nombre —`BR-OPS-001-…md`, `ADR-NNN-…md`— y adentro no hay un
+  segundo id escondido. Tu archivo reemplaza exactamente esa regla, que sigue definida por el tuyo.
+
+- **O sea que el ternario de `validate.js:165` no es un olvido ni un límite sin mirar: es correcto.** El
+  caso lo leyó como alcance faltante porque comparó dos colecciones que no tienen la misma forma.
+
+- **El tradeoff que el caso planteaba —«decir en el aviso que no se calcula»— se decide que no**, y con
+  la razón que la reproducción da: no hay nada que no se esté calculando. Agregar esa aclaración sería
+  explicar una ausencia que no existe, y un aviso que habla de más se lee peor que uno que calla.
+
+### Qué se corrió
+
+- La reproducción de arriba, sobre un banco recreado con `--force`, con la salida real pegada.
+- El contraste de la forma de cada colección: `ruleIds` (`structure.js:87`) busca `^##\s+([A-Z]\d+)`, que
+  es lo que sólo existe en `rules/`; los ids de las otras dos están en el nombre del archivo, comprobado
+  en `business-rules/README.md:29-30` y en el molde de ADR.
+- `npm run ci` exit 0.
+
+**Lo que el caso deja como saldo** es el recordatorio de por qué el recorrido empieza reproduciendo: se
+escribió con las dos citas del fuente abiertas y contrastadas, y aun así la conclusión era incorrecta.
+Leer bien dos líneas no dice qué hace el sistema.
