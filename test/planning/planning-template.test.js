@@ -193,6 +193,28 @@ test('R8 dice qué hacer con el cambio que este trabajo no produjo', () => {
   }
 })
 
+// Se afirma por ejes y no por redacción, igual que las pasadas de acá arriba.
+//
+// Lo propio de éste es que la regla tiene dos bordes y sin los dos se vuelve su propio opuesto: sin la
+// condición de borrado, deprecar es no quitar nunca; sin «lo que nadie llama se borra», es deprecar
+// todo. R9 ya decía cómo se prueba una quita y nunca cuándo se puede hacer.
+test('R9 dice cuándo se puede quitar lo que está en uso', () => {
+  const raiz = path.resolve(__dirname, '..', '..')
+  const commits = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'commits.md'), 'utf8')
+  const r9 = commits.split(/^##\s+/m).find((parte) => /^R9\b/.test(parte))
+  assert.ok(r9, 'R9 existe en commits.md')
+
+  for (const [eje, patron] of [
+    ['lo que está en uso se depreca, no se corta', /está en uso no se corta: se depreca/],
+    ['la marca dice qué lo reemplaza', /qué lo reemplaza/],
+    ['y qué condición permite borrarlo', /qué\s*\n?\s*condición permite borrarlo/],
+    ['sin eso queda para siempre', /código muerto con un cartel puesto/],
+    ['y lo que nadie llama se borra', /Lo que no llama nadie es otra cosa y se borra/],
+  ]) {
+    assert.match(r9, patron, `R9 perdió el eje: ${eje}`)
+  }
+})
+
 test('el vocabulario de lanes tiene un dueño y las copias no se despegan', () => {
   const P = require('../../engine/planning/parser')
   assert.deepEqual(P.LANES, ['express', 'directo', 'lite', 'full'], 'en orden de ceremonia creciente')

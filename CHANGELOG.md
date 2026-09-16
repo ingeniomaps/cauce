@@ -44,6 +44,15 @@ diseño — eso vive en el commit y en el código.
     corrida arranca, lee todo el estado y recién ahí muere. Pasó dos veces el mismo día, a 42k tokens por
     vez. Es lo que el WIP de Cauce ya hace bien con `status: IDLE`.
 
+- **R9 dice cuándo se puede quitar lo que está en uso.** Exigía probar la ausencia de lo quitado y nunca
+  decía cuándo se puede quitar. Ahora: lo que está en uso no se corta, se depreca, y la marca dice las
+  dos cosas que la vuelven una salida y no una etiqueta — qué lo reemplaza, y qué condición permite
+  borrarlo. Sin la primera, quien lo usa no sabe a dónde ir; sin la segunda, el deprecado es código
+  muerto con un cartel puesto y se queda para siempre.
+
+  Y lo que no llama nadie es otra cosa: se borra. Cortar de golpe rompe a un consumidor que nadie miró;
+  deprecar lo que nadie usa cuesta mantener dos caminos para nadie.
+
 - **R8 dice qué hacer con el cambio que tu trabajo no produjo.** En un árbol pueden aparecer archivos
   que dejó otra sesión, otro agente, la persona antes de empezar o una herramienta que corrió sola. Van
   en su propio commit con un mensaje que diga lo que son, o se dejan sin commitear y se avisa — nunca
@@ -101,7 +110,7 @@ diseño — eso vive en el commit y en el código.
   poder pedir algo que ninguna mutación puede tocar. Si no hay nada que romper, no había propiedad que
   cuidar, y eso se ve al redactarla en vez de al final de la vuelta.
 
-  **Lo que cuesta:** el bloque de reglas que cada agente carga al arrancar pasa de **39,1 a 50,2 KB**.
+  **Lo que cuesta:** el bloque de reglas que cada agente carga al arrancar pasa de **39,1 a 50,7 KB**.
   Está medido, no estimado, y el umbral del aviso de `check` **no se movió**: sigue en 64 KB, porque lo
   que mide es cuánto agregaste vos, y subirlo para hacerle lugar al piso apagaría justamente eso. Quedan
   ~18 KB de margen antes de que el aviso hable.
