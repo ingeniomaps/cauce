@@ -661,6 +661,18 @@ while (rounds++ < MAX_TASKS) {
           return stop('split-not-applied', `se pidió reemplazar ${task.id} en ${BACKLOG} por sus `
             + 'subtareas y la cola sigue ofreciéndola: la escritura no ocurrió como se pidió.')
         }
+        // La tarea partida ya no existe, así que su reclamo no reserva nada: lo único que hace es dejar
+        // al runner ocupado por un slug que no está ni en la cola ni en lo hecho. Ahí el Claim de la
+        // primera subtarea se niega —«este runner ya tiene …»— y la corrida entera para con
+        // `claim-stuck` sin construir nada. El reclamo lo puso esta corrida; soltarlo también le toca.
+        //
+        // Va **después** de la guarda de arriba y no antes de leer el contexto: si el reemplazo no
+        // ocurrió, la tarea sigue viva y su reclamo tiene que seguir puesto (caso 163).
+        await write(
+          `Corré "node tools/ops.js release ${P} ${task.id}" desde ${ROOT}: quedó partida y su reserva `
+          + 'ya no aplica. No escribas ningún archivo vos: lo escribe el comando.',
+          { label: `release:${task.id}` },
+        )
         log(`${task.id} quedó partida: la corrida sigue con ${nextUp(planning)}`)
         continue
       }

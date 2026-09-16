@@ -84,6 +84,31 @@ test('cambiar de tarea a mitad de corrida se dice, en las dos vueltas que lo hac
     `la partición no dijo con qué sigue: ${JSON.stringify(partida.said)}`)
 })
 
+// Por qué una tarea partida tiene que soltar su reserva está en la rama que la parte
+// (automatization/workflows/autobuild.js). Lo que se fija acá son las dos cosas que ahí no se ven: que
+// suelta **la partida** y no una subtarea —`T-1a` contiene a `T-1`, así que la aserción va por palabra
+// entera—, y que lo hace después del reemplazo. La mitad de ausencia vive en la prueba de
+// `split-not-applied`, que es donde el reemplazo no ocurre (caso 163).
+test('una tarea partida suelta su reclamo antes de seguir', async () => {
+  const base = baseScript()[KEY.context]
+  const otra = { ...base, slug: 'T-2', claimed: true }
+  const vacio = { ...base, hasTask: false, queued: 0 }
+
+  const { prompts, asked } = await runFlow(
+    { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
+    { contexts: [{ ...base, claimed: true }, otra, vacio, vacio] },
+  )
+
+  const soltar = prompts.find((one) => one.key.startsWith('Decompose|') && /\brelease\b/.test(one.prompt))
+  assert.ok(soltar, `la partición no soltó el reclamo: ${JSON.stringify(asked)}`)
+  assert.match(soltar.prompt, /\bT-1\b/, 'y suelta la tarea partida, no otra')
+
+  // El orden se compara sobre `asked` y no sobre el fuente: las dos llamadas se leen seguidas en el
+  // archivo y eso no dice cuál corrió primero si una queda dentro de una rama que no se tomó.
+  assert.ok(asked.indexOf('Decompose|split') < asked.indexOf(soltar.key),
+    `soltó antes de reemplazar el BACKLOG: ${JSON.stringify(asked)}`)
+})
+
 // Y la tercera lectura posible del mismo slug: la reserva **es nuestra** y quien la pidió contestó que
 // no. Ahí frenar sería tirar una corrida por un error de reporte, y el estado lo desmiente — comprobado
 // contra el motor: `context` devuelve `claimed: true` para el runner que reclamó, y otro slug para el que
@@ -104,10 +129,16 @@ test('un reclamo mal reportado no frena si el estado dice que la tarea es nuestr
 // que un corte escrito sobre ella pasaría en verde sin comprobar nada; el porqué está en el recorrido.
 test('si el BACKLOG no cambió tras partir la tarea, el recorrido para', async () => {
   const grande = { ...baseScript()[KEY.context], claimed: true }
-  const { result } = await runFlow(
+  const { result, prompts } = await runFlow(
     { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
     { contexts: [grande, grande, grande] },
   )
   assert.equal(result.reason, 'split-not-applied', `no frenó: ${JSON.stringify(result).slice(0, 160)}`)
   assert.match(result.detail, /la escritura no ocurrió como se pidió/)
+
+  // Y no suelta el reclamo: la tarea sigue viva, así que su reserva sigue siendo la correcta. Es la
+  // mitad de ausencia del caso 163 — soltar antes de comprobar que el reemplazo ocurrió deja la tarea
+  // en la cola y sin reservar, que se lee igual de bien y es el estado contrario al que hace falta.
+  assert.deepEqual(prompts.filter((one) => /\brelease\b/.test(one.prompt)).map((one) => one.key), [],
+    'soltó una reserva sobre una tarea que sigue en la cola')
 })

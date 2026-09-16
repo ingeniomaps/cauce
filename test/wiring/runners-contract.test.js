@@ -230,5 +230,10 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   }
   // El número exacto del 2026-09-14, clasificado a mano una por una. Se mueve al agregar un recorrido o
   // una consigna, y entonces toca clasificar las nuevas antes de actualizarlo.
-  assert.equal(hits, 52, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 53 desde el 2026-09-16: la consigna que suelta la reserva de una tarea partida nombra
+  // `tools/ops.js release`, que es la misma familia —y la misma forma literal— que el `tools/ops.js
+  // claim` que la fase Claim ya dictaba trescientas líneas antes. Un comando que el recorrido le dicta a
+  // un agente para que lo corra desde la raíz, no una ruta que el guard tenga que juzgar (caso 163).
+  assert.equal(hits, 53, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })
