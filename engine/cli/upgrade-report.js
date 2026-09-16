@@ -26,7 +26,7 @@ function adviceFor(changed) {
   const advice = []
   if (ruleFiles.length) {
     advice.push(
-      'Las ruleFiles y decisiones bajo system/ son del toolkit. Para cambiar una, escribí la tuya al\n'
+      'Las reglas y decisiones bajo system/ son del toolkit. Para cambiar una, escribí la tuya al\n'
       + 'lado con el mismo ID: el proyecto manda y `check` lo reporta como override explícito.',
     )
   }

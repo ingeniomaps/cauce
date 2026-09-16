@@ -47,6 +47,14 @@ test('el consejo de upgrade corresponde a quién posee cada archivo', () => {
     assert.match(todas, parte)
   }
   assert.equal(adviceFor([]), '')
+
+  // Y lo que se lee está en español entero: el consejo de las reglas decía «Las ruleFiles y decisiones
+  // bajo system/», que es el nombre de una variable del motor metido en una frase. Se comprueba por la
+  // forma y no por la palabra, porque lo que se cuela es siempre un identificador y nunca el mismo.
+  const todo = adviceFor(['planning/rules/system/process.md', 'automatization/hooks/guard-verify.sh',
+    'planning/PROTOCOL.md', 'AGENTS.md'])
+  const camel = todo.match(/\b[a-z]+[A-Z][a-z]+\b/g) || []
+  assert.deepEqual(camel, [], 'ningún identificador del motor en la prosa que lee una persona')
 })
 
 // `--check` mira y cuenta, y devuelve el código en vez de cortar el proceso, así que sus tres caminos
