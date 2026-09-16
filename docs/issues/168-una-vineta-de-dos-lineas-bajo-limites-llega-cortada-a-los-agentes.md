@@ -1,15 +1,16 @@
 ---
 caso: 168
 titulo: Una viñeta de dos líneas bajo `### Límites` llega cortada a los agentes, y su continuación se reporta como párrafo perdido
-estado: abierto
+estado: resuelto
+resuelto-en: 0.95.0
 prioridad: media
 version-detectada: 0.94.0
 ---
 
 # 168 — El camino declarado sólo funciona si el límite entra en una línea, y nada lo dice
 
-**🔴 abierto** · detectado en 0.94.0 · prioridad **media** — el límite viaja truncado a mitad de frase y el
-aviso manda a hacer lo que ya se hizo
+**🟢 resuelto en 0.95.0** · detectado en 0.94.0 · prioridad **media** — una viñeta es la viñeta entera:
+el límite viaja completo y el aviso deja de reclamar su propia continuación
 
 ## Resumen
 
@@ -154,3 +155,54 @@ Consultado: `ops contract . --json` y `ops check planning` sobre `roax-ops` con 
 - **157** — el caso que trajo el camino declarado. Éste es su borde: declarar funciona, pero sólo para un
   límite que entre en una línea.
 - **159** — el descuento por línea de `warnings()`. Es correcto y es la mitad de esta causa.
+
+## Cierre
+
+**Resuelto en 0.95.0.** El caso estaba bien de punta a punta: las dos citas de `contract.js` se abrieron
+contra el fuente y son exactas, y la reproducción se corrió tal cual está escrita — el banco mínimo con
+esas dos viñetas devuelve el primer límite terminando en «pedidos o», palabra por palabra como lo predice.
+
+Recorriendo lo que enumeró:
+
+- **«Lo que llega a `limits` es sólo la primera línea» → se hizo.** `marked()` pliega la viñeta: una
+  continuación se une a la que tiene arriba. Sobre el mismo banco, el límite ahora llega hasta «no las hace
+  un runner, aunque la tarea esté promovida.»
+- **«La continuación sobrevive al filtro de `warnings()`» → se hizo.** `marked()` devuelve además las
+  líneas **sin plegar**, y el descuento por línea del 159 compara contra ellas. Sobre el mismo banco el
+  aviso pasó de nombrar un párrafo a no emitir ninguno.
+- **El `reduce` del «Fix propuesto» → se escribió distinto, y la diferencia importa.** Su diff pliega y
+  nada más, así que arregla la primera mitad y deja la segunda: sin las líneas crudas, `warnings` sigue sin
+  reconocer la continuación. Está comprobado — es una de las mutaciones de abajo y se pone en rojo.
+- **«Plegar une con un espacio» → sigue siendo así y es lo correcto para este campo.** Lo que el caso no
+  preveía es el borde de al lado, que apareció escribiéndolo.
+- **La otra salida que el caso descartaba —documentar que una viñeta va en una línea— no se tomó**, por la
+  razón que él mismo daba: obliga a pasarse del ancho en el único lugar donde el toolkit no reformatea.
+
+Y lo que el caso no preveía, que salió de escribir la prueba:
+
+- **Una línea en blanco tiene que cerrar la viñeta**, y el plegado sin eso es peor que el defecto. La
+  primera versión de este arreglo pegaba al último límite la prosa suelta que viniera después **y además
+  la contaba como declarada**, así que el aviso dejaba de nombrarla: un párrafo que nadie declaró pasaba a
+  regir sobre cada subagente, en silencio. Lo atrapó la prueba escrita para esa rama, no la revisión — el
+  arreglo se veía bien leído.
+
+### Qué se corrió
+
+- **La reproducción del caso, tal como está escrita**: banco mínimo con los cuatro archivos, `ops contract
+  --json` antes y después. Antes, «…productos, pedidos o»; después, la viñeta entera. Y `warnings()` sobre
+  el mismo banco: antes `1 párrafo(s) … "configuración— no las hace un runner…"`, después ninguno.
+- **Cuatro mutaciones, las cuatro en rojo**: no plegar —el defecto—; comparar `warnings` contra las
+  viñetas plegadas en vez de las líneas —que es el diff del propio caso—; no cortar en la línea en blanco;
+  y contar toda línea no vacía como declarada, que es el error que cometí y la prueba encontró.
+- **El piso de cobertura de `contract.js` subió de 57 a 83 en branches**, y se comprobó que el número
+  nuevo es real: quitando las dos pruebas de este caso, mide 81 y la puerta se pone roja. Eso es lo que la
+  puerta pedía al exigir «un número comprobado —con qué pérdida cae—».
+- `npm run ci` exit 0: **903 pruebas**, 0 en rojo, 0 salteadas.
+
+### Lo que no se midió
+
+La segunda instancia que el caso trae —roax, con 26 límites y 11 cortados— no se volvió a medir: esa
+instancia no está acá. Lo que se comprobó es el mecanismo que produce esos 11, sobre el banco mínimo. Su
+observación de que **el aviso subestima el daño** —11 límites cortados reportados como 1 párrafo, porque
+las continuaciones de viñetas seguidas quedan pegadas y `paragraphs()` las junta— queda sin comprobar acá
+y deja de importar por el otro lado: con el plegado no hay continuaciones que juntar.

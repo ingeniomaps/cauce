@@ -18,6 +18,20 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Un límite escrito en dos líneas ya viaja entero a los agentes.** Una viñeta bajo `### Límites` se
+  recorría línea por línea, así que de un límite que no entraba en el ancho del archivo —que es como se
+  escribe cualquiera de verdad— llegaba **sólo la primera línea**, cortada a mitad de frase. Y lo que se
+  pierde ahí suele ser lo que el límite decide: «…crear, editar o borrar productos, pedidos o» sin el «no
+  las hace un runner» que venía abajo.
+
+  La continuación, además, volvía por el otro lado: no coincidía con ninguna viñeta declarada y `check` la
+  reportaba como un párrafo «que no llega a los agentes», citando media frase tuya. O sea que el proyecto
+  hacía lo que el aviso pedía, el aviso seguía sonando, y el límite que sí viajaba era el mutilado.
+
+  Si escribiste tus límites en una sola línea para que el aviso bajara a cero, ya podés volver a partirlos
+  donde corresponda. Una línea en blanco cierra la viñeta, así que la prosa que venga después sigue sin
+  contar como límite — y sigue avisándose.
+
 - **Una notificación de tarea de fondo ya no borra del chat a la persona que está mirando.** Cuando un
   guard frena algo, el bloqueo ofrece dos salidas: contestar «dale» —corto, y es lo que la persona ya está
   haciendo— o pegar líneas a mano en `planning/.ops-approval`. La primera sólo se ofrecía si el registro
