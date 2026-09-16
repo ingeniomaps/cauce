@@ -53,16 +53,6 @@ diseño — eso vive en el commit y en el código.
   Y lo que no llama nadie es otra cosa: se borra. Cortar de golpe rompe a un consumidor que nadie miró;
   deprecar lo que nadie usa cuesta mantener dos caminos para nadie.
 
-- **R8 dice qué hacer con el cambio que tu trabajo no produjo.** En un árbol pueden aparecer archivos
-  que dejó otra sesión, otro agente, la persona antes de empezar o una herramienta que corrió sola. Van
-  en su propio commit con un mensaje que diga lo que son, o se dejan sin commitear y se avisa — nunca
-  mezclados con lo tuyo.
-
-  Stagear por ruta explícita lo evita casi siempre y no siempre: la ruta ajena puede ser justo una de
-  las que tocaste. Por eso es una lectura del diff y no una precaución al stagear. Y el daño no se ve al
-  revisar: el commit queda atribuido a una tarea que no lo produjo, y quien lo revierta mañana se lleva
-  puesto algo que nadie relacionó con eso.
-
 - **R10 dice a dónde va lo que se publica, no sólo quién lo autoriza.** La autorización decía si se
   publica y nunca dónde. Ahora: lo que se publica va al repositorio en el que estás trabajando, y si ese
   remoto es un fork, va al fork — con la rama cortada de la suya, porque una rama cortada del principal
@@ -79,14 +69,6 @@ diseño — eso vive en el commit y en el código.
   commit: el título y el cuerpo del pull request, y los comentarios que se dejen ahí. Y casi nunca es
   algo que alguien tipea — lo agrega la herramienta sola, al final del texto que escribiste—, así que
   cumplirla es revisar la salida antes de publicarla, no acordarse de no escribirla.
-
-- **R3 acota qué bloquea: lo que este cambio tocó.** Un hallazgo en un archivo que el cambio no abrió es
-  deuda que ya estaba — se registra como cualquier hallazgo y no frena nada. Adoptar una exigencia sobre
-  código escrito antes que ella la convierte en una cuenta que paga quien pasaba por ahí, y lo que se
-  apaga no es esa exigencia sino la puerta entera, con la parte que sí atrapaba algo.
-
-  Y la mitad que evita que esto sea una escapatoria: **«ya estaba así» no vale para una línea que este
-  cambio escribió**. La deuda preexistente exime al archivo, nunca a la línea.
 
 - **R17 dice qué cuenta como una condición, que es lo que volvía incontable su umbral.** La barra son
   cinco condiciones de aceptación y nunca decía qué es una. Ahora: una condición es un resultado que se
@@ -110,7 +92,7 @@ diseño — eso vive en el commit y en el código.
   poder pedir algo que ninguna mutación puede tocar. Si no hay nada que romper, no había propiedad que
   cuidar, y eso se ve al redactarla en vez de al final de la vuelta.
 
-  **Lo que cuesta:** el bloque de reglas que cada agente carga al arrancar pasa de **39,1 a 50,7 KB**.
+  **Lo que cuesta:** el bloque de reglas que cada agente carga al arrancar pasa de **39,1 a 49,1 KB**.
   Está medido, no estimado, y el umbral del aviso de `check` **no se movió**: sigue en 64 KB, porque lo
   que mide es cuánto agregaste vos, y subirlo para hacerle lugar al piso apagaría justamente eso. Quedan
   ~18 KB de margen antes de que el aviso hable.

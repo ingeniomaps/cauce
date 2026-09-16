@@ -20,17 +20,6 @@ Y dentro del veredicto, el hallazgo que impide entregar se separa del que no. Ma
 mejora opinable cuesta una vuelta y un riesgo que nadie pidió; no anotarla la pierde. Se corrige lo primero
 y se registra lo segundo.
 
-**Lo que bloquea es lo que este cambio tocó.** Un hallazgo en un archivo que el cambio no abrió es deuda
-que ya estaba: se registra como cualquier otro hallazgo y no frena nada. Adoptar una exigencia sobre
-código que se escribió antes de ella la convierte en una cuenta que paga quien pasaba por ahí, y lo que
-se apaga no es esa exigencia sino la puerta entera — con ella, la parte que sí atrapaba algo. La empresa
-donde se midió esto tenía la comprobación desactivada en cinco servicios, que es cómo se ve una
-exigencia adoptada de golpe seis meses después.
-
-**Y «ya estaba así» no vale para una línea que este cambio escribió.** Ahí es donde una excepción de este
-tipo se vuelve una escapatoria: el archivo tenía el defecto, se lo toca, y lo nuevo entra con la misma
-forma amparado en lo viejo. La deuda preexistente exime al archivo, nunca a la línea.
-
 ## R4 — Sincronización de estados
 
 El estado se mueve de forma atómica entre contratos; nunca se copia para representar progreso.
