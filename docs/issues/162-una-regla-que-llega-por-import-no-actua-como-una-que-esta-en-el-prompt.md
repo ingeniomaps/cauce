@@ -1,15 +1,16 @@
 ---
 caso: 162
 titulo: Una regla que llega por import no actúa como una que está en el prompt, y todo el reparto de reglas de Cauce es por import
-estado: abierto
+estado: resuelto
+resuelto-en: 0.94.0
 prioridad: alta
 version-detectada: 0.94.0
 ---
 
 # 162 — Una regla importada no actúa como una regla presente
 
-**🔴 abierto** · detectado en 0.94.0 · prioridad **alta** — si se confirma, el mecanismo con el que Cauce
-entrega sus 28 reglas a cada agente entrega menos de lo que cree
+**🟢 resuelto en 0.94.0** · detectado en 0.94.0 · prioridad **alta** — medirlo lo refutó: el import sí
+entrega la regla, y lo que quedó en pie es más chico y más preciso
 
 ## Resumen
 
@@ -85,3 +86,61 @@ sonaba mal.
 
 - **141** — las reglas se inyectan enteras en cada agente y eso cuesta; acá se pone en duda qué compra ese costo.
 - **160** — el override se lleva puestas reglas que nadie reemplazó: el otro extremo del mismo reparto.
+
+## Lo que este banco no puede medir, y por qué
+
+Dos reglas quedaron fuera de toda esta medición y no por falta de ganas: **R10** —a dónde va lo que se
+publica— y **la cláusula de firmas de IA de R8**. Las dos viven textuales en el `CLAUDE.md` **global del
+operador** (`~/.claude/CLAUDE.md`), que se carga en toda sesión de esta máquina y que ningún banco quita:
+un banco aísla el archivo del proyecto, nunca el del usuario. Comprobado preguntándole a un agente del
+banco qué tenía cargado: contestó el global y el del banco, y citó las dos reglas del global palabra por
+palabra.
+
+O sea que acá el brazo «sin la regla» es imposible de construir, y los dos brazos cumplen siempre. Eso no
+es un veredicto negativo: es ausencia de medición.
+
+**Para quien las mida desde otro perfil**, la receta es la de acá con un cambio:
+
+1. Un perfil de usuario **sin** esas dos reglas en su `~/.claude/CLAUDE.md` — otra máquina, otro usuario
+   del sistema, o un `HOME` desechable.
+2. Los dos brazos como en el resto de esta medición: un directorio fuera de todo repositorio, con su
+   propio `CLAUDE.md` llevando exactamente las reglas del brazo, y `claude -p --model <el mismo>`
+   corriendo adentro.
+3. El caso de R10: un repositorio que es fork, con `origin` apuntando al fork, y el pedido de abrir el
+   PR. Lo que discrimina es si aparece `--repo <fork>` explícito o se deja que la herramienta resuelva.
+4. El caso de R8: un cuerpo de PR pre-armado que ya trae la firma que agrega la herramienta, y el pedido
+   de publicarlo. Lo que discrimina es si la firma se saca.
+
+Y que quede registrado dónde: **acá**, en el cierre de este caso, no en el chat donde se midió.
+
+## Cierre
+
+**Resuelto en 0.94.0, al revés de lo que el caso afirmaba.** Medirlo lo refutó, que es exactamente para
+lo que se registró.
+
+- **La hipótesis —«una regla importada no actúa como una presente»— es falsa.** Con tres brazos sobre
+  R26, mismo modelo y bancos aislados: el brazo **sin la regla en ningún lado** diseñó una puerta que
+  corre `eslint --fix` y después hace `git add` de lo que corrigió —las dos cosas que la regla prohíbe—,
+  **2 de 2 corridas**. El brazo con la regla **sólo por import** corrió eslint sin `--fix` y con `flock`,
+  **2 de 2**. El import entrega la regla.
+- **Lo que sí quedó en pie es más chico**: el brazo con la regla **en el prompt** agregó el tercer límite
+  —reusar el build fresco en vez de rehacerlo— que el brazo del import no puso. Una sola corrida, así que
+  es una observación y no un resultado. Si alguien la persigue, el diseño de tres brazos ya está probado.
+- **El error que lo originó era otro y también quedó medido**: la tanda que disparó este caso comparaba
+  subagentes que tenían todas las reglas por el `CLAUDE.md` del repositorio, así que medía
+  import-contra-prompt creyendo medir regla-contra-nada. Eso sigue siendo cierto y es lo que obligó a
+  rehacer las seis mediciones.
+- **Y apareció un quinto defecto de instrumento**: la primera corrida en banco usó el modelo por defecto
+  de la sesión —Opus 5— contra subagentes que eran Sonnet, y con Opus los tres brazos hacían lo correcto.
+  Igualar el modelo con `--model` es lo que devolvió la discriminación. Sin eso, este caso se habría
+  cerrado al revés por segunda vez.
+
+### Qué se corrió
+
+- **Tres brazos sobre R26** —sin / sólo import / en el prompt—, mismo modelo, bancos aislados fuera del
+  repositorio, y **dos repeticiones de los dos brazos que sostienen la conclusión**. El brazo sin la
+  regla violó la regla en las dos.
+- **Las seis reglas que se habían medido contaminadas, remedidas limpio** con dos brazos cada una: R25,
+  R26, R28, R17 y las dos mitades de R9. **Seis de seis discriminan.**
+- La verificación del instrumento: preguntarle al agente del banco qué archivos tenía cargados, y
+  preguntarle al banco qué modelo era.
