@@ -119,7 +119,10 @@ function orphanCredentials(root) {
     path.join('planning', 'HUMAN_ACTIONS.md')]
     .map((file) => { try { return fs.readFileSync(path.join(root, file), 'utf8') } catch { return '' } })
     .join('\n')
-  if (!contracts) return []
+  // Acá había una salida temprana por `contracts` vacío que no corría nunca —pegar tres cadenas con
+  // `\n` deja `"\n\n"` aunque las tres fallen—, y no se la repone: una credencial que ningún documento
+  // nombra está huérfana igual, y apagar el aviso porque el documento que debía nombrarla está vacío lo
+  // calla justo en la instancia que más lo necesita.
   const orphans = []
   const cut = []
   for (const service of inventory(root)) {
