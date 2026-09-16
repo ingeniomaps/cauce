@@ -352,8 +352,6 @@ function prepareProposal(root, agent, now = new Date(), period = '', kind = 'age
   const reportDir = path.join(target, 'learning', 'reports')
   const reports = pendingReports(target, sealing)
   const red = verdictFindings(root, target)
-  if (!reports.length && !red.findings.length) return { file: '', created: false, reports: 0 }
-
   const reportPaths = reports.map((name) => path.join(reportDir, name))
   // La misma regla que la rama de recorridos, por el mismo motivo: un documento que no puede decir qué
   // corregir no cambia ningún contrato y cuesta igual la firma humana que uno que sí. Un informe puede
