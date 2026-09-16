@@ -112,4 +112,14 @@ test('una propuesta se rechaza campo por campo', () => {
   assert.deepEqual(errors({ state: 'approved', service: 'app', estimateHours: 3 }), [])
   assert.deepEqual(errors({ state: 'approved', service: 'app', estimateHours: 8, justification: 'x' }), [])
   assert.deepEqual(errors({ type: 'Story', parent: 'DEMO-1' }), [])
+
+  // Cuarenta horas y no ocho: el tope que se está midiendo es el default, y un número apenas por encima
+  // de cuatro no distingue «cayó al default» de «quedó en el declarado». El porqué del `||` que lo
+  // sostiene está donde se lee la configuración (engine/integrations/proposals.js).
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ runner: {} }))
+  assert.match(
+    errors({ state: 'approved', service: 'app', estimateHours: 40 }).join('\n'),
+    /supera 4h; debe dividirse/,
+    'sin maxTaskHours declarado el tope cae al default, no desaparece',
+  )
 })

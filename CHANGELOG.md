@@ -18,6 +18,18 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **El tope de horas de una propuesta deja de desaparecer cuando la configuración no lo declara.** La
+  validación de propuestas lee `runner.maxTaskHours` de `ops.config.json` y tenía un default de cuatro
+  horas para cuando no se puede leer. Ese default sólo cubría el archivo ilegible: un `runner` sin el
+  campo no lanza nada, así que el tope quedaba en `undefined` y la comparación pasaba a ser falsa
+  siempre. O sea que el límite no se aflojaba: se iba entero, y en silencio.
+
+  Se nota poco a propósito de lo que es — lo que deja de pasar es un **rechazo**—, así que una propuesta
+  de cuarenta horas viajaba a Jira sin que nada la mirara. Verificado sobre una configuración con
+  `runner: {}`: antes no salía ni un error, ahora sale «supera 4h; debe dividirse o justificarlo».
+
+  Si tu `ops.config.json` declara `maxTaskHours`, nada cambia — `check` ya lo exigía mayor que cero.
+
 - **`rm -r` sobre la raíz o el home se frena también entrecomillado.** La regla reconocía el destino sólo
   desnudo: `rm -rf /` bloqueaba y `rm -rf "/"`, `rm -rf "$HOME"`, `rm -rf ${HOME}`, `rm -rf $HOME/` y
   `rm -rf -- /` pasaban. La comilla es lo que más importa — citar una variable es la forma *correcta* de

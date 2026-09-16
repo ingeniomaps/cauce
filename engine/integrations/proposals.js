@@ -40,7 +40,11 @@ function validate(root, provider, workspaces = []) {
   let maxHours = 4
   try {
     const config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
-    maxHours = config.runner.maxTaskHours
+    // `|| maxHours` y no a secas: un `runner` sin `maxTaskHours` no lanza, así que el `catch` no lo ve
+    // y el tope quedaba en `undefined`. `estimate > undefined` es falso siempre, o sea que el límite
+    // desaparecía entero y en silencio — el modo de fallo que menos se nota, porque lo que deja de
+    // pasar es un rechazo.
+    maxHours = config.runner.maxTaskHours || maxHours
   } catch { /* reported by the main validator */ }
   for (const proposal of read(root, provider)) {
     const at = `integrations/${provider}/proposed/${proposal.file}`
