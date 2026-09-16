@@ -181,9 +181,9 @@ test('el banco es del toolkit; una instancia recibe la salida que le corresponde
   assert.match(result.stderr, /evaluate product-manager/, 'y nombra la salida real')
 })
 
-// El banco es del toolkit y en una instancia se niega, que es correcto. Lo que no era correcto es qué
-// recomendaba: adoptar el cargo. El guard mira el modo de la instancia y nada más, así que quien
-// seguía el consejo forkeaba, repetía el comando y recibía el mismo mensaje diciéndole que forkeara.
+// Por qué el consejo tiene que ser una salida y no una condición lo explica `cli/catalog.js`, donde se
+// redactó. Acá se fija que el mensaje **no** nombre adoptar: un consejo que devuelve a quien lo sigue al
+// mismo bloqueo se lee como un mensaje correcto, y sólo se nota intentándolo dos veces.
 //
 // La asimetría que lo delató: `learn` sí cambia de comportamiento con el fork —falla antes, escribe el
 // informe después— y por eso su mensaje puede hablar de adoptar. Éste no.

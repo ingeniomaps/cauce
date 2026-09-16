@@ -66,8 +66,9 @@ test('check exige la fecha, y nombra el DONE.md que quedó en vez de ignorarlo',
   const verde = JSON.parse(run(['check', dir, '--json']).stdout).errors.filter((one) => /alta/.test(one))
   assert.deepEqual(verde, [], 'una entrada completa en su archivo pasa')
 
-  // Sin fecha no hay forma de saber cuál se cerró antes: con un archivo por tarea, el orden dejó de
-  // estar en la posición dentro del archivo y no quedó nada que lo reemplace.
+  // Para qué sirve la fecha está donde se exige, en `contracts.js`. Acá se fija que su ausencia sea un
+  // **error** y no un aviso: una entrada sin fecha se ve completa, así que lo único que la distingue es
+  // que la puerta se niegue a pasarla.
   fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta').replace(/ {2}fecha: .*\n/, ''))
   const sinFecha = JSON.parse(run(['check', dir, '--json']).stdout).errors.filter((one) => /alta/.test(one))
   assert.equal(sinFecha.length, 1, JSON.stringify(sinFecha))

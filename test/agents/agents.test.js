@@ -105,8 +105,7 @@ test('la documentación de agentes no cita rutas del toolkit ni rutas inexistent
     const at = path.relative(REPO, file)
     // `engine/cli/ops.js` sólo existe en el toolkit; estos documentos viajan a cada instancia.
     assert.equal(text.includes('engine/cli/ops.js'), false, `${at} cita el CLI del toolkit`)
-    // La extensión es parte de la ruta: sin ella el patrón cortaba en el punto y comprobaba la
-    // existencia de un archivo sin `.md`, que nunca existe.
+    // Las dos formas de errarle al patrón están en el encabezado de esta suite; acá se ejercen.
     //
     // Y el comienzo se ancla al borde: sin eso, una cita **correcta** de `engine/agents/evaluations.js`
     // matcheaba el trozo `agents/evaluations.js` y se preguntaba por él en la raíz, donde no existe. El

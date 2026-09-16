@@ -117,10 +117,9 @@ test('reinstalar retira un guard que el toolkit entregó y ya no trae', () => {
   assert.equal(anotado.includes(propio), false, 'lo que no pusimos no entra en el registro')
 })
 
-// `AGENTS.md` vive en las dos secciones del manifiesto: es un archivo del sistema y es donde un runner
-// como Codex deja sus instrucciones, entre marcas. `install` anotaba el bloque sólo en la sección de
-// runners, así que `localChanges` —que lee la de archivos— comparaba contra el digest previo al bloque
-// y `upgrade` se detenía acusando a la empresa de una edición que había hecho el comando de al lado.
+// Por qué el archivo se anota en las dos secciones está donde se decide, en `automation/index.js`. Acá se
+// fija el efecto, que es lo único que se ve desde afuera: que `upgrade` **no** acuse a la empresa de una
+// edición que hizo el comando de al lado. Sin este caso, anotarlo en una sola sección pasa en verde.
 test('el bloque que install escribe en AGENTS.md no queda como edición de la empresa', () => {
   const base = tempRoot('cauce-bloque-agents-')
   const target = path.join(base, 'acme')
