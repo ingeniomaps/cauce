@@ -184,9 +184,9 @@ function usage() {
   ops evaluate <agent|flow> [--flow] [--cases [--json]] [--bench [caso]] [--record [AAAA-MM-DD]]
   ops agents list [ops-root] [--own|--system] [--json]
   ops agents fork <cargo> [ops-root]
-  ops flow list
-  ops flow check <flow>
-  ops flow show <flow>`)
+  ops flow list [ops-root]
+  ops flow check <flow> [ops-root]
+  ops flow show <flow> [ops-root]`)
 }
 
 // Un `cli` que no tiene banderas, para reusar un comando desde otro: el `--force` de `init` habla del
@@ -236,7 +236,7 @@ async function run(cli) {
   else if (command === 'automation') W.automation(arg[1], arg[2], arg[3], cli)
   else if (command === 'learn') CAT.learn(arg[1], cli)
   else if (command === 'evaluate') CAT.evaluate(arg[1], arg[2], cli)
-  else if (command === 'flow') CAT.flow(arg[1], arg[2], cli)
+  else if (command === 'flow') CAT.flow(arg[1], arg[2], arg[3], cli)
 }
 
 run(parse(process.argv.slice(2))).catch((error) => fail(error.message))

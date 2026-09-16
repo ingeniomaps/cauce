@@ -18,6 +18,20 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`ops flow list|check|show` acepta la raíz de la instancia, como el resto.** Todos los comandos que leen
+  una instancia la toman como posicional; `flow` la descartaba y resolvía por el directorio actual, así que
+  `ops flow list <raíz>` contestaba sobre otra cosa — y una lista de recorridos se lee igual de bien venga
+  de donde venga. Ahora es `ops flow list [ops-root]`, y con recorrido va después de él.
+
+- **Una lista de cargos o recorridos vacía dice si es porque no hay o porque no se pudo resolver el
+  paquete.** Eran dos hechos distintos con la misma respuesta, y las acciones son opuestas. El aviso sale
+  por `stderr` y sólo cuando la lista viene vacía; el código de salida y el `--json` no cambian, porque
+  ese JSON lo consume el cron del ciclo de aprendizaje.
+
+- **`automation check` nombra un `ops.config.json` ilegible en vez de culpar al motor.** La resolución del
+  paquete cuelga de esa configuración, así que un JSON roto se propagaba como archivos del motor que faltan
+  y el aviso mandaba a correr `npm install` sobre un motor instalado: la acción sugerida no arreglaba nada.
+
 - **El catálogo de cargos y recorridos se encuentra también cuando el paquete vive un nivel arriba.** Es el
   layout que documenta el arranque —`npm install @ingeniomaps/cauce` en la carpeta de la empresa y la
   instancia adentro—, y 0.92.0 lo arregló para el motor y dejó afuera el catálogo. En ese estado `check`
