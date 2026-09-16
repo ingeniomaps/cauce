@@ -67,6 +67,22 @@ test('una variable cuenta como nombrada sólo si aparece entera', () => {
   assert.equal(orphanLine(ops), '', 'nombrada entera, deja de avisarse')
 })
 
+// El aviso tenía una salida temprana que no corría nunca; por qué no se repone está junto al código que
+// la reemplazó (engine/core/onboarding.js). Lo que esto fija es la conducta que la vuelve borrable, y por
+// eso el caso deja los tres contratos en blanco: sobre ese árbol, resucitar la guarda cambia el
+// resultado, así que el verde de acá dice que el aviso sigue saliendo y no que nadie lo mira.
+test('un contrato vacío no apaga el aviso: nadie la nombra igual', () => {
+  const { ops } = instance('cauce-contratos-vacios-', 'embedded', 'DB_PASSWORD=\n')
+  assert.match(orphanLine(ops), /DB_PASSWORD \(api\)/, 'con los contratos como vienen')
+
+  for (const file of [path.join('organization', 'workspace.md'), 'AGENTS.md',
+    path.join('planning', 'HUMAN_ACTIONS.md')]) {
+    const full = path.join(ops, file)
+    if (fs.existsSync(full)) fs.writeFileSync(full, '')
+  }
+  assert.match(orphanLine(ops), /DB_PASSWORD \(api\)/, 'y con los tres vacíos, que es cuando más importa')
+})
+
 // Una regla para los dos: si el aviso tuviera su propia lista, un nombre podría ser credencial para uno y
 // configuración para el otro sin que ninguna prueba de las suyas lo note.
 test('el aviso y secrets check juzgan igual el mismo nombre', () => {

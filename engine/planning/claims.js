@@ -109,7 +109,7 @@ function validate({ claims, milestones, done }) {
   return errors
 }
 
-const days = (from, to) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`))
+const daysBetween = (from, to) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`))
   / 86400000)
 
 // `activity` mapea el slug de una tarea a la fecha del último commit de su rama. Llega de afuera porque
@@ -125,14 +125,14 @@ function warnings({ claims, done, today, activity = new Map() }) {
     }
     if (!DATE.test(claim.started)) continue
     const commit = activity.get(claim.slug) || ''
-    const ultima = commit && commit > claim.started ? commit : claim.started
-    const quieta = days(ultima, today)
-    if (quieta > STALE_DAYS) {
-      const senal = commit
-        ? `último commit hace ${days(commit, today)} días`
+    const lastSeen = commit && commit > claim.started ? commit : claim.started
+    const idleDays = daysBetween(lastSeen, today)
+    if (idleDays > STALE_DAYS) {
+      const signal = commit
+        ? `último commit hace ${daysBetween(commit, today)} días`
         : 'la rama de la tarea no tiene commits'
-      lines.push(`${claim.at}: ${claim.slug} sin avanzar hace ${quieta} días `
-        + `(${claim.owner}, tomada hace ${days(claim.started, today)}; ${senal}); mirá si sigue viva`)
+      lines.push(`${claim.at}: ${claim.slug} sin avanzar hace ${idleDays} días `
+        + `(${claim.owner}, tomada hace ${daysBetween(claim.started, today)}; ${signal}); mirá si sigue viva`)
     }
   }
   // Dos tareas del mismo servicio pueden tocar los mismos archivos, y eso no se puede saber antes de

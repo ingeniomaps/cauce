@@ -15,7 +15,7 @@ const P = require('../planning/parser')
 const ST = require('../planning/state')
 const RC = require('../planning/recurring')
 const A = require('../automation')
-const { fail } = require('./io')
+const { fail, TODAY } = require('./io')
 const { declareEngine, pinEngine, undeclareEngine } = require('./dependency')
 const { adviceFor, previewUpgrade, reportUpgrade } = require('./upgrade-report')
 
@@ -98,7 +98,7 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
     '{{PROJECT_NAME}}': name,
     '{{MODE}}': mode,
     '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
-    ...RC.sinceValues(new Date().toISOString().slice(0, 10)),
+    ...RC.sinceValues(TODAY()),
   }, force, providerNames(), quiet)
   // No se copia `.github/`: `ci.yml` valida el toolkit con `npm run ci` —que una instancia no tiene— y
   // el ciclo de aprendizaje dejó de distribuirse en 0.4.0. Copiar salteando lo que no aplica dejaba
@@ -309,17 +309,17 @@ function upgrade(dir, cli) {
   //
   // El aviso sale en **cada** corrida y no sólo la primera: una instancia con medio molde congelado y
   // sin enterarse es el otro modo de fallo, y es silencioso.
-  const conservados = force ? new Set() : new Set(changed)
-  if (conservados.size) {
-    for (const file of conservados) console.log(`= conservado ${file} (editado localmente)`)
-    console.log(`\n${conservados.size} archivo(s) del molde quedan congelados por tu edición.`)
-    console.log(`${adviceFor([...conservados])}\n`)
+  const keptFiles = force ? new Set() : new Set(changed)
+  if (keptFiles.size) {
+    for (const file of keptFiles) console.log(`= conservado ${file} (editado localmente)`)
+    console.log(`\n${keptFiles.size} archivo(s) del molde quedan congelados por tu edición.`)
+    console.log(`${adviceFor([...keptFiles])}\n`)
     console.log('Para tomar la versión nueva y descartar la tuya, repetí con --force.\n')
   }
   // Un archivo propio que se llama como uno que el paquete empieza a traer (caso 110): se conserva y se
   // dice, igual que una edición local, y `--force` lo reemplaza diciéndolo.
-  const choques = new Set(force ? [] : colliding)
-  for (const file of choques) {
+  const collisions = new Set(force ? [] : colliding)
+  for (const file of collisions) {
     console.log(`= conservado ${file}: ya existía y Cauce no lo entregó, así que el del paquete no se `
       + 'instaló. Renombrá el tuyo y repetí, o repetí con --force para reemplazarlo.')
   }
@@ -345,7 +345,7 @@ function upgrade(dir, cli) {
       '{{PROJECT_NAME}}': config.project || path.basename(root),
       '{{MODE}}': O.mode(root),
       '{{WORKSPACE_PATH}}': O.mode(root) === 'embedded' ? '.' : '..',
-      ...RC.sinceValues(new Date().toISOString().slice(0, 10)),
+      ...RC.sinceValues(TODAY()),
     })) content = content.replaceAll(key, value)
     F.atomicWrite(target, content)
     added.push(relative)
@@ -368,13 +368,13 @@ function upgrade(dir, cli) {
 
   const conservar = (file) => {
     const relative = path.relative(root, file).replace(/\\/g, '/')
-    return conservados.has(relative) || choques.has(relative)
+    return keptFiles.has(relative) || collisions.has(relative)
   }
   for (const relative of [...system, ...O.RUNTIME_PATHS]) {
     const origin = path.join(PROJECT_ROOT, O.sourceOf(relative))
     if (!fs.existsSync(origin)) continue
     const target = path.join(root, relative)
-    if (conservados.has(relative)) continue
+    if (keptFiles.has(relative)) continue
     // Sobrescribe lo que trae el paquete y deja intacto lo demás: un guard propio de la empresa,
     // o un adaptador de runner que el toolkit no conoce, sobreviven a la actualización.
     if (fs.statSync(origin).isDirectory()) copyRuntime(origin, target, false, root, [], conservar)
@@ -389,7 +389,7 @@ function upgrade(dir, cli) {
 
   // Retirar lo que el toolkit ya no distribuye, después de haber actualizado lo que sí.
   const retired = []
-  const pendientes = []
+  const pending = []
   for (const relative of O.RETIRED) {
     const target = path.join(root, relative)
     if (!fs.existsSync(target)) continue
@@ -398,10 +398,10 @@ function upgrade(dir, cli) {
     // también usa para lo suyo, borrar el directorio entero se llevaba puesto contenido que nadie
     // había entregado —un `autobuild.js` propio, los workflows de una empresa— sin confirmación y sin
     // vuelta atrás. Se conserva y se nombra; `--force` es la salida, igual que para una edición local.
-    const contenido = O.RETIRED_COMPARTIDO.includes(relative) && fs.statSync(target).isDirectory()
+    const leftover = O.RETIRED_SHARED.includes(relative) && fs.statSync(target).isDirectory()
       ? O.treeFiles(target)
       : []
-    if (contenido.length && !force) { pendientes.push({ relative, files: contenido }); continue }
+    if (leftover.length && !force) { pending.push({ relative, files: leftover }); continue }
     fs.rmSync(target, { recursive: true, force: true })
     retired.push(relative)
   }
@@ -413,7 +413,7 @@ function upgrade(dir, cli) {
   // conservar **ese** digest: registrar el de disco lo volvería idéntico a lo entregado, dejaría de
   // detectarse como editado y la corrida siguiente lo pisaría sin decir nada. Es el 001 de vuelta por
   // la puerta de atrás, y no se ve mirando el archivo — se ve dos upgrades después.
-  const entregado = { ...record }
+  const delivered = { ...record }
   for (const relative of O.trackedPaths()) {
     if (fs.existsSync(path.join(root, relative))) {
       record = M.record(root, relative, O.deliveredFiles(root, relative), record)
@@ -428,8 +428,8 @@ function upgrade(dir, cli) {
     }
   }
   record = M.recordPaths(root, O.SYSTEM_FILES, record)
-  for (const file of conservados) if (entregado[file]) record[file] = entregado[file]
-  for (const file of choques) delete record[file]
+  for (const file of keptFiles) if (delivered[file]) record[file] = delivered[file]
+  for (const file of collisions) delete record[file]
   // El registro de forks se poda igual que el de archivos: un cargo devuelto al catálogo deja su
   // entrada, y una entrada sin copia sólo puede producir avisos sobre algo que no está.
   const kept = Object.fromEntries(Object.entries(M.readForks(root)).filter(
@@ -447,7 +447,7 @@ function upgrade(dir, cli) {
   // que no ocurrieron (caso 048).
   reportUpgrade({
     root, from, to, system, retired, added, overrides, pinned, droppedBlocks,
-    descartados: force ? changed : [], conservados: [...conservados], pendientes,
+    discarded: force ? changed : [], keptFiles: [...keptFiles], pending,
   })
 }
 

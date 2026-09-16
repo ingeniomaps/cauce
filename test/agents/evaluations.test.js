@@ -268,3 +268,27 @@ const CONTRATOS_EN_LA_REFERENCIA = [
   'people-operations-manager', 'product-marketing-manager', 'qa-engineer', 'release-manager',
   'security-engineer', 'site-reliability-engineer', 'solutions-engineer', 'tech-lead', 'treasury-analyst',
 ]
+
+// Qué hace que una línea cuente como veredicto está junto a `caseVerdicts`
+// (engine/agents/evaluations.js). El caso agrega lo que ahí no se ve: las dos lecturas se comparan
+// **entre sí** además de contra el número esperado, porque el defecto no era que una contara mal sino
+// que las dos contestaran distinto sobre el mismo archivo.
+test('una respuesta que cita un veredicto no suma un caso que no existe', () => {
+  const target = installedProject('Veredictos')
+  const dir = path.join(target, 'agents', 'roles', 'demo-role')
+  writeSkill(dir, 'demo-role', 'Un cargo de la empresa para contar veredictos.')
+  const results = path.join(dir, 'evaluations', 'results')
+  fs.mkdirSync(results, { recursive: true })
+  fs.writeFileSync(path.join(results, '2026-09-16.md'),
+    '# Registro\n\n### 01-caso\n\n- Veredicto: pasa\n\n**Respuesta del cargo**\n\n'
+    + 'Miré el registro anterior y decía:\n\n- Veredicto: no pasa\n\nasí que lo rehice.\n\n'
+    + '**Contraste**\n\nBien.\n\n### 02-caso\n\n- Veredicto: pasa\n\n**Respuesta del cargo**\n\nOK\n')
+
+  const current = evaluations.latest(target, 'demo-role')
+  const all = evaluations.composed(target, 'demo-role')
+  assert.deepEqual({ total: current.total, passed: current.passed }, { total: 2, passed: 2 },
+    'dos casos medidos y dos pasados: la cita no es un tercero')
+  assert.deepEqual([current.total, current.passed], [all.total, all.passed],
+    'y las dos lecturas del mismo archivo dan lo mismo')
+  assert.deepEqual([...all.measured.keys()], ['01-caso', '02-caso'])
+})

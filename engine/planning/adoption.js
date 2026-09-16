@@ -74,9 +74,9 @@ function sealWarnings(dir) {
   if (extra > 0) {
     // Cuáles sobran no se puede decir sin el conjunto original, y la cuenta sí: se nombran los últimos,
     // que es donde se agrega a mano. Decir «alguna de éstas» es más honesto que señalar la equivocada.
-    const últimos = slugs.slice(-extra).join(', ')
+    const lastOnes = slugs.slice(-extra).join(', ')
     return [`${BASELINE}: la lista creció. La huella sella ${seal[1]} entrada(s) y hay ${slugs.length}; `
-      + `sobra(n) ${extra}, probablemente ${últimos}. Una entrada agregada a mano queda exenta para `
+      + `sobra(n) ${extra}, probablemente ${lastOnes}. Una entrada agregada a mano queda exenta para `
       + 'siempre y nada más lo dice.']
   }
   return [`${BASELINE}: la huella no coincide con la lista. Sella ${seal[1]} entrada(s) y hay `

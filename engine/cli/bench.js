@@ -73,9 +73,9 @@ function benchSurvived(dir, since) {
 // la rama se ejerce en milisegundos y sobre un temporal que la prueba acaba de crear.
 function clearBench(dir, scratch, remove = fs.rmSync) {
   const target = path.resolve(dir)
-  const banco = path.resolve(scratch)
-  if (!target.startsWith(banco + path.sep)) {
-    return `no se borra ${target}: no cuelga de ${banco}, así que no es un banco de evaluación.`
+  const benchRoot = path.resolve(scratch)
+  if (!target.startsWith(benchRoot + path.sep)) {
+    return `no se borra ${target}: no cuelga de ${benchRoot}, así que no es un banco de evaluación.`
   }
   // El instante de arranque, para poder fechar lo que sobreviva: es lo único que separa un archivo que el
   // borrado no tocó de uno que alguien reescribió mientras borrábamos.

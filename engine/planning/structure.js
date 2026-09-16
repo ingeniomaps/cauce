@@ -98,23 +98,23 @@ function ruleIds(file) {
 // escribir, y ahí el aviso es lo único que lo dice.
 function competingSections(dir) {
   const roadmap = path.join(dir, 'roadmap')
-  const avisos = []
+  const warnings = []
   let files = []
   try { files = fs.readdirSync(roadmap).filter((file) => /^epic-\d{3}-/.test(file)) } catch { return [] }
   for (const file of files.sort()) {
     const text = P.read(path.join(roadmap, file))
     const titles = [...text.matchAll(/^##\s+(.+)$/gm)].map((hit) => hit[1].trim())
     for (const role of [/Criterios/i, /Historias/i]) {
-      const casan = titles.filter((title) => role.test(title))
-      if (casan.length < 2) continue
+      const matching = titles.filter((title) => role.test(title))
+      if (matching.length < 2) continue
       const exact = new RegExp(`^${role.source}$`, role.flags)
-      const gana = casan.find((title) => exact.test(title)) || casan[0]
-      const ignoradas = casan.filter((title) => title !== gana)
-      avisos.push(`roadmap/${file}: "## ${gana}" convive con "## ${ignoradas.join('", "## ')}"; `
+      const winner = matching.find((title) => exact.test(title)) || matching[0]
+      const ignored = matching.filter((title) => title !== winner)
+      warnings.push(`roadmap/${file}: "## ${winner}" convive con "## ${ignored.join('", "## ')}"; `
         + 'sólo se lee la primera y el resto se ignora entero')
     }
   }
-  return avisos
+  return warnings
 }
 
 function retiredByOverride(dir, name) {

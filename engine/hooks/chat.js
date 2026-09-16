@@ -116,13 +116,13 @@ function mentions(text, item) {
       if (before && !/[\s'"`(/]/.test(before)) continue
       if (rest && !/^(?:[\s'"`),;:!?]|\.(?:\s|$)|$)/.test(rest)) continue
       const clause = lower.slice(0, at).split(CLAUSE).pop()
-      const frase = `${clause} ${rest.split(CLAUSE)[0]}`
+      const phrase = `${clause} ${rest.split(CLAUSE)[0]}`
       found.push({
         denied: NEGATION.test(clause),
-        asked: asks(frase),
+        asked: asks(phrase),
         // El alcance se lee de la misma frase que decide si la ruta fue pedida, y no del mensaje entero:
         // un «mientras dure la tarea t-014» que hable de otra cosa, en otra oración, no acota a ésta.
-        scope: (frase.match(SCOPE) || [])[1] || '',
+        scope: (phrase.match(SCOPE) || [])[1] || '',
       })
     }
   }

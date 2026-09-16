@@ -94,6 +94,46 @@ test('el CLI rechaza una bandera que no existe en vez de ignorarla', () => {
   assert.equal(run(['inventado']).status, 2, 'un comando desconocido sigue fallando')
 })
 
+// Por qué estos cuatro nombres y no otros está junto a `accepted` (engine/cli/args.js). Acá se fija lo
+// que el usuario ve: cualquiera de ellos falla como comando desconocido, con y sin banderas, en vez de
+// salir en silencio con 0 o morir con un TypeError. Se recorren los cuatro porque cada uno rompía por
+// un camino distinto según tuviera o no `.includes`.
+test('un nombre heredado de Object.prototype no es un comando', () => {
+  for (const heredado of ['constructor', 'toString', 'valueOf', 'hasOwnProperty']) {
+    const sin = run([heredado])
+    assert.equal(sin.status, 2, `${heredado} sin banderas tiene que fallar, no salir en silencio`)
+    assert.match(sin.stderr, new RegExp(`Comando desconocido: ${heredado}`))
+
+    // Con una bandera se recorría `FLAGS[command].includes`, que acá no existe.
+    const con = run([heredado, '--json'])
+    assert.equal(con.status, 2, `${heredado} con bandera tiene que fallar por desconocido`)
+    assert.doesNotMatch(con.stderr, /is not a function/, 'y no reventar leyendo el método heredado')
+  }
+})
+
+// `-h` se anunciaba en el uso y no llegaba a ninguna bandera: `parse` sólo reconoce lo que empieza con
+// `--`, así que caía de posicional y `ops check -h` lo tomaba por la raíz del planning —«no existe el
+// planning en …/-h»— y encima salía con 0. Pedir ayuda y recibir un error sobre un directorio inventado
+// es la peor forma de contestar, porque parece que el comando corrió.
+test('-h pide el uso en vez de hacerse pasar por un argumento', () => {
+  const corto = run(['check', '-h'])
+  assert.equal(corto.status, 0)
+  assert.match(corto.stdout, /^Uso:/)
+  assert.doesNotMatch(corto.stderr, /-h/, 'no queda como ruta ni como bandera desconocida')
+
+  // Y vale solo, igual que `--help`.
+  assert.match(run(['-h']).stdout, /^Uso:/)
+
+  const { parse } = require('../../engine/cli/args')
+  assert.equal(parse(['check', '-h']).has('--help'), true, 'se normaliza a una sola grafía')
+  assert.deepEqual(parse(['check', '-h']).positional, ['check'])
+  assert.deepEqual(parse(['check', '-h']).unknown('check'), [], 'y no cuenta como bandera del comando')
+
+  // `unknown` es la otra puerta que consultaba `FLAGS[command]`: el CLI la llama con un comando ya
+  // validado, pero el módulo se exporta y se prueba solo, así que tiene que contestar por sí misma.
+  assert.deepEqual(parse(['--json']).unknown('constructor'), ['--json'], 'un heredado no acepta nada')
+})
+
 // La línea de comandos se leía de `process.argv` en veinticinco puntos, así que nada de esto se podía
 // comprobar sin levantar un proceso y `evaluationBench` sacaba `--force` de una variable global en vez
 // de recibirlo. Ahora se parsea una vez al entrar y esto es una función pura.

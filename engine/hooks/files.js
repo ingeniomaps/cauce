@@ -8,7 +8,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const {
-  patchOf, filesOf, contentOf, cwdOf, block, configOf, findOpsRoot, opsRoot,
+  patchOf, filesOf, contentOf, cwdOf, block, configOf, opsRoot,
   writableRoots, outsideRoots, DECLARE_IT,
 } = require('./input')
 const AP = require('./approval')
@@ -242,10 +242,10 @@ function planFirst(input) {
   //
   // Se lista recién acá, después de las dos salidas de arriba: quien tiene su plan sale por la primera y
   // no paga esta lectura, que es la misma razón por la que `hasTasks` se pregunta donde se pregunta.
-  const ajenos = readWips(planning).filter((one) => one.complete + one.pending > 0)
+  const foreign = readWips(planning).filter((one) => one.complete + one.pending > 0)
   const estado = wip ? `WIP tiene la tarea ${wip.task} y ningún paso` : 'WIP está en IDLE'
-  const why = ajenos.length
-    ? `hay plan escrito, pero bajo otro id: ${ajenos.map((one) => `${one.runner} (${one.task})`).join(', ')}.\n`
+  const why = foreign.length
+    ? `hay plan escrito, pero bajo otro id: ${foreign.map((one) => `${one.runner} (${one.task})`).join(', ')}.\n`
       + 'Si ese plan es tuyo, volvé a su id con `export CAUCE_RUNNER=<id>` —`ops runners <planning>` los lista '
       + 'con su tarea y su avance— y repetí el cambio. Si vas a trabajar en paralelo, montá tu propio árbol '
       + 'con `ops worktree <planning> <tarea>`, que te devuelve el id hecho.\n'
@@ -258,7 +258,7 @@ function planFirst(input) {
     // Con un plan a la vista no se ofrece ninguna de las dos salidas: aprobar la ruta escribe «esto no es
     // trabajo de una tarea», que ahí es falso, y anunciar la variable ofrece el permiso más ancho cuando
     // la acción correcta es angosta y concreta —el mismo criterio con que `HOW` decide no nombrarla—.
-    const how = ajenos.length
+    const how = foreign.length
       ? AP.HOW(null, [], input, [])
       : AP.HOW('OPS_PLAN_FIRST_OVERRIDE', [raw], input)
     block(`${raw} cambia el producto sin plan. ${why}${how}`)
@@ -359,7 +359,7 @@ function migrations(input) {
 // empresa corre un motor que no coincide con la versión que declara —la clase de diferencia que
 // aparece como un bug irreproducible—. En modo `toolkit` no aplica: ahí el motor es el producto.
 function engineWrites(input) {
-  const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
+  const root = opsRoot(input)
   if (!root) return
   const config = configOf(root)
   if (config.mode === 'toolkit') return

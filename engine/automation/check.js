@@ -52,9 +52,9 @@ function check(root) {
   }
   // Un choque que `upgrade` conservó (caso 110) también queda distinto del paquete, y mandarlo a correr
   // `upgrade` era una vuelta sin salida: lo conservaría otra vez. Se dice qué es y qué hacer.
-  const choques = new Set(O.collisions(root))
+  const collisions = new Set(O.collisions(root))
   for (const { file, edited } of staleHooks(root)) {
-    if (choques.has(`automatization/hooks/${file}`)) {
+    if (collisions.has(`automatization/hooks/${file}`)) {
       errors.push(`automatization/hooks/${file}: es tuyo y se llama como uno que trae el paquete, así que el `
         + "del paquete no está instalado; renombrá el tuyo y corré `cauce upgrade`")
       continue

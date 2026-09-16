@@ -13,13 +13,13 @@ const O = require('../core/ownership')
 // El banco desechable y su borrado comprobado. Se reexportan abajo porque su contrato lo fija la suite
 // del banco, que llega por acá desde antes de que el módulo existiera.
 const B = require('./bench')
-const { fail, opsRoot } = require('./io')
+const { fail, opsRoot, TODAY } = require('./io')
 
 function agentsFork(slug, dir) {
   const root = opsRoot(dir)
   if (!slug) fail('Falta el cargo: ops agents fork <cargo> [ops-root]', 2)
   let result
-  const date = new Date().toISOString().slice(0, 10)
+  const date = TODAY()
   try { result = require('../agents/fork').fork(root, slug, date) } catch (error) { fail(error.message, 2) }
   console.log(`+ ${path.relative(root, result.dir)} (${result.files.length} archivo(s))`)
   if (result.skipped.length) {
@@ -179,7 +179,7 @@ function evaluate(agent, caso, cli) {
     // Dónde escribir el registro de esta corrida. Lo pregunta el recorrido en vez de componer el
     // nombre, que es lo que hacía que la segunda corrida de un día borrara a la primera.
     if (cli.has('--record')) {
-      const day = cli.value('--record') || new Date().toISOString().slice(0, 10)
+      const day = cli.value('--record') || TODAY()
       return console.log(path.relative(root,
         path.join(EV.resultsDir(root, agent, kind), EV.nextResult(root, agent, day, kind))))
     }

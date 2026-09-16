@@ -9,9 +9,7 @@ const path = require('node:path')
 const CL = require('../planning/claims')
 const R = require('../core/repos')
 const ST = require('../planning/state')
-const { fail, planningRoot } = require('./io')
-
-const TODAY = () => new Date().toISOString().slice(0, 10)
+const { fail, planningRoot, TODAY } = require('./io')
 
 function claim(dir, slug, cli) {
   const root = planningRoot(dir)
@@ -22,8 +20,8 @@ function claim(dir, slug, cli) {
 
   // No se reserva lo que todavía no se puede empezar: una tarea tomada con su dependencia en vuelo
   // bloquea la cola sin que nadie pueda avanzarla, y el runner que la tomó se queda sin poder tomar otra.
-  const falta = task.depends.find((dep) => !state.done.set.has(dep))
-  if (falta) return fail(`${slug} depende de ${falta}, que todavía no está en DONE.`)
+  const blocker = task.depends.find((dep) => !state.done.set.has(dep))
+  if (blocker) return fail(`${slug} depende de ${blocker}, que todavía no está en DONE.`)
 
   const me = CL.owner(root)
   const from = CL.runner()
@@ -45,7 +43,7 @@ function claim(dir, slug, cli) {
 
   const target = CL.file(root, slug)
   fs.mkdirSync(path.dirname(target), { recursive: true })
-  const cuerpo = CL.content({ task: slug, owner: me, runner: from, started: TODAY(), service: task.service })
+  const body = CL.content({ task: slug, owner: me, runner: from, started: TODAY(), service: task.service })
   try {
     // Reservar **es** crear el archivo, así que el único juez de quién la tiene es el archivo. `wx` falla
     // si ya está, y de ahí sale la respuesta entera: propia, ajena o perdida en la carrera.
@@ -54,25 +52,25 @@ function claim(dir, slug, cli) {
     // de diferencia ganarían los dos sin que ninguno se entere. Y una comprobación previa tampoco
     // alcanzaría —entre mirar y escribir queda la misma ventana—, así que sería un segundo juez que
     // adelanta un veredicto que este bloque tiene que volver a dar igual.
-    fs.writeFileSync(target, cuerpo, { flag: 'wx' })
+    fs.writeFileSync(target, body, { flag: 'wx' })
   } catch (error) {
     if (error.code !== 'EEXIST') throw error
-    const dueño = CL.read(root).find((one) => one.slug === slug)
+    const holder = CL.read(root).find((one) => one.slug === slug)
     // Existía al crear y ya no está: alguien la soltó entre las dos operaciones. Es una ventana de
     // microsegundos y aun así tiene respuesta, porque la alternativa es reventar con un TypeError.
-    if (!dueño) return fail(`${slug} cambió de manos mientras la pedías; volvé a intentarlo.`)
-    if (dueño.runner === from) return console.log(`= ${slug} ya era tuya desde ${dueño.started}`)
+    if (!holder) return fail(`${slug} cambió de manos mientras la pedías; volvé a intentarlo.`)
+    if (holder.runner === from) return console.log(`= ${slug} ya era tuya desde ${holder.started}`)
     // Mismo dueño y otro runner son dos situaciones que se ven idénticas desde acá —vos retomando la
     // sesión de ayer, o un segundo agente tuyo— y ninguna se puede distinguir mirando el archivo.
     // Retomarla sola le sacaría la tarea al otro agente; crear un runner nuevo dejaría dos trabajando lo
     // mismo. Las dos rompen trabajo, así que decide una persona y acá sólo se dice cuál es cuál.
-    if (dueño.owner === me) {
-      return fail(`${slug} la tenés vos, tomada el ${dueño.started} desde el runner ${dueño.runner}. `
+    if (holder.owner === me) {
+      return fail(`${slug} la tenés vos, tomada el ${holder.started} desde el runner ${holder.runner}. `
         + 'Preguntá si se retoma esa sesión —y entonces corré con ese id— o si es otro agente en '
         + `paralelo, que toma otra tarea. \`ops runners ${path.relative(process.cwd(), root) || '.'}\` `
         + 'lista lo que hay abierto.')
     }
-    return fail(`${slug} la tomó ${dueño.owner} el ${dueño.started}. Si se abandonó, borrá `
+    return fail(`${slug} la tomó ${holder.owner} el ${holder.started}. Si se abandonó, borrá `
       + `${CL.DIR}/${slug}.md a mano: soltar lo de otro es una decisión, no un comando.`)
   }
   console.log(`✓ ${slug} tomada por ${me}`)
@@ -111,20 +109,20 @@ function release(dir, slug) {
 function runners(dir, cli) {
   const root = planningRoot(dir)
   const done = ST.snapshot(root).done
-  const abiertos = CL.read(root).filter((one) => !done.set.has(one.slug))
-  const hoy = TODAY()
-  const filas = abiertos.map((one) => {
+  const open = CL.read(root).filter((one) => !done.set.has(one.slug))
+  const today = TODAY()
+  const rows = open.map((one) => {
     const commit = R.lastCommit(R.repoOf(path.join(root, '..'), one.service), CL.branchOf(one.slug))
     return { runner: one.runner, task: one.slug, owner: one.owner, started: one.started, lastCommit: commit }
   })
-  if (cli.has('--json')) return console.log(JSON.stringify(filas))
-  if (!filas.length) return console.log('= ningún runner tiene trabajo abierto: arrancá con un id propio')
-  const ancho = Math.max(...filas.map((one) => one.runner.length))
-  for (const una of filas) {
-    const avance = una.lastCommit ? `último commit ${una.lastCommit}` : 'sin commits en su rama'
-    console.log(`${una.runner.padEnd(ancho)}  ${una.task}  (${una.owner}, desde ${una.started}; ${avance})`)
+  if (cli.has('--json')) return console.log(JSON.stringify(rows))
+  if (!rows.length) return console.log('= ningún runner tiene trabajo abierto: arrancá con un id propio')
+  const width = Math.max(...rows.map((one) => one.runner.length))
+  for (const row of rows) {
+    const progress = row.lastCommit ? `último commit ${row.lastCommit}` : 'sin commits en su rama'
+    console.log(`${row.runner.padEnd(width)}  ${row.task}  (${row.owner}, desde ${row.started}; ${progress})`)
   }
-  console.log(`\n${filas.length} runner(s) con trabajo abierto al ${hoy}. `
+  console.log(`\n${rows.length} runner(s) con trabajo abierto al ${today}. `
     + 'Retomá uno usando su id, o arrancá con uno propio.')
 }
 

@@ -175,12 +175,12 @@ function pendingSources(text) {
       if (one) out.push(one)
       one = {}
       last = ''
-      const primero = line.match(/^\s{2}-\s*(name|url|why|since):\s*(.+?)\s*$/)
-      if (primero) { one[primero[1]] = quitar(primero[2]); last = primero[1] }
+      const first = line.match(/^\s{2}-\s*(name|url|why|since):\s*(.+?)\s*$/)
+      if (first) { one[first[1]] = quitar(first[2]); last = first[1] }
       continue
     }
-    const campo = line.match(PENDING_FIELD)
-    if (campo && one) { one[campo[1]] = quitar(campo[2]); last = campo[1]; continue }
+    const field = line.match(PENDING_FIELD)
+    if (field && one) { one[field[1]] = quitar(field[2]); last = field[1]; continue }
     const sigue = line.match(/^\s{6,}(\S.*?)\s*$/)
     if (sigue && one && last) one[last] += ` ${sigue[1]}`
   }
@@ -229,9 +229,9 @@ function evaluate(root, agent) {
     // Una pendiente sin razón es un enlace muerto con fecha, y sin fecha no se puede ver que lleva
     // meses ahí. Los dos campos son la mitad del valor de la lista: lo que la vuelve revisable.
     for (const one of pendingSources(fs.readFileSync(sourcesFile, 'utf8'))) {
-      const falta = ['name', 'why', 'since'].filter((campo) => !one[campo])
-      if (falta.length) {
-        errors.push(`sources.yaml: una pendiente no declara ${falta.join(' ni ')}`
+      const missing = ['name', 'why', 'since'].filter((key) => !one[key])
+      if (missing.length) {
+        errors.push(`sources.yaml: una pendiente no declara ${missing.join(' ni ')}`
           + `${one.name ? ` (${one.name})` : ''}`)
       }
       // Declarada y pendiente a la vez es una contradicción que el chequeo semanal no puede resolver:

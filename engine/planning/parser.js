@@ -315,13 +315,13 @@ const HUMAN_ACTION_STATES = ['pendiente', 'resuelta']
 // Lo que no cubre: una celda que termine en una barra invertida literal. En markdown eso se escribe
 // `\\` y acá se leería como escape del separador. Es un borde que nadie escribe y taparlo pedía un
 // parser de verdad; queda dicho en vez de supuesto.
-const SEPARADOR = /(?<!\\)\|/
-const SEPARADORES = /^\|\s*:?-+/
+const CELL_SPLIT = /(?<!\\)\|/
+const SEPARATORS = /^\|\s*:?-+/
 
 // El escape se quita al normalizar. Esta columna existe para que una persona lea qué tiene que hacer, y
 // `\|` no es parte de lo que quiso decir: es cómo markdown escribe un pipe. La fila archivada no se ve
 // afectada —`archive` reescribe `raw`, la línea original, no las celdas—, así que quitarlo no pierde nada.
-const celda = (cell) => cell.trim().replace(/\\\|/g, '|')
+const cellOf = (cell) => cell.trim().replace(/\\\|/g, '|')
 
 // Las filas de datos de las tablas de un texto, con las celdas ya normalizadas. Vive acá y no en cada
 // lector porque el escape del pipe tiene que leerse igual en los dos archivos que traen tabla: escrito
@@ -332,11 +332,11 @@ const celda = (cell) => cell.trim().replace(/\\\|/g, '|')
 // y con `findIndex` la segunda y la tercera vuelven a leerse como datos. Nada más se mueve, porque una
 // fila de datos nunca está inmediatamente antes de los guiones.
 function tableRows(text) {
-  const lineas = text.split('\n')
-  const cabeceras = new Set(lineas.map((line, i) => (SEPARADORES.test(line) ? i - 1 : -1)))
-  return lineas
-    .filter((line, i) => /^\|/.test(line) && !SEPARADORES.test(line) && !cabeceras.has(i))
-    .map((line) => ({ line, cells: line.split(SEPARADOR).slice(1, -1).map(celda) }))
+  const lines = text.split('\n')
+  const headers = new Set(lines.map((line, i) => (SEPARATORS.test(line) ? i - 1 : -1)))
+  return lines
+    .filter((line, i) => /^\|/.test(line) && !SEPARATORS.test(line) && !headers.has(i))
+    .map((line) => ({ line, cells: line.split(CELL_SPLIT).slice(1, -1).map(cellOf) }))
 }
 
 function readHumanActions(dir) {

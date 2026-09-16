@@ -172,6 +172,25 @@ test('un caso en rojo abre la revisión de un cargo, y la corrida queda sellada'
   assert.match(fs.readFileSync(registro, 'utf8'), /^status: consolidated$/m)
 })
 
+// El sello buscaba `status:` en el documento entero, y un registro de corrida **nace sin `status` en el
+// frontmatter** —lo dice el comentario de `markConsolidated`—, mientras que su cuerpo lleva la respuesta
+// verbatim del cargo. Si esa respuesta trae una línea `status: <palabra>` a columna cero, el sello caía
+// ahí: el cuerpo quedaba marcado y el frontmatter sin marcar, o sea el registro sin sellar, o sea el
+// mismo hallazgo entrando a la propuesta siguiente. Es justo el modo de fallo que el sello cierra.
+test('el sello va al frontmatter aunque el cuerpo traiga su propia línea de status', () => {
+  const { target } = cargoConRegistro('Sello mal puesto',
+    '### 02-dos\n\n- Veredicto: no pasa\n\nEl cargo respondió:\nstatus: rechazado\n\nFalló por esto.\n')
+  const registro = path.join(target, 'agents', 'roles', 'probe', 'evaluations', 'results',
+    fs.readdirSync(path.join(target, 'agents', 'roles', 'probe', 'evaluations', 'results'))[0])
+
+  learning.prepareProposal(target, 'probe', new Date('2099-07-01T00:00:00Z'), '2099-06')
+
+  const texto = fs.readFileSync(registro, 'utf8')
+  const front = texto.match(/^---\n([\s\S]*?)\n---\n/)[1]
+  assert.match(front, /^status: consolidated$/m, 'el sello va al frontmatter, que es lo que se lee')
+  assert.match(texto, /^status: rechazado$/m, 'y la línea del cuerpo se queda como la escribió el cargo')
+})
+
 // El predicado se mira también de cerca, y no sólo por el ciclo: sus cuatro caminos deciden si un
 // documento puede cerrar el ciclo, y por el CLI sólo se alcanzan los que traen texto. El caso vacío es el
 // que ninguna corrida real produce —quien firma escribe algo— y es justamente el que no puede fallar.

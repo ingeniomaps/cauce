@@ -16,7 +16,7 @@ const path = require('node:path')
 const catalog = require('./catalog')
 const manifest = require('../core/manifest')
 const ownership = require('../core/ownership')
-const { atomicWrite } = require('../core/files')
+const { atomicWrite, assertWithin } = require('../core/files')
 
 // Informes, propuestas y veredictos no viajan: son lo que produjo nuestra versión del contrato, y el
 // fork nace para dejar de ser ese contrato. Heredar un veredicto le daría a la copia una garantía que
@@ -80,13 +80,26 @@ function fork(root, slug, date) {
   const fromPath = `agents/${type}/system/${slug}`
   const toPath = `agents/${type}/${slug}`
   const digests = {}
-  for (const relative of files) {
-    const from = path.join(found.dir, relative)
-    const to = path.join(target, relative)
-    fs.mkdirSync(path.dirname(to), { recursive: true })
-    if (TEXT.test(relative)) fs.writeFileSync(to, fs.readFileSync(from, 'utf8').split(fromPath).join(toPath))
-    else fs.copyFileSync(from, to)
-    digests[relative] = manifest.digest(from)
+  try {
+    for (const relative of files) {
+      const from = path.join(found.dir, relative)
+      const to = path.join(target, relative)
+      fs.mkdirSync(path.dirname(to), { recursive: true })
+      if (TEXT.test(relative)) fs.writeFileSync(to, fs.readFileSync(from, 'utf8').split(fromPath).join(toPath))
+      else fs.copyFileSync(from, to)
+      digests[relative] = manifest.digest(from)
+    }
+  } catch (error) {
+    // Lo caro de un copiado cortado no es perder la copia: es dejarla. Con medio cargo puesto el
+    // catálogo pasa a resolver el slug contra esa copia, así que el intento siguiente no dice «se
+    // cortó» sino «ya lo mantiene esta empresa» —y lo que la empresa mantiene es un contrato
+    // incompleto que ningún manifiesto registra, o sea que `drift` tampoco lo mira—.
+    //
+    // Se borra sólo lo que esta llamada creó: `target` se comprobó inexistente antes de empezar, y
+    // `assertWithin` lo nombra contra la raíz de la instancia antes de tocar nada —el slug entra por
+    // la línea de comandos y ésta es la única parte de este archivo que destruye—.
+    fs.rmSync(assertWithin(root, target, `el fork de ${slug}`), { recursive: true, force: true })
+    throw error
   }
 
   const version = packageVersion(root)

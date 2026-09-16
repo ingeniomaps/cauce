@@ -107,9 +107,12 @@ function derive(snapshot, draft) {
 }
 
 function renderDraft(item, config, state = 'pending') {
-  const service = config.serviceFrom === 'component' && item.components.length === 1
-    ? item.components[0]
-    : ''
+  // `|| []` porque el item lo arma el adaptador y el README declara el contrato por sus tres funciones,
+  // sin decir qué campos trae un item. Uno propio —que es lo que ese README invita a escribir— puede no
+  // traer `components`, y con `serviceFrom: "component"`, que es lo que trae el molde, eso era un
+  // TypeError sin nada que lo atribuya. Sin campo la respuesta es la que el borrador ya sabe dar.
+  const components = item.components || []
+  const service = config.serviceFrom === 'component' && components.length === 1 ? components[0] : ''
   const acceptance = item.acceptance || 'Por definir.'
   const issues = []
   if (!item.acceptance) issues.push('La incidencia no contiene aceptación concreta.')

@@ -186,6 +186,22 @@ function nextResult(root, agent, date, kind) {
   return `${date}-${run}.md`
 }
 
+// Qué veredictos trae un registro, leídos en un solo lugar porque `latest` y `composed` contestan sobre
+// el mismo archivo y contestaban distinto: `latest` contaba cualquier línea `- Veredicto:` y `composed`
+// sólo la que cuelga de un `### <caso>`. La diferencia no es teórica — el registro transcribe la
+// respuesta literal del cargo, así que una respuesta que cita un veredicto ajeno sumaba un caso que no
+// existe, y `latest` decía «2 de 3» sobre una corrida que midió dos y pasó las dos.
+//
+// Un veredicto es un caso con su línea, nunca una línea suelta: sin el encabezado no hay a qué atribuirlo.
+const VERDICT = /\n###\s+([^\n]+)\n\n-\s*Veredicto:\s*(pasa|no pasa)\s*$/gim
+
+function caseVerdicts(text) {
+  return [...text.matchAll(VERDICT)].map((hit) => ({
+    id: hit[1].trim(),
+    passed: hit[2].toLowerCase() === 'pasa',
+  }))
+}
+
 // El último resultado registrado, para que `evaluate` pueda decir si el cargo se corrió alguna vez y
 // cómo le fue. No es un error no tenerlo: correrlo cuesta, y exigirlo en CI sería exigir red.
 function latest(root, agent, kind) {
@@ -195,7 +211,7 @@ function latest(root, agent, kind) {
   const name = names[names.length - 1]
   const file = path.join(dir, name)
   const text = fs.readFileSync(file, 'utf8')
-  const verdicts = [...text.matchAll(/^-\s*Veredicto:\s*(pasa|no pasa)\s*$/gim)].map((hit) => hit[1].toLowerCase())
+  const verdicts = caseVerdicts(text)
   const [, date, run] = name.match(RESULT_NAME)
   return {
     file,
@@ -204,7 +220,7 @@ function latest(root, agent, kind) {
     date,
     run: Number(run || 1),
     total: verdicts.length,
-    passed: verdicts.filter((verdict) => verdict === 'pasa').length,
+    passed: verdicts.filter((verdict) => verdict.passed).length,
   }
 }
 
@@ -225,9 +241,8 @@ function composed(root, agent, kind) {
   for (const name of names) {
     const file = path.join(dir, name)
     const [, date] = name.match(RESULT_NAME)
-    const pattern = /\n###\s+([^\n]+)\n\n-\s*Veredicto:\s*(pasa|no pasa)\s*$/gim
-    for (const hit of fs.readFileSync(file, 'utf8').matchAll(pattern)) {
-      current.set(hit[1].trim(), { passed: hit[2].toLowerCase() === 'pasa', date, file })
+    for (const one of caseVerdicts(fs.readFileSync(file, 'utf8'))) {
+      current.set(one.id, { passed: one.passed, date, file })
     }
   }
   const entries = [...current.entries()]

@@ -18,6 +18,100 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Un veredicto se lee de una sola forma, así que las dos cuentas de un registro coinciden.** El registro
+  de una evaluación transcribe la respuesta literal del cargo —es la evidencia de la corrida—, así que su
+  cuerpo puede traer cualquier cosa, incluida una línea con forma de veredicto. La cuenta de la última
+  corrida las tomaba todas y la cuenta compuesta sólo las que cuelgan de un `### <caso>`: dos números
+  distintos sobre el mismo archivo y ninguna forma de saber cuál valía.
+
+  Con un registro de dos casos cuya respuesta citaba un veredicto ajeno, la última corrida decía «2 de 3»
+  sobre una corrida que midió dos y pasó las dos. Ahora un veredicto es un caso con su línea —sin
+  encabezado no hay a qué atribuirlo— y las dos lecturas salen del mismo lugar.
+
+- **Un `agents fork` que se corta a la mitad se retira en vez de quedarse puesto.** Si el copiado fallaba
+  —un archivo ilegible, disco lleno— quedaba medio cargo en `agents/`, y lo caro no es perder la copia: es
+  dejarla. El catálogo pasa a resolver el slug contra esa copia, así que el intento siguiente ya no dice
+  que se cortó sino **«ya lo mantiene esta empresa»** — y lo que la empresa mantiene es un contrato
+  incompleto que ningún manifiesto registra, o sea que el aviso de deriva tampoco lo mira nunca.
+
+  Verificado provocando el corte con un archivo ilegible: antes el segundo intento contestaba «ya lo
+  mantiene esta empresa» con `.cauce` vacío; ahora no queda nada en `agents/` y arreglando lo que lo
+  cortó el fork sale entero. Sólo se borra lo que esa llamada creó, y la ruta se comprueba contra la raíz
+  de la instancia antes de tocarla.
+
+- **`automation uninstall` no borra nada si no puede leer la configuración de tu runner.** Borraba
+  primero y leía el `settings.json` al final, con un `JSON.parse` sin proteger. Con un archivo que alguien
+  dejó a medio fusionar, el comando moría con «Expected property name or '}' in JSON at position 13»
+  —que no nombra ni un archivo— **después** de haber borrado los workflows y los cargos: la instancia
+  quedaba a medio desinstalar, con la configuración registrando guards que ya no existen.
+
+  Verificado sobre un banco: el comando se para antes de tocar el disco, dice qué archivo no pudo leer, y
+  arreglando ese archivo vuelve a correr.
+
+- **Un adaptador propio que no trae `components` ya no rompe el borrador.** El README declara el contrato
+  de un adaptador por sus tres funciones y no dice qué campos trae un item, así que un adaptador de la
+  empresa —que es lo que ese README invita a escribir— puede no traerlo. Con `serviceFrom: "component"`,
+  que es lo que trae el molde, eso era un `TypeError` sobre `undefined` sin nada que lo atribuyera.
+
+  Sin el campo la respuesta es la que el borrador ya sabía dar: `service: ""` y «Debe definirse un
+  servicio único para la promoción». Lo que se toleró es la ausencia y no el caso de uso: con un
+  componente sigue resolviendo el servicio y con dos sigue sin resolverlo.
+
+- **`promotionEpic` se valida también cuando la promoción es una épica.** El campo se exigía `NNN` sólo
+  para una historia. Para una épica es opcional —sin él el número lo elige el motor—, y por eso nadie lo
+  miraba; pero cuando está se usa tal cual para armar el nombre del archivo. O sea que el único caso sin
+  validar era el único que escribe una ruta con lo que diga el campo.
+
+  `promotionEpic: 7` producía `epic-7-…`, que el roadmap no reconoce como épica: la promoción se anunciaba
+  bien y lo escrito quedaba invisible para la cola. Y con un `..` la épica salía de `roadmap/` entera.
+  Verificado sobre una instancia desechable: `integration check` daba exit 0 y `integration promote`
+  devolvía «✓ jira:DEMO-42 promovido como epic» dejando el archivo fuera del roadmap. Ahora `check` lo
+  rechaza con «promotionEpic debe ser NNN» y `promote`, que valida antes de escribir, no llega a tocar el
+  disco.
+
+- **El aviso de commits sin entrada de DONE vuelve a decir lo que ve.** El filtro por fecha leía la
+  columna del `git log` en una posición fija, y `%h` no mide siempre lo mismo: git sube el largo del hash
+  abreviado solo cuando el repositorio crece. En cuanto pasa de siete, la posición fija lee un espacio en
+  vez de la fecha y **ningún commit pasa el filtro**, así que el aviso quedaba mudo sin decir por qué —la
+  peor forma de que una puerta falle, porque se lee igual que «no hay nada que avisar»—. Ahora se parte
+  por espacios y se lee el campo.
+
+  Verificado en este repositorio, donde el abreviado mide ocho: el aviso pasó de cero a «66 commit(s)
+  desde 2026-09-15 que ninguna entrada de DONE nombra». La prueba nueva lo fija en 7, 8 y 12.
+
+- **El sello de un registro de evaluación se escribe en el frontmatter y no en el cuerpo.**
+  `markConsolidated` buscaba `status:` en el documento entero. Un registro nace sin `status` en su
+  frontmatter y su cuerpo transcribe la respuesta literal del cargo: si esa respuesta traía una línea
+  `status: <algo>` en la columna cero, el sello aterrizaba ahí y el frontmatter quedaba sin sellar.
+
+  Un registro sin sellar vuelve a entrar en la propuesta siguiente, o sea que el mismo hallazgo llega dos
+  veces — que es exactamente lo que sellar existe para evitar.
+
+- **`ops -h` pide la ayuda, y un nombre heredado de `Object` ya no pasa por comando.** Dos huecos de la
+  puerta de entrada del CLI, los dos de la misma forma: leer algo que no era ni un comando ni una bandera.
+
+  `-h` se anunciaba en el uso y no existía: el parser sólo reconoce lo que empieza con `--`, así que caía
+  de argumento posicional y `ops check -h` contestaba «no existe el planning en …/-h» **saliendo con 0**.
+  Pedir ayuda y recibir un error sobre un directorio inventado es la peor forma de contestar, porque
+  parece que el comando corrió.
+
+  Y la tabla de comandos se consultaba con `FLAGS[comando]`, que resuelve contra `Object.prototype`:
+  `ops constructor` salía con 0 sin hacer nada y `ops toString --json` moría con
+  «FLAGS[command].includes is not a function». No es un nombre exótico — es lo que sale de pasarle al CLI
+  una variable que vino vacía o mal leída desde un script.
+
+- **El tope de horas de una propuesta deja de desaparecer cuando la configuración no lo declara.** La
+  validación de propuestas lee `runner.maxTaskHours` de `ops.config.json` y tenía un default de cuatro
+  horas para cuando no se puede leer. Ese default sólo cubría el archivo ilegible: un `runner` sin el
+  campo no lanza nada, así que el tope quedaba en `undefined` y la comparación pasaba a ser falsa
+  siempre. O sea que el límite no se aflojaba: se iba entero, y en silencio.
+
+  Se nota poco a propósito de lo que es — lo que deja de pasar es un **rechazo**—, así que una propuesta
+  de cuarenta horas viajaba a Jira sin que nada la mirara. Verificado sobre una configuración con
+  `runner: {}`: antes no salía ni un error, ahora sale «supera 4h; debe dividirse o justificarlo».
+
+  Si tu `ops.config.json` declara `maxTaskHours`, nada cambia — `check` ya lo exigía mayor que cero.
+
 - **`rm -r` sobre la raíz o el home se frena también entrecomillado.** La regla reconocía el destino sólo
   desnudo: `rm -rf /` bloqueaba y `rm -rf "/"`, `rm -rf "$HOME"`, `rm -rf ${HOME}`, `rm -rf $HOME/` y
   `rm -rf -- /` pasaban. La comilla es lo que más importa — citar una variable es la forma *correcta* de

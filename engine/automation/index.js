@@ -45,9 +45,9 @@ function probeBridge(paths, runner) {
   const problems = []
   // Desde la raíz y desde una carpeta de adentro: si el runner lanza el hook con otro cwd, la ruta
   // relativa de su configuración deja de resolver y eso hay que verlo acá, no en la primera sesión.
-  const sourceRoot = [paths.install, path.dirname(script)]
+  const launchDirs = [paths.install, path.dirname(script)]
   for (const event of hookEvents) {
-    for (const cwd of sourceRoot) {
+    for (const cwd of launchDirs) {
       const payload = JSON.stringify({ toolCall: { args: { CommandLine: 'ls', Cwd: paths.install } } })
       const result = spawnSync(process.execPath, [script, event], { cwd, input: payload, encoding: 'utf8' })
       let response = {}
@@ -75,11 +75,11 @@ function doctor(root, name, output = console) {
   const warnings = []
   try {
     const expected = runnerConfig(paths, root)
-    const actual = JSON.parse(fs.readFileSync(paths.configTarget, 'utf8'))
-    if (!includesConfig(actual, expected)) {
+    const installed = JSON.parse(fs.readFileSync(paths.configTarget, 'utf8'))
+    if (!includesConfig(installed, expected)) {
       errors.push(`${runner.config.target}: configuración instalada incompleta o divergente`)
     }
-    const legacy = legacyGuardWiring(actual)
+    const legacy = legacyGuardWiring(installed)
     if (legacy.length) {
       warnings.push(`${runner.config.target}: ${legacy.join(', ')} siguen registrados sueltos junto al grupo; `
         + 'cada uno se ejecuta dos veces. Borrá esas entradas del archivo para quedarte sólo con el grupo')
@@ -221,6 +221,18 @@ function uninstall(root, name, output = console) {
   }
   const runner = runnerManifest(root, name)
   const paths = runnerPaths(root, name, runner)
+  // La configuración se lee **antes** de borrar nada, aunque se use al final. Leyéndola al final, un
+  // `settings.json` a medio fusionar hacía morir el comando con el mensaje crudo del parser —que no
+  // nombra ni un archivo— con los workflows y los cargos ya borrados: la instancia quedaba a medio
+  // desinstalar, con la configuración registrando guards que no existen. Acá no hay nada que deshacer
+  // porque todavía no se tocó el disco, que es más barato que cualquier rollback.
+  const hasConfig = fs.existsSync(paths.configTarget)
+  let config
+  if (hasConfig) {
+    try { config = JSON.parse(fs.readFileSync(paths.configTarget, 'utf8')) } catch (error) {
+      throw new Error(`${runner.config.target} contiene JSON inválido (${error.message})`)
+    }
+  }
   const prefix = opsPrefix(root)
   const recorded = M.readRunners(root)
   const kept = []
@@ -266,9 +278,8 @@ function uninstall(root, name, output = console) {
     }
   }
 
-  if (fs.existsSync(paths.configTarget)) {
-    const current = JSON.parse(fs.readFileSync(paths.configTarget, 'utf8'))
-    const clean = unmergeConfig(unmergeConfig(current, runnerConfig(paths, root)), runner.config.retired || {})
+  if (hasConfig) {
+    const clean = unmergeConfig(unmergeConfig(config, runnerConfig(paths, root)), runner.config.retired || {})
     if (clean && Object.keys(clean).length) F.atomicWriteJson(paths.configTarget, clean)
     else { removeFile(paths.configTarget, paths.install); removed += 1 }
     output.log(`✓ ${name}: ${runner.config.target} sin las entradas de Cauce`)
