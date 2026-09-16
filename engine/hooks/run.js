@@ -9,7 +9,7 @@
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { readInput, cwdOf, block, findOpsRoot } = require('./input')
+const { readInput, block, opsRoot } = require('./input')
 const shell = require('./shell')
 const { verify } = require('./verify')
 const files = require('./files')
@@ -18,7 +18,7 @@ const { secretsShell } = require('./secrets-shell')
 const { opsConfig, opsConfigShell } = require('./ops-config')
 
 function planningDrift(input) {
-  const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
+  const root = opsRoot(input)
   if (!root) return
   const local = path.join(root, 'tools', 'ops.js')
   const source = path.join(root, 'engine', 'cli', 'ops.js')
@@ -202,5 +202,5 @@ if (require.main === module) {
 }
 
 module.exports = {
-  execute, executeAll, findOpsRoot, guards, hookGroups, hookMetadata,
+  execute, executeAll, guards, hookGroups, hookMetadata,
 }

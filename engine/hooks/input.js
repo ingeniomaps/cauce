@@ -233,7 +233,7 @@ function findOpsRoot(start) {
 // Sin raíz legible no hay lista, y quien pregunta se abstiene: el guard que no sabe dónde está no
 // inventa un límite.
 function writableRoots(input) {
-  const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
+  const root = opsRoot(input)
   if (!root) return null
   const config = configOf(root)
   return [

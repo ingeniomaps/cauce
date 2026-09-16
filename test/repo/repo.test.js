@@ -378,3 +378,30 @@ test('la fecha de hoy se calcula en un solo lugar', () => {
   }
   assert.deepEqual(copies, [], `usan el TODAY de ${owner}:\n  ${copies.join('\n  ')}`)
 })
+
+// El mismo defecto que la fecha de hoy, en el otro extremo del motor: `opsRoot` (engine/hooks/input.js)
+// existe para esto y lo dice, y tres guards armaban su expresión a mano igual.
+//
+// Acá el silencio tiene una forma concreta: la cadena de variables de entorno es lo que cambia cuando
+// entra un runner nuevo, y `approval.js` ya lee un `GEMINI_PROJECT_DIR` que estas copias no miraban. Con
+// la copia puesta, agregar un runner arregla un guard y deja a los otros resolviendo otra raíz — y un
+// guard que mira la instancia equivocada no falla: deja pasar.
+test('la raíz de un hook se resuelve en un solo lugar', () => {
+  const root = path.resolve(__dirname, '..', '..')
+  const owner = path.join('engine', 'hooks', 'input.js')
+  const copies = []
+  for (const file of sourceFiles().filter((name) => name.endsWith('.js'))) {
+    const relative = path.relative(root, file)
+    const code = fs.readFileSync(file, 'utf8').split('\n')
+      .filter((line) => !line.trim().startsWith('//'))
+    for (const [index, line] of code.entries()) {
+      // La firma es la cadena de env, no `findOpsRoot`: quien la arma a mano es quien se queda atrás.
+      if (/process\.env\.OPS_ROOT\s*\|\|\s*process\.env\.CLAUDE_PROJECT_DIR/.test(line)) {
+        copies.push(`${relative}:${index + 1}`)
+      }
+    }
+  }
+  assert.deepEqual(copies.filter((hit) => !hit.startsWith(`${owner}:`)), [],
+    `usan el opsRoot de ${owner}:\n  ${copies.join('\n  ')}`)
+  assert.equal(copies.length, 1, 'y el dueño la arma una sola vez')
+})

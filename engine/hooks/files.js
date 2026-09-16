@@ -8,7 +8,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const {
-  patchOf, filesOf, contentOf, cwdOf, block, configOf, findOpsRoot, opsRoot,
+  patchOf, filesOf, contentOf, cwdOf, block, configOf, opsRoot,
   writableRoots, outsideRoots, DECLARE_IT,
 } = require('./input')
 const AP = require('./approval')
@@ -359,7 +359,7 @@ function migrations(input) {
 // empresa corre un motor que no coincide con la versión que declara —la clase de diferencia que
 // aparece como un bug irreproducible—. En modo `toolkit` no aplica: ahí el motor es el producto.
 function engineWrites(input) {
-  const root = findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
+  const root = opsRoot(input)
   if (!root) return
   const config = configOf(root)
   if (config.mode === 'toolkit') return
