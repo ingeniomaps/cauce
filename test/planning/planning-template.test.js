@@ -64,6 +64,27 @@ test('el protocolo manda contrastar la línea de una tarea contra su descripció
   }
 })
 
+// R9 exige la mutación desde siempre; lo nuevo es que quede **escrita**. Se afirma por ejes y no por
+// redacción, por lo mismo que la pasada de lanes de acá arriba.
+//
+// Lo propio de éste es qué se pierde si se cae: la mutación que no se escribió no la puede reponer quien
+// revisa, sólo rehacerla. Los tres ejes se comprobaron por separado — quitar cualquiera de los tres deja
+// la puerta en rojo sola.
+test('R9 pide que la mutación se declare, no sólo que se corra', () => {
+  const raiz = path.resolve(__dirname, '..', '..')
+  const commits = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'commits.md'), 'utf8')
+  const r9 = commits.split(/^##\s+/m).find((parte) => /^R9\b/.test(parte))
+  assert.ok(r9, 'R9 existe en commits.md')
+
+  for (const [eje, patron] of [
+    ['la mutación se escribe, no sólo se corre', /mutación se declara por escrito/],
+    ['dice qué romper y qué tiene que ponerse rojo', /qué se rompe\s*\n?\s*y qué prueba tiene que ponerse roja/],
+    ['sin eso, revisar obliga a volver a correrla', /volver a correrla/],
+  ]) {
+    assert.match(r9, patron, `R9 perdió el eje: ${eje}`)
+  }
+})
+
 test('el vocabulario de lanes tiene un dueño y las copias no se despegan', () => {
   const P = require('../../engine/planning/parser')
   assert.deepEqual(P.LANES, ['express', 'directo', 'lite', 'full'], 'en orden de ceremonia creciente')

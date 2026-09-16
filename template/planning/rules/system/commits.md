@@ -28,6 +28,15 @@ una implementación sutilmente equivocada de una correcta. Lo que sí la disting
 puesto, exactamente lo que el caso dice cuidar, y verlo ponerse rojo por eso. Si no se pone rojo, no lo cuida,
 y la cobertura no lo va a decir: mide qué líneas se ejecutan, no qué defectos se atrapan.
 
+**Y esa mutación se declara por escrito, en la aceptación que la pide.** Una línea alcanza: qué se rompe
+y qué prueba tiene que ponerse roja. Sin eso, quien revisa no puede distinguir la mutación que se corrió
+de la que se pensó, y la única salida que le queda es volver a correrla — que es rehacer el trabajo que
+delegarlo evitaba, igual que el contraste de lo consultado en R14.
+
+Escribirla antes cambia además lo que se escribe. Una aceptación que tiene que nombrar qué romper deja de
+poder pedir algo que ninguna mutación puede tocar: si no hay nada que romper, no había propiedad que
+cuidar, y eso se ve al redactarla en vez de al final de la vuelta.
+
 La precondición del caso también cuenta. Si el estado en que arranca no puede ocurrir por el camino de
 producción, lo que prueba tampoco: queda verde para siempre sobre algo que nadie va a vivir.
 

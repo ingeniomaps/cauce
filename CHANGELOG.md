@@ -44,7 +44,17 @@ diseño — eso vive en el commit y en el código.
     corrida arranca, lee todo el estado y recién ahí muere. Pasó dos veces el mismo día, a 42k tokens por
     vez. Es lo que el WIP de Cauce ya hace bien con `status: IDLE`.
 
-  **Lo que cuesta:** el bloque de reglas que cada agente carga al arrancar pasa de **39,1 a 45,9 KB**.
+- **R9 ahora pide que la mutación quede escrita, no sólo que se corra.** R9 ya exigía romper, con el
+  código puesto, exactamente lo que el caso dice cuidar, y verlo ponerse rojo. Lo que faltaba es que eso
+  quedara en la aceptación: una línea con qué se rompe y qué prueba tiene que ponerse roja. Sin ella,
+  quien revisa no puede distinguir la mutación que se corrió de la que se pensó, y lo único que le queda
+  es volver a correrla — o sea rehacer el trabajo que delegarlo evitaba.
+
+  Y escribirla antes cambia lo que se escribe: una aceptación que tiene que nombrar qué romper deja de
+  poder pedir algo que ninguna mutación puede tocar. Si no hay nada que romper, no había propiedad que
+  cuidar, y eso se ve al redactarla en vez de al final de la vuelta.
+
+  **Lo que cuesta:** el bloque de reglas que cada agente carga al arrancar pasa de **39,1 a 46,5 KB**.
   Está medido, no estimado, y el umbral del aviso de `check` **no se movió**: sigue en 64 KB, porque lo
   que mide es cuánto agregaste vos, y subirlo para hacerle lugar al piso apagaría justamente eso. Quedan
   ~18 KB de margen antes de que el aviso hable.
