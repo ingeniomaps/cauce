@@ -394,9 +394,9 @@ function governance(input) {
   // La aprobación vale para lo que nombra y para nada más: lo que quede sin cubrir es lo que se
   // reporta. Así una aprobación vieja no autoriza el archivo que se sumó después, que es la diferencia
   // entre una llave por operación y una puerta que quedó abierta.
-  const pendientes = AP.pendingNow(opsRoot(input), governed, input)
-  if (!pendientes.length) return
-  block(`El commit toca gobernanza protegida.\n${AP.HOW('OPS_GOVERNANCE_OVERRIDE', pendientes, input)}`)
+  const pending = AP.pendingNow(opsRoot(input), governed, input)
+  if (!pending.length) return
+  block(`El commit toca gobernanza protegida.\n${AP.HOW('OPS_GOVERNANCE_OVERRIDE', pending, input)}`)
 }
 
 function run(program, args, cwd, extra = {}) {

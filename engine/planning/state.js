@@ -86,8 +86,8 @@ function currentTask({ milestones, done, wips = [], claims = [] }, blockers = []
     // estaría lista y no acá—, así que buscarla no puede fallar y no lleva defensa.
     waiting: pending.filter((task) => !others.has(task.slug) && !ready(task)).map((task) => {
       const dep = task.depends.find((one) => !done.set.has(one))
-      const otro = others.get(dep)
-      return { slug: task.slug, dep, owner: otro ? otro.owner : (mine.has(dep) ? 'vos' : '') }
+      const other = others.get(dep)
+      return { slug: task.slug, dep, owner: other ? other.owner : (mine.has(dep) ? 'vos' : '') }
     }),
   }
 }

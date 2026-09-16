@@ -141,7 +141,7 @@ function context(dir, cli) {
   // Un filtro elige dónde buscar trabajo **nuevo**; no puede esconder el que ya tenés. Sin esto, pedir
   // otro hito mientras sostenías una tarea ofrecía una segunda que `claim` después se niega a dar: el
   // comando que dice qué hacer y el que lo autoriza contestaban distinto, y sólo se veía al reclamar.
-  const propio = state.claims.find((one) => one.runner === from && !state.done.set.has(one.slug))
+  const own = state.claims.find((one) => one.runner === from && !state.done.set.has(one.slug))
   let hitoOmitido = ''
   if (hito) {
     const existe = state.milestones.some((one) => one.slug === hito)
@@ -150,7 +150,7 @@ function context(dir, cli) {
       const hay = state.milestones.map((one) => one.slug).join(', ') || '(ninguno)'
       return fail(`el hito ${hito} no existe. Hay: ${hay}`, 2)
     }
-    if (propio) hitoOmitido = `${hito} no se aplica: ya tenés ${propio.slug} tomada`
+    if (own) hitoOmitido = `${hito} no se aplica: ya tenés ${own.slug} tomada`
     else state.milestones = state.milestones.filter((one) => one.slug === hito)
   }
   const gate = path.join(root, 'AWAITING_REVIEW.md')
@@ -222,13 +222,13 @@ function context(dir, cli) {
   // Es el comando que existe para decir qué toca ahora, contestando «nada» cuando lo que toca es eso.
   // Tu propio nombre en una tarea «ajena» es la señal de que sos vos desde otro runner, y sin decirlo se
   // lee como que alguien te ganó la tarea.
-  const dueño = (one) => (one.owner === report.owner ? `${one.owner} — vos, desde otro runner` : one.owner)
+  const ownerLabel = (one) => (one.owner === report.owner ? `${one.owner} — vos, desde otro runner` : one.owner)
   // Que el reclamo sea tuyo desde otro id ya se decía; que además haya un **plan escrito** bajo ese id, no.
   // Esa es la mitad que cuesta la sesión: los pasos ya hechos están en un archivo que nadie nombra, y el id
   // que lo recupera es justo el que esta sesión no supo deducir. Los dos datos están en el reclamo.
   const tomadas = () => {
     for (const one of report.taken) {
-      console.log(`TAKEN  ${one.slug} (${dueño(one)})`)
+      console.log(`TAKEN  ${one.slug} (${ownerLabel(one)})`)
       if (one.owner === report.owner && one.wip) {
         console.log(`PLAN   ${one.slug}: su plan está en wip/${one.wip} — retomalo con `
           + `\`export CAUCE_RUNNER=${one.runner}\``)

@@ -216,15 +216,15 @@ function fallo(gate, result) {
 // Un gate que vuelve en menos de esto no corrió una suite. No se afirma que **no** haya corrido —un
 // lint puede fallar rápido y de verdad— y por eso lo que se agrega es el número, no un veredicto: los
 // tres gates del caso 068 volvieron a un segundo uno de otro contra los trece de la corrida real.
-const DEMASIADO_RAPIDO = 2000
-function comoSeLee(failures) {
-  const texto = failures
+const TOO_FAST = 2000
+function howItReads(failures) {
+  const summary = failures
     .map((one) => `${one.gate} (exit ${one.status}, ${(one.ms / 1000).toFixed(1)} s)`
       + `${one.line ? `: ${one.line}` : ''}`)
     .join('; ')
-  if (!failures.every((one) => one.ms < DEMASIADO_RAPIDO)) return texto
-  const cuantos = failures.length === 1 ? 'Volvió' : `Los ${failures.length} volvieron`
-  return `${texto}\n${cuantos} en menos de ${DEMASIADO_RAPIDO / 1000} s: eso no alcanza para correr `
+  if (!failures.every((one) => one.ms < TOO_FAST)) return summary
+  const lead = failures.length === 1 ? 'Volvió' : `Los ${failures.length} volvieron`
+  return `${summary}\n${lead} en menos de ${TOO_FAST / 1000} s: eso no alcanza para correr `
     + 'una suite, así que mirá si llegaron a ejecutarse antes de aprobar esto como un rojo conocido.'
 }
 
@@ -268,7 +268,7 @@ function verifyGates(root, dir, sinAprobar, env, input) {
   // comando a mano se lee como que el guard miente, y lo que pasó es que midió lo que se va a grabar.
   const donde = root === dir ? '' : '\nCorrió sobre el índice, que es lo que el commit graba: si en tu '
     + 'directorio pasa, es que en disco tenés algo que no está staged.'
-  block(`Verify falló en ${path.basename(dir)}: ${comoSeLee(failures)}\nNo se commitea en rojo.${donde}\n`
+  block(`Verify falló en ${path.basename(dir)}: ${howItReads(failures)}\nNo se commitea en rojo.${donde}\n`
     + AP.HOW('OPS_SKIP_VERIFY', sinAprobar, input))
 }
 

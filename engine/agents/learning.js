@@ -215,9 +215,9 @@ function verdictFindings(root, dir) {
   // encabezado, así que uno que escape puede hacer que se lea la sección equivocada.
   const nested = (detail) => detail.replace(/^(#{1,5}) /gm, '#$1 ')
   const findings = [...latest.values()].flatMap((item) => {
-    const corrida = `Corrida: \`${path.relative(root, item.file)}\``
+    const runLine = `Corrida: \`${path.relative(root, item.file)}\``
     if (!item.passed) {
-      return [`### ${item.id} — ${item.name.slice(0, -3)}\n\n${corrida}`
+      return [`### ${item.id} — ${item.name.slice(0, -3)}\n\n${runLine}`
         + `${item.failures > 1 ? ` — falló en ${item.failures} corridas de esta tanda` : ''}\n\n`
         + `${nested(item.detail)}`]
     }
@@ -231,7 +231,7 @@ function verdictFindings(root, dir) {
     // y ahí una línea con este prefijo sería una nota que el sujeto se escribe a sí mismo.
     const note = (item.detail.split('\n', 1)[0].match(CONTRACT_NOTE) || [])[1]
     return note
-      ? [`### ${item.id} — ${item.name.slice(0, -3)} · el caso pasa\n\n${corrida}\n\n`
+      ? [`### ${item.id} — ${item.name.slice(0, -3)} · el caso pasa\n\n${runLine}\n\n`
         + `Lo que el contrato no cubre: ${note.trim()}`]
       : []
   })

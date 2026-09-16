@@ -55,10 +55,10 @@ function repoOf(opsRoot, service) {
 // el árbol principal: los worktrees se crean desde ahí y ahí se queda.
 function lastCommit(repo, branch) {
   if (!repo) return ''
-  const actual = git(repo, 'rev-parse', '--abbrev-ref', 'HEAD')
-  const tronco = actual.status === 0 ? actual.stdout.trim() : ''
-  const args = tronco && tronco !== branch
-    ? ['log', '-1', '--format=%cs', branch, '--not', tronco, '--']
+  const head = git(repo, 'rev-parse', '--abbrev-ref', 'HEAD')
+  const trunk = head.status === 0 ? head.stdout.trim() : ''
+  const args = trunk && trunk !== branch
+    ? ['log', '-1', '--format=%cs', branch, '--not', trunk, '--']
     : ['log', '-1', '--format=%cs', branch, '--']
   const shown = git(repo, ...args)
   return shown.status === 0 ? shown.stdout.trim() : ''
@@ -90,8 +90,8 @@ function unrecordedCommits(repo, since, recorded) {
   // vez de la fecha y ningún commit pasaba el filtro. El aviso quedaba mudo sin decirlo, que es la peor
   // forma de que una puerta falle (caso 169).
   return log.stdout.split('\n').map((line) => line.trim()).filter(Boolean)
-    .map((line) => ({ line, sha: line.split(/\s+/)[0], fecha: line.split(/\s+/)[1] }))
-    .filter((one) => one.fecha >= since)
+    .map((line) => ({ line, sha: line.split(/\s+/)[0], date: line.split(/\s+/)[1] }))
+    .filter((one) => one.date >= since)
     .filter((one) => !conocidos.has(one.sha.slice(0, 7)))
     .map((one) => one.line)
 }
@@ -108,18 +108,18 @@ function unrecordedCommits(repo, since, recorded) {
 // Y no dice cuántos *deberían* tener entrada, porque eso no se sabe desde acá: lo dice el desglose, y en
 // la instancia medida 120 de 173 eran `feat` o `fix` (caso 082).
 function coverageWarnings(opsRoot, done) {
-  const fechas = done.entries.map((entry) => entry.fecha).filter(Boolean).sort()
-  const desde = fechas[fechas.length - 1]
-  if (!desde) return []
+  const dates = done.entries.map((entry) => entry.fecha).filter(Boolean).sort()
+  const since = dates[dates.length - 1]
+  if (!since) return []
   const recorded = new Set()
   for (const entry of done.entries) {
     for (const sha of String(entry.commit || '').matchAll(/\b[0-9a-f]{7,40}\b/g)) recorded.add(sha[0])
   }
   const warnings = []
   for (const repo of reposFor(opsRoot, '.')) {
-    const sueltos = unrecordedCommits(repo, desde, recorded)
-    if (!sueltos.length) continue
-    warnings.push(`${path.basename(repo)}: ${sueltos.length} commit(s) desde ${desde} que ninguna `
+    const unrecorded = unrecordedCommits(repo, since, recorded)
+    if (!unrecorded.length) continue
+    warnings.push(`${path.basename(repo)}: ${unrecorded.length} commit(s) desde ${since} que ninguna `
       + 'entrada de DONE nombra, así que ese trabajo no está en planning/ (OPS-001)')
   }
   return warnings
