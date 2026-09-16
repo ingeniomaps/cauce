@@ -14,6 +14,21 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.96.0] - 2026-09-16
+
+### Corregido
+
+- **El catálogo de cargos y recorridos se encuentra también cuando el paquete vive un nivel arriba.** Es el
+  layout que documenta el arranque —`npm install @ingeniomaps/cauce` en la carpeta de la empresa y la
+  instancia adentro—, y 0.92.0 lo arregló para el motor y dejó afuera el catálogo. En ese estado `check`
+  pasaba en verde y `agents list` contestaba **una lista vacía con exit 0**, indistinguible de «esta
+  instancia no tiene cargos»; `flow list` igual, y `evaluate` culpaba a un `SKILL.md` que falta, mandando
+  a mirar el cargo en vez del paquete.
+
+  Si te pasó, no hacía falta bajar una segunda copia: con esta versión los cargos aparecen donde ya estaban.
+  Verificado instalando el paquete publicado desde el registro y recorriendo la superficie del CLI: de 0
+  cargos y 0 recorridos a **53 y 7**, sobre la misma instancia.
+
 ## [0.95.0] - 2026-09-16
 
 ### Corregido
