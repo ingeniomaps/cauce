@@ -18,6 +18,15 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Un adaptador propio que no trae `components` ya no rompe el borrador.** El README declara el contrato
+  de un adaptador por sus tres funciones y no dice qué campos trae un item, así que un adaptador de la
+  empresa —que es lo que ese README invita a escribir— puede no traerlo. Con `serviceFrom: "component"`,
+  que es lo que trae el molde, eso era un `TypeError` sobre `undefined` sin nada que lo atribuyera.
+
+  Sin el campo la respuesta es la que el borrador ya sabía dar: `service: ""` y «Debe definirse un
+  servicio único para la promoción». Lo que se toleró es la ausencia y no el caso de uso: con un
+  componente sigue resolviendo el servicio y con dos sigue sin resolverlo.
+
 - **`promotionEpic` se valida también cuando la promoción es una épica.** El campo se exigía `NNN` sólo
   para una historia. Para una épica es opcional —sin él el número lo elige el motor—, y por eso nadie lo
   miraba; pero cuando está se usa tal cual para armar el nombre del archivo. O sea que el único caso sin

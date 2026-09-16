@@ -391,3 +391,18 @@ test('el README de integraciones que viaja documenta el contrato con su versión
     assert.ok(readme.includes(firma), `el README del molde declara ${firma}`)
   }
 })
+
+// Por qué un item puede llegar sin `components` está junto al `|| []` que lo tolera
+// (engine/integrations/state.js). Lo que el caso fija es que tolerarlo no aflojó nada: los tres
+// tamaños posibles —sin campo, un componente, dos— y sólo el del medio resuelve un servicio.
+test('un item sin components no rompe el borrador, se queda sin servicio', () => {
+  const item = { key: 'X-1', summary: 'Un título', type: 'story', status: 'To Do', labels: [] }
+  const draft = S.renderDraft(item, { serviceFrom: 'component' })
+  assert.match(draft, /service: ""/)
+  assert.match(draft, /Debe definirse un servicio único para la promoción/)
+
+  // Y con el campo presente sigue resolviendo: lo que se toleró es la ausencia, no el caso de uso.
+  assert.match(S.renderDraft({ ...item, components: ['app'] }, { serviceFrom: 'component' }), /service: "app"/)
+  assert.match(S.renderDraft({ ...item, components: ['app', 'web'] }, { serviceFrom: 'component' }),
+    /service: ""/, 'dos componentes siguen sin resolver un servicio único')
+})
