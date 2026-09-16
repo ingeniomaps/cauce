@@ -107,6 +107,28 @@ test('R17 dice qué cuenta como una condición, en las dos direcciones', () => {
   }
 })
 
+// Se afirma por ejes y no por redacción, igual que las pasadas de acá arriba.
+//
+// Lo propio de éste es que las dos mitades se sostienen entre sí y por separado no sirven: sin la
+// primera, la puerta cobra deuda ajena y alguien la apaga entera; sin la segunda, «lo preexistente no
+// frena» ampara a la línea que este cambio acaba de escribir. Perder cualquiera de las dos deja una
+// regla que se lee completa y hace lo contrario de lo que promete.
+test('R3 acota qué bloquea sin volverlo una escapatoria', () => {
+  const raiz = path.resolve(__dirname, '..', '..')
+  const proceso = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'process.md'), 'utf8')
+  const r3 = proceso.split(/^##\s+/m).find((parte) => /^R3\b/.test(parte))
+  assert.ok(r3, 'R3 existe en process.md')
+
+  for (const [eje, patron] of [
+    ['bloquea lo que el cambio tocó', /Lo que bloquea es lo que este cambio tocó/],
+    ['lo preexistente se registra y no frena', /deuda\s*\n?\s*que ya estaba[\s\S]{0,80}no frena nada/],
+    ['lo que se apaga es la puerta entera', /no es esa exigencia sino la puerta entera/],
+    ['y no ampara la línea nueva', /exime al archivo, nunca a la línea/],
+  ]) {
+    assert.match(r3, patron, `R3 perdió el eje: ${eje}`)
+  }
+})
+
 test('el vocabulario de lanes tiene un dueño y las copias no se despegan', () => {
   const P = require('../../engine/planning/parser')
   assert.deepEqual(P.LANES, ['express', 'directo', 'lite', 'full'], 'en orden de ceremonia creciente')
