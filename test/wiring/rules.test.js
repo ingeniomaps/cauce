@@ -210,10 +210,11 @@ test('install declara lo que el bloque de reglas va a pesar en cada agente', () 
   assert.equal(salida.status, 0, salida.stderr)
   // En bytes y no en tokens: los bytes los mide el motor, y la equivalencia en tokens depende del
   // modelo. Un número inventado en la salida es peor que uno exacto, porque se cita para decidir.
-  // Cinco desde que `runs.md` salió de `process.md` (caso 160). Los KB sí se movieron después, de 39,1 a
-  // 45,9, y eso no fue un corte sino texto nuevo: las cinco reglas que trajo una instancia real. El
-  // número se actualiza midiendo, porque es lo que cada agente paga al arrancar.
-  assert.match(salida.stdout, /claude: el bloque de reglas carga 5 archivo\(s\), 4[56]\.\d KB en cada agente/,
+  // Cinco desde que `runs.md` salió de `process.md` (caso 160). Los KB se mueven cuando el toolkit enseña
+  // algo nuevo —39,1 con cuatro archivos, 45,9 con R24..R28, 47,3 con lo que se le agregó a R9 y R17— y
+  // la ventana se deja angosta a propósito: que esta prueba falle en cada edición de una regla **es** la
+  // función. Es lo único que obliga a medir lo que cada agente paga antes de mover el número.
+  assert.match(salida.stdout, /claude: el bloque de reglas carga 5 archivo\(s\), 4[67]\.\d KB en cada agente/,
     'declara cuántas y cuánto pesan')
 })
 

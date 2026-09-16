@@ -85,6 +85,28 @@ test('R9 pide que la mutación se declare, no sólo que se corra', () => {
   }
 })
 
+// El umbral de R17 son cinco condiciones y nunca decía qué es una, así que no se podía contar. Se afirma
+// por ejes y no por redacción, igual que las dos pasadas de acá arriba.
+//
+// Lo propio de éste es que la simetría es la mitad que importa: contar de más parte lo que era uno solo
+// —se ve y se corrige—, y contar de menos no dispara nada y se lee igual que una unidad chica. Un eje
+// por cada dirección, y la prueba operable aparte, que es lo único que se puede aplicar sin criterio.
+test('R17 dice qué cuenta como una condición, en las dos direcciones', () => {
+  const raiz = path.resolve(__dirname, '..', '..')
+  const proceso = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'process.md'), 'utf8')
+  const r17 = proceso.split(/^##\s+/m).find((parte) => /^R17\b/.test(parte))
+  assert.ok(r17, 'R17 existe en process.md')
+
+  for (const [eje, patron] of [
+    ['una condición es un resultado, no una viñeta', /resultado que se puede mirar por separado/],
+    ['contar de más parte lo que era uno solo', /mismo invariante[\s\S]{0,120}\*\*una\*\* condición/],
+    ['contar de menos no dispara nada', /Contar de menos no dispara nada/],
+    ['y hay una prueba que no pide criterio', /se pueden entregar por separado/],
+  ]) {
+    assert.match(r17, patron, `R17 perdió el eje: ${eje}`)
+  }
+})
+
 test('el vocabulario de lanes tiene un dueño y las copias no se despegan', () => {
   const P = require('../../engine/planning/parser')
   assert.deepEqual(P.LANES, ['express', 'directo', 'lite', 'full'], 'en orden de ceremonia creciente')
