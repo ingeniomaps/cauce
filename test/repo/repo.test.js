@@ -173,10 +173,6 @@ const JUSTIFIED = {
     + 'cola, dos runners y un reclamo entre ellos. Partirla por tema separaría el reclamo de lo que el '
     + 'reclamo decide —a quién se le ofrece cada tarea—, que son las dos mitades de la misma decisión y '
     + 'que en esta rama cambiaron siempre juntas.',
-  'test/agents/learning.test.js':
-    'Las pruebas de un ciclo suman una por conducta y comparten el montaje —un cargo con su propuesta '
-    + 'aplicada y su registro sin sellar—. Partirlas por tema separaría de qué material se abre una '
-    + 'propuesta de qué pasa al aplicarla, que son las dos mitades del mismo recorrido.',
 }
 
 const PENDING_SPLIT = {}
