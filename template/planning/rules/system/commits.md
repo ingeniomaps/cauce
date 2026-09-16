@@ -13,6 +13,16 @@ por separado, y quien revise tiene que volver a separarlos a mano.
 La unidad de aceptación y de evidencia sigue siendo la tarea: su entrada de DONE registra todos los
 commits que produjo, separados por `;`. Partir el diff no parte la aceptación.
 
+**El cambio que este trabajo no produjo no se absorbe.** En un árbol pueden aparecer archivos que no
+salieron de acá: los dejó otra sesión, otro agente, la persona antes de empezar, o una herramienta que
+corrió sola. Se miran, y van en su propio commit con un mensaje que diga lo que son, o se dejan sin
+commitear y se avisa. Lo que no pueden es entrar mezclados con lo de uno.
+
+Stagear por ruta explícita —lo de arriba— lo evita casi siempre y no siempre: la ruta ajena puede ser
+justo una de las que este trabajo tocó. Por eso esto es una lectura del diff y no una precaución al
+stagear. El daño es de los que no se ven al revisar: el commit queda atribuido a una tarea que no lo
+produjo, y quien lo revierta mañana se lleva puesto algo que nadie relacionó con esto.
+
 **La prohibición de firmas de IA cubre todo lo que este trabajo publica**, no sólo el mensaje del commit:
 el título y el cuerpo del pull request, y los comentarios que se dejen ahí. Y casi nunca es algo que
 alguien tipea — lo agrega la herramienta, sola, al final del texto que uno escribió—, así que cumplirla

@@ -172,6 +172,27 @@ test('R10 dice a dónde va lo que se publica, no sólo quién lo autoriza', () =
   }
 })
 
+// Se afirma por ejes y no por redacción, igual que las pasadas de acá arriba.
+//
+// Lo propio de éste es el segundo eje, que es contraintuitivo: stagear por ruta explícita ya lo evita
+// casi siempre, y por eso la regla parecía no hacer falta. No alcanza cuando la ruta ajena es una de las
+// que este trabajo tocó, y ahí la precaución al stagear no ve nada — sólo la ve leer el diff.
+test('R8 dice qué hacer con el cambio que este trabajo no produjo', () => {
+  const raiz = path.resolve(__dirname, '..', '..')
+  const commits = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'commits.md'), 'utf8')
+  const r8 = commits.split(/^##\s+/m).find((parte) => /^R8\b/.test(parte))
+  assert.ok(r8, 'R8 existe en commits.md')
+
+  for (const [eje, patron] of [
+    ['lo ajeno no se absorbe', /no produjo no se absorbe/],
+    ['va en su commit o se deja y se avisa', /su propio commit[\s\S]{0,120}sin\s*\n?\s*commitear y se avisa/],
+    ['stagear por ruta no alcanza', /puede ser\s*\n?\s*justo una de las que este trabajo tocó/],
+    ['el daño aparece al revertir', /quien lo revierta mañana/],
+  ]) {
+    assert.match(r8, patron, `R8 perdió el eje: ${eje}`)
+  }
+})
+
 test('el vocabulario de lanes tiene un dueño y las copias no se despegan', () => {
   const P = require('../../engine/planning/parser')
   assert.deepEqual(P.LANES, ['express', 'directo', 'lite', 'full'], 'en orden de ceremonia creciente')
