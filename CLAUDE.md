@@ -2,6 +2,7 @@
 
 @AGENTS.md
 @template/planning/rules/system/process.md
+@template/planning/rules/system/runs.md
 @template/planning/rules/system/code-shape.md
 @template/planning/rules/system/commits.md
 @template/planning/rules/system/conduct.md

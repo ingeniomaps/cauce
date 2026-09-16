@@ -14,6 +14,24 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.94.0] - 2026-09-16
+
+### Corregido
+
+- **Escribir tu propio `process.md` ya no te deja sin las reglas que no ibas a reemplazar.** El override
+  es por nombre de archivo, así que reemplazar «pensar antes de editar» por tu versión se llevaba puesto
+  el archivo entero: R16, R17, R20, R21 y R22 dejaban de llegarle a todo agente. `check` te lo decía —lo
+  hace desde 0.57.0— y no había nada que hacer al respecto, porque conservarlas exigía copiar su texto y
+  una copia deja de recibir las mejoras del `upgrade`.
+
+  Ahora **R16, R20, R21 y R22 viven en `system/runs.md`** —lo que cuesta una corrida, cuándo una medición
+  vale, cómo se retoma lo interrumpido y qué no se toca mientras se mide—, un archivo que reemplazar tu
+  proceso no toca. `system/process.md` se queda con R1..R4 y R17.
+
+  **No tenés que hacer nada**: el archivo nuevo llega en tu próximo `upgrade`. Si ya sobrescribiste
+  `process.md`, esas cuatro reglas vuelven a regir solas, y el aviso de `check` se acorta a lo que de
+  verdad reemplazaste. El bloque de reglas pasa de cuatro archivos a cinco y pesa lo mismo: 39,1 KB.
+
 ## [0.93.0] - 2026-09-16
 
 ### Corregido
