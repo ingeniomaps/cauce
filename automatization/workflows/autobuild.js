@@ -650,8 +650,23 @@ while (rounds++ < MAX_TASKS) {
       )
       if (!estimate) return stop('agent-unavailable', 'Decompose no devolvió resultado')
       if (estimate.needsSplit) {
+        // Una tarea que viene de una épica es además una historia suya, y la lista de historias no se
+        // actualizaba sola: quedaba nombrando un slug que ya no existe en ninguna parte. Medido sobre un
+        // banco, eso rompe por los dos lados según qué escriba el agente — con las subtareas declarando
+        // la épica, `check` se pone en rojo en el acto («BACKLOG <sub>: no existe en epic-NNN»); sin
+        // declararla pasa en verde y la épica **no puede cerrar nunca**, porque `closed` exige evidencia
+        // de cada historia y la original jamás la va a tener.
+        //
+        // Es lo que R25 pide al decir que la unidad partida se cierra diciendo en qué se partió, y el
+        // lugar donde eso se dice es la épica: ahí es donde la unidad vivía. En `done/` no va —su README
+        // declara que es la evidencia de lo que una tarea **entregó**, y una partida no entregó nada—
+        // (caso 169).
+        const historias = task.epic
+          ? ` ${task.id} es una historia de la épica ${task.epic}: reemplazá también ahí su historia por `
+            + 'las de las subtareas, con el mismo criterio y el mismo service que traía.'
+          : ''
         await write(`Reemplazá sólo ${task.id} en ${BACKLOG} por subtareas ordenadas y verificables de forma ` +
-          `independiente: ${JSON.stringify(estimate.subtasks)}.`, { label: 'split' })
+          `independiente: ${JSON.stringify(estimate.subtasks)}.${historias}`, { label: 'split' })
         planning = await readContext()
         if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
         // Misma forma que en Claim: si la cola sigue ofreciendo lo mismo, el estado no cambió y repetir
