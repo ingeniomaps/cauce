@@ -120,7 +120,13 @@ function destructive(input) {
       'Operación destructiva sobre disco o dispositivo.',
     ],
     [
-      new RegExp(String.raw`\brm\s+(?:-[^\s]*r[^\s]*\s+)+(?:\/\*?|~\/?|\$HOME|\.\.)(?=${PALABRA})`),
+      // El destino se reconoce como lo escribe una persona y no sólo desnudo: entre comillas, con llaves,
+      // detrás de `--` y con barra final. Las comillas importan más que las otras tres — `rm -rf "$HOME"`
+      // es la forma *correcta* de escribirlo en bash, así que sin esto el hueco premiaba al que cita bien
+      // sus variables. Y `destructive` no desentrecomilla fuera de un commit, a propósito, así que la
+      // comilla tiene que entrar en el patrón (caso 167).
+      new RegExp(String.raw`\brm\s+(?:-[^\s]*r[^\s]*\s+)+(?:--\s+)?['"]?`
+        + String.raw`(?:\/\*?|~\/?|\$\{?HOME\}?\/?|\.\.)(?=${PALABRA})`),
       "'rm -r' sobre /, home o el directorio padre es catastrófico.",
     ],
   ]

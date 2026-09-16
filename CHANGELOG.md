@@ -18,6 +18,14 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`rm -r` sobre la raíz o el home se frena también entrecomillado.** La regla reconocía el destino sólo
+  desnudo: `rm -rf /` bloqueaba y `rm -rf "/"`, `rm -rf "$HOME"`, `rm -rf ${HOME}`, `rm -rf $HOME/` y
+  `rm -rf -- /` pasaban. La comilla es lo que más importa — citar una variable es la forma *correcta* de
+  escribirlo en bash, así que el hueco premiaba al que tiene el hábito bueno.
+
+  Los borrados con destino concreto siguen pasando, también entrecomillados: se comprobó con
+  `rm -rf "$HOME/proyecto/dist"` entre otros cinco.
+
 - **Un commit escrito en dos líneas vuelve a pasar por los guards.** `isCommit` reconocía el commit
   después de `;`, `&` o `|` y no después de un salto de línea ni dentro de un subshell — o sea que
   `git add x` ⏎ `git commit -m x` en un solo Bash, que es como se escriben dos pasos, dejaba sin correr
