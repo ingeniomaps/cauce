@@ -75,3 +75,22 @@ quedar verde con el defecto adentro sin que sobre un solo doble — lo que falta
 escribió. Por eso se justifica y se reúsa en vez de prohibirse: un doble sin razón escrita se copia, y la
 copia deja de coincidir con lo que reemplaza sin que ninguna prueba lo note.
 
+
+## R27 — Una defensa se aplica por defecto y cada excepción se declara sola
+
+Una defensa escrita como lista de lo que protege deja abierto todo lo que venga después. El día que
+alguien agrega una ruta, un campo o un comando, nace afuera —y no falla nada, porque no hay nada que
+compare la lista con lo que existe—. La ausencia no deja rastro, que es la forma de R15 aplicada a un
+mecanismo en vez de a un entregable.
+
+Se escribe al revés: cerrado por defecto, y cada excepción declarada de a una, con su razón y en el
+mismo lugar. Así lo que se agrega nace protegido y lo que se abre deja constancia de quién lo abrió.
+
+No es una regla de seguridad aunque ahí sea donde más se note. Vale para un guard, para el alcance de un
+lint, para lo que un CI corre, para un permiso: cualquier mecanismo cuya lista alguien tiene que
+acordarse de ampliar.
+
+Y el caso que más se disfraza es la excepción por ambiente. «Esta comprobación no corre en desarrollo»
+es una quita escrita como agregado —R9—, y además garantiza que el camino de producción sea el único que
+nunca se ejercitó. Si hace falta que en desarrollo sea más fácil, se le da a desarrollo lo que necesita
+para pasar la comprobación, no una puerta trasera.

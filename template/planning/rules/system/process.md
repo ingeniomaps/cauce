@@ -72,3 +72,41 @@ Las dos barras juntas, y en los dos sentidos: una tarea de tres horas con quince
 el tope de esfuerzo y no se construye nunca; una tarea de una condición y tres días lo pasa por el otro
 lado. Medir una sola deja pasar la mitad de los casos.
 
+
+## R25 — El identificador de una unidad de trabajo no cambia mientras está viva
+
+El slug con el que una tarea se escribe es el mismo con el que se cierra. Renombrarlo a mitad de camino
+—porque se entendió mejor el alcance, porque se partió en dos, porque el nombre viejo quedó feo— rompe
+lo único que ata la cola con lo entregado.
+
+Y rompe **sin que nada falle**, que es lo que lo vuelve caro. El estado de una unidad no está escrito en
+ningún lado: se deriva cruzando el identificador entre la cola, lo reclamado y lo hecho. Con el nombre
+cambiado, las dos mitades dejan de cruzarse y cada lado se lee coherente por separado: la cola muestra
+una tarea pendiente que ya está construida, y lo hecho muestra una entrega que nadie pidió. La puerta
+pasa en verde. En la instancia que originó esta regla, una tarea partida en cuatro se cerró con dos
+nombres nuevos y la corrida siguiente gastó 594k tokens para descubrir que tres de ellas ya estaban
+hechas.
+
+Cuando el nombre de verdad tiene que cambiar, la salida es barata y hay que escribirla: el nuevo lleva
+el viejo al lado —`slug-nuevo (antes: slug-viejo)`— hasta que la unidad se cierra. Ahí el cruce vuelve a
+existir y lo puede hacer una persona leyendo.
+
+Partir una unidad es otra cosa y no la toca: las partes son unidades nuevas, con identificadores nuevos,
+y la original se cierra diciendo en qué se partió. Lo que R25 prohíbe es que la misma unidad viva con
+dos nombres.
+
+## R28 — Un estado lo dice el contenido de un archivo, nunca su presencia
+
+Un bloqueo, una pausa o un trabajo en curso que se representan con «el archivo está» tienen un modo de
+fallo que no se ve: resolverlos exige acordarse de borrar, y el que revisa lee lo que el archivo dice
+—que ya está resuelto— mientras el mecanismo sigue leyendo que existe.
+
+Se paga entero y en la puerta de entrada: la corrida arranca, lee el estado completo, y recién ahí
+descubre que lo que la frena es un archivo que alguien dejó puesto. En la instancia que originó esta
+regla pasó dos veces el mismo día —la segunda después de haber dicho que no se repetiría— a 42k tokens
+por vez.
+
+El archivo se queda y su contenido dice en qué estado está. Es lo que ya hace el WIP de este toolkit:
+`status: IDLE` es un estado escrito, no un archivo ausente, así que quien lo lee y quien lo comprueba
+leen lo mismo. Un centinela cuya única información es existir obliga a que el borrado sea parte de la
+resolución, y eso es una convención que alguien va a olvidar.

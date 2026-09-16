@@ -196,10 +196,13 @@ test('una regla que declara su superficie se nombra sin cargarse, y una sin decl
 // mitades de decirlo son distintas — `install` lo declara cuando se elige, `check` avisa cuando ya pesa—
 // y las dos cuentan lo mismo: lo que el bloque **carga**. Una regla con `aplica:` no suma, porque si
 // sumara declararla no serviría de nada.
-// ~18,6 KB cada una. El tamaño está elegido para que el banco tenga margen de los dos lados: con las dos
-// el bloque llega a 75,5 KB y cruza, y quitando una queda en 56,9 KB y no. Ajustado más fino —tres de 13
-// KB— quitar una dejaba 64,4 KB, que sigue cruzando por 400 bytes, y la prueba habría culpado al motor.
-const heavyRule = (n) => `# Propia ${n}\n\n## P${n} — Regla de la empresa\n\n${'Texto de la regla. '.repeat(1000)}\n`
+// ~13,0 KB cada una. El tamaño se elige midiendo y no estimando, para que el banco tenga margen de los
+// dos lados: con las dos el bloque llega a 72,0 KB y cruza el umbral de 64, y quitando una queda en 58,9
+// y no. Era de 18,6 KB cuando el piso del toolkit eran 38,3; con el piso en 45,9 —las cinco reglas que
+// R24..R28 sumaron— quitar una dejaba 64,5 KB, que sigue cruzando por medio KB, y la prueba habría
+// culpado al motor por un fixture que envejeció. Es el mismo ajuste que ya se había hecho una vez, y por
+// eso el número va acá con su medición al lado: se recalibra cada vez que el piso se mueve.
+const heavyRule = (n) => `# Propia ${n}\n\n## P${n} — Regla de la empresa\n\n${'Texto de la regla. '.repeat(700)}\n`
 
 test('install declara lo que el bloque de reglas va a pesar en cada agente', () => {
   const { target, runCli } = installedProject('cauce-rules-peso-')
@@ -207,9 +210,10 @@ test('install declara lo que el bloque de reglas va a pesar en cada agente', () 
   assert.equal(salida.status, 0, salida.stderr)
   // En bytes y no en tokens: los bytes los mide el motor, y la equivalencia en tokens depende del
   // modelo. Un número inventado en la salida es peor que uno exacto, porque se cita para decidir.
-  // Cinco desde que `runs.md` salió de `process.md` (caso 160): los KB no se movieron —el texto es el
-  // mismo, repartido— y por eso el rango se queda donde estaba. Lo que cambia es el conteo.
-  assert.match(salida.stdout, /claude: el bloque de reglas carga 5 archivo\(s\), 3[89]\.\d KB en cada agente/,
+  // Cinco desde que `runs.md` salió de `process.md` (caso 160). Los KB sí se movieron después, de 39,1 a
+  // 45,9, y eso no fue un corte sino texto nuevo: las cinco reglas que trajo una instancia real. El
+  // número se actualiza midiendo, porque es lo que cada agente paga al arrancar.
+  assert.match(salida.stdout, /claude: el bloque de reglas carga 5 archivo\(s\), 4[56]\.\d KB en cada agente/,
     'declara cuántas y cuánto pesan')
 })
 

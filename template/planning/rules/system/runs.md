@@ -128,3 +128,26 @@ materializar, o se espera. Esperar es más barato que descubrir que la tanda no 
 Y si ya pasó, se dice: qué medición, qué cambió y cuándo. Un resultado cuyo entorno se movió es una
 hipótesis, no un veredicto —lo mismo que R21 nombra para lo que quedó a medias—, y guardarlo sin esa
 marca es la forma cara del error, porque el número sobrevive a la sesión que sabía.
+
+## R26 — Una puerta acota su propio costo y no escribe en el árbol que juzga
+
+Una puerta existe para medir, y una que se lleva la máquina no mide nada: se apaga. Tres límites, y los
+tres se ganaron con una corrida perdida.
+
+**Acota su alcance.** Una puerta opina sobre el repositorio que la declara y no sobre sus vecinos. La
+que juzga a otro frena trabajo que no pidió juzgar y lo hace con reglas que ese equipo no escribió.
+
+**Acota su costo, con un tope y con un candado.** Dos revisores lanzando la misma suite son dos corridas
+simultáneas, y ninguna de las dos lo sabe. En la instancia que originó esta regla fueron cuatro en cuatro
+minutos: el sistema operativo mató la sesión entera con un pico de 24,2 GB y se llevó puesta la corrida
+que estaba a punto de terminar. Y lo que ya se midió no se vuelve a medir: si el build dejó su
+resultado, la puerta lo lee en vez de rehacerlo.
+
+**No escribe en el árbol que juzga.** Un formateador con `--fix`, un build que limpia su salida, un
+gestor que sincroniza antes de arrancar: los tres parecen inocuos y los tres editan el trabajo de quien
+está commiteando, a veces a mitad de camino. La puerta corre sobre una copia, o corre sin la bandera que
+escribe. Este toolkit lo aprendió así —`verify` materializa el índice en un temporal justamente por
+esto— y la regla existe para que la puerta que escribe **la empresa** no lo vuelva a aprender sola.
+
+El remate es la razón de las tres: una puerta que estorba se saltea con la variable de escape, y desde
+ahí no protege de nada. Lo que se negocia es el costo, nunca la exigencia.

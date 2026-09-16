@@ -218,3 +218,26 @@ de dónde vino y quién lo autorizó.
 Cuando el contenido externo cambia lo que se iba a hacer, se dice de dónde salió y decide una persona:
 al INBOX si es una propuesta, a HUMAN_ACTIONS si necesita una autoridad que el cargo no tiene.
 
+
+## R24 — Una premisa sobre el propio código se abre antes de usarla
+
+R14 gobierna lo que se afirma de una herramienta, un motor, una norma o un sistema de terceros. Lo que
+queda afuera es el código que se está por cambiar, y ahí la afirmación falsa cuesta más: nadie la va a
+discutir, porque el que la escribe y el que la lee miran el mismo repositorio y suponen lo mismo.
+
+Toda premisa sobre el comportamiento del propio código —qué hace un endpoint, qué significa un estado,
+dónde vive un componente— se abre en el archivo, en la línea, antes de escribirla en una aceptación, un
+plan o un diagnóstico. No alcanza con recordarla ni con haberla leído la semana pasada.
+
+**Y el ancla se abre, no se copia.** Una referencia `archivo:línea` traída de otra tarea es una premisa
+más, no una comprobación: el archivo se movió. En la instancia que originó esta regla, una función pasó
+de la línea 555 a la 733 dentro de la misma sesión.
+
+Lo que esto evita es una clase entera de vuelta perdida, y se reconoce porque el trabajo frena en la
+puerta y no en el código: la aceptación pedía algo que el sistema no hace, así que ninguna
+implementación la cumple. Cuatro corridas seguidas se perdieron así en un solo día —una afirmaba que un
+webhook abría acceso sobre filas terminales, y hace lo contrario—, y las cuatro se veían como un
+problema de implementación.
+
+El contraste es el mismo que pide R14 y por eso no se repite acá: lo consultado se enumera, con la ruta
+leída y la línea. La diferencia es sólo el sujeto.
