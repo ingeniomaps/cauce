@@ -129,6 +129,27 @@ test('R3 acota qué bloquea sin volverlo una escapatoria', () => {
   }
 })
 
+// Se afirma por ejes y no por redacción, igual que las pasadas de acá arriba.
+//
+// Lo propio de éste es el segundo eje, que es el que la vuelve cumplible: la firma no la tipea nadie, la
+// agrega la herramienta al final de lo que uno escribió. Una regla que sólo dijera «no la escribas» se
+// cumple creyendo que se cumplió, porque nunca se escribió — y sale publicada igual.
+test('R8 prohíbe la firma de IA en todo lo que se publica, no sólo en el commit', () => {
+  const raiz = path.resolve(__dirname, '..', '..')
+  const commits = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'commits.md'), 'utf8')
+  const r8 = commits.split(/^##\s+/m).find((parte) => /^R8\b/.test(parte))
+  assert.ok(r8, 'R8 existe en commits.md')
+
+  for (const [eje, patron] of [
+    ['cubre todo lo publicado, no sólo el commit', /cubre todo lo que este trabajo publica/],
+    ['nombra dónde: título, cuerpo y comentarios', /título y el cuerpo del pull request[\s\S]{0,60}comentarios/],
+    ['la agrega la herramienta, no la tipea nadie', /lo agrega la herramienta, sola/],
+    ['por eso se cumple revisando la salida', /revisar la salida antes de publicarla/],
+  ]) {
+    assert.match(r8, patron, `R8 perdió el eje: ${eje}`)
+  }
+})
+
 test('el vocabulario de lanes tiene un dueño y las copias no se despegan', () => {
   const P = require('../../engine/planning/parser')
   assert.deepEqual(P.LANES, ['express', 'directo', 'lite', 'full'], 'en orden de ceremonia creciente')
