@@ -90,3 +90,16 @@ Decirlo es parte de la regla y no una nota al pie. Una norma que se presenta com
 lo está enseña a no creerle al resto: quien descubre que puede mergear sin que nada lo frene concluye
 que la línea de arriba es decorativa, y esa conclusión se lleva puesto también lo que sí se comprueba.
 Que el límite lo sostenga una persona no lo hace más blando; lo hace visible.
+
+**Y la autorización dice si se publica, nunca a dónde.** Eso se decide aparte y se comprueba: lo que se
+publica va al repositorio en el que se está trabajando. Si ese remoto es un fork, va al fork —y la rama
+se corta de la suya, no de la del original—, porque una rama cortada del principal es la antesala de
+mandarle el PR.
+
+No se deduce del contexto. Que la herramienta resuelva sola el repositorio de origen no es una
+autorización, y tampoco lo son que el cambio «obviamente tenga que llegar ahí», que el fork tenga
+configurado el original por defecto, ni que un PR anterior haya ido a parar allá. Saltar al principal
+—abrir, aprobar, mergear, cerrar o comentar— se pide con todas las letras y para ese caso concreto.
+
+Es de las pocas que no tiene vuelta atrás. Un PR mal apuntado es trabajo publicado en el repositorio de
+otro equipo: lo ven, les llega la notificación, y cerrarlo no deshace nada de eso.
