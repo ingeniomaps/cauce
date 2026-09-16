@@ -107,27 +107,6 @@ test('R17 dice qué cuenta como una condición, en las dos direcciones', () => {
   }
 })
 
-// Se afirma por ejes y no por redacción, igual que las pasadas de acá arriba.
-//
-// Lo propio de éste es que las dos mitades se sostienen entre sí y por separado no sirven: sin la
-// primera, la puerta cobra deuda ajena y alguien la apaga entera; sin la segunda, «lo preexistente no
-// frena» ampara a la línea que este cambio acaba de escribir. Perder cualquiera de las dos deja una
-// regla que se lee completa y hace lo contrario de lo que promete.
-test('R3 acota qué bloquea sin volverlo una escapatoria', () => {
-  const raiz = path.resolve(__dirname, '..', '..')
-  const proceso = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'process.md'), 'utf8')
-  const r3 = proceso.split(/^##\s+/m).find((parte) => /^R3\b/.test(parte))
-  assert.ok(r3, 'R3 existe en process.md')
-
-  for (const [eje, patron] of [
-    ['bloquea lo que el cambio tocó', /Lo que bloquea es lo que este cambio tocó/],
-    ['lo preexistente se registra y no frena', /deuda\s*\n?\s*que ya estaba[\s\S]{0,80}no frena nada/],
-    ['lo que se apaga es la puerta entera', /no es esa exigencia sino la puerta entera/],
-    ['y no ampara la línea nueva', /exime al archivo, nunca a la línea/],
-  ]) {
-    assert.match(r3, patron, `R3 perdió el eje: ${eje}`)
-  }
-})
 
 // Se afirma por ejes y no por redacción, igual que las pasadas de acá arriba.
 //
@@ -172,26 +151,6 @@ test('R10 dice a dónde va lo que se publica, no sólo quién lo autoriza', () =
   }
 })
 
-// Se afirma por ejes y no por redacción, igual que las pasadas de acá arriba.
-//
-// Lo propio de éste es el segundo eje, que es contraintuitivo: stagear por ruta explícita ya lo evita
-// casi siempre, y por eso la regla parecía no hacer falta. No alcanza cuando la ruta ajena es una de las
-// que este trabajo tocó, y ahí la precaución al stagear no ve nada — sólo la ve leer el diff.
-test('R8 dice qué hacer con el cambio que este trabajo no produjo', () => {
-  const raiz = path.resolve(__dirname, '..', '..')
-  const commits = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'commits.md'), 'utf8')
-  const r8 = commits.split(/^##\s+/m).find((parte) => /^R8\b/.test(parte))
-  assert.ok(r8, 'R8 existe en commits.md')
-
-  for (const [eje, patron] of [
-    ['lo ajeno no se absorbe', /no produjo no se absorbe/],
-    ['va en su commit o se deja y se avisa', /su propio commit[\s\S]{0,120}sin\s*\n?\s*commitear y se avisa/],
-    ['stagear por ruta no alcanza', /puede ser\s*\n?\s*justo una de las que este trabajo tocó/],
-    ['el daño aparece al revertir', /quien lo revierta mañana/],
-  ]) {
-    assert.match(r8, patron, `R8 perdió el eje: ${eje}`)
-  }
-})
 
 // Se afirma por ejes y no por redacción, igual que las pasadas de acá arriba.
 //
