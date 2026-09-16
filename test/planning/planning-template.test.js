@@ -150,6 +150,28 @@ test('R8 prohíbe la firma de IA en todo lo que se publica, no sólo en el commi
   }
 })
 
+// Se afirma por ejes y no por redacción, igual que las pasadas de acá arriba.
+//
+// Lo propio de éste es el tercer eje. Los dos primeros se pueden leer como una preferencia de flujo; el
+// que los vuelve regla es que el daño no se deshace — el PR mal apuntado ya se vio, ya notificó, y
+// cerrarlo no borra nada de eso. Sin él, «va al fork» se negocia el día que apura.
+test('R10 dice a dónde va lo que se publica, no sólo quién lo autoriza', () => {
+  const raiz = path.resolve(__dirname, '..', '..')
+  const commits = fs.readFileSync(path.join(raiz, 'template', 'planning', 'rules', 'system', 'commits.md'), 'utf8')
+  const r10 = commits.split(/^##\s+/m).find((parte) => /^R10\b/.test(parte))
+  assert.ok(r10, 'R10 existe en commits.md')
+
+  for (const [eje, patron] of [
+    ['la autorización no dice a dónde', /autorización dice si se publica, nunca a dónde/],
+    ['va al repo en el que se trabaja, y al fork si lo es', /Si ese remoto es un fork, va al fork/],
+    ['la rama se corta de la suya', /rama\s*\n?\s*se corta de la suya/],
+    ['que la herramienta lo resuelva no autoriza', /resuelva sola el repositorio de origen no es una/],
+    ['y no tiene vuelta atrás', /cerrarlo no deshace nada/],
+  ]) {
+    assert.match(r10, patron, `R10 perdió el eje: ${eje}`)
+  }
+})
+
 test('el vocabulario de lanes tiene un dueño y las copias no se despegan', () => {
   const P = require('../../engine/planning/parser')
   assert.deepEqual(P.LANES, ['express', 'directo', 'lite', 'full'], 'en orden de ceremonia creciente')

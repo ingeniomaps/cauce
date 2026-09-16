@@ -44,6 +44,18 @@ diseño — eso vive en el commit y en el código.
     corrida arranca, lee todo el estado y recién ahí muere. Pasó dos veces el mismo día, a 42k tokens por
     vez. Es lo que el WIP de Cauce ya hace bien con `status: IDLE`.
 
+- **R10 dice a dónde va lo que se publica, no sólo quién lo autoriza.** La autorización decía si se
+  publica y nunca dónde. Ahora: lo que se publica va al repositorio en el que estás trabajando, y si ese
+  remoto es un fork, va al fork — con la rama cortada de la suya, porque una rama cortada del principal
+  es la antesala de mandarle el PR.
+
+  No se deduce del contexto: que la herramienta resuelva sola el repositorio de origen no es una
+  autorización, ni lo son que el cambio «obviamente tenga que llegar ahí» ni que un PR anterior haya ido
+  a parar allá. Saltar al principal se pide con todas las letras y para ese caso concreto.
+
+  Es de las pocas sin vuelta atrás: un PR mal apuntado es trabajo publicado en el repositorio de otro
+  equipo — lo vieron, les llegó la notificación, y cerrarlo no deshace nada de eso.
+
 - **R8 dice que la prohibición de firmas de IA cubre todo lo que se publica**, no sólo el mensaje del
   commit: el título y el cuerpo del pull request, y los comentarios que se dejen ahí. Y casi nunca es
   algo que alguien tipea — lo agrega la herramienta sola, al final del texto que escribiste—, así que
@@ -79,7 +91,7 @@ diseño — eso vive en el commit y en el código.
   poder pedir algo que ninguna mutación puede tocar. Si no hay nada que romper, no había propiedad que
   cuidar, y eso se ve al redactarla en vez de al final de la vuelta.
 
-  **Lo que cuesta:** el bloque de reglas que cada agente carga al arrancar pasa de **39,1 a 48,5 KB**.
+  **Lo que cuesta:** el bloque de reglas que cada agente carga al arrancar pasa de **39,1 a 49,4 KB**.
   Está medido, no estimado, y el umbral del aviso de `check` **no se movió**: sigue en 64 KB, porque lo
   que mide es cuánto agregaste vos, y subirlo para hacerle lugar al piso apagaría justamente eso. Quedan
   ~18 KB de margen antes de que el aviso hable.
