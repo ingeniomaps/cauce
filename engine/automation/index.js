@@ -75,11 +75,11 @@ function doctor(root, name, output = console) {
   const warnings = []
   try {
     const expected = runnerConfig(paths, root)
-    const actual = JSON.parse(fs.readFileSync(paths.configTarget, 'utf8'))
-    if (!includesConfig(actual, expected)) {
+    const installed = JSON.parse(fs.readFileSync(paths.configTarget, 'utf8'))
+    if (!includesConfig(installed, expected)) {
       errors.push(`${runner.config.target}: configuración instalada incompleta o divergente`)
     }
-    const legacy = legacyGuardWiring(actual)
+    const legacy = legacyGuardWiring(installed)
     if (legacy.length) {
       warnings.push(`${runner.config.target}: ${legacy.join(', ')} siguen registrados sueltos junto al grupo; `
         + 'cada uno se ejecuta dos veces. Borrá esas entradas del archivo para quedarte sólo con el grupo')

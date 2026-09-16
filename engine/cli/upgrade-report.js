@@ -47,11 +47,11 @@ function adviceFor(changed) {
   // El consejo de arriba manda mudar lo propio a donde sí es del proyecto, y para estos cuatro no hay
   // adónde: no existe un PROTOCOL de la empresa que le gane al del toolkit como sí lo hay en `rules/`.
   // Sin decirlo, quien adoptó Cauce sobre su propio proceso lee un consejo que no puede seguir.
-  const SIN_CONTRAPARTE = ['planning/PROTOCOL.md', 'planning/METHODOLOGY.md', 'planning/FLOW.md', 'Makefile']
-  const propios = docs.filter((file) => SIN_CONTRAPARTE.includes(file))
-  if (propios.length) {
+  const NO_COUNTERPART = ['planning/PROTOCOL.md', 'planning/METHODOLOGY.md', 'planning/FLOW.md', 'Makefile']
+  const ownDocs = docs.filter((file) => NO_COUNTERPART.includes(file))
+  if (ownDocs.length) {
     advice.push(
-      `${propios.join(', ')} no tienen contraparte propia adónde mudarse: son del toolkit y no hay\n`
+      `${ownDocs.join(', ')} no tienen contraparte propia adónde mudarse: son del toolkit y no hay\n`
       + 'una versión del proyecto que le gane. Quedan congelados con tu versión y el resto se actualiza\n'
       + 'igual. Adoptar el del toolkit es trabajo propio —comparar los dos procesos y decidir—, no un flag.',
     )
@@ -74,18 +74,18 @@ function adviceFor(changed) {
 // entero en vez de recalcular nada: lo que se informa es exactamente lo que ocurrió.
 function reportUpgrade({
   root, from, to, system, retired, added, overrides, pinned, droppedBlocks,
-  descartados, conservados, pendientes,
+  discarded, keptFiles, pending,
 }) {
   console.log(`✓ Cauce ${from || '(previa)'} → ${to}`)
   // Descartar con --force es legítimo; hacerlo sin dejar rastro no. Queda en la salida del comando,
   // que es la evidencia que el protocolo pide para cualquier cambio. Y lo que se conservó no se vuelve
   // a enumerar acá: ya salió con su consejo antes de escribir nada, y repetirlo con el glifo del
   // descarte es lo que volvía ilegible el bloque.
-  for (const file of descartados) console.log(`− descartado tu cambio en ${file}`)
-  if (conservados.length) console.log(`= ${conservados.length} archivo(s) conservados por tu edición`)
+  for (const file of discarded) console.log(`− descartado tu cambio en ${file}`)
+  if (keptFiles.length) console.log(`= ${keptFiles.length} archivo(s) conservados por tu edición`)
   for (const relative of retired) console.log(`− retirado ${relative}: Cauce ya no lo distribuye`)
   // Sin glifo de acción porque no hubo ninguna: la ruta sigue ahí y el contenido también.
-  for (const { relative, files } of pendientes) {
+  for (const { relative, files } of pending) {
     console.log(`  ${relative}: ${files.length} archivo(s) que Cauce no entregó; la ruta se retiró y `
       + 'el contenido queda. Movelo adonde lo quieras y borrala, o repetí con --force.')
   }
@@ -103,7 +103,7 @@ function reportUpgrade({
   }
   // Sólo cuando es cierto, y ahora lo decide lo que pasó y no una condición: se dice justo cuando no
   // se descartó nada, que incluye la corrida que conservó veinte archivos.
-  if (!descartados.length) console.log('  planning, organization y todo lo propio quedaron intactos')
+  if (!discarded.length) console.log('  planning, organization y todo lo propio quedaron intactos')
   // No se borra: sin la dependencia declarada, quitarle `.ops/` la dejaría sin motor. Se avisa y
   // decide una persona.
   if (fs.existsSync(path.join(root, '.ops', 'engine'))) {

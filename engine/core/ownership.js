@@ -299,7 +299,7 @@ const RETIRED = [
 //
 // El manifiesto no las puede desempatar: `trackedPaths()` nunca las registró, así que para el toolkit
 // todo su contenido es igual de ajeno. Sin poder demostrar que lo entregó, no lo borra.
-const RETIRED_COMPARTIDO = ['automatization/runners', 'automatization/workflows']
+const RETIRED_SHARED = ['automatization/runners', 'automatization/workflows']
 
 function retiredWithLearning(root) {
   const found = []
@@ -407,7 +407,7 @@ module.exports = {
   deliveredFiles,
   effectiveRules,
   shippedFiles,
-  RETIRED_COMPARTIDO,
+  RETIRED_SHARED,
   TEMPLATE_OWN,
   TEMPLATE_PREFIXES,
   addedPaths,

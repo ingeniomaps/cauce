@@ -43,7 +43,7 @@ function claim(dir, slug, cli) {
 
   const target = CL.file(root, slug)
   fs.mkdirSync(path.dirname(target), { recursive: true })
-  const cuerpo = CL.content({ task: slug, owner: me, runner: from, started: TODAY(), service: task.service })
+  const body = CL.content({ task: slug, owner: me, runner: from, started: TODAY(), service: task.service })
   try {
     // Reservar **es** crear el archivo, así que el único juez de quién la tiene es el archivo. `wx` falla
     // si ya está, y de ahí sale la respuesta entera: propia, ajena o perdida en la carrera.
@@ -52,7 +52,7 @@ function claim(dir, slug, cli) {
     // de diferencia ganarían los dos sin que ninguno se entere. Y una comprobación previa tampoco
     // alcanzaría —entre mirar y escribir queda la misma ventana—, así que sería un segundo juez que
     // adelanta un veredicto que este bloque tiene que volver a dar igual.
-    fs.writeFileSync(target, cuerpo, { flag: 'wx' })
+    fs.writeFileSync(target, body, { flag: 'wx' })
   } catch (error) {
     if (error.code !== 'EEXIST') throw error
     const dueño = CL.read(root).find((one) => one.slug === slug)
@@ -109,20 +109,20 @@ function release(dir, slug) {
 function runners(dir, cli) {
   const root = planningRoot(dir)
   const done = ST.snapshot(root).done
-  const abiertos = CL.read(root).filter((one) => !done.set.has(one.slug))
-  const hoy = TODAY()
-  const filas = abiertos.map((one) => {
+  const open = CL.read(root).filter((one) => !done.set.has(one.slug))
+  const today = TODAY()
+  const rows = open.map((one) => {
     const commit = R.lastCommit(R.repoOf(path.join(root, '..'), one.service), CL.branchOf(one.slug))
     return { runner: one.runner, task: one.slug, owner: one.owner, started: one.started, lastCommit: commit }
   })
-  if (cli.has('--json')) return console.log(JSON.stringify(filas))
-  if (!filas.length) return console.log('= ningún runner tiene trabajo abierto: arrancá con un id propio')
-  const ancho = Math.max(...filas.map((one) => one.runner.length))
-  for (const una of filas) {
-    const avance = una.lastCommit ? `último commit ${una.lastCommit}` : 'sin commits en su rama'
-    console.log(`${una.runner.padEnd(ancho)}  ${una.task}  (${una.owner}, desde ${una.started}; ${avance})`)
+  if (cli.has('--json')) return console.log(JSON.stringify(rows))
+  if (!rows.length) return console.log('= ningún runner tiene trabajo abierto: arrancá con un id propio')
+  const width = Math.max(...rows.map((one) => one.runner.length))
+  for (const row of rows) {
+    const progress = row.lastCommit ? `último commit ${row.lastCommit}` : 'sin commits en su rama'
+    console.log(`${row.runner.padEnd(width)}  ${row.task}  (${row.owner}, desde ${row.started}; ${progress})`)
   }
-  console.log(`\n${filas.length} runner(s) con trabajo abierto al ${hoy}. `
+  console.log(`\n${rows.length} runner(s) con trabajo abierto al ${today}. `
     + 'Retomá uno usando su id, o arrancá con uno propio.')
 }
 

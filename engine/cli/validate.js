@@ -137,19 +137,19 @@ function check(dir, cli) {
   // Lo que `upgrade` conserva por estar editado deja de recibir mejoras, y eso es una deuda que no
   // avisa sola: la instancia queda con medio molde viejo y todo se ve normal. Sale acá para que se vea
   // en cada corrida y no sólo el día que alguien actualiza.
-  const congelados = O.localChanges(path.resolve(root, '..'))
-  if (congelados.length) {
-    warnings.push(`${congelados.length} archivo(s) del molde congelados por edición local; `
+  const frozen = O.localChanges(path.resolve(root, '..'))
+  if (frozen.length) {
+    warnings.push(`${frozen.length} archivo(s) del molde congelados por edición local; `
       + '`upgrade` los conserva y no les trae mejoras')
   }
 
   // Y lo que `upgrade` no retiró porque no pudo demostrar que fuera suyo: queda ahí, sin colgar de
   // ningún mecanismo, hasta que alguien lo mueva o lo borre. Se cuenta por lo mismo que los congelados
   // — un resto que no se ve se vuelve permanente.
-  const restos = O.RETIRED_COMPARTIDO.filter((relative) => fs.existsSync(path.join(root, '..', relative)))
-  if (restos.length) {
-    warnings.push(`${restos.length} ruta(s) retiradas siguen en disco con contenido tuyo `
-      + `(${restos.join(', ')}); Cauce ya no las distribuye ni las toca`)
+  const leftovers = O.RETIRED_SHARED.filter((relative) => fs.existsSync(path.join(root, '..', relative)))
+  if (leftovers.length) {
+    warnings.push(`${leftovers.length} ruta(s) retiradas siguen en disco con contenido tuyo `
+      + `(${leftovers.join(', ')}); Cauce ya no las distribuye ni las toca`)
   }
 
   const integration = I.validate(path.resolve(root, '..'))
