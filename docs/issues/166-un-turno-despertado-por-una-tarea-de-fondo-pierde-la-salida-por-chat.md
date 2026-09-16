@@ -1,15 +1,16 @@
 ---
 caso: 166
 titulo: Un turno despertado por una notificación de tarea pierde la salida por chat, y el bloqueo manda a copiar y pegar con la persona mirando
-estado: abierto
+estado: resuelto
+resuelto-en: 0.95.0
 prioridad: media
 version-detectada: 0.94.0
 ---
 
 # 166 — Un turno despertado por una tarea de fondo pierde la salida por chat
 
-**🔴 abierto** · detectado en 0.94.0 · prioridad **media** — no rompe nada, le pasa trabajo manual a la
-persona que está ahí y que Cauce ya sabe que está ahí
+**🟢 resuelto en 0.95.0** · detectado en 0.94.0 · prioridad **media** — el bloqueo vuelve a ofrecer el
+«dale» en un turno despertado, y medirlo mostró que la causa era otra que la que el caso nombraba
 
 ## Resumen
 
@@ -130,3 +131,62 @@ como si la carpeta hubiera quedado autorizada.
 persona, no el agente: después del tercer «pegá esto en `.ops-approval`» preguntó si no sería mejor que
 se le ofreciera aprobar por chat. El agente estaba repitiendo lo que el bloqueo le decía; el bloqueo
 estaba eligiendo la redacción equivocada.
+
+## Cierre
+
+**Resuelto en 0.95.0, con un arreglo distinto del que el caso proponía.** El síntoma era exacto y el
+razonamiento estaba bien construido; la rama de `said` que lo causaba era otra, y el fix propuesto no lo
+arreglaba. Se supo corriéndolo, no leyéndolo.
+
+Recorriendo lo que el caso enumeró:
+
+- **«El agente recibe la redacción de no hay nadie a quien preguntarle» → comprobado y cerrado.**
+  Reproducido contra el motor: tras el mensaje de la persona, `HOW` devuelve «Decile a la persona qué se
+  frenó…»; tras la notificación, «Aprobalo pegando tal cual en…». Con el arreglo devuelve la primera en
+  los dos turnos.
+- **«La última línea de `said` es la que lo causa» → refutado, midiéndolo.** La notificación entra por el
+  **mismo hook** que un mensaje: es un `UserPromptSubmit` cuyo texto arranca con `<task-notification>`, y
+  `record` calcula `human = !/^\s*</.test(text)`, así que reescribe el registro con `human: false`.
+  `said` devuelve `null` en `!saved.human` y nunca llega a comparar los ids. El caso marcó esa rama como
+  hipótesis no comprobada y acertó en marcarla: era falsa.
+- **«El registro tenía `human: true` en ambos momentos» → así se leía después, y por eso engañó.** El
+  registro es uno por sesión y se reescribe en cada mensaje: la notificación lo dejó en `false` y el «dale»
+  siguiente lo devolvió a `true`. Quien lo abrió más tarde vio el estado posterior al bloqueo, no el que
+  había cuando el bloqueo ocurrió.
+- **«`hold` pasa por la misma puerta que `authorize`, y ahí esa comparación no protege nada» → cierto, y
+  es lo que se arregló.** El diagnóstico de fondo —preguntar no es conceder— era correcto; lo que estaba
+  mal era qué condición sobraba.
+- **El fix propuesto → no se aplicó, porque no arregla el caso.** Su `present()` conserva
+  `if (!saved || !saved.human || saved.flow) return null`, y la notificación deja `human` en `false`. Se
+  corrió tal como está escrito contra la secuencia real: devuelve `null`, o sea que el «dale» seguiría sin
+  ofrecerse.
+- **«Lo relacionado, que no se pide arreglar acá» → salió como caso propio, el 170.** La pregunta que
+  dejaba abierta quedó contestada de paso: el alcance por conjunto **es** deliberado y el «dale» aprueba
+  exactamente lo que se frenó —`approved: ["Write /d/a.md"]`, `granted: []`—. Lo que queda es que la rama
+  del chat no dice ese alcance y la del pegado sí, que es una decisión de redacción.
+
+### Lo que se hizo en su lugar
+
+Que haya alguien a quien preguntarle pasa a ser de la **sesión** y no del mensaje: `record` arrastra un
+`askable` a través de los mensajes no humanos, igual que ya arrastraba `granted` y por la razón que su
+propio comentario daba —«un aviso del runner en el medio no le quita a nadie lo que ya autorizó»—. `hold`
+pregunta por eso; `said` quedó intacta, letra por letra.
+
+El arrastre se corta donde tiene que cortarse: un `$flow` deja `askable` en falso, así que un recorrido no
+hereda una persona mirando por una notificación que llegó en el medio.
+
+### Qué se corrió
+
+- **La medición que refutó el diagnóstico**: 244 registros reales de `/tmp/cauce-chat/`, uno con
+  `human: false`, y su texto es `<task-notification>` — o sea que la notificación sí pasa por
+  `UserPromptSubmit`. Es el dato que el caso no tuvo y que cambia la causa.
+- **Reproducción determinista** de la secuencia entera contra el motor —mensaje humano, notificación,
+  bloqueo—, con las dos redacciones pegadas arriba. Después del arreglo: el «dale» se ofrece, `pending`
+  queda en `["ruta"]` —anotar lo frenado es lo que hace que ofrecerlo sirva— y `said()` sigue devolviendo
+  `null`, que es la propiedad que no podía moverse.
+- **El fix del propio caso, corrido**: `present()` tal como está escrito devuelve `null` sobre la secuencia
+  real.
+- **Tres mutaciones, las tres en rojo.** Que `said` herede la presencia —la dirección peligrosa— la agarra
+  una prueba que ya existía. Que `askable` no se arrastre devuelve el defecto. Que se arrastre ignorando
+  el recorrido lo agarra una prueba nueva, que se escribió justamente porque esa rama no la miraba nadie.
+- `npm run ci` exit 0: **900 pruebas**, 0 en rojo, 0 salteadas, cobertura 73 archivos en su piso.

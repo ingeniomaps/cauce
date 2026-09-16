@@ -18,6 +18,22 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Una notificación de tarea de fondo ya no borra del chat a la persona que está mirando.** Cuando un
+  guard frena algo, el bloqueo ofrece dos salidas: contestar «dale» —corto, y es lo que la persona ya está
+  haciendo— o pegar líneas a mano en `planning/.ops-approval`. La primera sólo se ofrecía si el registro
+  de la sesión decía que había alguien.
+
+  Una notificación de una tarea de fondo entra por el mismo hook que un mensaje, así que el registro
+  pasaba a decir que el último que habló no era una persona — y en el turno que esa notificación despierta
+  **la persona sigue ahí**. El bloqueo le ofrecía la salida cara y terminaba copiando y pegando un comando
+  que no hacía falta. Se disparaba solo en el patrón más común de una sesión larga: lanzar trabajo de
+  fondo y retomar cuando vuelve.
+
+  Que haya alguien a quien preguntarle pasa a ser de la sesión y no del mensaje. **No cambia ninguna
+  autorización**: preguntar no es conceder, y lo que decide si un «dale» viejo cubre algo nuevo quedó
+  intacto — un mensaje de hace tres turnos sigue sin autorizar lo que se frenó ahora. Y un recorrido de
+  Cauce sigue sin ofrecer el «dale», porque ahí no hay nadie leyendo.
+
 - **Una tarea que `autobuild` parte ya suelta su reserva, así que la corrida sigue.** El recorrido reclama
   la tarea antes de estimarla, y cuando Decompose la partía el reclamo quedaba puesto sobre un slug que ya
   no estaba ni en la cola ni en lo hecho. Con eso el runner quedaba ocupado por una tarea que no existe: el
