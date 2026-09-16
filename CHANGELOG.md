@@ -18,6 +18,18 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **El bloqueo dice hasta dónde llega el «dale».** Ofrece dos salidas y sólo la del pegado decía su
+  alcance —«valen para ese conjunto y dejan de valer en cuanto cambie»—; la del chat, que es la que se
+  ofrece primero, decía sólo «reintentá el mismo cambio y pasa».
+
+  Faltaban **dos** cosas y no son la misma. Que el «dale» cubre lo que se frenó y nada más: por eso en una
+  carpeta donde se itera cada archivo nuevo vuelve a frenar, que desde afuera se lee como si el guard se
+  hubiera olvidado de que ya la aprobaste. Y que lo concedido **sigue valiendo en los mensajes
+  siguientes** hasta que lo niegues — la mitad permisiva, la que no se nota porque lo que no ocurre es un
+  bloqueo. `check` la muestra al final de la corrida; ahora también se dice al concederla.
+
+  No cambia ningún permiso: el diff es texto.
+
 - **Partir una tarea de una épica actualiza también sus historias, así que `check` no queda en rojo.** Una
   tarea que viene de una épica es además una historia suya, y la partición reemplazaba sólo su línea del
   BACKLOG. La lista de historias quedaba nombrando un slug que ya no existe en ninguna parte, y eso rompe

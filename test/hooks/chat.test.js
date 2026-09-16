@@ -244,3 +244,41 @@ test('durante un recorrido no se ofrece el «dale», ni antes ni después de una
       'y la notificación no lo convierte en una sesión con alguien mirando')
   } finally { chat.close() }
 })
+
+// Por qué el alcance del «dale» va con la oferta está junto a `ask` (engine/hooks/approval.js). Acá se
+// fija que sean **dos** mitades y no una: separadas, cada una se puede perder sin que la otra lo note, y
+// la de la duración es la que nadie extraña porque lo que no ocurre es un bloqueo. Y el espejo, que es lo
+// que impide anunciar un alcance de algo que no se ofreció (caso 170).
+test('el bloqueo dice hasta dónde llega el «dale», en sus dos mitades', () => {
+  const root = planFirstRoot('ops-hook-chat-alcance-', WIP_CON_PLAN)
+  const lee = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
+  const chat = chatSession()
+  try {
+    const frenado = messageOf('secrets-read', lee(chat.says('revisá cómo arranca el servicio')))
+    assert.match(frenado, /si contesta «dale», reintentá el mismo cambio/, 'sigue ofreciendo la salida corta')
+    assert.match(frenado, /lo que se frenó y nada más/, 'dice que no cubre lo que venga después')
+    assert.match(frenado, /mensajes siguientes/, 'y que no se agota en el reintento')
+
+    // Sin persona no se nombra un alcance de algo que no se ofreció.
+    const sinChat = messageOf('secrets-read', lee((one) => one))
+    assert.doesNotMatch(sinChat, /lo que se frenó y nada más/)
+    assert.match(sinChat, /Valen para ese conjunto/, 'ahí el alcance que corresponde es el del pegado')
+  } finally { chat.close() }
+})
+
+// Y las dos mitades son ciertas, no una promesa del texto: se comprueban contra el mecanismo en el mismo
+// caso, porque un mensaje que describe un alcance que el código no tiene es peor que no decir nada.
+test('lo que el mensaje promete sobre el «dale» es lo que el mecanismo hace', () => {
+  const root = planFirstRoot('ops-hook-chat-alcance-real-', WIP_CON_PLAN)
+  const lee = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
+  const chat = chatSession()
+  try {
+    messageOf('secrets-read', lee(chat.says('revisá cómo arranca el servicio')))
+    const dale = chat.says('dale')
+    assert.doesNotThrow(() => execute('secrets-read', lee(dale)), 'el dale aprueba lo que se frenó')
+    // «y nada más»: otra credencial sigue frenada.
+    blocked('secrets-read', lee(dale, 'id_ed25519'), /leerla/)
+    // «sigue valiendo en los mensajes siguientes»: sin repetir el pedido.
+    assert.doesNotThrow(() => execute('secrets-read', lee(chat.says('seguí con eso'))))
+  } finally { chat.close() }
+})
