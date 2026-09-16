@@ -1,15 +1,16 @@
 ---
 caso: 163
 titulo: Decompose parte una tarea reclamada y no suelta su reclamo, así que el Claim siguiente se niega y la corrida para
-estado: abierto
+estado: resuelto
+resuelto-en: 0.95.0
 prioridad: alta
 version-detectada: 0.90.0
 ---
 
 # 163 — Partir una tarea la borra del BACKLOG y deja su reclamo puesto: el runner queda ocupado por una tarea que ya no existe
 
-**🔴 abierto** · detectado en 0.90.0 · comprobado en 0.94.0 · prioridad **alta** — toda corrida que parta
-una tarea termina en `claim-stuck`, y `check` queda en rojo con un reclamo huérfano que suelta una persona
+**🟢 resuelto en 0.95.0** · detectado en 0.90.0 · comprobado en 0.94.0 · prioridad **alta** — la rama que
+parte la tarea ahora suelta su reserva, y el cierre de la unidad partida salió como caso propio
 
 ## Resumen
 
@@ -131,3 +132,63 @@ y la salida de `ops check planning` antes y después del `release`.
   mensaje de `claim`, y acá es una pista falsa.
 - **R25** (0.94.0) — pide que la unidad partida se cierre diciendo en qué se partió; hoy el recorrido la
   borra.
+
+## Cierre
+
+**Resuelto en 0.95.0.** El caso estaba bien diagnosticado: las tres piezas de «Causa raíz» son exactas y
+las cuatro citas `archivo:línea` se abrieron contra el fuente de 0.95.0 —la rama de `needsSplit` sigue en
+la 652— antes de tocar nada. Lo que no estaba bien era una afirmación del fix y el alcance de dos de sus
+párrafos.
+
+Recorriendo lo que el caso enumeró:
+
+- **«El reclamo de la tarea partida se queda en disco» → se hizo.** La rama que parte ahora suelta la
+  reserva antes de seguir.
+- **«El Claim de la primera subtarea se niega y la corrida para con `claim-stuck`» → comprobado y cerrado.**
+  Reproducido literal antes del arreglo: `este runner ya tiene tarea-medida. Cerrala o soltala primero…`,
+  exit 1. Después del arreglo la subtarea se reclama con exit 0.
+- **«`check` falla con `✗ claims/<slug>.md: <slug> no existe en BACKLOG ni DONE`» → comprobado y cerrado.**
+  Mismo mensaje, exit 1 antes; `✓ planning válido … 2 tarea(s) en cola` con exit 0 después.
+- **«Soltar después de la escritura y no antes» → se hizo, y más fuerte de lo que el caso pedía.** El
+  release quedó **después de la guarda `split-not-applied`**, no sólo después del `write`: la escritura se
+  le pide a un agente y siempre «sale bien», así que lo único que demuestra que el reemplazo ocurrió es que
+  la cola deje de ofrecer la tarea. Sin eso, un reemplazo que no ocurrió dejaba la tarea en la cola y sin
+  reservar, que es el estado contrario al que hace falta. Tiene su aserción de ausencia en la prueba de
+  `split-not-applied`.
+- **«Si la partición quiere cumplir R25…» → salió como caso propio, el 169.** No es un arreglo sino una
+  decisión sobre qué significa `DONE`: hoy quiere decir *trabajo entregado*, y cuatro lectores del motor
+  cuentan sobre eso —entre ellos la ventana de OPS-001, que se mueve con la fecha de la entrada más nueva—.
+  Elegir entre las cuatro salidas posibles no le tocaba a este caso.
+
+Y lo que el caso no preveía:
+
+- **«Es determinista y no necesita un agente» es falso.** El recorrido no tiene ninguna primitiva para
+  correr un comando: `read`, `run` y `write` son los tres `agent(...)` —`autobuild.js:405-407`—. Soltar la
+  reserva cuesta **un agente**, igual que reclamarla. Sigue siendo barato contra una corrida que termina
+  sin construir nada, pero el caso lo afirmaba al revés y esa afirmación es de mecanismo.
+- **`releaseClaim` no existe.** El diff del «Fix propuesto» llama a un ayudante que no está en el archivo;
+  quedó escrito con la forma que ya usa la fase Claim, un `write` que dicta el comando.
+- **El WIP no entra en este defecto, y conviene decirlo porque parece que sí.** Sobre un banco con WIP
+  activo, partir deja **dos** errores en `check` y no uno: el reclamo y el WIP, los dos apuntando al slug
+  borrado. Pero ese estado no ocurre por el camino de producción: `if (!planning.wipActive)` en la 626
+  envuelve a Ready **y a Decompose**, así que una partición nunca convive con un WIP activo. El segundo
+  error lo trajo el banco, no el defecto. Se persiguió y no había nada — que es un resultado.
+
+### Qué se corrió
+
+- **Reproducción, sin gastar un solo agente.** La partición es «reescribir el BACKLOG» y el resto es motor,
+  así que se hizo sobre el banco `tarea` en el estado en que Decompose corre —reclamada y sin WIP—:
+  reemplazar la línea por dos subtareas, `claim` de la primera → rechazo verbatim, `check` → 1 error.
+  Después del release: `claim` exit 0 y `check` exit 0 con las dos subtareas en cola.
+- **Rojo previo**, con la traza de fases que lo explica: `Ready, Decompose|estimate, Decompose|split,
+  Decompose|planning-context …` y ningún release.
+- **Tres mutaciones, cada una una forma distinta de escribirlo mal, y las tres en rojo**: soltar antes de
+  la guarda —lo agarra la aserción de ausencia del `split-not-applied`—, soltar `estimate.subtasks[0]` en
+  vez de la tarea partida —`T-1a` no matchea `\bT-1\b`— y no soltar nada.
+- `npm run ci` exit 0: **898 pruebas**, 0 en rojo, 0 salteadas, cobertura 73 archivos en su piso.
+
+Tres puertas del repositorio hablaron durante el arreglo y las tres tenían razón: la de comentarios
+repetidos —la razón estaba escrita en el recorrido y en la prueba—, la de 500 líneas —`autobuild.test.js`
+llegó a 505 y se partió por reloj: `autobuild-claim.test.js` se queda con elegir y reservar— y la que
+cuenta lo que el guard de rutas se saltea, que obligó a clasificar `tools/ops.js release` antes de mover su
+número de 52 a 53.
