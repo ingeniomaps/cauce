@@ -161,10 +161,6 @@ const JUSTIFIED = {
     + 'destino al lado del schema que la valida, así que partirlo por salida separa el manifiesto de '
     + 'quien lo consume. Cruzó las 500 con la procedencia del INBOX (caso 115), estando en 498, y '
     + 'partirlo bien es un cambio propio y no la cola de otro.',
-  'test/wiring/hooks.test.js':
-    'El registro de guards suma un caso por guard, y cada caso prueba los dos lados de la misma '
-    + 'decisión: qué bloquea y qué deja pasar. Partirlo por grupo separaría casos que comparten el '
-    + 'montaje de una raíz ops y el helper que exige el motivo del bloqueo.',
   'test/wiring/runners.test.js':
     'Suma un caso por runner y, al lado, los que recorren los cuatro a la vez —que ningún comando de hook '
     + 'quede relativo al workspace, que ninguna ruta dé por sentado dónde se instala—. Partirla por runner '
