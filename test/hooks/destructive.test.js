@@ -14,6 +14,30 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { execute, guards } = require('../../engine/hooks/run')
 
+// R23 nombra la raíz, el home y el directorio padre, y la regla los reconocía sólo desnudos: con una
+// comilla, con llaves, con `--` delante o con una barra al final, el mismo destino pasaba. Las comillas
+// son lo que escribe quien cita bien sus variables —`rm -rf "$HOME"` es la forma *correcta* de escribirlo
+// en bash—, así que el hueco premiaba justamente al que tiene el hábito bueno (caso 167).
+//
+// La segunda mitad es la que impide cerrarlo frenando todo: un borrado con destino concreto es trabajo
+// corriente y tiene que seguir pasando, también entrecomillado.
+test('el destino catastrófico se reconoce entrecomillado, con llaves y con barra final', () => {
+  for (const command of [
+    'rm -rf /', 'rm -rf "/"', "rm -rf '/'", 'rm -rf ~', 'rm -rf ~/',
+    'rm -rf $HOME', 'rm -rf "$HOME"', 'rm -rf ${HOME}', 'rm -rf $HOME/',
+    'rm -rf -- /', 'rm -rf ..', 'rm -rf "..";',
+  ]) {
+    blocked('destructive', { cwd: '/tmp', tool_input: { command } }, /catastrófico/)
+  }
+
+  for (const command of [
+    'rm -rf ./dist', 'rm -rf node_modules', 'rm -rf /tmp/banco-123',
+    'rm -rf "$HOME/proyecto/dist"', 'rm -rf ../otro/dist', 'rm -rf "$PWD/out"',
+  ]) {
+    assert.doesNotThrow(() => execute('destructive', { cwd: '/tmp', tool_input: { command } }), command)
+  }
+})
+
 test('guard-destructive bloquea pérdida o publicación y permite lecturas', () => {
   blocked('destructive', { tool_input: { command: 'git push origin main' } }, /publica cambios/)
   blocked('destructive', { tool_input: { command: 'git reset --hard HEAD' } }, /destruye cambios locales/)
