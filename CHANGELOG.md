@@ -14,6 +14,25 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.93.0] - 2026-09-16
+
+### Corregido
+
+- **Declarar un límite ahora lo saca del aviso, en vez de sumarlo.** Si escribiste tus límites como
+  viñetas bajo `### Límites` —el camino que 0.92.0 agregó—, `check` los contaba igual como párrafos que
+  no llegan a los agentes, y también contaba la frase con la que presentabas la lista. O sea que hacer
+  lo correcto **subía** el número: medido sobre un banco, de 4 párrafos avisados pasaba a 6.
+
+  Ahora una viñeta declarada y la prosa que la presenta no entran en el aviso. Lo que sigue entrando es
+  la prosa de afuera del bloque, que es lo único para lo que el aviso existe: descontar el bloque entero
+  la habría silenciado, porque a un bloque `### Límites` no lo cierra nada más que el próximo
+  encabezado y el del molde se extiende hasta donde escribas el tuyo.
+
+- **El aviso te manda al camino declarado y no a imitar una gramática.** Decía que tus párrafos no
+  llegan «porque no arrancan con «El runner», «Debe» o «Nunca»». Desde 0.92.0 hay una forma de
+  arreglarlo sin imitar nada, y es la que el aviso nombra ahora: sumar el límite como viñeta bajo
+  `### Límites`. Los dos caminos siguen valiendo; lo que cambia es cuál se recomienda.
+
 ## [0.92.0] - 2026-09-15
 
 ### Agregado

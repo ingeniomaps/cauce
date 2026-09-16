@@ -72,21 +72,37 @@ const MARKED = /^###\s+Límites\s*$/m
 // No filtra comentarios y no hace falta: una viñeta comentada arranca con `<!--`, así que el filtro de
 // viñetas ya la descarta. Sacar `withoutComments` de acá fue el resultado de una mutación que sobrevivió
 // —apagarlo no ponía nada en rojo—, que es como se ve una defensa que no defiende de nada.
-function declared(raw) {
-  const out = []
+// Un solo recorrido de los bloques: las viñetas, que son los límites declarados, y la prosa que las
+// presenta. Las dos salen de acá porque dónde empieza y dónde termina un bloque se decide una vez; con
+// dos recorridos, el que delimita para `limits` y el que delimita para `warnings` se despegan y nada
+// falla.
+//
+// El intro se corta en la primera viñeta y no al final del bloque, y eso es lo único que separa este
+// arreglo de un silenciador. A un bloque no lo cierra nada más que el próximo encabezado, así que el del
+// molde se extiende hasta donde alguien escriba el suyo: medido sobre un banco, el primer bloque se
+// llevaba adentro los cuatro párrafos que la persona había agregado al final de la sección. Descontar el
+// bloque entero —que es lo que parecía el arreglo— apagaba justo lo que el aviso existe para encontrar.
+const BULLET = /^\s*[-*]\s+/
+function marked(raw) {
+  const bullets = []
+  const intros = []
   let rest = raw
   for (let start = rest.search(MARKED); start >= 0; start = rest.search(MARKED)) {
     const after = rest.slice(start).split('\n').slice(1)
     const end = after.findIndex((line) => /^#{1,3}\s/.test(line))
     const block = end < 0 ? after : after.slice(0, end)
-    out.push(...block
-      .filter((line) => /^\s*[-*]\s+/.test(line))
-      .map((line) => line.replace(/^\s*[-*]\s+/, '').trim())
+    const first = block.findIndex((line) => BULLET.test(line))
+    if (first > 0) intros.push(...block.slice(0, first).map((line) => line.trim()).filter(Boolean))
+    bullets.push(...block
+      .filter((line) => BULLET.test(line))
+      .map((line) => line.replace(BULLET, '').trim())
       .filter(Boolean))
     rest = (end < 0 ? '' : after.slice(end).join('\n'))
   }
-  return out
+  return { bullets, intros }
 }
+
+const declared = (raw) => marked(raw).bullets
 
 function limits(text) {
   const prose = text.split(/\n\s*\n/)
@@ -128,12 +144,23 @@ function warnings(root) {
   const fromTemplate = new Set(paragraphs(
     P.withoutComments(P.section(readIfAny(TEMPLATE_WORKSPACE), /Excepciones de autonom/)),
   ))
-  const declaredHere = new Set(declared(mine))
-  const lost = paragraphs(P.withoutComments(mine))
-    .filter((one) => !fromTemplate.has(one) && !ENUNCIA.test(one) && !declaredHere.has(one))
+  // Se descuenta por línea y no por párrafo, que es donde estaba el defecto: `paragraphs` saca el `- ` y
+  // une las viñetas seguidas en un párrafo solo, así que una lista declarada no era igual a ninguna
+  // entrada de `declared()` y se contaba entera como un límite perdido (caso 159).
+  const { bullets, intros } = marked(mine)
+  const suyo = new Set([...bullets, ...intros])
+  const outside = P.withoutComments(mine).split('\n')
+    .filter((line) => !suyo.has(line.replace(BULLET, '').trim()))
+    .join('\n')
+  const lost = paragraphs(outside)
+    .filter((one) => !fromTemplate.has(one) && !ENUNCIA.test(one))
   if (!lost.length) return []
+  // El aviso nombra el camino declarado y no la gramática, aunque los dos sigan valiendo: desde 0.92.0
+  // hay una forma de arreglar esto que no pide imitar nada, y mandar a la otra es mandar al camino que
+  // el 157 existe para no tener que usar. Quien ya escribió «El runner…» no necesita el aviso — no le
+  // sale.
   return [`organization/workspace.md: ${lost.length} párrafo(s) de "## Excepciones de autonomía" no llegan `
-    + 'a los agentes porque no arrancan con «El runner», «Debe» o «Nunca»: '
+    + 'a los agentes. El que sea un límite va como viñeta bajo `### Límites`: '
     + `${lost.map((one) => `"${one.slice(0, 60)}…"`).join(', ')}`]
 }
 
