@@ -1,14 +1,15 @@
 ---
 caso: 174
 titulo: Con `ops.config.json` ilegible, `automation check` reporta que falta el motor y manda a correr npm install
-estado: abierto
+estado: resuelto
+resuelto-en: 0.96.0
 prioridad: media
 version-detectada: 0.95.0
 ---
 
 # 174 — Una config ilegible se reporta como motor faltante
 
-**🔴 abierto** · detectado en 0.95.0 · prioridad **media** — el motor está instalado, lo roto es un JSON, y
+**🟢 resuelto en 0.96.0** · detectado en 0.95.0 · prioridad **media** — el motor está instalado, lo roto es un JSON, y
 la acción que el mensaje sugiere no arregla nada
 
 ## Resumen
@@ -86,3 +87,21 @@ instancia con la config sana y rota, aisladas una de otra; y `declaredRoot`/`pac
 
 - **158** y **171** — la resolución del paquete desde la raíz declarada. Acá el problema no es dónde busca
   sino qué dice cuando la raíz no se puede leer.
+
+## Cierre
+
+**Resuelto en 0.96.0.** `automation check` lee la configuración primero y corta ahí, reusando el mensaje que
+`mode()` ya tenía —«ops.config.json no se puede leer (…)»—, que es el mismo que dan `check` y `contract`.
+
+- **«Que distinga las dos cosas antes de buscar archivos» → se hizo**, y además **no sigue**: enumerar
+  ausencias que salen de una causa ya nombrada manda a arreglar lo que no está roto.
+- **«Vale la pena mirar si la asimetría está sólo acá» → se miró.** `check` y `contract` ya nombraban el
+  JSON; los demás comandos que resuelven por `declaredRoot` no informan ausencias de archivos, así que no
+  tienen dónde confundir la causa con el síntoma. Era el único.
+
+### Qué se corrió
+
+- **Rojo previo**: con la config rota, `✗ falta engine/hooks/run.js: corré "npm install"…`.
+- Después: `✗ ops.config.json no se puede leer (…)`, sin nombrar `npm install` ni ninguna ausencia.
+- **Mutación**: quitada la lectura previa, vuelve el mensaje viejo y la prueba a rojo.
+- `npm run ci` exit 0, **911 pruebas**.

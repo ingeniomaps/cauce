@@ -1,14 +1,15 @@
 ---
 caso: 173
 titulo: Un catálogo vacío y uno que no se pudo resolver dan la misma respuesta
-estado: abierto
+estado: resuelto
+resuelto-en: 0.96.0
 prioridad: baja
 version-detectada: 0.95.0
 ---
 
 # 173 — Un catálogo vacío no se distingue de uno irresoluble
 
-**🔴 abierto** · detectado en 0.95.0 · prioridad **baja** — son dos hechos distintos y `agents list`
+**🟢 resuelto en 0.96.0** · detectado en 0.95.0 · prioridad **baja** — son dos hechos distintos y `agents list`
 contesta lo mismo para los dos
 
 ## Resumen
@@ -58,3 +59,23 @@ la próxima causa que la produzca va a ser igual de muda.
 ## Relacionados
 
 - **171** — el defecto que hacía frecuente esta ambigüedad.
+
+## Cierre
+
+**Resuelto en 0.96.0, por la salida 1: un aviso por `stderr`.**
+
+- **«Un aviso cuando el paquete no resuelve» → se hizo**, y sólo cuando la lista sale **vacía**: con
+  resultados a la vista no hay ambigüedad que aclarar, y avisar igual sería ruido sobre una respuesta
+  correcta. Vale para `agents list` y `flow list`.
+- **«Exit distinto de 0» → no se tomó.** El `--json` lo consume el cron del ciclo de aprendizaje; romperle
+  el contrato para arreglar un mensaje sería cambiar lo que no está mal.
+- **«Nada» → no se tomó**, aunque el 171 hiciera rara la situación: la ambigüedad seguía y la próxima causa
+  iba a ser igual de muda.
+
+### Qué se corrió
+
+- **Rojo previo**: sin el paquete en ninguna parte, `agents list` y `flow list` contestaban vacío y callado.
+- Después: los dos avisan por `stderr`, el exit sigue en 0 y el `--json` sigue devolviendo `[]`.
+- **Dos mutaciones**: sin el aviso, rojo; avisando siempre —aun con cargos resueltos—, rojo también. La
+  segunda es la que cuida que el aviso no se vuelva ruido.
+- `npm run ci` exit 0, **911 pruebas**.

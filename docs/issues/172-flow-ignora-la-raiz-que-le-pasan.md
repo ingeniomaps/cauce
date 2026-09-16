@@ -1,14 +1,15 @@
 ---
 caso: 172
 titulo: Los subcomandos de `flow` ignoran la raíz que se les pasa y corren contra el directorio actual
-estado: abierto
+estado: resuelto
+resuelto-en: 0.96.0
 prioridad: media
 version-detectada: 0.95.0
 ---
 
 # 172 — `flow` ignora la raíz que le pasan
 
-**🔴 abierto** · detectado en 0.95.0 · prioridad **media** — el argumento parece aceptado, se descarta, y
+**🟢 resuelto en 0.96.0** · detectado en 0.95.0 · prioridad **media** — el argumento parece aceptado, se descarta, y
 el comando contesta sobre otra instancia sin decirlo
 
 ## Resumen
@@ -74,3 +75,22 @@ despacho) y `engine/cli/io.js` (`opsRoot`).
 ## Relacionados
 
 - **171** — el caso del que sale.
+
+## Cierre
+
+**Resuelto en 0.96.0, por la salida 1: `flow` toma la raíz.**
+
+- **«Que `flow` tome la raíz como posicional» → se hizo.** `ops flow list [ops-root]`,
+  `ops flow check <flow> [ops-root]` y `ops flow show <flow> [ops-root]`: `list` no lleva recorrido, así que
+  la suya es el primer posicional, y las otras dos la llevan después —la misma forma que
+  `agents fork <cargo> [ops-root]`—. El uso lo anuncia.
+- **«Que rechace el posicional de más» → no se tomó**, y la razón es que la 1 no rompe nada: hoy ese
+  argumento se ignora, así que aceptarlo no invalida ninguna invocación que ya funcione. La 2 habría
+  dejado a `flow` como el único comando que no se puede apuntar a otra instancia.
+
+### Qué se corrió
+
+- **Rojo previo**: desde un directorio que no es instancia, `flow list <raíz>` no listaba nada.
+- Después: `list`, `check` y `show` contestan sobre la raíz que reciben, comprobado desde afuera de ella.
+- **Mutación**: el despacho volviendo a descartar el posicional deja la prueba en rojo.
+- `npm run ci` exit 0, **911 pruebas**.
