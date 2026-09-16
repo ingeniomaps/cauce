@@ -196,13 +196,13 @@ test('una regla que declara su superficie se nombra sin cargarse, y una sin decl
 // mitades de decirlo son distintas — `install` lo declara cuando se elige, `check` avisa cuando ya pesa—
 // y las dos cuentan lo mismo: lo que el bloque **carga**. Una regla con `aplica:` no suma, porque si
 // sumara declararla no serviría de nada.
-// ~13,0 KB cada una. El tamaño se elige midiendo y no estimando, para que el banco tenga margen de los
-// dos lados: con las dos el bloque llega a 72,0 KB y cruza el umbral de 64, y quitando una queda en 58,9
-// y no. Era de 18,6 KB cuando el piso del toolkit eran 38,3; con el piso en 45,9 —las cinco reglas que
-// R24..R28 sumaron— quitar una dejaba 64,5 KB, que sigue cruzando por medio KB, y la prueba habría
-// culpado al motor por un fixture que envejeció. Es el mismo ajuste que ya se había hecho una vez, y por
-// eso el número va acá con su medición al lado: se recalibra cada vez que el piso se mueve.
-const heavyRule = (n) => `# Propia ${n}\n\n## P${n} — Regla de la empresa\n\n${'Texto de la regla. '.repeat(700)}\n`
+// ~33,4 KB cada una, elegido midiendo: con las dos, lo propio llega a 66,9 KB y cruza el umbral de 64;
+// quitando una queda en 33,4 y no. Los márgenes son anchos de los dos lados a propósito.
+//
+// Y desde que el aviso mide **lo propio** en vez del total, este número deja de envejecer: no depende del
+// piso del toolkit, así que agregar una regla del sistema ya no lo mueve. Antes sí — se recalibró dos
+// veces, de 18,6 a 13,0 KB, y la segunda porque quitar una dejaba 64,5 y cruzaba por medio KB.
+const heavyRule = (n) => `# Propia ${n}\n\n## P${n} — Regla de la empresa\n\n${'Texto de la regla. '.repeat(1800)}\n`
 
 test('install declara lo que el bloque de reglas va a pesar en cada agente', () => {
   const { target, runCli } = installedProject('cauce-rules-peso-')
@@ -210,12 +210,17 @@ test('install declara lo que el bloque de reglas va a pesar en cada agente', () 
   assert.equal(salida.status, 0, salida.stderr)
   // En bytes y no en tokens: los bytes los mide el motor, y la equivalencia en tokens depende del
   // modelo. Un número inventado en la salida es peor que uno exacto, porque se cita para decidir.
-  // Cinco desde que `runs.md` salió de `process.md` (caso 160). Los KB se mueven cuando el toolkit enseña
-  // algo nuevo —39,1 con cuatro archivos, 45,9 con R24..R28, 50,7 con lo agregado a R3, R8..R10 y R17— y
-  // la ventana se deja angosta a propósito: que esta prueba falle en cada edición de una regla **es** la
-  // función. Es lo único que obliga a medir lo que cada agente paga antes de mover el número.
-  assert.match(salida.stdout, /claude: el bloque de reglas carga 5 archivo\(s\), 50\.\d KB en cada agente/,
-    'declara cuántas y cuánto pesan')
+  // Cinco desde que `runs.md` salió de `process.md` (caso 160). Los KB del total se mueven cuando el
+  // toolkit enseña algo nuevo —39,1 con cuatro archivos, 45,9 con R24..R28, 50,7 con lo agregado a R3,
+  // R8..R10 y R17— y la ventana se deja angosta a propósito: que esta prueba falle en cada edición de una
+  // regla **es** la función, y es lo único que obliga a medir lo que cada agente paga antes de moverla.
+  //
+  // Y las propias son 0,0 acá, que es la propiedad que compra medir lo propio: una instancia recién
+  // creada no puede cruzar el umbral por más que nuestro piso crezca. Antes era una consecuencia
+  // aritmética que había que recalcular; ahora es una invariante y por eso se asercia.
+  assert.match(salida.stdout,
+    /claude: el bloque de reglas carga 5 archivo\(s\), 50\.\d KB en cada agente \(0\.0 KB propias\)/,
+    'declara cuántas, cuánto pesan y cuánto de eso puso el proyecto')
 })
 
 test('check avisa cuando el bloque se pasa del umbral, y calla en una instancia limpia', () => {
@@ -229,9 +234,22 @@ test('check avisa cuando el bloque se pasa del umbral, y calla en una instancia 
   assert.equal(runCli(['automation', 'install', target, 'claude']).status, 0)
   const avisa = runCli(['check', planning])
   assert.equal(avisa.status, 0, 'avisa y no frena: la instancia sigue siendo válida')
-  assert.match(avisa.stderr, /el bloque de reglas carga 7 archivo\(s\), \d+\.\d KB en cada agente/,
-    'dice cuánto pesa')
+  assert.match(avisa.stderr,
+    /el bloque de reglas carga 7 archivo\(s\), \d+\.\d KB en cada agente \(6[6-9]\.\d KB propias\)/,
+    'dice cuánto pesa en total y cuánto de eso es del proyecto, que es lo que cruzó')
   assert.match(avisa.stderr, /P1-propia\.md/, 'y nombra las más grandes, que es lo accionable')
+
+  // La mitad de ausencia: el piso del toolkit **no** cuenta para el umbral. Tiene que medirse con una
+  // sola regla propia y no con cero, y la diferencia es lo único que la vuelve una prueba: con cero, el
+  // total queda en ~50 KB —debajo de 64— y volver a medir el total daría el mismo verde. Con una, lo
+  // propio son 33 KB y el total ~84: el que mide lo propio calla y el que mide el total avisa.
+  fs.rmSync(path.join(rules, 'P2-propia.md'))
+  assert.equal(runCli(['automation', 'install', target, 'claude']).status, 0)
+  const sola = runCli(['check', planning])
+  assert.doesNotMatch(sola.stderr, /bloque de reglas/,
+    'una sola regla propia no cruza, aunque con el piso del sistema el total sí')
+  fs.writeFileSync(path.join(rules, 'P2-propia.md'), heavyRule(2))
+  assert.equal(runCli(['automation', 'install', target, 'claude']).status, 0)
 
   // Y una regla declarada por superficie no cuenta: es justamente lo que se apartó del arranque.
   fs.writeFileSync(path.join(rules, 'P1-propia.md'), `---\naplica: pagos\n---\n\n${heavyRule(1)}`)

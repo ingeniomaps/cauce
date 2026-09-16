@@ -117,6 +117,22 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **El aviso de peso mide lo que agregaste vos, no el total.** Comparaba el bloque entero contra el
+  umbral, así que el piso del toolkit y tus reglas salían del mismo bolsillo: decía «tu bloque pesa»
+  cuando la mitad la habíamos puesto nosotros, y cada regla que Cauce agregaba te achicaba el margen sin
+  que nadie lo decidiera. Ahora el umbral se compara contra tus reglas, y la línea dice las dos cosas —
+  `114.8 KB en cada agente (93.8 KB propias)`—: el total es lo que paga el agente y lo propio es lo único
+  sobre lo que podés hacer algo.
+
+  **Una instancia recién creada ya no puede cruzarlo**, por más que el piso crezca. Antes era una cuenta
+  que había que rehacer cada vez que agregábamos una regla.
+
+  El número **no se movió**: sigue en 64 KB, a propósito, porque cambiar qué se mide y cuánto a la vez
+  deja sin saber cuál de los dos movió el resultado. Lo que sí quedó medido es que 64 está por debajo de
+  lo que una empresa real usa — una instancia medida tiene 93,8 KB de reglas propias — así que elegirlo
+  con esa evidencia es lo que sigue.
+
+
 - **Escribir tu propio `process.md` ya no te deja sin las reglas que no ibas a reemplazar.** El override
   es por nombre de archivo, así que reemplazar «pensar antes de editar» por tu versión se llevaba puesto
   el archivo entero: R16, R17, R20, R21 y R22 dejaban de llegarle a todo agente. `check` te lo decía —lo
