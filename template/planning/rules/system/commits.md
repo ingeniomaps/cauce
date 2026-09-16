@@ -66,6 +66,14 @@ frase que la justifica — «lo agrego **para que** deje de …». Ahí el sujet
 lo que desaparece, y lo que desaparece es lo que hay que probar. Silenciar un aviso, saltear una rama,
 desarmar una confirmación: los tres se escriben sumando y los tres son quitas.
 
+**Y antes de probar cómo se quita hay que poder quitarlo.** Lo que está en uso no se corta: se depreca,
+y la marca dice las dos cosas que la vuelven una salida y no una etiqueta — qué lo reemplaza, y qué
+condición permite borrarlo. Sin la primera, quien lo usa no sabe a dónde ir; sin la segunda, el
+deprecado es código muerto con un cartel puesto, y se queda para siempre.
+
+Lo que no llama nadie es otra cosa y se borra. La diferencia no es de estilo: cortar de golpe rompe a un
+consumidor que nadie miró, y deprecar lo que nadie usa cuesta mantener dos caminos para nadie.
+
 Esto no admite excepción y por eso se dice acá y no en una guía: **una quita no se entrega sin su
 aserción de ausencia, y esa aserción se vio en rojo devolviendo lo quitado.** Sin ese rojo no está
 probado que la aserción mire lo que dice mirar — es el mismo rojo previo del párrafo de arriba, aplicado
