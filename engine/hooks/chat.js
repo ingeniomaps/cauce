@@ -183,11 +183,19 @@ function record(input) {
     // alcance que ya no acota a nadie.
     const scopes = {}
     for (const one of granted) if (previous.scopes && previous.scopes[one]) scopes[one] = previous.scopes[one]
+    // Que haya alguien a quien preguntarle es de la sesión y no de este mensaje. Una notificación de una
+    // tarea de fondo entra por este mismo hook —es un `UserPromptSubmit` con el texto
+    // `<task-notification>…`, medido sobre los registros reales— así que se anota con `human: false`, y
+    // sin esto borraba del registro a la persona que está mirando el bloqueo en ese instante. Se arrastra
+    // igual que `granted` y por la misma razón: un aviso del runner en el medio no se lleva puesto lo que
+    // ya era cierto. Lo vuelve a decidir el mensaje humano siguiente (caso 166).
+    const flow = flowCommand(text)
+    const askable = human ? !flow : Boolean(previous && previous.askable)
     fs.mkdirSync(DIR, { recursive: true })
     // Sobre qué instancia se está hablando, que es lo que después deja filtrar lo concedido: por qué hace
     // falta, en `grantedIn`.
     fs.writeFileSync(recordPath(input.session_id), JSON.stringify(
-      { id: idOf(input), text, human, flow: flowCommand(text), root: opsRoot(input), approved, granted,
+      { id: idOf(input), text, human, askable, flow, root: opsRoot(input), approved, granted,
         scopes, pending: [] }))
   } catch { /* registrar es un extra: si falla, los guards siguen frenando lo que frenaban */ }
 }
@@ -201,6 +209,20 @@ function said(input) {
   if (!saved || !saved.human || saved.flow) return null
   const current = idOf(input)
   return current && saved.id && current !== saved.id ? null : saved
+}
+
+// Hay una persona en esta sesión a quien preguntarle, que no es lo mismo que «este mensaje lo escribió
+// ella». `said` contesta la segunda porque de ella depende **conceder**; ésta contesta la primera, que es
+// todo lo que hace falta para decidir si el bloqueo ofrece contestar «dale» o manda a pegar líneas en un
+// archivo. Preguntar no es conceder, y fundir las dos preguntas le cobraba un copiar y pegar a la persona
+// justo cuando estaba mirando (caso 166).
+//
+// Un registro escrito antes de que `askable` existiera no lo trae y queda afuera: la sesión pierde la
+// salida por chat hasta el mensaje siguiente, que la vuelve a escribir. Es la dirección barata del error.
+function present(input) {
+  if (process.env.CI || input.agent_id || !input.session_id) return null
+  const saved = load(input.session_id)
+  return saved && saved.askable ? saved : null
 }
 
 // Con qué autorización pasa un ítem, o vacío si no pasa: lo pidió este mensaje, un «dale» aprobó lo que
@@ -303,7 +325,7 @@ function unauthorizedNow(input, items) {
 // Lo que quedó frenado, para que un «dale» en el mensaje siguiente apruebe exactamente eso y nada más.
 // Devuelve si hay una persona a quien preguntarle.
 function hold(input, items) {
-  const saved = said(input)
+  const saved = present(input)
   if (!saved) return false
   try {
     saved.pending = [...new Set([...saved.pending, ...items])]

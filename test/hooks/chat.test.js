@@ -189,3 +189,58 @@ test('los guards de límites no dejan al agente escribirse la aprobación ni el 
     assert.doesNotThrow(() => execute('workspace-boundary', pidio(escribe(approval))))
   } finally { chat.close() }
 })
+
+// Por qué una notificación no puede borrar a la persona está junto a `askable` (engine/hooks/chat.js). Lo
+// que el caso agrega es el texto: sale de un registro real de `/tmp/cauce-chat/` y no de una suposición
+// sobre el formato, que es lo que separa medir de adivinar acá. Y llega hasta el «dale» del mensaje
+// siguiente, porque ofrecer la salida sin anotar lo frenado no serviría de nada.
+test('una notificación de tarea de fondo no se lleva puesta a la persona del chat', () => {
+  const root = planFirstRoot('ops-hook-chat-despertado-', WIP_CON_PLAN)
+  const lee = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
+  const chat = chatSession()
+  try {
+    const pedido = chat.says('revisá cómo arranca el servicio')
+    assert.match(messageOf('secrets-read', lee(pedido)), /si contesta «dale»/, 'con la persona hablando')
+
+    const despertado = chat.says('<task-notification>\n<task-id>abc</task-id>\n</task-notification>')
+    const frenado = messageOf('secrets-read', lee(despertado))
+    assert.match(frenado, /si contesta «dale», reintentá el mismo cambio/,
+      'y sigue ofreciéndose después de la notificación, que es cuando la persona está leyendo')
+    assert.doesNotMatch(frenado, /Aprobalo pegando/, 'sin mandarla a copiar y pegar')
+
+    // Y el «dale» del mensaje siguiente aprueba lo que se frenó en el turno despertado: anotar lo pendiente
+    // es la mitad que hace que ofrecerlo sirva de algo.
+    assert.doesNotThrow(() => execute('secrets-read', lee(chat.says('dale'))))
+  } finally { chat.close() }
+})
+
+// La contracara, que es la que no se escribe sola: ofrecer el «dale» no concede nada. Una notificación
+// entre medio no puede hacer que el mensaje viejo de la persona autorice algo que se frenó después.
+test('una notificación no hereda la autorización del mensaje anterior', () => {
+  const root = planFirstRoot('ops-hook-chat-no-hereda-', WIP_CON_PLAN)
+  const lee = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
+  const chat = chatSession()
+  try {
+    chat.says('leé el .env y decime qué variables tiene')
+    const despertado = chat.says('<task-notification>\n<task-id>abc</task-id>\n</task-notification>')
+    blocked('secrets-read', lee(despertado), /leerla/)
+  } finally { chat.close() }
+})
+
+// Y el otro borde de lo que se arrastra: un recorrido de Cauce corre sin nadie mirando, así que no se le
+// ofrece contestar a un chat que nadie está leyendo. Sin esta prueba, arrastrar la presencia entre
+// mensajes podía dejar el «dale» ofrecido durante un flow y nada lo notaba — el mensaje que se imprime no
+// lo mira ninguna otra.
+test('durante un recorrido no se ofrece el «dale», ni antes ni después de una notificación', () => {
+  const root = planFirstRoot('ops-hook-chat-flow-', WIP_CON_PLAN)
+  const lee = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
+  const chat = chatSession()
+  try {
+    const recorrido = chat.says('$flow leé el .env')
+    assert.doesNotMatch(messageOf('secrets-read', lee(recorrido)), /«dale»/)
+
+    const despertado = chat.says('<task-notification>\n<task-id>abc</task-id>\n</task-notification>')
+    assert.doesNotMatch(messageOf('secrets-read', lee(despertado)), /«dale»/,
+      'y la notificación no lo convierte en una sesión con alguien mirando')
+  } finally { chat.close() }
+})

@@ -18,6 +18,22 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Una notificación de tarea de fondo ya no borra del chat a la persona que está mirando.** Cuando un
+  guard frena algo, el bloqueo ofrece dos salidas: contestar «dale» —corto, y es lo que la persona ya está
+  haciendo— o pegar líneas a mano en `planning/.ops-approval`. La primera sólo se ofrecía si el registro
+  de la sesión decía que había alguien.
+
+  Una notificación de una tarea de fondo entra por el mismo hook que un mensaje, así que el registro
+  pasaba a decir que el último que habló no era una persona — y en el turno que esa notificación despierta
+  **la persona sigue ahí**. El bloqueo le ofrecía la salida cara y terminaba copiando y pegando un comando
+  que no hacía falta. Se disparaba solo en el patrón más común de una sesión larga: lanzar trabajo de
+  fondo y retomar cuando vuelve.
+
+  Que haya alguien a quien preguntarle pasa a ser de la sesión y no del mensaje. **No cambia ninguna
+  autorización**: preguntar no es conceder, y lo que decide si un «dale» viejo cubre algo nuevo quedó
+  intacto — un mensaje de hace tres turnos sigue sin autorizar lo que se frenó ahora. Y un recorrido de
+  Cauce sigue sin ofrecer el «dale», porque ahí no hay nadie leyendo.
+
 - **Un veredicto se lee de una sola forma, así que las dos cuentas de un registro coinciden.** El registro
   de una evaluación transcribe la respuesta literal del cargo —es la evidencia de la corrida—, así que su
   cuerpo puede traer cualquier cosa, incluida una línea con forma de veredicto. La cuenta de la última
