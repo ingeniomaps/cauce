@@ -9,9 +9,7 @@ const path = require('node:path')
 const CL = require('../planning/claims')
 const R = require('../core/repos')
 const ST = require('../planning/state')
-const { fail, planningRoot } = require('./io')
-
-const TODAY = () => new Date().toISOString().slice(0, 10)
+const { fail, planningRoot, TODAY } = require('./io')
 
 function claim(dir, slug, cli) {
   const root = planningRoot(dir)

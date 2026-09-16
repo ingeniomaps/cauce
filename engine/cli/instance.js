@@ -15,7 +15,7 @@ const P = require('../planning/parser')
 const ST = require('../planning/state')
 const RC = require('../planning/recurring')
 const A = require('../automation')
-const { fail } = require('./io')
+const { fail, TODAY } = require('./io')
 const { declareEngine, pinEngine, undeclareEngine } = require('./dependency')
 const { adviceFor, previewUpgrade, reportUpgrade } = require('./upgrade-report')
 
@@ -98,7 +98,7 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
     '{{PROJECT_NAME}}': name,
     '{{MODE}}': mode,
     '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
-    ...RC.sinceValues(new Date().toISOString().slice(0, 10)),
+    ...RC.sinceValues(TODAY()),
   }, force, providerNames(), quiet)
   // No se copia `.github/`: `ci.yml` valida el toolkit con `npm run ci` —que una instancia no tiene— y
   // el ciclo de aprendizaje dejó de distribuirse en 0.4.0. Copiar salteando lo que no aplica dejaba
@@ -345,7 +345,7 @@ function upgrade(dir, cli) {
       '{{PROJECT_NAME}}': config.project || path.basename(root),
       '{{MODE}}': O.mode(root),
       '{{WORKSPACE_PATH}}': O.mode(root) === 'embedded' ? '.' : '..',
-      ...RC.sinceValues(new Date().toISOString().slice(0, 10)),
+      ...RC.sinceValues(TODAY()),
     })) content = content.replaceAll(key, value)
     F.atomicWrite(target, content)
     added.push(relative)

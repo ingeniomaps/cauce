@@ -350,3 +350,31 @@ test('el nombre de un banco no trae nada que la prueba no haya pedido', () => {
   assert.equal(/adr\//.test(`${tempRoot('cauce-plantilla-adr-')}/integrations/config.json`), false,
     'un error ajeno no puede entrar por el nombre del banco')
 })
+
+// `io.js` define la fecha de hoy y su comentario explica por qué vive en un solo lugar: «dejar una copia
+// a cada lado habría roto en silencio lo único que esta función promete». Igual había siete lugares
+// calculándola —dos copias de `TODAY` con el mismo nombre y cuatro expresiones sueltas—, y el silencio es
+// literal: el día que alguien cambie esa definición —la zona horaria es el candidato— los demás siguen
+// devolviendo lo de antes y dos comandos del mismo minuto empiezan a fechar distinto sin que nada falle.
+//
+// Se mira la expresión y no el nombre: las copias no se detectan por llamarse igual —dos ni siquiera se
+// llamaban igual— sino por recalcular lo mismo. Y se mira el motor y no las pruebas: la promesa es que
+// dos comandos del mismo minuto fechen igual, y una prueba que arma un fixture con la fecha de hoy no es
+// un comando — pedirle que importe el CLI para saber qué día es sería reuso por el reuso mismo.
+test('la fecha de hoy se calcula en un solo lugar', () => {
+  const root = path.resolve(__dirname, '..', '..')
+  const owner = path.join('engine', 'cli', 'io.js')
+  const copies = []
+  for (const file of sourceFiles().filter((name) => name.endsWith('.js'))) {
+    const relative = path.relative(root, file)
+    if (relative === owner || !/^(engine|automatization)\b/.test(relative)) continue
+    const code = fs.readFileSync(file, 'utf8').split('\n')
+      .filter((line) => !line.trim().startsWith('//'))
+    for (const [index, line] of code.entries()) {
+      if (/new Date\(\)\.toISOString\(\)\.slice\(0, ?10\)/.test(line)) {
+        copies.push(`${relative}:${index + 1}`)
+      }
+    }
+  }
+  assert.deepEqual(copies, [], `usan el TODAY de ${owner}:\n  ${copies.join('\n  ')}`)
+})

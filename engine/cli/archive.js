@@ -11,10 +11,7 @@ const P = require('../planning/parser')
 const PC = require('../planning/contracts')
 const AD = require('../planning/adoption')
 const F = require('../core/files')
-const { fail, planningRoot } = require('./io')
-
-// La fecha de hoy, la misma que usan los comandos que leen.
-const TODAY = () => new Date().toISOString().slice(0, 10)
+const { fail, planningRoot, TODAY } = require('./io')
 
 // El historial de acciones humanas se acumula en un solo archivo y no por épica: una fila no pertenece
 // a ninguna, y esperar el cierre de una épica dejaría sin archivar las de un planning que todavía no
