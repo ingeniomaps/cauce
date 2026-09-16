@@ -44,6 +44,11 @@ diseño — eso vive en el commit y en el código.
     corrida arranca, lee todo el estado y recién ahí muere. Pasó dos veces el mismo día, a 42k tokens por
     vez. Es lo que el WIP de Cauce ya hace bien con `status: IDLE`.
 
+- **R8 dice que la prohibición de firmas de IA cubre todo lo que se publica**, no sólo el mensaje del
+  commit: el título y el cuerpo del pull request, y los comentarios que se dejen ahí. Y casi nunca es
+  algo que alguien tipea — lo agrega la herramienta sola, al final del texto que escribiste—, así que
+  cumplirla es revisar la salida antes de publicarla, no acordarse de no escribirla.
+
 - **R3 acota qué bloquea: lo que este cambio tocó.** Un hallazgo en un archivo que el cambio no abrió es
   deuda que ya estaba — se registra como cualquier hallazgo y no frena nada. Adoptar una exigencia sobre
   código escrito antes que ella la convierte en una cuenta que paga quien pasaba por ahí, y lo que se
@@ -74,7 +79,7 @@ diseño — eso vive en el commit y en el código.
   poder pedir algo que ninguna mutación puede tocar. Si no hay nada que romper, no había propiedad que
   cuidar, y eso se ve al redactarla en vez de al final de la vuelta.
 
-  **Lo que cuesta:** el bloque de reglas que cada agente carga al arrancar pasa de **39,1 a 48,1 KB**.
+  **Lo que cuesta:** el bloque de reglas que cada agente carga al arrancar pasa de **39,1 a 48,5 KB**.
   Está medido, no estimado, y el umbral del aviso de `check` **no se movió**: sigue en 64 KB, porque lo
   que mide es cuánto agregaste vos, y subirlo para hacerle lugar al piso apagaría justamente eso. Quedan
   ~18 KB de margen antes de que el aviso hable.

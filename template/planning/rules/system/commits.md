@@ -13,6 +13,11 @@ por separado, y quien revise tiene que volver a separarlos a mano.
 La unidad de aceptación y de evidencia sigue siendo la tarea: su entrada de DONE registra todos los
 commits que produjo, separados por `;`. Partir el diff no parte la aceptación.
 
+**La prohibición de firmas de IA cubre todo lo que este trabajo publica**, no sólo el mensaje del commit:
+el título y el cuerpo del pull request, y los comentarios que se dejen ahí. Y casi nunca es algo que
+alguien tipea — lo agrega la herramienta, sola, al final del texto que uno escribió—, así que cumplirla
+es revisar la salida antes de publicarla y no acordarse de no escribirla.
+
 ## R9 — El artefacto manda
 
 Tests verdes no reemplazan build, paquete, imagen o migración cuando son parte del artefacto entregable.
