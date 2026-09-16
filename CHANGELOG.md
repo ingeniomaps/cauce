@@ -18,6 +18,21 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Una tarea que `autobuild` parte ya suelta su reserva, así que la corrida sigue.** El recorrido reclama
+  la tarea antes de estimarla, y cuando Decompose la partía el reclamo quedaba puesto sobre un slug que ya
+  no estaba ni en la cola ni en lo hecho. Con eso el runner quedaba ocupado por una tarea que no existe: el
+  Claim de la primera subtarea se negaba —«este runner ya tiene …»— y la corrida entera terminaba en
+  `claim-stuck` **sin construir nada**, dejando además `check` en rojo con un reclamo huérfano que soltaba
+  una persona a mano.
+
+  No dependía de una carrera ni de un id de runner compartido, que es a lo que el mensaje mandaba a mirar:
+  pasaba siempre que Decompose partiera, que es una fase que el propio protocolo manda correr. Si venís de
+  una versión anterior y tenés un reclamo huérfano de esto, se suelta con
+  `node tools/ops.js release planning <tarea>`.
+
+  La reserva se suelta **después** de comprobar que el reemplazo en el BACKLOG ocurrió: si no ocurrió, la
+  tarea sigue viva y su reserva tiene que seguir puesta.
+
 - **Un veredicto se lee de una sola forma, así que las dos cuentas de un registro coinciden.** El registro
   de una evaluación transcribe la respuesta literal del cargo —es la evidencia de la corrida—, así que su
   cuerpo puede traer cualquier cosa, incluida una línea con forma de veredicto. La cuenta de la última
