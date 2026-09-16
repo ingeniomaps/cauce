@@ -161,11 +161,6 @@ const JUSTIFIED = {
     + 'destino al lado del schema que la valida, así que partirlo por salida separa el manifiesto de '
     + 'quien lo consume. Cruzó las 500 con la procedencia del INBOX (caso 115), estando en 498, y '
     + 'partirlo bien es un cambio propio y no la cola de otro.',
-  'engine/hooks/shell.js':
-    'Suma una regla por peligro del shell y las siete comparten la misma aproximación de parseo —dónde '
-    + 'empieza una palabra, dónde termina un comando—. El caso 067 lo mostró al revés: el defecto vivía '
-    + 'en esa forma compartida y arreglarlo en un lugar arregló las siete, así que partirlo por grupo '
-    + 'dejaría siete copias del mismo corte y seis se pudrirían sin que nada falle.',
   'test/wiring/runners.test.js':
     'Suma un caso por runner y, al lado, los que recorren los cuatro a la vez —que ningún comando de hook '
     + 'quede relativo al workspace, que ninguna ruta dé por sentado dónde se instala—. Partirla por runner '
