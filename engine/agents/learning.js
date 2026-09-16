@@ -18,16 +18,25 @@ const { SOURCE_TIERS, cadence, evaluate, evaluateTeam } = require('./learning-so
 // consolidó y el que se escribió tarde —después de que la propuesta del período ya existía, y por eso
 // no entra a ninguna— se leían igual. El segundo no es un descuido de forma: es un hallazgo que no
 // llega al contrato y que nada delata. Marcar al primero es lo que deja ver al segundo.
+// El sello se busca **dentro del frontmatter** y no en el documento entero. Un registro de corrida nace
+// sin `status` ahí y su cuerpo lleva la respuesta verbatim del cargo: si esa respuesta traía una línea
+// `status: <palabra>` a columna cero, el sello caía en el cuerpo y el frontmatter quedaba sin marcar —o
+// sea el registro sin sellar, y el mismo hallazgo entrando a la propuesta siguiente, que es exactamente
+// lo que sellar existe para evitar (caso 168).
+const FRONTMATTER = /^---\n([\s\S]*?)\n---\n/
+const STATUS_LINE = /^status:\s*\S+\s*$/m
+
 function markConsolidated(file) {
   const text = fs.readFileSync(file, 'utf8')
-  if (/^status:\s*\S+\s*$/m.test(text)) {
-    return atomicWrite(file, text.replace(/^status:\s*\S+\s*$/m, 'status: consolidated'))
+  const front = text.match(FRONTMATTER)
+  if (front && STATUS_LINE.test(front[1])) {
+    return atomicWrite(file, text.replace(front[0],
+      `---\n${front[1].replace(STATUS_LINE, 'status: consolidated')}\n---\n`))
   }
   // Un informe nace con `status`; un registro de corrida no, porque lo escribe el recorrido de
   // evaluación y ahí el dato no existía. Se agrega en vez de exigirle a quien lo escriba que se
   // acuerde: el sello es lo que evita que el mismo hallazgo entre dos veces, y depender de una
   // convención para eso es depender de que nadie la olvide.
-  const front = text.match(/^---\n([\s\S]*?)\n---\n/)
   if (!front) return
   atomicWrite(file, text.replace(front[0], `---\n${front[1]}\nstatus: consolidated\n---\n`))
 }
