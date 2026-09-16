@@ -85,9 +85,15 @@ function unrecordedCommits(repo, since, recorded) {
   const log = git(repo, 'log', '--no-merges', '--date=short', '--format=%h %ad %s')
   if (log.status !== 0) return []
   const conocidos = new Set([...recorded].map((sha) => String(sha).slice(0, 7)))
+  // El hash y la fecha se leen partiendo por espacios y no por columna: `%h` mide 7 por default y git lo
+  // sube solo cuando el repositorio crece —en éste mide 8—, así que una posición fija leía un espacio en
+  // vez de la fecha y ningún commit pasaba el filtro. El aviso quedaba mudo sin decirlo, que es la peor
+  // forma de que una puerta falle (caso 169).
   return log.stdout.split('\n').map((line) => line.trim()).filter(Boolean)
-    .filter((line) => line.slice(8, 18) >= since)
-    .filter((line) => !conocidos.has(line.slice(0, 7)))
+    .map((line) => ({ line, sha: line.split(/\s+/)[0], fecha: line.split(/\s+/)[1] }))
+    .filter((one) => one.fecha >= since)
+    .filter((one) => !conocidos.has(one.sha.slice(0, 7)))
+    .map((one) => one.line)
 }
 
 // Cuánto del trabajo que entró a los repositorios quedó registrado, desde la última tarea cerrada. Avisa
