@@ -18,6 +18,15 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`automation uninstall` no borra nada si no puede leer la configuración de tu runner.** Borraba
+  primero y leía el `settings.json` al final, con un `JSON.parse` sin proteger. Con un archivo que alguien
+  dejó a medio fusionar, el comando moría con «Expected property name or '}' in JSON at position 13»
+  —que no nombra ni un archivo— **después** de haber borrado los workflows y los cargos: la instancia
+  quedaba a medio desinstalar, con la configuración registrando guards que ya no existen.
+
+  Verificado sobre un banco: el comando se para antes de tocar el disco, dice qué archivo no pudo leer, y
+  arreglando ese archivo vuelve a correr.
+
 - **Un adaptador propio que no trae `components` ya no rompe el borrador.** El README declara el contrato
   de un adaptador por sus tres funciones y no dice qué campos trae un item, así que un adaptador de la
   empresa —que es lo que ese README invita a escribir— puede no traerlo. Con `serviceFrom: "component"`,

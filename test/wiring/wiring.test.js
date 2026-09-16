@@ -189,6 +189,38 @@ test('automation uninstall saca lo del toolkit y deja lo del usuario', () => {
   assert.equal(run(['automation', 'uninstall', target, 'claude']).status, 0)
 })
 
+// Por qué la configuración se lee antes de borrar está donde se la lee (engine/automation/index.js).
+// Acá se fija lo que esa lectura promete y el mensaje no alcanza a decir: que el disco quede como
+// estaba. Se comprueba contra la lista de antes y no contra un archivo puntual, porque «no borró
+// **esto**» pasa igual si borró otra cosa.
+test('uninstall no borra nada si la configuración del runner no se puede leer', () => {
+  const base = tempRoot('cauce-uninst-roto-')
+  const workspace = path.join(base, 'mono')
+  const target = path.join(workspace, 'ops')
+  fs.mkdirSync(workspace)
+  assert.equal(run(['init', target, '--name', 'Roto', '--mode', 'sidecar', '--no-install']).status, 0)
+  linkEngine(target)
+  assert.equal(run(['automation', 'install', target, 'claude']).status, 0)
+
+  const settingsFile = path.join(workspace, '.claude', 'settings.json')
+  fs.writeFileSync(settingsFile, '{ "hooks": { ,,, ')
+  const antes = fs.readdirSync(path.join(workspace, '.claude', 'workflows'))
+  assert.ok(antes.length, 'el banco tiene qué perder')
+
+  const roto = run(['automation', 'uninstall', target, 'claude'])
+  assert.equal(roto.status, 2)
+  assert.match(roto.stderr, /settings\.json/, 'y el error nombra el archivo que no se pudo leer')
+  assert.deepEqual(fs.readdirSync(path.join(workspace, '.claude', 'workflows')), antes,
+    'nada borrado: se para antes de tocar el disco')
+  assert.equal(fs.existsSync(path.join(workspace, '.claude', 'skills', 'product-manager')), true)
+
+  // Y arreglando el archivo el comando vuelve a funcionar, que es lo que lo vuelve una parada y no un
+  // callejón: lo que hay que hacer para salir es leer el JSON que el error nombró.
+  fs.writeFileSync(settingsFile, '{}')
+  assert.equal(run(['automation', 'uninstall', target, 'claude']).status, 0)
+  assert.equal(fs.existsSync(path.join(workspace, '.claude', 'workflows', 'autobuild.js')), false)
+})
+
 test('install reemplaza el wiring por guard suelto y conserva lo que no es suyo', () => {
   const base = tempRoot('cauce-migrate-')
   const target = path.join(base, 'project')
