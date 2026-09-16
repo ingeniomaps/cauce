@@ -7,7 +7,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const F = require('../core/files')
-const { fail, REFUSED } = require('./io')
+const { fail, USAGE } = require('./io')
 
 // Declara el motor como dependencia exacta: el lockfile decide qué versión corre, no una copia.
 // Conserva el manifiesto existente porque el repo anfitrión puede tener el suyo.
@@ -15,7 +15,7 @@ function declareEngine(manifest, version) {
   let pkg = { name: path.basename(path.dirname(manifest)), private: true, version: '0.0.0' }
   if (fs.existsSync(manifest)) {
     try { pkg = JSON.parse(fs.readFileSync(manifest, 'utf8')) } catch (error) {
-      fail(`package.json inválido en ${manifest}: ${error.message}`, REFUSED)
+      fail(`package.json inválido en ${manifest}: ${error.message}`, USAGE)
     }
   }
   pkg.devDependencies = { ...pkg.devDependencies, '@ingeniomaps/cauce': version }

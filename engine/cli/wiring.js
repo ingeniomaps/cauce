@@ -203,14 +203,14 @@ function onboard(rootArg, cli, runner = '') {
 function providerRegistry(root) {
   const file = path.join(root, 'integrations', 'config.json')
   try { return { file, config: JSON.parse(fs.readFileSync(file, 'utf8')) } } catch (error) {
-    return fail(`integrations/config.json ilegible: ${error.message}`, REFUSED)
+    return fail(`integrations/config.json ilegible: ${error.message}`, USAGE)
   }
 }
 
 function switchProvider(root, provider, enabled) {
   const { file, config } = providerRegistry(root)
   if (!config.providers || !config.providers[provider]) {
-    fail(`${provider} no está en integrations/config.json.`, REFUSED)
+    fail(`${provider} no está en integrations/config.json.`, USAGE)
   }
   config.providers[provider].enabled = enabled
   F.atomicWriteJson(file, config)
