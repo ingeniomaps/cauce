@@ -44,6 +44,16 @@ diseño — eso vive en el commit y en el código.
     corrida arranca, lee todo el estado y recién ahí muere. Pasó dos veces el mismo día, a 42k tokens por
     vez. Es lo que el WIP de Cauce ya hace bien con `status: IDLE`.
 
+- **R8 dice qué hacer con el cambio que tu trabajo no produjo.** En un árbol pueden aparecer archivos
+  que dejó otra sesión, otro agente, la persona antes de empezar o una herramienta que corrió sola. Van
+  en su propio commit con un mensaje que diga lo que son, o se dejan sin commitear y se avisa — nunca
+  mezclados con lo tuyo.
+
+  Stagear por ruta explícita lo evita casi siempre y no siempre: la ruta ajena puede ser justo una de
+  las que tocaste. Por eso es una lectura del diff y no una precaución al stagear. Y el daño no se ve al
+  revisar: el commit queda atribuido a una tarea que no lo produjo, y quien lo revierta mañana se lleva
+  puesto algo que nadie relacionó con eso.
+
 - **R10 dice a dónde va lo que se publica, no sólo quién lo autoriza.** La autorización decía si se
   publica y nunca dónde. Ahora: lo que se publica va al repositorio en el que estás trabajando, y si ese
   remoto es un fork, va al fork — con la rama cortada de la suya, porque una rama cortada del principal
@@ -91,7 +101,7 @@ diseño — eso vive en el commit y en el código.
   poder pedir algo que ninguna mutación puede tocar. Si no hay nada que romper, no había propiedad que
   cuidar, y eso se ve al redactarla en vez de al final de la vuelta.
 
-  **Lo que cuesta:** el bloque de reglas que cada agente carga al arrancar pasa de **39,1 a 49,4 KB**.
+  **Lo que cuesta:** el bloque de reglas que cada agente carga al arrancar pasa de **39,1 a 50,2 KB**.
   Está medido, no estimado, y el umbral del aviso de `check` **no se movió**: sigue en 64 KB, porque lo
   que mide es cuánto agregaste vos, y subirlo para hacerle lugar al piso apagaría justamente eso. Quedan
   ~18 KB de margen antes de que el aviso hable.
