@@ -67,42 +67,56 @@ function split(root) {
 function weight(root) {
   const { loaded } = split(root)
   let bytes = 0
+  let own = 0
   const files = []
   for (const file of loaded) {
     try {
       const size = fs.statSync(path.join(root, file)).size
       bytes += size
+      // Lo propio es lo que no vive en `rules/system/`, que es exactamente lo que el proyecto escribió:
+      // una regla del sistema que sobrescribió deja de cargarse y la suya ocupa su lugar, así que
+      // contarla como propia es correcto — la escribió él y la puede achicar.
+      if (!file.includes('/system/')) own += size
       files.push({ file, size })
     } catch { /* la que no está en disco ya la reporta `check` por su lado */ }
   }
-  return { count: loaded.length, bytes, files: files.sort((a, b) => b.size - a.size) }
+  return { count: loaded.length, bytes, own, files: files.sort((a, b) => b.size - a.size) }
 }
 
 const KB = (bytes) => `${(bytes / 1024).toFixed(1)} KB`
 
-// A partir de dónde el peso deja de ser el costo de arrancar y pasa a ser una decisión que conviene mirar.
-// El piso que Cauce impone —hoy cinco archivos, 45,9 KB— tiene que quedar debajo: un umbral por debajo
-// de él avisaría en toda instancia recién creada y se apagaría por ruido el primer día, y eso descartó
-// los 60 KB que el caso 141 proponía. 64 KB deja ~18 KB para lo propio, que a ~1,4 KB por regla son más
-// de diez antes de que el aviso hable.
+// A partir de dónde lo que el proyecto agregó deja de ser el costo de arrancar y pasa a ser una decisión
+// que conviene mirar. **Se compara contra lo propio y no contra el total**, y esa es la diferencia que
+// hace al número significar algo.
 //
-// El piso sube cuando el toolkit enseña algo nuevo —eran 38,3 KB con cuatro archivos, y R24..R28 lo
-// llevaron acá—, así que este número se relee cada vez que eso pasa. El umbral no se mueve con él: lo
-// que mide es cuánto agregó la empresa, y subirlo para hacer lugar al piso apagaría justamente eso.
+// Contra el total, el piso del toolkit y las reglas de la empresa salían del mismo bolsillo: el aviso
+// decía «tu bloque pesa» cuando la mitad la habíamos puesto nosotros, y cada regla que Cauce agregaba le
+// achicaba el margen sin que nadie lo decidiera. El 64 tampoco salió de un costo medido: salió de
+// esquivar nuestro propio piso —el caso 141 proponía 60 y se subió porque lo que Cauce ponía ya eran
+// 61,9 KB—, así que había que reelegirlo cada vez que el toolkit enseñaba algo. Medido sobre lo propio,
+// el número deja de depender de nosotros y no se toca cuando el piso crece.
+//
+// El valor sigue siendo el que había, y eso es a propósito: cambiar qué se mide y cuánto a la vez deja
+// sin saber cuál de los dos movió el resultado. Lo que se sabe hoy es que **64 está por debajo de lo que
+// una empresa real usa**: una instancia medida tiene 93,8 KB de reglas propias, así que el aviso le sale
+// desde el día que instaló. Elegir el número con esa evidencia es una decisión aparte, y la cuenta que la
+// habilita está en el 141: 61,9 KB ≈ 15,9 K tokens, o sea ~3,9 KB por 1K tokens en **cada** agente.
 const HEAVY = 64 * 1024
 
 // La línea que declara el peso, para que la digan igual `install` y `check`. Nombra las dos más grandes
 // porque es lo accionable: saber que el bloque pesa no dice cuál conviene declarar por superficie.
 function weightLine(root) {
-  const { count, bytes, files } = weight(root)
+  const { count, bytes, own, files } = weight(root)
   const top = files.slice(0, 2).map((one) => path.basename(one.file)).join(', ')
+  // El total es lo que paga el agente y lo propio es lo único sobre lo que el proyecto puede hacer algo,
+  // así que van los dos: con uno solo, o el número no es el costo real o no es accionable.
   return `el bloque de reglas carga ${count} archivo(s), ${KB(bytes)} en cada agente`
-    + (top ? ` (las más grandes: ${top})` : '')
+    + ` (${KB(own)} propias)${top ? ` (las más grandes: ${top})` : ''}`
 }
 
 // Sólo cuando pasó el umbral. Devuelve lista porque es lo que `check` empalma con el resto de avisos.
 function heavyRules(root) {
-  return weight(root).bytes > HEAVY ? [weightLine(root)] : []
+  return weight(root).own > HEAVY ? [weightLine(root)] : []
 }
 
 // Sin raíz el marcador queda como está —así lo leen las pruebas que revisan el texto de un adaptador—: un
