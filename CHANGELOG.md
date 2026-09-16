@@ -18,6 +18,14 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Un commit escrito en dos líneas vuelve a pasar por los guards.** `isCommit` reconocía el commit
+  después de `;`, `&` o `|` y no después de un salto de línea ni dentro de un subshell — o sea que
+  `git add x` ⏎ `git commit -m x` en un solo Bash, que es como se escriben dos pasos, dejaba sin correr
+  `governance`, `dependencies` y `verify`, y también el bloqueo que impide stagear y commitear a la vez.
+
+  `bash -c "git commit …"` sigue sin reconocerse, a propósito: hacerlo exige desentrecomillar, y eso
+  choca con que el mensaje de un commit sea dato y no código.
+
 - **Redirigir con `>|` ya no evade el guard que mira a dónde escribe un comando.** `>|` es el override de
   `noclobber` y escribe igual que `>`, pero el guard no veía su destino: el comando se partía en segmentos
   por `|` antes de buscar destinos, así que la redirección quedaba separada de su ruta. Verificado sobre
