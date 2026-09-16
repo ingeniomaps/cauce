@@ -1,15 +1,16 @@
 ---
 caso: 169
 titulo: R25 pide que una unidad partida se cierre diciendo en qué se partió, y el único lugar de cierre que hay significa otra cosa
-estado: abierto
-prioridad: media
+estado: resuelto
+resuelto-en: 0.95.0
+prioridad: alta
 version-detectada: 0.95.0
 ---
 
 # 169 — Una unidad partida no tiene dónde cerrarse
 
-**🔴 abierto** · detectado en 0.95.0 · prioridad **media** — la regla describe un cierre que el motor no
-tiene forma de representar, así que hoy la unidad original desaparece sin dejar rastro
+**🟢 resuelto en 0.95.0** · detectado en 0.95.0 · prioridad **alta** (subida al medirlo) — el lugar donde
+se cierra es la épica, no `DONE`; y no se perdía en silencio: dejaba `check` en rojo
 
 ## Resumen
 
@@ -97,3 +98,57 @@ el banco `tarea` después de partir y soltar.
 - **163** (resuelto en 0.95.0) — la otra mitad: el reclamo de la tarea partida quedaba puesto. Ahí se
   arregló lo que rompía una corrida; acá queda lo que decide una persona.
 - **R25** — la regla que pide el cierre que hoy no existe.
+
+## Cierre
+
+**Resuelto en 0.95.0, y este caso estaba mal planteado.** Lo escribí yo al cerrar el 163, con la
+enumeración de salidas que ahí correspondía; medirlo mostró que la pregunta era otra y que ninguna de las
+cuatro era la respuesta. Lo que faltaba mirar era **de dónde viene la tarea**.
+
+Recorriendo lo que enumeró:
+
+- **«Hoy no se cierra: se borra» → cierto, y ésa era la única parte bien vista.**
+- **«Se pierde en silencio… nadie va a extrañar un slug que no está» → falso.** Si la tarea viene de una
+  épica, la lista de historias de esa épica sigue nombrando el slug borrado, y eso rompe por los dos lados
+  según qué escriba el agente que reemplaza la línea. Medido sobre un banco:
+
+  | la partición escribe | `check` al partir | al cerrar la épica |
+  |---|---|---|
+  | subtareas con `(epic: NNN)` | **rojo**: `✗ BACKLOG <sub>: no existe en epic-001` (×2) | — |
+  | subtareas sin la épica | verde | **rojo**: `✗ … closed sin evidencia para integraciones-por-tabla` |
+
+  O sea que no es silencioso: o la puerta se pone roja en el acto, o la épica **no puede cerrar nunca**,
+  porque `closed` exige evidencia de cada historia y la original jamás la va a tener.
+- **«Prioridad media» → subida a alta.** Una puerta en rojo justo después de partir, o una épica que
+  queda sin poder cerrarse, no es fricción.
+- **Las cuatro salidas → ninguna se tomó, y las cuatro quedaron superadas.** La 1 —entrada en `done/`—
+  contradice lo que ese directorio declara de sí mismo: su README dice «Evidencia de lo terminado… lo que
+  esa tarea **entregó**», y una partida no entregó nada. La 2 y la 3 construyen contrato nuevo para un
+  problema que no era el que había. Y la 4 —que R25 no aplique— queda refutada por la tabla de arriba.
+- **La quinta, que el caso no listó, es la que la evidencia fuerza:** la partición actualiza **también la
+  épica**, reemplazando la historia original por las de las subtareas. Ahí es donde la unidad vivía, así
+  que ahí es donde se dice en qué se partió — que es exactamente lo que R25 pide, leído por su propósito
+  y no por su letra.
+
+Y con eso la pregunta que abría el caso se contesta sola: **para una tarea sin épica no hace falta ningún
+cierre.** El cruce que R25 protege —cola, reclamado, hecho— no se rompe cuando una unidad deja de existir
+limpiamente; se rompe cuando vive con dos nombres. `DONE` se queda significando lo que su README dice.
+
+### Qué se corrió
+
+- **Las dos variantes de la partición sobre un banco con una épica de una historia**, con las salidas de
+  `check` pegadas en la tabla de arriba. Y la tercera: partiendo como la consigna manda ahora —BACKLOG y
+  épica— `check` devuelve `✓ planning válido: 1 épica(s), 2 tarea(s) en cola` y no queda ninguna historia
+  huérfana.
+- **Rojo previo** sobre la consigna: no nombraba la épica.
+- **Tres mutaciones, las tres en rojo**: sin la cláusula —el defecto—; mandándola siempre, que haría
+  tocar un roadmap a una tarea suelta; y sin nombrar **cuál** épica, que le deja al agente adivinar qué
+  archivo abrir.
+- `npm run ci` exit 0: **903 pruebas**, 0 en rojo, 0 salteadas.
+
+### Lo que este caso deja dicho sobre sí mismo
+
+Se registró para no tomar solo una decisión de producto, y eso estuvo bien; lo que estuvo mal fue
+enumerar las salidas sin haber medido de dónde viene una tarea. Las cuatro opciones estaban bien
+razonadas sobre una premisa que nadie había comprobado — la misma forma de fallar que el 166 tuvo con su
+hipótesis, dos casos antes, y que acá no reconocí por haberlo escrito yo.
