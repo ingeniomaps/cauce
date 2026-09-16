@@ -164,11 +164,6 @@ const JUSTIFIED = {
     + 'y un nombre de propiedad dentro de los schemas— y ése parte lo que dieciséis de treinta y seis '
     + 'commits cambiaron juntos: un campo del schema y el prompt que lo obedece. Cruzó las 500 con la '
     + 'procedencia del INBOX (caso 115), estando en 498.',
-  'test/planning/claims.test.js':
-    'La coordinación de un equipo suma un caso por conducta y las comparte todas: una instancia con su '
-    + 'cola, dos runners y un reclamo entre ellos. Partirla por tema separaría el reclamo de lo que el '
-    + 'reclamo decide —a quién se le ofrece cada tarea—, que son las dos mitades de la misma decisión y '
-    + 'que en esta rama cambiaron siempre juntas.',
 }
 
 const PENDING_SPLIT = {}

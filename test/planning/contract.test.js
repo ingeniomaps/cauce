@@ -206,3 +206,30 @@ test('check no avisa sobre la prosa que el molde trae', () => {
   const hecho = run(['check', path.join(root, 'planning')])
   assert.equal(/no llegan a los agentes/.test(hecho.stderr), false, hecho.stderr)
 })
+
+// Hacer lo que el 157 pide subía el aviso en dos en vez de bajarlo; por qué, en `marked()` y en el
+// filtro de `warnings` (caso 159). Acá se fija el veredicto que se ve desde afuera.
+//
+// El orden de las aserciones no es decorativo: la primera es la que impide arreglar esto callando todo,
+// y por eso la prosa de afuera se escribe antes del bloque, que es como queda cuando una persona agrega
+// el suyo al final del archivo.
+test('declarar un límite lo saca del aviso, y la prosa de afuera sigue entrando', () => {
+  const root = instance('cauce-contract-declarado-')
+  conExcepcion(root, 'Esto lo escribió el proyecto y es un límite que nadie declaró todavía.')
+  conExcepcion(root, '### Límites\n\nLo de arriba es la razón, para una persona; esto es lo que viaja.\n\n'
+    + '- En `api/` no se tocan migraciones sin aprobación de datos.\n- No se empuja a la rama viva.')
+  const hecho = run(['check', path.join(root, 'planning')])
+
+  assert.match(hecho.stderr, /Esto lo escribió el proyecto/, 'la prosa de afuera sigue avisando')
+  assert.equal(/migraciones/.test(hecho.stderr), false, 'una viñeta declarada no es un límite perdido')
+  assert.equal(/Lo de arriba es la razón/.test(hecho.stderr), false,
+    'ni la prosa que presenta el bloque, que es la que sube el número al adoptarlo')
+  assert.match(hecho.stderr, /1 párrafo\(s\)/, 'y queda contado el único que de verdad no llega')
+
+  // La otra mitad del caso: el aviso mandaba a imitar la gramática, que es justo lo que el 157 existe
+  // para no tener que hacer. Se asercia por ausencia porque cambiar el texto es una quita —el camino
+  // viejo deja de recomendarse— y lo nuevo podría aparecer con lo viejo todavía puesto.
+  assert.match(hecho.stderr, /va como viñeta bajo `### Límites`/, 'manda al camino declarado')
+  assert.equal(/porque no arrancan con «El runner»/.test(hecho.stderr), false,
+    'y ya no manda a imitar la gramática, que es el camino que el 157 vino a evitar')
+})
