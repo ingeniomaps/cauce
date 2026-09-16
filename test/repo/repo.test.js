@@ -164,13 +164,6 @@ const JUSTIFIED = {
     + 'y un nombre de propiedad dentro de los schemas— y ése parte lo que dieciséis de treinta y seis '
     + 'commits cambiaron juntos: un campo del schema y el prompt que lo obedece. Cruzó las 500 con la '
     + 'procedencia del INBOX (caso 115), estando en 498.',
-  'test/wiring/runners.test.js':
-    'Suma un caso por runner y, al lado, los que recorren los cuatro a la vez —que ningún comando de hook '
-    + 'quede relativo al workspace, que ninguna ruta dé por sentado dónde se instala—. Partirla por runner '
-    + 'rompe justo ésos, que existen para valer también sobre el adaptador que se agregue después, y todos '
-    + 'los casos comparten el montaje de una raíz ops instalada. Cruzó las 500 con el aviso de sidecar del '
-    + 'caso 138, estando en 491, y el 145 lo llevó a 550 con la razón medida de lo que el guard de rutas '
-    + 'se saltea.',
   'test/planning/claims.test.js':
     'La coordinación de un equipo suma un caso por conducta y las comparte todas: una instancia con su '
     + 'cola, dos runners y un reclamo entre ellos. Partirla por tema separaría el reclamo de lo que el '
