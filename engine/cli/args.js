@@ -41,6 +41,12 @@ const FLAGS = {
   flow: ['--json'],
 }
 
+// Qué banderas acepta un comando, y `[]` si el comando no existe. `FLAGS[nombre]` a secas resuelve
+// contra `Object.prototype`, así que `constructor` contestaba una función —que es verdadera, y el CLI
+// daba el comando por bueno— y `toString` contestaba un método sin `.includes`, que reventaba acá
+// mismo. No es un nombre exótico: es lo que sale de pasarle a `ops` una variable que vino vacía.
+const accepted = (command) => (Object.hasOwn(FLAGS, command) ? FLAGS[command] : [])
+
 // La línea de comandos, leída una sola vez. Antes cada función buscaba sus banderas en
 // `process.argv`, veinticinco veces y a cualquier profundidad: `evaluationBench` sacaba `--force` de
 // ahí en vez de recibirlo, así que su firma no decía de qué dependía y probar un comando exigía
@@ -51,6 +57,10 @@ function parse(argv) {
   const positional = []
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index]
+    // `-h` es la única bandera corta que el CLI anuncia, y como no empieza con `--` caía de posicional:
+    // `ops check -h` tomaba `-h` por la raíz del planning y contestaba que ahí no había ninguno. Se
+    // normaliza a `--help` para que adentro haya una sola grafía y nadie tenga que preguntar por las dos.
+    if (value === '-h') { flags.add('--help'); continue }
     if (!value.startsWith('--')) { positional.push(value); continue }
     flags.add(value)
     if (VALUED_FLAGS.has(value)) { values[value] = argv[index + 1] || ''; index += 1 }
@@ -60,8 +70,12 @@ function parse(argv) {
     has: (flag) => flags.has(flag),
     value: (flag, fallback = '') => values[flag] || fallback,
     // Lo que el comando no declara en `FLAGS`. Se calcula sobre `flags` y no sobre argv crudo para
-    // que el valor de una bandera con valor no se confunda con una bandera suelta.
-    unknown: (command) => [...flags].filter((flag) => !FLAGS[command].includes(flag)),
+    // que el valor de una bandera con valor no se confunda con una bandera suelta. `--help` la acepta
+    // cualquier comando y por eso no la declara ninguno: sin esta excepción, pedir ayuda sería una
+    // bandera desconocida.
+    unknown: (command) => [...flags]
+      .filter((flag) => flag !== '--help')
+      .filter((flag) => !accepted(command).includes(flag)),
   }
 }
 

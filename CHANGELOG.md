@@ -18,6 +18,19 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`ops -h` pide la ayuda, y un nombre heredado de `Object` ya no pasa por comando.** Dos huecos de la
+  puerta de entrada del CLI, los dos de la misma forma: leer algo que no era ni un comando ni una bandera.
+
+  `-h` se anunciaba en el uso y no existía: el parser sólo reconoce lo que empieza con `--`, así que caía
+  de argumento posicional y `ops check -h` contestaba «no existe el planning en …/-h» **saliendo con 0**.
+  Pedir ayuda y recibir un error sobre un directorio inventado es la peor forma de contestar, porque
+  parece que el comando corrió.
+
+  Y la tabla de comandos se consultaba con `FLAGS[comando]`, que resuelve contra `Object.prototype`:
+  `ops constructor` salía con 0 sin hacer nada y `ops toString --json` moría con
+  «FLAGS[command].includes is not a function». No es un nombre exótico — es lo que sale de pasarle al CLI
+  una variable que vino vacía o mal leída desde un script.
+
 - **El tope de horas de una propuesta deja de desaparecer cuando la configuración no lo declara.** La
   validación de propuestas lee `runner.maxTaskHours` de `ops.config.json` y tenía un default de cuatro
   horas para cuando no se puede leer. Ese default sólo cubría el archivo ilegible: un `runner` sin el

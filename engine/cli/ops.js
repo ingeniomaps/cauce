@@ -195,11 +195,15 @@ const NO_FLAGS = { has: () => false, value: (_flag, fallback = '') => fallback }
 
 async function run(cli) {
   const [command] = cli.positional
-  if (!command || ['help', '--help', '-h'].includes(command)) return usage()
-  if (!FLAGS[command]) { usage(); fail(`Comando desconocido: ${command}`, 2) }
+  // `--help` y `-h` nunca llegan acá: `parse` los reconoce como banderas, así que el posicional queda
+  // vacío y lo atiende el `!command` de al lado. Lo que sí es un posicional es `help` a secas.
+  if (!command || command === 'help') return usage()
+  // `Object.hasOwn` y no `FLAGS[command]`: `constructor` heredado de `Object.prototype` pasaba por
+  // comando válido y el CLI salía con 0 sin hacer nada.
+  if (!Object.hasOwn(FLAGS, command)) { usage(); fail(`Comando desconocido: ${command}`, 2) }
   // `--help` valía sólo como primer argumento: `check --help` corría `check` contra el directorio
   // actual en vez de explicarse.
-  if (cli.has('--help') || cli.has('-h')) return usage()
+  if (cli.has('--help')) return usage()
   const unknown = cli.unknown(command)
   if (unknown.length) {
     const accepts = FLAGS[command].length ? `Acepta: ${FLAGS[command].join(', ')}.` : 'No acepta banderas.'
