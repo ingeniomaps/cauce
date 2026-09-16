@@ -26,7 +26,7 @@ function cases() {
   return fs.readdirSync(ISSUES).filter((name) => /^\d{3}-.*\.md$/.test(name)).sort().map((name) => {
     const text = fs.readFileSync(path.join(ISSUES, name), 'utf8')
     const field = (key) => ((text.match(new RegExp(`^${key}:\\s*(.+)$`, 'm')) || [])[1] || '').trim()
-    return { name, text, estado: field('estado'), resueltoEn: field('resuelto-en') }
+    return { name, text, caso: field('caso'), estado: field('estado'), resueltoEn: field('resuelto-en') }
   })
 }
 
@@ -126,4 +126,30 @@ test('el estado del frontmatter y el del encabezado dicen lo mismo', () => {
   }
   assert.ok(cases().length > 30, `sólo se leyeron ${cases().length} casos`)
   assert.deepEqual(desacuerdos, [], `estados que no coinciden:\n  ${desacuerdos.join('\n  ')}`)
+})
+
+// El número **es** el identificador del caso: lo citan los cierres, los mensajes de commit, los cuerpos de
+// los PR y el CHANGELOG. Vivía sin comprobar nada, y las dos formas de romperlo son silenciosas.
+//
+// Dos archivos con el mismo número: pasó el 2026-09-16 con el 164, porque el README dice que el próximo es
+// el siguiente al más alto «que haya acá» y dos sesiones que trabajan a la vez ven árboles distintos. La
+// puerta pasaba en verde con los dos puestos, y a partir de ahí «el 164» deja de nombrar una cosa.
+//
+// Y el número escrito en dos lugares que se contradicen —el del nombre y el del frontmatter—, que es la
+// misma situación que el estado y por la misma razón: el que se lee sin abrir el archivo es el del nombre,
+// así que es el que miente.
+test('el número de un caso es único, y el nombre dice el mismo que el frontmatter', () => {
+  const reclamado = new Map()
+  const problemas = []
+  for (const one of cases()) {
+    const enElNombre = one.name.slice(0, 3)
+    if (one.caso !== enElNombre) {
+      problemas.push(`${one.name}: adentro se llama caso ${one.caso || '(sin caso:)'}`)
+    }
+    if (reclamado.has(enElNombre)) {
+      problemas.push(`${enElNombre}: lo reclaman ${reclamado.get(enElNombre)} y ${one.name}`)
+    } else reclamado.set(enElNombre, one.name)
+  }
+  assert.ok(cases().length > 30, `sólo se leyeron ${cases().length} casos`)
+  assert.deepEqual(problemas, [], `números que no identifican un caso:\n  ${problemas.join('\n  ')}`)
 })
