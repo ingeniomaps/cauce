@@ -99,6 +99,27 @@ test('no se forkea dos veces ni se forkea lo propio', () => {
   assert.throws(() => fork(root, 'demo-role', DATE), /ya lo mantiene esta empresa/)
 })
 
+// Por qué la copia a medias es peor que no tener copia está junto al `catch` que la retira
+// (engine/agents/fork.js). Acá el cuidado es del instrumento: el corte se provoca con un archivo
+// ilegible, que da el mismo `throw` que un disco lleno sin simular nada, y el caso sigue hasta el
+// segundo intento — sin esa mitad probaría que no quedó nada y no que se pueda reintentar, que es la
+// única razón por la que borrar valía la pena.
+test('un copiado cortado no deja medio cargo puesto', () => {
+  const { root, source } = company('cauce-fork-cortado-')
+  const unreadable = path.join(source, 'evaluations', 'cases', '01-caso.md')
+  fs.chmodSync(unreadable, 0o000)
+
+  assert.throws(() => fork(root, 'demo-role', DATE), /EACCES|permission denied/)
+  assert.equal(fs.existsSync(path.join(root, 'agents', 'roles', 'demo-role')), false,
+    'nada a medias en agents/: lo copiado se retira con el error')
+
+  // Y arreglado lo que lo cortó, el fork sale — que es lo que separa una parada de un callejón.
+  fs.chmodSync(unreadable, 0o644)
+  const result = fork(root, 'demo-role', DATE)
+  assert.ok(result.files.includes('SKILL.md'))
+  assert.ok(result.files.includes(path.join('evaluations', 'cases', '01-caso.md')))
+})
+
 test('la deriva avisa cuando mejora el catálogo, no cuando la empresa edita su copia', () => {
   const { root, source } = company('cauce-drift-')
   const forked = fork(root, 'demo-role', DATE)

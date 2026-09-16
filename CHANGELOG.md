@@ -18,6 +18,17 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Un `agents fork` que se corta a la mitad se retira en vez de quedarse puesto.** Si el copiado fallaba
+  —un archivo ilegible, disco lleno— quedaba medio cargo en `agents/`, y lo caro no es perder la copia: es
+  dejarla. El catálogo pasa a resolver el slug contra esa copia, así que el intento siguiente ya no dice
+  que se cortó sino **«ya lo mantiene esta empresa»** — y lo que la empresa mantiene es un contrato
+  incompleto que ningún manifiesto registra, o sea que el aviso de deriva tampoco lo mira nunca.
+
+  Verificado provocando el corte con un archivo ilegible: antes el segundo intento contestaba «ya lo
+  mantiene esta empresa» con `.cauce` vacío; ahora no queda nada en `agents/` y arreglando lo que lo
+  cortó el fork sale entero. Sólo se borra lo que esa llamada creó, y la ruta se comprueba contra la raíz
+  de la instancia antes de tocarla.
+
 - **`automation uninstall` no borra nada si no puede leer la configuración de tu runner.** Borraba
   primero y leía el `settings.json` al final, con un `JSON.parse` sin proteger. Con un archivo que alguien
   dejó a medio fusionar, el comando moría con «Expected property name or '}' in JSON at position 13»
