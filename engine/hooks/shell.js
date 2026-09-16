@@ -252,7 +252,12 @@ function dependencies(input) {
 // era la causa —sólo hacía que la lectura frenara en un token que sobrevive—: sin él la lista cruzaba
 // igual y el último token era la marca de lo entrecomillado, que el filtro final descarta. O sea que
 // pasaba de casualidad, y aserciar que pasa no fijaba nada.
-const REDIRECT = /(?:^|[\s(])&?\d*>>?\s*(?![&(])([^\s;|&<>()]+)/g
+// Y el `|` después de `>` es el override de `noclobber`, no una tubería: `>| destino` escribe igual que
+// `> destino` aunque el shell esté configurado para no pisar. Sin admitirlo acá el guard no veía ese
+// destino —el `|` está fuera de la clase que captura la ruta, así que la coincidencia moría—, y con él
+// se perdían los tres guards que salen de `writesWithBase` a la vez. Lo que un agente se escribía por
+// ese hueco era su propia `.ops-approval` (caso 164).
+const REDIRECT = /(?:^|[\s(])&?\d*>>?\|?\s*(?![&(])([^\s;|&<>()]+)/g
 const EVERY_ARG = /(?:^|[\s;|&(])(tee|truncate)\s+([^;|&<>()\n]+)/g
 const LAST_ARG = /(?:^|[\s;|&(])(cp|mv|install|rsync)\s+([^;|&<>()\n]+)/g
 const SED = /(?:^|[\s;|&(])sed\s+([^;|&<>()\n]+)/g
@@ -315,7 +320,10 @@ function cdTarget(argument, base) {
 function writesWithBase(command, cwd) {
   const found = []
   let base = cwd
-  for (const segment of unquoted(command).split(/[;&|\n]+/)) {
+  // El `|` que sigue a un `>` no parte nada: es el override de `noclobber`, no una tubería. Partir ahí
+  // separaba la redirección de su destino —`echo x >| ruta` quedaba como `echo x >` y ` ruta`— y el
+  // destino no lo veía nadie, que es por donde se colaba escribir la propia `.ops-approval` (caso 164).
+  for (const segment of unquoted(command).split(/[;&\n]+|(?<!>)\|+/)) {
     const cd = segment.match(/^\s*cd(?:\s+(\S+))?\s*$/)
     if (cd) { base = base === null ? null : cdTarget(cd[1], base); continue }
     for (const raw of writeTargets(segment)) found.push({ raw, base })

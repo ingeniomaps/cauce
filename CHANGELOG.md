@@ -14,6 +14,20 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.95.0] - 2026-09-16
+
+### Corregido
+
+- **Redirigir con `>|` ya no evade el guard que mira a dónde escribe un comando.** `>|` es el override de
+  `noclobber` y escribe igual que `>`, pero el guard no veía su destino: el comando se partía en segmentos
+  por `|` antes de buscar destinos, así que la redirección quedaba separada de su ruta. Verificado sobre
+  un banco: `echo x > <fuera>` y `echo x >> <fuera>` bloqueaban y `echo x >| <fuera>` pasaba.
+
+  Importa porque una de las rutas que se escriben por ese hueco es `planning/.ops-approval` — la
+  aprobación que después habilita el push a la rama viva—, que es lo que cerraron el 098 y el 119.
+
+  Las tuberías corrientes siguen sin producir destino: se comprobó con `ls | wc -l` y `a || b`.
+
 ## [0.94.0] - 2026-09-16
 
 ### Agregado
