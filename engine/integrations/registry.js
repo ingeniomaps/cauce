@@ -197,6 +197,13 @@ function validate(root, onlyProvider = '') {
         if (fields.promotionKind === 'story' && (!/^\d{3}$/.test(fields.promotionEpic) || !fields.promotionCriteria)) {
           errors.push(`${at}: story exige promotionEpic NNN y promotionCriteria`)
         }
+        // Para una épica el campo es opcional —sin él el número lo elige el motor—, y por eso nadie lo
+        // miraba: el único caso sin validar era justo el que arma el nombre del archivo con lo que diga.
+        // `promotionEpic: 7` producía `epic-7-…`, que el roadmap no reconoce como épica, y un `..` sacaba
+        // la épica de `roadmap/` entero con `promote` devolviendo 0 y anunciando que promovió.
+        if (fields.promotionKind === 'epic' && fields.promotionEpic && !/^\d{3}$/.test(fields.promotionEpic)) {
+          errors.push(`${at}: promotionEpic debe ser NNN`)
+        }
         if (!sections.Aceptación || /^(por definir|n\/a|pendiente)\.?$/i.test(sections.Aceptación)) {
           errors.push(`${at}: ready exige aceptación concreta`)
         }

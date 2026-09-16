@@ -18,6 +18,18 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`promotionEpic` se valida también cuando la promoción es una épica.** El campo se exigía `NNN` sólo
+  para una historia. Para una épica es opcional —sin él el número lo elige el motor—, y por eso nadie lo
+  miraba; pero cuando está se usa tal cual para armar el nombre del archivo. O sea que el único caso sin
+  validar era el único que escribe una ruta con lo que diga el campo.
+
+  `promotionEpic: 7` producía `epic-7-…`, que el roadmap no reconoce como épica: la promoción se anunciaba
+  bien y lo escrito quedaba invisible para la cola. Y con un `..` la épica salía de `roadmap/` entera.
+  Verificado sobre una instancia desechable: `integration check` daba exit 0 y `integration promote`
+  devolvía «✓ jira:DEMO-42 promovido como epic» dejando el archivo fuera del roadmap. Ahora `check` lo
+  rechaza con «promotionEpic debe ser NNN» y `promote`, que valida antes de escribir, no llega a tocar el
+  disco.
+
 - **El aviso de commits sin entrada de DONE vuelve a decir lo que ve.** El filtro por fecha leía la
   columna del `git log` en una posición fija, y `%h` no mide siempre lo mismo: git sube el largo del hash
   abreviado solo cuando el repositorio crece. En cuanto pasa de siete, la posición fija lee un espacio en
