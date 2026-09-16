@@ -157,7 +157,10 @@ function gitDirectory(command, cwd) {
 // de correr: gobernanza, dependencias y generados. Cualquier variable delante alcanza, y la ironía es
 // que el prefijo que el procedimiento manda escribir para un commit de gobernanza es
 // `OPS_GOVERNANCE_OVERRIDE=1`: escrito ahí, el guard no lee el override, directamente no se ejecuta.
-const PREFIX = String.raw`(?:^|[;&|]\s*)(?:(?:env|sudo)\s+)*`
+// El ancla admite el salto de línea y el `(` por lo mismo que admite `;`: los tres abren un comando. El
+// salto es el que más caro salía —dos líneas en un solo Bash es como se escriben dos pasos— y el léxico
+// de `shell.js` ya lo declaraba separador; acá faltaba (caso 165).
+const PREFIX = String.raw`(?:^|[;&|(\n]\s*)(?:(?:env|sudo)\s+)*`
   + String.raw`(?:[A-Za-z_][A-Za-z0-9_]*=(?:'[^']*'|"[^"]*"|\S*)\s+)*`
 const COMMIT = new RegExp(PREFIX + String.raw`git\s+commit(?:\s|$)`)
 
