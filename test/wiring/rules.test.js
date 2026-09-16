@@ -34,9 +34,33 @@ test('las reglas vigentes son las propias y las del sistema que el proyecto no s
     'planning/rules/system/commits.md',
     'planning/rules/system/conduct.md',
     'planning/rules/system/process.md',
+    'planning/rules/system/runs.md',
     'planning/rules/code-shape.md',
     'planning/rules/security.md',
   ])
+})
+
+// Reemplazar «pensar antes de editar» por la versión de la empresa es lo primero que hace cualquiera que
+// adopta Cauce sobre su propio proceso, y el override es por nombre de archivo: se llevaba puesto el
+// archivo entero. R16, R20, R21 y R22 —lo que cuesta una corrida, cuándo una medición vale, cómo se
+// retoma, qué no se toca mientras se mide— dejaban de llegarle a todo agente sin que nadie lo decidiera.
+// Una instancia real las declaró «adoptadas por referencia» en una tabla de prosa que el motor no lee, y
+// dos de ellas no estaban rigiendo el día que le costaron una sesión (caso 160).
+//
+// Por eso viven en `runs.md`: la prueba no es que el override ande —eso ya se mide arriba— sino que el
+// archivo que una empresa reemplaza no arrastre lo que nadie reemplaza.
+test('sobrescribir el proceso propio no se lleva puesto lo que cuesta una corrida', () => {
+  const { target } = installedProject('cauce-rules-proceso-')
+  fs.writeFileSync(path.join(target, 'planning', 'rules', 'process.md'),
+    '# Proceso (propio)\n\n## R1 — Pensar antes de codear\n\nLa versión de la empresa.\n')
+
+  const vigentes = O.effectiveRules(target)
+  assert.equal(vigentes.includes('planning/rules/system/process.md'), false, 'el override rige')
+  assert.ok(vigentes.includes('planning/rules/system/runs.md'), `se perdió runs.md: ${vigentes.join(', ')}`)
+
+  // Y llegan de verdad, no sólo en la lista: es el texto lo que un agente lee.
+  const texto = read(path.join(target, 'planning', 'rules', 'system', 'runs.md'))
+  for (const id of ['R16', 'R20', 'R21', 'R22']) assert.match(texto, new RegExp(`^## ${id} — `, 'm'), id)
 })
 
 test('cada runner instala las reglas vigentes y ninguna que el proyecto retiró', () => {
@@ -183,7 +207,9 @@ test('install declara lo que el bloque de reglas va a pesar en cada agente', () 
   assert.equal(salida.status, 0, salida.stderr)
   // En bytes y no en tokens: los bytes los mide el motor, y la equivalencia en tokens depende del
   // modelo. Un número inventado en la salida es peor que uno exacto, porque se cita para decidir.
-  assert.match(salida.stdout, /claude: el bloque de reglas carga 4 archivo\(s\), 3[89]\.\d KB en cada agente/,
+  // Cinco desde que `runs.md` salió de `process.md` (caso 160): los KB no se movieron —el texto es el
+  // mismo, repartido— y por eso el rango se queda donde estaba. Lo que cambia es el conteo.
+  assert.match(salida.stdout, /claude: el bloque de reglas carga 5 archivo\(s\), 3[89]\.\d KB en cada agente/,
     'declara cuántas y cuánto pesan')
 })
 
@@ -198,7 +224,7 @@ test('check avisa cuando el bloque se pasa del umbral, y calla en una instancia 
   assert.equal(runCli(['automation', 'install', target, 'claude']).status, 0)
   const avisa = runCli(['check', planning])
   assert.equal(avisa.status, 0, 'avisa y no frena: la instancia sigue siendo válida')
-  assert.match(avisa.stderr, /el bloque de reglas carga 6 archivo\(s\), \d+\.\d KB en cada agente/,
+  assert.match(avisa.stderr, /el bloque de reglas carga 7 archivo\(s\), \d+\.\d KB en cada agente/,
     'dice cuánto pesa')
   assert.match(avisa.stderr, /P1-propia\.md/, 'y nombra las más grandes, que es lo accionable')
 
