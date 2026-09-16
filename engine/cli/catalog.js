@@ -13,14 +13,14 @@ const O = require('../core/ownership')
 // El banco desechable y su borrado comprobado. Se reexportan abajo porque su contrato lo fija la suite
 // del banco, que llega por acá desde antes de que el módulo existiera.
 const B = require('./bench')
-const { fail, opsRoot, TODAY } = require('./io')
+const { fail, opsRoot, TODAY, USAGE, REFUSED } = require('./io')
 
 function agentsFork(slug, dir) {
   const root = opsRoot(dir)
-  if (!slug) fail('Falta el cargo: ops agents fork <cargo> [ops-root]', 2)
+  if (!slug) fail('Falta el cargo: ops agents fork <cargo> [ops-root]', USAGE)
   let result
   const date = TODAY()
-  try { result = require('../agents/fork').fork(root, slug, date) } catch (error) { fail(error.message, 2) }
+  try { result = require('../agents/fork').fork(root, slug, date) } catch (error) { fail(error.message, USAGE) }
   console.log(`+ ${path.relative(root, result.dir)} (${result.files.length} archivo(s))`)
   if (result.skipped.length) {
     console.log(`  quedan en el catálogo: ${result.skipped.length} artefacto(s) que ganó su versión`)
@@ -45,7 +45,7 @@ function warnUnresolved(root, name, found) {
 
 function agents(action, dir, extra, cli) {
   if (action === 'fork') return agentsFork(dir, extra)
-  if (action !== 'list') fail(`Acción de agents desconocida: ${action || '(vacía)'}`, 2)
+  if (action !== 'list') fail(`Acción de agents desconocida: ${action || '(vacía)'}`, USAGE)
   const root = opsRoot(dir)
   // Una empresa mantiene sus cargos, no los nuestros: `learn` sobre uno del catálogo se niega, así que
   // recorrer el catálogo entero para encontrar el suyo es ruido. `--own` hace ejecutable ese recorrido.
@@ -117,7 +117,7 @@ function learn(agent, cli) {
     // falta. Negarse nombrando el comando que sí corresponde es lo que cierra R13.
     if (kind === 'flow' && !cli.has('--proposal')) {
       fail(`${agent} es un recorrido: aprende de sus corridas, no de informes semanales.\n`
-        + `  Abrí la propuesta con "ops learn ${agent} --flow --proposal".`, 2)
+        + `  Abrí la propuesta con "ops learn ${agent} --flow --proposal".`, USAGE)
     }
     // `--period` es para consolidar a mano un mes que no es el de hoy. El ciclo automático no lo
     // pasa: la propuesta se llama por el mes en que se abre y arrastra lo que todavía no entró.
@@ -146,7 +146,7 @@ function learn(agent, cli) {
     if (LF.blankProposal(result.file)) {
       console.log('  sin cambio decidido: falta correr agent-propose antes de que esto se pueda firmar')
     }
-  } catch (error) { fail(error.message, 2) }
+  } catch (error) { fail(error.message, USAGE) }
 }
 
 function evaluate(agent, caso, cli) {
@@ -162,7 +162,7 @@ function evaluate(agent, caso, cli) {
       // forkeaba, repetía el comando y recibía el mismo mensaje diciéndole que forkeara—.
       fail('--bench es del toolkit. En una instancia, el cargo trabaja sobre tu planning/: corré '
         + `"ops evaluate ${agent}" sin la bandera, que valida sus controles, casos y propuestas `
-        + 'contra este proyecto.', 2)
+        + 'contra este proyecto.', USAGE)
     }
     // El caso es el posicional que sigue al cargo: `evaluate <cargo> --bench <caso>`. Sin él se arma
     // un banco suelto, para mirarlo a mano; una corrida real pide uno por caso.
@@ -203,7 +203,7 @@ function evaluate(agent, caso, cli) {
     const errors = [...result.errors, ...runs.errors]
     for (const warning of [...result.warnings, ...runs.warnings]) console.warn(`⚠ ${warning}`)
     for (const error of errors) console.error(`✗ ${error}`)
-    if (errors.length) fail(`\n${errors.length} error(es)`, 1)
+    if (errors.length) fail(`\n${errors.length} error(es)`, 1, REFUSED)
     // Cuándo se midió es un rango cuando el veredicto vigente lo aportó más de una corrida. Por qué se
     // compone en vez de leerse la última, en `composed`.
     const measuredAt = runs.state && runs.state.oldest !== runs.state.newest
@@ -221,7 +221,7 @@ function evaluate(agent, caso, cli) {
         `${result.pending ? ` (${result.pending} sin aplicar)` : ''}, ` +
         'controles estructurales válidos',
     )
-  } catch (error) { fail(error.message, 2) }
+  } catch (error) { fail(error.message, USAGE) }
 }
 
 // La raíz la toma como posicional, igual que el resto de los comandos que leen una instancia: `list` no
@@ -257,11 +257,11 @@ function flow(action, slug, dir, cli) {
     for (const name of slugs) console.log(name)
     return
   }
-  if (!['check', 'show'].includes(action)) fail(`Acción de flow desconocida: ${action || '(vacía)'}`, 2)
+  if (!['check', 'show'].includes(action)) fail(`Acción de flow desconocida: ${action || '(vacía)'}`, USAGE)
   try {
     const result = T.validate(root, slug)
     for (const error of result.errors) console.error(`✗ ${error}`)
-    if (result.errors.length) fail(`${slug}: ${result.errors.length} error(es)`, 1)
+    if (result.errors.length) fail(`${slug}: ${result.errors.length} error(es)`, 1, REFUSED)
     if (action === 'show') {
       // El manifiesto entero, para que un workflow ejecute las etapas sin que un modelo lo parsee.
       if (cli.has('--json')) return console.log(JSON.stringify(result.manifest))
@@ -273,7 +273,7 @@ function flow(action, slug, dir, cli) {
     } else {
       console.log(`✓ ${slug}: ${result.stages} etapa(s), ${result.agents} agente(s), contrato válido`)
     }
-  } catch (error) { fail(error.message, 2) }
+  } catch (error) { fail(error.message, USAGE) }
 }
 
 module.exports = {

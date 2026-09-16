@@ -11,7 +11,7 @@ const P = require('../planning/parser')
 const PC = require('../planning/contracts')
 const AD = require('../planning/adoption')
 const F = require('../core/files')
-const { fail, planningRoot, TODAY } = require('./io')
+const { fail, planningRoot, TODAY, USAGE, REFUSED } = require('./io')
 
 // El historial de acciones humanas se acumula en un solo archivo y no por épica: una fila no pertenece
 // a ninguna, y esperar el cierre de una épica dejaría sin archivar las de un planning que todavía no
@@ -30,7 +30,7 @@ function adopt(dir) {
     const existing = fs.readFileSync(target, 'utf8')
     if (!AD.sealWarnings(root).some((one) => /sin huella/.test(one))) {
       fail(`${AD.BASELINE} ya existe: se genera una vez. Para retirar un renglón, ponele \`#~\` `
-        + 'delante; `check` marca los que ya cumplen.')
+        + 'delante; `check` marca los que ya cumplen.', REFUSED)
     }
     const slugs = AD.declared(existing)
     F.atomicWrite(target, existing.replace(/\n?$/, `\n# huella: ${slugs.length} entradas · `
@@ -78,7 +78,7 @@ function archiveHumanActions(root) {
 function archive(dir, rawNum) {
   if (String(rawNum || '') === 'human-actions') return archiveHumanActions(planningRoot(dir))
   return fail('Sólo se archiva `human-actions`. La evidencia de una tarea ya vive en su propio archivo '
-    + 'de `done/`, así que archivar una épica dejó de tener sentido.', 2)
+    + 'de `done/`, así que archivar una épica dejó de tener sentido.', USAGE)
 }
 
 module.exports = { archive, adopt }

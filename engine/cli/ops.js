@@ -6,7 +6,7 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const A = require('../automation')
 const { FLAGS, parse } = require('./args')
-const { fail } = require('./io')
+const { fail, USAGE, REFUSED } = require('./io')
 const IN = require('./instance')
 const PL = require('./planning')
 const CT = require('./contract')
@@ -88,7 +88,7 @@ async function init(target, cli) {
   // directorio y elegían modos opuestos, así que escribir el punto daba el layout contrario al de
   // arriba sin que nadie lo pidiera.
   const mode = cli.value('--mode', isInstanceDir(root) ? 'sidecar' : 'embedded')
-  if (!['embedded', 'sidecar'].includes(mode)) fail('--mode debe ser embedded o sidecar.', 2)
+  if (!['embedded', 'sidecar'].includes(mode)) fail('--mode debe ser embedded o sidecar.', USAGE)
   const name = cli.value('--name', defaultName(root))
   const force = cli.has('--force')
   // `.git` no cuenta como contenido: es lo único que hay en la carpeta que alguien acaba de crear y
@@ -96,7 +96,7 @@ async function init(target, cli) {
   // más natural —`mkdir acme-ops && git init && cauce init`— pedía `--force` para no pisar nada.
   const existing = (fs.existsSync(root) ? fs.readdirSync(root) : []).filter((entry) => entry !== '.git')
   if (existing.length && !force) {
-    fail(`El destino no está vacío: ${root}. Usa --force para agregar solo archivos faltantes.`)
+    fail(`El destino no está vacío: ${root}. Usa --force para agregar solo archivos faltantes.`, REFUSED)
   }
   // Preguntar exige una terminal, e instalar baja un paquete y escribe `node_modules`: las dos cosas
   // pasan cuando hay alguien mirando. Una corrida automatizada —CI, un contenedor, estas pruebas—
@@ -112,7 +112,7 @@ async function init(target, cli) {
   }
   // Se valida antes de escribir: un runner o una integración que no existen no pueden dejar una
   // instancia hecha con el comando en error (caso 096). `BOOT.run` vuelve a validar con la misma función.
-  try { BOOT.validate(options) } catch (error) { fail(error.message, 2) }
+  try { BOOT.validate(options) } catch (error) { fail(error.message, USAGE) }
   IN.scaffold(root, { name, mode, force })
   const relative = path.relative(process.cwd(), root)
   const enter = relative && relative !== '.' ? `cd ${relative} && ` : ''
@@ -125,7 +125,7 @@ async function init(target, cli) {
       installRunner: (runner) => W.automation('install', root, runner, NO_FLAGS),
       enableProvider: (provider) => W.enableProvider(root, provider),
     })
-  } catch (error) { fail(error.message, 2) }
+  } catch (error) { fail(error.message, USAGE) }
 
   if (result.installed) VA.check(path.join(root, 'planning'), NO_FLAGS)
 
@@ -139,7 +139,7 @@ async function init(target, cli) {
   console.log('')
   W.onboard(root, NO_FLAGS, result.installed ? result.runner : '')
   for (const step of initSteps(enter, result)) console.log(step)
-  if (result.error) fail(`${result.error}: la instancia quedó creada pero todavía no funciona.`)
+  if (result.error) fail(`${result.error}: la instancia quedó creada pero todavía no funciona.`, REFUSED)
 }
 
 function usage() {
@@ -200,14 +200,14 @@ async function run(cli) {
   if (!command || command === 'help') return usage()
   // `Object.hasOwn` y no `FLAGS[command]`: `constructor` heredado de `Object.prototype` pasaba por
   // comando válido y el CLI salía con 0 sin hacer nada.
-  if (!Object.hasOwn(FLAGS, command)) { usage(); fail(`Comando desconocido: ${command}`, 2) }
+  if (!Object.hasOwn(FLAGS, command)) { usage(); fail(`Comando desconocido: ${command}`, USAGE) }
   // `--help` valía sólo como primer argumento: `check --help` corría `check` contra el directorio
   // actual en vez de explicarse.
   if (cli.has('--help')) return usage()
   const unknown = cli.unknown(command)
   if (unknown.length) {
     const accepts = FLAGS[command].length ? `Acepta: ${FLAGS[command].join(', ')}.` : 'No acepta banderas.'
-    fail(`${command}: bandera desconocida ${unknown.join(', ')}. ${accepts}`, 2)
+    fail(`${command}: bandera desconocida ${unknown.join(', ')}. ${accepts}`, USAGE)
   }
   const arg = cli.positional
   if (command === 'init') await init(arg[1], cli)
@@ -239,4 +239,4 @@ async function run(cli) {
   else if (command === 'flow') CAT.flow(arg[1], arg[2], arg[3], cli)
 }
 
-run(parse(process.argv.slice(2))).catch((error) => fail(error.message))
+run(parse(process.argv.slice(2))).catch((error) => fail(error.message, REFUSED))

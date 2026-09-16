@@ -30,7 +30,7 @@ const CP = require('../config/paths')
 const AG = require('../agents/catalog')
 const RL = require('../automation/rules')
 const CT = require('./contract')
-const { fail, planningRoot, TODAY } = require('./io')
+const { fail, planningRoot, TODAY, REFUSED } = require('./io')
 
 function check(dir, cli) {
   const root = planningRoot(dir)
@@ -197,7 +197,7 @@ function check(dir, cli) {
 
   for (const warning of warnings) console.warn(`⚠ ${warning}`)
   for (const error of errors) console.error(`✗ ${error}`)
-  if (errors.length) fail(`\n${errors.length} error(es), ${warnings.length} advertencia(s)`)
+  if (errors.length) fail(`\n${errors.length} error(es), ${warnings.length} advertencia(s)`, REFUSED)
   console.log(
     `✓ planning válido: ${epics.length} épica(s), ${backlog.length} tarea(s) en cola, ` +
       `${done.entries.length} terminada(s)`,

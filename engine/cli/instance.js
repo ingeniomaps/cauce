@@ -15,7 +15,7 @@ const P = require('../planning/parser')
 const ST = require('../planning/state')
 const RC = require('../planning/recurring')
 const A = require('../automation')
-const { fail, TODAY } = require('./io')
+const { fail, TODAY, USAGE, REFUSED } = require('./io')
 const { declareEngine, pinEngine, undeclareEngine } = require('./dependency')
 const { adviceFor, previewUpgrade, reportUpgrade } = require('./upgrade-report')
 
@@ -47,7 +47,7 @@ function copyTemplate(source, target, replacements, force, skip = [], quiet = fa
     if (entry.isDirectory()) Object.assign(preserved, copyTemplate(from, to, replacements, force, skip, quiet))
     else {
       if (fs.existsSync(to)) {
-        if (!force) fail(`El destino contiene ${to}. Usa un directorio vacío o --force.`)
+        if (!force) fail(`El destino contiene ${to}. Usa un directorio vacío o --force.`, REFUSED)
         if (!quiet) console.log(`= conservado ${to}`)
         let would = fs.readFileSync(from, 'utf8')
         for (const [key, value] of Object.entries(replacements)) would = would.replaceAll(key, value)
@@ -175,9 +175,9 @@ function whatIsLost(root) {
 function destroy(dir, cli) {
   const root = path.resolve(dir || '.')
   if (!fs.existsSync(path.join(root, 'ops.config.json'))) {
-    fail(`${root} no es una instancia de Cauce: falta ops.config.json.`, 2)
+    fail(`${root} no es una instancia de Cauce: falta ops.config.json.`, USAGE)
   }
-  if (O.mode(root) === 'toolkit') fail(`${root} es el toolkit: acá se fabrica Cauce, no se lo borra.`, 2)
+  if (O.mode(root) === 'toolkit') fail(`${root} es el toolkit: acá se fabrica Cauce, no se lo borra.`, USAGE)
 
   const loss = whatIsLost(root)
   const lines = [
@@ -261,12 +261,12 @@ function renameTeamsToFlows(root) {
 function upgrade(dir, cli) {
   const root = path.resolve(dir || '.')
   if (!fs.existsSync(path.join(root, 'ops.config.json'))) {
-    fail(`${root} no es una instancia de Cauce: falta ops.config.json.`, 2)
+    fail(`${root} no es una instancia de Cauce: falta ops.config.json.`, USAGE)
   }
   // Acá se fabrica Cauce: `upgrade` reemplazaría con las copias de `template/` los archivos que este
   // repositorio mantiene en la raíz —`AGENTS.md` entre ellos, que es donde vive esta misma regla—.
   if (O.mode(root) === 'toolkit') {
-    fail(`${root} es el toolkit: acá se edita Cauce, no se lo actualiza.`, 2)
+    fail(`${root} es el toolkit: acá se edita Cauce, no se lo actualiza.`, USAGE)
   }
   // Antes que nada, y antes de los controles: `teams/` pasó a llamarse `flows/`, y los controles que
   // siguen miran las rutas nuevas. Sin esto `upgrade` copiaría `flows/` al lado y dejaría los
@@ -299,6 +299,7 @@ function upgrade(dir, cli) {
     fail(
       `\n${rescue.length} archivo(s) de aprendizaje quedaron en una ruta que Cauce ya no mantiene.\n\n` +
       'Movelos a un cargo propio en agents/roles/<slug>/learning/ y repetí, o descartalos con --force.',
+      REFUSED,
     )
   }
 

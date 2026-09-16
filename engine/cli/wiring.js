@@ -14,7 +14,7 @@ const SC = require('../core/scan')
 const OB = require('../core/onboarding')
 const IN = require('./instance')
 const ST = require('../planning/state')
-const { fail, opsRoot } = require('./io')
+const { fail, opsRoot, USAGE, REFUSED } = require('./io')
 
 // Cuántos servicios se listan en pantalla antes de recortar. El resto sigue en `--json`, que es lo que
 // consume el recorrido de arranque: recortar la lista es para leerla, no para acotar lo que se sabe.
@@ -45,7 +45,7 @@ const INTEGRATION = {
         && fs.existsSync(path.join(root, 'integrations', provider))
       if (!fromCauce && !own) {
         fail(`Cauce no trae un adaptador para ${provider}. Uno propio vive en integrations/${provider}/ y se `
-          + `registra en integrations/config.json con "adapter": "./adapter.js"; con eso, enable lo conecta.`, 2)
+          + `registra en integrations/config.json con "adapter": "./adapter.js"; con eso, enable lo conecta.`, USAGE)
       }
       // Habilitar no es inicializar: repone lo que falte y conserva lo que ya esté. Una instancia que
       // trae el andamiaje de una versión anterior —o que ya tiene snapshots— sólo quiere el interruptor.
@@ -86,7 +86,7 @@ const INTEGRATION = {
       const result = I.validate(root, provider || '')
       for (const warning of result.warnings) console.warn(`⚠ ${warning}`)
       for (const error of result.errors) console.error(`✗ ${error}`)
-      if (result.errors.length) fail(`${result.errors.length} error(es) de integración`)
+      if (result.errors.length) fail(`${result.errors.length} error(es) de integración`, REFUSED)
       console.log(`✓ integraciones válidas${provider ? `: ${provider}` : ''}`)
     },
   },
@@ -203,14 +203,14 @@ function onboard(rootArg, cli, runner = '') {
 function providerRegistry(root) {
   const file = path.join(root, 'integrations', 'config.json')
   try { return { file, config: JSON.parse(fs.readFileSync(file, 'utf8')) } } catch (error) {
-    return fail(`integrations/config.json ilegible: ${error.message}`)
+    return fail(`integrations/config.json ilegible: ${error.message}`, REFUSED)
   }
 }
 
 function switchProvider(root, provider, enabled) {
   const { file, config } = providerRegistry(root)
   if (!config.providers || !config.providers[provider]) {
-    fail(`${provider} no está en integrations/config.json.`)
+    fail(`${provider} no está en integrations/config.json.`, REFUSED)
   }
   config.providers[provider].enabled = enabled
   F.atomicWriteJson(file, config)
@@ -218,8 +218,8 @@ function switchProvider(root, provider, enabled) {
 
 async function integration(action, rootArg, provider, key, cli) {
   const step = INTEGRATION[action]
-  if (!step) fail(`Acción de integración desconocida: ${action || '(vacía)'}`, 2)
-  if (step.missing && (!provider || (step.needsKey && !key))) fail(step.missing, 2)
+  if (!step) fail(`Acción de integración desconocida: ${action || '(vacía)'}`, USAGE)
+  if (step.missing && (!provider || (step.needsKey && !key))) fail(step.missing, USAGE)
   await step.run(path.resolve(rootArg || '.'), provider, key, cli)
 }
 
@@ -245,7 +245,7 @@ function automation(action, rootArg, runnerName, cli) {
   if (action === 'check') {
     const errors = A.check(root)
     for (const error of errors) console.error(`✗ ${error}`)
-    if (errors.length) fail(`${errors.length} error(es) de automatización`)
+    if (errors.length) fail(`${errors.length} error(es) de automatización`, REFUSED)
     console.log(
       `✓ automatización válida: ${A.GUARD_NAMES.length} guards, ${A.RUNNER_NAMES.length} adaptadores`,
     )
@@ -260,22 +260,22 @@ function automation(action, rootArg, runnerName, cli) {
   }
   if (action === 'doctor') {
     let result
-    try { result = A.doctor(root, runnerName) } catch (error) { fail(error.message, 2) }
+    try { result = A.doctor(root, runnerName) } catch (error) { fail(error.message, USAGE) }
     if (result.errors.length) {
-      fail(`${runnerName}: ${result.errors.length} error(es), ${result.warnings.length} advertencia(s)`)
+      fail(`${runnerName}: ${result.errors.length} error(es), ${result.warnings.length} advertencia(s)`, REFUSED)
     }
     console.log(`✓ ${runnerName}: adaptador operativo (${result.warnings.length} advertencia(s))`)
     return
   }
   if (action === 'uninstall') {
-    try { A.uninstall(root, runnerName, console) } catch (error) { fail(error.message, 2) }
+    try { A.uninstall(root, runnerName, console) } catch (error) { fail(error.message, USAGE) }
     console.log('  la instancia sigue en pie: borrar la carpeta ops es una decisión aparte.')
     return
   }
   if (action === 'install') {
     let runner
     const force = cli.has('--force')
-    try { runner = A.install(root, runnerName, console, { force }) } catch (error) { fail(error.message, 2) }
+    try { runner = A.install(root, runnerName, console, { force }) } catch (error) { fail(error.message, USAGE) }
     if (runnerName === 'codex') {
       console.log('  Codex deja los hooks nuevos sin correr hasta que los confíes: abrí una sesión')
       console.log('  y usá /hooks para revisarlos y marcarlos como confiables.')
@@ -284,20 +284,20 @@ function automation(action, rootArg, runnerName, cli) {
       console.log(`  ${runnerName} no expone hooks nativos; aplica guards como prechecks.`)
     }
     const result = A.doctor(root, runnerName)
-    if (result.errors.length) fail(`${runnerName}: instalación incompleta`)
+    if (result.errors.length) fail(`${runnerName}: instalación incompleta`, REFUSED)
     console.log(`✓ ${runnerName}: adaptador operativo (${result.warnings.length} advertencia(s))`)
     return
   }
-  fail(`Acción de automatización desconocida: ${action || '(vacía)'}`, 2)
+  fail(`Acción de automatización desconocida: ${action || '(vacía)'}`, USAGE)
 }
 
 function secrets(action, rootArg) {
-  if (action !== 'check') fail(`Acción de secretos desconocida: ${action || '(vacía)'}`, 2)
+  if (action !== 'check') fail(`Acción de secretos desconocida: ${action || '(vacía)'}`, USAGE)
   const result = SE.check(opsRoot(rootArg))
   if (!result.declared) return console.log(`Sin ${SE.DECLARATION}: no hay contrato de secretos que comprobar.`)
   for (const warning of result.warnings) console.log(`⚠ ${warning}`)
   for (const error of result.errors) console.error(`✗ ${error}`)
-  if (result.errors.length) fail(`${result.errors.length} error(es) en el contrato de secretos`)
+  if (result.errors.length) fail(`${result.errors.length} error(es) en el contrato de secretos`, REFUSED)
   console.log(`✓ contrato de secretos: ${result.current} servicio(s) al día`)
 }
 

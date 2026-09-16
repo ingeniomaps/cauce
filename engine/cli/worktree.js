@@ -15,7 +15,7 @@ const ST = require('../planning/state')
 const CL = require('../planning/claims')
 const R = require('../core/repos')
 const O = require('../core/ownership')
-const { fail, planningRoot } = require('./io')
+const { fail, planningRoot, USAGE, REFUSED } = require('./io')
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
 
@@ -34,38 +34,38 @@ function existing(repo, branch) {
 
 function worktree(dir, slug, cli) {
   const root = planningRoot(dir)
-  if (!slug) return fail('Falta el slug. `ops worktree <planning-dir> <tarea>`', 2)
+  if (!slug) return fail('Falta el slug. `ops worktree <planning-dir> <tarea>`', USAGE)
   const state = ST.snapshot(root)
   const task = state.milestones.flatMap((milestone) => milestone.tasks).find((one) => one.slug === slug)
-  if (!task) return fail(`${slug} no está en BACKLOG: sólo se prepara trabajo ya promovido.`, 2)
+  if (!task) return fail(`${slug} no está en BACKLOG: sólo se prepara trabajo ya promovido.`, USAGE)
 
   // No reserva —eso es `claim`— pero se niega a montar sobre lo de otro: preparar un árbol para una
   // tarea ajena es trabajo que se va a tirar, y el aviso cuesta menos que descubrirlo después.
   const taken = state.claims.find((one) => one.slug === slug)
   if (taken && taken.runner !== CL.runner()) {
-    return fail(`${slug} la tomó ${taken.owner}; preparar un árbol para su tarea no ayuda a nadie.`)
+    return fail(`${slug} la tomó ${taken.owner}; preparar un árbol para su tarea no ayuda a nadie.`, REFUSED)
   }
 
   const candidatos = R.reposFor(path.join(root, '..'), task.service)
   if (candidatos.length > 1) {
     return fail(`${task.service || '.'} existe en más de un repositorio (${candidatos.join(', ')}), así que `
-      + 'no puedo saber cuál. Escribí un `service:` que sólo exista en uno.', 2)
+      + 'no puedo saber cuál. Escribí un `service:` que sólo exista en uno.', USAGE)
   }
   const repo = candidatos[0]
   if (!repo) {
     return fail(`no encontré el repositorio de ${task.service || '(sin service)'}: revisá workspaceRoots `
-      + 'en ops.config.json y que la ruta del servicio exista.', 2)
+      + 'en ops.config.json y que la ruta del servicio exista.', USAGE)
   }
 
   const branch = CL.branchOf(slug)
   const already = existing(repo, branch)
   const target = already || path.join(path.dirname(repo), `${path.basename(repo)}-${slug}`)
   if (!already) {
-    if (fs.existsSync(target)) return fail(`${target} ya existe y no es un árbol de esta rama.`)
+    if (fs.existsSync(target)) return fail(`${target} ya existe y no es un árbol de esta rama.`, REFUSED)
     const hasBranch = git(repo, 'rev-parse', '--verify', '--quiet', `refs/heads/${branch}`).status === 0
     const args = hasBranch ? ['worktree', 'add', target, branch] : ['worktree', 'add', '-b', branch, target]
     const added = git(repo, ...args)
-    if (added.status !== 0) return fail(`git worktree add falló: ${(added.stderr || '').trim()}`)
+    if (added.status !== 0) return fail(`git worktree add falló: ${(added.stderr || '').trim()}`, REFUSED)
   }
 
   if (cli.has('--json')) {
