@@ -11,6 +11,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { readInput, cwdOf, block, findOpsRoot } = require('./input')
 const shell = require('./shell')
+const { verify } = require('./verify')
 const files = require('./files')
 const chat = require('./chat')
 const { secretsShell } = require('./secrets-shell')
@@ -40,7 +41,7 @@ const guards = {
   'git-add': shell.gitAdd,
   dependencies: shell.dependencies,
   governance: shell.governance,
-  verify: shell.verify,
+  verify,
   'shell-boundary': shell.shellBoundary,
   'secrets-shell': secretsShell,
   'ops-config-shell': opsConfigShell,
