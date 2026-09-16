@@ -109,6 +109,35 @@ test('una tarea partida suelta su reclamo antes de seguir', async () => {
     `soltó antes de reemplazar el BACKLOG: ${JSON.stringify(asked)}`)
 })
 
+// Por qué la épica tiene que moverse con la partición está junto a la consigna que la parte
+// (automatization/workflows/autobuild.js). Acá se fija lo que ahí no se ve: que la épica se nombra por su
+// id y no en abstracto —el agente tiene que saber cuál abrir— y, en el espejo de abajo, que una tarea
+// suelta no reciba una instrucción sobre un roadmap que no la contiene (caso 169).
+test('partir una tarea de una épica actualiza también sus historias', async () => {
+  const base = baseScript()[KEY.context]
+  const vacio = { ...base, hasTask: false, queued: 0 }
+  const { prompts } = await runFlow(
+    { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
+    { contexts: [{ ...base, claimed: true }, { ...base, slug: 'T-2', claimed: true }, vacio, vacio] },
+  )
+  const split = prompts.find((one) => one.key === 'Decompose|split').prompt
+  assert.match(split, /E1/, 'la consigna nombra la épica de la tarea que parte')
+  assert.match(split, /[Hh]istoria/, 'y manda a reemplazar su historia, no sólo la línea del BACKLOG')
+})
+
+// Y el espejo, que es el que evita que la consigna mande a tocar una épica que no existe: una tarea
+// suelta se parte sin nombrar ninguna.
+test('partir una tarea sin épica no manda a tocar ningún roadmap', async () => {
+  const base = { ...baseScript()[KEY.context], epic: '' }
+  const vacio = { ...base, hasTask: false, queued: 0 }
+  const { prompts } = await runFlow(
+    { [KEY.decompose]: { hours: 12, needsSplit: true, subtasks: ['T-1a', 'T-1b'] } },
+    { contexts: [{ ...base, claimed: true }, { ...base, slug: 'T-2', claimed: true }, vacio, vacio] },
+  )
+  const split = prompts.find((one) => one.key === 'Decompose|split').prompt
+  assert.doesNotMatch(split, /[Hh]istoria/, 'sin épica no hay lista de historias que arreglar')
+})
+
 // Y la tercera lectura posible del mismo slug: la reserva **es nuestra** y quien la pidió contestó que
 // no. Ahí frenar sería tirar una corrida por un error de reporte, y el estado lo desmiente — comprobado
 // contra el motor: `context` devuelve `claimed: true` para el runner que reclamó, y otro slug para el que

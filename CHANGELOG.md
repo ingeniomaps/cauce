@@ -30,6 +30,35 @@ diseño — eso vive en el commit y en el código.
 
   No cambia ningún permiso: el diff es texto.
 
+- **Partir una tarea de una épica actualiza también sus historias, así que `check` no queda en rojo.** Una
+  tarea que viene de una épica es además una historia suya, y la partición reemplazaba sólo su línea del
+  BACKLOG. La lista de historias quedaba nombrando un slug que ya no existe en ninguna parte, y eso rompe
+  por los dos lados según qué escriba la partición: con las subtareas declarando la épica, `check` falla en
+  el acto con «BACKLOG \<sub\>: no existe en epic-NNN»; sin declararla pasa en verde y **la épica no puede
+  cerrar nunca**, porque `closed` exige evidencia de cada historia y la original jamás la va a tener.
+
+  Ahí es donde la unidad partida se cierra diciendo en qué se partió, que es lo que pide R25. **No va una
+  entrada en `done/`**: ese directorio es la evidencia de lo que una tarea entregó, y una partida no
+  entregó nada. Una tarea sin épica no necesita ningún cierre — deja de existir limpiamente y no hay
+  cruce que se rompa.
+
+  Si tenés una épica con una historia que ninguna tarea de la cola nombra y que nunca vas a poder cerrar,
+  viene de esto: reemplazá esa historia por las de las subtareas que la partición dejó en el BACKLOG.
+
+- **Un límite escrito en dos líneas ya viaja entero a los agentes.** Una viñeta bajo `### Límites` se
+  recorría línea por línea, así que de un límite que no entraba en el ancho del archivo —que es como se
+  escribe cualquiera de verdad— llegaba **sólo la primera línea**, cortada a mitad de frase. Y lo que se
+  pierde ahí suele ser lo que el límite decide: «…crear, editar o borrar productos, pedidos o» sin el «no
+  las hace un runner» que venía abajo.
+
+  La continuación, además, volvía por el otro lado: no coincidía con ninguna viñeta declarada y `check` la
+  reportaba como un párrafo «que no llega a los agentes», citando media frase tuya. O sea que el proyecto
+  hacía lo que el aviso pedía, el aviso seguía sonando, y el límite que sí viajaba era el mutilado.
+
+  Si escribiste tus límites en una sola línea para que el aviso bajara a cero, ya podés volver a partirlos
+  donde corresponda. Una línea en blanco cierra la viñeta, así que la prosa que venga después sigue sin
+  contar como límite — y sigue avisándose.
+
 - **Una notificación de tarea de fondo ya no borra del chat a la persona que está mirando.** Cuando un
   guard frena algo, el bloqueo ofrece dos salidas: contestar «dale» —corto, y es lo que la persona ya está
   haciendo— o pegar líneas a mano en `planning/.ops-approval`. La primera sólo se ofrecía si el registro
