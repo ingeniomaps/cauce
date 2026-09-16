@@ -353,6 +353,9 @@ test('sin informes pendientes no se abre propuesta', () => {
   assert.equal(vacia.reports, 0)
   assert.equal(vacia.file, '', 'no hay archivo porque no se escribió ninguno')
   assert.equal(fs.existsSync(proposals) && fs.readdirSync(proposals).length, 0, 'el directorio queda vacío')
+  // Cuántos callados había, que acá son cero. Se fija porque es lo único que distinguía este caso del
+  // camino que lo atiende, y `catalog` lo lee para decidir qué línea imprime.
+  assert.equal(vacia.quiet, 0, 'sin informes no hay ninguno callado, que no es lo mismo que no saberlo')
 
   // Con un informe pendiente sí se abre, y lo consolida.
   withRecommendation(learning.prepareReport(target, 'probe', new Date('2099-06-10T00:00:00Z')).file)
