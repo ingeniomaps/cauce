@@ -157,10 +157,13 @@ const JUSTIFIED = {
     'Un recorrido crece de a una fase, y su schema y su paso cambian juntos: separarlos parte por la '
     + 'mitad lo que es una sola cosa.',
   'automatization/workflows/flow.js':
-    'Un recorrido de equipo crece de a una salida —épica, informe, investigar— y cada una arma su '
-    + 'destino al lado del schema que la valida, así que partirlo por salida separa el manifiesto de '
-    + 'quien lo consume. Cruzó las 500 con la procedencia del INBOX (caso 115), estando en 498, y '
-    + 'partirlo bien es un cambio propio y no la cola de otro.',
+    'El corte que el tamaño sugiere es por salida —son cuatro: épica, informe, investigar y no-hacer— '
+    + 'y no se puede: el bloque que las arma usa catorce bindings de lo que quedaría del otro lado. El '
+    + 'único corte limpio en referencias es declaraciones contra ejecución —quince identificadores hacia '
+    + 'adelante y ninguno hacia atrás, porque las tres apariciones que parecen volver son valores de enum '
+    + 'y un nombre de propiedad dentro de los schemas— y ése parte lo que dieciséis de treinta y seis '
+    + 'commits cambiaron juntos: un campo del schema y el prompt que lo obedece. Cruzó las 500 con la '
+    + 'procedencia del INBOX (caso 115), estando en 498.',
   'test/wiring/runners.test.js':
     'Suma un caso por runner y, al lado, los que recorren los cuatro a la vez —que ningún comando de hook '
     + 'quede relativo al workspace, que ninguna ruta dé por sentado dónde se instala—. Partirla por runner '
