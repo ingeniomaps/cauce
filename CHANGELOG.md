@@ -18,6 +18,18 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **El bloqueo dice hasta dónde llega el «dale».** Ofrece dos salidas y sólo la del pegado decía su
+  alcance —«valen para ese conjunto y dejan de valer en cuanto cambie»—; la del chat, que es la que se
+  ofrece primero, decía sólo «reintentá el mismo cambio y pasa».
+
+  Faltaban **dos** cosas y no son la misma. Que el «dale» cubre lo que se frenó y nada más: por eso en una
+  carpeta donde se itera cada archivo nuevo vuelve a frenar, que desde afuera se lee como si el guard se
+  hubiera olvidado de que ya la aprobaste. Y que lo concedido **sigue valiendo en los mensajes
+  siguientes** hasta que lo niegues — la mitad permisiva, la que no se nota porque lo que no ocurre es un
+  bloqueo. `check` la muestra al final de la corrida; ahora también se dice al concederla.
+
+  No cambia ningún permiso: el diff es texto.
+
 - **Una notificación de tarea de fondo ya no borra del chat a la persona que está mirando.** Cuando un
   guard frena algo, el bloqueo ofrece dos salidas: contestar «dale» —corto, y es lo que la persona ya está
   haciendo— o pegar líneas a mano en `planning/.ops-approval`. La primera sólo se ofrecía si el registro

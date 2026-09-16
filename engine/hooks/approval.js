@@ -96,9 +96,17 @@ function where(input) {
 function HOW(variable, lines, input, pasteable = lines) {
   const chat = CHAT.hold(input, lines)
   const stuck = lines.filter((one) => !pasteable.includes(one))
+  // El alcance del «dale» va con la oferta y no después. La rama del pegado ya decía el suyo —«valen para
+  // ese conjunto»— y la del chat no decía ninguno, siendo la que se ofrece primero. Las dos mitades que
+  // faltaban no son la misma: que **cubre lo frenado y nada más** explica por qué un archivo nuevo vuelve a
+  // frenar, que desde afuera se lee como que el guard se olvidó; y que **sigue valiendo en los mensajes
+  // siguientes** es la dirección permisiva, la que nadie nota porque lo que no ocurre es un bloqueo.
+  // `check` la muestra al final de la corrida —es lo que trajo el 117—, y al concederla no la decía nadie
+  // (caso 170).
   const ask = chat
     ? 'Decile a la persona qué se frenó y por qué, y esperá: si contesta «dale», reintentá el mismo cambio y '
-      + 'pasa. '
+      + 'pasa. Ese «dale» cubre lo que se frenó y nada más —algo nuevo vuelve a frenar— y sigue valiendo en '
+      + 'los mensajes siguientes hasta que ella lo niegue. '
     : ''
   const paste = pasteable.length
     ? (chat ? 'Si prefiere aprobarlo a mano, que pegue ella tal cual en' : 'Aprobalo pegando tal cual en')
