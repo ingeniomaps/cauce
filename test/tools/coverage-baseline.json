@@ -105,8 +105,8 @@
     "functions": 100
   },
   "engine/cli/contract.js": {
-    "lines": 98,
-    "branches": 57,
+    "lines": 100,
+    "branches": 83,
     "functions": 100
   },
   "engine/cli/dependency.js": {

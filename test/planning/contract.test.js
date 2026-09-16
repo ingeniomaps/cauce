@@ -233,3 +233,50 @@ test('declarar un límite lo saca del aviso, y la prosa de afuera sigue entrando
   assert.equal(/porque no arrancan con «El runner»/.test(hecho.stderr), false,
     'y ya no manda a imitar la gramática, que es el camino que el 157 vino a evitar')
 })
+
+// Por qué una viñeta es la viñeta entera está junto a `marked` (engine/cli/contract.js). Las dos mitades
+// —lo que viaja y lo que se avisa— van en un caso solo porque arreglar una sin la otra deja la mentira
+// del otro lado, y eso sólo se ve mirándolas juntas: el límite completo viajando con el aviso todavía
+// pidiéndolo, o el aviso callado sobre un límite que sigue cortado (caso 168).
+test('un límite escrito en dos líneas viaja entero y no vuelve como párrafo perdido', () => {
+  const root = instance('cauce-contract-dos-lineas-')
+  const antes = contractOf(root).value.boundaries.length
+  conExcepcion(root, '### Límites\n\n'
+    + '- **Escrituras a la tienda real** —crear, editar o borrar productos, pedidos o\n'
+    + '  configuración— no las hace un runner, aunque la tarea esté promovida.\n'
+    + '- **Una viñeta de una línea** llega entera, como siempre.')
+  const { value } = contractOf(root)
+
+  assert.equal(value.boundaries.length, antes + 2, `llegaron: ${value.boundaries.join(' | ')}`)
+  const cortada = value.boundaries.find((one) => /Escrituras a la tienda real/.test(one))
+  assert.match(cortada, /no las hace un runner, aunque la tarea esté promovida\.$/,
+    'el límite llega hasta el final: lo que decide está en la segunda línea')
+
+  // Y el aviso deja de reclamar la continuación de algo que sí se declaró.
+  const hecho = run(['check', path.join(root, 'planning')])
+  assert.doesNotMatch(hecho.stderr, /no llegan a los agentes/,
+    `avisó sobre una viñeta declarada: ${hecho.stderr}`)
+})
+
+// Plegar tiene un borde que no se escribe solo: una línea en blanco cierra la viñeta. Sin eso, la prosa
+// que venga después queda pegada al último límite —y encima deja de avisarse, porque plegar la cuenta
+// como declarada—, así que un párrafo que nadie declaró pasaría a regir sobre cada subagente.
+test('una línea en blanco cierra la viñeta: lo que sigue no se pega al último límite', () => {
+  const root = instance('cauce-contract-blanco-')
+  conExcepcion(root, '### Límites\n\n'
+    + '- En `api/` no se tocan migraciones sin aprobación de datos.\n'
+    + '\n'
+    + 'Esto es prosa que nadie declaró como límite.')
+  const { value } = contractOf(root)
+
+  const declarado = value.boundaries.find((one) => /migraciones/.test(one))
+  assert.ok(declarado, `no llegó el declarado: ${value.boundaries.join(' | ')}`)
+  assert.doesNotMatch(declarado, /prosa que nadie declaró/, 'la prosa de abajo no es parte del límite')
+  assert.equal(value.boundaries.some((one) => /prosa que nadie declaró/.test(one)), false,
+    'ni llega como un límite propio')
+
+  // Y sigue avisándose, que es la mitad que el plegado podría haber apagado sin que nada lo note.
+  const hecho = run(['check', path.join(root, 'planning')])
+  assert.match(hecho.stderr, /no llegan a los agentes/)
+  assert.match(hecho.stderr, /prosa que nadie declaró/, 'y cita el párrafo que de verdad se pierde')
+})

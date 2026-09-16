@@ -83,9 +83,18 @@ const MARKED = /^###\s+Límites\s*$/m
 // llevaba adentro los cuatro párrafos que la persona había agregado al final de la sección. Descontar el
 // bloque entero —que es lo que parecía el arreglo— apagaba justo lo que el aviso existe para encontrar.
 const BULLET = /^\s*[-*]\s+/
+// Una viñeta es la viñeta entera, no su primera línea. Un límite de verdad no entra en el ancho del
+// archivo, así que se escribe en dos, y recorriendo línea por línea lo que viajaba al preámbulo de cada
+// subagente era la mitad — cortada justo donde suele estar lo que el límite decide (caso 168).
+//
+// `own` son las líneas **sin plegar**, y existe para `warnings`: descuenta por línea contra lo que el
+// archivo tiene escrito (caso 159), y una viñeta ya plegada no coincide con ninguna de esas líneas, así
+// que su continuación volvía a contarse como un párrafo perdido. Son dos preguntas distintas sobre el
+// mismo bloque: qué dice cada límite, y qué líneas ya están cubiertas.
 function marked(raw) {
   const bullets = []
   const intros = []
+  const own = []
   let rest = raw
   for (let start = rest.search(MARKED); start >= 0; start = rest.search(MARKED)) {
     const after = rest.slice(start).split('\n').slice(1)
@@ -93,13 +102,21 @@ function marked(raw) {
     const block = end < 0 ? after : after.slice(0, end)
     const first = block.findIndex((line) => BULLET.test(line))
     if (first > 0) intros.push(...block.slice(0, first).map((line) => line.trim()).filter(Boolean))
-    bullets.push(...block
-      .filter((line) => BULLET.test(line))
-      .map((line) => line.replace(BULLET, '').trim())
-      .filter(Boolean))
+    // Una línea en blanco cierra la viñeta abierta: lo que venga después es otra cosa y pegarlo ahí
+    // uniría dos límites en uno.
+    let open = -1
+    for (const line of first < 0 ? [] : block.slice(first)) {
+      const text = line.replace(BULLET, '').trim()
+      if (!text) { open = -1; continue }
+      // A `own` va lo que pertenece a una viñeta y nada más. Empujar toda línea no vacía haría que la
+      // prosa suelta que quedó bajo el encabezado contara como declarada y `warnings` dejara de nombrarla:
+      // el plegado apagaría el aviso en vez de arreglar el límite.
+      if (BULLET.test(line)) { bullets.push(text); open = bullets.length - 1; own.push(text) }
+      else if (open >= 0) { bullets[open] += ` ${text}`; own.push(text) }
+    }
     rest = (end < 0 ? '' : after.slice(end).join('\n'))
   }
-  return { bullets, intros }
+  return { bullets, intros, own }
 }
 
 const declared = (raw) => marked(raw).bullets
@@ -147,8 +164,8 @@ function warnings(root) {
   // Se descuenta por línea y no por párrafo, que es donde estaba el defecto: `paragraphs` saca el `- ` y
   // une las viñetas seguidas en un párrafo solo, así que una lista declarada no era igual a ninguna
   // entrada de `declared()` y se contaba entera como un límite perdido (caso 159).
-  const { bullets, intros } = marked(mine)
-  const suyo = new Set([...bullets, ...intros])
+  const { own, intros } = marked(mine)
+  const suyo = new Set([...own, ...intros])
   const outside = P.withoutComments(mine).split('\n')
     .filter((line) => !suyo.has(line.replace(BULLET, '').trim()))
     .join('\n')
