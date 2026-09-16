@@ -81,10 +81,14 @@ function weight(root) {
 const KB = (bytes) => `${(bytes / 1024).toFixed(1)} KB`
 
 // A partir de dónde el peso deja de ser el costo de arrancar y pasa a ser una decisión que conviene mirar.
-// El piso que Cauce impone —las cuatro reglas del sistema— son 38,3 KB, así que un umbral por debajo de
-// eso avisaría en toda instancia recién creada y se apagaría por ruido el primer día: eso descartó los
-// 60 KB que el caso 141 proponía. 64 KB deja ~26 KB para lo propio, que son varias reglas de tamaño
-// normal, antes de que el aviso hable.
+// El piso que Cauce impone —hoy cinco archivos, 45,9 KB— tiene que quedar debajo: un umbral por debajo
+// de él avisaría en toda instancia recién creada y se apagaría por ruido el primer día, y eso descartó
+// los 60 KB que el caso 141 proponía. 64 KB deja ~18 KB para lo propio, que a ~1,4 KB por regla son más
+// de diez antes de que el aviso hable.
+//
+// El piso sube cuando el toolkit enseña algo nuevo —eran 38,3 KB con cuatro archivos, y R24..R28 lo
+// llevaron acá—, así que este número se relee cada vez que eso pasa. El umbral no se mueve con él: lo
+// que mide es cuánto agregó la empresa, y subirlo para hacer lugar al piso apagaría justamente eso.
 const HEAVY = 64 * 1024
 
 // La línea que declara el peso, para que la digan igual `install` y `check`. Nombra las dos más grandes

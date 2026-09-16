@@ -16,6 +16,39 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.94.0] - 2026-09-16
 
+### Agregado
+
+- **Cinco reglas nuevas, traídas de una empresa que las pagó.** Salieron de revisar las reglas propias de
+  una instancia real: no son ideas, cada una tiene adentro la corrida que costó.
+
+  - **R24 — una premisa sobre el propio código se abre antes de usarla.** R14 ya exigía registro para lo
+    que se afirma de una herramienta o una norma, y dejaba afuera tu propio repositorio, que es donde
+    nadie te va a discutir. Cuatro corridas perdidas en un día, todas frenadas en la puerta y ninguna por
+    el código: la aceptación pedía algo que el sistema no hace. Y el ancla `archivo:línea` se abre, no se
+    copia — una función se movió de la 555 a la 733 en la misma sesión.
+  - **R25 — el identificador de una unidad de trabajo no cambia mientras está viva.** Renombrar un slug a
+    mitad de camino rompe el cruce entre la cola y lo hecho **sin que nada falle**: cada lado se lee
+    coherente por separado. Una tarea partida en cuatro y cerrada con otros nombres costó 594k tokens de
+    la corrida siguiente para descubrir que ya estaba construida. Si el nombre tiene que cambiar, va
+    `slug-nuevo (antes: slug-viejo)` hasta cerrar.
+  - **R26 — una puerta acota su propio costo y no escribe en el árbol que juzga.** Dos revisores lanzando
+    la misma suite fueron cuatro corridas en cuatro minutos: el sistema operativo mató la sesión entera
+    con un pico de 24,2 GB. Y un formateador con `--fix` o un build que limpia su salida editan el trabajo
+    de quien está commiteando. Una puerta que estorba se saltea, y desde ahí no protege de nada.
+  - **R27 — una defensa se aplica por defecto y cada excepción se declara sola.** Con lista de lo que
+    protege, todo lo que se agregue después nace afuera y nada lo compara. Incluye el caso que más se
+    disfraza: «esta comprobación no corre en desarrollo» es una quita escrita como agregado, y garantiza
+    que el camino de producción sea el único que nunca se ejercitó.
+  - **R28 — un estado lo dice el contenido de un archivo, nunca su presencia.** Un centinela cuya única
+    información es existir obliga a que borrarlo sea parte de la resolución, y eso alguien lo olvida: la
+    corrida arranca, lee todo el estado y recién ahí muere. Pasó dos veces el mismo día, a 42k tokens por
+    vez. Es lo que el WIP de Cauce ya hace bien con `status: IDLE`.
+
+  **Lo que cuesta:** el bloque de reglas que cada agente carga al arrancar pasa de **39,1 a 45,9 KB**.
+  Está medido, no estimado, y el umbral del aviso de `check` **no se movió**: sigue en 64 KB, porque lo
+  que mide es cuánto agregaste vos, y subirlo para hacerle lugar al piso apagaría justamente eso. Quedan
+  ~18 KB de margen antes de que el aviso hable.
+
 ### Corregido
 
 - **Escribir tu propio `process.md` ya no te deja sin las reglas que no ibas a reemplazar.** El override
