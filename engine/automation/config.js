@@ -173,16 +173,16 @@ function isSharedFile(root, target) {
 }
 
 function withoutBlock(text, name) {
-  const sourceRoot = text.indexOf(blockStart(name))
-  if (sourceRoot === -1) return text
-  const until = text.indexOf(blockEnd(name), sourceRoot)
+  const from = text.indexOf(blockStart(name))
+  if (from === -1) return text
+  const until = text.indexOf(blockEnd(name), from)
   if (until === -1) return text
-  return `${text.slice(0, sourceRoot)}${text.slice(until + blockEnd(name).length)}`.trimEnd()
+  return `${text.slice(0, from)}${text.slice(until + blockEnd(name).length)}`.trimEnd()
 }
 
 function mergeInstruction(file, name, content) {
-  const actual = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''
-  const instructionBody = withoutBlock(actual, name).trimEnd()
+  const current = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''
+  const instructionBody = withoutBlock(current, name).trimEnd()
   const block = `${blockStart(name)}\n\n${content.trim()}\n\n${blockEnd(name)}\n`
   F.atomicWrite(file, instructionBody ? `${instructionBody}\n\n${block}` : block)
 }
@@ -190,10 +190,10 @@ function mergeInstruction(file, name, content) {
 function blockUpToDate(file, name, content) {
   if (!fs.existsSync(file)) return false
   const body = fs.readFileSync(file, 'utf8')
-  const sourceRoot = body.indexOf(blockStart(name))
+  const from = body.indexOf(blockStart(name))
   const until = body.indexOf(blockEnd(name))
-  if (sourceRoot === -1 || until === -1) return false
-  return body.slice(sourceRoot + blockStart(name).length, until).trim() === content.trim()
+  if (from === -1 || until === -1) return false
+  return body.slice(from + blockStart(name).length, until).trim() === content.trim()
 }
 
 module.exports = {

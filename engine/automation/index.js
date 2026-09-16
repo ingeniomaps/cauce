@@ -45,9 +45,9 @@ function probeBridge(paths, runner) {
   const problems = []
   // Desde la raíz y desde una carpeta de adentro: si el runner lanza el hook con otro cwd, la ruta
   // relativa de su configuración deja de resolver y eso hay que verlo acá, no en la primera sesión.
-  const sourceRoot = [paths.install, path.dirname(script)]
+  const launchDirs = [paths.install, path.dirname(script)]
   for (const event of hookEvents) {
-    for (const cwd of sourceRoot) {
+    for (const cwd of launchDirs) {
       const payload = JSON.stringify({ toolCall: { args: { CommandLine: 'ls', Cwd: paths.install } } })
       const result = spawnSync(process.execPath, [script, event], { cwd, input: payload, encoding: 'utf8' })
       let response = {}
