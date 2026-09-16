@@ -18,6 +18,24 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **El aviso de commits sin entrada de DONE vuelve a decir lo que ve.** El filtro por fecha leía la
+  columna del `git log` en una posición fija, y `%h` no mide siempre lo mismo: git sube el largo del hash
+  abreviado solo cuando el repositorio crece. En cuanto pasa de siete, la posición fija lee un espacio en
+  vez de la fecha y **ningún commit pasa el filtro**, así que el aviso quedaba mudo sin decir por qué —la
+  peor forma de que una puerta falle, porque se lee igual que «no hay nada que avisar»—. Ahora se parte
+  por espacios y se lee el campo.
+
+  Verificado en este repositorio, donde el abreviado mide ocho: el aviso pasó de cero a «66 commit(s)
+  desde 2026-09-15 que ninguna entrada de DONE nombra». La prueba nueva lo fija en 7, 8 y 12.
+
+- **El sello de un registro de evaluación se escribe en el frontmatter y no en el cuerpo.**
+  `markConsolidated` buscaba `status:` en el documento entero. Un registro nace sin `status` en su
+  frontmatter y su cuerpo transcribe la respuesta literal del cargo: si esa respuesta traía una línea
+  `status: <algo>` en la columna cero, el sello aterrizaba ahí y el frontmatter quedaba sin sellar.
+
+  Un registro sin sellar vuelve a entrar en la propuesta siguiente, o sea que el mismo hallazgo llega dos
+  veces — que es exactamente lo que sellar existe para evitar.
+
 - **`ops -h` pide la ayuda, y un nombre heredado de `Object` ya no pasa por comando.** Dos huecos de la
   puerta de entrada del CLI, los dos de la misma forma: leer algo que no era ni un comando ni una bandera.
 
