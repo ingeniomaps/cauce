@@ -171,11 +171,7 @@ const JUSTIFIED = {
     + 'los casos comparten el montaje de una raíz ops instalada. Cruzó las 500 con el aviso de sidecar del '
     + 'caso 138, estando en 491, y el 145 lo llevó a 550 con la razón medida de lo que el guard de rutas '
     + 'se saltea.',
-  'test/planning/claims.test.js':
-    'La coordinación de un equipo suma un caso por conducta y las comparte todas: una instancia con su '
-    + 'cola, dos runners y un reclamo entre ellos. Partirla por tema separaría el reclamo de lo que el '
-    + 'reclamo decide —a quién se le ofrece cada tarea—, que son las dos mitades de la misma decisión y '
-    + 'que en esta rama cambiaron siempre juntas.',
+
 }
 
 const PENDING_SPLIT = {}
