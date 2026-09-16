@@ -44,6 +44,18 @@ diseño — eso vive en el commit y en el código.
     corrida arranca, lee todo el estado y recién ahí muere. Pasó dos veces el mismo día, a 42k tokens por
     vez. Es lo que el WIP de Cauce ya hace bien con `status: IDLE`.
 
+- **R17 dice qué cuenta como una condición, que es lo que volvía incontable su umbral.** La barra son
+  cinco condiciones de aceptación y nunca decía qué es una. Ahora: una condición es un resultado que se
+  puede mirar por separado, no una viñeta. Cinco viñetas que describen el mismo invariante desde cinco
+  ángulos son **una**, y contarlas como cinco parte por la mitad lo que era una sola cosa.
+
+  La otra dirección es la cara y la que nadie mira: una frase que promete dos resultados con vidas
+  distintas —«valida el pago y manda el email»— son **dos**, y escrita como una el umbral no se entera
+  nunca. Contar de menos no dispara nada, y se lee igual que una unidad chica.
+
+  La prueba no pide criterio: si al tachar una condición las otras siguen valiendo, son distintas; si
+  tachar una deja a las demás sin sentido, era una sola dicha en partes.
+
 - **R9 ahora pide que la mutación quede escrita, no sólo que se corra.** R9 ya exigía romper, con el
   código puesto, exactamente lo que el caso dice cuidar, y verlo ponerse rojo. Lo que faltaba es que eso
   quedara en la aceptación: una línea con qué se rompe y qué prueba tiene que ponerse roja. Sin ella,
@@ -54,7 +66,7 @@ diseño — eso vive en el commit y en el código.
   poder pedir algo que ninguna mutación puede tocar. Si no hay nada que romper, no había propiedad que
   cuidar, y eso se ve al redactarla en vez de al final de la vuelta.
 
-  **Lo que cuesta:** el bloque de reglas que cada agente carga al arrancar pasa de **39,1 a 46,5 KB**.
+  **Lo que cuesta:** el bloque de reglas que cada agente carga al arrancar pasa de **39,1 a 47,3 KB**.
   Está medido, no estimado, y el umbral del aviso de `check` **no se movió**: sigue en 64 KB, porque lo
   que mide es cuánto agregaste vos, y subirlo para hacerle lugar al piso apagaría justamente eso. Quedan
   ~18 KB de margen antes de que el aviso hable.

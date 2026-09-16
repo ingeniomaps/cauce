@@ -30,6 +30,16 @@ Dos barras, y cada una encuentra lo que la otra deja pasar: **cinco condiciones 
 tarea, y **cuatro horas de esfuerzo humano**. Arriba de la tarea el conteo sigue: siete criterios en una
 épica, nueve tareas en un hito.
 
+**Una condición es un resultado que se puede mirar por separado, no una viñeta.** El número no sirve de
+nada sin esto: cinco viñetas que describen el mismo invariante desde cinco ángulos son **una** condición,
+y contarlas como cinco parte por la mitad lo que era una sola cosa. Al revés cuesta más caro y es el que
+nadie mira: una frase que promete dos resultados con vidas distintas —«valida el pago y manda el
+email»— son **dos**, y escrita como una el umbral no se entera nunca. Contar de menos no dispara nada, y
+eso se lee igual que una unidad chica.
+
+La prueba es si se pueden entregar por separado. Si al tachar una las otras siguen valiendo, son
+distintas; si tachar una deja a las demás sin sentido, era una sola dicha en partes.
+
 Y hay una tercera que no se mide antes sino después: **un plan que ninguna crítica aprueba**. Las dos
 primeras miran la unidad escrita; ésta mira lo que pasó al intentarla, y por eso es la evidencia más
 directa de las tres — y la única que no se puede tener de antemano. Cuando nadie pudo escribir un plan
