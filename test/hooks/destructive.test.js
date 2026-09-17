@@ -3,7 +3,7 @@
 // Qué frena el guard que cuida lo que se pierde y lo que se publica, y qué deja pasar.
 
 const { tempRoot } = require('../support/environment')
-const { blocked, git, chatSession } = require('../support/hooks-harness')
+const { blocked, git, initRepo, repoPublicado, chatSession } = require('../support/hooks-harness')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -65,6 +65,7 @@ test('guard-destructive bloquea pérdida o publicación y permite lecturas', () 
 // home siguen sin salida, y por qué está escrito en `destructive`.
 test('destructive deja pasar lo que la persona pidió, y sigue cerrado en lo que R8 prohíbe', () => {
   const corre = (command) => ({ tool_input: { command } })
+  const publicado = repoPublicado('ops-amend-cerrado-')
   const chat = chatSession()
   try {
     for (const [command, motivo] of [
@@ -91,8 +92,11 @@ test('destructive deja pasar lo que la persona pidió, y sigue cerrado en lo que
     // Y lo que R8 prohíbe no se abre ni pidiéndolo: son las dos ramas que el comentario de arriba exceptúa.
     blocked('destructive', otra.says('corré git push --force origin main')(corre('git push --force origin main')),
       /reescribe historia ya publicada/)
-    blocked('destructive', otra.says('corré git commit --amend')(corre('git commit --amend')),
-      /reescribe un commit ya creado/)
+    // El amend se mide sobre historia **publicada**, que es donde R8 lo prohíbe: sin publicar no hay nada
+    // que abrir porque no está cerrado. Por qué la distinción existe vive junto a la regla.
+    blocked('destructive',
+      { ...otra.says('corré git commit --amend')(corre('git commit --amend')), cwd: publicado },
+      /publicad/)
     blocked('destructive', otra.says('corré rm -rf /')(corre('rm -rf /')), /catastrófico/)
   } finally { otra.close() }
 })
@@ -221,7 +225,8 @@ test('guard-destructive separa publicar de reescribir historia', () => {
   // El `+` del refspec es el mismo force, y con la llave prendida pasaba como un push normal.
   blocked('destructive', entrada('git push origin +rama'), /reescribe historia ya publicada/)
   blocked('destructive', entrada('git push origin +HEAD:rama'), /reescribe historia ya publicada/)
-  blocked('destructive', entrada('git commit --amend -m x'), /reescribe un commit ya creado/)
+  blocked('destructive',
+    { ...entrada('git commit --amend -m x'), cwd: repoPublicado('ops-amend-forma-') }, /publicad/)
 
   // Ni una bandera que apenas se le parece ni un commit corriente: el permiso lo decide la forma, no la
   // palabra suelta.
@@ -298,4 +303,38 @@ test('git-add no lee el mensaje de un commit como si fuera un comando', () => {
   // formas pasaban hasta este arreglo, por dónde terminaba la palabra: el límite, en `gitAdd`.
   blocked('git-add', { tool_input: { command: `bash -c "git add -A"` } }, /está prohibido/)
   blocked('git-add', { tool_input: { command: `eval 'git add -A'` } }, /está prohibido/)
+})
+
+// Un `--amend` sobre un commit que nadie vio es la corrección, no el daño. Lo que R8 protege es la
+// historia que otro ya leyó, y eso el motor ya lo distingue para el push: «publicar se autoriza,
+// reescribir historia publicada, no». La razón por la que acá se mira el remoto vive junto a la regla.
+//
+// Las dos mitades van juntas porque cualquiera sola deja pasar la otra: sin la primera el guard frena una
+// corrección legítima y la salida real pasa a ser `reset --soft`, que consigue lo mismo y no lo nombra;
+// sin la segunda, el amend abriría la puerta que el force-push tiene cerrada.
+test('el amend se frena sobre historia publicada y no sobre la que nadie vio', () => {
+  const root = tempRoot('ops-amend-')
+  initRepo(root)
+  fs.writeFileSync(path.join(root, 'a.txt'), 'uno\n')
+  git(['add', 'a.txt'], root)
+  git(['commit', '-qm', 'uno'], root)
+  const entrada = { cwd: root, tool_input: { command: 'git commit --amend' } }
+
+  // Sin remoto: nadie lo vio, así que corregirlo es corregirlo.
+  assert.doesNotThrow(() => execute('destructive', entrada),
+    'frenó un amend sobre un commit que no salió de esta máquina')
+
+  // Con el commit alcanzable desde un remoto: ahí sí es reescribir lo que otro leyó.
+  const remoto = tempRoot('ops-amend-remoto-')
+  git(['init', '-q', '--bare'], remoto)
+  git(['remote', 'add', 'origin', remoto], root)
+  git(['push', '-q', 'origin', 'HEAD'], root)
+  git(['fetch', '-q', 'origin'], root)
+  blocked('destructive', entrada, /publicad/)
+
+  // Y donde no hay con qué saber: cerrado por defecto (R27). No saber si algo se publicó no es lo mismo
+  // que saber que no, y ésta es la mitad que se abre sola si nadie la mide — un guard que falla hacia el
+  // «pasá» deja de proteger sin que nada lo diga.
+  blocked('destructive', { cwd: tempRoot('ops-amend-sin-git-'), tool_input: { command: 'git commit --amend' } },
+    /publicad/)
 })

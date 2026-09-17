@@ -3,7 +3,13 @@
 ## R8 — Un commit por naturaleza
 
 Stagear rutas explícitas, revisar el diff staged y crear un Conventional Commit en inglés. No usar
-`git add .`, `git add -A`, amend, force ni trailers de IA.
+`git add .`, `git add -A`, force ni trailers de IA.
+
+**Y no reescribir historia que otro ya leyó.** Lo que se protege es eso, no el comando: un `--amend`
+sobre un commit publicado es la misma reescritura que un force-push y se frena igual; sobre uno que no
+salió de tu máquina es la corrección, y prohibirlo no impide el resultado —`git reset --soft HEAD~1` y
+volver a commitear produce exactamente lo mismo— sino el comando que lo nombra. Una regla que se cumple
+mejor esquivándola se termina esquivando siempre.
 
 Dónde corta un commit lo decide la naturaleza del diff, no su tamaño ni un conteo. Una tarea suele
 tener una sola, y por eso un commit por tarea es lo habitual; cuando tiene dos, se hacen dos. Un
@@ -90,7 +96,8 @@ Push, PR, merge, tags, deploy y rollback requieren la autorización configurada 
 De esos seis, el motor comprueba uno: el push, contra `runner.allowPush` —que no llega a la rama viva
 sin `runner.pushToLiveBranches`, ni a un subagente— o contra la orden que la persona da en el chat
 nombrando el remoto y la rama. Reescribir historia publicada
-no entra en esa autorización y se frena siempre, igual que `--amend`. Los otros cinco no tienen una
+no entra en esa autorización y se frena siempre — también cuando la reescritura es un `--amend`, que el
+guard distingue mirando si algún remoto alcanza al commit. Los otros cinco no tienen una
 forma reconocible en un comando —un deploy es `kubectl`, `terraform`, un script o un botón— y los
 sostiene esta regla y el review, no un guard.
 
