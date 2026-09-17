@@ -162,7 +162,7 @@ function context(dir, cli) {
   const report = {
     // Toda la cola trabada por una persona no es lo mismo que no tener cola, y decir lo segundo manda a
     // buscar trabajo que no existe en vez de a resolver la fila que lo destraba.
-    blocked: fs.existsSync(gate) ? 'awaiting-review' : (!task && skipped.length ? 'blocked-on-human' : ''),
+    blocked: P.checkpointHolds(root) ? 'awaiting-review' : (!task && skipped.length ? 'blocked-on-human' : ''),
     task: task && {
       slug: task.slug, hito: task.hito, tier: task.tier, cast: task.cast, service: task.service,
       // Una tarea puede heredar su aceptación del criterio citado; el runner necesita el texto, no la cita.

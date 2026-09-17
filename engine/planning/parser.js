@@ -388,6 +388,23 @@ function readWip(dir, runner) {
   return parseWip(read(path.join(dir, 'wip', `${name}.md`)), name)
 }
 
+// Si el checkpoint de hito sigue frenando, leído del archivo y no de que el archivo esté. Es la misma
+// forma que el WIP de acá arriba —`status: IDLE` es un estado escrito— y la razón es R28: un centinela
+// cuya única información es existir obliga a que el borrado sea parte de la resolución, y esa es una
+// convención que alguien va a olvidar. Cuando se olvida, quien revisa lee que el hito ya se revisó
+// mientras el mecanismo sigue leyendo que el archivo está, y la corrida siguiente muere en la puerta de
+// entrada habiendo cargado el estado entero.
+//
+// Cerrado por defecto (R27): frena salvo que diga `resuelta`. Un archivo de una instancia anterior no
+// trae `status`, y abrirlo por eso destrabaría en silencio al actualizar, que es la quita escrita como
+// agregado que R9 nombra. El vocabulario es el mismo de `HUMAN_ACTIONS.md` a propósito: es el mismo acto
+// —una persona contesta— y dos palabras para eso serían dos convenciones que aprender.
+function checkpointHolds(dir) {
+  const text = read(path.join(dir, 'AWAITING_REVIEW.md'))
+  if (!text) return false
+  return !/^status:\s*resuelta\b/mi.test(text)
+}
+
 // Todos los que hay. Lo pregunta `check`, que juzga si cada plan apunta a una tarea que existe, y `tree`,
 // que muestra qué está en vuelo: las dos son preguntas sobre la instancia y no sobre quien pregunta.
 function readWips(dir) {
@@ -436,6 +453,7 @@ module.exports = {
   EPIC_STATES, HUMAN_ACTION_STATES, LANES, MILESTONE_HEADING, STOP_REASONS,
   TASK_LINE, TASK_LINE_ANY_LANE,
   read, section, withoutComments, frontmatter, readEpics, readBacklog, readDone, readWip, readWips, wipName,
+  checkpointHolds,
   acceptanceConditions, tableRows, taskFromLine,
   readInbox, inboxHeads, readHumanActions,
 }

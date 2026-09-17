@@ -444,3 +444,31 @@ service: app
   assert.equal(JSON.parse(run(['context', planning, '--json']).stdout).task.tier, '',
     'y un WIP que no lo declara no estrena carril: vacío es "no se sabe"')
 })
+
+// Por qué la compuerta se lee por contenido y no por presencia está junto a la lectura, en el motor
+// (`engine/cli/planning.js`), y la regla que lo exige es R28.
+//
+// Las tres formas van en una sola prueba porque el valor está en el contraste. La que más importa es la
+// del medio: un archivo que dice `resuelta` y sigue frenando es exactamente el modo de fallo que R28
+// describe —quien revisa lee que ya está resuelto mientras el mecanismo sigue leyendo que existe—, y sin
+// las otras dos no se distingue de una compuerta que no frena nunca.
+test('el checkpoint de hito lo dice su contenido, no su presencia', () => {
+  const base = tempRoot('cauce-r28-gate-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Gate', '--mode', 'sidecar']).status, 0)
+  const planning = path.join(target, 'planning')
+  const gate = path.join(planning, 'AWAITING_REVIEW.md')
+  const bloqueo = () => JSON.parse(run(['context', planning, '--json']).stdout).blocked
+
+  fs.writeFileSync(gate, '---\nstatus: pendiente\n---\n\n# Checkpoint\n\nRevisar el hito demo.\n')
+  assert.equal(bloqueo(), 'awaiting-review', 'pendiente frena, que es para lo que se escribe')
+
+  fs.writeFileSync(gate, '---\nstatus: resuelta\n---\n\n# Checkpoint\n\nRevisar el hito demo.\n')
+  assert.equal(bloqueo(), '', 'resuelta destraba sin que nadie tenga que acordarse de borrar el archivo')
+  assert.equal(fs.existsSync(gate), true, 'y el archivo se queda, que es lo que deja leer qué se revisó')
+
+  // Cerrado por defecto (R27): el archivo de una instancia anterior no trae `status`, y hasta que alguien
+  // se lo agregue tiene que seguir frenando. Abrirlo sería destrabar en silencio al actualizar.
+  fs.writeFileSync(gate, '# Checkpoint\n\nRevisar el hito demo.\n')
+  assert.equal(bloqueo(), 'awaiting-review', 'sin status frena igual')
+})
