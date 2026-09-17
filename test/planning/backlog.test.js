@@ -377,3 +377,27 @@ test('una fila de acciones humanas que casi nombra su tarea se marca; una que no
   assert.match(errores('**h-uno: falta la credencial**').join('|'), /h-uno/,
     'la que nombra la tarea sin ser su slug promete un bloqueo que no ocurre')
 })
+
+// La descripción de una tarea es lo que la aceptación no puede decir: dónde vive un símbolo, qué queda
+// fuera de alcance, con qué se produce la evidencia. Por qué tiene que salir del BACKLOG está junto al
+// campo, en el parser.
+//
+// Las tres aserciones son las tres formas de equivocarse al recortarla, y ninguna se ve desde las otras:
+// dejarle la aceptación pegada, dejarle los marcadores del contrato, o devolverla vacía cuando la línea
+// no trae más que ellos.
+test('la línea de una tarea entrega su descripción, sin la aceptación ni los marcadores', () => {
+  const linea = '- [ ] **alta-de-cliente** [full] — El padrón se consulta por documento; `normalizar` vive '
+    + 'en `api/padron.js` y el rechazo de duplicado queda fuera de alcance. '
+    + '_Aceptación: el alta responde 409 ante un documento repetido._ '
+    + '(→ C1) (epic: 001) (service: api) (cast: backend-engineer → qa-engineer) (depende: padron-cargado)'
+  const tarea = P.taskFromLine(linea)
+  assert.ok(tarea, 'la línea se lee')
+  assert.match(tarea.description, /El padrón se consulta por documento/)
+  assert.match(tarea.description, /queda fuera de alcance/, 'y llega entera, no cortada en el primer punto')
+  assert.doesNotMatch(tarea.description, /Aceptación/, 'la aceptación viaja en su campo, no acá')
+  assert.doesNotMatch(tarea.description, /service:|cast:|depende:|epic:/,
+    'y los marcadores del contrato tampoco: cada uno ya tiene su campo')
+
+  const pelada = P.taskFromLine('- [ ] **sola** — Sin nada más. (epic: 002) (service: api)')
+  assert.equal(pelada.description, 'Sin nada más.', 'una línea sin aceptación igual tiene descripción')
+})

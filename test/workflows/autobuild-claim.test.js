@@ -190,3 +190,36 @@ test('una cola vacía cierra en silencio, como antes', async () => {
   const { result } = await runFlow({}, { contexts: [vacia] })
   assert.notEqual(result.reason, 'queue-unavailable', 'sin cola no hay nada que avisar')
 })
+
+// Una parada que bloquea la tarea suelta lo que reclamó. Por qué, y por qué sólo estas dos, está junto
+// al release en el recorrido.
+//
+// Las dos mitades van juntas porque cualquiera sola deja pasar la otra: sin la primera el reclamo queda
+// sobre una tarea que nadie puede tomar; sin la segunda, soltarlo siempre abandonaría el trabajo que la
+// corrida dejó a medias en disco, que es lo contrario de lo que el reclamo dice.
+test('las paradas que bloquean antes de construir sueltan el reclamo, y las de después no', async () => {
+  const suelta = (written) => written.some((text) => /ops\.js release/.test(text))
+
+  const noLista = await runFlow({ [KEY.ready]: { ready: false, reason: 'falta decidir el proveedor' } })
+  assert.equal(noLista.result.reason, 'not-ready')
+  assert.ok(suelta(noLista.written), 'not-ready suelta: no hay WIP y la fila acaba de bloquear la tarea')
+
+  // Por la otra puerta del mismo registro: un plan bloqueado no se corrige, así que para sin replan.
+  const planMuerto = await runFlow({
+    [KEY.critique]: {
+      verdict: 'bloqueado', consulted: ['api/alta.go'],
+      concerns: [{ detail: 'la aceptación pide dos resultados distintos', blocking: true }],
+    },
+  })
+  assert.equal(planMuerto.result.reason, 'plan-blocked')
+  assert.ok(suelta(planMuerto.written), 'y el plan que nadie aprueba también: Critique corre antes del WIP')
+
+  // Y la de después: acá el WIP existe y el reclamo es lo que dice de quién es ese trabajo.
+  const trasConstruir = await runFlow({
+    [KEY.verify]: {
+      passed: false, commands: ['npm test'], details: 'rompió dos casos', uncovered: [],
+    },
+  })
+  assert.equal(trasConstruir.result.reason, 'verify-failed')
+  assert.ok(!suelta(trasConstruir.written), 'lo construido no se abandona soltando su reserva')
+})

@@ -60,6 +60,9 @@ const CONTEXT = {
     hasTask: { type: 'boolean' }, wipActive: { type: 'boolean' },
     queued: { type: 'integer' }, slug: { type: 'string' }, hito: { type: 'string' },
     service: { type: 'string' }, acceptance: { type: 'string' }, epic: { type: 'string' },
+    // Sin declararlo acá no llega, igual que le pasó a `epicContext`: `additionalProperties: false` lo
+    // descarta y las fases lo reciben vacío para siempre.
+    description: { type: 'string' },
     // Sin declararlo acá no llega: `additionalProperties: false` lo descartaría, y el aplanado de la
     // épica a su número —dos líneas arriba— hace fácil creer que ya viene. La fase Plan lo pedía en su
     // prompt y planificaba contra el título; `readEpics` cuenta de dónde sale.
@@ -454,7 +457,8 @@ const readContext = () => read(
   `omitilo entero si wip es null, sin inventar ceros—, y lane ` +
   `de task.tier; copiá slug, ` +
   `hito, service, acceptance, ` +
-  `epic y cast de task, epicContext de epic.context —vacío si no hay épica— e inbox tal cual. El comando es ` +
+  `epic, cast y description de task, epicContext de epic.context —vacío si no hay épica— e inbox tal `
+  + `cual. El comando es ` +
   `la fuente de ` +
   `verdad: no abras archivos de planning para completarlo. Poné readOk en true sólo si el comando salió ` +
   `con código 0 y devolvió JSON; si falló, readOk en false y el resto en sus valores vacíos, sin ` +
@@ -531,9 +535,16 @@ while (rounds++ < MAX_TASKS) {
       + '"ops release" o se retoma desde el runner que lo tiene; lo que espera una dependencia, no.')
   }
   if (!planning.hasTask || (currentMilestone && planning.hito !== currentMilestone)) break
+  // Las decisiones que la línea ya tomó, dichas como lo que son. Sin ese rótulo se leen como contexto
+  // opinable y el que planifica las re-decide igual, que es el defecto entero: la crítica abre el
+  // BACKLOG por su cuenta y bloquea el plan citando la línea palabra por palabra (caso 177).
+  const DECIDED = () => (task.description
+    ? ` Lo que la línea de la tarea ya decidió, y no se re-decide acá: ${task.description}`
+    : '')
   const task = {
     id: planning.slug, hito: planning.hito, service: planning.service,
     acceptance: planning.acceptance, epic: planning.epic, epicContext: planning.epicContext || '',
+    description: planning.description || '',
   }
   // Reservar antes de construir, y antes de fijar el hito de la corrida. Sin esto dos corridas en
   // paralelo trabajan la misma tarea: `context` sólo puede saltear lo que alguien ya reclamó, y el
@@ -659,12 +670,32 @@ while (rounds++ < MAX_TASKS) {
   //
   // Lo que la fila le pide a una persona lo dice R17: dos rechazos sobre lo mismo son el disparador
   // posterior de división. No se parte acá porque partir es una decisión, y ésa no le toca al recorrido.
+  // Una parada que registra la fila **bloquea** la tarea: la fila pendiente la saca de la cola. Si además
+  // el reclamo se queda puesto, el runner queda ocupado por algo que nadie puede tomar, y la corrida
+  // siguiente —que hace bien en no reintentarla— muere reclamando la que sigue: `claim` le contesta «este
+  // runner ya tiene …». Es la forma del 163 por la otra puerta, y la diferencia es que el estado lo creó
+  // esta corrida, así que soltarlo también le toca (caso 176).
+  //
+  // Sólo las paradas de **antes** de construir. Las de después —`verify-regression`, `qa-failed`,
+  // `commit-failed`— dejan el WIP en disco y es resumible: ahí el reclamo es lo único que dice de quién es
+  // ese trabajo, y soltarlo lo abandonaría.
+  //
+  // Cuesta un agente, porque el recorrido no tiene con qué correr un comando. Un agente contra una
+  // corrida entera.
+  const releaseBlocked = async () => write(
+    `Corré "node tools/ops.js release ${P} ${task.id}" desde ${ROOT}: quedó bloqueada por la fila que `
+    + 'acabás de registrar y todavía no hay nada construido, así que su reserva no reserva trabajo. No '
+    + 'escribas ningún archivo vos: lo escribe el comando.',
+    { label: `release:${task.id}` },
+  )
+
   const planRejected = async (reason, unit, found) => {
     const detail = found.join('; ') || 'sin condiciones nombradas'
     const nota = await registerHuman(
       `Registrá ${unit.id} en ${HUMAN}: nadie pudo escribir un plan que sobreviva a la crítica. `
       + `Motivo: ${detail}. La acción humana es revisar si la unidad son dos resultados con vidas `
       + `distintas y partirla, o dejarla entera con la razón escrita.`, 'plan-human')
+    await releaseBlocked()
     return stop(reason, `${detail}${nota}`)
   }
 
@@ -673,7 +704,8 @@ while (rounds++ < MAX_TASKS) {
       phase('Ready')
       const ready = await read(
         `${asRole(OWNERS.ready)}Revisá que ${task.id} tenga aceptación concreta, dependencias resueltas y ` +
-        `ninguna decisión pendiente: ${task.acceptance}. Aclará la redacción y nada más; nunca amplíes el ` +
+        `ninguna decisión pendiente: ${task.acceptance}.${DECIDED()} Aclará la redacción y nada más; ` +
+        `nunca amplíes el ` +
         `alcance.`,
         { schema: READY, label: 'ready' },
       )
@@ -682,6 +714,7 @@ while (rounds++ < MAX_TASKS) {
         const nota = await registerHuman(
           `Registrá ${task.id} en ${HUMAN} con el motivo y una acción humana exacta: ${ready.reason}.`,
           'ready-human')
+        await releaseBlocked()
         return stop('not-ready', `${ready.reason}${nota}`)
       }
       if (ready.refinedAcceptance) task.acceptance = ready.refinedAcceptance
@@ -748,7 +781,8 @@ while (rounds++ < MAX_TASKS) {
       `vecinas y el git status de ${task.id}.` +
       `${task.epicContext ? ` Contexto de la épica: ${task.epicContext}` : ''}` +
       ` Producí el plan más chico que satisfaga ` +
-      `${task.acceptance}. Un archivo de planning no puede ser un archivo de implementación. El plan cubre ` +
+      `${task.acceptance}.${DECIDED()} Un archivo de planning no puede ser un archivo de implementación. ` +
+      `El plan cubre ` +
       `sólo el cambio dentro de ${task.service}: correr los gates del repositorio, hacer QA, commitear y ` +
       `cerrar la tarea son fases posteriores de este recorrido, cada una con su dueño, así que no van como ` +
       `pasos.`,
@@ -759,7 +793,7 @@ while (rounds++ < MAX_TASKS) {
       phase('Critique')
       let critique = await read(
         `Atacá este plan por correctitud, alcance, seguridad, pruebas y conflictos con el código ` +
-        `existente.${MANIFEST}${VERDICT} Plan: ${JSON.stringify(plan)}`,
+        `existente.${DECIDED()}${MANIFEST}${VERDICT} Plan: ${JSON.stringify(plan)}`,
         { schema: DECISION, label: 'critique' },
       )
       if (!critique) return stop('agent-unavailable', 'Critique no devolvió resultado')
@@ -774,7 +808,7 @@ while (rounds++ < MAX_TASKS) {
           { schema: PLAN, label: 'replan' },
         )
         critique = await read(
-          `Volvé a criticar el plan corregido contra ${task.acceptance}.${MANIFEST}${VERDICT} ` +
+          `Volvé a criticar el plan corregido contra ${task.acceptance}.${DECIDED()}${MANIFEST}${VERDICT} ` +
           `Plan: ${JSON.stringify(plan)}`,
           { schema: DECISION, label: 'critique' },
         )
@@ -843,7 +877,7 @@ while (rounds++ < MAX_TASKS) {
     `nombrás en test y anotás en redFirst—, kind=open si lo notaste y no impide entregar la aceptación: se ` +
     `registra para que lo decida quien corresponde y el recorrido sigue. Si de verdad no podés entregar sin ` +
     `esa decisión, eso no va en discovered: es completed=false con su blocker. ` +
-    `Aceptación: ${task.acceptance}.`,
+    `Aceptación: ${task.acceptance}.${DECIDED()}`,
     { schema: BUILD, label: 'build' },
   )
   if (!build) return stop('agent-unavailable', 'Build no devolvió resultado')
