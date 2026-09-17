@@ -30,6 +30,15 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Una parada que espera una decisión tuya suelta la tarea que había reservado.** Al registrar la fila
+  en `HUMAN_ACTIONS.md`, la tarea queda bloqueada; si además seguía reservada, el runner quedaba ocupado
+  por algo que nadie podía tomar y la corrida siguiente moría reclamando la que sigue —«este runner ya
+  tiene …»—. Pasaba en toda parada anterior a Build, que son las más frecuentes mientras una tarea
+  todavía se está definiendo, y costaba una corrida entera por vez.
+
+  Las paradas de después de construir **no** sueltan nada: ahí el WIP existe y es resumible, y la reserva
+  es lo único que dice de quién es ese trabajo.
+
 - **Una etapa de un recorrido ya no muere por escribir de más.** Pasado cierto tamaño el modelo deja de
   emitir los campos y devuelve el JSON envuelto como texto, que no valida; cinco reintentos después la
   etapa se cae y la corrida entera se para. Cada campo de la respuesta lleva ahora su tope declarado
