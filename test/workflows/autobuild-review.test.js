@@ -138,6 +138,25 @@ test('lo que no bloquea se anota y no manda a tocar código', async () => {
   )
 })
 
+// Corregir un hallazgo deja atrás lo que describía el estado anterior —el conteo que enumeraba la batería,
+// el comentario que contaba cuántos casos había, la fila que los listaba—. Por qué eso entra en la misma
+// corrección y no es ampliar el alcance está junto al pedido, en el recorrido.
+//
+// Se asercia el prompt porque el límite es lo que el recorrido le pide al agente: lo que el agente
+// efectivamente escriba es otra medición.
+test('la corrección de Review se lleva también lo que su propio cambio dejó desactualizado', async () => {
+  const { prompts } = await runFlow({
+    [KEY.review]: {
+      verdict: 'con-condiciones', consulted: ['api/alta.go'],
+      concerns: [{ detail: 'falta el caso vacío', blocking: true }],
+    },
+  })
+  const arreglo = prompts.find((one) => /Corregí sólo estos hallazgos/.test(one.prompt))
+  assert.ok(arreglo, 'la corrección corrió')
+  assert.match(arreglo.prompt, /desactualiz/i,
+    'sin pedirlo, la vuelta siguiente rechaza por la deriva que la corrección acaba de crear')
+})
+
 test('un review que sigue rechazando después de corregir frena', async () => {
   const { result } = await runFlow({
     [KEY.review]: {

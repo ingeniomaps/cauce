@@ -874,7 +874,19 @@ while (rounds++ < MAX_TASKS) {
       return stop('review-blocked', blockers(review).join('; ') || 'sin condiciones nombradas')
     }
     if (blockers(review).length) {
-      await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${blockers(review).join('; ')}`,
+      // «Sólo estos hallazgos» acota el alcance (R6) y por sí solo deja un cabo suelto: una corrección
+      // tiene dependientes y no se anuncian —el conteo que enumeraba lo que cambió, el comentario que
+      // describía la forma vieja, la fila que la afirmaba—. Es R9 leído al derecho: lo que deja de valer
+      // se lleva puesto a quien lo daba por cierto, y eso vive casi siempre en otro archivo.
+      //
+      // Sin pedirlo, la vuelta siguiente rechaza por la deriva que la corrección acabó de crear, y como
+      // la vuelta es una sola eso termina en `review-failed` sobre trabajo correcto. Medido: una
+      // corrección agregó una mutación y un caso de prueba, y la re-revisión frenó porque la fila de
+      // acciones humanas seguía diciendo el número viejo y dos comentarios seguían contando los casos
+      // anteriores. Traerlos no amplía el alcance: es terminar la corrección.
+      await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${blockers(review).join('; ')}. `
+        + 'Traé también lo que tu propia corrección deje desactualizado —un conteo, un comentario que '
+        + 'describa la forma vieja, una fila que la enumere— y nada más que eso.',
         { label: 'review-fix' })
       review = await run(`Volvé a revisar el diff corregido de ${task.id}.${MANIFEST}${VERDICT}${RULED}`,
         { schema: REVIEWED, label: 'review' })
