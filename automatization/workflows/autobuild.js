@@ -153,8 +153,25 @@ const DECISION = {
 }
 // Review nombra contra qué reglas revisó (caso 105): recibir las rutas no garantiza abrirlas, y esto es lo único
 // que deja rastro de que se hizo. Critique no lo lleva porque no recibe la lista.
+//
+// Y `decision` es el tercer destino, el que R6 le da a lo que aparece y no le toca a este cargo: queda
+// registrado con qué lo cierra y quién puede tomarlo. Las otras fases lo tienen —`ready-human`,
+// `plan-human`, `verify-human`, y `open-decisions` en Build— y Review no, así que un revisor que
+// encontraba una decisión elegía entre frenar la corrida o degradarla a propuesta con tope de tres.
+// Elegía frenar, que de las dos es la correcta, y costaba la corrida entera sobre trabajo que estaba
+// bien: dos corridas reales terminaron así, las dos con la suite del producto en verde y la aceptación
+// cumplida. Es la misma separación que `uncovered` hace en Verify, en el otro extremo del recorrido.
 const REVIEWED = { ...DECISION, required: [...DECISION.required, 'rules'],
-  properties: { ...DECISION.properties, rules: { type: 'array', items: { type: 'string' } } } }
+  properties: {
+    ...DECISION.properties,
+    rules: { type: 'array', items: { type: 'string' } },
+    concerns: { type: 'array', items: { type: 'object', additionalProperties: false,
+      required: ['detail', 'blocking'],
+      properties: {
+        detail: { type: 'string' }, blocking: { type: 'boolean' }, decision: { type: 'boolean' },
+      },
+    } },
+  } }
 // Un exit code dice que el test corrió, no que pruebe lo que la tarea prometió: un test que asercia de
 // menos —o que ni existe— sale verde igual, y el guard de verify tampoco lo ve porque también mira exit
 // codes. Por eso `uncovered` se contrasta contra la aceptación leyendo el fuente, no la salida (R9).
@@ -301,9 +318,15 @@ const VERDICT = ' Cerrá con verdict=aprobado si no queda nada por corregir ante
   'alcance—. Marcá blocking=true sólo en el hallazgo que impide entregar: el resto queda registrado y no ' +
   'manda a tocar código.'
 // Acompaña a todo prompt con schema REVIEWED.
-const RULED = ' En rules nombrá, por su ruta, cada una de las reglas que rigen contra la que revisaste el diff.'
+const RULED = ' En rules nombrá, por su ruta, cada una de las reglas que rigen contra la que revisaste'
+  + ' el diff. Y marcá decision=true en el hallazgo que no te toca resolver a vos —una definición de'
+  + ' producto, un contrato público, una autoridad que el cargo no tiene—: ése se registra para una'
+  + ' persona y no manda a tocar código.'
 // Lo que hay que corregir antes de entregar. El resto de los hallazgos no desaparece: se registra.
-const blockers = (verdict) => verdict.concerns.filter((one) => one.blocking).map((one) => one.detail)
+// Una decisión no cuenta como bloqueante aunque venga marcada: su destino es la fila, no la corrección.
+// Critique no la emite —no está en su esquema— así que para él `one.decision` es siempre `undefined`.
+const blockers = (verdict) => verdict.concerns
+  .filter((one) => one.blocking && !one.decision).map((one) => one.detail)
 // El resultado de Build cuando no hubo nada que construir en esta corrida. Devuelve lo que de verdad
 // pasó y nada más: `redFirst` y `discovered` van **vacíos** porque acá no hubo ningún rojo nuevo que
 // mostrar ni ningún borde nuevo que fijar, y rellenarlos para que se parezca a una construcción sería
@@ -905,7 +928,19 @@ while (rounds++ < MAX_TASKS) {
     // Contra qué reglas se revisó va también a la entrada de DONE, y no sólo al journal: el journal muere
     // con la corrida y la entrada queda, así que sin esto no había cómo reconstruir contra cuáles se
     // revisó cuando alguien audita la entrega meses después (caso 122).
+    // Lo que la revisión encontró y no le toca resolver: va a la fila que una persona lee, no al INBOX,
+    // que es para propuestas y tiene tope. Se registra con la revisión ya cerrada —no en la primera
+    // pasada— porque una decisión que la corrección terminó cerrando no merece fila.
+    const decided = review.concerns.filter((one) => one.decision).map((one) => one.detail)
+    if (decided.length) {
+      await registerHuman(`Registrá en ${HUMAN} una fila por cada decisión que la revisión de ${task.id} `
+        + `dejó abierta, con qué la cierra y quién puede tomarla. La primera columna nunca es ${task.id}: `
+        + 'el motor bloquea por esa celda exacta y estas decisiones no impiden entregarla. Va la épica, el '
+        + `hito o el recorrido al que alcanza. No inventes responsables ni fechas: ${JSON.stringify(decided)}`,
+      'review-human')
+    }
     reviewFact = `${review.verdict} por ${cast.review}, sobre ${review.consulted.join(', ')}`
+      + (decided.length ? ` · ${decided.length} decisión(es) registrada(s)` : '')
       + ((review.rules || []).length ? ` · reglas: ${review.rules.join(', ')}` : '')
     // Lo que no impide entregar no manda a tocar código, y tampoco desaparece: la mejora opinable que se
     // corrige a las apuradas cuesta una vuelta y un riesgo que nadie pidió. Va a Propuestas y no a

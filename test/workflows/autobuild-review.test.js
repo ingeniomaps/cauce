@@ -332,3 +332,24 @@ test('lo anotado dentro del tope no deja nada contado sin volcar', async () => {
   })
   assert.doesNotMatch(prompts.find((one) => one.key === 'Done|done').prompt, /sin volcar/)
 })
+
+// El tercer destino de un hallazgo de Review: la decisión que este cargo no toma. Por qué hacía falta
+// —y por qué sin él un revisor elige entre frenar la corrida o degradarla a propuesta— está junto al
+// esquema, en el recorrido.
+//
+// Las dos mitades van juntas porque cualquiera sola deja pasar la otra: sin la primera, la decisión no se
+// registra en ningún lado; sin la segunda, marcarla frenaría igual y el canal no serviría de nada.
+test('una decisión que Review no puede tomar se registra y la corrida sigue', async () => {
+  const { result, written } = await runFlow({
+    [KEY.review]: {
+      verdict: 'con-condiciones', consulted: ['api/alta.go'], rules: [],
+      concerns: [{ detail: 'validar el formato de la cota fija un contrato público', blocking: true, decision: true }],
+    },
+  })
+  // El orden importa: así cada mitad falla por lo suyo —marcarla no frena, y no frenar no alcanza si
+  // además no queda escrita en ningún lado.
+  ranToEnd(result)
+  const fila = written.find((text) => /HUMAN_ACTIONS/.test(text) && /revisión/i.test(text))
+  assert.ok(fila, 'la decisión queda registrada donde una persona la lee')
+  assert.match(fila, /primera columna nunca es T-1/, 'y sin bloquear la tarea que la encontró')
+})
