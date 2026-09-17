@@ -18,6 +18,18 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **El checkpoint de hito se destraba escribiendo, no borrando.** `AWAITING_REVIEW.md` frenaba a todos los
+  runners por el hecho de existir, así que resolverlo exigía acordarse de borrarlo — y mientras tanto
+  quien lo leía podía ver ahí escrito que ya estaba revisado. Es lo que R28 prohíbe, y el propio archivo
+  lo decía de sí mismo.
+
+  Ahora lleva `status: pendiente` en su frontmatter y se destraba cambiándolo a `resuelta`, con lo cual el
+  archivo **se queda** y se puede leer después qué se revisó. Borrarlo sigue funcionando.
+
+  **Tu archivo actual no cambia de conducta**: sin `status` sigue frenando, que es lo que corresponde
+  —abrirlo al actualizar sería destrabar una compuerta en silencio—. Agregale la línea cuando quieras
+  resolverlo sin perderlo; los que escriba `autobuild` de acá en más ya vienen con ella.
+
 - **`check` rechaza una fila de `HUMAN_ACTIONS.md` que nombra a su tarea sin ser su slug.** El motor
   bloquea por esa primera columna **exacta**, así que `| **alta-de-cliente: falta el token** | pendiente |`
   se escribía sin error, salía en `ops context` bajo `HUMAN` como si estuviera registrada, y la tarea se
