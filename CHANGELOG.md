@@ -30,6 +30,15 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Una etapa de un recorrido ya no muere por escribir de más.** Pasado cierto tamaño el modelo deja de
+  emitir los campos y devuelve el JSON envuelto como texto, que no valida; cinco reintentos después la
+  etapa se cae y la corrida entera se para. Cada campo de la respuesta lleva ahora su tope declarado
+  —`summary` 1000 caracteres, `missing` y `humanAction` 500, cada evidencia 200—, así que el rechazo
+  nombra el campo y el número en vez de decir que no se pudo parsear.
+
+  Lo que no entra no se pierde: va al archivo de análisis, que es lo que lee quien sintetiza al final.
+  Si escribís un recorrido propio, no tenés que hacer nada — el tope es del esquema, no del contrato.
+
 - **`autobuild` ya no frena una tarea correcta porque el nombre del test venga anotado de dos formas.**
   La puerta comprueba que un borde que el build arregló aparezca en algún rojo declarado, comparando los
   dos nombres por contención. Eso cubría que uno fuera prefijo del otro, y dejaba afuera la forma que
