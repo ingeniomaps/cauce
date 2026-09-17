@@ -162,8 +162,24 @@ const WORK = /publica cambios y requiere una acción humana/
 
 const LIVE = /la rama viva/
 
+// Un repositorio cuyo HEAD alcanza un remoto: es lo que distingue «reescribir historia que otro leyó» de
+// corregir algo que no salió de la máquina. El remoto es un bare local — nada habla con la red.
+function repoPublicado(prefijo) {
+  const root = tempRoot(prefijo)
+  initRepo(root)
+  fs.writeFileSync(path.join(root, 'a.txt'), 'uno\n')
+  git(['add', 'a.txt'], root)
+  git(['commit', '-qm', 'uno'], root)
+  const remoto = tempRoot(`${prefijo}remoto-`)
+  git(['init', '-q', '--bare'], remoto)
+  git(['remote', 'add', 'origin', remoto], root)
+  git(['push', '-q', 'origin', 'HEAD'], root)
+  git(['fetch', '-q', 'origin'], root)
+  return root
+}
+
 module.exports = {
-  blocked, git, initRepo, chatSession, messageOf,
+  blocked, git, initRepo, repoPublicado, chatSession, messageOf,
   planFirstRoot, pasteApproval, pushRoot,
   DESARMAN, WIP_IDLE, WIP_CON_PLAN, WIP_SIN_PLAN,
   BACKLOG_CON_TAREA, BACKLOG_VACIO, WORK, LIVE,

@@ -4,7 +4,7 @@
 // parte de su texto es dato y no orden.
 
 const { tempRoot } = require('../support/environment')
-const { blocked, git, initRepo } = require('../support/hooks-harness')
+const { blocked, git, initRepo, repoPublicado } = require('../support/hooks-harness')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -112,12 +112,16 @@ test('una opción global de git no desactiva la regla que mira el subcomando', (
     ['destructive', 'git push origin main --force', /reescribe historia ya publicada/],
     ['destructive', 'git push origin main', /publica cambios/],
     ['destructive', 'git reset --hard HEAD', /destruye cambios locales/],
-    ['destructive', 'git commit --amend -m x', /reescribe un commit ya creado/],
+    // El amend se mide sobre historia publicada, que es donde la regla aplica: sin publicar no hay
+    // bloqueo que las opciones globales puedan desactivar. Por qué, junto a la regla en `shell.js`.
+    ['destructive', 'git commit --amend -m x', /publicad/, repoPublicado('ops-amend-globals-')],
     ['destructive', 'git clean -fd', /sin seguimiento/],
     ['destructive', 'git checkout -- .', /no sólo lo que estás mirando/],
   ]
-  for (const [guard, command, motivo] of rules) {
-    for (const form of forms(command)) blocked(guard, { tool_input: { command: form } }, motivo)
+  for (const [guard, command, motivo, cwd] of rules) {
+    for (const form of forms(command)) {
+      blocked(guard, { ...(cwd ? { cwd } : {}), tool_input: { command: form } }, motivo)
+    }
   }
 })
 

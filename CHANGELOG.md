@@ -50,6 +50,16 @@ diseño — eso vive en el commit y en el código.
   decisiones ya tomadas, que no se re-deciden. **No tenés que cambiar nada en tus líneas** — es el texto
   que ya escribías antes de la aceptación.
 
+- **`git commit --amend` se frena sobre historia publicada, y ya no sobre la que nadie vio.** Lo que R8
+  protege es la historia que otro leyó —lo mismo que ya decía del force-push—, y el guard lo bloqueaba
+  siempre «por política y no por daño». Eso no impedía el resultado: `git reset --soft HEAD~1` y volver a
+  commitear produce exactamente lo mismo, no lo frena nada y no deja constancia. Sólo impedía el comando
+  que lo nombra.
+
+  Ahora el guard mira si algún remoto alcanza al commit, con una lectura local que no habla con ningún
+  servidor. Publicado sigue cerrado y sin salida por chat, igual que el force-push. **R8 también cambió**:
+  pasa a prohibir reescribir historia que otro ya leyó, en vez de nombrar el comando.
+
 - **Una etapa de un recorrido ya no muere por escribir de más.** Pasado cierto tamaño el modelo deja de
   emitir los campos y devuelve el JSON envuelto como texto, que no valida; cinco reintentos después la
   etapa se cae y la corrida entera se para. Cada campo de la respuesta lleva ahora su tope declarado

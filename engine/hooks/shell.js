@@ -45,6 +45,20 @@ const COMANDO = String.raw`$|[;&|)'"\`]`
 // de frenar trabajo legítimo nombraba una violación que no estaba.
 const MISMO = String.raw`[^;&|\n]`
 
+// Si algún remoto alcanza al commit que está en HEAD. Lectura local e inocua: `branch -r` mira lo que ya
+// está en `refs/remotes/`, no habla con ningún servidor. Un `fetch` que nadie corrió deja la respuesta
+// desactualizada hacia el lado seguro — cree que no está publicado algo que sí lo está—, y por eso esto
+// acota un bloqueo y no autoriza nada: lo que decide publicar sigue siendo `push`, que mira otra cosa.
+//
+// Sin git, sin repositorio o con el comando fallando, la respuesta es **sí**: cerrado por defecto (R27).
+// No saber si algo se publicó no es lo mismo que saber que no.
+function publishedHead(input) {
+  const cwd = (input && input.cwd) || process.cwd()
+  const result = spawnSync('git', ['branch', '-r', '--contains', 'HEAD'], { cwd, encoding: 'utf8' })
+  if (result.status !== 0) return true
+  return Boolean(result.stdout.trim())
+}
+
 // Un mensaje de commit es dato, no código. `git commit -m "fix: bloquear git push --force"` disparaba
 // el guard de publicación, y lo mismo `rm -rf /` nombrado en una explicación; con el heredoc que se usa
 // para un mensaje largo, el cuerpo entero entra en el comando, así que la línea que arregla esto no se
@@ -80,13 +94,22 @@ function destructive(input) {
   publish(input, command)
   const rules = [
     [/\bgit\s+reset\s+--hard\b/, "'git reset --hard' destruye cambios locales.", true],
-    // R8 lo prohíbe sin excepción configurable y ningún guard lo miraba: `grep -rn amend engine/hooks/`
-    // no devolvía una línea. Se bloquea por política y no por daño —un `--amend` sobre algo que nadie vio
-    // no rompe nada—, así que el mensaje manda a lo que sí corresponde: otro commit.
-    [
+    // Lo que R8 protege es la historia que **otro ya leyó**, y el motor ya hace esa distinción para el
+    // push: publicar se autoriza, reescribir lo publicado no. Acá se hace la misma, mirando si algún
+    // remoto alcanza a HEAD.
+    //
+    // Antes se bloqueaba siempre, «por política y no por daño», y eso no impedía el resultado sino el
+    // comando que lo nombra: `git reset --soft HEAD~1` y volver a commitear produce exactamente lo mismo,
+    // no lo frena ningún guard y no deja constancia de nada. Una regla que se cumple mejor esquivándola se
+    // termina esquivando siempre (caso 178).
+    //
+    // Y no lleva salida por chat ni publicado ni sin publicar: sin publicar no la necesita, y publicado es
+    // la misma reescritura que el force-push, que tampoco la tiene.
+    ...(publishedHead(input) ? [[
       new RegExp(String.raw`\bgit\s+commit\b${MISMO}*\s--amend\b`),
-      "'git commit --amend' reescribe un commit ya creado. R8 pide uno nuevo en su lugar.",
-    ],
+      "'git commit --amend' sobre un commit ya publicado reescribe historia que otro leyó. R8 lo "
+        + 'prohíbe: hacé otro commit encima.',
+    ]] : []),
     [/\bgit\s+clean\s+-[^\s]*f/, "'git clean -f' borra archivos sin seguimiento.", true],
     // `git checkout -- .` destruye lo mismo que `reset --hard` y sin recuperación, pero se escribe como
     // una limpieza. Se bloquea sólo la forma ancha —`.`, `*`, `:/`, o sin ruta—: revertir un archivo
