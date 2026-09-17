@@ -349,3 +349,31 @@ test('currentTask aplica la precedencia del protocolo sobre el estado ya leído'
   assert.equal(todas.task, null)
   assert.deepEqual(todas.skipped, ['uno', 'dos', 'tres'])
 })
+
+// Por qué una fila que casi nombra su tarea es peor que una que no la nombra está junto a la comprobación
+// que las separa (`engine/planning/contracts.js`, el recorrido de `humanActions`).
+//
+// Las tres formas van en la misma prueba porque el valor está en el contraste: la libertad de la primera
+// columna es del contrato —el molde manda nombrar la épica o el recorrido cuando la tarea todavía no
+// existe— así que una comprobación que la recortara rompería lo que el molde pide. Lo único que se marca
+// es la forma que promete un bloqueo y no lo cumple.
+test('una fila de acciones humanas que casi nombra su tarea se marca; una que no la nombra, no', () => {
+  const tarea = {
+    slug: 'h-uno', tier: 'lite', cast: { build: '', review: [] }, epic: '001',
+    service: 'api', acceptance: 'algo observable', criteria: ['C1'],
+  }
+  const base = {
+    epics: [], milestones: [{ slug: 'h', title: 'H', tasks: [tarea] }],
+    done: { entries: [], set: new Set(), duplicates: [] }, wips: [],
+  }
+  const fila = (task) => ({ task, state: 'pendiente', valid: true, resolved: false, action: 'Algo' })
+  const errores = (task) => PC.validateState({ ...base, humanActions: [fila(task)] })
+    .filter((one) => /HUMAN_ACTIONS/.test(one))
+
+  assert.deepEqual(errores('h-uno'), [], 'el slug exacto bloquea, que es lo que se espera de él')
+  assert.deepEqual(errores('epic 001'), [], 'nombrar la épica es lo que el molde pide cuando no hay tarea')
+  assert.deepEqual(errores('—'), [], 'y la raya es toda la línea de trabajo, no una tarea mal escrita')
+
+  assert.match(errores('**h-uno: falta la credencial**').join('|'), /h-uno/,
+    'la que nombra la tarea sin ser su slug promete un bloqueo que no ocurre')
+})
