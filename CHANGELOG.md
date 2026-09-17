@@ -14,6 +14,20 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.97.0] - 2026-09-17
+
+### Corregido
+
+- **Una corrida de `autobuild` que no puede tomar nada lo dice, en vez de terminar como si la cola
+  estuviera vacía.** Eran dos estados distintos con la misma salida: la cola terminada, y la cola cuyas
+  tareas están todas reclamadas por otro runner o esperando una dependencia. La corrida informaba que no
+  había nada que hacer sobre una cola que sí tenía trabajo.
+
+  Se paga después de una parada que espera una decisión tuya: ahí el reclamo se queda puesto a propósito
+  —quien paró va a volver y su `claim` es idempotente—, así que cuando contestás, **otro** runner pregunta
+  y se va sin nada. Ahora para con `queue-unavailable` y dice cuántas hay; la línea `TAKEN` de
+  `ops context` nombra quién tiene cada una, y se sueltan con `ops release`.
+
 ## [0.96.0] - 2026-09-16
 
 ### Corregido
