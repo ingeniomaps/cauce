@@ -852,11 +852,25 @@ while (rounds++ < MAX_TASKS) {
   // cadena exacta frena una tarea correcta por haber nombrado el test de dos formas —`TestAlta` acá y
   // `users_test.go::TestAlta` allá—. Alcanza con que uno nombre al otro; lo que sigue frenando, que es de
   // lo que se trata, es el caso que no aparece en ningún rojo.
-  const namesTest = (red, item) => Boolean(item.test)
-    && (red.test.includes(item.test) || item.test.includes(red.test))
+  //
+  // Y la contención sola no alcanza, porque el caso que aparece no es que uno esté contenido en el otro:
+  // los dos nombran el mismo test y cada uno le agrega **su propia** anotación entre paréntesis —dónde
+  // está la línea de un lado, por qué se vio en rojo del otro—. Ahí ninguno contiene al otro y la puerta
+  // frenaba una entrega correcta, que es lo que R26 dice que termina apagándola. Se compara sin esa
+  // anotación final; una que esté en el medio se conserva, porque ahí sí es parte del nombre.
+  const core = (name) => String(name || '').replace(/\s*\([^)]*\)\s*$/, '').trim()
+  const namesTest = (red, item) => Boolean(core(item.test))
+    && (core(red.test).includes(core(item.test)) || core(item.test).includes(core(red.test)))
   const loose = build.discovered.find((entry) => entry.kind === 'edge'
     && !build.redFirst.some((red) => namesTest(red, entry)))
-  if (loose) return stop('edge-unproven', `${loose.detail} entró sin la prueba que lo fija`)
+  // El motivo dice qué comprobó la puerta y no una conclusión sobre el trabajo: pegarle al detalle del
+  // build un «entró sin la prueba que lo fija» producía una parada que se contradecía sola cuando el
+  // detalle contaba que la prueba sí estaba —la frase del agente y la de la puerta hablaban de cosas
+  // distintas y se leían como una—.
+  if (loose) {
+    return stop('edge-unproven', `${loose.detail} — su campo "test" (${loose.test || 'vacío'}) no nombra `
+      + `ninguno de los rojos declarados: ${build.redFirst.map((red) => red.test).join(' | ') || '(ninguno)'}`)
+  }
 
   // Qué revisión hubo, para que el cierre no pueda inventar una. Nace diciendo que no hubo porque
   // `express` no convoca a nadie, y ése es el caso que se escribió como si un cargo hubiera aprobado.

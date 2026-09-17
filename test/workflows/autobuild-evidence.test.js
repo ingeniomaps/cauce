@@ -51,6 +51,20 @@ test('un caso descubierto entra con su prueba, y el nombre no tiene que coincidi
     },
   })
   ranToEnd(covered.result)
+
+  // La tercera forma es la que apareció corriendo, y por qué la contención sola no la cubre está junto a
+  // la comparación, en el recorrido. Va acá porque las dos de arriba pasaban igual con el defecto puesto:
+  // lo que esta fija es que el nombre anotado de dos maneras distintas no frene.
+  const anotado = await runFlow({
+    [KEY.build]: {
+      completed: true, summary: 'x',
+      redFirst: [{ test: "saldo.test.js — 'período vacío' (rojo por mutación)", failure: 'want EUR 70.00' }],
+      discovered: [{
+        kind: 'edge', detail: 'período vacío', test: "saldo.test.js — 'período vacío' (saldo.test.js:45)",
+      }],
+    },
+  })
+  ranToEnd(anotado.result)
 })
 
 test('un criterio sin cubrir va a una persona o vuelve a quien construye, según su causa', async () => {
