@@ -1031,9 +1031,14 @@ const closing = await write(
 )
 if (!closing) return stop('agent-unavailable', 'Closing no devolvió resultado')
 if (!closing.passed) return stop('planning-check-failed', closing.details)
+// El archivo nace con su estado escrito porque la compuerta lo lee de ahí —R28, y el porqué vive junto a
+// esa lectura—. Sin decirlo acá la fase escribe prosa sin `status`, y la instancia queda con una compuerta
+// que sólo se destraba borrando: la forma que la regla prohíbe, escrita por el propio recorrido.
 if (completed.length && contract.humanCheckpoint) await write(
   `Creá ${GATE} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones humanas ` +
-  `pendientes y las instrucciones exactas para continuar. Nunca hagas push ni deploy.`,
+  `pendientes y las instrucciones exactas para continuar. Arrancá el archivo con un frontmatter ` +
+  `"status: pendiente", y decí que se destraba cambiándolo a "resuelta" —no borrando el archivo, que es ` +
+  `lo que deja leer después qué se revisó—. Nunca hagas push ni deploy.`,
   { label: 'human-checkpoint' },
 )
 return finish({ done: completed, count: completed.length, hito: currentMilestone, phases: ran })

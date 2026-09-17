@@ -246,6 +246,12 @@ test('con checkpoint configurado el hito terminado queda esperando una firma', a
   // Y apagado no lo escribe: es configuración del proyecto, no una ceremonia fija.
   const { written: withoutGate } = await runFlow()
   assert.ok(!withoutGate.some((text) => text.includes('AWAITING_REVIEW')))
+
+  // Qué estado lleva el archivo y por qué está junto a la lectura de la compuerta
+  // (`engine/planning/parser.js`). Acá se fija sólo que la fase lo pida al escribirlo.
+  const escrito = written.find((text) => text.includes('AWAITING_REVIEW'))
+  assert.match(escrito, /status: pendiente/, 'el archivo nace con su estado escrito')
+  assert.match(escrito, /resuelta/, 'y dice con qué se destraba, que es lo que evita el borrado')
 })
 
 test('una tarea que vuelve a quedar elegible para siempre corta con su motivo', async () => {
