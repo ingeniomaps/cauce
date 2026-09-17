@@ -18,6 +18,16 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`autobuild` ya no frena una tarea correcta porque el nombre del test venga anotado de dos formas.**
+  La puerta comprueba que un borde que el build arregló aparezca en algún rojo declarado, comparando los
+  dos nombres por contención. Eso cubría que uno fuera prefijo del otro, y dejaba afuera la forma que
+  aparece de verdad: los dos nombran el mismo test y cada uno le agrega **su propia** anotación entre
+  paréntesis —dónde está la línea de un lado, por qué se vio en rojo del otro—. Ahí ninguno contenía al
+  otro y la corrida paraba con `edge-unproven` sobre trabajo terminado y en verde.
+
+  Si te pasó, la tarea estaba bien: no hacía falta rehacerla. Y el motivo de la parada ya no se contradice
+  solo — dice qué comparó la puerta en vez de afirmar que faltaba la prueba.
+
 - **El checkpoint de hito se destraba escribiendo, no borrando.** `AWAITING_REVIEW.md` frenaba a todos los
   runners por el hecho de existir, así que resolverlo exigía acordarse de borrarlo — y mientras tanto
   quien lo leía podía ver ahí escrito que ya estaba revisado. Es lo que R28 prohíbe, y el propio archivo
