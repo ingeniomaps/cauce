@@ -30,6 +30,17 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Lo que la línea de una tarea ya decidió llega a las fases que deciden.** La descripción —dónde vive un
+  símbolo, qué queda fuera de alcance, con qué se produce la evidencia— se leía del BACKLOG y se
+  descartaba, así que Plan la volvía a decidir por su cuenta y decidía distinto. Critique **sí** abre el
+  BACKLOG, y bloqueaba el plan citando la línea palabra por palabra: una compuerta juzgando contra un
+  texto que la otra no recibió. Dos corridas medidas se pagaron enteras por esto, 1,10 M y 815 k tokens,
+  sin escribir una línea.
+
+  Ahora `ops context` la emite con la tarea y llega a Ready, Plan, Critique y Build, dicha como lo que es:
+  decisiones ya tomadas, que no se re-deciden. **No tenés que cambiar nada en tus líneas** — es el texto
+  que ya escribías antes de la aceptación.
+
 - **Una etapa de un recorrido ya no muere por escribir de más.** Pasado cierto tamaño el modelo deja de
   emitir los campos y devuelve el JSON envuelto como texto, que no valida; cinco reintentos después la
   etapa se cae y la corrida entera se para. Cada campo de la respuesta lleva ahora su tope declarado
