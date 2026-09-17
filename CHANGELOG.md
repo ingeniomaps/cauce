@@ -18,6 +18,19 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Tres errores que el CLI contestaba con exit 1 ahora contestan 2, que es lo que dice la convención.**
+  Son «no se llegó a la pregunta»: `integrations/config.json` ilegible, un proveedor que no está en ese
+  registro, y un `package.json` inválido al declarar el motor. Sus hermanos —un `ops.config.json`
+  ilegible, un proveedor que Cauce no trae— ya contestaban 2.
+
+  El corte, que hasta ahora estaba en la cabeza de quien escribía cada salida, está escrito y sale en
+  `ops --help`: **2** es que el comando no existe, falta un argumento, o la raíz que nombrás no es lo que
+  dice ser —lo arreglás cambiando la invocación—; **1** es que se llegó y la respuesta es que no —una
+  validación encontró problemas, el estado se niega, o una operación falló a mitad de camino—.
+
+  Si tenés un script que distingue los dos, revisá esos tres casos. Si sólo mira «distinto de cero», no
+  cambia nada.
+
 - **`ops flow list|check|show` acepta la raíz de la instancia, como el resto.** Todos los comandos que leen
   una instancia la toman como posicional; `flow` la descartaba y resolvía por el directorio actual, así que
   `ops flow list <raíz>` contestaba sobre otra cosa — y una lista de recorridos se lee igual de bien venga

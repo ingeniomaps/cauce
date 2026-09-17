@@ -186,7 +186,12 @@ function usage() {
   ops agents fork <cargo> [ops-root]
   ops flow list [ops-root]
   ops flow check <flow> [ops-root]
-  ops flow show <flow> [ops-root]`)
+  ops flow show <flow> [ops-root]
+
+Códigos de salida:
+  2  no se llegó a la pregunta: el comando no existe, falta un argumento, o la raíz no es lo que dice ser.
+  1  se llegó y la respuesta es que no: una validación encontró problemas, el estado se niega, o una
+     operación falló a mitad de camino.`)
 }
 
 // Un `cli` que no tiene banderas, para reusar un comando desde otro: el `--force` de `init` habla del
