@@ -30,6 +30,15 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Una parada que espera una decisión tuya suelta la tarea que había reservado.** Al registrar la fila
+  en `HUMAN_ACTIONS.md`, la tarea queda bloqueada; si además seguía reservada, el runner quedaba ocupado
+  por algo que nadie podía tomar y la corrida siguiente moría reclamando la que sigue —«este runner ya
+  tiene …»—. Pasaba en toda parada anterior a Build, que son las más frecuentes mientras una tarea
+  todavía se está definiendo, y costaba una corrida entera por vez.
+
+  Las paradas de después de construir **no** sueltan nada: ahí el WIP existe y es resumible, y la reserva
+  es lo único que dice de quién es ese trabajo.
+
 - **Lo que la línea de una tarea ya decidió llega a las fases que deciden.** La descripción —dónde vive un
   símbolo, qué queda fuera de alcance, con qué se produce la evidencia— se leía del BACKLOG y se
   descartaba, así que Plan la volvía a decidir por su cuenta y decidía distinto. Critique **sí** abre el

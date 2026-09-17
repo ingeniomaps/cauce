@@ -235,5 +235,9 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   // `tools/ops.js release`, que es la misma familia —y la misma forma literal— que el `tools/ops.js
   // claim` que la fase Claim ya dictaba trescientas líneas antes. Un comando que el recorrido le dicta a
   // un agente para que lo corra desde la raíz, no una ruta que el guard tenga que juzgar (caso 163).
-  assert.equal(hits, 53, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 54 desde el 2026-09-17: una cuarta consigna con la misma forma literal, del release que sueltan las
+  // dos paradas que bloquean una tarea antes de construirla (caso 176). Clasificada igual que la
+  // anterior y por la misma razón: es el mismo comando dictado desde la misma raíz.
+  assert.equal(hits, 54, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })

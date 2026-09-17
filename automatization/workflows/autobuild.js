@@ -670,12 +670,32 @@ while (rounds++ < MAX_TASKS) {
   //
   // Lo que la fila le pide a una persona lo dice R17: dos rechazos sobre lo mismo son el disparador
   // posterior de división. No se parte acá porque partir es una decisión, y ésa no le toca al recorrido.
+  // Una parada que registra la fila **bloquea** la tarea: la fila pendiente la saca de la cola. Si además
+  // el reclamo se queda puesto, el runner queda ocupado por algo que nadie puede tomar, y la corrida
+  // siguiente —que hace bien en no reintentarla— muere reclamando la que sigue: `claim` le contesta «este
+  // runner ya tiene …». Es la forma del 163 por la otra puerta, y la diferencia es que el estado lo creó
+  // esta corrida, así que soltarlo también le toca (caso 176).
+  //
+  // Sólo las paradas de **antes** de construir. Las de después —`verify-regression`, `qa-failed`,
+  // `commit-failed`— dejan el WIP en disco y es resumible: ahí el reclamo es lo único que dice de quién es
+  // ese trabajo, y soltarlo lo abandonaría.
+  //
+  // Cuesta un agente, porque el recorrido no tiene con qué correr un comando. Un agente contra una
+  // corrida entera.
+  const releaseBlocked = async () => write(
+    `Corré "node tools/ops.js release ${P} ${task.id}" desde ${ROOT}: quedó bloqueada por la fila que `
+    + 'acabás de registrar y todavía no hay nada construido, así que su reserva no reserva trabajo. No '
+    + 'escribas ningún archivo vos: lo escribe el comando.',
+    { label: `release:${task.id}` },
+  )
+
   const planRejected = async (reason, unit, found) => {
     const detail = found.join('; ') || 'sin condiciones nombradas'
     const nota = await registerHuman(
       `Registrá ${unit.id} en ${HUMAN}: nadie pudo escribir un plan que sobreviva a la crítica. `
       + `Motivo: ${detail}. La acción humana es revisar si la unidad son dos resultados con vidas `
       + `distintas y partirla, o dejarla entera con la razón escrita.`, 'plan-human')
+    await releaseBlocked()
     return stop(reason, `${detail}${nota}`)
   }
 
@@ -694,6 +714,7 @@ while (rounds++ < MAX_TASKS) {
         const nota = await registerHuman(
           `Registrá ${task.id} en ${HUMAN} con el motivo y una acción humana exacta: ${ready.reason}.`,
           'ready-human')
+        await releaseBlocked()
         return stop('not-ready', `${ready.reason}${nota}`)
       }
       if (ready.refinedAcceptance) task.acceptance = ready.refinedAcceptance
