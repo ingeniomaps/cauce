@@ -833,8 +833,16 @@ while (rounds++ < MAX_TASKS) {
   // tiene camino —`completed: false` con su blocker—; esto se registra y sigue.
   const openDecisions = build.discovered.filter((entry) => entry.kind === 'open')
   if (openDecisions.length) {
+    // Y la fila no puede nombrar a la tarea que la produjo. El motor bloquea por esa primera celda
+    // exacta, así que escribirla ahí registra «esto no impide entregar» y produce el bloqueo igual —lo
+    // contrario de lo que este registro decidió dos líneas arriba—. No se nota mientras la corrida vive,
+    // porque el WIP activo manda sobre la acción humana; aparece cuando el WIP cierra, y entonces la
+    // tarea queda frenada por una pregunta que ya se había resuelto seguir sin contestar. En la corrida
+    // que lo mostró la atrapó Review, tres fases después de escribirla.
     await write(`Registrá en ${HUMAN} una fila por cada decisión que ${task.id} dejó abierta, con qué la ` +
-      `cierra y quién puede tomarla. No inventes responsables ni fechas: ` +
+      `cierra y quién puede tomarla. La primera columna nunca es ${task.id}: el motor bloquea por esa ` +
+      `celda exacta y estas decisiones no impiden entregarla. Va la épica, el hito o el recorrido al que ` +
+      `alcanza la decisión. No inventes responsables ni fechas: ` +
       `${JSON.stringify(openDecisions.map((entry) => entry.detail))}`, { label: 'open-decisions' })
   }
   // Y un caso que sí se fijó acá entra con su prueba o no entró: sin ella el comportamiento nuevo queda
