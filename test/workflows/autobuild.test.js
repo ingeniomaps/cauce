@@ -412,3 +412,23 @@ test('lo que la línea ya decidió llega a Ready, Plan, Critique y Build', async
   assert.match(plan.prompt, /ya decidió, y no se re-decide/i,
     'nombrado como decisión tomada, no como sugerencia')
 })
+
+// El plan está obligado a escribir su estrategia de prueba —`testStrategy` es `required`— y sus propios
+// pasos la citan. Por qué tiene que viajar al WIP está junto al pedido, en el recorrido.
+//
+// Se mide en el WIP y en Build porque son los dos que la necesitan y por motivos distintos: el WIP es
+// donde queda escrita para quien revisa —R9 pide la mutación declarada, no recordada— y Build es quien la
+// corre. Que llegue a uno solo deja la mitad del defecto en pie.
+test('la estrategia de prueba del plan llega al WIP y a Build', async () => {
+  const estrategia = 'romper el replace y ver roja «pone mayúscula en cada palabra»'
+  const conPlan = {
+    approach: 'validar en el repositorio', steps: ['1'], files: ['api/alta.go'], testStrategy: estrategia,
+  }
+  const { prompts } = await runFlow({ [KEY.plan]: conPlan })
+
+  for (const key of [KEY.wip, KEY.build]) {
+    const fase = prompts.find((one) => one.key === key)
+    assert.ok(fase, `${key} corrió`)
+    assert.ok(fase.prompt.includes(estrategia), `${key} recibe la estrategia que el plan escribió`)
+  }
+})

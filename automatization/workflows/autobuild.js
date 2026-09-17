@@ -541,6 +541,10 @@ while (rounds++ < MAX_TASKS) {
   const DECIDED = () => (task.description
     ? ` Lo que la línea de la tarea ya decidió, y no se re-decide acá: ${task.description}`
     : '')
+  // Sobrevive al bloque del plan porque Build vive afuera —y porque una corrida que reanuda desde un WIP
+  // no tiene plan en memoria—. Sin esto la estrategia no era que se descartara: es que no estaba en
+  // alcance, que es la forma que ninguna prueba de la fase ve.
+  let testStrategy = ''
   const task = {
     id: planning.slug, hito: planning.hito, service: planning.service,
     acceptance: planning.acceptance, epic: planning.epic, epicContext: planning.epicContext || '',
@@ -821,6 +825,7 @@ while (rounds++ < MAX_TASKS) {
       if (!critique.consulted.length) return stop('critique-unbacked', 'aprobó el plan sin declarar qué inspeccionó')
     }
     }
+    testStrategy = plan.testStrategy || ''
     phase('WIP')
     // Esta llamada escribe un archivo y nada más, y hay que decirlo con todas las letras. En una corrida
     // real hizo el trabajo entero: leyó los pasos del plan como una orden, implementó, corrió RED/GREEN,
@@ -833,7 +838,15 @@ while (rounds++ < MAX_TASKS) {
       `en DONE. Los pasos van sin tildar porque todavía no ocurrieron. task=${task.id}, ` +
       `hito=${JSON.stringify(task.hito)}, phase=Build, service=${task.service}, ` +
       `acceptance=${JSON.stringify(task.acceptance)}, lane=${planning.lane || 'sin clasificar'}, ` +
-      `pasos sin tildar=${JSON.stringify(plan.steps)}. ` +
+      `pasos sin tildar=${JSON.stringify(plan.steps)}, ` +
+      // La estrategia de prueba es `required` en el plan y hasta acá se descartaba, así que un paso que
+      // decía «correr la mutación declarada en testStrategy» apuntaba a un lugar que no existía: quien
+      // revisa no podía distinguir la mutación corrida de la pensada, y la única salida que le quedaba
+      // era rehacer la revisión. R9 pide la mutación **declarada**, y el WIP es donde queda escrita.
+      //
+      // Es la tercera vez que algo decidido no llega a quien decide después: el contexto de la épica
+      // (027), la descripción de la tarea (177) y esto. Las tres se arreglan igual — que viaje.
+      `testStrategy=${JSON.stringify(testStrategy)}. ` +
       `Registrá el reparto de cargos ${JSON.stringify(cast)} en las decisiones del WIP, para que después se ` +
       `pueda auditar quién revisó qué. Seguí el contrato de WIP exactamente y reportá con qué status quedó.`,
       { label: 'wip', schema: {
@@ -877,7 +890,8 @@ while (rounds++ < MAX_TASKS) {
     `nombrás en test y anotás en redFirst—, kind=open si lo notaste y no impide entregar la aceptación: se ` +
     `registra para que lo decida quien corresponde y el recorrido sigue. Si de verdad no podés entregar sin ` +
     `esa decisión, eso no va en discovered: es completed=false con su blocker. ` +
-    `Aceptación: ${task.acceptance}.${DECIDED()}`,
+    `Aceptación: ${task.acceptance}.${DECIDED()}`
+    + (testStrategy ? ` Estrategia de prueba que el plan fijó: ${testStrategy}` : ''),
     { schema: BUILD, label: 'build' },
   )
   if (!build) return stop('agent-unavailable', 'Build no devolvió resultado')
