@@ -30,6 +30,16 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`autobuild` ya no frena una tarea correcta porque el nombre del test venga anotado de dos formas.**
+  La puerta comprueba que un borde que el build arregló aparezca en algún rojo declarado, comparando los
+  dos nombres por contención. Eso cubría que uno fuera prefijo del otro, y dejaba afuera la forma que
+  aparece de verdad: los dos nombran el mismo test y cada uno le agrega **su propia** anotación entre
+  paréntesis —dónde está la línea de un lado, por qué se vio en rojo del otro—. Ahí ninguno contenía al
+  otro y la corrida paraba con `edge-unproven` sobre trabajo terminado y en verde.
+
+  Si te pasó, la tarea estaba bien: no hacía falta rehacerla. Y el motivo de la parada ya no se contradice
+  solo — dice qué comparó la puerta en vez de afirmar que faltaba la prueba.
+
 - **Una corrección de Review se lleva también lo que ella misma dejó desactualizado.** «Corregí sólo estos
   hallazgos» acota el alcance y dejaba un cabo suelto: el conteo que enumeraba lo que cambió, el
   comentario que describía la forma vieja, la fila que la afirmaba. Como Review tiene una sola vuelta de
