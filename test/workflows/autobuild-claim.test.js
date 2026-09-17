@@ -171,3 +171,22 @@ test('si el BACKLOG no cambió tras partir la tarea, el recorrido para', async (
   assert.deepEqual(prompts.filter((one) => /\brelease\b/.test(one.prompt)).map((one) => one.key), [],
     'soltó una reserva sobre una tarea que sigue en la cola')
 })
+// Qué distingue una cola ocupada de una terminada, y por qué importa, está junto a la guarda que las
+// separa (`automatization/workflows/autobuild.js`, la condición sobre `queued`).
+//
+// Las dos pruebas van juntas porque separadas no fijan nada: sin la segunda, un recorrido que frenara
+// siempre pasaría la primera, y el modo de fallo que esto ataca es exactamente confundir los dos casos.
+// Lo que la mutación deja ver es la conducta vieja entera — `phases: [Triage, Pick, Closing]` y
+// `done: []`, una corrida que informa que no había nada que hacer.
+test('una cola reclamada por otro runner se dice, en vez de cerrar como si estuviera vacía', async () => {
+  const ocupada = { ...baseScript()[KEY.context], hasTask: false, queued: 2 }
+  const { result } = await runFlow({}, { contexts: [ocupada] })
+  assert.equal(result.reason, 'queue-unavailable', `no lo dijo: ${JSON.stringify(result).slice(0, 200)}`)
+  assert.match(result.detail, /2/, 'y dice cuántas hay, que es lo que separa esto de una cola vacía')
+})
+
+test('una cola vacía cierra en silencio, como antes', async () => {
+  const vacia = { ...baseScript()[KEY.context], hasTask: false, queued: 0 }
+  const { result } = await runFlow({}, { contexts: [vacia] })
+  assert.notEqual(result.reason, 'queue-unavailable', 'sin cola no hay nada que avisar')
+})

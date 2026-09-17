@@ -485,6 +485,20 @@ while (rounds++ < MAX_TASKS) {
   //
   // `context` nombra la que sigue, igual que nombra una recurrencia vencida y por el mismo motivo: la
   // máquina calcula y la persona encola.
+  // Una cola con trabajo y sin tarea disponible no es una cola terminada. Romper el bucle igual deja la
+  // corrida informando que no había nada que hacer sobre una cola que sí tiene tareas —reclamadas por otro
+  // runner, o esperando una dependencia—, que es la forma del caso 075: una respuesta vacía que se lee
+  // como un hecho del dominio. El dato ya venía: `queued` cuenta la cola entera, y `context` además la
+  // nombra con su dueño en la línea TAKEN.
+  //
+  // Se paga sobre todo después de una parada que espera a una persona: ahí el reclamo se queda puesto a
+  // propósito —quien paró va a volver, y `claim` le es idempotente—, así que cuando la persona contesta es
+  // un runner distinto el que pregunta y el que se va sin nada.
+  if (!planning.hasTask && planning.queued > 0) {
+    return stop('queue-unavailable', `la cola tiene ${planning.queued} tarea(s) y ninguna disponible para `
+      + 'este runner. Mirá la línea TAKEN de "ops context": lo reclamado por otro se suelta con '
+      + '"ops release" o se retoma desde el runner que lo tiene; lo que espera una dependencia, no.')
+  }
   if (!planning.hasTask || (currentMilestone && planning.hito !== currentMilestone)) break
   const task = {
     id: planning.slug, hito: planning.hito, service: planning.service,
