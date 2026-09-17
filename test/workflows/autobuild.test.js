@@ -366,3 +366,20 @@ test('una instancia que no emite wip construye como antes del campo', async () =
   assert.ok(asked.includes('Build|build'), 'sin el dato no se supone nada')
   assert.ok(result.phases.includes('Build'))
 })
+
+// Qué le pasa a una fila que nombra a la tarea que la produjo está junto al prompt que lo prohíbe, en el
+// recorrido.
+//
+// Se asercia el prompt y no el archivo porque es donde vive el límite: lo escribe un agente, así que lo
+// único que el recorrido controla es qué le pide. Una prueba sobre el disco mediría al modelo.
+test('la fila de una decisión abierta no puede nombrar a la tarea que la dejó', async () => {
+  const conDecision = {
+    completed: true, summary: 'algo', redFirst: [{ test: 'T', failure: 'want x, got y' }],
+    discovered: [{ kind: 'open', detail: 'falta decidir el default' }], closedTask: false,
+  }
+  const { prompts } = await runFlow({ [KEY.build]: conDecision })
+  const fila = prompts.find((one) => /una fila por cada decisión/.test(one.prompt))
+  assert.ok(fila, 'la fase corrió')
+  assert.match(fila.prompt, /primera columna nunca es T-1/,
+    'el prompt tiene que prohibirlo: sin eso la fila bloquea lo que dice no bloquear')
+})

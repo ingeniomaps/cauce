@@ -18,6 +18,22 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`check` rechaza una fila de `HUMAN_ACTIONS.md` que nombra a su tarea sin ser su slug.** El motor
+  bloquea por esa primera columna **exacta**, así que `| **alta-de-cliente: falta el token** | pendiente |`
+  se escribía sin error, salía en `ops context` bajo `HUMAN` como si estuviera registrada, y la tarea se
+  seguía ofreciendo. Es la forma que sale natural, porque esa tabla la lee una persona; en la instancia
+  donde se midió, **once filas pendientes bloqueaban cero tareas** y la corrida siguiente volvía a elegir
+  lo mismo y a pagar la misma fase.
+
+  Si te aparece, el mensaje dice qué fila y a qué tarea apuntaba: dejá el slug solo en esa celda y contá
+  el resto en la columna de la acción. Las otras dos formas no cambian — el slug exacto sigue bloqueando,
+  y nombrar la épica, el hito o el recorrido sigue siendo válido cuando lo que se frena no es una tarea.
+
+- **Una decisión que `autobuild` deja abierta ya no bloquea la tarea que la encontró.** Esas filas se
+  registran para que la corrida siga —lo que de verdad frena tiene otro camino—, pero la fase que las
+  escribe podía poner en la primera columna el slug de la tarea en construcción y bloquearla. No se veía
+  mientras la corrida vivía, porque un WIP activo manda sobre la acción humana; aparecía al cerrar el WIP.
+
 - **Una corrida de `autobuild` que no puede tomar nada lo dice, en vez de terminar como si la cola
   estuviera vacía.** Eran dos estados distintos con la misma salida: la cola terminada, y la cola cuyas
   tareas están todas reclamadas por otro runner o esperando una dependencia. La corrida informaba que no

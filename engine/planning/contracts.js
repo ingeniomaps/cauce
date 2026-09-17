@@ -383,6 +383,25 @@ function validateState({
     if (!row.valid) {
       errors.push(`HUMAN_ACTIONS ${row.task}: estado "${row.state}" fuera de `
         + `${P.HUMAN_ACTION_STATES.join(' | ')}; mientras no se entienda, la tarea queda bloqueada`)
+      continue
+    }
+    // La primera columna es a la vez lo que una persona lee y la clave con la que el motor bloquea:
+    // la selección de tarea (`state.js`) arma su conjunto de bloqueadas con ella tal cual. Esa doble
+    // función es libre a propósito —el molde manda
+    // nombrar la épica o el recorrido cuando la tarea todavía no existe— así que lo que no se puede
+    // recortar es la libertad, y lo que sí se puede es la forma intermedia: la celda que **menciona** una
+    // tarea de la cola sin ser su slug.
+    //
+    // Es la peor de las tres porque promete un bloqueo que no ocurre, y nada lo dice: la fila se escribe
+    // sin error, sale en `ops context` bajo HUMAN como si estuviera registrada, y la tarea se sigue
+    // ofreciendo. `**slug: de qué se trata**` es la que sale natural, porque esta tabla la lee una
+    // persona. Sin esto la ausencia no deja rastro, que es la forma de R15 aplicada a un mecanismo.
+    if (backlogSlugs.has(row.task)) continue
+    const casi = [...backlogSlugs].find((slug) => new RegExp(`\\b${slug}\\b`).test(row.task))
+    if (casi) {
+      errors.push(`HUMAN_ACTIONS: la fila "${row.task}" nombra a ${casi} y no bloquea nada, porque el `
+        + `motor bloquea por la primera columna exacta. Dejá "${casi}" sola ahí y contá el resto en la `
+        + 'acción, o nombrá la épica o el recorrido si lo que se frena no es esa tarea')
     }
   }
 
