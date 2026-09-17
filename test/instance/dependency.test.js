@@ -104,7 +104,7 @@ test('declarar el motor sobre un package.json inválido lo dice y no lo pisa', (
   fs.writeFileSync(path.join(repo, 'package.json'), '{ esto no es json\n')
 
   const hecho = run(['init', repo, '--name', 'App', '--mode', 'embedded', '--force'])
-  assert.equal(hecho.status, 1, hecho.stdout)
+  assert.equal(hecho.status, 2, hecho.stdout)
   assert.match(hecho.stderr + hecho.stdout, /package\.json inválido/)
   assert.equal(fs.readFileSync(path.join(repo, 'package.json'), 'utf8'), '{ esto no es json\n',
     'el archivo del anfitrión se deja como estaba')

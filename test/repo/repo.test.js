@@ -405,3 +405,43 @@ test('la raíz de un hook se resuelve en un solo lugar', () => {
     `usan el opsRoot de ${owner}:\n  ${copies.join('\n  ')}`)
   assert.equal(copies.length, 1, 'y el dueño la arma una sola vez')
 })
+
+// Cada `fail()` del CLI dice con cuál de los dos códigos sale, y lo dice con el nombre. El corte entre
+// ellos —y por qué son dos y no tres— vive en `engine/cli/io.js`; acá sólo se comprueba que nadie elija
+// por omisión.
+//
+// La puerta es la mitad que vuelve durable al renombre: nombrarlos arregla los sitios de hoy y no dice
+// nada del que se escriba mañana, que es el que va a heredar el default sin haberlo decidido. Así nació
+// el defecto que esto cierra — tres sitios contestaban «el proyecto se negó» sobre algo que no se pudo
+// leer, cada uno imitando al vecino que tenía más cerca.
+//
+// Cerrada por defecto y sin excepciones (R27): la definición queda afuera por ser una declaración y no
+// una llamada, no por estar en una lista.
+test('cada fail() del CLI nombra el código con el que sale', () => {
+  const dir = path.resolve(__dirname, '..', '..', 'engine', 'cli')
+  const bare = []
+  let calls = 0
+  for (const name of fs.readdirSync(dir).filter((one) => one.endsWith('.js'))) {
+    const source = fs.readFileSync(path.join(dir, name), 'utf8')
+    for (const hit of source.matchAll(/\bfail\(/g)) {
+      if (/function\s+$/.test(source.slice(0, hit.index))) continue
+      // La llamada abarca varias líneas y lleva plantillas adentro, así que el último argumento se
+      // encuentra cerrando paréntesis y no con una expresión.
+      let index = hit.index + hit[0].length
+      let depth = 1
+      while (index < source.length && depth > 0) {
+        if (source[index] === '(') depth += 1
+        else if (source[index] === ')') depth -= 1
+        index += 1
+      }
+      calls += 1
+      // La coma final de una llamada multilínea es estilo legítimo, no un código sin nombre.
+      const tail = source.slice(hit.index, index - 1).trimEnd()
+      if (!/,\s*(USAGE|REFUSED),?$/.test(tail)) {
+        bare.push(`engine/cli/${name}:${source.slice(0, hit.index).split('\n').length}`)
+      }
+    }
+  }
+  assert.deepEqual(bare, [], `salen con un código sin nombre:\n  ${bare.join('\n  ')}`)
+  assert.ok(calls > 70, `sólo se encontraron ${calls} llamadas: el parseo dejó de ver el CLI`)
+})

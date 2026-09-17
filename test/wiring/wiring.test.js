@@ -382,3 +382,25 @@ test('automation check nombra la config ilegible en vez de culpar al motor', () 
     'y no manda a bajar una segunda copia de un motor que está instalado')
   assert.doesNotMatch(roto.stderr, /falta engine/, 'ni enumera ausencias que salen de esa misma causa')
 })
+
+// Las dos salidas de `integration` que caían del lado equivocado del corte que define `engine/cli/io.js`:
+// un registro ilegible y un proveedor que no está en él. Las dos son «no se llegó a la pregunta» —se
+// arreglan cambiando la invocación o el archivo que la nombra—, y las dos contestaban el código que dice
+// que el proyecto se negó. Sus hermanos ya contestaban USAGE: `contract` sobre un `ops.config.json`
+// ilegible, y `enable` sobre un proveedor que Cauce no trae.
+test('un registro ilegible y un proveedor inexistente salen como mala invocación', () => {
+  const base = tempRoot('cauce-registro-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar']).status, 0)
+  linkEngine(target)
+  assert.equal(run(['integration', 'list', target]).status, 0, 'con el registro sano, list pasa')
+
+  const ausente = run(['integration', 'disable', target, 'no-existe'])
+  assert.equal(ausente.status, 2, ausente.stderr)
+  assert.match(ausente.stderr, /no está en integrations\/config\.json/)
+
+  fs.writeFileSync(path.join(target, 'integrations', 'config.json'), '{ "providers": ')
+  const ilegible = run(['integration', 'list', target])
+  assert.equal(ilegible.status, 2, ilegible.stderr)
+  assert.match(ilegible.stderr, /integrations\/config\.json ilegible/)
+})

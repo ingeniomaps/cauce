@@ -9,25 +9,25 @@ const path = require('node:path')
 const CL = require('../planning/claims')
 const R = require('../core/repos')
 const ST = require('../planning/state')
-const { fail, planningRoot, TODAY } = require('./io')
+const { fail, planningRoot, TODAY, USAGE, REFUSED } = require('./io')
 
 function claim(dir, slug, cli) {
   const root = planningRoot(dir)
-  if (!slug) return fail('Falta el slug. `ops claim <planning-dir> <tarea>`', 2)
+  if (!slug) return fail('Falta el slug. `ops claim <planning-dir> <tarea>`', USAGE)
   const state = ST.snapshot(root)
   const task = state.milestones.flatMap((milestone) => milestone.tasks).find((one) => one.slug === slug)
-  if (!task) return fail(`${slug} no está en BACKLOG: sólo se toma trabajo ya promovido.`, 2)
+  if (!task) return fail(`${slug} no está en BACKLOG: sólo se toma trabajo ya promovido.`, USAGE)
 
   // No se reserva lo que todavía no se puede empezar: una tarea tomada con su dependencia en vuelo
   // bloquea la cola sin que nadie pueda avanzarla, y el runner que la tomó se queda sin poder tomar otra.
   const blocker = task.depends.find((dep) => !state.done.set.has(dep))
-  if (blocker) return fail(`${slug} depende de ${blocker}, que todavía no está en DONE.`)
+  if (blocker) return fail(`${slug} depende de ${blocker}, que todavía no está en DONE.`, REFUSED)
 
   const me = CL.owner(root)
   const from = CL.runner()
   if (!me) {
     return fail('No sé quién sos. Configurá `git config user.email` o exportá CAUCE_OWNER: '
-      + 'un reclamo anónimo no dice a quién preguntarle.', 2)
+      + 'un reclamo anónimo no dice a quién preguntarle.', USAGE)
   }
   // Un runner lleva una tarea a la vez (BR-OPS-001), y exigirlo acá hace ruidosa la única forma en que
   // este contrato falla en silencio: dos agentes de la misma máquina compartiendo id porque nadie puso
@@ -38,7 +38,7 @@ function claim(dir, slug, cli) {
     .find((one) => one.runner === from && one.slug !== slug && !state.done.set.has(one.slug))
   if (ocupado) {
     return fail(`este runner ya tiene ${ocupado.slug}. Cerrala o soltala primero; y si sos otro agente `
-      + 'en la misma máquina, exportá CAUCE_RUNNER con un valor propio.')
+      + 'en la misma máquina, exportá CAUCE_RUNNER con un valor propio.', REFUSED)
   }
 
   const target = CL.file(root, slug)
@@ -58,7 +58,7 @@ function claim(dir, slug, cli) {
     const holder = CL.read(root).find((one) => one.slug === slug)
     // Existía al crear y ya no está: alguien la soltó entre las dos operaciones. Es una ventana de
     // microsegundos y aun así tiene respuesta, porque la alternativa es reventar con un TypeError.
-    if (!holder) return fail(`${slug} cambió de manos mientras la pedías; volvé a intentarlo.`)
+    if (!holder) return fail(`${slug} cambió de manos mientras la pedías; volvé a intentarlo.`, REFUSED)
     if (holder.runner === from) return console.log(`= ${slug} ya era tuya desde ${holder.started}`)
     // Mismo dueño y otro runner son dos situaciones que se ven idénticas desde acá —vos retomando la
     // sesión de ayer, o un segundo agente tuyo— y ninguna se puede distinguir mirando el archivo.
@@ -68,10 +68,10 @@ function claim(dir, slug, cli) {
       return fail(`${slug} la tenés vos, tomada el ${holder.started} desde el runner ${holder.runner}. `
         + 'Preguntá si se retoma esa sesión —y entonces corré con ese id— o si es otro agente en '
         + `paralelo, que toma otra tarea. \`ops runners ${path.relative(process.cwd(), root) || '.'}\` `
-        + 'lista lo que hay abierto.')
+        + 'lista lo que hay abierto.', REFUSED)
     }
     return fail(`${slug} la tomó ${holder.owner} el ${holder.started}. Si se abandonó, borrá `
-      + `${CL.DIR}/${slug}.md a mano: soltar lo de otro es una decisión, no un comando.`)
+      + `${CL.DIR}/${slug}.md a mano: soltar lo de otro es una decisión, no un comando.`, REFUSED)
   }
   console.log(`✓ ${slug} tomada por ${me}`)
   if (!cli.has('--json')) {
@@ -87,12 +87,12 @@ function claim(dir, slug, cli) {
 
 function release(dir, slug) {
   const root = planningRoot(dir)
-  if (!slug) return fail('Falta el slug. `ops release <planning-dir> <tarea>`', 2)
+  if (!slug) return fail('Falta el slug. `ops release <planning-dir> <tarea>`', USAGE)
   const from = CL.runner()
   const taken = CL.read(root).find((one) => one.slug === slug)
-  if (!taken) return fail(`${slug} no está tomada por nadie.`, 2)
+  if (!taken) return fail(`${slug} no está tomada por nadie.`, USAGE)
   if (taken.runner !== from) {
-    return fail(`${slug} es de ${taken.owner}. Si se abandonó, borrá ${taken.at} a mano.`)
+    return fail(`${slug} es de ${taken.owner}. Si se abandonó, borrá ${taken.at} a mano.`, REFUSED)
   }
   fs.rmSync(CL.file(root, slug))
   console.log(`✓ ${slug} soltada; volvió a la cola`)

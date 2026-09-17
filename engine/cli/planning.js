@@ -14,7 +14,7 @@ const CL = require('../planning/claims')
 const ST = require('../planning/state')
 const O = require('../core/ownership')
 const EV = require('../core/evidence')
-const { fail, planningRoot, TODAY } = require('./io')
+const { fail, planningRoot, TODAY, USAGE } = require('./io')
 
 // Qué dimensiones enumera el molde de `organization/` y cuáles dejaron de estar. Un agente que reescribe
 // esos archivos tiende a quedarse con el contenido y perder la estructura: el resultado se lee entero y
@@ -34,7 +34,7 @@ function evidence(dir, cli) {
   // Sin `--task`, la más reciente, y la decide `fecha:` — por qué ese campo existe lo dice el contrato.
   const reciente = [...entries].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).pop()
   const entry = slug ? entries.find((one) => one.slug === slug) : reciente
-  if (!entry) return fail(slug ? `DONE no tiene la entrada ${slug}` : 'DONE no tiene ninguna entrada', 2)
+  if (!entry) return fail(slug ? `DONE no tiene la entrada ${slug}` : 'DONE no tiene ninguna entrada', USAGE)
 
   let config = {}
   try { config = JSON.parse(fs.readFileSync(path.join(opsDir, 'ops.config.json'), 'utf8')) } catch { /* sin raíces */ }
@@ -148,7 +148,7 @@ function context(dir, cli) {
     // Un hito mal escrito devolvería «sin tarea disponible», que es indistinguible de un hito terminado.
     if (!existe) {
       const hay = state.milestones.map((one) => one.slug).join(', ') || '(ninguno)'
-      return fail(`el hito ${hito} no existe. Hay: ${hay}`, 2)
+      return fail(`el hito ${hito} no existe. Hay: ${hay}`, USAGE)
     }
     if (own) hitoOmitido = `${hito} no se aplica: ya tenés ${own.slug} tomada`
     else state.milestones = state.milestones.filter((one) => one.slug === hito)
@@ -299,7 +299,7 @@ function recurring(dir, cli) {
   const promote = cli.value('--promote')
   if (promote) {
     const one = state.find((candidate) => candidate.id === promote)
-    if (!one) return fail(`${RC.FILE} no declara ${promote}`, 2)
+    if (!one) return fail(`${RC.FILE} no declara ${promote}`, USAGE)
     // La línea sale sola por stdout para que se pueda pegar o redirigir sin recortar nada; el destino,
     // que es lo único que falta decidir, va por stderr.
     console.error(`Pegala en el hito que corresponda de BACKLOG.md:`)

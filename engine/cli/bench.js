@@ -18,7 +18,7 @@ const CL = require('../planning/claims')
 const P = require('../planning/parser')
 const IN = require('./instance')
 const O = require('../core/ownership')
-const { fail, opsRoot, TODAY } = require('./io')
+const { fail, opsRoot, TODAY, USAGE } = require('./io')
 
 // Qué decir cuando el banco sobrevivió a su propio borrado, que es lo único que va a permitir
 // establecer la causa. Devuelve el mensaje en vez de escribirlo donde ocurre, y eso es lo que lo hace
@@ -106,7 +106,7 @@ function makeBench(root, dir, force, name) {
   const dirty = spawnSync('git', ['-C', dir, 'status', '--porcelain'], { encoding: 'utf8' })
   if ((dirty.stdout || '').trim() && !force) {
     fail(`${dir} tiene trabajo sin recoger. Guardá lo que esa corrida dejó antes de rehacerlo, `
-      + 'o usá --force si ya lo tenés.', 2)
+      + 'o usá --force si ya lo tenés.', USAGE)
   }
   // Rodear un borrado a medias deja la corrida siguiendo sobre un banco que no es nuevo, y lo que falla
   // después no dice nada del borrado: el test que lo destapó reportaba `true !== false` sobre un archivo
@@ -116,7 +116,7 @@ function makeBench(root, dir, force, name) {
   // **Y de acá para abajo el directorio no existe.** Eso es lo que sostiene que el andamiaje y el enlace
   // se escriban sin defensas: hasta el 073, los dos llevaban una por si algo sobrevivía al borrado.
   const problema = clearBench(dir, path.join(root, '.cauce-eval'))
-  if (problema) fail(problema, 2)
+  if (problema) fail(problema, USAGE)
   // Sin `force`, y eso es lo que hay que poder decir: sólo servía si algún archivo sobrevivía al borrado,
   // y la comprobación de arriba garantiza que no queda ninguno. Lo llevaba porque el mismo test falló tres
   // veces en un día con «El destino contiene …/AGENTS.md», y eso era el escritor de fondo que apagó el 073.
@@ -183,7 +183,7 @@ function seal(dir, git, mensaje) {
 function evaluationBench(root, agent, caso, force, kind) {
   const safe = (value) => {
     if (!/^[a-z0-9_][a-z0-9._-]*$/i.test(value) || value.includes('..')) {
-      fail(`nombre inválido para el banco: ${value}`, 2)
+      fail(`nombre inválido para el banco: ${value}`, USAGE)
     }
     return value
   }
@@ -273,7 +273,7 @@ function populate(dir, scenario, git) {
 // `clearBench` ya se niega a borrar fuera de ahí— y se distingue por el escenario, que es lo que lo puebla.
 function measurementBench(root, scenario, force) {
   if (!SCENARIOS.includes(scenario)) {
-    fail(`escenario desconocido: ${scenario || '(ninguno)'}. Hay ${SCENARIOS.join(', ')}.`, 2)
+    fail(`escenario desconocido: ${scenario || '(ninguno)'}. Hay ${SCENARIOS.join(', ')}.`, USAGE)
   }
   const dir = path.join(root, '.cauce-eval', '_medicion', scenario)
   const { env, git } = makeBench(root, dir, force, `Banco de medición (${scenario})`)
@@ -293,7 +293,7 @@ function bench(scenario, cli) {
   const root = opsRoot()
   if (O.mode(root) !== 'toolkit') {
     fail('ops bench es del toolkit: arma un banco desechable para medir a Cauce. En una instancia, lo '
-      + 'que se mide es tu propio proyecto — corré el comando que quieras medir sobre tu planning/.', 2)
+      + 'que se mide es tu propio proyecto — corré el comando que quieras medir sobre tu planning/.', USAGE)
   }
   const dir = measurementBench(root, scenario, cli.has('--force'))
   console.log(path.relative(root, dir))

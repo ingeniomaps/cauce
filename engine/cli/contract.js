@@ -15,7 +15,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const P = require('../planning/parser')
-const { fail, opsRoot } = require('./io')
+const { fail, opsRoot, USAGE } = require('./io')
 
 // Los cuatro que componen el contrato, con la ruta relativa a la raíz de la instancia. El orden es el que
 // usa el mensaje de error: se nombra el primero que falte y no los cuatro, porque arreglar uno suele
@@ -188,14 +188,15 @@ function contract(dir, cli) {
   // se pierde no se ve en la salida, se ve tres fases después en lo que un subagente creyó que podía tocar.
   if (missing) {
     return fail(`${root} no tiene ${missing}, así que no hay contrato que derivar. Es la raíz que escribió `
-      + '`automation install`: comprobá que exista y, si moviste el proyecto de carpeta, reinstalá el adaptador.', 2)
+      + '`automation install`: comprobá que exista y, si moviste el proyecto de carpeta, reinstalá el adaptador.',
+    USAGE)
   }
 
   let config
   try {
     config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8'))
   } catch (error) {
-    return fail(`ops.config.json no se pudo leer como JSON: ${error.message}`, 2)
+    return fail(`ops.config.json no se pudo leer como JSON: ${error.message}`, USAGE)
   }
 
   const sections = {}
@@ -205,7 +206,7 @@ function contract(dir, cli) {
     // que poder abrir el archivo y ver qué encabezado falta, y el arreglo es restaurarlo con `upgrade`.
     if (!found.trim()) {
       return fail(`${file} no tiene la sección ${name}, y de ahí sale el contrato que reciben los agentes. `
-        + 'Ese archivo lo reemplaza `ops upgrade` entero: corrélo para restaurarlo.', 2)
+        + 'Ese archivo lo reemplaza `ops upgrade` entero: corrélo para restaurarlo.', USAGE)
     }
     sections[file] = found
   }
