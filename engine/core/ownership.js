@@ -164,9 +164,16 @@ function engineAt(root, relative = '') {
 // de copiarse. Se reconocen por contener `system/`, que es el espacio del toolkit y no algo que un
 // proyecto deba crear. Una sola implementación para las dos, o divergen.
 function packageDir(root, name) {
+  // La raíz declarada va también acá, y no sólo en `packagePath`. Las dos contestan dónde está el paquete
+  // sobre la misma instancia y desde el 158 contestaban distinto: en el layout documentado —`npm install`
+  // en la carpeta de la empresa y la instancia adentro— el motor se resolvía y el catálogo no, así que
+  // `check` pasaba en verde y `agents list` devolvía una lista vacía con exit 0, indistinguible de «esta
+  // instancia no tiene cargos». `evaluate` era peor: culpaba a un `SKILL.md` que falta (caso 171).
+  const above = declaredRoot(root)
   const candidates = [
     path.join(root, 'node_modules', '@ingeniomaps', 'cauce', name),
     path.join(root, name),
+    ...(above ? [path.join(above, 'node_modules', '@ingeniomaps', 'cauce', name)] : []),
   ]
   return candidates.find((dir) => fs.existsSync(path.join(dir, 'system'))
     || fs.existsSync(path.join(dir, 'roles', 'system'))) || ''

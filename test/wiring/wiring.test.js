@@ -362,3 +362,23 @@ test('Jira sincroniza ADF, preserva curación y promueve sin escribir remoto', (
   assert.match(deleted.stdout, /1 sin curar se fueron del remoto y se borraron/)
   assert.equal(fs.existsSync(staged), false, 'y el directorio efectivamente ya no está')
 })
+
+// Por qué un JSON roto se propagaba como archivos que faltan está junto a la lectura que ahora lo corta
+// (engine/automation/check.js). Lo que el caso fija son las dos ausencias: que no aparezca `npm install`
+// —la acción que no arregla nada— ni la enumeración de ausencias que salen de esa misma causa. Sin ellas,
+// un mensaje que nombre el JSON **y además** siga enumerando pasaría igual (caso 174).
+test('automation check nombra la config ilegible en vez de culpar al motor', () => {
+  const base = tempRoot('cauce-config-rota-')
+  const target = path.join(base, 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar']).status, 0)
+  linkEngine(target)
+  assert.equal(run(['automation', 'check', target]).status, 0, 'con la config sana pasa')
+
+  fs.writeFileSync(path.join(target, 'ops.config.json'), '{ "project": ')
+  const roto = run(['automation', 'check', target])
+  assert.notEqual(roto.status, 0)
+  assert.match(roto.stderr, /ops\.config\.json no se puede leer/, 'nombra la causa')
+  assert.doesNotMatch(roto.stderr, /npm install/,
+    'y no manda a bajar una segunda copia de un motor que está instalado')
+  assert.doesNotMatch(roto.stderr, /falta engine/, 'ni enumera ausencias que salen de esa misma causa')
+})

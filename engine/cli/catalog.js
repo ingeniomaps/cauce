@@ -31,6 +31,18 @@ function agentsFork(slug, dir) {
 
 // Lista los cargos visibles resolviendo la precedencia; evita que cada consumidor —CI incluido—
 // reimplemente el recorrido del catálogo.
+// Una lista vacía y un paquete que no se resolvió se ven igual, y las acciones son opuestas: en uno no hay
+// nada que hacer, en el otro falta una instalación. Se avisa sólo cuando la lista sale vacía, que es cuando
+// la ambigüedad existe — con resultados a la vista no hay nada que aclarar.
+//
+// Va por `stderr` y no por el código de salida: el `--json` lo consume el cron del ciclo de aprendizaje, y
+// romperle el contrato para arreglar un mensaje sería cambiar lo que no está mal (caso 173).
+function warnUnresolved(root, name, found) {
+  if (found || O.packageDir(root, name)) return
+  console.error(`⚠ ${name}/ no se pudo resolver desde ${root}: el paquete @ingeniomaps/cauce no está ahí `
+    + `ni en la raíz que declara ops.config.json, así que una lista vacía acá no dice que no haya ${name}.`)
+}
+
 function agents(action, dir, extra, cli) {
   if (action === 'fork') return agentsFork(dir, extra)
   if (action !== 'list') fail(`Acción de agents desconocida: ${action || '(vacía)'}`, 2)
@@ -40,6 +52,7 @@ function agents(action, dir, extra, cli) {
   const own = cli.has('--own')
   const system = cli.has('--system')
   const roles = AG.list(root).filter((role) => (own ? !role.system : true) && (system ? role.system : true))
+  warnUnresolved(root, 'agents', roles.length)
   if (cli.has('--json')) {
     // `path` viene resuelto: quien consuma esto no debería reconstruir dónde ganó la precedencia.
     return console.log(JSON.stringify(roles.map((role) => ({
@@ -211,10 +224,16 @@ function evaluate(agent, caso, cli) {
   } catch (error) { fail(error.message, 2) }
 }
 
-function flow(action, slug, cli) {
+// La raíz la toma como posicional, igual que el resto de los comandos que leen una instancia: `list` no
+// lleva recorrido, así que la suya es el primer posicional, y `check`/`show` la llevan después del
+// recorrido —la misma forma que `agents fork <cargo> [ops-root]`—. Antes se descartaba y todo resolvía por
+// `opsRoot()`, así que `ops flow list <raíz>` contestaba sobre el directorio actual y la respuesta se leía
+// igual de bien viniendo de otra instancia (caso 172).
+function flow(action, slug, dir, cli) {
+  const root = opsRoot(action === 'list' ? slug : dir)
   if (action === 'list') {
-    const root = opsRoot()
     const slugs = T.list(root)
+    warnUnresolved(root, 'flows', slugs.length)
     // La misma forma que `agents list --json`, porque la consume el mismo cron. `cadence` es fija:
     // un recorrido no tiene profesión que cambie afuera, así que su calendario no se deriva de
     // fuentes —no tiene—; lo que decide si le toca es `pending`, las corridas que dejó sin consolidar.
@@ -240,7 +259,7 @@ function flow(action, slug, cli) {
   }
   if (!['check', 'show'].includes(action)) fail(`Acción de flow desconocida: ${action || '(vacía)'}`, 2)
   try {
-    const result = T.validate(opsRoot(), slug)
+    const result = T.validate(root, slug)
     for (const error of result.errors) console.error(`✗ ${error}`)
     if (result.errors.length) fail(`${slug}: ${result.errors.length} error(es)`, 1)
     if (action === 'show') {

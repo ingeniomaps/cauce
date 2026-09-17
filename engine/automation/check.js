@@ -22,6 +22,12 @@ const { hasHooks } = require('./config')
 
 function check(root) {
   const errors = []
+  // La configuración se lee primero y se corta ahí. La resolución del paquete cuelga de ella —`declaredRoot`
+  // la parsea— así que un JSON roto se propagaba como archivos del motor que faltan, y el aviso mandaba a
+  // correr `npm install` sobre un motor que está instalado: la acción sugerida no arreglaba nada. Nombrar
+  // la causa y no seguir es lo que separa este aviso del ruido — enumerar ausencias que salen de una causa
+  // ya nombrada manda a arreglar lo que no está roto (caso 174).
+  try { O.mode(root) } catch (error) { return [error.message] }
   const hookDir = path.join(root, 'automatization', 'hooks')
   if (!fs.existsSync(path.join(root, 'automatization', 'AGENTS.md'))) {
     errors.push('falta automatization/AGENTS.md')
