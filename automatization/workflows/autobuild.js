@@ -153,8 +153,29 @@ const DECISION = {
 }
 // Review nombra contra qué reglas revisó (caso 105): recibir las rutas no garantiza abrirlas, y esto es lo único
 // que deja rastro de que se hizo. Critique no lo lleva porque no recibe la lista.
+//
+// Y `decision` es el tercer destino, el que R6 le da a lo que aparece y no le toca a este cargo: queda
+// registrado con qué lo cierra y quién puede tomarlo. Las otras fases lo tienen —`ready-human`,
+// `plan-human`, `verify-human`, y `open-decisions` en Build— y Review no, así que un revisor que
+// encontraba una decisión elegía entre frenar la corrida o degradarla a propuesta con tope de tres.
+// Elegía frenar, que de las dos es la correcta, y costaba la corrida entera sobre trabajo que estaba
+// bien. Es la misma separación que `uncovered` hace en Verify, en el otro extremo del recorrido.
+//
+// Medido sobre un banco desechable el 2026-09-17, corridas `wf_99130468-2c4` y `wf_5dcc3828-a9f`: las dos
+// terminaron en `review-failed` con la suite del producto en verde y los tres casos de la aceptación
+// dando lo pedido, y las dos por un hallazgo que el propio revisor describió como una decisión que no le
+// tocaba.
 const REVIEWED = { ...DECISION, required: [...DECISION.required, 'rules'],
-  properties: { ...DECISION.properties, rules: { type: 'array', items: { type: 'string' } } } }
+  properties: {
+    ...DECISION.properties,
+    rules: { type: 'array', items: { type: 'string' } },
+    // Extiende el concern de `DECISION` en vez de reescribirlo: copiado entero, un campo nuevo allá no
+    // llegaría acá y ninguna prueba lo notaría.
+    concerns: { ...DECISION.properties.concerns,
+      items: { ...DECISION.properties.concerns.items,
+        properties: { ...DECISION.properties.concerns.items.properties, decision: { type: 'boolean' } },
+      } },
+  } }
 // Un exit code dice que el test corrió, no que pruebe lo que la tarea prometió: un test que asercia de
 // menos —o que ni existe— sale verde igual, y el guard de verify tampoco lo ve porque también mira exit
 // codes. Por eso `uncovered` se contrasta contra la aceptación leyendo el fuente, no la salida (R9).
@@ -301,9 +322,19 @@ const VERDICT = ' Cerrá con verdict=aprobado si no queda nada por corregir ante
   'alcance—. Marcá blocking=true sólo en el hallazgo que impide entregar: el resto queda registrado y no ' +
   'manda a tocar código.'
 // Acompaña a todo prompt con schema REVIEWED.
-const RULED = ' En rules nombrá, por su ruta, cada una de las reglas que rigen contra la que revisaste el diff.'
+const RULED = ' En rules nombrá, por su ruta, cada una de las reglas que rigen contra la que revisaste'
+  + ' el diff. Y marcá decision=true en el hallazgo que no te toca resolver a vos —una definición de'
+  + ' producto, un contrato público, una autoridad que el cargo no tiene—: ése se registra para una'
+  + ' persona y no manda a tocar código.'
 // Lo que hay que corregir antes de entregar. El resto de los hallazgos no desaparece: se registra.
-const blockers = (verdict) => verdict.concerns.filter((one) => one.blocking).map((one) => one.detail)
+// Una decisión no cuenta como bloqueante aunque venga marcada: su destino es la fila, no la corrección.
+// Critique no la emite —no está en su esquema— así que para él `one.decision` es siempre `undefined`.
+const blockers = (verdict) => verdict.concerns
+  .filter((one) => one.blocking && !one.decision).map((one) => one.detail)
+// Lo que una parada tiene que nombrar es todo lo que el revisor señaló, no sólo lo que manda a corregir:
+// con `blockers` solo, un veredicto cuyo único hallazgo es una decisión paraba diciendo que nadie nombró
+// ninguna condición. El motivo es lo único que queda para leer cuando la corrida terminó.
+const named = (verdict) => verdict.concerns.filter((one) => one.blocking).map((one) => one.detail)
 // El resultado de Build cuando no hubo nada que construir en esta corrida. Devuelve lo que de verdad
 // pasó y nada más: `redFirst` y `discovered` van **vacíos** porque acá no hubo ningún rojo nuevo que
 // mostrar ni ningún borde nuevo que fijar, y rellenarlos para que se parezca a una construcción sería
@@ -884,17 +915,35 @@ while (rounds++ < MAX_TASKS) {
       { schema: REVIEWED, label: 'review' },
     )
     if (!review) return stop('agent-unavailable', 'Review no devolvió resultado')
+    // Se junta apenas cada pasada contesta, y no al final: las paradas de abajo salen antes de llegar al
+    // registro, y sin esto lo que el revisor señaló se iba con la corrida.
+    const reviewDecisions = review.concerns.filter((one) => one.decision)
+    let decidedNote = ''
     if (review.verdict === 'bloqueado') {
-      return stop('review-blocked', blockers(review).join('; ') || 'sin condiciones nombradas')
+      return stop('review-blocked', named(review).join('; ') || 'sin condiciones nombradas')
     }
     if (blockers(review).length) {
-      await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${blockers(review).join('; ')}`,
+      // «Sólo estos hallazgos» acota el alcance (R6) y por sí solo deja un cabo suelto: una corrección
+      // tiene dependientes y no se anuncian —el conteo que enumeraba lo que cambió, el comentario que
+      // describía la forma vieja, la fila que la afirmaba—. Es R9 leído al derecho: lo que deja de valer
+      // se lleva puesto a quien lo daba por cierto, y eso vive casi siempre en otro archivo.
+      //
+      // Sin pedirlo, la vuelta siguiente rechaza por la deriva que la corrección acabó de crear, y como
+      // la vuelta es una sola eso termina en `review-failed` sobre trabajo correcto. Medido: una
+      // corrección agregó una mutación y un caso de prueba, y la re-revisión frenó porque la fila de
+      // acciones humanas seguía diciendo el número viejo y dos comentarios seguían contando los casos
+      // anteriores —corrida `wf_99130468-2c4`, 2026-09-17, sobre un banco desechable—. Traerlos no
+      // amplía el alcance: es terminar la corrección.
+      await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${blockers(review).join('; ')}. `
+        + 'Traé también lo que tu propia corrección deje desactualizado —un conteo, un comentario que '
+        + 'describa la forma vieja, una fila que la enumere— y nada más que eso.',
         { label: 'review-fix' })
       review = await run(`Volvé a revisar el diff corregido de ${task.id}.${MANIFEST}${VERDICT}${RULED}`,
         { schema: REVIEWED, label: 'review' })
       if (!review) return stop('agent-unavailable', 'la re-revisión no devolvió resultado')
+      reviewDecisions.push(...review.concerns.filter((one) => one.decision))
       if (review.verdict === 'bloqueado' || blockers(review).length) {
-        return stop('review-failed', blockers(review).join('; ') || 'sin condiciones nombradas')
+        return stop('review-failed', named(review).join('; ') || 'sin condiciones nombradas')
       }
     }
     // Con reglas que rigen, aprobar sin nombrar contra cuáles es la misma falla que la de abajo en otro eje.
@@ -907,7 +956,30 @@ while (rounds++ < MAX_TASKS) {
     // Contra qué reglas se revisó va también a la entrada de DONE, y no sólo al journal: el journal muere
     // con la corrida y la entrada queda, así que sin esto no había cómo reconstruir contra cuáles se
     // revisó cuando alguien audita la entrega meses después (caso 122).
+    // Lo que la revisión encontró y no le toca resolver va a la fila que una persona lee. No al INBOX, que
+    // es para propuestas: quien lo lea ahí puede promoverlo, y esto no se promueve, se decide.
+    //
+    // Se acumula desde la primera pasada y no se lee sólo de la última: al corrector se le pasa nada más
+    // lo que manda a corregir, así que nunca se entera de la decisión y no la puede cerrar. Leyendo sólo
+    // la re-revisión, una decisión que el agente no repitiera desaparecía sin dejar rastro, y el mismo
+    // camino la perdía entera cuando la revisión paraba antes de llegar acá.
+    //
+    // El tope es el mismo del INBOX y por la misma razón: una revisión que deja treinta filas en una tabla
+    // que lee una persona no está priorizando (caso 101). Lo que no entra queda contado en el hecho.
+    const decided = [...new Set(reviewDecisions.map((one) => one.detail))]
+    const filed = decided.slice(0, INBOX_CAP)
+    if (filed.length) {
+      // La nota que devuelve viaja al hecho: sin ella la entrega afirma una fila que el disco no tiene,
+      // que es el caso 087 entrando por otra puerta.
+      const nota = await registerHuman(`Registrá en ${HUMAN} una fila por cada decisión que la revisión de `
+        + `${task.id} dejó abierta, con qué la cierra y quién puede tomarla. La primera columna nunca es `
+        + `${task.id} —el porqué es el mismo que en Build—: va la épica, el hito o el recorrido al que `
+        + `alcanza. No inventes responsables ni fechas: ${JSON.stringify(filed)}`, 'review-human')
+      decidedNote = `${nota}`
+    }
     reviewFact = `${review.verdict} por ${cast.review}, sobre ${review.consulted.join(', ')}`
+      + (filed.length ? ` · ${filed.length} decisión(es) registrada(s)${decidedNote}` : '')
+      + (decided.length > filed.length ? ` · ${decided.length - filed.length} decisión(es) sin volcar` : '')
       + ((review.rules || []).length ? ` · reglas: ${review.rules.join(', ')}` : '')
     // Lo que no impide entregar no manda a tocar código, y tampoco desaparece: la mejora opinable que se
     // corrige a las apuradas cuesta una vuelta y un riesgo que nadie pidió. Va a Propuestas y no a
@@ -917,7 +989,10 @@ while (rounds++ < MAX_TASKS) {
     // De qué vía salió cada una: este recorrido, la tarea que la dejó anotada y la fecha del motor. La
     // arma el recorrido, que es el único de los dos que sabe las tres cosas (caso 115).
     const origin = inboxOrigin('autobuild', task.id, planning.today)
-    const noted = review.concerns.filter((one) => !one.blocking).map((one) => withOrigin(one.detail, origin))
+    // Lo marcado como decisión ya tiene destino y no se duplica acá: escrito en los dos lados, además de
+    // aparecer dos veces, le come una ranura del tope a una propuesta que sí lo era.
+    const noted = review.concerns.filter((one) => !one.blocking && !one.decision)
+      .map((one) => withOrigin(one.detail, origin))
     const kept = noted.slice(0, INBOX_CAP)
     // Lo que pasa del tope no se escribe y tampoco desaparece: queda contado en el hecho de revisión, que
     // viaja a `done/`. Una revisión que anota treinta y seis cosas no está priorizando, y el INBOX no las

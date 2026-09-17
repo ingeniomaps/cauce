@@ -138,6 +138,29 @@ test('lo que no bloquea se anota y no manda a tocar código', async () => {
   )
 })
 
+// Corregir un hallazgo deja atrás lo que describía el estado anterior —el conteo que enumeraba la batería,
+// el comentario que contaba cuántos casos había, la fila que los listaba—. Por qué eso entra en la misma
+// corrección y no es ampliar el alcance está junto al pedido, en el recorrido.
+//
+// Se asercia el prompt porque el límite es lo que el recorrido le pide al agente: lo que el agente
+// efectivamente escriba es otra medición.
+test('la corrección de Review se lleva también lo que su propio cambio dejó desactualizado', async () => {
+  const { prompts } = await runFlow({
+    [KEY.review]: {
+      verdict: 'con-condiciones', consulted: ['api/alta.go'],
+      concerns: [{ detail: 'falta el caso vacío', blocking: true }],
+    },
+  })
+  const arreglo = prompts.find((one) => /Corregí sólo estos hallazgos/.test(one.prompt))
+  assert.ok(arreglo, 'la corrección corrió')
+  assert.match(arreglo.prompt, /desactualiz/i,
+    'sin pedirlo, la vuelta siguiente rechaza por la deriva que la corrección acaba de crear')
+  // Y la otra mitad, que sin esto sobrevivía: el acote es lo que impide que «traé también lo que quedó
+  // desactualizado» se lea como permiso para tocar lo que a nadie le pidieron (R6).
+  assert.match(arreglo.prompt, /y nada más que eso/,
+    'el pedido sigue acotado: traer los dependientes no abre la puerta a ampliar el alcance')
+})
+
 test('un review que sigue rechazando después de corregir frena', async () => {
   const { result } = await runFlow({
     [KEY.review]: {
@@ -312,4 +335,89 @@ test('lo anotado dentro del tope no deja nada contado sin volcar', async () => {
     [KEY.review]: { verdict: 'aprobado', consulted: ['api/alta.go'], concerns: [{ detail: 'uno', blocking: false }] },
   })
   assert.doesNotMatch(prompts.find((one) => one.key === 'Done|done').prompt, /sin volcar/)
+})
+
+// El tercer destino de un hallazgo de Review: la decisión que este cargo no toma. Por qué hacía falta
+// —y por qué sin él un revisor elige entre frenar la corrida o degradarla a propuesta— está junto al
+// esquema, en el recorrido.
+//
+// Las dos mitades van juntas porque cualquiera sola deja pasar la otra: sin la primera, la decisión no se
+// registra en ningún lado; sin la segunda, marcarla frenaría igual y el canal no serviría de nada.
+test('una decisión que Review no puede tomar se registra y la corrida sigue', async () => {
+  const { result, written } = await runFlow({
+    [KEY.review]: {
+      verdict: 'con-condiciones', consulted: ['api/alta.go'], rules: [],
+      concerns: [{ detail: 'validar el formato de la cota fija un contrato público', blocking: true, decision: true }],
+    },
+  })
+  // El orden importa: así cada mitad falla por lo suyo —marcarla no frena, y no frenar no alcanza si
+  // además no queda escrita en ningún lado.
+  ranToEnd(result)
+  const fila = written.find((text) => /HUMAN_ACTIONS/.test(text) && /revisión/i.test(text))
+  assert.ok(fila, 'la decisión queda registrada donde una persona la lee')
+  assert.match(fila, /primera columna nunca es T-1/, 'y sin bloquear la tarea que la encontró')
+})
+
+// Los tres destinos no pueden pisarse, y el hallazgo que los pisa es el que los propios prompts producen:
+// una decisión **no** impide entregar, así que el revisor que obedece «marcá blocking sólo en lo que
+// impide entregar» la emite con `blocking: false`. Por qué cada destino es el que es está junto a cada
+// escritura, en el recorrido; acá se fija que un hallazgo caiga en uno solo.
+//
+// Las cuatro aserciones son las cuatro formas en que la decisión se perdía o se duplicaba, y ninguna se
+// ve desde las otras: dos veces escrita, sin nombrar en una parada, perdida entre pasadas, y contada como
+// registrada sin haberse escrito.
+test('una decisión cae en un solo destino y no desaparece por ningún camino', async () => {
+  const decision = { detail: 'el formato de la cota fija un contrato público', blocking: false, decision: true }
+  const propuesta = (n) => ({ detail: `propuesta ${n}`, blocking: false })
+
+  // 1. No se duplica: va a la fila, no al INBOX, y no le come una ranura a una propuesta real.
+  const dupe = await runFlow({
+    [KEY.review]: {
+      verdict: 'aprobado', consulted: ['api/alta.go'], rules: [],
+      concerns: [decision, propuesta(1), propuesta(2), propuesta(3)],
+    },
+  })
+  ranToEnd(dupe.result)
+  // `/INBOX/` sola no discrimina: el preámbulo compartido nombra esa ruta en todos los prompts. Lo que
+  // identifica a la escritura es la sección a la que manda.
+  const inbox = dupe.written.find((text) => /sección Propuestas/.test(text)) || ''
+  assert.doesNotMatch(inbox, /contrato público/, 'la decisión no se escribe también como propuesta')
+  assert.match(inbox, /propuesta 3/, 'y no desplaza del tope a una propuesta que sí lo era')
+
+  // 2. Un veredicto bloqueado cuyo motivo es la decisión la nombra, en vez de decir que no nombró nada.
+  const blocked = await runFlow({
+    [KEY.review]: {
+      verdict: 'bloqueado', consulted: ['api/alta.go'], rules: [],
+      concerns: [{ ...decision, blocking: true }],
+    },
+  })
+  assert.match(blocked.result.detail, /contrato público/, 'el motivo lleva lo que el revisor nombró')
+
+  // 3. No se pierde entre pasadas: al corrector se le pasa sólo lo que manda a corregir, así que nunca se
+  // entera de la decisión y no la puede cerrar. Si la re-revisión no la repite, desaparecía sin rastro.
+  let vuelta = 0
+  const entrePasadas = await runFlow({
+    [KEY.review]: () => (vuelta++ === 0
+      ? {
+        verdict: 'con-condiciones', consulted: ['api/alta.go'], rules: [],
+        concerns: [decision, { detail: 'falta el caso vacío', blocking: true }],
+      }
+      : { verdict: 'aprobado', consulted: ['api/alta.go'], rules: [], concerns: [] }),
+  })
+  ranToEnd(entrePasadas.result)
+  assert.ok(entrePasadas.written.some((text) => /contrato público/.test(text)),
+    'la decisión de la primera pasada sigue llegando a la fila')
+
+  // 4. Y no se cuenta como registrada si la escritura no ocurrió: `registerHuman` devuelve el aviso
+  // justamente para eso, y descartarlo deja la entrega afirmando algo que el disco no tiene (caso 087).
+  const muda = await runFlow({
+    [KEY.review]: {
+      verdict: 'aprobado', consulted: ['api/alta.go'], rules: [], concerns: [decision],
+    },
+  }, { silent: ['review-human'] })
+  ranToEnd(muda.result)
+  // El aviso viaja en el hecho de revisión, que es lo que queda escrito en `done/` — no en el log, que
+  // muere con la corrida.
+  const cierre = muda.written.find((text) => /review=/.test(text)) || ''
+  assert.match(cierre, /no se pudo registrar/, 'lo que no se escribió no se cuenta como escrito')
 })

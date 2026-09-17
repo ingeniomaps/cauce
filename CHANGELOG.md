@@ -16,6 +16,18 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.97.0] - 2026-09-17
 
+### Agregado
+
+- **La revisión de `autobuild` tiene dónde poner una decisión que no le toca tomar.** Tenía dos puertas:
+  marcar el hallazgo como bloqueante —y mandar a tocar código— o dejarlo en el INBOX como propuesta, con
+  tope de tres. Un contrato público que alguien tiene que definir no es ninguna de las dos, así que el
+  revisor elegía frenar, que de las dos es la correcta y costaba la corrida entera sobre trabajo que
+  estaba bien.
+
+  Ahora ese hallazgo va a `HUMAN_ACTIONS.md` con qué lo cierra y quién puede tomarlo, nombrando la épica o
+  el hito al que alcanza —nunca la tarea, para no bloquear a la que lo encontró—, y la corrida sigue. La
+  entrada de DONE cuenta cuántas quedaron registradas.
+
 ### Corregido
 
 - **`autobuild` ya no frena una tarea correcta porque el nombre del test venga anotado de dos formas.**
@@ -27,6 +39,11 @@ diseño — eso vive en el commit y en el código.
 
   Si te pasó, la tarea estaba bien: no hacía falta rehacerla. Y el motivo de la parada ya no se contradice
   solo — dice qué comparó la puerta en vez de afirmar que faltaba la prueba.
+
+- **Una corrección de Review se lleva también lo que ella misma dejó desactualizado.** «Corregí sólo estos
+  hallazgos» acota el alcance y dejaba un cabo suelto: el conteo que enumeraba lo que cambió, el
+  comentario que describía la forma vieja, la fila que la afirmaba. Como Review tiene una sola vuelta de
+  corrección, esa deriva aterrizaba en la re-revisión y la corrida frenaba sobre trabajo correcto.
 
 - **El checkpoint de hito se destraba escribiendo, no borrando.** `AWAITING_REVIEW.md` frenaba a todos los
   runners por el hecho de existir, así que resolverlo exigía acordarse de borrarlo — y mientras tanto
