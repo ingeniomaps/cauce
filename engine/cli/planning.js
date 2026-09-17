@@ -167,6 +167,9 @@ function context(dir, cli) {
       slug: task.slug, hito: task.hito, tier: task.tier, cast: task.cast, service: task.service,
       // Una tarea puede heredar su aceptación del criterio citado; el runner necesita el texto, no la cita.
       acceptance: task.acceptance || criteria.map((criterion) => criterion.text).join(' '),
+      // Las decisiones que la línea ya tomó. Viaja con la tarea y no aparte porque es de ella: quien la
+      // reciba tiene que poder leerla al lado de su aceptación, que es contra lo que se contrasta.
+      description: task.description || '',
       epic: task.epic,
     },
     criteria,

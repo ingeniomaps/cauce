@@ -389,3 +389,26 @@ test('la fila de una decisión abierta no puede nombrar a la tarea que la dejó'
   assert.match(fila.prompt, /primera columna nunca es T-1/,
     'el prompt tiene que prohibirlo: sin eso la fila bloquea lo que dice no bloquear')
 })
+
+// Las decisiones que la línea de la tarea ya tomó llegan a las cuatro fases que las necesitan. Por qué
+// —y por qué la aceptación no puede contenerlas— está junto al campo, en `engine/planning/parser.js`.
+//
+// Se mide fase por fase y no «en algún prompt» porque el reparto es el punto: Ready juzga si la tarea
+// está lista, Plan y Build deciden, y Critique ya abre el BACKLOG por su cuenta. Que una sola se quede
+// sin la descripción reproduce el defecto entero — una compuerta juzgando contra un texto que la otra
+// no vio.
+test('lo que la línea ya decidió llega a Ready, Plan, Critique y Build', async () => {
+  const decidido = 'normalizar vive en api/padron.js y el duplicado queda fuera de alcance'
+  const conDescripcion = { ...baseScript()[KEY.context], description: decidido }
+  const { prompts } = await runFlow({ [KEY.context]: conDescripcion }, { contexts: [conDescripcion] })
+
+  for (const key of [KEY.ready, KEY.plan, KEY.critique, KEY.build]) {
+    const fase = prompts.find((one) => one.key === key)
+    assert.ok(fase, `${key} corrió`)
+    assert.ok(fase.prompt.includes(decidido), `${key} recibe lo que la línea ya decidió`)
+  }
+  // Y se dice qué es: sin eso se lee como contexto opinable y el plan la re-decide igual.
+  const plan = prompts.find((one) => one.key === KEY.plan)
+  assert.match(plan.prompt, /ya decidió, y no se re-decide/i,
+    'nombrado como decisión tomada, no como sugerencia')
+})

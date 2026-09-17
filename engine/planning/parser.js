@@ -176,6 +176,10 @@ function readCast(rest) {
 // devolvía `MAX` con `check` en verde, que es la forma cara del error —la tarea se lee completa y no
 // lo está—. Cierra el `_` que markdown cerraría: el que no está entre caracteres de palabra.
 const ACCEPTANCE = /_Aceptaci[oó]n:\s*(.*?\S)_(?![A-Za-z0-9])/i
+// Los paréntesis del contrato de una línea de tarea. Se enumeran por su clave y no como «cualquier
+// paréntesis» para no llevarse puesta una aclaración de la prosa: la descripción usa paréntesis igual
+// que cualquier texto, y el criterio `(→ C1)` va acá porque `criteria` ya lo extrae.
+const MARKERS = /\((?:→|->|criterios?\s|epic:|service:|cast:|depende:|sin partir:)[^)]*\)/gi
 
 // Cuántas condiciones tiene una aceptación escrita en prosa. Estuvo mucho tiempo sin contarse con una
 // razón buena —contar condiciones en una frase es una lectura, y un número inventado es peor que
@@ -207,6 +211,19 @@ function taskFromLine(line) {
     epic: ((rest.match(/\(epic:\s*(\d{3})\)/) || [])[1] || ''),
     service: ((rest.match(/\(service:\s*([^)]+)\)/) || [])[1] || '').trim(),
     acceptance,
+    // Lo que la aceptación no puede decir y alguien ya decidió: dónde vive un símbolo, qué queda fuera de
+    // alcance, con qué se produce la evidencia. Por contrato la aceptación describe estado observable del
+    // producto, así que una decisión de diseño no cabe ahí — y hasta acá tampoco salía del BACKLOG: el
+    // texto vivía en `rest` y se descartaba.
+    //
+    // Sin ella el que planifica vuelve a decidir lo ya decidido, y decide distinto. La crítica **sí** abre
+    // el BACKLOG y bloquea el plan citando la línea palabra por palabra: una compuerta juzga contra un
+    // texto que la otra no recibió. Dos corridas reales se pagaron enteras para descubrirlo, 1,10 M y
+    // 815 k tokens, la segunda con sus cuatro objeciones diciendo lo mismo (caso 177).
+    //
+    // Se recorta la aceptación y los marcadores del contrato porque cada uno ya tiene su campo: repetirlos
+    // acá los pone dos veces en el prompt de cada fase, que es lo que R16 cobra una vez por etapa.
+    description: rest.replace(ACCEPTANCE, '').replace(MARKERS, '').replace(/\s+/g, ' ').trim(),
     conditions: acceptanceConditions(acceptance),
     criteria: criteriaRefs(rest),
     // De qué otras tareas depende. El orden del BACKLOG alcanzaba mientras hubiera un runner: con dos,
