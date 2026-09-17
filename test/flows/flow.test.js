@@ -311,9 +311,16 @@ test('el análisis largo va a un archivo, no por el handoff', async () => {
   assert.ok(etapa, 'la etapa corrió')
   assert.match(etapa.prompt, /encuadre-analisis\.md/, 'el análisis se escribe, con el id de la etapa')
   assert.match(etapa.prompt, /devolvé esa ruta en analysis/, 'y lo que vuelve por el esquema es la ruta')
-  assert.match(etapa.prompt, /por debajo de 2000 caracteres/, 'el resto del esquema queda corto')
-  assert.match(etapa.prompt, /Vale también para missing y humanAction/, 'incluida la etapa que frena')
+  assert.match(etapa.prompt, /cada campo tiene su tope/, 'el resto del esquema queda corto')
+  assert.match(etapa.prompt, /missing y humanAction 500/,
+    'y el tope nombra a los campos de la etapa que frena, que es la que más escribe')
+  // En caracteres y no en palabras: es lo que el esquema mide, y pedirlo en otra unidad deja al agente
+  // presupuestando contra algo que nadie comprueba.
+  assert.match(etapa.prompt, /summary 1000 caracteres/, 'y lo dice en la unidad que se rechaza')
   assert.match(etapa.prompt, /\{"raw": \.\.\., "len": \.\.\.\}/, 'y el envoltorio se prohíbe por su nombre')
+  // Pedirlo no alcanzó —el prompt ya lo pedía cuando una corrida real murió con los cinco reintentos
+  // envueltos—, así que el tope pasó a ser del esquema. Que ningún campo quede sin él lo comprueba
+  // `test/workflows/workflows.test.js`; acá se fija que el prompt diga dónde va lo que no entra.
 })
 
 test('el bloqueo de la primera etapa también entrega, y entrega el pedido', async () => {

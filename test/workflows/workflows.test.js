@@ -336,3 +336,30 @@ test('cada runner ofrece el arranque en el formato que entiende', () => {
   // desde 0.39.0, así que le llegaba sólo como prosa dentro de AGENTS.md mientras el CLI ya las leía.
   assert.deepEqual(nativos.sort(), [...A.RUNNER_NAMES].sort())
 })
+
+// Por qué la respuesta de una etapa se acota por diseño y no pidiéndolo está junto al schema, en
+// `flow.js`: cuando crece, el modelo deja de emitir los campos y devuelve el JSON envuelto como string,
+// que no valida, y cinco reintentos después la etapa muere.
+//
+// El techo se comprueba acá y no se confía al comentario porque el campo que falta no se ve: se agrega
+// uno nuevo sin tope, la corrida sigue pasando, y lo que revienta es la etapa que escribe largo —la que
+// frena—, que es la que menos se ejercita. Cerrado por defecto (R27): todo texto libre lleva su tope, y
+// `analysis` es la única excepción declarada, porque es una ruta y no el texto.
+test('la respuesta de una etapa de flow no tiene ningún campo de texto sin techo', () => {
+  const source = fs.readFileSync(path.join(WF, 'flow.js'), 'utf8')
+  const block = source.slice(source.indexOf('const STAGE'), source.indexOf('const EPIC'))
+  assert.ok(block.includes('gate:'), 'no se encontró el schema de etapa')
+
+  const sinTecho = []
+  for (const hit of block.matchAll(/([a-zA-Z]+): \{ type: 'string'([^}]*)\}/g)) {
+    const [, campo, resto] = hit
+    if (campo === 'analysis' || resto.includes('enum:') || resto.includes('maxLength')) continue
+    sinTecho.push(campo)
+  }
+  assert.deepEqual(sinTecho, [], `campos de texto sin maxLength: ${sinTecho.join(', ')}`)
+
+  // Y los arreglos también: tres elementos sin tope pesan lo mismo que un campo largo.
+  const arreglos = [...block.matchAll(/([a-zA-Z]+): \{ type: 'array'([\s\S]*?)\} \},/g)]
+    .filter(([, , resto]) => !resto.includes('maxItems')).map(([, campo]) => campo)
+  assert.deepEqual(arreglos, [], `arreglos sin maxItems: ${arreglos.join(', ')}`)
+})

@@ -111,16 +111,30 @@ const STAGE = {
   properties: {
     gate: { type: 'string', enum: ['cumplido', 'con-condiciones', 'no-cumplido'] },
     // La ruta del análisis, no el análisis. Ver el comentario de arriba: mientras el campo pudo
-    // contener el texto entero, lo contuvo, y la respuesta no llegaba.
-    analysis: { type: 'string' }, summary: { type: 'string' },
-    evidence: { type: 'array', items: { type: 'string' } },
-    assumptions: { type: 'array', items: { type: 'string' } },
-    openQuestions: { type: 'array', items: { type: 'object', additionalProperties: false,
+    // contener el texto entero, lo contuvo, y la respuesta no llegaba. Es la única excepción al techo:
+    // una ruta se acota sola.
+    analysis: { type: 'string' },
+    // Y el resto lleva su techo por la misma razón, que el arreglo de `analysis` no alcanzó a cubrir: la
+    // etapa que **frena** escribe largo en `missing` y `humanAction` —lo dice el párrafo de arriba y lo
+    // volvió a mostrar una corrida sobre un banco, con los cinco reintentos envueltos—. Sin tope, cada
+    // campo nuevo nace sin él y lo que revienta es la etapa que menos se ejercita.
+    //
+    // Los números salen de lo que el prompt ya pedía —`summary` en 150 palabras o menos, que es del orden
+    // de mil caracteres— y de R16: entre etapas viaja lo que la siguiente necesita para decidir, no todo
+    // lo que la anterior produjo. Lo que no entra no se pierde: vive en el archivo de análisis.
+    //
+    // Un techo por debajo de lo que el prompt pide no acota: contradice. Medido en una corrida real con
+    // `summary` en 400, el agente achicó en cada reintento —2766, 2078, 2064, 1934, 1854— y murió
+    // convergiendo hacia un número siete veces menor que el que la misma instrucción le pedía escribir.
+    summary: { type: 'string', maxLength: 1000 },
+    evidence: { type: 'array', maxItems: 5, items: { type: 'string', maxLength: 200 } },
+    assumptions: { type: 'array', maxItems: 4, items: { type: 'string', maxLength: 160 } },
+    openQuestions: { type: 'array', maxItems: 4, items: { type: 'object', additionalProperties: false,
       required: ['detail', 'blocking'],
-      properties: { detail: { type: 'string' }, blocking: { type: 'boolean' } },
+      properties: { detail: { type: 'string', maxLength: 200 }, blocking: { type: 'boolean' } },
     } },
-    missing: { type: 'string' },
-    humanAction: { type: 'string' },
+    missing: { type: 'string', maxLength: 500 },
+    humanAction: { type: 'string', maxLength: 500 },
   },
 }
 // Tres salidas porque el contrato del equipo enumera tres —«hacer, no hacer o investigar»— y con un
@@ -281,14 +295,16 @@ const runStage = (stage, index) => {
     `condiciona la decisión siguiente. ` +
     `Escribí primero tu análisis completo en ${REPORTS} como ${stage.id}-analisis.md —ahí no hay ` +
     `límite de extensión y es lo que lee quien sintetiza al final— y devolvé esa ruta en analysis.\n` +
-    `Lo que devolvés en el esquema es corto, todo junto por debajo de 2000 caracteres: si algo no ` +
-    `entra, va al archivo y en el campo queda lo esencial. Vale también para missing y humanAction ` +
-    `cuando el gate no se cumple, que es cuando más se escribe. ` +
+    `Lo que devolvés en el esquema es corto y cada campo tiene su tope, que el esquema rechaza si lo `
+    + `pasás: summary 1000 caracteres, missing y humanAction 500, cada evidencia 200. Si algo no entra, `
+    + `va al archivo y en el campo queda lo esencial. El tope rige sobre todo cuando el gate no se `
+    + `cumple, que es cuando más se escribe. ` +
     `Devolvé los campos directamente: nunca envuelvas la respuesta en {"raw": ..., "len": ...} ni ` +
     `mandes el JSON como string adentro de un campo, porque eso no valida. ` +
-    `En summary va, en 150 ` +
-    `palabras o menos, lo que la etapa siguiente necesita para decidir —no un resumen de tu análisis, ` +
-    `sino lo que le cambia el trabajo—, porque eso se le reenvía a cada etapa posterior.`,
+    `En summary va, en los 1000 caracteres que el esquema admite, lo que la etapa siguiente necesita ` +
+    `para decidir —no un resumen de tu análisis, sino lo que le cambia el trabajo—, porque eso se le ` +
+    `reenvía a cada etapa posterior. El límite va en caracteres y no en palabras porque es lo que el ` +
+    `esquema mide.`,
     { schema: STAGE, label: `stage:${stage.id}` })
 }
 
