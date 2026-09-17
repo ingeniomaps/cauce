@@ -14,6 +14,19 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.98.0] - 2026-09-17
+
+### Corregido
+
+- **La estrategia de prueba que el plan fija llega al WIP y a quien construye.** `testStrategy` es
+  obligatorio en el plan —el que planifica está obligado a escribirlo— y después no aparecía en ninguna
+  otra parte de la corrida. Sus propios pasos la citaban, los pasos sí viajan al WIP, y ella no: un paso
+  que decía «correr la mutación declarada en testStrategy» apuntaba a un lugar que no existe.
+
+  El costo es de quien revisa: R9 pide la mutación **declarada**, y sin ella no se puede distinguir la que
+  se corrió de la que se pensó, así que la única salida es rehacer la revisión. Medido dos veces, en dos
+  corridas distintas.
+
 ## [0.97.0] - 2026-09-17
 
 ### Agregado
