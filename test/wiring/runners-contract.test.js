@@ -239,5 +239,8 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   // 54 desde el 2026-09-17: una cuarta consigna con la misma forma literal, del release que sueltan las
   // dos paradas que bloquean una tarea antes de construirla (caso 176). Clasificada igual que la
   // anterior y por la misma razón: es el mismo comando dictado desde la misma raíz.
-  assert.equal(hits, 54, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 55 desde el 2026-09-23: la relectura de la fila que registra una parada (caso 180) dicta
+  // `tools/ops.js context`, el mismo comando y la misma raíz que la lectura de Triage.
+  assert.equal(hits, 55, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })
