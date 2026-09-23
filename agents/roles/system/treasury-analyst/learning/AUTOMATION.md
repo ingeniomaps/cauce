@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en tesorería corporativa, liquidez y pagos salientes para mantener
@@ -17,4 +17,4 @@ no actualices SKILL.md, código ni planificación; no publiques, hagas commit ni
 con `make agent-evaluate AGENT=treasury-analyst`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

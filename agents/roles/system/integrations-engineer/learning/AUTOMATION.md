@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en integración con sistemas de terceros para mantener el cargo
@@ -20,5 +20,5 @@ SKILL.md ni planificación; no publiques, no hagas commit ni push. Termina con
 `make agent-evaluate AGENT=integrations-engineer`.
 ```
 
-Programar semanalmente en cada instalación. La cadencia importa más acá que en otros cargos: la ventana
-de deprecación de un tercero corre aunque nadie la esté mirando, y enterarse tarde no la extiende.
+Programar mensualmente en cada instalación. La ventana de deprecación de un tercero corre aunque nadie
+la esté mirando, y enterarse tarde no la extiende: cada revisión cubre todo lo anunciado desde la anterior.

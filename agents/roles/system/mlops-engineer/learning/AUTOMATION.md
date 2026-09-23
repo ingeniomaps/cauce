@@ -1,6 +1,6 @@
 # Automatización de aprendizaje
 
-## Semanal con Codex
+## Mensual con Codex
 
 Ejecutar `make agent-learn AGENT=mlops-engineer`. Registrar fuentes primarias, plataforma/modelo/framework/versión/estado, evidencia reproducible y fit del contexto. Investigar no autoriza acceder a datos, ejecutar pipelines o tocar producción.
 

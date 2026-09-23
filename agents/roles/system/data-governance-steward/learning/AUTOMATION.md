@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en gobierno de datos —ownership, definiciones canónicas,
@@ -18,4 +18,4 @@ otorgues accesos, no publiques, no hagas commit ni push. Termina con
 `make agent-evaluate AGENT=data-governance-steward`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

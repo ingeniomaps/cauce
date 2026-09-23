@@ -1,6 +1,6 @@
 # Automatización de aprendizaje
 
-## Semanal con Codex
+## Mensual con Codex
 
 Ejecutar `make agent-learn AGENT=analytics-engineer`. Completar el informe con fuentes primarias, versión/estado, fit de plataforma, evidencia reproducible y equivalencia semántica. Investigar no autoriza consultar datos ni ejecutar SQL.
 

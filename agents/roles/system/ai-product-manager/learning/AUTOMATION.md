@@ -1,6 +1,6 @@
 # Automatización de aprendizaje
 
-## Semanal con Codex
+## Mensual con Codex
 
 Ejecutar `make agent-learn AGENT=ai-product-manager`. Registrar fuentes primarias, modelo/provider/versión/fecha/estado, fit del use case, evidencia reproducible e input de afectados. Investigar no autoriza usar datos, cambiar roadmap o tocar modelos/producción.
 

@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en growth marketing, experimentación y atribución para
@@ -15,4 +15,4 @@ landings, precios, SKILL.md ni planificación; no compres medios, publiques, hag
 commit ni push. Termina con `make agent-evaluate AGENT=growth-marketer`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

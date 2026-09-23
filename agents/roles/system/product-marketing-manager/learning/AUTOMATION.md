@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en Product Marketing para mantener
@@ -15,4 +15,4 @@ planificación; no publiques, contactes audiencias, hagas commit ni push. Termin
 con `make agent-evaluate AGENT=product-marketing-manager`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

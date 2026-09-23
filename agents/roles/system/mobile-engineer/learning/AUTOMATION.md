@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en Mobile Engineering para mantener
@@ -15,4 +15,4 @@ planificación; no generes o publiques releases, hagas commit ni push. Termina c
 `make agent-evaluate AGENT=mobile-engineer`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

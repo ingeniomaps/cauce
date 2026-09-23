@@ -186,7 +186,7 @@ se toma sin decidirla.
 La cita de `release-pr.yml` sigue en pie aunque ésta haya envejecido: ahí la afirmación es sobre un
 **tag** empujado con el `GITHUB_TOKEN`, que es otro mecanismo.
 
-#### Destrabar una tanda semanal
+#### Destrabar una tanda de investigación
 
 Los PR de una tanda se destraban a pedido —«revisá los PR»— y **no hay herramienta que lo haga sola**: el
 caso 146 midió que ninguna es posible sin guardar un PAT, que es la credencial que esta compuerta existe

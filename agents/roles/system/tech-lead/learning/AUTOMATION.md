@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en la práctica de liderazgo técnico —revisión y aprobación
@@ -22,4 +22,4 @@ apruebes, despliegues, hagas commit ni push, y no autorices gasto. Termina con
 `make agent-evaluate AGENT=tech-lead`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

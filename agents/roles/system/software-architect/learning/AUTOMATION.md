@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en Software Architecture para mantener
@@ -15,4 +15,4 @@ no generes migraciones, publiques, hagas commit ni push. Termina con
 `make agent-evaluate AGENT=software-architect`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

@@ -1,6 +1,6 @@
 # Automatización de aprendizaje
 
-## Semanal con Codex
+## Mensual con Codex
 
 Ejecutar `make agent-learn AGENT=implementation-manager`. Completar el informe con fuentes primarias, versiones, aplicabilidad, novedades de implementación y evidencia. Investigar no autoriza cambiar contratos, planes activos, configuraciones ni sistemas.
 

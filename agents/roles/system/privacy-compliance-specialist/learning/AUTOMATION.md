@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes de privacidad y cumplimiento para mantener
@@ -16,4 +16,4 @@ asesoría legal definitiva. Termina con
 `make agent-evaluate AGENT=privacy-compliance-specialist`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

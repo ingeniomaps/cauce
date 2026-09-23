@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en Data Analysis y analytics engineering para
@@ -15,4 +15,4 @@ no ejecutes consultas remotas, exportes datos, publiques, hagas commit ni push.
 Termina con `make agent-evaluate AGENT=data-analyst`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

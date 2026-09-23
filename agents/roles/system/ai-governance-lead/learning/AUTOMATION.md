@@ -1,6 +1,6 @@
 # Automatización de aprendizaje
 
-## Semanal con Codex
+## Mensual con Codex
 
 Ejecutar `make agent-learn AGENT=ai-governance-lead`. Completar el informe con fuentes primarias, versión, estado legal, jurisdicción, rol, fechas y revisión competente. Investigar no autoriza reclasificar, aprobar o cambiar sistemas.
 

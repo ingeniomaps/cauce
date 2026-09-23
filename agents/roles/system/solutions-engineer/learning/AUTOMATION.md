@@ -1,6 +1,6 @@
 # Automatización de aprendizaje
 
-## Semanal con Codex
+## Mensual con Codex
 
 Ejecutar `make agent-learn AGENT=solutions-engineer`. Completar el informe generado con novedades relevantes, versiones, aplicabilidad, evidencia primaria, impacto y recomendación. Investigar no autoriza cambiar `SKILL.md`, materiales, producto ni sistemas.
 

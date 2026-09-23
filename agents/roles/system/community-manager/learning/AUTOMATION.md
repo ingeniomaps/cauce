@@ -1,6 +1,6 @@
 # Automatización de aprendizaje
 
-## Semanal con Codex
+## Mensual con Codex
 
 Ejecutar `make agent-learn AGENT=community-manager`. Completar el informe con fuentes primarias, versiones, plataforma/jurisdicción, aplicabilidad y evidencia desidentificada. Investigar no autoriza interactuar con miembros o cambiar comunidades.
 

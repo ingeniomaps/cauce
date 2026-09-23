@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en Content Strategy, editorial, accesibilidad y SEO
@@ -15,4 +15,4 @@ contactes audiencias, hagas commit ni push. Termina con
 `make agent-evaluate AGENT=content-specialist`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

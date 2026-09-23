@@ -1,6 +1,6 @@
 # Automatización de aprendizaje
 
-## Semanal con Codex
+## Mensual con Codex
 
 Ejecutar `make agent-learn AGENT=cloud-architect`. Registrar fuentes primarias, proveedor/servicio/región/versión/fecha/estado, evidencia y fit del workload. Investigar no autoriza acceder o cambiar cloud real.
 

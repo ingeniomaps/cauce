@@ -1,6 +1,6 @@
 # Automatización de aprendizaje
 
-## Semanal con Codex
+## Mensual con Codex
 
 Ejecutar `make agent-learn AGENT=technical-program-manager`. Registrar fuentes primarias, estándar/versión/estado, fit organizacional, evidencia de outcome y validación de owners. Investigar no autoriza cambiar planes, compromisos o sistemas.
 

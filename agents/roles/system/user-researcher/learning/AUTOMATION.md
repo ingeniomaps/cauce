@@ -1,6 +1,6 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
-Configurar una automatización semanal en la raíz del repositorio con este prompt:
+Configurar una automatización mensual en la raíz del repositorio con este prompt:
 
 ```text
 Investiga cambios recientes en User Research para mantener el agente
@@ -19,4 +19,4 @@ contactes participantes, accedas a datos personales, publiques, hagas commit ni
 push. Termina ejecutando `make agent-evaluate AGENT=user-researcher`.
 ```
 
-La frecuencia recomendada es semanal; cada instalación elige día y hora.
+La frecuencia recomendada es mensual; cada instalación elige día y hora.

@@ -1,6 +1,6 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
-Configurar una automatización semanal en la raíz del repositorio con este prompt:
+Configurar una automatización mensual en la raíz del repositorio con este prompt:
 
 ```text
 Investiga la evolución reciente de Product Management para mantener el agente
@@ -18,4 +18,4 @@ cambios sustanciales, regístralo explícitamente. Termina ejecutando
 `make agent-evaluate AGENT=product-manager` y reporta su resultado.
 ```
 
-La frecuencia recomendada es semanal. El día y la hora pertenecen a cada instalación y no a este repositorio portable.
+La frecuencia recomendada es mensual. El día y la hora pertenecen a cada instalación y no a este repositorio portable.
