@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en Engineering Management para mantener

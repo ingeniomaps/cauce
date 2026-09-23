@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en Customer Support, service desk y troubleshooting
@@ -15,4 +15,4 @@ no contactes clientes, ejecutes acciones remotas, publiques, hagas commit ni pus
 Termina con `make agent-evaluate AGENT=customer-support-specialist`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en riesgo de fraude y decisión automática para mantener
@@ -18,4 +18,4 @@ exportes datos de casos reales; no toques SKILL.md ni la planificación; no publ
 hagas commit ni push. Termina con `make agent-evaluate AGENT=fraud-risk-analyst`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

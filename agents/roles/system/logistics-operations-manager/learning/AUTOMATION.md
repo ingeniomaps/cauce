@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en gestión de excepciones logísticas de última milla para
@@ -19,4 +19,4 @@ hagas commit ni push. Termina con
 `make agent-evaluate AGENT=logistics-operations-manager`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

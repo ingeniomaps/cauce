@@ -9,14 +9,10 @@ on:
     # Cada cargo investiga al ritmo de su fuente más rápida. La cadencia sale de `sources.yaml` y no de
     # una lista acá: `agents list --json` la trae en `cadence`, y por qué a cada tipo le toca la suya
     # está donde se decide, en `TIER_CADENCE`.
-    - cron: '17 13 * * 1'          # semanal
     - cron: '17 13 24 * *'         # mensual
     - cron: '17 13 23 3,6,9,12 *'  # trimestral
     # El ensamblaje siempre el 1, y temprano. La investigación mensual corre el 24 y no unas horas
-    # antes: con siete días de margen, un cargo que falla se puede repetir antes del cierre. Y el día 1
-    # cae lunes cada tantos meses —antes los dos crones disparaban al mismo minuto y el orden
-    # quedaba librado a la cola—: a las 07 consolida el mes que cerró, y el informe de ese lunes ya
-    # cuenta para el mes nuevo.
+    # antes: con siete días de margen, un cargo que falla se puede repetir antes del cierre.
     - cron: '17 7 1 * *'           # ensamblaje
   workflow_dispatch:
     inputs:
@@ -35,7 +31,7 @@ on:
         required: false
         default: ''
         type: choice
-        options: ['', semanal, mensual, trimestral]
+        options: ['', mensual, trimestral]
       # Lanzarlo a mano disparaba también el ensamblaje mensual, así que probar `research` abría una
       # propuesta de regalo — y una propuesta cuesta una firma humana. Peor: consolidar **sella** los
       # informes que consume, o sea que un dispatch de prueba movía estado real del ciclo.
@@ -99,7 +95,6 @@ jobs:
             // Qué cadencia le toca a cada cron. El del ensamblaje no está en la tabla a propósito:
             // ese día no se investiga, sólo se consolida.
             const POR_CRON = {
-              "17 13 * * 1": "semanal",
               "17 13 24 * *": "mensual",
               "17 13 23 3,6,9,12 *": "trimestral",
             }
@@ -131,7 +126,7 @@ jobs:
             console.log(`${list.length} cargo(s)${cadence ? ` de cadencia ${cadence}` : ""}`)
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `agents=${JSON.stringify(list)}\n`)
             // A quién consolidar: lo mismo que arriba **sin** el filtro por cadencia. Consolidar no
-            // sigue el calendario de nadie —lee lo que quedó sin sellar— así que un cargo semanal y
+            // sigue el calendario de nadie —lee lo que quedó sin sellar— así que un cargo mensual y
             // uno trimestral se consolidan el mismo día. Un slug a mano sí manda: si nombra un
             // recorrido esto queda vacío, y ahí `propose` no tiene que arrancar.
             const consolidar = (only ? roles.filter((role) => role.slug === only) : roles)
@@ -181,9 +176,9 @@ jobs:
             # saltea, no falla— y el aviso quedaba en una línea perdida del log. Eso ya dejó al ciclo
             # parado una semana sin que nada lo dijera: el secret faltó en la corrida programada del
             # 2026-08-24 y estaba de vuelta el 28, pero el hueco se encontró cinco días tarde y leyendo
-            # logs a mano. Fallar la corrida sería peor —un rojo cada lunes se termina ignorando—; una
+            # logs a mano. Fallar la corrida sería peor —un rojo en cada corrida se termina ignorando—; una
             # anotación se ve en la lista de runs sin romper nada.
-            echo '::warning title=Sin credencial::No hay CLAUDE_CODE_OAUTH_TOKEN ni ANTHROPIC_API_KEY: esta semana no se investiga. Cargá uno de los dos en los secrets del repositorio.'
+            echo '::warning title=Sin credencial::No hay CLAUDE_CODE_OAUTH_TOKEN ni ANTHROPIC_API_KEY: este ciclo no se investiga. Cargá uno de los dos en los secrets del repositorio.'
           fi
 
   # Sin credencial no corre: `learn` sólo arma el andamiaje, y llenarlo es lo que hace el modelo.
@@ -235,7 +230,7 @@ jobs:
       #
       # El respaldo se intenta ante cualquier fallo del primero, no sólo ante uno de credencial:
       # distinguirlos exigiría interpretar el error, y un reintento de más cuesta menos que una
-      # semana sin investigación. Cuál se usó queda dicho en el log.
+      # mes sin investigación. Cuál se usó queda dicho en el log.
       - name: Research
         id: research
         env:
@@ -252,7 +247,7 @@ jobs:
           # el informe vacío. El job sí puede correrlas: se las da hechas en vez de abrirle permisos a
           # un modelo, y el dato le llega a los 53 cargos sin que ninguno lo pida.
           entorno="Node $(node -v) y npm $(npm -v)"
-          prompt="Leé el learning/AUTOMATION.md del cargo $AGENT y ejecutá exactamente lo que declara. El informe de esta semana ya está creado y vacío: completalo. El entorno de esta corrida es $entorno, medido por el job: dalo por dado, no hay shell para volver a comprobarlo. Cada afirmación necesita enlace, fecha y versión; lo que no puedas corroborar va a Preguntas abiertas en vez de afirmarse. Contestá el campo 'propone' del frontmatter con 'si' o con 'no' —el comentario del molde dice cuál va— y dejá 'status: draft' como está. El único archivo que escribís es ese informe."
+          prompt="Leé el learning/AUTOMATION.md del cargo $AGENT y ejecutá exactamente lo que declara. El informe de esta corrida ya está creado y vacío: completalo. Cubrí todo lo que tus fuentes publicaron desde tu informe anterior —el más reciente de learning/reports/—, no sólo lo último: la próxima corrida es dentro de un mes. El entorno de esta corrida es $entorno, medido por el job: dalo por dado, no hay shell para volver a comprobarlo. Cada afirmación necesita enlace, fecha y versión; lo que no puedas corroborar va a Preguntas abiertas en vez de afirmarse. Contestá el campo 'propone' del frontmatter con 'si' o con 'no' —el comentario del molde dice cuál va— y dejá 'status: draft' como está. El único archivo que escribís es ese informe."
           # Sin permisos declarados, `claude -p` no puede correr un comando ni salir a la web, que es
           # todo lo que una investigación hace. La primera corrida real duró tres minutos y devolvió el
           # informe vacío —«every tool this task needs is currently denied in this session»— y el
@@ -328,8 +323,8 @@ jobs:
           # modelo no lo decide nadie**. El 2026-08-28 `backend-engineer` usó `Edit` y salió bien en 33
           # turnos; el 29 `qa-engineer` llegó al final de la investigación y pidió `Write`, se lo negaron
           # dos veces y se perdieron 61 turnos, 48 mil tokens de salida y USD 2.70 — con el informe vacío
-          # y el guard de `Collect report` frenando el PR, que es lo único que funcionó ahí. Un lunes eso
-          # es una lotería sobre los veinte cargos semanales.
+          # y el guard de `Collect report` frenando el PR, que es lo único que funcionó ahí. En una tanda eso
+          # es una lotería sobre los veinte cargos de una tanda.
           #
           # Sin acotar a una ruta a propósito: `--help` documenta `Bash(git *)` y nombres pelados, y una
           # regla que el CLI no entiende **se descarta en silencio** —ya pasó acá con la de Bash sin
@@ -426,8 +421,8 @@ jobs:
             exit 1
           fi
           # Y que exista no alcanza: `learn` lo crea vacío y el modelo puede devolverlo tal cual. Así
-          # salió la primera corrida real, y `research-pr` lo publicó igual — un lunes eso es un PR en
-          # blanco por cada cargo semanal, y nada lo dice. Es la forma que R15 nombra: se lee entero y
+          # salió la primera corrida real, y `research-pr` lo publicó igual — en una tanda eso es un PR en
+          # blanco por cada cargo de la tanda, y nada lo dice. Es la forma que R15 nombra: se lee entero y
           # no lo está.
           #
           # Se mira contenido y no tamaño: las secciones que la propuesta mensual consolida son las que
@@ -490,7 +485,7 @@ jobs:
           fi
           echo "path=$report" >> "$GITHUB_OUTPUT"
           echo "stamp=$stamp" >> "$GITHUB_OUTPUT"
-      # Qué fuentes de las que el cargo declara no se pudieron abrir esta semana. Una fuente ilegible y
+      # Qué fuentes de las que el cargo declara no se pudieron abrir en esta corrida. Una fuente ilegible y
       # una que no cambió producen el mismo informe —«sin novedades»— pero no son lo mismo: la primera no
       # se comprobó. Sin esto la diferencia sólo vivía en la prosa, donde nadie la agrega, y la cadencia
       # seguía siendo la de una fuente rápida que hacía dos meses no se leía.
@@ -499,7 +494,7 @@ jobs:
       # el informe, que mediría menciones y dependería de cómo redacte cada cargo — lo dice el código de
       # respuesta, que es el mismo dato para todos.
       #
-      # Avisa y no falla: un 403 de una semana puede ser un bloqueo temporal, y lo que decide un `tier` es
+      # Avisa y no falla: un 403 de una corrida puede ser un bloqueo temporal, y lo que decide un `tier` es
       # el patrón sostenido. Fallar acá tiraría la investigación por algo que no la invalida.
       #
       # Mira `sources.yaml` y también `references/` y `SKILL.md`, que es lo que el cargo sigue para
@@ -605,7 +600,7 @@ jobs:
           done <<< "$urls"
           # Las que el cargo anotó como pendientes: no se pudieron abrir cuando las probó, y por eso no son
           # fuentes. Acá se reporta **sólo la que ya responde**, que es la única noticia — una que sigue
-          # sin abrir es lo esperado y decirlo cada semana sería el aviso permanente que nadie lee. Sin
+          # sin abrir es lo esperado y decirlo en cada corrida sería el aviso permanente que nadie lee. Sin
           # esto la nota quedaba en un comentario del propio archivo: cinco cargos lo escribían así y uno
           # hasta puso «Registrar cuando exista una ficha legible», que nadie iba a revisar.
           pendientes="$(node -e '
@@ -757,7 +752,7 @@ jobs:
           git push origin "$branch"
           gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
             --title "$AGENT weekly research — $stamp" \
-            --body "Investigación semanal de la profesión. No modifica SKILL.md ni propone cambios: alimenta la propuesta mensual."
+            --body "Investigación de la profesión. No modifica SKILL.md ni propone cambios: alimenta la propuesta mensual."
           # Un informe que no pide tocar ningún archivo del cargo no tiene nada que una persona pueda
           # decidir, y cuesta la misma revisión que uno que sí. Se le arma auto-merge: GitHub lo mergea
           # cuando pasen los checks que el ruleset exige, sin que nadie mire.
@@ -993,7 +988,7 @@ jobs:
           fi
           gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
             --title "$AGENT learning proposal — $name" \
-            --body "Propuesta automática construida desde los informes semanales. No modifica SKILL.md y requiere evaluación y aprobación humana."
+            --body "Propuesta automática construida desde los informes de investigación. No modifica SKILL.md y requiere evaluación y aprobación humana."
 
   # Lo que `propose` para los cargos, y como aquél sin hablar con ningún modelo. Todavía no es su
   # espejo exacto: `propose` revalida con `evaluate` la propuesta que acaba de escribir y acá ese paso

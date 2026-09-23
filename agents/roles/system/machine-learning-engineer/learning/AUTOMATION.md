@@ -1,6 +1,6 @@
 # Automatización de aprendizaje
 
-## Semanal con Codex
+## Mensual con Codex
 
 Ejecutar `make agent-learn AGENT=machine-learning-engineer`. Completar el informe con fuentes primarias, versiones, modelos/casos de uso, jurisdicción, evidencia reproducible y cambios de estado —incluidos drafts o revisiones—. Investigar no autoriza entrenar o desplegar.
 

@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en ventas responsables y procesos comerciales para
@@ -15,4 +15,4 @@ no compres listas, envíes outreach, publiques, hagas commit ni push. Termina co
 `make agent-evaluate AGENT=sales-representative`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

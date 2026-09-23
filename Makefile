@@ -46,7 +46,7 @@ ci: ## Ejecuta todos los controles de CI
 require-agent:
 	@test -n "$(AGENT)" || (echo "Falta AGENT=<slug>" >&2; exit 2)
 
-agent-learn: require-agent ## Prepara el informe semanal de AGENT=<slug>
+agent-learn: require-agent ## Prepara el informe de investigación de AGENT=<slug>
 	@node engine/cli/ops.js learn "$(AGENT)"
 
 agent-propose: require-agent ## Consolida una propuesta para AGENT=<slug>

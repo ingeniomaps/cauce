@@ -124,7 +124,7 @@ propuso se vuelve a proponer.
 
 Y lo que apareció arreglándolo: el análisis de la tanda mostró que casi toda la repetición salía de
 propuestas archivadas **sin decidir**, no de rechazos. Para esas, este cambio no reduce la repetición: la
-hace legítima. Qué hacer con la cadencia semanal es otra decisión, y queda fuera de este caso.
+hace legítima. Qué hacer con la cadencia semanal es otra decisión, y la tomó el caso 182.
 
 ### Qué se corrió
 

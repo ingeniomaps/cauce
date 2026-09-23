@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en Business Strategy para mantener
@@ -15,4 +15,4 @@ no compres datos, contactes terceros, publiques, hagas commit ni push. Termina c
 `make agent-evaluate AGENT=business-strategist`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

@@ -1,6 +1,6 @@
 # Automatización de aprendizaje
 
-## Semanal con Codex
+## Mensual con Codex
 
 Ejecutar `make agent-learn AGENT=data-engineer`. Completar el informe con fuentes primarias, versiones, engines, workloads, evidencia reproducible y aplicabilidad. Investigar no autoriza consultar o cambiar datos/sistemas.
 

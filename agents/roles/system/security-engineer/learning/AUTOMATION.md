@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en Security Engineering para mantener
@@ -16,4 +16,4 @@ hagas commit ni push. Termina con
 `make agent-evaluate AGENT=security-engineer`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

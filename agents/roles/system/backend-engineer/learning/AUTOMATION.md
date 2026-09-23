@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en Backend Engineering para mantener
@@ -14,4 +14,4 @@ migraciones, publiques, hagas commit ni push. Termina con
 `make agent-evaluate AGENT=backend-engineer`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

@@ -52,15 +52,17 @@ function evaluateTeam(root, slug) {
 // un nombre compuesto. Cuando eran uno solo el catálogo llegó a 51 etiquetas para estas seis.
 const SOURCE_TIERS = ['advisory', 'platform', 'project', 'regulation', 'standard', 'profession']
 
-// Cada cuánto vale la pena volver a mirar cada tipo. Un aviso publica todos los días y llegar un mes
-// tarde es llegar tarde; una norma se revisa por edición y mirarla cada lunes devuelve el mismo texto.
-// La cadencia de un cargo la fija su fuente más rápida: basta una que corra para que la semana traiga
-// algo, y ninguna otra pierde nada por mirarse antes.
+// Cada cuánto vale la pena volver a mirar cada tipo. La cadencia de un cargo la fija su fuente más
+// rápida, y la más rápida es mensual aunque un aviso publique todos los días: lo que el ciclo produce es
+// un cambio de contrato, que se firma una vez al mes y llega a cada empresa con `upgrade`, así que
+// enterarse el día 7 en vez del 24 no adelanta nada. Hubo una cadencia semanal y se midió (caso 182):
+// en tres semanas, ~353 hallazgos, ninguno urgente, ninguno aplicado y la mitad repetidos.
+// Una norma, en cambio, se revisa por edición, y la profesión cambia más despacio que las dos.
 const TIER_CADENCE = {
-  advisory: 'semanal', platform: 'semanal', project: 'semanal',
+  advisory: 'mensual', platform: 'mensual', project: 'mensual',
   regulation: 'mensual', standard: 'mensual', profession: 'trimestral',
 }
-const CADENCES = ['semanal', 'mensual', 'trimestral']
+const CADENCES = ['mensual', 'trimestral']
 
 // Sale del árbol y no de una lista escrita a mano, por la misma razón que la matriz del cron sale del
 // árbol: una lista paralela se pudre el día que un cargo cambia sus fuentes y nadie la toca.
@@ -79,7 +81,7 @@ function sourceTiers(text) {
 }
 
 // El cuerpo de `sources:` termina donde empieza `pending:`. Sin este corte, una pendiente entraba como
-// fuente declarada y el chequeo semanal la reportaba rota todas las semanas — que es exactamente el
+// fuente declarada y cada corrida la reportaba rota, una vez tras otra — que es exactamente el
 // aviso permanente que la lista existe para no producir.
 function sourcesBody(text) {
   if (!text.includes('sources:')) return ''
@@ -207,8 +209,8 @@ function evaluate(root, agent) {
   const sourcesFile = path.join(target, 'learning', 'sources.yaml')
   if (fs.existsSync(sourcesFile)) {
     const tiers = sourceTiers(fs.readFileSync(sourcesFile, 'utf8'))
-    // Sin fuentes el ciclo semanal no tiene literatura que leer y devuelve un informe vacío cada
-    // semana. Avisa y no bloquea: un cargo que se está escribiendo todavía no las tiene.
+    // Sin fuentes el ciclo no tiene literatura que leer y devuelve un informe vacío en cada
+    // corrida. Avisa y no bloquea: un cargo que se está escribiendo todavía no las tiene.
     if (!tiers.length) warnings.push('sources.yaml sin fuentes: la investigación no tiene qué leer')
     for (const tier of tiers) {
       if (!SOURCE_TIERS.includes(tier)) {
@@ -234,7 +236,7 @@ function evaluate(root, agent) {
         errors.push(`sources.yaml: una pendiente no declara ${missing.join(' ni ')}`
           + `${one.name ? ` (${one.name})` : ''}`)
       }
-      // Declarada y pendiente a la vez es una contradicción que el chequeo semanal no puede resolver:
+      // Declarada y pendiente a la vez es una contradicción que el chequeo de cada corrida no puede resolver:
       // la reportaría rota como fuente y recuperada como pendiente en la misma corrida.
       if (one.url && byUrl.has(one.url)) {
         errors.push(`sources.yaml: ${one.url} está declarada como fuente y también como pendiente`)

@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en FinOps, precios de proveedores y costo de inferencia
@@ -15,4 +15,4 @@ contratos, SKILL.md ni planificación; no apagues nada, no contrates, no hagas c
 ni push. Termina con `make agent-evaluate AGENT=finops-engineer`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

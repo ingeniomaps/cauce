@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en Quality Assurance y software testing para mantener
@@ -15,4 +15,4 @@ pruebas invasivas o de producción, publiques, hagas commit ni push. Termina con
 `make agent-evaluate AGENT=qa-engineer`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

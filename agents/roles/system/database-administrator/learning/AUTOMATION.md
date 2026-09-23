@@ -1,6 +1,6 @@
 # Automatización de aprendizaje
 
-## Semanal con Codex
+## Mensual con Codex
 
 Ejecutar `make agent-learn AGENT=database-administrator`. Registrar fuentes primarias, motor/edición/versión, soporte, aplicabilidad, evidencia y pruebas de recuperación. Investigar no autoriza conectarse, ejecutar comandos o cambiar bases reales.
 

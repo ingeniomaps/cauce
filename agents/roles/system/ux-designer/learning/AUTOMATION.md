@@ -1,6 +1,6 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
-Configurar una automatización semanal con este prompt:
+Configurar una automatización mensual con este prompt:
 
 ```text
 Investiga cambios recientes en UX Design para mantener agents/roles/system/ux-designer.
@@ -15,4 +15,4 @@ referencias, evaluaciones, fuentes ni planificación; no publiques, hagas commit
 ni push. Termina con `make agent-evaluate AGENT=ux-designer`.
 ```
 
-La frecuencia recomendada es semanal; cada instalación define el horario.
+La frecuencia recomendada es mensual; cada instalación define el horario.

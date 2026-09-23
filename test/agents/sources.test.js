@@ -198,11 +198,19 @@ test('la cadencia de investigación se deriva de las fuentes, no de una lista', 
   declarar('profession')
   assert.equal(learning.cadence(target, 'probe'), 'trimestral')
   declarar('advisory')
-  assert.equal(learning.cadence(target, 'probe'), 'semanal', 'un aviso publica todos los días')
+  assert.equal(learning.cadence(target, 'probe'), 'mensual', 'un aviso también: el contrato cambia una vez al mes')
 
-  // Basta una fuente rápida: mirar antes no le cuesta nada a las lentas, y llegar tarde a un aviso sí.
+  // Basta una fuente rápida: mirar antes no le cuesta nada a las lentas.
   declarar('standard', 'profession', 'platform')
-  assert.equal(learning.cadence(target, 'probe'), 'semanal', 'la manda la más rápida, no la mayoría')
+  assert.equal(learning.cadence(target, 'probe'), 'mensual', 'la manda la más rápida, no la mayoría')
+
+  // La cadencia semanal se quitó (caso 182): ningún tipo de fuente la devuelve, ni solo ni combinado.
+  for (const tier of learning.SOURCE_TIERS) {
+    declarar(tier)
+    assert.notEqual(learning.cadence(target, 'probe'), 'semanal', `${tier} no vuelve a investigar cada semana`)
+  }
+  declarar(...learning.SOURCE_TIERS)
+  assert.notEqual(learning.cadence(target, 'probe'), 'semanal', 'ni todos juntos')
 
   // Sin fuentes no hay cadencia que derivar, y eso ya lo avisa `evaluate`: no se inventa una.
   fs.writeFileSync(path.join(own, 'learning', 'sources.yaml'), 'version: 1\n')

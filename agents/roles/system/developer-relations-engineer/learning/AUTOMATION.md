@@ -1,6 +1,6 @@
 # Automatización de aprendizaje
 
-## Semanal con Codex
+## Mensual con Codex
 
 Ejecutar `make agent-learn AGENT=developer-relations-engineer`. Completar el informe con fuentes primarias, versiones, plataformas, evidencia reproducible y aplicabilidad al producto. Investigar no autoriza publicar, cambiar repositorios ni interactuar con la comunidad.
 

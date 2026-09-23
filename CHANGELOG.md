@@ -21,12 +21,26 @@ diseño — eso vive en el commit y en el código.
 - **Descartar una propuesta que decide un cambio pide el motivo, y el informe siguiente lo lee.**
   `ops learn <cargo> --archived` se niega sobre una propuesta cuyo «Cambio propuesto» dice qué hacer si no
   lleva `--reason "<motivo>"`. El motivo queda en el documento, como `- Motivo:`, y en la fila de
-  `HISTORY.md`. Cada informe semanal nuevo trae arriba, en un comentario, las propuestas descartadas del
+  `HISTORY.md`. Cada informe nuevo trae arriba, en un comentario, las propuestas descartadas del
   cargo con su motivo, y le pide no volver a recomendarlas salvo que aparezca un hecho nuevo.
 
   Antes, archivar no dejaba ningún porqué, y el mismo hallazgo volvía todas las semanas. Una propuesta
   con el molde intacto se sigue archivando sin motivo: nadie decidió nada, y lo que traía sigue vivo.
   Si tenés un script que archiva propuestas decididas, agregale `--reason`.
+
+- **La investigación de los cargos pasa a ser mensual: ya no hay cadencia semanal.** Los cargos con
+  fuentes de tipo `advisory`, `platform` o `project` investigaban cada lunes. Ahora investigan el 24, igual
+  que los demás, y el 1 se consolida como siempre. `profession` sigue trimestral. Se quitó el cron del
+  lunes y la opción `semanal` de la corrida manual. El informe se llama «Investigación» a secas, y el
+  prompt le pide al cargo cubrir todo lo publicado desde su informe anterior.
+
+  Es una decisión medida. En tres semanas de septiembre, las corridas semanales dieron unos 353
+  hallazgos: ninguno urgente, ninguno aplicado y la mitad repetidos. Lo que produce el ciclo es un cambio
+  de contrato, que se firma una vez al mes y llega con `upgrade`, así que detectarlo antes no lo
+  adelantaba.
+
+  Si programaste la investigación en tu instalación siguiendo el `learning/AUTOMATION.md` de un cargo,
+  pasala a mensual: esos archivos ya lo dicen.
 
 ### Corregido
 

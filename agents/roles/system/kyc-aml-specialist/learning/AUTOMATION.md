@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en KYC, prevención de lavado de activos y financiación
@@ -18,5 +18,5 @@ desbloquees clientes; no contactes autoridades, proveedores ni titulares; no hag
 commit ni push. Termina con `make agent-evaluate AGENT=kyc-aml-specialist`.
 ```
 
-Programar semanalmente en cada instalación. Las listas de sanciones cambian con más frecuencia que la
-norma: su ciclo de actualización lo fija el programa de la empresa, no esta revisión semanal.
+Programar mensualmente en cada instalación. Las listas de sanciones cambian con más frecuencia que la
+norma: su ciclo de actualización lo fija el programa de la empresa, no esta revisión mensual.

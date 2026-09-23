@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en Frontend Engineering para mantener
@@ -14,4 +14,4 @@ publiques, hagas commit ni push. Termina con
 `make agent-evaluate AGENT=frontend-engineer`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

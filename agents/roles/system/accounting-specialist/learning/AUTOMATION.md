@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en registro contable y trazabilidad para mantener
@@ -17,4 +17,4 @@ no hagas commit ni push, y no edites SKILL.md. Termina con
 `make agent-evaluate AGENT=accounting-specialist`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.

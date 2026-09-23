@@ -63,7 +63,7 @@ status: draft
 propone: por-completar
 ---
 
-# Investigación semanal — ${isoDate(now)}
+# Investigación — ${isoDate(now)}
 ${decided(discardedProposals(path.join(learning, 'proposals')))}
 <!-- Tres convenciones que el ciclo necesita y que nada más sostiene:
 
@@ -100,7 +100,7 @@ propuesta consolidada. -->
 
 // Lo que ya se descartó, dicho donde el cargo lo va a leer: en el informe que está por completar, y no
 // en su prompt ni en el `AUTOMATION.md` de cada cargo. Un prompt lo repetiría en cincuenta archivos, y
-// basta uno que no lo copie para que ese cargo vuelva a proponer lo descartado cada semana.
+// basta uno que no lo copie para que ese cargo vuelva a proponer lo descartado en cada corrida.
 //
 // Va en un comentario, fuera de toda sección, por lo mismo que las convenciones de abajo: dentro de
 // «Recomendación» viajaría a la propuesta mensual.
@@ -118,8 +118,8 @@ una fecha, una norma nueva—, recomendalo nombrando la propuesta y qué cambió
 `
 }
 
-// Abre la revisión siguiente. No vuelve a consolidar los informes semanales: ya se consolidaron en la
-// propuesta que ésta corrige, y repetirlos haría que el mismo hallazgo entre dos veces al contrato. El
+// Abre la revisión siguiente. No vuelve a consolidar los informes de investigación: ya se consolidaron
+// en la propuesta que ésta corrige, y repetirlos haría que el mismo hallazgo entre dos veces al contrato. El
 // insumo de una revisión es otro —qué mostró la evaluación posterior a aplicar—, y por eso el molde
 // pregunta eso y no otra cosa.
 //
@@ -416,11 +416,11 @@ automatic_apply: false
 
 ## Hallazgos
 
-${summaries.join('\n\n') || 'No hay informes semanales para este período.'}
+${summaries.join('\n\n') || 'No hay informes de investigación para este período.'}
 
 ## Evidencia
 
-Revisar las fuentes primarias enlazadas desde cada informe semanal.
+Revisar las fuentes primarias enlazadas desde cada informe de investigación.
 
 ## Cambio propuesto
 

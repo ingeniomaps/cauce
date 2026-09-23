@@ -1,4 +1,4 @@
-# Automatización semanal del aprendizaje
+# Automatización mensual del aprendizaje
 
 ```text
 Investiga cambios recientes en Financial Control, reporting y controles internos
@@ -16,4 +16,4 @@ ni push. No emitas conclusión profesional definitiva. Termina con
 `make agent-evaluate AGENT=financial-controller`.
 ```
 
-Programar semanalmente en cada instalación.
+Programar mensualmente en cada instalación.
