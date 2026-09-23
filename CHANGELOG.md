@@ -44,6 +44,25 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **La fila que `autobuild` registra al frenarse nace pendiente, y si no quedó así la parada lo dice.**
+  En una corrida real, el agente que escribe la fila la dejó `resuelta` y «decidida por el dueño», y la
+  tarea quedó desbloqueada sin que nadie decidiera nada. Las cuatro paradas que registran una acción
+  humana ahora piden la fila `pendiente` y prohíben atribuir decisiones. Las tres que registran la
+  propia tarea relen `ops context` y, si la fila no quedó pendiente, lo dicen en el detalle de la
+  parada.
+
+- **El guard de dependencias ya no frena un `package.json` que cambió sin tocar nada del lockfile.**
+  Un commit que agrega un script o ajusta la configuración de `jest` se frenaba por llevar el manifiesto
+  sin su lock, y había que pedir permiso para un cambio sin riesgo. Pasa sólo con `package-lock.json` y
+  sólo si lo que cambió está en una lista medida con npm 11.16.0. `version`, `name`, `license`,
+  `engines`, `bin` y los scripts de instalación sí mueven el lock, y siguen frenando. Con pnpm, yarn o
+  bun no cambia nada.
+
+- **Las ramas que mergea el auto-merge del ciclo se borran.** El auto-merge de los informes que no
+  proponen cambios lo firma `github-actions`, y ese merge no dispara el workflow que borra las ramas,
+  así que quedaban en el remoto. Ahora cada corrida del ciclo barre las ramas `automation/*` mergeadas
+  que no se movieron después del merge.
+
 - **La estrategia de prueba que el plan fija llega al WIP y a quien construye.** `testStrategy` es
   obligatorio en el plan —el que planifica está obligado a escribirlo— y después no aparecía en ninguna
   otra parte de la corrida. Sus propios pasos la citaban, los pasos sí viajan al WIP, y ella no: un paso
