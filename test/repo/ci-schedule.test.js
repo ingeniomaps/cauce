@@ -76,17 +76,21 @@ test('cada cron investiga su cadencia, y el del ensamblaje no investiga', () => 
   const file = path.resolve(__dirname, '..', '..', '.github', 'workflows', 'agent-learning.yml')
   const source = fs.readFileSync(file, 'utf8')
   const crones = [...source.matchAll(/^ {4}- cron: '([^']+)'/gm)].map((hit) => hit[1])
-  assert.deepEqual(crones, ['17 13 * * 1', '17 13 24 * *', '17 13 23 3,6,9,12 *', '17 7 1 * *'])
+  assert.deepEqual(crones, ['17 13 24 * *', '17 13 23 3,6,9,12 *', '17 7 1 * *'])
+  // El cron del lunes se quitó con la cadencia semanal (caso 182): ninguno fija un día de la semana, y
+  // a mano tampoco se puede pedir.
+  assert.equal(crones.some((one) => one.split(' ')[4] !== '*'), false, 'ningún cron corre por día de semana')
+  assert.equal(/options: \[[^\]]*semanal/.test(source), false, 'y el dispatch no ofrece la cadencia semanal')
 
-  // Ninguno comparte minuto con otro: el día 1 cae lunes cuatro veces cada dos años y antes los dos
-  // disparaban a la misma hora, con el orden librado a la cola.
+  // Ninguno comparte minuto con otro: antes el ensamblaje y la investigación del lunes disparaban a la
+  // misma hora, con el orden librado a la cola.
   assert.equal(new Set(crones.map((one) => one.split(' ').slice(0, 2).join(' '))).size > 1,
     true, 'el ensamblaje no compite con la investigación')
 
   // Los tres de investigación tienen cadencia declarada; el del ensamblaje no está en la tabla, y por
   // eso ese día la lista sale vacía y `research` no arranca.
   const tabla = source.slice(source.indexOf('const POR_CRON'), source.indexOf('const cadence'))
-  for (const cron of crones.slice(0, 3)) assert.ok(tabla.includes(cron), `${cron} elige a quién correr`)
+  for (const cron of crones.slice(0, 2)) assert.ok(tabla.includes(cron), `${cron} elige a quién correr`)
   assert.equal(tabla.includes('17 7 1 * *'), false, 'el del ensamblaje no investiga a nadie')
   assert.match(source, /needs\.discover\.outputs\.agents != '\[\]'/, 'y research no arranca con lista vacía')
   assert.match(source, /github\.event\.schedule == '17 7 1 \* \*'/, 'propose corre el día del ensamblaje')
@@ -191,7 +195,6 @@ test('cada cron elige su cohorte, y el del ensamblaje no aborta por no tener nin
   const dir = tempRoot('cauce-cron-')
   const salida = path.join(dir, 'github-output')
   const roles = JSON.stringify([
-    { slug: 'un-semanal', cadence: 'semanal' },
     { slug: 'un-mensual', cadence: 'mensual' },
     { slug: 'un-trimestral', cadence: 'trimestral' },
   ])
@@ -204,9 +207,8 @@ test('cada cron elige su cohorte, y el del ensamblaje no aborta por no tener nin
     return { ...hecho, escrito: fs.readFileSync(salida, 'utf8') }
   }
 
-  // Los tres crones que investigan, cada uno con su cohorte y ninguna otra.
+  // Los dos crones que investigan, cada uno con su cohorte y ninguna otra.
   for (const [cron, slug] of [
-    ['17 13 * * 1', 'un-semanal'],
     ['17 13 24 * *', 'un-mensual'],
     ['17 13 23 3,6,9,12 *', 'un-trimestral'],
   ]) {
@@ -223,7 +225,7 @@ test('cada cron elige su cohorte, y el del ensamblaje no aborta por no tener nin
 
   // A mano sin slug sigue siendo un error si de verdad no hay cargos: es la única corrida que lo es.
   const vacio = { ...correr({ SCHEDULE: '' }) }
-  assert.match(vacio.escrito, /^agents=\["un-mensual","un-semanal","un-trimestral"\]$/m,
+  assert.match(vacio.escrito, /^agents=\["un-mensual","un-trimestral"\]$/m,
     'a mano sin slug van todos, sin mirar cadencia')
 })
 
@@ -241,7 +243,6 @@ test('el día del ensamblaje propose tiene a quién consolidar, que es cuando ag
   const dir = tempRoot('cauce-consolidar-')
   const salida = path.join(dir, 'github-output')
   const roles = JSON.stringify([
-    { slug: 'un-semanal', cadence: 'semanal' },
     { slug: 'un-mensual', cadence: 'mensual' },
     { slug: 'un-trimestral', cadence: 'trimestral' },
   ])
@@ -257,13 +258,13 @@ test('el día del ensamblaje propose tiene a quién consolidar, que es cuando ag
   // Las dos salidas del mismo paso y en la misma corrida: nadie investiga, todos se consolidan.
   const ensamblaje = correr({ SCHEDULE: '17 7 1 * *' })
   assert.match(ensamblaje.escrito, /^agents=\[\]$/m, 'ese día no se investiga')
-  assert.match(ensamblaje.escrito, /^consolidate=\["un-mensual","un-semanal","un-trimestral"\]$/m,
+  assert.match(ensamblaje.escrito, /^consolidate=\["un-mensual","un-trimestral"\]$/m,
     'y consolidar los quiere a todos: con la lista vacía, propose se queda sin matriz')
 
   // Consolidar no sigue el calendario de nadie, así que un cron de investigación tampoco lo recorta.
-  const semanal = correr({ SCHEDULE: '17 13 * * 1' })
-  assert.match(semanal.escrito, /^agents=\["un-semanal"\]$/m)
-  assert.match(semanal.escrito, /^consolidate=\["un-mensual","un-semanal","un-trimestral"\]$/m,
+  const mensual = correr({ SCHEDULE: '17 13 24 * *' })
+  assert.match(mensual.escrito, /^agents=\["un-mensual"\]$/m)
+  assert.match(mensual.escrito, /^consolidate=\["un-mensual","un-trimestral"\]$/m,
     'la cadencia elige quién investiga, no quién se consolida')
 
   // Un slug a mano sí manda, en los dos sentidos.
@@ -390,7 +391,7 @@ test('el PR de una propuesta lleva también el sello de lo que consumió', () =>
   }
 })
 
-// Un dispatch no trae `schedule`, así que reproducir a mano lo que corre un lunes exigía un dispatch
+// Un dispatch no trae `schedule`, así que reproducir a mano lo que corre un cron exigía un dispatch
 // por cargo: veinte corridas que el `concurrency` encola de a una, repitiendo `discover` cada vez,
 // para conseguir algo peor que la matriz única del cron.
 test('un dispatch puede nombrar una cadencia y arma la misma cohorte que el cron', () => {
@@ -400,8 +401,8 @@ test('un dispatch puede nombrar una cadencia y arma la misma cohorte que el cron
 
   const correr = (env) => {
     const datos = JSON.stringify([
-      { slug: 'semanal-uno', cadence: 'semanal' },
-      { slug: 'semanal-dos', cadence: 'semanal' },
+      { slug: 'trimestral-uno', cadence: 'trimestral' },
+      { slug: 'trimestral-dos', cadence: 'trimestral' },
       { slug: 'mensual-uno', cadence: 'mensual' },
     ])
     const cuerpo = workflowStep(source, 'id: list').replace(/^all=\$\(node .*\)$/m, `all=${JSON.stringify(datos)}`)
@@ -415,11 +416,11 @@ test('un dispatch puede nombrar una cadencia y arma la misma cohorte que el cron
   }
 
   // La cohorte pedida a mano es la misma que arma el cron de esa cadencia, y no la lista entera.
-  const aMano = correr({ CADENCE: 'semanal' })
+  const aMano = correr({ CADENCE: 'trimestral' })
   assert.equal(aMano.status, 0, aMano.stderr)
-  assert.match(aMano.salida, /^agents=\["semanal-dos","semanal-uno"\]$/m, 'sólo los de esa cadencia')
+  assert.match(aMano.salida, /^agents=\["trimestral-dos","trimestral-uno"\]$/m, 'sólo los de esa cadencia')
 
-  const porCron = correr({ SCHEDULE: '17 13 * * 1' })
+  const porCron = correr({ SCHEDULE: '17 13 23 3,6,9,12 *' })
   assert.equal(
     aMano.salida.match(/^agents=.*$/m)[0], porCron.salida.match(/^agents=.*$/m)[0],
     'pedirla a mano y que la traiga el cron tienen que dar la misma cohorte',
@@ -427,10 +428,10 @@ test('un dispatch puede nombrar una cadencia y arma la misma cohorte que el cron
 
   // Vacío sigue corriendo todos: el input no cambia ninguna corrida que ya existía.
   const sinNada = correr({})
-  assert.match(sinNada.salida, /^agents=\["mensual-uno","semanal-dos","semanal-uno"\]$/m, 'vacío corre todos')
+  assert.match(sinNada.salida, /^agents=\["mensual-uno","trimestral-dos","trimestral-uno"\]$/m, 'vacío corre todos')
 
   // Y un slug es más específico que una cadencia: manda el slug.
-  const conSlug = correr({ ONLY: 'mensual-uno', CADENCE: 'semanal' })
+  const conSlug = correr({ ONLY: 'mensual-uno', CADENCE: 'trimestral' })
   assert.match(conSlug.salida, /^agents=\["mensual-uno"\]$/m, 'el slug gana sobre la cadencia')
 })
 
