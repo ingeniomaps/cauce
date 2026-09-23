@@ -1,6 +1,6 @@
 // Convierte la recomendación de los informes en el cambio concreto que una persona puede aprobar.
 //
-// `learn --proposal` consolida qué recomendaron los informes de la semana, pero deja «Cambio
+// `learn --proposal` consolida qué recomendaron los informes de investigación, pero deja «Cambio
 // propuesto: por definir». Eso no es aprobable: nadie firma una intención. Este recorrido escribe el
 // texto exacto que habría que agregar, archivo por archivo, y lo contrasta contra los casos
 // adversariales vigentes antes de proponerlo.
@@ -70,7 +70,7 @@ phase('Proponer')
 
 const proposal = await agent(
   `Sos quien mantiene el cargo ${AGENT}. La propuesta ${context.proposal} consolidó lo que ` +
-  `recomendaron los informes semanales, pero le falta lo único que una persona puede aprobar: el ` +
+  `recomendaron los informes de investigación, pero le falta lo único que una persona puede aprobar: el ` +
   `cambio concreto.\n\n` +
   `Leé los informes citados en su sección «Hallazgos», el SKILL.md del cargo, ` +
   `${context.dir}/learning/sources.yaml, ${context.dir}/evaluations/expected-behaviors.yaml y sus ` +

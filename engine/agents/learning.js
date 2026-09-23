@@ -61,7 +61,7 @@ status: draft
 propone: por-completar
 ---
 
-# Investigación semanal — ${isoDate(now)}
+# Investigación — ${isoDate(now)}
 
 <!-- Tres convenciones que el ciclo necesita y que nada más sostiene:
 
@@ -96,7 +96,7 @@ propuesta consolidada. -->
   return { file, created: true }
 }
 
-// Abre la revisión siguiente. No vuelve a consolidar los informes semanales: ya se consolidaron en la
+// Abre la revisión siguiente. No vuelve a consolidar los informes de investigación: ya se consolidaron en la
 // propuesta que ésta corrige, y repetirlos haría que el mismo hallazgo entre dos veces al contrato. El
 // insumo de una revisión es otro —qué mostró la evaluación posterior a aplicar—, y por eso el molde
 // pregunta eso y no otra cosa.
@@ -394,11 +394,11 @@ automatic_apply: false
 
 ## Hallazgos
 
-${summaries.join('\n\n') || 'No hay informes semanales para este período.'}
+${summaries.join('\n\n') || 'No hay informes de investigación para este período.'}
 
 ## Evidencia
 
-Revisar las fuentes primarias enlazadas desde cada informe semanal.
+Revisar las fuentes primarias enlazadas desde cada informe de investigación.
 
 ## Cambio propuesto
 

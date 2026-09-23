@@ -57,7 +57,7 @@ comando, sin cron —activarlo en tu repositorio es decisión tuya—:
 
 ```bash
 node tools/ops.js agents list --own          # sólo los tuyos, sin los del catálogo
-node tools/ops.js learn <slug>               # arma el informe de la semana
+node tools/ops.js learn <slug>               # arma el informe de investigación
 /agent-propose <slug>                        # escribe el cambio concreto sobre esos informes
 #   ↑ firmá «Aprobación humana» en la propuesta antes de seguir
 /agent-promote <slug>                        # lo aplica, registra y manda a verificar
