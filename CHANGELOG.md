@@ -44,6 +44,13 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Confirmar un bloqueo ya no exige una palabra.** El guard aprobaba sólo si la respuesta empezaba con
+  una de once formas —«dale», «sí», «ok»…—, así que «listo», «claro», «confirmo» o «bueno dale» volvían
+  a frenar lo que la persona acababa de aprobar. Ahora la confirmación es con tus palabras, y juzgar si es
+  un sí le toca al agente: el mensaje del bloqueo se lo pide así. Lo único que el guard sigue frenando es
+  la respuesta que niega, que arranca frenando («pará», «esperá», «cancelá») o que pregunta. Y lo que se
+  frena mientras decís que no ya no queda esperando una confirmación.
+
 - **La fila que `autobuild` registra al frenarse nace pendiente, y si no quedó así la parada lo dice.**
   En una corrida real, el agente que escribe la fila la dejó `resuelta` y «decidida por el dueño», y la
   tarea quedó desbloqueada sin que nadie decidiera nada. Las cuatro paradas que registran una acción
