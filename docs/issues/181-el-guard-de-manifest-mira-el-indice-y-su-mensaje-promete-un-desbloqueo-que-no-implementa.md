@@ -197,3 +197,18 @@ cambio, lo que falta registrar es desde qué tipo de sesión se commiteó.
 - **El «dale» sobre este guard**: «lo concedido no abre un gate de commit, y gobernanza no interroga a
   la persona» (`test/hooks/chat-effects.test.js`) en verde. Ejercita `dependencies` con un manifiesto
   sin su lock, un mensaje que no autoriza (frena) y un «dale» (pasa).
+
+### Prueba real posterior, 2026-09-23
+
+El hook real, `automatization/hooks/guard-dependencies.sh`, con el JSON de PreToolUse por stdin como lo
+invoca el runner, sobre un repo de un banco `suelto` con `package.json` y `package-lock.json` commiteados:
+
+```
+== script nuevo (el caso de roax):  exit=0
+== jest coverageThreshold:          exit=0
+== version:        exit=2 BLOQUEADO: .: cambió package.json sin actualizar su lockfile.
+== dependencia:    exit=2 BLOQUEADO: …
+== postinstall:    exit=2 BLOQUEADO: …
+```
+
+Y el mismo script nuevo con el guard de `v0.97.0` (`git archive v0.97.0`): `exit=2 BLOQUEADO`.
