@@ -24,7 +24,7 @@ const CHAT_RECORD = (file) => `${file} es el registro de lo que la persona dijo 
   + 'runner, nunca una herramienta.'
 
 const SELF = (file) => `${file} es la aprobación de una persona, y escribírsela es aprobarse solo. Si la `
-  + 'persona quiere autorizar algo, que lo diga en el chat —nombrándolo, o contestando «dale» al bloqueo— o '
+  + 'persona quiere autorizar algo, que lo diga en el chat —nombrándolo, o confirmando el bloqueo— o '
   + 'que edite el archivo ella.'
 
 // Las líneas van en el mensaje porque son lo que el «dale» va a aprobar: una confirmación que no muestra
@@ -32,7 +32,7 @@ const SELF = (file) => `${file} es la aprobación de una persona, y escribírsel
 const UNASKED = (file, missing) => `${file} es la aprobación de una persona y estas líneas no las pidió:\n`
   + missing.map((line) => `  ${line}\n`).join('')
   + 'Escribí sólo lo que ella nombró en su mensaje. Si hacen falta las otras, decile cuáles y por qué, y '
-  + 'esperá: si contesta «dale», reintentá la misma escritura y pasa.'
+  + 'pedile que lo confirme con sus palabras: si lo que contesta es un sí, reintentá la misma escritura y pasa.'
 
 // **Por shell se frena toda escritura.** Es la misma decisión que toma `ops-config`, y por qué un comando
 // no se puede comparar está escrito allá. Lo que la trae hasta acá es que el contenido es lo único que

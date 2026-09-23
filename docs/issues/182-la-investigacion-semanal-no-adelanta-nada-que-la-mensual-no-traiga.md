@@ -150,3 +150,9 @@ El caso 179 resolvió la parte de los rechazos. Éste se pregunta si la semana e
   - Volver a ofrecer `semanal` en el dispatch pone en rojo la misma prueba.
 - La corrida real del 24 es la que lo confirma en producción; hasta entonces lo medido es la derivación
   y el workflow.
+
+### Prueba real posterior, 2026-09-23
+
+Desde una instancia (banco `suelto`), no desde el repositorio: `node tools/ops.js agents list --json` dio
+`{ mensual: 52, trimestral: 1 }`, y `learn` sobre un cargo forkeado armó el informe con el encabezado
+`# Investigación — 2026-09-23`. El disparo del cron del 24 no se forzó: pondría a investigar a los 52.

@@ -74,11 +74,12 @@ guards lo leen:
 
 - lo que la persona **pidió nombrándolo** pasa: «leé el `.env`» autoriza leer el `.env`; «no toques el
   `.env`» no, y tampoco una pregunta o un comentario que sólo lo nombra —«¿qué tiene el `.env`?»—;
-- lo que se frenó sin que lo nombrara queda anotado, y un «dale» en el mensaje siguiente aprueba
-  exactamente eso;
+- lo que se frenó sin que lo nombrara queda anotado, y su confirmación en el mensaje siguiente —con las
+  palabras que sea— aprueba exactamente eso. Si ese mensaje niega, frena o pregunta, no aprueba nada; y lo
+  que se frenó mientras ella decía que no, no queda esperando;
 - lo que un guard dejó pasar porque ella lo pidió sigue valiendo mientras dure la sesión, **salvo en los
   gates de un commit** —`governance`, `verify` y `dependencies`—, que preguntan cada vez: ahí vale lo que
-  pidió el mensaje en curso o un «dale», igual que para publicar;
+  pidió el mensaje en curso o su confirmación al bloqueo, igual que para publicar;
 - `plan-first` no aplica: el plan es del trabajo que va por tareas.
 
 No cuenta cuando no hay persona —CI, o un aviso del runner como el de un subagente que terminó—, cuando lo

@@ -108,8 +108,9 @@ te frena es el peor para elegir bien.
 **Si lo pediste vos en el chat, no hace falta nada.** Los guards contienen al agente cuando decide solo o
 cuando trabaja dentro de un recorrido; lo que vos pedís directo no se frena. Nombrá lo que querés que
 toque —«borrá la prueba de altas», «reescribí la migración 004»— y pasa sin preguntarte de nuevo. Si tu
-pedido no lo nombraba y algo se frena, el agente te dice qué y por qué: contestá «dale» y pasa exactamente
-eso. **Con los gates de un commit se pregunta cada vez**, como con publicar: gobernanza, los gates del
+pedido no lo nombraba y algo se frena, el agente te dice qué y por qué: confirmalo con tus palabras —un
+«dale» alcanza, pero no hace falta esa palabra— y pasa exactamente eso. Si contestás negando, frenando o
+preguntando, no pasa. **Con los gates de un commit se pregunta cada vez**, como con publicar: gobernanza, los gates del
 stack y los lockfiles no heredan lo que autorizaste en un mensaje anterior, porque cada commit es otra
 operación. Y `plan-first` no te pide un plan cuando el cambio lo pediste vos: el plan es para el trabajo que va
 por tareas. Funciona en Claude Code, Codex y Gemini, que le avisan a Cauce cuando mandás un mensaje; en
@@ -258,7 +259,7 @@ Publicar es lo único de todo eso que este proyecto puede habilitar, y `runner.a
 `ops.config.json` es la autorización que R10 pide para las ramas de trabajo. La rama viva —`main`,
 `master` o la rama por defecto del remoto— no la alcanza si el proyecto no la nombra en
 `runner.pushToLiveBranches`, y un subagente no publica con ningún permiso. Sin la llave, pasa el push
-que la persona pide en el chat nombrando el remoto y la rama, o el que ella aprueba contestando «dale».
+que la persona pide en el chat nombrando el remoto y la rama, o el que ella confirma cuando se frena.
 Reescribir historia publicada no entra en el trato: un `push --force` se frena con la llave prendida o
 apagada.
 

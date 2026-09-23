@@ -185,3 +185,17 @@ qué quedaban ramas `automation/*` en el remoto.
   - Sin permiso de escritura.
 - **La corrida real es la del 24**, primera del ciclo con este job. Ahí se ve si las ramas de los
   `propone: no` de esa tanda desaparecen en la corrida siguiente.
+
+### Prueba real posterior, 2026-09-23
+
+Una corrida real en GitHub Actions, `35863075293`. Se recreó
+`automation/cloud-architect-research-2026-09-21` en `25f41701`, el head con que se mergeó el #543, y se
+lanzó el workflow con un slug inexistente para que ningún job gastara modelos:
+
+```
+discover: failure          ← a propósito, «No existe el agente ni el recorrido»
+prune-merged: success
+##[notice]automation/cloud-architect-research-2026-09-21, mergeada y sin cambios desde entonces.
+```
+
+`git ls-remote --heads origin 'automation/*'` quedó en 0.

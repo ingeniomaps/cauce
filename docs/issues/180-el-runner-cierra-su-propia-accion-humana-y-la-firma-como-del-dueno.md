@@ -177,3 +177,13 @@ Recorriendo lo que enumeró:
   - Sin relectura.
   - `ready-human` sin su slug.
   - Ignorando `pending`.
+
+### Prueba real posterior, 2026-09-23
+
+- **Tres agentes reales, no simulados**, cada uno con el prompt de `plan-human` renderizado desde el
+  workflow y el contrato real de `planning/PROTOCOL.md`, sobre su propia copia de un banco `tarea`: dos
+  con el arreglo, uno de control con el prompt de 0.97.0. Las tres filas quedaron `pendiente`, verificado
+  en disco y en `ops context --json`, que devolvió `humanActions: ["tarea-medida:pendiente"]` en los tres.
+- **Lo que eso muestra y lo que no:** el control tampoco reprodujo el fallo, así que la corrida real prueba
+  que el prompt nuevo funciona y no rompe nada, no que sea lo que evita el fallo. La parte determinista
+  —la relectura en `context`— sí queda probada en real.

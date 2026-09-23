@@ -35,7 +35,12 @@ test('un push que la persona ordena con su remoto y su rama pasa, y ningún otro
       ["don't push feat/x to origin", 'git push origin feat/x'],
       ['¿qué tiene origin feat/x?', 'git push origin feat/x'],
       ['subí feat/xy a origin2', 'git push origin feat/x'],
-    ]) blocked('destructive', push(chat.says(mensaje), command), WORK)
+    ]) {
+      // Cada frase en su sesión: lo que se mide es si la frase ordena, y con una sesión compartida el bloqueo
+      // de la anterior queda pendiente y ésta lo confirmaría (caso 184) — otra pregunta, que es del chat.
+      const sola = chatSession()
+      try { blocked('destructive', push(sola.says(mensaje), command), WORK) } finally { sola.close() }
+    }
     // Sin persona no hay orden: un subagente, CI o el registro de otro mensaje.
     const orden = chat.says('subí feat/x a origin')
     blocked('destructive', push((extra) => orden({ ...extra, agent_id: 'sub' }), 'git push origin feat/x'),
@@ -56,7 +61,7 @@ test('un «dale» a un push frenado aprueba ese push y ningún otro', () => {
   const chat = chatSession()
   try {
     const frenado = messageOf('destructive', push(chat.says('subí la rama'), 'git push origin feat/x'))
-    assert.match(frenado, /si contesta «dale», reintentá el mismo push/)
+    assert.match(frenado, /si lo que contesta es un sí, reintentá el mismo push/)
     assert.match(frenado, /\n {2}push origin feat\/x\n/)
     const dale = chat.says('dale')
     assert.doesNotThrow(() => execute('destructive', push(dale, 'git push origin feat/x')))
