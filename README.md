@@ -202,6 +202,7 @@ Lee [template/planning/PROTOCOL.md](template/planning/PROTOCOL.md) para el contr
 | `ops agents fork <cargo>` | Copia un cargo del catálogo a la empresa, que pasa a mantenerlo. |
 | `ops learn <agent>` | Prepara el informe de aprendizaje del período. |
 | `ops learn <agent> --proposal` | Consolida los informes en una propuesta, sin aplicar cambios. |
+| `ops learn <agent> --archived --reason "<motivo>"` | Descarta la propuesta sin aplicarla. El motivo lo lee el informe siguiente, para no volver a recomendarla. |
 | `ops evaluate <agent>` | Valida controles, casos y propuestas del cargo. |
 | `ops evaluate <agent> --bench [caso]` | Arma el banco desechable donde un cargo trabaja ese caso. |
 | `ops flow list` | Lista equipos disponibles. |

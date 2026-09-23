@@ -9,6 +9,7 @@ const { atomicWrite } = require('../core/files')
 const {
   REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME, assertWritableTeam, assertWritable, lastOfPeriod,
   isoDate, month, proposalOrder, proposalFiles, frontmatterState, proposalState, reportFiles, CLOSED,
+  discardedProposals,
 } = require('./learning-files')
 // Cerrar una propuesta vive en su propio módulo; se reexporta para no mover a cada llamador.
 const { seal, archive } = require('./learning-seal')
@@ -42,7 +43,8 @@ function markConsolidated(file) {
 }
 
 function prepareReport(root, agent, now = new Date()) {
-  const reports = path.join(assertWritable(root, agent), 'learning', 'reports')
+  const learning = path.join(assertWritable(root, agent), 'learning')
+  const reports = path.join(learning, 'reports')
   const file = path.join(reports, `${isoDate(now)}.md`)
   fs.mkdirSync(reports, { recursive: true })
   if (fs.existsSync(file)) return { file, created: false }
@@ -62,7 +64,7 @@ propone: por-completar
 ---
 
 # Investigación semanal — ${isoDate(now)}
-
+${decided(discardedProposals(path.join(learning, 'proposals')))}
 <!-- Tres convenciones que el ciclo necesita y que nada más sostiene:
 
   · Etiquetá cada hallazgo H1, H2, … en el orden en que aparecen. «Evidencia» y «Recomendación» se
@@ -94,6 +96,26 @@ propuesta consolidada. -->
 ## Preguntas abiertas
 `)
   return { file, created: true }
+}
+
+// Lo que ya se descartó, dicho donde el cargo lo va a leer: en el informe que está por completar, y no
+// en su prompt ni en el `AUTOMATION.md` de cada cargo. Un prompt lo repetiría en cincuenta archivos, y
+// basta uno que no lo copie para que ese cargo vuelva a proponer lo descartado cada semana.
+//
+// Va en un comentario, fuera de toda sección, por lo mismo que las convenciones de abajo: dentro de
+// «Recomendación» viajaría a la propuesta mensual.
+function decided(discarded) {
+  if (!discarded.length) return ''
+  const lines = discarded.map(({ name, reason }) => `  · learning/proposals/${name}: ${reason}`)
+  return `
+<!-- Ya se decidió no aplicar estas propuestas. Lo que proponían está en cada archivo, en «Cambio
+propuesto» y «Hallazgos»; el motivo, acá:
+
+${lines.join('\n')}
+
+No vuelvas a recomendar lo descartado. Si encontrás un hecho que el motivo no contemplaba —una versión,
+una fecha, una norma nueva—, recomendalo nombrando la propuesta y qué cambió desde entonces. -->
+`
 }
 
 // Abre la revisión siguiente. No vuelve a consolidar los informes semanales: ya se consolidaron en la

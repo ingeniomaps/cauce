@@ -16,6 +16,18 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.98.0] - 2026-09-17
 
+### Cambiado
+
+- **Descartar una propuesta que decide un cambio pide el motivo, y el informe siguiente lo lee.**
+  `ops learn <cargo> --archived` se niega sobre una propuesta cuyo «Cambio propuesto» dice qué hacer si no
+  lleva `--reason "<motivo>"`. El motivo queda en el documento, como `- Motivo:`, y en la fila de
+  `HISTORY.md`. Cada informe semanal nuevo trae arriba, en un comentario, las propuestas descartadas del
+  cargo con su motivo, y le pide no volver a recomendarlas salvo que aparezca un hecho nuevo.
+
+  Antes, archivar no dejaba ningún porqué, y el mismo hallazgo volvía todas las semanas. Una propuesta
+  con el molde intacto se sigue archivando sin motivo: nadie decidió nada, y lo que traía sigue vivo.
+  Si tenés un script que archiva propuestas decididas, agregale `--reason`.
+
 ### Corregido
 
 - **La estrategia de prueba que el plan fija llega al WIP y a quien construye.** `testStrategy` es

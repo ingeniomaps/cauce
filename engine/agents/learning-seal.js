@@ -93,7 +93,7 @@ function proposalFile(root, agent, period = '', kind = 'agent') {
   return path.join(dir, name)
 }
 
-function archive(root, agent, period = '', kind = 'agent') {
+function archive(root, agent, period = '', kind = 'agent', reason = '') {
   const file = proposalFile(root, agent, period, kind)
   const text = fs.readFileSync(file, 'utf8')
   const state = proposalState(text)
@@ -116,31 +116,43 @@ function archive(root, agent, period = '', kind = 'agent') {
   // que `claim` usa para decir de quién es una tarea. Sin esto la propuesta quedaba en «por definir» y no
   // había forma de distinguir una decisión de un olvido.
   const responsible = owner(root) || 'sin identificar'
-  atomicWrite(file, text
+  // Descartar lo que alguien decidió exige decir por qué, y el motivo va al documento porque es lo que lee
+  // el informe siguiente (`discardedProposals`). Sin él el hallazgo volvía cada semana: nada distinguía
+  // «se miró y no va» de «nadie lo miró», y el cargo no tenía cómo saber que ya estaba contestado. Una
+  // propuesta con el molde intacto no lo exige: ahí no hubo decisión que explicar, y lo que traía sigue
+  // vivo para la próxima — a menos que quien archiva sí haya mirado los hallazgos y lo diga.
+  const why = reason.replace(/\s+/g, ' ').trim()
+  const blank = undecided(change)
+  if (!blank && !why) {
+    throw new Error(
+      `${path.basename(file)} decide un cambio: descartarlo pide --reason "<por qué no va>". `
+      + 'El motivo es lo que evita que el próximo informe lo vuelva a recomendar.',
+    )
+  }
+  const stamped = text
     .replace(/^status:\s*\S+\s*$/m, 'status: archived')
     // `UNSEALED` y no sólo «pendiente»: desde que se puede archivar una firmada sin decidir, el cuerpo
     // llega diciendo «aprobada» y se quedaba así con el frontmatter en `archived`. Es la contradicción
     // que el comentario de `seal` nombra, por el otro destino.
     .replace(UNSEALED, '- Estado: archivada')
     .replace(/^-[ \t]*Responsable:[ \t]*por definir[ \t]*$/mi, `- Responsable: ${responsible}`)
-    .replace(/^-[ \t]*Fecha:[ \t]*por definir[ \t]*$/mi, `- Fecha: ${isoDate(new Date())}`))
+    .replace(/^-[ \t]*Fecha:[ \t]*por definir[ \t]*$/mi, `- Fecha: ${isoDate(new Date())}`)
+  atomicWrite(file, why ? stamped.replace(/^(-[ \t]*Estado:[ \t]*archivada[ \t]*)$/m, `$1\n- Motivo: ${why}`) : stamped)
   // La fila va para los dos tipos, y no sólo para los recorridos como en `seal`: allá los cargos los
   // registra `agent-promote` al aplicar, y archivar no pasa por ningún workflow que lo haga.
   // La raíz del cargo, que es `<cargo>/learning/proposals/<archivo>` sin sus tres últimos tramos:
   // `appendHistory` agrega `learning/` por su cuenta.
   //
   // La celda del cambio lleva el criterio y no queda vacía, para que la fila no se lea como un registro a
-  // medias. Son dos y dicen cosas distintas: archivar lo que alguien miró **es** decidir que no cambia
-  // nada, y archivar un documento que nadie decidió es tirar el andamio — la firma se gastó sobre el molde
-  // intacto y no hubo nada que aprobar. Escribir el primero sobre el segundo pondría en el historial que se
-  // miró algo que nadie miró, y ese archivo es lo que alguien lee dentro de seis meses.
-  const blank = undecided(change)
-  appendHistory(path.dirname(path.dirname(path.dirname(file))), file, responsible,
-    blank ? 'Se archivó sin decidir: el documento quedó con el molde.' : 'Se miró y no cambia nada.',
-    'archivada')
+  // medias. Son dos y dicen cosas distintas: descartar con motivo **es** decidir, y archivar un documento
+  // que nadie decidió es tirar el andamio — la firma se gastó sobre el molde intacto y no hubo nada que
+  // aprobar. Escribir el primero sobre el segundo pondría en el historial que se miró algo que nadie
+  // miró, y ese archivo es lo que alguien lee dentro de seis meses.
+  const verdict = why ? `Descartada: ${why}` : 'Se archivó sin decidir: el documento quedó con el molde.'
+  appendHistory(path.dirname(path.dirname(path.dirname(file))), file, responsible, verdict, 'archivada')
   // `blank` sale acá y no lo recalcula quien imprime: son la misma pregunta, y dos lecturas de la misma
   // sección se separan sin que nada falle.
-  return { file, already: false, blank }
+  return { file, already: false, blank, reason: why }
 }
 
 // Una fila por propuesta cerrada, cualquiera sea el destino. El cambio va en una línea: el documento
