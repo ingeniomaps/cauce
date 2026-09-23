@@ -400,3 +400,42 @@ test('la rama se borra cuando el merge ocurrió, y sólo entonces', () => {
   assert.match(fuente, /permissions:\s*\n\s*contents: write/,
     'con permiso para escribir, que es lo que el borrado necesita')
 })
+
+// Lo que mergea el auto-merge del bot no dispara `delete-merged-branch.yml`, así que el ciclo barre sus
+// propias ramas (caso 183). Se corre el paso tal cual con un `gh` falso que sólo anota lo que le piden
+// borrar: ninguna prueba toca un remoto, y lo que se mide es qué decide borrar el paso.
+test('el ciclo borra sus ramas ya mergeadas, y sólo ésas', () => {
+  const dir = tempRoot('cauce-prune-')
+  const bin = path.join(dir, 'bin')
+  const borradas = path.join(dir, 'borradas')
+  fs.mkdirSync(bin)
+  // Cuatro ramas: mergeada y quieta, mergeada y movida después, con el PR abierto, y una fuera de
+  // `automation/` que el prefijo de la consulta no traería pero el paso tiene que ignorar igual.
+  fs.writeFileSync(path.join(bin, 'gh'), `#!/usr/bin/env bash
+case "$*" in
+  *matching-refs*) printf '%s\\n' 'refs/heads/automation/quieta aaa' 'refs/heads/automation/movida bbb' \\
+    'refs/heads/automation/abierta ccc' 'refs/heads/fix/otra ddd' ;;
+  *"--head automation/quieta"*) echo aaa ;;
+  *"--head automation/movida"*) echo zzz ;;
+  *"--head automation/abierta"*) echo '' ;;
+  *"--head fix/otra"*) echo ddd ;;
+  *"--method DELETE"*) echo "\${@: -1}" >> '${borradas}' ;;
+  *) echo "gh inesperado: $*" >&2; exit 1 ;;
+esac
+`, { mode: 0o755 })
+  const paso = workflowStep(workflow('agent-learning'), 'id: prune')
+  assert.ok(paso, 'el paso existe')
+  const hecho = spawnSync('bash', ['-c', paso], {
+    encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, GITHUB_REPOSITORY: 'o/r' },
+  })
+  assert.equal(hecho.status, 0, hecho.stderr)
+  const borrado = fs.existsSync(borradas) ? fs.readFileSync(borradas, 'utf8').trim().split('\n') : []
+  assert.deepEqual(borrado, ['repos/o/r/git/refs/heads/automation/quieta'], 'sólo la mergeada que no se movió')
+  assert.match(hecho.stdout, /automation\/movida cambió después de su merge/, 'y la movida se dice, no se borra')
+  assert.doesNotMatch(hecho.stdout, /abierta/, 'y una con el PR abierto no es noticia: no se mergeó')
+
+  // Corre en cada corrida del ciclo, sin depender de un evento, y con permiso para borrar.
+  const job = workflow('agent-learning').split('\n  prune-merged:\n')[1].split('\n  research:\n')[0]
+  assert.doesNotMatch(job, /\n {4}(?:if|needs):/, 'no depende de nada que pueda no llegar')
+  assert.match(job, /permissions:\s*\n\s*contents: write/, 'y puede borrar')
+})

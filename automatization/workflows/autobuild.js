@@ -43,6 +43,13 @@ const GATE = `${P}/AWAITING_REVIEW.md`
 // suelta no es un envoltorio. Por eso también la escapada en vez de alternar el estilo de comillas.
 const QUOTES = ['\'', '"']
 
+// Si la fila que registró una parada quedó pendiente. `context` sólo lista las pendientes, así que
+// preguntar por la presencia de la tarea alcanza, y no hace falta que un modelo lea el estado.
+const HUMAN_ROW = {
+  type: 'object', additionalProperties: false, required: ['readOk', 'pending'],
+  properties: { readOk: { type: 'boolean' }, pending: { type: 'boolean' } },
+}
+
 const CONTEXT = {
   type: 'object', additionalProperties: false,
   required: ['blocked', 'hasTask', 'wipActive', 'queued', 'cast', 'readOk'],
@@ -440,13 +447,32 @@ const read = (prompt, options = {}) => agent(`${BASE}\n\n${prompt}`, options)
 const run = (prompt, options = {}) => agent(`${SCOPE()}\n\n${prompt}`, options)
 const write = (prompt, options = {}) => agent(`${LEDGER()}\n\n${prompt}`, options)
 
-// Las tres paradas que dejan una fila en HUMAN_ACTIONS delegan esa escritura a un agente, y esa fila es
-// el único rastro de la parada: sin ella el recorrido informa un estado que el disco no tiene. Por eso
-// se espera —lanzarla y volver en la línea siguiente la abandona— y por eso se mira si contestó.
-// Devuelve lo que hay que agregarle al detalle, vacío cuando la fila quedó pedida. Caso 087.
-const registerHuman = async (prompt, label) => (await write(prompt, { label })
-  ? ''
-  : ` — la fila en ${HUMAN} no se pudo registrar: escribila a mano`)
+// Las paradas que dejan una fila en HUMAN_ACTIONS delegan esa escritura a un agente, y esa fila es el
+// único rastro de la parada: sin ella el recorrido informa un estado que el disco no tiene. Por eso se
+// espera —lanzarla y volver en la línea siguiente la abandona— y por eso se mira si contestó (caso 087).
+// Devuelve lo que hay que agregarle al detalle, vacío cuando la fila quedó como tiene que quedar.
+//
+// Contestar no alcanza: el agente que acaba de escribir el diagnóstico entero lo lee como ya resuelto, y
+// en una corrida real escribió la fila `resuelta` y la firmó como «decidido por el dueño», desbloqueando
+// la tarea sin que nadie decidiera nada (caso 180). Por eso cada pedido arranca diciendo que la fila nace
+// pendiente, y cuando la fila es de la propia tarea se relee en `context`, que sólo lista las pendientes.
+const HUMAN_ROW_STATE = 'La fila nace con estado `pendiente`, sin excepción: registrás el bloqueo, no lo '
+  + 'resolvés —lo resuelve una persona—. No escribas una decisión ni se la atribuyas a nadie.'
+const registerHuman = async (prompt, label, slug = '') => {
+  if (!(await write(`${HUMAN_ROW_STATE}\n\n${prompt}`, { label }))) {
+    return ` — la fila en ${HUMAN} no se pudo registrar: escribila a mano`
+  }
+  if (!slug) return ''
+  const row = await read(
+    `Corré "node tools/ops.js context ${P} --json" desde ${ROOT}. Poné pending en true sólo si humanActions `
+    + `trae una fila cuya task sea ${slug}, y readOk en true sólo si el comando salió con código 0 y devolvió `
+    + 'JSON. El comando es la fuente de verdad: no abras archivos de planning.',
+    { schema: HUMAN_ROW, label: 'human-row' },
+  )
+  if (!row || !row.readOk) return ` — no se pudo comprobar la fila de ${slug} en ${HUMAN}: revisala a mano`
+  return row.pending ? ''
+    : ` — la fila de ${slug} en ${HUMAN} no quedó pendiente: la resuelve una persona, revisala a mano`
+}
 
 // Gate, mutex de WIP y selección de tarea salen de un comando determinista: AWAITING_REVIEW, BACKLOG,
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
@@ -698,7 +724,7 @@ while (rounds++ < MAX_TASKS) {
     const nota = await registerHuman(
       `Registrá ${unit.id} en ${HUMAN}: nadie pudo escribir un plan que sobreviva a la crítica. `
       + `Motivo: ${detail}. La acción humana es revisar si la unidad son dos resultados con vidas `
-      + `distintas y partirla, o dejarla entera con la razón escrita.`, 'plan-human')
+      + `distintas y partirla, o dejarla entera con la razón escrita.`, 'plan-human', unit.id)
     await releaseBlocked()
     return stop(reason, `${detail}${nota}`)
   }
@@ -717,7 +743,7 @@ while (rounds++ < MAX_TASKS) {
       if (!ready.ready) {
         const nota = await registerHuman(
           `Registrá ${task.id} en ${HUMAN} con el motivo y una acción humana exacta: ${ready.reason}.`,
-          'ready-human')
+          'ready-human', task.id)
         await releaseBlocked()
         return stop('not-ready', `${ready.reason}${nota}`)
       }
@@ -1084,7 +1110,7 @@ while (rounds++ < MAX_TASKS) {
   if (ambiguous) {
     const nota = await registerHuman(
       `Registrá ${task.id} en ${HUMAN}: el criterio "${ambiguous.criterion}" no dice qué habría ` +
-      `que aserciar, y hace falta la decisión que lo fija.`, 'verify-human')
+      `que aserciar, y hace falta la decisión que lo fija.`, 'verify-human', task.id)
     return stop('acceptance-ambiguous', `${ambiguous.criterion}${nota}`)
   }
   if (verified.uncovered.length) {

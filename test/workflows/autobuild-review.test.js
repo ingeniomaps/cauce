@@ -276,6 +276,45 @@ test('la fila que registra la parada se espera, y si no ocurre la parada lo dice
   assert.match(mudo.result.detail, /no se pudo registrar: escribila a mano/)
 })
 
+// La fila que registra una parada nace pendiente: la resuelve una persona, no el agente que la escribe.
+// En una corrida real el agente la escribió `resuelta` y firmada por el dueño, y la tarea quedó
+// desbloqueada sin que nadie decidiera nada (caso 180). Las cuatro paradas llevan la instrucción, y las
+// tres que registran la propia tarea releen si quedó pendiente.
+test('la fila de una parada nace pendiente, y si no quedó así la parada lo dice', async () => {
+  const bloqueado = {
+    verdict: 'bloqueado', consulted: ['api/alta.go'],
+    concerns: [{ detail: 'la aceptación mezcla dos resultados', blocking: true }],
+  }
+  const ambigua = {
+    passed: true, details: 'verde', commands: [{ cmd: 'go test ./...', exitCode: 0 }],
+    uncovered: [{ criterion: 'el alta es rápida', cause: 'ambiguous' }],
+  }
+  const decision = { detail: 'el formato de la cota fija un contrato público', blocking: false, decision: true }
+  const paradas = [
+    ['plan-human', { [KEY.critique]: bloqueado }, KEY.planRow],
+    ['ready-human', { [KEY.ready]: { ready: false, needsHuman: true, reason: 'falta la cota' } }, KEY.readyRow],
+    ['verify-human', { [KEY.verify]: ambigua }, KEY.verifyRow],
+    ['review-human', { [KEY.review]: { verdict: 'aprobado', consulted: ['api/alta.go'], concerns: [decision] } }],
+  ]
+  for (const [label, cambio, relectura] of paradas) {
+    const { prompts, result } = await runFlow(cambio)
+    const pedido = prompts.find((one) => one.key.endsWith(`|${label}`))
+    assert.ok(pedido, `${label} se pidió`)
+    assert.match(pedido.prompt, /nace con estado `pendiente`, sin excepción/, `${label} dice que nace pendiente`)
+    assert.match(pedido.prompt, /No escribas una decisión ni se la atribuyas a nadie/, label)
+    if (!relectura) continue
+    assert.doesNotMatch(result.detail, /no quedó pendiente|no se pudo comprobar/, `${label}: nada que avisar`)
+
+    // La fila quedó resuelta: el motivo de la parada no cambia, y el detalle lo dice.
+    const resuelta = await runFlow({ ...cambio, [relectura]: { readOk: true, pending: false } })
+    assert.equal(resuelta.result.reason, result.reason, `${label}: el motivo es el de la parada`)
+    assert.match(resuelta.result.detail, /no quedó pendiente: la resuelve una persona/, label)
+    // Y si no se pudo leer, no se afirma nada sobre la fila.
+    const ciega = await runFlow({ ...cambio, [relectura]: { readOk: false, pending: false } })
+    assert.match(ciega.result.detail, /no se pudo comprobar la fila de T-1/, label)
+  }
+})
+
 // Caso 101. El tope lo aplica el recorrido sobre lo que le pasa al agente: cinco hallazgos no
 // bloqueantes llegan como tres, en una línea cada uno, y los dos que no entran quedan contados en el
 // hecho de revisión, que es lo que viaja a `done/`.

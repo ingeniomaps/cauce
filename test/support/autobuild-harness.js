@@ -35,6 +35,10 @@ const KEY = {
   // 0.72.0 y un caso comprueba que nunca vuelva a pedirse. Sale del guion cuando salga ese caso.
   pick: 'Pick|expand-epic',
   closing: 'Closing|closing',
+  // La relectura de la fila que registra cada parada de la propia tarea (caso 180), una por fase.
+  planRow: 'Critique|human-row',
+  readyRow: 'Ready|human-row',
+  verifyRow: 'Verify|human-row',
 }
 
 // Respuestas del camino que llega hasta el final. Cada escenario cambia una sola y asercia el efecto:
@@ -80,6 +84,9 @@ function baseScript() {
     [KEY.commit]: { committed: true, hash: 'abc123' },
     [KEY.pick]: { expanded: false },
     [KEY.closing]: { passed: true, details: 'check verde' },
+    [KEY.planRow]: { readOk: true, pending: true },
+    [KEY.readyRow]: { readOk: true, pending: true },
+    [KEY.verifyRow]: { readOk: true, pending: true },
   }
 }
 
