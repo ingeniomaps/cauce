@@ -104,9 +104,11 @@ function HOW(variable, lines, input, pasteable = lines) {
   // `check` la muestra al final de la corrida —es lo que trajo el 117—, y al concederla no la decía nadie
   // (caso 170).
   const ask = chat
-    ? 'Decile a la persona qué se frenó y por qué, y esperá: si contesta «dale», reintentá el mismo cambio y '
-      + 'pasa. Ese «dale» cubre lo que se frenó y nada más —algo nuevo vuelve a frenar— y sigue valiendo en '
-      + 'los mensajes siguientes hasta que ella lo niegue. '
+    ? 'Decile a la persona qué se frenó y por qué, y pedile que lo confirme con sus palabras: un «dale» '
+      + 'alcanza, pero no hace falta esa palabra. Si lo que contesta es un sí, reintentá el mismo cambio y '
+      + 'pasa; si duda, pregunta o dice que no, no reintentes. Juzgarlo te toca a vos: el guard sólo frena la '
+      + 'respuesta que niega, frena o pregunta. Esa confirmación cubre lo que se frenó y nada más —algo nuevo '
+      + 'vuelve a frenar— y sigue valiendo en los mensajes siguientes hasta que ella lo niegue. '
     : ''
   const paste = pasteable.length
     ? (chat ? 'Si prefiere aprobarlo a mano, que pegue ella tal cual en' : 'Aprobalo pegando tal cual en')

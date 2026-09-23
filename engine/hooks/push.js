@@ -105,7 +105,7 @@ function liveMessage(live, input) {
   // una sesión real, con «pegando tal cual» a secas el agente se ofreció a escribirse la aprobación.
   return `'git push' publica cambios en ${names}, la rama viva, y requiere una acción humana: ni `
     + 'runner.allowPush ni una orden en el chat llegan ahí sin un permiso por rama. Decile a la persona qué '
-    + 'se frenó y esperá: un «dale» no lo destraba. Lo da ella, nombrando la rama en '
+    + 'se frenó y esperá: confirmarlo en el chat no lo destraba. Lo da ella, nombrando la rama en '
     + 'runner.pushToLiveBranches de ops.config.json, que la deja como una rama de trabajo'
     + (lines.length ? `, o pegando ella tal cual en ${AP.where(input)} estas líneas:\n`
       + lines.map((line) => `  ${line}\n`).join('') : '.')
@@ -115,7 +115,8 @@ function workMessage(items, input) {
   const lines = items.filter((item) => item.startsWith('push '))
   const chat = CHAT.hold(input, items)
   const how = chat
-    ? 'Decile a la persona qué se frenó y esperá: si contesta «dale», reintentá el mismo push y pasa. '
+    ? 'Decile a la persona qué se frenó y pedile que lo confirme con sus palabras: si lo que contesta es un '
+      + 'sí, reintentá el mismo push y pasa; si duda, pregunta o dice que no, no reintentes. '
       + 'También pasa si lo pide nombrando el remoto y la rama, como «subí feat/x a origin».'
     : 'Lo destraba una persona pidiéndolo en el chat con el remoto y la rama.'
   const paste = lines.length

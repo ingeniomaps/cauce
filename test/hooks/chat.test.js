@@ -50,7 +50,7 @@ test('un «dale» aprueba exactamente lo que quedó frenado, y nada más', () =>
     const pedido = chat.says('revisá cómo arranca el servicio')
     // Con persona, el archivo es de ella: el mensaje no le dice al agente que se lo escriba.
     const frenado = messageOf('secrets-read', lee(pedido))
-    assert.match(frenado, /si contesta «dale», reintentá el mismo cambio/)
+    assert.match(frenado, /pedile que lo confirme con sus palabras/)
     assert.doesNotMatch(frenado, /Aprobalo pegando/)
     // Y el espejo, que es la mitad que no se escribe sola: sin persona en el chat no se ofrece contestar,
     // porque no hay a quién (caso 118). La rama existe en `HOW` y hasta acá nadie la fijaba por este lado,
@@ -200,11 +200,11 @@ test('una notificación de tarea de fondo no se lleva puesta a la persona del ch
   const chat = chatSession()
   try {
     const pedido = chat.says('revisá cómo arranca el servicio')
-    assert.match(messageOf('secrets-read', lee(pedido)), /si contesta «dale»/, 'con la persona hablando')
+    assert.match(messageOf('secrets-read', lee(pedido)), /pedile que lo confirme/, 'con la persona hablando')
 
     const despertado = chat.says('<task-notification>\n<task-id>abc</task-id>\n</task-notification>')
     const frenado = messageOf('secrets-read', lee(despertado))
-    assert.match(frenado, /si contesta «dale», reintentá el mismo cambio/,
+    assert.match(frenado, /pedile que lo confirme con sus palabras/,
       'y sigue ofreciéndose después de la notificación, que es cuando la persona está leyendo')
     assert.doesNotMatch(frenado, /Aprobalo pegando/, 'sin mandarla a copiar y pegar')
 
@@ -255,7 +255,7 @@ test('el bloqueo dice hasta dónde llega el «dale», en sus dos mitades', () =>
   const chat = chatSession()
   try {
     const frenado = messageOf('secrets-read', lee(chat.says('revisá cómo arranca el servicio')))
-    assert.match(frenado, /si contesta «dale», reintentá el mismo cambio/, 'sigue ofreciendo la salida corta')
+    assert.match(frenado, /pedile que lo confirme con sus palabras/, 'sigue ofreciendo la salida corta')
     assert.match(frenado, /lo que se frenó y nada más/, 'dice que no cubre lo que venga después')
     assert.match(frenado, /mensajes siguientes/, 'y que no se agota en el reintento')
 
@@ -281,4 +281,32 @@ test('lo que el mensaje promete sobre el «dale» es lo que el mecanismo hace', 
     // «sigue valiendo en los mensajes siguientes»: sin repetir el pedido.
     assert.doesNotThrow(() => execute('secrets-read', lee(chat.says('seguí con eso'))))
   } finally { chat.close() }
+})
+
+// Caso 184. Confirmar un bloqueo no exige ninguna palabra: el guard aprobaba sólo si el mensaje empezaba
+// con una de once formas, y «listo», «claro» o «bueno dale» volvían a frenar lo que la persona aprobó. Lo
+// que el guard sigue decidiendo es la dirección segura: negar, frenar o preguntar no aprueban, y lo que se
+// frena mientras ella dice que no, no queda esperando una confirmación.
+test('un bloqueo se confirma con cualquier palabra, y negar, frenar o preguntar no lo aprueba', () => {
+  const root = planFirstRoot('ops-hook-chat-confirma-', WIP_CON_PLAN)
+  const lee = (call) => call({ cwd: root, tool_input: { file_path: path.join(root, '.env') } })
+  // Una sesión por respuesta, para que ninguna confirme el bloqueo de otra.
+  const sesiones = []
+  const tras = (respuesta, pedido = 'revisá cómo arranca el servicio') => {
+    const chat = chatSession()
+    sesiones.push(chat)
+    messageOf('secrets-read', lee(chat.says(pedido)))
+    return () => execute('secrets-read', lee(chat.says(respuesta)))
+  }
+  try {
+    for (const si of ['dale', 'listo', 'claro', 'confirmo', 'bueno dale', 'procede', 'perfecto, seguí', 'está bien']) {
+      assert.doesNotThrow(tras(si), `«${si}» confirma`)
+    }
+    for (const no of ['no', 'mejor no', 'pará', 'esperá un momento', 'cancelá eso', '¿para qué sirve?', 'stop']) {
+      assert.throws(tras(no), (error) => error.blocked === true, `«${no}» no confirma`)
+    }
+    // Frenado mientras ella decía que no: el mensaje siguiente, aunque sea un sí, no lo reabre.
+    assert.throws(tras('listo', 'no toques el .env'), (error) => error.blocked === true,
+      'lo que ella acababa de negar no queda esperando')
+  } finally { for (const chat of sesiones) chat.close() }
 })

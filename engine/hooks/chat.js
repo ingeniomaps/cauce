@@ -157,10 +157,15 @@ function ordersPush(text, item) {
   })
 }
 
-// Quien contesta a un bloqueo que quedó pendiente. Sólo el principio del mensaje: «dale» es la respuesta
-// entera o su primera palabra, no algo que aparece en medio de otra frase.
-const YES = new RegExp(String.raw`^\s*(?:s[ií]|dale|ok(?:ay)?|hac[eé]lo|hazlo|adelante|aprobado|apruebo`
-  + String.raw`|aprob[aá]lo|de acuerdo|yes)(?![\p{L}])`, 'iu')
+// Quien contesta a un bloqueo que quedó pendiente lo confirma con sus palabras, y juzgar si lo que dijo
+// es un sí le toca al agente que lo lee. Antes el guard exigía que el mensaje **empezara** con una de once
+// formas —«dale», «sí», «ok»…—, así que «listo», «claro», «confirmo» o «bueno dale» volvían a frenar lo
+// que la persona acababa de aprobar (caso 184). Lo único que el guard sigue decidiendo es la dirección
+// segura: un mensaje que niega, que arranca frenando o que pregunta no aprueba nada. Si eso se equivoca,
+// el costo es volver a preguntar; si se equivocara al revés, un «no» o un «¿para qué sirve?» ejecutaría lo
+// que la persona no aprobó.
+const HALT = /^\s*(?:par[aá]|deten\p{L}*|esper[aá]|cancel\p{L}*|stop|wait|hold on)(?![\p{L}])/iu
+const refuses = (text) => NEGATION.test(text) || HALT.test(text) || /[?¿]/.test(text)
 
 // El hook de mensaje. Nunca frena: un mensaje de la persona no se bloquea, y sin registro los guards
 // deciden como antes. Un texto que empieza con una etiqueta no lo escribió una persona —Claude avisa así
@@ -175,7 +180,7 @@ function record(input) {
     const text = String(input.prompt || '')
     const human = !process.env.CI && !/^\s*</.test(text)
     const previous = load(input.session_id)
-    const approved = human && previous && YES.test(text)
+    const approved = human && previous && !refuses(text)
       ? previous.pending.filter((item) => !mentions(text, item).denied)
       : []
     const granted = previous ? (previous.granted || []).filter((one) => !mentions(text, one).denied) : []
@@ -322,13 +327,20 @@ function unauthorizedNow(input, items) {
   return items.filter((item) => !cleared.has(item))
 }
 
-// Lo que quedó frenado, para que un «dale» en el mensaje siguiente apruebe exactamente eso y nada más.
+// Lo que quedó frenado, para que la confirmación del mensaje siguiente apruebe exactamente eso y nada más.
 // Devuelve si hay una persona a quien preguntarle.
+//
+// Si el mensaje en curso niega o frena, lo que se ataje en su turno no queda esperando: la persona ya
+// contestó que no antes de que el agente lo intentara. Desde que confirmar no exige una palabra (caso 184),
+// dejarlo pendiente hacía que un «seguí con lo tuyo» aprobara el `.env` o el push que ella acababa de
+// prohibir. Se mira el mensaje y no el ítem porque un push no se nombra como un archivo.
 function hold(input, items) {
   const saved = present(input)
   if (!saved) return false
   try {
-    saved.pending = [...new Set([...saved.pending, ...items])]
+    const text = saved.text || ''
+    const open = NEGATION.test(text) || HALT.test(text) ? [] : items
+    saved.pending = [...new Set([...saved.pending, ...open])]
     fs.writeFileSync(recordPath(input.session_id), JSON.stringify(saved))
     return true
   } catch { return false }
