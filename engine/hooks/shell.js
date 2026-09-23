@@ -193,6 +193,39 @@ function gitAdd(input) {
   }
 }
 
+// Un `package.json` cambia sin tocar nada de lo que su lockfile registra: un script, una descripción, la
+// configuración de una herramienta. Frenar eso por la sola presencia del archivo en el índice obligaba a
+// pedir permiso por un cambio sin riesgo (caso 181). Se deja pasar sólo lo medido, y lo demás frena como
+// antes, incluido lo que no se puede comparar.
+//
+// La lista salió de correr `npm install --package-lock-only` con npm 11.16.0 cambiando una clave por vez:
+// las claves name, version, license, engines, bin, funding, workspaces, os y cpu, y los scripts preinstall,
+// install y postinstall, sí mueven el lock. Sólo se midió el lock de npm, así que con otro gestor no se
+// afloja nada.
+const INERT_KEYS = new Set([
+  'scripts', 'description', 'keywords', 'author', 'repository', 'homepage', 'bugs', 'private', 'type',
+  'main', 'files', 'exports', 'config', 'jest', 'eslintConfig', 'prettier',
+])
+const INSTALL_SCRIPTS = ['preinstall', 'install', 'postinstall']
+
+function lockUnaffected(dir, file, lockfiles) {
+  if (path.basename(file) !== 'package.json' || lockfiles.join() !== 'package-lock.json') return false
+  const read = (ref) => {
+    const shown = run('git', ['-C', dir, 'show', `${ref}:${file}`], dir)
+    if (!shown.ok) return null
+    try { return JSON.parse(shown.output) } catch { return null }
+  }
+  const before = read('HEAD')
+  const after = read('')
+  if (!before || !after || typeof before !== 'object' || typeof after !== 'object') return false
+  const same = (one, other) => JSON.stringify(one) === JSON.stringify(other)
+  const changed = [...new Set([...Object.keys(before), ...Object.keys(after)])]
+    .filter((key) => !same(before[key], after[key]))
+  if (changed.some((key) => !INERT_KEYS.has(key))) return false
+  const scripts = (one) => (one && typeof one.scripts === 'object' ? one.scripts : {}) || {}
+  return INSTALL_SCRIPTS.every((name) => same(scripts(before)[name], scripts(after)[name]))
+}
+
 function dependencies(input) {
   if (process.env.OPS_DEPENDENCIES_OVERRIDE === '1') return
   const command = commandOf(input)
@@ -250,6 +283,7 @@ function dependencies(input) {
       block(`${parent}: hay varios lockfiles (${onDisk.join(', ')}). Conserva uno solo.`)
     }
     const manifests = sinAprobar(parent, state.manifests)
+      .filter((name) => !lockUnaffected(dir, name, existingLocks))
     if (state.manifests.length && existingLocks.length && !state.locks.length && manifests.length) {
       block(`${parent}: cambió ${state.manifests.join(', ')} sin actualizar su lockfile.\n`
         + AP.HOW('OPS_DEPENDENCIES_OVERRIDE', manifests, input))

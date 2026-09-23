@@ -356,6 +356,55 @@ test('guard-dependencies exige consistencia y bloquea publicación', () => {
   assert.doesNotThrow(() => execute('dependencies', { cwd: dos, tool_input: { command: 'git commit -m deps' } }))
 })
 
+// Un cambio que el lockfile no registra no tiene lock que actualizar (caso 181). Lo que sí lo mueve se
+// midió con npm 11.16.0 y sigue frenando, y con otro gestor, sin medir, no se afloja nada.
+test('guard-dependencies deja pasar lo que no llega al lockfile de npm, y sólo eso', () => {
+  const commit = (root) => ({ cwd: root, tool_input: { command: 'git commit -m x' } })
+  const base = { name: 'app', version: '1.0.0', scripts: { test: 'node --test' }, dependencies: { a: '1.0.0' } }
+  const repo = (lock, change, { tracked = true } = {}) => {
+    const root = tempRoot('ops-hook-deps-inerte-')
+    initRepo(root)
+    fs.writeFileSync(path.join(root, lock), '{}\n')
+    if (tracked) {
+      fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(base, null, 2))
+      git(['add', 'package.json', lock], root)
+      git(['commit', '-q', '-m', 'base'], root)
+    } else {
+      git(['add', lock], root)
+      git(['commit', '-q', '-m', 'base'], root)
+    }
+    const next = tracked ? JSON.parse(JSON.stringify(base)) : {}
+    change(next)
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(next, null, 2))
+    git(['add', 'package.json'], root)
+    return root
+  }
+
+  for (const [what, change] of [
+    ['un script', (p) => { p.scripts.cov = 'node --test --experimental-test-coverage' }],
+    ['la configuración de jest', (p) => { p.jest = { coverageThreshold: { global: { lines: 80 } } } }],
+    ['la descripción', (p) => { p.description = 'otra' }],
+  ]) {
+    assert.doesNotThrow(() => execute('dependencies', commit(repo('package-lock.json', change))), what)
+  }
+
+  for (const [, change] of [
+    ['una dependencia', (p) => { p.dependencies.a = '2.0.0' }],
+    ['la versión', (p) => { p.version = '1.0.1' }],
+    ['un script de instalación', (p) => { p.scripts.postinstall = 'node setup.js' }],
+    ['engines', (p) => { p.engines = { node: '>=24' } }],
+    ['un script y una dependencia a la vez', (p) => { p.scripts.cov = 'x'; p.dependencies.b = '1.0.0' }],
+  ]) {
+    blocked('dependencies', commit(repo('package-lock.json', change)), /sin actualizar su lockfile/)
+  }
+
+  // Sin medir el lock de otro gestor, un script tampoco pasa. Y un manifiesto que HEAD no tenía no se
+  // compara contra nada, aunque sólo traiga scripts.
+  blocked('dependencies', commit(repo('pnpm-lock.yaml', (p) => { p.scripts.cov = 'x' })), /sin actualizar su lockfile/)
+  blocked('dependencies', commit(repo('package-lock.json', (p) => { p.scripts = { cov: 'x' } }, { tracked: false })),
+    /sin actualizar su lockfile/)
+})
+
 // La aprobación por operación existía y la usaba un guard solo; los otros cuatro que se pueden abrir
 // tenían una única salida, una variable de entorno, que es **por sesión**: se lee del proceso del
 // runner, así que la forma que funciona deja el guard apagado hasta que la sesión cierre.
