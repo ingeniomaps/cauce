@@ -171,3 +171,73 @@ test('una fila entra en su tabla aunque el historial no la traiga', () => {
   assert.equal((dos.match(/^\| Fecha \|/gm) || []).length, 1, 'una sola cabecera')
   assert.equal((dos.match(/^\| 2\d{3}-/gm) || []).length, 2, 'y las dos filas')
 })
+
+// Una propuesta cuyo «Cambio propuesto» ya dice qué hacer, lista para descartar o aplicar.
+function decidedProposal(title, slug) {
+  const target = installedProject(title)
+  const own = writeSkill(path.join(target, 'agents', 'roles', slug), slug, 'x')
+  const reports = path.join(own, 'learning', 'reports')
+  fs.mkdirSync(reports, { recursive: true })
+  fs.writeFileSync(path.join(reports, '2099-01-07.md'),
+    `---\nagent: ${slug}\ndate: 2099-01-07\nstatus: draft\n---\n\n## Recomendación\n\nAgregar la fuente X.\n`)
+  fs.writeFileSync(path.join(own, 'learning', 'HISTORY.md'),
+    '# Historial\n\n| Fecha | Propuesta | Decisión | Aprobó | Cambio aplicado |\n|---|---|---|---|---|\n')
+  const { file } = learning.prepareProposal(target, slug, new Date('2099-02-01T13:17:00Z'), '2099-01')
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
+    .replace(/(\n## Cambio propuesto\n)[\s\S]*?(?=\n## )/, '$1\nAgregar la fuente X a sources.yaml.\n'))
+  return { target, own, file }
+}
+
+// Sin motivo, una propuesta descartada no se distinguía de una olvidada, y el informe siguiente volvía a
+// recomendar lo mismo: cuatro cargos lo repitieron semana tras semana en septiembre de 2026.
+test('descartar un cambio decidido exige el motivo, y el motivo queda en el documento y el historial', () => {
+  const { target, own, file } = decidedProposal('Descartar con motivo', 'probe6')
+
+  const sin = run(['learn', 'probe6', '--archived', '--period', '2099-01'], target)
+  assert.notEqual(sin.status, 0, 'sin motivo no se archiva')
+  assert.match(sin.stderr, /--reason/, `y dice qué falta: ${sin.stderr}`)
+  assert.match(fs.readFileSync(file, 'utf8'), /^status: proposed$/m, 'y el documento queda intacto')
+
+  const con = run(['learn', 'probe6', '--archived', '--period', '2099-01', '--reason', 'X ya la cubre la fuente Y'],
+    target, { CAUCE_OWNER: 'quien@acme.test' })
+  assert.equal(con.status, 0, `${con.stdout}${con.stderr}`)
+  const doc = fs.readFileSync(file, 'utf8')
+  assert.match(doc, /^status: archived$/m)
+  assert.match(doc, /^- Motivo: X ya la cubre la fuente Y$/m, 'el motivo entero, en el documento')
+  assert.match(fs.readFileSync(path.join(own, 'learning', 'HISTORY.md'), 'utf8'),
+    /\| archivada \| quien@acme\.test \| Descartada: X ya la cubre la fuente Y \|/, 'y en la fila del historial')
+})
+
+// El motivo sirve si lo lee quien investiga, y lo que lee es el informe que tiene que completar.
+test('el informe siguiente trae lo descartado con su motivo, fuera de toda sección', () => {
+  const { target, own } = decidedProposal('Informe con lo descartado', 'probe7')
+  learning.archive(target, 'probe7', '2099-01', 'agent', 'X ya la cubre la fuente Y')
+
+  const { file } = learning.prepareReport(target, 'probe7', new Date('2099-02-08T13:17:00Z'))
+  const informe = fs.readFileSync(file, 'utf8')
+  assert.match(informe, /learning\/proposals\/2099-01\.md: X ya la cubre la fuente Y/,
+    `nombra la propuesta y su motivo: ${informe}`)
+  // Dentro de una sección viajaría a la propuesta mensual como si fuera un hallazgo.
+  const aviso = informe.indexOf('X ya la cubre la fuente Y')
+  assert.ok(aviso < informe.indexOf('\n## '), 'antes de la primera sección')
+  assert.ok(informe.lastIndexOf('<!--', aviso) > informe.lastIndexOf('-->', aviso), 'y dentro de un comentario')
+
+  // Un archivado sin motivo no es una decisión: lo que traía sigue vivo, y el informe no lo da por descartado.
+  const reports = path.join(own, 'learning', 'reports')
+  fs.writeFileSync(path.join(reports, '2099-02-08.md'),
+    '---\nagent: probe7\ndate: 2099-02-08\nstatus: draft\n---\n\n## Recomendación\n\nOtra cosa.\n')
+  learning.prepareProposal(target, 'probe7', new Date('2099-03-01T13:17:00Z'), '2099-02')
+  learning.archive(target, 'probe7', '2099-02')
+  const siguiente = fs.readFileSync(learning.prepareReport(target, 'probe7', new Date('2099-03-08T13:17:00Z')).file,
+    'utf8')
+  assert.match(siguiente, /2099-01\.md/, 'lo descartado sigue a la vista')
+  assert.equal(/2099-02\.md/.test(siguiente), false, `lo archivado sin decidir no se lee como descartado: ${siguiente}`)
+})
+
+// Sin nada descartado, el informe nace como antes: el aviso no aparece vacío.
+test('sin propuestas descartadas el informe no trae el aviso', () => {
+  const target = installedProject('Informe sin descartes')
+  writeSkill(path.join(target, 'agents', 'roles', 'probe8'), 'probe8', 'x')
+  const { file } = learning.prepareReport(target, 'probe8', new Date('2099-02-08T13:17:00Z'))
+  assert.equal(/Ya se decidió no aplicar/.test(fs.readFileSync(file, 'utf8')), false)
+})

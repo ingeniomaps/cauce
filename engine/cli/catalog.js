@@ -91,14 +91,14 @@ function learn(agent, cli) {
     // y lo que se hacía era mergear el PR sin firmar — que deja el documento diciendo «sin aplicar»
     // para siempre, indistinguible de una que espera trabajo.
     if (cli.has('--archived')) {
-      const result = L.archive(opsRoot(), agent, cli.value('--period'), kind)
+      const result = L.archive(opsRoot(), agent, cli.value('--period'), kind, cli.value('--reason') || '')
       const relative = path.relative(opsRoot(), result.file)
-      // Los dos archivados no son lo mismo y el mensaje lo dice: uno es una decisión —se miró y no
-      // cambia nada— y el otro es tirar un andamio que nadie llegó a llenar. Afirmar el primero sobre
-      // el segundo le cuenta a quien archiva que hubo una revisión que no hubo.
-      const porque = result.blank
-        ? 'nadie decidió el cambio y el documento quedó con el molde'
-        : 'se miró y no cambia nada'
+      // Los dos archivados no son lo mismo y el mensaje lo dice: uno es una decisión, con su motivo, y
+      // el otro es tirar un andamio que nadie llegó a llenar. Afirmar el primero sobre el segundo le
+      // cuenta a quien archiva que hubo una revisión que no hubo.
+      const porque = result.reason
+        ? `descartada — ${result.reason}`
+        : 'nadie decidió el cambio y el documento quedó con el molde'
       return console.log(result.already
         ? `= ${relative} ya estaba archivada`
         : `✓ ${relative} queda archivada: ${porque}`)
