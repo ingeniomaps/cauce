@@ -18,6 +18,16 @@ diseño — eso vive en el commit y en el código.
 
 ### Cambiado
 
+- **Descartar una propuesta que decide un cambio pide el motivo, y el informe siguiente lo lee.**
+  `ops learn <cargo> --archived` se niega sobre una propuesta cuyo «Cambio propuesto» dice qué hacer si no
+  lleva `--reason "<motivo>"`. El motivo queda en el documento, como `- Motivo:`, y en la fila de
+  `HISTORY.md`. Cada informe nuevo trae arriba, en un comentario, las propuestas descartadas del
+  cargo con su motivo, y le pide no volver a recomendarlas salvo que aparezca un hecho nuevo.
+
+  Antes, archivar no dejaba ningún porqué, y el mismo hallazgo volvía todas las semanas. Una propuesta
+  con el molde intacto se sigue archivando sin motivo: nadie decidió nada, y lo que traía sigue vivo.
+  Si tenés un script que archiva propuestas decididas, agregale `--reason`.
+
 - **La investigación de los cargos pasa a ser mensual: ya no hay cadencia semanal.** Los cargos con
   fuentes de tipo `advisory`, `platform` o `project` investigaban cada lunes. Ahora investigan el 24, igual
   que los demás, y el 1 se consolida como siempre. `profession` sigue trimestral. Se quitó el cron del

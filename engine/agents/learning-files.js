@@ -138,6 +138,23 @@ function proposalState(text) {
   return frontmatterState(text, 'proposed')
 }
 
+// Las propuestas que alguien descartó diciendo por qué. Es lo que el informe siguiente necesita para no
+// volver a recomendar lo mismo: sin el motivo escrito, una archivada no se distingue de un olvido, y el
+// hallazgo vuelve cada semana con el mismo texto — pasó con cuatro cargos en septiembre de 2026.
+//
+// Lee el documento y no el historial: la fila de `HISTORY.md` recorta la celda a 160 caracteres, y un
+// motivo cortado a la mitad es justo el que se malinterpreta.
+const REASON_LINE = /^-[ \t]*Motivo:[ \t]*(.+)$/m
+
+function discardedProposals(dir) {
+  return proposalFiles(dir).map((name) => {
+    const text = fs.readFileSync(path.join(dir, name), 'utf8')
+    const reason = (text.match(REASON_LINE) || [])[1]
+    if (proposalState(text) !== 'archived' || !reason) return null
+    return { name, reason: reason.trim() }
+  }).filter(Boolean)
+}
+
 // El sufijo `-N` es la segunda corrida del mismo día, y es la que trae el veredicto más nuevo. Sin él
 // en el patrón, más de una cuarta parte de los registros que existían —de cargos y de recorridos—
 // quedaban fuera del ciclo: no entraban a ninguna propuesta y nada lo delataba, que es el modo de fallo
@@ -159,4 +176,5 @@ module.exports = {
   REQUIRED_SECTIONS, SUMMARY_MAX, PROPOSAL_NAME, REPORT_NAME, undecided, blankProposal, SIGNED, CLOSED,
   assertWritableTeam, assertWritable, isoDate, month,
   proposalOrder, proposalFiles, frontmatterState, proposalState, reportFiles, lastOfPeriod,
+  discardedProposals,
 }
