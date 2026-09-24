@@ -1,14 +1,15 @@
 ---
 caso: 193
 titulo: El guard de migraciones no ve un borrado escrito con la API del ORM, sólo el SQL crudo
-estado: abierto
+estado: resuelto
+resuelto-en: 0.99.0
 prioridad: media
 version-detectada: 0.98.0
 ---
 
 # 193 — Una migración de lenguaje borra una tabla y el guard la deja pasar
 
-**🔴 abierto** · detectado en 0.98.0 · prioridad **media**. Declarar `migrations.extensions` promete cubrir las
+**🟢 resuelto en 0.99.0** · detectado en 0.98.0 · prioridad **media**. Declarar `migrations.extensions` promete cubrir las
 migraciones de lenguaje, y lo que cubre es el SQL crudo que aparezca adentro: `op.drop_table`, `drop_table`,
 `queryRunner.dropTable` o `knex.schema.dropTable` en el `up` pasan sin nada que los frene.
 
@@ -168,3 +169,60 @@ por defecto de Alembic, así que ahí no frena ni el SQL crudo — ver **196**.
 - **077**: amplió qué archivos se miran; éste es lo que quedó pendiente de esa ampliación.
 - **196**: en `alembic/versions/` el guard no reconoce ni el archivo, así que este caso ni llega a aplicar.
 - **039**: el costo de falsos positivos que cualquier ampliación del criterio vuelve a pagar.
+
+## Cierre
+
+**Resuelto en 0.99.0, con la lista del caso más las cuatro hipótesis comprobadas, y partiendo el `down()` de
+lenguaje.** Recorriendo lo que enumeró:
+
+- **Fix propuesto, ampliar lo que cuenta como borrado → se hizo, distinto en la forma.** No se sumó a la
+  expresión de SQL sino a una propia, `DESTRUCTIVE_API` en `engine/core/migrations.js`, **sensible a
+  mayúsculas**: con la `i` del SQL, `droptable` o `deletemodel` en prosa también frenaban. Entran las diez
+  filas de la tabla del caso.
+- **Las variantes marcadas hipótesis → comprobadas y agregadas** (2026-09-23, la página se descargó y el
+  nombre aparece en ella): `knex.schema.dropTableIfExists(tableName)` en
+  https://github.com/knex/documentation/blob/main/src/guide/schema-builder.md; `remove_columns` y
+  `drop_join_table` en https://github.com/rails/rails/blob/main/guides/source/active_record_migrations.md;
+  `dropColumns(table, columns, ifExists?)` en
+  https://github.com/typeorm/typeorm/blob/master/docs/docs/migrations/09-api.md.
+- **Convivir con el 185, partir por el método de reversión → se hizo.** Sin esto, cada TypeORM o Knex que
+  crea una tabla se frenaba por su `down()`, que es el 185 trasladado. Se reconoce el encabezado al principio
+  de la línea —`def downgrade(` de Alembic, `def down`/`def self.down` de Rails, `down(` con sus modificadores
+  en TypeORM, `exports.down =` y `export function down` de Knex— y **el bloque termina donde la indentación
+  vuelve a la del encabezado**. No es parsear el lenguaje, y por eso es barato: las herramientas generan sus
+  migraciones con ese formato, y un archivo con otro formato acorta el bloque, así que se juzga de más y no de
+  menos. El único borde abierto es escribir `up` en la misma línea que el encabezado de `down`; una llamada a
+  `down(knex)` dentro de `up` no cuenta como encabezado, y está probado.
+- **Tradeoff de falsos positivos → aceptado**, sigue siendo opt-in por extensión.
+- **Tradeoff de la lista que envejece → aceptado**; el comentario lo dice donde vive la lista.
+- **Tradeoff de no filtrar por extensión → se decidió que no hace falta**: la sensibilidad a mayúsculas
+  saca el ruido que motivaba la duda.
+
+**Lo que el caso no preveía.**
+
+- **La misma página de TypeORM define otros tres borrados** —`dropSchema`, `dropDatabase`, `clearTable`— y la
+  de Rails `remove_reference`. No entraron: el dueño pidió la lista del caso y nada más. Agregarlos es una
+  línea y su prueba; queda para decidir.
+- **Django no tiene `down`**: la reversión la calcula el framework, así que en sus migraciones se juzga todo
+  el archivo, y una función de reversión de `RunPython` que borre frena igual. Es correcto por construcción,
+  y se dice para que nadie busque ahí un corte que no existe.
+
+### Qué se corrió
+
+- **La reproducción del caso contra el motor arreglado** (2026-09-23): las cuatro migraciones que antes daban
+  `exit=0` ahora frenan, y el contraste sigue frenando:
+
+  ```
+  --- al.py     BLOQUEADO: … contiene un borrado destructivo en el bloque que aplica (la reversión, `downgrade()`, no se juzga): `drop_table`.  exit=2
+  --- rails.rb  BLOQUEADO: … contiene un borrado destructivo: `drop_table`.  exit=2
+  --- torm.ts   BLOQUEADO: … (la reversión, `down()`, no se juzga): `dropTable`.  exit=2
+  --- knex.js   BLOQUEADO: … (la reversión, `exports.down`, no se juzga): `dropTable`.  exit=2
+  --- al-raw.py BLOQUEADO: … contiene SQL destructivo en el bloque que aplica …: `DROP TABLE`.  exit=2
+  --- reversión honesta TypeORM (createTable en up, dropTable en down)  exit=0
+  ```
+- **Pruebas nuevas en `test/hooks/migrations.test.js`, en rojo sobre el código anterior**, y **cinco
+  mutaciones en una copia del árbol, las cinco en rojo**: sin la expresión de la API, sin
+  `dropTableIfExists`, sin partir lenguaje, el bloque de `down` hasta el final del archivo, y el encabezado
+  sin anclar al principio de la línea. Una sexta —no contar la línea de cierre como parte del bloque—
+  sobrevivió: era inobservable, porque un `}` o un `end` no destruyen nada, y se sacó del código.
+- `npm run ci`, exit 0, en una copia con los archivos nuevos trackeados.

@@ -1,14 +1,15 @@
 ---
 caso: 185
 titulo: El guard de migraciones frena el `down` honesto que la propia aceptación exige, y premia la migración sin reversión
-estado: abierto
+estado: resuelto
+resuelto-en: 0.99.0
 prioridad: alta
 version-detectada: 0.98.0
 ---
 
 # 185 — Crear una tabla es destructivo si se puede deshacer
 
-**🔴 abierto** · detectado en 0.98.0 · prioridad **alta**. El guard mira el archivo entero y no distingue el
+**🟢 resuelto en 0.99.0** · detectado en 0.98.0 · prioridad **alta**. El guard mira el archivo entero y no distingue el
 bloque que aplica del que revierte, así que toda migración que crea una tabla queda bloqueada por su propio
 `down`.
 
@@ -216,3 +217,64 @@ comprobar que la concesión por chat no alcanza a un subagente.
   Ésta pide mirar la estructura del archivo, no la ruta.
 - **077**: el guard aprendió a cubrir migraciones de lenguaje.
 - **193**: el guard no ve el borrado idiomático de un ORM; ahí vive el punto 2 del fix.
+
+## Cierre
+
+**Resuelto en 0.99.0, con los tres formatos y el `Edit` adentro, como decidió el dueño.** Recorriendo lo que
+enumeró:
+
+- **Fix 1, partir por marcadores → se hizo, distinto en la forma.** No es un corte en un índice sino una
+  máscara por línea (`engine/core/migrations.js`, `sqlMask`): cada marcador `Up` devuelve al lado que aplica y
+  cada `Down` lo deja, así que un archivo con los bloques en otro orden tampoco esconde nada. Goose se lee como
+  lo lee su parser —comprobado el 2026-09-23 en `internal/sqlparser/parser.go` de pressly/goose, `main`: la
+  línea empieza con `--` sin espacio antes, se borran `--` y `+goose`, y la anotación se compara con
+  `strings.EqualFold`—: `-- +goose down` y `--+goose Down` parten, ` -- +goose Down` no. Sin marcadores se
+  evalúa entero, como antes.
+- **Fix 2, migraciones de lenguaje → salió al 193, y se hizo ahí** en esta misma versión.
+- **Fix 3, el mensaje nombra el bloque → se hizo.** Dice la sentencia y que la reversión no se juzgó:
+  «contiene SQL destructivo en el bloque que aplica (la reversión, `-- +goose Down`, no se juzga): `DROP TABLE`».
+- **golang-migrate y sqlx → se hizo.** Un `*.down.<ext>` es reversión entera; el `.up.sql` se sigue juzgando.
+- **dbmate → se hizo**, con su expresión literal (comprobado el 2026-09-23 en `pkg/dbmate/migration.go` de
+  amacneil/dbmate, `main`: `(?m)^--\s*migrate:down(\s*$|\s+\S+)`, sensible a mayúsculas).
+- **El `Edit` sobre el `Down` → se hizo, distinto de lo propuesto.** En vez de ubicar `old_string` y decidir
+  un lado para todo el fragmento, el guard reconstruye el archivo como va a quedar y juzga la parte del
+  fragmento que cae del lado que aplica (`judged`): un fragmento que mueve o agrega un marcador se lee en su
+  lugar. Con `replace_all` cuentan todas las apariciones. Sin archivo en disco o sin `old_string` adentro, se
+  juzga el fragmento entero, como antes.
+- **La versión de lenguaje del bloqueo → la cerró el 193**, partiendo por `down()`/`downgrade()`.
+- **Decisiones → tomadas por el dueño**: los tres formatos entran y el `Edit` también.
+- **Tradeoffs → aceptados los tres como estaban escritos.** El de «depende del formato» se achicó: dbmate y
+  golang-migrate ya no degradan.
+
+**Lo que el caso no preveía.**
+
+- **El guard dejó `files.js`.** Con tres casos encima pasaba de las 500 líneas; se partió por
+  responsabilidad (R7): `engine/core/migrations.js` sabe qué es una migración, qué aplica y qué destruye, y lo
+  leen el guard (`engine/hooks/migrations.js`) y `check` (196).
+- **El sobre de `apply_patch` de Codex no se parte.** Ahí las líneas llegan con el prefijo del parche
+  (`+-- +goose Down`), ningún marcador empieza la línea, y se evalúa entero: el comportamiento de antes, no
+  uno más permisivo. Queda **sin caso propio y hay que numerarlo** al integrar —no se le asignó número acá
+  porque otras sesiones abren casos a la vez y el README pide que se mueva el que no se publicó—.
+
+### Qué se corrió
+
+- **La reproducción del caso contra el motor arreglado** (2026-09-23, la función `guard()` de arriba y un
+  `Edit` con el mismo JSON):
+
+  ```
+  --- up-down.sql                 exit=0
+  --- up-only.sql                 exit=0
+  --- golang-migrate .down.sql    exit=0
+  --- dbmate                      exit=0
+  --- Edit sobre el Down          exit=0
+  --- contraste: DROP en el Up
+  BLOQUEADO: api/db/migrations/20260923120001_x.sql contiene SQL destructivo en el bloque que aplica (la reversión, `-- +goose Down`, no se juzga): `DROP TABLE`.
+  exit=2
+  ```
+
+  Antes del arreglo, las cinco primeras daban `exit=2` salvo `up-only.sql`, que es el síntoma del caso.
+- **Pruebas nuevas en `test/hooks/migrations.test.js`, en rojo sobre el código anterior** (las seis del
+  archivo fallaban) y **siete mutaciones en una copia del árbol, las siete en rojo**: goose sensible a
+  mayúsculas, sin partir SQL, sin dbmate, sin el sufijo `.down`, el `Edit` sin leer el disco, `replace_all`
+  ignorado y el mensaje sin nombrar el bloque.
+- `npm run ci`, exit 0, en una copia con los archivos nuevos trackeados.

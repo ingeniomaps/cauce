@@ -62,11 +62,27 @@ diseño — eso vive en el commit y en el código.
   `check` recomienda, y la corrida paraba igual; ahora viaja a Done para quedar cumplida en `tests:`, `qa:`
   o `commit:`.
 
+- **El guard de migraciones ya no frena la reversión honesta.** Buscaba en todo el archivo, así que el
+  `DROP TABLE` del `-- +goose Down` frenaba cada tabla nueva y una migración sin `Down` pasaba. Ahora, en
+  goose y dbmate, juzga sólo el bloque que aplica; un `*.down.sql` es reversión entera; corregir el `Down`
+  con una edición también pasa; y el mensaje dice en qué bloque está lo que frena.
+- **Si declarás `migrations.extensions`, el guard ve también el borrado escrito con la API del ORM**, no
+  sólo el SQL crudo: `op.drop_table`/`drop_column` (Alembic), `drop_table`, `remove_column(s)` y
+  `drop_join_table` (Rails), `dropTable`/`dropColumn(s)` (TypeORM), `dropTable(IfExists)`/`dropColumn`
+  (Knex) y `DeleteModel`/`RemoveField` (Django). La reversión —`downgrade()`, `down`— no se juzga.
+
 ### Cambiado
 
 - **`check` falla si una entrada de DONE tiene `tests:` todo `n/a` y su commit toca algo que no sea `.md`,
   `.txt` o `.adoc`.** Es lo que vuelve creíble el `n/a` de arriba: lo demás se ejecuta y se prueba. Rige
   para lo cerrado desde el 2026-09-24, así que tu historia anterior no se pone en rojo al actualizar.
+
+### Agregado
+
+- **`migrations.paths` en `ops.config.json`**: las carpetas donde viven tus migraciones, por ejemplo
+  `["migrations", "alembic/versions"]`. Si la declarás, reemplaza el default (`migrations`, `migration`,
+  `migrate`), que no alcanzaba a Alembic. `check` avisa la extensión o la carpeta declarada que no alcanza
+  a ningún archivo: una cobertura que declaraste y no cubre nada.
 
 ## [0.98.0] - 2026-09-17
 

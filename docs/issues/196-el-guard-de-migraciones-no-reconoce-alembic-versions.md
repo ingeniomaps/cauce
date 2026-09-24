@@ -1,14 +1,15 @@
 ---
 caso: 196
 titulo: El guard de migraciones no reconoce `alembic/versions/`, así que ahí no frena ni el SQL crudo ni la reescritura
-estado: abierto
+estado: resuelto
+resuelto-en: 0.99.0
 prioridad: media
 version-detectada: 0.98.0
 ---
 
 # 196 — Una migración de Alembic en su carpeta por defecto no es una migración para el guard
 
-**🔴 abierto** · detectado en 0.98.0 · prioridad **media**. La ruta de una migración la decide una lista fija
+**🟢 resuelto en 0.99.0** · detectado en 0.98.0 · prioridad **media**. La ruta de una migración la decide una lista fija
 de nombres de directorio, y la carpeta por defecto de Alembic no está en ella: declarar `py` en
 `migrations.extensions` no cubre ninguna migración de un proyecto Alembic con la estructura de su tutorial.
 
@@ -140,3 +141,62 @@ con SQL crudo en `alembic/versions/` dio `exit=0`, y el mismo archivo bajo `migr
   reconoce siquiera el archivo.
 - **077**: abrió la extensión al proyecto y dejó el directorio en el motor; éste es la mitad que quedó.
 - **039**: por qué la ruta decide qué es una migración, y el falso positivo que una lista más ancha reabre.
+
+## Cierre
+
+**Resuelto en 0.99.0, con la carpeta declarada y el aviso sobre lo declarado; el aviso por carpetas
+conocidas de alguna herramienta se decidió que no.** Recorriendo lo que enumeró:
+
+- **Salida inmediata, agregar `versions` a la lista → se decidió que no**, por lo que el propio caso dice:
+  es una lista más, deja afuera `./scripts/versions` y `version_locations`, y `versions/` es genérico.
+- **Parte 1, `migrations.paths` → se hizo.** Cada entrada es una carpeta relativa —uno o más segmentos, sin
+  «.», «..» ni barras sueltas— que el guard busca en cualquier lugar de la ruta, así que `alembic/versions`
+  alcanza también a `api/alembic/versions`. Declararla **reemplaza** el default, igual que `extensions`. La
+  valida `validateMigrations` (`engine/config/validate.js`) con la misma forma que usa el guard, y el schema
+  la declara. Alcanza a las dos mitades del guard: el SQL destructivo y la reescritura.
+- **Parte 2, lo declarado que no alcanza a nada se ve → se hizo en `check`, no en `doctor`,** y cubre las dos
+  claves: una extensión declarada que ningún archivo trackeado alcanza, y una carpeta declarada que tampoco.
+  Lee `git ls-files` de cada repositorio de las raíces y sólo si el proyecto declaró algo. Sin repositorio no
+  dice nada, como los otros avisos que le preguntan a git.
+- **La otra mitad de la parte 2, «archivos bajo un directorio de migraciones conocido de alguna
+  herramienta» → se decidió que no** (decisión tomada al integrarlo, 2026-09-23). Pide una lista de carpetas
+  conocidas que mantenga el motor, que es la misma forma que el caso rechazó para el fix inmediato y la que
+  R27 describe como la que falla: la lista envejece y lo que no nombra queda afuera sin avisar.
+  Lo construido encuentra al proyecto Alembic del caso (medido abajo), pero **no a uno mixto**: con
+  `migrations/*.py` cubiertas y `alembic/versions/*.py` afuera, `py` alcanza a algo y no avisa. El proyecto
+  mixto queda como límite declarado: lo cubre declarar las dos carpetas en `migrations.paths`.
+- **Tradeoff de la configuración nueva → aceptado**, con la validación y el aviso de `check` que el caso
+  pedía para que declararla mal se vea.
+- **Tradeoff del costo del recorrido → resuelto como proponía**: va en `check` y es un `git ls-files` por
+  repositorio.
+- **Tradeoff de detectar Alembic por contenido → no se hizo**; sigue siendo hipótesis y no hacía falta.
+
+### Qué se corrió
+
+- **La reproducción del caso contra el motor arreglado** (2026-09-23, `guard()` del 185 y la raíz `inst2/`
+  fuera de todo repositorio):
+
+  ```
+  --- alembic/versions, sin declarar paths   exit=0     (el default no cambia)
+  --- alembic/versions, con paths ["migrations","alembic/versions"]
+  BLOQUEADO: alembic/versions/20260923_drop.py contiene SQL destructivo en el bloque que aplica (la reversión, `downgrade()`, no se juzga): `DROP TABLE`.
+  exit=2
+  --- reescribir existente en alembic/versions
+  BLOQUEADO: alembic/versions/0001_init.py existe, y acá no hay repositorio con el que saber si ya viajó a otra copia. Crea una nueva en vez de reescribirla.
+  exit=2
+  ```
+- **`check` sobre un producto con `alembic/versions/0001_init.py` trackeado** y una instancia sidecar:
+
+  ```
+  --- extensions ["sql","py"], sin paths
+  ⚠ ops.config.json: migrations.extensions "sql" no alcanza a ningún archivo bajo migrations, migration, migrate: …
+  ⚠ ops.config.json: migrations.extensions "py" no alcanza a ningún archivo bajo migrations, migration, migrate: …
+  exit=0
+  --- con paths ["alembic/versions"]
+  ⚠ ops.config.json: migrations.extensions "sql" no alcanza a ningún archivo bajo alembic/versions: …
+  exit=0
+  ```
+- **Pruebas nuevas en rojo sobre el código anterior** (`test/hooks/migrations.test.js` y
+  `test/instance/core.test.js`) y **cuatro mutaciones en una copia del árbol, las cuatro en rojo**: el guard
+  ignorando `paths`, la validación de `paths` apagada, `check` sin el aviso y `check` sin el aviso de carpeta.
+- `npm run ci`, exit 0, en una copia con los archivos nuevos trackeados.
