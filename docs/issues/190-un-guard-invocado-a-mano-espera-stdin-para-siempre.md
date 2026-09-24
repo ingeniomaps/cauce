@@ -306,3 +306,7 @@ propio, el 198,** y no entra acá.
 ### Prueba real en un banco instalado (2026-09-23)
 
 Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. El shim `guard-shell.sh` instalado, con stdin de un pipe que nadie cierra: `exit=2` a los 2 s con la rama; con 0.98.0, colgado hasta el `timeout` (124). En todas las sesiones reales de Claude Code y Codex de esta tanda los hooks leyeron su entrada con el lector nuevo, sin cuelgues ni falsos «no llegó nada».
+
+### Revisión del conjunto antes del PR (2026-09-24)
+
+La revisión encontró que el plazo cubría sólo el primer byte: un escritor que manda el JSON entero y no cierra stdin dejaba al guard esperando para siempre. No era una regresión —0.98.0 también se colgaba—, pero es la clase que este caso cerraba. Corregido en `06e0bf4e`: llegados datos, si pasa el plazo sin nada nuevo y lo recibido ya es un JSON entero, se juzga; medio JSON sigue esperando, así que la prueba de los dos trozos con pausa sigue en verde. Caso nuevo en `test/hooks/stdin.test.js`, visto en rojo (el guard no terminaba en 8 s).

@@ -346,3 +346,7 @@ sobre un push descartado. Dice lo mismo que los demás, con su prueba en `push.t
 ### Prueba real en un banco instalado (2026-09-23)
 
 Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. **Sesión real de Claude Code, sin llamadas manuales al guard**: «…; fijate si no falta ninguna…» lleva al agente a leer `api/.env`, el guard lo frena y queda pendiente; con «confirmo» el agente reintenta y lee. Con 0.98.0 el agente reporta que su «confirmo» no alcanzó y que el guard lo frenó de nuevo.
+
+### Revisión del conjunto antes del PR (2026-09-24)
+
+La revisión encontró que leer la negación general sólo en la primera cláusula reabría el 184 para los push: «Seguí con el refactor. No hagas push todavía» dejaba el push pendiente —la segunda oración no nombra la rama— y el «dale» siguiente lo publicaba. Reproducido y corregido en `222f18aa`: una cláusula con un verbo de publicar y una negación retiene cualquier push pendiente, con las formas del subjuntivo («no subas», «no publiques») como verbos de publicar. Dos casos nuevos en `test/hooks/push.test.js`, vistos en rojo.

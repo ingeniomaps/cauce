@@ -119,3 +119,6 @@ vez, en el encabezado de `test/wiring/registration.test.js`, que además usa un 
   porque con un home vacío la condición vieja ya pedía registrar.
 - `npm run ci`, exit 0, 995 pruebas.
 
+### Revisión del conjunto antes del PR (2026-09-24)
+
+La revisión encontró que el sondeo lanzaba los hooks de la copia registrada sin límite de tiempo —una copia colgada colgaba `doctor` e `install`; reproducido: la prueba nueva no terminaba en 300 s— y que `install` los lanzaba dos veces. Corregido en `ef0e185e`: diez segundos por lanzamiento, el sondeo corta en la primera copia que no contesta, e `install` usa la advertencia de `doctor`, que ya trae el comando. La prueba mide que termine en menos de 25 s, lo que además ve si se quita el corte.

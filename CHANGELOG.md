@@ -39,7 +39,7 @@ diseño — eso vive en el commit y en el código.
 - **Una negación sobre otra cosa ya no te hace perder un bloqueo.** «dale, fijate si esto no es un
   defecto» dejaba lo frenado sin anotar, y tu «confirmo» siguiente no aprobaba nada. Ahora la respuesta se
   lee en la primera parte del mensaje, y lo que negás nombrándolo —«dale, pero no el .env»— sigue sin
-  pasar. Cuando algo no queda esperando tu confirmación, el bloqueo lo dice y te indica que lo pidas
+  pasar, igual que un push si en cualquier parte decís que no se publique —«no hagas push todavía»—. Cuando algo no queda esperando tu confirmación, el bloqueo lo dice y te indica que lo pidas
   nombrándolo, en vez de ofrecerte un «dale» que no iba a servir.
 
 - **Si lo que se frenó lo hacía un subagente, tu confirmación le llega.** Dentro de trabajo delegado —Build en
@@ -63,7 +63,7 @@ diseño — eso vive en el commit y en el código.
   en segundo plano— con stdin abierto y sin datos, esperaba hasta que el otro extremo cerrara: horas, sin
   llegar a correr. Ahora, si en 2 s no llega nada, bloquea y explica cómo invocarlo: con el JSON del hook
   por stdin, o sin entrada con `</dev/null`. Lo que manda el runner se lee entero, así que una escritura
-  grande no se corta.
+  grande no se corta, y un JSON completo se juzga aunque quien lo mandó no cierre stdin.
 
 - **Una tarea cuyo entregable es un documento o una decisión escrita ya puede cerrarse en `autobuild`.**
   Paraba en `verify-hollow` pidiendo pruebas imposibles. Ahora Verify declara esos criterios sin superficie

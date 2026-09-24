@@ -150,3 +150,7 @@ cada archivo. Juzgar por sección lo cierra, y la prueba lo fija.
 ### Prueba real en un banco instalado (2026-09-23)
 
 Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. **Codex real** (codex-cli 0.152.1, gpt-5.5) escribiendo una migración goose con `Down` honesto por `apply_patch`, sin que el pedido nombre el archivo: escrita con la rama (`goose validate` exit 0) y «BLOQUEADO: … contiene SQL destructivo» con 0.98.0. La entrada cruda capturada confirma la forma que suponían las pruebas: `tool_name: "apply_patch"`, el sobre en `tool_input.command`, rutas relativas y `turn_id`.
+
+### Revisión del conjunto antes del PR (2026-09-24)
+
+Una revisión de código de la rama entera encontró que `patchSections` cortaba la sección en cualquier línea `*** `: un `*** Move to:` —migración renombrada— o un `*** End of File` dejaba sin juzgar lo que seguía, y un `DROP TABLE` ahí **pasaba**, donde el guard anterior, que juzgaba el sobre entero, lo frenaba. Reproducido con `patchSections` real (`lines: []` tras el `Move to`) y corregido en `c1fd28d0`: la sección termina sólo en la próxima cabecera de archivo o en `*** End Patch`. Dos casos nuevos en `test/hooks/migrations.test.js`, vistos en rojo.

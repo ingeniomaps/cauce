@@ -201,3 +201,7 @@ de los dos o `stagedForCommit` ya frenó antes, igual que el `ls-files` fallido 
 ### Prueba real en un banco instalado (2026-09-23)
 
 Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. Monorepo real: `api/sqlc.yaml` solo pasa con la rama y 0.98.0 lo frena como «fuente OpenAPI»; una especificación OpenAPI real frena; un fragmento `$ref` solo frena; y en la carpeta mixta la config de sqlc frena, que es el límite declarado. El guard `verify` de la propia sesión de Claude Code que corrió las pruebas frenó también el commit del banco con la especificación sin su generado, y lo dejó pasar al agregarlo.
+
+### Revisión del conjunto antes del PR (2026-09-24)
+
+La revisión encontró el costo de la búsqueda de fragmentos: un `git show` por cada `.yaml` de la carpeta en cada commit. Medido con 300 fixtures en `spec/`: unos 840 ms por commit antes, unos 18 ms después de reemplazarlo por un solo `git grep --cached` (`144858b3`), con el mismo veredicto. La carpeta mixta que también señaló es el límite ya declarado arriba.
