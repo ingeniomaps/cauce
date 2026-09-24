@@ -1,8 +1,8 @@
 {
   "automatization/runners/antigravity/hook.js": {
-    "lines": 77,
-    "branches": 75,
-    "functions": 62
+    "lines": 97,
+    "branches": 84,
+    "functions": 95
   },
   "engine/agents/catalog.js": {
     "lines": 100,
@@ -58,6 +58,11 @@
     "lines": 86,
     "branches": 54,
     "functions": 94
+  },
+  "engine/automation/registration.js": {
+    "lines": 97,
+    "branches": 71,
+    "functions": 100
   },
   "engine/automation/roles.js": {
     "lines": 100,
@@ -189,6 +194,11 @@
     "branches": 83,
     "functions": 100
   },
+  "engine/core/migrations.js": {
+    "lines": 100,
+    "branches": 96,
+    "functions": 100
+  },
   "engine/core/onboarding.js": {
     "lines": 100,
     "branches": 76,
@@ -242,6 +252,11 @@
   "engine/hooks/input.js": {
     "lines": 100,
     "branches": 84,
+    "functions": 100
+  },
+  "engine/hooks/migrations.js": {
+    "lines": 100,
+    "branches": 94,
     "functions": 100
   },
   "engine/hooks/ops-config.js": {
@@ -307,6 +322,11 @@
   "engine/integrations/writeback.js": {
     "lines": 90,
     "branches": 78,
+    "functions": 100
+  },
+  "engine/planning/acceptance.js": {
+    "lines": 100,
+    "branches": 100,
     "functions": 100
   },
   "engine/planning/adoption.js": {

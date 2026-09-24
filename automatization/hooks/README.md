@@ -12,7 +12,8 @@ Los hooks convierten invariantes comprobables en gates mecánicos. La base recom
 - cierre de sesión con planning o integraciones inválidas;
 - modificación del protocolo durante una tarea de producto.
 - escrituras fuera de las raíces declaradas del workspace;
-- reescritura de migraciones y SQL destructivo;
+- reescritura de migraciones y borrado destructivo —SQL o la API del ORM— en la parte que aplica, no en su
+  reversión; qué carpetas y extensiones son migraciones lo declara `migrations` en `ops.config.json`;
 - publicación, instalaciones globales y drift entre manifests y lockfiles.
 
 La lógica portable vive en `engine/hooks/run.js`; los `guard-*.sh` son entradas ejecutables comunes. Cada
@@ -84,7 +85,10 @@ guards lo leen:
 
 No cuenta cuando no hay persona —CI, o un aviso del runner como el de un subagente que terminó—, cuando lo
 que pidió es un recorrido de Cauce (`/autobuild`, `$flow`…), ni en la llamada de un subagente, que Claude
-marca con `agent_id`. En Claude y Codex cada llamada trae el identificador del mensaje que la originó;
+marca con `agent_id`: a un subagente no le llega lo que ella pidió ni lo que se le concedió antes. Sí le
+llega su confirmación a un bloqueo, que nombra exactamente lo frenado: el bloqueo de un subagente le pide
+devolverlo a quien lo lanzó para que se lo pregunte, y lo que ella confirme pasa aunque lo reintente otro
+subagente. En Claude y Codex cada llamada trae el identificador del mensaje que la originó;
 Gemini no lo manda, y ahí vale el último mensaje. El registro vive en el temporal del sistema, uno por
 sesión, y los guards de límites lo cuidan junto con `planning/.ops-approval`: el registro no lo escribe
 nunca una herramienta, y en la aprobación sólo entran las líneas que la persona nombró en ese mismo

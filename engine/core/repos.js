@@ -34,7 +34,7 @@ function reposFor(opsRoot, service) {
     .filter(Boolean)
     // Dos raíces del mismo repositorio son un solo repositorio: lo ambiguo es a cuál pertenece el
     // servicio, no cuántas rutas lo contienen.
-    .filter((repo, index, todos) => todos.indexOf(repo) === index)
+    .filter((repo, index, all) => all.indexOf(repo) === index)
 }
 
 // El repositorio del servicio cuando no hay duda. Sin ninguno o con varios devuelve vacío, y quien
@@ -84,7 +84,7 @@ function unrecordedCommits(repo, since, recorded) {
   // historial reescrito o un `commit --date` la cuenta daba cero sobre un repositorio lleno.
   const log = git(repo, 'log', '--no-merges', '--date=short', '--format=%h %ad %s')
   if (log.status !== 0) return []
-  const conocidos = new Set([...recorded].map((sha) => String(sha).slice(0, 7)))
+  const known = new Set([...recorded].map((sha) => String(sha).slice(0, 7)))
   // El hash y la fecha se leen partiendo por espacios y no por columna: `%h` mide 7 por default y git lo
   // sube solo cuando el repositorio crece —en éste mide 8—, así que una posición fija leía un espacio en
   // vez de la fecha y ningún commit pasaba el filtro. El aviso quedaba mudo sin decirlo, que es la peor
@@ -92,7 +92,7 @@ function unrecordedCommits(repo, since, recorded) {
   return log.stdout.split('\n').map((line) => line.trim()).filter(Boolean)
     .map((line) => ({ line, sha: line.split(/\s+/)[0], date: line.split(/\s+/)[1] }))
     .filter((one) => one.date >= since)
-    .filter((one) => !conocidos.has(one.sha.slice(0, 7)))
+    .filter((one) => !known.has(one.sha.slice(0, 7)))
     .map((one) => one.line)
 }
 
@@ -153,4 +153,18 @@ function unrecordedHumanActions(opsRoot, rows) {
     .map((row) => `HUMAN_ACTIONS.md: ${row.task} figura resuelta y ningún commit la registró`)
 }
 
-module.exports = { reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions }
+// Qué archivos tocó un commit, buscado en todos los repositorios declarados: una entrada de DONE nombra
+// el sha y no el repositorio. Devuelve null si ninguno lo conoce, y quien pregunta decide qué significa.
+// `--root` es para que el primer commit de un repositorio también liste lo suyo.
+function commitFiles(opsRoot) {
+  const repos = reposFor(opsRoot, '.')
+  return (sha) => {
+    for (const repo of repos) {
+      const shown = git(repo, 'diff-tree', '--no-commit-id', '--name-only', '-r', '--root', sha)
+      if (shown.status === 0) return shown.stdout.split('\n').map((line) => line.trim()).filter(Boolean)
+    }
+    return null
+  }
+}
+
+module.exports = { reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions, commitFiles }

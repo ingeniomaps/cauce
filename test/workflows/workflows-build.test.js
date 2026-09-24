@@ -76,8 +76,8 @@ test('Build declara el rojo previo en su schema', () => {
 
 test('la aceptación viaja a Verify, que declara qué criterio no cubre', () => {
   assert.match(
-    workflow, /required: \['passed', 'commands', 'details', 'uncovered'\]/,
-    'verify declara qué criterio quedó sin codificar',
+    workflow, /required: \['passed', 'commands', 'details', 'uncovered', 'covered'\]/,
+    'verify declara qué criterio quedó sin codificar y cuál sí, con qué prueba',
   )
   const verify = workflow.slice(workflow.indexOf("phase('Verify')"), workflow.indexOf("phase('QA')"))
   assert.match(verify, /task\.acceptance/, 'la aceptación viaja al que audita el fuente de los tests')
@@ -88,7 +88,8 @@ test('la aceptación viaja a Verify, que declara qué criterio no cubre', () => 
 // Que después se encamine bien lo ejecuta `autobuild.test.js`.
 test('lo descubierto declara de qué tipo es y con qué se cierra', () => {
   assert.match(workflow, /kind: \{ type: 'string', enum: \['edge', 'open'\] \}/, 'Build declara qué encontró')
-  assert.match(workflow, /enum: \['missing-test', 'ambiguous'\]/, 'el criterio sin cubrir declara su causa')
+  assert.match(workflow, /enum: \['missing-test', 'ambiguous', 'no-surface'\]/,
+    'el criterio sin cubrir declara su causa')
   assert.match(
     workflow, /dejó abierta[\s\S]{0,200}quién puede tomarla/,
     'y una decisión abierta se registra pidiendo quién puede tomarla',
@@ -215,9 +216,9 @@ test('flow acepta la intención suelta, con prefijo de equipo o estructurada', (
   // El texto crudo se conserva para poder recomponerlo si el prefijo no era un equipo.
   assert.equal(withPrefix.raw, 'incident-review: se cayó el checkout')
   // Estructurado, el prefijo no se interpreta: el equipo vino explícito.
-  const estructurado = resolve({ intent: 'algo: con dos puntos', flow: 'acme-soporte' })
-  assert.equal(estructurado.CANDIDATE, 'acme-soporte')
-  assert.equal(estructurado.INTENT, 'algo: con dos puntos')
+  const structured = resolve({ intent: 'algo: con dos puntos', flow: 'acme-soporte' })
+  assert.equal(structured.CANDIDATE, 'acme-soporte')
+  assert.equal(structured.INTENT, 'algo: con dos puntos')
   assert.equal(resolve(undefined).INTENT, '', 'sin intención no arranca')
 })
 
@@ -253,11 +254,11 @@ test('en una instancia instalada, ROOT ancla y no depende de dónde esté parado
   const A = require('../../engine/automation')
   const auto = path.resolve(__dirname, '..', '..', 'automatization')
   const rootOf = (prefix, opsRoot) => {
-    const linea = A.render(path.join(WF, 'autobuild.js'), prefix, auto, opsRoot)
+    const line = A.render(path.join(WF, 'autobuild.js'), prefix, auto, opsRoot)
       .split('\n').find((one) => one.includes('const ROOT ='))
     // Se evalúa la línea en vez de compararla como texto: lo que importa es el valor con el que arrancan
     // los agentes, no cómo está escrita la expresión que lo produce.
-    return new Function(`${linea}; return ROOT`)()
+    return new Function(`${line}; return ROOT`)()
   }
 
   assert.equal(rootOf('empresa-ops/', '/abs/empresa/empresa-ops'), '/abs/empresa/empresa-ops',

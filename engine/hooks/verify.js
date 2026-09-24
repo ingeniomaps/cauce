@@ -144,33 +144,90 @@ function commitTree(dir, input) {
   return { root: temp, temp, env: { pnpm_config_verify_deps_before_run: 'false' } }
 }
 
+// Dónde viven la consulta de sqlc y su generado lo declara cada proyecto en su config (`queries:` y
+// `gen.go.out`), y acá no se lee: no hay parser de YAML y no se agrega uno para un guard. Lo que se usa
+// en su lugar son dos hechos que no dependen del layout.
+//
+// La consulta se busca en `queries/` a cualquier profundidad —un monorepo la tiene en `api/db/queries/`
+// (caso 192)—, y sólo cuenta si el repositorio tiene un `sqlc.yaml`, `sqlc.yml` o `sqlc.json`, los tres
+// nombres que sqlc busca: sin esa condición, desanclar el patrón frenaría consultas de un reporte o
+// fixtures que nadie genera, y cada freno falso se resuelve aprobándolo. Un `queries:` con otro nombre de
+// carpeta sigue sin verse.
+//
+// El generado se reconoce por el nombre del archivo, no por su carpeta: sqlc escribe `<consulta>.sql.go`
+// donde diga `out`, y esperar una carpeta `sqlc/` frenaba al que la llamó de otro modo (caso 187). La
+// carpeta queda como respaldo. `.ts` o `.py` no: esos generadores son plugins y su nombre no se comprobó.
+const SQL_SOURCE = /(?:^|\/)queries\/.*\.sql$/i
+const SQL_GENERATED = /\.sql\.go$|(?:^|\/)(?:sqlc|generated)(?:\/|.*\.(?:go|ts|js|py)$)/i
+function usesSqlc(dir) {
+  // `top` porque `dir` puede ser un subdirectorio y el índice se pregunta entero; `glob` para que `**/`
+  // alcance también la raíz. Se lee el índice y no el disco: una config sin trackear no es del proyecto.
+  // Si git no contesta se asume que sí: un guard que no pudo mirar no afloja.
+  const listed = run('git', ['-C', dir, 'ls-files', '--',
+    ...['yaml', 'yml', 'json'].map((ext) => `:(top,glob)**/sqlc.${ext}`)], dir)
+  return !listed.ok || Boolean(listed.output.trim())
+}
+
+// Una especificación OpenAPI se reconoce por lo que declara y no por la carpeta: `api/` guarda también la
+// config de sqlc, un compose o fixtures, y cada uno pedía regenerar un cliente que no existe (caso 197). La
+// carpeta queda como filtro barato antes de leer nada. Un fragmento de una especificación partida con `$ref`
+// no declara nada, así que cuenta si su carpeta de primer nivel tiene en el índice una raíz que sí lo haga.
+// Se lee el índice y no el disco, que es lo que el commit graba. Si git no contesta, dispara: un guard que
+// no pudo mirar no afloja.
+const OPENAPI_CANDIDATE = /^(?:(?:openapi|api|spec)\/(?:.*\/)?[^/]+|openapi|swagger)\.ya?ml$/i
+const OPENAPI_ROOT = /^(?:openapi|swagger)\s*:/m
+
+function declaresOpenApi(dir, file) {
+  // Un archivo borrado figura como cambio y ya no está en el índice: lo que era se lee en `HEAD`.
+  for (const revision of ['', 'HEAD']) {
+    const shown = run('git', ['-C', dir, 'show', `${revision}:${file}`], dir)
+    if (shown.ok) return OPENAPI_ROOT.test(shown.output.slice(0, 4096))
+  }
+  return true
+}
+
+function changedOpenApiSpec(dir, staged) {
+  const candidates = staged.filter((file) => OPENAPI_CANDIDATE.test(file))
+  if (candidates.some((file) => declaresOpenApi(dir, file))) return true
+  // Una sola búsqueda en el índice por todas las carpetas, y no un `git show` por archivo: un `spec/` con
+  // cientos de fixtures costaba cientos de procesos por commit. `git grep` sale con 1 si no encuentra nada, y
+  // con cualquier otro código no pudo mirar, que dispara igual.
+  const folders = [...new Set(candidates.filter((file) => file.includes('/')).map((file) => file.split('/')[0]))]
+  if (!folders.length) return false
+  const found = run('git', ['-C', dir, 'grep', '--cached', '-l', '-E', '^(openapi|swagger)[[:space:]]*:', '--',
+    ...folders.flatMap((folder) => [`:(top,glob)${folder}/**/*.yaml`, `:(top,glob)${folder}/**/*.yml`])], dir)
+  if (found.ok) return Boolean(found.output.trim())
+  return found.status !== 1
+}
+
 function verify(input) {
   if (process.env.OPS_SKIP_VERIFY === '1') return
   const command = commandOf(input)
   if (!isCommit(command)) return
   const { dir, staged } = stagedForCommit(command, cwdOf(input))
-  const changedOpenApi = staged.some((file) => /^(?:openapi|api|spec)(?:\/.*)?\/[^/]+\.ya?ml$/i.test(file))
-    || staged.some((file) => /^(?:openapi|swagger)\.ya?ml$/i.test(file))
-  const changedSqlSource = staged.some((file) => /^(?:db\/queries|queries)\/.*\.sql$/i.test(file))
+  const changedOpenApi = changedOpenApiSpec(dir, staged)
+  const changedSqlSource = staged.some((file) => SQL_SOURCE.test(file)) && usesSqlc(dir)
   const hasApiGenerated = staged.some((file) => /(?:^|\/)[^/]*(?:generated|\.gen)\.(?:go|ts|js|py)$/i.test(file))
-  const hasSqlGenerated = staged.some((file) => /(?:^|\/)(?:sqlc|generated)(?:\/|.*\.(?:go|ts|js|py)$)/i.test(file))
+  const hasSqlGenerated = staged.some((file) => SQL_GENERATED.test(file))
   // Acá lo aprobado es el conjunto staged entero: decir «autorizo commitear exactamente estas rutas»
   // es lo que un gate en rojo necesita, y cambia en cuanto se stagea una más. La lista sale del índice
   // y no de una regla, que es lo que la vuelve una operación y no un permiso.
-  const sinAprobar = AP.pendingNow(opsRoot(input), staged, input)
-  const aprobado = !sinAprobar.length
-  if (changedOpenApi && !hasApiGenerated && !aprobado) {
+  const unapproved = AP.pendingNow(opsRoot(input), staged, input)
+  const approved = !unapproved.length
+  if (changedOpenApi && !hasApiGenerated && !approved) {
     block('Cambió una fuente OpenAPI/Swagger sin incluir código regenerado. Ejecuta el generador y '
-      + `stagea su salida.\n${AP.HOW('OPS_SKIP_VERIFY', sinAprobar, input)}`)
+      + `stagea su salida.\n${AP.HOW('OPS_SKIP_VERIFY', unapproved, input)}`)
   }
-  if (changedSqlSource && !hasSqlGenerated && !aprobado) {
-    block('Cambió una consulta SQL fuente sin artefactos regenerados. Ejecuta el generador.\n'
-      + AP.HOW('OPS_SKIP_VERIFY', sinAprobar, input))
+  if (changedSqlSource && !hasSqlGenerated && !approved) {
+    block('Cambió una consulta SQL fuente sin artefactos regenerados: busqué en el índice un `*.sql.go`, '
+      + 'o algo bajo una carpeta `sqlc/` o `generated/`, y no hay ninguno. Si corriste `sqlc generate`, '
+      + 'stageá lo que escribió; si su `output_files_suffix` le cambia el nombre, esto no lo reconoce.\n'
+      + AP.HOW('OPS_SKIP_VERIFY', unapproved, input))
   }
   if (!staged.some((file) => /\.(?:ts|tsx|js|jsx|mjs|cjs|go|py|html|css|scss|prisma)$/.test(file))) return
   const { root, temp, env } = commitTree(dir, input)
   try {
-    verifyGates(root, dir, sinAprobar, env, input)
+    verifyGates(root, dir, unapproved, env, input)
   } finally {
     if (temp) fs.rmSync(temp, { recursive: true, force: true })
   }
@@ -201,7 +258,7 @@ const ERROR_LINE = /error|err[_!]|fail|abort|not found|cannot|no such/i
 const FAILED_TEST = /^(?:✖|not ok\b|--- FAIL:|● |× |\d+\) |FAILED )/
 const PASSED_TEST = /^(?:✔|ok\b|--- PASS:)|::\S+ PASSED\b/
 const MAX_LINE = 160
-function fallo(gate, result) {
+function failure(gate, result) {
   // La línea que empieza con `>` es el eco del script que npm y pnpm imprimen antes de correrlo, así
   // que lleva el comando entero y no dice nada de qué falló. Descartarla es lo que hace que la primera
   // coincidencia sea el error y no el comando — con el eco adentro, un script que **menciona** una
@@ -228,7 +285,7 @@ function howItReads(failures) {
     + 'una suite, así que mirá si llegaron a ejecutarse antes de aprobar esto como un rojo conocido.'
 }
 
-function verifyGates(root, dir, sinAprobar, env, input) {
+function verifyGates(root, dir, unapproved, env, input) {
   const ops = opsRoot(input)
   const failures = []
   if (fs.existsSync(path.join(root, 'package.json'))) {
@@ -240,19 +297,19 @@ function verifyGates(root, dir, sinAprobar, env, input) {
       if (!pkg.scripts || !pkg.scripts[script]) continue
       const result = run(pm, ['run', script], root, env)
       EV.record(ops, script, result.status, result.ms)
-      if (!result.ok) failures.push(fallo(script, result))
+      if (!result.ok) failures.push(failure(script, result))
     }
   } else if (fs.existsSync(path.join(root, 'go.mod'))) {
     const makefile = path.join(root, 'Makefile')
     if (fs.existsSync(makefile) && /^ci:/m.test(fs.readFileSync(makefile, 'utf8'))) {
       const result = run('make', ['ci'], root, env)
       EV.record(ops, 'make ci', result.status, result.ms)
-      if (!result.ok) failures.push(fallo('make ci', result))
+      if (!result.ok) failures.push(failure('make ci', result))
     } else {
       for (const args of [['test', './...'], ['build', './...']]) {
         const result = run('go', args, root, env)
         EV.record(ops, `go ${args[0]}`, result.status, result.ms)
-        if (!result.ok) failures.push(fallo(`go ${args[0]}`, result))
+        if (!result.ok) failures.push(failure(`go ${args[0]}`, result))
       }
     }
   } else if (fs.existsSync(path.join(root, 'pyproject.toml')) || fs.existsSync(path.join(root, 'requirements.txt'))) {
@@ -260,16 +317,16 @@ function verifyGates(root, dir, sinAprobar, env, input) {
     if (fs.existsSync(makefile) && /^test:/m.test(fs.readFileSync(makefile, 'utf8'))) {
       const result = run('make', ['test'], root, env)
       EV.record(ops, 'make test', result.status, result.ms)
-      if (!result.ok) failures.push(fallo('make test', result))
+      if (!result.ok) failures.push(failure('make test', result))
     }
   }
-  if (!failures.length || !sinAprobar.length) return
+  if (!failures.length || !unapproved.length) return
   // Se dice sobre qué corrió cuando no fue el árbol: un fallo que no se reproduce escribiendo el mismo
   // comando a mano se lee como que el guard miente, y lo que pasó es que midió lo que se va a grabar.
-  const donde = root === dir ? '' : '\nCorrió sobre el índice, que es lo que el commit graba: si en tu '
+  const where = root === dir ? '' : '\nCorrió sobre el índice, que es lo que el commit graba: si en tu '
     + 'directorio pasa, es que en disco tenés algo que no está staged.'
-  block(`Verify falló en ${path.basename(dir)}: ${howItReads(failures)}\nNo se commitea en rojo.${donde}\n`
-    + AP.HOW('OPS_SKIP_VERIFY', sinAprobar, input))
+  block(`Verify falló en ${path.basename(dir)}: ${howItReads(failures)}\nNo se commitea en rojo.${where}\n`
+    + AP.HOW('OPS_SKIP_VERIFY', unapproved, input))
 }
 
 module.exports = { verify }

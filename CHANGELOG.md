@@ -14,6 +14,103 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.99.0] - 2026-09-24
+
+### Agregado
+
+- **`migrations.paths` en `ops.config.json`**: las carpetas donde viven tus migraciones, por ejemplo
+  `["migrations", "alembic/versions"]`. Si la declarás, reemplaza el default (`migrations`, `migration`,
+  `migrate`), que no alcanzaba a Alembic. `check` avisa la extensión o la carpeta declarada que no alcanza
+  a ningún archivo: una cobertura que declaraste y no cubre nada.
+
+### Cambiado
+
+- **`check` falla si una entrada de DONE tiene `tests:` todo `n/a` y su commit toca algo que no sea un
+  documento (`.md`, `.txt`, `.adoc`) o una imagen (`.png`, `.jpg`, `.jpeg`, `.gif`, `.svg`, `.webp`).** Es lo que vuelve creíble el `n/a` de arriba: lo demás se ejecuta y se prueba. Rige
+  para lo cerrado desde el 2026-09-24, así que tu historia anterior no se pone en rojo al actualizar.
+
+### Corregido
+
+- **Un aviso de una tarea de fondo ya no le borra a la persona lo que dijo.** Si un guard frenaba algo en el
+  turno de un aviso de un subagente, eso no quedaba esperando tu confirmación, y tu «dale» siguiente no
+  aprobaba nada. Ahora lo frenado espera tu respuesta aunque el aviso llegue antes que ella, y tu negativa
+  —«no toques el `.env`»— sigue valiendo después de un aviso sin depender del texto que el aviso traiga.
+
+- **Una negación sobre otra cosa ya no te hace perder un bloqueo.** «dale, fijate si esto no es un
+  defecto» dejaba lo frenado sin anotar, y tu «confirmo» siguiente no aprobaba nada. Ahora la respuesta se
+  lee en la primera parte del mensaje, y lo que negás nombrándolo —«dale, pero no el .env»— sigue sin
+  pasar, igual que un push si en cualquier parte decís que no se publique —«no hagas push todavía»—. Cuando algo no queda esperando tu confirmación, el bloqueo lo dice y te indica que lo pidas
+  nombrándolo, en vez de ofrecerte un «dale» que no iba a servir.
+
+- **Si lo que se frenó lo hacía un subagente, tu confirmación le llega.** Dentro de trabajo delegado —Build en
+  cada `autobuild`— el bloqueo no ofrecía el chat: decías que sí y el reintento volvía a frenar con el mismo
+  mensaje, y la única salida era pegar la línea en `planning/.ops-approval`. Ahora el subagente devuelve el
+  bloqueo para que te lo pregunten, y lo que confirmes pasa aunque lo reintente otro subagente. Sólo eso: un
+  pedido tuyo que nombraba algo sigue valiendo para el agente con el que hablás, no para un subagente.
+
+- **Sin nadie en el chat, el bloqueo ya no le ordena al agente que se escriba la aprobación.** Decía «Aprobalo
+  pegando tal cual en…», y el agente lo leía como una orden que su contrato le prohíbe. Ahora dice que las
+  líneas las pega una persona, y al agente qué hacer mientras tanto.
+
+- **El gate de commit reconoce el código de sqlc donde lo pongas.** Sólo aceptaba el generado bajo una
+  carpeta `sqlc/` o `generated/`, así que un `out` como `internal/platform/pgdb/` pedía aprobación en cada
+  commit que tocaba una consulta aunque hubieras regenerado. Ahora reconoce `*.sql.go` en cualquier carpeta.
+  Y ve una consulta en cualquier carpeta `queries/` —`api/db/queries/` en un monorepo—, que antes se
+  commiteaba sin su generado sin que nada avisara; eso sólo si el repositorio tiene `sqlc.yaml`, `sqlc.yml`
+  o `sqlc.json`. Si frena, dice qué buscó. Límite: con `output_files_suffix` el generado no se reconoce.
+
+- **Un guard invocado a mano ya no se queda colgado.** Lanzado fuera del runner —a mano, desde un script o
+  en segundo plano— con stdin abierto y sin datos, esperaba hasta que el otro extremo cerrara: horas, sin
+  llegar a correr. Ahora, si en 2 s no llega nada, bloquea y explica cómo invocarlo: con el JSON del hook
+  por stdin, o sin entrada con `</dev/null`. Lo que manda el runner se lee entero, así que una escritura
+  grande no se corta, y un JSON completo se juzga aunque quien lo mandó no cierre stdin.
+
+- **Una tarea cuyo entregable es un documento o una decisión escrita ya puede cerrarse en `autobuild`.**
+  Paraba en `verify-hollow` pidiendo pruebas imposibles. Ahora Verify declara esos criterios sin superficie
+  ejecutable, llegan a Done como `tests: n/a — <razón>`, y QA comprueba que el documento exista y cubra lo
+  que la aceptación enumera. Con causas mezcladas, el rebote pide sólo las pruebas que de verdad faltan, y
+  Done recibe de Verify qué prueba cubre cada criterio en vez de componerlo de memoria.
+
+- **Una condición marcada `(fuera de verify: <razón>)` ya no llega a Verify ni a QA.** Era la salida que
+  `check` recomienda, y la corrida paraba igual; ahora viaja a Done para quedar cumplida en `tests:`, `qa:`
+  o `commit:`.
+
+- **El guard de migraciones ya no frena la reversión honesta.** Buscaba en todo el archivo, así que el
+  `DROP TABLE` del `-- +goose Down` frenaba cada tabla nueva y una migración sin `Down` pasaba. Ahora, en
+  goose y dbmate, juzga sólo el bloque que aplica; un `*.down.sql` es reversión entera; corregir el `Down`
+  con una edición también pasa; y el mensaje dice en qué bloque está lo que frena.
+
+- **Si declarás `migrations.extensions`, el guard ve también el borrado escrito con la API del ORM**, no
+  sólo el SQL crudo: `op.drop_table`/`drop_column` (Alembic), `drop_table`, `remove_column(s)` y
+  `drop_join_table` (Rails), `dropTable`/`dropColumn(s)` (TypeORM), `dropTable(IfExists)`/`dropColumn`
+  (Knex) y `DeleteModel`/`RemoveField` (Django). La reversión —`downgrade()`, `down`— no se juzga.
+
+- **El puente de Antigravity ya no deja pasar lo que no puede leer.** Ante un JSON ilegible respondía
+  `allow`: un `git push --force` al que le faltaba una llave pasaba. Y con stdin abierto se colgaba. Ahora
+  lee con el mismo lector que los guards: lo ilegible se niega en `pre-shell` y `pre-files`, si en 2 s no
+  llega nada niega y dice cómo invocarlo a mano, y en `stop` deja cerrar con el motivo a la vista. Sin
+  entrada (`</dev/null`) sigue permitiendo, como antes.
+
+- **El puente de Antigravity niega una llamada que no sabe describir.** Leía cada campo por un nombre fijo,
+  así que una llamada con otra forma —un campo renombrado en una actualización del runner— llegaba vacía a
+  los guards y pasaba: todos apagados sin avisar. Ahora un `pre-shell` sin comando o un `pre-files` sin
+  archivo se niegan, y el motivo nombra los campos que sí llegaron.
+
+- **El gate de commit reconoce una especificación OpenAPI por lo que declara, no por la carpeta.** Cualquier
+  `.yaml` bajo `api/`, `openapi/` o `spec/` pedía regenerar el cliente: una config de sqlc, un compose o un
+  fixture ahí frenaban cada commit. Ahora cuenta el que declara `openapi:` o `swagger:`, o un fragmento de una
+  carpeta que tiene uno.
+
+- **En Codex, el guard de migraciones juzga cada archivo del parche por separado.** Un `apply_patch` llegaba
+  como un solo sobre: los marcadores de goose y dbmate venían con el `+` del parche y no partían, así que la
+  reversión honesta volvía a frenar, y un `DROP TABLE` citado en otro archivo del mismo parche frenaba la
+  migración. Ahora cada archivo se juzga por su sección, y en una modificación sólo lo agregado.
+
+- **`automation doctor` de Antigravity mira la copia que `agy` ejecuta de verdad.** `agy` corre la que registrás
+  con `agy plugin install`, una por usuario, y `doctor` miraba la del workspace: decía «operativo» mientras `agy`
+  ejecutaba el plugin de otro proyecto o uno roto, y frenaba cada comando. Ahora compara las dos, lanza la
+  registrada como la lanza `agy`, y si difiere te dice qué comando corre para registrar esta instalación.
+
 ## [0.98.0] - 2026-09-17
 
 ### Cambiado

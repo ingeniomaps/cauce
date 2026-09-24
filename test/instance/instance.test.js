@@ -99,7 +99,10 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   assert.equal(run(['automation', 'doctor', target, 'gemini']).status, 0)
   assert.equal(run(['automation', 'install', target, 'antigravity']).status, 0)
   assert.equal(fs.existsSync(path.join(workspace, '.agents', 'plugins', 'cauce', 'plugin.json')), true)
-  assert.equal(run(['automation', 'doctor', target, 'antigravity']).status, 0)
+  // Un home propio: por qué, en el encabezado de test/wiring/registration.test.js.
+  const home = path.join(base, 'home')
+  fs.mkdirSync(home)
+  assert.equal(run(['automation', 'doctor', target, 'antigravity'], undefined, { HOME: home }).status, 0)
   assert.equal(fs.existsSync(path.join(target, 'organization', 'company.md')), true)
   // El catálogo del sistema no se copia: se resuelve desde el paquete o desde .ops en modo copia.
   assert.equal(fs.existsSync(path.join(target, 'agents', 'roles', 'system')), false)

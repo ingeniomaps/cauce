@@ -114,7 +114,9 @@ preguntando, no pasa. **Con los gates de un commit se pregunta cada vez**, como 
 stack y los lockfiles no heredan lo que autorizaste en un mensaje anterior, porque cada commit es otra
 operación. Y `plan-first` no te pide un plan cuando el cambio lo pediste vos: el plan es para el trabajo que va
 por tareas. Funciona en Claude Code, Codex y Gemini, que le avisan a Cauce cuando mandás un mensaje; en
-Antigravity, y cuando nadie está en el chat —CI, un recorrido, un subagente—, queda el archivo de abajo.
+Antigravity, y cuando nadie está en el chat —CI, un recorrido—, queda el archivo de abajo. Si lo frenado
+lo hacía un subagente, tu confirmación le llega igual; un pedido tuyo que lo nombraba, no: ése vale sólo
+para el agente con el que hablás.
 
 **Sin chat, la salida de todos ellos es la misma**: escribir en `planning/.ops-approval` las rutas que
 autorizás, una por línea, con `#` para lo que no sea una ruta. En sidecar es el `planning/` de la

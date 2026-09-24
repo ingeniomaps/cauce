@@ -4,7 +4,7 @@
 // puede tocar mientras lo juzga.
 
 const { tempRoot } = require('../support/environment')
-const { blocked, git, initRepo, messageOf, DESARMAN } = require('../support/hooks-harness')
+const { blocked, git, initRepo, messageOf, DISARM } = require('../support/hooks-harness')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -22,10 +22,10 @@ test('la copia recibe la palanca que apaga la sincronización, y ya no la que de
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
   // El gate va en un archivo y no inline: tiene que quedar trackeado para que la copia lo materialice,
   // y anota fuera del árbol que se juzga para que las dos corridas escriban en el mismo lugar.
-  const visto = path.join(tempRoot('ops-hook-ci-visto-'), 'visto.txt')
+  const seen = path.join(tempRoot('ops-hook-ci-visto-'), 'visto.txt')
   fs.writeFileSync(path.join(root, 'gate.js'),
-    `const d = ${JSON.stringify(DESARMAN)}\n`
-    + `require('node:fs').appendFileSync(${JSON.stringify(visto)}, `
+    `const d = ${JSON.stringify(DISARM)}\n`
+    + `require('node:fs').appendFileSync(${JSON.stringify(seen)}, `
     + `'verify=' + (process.env.pnpm_config_verify_deps_before_run || 'vacio') `
     + `+ ' viejo=' + (process.env.npm_config_verify_deps_before_run || 'vacio') `
     + `+ ' desarmadas=' + Object.keys(d).filter((k) => process.env[k]).join(',') + '\\n')\n`)
@@ -44,29 +44,29 @@ test('la copia recibe la palanca que apaga la sincronización, y ya no la que de
   // corre dentro de una copia, y sin despejarla la prueba frenaba todo commit con algo sin trackear
   // (caso 093).
   const ISOLATED = ['CI', 'npm_config_verify_deps_before_run', 'pnpm_config_verify_deps_before_run']
-  const antes = Object.fromEntries(ISOLATED.map((name) => [name, process.env[name]]))
+  const before = Object.fromEntries(ISOLATED.map((name) => [name, process.env[name]]))
   try {
     for (const name of ISOLATED) delete process.env[name]
     assert.doesNotThrow(() => execute('verify', commit))
-    assert.match(fs.readFileSync(visto, 'utf8'), /^verify=vacio viejo=vacio desarmadas=$/m,
+    assert.match(fs.readFileSync(seen, 'utf8'), /^verify=vacio viejo=vacio desarmadas=$/m,
       'sin copia no se le cambia el entorno a nadie')
 
     // Y ahora sí hay copia, por lo más barato que la dispara.
-    fs.writeFileSync(visto, '')
+    fs.writeFileSync(seen, '')
     fs.writeFileSync(path.join(root, 'suelto.txt'), 'no trackeado\n')
     assert.doesNotThrow(() => execute('verify', commit))
-    const enLaCopia = fs.readFileSync(visto, 'utf8')
+    const inCopy = fs.readFileSync(seen, 'utf8')
     // La segunda mitad es la aserción de ausencia que R9 pide para una quita: el nombre viejo no viaja.
     // Sin ella, exportar los dos a la vez pasaría, y lo que se quitó fue justamente el que no sirve.
-    assert.match(enLaCopia, /^verify=false viejo=vacio/m,
+    assert.match(inCopy, /^verify=false viejo=vacio/m,
       'la copia no sincroniza nada antes de correr el gate, y por el nombre que pnpm sí lee')
-    assert.match(enLaCopia, /desarmadas=$/m,
-      `y ninguna de éstas llega al gate:\n${Object.entries(DESARMAN)
+    assert.match(inCopy, /desarmadas=$/m,
+      `y ninguna de éstas llega al gate:\n${Object.entries(DISARM)
         .map(([k, why]) => `  ${k}: ${why}`).join('\n')}`)
   } finally {
     for (const name of ISOLATED) {
-      if (antes[name] === undefined) delete process.env[name]
-      else process.env[name] = antes[name]
+      if (before[name] === undefined) delete process.env[name]
+      else process.env[name] = before[name]
     }
   }
 })
@@ -100,8 +100,8 @@ test('un gate no puede purgar el node_modules del proyecto por el enlace', () =>
 
   // El `pnpm` de mentira: reinstala —o sea, empieza borrando— salvo que se le haya apagado la
   // comprobación previa. Sigue el enlace, que es exactamente por donde ocurrió el daño.
-  const falso = tempRoot('ops-hook-purga-bin-')
-  fs.writeFileSync(path.join(falso, 'pnpm'), '#!/usr/bin/env bash\n'
+  const fake = tempRoot('ops-hook-purga-bin-')
+  fs.writeFileSync(path.join(fake, 'pnpm'), '#!/usr/bin/env bash\n'
     + 'if [ "${pnpm_config_verify_deps_before_run:-}" != "false" ]; then\n'
     + '  rm -f node_modules/marca.txt\n'
     + 'fi\n'
@@ -109,12 +109,12 @@ test('un gate no puede purgar el node_modules del proyecto por el enlace', () =>
 
   // Árbol e índice difieren, que es cuando se materializa la copia y aparece el enlace.
   fs.writeFileSync(path.join(root, 'suelto.txt'), 'no trackeado\n')
-  const antes = process.env.PATH
+  const before = process.env.PATH
   try {
-    process.env.PATH = `${falso}${path.delimiter}${antes}`
+    process.env.PATH = `${fake}${path.delimiter}${before}`
     assert.doesNotThrow(() => execute('verify', { cwd: root, tool_input: { command: 'git commit -m x' } }))
   } finally {
-    process.env.PATH = antes
+    process.env.PATH = before
   }
 
   // La aserción es de ausencia de daño: que el gate haya pasado no dice nada: en la regresión también
@@ -231,14 +231,14 @@ test('el contraste de evidencia separa lo que existe de lo que no se puede busca
   fs.writeFileSync(path.join(root, 'api', 'alta_test.go'), 'func TestAltaResponde201(t *testing.T) {}\n')
   const roots = [path.join(root, 'api')]
 
-  const veredicto = (tests) => EV.contrast(tests, roots).map((trace) => trace.verdict)
-  assert.deepEqual(veredicto('C1 → TestAltaResponde201'), ['encontrado'])
+  const verdictsOf = (tests) => EV.contrast(tests, roots).map((trace) => trace.verdict)
+  assert.deepEqual(verdictsOf('C1 → TestAltaResponde201'), ['encontrado'])
   // La prueba inventada es lo que este contraste existe para atrapar.
-  assert.deepEqual(veredicto('C1 → TestQueNoExiste'), ['ausente'])
+  assert.deepEqual(verdictsOf('C1 → TestQueNoExiste'), ['ausente'])
   // Y la descrita en prosa no se da por ausente: el molde admite «nombre de prueba o comando», así que
   // confundir «no lo encontré» con «no existe» convertiría la forma documentada en un error.
-  assert.deepEqual(veredicto('C1 → prueba de alta de cliente'), ['inbuscable'])
-  assert.deepEqual(veredicto('n/a — no hay superficie ejecutable'), [])
+  assert.deepEqual(verdictsOf('C1 → prueba de alta de cliente'), ['inbuscable'])
+  assert.deepEqual(verdictsOf('n/a — no hay superficie ejecutable'), [])
   // El tercer veredicto, con su razón en `core/evidence.js`: acá se ejerce la lista vacía de raíces.
   assert.deepEqual(EV.contrast('C1 → TestAltaResponde201', []).map((t) => t.verdict), ['inbuscable'])
 })
@@ -265,21 +265,111 @@ test('verify no deja que un gate escriba en el repositorio que juzga', () => {
   // antes en vez de enumerar lo esperado: enumerar deja pasar lo que uno no pensó en escribir.
   // Se descuenta `planning/`: es donde `verify` deja su propio registro de gates, que sí es una
   // escritura suya y esperada. Todo lo demás tiene que quedar idéntico.
-  const estado = () => spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' })
+  const worktreeState = () => spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' })
     .stdout.split('\n').filter((line) => !/planning\//.test(line)).join('\n')
-  const antes = estado()
+  const before = worktreeState()
 
   assert.doesNotThrow(() => execute('verify', { cwd: root, tool_input: { command: 'git commit -m x' } }))
 
   const log = spawnSync('git', ['log', '--oneline'], { cwd: root, encoding: 'utf8' }).stdout
   assert.equal(/fuga-desde-el-gate/.test(log), false, 'el gate commiteó en el repositorio de verdad')
-  assert.equal(estado(), antes, 'el índice o el árbol del repositorio de verdad cambiaron durante el gate')
+  assert.equal(worktreeState(), before, 'el índice o el árbol del repositorio de verdad cambiaron durante el gate')
   const config = spawnSync('git', ['config', '--local', '--get', 'core.worktree'],
     { cwd: root, encoding: 'utf8' }).stdout.trim()
   assert.equal(config, '', 'el repositorio quedó apuntando a un árbol que ya no existe')
 })
 
+// Los layouts de los casos 187 y 192, uno por repositorio. `prior` va commiteado antes, así que cuenta como
+// trackeado y no como parte de lo que se juzga.
+test('el guard de sqlc reconoce la consulta y el generado donde el proyecto los puso', async (t) => {
+  const scenarios = [
+    { name: 'monorepo con el generado fuera de sqlc/', prior: ['api/sqlc.yaml'],
+      staged: ['api/db/queries/x.sql', 'api/internal/platform/pgdb/x.sql.go'], blocks: false },
+    // `backend/` y no `api/`: así esta tabla no depende de cómo el guard de OpenAPI lee esa carpeta.
+    { name: 'monorepo sin generado', staged: ['backend/sqlc.yaml', 'backend/db/queries/x.sql'],
+      blocks: true },
+    { name: 'out en internal/platform/pgdb', prior: ['sqlc.yml'],
+      staged: ['db/queries/x.sql', 'internal/platform/pgdb/x.sql.go', 'internal/platform/pgdb/models.go'],
+      blocks: false },
+    { name: 'config en json y consulta anidada', prior: ['sqlc.json'], staged: ['db/queries/sub/x.sql'],
+      blocks: true },
+    { name: 'commit desde un subdirectorio', prior: ['sqlc.yaml'], staged: ['db/queries/x.sql'],
+      from: 'db', blocks: true },
+    { name: 'queries/ sin sqlc', staged: ['queries/x.sql'], blocks: false },
+    { name: 'db/queries/ sin sqlc', staged: ['db/queries/x.sql'], blocks: false },
+  ]
+  for (const scenario of scenarios) await t.test(scenario.name, () => {
+    const root = tempRoot('ops-hook-sqlc-')
+    initRepo(root)
+    const stage = (files) => {
+      for (const file of files) {
+        fs.mkdirSync(path.join(root, path.dirname(file)), { recursive: true })
+        fs.writeFileSync(path.join(root, file), '-- x\n')
+      }
+      git(['add', ...files], root)
+    }
+    if (scenario.prior) {
+      stage(scenario.prior)
+      git(['commit', '-qm', 'previo'], root)
+    }
+    stage(scenario.staged)
+    const input = { cwd: path.join(root, scenario.from || '.'), tool_input: { command: 'git commit -m x' } }
+    if (!scenario.blocks) {
+      assert.doesNotThrow(() => execute('verify', input))
+      return
+    }
+    // «Ejecutá el generador» a quien ya lo ejecutó no tiene cómo desbloquear: el mensaje dice qué buscó.
+    const message = messageOf('verify', input)
+    assert.match(message, /consulta SQL fuente/)
+    assert.match(message, /\*\.sql\.go/)
+    assert.doesNotMatch(message, /Ejecuta el generador\./)
+  })
+})
+
+// Caso 197. Una carpeta `api/` no hace de un `.yaml` una especificación: lo hace declarar `openapi:` o
+// `swagger:`, o ser un fragmento de una carpeta que tiene una. `prior` va commiteado antes.
+test('el guard de OpenAPI dispara con una especificación, no con cualquier yaml de su carpeta', async (t) => {
+  const SPEC = 'openapi: 3.0.0\ninfo:\n  title: x\n'
+  const scenarios = [
+    { name: 'la raíz de una especificación', staged: { 'api/openapi.yaml': SPEC }, blocks: true },
+    { name: 'swagger 2 en la raíz del repo', staged: { 'swagger.yaml': 'swagger: "2.0"\n' }, blocks: true },
+    { name: 'la config de sqlc bajo api/', staged: { 'api/sqlc.yaml': 'version: "2"\n' }, blocks: false },
+    { name: 'un compose bajo api/', staged: { 'api/docker-compose.yml': 'services: {}\n' }, blocks: false },
+    { name: 'un fixture bajo spec/', staged: { 'spec/fixtures/config.yaml': 'a: 1\n' }, blocks: false },
+    { name: 'un fragmento de una especificación partida', prior: { 'api/openapi.yaml': SPEC },
+      staged: { 'api/paths/users.yaml': 'get:\n  summary: x\n' }, blocks: true },
+    { name: 'el fragmento, commiteado desde un subdirectorio', prior: { 'api/openapi.yaml': SPEC },
+      staged: { 'api/paths/users.yaml': 'get:\n  summary: x\n' }, from: 'api/paths', blocks: true },
+    { name: 'borrar la especificación', prior: { 'api/openapi.yaml': SPEC }, deleted: ['api/openapi.yaml'],
+      blocks: true },
+    { name: 'borrar la config de sqlc', prior: { 'api/sqlc.yaml': 'version: "2"\n' }, deleted: ['api/sqlc.yaml'],
+      blocks: false },
+    { name: 'la especificación ya regenerada',
+      staged: { 'api/openapi.yaml': SPEC, 'client_generated.go': 'package c\n' }, blocks: false },
+  ]
+  for (const scenario of scenarios) await t.test(scenario.name, () => {
+    const root = tempRoot('ops-hook-openapi-')
+    initRepo(root)
+    const stage = (files) => {
+      for (const [file, text] of Object.entries(files)) {
+        fs.mkdirSync(path.join(root, path.dirname(file)), { recursive: true })
+        fs.writeFileSync(path.join(root, file), text)
+      }
+      git(['add', ...Object.keys(files)], root)
+    }
+    if (scenario.prior) {
+      stage(scenario.prior)
+      git(['commit', '-qm', 'prior'], root)
+    }
+    stage(scenario.staged || {})
+    if (scenario.deleted) git(['rm', '-q', ...scenario.deleted], root)
+    const input = { cwd: path.join(root, scenario.from || '.'), tool_input: { command: 'git commit -m x' } }
+    if (scenario.blocks) blocked('verify', input, /OpenAPI\/Swagger/)
+    else assert.doesNotThrow(() => execute('verify', input))
+  })
+})
+
 // Lo que la persona pidió en el chat, visto por los guards (caso 098). El registro lo escribe el hook de
 // mensaje y lo lee cada guard con la sesión y el mensaje de la llamada. Cada prueba abre una sesión propia
 // para no leer el registro de otra, y saca `CI` del entorno: en la puerta está puesta, y ahí no hay persona.
-let sesiones = 0
+let sessions = 0

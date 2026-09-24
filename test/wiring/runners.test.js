@@ -77,6 +77,25 @@ test('el bridge de Antigravity traduce decisiones al protocolo nativo', () => {
   const raro = evaluate('evento-que-no-existe', payload('git status'))
   assert.equal(raro.decision, 'deny')
   assert.match(raro.reason, /Evento Antigravity desconocido: evento-que-no-existe/)
+
+  // Una llamada que el puente no sabe describir no se autoriza: con otro nombre de campo el mismo push
+  // forzado llegaba vacío a los guards y pasaba (caso 200). El motivo nombra lo que sí llegó.
+  const cwd = path.resolve(root, '..', '..')
+  const renamed = evaluate('pre-shell',
+    { workspacePaths: [cwd], toolCall: { args: { Command: 'git push --force', Cwd: cwd } } })
+  assert.equal(renamed.decision, 'deny')
+  assert.match(renamed.reason, /no trae CommandLine/)
+  assert.match(renamed.reason, /Command, Cwd/)
+  const noFile = evaluate('pre-files', { workspacePaths: [cwd], toolCall: { args: { Path: '.env', Cwd: cwd } } })
+  assert.equal(noFile.decision, 'deny')
+  assert.match(noFile.reason, /no trae TargetFile ni AbsolutePath/)
+  // Con el archivo pero sin el contenido, los guards que juzgan contenido verían un texto vacío.
+  const renamedContent = { TargetFile: 'db/migrations/1.sql', Content: 'DROP TABLE x;', Cwd: cwd }
+  const noContent = evaluate('pre-files', { workspacePaths: [cwd], toolCall: { args: renamedContent } })
+  assert.equal(noContent.decision, 'deny')
+  assert.match(noContent.reason, /no trae CodeContent, ReplacementContent ni ReplacementChunks/)
+  // Sin entrada no hay llamada descrita: se invoca así a mano, con OPS_HOOK_*, y sigue como antes (caso 198).
+  assert.equal(evaluate('pre-shell', {}).decision, 'allow')
 })
 
 // Los dos errores en el mismo evento `stop`, porque separados los dos dan `continue` y cualquiera de
@@ -231,11 +250,19 @@ test('doctor ejecuta el puente del runner, no sólo lo busca', () => {
   assert.equal(runCli(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
   linkEngine(target)
   assert.equal(runCli(['automation', 'install', target, 'antigravity']).status, 0)
-  assert.equal(A.doctor(target, 'antigravity', { warn() {}, error() {} }).errors.length, 0)
+  // Un home propio: por qué, en el encabezado de test/wiring/registration.test.js.
+  const home = path.join(base, 'home')
+  fs.mkdirSync(home)
+  const doctor = () => {
+    const before = process.env.HOME
+    process.env.HOME = home
+    try { return A.doctor(target, 'antigravity', { warn() {}, error() {} }) } finally { process.env.HOME = before }
+  }
+  assert.equal(doctor().errors.length, 0)
 
   const bridge = path.join(workspace, '.agents', 'plugins', 'cauce', 'hook.js')
   fs.appendFileSync(bridge, '\nesto no es javascript (\n')
-  const broken = A.doctor(target, 'antigravity', { warn() {}, error() {} })
+  const broken = doctor()
   assert.ok(broken.errors.some((error) => /hook\.js pre-shell/.test(error)), 'un puente que no arranca es error')
 })
 

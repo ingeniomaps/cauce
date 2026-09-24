@@ -25,6 +25,7 @@ const {
 // Qué le falta a la superficie de automatización, que no comparte ayudantes con los tres verbos que
 // escriben. Se reexporta para que sus consumidores sigan pidiéndoselo a este módulo.
 const { check } = require('./check')
+const { registrationProblems } = require('./registration')
 
 // Ejecuta el puente del runner tal como él lo invoca, y desde otra carpeta. Instalado no es lo mismo que
 // operativo: un bridge que el runner no puede lanzar —porque su ruta es relativa y el cwd es otro, o
@@ -48,7 +49,12 @@ function probeBridge(paths, runner) {
   const launchDirs = [paths.install, path.dirname(script)]
   for (const event of hookEvents) {
     for (const cwd of launchDirs) {
-      const payload = JSON.stringify({ toolCall: { args: { CommandLine: 'ls', Cwd: paths.install } } })
+      // Una llamada inocua para el evento que la juzga, y ninguna para los demás: un `pre-files` con un
+      // comando no describe ningún archivo, y el puente niega lo que no sabe describir (caso 200). La
+      // entrada vacía es la forma legítima de no describir nada, y ejercita igual el arranque y la raíz.
+      const payload = JSON.stringify(event === 'pre-shell'
+        ? { toolCall: { args: { CommandLine: 'ls', Cwd: paths.install } } }
+        : {})
       const result = spawnSync(process.execPath, [script, event], { cwd, input: payload, encoding: 'utf8' })
       let response = {}
       try { response = JSON.parse((result.stdout || '').trim()) } catch { response = {} }
@@ -68,7 +74,9 @@ function probeBridge(paths, runner) {
   return problems
 }
 
-function doctor(root, name, output = console) {
+// `afterInstall` es la llamada con la que cierra `install`: ahí una copia registrada vieja es el paso que sigue
+// —registrar lo que se acaba de instalar—, no una instalación rota, así que se avisa en vez de fallar.
+function doctor(root, name, output = console, { afterInstall = false } = {}) {
   const runner = runnerManifest(root, name)
   const paths = runnerPaths(root, name, runner)
   const errors = []
@@ -151,6 +159,7 @@ function doctor(root, name, output = console) {
   }
   // Un puente que no responde niega cada llamada del runner: es error, no advertencia.
   for (const problem of probeBridge(paths, runner)) errors.push(problem)
+  for (const problem of registrationProblems(paths, runner)) (afterInstall ? warnings : errors).push(problem)
 
   const executable = spawnSync(
     'sh',

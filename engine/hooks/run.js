@@ -13,6 +13,7 @@ const { readInput, block, opsRoot } = require('./input')
 const shell = require('./shell')
 const { verify } = require('./verify')
 const files = require('./files')
+const { migrations } = require('./migrations')
 const chat = require('./chat')
 const { secretsShell } = require('./secrets-shell')
 const { opsConfig, opsConfigShell } = require('./ops-config')
@@ -50,7 +51,7 @@ const guards = {
   generated: files.generated,
   'workspace-boundary': files.workspaceBoundary,
   engine: files.engineWrites,
-  migrations: files.migrations,
+  migrations,
   'integration-snapshot': files.integrationSnapshot,
   'test-evidence': files.testEvidence,
   'plan-first': files.planFirst,
@@ -145,8 +146,10 @@ const hookMetadata = [
   {
     name: 'migrations',
     event: 'PreToolUse · files',
-    purpose: 'Protege migraciones existentes y bloquea SQL destructivo, sobre las extensiones que el '
-      + 'proyecto declare en migrations.extensions — sólo .sql si no declara ninguna.',
+    purpose: 'Protege migraciones existentes y bloquea SQL destructivo o el borrado con la API del ORM en la '
+      + 'parte que aplica —no en su reversión—, sobre las extensiones y carpetas que el proyecto declare en '
+      + 'migrations.extensions y migrations.paths — sólo .sql bajo migrations/, migration/ o migrate/ si no '
+      + 'declara nada.',
   },
   {
     name: 'integration-snapshot',
@@ -194,11 +197,13 @@ function executeAll(names, input) {
   for (const name of resolve(names)) execute(name, input)
 }
 
+// Asíncrono sólo por la lectura de stdin, que necesita un plazo (`input.js`); los guards siguen siendo
+// sincrónicos y `executeAll` también, así que quien los llama directo no cambia.
 if (require.main === module) {
-  try { executeAll(process.argv.slice(2), readInput()) } catch (error) {
+  readInput().then((input) => executeAll(process.argv.slice(2), input)).catch((error) => {
     console.error(`BLOQUEADO: ${error.message}`)
     process.exit(error.blocked ? 2 : 1)
-  }
+  })
 }
 
 module.exports = {

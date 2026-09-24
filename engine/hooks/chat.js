@@ -126,11 +126,11 @@ function mentions(text, item) {
       })
     }
   }
-  const pedidas = found.filter((one) => one.asked && !one.denied)
+  const asked = found.filter((one) => one.asked && !one.denied)
   return {
-    named: pedidas.length > 0,
+    named: asked.length > 0,
     denied: found.some((one) => one.denied),
-    scope: (pedidas.find((one) => one.scope) || {}).scope || '',
+    scope: (asked.find((one) => one.scope) || {}).scope || '',
   }
 }
 
@@ -139,7 +139,16 @@ function mentions(text, item) {
 // el remoto y la rama tienen que aparecer tal cual, como palabras enteras, en una frase que pida publicar
 // —un verbo de publicar, no cualquiera: «revisá feat/x en origin» no pide un push— y sin una negación
 // antes del último de los dos.
-const PUSHES = new Set('subi sube subir pushea pushear push publica publicar publish empuja empujar'.split(' '))
+// Con las formas de una prohibición —«no subas», «no publiques»—, que es como se niega un push.
+const PUSHES = new Set(('subi sube subir subas pushea pushear pushees push publica publicar publiques publish '
+  + 'empuja empujar empujes').split(' '))
+const pushVerb = (clause) => (clause.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .match(/[a-z]+/g) || []).some((word) => PUSHES.has(word) || PUSHES.has(word.replace(ENCLITIC, '')))
+
+// Un push no se nombra como un archivo: «no hagas push todavía» lo prohíbe sin decir remoto ni rama. Basta una
+// cláusula con un verbo de publicar y una negación.
+const refusesPush = (text) => String(text).split(CLAUSE)
+  .some((clause) => pushVerb(clause) && NEGATION.test(clause))
 function ordersPush(text, item) {
   const [verb, remote, branch] = item.split(' ')
   if (verb !== 'push' || !remote || !branch) return false
@@ -150,10 +159,7 @@ function ordersPush(text, item) {
       .map((word) => word.replace(/^'+/, '').replace(/\.$/, '').replace(/'+$/, ''))
     const last = Math.max(words.indexOf(remote), words.indexOf(branch))
     if (words.indexOf(remote) < 0 || words.indexOf(branch) < 0) return false
-    const plain = clause.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .match(/[a-z]+/g) || []
-    return plain.some((word) => PUSHES.has(word) || PUSHES.has(word.replace(ENCLITIC, '')))
-      && !NEGATION.test(words.slice(0, last + 1).join(' '))
+    return pushVerb(clause) && !NEGATION.test(words.slice(0, last + 1).join(' '))
   })
 }
 
@@ -180,9 +186,16 @@ function record(input) {
     const text = String(input.prompt || '')
     const human = !process.env.CI && !/^\s*</.test(text)
     const previous = load(input.session_id)
-    const approved = human && previous && !refuses(text)
+    // Lanzar un recorrido no es contestar el bloqueo: para la sesión principal ya no valía —`said` descarta un
+    // mensaje `flow`—, pero lo aprobado sí les llegaba a los subagentes del recorrido (`confirmed`), así que
+    // escribir `/autobuild` aprobaba lo que estaba esperando una respuesta.
+    const answered = human && previous && !refuses(text) && !flowCommand(text)
       ? previous.pending.filter((item) => !mentions(text, item).denied)
       : []
+    // Lo que ella confirmó también sobrevive al aviso, porque quien lo usa puede ser un subagente que
+    // reintenta mientras ella no escribe nada (caso 186). A la sesión principal no le cambia nada: su
+    // lectura, `said`, exige un mensaje de la persona.
+    const approved = human || !previous ? answered : previous.approved || []
     const granted = previous ? (previous.granted || []).filter((one) => !mentions(text, one).denied) : []
     // El acote viaja con lo concedido: lo que se negó pierde las dos cosas a la vez, y nada queda con un
     // alcance que ya no acota a nadie.
@@ -196,12 +209,20 @@ function record(input) {
     // ya era cierto. Lo vuelve a decidir el mensaje humano siguiente (caso 166).
     const flow = flowCommand(text)
     const askable = human ? !flow : Boolean(previous && previous.askable)
+    // Con la persona se arrastra también lo que dijo y lo que quedó esperando su respuesta. `hold` lee su
+    // negación en `spoken` y no en `text`, que en un aviso es la etiqueta del runner: sin esto, su «no
+    // toques el .env» dejaba de retener lo que se frenaba después del aviso, y el «seguí» siguiente lo
+    // aprobaba (caso 191). Y lo frenado en su turno sigue pendiente aunque el aviso llegue antes que ella.
+    // Un registro de antes de 0.99.0 no trae `spoken`: si lo escribió la persona, lo que dijo es su `text`.
+    const last = previous ? previous.spoken ?? (previous.human ? previous.text : '') : ''
+    const spoken = human ? text : String(last || '')
+    const pending = human || !previous ? [] : previous.pending
     fs.mkdirSync(DIR, { recursive: true })
     // Sobre qué instancia se está hablando, que es lo que después deja filtrar lo concedido: por qué hace
     // falta, en `grantedIn`.
     fs.writeFileSync(recordPath(input.session_id), JSON.stringify(
-      { id: idOf(input), text, human, askable, flow, root: opsRoot(input), approved, granted,
-        scopes, pending: [] }))
+      { id: idOf(input), text, spoken, human, askable, flow, root: opsRoot(input), approved, granted,
+        scopes, pending }))
   } catch { /* registrar es un extra: si falla, los guards siguen frenando lo que frenaban */ }
 }
 
@@ -224,8 +245,12 @@ function said(input) {
 //
 // Un registro escrito antes de que `askable` existiera no lo trae y queda afuera: la sesión pierde la
 // salida por chat hasta el mensaje siguiente, que la vuelve a escribir. Es la dirección barata del error.
+//
+// Un subagente también tiene a quién preguntarle: la persona es de la sesión, no de la llamada, y el
+// subagente hereda la sesión. Excluirlo acá cerraba la salida por chat en todo trabajo delegado —Build en
+// cada `autobuild`— y la persona decía que sí sin que llegara a ningún lado (caso 186).
 function present(input) {
-  if (process.env.CI || input.agent_id || !input.session_id) return null
+  if (process.env.CI || !input.session_id) return null
   const saved = load(input.session_id)
   return saved && saved.askable ? saved : null
 }
@@ -275,18 +300,18 @@ function why(saved, item, asked, inherit) {
 // antes que de menos.
 function grant(input, saved, entries) {
   const before = saved.granted || []
-  const nuevas = entries.filter((one) => !before.includes(one.item))
-  if (!nuevas.length) return
+  const added = entries.filter((one) => !before.includes(one.item))
+  if (!added.length) return
   const grantedAt = new Date().toISOString()
   try {
-    saved.granted = [...before, ...nuevas.map((one) => one.item)]
+    saved.granted = [...before, ...added.map((one) => one.item)]
     saved.scopes = { ...(saved.scopes || {}) }
-    for (const one of nuevas) if (one.scope) saved.scopes[one.item] = one.scope
+    for (const one of added) if (one.scope) saved.scopes[one.item] = one.scope
     fs.writeFileSync(recordPath(input.session_id), JSON.stringify(saved))
   } catch { /* sin anotarlo, se vuelve a pedir */ }
   // Y queda el rastro, que es lo que el registro de la sesión no puede dar: muere con ella, y lo que una
   // auditoría pregunta es quién concedió qué y con qué alcance, meses después (caso 127).
-  TRAIL.append(saved.root, LOG, nuevas.map((one) => ({
+  TRAIL.append(saved.root, LOG, added.map((one) => ({
     grantedAt, item: one.item, scope: one.scope || null, via: one.via, session: input.session_id || null,
   })))
 }
@@ -301,14 +326,34 @@ function grant(input, saved, entries) {
 // en el mensaje en curso o aprobó con un «dale» (caso 119).
 function authorized(input, items, { asked = named, inherit = true } = {}) {
   const saved = said(input)
-  if (!saved) return []
+  if (!saved) return confirmed(input, items).map(({ item, via }) => ({ item, via }))
   return items.map((item) => ({ item, via: why(saved, item, asked, inherit) })).filter((one) => one.via)
+}
+
+// Lo que la persona confirmó y un subagente puede usar: eso y nada más. Una orden no, porque la da el mensaje
+// y la llamada de un subagente no es ese mensaje —es lo que `said` cuida—; lo concedido antes tampoco. Lo
+// confirmado sí: son los ítems exactos que un bloqueo nombró y ella aprobó al contestarle (caso 186). Sin
+// la comparación de `id`, porque el subagente puede reintentar después del mensaje en que ella contestó.
+function confirmed(input, items) {
+  if (process.env.CI || !input.agent_id || !input.session_id) return []
+  const saved = load(input.session_id)
+  const approved = (saved && saved.approved) || []
+  return items.filter((item) => approved.includes(item)).map((item) => ({ item, via: 'dale', saved }))
 }
 
 // Lo que la persona no autorizó de lo que un guard está por frenar; lo que sí, queda concedido.
 function unauthorized(input, items) {
   const saved = said(input)
-  if (!saved) return items
+  if (!saved) {
+    const passed = confirmed(input, items)
+    if (passed.length) {
+      const record = passed[0].saved
+      grant(input, record, passed.map((one) => ({ item: one.item, via: one.via,
+        scope: (record.scopes || {})[one.item] || '' })))
+    }
+    const cleared = new Set(passed.map((one) => one.item))
+    return items.filter((item) => !cleared.has(item))
+  }
   const passed = items.map((item) => ({ item, via: why(saved, item, named, true) })).filter((one) => one.via)
   // El alcance sale del mensaje cuando es éste el que lo concede, y del registro cuando se hereda: una
   // orden vieja no se reinterpreta contra un texto que no la nombraba.
@@ -328,21 +373,34 @@ function unauthorizedNow(input, items) {
 }
 
 // Lo que quedó frenado, para que la confirmación del mensaje siguiente apruebe exactamente eso y nada más.
-// Devuelve si hay una persona a quien preguntarle.
+// Devuelve `false` si no hay persona a quien preguntarle, y si la hay, qué de lo frenado no quedó
+// esperando: qué dice el bloqueo con eso, en `REFUSED` (approval.js).
 //
-// Si el mensaje en curso niega o frena, lo que se ataje en su turno no queda esperando: la persona ya
-// contestó que no antes de que el agente lo intentara. Desde que confirmar no exige una palabra (caso 184),
-// dejarlo pendiente hacía que un «seguí con lo tuyo» aprobara el `.env` o el push que ella acababa de
-// prohibir. Se mira el mensaje y no el ítem porque un push no se nombra como un archivo.
+// Si el último mensaje de la persona niega o frena, lo que se ataje después no queda esperando: ya contestó
+// que no antes de que el agente lo intentara, y un aviso del runner en el medio no cambia eso. Desde que
+// confirmar no exige una palabra (caso 184), dejarlo pendiente hacía que un «seguí con lo tuyo» aprobara
+// el `.env` o el push que ella acababa de prohibir. Se mira el mensaje, y no sólo el ítem, porque un push
+// no se nombra como un archivo.
+//
+// Pero el mensaje se mira en su primera cláusula, que es donde está la respuesta: lo que viene después
+// puede negar otra cosa, y «dale, fijate si esto no es un defecto» dejaba sin anotar lo que ella estaba
+// aprobando (caso 188). Lo que niega nombrando el ítem se respeta en cualquier cláusula —«dale, pero no el
+// .env»—. Queda afuera la prohibición que no nombra nada después de la coma, «dale, pero no toques nada
+// más»: ninguna lectura de palabras la separa de una negación sobre otro tema.
 function hold(input, items) {
   const saved = present(input)
   if (!saved) return false
   try {
-    const text = saved.text || ''
-    const open = NEGATION.test(text) || HALT.test(text) ? [] : items
+    const spoken = String(saved.spoken ?? saved.text ?? '')
+    const head = spoken.split(CLAUSE)[0]
+    const dropped = NEGATION.test(head) || HALT.test(head)
+      ? items
+      : items.filter((item) => mentions(spoken, item).denied
+        || (item.startsWith('push ') && refusesPush(spoken)))
+    const open = items.filter((item) => !dropped.includes(item))
     saved.pending = [...new Set([...saved.pending, ...open])]
     fs.writeFileSync(recordPath(input.session_id), JSON.stringify(saved))
-    return true
+    return { dropped }
   } catch { return false }
 }
 

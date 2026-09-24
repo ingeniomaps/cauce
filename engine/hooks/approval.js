@@ -79,6 +79,17 @@ function where(input) {
   return relative && !relative.startsWith('..') && !path.isAbsolute(relative) ? relative : file
 }
 
+// Lo que el último mensaje de la persona negaba no quedó esperando su confirmación, así que un «dale» no
+// lo aprobaría: ofrecerlo sería mandarla a contestar para volver a frenar (caso 188). Lo que sí lo pasa es
+// pedirlo nombrándolo, que es una orden y no una confirmación.
+function REFUSED(items, input = {}) {
+  return `Lo último que dijo la persona niega o frena ${items.join(', ')}, así que no quedó esperando su `
+    + 'confirmación y un sí no lo aprobaría: no reintentes. '
+    + (input.agent_id
+      ? 'Devolvele el bloqueo a quien te lanzó. '
+      : 'Si lo quiere, que lo pida en el chat nombrándolo. ')
+}
+
 // Cómo se toma la salida angosta, dicho una vez porque lo dicen todos los bloqueos que la tienen. Lleva
 // las líneas exactas porque cada guard coteja la ruta en la forma que tiene a mano —absoluta la que llega
 // de un Write, relativa al repositorio la que sale del índice— y una línea en la otra forma no pega: sin
@@ -94,7 +105,9 @@ function where(input) {
 // que tiene a mano no sirve para pegar —por qué, en `secrets-shell.js` (caso 118)—. Lo frenado se anota
 // igual, así que el «dale» sigue cubriendo todo.
 function HOW(variable, lines, input, pasteable = lines) {
-  const chat = CHAT.hold(input, lines)
+  const held = CHAT.hold(input, lines)
+  const dropped = held ? held.dropped : []
+  const chat = held && dropped.length < lines.length
   const stuck = lines.filter((one) => !pasteable.includes(one))
   // El alcance del «dale» va con la oferta y no después. La rama del pegado ya decía el suyo —«valen para
   // ese conjunto»— y la del chat no decía ninguno, siendo la que se ofrece primero. Las dos mitades que
@@ -103,18 +116,34 @@ function HOW(variable, lines, input, pasteable = lines) {
   // siguientes** es la dirección permisiva, la que nadie nota porque lo que no ocurre es un bloqueo.
   // `check` la muestra al final de la corrida —es lo que trajo el 117—, y al concederla no la decía nadie
   // (caso 170).
-  const ask = chat
-    ? 'Decile a la persona qué se frenó y por qué, y pedile que lo confirme con sus palabras: un «dale» '
+  // Un subagente no puede esperar la respuesta —su turno termina antes—, así que lo que le toca es
+  // devolver el bloqueo: preguntar lo hace quien lo lanzó, y el reintento pasa aunque vuelva a ser delegado
+  // (caso 186).
+  const lead = input.agent_id
+    ? 'Sos un subagente y no podés esperar la respuesta: devolvele a quien te lanzó qué se frenó y por qué, '
+      + 'para que se lo pregunte a la persona. Si ella lo confirma, el mismo cambio pasa aunque lo reintente '
+      + 'un subagente. '
+    : 'Decile a la persona qué se frenó y por qué, y pedile que lo confirme con sus palabras: un «dale» '
       + 'alcanza, pero no hace falta esa palabra. Si lo que contesta es un sí, reintentá el mismo cambio y '
       + 'pasa; si duda, pregunta o dice que no, no reintentes. Juzgarlo te toca a vos: el guard sólo frena la '
-      + 'respuesta que niega, frena o pregunta. Esa confirmación cubre lo que se frenó y nada más —algo nuevo '
-      + 'vuelve a frenar— y sigue valiendo en los mensajes siguientes hasta que ella lo niegue. '
+      + 'respuesta que niega, frena o pregunta. '
+  const ask = chat
+    ? lead + 'Esa confirmación cubre lo que se frenó y nada más —algo nuevo vuelve a frenar— y sigue valiendo '
+      + 'en los mensajes siguientes hasta que ella lo niegue. '
     : ''
+  const refused = dropped.length ? REFUSED(dropped, input) : ''
+  // Sin chat la salida es la misma, y también se dice como cosa de ella: el imperativo que el párrafo de
+  // arriba sacó de la rama con chat seguía acá, y es lo único que ve quien no tiene a nadie en el chat
+  // (caso 194). A quien corre el guard le toca otra cosa, y se le dice cuál. Vale también cuando hay persona
+  // pero no se le ofrece contestar, porque su último mensaje negaba todo lo frenado.
   const paste = pasteable.length
-    ? (chat ? 'Si prefiere aprobarlo a mano, que pegue ella tal cual en' : 'Aprobalo pegando tal cual en')
+    ? (chat ? 'Si prefiere aprobarlo a mano, que pegue ella' : 'Esto lo aprueba una persona: que pegue ella')
+      + ' tal cual en'
       + ` ${where(input)} estas líneas:\n`
       + pasteable.map((line) => `  ${line}\n`).join('')
       + 'Valen para ese conjunto y dejan de valer en cuanto cambie. '
+      + (chat ? '' : 'Vos no lo escribas —un guard lo frena—: decí qué se frenó y dónde, y reintentá cuando '
+        + 'esté; si sos un subagente, devolvele el bloqueo a quien te lanzó. ')
     : ''
   const unresolved = stuck.length
     ? `Por archivo no hay línea que pegar para ${stuck.join(', ')}: la ruta llegó con una expansión del shell `
@@ -128,7 +157,7 @@ function HOW(variable, lines, input, pasteable = lines) {
     ? `La variable ${variable}=1 sigue existiendo y apaga el guard para toda la sesión, que es por lo que no `
       + 'es la vía recomendada.'
     : ''
-  return ask + paste + unresolved + off
+  return ask + refused + paste + unresolved + off
 }
 
 // Las dos exenciones que sobreviven a un bloqueo, para que `check` las muestre juntas: la lista que una
@@ -153,4 +182,4 @@ function warnings(root) {
   return out
 }
 
-module.exports = { APPROVAL, lines, read, pending, pendingNow, where, HOW, warnings }
+module.exports = { APPROVAL, lines, read, pending, pendingNow, where, HOW, REFUSED, warnings }

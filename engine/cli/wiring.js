@@ -283,7 +283,7 @@ function automation(action, rootArg, runnerName, cli) {
     if (!runner.capabilities.nativeHooks) {
       console.log(`  ${runnerName} no expone hooks nativos; aplica guards como prechecks.`)
     }
-    const result = A.doctor(root, runnerName)
+    const result = A.doctor(root, runnerName, console, { afterInstall: true })
     if (result.errors.length) fail(`${runnerName}: instalación incompleta`, REFUSED)
     console.log(`✓ ${runnerName}: adaptador operativo (${result.warnings.length} advertencia(s))`)
     return

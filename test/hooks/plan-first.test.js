@@ -5,7 +5,7 @@
 const { tempRoot, writeWip } = require('../support/environment')
 const {
   blocked, git, initRepo, planFirstRoot, WIP_IDLE,
-  WIP_CON_PLAN, WIP_SIN_PLAN, BACKLOG_CON_TAREA, BACKLOG_VACIO,
+  WIP_CON_PLAN, WIP_WITHOUT_PLAN, BACKLOG_WITH_TASK, BACKLOG_EMPTY,
 } = require('../support/hooks-harness')
 
 const test = require('node:test')
@@ -17,35 +17,35 @@ const { execute } = require('../../engine/hooks/run')
 
 test('guard-plan-first exige el plan antes de cambiar el producto', () => {
   const root = planFirstRoot('ops-hook-plan-', WIP_IDLE)
-  const escribe = (file) => ({ cwd: root, tool_input: { file_path: file } })
+  const writes = (file) => ({ cwd: root, tool_input: { file_path: file } })
 
-  blocked('plan-first', escribe('src/altas.js'), /sin plan/)
+  blocked('plan-first', writes('src/altas.js'), /sin plan/)
   // Nombrar el estado es la mitad del mensaje: «IDLE» y «tarea sin pasos» piden cosas distintas.
-  blocked('plan-first', escribe('src/altas.js'), /IDLE/)
+  blocked('plan-first', writes('src/altas.js'), /IDLE/)
 
-  const conTarea = planFirstRoot('ops-hook-plan-sinpasos-', WIP_SIN_PLAN)
-  blocked('plan-first', { cwd: conTarea, tool_input: { file_path: 'src/altas.js' } },
+  const withTask = planFirstRoot('ops-hook-plan-sinpasos-', WIP_WITHOUT_PLAN)
+  blocked('plan-first', { cwd: withTask, tool_input: { file_path: 'src/altas.js' } },
     /alta-de-cliente y ningún paso/)
 
-  const conPlan = planFirstRoot('ops-hook-plan-ok-', WIP_CON_PLAN)
-  assert.doesNotThrow(() => execute('plan-first', { cwd: conPlan, tool_input: { file_path: 'src/altas.js' } }))
+  const withPlan = planFirstRoot('ops-hook-plan-ok-', WIP_CON_PLAN)
+  assert.doesNotThrow(() => execute('plan-first', { cwd: withPlan, tool_input: { file_path: 'src/altas.js' } }))
 })
 
 test('guard-plan-first no juzga lo que la instancia posee', () => {
   const root = planFirstRoot('ops-hook-plan-exento-', WIP_IDLE)
-  const escribe = (file) => execute('plan-first', { cwd: root, tool_input: { file_path: file } })
+  const writes = (file) => execute('plan-first', { cwd: root, tool_input: { file_path: file } })
 
   // El plan se escribe acá: sin esta exención, escribirlo exigiría haberlo escrito.
-  assert.doesNotThrow(() => escribe('planning/WIP.md'))
-  assert.doesNotThrow(() => escribe('planning/roadmap/epic-001-alta.md'))
+  assert.doesNotThrow(() => writes('planning/WIP.md'))
+  assert.doesNotThrow(() => writes('planning/roadmap/epic-001-alta.md'))
   // Y los recorridos que no pasan por la máquina de tareas tampoco tienen un WIP que mostrar.
-  assert.doesNotThrow(() => escribe('organization/workspace.md'))
-  assert.doesNotThrow(() => escribe('agents/roles/tech-lead/SKILL.md'))
-  assert.doesNotThrow(() => escribe('integrations/jira/staging/draft.md'))
+  assert.doesNotThrow(() => writes('organization/workspace.md'))
+  assert.doesNotThrow(() => writes('agents/roles/tech-lead/SKILL.md'))
+  assert.doesNotThrow(() => writes('integrations/jira/staging/draft.md'))
   // Un directorio que sólo empieza igual no es la raíz exenta.
   blocked('plan-first', { cwd: root, tool_input: { file_path: 'planningtool/app.js' } }, /sin plan/)
   // En embedded la raíz de ops es la del producto: su configuración no es producto, su `package.json` sí.
-  assert.doesNotThrow(() => escribe('ops.config.json'))
+  assert.doesNotThrow(() => writes('ops.config.json'))
   blocked('plan-first', { cwd: root, tool_input: { file_path: 'package.json' } }, /sin plan/)
 })
 
@@ -54,7 +54,7 @@ test('guard-plan-first no juzga la instancia sidecar ni lo que queda fuera de la
   const root = path.join(base, 'acme-ops')
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   writeWip(path.join(root, 'planning'), WIP_IDLE)
-  fs.writeFileSync(path.join(root, 'planning', 'BACKLOG.md'), BACKLOG_CON_TAREA)
+  fs.writeFileSync(path.join(root, 'planning', 'BACKLOG.md'), BACKLOG_WITH_TASK)
   const declare = (workspaceRoots) => fs.writeFileSync(path.join(root, 'ops.config.json'),
     JSON.stringify({ mode: 'sidecar', workspaceRoots }))
   const write = (file) => ({ cwd: root, tool_input: { file_path: file } })
@@ -82,20 +82,20 @@ test('guard-plan-first no juzga la instancia sidecar ni lo que queda fuera de la
 test('guard-plan-first queda inerte mientras el planning no declara tareas', () => {
   // El día uno no hay trabajo de producto que cuidar, hay instalación: `onboard` deja el roadmap vacío
   // y pide que alguien lo llene. Un bloqueo ahí es un candado delante de la puerta.
-  const nuevo = planFirstRoot('ops-hook-plan-nuevo-', WIP_IDLE, BACKLOG_VACIO)
-  assert.doesNotThrow(() => execute('plan-first', { cwd: nuevo, tool_input: { file_path: 'src/altas.js' } }))
+  const fresh = planFirstRoot('ops-hook-plan-nuevo-', WIP_IDLE, BACKLOG_EMPTY)
+  assert.doesNotThrow(() => execute('plan-first', { cwd: fresh, tool_input: { file_path: 'src/altas.js' } }))
 
   // Y muerde en cuanto hay de dónde sacar una tarea, que es la mitad que vuelve útil a la otra.
-  fs.writeFileSync(path.join(nuevo, 'planning', 'BACKLOG.md'), BACKLOG_CON_TAREA)
-  blocked('plan-first', { cwd: nuevo, tool_input: { file_path: 'src/altas.js' } }, /sin plan/)
+  fs.writeFileSync(path.join(fresh, 'planning', 'BACKLOG.md'), BACKLOG_WITH_TASK)
+  blocked('plan-first', { cwd: fresh, tool_input: { file_path: 'src/altas.js' } }, /sin plan/)
 
   // Una tarea ya terminada cuenta igual: el BACKLOG vacío de una instancia con historia no la devuelve
   // al día uno.
-  const conHistoria = planFirstRoot('ops-hook-plan-historia-', WIP_IDLE, BACKLOG_VACIO)
-  fs.mkdirSync(path.join(conHistoria, 'planning', 'done'), { recursive: true })
-  fs.writeFileSync(path.join(conHistoria, 'planning', 'done', 'alta-de-cliente.md'),
+  const withHistory = planFirstRoot('ops-hook-plan-historia-', WIP_IDLE, BACKLOG_EMPTY)
+  fs.mkdirSync(path.join(withHistory, 'planning', 'done'), { recursive: true })
+  fs.writeFileSync(path.join(withHistory, 'planning', 'done', 'alta-de-cliente.md'),
     '- [x] **alta-de-cliente** — Alta\n')
-  blocked('plan-first', { cwd: conHistoria, tool_input: { file_path: 'src/altas.js' } }, /sin plan/)
+  blocked('plan-first', { cwd: withHistory, tool_input: { file_path: 'src/altas.js' } }, /sin plan/)
 })
 
 // Con `mode: sidecar` hay un solo `planning/` por máquina, así que el plan de un agente está al alcance
@@ -105,15 +105,15 @@ test('el plan de un runner no le sirve a otro para saltear plan-first', () => {
   const root = planFirstRoot('ops-hook-plan-por-runner-', WIP_IDLE)
   writeWip(path.join(root, 'planning'), '---\ntask: alta-de-cliente\nphase: Build\n---\n'
     + '\n## Plan aprobado\n1. [ ] Montar el alta\n')
-  const escribir = { cwd: root, tool_input: { file_path: 'src/altas.js' } }
+  const writing = { cwd: root, tool_input: { file_path: 'src/altas.js' } }
 
-  assert.doesNotThrow(() => execute('plan-first', escribir), 'con su propio plan, escribe')
+  assert.doesNotThrow(() => execute('plan-first', writing), 'con su propio plan, escribe')
 
-  const previo = process.env.CAUCE_RUNNER
+  const previous = process.env.CAUCE_RUNNER
   process.env.CAUCE_RUNNER = '/w/otro-agente'
   try {
-    blocked('plan-first', escribir, /sin plan/)
-  } finally { process.env.CAUCE_RUNNER = previo }
+    blocked('plan-first', writing, /sin plan/)
+  } finally { process.env.CAUCE_RUNNER = previous }
 })
 
 // Lo que ésta fija y las otras de `plan-first` no: que el bloqueo distinga sus dos causas. En las dos
@@ -126,47 +126,47 @@ test('plan-first distingue no tener plan de no ver el plan de otro id', () => {
   // Con pasos y bajo un nombre que no es el del runner de las pruebas: es un plan real y ajeno.
   fs.writeFileSync(path.join(root, 'planning', 'wip', 'w-otro-agente.md'),
     '---\ntask: alta-de-cliente\nphase: Build\nservice: api\n---\n\n## Plan aprobado\n1. [ ] Montar el alta\n')
-  const escribir = { cwd: root, tool_input: { file_path: 'src/altas.js' } }
-  const motivoDe = (input) => {
+  const writing = { cwd: root, tool_input: { file_path: 'src/altas.js' } }
+  const reasonOf = (input) => {
     try { execute('plan-first', input); return '' } catch (error) { return error.message }
   }
 
-  blocked('plan-first', escribir, /sin plan/)
-  const motivo = motivoDe(escribir)
-  assert.doesNotMatch(motivo, /IDLE/,
+  blocked('plan-first', writing, /sin plan/)
+  const reason = reasonOf(writing)
+  assert.doesNotMatch(reason, /IDLE/,
     'el plan está escrito: decir IDLE manda a escribir de nuevo lo que ya existe')
-  assert.match(motivo, /w-otro-agente/, 'nombra el id que sí tiene el plan')
-  assert.match(motivo, /alta-de-cliente/, 'y con qué tarea, que es lo que permite reconocerlo como propio')
-  assert.match(motivo, /CAUCE_RUNNER/, 'y cómo volver a ese id, que es la acción que destraba')
+  assert.match(reason, /w-otro-agente/, 'nombra el id que sí tiene el plan')
+  assert.match(reason, /alta-de-cliente/, 'y con qué tarea, que es lo que permite reconocerlo como propio')
+  assert.match(reason, /CAUCE_RUNNER/, 'y cómo volver a ese id, que es la acción que destraba')
   // La aprobación por ruta escribe «esto no es trabajo de una tarea», y acá eso es falso: hay plan y hay
   // tarea. Ofrecerla es lo que convierte un bloqueo en una afirmación falsa firmada.
-  assert.doesNotMatch(motivo, /Aprobalo pegando/,
+  assert.doesNotMatch(reason, /tal cual en/,
     'con un plan a la vista, aprobar la ruta declara por escrito algo que no es cierto')
 
   // Y sin ningún plan ajeno el mensaje sigue siendo el de antes: son dos situaciones distintas.
-  const solo = planFirstRoot('ops-hook-plan-sin-ninguno-', WIP_IDLE)
-  assert.match(motivoDe({ cwd: solo, tool_input: { file_path: 'src/altas.js' } }), /IDLE/)
+  const alone = planFirstRoot('ops-hook-plan-sin-ninguno-', WIP_IDLE)
+  assert.match(reasonOf({ cwd: alone, tool_input: { file_path: 'src/altas.js' } }), /IDLE/)
 })
 
 test('guard-plan-first se abre por aprobación, por variable y donde no hay instancia', () => {
   const root = planFirstRoot('ops-hook-plan-llaves-', WIP_IDLE)
-  const escribe = { cwd: root, tool_input: { file_path: 'src/altas.js' } }
+  const writes = { cwd: root, tool_input: { file_path: 'src/altas.js' } }
 
   fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), 'src/altas.js\n')
-  assert.doesNotThrow(() => execute('plan-first', escribe))
+  assert.doesNotThrow(() => execute('plan-first', writes))
   // La aprobación vale para la ruta que nombra y para ninguna otra.
   blocked('plan-first', { cwd: root, tool_input: { file_path: 'src/bajas.js' } }, /sin plan/)
   fs.unlinkSync(path.join(root, 'planning', '.ops-approval'))
-  blocked('plan-first', escribe, /sin plan/)
+  blocked('plan-first', writes, /sin plan/)
 
   process.env.OPS_PLAN_FIRST_OVERRIDE = '1'
-  try { assert.doesNotThrow(() => execute('plan-first', escribe)) } finally {
+  try { assert.doesNotThrow(() => execute('plan-first', writes)) } finally {
     delete process.env.OPS_PLAN_FIRST_OVERRIDE
   }
 
   // Sin `planning/` no hay instancia que gobernar: es el estado de este mismo repositorio.
-  const suelto = tempRoot('ops-hook-plan-suelto-')
-  assert.doesNotThrow(() => execute('plan-first', { cwd: suelto, tool_input: { file_path: 'src/altas.js' } }))
+  const loose = tempRoot('ops-hook-plan-suelto-')
+  assert.doesNotThrow(() => execute('plan-first', { cwd: loose, tool_input: { file_path: 'src/altas.js' } }))
 })
 
 // El registro que deja `verify` y el contraste que lo lee. Las dos mitades juntas porque el valor está

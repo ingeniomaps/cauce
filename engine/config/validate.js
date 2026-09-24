@@ -1,5 +1,7 @@
 'use strict'
 
+const { PATH_SHAPE, EXTENSION_SHAPE } = require('../core/migrations')
+
 const MODES = ['embedded', 'sidecar', 'toolkit']
 
 // Campos que existieron y se retiraron. Se nombran en vez de caer en «propiedad desconocida» porque
@@ -69,18 +71,35 @@ function validateMigrations(migrations, errors) {
     return
   }
   for (const key of Object.keys(migrations)) {
-    if (key !== 'extensions') errors.push(`ops.config.json: migrations.${key} no está permitido`)
+    if (!['extensions', 'paths'].includes(key)) errors.push(`ops.config.json: migrations.${key} no está permitido`)
   }
-  if (!('extensions' in migrations)) return
-  const declaradas = migrations.extensions
-  if (!Array.isArray(declaradas) || !declaradas.length) {
-    errors.push('ops.config.json: migrations.extensions debe listar al menos una extensión, o no estar')
-    return
+  if ('extensions' in migrations) {
+    const declared = migrations.extensions
+    if (!Array.isArray(declared) || !declared.length) {
+      errors.push('ops.config.json: migrations.extensions debe listar al menos una extensión, o no estar')
+    } else {
+      for (const one of declared) {
+        if (typeof one !== 'string' || !EXTENSION_SHAPE.test(one)) {
+          errors.push(`ops.config.json: migrations.extensions "${one}" debe ser la extensión sin el punto `
+            + 'y en minúscula, como "sql" o "ts"')
+        }
+      }
+    }
   }
-  for (const one of declaradas) {
-    if (typeof one !== 'string' || !/^[a-z0-9]+$/.test(one)) {
-      errors.push(`ops.config.json: migrations.extensions "${one}" debe ser la extensión sin el punto `
-        + 'y en minúscula, como "sql" o "ts"')
+  // Las carpetas, por lo mismo que las extensiones y con una razón más: el guard las busca dentro de la
+  // ruta que recibe, que puede ser relativa, así que una absoluta o una que sale con `..` no nombraría
+  // nada que pudiera encontrar (caso 196).
+  if ('paths' in migrations) {
+    const paths = migrations.paths
+    if (!Array.isArray(paths) || !paths.length) {
+      errors.push('ops.config.json: migrations.paths debe listar al menos una carpeta, o no estar')
+      return
+    }
+    for (const one of paths) {
+      if (typeof one !== 'string' || !PATH_SHAPE.test(one)) {
+        errors.push(`ops.config.json: migrations.paths ${JSON.stringify(one)} debe ser una carpeta relativa, `
+          + 'sin barra al principio ni al final y sin «.» ni «..», como "migrations" o "alembic/versions"')
+      }
     }
   }
 }

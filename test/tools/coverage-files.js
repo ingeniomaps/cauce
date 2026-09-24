@@ -50,8 +50,8 @@ const NOT_COVERED = ['automatization/workflows/', 'automatization/shared/']
 // subproceso vale igual acá: las pruebas que ejercitan sus decisiones de `deny` y de `stop` lanzan el
 // puente con `node -e` —tienen que hacerlo, porque miden cómo resuelve la raíz desde el workspace que
 // Antigravity abre—, así que esas ramas se ejecutan sin que se le atribuyan. Y encima no usa `fail()`:
-// su `main()` corre sólo bajo `require.main`, que al importarlo no se toma nunca, y el resto de lo que
-// figura sin cubrir son guardas defensivas y segundos lados de `&&`/`||` dentro de un mismo `return`.
+// hasta el caso 198 ninguna prueba lanzaba su `main()`, y el resto de lo que figura sin cubrir son
+// guardas defensivas y segundos lados de `&&`/`||` dentro de un mismo `return`.
 //
 // Medido el 2026-09-13: **78,3 % de ramas reales contra un piso de 33**, y estable — 47/60 exacto en
 // cinco corridas seguidas, sin una décima de variación. Un piso cuarenta y cinco puntos por debajo no
@@ -65,6 +65,11 @@ const NOT_COVERED = ['automatization/workflows/', 'automatization/shared/']
 //
 // Lo que sí se cubrió es lo único que era conducta propia sin probar: el evento que `hookGroups` no
 // conoce, que niega toda llamada a herramienta si un manifiesto lo escribe mal.
+//
+// Desde el caso 198 los tres pisos subieron a **97/84/95** (líneas, ramas, funciones):
+// `test/wiring/bridge-stdin.test.js` lanza el puente **del fuente**, no una copia instalada, y ese hijo sí
+// se le atribuye. Medido el 2026-09-23 dos veces: 100/85/100 con esa prueba y 84/77/83 sin ella, así
+// que quitarla hace caer los tres.
 const SLACK = 1
 
 // Cuán lejos puede quedar un piso de lo que el archivo mide. Registrar un piso y comprobar que sirve son

@@ -118,6 +118,15 @@
             "pattern": "^[a-z0-9]+$"
           },
           "minItems": 1
+        },
+        "paths": {
+          "type": "array",
+          "description": "Carpetas donde viven las migraciones, relativas y sin «.» ni «..»: el guard las reconoce en cualquier lugar de la ruta, así que \"alembic/versions\" también alcanza a \"api/alembic/versions\". Declararlas reemplaza el default [\"migrations\", \"migration\", \"migrate\"], y `check` avisa la que no alcanza a ningún archivo.",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-][A-Za-z0-9._-]*(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$"
+          },
+          "minItems": 1
         }
       }
     },

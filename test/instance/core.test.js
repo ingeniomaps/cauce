@@ -28,15 +28,15 @@ test('valida el contrato completo de ops.config.json', () => {
 // El permiso por rama viva (caso 108) compara nombres tal cual, así que un patrón no publicaría en ninguna
 // rama y parecería que en todas: se rechaza acá, donde se ve, y no se descubre al primer push frenado.
 test('runner.pushToLiveBranches acepta nombres exactos y rechaza patrones', () => {
-  const con = (value) => {
+  const errorsOf = (value) => {
     const config = opsConfig()
     config.runner.pushToLiveBranches = value
     return validateOpsConfig(config).filter((error) => error.includes('pushToLiveBranches'))
   }
-  assert.deepEqual(con(['main', 'release/2026']), [])
-  assert.deepEqual(con([]), [])
-  for (const malo of [['release/*'], ['ma in'], [''], ['rel?'], [3], 'main']) {
-    assert.equal(con(malo).length, 1, `${JSON.stringify(malo)} tiene que rechazarse`)
+  assert.deepEqual(errorsOf(['main', 'release/2026']), [])
+  assert.deepEqual(errorsOf([]), [])
+  for (const bad of [['release/*'], ['ma in'], [''], ['rel?'], [3], 'main']) {
+    assert.equal(errorsOf(bad).length, 1, `${JSON.stringify(bad)} tiene que rechazarse`)
   }
 })
 
@@ -124,13 +124,13 @@ test('las llaves de runner que el molde nombra existen en el schema', () => {
   // una regla viaja a cada consumidor igual que `AGENTS.md`. Mirar sólo uno de los dos dejaba la mitad
   // de las mencionas sin atar, que es la forma en que este hueco vuelve.
   const rules = path.join(template, 'planning', 'rules', 'system')
-  const textos = [fs.readFileSync(path.join(template, 'AGENTS.md'), 'utf8')]
+  const texts = [fs.readFileSync(path.join(template, 'AGENTS.md'), 'utf8')]
     .concat(fs.readdirSync(rules).map((file) => fs.readFileSync(path.join(rules, file), 'utf8')))
-  const nombradas = textos.flatMap((text) => [...text.matchAll(/`runner\.([a-zA-Z]+)`/g)].map((m) => m[1]))
+  const named = texts.flatMap((text) => [...text.matchAll(/`runner\.([a-zA-Z]+)`/g)].map((m) => m[1]))
 
-  assert.ok(nombradas.length, 'si el molde deja de nombrar llaves, esta atadura ya no cuida nada')
+  assert.ok(named.length, 'si el molde deja de nombrar llaves, esta atadura ya no cuida nada')
   assert.deepEqual(
-    nombradas.filter((key) => !(key in schema.properties.runner.properties)),
+    named.filter((key) => !(key in schema.properties.runner.properties)),
     [],
     'el molde nombra una llave de runner que el schema no declara',
   )
@@ -142,21 +142,37 @@ test('las llaves de runner que el molde nombra existen en el schema', () => {
 // ampliaría sin que nadie lo pidiera. Y `.ts` o `SQL` son tipeos que conviene ver acá y no como cobertura
 // que el proyecto cree tener y no tiene, que es el defecto que el campo vino a cerrar (caso 077).
 test('migrations.extensions se valida, y no declararlo es válido', () => {
-  const con = (migrations) => validateOpsConfig({ ...opsConfig(), migrations })
+  const errorsOf = (migrations) => validateOpsConfig({ ...opsConfig(), migrations })
     .filter((error) => error.includes('migrations'))
 
   assert.deepEqual(validateOpsConfig(opsConfig()).filter((e) => e.includes('migrations')), [],
     'no declararlo es el caso normal y no es un error')
-  assert.deepEqual(con({ extensions: ['sql', 'ts'] }), [], 'lo declarado bien pasa')
+  assert.deepEqual(errorsOf({ extensions: ['sql', 'ts'] }), [], 'lo declarado bien pasa')
 
-  for (const malo of ['.ts', 'SQL', 'sql;', '*', '']) {
-    const errores = con({ extensions: [malo] })
-    assert.equal(errores.length, 1, `"${malo}" tiene que rechazarse: ${JSON.stringify(errores)}`)
-    assert.match(errores[0], /sin el punto y en minúscula/)
+  for (const bad of ['.ts', 'SQL', 'sql;', '*', '']) {
+    const errors = errorsOf({ extensions: [bad] })
+    assert.equal(errors.length, 1, `"${bad}" tiene que rechazarse: ${JSON.stringify(errors)}`)
+    assert.match(errors[0], /sin el punto y en minúscula/)
   }
-  assert.match(con({ extensions: [] })[0], /al menos una extensión/, 'declararlo vacío promete y no da')
-  assert.match(con({ paths: ['x'] })[0], /no está permitido/, 'y la clave que no existe se nombra')
-  assert.match(con('sql')[0], /debe ser un objeto/)
+  assert.match(errorsOf({ extensions: [] })[0], /al menos una extensión/, 'declararlo vacío promete y no da')
+  assert.match(errorsOf({ folders: ['x'] })[0], /no está permitido/, 'y la clave que no existe se nombra')
+  assert.match(errorsOf('sql')[0], /debe ser un objeto/)
+})
+
+// Las carpetas entran en la misma expresión regular que las extensiones, así que se validan por lo mismo;
+// y una ruta que sale de la raíz o arranca en `/` no nombra una carpeta que el guard pueda reconocer en la
+// ruta relativa que recibe (caso 196).
+test('migrations.paths se valida como carpetas relativas', () => {
+  const errorsOf = (paths) => validateOpsConfig({ ...opsConfig(), migrations: { paths } })
+    .filter((error) => error.includes('migrations'))
+  assert.deepEqual(errorsOf(['migrations', 'alembic/versions', 'db/migrate', 'scripts/versions_2']), [])
+  for (const bad of ['/abs', '../x', 'a/../b', './x', 'a//b', 'x/', '.*', 'a b', '', 3]) {
+    const errors = errorsOf([bad])
+    assert.equal(errors.length, 1, `${JSON.stringify(bad)} tiene que rechazarse: ${JSON.stringify(errors)}`)
+    assert.match(errors[0], /carpeta relativa/)
+  }
+  assert.match(errorsOf([])[0], /al menos una carpeta/, 'declararlo vacío promete y no da')
+  assert.match(errorsOf('migrations')[0], /al menos una carpeta/)
 })
 
 test('el validador conoce todas las propiedades que el schema declara en el primer nivel', () => {
@@ -262,14 +278,14 @@ test('el changelog del paquete cubre la versión que se publica', () => {
   // la misma versión dejó dos encabezados `## [0.49.0]` con fechas distintas, y `entries()` devuelve
   // uno por encabezado: quien actualizara habría visto la versión dos veces, con la mitad de las
   // novedades en cada una. El archivo se lee entero y bien formado, que es justo lo que R15 nombra.
-  const repetidas = versions.filter((entry, index) => versions.indexOf(entry) !== index)
-  assert.deepEqual([...new Set(repetidas)], [], 'ninguna versión aparece dos veces')
+  const repeated = versions.filter((entry, index) => versions.indexOf(entry) !== index)
+  assert.deepEqual([...new Set(repeated)], [], 'ninguna versión aparece dos veces')
 
   // Y dentro de una versión, una sección por tipo: la misma resolución dejó dos `### Corregido`.
   for (const entry of CL.entries(CL.read(repoRoot))) {
-    const secciones = [...entry.body.matchAll(/^###\s+(\S+)/gm)].map((hit) => hit[1])
+    const sections = [...entry.body.matchAll(/^###\s+(\S+)/gm)].map((hit) => hit[1])
     assert.deepEqual(
-      secciones.filter((one, index) => secciones.indexOf(one) !== index), [],
+      sections.filter((one, index) => sections.indexOf(one) !== index), [],
       `${entry.version} repite una sección`,
     )
   }
@@ -289,10 +305,10 @@ test('toda ruta declarada del sistema existe en el paquete', () => {
   // Lo mismo para lo que una versión agrega, que entra por el mismo `continue` silencioso y no estaba
   // cubierto: `.gitattributes` vive sólo en el molde, así que sin su entrada en `TEMPLATE_FILES` la
   // instancia que actualiza no lo recibía y `upgrade` terminaba en verde igual.
-  const perdidos = O.addedPaths()
+  const missingAdded = O.addedPaths()
     .map((file) => ({ file, source: O.sourceOf(file) }))
     .filter(({ source }) => !fs.existsSync(path.join(repoRoot, source)))
-  assert.deepEqual(perdidos, [], 'una versión agrega rutas que no resuelven contra el paquete')
+  assert.deepEqual(missingAdded, [], 'una versión agrega rutas que no resuelven contra el paquete')
 
   for (const relative of O.RUNTIME_PATHS.concat(O.SYSTEM_COLLECTIONS)) {
     const source = O.sourceOf(relative)
@@ -320,10 +336,10 @@ test('el frontmatter se lee igual desde planning y desde integraciones', () => {
   assert.deepEqual(FM.frontmatter(undefined), {}, 'no explota con lo que no es texto')
 
   // Las dos formas de llamarlo leen lo mismo; sólo cambia qué devuelven.
-  const texto = '---\ntask: alta\nphase: Build\n---\n'
-  assert.equal(P.frontmatter(texto)('phase'), 'Build')
-  assert.equal(P.frontmatter(texto)('inexistente'), '', 'el contrato de planning devuelve vacío, no undefined')
-  assert.deepEqual(S.frontmatter(texto), { task: 'alta', phase: 'Build' })
+  const text = '---\ntask: alta\nphase: Build\n---\n'
+  assert.equal(P.frontmatter(text)('phase'), 'Build')
+  assert.equal(P.frontmatter(text)('inexistente'), '', 'el contrato de planning devuelve vacío, no undefined')
+  assert.deepEqual(S.frontmatter(text), { task: 'alta', phase: 'Build' })
 })
 
 test('el manifiesto ausente se lee vacío y el ilegible se niega a ser leído', () => {
@@ -348,12 +364,12 @@ test('el manifiesto ausente se lee vacío y el ilegible se niega a ser leído', 
 
 // Caso 101. Por qué sólo un entero positivo está en `validateInbox`.
 test('inbox.warnLines se valida, y no declararlo es válido', () => {
-  const con = (inbox) => validateOpsConfig({ ...opsConfig(), inbox }).filter((error) => error.includes('inbox'))
-  assert.deepEqual(con(undefined), [], 'no declararlo es el caso normal')
-  assert.deepEqual(con({ warnLines: 500 }), [])
-  for (const malo of [0, -1, 2.5, '300']) {
-    assert.match(con({ warnLines: malo })[0] || '', /entero mayor que cero/, `${JSON.stringify(malo)} se rechaza`)
+  const errorsOf = (inbox) => validateOpsConfig({ ...opsConfig(), inbox }).filter((error) => error.includes('inbox'))
+  assert.deepEqual(errorsOf(undefined), [], 'no declararlo es el caso normal')
+  assert.deepEqual(errorsOf({ warnLines: 500 }), [])
+  for (const bad of [0, -1, 2.5, '300']) {
+    assert.match(errorsOf({ warnLines: bad })[0] || '', /entero mayor que cero/, `${JSON.stringify(bad)} se rechaza`)
   }
-  assert.match(con({ lines: 3 })[0], /no está permitido/)
-  assert.match(con([])[0], /debe ser un objeto/)
+  assert.match(errorsOf({ lines: 3 })[0], /no está permitido/)
+  assert.match(errorsOf([])[0], /debe ser un objeto/)
 })

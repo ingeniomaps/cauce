@@ -4,13 +4,6 @@
 const fs = require('node:fs')
 const path = require('node:path')
 
-function readInput() {
-  try {
-    const raw = fs.readFileSync(0, 'utf8')
-    return raw.trim() ? JSON.parse(raw) : {}
-  } catch { return {} }
-}
-
 // Dónde quedó la raíz ops respecto de la carpeta que Antigravity abre. Lo completa
 // `automation install`, que es el único momento en que se sabe: en modo sidecar la raíz ops es un
 // hermano de los repos de producto, y ninguna búsqueda hacia arriba la encuentra. Sin esto el bridge
@@ -78,16 +71,37 @@ function findRoot(input, markers = MARKERS) {
   throw new Error('No se encontró una raíz Cauce desde el workspace de Antigravity.')
 }
 
-function runtimeAt(root) {
+function engineAt(root, file) {
   const candidates = [
-    path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine', 'hooks', 'run.js'),
-    path.join(root, 'engine', 'hooks', 'run.js'),
-    path.join(root, '..', 'node_modules', '@ingeniomaps', 'cauce', 'engine', 'hooks', 'run.js'),
+    path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine', 'hooks', file),
+    path.join(root, 'engine', 'hooks', file),
+    path.join(root, '..', 'node_modules', '@ingeniomaps', 'cauce', 'engine', 'hooks', file),
   ]
   // Copia de `packagePath`; su porqué vive allá. Son tres los que la repiten y el motor los nombra.
-  const runtime = candidates.find(fs.existsSync)
+  return candidates.find(fs.existsSync) || ''
+}
+
+function runtimeAt(root) {
+  const runtime = engineAt(root, 'run.js')
   if (!runtime) throw new Error('No se encontró el runtime engine/hooks/run.js.')
   return require(runtime)
+}
+
+// La entrada se lee con el lector del motor y no con uno propio: el puente tenía su copia, y la copia se
+// colgaba con stdin abierto y convertía un JSON ilegible en `allow` (caso 198). Lo que no se puede usar para
+// encontrarlo es la entrada misma, que todavía no se leyó: se busca como `findRoot` sin entrada —la raíz que
+// `install` dejó escrita y, si no resuelve, desde donde corre el puente—. Sólo la declarada dejaba sin
+// lector, negando cada llamada, a un proyecto movido que los guards sí encontraban. Sin ninguna, se niega.
+function inputReader(markers = MARKERS) {
+  let root = ''
+  try { root = findRoot({}, markers) } catch { /* sin raíz no hay motor: lo dice el error de abajo */ }
+  const reader = root && engineAt(root, 'input.js')
+  if (!reader) {
+    throw new Error('No se encontró engine/hooks/input.js, con el que se lee la entrada, ni en la raíz que '
+      + `automation install declaró (${declaredRoot(markers) || 'ninguna'}) ni desde ${process.cwd()}. `
+      + 'Reinstalá el runner.')
+  }
+  return require(reader)
 }
 
 // La carpeta que el runner abrió, deducida de la raíz: en sidecar la raíz ops es su hija, y en modo
@@ -134,6 +148,47 @@ function respond(value) {
   process.stdout.write(`${JSON.stringify(value)}\n`)
 }
 
+function refusal(event, message, blocking) {
+  const reason = `Cauce: ${message}`
+  if (event !== 'stop') return { decision: 'deny', reason }
+  // Un guard que bloquea marca su error con `blocked` (engine/hooks/run.js); cualquier otro es que el
+  // puente no llegó a juzgar nada. En `stop` los dos devolvían `continue`, y eso ata al agente: la
+  // raíz que no resuelve no se arregla sola, así que cada intento de cerrar repite el mismo error.
+  // El bloqueo sigue dando `continue` —es el mecanismo funcionando—; la falla deja cerrar y avisa.
+  return blocking ? { decision: 'continue', reason } : { decision: 'stop', reason }
+}
+
+// Lo que cada evento tiene que traer para que sus guards juzguen algo. `normalize` lee campos por nombre y
+// convierte en `''` el que no encuentra, así que una llamada con otra forma —un campo renombrado en una
+// actualización de Antigravity— llegaba vacía a los guards, ninguno frenaba y el puente respondía `allow`:
+// todos los guards apagados sin rastro (caso 200). Cerrado por defecto: sin lo que el evento juzga, se niega
+// y se dice qué llegó, que es lo que hace falta para enseñarle la forma nueva a `normalize`.
+//
+// Una entrada vacía no es una llamada con otra forma: no describe ninguna, y es como se invoca a mano, con
+// `OPS_HOOK_COMMAND` u `OPS_HOOK_FILE` (caso 198).
+const DESCRIBED_BY = {
+  'pre-shell': { field: 'command', names: 'CommandLine' },
+  'pre-files': { field: 'file_path', names: 'TargetFile ni AbsolutePath' },
+}
+
+// Un archivo sin su contenido tampoco se puede juzgar: los guards que miran qué se escribe —secretos,
+// migraciones— verían un texto vacío. Basta que el campo esté; vacío es un archivo vacío.
+const CONTENT_FIELDS = ['CodeContent', 'ReplacementContent', 'ReplacementChunks']
+
+function undescribed(event, input, normalized) {
+  const need = DESCRIBED_BY[event]
+  if (!need || !Object.keys(input).length) return ''
+  const fields = (input.toolCall && input.toolCall.args) || {}
+  const args = Object.keys(fields)
+  const missing = !normalized.tool_input[need.field] ? need.names
+    : event === 'pre-files' && !CONTENT_FIELDS.some((field) => field in fields)
+      ? 'CodeContent, ReplacementContent ni ReplacementChunks' : ''
+  if (!missing) return ''
+  const received = args.length ? `toolCall.args trae ${args.join(', ')}` : `llegó ${Object.keys(input).join(', ')}`
+  return `la llamada no trae ${missing}, así que no hay nada que juzgar y no se autoriza (${received}). Si `
+    + 'Antigravity cambió el formato de sus llamadas, el puente tiene que aprenderlo en normalize().'
+}
+
 function evaluate(event, input) {
   try {
     const root = findRoot(input)
@@ -141,23 +196,30 @@ function evaluate(event, input) {
     const hooks = runtimeAt(root)
     const normalized = normalize(input, root)
     if (!hooks.hookGroups[event]) throw new Error(`Evento Antigravity desconocido: ${event || '(vacío)'}`)
+    const missing = undescribed(event, input, normalized)
+    if (missing) throw new Error(missing)
     hooks.executeAll([event], normalized)
     return event === 'stop' ? { decision: 'stop' } : { decision: 'allow' }
   } catch (error) {
-    const reason = `Cauce: ${error.message}`
-    if (event !== 'stop') return { decision: 'deny', reason }
-    // Un guard que bloquea marca su error con `blocked` (engine/hooks/run.js); cualquier otro es que el
-    // puente no llegó a juzgar nada. En `stop` los dos devolvían `continue`, y eso ata al agente: la
-    // raíz que no resuelve no se arregla sola, así que cada intento de cerrar repite el mismo error.
-    // El bloqueo sigue dando `continue` —es el mecanismo funcionando—; la falla deja cerrar y avisa.
-    return error.blocked ? { decision: 'continue', reason } : { decision: 'stop', reason }
+    return refusal(event, error.message, error.blocked)
   }
 }
 
-function main() {
-  respond(evaluate(process.argv[2], readInput()))
+async function main(event = process.argv[2]) {
+  let input
+  try {
+    const engine = inputReader()
+    const usage = 'pasale el JSON de Antigravity —printf \'%s\' '
+      + `'{"toolCall":{"args":{"CommandLine":"…"}}}' | node hook.js ${event || '<evento>'}—`
+    input = await engine.readInput(process.stdin, engine.FIRST_BYTE_MS, usage)
+  } catch (error) {
+    // El lector del motor marca `blocked` lo que no pudo leer, porque para un guard eso es bloquear. Acá
+    // es el puente sin nada que juzgar, y en `stop` eso deja cerrar: reintentar no arregla la entrada.
+    return respond(refusal(event, error.message, false))
+  }
+  respond(evaluate(event, input))
 }
 
 if (require.main === module) main()
 
-module.exports = { evaluate, findRoot, normalize }
+module.exports = { evaluate, findRoot, normalize, inputReader }

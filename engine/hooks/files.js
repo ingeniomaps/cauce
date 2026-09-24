@@ -1,12 +1,11 @@
 'use strict'
 
-// Los guards que juzgan lo que está por escribirse: un secreto, un archivo generado, una migración,
-// una prueba que se apaga, el motor de la dependencia. Todos leen el contenido entrante y no el disco
-// —lo que ya estaba no lo escribió este cambio— y son el grupo `pre-files` del registro.
+// Los guards que juzgan lo que está por escribirse: un secreto, un archivo generado, una prueba que se
+// apaga, el motor de la dependencia. Todos leen el contenido entrante y no el disco —lo que ya estaba no
+// lo escribió este cambio— y son el grupo `pre-files` del registro, junto con `migrations.js`.
 
 const fs = require('node:fs')
 const path = require('node:path')
-const { spawnSync } = require('node:child_process')
 const {
   patchOf, filesOf, contentOf, cwdOf, block, configOf, opsRoot,
   writableRoots, outsideRoots, DECLARE_IT,
@@ -23,29 +22,6 @@ const { TEMPLATE_PREFIXES } = require('../core/ownership')
 // angosta: vale para esa ruta y deja de valer en cuanto cambie, a diferencia de la variable, que apaga
 // el guard hasta que cierre la sesión.
 const approved = (input, file) => !AP.pending(opsRoot(input), [file], input).length
-
-// Si la migración ya viajó a otra copia, que es lo que el bloqueo de abajo quiere saber y `existsSync`
-// no contesta. Devuelve el motivo del bloqueo o cadena vacía.
-//
-// **`HEAD` y no el índice**: un archivo apenas `git add`eado no viajó a ninguna parte, y `git ls-files`
-// lo daría por historial. Y **resolver la raíz es una pregunta aparte** de si el archivo está en `HEAD`:
-// las dos fallan con 128 y confundirlas repite el error que este caso arregla —decidir por la respuesta
-// equivocada—. Sin raíz resoluble se degrada a la conducta de antes, que bloquea de más, porque cuando
-// no se puede saber ése es el lado correcto para equivocarse. Es la degradación que `check` ya declara
-// cuando no puede resolver el repositorio de un servicio. Caso 086.
-function alreadyShipped(file) {
-  if (!fs.existsSync(file)) return ''
-  const cwd = path.dirname(file)
-  const top = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd, encoding: 'utf8' })
-  if (top.status !== 0) {
-    return 'existe, y acá no hay repositorio con el que saber si ya viajó a otra copia'
-  }
-  const rel = path.relative(top.stdout.trim(), file).split(path.sep).join('/')
-  return spawnSync('git', ['cat-file', '-e', `HEAD:${rel}`], { cwd }).status === 0
-    ? 'ya está en el historial del repositorio'
-    : ''
-}
-
 
 // Qué archivo es una credencial, para los dos guards que la cuidan: `secrets`, que frena escribirla, y
 // `secrets-read`, que frena leerla. Devuelve el motivo, o vacío.
@@ -243,13 +219,13 @@ function planFirst(input) {
   // Se lista recién acá, después de las dos salidas de arriba: quien tiene su plan sale por la primera y
   // no paga esta lectura, que es la misma razón por la que `hasTasks` se pregunta donde se pregunta.
   const foreign = readWips(planning).filter((one) => one.complete + one.pending > 0)
-  const estado = wip ? `WIP tiene la tarea ${wip.task} y ningún paso` : 'WIP está en IDLE'
+  const state = wip ? `WIP tiene la tarea ${wip.task} y ningún paso` : 'WIP está en IDLE'
   const why = foreign.length
     ? `hay plan escrito, pero bajo otro id: ${foreign.map((one) => `${one.runner} (${one.task})`).join(', ')}.\n`
       + 'Si ese plan es tuyo, volvé a su id con `export CAUCE_RUNNER=<id>` —`ops runners <planning>` los lista '
       + 'con su tarea y su avance— y repetí el cambio. Si vas a trabajar en paralelo, montá tu propio árbol '
       + 'con `ops worktree <planning> <tarea>`, que te devuelve el id hecho.\n'
-    : `${estado}, así que el plan todavía no está escrito.\n`
+    : `${state}, así que el plan todavía no está escrito.\n`
       + 'Escribí en tu planning/wip/<runner>.md la tarea y su plan aprobado —pasos numerados, cada uno con '
       + 'un estado verificable— y volvé al cambio. Si esto no es trabajo de una tarea, aprobá la ruta.\n'
   for (const raw of filesOf(input)) {
@@ -274,80 +250,6 @@ function workspaceBoundary(input) {
     if (own) block(own)
     if (allowed && outsideRoots(file, allowed)) {
       block(`${file} está fuera de las raíces declaradas en ops.config.json. ${DECLARE_IT}`)
-    }
-  }
-}
-
-// Qué archivos son migraciones para este proyecto. La ruta la fija el motor —`migrations/`, `migration/`
-// o `migrate/`, que es donde las ponen todas las herramientas— y **la extensión la declara el proyecto**,
-// con `sql` de default.
-//
-// Sin esto el guard sólo veía `.sql`, así que en TypeORM, Prisma, Django, Rails o Alembic no miraba nada:
-// ni frenaba el SQL destructivo, ni protegía una migración existente de ser reescrita. Y no lo decía —
-// aparecía cableado y en verde—. Medido en una instancia real: 64 migraciones `.sql` cubiertas y **409
-// TypeORM `.ts` invisibles** (caso 077).
-//
-// No se amplía el default a `.ts`/`.py`/`.rb` por su cuenta: eso reintroduciría el falso positivo del
-// caso 039 —un archivo de lenguaje que menciona `DROP TABLE` en un comentario o en un string— por otra
-// puerta. Declararlo es opt-in porque el que sabe si sus migraciones son de lenguaje es el proyecto, y
-// porque así el costo lo elige quien lo paga.
-//
-// La extensión inválida no se descarta en silencio: descartarla dejaría al proyecto creyendo que declaró
-// una cobertura que no tiene, que es exactamente el defecto que este helper vino a cerrar. La valida
-// `validateOpsConfig`, y acá se ignora lo que no pasa ese filtro porque el guard no es el lugar donde se
-// enseña a escribir la configuración.
-const DEFAULT_MIGRATION_EXTENSIONS = ['sql']
-
-function migrationPattern(input) {
-  const root = opsRoot(input)
-  const declared = root ? (configOf(root).migrations || {}).extensions : null
-  const extensions = (Array.isArray(declared) ? declared : DEFAULT_MIGRATION_EXTENSIONS)
-    .filter((one) => typeof one === 'string' && /^[a-z0-9]+$/.test(one))
-  const usable = extensions.length ? extensions : DEFAULT_MIGRATION_EXTENSIONS
-  return new RegExp(`(?:^|/)(?:migrations?|migrate)/.*\\.(?:${usable.join('|')})$`, 'i')
-}
-
-function migrations(input) {
-  if (process.env.OPS_MIGRATIONS_OVERRIDE === '1') return
-  // Cada rama cierra su propio límite. Cuando el `\b` estaba al final del grupo se aplicaba a las tres, y
-  // la de `delete` termina a propósito en `;`: después de un punto y coma no hay límite de palabra, así que
-  // `DELETE FROM pedidos;` —la forma que tiene en cualquier migración— pasaba y sólo frenaba la variante sin
-  // punto y coma. `drop column` y `drop constraint` faltaban: pierden datos y garantías igual que `drop table`.
-  const destructiveSql = new RegExp(
-    String.raw`\bdrop\s+(?:table|database|schema|column|constraint)\b` +
-      String.raw`|\btruncate\b` +
-      String.raw`|\bdelete\s+from\s+\S+\s*(?:;|$)`,
-    'i',
-  )
-  // Las dos condiciones deciden sobre el mismo alcance, y por eso comparten el filtro. El bloqueo por
-  // SQL destructivo corría antes de este bucle, o sea sobre el contenido y sin mirar la ruta que ya
-  // tenía a mano: frenaba un ADR que citaba la migración o un comentario que advertía que eso no se
-  // hace, y encima afirmaba «La migración contiene…» sobre un archivo que no lo era. Un guard que
-  // frena donde no corresponde enseña a apagarlo, que es la salida más ancha que hay.
-  //
-  // El mensaje nombra el archivo por lo mismo: un falso positivo se lee igual que un bloqueo correcto
-  // mientras no diga sobre qué está decidiendo.
-  //
-  // El precio de compartir el filtro es que una migración escrita fuera de un directorio con ese nombre
-  // deja de frenarse. Es deliberado: el otro chequeo ya vivía con esa convención, y dos condiciones de
-  // la misma función con dos alcances distintos es lo que hizo falta arreglar acá.
-  const esMigracion = migrationPattern(input)
-  for (const raw of filesOf(input)) {
-    const normalized = raw.replace(/\\/g, '/')
-    if (!esMigracion.test(normalized)) continue
-    if (approved(input, normalized)) continue
-    if (destructiveSql.test(contentOf(input))) {
-      block(`${raw} contiene SQL destructivo.\n${AP.HOW('OPS_MIGRATIONS_OVERRIDE', [normalized], input)}`)
-    }
-    // El mensaje nombra el hecho que sostiene el bloqueo y no su interpretación: «historial» era una
-    // lectura que `existsSync` no podía dar, y se la daba igual sobre stubs de la misma sesión. Y lleva
-    // la salida angosta, que hasta 0.79.0 sólo tenía el bloqueo hermano: éste es el que aparece en el
-    // flujo normal de escribir una migración, así que era justo el que no podía quedarse sin decirla.
-    const file = path.resolve(cwdOf(input), raw)
-    const shipped = alreadyShipped(file)
-    if (shipped) {
-      block(`${raw} ${shipped}. Crea una nueva en vez de reescribirla.\n`
-        + AP.HOW('OPS_MIGRATIONS_OVERRIDE', [normalized], input))
     }
   }
 }
@@ -381,5 +283,5 @@ function engineWrites(input) {
 module.exports = {
   credential, patternNames,
   secrets, secretsRead, integrationSnapshot, generated, testEvidence, planFirst, workspaceBoundary,
-  migrations, engineWrites,
+  engineWrites,
 }

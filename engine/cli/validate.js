@@ -26,6 +26,7 @@ const O = require('../core/ownership')
 const TR = require('../core/trails')
 const OB = require('../core/onboarding')
 const C = require('../config/validate')
+const MG = require('../core/migrations')
 const CP = require('../config/paths')
 const AG = require('../agents/catalog')
 const RL = require('../automation/rules')
@@ -62,6 +63,7 @@ function check(dir, cli) {
       if (!raw.includes('{{')) {
         errors.push(...C.validateOpsConfig(config))
         warnings.push(...C.configWarnings(config))
+        warnings.push(...MG.coverageWarnings(R.reposFor(path.dirname(configPath), '.'), config))
         if (Array.isArray(config.workspaceRoots)) {
           for (const workspace of config.workspaceRoots) {
             if (workspace && workspace.name && workspace.path
@@ -108,6 +110,7 @@ function check(dir, cli) {
   // corre en los cuatro carriles, incluidos los que saltean Ready (caso 140).
   warnings.push(...PC.unverifiableAcceptance(milestones))
   warnings.push(...R.coverageWarnings(path.resolve(root, '..'), done))
+  errors.push(...PC.surfaceWithoutTests(done.entries, R.commitFiles(path.resolve(root, '..')), new Set(adopted)))
   // Sin `RECURRING.md` no dice una palabra: una instancia que actualiza y no declara trabajo recurrente
   // no tiene por qué enterarse de que el contrato existe. Vencida avisa y no frena — lo que frena vive
   // en `HUMAN_ACTIONS.md`, y un aviso que salta siempre se termina apagando.
