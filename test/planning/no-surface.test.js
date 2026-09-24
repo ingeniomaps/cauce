@@ -58,6 +58,11 @@ test('check rechaza tests: n/a sobre un commit que toca algo que se ejecuta', ()
   const doc = commit({ 'docs/003-legacy.md': '# ADR\n', 'docs/notas.txt': 'x\n' }, 'docs: decide legacy')
   entry('sin-codigo', 'n/a — el entregable es un ADR, sin superficie ejecutable', `${doc} docs: decide legacy`)
   assert.deepEqual(errors(), [], 'un commit de sólo documentos sostiene el n/a')
+  // Un diagrama acompaña al documento y no se ejecuta; un Makefile, que no tiene extensión, sí.
+  const drawn = commit({ 'docs/005.md': '# ADR\n', 'docs/arch.svg': '<svg/>\n', 'docs/flow.png': 'png\n' },
+    'docs: diagram')
+  entry('con-diagrama', 'n/a — es un ADR con su diagrama', `${drawn} docs: diagram`)
+  assert.deepEqual(errors(), [], 'un diagrama no es superficie ejecutable')
 
   const code = commit({ 'docs/004.md': '# ADR\n', 'api/alta.go': 'package api\n' }, 'feat: alta')
   entry('con-codigo', 'n/a — es un documento', `${code} feat: alta`)

@@ -30,8 +30,9 @@ invariantes.
   ordena una evidencia que ya no depende de su posición dentro de un archivo. `tests:` enlaza cada criterio
   mediante `CN → prueba`; usa `A → prueba` cuando no hay épica o `n/a — razón` si no existe una
   superficie ejecutable. Un `tests:` que sea todo `n/a` es un error de `check` si su `commit:` toca algún
-  archivo que no sea `.md`, `.txt` o `.adoc`: lo demás se ejecuta y se prueba. Rige para lo cerrado desde el
-  2026-09-24; lo anterior no se juzga con ella. `decisions:` es opcional y, si aparece, cita `[fuente: ...]` o
+  archivo que no sea un documento (`.md`, `.txt`, `.adoc`) o una imagen (`.png`, `.jpg`, `.jpeg`, `.gif`,
+  `.svg`, `.webp`): lo demás se ejecuta y se prueba, también lo que no tiene extensión, como un `Makefile`.
+  Rige para lo cerrado desde el 2026-09-24; lo anterior no se juzga con ella. `decisions:` es opcional y, si aparece, cita `[fuente: ...]` o
   `[supuesto: ...]`. `commit:` apunta a `<sha> <asunto>`, o a `n/a — razón` cuando la tarea no
   produce commit.
 - Acción humana: fila `| tarea | estado | origen | acción y condición de desbloqueo |`, con el estado

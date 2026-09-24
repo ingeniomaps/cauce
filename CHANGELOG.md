@@ -25,8 +25,8 @@ diseño — eso vive en el commit y en el código.
 
 ### Cambiado
 
-- **`check` falla si una entrada de DONE tiene `tests:` todo `n/a` y su commit toca algo que no sea `.md`,
-  `.txt` o `.adoc`.** Es lo que vuelve creíble el `n/a` de arriba: lo demás se ejecuta y se prueba. Rige
+- **`check` falla si una entrada de DONE tiene `tests:` todo `n/a` y su commit toca algo que no sea un
+  documento (`.md`, `.txt`, `.adoc`) o una imagen (`.png`, `.jpg`, `.jpeg`, `.gif`, `.svg`, `.webp`).** Es lo que vuelve creíble el `n/a` de arriba: lo demás se ejecuta y se prueba. Rige
   para lo cerrado desde el 2026-09-24, así que tu historia anterior no se pone en rojo al actualizar.
 
 ### Corregido

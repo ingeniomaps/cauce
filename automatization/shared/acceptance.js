@@ -21,4 +21,6 @@ const OUT_OF_VERIFY = /\(fuera de verify:\s*[^)]+\)/i
 // Es la lista a favor y no la de lo ejecutable a propósito (R27): un `.sql` de migración, un workflow en
 // YAML, un `Dockerfile`, un `Makefile` o un `.json` de configuración se ejecutan sin parecer código, y una
 // lista de lo ejecutable dejaría afuera lo que venga después. Ampliarla es un cambio con su razón al lado.
-const NON_EXECUTABLE = ['.md', '.txt', '.adoc']
+// Las imágenes entraron porque un ADR suele traer su diagrama, y sin ellas ese commit contaba como código.
+// Lo que no tiene extensión sigue contando como ejecutable: `Makefile` y `Dockerfile` no la tienen.
+const NON_EXECUTABLE = ['.md', '.txt', '.adoc', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp']
