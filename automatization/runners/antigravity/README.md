@@ -19,7 +19,10 @@ usuario y no por workspace. De ahí salen tres consecuencias que conviene tener 
 - Registrar desde otro proyecto reemplaza el plugin del anterior.
 
 Volvé a registrar cada vez que `automation install` cambie el wiring o el proyecto se mueva de lugar;
-`agy plugin validate .agents/plugins/cauce` comprueba la copia del repo antes de registrarla.
+`agy plugin validate .agents/plugins/cauce` comprueba la copia del repo antes de registrarla. Si te
+olvidás, `automation doctor` lo dice: compara la copia registrada con la del workspace y la lanza como
+la lanza `agy`, desde su carpeta, así que una copia de otro proyecto o de otra versión es un error con el
+comando que lo corrige. Al instalar es una advertencia, porque registrar es justo el paso que sigue.
 
 El plugin aporta hooks `PreToolUse` y `Stop`, reglas Cauce y los cinco recorridos —`/cauce:onboard`,
 `/cauce:flow`, `/cauce:autobuild`, `/cauce:integration-sync` y `/cauce:integration-promote`— más el

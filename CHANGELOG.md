@@ -92,6 +92,11 @@ diseño — eso vive en el commit y en el código.
   reversión honesta volvía a frenar, y un `DROP TABLE` citado en otro archivo del mismo parche frenaba la
   migración. Ahora cada archivo se juzga por su sección, y en una modificación sólo lo agregado.
 
+- **`automation doctor` de Antigravity mira la copia que `agy` ejecuta de verdad.** `agy` corre la que registrás
+  con `agy plugin install`, una por usuario, y `doctor` miraba la del workspace: decía «operativo» mientras `agy`
+  ejecutaba el plugin de otro proyecto o uno roto, y frenaba cada comando. Ahora compara las dos, lanza la
+  registrada como la lanza `agy`, y si difiere te dice qué comando corre para registrar esta instalación.
+
 ### Cambiado
 
 - **`check` falla si una entrada de DONE tiene `tests:` todo `n/a` y su commit toca algo que no sea `.md`,
