@@ -87,6 +87,11 @@ diseño — eso vive en el commit y en el código.
   fixture ahí frenaban cada commit. Ahora cuenta el que declara `openapi:` o `swagger:`, o un fragmento de una
   carpeta que tiene uno.
 
+- **En Codex, el guard de migraciones juzga cada archivo del parche por separado.** Un `apply_patch` llegaba
+  como un solo sobre: los marcadores de goose y dbmate venían con el `+` del parche y no partían, así que la
+  reversión honesta volvía a frenar, y un `DROP TABLE` citado en otro archivo del mismo parche frenaba la
+  migración. Ahora cada archivo se juzga por su sección, y en una modificación sólo lo agregado.
+
 ### Cambiado
 
 - **`check` falla si una entrada de DONE tiene `tests:` todo `n/a` y su commit toca algo que no sea `.md`,

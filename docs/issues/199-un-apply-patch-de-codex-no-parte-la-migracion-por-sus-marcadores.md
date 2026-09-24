@@ -1,14 +1,15 @@
 ---
 caso: 199
 titulo: En un apply_patch de Codex los marcadores de goose y dbmate llegan con el prefijo del parche, y la migración se juzga entera
-estado: abierto
+estado: resuelto
+resuelto-en: 0.99.0
 prioridad: media
 version-detectada: 0.98.0
 ---
 
 # 199 — Por `apply_patch`, el `down` honesto vuelve a frenar
 
-**🔴 abierto** · detectado en 0.98.0 · prioridad **media**. El arreglo del 185 parte la migración por sus
+**🟢 resuelto en 0.99.0** · detectado en 0.98.0 · prioridad **media**. El arreglo del 185 parte la migración por sus
 marcadores, pero en el sobre de `apply_patch` cada línea trae el prefijo del parche y ningún marcador empieza
 la línea: la migración se evalúa entera y el `DROP` de su `Down` frena, igual que antes del 185.
 
@@ -108,3 +109,41 @@ fue la única entrada que el arreglo no alcanzaba.
 ## Relacionados
 
 - **185**: el mismo falso positivo, arreglado para `Write` y `Edit`.
+
+## Cierre
+
+**Resuelto en 0.99.0, por el fix propuesto.** Recorriendo lo que enumeró:
+
+- **`Add File` → se hizo.** `patchSections` (`engine/core/migrations.js`) corta el sobre por archivo, y
+  `judgedPatch` juzga un archivo nuevo por su contenido sin el prefijo, partido como un `Write`.
+- **`Update File` → se hizo, por el camino que el caso proponía.** Se reconstruye el lado que va a quedar
+  —contexto y agregado—, se parte con los marcadores que el hunk trae, y se juzga sólo lo agregado que cae
+  del lado que aplica. Sin marcador en el contexto se juzga todo lo agregado, como antes. Dos bordes salieron
+  al mutar y quedaron fijados: lo **quitado** no cuenta para partir —un hunk que saca el `Down` deja lo
+  agregado después en el `Up`, y eso frena—, y el separador `@@` no es una línea del archivo —leído como tal,
+  su sangría cortaba el `downgrade()` de una migración de Python—.
+- **Tradeoff del formato de un tercero → aceptado**: el parser sólo reconoce las cabeceras `*** … File:` y los
+  prefijos de línea, que es lo que `filesOf` ya leía para saber qué archivos toca el parche.
+- **Tradeoff de juzgar por archivo en los otros guards → se limitó a `migrations`**, que es lo que el caso
+  sugería decidir. `contentOf` no cambió, así que los demás guards siguen viendo el sobre entero.
+
+**Lo que el caso no preveía: el sobre entero también frenaba de más entre archivos.** Un `DROP TABLE` citado en
+un `docs/notes.md` del mismo parche frenaba la migración de al lado, porque el guard juzgaba todo el sobre para
+cada archivo. Juzgar por sección lo cierra, y la prueba lo fija.
+
+### Qué se corrió
+
+- **La reproducción del caso, tal como está escrita, contra el guard arreglado** (2026-09-23):
+
+  ```
+  hook write → exit=0
+  hook patch → exit=0
+  ```
+
+  Antes, `patch` daba `exit=2` con «contiene SQL destructivo: `DROP TABLE`».
+- **La prueba nueva en `test/hooks/migrations.test.js`, en rojo sobre el código anterior**, y **cinco
+  mutaciones en una copia del árbol, las cinco en rojo**: juzgar el sobre entero, un `Update` sin partir, lo
+  quitado contando para partir, el `Add` con su prefijo, y `@@` como contenido. Las dos últimas de éstas
+  sobrevivían a la primera versión de la prueba y pidieron los dos casos de arriba.
+- `npm run ci`, exit 0, 993 pruebas.
+
