@@ -71,6 +71,12 @@ diseño — eso vive en el commit y en el código.
   `drop_join_table` (Rails), `dropTable`/`dropColumn(s)` (TypeORM), `dropTable(IfExists)`/`dropColumn`
   (Knex) y `DeleteModel`/`RemoveField` (Django). La reversión —`downgrade()`, `down`— no se juzga.
 
+- **El puente de Antigravity ya no deja pasar lo que no puede leer.** Ante un JSON ilegible respondía
+  `allow`: un `git push --force` al que le faltaba una llave pasaba. Y con stdin abierto se colgaba. Ahora
+  lee con el mismo lector que los guards: lo ilegible se niega en `pre-shell` y `pre-files`, si en 2 s no
+  llega nada niega y dice cómo invocarlo a mano, y en `stop` deja cerrar con el motivo a la vista. Sin
+  entrada (`</dev/null`) sigue permitiendo, como antes.
+
 ### Cambiado
 
 - **`check` falla si una entrada de DONE tiene `tests:` todo `n/a` y su commit toca algo que no sea `.md`,

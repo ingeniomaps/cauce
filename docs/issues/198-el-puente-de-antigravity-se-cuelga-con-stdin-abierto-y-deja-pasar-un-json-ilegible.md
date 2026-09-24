@@ -1,14 +1,15 @@
 ---
 caso: 198
 titulo: El puente de Antigravity se cuelga con stdin abierto y deja pasar lo que no puede leer
-estado: abierto
+estado: resuelto
+resuelto-en: 0.99.0
 prioridad: alta
 version-detectada: 0.98.0
 ---
 
 # 198 — El puente de Antigravity lee stdin por su cuenta: se cuelga como el 190 y ante un JSON ilegible permite
 
-**🔴 abierto** · detectado en 0.98.0 · prioridad **alta**. Dos defectos del mismo `readInput()`, y uno falla
+**🟢 resuelto en 0.99.0** · detectado en 0.98.0 · prioridad **alta**. Dos defectos del mismo `readInput()`, y uno falla
 en la dirección peligrosa y en silencio: un `git push --force` al que le falta la última llave sale
 `{"decision":"allow"}`.
 
@@ -184,3 +185,98 @@ ilegible, que el 190 no tenía porque el motor ya bloqueaba ahí.
   deriva este caso.
 - `sistema R27` — cerrado por defecto: una entrada ilegible no autoriza.
 - `sistema R11` — una razón en un solo lugar: pesa sobre si el puente copia el lector o reusa el del motor.
+
+## Cierre
+
+**Resuelto en 0.99.0 reusando el lector del motor, sin copia**: el puente lee con el `readInput` de
+`engine/hooks/input.js`, el mismo del 190, así que hereda el plazo al primer byte y el rechazo del JSON
+ilegible. Recorriendo lo que el caso enumeró:
+
+- **Fix propuesto → se hizo distinto de las dos formas, y sin la copia de ninguna.** La premisa de la forma 1
+  —que sin `OPS_ROOT` no se sabe dónde está el motor sin leer la entrada— resultó cierta sólo a medias:
+  `declaredRoot(markers)` ya resuelve sin la entrada en los dos caminos que existen, la raíz que `install`
+  escribió y la carpeta de la que cuelga el puente, que desde el fuente es el propio repositorio. El puente
+  busca ahí `engine/hooks/input.js` con la misma cascada con que ya buscaba `run.js` (`engineAt`, antes
+  inlineada en `runtimeAt`) y lee con él (`hook.js`, `inputReader` y `main`). Una primera versión agregaba un
+  segundo candidato relativo al paquete; una mutación que lo rompía sobrevivió, porque desde el fuente
+  `declaredRoot` ya llega al mismo lugar, y se quitó. La forma 2 —copia más una prueba de paridad— se
+  descartó por R11: la razón de cómo se lee stdin queda en un solo archivo.
+- **Lo único que cambia entre los dos lectores es cómo invocarlo a mano**, y eso pasó a ser un parámetro de
+  `readInput` (`usage`, con el texto de siempre por defecto): el puente dice `printf … | node hook.js
+  <evento>` con el JSON de Antigravity en vez del de un guard.
+- **JSON ilegible → `deny`** en `pre-shell` y `pre-files`, con el motivo del motor («la entrada del hook no es
+  JSON válido (…)»). Nunca `allow`: R27.
+- **Tradeoff de `stop` ante una entrada que no se lee → `stop` con la razón a la vista**, como el caso
+  proponía. El motor marca esa falla `blocked`, que en `evaluate` daría `continue` y ataría al agente a una
+  entrada que reintentar no arregla; `main` la trata como falla del puente (`refusal(event, message, false)`).
+  Antes salía `{"decision":"stop"}` sin razón.
+- **Plazo agotado → `deny`** con el motivo y cómo invocarlo a mano; en `stop`, `stop` con ese motivo.
+- **Un `{}` legítimo sigue permitiendo → se mantuvo, con la razón.** `</dev/null` y stdin cerrado dan
+  `allow`, como en el motor. No es un `allow` sobre una llamada que el guard debía juzgar: sin entrada no hay
+  llamada descrita, y los guards caen a `OPS_HOOK_COMMAND`/`OPS_HOOK_FILE`, que es como se los invoca a mano.
+  Antigravity no manda stdin vacío en una llamada a herramienta; si lo mandara, eso ya es la forma
+  desconocida del punto siguiente.
+- **Payload JSON válido con campos que `normalize()` no reconoce → no se cubrió acá**, como el caso
+  anticipaba: decidir qué campos son obligatorios por evento es una decisión de producto, no parte de este
+  arreglo. **Sale como caso propio**, a abrir por quien coordina la tanda —la numeración de `docs/issues/`
+  la comparten sesiones paralelas y este cierre no la toma—.
+- **Qué hace `agy` con stdin → sigue siendo hipótesis**, no comprobable sin instalar el puente y correr una
+  sesión real. Lo que cambió es el costo de que sea falsa: antes cada llamada se colgaba, ahora se niega a
+  los 2 s con el motivo escrito.
+- **Prioridad → ya no aplica**: el `push --force` sin la última llave se niega (forma D abajo).
+- **R11 (copia o reuso) → reuso**, con el encabezado de `input.js` nombrando al puente como consumidor.
+
+**Lo que el caso no preveía.** Una raíz declarada que dejó de existir falla ahora al leer y no al juzgar: el
+puente ya no puede buscar la raíz desde la entrada antes de leerla. No cambia la respuesta —antes
+`findRoot` tampoco la encontraba, porque Antigravity manda `workspacePaths` vacío y un `Cwd` que apunta al
+home—, y el mensaje nombra la raíz declarada y pide reinstalar. Y la prueba nueva, al lanzar el puente del
+fuente como proceso, es la primera que le atribuye cobertura a su `main()`: los pisos de
+`automatization/runners/antigravity/hook.js` suben a 97/84/95 (`test/tools/coverage-baseline.json`, razón
+en `test/tools/coverage-files.js`).
+
+### Qué se corrió
+
+- **La reproducción del caso, formas A–G, contra el puente arreglado** (2026-09-23, Node v24.18.0, Linux
+  6.8, desde la raíz del worktree):
+
+  ```
+  A pipe abierto:
+  {"decision":"deny","reason":"Cauce: no llegó nada por stdin en 2000 ms: stdin está abierto y nadie escribe (…). Un guard que no sabe qué juzgar no autoriza. Para invocarlo a mano, pasale el JSON de Antigravity —printf '%s' '{\"toolCall\":{\"args\":{\"CommandLine\":\"…\"}}}' | node hook.js pre-shell— o correlo sin entrada con </dev/null."}
+     exit 0
+  B /dev/null:
+  {"decision":"allow"}
+     exit 0
+  C JSON válido que bloquea:
+  {"decision":"deny","reason":"Cauce: 'git push --force' reescribe historia ya publicada. R8 lo prohíbe y runner.allowPush no lo habilita: …"}
+  D el mismo JSON sin la última llave:
+  {"decision":"deny","reason":"Cauce: la entrada del hook no es JSON válido (Expected ',' or '}' after property value in JSON at position 67 (line 1 column 68))."}
+  E JSON ilegible en pre-files:
+  {"decision":"deny","reason":"Cauce: la entrada del hook no es JSON válido (Expected ',' or '}' after property value in JSON at position 61 (line 1 column 62))."}
+  F JSON ilegible en stop:
+  {"decision":"stop","reason":"Cauce: la entrada del hook no es JSON válido (Expected property name or '}' in JSON at position 1 (line 1 column 2))."}
+  C' JSON válido inocuo:
+  {"decision":"allow"}
+  G socket:
+     fd0: socket:[291582947] wchan: ep_poll
+     {"decision":"deny","reason":"Cauce: no llegó nada por stdin en 2000 ms: …"} exit 0 null a los 2024 ms
+  leftovers: ninguno
+  ```
+
+  A pasó de `exit 124` a `deny` antes del `timeout 3`; D, E y F dejaron de permitir; G ya no duerme en
+  `unix_stream_data_wait` sino en el `ep_poll` del bucle de eventos, y termina solo a los 2 s.
+- **La prueba nueva, `test/wiring/bridge-stdin.test.js`**, lanza el puente como proceso en nueve formas
+  —socket y pipe abiertos; push forzado válido; el mismo sin la última llave; ilegible en `pre-files` y en
+  `stop`; JSON inocuo; `/dev/null`; stdin cerrado— y prueba `inputReader` sin raíz declarada. Cada hijo
+  tiene su tope y se mata al final; `pgrep` no encontró ningún puente vivo después de ninguna tanda.
+  **En rojo sobre el código de 0.98.0**: 7 de 12 —socket y pipe «no terminó solo en 8000 ms», y los tres
+  ilegibles `'allow' !== 'deny'` o `stop` sin razón—; las tres de «stdin que termina» y el push forzado
+  válido pasaban, que es lo que no debía cambiar.
+- **Seis mutaciones en una copia del árbol, las seis en rojo**: ilegible o plazo agotado leídos como `{}`
+  (fallan socket, pipe y los tres ilegibles); sin plazo (fallan socket y pipe, a los 8 s del tope); la falla
+  de lectura tratada como bloqueo (falla `stop`, que da `continue`); sin el `usage` del puente (falla el
+  socket, que ya no nombra `hook.js pre-shell`); el motor devolviendo `{}` ante JSON ilegible (fallan los
+  tres ilegibles del puente, además de la prueba del motor); sin la guarda del lector ausente (falla
+  `inputReader`, que tira el error genérico de `require`).
+- **Los pisos**: la suite entera sin la prueba nueva mide 84/77/83 en `hook.js` y con ella 100/85/100, en
+  dos corridas; con los pisos en 97/84/95 quitarla hace caer los tres.
+- `npm run ci`, exit 0, 981 pruebas.
