@@ -50,9 +50,9 @@ status: open
 `)
 
   assert.equal(P.readEpics(root)[0].noSplit, 'el harness mide este servicio y no se entrega solo')
-  const [hito] = P.readBacklog(root)
-  assert.equal(hito.noSplit, 'es una sola migración y partirla la deja a medias')
-  assert.equal(hito.tasks[0].noSplit, 'los seis bordes son el mismo camino')
+  const [milestone] = P.readBacklog(root)
+  assert.equal(milestone.noSplit, 'es una sola migración y partirla la deja a medias')
+  assert.equal(milestone.tasks[0].noSplit, 'los seis bordes son el mismo camino')
 
   // El alcance importa: la razón de la tarea es de la tarea, no del hito que la contiene.
   fs.writeFileSync(path.join(root, 'BACKLOG.md'), `# Backlog
@@ -69,10 +69,10 @@ status: open
 // y el BACKLOG no tenía la red: dos tareas escritas daban cero en cola y cero errores.
 test('una línea de BACKLOG que nadie puede leer es un error, no un silencio', () => {
   const root = tempRoot('ops-backlog-')
-  const escribir = (cuerpo) => fs.writeFileSync(path.join(root, 'BACKLOG.md'), cuerpo)
-  const errores = () => SR.validateBacklogStructure(root)
+  const write = (body) => fs.writeFileSync(path.join(root, 'BACKLOG.md'), body)
+  const errors = () => SR.validateBacklogStructure(root)
 
-  escribir(`# Backlog promovido
+  write(`# Backlog promovido
 
 Solo contiene trabajo aprobado y listo. Las ideas viven en \`INBOX.md\`.
 
@@ -82,37 +82,37 @@ Solo contiene trabajo aprobado y listo. Las ideas viven en \`INBOX.md\`.
 
 - [ ] **alta-email-nuevo** [lite] — Crear la cuenta. (→ C1) (epic: 001) (service: api)
 `)
-  assert.deepEqual(errores(), [], 'la forma canónica pasa, y la prosa fuera de un hito no se juzga')
+  assert.deepEqual(errors(), [], 'la forma canónica pasa, y la prosa fuera de un hito no se juzga')
 
-  escribir(`# Backlog promovido
+  write(`# Backlog promovido
 
 ## Hito alta — Alta de cuenta
 
 - [ ] **alta-email-nuevo** [lite] (→ C1) (epic: 001) — Crear la cuenta. (service: api)
 `)
-  const refs = errores()
+  const refs = errors()
   assert.equal(refs.length, 1)
   assert.match(refs[0], /BACKLOG hito alta: no la lee nadie/)
   assert.match(refs[0], /alta-email-nuevo/, 'el error cita la línea que se pierde')
 
-  escribir(`# Backlog promovido
+  write(`# Backlog promovido
 
 ## Hito alta — Alta de cuenta
 
 - [x] **alta-email-nuevo** [lite] — Crear la cuenta. (service: api)
 `)
-  assert.match(errores()[0], /se mueve a DONE\.md/, 'tildar en el backlog borra la tarea del sistema')
+  assert.match(errors()[0], /se mueve a DONE\.md/, 'tildar en el backlog borra la tarea del sistema')
 
-  escribir(`# Backlog promovido
+  write(`# Backlog promovido
 
 ## Hito alta
 
 - [ ] **alta-email-nuevo** [lite] — Crear la cuenta. (service: api)
 `)
-  const encabezado = errores()
-  assert.match(encabezado[0], /## Hito <slug> — <T[ií]tulo>/, 'el hito sin título deja sus tareas huérfanas')
+  const heading = errors()
+  assert.match(heading[0], /## Hito <slug> — <T[ií]tulo>/, 'el hito sin título deja sus tareas huérfanas')
 
-  escribir(`# Backlog promovido
+  write(`# Backlog promovido
 
 ## Hito alta — Alta de cuenta
 
@@ -120,7 +120,7 @@ Solo contiene trabajo aprobado y listo. Las ideas viven en \`INBOX.md\`.
 - [ ] **slug-de-tarea** [full] — Resultado. _Aceptación: conducta observable._ (service: ruta)
 -->
 `)
-  assert.deepEqual(errores(), [], 'el ejemplo comentado enseña el formato sin ser juzgado')
+  assert.deepEqual(errors(), [], 'el ejemplo comentado enseña el formato sin ser juzgado')
 })
 
 // Las dos mitades juntas, porque separadas cualquiera se cumple sola: cruzar el umbral sin razón tiene
@@ -134,61 +134,61 @@ Solo contiene trabajo aprobado y listo. Las ideas viven en \`INBOX.md\`.
 // cuesta un regex sobre la cola, y por eso avisa en vez de fallar: el patrón es de texto y una aceptación
 // legítima puede nombrar la palabra sin depender de ella.
 test('una aceptación que nombra el registro se avisa antes de construir', () => {
-  const juzgar = (acceptance) => PC.unverifiableAcceptance(
+  const judge = (acceptance) => PC.unverifiableAcceptance(
     [{ slug: 'h', tasks: [{ slug: 'tarea', acceptance }] }])
 
-  assert.match(juzgar('el borrado aplicado, con las dos corridas registradas en la evidencia')[0],
+  assert.match(judge('el borrado aplicado, con las dos corridas registradas en la evidencia')[0],
     /BACKLOG tarea: una condición nombra la evidencia, que existe después de Verify/)
-  assert.match(juzgar('con su entrada en planning/done/')[0], /nombra planning\/done\//)
-  assert.match(juzgar('el commit apunta al sha')[0], /nombra el commit/)
-  assert.match(juzgar('el reclamo queda liberado')[0], /nombra el reclamo/)
+  assert.match(judge('con su entrada en planning/done/')[0], /nombra planning\/done\//)
+  assert.match(judge('el commit apunta al sha')[0], /nombra el commit/)
+  assert.match(judge('el reclamo queda liberado')[0], /nombra el reclamo/)
   // Dice qué hacer, no sólo qué está mal: esa cláusula tiene lugar, y es el registro que DONE ya exige.
-  assert.match(juzgar('con la evidencia registrada')[0], /tests:, qa: o commit: de su entrada de DONE/)
+  assert.match(judge('con la evidencia registrada')[0], /tests:, qa: o commit: de su entrada de DONE/)
 
   // Y no dispara sobre lo que se escribe de verdad: las aceptaciones reales son técnicas y nombran el
   // producto. Si marcara éstas, el aviso se apagaría el primer día.
-  assert.deepEqual(juzgar('`make check-env` sigue frenando y nombrando la requerida que falte'), [])
-  assert.deepEqual(juzgar('`node tools/ops.js secrets check .` termina en 0'), [])
-  assert.deepEqual(juzgar('el test deriva el set desde `db/queries/*.sql`'), [])
-  assert.deepEqual(juzgar(''), [], 'sin aceptación no hay nada que mirar')
+  assert.deepEqual(judge('`make check-env` sigue frenando y nombrando la requerida que falte'), [])
+  assert.deepEqual(judge('`node tools/ops.js secrets check .` termina en 0'), [])
+  assert.deepEqual(judge('el test deriva el set desde `db/queries/*.sql`'), [])
+  assert.deepEqual(judge(''), [], 'sin aceptación no hay nada que mirar')
 
   // Por qué la salida es una marca y no una frase reconocida vive en `automatization/shared/acceptance.js`.
   // Acá se fija lo que el aviso promete: que ofrece esa salida y que ponerla alcanza.
-  assert.match(juzgar('con la evidencia registrada')[0], /declaralo con "\(fuera de verify: <razón>\)"/)
-  assert.deepEqual(juzgar('lo comprueba quien revisa (fuera de verify: el commit no existe en Verify)'), [],
+  assert.match(judge('con la evidencia registrada')[0], /declaralo con "\(fuera de verify: <razón>\)"/)
+  assert.deepEqual(judge('lo comprueba quien revisa (fuera de verify: el commit no existe en Verify)'), [],
     'declarada, pasa en silencio')
 
   // Y se juzga condición por condición, que es el grano con el que Verify contrasta: una aceptación real
   // trae varias, y marcar el párrafo entero señalaría a las que están bien por estar al lado de la que no.
-  const mezcla = 'el borrado aplicado; con su entrada en planning/done/; el conteo baja'
-  assert.equal(juzgar(mezcla).length, 1, 'sólo la condición que lo nombra')
+  const mixture = 'el borrado aplicado; con su entrada en planning/done/; el conteo baja'
+  assert.equal(judge(mixture).length, 1, 'sólo la condición que lo nombra')
   assert.equal(
-    juzgar('con la evidencia registrada; y con su entrada en planning/done/').length, 2,
+    judge('con la evidencia registrada; y con su entrada en planning/done/').length, 2,
     'dos condiciones que lo nombran son dos avisos')
   assert.deepEqual(
-    juzgar('el borrado aplicado; el commit apunta al sha (fuera de verify: lo mira quien revisa)'), [],
+    judge('el borrado aplicado; el commit apunta al sha (fuera de verify: lo mira quien revisa)'), [],
     'excluir una condición no exime a las otras, pero acá la otra está limpia')
 })
 
 test('la aceptación propia de una tarea también cuenta para R17', () => {
-  const tarea = (acceptance) => ({
+  const sampleTask = (acceptance) => ({
     slug: 'inflada', criteria: [], noSplit: '', acceptance, conditions: P.acceptanceConditions(acceptance),
   })
-  const juzgar = (acceptance) => SZ.oversizedUnits({ milestones: [{ slug: 'h', tasks: [tarea(acceptance)] }] })
+  const judge = (acceptance) => SZ.oversizedUnits({ milestones: [{ slug: 'h', tasks: [sampleTask(acceptance)] }] })
 
-  assert.match(juzgar('(1) a; (2) b; (3) c; (4) d; (5) e; (6) f')[0],
+  assert.match(judge('(1) a; (2) b; (3) c; (4) d; (5) e; (6) f')[0],
     /BACKLOG inflada: condiciones de aceptación: 6 \(umbral 5 de R17\)/,
     'el mensaje nombra qué contó: «criterios: 6» sobre una tarea sin un (→ CN) manda a buscar seis que no existen')
-  assert.deepEqual(juzgar('a; b; c; d; e'), [], 'cinco no cruza: el umbral es «más de»')
-  assert.deepEqual(juzgar('una frase larga, con comas, que sigue y sigue'), [], 'sub-cuenta antes que sobre-contar')
-  assert.deepEqual(juzgar(''), [], 'sin aceptación propia no hay nada que contar')
+  assert.deepEqual(judge('a; b; c; d; e'), [], 'cinco no cruza: el umbral es «más de»')
+  assert.deepEqual(judge('una frase larga, con comas, que sigue y sigue'), [], 'sub-cuenta antes que sobre-contar')
+  assert.deepEqual(judge(''), [], 'sin aceptación propia no hay nada que contar')
 
   // Se juzga la mayor y no la suma: una tarea que repite en prosa lo que ya citó no acumula dos veces.
-  const mixta = {
+  const mixed = {
     slug: 'mixta', criteria: ['C1', 'C2', 'C3'], noSplit: '',
     acceptance: 'a; b; c', conditions: P.acceptanceConditions('a; b; c'),
   }
-  assert.deepEqual(SZ.oversizedUnits({ milestones: [{ slug: 'h', tasks: [mixta] }] }), [],
+  assert.deepEqual(SZ.oversizedUnits({ milestones: [{ slug: 'h', tasks: [mixed] }] }), [],
     'tres heredados y tres propios son tres, no seis')
 })
 
@@ -208,30 +208,30 @@ test('las condiciones de una aceptación se cuentan como el autor las marcó', (
 })
 
 test('los umbrales de R17 exigen decidir, y la razón escrita alcanza', () => {
-  const criterios = (n) => Array.from({ length: n }, (_, i) => ({ id: `C${i + 1}` }))
-  const tareas = (n) => Array.from({ length: n }, (_, i) => ({ slug: `t-${i}`, criteria: [], noSplit: '' }))
-  const epica = (n, noSplit = '') => ({ file: 'epic-001-x.md', criteria: criterios(n), noSplit })
+  const sampleCriteria = (n) => Array.from({ length: n }, (_, i) => ({ id: `C${i + 1}` }))
+  const sampleTasks = (n) => Array.from({ length: n }, (_, i) => ({ slug: `t-${i}`, criteria: [], noSplit: '' }))
+  const sampleEpic = (n, noSplit = '') => ({ file: 'epic-001-x.md', criteria: sampleCriteria(n), noSplit })
 
   assert.deepEqual(SZ.oversizedUnits({
-    epics: [epica(7)], milestones: [{ slug: 'h', tasks: tareas(9), noSplit: '' }],
+    epics: [sampleEpic(7)], milestones: [{ slug: 'h', tasks: sampleTasks(9), noSplit: '' }],
   }), [], 'en el umbral no dice nada: el borde entra')
 
-  const cruzada = SZ.oversizedUnits({ epics: [epica(8)] })
-  assert.equal(cruzada.length, 1)
-  assert.match(cruzada[0], /roadmap\/epic-001-x\.md: criterios: 8 \(umbral 7 de R17\)/, 'cuánto y contra qué')
-  assert.match(cruzada[0], /sin partir: <razón>/, 'y cómo se cierra sin partir, que es la otra salida')
+  const crossed = SZ.oversizedUnits({ epics: [sampleEpic(8)] })
+  assert.equal(crossed.length, 1)
+  assert.match(crossed[0], /roadmap\/epic-001-x\.md: criterios: 8 \(umbral 7 de R17\)/, 'cuánto y contra qué')
+  assert.match(crossed[0], /sin partir: <razón>/, 'y cómo se cierra sin partir, que es la otra salida')
 
   // La razón escrita es lo que cierra el agujero: sin ella la escapatoria no dejaba rastro.
-  assert.deepEqual(SZ.oversizedUnits({ epics: [epica(8, 'el harness mide este servicio y no se entrega solo')] }),
+  assert.deepEqual(SZ.oversizedUnits({ epics: [sampleEpic(8, 'el harness mide este servicio y no se entrega solo')] }),
     [], 'decidida y con la razón puesta, la unidad pasa')
 
-  const hito = { slug: 'primero', tasks: tareas(10), noSplit: '' }
-  assert.match(SZ.oversizedUnits({ milestones: [hito] })[0], /hito primero: tareas: 10/)
-  assert.deepEqual(SZ.oversizedUnits({ milestones: [{ ...hito, noSplit: 'una sola migración' }] }), [])
+  const milestone = { slug: 'primero', tasks: sampleTasks(10), noSplit: '' }
+  assert.match(SZ.oversizedUnits({ milestones: [milestone] })[0], /hito primero: tareas: 10/)
+  assert.deepEqual(SZ.oversizedUnits({ milestones: [{ ...milestone, noSplit: 'una sola migración' }] }), [])
 
   // La tarea se cuenta por los criterios que hereda, no por su aceptación en prosa.
-  const larga = { slug: 'muchos', criteria: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6'], noSplit: '' }
-  assert.match(SZ.oversizedUnits({ milestones: [{ slug: 'h', tasks: [larga], noSplit: '' }] })[0],
+  const longTask = { slug: 'muchos', criteria: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6'], noSplit: '' }
+  assert.match(SZ.oversizedUnits({ milestones: [{ slug: 'h', tasks: [longTask], noSplit: '' }] })[0],
     /BACKLOG muchos: criterios: 6 \(umbral 5 de R17\)/)
 })
 
@@ -239,115 +239,117 @@ test('los umbrales de R17 exigen decidir, y la razón escrita alcanza', () => {
 // proceso y un árbol de archivos. Extraída, `validateState` recibe el estado ya leído y se ejercita en
 // memoria: es lo que la mudanza compra, y sin esto sería sólo mover código de archivo.
 test('validateState juzga el estado ya leído, sin tocar disco', () => {
-  const epica = (extra = {}) => ({
+  const sampleEpic = (extra = {}) => ({
     file: 'epic-001-x.md', num: '001', title: 'X', status: 'open', hasContext: true,
     criteria: [{ id: 'C1', text: 'Cuando algo, alguien obtiene algo.' }],
     stories: [{ slug: 'h-uno', criteria: ['C1'], service: 'api' }],
     ...extra,
   })
-  const tarea = (extra = {}) => ({
+  const sampleTask = (extra = {}) => ({
     slug: 'h-uno', tier: 'lite', cast: { build: '', review: [] }, epic: '001',
     service: 'api', acceptance: 'algo observable', criteria: ['C1'], ...extra,
   })
-  const estado = (extra = {}) => ({
-    epics: [epica()], milestones: [{ slug: 'h', title: 'H', tasks: [tarea()] }],
+  const sampleState = (extra = {}) => ({
+    epics: [sampleEpic()], milestones: [{ slug: 'h', title: 'H', tasks: [sampleTask()] }],
     done: { entries: [], set: new Set(), duplicates: [] }, wips: [], ...extra,
   })
-  const errores = (extra) => PC.validateState(estado(extra))
+  const errors = (extra) => PC.validateState(sampleState(extra))
 
-  assert.deepEqual(errores(), [], 'un estado coherente no produce nada')
+  assert.deepEqual(errors(), [], 'un estado coherente no produce nada')
 
   // Épica: identidad, contrato y cierre.
-  assert.match(errores({ epics: [epica({ num: '1' })] }).join('|'), /epic debe ser NNN/)
-  assert.match(errores({ epics: [epica(), epica({ file: 'epic-001-y.md' })] }).join('|'),
+  assert.match(errors({ epics: [sampleEpic({ num: '1' })] }).join('|'), /epic debe ser NNN/)
+  assert.match(errors({ epics: [sampleEpic(), sampleEpic({ file: 'epic-001-y.md' })] }).join('|'),
     /número de épica duplicado 001/)
-  assert.match(errores({ epics: [epica({ title: '' })] })[0], /falta title/)
-  assert.match(errores({ epics: [epica({ status: 'vigente' })] }).join('|'), /status inválido/)
-  assert.match(errores({ epics: [epica({ criteria: [] })] }).join('|'), /falta al menos un criterio/)
-  assert.match(errores({ epics: [epica({ stories: [] })] }).join('|'), /falta al menos una historia/)
-  assert.match(errores({ epics: [epica({ hasContext: false })] })[0], /Contexto relevante/)
+  assert.match(errors({ epics: [sampleEpic({ title: '' })] })[0], /falta title/)
+  assert.match(errors({ epics: [sampleEpic({ status: 'vigente' })] }).join('|'), /status inválido/)
+  assert.match(errors({ epics: [sampleEpic({ criteria: [] })] }).join('|'), /falta al menos un criterio/)
+  assert.match(errors({ epics: [sampleEpic({ stories: [] })] }).join('|'), /falta al menos una historia/)
+  assert.match(errors({ epics: [sampleEpic({ hasContext: false })] })[0], /Contexto relevante/)
 
   // Historias: slug, trazabilidad y servicio.
-  const historia = (extra) => errores({
-    epics: [epica({ stories: [{ slug: 'h-uno', criteria: ['C1'], service: 'api', ...extra }] })],
+  const storyErrors = (extra) => errors({
+    epics: [sampleEpic({ stories: [{ slug: 'h-uno', criteria: ['C1'], service: 'api', ...extra }] })],
   })
-  assert.match(historia({ slug: 'H Uno' }).join('|'), /slug inválido/)
-  assert.match(historia({ criteria: [] }).join('|'), /no rastrea a un criterio/)
-  assert.match(historia({ criteria: ['C9'] }).join('|'), /cita C9, que no existe/)
-  assert.match(historia({ service: '' }).join('|'), /no declara \(service/)
+  assert.match(storyErrors({ slug: 'H Uno' }).join('|'), /slug inválido/)
+  assert.match(storyErrors({ criteria: [] }).join('|'), /no rastrea a un criterio/)
+  assert.match(storyErrors({ criteria: ['C9'] }).join('|'), /cita C9, que no existe/)
+  assert.match(storyErrors({ service: '' }).join('|'), /no declara \(service/)
 
   // Una épica activa sin nada pendiente tiene que cerrar.
-  assert.match(errores({
-    epics: [epica({ status: 'active' })], done: { entries: [], set: new Set(['h-uno']), duplicates: [] },
+  assert.match(errors({
+    epics: [sampleEpic({ status: 'active' })], done: { entries: [], set: new Set(['h-uno']), duplicates: [] },
   }).join('|'), /active sin historias pendientes/)
 
   // Hitos y tareas.
-  const hito = (extra) => errores({ milestones: [{ slug: 'h', title: 'H', tasks: [tarea(extra)] }] })
-  assert.match(errores({ milestones: [{ slug: 'H Uno', tasks: [] }] })[0], /hito con slug inválido/)
-  assert.match(errores({
+  const milestone = (extra) => errors({ milestones: [{ slug: 'h', title: 'H', tasks: [sampleTask(extra)] }] })
+  assert.match(errors({ milestones: [{ slug: 'H Uno', tasks: [] }] })[0], /hito con slug inválido/)
+  assert.match(errors({
     milestones: [{ slug: 'h', tasks: [] }, { slug: 'h', tasks: [] }],
   }).join('|'), /hito duplicado/)
-  assert.match(hito({ service: '' }).join('|'), /falta \(service/)
-  assert.match(hito({ acceptance: '', criteria: [] }).join('|'), /falta aceptación explícita/)
-  assert.match(hito({ acceptance: 'Por definir.' }).join('|'), /la aceptación no está decidida/)
-  assert.match(hito({ slug: 'ajena' }).join('|'), /no existe en epic-001/)
+  assert.match(milestone({ service: '' }).join('|'), /falta \(service/)
+  assert.match(milestone({ acceptance: '', criteria: [] }).join('|'), /falta aceptación explícita/)
+  assert.match(milestone({ acceptance: 'Por definir.' }).join('|'), /la aceptación no está decidida/)
+  assert.match(milestone({ slug: 'ajena' }).join('|'), /no existe en epic-001/)
   assert.deepEqual(PC.validateState({
-    ...estado(), roles: new Set(['backend-engineer']),
-    milestones: [{ slug: 'h', tasks: [tarea({ cast: { build: 'inventado', review: [] } })] }],
+    ...sampleState(), roles: new Set(['backend-engineer']),
+    milestones: [{ slug: 'h', tasks: [sampleTask({ cast: { build: 'inventado', review: [] } })] }],
   }).filter((error) => /cast/.test(error)),
   ['BACKLOG h-uno: el cast nombra inventado, que no está en el catálogo'])
 
   // WIP y evidencia.
-  assert.match(errores({ wips: [{ task: 'ajena', runner: 'w-uno', complete: 1, pending: 0 }] }).join('|'),
+  assert.match(errors({ wips: [{ task: 'ajena', runner: 'w-uno', complete: 1, pending: 0 }] }).join('|'),
     /wip\/w-uno\.md: ajena no existe en BACKLOG ni DONE/)
-  assert.match(errores({ wips: [{ task: 'h-uno', runner: 'w-uno', complete: 0, pending: 0 }] }).join('|'),
+  assert.match(errors({ wips: [{ task: 'h-uno', runner: 'w-uno', complete: 0, pending: 0 }] }).join('|'),
     /el plan de h-uno no tiene pasos que el motor pueda contar/)
-  assert.match(errores({ done: { entries: [], set: new Set(), duplicates: ['h-uno'] } })[0],
+  assert.match(errors({ done: { entries: [], set: new Set(), duplicates: ['h-uno'] } })[0],
     /DONE duplicado: h-uno/)
 
   // Acciones humanas.
   assert.match(PC.validateState({
-    ...estado(), humanActions: [{ task: 'h-uno', state: 'COMPLETADO', valid: false }],
+    ...sampleState(), humanActions: [{ task: 'h-uno', state: 'COMPLETADO', valid: false }],
   }).join('|'), /estado "COMPLETADO" fuera de/)
 })
 
 // Cada rama de la precedencia en su propia aserción, que es lo que la extracción de arriba compra.
 test('currentTask aplica la precedencia del protocolo sobre el estado ya leído', () => {
   const ST = require('../../engine/planning/state')
-  const tarea = (slug) => ({ slug, tier: 'lite', cast: { build: '', review: [] }, service: 'api' })
-  const estado = (extra = {}) => ({
-    milestones: [{ slug: 'h', tasks: [tarea('uno'), tarea('dos'), tarea('tres')] }],
+  const sampleTask = (slug) => ({ slug, tier: 'lite', cast: { build: '', review: [] }, service: 'api' })
+  const sampleState = (extra = {}) => ({
+    milestones: [{ slug: 'h', tasks: [sampleTask('uno'), sampleTask('dos'), sampleTask('tres')] }],
     done: { set: new Set() }, wips: [], ...extra,
   })
 
-  assert.equal(ST.currentTask(estado()).task.slug, 'uno', 'la primera del primer hito')
-  assert.deepEqual(ST.currentTask(estado()).skipped, [])
+  assert.equal(ST.currentTask(sampleState()).task.slug, 'uno', 'la primera del primer hito')
+  assert.deepEqual(ST.currentTask(sampleState()).skipped, [])
 
   // El WIP manda aunque su tarea tenga una acción humana abierta: es el mutex.
-  const conWip = ST.currentTask(
-    estado({ wips: [{ task: 'dos', runner: 'w-uno', service: 'api' }] }), [{ task: 'dos' }], '/w/uno',
+  const withWip = ST.currentTask(
+    sampleState({ wips: [{ task: 'dos', runner: 'w-uno', service: 'api' }] }), [{ task: 'dos' }], '/w/uno',
   )
-  assert.equal(conWip.task.slug, 'dos')
-  assert.deepEqual(conWip.skipped, [], 'con WIP no se salta nada: hay una sola tarea posible')
+  assert.equal(withWip.task.slug, 'dos')
+  assert.deepEqual(withWip.skipped, [], 'con WIP no se salta nada: hay una sola tarea posible')
 
   // Un WIP que apunta fuera del backlog igual se entrega, para poder cerrarlo.
-  const huerfano = ST.currentTask(estado({ wips: [{ task: 'ajena', runner: 'w-uno', service: 'api' }] }), [], '/w/uno')
-  assert.equal(huerfano.task.slug, 'ajena')
-  assert.equal(huerfano.task.hito, '', 'sin hito, porque no está en la cola')
+  const orphan = ST.currentTask(
+    sampleState({ wips: [{ task: 'ajena', runner: 'w-uno', service: 'api' }] }), [], '/w/uno',
+  )
+  assert.equal(orphan.task.slug, 'ajena')
+  assert.equal(orphan.task.hito, '', 'sin hito, porque no está en la cola')
 
   // Sin WIP, lo bloqueado se salta y queda nombrado.
-  const bloqueada = ST.currentTask(estado(), [{ task: 'uno' }])
-  assert.equal(bloqueada.task.slug, 'dos')
-  assert.deepEqual(bloqueada.skipped, ['uno'])
+  const blocked = ST.currentTask(sampleState(), [{ task: 'uno' }])
+  assert.equal(blocked.task.slug, 'dos')
+  assert.deepEqual(blocked.skipped, ['uno'])
 
   // Lo ya terminado no vuelve a la cola.
-  const hecha = ST.currentTask(estado({ done: { set: new Set(['uno', 'dos']) } }))
-  assert.equal(hecha.task.slug, 'tres')
+  const finished = ST.currentTask(sampleState({ done: { set: new Set(['uno', 'dos']) } }))
+  assert.equal(finished.task.slug, 'tres')
 
   // Todo bloqueado: no hay tarea, y las saltadas se enumeran para poder decir por qué.
-  const todas = ST.currentTask(estado(), [{ task: 'uno' }, { task: 'dos' }, { task: 'tres' }])
-  assert.equal(todas.task, null)
-  assert.deepEqual(todas.skipped, ['uno', 'dos', 'tres'])
+  const allBlocked = ST.currentTask(sampleState(), [{ task: 'uno' }, { task: 'dos' }, { task: 'tres' }])
+  assert.equal(allBlocked.task, null)
+  assert.deepEqual(allBlocked.skipped, ['uno', 'dos', 'tres'])
 })
 
 // Por qué una fila que casi nombra su tarea es peor que una que no la nombra está junto a la comprobación
@@ -358,23 +360,23 @@ test('currentTask aplica la precedencia del protocolo sobre el estado ya leído'
 // existe— así que una comprobación que la recortara rompería lo que el molde pide. Lo único que se marca
 // es la forma que promete un bloqueo y no lo cumple.
 test('una fila de acciones humanas que casi nombra su tarea se marca; una que no la nombra, no', () => {
-  const tarea = {
+  const sampleTask = {
     slug: 'h-uno', tier: 'lite', cast: { build: '', review: [] }, epic: '001',
     service: 'api', acceptance: 'algo observable', criteria: ['C1'],
   }
   const base = {
-    epics: [], milestones: [{ slug: 'h', title: 'H', tasks: [tarea] }],
+    epics: [], milestones: [{ slug: 'h', title: 'H', tasks: [sampleTask] }],
     done: { entries: [], set: new Set(), duplicates: [] }, wips: [],
   }
-  const fila = (task) => ({ task, state: 'pendiente', valid: true, resolved: false, action: 'Algo' })
-  const errores = (task) => PC.validateState({ ...base, humanActions: [fila(task)] })
+  const row = (task) => ({ task, state: 'pendiente', valid: true, resolved: false, action: 'Algo' })
+  const errors = (task) => PC.validateState({ ...base, humanActions: [row(task)] })
     .filter((one) => /HUMAN_ACTIONS/.test(one))
 
-  assert.deepEqual(errores('h-uno'), [], 'el slug exacto bloquea, que es lo que se espera de él')
-  assert.deepEqual(errores('epic 001'), [], 'nombrar la épica es lo que el molde pide cuando no hay tarea')
-  assert.deepEqual(errores('—'), [], 'y la raya es toda la línea de trabajo, no una tarea mal escrita')
+  assert.deepEqual(errors('h-uno'), [], 'el slug exacto bloquea, que es lo que se espera de él')
+  assert.deepEqual(errors('epic 001'), [], 'nombrar la épica es lo que el molde pide cuando no hay tarea')
+  assert.deepEqual(errors('—'), [], 'y la raya es toda la línea de trabajo, no una tarea mal escrita')
 
-  assert.match(errores('**h-uno: falta la credencial**').join('|'), /h-uno/,
+  assert.match(errors('**h-uno: falta la credencial**').join('|'), /h-uno/,
     'la que nombra la tarea sin ser su slug promete un bloqueo que no ocurre')
 })
 
@@ -386,18 +388,18 @@ test('una fila de acciones humanas que casi nombra su tarea se marca; una que no
 // dejarle la aceptación pegada, dejarle los marcadores del contrato, o devolverla vacía cuando la línea
 // no trae más que ellos.
 test('la línea de una tarea entrega su descripción, sin la aceptación ni los marcadores', () => {
-  const linea = '- [ ] **alta-de-cliente** [full] — El padrón se consulta por documento; `normalizar` vive '
+  const line = '- [ ] **alta-de-cliente** [full] — El padrón se consulta por documento; `normalizar` vive '
     + 'en `api/padron.js` y el rechazo de duplicado queda fuera de alcance. '
     + '_Aceptación: el alta responde 409 ante un documento repetido._ '
     + '(→ C1) (epic: 001) (service: api) (cast: backend-engineer → qa-engineer) (depende: padron-cargado)'
-  const tarea = P.taskFromLine(linea)
-  assert.ok(tarea, 'la línea se lee')
-  assert.match(tarea.description, /El padrón se consulta por documento/)
-  assert.match(tarea.description, /queda fuera de alcance/, 'y llega entera, no cortada en el primer punto')
-  assert.doesNotMatch(tarea.description, /Aceptación/, 'la aceptación viaja en su campo, no acá')
-  assert.doesNotMatch(tarea.description, /service:|cast:|depende:|epic:/,
+  const sampleTask = P.taskFromLine(line)
+  assert.ok(sampleTask, 'la línea se lee')
+  assert.match(sampleTask.description, /El padrón se consulta por documento/)
+  assert.match(sampleTask.description, /queda fuera de alcance/, 'y llega entera, no cortada en el primer punto')
+  assert.doesNotMatch(sampleTask.description, /Aceptación/, 'la aceptación viaja en su campo, no acá')
+  assert.doesNotMatch(sampleTask.description, /service:|cast:|depende:|epic:/,
     'y los marcadores del contrato tampoco: cada uno ya tiene su campo')
 
-  const pelada = P.taskFromLine('- [ ] **sola** — Sin nada más. (epic: 002) (service: api)')
-  assert.equal(pelada.description, 'Sin nada más.', 'una línea sin aceptación igual tiene descripción')
+  const bare = P.taskFromLine('- [ ] **sola** — Sin nada más. (epic: 002) (service: api)')
+  assert.equal(bare.description, 'Sin nada más.', 'una línea sin aceptación igual tiene descripción')
 })

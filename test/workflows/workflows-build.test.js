@@ -216,9 +216,9 @@ test('flow acepta la intención suelta, con prefijo de equipo o estructurada', (
   // El texto crudo se conserva para poder recomponerlo si el prefijo no era un equipo.
   assert.equal(withPrefix.raw, 'incident-review: se cayó el checkout')
   // Estructurado, el prefijo no se interpreta: el equipo vino explícito.
-  const estructurado = resolve({ intent: 'algo: con dos puntos', flow: 'acme-soporte' })
-  assert.equal(estructurado.CANDIDATE, 'acme-soporte')
-  assert.equal(estructurado.INTENT, 'algo: con dos puntos')
+  const structured = resolve({ intent: 'algo: con dos puntos', flow: 'acme-soporte' })
+  assert.equal(structured.CANDIDATE, 'acme-soporte')
+  assert.equal(structured.INTENT, 'algo: con dos puntos')
   assert.equal(resolve(undefined).INTENT, '', 'sin intención no arranca')
 })
 
@@ -254,11 +254,11 @@ test('en una instancia instalada, ROOT ancla y no depende de dónde esté parado
   const A = require('../../engine/automation')
   const auto = path.resolve(__dirname, '..', '..', 'automatization')
   const rootOf = (prefix, opsRoot) => {
-    const linea = A.render(path.join(WF, 'autobuild.js'), prefix, auto, opsRoot)
+    const line = A.render(path.join(WF, 'autobuild.js'), prefix, auto, opsRoot)
       .split('\n').find((one) => one.includes('const ROOT ='))
     // Se evalúa la línea en vez de compararla como texto: lo que importa es el valor con el que arrancan
     // los agentes, no cómo está escrita la expresión que lo produce.
-    return new Function(`${linea}; return ROOT`)()
+    return new Function(`${line}; return ROOT`)()
   }
 
   assert.equal(rootOf('empresa-ops/', '/abs/empresa/empresa-ops'), '/abs/empresa/empresa-ops',

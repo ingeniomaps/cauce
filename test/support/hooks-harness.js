@@ -18,17 +18,17 @@ const { tempRoot, writeWip } = require('./environment')
 
 // Un nombre de sesión por llamada, y no el pid solo: dos suites del mismo proceso se pisarían el archivo
 // de concesiones y la segunda leería lo que concedió la primera.
-let sesiones = 0
+let sessions = 0
 
 // Que un guard frene no alcanza: tiene que frenar por lo que corresponde, y el motivo es lo único que
 // el usuario recibe. Sin exigirlo, cambiarle a un bloqueo el mensaje de otra regla dejaba la suite entera
 // en verde — medido mutando los 22 bloqueos del motor, 17 no tenían nada que los comprobara. El motivo es
 // obligatorio para que un sitio nuevo no pueda saltearlo por olvido.
-function blocked(name, input, motivo) {
-  if (!(motivo instanceof RegExp)) throw new Error(`blocked(${name}) exige el motivo esperado`)
+function blocked(name, input, reason) {
+  if (!(reason instanceof RegExp)) throw new Error(`blocked(${name}) exige el motivo esperado`)
   assert.throws(() => execute(name, input), (error) => {
     assert.equal(error.blocked, true, `${name} lanzó algo que no es un bloqueo: ${error.message}`)
-    assert.match(error.message, motivo, `${name} bloqueó, pero por otro motivo`)
+    assert.match(error.message, reason, `${name} bloqueó, pero por otro motivo`)
     return true
   })
 }
@@ -56,15 +56,15 @@ function initRepo(root) {
 
 function chatSession() {
   const { DIR } = require('../../engine/hooks/chat')
-  const session = `prueba-${process.pid}-${sesiones += 1}`
+  const session = `prueba-${process.pid}-${sessions += 1}`
   const ci = process.env.CI
   delete process.env.CI
-  let turno = 0
+  let turn = 0
   return {
     // La persona manda un mensaje; devuelve cómo se ve una llamada originada por él, con el campo que
     // mande el runner —cuál es cuál lo dice chat.js—.
     says(prompt, field = 'prompt_id') {
-      const id = field ? { [field]: `m${turno += 1}` } : {}
+      const id = field ? { [field]: `m${turn += 1}` } : {}
       execute('chat', { session_id: session, ...id, prompt })
       return (extra) => ({ session_id: session, ...id, ...extra })
     },
@@ -83,8 +83,8 @@ function messageOf(name, input) {
   return assert.fail(`${name} no bloqueó`)
 }
 
-function planFirstRoot(prefijo, wip, backlog = BACKLOG_CON_TAREA) {
-  const root = tempRoot(prefijo)
+function planFirstRoot(prefix, wip, backlog = BACKLOG_WITH_TASK) {
+  const root = tempRoot(prefix)
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'),
     JSON.stringify({ mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }] }))
@@ -113,8 +113,8 @@ function pasteApproval(root, message) {
 
 // Publicar (casos 103 y 108). Una raíz sin git, así que las ramas vivas son `main` y `master`; la rama por
 // defecto de un remoto se prueba aparte, con un repositorio de verdad.
-function pushRoot(prefijo, runner = {}) {
-  const root = tempRoot(prefijo)
+function pushRoot(prefix, runner = {}) {
+  const root = tempRoot(prefix)
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'),
     JSON.stringify({ mode: 'embedded', runner: { allowPush: false, ...runner } }))
@@ -136,7 +136,7 @@ function pushRoot(prefijo, runner = {}) {
 //
 // La lista atrapa lo que conocemos y nada más, que es el límite honesto de una lista. Lo que agrega es
 // que la próxima vez la decisión se tome a la vista y no dentro de un comentario.
-const DESARMAN = {
+const DISARM = {
   CI: 'pnpm deja de confirmar antes de purgar el node_modules, y npm y yarn cambian de modo (caso 070)',
   CONTINUOUS_INTEGRATION: 'el mismo efecto que CI en varias herramientas',
   npm_config_yes: 'npx deja de preguntar antes de bajar y ejecutar un paquete',
@@ -148,15 +148,15 @@ const WIP_IDLE = 'status: IDLE\n'
 const WIP_CON_PLAN = '---\ntask: alta-de-cliente\nphase: Build\nservice: api\n---\n\n'
   + '## Plan aprobado\n1. [ ] Escribir el handler\n'
 
-const WIP_SIN_PLAN = '---\ntask: alta-de-cliente\nphase: Build\nservice: api\n---\n\n## Plan aprobado\n'
+const WIP_WITHOUT_PLAN = '---\ntask: alta-de-cliente\nphase: Build\nservice: api\n---\n\n## Plan aprobado\n'
 
 // Las dos mitades de `plan-first`: qué frena —el cambio de producto sin plan— y, sobre todo, qué deja
 // pasar. La segunda es la que decide si el guard sirve: si frenara la escritura del propio WIP sería un
 // candado con la llave adentro, y si frenara a `onboard` o a una evaluación, quien lo sufra lo apaga.
-const BACKLOG_CON_TAREA = '# Backlog promovido\n\n## Hito primero — Primer resultado\n\n'
+const BACKLOG_WITH_TASK = '# Backlog promovido\n\n## Hito primero — Primer resultado\n\n'
   + '- [ ] **alta-de-cliente** [lite] — Alta. _Aceptación: responde 201._ (service: api)\n'
 
-const BACKLOG_VACIO = '# Backlog promovido\n'
+const BACKLOG_EMPTY = '# Backlog promovido\n'
 
 const WORK = /publica cambios y requiere una acción humana/
 
@@ -164,15 +164,15 @@ const LIVE = /la rama viva/
 
 // Un repositorio cuyo HEAD alcanza un remoto: es lo que distingue «reescribir historia que otro leyó» de
 // corregir algo que no salió de la máquina. El remoto es un bare local — nada habla con la red.
-function repoPublicado(prefijo) {
-  const root = tempRoot(prefijo)
+function repoPublicado(prefix) {
+  const root = tempRoot(prefix)
   initRepo(root)
   fs.writeFileSync(path.join(root, 'a.txt'), 'uno\n')
   git(['add', 'a.txt'], root)
   git(['commit', '-qm', 'uno'], root)
-  const remoto = tempRoot(`${prefijo}remoto-`)
-  git(['init', '-q', '--bare'], remoto)
-  git(['remote', 'add', 'origin', remoto], root)
+  const remote = tempRoot(`${prefix}remoto-`)
+  git(['init', '-q', '--bare'], remote)
+  git(['remote', 'add', 'origin', remote], root)
   git(['push', '-q', 'origin', 'HEAD'], root)
   git(['fetch', '-q', 'origin'], root)
   return root
@@ -181,6 +181,6 @@ function repoPublicado(prefijo) {
 module.exports = {
   blocked, git, initRepo, repoPublicado, chatSession, messageOf,
   planFirstRoot, pasteApproval, pushRoot,
-  DESARMAN, WIP_IDLE, WIP_CON_PLAN, WIP_SIN_PLAN,
-  BACKLOG_CON_TAREA, BACKLOG_VACIO, WORK, LIVE,
+  DISARM, WIP_IDLE, WIP_CON_PLAN, WIP_WITHOUT_PLAN,
+  BACKLOG_WITH_TASK, BACKLOG_EMPTY, WORK, LIVE,
 }

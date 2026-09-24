@@ -57,13 +57,13 @@ test('un prefijo de entorno no apaga los guards que sólo corren sobre un commit
   git(['init'], root)
   git(['config', 'user.email', 'x@y.z'], root)
   git(['config', 'user.name', 'x'], root)
-  const gobernado = 'agents/roles/system/qa-engineer/SKILL.md'
-  fs.mkdirSync(path.join(root, path.dirname(gobernado)), { recursive: true })
-  fs.writeFileSync(path.join(root, gobernado), 'contenido\n')
-  git(['add', gobernado], root)
+  const governed = 'agents/roles/system/qa-engineer/SKILL.md'
+  fs.mkdirSync(path.join(root, path.dirname(governed)), { recursive: true })
+  fs.writeFileSync(path.join(root, governed), 'contenido\n')
+  git(['add', governed], root)
 
-  for (const prefijo of ['', 'FOO=1 ', 'OPS_GOVERNANCE_OVERRIDE=1 ', 'env FOO=1 ', 'sudo ']) {
-    blocked('governance', { cwd: root, tool_input: { command: `${prefijo}git commit -m x` } },
+  for (const prefix of ['', 'FOO=1 ', 'OPS_GOVERNANCE_OVERRIDE=1 ', 'env FOO=1 ', 'sudo ']) {
+    blocked('governance', { cwd: root, tool_input: { command: `${prefix}git commit -m x` } },
       /gobernanza protegida/)
   }
 
@@ -84,10 +84,10 @@ test('un salto de línea o un subshell no apagan los guards que sólo corren sob
   git(['init'], root)
   git(['config', 'user.email', 'x@y.z'], root)
   git(['config', 'user.name', 'x'], root)
-  const gobernado = 'agents/roles/system/qa-engineer/SKILL.md'
-  fs.mkdirSync(path.join(root, path.dirname(gobernado)), { recursive: true })
-  fs.writeFileSync(path.join(root, gobernado), 'contenido\n')
-  git(['add', gobernado], root)
+  const governed = 'agents/roles/system/qa-engineer/SKILL.md'
+  fs.mkdirSync(path.join(root, path.dirname(governed)), { recursive: true })
+  fs.writeFileSync(path.join(root, governed), 'contenido\n')
+  git(['add', governed], root)
 
   for (const command of [`echo listo\n  git commit -m x`, '(git commit -m x)']) {
     blocked('governance', { cwd: root, tool_input: { command } }, /gobernanza protegida/)
@@ -96,7 +96,7 @@ test('un salto de línea o un subshell no apagan los guards que sólo corren sob
   // Y la forma más común —stagear y commitear en el mismo Bash— cae en el bloqueo que existe para eso,
   // que también estaba apagado: sin ver el commit, nadie miraba el índice. Se asercia el motivo y no sólo
   // que frene, porque frenar por la razón equivocada ya lo encontró esta suite una vez.
-  blocked('governance', { cwd: root, tool_input: { command: `git add ${gobernado}\ngit commit -m x` } },
+  blocked('governance', { cwd: root, tool_input: { command: `git add ${governed}\ngit commit -m x` } },
     /stagea y commitea a la vez/)
 
   // Lo que no es un commit sigue sin serlo, que es lo que impide cerrar esto frenando todo.
@@ -155,24 +155,24 @@ test('una aprobación de gobernanza vale para lo que nombra y deja de valer al c
     return relative
   }
   // Con cabecera: quien lo escribe a mano va a explicar qué autorizó y cuándo, y eso no es una ruta.
-  const aprobar = (...rutas) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
-    `# Aprobado por X el 2026-09-06 para el commit de la propuesta 2026-08.\n${rutas.join('\n')}\n`)
+  const approve = (...paths) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
+    `# Aprobado por X el 2026-09-06 para el commit de la propuesta 2026-08.\n${paths.join('\n')}\n`)
   const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
 
-  const regla = write('planning/rules/system/conduct.md')
-  const cargo = write('agents/roles/system/qa-engineer/SKILL.md')
+  const rule = write('planning/rules/system/conduct.md')
+  const role = write('agents/roles/system/qa-engineer/SKILL.md')
   blocked('governance', commit, /gobernanza protegida/)
 
   // Parcial no alcanza, y el mensaje nombra sólo lo que falta: mandar a revisar lo ya aprobado es lo
   // que hace que la próxima vez nadie lea el mensaje.
-  aprobar(regla)
+  approve(rule)
   assert.throws(() => execute('governance', commit), (error) => {
-    assert.match(error.message, new RegExp(cargo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    assert.match(error.message, new RegExp(role.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
     assert.doesNotMatch(error.message, /conduct\.md/, 'lo aprobado no se vuelve a reportar')
     return true
   })
 
-  aprobar(regla, cargo)
+  approve(rule, role)
   assert.doesNotThrow(() => execute('governance', commit), 'lo aprobado entero pasa')
 
   // Y la propiedad que la hace de un solo uso sin borrarse: con la misma aprobación puesta, un archivo
@@ -196,7 +196,7 @@ test('guard-governance protege el contrato de un cargo, su medición y su firma'
   }
   const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
 
-  for (const gobernado of [
+  for (const governed of [
     'agents/roles/system/qa-engineer/learning/proposals/2026-08.md',
     'agents/roles/curador/learning/proposals/2026-08.md',
     'agents/roles/system/qa-engineer/SKILL.md',
@@ -204,7 +204,7 @@ test('guard-governance protege el contrato de un cargo, su medición y su firma'
     'agents/roles/system/qa-engineer/evaluations/expected-behaviors.yaml',
     'agents/roles/system/qa-engineer/references/operating-model.md',
   ]) {
-    write(gobernado)
+    write(governed)
     blocked('governance', commit, /gobernanza protegida/)
     git(['reset'], root)
   }
@@ -241,30 +241,30 @@ test('una migración se frena por haber viajado, no por estar en disco', () => {
   git('config', 'user.email', 'p@p')
   git('config', 'user.name', 'p')
 
-  const escribir = (name, content) => ({ cwd: root, tool_input: { file_path: `migrations/${name}`, content } })
-  const archivo = (name, texto) => fs.writeFileSync(path.join(root, 'migrations', name), texto)
+  const writeInput = (name, content) => ({ cwd: root, tool_input: { file_path: `migrations/${name}`, content } })
+  const putFile = (name, text) => fs.writeFileSync(path.join(root, 'migrations', name), text)
 
   // 1. Crear: no hay nada en disco y no se le pregunta nada a git.
-  assert.doesNotThrow(() => execute('migrations', escribir('001_init.sql', 'create table users (id int);')))
-  archivo('001_init.sql', 'create table users (id int);\n')
+  assert.doesNotThrow(() => execute('migrations', writeInput('001_init.sql', 'create table users (id int);')))
+  putFile('001_init.sql', 'create table users (id int);\n')
 
   // 2. Completar, acto seguido y sin commitear: es el paso que costó una corrida.
-  assert.doesNotThrow(() => execute('migrations', escribir('001_init.sql', 'create table users (id int, n text);')),
+  assert.doesNotThrow(() => execute('migrations', writeInput('001_init.sql', 'create table users (id int, n text);')),
     'un stub de esta misma sesión no es historial de nadie')
 
   // 3. Staged y sin commitear: tampoco viajó. `git ls-files` lo daría por historial y por eso no se usa.
   git('add', 'migrations/001_init.sql')
-  assert.doesNotThrow(() => execute('migrations', escribir('001_init.sql', 'create table users (id int, m text);')),
+  assert.doesNotThrow(() => execute('migrations', writeInput('001_init.sql', 'create table users (id int, m text);')),
     'estar en el índice no es haber viajado')
 
   // 4. Commiteada: ahora sí, y el mensaje afirma el hecho que lo sostiene en vez de interpretarlo.
   git('commit', '-qm', 'la migración')
-  blocked('migrations', escribir('001_init.sql', 'create table users (id int, z text);'),
+  blocked('migrations', writeInput('001_init.sql', 'create table users (id int, z text);'),
     /ya está en el historial del repositorio/)
   // Y nombra la salida angosta, que es la mitad que faltaba: sin ella el único camino a la vista apaga
   // el guard entero.
-  blocked('migrations', escribir('001_init.sql', 'create table users (id int, z text);'), /ops-approval/)
-  blocked('migrations', escribir('001_init.sql', 'create table users (id int, z text);'),
+  blocked('migrations', writeInput('001_init.sql', 'create table users (id int, z text);'), /ops-approval/)
+  blocked('migrations', writeInput('001_init.sql', 'create table users (id int, z text);'),
     /OPS_MIGRATIONS_OVERRIDE/)
 })
 
@@ -279,23 +279,23 @@ test('guard-migrations juzga las extensiones que el proyecto declara, y `.sql` s
   const config = (extra) => fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({
     project: 'x', mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }], ...extra,
   }))
-  const escribe = (file) => ({
+  const writes = (file) => ({
     cwd: root, tool_input: { file_path: `migrations/${file}`, content: 'DROP TABLE users' },
   })
 
   // Sin declarar: el default es `.sql` y nada más. Es lo que hacía que 409 migraciones TypeORM de una
   // instancia real fueran invisibles para un guard que aparecía cableado y en verde.
   config({})
-  blocked('migrations', escribe('001.sql'), /SQL destructivo/)
-  assert.doesNotThrow(() => execute('migrations', escribe('1700000000000-Foo.ts')),
+  blocked('migrations', writes('001.sql'), /SQL destructivo/)
+  assert.doesNotThrow(() => execute('migrations', writes('1700000000000-Foo.ts')),
     'sin declararlo, el guard no mira una migración de lenguaje')
 
   // Declarándolas, las mira — y sigue sin mirar lo que no es una migración, que es el falso positivo que
   // el 039 vino a cerrar.
   config({ migrations: { extensions: ['sql', 'ts'] } })
-  blocked('migrations', escribe('1700000000000-Foo.ts'), /SQL destructivo/)
-  blocked('migrations', escribe('001.sql'), /SQL destructivo/)
-  assert.doesNotThrow(() => execute('migrations', escribe('notas.md')), 'un archivo que no es migración')
+  blocked('migrations', writes('1700000000000-Foo.ts'), /SQL destructivo/)
+  blocked('migrations', writes('001.sql'), /SQL destructivo/)
+  assert.doesNotThrow(() => execute('migrations', writes('notas.md')), 'un archivo que no es migración')
 
   // Y la ruta sigue decidiendo: un `.ts` fuera de una carpeta de migraciones no lo juzga nadie, aunque el
   // proyecto haya declarado esa extensión.
@@ -307,17 +307,17 @@ test('guard-migrations juzga las extensiones que el proyecto declara, y `.sql` s
   // ampliaría a todo, que es peor que el defecto que el campo vino a cerrar. El guard cae al default en
   // vez de construirla — quien enseña a escribir la configuración es `check`, no un bloqueo.
   config({ migrations: { extensions: ['.*'] } })
-  assert.doesNotThrow(() => execute('migrations', escribe('notas.md')), 'no se amplía a cualquier cosa')
-  blocked('migrations', escribe('001.sql'), /SQL destructivo/)
+  assert.doesNotThrow(() => execute('migrations', writes('notas.md')), 'no se amplía a cualquier cosa')
+  blocked('migrations', writes('001.sql'), /SQL destructivo/)
 })
 
 // El guard dice qué cubre. La descripción prometía «protege migraciones» a secas, y un proyecto TypeORM la
 // leía como cobertura que no tenía: eso es lo que vuelve a un guard peor que no tenerlo.
 test('la descripción del guard de migraciones nombra su alcance real', () => {
-  const migraciones = hookMetadata.find((one) => one.name === 'migrations')
-  assert.ok(migraciones, hookMetadata.map((one) => one.name).join(', '))
-  assert.match(migraciones.purpose, /migrations\.extensions/, 'nombra el campo que amplía la cobertura')
-  assert.match(migraciones.purpose, /\.sql/, 'y el default de quien no lo declara')
+  const guard = hookMetadata.find((one) => one.name === 'migrations')
+  assert.ok(guard, hookMetadata.map((one) => one.name).join(', '))
+  assert.match(guard.purpose, /migrations\.extensions/, 'nombra el campo que amplía la cobertura')
+  assert.match(guard.purpose, /\.sql/, 'y el default de quien no lo declara')
 })
 
 test('guard-dependencies exige consistencia y bloquea publicación', () => {
@@ -334,27 +334,27 @@ test('guard-dependencies exige consistencia y bloquea publicación', () => {
 
   // Un lockfile que se mueve solo: o el manifest cambió y no se stageó, o lo regeneró algo que nadie
   // pidió. Las dos merecen mirarse, y ninguna se distingue de la otra sin el manifest al lado.
-  const solo = tempRoot('ops-hook-deps-lock-solo-')
-  git(['init', '-q'], solo)
-  fs.writeFileSync(path.join(solo, 'package.json'), JSON.stringify({ dependencies: { example: '1.0.0' } }))
-  fs.writeFileSync(path.join(solo, 'package-lock.json'), '{}\n')
-  git(['add', 'package-lock.json'], solo)
-  blocked('dependencies', { cwd: solo, tool_input: { command: 'git commit -m deps' } },
+  const lockOnly = tempRoot('ops-hook-deps-lock-solo-')
+  git(['init', '-q'], lockOnly)
+  fs.writeFileSync(path.join(lockOnly, 'package.json'), JSON.stringify({ dependencies: { example: '1.0.0' } }))
+  fs.writeFileSync(path.join(lockOnly, 'package-lock.json'), '{}\n')
+  git(['add', 'package-lock.json'], lockOnly)
+  blocked('dependencies', { cwd: lockOnly, tool_input: { command: 'git commit -m deps' } },
     /sin un cambio explícito en el manifest/)
-  git(['add', 'package.json'], solo)
-  assert.doesNotThrow(() => execute('dependencies', { cwd: solo, tool_input: { command: 'git commit -m deps' } }))
+  git(['add', 'package.json'], lockOnly)
+  assert.doesNotThrow(() => execute('dependencies', { cwd: lockOnly, tool_input: { command: 'git commit -m deps' } }))
 
   // Y dos lockfiles conviviendo: cuál manda lo decide el gestor que corra, así que el árbol ya no dice
   // qué versiones se instalan. Se mira lo que hay en disco, no lo que se stageó.
-  const dos = tempRoot('ops-hook-deps-dos-locks-')
-  initRepo(dos)
-  fs.writeFileSync(path.join(dos, 'package.json'), JSON.stringify({ dependencies: { example: '1.0.0' } }))
-  fs.writeFileSync(path.join(dos, 'package-lock.json'), '{}\n')
-  fs.writeFileSync(path.join(dos, 'pnpm-lock.yaml'), 'lockfileVersion: 9\n')
-  git(['add', 'package.json', 'package-lock.json'], dos)
-  blocked('dependencies', { cwd: dos, tool_input: { command: 'git commit -m deps' } }, /varios lockfiles/)
-  fs.rmSync(path.join(dos, 'pnpm-lock.yaml'))
-  assert.doesNotThrow(() => execute('dependencies', { cwd: dos, tool_input: { command: 'git commit -m deps' } }))
+  const twoLocks = tempRoot('ops-hook-deps-dos-locks-')
+  initRepo(twoLocks)
+  fs.writeFileSync(path.join(twoLocks, 'package.json'), JSON.stringify({ dependencies: { example: '1.0.0' } }))
+  fs.writeFileSync(path.join(twoLocks, 'package-lock.json'), '{}\n')
+  fs.writeFileSync(path.join(twoLocks, 'pnpm-lock.yaml'), 'lockfileVersion: 9\n')
+  git(['add', 'package.json', 'package-lock.json'], twoLocks)
+  blocked('dependencies', { cwd: twoLocks, tool_input: { command: 'git commit -m deps' } }, /varios lockfiles/)
+  fs.rmSync(path.join(twoLocks, 'pnpm-lock.yaml'))
+  assert.doesNotThrow(() => execute('dependencies', { cwd: twoLocks, tool_input: { command: 'git commit -m deps' } }))
 })
 
 // Un cambio que el lockfile no registra no tiene lock que actualizar (caso 181). Lo que sí lo mueve se
@@ -419,36 +419,36 @@ test('la aprobación por operación abre los guards que deciden sobre una ruta',
   initRepo(root)
   fs.mkdirSync(path.join(root, 'planning'), { recursive: true })
   fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'x', mode: 'embedded' }))
-  const aprobar = (...rutas) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
-    `# Aprobado por X el 2026-09-07.\n${rutas.join('\n')}\n`)
-  const limpiar = () => fs.rmSync(path.join(root, 'planning', '.ops-approval'), { force: true })
+  const approve = (...paths) => fs.writeFileSync(path.join(root, 'planning', '.ops-approval'),
+    `# Aprobado por X el 2026-09-07.\n${paths.join('\n')}\n`)
+  const clear = () => fs.rmSync(path.join(root, 'planning', '.ops-approval'), { force: true })
 
   // En `migrations` lo que se decide es la ruta del archivo que se está por escribir.
   fs.mkdirSync(path.join(root, 'migrations'), { recursive: true })
   const sql = { file_path: 'migrations/010_drop.sql', content: 'DROP TABLE pedidos;' }
-  limpiar()
+  clear()
   blocked('migrations', { cwd: root, tool_input: sql }, /SQL destructivo/)
-  aprobar('migrations/010_drop.sql')
+  approve('migrations/010_drop.sql')
   assert.doesNotThrow(() => execute('migrations', { cwd: root, tool_input: sql }))
   // Y vale para lo que nombra y nada más.
-  aprobar('migrations/999_otra.sql')
+  approve('migrations/999_otra.sql')
   blocked('migrations', { cwd: root, tool_input: sql }, /SQL destructivo/)
 
   // En `test-evidence` es la ruta de la prueba que se borra.
-  const borrado = { patch: '*** Begin Patch\n*** Delete File: test/pagos.test.js\n*** End Patch' }
-  limpiar()
-  blocked('test-evidence', { cwd: root, tool_input: borrado }, /borra una prueba/)
-  aprobar('test/pagos.test.js')
-  assert.doesNotThrow(() => execute('test-evidence', { cwd: root, tool_input: borrado }))
+  const deletion = { patch: '*** Begin Patch\n*** Delete File: test/pagos.test.js\n*** End Patch' }
+  clear()
+  blocked('test-evidence', { cwd: root, tool_input: deletion }, /borra una prueba/)
+  approve('test/pagos.test.js')
+  assert.doesNotThrow(() => execute('test-evidence', { cwd: root, tool_input: deletion }))
 
   // En `dependencies` es el manifiesto staged que va sin su lockfile.
   fs.writeFileSync(path.join(root, 'package.json'), '{}\n')
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n')
   git(['add', 'package.json'], root)
   const commit = { cwd: root, tool_input: { command: 'git commit -m x' } }
-  limpiar()
+  clear()
   blocked('dependencies', commit, /lockfile/i)
-  aprobar('package.json')
+  approve('package.json')
   assert.doesNotThrow(() => execute('dependencies', commit))
 })
 
