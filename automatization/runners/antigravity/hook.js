@@ -88,17 +88,18 @@ function runtimeAt(root) {
 }
 
 // La entrada se lee con el lector del motor y no con uno propio: el puente tenía su copia, y la copia se
-// colgaba con stdin abierto y convertía un JSON ilegible en `allow` (caso 198). El problema es de orden:
-// la raíz que dice dónde está el motor puede salir de la entrada misma (`findRoot`). Por eso se busca
-// sólo en la que se conoce sin leerla, `declaredRoot`: la que `install` dejó escrita, o la carpeta de la
-// que cuelga el puente, que desde el fuente es este mismo repositorio. Sin ella no hay con qué leer, y
-// eso niega como cualquier otra falla del puente.
+// colgaba con stdin abierto y convertía un JSON ilegible en `allow` (caso 198). Lo que no se puede usar para
+// encontrarlo es la entrada misma, que todavía no se leyó: se busca como `findRoot` sin entrada —la raíz que
+// `install` dejó escrita y, si no resuelve, desde donde corre el puente—. Sólo la declarada dejaba sin
+// lector, negando cada llamada, a un proyecto movido que los guards sí encontraban. Sin ninguna, se niega.
 function inputReader(markers = MARKERS) {
-  const declared = declaredRoot(markers)
-  const reader = declared && engineAt(declared, 'input.js')
+  let root = ''
+  try { root = findRoot({}, markers) } catch { /* sin raíz no hay motor: lo dice el error de abajo */ }
+  const reader = root && engineAt(root, 'input.js')
   if (!reader) {
-    throw new Error('No se encontró engine/hooks/input.js, con el que se lee la entrada, en la raíz que '
-      + `automation install declaró (${declared || 'ninguna'}). Reinstalá el runner.`)
+    throw new Error('No se encontró engine/hooks/input.js, con el que se lee la entrada, ni en la raíz que '
+      + `automation install declaró (${declaredRoot(markers) || 'ninguna'}) ni desde ${process.cwd()}. `
+      + 'Reinstalá el runner.')
   }
   return require(reader)
 }

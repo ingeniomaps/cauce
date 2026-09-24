@@ -11,7 +11,8 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
-const { spawn } = require('node:child_process')
+const { spawn, spawnSync } = require('node:child_process')
+const { tempRoot } = require('../support/environment')
 
 const { FIRST_BYTE_MS } = require('../../engine/hooks/input')
 
@@ -127,12 +128,17 @@ test('el puente con stdin que termina juzga como siempre', { concurrency: true }
   })
 })
 
-// Sin raíz declarada el puente no sabe dónde está el motor, y por lo tanto con qué leer. Lo dice
-// nombrando el archivo que buscó, en vez del error genérico de `require` que saldría sin la guarda.
-test('el puente sin raíz declarada no tiene con qué leer, y lo dice', () => {
-  const { inputReader } = require(BRIDGE)
-  const nowhere = path.join(require('node:os').tmpdir(), 'cauce-bridge-without-root')
-  const markers = { dir: '{{OPS_DIR}}', root: path.join(nowhere, 'x'), plugin: path.join(nowhere, 'a', 'b', 'c') }
-  assert.throws(() => inputReader(markers), /No se encontró engine\/hooks\/input\.js/)
-  assert.equal(typeof inputReader().readInput, 'function', 'desde el fuente, la raíz es este repositorio')
+// La raíz declarada es la primera candidata y no la única: si el proyecto se movió o quedó un placeholder,
+// el lector se busca desde donde corre el puente, como la raíz de los guards (caso 198). Sin ninguna de
+// las dos lo dice nombrando el archivo que buscó, en vez del error genérico de `require`. El cwd se fija en
+// un proceso aparte porque es lo que decide.
+test('el puente busca con qué leer también desde donde corre, y si no lo encuentra lo dice', () => {
+  const nowhere = tempRoot('cauce-bridge-without-root-')
+  const markers = JSON.stringify(
+    { dir: '{{OPS_DIR}}', root: path.join(nowhere, 'x'), plugin: path.join(nowhere, 'a', 'b', 'c') })
+  const probe = (cwd) => spawnSync(process.execPath, ['-e', `const { inputReader } = require(${JSON.stringify(BRIDGE)})
+    try { console.log(typeof inputReader(${markers}).readInput) } catch (error) { console.log(error.message) }`],
+  { cwd, encoding: 'utf8' }).stdout.trim()
+  assert.match(probe(nowhere), /No se encontró engine\/hooks\/input\.js/)
+  assert.equal(probe(REPO), 'function', 'desde adentro de un proyecto, lo encuentra aunque la raíz declarada no exista')
 })
