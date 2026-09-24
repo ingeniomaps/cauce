@@ -196,12 +196,20 @@ function record(input) {
     // ya era cierto. Lo vuelve a decidir el mensaje humano siguiente (caso 166).
     const flow = flowCommand(text)
     const askable = human ? !flow : Boolean(previous && previous.askable)
+    // Con la persona se arrastra también lo que dijo y lo que quedó esperando su respuesta. `hold` lee su
+    // negación en `spoken` y no en `text`, que en un aviso es la etiqueta del runner: sin esto, su «no
+    // toques el .env» dejaba de retener lo que se frenaba después del aviso, y el «seguí» siguiente lo
+    // aprobaba (caso 191). Y lo frenado en su turno sigue pendiente aunque el aviso llegue antes que ella.
+    // Un registro de antes de 0.99.0 no trae `spoken`: si lo escribió la persona, lo que dijo es su `text`.
+    const last = previous ? previous.spoken ?? (previous.human ? previous.text : '') : ''
+    const spoken = human ? text : String(last || '')
+    const pending = human || !previous ? [] : previous.pending
     fs.mkdirSync(DIR, { recursive: true })
     // Sobre qué instancia se está hablando, que es lo que después deja filtrar lo concedido: por qué hace
     // falta, en `grantedIn`.
     fs.writeFileSync(recordPath(input.session_id), JSON.stringify(
-      { id: idOf(input), text, human, askable, flow, root: opsRoot(input), approved, granted,
-        scopes, pending: [] }))
+      { id: idOf(input), text, spoken, human, askable, flow, root: opsRoot(input), approved, granted,
+        scopes, pending }))
   } catch { /* registrar es un extra: si falla, los guards siguen frenando lo que frenaban */ }
 }
 
@@ -330,15 +338,16 @@ function unauthorizedNow(input, items) {
 // Lo que quedó frenado, para que la confirmación del mensaje siguiente apruebe exactamente eso y nada más.
 // Devuelve si hay una persona a quien preguntarle.
 //
-// Si el mensaje en curso niega o frena, lo que se ataje en su turno no queda esperando: la persona ya
-// contestó que no antes de que el agente lo intentara. Desde que confirmar no exige una palabra (caso 184),
-// dejarlo pendiente hacía que un «seguí con lo tuyo» aprobara el `.env` o el push que ella acababa de
-// prohibir. Se mira el mensaje y no el ítem porque un push no se nombra como un archivo.
+// Si el último mensaje de la persona niega o frena, lo que se ataje después no queda esperando: ya contestó
+// que no antes de que el agente lo intentara, y un aviso del runner en el medio no cambia eso. Desde que
+// confirmar no exige una palabra (caso 184), dejarlo pendiente hacía que un «seguí con lo tuyo» aprobara
+// el `.env` o el push que ella acababa de prohibir. Se mira el mensaje y no el ítem porque un push no se
+// nombra como un archivo.
 function hold(input, items) {
   const saved = present(input)
   if (!saved) return false
   try {
-    const text = saved.text || ''
+    const text = saved.spoken ?? saved.text ?? ''
     const open = NEGATION.test(text) || HALT.test(text) ? [] : items
     saved.pending = [...new Set([...saved.pending, ...open])]
     fs.writeFileSync(recordPath(input.session_id), JSON.stringify(saved))

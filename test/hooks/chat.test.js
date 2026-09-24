@@ -6,9 +6,11 @@ const { blocked, chatSession, messageOf, planFirstRoot, WIP_IDLE, WIP_CON_PLAN }
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
 const path = require('node:path')
 
 const { execute, executeAll, guards } = require('../../engine/hooks/run')
+const { DIR } = require('../../engine/hooks/chat')
 
 test('lo que la persona nombró en el chat pasa; lo que no nombró, negó o no pidió ella se sigue frenando', () => {
   const root = planFirstRoot('ops-hook-chat-nombra-', WIP_CON_PLAN)
@@ -225,6 +227,38 @@ test('una notificación no hereda la autorización del mensaje anterior', () => 
     const despertado = chat.says('<task-notification>\n<task-id>abc</task-id>\n</task-notification>')
     blocked('secrets-read', lee(despertado), /leerla/)
   } finally { chat.close() }
+})
+
+// Lo que dijo la persona sobrevive al aviso en las dos direcciones: su «no» y lo que quedó esperando su
+// respuesta. Por qué, junto a `spoken` en engine/hooks/chat.js.
+test('un aviso en el medio no borra lo que dijo la persona', () => {
+  const root = planFirstRoot('ops-hook-chat-aviso-medio-', WIP_CON_PLAN)
+  const lee = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
+  const aviso = '<task-notification>\n<task-id>abc</task-id>\n</task-notification>'
+  const niega = chatSession()
+  try {
+    niega.says('no toques el .env')
+    blocked('secrets-read', lee(niega.says(aviso)), /leerla/)
+    blocked('secrets-read', lee(niega.says('seguí con lo tuyo')), /leerla/)
+  } finally { niega.close() }
+
+  const espera = chatSession()
+  try {
+    blocked('secrets-read', lee(espera.says('revisá cómo arranca el servicio')), /leerla/)
+    espera.says(aviso)
+    assert.doesNotThrow(() => execute('secrets-read', lee(espera.says('dale'))), 'lo frenado sigue esperando')
+  } finally { espera.close() }
+
+  // Un registro escrito antes de `spoken` también retiene: lo que dijo la persona era su `text`.
+  const vieja = chatSession()
+  try {
+    const niego = vieja.says('no toques el .env')
+    const registro = path.join(DIR, `${niego().session_id}.json`)
+    const { spoken, ...antes } = JSON.parse(fs.readFileSync(registro, 'utf8'))
+    fs.writeFileSync(registro, JSON.stringify(antes))
+    blocked('secrets-read', lee(vieja.says(aviso)), /leerla/)
+    blocked('secrets-read', lee(vieja.says('seguí con lo tuyo')), /leerla/)
+  } finally { vieja.close() }
 })
 
 // Y el otro borde de lo que se arrastra: un recorrido de Cauce corre sin nadie mirando, así que no se le
