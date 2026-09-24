@@ -27,14 +27,11 @@ test('la versión sale del CHANGELOG y el tag no lo empuja el bot', () => {
   // El PR toca `package.json` y nada más: si trae otra cosa, alguien empujó a la rama de release.
   assert.match(source, /grep -v -F 'package\.json'/, 'el diff del PR se acota a la versión')
 
-  // El tag lo empuja una persona, y la razón es un mecanismo verificado, no una preferencia: un tag
-  // empujado con GITHUB_TOKEN no dispararía `release.yml`, así que automatizarlo pediría un PAT
-  // guardado — justo la credencial que `release.yml` evita publicando por OIDC.
-  // Se mira lo que se ejecuta, no lo que se escribe: el cuerpo del PR le dice a la persona qué comando
-  // correr, así que la cadena `git tag …` aparece en el archivo y no es el bot tagueando. Las líneas del
-  // cuerpo empiezan con comilla; las que se ejecutan, no.
+  // El bot no empuja ni taguea nada fuera de la rama del PR: lo que publica es el merge de una persona,
+  // y un push del GITHUB_TOKEN no dispararía `release.yml`. Se mira lo que se ejecuta —las líneas que
+  // empiezan con el comando—, no lo que el cuerpo del PR le cuenta a quien lo lee.
   const empuja = source.split('\n').map((one) => one.trim())
-    .filter((one) => one.startsWith('git push'))
+    .filter((one) => one.startsWith('git push') || one.startsWith('git tag'))
   assert.deepEqual(empuja, ['git push --force-with-lease origin "$branch"'],
     'lo único que el workflow empuja es la rama del PR')
 
@@ -42,8 +39,9 @@ test('la versión sale del CHANGELOG y el tag no lo empuja el bot', () => {
   // rama se crea desde main en cada corrida. Falla justo en la segunda —cuando ya existe allá y no
   // acá—, que es la que importa: la primera pudo haber fallado después de empujarla.
   assert.match(source, /git fetch origin "\$branch"/, 'se trae la referencia antes de empujar con lease')
-  // El comentario envuelve, así que se contrasta sobre el texto sin los saltos ni las almohadillas.
-  const prosa = source.split('\n').map((one) => one.replace(/^\s*#\s?/, '')).join(' ')
+  // Por qué alcanza con el merge vive en `release.yml`, con su cita. El comentario envuelve, así que se
+  // contrasta sobre el texto sin los saltos ni las almohadillas.
+  const prosa = workflow('release').split('\n').map((one) => one.replace(/^\s*#\s?/, '')).join(' ')
   assert.match(prosa, /will not create a new workflow run/, 'deja escrito por qué, con su cita')
   assert.match(prosa, /docs\.github\.com/, 'y de dónde salió')
   assert.match(source, /Falta el tag/, 'lo que sí hace es avisar cuando la versión quedó sin taguear')
@@ -60,30 +58,42 @@ test('la versión sale del CHANGELOG y el tag no lo empuja el bot', () => {
   assert.equal(opciones.some((one) => /^fetch-depth:/.test(one)), false, 'sin clonar la historia completa')
 })
 
-// La release no vuelve a preguntar después del tag, así que sus dos guardas son lo único que separa
-// una publicación correcta de una que ya no se puede deshacer: npm no republica una versión. Se
-// prueban ejecutándolas, porque lo que falla no es el texto sino lo que el texto hace.
-test('la release no publica si el tag y package.json no dicen lo mismo', { skip: process.platform === 'win32' }, () => {
+// La release no vuelve a preguntar después del merge, y npm no republica una versión: lo que decide qué
+// falta es lo único que separa publicar de intentar pisar algo que ya salió. Se prueba ejecutándolo con
+// un `git` y un `npm` falsos, porque lo que falla no es el texto sino lo que el texto decide.
+test('la release publica sólo lo que todavía no salió', { skip: process.platform === 'win32' }, () => {
   const step = workflowStep(workflow('release'), 'id: version')
-  assert.ok(step.length, 'no se encontró el paso que compara el tag')
+  assert.ok(step.length, 'no se encontró el paso que decide')
 
   const repo = tempRoot('cauce-release-')
-  fs.writeFileSync(path.join(repo, 'package.json'), JSON.stringify({ name: 'x', version: '1.2.3' }))
-  const run = (ref) => spawnSync('bash', ['-c', step], {
-    cwd: repo,
-    encoding: 'utf8',
-    env: { ...process.env, GITHUB_REF_NAME: ref, GITHUB_OUTPUT: path.join(repo, 'out') },
-  })
+  fs.writeFileSync(path.join(repo, 'package.json'), JSON.stringify({ name: '@x/y', version: '1.2.3' }))
+  const bin = path.join(repo, 'bin')
+  fs.mkdirSync(bin)
+  const decide = ({ tagged, onNpm }) => {
+    fs.writeFileSync(path.join(bin, 'git'), `#!/usr/bin/env bash\nexit ${tagged ? 0 : 2}\n`, { mode: 0o755 })
+    const npm = onNpm ? 'echo 1.2.3' : 'exit 1'
+    fs.writeFileSync(path.join(bin, 'npm'), `#!/usr/bin/env bash\n${npm}\n`, { mode: 0o755 })
+    const out = path.join(repo, 'out')
+    fs.rmSync(out, { force: true })
+    const done = spawnSync('bash', ['-c', step], {
+      cwd: repo, encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, GITHUB_OUTPUT: out },
+    })
+    assert.equal(done.status, 0, done.stderr)
+    return Object.fromEntries(fs.readFileSync(out, 'utf8').trim().split('\n').map((one) => one.split('=')))
+  }
 
-  const ok = run('v1.2.3')
-  assert.equal(ok.status, 0, ok.stderr)
-  assert.match(fs.readFileSync(path.join(repo, 'out'), 'utf8'), /^version=1\.2\.3$/m, 'la versión sale del árbol')
+  assert.deepEqual(decide({ tagged: false, onNpm: false }), { version: '1.2.3', release: 'true', published: 'false' },
+    'una versión nueva se publica')
+  assert.deepEqual(decide({ tagged: false, onNpm: true }), { version: '1.2.3', release: 'true', published: 'true' },
+    'si npm ya la tiene, falta sólo la release: no se republica')
+  assert.deepEqual(decide({ tagged: true, onNpm: true }), { version: '1.2.3', release: 'false' },
+    'con su tag, ya salió entera y no se toca')
 
-  // El caso que importa: el tag de una versión que el árbol no tiene. Publicarla dejaría npm y la
-  // historia contando cosas distintas, y no hay vuelta atrás.
-  const wrong = run('v9.9.9')
-  assert.notEqual(wrong.status, 0, 'un tag que no coincide detiene la publicación')
-  assert.match(wrong.stderr, /no coincide/, 'y dice por qué')
+  // Las dos salidas gobiernan los pasos que escriben afuera: sin esto, decidir no frenaría nada.
+  const source = workflow('release')
+  const gate = "steps\\.version\\.outputs\\.release == 'true' && steps\\.version\\.outputs\\.published != 'true'"
+  assert.match(source, new RegExp(`- name: Publish to npm\\n\\s+if: ${gate}`))
+  assert.match(source, /- name: Create GitHub release\n\s+if: steps\.version\.outputs\.release == 'true'/)
 })
 
 // `upgrade` le imprime la entrada del CHANGELOG a quien está por aplicar la versión. Sin entrada, la
@@ -121,7 +131,9 @@ test('la release se autentica por OIDC y no guarda un token de npm', () => {
   // es usarlo. Lo que la prueba tiene que mirar es lo que el workflow ejecuta.
   const code = source.split('\n').filter((line) => !line.trim().startsWith('#')).join('\n')
   assert.equal(/NPM_TOKEN|NODE_AUTH_TOKEN|secrets\./.test(code), false, 'y no hay ningún secreto guardado')
-  // El tag es el acto humano que R10 exige. Un `push` a una rama publicaría sin que nadie lo decida.
-  assert.match(source, /^ {4}tags: \['v\*'\]$/m, 'sólo un tag dispara la publicación')
-  assert.equal(/branches:/.test(source), false, 'ninguna rama publica')
+  // El merge del PR de release es el acto humano que R10 exige: un push a `main` que cambia la versión.
+  // Cualquier otro push no tiene nada que publicar, y un tag ya no dispara nada — lo crea la release.
+  assert.match(source, /^ {2}push:\n {4}branches: \[main\]\n(?: {4}#.*\n)* {4}paths: \[package\.json\]$/m,
+    'sólo un cambio de versión en main dispara la publicación')
+  assert.equal(/tags:/.test(source), false, 'un tag ya no publica')
 })

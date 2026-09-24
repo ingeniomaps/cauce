@@ -405,15 +405,19 @@ tocan juntos: desincronizados, el que miente es el que se lee sin abrir el archi
   2026-09-06 empujando 32 commits sin querer. O sea que acá el límite no lo sostiene el mecanismo: lo
   sostiene esta línea, y usar el bypass es una decisión que se dice, no un default.
 
-  El tag queda afuera: el ruleset apunta a `~DEFAULT_BRANCH` y no cubre `refs/tags/`, así que empujar
-  `v*` para publicar no lo toca. Y para el bump de versión no hace falta ir a `main`: `release-pr.yml`
-  abre solo el PR que sincroniza `package.json` con el encabezado más nuevo del CHANGELOG.
+  Para el bump de versión no hace falta ir a `main`: `release-pr.yml` abre solo el PR que sincroniza
+  `package.json` con el encabezado más nuevo del CHANGELOG.
 
-- **Se publica por tag y OIDC; el `NPM_TOKEN` es el respaldo.** El push de un tag `v*` dispara
-  `release.yml`, que corre con `id-token: write` y publica con `npm publish --provenance`: no hay
-  ninguna credencial de npm guardada en el repositorio, y no guardarla es la mitad del punto. La vía
-  manual se queda porque es la única salida si el trusted publishing falla, no porque sea el camino
-  principal.
+- **Se publica mergeando el PR de release, por OIDC; el `NPM_TOKEN` es el respaldo.** El merge cambia la
+  versión de `package.json` en `main` y eso dispara `release.yml`, que publica con `npm publish
+  --provenance` y crea el tag con la release: no hay tag que empujar a mano, y ninguna credencial de npm
+  guardada en el repositorio —no guardarla es la mitad del punto—. Si falla después del merge, se
+  reintenta con `gh workflow run release.yml`: reconoce lo que ya salió y no lo repite.
+  Lo que abre ese PR es una entrada nueva en el CHANGELOG, y la de los cargos la escribe el motor: al
+  sellar la propuesta que `agent-promote` aplicó, la anota en la versión que todavía no salió —la minor
+  siguiente si no hay una abierta—. El resto de las entradas se siguen escribiendo a mano.
+  La vía manual se queda porque es la única salida si el trusted publishing falla, no porque sea el
+  camino principal.
   **Ese respaldo necesita `NPM_TOKEN` exportado**: `.npmrc` lo expande desde el entorno, no desde `.env`.
   Ese archivo no viaja con el repositorio —está gitignoreado y el guard de secretos lo bloquea por
   nombre, aunque hoy no tenga ningún valor adentro—, así que un clon nuevo hay que dárselo a mano con su
