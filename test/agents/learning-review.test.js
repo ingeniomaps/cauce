@@ -8,7 +8,7 @@
 // que se mide con ese contrato está en `evaluations.test.js`; de dónde sale la cadencia, en
 // `sources.test.js`.
 
-const { run } = require('../support/environment')
+const { run, tempRoot } = require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -18,30 +18,22 @@ const learning = require('../../engine/agents/learning')
 const { REPO, installedProject, writeSkill } = require('../support/agents-fixtures')
 
 test('el aprendizaje de la profesión se hace en el toolkit, no en cada empresa', () => {
-  // Acá, en el repositorio del toolkit, el cargo es escribible y el ciclo corre.
-  const contract = path.join(REPO, 'agents', 'roles', 'system', 'product-manager', 'SKILL.md')
+  // Una raíz de toolkit propia y no el repositorio: `learn` escribe el informe del día en el catálogo, y
+  // las demás pruebas lo recorren en paralelo. Sobre el árbol real, una lo listaba y el `finally` de ésta
+  // lo borraba antes de que la otra lo leyera — un ENOENT en CI sobre un archivo que ningún cambio tocó.
+  const root = tempRoot('cauce-toolkit-')
+  fs.copyFileSync(path.join(REPO, 'ops.config.json'), path.join(root, 'ops.config.json'))
+  const role = path.join(root, 'agents', 'roles', 'system', 'product-manager')
+  const source = path.join(REPO, 'agents', 'roles', 'system', 'product-manager')
+  const reports = path.join(role, 'learning', 'reports')
+  // Sin los informes versionados, para que `learn` abra uno siempre y no dependa de si hoy ya había.
+  fs.cpSync(source, role, { recursive: true, filter: (file) => file !== path.join(source, 'learning', 'reports') })
+  const contract = path.join(role, 'SKILL.md')
   const before = fs.readFileSync(contract, 'utf8')
-  // El directorio puede no existir: sólo se versiona cuando tiene un informe real, y al retirar los
-  // moldes muertos dejó de existir en casi todos los cargos. `learn` lo crea
-  // cuando hace falta, así que darlo por presente medía el disco de quien corre la prueba.
-  const reports = path.join(REPO, 'agents', 'roles', 'system', 'product-manager', 'learning', 'reports')
-  const stamps = () => {
-    try { return fs.readdirSync(reports).filter((name) => /^\d{4}-\d{2}-\d{2}\.md$/.test(name)) } catch { return [] }
-  }
-  const known = stamps()
-  const existed = fs.existsSync(reports)
-  try {
-    assert.equal(run(['learn', 'product-manager'], REPO).status, 0)
-    assert.equal(fs.readFileSync(contract, 'utf8'), before, 'investigar no reescribe el cargo')
-  } finally {
-    for (const name of stamps()) {
-      if (!known.includes(name)) fs.rmSync(path.join(reports, name))
-    }
-    // El informe se borraba pero el directorio quedaba, y `learn` lo crea. Una prueba no deja andamiaje
-    // en el catálogo que el repositorio versiona. `rmdirSync` sólo saca el vacío: si quedó algo que esta
-    // corrida no puso, se conserva en vez de taparlo con un error dentro del `finally`.
-    if (!existed) { try { fs.rmdirSync(reports) } catch { /* no quedó vacío */ } }
-  }
+
+  assert.equal(run(['learn', 'product-manager'], root).status, 0)
+  assert.equal(fs.readdirSync(reports).length, 1, 'el ciclo corre: abre el informe')
+  assert.equal(fs.readFileSync(contract, 'utf8'), before, 'investigar no reescribe el cargo')
 })
 
 test('una empresa no puede investigar la profesión dentro del paquete', () => {
