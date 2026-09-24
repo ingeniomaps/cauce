@@ -278,3 +278,7 @@ enumeró:
   mayúsculas, sin partir SQL, sin dbmate, sin el sufijo `.down`, el `Edit` sin leer el disco, `replace_all`
   ignorado y el mensaje sin nombrar el bloque.
 - `npm run ci`, exit 0, en una copia con los archivos nuevos trackeados.
+
+### Prueba real en un banco instalado (2026-09-23)
+
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. Una migración goose del incidente, escrita por `guard-files` como un `Write` de Claude Code: `exit=0` con la rama y `exit=2` con 0.98.0; `goose validate` (v3.28.0) la acepta. Un `DROP` en el `Up`: `exit=2` nombrando el bloque. Con **Codex real** (0.152.1, gpt-5.5) escribiendo una migración con `Down` honesto por `apply_patch`: escrita con la rama, «contiene SQL destructivo» con 0.98.0 (ver 199).

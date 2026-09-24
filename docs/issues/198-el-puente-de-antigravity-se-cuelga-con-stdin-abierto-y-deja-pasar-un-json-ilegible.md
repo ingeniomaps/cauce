@@ -279,3 +279,7 @@ en `test/tools/coverage-files.js`).
 - **Los pisos**: la suite entera sin la prueba nueva mide 84/77/83 en `hook.js` y con ella 100/85/100, en
   dos corridas; con los pisos en 97/84/95 quitarla hace caer los tres.
 - `npm run ci`, exit 0, 981 pruebas.
+
+### Prueba real en un banco instalado (2026-09-23)
+
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. El puente **instalado** por `automation install . antigravity`: un `push --force` sin la última llave y un stdin abierto reciben `deny` con la rama; con el puente de 0.98.0, `allow` y colgado hasta el `timeout` (124). `automation doctor` pasa. Una sesión real de `agy` (1.1.16) respondió en modo `-p`; la corrida siguiente pidió autenticación y queda pendiente.

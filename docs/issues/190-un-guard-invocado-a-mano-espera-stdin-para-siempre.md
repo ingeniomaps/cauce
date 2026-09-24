@@ -302,3 +302,7 @@ propio, el 198,** y no entra acá.
   soltar el stream al rendirse (falla `readInput`); vacío que bloquea (fallan `/dev/null` y stdin cerrado);
   `run.js` sin `exit` en el bloqueo (fallan socket, pipe, dos trozos y el JSON que bloquea).
 - `npm run ci`, exit 0.
+
+### Prueba real en un banco instalado (2026-09-23)
+
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. El shim `guard-shell.sh` instalado, con stdin de un pipe que nadie cierra: `exit=2` a los 2 s con la rama; con 0.98.0, colgado hasta el `timeout` (124). En todas las sesiones reales de Claude Code y Codex de esta tanda los hooks leyeron su entrada con el lector nuevo, sin cuelgues ni falsos «no llegó nada».

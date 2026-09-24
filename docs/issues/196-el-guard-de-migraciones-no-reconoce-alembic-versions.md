@@ -200,3 +200,7 @@ conocidas de alguna herramienta se decidió que no.** Recorriendo lo que enumer�
   `test/instance/core.test.js`) y **cuatro mutaciones en una copia del árbol, las cuatro en rojo**: el guard
   ignorando `paths`, la validación de `paths` apagada, `check` sin el aviso y `check` sin el aviso de carpeta.
 - `npm run ci`, exit 0, en una copia con los archivos nuevos trackeados.
+
+### Prueba real en un banco instalado (2026-09-23)
+
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. `migrations.paths: ["migrations", "alembic/versions"]` en el banco: reescribir una revisión Alembic ya commiteada da «ya está en el historial» con la rama y `exit=0` con 0.98.0; `check` avisa las dos claves mientras no alcanzan a ningún archivo trackeado y deja de avisar al commitearlo.

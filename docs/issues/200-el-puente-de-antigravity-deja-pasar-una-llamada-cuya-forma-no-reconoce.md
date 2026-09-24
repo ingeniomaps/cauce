@@ -135,3 +135,6 @@ llamada y es como se invoca el puente a mano, con `OPS_HOOK_COMMAND`/`OPS_HOOK_F
   (1 prueba), negando también la entrada vacía (4) y el sondeo de antes (3).
 - `npm run ci`, exit 0, 981 pruebas.
 
+### Prueba real en un banco instalado (2026-09-23)
+
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. El puente instalado: el campo renombrado (`Command`) y `pre-files` sin archivo reciben `deny` nombrando lo que llegó; `git status` y la entrada vacía pasan. Con el puente de 0.98.0 el campo renombrado pasa con `allow`. Qué campos manda `agy` hoy queda pendiente de la sesión real (ver 198).

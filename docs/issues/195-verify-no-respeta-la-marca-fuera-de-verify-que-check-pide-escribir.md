@@ -171,3 +171,7 @@ criterio que Verify no puede comprobar. La marca apareció en `contracts.js`, y 
   tradeoff de arriba, no el defecto. Qué contesta un Verify real sin la condición **no está medido**: pide
   lanzar un agente.
 - `npm run ci`, exit 0 (941 pruebas).
+
+### Prueba real en un banco instalado (2026-09-23)
+
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. **`/autobuild` real** (ver 189): la condición `(fuera de verify: …)` no llegó a Verify —sus cinco `uncovered` son las otras condiciones— y Done la registró como cumplida en el campo `commit`. Con 0.98.0 la condición sí llegó a Verify, que esta vez no la marcó; el defecto, igual que en el 189, depende del modelo.

@@ -364,3 +364,7 @@ puede reintentar después del mensaje en que ella contestó.
   `confirmed` vacío, el aviso borrando lo confirmado, los gates sin lo confirmado, el mismo texto para el
   subagente, `REFUSED` sin distinguirlo, y `said` dejando pasar al subagente (cuatro pruebas en rojo).
 - `npm run ci`, exit 0.
+
+### Prueba real en un banco instalado (2026-09-23)
+
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. **Sesión real de Claude Code 2.1.281** (`claude -p`, `--resume`): un subagente lee `api/.env` y el guard lo frena con «Sos un subagente…»; la persona contesta «dale» y el reintento del subagente lee el archivo. Con 0.98.0 el mismo recorrido da «Aprobalo pegando…» y el «dale» vuelve a frenar con el mismo mensaje, que es el incidente. **Premisa comprobada** con la entrada cruda capturada: el `PreToolUse` del subagente trae el mismo `session_id` y el mismo `prompt_id` que el padre, más su `agent_id` y `agent_type`.

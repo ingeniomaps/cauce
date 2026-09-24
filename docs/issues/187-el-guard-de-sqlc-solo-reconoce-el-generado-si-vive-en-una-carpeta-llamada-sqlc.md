@@ -334,3 +334,7 @@ caso 197.
   guard afloje. Esa rama no se puede observar, porque si git falla, `stagedForCommit` ya frenó un paso
   antes.
 - `npm run ci`, exit 0.
+
+### Prueba real en un banco instalado (2026-09-23)
+
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. Proyecto con `out: internal/platform/pgdb`, `sqlc generate` real (v1.31.1) y commit por `guard-shell`: `exit=0` con la rama; con 0.98.0, «Cambió una consulta SQL fuente sin artefactos regenerados. Ejecuta el generador.», el mensaje literal del incidente. Consulta cambiada sin regenerar (`sqlc diff` exit 1): `exit=2` diciendo qué buscó; regenerada y stageada: `exit=0`.

@@ -343,3 +343,6 @@ sobre un push descartado. Dice lo mismo que los demás, con su prueba en `push.t
   decirlo.
 - `npm run ci`, exit 0, 936 pruebas.
 
+### Prueba real en un banco instalado (2026-09-23)
+
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. **Sesión real de Claude Code, sin llamadas manuales al guard**: «…; fijate si no falta ninguna…» lleva al agente a leer `api/.env`, el guard lo frena y queda pendiente; con «confirmo» el agente reintenta y lee. Con 0.98.0 el agente reporta que su «confirmo» no alcanzó y que el guard lo frenó de nuevo.

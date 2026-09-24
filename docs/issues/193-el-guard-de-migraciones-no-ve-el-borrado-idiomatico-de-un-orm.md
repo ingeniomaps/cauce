@@ -228,3 +228,7 @@ lenguaje.** Recorriendo lo que enumeró:
   sin anclar al principio de la línea. Una sexta —no contar la línea de cierre como parte del bloque—
   sobrevivió: era inobservable, porque un `}` o un `end` no destruyen nada, y se sacó del código.
 - `npm run ci`, exit 0, en una copia con los archivos nuevos trackeados.
+
+### Prueba real en un banco instalado (2026-09-23)
+
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. Revisión generada por **Alembic real** (1.20.0, `alembic revision`) en su carpeta por defecto: con `op.drop_table` en `upgrade()`, `exit=2` con la rama y `exit=0` con 0.98.0; la honesta (`upgrade` crea, `downgrade` borra), que Alembic corrió de ida y vuelta contra SQLite, pasa.
