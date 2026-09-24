@@ -184,9 +184,11 @@ await agent(
 // Sellar es lo último: hasta que el cambio no está aplicado y registrado, la propuesta sigue
 // pendiente. Lo hace el motor y no vos, a mano, porque marcar el estado editando frontmatter es
 // exactamente el paso que se hace mal en silencio.
+// En el toolkit, sellar además anota el cambio en el CHANGELOG para que salga en la versión siguiente.
+// Un mes sin cambios no le cambia nada a quien actualiza, y `--unchanged` lo deja fuera.
 await agent(
   `From ${ROOT}, run "node ${signature.cli || 'tools/ops.js'} ` +
-  `learn ${AGENT} --applied --period ${PERIOD}" and report only ` +
+  `learn ${AGENT} --applied --period ${PERIOD}${NOTHING ? ' --unchanged' : ''}" and report only ` +
   `what it printed. Change nothing else.`,
   { label: 'sella' },
 )
