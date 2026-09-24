@@ -98,7 +98,7 @@ function planFirstRoot(prefijo, wip, backlog = BACKLOG_CON_TAREA) {
 // de pisarlo, porque `verify` aprueba el conjunto entero y lo que ya aprobaron los otros sigue contando.
 function pasteApproval(root, message) {
   const lines = message.split('\n')
-  const start = lines.findIndex((line) => line.startsWith('Aprobalo pegando tal cual'))
+  const start = lines.findIndex((line) => /tal cual en .* estas líneas:$/.test(line))
   assert.ok(start >= 0, `el bloqueo no dice qué pegar:\n${message}`)
   const paste = []
   for (const line of lines.slice(start + 1)) {

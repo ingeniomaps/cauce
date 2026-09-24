@@ -121,11 +121,17 @@ function HOW(variable, lines, input, pasteable = lines) {
       + 'vuelve a frenar— y sigue valiendo en los mensajes siguientes hasta que ella lo niegue. '
     : ''
   const refused = dropped.length ? REFUSED(dropped) : ''
+  // Sin chat la salida es la misma, y también se dice como cosa de ella: el imperativo que el párrafo de
+  // arriba sacó de la rama con chat seguía acá, y es lo único que ve quien no tiene a nadie en el chat
+  // (caso 194). A quien corre el guard le toca otra cosa, y se le dice cuál.
   const paste = pasteable.length
-    ? (held ? 'Si prefiere aprobarlo a mano, que pegue ella tal cual en' : 'Aprobalo pegando tal cual en')
+    ? (held ? 'Si prefiere aprobarlo a mano, que pegue ella' : 'Esto lo aprueba una persona: que pegue ella')
+      + ' tal cual en'
       + ` ${where(input)} estas líneas:\n`
       + pasteable.map((line) => `  ${line}\n`).join('')
       + 'Valen para ese conjunto y dejan de valer en cuanto cambie. '
+      + (held ? '' : 'Vos no lo escribas —un guard lo frena—: decí qué se frenó y dónde, y reintentá cuando '
+        + 'esté; si sos un subagente, devolvele el bloqueo a quien te lanzó. ')
     : ''
   const unresolved = stuck.length
     ? `Por archivo no hay línea que pegar para ${stuck.join(', ')}: la ruta llegó con una expansión del shell `

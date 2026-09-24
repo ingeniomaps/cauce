@@ -140,7 +140,7 @@ test('plan-first distingue no tener plan de no ver el plan de otro id', () => {
   assert.match(motivo, /CAUCE_RUNNER/, 'y cómo volver a ese id, que es la acción que destraba')
   // La aprobación por ruta escribe «esto no es trabajo de una tarea», y acá eso es falso: hay plan y hay
   // tarea. Ofrecerla es lo que convierte un bloqueo en una afirmación falsa firmada.
-  assert.doesNotMatch(motivo, /Aprobalo pegando/,
+  assert.doesNotMatch(motivo, /tal cual en/,
     'con un plan a la vista, aprobar la ruta declara por escrito algo que no es cierto')
 
   // Y sin ningún plan ajeno el mensaje sigue siendo el de antes: son dos situaciones distintas.

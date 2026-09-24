@@ -157,7 +157,7 @@ test('en sidecar el bloqueo nombra el archivo que el guard lee, y pegar ahí des
   try {
     const lee = leer(workspace, '.env')
     const message = messageOf('secrets-read', lee)
-    assert.match(message, /pegando tal cual en acme-ops\/planning\/\.ops-approval estas líneas/)
+    assert.match(message, /que pegue ella tal cual en acme-ops\/planning\/\.ops-approval estas líneas/)
     // Donde decía antes —el `planning/` de la carpeta de la sesión— no destraba: ése era el defecto.
     fs.mkdirSync(path.join(workspace, 'planning'))
     fs.writeFileSync(path.join(workspace, 'planning', '.ops-approval'), `${path.join(workspace, '.env')}\n`)
@@ -169,13 +169,13 @@ test('en sidecar el bloqueo nombra el archivo que el guard lee, y pegar ahí des
     delete process.env.CLAUDE_PROJECT_DIR
     process.env.GEMINI_PROJECT_DIR = workspace
     assert.match(messageOf('secrets-read', leer(workspace, 'id_ed25519')),
-      /pegando tal cual en acme-ops\/planning\/\.ops-approval estas líneas/)
+      /que pegue ella tal cual en acme-ops\/planning\/\.ops-approval estas líneas/)
     // Una sesión abierta en un proyecto hermano no tiene la instancia adentro: ahí va la ruta entera.
     delete process.env.GEMINI_PROJECT_DIR
     const api = path.join(workspace, 'api')
     fs.mkdirSync(api)
     assert.match(messageOf('secrets-read', leer(api, '.env')),
-      new RegExp(`pegando tal cual en ${literal(path.join(root, 'planning', '.ops-approval'))} estas líneas`))
+      new RegExp(`que pegue ella tal cual en ${literal(path.join(root, 'planning', '.ops-approval'))} estas líneas`))
   } finally { restore() }
 
   // En embedded la sesión y la instancia son la misma carpeta, y el mensaje no cambia. Sin instancia no
@@ -186,9 +186,10 @@ test('en sidecar el bloqueo nombra el archivo que el guard lee, y pegar ahí des
   try {
     const embedded = planFirstRoot('ops-hook-embedded-aprueba-', WIP_CON_PLAN)
     assert.match(messageOf('secrets-read', leer(embedded, '.env')),
-      /pegando tal cual en planning\/\.ops-approval estas líneas/)
+      /que pegue ella tal cual en planning\/\.ops-approval estas líneas/)
     const suelto = tempRoot('ops-hook-sin-raiz-')
-    assert.match(messageOf('secrets-read', leer(suelto, '.env')), /pegando tal cual en planning\/\.ops-approval estas/)
+    assert.match(messageOf('secrets-read', leer(suelto, '.env')),
+      /que pegue ella tal cual en planning\/\.ops-approval estas/)
   } finally { restore() }
 })
 

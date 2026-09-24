@@ -53,13 +53,16 @@ test('un «dale» aprueba exactamente lo que quedó frenado, y nada más', () =>
     // Con persona, el archivo es de ella: el mensaje no le dice al agente que se lo escriba.
     const frenado = messageOf('secrets-read', lee(pedido))
     assert.match(frenado, /pedile que lo confirme con sus palabras/)
-    assert.doesNotMatch(frenado, /Aprobalo pegando/)
+    assert.doesNotMatch(frenado, /Esto lo aprueba una persona/)
     // Y el espejo, que es la mitad que no se escribe sola: sin persona en el chat no se ofrece contestar,
     // porque no hay a quién (caso 118). La rama existe en `HOW` y hasta acá nadie la fijaba por este lado,
     // así que invertir el ternario no rompía ninguna prueba.
     const sinChat = messageOf('secrets-read', lee((one) => one))
     assert.doesNotMatch(sinChat, /«dale»/, 'sin sesión de chat no se ofrece la salida por chat')
-    assert.match(sinChat, /Aprobalo pegando/, 'y queda la que sí está disponible')
+    assert.match(sinChat, /Esto lo aprueba una persona: que pegue ella tal cual/, 'y queda la que sí está disponible')
+    // Dicha a la persona y no al agente: en imperativo, el agente intentaba escribírsela (caso 194).
+    assert.doesNotMatch(sinChat, /Aprobalo/)
+    assert.match(sinChat, /Vos no lo escribas/)
     const dale = chat.says('dale')
     assert.doesNotThrow(() => execute('secrets-read', lee(dale)))
     blocked('secrets-read', lee(dale, 'id_ed25519'), /leerla/)
@@ -208,7 +211,7 @@ test('una notificación de tarea de fondo no se lleva puesta a la persona del ch
     const frenado = messageOf('secrets-read', lee(despertado))
     assert.match(frenado, /pedile que lo confirme con sus palabras/,
       'y sigue ofreciéndose después de la notificación, que es cuando la persona está leyendo')
-    assert.doesNotMatch(frenado, /Aprobalo pegando/, 'sin mandarla a copiar y pegar')
+    assert.doesNotMatch(frenado, /Esto lo aprueba una persona/, 'sin mandarla a copiar y pegar')
 
     // Y el «dale» del mensaje siguiente aprueba lo que se frenó en el turno despertado: anotar lo pendiente
     // es la mitad que hace que ofrecerlo sirva de algo.
