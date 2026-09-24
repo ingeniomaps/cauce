@@ -7,7 +7,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
-const { filesOf, contentOf, cwdOf, block, configOf, opsRoot } = require('./input')
+const { filesOf, contentOf, patchOf, cwdOf, block, configOf, opsRoot } = require('./input')
 const AP = require('./approval')
 const M = require('../core/migrations')
 
@@ -58,6 +58,8 @@ function migrations(input) {
   // función con dos alcances distintos es lo que hizo falta arreglar acá.
   const root = opsRoot(input)
   const isMigration = M.pattern(root ? configOf(root) : {})
+  // Un parche trae varios archivos en un sobre: cada uno se juzga por su sección, no por el sobre entero.
+  const sections = M.patchSections(patchOf(input))
   for (const raw of filesOf(input)) {
     const normalized = raw.replace(/\\/g, '/')
     if (!isMigration.test(normalized)) continue
@@ -66,7 +68,10 @@ function migrations(input) {
     // El mensaje nombra el archivo y la sentencia: un falso positivo se lee igual que un bloqueo correcto
     // mientras no diga sobre qué está decidiendo. Y cuando la migración se partió, dice que la reversión
     // no se juzgó, para que quien lo lea no busque la sentencia en el bloque equivocado.
-    const scope = M.judged(normalized, contentOf(input), editOf(input, file))
+    const section = sections.get(raw)
+    const scope = section
+      ? M.judgedPatch(normalized, section)
+      : M.judged(normalized, contentOf(input), editOf(input, file))
     const found = M.destructive(scope.text)
     if (found) {
       const where = scope.label ? ` en el bloque que aplica (la reversión, \`${scope.label}\`, no se juzga)` : ''

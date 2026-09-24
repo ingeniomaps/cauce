@@ -164,6 +164,37 @@ function judged(file, text, edit = {}) {
   return { text: kept.join('\n'), label: split ? split.label : '' }
 }
 
+// Las secciones de un `apply_patch`, por archivo: la línea `*** Add|Update|Delete File: <ruta>` y lo que
+// sigue hasta la próxima que empiece con `*** `. Cada línea conserva su prefijo —`+` agregada, `-` quitada,
+// ` ` contexto— porque de él depende qué se juzga; `@@` separa hunks y no es contenido.
+function patchSections(patch) {
+  const sections = new Map()
+  let current = null
+  for (const line of String(patch).split('\n')) {
+    const header = line.match(/^\*\*\* (Add|Update|Delete) File:\s*(.+)$/)
+    if (header) {
+      current = { kind: header[1].toLowerCase(), lines: [] }
+      sections.set(header[2].trim(), current)
+    } else if (line.startsWith('*** ')) current = null
+    else if (current && !line.startsWith('@@')) current.lines.push({ op: line[0] || ' ', text: line.slice(1) })
+  }
+  return sections
+}
+
+// Lo que hay que juzgar de un archivo del parche, con el mismo contrato que `judged` (caso 199). Un archivo
+// nuevo es su contenido entero sin el prefijo, y se parte como un `Write`. Una modificación es el lado que va a
+// quedar —contexto y agregado—, partido con lo que el hunk trae, y de él se juzga sólo lo agregado: lo quitado
+// no destruye nada y el contexto ya estaba. Si el hunk no trae ningún marcador, no se sabe de qué lado cae y se
+// juzga todo lo agregado, como antes.
+function judgedPatch(file, section) {
+  if (section.kind === 'delete') return { text: '', label: '' }
+  if (section.kind === 'add') return judged(file, section.lines.map((line) => line.text).join('\n'))
+  const after = section.lines.filter((line) => line.op !== '-')
+  const split = applyMask(file, after.map((line) => line.text.replace(/\r$/, '')))
+  const kept = after.filter((line, index) => line.op === '+' && (!split || split.mask[index]))
+  return { text: kept.map((line) => line.text).join('\n'), label: split ? split.label : '' }
+}
+
 // Lo que destruye escrito en SQL. Cada rama cierra su propio límite. Cuando el `\b` estaba al final del
 // grupo se aplicaba a las tres, y la de `delete` termina a propósito en `;`: después de un punto y coma no
 // hay límite de palabra, así que `DELETE FROM pedidos;` —la forma que tiene en cualquier migración— pasaba
@@ -236,5 +267,5 @@ function coverageWarnings(repos, config) {
 }
 
 module.exports = {
-  PATH_SHAPE, EXTENSION_SHAPE, pattern, judged, destructive, coverageWarnings,
+  PATH_SHAPE, EXTENSION_SHAPE, pattern, judged, judgedPatch, patchSections, destructive, coverageWarnings,
 }

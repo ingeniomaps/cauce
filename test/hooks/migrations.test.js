@@ -218,3 +218,39 @@ test('check avisa lo declarado en migrations que no alcanza a ningún archivo', 
   assert.match(paths, /migrations\.paths "db\/migrate" no alcanza a ningún archivo/)
   assert.doesNotMatch(paths, /paths "alembic\/versions"/)
 })
+
+// Caso 199. Un `apply_patch` de Codex trae cada archivo con el prefijo del parche, y el guard juzgaba el sobre
+// entero: los marcadores no partían y la reversión volvía a frenar. Cada archivo se juzga por su sección.
+test('un parche se juzga archivo por archivo, y cada uno por el bloque que aplica', () => {
+  const root = instance('ops-hook-mig-patch-')
+  const file = 'db/migrations/20260923120000_catalog_items.sql'
+  const patch = (...sections) => ({ cwd: root, tool_name: 'apply_patch',
+    tool_input: { command: ['*** Begin Patch', ...sections, '*** End Patch'].join('\n') } })
+  const added = (name, text) => [`*** Add File: ${name}`, ...text.split('\n').map((line) => `+${line}`)].join('\n')
+
+  passes(patch(added(file, GOOSE)))
+  blocked('migrations', patch(added(file, GOOSE.replace('CREATE TABLE catalog_items (id uuid PRIMARY KEY);',
+    'DROP TABLE legacy_items;'))), /en el bloque que aplica.*DROP TABLE/)
+
+  // Lo que otro archivo del mismo parche dice no es de la migración.
+  passes(patch(added(file, 'CREATE TABLE t (id int);'), added('docs/notes.md', 'Nunca DROP TABLE en producción.')))
+
+  // Una modificación juzga sólo lo agregado, del lado que aplica según el contexto que trae el hunk.
+  const update = (lines) => [`*** Update File: ${file}`, ...lines].join('\n')
+  passes(patch(update(['@@', ' -- +goose Down', '-DELETE FROM catalog_items;', '+DROP TABLE catalog_items;'])))
+  blocked('migrations', patch(update(['@@', ' -- +goose Up', '+DROP TABLE legacy_items;', ' -- +goose Down'])),
+    /en el bloque que aplica.*DROP TABLE/)
+  // Sin marcador en el contexto no se sabe de qué lado cae: se juzga lo agregado entero, como antes.
+  blocked('migrations', patch(update(['@@', ' SELECT 1;', '+DROP TABLE legacy_items;'])), /SQL destructivo/)
+  // Lo que se quita no se juzga: sacar un DROP no destruye nada.
+  passes(patch(update(['@@', ' -- +goose Up', '-DROP TABLE legacy_items;', '+SELECT 1;'])))
+  // Y no cuenta para partir: sin el `Down` que el hunk quita, lo agregado después cae en lo que aplica.
+  blocked('migrations', patch(update(['@@', ' -- +goose Up', '--- +goose Down', '+DROP TABLE t;'])), /DROP TABLE/)
+
+  // `@@` separa hunks y no es una línea del archivo: leído como tal, su sangría cerraría el `downgrade()`.
+  const python = instance('ops-hook-mig-patch-py-', { extensions: ['py'] })
+  const revision = 'migrations/versions/0001_items.py'
+  passes({ cwd: python, tool_name: 'apply_patch', tool_input: { command: ['*** Begin Patch',
+    `*** Update File: ${revision}`, '@@', ' def downgrade():', '     op.drop_index("ix")', '@@',
+    '     op.execute("SELECT 1")', '+    op.drop_table("items")', '*** End Patch'].join('\n') } })
+})
