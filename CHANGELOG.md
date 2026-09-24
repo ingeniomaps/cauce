@@ -14,15 +14,27 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
-## [0.99.0] - 2026-09-23
+## [0.99.0] - 2026-09-24
+
+### Agregado
+
+- **`migrations.paths` en `ops.config.json`**: las carpetas donde viven tus migraciones, por ejemplo
+  `["migrations", "alembic/versions"]`. Si la declarás, reemplaza el default (`migrations`, `migration`,
+  `migrate`), que no alcanzaba a Alembic. `check` avisa la extensión o la carpeta declarada que no alcanza
+  a ningún archivo: una cobertura que declaraste y no cubre nada.
+
+### Cambiado
+
+- **`check` falla si una entrada de DONE tiene `tests:` todo `n/a` y su commit toca algo que no sea `.md`,
+  `.txt` o `.adoc`.** Es lo que vuelve creíble el `n/a` de arriba: lo demás se ejecuta y se prueba. Rige
+  para lo cerrado desde el 2026-09-24, así que tu historia anterior no se pone en rojo al actualizar.
 
 ### Corregido
 
-- **Un aviso de una tarea de fondo ya no le borra a la persona lo que dijo.** Si decías «no toques el
-  `.env`» y antes de que el agente lo intentara llegaba un aviso de un subagente, el bloqueo quedaba
-  esperando confirmación, y un «seguí con lo tuyo» después lo aprobaba. Ahora tu negativa sigue valiendo
-  aunque llegue un aviso en el medio. Y al revés: lo que se frenó en tu turno sigue esperando tu respuesta
-  aunque el aviso llegue antes que ella, en vez de perderse y hacer que tu «dale» no apruebe nada.
+- **Un aviso de una tarea de fondo ya no le borra a la persona lo que dijo.** Si un guard frenaba algo en el
+  turno de un aviso de un subagente, eso no quedaba esperando tu confirmación, y tu «dale» siguiente no
+  aprobaba nada. Ahora lo frenado espera tu respuesta aunque el aviso llegue antes que ella, y tu negativa
+  —«no toques el `.env`»— sigue valiendo después de un aviso sin depender del texto que el aviso traiga.
 
 - **Una negación sobre otra cosa ya no te hace perder un bloqueo.** «dale, fijate si esto no es un
   defecto» dejaba lo frenado sin anotar, y tu «confirmo» siguiente no aprobaba nada. Ahora la respuesta se
@@ -58,6 +70,7 @@ diseño — eso vive en el commit y en el código.
   ejecutable, llegan a Done como `tests: n/a — <razón>`, y QA comprueba que el documento exista y cubra lo
   que la aceptación enumera. Con causas mezcladas, el rebote pide sólo las pruebas que de verdad faltan, y
   Done recibe de Verify qué prueba cubre cada criterio en vez de componerlo de memoria.
+
 - **Una condición marcada `(fuera de verify: <razón>)` ya no llega a Verify ni a QA.** Era la salida que
   `check` recomienda, y la corrida paraba igual; ahora viaja a Done para quedar cumplida en `tests:`, `qa:`
   o `commit:`.
@@ -66,6 +79,7 @@ diseño — eso vive en el commit y en el código.
   `DROP TABLE` del `-- +goose Down` frenaba cada tabla nueva y una migración sin `Down` pasaba. Ahora, en
   goose y dbmate, juzga sólo el bloque que aplica; un `*.down.sql` es reversión entera; corregir el `Down`
   con una edición también pasa; y el mensaje dice en qué bloque está lo que frena.
+
 - **Si declarás `migrations.extensions`, el guard ve también el borrado escrito con la API del ORM**, no
   sólo el SQL crudo: `op.drop_table`/`drop_column` (Alembic), `drop_table`, `remove_column(s)` y
   `drop_join_table` (Rails), `dropTable`/`dropColumn(s)` (TypeORM), `dropTable(IfExists)`/`dropColumn`
@@ -96,19 +110,6 @@ diseño — eso vive en el commit y en el código.
   con `agy plugin install`, una por usuario, y `doctor` miraba la del workspace: decía «operativo» mientras `agy`
   ejecutaba el plugin de otro proyecto o uno roto, y frenaba cada comando. Ahora compara las dos, lanza la
   registrada como la lanza `agy`, y si difiere te dice qué comando corre para registrar esta instalación.
-
-### Cambiado
-
-- **`check` falla si una entrada de DONE tiene `tests:` todo `n/a` y su commit toca algo que no sea `.md`,
-  `.txt` o `.adoc`.** Es lo que vuelve creíble el `n/a` de arriba: lo demás se ejecuta y se prueba. Rige
-  para lo cerrado desde el 2026-09-24, así que tu historia anterior no se pone en rojo al actualizar.
-
-### Agregado
-
-- **`migrations.paths` en `ops.config.json`**: las carpetas donde viven tus migraciones, por ejemplo
-  `["migrations", "alembic/versions"]`. Si la declarás, reemplaza el default (`migrations`, `migration`,
-  `migrate`), que no alcanzaba a Alembic. `check` avisa la extensión o la carpeta declarada que no alcanza
-  a ningún archivo: una cobertura que declaraste y no cubre nada.
 
 ## [0.98.0] - 2026-09-17
 
