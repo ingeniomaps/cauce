@@ -4,13 +4,6 @@
 const fs = require('node:fs')
 const path = require('node:path')
 
-function readInput() {
-  try {
-    const raw = fs.readFileSync(0, 'utf8')
-    return raw.trim() ? JSON.parse(raw) : {}
-  } catch { return {} }
-}
-
 // Dónde quedó la raíz ops respecto de la carpeta que Antigravity abre. Lo completa
 // `automation install`, que es el único momento en que se sabe: en modo sidecar la raíz ops es un
 // hermano de los repos de producto, y ninguna búsqueda hacia arriba la encuentra. Sin esto el bridge
@@ -78,16 +71,36 @@ function findRoot(input, markers = MARKERS) {
   throw new Error('No se encontró una raíz Cauce desde el workspace de Antigravity.')
 }
 
-function runtimeAt(root) {
+function engineAt(root, file) {
   const candidates = [
-    path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine', 'hooks', 'run.js'),
-    path.join(root, 'engine', 'hooks', 'run.js'),
-    path.join(root, '..', 'node_modules', '@ingeniomaps', 'cauce', 'engine', 'hooks', 'run.js'),
+    path.join(root, 'node_modules', '@ingeniomaps', 'cauce', 'engine', 'hooks', file),
+    path.join(root, 'engine', 'hooks', file),
+    path.join(root, '..', 'node_modules', '@ingeniomaps', 'cauce', 'engine', 'hooks', file),
   ]
   // Copia de `packagePath`; su porqué vive allá. Son tres los que la repiten y el motor los nombra.
-  const runtime = candidates.find(fs.existsSync)
+  return candidates.find(fs.existsSync) || ''
+}
+
+function runtimeAt(root) {
+  const runtime = engineAt(root, 'run.js')
   if (!runtime) throw new Error('No se encontró el runtime engine/hooks/run.js.')
   return require(runtime)
+}
+
+// La entrada se lee con el lector del motor y no con uno propio: el puente tenía su copia, y la copia se
+// colgaba con stdin abierto y convertía un JSON ilegible en `allow` (caso 198). El problema es de orden:
+// la raíz que dice dónde está el motor puede salir de la entrada misma (`findRoot`). Por eso se busca
+// sólo en la que se conoce sin leerla, `declaredRoot`: la que `install` dejó escrita, o la carpeta de la
+// que cuelga el puente, que desde el fuente es este mismo repositorio. Sin ella no hay con qué leer, y
+// eso niega como cualquier otra falla del puente.
+function inputReader(markers = MARKERS) {
+  const declared = declaredRoot(markers)
+  const reader = declared && engineAt(declared, 'input.js')
+  if (!reader) {
+    throw new Error('No se encontró engine/hooks/input.js, con el que se lee la entrada, en la raíz que '
+      + `automation install declaró (${declared || 'ninguna'}). Reinstalá el runner.`)
+  }
+  return require(reader)
 }
 
 // La carpeta que el runner abrió, deducida de la raíz: en sidecar la raíz ops es su hija, y en modo
@@ -134,6 +147,16 @@ function respond(value) {
   process.stdout.write(`${JSON.stringify(value)}\n`)
 }
 
+function refusal(event, message, blocking) {
+  const reason = `Cauce: ${message}`
+  if (event !== 'stop') return { decision: 'deny', reason }
+  // Un guard que bloquea marca su error con `blocked` (engine/hooks/run.js); cualquier otro es que el
+  // puente no llegó a juzgar nada. En `stop` los dos devolvían `continue`, y eso ata al agente: la
+  // raíz que no resuelve no se arregla sola, así que cada intento de cerrar repite el mismo error.
+  // El bloqueo sigue dando `continue` —es el mecanismo funcionando—; la falla deja cerrar y avisa.
+  return blocking ? { decision: 'continue', reason } : { decision: 'stop', reason }
+}
+
 function evaluate(event, input) {
   try {
     const root = findRoot(input)
@@ -144,20 +167,25 @@ function evaluate(event, input) {
     hooks.executeAll([event], normalized)
     return event === 'stop' ? { decision: 'stop' } : { decision: 'allow' }
   } catch (error) {
-    const reason = `Cauce: ${error.message}`
-    if (event !== 'stop') return { decision: 'deny', reason }
-    // Un guard que bloquea marca su error con `blocked` (engine/hooks/run.js); cualquier otro es que el
-    // puente no llegó a juzgar nada. En `stop` los dos devolvían `continue`, y eso ata al agente: la
-    // raíz que no resuelve no se arregla sola, así que cada intento de cerrar repite el mismo error.
-    // El bloqueo sigue dando `continue` —es el mecanismo funcionando—; la falla deja cerrar y avisa.
-    return error.blocked ? { decision: 'continue', reason } : { decision: 'stop', reason }
+    return refusal(event, error.message, error.blocked)
   }
 }
 
-function main() {
-  respond(evaluate(process.argv[2], readInput()))
+async function main(event = process.argv[2]) {
+  let input
+  try {
+    const engine = inputReader()
+    const usage = 'pasale el JSON de Antigravity —printf \'%s\' '
+      + `'{"toolCall":{"args":{"CommandLine":"…"}}}' | node hook.js ${event || '<evento>'}—`
+    input = await engine.readInput(process.stdin, engine.FIRST_BYTE_MS, usage)
+  } catch (error) {
+    // El lector del motor marca `blocked` lo que no pudo leer, porque para un guard eso es bloquear. Acá
+    // es el puente sin nada que juzgar, y en `stop` eso deja cerrar: reintentar no arregla la entrada.
+    return respond(refusal(event, error.message, false))
+  }
+  respond(evaluate(event, input))
 }
 
 if (require.main === module) main()
 
-module.exports = { evaluate, findRoot, normalize }
+module.exports = { evaluate, findRoot, normalize, inputReader }

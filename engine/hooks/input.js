@@ -3,7 +3,8 @@
 // Cómo un guard lee lo que el runner le mandó, y cómo se niega. Es una sola pregunta —qué hay en la
 // entrada y cómo se interpreta— y la comparten las tres familias de guards, así que vive acá y no en
 // ninguna de ellas: copiada, una copia dejaría de reconocer un formato y su guard permitiría todo en
-// silencio, que es la falla que ninguna prueba verde delata.
+// silencio, que es la falla que ninguna prueba verde delata. `readInput` lo usa además el puente de
+// Antigravity, que tenía su copia y la tenía rota así (caso 198).
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -17,10 +18,13 @@ const { writableOutsideRoots } = require('../config/paths')
 // no configurable: una variable que lo estire no arregla nada que el runner necesite (caso 190).
 const FIRST_BYTE_MS = 2000
 
-const noInput = (waitMs) => `no llegó nada por stdin en ${waitMs} ms: stdin está abierto y nadie escribe`
+// Cómo se invoca a mano quien lee. Es lo único del mensaje que cambia entre un guard y el puente de
+// Antigravity, que lee con esta misma función pero recibe otro JSON y se lanza con otro comando.
+const GUARD_USAGE = 'pasale el JSON del hook —printf \'%s\' \'{"tool_input":{"command":"…"}}\' | guard-….sh—'
+
+const noInput = (waitMs, usage) => `no llegó nada por stdin en ${waitMs} ms: stdin está abierto y nadie escribe`
   + ' (una terminal, o un pipe o un socket que no se cierran). Un guard que no sabe qué juzgar no autoriza.'
-  + ' Para invocarlo a mano, pasale el JSON del hook —printf \'%s\' \'{"tool_input":{"command":"…"}}\' |'
-  + ' guard-….sh— o correlo sin entrada con </dev/null.'
+  + ` Para invocarlo a mano, ${usage} o correlo sin entrada con </dev/null.`
 
 // Sin stdin no hay nada que leer y los guards caen a las variables de entorno; con stdin ilegible sí
 // hay algo y no se entiende, que es otra cosa. Devolver `{}` ahí dejaba a cada guard sin comando ni
@@ -34,12 +38,12 @@ const noInput = (waitMs) => `no llegó nada por stdin en ${waitMs} ms: stdin est
 // El plazo es sobre el primer byte y no sobre la lectura: un `Write` grande llega en tramos, y cortarlo
 // a mitad de camino bloquearía una escritura legítima. Agotado, **bloquea**: tratarlo como entrada vacía
 // dejaba pasar todo lo que no estuviera en `OPS_HOOK_COMMAND`, que es un guard apagado sin rastro (R27).
-function readInput(stream = process.stdin, waitMs = FIRST_BYTE_MS) {
+function readInput(stream = process.stdin, waitMs = FIRST_BYTE_MS, usage = GUARD_USAGE) {
   return new Promise((resolve, reject) => {
     const chunks = []
     const timer = setTimeout(() => {
       stream.destroy()
-      reject(blocked(noInput(waitMs)))
+      reject(blocked(noInput(waitMs, usage)))
     }, waitMs)
     stream.on('data', (chunk) => { clearTimeout(timer); chunks.push(chunk) })
     stream.on('error', () => { clearTimeout(timer); resolve({}) })
