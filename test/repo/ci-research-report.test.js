@@ -371,50 +371,34 @@ test('el ciclo anota qué URLs del cargo no pudo abrir', { skip: process.platfor
   assert.equal(/::warning/.test(limpio.stdout), false, 'y no se avisa de una falta que no existe')
 })
 
-// El borrado de la rama vive en su propio workflow porque es el único que corre cuando el merge ya
-// ocurrió. La prueba que había antes exigía `--delete-branch` escrito en `agent-learning.yml` y se
-// quedaba ahí: estuvo en verde mientras nueve ramas sobrevivían, porque comprobaba el texto del
-// workflow y no la rama (caso 147). Ésta mira las tres condiciones que deciden si borra bien.
-test('la rama se borra cuando el merge ocurrió, y sólo entonces', () => {
-  const fuente = workflow('delete-merged-branch')
-
-  // El disparador es lo que arregla el caso: `closed` llega después del merge, venga de auto-merge,
-  // de la web o de alguien sin la bandera. Cualquier otro evento vuelve a llegar demasiado temprano.
-  assert.match(fuente, /on:\s*\n\s*pull_request:\s*\n\s*types:\s*\[closed\]/,
-    'escucha el cierre del PR, que es cuando el merge ya pasó')
-
-  // `closed` también llega cuando el PR se cierra sin mergear: ahí la rama es trabajo vivo.
-  assert.match(fuente, /if:\s*github\.event\.pull_request\.merged == true/,
-    'y no borra nada si el PR se cerró sin mergear')
-
-  // Una rama de un fork no es nuestra, y el token no la alcanza.
-  assert.match(fuente, /head\.repo\.full_name == github\.repository/,
-    'una rama de un fork no se toca')
-
-  // Lo que efectivamente borra. Sin esto el workflow podría cumplir todo lo de arriba y no hacer nada.
-  assert.match(fuente, /--method DELETE .*git\/refs\/heads/,
-    'y borra la ref, que es lo que nadie más hace')
-
-  // Pedir permiso de escritura es parte del arreglo: con el `contents: read` del encabezado, el
-  // borrado devuelve 403 y el workflow terminaría en rojo sin que se vea por qué.
-  assert.match(fuente, /permissions:\s*\n\s*contents: write/,
-    'con permiso para escribir, que es lo que el borrado necesita')
+// El borrado es manual y por qué lo dice `.github/scripts/prune-merged-branches.sh`. Esto avisa si vuelve
+// un workflow que lo haga en cada cierre.
+test('ningún workflow borra ramas: eso se hace a mano, una vez por tanda', () => {
+  const dir = path.resolve(__dirname, '..', '..', '.github', 'workflows')
+  for (const name of fs.readdirSync(dir)) {
+    const fuente = fs.readFileSync(path.join(dir, name), 'utf8')
+    assert.doesNotMatch(fuente, /--method DELETE .*git\/refs\/heads/, `${name} no borra ramas`)
+    assert.doesNotMatch(fuente, /types:\s*\[closed\]/, `${name} no corre en cada cierre de PR`)
+  }
 })
 
-// Lo que mergea el auto-merge del bot no dispara `delete-merged-branch.yml`, así que el ciclo barre sus
-// propias ramas (caso 183). Se corre el paso tal cual con un `gh` falso que sólo anota lo que le piden
-// borrar: ninguna prueba toca un remoto, y lo que se mide es qué decide borrar el paso.
-test('el ciclo borra sus ramas ya mergeadas, y sólo ésas', () => {
+// El script se corre tal cual con un `gh` falso que sólo anota lo que le piden borrar: ninguna prueba toca
+// un remoto, y lo que se mide es qué decide borrar.
+test('el barrido borra las ramas ya mergeadas, y sólo ésas', () => {
   const dir = tempRoot('cauce-prune-')
   const bin = path.join(dir, 'bin')
   const borradas = path.join(dir, 'borradas')
   fs.mkdirSync(bin)
-  // Cuatro ramas: mergeada y quieta, mergeada y movida después, con el PR abierto, y una fuera de
-  // `automation/` que el prefijo de la consulta no traería pero el paso tiene que ignorar igual.
+  // Cinco ramas: mergeada y quieta, mergeada y movida después, con el PR abierto, una fuera de
+  // `automation/` que el prefijo de la consulta no traería pero el script tiene que ignorar igual, y una
+  // mergeada que otro borró entre listar y borrar —pasó en la primera corrida real y cortaba el resto—.
   fs.writeFileSync(path.join(bin, 'gh'), `#!/usr/bin/env bash
 case "$*" in
-  *matching-refs*) printf '%s\\n' 'refs/heads/automation/quieta aaa' 'refs/heads/automation/movida bbb' \\
-    'refs/heads/automation/abierta ccc' 'refs/heads/fix/otra ddd' ;;
+  *matching-refs*) printf '%s\\n' 'refs/heads/automation/ganada eee' 'refs/heads/automation/quieta aaa' \\
+    'refs/heads/automation/movida bbb' 'refs/heads/automation/abierta ccc' 'refs/heads/fix/otra ddd' ;;
+  *"--head automation/ganada"*) echo eee ;;
+  *"--method DELETE"*"automation/ganada") echo 'Reference does not exist' >&2; exit 1 ;;
+  *"git/ref/heads/automation/ganada") exit 1 ;;
   *"--head automation/quieta"*) echo aaa ;;
   *"--head automation/movida"*) echo zzz ;;
   *"--head automation/abierta"*) echo '' ;;
@@ -423,9 +407,8 @@ case "$*" in
   *) echo "gh inesperado: $*" >&2; exit 1 ;;
 esac
 `, { mode: 0o755 })
-  const paso = workflowStep(workflow('agent-learning'), 'id: prune')
-  assert.ok(paso, 'el paso existe')
-  const hecho = spawnSync('bash', ['-c', paso], {
+  const script = path.resolve(__dirname, '..', '..', '.github', 'scripts', 'prune-merged-branches.sh')
+  const hecho = spawnSync('bash', [script], {
     encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, GITHUB_REPOSITORY: 'o/r' },
   })
   assert.equal(hecho.status, 0, hecho.stderr)
@@ -433,9 +416,5 @@ esac
   assert.deepEqual(borrado, ['repos/o/r/git/refs/heads/automation/quieta'], 'sólo la mergeada que no se movió')
   assert.match(hecho.stdout, /automation\/movida cambió después de su merge/, 'y la movida se dice, no se borra')
   assert.doesNotMatch(hecho.stdout, /abierta/, 'y una con el PR abierto no es noticia: no se mergeó')
-
-  // Corre en cada corrida del ciclo, sin depender de un evento, y con permiso para borrar.
-  const job = workflow('agent-learning').split('\n  prune-merged:\n')[1].split('\n  research:\n')[0]
-  assert.doesNotMatch(job, /\n {4}(?:if|needs):/, 'no depende de nada que pueda no llegar')
-  assert.match(job, /permissions:\s*\n\s*contents: write/, 'y puede borrar')
+  assert.match(hecho.stdout, /automation\/ganada ya no estaba/, 'y la que otro borró antes no corta el barrido')
 })

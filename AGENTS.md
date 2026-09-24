@@ -210,6 +210,13 @@ alguien se acuerde:
 
    El filtro va por `conclusion` y no por `status`: una corrida que espera figura `status=completed` con
    `conclusion=action_required`, así que buscarla por estado devuelve cero sobre corridas que sí están ahí.
+
+   **Cuando el auto-merge los cierra, borrar sus ramas**, una vez y a mano:
+
+       GH_TOKEN="$GITHUB_PAT_CAUCE" bash .github/scripts/prune-merged-branches.sh
+
+   Por qué a mano y no en un workflow lo dice el encabezado del script. Lo que se quede sin borrar porque
+   todavía no se mergeó lo levanta la pasada de la tanda siguiente.
 4. **Dejar abiertos los `propone: si`.** Esos son la mirada que el campo compra, y se mergean igual antes
    del 1 de cada mes: la consolidación lee los informes de `main`, así que un PR sin mergear no entra a la
    propuesta mensual y su hallazgo se pierde.
