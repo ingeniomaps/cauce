@@ -171,7 +171,7 @@ lo que el caso enumeró:
 índice desde ahí, y `git ls-files` sin `:(top)` sólo lista lo que cuelga de ese directorio. Sin eso, un
 `sqlc.yaml` en la raíz no se habría visto. Se usa `:(top,glob)**/sqlc.*`, y la fila `commit desde un
 subdirectorio` lo fija. El otro hallazgo, que el guard de OpenAPI toma un `api/sqlc.yaml` staged por una
-especificación, está en el cierre del 187 y sale como caso propio.
+especificación, está en el cierre del 187 y es el caso 197.
 
 ### Qué se corrió
 

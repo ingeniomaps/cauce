@@ -266,7 +266,7 @@ por `input.js`. Medido acá: `sleep 6 | timeout 3 node automatization/runners/an
 → `exit 124`, colgado igual; y `echo '{roto' | … pre-shell` → `{"decision":"allow"}`, o sea que además deja
 pasar un JSON ilegible, que es justo lo que el `readInput` del motor dejó de hacer hace tiempo. Es otro
 archivo, otro runner y otra decisión —si el puente debe reusar el del motor—, así que **sale como caso
-propio** y no entra acá.
+propio, el 198,** y no entra acá.
 
 ### Qué se corrió
 

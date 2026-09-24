@@ -201,8 +201,10 @@ lenguaje.** Recorriendo lo que enumeró:
 **Lo que el caso no preveía.**
 
 - **La misma página de TypeORM define otros tres borrados** —`dropSchema`, `dropDatabase`, `clearTable`— y la
-  de Rails `remove_reference`. No entraron: el dueño pidió la lista del caso y nada más. Agregarlos es una
-  línea y su prueba; queda para decidir.
+  de Rails `remove_reference`. **Se decidió que no**: quedan fuera del alcance del caso, que se escribió
+  sobre las formas de borrar tablas y columnas de su tabla, y agregarlos amplía lo que el guard frena en
+  cada proyecto que declaró extensiones de lenguaje, que es una decisión de producto y no un arreglo. Si
+  alguien la toma, es una línea en `DESTRUCTIVE_API` y su prueba, con las fuentes ya citadas acá.
 - **Django no tiene `down`**: la reversión la calcula el framework, así que en sus migraciones se juzga todo
   el archivo, y una función de reversión de `RunPython` que borre frena igual. Es correcto por construcción,
   y se dice para que nadie busque ahí un corte que no existe.

@@ -303,8 +303,8 @@ meter un parser de YAML en el guard, así que el punto 1 no se hizo. Recorriendo
 `changedOpenApi` (`engine/hooks/verify.js`, en `verify`) cuenta como fuente OpenAPI cualquier `.yaml` bajo
 `api/`, `openapi/` o `spec/`. Un monorepo que stagea `api/sqlc.yaml` recibe «Cambió una fuente
 OpenAPI/Swagger» aunque no tenga OpenAPI. Apareció al escribir la tabla, con la fila `api/sqlc.yaml`
-staged, y la fila se movió a `backend/` para no mezclarlo. Es otro defecto de otro chequeo, así que sale
-como caso propio.
+staged, y la fila se movió a `backend/` para no mezclarlo. Es otro defecto de otro chequeo: es el
+caso 197.
 
 ### Qué se corrió
 

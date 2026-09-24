@@ -253,8 +253,8 @@ enumeró:
   leen el guard (`engine/hooks/migrations.js`) y `check` (196).
 - **El sobre de `apply_patch` de Codex no se parte.** Ahí las líneas llegan con el prefijo del parche
   (`+-- +goose Down`), ningún marcador empieza la línea, y se evalúa entero: el comportamiento de antes, no
-  uno más permisivo. Queda **sin caso propio y hay que numerarlo** al integrar —no se le asignó número acá
-  porque otras sesiones abren casos a la vez y el README pide que se mueva el que no se publicó—.
+  uno más permisivo. Pero es el falso positivo de este caso por otra vía, así que **salió como caso propio:
+  199**.
 
 ### Qué se corrió
 
