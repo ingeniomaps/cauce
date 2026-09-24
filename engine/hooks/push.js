@@ -113,12 +113,14 @@ function liveMessage(live, input) {
 
 function workMessage(items, input) {
   const lines = items.filter((item) => item.startsWith('push '))
-  const chat = CHAT.hold(input, items)
-  const how = chat
+  const held = CHAT.hold(input, items)
+  const dropped = held ? held.dropped : []
+  const chat = held && dropped.length < items.length
+  const how = (dropped.length ? AP.REFUSED(dropped) : '') + (chat
     ? 'Decile a la persona qué se frenó y pedile que lo confirme con sus palabras: si lo que contesta es un '
       + 'sí, reintentá el mismo push y pasa; si duda, pregunta o dice que no, no reintentes. '
       + 'También pasa si lo pide nombrando el remoto y la rama, como «subí feat/x a origin».'
-    : 'Lo destraba una persona pidiéndolo en el chat con el remoto y la rama.'
+    : 'Lo destraba una persona pidiéndolo en el chat con el remoto y la rama.')
   const paste = lines.length
     ? `\nSi prefiere aprobarlo a mano, que pegue ella tal cual en ${AP.where(input)} estas líneas:\n`
       + lines.map((line) => `  ${line}\n`).join('')

@@ -79,6 +79,14 @@ function where(input) {
   return relative && !relative.startsWith('..') && !path.isAbsolute(relative) ? relative : file
 }
 
+// Lo que el último mensaje de la persona negaba no quedó esperando su confirmación, así que un «dale» no
+// lo aprobaría: ofrecerlo sería mandarla a contestar para volver a frenar (caso 188). Lo que sí lo pasa es
+// pedirlo nombrándolo, que es una orden y no una confirmación.
+function REFUSED(items) {
+  return `Lo último que dijo la persona niega o frena ${items.join(', ')}, así que no quedó esperando su `
+    + 'confirmación y un sí no lo aprobaría: no reintentes. Si lo quiere, que lo pida en el chat nombrándolo. '
+}
+
 // Cómo se toma la salida angosta, dicho una vez porque lo dicen todos los bloqueos que la tienen. Lleva
 // las líneas exactas porque cada guard coteja la ruta en la forma que tiene a mano —absoluta la que llega
 // de un Write, relativa al repositorio la que sale del índice— y una línea en la otra forma no pega: sin
@@ -94,7 +102,9 @@ function where(input) {
 // que tiene a mano no sirve para pegar —por qué, en `secrets-shell.js` (caso 118)—. Lo frenado se anota
 // igual, así que el «dale» sigue cubriendo todo.
 function HOW(variable, lines, input, pasteable = lines) {
-  const chat = CHAT.hold(input, lines)
+  const held = CHAT.hold(input, lines)
+  const dropped = held ? held.dropped : []
+  const chat = held && dropped.length < lines.length
   const stuck = lines.filter((one) => !pasteable.includes(one))
   // El alcance del «dale» va con la oferta y no después. La rama del pegado ya decía el suyo —«valen para
   // ese conjunto»— y la del chat no decía ninguno, siendo la que se ofrece primero. Las dos mitades que
@@ -110,8 +120,9 @@ function HOW(variable, lines, input, pasteable = lines) {
       + 'respuesta que niega, frena o pregunta. Esa confirmación cubre lo que se frenó y nada más —algo nuevo '
       + 'vuelve a frenar— y sigue valiendo en los mensajes siguientes hasta que ella lo niegue. '
     : ''
+  const refused = dropped.length ? REFUSED(dropped) : ''
   const paste = pasteable.length
-    ? (chat ? 'Si prefiere aprobarlo a mano, que pegue ella tal cual en' : 'Aprobalo pegando tal cual en')
+    ? (held ? 'Si prefiere aprobarlo a mano, que pegue ella tal cual en' : 'Aprobalo pegando tal cual en')
       + ` ${where(input)} estas líneas:\n`
       + pasteable.map((line) => `  ${line}\n`).join('')
       + 'Valen para ese conjunto y dejan de valer en cuanto cambie. '
@@ -128,7 +139,7 @@ function HOW(variable, lines, input, pasteable = lines) {
     ? `La variable ${variable}=1 sigue existiendo y apaga el guard para toda la sesión, que es por lo que no `
       + 'es la vía recomendada.'
     : ''
-  return ask + paste + unresolved + off
+  return ask + refused + paste + unresolved + off
 }
 
 // Las dos exenciones que sobreviven a un bloqueo, para que `check` las muestre juntas: la lista que una
@@ -153,4 +164,4 @@ function warnings(root) {
   return out
 }
 
-module.exports = { APPROVAL, lines, read, pending, pendingNow, where, HOW, warnings }
+module.exports = { APPROVAL, lines, read, pending, pendingNow, where, HOW, REFUSED, warnings }

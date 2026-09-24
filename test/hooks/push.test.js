@@ -62,6 +62,13 @@ test('un «dale» a un push frenado aprueba ese push y ningún otro', () => {
   try {
     const frenado = messageOf('destructive', push(chat.says('subí la rama'), 'git push origin feat/x'))
     assert.match(frenado, /si lo que contesta es un sí, reintentá el mismo push/)
+    // Frenado mientras ella decía que no, no se ofrece confirmar: un sí no lo aprobaría (caso 188).
+    const negado = chatSession()
+    try {
+      const noQuedo = messageOf('destructive', push(negado.says('no, esperá'), 'git push origin feat/x'))
+      assert.match(noQuedo, /no quedó esperando su confirmación/)
+      assert.doesNotMatch(noQuedo, /reintentá el mismo push/)
+    } finally { negado.close() }
     assert.match(frenado, /\n {2}push origin feat\/x\n/)
     const dale = chat.says('dale')
     assert.doesNotThrow(() => execute('destructive', push(dale, 'git push origin feat/x')))

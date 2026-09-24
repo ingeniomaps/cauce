@@ -344,3 +344,30 @@ test('un bloqueo se confirma con cualquier palabra, y negar, frenar o preguntar 
       'lo que ella acababa de negar no queda esperando')
   } finally { for (const chat of sesiones) chat.close() }
 })
+
+// Caso 188: dónde se lee la negación, junto a `hold` en engine/hooks/chat.js. Las dos direcciones, y el
+// bloqueo diciendo lo que no quedó anotado.
+test('una negación sobre otra cosa no borra el bloqueo, y la que nombra lo frenado sí', () => {
+  const root = planFirstRoot('ops-hook-chat-negacion-', WIP_CON_PLAN)
+  const lee = (call) => call({ cwd: root, tool_input: { file_path: path.join(root, '.env') } })
+  const sesiones = []
+  const tras = (pedido) => {
+    const chat = chatSession()
+    sesiones.push(chat)
+    const frenado = messageOf('secrets-read', lee(chat.says(pedido)))
+    return { frenado, confirma: () => execute('secrets-read', lee(chat.says('confirmo'))) }
+  }
+  try {
+    for (const pedido of ['dale, fijate si esto no es un defecto', 'dale, sin apuro', 'seguí; no hay prisa']) {
+      const { frenado, confirma } = tras(pedido)
+      assert.match(frenado, /pedile que lo confirme/, `«${pedido}» ofrece confirmar`)
+      assert.doesNotThrow(confirma, `tras «${pedido}», confirmar aprueba`)
+    }
+    for (const pedido of ['dale, pero no el .env', 'seguí, no toques el .env', 'no, dale', 'pará, después vemos']) {
+      const { frenado, confirma } = tras(pedido)
+      assert.throws(confirma, (error) => error.blocked === true, `tras «${pedido}», confirmar no lo aprueba`)
+      assert.match(frenado, /no quedó esperando/, `«${pedido}» dice que no quedó anotado`)
+      assert.doesNotMatch(frenado, /pedile que lo confirme/, `«${pedido}» no ofrece una confirmación inútil`)
+    }
+  } finally { for (const chat of sesiones) chat.close() }
+})

@@ -336,22 +336,33 @@ function unauthorizedNow(input, items) {
 }
 
 // Lo que quedó frenado, para que la confirmación del mensaje siguiente apruebe exactamente eso y nada más.
-// Devuelve si hay una persona a quien preguntarle.
+// Devuelve `false` si no hay persona a quien preguntarle, y si la hay, qué de lo frenado no quedó
+// esperando: qué dice el bloqueo con eso, en `REFUSED` (approval.js).
 //
 // Si el último mensaje de la persona niega o frena, lo que se ataje después no queda esperando: ya contestó
 // que no antes de que el agente lo intentara, y un aviso del runner en el medio no cambia eso. Desde que
 // confirmar no exige una palabra (caso 184), dejarlo pendiente hacía que un «seguí con lo tuyo» aprobara
-// el `.env` o el push que ella acababa de prohibir. Se mira el mensaje y no el ítem porque un push no se
-// nombra como un archivo.
+// el `.env` o el push que ella acababa de prohibir. Se mira el mensaje, y no sólo el ítem, porque un push
+// no se nombra como un archivo.
+//
+// Pero el mensaje se mira en su primera cláusula, que es donde está la respuesta: lo que viene después
+// puede negar otra cosa, y «dale, fijate si esto no es un defecto» dejaba sin anotar lo que ella estaba
+// aprobando (caso 188). Lo que niega nombrando el ítem se respeta en cualquier cláusula —«dale, pero no el
+// .env»—. Queda afuera la prohibición que no nombra nada después de la coma, «dale, pero no toques nada
+// más»: ninguna lectura de palabras la separa de una negación sobre otro tema.
 function hold(input, items) {
   const saved = present(input)
   if (!saved) return false
   try {
-    const text = saved.spoken ?? saved.text ?? ''
-    const open = NEGATION.test(text) || HALT.test(text) ? [] : items
+    const spoken = String(saved.spoken ?? saved.text ?? '')
+    const head = spoken.split(CLAUSE)[0]
+    const dropped = NEGATION.test(head) || HALT.test(head)
+      ? items
+      : items.filter((item) => mentions(spoken, item).denied)
+    const open = items.filter((item) => !dropped.includes(item))
     saved.pending = [...new Set([...saved.pending, ...open])]
     fs.writeFileSync(recordPath(input.session_id), JSON.stringify(saved))
-    return true
+    return { dropped }
   } catch { return false }
 }
 
