@@ -54,7 +54,7 @@ Combinar satisfacción/bienestar, performance/outcomes, actividad contextual, co
 
 - [DORA Capabilities](https://dora.dev/capabilities/): entrega sostenible, feedback, cultura y desempeño organizacional.
 - **SPACE Framework**, ACM Queue 19(1) (sin enlace: `queue.acm.org` bloquea): productividad multidimensional, no reducible a actividad.
-- [Google re:Work — Understand team effectiveness](https://rework.withgoogle.com/intl/en/guides/understanding-team-effectiveness): seguridad psicológica, confiabilidad, estructura, significado e impacto.
+- [Google re:Work — Understand team effectiveness](https://rework.withgoogle.com/intl/en/guides/understand-team-effectiveness): seguridad psicológica, confiabilidad, estructura, significado e impacto.
 - [ACM Code of Ethics](https://www.acm.org/binaries/content/assets/about/acm-code-of-ethics-booklet.pdf): bienestar, justicia, privacidad, competencia y liderazgo responsable.
 
 Verificar políticas laborales, jurisdicción y contexto real de cada empresa.

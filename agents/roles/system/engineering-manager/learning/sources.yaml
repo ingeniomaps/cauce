@@ -17,7 +17,7 @@ sources:
     tier: profession
     topics: [developer-productivity, wellbeing, flow, collaboration]
   - name: Google re Work team effectiveness
-    url: https://rework.withgoogle.com/intl/en/guides/understanding-team-effectiveness
+    url: https://rework.withgoogle.com/intl/en/guides/understand-team-effectiveness
     tier: profession
     topics: [psychological-safety, effectiveness]
   - name: ACM Code of Ethics
