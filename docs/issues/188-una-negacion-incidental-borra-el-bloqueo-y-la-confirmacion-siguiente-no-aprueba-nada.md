@@ -1,14 +1,15 @@
 ---
 caso: 188
 titulo: Una negación incidental hace que el bloqueo no quede anotado, y entonces la confirmación siguiente aprueba una lista vacía
-estado: abierto
+estado: resuelto
+resuelto-en: 0.99.0
 prioridad: alta
 version-detectada: 0.98.0
 ---
 
 # 188 — «Dale, fijate si esto no es de Cauce» deja el bloqueo sin anotar, y el «confirmo» siguiente no aprueba nada
 
-**🔴 abierto** · detectado en 0.98.0 · prioridad **alta**. Falla en silencio: la persona aprueba, el guard sigue
+**🟢 resuelto en 0.99.0** · detectado en 0.98.0 · prioridad **alta**. Falla en silencio: la persona aprueba, el guard sigue
 frenando, y nada dice por qué.
 
 ## Resumen
@@ -281,3 +282,64 @@ mensaje del guard, que en los tres intentos fue idéntico.
   medio, lee el texto del aviso y aprueba lo prohibido—. Salió de revisar este caso.
 - **116**: lo que un guard dejó pasar queda anotado para no repetir el bloqueo. Acá lo que no queda anotado es
   lo que el guard frenó.
+
+## Cierre
+
+**Resuelto en 0.99.0, por la variante 1b más el fix 2**, que es lo que recomendaba «Decisiones abiertas».
+Recorriendo lo que el caso enumeró:
+
+- **Fix 1 → se hizo distinto: 1b.** La negación general se lee en la primera cláusula del último mensaje de
+  la persona, y la que nombra el ítem en todo el mensaje (`hold`, `engine/hooks/chat.js`). Tal cual, el fix 1
+  reabría el hueco del 184 —«dale, pero no el .env» terminaba aprobado por el «listo» siguiente—; con 1b ese
+  mensaje sigue reteniendo.
+- **Fix 2 → se hizo distinto, y mejor que lo propuesto.** El caso pedía anotar el descarte para que el
+  *próximo* bloqueo lo dijera. El bloqueo que descarta ya sabe qué descartó: `hold` devuelve la lista y el
+  mensaje lo dice en ese mismo momento —«no quedó esperando su confirmación y un sí no lo aprobaría: no
+  reintentes. Si lo quiere, que lo pida en el chat nombrándolo»— (`REFUSED`, `engine/hooks/approval.js`).
+  Pedirlo nombrándolo es una orden, y una orden pasa: no hace falta el archivo.
+- **Fix 3 → se decidió que no.** Movía la negación a `record()` sin cambiar qué se lee, así que la
+  reproducción seguía perdiendo la aprobación; y literal rompía cuatro pruebas, entre ellas la del 184.
+- **Decisión 1 (qué error se acepta) → 1b más fix 2**, con las pruebas nuevas sobre el mensaje siguiente.
+- **Decisión 2 (fix 3 bien hecho) → no**, por lo de arriba: con 1b la negación queda leída en un solo lugar,
+  `hold`, que era lo que el fix 3 buscaba.
+- **Decisión 3 (el `present()` con aviso) → salió como el 191** y se arregló antes: `hold` lee `spoken`, el
+  último texto de la persona, así que lo de acá se aplica sobre eso.
+- **Decisión 4 (`hold` devolvía `true` tras descartar todo) → se hizo.** Si descartó todo, el bloqueo no
+  ofrece confirmar; si descartó una parte, ofrece confirmar lo demás y dice lo descartado.
+- **Tradeoff de la prohibición que no nombra el ítem → aceptado y declarado** en el comentario de `hold`:
+  «dale, pero no toques nada más» deja el `.env` esperando confirmación. La confirmación la tiene que dar
+  ella después de que el agente le diga qué se frenó, que es lo que el bloqueo le pide.
+- **Tradeoff del push por basename → queda como estaba.** Para un push, la negación por ítem compara lo que
+  `mentions` compara; «dale, pero no subas nada» no retiene el push. Lo que sí retiene es una negación en la
+  primera cláusula, igual que antes.
+- **La prueba de `chat.test.js:71` que no miraba el mensaje siguiente → cubierta** por la prueba nueva, que
+  confirma después de «dale, pero no el .env» y ve que sigue frenado.
+
+**Lo que el caso no preveía: el push tenía su propio texto de oferta.** `workMessage` en `push.js` llama a
+`hold` igual que `HOW`, y habría seguido ofreciendo «si lo que contesta es un sí, reintentá el mismo push»
+sobre un push descartado. Dice lo mismo que los demás, con su prueba en `push.test.js`.
+
+### Qué se corrió
+
+- **La reproducción, por los hooks reales** —`run.js chat` y `run.js secrets-read` como procesos, con el
+  JSON por stdin y `TMPDIR` en un scratch—, 2026-09-23:
+
+  ```
+  === «dale, fijate si esto no es un defecto»  → primer bloqueo: «Decile a la persona qué se frenó…»
+      tras «confirmo», reintento: [exit=0]
+  === «dale»                                   → tras «confirmo», reintento: [exit=0]
+  === «dale, pero no el .env»                  → primer bloqueo: «Lo último que dijo la persona niega o frena
+      …/.env, así que no quedó esperando su confirmación y un sí no lo aprobaría … no reintentes. Si lo
+      quiere, que lo pida en el chat nombrándolo»
+      tras «confirmo», reintento: [exit=2]
+  ```
+
+  La negación incidental ya aprueba al primer «confirmo», igual que el control; la que nombra el `.env` lo
+  sigue reteniendo y lo dice.
+- **Las pruebas nuevas contra el código anterior: dos fallas** —«tras «dale, fijate si esto no es un
+  defecto», confirmar aprueba» y la del push—.
+- **Cinco mutaciones en una copia del árbol, las cinco en rojo**: la negación leída sobre el mensaje entero,
+  sin la negación por ítem, `HOW` sin decir lo descartado, `HOW` ofreciendo confirmar igual, y `push.js` sin
+  decirlo.
+- `npm run ci`, exit 0, 936 pruebas.
+

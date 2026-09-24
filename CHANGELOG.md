@@ -24,6 +24,12 @@ diseño — eso vive en el commit y en el código.
   aunque llegue un aviso en el medio. Y al revés: lo que se frenó en tu turno sigue esperando tu respuesta
   aunque el aviso llegue antes que ella, en vez de perderse y hacer que tu «dale» no apruebe nada.
 
+- **Una negación sobre otra cosa ya no te hace perder un bloqueo.** «dale, fijate si esto no es un
+  defecto» dejaba lo frenado sin anotar, y tu «confirmo» siguiente no aprobaba nada. Ahora la respuesta se
+  lee en la primera parte del mensaje, y lo que negás nombrándolo —«dale, pero no el .env»— sigue sin
+  pasar. Cuando algo no queda esperando tu confirmación, el bloqueo lo dice y te indica que lo pidas
+  nombrándolo, en vez de ofrecerte un «dale» que no iba a servir.
+
 ## [0.98.0] - 2026-09-17
 
 ### Cambiado
