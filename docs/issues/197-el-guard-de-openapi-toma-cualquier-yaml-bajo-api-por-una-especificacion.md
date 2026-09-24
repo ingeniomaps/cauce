@@ -1,14 +1,15 @@
 ---
 caso: 197
 titulo: El guard de verify toma cualquier `.yaml` staged bajo `api/`, `openapi/` o `spec/` por una especificación OpenAPI, y frena un `sqlc.yaml` o un `docker-compose.yml` pidiendo código regenerado
-estado: abierto
+estado: resuelto
+resuelto-en: 0.99.0
 prioridad: media
 version-detectada: 0.98.0
 ---
 
 # 197 — Un `api/sqlc.yaml` se frena como si fuera una especificación OpenAPI
 
-**🔴 abierto** · detectado en 0.98.0 · prioridad **media**. El guard reconoce una fuente OpenAPI por la
+**🟢 resuelto en 0.99.0** · detectado en 0.98.0 · prioridad **media**. El guard reconoce una fuente OpenAPI por la
 carpeta y la extensión, sin mirar el contenido. Así, cualquier configuración YAML que viva bajo `api/`,
 `openapi/` o `spec/` exige un generado que no existe.
 
@@ -148,3 +149,52 @@ fila se movió a `backend/` para no mezclar los dos defectos, y éste salió com
   para el generado de sqlc; acá para la fuente OpenAPI.
 - **192**: su arreglo introdujo el `sqlc.yaml` como señal, y esa señal es justo lo que este guard toma
   por una especificación cuando vive bajo `api/`.
+
+## Cierre
+
+**Resuelto en 0.99.0, por el punto 1 del fix.** Recorriendo lo que enumeró:
+
+- **Fix 1, mirar la primera clave del archivo staged → se hizo.** `declaresOpenApi` (`engine/hooks/verify.js`)
+  lee el blob con `git show :<ruta>` y busca `openapi:` o `swagger:` en los primeros 4 KB. La carpeta quedó
+  como filtro previo (`OPENAPI_CANDIDATE`), así que sólo se lee lo que ya era candidato.
+- **Fix 2, excluir por nombre las configs conocidas → se decidió que no**, por lo que el propio caso dice: es
+  una lista de lo que no es OpenAPI y envejece con cada herramienta nueva (R27).
+- **Tradeoff de la especificación partida en fragmentos → se resolvió, no se aceptó el hueco.** Un candidato
+  que no declara nada cuenta si su carpeta de primer nivel tiene en el índice un `.yaml` que sí declare
+  `openapi:` o `swagger:` (`changedOpenApiSpec`). Así `api/paths/users.yaml` sigue pidiendo el generado junto a
+  un `api/openapi.yaml`, y `api/sqlc.yaml` no lo pide en una carpeta sin especificación. Lo que queda: en una
+  carpeta **mixta** —especificación y config de sqlc juntas en `api/`— cambiar la config sigue disparando.
+  Separar eso pediría resolver los `$ref`, y no lo vale.
+- **Tradeoff del costo de `git show` → aceptado**: un `show` por candidato, y un `ls-files` por carpeta sólo si
+  ningún candidato declaró nada.
+- **Tradeoff de JSON → queda igual que antes**, como decía el caso: una especificación en `openapi.json` no
+  dispara ni antes ni después.
+
+**Lo que el caso no preveía: un archivo borrado.** Figura en el índice como cambio y `git show :<ruta>` ya no
+lo encuentra. Leído así habría disparado siempre, también al borrar una config de sqlc. Se lee lo que era en
+`HEAD`: borrar una especificación dispara, borrar la config de sqlc no. Si ninguno de los dos lo tiene, el
+guard dispara —no pudo mirar, no afloja—; esa rama es inobservable, porque un archivo del índice está en uno
+de los dos o `stagedForCommit` ya frenó antes, igual que el `ls-files` fallido del 187.
+
+### Qué se corrió
+
+- **La reproducción del caso, tal como está escrita, contra el guard arreglado** (2026-09-23):
+
+  ```
+  == sqlc-en-api: api/sqlc.yaml               PASA (verify no bloqueó)
+  == compose-en-api: api/docker-compose.yml   PASA (verify no bloqueó)
+  == ci-en-spec: spec/fixtures/config.yaml    PASA (verify no bloqueó)
+  == sqlc-en-backend: backend/sqlc.yaml       PASA (verify no bloqueó)
+  == openapi-de-verdad: api/openapi.yaml      PASA (verify no bloqueó)
+  --- control: api/openapi.yaml con «openapi: 3.0.0»
+  BLOQUEADO: Cambió una fuente OpenAPI/Swagger sin incluir código regenerado…
+  ```
+
+  El quinto del caso contiene `version: "2"`: se llama como una especificación y no lo es, y ahora pasa.
+- **La tabla nueva en `test/hooks/verify.test.js`**, diez filas, con las tres del caso en rojo sobre el código
+  anterior. **Cuatro mutaciones en una copia del árbol**: todo `.yaml` como especificación (5 en rojo), sin
+  fragmentos (3), sin `HEAD` para lo borrado (2), y el último `return` aflojando, que sobrevive por lo dicho
+  arriba. Una quinta, sin `--full-name` en el `ls-files`, sobrevivía también: `git` resuelve `:../ruta`
+  relativo al directorio, así que la bandera sobraba y se quitó.
+- `npm run ci`, exit 0, 992 pruebas.
+

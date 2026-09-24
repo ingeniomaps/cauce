@@ -82,6 +82,11 @@ diseño — eso vive en el commit y en el código.
   los guards y pasaba: todos apagados sin avisar. Ahora un `pre-shell` sin comando o un `pre-files` sin
   archivo se niegan, y el motivo nombra los campos que sí llegaron.
 
+- **El gate de commit reconoce una especificación OpenAPI por lo que declara, no por la carpeta.** Cualquier
+  `.yaml` bajo `api/`, `openapi/` o `spec/` pedía regenerar el cliente: una config de sqlc, un compose o un
+  fixture ahí frenaban cada commit. Ahora cuenta el que declara `openapi:` o `swagger:`, o un fragmento de una
+  carpeta que tiene uno.
+
 ### Cambiado
 
 - **`check` falla si una entrada de DONE tiene `tests:` todo `n/a` y su commit toca algo que no sea `.md`,
