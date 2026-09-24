@@ -10,16 +10,48 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { writableOutsideRoots } = require('../config/paths')
 
+// Cuánto se espera el primer byte de stdin. El runner escribe su JSON al lanzar el hook, así que en el
+// camino real ya está en el búfer cuando Node termina de arrancar: el plazo sólo cubre una máquina
+// cargada, y dos segundos le sobran. Lo que agota el plazo es un stdin heredado que nadie va a escribir
+// —una terminal, un pipe o un socket abiertos— y ahí cada segundo de más es un segundo colgado. Fijo y
+// no configurable: una variable que lo estire no arregla nada que el runner necesite (caso 190).
+const FIRST_BYTE_MS = 2000
+
+const noInput = (waitMs) => `no llegó nada por stdin en ${waitMs} ms: stdin está abierto y nadie escribe`
+  + ' (una terminal, o un pipe o un socket que no se cierran). Un guard que no sabe qué juzgar no autoriza.'
+  + ' Para invocarlo a mano, pasale el JSON del hook —printf \'%s\' \'{"tool_input":{"command":"…"}}\' |'
+  + ' guard-….sh— o correlo sin entrada con </dev/null.'
+
 // Sin stdin no hay nada que leer y los guards caen a las variables de entorno; con stdin ilegible sí
 // hay algo y no se entiende, que es otra cosa. Devolver `{}` ahí dejaba a cada guard sin comando ni
 // archivos, o sea permitiendo todo, y en silencio.
-function readInput() {
-  let raw = ''
-  try { raw = fs.readFileSync(0, 'utf8') } catch { /* sin stdin */ }
-  if (!raw.trim()) return {}
-  try { return JSON.parse(raw) } catch (error) {
-    block(`la entrada del hook no es JSON válido (${error.message}).`)
-  }
+//
+// Hay un tercer estado, y es el del caso 190: stdin abierto que no manda nada. Leerlo sincrónico
+// esperaba hasta que el otro extremo cerrara —horas, en la corrida que lo encontró— sin que el guard
+// llegara a correr. Se lee asíncrono porque es la única forma de ponerle plazo a un socket: reabrir el 0
+// con `O_NONBLOCK` falla con `ENXIO` sobre un socket, que era el descriptor del colgado original.
+//
+// El plazo es sobre el primer byte y no sobre la lectura: un `Write` grande llega en tramos, y cortarlo
+// a mitad de camino bloquearía una escritura legítima. Agotado, **bloquea**: tratarlo como entrada vacía
+// dejaba pasar todo lo que no estuviera en `OPS_HOOK_COMMAND`, que es un guard apagado sin rastro (R27).
+function readInput(stream = process.stdin, waitMs = FIRST_BYTE_MS) {
+  return new Promise((resolve, reject) => {
+    const chunks = []
+    const timer = setTimeout(() => {
+      stream.destroy()
+      reject(blocked(noInput(waitMs)))
+    }, waitMs)
+    stream.on('data', (chunk) => { clearTimeout(timer); chunks.push(chunk) })
+    stream.on('error', () => { clearTimeout(timer); resolve({}) })
+    stream.on('end', () => {
+      clearTimeout(timer)
+      const raw = Buffer.concat(chunks).toString('utf8')
+      if (!raw.trim()) return resolve({})
+      try { resolve(JSON.parse(raw)) } catch (error) {
+        reject(blocked(`la entrada del hook no es JSON válido (${error.message}).`))
+      }
+    })
+  })
 }
 
 // El cuerpo de un heredoc es entrada estándar: no se ejecuta, se escribe. Juzgarlo como comando frenaba
@@ -87,10 +119,14 @@ function cwdOf(input) {
   return path.resolve(String(cwd))
 }
 
-function block(message) {
+function blocked(message) {
   const error = new Error(message)
   error.blocked = true
-  throw error
+  return error
+}
+
+function block(message) {
+  throw blocked(message)
 }
 
 // La configuración de la raíz ops. Un guard que no puede leerla bloquea: `findOpsRoot` sólo devuelve
@@ -262,7 +298,7 @@ function opsRoot(input) {
 }
 
 module.exports = {
-  readInput, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
+  readInput, FIRST_BYTE_MS, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
   gitDirectory, isCommit, withoutGitGlobals, stagedFiles, stagedForCommit,
   findOpsRoot, opsRoot,
   writableRoots, outsideRoots, DECLARE_IT, unquoted,

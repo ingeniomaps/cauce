@@ -194,11 +194,13 @@ function executeAll(names, input) {
   for (const name of resolve(names)) execute(name, input)
 }
 
+// Asíncrono sólo por la lectura de stdin, que necesita un plazo (`input.js`); los guards siguen siendo
+// sincrónicos y `executeAll` también, así que quien los llama directo no cambia.
 if (require.main === module) {
-  try { executeAll(process.argv.slice(2), readInput()) } catch (error) {
+  readInput().then((input) => executeAll(process.argv.slice(2), input)).catch((error) => {
     console.error(`BLOQUEADO: ${error.message}`)
     process.exit(error.blocked ? 2 : 1)
-  }
+  })
 }
 
 module.exports = {
