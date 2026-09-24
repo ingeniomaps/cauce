@@ -69,6 +69,17 @@ test('stdin abierto sin datos: el guard termina bloqueando', { concurrency: true
     assert.match(result.stderr, /BLOQUEADO: no llegó nada por stdin/)
   })
 
+  // Un JSON completo con el pipe abierto: quien escribió no cerró, pero el documento está entero. Esperar el
+  // cierre dejaba al guard colgado igual que sin datos; pasado el plazo sin nada nuevo, se juzga.
+  t.test('JSON completo y pipe que nadie cierra', async () => {
+    let stdin
+    const result = await launch(process.execPath, [RUN, 'git-add'], { feed: (s) => { stdin = s; s.write(BLOCKED) } })
+    stdin.destroy()
+    assert.equal(result.killed, false, `el guard no terminó solo en ${LIMIT} ms`)
+    assert.equal(result.status, 2, result.stderr)
+    assert.match(result.stderr, /git add/, 'juzgó el comando que llegó, no la falta de entrada')
+  })
+
   // El plazo es sobre el primer byte y no sobre la lectura: el segundo trozo llega después de que el plazo
   // venció, y aun así se lee entero. Un plazo sobre el total cortaría acá un `Write` grande.
   t.test('JSON en dos trozos, el segundo después del plazo', async () => {

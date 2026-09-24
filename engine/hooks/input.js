@@ -45,10 +45,26 @@ function readInput(stream = process.stdin, waitMs = FIRST_BYTE_MS, usage = GUARD
       stream.destroy()
       reject(blocked(noInput(waitMs, usage)))
     }, waitMs)
-    stream.on('data', (chunk) => { clearTimeout(timer); chunks.push(chunk) })
-    stream.on('error', () => { clearTimeout(timer); resolve({}) })
+    // Llegado el primer byte, el plazo cambia de sentido: si pasa sin nada nuevo y lo recibido ya es un JSON
+    // entero, el documento está completo aunque quien escribió no haya cerrado el pipe, y esperar el cierre
+    // colgaba al guard igual que sin datos. Un JSON a medias sigue esperando: un `Write` grande puede llegar
+    // en tramos con pausas, y cortarlo bloquearía una escritura legítima.
+    let idle
+    stream.on('data', (chunk) => {
+      clearTimeout(timer)
+      clearTimeout(idle)
+      chunks.push(chunk)
+      idle = setTimeout(() => {
+        let parsed
+        try { parsed = JSON.parse(Buffer.concat(chunks).toString('utf8')) } catch { return }
+        stream.destroy()
+        resolve(parsed)
+      }, waitMs)
+    })
+    stream.on('error', () => { clearTimeout(timer); clearTimeout(idle); resolve({}) })
     stream.on('end', () => {
       clearTimeout(timer)
+      clearTimeout(idle)
       const raw = Buffer.concat(chunks).toString('utf8')
       if (!raw.trim()) return resolve({})
       try { resolve(JSON.parse(raw)) } catch (error) {
