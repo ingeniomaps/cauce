@@ -62,6 +62,15 @@ test('un «dale» a un push frenado aprueba ese push y ningún otro', () => {
   try {
     const stopped = messageOf('destructive', push(chat.says('subí la rama'), 'git push origin feat/x'))
     assert.match(stopped, /si lo que contesta es un sí, reintentá el mismo push/)
+    // Una prohibición de publicar en otra oración retiene el push aunque no nombre la rama: leer sólo la
+    // primera cláusula la perdía, y el «dale» siguiente publicaba lo que ella acababa de prohibir.
+    for (const forbid of ['Seguí con el refactor. No hagas push todavía', 'dale con los tests, pero no subas nada']) {
+      const one = chatSession()
+      try {
+        messageOf('destructive', push(one.says(forbid), 'git push origin feat/x'))
+        blocked('destructive', push(one.says('dale'), 'git push origin feat/x'), WORK)
+      } finally { one.close() }
+    }
     // Frenado mientras ella decía que no, no se ofrece confirmar: un sí no lo aprobaría (caso 188).
     const denied = chatSession()
     try {

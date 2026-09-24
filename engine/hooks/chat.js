@@ -139,7 +139,16 @@ function mentions(text, item) {
 // el remoto y la rama tienen que aparecer tal cual, como palabras enteras, en una frase que pida publicar
 // —un verbo de publicar, no cualquiera: «revisá feat/x en origin» no pide un push— y sin una negación
 // antes del último de los dos.
-const PUSHES = new Set('subi sube subir pushea pushear push publica publicar publish empuja empujar'.split(' '))
+// Con las formas de una prohibición —«no subas», «no publiques»—, que es como se niega un push.
+const PUSHES = new Set(('subi sube subir subas pushea pushear pushees push publica publicar publiques publish '
+  + 'empuja empujar empujes').split(' '))
+const pushVerb = (clause) => (clause.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .match(/[a-z]+/g) || []).some((word) => PUSHES.has(word) || PUSHES.has(word.replace(ENCLITIC, '')))
+
+// Un push no se nombra como un archivo: «no hagas push todavía» lo prohíbe sin decir remoto ni rama. Basta una
+// cláusula con un verbo de publicar y una negación.
+const refusesPush = (text) => String(text).split(CLAUSE)
+  .some((clause) => pushVerb(clause) && NEGATION.test(clause))
 function ordersPush(text, item) {
   const [verb, remote, branch] = item.split(' ')
   if (verb !== 'push' || !remote || !branch) return false
@@ -150,10 +159,7 @@ function ordersPush(text, item) {
       .map((word) => word.replace(/^'+/, '').replace(/\.$/, '').replace(/'+$/, ''))
     const last = Math.max(words.indexOf(remote), words.indexOf(branch))
     if (words.indexOf(remote) < 0 || words.indexOf(branch) < 0) return false
-    const plain = clause.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .match(/[a-z]+/g) || []
-    return plain.some((word) => PUSHES.has(word) || PUSHES.has(word.replace(ENCLITIC, '')))
-      && !NEGATION.test(words.slice(0, last + 1).join(' '))
+    return pushVerb(clause) && !NEGATION.test(words.slice(0, last + 1).join(' '))
   })
 }
 
@@ -389,7 +395,8 @@ function hold(input, items) {
     const head = spoken.split(CLAUSE)[0]
     const dropped = NEGATION.test(head) || HALT.test(head)
       ? items
-      : items.filter((item) => mentions(spoken, item).denied)
+      : items.filter((item) => mentions(spoken, item).denied
+        || (item.startsWith('push ') && refusesPush(spoken)))
     const open = items.filter((item) => !dropped.includes(item))
     saved.pending = [...new Set([...saved.pending, ...open])]
     fs.writeFileSync(recordPath(input.session_id), JSON.stringify(saved))
