@@ -116,7 +116,7 @@ function workMessage(items, input) {
   const held = CHAT.hold(input, items)
   const dropped = held ? held.dropped : []
   const chat = held && dropped.length < items.length
-  const how = (dropped.length ? AP.REFUSED(dropped) : '') + (chat
+  const how = (dropped.length ? AP.REFUSED(dropped, input) : '') + (chat
     ? 'Decile a la persona qué se frenó y pedile que lo confirme con sus palabras: si lo que contesta es un '
       + 'sí, reintentá el mismo push y pasa; si duda, pregunta o dice que no, no reintentes. '
       + 'También pasa si lo pide nombrando el remoto y la rama, como «subí feat/x a origin».'

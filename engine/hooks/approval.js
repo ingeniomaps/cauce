@@ -82,9 +82,12 @@ function where(input) {
 // Lo que el último mensaje de la persona negaba no quedó esperando su confirmación, así que un «dale» no
 // lo aprobaría: ofrecerlo sería mandarla a contestar para volver a frenar (caso 188). Lo que sí lo pasa es
 // pedirlo nombrándolo, que es una orden y no una confirmación.
-function REFUSED(items) {
+function REFUSED(items, input = {}) {
   return `Lo último que dijo la persona niega o frena ${items.join(', ')}, así que no quedó esperando su `
-    + 'confirmación y un sí no lo aprobaría: no reintentes. Si lo quiere, que lo pida en el chat nombrándolo. '
+    + 'confirmación y un sí no lo aprobaría: no reintentes. '
+    + (input.agent_id
+      ? 'Devolvele el bloqueo a quien te lanzó. '
+      : 'Si lo quiere, que lo pida en el chat nombrándolo. ')
 }
 
 // Cómo se toma la salida angosta, dicho una vez porque lo dicen todos los bloqueos que la tienen. Lleva
@@ -113,14 +116,22 @@ function HOW(variable, lines, input, pasteable = lines) {
   // siguientes** es la dirección permisiva, la que nadie nota porque lo que no ocurre es un bloqueo.
   // `check` la muestra al final de la corrida —es lo que trajo el 117—, y al concederla no la decía nadie
   // (caso 170).
-  const ask = chat
-    ? 'Decile a la persona qué se frenó y por qué, y pedile que lo confirme con sus palabras: un «dale» '
+  // Un subagente no puede esperar la respuesta —su turno termina antes—, así que lo que le toca es
+  // devolver el bloqueo: preguntar lo hace quien lo lanzó, y el reintento pasa aunque vuelva a ser delegado
+  // (caso 186).
+  const lead = input.agent_id
+    ? 'Sos un subagente y no podés esperar la respuesta: devolvele a quien te lanzó qué se frenó y por qué, '
+      + 'para que se lo pregunte a la persona. Si ella lo confirma, el mismo cambio pasa aunque lo reintente '
+      + 'un subagente. '
+    : 'Decile a la persona qué se frenó y por qué, y pedile que lo confirme con sus palabras: un «dale» '
       + 'alcanza, pero no hace falta esa palabra. Si lo que contesta es un sí, reintentá el mismo cambio y '
       + 'pasa; si duda, pregunta o dice que no, no reintentes. Juzgarlo te toca a vos: el guard sólo frena la '
-      + 'respuesta que niega, frena o pregunta. Esa confirmación cubre lo que se frenó y nada más —algo nuevo '
-      + 'vuelve a frenar— y sigue valiendo en los mensajes siguientes hasta que ella lo niegue. '
+      + 'respuesta que niega, frena o pregunta. '
+  const ask = chat
+    ? lead + 'Esa confirmación cubre lo que se frenó y nada más —algo nuevo vuelve a frenar— y sigue valiendo '
+      + 'en los mensajes siguientes hasta que ella lo niegue. '
     : ''
-  const refused = dropped.length ? REFUSED(dropped) : ''
+  const refused = dropped.length ? REFUSED(dropped, input) : ''
   // Sin chat la salida es la misma, y también se dice como cosa de ella: el imperativo que el párrafo de
   // arriba sacó de la rama con chat seguía acá, y es lo único que ve quien no tiene a nadie en el chat
   // (caso 194). A quien corre el guard le toca otra cosa, y se le dice cuál.

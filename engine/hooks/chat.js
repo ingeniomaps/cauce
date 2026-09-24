@@ -180,9 +180,13 @@ function record(input) {
     const text = String(input.prompt || '')
     const human = !process.env.CI && !/^\s*</.test(text)
     const previous = load(input.session_id)
-    const approved = human && previous && !refuses(text)
+    const answered = human && previous && !refuses(text)
       ? previous.pending.filter((item) => !mentions(text, item).denied)
       : []
+    // Lo que ella confirmó también sobrevive al aviso, porque quien lo usa puede ser un subagente que
+    // reintenta mientras ella no escribe nada (caso 186). A la sesión principal no le cambia nada: su
+    // lectura, `said`, exige un mensaje de la persona.
+    const approved = human || !previous ? answered : previous.approved || []
     const granted = previous ? (previous.granted || []).filter((one) => !mentions(text, one).denied) : []
     // El acote viaja con lo concedido: lo que se negó pierde las dos cosas a la vez, y nada queda con un
     // alcance que ya no acota a nadie.
@@ -232,8 +236,12 @@ function said(input) {
 //
 // Un registro escrito antes de que `askable` existiera no lo trae y queda afuera: la sesión pierde la
 // salida por chat hasta el mensaje siguiente, que la vuelve a escribir. Es la dirección barata del error.
+//
+// Un subagente también tiene a quién preguntarle: la persona es de la sesión, no de la llamada, y el
+// subagente hereda la sesión. Excluirlo acá cerraba la salida por chat en todo trabajo delegado —Build en
+// cada `autobuild`— y la persona decía que sí sin que llegara a ningún lado (caso 186).
 function present(input) {
-  if (process.env.CI || input.agent_id || !input.session_id) return null
+  if (process.env.CI || !input.session_id) return null
   const saved = load(input.session_id)
   return saved && saved.askable ? saved : null
 }
@@ -309,14 +317,34 @@ function grant(input, saved, entries) {
 // en el mensaje en curso o aprobó con un «dale» (caso 119).
 function authorized(input, items, { asked = named, inherit = true } = {}) {
   const saved = said(input)
-  if (!saved) return []
+  if (!saved) return confirmed(input, items).map(({ item, via }) => ({ item, via }))
   return items.map((item) => ({ item, via: why(saved, item, asked, inherit) })).filter((one) => one.via)
+}
+
+// Lo que la persona confirmó y un subagente puede usar: eso y nada más. Una orden no, porque la da el mensaje
+// y la llamada de un subagente no es ese mensaje —es lo que `said` cuida—; lo concedido antes tampoco. Lo
+// confirmado sí: son los ítems exactos que un bloqueo nombró y ella aprobó al contestarle (caso 186). Sin
+// la comparación de `id`, porque el subagente puede reintentar después del mensaje en que ella contestó.
+function confirmed(input, items) {
+  if (process.env.CI || !input.agent_id || !input.session_id) return []
+  const saved = load(input.session_id)
+  const approved = (saved && saved.approved) || []
+  return items.filter((item) => approved.includes(item)).map((item) => ({ item, via: 'dale', saved }))
 }
 
 // Lo que la persona no autorizó de lo que un guard está por frenar; lo que sí, queda concedido.
 function unauthorized(input, items) {
   const saved = said(input)
-  if (!saved) return items
+  if (!saved) {
+    const passed = confirmed(input, items)
+    if (passed.length) {
+      const record = passed[0].saved
+      grant(input, record, passed.map((one) => ({ item: one.item, via: one.via,
+        scope: (record.scopes || {})[one.item] || '' })))
+    }
+    const cleared = new Set(passed.map((one) => one.item))
+    return items.filter((item) => !cleared.has(item))
+  }
   const passed = items.map((item) => ({ item, via: why(saved, item, named, true) })).filter((one) => one.via)
   // El alcance sale del mensaje cuando es éste el que lo concede, y del registro cuando se hereda: una
   // orden vieja no se reinterpreta contra un texto que no la nombraba.

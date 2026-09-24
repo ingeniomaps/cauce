@@ -10,7 +10,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const { execute, executeAll, guards } = require('../../engine/hooks/run')
-const { DIR } = require('../../engine/hooks/chat')
+const { DIR, authorized } = require('../../engine/hooks/chat')
 
 test('lo que la persona nombró en el chat pasa; lo que no nombró, negó o no pidió ella se sigue frenando', () => {
   const root = planFirstRoot('ops-hook-chat-nombra-', WIP_CON_PLAN)
@@ -373,4 +373,34 @@ test('una negación sobre otra cosa no borra el bloqueo, y la que nombra lo fren
       assert.doesNotMatch(frenado, /pedile que lo confirme/, `«${pedido}» no ofrece una confirmación inútil`)
     }
   } finally { for (const chat of sesiones) chat.close() }
+})
+
+// Caso 186, junto a `confirmed` en engine/hooks/chat.js. Que una orden o lo concedido antes no alcancen al
+// subagente lo fija «lo que la persona nombró en el chat pasa».
+test('el trabajo delegado ofrece preguntar, y lo que la persona confirma le llega al subagente', () => {
+  const root = planFirstRoot('ops-hook-chat-delegado-', WIP_CON_PLAN)
+  const lee = (call, file = '.env') => call({ cwd: root, tool_input: { file_path: path.join(root, file) } })
+  const sub = (call) => (extra) => call({ agent_id: 'a1', ...extra })
+  const chat = chatSession()
+  try {
+    const frenado = messageOf('secrets-read', lee(sub(chat.says('revisá cómo arranca el servicio'))))
+    assert.match(frenado, /devolvele a quien te lanzó qué se frenó/)
+    assert.doesNotMatch(frenado, /Esto lo aprueba una persona/)
+
+    chat.says('dale')
+    const despertado = chat.says('<task-notification>\n<task-id>abc</task-id>\n</task-notification>')
+    assert.doesNotThrow(() => execute('secrets-read', lee(sub(despertado))))
+    blocked('secrets-read', lee(sub(despertado), 'id_ed25519'), /leerla/)
+    // Los gates de un commit preguntan sin heredar, y ahí también le llega: es donde frenaba el caso 187.
+    const env = path.join(root, '.env')
+    assert.deepEqual(authorized(sub(despertado)({}), [env, 'otro'], { inherit: false }), [{ item: env, via: 'dale' }])
+  } finally { chat.close() }
+
+  // Lo que ella negó no le llega, y el subagente no puede pedírselo en el chat: lo devuelve.
+  const niega = chatSession()
+  try {
+    const frenado = messageOf('secrets-read', lee(sub(niega.says('no toques el .env'))))
+    assert.match(frenado, /no reintentes\. Devolvele el bloqueo a quien te lanzó/)
+    assert.doesNotMatch(frenado, /que lo pida en el chat/)
+  } finally { niega.close() }
 })
