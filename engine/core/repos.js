@@ -153,4 +153,18 @@ function unrecordedHumanActions(opsRoot, rows) {
     .map((row) => `HUMAN_ACTIONS.md: ${row.task} figura resuelta y ningún commit la registró`)
 }
 
-module.exports = { reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions }
+// Qué archivos tocó un commit, buscado en todos los repositorios declarados: una entrada de DONE nombra
+// el sha y no el repositorio. Devuelve null si ninguno lo conoce, y quien pregunta decide qué significa.
+// `--root` es para que el primer commit de un repositorio también liste lo suyo.
+function commitFiles(opsRoot) {
+  const repos = reposFor(opsRoot, '.')
+  return (sha) => {
+    for (const repo of repos) {
+      const shown = git(repo, 'diff-tree', '--no-commit-id', '--name-only', '-r', '--root', sha)
+      if (shown.status === 0) return shown.stdout.split('\n').map((line) => line.trim()).filter(Boolean)
+    }
+    return null
+  }
+}
+
+module.exports = { reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions, commitFiles }

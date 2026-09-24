@@ -152,7 +152,7 @@ test('una aceptación que nombra el registro se avisa antes de construir', () =>
   assert.deepEqual(juzgar('el test deriva el set desde `db/queries/*.sql`'), [])
   assert.deepEqual(juzgar(''), [], 'sin aceptación no hay nada que mirar')
 
-  // Por qué la salida es una marca y no una frase reconocida vive en `contracts.js`, junto al criterio.
+  // Por qué la salida es una marca y no una frase reconocida vive en `automatization/shared/acceptance.js`.
   // Acá se fija lo que el aviso promete: que ofrece esa salida y que ponerla alcanza.
   assert.match(juzgar('con la evidencia registrada')[0], /declaralo con "\(fuera de verify: <razón>\)"/)
   assert.deepEqual(juzgar('lo comprueba quien revisa (fuera de verify: el commit no existe en Verify)'), [],

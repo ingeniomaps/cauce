@@ -76,8 +76,8 @@ test('Build declara el rojo previo en su schema', () => {
 
 test('la aceptación viaja a Verify, que declara qué criterio no cubre', () => {
   assert.match(
-    workflow, /required: \['passed', 'commands', 'details', 'uncovered'\]/,
-    'verify declara qué criterio quedó sin codificar',
+    workflow, /required: \['passed', 'commands', 'details', 'uncovered', 'covered'\]/,
+    'verify declara qué criterio quedó sin codificar y cuál sí, con qué prueba',
   )
   const verify = workflow.slice(workflow.indexOf("phase('Verify')"), workflow.indexOf("phase('QA')"))
   assert.match(verify, /task\.acceptance/, 'la aceptación viaja al que audita el fuente de los tests')
@@ -88,7 +88,8 @@ test('la aceptación viaja a Verify, que declara qué criterio no cubre', () => 
 // Que después se encamine bien lo ejecuta `autobuild.test.js`.
 test('lo descubierto declara de qué tipo es y con qué se cierra', () => {
   assert.match(workflow, /kind: \{ type: 'string', enum: \['edge', 'open'\] \}/, 'Build declara qué encontró')
-  assert.match(workflow, /enum: \['missing-test', 'ambiguous'\]/, 'el criterio sin cubrir declara su causa')
+  assert.match(workflow, /enum: \['missing-test', 'ambiguous', 'no-surface'\]/,
+    'el criterio sin cubrir declara su causa')
   assert.match(
     workflow, /dejó abierta[\s\S]{0,200}quién puede tomarla/,
     'y una decisión abierta se registra pidiendo quién puede tomarla',

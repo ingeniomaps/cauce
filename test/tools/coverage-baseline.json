@@ -309,6 +309,11 @@
     "branches": 78,
     "functions": 100
   },
+  "engine/planning/acceptance.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/planning/adoption.js": {
     "lines": 100,
     "branches": 100,

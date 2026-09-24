@@ -4,6 +4,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const P = require('./parser')
 const { PLACEHOLDERS } = require('../core/onboarding')
+const { acceptanceConditions, OUT_OF_VERIFY, NON_EXECUTABLE } = require('./acceptance')
 
 const TEST_TRACE = /^(?:n\/a\s*[—-]\s*.+|(?:A|C\d+)\s*(?:→|->)\s*\S.+)$/i
 const DECISION_TRACE = /\[(?:fuente|supuesto):\s*[^\]]+\]/i
@@ -40,12 +41,13 @@ function validDecisionTrace(value) {
 // sha. La salida explícita existe porque hay tareas que no producen commit —abrir una fila en
 // HUMAN_ACTIONS, registrar un informe—, y forzarlas a llenar el campo produce un sha inventado, que es
 // peor que la ausencia: parece evidencia.
+// Se corta en cada `|`, y en un `;` sólo cuando detrás viene un sha: el `;` aparece también dentro del
+// paréntesis final —`(api@main; sin footer Task:)`— y cortar ahí convertiría una nota en un commit que
+// falta. Cada tramo responde por sí mismo; validar sólo el primero dejaba pasar la mitad sin artefacto.
+const commitParts = (value) => String(value || '').trim().split(/\s*(?:\||;(?=\s*[0-9a-f]{7,40}\s))\s*/)
+
 function validCommitTrace(value) {
-  // Se corta en cada `|`, y en un `;` sólo cuando detrás viene un sha: el `;` aparece también dentro del
-  // paréntesis final —`(api@main; sin footer Task:)`— y cortar ahí convertiría una nota en un commit que
-  // falta. Cada tramo responde por sí mismo; validar sólo el primero dejaba pasar la mitad sin artefacto.
-  return String(value || '').trim().split(/\s*(?:\||;(?=\s*[0-9a-f]{7,40}\s))\s*/)
-    .every((part) => COMMIT_TRACE.test(part.trim()))
+  return commitParts(value).every((part) => COMMIT_TRACE.test(part.trim()))
 }
 
 // Los criterios que la evidencia realmente rastrea. `n/a — razón` no rastrea ninguno a propósito: es
@@ -165,14 +167,6 @@ const POST_VERIFY = [
   [/\bel reclamo\b|\bclaims\//i, 'el reclamo'],
 ]
 
-// La salida explícita, con la forma que el repositorio ya usa dos veces: `(sin partir: …)` para el umbral
-// de R17 y `n/a — razón` para `tests:` y `commit:`. Acá vale lo mismo que allá —«como lleva su razón
-// escrita se lee en el propio artefacto sin que nadie la cruce»— y por eso no se intenta adivinar si la
-// prosa excluye a Verify. Adivinarlo es lo que no se puede: la única aceptación real que nombra el commit
-// lo hace justamente para decir que no es condición de Verify, y cualquier lista de frases que la
-// reconociera enseñaría a escribir esa frase exacta para silenciar el aviso.
-const OUT_OF_VERIFY = /\(fuera de verify:\s*[^)]+\)/i
-
 // Una condición de aceptación que nombra el registro en vez del producto no se puede cumplir nunca: se
 // comprueba en Verify, que corre antes que Commit y que Done. El recorrido lo detecta —y hace bien—, pero
 // recién ahí: en la corrida que originó esto fueron 1,2 M de tokens y once agentes para terminar con el
@@ -194,8 +188,8 @@ function unverifiableAcceptance(milestones = []) {
   const warnings = []
   for (const milestone of milestones) {
     for (const task of milestone.tasks || []) {
-      for (const condition of String(task.acceptance || '').split(';').map((one) => one.trim())) {
-        if (!condition || OUT_OF_VERIFY.test(condition)) continue
+      for (const condition of acceptanceConditions(task.acceptance)) {
+        if (OUT_OF_VERIFY.test(condition)) continue
         const nombra = POST_VERIFY.filter(([pattern]) => pattern.test(condition))
         if (!nombra.length) continue
         warnings.push(`BACKLOG ${task.slug}: una condición nombra ${nombra.map(([, what]) => what).join(', ')}`
@@ -206,6 +200,44 @@ function unverifiableAcceptance(milestones = []) {
     }
   }
   return warnings
+}
+
+// `tests: n/a` dice que la tarea no produjo nada que se ejecute, y quien lo escribe es el mismo que quiere
+// cerrar: desde el 189 el recorrido lo emite cuando Verify declara `no-surface`, que es la palabra de un
+// modelo. Lo que la vuelve creíble es mirar qué tocó el commit, y eso no lo decide nadie. Se juzga el n/a
+// entero y no el mixto: en una tarea que rastrea algún criterio con su prueba, el código del commit es el
+// de esos criterios y no dice nada del que se declaró sin superficie.
+//
+// `filesOf` devuelve los archivos de un sha, o null si ningún repositorio lo conoce. Ahí calla, igual que
+// el resto de lo que pregunta a git desde `check`: un sha que no se encuentra no es superficie, y avisarlo
+// sería inventar el hallazgo. Lo adoptado queda afuera por lo mismo que en el resto de DONE: se escribió
+// antes de que el contrato lo pidiera.
+//
+// Y rige desde que existe. Una entrada cerrada antes con `tests: n/a` sobre código no violó nada que se le
+// hubiera pedido, y frenarla ahora pondría `check` en rojo con el `upgrade` —y con él al guard que lo corre
+// antes de cada commit— por algo que nadie puede corregir sin reescribir evidencia. Es la misma razón por
+// la que se exime lo adoptado, aplicada a lo que ya estaba cerrado cuando la regla llegó.
+const NOT_APPLICABLE = /^n\/a\s*[—-]/i
+const SURFACE_SINCE = '2026-09-24'
+
+function surfaceWithoutTests(entries, filesOf, adopted = new Set()) {
+  const errors = []
+  for (const entry of entries) {
+    const traces = splitTraces(entry.tests)
+    if (adopted.has(entry.slug) || !traces.length || !traces.every((one) => NOT_APPLICABLE.test(one))) continue
+    if (!(String(entry.fecha || '') >= SURFACE_SINCE)) continue
+    for (const sha of commitParts(entry.commit).map((part) => (part.match(/^([0-9a-f]{7,40})\s/) || [])[1])) {
+      if (!sha) continue
+      const surface = (filesOf(sha) || [])
+        .filter((file) => !NON_EXECUTABLE.includes(path.extname(file).toLowerCase()))
+      if (!surface.length) continue
+      const shown = surface.length > 5 ? [...surface.slice(0, 5), `y ${surface.length - 5} más`] : surface
+      errors.push(`${entry.source} ${entry.slug}: tests: n/a dice que no hay superficie ejecutable y el commit `
+        + `${sha} toca ${shown.join(', ')}; sólo ${NON_EXECUTABLE.join(', ')} cuentan como no ejecutables, `
+        + 'así que esos criterios se rastrean con su prueba')
+    }
+  }
+  return errors
 }
 
 function duplicates(values) {
@@ -435,6 +467,7 @@ module.exports = {
   doneEntryErrors,
   doneCeremonyWarnings,
   unverifiableAcceptance,
+  surfaceWithoutTests,
   validCommitTrace,
   validDecisionTrace,
   validTestTrace,
