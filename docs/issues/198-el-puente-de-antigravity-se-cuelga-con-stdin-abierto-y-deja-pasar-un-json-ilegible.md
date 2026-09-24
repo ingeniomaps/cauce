@@ -218,8 +218,7 @@ ilegible. Recorriendo lo que el caso enumeró:
   desconocida del punto siguiente.
 - **Payload JSON válido con campos que `normalize()` no reconoce → no se cubrió acá**, como el caso
   anticipaba: decidir qué campos son obligatorios por evento es una decisión de producto, no parte de este
-  arreglo. **Sale como caso propio**, a abrir por quien coordina la tanda —la numeración de `docs/issues/`
-  la comparten sesiones paralelas y este cierre no la toma—.
+  arreglo. **Salió como caso propio: el 200.**
 - **Qué hace `agy` con stdin → sigue siendo hipótesis**, no comprobable sin instalar el puente y correr una
   sesión real. Lo que cambió es el costo de que sea falsa: antes cada llamada se colgaba, ahora se niega a
   los 2 s con el motivo escrito.
