@@ -242,6 +242,13 @@ test('un parche se juzga archivo por archivo, y cada uno por el bloque que aplic
     /en el bloque que aplica.*DROP TABLE/)
   // Sin marcador en el contexto no se sabe de qué lado cae: se juzga lo agregado entero, como antes.
   blocked('migrations', patch(update(['@@', ' SELECT 1;', '+DROP TABLE legacy_items;'])), /SQL destructivo/)
+  // `*** Move to:` y `*** End of File` son líneas del formato dentro de una sección, no el fin de ella: tomarlas
+  // como tal dejaba sin juzgar lo que venía después, y el guard viejo, que juzgaba el sobre entero, sí lo frenaba.
+  const renamed = [`*** Update File: ${file}`, '*** Move to: db/migrations/20260924000000_renamed.sql']
+  blocked('migrations', patch([...renamed, '@@', ' SELECT 1;', '+DROP TABLE legacy_items;'].join('\n')),
+    /SQL destructivo/)
+  blocked('migrations', patch(update(['@@', ' SELECT 1;', '+SELECT 2;', '*** End of File', '@@',
+    '+DROP TABLE legacy_items;'])), /SQL destructivo/)
   // Lo que se quita no se juzga: sacar un DROP no destruye nada.
   passes(patch(update(['@@', ' -- +goose Up', '-DROP TABLE legacy_items;', '+SELECT 1;'])))
   // Y no cuenta para partir: sin el `Down` que el hunk quita, lo agregado después cae en lo que aplica.

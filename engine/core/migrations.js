@@ -165,8 +165,10 @@ function judged(file, text, edit = {}) {
 }
 
 // Las secciones de un `apply_patch`, por archivo: la línea `*** Add|Update|Delete File: <ruta>` y lo que
-// sigue hasta la próxima que empiece con `*** `. Cada línea conserva su prefijo —`+` agregada, `-` quitada,
-// ` ` contexto— porque de él depende qué se juzga; `@@` separa hunks y no es contenido.
+// sigue hasta la cabecera del próximo archivo o `*** End Patch`. Cada línea conserva su prefijo —`+`
+// agregada, `-` quitada, ` ` contexto— porque de él depende qué se juzga. `@@`, `*** Move to:` y
+// `*** End of File` son del formato y no contenido, y no cortan la sección: cortarla ahí dejaba sin juzgar
+// lo que venía después, y pasaba lo que el guard viejo, que juzgaba el sobre entero, frenaba.
 function patchSections(patch) {
   const sections = new Map()
   let current = null
@@ -175,8 +177,10 @@ function patchSections(patch) {
     if (header) {
       current = { kind: header[1].toLowerCase(), lines: [] }
       sections.set(header[2].trim(), current)
-    } else if (line.startsWith('*** ')) current = null
-    else if (current && !line.startsWith('@@')) current.lines.push({ op: line[0] || ' ', text: line.slice(1) })
+    } else if (/^\*\*\* End Patch\s*$/.test(line)) current = null
+    else if (current && !line.startsWith('@@') && !line.startsWith('*** ')) {
+      current.lines.push({ op: line[0] || ' ', text: line.slice(1) })
+    }
   }
   return sections
 }
