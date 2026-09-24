@@ -35,7 +35,7 @@ En esta máquina, 2026-09-23/24, con `agy` 1.1.16:
 
 ```
 JSON hook "jsonhook__cauce_PreToolUse_0_0" failed: command failed: exit status 1, stderr: …
-Error: Cannot find module '/home/manuel/.gemini/config/plugins/cauce/.agents/plugins/cauce/hook.js'
+Error: Cannot find module '~/.gemini/config/plugins/cauce/.agents/plugins/cauce/hook.js'
 ```
 
 `agy` frenó todos los comandos, también `git status`: falla cerrado, pero ningún guard de Cauce juzgó nada. Con
