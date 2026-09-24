@@ -180,7 +180,10 @@ function record(input) {
     const text = String(input.prompt || '')
     const human = !process.env.CI && !/^\s*</.test(text)
     const previous = load(input.session_id)
-    const answered = human && previous && !refuses(text)
+    // Lanzar un recorrido no es contestar el bloqueo: para la sesión principal ya no valía —`said` descarta un
+    // mensaje `flow`—, pero lo aprobado sí les llegaba a los subagentes del recorrido (`confirmed`), así que
+    // escribir `/autobuild` aprobaba lo que estaba esperando una respuesta.
+    const answered = human && previous && !refuses(text) && !flowCommand(text)
       ? previous.pending.filter((item) => !mentions(text, item).denied)
       : []
     // Lo que ella confirmó también sobrevive al aviso, porque quien lo usa puede ser un subagente que

@@ -396,6 +396,13 @@ test('el trabajo delegado ofrece preguntar, y lo que la persona confirma le lleg
     assert.deepEqual(authorized(sub(woken)({}), [env, 'otro'], { inherit: false }), [{ item: env, via: 'dale' }])
   } finally { chat.close() }
 
+  // Lanzar un recorrido no es contestar el bloqueo: lo pendiente no les llega a los subagentes del recorrido.
+  const launched = chatSession()
+  try {
+    blocked('secrets-read', reads(launched.says('revisá cómo arranca el servicio')), /leerla/)
+    blocked('secrets-read', reads(sub(launched.says('/autobuild'))), /leerla/)
+  } finally { launched.close() }
+
   // Lo que ella negó no le llega, y el subagente no puede pedírselo en el chat: lo devuelve.
   const denies = chatSession()
   try {
