@@ -25,6 +25,7 @@ const {
 // Qué le falta a la superficie de automatización, que no comparte ayudantes con los tres verbos que
 // escriben. Se reexporta para que sus consumidores sigan pidiéndoselo a este módulo.
 const { check } = require('./check')
+const { registrationProblems } = require('./registration')
 
 // Ejecuta el puente del runner tal como él lo invoca, y desde otra carpeta. Instalado no es lo mismo que
 // operativo: un bridge que el runner no puede lanzar —porque su ruta es relativa y el cwd es otro, o
@@ -73,7 +74,9 @@ function probeBridge(paths, runner) {
   return problems
 }
 
-function doctor(root, name, output = console) {
+// `afterInstall` es la llamada con la que cierra `install`: ahí una copia registrada vieja es el paso que sigue
+// —registrar lo que se acaba de instalar—, no una instalación rota, así que se avisa en vez de fallar.
+function doctor(root, name, output = console, { afterInstall = false } = {}) {
   const runner = runnerManifest(root, name)
   const paths = runnerPaths(root, name, runner)
   const errors = []
@@ -156,6 +159,7 @@ function doctor(root, name, output = console) {
   }
   // Un puente que no responde niega cada llamada del runner: es error, no advertencia.
   for (const problem of probeBridge(paths, runner)) errors.push(problem)
+  for (const problem of registrationProblems(paths, runner)) (afterInstall ? warnings : errors).push(problem)
 
   const executable = spawnSync(
     'sh',
@@ -438,7 +442,7 @@ function install(root, name, output = console, options = {}) {
     const listing = runner.commands.names.map((nombre) => invocation.replace('{name}', nombre))
     output.log(`  ${name}: se invocan como ${listing.join(', ')}`)
   }
-  if (runner.activation && activated(runner) !== true) {
+  if (runner.activation && (activated(runner) !== true || registrationProblems(paths, runner).length)) {
     output.log(`  ${name}: falta registrarlo para que corra. Desde ${paths.install}:`)
     output.log(`    ${runner.activation.hint}`)
   }

@@ -245,11 +245,19 @@ test('doctor ejecuta el puente del runner, no sólo lo busca', () => {
   assert.equal(runCli(['init', target, '--name', 'P', '--mode', 'sidecar', '--no-install']).status, 0)
   linkEngine(target)
   assert.equal(runCli(['automation', 'install', target, 'antigravity']).status, 0)
-  assert.equal(A.doctor(target, 'antigravity', { warn() {}, error() {} }).errors.length, 0)
+  // Un home propio: por qué, en el encabezado de test/wiring/registration.test.js.
+  const home = path.join(base, 'home')
+  fs.mkdirSync(home)
+  const doctor = () => {
+    const before = process.env.HOME
+    process.env.HOME = home
+    try { return A.doctor(target, 'antigravity', { warn() {}, error() {} }) } finally { process.env.HOME = before }
+  }
+  assert.equal(doctor().errors.length, 0)
 
   const bridge = path.join(workspace, '.agents', 'plugins', 'cauce', 'hook.js')
   fs.appendFileSync(bridge, '\nesto no es javascript (\n')
-  const broken = A.doctor(target, 'antigravity', { warn() {}, error() {} })
+  const broken = doctor()
   assert.ok(broken.errors.some((error) => /hook\.js pre-shell/.test(error)), 'un puente que no arranca es error')
 })
 

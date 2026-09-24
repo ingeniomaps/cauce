@@ -52,6 +52,7 @@
   "roleSkills": ".agents/plugins/cauce/skills",
   "activation": {
     "hint": "agy plugin install .agents/plugins/cauce",
+    "registered": "~/.gemini/config/plugins/cauce",
     "verify": [
       "plugin",
       "list"

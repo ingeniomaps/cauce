@@ -59,6 +59,11 @@
     "branches": 54,
     "functions": 94
   },
+  "engine/automation/registration.js": {
+    "lines": 97,
+    "branches": 71,
+    "functions": 100
+  },
   "engine/automation/roles.js": {
     "lines": 100,
     "branches": 81,
