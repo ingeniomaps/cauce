@@ -219,13 +219,13 @@ function planFirst(input) {
   // Se lista recién acá, después de las dos salidas de arriba: quien tiene su plan sale por la primera y
   // no paga esta lectura, que es la misma razón por la que `hasTasks` se pregunta donde se pregunta.
   const foreign = readWips(planning).filter((one) => one.complete + one.pending > 0)
-  const estado = wip ? `WIP tiene la tarea ${wip.task} y ningún paso` : 'WIP está en IDLE'
+  const state = wip ? `WIP tiene la tarea ${wip.task} y ningún paso` : 'WIP está en IDLE'
   const why = foreign.length
     ? `hay plan escrito, pero bajo otro id: ${foreign.map((one) => `${one.runner} (${one.task})`).join(', ')}.\n`
       + 'Si ese plan es tuyo, volvé a su id con `export CAUCE_RUNNER=<id>` —`ops runners <planning>` los lista '
       + 'con su tarea y su avance— y repetí el cambio. Si vas a trabajar en paralelo, montá tu propio árbol '
       + 'con `ops worktree <planning> <tarea>`, que te devuelve el id hecho.\n'
-    : `${estado}, así que el plan todavía no está escrito.\n`
+    : `${state}, así que el plan todavía no está escrito.\n`
       + 'Escribí en tu planning/wip/<runner>.md la tarea y su plan aprobado —pasos numerados, cada uno con '
       + 'un estado verificable— y volvé al cambio. Si esto no es trabajo de una tarea, aprobá la ruta.\n'
   for (const raw of filesOf(input)) {

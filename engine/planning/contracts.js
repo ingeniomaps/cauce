@@ -120,8 +120,8 @@ function doneEntryErrors(entry, epics = []) {
 // Un carril declara **cuánta ceremonia** merecía la tarea; `n/a` en `review:` dice que la revisión no
 // corrió. `express` es el único que no convoca revisor, así que en los otros tres esa combinación es la
 // ADR incumplida, escrita en el propio registro.
-const CONVOCAN_REVISOR = ['directo', 'lite', 'full']
-const SIN_REVISION = /^n\/a\b/i
+const REVIEWED_LANES = ['directo', 'lite', 'full']
+const NO_REVIEW = /^n\/a\b/i
 
 // Lo que el registro puede decir sobre la ceremonia, y lo que todavía no. Los dos campos avisan en vez de
 // fallar por lo que dice `doneEntryErrors`, y cuentan en vez de listar porque al principio son todas: lo
@@ -136,22 +136,22 @@ const SIN_REVISION = /^n\/a\b/i
 // completo, pero eso lo sabe el recorrido y no la entrada. Avisar sobre lo que hay que deducir es lo que
 // llena de ruido un aviso que después nadie mira.
 function doneCeremonyWarnings(done, adopted = new Set()) {
-  const propias = done.entries.filter((entry) => !adopted.has(entry.slug))
+  const own = done.entries.filter((entry) => !adopted.has(entry.slug))
   const warnings = []
-  const sinLane = propias.filter((entry) => !entry.lane)
-  if (sinLane.length) {
-    warnings.push(`planning/done: ${sinLane.length} entrada(s) sin lane:, así que no se puede comprobar `
+  const withoutLane = own.filter((entry) => !entry.lane)
+  if (withoutLane.length) {
+    warnings.push(`planning/done: ${withoutLane.length} entrada(s) sin lane:, así que no se puede comprobar `
       + 'sobre el registro que la ceremonia que recibieron fue la que su superficie pedía (OPS-006)')
   }
-  const sinReview = propias.filter((entry) => !entry.review)
-  if (sinReview.length) {
-    warnings.push(`planning/done: ${sinReview.length} entrada(s) sin review:, que es la dimensión con la `
+  const withoutReview = own.filter((entry) => !entry.review)
+  if (withoutReview.length) {
+    warnings.push(`planning/done: ${withoutReview.length} entrada(s) sin review:, que es la dimensión con la `
       + 'que OPS-006 dice que se mide si el carril elegido fue el correcto')
   }
-  const saltadas = propias.filter((entry) => CONVOCAN_REVISOR.includes(entry.lane)
-    && entry.review && SIN_REVISION.test(entry.review))
-  if (saltadas.length) {
-    warnings.push(`planning/done: ${saltadas.map((entry) => entry.slug).join(', ')} declara(n) un carril `
+  const skipped = own.filter((entry) => REVIEWED_LANES.includes(entry.lane)
+    && entry.review && NO_REVIEW.test(entry.review))
+  if (skipped.length) {
+    warnings.push(`planning/done: ${skipped.map((entry) => entry.slug).join(', ')} declara(n) un carril `
       + 'que convoca revisor y una revisión que no corrió: el carril reduce ceremonia, nunca evidencia')
   }
   return warnings
@@ -190,9 +190,9 @@ function unverifiableAcceptance(milestones = []) {
     for (const task of milestone.tasks || []) {
       for (const condition of acceptanceConditions(task.acceptance)) {
         if (OUT_OF_VERIFY.test(condition)) continue
-        const nombra = POST_VERIFY.filter(([pattern]) => pattern.test(condition))
-        if (!nombra.length) continue
-        warnings.push(`BACKLOG ${task.slug}: una condición nombra ${nombra.map(([, what]) => what).join(', ')}`
+        const names = POST_VERIFY.filter(([pattern]) => pattern.test(condition))
+        if (!names.length) continue
+        warnings.push(`BACKLOG ${task.slug}: una condición nombra ${names.map(([, what]) => what).join(', ')}`
           + ', que existe después de Verify, así que no se puede comprobar cuando se la comprueba. Eso va '
           + 'en tests:, qa: o commit: de su entrada de DONE, que ya lo exigen; si de verdad va acá, '
           + 'declaralo con "(fuera de verify: <razón>)"')
@@ -292,22 +292,22 @@ function dependencyErrors(milestones, done) {
   // Recorrido en profundidad con el camino a cuestas: al reencontrar un slug que sigue en el camino,
   // ese camino **es** el ciclo, y nombrarlo entero es lo que lo hace reparable — decir sólo que hay uno
   // deja el trabajo de encontrarlo del lado de quien lee.
-  const estado = new Map()
-  const visitar = (slug, camino) => {
-    if (estado.get(slug) === 'listo') return
-    const desde = camino.indexOf(slug)
-    if (desde >= 0) {
-      const ciclo = [...camino.slice(desde), slug]
-      errors.push(`BACKLOG: ciclo de dependencias ${ciclo.join(' → ')}`)
+  const state = new Map()
+  const visit = (slug, trail) => {
+    if (state.get(slug) === 'listo') return
+    const from = trail.indexOf(slug)
+    if (from >= 0) {
+      const cycle = [...trail.slice(from), slug]
+      errors.push(`BACKLOG: ciclo de dependencias ${cycle.join(' → ')}`)
       return
     }
     for (const dep of queued.get(slug) || []) {
       // La que se depende a sí misma ya tiene su error, más claro que un ciclo de un solo paso.
-      if (dep !== slug && queued.has(dep)) visitar(dep, [...camino, slug])
+      if (dep !== slug && queued.has(dep)) visit(dep, [...trail, slug])
     }
-    estado.set(slug, 'listo')
+    state.set(slug, 'listo')
   }
-  for (const slug of queued.keys()) visitar(slug, [])
+  for (const slug of queued.keys()) visit(slug, [])
   return [...new Set(errors)]
 }
 
@@ -429,10 +429,10 @@ function validateState({
     // ofreciendo. `**slug: de qué se trata**` es la que sale natural, porque esta tabla la lee una
     // persona. Sin esto la ausencia no deja rastro, que es la forma de R15 aplicada a un mecanismo.
     if (backlogSlugs.has(row.task)) continue
-    const casi = [...backlogSlugs].find((slug) => new RegExp(`\\b${slug}\\b`).test(row.task))
-    if (casi) {
-      errors.push(`HUMAN_ACTIONS: la fila "${row.task}" nombra a ${casi} y no bloquea nada, porque el `
-        + `motor bloquea por la primera columna exacta. Dejá "${casi}" sola ahí y contá el resto en la `
+    const near = [...backlogSlugs].find((slug) => new RegExp(`\\b${slug}\\b`).test(row.task))
+    if (near) {
+      errors.push(`HUMAN_ACTIONS: la fila "${row.task}" nombra a ${near} y no bloquea nada, porque el `
+        + `motor bloquea por la primera columna exacta. Dejá "${near}" sola ahí y contá el resto en la `
         + 'acción, o nombrá la épica o el recorrido si lo que se frena no es esa tarea')
     }
   }

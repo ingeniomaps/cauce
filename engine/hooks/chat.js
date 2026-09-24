@@ -126,11 +126,11 @@ function mentions(text, item) {
       })
     }
   }
-  const pedidas = found.filter((one) => one.asked && !one.denied)
+  const asked = found.filter((one) => one.asked && !one.denied)
   return {
-    named: pedidas.length > 0,
+    named: asked.length > 0,
     denied: found.some((one) => one.denied),
-    scope: (pedidas.find((one) => one.scope) || {}).scope || '',
+    scope: (asked.find((one) => one.scope) || {}).scope || '',
   }
 }
 
@@ -291,18 +291,18 @@ function why(saved, item, asked, inherit) {
 // antes que de menos.
 function grant(input, saved, entries) {
   const before = saved.granted || []
-  const nuevas = entries.filter((one) => !before.includes(one.item))
-  if (!nuevas.length) return
+  const added = entries.filter((one) => !before.includes(one.item))
+  if (!added.length) return
   const grantedAt = new Date().toISOString()
   try {
-    saved.granted = [...before, ...nuevas.map((one) => one.item)]
+    saved.granted = [...before, ...added.map((one) => one.item)]
     saved.scopes = { ...(saved.scopes || {}) }
-    for (const one of nuevas) if (one.scope) saved.scopes[one.item] = one.scope
+    for (const one of added) if (one.scope) saved.scopes[one.item] = one.scope
     fs.writeFileSync(recordPath(input.session_id), JSON.stringify(saved))
   } catch { /* sin anotarlo, se vuelve a pedir */ }
   // Y queda el rastro, que es lo que el registro de la sesión no puede dar: muere con ella, y lo que una
   // auditoría pregunta es quién concedió qué y con qué alcance, meses después (caso 127).
-  TRAIL.append(saved.root, LOG, nuevas.map((one) => ({
+  TRAIL.append(saved.root, LOG, added.map((one) => ({
     grantedAt, item: one.item, scope: one.scope || null, via: one.via, session: input.session_id || null,
   })))
 }

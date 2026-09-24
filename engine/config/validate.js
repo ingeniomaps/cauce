@@ -74,11 +74,11 @@ function validateMigrations(migrations, errors) {
     if (!['extensions', 'paths'].includes(key)) errors.push(`ops.config.json: migrations.${key} no está permitido`)
   }
   if ('extensions' in migrations) {
-    const declaradas = migrations.extensions
-    if (!Array.isArray(declaradas) || !declaradas.length) {
+    const declared = migrations.extensions
+    if (!Array.isArray(declared) || !declared.length) {
       errors.push('ops.config.json: migrations.extensions debe listar al menos una extensión, o no estar')
     } else {
-      for (const one of declaradas) {
+      for (const one of declared) {
         if (typeof one !== 'string' || !EXTENSION_SHAPE.test(one)) {
           errors.push(`ops.config.json: migrations.extensions "${one}" debe ser la extensión sin el punto `
             + 'y en minúscula, como "sql" o "ts"')

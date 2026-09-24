@@ -592,13 +592,13 @@ while (rounds++ < MAX_TASKS) {
   // por eso perder la carrera no es un error: se relee y se sigue con la que quedó libre.
   if (!planning.claimed && !planning.wipActive) {
     phase('Claim')
-    const reserva = await write(
+    const claim = await write(
       `Corré "node tools/ops.js claim ${P} ${task.id}" desde ${ROOT}. No escribas ningún archivo vos: lo ` +
       `escribe el comando. claimed=true sólo con exit 0; si falla porque la tomó otro, claimed=false y ` +
       `copiá el mensaje en details.`,
       { schema: CLAIM, label: `claim:${task.id}` },
     )
-    if (!reserva || !reserva.claimed) {
+    if (!claim || !claim.claimed) {
       planning = await readContext()
       if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
       // Perder la carrera es legítimo y se ve en que la cola pasa a ofrecer **otra** tarea: quien la
@@ -617,7 +617,7 @@ while (rounds++ < MAX_TASKS) {
       if (planning.hasTask && planning.slug === task.id && !planning.claimed) {
         return stop('claim-stuck', `${task.id} sigue siendo la próxima tarea y no se pudo reclamar. `
           + `context la ofrece y claim la rechaza, así que repetir no cambia nada. `
-          + `El reclamo contestó: ${(reserva && reserva.details) || '(sin detalle)'}`)
+          + `El reclamo contestó: ${(claim && claim.details) || '(sin detalle)'}`)
       }
       // Con qué sigue, que es lo que cambia respecto de lo que esperaba quien autorizó la corrida: se
       // pidió un hito y se va a construir otra tarea de ese hito. Sin decirlo, el cambio sólo aparece al
@@ -731,12 +731,12 @@ while (rounds++ < MAX_TASKS) {
 
   const planRejected = async (reason, unit, found) => {
     const detail = found.join('; ') || 'sin condiciones nombradas'
-    const nota = await registerHuman(
+    const note = await registerHuman(
       `Registrá ${unit.id} en ${HUMAN}: nadie pudo escribir un plan que sobreviva a la crítica. `
       + `Motivo: ${detail}. La acción humana es revisar si la unidad son dos resultados con vidas `
       + `distintas y partirla, o dejarla entera con la razón escrita.`, 'plan-human', unit.id)
     await releaseBlocked()
-    return stop(reason, `${detail}${nota}`)
+    return stop(reason, `${detail}${note}`)
   }
 
   if (!planning.wipActive) {
@@ -751,11 +751,11 @@ while (rounds++ < MAX_TASKS) {
       )
       if (!ready) return stop('agent-unavailable', 'Ready no devolvió resultado')
       if (!ready.ready) {
-        const nota = await registerHuman(
+        const note = await registerHuman(
           `Registrá ${task.id} en ${HUMAN} con el motivo y una acción humana exacta: ${ready.reason}.`,
           'ready-human', task.id)
         await releaseBlocked()
-        return stop('not-ready', `${ready.reason}${nota}`)
+        return stop('not-ready', `${ready.reason}${note}`)
       }
       if (ready.refinedAcceptance) task.acceptance = ready.refinedAcceptance
     }
@@ -1055,11 +1055,11 @@ while (rounds++ < MAX_TASKS) {
     if (filed.length) {
       // La nota que devuelve viaja al hecho: sin ella la entrega afirma una fila que el disco no tiene,
       // que es el caso 087 entrando por otra puerta.
-      const nota = await registerHuman(`Registrá en ${HUMAN} una fila por cada decisión que la revisión de `
+      const note = await registerHuman(`Registrá en ${HUMAN} una fila por cada decisión que la revisión de `
         + `${task.id} dejó abierta, con qué la cierra y quién puede tomarla. La primera columna nunca es `
         + `${task.id} —el porqué es el mismo que en Build—: va la épica, el hito o el recorrido al que `
         + `alcanza. No inventes responsables ni fechas: ${JSON.stringify(filed)}`, 'review-human')
-      decidedNote = `${nota}`
+      decidedNote = `${note}`
     }
     reviewFact = `${review.verdict} por ${cast.review}, sobre ${review.consulted.join(', ')}`
       + (filed.length ? ` · ${filed.length} decisión(es) registrada(s)${decidedNote}` : '')
@@ -1132,10 +1132,10 @@ while (rounds++ < MAX_TASKS) {
   // hacer parar a una persona por eso le cobra una interrupción por algo que se resolvía solo.
   const ambiguous = verified.uncovered.find((entry) => entry.cause === 'ambiguous')
   if (ambiguous) {
-    const nota = await registerHuman(
+    const note = await registerHuman(
       `Registrá ${task.id} en ${HUMAN}: el criterio "${ambiguous.criterion}" no dice qué habría ` +
       `que aserciar, y hace falta la decisión que lo fija.`, 'verify-human', task.id)
-    return stop('acceptance-ambiguous', `${ambiguous.criterion}${nota}`)
+    return stop('acceptance-ambiguous', `${ambiguous.criterion}${note}`)
   }
   // Lo que no tiene superficie no frena ni rebota: viaja a Done, que lo escribe como `tests: n/a`. Se filtra
   // por exclusión y no por `missing-test` para que una causa que no se conozca siga frenando (R27). Que

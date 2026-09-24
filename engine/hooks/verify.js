@@ -181,22 +181,22 @@ function verify(input) {
   // Acá lo aprobado es el conjunto staged entero: decir «autorizo commitear exactamente estas rutas»
   // es lo que un gate en rojo necesita, y cambia en cuanto se stagea una más. La lista sale del índice
   // y no de una regla, que es lo que la vuelve una operación y no un permiso.
-  const sinAprobar = AP.pendingNow(opsRoot(input), staged, input)
-  const aprobado = !sinAprobar.length
-  if (changedOpenApi && !hasApiGenerated && !aprobado) {
+  const unapproved = AP.pendingNow(opsRoot(input), staged, input)
+  const approved = !unapproved.length
+  if (changedOpenApi && !hasApiGenerated && !approved) {
     block('Cambió una fuente OpenAPI/Swagger sin incluir código regenerado. Ejecuta el generador y '
-      + `stagea su salida.\n${AP.HOW('OPS_SKIP_VERIFY', sinAprobar, input)}`)
+      + `stagea su salida.\n${AP.HOW('OPS_SKIP_VERIFY', unapproved, input)}`)
   }
-  if (changedSqlSource && !hasSqlGenerated && !aprobado) {
+  if (changedSqlSource && !hasSqlGenerated && !approved) {
     block('Cambió una consulta SQL fuente sin artefactos regenerados: busqué en el índice un `*.sql.go`, '
       + 'o algo bajo una carpeta `sqlc/` o `generated/`, y no hay ninguno. Si corriste `sqlc generate`, '
       + 'stageá lo que escribió; si su `output_files_suffix` le cambia el nombre, esto no lo reconoce.\n'
-      + AP.HOW('OPS_SKIP_VERIFY', sinAprobar, input))
+      + AP.HOW('OPS_SKIP_VERIFY', unapproved, input))
   }
   if (!staged.some((file) => /\.(?:ts|tsx|js|jsx|mjs|cjs|go|py|html|css|scss|prisma)$/.test(file))) return
   const { root, temp, env } = commitTree(dir, input)
   try {
-    verifyGates(root, dir, sinAprobar, env, input)
+    verifyGates(root, dir, unapproved, env, input)
   } finally {
     if (temp) fs.rmSync(temp, { recursive: true, force: true })
   }
@@ -227,7 +227,7 @@ const ERROR_LINE = /error|err[_!]|fail|abort|not found|cannot|no such/i
 const FAILED_TEST = /^(?:✖|not ok\b|--- FAIL:|● |× |\d+\) |FAILED )/
 const PASSED_TEST = /^(?:✔|ok\b|--- PASS:)|::\S+ PASSED\b/
 const MAX_LINE = 160
-function fallo(gate, result) {
+function failure(gate, result) {
   // La línea que empieza con `>` es el eco del script que npm y pnpm imprimen antes de correrlo, así
   // que lleva el comando entero y no dice nada de qué falló. Descartarla es lo que hace que la primera
   // coincidencia sea el error y no el comando — con el eco adentro, un script que **menciona** una
@@ -254,7 +254,7 @@ function howItReads(failures) {
     + 'una suite, así que mirá si llegaron a ejecutarse antes de aprobar esto como un rojo conocido.'
 }
 
-function verifyGates(root, dir, sinAprobar, env, input) {
+function verifyGates(root, dir, unapproved, env, input) {
   const ops = opsRoot(input)
   const failures = []
   if (fs.existsSync(path.join(root, 'package.json'))) {
@@ -266,19 +266,19 @@ function verifyGates(root, dir, sinAprobar, env, input) {
       if (!pkg.scripts || !pkg.scripts[script]) continue
       const result = run(pm, ['run', script], root, env)
       EV.record(ops, script, result.status, result.ms)
-      if (!result.ok) failures.push(fallo(script, result))
+      if (!result.ok) failures.push(failure(script, result))
     }
   } else if (fs.existsSync(path.join(root, 'go.mod'))) {
     const makefile = path.join(root, 'Makefile')
     if (fs.existsSync(makefile) && /^ci:/m.test(fs.readFileSync(makefile, 'utf8'))) {
       const result = run('make', ['ci'], root, env)
       EV.record(ops, 'make ci', result.status, result.ms)
-      if (!result.ok) failures.push(fallo('make ci', result))
+      if (!result.ok) failures.push(failure('make ci', result))
     } else {
       for (const args of [['test', './...'], ['build', './...']]) {
         const result = run('go', args, root, env)
         EV.record(ops, `go ${args[0]}`, result.status, result.ms)
-        if (!result.ok) failures.push(fallo(`go ${args[0]}`, result))
+        if (!result.ok) failures.push(failure(`go ${args[0]}`, result))
       }
     }
   } else if (fs.existsSync(path.join(root, 'pyproject.toml')) || fs.existsSync(path.join(root, 'requirements.txt'))) {
@@ -286,16 +286,16 @@ function verifyGates(root, dir, sinAprobar, env, input) {
     if (fs.existsSync(makefile) && /^test:/m.test(fs.readFileSync(makefile, 'utf8'))) {
       const result = run('make', ['test'], root, env)
       EV.record(ops, 'make test', result.status, result.ms)
-      if (!result.ok) failures.push(fallo('make test', result))
+      if (!result.ok) failures.push(failure('make test', result))
     }
   }
-  if (!failures.length || !sinAprobar.length) return
+  if (!failures.length || !unapproved.length) return
   // Se dice sobre qué corrió cuando no fue el árbol: un fallo que no se reproduce escribiendo el mismo
   // comando a mano se lee como que el guard miente, y lo que pasó es que midió lo que se va a grabar.
-  const donde = root === dir ? '' : '\nCorrió sobre el índice, que es lo que el commit graba: si en tu '
+  const where = root === dir ? '' : '\nCorrió sobre el índice, que es lo que el commit graba: si en tu '
     + 'directorio pasa, es que en disco tenés algo que no está staged.'
-  block(`Verify falló en ${path.basename(dir)}: ${howItReads(failures)}\nNo se commitea en rojo.${donde}\n`
-    + AP.HOW('OPS_SKIP_VERIFY', sinAprobar, input))
+  block(`Verify falló en ${path.basename(dir)}: ${howItReads(failures)}\nNo se commitea en rojo.${where}\n`
+    + AP.HOW('OPS_SKIP_VERIFY', unapproved, input))
 }
 
 module.exports = { verify }
