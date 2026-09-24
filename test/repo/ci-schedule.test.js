@@ -128,13 +128,10 @@ test('un solo workflow cubre a todos los agentes', () => {
   // workflow por cargo, y con un patrón —«ninguno se llama como un cargo»— eso pasaría inadvertido el
   // día que alguien los llame de otra forma. El costo es que agregar uno obliga a nombrarlo acá, que es
   // exactamente lo que se quiere: `sign-proposal.yml` entra porque firmar es un acto de una persona
-  // sobre un PR, no un paso del ciclo de ningún cargo. `delete-merged-branch.yml` entra por lo mismo:
-  // limpia la rama de cualquier PR mergeado, y existe porque es el único momento en que el borrado
-  // puede ocurrir —el caso 147 mide por qué ni `gh` ni el ajuste del repositorio llegan ahí—.
+  // sobre un PR, no un paso del ciclo de ningún cargo.
   assert.deepEqual(
     files,
-    ['agent-learning.yml', 'ci.yml', 'delete-merged-branch.yml', 'open-pr.yml', 'release-pr.yml',
-      'release.yml', 'sign-proposal.yml'],
+    ['agent-learning.yml', 'ci.yml', 'open-pr.yml', 'release-pr.yml', 'release.yml', 'sign-proposal.yml'],
     'no vuelve a haber un workflow por agente',
   )
 })

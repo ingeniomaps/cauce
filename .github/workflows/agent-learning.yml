@@ -182,42 +182,6 @@ jobs:
           fi
 
   # Sin credencial no corre: `learn` sólo arma el andamiaje, y llenarlo es lo que hace el modelo.
-  # Las ramas de los informes `propone: no` las mergea el auto-merge, que se arma con `github.token`, y
-  # un `closed` disparado por ese token no crea corridas: «Other `pull_request` activity types (such as
-  # `labeled`, `edited`, or `closed`) do not create workflow runs» —docs.github.com, «Triggering a
-  # workflow», consultado 2026-09-23—. Así `delete-merged-branch.yml` nunca se enteraba y la rama quedaba
-  # (caso 183). Este job no depende de ningún evento: barre en cada corrida del ciclo.
-  #
-  # Borra sólo lo que puede probar que ya está en `main`: rama `automation/*`, con un PR mergeado cuyo
-  # head es el commit en que la rama está. Una rama que alguien movió después del merge es trabajo vivo.
-  prune-merged:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: write
-      pull-requests: read
-    steps:
-      - name: Delete merged automation branches
-        id: prune
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          refs="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/git/matching-refs/heads/automation/" \
-            --jq '.[] | "\(.ref) \(.object.sha)"')"
-          printf '%s\n' "$refs" | while read -r ref sha; do
-            branch="${ref#refs/heads/}"
-            case "$branch" in automation/?*) ;; *) continue ;; esac
-            merged="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$branch" --state merged \
-              --json headRefOid --jq '.[0].headRefOid // ""')"
-            if [ -z "$merged" ]; then continue; fi
-            if [ "$merged" != "$sha" ]; then
-              echo "::notice title=Rama movida::$branch cambió después de su merge; no se borra."
-              continue
-            fi
-            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${branch}"
-            echo "::notice title=Rama borrada::$branch, mergeada y sin cambios desde entonces."
-          done
-
   research:
     # El día del ensamblaje no se investiga: `discover` devuelve lista vacía y este job no arranca.
     if: >-
@@ -802,10 +766,11 @@ jobs:
           # en `action_required` y esperan autorización, así que el auto-merge queda armado y espera a
           # que alguien la dé. Aun así ahorra la mitad del trabajo —una autorización en vez de una
           # autorización y un merge— y se dispara solo el día que esas corridas arranquen solas.
-          # La rama la borra `delete-merged-branch.yml`, no esta línea. `--delete-branch` borra «after
-          # merge» y acá el merge cae horas más tarde, sin `gh` presente, así que ese momento no llega;
-          # el auto-merge que queda registrado ni siquiera tiene un campo donde el pedido pudiera
-          # viajar. Se dejó de pasar la bandera para no volver a leerla como una garantía (caso 147).
+          # La rama la borra `.github/scripts/prune-merged-branches.sh`, a mano, no esta línea.
+          # `--delete-branch` borra «after merge» y acá el merge cae horas más tarde, sin `gh` presente,
+          # así que ese momento no llega; el auto-merge que queda registrado ni siquiera tiene un campo
+          # donde el pedido pudiera viajar. Se dejó de pasar la bandera para no volver a leerla como una
+          # garantía (caso 147).
           if grep -qx 'propone: no' "$report"; then
             gh pr merge "$branch" --auto --merge
             echo "::notice::$AGENT no propone cambios: auto-merge armado."
