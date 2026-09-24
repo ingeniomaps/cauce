@@ -189,13 +189,15 @@ function declaresOpenApi(dir, file) {
 function changedOpenApiSpec(dir, staged) {
   const candidates = staged.filter((file) => OPENAPI_CANDIDATE.test(file))
   if (candidates.some((file) => declaresOpenApi(dir, file))) return true
-  for (const folder of new Set(candidates.filter((file) => file.includes('/')).map((file) => file.split('/')[0]))) {
-    const listed = run('git', ['-C', dir, 'ls-files', '--', `:(top,glob)${folder}/**/*.yaml`,
-      `:(top,glob)${folder}/**/*.yml`], dir)
-    if (!listed.ok) return true
-    if (listed.output.split('\n').filter(Boolean).some((file) => declaresOpenApi(dir, file))) return true
-  }
-  return false
+  // Una sola búsqueda en el índice por todas las carpetas, y no un `git show` por archivo: un `spec/` con
+  // cientos de fixtures costaba cientos de procesos por commit. `git grep` sale con 1 si no encuentra nada, y
+  // con cualquier otro código no pudo mirar, que dispara igual.
+  const folders = [...new Set(candidates.filter((file) => file.includes('/')).map((file) => file.split('/')[0]))]
+  if (!folders.length) return false
+  const found = run('git', ['-C', dir, 'grep', '--cached', '-l', '-E', '^(openapi|swagger)[[:space:]]*:', '--',
+    ...folders.flatMap((folder) => [`:(top,glob)${folder}/**/*.yaml`, `:(top,glob)${folder}/**/*.yml`])], dir)
+  if (found.ok) return Boolean(found.output.trim())
+  return found.status !== 1
 }
 
 function verify(input) {
