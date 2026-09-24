@@ -262,6 +262,31 @@ test('el changelog dice qué trae una versión antes de reemplazar system/', () 
   assert.equal(CL.compare('1.2.3', '1.2.3'), 0)
 })
 
+// La entrada que deja un cargo aplicado va a la versión que todavía no salió: la abre si lo publicado es
+// lo más nuevo, y si ya está abierta se suma a su sección de cargos. Anotar dos veces la misma propuesta
+// no la repite, aunque la viñeta haya quedado partida en dos líneas.
+test('un cargo aplicado entra en la versión que todavía no salió', () => {
+  const CL = require('../../engine/core/changelog')
+  const root = tempRoot('cauce-changelog-')
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ version: '2.3.0' }))
+  const changelog = path.join(root, 'CHANGELOG.md')
+  fs.writeFileSync(changelog, '# Changelog\n\n## [2.4.0] - 2099-01-02\n\n### Corregido\n\n- un fix\n\n'
+    + '## [2.3.0] - 2099-01-01\n\n- lo publicado\n')
+  const long = 'Actualizar el nombre de la fuente y anotar su versión vigente en el comentario de la entrada, '
+    + 'que es lo que la próxima corrida compara'
+  const note = (agent, summary) => CL.noteAgentChange(root, { agent, proposal: '2099-02.md', summary, today: 'x' })
+
+  assert.deepEqual(note('uno', long), { version: '2.4.0', already: false }, 'la abierta es la que va por delante')
+  assert.deepEqual(note('dos', 'Otra cosa'), { version: '2.4.0', already: false })
+  assert.deepEqual(note('uno', long), { version: '2.4.0', already: true }, 'partida en dos líneas, no se repite')
+  const [open, published] = fs.readFileSync(changelog, 'utf8').split('## [2.3.0]')
+  assert.equal(open.match(/### Cargos/g).length, 1, 'una sola sección de cargos')
+  assert.match(open, /- un fix\n\n### Cargos\n\n- \*\*`uno`\*\*[^]*\n- \*\*`dos`\*\*: Otra cosa/,
+    'después de lo que había')
+  assert.doesNotMatch(published, /uno|dos/, 'lo publicado no se toca')
+  assert.ok(open.split('\n').every((line) => line.length <= 110), 'al ancho del archivo')
+})
+
 test('el changelog del paquete cubre la versión que se publica', () => {
   const CL = require('../../engine/core/changelog')
   const repoRoot = path.resolve(__dirname, '..', '..')

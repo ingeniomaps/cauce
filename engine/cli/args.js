@@ -36,7 +36,7 @@ const FLAGS = {
   integration: ['--fixture'],
   secrets: [],
   automation: ['--force'],
-  learn: ['--flow', '--proposal', '--applied', '--archived', '--period', '--reason'],
+  learn: ['--flow', '--proposal', '--applied', '--unchanged', '--archived', '--period', '--reason'],
   evaluate: ['--cases', '--json', '--bench', '--force', '--record', '--flow'],
   flow: ['--json'],
 }

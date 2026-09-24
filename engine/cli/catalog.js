@@ -104,11 +104,17 @@ function learn(agent, cli) {
         : `✓ ${relative} queda archivada: ${porque}`)
     }
     if (cli.has('--applied')) {
-      const result = L.seal(opsRoot(), agent, cli.value('--period'), kind)
+      const result = L.seal(opsRoot(), agent, cli.value('--period'), kind, { note: !cli.has('--unchanged') })
       const relative = path.relative(opsRoot(), result.file)
-      return console.log(result.already
+      console.log(result.already
         ? `= ${relative} ya estaba aplicada`
         : `✓ ${relative} queda aplicada: no se vuelve a aplicar`)
+      if (result.noted) {
+        console.log(result.noted.already
+          ? `= CHANGELOG.md ya nombraba este cambio en ${result.noted.version}`
+          : `✓ CHANGELOG.md: el cambio sale en ${result.noted.version}`)
+      }
+      return
     }
     // Un recorrido no tiene informe de investigación: su propuesta se compone de los veredictos de sus
     // propias corridas y nunca lee `learning/reports/`. La forma desnuda —la que para un cargo abre su

@@ -117,6 +117,40 @@ test('una propuesta aplicada no se puede volver a aplicar', () => {
   assert.equal(learning.evaluate(target, 'probe').pending, 0, 'y deja de pedir trabajo')
 })
 
+// Aplicar un cargo del catálogo lo deja en `main` sin versión que lo lleve si nadie escribe su entrada, y
+// escribirla era un paso que nadie tenía asignado. Sellar la escribe en el toolkit y en ningún otro lado:
+// en una empresa el cargo es suyo y no hay CHANGELOG de Cauce. Un mes sin cambios se sella sin anotar.
+test('sellar un cargo en el toolkit lo anota en el CHANGELOG, y en una empresa no', () => {
+  const sealAt = (root, dir, options) => {
+    withRecommendation(learning.prepareReport(root, 'probe', new Date('2099-06-10T00:00:00Z')).file)
+    learning.prepareProposal(root, 'probe', new Date('2099-06-15T00:00:00Z'))
+    firmarPropuesta(path.join(dir, 'learning', 'proposals', '2099-06.md'))
+    return learning.seal(root, 'probe', '2099-06', 'agent', options)
+  }
+
+  const toolkit = () => {
+    const root = tempRoot('cauce-toolkit-')
+    fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ project: 'T', mode: 'toolkit' }))
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ version: '1.4.0' }))
+    fs.writeFileSync(path.join(root, 'CHANGELOG.md'), '# Changelog\n\n## [1.4.0] - 2099-05-01\n\n- lo publicado\n')
+    return { root, dir: writeSkill(path.join(root, 'agents', 'roles', 'system', 'probe'), 'probe', 'x') }
+  }
+  const tk = toolkit()
+  const sealed = sealAt(tk.root, tk.dir)
+  assert.deepEqual(sealed.noted, { version: '1.5.0', already: false }, 'abre la minor siguiente a lo publicado')
+  const text = fs.readFileSync(path.join(tk.root, 'CHANGELOG.md'), 'utf8')
+  assert.match(text, /## \[1\.5\.0\][\s\S]*### Cargos[\s\S]*\*\*`probe`\*\*: Se agrega la fuente/, 'con lo que cambió')
+
+  const quiet = toolkit()
+  assert.equal(sealAt(quiet.root, quiet.dir, { note: false }).noted, undefined, 'un mes sin cambios no se anota')
+  assert.doesNotMatch(fs.readFileSync(path.join(quiet.root, 'CHANGELOG.md'), 'utf8'), /Cargos/)
+
+  const company = installedProject('Sello en empresa')
+  const own = writeSkill(path.join(company, 'agents', 'roles', 'probe'), 'probe', 'x')
+  assert.equal(sealAt(company, own).noted, undefined, 'en una empresa no hay CHANGELOG de Cauce que escribir')
+  assert.equal(fs.existsSync(path.join(company, 'CHANGELOG.md')), false)
+})
+
 // El sello salía temprano mirando sólo el frontmatter, así que un `status` que llegó antes que él dejaba
 // el cuerpo diciendo lo contrario dentro del mismo documento — que es justo la contradicción que sellar
 // existe para cerrar. Pasó con `growth-marketer/2026-09`, aplicada con el arreglo del cuerpo ya puesto y

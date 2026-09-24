@@ -6,13 +6,8 @@ name: Release PR
 # en las dos direcciones: mediría qué se tocó acá y no qué le cambia a quien recibe el `upgrade`.
 #
 # Lo que este workflow hace es abrir el PR que sincroniza `package.json` con esa decisión. Mergearlo es
-# el acto humano, y de ahí sale el tag que dispara `release.yml`.
-#
-# Por qué el tag no se empuja solo: «events triggered by the GITHUB_TOKEN will not create a new
-# workflow run» —docs.github.com, «Trigger a workflow», consultado 2026-08-26—. Un tag empujado desde
-# acá no dispararía la publicación, así que haría falta un PAT guardado como secreto. Ese es
-# exactamente el tipo de credencial que `release.yml` evita usando OIDC, y cambiarlo por comodidad
-# empeora la superficie a cambio de ahorrar un comando.
+# el acto humano, y ese merge es lo que dispara `release.yml`: publica y crea el tag. Por qué alcanza
+# con el merge y no hace falta un tag empujado a mano lo explica el encabezado de `release.yml`.
 on:
   push:
     branches: [main]
@@ -117,14 +112,9 @@ jobs:
           cuerpo="$(printf '%s\n' \
             "Sube \`package.json\` de $BEFORE a **$VERSION**, que es lo que declara la entrada más nueva de \`CHANGELOG.md\`." \
             "" \
-            "Al mergear, empujá el tag para publicar:" \
+            "Al mergearlo se publica: \`release.yml\` corre con ese merge, publica en npm y crea el tag." \
             "" \
-            '```' \
-            "git switch main && git pull" \
-            "git tag v$VERSION && git push origin v$VERSION" \
-            '```' \
-            "" \
-            "El tag es el acto humano que \`R10\` pide, y \`release.yml\` verifica que coincida con \`package.json\` y que el CHANGELOG tenga su entrada antes de tocar npm.")"
+            "El merge es el acto humano que \`R10\` pide, y \`release.yml\` verifica que la versión no haya salido y que el CHANGELOG tenga su entrada antes de tocar npm.")"
           if gh pr view "$branch" --json state --jq .state 2>/dev/null | grep -q OPEN; then
             gh pr edit "$branch" --title "release: $VERSION" --body "$cuerpo"
           else
@@ -133,7 +123,8 @@ jobs:
 
       # Lo que dejó a 0.42.0 y 0.43.0 publicadas sin tag: nada avisaba. Un aviso no bloquea nada y
       # convierte la deriva en algo que se ve en la corrida, en vez de descubrirse meses después
-      # comparando npm contra git.
+      # comparando npm contra git. Con el merge del PR de release sale siempre, porque `Release` corre
+      # a la par y todavía no creó el tag; lo que dice importa si no hay ninguna `Release` en curso.
       - name: Warn when the released version has no tag
         if: steps.read.outputs.changelog == steps.read.outputs.package
         env:
@@ -142,5 +133,5 @@ jobs:
           if git rev-parse "v$VERSION" >/dev/null 2>&1; then
             echo "v$VERSION ya está tagueada."
           else
-            echo "::notice title=Falta el tag::package.json está en $VERSION y no existe v$VERSION. Publicá con: git tag v$VERSION && git push origin v$VERSION"
+            echo "::notice title=Falta el tag::package.json está en $VERSION y no existe v$VERSION. Si \`Release\` no está corriendo ahora, falló: reintentala con gh workflow run release.yml"
           fi

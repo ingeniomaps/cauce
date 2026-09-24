@@ -14,6 +14,8 @@ const {
   isoDate, proposalFiles, proposalState, assertWritable, lastOfPeriod, undecided, SIGNED,
 } = require('./learning-files')
 const { section } = require('../planning/parser')
+const ownership = require('../core/ownership')
+const changelog = require('../core/changelog')
 // La misma identidad con la que se reclama una tarea: quién es la persona, no qué runner corre.
 const { owner } = require('../planning/claims')
 
@@ -28,7 +30,7 @@ const UNSEALED = /^-[ \t]*Estado:[ \t]*(?:pendiente|aprobada)[ \t]*$/mi
 // aprobada con responsable — y «aprobada y aplicada» cumple eso—, así que volver a correrlo sobre una
 // propuesta ya aplicada la aplicaba de nuevo. Como los cambios son aditivos por diseño, el resultado
 // no es un error visible sino un contrato con cada viñeta y cada fuente duplicadas.
-function seal(root, agent, period = '', kind = 'agent') {
+function seal(root, agent, period = '', kind = 'agent', { note = true } = {}) {
   const file = proposalFile(root, agent, period, kind)
   const dir = path.dirname(file)
   const text = fs.readFileSync(file, 'utf8')
@@ -66,7 +68,24 @@ function seal(root, agent, period = '', kind = 'agent') {
   // así que el registro que la plantilla promete no existía nunca. Se escribe acá porque es determinista:
   // la fecha, el documento, quién aprobó y qué dice que cambia, todo sale de lo que se acaba de sellar.
   if (kind === 'flow') appendHistory(path.dirname(path.dirname(dir)), file, responsible.trim(), change)
+  // Sólo en el toolkit: ahí el cargo es del catálogo que se publica, y su cambio tiene que viajar en una
+  // versión. En una empresa el cargo es suyo y no hay CHANGELOG de Cauce que escribir. `note: false` es
+  // el mes revisado sin cambios, que se sella igual y no le cambia nada a quien actualiza.
+  if (kind === 'agent' && note && ownership.mode(root) === 'toolkit') {
+    const noted = changelog.noteAgentChange(root, {
+      agent, proposal: path.basename(file), summary: summarize(change), today: isoDate(new Date()),
+    })
+    return { file, already: false, noted }
+  }
   return { file, already: false }
+}
+
+// La primera idea de «Cambio propuesto», en una línea: el documento entero está en el cargo, y el
+// CHANGELOG lo lee quien actualiza antes de decidir, no quien aplica.
+function summarize(change, limit = 240) {
+  const first = change.split(/\n\s*\n/)[0].replace(/^\s*(?:\d+\.|[-*])\s+/, '').replace(/\s+/g, ' ').trim()
+  if (first.length <= limit) return first.replace(/[.:;]$/, '')
+  return `${first.slice(0, first.lastIndexOf(' ', limit)).replace(/[.,:;]$/, '')}…`
 }
 
 // Archivar es el tercer destino de una propuesta, y hasta ahora no existía: aplicarla, dejarla

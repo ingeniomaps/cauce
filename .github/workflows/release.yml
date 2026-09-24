@@ -1,18 +1,30 @@
 name: Release
 
-# Publicar es una operación humana y R10 la exige así. Acá el acto humano es empujar el tag: nada más
-# dispara este workflow —ni un merge a `main`, ni un cron—, y el tag queda como el registro de quién
-# autorizó qué versión. Lo que sigue no vuelve a preguntar, así que todo lo que se comprueba se
-# comprueba antes de tocar npm.
+# Publicar es una operación humana y R10 la exige así. El acto humano es mergear el PR de release que abre
+# `release-pr.yml`: ese merge es un push a `main` que cambia la versión de `package.json`, y es lo único que
+# dispara este workflow. Lo que sigue no vuelve a preguntar, así que todo lo que se comprueba se comprueba
+# antes de tocar npm.
+#
+# Antes el acto era empujar el tag a mano, un paso más después del merge. Se podía sacar porque el merge
+# lo hace una persona: un push hecho con el `GITHUB_TOKEN` no dispararía nada —«events triggered by the
+# GITHUB_TOKEN will not create a new workflow run», docs.github.com, «Trigger a workflow», consultado
+# 2026-08-26—, y el de un merge desde la web o con una credencial personal sí. El tag lo crea ahora la
+# release, que ya no tiene que disparar nada.
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+    # Sólo cuando cambia la versión: cualquier otro push a `main` no tiene nada que publicar, y correr
+    # igual para descubrirlo gastaría CI en cada merge.
+    paths: [package.json]
+  # Para reintentar una publicación que falló después del merge. Es idempotente: lo ya publicado o
+  # tagueado se reconoce y no se repite.
+  workflow_dispatch:
 
 permissions:
   contents: read
 
-# Dos tags empujados seguidos publicarían a la vez sobre el mismo paquete. No se cancela la corrida en
-# curso: cortarla entre el publish y la release deja npm con una versión que GitHub no anuncia.
+# Dos merges seguidos publicarían a la vez sobre el mismo paquete. No se cancela la corrida en curso:
+# cortarla entre el publish y la release deja npm con una versión que GitHub no anuncia.
 concurrency:
   group: release
   cancel-in-progress: false
@@ -22,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
-      # Sólo para crear la GitHub Release; el tag ya lo empujó una persona.
+      # Para crear la GitHub Release, que crea el tag de la versión.
       contents: write
       # El token OIDC del trusted publishing. Es toda la credencial que hay: este repositorio no
       # guarda un NPM_TOKEN, y no guardarlo es la mitad del punto.
@@ -34,25 +46,34 @@ jobs:
           node-version: '24'
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
-      # El tag es lo único que eligió una persona; el resto sale del árbol. Si no coinciden, el que
-      # está mal es el tag —el árbol ya pasó por CHANGELOG y revisión—, y publicar igual dejaría npm
-      # y la historia contando versiones distintas para siempre: una versión no se republica.
-      - name: Check tag against package.json
+      # Una versión se publica una sola vez, y la marca de que ya salió es su tag. Sin tag puede faltar todo
+      # o sólo la mitad —npm aceptó y la release falló—, y npm no republica una versión: por eso se pregunta
+      # a los dos antes de decidir qué falta.
+      - name: Decide what this version still needs
         id: version
         run: |
-          tag="${GITHUB_REF_NAME#v}"
-          pkg="$(node -p 'require("./package.json").version')"
-          if [ "$tag" != "$pkg" ]; then
-            echo "El tag v$tag no coincide con package.json ($pkg). No se publica." >&2
-            exit 1
+          name="$(node -p 'require("./package.json").name')"
+          version="$(node -p 'require("./package.json").version')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null 2>&1; then
+            echo "v$version ya está publicada y tagueada: no hay nada que hacer."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-          echo "version=$pkg" >> "$GITHUB_OUTPUT"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          if [ "$(npm view "$name@$version" version 2>/dev/null)" = "$version" ]; then
+            echo "$version ya está en npm: falta sólo la release y su tag."
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
 
       # `upgrade` reemplaza `system/` sin pedir confirmación, y esta entrada es lo que hace que esa
       # operación sea confiable en vez de sólo cómoda. Publicar sin ella deja al que actualiza sin
       # nada que leer, así que falta de entrada frena la release entera y no sólo la deja vacía.
       - name: Extract changelog entry
         id: notes
+        if: steps.version.outputs.release == 'true'
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -74,12 +95,15 @@ jobs:
       # attestations por su cuenta —docs.npmjs.com, «Trusted publishers»—. Escrito acá, el archivo
       # dice que una publicación sin attestation no es la que se pidió.
       - name: Publish to npm
+        if: steps.version.outputs.release == 'true' && steps.version.outputs.published != 'true'
         run: npm publish --provenance
 
       # Después del publish y no antes: una release que anuncia una versión que npm rechazó es peor
-      # que no anunciarla. Al revés sólo cuesta volver a correr el job.
+      # que no anunciarla. Al revés sólo cuesta volver a correr el job. `--target` es el commit del merge:
+      # la release crea ahí el tag, que desde entonces es la marca de que la versión salió.
       - name: Create GitHub release
+        if: steps.version.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
-        run: gh release create "$GITHUB_REF_NAME" --title "v$VERSION" --notes-file notes.md
+        run: gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" --notes-file notes.md
