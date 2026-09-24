@@ -1,14 +1,15 @@
 ---
 caso: 195
 titulo: Verify no respeta la marca «(fuera de verify: …)» que check pide escribir, así que la condición marcada termina igual en uncovered
-estado: abierto
+estado: resuelto
+resuelto-en: 0.99.0
 prioridad: media
 version-detectada: 0.98.0
 ---
 
 # 195 — La salida que `check` ofrece para una condición post-Verify no llega a Verify
 
-**🔴 abierto** · detectado en 0.98.0 · prioridad **media**. `check` le dice a quien planifica que marque la
+**🟢 resuelto en 0.99.0** · detectado en 0.98.0 · prioridad **media**. `check` le dice a quien planifica que marque la
 condición con `(fuera de verify: <razón>)`, y el recorrido no sabe qué significa esa marca: se la pasa a
 Verify como una condición más.
 
@@ -113,3 +114,60 @@ criterio que Verify no puede comprobar. La marca apareció en `contracts.js`, y 
   189 pide para que no se vuelva la forma barata de cerrar sin tests. Estirarla para cubrir el 189 es una
   decisión de producto, no una consecuencia de arreglar esto.
 - **140**: el origen de la marca. Su cierre no menciona Verify.
+
+## Cierre
+
+**Resuelto en 0.99.0, por el camino propuesto.** Recorriendo lo que enumeró:
+
+- **Fix 1, partir por `;` y separar lo marcado → se hizo.** `autobuild` parte `task.acceptance` al llegar a
+  Verify —después de que Ready pudo refinarla— y aparta las condiciones que cumplen `OUT_OF_VERIFY`.
+- **Fix 2, a Verify y a QA sólo lo no marcado; lo marcado a Done → se hizo.** Los dos prompts reciben la
+  aceptación sin esas condiciones (y si no queda ninguna, lo dicen). Done recibe `fuera-de-verify=[…]` y la
+  instrucción de dejar cada una cumplida en `tests`, `qa` o `commit`.
+- **Fix 3, la regex en un solo lugar → se hizo distinto: ni copia declarada ni include de ida.** La regex, el
+  corte por `;` y la lista de no ejecutables del 189 viven en `automatization/shared/acceptance.js`; el
+  recorrido lo incluye con `{{INCLUDE:}}` y el motor lo evalúa con `vm` desde `engine/planning/acceptance.js`
+  (el mismo patrón por el que `engine/hooks/chat.js` ya lee `automatization/` desde el paquete). La definición
+  y su comentario salieron de `contracts.js`, que ahora la importa. No hay segunda copia que se pudra.
+- **Fix 4, la prueba en rojo con el fuente de antes → se hizo** en `test/workflows/autobuild-surface.test.js`
+  («una condición marcada fuera de verify no llega a Verify ni a QA, y viaja a Done»), y no en
+  `autobuild-evidence.test.js`: va junto con las del 189, que comparten el mismo trayecto hacia Done.
+- **Tradeoff «la marca se vuelve más fuerte» → aceptado, y el hueco sigue.** Nada comprueba después que la
+  condición marcada haya quedado cumplida en la evidencia; lo que la acota sigue siendo que la pone quien
+  planifica y que `check` avisa sobre las que nombran el registro sin marcarlas. No se estiró la marca para
+  cubrir el 189 (decisión del dueño).
+- **Tradeoff «el corte puede no coincidir con lo que Verify llama criterio» → se sostuvo:** la separación
+  ocurre antes de preguntar y la respuesta no se reinterpreta. Consecuencia medida abajo: si un Verify
+  devolviera como `uncovered` una condición que no recibió, la corrida seguiría parando. No se filtró la
+  respuesta a propósito: sería reconocer la marca en la prosa del modelo, que es lo que el caso descartó.
+- **PROTOCOL → se completó.** `template/planning/PROTOCOL.md` decía qué hace `check` con la marca; ahora dice
+  también que el recorrido la saca de Verify y QA y la lleva a Done. Baja a las instancias en su `upgrade`.
+
+### Qué se corrió
+
+- **La prueba nueva, en rojo sobre el fuente anterior** (falla en «la marcada no»: el prompt de Verify traía
+  `footer Task`), verde con el arreglo.
+- **Dos mutaciones en una copia del árbol (`git ls-files` + los archivos nuevos), las dos en rojo**: volver a
+  mandar la aceptación entera a Verify, y no pasarle `fuera-de-verify` a Done.
+- **La reproducción del caso contra el código arreglado** (`repro195.js` apuntado al worktree y su variante,
+  2026-09-23, Node 24, exit 0):
+
+  ```
+  == 195, Verify guionado reportando la marcada (el guion original)
+  marca en el prompt de Verify: false
+  aceptación que recibe Verify: Aceptación: el alta rechaza un duplicado.
+  marca en el prompt de QA: false
+  result: {"stopped":true,"reason":"verify-hollow","detail":"sin test que lo codifique: el commit lleva el footer
+  Task: T-1 (fuera de verify: lo registra Commit, después de Verify)"}
+  == 195, Verify guionado sobre lo que recibe
+  marca en el prompt de Verify: false
+  aceptación que recibe Verify: Aceptación: el alta rechaza un duplicado.
+  marca en el prompt de QA: false
+  result: {"done":["T-1"],"count":1,"hito":"H1","phases":[…,"Verify","QA","Commit","Done","Pick","Closing"]}
+  Done recibe: fuera-de-verify=["el commit lleva el footer Task: T-1 (fuera de verify: lo registra Commit, después de Verify)"]
+  ```
+
+  El guion original sigue parando porque le hace devolver a Verify una condición que ya no recibe; es el
+  tradeoff de arriba, no el defecto. Qué contesta un Verify real sin la condición **no está medido**: pide
+  lanzar un agente.
+- `npm run ci`, exit 0 (941 pruebas).

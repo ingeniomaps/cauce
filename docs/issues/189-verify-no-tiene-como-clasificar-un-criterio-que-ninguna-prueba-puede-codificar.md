@@ -1,14 +1,15 @@
 ---
 caso: 189
 titulo: Verify no tiene cómo clasificar un criterio que ninguna prueba puede codificar, así que una tarea de decisión no se puede cerrar
-estado: abierto
+estado: resuelto
+resuelto-en: 0.99.0
 prioridad: alta
 version-detectada: 0.98.0
 ---
 
 # 189 — La tarea cuyo entregable es una decisión escrita muere en Verify
 
-**🔴 abierto** · detectado en 0.98.0 · prioridad **alta**. El contrato de DONE acepta `tests: n/a — razón`; el
+**🟢 resuelto en 0.99.0** · detectado en 0.98.0 · prioridad **alta**. El contrato de DONE acepta `tests: n/a — razón`; el
 recorrido no tiene por dónde emitirlo, así que para siempre.
 
 ## Resumen
@@ -225,3 +226,106 @@ justamente, una tarea que el recorrido no puede cerrar. Se cerró a mano, con `t
   criterio → prueba (`autobuild.js:1167-1170` sólo pasa `verified.commands`), así que el `tests: CN →
   prueba` de toda entrada escrita por el recorrido lo compone el agente de Done sin un hecho que lo
   respalde. `engine/core/evidence.js` contrasta después que el artefacto exista, no de dónde salió.
+
+## Cierre
+
+**Resuelto en 0.99.0, con la puerta determinista en `check` (decisión 1b del dueño) y no en el recorrido.**
+Recorriendo lo que enumeró:
+
+- **Fix 1, tercera causa `no-surface` → se hizo** en el esquema `VERIFY` (con `reason`) y en `VERIFY_ASK`, que
+  la define y le pasa a Verify la lista de no ejecutables como guía: con cualquier otro archivo en el diff es
+  `missing-test`.
+- **Fix 2, `no-surface` no frena y viaja → se hizo.** El rebote y el `verify-hollow` miran
+  `uncovered.filter((e) => e.cause !== 'no-surface')` —por exclusión, para que una causa desconocida siga
+  frenando (R27)—. Done recibe `sin-superficie=[{criterion, reason}]` y la instrucción de escribirlos como
+  `tests: n/a — <razón>`.
+- **Fix 3, «no se cree sola» → se hizo distinto: en `check`, sobre el commit.** El recorrido no tiene shell
+  (lo decía el propio caso), así que la comprobación vive en el motor: `surfaceWithoutTests`
+  (`engine/planning/contracts.js`) juzga, y `commitFiles` (`engine/core/repos.js`) lista con
+  `git diff-tree --root` los archivos del sha que nombra `commit:`, buscado en los repositorios de
+  `workspaceRoots` —la entrada no dice de cuál es—. Una entrada cuyo `tests:` es todo `n/a` y cuyo commit
+  toca algo fuera de `.md`, `.txt`, `.adoc` es **error**. Mirar el commit y no el árbol de Verify esquiva el
+  hueco de `git diff --name-only` con archivos nuevos: el commit ya los contiene.
+- **Fix 4, saltear el rebote cuando todo es `no-surface` → se hizo.**
+- **«Punto 2 necesita un hecho nuevo en Done» → se hizo** (`sin-superficie=`), y el despacho filtra por causa.
+- **«Punto 3 no es implementable en el workflow» → confirmado**, y por eso la puerta es de `check`. Corre en
+  Closing (`autobuild` para en `planning-check-failed` si sale en rojo, aunque ahí lo lanza un agente) y en el
+  guard `planning-drift`, fuera de todo agente.
+- **«`git diff --name-only` no ve lo que una tarea de decisión produce» → cerrado por construcción**: se lee
+  el commit, no el árbol sin commitear.
+- **«Ejecutable no está definido» → lista cerrada** `NON_EXECUTABLE = ['.md', '.txt', '.adoc']`, en un solo
+  lugar (`automatization/shared/acceptance.js`) con su razón; la misma la leen `check` y el prompt de Verify.
+  Un `Makefile` sin extensión cuenta como superficie, y hay prueba de eso.
+- **«Punto 4 incompleto con causas mezcladas» → se hizo**: el rebote lista sólo lo que no es `no-surface`.
+- **«La pared siguiente es QA» → decidido (3 del dueño) y hecho**: con todos los criterios `no-surface` y
+  ninguno cubierto, QA no se saltea; se le pide comprobar que el documento existe y cubre cada elemento que
+  la aceptación enumera, y eso queda en `qa:`. Qué contesta un QA real ante ese pedido **no está medido**:
+  pide lanzar un agente.
+- **Decisiones 1, 2 y 3 → tomadas por el dueño** como recomendaba el caso; ver arriba.
+- **Tradeoff «una causa más es una escapatoria más» → acotado por la puerta, con dos bordes declarados.**
+  (a) La puerta juzga el `n/a` **entero**: en una entrada mixta (`A → prueba; n/a — …`) el código del commit
+  es el de los criterios probados y no dice nada del otro, así que ahí un `no-surface` falso no se ve. Juzgar
+  también el mixto haría imposible la tarea mixta que el recorrido ahora deja cerrar. (b) Calla si ningún
+  repositorio conoce el sha, como el resto de lo que `check` pregunta a git. Qué lista `diff-tree` sobre un
+  commit de merge no se comprobó: ninguna prueba lo ejerce.
+- **Tradeoffs 2 y 3** (la aceptación de decisión sigue sin comprobarse sola; la prueba que lee el ADR sigue
+  siendo posible y deja de ser obligatoria) → quedan como estaban: el arreglo los declara, no los cambia.
+- **Hallazgo lateral, Done compone `tests: CN → prueba` sin hecho → se hizo acá** (fold-in pedido por el
+  dueño): `VERIFY` exige `covered: [{criterion, test}]` y Done lo recibe como `cubiertos=`. Sigue siendo la
+  palabra de Verify; `ops evidence` contrasta después que el artefacto exista.
+- **Relacionado 195 → resuelto aparte**, en el mismo cambio; la marca no se estiró para cubrir esto.
+
+**Lo que el caso no preveía: la puerta nueva puede poner en rojo historia vieja.** Una instancia que cerró a
+mano tareas con código y `tests: n/a` antes de 0.99.0 recibe el error en su próximo `check`. Lo adoptado
+(`.adoption-baseline`) queda exento, pero ese baseline se genera una sola vez, así que no sirve de salida
+para una instancia que ya lo tiene. Se resolvió al integrarlo, en el párrafo siguiente.
+
+**Decidido al integrarlo: la puerta rige desde el 2026-09-24.** Una instancia que ya cerró tareas con código y
+`tests: n/a` habría visto `check` en rojo con el `upgrade`, y con él el guard que lo corre antes de cada commit,
+por entradas que no violaron nada cuando se escribieron y que no se pueden corregir sin reescribir evidencia. Lo
+adoptado ya estaba exento por la misma razón, pero el baseline se genera una sola vez y no cubría esto. Ahora
+`surfaceWithoutTests` saltea una entrada cuya `fecha:` es anterior (`SURFACE_SINCE`, `engine/planning/contracts.js`),
+`PROTOCOL.md` lo dice, y `test/planning/no-surface.test.js` lo fija en las dos direcciones; quitar el corte lo
+pone en rojo (mutación corrida en una copia del árbol).
+
+### Qué se corrió
+
+- **Las pruebas nuevas, en rojo sobre el fuente anterior**: las cuatro de
+  `test/workflows/autobuild-surface.test.js` (la de sólo documento paraba en `verify-hollow`; la mixta,
+  igual) y la de `test/planning/no-surface.test.js` que exige el error.
+- **Diez mutaciones en una copia del árbol, las diez en rojo**: `no-surface` frenando otra vez; el rebote
+  listando todo `uncovered`; Done sin `sin-superficie`; QA con el pedido de siempre; Done sin `cubiertos`;
+  todo contado como no ejecutable; la lista cerrada invertida a una de ejecutables (`.go`, `.js`); la puerta
+  juzgando el mixto; `validate` descartando lo que la puerta devuelve; `commitFiles` sin encontrar nada.
+- **La reproducción del caso contra el código arreglado** (`repro.js` apuntado al worktree y su variante,
+  2026-09-23, Node 24, exit 0):
+
+  ```
+  == 189, Verify contesta missing-test
+  result: {"stopped":true,"reason":"verify-hollow","detail":"sin test que lo codifique: Queda escrito en api/docs/ …"}
+  verify turns: 2 | asked in Verify: [ 'Verify|verify', 'Verify|missing-tests', 'Verify|verify' ]
+  reached Done: false
+  == 189, Verify contesta no-surface
+  result: {"done":["T-1"],"count":1,"hito":"H1","phases":[…,"Verify","QA","Commit","Done","Pick","Closing"]}
+  verify turns: 1 | asked in Verify: [ 'Verify|verify' ]
+  reached Done: true
+  Done, hechos: cubiertos=[]; sin-superficie=[{"criterion":"Queda escrito en api/docs/ el destino de cada tabla",
+  "reason":"el entregable es un ADR"},…]; … y los de sin-superficie con tests: n/a — <razón>.
+  QA pide: T-1 no tiene superficie ejecutable: comprobá que el documento existe y cubre cada elemento que la
+  aceptación enumera, …
+  ```
+
+  Con `missing-test` sigue parando, y es correcto: ahí la causa la eligió Verify. Si un Verify real elige
+  `no-surface` ante un ADR **no está medido**.
+- **`check` de verdad sobre una instancia sidecar con el producto en git** (`proof-check.sh`, git 2.43.0):
+
+  ```
+  --- sólo documento (277f9ecc0682)
+  ✓ planning válido: 0 épica(s), 0 tarea(s) en cola, 1 terminada(s)
+  --- más una con código (f1ae1e5ce7a9)
+  ✗ done/alta-sin-pruebas.md alta-sin-pruebas: tests: n/a dice que no hay superficie ejecutable y el commit
+  f1ae1e5ce7a9 toca api/alta.go; sólo .md, .txt, .adoc cuentan como no ejecutables, así que esos criterios se
+  rastrean con su prueba
+  1 error(es), 0 advertencia(s)
+  ```
+- `npm run ci`, exit 0 (941 pruebas).

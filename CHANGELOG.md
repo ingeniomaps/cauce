@@ -53,6 +53,21 @@ diseño — eso vive en el commit y en el código.
   por stdin, o sin entrada con `</dev/null`. Lo que manda el runner se lee entero, así que una escritura
   grande no se corta.
 
+- **Una tarea cuyo entregable es un documento o una decisión escrita ya puede cerrarse en `autobuild`.**
+  Paraba en `verify-hollow` pidiendo pruebas imposibles. Ahora Verify declara esos criterios sin superficie
+  ejecutable, llegan a Done como `tests: n/a — <razón>`, y QA comprueba que el documento exista y cubra lo
+  que la aceptación enumera. Con causas mezcladas, el rebote pide sólo las pruebas que de verdad faltan, y
+  Done recibe de Verify qué prueba cubre cada criterio en vez de componerlo de memoria.
+- **Una condición marcada `(fuera de verify: <razón>)` ya no llega a Verify ni a QA.** Era la salida que
+  `check` recomienda, y la corrida paraba igual; ahora viaja a Done para quedar cumplida en `tests:`, `qa:`
+  o `commit:`.
+
+### Cambiado
+
+- **`check` falla si una entrada de DONE tiene `tests:` todo `n/a` y su commit toca algo que no sea `.md`,
+  `.txt` o `.adoc`.** Es lo que vuelve creíble el `n/a` de arriba: lo demás se ejecuta y se prueba. Rige
+  para lo cerrado desde el 2026-09-24, así que tu historia anterior no se pone en rojo al actualizar.
+
 ## [0.98.0] - 2026-09-17
 
 ### Cambiado
