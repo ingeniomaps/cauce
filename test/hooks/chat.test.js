@@ -370,6 +370,7 @@ test('una negación sobre otra cosa no borra el bloqueo, y la que nombra lo fren
       const { stopped, confirm } = after(request)
       assert.throws(confirm, (error) => error.blocked === true, `tras «${request}», confirmar no lo aprueba`)
       assert.match(stopped, /no quedó esperando/, `«${request}» dice que no quedó anotado`)
+      assert.match(stopped, /Vos no lo escribas/, `«${request}» le dice al agente que la línea no es suya`)
       assert.doesNotMatch(stopped, /pedile que lo confirme/, `«${request}» no ofrece una confirmación inútil`)
     }
   } finally { for (const chat of sessions) chat.close() }
