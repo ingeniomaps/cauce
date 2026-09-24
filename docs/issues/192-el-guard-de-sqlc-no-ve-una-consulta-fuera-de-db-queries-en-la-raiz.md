@@ -1,14 +1,15 @@
 ---
 caso: 192
 titulo: El guard de verify sólo detecta una consulta SQL cambiada si vive en `db/queries/` o `queries/` en la raíz, así que en un monorepo o con otro `queries:` deja pasar el commit sin generado
-estado: abierto
+estado: resuelto
+resuelto-en: 0.99.0
 prioridad: media
 version-detectada: 0.98.0
 ---
 
 # 192 — Una query fuera de `db/queries/` en la raíz se commitea sin regenerar y el guard no se entera
 
-**🔴 abierto** · detectado en 0.98.0 · prioridad **media**. El guard que exige el generado de sqlc
+**🟢 resuelto en 0.99.0** · detectado en 0.98.0 · prioridad **media**. El guard que exige el generado de sqlc
 junto a una query cambiada sólo reconoce la query en dos rutas ancladas a la raíz del repositorio; en
 cualquier otro layout no dispara, y el commit sale con la fuente nueva y el generado viejo.
 
@@ -138,3 +139,64 @@ quedaban fuera de la raíz pasaron sin generado.
 - **187**: la mitad opuesta del mismo guard —el generado fuera de `sqlc/` o `generated/` bloquea lo
   que está bien—. Mismo origen; un fix que lea la config de sqlc cierra los dos, y este no debería
   entregarse solo (ver Tradeoffs).
+
+## Cierre
+
+**Resuelto en 0.99.0 por el punto 2 del fix, con una condición que el caso no traía, y en el mismo
+cambio que el 187.** El dueño decidió no leer la config de sqlc. El patrón se desancló y, para no pagar
+el tradeoff que el propio caso señalaba, sólo dispara si el repositorio tiene config de sqlc. Recorriendo
+lo que el caso enumeró:
+
+- **Fix 1, leer `queries:` de la config → se decidió que no**, por la misma razón que el fix 1 del 187:
+  haría falta un lector de YAML en un repositorio sin dependencias.
+- **Fix 2, desanclar el patrón → se hizo distinto.** `SQL_SOURCE` en `engine/hooks/verify.js` es
+  `(?:^|/)queries/.*\.sql`, y `changedSqlSource` exige además `usesSqlc(dir)`, que devuelve si el índice
+  tiene un `sqlc.yaml`, `sqlc.yml` o `sqlc.json` a cualquier profundidad. No se parsea el archivo: sólo se
+  comprueba que exista. Cubre `monorepo` y, a diferencia de lo que el caso preveía, también `otraruta`
+  (`sql/queries/x.sql`), porque el patrón busca un segmento `queries/` en cualquier lugar de la ruta. Lo
+  que sigue sin verse es un `queries:` que apunte a una carpeta con otro nombre (`sql/x.sql`).
+- **Tradeoff «ampliar el patrón dispara más» → cerrado con la condición de la config.** Una carpeta
+  `queries/` en un repositorio sin config de sqlc ya no dispara. Eso **quita** algo que antes pasaba: un
+  `db/queries/x.sql` en la raíz de un repositorio sin sqlc bloqueaba y ahora no. Esa quita tiene su
+  aserción de ausencia (filas `queries/ sin sqlc` y `db/queries/ sin sqlc`), que se vio en rojo sobre el
+  código anterior. El único dependiente era la prueba vieja de `test/hooks/commit.test.js`, que ahora
+  stagea un `sqlc.yaml`. Ni la documentación ni las plantillas mencionan ese comportamiento
+  (`grep -rn "db/queries\|Ejecuta el generador"` fuera de `docs/issues/`).
+- **Tradeoff de la interacción con el 187 → respetado.** Se entregan juntos, y el reconocimiento del
+  generado por `*.sql.go` entra en el mismo cambio. El monorepo con `out` en `internal/platform/pgdb/`
+  que el caso ponía de ejemplo pasa (fila `monorepo con el generado fuera de sqlc/`).
+- **Tradeoff de YAML en el guard → no hace falta**, porque no se lee el contenido de la config.
+
+**Lo que el caso no preveía.** Un commit hecho desde un subdirectorio (`git -C api commit`) pregunta el
+índice desde ahí, y `git ls-files` sin `:(top)` sólo lista lo que cuelga de ese directorio. Sin eso, un
+`sqlc.yaml` en la raíz no se habría visto. Se usa `:(top,glob)**/sqlc.*`, y la fila `commit desde un
+subdirectorio` lo fija. El otro hallazgo, que el guard de OpenAPI toma un `api/sqlc.yaml` staged por una
+especificación, está en el cierre del 187 y sale como caso propio.
+
+### Qué se corrió
+
+- **La reproducción del caso, contra el motor arreglado** (2026-09-23, Node v24.18.0). Tal como está
+  escrita, sin config de sqlc, las cuatro corridas dan `PASA`. Es lo que se decidió: sin config no hay
+  generador que pedir. Con un `sqlc.yaml` staged junto a la consulta:
+
+  ```
+  == raiz-cfg: db/queries/x.sql sqlc.yaml
+  BLOQUEADO: Cambió una consulta SQL fuente sin artefactos regenerados: busqué en el índice un `*.sql.go`, o algo bajo una carpeta `sqlc/` o `generated/`, y no hay ninguno. Si corriste `sqlc generate`, stageá lo que escribió; si su `output_files_suffix` le cambia el nombre, esto no lo reconoce.
+  == monorepo-cfg: backend/db/queries/x.sql backend/sqlc.yaml
+  BLOQUEADO: Cambió una consulta SQL fuente sin artefactos regenerados: busqué en el índice un `*.sql.go`, ...
+  == otraruta-cfg: sql/queries/x.sql sqlc.yaml
+  BLOQUEADO: Cambió una consulta SQL fuente sin artefactos regenerados: busqué en el índice un `*.sql.go`, ...
+  == anidada-cfg: db/queries/sub/x.sql sqlc.yaml
+  BLOQUEADO: Cambió una consulta SQL fuente sin artefactos regenerados: busqué en el índice un `*.sql.go`, ...
+  ```
+
+  Los cuatro bloquean. `monorepo` y `otraruta` pasaban antes del arreglo. El monorepo va en `backend/` y
+  no en `api/` por el hallazgo de OpenAPI de arriba.
+- **La tabla de `test/hooks/verify.test.js`, en rojo sobre el `verify.js` de antes**: `monorepo sin
+  generado`, `commit desde un subdirectorio` y las dos filas sin sqlc.
+- **Mutaciones en una copia del árbol**. Estas cuatro se pusieron en rojo: la fuente anclada a la raíz
+  otra vez (falla `monorepo sin generado`), sin la condición de la config (fallan las dos filas sin
+  sqlc), la config buscada sólo en la raíz (falla `monorepo sin generado`) y sin `top` (falla el commit
+  desde un subdirectorio). La que sobrevive, que un `git ls-files` que falla haga aflojar el guard, está
+  explicada en el cierre del 187.
+- `npm run ci`, exit 0.

@@ -1,14 +1,15 @@
 ---
 caso: 187
 titulo: El guard de verify sólo reconoce el generado de sqlc si vive en una carpeta llamada `sqlc` o `generated`, y bloquea el commit cuando el proyecto configuró otro `out`
-estado: abierto
+estado: resuelto
+resuelto-en: 0.99.0
 prioridad: alta
 version-detectada: 0.98.0
 ---
 
 # 187 — Regenerar sqlc no alcanza: hay que ponerlo en la carpeta que el guard espera
 
-**🔴 abierto** · detectado en 0.98.0 · prioridad **alta**. El guard detecta la fuente SQL por su ruta
+**🟢 resuelto en 0.99.0** · detectado en 0.98.0 · prioridad **alta**. El guard detecta la fuente SQL por su ruta
 declarada (`db/queries`) pero detecta el generado por un nombre de carpeta fijo, así que cualquier
 proyecto que declare `gen.go.out` en otro lugar queda bloqueado aunque haya regenerado y stageado todo.
 
@@ -259,3 +260,77 @@ frena la misma tarea por asumir un layout que el proyecto no tiene obligación d
   lo que deja `.ops-approval` como única vía.
 - **192**: la otra mitad del mismo guard —la fuente fuera de la raíz no dispara nada—, encontrada
   revisando este caso. Un fix que lea `sqlc.yaml` puede cerrar los dos.
+
+## Cierre
+
+**Resuelto en 0.99.0 por el punto 2 del fix, junto con el 192 en un solo cambio.** El dueño decidió no
+meter un parser de YAML en el guard, así que el punto 1 no se hizo. Recorriendo lo que el caso enumeró:
+
+- **Fix 1, leer `gen.*.out` del `sqlc.yaml` → se decidió que no.** Exige un lector de YAML en un
+  repositorio sin dependencias, y el punto 2 cierra la reproducción sin él. Lo único que se lee de la
+  config es si existe, y eso lo usa el 192 para decidir si hay SQL de sqlc (ver su cierre).
+- **Fix 2, reconocer el generado por nombre de archivo → se hizo, sólo con `.go`.** `SQL_GENERATED` en
+  `engine/hooks/verify.js` acepta `*.sql.go` en cualquier carpeta y mantiene el patrón viejo
+  (`sqlc/`, `generated/`) como respaldo. `.ts` y `.py` no se prometen: el contraste de este mismo caso
+  dejó sin comprobar cómo nombran sus archivos los plugins de sqlc para esos lenguajes.
+- **Fix 3, que el mensaje diga qué buscó → se hizo.** Ahora dice que buscó en el índice un `*.sql.go`, o
+  algo bajo `sqlc/` o `generated/`, y que no encontró ninguno. También pide stagear lo que escribió
+  `sqlc generate` y avisa que un `output_files_suffix` le cambia el nombre. El «Ejecuta el generador» a
+  secas ya no está, y la prueba lo afirma por ausencia.
+- **Matiz `output_files_suffix` → queda como límite declarado.** Con un sufijo el archivo es
+  `x.sql_gen.go`, el guard no lo reconoce y frena como antes del arreglo. Lo dicen el mensaje y el
+  comentario de `SQL_GENERATED`. Sin leer la config no hay forma de saber cuál es el sufijo.
+- **Matiz de `models.go`, `querier.go`, `db.go` y el resto de los defaults → no se usan como señal**,
+  como proponía el punto 2: se pueden renombrar y varios son condicionales.
+- **Punto 1 en un monorepo → no aplica**, porque el punto 1 no se hizo. El reconocimiento por nombre no
+  depende de dónde esté la config.
+- **«Ninguno de los dos cierra el 192» → se cerró en el mismo cambio.** Ese caso pedía no entregarse
+  antes que éste, y así fue.
+- **«YAML en el repo: no hay parser» → es la razón de la decisión del fix 1.**
+- **Punto 3 como defecto de la familia del 181 → se arregló acá** y no salió como caso aparte: el mensaje
+  vive en el mismo `block` que se tocaba.
+- **Causa raíz, «la única prueba fija el layout que falla» → se agregó la tabla** «el guard de sqlc
+  reconoce la consulta y el generado donde el proyecto los puso», en `test/hooks/verify.test.js`. Tiene
+  siete layouts, entre ellos el `out` en `internal/platform/pgdb/`. La prueba vieja de
+  `test/hooks/commit.test.js` sigue midiendo el respaldo `sqlc/altas.go`, y ahora stagea un `sqlc.yaml`.
+- **Tradeoff del parser de YAML → se cierra con la decisión de arriba.**
+- **Tradeoff de un `*.sql.go` escrito a mano → aceptado**, igual que el caso lo aceptaba: el guard busca
+  una señal de que alguien regeneró, no una prueba.
+- **Tradeoff de no comprobar el sync (`sqlc diff`) → no se hizo, y sigue igual que antes.** Es una
+  decisión distinta y más cara. Nadie la pidió.
+
+**Lo que el caso no preveía: el guard de OpenAPI toma un `sqlc.yaml` por una especificación.**
+`changedOpenApi` (`engine/hooks/verify.js`, en `verify`) cuenta como fuente OpenAPI cualquier `.yaml` bajo
+`api/`, `openapi/` o `spec/`. Un monorepo que stagea `api/sqlc.yaml` recibe «Cambió una fuente
+OpenAPI/Swagger» aunque no tenga OpenAPI. Apareció al escribir la tabla, con la fila `api/sqlc.yaml`
+staged, y la fila se movió a `backend/` para no mezclarlo. Es otro defecto de otro chequeo, así que sale
+como caso propio.
+
+### Qué se corrió
+
+- **La reproducción mínima del caso, contra el motor arreglado** (2026-09-23, Node v24.18.0). Tal como
+  está escrita, sin `sqlc.yaml`, las dos corridas dan `PASA`. Eso no prueba nada, porque ahora el guard
+  ni mira si falta la config. Con un `sqlc.yaml` staged junto a la consulta:
+
+  ```
+  == pgdb-cfg: db/queries/x.sql internal/platform/pgdb/models.go internal/platform/pgdb/querier.go internal/platform/pgdb/x.sql.go sqlc.yaml
+  PASA (verify no bloqueó)
+  == sqlcdir-cfg: db/queries/x.sql internal/sqlc/models.go internal/sqlc/querier.go internal/sqlc/x.sql.go sqlc.yaml
+  PASA (verify no bloqueó)
+  == pgdb-cfg-sin-generado: db/queries/x.sql sqlc.yaml
+  BLOQUEADO: Cambió una consulta SQL fuente sin artefactos regenerados: busqué en el índice un `*.sql.go`, o algo bajo una carpeta `sqlc/` o `generated/`, y no hay ninguno. Si corriste `sqlc generate`, stageá lo que escribió; si su `output_files_suffix` le cambia el nombre, esto no lo reconoce.
+  ```
+
+  `pgdb` ahora pasa como `sqlcdir`. La tercera corrida muestra que el guard sigue frenando cuando de
+  verdad falta el generado.
+- **La tabla nueva en rojo sobre el `verify.js` de antes**: seis de sus siete filas, y entre ellas
+  `out en internal/platform/pgdb`. La séptima, el monorepo con el generado, ya pasaba antes, pero por
+  la razón equivocada: el guard no veía la consulta (192). Esa fila la sostiene la mutación sin
+  `*.sql.go`.
+- **Mutaciones en una copia del árbol**. Estas cuatro se pusieron en rojo: sin `*.sql.go` (fallan las
+  filas de `pgdb` y del monorepo con generado), sin el respaldo por carpeta (falla la prueba vieja de
+  `commit.test.js`), el mensaje viejo (fallan las tres filas que bloquean) y la ruta de la config sin
+  `top` (falla el commit desde un subdirectorio). Una **sobrevive**: que `git ls-files` falle y el
+  guard afloje. Esa rama no se puede observar, porque si git falla, `stagedForCommit` ya frenó un paso
+  antes.
+- `npm run ci`, exit 0.

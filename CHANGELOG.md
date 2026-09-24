@@ -40,6 +40,13 @@ diseño — eso vive en el commit y en el código.
   pegando tal cual en…», y el agente lo leía como una orden que su contrato le prohíbe. Ahora dice que las
   líneas las pega una persona, y al agente qué hacer mientras tanto.
 
+- **El gate de commit reconoce el código de sqlc donde lo pongas.** Sólo aceptaba el generado bajo una
+  carpeta `sqlc/` o `generated/`, así que un `out` como `internal/platform/pgdb/` pedía aprobación en cada
+  commit que tocaba una consulta aunque hubieras regenerado. Ahora reconoce `*.sql.go` en cualquier carpeta.
+  Y ve una consulta en cualquier carpeta `queries/` —`api/db/queries/` en un monorepo—, que antes se
+  commiteaba sin su generado sin que nada avisara; eso sólo si el repositorio tiene `sqlc.yaml`, `sqlc.yml`
+  o `sqlc.json`. Si frena, dice qué buscó. Límite: con `output_files_suffix` el generado no se reconoce.
+
 ## [0.98.0] - 2026-09-17
 
 ### Cambiado
