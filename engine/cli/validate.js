@@ -26,6 +26,7 @@ const O = require('../core/ownership')
 const TR = require('../core/trails')
 const OB = require('../core/onboarding')
 const C = require('../config/validate')
+const MG = require('../core/migrations')
 const CP = require('../config/paths')
 const AG = require('../agents/catalog')
 const RL = require('../automation/rules')
@@ -62,6 +63,7 @@ function check(dir, cli) {
       if (!raw.includes('{{')) {
         errors.push(...C.validateOpsConfig(config))
         warnings.push(...C.configWarnings(config))
+        warnings.push(...MG.coverageWarnings(R.reposFor(path.dirname(configPath), '.'), config))
         if (Array.isArray(config.workspaceRoots)) {
           for (const workspace of config.workspaceRoots) {
             if (workspace && workspace.name && workspace.path

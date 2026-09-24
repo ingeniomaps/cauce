@@ -12,7 +12,8 @@ Los hooks convierten invariantes comprobables en gates mecánicos. La base recom
 - cierre de sesión con planning o integraciones inválidas;
 - modificación del protocolo durante una tarea de producto.
 - escrituras fuera de las raíces declaradas del workspace;
-- reescritura de migraciones y SQL destructivo;
+- reescritura de migraciones y borrado destructivo —SQL o la API del ORM— en la parte que aplica, no en su
+  reversión; qué carpetas y extensiones son migraciones lo declara `migrations` en `ops.config.json`;
 - publicación, instalaciones globales y drift entre manifests y lockfiles.
 
 La lógica portable vive en `engine/hooks/run.js`; los `guard-*.sh` son entradas ejecutables comunes. Cada

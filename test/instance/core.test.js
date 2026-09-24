@@ -155,8 +155,24 @@ test('migrations.extensions se valida, y no declararlo es válido', () => {
     assert.match(errores[0], /sin el punto y en minúscula/)
   }
   assert.match(con({ extensions: [] })[0], /al menos una extensión/, 'declararlo vacío promete y no da')
-  assert.match(con({ paths: ['x'] })[0], /no está permitido/, 'y la clave que no existe se nombra')
+  assert.match(con({ folders: ['x'] })[0], /no está permitido/, 'y la clave que no existe se nombra')
   assert.match(con('sql')[0], /debe ser un objeto/)
+})
+
+// Las carpetas entran en la misma expresión regular que las extensiones, así que se validan por lo mismo;
+// y una ruta que sale de la raíz o arranca en `/` no nombra una carpeta que el guard pueda reconocer en la
+// ruta relativa que recibe (caso 196).
+test('migrations.paths se valida como carpetas relativas', () => {
+  const con = (paths) => validateOpsConfig({ ...opsConfig(), migrations: { paths } })
+    .filter((error) => error.includes('migrations'))
+  assert.deepEqual(con(['migrations', 'alembic/versions', 'db/migrate', 'scripts/versions_2']), [])
+  for (const malo of ['/abs', '../x', 'a/../b', './x', 'a//b', 'x/', '.*', 'a b', '', 3]) {
+    const errores = con([malo])
+    assert.equal(errores.length, 1, `${JSON.stringify(malo)} tiene que rechazarse: ${JSON.stringify(errores)}`)
+    assert.match(errores[0], /carpeta relativa/)
+  }
+  assert.match(con([])[0], /al menos una carpeta/, 'declararlo vacío promete y no da')
+  assert.match(con('migrations')[0], /al menos una carpeta/)
 })
 
 test('el validador conoce todas las propiedades que el schema declara en el primer nivel', () => {

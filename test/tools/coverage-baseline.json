@@ -189,6 +189,11 @@
     "branches": 83,
     "functions": 100
   },
+  "engine/core/migrations.js": {
+    "lines": 100,
+    "branches": 96,
+    "functions": 100
+  },
   "engine/core/onboarding.js": {
     "lines": 100,
     "branches": 76,
@@ -242,6 +247,11 @@
   "engine/hooks/input.js": {
     "lines": 100,
     "branches": 84,
+    "functions": 100
+  },
+  "engine/hooks/migrations.js": {
+    "lines": 100,
+    "branches": 94,
     "functions": 100
   },
   "engine/hooks/ops-config.js": {
