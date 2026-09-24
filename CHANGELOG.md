@@ -30,6 +30,16 @@ diseño — eso vive en el commit y en el código.
   pasar. Cuando algo no queda esperando tu confirmación, el bloqueo lo dice y te indica que lo pidas
   nombrándolo, en vez de ofrecerte un «dale» que no iba a servir.
 
+- **Si lo que se frenó lo hacía un subagente, tu confirmación le llega.** Dentro de trabajo delegado —Build en
+  cada `autobuild`— el bloqueo no ofrecía el chat: decías que sí y el reintento volvía a frenar con el mismo
+  mensaje, y la única salida era pegar la línea en `planning/.ops-approval`. Ahora el subagente devuelve el
+  bloqueo para que te lo pregunten, y lo que confirmes pasa aunque lo reintente otro subagente. Sólo eso: un
+  pedido tuyo que nombraba algo sigue valiendo para el agente con el que hablás, no para un subagente.
+
+- **Sin nadie en el chat, el bloqueo ya no le ordena al agente que se escriba la aprobación.** Decía «Aprobalo
+  pegando tal cual en…», y el agente lo leía como una orden que su contrato le prohíbe. Ahora dice que las
+  líneas las pega una persona, y al agente qué hacer mientras tanto.
+
 ## [0.98.0] - 2026-09-17
 
 ### Cambiado

@@ -84,7 +84,10 @@ guards lo leen:
 
 No cuenta cuando no hay persona —CI, o un aviso del runner como el de un subagente que terminó—, cuando lo
 que pidió es un recorrido de Cauce (`/autobuild`, `$flow`…), ni en la llamada de un subagente, que Claude
-marca con `agent_id`. En Claude y Codex cada llamada trae el identificador del mensaje que la originó;
+marca con `agent_id`: a un subagente no le llega lo que ella pidió ni lo que se le concedió antes. Sí le
+llega su confirmación a un bloqueo, que nombra exactamente lo frenado: el bloqueo de un subagente le pide
+devolverlo a quien lo lanzó para que se lo pregunte, y lo que ella confirme pasa aunque lo reintente otro
+subagente. En Claude y Codex cada llamada trae el identificador del mensaje que la originó;
 Gemini no lo manda, y ahí vale el último mensaje. El registro vive en el temporal del sistema, uno por
 sesión, y los guards de límites lo cuidan junto con `planning/.ops-approval`: el registro no lo escribe
 nunca una herramienta, y en la aprobación sólo entran las líneas que la persona nombró en ese mismo

@@ -1,14 +1,15 @@
 ---
 caso: 194
 titulo: El bloqueo sin chat le ordena al agente pegar la aprobación que su contrato le prohíbe escribir
-estado: abierto
+estado: resuelto
+resuelto-en: 0.99.0
 prioridad: media
 version-detectada: 0.98.0
 ---
 
 # 194 — «Aprobalo pegando» le habla al agente cuando no hay chat
 
-**🔴 abierto** · detectado en 0.98.0 · prioridad **media**. Cuando no hay nadie en el chat, `HOW()` dice
+**🟢 resuelto en 0.99.0** · detectado en 0.98.0 · prioridad **media**. Cuando no hay nadie en el chat, `HOW()` dice
 «Aprobalo pegando tal cual en planning/.ops-approval…»: un imperativo dirigido a quien lee el bloqueo, que
 es el agente. El 098 corrigió esa redacción sólo en la rama con chat; en todos los caminos sin chat —CI,
 un recorrido lanzado con `/autobuild`, un subagente, Antigravity, `claude -p` sin hook de mensaje— sigue
@@ -142,3 +143,32 @@ pueda arreglar sin decidir lo que el 186 deja abierto.
   caminos sin chat.
 - **098**: corrigió la redacción imperativa sólo en la rama con chat, después de medir que el agente
   intentaba escribirse la aprobación.
+
+## Cierre
+
+**Resuelto en 0.99.0, por el camino propuesto.** Recorriendo lo que enumeró:
+
+- **Fix 1 (la rama sin chat nombra a la persona y le dice al agente qué hacer) → se hizo.** Dice «Esto lo aprueba
+  una persona: que pegue ella tal cual en …», y al agente: «Vos no lo escribas —un guard lo frena—: decí qué se
+  frenó y dónde, y reintentá cuando esté; si sos un subagente, devolvele el bloqueo a quien te lanzó».
+- **Fix 2, las pruebas que operan con el literal → se hizo.** `pasteApproval` busca ahora la línea que termina
+  en «tal cual en … estas líneas:», que conservan las dos ramas. El caso no listaba las cinco aserciones de
+  `chat-effects.test.js` sobre la ruta en sidecar, que también buscaban «pegando tal cual en»: salieron al
+  correr la suite y apuntan ahora a «que pegue ella tal cual en».
+- **Fix 2, las que afirman ausencia → se hizo, y se vieron en rojo.** `chat.test.js` busca la ausencia de «Esto
+  lo aprueba una persona» en la rama con chat, y `plan-first.test.js` la de «tal cual en», que cubre las dos
+  ramas.
+- **Fix 3 (template y README) → comprobado: no citaban la frase.**
+- **Tradeoffs → aceptados**: el mensaje sin chat es algo más largo, y una instancia que automatizara sobre el
+  literal viejo se rompería; no se conoce ninguna.
+
+### Qué se corrió
+
+- **La reproducción del caso contra el motor arreglado**: el bloqueo sin `session_id` y con `CI=true` ya no dice
+  «Aprobalo»; dice «Esto lo aprueba una persona: que pegue ella tal cual» y «Vos no lo escribas». Lo fija
+  `chat.test.js` en la rama sin chat, con la aserción de ausencia del imperativo.
+- **La aserción nueva en rojo sobre el código anterior**, y **cuatro mutaciones en una copia del árbol, las
+  cuatro en rojo**: el imperativo de vuelta (dos pruebas), la rama con chat mandando a pegar (dos), el texto sin
+  qué hacer el agente, y `plan-first` ofreciendo pegar con un plan a la vista.
+- El estado con sólo este arreglo, sin el del 186, pasó `node --test` de hooks y planning (292/292) en una copia
+  antes de commitearlo aparte; `npm run ci`, exit 0, con los dos.

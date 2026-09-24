@@ -1,14 +1,15 @@
 ---
 caso: 186
 titulo: Un bloqueo dentro de un subagente nunca ofrece la salida por chat, aunque la persona esté mirando
-estado: abierto
+estado: resuelto
+resuelto-en: 0.99.0
 prioridad: alta
 version-detectada: 0.98.0
 ---
 
 # 186 — Delegar el trabajo cierra la salida por chat sin decírselo a nadie
 
-**🔴 abierto** · detectado en 0.98.0 · prioridad **alta**. `present()` excluye al subagente igual que
+**🟢 resuelto en 0.99.0** · detectado en 0.98.0 · prioridad **alta**. `present()` excluye al subagente igual que
 `said()`, así que el bloqueo que frena trabajo delegado no ofrece el «dale» ni dice que no lo ofrece. La
 redacción imperativa con que cae en su lugar es de todos los caminos sin chat y vive en el caso 194.
 
@@ -308,3 +309,58 @@ explicación estaba escrita en la fila de `HUMAN_ACTIONS.md` que dejó la primer
 - **098**: estableció que el archivo es de la persona y que la redacción imperativa hace que el agente se lo
   escriba solo. En trabajo delegado esa redacción vuelve a ser la única.
 - **126** y **124**: la familia de «el guard frena a quien está dando la instrucción y no le ofrece salida».
+
+## Cierre
+
+**Resuelto en 0.99.0, separando preguntar de conceder también para el trabajo delegado.** Recorriendo lo que
+enumeró:
+
+- **Fix 1 (sacar `agent_id` de `present()`) → se hizo.** El bloqueo de un subagente ofrece el chat y anota lo
+  frenado en `pending`.
+- **Fix 2 (a quién le toca reintentar) → se hizo.** Dentro de un subagente, el bloqueo le dice que no puede
+  esperar la respuesta y que se lo devuelva a quien lo lanzó para que se lo pregunte a la persona, y que si
+  ella lo confirma, el mismo cambio pasa aunque lo reintente un subagente (`HOW`, `engine/hooks/approval.js`).
+- **Fix 3 (decir que el chat no va) → no hizo falta**: el chat sí va.
+- **Decisión 1 (¿el trabajo delegado ofrece el chat?) → sí.** `template/AGENTS.md` y el README de los guards
+  dicen ahora que la confirmación le llega a un subagente, y que un pedido que nombra algo no.
+- **Decisión 2 (¿lo confirmado alcanza a un subagente?) → sí, y sólo eso.** De las tres vías con que algo pasa
+  —`orden`, `dale`, `concedido`—, a una llamada con `agent_id` le llega sólo `dale`: los ítems exactos que un
+  bloqueo nombró y la persona aprobó (`confirmed`, `engine/hooks/chat.js`). Es la lectura que cierra el síntoma
+  sin tocar lo que `chat.test.js` fija: una orden o lo concedido antes siguen sin alcanzar al subagente. Vale
+  también para los gates de un commit, que preguntan con `authorized` sin heredar: ahí fue donde frenó el 187.
+  El push desde un subagente sigue prohibido por su propio candado (`push.js`), así que R10 no cambia.
+- **Decisión 3 (`/autobuild` literal) → queda como está.** Un recorrido pedido con su comando sigue sin ofrecer
+  el chat (decisión del 098); no fue la causa en la instancia que lo encontró.
+- **Decisión 4 (la redacción imperativa) → salió como el 194** y se arregló en esta misma versión.
+- **Tradeoff de las llamadas que anotan `pending` → aceptado.** Un subagente anota lo que lo frenó; lo acota el
+  alcance que ya existía —aprobar cubre lo frenado y nada más— y el subagente tiene que devolverlo con qué se
+  frenó para que alguien se lo pregunte a la persona.
+- **Tradeoff del lavado de aprobaciones → sigue cerrado.** Lo que llega al subagente lo tuvo que confirmar un
+  mensaje con `human: true`, que un agente no fabrica.
+- **Tradeoff del punto 3 → no aplica**, porque no se eligió el punto 3.
+
+**Lo que el caso no preveía: la confirmación tenía que sobrevivir a un aviso.** Un subagente reintenta mientras
+la persona no escribe nada, y en ese tiempo llegan avisos de tareas de fondo. `record()` escribía `approved: []`
+en el registro de un aviso, así que lo que ella confirmó se perdía antes del reintento. Ahora un aviso arrastra
+`approved`, igual que desde el 191 arrastra `spoken` y `pending`. A la sesión principal no le cambia nada: su
+lectura, `said`, sigue exigiendo un mensaje de la persona. Y sin comparar el id del mensaje, porque el subagente
+puede reintentar después del mensaje en que ella contestó.
+
+### Qué se corrió
+
+- **La reproducción del incidente, por los hooks reales** —`run.js chat` y `run.js secrets-read` como procesos,
+  con el subagente como `agent_id` y un aviso de fondo en el medio—, 2026-09-23:
+
+  ```
+  1) subagente frenado:   «Sos un subagente y no podés esperar la respuesta» [exit=2]
+  2) «autorizo y sigue» → aviso → reintento del subagente: [exit=0]
+  3) otra credencial, mismo subagente: [exit=2]
+  ```
+
+  Es la secuencia de la segunda corrida del caso —el dueño dijo «autorizo y sigue» y el reintento delegado
+  volvía a frenar—, y ahora pasa, sólo para lo frenado.
+- **La prueba nueva en rojo sobre el código anterior** —el bloqueo del subagente no decía nada de devolverlo— y
+  **siete mutaciones en una copia del árbol, las siete en rojo**: `present()` excluyendo al subagente otra vez,
+  `confirmed` vacío, el aviso borrando lo confirmado, los gates sin lo confirmado, el mismo texto para el
+  subagente, `REFUSED` sin distinguirlo, y `said` dejando pasar al subagente (cuatro pruebas en rojo).
+- `npm run ci`, exit 0.
