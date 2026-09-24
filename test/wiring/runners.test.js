@@ -89,6 +89,11 @@ test('el bridge de Antigravity traduce decisiones al protocolo nativo', () => {
   const noFile = evaluate('pre-files', { workspacePaths: [cwd], toolCall: { args: { Path: '.env', Cwd: cwd } } })
   assert.equal(noFile.decision, 'deny')
   assert.match(noFile.reason, /no trae TargetFile ni AbsolutePath/)
+  // Con el archivo pero sin el contenido, los guards que juzgan contenido verían un texto vacío.
+  const renamedContent = { TargetFile: 'db/migrations/1.sql', Content: 'DROP TABLE x;', Cwd: cwd }
+  const noContent = evaluate('pre-files', { workspacePaths: [cwd], toolCall: { args: renamedContent } })
+  assert.equal(noContent.decision, 'deny')
+  assert.match(noContent.reason, /no trae CodeContent, ReplacementContent ni ReplacementChunks/)
   // Sin entrada no hay llamada descrita: se invoca así a mano, con OPS_HOOK_*, y sigue como antes (caso 198).
   assert.equal(evaluate('pre-shell', {}).decision, 'allow')
 })

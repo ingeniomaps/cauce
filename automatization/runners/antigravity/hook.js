@@ -170,12 +170,21 @@ const DESCRIBED_BY = {
   'pre-files': { field: 'file_path', names: 'TargetFile ni AbsolutePath' },
 }
 
+// Un archivo sin su contenido tampoco se puede juzgar: los guards que miran qué se escribe —secretos,
+// migraciones— verían un texto vacío. Basta que el campo esté; vacío es un archivo vacío.
+const CONTENT_FIELDS = ['CodeContent', 'ReplacementContent', 'ReplacementChunks']
+
 function undescribed(event, input, normalized) {
   const need = DESCRIBED_BY[event]
-  if (!need || !Object.keys(input).length || normalized.tool_input[need.field]) return ''
-  const args = Object.keys((input.toolCall && input.toolCall.args) || {})
+  if (!need || !Object.keys(input).length) return ''
+  const fields = (input.toolCall && input.toolCall.args) || {}
+  const args = Object.keys(fields)
+  const missing = !normalized.tool_input[need.field] ? need.names
+    : event === 'pre-files' && !CONTENT_FIELDS.some((field) => field in fields)
+      ? 'CodeContent, ReplacementContent ni ReplacementChunks' : ''
+  if (!missing) return ''
   const received = args.length ? `toolCall.args trae ${args.join(', ')}` : `llegó ${Object.keys(input).join(', ')}`
-  return `la llamada no trae ${need.names}, así que no hay nada que juzgar y no se autoriza (${received}). Si `
+  return `la llamada no trae ${missing}, así que no hay nada que juzgar y no se autoriza (${received}). Si `
     + 'Antigravity cambió el formato de sus llamadas, el puente tiene que aprenderlo en normalize().'
 }
 
