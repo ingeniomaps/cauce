@@ -389,12 +389,16 @@ test('el barrido borra las ramas ya mergeadas, y sólo ésas', () => {
   const bin = path.join(dir, 'bin')
   const borradas = path.join(dir, 'borradas')
   fs.mkdirSync(bin)
-  // Cuatro ramas: mergeada y quieta, mergeada y movida después, con el PR abierto, y una fuera de
-  // `automation/` que el prefijo de la consulta no traería pero el script tiene que ignorar igual.
+  // Cinco ramas: mergeada y quieta, mergeada y movida después, con el PR abierto, una fuera de
+  // `automation/` que el prefijo de la consulta no traería pero el script tiene que ignorar igual, y una
+  // mergeada que otro borró entre listar y borrar —pasó en la primera corrida real y cortaba el resto—.
   fs.writeFileSync(path.join(bin, 'gh'), `#!/usr/bin/env bash
 case "$*" in
-  *matching-refs*) printf '%s\\n' 'refs/heads/automation/quieta aaa' 'refs/heads/automation/movida bbb' \\
-    'refs/heads/automation/abierta ccc' 'refs/heads/fix/otra ddd' ;;
+  *matching-refs*) printf '%s\\n' 'refs/heads/automation/ganada eee' 'refs/heads/automation/quieta aaa' \\
+    'refs/heads/automation/movida bbb' 'refs/heads/automation/abierta ccc' 'refs/heads/fix/otra ddd' ;;
+  *"--head automation/ganada"*) echo eee ;;
+  *"--method DELETE"*"automation/ganada") echo 'Reference does not exist' >&2; exit 1 ;;
+  *"git/ref/heads/automation/ganada") exit 1 ;;
   *"--head automation/quieta"*) echo aaa ;;
   *"--head automation/movida"*) echo zzz ;;
   *"--head automation/abierta"*) echo '' ;;
@@ -412,4 +416,5 @@ esac
   assert.deepEqual(borrado, ['repos/o/r/git/refs/heads/automation/quieta'], 'sólo la mergeada que no se movió')
   assert.match(hecho.stdout, /automation\/movida cambió después de su merge/, 'y la movida se dice, no se borra')
   assert.doesNotMatch(hecho.stdout, /abierta/, 'y una con el PR abierto no es noticia: no se mergeó')
+  assert.match(hecho.stdout, /automation\/ganada ya no estaba/, 'y la que otro borró antes no corta el barrido')
 })

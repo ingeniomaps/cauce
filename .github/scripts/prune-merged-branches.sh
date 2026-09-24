@@ -14,7 +14,8 @@ set -euo pipefail
 repo="${GITHUB_REPOSITORY:-ingeniomaps/cauce}"
 refs="$(gh api --paginate "repos/${repo}/git/matching-refs/heads/automation/" \
   --jq '.[] | "\(.ref) \(.object.sha)"')"
-printf '%s\n' "$refs" | while read -r ref sha; do
+failed=0
+while read -r ref sha; do
   branch="${ref#refs/heads/}"
   case "$branch" in automation/?*) ;; *) continue ;; esac
   merged="$(gh pr list --repo "$repo" --head "$branch" --state merged \
@@ -24,6 +25,17 @@ printf '%s\n' "$refs" | while read -r ref sha; do
     echo "$branch cambió después de su merge; no se borra."
     continue
   fi
-  gh api --method DELETE "repos/${repo}/git/refs/heads/${branch}"
+  # Entre listar y borrar, otra mano puede llegar antes —un merge con `--delete-branch`—, y eso no es un
+  # fallo del barrido: se dice y se sigue. Un 422 cortaba el resto con `set -e` y dejaba ramas vivas.
+  if ! out="$(gh api --method DELETE "repos/${repo}/git/refs/heads/${branch}" 2>&1)"; then
+    if gh api "repos/${repo}/git/ref/heads/${branch}" >/dev/null 2>&1; then
+      echo "$branch no se pudo borrar: $out" >&2
+      failed=1
+    else
+      echo "$branch ya no estaba: la borró otro antes."
+    fi
+    continue
+  fi
   echo "$branch borrada: mergeada y sin cambios desde entonces."
-done
+done < <(printf '%s\n' "$refs")
+exit "$failed"
