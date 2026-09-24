@@ -285,7 +285,7 @@ test('el guard de sqlc reconoce la consulta y el generado donde el proyecto los 
   const scenarios = [
     { name: 'monorepo con el generado fuera de sqlc/', prior: ['api/sqlc.yaml'],
       staged: ['api/db/queries/x.sql', 'api/internal/platform/pgdb/x.sql.go'], blocks: false },
-    // `backend/` y no `api/`: un `.yaml` staged bajo `api/` es, para el guard de OpenAPI, una fuente suya.
+    // `backend/` y no `api/`: así esta tabla no depende de cómo el guard de OpenAPI lee esa carpeta.
     { name: 'monorepo sin generado', staged: ['backend/sqlc.yaml', 'backend/db/queries/x.sql'],
       blocks: true },
     { name: 'out en internal/platform/pgdb', prior: ['sqlc.yml'],
@@ -323,6 +323,49 @@ test('el guard de sqlc reconoce la consulta y el generado donde el proyecto los 
     assert.match(message, /consulta SQL fuente/)
     assert.match(message, /\*\.sql\.go/)
     assert.doesNotMatch(message, /Ejecuta el generador\./)
+  })
+})
+
+// Caso 197. Una carpeta `api/` no hace de un `.yaml` una especificación: lo hace declarar `openapi:` o
+// `swagger:`, o ser un fragmento de una carpeta que tiene una. `prior` va commiteado antes.
+test('el guard de OpenAPI dispara con una especificación, no con cualquier yaml de su carpeta', async (t) => {
+  const SPEC = 'openapi: 3.0.0\ninfo:\n  title: x\n'
+  const scenarios = [
+    { name: 'la raíz de una especificación', staged: { 'api/openapi.yaml': SPEC }, blocks: true },
+    { name: 'swagger 2 en la raíz del repo', staged: { 'swagger.yaml': 'swagger: "2.0"\n' }, blocks: true },
+    { name: 'la config de sqlc bajo api/', staged: { 'api/sqlc.yaml': 'version: "2"\n' }, blocks: false },
+    { name: 'un compose bajo api/', staged: { 'api/docker-compose.yml': 'services: {}\n' }, blocks: false },
+    { name: 'un fixture bajo spec/', staged: { 'spec/fixtures/config.yaml': 'a: 1\n' }, blocks: false },
+    { name: 'un fragmento de una especificación partida', prior: { 'api/openapi.yaml': SPEC },
+      staged: { 'api/paths/users.yaml': 'get:\n  summary: x\n' }, blocks: true },
+    { name: 'el fragmento, commiteado desde un subdirectorio', prior: { 'api/openapi.yaml': SPEC },
+      staged: { 'api/paths/users.yaml': 'get:\n  summary: x\n' }, from: 'api/paths', blocks: true },
+    { name: 'borrar la especificación', prior: { 'api/openapi.yaml': SPEC }, deleted: ['api/openapi.yaml'],
+      blocks: true },
+    { name: 'borrar la config de sqlc', prior: { 'api/sqlc.yaml': 'version: "2"\n' }, deleted: ['api/sqlc.yaml'],
+      blocks: false },
+    { name: 'la especificación ya regenerada',
+      staged: { 'api/openapi.yaml': SPEC, 'client_generated.go': 'package c\n' }, blocks: false },
+  ]
+  for (const scenario of scenarios) await t.test(scenario.name, () => {
+    const root = tempRoot('ops-hook-openapi-')
+    initRepo(root)
+    const stage = (files) => {
+      for (const [file, text] of Object.entries(files)) {
+        fs.mkdirSync(path.join(root, path.dirname(file)), { recursive: true })
+        fs.writeFileSync(path.join(root, file), text)
+      }
+      git(['add', ...Object.keys(files)], root)
+    }
+    if (scenario.prior) {
+      stage(scenario.prior)
+      git(['commit', '-qm', 'prior'], root)
+    }
+    stage(scenario.staged || {})
+    if (scenario.deleted) git(['rm', '-q', ...scenario.deleted], root)
+    const input = { cwd: path.join(root, scenario.from || '.'), tool_input: { command: 'git commit -m x' } }
+    if (scenario.blocks) blocked('verify', input, /OpenAPI\/Swagger/)
+    else assert.doesNotThrow(() => execute('verify', input))
   })
 })
 

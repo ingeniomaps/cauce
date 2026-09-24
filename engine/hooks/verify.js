@@ -168,13 +168,42 @@ function usesSqlc(dir) {
   return !listed.ok || Boolean(listed.output.trim())
 }
 
+// Una especificación OpenAPI se reconoce por lo que declara y no por la carpeta: `api/` guarda también la
+// config de sqlc, un compose o fixtures, y cada uno pedía regenerar un cliente que no existe (caso 197). La
+// carpeta queda como filtro barato antes de leer nada. Un fragmento de una especificación partida con `$ref`
+// no declara nada, así que cuenta si su carpeta de primer nivel tiene en el índice una raíz que sí lo haga.
+// Se lee el índice y no el disco, que es lo que el commit graba. Si git no contesta, dispara: un guard que
+// no pudo mirar no afloja.
+const OPENAPI_CANDIDATE = /^(?:(?:openapi|api|spec)\/(?:.*\/)?[^/]+|openapi|swagger)\.ya?ml$/i
+const OPENAPI_ROOT = /^(?:openapi|swagger)\s*:/m
+
+function declaresOpenApi(dir, file) {
+  // Un archivo borrado figura como cambio y ya no está en el índice: lo que era se lee en `HEAD`.
+  for (const revision of ['', 'HEAD']) {
+    const shown = run('git', ['-C', dir, 'show', `${revision}:${file}`], dir)
+    if (shown.ok) return OPENAPI_ROOT.test(shown.output.slice(0, 4096))
+  }
+  return true
+}
+
+function changedOpenApiSpec(dir, staged) {
+  const candidates = staged.filter((file) => OPENAPI_CANDIDATE.test(file))
+  if (candidates.some((file) => declaresOpenApi(dir, file))) return true
+  for (const folder of new Set(candidates.filter((file) => file.includes('/')).map((file) => file.split('/')[0]))) {
+    const listed = run('git', ['-C', dir, 'ls-files', '--', `:(top,glob)${folder}/**/*.yaml`,
+      `:(top,glob)${folder}/**/*.yml`], dir)
+    if (!listed.ok) return true
+    if (listed.output.split('\n').filter(Boolean).some((file) => declaresOpenApi(dir, file))) return true
+  }
+  return false
+}
+
 function verify(input) {
   if (process.env.OPS_SKIP_VERIFY === '1') return
   const command = commandOf(input)
   if (!isCommit(command)) return
   const { dir, staged } = stagedForCommit(command, cwdOf(input))
-  const changedOpenApi = staged.some((file) => /^(?:openapi|api|spec)(?:\/.*)?\/[^/]+\.ya?ml$/i.test(file))
-    || staged.some((file) => /^(?:openapi|swagger)\.ya?ml$/i.test(file))
+  const changedOpenApi = changedOpenApiSpec(dir, staged)
   const changedSqlSource = staged.some((file) => SQL_SOURCE.test(file)) && usesSqlc(dir)
   const hasApiGenerated = staged.some((file) => /(?:^|\/)[^/]*(?:generated|\.gen)\.(?:go|ts|js|py)$/i.test(file))
   const hasSqlGenerated = staged.some((file) => SQL_GENERATED.test(file))
