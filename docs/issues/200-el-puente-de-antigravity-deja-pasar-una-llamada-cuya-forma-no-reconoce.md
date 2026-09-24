@@ -1,14 +1,15 @@
 ---
 caso: 200
 titulo: El puente de Antigravity deja pasar una llamada cuya forma no reconoce, así que un campo renombrado apaga todos sus guards en silencio
-estado: abierto
+estado: resuelto
+resuelto-en: 0.99.0
 prioridad: alta
 version-detectada: 0.98.0
 ---
 
 # 200 — Un campo con otro nombre y el puente no juzga nada
 
-**🔴 abierto** · detectado en 0.98.0 · prioridad **alta**. Falla hacia el lado peligroso y sin rastro: la
+**🟢 resuelto en 0.99.0** · detectado en 0.98.0 · prioridad **alta**. Falla hacia el lado peligroso y sin rastro: la
 llamada pasa como si el guard la hubiera mirado.
 
 ## Resumen
@@ -89,3 +90,48 @@ evento es una decisión aparte.
 
 - **198**: la mitad ilegible del mismo problema, ya cerrada.
 - **190**: el mismo contrato, del lado del motor: un guard que no sabe qué juzgar no autoriza.
+
+## Cierre
+
+**Resuelto en 0.99.0, por el fix propuesto.** Recorriendo lo que enumeró:
+
+- **`pre-shell` sin comando → se niega.** `undescribed` (`automatization/runners/antigravity/hook.js`) mira si
+  `normalize` encontró el campo que el evento juzga, y si no, `evaluate` niega nombrando lo que llegó
+  —`toolCall.args trae Command`, o `llegó tool_call` si ni siquiera está `toolCall`—.
+- **`pre-files` sin archivo → se niega también.** El caso lo dejaba condicionado a comprobar si Antigravity
+  tiene herramientas de archivos que no nombren uno. No se pudo comprobar sin una sesión real, y se eligió el
+  lado cerrado: si existe una, se va a ver en el primer intento con el motivo que dice qué llegó, que es el
+  tradeoff que el caso ya aceptaba.
+- **`stop` → no aplica**, como decía el caso: no tiene campos que juzgar.
+- **Tradeoff de las llamadas legítimas con otra forma → aceptado**, y el motivo dice dónde se arregla
+  (`normalize()`).
+- **Tradeoff de los nombres no comprobados → sigue siendo hipótesis** qué manda `agy` hoy; lo que cambió es el
+  costo de que sea falsa: antes apagaba los guards, ahora niega a la vista.
+
+**Lo que el caso no preveía: el sondeo de `install` y `doctor` dependía de este defecto.** `probeBridge`
+(`engine/automation/index.js`) le mandaba a cada evento un payload de shell, `CommandLine: 'ls'`. En
+`pre-files` eso no describe ningún archivo: pasaba sólo porque el puente dejaba pasar una llamada vacía. Con el
+arreglo, tres pruebas de instalación se pusieron en rojo, y el sondeo ahora manda una llamada inocua a
+`pre-shell` y una entrada vacía al resto, que es la forma legítima de no describir nada y ejercita igual el
+arranque y la raíz.
+
+**Lo que se mantuvo a propósito: la entrada vacía sigue pasando**, como decidió el 198. No describe ninguna
+llamada y es como se invoca el puente a mano, con `OPS_HOOK_COMMAND`/`OPS_HOOK_FILE`.
+
+### Qué se corrió
+
+- **La reproducción del caso contra el puente real** (2026-09-23, exit 0 en todas):
+
+  ```
+  CommandLine: git push --force  → deny: 'git push --force' reescribe historia ya publicada…
+  Command:     git push --force  → deny: la llamada no trae CommandLine … (toolCall.args trae Command)…
+  tool_call.args.CommandLine     → deny: la llamada no trae CommandLine … (llegó tool_call)…
+  CommandLine: git status        → allow
+  </dev/null                     → allow
+  ```
+
+- **La prueba nueva en `test/wiring/runners.test.js`, en rojo sobre el código anterior** (la forma renombrada
+  pasaba con `allow`), y **tres mutaciones en una copia del árbol, las tres en rojo**: sin la comprobación
+  (1 prueba), negando también la entrada vacía (4) y el sondeo de antes (3).
+- `npm run ci`, exit 0, 981 pruebas.
+

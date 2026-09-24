@@ -77,6 +77,11 @@ diseño — eso vive en el commit y en el código.
   llega nada niega y dice cómo invocarlo a mano, y en `stop` deja cerrar con el motivo a la vista. Sin
   entrada (`</dev/null`) sigue permitiendo, como antes.
 
+- **El puente de Antigravity niega una llamada que no sabe describir.** Leía cada campo por un nombre fijo,
+  así que una llamada con otra forma —un campo renombrado en una actualización del runner— llegaba vacía a
+  los guards y pasaba: todos apagados sin avisar. Ahora un `pre-shell` sin comando o un `pre-files` sin
+  archivo se niegan, y el motivo nombra los campos que sí llegaron.
+
 ### Cambiado
 
 - **`check` falla si una entrada de DONE tiene `tests:` todo `n/a` y su commit toca algo que no sea `.md`,
