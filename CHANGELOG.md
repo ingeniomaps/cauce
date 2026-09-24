@@ -14,6 +14,16 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.99.0] - 2026-09-23
+
+### Corregido
+
+- **Un aviso de una tarea de fondo ya no le borra a la persona lo que dijo.** Si decías «no toques el
+  `.env`» y antes de que el agente lo intentara llegaba un aviso de un subagente, el bloqueo quedaba
+  esperando confirmación, y un «seguí con lo tuyo» después lo aprobaba. Ahora tu negativa sigue valiendo
+  aunque llegue un aviso en el medio. Y al revés: lo que se frenó en tu turno sigue esperando tu respuesta
+  aunque el aviso llegue antes que ella, en vez de perderse y hacer que tu «dale» no apruebe nada.
+
 ## [0.98.0] - 2026-09-17
 
 ### Cambiado
