@@ -48,7 +48,12 @@ function probeBridge(paths, runner) {
   const launchDirs = [paths.install, path.dirname(script)]
   for (const event of hookEvents) {
     for (const cwd of launchDirs) {
-      const payload = JSON.stringify({ toolCall: { args: { CommandLine: 'ls', Cwd: paths.install } } })
+      // Una llamada inocua para el evento que la juzga, y ninguna para los demás: un `pre-files` con un
+      // comando no describe ningún archivo, y el puente niega lo que no sabe describir (caso 200). La
+      // entrada vacía es la forma legítima de no describir nada, y ejercita igual el arranque y la raíz.
+      const payload = JSON.stringify(event === 'pre-shell'
+        ? { toolCall: { args: { CommandLine: 'ls', Cwd: paths.install } } }
+        : {})
       const result = spawnSync(process.execPath, [script, event], { cwd, input: payload, encoding: 'utf8' })
       let response = {}
       try { response = JSON.parse((result.stdout || '').trim()) } catch { response = {} }

@@ -77,6 +77,20 @@ test('el bridge de Antigravity traduce decisiones al protocolo nativo', () => {
   const raro = evaluate('evento-que-no-existe', payload('git status'))
   assert.equal(raro.decision, 'deny')
   assert.match(raro.reason, /Evento Antigravity desconocido: evento-que-no-existe/)
+
+  // Una llamada que el puente no sabe describir no se autoriza: con otro nombre de campo el mismo push
+  // forzado llegaba vacío a los guards y pasaba (caso 200). El motivo nombra lo que sí llegó.
+  const cwd = path.resolve(root, '..', '..')
+  const renamed = evaluate('pre-shell',
+    { workspacePaths: [cwd], toolCall: { args: { Command: 'git push --force', Cwd: cwd } } })
+  assert.equal(renamed.decision, 'deny')
+  assert.match(renamed.reason, /no trae CommandLine/)
+  assert.match(renamed.reason, /Command, Cwd/)
+  const noFile = evaluate('pre-files', { workspacePaths: [cwd], toolCall: { args: { Path: '.env', Cwd: cwd } } })
+  assert.equal(noFile.decision, 'deny')
+  assert.match(noFile.reason, /no trae TargetFile ni AbsolutePath/)
+  // Sin entrada no hay llamada descrita: se invoca así a mano, con OPS_HOOK_*, y sigue como antes (caso 198).
+  assert.equal(evaluate('pre-shell', {}).decision, 'allow')
 })
 
 // Los dos errores en el mismo evento `stop`, porque separados los dos dan `continue` y cualquiera de

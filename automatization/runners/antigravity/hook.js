@@ -157,6 +157,28 @@ function refusal(event, message, blocking) {
   return blocking ? { decision: 'continue', reason } : { decision: 'stop', reason }
 }
 
+// Lo que cada evento tiene que traer para que sus guards juzguen algo. `normalize` lee campos por nombre y
+// convierte en `''` el que no encuentra, así que una llamada con otra forma —un campo renombrado en una
+// actualización de Antigravity— llegaba vacía a los guards, ninguno frenaba y el puente respondía `allow`:
+// todos los guards apagados sin rastro (caso 200). Cerrado por defecto: sin lo que el evento juzga, se niega
+// y se dice qué llegó, que es lo que hace falta para enseñarle la forma nueva a `normalize`.
+//
+// Una entrada vacía no es una llamada con otra forma: no describe ninguna, y es como se invoca a mano, con
+// `OPS_HOOK_COMMAND` u `OPS_HOOK_FILE` (caso 198).
+const DESCRIBED_BY = {
+  'pre-shell': { field: 'command', names: 'CommandLine' },
+  'pre-files': { field: 'file_path', names: 'TargetFile ni AbsolutePath' },
+}
+
+function undescribed(event, input, normalized) {
+  const need = DESCRIBED_BY[event]
+  if (!need || !Object.keys(input).length || normalized.tool_input[need.field]) return ''
+  const args = Object.keys((input.toolCall && input.toolCall.args) || {})
+  const received = args.length ? `toolCall.args trae ${args.join(', ')}` : `llegó ${Object.keys(input).join(', ')}`
+  return `la llamada no trae ${need.names}, así que no hay nada que juzgar y no se autoriza (${received}). Si `
+    + 'Antigravity cambió el formato de sus llamadas, el puente tiene que aprenderlo en normalize().'
+}
+
 function evaluate(event, input) {
   try {
     const root = findRoot(input)
@@ -164,6 +186,8 @@ function evaluate(event, input) {
     const hooks = runtimeAt(root)
     const normalized = normalize(input, root)
     if (!hooks.hookGroups[event]) throw new Error(`Evento Antigravity desconocido: ${event || '(vacío)'}`)
+    const missing = undescribed(event, input, normalized)
+    if (missing) throw new Error(missing)
     hooks.executeAll([event], normalized)
     return event === 'stop' ? { decision: 'stop' } : { decision: 'allow' }
   } catch (error) {
