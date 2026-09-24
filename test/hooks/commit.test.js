@@ -34,10 +34,11 @@ test('guard-verify exige regenerar después de cambiar OpenAPI o SQL fuente', ()
   assert.doesNotThrow(() => execute('verify', { cwd: root, tool_input: { command: 'git commit -m test' } }))
 
   // La otra mitad de lo que este caso dice cuidar: estaba en el nombre y no en el cuerpo, y el guard
-  // podía dejar de mirar SQL sin que nada se pusiera rojo.
+  // podía dejar de mirar SQL sin que nada se pusiera rojo. Sin un `sqlc.yaml` en el repositorio no dispara.
   fs.mkdirSync(path.join(root, 'db', 'queries'), { recursive: true })
   fs.writeFileSync(path.join(root, 'db', 'queries', 'altas.sql'), 'SELECT 1;\n')
-  git(['add', 'db/queries/altas.sql'], root)
+  fs.writeFileSync(path.join(root, 'sqlc.yaml'), 'version: "2"\n')
+  git(['add', 'db/queries/altas.sql', 'sqlc.yaml'], root)
   blocked('verify', { cwd: root, tool_input: { command: 'git commit -m test' } }, /consulta SQL fuente/)
   fs.mkdirSync(path.join(root, 'sqlc'), { recursive: true })
   fs.writeFileSync(path.join(root, 'sqlc', 'altas.go'), 'package sqlc\n')

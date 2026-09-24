@@ -144,6 +144,30 @@ function commitTree(dir, input) {
   return { root: temp, temp, env: { pnpm_config_verify_deps_before_run: 'false' } }
 }
 
+// Dónde viven la consulta de sqlc y su generado lo declara cada proyecto en su config (`queries:` y
+// `gen.go.out`), y acá no se lee: no hay parser de YAML y no se agrega uno para un guard. Lo que se usa
+// en su lugar son dos hechos que no dependen del layout.
+//
+// La consulta se busca en `queries/` a cualquier profundidad —un monorepo la tiene en `api/db/queries/`
+// (caso 192)—, y sólo cuenta si el repositorio tiene un `sqlc.yaml`, `sqlc.yml` o `sqlc.json`, los tres
+// nombres que sqlc busca: sin esa condición, desanclar el patrón frenaría consultas de un reporte o
+// fixtures que nadie genera, y cada freno falso se resuelve aprobándolo. Un `queries:` con otro nombre de
+// carpeta sigue sin verse.
+//
+// El generado se reconoce por el nombre del archivo, no por su carpeta: sqlc escribe `<consulta>.sql.go`
+// donde diga `out`, y esperar una carpeta `sqlc/` frenaba al que la llamó de otro modo (caso 187). La
+// carpeta queda como respaldo. `.ts` o `.py` no: esos generadores son plugins y su nombre no se comprobó.
+const SQL_SOURCE = /(?:^|\/)queries\/.*\.sql$/i
+const SQL_GENERATED = /\.sql\.go$|(?:^|\/)(?:sqlc|generated)(?:\/|.*\.(?:go|ts|js|py)$)/i
+function usesSqlc(dir) {
+  // `top` porque `dir` puede ser un subdirectorio y el índice se pregunta entero; `glob` para que `**/`
+  // alcance también la raíz. Se lee el índice y no el disco: una config sin trackear no es del proyecto.
+  // Si git no contesta se asume que sí: un guard que no pudo mirar no afloja.
+  const listed = run('git', ['-C', dir, 'ls-files', '--',
+    ...['yaml', 'yml', 'json'].map((ext) => `:(top,glob)**/sqlc.${ext}`)], dir)
+  return !listed.ok || Boolean(listed.output.trim())
+}
+
 function verify(input) {
   if (process.env.OPS_SKIP_VERIFY === '1') return
   const command = commandOf(input)
@@ -151,9 +175,9 @@ function verify(input) {
   const { dir, staged } = stagedForCommit(command, cwdOf(input))
   const changedOpenApi = staged.some((file) => /^(?:openapi|api|spec)(?:\/.*)?\/[^/]+\.ya?ml$/i.test(file))
     || staged.some((file) => /^(?:openapi|swagger)\.ya?ml$/i.test(file))
-  const changedSqlSource = staged.some((file) => /^(?:db\/queries|queries)\/.*\.sql$/i.test(file))
+  const changedSqlSource = staged.some((file) => SQL_SOURCE.test(file)) && usesSqlc(dir)
   const hasApiGenerated = staged.some((file) => /(?:^|\/)[^/]*(?:generated|\.gen)\.(?:go|ts|js|py)$/i.test(file))
-  const hasSqlGenerated = staged.some((file) => /(?:^|\/)(?:sqlc|generated)(?:\/|.*\.(?:go|ts|js|py)$)/i.test(file))
+  const hasSqlGenerated = staged.some((file) => SQL_GENERATED.test(file))
   // Acá lo aprobado es el conjunto staged entero: decir «autorizo commitear exactamente estas rutas»
   // es lo que un gate en rojo necesita, y cambia en cuanto se stagea una más. La lista sale del índice
   // y no de una regla, que es lo que la vuelve una operación y no un permiso.
@@ -164,7 +188,9 @@ function verify(input) {
       + `stagea su salida.\n${AP.HOW('OPS_SKIP_VERIFY', sinAprobar, input)}`)
   }
   if (changedSqlSource && !hasSqlGenerated && !aprobado) {
-    block('Cambió una consulta SQL fuente sin artefactos regenerados. Ejecuta el generador.\n'
+    block('Cambió una consulta SQL fuente sin artefactos regenerados: busqué en el índice un `*.sql.go`, '
+      + 'o algo bajo una carpeta `sqlc/` o `generated/`, y no hay ninguno. Si corriste `sqlc generate`, '
+      + 'stageá lo que escribió; si su `output_files_suffix` le cambia el nombre, esto no lo reconoce.\n'
       + AP.HOW('OPS_SKIP_VERIFY', sinAprobar, input))
   }
   if (!staged.some((file) => /\.(?:ts|tsx|js|jsx|mjs|cjs|go|py|html|css|scss|prisma)$/.test(file))) return

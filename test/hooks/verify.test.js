@@ -279,6 +279,53 @@ test('verify no deja que un gate escriba en el repositorio que juzga', () => {
   assert.equal(config, '', 'el repositorio quedó apuntando a un árbol que ya no existe')
 })
 
+// Los layouts de los casos 187 y 192, uno por repositorio. `previo` va commiteado antes, así que cuenta como
+// trackeado y no como parte de lo que se juzga.
+test('el guard de sqlc reconoce la consulta y el generado donde el proyecto los puso', async (t) => {
+  const casos = [
+    { nombre: 'monorepo con el generado fuera de sqlc/', previo: ['api/sqlc.yaml'],
+      staged: ['api/db/queries/x.sql', 'api/internal/platform/pgdb/x.sql.go'], bloquea: false },
+    // `backend/` y no `api/`: un `.yaml` staged bajo `api/` es, para el guard de OpenAPI, una fuente suya.
+    { nombre: 'monorepo sin generado', staged: ['backend/sqlc.yaml', 'backend/db/queries/x.sql'],
+      bloquea: true },
+    { nombre: 'out en internal/platform/pgdb', previo: ['sqlc.yml'],
+      staged: ['db/queries/x.sql', 'internal/platform/pgdb/x.sql.go', 'internal/platform/pgdb/models.go'],
+      bloquea: false },
+    { nombre: 'config en json y consulta anidada', previo: ['sqlc.json'], staged: ['db/queries/sub/x.sql'],
+      bloquea: true },
+    { nombre: 'commit desde un subdirectorio', previo: ['sqlc.yaml'], staged: ['db/queries/x.sql'],
+      desde: 'db', bloquea: true },
+    { nombre: 'queries/ sin sqlc', staged: ['queries/x.sql'], bloquea: false },
+    { nombre: 'db/queries/ sin sqlc', staged: ['db/queries/x.sql'], bloquea: false },
+  ]
+  for (const caso of casos) await t.test(caso.nombre, () => {
+    const root = tempRoot('ops-hook-sqlc-')
+    initRepo(root)
+    const escribir = (archivos) => {
+      for (const file of archivos) {
+        fs.mkdirSync(path.join(root, path.dirname(file)), { recursive: true })
+        fs.writeFileSync(path.join(root, file), '-- x\n')
+      }
+      git(['add', ...archivos], root)
+    }
+    if (caso.previo) {
+      escribir(caso.previo)
+      git(['commit', '-qm', 'previo'], root)
+    }
+    escribir(caso.staged)
+    const input = { cwd: path.join(root, caso.desde || '.'), tool_input: { command: 'git commit -m x' } }
+    if (!caso.bloquea) {
+      assert.doesNotThrow(() => execute('verify', input))
+      return
+    }
+    // «Ejecutá el generador» a quien ya lo ejecutó no tiene cómo desbloquear: el mensaje dice qué buscó.
+    const mensaje = messageOf('verify', input)
+    assert.match(mensaje, /consulta SQL fuente/)
+    assert.match(mensaje, /\*\.sql\.go/)
+    assert.doesNotMatch(mensaje, /Ejecuta el generador\./)
+  })
+})
+
 // Lo que la persona pidió en el chat, visto por los guards (caso 098). El registro lo escribe el hook de
 // mensaje y lo lee cada guard con la sesión y el mensaje de la llamada. Cada prueba abre una sesión propia
 // para no leer el registro de otra, y saca `CI` del entorno: en la puerta está puesta, y ahí no hay persona.
