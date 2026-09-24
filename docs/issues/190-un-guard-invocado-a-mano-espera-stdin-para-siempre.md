@@ -1,14 +1,15 @@
 ---
 caso: 190
 titulo: Un guard invocado fuera de Claude Code espera stdin hasta que alguien lo cierre, y deja un node vivo por horas
-estado: abierto
+estado: resuelto
+resuelto-en: 0.99.0
 prioridad: media
 version-detectada: 0.98.0
 ---
 
 # 190 — El motor de hooks lee stdin hasta EOF sin límite, así que una invocación con stdin abierto no termina
 
-**🔴 abierto** · detectado en 0.98.0 · prioridad **media**. No rompe ninguna corrida del runner: rompe la
+**🟢 resuelto en 0.99.0** · detectado en 0.98.0 · prioridad **media**. No rompe ninguna corrida del runner: rompe la
 máquina de a poco, con procesos que nadie ve porque están dormidos.
 
 ## Resumen
@@ -227,3 +228,77 @@ pensar que el guard estaba bien—. Encaja con que en primer plano el descriptor
 - `sistema R27` — cerrado por defecto: decide qué hace el plazo al agotarse.
 - `sistema R21` — lo hecho no es lo aprovechable: acá se creyó que el guard había terminado su trabajo y
   no había empezado.
+
+## Cierre
+
+**Resuelto en 0.99.0, por la vía asíncrona que el caso proponía y con las tres decisiones tomadas por el
+dueño**: plazo sobre el primer byte, plazo agotado bloquea, despacho asíncrono aceptado. Recorriendo lo que
+enumeró:
+
+- **Fix propuesto → se hizo.** `readInput()` lee `process.stdin` con un temporizador que corre hasta el
+  primer `data` y devuelve una promesa (`engine/hooks/input.js`, `readInput`); `run.js` despacha cuando
+  resuelve. La *hipótesis* del caso —que es la forma que cubre el socket— queda **verificada**: forma F abajo.
+- **Valor del plazo → 2000 ms, fijo, sin variable de entorno** (`FIRST_BYTE_MS`). El runner escribe su JSON
+  al lanzar el hook, así que en el camino real el primer byte ya está en el búfer cuando Node termina de
+  arrancar; dos segundos sólo cubren una máquina cargada. No se hizo configurable: estirarlo no arregla nada
+  que el runner necesite, y acortarlo es la única forma de volverlo frágil.
+- **«Toca a quien importe `readInput`» → comprobado, sólo `run.js`** (`grep -rn readInput engine
+  automatization test`). `executeAll` y `execute` siguen sincrónicos, así que las ~30 pruebas que los llaman
+  directo y `engine/automation/hooks.js` no cambian.
+- **No resolverlo en el shim con `</dev/null` → respetado**: `run-hook.sh` no se tocó.
+- **Tradeoff del plazo agotado → bloquea con `exit 2`**, nunca entrada vacía (R27), con un mensaje que dice
+  qué pasó y las dos formas de invocarlo a mano: el JSON por stdin o `</dev/null`.
+- **Tradeoff del `Write` grande → el plazo es sobre el primer byte.** La prueba lo fija con un escritor que
+  manda la segunda mitad del JSON *después* de vencido el plazo —más fuerte que una demora menor, que
+  pasaría también con un plazo sobre la lectura entera— y la forma E' lo repite a mano con 4 s.
+- **Lo que garantiza el runner → sin cambios, y no re-medido contra este motor.** Que Claude Code cierra
+  stdin estaba verificado en el caso; el camino que usa —JSON escrito y cerrado— es la forma C y E', que dan
+  lo mismo que antes. Correr el motor arreglado bajo el runner real exige instalarlo, y acá no se instala.
+- **Pruebas que invocan guards por stdin → no afectadas**, como el caso anticipaba: `npm run ci` en verde con
+  944 pruebas, `hooks-smoke.sh` incluido.
+- **Síntoma del runner que muestra el comando «en curso» → cerrado por la misma vía**: el comando compuesto
+  termina a los 2 s con el bloqueo a la vista, en vez de no terminar.
+- **Prioridad («sube si alguien automatiza invocaciones»)** → ya no aplica: cada invocación termina.
+
+**Lo que el caso no preveía: el puente de Antigravity tiene su propia copia del mismo defecto, y peor.**
+`automatization/runners/antigravity/hook.js` define otro `readInput()` con `fs.readFileSync(0)` que no pasa
+por `input.js`. Medido acá: `sleep 6 | timeout 3 node automatization/runners/antigravity/hook.js pre-shell`
+→ `exit 124`, colgado igual; y `echo '{roto' | … pre-shell` → `{"decision":"allow"}`, o sea que además deja
+pasar un JSON ilegible, que es justo lo que el `readInput` del motor dejó de hacer hace tiempo. Es otro
+archivo, otro runner y otra decisión —si el puente debe reusar el del motor—, así que **sale como caso
+propio** y no entra acá.
+
+### Qué se corrió
+
+- **La reproducción del caso, formas A–G, contra el motor arreglado** (2026-09-23, Node v24.18.0, Linux
+  6.8; el tiempo es el del `node`, no el del pipeline, que espera al `sleep`):
+
+  ```
+  A </dev/null                       node: 0.072 s  exit 0
+  B pipe abierto                     BLOQUEADO: no llegó nada por stdin en 2000 ms: …   node: 2.084 s  exit 2
+  C JSON cerrado                     BLOQUEADO: 'git add -A/--all/.' está prohibido. …  node: 0.072 s  exit 2
+  D stdin cerrado                    node: 0.072 s  exit 0
+  E shim planning-drift, pipe        BLOQUEADO: no llegó nada por stdin en 2000 ms: …   node: 2.077 s  exit 2
+  E' shim, JSON que termina a los 4 s                                                   node: 4.015 s  exit 0
+  F socket   fd0: socket:[289559212] wchan: ep_poll
+             BLOQUEADO: no llegó nada por stdin en 2000 ms: …   exit 2 null a los 2100 ms
+  G terminal /dev/pts/4 (script con stdin que nadie escribe)
+             BLOQUEADO: no llegó nada por stdin en 2000 ms: …   node: 2.109 s  exit=2
+  leftovers: ninguno
+  ```
+
+  El mensaje entero: «no llegó nada por stdin en 2000 ms: stdin está abierto y nadie escribe (una terminal, o
+  un pipe o un socket que no se cierran). Un guard que no sabe qué juzgar no autoriza. Para invocarlo a mano,
+  pasale el JSON del hook —printf '%s' '{"tool_input":{"command":"…"}}' | guard-….sh— o correlo sin entrada
+  con </dev/null.» En la forma F el proceso ya no duerme en `unix_stream_data_wait` sino en el `ep_poll` del
+  bucle de eventos, que es lo que deja correr al temporizador. La G necesitó darle a `script` un stdin que no
+  cierre: con uno cerrado, `script` manda EOF a la terminal y el guard termina en 0 como la forma D.
+- **La prueba nueva, `test/hooks/stdin.test.js`**, lanza `run.js` como proceso hijo en siete formas —socket y
+  pipe abiertos, JSON en dos trozos, JSON que bloquea y que pasa, `/dev/null`, stdin cerrado— y prueba
+  `readInput` sobre un stream. Cada hijo tiene su tope y se mata al final; `pgrep` no encontró ninguno vivo
+  después de ninguna tanda. **En rojo sobre el código de 0.98.0**: socket y pipe «no terminó solo en 8000 ms».
+- **Cinco mutaciones más en una copia del árbol, las cinco en rojo**: plazo agotado como entrada vacía
+  (fallan socket, pipe y `readInput`); plazo sobre la lectura entera (falla el JSON en dos trozos); no
+  soltar el stream al rendirse (falla `readInput`); vacío que bloquea (fallan `/dev/null` y stdin cerrado);
+  `run.js` sin `exit` en el bloqueo (fallan socket, pipe, dos trozos y el JSON que bloquea).
+- `npm run ci`, exit 0.

@@ -47,6 +47,12 @@ diseño — eso vive en el commit y en el código.
   commiteaba sin su generado sin que nada avisara; eso sólo si el repositorio tiene `sqlc.yaml`, `sqlc.yml`
   o `sqlc.json`. Si frena, dice qué buscó. Límite: con `output_files_suffix` el generado no se reconoce.
 
+- **Un guard invocado a mano ya no se queda colgado.** Lanzado fuera del runner —a mano, desde un script o
+  en segundo plano— con stdin abierto y sin datos, esperaba hasta que el otro extremo cerrara: horas, sin
+  llegar a correr. Ahora, si en 2 s no llega nada, bloquea y explica cómo invocarlo: con el JSON del hook
+  por stdin, o sin entrada con `</dev/null`. Lo que manda el runner se lee entero, así que una escritura
+  grande no se corta.
+
 ## [0.98.0] - 2026-09-17
 
 ### Cambiado
