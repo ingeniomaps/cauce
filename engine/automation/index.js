@@ -442,7 +442,7 @@ function install(root, name, output = console, options = {}) {
     const listing = runner.commands.names.map((nombre) => invocation.replace('{name}', nombre))
     output.log(`  ${name}: se invocan como ${listing.join(', ')}`)
   }
-  if (runner.activation && (activated(runner) !== true || registrationProblems(paths, runner).length)) {
+  if (runner.activation && activated(runner) !== true) {
     output.log(`  ${name}: falta registrarlo para que corra. Desde ${paths.install}:`)
     output.log(`    ${runner.activation.hint}`)
   }

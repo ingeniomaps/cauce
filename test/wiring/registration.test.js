@@ -77,5 +77,18 @@ test('al instalar, una copia registrada vieja es el paso siguiente y no un error
   const again = project.runCli(['automation', 'install', project.target, 'antigravity'])
   assert.equal(again.status, 0, again.stderr)
   assert.match(again.stdout + again.stderr, /no es esta instalación/)
-  assert.match(again.stdout, /agy plugin install \.agents\/plugins\/cauce/)
+  assert.match(again.stdout + again.stderr, /agy plugin install \.agents\/plugins\/cauce/)
+})
+
+// Una copia registrada que no contesta —un puente viejo que lee stdin sin plazo, un guard colgado— no puede
+// colgar a `doctor`: lanzarla lleva tope, y agotarlo es el diagnóstico.
+test('una copia registrada que no contesta no cuelga a doctor', () => {
+  const project = antigravityProject('cauce-registro-colgado-')
+  assert.equal(project.runCli(['automation', 'install', project.target, 'antigravity']).status, 0)
+  project.register()
+  fs.writeFileSync(path.join(project.registered, 'hook.js'), 'setInterval(() => {}, 1000)\n')
+  const started = Date.now()
+  const hung = doctorWithHome(project.home, project.target)
+  assert.ok(Date.now() - started < 25000, 'terminó con un solo tope y no esperando a la copia')
+  assert.ok(hung.errors.some((error) => /no respondió en \d+ s/.test(error)), hung.errors.join('\n'))
 })

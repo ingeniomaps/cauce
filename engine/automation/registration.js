@@ -30,10 +30,17 @@ function pluginFiles(paths, runner, pluginDir) {
 
 // Lanza cada comando de la configuración registrada como lo lanza el runner: el texto literal, desde la
 // carpeta del plugin. Así se ve el wiring que no resuelve, que ejecutando el puente directo no aparece.
+// Con tope: la copia registrada puede ser vieja o estar rota, y una que no contesta colgaba a `doctor`. Diez
+// segundos sobran para una copia sana —arranca y contesta en menos de uno— y con una que no contesta ya
+// alcanza para el diagnóstico, así que el sondeo corta ahí en vez de esperar el tope una vez por evento.
+const LAUNCH_LIMIT_MS = 10000
+
 function launch(dir, event, command) {
   const payload = event === 'pre-shell' ? { toolCall: { args: { CommandLine: 'ls' } } } : {}
   const input = JSON.stringify(payload)
-  const result = spawnSync('sh', ['-c', command], { cwd: dir, input, encoding: 'utf8' })
+  const result = spawnSync('sh', ['-c', command],
+    { cwd: dir, input, encoding: 'utf8', timeout: LAUNCH_LIMIT_MS, killSignal: 'SIGKILL' })
+  if (result.error && result.error.code === 'ETIMEDOUT') return `no respondió en ${LAUNCH_LIMIT_MS / 1000} s`
   let response = {}
   try { response = JSON.parse((result.stdout || '').trim()) } catch { response = {} }
   const healthy = event === 'stop' ? 'stop' : 'allow'
@@ -74,6 +81,7 @@ function registrationProblems(paths, runner) {
     if (failure) {
       problems.push(`la copia registrada no responde a ${event} lanzada como la lanza ${runner.command}: ${failure}`)
     }
+    if (/^no respondió/.test(failure)) break
   }
   return problems
 }
