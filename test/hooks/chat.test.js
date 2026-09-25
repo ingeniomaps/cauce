@@ -299,7 +299,8 @@ test('el bloqueo dice hasta dónde llega el «dale», en sus dos mitades', () =>
     // Sin persona no se nombra un alcance de algo que no se ofreció.
     const noChat = messageOf('secrets-read', reads((one) => one))
     assert.doesNotMatch(noChat, /lo que se frenó y nada más/)
-    assert.match(noChat, /Valen para ese conjunto/, 'ahí el alcance que corresponde es el del pegado')
+    assert.match(noChat, /Cada línea vale hasta que alguien la borre/,
+      'ahí el alcance que corresponde es el del pegado')
   } finally { chat.close() }
 })
 

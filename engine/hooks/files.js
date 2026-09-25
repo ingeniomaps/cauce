@@ -19,8 +19,8 @@ const { hasTasks } = require('../planning/state')
 const { TEMPLATE_PREFIXES } = require('../core/ownership')
 
 // Si la ruta que este guard está por bloquear está aprobada, no hay nada que decir. Es la salida
-// angosta: vale para esa ruta y deja de valer en cuanto cambie, a diferencia de la variable, que apaga
-// el guard hasta que cierre la sesión.
+// angosta: vale para esa ruta y para ninguna otra, a diferencia de la variable, que apaga el guard hasta
+// que cierre la sesión.
 const approved = (input, file) => !AP.pending(opsRoot(input), [file], input).length
 
 // Qué archivo es una credencial, para los dos guards que la cuidan: `secrets`, que frena escribirla, y
@@ -78,7 +78,7 @@ function secretsRead(input) {
   for (const file of [...filesOf(input), ...patterns]) {
     if (!patternNames(file).some((name) => credential(input, name)) || approved(input, file)) continue
     block(`${file} es una credencial: leerla la deja en el contexto de la sesión. Si hace falta un valor, `
-      + `pedíselo a una persona.\n${AP.HOW('OPS_SECRETS_READ_OVERRIDE', [file], input)}`)
+      + `pedíselo a una persona.\n${AP.HOW('OPS_SECRETS_READ_OVERRIDE', [file], input, [file], { durable: true })}`)
   }
 }
 

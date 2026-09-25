@@ -317,3 +317,85 @@ test('un bloqueo no ofrece pegar una ruta que el shell no expandió, y sigue hab
   } finally { chat.close() }
 })
 
+
+// Una lectura que el proyecto necesita siempre se preguntaba en cada sesión: el «dale» dura la sesión, y
+// ninguna confirmación —«pon esa línea», «acepto que leas», un segundo «dale»— le alcanzaba al agente para
+// dejarla escrita. Sólo pasaba la frase que nombra el archivo con un verbo de la lista (caso 202). Las
+// respuestas son las que dio la persona en la sesión real, y ninguna nombra nada: la intención la juzga el
+// agente, y lo que se comprueba acá es que la confirmación alcanza y que no alcanza para otra línea.
+test('confirmar la lectura de una credencial deja al agente escribir esa línea, y ninguna otra', () => {
+  const root = planFirstRoot('ops-hook-lectura-permanente-', WIP_CON_PLAN)
+  const env = path.join(root, '.env')
+  const approval = path.join(root, 'planning', '.ops-approval')
+  const reads = (call) => call({ cwd: root, tool_input: { command: `grep -m1 '^TOKEN=' ${env} | cut -d= -f2-` } })
+  const writes = (call, content = `# aprobado por la persona, 2026-09-25\n${env}\n`) =>
+    call({ cwd: root, tool_input: { file_path: approval, content } })
+  for (const reply of ['dale', 'pon esa línea', 'acepto que leas']) {
+    const chat = chatSession()
+    try {
+      const stopped = messageOf('secrets-shell', reads(chat.says('abrí el PR')))
+      assert.match(stopped, /dejarlo aprobado para siempre/, 'ofrece dejarlo permanente')
+      const yes = chat.says(reply)
+      assert.doesNotThrow(() => execute('secrets-shell', reads(yes)), reply)
+      assert.doesNotThrow(() => execute('workspace-boundary', writes(yes)), reply)
+      blocked('workspace-boundary', writes(yes, 'push origin main\n'), /push origin main/)
+    } finally { chat.close() }
+  }
+  // Lo que niega no aprueba ni la lectura ni la línea.
+  const chat = chatSession()
+  try {
+    messageOf('secrets-shell', reads(chat.says('abrí el PR')))
+    const no = chat.says('no, eso no')
+    blocked('secrets-shell', reads(no), /credencial/)
+    blocked('workspace-boundary', writes(no), /aprobarse solo/)
+  } finally { chat.close() }
+})
+
+// El otro camino: el agente intenta escribir la aprobación sin que se la hayan nombrado. El bloqueo pedía
+// «confirmando el bloqueo» y no anotaba nada, así que el «sí» siguiente volvía a frenar (caso 202).
+test('un sí al bloqueo de la aprobación aprueba las líneas que mostró', () => {
+  const root = planFirstRoot('ops-hook-aprobacion-confirmada-', WIP_CON_PLAN)
+  const approval = path.join(root, 'planning', '.ops-approval')
+  const writes = (call, content = 'src/x.js\n') => call({ cwd: root, tool_input: { file_path: approval, content } })
+  const chat = chatSession()
+  try {
+    const stopped = messageOf('workspace-boundary', writes(chat.says('seguí con lo tuyo')))
+    assert.match(stopped, /aprobarse solo[\s\S]*src\/x\.js/, 'muestra lo que el sí va a aprobar')
+    const yes = chat.says('sí')
+    assert.doesNotThrow(() => execute('workspace-boundary', writes(yes)))
+    blocked('workspace-boundary', writes(yes, 'src/otro.js\n'), /src\/otro\.js/)
+  } finally { chat.close() }
+})
+
+// Los bordes donde no se ofrece dejarlo permanente: lo que la persona negó antes del bloqueo, una ruta que
+// el shell no resolvió —no hay línea que escribir— y una sesión fuera de toda instancia, donde no hay
+// archivo de aprobación.
+test('no se ofrece dejar permanente lo que no se puede o no se debe escribir', () => {
+  const root = planFirstRoot('ops-hook-lectura-sin-oferta-', WIP_CON_PLAN)
+  const approval = path.join(root, 'planning', '.ops-approval')
+  const runs = (call, command) => call({ cwd: root, tool_input: { command } })
+  const writes = (call, content) => call({ cwd: root, tool_input: { file_path: approval, content } })
+  const chat = chatSession()
+  try {
+    const denied = chat.says('revisá el deploy, pero no toques .ops-approval')
+    assert.doesNotMatch(messageOf('secrets-shell', runs(denied, `cat ${root}/.env`)), /para siempre/)
+    blocked('workspace-boundary', writes(denied, `${root}/.env\n`), /^(?![\s\S]*Esta escritura agrega)/)
+    const unresolved = chat.says('revisá el deploy')
+    assert.doesNotMatch(messageOf('secrets-shell', runs(unresolved, 'cat $DIR/.env')), /para siempre/)
+    // Escribir sólo un comentario no agrega nada que aprobar: no hay qué mostrarle.
+    blocked('workspace-boundary', writes(unresolved, '# nota\n'), /^(?![\s\S]*Esta escritura agrega)/)
+  } finally { chat.close() }
+
+  const loose = tempRoot('ops-hook-lectura-suelta-')
+  const outside = chatSession()
+  const before = process.env.OPS_ROOT
+  delete process.env.OPS_ROOT
+  try {
+    const call = outside.says('revisá el deploy')
+    const reads = call({ cwd: loose, tool_input: { file_path: path.join(loose, '.env') } })
+    assert.doesNotMatch(messageOf('secrets-read', reads), /para siempre/)
+  } finally {
+    outside.close()
+    if (before !== undefined) process.env.OPS_ROOT = before
+  }
+})
