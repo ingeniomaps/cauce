@@ -14,6 +14,22 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.99.1] - 2026-09-25
+
+### Cambiado
+
+- **Una lectura de credencial que necesitás siempre se aprueba una vez.** Cuando el agente se frena leyendo
+  una credencial, te pregunta además si querés dejarla aprobada para siempre. Si esa es tu intención —con
+  tus palabras, sin frase fija—, él mismo escribe la ruta en `planning/.ops-approval` con quién lo aprobó y
+  para qué, y ninguna sesión vuelve a preguntarlo. Tu confirmación le deja escribir esa línea y ninguna otra.
+- **Confirmar el bloqueo de `.ops-approval` ahora aprueba.** Si el agente intenta escribir la aprobación sin
+  que se la hayas pedido, el bloqueo te muestra qué iba a agregar y tu «sí» lo deja pasar. Antes el bloqueo
+  ofrecía confirmar y la confirmación no hacía nada: sólo pasaba pidiéndolo con el nombre del archivo.
+- **El bloqueo dice cuánto dura una línea pegada**: hasta que alguien la borre. Decía que dejaba de valer
+  «en cuanto cambie», y una lectura siempre frena la misma ruta, así que nunca cambiaba.
+- **`check` nombra aparte las credenciales aprobadas** —«N credencial(es) aprobadas hasta que se borre su
+  línea»—, en vez de contarlas como una aprobación olvidada. Sigue mostrándolas en cada corrida.
+
 ## [0.99.0] - 2026-09-24
 
 ### Agregado

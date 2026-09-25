@@ -280,6 +280,14 @@ test('check muestra una aprobación de gobernanza sin borrar, contando rutas', (
   assert.equal(avisado.status, 0, 'es advertencia: la aprobación es legítima, lo que no puede es esconderse')
   assert.match(avisado.stderr + avisado.stdout, /ops-approval: 1 ruta\(s\)/,
     'una ruta y dos comentarios son una ruta')
+
+  // Una credencial que la persona dejó aprobada se nombra aparte: no es un resto de commit (caso 202).
+  const env = path.join(target, '.env')
+  fs.appendFileSync(path.join(planning, '.ops-approval'), `# lectura permanente\n${env}\n`)
+  const both = run(['check', planning])
+  const said = both.stderr + both.stdout
+  assert.match(said, new RegExp(`1 credencial\\(es\\) aprobadas hasta que se borre su línea: ${env}`))
+  assert.match(said, /ops-approval: 1 ruta\(s\) aprobadas y sin borrar/, 'la otra sigue contada aparte')
 })
 
 test('check muestra cada ruta exenta del límite de raíces, ya resuelta', () => {

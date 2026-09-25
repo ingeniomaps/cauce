@@ -15,8 +15,8 @@
 // **Se coteja, no se consume.** Borrar el archivo al leerlo daría el mismo alcance y traería dos cosas
 // que no queremos: hoy ningún guard escribe en el repositorio, y `governance` corre antes que `verify`,
 // así que un commit frenado por otra razón se habría llevado puesta la aprobación y habría que
-// rehacerla. Cotejando, la aprobación vale para el conjunto que nombra y para ningún otro: en cuanto
-// cambia lo que está en el índice deja de servir, que es «por operación» sin fecha ni contador.
+// rehacerla. Cotejando, la aprobación vale para las rutas que nombra y para ninguna otra: lo que se sume
+// al índice vuelve a frenar, que es «por operación» sin fecha ni contador.
 //
 // Queda a la vista porque `check` avisa mientras exista. Sin eso, un archivo olvidado sigue autorizando
 // esas mismas rutas la próxima vez que alguien las stagee, que es la puerta abierta que esto evitaba.
@@ -104,7 +104,7 @@ function REFUSED(items, input = {}) {
 // `pasteable` es lo que se puede aprobar por archivo, y por defecto es todo: un guard lo angosta cuando lo
 // que tiene a mano no sirve para pegar —por qué, en `secrets-shell.js` (caso 118)—. Lo frenado se anota
 // igual, así que el «dale» sigue cubriendo todo.
-function HOW(variable, lines, input, pasteable = lines) {
+function HOW(variable, lines, input, pasteable = lines, { durable = false } = {}) {
   const held = CHAT.hold(input, lines)
   const dropped = held ? held.dropped : []
   const chat = held && dropped.length < lines.length
@@ -132,6 +132,7 @@ function HOW(variable, lines, input, pasteable = lines) {
       + 'en los mensajes siguientes hasta que ella lo niegue. '
     : ''
   const refused = dropped.length ? REFUSED(dropped, input) : ''
+  const keep = chat && durable ? KEEP(input, pasteable.filter((one) => !dropped.includes(one))) : ''
   // Sin chat la salida es la misma, y también se dice como cosa de ella: el imperativo que el párrafo de
   // arriba sacó de la rama con chat seguía acá, y es lo único que ve quien no tiene a nadie en el chat
   // (caso 194). A quien corre el guard le toca otra cosa, y se le dice cuál. Vale también cuando hay persona
@@ -141,7 +142,7 @@ function HOW(variable, lines, input, pasteable = lines) {
       + ' tal cual en'
       + ` ${where(input)} estas líneas:\n`
       + pasteable.map((line) => `  ${line}\n`).join('')
-      + 'Valen para ese conjunto y dejan de valer en cuanto cambie. '
+      + 'Cada línea vale hasta que alguien la borre, y lo que no esté ahí vuelve a frenar. '
       + (chat ? '' : 'Vos no lo escribas —un guard lo frena—: decí qué se frenó y dónde, y reintentá cuando '
         + 'esté; si sos un subagente, devolvele el bloqueo a quien te lanzó. ')
     : ''
@@ -157,7 +158,28 @@ function HOW(variable, lines, input, pasteable = lines) {
     ? `La variable ${variable}=1 sigue existiendo y apaga el guard para toda la sesión, que es por lo que no `
       + 'es la vía recomendada.'
     : ''
-  return ask + refused + paste + unresolved + off
+  return ask + keep + refused + paste + unresolved + off
+}
+
+// La lectura que un proyecto necesita siempre —el token con que su regla manda autenticar— se preguntaba en
+// cada sesión, porque el «dale» dura la sesión y la línea del archivo la tenía que pegar la persona a mano:
+// «pon esa línea» o «acepto que leas» no le alcanzaban al agente para escribírsela (caso 202).
+//
+// La pregunta va entera al agente, y no se le pide a la persona ninguna frase: cuál de las dos cosas quiso la
+// juzga él, igual que el «dale» (caso 184). Lo que hace el guard es dejar anotados, además de lo frenado, el
+// archivo de aprobación, así que la misma confirmación que habilita leer habilita escribir **esas líneas y
+// ninguna otra** —cuáles, lo compara `self-approval`—. Sólo lo ofrece un guard de lectura: una lectura
+// frena siempre la misma ruta, y ahí una línea permanente es lo que la persona está pidiendo; para un
+// commit, lo frenado cambia con el índice y dejarlo escrito no le ahorra nada a nadie.
+function KEEP(input, lines) {
+  const root = opsRoot(input)
+  if (!root || !lines.length) return ''
+  const held = CHAT.hold(input, [path.join(root, 'planning', APPROVAL)])
+  if (!held || held.dropped.length) return ''
+  return 'Preguntale también si quiere dejarlo aprobado para siempre, para no volver a preguntarlo en otra '
+    + `sesión. Si esa es su intención, agregá a ${where(input)} las líneas de abajo, con un comentario arriba que `
+    + 'diga quién lo aprobó, cuándo y para qué: la misma confirmación te deja escribirlas. Si sólo quiso que '
+    + 'leas ahora, no las escribas y vale para esta sesión. '
 }
 
 // Las dos exenciones que sobreviven a un bloqueo, para que `check` las muestre juntas: la lista que una
@@ -168,11 +190,23 @@ function HOW(variable, lines, input, pasteable = lines) {
 // repetir la autorización en cada mensaje —y eso está bien—, pero quedó del lado que nadie audita: vive en
 // el temporal del sistema, mientras que por una sola línea del archivo `check` sí avisaba. Una exención que
 // no se ve es un límite que ya no existe (caso 117).
+//
+// Una credencial aprobada se nombra aparte, y no como algo «sin borrar». Está ahí a propósito —la dejó
+// escrita la persona para no volver a autorizar la misma lectura en cada sesión (caso 202)—, y contada
+// junto a lo que quedó de un commit se leía como un olvido que había que limpiar. Sigue saliendo en cada
+// corrida, igual que `writableOutsideRoots`: una exención deliberada también se ve.
 function warnings(root) {
   const out = []
+  const { credential } = require('./files')
   const approved = read(root)
-  if (approved.length) {
-    out.push(`planning/${APPROVAL}: ${approved.length} ruta(s) aprobadas y sin borrar; `
+  const secret = approved.filter((line) => credential({ cwd: root }, line))
+  const rest = approved.filter((line) => !secret.includes(line))
+  if (secret.length) {
+    out.push(`planning/${APPROVAL}: ${secret.length} credencial(es) aprobadas hasta que se borre su línea: `
+      + secret.join(', '))
+  }
+  if (rest.length) {
+    out.push(`planning/${APPROVAL}: ${rest.length} ruta(s) aprobadas y sin borrar; `
       + 'el archivo sigue autorizándolas')
   }
   const granted = CHAT.grantedIn(root)

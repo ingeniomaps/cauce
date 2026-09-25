@@ -67,7 +67,8 @@ function secretsShell(input) {
   if (!left.length) return
   block(`el comando lee ${left.join(', ')}, que es una credencial: leerla la deja en el contexto de la sesión. `
     + 'Si hace falta un valor, pedíselo a una persona.\n'
-    + AP.HOW('OPS_SECRETS_READ_OVERRIDE', left, input, left.filter((one) => !UNRESOLVED.test(one))))
+    + AP.HOW('OPS_SECRETS_READ_OVERRIDE', left, input, left.filter((one) => !UNRESOLVED.test(one)),
+      { durable: true }))
 }
 
 module.exports = { secretsShell }

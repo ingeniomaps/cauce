@@ -122,7 +122,14 @@ para el agente con el que hablás.
 autorizás, una por línea, con `#` para lo que no sea una ruta. En sidecar es el `planning/` de la
 instancia y no una carpeta al lado de tus proyectos; el bloqueo dice la ruta exacta. Es un solo archivo
 para todos los guards, porque lo que escribís son rutas y quién las mira lo decide qué guard esté
-juzgando esa ruta. Lo escribís vos: si el agente intenta escribírselo, un guard lo frena.
+juzgando esa ruta. Lo escribís vos, o el agente con tu confirmación: si intenta escribírselo solo, un
+guard lo frena y te muestra qué iba a agregar.
+
+**Una lectura que necesitás siempre se aprueba una vez.** El «dale» dura la sesión. Cuando el agente se
+frena leyendo una credencial —el token con el que una regla tuya manda autenticar—, te pregunta además si
+querés dejarla aprobada para siempre; si esa es tu intención, escribe la ruta en ese archivo, con quién lo
+aprobó y para qué, y ninguna sesión vuelve a preguntarlo. `check` la sigue nombrando mientras exista, como
+toda exención; se revoca borrando la línea.
 
 | lo que te frena | qué ruta aprobás |
 |---|---|
