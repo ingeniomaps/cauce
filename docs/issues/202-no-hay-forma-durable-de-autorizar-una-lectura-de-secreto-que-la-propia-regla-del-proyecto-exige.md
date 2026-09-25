@@ -114,14 +114,14 @@ En `gouduet` (sidecar, Cauce 0.99.0), 2026-09-25:
 
 1. `gouduet-ops/planning/rules/github-identity.md` (regla propia P6) declara que `gh` **nunca** va sin
    `GH_TOKEN`, y escribe el comando exacto: leer `GITHUB_PAT_GOUDUET_ORG` de
-   `/home/manuel/Code/gouduet/.env` y pasarlo en la misma línea.
+   `~/Code/gouduet/.env` y pasarlo en la misma línea.
 2. El usuario pide abrir un PR.
 3. El agente corre ese comando, tal como la regla lo escribe.
 
 ## Síntoma
 
 ```
-BLOQUEADO: el comando lee /home/manuel/Code/gouduet/.env, que es una credencial: leerla la deja en el
+BLOQUEADO: el comando lee ~/Code/gouduet/.env, que es una credencial: leerla la deja en el
 contexto de la sesión. Si hace falta un valor, pedíselo a una persona.
 ```
 
@@ -157,7 +157,7 @@ sola:
   ],
 + "readableSecrets": [
 +   {
-+     "path": "/home/manuel/Code/gouduet/.env",
++     "path": "~/Code/gouduet/.env",
 +     "razon": "P6: gh autentica con GITHUB_PAT_GOUDUET_ORG; sin el token resuelve a otra cuenta"
 +   }
 + ],
