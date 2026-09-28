@@ -242,4 +242,3 @@ el motor de `main`: 4 en rojo. Con el arreglo, dos mutaciones: sin el `hold` de 
 lectura de una credencial deja al agente escribir esa línea» (`Got unwanted exception: dale`); sin el de
 `unnamed` falla «un sí al bloqueo de la aprobación aprueba las líneas que mostró». `npm run ci`: 1002
 pruebas, exit 0.
-
