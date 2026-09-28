@@ -14,6 +14,18 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.99.2] - 2026-09-28
+
+### Corregido
+
+- **Cada límite de `### Límites` llega una sola vez.** Si la primera viñeta empezaba con «El runner»,
+  «Debe» o «Nunca», la lista entera llegaba otra vez a cada agente, pegada en un límite más. Si reordenaste
+  tus viñetas para esquivarlo, ya podés dejarlas como quieras.
+- **`check` deja de avisar que una fila resuelta de `HUMAN_ACTIONS.md` no está commiteada cuando sí lo
+  está.** Pasaba con filas largas: la búsqueda de git que usaba no encuentra algunas de más de 256 bytes.
+  Ahora se compara contra el archivo commiteado, y una fila que pasó a resuelta sólo en tu árbol se sigue
+  avisando.
+
 ## [0.99.1] - 2026-09-25
 
 ### Cambiado
