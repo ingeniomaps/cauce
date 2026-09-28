@@ -141,8 +141,7 @@ vieja:
 llega como **un** límite: `· El runner no despliega. Nunca borra ramas.` Pasa igual en `main` y con el fix,
 porque el fix sólo descuenta lo que `marked()` tomó, y `marked()` sólo mira `### Límites`. No se duplica
 nada y los dos límites llegan, pegados. Es el comportamiento de siempre del camino viejo —para él una lista
-es un párrafo— y el 157 existe justo para no tener que usarlo; si vale un caso propio es una decisión, no
-algo que este arreglo deba tocar.
+es un párrafo— y el 157 existe justo para no tener que usarlo. Se decidió no arreglarlo: ver «Cierre».
 
 ## Relacionados
 
@@ -167,9 +166,19 @@ algo que este arreglo deba tocar.
   `### Límites`, que hoy no llega, pasaría a llegar. Es una decisión sobre la gramática vieja, no sobre esta
   copia. Lo que sí se midió es que la diferencia no vuelve a duplicar: con viñetas sangradas bajo
   `### Límites` llegan una vez cada una (ver «Fix propuesto»).
-- **La lista con la gramática vieja fuera de `### Límites`, que llega pegada en un límite → sin
-  arreglar.** No es este defecto y no duplica nada. Queda escrita en «Lo que apareció al correrlo», a
-  decidir si merece un caso propio.
+- **La lista con la gramática vieja fuera de `### Límites`, que llega pegada en un límite → se decidió
+  que no** (2026-09-28), y no sale como caso propio. Tres razones:
+  - **No hay a quién le duela.** Las siete instancias de la máquina donde se revisó usan `### Límites`, y
+    ninguna tiene fuera de esa sección una lista de varias viñetas que empiece con «El runner», «Debe» o
+    «Nunca». Se buscó bloque por bloque en la sección «Excepciones de autonomía», sin comentarios.
+  - **No se pierde nada.** Los límites llegan todos, pegados en una frase. La lista que empieza con otra
+    palabra no llega, pero ésa ya la avisa `warnings()` y manda a `### Límites`.
+  - **Arreglarlo abre un riesgo que hoy no está.** Partir la lista obliga a decidir qué pasa con la viñeta
+    que no empieza con la gramática: filtrarla una por una deja de mandar «- Tampoco borra ramas.», que
+    hoy llega pegada a la anterior, y no filtrarla sólo cambia la forma de algo que ya llega entero.
+
+  Se reabre si aparece una instancia real con ese patrón, o si el preámbulo pasa a tener un tope y un
+  límite pegado cuesta lugar.
 - **«Sube a alta si el preámbulo tiene un tope» → no hizo falta mirarlo**: el defecto se cerró antes.
 
 **Probado corriendo.** Mutación, en una copia del árbol con la prueba nueva adentro: volver a
