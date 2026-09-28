@@ -132,7 +132,7 @@ function check(dir, cli) {
   warnings.push(...RC.warnings(RC.status({ ...recurring, done, today: TODAY() })))
   warnings.push(...IB.warnings(root, done, config))
   warnings.push(...AD.sealWarnings(root))
-  warnings.push(...R.unrecordedHumanActions(path.resolve(root, '..'), P.readHumanActions(root)))
+  warnings.push(...R.unrecordedHumanActions(path.resolve(root, '..'), P.readHumanActions(root), P.withoutComments))
   warnings.push(...AP.warnings(path.resolve(root, '..')))
   warnings.push(...TR.warnings(path.resolve(root, '..')))
   warnings.push(...CT.warnings(path.resolve(root, '..')))

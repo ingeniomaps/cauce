@@ -258,6 +258,26 @@ test('un límite escrito en dos líneas viaja entero y no vuelve como párrafo p
     `avisó sobre una viñeta declarada: ${hecho.stderr}`)
 })
 
+// Por qué se descuenta está junto a `limits` (caso 203). Entre las dos primeras listas sólo cambia cómo
+// empieza la primera viñeta, que era lo que decidía la copia; la tercera cruza este caso con el 168.
+test('una lista declarada llega una vez, empiece como empiece su primera viñeta', () => {
+  for (const lista of [
+    '- El runner no toca migraciones en `api/` sin aprobación de datos.\n- Nunca publica en `main`.',
+    '- En `api/` el runner no toca migraciones sin aprobación de datos.\n- Nunca publica en `main`.',
+    '- El runner no toca migraciones en `api/` sin aprobación\n  de datos.\n- Nunca publica en `main`.',
+  ]) {
+    const root = instance('cauce-contract-lista-')
+    const antes = contractOf(root).value.boundaries.length
+    conExcepcion(root, `### Límites\n\n${lista}`)
+    const { boundaries } = contractOf(root).value
+    assert.equal(boundaries.length, antes + 2, `llegaron:\n  ${boundaries.join('\n  ')}`)
+    for (const one of boundaries) {
+      assert.equal(boundaries.some((other) => other !== one && other.includes(one)), false,
+        `«${one}» llegó también dentro de otro límite`)
+    }
+  }
+})
+
 // Plegar tiene un borde que no se escribe solo: una línea en blanco cierra la viñeta. Sin eso, la prosa
 // que venga después queda pegada al último límite —y encima deja de avisarse, porque plegar la cuenta
 // como declarada—, así que un párrafo que nadie declaró pasaría a regir sobre cada subagente.

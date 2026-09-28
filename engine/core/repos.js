@@ -130,26 +130,30 @@ function coverageWarnings(opsRoot, done) {
 // defecto se descubría en la fase 4 de un recorrido: 1,21 M de tokens en tres paradas, con la puerta en
 // verde las tres veces (caso 121).
 //
-// Se pregunta con el pickaxe sobre la línea entera y no por la palabra `resuelta`: lo que hay que
-// establecer es que **esa** fila, con ese estado, existió alguna vez en un commit. Una que pasó a resuelta
-// sólo en el árbol de trabajo no aparece en ninguno.
+// Se pregunta si **esa** fila, con ese estado, está en el archivo de `HEAD`, línea por línea, y no por la
+// palabra `resuelta`. Una que pasó a resuelta sólo en el árbol de trabajo no está ahí.
+//
+// No se pregunta con el pickaxe, que era la primera forma: `git log -S` busca con una tabla de saltos de
+// un byte (`kwset.c`), que con una aguja de más de 256 bytes se desborda y salta por encima de una fila que
+// sí está en el commit. Una fila resuelta de verdad es justo la larga, porque lleva la decisión adentro
+// (caso 204).
+//
+// `clean` es la limpieza que ya sufrieron las filas: el parser las lee sin comentarios, así que el archivo
+// commiteado tiene que pasar por la misma o una fila con un `<!-- -->` adentro no coincide con su línea.
 //
 // Sin repositorio, o con el archivo todavía sin commitear, no dice nada: no hay historia contra la cual
 // preguntar y el aviso sería inventado. Degrada como el 086 con las migraciones — antes callar de más que
 // avisar de más, porque un aviso que salta siempre se termina apagando.
-function unrecordedHumanActions(opsRoot, rows) {
+function unrecordedHumanActions(opsRoot, rows, clean) {
   const file = path.join(opsRoot, 'planning', 'HUMAN_ACTIONS.md')
   const top = git(path.dirname(file), 'rev-parse', '--show-toplevel')
   if (top.status !== 0) return []
   const repo = top.stdout.trim()
-  const relative = path.relative(repo, file)
-  const history = git(repo, 'log', '--format=%h', '--', relative)
-  if (history.status !== 0 || !history.stdout.trim()) return []
-  return rows.filter((row) => row.resolved)
-    .filter((row) => {
-      const found = git(repo, 'log', '--format=%h', `-S${row.raw}`, '--', relative)
-      return found.status === 0 && !found.stdout.trim()
-    })
+  const relative = path.relative(repo, file).split(path.sep).join('/')
+  const committed = git(repo, 'show', `HEAD:${relative}`)
+  if (committed.status !== 0) return []
+  const lines = new Set(clean(committed.stdout).split('\n'))
+  return rows.filter((row) => row.resolved && !lines.has(row.raw))
     .map((row) => `HUMAN_ACTIONS.md: ${row.task} figura resuelta y ningún commit la registró`)
 }
 

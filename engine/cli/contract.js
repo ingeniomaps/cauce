@@ -119,17 +119,21 @@ function marked(raw) {
   return { bullets, intros, own }
 }
 
-const declared = (raw) => marked(raw).bullets
-
+// La pasada de prosa descuenta las líneas que ya son viñetas declaradas. Para ella un bloque de viñetas
+// seguidas es un solo párrafo, así que si la primera empezaba con «El runner» la lista entera entraba otra
+// vez, pegada en un límite: cada uno llegaba dos veces al preámbulo (caso 203). Es el mismo descuento por
+// línea que hace `warnings`, y por la misma razón.
 function limits(text) {
+  const { bullets, own } = marked(text)
+  const taken = new Set(own)
   const prose = text.split(/\n\s*\n/)
     .map((block) => block.split('\n')
       .map((line) => line.replace(/^[-*]\s+/, '').trim())
-      .filter((line) => line && !line.startsWith('#') && !line.startsWith('|'))
+      .filter((line) => line && !line.startsWith('#') && !line.startsWith('|') && !taken.has(line))
       .join(' ')
       .trim())
     .filter((block) => ENUNCIA.test(block))
-  return [...declared(text), ...prose]
+  return [...bullets, ...prose]
 }
 
 // Lo que el proyecto escribió en su sección de excepciones y **no** llegó a `boundaries`. Existe porque
@@ -163,7 +167,7 @@ function warnings(root) {
   ))
   // Se descuenta por línea y no por párrafo, que es donde estaba el defecto: `paragraphs` saca el `- ` y
   // une las viñetas seguidas en un párrafo solo, así que una lista declarada no era igual a ninguna
-  // entrada de `declared()` y se contaba entera como un límite perdido (caso 159).
+  // viñeta de `marked()` y se contaba entera como un límite perdido (caso 159).
   const { own, intros } = marked(mine)
   const suyo = new Set([...own, ...intros])
   const outside = P.withoutComments(mine).split('\n')
