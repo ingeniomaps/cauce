@@ -68,6 +68,18 @@ test('partir deja la prosa en BACKLOG.md y cada hito en su archivo, con el orden
   assert.match(files[1].text, /^---\norder: 20\n---/)
 })
 
+// El porqué está en `splitBacklog`; acá se mide sobre el molde real, que es donde el defecto mordía.
+test('partir deja lo comentado donde está: el ejemplo del molde no se vuelve cola', () => {
+  const molde = fs.readFileSync(path.join(MOLDE, 'BACKLOG.md'), 'utf8')
+  assert.match(molde, /<!--\n## Hito primer-resultado/, 'el molde sigue trayendo su ejemplo comentado')
+  const { backlog, files } = splitBacklog(molde)
+  assert.deepEqual(files, [])
+  assert.equal(backlog, `${molde.trimEnd()}\n`)
+
+  const { files: [one] } = splitBacklog(`## Hito a — A\n\n${task('ta')}\n<!--\nnota\n-->\n`)
+  assert.match(one.text, /<!--\nnota\n-->/, 'un comentario adentro de un hito se queda con su hito')
+})
+
 test('split-backlog migra a la forma partida, y si un archivo ya existe no escribe nada', () => {
   const dir = planning('cauce-backlog-split-cli-')
   write(dir, 'BACKLOG.md', `# Backlog\n\n## Hito a — A\n\n${task('ta')}\n\n## Hito b — B\n\n${task('tb')}\n`)
@@ -84,6 +96,14 @@ test('split-backlog migra a la forma partida, y si un archivo ya existe no escri
     [['a', 'backlog/a.md'], ['b', 'backlog/b.md']])
   assert.deepEqual(SR.validateBacklogStructure(dir), [], 'lo migrado cumple la forma partida')
   assert.match(run(['split-backlog', dir]).stdout, /no tiene hitos que partir/)
+
+  // Hito repetido: el porqué de negarse está en `splitBacklog` de `engine/cli/planning.js`.
+  const twice = planning('cauce-backlog-split-twice-')
+  write(twice, 'BACKLOG.md', `# Backlog\n\n## Hito a — A\n\n${task('ta')}\n\n## Hito a — Otra vez\n\n${task('tb')}\n`)
+  const refusedTwice = run(['split-backlog', twice])
+  assert.equal(refusedTwice.status, 1)
+  assert.match(refusedTwice.stderr, /tiene el hito a más de una vez: no se escribió nada/)
+  assert.ok(!fs.existsSync(path.join(twice, 'backlog', 'a.md')), 'escribió a pesar de negarse')
 })
 
 // La reproducción del caso, con git de verdad: dos líneas promueven cada una su hito y una trae a la otra.

@@ -351,6 +351,13 @@ function splitBacklog(dir) {
   const root = planningRoot(dir)
   const { backlog, files } = BK.splitBacklog(P.read(path.join(root, 'BACKLOG.md')))
   if (!files.length) return console.log('= BACKLOG.md no tiene hitos que partir')
+  // El mismo hito dos veces iría al mismo archivo, y el segundo pisaría al primero: sus tareas no quedarían
+  // en ningún lado. Se niega antes de escribir, con el hito nombrado.
+  const twice = [...new Set(files.map((one) => one.slug).filter((slug, i, all) => all.indexOf(slug) !== i))]
+  if (twice.length) {
+    return fail(`BACKLOG.md tiene el hito ${twice.join(', ')} más de una vez: no se escribió nada. Juntá esas `
+      + 'secciones en una y volvé a correr.', REFUSED)
+  }
   const taken = files.filter((one) => fs.existsSync(path.join(root, one.file)))
   if (taken.length) {
     return fail(`ya existen ${taken.map((one) => one.file).join(', ')}: no se escribió nada. Mové a mano esos `

@@ -60,12 +60,27 @@ function readBacklog(dir) {
 // renumerar.
 const STEP = 10
 
+// Un hito dentro de un comentario no es un hito: el molde trae uno de ejemplo así, y partirlo lo sacaba del
+// comentario y dejaba sus tareas de ejemplo en cola. Lo comentado se queda donde está, entero.
 function splitBacklog(text) {
   const lines = String(text || '').split('\n')
   const keep = []
   const parts = []
   let current = null
+  // Dónde va el comentario abierto: con el hito en el que se abrió, o con la prosa si se abrió afuera.
+  let comment = null
   for (const line of lines) {
+    if (comment) {
+      comment.push(line)
+      if (line.includes('-->')) comment = null
+      continue
+    }
+    const opens = line.indexOf('<!--')
+    if (opens !== -1 && !line.slice(opens).includes('-->')) {
+      comment = current ? current.lines : keep
+      comment.push(line)
+      continue
+    }
     const heading = line.match(P.MILESTONE_HEADING)
     if (heading) {
       current = { slug: heading[1], lines: [line] }
