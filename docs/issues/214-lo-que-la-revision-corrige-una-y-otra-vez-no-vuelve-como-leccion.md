@@ -2,14 +2,14 @@
 caso: 214
 titulo: lo que la revisión corrige una y otra vez no vuelve como lección
 estado: resuelto
-resuelto-en: 0.101.0
+resuelto-en: 0.100.0
 prioridad: media
-version-detectada: 0.100.0
+version-detectada: 0.99.2
 ---
 
 # 214 — Una regla que la revisión hace cumplir en cada tarea no le avisa a nadie que no se cumple sola
 
-**🟢 resuelto en 0.101.0** · detectado en 0.100.0 · prioridad **media**.
+**🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **media**.
 
 **Prioridad media**: no rompe nada; cuesta una vuelta de corrección por tarea mientras dure, y la señal de
 que una regla no se entiende o no se ve existe desde 0.100.0 en `done/` sin que nada la lea.

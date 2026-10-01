@@ -2,14 +2,14 @@
 caso: 213
 titulo: una regla de negocio no distingue si rige de si alguien la confirmó
 estado: resuelto
-resuelto-en: 0.101.0
+resuelto-en: 0.100.0
 prioridad: media
 version-detectada: 0.99.2
 ---
 
 # 213 — `Estado` mezcla dos preguntas: si la regla rige y si alguien con autoridad confirmó que es correcta
 
-**🟢 resuelto en 0.101.0** · detectado en 0.99.2 · prioridad **media**.
+**🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **media**.
 
 **Prioridad media**: no rompe nada, pero un cargo que lee el código y escribe la regla la puede dejar
 `vigente` describiendo un defecto como comportamiento correcto, y nada distingue esa regla de una que

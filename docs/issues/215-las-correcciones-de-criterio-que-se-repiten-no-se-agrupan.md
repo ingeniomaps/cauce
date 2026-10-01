@@ -3,12 +3,12 @@ caso: 215
 titulo: las correcciones de criterio que se repiten no se agrupan
 estado: abierto
 prioridad: baja
-version-detectada: 0.101.0
+version-detectada: 0.99.2
 ---
 
 # 215 — `ops lessons` agrupa por regla y deja sueltas las correcciones de criterio
 
-**🔴 abierto** · detectado en 0.101.0 · prioridad **baja**.
+**🔴 abierto** · detectado en 0.99.2 · prioridad **baja**.
 
 **Prioridad baja**: hoy no hay con qué medirlo. Sube a media cuando una instancia real tenga al menos un mes
 de entradas de `done/` con `corregido:`, que es lo que permite ver si el agrupamiento acierta.
