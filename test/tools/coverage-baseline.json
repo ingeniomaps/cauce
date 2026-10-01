@@ -379,6 +379,11 @@
     "branches": 100,
     "functions": 100
   },
+  "engine/planning/renumber.js": {
+    "lines": 100,
+    "branches": 86,
+    "functions": 100
+  },
   "engine/planning/sizing.js": {
     "lines": 100,
     "branches": 100,

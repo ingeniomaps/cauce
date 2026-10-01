@@ -15,6 +15,7 @@ const ST = require('../planning/state')
 const SF = require('../planning/surfaces')
 const LS = require('../planning/lessons')
 const BK = require('../planning/backlog')
+const RN = require('../planning/renumber')
 const O = require('../core/ownership')
 const EV = require('../core/evidence')
 const { fail, planningRoot, REFUSED, TODAY, USAGE } = require('./io')
@@ -358,6 +359,21 @@ function inbox(dir, cli) {
   if (skipped) console.log(`\n${skipped} sin contar: falta el nombre en **negrita**`)
 }
 
+// Mueve una épica a otro número con las tareas que la citan (caso 217). Lo corre una persona al ver el
+// duplicado en `check`; el porqué de cada paso está en `engine/planning/renumber.js`.
+function renumberEpic(dir, epic, num) {
+  const root = planningRoot(dir)
+  if (!epic || !num) return fail('Uso: ops renumber-epic <planning-dir> <epic-NNN-slug> <NNN>', USAGE)
+  const result = RN.plan(root, epic, num)
+  if (result.error) return fail(`${result.error}: no se movió nada.`, REFUSED)
+  RN.apply(result)
+  console.log(`✓ ${path.relative(root, result.from)} → ${path.relative(root, result.to)}`)
+  // Lo reescrito dentro de la épica se nombra donde quedó, no donde estaba.
+  const now = (file) => (file.startsWith(result.from) ? result.to + file.slice(result.from.length) : file)
+  for (const one of result.edits) console.log(`  reescrito ${path.relative(root, now(one.file))}`)
+  console.log('Corré check: las citas en prosa que no nombran el archivo no se tocan.')
+}
+
 // Pasa cada hito de `BACKLOG.md` a su archivo en `backlog/` (caso 212). Es la migración de una instancia
 // que ya existe, y la corre quien la opera: `upgrade` no reescribe la cola de nadie. No pisa nada —si un
 // archivo de hito ya existe, no escribe ninguno— y `check` corre después igual que siempre.
@@ -384,4 +400,4 @@ function splitBacklog(dir) {
   console.log(`${files.length} hito(s) pasaron a backlog/. Corré "ops check" y commiteá el cambio.`)
 }
 
-module.exports = { evidence, tree, context, recurring, lessons, inbox, splitBacklog }
+module.exports = { evidence, tree, context, recurring, lessons, inbox, renumberEpic, splitBacklog }

@@ -48,6 +48,19 @@ epic-NNN-slug/
 Para graduarla, se mueve el contenido contractual a `spec.md` sin cambiar el número ni el slug. No se crean
 archivos auxiliares vacíos ni se usa una carpeta si la épica sigue siendo fácil de entender en un solo archivo.
 
+## Número
+
+Una épica nueva toma el siguiente al número más alto. Dos líneas de trabajo en paralelo pueden tomar el
+mismo, porque ninguna ve la de la otra hasta traerla: git no choca —los archivos se llaman distinto— y
+`check` lo marca. Se mueve la que todavía no llegó a la rama principal, con
+
+```text
+node tools/ops.js renumber-epic planning epic-NNN-slug <número libre>
+```
+
+que renombra el archivo o la carpeta, cambia el frontmatter y el encabezado, y reescribe el `(epic: NNN)`
+de sus tareas y las rutas que la citan. Las tareas de la otra épica no se tocan.
+
 ## Contrato de una épica
 
 - Frontmatter: `epic`, `title`, `status` y `service`.

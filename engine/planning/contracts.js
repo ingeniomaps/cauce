@@ -3,6 +3,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const P = require('./parser')
+const RN = require('./renumber')
 const { PLACEHOLDERS } = require('../core/onboarding')
 const { acceptanceConditions, OUT_OF_VERIFY, NON_EXECUTABLE } = require('./acceptance')
 
@@ -319,7 +320,7 @@ function validateState({
   epics, milestones, done, wips = [], roles = new Set(), humanActions = [], adopted = new Set(),
 }) {
   const errors = []
-  const epicNums = new Set()
+  const epicNums = new Map()
   const storySlugs = new Set()
   const backlogSlugs = new Set(milestones.flatMap((milestone) => milestone.tasks).map((task) => task.slug))
   for (const duplicate of done.duplicates) errors.push(`DONE duplicado: ${duplicate}`)
@@ -327,8 +328,13 @@ function validateState({
     const at = `roadmap/${epic.file}`
     errors.push(...validateEpic(epic, done.set))
     if (!/^\d{3}$/.test(epic.num)) errors.push(`${at}: epic debe ser NNN`)
-    if (epicNums.has(epic.num)) errors.push(`${at}: número de épica duplicado ${epic.num}`)
-    epicNums.add(epic.num)
+    // Nombra las dos y la salida: la que se mueve es la que todavía no llegó a la rama principal (caso 217).
+    if (epicNums.has(epic.num)) {
+      errors.push(`${at}: número de épica duplicado ${epic.num}, también en roadmap/${epicNums.get(epic.num)}. `
+        + 'Mové la que todavía no llegó a la rama principal: node tools/ops.js renumber-epic planning '
+        + `<epic-${epic.num}-slug> ${RN.nextFree(epics, done)}`)
+    }
+    epicNums.set(epic.num, epic.file)
     if (!epic.title) errors.push(`${at}: falta title`)
     if (!P.EPIC_STATES.includes(epic.status)) errors.push(`${at}: status inválido "${epic.status}"`)
     if (!epic.criteria.length) errors.push(`${at}: falta al menos un criterio observable`)
