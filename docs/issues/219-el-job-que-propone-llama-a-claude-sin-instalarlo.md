@@ -123,6 +123,47 @@ decía `success`, y lo que faltaba se vio recién al contar anotaciones y PR.
 Es la primera vez que el paso corre de verdad: entró el 2026-09-15 y el ensamblaje es mensual. El cierre del
 155 lo probó por estructura y no lo corrió, que es justo el hueco que dejó pasar esto.
 
+## Lo que encontró la primera prueba real
+
+El arreglo de arriba entró con el PR #640, y se probó corriendo `phase=propose` sólo para `backend-engineer`
+(corrida `36923010691`, sobre `f9264bb`). El CLI se instaló y corrió 43 s, `Fail when the proposal run failed`
+quedó salteado, el job salió verde y **no se abrió ningún PR**. Había dos defectos más detrás del primero.
+
+**`/agent-propose` no corre en `-p` sin `Workflow` permitido.** Lo que `claude` imprimió en el runner:
+
+```
+Intenté lanzar el workflow `agent-propose` para `backend-engineer` (tanto por nombre como por `scriptPath`),
+pero la herramienta devuelve `Review dynamic workflow before running` en los tres intentos, sin llegar a
+ejecutarse.
+```
+
+Se verificó con la misma versión que el workflow (`npx @anthropic-ai/claude-code@2.1.233`), en un banco con un
+recorrido de una sola instrucción:
+
+- **Con los `--allowedTools` del job** devuelve `Workflow(name: "probe") → Review dynamic workflow before running`,
+  con `exit=0`.
+- **Sumando `Workflow`**, el recorrido corre.
+- **Con `--allowedTools 'Workflow'` solo**, el agente de adentro escribe `out.txt` con `SUBAGENT-WROTE`. Como la
+  sesión principal no tenía `Write`, el que escribió fue el agente.
+
+Esto se comprobó con la configuración de usuario de esta máquina y no con la de un runner vacío. Lo que lo
+establece para CI es la corrida real después del merge.
+
+**El job decidía por el código de salida, y el PR leía un veredicto viejo.** `claude` contestó pidiendo
+aprobación y salió en cero, así que la primera mitad del arreglo no tenía qué atrapar. Y `Open proposal pull
+request` leía `steps.proposal.outputs.decided`, que se calcula **antes** de correr el recorrido: una propuesta
+que `/agent-propose` sí completara se habría empujado igual sin PR.
+
+El segundo arreglo:
+
+- suma `Workflow` a `--allowedTools`;
+- agrega `Check the proposal again`, que vuelve a preguntarle al documento con `blankProposal` después de
+  correr el recorrido;
+- hace que el PR y el rojo lean ese veredicto.
+
+Si falta el archivo, el paso responde «sin decidir», porque `blankProposal` da por decidido lo que no puede
+leer. Tampoco sale en error: cortar ahí saltearía el push de los sellos.
+
 ## Relacionados
 
 - **155**, que agregó el paso. Este caso es lo que su cierre no probó.
