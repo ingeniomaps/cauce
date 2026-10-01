@@ -24,6 +24,7 @@ const FLAGS = {
   bench: ['--force'],
   recurring: ['--json', '--promote'],
   lessons: ['--json'],
+  inbox: ['--json'],
   'split-backlog': [],
   line: ['--json'],
   claim: ['--json'],

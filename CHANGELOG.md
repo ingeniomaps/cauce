@@ -33,8 +33,9 @@ diseño — eso vive en el commit y en el código.
 - **El INBOX acepta una entrada por archivo.** Los recorridos ya no agregan al final de una sección de
   `INBOX.md`: escriben cada entrada en `planning/inbox/<sección>/<nombre>.md`, así que dos líneas en paralelo
   que anotan en la misma sección ya no chocan al traerse. `INBOX.md` se sigue leyendo primero y escribir ahí
-  a mano sigue valiendo; `tree` y `check` cuentan las dos cosas juntas. Para promover o descartar una entrada
-  de las carpetas, borrás su archivo. `check` avisa —sin fallar— una carpeta que no es sección o un archivo
+  a mano sigue valiendo; `tree` y `check` cuentan las dos cosas juntas, y `node tools/ops.js inbox planning`
+  lo imprime entero, con la sección y el archivo de cada entrada. Para promover o descartar una entrada de
+  las carpetas, borrás su archivo. `check` avisa —sin fallar— una carpeta que no es sección o un archivo
   que no se llama como su entrada, que de otro modo no se contarían donde corresponde.
 - **Una tarea que toca lo que no se puede romper no va por `express`.** `autobuild` lee la tabla «Qué no
   se puede romper» de `organization/company.md` y, si una tarea `express` toca una de esas superficies,
