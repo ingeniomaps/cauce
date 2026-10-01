@@ -129,6 +129,11 @@
     "branches": 100,
     "functions": 100
   },
+  "engine/cli/lines.js": {
+    "lines": 97,
+    "branches": 56,
+    "functions": 90
+  },
   "engine/cli/ops.js": {
     "lines": 88,
     "branches": 67,

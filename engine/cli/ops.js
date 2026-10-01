@@ -9,6 +9,7 @@ const { FLAGS, parse } = require('./args')
 const { fail, USAGE, REFUSED } = require('./io')
 const IN = require('./instance')
 const PL = require('./planning')
+const LN = require('./lines')
 const CT = require('./contract')
 const BN = require('./bench')
 const VA = require('./validate')
@@ -156,6 +157,7 @@ function usage() {
   ops recurring <planning-dir> [--promote <qué>] [--json]
   ops lessons <planning-dir> [--json]
   ops split-backlog <planning-dir>
+  ops line <ops-root> <nombre> [--json]
   ops runners <planning-dir> [--json]
   ops claim <planning-dir> <tarea>
   ops release <planning-dir> <tarea>
@@ -229,6 +231,7 @@ async function run(cli) {
   else if (command === 'recurring') PL.recurring(arg[1], cli)
   else if (command === 'lessons') PL.lessons(arg[1], cli)
   else if (command === 'split-backlog') PL.splitBacklog(arg[1])
+  else if (command === 'line') LN.line(arg[1], arg[2], cli)
   else if (command === 'runners') CLM.runners(arg[1], cli)
   else if (command === 'claim') CLM.claim(arg[1], arg[2], cli)
   else if (command === 'release') CLM.release(arg[1], arg[2])
