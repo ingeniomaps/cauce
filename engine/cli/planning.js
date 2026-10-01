@@ -12,6 +12,7 @@ const P = require('../planning/parser')
 const RC = require('../planning/recurring')
 const CL = require('../planning/claims')
 const ST = require('../planning/state')
+const SF = require('../planning/surfaces')
 const O = require('../core/ownership')
 const EV = require('../core/evidence')
 const { fail, planningRoot, TODAY, USAGE } = require('./io')
@@ -207,6 +208,8 @@ function context(dir, cli) {
     // Las reglas que rigen, con los overrides resueltos. Van acá porque `autobuild` ya lee este comando y
     // tiene prohibido abrir otros archivos para completar su contrato (caso 105).
     rules: O.effectiveRules(path.resolve(root, '..')),
+    // Lo que la empresa declaró que no se puede romper (caso 205). Viaja acá por lo mismo que `rules`.
+    surfaces: SF.criticalSurfaces(path.resolve(root, '..')),
   }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
   const reglas = () => console.log(`RULES  ${report.rules.join(', ') || '(ninguna)'}`)

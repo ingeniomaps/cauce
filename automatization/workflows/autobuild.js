@@ -84,6 +84,9 @@ const CONTEXT = {
       properties: { build: { type: 'string' }, review: { type: 'array', items: { type: 'string' } } },
     },
     blockedTasks: { type: 'array', items: { type: 'string' } },
+    // «Qué no se puede romper» como «nombre (dónde vive)», y si la tabla tiene algo sin declarar (caso 205).
+    surfaces: { type: 'array', items: { type: 'string' } },
+    surfacesPending: { type: 'boolean' },
     // Si la tarea que `context` devolvió ya está reservada a nombre de este runner. Libre no significa
     // que sea nuestra: significa que todavía la puede tomar cualquiera, y dos corridas en paralelo la
     // reciben las dos.
@@ -162,6 +165,11 @@ const DECISION = {
     consulted: { type: 'array', items: { type: 'string' } },
   },
 }
+// Qué superficie crítica toca una tarea `express`. Una sola cadena: la entrada de la lista tal cual, o vacía.
+const CRITICAL = {
+  type: 'object', additionalProperties: false, required: ['critical'],
+  properties: { critical: { type: 'string' } },
+}
 // Review nombra contra qué reglas revisó (caso 105): recibir las rutas no garantiza abrirlas, y esto es lo único
 // que deja rastro de que se hizo. Critique no lo lleva porque no recibe la lista.
 //
@@ -176,10 +184,13 @@ const DECISION = {
 // terminaron en `review-failed` con la suite del producto en verde y los tres casos de la aceptación
 // dando lo pedido, y las dos por un hallazgo que el propio revisor describió como una decisión que no le
 // tocaba.
-const REVIEWED = { ...DECISION, required: [...DECISION.required, 'rules'],
+const REVIEWED = { ...DECISION, required: [...DECISION.required, 'rules', 'critical'],
   properties: {
     ...DECISION.properties,
     rules: { type: 'array', items: { type: 'string' } },
+    // Qué superficie de las que la empresa declaró crítica toca el diff, o vacío. Viaja al hecho de
+    // revisión, que llega a `done/`: es lo que dice después con qué rigor se miró la entrega (caso 205).
+    critical: { type: 'string' },
     // Extiende el concern de `DECISION` en vez de reescribirlo: copiado entero, un campo nuevo allá no
     // llegaría acá y ninguna prueba lo notaría.
     concerns: { ...DECISION.properties.concerns,
@@ -346,6 +357,12 @@ const RULED = ' En rules nombrá, por su ruta, cada una de las reglas que rigen 
   + ' el diff. Y marcá decision=true en el hallazgo que no te toca resolver a vos —una definición de'
   + ' producto, un contrato público, una autoridad que el cargo no tiene—: ése se registra para una'
   + ' persona y no manda a tocar código.'
+// También acompaña a todo prompt con schema REVIEWED, y es función porque las superficies se leen después.
+const SURFACED = () => ((planning && (planning.surfaces || []).length)
+  ? ` En critical poné la superficie de esta lista que el diff toca, tal cual, o vacío si no toca ninguna: `
+    + `${JSON.stringify(planning.surfaces)}. Son las que la empresa declaró que no se pueden romper; un hallazgo `
+    + 'de corrección o de seguridad sobre una de ellas bloquea.'
+  : ' En critical poné la cadena vacía: la empresa no declaró superficies críticas.')
 // Lo que hay que corregir antes de entregar. El resto de los hallazgos no desaparece: se registra.
 // Una decisión no cuenta como bloqueante aunque venga marcada: su destino es la fila, no la corrección.
 // Critique no la emite —no está en su esquema— así que para él `one.decision` es siempre `undefined`.
@@ -494,7 +511,8 @@ const readContext = () => read(
   `de task.tier; copiá slug, ` +
   `hito, service, acceptance, ` +
   `epic, cast y description de task, epicContext de epic.context —vacío si no hay épica— e inbox tal `
-  + `cual. El comando es ` +
+  + `cual. surfaces sale de surfaces.declared, una entrada por fila con la forma "<surface> (<lives>)", y `
+  + `surfacesPending de surfaces.pending. El comando es ` +
   `la fuente de ` +
   `verdad: no abras archivos de planning para completarlo. Poné readOk en true sólo si el comando salió ` +
   `con código 0 y devolvió JSON; si falló, readOk en false y el resto en sus valores vacíos, sin ` +
@@ -641,7 +659,9 @@ while (rounds++ < MAX_TASKS) {
     phase('Classify')
     classified.add(task.id)
     const classification = await write(
-      `${CLASSIFY_RULES}\n\nRun "node tools/ops.js agents list ${ROOT} --json" and choose only from the slugs ` +
+      `${CLASSIFY_RULES}${(planning.surfaces || []).length ? ` Una tarea que toca alguna de estas superficies, que la `
+        + `empresa declaró que no se pueden romper, nunca va por express: ${JSON.stringify(planning.surfaces)}.` : ''}`
+        + `\n\nRun "node tools/ops.js agents list ${ROOT} --json" and choose only from the slugs ` +
       `it lists.\nClasificá en ${BACKLOG} todas las tareas en cola que no declaren lane o no declaren cast, ` +
       `empezando por ${task.id} en ${task.service} —aceptación: ${task.acceptance}—. El lane va entre ` +
       `corchetes después del slug y el reparto al final de la línea, con la forma ` +
@@ -667,8 +687,26 @@ while (rounds++ < MAX_TASKS) {
   // ese lector no existió —`Classify` sólo corre si falta lane o cast—, y saltear la única fase que
   // pregunta si la tarea está lista quedaba apoyado en una premisa que nadie comprobó.
   const vouched = classified.has(task.id)
-  const express = planning.lane === 'express'
-  const direct = planning.lane === 'directo'
+  // Una tarea que toca una superficie que la empresa declaró que no se puede romper no va por `express`,
+  // que no convoca revisor (caso 205). El piso lo aplica el recorrido y no el clasificador: el carril
+  // también se escribe a mano, y ahí nadie leyó la tabla. Se pregunta sólo cuando hay algo que
+  // decidir —carril `express` y superficies declaradas—, y lo que no se puede determinar sube de carril:
+  // un `null`, o cualquier respuesta no vacía aunque no esté en la lista, cuestan una revisión de más, y
+  // suponer lo contrario costaría una entrega sin mirar sobre lo que no se puede romper.
+  const surfaces = planning.surfaces || []
+  let critical = ''
+  if (planning.lane === 'express' && surfaces.length) {
+    phase('Surface')
+    const touched = await read(`¿La tarea ${task.id} toca alguna de estas superficies que la empresa declaró que `
+      + `no se pueden romper? ${JSON.stringify(surfaces)}. Servicio: ${task.service}. Aceptación: `
+      + `${task.acceptance}. ${task.description ? `Decisiones de la línea: ${task.description}. ` : ''}`
+      + 'Contestá en critical la entrada de la lista tal cual si la toca, o la cadena vacía si no toca ninguna.',
+    { schema: CRITICAL, label: 'critical-surface' })
+    critical = !touched ? 'no se pudo determinar' : touched.critical.trim()
+    if (critical) log(`${task.id} toca una superficie crítica (${critical}): sube de express a directo`)
+  }
+  const express = planning.lane === 'express' && !critical
+  const direct = planning.lane === 'directo' || (planning.lane === 'express' && Boolean(critical))
   const lite = planning.lane === 'lite'
   // Lo mecánico no se planifica ni se pregunta si está listo: el clasificador ya leyó la aceptación y
   // dijo que nombra un valor literal. Volver a preguntarlo son dos llamadas para llegar al mismo lado.
@@ -990,12 +1028,13 @@ while (rounds++ < MAX_TASKS) {
   // Qué revisión hubo, para que el cierre no pueda inventar una. Nace diciendo que no hubo porque
   // `express` no convoca a nadie, y ése es el caso que se escribió como si un cargo hubiera aprobado.
   let reviewFact = 'no corrió (el carril express no convoca revisor)'
+  if (express && planning.surfacesPending) reviewFact += ' · «Qué no se puede romper» tiene filas sin declarar'
   if (!express) {
     phase('Review')
     let review = await run(
       `${asRole(cast.review)}Revisá el diff real por aceptación, regresiones, seguridad, arquitectura, código ` +
       `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.${MANIFEST}` +
-      `${VERDICT}${RULED}`,
+      `${VERDICT}${RULED}${SURFACED()}`,
       { schema: REVIEWED, label: 'review' },
     )
     if (!review) return stop('agent-unavailable', 'Review no devolvió resultado')
@@ -1022,7 +1061,7 @@ while (rounds++ < MAX_TASKS) {
         + 'Traé también lo que tu propia corrección deje desactualizado —un conteo, un comentario que '
         + 'describa la forma vieja, una fila que la enumere— y nada más que eso.',
         { label: 'review-fix' })
-      review = await run(`Volvé a revisar el diff corregido de ${task.id}.${MANIFEST}${VERDICT}${RULED}`,
+      review = await run(`Volvé a revisar el diff corregido de ${task.id}.${MANIFEST}${VERDICT}${RULED}${SURFACED()}`,
         { schema: REVIEWED, label: 'review' })
       if (!review) return stop('agent-unavailable', 'la re-revisión no devolvió resultado')
       reviewDecisions.push(...review.concerns.filter((one) => one.decision))
@@ -1065,6 +1104,11 @@ while (rounds++ < MAX_TASKS) {
       + (filed.length ? ` · ${filed.length} decisión(es) registrada(s)${decidedNote}` : '')
       + (decided.length > filed.length ? ` · ${decided.length - filed.length} decisión(es) sin volcar` : '')
       + ((review.rules || []).length ? ` · reglas: ${review.rules.join(', ')}` : '')
+    // Qué superficie crítica tocó, dicho siempre: «no toca ninguna» también es lo que se miró. Y si la tabla
+    // está sin declarar se dice acá, que es lo que llega a `done/`, en vez de suponer que no hay ninguna.
+    reviewFact += review.critical ? ` · toca la superficie crítica ${review.critical}`
+      : surfaces.length ? ' · no toca superficies críticas' : ''
+    if (planning.surfacesPending) reviewFact += ' · «Qué no se puede romper» tiene filas sin declarar'
     // Lo que no impide entregar no manda a tocar código, y tampoco desaparece: la mejora opinable que se
     // corrige a las apuradas cuesta una vuelta y un riesgo que nadie pidió. Va a Propuestas y no a
     // Lecciones porque lo que la revisión anotó es un cambio del producto —su evidencia es la de la
