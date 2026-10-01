@@ -1,14 +1,15 @@
 ---
 caso: 219
 titulo: el job que consolida llama a `claude` sin instalarlo, y los 53 fallos salen en verde
-estado: abierto
+estado: resuelto
+resuelto-en: 0.100.0
 prioridad: alta
 version-detectada: 0.99.2
 ---
 
 # 219 — El ensamblaje del 1 llama a `claude` sin instalarlo, y los 53 fallos salen en verde
 
-**🔴 abierto** · detectado en 0.99.2 · prioridad **alta**.
+**🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **alta**.
 
 **Prioridad alta**: es el primer ensamblaje desde que el job escribe el cambio concreto (caso 155), y no
 produjo ninguna propuesta firmable. Además lo hizo con la corrida en verde: sin abrir los logs, el mes se ve
@@ -169,3 +170,53 @@ leer. Tampoco sale en error: cortar ahí saltearía el push de los sellos.
 - **155**, que agregó el paso. Este caso es lo que su cierre no probó.
 - **220**, que es lo que encuentra quien relance el ensamblaje para recuperar este mes: las ramas
   `automation/<cargo>-<período>` ya existen y el push se rechaza.
+
+## Cierre
+
+**🟢 resuelto en 0.100.0** · `.github/workflows/agent-learning.yml`, `test/repo/ci-propose.test.js`,
+`test/repo/ci-schedule.test.js` · PR #640 y #641.
+
+El workflow no viaja en el paquete, así que el arreglo rige desde que se mergeó a `main` y no desde que se
+publique la versión. 0.100.0 es la que estaba abierta cuando entró.
+
+### La prueba
+
+Se lanzó `phase=propose` sólo para `backend-engineer`, sobre `231e40d` (el merge de #641). Es la corrida
+`36925119157`, que terminó en `success`:
+
+```
+Install Claude Code              success  20:55:53 → 20:55:56
+Write the concrete change        success  20:55:56 → 21:05:19
+Check the proposal again         success  21:05:19 → 21:05:19   FILE: …/backend-engineer/learning/proposals/2026-10.md
+Open proposal pull request       success  21:05:19 → 21:05:22   https://github.com/ingeniomaps/cauce/pull/642
+Fail when the proposal run failed skipped
+```
+
+El PR #642 lo abrió `app/github-actions`, de `automation/backend-engineer-2026-10` a `main`. Su diff es la
+propuesta (`+198`) y los sellos de los cuatro informes de septiembre (`+1 -1` cada uno), nada fuera del
+cargo. «Cambio propuesto» decide algo: ningún cambio de contrato, justificado archivo por archivo. Es una
+decisión firmable, no el molde.
+
+Antes de este arreglo, la misma corrida (`36923010691`, sobre `f9264bb`) terminó en verde y sin PR. Ése es
+el rojo previo.
+
+### Contra lo que el caso enumeró
+
+- **Fix 1, instalar el CLI en `propose` con la versión declarada una vez** — **se hizo** (#640). En la corrida
+  de prueba el paso tardó 3 s.
+- **Fix 2, que la corrida fallida ponga el job en rojo después de empujar los sellos** — **se hizo distinto**
+  (#641). Como estaba en #640 no alcanzaba: `claude` salía en cero sin haber hecho nada, y el PR leía un
+  veredicto de antes de la corrida. Ahora decide el documento, que se vuelve a leer después de correr. La rama
+  en rojo no se vio en una corrida real, porque la de prueba salió bien. La sostiene
+  `test/repo/ci-propose.test.js` con un `claude` que no escribe nada, y se vio en rojo con cinco mutaciones.
+- **Sin credencial sigue siendo aviso** — **se hizo**: la prueba lo cubre y la rama no cambió.
+- **Tradeoff «unos segundos más por cargo»** — **medido**: 3 s de instalación.
+- **Tradeoff «una caída transitoria pone la corrida en rojo»** — **se aceptó**, como decía el caso.
+- **Lo que el caso no preveía.** La primera prueba real encontró los dos defectos que están en «Lo que
+  encontró la primera prueba real», y los dos se arreglaron acá. Encontró además un dato que el caso no
+  pedía: `/agent-propose` tardó **9 min 23 s** de un `timeout-minutes: 15`. Con un solo cargo no hay
+  distribución. La corrida de los 52 restantes lo mide, y si alguno se corta por tiempo sale como caso
+  propio.
+- **Recuperar el mes** — no le toca a este caso. Son 52 cargos con su rama de 2026-10 empujada y la propuesta
+  en «por definir». Relanzarlos choca con el caso 220, y se decide aparte.
+
