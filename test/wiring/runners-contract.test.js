@@ -242,5 +242,8 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   //
   // 55 desde el 2026-09-23: la relectura de la fila que registra una parada (caso 180) dicta
   // `tools/ops.js context`, el mismo comando y la misma raíz que la lectura de Triage.
-  assert.equal(hits, 55, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 56 desde el 2026-10-01: el cierre dicta `tools/ops.js lessons` para traer las lecciones (caso 214),
+  // en la misma vuelta y desde la misma raíz que el `tools/ops.js check` que ya dictaba.
+  assert.equal(hits, 56, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })

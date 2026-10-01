@@ -558,6 +558,9 @@ if (!planning) return stop('context-unavailable', `no se pudo leer el estado de 
 // Que el agente conteste no significa que haya leído: el schema se completa igual con ceros. Parar acá
 // cuesta una corrida; seguir sobre una lectura fallida escribe en el BACKLOG, y eso no se revierte solo.
 if (!planning.readOk) return stop('context-unavailable', `${P} no se pudo leer; revisá la ruta y el cwd`)
+// La fecha de la primera lectura, para lo que se escribe después de la última: la relectura que cierra la
+// cola puede volver sin `today`, y una fila fechada `undefined` no se puede leer (caso 214).
+const startedOn = planning.today
 // `blocked` se lee por su valor y no por su verdad. Como verdad, **cualquier** cadena no vacía frenaba la
 // corrida con el mismo motivo, y eso mentía dos veces: con `blocked-on-human` —la cola trabada por
 // acciones humanas, que es otra cosa— mandaba a mirar un gate que no existe, y eso no era intermitente;
@@ -1352,18 +1355,47 @@ if (rounds > MAX_TASKS) {
 }
 
 phase('Closing')
+// El mismo agente que corre `check` trae las lecciones, y no uno aparte: es un comando más en la misma
+// vuelta, y una llamada por corrida para una lista que casi siempre viene vacía no se paga (R16).
 const closing = await write(
   `Corré "node tools/ops.js check ${P}" desde ${ROOT}. Si sale en rojo, reparás sólo estado derivado ` +
-  `determinista; nunca reescribas aceptación ni decisiones para forzar el verde.`, {
+  `determinista; nunca reescribas aceptación ni decisiones para forzar el verde. Después corré ` +
+  `"node tools/ops.js lessons ${P} --json" y copiá su campo proposals tal cual en lessons, vacío si no hay.`, {
     label: 'closing',
     schema: {
-      type: 'object', required: ['passed', 'details'],
-      properties: { passed: { type: 'boolean' }, details: { type: 'string' } },
+      type: 'object', required: ['passed', 'details', 'lessons'],
+      properties: {
+        passed: { type: 'boolean' }, details: { type: 'string' },
+        lessons: { type: 'array', items: { type: 'object', additionalProperties: true,
+          required: ['name', 'ref', 'tasks'],
+          properties: { name: { type: 'string' }, ref: { type: 'string' },
+            tasks: { type: 'array', items: { type: 'string' } }, reopened: { type: 'boolean' } } } },
+      },
     },
   },
 )
 if (!closing) return stop('agent-unavailable', 'Closing no devolvió resultado')
 if (!closing.passed) return stop('planning-check-failed', closing.details)
+// Una regla que la revisión mandó a corregir en varias tareas vuelve como lección, sin promover: es lo
+// que el registro de lo corregido (caso 207) existe para alimentar (caso 214). El tope es el del INBOX.
+const learned = (closing.lessons || []).slice(0, INBOX_CAP)
+if (learned.length) {
+  const day = planning.today || startedOn
+  const origin = inboxOrigin('autobuild', 'lecciones', day)
+  // La pregunta va antes que la lista de tareas: si la entrada no entra en una línea, lo que se recorta es
+  // la lista, que sigue entera en la fila de `LESSONS.md`.
+  const entries = learned.map((one) => withOrigin(`${one.name}: la revisión corrigió ${one.ref} en `
+    + `${one.tasks.length} tareas${one.reopened ? ', con tareas nuevas desde que se rechazó' : ''}; ¿le falta `
+    + `a la regla un ejemplo, claridad o visibilidad? (${one.tasks.join(', ')})`, origin))
+  await write(`Registrá en la sección Lecciones de ${P}/INBOX.md una entrada por cada una de éstas, con el `
+    + 'nombre que trae antes de los dos puntos, sin promover ninguna. '
+    + `${inboxAsk(['Lecciones'], planning.inbox, origin)} `
+    + `Y por cada una, una fila en la tabla de la sección Registro de ${P}/LESSONS.md —actualizando la que ya `
+    + `tenga esa regla—: | <ref> | propuesta | <tareas separadas por coma> | ${day} |. Si el archivo `
+    + 'no existe, crealo con un título «# Lecciones de lo que se corrige», una sección «## Registro» y la tabla '
+    + `con encabezado | Regla | Estado | Tareas | Fecha |. Lecciones: ${JSON.stringify(learned)}. Entradas: `
+    + `${JSON.stringify(entries)}`, { label: 'lessons-noted' })
+}
 // El archivo nace con su estado escrito porque la compuerta lo lee de ahí —R28, y el porqué vive junto a
 // esa lectura—. Sin decirlo acá la fase escribe prosa sin `status`, y la instancia queda con una compuerta
 // que sólo se destraba borrando: la forma que la regla prohíbe, escrita por el propio recorrido.

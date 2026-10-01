@@ -150,3 +150,31 @@ test('una regla que rige citada con otra forma de la ruta no se marca como que n
   const fix = prompt(run, 'Review|review-fix')
   assert.doesNotMatch(fix, /que no rige/, fix.slice(-400))
 })
+
+// Caso 214. El cierre trae del motor qué regla se corrigió en varias tareas y la anota como lección, sin
+// promover; sin nada que anotar no escribe, y con más del tope anota sólo el tope.
+const lesson = (n) => ({ name: `reforzar-commits-r${n}`, ref: `planning/rules/system/commits.md#R${n}`,
+  tasks: ['alta', 'baja'], reopened: false })
+const closingWith = (lessons) => ({ [KEY.closing]: { passed: true, details: 'check verde', lessons } })
+
+test('el cierre anota como lección la regla corregida en varias tareas, con su fila en LESSONS.md', async () => {
+  const run = await runFlow(closingWith([lesson(8)]))
+  ranToEnd(run.result)
+  const noted = run.written.find((one) => one.includes('sección Lecciones')) || ''
+  assert.match(noted, /reforzar-commits-r8: la revisión corrigió [^ ]+#R8 en 2 tareas; ¿le falta a la regla/)
+  assert.match(noted, /visibilidad\? \(alta, baja\) \(autobuild · lecciones · 2026-09-08\)/, 'entra entera')
+  // La fecha es la de la primera lectura: la relectura que cierra la cola no la trae.
+  assert.match(noted, /\| propuesta \| <tareas separadas por coma> \| 2026-09-08 \|/)
+  assert.match(noted, /sin promover ninguna/)
+  assert.match(noted, /LESSONS\.md[^|]*\| <ref> \| propuesta \|/)
+  assert.match(prompt(run, 'Closing|closing'), /node tools\/ops\.js lessons \.\/planning --json/)
+})
+
+test('sin lecciones no se escribe nada, y con más del tope se anota sólo el tope', async () => {
+  const none = await runFlow(closingWith([]))
+  assert.ok(!none.wrote.includes('Closing|lessons-noted'))
+  const many = await runFlow(closingWith([1, 2, 3, 4].map(lesson)))
+  const noted = many.written.find((one) => one.includes('sección Lecciones')) || ''
+  assert.match(noted, /reforzar-commits-r3/)
+  assert.doesNotMatch(noted, /reforzar-commits-r4/)
+})
