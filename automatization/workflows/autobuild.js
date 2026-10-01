@@ -1216,8 +1216,8 @@ while (rounds++ < MAX_TASKS) {
       reviewFact += ` · ${noted.length - kept.length} anotado(s) sin volcar al INBOX`
     }
     if (kept.length) {
-      await write(`Registrá en la sección Propuestas de ${P}/INBOX.md lo que la revisión de ${task.id} dejó ` +
-        `anotado sin frenar la entrega, sin promover ninguna. ` +
+      await write(`Registrá en ${inboxWhere(P, 'Propuestas')} lo que la revisión de ${task.id} dejó ` +
+        `anotado sin frenar la entrega, sin promover ninguna. ${INBOX_FILES} ` +
         `${inboxAsk(['Propuestas'], planning.inbox, origin)} ` +
         `Lo anotado: ${JSON.stringify(kept)}`, { label: 'review-noted' })
     }
@@ -1394,8 +1394,8 @@ if (learned.length) {
   const entries = learned.map((one) => withOrigin(`${one.name}: la revisión corrigió ${one.ref} en `
     + `${one.tasks.length} tareas${one.reopened ? ', con tareas nuevas desde que se rechazó' : ''}; ¿le falta `
     + `a la regla un ejemplo, claridad o visibilidad? (${one.tasks.join(', ')})`, origin))
-  await write(`Registrá en la sección Lecciones de ${P}/INBOX.md una entrada por cada una de éstas, con el `
-    + 'nombre que trae antes de los dos puntos, sin promover ninguna. '
+  await write(`Registrá en ${inboxWhere(P, 'Lecciones')} una entrada por cada una de éstas, con el `
+    + `nombre que trae antes de los dos puntos, sin promover ninguna. ${INBOX_FILES} `
     + `${inboxAsk(['Lecciones'], planning.inbox, origin)} `
     + `Y por cada una, una fila en la tabla de la sección Registro de ${P}/LESSONS.md —actualizando la que ya `
     + `tenga esa regla—: | <ref> | propuesta | <tareas separadas por coma> | ${day} |. Si el archivo `

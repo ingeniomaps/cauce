@@ -418,8 +418,8 @@ test('una decisión cae en un solo destino y no desaparece por ningún camino', 
   })
   ranToEnd(dupe.result)
   // `/INBOX/` sola no discrimina: el preámbulo compartido nombra esa ruta en todos los prompts. Lo que
-  // identifica a la escritura es la sección a la que manda.
-  const inbox = dupe.written.find((text) => /sección Propuestas/.test(text)) || ''
+  // identifica a la escritura es la carpeta de la sección a la que manda.
+  const inbox = dupe.written.find((text) => /inbox\/propuestas\//.test(text)) || ''
   assert.doesNotMatch(inbox, /contrato público/, 'la decisión no se escribe también como propuesta')
   assert.match(inbox, /propuesta 3/, 'y no desplaza del tope a una propuesta que sí lo era')
 

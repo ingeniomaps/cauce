@@ -113,6 +113,8 @@ test('onboard lleva al INBOX tres preguntas abiertas y cuenta las demás', async
   assert.doesNotMatch(epic, /"p4|"p5"/, 'la cuarta y la quinta no llegan al INBOX')
   assert.match(epic, /- \*\*slug-del-item\*\* — /, 'nombra la forma de entrada del molde')
   assert.match(epic, /en Ideas ya están ya-preguntada/, 'y los nombres que ya hay')
+  assert.match(epic, /planning\/inbox\/ideas\/, sin promover.*su propio archivo/, 'una por archivo (caso 216)')
+  assert.doesNotMatch(epic, /sección Ideas/, 'y ya no en la sección de INBOX.md')
   assert.deepEqual(result.unlistedQuestions, ['p4', 'p5'])
   assert.ok(said.some((text) => /2 pregunta\(s\) abierta\(s\) más no entraron/.test(text)), 'y se dicen')
 })

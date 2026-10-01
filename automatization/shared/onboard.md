@@ -27,7 +27,7 @@ inventes clientes, ingresos ni objetivos.
 
 Credenciales, MCP y el permiso de push no te corresponden. Cada uno va como fila en
 `{{OPS_DIR}}planning/HUMAN_ACTIONS.md` con la acción concreta que lo desbloquea y sin proponer ningún
-valor; las preguntas abiertas, a la sección Ideas de `{{OPS_DIR}}planning/INBOX.md`.
+valor; las preguntas abiertas, a `{{OPS_DIR}}planning/inbox/ideas/`, una por archivo.
 
 El arranque tiene tres objetivos y ninguno más: entender qué es el proyecto, dejar la instancia correcta
 para él y que la primera tarea pueda empezar. El análisis profundo viene después, cuando la persona pida
@@ -57,7 +57,7 @@ falló los cinco puntos sin darse cuenta, y todos del mismo lado —lo que no pr
 
 6. **Ninguna dimensión se completa sin haberla preguntado.** Si llegaste al tope de preguntas y una
    quedó afuera —quién lo usa, qué está muerto, qué externo hay— va «Por definir» con su pregunta en
-   `{{OPS_DIR}}planning/INBOX.md`, aunque puedas imaginar la respuesta. Y lo que deducís de otra
+   `{{OPS_DIR}}planning/inbox/ideas/`, aunque puedas imaginar la respuesta. Y lo que deducís de otra
    respuesta va marcado `(supuesto)`, por plausible que sea: sin la marca se lee con el mismo peso que
    lo que la persona dijo, y nadie va a volver a preguntarlo.
 7. **Corré `node {{OPS_DIR}}tools/ops.js onboard`.** Si te vuelve a ofrecer la pregunta de apertura, la

@@ -2,7 +2,7 @@
 
 Lo que la revisión de `autobuild` mandó a corregir queda en `done/`, con la regla que lo sostenía. Cuando
 la misma regla se corrige en dos tareas o más, el cierre de la corrida la anota como lección en
-`INBOX.md`, sin promover, y deja acá su fila. `node tools/ops.js lessons planning` muestra lo mismo sin
+`inbox/lecciones/`, sin promover, y deja acá su fila. `node tools/ops.js lessons planning` muestra lo mismo sin
 esperar una corrida.
 
 Una regla que se corrige una y otra vez existe y no se está cumpliendo de antemano: puede faltarle un

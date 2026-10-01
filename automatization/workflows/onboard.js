@@ -30,7 +30,7 @@ export const meta = {
 const P = `${ROOT}/planning`
 const ORG = `${ROOT}/organization`
 const HUMAN = `${P}/HUMAN_ACTIONS.md`
-const INBOX = `${P}/INBOX.md`
+const INBOX = `${P}/inbox/`
 const ROADMAP = `${P}/roadmap`
 
 // Lo que la persona ya sabe y el repositorio no puede decir: `/onboard vendemos ruteo a PYMEs de
@@ -206,8 +206,8 @@ const ORIGIN = inboxOrigin('onboard', state.today)
 const questions = (drafted.openQuestions || []).map(oneLine)
 const inboxed = questions.slice(0, INBOX_CAP).map((one) => withOrigin(one, ORIGIN))
 const INBOX_ASK = inboxed.length
-  ? `Registrá además en la sección Ideas de ${INBOX}, sin promover, estas preguntas abiertas: ` +
-    `${JSON.stringify(inboxed)}. ${inboxAsk(['Ideas'], { ideas: state.inboxIdeas || [] }, ORIGIN)}\n\n`
+  ? `Registrá además en ${inboxWhere(P, 'Ideas')}, sin promover, estas preguntas abiertas: ` +
+    `${JSON.stringify(inboxed)}. ${INBOX_FILES} ${inboxAsk(['Ideas'], { ideas: state.inboxIdeas || [] }, ORIGIN)}\n\n`
   : ''
 
 const epic = await agent(

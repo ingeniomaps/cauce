@@ -18,4 +18,4 @@ intención es viable y propone una épica, y `/autobuild` ejecuta trabajo ya pro
 `/integration-promote` gestionan staging local sin escritura remota. Ninguno promueve al BACKLOG.
 
 Antes de iniciar, respeta `{{OPS_DIR}}planning/AWAITING_REVIEW.md` y el mutex de `{{OPS_DIR}}planning/wip/<runner>.md`. Si el protocolo y
-un workflow difieren, manda el protocolo y la diferencia se registra en `{{OPS_DIR}}planning/INBOX.md`.
+un workflow difieren, manda el protocolo y la diferencia se registra en `{{OPS_DIR}}planning/inbox/lecciones/`.

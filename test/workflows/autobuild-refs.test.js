@@ -160,12 +160,15 @@ const closingWith = (lessons) => ({ [KEY.closing]: { passed: true, details: 'che
 test('el cierre anota como lección la regla corregida en varias tareas, con su fila en LESSONS.md', async () => {
   const run = await runFlow(closingWith([lesson(8)]))
   ranToEnd(run.result)
-  const noted = run.written.find((one) => one.includes('sección Lecciones')) || ''
+  const noted = run.written.find((one) => one.includes('inbox/lecciones/')) || ''
   assert.match(noted, /reforzar-commits-r8: la revisión corrigió [^ ]+#R8 en 2 tareas; ¿le falta a la regla/)
   assert.match(noted, /visibilidad\? \(alta, baja\) \(autobuild · lecciones · 2026-09-08\)/, 'entra entera')
   // La fecha es la de la primera lectura: la relectura que cierra la cola no la trae.
   assert.match(noted, /\| propuesta \| <tareas separadas por coma> \| 2026-09-08 \|/)
   assert.match(noted, /sin promover ninguna/)
+  // Caso 216: una entrada por archivo, y ya no en la sección de INBOX.md, que es lo que chocaba entre líneas.
+  assert.match(noted, /su propio archivo/)
+  assert.doesNotMatch(noted, /sección Lecciones de [^ ]*INBOX\.md/)
   assert.match(noted, /LESSONS\.md[^|]*\| <ref> \| propuesta \|/)
   assert.match(prompt(run, 'Closing|closing'), /node tools\/ops\.js lessons \.\/planning --json/)
 })
@@ -174,7 +177,7 @@ test('sin lecciones no se escribe nada, y con más del tope se anota sólo el to
   const none = await runFlow(closingWith([]))
   assert.ok(!none.wrote.includes('Closing|lessons-noted'))
   const many = await runFlow(closingWith([1, 2, 3, 4].map(lesson)))
-  const noted = many.written.find((one) => one.includes('sección Lecciones')) || ''
+  const noted = many.written.find((one) => one.includes('inbox/lecciones/')) || ''
   assert.match(noted, /reforzar-commits-r3/)
   assert.doesNotMatch(noted, /reforzar-commits-r4/)
 })

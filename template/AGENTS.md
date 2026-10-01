@@ -281,7 +281,7 @@ publicación tampoco se decide ahí: la deciden `allowPush` y `pushToLiveBranche
 1. La aceptación se observa y queda cubierta por pruebas cuando existe superficie testeable.
 2. Tests, lint, tipos y build aplicables terminan con exit code real.
 3. QA valida el comportamiento por el camino real, no por un atajo interno.
-4. La deuda residual va a `planning/INBOX.md`.
+4. La deuda residual va a `planning/inbox/deuda/`, un archivo por entrada.
 5. El cambio se commitea en el repo del servicio —uno por naturaleza del diff, y una tarea suele
    tener una sola— y el hash real queda en la evidencia de la tarea, `planning/done/<slug>.md`.
 6. `node tools/ops.js check planning` queda verde.

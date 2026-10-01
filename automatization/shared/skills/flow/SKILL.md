@@ -13,5 +13,5 @@ autoridad o una decisión externa, registrá la acción concreta en `{{OPS_DIR}}
 una opinión del modelo no es investigación de usuarios ni valida un problema.
 
 Si la intención resulta viable, escribí la épica en `{{OPS_DIR}}planning/roadmap/` con criterios observables y
-cerrá con `node {{OPS_DIR}}tools/ops.js check planning`. Si no lo es, registrá en `{{OPS_DIR}}planning/INBOX.md` por qué y
+cerrá con `node {{OPS_DIR}}tools/ops.js check planning`. Si no lo es, registrá en `{{OPS_DIR}}planning/inbox/lecciones/` por qué y
 qué la haría viable. **Nunca promuevas al BACKLOG**: esa firma es humana.
