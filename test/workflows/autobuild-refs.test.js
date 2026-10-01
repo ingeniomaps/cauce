@@ -74,3 +74,35 @@ test('Critique sigue mandando a replanificar sin el campo nuevo', async () => {
   ranToEnd(run.result)
   assert.ok(run.asked.includes(KEY.replan), 'el bloqueante de Critique dejó de bloquear')
 })
+
+// Caso 207. Lo que la revisión mandó a corregir llega a `done/` con su regla: es el único registro que
+// sobrevive a la corrida, y sin esto la misma falla corregida en diez tareas no dejaba rastro.
+const doneFacts = (run) => prompt(run, 'Done|done')
+
+test('lo que se mandó a corregir llega a done/ con su regla', async () => {
+  const run = await flow([
+    finding({ ref: RULE, verified: true }),
+    finding({ detail: 'falta el índice', ref: 'criterio', verified: true }),
+  ])
+  ranToEnd(run.result)
+  assert.match(doneFacts(run), /review=[^;]*corregido: la clave viaja en el log \[planning\/rules\/security\.md#P2\]/)
+  assert.match(doneFacts(run), /review=[^;]*\| falta el índice \[criterio\]/)
+})
+
+test('sin correcciones, o con sólo sospechas, done/ no dice que se corrigió algo', async () => {
+  for (const concerns of [[], [finding({ ref: RULE, verified: false })]]) {
+    const run = await flow(concerns)
+    ranToEnd(run.result)
+    assert.doesNotMatch(doneFacts(run), /corregido:/, `con ${JSON.stringify(concerns)} afirmó una corrección`)
+  }
+})
+
+test('lo corregido lleva tope y cuenta lo que no entra', async () => {
+  const many = [1, 2, 3, 4, 5].map((n) => finding({ detail: `hallazgo ${n}`, ref: 'criterio', verified: true }))
+  const run = await flow(many)
+  ranToEnd(run.result)
+  const listed = '1 \\[criterio\\] \\| hallazgo 2 \\[criterio\\] \\| hallazgo 3 \\[criterio\\]'
+  assert.match(doneFacts(run), new RegExp(`corregido: hallazgo ${listed}`))
+  assert.doesNotMatch(doneFacts(run), /hallazgo 4/)
+  assert.match(doneFacts(run), /y 2 más/)
+})

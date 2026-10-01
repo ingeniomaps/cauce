@@ -1068,6 +1068,10 @@ while (rounds++ < MAX_TASKS) {
     // Se junta apenas cada pasada contesta, y no al final: las paradas de abajo salen antes de llegar al
     // registro, y sin esto lo que el revisor señaló se iba con la corrida.
     const reviewDecisions = review.concerns.filter((one) => one.decision)
+    // Lo que esta pasada manda a corregir, con su regla al lado. Se guarda antes de la re-revisión, que
+    // reasigna `review`: sin esto lo corregido no llegaba a `done/` y la misma falla corregida en diez
+    // tareas no dejaba rastro en ninguna (caso 207).
+    const fixed = blockers(review)
     let decidedNote = ''
     if (review.verdict === 'bloqueado') {
       return stop('review-blocked', named(review).join('; ') || 'sin condiciones nombradas')
@@ -1137,6 +1141,11 @@ while (rounds++ < MAX_TASKS) {
     reviewFact += review.critical ? ` · toca la superficie crítica ${review.critical}`
       : surfaces.length ? ' · no toca superficies críticas' : ''
     if (planning.surfacesPending) reviewFact += ' · «Qué no se puede romper» tiene filas sin declarar'
+    // El tope y el conteo de lo que no entra son los del INBOX, más abajo, y por la misma razón.
+    if (fixed.length) {
+      reviewFact += ` · corregido: ${fixed.slice(0, INBOX_CAP).join(' | ')}`
+        + (fixed.length > INBOX_CAP ? ` · y ${fixed.length - INBOX_CAP} más` : '')
+    }
     // Lo que no impide entregar no manda a tocar código, y tampoco desaparece: la mejora opinable que se
     // corrige a las apuradas cuesta una vuelta y un riesgo que nadie pidió. Va a Propuestas y no a
     // Lecciones porque lo que la revisión anotó es un cambio del producto —su evidencia es la de la

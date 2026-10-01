@@ -262,3 +262,17 @@ test('check avisa por los commits que ninguna entrada de DONE nombra', () => {
   assert.deepEqual(limpio.warnings.filter((one) => /entrada de DONE nombra/.test(one)), [],
     'con todo registrado no dice nada')
 })
+
+// Caso 207: `review` ahora trae lo que se mandó a corregir, con su regla, y puede venir envuelto. Ni el
+// `corregido:` ni la regla al lado pueden cortar el campo: no son del vocabulario de DONE.
+test('lo corregido viaja dentro de review sin cortarlo, aunque venga envuelto', () => {
+  const dir = planning('cauce-done-corregido-')
+  fs.writeFileSync(path.join(dir, 'done', 'alta.md'), entrada('alta', `  lane: full
+  review: aprobado por software-architect, sobre api/alta.go · corregido: la clave viaja en el log
+    [planning/rules/security.md#P2] | falta el índice [criterio]
+`))
+  const [alta] = P.readDone(dir).entries
+  assert.equal(alta.review, 'aprobado por software-architect, sobre api/alta.go · corregido: la clave viaja en el '
+    + 'log [planning/rules/security.md#P2] | falta el índice [criterio]')
+  assert.equal(alta.lane, 'full')
+})
