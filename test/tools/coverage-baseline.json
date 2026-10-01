@@ -259,6 +259,11 @@
     "branches": 84,
     "functions": 100
   },
+  "engine/hooks/machine-lock.js": {
+    "lines": 100,
+    "branches": 83,
+    "functions": 100
+  },
   "engine/hooks/migrations.js": {
     "lines": 100,
     "branches": 94,

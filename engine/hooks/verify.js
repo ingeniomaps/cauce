@@ -15,6 +15,7 @@ const AP = require('./approval')
 const EV = require('../core/evidence')
 const SC = require('../core/scope')
 const { run } = require('./shell')
+const { holdMachine } = require('./machine-lock')
 
 // Salidas de build y cachés que cualquier gate rehace solo. Se comparan contra el nombre entero de la
 // entrada para que valga también anidado —`packages/app/dist`—, y con el separador de `git status`, que
@@ -226,9 +227,14 @@ function verify(input) {
   }
   if (!staged.some((file) => /\.(?:ts|tsx|js|jsx|mjs|cjs|go|py|html|css|scss|prisma)$/.test(file))) return
   const { root, temp, env } = commitTree(dir, input)
+  const timeoutMs = gateTimeout(input)
+  // Quien lo tiene puede correr hasta cuatro gates, cada uno con su tope: esperar uno solo se rendía con
+  // una corrida sana a la mitad.
+  const release = holdMachine(timeoutMs * 4)
   try {
-    verifyGates(root, dir, unapproved, env, input)
+    verifyGates(root, dir, unapproved, env, input, timeoutMs)
   } finally {
+    release()
     if (temp) fs.rmSync(temp, { recursive: true, force: true })
   }
 }
@@ -258,7 +264,11 @@ const ERROR_LINE = /error|err[_!]|fail|abort|not found|cannot|no such/i
 const FAILED_TEST = /^(?:✖|not ok\b|--- FAIL:|● |× |\d+\) |FAILED )/
 const PASSED_TEST = /^(?:✔|ok\b|--- PASS:)|::\S+ PASSED\b/
 const MAX_LINE = 160
-function failure(gate, result) {
+function failure(gate, result, timeoutMs) {
+  if (result.timedOut) {
+    return { gate, status: 'cortado', ms: result.ms,
+      line: `pasó el tope de ${timeoutMs / 60_000} min (runner.gateTimeoutMinutes en ops.config.json)` }
+  }
   // La línea que empieza con `>` es el eco del script que npm y pnpm imprimen antes de correrlo, así
   // que lleva el comando entero y no dice nada de qué falló. Descartarla es lo que hace que la primera
   // coincidencia sea el error y no el comando — con el eco adentro, un script que **menciona** una
@@ -276,7 +286,8 @@ function failure(gate, result) {
 const TOO_FAST = 2000
 function howItReads(failures) {
   const summary = failures
-    .map((one) => `${one.gate} (exit ${one.status}, ${(one.ms / 1000).toFixed(1)} s)`
+    .map((one) => `${one.gate} (${one.status === 'cortado' ? 'cortado' : `exit ${one.status}`}, `
+      + `${(one.ms / 1000).toFixed(1)} s)`
       + `${one.line ? `: ${one.line}` : ''}`)
     .join('; ')
   if (!failures.every((one) => one.ms < TOO_FAST)) return summary
@@ -285,39 +296,62 @@ function howItReads(failures) {
     + 'una suite, así que mirá si llegaron a ejecutarse antes de aprobar esto como un rojo conocido.'
 }
 
-function verifyGates(root, dir, unapproved, env, input) {
+// Cuánto puede durar un gate: `runner.gateTimeoutMinutes`, o diez minutos (caso 219). Sin tope, un gate que
+// cuelga dejaba la sesión colgada sin decir por qué.
+const GATE_MINUTES = 10
+function gateTimeout(input) {
+  const ops = opsRoot(input)
+  const declared = ops ? Number((configOf(ops).runner || {}).gateTimeoutMinutes) : NaN
+  return (declared > 0 ? declared : GATE_MINUTES) * 60_000
+}
+
+// Lo que escribe no corre en el árbol vivo (R26, caso 219): ahí el árbol **es** el trabajo de quien
+// commitea, y un `build` que limpia su salida o un lint con `--fix` lo tocan. Sobre la copia del índice
+// corren igual, porque se descarta. `build` vuelve al árbol si la raíz lo pide en su `verify`; correrlo
+// siempre en una copia no es la salida, porque ahí `node_modules` viaja por enlace y eso rompe Turbopack
+// (caso 153). `go build ./...` no se toca: con más de un paquete no escribe nada en el árbol.
+const WRITES = { build: () => true, lint: (line) => /(?:^|\s)--(?:fix|write)\b/.test(line) }
+function writesInTree(script, line, rootConfig) {
+  if (!WRITES[script] || !WRITES[script](line)) return false
+  return !(script === 'build' && rootConfig && /\bbuild\b/.test(rootConfig.verify || ''))
+}
+
+function rootOf(input, dir) {
+  const ops = opsRoot(input)
+  if (!ops) return null
+  return (configOf(ops).workspaceRoots || []).find((one) => one && one.path && path.resolve(ops, one.path) === dir)
+}
+
+function verifyGates(root, dir, unapproved, env, input, timeoutMs) {
   const ops = opsRoot(input)
   const failures = []
+  const gate = (label, program, args) => {
+    const result = run(program, args, root, env, { timeoutMs })
+    EV.record(ops, label, result.status, result.ms)
+    if (!result.ok) failures.push(failure(label, result, timeoutMs))
+  }
   if (fs.existsSync(path.join(root, 'package.json'))) {
     const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
     const usesPnpm = fs.existsSync(path.join(root, 'pnpm-lock.yaml'))
       && !fs.existsSync(path.join(root, 'package-lock.json'))
     const pm = usesPnpm ? 'pnpm' : 'npm'
+    const declared = root === dir ? rootOf(input, dir) : null
     for (const script of ['test', 'lint', 'typecheck', 'build']) {
       if (!pkg.scripts || !pkg.scripts[script]) continue
-      const result = run(pm, ['run', script], root, env)
-      EV.record(ops, script, result.status, result.ms)
-      if (!result.ok) failures.push(failure(script, result))
+      if (root === dir && writesInTree(script, pkg.scripts[script], declared)) continue
+      gate(script, pm, ['run', script])
     }
   } else if (fs.existsSync(path.join(root, 'go.mod'))) {
     const makefile = path.join(root, 'Makefile')
     if (fs.existsSync(makefile) && /^ci:/m.test(fs.readFileSync(makefile, 'utf8'))) {
-      const result = run('make', ['ci'], root, env)
-      EV.record(ops, 'make ci', result.status, result.ms)
-      if (!result.ok) failures.push(failure('make ci', result))
+      gate('make ci', 'make', ['ci'])
     } else {
-      for (const args of [['test', './...'], ['build', './...']]) {
-        const result = run('go', args, root, env)
-        EV.record(ops, `go ${args[0]}`, result.status, result.ms)
-        if (!result.ok) failures.push(failure(`go ${args[0]}`, result))
-      }
+      for (const args of [['test', './...'], ['build', './...']]) gate(`go ${args[0]}`, 'go', args)
     }
   } else if (fs.existsSync(path.join(root, 'pyproject.toml')) || fs.existsSync(path.join(root, 'requirements.txt'))) {
     const makefile = path.join(root, 'Makefile')
     if (fs.existsSync(makefile) && /^test:/m.test(fs.readFileSync(makefile, 'utf8'))) {
-      const result = run('make', ['test'], root, env)
-      EV.record(ops, 'make test', result.status, result.ms)
-      if (!result.ok) failures.push(failure('make test', result))
+      gate('make test', 'make', ['test'])
     }
   }
   if (!failures.length || !unapproved.length) return
@@ -329,4 +363,4 @@ function verifyGates(root, dir, unapproved, env, input) {
     + AP.HOW('OPS_SKIP_VERIFY', unapproved, input))
 }
 
-module.exports = { verify }
+module.exports = { verify, writesInTree }
