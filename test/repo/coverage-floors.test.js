@@ -319,8 +319,11 @@ test('una prueba en rojo frena la puerta, y al registrar un piso no', { skip: pr
   const enRepo = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: ROOT, encoding: 'utf8' })
   if (enRepo.status !== 0) return
   const repo = tempRoot('cauce-148-')
+  // La lista va a `tar` por stdin y no por `xargs`: con más rutas que el límite de argumentos, `xargs` parte
+  // en dos `tar` y el `tar xf` de este lado sólo extrae el primero. Pasó al sumar veinte casos de una vez, y
+  // la copia salió sin `test/tools/coverage.sh`.
   const copiado = spawnSync('bash', ['-c',
-    `cd ${JSON.stringify(enRepo.stdout.trim())} && git ls-files -z | xargs -0 tar cf - `
+    `cd ${JSON.stringify(enRepo.stdout.trim())} && git ls-files -z | tar --null -T - -cf - `
     + `| (cd ${JSON.stringify(repo)} && tar xf -)`],
   { encoding: 'utf8' })
   assert.equal(copiado.status, 0, `no se pudo copiar el árbol trackeado: ${copiado.stderr}`)
