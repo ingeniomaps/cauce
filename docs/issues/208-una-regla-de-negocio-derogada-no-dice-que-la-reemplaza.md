@@ -65,6 +65,12 @@ escribir el reemplazo.
    distinguir una de otra —por fecha de `Actualizado`, o aviso para todas durante una versión— se
    decide al mejorar el caso.
 
+**Decidido al implementarlo**, distinto del punto 3: la falta **avisa siempre**, también en las reglas
+nuevas. Distinguir una vieja de una nueva por la fecha de `Actualizado` es frágil —se toca la fecha al
+editar cualquier cosa— y un aviso permanente ya se ve en cada `check`. Lo que sí es error es lo que se
+escribe mal: un `Reemplazada por:` que cita un identificador que no existe, o uno del mismo archivo, que
+quedó derogado con ella —este borde apareció al probarlo en el banco—.
+
 ## Tradeoffs
 
 - Una instancia con reglas derogadas viejas ve avisos nuevos en el `upgrade`. Es el costo de no
