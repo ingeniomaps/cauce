@@ -155,6 +155,7 @@ function usage() {
   ops bench <suelto|tarea|sidecar> [--force]
   ops recurring <planning-dir> [--promote <qué>] [--json]
   ops lessons <planning-dir> [--json]
+  ops split-backlog <planning-dir>
   ops runners <planning-dir> [--json]
   ops claim <planning-dir> <tarea>
   ops release <planning-dir> <tarea>
@@ -227,6 +228,7 @@ async function run(cli) {
   else if (command === 'bench') BN.bench(arg[1], cli)
   else if (command === 'recurring') PL.recurring(arg[1], cli)
   else if (command === 'lessons') PL.lessons(arg[1], cli)
+  else if (command === 'split-backlog') PL.splitBacklog(arg[1])
   else if (command === 'runners') CLM.runners(arg[1], cli)
   else if (command === 'claim') CLM.claim(arg[1], arg[2], cli)
   else if (command === 'release') CLM.release(arg[1], arg[2])

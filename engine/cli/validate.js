@@ -11,6 +11,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const P = require('../planning/parser')
+const BK = require('../planning/backlog')
 const B = require('../planning/business-rules')
 const PC = require('../planning/contracts')
 const SR = require('../planning/structure')
@@ -90,7 +91,7 @@ function check(dir, cli) {
   }
 
   const epics = P.readEpics(root)
-  const milestones = P.readBacklog(root)
+  const milestones = BK.readBacklog(root)
   const done = P.readDone(root)
   errors.push(...B.validate(path.join(root, 'business-rules')))
   const lineage = B.lineage(path.join(root, 'business-rules'))

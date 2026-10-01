@@ -235,26 +235,6 @@ function taskFromLine(line) {
   }
 }
 
-function readBacklog(dir) {
-  const text = withoutComments(read(path.join(dir, 'BACKLOG.md')))
-  const milestones = []
-  let current = null
-  for (const line of text.split('\n')) {
-    const heading = line.match(MILESTONE_HEADING)
-    if (heading) {
-      current = {
-        slug: heading[1], title: heading[2].trim(), heading: line.slice(3),
-        noSplit: noSplitReason(line), tasks: [],
-      }
-      milestones.push(current)
-      continue
-    }
-    if (/^##\s+/.test(line)) current = null
-    const task = current ? taskFromLine(line) : null
-    if (task) current.tasks.push(task)
-  }
-  return milestones
-}
 
 // Lo que hay en `done/` y no es una entrada: una tabla de acciones humanas resueltas y la prosa que
 // explica el formato. Se nombran acá porque el lector recorre el directorio entero — una tarea cerrada
@@ -469,7 +449,7 @@ function inboxSections(dir) {
 module.exports = {
   EPIC_STATES, HUMAN_ACTION_STATES, LANES, MILESTONE_HEADING, STOP_REASONS,
   TASK_LINE, TASK_LINE_ANY_LANE,
-  read, section, withoutComments, frontmatter, readEpics, readBacklog, readDone, readWip, readWips, wipName,
+  read, section, withoutComments, frontmatter, readEpics, readDone, readWip, readWips, wipName, noSplitReason,
   checkpointHolds,
   acceptanceConditions, tableRows, taskFromLine,
   readInbox, inboxHeads, readHumanActions,

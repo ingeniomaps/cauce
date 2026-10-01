@@ -18,6 +18,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **La cola se puede partir en un archivo por hito.** Cada hito puede vivir en `planning/backlog/<slug>.md`, con
+  `order: N` en el frontmatter, en vez de en `BACKLOG.md`. Si trabajás con varias líneas en paralelo —una rama
+  por persona o por frente—, cada una escribe el archivo de su hito y traer la otra ya no choca. `BACKLOG.md`
+  se sigue leyendo primero, así que no tenés que cambiar nada; `node tools/ops.js split-backlog planning` pasa
+  tus hitos a sus archivos cuando quieras. `autobuild` cierra cada tarea en su archivo y lo borra cuando el
+  hito se queda sin tareas.
 - **Una tarea que toca lo que no se puede romper no va por `express`.** `autobuild` lee la tabla «Qué no
   se puede romper» de `organization/company.md` y, si una tarea `express` toca una de esas superficies,
   la sube a `directo`, que pasa por Review. Lo que no puede determinar también lo sube. La entrada de
