@@ -12,6 +12,7 @@ const O = require('../core/ownership')
 const M = require('../core/manifest')
 const OB = require('../core/onboarding')
 const P = require('../planning/parser')
+const BK = require('../planning/backlog')
 const ST = require('../planning/state')
 const RC = require('../planning/recurring')
 const A = require('../automation')
@@ -154,7 +155,7 @@ function instanceVersion(root) {
 // recién creada. Un aviso que exagera lo que se pierde se deja de leer igual que uno que lo minimiza.
 function whatIsLost(root) {
   const planning = path.join(root, 'planning')
-  const queued = P.readBacklog(planning).reduce((total, hito) => total + (hito.tasks || []).length, 0)
+  const queued = BK.readBacklog(planning).reduce((total, hito) => total + (hito.tasks || []).length, 0)
   const humanActions = ST.pendingHumanActions(planning).length
   return {
     epicas: P.readEpics(planning).length,

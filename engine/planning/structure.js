@@ -10,6 +10,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const P = require('./parser')
+const BK = require('./backlog')
 
 const EPIC_AUXILIARY_FILES = new Set(['notes.md', 'plan.md', 'research.md', 'spec.md'])
 
@@ -48,14 +49,40 @@ function validateRoadmapStructure(dir) {
 // Se juzga sólo lo que vive bajo un hito —el encabezado del archivo es prosa— y sólo las viñetas,
 // para no confundir con un error el texto que acompaña a una tarea.
 function validateBacklogStructure(dir) {
-  const text = P.withoutComments(P.read(path.join(dir, 'BACKLOG.md')))
   const errors = []
+  const where = new Map()
+  for (const file of BK.backlogFiles(dir)) {
+    const text = P.withoutComments(P.read(path.join(dir, file)))
+    const label = file === 'BACKLOG.md' ? 'BACKLOG' : file
+    const slugs = validateBacklogFile(text, label, errors)
+    for (const slug of slugs) {
+      if (!where.has(slug)) { where.set(slug, label); continue }
+      errors.push(`${label}: el hito ${slug} ya está en ${where.get(slug)}; un hito vive en un solo archivo`)
+    }
+    if (file === 'BACKLOG.md') continue
+    // Un archivo, un hito, con su nombre: es lo que hace que dos líneas de trabajo no escriban el mismo
+    // archivo, y lo que deja encontrar el hito sin abrirlo (caso 212).
+    const expected = path.basename(file, '.md')
+    if (slugs.length !== 1 || slugs[0] !== expected) {
+      errors.push(`${label}: tiene que tener un solo hito, ## Hito ${expected} — <Título>; tiene `
+        + `${slugs.length ? slugs.join(', ') : 'ninguno'}`)
+    }
+    if (P.frontmatter(text)('order') === '' || !Number.isFinite(Number(P.frontmatter(text)('order')))) {
+      errors.push(`${label}: falta order en el frontmatter; partida la cola, el lugar de cada hito lo dice ese `
+        + 'número y no la posición en un archivo')
+    }
+  }
+  return errors
+}
+
+function validateBacklogFile(text, label, errors) {
+  const slugs = []
   let milestone = ''
   for (const line of text.split('\n')) {
     const heading = line.match(P.MILESTONE_HEADING)
-    if (heading) { milestone = heading[1]; continue }
+    if (heading) { milestone = heading[1]; slugs.push(milestone); continue }
     if (/^##\s+Hito\b/.test(line)) {
-      errors.push(`BACKLOG "${line.trim()}": encabezado inválido; se escribe ## Hito <slug> — <Título>, `
+      errors.push(`${label} "${line.trim()}": encabezado inválido; se escribe ## Hito <slug> — <Título>, `
         + 'y sin él las tareas que vienen abajo quedan huérfanas')
       milestone = ''
       continue
@@ -64,11 +91,11 @@ function validateBacklogStructure(dir) {
     if (!milestone || !/^\s*[-*]\s+\S/.test(line) || P.TASK_LINE.test(line)) continue
     const lane = line.match(P.TASK_LINE_ANY_LANE)
     if (lane) {
-      errors.push(`BACKLOG ${lane[1].trim()}: lane "${lane[2]}" no existe; usá ${P.LANES.join(' | ')}, `
+      errors.push(`${label} ${lane[1].trim()}: lane "${lane[2]}" no existe; usá ${P.LANES.join(' | ')}, `
         + 'o dejá la tarea sin clasificar')
       continue
     }
-    const at = `BACKLOG hito ${milestone}: no la lee nadie`
+    const at = `${label} hito ${milestone}: no la lee nadie`
     if (/^-\s+\[[xX]\]/.test(line)) {
       errors.push(`${at} — ${line.trim().slice(0, 60)}. Una tarea terminada se mueve a DONE.md, no se tilda acá.`)
       continue
@@ -76,7 +103,7 @@ function validateBacklogStructure(dir) {
     errors.push(`${at} — ${line.trim().slice(0, 60)}. Una tarea se escribe `
       + '`- [ ] **slug** [lane] — descripción`, con `(→ CN) (epic: NNN)` o `_Aceptación:_` después del guión.')
   }
-  return errors
+  return slugs
 }
 
 // El número de una regla es su identificador, y lo cita todo el sistema: cargos, workflows, plantillas

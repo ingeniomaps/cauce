@@ -5,10 +5,11 @@
 // que fija el protocolo. Vivía en el CLI, donde nadie podía ejercitarlo sin lanzar un proceso.
 
 const P = require('./parser')
+const BK = require('./backlog')
 const C = require('./claims')
 
 function snapshot(root) {
-  const milestones = P.readBacklog(root)
+  const milestones = BK.readBacklog(root)
   return {
     epics: P.readEpics(root),
     milestones,
@@ -98,7 +99,7 @@ function currentTask({ milestones, done, wips = [], claims = [] }, blockers = []
 // `automation check`, para poder decir que ese guard está inerte. Vive acá y no en el guard porque con
 // dos copias una se pudre y el reporte anuncia una condición distinta de la que el guard aplica.
 function hasTasks(root) {
-  return P.readBacklog(root).some((milestone) => milestone.tasks.length > 0)
+  return BK.readBacklog(root).some((milestone) => milestone.tasks.length > 0)
     || P.readDone(root).entries.length > 0
 }
 

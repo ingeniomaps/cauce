@@ -14,9 +14,10 @@ const CL = require('../planning/claims')
 const ST = require('../planning/state')
 const SF = require('../planning/surfaces')
 const LS = require('../planning/lessons')
+const BK = require('../planning/backlog')
 const O = require('../core/ownership')
 const EV = require('../core/evidence')
-const { fail, planningRoot, TODAY, USAGE } = require('./io')
+const { fail, planningRoot, REFUSED, TODAY, USAGE } = require('./io')
 
 // Qué dimensiones enumera el molde de `organization/` y cuáles dejaron de estar. Un agente que reescribe
 // esos archivos tiende a quedarse con el contenido y perder la estructura: el resultado se lee entero y
@@ -167,6 +168,8 @@ function context(dir, cli) {
     blocked: P.checkpointHolds(root) ? 'awaiting-review' : (!task && skipped.length ? 'blocked-on-human' : ''),
     task: task && {
       slug: task.slug, hito: task.hito, tier: task.tier, cast: task.cast, service: task.service,
+      // En qué archivo de la cola vive, que es donde se clasifica, se parte y se cierra (caso 212).
+      file: task.file,
       // Una tarea puede heredar su aceptación del criterio citado; el runner necesita el texto, no la cita.
       acceptance: task.acceptance || criteria.map((criterion) => criterion.text).join(' '),
       // Las decisiones que la línea ya tomó. Viaja con la tarea y no aparte porque es de ella: quien la
@@ -309,7 +312,7 @@ function recurring(dir, cli) {
     if (!one) return fail(`${RC.FILE} no declara ${promote}`, USAGE)
     // La línea sale sola por stdout para que se pueda pegar o redirigir sin recortar nada; el destino,
     // que es lo único que falta decidir, va por stderr.
-    console.error(`Pegala en el hito que corresponda de BACKLOG.md:`)
+    console.error(`Pegala en el hito que corresponda, en backlog/<hito>.md o en BACKLOG.md:`)
     return console.log(RC.taskLine(one, TODAY().slice(0, 7)))
   }
   if (cli.has('--json')) return console.log(JSON.stringify(state))
@@ -341,4 +344,23 @@ function lessons(dir, cli) {
   }
 }
 
-module.exports = { evidence, tree, context, recurring, lessons }
+// Pasa cada hito de `BACKLOG.md` a su archivo en `backlog/` (caso 212). Es la migración de una instancia
+// que ya existe, y la corre quien la opera: `upgrade` no reescribe la cola de nadie. No pisa nada —si un
+// archivo de hito ya existe, no escribe ninguno— y `check` corre después igual que siempre.
+function splitBacklog(dir) {
+  const root = planningRoot(dir)
+  const { backlog, files } = BK.splitBacklog(P.read(path.join(root, 'BACKLOG.md')))
+  if (!files.length) return console.log('= BACKLOG.md no tiene hitos que partir')
+  const taken = files.filter((one) => fs.existsSync(path.join(root, one.file)))
+  if (taken.length) {
+    return fail(`ya existen ${taken.map((one) => one.file).join(', ')}: no se escribió nada. Mové a mano esos `
+      + 'hitos o borrá esos archivos y volvé a correr.', REFUSED)
+  }
+  fs.mkdirSync(path.join(root, 'backlog'), { recursive: true })
+  for (const one of files) fs.writeFileSync(path.join(root, one.file), one.text)
+  fs.writeFileSync(path.join(root, 'BACKLOG.md'), backlog)
+  for (const one of files) console.log(`✓ ${one.file}`)
+  console.log(`${files.length} hito(s) pasaron a backlog/. Corré "ops check" y commiteá el cambio.`)
+}
+
+module.exports = { evidence, tree, context, recurring, lessons, splitBacklog }

@@ -12,6 +12,7 @@ const PC = require('../../engine/planning/contracts')
 const SR = require('../../engine/planning/structure')
 const SZ = require('../../engine/planning/sizing')
 const P = require('../../engine/planning/parser')
+const BK = require('../../engine/planning/backlog')
 
 // El marcador se lee del artefacto, no de un objeto de prueba: sin esto `oversizedUnits` podía estar
 // perfecta y la razón escrita en la épica no llegar nunca hasta ella. Se comprueba en los tres niveles
@@ -50,7 +51,7 @@ status: open
 `)
 
   assert.equal(P.readEpics(root)[0].noSplit, 'el harness mide este servicio y no se entrega solo')
-  const [milestone] = P.readBacklog(root)
+  const [milestone] = BK.readBacklog(root)
   assert.equal(milestone.noSplit, 'es una sola migración y partirla la deja a medias')
   assert.equal(milestone.tasks[0].noSplit, 'los seis bordes son el mismo camino')
 
@@ -61,7 +62,7 @@ status: open
 
 - [ ] **una** [lite] — Incremento. (service: app) (sin partir: los seis bordes son el mismo camino)
 `)
-  assert.equal(P.readBacklog(root)[0].noSplit, '', 'el hito no hereda la razón de su tarea')
+  assert.equal(BK.readBacklog(root)[0].noSplit, '', 'el hito no hereda la razón de su tarea')
 })
 
 // Una viñeta bajo un hito que no cumple el contrato de tarea no la lee nadie: ni `check`, ni `tree`,

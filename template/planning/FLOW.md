@@ -20,7 +20,7 @@ INBOX ──promoción humana──▶ roadmap ──historias listas──▶ B
 1. Curar una idea desde INBOX.
 2. Escribir una épica con resultados observables, contexto actual y criterios `C1..CN`.
 3. Descomponerla en historias de máximo cuatro horas, cada una rastreada a uno o más criterios.
-4. Promover historias a un hito de BACKLOG sin cambiar su slug ni aceptación.
+4. Promover historias a un hito —su archivo en `backlog/`, o `BACKLOG.md`— sin cambiar su slug ni aceptación.
 
 ## Ejecutar
 
