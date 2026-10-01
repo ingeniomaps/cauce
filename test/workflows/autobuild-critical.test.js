@@ -94,3 +94,45 @@ test('sobre una superficie crítica el revisor recibe que tiene que comprobar', 
   const review = (flow.prompts.find((one) => one.key === KEY.review) || {}).prompt || ''
   assert.match(review, /se comprueba antes de afirmarlo; sin comprobar no manda a corregir/)
 })
+
+// Sobre una superficie crítica, una sospecha bloqueante sin comprobar frena y la decide una persona: ni se
+// corrige —sería cambiar código por una hipótesis— ni se entrega. Fuera de lo crítico sigue yendo al INBOX.
+const suspicion = { detail: 'el total puede quedar negativo', blocking: true, ref: 'criterio', verified: false }
+const reviewed = (critical, concerns, second) => {
+  let pass = 0
+  return () => {
+    pass += 1
+    const base = { ...baseScript()[KEY.review], rules: [], critical }
+    return pass === 1 ? { ...base, verdict: 'con-condiciones', concerns } : { ...base, ...second }
+  }
+}
+const ROW = { 'Review|human-row': { readOk: true, pending: true } }
+
+test('una sospecha sin comprobar sobre una superficie crítica frena y queda para una persona', async () => {
+  const flow = await runFlow({ ...withSurfaces({ critical: '' }), ...ROW,
+    [KEY.review]: reviewed(SURFACE, [suspicion]) })
+  assert.equal(flow.result.reason, 'review-unverified')
+  assert.match(flow.result.detail, /el total puede quedar negativo/)
+  assert.ok(flow.wrote.includes('Review|critical-human'), 'no registró la fila para una persona')
+  assert.ok(!flow.asked.includes('Review|review-fix'), 'mandó a corregir una hipótesis')
+  assert.ok(!flow.wrote.some((key) => key.startsWith('Review|release:')), 'soltó la reserva con trabajo construido')
+  assert.ok(!flow.phases.includes('Commit'), 'entregó sobre lo crítico sin que nadie lo comprobara')
+})
+
+test('fuera de lo crítico, o comprobada, la misma sospecha sigue su camino de siempre', async () => {
+  const afuera = await runFlow({ ...withSurfaces({ critical: '' }), [KEY.review]: reviewed('', [suspicion]) })
+  ranToEnd(afuera.result)
+  assert.ok(!afuera.wrote.includes('Review|critical-human'))
+
+  const comprobada = await runFlow({ ...withSurfaces({ critical: '' }),
+    [KEY.review]: reviewed(SURFACE, [{ ...suspicion, verified: true }], { verdict: 'aprobado', concerns: [] }) })
+  ranToEnd(comprobada.result)
+  assert.ok(comprobada.asked.includes('Review|review-fix'), 'lo comprobado sobre lo crítico se corrige')
+})
+
+test('la re-revisión también frena si deja una sospecha sin comprobar sobre lo crítico', async () => {
+  const fixable = { ...suspicion, detail: 'falta validar el cupón', verified: true }
+  const flow = await runFlow({ ...withSurfaces({ critical: '' }), ...ROW,
+    [KEY.review]: reviewed(SURFACE, [fixable], { verdict: 'con-condiciones', concerns: [suspicion] }) })
+  assert.equal(flow.result.reason, 'review-unverified')
+})

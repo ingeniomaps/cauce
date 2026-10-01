@@ -371,7 +371,7 @@ const SURFACED = () => ((planning && (planning.surfaces || []).length)
   ? ` En critical poné la superficie de esta lista que el diff toca, tal cual, o vacío si no toca ninguna: `
     + `${JSON.stringify(planning.surfaces)}. Son las que la empresa declaró que no se pueden romper: un hallazgo `
     + 'de corrección o de seguridad sobre una de ellas bloquea, y por eso se comprueba antes de afirmarlo; '
-    + 'sin comprobar no manda a corregir.'
+    + 'sin comprobar no manda a corregir: frena la entrega y lo decide una persona.'
   : ' En critical poné la cadena vacía: la empresa no declaró superficies críticas.')
 // Lo que hay que corregir antes de entregar. El resto de los hallazgos no desaparece: se registra.
 // Una decisión no cuenta como bloqueante aunque venga marcada: su destino es la fila, no la corrección.
@@ -804,6 +804,22 @@ while (rounds++ < MAX_TASKS) {
     { label: `release:${task.id}` },
   )
 
+  // Sobre una superficie que la empresa declaró que no se puede romper, una sospecha bloqueante sin comprobar
+  // no se corrige —sería cambiar código por una hipótesis (R14)— ni se entrega —sería fallar abierto sobre lo
+  // crítico (R27)—: frena y la decide una persona. Fuera de esas superficies va al INBOX como el resto. La
+  // reserva no se suelta: hay trabajo construido, y otro runner tomaría la tarea sobre un árbol con cambios.
+  const uncheckedOnCritical = async (verdict) => {
+    if (!verdict.critical) return null
+    const unchecked = verdict.concerns.filter((one) => one.blocking && !one.decision && one.verified === false)
+    if (!unchecked.length) return null
+    const detail = unchecked.map(cite).join('; ')
+    const note = await registerHuman(`Registrá ${task.id} en ${HUMAN}: el diff toca la superficie crítica `
+      + `${verdict.critical} y la revisión señaló sin poder comprobarlo: ${detail}. La acción humana es `
+      + 'comprobarlo antes de reanudar: si es un defecto, se corrige antes de entregar; si no lo es, se deja '
+      + 'escrito por qué.', 'critical-human', task.id)
+    return stop('review-unverified', `${verdict.critical}: ${detail}${note}`)
+  }
+
   const planRejected = async (reason, unit, found) => {
     const detail = found.join('; ') || 'sin condiciones nombradas'
     const note = await registerHuman(
@@ -1093,6 +1109,8 @@ while (rounds++ < MAX_TASKS) {
     if (review.verdict === 'bloqueado') {
       return stop('review-blocked', named(review).join('; ') || 'sin condiciones nombradas')
     }
+    const unproven = await uncheckedOnCritical(review)
+    if (unproven) return unproven
     if (blockers(review).length) {
       // «Sólo estos hallazgos» acota el alcance (R6) y por sí solo deja un cabo suelto: una corrección
       // tiene dependientes y no se anuncian —el conteo que enumeraba lo que cambió, el comentario que
@@ -1114,6 +1132,8 @@ while (rounds++ < MAX_TASKS) {
         { schema: REVIEWED, label: 'review' })
       if (!review) return stop('agent-unavailable', 'la re-revisión no devolvió resultado')
       grounded(review)
+      const unprovenAgain = await uncheckedOnCritical(review)
+      if (unprovenAgain) return unprovenAgain
       reviewDecisions.push(...review.concerns.filter((one) => one.decision))
       if (review.verdict === 'bloqueado' || blockers(review).length) {
         return stop('review-failed', named(review).join('; ') || 'sin condiciones nombradas')
