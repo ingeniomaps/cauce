@@ -33,6 +33,10 @@ const CONFIG = `${ROOT}/ops.config.json`
 const P = `${ROOT}/planning`
 const ORG = `${ROOT}/organization`
 const BACKLOG = `${P}/BACKLOG.md`
+// La cola entera: el archivo de siempre más uno por hito (caso 212). Lo que se clasifica o se protege es
+// todo; lo que se parte o se cierra es el archivo de la tarea, que `context` dice cuál es.
+const QUEUE = `${BACKLOG} y los archivos de ${P}/backlog/`
+const queueFile = () => `${P}/${(planning && planning.file) || 'BACKLOG.md'}`
 // Una tarea cerrada escribe su propio archivo, así que dos corridas en paralelo no comparten ninguno.
 const doneFile = (slug) => `${P}/done/${slug}.md`
 const HUMAN = `${P}/HUMAN_ACTIONS.md`
@@ -68,6 +72,8 @@ const CONTEXT = {
     hasTask: { type: 'boolean' }, wipActive: { type: 'boolean' },
     queued: { type: 'integer' }, slug: { type: 'string' }, hito: { type: 'string' },
     service: { type: 'string' }, acceptance: { type: 'string' }, epic: { type: 'string' },
+    // El archivo de la cola donde vive la tarea, relativo al planning: `BACKLOG.md` o `backlog/<hito>.md`.
+    file: { type: 'string' },
     // Sin declararlo acá no llega, igual que le pasó a `epicContext`: `additionalProperties: false` lo
     // descarta y las fases lo reciben vacío para siempre.
     description: { type: 'string' },
@@ -543,7 +549,7 @@ const readContext = () => read(
   `omitilo entero si wip es null, sin inventar ceros—, y lane ` +
   `de task.tier; copiá slug, ` +
   `hito, service, acceptance, ` +
-  `epic, cast y description de task, epicContext de epic.context —vacío si no hay épica— e inbox tal `
+  `epic, cast, description y file de task, epicContext de epic.context —vacío si no hay épica— e inbox tal `
   + `cual. surfaces sale de surfaces.declared, una entrada por fila con la forma "<surface> (<lives>)", y `
   + `surfacesPending de surfaces.pending. El comando es ` +
   `la fuente de ` +
@@ -698,7 +704,7 @@ while (rounds++ < MAX_TASKS) {
       `${CLASSIFY_RULES}${(planning.surfaces || []).length ? ` Una tarea que toca alguna de estas superficies, que la `
         + `empresa declaró que no se pueden romper, nunca va por express: ${JSON.stringify(planning.surfaces)}.` : ''}`
         + `\n\nRun "node tools/ops.js agents list ${ROOT} --json" and choose only from the slugs ` +
-      `it lists.\nClasificá en ${BACKLOG} todas las tareas en cola que no declaren lane o no declaren cast, ` +
+      `it lists.\nClasificá en ${QUEUE} todas las tareas en cola que no declaren lane o no declaren cast, ` +
       `empezando por ${task.id} en ${task.service} —aceptación: ${task.acceptance}—. El lane va entre ` +
       `corchetes después del slug y el reparto al final de la línea, con la forma ` +
       `"(cast: quien-entrega → quien-revisa, otro)". No toques nada más de la línea, ni el orden del hito, ` +
@@ -877,7 +883,7 @@ while (rounds++ < MAX_TASKS) {
           ? ` ${task.id} es una historia de la épica ${task.epic}: reemplazá también ahí su historia por `
             + 'las de las subtareas, con el mismo criterio y el mismo service que traía.'
           : ''
-        await write(`Reemplazá sólo ${task.id} en ${BACKLOG} por subtareas ordenadas y verificables de forma ` +
+        await write(`Reemplazá sólo ${task.id} en ${queueFile()} por subtareas ordenadas y verificables de forma ` +
           `independiente: ${JSON.stringify(estimate.subtasks)}.${historias}`, { label: 'split' })
         planning = await readContext()
         if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
@@ -885,7 +891,7 @@ while (rounds++ < MAX_TASKS) {
         // no lo va a cambiar. Acá lo que no cambió es una escritura que se le pidió a un agente, y darla
         // por hecha manda al bucle a partir la misma tarea otra vez.
         if (planning.hasTask && planning.slug === task.id) {
-          return stop('split-not-applied', `se pidió reemplazar ${task.id} en ${BACKLOG} por sus `
+          return stop('split-not-applied', `se pidió reemplazar ${task.id} en ${queueFile()} por sus `
             + 'subtareas y la cola sigue ofreciéndola: la escritura no ocurrió como se pidió.')
         }
         // La tarea partida ya no existe, así que su reclamo no reserva nada: lo único que hace es dejar
@@ -1015,7 +1021,7 @@ while (rounds++ < MAX_TASKS) {
     `dio; recién después implementá. Un test que pasa antes de que exista el código no asercia lo que dice ` +
     `aserciar: endurecelo y volvé a correr hasta verlo fallar. Corré las pruebas que necesites para ver ese ` +
     `rojo y ese verde, y nada más: los gates completos, el QA, el commit y el cierre son fases posteriores, ` +
-    `así que no toques ${P}/done/ ni ${BACKLOG} ni el status del WIP. Lo que el plan no previó va en discovered y ` +
+    `así que no toques ${P}/done/ ni ${QUEUE} ni el status del WIP. Lo que el plan no previó va en discovered y ` +
     `no en el código a secas: kind=edge si esta tarea lo puede fijar —y entonces entra con su prueba, que ` +
     `nombrás en test y anotás en redFirst—, kind=open si lo notaste y no impide entregar la aceptación: se ` +
     `registra para que lo decida quien corresponde y el recorrido sigue. Si de verdad no podés entregar sin ` +
@@ -1328,7 +1334,8 @@ while (rounds++ < MAX_TASKS) {
     `Cerrá ${task.id} de forma atómica: escribí ${doneFile(task.id)} con su evidencia —acept, ` +
     `fecha: ${planning.today}, done, qa, tests, commit, lane y review, en el formato de entrada que trae ` +
     `este preámbulo—; ` +
-    `sacala junto con sus notas indentadas de ${BACKLOG}; cerrá su épica sólo si no queda ` +
+    `sacala junto con sus notas indentadas de ${queueFile()} —si es un archivo de ${P}/backlog/ y su hito queda ` +
+    'sin tareas, borrá ese archivo—; cerrá su épica sólo si no queda ' +
     `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE; y soltá la reserva corriendo ` +
     `"node tools/ops.js release ${P} ${task.id}". lane y review van textuales, copiados de estos hechos sin ` +
     'resumir ni recortar: son lo que después se audita, y un resumen elige qué perder. ' +
