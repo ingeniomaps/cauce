@@ -79,13 +79,14 @@ function check(dir, cli) {
         // Y se muestra resuelta porque resuelta es como la compara el guard — un `~` escrito solo exenta
         // la casa entera, y escrito no se nota.
         for (const exempt of CP.writableOutsideRoots(path.dirname(configPath), config)) {
-          warnings.push(`ops.config.json: ${exempt.declared} está exenta del límite `
+          warnings.push(`${exempt.from}: ${exempt.declared} está exenta del límite `
             + `de raíces (${exempt.path})`)
         }
       }
     } catch (error) {
       errors.push(`ops.config.json: JSON inválido (${error.message})`)
     }
+    warnings.push(...C.localConfigWarnings(path.dirname(configPath)))
   } else {
     warnings.push(`no existe ${path.relative(root, configPath)}`)
   }

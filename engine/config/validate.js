@@ -1,6 +1,9 @@
 'use strict'
 
+const fs = require('node:fs')
+const path = require('node:path')
 const { PATH_SHAPE, EXTENSION_SHAPE } = require('../core/migrations')
+const { LOCAL_CONFIG } = require('./paths')
 
 const MODES = ['embedded', 'sidecar', 'toolkit']
 
@@ -214,4 +217,27 @@ function validateRunner(runner, errors) {
   }
 }
 
-module.exports = { configWarnings, validateOpsConfig }
+// El archivo de una persona (caso 209). Se avisa y no falla: el guard ya lo lee de la forma segura —lo que no
+// entiende no exenta nada—, así que no hay riesgo que frenar, sólo una ruta que alguien cree declarada y no
+// lo está, o una llave que cree que rige.
+function localConfigWarnings(dir) {
+  const file = path.join(dir, LOCAL_CONFIG)
+  if (!fs.existsSync(file)) return []
+  let local
+  try { local = JSON.parse(fs.readFileSync(file, 'utf8')) } catch (error) {
+    return [`${LOCAL_CONFIG}: no se puede leer (${error.message}); sus rutas no cuentan`]
+  }
+  if (!local || typeof local !== 'object' || Array.isArray(local)) {
+    return [`${LOCAL_CONFIG}: tiene que ser un objeto con writableOutsideRoots; sus rutas no cuentan`]
+  }
+  const shape = []
+  validateWritable(local.writableOutsideRoots, shape)
+  const other = Object.keys(local).filter((key) => key !== 'writableOutsideRoots')
+  return [
+    ...shape.map((one) => one.replace('ops.config.json', LOCAL_CONFIG)),
+    ...(other.length ? [`${LOCAL_CONFIG}: de este archivo sólo se lee writableOutsideRoots; `
+      + `${other.join(', ')} no rige acá`] : []),
+  ]
+}
+
+module.exports = { configWarnings, validateOpsConfig, localConfigWarnings }

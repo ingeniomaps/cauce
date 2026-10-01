@@ -27,5 +27,9 @@ planning/.grant-log
 planning/wip/*.md
 !planning/wip/README.md
 
+# Las rutas escribibles que son de una sola máquina: la memoria del runner de una persona, un proyecto suyo.
+# En `ops.config.json` viajarían a todo el que clona; acá se suman sólo donde existen.
+ops.config.local.json
+
 *.tgz
 .DS_Store
