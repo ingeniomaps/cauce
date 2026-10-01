@@ -127,6 +127,12 @@ Recorrido contra el caso entero:
 - **Lo que el caso no preveía:** con la tarea subida, el WIP y `done/` seguían diciendo `lane: express`. Lo
   marcó el propio revisor en la corrida real; ahora va el carril que corrió (`0e7492de`).
 
+- **Lo que encontró la revisión del conjunto:** el prompt prometía que un hallazgo sobre una superficie
+  crítica bloquea, y uno sin comprobar no bloqueaba. Decidido con Manuel: sobre una superficie crítica, una
+  sospecha sin comprobar **frena y escala** —parada `review-unverified` y fila en `HUMAN_ACTIONS.md`, con la
+  reserva conservada—; ni se corrige ni se entrega. Probado en el arnés con sus contracaras (fuera de lo
+  crítico va al INBOX; comprobada, se corrige) y cuatro mutaciones vistas en rojo.
+
 **Probado corriendo.**
 - `ops context --json` en un banco devuelve `{"declared":[],"pending":true}` con la tabla del molde y las
   filas declaradas cuando se llenan.
