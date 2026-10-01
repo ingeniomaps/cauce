@@ -1,14 +1,15 @@
 ---
 caso: 210
 titulo: Review revisa por aceptación sin recibir la aceptación
-estado: abierto
+estado: resuelto
+resuelto-en: 0.100.0
 prioridad: media
 version-detectada: 0.99.2
 ---
 
 # 210 — El prompt de Review pide revisar «por aceptación» y no dice cuál es
 
-**🔴 abierto** · detectado en 0.99.2 · prioridad **media**.
+**🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **media**.
 
 **Prioridad media**: en las dos mediciones donde apareció, el revisor la encontró solo, buscándola en el
 BACKLOG. Funciona por diligencia del agente y no por mecanismo, y la que encuentra puede no ser la que
@@ -67,3 +68,15 @@ medición (C y B) lo confirmaron: el revisor la buscó en el BACKLOG.
 ## Relacionados
 
 - 206 — el mismo prompt de Review.
+
+## Cierre
+
+Recorrido contra el caso entero:
+
+- **Fix, las dos pasadas de Review reciben `task.acceptance`** → se hizo; es la que ya trae el
+  refinamiento de Ready.
+- **Tradeoff, el prompt crece una línea** → aceptado.
+
+**Probado corriendo.** Arnés: un caso en `test/workflows/autobuild-refs.test.js` que mira las dos pasadas y la
+aceptación refinada por Ready; quitarla de cualquiera de las dos se vio en rojo. La corrida real del 205 corrió
+con el motor anterior a este arreglo, así que no lo ejerce: lo que se midió en real es el defecto (C y B).

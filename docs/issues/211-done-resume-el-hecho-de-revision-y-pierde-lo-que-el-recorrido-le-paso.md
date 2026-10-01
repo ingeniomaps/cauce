@@ -1,14 +1,15 @@
 ---
 caso: 211
 titulo: Done resume el hecho de revisión y pierde lo que el recorrido le pasó
-estado: abierto
+estado: resuelto
+resuelto-en: 0.100.0
 prioridad: alta
 version-detectada: 0.99.2
 ---
 
 # 211 — La entrada de `done/` no trae lo que el hecho de revisión decía
 
-**🔴 abierto** · detectado en 0.99.2 · prioridad **alta**.
+**🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **alta**.
 
 **Prioridad alta**: es la entrega de otros tres casos que se dan por resueltos sólo porque el prompt de
 Done lleva el dato —el 122 (contra qué reglas se revisó), el 205 (qué superficie crítica tocó) y el 207
@@ -73,3 +74,19 @@ pasado a Done.
 ## Relacionados
 
 - 122, 205, 207 — los tres cuyos datos se perdían en este paso.
+
+## Cierre
+
+Recorrido contra el caso entero:
+
+- **Fix, `lane` y `review` textuales** → se hizo.
+- **La prueba real mide el disco y no el prompt** → se hizo: abajo.
+- **Tradeoff, entradas más largas** → aceptado.
+- **Los tres casos afectados (122, 205, 207)** → quedan cubiertos por este arreglo; las entradas escritas
+  antes no se reescriben.
+
+**Probado corriendo.** Se repitió sólo el paso de Done, con su prompt real de la corrida del 205 más el pedido
+de copia textual, sobre una copia del banco devuelta al estado previo al cierre (USD 0,69). La entrada escrita,
+leída con `readDone`, trae `toca la superficie crítica`, `reglas: planning/rules…` y `1 decisión(es)
+registrada(s)` —los tres en `true`—, donde la corrida original había escrito sólo el veredicto y dos archivos;
+`check` pasa. Arnés: el pedido textual está en el prompt, y quitarlo se vio en rojo.

@@ -1,14 +1,15 @@
 ---
 caso: 206
 titulo: un hallazgo del Review no dice en qué regla se apoya ni si se verificó
-estado: abierto
+estado: resuelto
+resuelto-en: 0.100.0
 prioridad: alta
 version-detectada: 0.99.2
 ---
 
 # 206 — Review nombra las reglas una vez por revisión, y cada hallazgo bloquea sin decir de dónde sale
 
-**🔴 abierto** · detectado en 0.99.2 · prioridad **alta**.
+**🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **alta**.
 
 **Prioridad alta**: es la base de 207 y de cualquier aprendizaje sobre lo que se revisa, y deja hoy dos
 huecos sin mecanismo: un hallazgo de criterio no se distingue de uno respaldado por una regla, y un
@@ -108,3 +109,27 @@ hallazgo de confianza media no puede ser bloqueante (`:156`).
 
 - 207 — usa el `ref` para registrar lo que se corrigió.
 - 205 — el mismo Review, del lado de qué superficies mira.
+
+## Cierre
+
+Recorrido contra el caso entero:
+
+- **a, `ref` por hallazgo** → se hizo distinto: la cita a una regla que no rige se conserva marcada como
+  criterio en vez de frenar (decisión escrita arriba).
+- **b, `verified` por hallazgo** → se hizo: un bloqueante no verificado va al INBOX como `[sin verificar]`.
+- **Critique conserva `DECISION`** → se hizo; una prueba fija que un bloqueante de Critique sigue bloqueando
+  sin el campo.
+- **Lo que faltaba decidir, derivar `rules` de los `ref`** → se decidió que no: `rules` dice también contra
+  qué se revisó sin encontrar nada.
+- **Tradeoff, un defecto real sin comprobar pasa** → medido en las mediciones C y B del plan: en las dos el
+  revisor comprobó los bloqueantes y los marcó `verified: true`; ninguno quedó degradado sin razón.
+- **Tradeoff, el esquema y el prompt crecen** → aceptado.
+- **Lo que el caso no preveía:** en C y en B el revisor citó `commits.md#R9` para la mezcla de unidades, que
+  era criterio. La semántica de una cita no se puede comprobar mecánicamente; queda observado (2 de 2) y no
+  se cambió el prompt por eso.
+
+**Probado corriendo.**
+- Arnés: `test/workflows/autobuild-refs.test.js`. Mutaciones vistas en rojo: el no verificado bloquea, leer
+  `verified` por verdad, no marcar la cita sin base, `cite` sin `ref` y no anotar el no verificado.
+- **Corrida real** del 205: los tres hallazgos de Review traían `ref` (`criterio`,
+  `planning/rules/system/commits.md#R9`) y `verified`, uno en `false` y sin bloquear.

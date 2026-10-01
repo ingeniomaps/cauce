@@ -1,14 +1,15 @@
 ---
 caso: 208
 titulo: una regla de negocio derogada no dice qué la reemplaza
-estado: abierto
+estado: resuelto
+resuelto-en: 0.100.0
 prioridad: media
 version-detectada: 0.99.2
 ---
 
 # 208 — `check` acepta una regla `derogada` sin reemplazo ni razón de baja
 
-**🔴 abierto** · detectado en 0.99.2 · prioridad **media**.
+**🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **media**.
 
 **Prioridad media**: no rompe nada hoy, pero una épica o un ADR que cita `[fuente: BR-…]` sobre una
 regla derogada queda apuntando a algo que ya no rige y sin forma de saber qué la reemplazó. Es R25
@@ -87,3 +88,22 @@ en las dos direcciones (`reemplaza_a` / `reemplazada_por`) y nunca reutiliza un 
 ## Relacionados
 
 - R25 — la misma idea para las unidades de trabajo.
+
+## Cierre
+
+Recorrido contra el caso entero:
+
+- **Fix 1, la plantilla dice dónde escribirlo** → se hizo, en `000-template.md`.
+- **Fix 2, `check` lo exige y valida el `BR-` citado** → se hizo distinto: la falta avisa y la cita mal
+  escrita es error (decisión escrita arriba).
+- **Fix 3, no cortar las que ya existen** → se hizo por la vía del aviso, para todas.
+- **Tradeoff, avisos nuevos en el `upgrade`** → aceptado.
+- **Tradeoff, el reemplazo tiene que existir antes** → aceptado; es el orden correcto.
+- **Lo que el caso no preveía:** una regla que dice que la reemplaza un identificador de su propio archivo
+  pasaba; ahora es error.
+
+**Probado corriendo.** En un banco, la regla derogada sin reemplazo da `⚠ … está derogada y no dice qué rige
+en su lugar` con `check` en verde; con `BR-PAG-777` da `✗ … que no existe` y sale 1; con un reemplazo propio
+da `✗ … está en el mismo archivo`; con un reemplazo válido o una razón de baja, verde. Arnés:
+`test/planning/contracts.test.js`, dos casos; las cinco mutaciones —sin aviso, razón de baja ignorada, cita
+rota aceptada, auto-reemplazo aceptado y `check` sin cablear— se vieron en rojo.

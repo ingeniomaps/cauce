@@ -1,14 +1,15 @@
 ---
 caso: 205
 titulo: el ciclo de construcción no mira las superficies críticas que declara la empresa
-estado: abierto
+estado: resuelto
+resuelto-en: 0.100.0
 prioridad: alta
 version-detectada: 0.99.2
 ---
 
 # 205 — `autobuild` clasifica y revisa sin leer «Qué no se puede romper»
 
-**🔴 abierto** · detectado en 0.99.2 · prioridad **alta**.
+**🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **alta**.
 
 **Prioridad alta**: el dato ya existe en cada instancia —lo pide `organization/company.md`— y hoy no
 llega al único recorrido que construye y entrega código sin una persona en el medio. Una tarea que toca
@@ -101,3 +102,40 @@ equivalente en cauce apareció que la tabla existe y el ciclo de construcción n
 
 - `change-review`, etapa `scope` — el único consumidor actual de la tabla (CHANGELOG 0.47.0).
 - 206 — el mismo Review, del lado de qué cita cada hallazgo.
+
+## Cierre
+
+Recorrido contra el caso entero:
+
+- **Fix 1, Classify recibe las superficies** → se hizo. Además del clasificador, quien decide es una pregunta
+  propia (`critical-surface`), porque el carril también se escribe a mano y ahí Classify no corre.
+- **Fix 2, el piso lo aplica el recorrido** → se hizo: `express` con superficie sube a `directo`. Lo que no se
+  puede determinar —un `null` o cualquier respuesta no vacía— también sube.
+- **Fix 3, Review declara la superficie y llega a `done/`** → se hizo, con un hueco que la prueba real
+  encontró y salió como caso propio: el agente de Done resumía el hecho y la superficie no llegaba al disco
+  (caso 211, resuelto en esta misma versión).
+- **Fix 4, tabla en `Por definir`** → se hizo: viaja como `surfacesPending` y queda escrito en el hecho de
+  revisión, sin frenar.
+- **Lo que faltaba decidir, quién arma las filas** → `ops context`, con el parser en
+  `engine/planning/surfaces.js`.
+- **Tradeoff, más tareas pasan por Review** → aceptado: es el costo buscado.
+- **Tradeoff, falsos negativos del juicio** → se decidió no medir la tasa: una corrida no estima una tasa
+  (R20), y un falso negativo deja la tarea donde estaba antes de este caso, sin empeorar nada.
+- **Tradeoff, que `change-review` use también `ops context`** → se decidió que no: `scope` necesita la tabla
+  entera, con qué se detiene y a quién alcanza, y la lee del archivo; las dos lecturas parten del mismo
+  archivo y no pueden divergir en el dato.
+- **Lo que el caso no preveía:** con la tarea subida, el WIP y `done/` seguían diciendo `lane: express`. Lo
+  marcó el propio revisor en la corrida real; ahora va el carril que corrió (`0e7492de`).
+
+**Probado corriendo.**
+- `ops context --json` en un banco devuelve `{"declared":[],"pending":true}` con la tabla del molde y las
+  filas declaradas cuando se llenan.
+- Arnés: `test/workflows/autobuild-critical.test.js`, 7 casos. Mutaciones vistas en rojo: quitar el piso,
+  fallar abierto ante `null`, quitar el «no toca superficies críticas», sacar `surfaces` de `context`,
+  contar `Por definir` como declarada y no subir el carril informado. Una sobrevivió —tratar aparte una
+  respuesta fuera de la lista— y no medía nada: esa rama se quitó.
+- **Corrida real** de `/autobuild` en un banco fuera del árbol, motor congelado en `8a93c877`, tarea
+  `umbral-envio-gratis [express]` sobre «Total del pedido» (USD 8,20). La fase `Surface` devolvió
+  `"critical":"Total del pedido (app/src/order-total.js)"`, Review corrió y devolvió el mismo `critical`, y
+  el hecho que recibió Done terminaba en `· toca la superficie crítica Total del pedido
+  (app/src/order-total.js)`.
