@@ -168,6 +168,12 @@ Recorrido contra el caso entero:
 - **Tradeoff, orden explícito** → es el `order`, y `check` lo exige en cada archivo partido.
 - **Tradeoff, migración** → `ops split-backlog`, opcional; no pisa nada si un archivo de hito ya existe.
 - **Lo que el caso no preveía:** `parser.js` cruzó las 500 líneas; la cola salió a su propio módulo.
+- **Lo que encontró la revisión del conjunto, antes del PR:** `split-backlog` sacaba del comentario el hito de
+  ejemplo que trae el `BACKLOG.md` del molde y dejaba sus cuatro tareas de ejemplo en cola; y un hito repetido
+  hacía que el segundo pisara al primero y sus tareas no quedaran en ningún lado. Lo comentado ahora se queda
+  donde está, y un hito repetido hace que el comando se niegue sin escribir. Comprobado en real: `split-backlog`
+  sobre una instancia recién creada con `init` contesta «no tiene hitos que partir» y la cola sigue vacía; y con
+  sus mutaciones vistas en rojo.
 
 **Probado corriendo.**
 - La reproducción del caso, con git 2.43.0: el mismo `CONFLICTO (contenido)` en `BACKLOG.md`. Y la misma
