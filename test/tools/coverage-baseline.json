@@ -379,6 +379,11 @@
     "branches": 88,
     "functions": 100
   },
+  "engine/planning/surfaces.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/secrets/index.js": {
     "lines": 93,
     "branches": 80,

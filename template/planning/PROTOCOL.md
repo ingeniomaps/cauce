@@ -71,7 +71,9 @@ invariantes.
 6. Plan y Critique: entender contexto, escribir plan y atacarlo una vez.
 7. WIP: persistir el plan aprobado antes del primer cambio.
 8. Build: alcance exacto, progreso tildado, RED/GREEN/VERIFY aplicable.
-9. Review: calidad y seguridad según la superficie modificada.
+9. Review: calidad y seguridad según la superficie modificada. Cada hallazgo nombra la regla que lo
+   sostiene o se declara criterio, y dice si se comprobó: lo que no se comprobó se registra y no manda a
+   corregir.
 10. Verify: ejecutar los gates declarados por el servicio y registrar exit codes.
 11. QA: probar la aceptación por el camino que usa un consumidor real.
 12. Commit: stage explícito y commits verificables, uno por naturaleza del diff.
@@ -86,7 +88,9 @@ clasificación—, se toma al escribir la tarea y viaja en su línea, así que s
 vez por corrida. La tarea que llega sin ella se clasifica antes de ejecutarse.
 
 - `express`: la aceptación nombra un valor literal y el resultado no lo mira nadie —un typo, un umbral
-  interno, un renombre—; WIP, Build, Verify, Commit y Done.
+  interno, un renombre—; WIP, Build, Verify, Commit y Done. **Nunca sobre una superficie que
+  `organization/company.md` declara en «Qué no se puede romper»**: ahí el recorrido la sube a `directo`,
+  aunque la línea diga `express`, y lo que no puede determinar también lo sube.
 - `directo`: igual de mecánico, pero cambia una superficie que alguien ve; agrega el review del cargo
   que nombra el cast.
 - `lite`: comportamiento nuevo dentro de un servicio con superficie conocida; agrega Ready, Plan y QA.

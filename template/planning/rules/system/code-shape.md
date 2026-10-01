@@ -86,6 +86,13 @@ mecanismo en vez de a un entregable.
 Se escribe al revés: cerrado por defecto, y cada excepción declarada de a una, con su razón y en el
 mismo lugar. Así lo que se agrega nace protegido y lo que se abre deja constancia de quién lo abrió.
 
+Hay un caso en que cerrar por defecto cuesta más de lo que protege: cuando lo cerrado es el camino que
+todos usan todo el tiempo, y cada cosa nueva que nace cerrada rompe el trabajo de todos hasta que alguien
+la abre. Ahí la salida no es volver a la lista sin más, sino darle el comparador que le faltaba: una prueba
+que recorre lo que existe —los comandos, las rutas, los campos— y falla hasta que cada elemento nuevo esté
+clasificado, protegido o exento con su razón. El defecto de la lista era que nada la comparaba con lo que
+hay; con esa prueba lo nuevo no nace abierto en silencio, nace en rojo.
+
 No es una regla de seguridad aunque ahí sea donde más se note. Vale para un guard, para el alcance de un
 lint, para lo que un CI corre, para un permiso: cualquier mecanismo cuya lista alguien tiene que
 acordarse de ampliar.

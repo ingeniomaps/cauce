@@ -84,6 +84,9 @@ const CONTEXT = {
       properties: { build: { type: 'string' }, review: { type: 'array', items: { type: 'string' } } },
     },
     blockedTasks: { type: 'array', items: { type: 'string' } },
+    // «Qué no se puede romper» como «nombre (dónde vive)», y si la tabla tiene algo sin declarar (caso 205).
+    surfaces: { type: 'array', items: { type: 'string' } },
+    surfacesPending: { type: 'boolean' },
     // Si la tarea que `context` devolvió ya está reservada a nombre de este runner. Libre no significa
     // que sea nuestra: significa que todavía la puede tomar cualquiera, y dos corridas en paralelo la
     // reciben las dos.
@@ -162,6 +165,11 @@ const DECISION = {
     consulted: { type: 'array', items: { type: 'string' } },
   },
 }
+// Qué superficie crítica toca una tarea `express`. Una sola cadena: la entrada de la lista tal cual, o vacía.
+const CRITICAL = {
+  type: 'object', additionalProperties: false, required: ['critical'],
+  properties: { critical: { type: 'string' } },
+}
 // Review nombra contra qué reglas revisó (caso 105): recibir las rutas no garantiza abrirlas, y esto es lo único
 // que deja rastro de que se hizo. Critique no lo lleva porque no recibe la lista.
 //
@@ -176,15 +184,23 @@ const DECISION = {
 // terminaron en `review-failed` con la suite del producto en verde y los tres casos de la aceptación
 // dando lo pedido, y las dos por un hallazgo que el propio revisor describió como una decisión que no le
 // tocaba.
-const REVIEWED = { ...DECISION, required: [...DECISION.required, 'rules'],
+const REVIEWED = { ...DECISION, required: [...DECISION.required, 'rules', 'critical'],
   properties: {
     ...DECISION.properties,
     rules: { type: 'array', items: { type: 'string' } },
+    // Qué superficie de las que la empresa declaró crítica toca el diff, o vacío. Viaja al hecho de
+    // revisión, que llega a `done/`: es lo que dice después con qué rigor se miró la entrega (caso 205).
+    critical: { type: 'string' },
     // Extiende el concern de `DECISION` en vez de reescribirlo: copiado entero, un campo nuevo allá no
     // llegaría acá y ninguna prueba lo notaría.
     concerns: { ...DECISION.properties.concerns,
       items: { ...DECISION.properties.concerns.items,
-        properties: { ...DECISION.properties.concerns.items.properties, decision: { type: 'boolean' } },
+        // `ref` y `verified` son del Review y no de Critique, que critica un plan sin diff que comprobar
+        // (caso 206): de dónde sale cada hallazgo —una regla que rige o `criterio`—, y si el revisor
+        // comprobó lo que afirma o lo supone.
+        required: [...DECISION.properties.concerns.items.required, 'ref', 'verified'],
+        properties: { ...DECISION.properties.concerns.items.properties, decision: { type: 'boolean' },
+          ref: { type: 'string' }, verified: { type: 'boolean' } },
       } },
   } }
 // Un exit code dice que el test corrió, no que pruebe lo que la tarea prometió: un test que asercia de
@@ -345,12 +361,46 @@ const VERDICT = ' Cerrá con verdict=aprobado si no queda nada por corregir ante
 const RULED = ' En rules nombrá, por su ruta, cada una de las reglas que rigen contra la que revisaste'
   + ' el diff. Y marcá decision=true en el hallazgo que no te toca resolver a vos —una definición de'
   + ' producto, un contrato público, una autoridad que el cargo no tiene—: ése se registra para una'
-  + ' persona y no manda a tocar código.'
+  + ' persona y no manda a tocar código. En cada hallazgo, ref es la regla que lo sostiene, con su ruta y su'
+  + ' número —<ruta>#<número>— y una de las que rigen, o la palabra criterio si es juicio tuyo sin regla'
+  + ' escrita; nunca presentes un criterio como regla. Y verified es true sólo si comprobaste lo que el hallazgo'
+  + ' afirma —leíste el código que lo muestra, corriste el comando—; si lo suponés, false: un hallazgo sin'
+  + ' comprobar no manda a corregir, se registra.'
+// También acompaña a todo prompt con schema REVIEWED, y es función porque las superficies se leen después.
+const SURFACED = () => ((planning && (planning.surfaces || []).length)
+  ? ` En critical poné la superficie de esta lista que el diff toca, tal cual, o vacío si no toca ninguna: `
+    + `${JSON.stringify(planning.surfaces)}. Son las que la empresa declaró que no se pueden romper: un hallazgo `
+    + 'de corrección o de seguridad sobre una de ellas bloquea, y por eso se comprueba antes de afirmarlo; '
+    + 'sin comprobar no manda a corregir: frena la entrega y lo decide una persona.'
+  : ' En critical poné la cadena vacía: la empresa no declaró superficies críticas.')
 // Lo que hay que corregir antes de entregar. El resto de los hallazgos no desaparece: se registra.
 // Una decisión no cuenta como bloqueante aunque venga marcada: su destino es la fila, no la corrección.
 // Critique no la emite —no está en su esquema— así que para él `one.decision` es siempre `undefined`.
+//
+// Un hallazgo que el revisor no comprobó tampoco manda a corregir: es R14 —una hipótesis no sostiene una
+// negativa— con mecanismo (caso 206). Se compara contra `false` y no por verdad porque Critique no
+// declara el campo, y para él todo bloqueante sigue bloqueando; el esquema de Review lo exige.
 const blockers = (verdict) => verdict.concerns
-  .filter((one) => one.blocking && !one.decision).map((one) => one.detail)
+  .filter((one) => one.blocking && !one.decision && one.verified !== false).map(cite)
+// El hallazgo con la regla que lo sostiene al lado: es lo que llega a quien corrige y a `done/`.
+const cite = (one) => (one.ref ? `${one.detail} [${one.ref}]` : one.detail)
+// Un `ref` que nombra una regla que no rige es una cita sin base. No se borra ni se corrige en silencio
+// —R14: sigue viaje marcada—; pasa a criterio diciendo qué citó, y el hallazgo conserva su peso.
+// La ruta se compara sin el `./` inicial y por sufijo, porque el revisor la escribe como la ve —con la raíz
+// delante o sin ella— y marcar «no rige» una regla que sí rige sería afirmar algo falso en `done/`.
+const governs = (ref) => {
+  const file = ref.split('#')[0].replace(/^\.\//, '')
+  return governing.some((rule) => file === rule || file.endsWith(`/${rule}`))
+}
+const grounded = (verdict) => {
+  for (const one of verdict.concerns) {
+    const ref = String(one.ref || '').trim()
+    if (ref && !/^criterio\b/i.test(ref) && !governs(ref)) {
+      one.ref = `criterio (citó ${ref}, que no rige)`
+    }
+  }
+  return verdict
+}
 // Lo que una parada tiene que nombrar es todo lo que el revisor señaló, no sólo lo que manda a corregir:
 // con `blockers` solo, un veredicto cuyo único hallazgo es una decisión paraba diciendo que nadie nombró
 // ninguna condición. El motivo es lo único que queda para leer cuando la corrida terminó.
@@ -494,7 +544,8 @@ const readContext = () => read(
   `de task.tier; copiá slug, ` +
   `hito, service, acceptance, ` +
   `epic, cast y description de task, epicContext de epic.context —vacío si no hay épica— e inbox tal `
-  + `cual. El comando es ` +
+  + `cual. surfaces sale de surfaces.declared, una entrada por fila con la forma "<surface> (<lives>)", y `
+  + `surfacesPending de surfaces.pending. El comando es ` +
   `la fuente de ` +
   `verdad: no abras archivos de planning para completarlo. Poné readOk en true sólo si el comando salió ` +
   `con código 0 y devolvió JSON; si falló, readOk en false y el resto en sus valores vacíos, sin ` +
@@ -641,7 +692,9 @@ while (rounds++ < MAX_TASKS) {
     phase('Classify')
     classified.add(task.id)
     const classification = await write(
-      `${CLASSIFY_RULES}\n\nRun "node tools/ops.js agents list ${ROOT} --json" and choose only from the slugs ` +
+      `${CLASSIFY_RULES}${(planning.surfaces || []).length ? ` Una tarea que toca alguna de estas superficies, que la `
+        + `empresa declaró que no se pueden romper, nunca va por express: ${JSON.stringify(planning.surfaces)}.` : ''}`
+        + `\n\nRun "node tools/ops.js agents list ${ROOT} --json" and choose only from the slugs ` +
       `it lists.\nClasificá en ${BACKLOG} todas las tareas en cola que no declaren lane o no declaren cast, ` +
       `empezando por ${task.id} en ${task.service} —aceptación: ${task.acceptance}—. El lane va entre ` +
       `corchetes después del slug y el reparto al final de la línea, con la forma ` +
@@ -667,8 +720,30 @@ while (rounds++ < MAX_TASKS) {
   // ese lector no existió —`Classify` sólo corre si falta lane o cast—, y saltear la única fase que
   // pregunta si la tarea está lista quedaba apoyado en una premisa que nadie comprobó.
   const vouched = classified.has(task.id)
-  const express = planning.lane === 'express'
-  const direct = planning.lane === 'directo'
+  // Una tarea que toca una superficie que la empresa declaró que no se puede romper no va por `express`,
+  // que no convoca revisor (caso 205). El piso lo aplica el recorrido y no el clasificador: el carril
+  // también se escribe a mano, y ahí nadie leyó la tabla. Se pregunta sólo cuando hay algo que
+  // decidir —carril `express` y superficies declaradas—, y lo que no se puede determinar sube de carril:
+  // un `null`, o cualquier respuesta no vacía aunque no esté en la lista, cuestan una revisión de más, y
+  // suponer lo contrario costaría una entrega sin mirar sobre lo que no se puede romper.
+  const surfaces = planning.surfaces || []
+  let critical = ''
+  if (planning.lane === 'express' && surfaces.length) {
+    phase('Surface')
+    const touched = await read(`¿La tarea ${task.id} toca alguna de estas superficies que la empresa declaró que `
+      + `no se pueden romper? ${JSON.stringify(surfaces)}. Servicio: ${task.service}. Aceptación: `
+      + `${task.acceptance}. ${task.description ? `Decisiones de la línea: ${task.description}. ` : ''}`
+      + 'Contestá en critical la entrada de la lista tal cual si la toca, o la cadena vacía si no toca ninguna.',
+    { schema: CRITICAL, label: 'critical-surface' })
+    critical = !touched ? 'no se pudo determinar' : touched.critical.trim()
+    if (critical) log(`${task.id} toca una superficie crítica (${critical}): sube de express a directo`)
+  }
+  const express = planning.lane === 'express' && !critical
+  const direct = planning.lane === 'directo' || (planning.lane === 'express' && Boolean(critical))
+  // El carril que corrió, que es el que va al WIP y a `done/`: decir `express` de una tarea que pasó por
+  // Review deja un registro que contradice lo que pasó. Va el valor a secas —`check` sólo acepta los del
+  // vocabulario— y el porqué viaja en el hecho de revisión, que nombra la superficie.
+  const lane = critical ? 'directo' : planning.lane || 'sin clasificar'
   const lite = planning.lane === 'lite'
   // Lo mecánico no se planifica ni se pregunta si está listo: el clasificador ya leyó la aceptación y
   // dijo que nombra un valor literal. Volver a preguntarlo son dos llamadas para llegar al mismo lado.
@@ -728,6 +803,22 @@ while (rounds++ < MAX_TASKS) {
     + 'escribas ningún archivo vos: lo escribe el comando.',
     { label: `release:${task.id}` },
   )
+
+  // Sobre una superficie que la empresa declaró que no se puede romper, una sospecha bloqueante sin comprobar
+  // no se corrige —sería cambiar código por una hipótesis (R14)— ni se entrega —sería fallar abierto sobre lo
+  // crítico (R27)—: frena y la decide una persona. Fuera de esas superficies va al INBOX como el resto. La
+  // reserva no se suelta: hay trabajo construido, y otro runner tomaría la tarea sobre un árbol con cambios.
+  const uncheckedOnCritical = async (verdict) => {
+    if (!verdict.critical) return null
+    const unchecked = verdict.concerns.filter((one) => one.blocking && !one.decision && one.verified === false)
+    if (!unchecked.length) return null
+    const detail = unchecked.map(cite).join('; ')
+    const note = await registerHuman(`Registrá ${task.id} en ${HUMAN}: el diff toca la superficie crítica `
+      + `${verdict.critical} y la revisión señaló sin poder comprobarlo: ${detail}. La acción humana es `
+      + 'comprobarlo antes de reanudar: si es un defecto, se corrige antes de entregar; si no lo es, se deja '
+      + 'escrito por qué.', 'critical-human', task.id)
+    return stop('review-unverified', `${verdict.critical}: ${detail}${note}`)
+  }
 
   const planRejected = async (reason, unit, found) => {
     const detail = found.join('; ') || 'sin condiciones nombradas'
@@ -873,7 +964,7 @@ while (rounds++ < MAX_TASKS) {
       `Escribí el WIP y nada más: no toques código, no corras pruebas, no cierres la tarea y no escribas ` +
       `en DONE. Los pasos van sin tildar porque todavía no ocurrieron. task=${task.id}, ` +
       `hito=${JSON.stringify(task.hito)}, phase=Build, service=${task.service}, ` +
-      `acceptance=${JSON.stringify(task.acceptance)}, lane=${planning.lane || 'sin clasificar'}, ` +
+      `acceptance=${JSON.stringify(task.acceptance)}, lane=${lane}, ` +
       `pasos sin tildar=${JSON.stringify(plan.steps)}, ` +
       // La estrategia de prueba es `required` en el plan y hasta acá se descartaba, así que un paso que
       // decía «correr la mutación declarada en testStrategy» apuntaba a un lugar que no existía: quien
@@ -990,22 +1081,36 @@ while (rounds++ < MAX_TASKS) {
   // Qué revisión hubo, para que el cierre no pueda inventar una. Nace diciendo que no hubo porque
   // `express` no convoca a nadie, y ése es el caso que se escribió como si un cargo hubiera aprobado.
   let reviewFact = 'no corrió (el carril express no convoca revisor)'
+  if (express && planning.surfacesPending) reviewFact += ' · «Qué no se puede romper» tiene filas sin declarar'
   if (!express) {
     phase('Review')
     let review = await run(
-      `${asRole(cast.review)}Revisá el diff real por aceptación, regresiones, seguridad, arquitectura, código ` +
+      // La aceptación va en el prompt: es contra lo que se juzga el diff, y la del BACKLOG no trae lo que Ready
+      // pudo haber refinado en esta corrida (caso 210).
+      `${asRole(cast.review)}Revisá el diff real de ${task.id} contra su aceptación —${task.acceptance}— y por ` +
+      `regresiones, seguridad, arquitectura, código ` +
       `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.${MANIFEST}` +
-      `${VERDICT}${RULED}`,
+      `${VERDICT}${RULED}${SURFACED()}`,
       { schema: REVIEWED, label: 'review' },
     )
     if (!review) return stop('agent-unavailable', 'Review no devolvió resultado')
+    grounded(review)
     // Se junta apenas cada pasada contesta, y no al final: las paradas de abajo salen antes de llegar al
     // registro, y sin esto lo que el revisor señaló se iba con la corrida.
     const reviewDecisions = review.concerns.filter((one) => one.decision)
+    // Lo que esta pasada manda a corregir, con su regla al lado. Se guarda antes de la re-revisión, que
+    // reasigna `review`: sin esto lo corregido no llegaba a `done/` y la misma falla corregida en diez
+    // tareas no dejaba rastro en ninguna (caso 207).
+    const fixed = blockers(review)
+    // Lo que esta pasada sospechó sin comprobar va al INBOX y no a corregir. Se guarda por lo mismo que
+    // `fixed`: si la re-revisión no lo repite, sin esto no llegaba a ningún lado.
+    const suspected = review.concerns.filter((one) => one.blocking && !one.decision && one.verified === false)
     let decidedNote = ''
     if (review.verdict === 'bloqueado') {
       return stop('review-blocked', named(review).join('; ') || 'sin condiciones nombradas')
     }
+    const unproven = await uncheckedOnCritical(review)
+    if (unproven) return unproven
     if (blockers(review).length) {
       // «Sólo estos hallazgos» acota el alcance (R6) y por sí solo deja un cabo suelto: una corrección
       // tiene dependientes y no se anuncian —el conteo que enumeraba lo que cambió, el comentario que
@@ -1022,9 +1127,13 @@ while (rounds++ < MAX_TASKS) {
         + 'Traé también lo que tu propia corrección deje desactualizado —un conteo, un comentario que '
         + 'describa la forma vieja, una fila que la enumere— y nada más que eso.',
         { label: 'review-fix' })
-      review = await run(`Volvé a revisar el diff corregido de ${task.id}.${MANIFEST}${VERDICT}${RULED}`,
+      review = await run(`Volvé a revisar el diff corregido de ${task.id} contra su aceptación `
+        + `—${task.acceptance}—.${MANIFEST}${VERDICT}${RULED}${SURFACED()}`,
         { schema: REVIEWED, label: 'review' })
       if (!review) return stop('agent-unavailable', 'la re-revisión no devolvió resultado')
+      grounded(review)
+      const unprovenAgain = await uncheckedOnCritical(review)
+      if (unprovenAgain) return unprovenAgain
       reviewDecisions.push(...review.concerns.filter((one) => one.decision))
       if (review.verdict === 'bloqueado' || blockers(review).length) {
         return stop('review-failed', named(review).join('; ') || 'sin condiciones nombradas')
@@ -1065,6 +1174,16 @@ while (rounds++ < MAX_TASKS) {
       + (filed.length ? ` · ${filed.length} decisión(es) registrada(s)${decidedNote}` : '')
       + (decided.length > filed.length ? ` · ${decided.length - filed.length} decisión(es) sin volcar` : '')
       + ((review.rules || []).length ? ` · reglas: ${review.rules.join(', ')}` : '')
+    // Qué superficie crítica tocó, dicho siempre: «no toca ninguna» también es lo que se miró. Y si la tabla
+    // está sin declarar se dice acá, que es lo que llega a `done/`, en vez de suponer que no hay ninguna.
+    reviewFact += review.critical ? ` · toca la superficie crítica ${review.critical}`
+      : surfaces.length ? ' · no toca superficies críticas' : ''
+    if (planning.surfacesPending) reviewFact += ' · «Qué no se puede romper» tiene filas sin declarar'
+    // El tope y el conteo de lo que no entra son los del INBOX, más abajo, y por la misma razón.
+    if (fixed.length) {
+      reviewFact += ` · corregido: ${fixed.slice(0, INBOX_CAP).join(' | ')}`
+        + (fixed.length > INBOX_CAP ? ` · y ${fixed.length - INBOX_CAP} más` : '')
+    }
     // Lo que no impide entregar no manda a tocar código, y tampoco desaparece: la mejora opinable que se
     // corrige a las apuradas cuesta una vuelta y un riesgo que nadie pidió. Va a Propuestas y no a
     // Lecciones porque lo que la revisión anotó es un cambio del producto —su evidencia es la de la
@@ -1075,8 +1194,11 @@ while (rounds++ < MAX_TASKS) {
     const origin = inboxOrigin('autobuild', task.id, planning.today)
     // Lo marcado como decisión ya tiene destino y no se duplica acá: escrito en los dos lados, además de
     // aparecer dos veces, le come una ranura del tope a una propuesta que sí lo era.
-    const noted = review.concerns.filter((one) => !one.blocking && !one.decision)
-      .map((one) => withOrigin(one.detail, origin))
+    // Un bloqueante sin comprobar cae acá y no en la corrección, marcado: quien lo lea sabe que es una
+    // sospecha y no un defecto establecido.
+    const noted = [...new Set([...review.concerns, ...suspected]
+      .filter((one) => !one.decision && (!one.blocking || one.verified === false))
+      .map((one) => withOrigin(`${one.blocking ? '[sin verificar] ' : ''}${cite(one)}`, origin)))]
     const kept = noted.slice(0, INBOX_CAP)
     // Lo que pasa del tope no se escribe y tampoco desaparece: queda contado en el hecho de revisión, que
     // viaja a `done/`. Una revisión que anota treinta y seis cosas no está priorizando, y el INBOX no las
@@ -1196,14 +1318,19 @@ while (rounds++ < MAX_TASKS) {
   if (!commit.committed) return stop('commit-failed', commit.reason)
 
   phase('Done')
+  // `lane` y `review` se piden textuales: en una corrida real el agente resumió el hecho de revisión y
+  // perdió las reglas, la decisión y la superficie crítica, mientras el prompt —lo que mide el arnés— sí
+  // las traía (caso 211).
   await write(
     `Cerrá ${task.id} de forma atómica: escribí ${doneFile(task.id)} con su evidencia —acept, ` +
     `fecha: ${planning.today}, done, qa, tests, commit, lane y review, en el formato de entrada que trae ` +
     `este preámbulo—; ` +
     `sacala junto con sus notas indentadas de ${BACKLOG}; cerrá su épica sólo si no queda ` +
     `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE; y soltá la reserva corriendo ` +
-    `"node tools/ops.js release ${P} ${task.id}". En decisions no nombres una fase ni un cargo ` +
-    `que no figure en estos hechos. Hechos: lane=${planning.lane || 'sin clasificar'}; ` +
+    `"node tools/ops.js release ${P} ${task.id}". lane y review van textuales, copiados de estos hechos sin ` +
+    'resumir ni recortar: son lo que después se audita, y un resumen elige qué perder. ' +
+    `En decisions no nombres una fase ni un cargo ` +
+    `que no figure en estos hechos. Hechos: lane=${lane}; ` +
     `review=${reviewFact}; fases=${ran.join(' → ')}; build=${build.summary}; ` +
     `verify=${JSON.stringify(verified.commands)}; cubiertos=${JSON.stringify(covered)}; ` +
     (noSurface.length ? `sin-superficie=${JSON.stringify(noSurface.map(({ criterion, reason }) => ({
