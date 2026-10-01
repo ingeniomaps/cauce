@@ -41,6 +41,21 @@ test('lee lo corregido del review: cada hallazgo con su regla, sin lo que sigue'
     { detail: 'falta el índice', ref: 'criterio' },
   ])
   assert.deepEqual(LS.corrected('aprobado por software-architect'), [])
+  // Sin cita es criterio, y la misma regla con o sin la raíz delante es una sola.
+  assert.deepEqual(LS.corrected('corregido: sin cita | otro [rules/system/a.md#R9]'), [
+    { detail: 'sin cita', ref: 'criterio' },
+    { detail: 'otro', ref: 'planning/rules/system/a.md#R9' },
+  ])
+})
+
+test('la misma regla citada de dos formas cuenta como una', () => {
+  const dir = planning('cauce-lessons-forma-')
+  done(dir, 'alta', 'sin firma [planning/rules/system/commits.md#R8]')
+  done(dir, 'baja', 'sin firma [rules/system/commits.md#R8]')
+  const [one] = LS.candidates(dir).proposals
+  assert.deepEqual(one && [one.ref, one.tasks.sort()], [RULE, ['alta', 'baja']])
+  ledger(dir, ['| rules/system/commits.md#R8 | propuesta | alta, baja | 2026-10-01 |'])
+  assert.deepEqual(LS.candidates(dir).proposals, [], 'el registro también la reconoce escrita de otra forma')
 })
 
 test('una regla corregida en dos tareas vuelve como lección; en una sola, no', () => {

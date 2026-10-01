@@ -23,11 +23,23 @@ const THRESHOLD = 2
 // `detalle [ref]`, que es como `autobuild` escribe cada corrección dentro del `review` de `done/`.
 const ITEM = /^(.*\S)\s+\[([^\]]+)\]$/
 
+// Una regla se cita de varias formas —con la raíz delante o sin ella— y el Review las acepta todas. Se
+// cuentan por la ruta desde `rules/`, o la misma regla escrita de dos formas no llegaría nunca al umbral.
+function canonical(ref) {
+  const clean = ref.trim().replace(/^\.\//, '')
+  const at = clean.search(/(?:^|\/)rules\//)
+  return at === -1 ? clean : `planning/${clean.slice(at).replace(/^\//, '')}`
+}
+
+// Lo que no trae `[regla]` —el Review lo escribe así cuando el hallazgo vino sin cita— es criterio: se
+// lista con el resto en vez de perderse.
 function corrected(review) {
   const segment = String(review || '').match(/corregido:\s*(.*?)(?=\s·\s|$)/)
   if (!segment) return []
-  return segment[1].split(/\s\|\s/).map((item) => item.trim().match(ITEM)).filter(Boolean)
-    .map(([, detail, ref]) => ({ detail: detail.trim(), ref: ref.trim().replace(/^\.\//, '') }))
+  return segment[1].split(/\s\|\s/).map((item) => item.trim()).filter(Boolean).map((item) => {
+    const match = item.match(ITEM)
+    return match ? { detail: match[1].trim(), ref: canonical(match[2]) } : { detail: item, ref: 'criterio' }
+  })
 }
 
 function readLedger(dir) {
@@ -68,7 +80,7 @@ function candidates(dir) {
   const proposals = []
   for (const one of byRef.values()) {
     if (one.tasks.length < THRESHOLD) continue
-    const row = ledger.rows.find((candidate) => candidate.ref === one.ref)
+    const row = ledger.rows.find((candidate) => canonical(candidate.ref) === one.ref)
     if (row && row.state !== 'rechazada') continue
     if (row && one.tasks.every((task) => row.tasks.includes(task))) continue
     proposals.push({ ...one, name: lessonName(one.ref), reopened: Boolean(row) })
