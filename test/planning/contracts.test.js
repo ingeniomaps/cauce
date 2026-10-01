@@ -4,7 +4,7 @@
 // estado sin declarar rompen la referencia por la que todo el sistema los nombra, y eso no falla
 // solo — se lee como si estuviera bien. Las suites hermanas cubren épicas, cola y evidencia.
 
-const { tempRoot } = require('../support/environment')
+const { tempRoot, run } = require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -184,4 +184,53 @@ test('check avisa cuando dos secciones de una épica compiten por el mismo rol',
     '## Criterios\n\n- **C1** — real\n\n'
     + '## Historias (Tareas)\n\n- [ ] **x** (→ C1) — algo. (service: app)\n'))
   assert.deepEqual(SR.competingSections(root), [])
+})
+
+// Caso 208. Una regla derogada dice qué rige en su lugar o por qué se dio de baja. Que falte avisa —las
+// derogadas de antes no lo traían—, y lo que se escribe mal es error: citar algo que no existe, o a sí misma.
+test('una regla derogada dice qué la reemplaza, y la cita tiene que llevar a algo', () => {
+  const root = tempRoot('ops-business-rules-lineage-')
+  const rule = (id, state, extra = '') => `# Regla\n\n> **Dominio:** demo | **Estado:** ${state} | `
+    + `**Actualizado:** 2026-10-01\n${extra}\n## Reglas\n\n| ${id} | Regla | Resultado |\n`
+    + '\n## Por qué existe cada regla\n\n- Razón.\n\n## Historial\n\n- Creación.\n'
+  const write = (name, text) => fs.writeFileSync(path.join(root, name), text)
+  write('nueva.md', rule('BR-DEMO-002', 'vigente'))
+
+  write('vieja.md', rule('BR-DEMO-001', 'derogada'))
+  let result = B.lineage(root)
+  assert.deepEqual(result.errors, [])
+  assert.match(result.warnings.join('\n'), /vieja\.md: está derogada y no dice qué rige en su lugar/)
+
+  for (const line of ['> **Reemplazada por:** BR-DEMO-002', '> **Razón de baja:** la hace el banco.']) {
+    write('vieja.md', rule('BR-DEMO-001', 'derogada', line))
+    result = B.lineage(root)
+    assert.deepEqual(result, { errors: [], warnings: [] }, line)
+  }
+
+  write('vieja.md', rule('BR-DEMO-001', 'derogada', '> **Reemplazada por:** BR-DEMO-777'))
+  assert.match(B.lineage(root).errors.join('\n'), /la reemplaza BR-DEMO-777, que no existe/)
+  write('vieja.md', rule('BR-DEMO-001', 'derogada', '> **Reemplazada por:** BR-DEMO-001'))
+  assert.match(B.lineage(root).errors.join('\n'), /está en el mismo archivo y quedó derogada/)
+
+  // Lo vigente no tiene nada que declarar: el aviso es de las derogadas y de nadie más.
+  write('vieja.md', rule('BR-DEMO-001', 'vigente'))
+  assert.deepEqual(B.lineage(root), { errors: [], warnings: [] })
+})
+
+test('check avisa la derogada sin reemplazo y frena la cita rota', () => {
+  const target = path.join(tempRoot('ops-business-rules-check-'), 'demo')
+  assert.equal(run(['init', target, '--name', 'Linaje']).status, 0)
+  const file = path.join(target, 'planning', 'business-rules', 'vieja.md')
+  const rule = (extra = '') => '# Regla\n\n> **Dominio:** demo | **Estado:** derogada | **Actualizado:** 2026-10-01\n'
+    + `${extra}\n## Reglas\n\n| BR-DEMO-001 | Regla | Resultado |\n`
+    + '\n## Por qué existe cada regla\n\n- Razón.\n\n## Historial\n\n- Creación.\n'
+  fs.writeFileSync(file, rule())
+  const aviso = run(['check', path.join(target, 'planning')])
+  assert.equal(aviso.status, 0, aviso.stderr)
+  assert.match(`${aviso.stdout}${aviso.stderr}`, /vieja\.md: está derogada y no dice qué rige en su lugar/)
+
+  fs.writeFileSync(file, rule('> **Reemplazada por:** BR-DEMO-777'))
+  const rota = run(['check', path.join(target, 'planning')])
+  assert.equal(rota.status, 1)
+  assert.match(`${rota.stdout}${rota.stderr}`, /la reemplaza BR-DEMO-777, que no existe/)
 })

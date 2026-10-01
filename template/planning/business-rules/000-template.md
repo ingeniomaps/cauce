@@ -2,6 +2,10 @@
 
 > **Dominio:** nombre | **Estado:** propuesta | vigente | derogada | **Actualizado:** YYYY-MM-DD
 
+Si la regla pasa a `derogada`, debajo de la cabecera va `> **Reemplazada por:** BR-…` —la regla que rige
+en su lugar— o, si no la reemplaza ninguna, `> **Razón de baja:** …`. Una épica que la cite tiene que poder
+seguir el hilo.
+
 Describir brevemente el comportamiento de negocio compartido y el riesgo que controla. Las fuentes no obvias
 se citan como `[fuente: ruta#sección|ADR-NNN|URL]`; lo desconocido se marca `[supuesto: explicación]`.
 
