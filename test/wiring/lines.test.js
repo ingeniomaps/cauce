@@ -104,3 +104,39 @@ test('una línea se niega sin nombre válido, sin repositorio o sobre una carpet
   discard(path.join(loose, '.git'))
   assert.match(run(['line', loose, 'b']).stderr, /no está en un repositorio git/)
 })
+
+// Revisión de la rama: un hook propio con comillas escapadas rompía cualquier instalación, porque la
+// configuración se leía con una regex sobre el texto.
+test('un hook propio con comillas escapadas no rompe la reinstalación', () => {
+  const { base, target } = instance('cauce-line-quotes-')
+  const file = path.join(base, '.claude', 'settings.json')
+  const config = JSON.parse(fs.readFileSync(file, 'utf8'))
+  config.hooks.Stop.push({ hooks: [{ type: 'command', command: 'bash -c "echo hola"' }] })
+  fs.writeFileSync(file, JSON.stringify(config, null, 2))
+  const again = run(['automation', 'install', target, 'claude'])
+  assert.equal(again.status, 0, again.stderr)
+})
+
+test('el freno también vale para Codex, que escribe la ruta absoluta del árbol', () => {
+  const { base, target, git } = instance('cauce-line-codex-')
+  assert.equal(run(['automation', 'install', target, 'codex']).status, 0)
+  git('worktree', 'add', '-q', path.join(base, 'ops-b'), '-b', 'work/b')
+  linkEngine(path.join(base, 'ops-b'))
+  const moved = run(['automation', 'install', path.join(base, 'ops-b'), 'codex'])
+  assert.notEqual(moved.status, 0, 'movió los guards de Codex a otro árbol')
+  assert.match(moved.stderr, /ops line/)
+})
+
+test('una línea pedida por un enlace, o borrada a mano, se arma igual en su lugar', () => {
+  const { base, target } = instance('cauce-line-paths-')
+  const alias = `${base}-alias`
+  fs.symlinkSync(base, alias, 'dir')
+  const report = JSON.parse(run(['line', path.join(alias, path.basename(target)), 'b', '--json']).stdout)
+  assert.equal(report.home, `${fs.realpathSync(base)}-b`, 'por el enlace la línea cayó en otro lugar')
+
+  discard(report.home)
+  const rebuilt = run(['line', target, 'b', '--json'])
+  assert.equal(rebuilt.status, 0, rebuilt.stderr)
+  assert.equal(JSON.parse(rebuilt.stdout).reused, false, 'una línea borrada se dio por reusada')
+  assert.ok(fs.existsSync(path.join(report.home, 'ops', 'automatization', 'hooks')), 'quedó a medias')
+})

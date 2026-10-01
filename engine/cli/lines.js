@@ -43,7 +43,10 @@ function linkIfMissing(link, target) {
 }
 
 function line(dir, name, cli) {
-  const root = opsRoot(dir)
+  // Real, porque git devuelve rutas reales: mezcladas con una que pasa por un enlace, la línea caía en la
+  // carpeta compartida en vez de al lado.
+  const given = opsRoot(dir)
+  const root = fs.existsSync(given) ? fs.realpathSync(given) : given
   if (!name || !NAME.test(name)) {
     return fail('Falta el nombre, en minúsculas y con guiones. `ops line <ops-root> <nombre>`', USAGE)
   }
@@ -51,6 +54,8 @@ function line(dir, name, cli) {
   if (repo.status !== 0) return fail(`${root} no está en un repositorio git: una línea es un worktree de él.`, REFUSED)
   const where = layout(root, repo.stdout.trim(), name)
 
+  // Una línea borrada a mano sigue listada como prunable: sin podar, se daba por reusada y quedaba a medias.
+  if (!fs.existsSync(where.tree)) git(root, 'worktree', 'prune')
   const listed = git(root, 'worktree', 'list', '--porcelain').stdout || ''
   const reused = listed.split('\n').some((entry) => entry.trim() === `worktree ${where.tree}`)
   if (!reused) {

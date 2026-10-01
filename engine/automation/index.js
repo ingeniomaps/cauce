@@ -302,15 +302,19 @@ function uninstall(root, name, output = console) {
 }
 
 // A qué árbol apuntan los guards de Cauce de una configuración: lo que precede a `automatization/hooks/` en
-// cada comando. Devuelve los dos lados si la que ya está apunta a **otro árbol que existe**; una ruta que no
-// lleva a nada es cableado viejo que la instalación vino a reemplazar, y frenarlo sería impedir la migración.
+// cada comando, leído del objeto y no del texto —un hook propio con comillas escapadas rompía la regex—.
+// Devuelve los dos lados si la que ya está apunta a **otro árbol que existe**; una ruta que no lleva a nada
+// es cableado viejo que la instalación vino a reemplazar, y frenarlo impediría la migración.
 function foreignHooks(current, incoming, install) {
-  const prefixes = (config) => (JSON.stringify(config).match(/"command":"[^"]*"/g) || [])
-    .map((entry) => JSON.parse(`{${entry}}`).command)
+  const commands = (value) => (value && typeof value === 'object' ? Object.entries(value)
+    .flatMap(([key, inner]) => (key === 'command' && typeof inner === 'string' ? [inner] : commands(inner))) : [])
+  const prefixes = (config) => commands(config)
     .filter((command) => command.includes('automatization/hooks/'))
     .map((command) => command.slice(0, command.indexOf('automatization/hooks/')))
+  // Una variable del runner y la ruta relativa a la sesión, o una absoluta: Codex escribe `{{OPS_ROOT}}`.
   const hooksOf = (prefix) => {
-    const dir = path.join(install, prefix.replace(/^\$[A-Z_]+\/?/, ''), 'automatization', 'hooks')
+    const rest = prefix.replace(/^\$[A-Z_]+\/?/, '')
+    const dir = path.join(path.isAbsolute(rest) ? rest : path.join(install, rest), 'automatization', 'hooks')
     try { return fs.realpathSync(dir) } catch { return '' }
   }
   const [ours] = prefixes(incoming)
