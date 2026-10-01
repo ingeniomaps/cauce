@@ -272,6 +272,9 @@ const TEMPLATE_OWN = {
   'planning/BACKLOG.md': 'init',
   'planning/HUMAN_ACTIONS.md': 'init',
   'planning/INBOX.md': 'init',
+  // 0.101.0. El cierre de `autobuild` lo escribe y `check` lo valida, así que la instancia que actualiza lo
+  // necesita igual que la nueva; el recorrido lo crea si falta, pero sin la explicación de sus estados.
+  'planning/LESSONS.md': 'upgrade',
   // 0.69.0. El contrato nace con esta versión, así que ninguna instancia anterior lo tiene: por `init`
   // no llegaría nunca a la que ya existe, que es justo la que iba a usarlo.
   'planning/RECURRING.md': 'upgrade',
