@@ -309,7 +309,8 @@ function outsideRoots(file, allowed) {
 // Va en los dos bloqueos y no en uno: un límite que sólo dice «no» enseña a rodearlo, y el rodeo que
 // este mensaje evita es cambiar de herramienta, que es por donde el límite se perdía entero.
 const DECLARE_IT = 'Si el proyecto necesita escribir ahí, declaralo en writableOutsideRoots de '
-  + 'ops.config.json; cambiar de herramienta no lo autoriza.'
+  + 'ops.config.json, o de ops.config.local.json si la ruta es sólo de esta máquina; cambiar de herramienta '
+  + 'no lo autoriza.'
 
 // La raíz donde vive `planning/`, que es donde se busca la aprobación. La resuelven igual los guards de
 // archivos, los de shell y la aprobación misma, así que se resuelve en un solo lugar.
