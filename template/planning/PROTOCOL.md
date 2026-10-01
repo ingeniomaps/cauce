@@ -71,7 +71,9 @@ invariantes.
 6. Plan y Critique: entender contexto, escribir plan y atacarlo una vez.
 7. WIP: persistir el plan aprobado antes del primer cambio.
 8. Build: alcance exacto, progreso tildado, RED/GREEN/VERIFY aplicable.
-9. Review: calidad y seguridad según la superficie modificada.
+9. Review: calidad y seguridad según la superficie modificada. Cada hallazgo nombra la regla que lo
+   sostiene o se declara criterio, y dice si se comprobó: lo que no se comprobó se registra y no manda a
+   corregir.
 10. Verify: ejecutar los gates declarados por el servicio y registrar exit codes.
 11. QA: probar la aceptación por el camino que usa un consumidor real.
 12. Commit: stage explícito y commits verificables, uno por naturaleza del diff.

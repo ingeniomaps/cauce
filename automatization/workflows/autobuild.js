@@ -195,7 +195,12 @@ const REVIEWED = { ...DECISION, required: [...DECISION.required, 'rules', 'criti
     // llegaría acá y ninguna prueba lo notaría.
     concerns: { ...DECISION.properties.concerns,
       items: { ...DECISION.properties.concerns.items,
-        properties: { ...DECISION.properties.concerns.items.properties, decision: { type: 'boolean' } },
+        // `ref` y `verified` son del Review y no de Critique, que critica un plan sin diff que comprobar
+        // (caso 206): de dónde sale cada hallazgo —una regla que rige o `criterio`—, y si el revisor
+        // comprobó lo que afirma o lo supone.
+        required: [...DECISION.properties.concerns.items.required, 'ref', 'verified'],
+        properties: { ...DECISION.properties.concerns.items.properties, decision: { type: 'boolean' },
+          ref: { type: 'string' }, verified: { type: 'boolean' } },
       } },
   } }
 // Un exit code dice que el test corrió, no que pruebe lo que la tarea prometió: un test que asercia de
@@ -356,7 +361,11 @@ const VERDICT = ' Cerrá con verdict=aprobado si no queda nada por corregir ante
 const RULED = ' En rules nombrá, por su ruta, cada una de las reglas que rigen contra la que revisaste'
   + ' el diff. Y marcá decision=true en el hallazgo que no te toca resolver a vos —una definición de'
   + ' producto, un contrato público, una autoridad que el cargo no tiene—: ése se registra para una'
-  + ' persona y no manda a tocar código.'
+  + ' persona y no manda a tocar código. En cada hallazgo, ref es la regla que lo sostiene, con su ruta y su'
+  + ' número —<ruta>#<número>— y una de las que rigen, o la palabra criterio si es juicio tuyo sin regla'
+  + ' escrita; nunca presentes un criterio como regla. Y verified es true sólo si comprobaste lo que el hallazgo'
+  + ' afirma —leíste el código que lo muestra, corriste el comando—; si lo suponés, false: un hallazgo sin'
+  + ' comprobar no manda a corregir, se registra.'
 // También acompaña a todo prompt con schema REVIEWED, y es función porque las superficies se leen después.
 const SURFACED = () => ((planning && (planning.surfaces || []).length)
   ? ` En critical poné la superficie de esta lista que el diff toca, tal cual, o vacío si no toca ninguna: `
@@ -366,8 +375,25 @@ const SURFACED = () => ((planning && (planning.surfaces || []).length)
 // Lo que hay que corregir antes de entregar. El resto de los hallazgos no desaparece: se registra.
 // Una decisión no cuenta como bloqueante aunque venga marcada: su destino es la fila, no la corrección.
 // Critique no la emite —no está en su esquema— así que para él `one.decision` es siempre `undefined`.
+//
+// Un hallazgo que el revisor no comprobó tampoco manda a corregir: es R14 —una hipótesis no sostiene una
+// negativa— con mecanismo (caso 206). Se compara contra `false` y no por verdad porque Critique no
+// declara el campo, y para él todo bloqueante sigue bloqueando; el esquema de Review lo exige.
 const blockers = (verdict) => verdict.concerns
-  .filter((one) => one.blocking && !one.decision).map((one) => one.detail)
+  .filter((one) => one.blocking && !one.decision && one.verified !== false).map(cite)
+// El hallazgo con la regla que lo sostiene al lado: es lo que llega a quien corrige y a `done/`.
+const cite = (one) => (one.ref ? `${one.detail} [${one.ref}]` : one.detail)
+// Un `ref` que nombra una regla que no rige es una cita sin base. No se borra ni se corrige en silencio
+// —R14: sigue viaje marcada—; pasa a criterio diciendo qué citó, y el hallazgo conserva su peso.
+const grounded = (verdict) => {
+  for (const one of verdict.concerns) {
+    const ref = String(one.ref || '').trim()
+    if (ref && ref !== 'criterio' && !governing.includes(ref.split('#')[0])) {
+      one.ref = `criterio (citó ${ref}, que no rige)`
+    }
+  }
+  return verdict
+}
 // Lo que una parada tiene que nombrar es todo lo que el revisor señaló, no sólo lo que manda a corregir:
 // con `blockers` solo, un veredicto cuyo único hallazgo es una decisión paraba diciendo que nadie nombró
 // ninguna condición. El motivo es lo único que queda para leer cuando la corrida terminó.
@@ -1038,6 +1064,7 @@ while (rounds++ < MAX_TASKS) {
       { schema: REVIEWED, label: 'review' },
     )
     if (!review) return stop('agent-unavailable', 'Review no devolvió resultado')
+    grounded(review)
     // Se junta apenas cada pasada contesta, y no al final: las paradas de abajo salen antes de llegar al
     // registro, y sin esto lo que el revisor señaló se iba con la corrida.
     const reviewDecisions = review.concerns.filter((one) => one.decision)
@@ -1064,6 +1091,7 @@ while (rounds++ < MAX_TASKS) {
       review = await run(`Volvé a revisar el diff corregido de ${task.id}.${MANIFEST}${VERDICT}${RULED}${SURFACED()}`,
         { schema: REVIEWED, label: 'review' })
       if (!review) return stop('agent-unavailable', 'la re-revisión no devolvió resultado')
+      grounded(review)
       reviewDecisions.push(...review.concerns.filter((one) => one.decision))
       if (review.verdict === 'bloqueado' || blockers(review).length) {
         return stop('review-failed', named(review).join('; ') || 'sin condiciones nombradas')
@@ -1119,8 +1147,10 @@ while (rounds++ < MAX_TASKS) {
     const origin = inboxOrigin('autobuild', task.id, planning.today)
     // Lo marcado como decisión ya tiene destino y no se duplica acá: escrito en los dos lados, además de
     // aparecer dos veces, le come una ranura del tope a una propuesta que sí lo era.
-    const noted = review.concerns.filter((one) => !one.blocking && !one.decision)
-      .map((one) => withOrigin(one.detail, origin))
+    // Un bloqueante sin comprobar cae acá y no en la corrección, marcado: quien lo lea sabe que es una
+    // sospecha y no un defecto establecido.
+    const noted = review.concerns.filter((one) => !one.decision && (!one.blocking || one.verified === false))
+      .map((one) => withOrigin(`${one.blocking ? '[sin verificar] ' : ''}${cite(one)}`, origin))
     const kept = noted.slice(0, INBOX_CAP)
     // Lo que pasa del tope no se escribe y tampoco desaparece: queda contado en el hecho de revisión, que
     // viaja a `done/`. Una revisión que anota treinta y seis cosas no está priorizando, y el INBOX no las
