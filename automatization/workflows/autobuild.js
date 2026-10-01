@@ -1058,7 +1058,10 @@ while (rounds++ < MAX_TASKS) {
   if (!express) {
     phase('Review')
     let review = await run(
-      `${asRole(cast.review)}Revisá el diff real por aceptación, regresiones, seguridad, arquitectura, código ` +
+      // La aceptación va en el prompt: es contra lo que se juzga el diff, y la del BACKLOG no trae lo que Ready
+      // pudo haber refinado en esta corrida (caso 210).
+      `${asRole(cast.review)}Revisá el diff real de ${task.id} contra su aceptación —${task.acceptance}— y por ` +
+      `regresiones, seguridad, arquitectura, código ` +
       `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.${MANIFEST}` +
       `${VERDICT}${RULED}${SURFACED()}`,
       { schema: REVIEWED, label: 'review' },
@@ -1092,7 +1095,8 @@ while (rounds++ < MAX_TASKS) {
         + 'Traé también lo que tu propia corrección deje desactualizado —un conteo, un comentario que '
         + 'describa la forma vieja, una fila que la enumere— y nada más que eso.',
         { label: 'review-fix' })
-      review = await run(`Volvé a revisar el diff corregido de ${task.id}.${MANIFEST}${VERDICT}${RULED}${SURFACED()}`,
+      review = await run(`Volvé a revisar el diff corregido de ${task.id} contra su aceptación —${task.acceptance}—.`
+        + `${MANIFEST}${VERDICT}${RULED}${SURFACED()}`,
         { schema: REVIEWED, label: 'review' })
       if (!review) return stop('agent-unavailable', 'la re-revisión no devolvió resultado')
       grounded(review)

@@ -106,3 +106,20 @@ test('lo corregido lleva tope y cuenta lo que no entra', async () => {
   assert.doesNotMatch(doneFacts(run), /hallazgo 4/)
   assert.match(doneFacts(run), /y 2 más/)
 })
+
+// Caso 210. Review juzga el diff contra la aceptación, así que la recibe —y la que rige, que puede ser la
+// que Ready refinó en esta corrida, no la que sigue escrita en el BACKLOG—.
+test('las dos pasadas de Review reciben la aceptación que rige', async () => {
+  const run = await flow([finding({ ref: RULE, verified: true })])
+  const passes = run.prompts.filter((one) => one.key === KEY.review)
+  assert.equal(passes.length, 2, 'la primera revisión y la re-revisión')
+  for (const { prompt: text } of passes) assert.ok(text.includes('el alta rechaza un duplicado'), text.slice(-300))
+
+  const refined = await runFlow({
+    [KEY.context]: { ...baseScript()[KEY.context], rules: RULES },
+    [KEY.ready]: { ready: true, needsHuman: false, refinedAcceptance: 'el alta rechaza un email duplicado' },
+    [KEY.review]: approved,
+  })
+  ranToEnd(refined.result)
+  assert.ok(prompt(refined, KEY.review).includes('el alta rechaza un email duplicado'), 'no recibió la refinada')
+})
