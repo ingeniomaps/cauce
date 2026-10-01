@@ -49,6 +49,9 @@ test('check avisa la carpeta que no es sección y el archivo que no se llama com
   write(dir, 'inbox/propuestas/cache-de-precios.md', entry('cache-de-precios'))
   write(dir, 'inbox/propuestas/otro-nombre.md', entry('reintentos-pagos'))
   write(dir, 'inbox/mejoras/algo.md', entry('algo'))
+  // Con tilde o sin ella el archivo se llama como su entrada: el prompt no pide quitarlas.
+  write(dir, 'inbox/ideas/revisión-de-precios.md', entry('revisión-de-precios'))
+  write(dir, 'inbox/ideas/revision-de-pagos.md', entry('revisión-de-pagos'))
   assert.deepEqual(IN.warnings(dir, noDone, {}), [
     'inbox/mejoras/: no es una sección (deuda, ideas, propuestas, lecciones); lo que tiene no se lee',
     'inbox/propuestas/otro-nombre.md: la entrada se llama **reintentos-pagos**; renombrá el archivo',

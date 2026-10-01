@@ -27,8 +27,9 @@ function warnings(root, done, config) {
   // avisa en vez de fallar (caso 106).
   for (const [section, names] of Object.entries(P.inboxHeads(root))) {
     for (const name of names.filter((one) => done.set.has(one))) {
-      const own = `inbox/${section}/${slug(name)}.md`
-      const where = fs.existsSync(path.join(root, own)) ? own : FILE
+      const own = slugs(name).map((one) => `inbox/${section}/${one}.md`)
+        .find((one) => fs.existsSync(path.join(root, one)))
+      const where = own || FILE
       found.push(`${where}: **${name}** se llama como done/${name}.md; si ya se promovió, borrala`)
     }
   }
@@ -50,7 +51,7 @@ function entryWarnings(root) {
     for (const file of P.inboxFiles(root, folder.name)) {
       const base = path.basename(file, '.md')
       const names = P.entryNames(P.read(file))
-      if (names.length === 1 && slug(names[0]) !== base) {
+      if (names.length === 1 && !slugs(names[0]).includes(base)) {
         found.push(`inbox/${folder.name}/${base}.md: la entrada se llama **${names[0]}**; renombrá el archivo`)
       }
     }
@@ -58,9 +59,11 @@ function entryWarnings(root) {
   return found
 }
 
-function slug(name) {
-  return name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
+// El prompt pide «minúsculas y con guiones» y no dice qué hacer con una tilde: vale con ella y sin ella.
+function slugs(name) {
+  const plain = name.toLowerCase().normalize('NFC')
+  return [plain, plain.normalize('NFD').replace(/[\u0300-\u036f]/g, '')]
+    .map((one) => one.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, ''))
 }
 
 module.exports = { warnings }
