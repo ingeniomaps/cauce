@@ -212,6 +212,13 @@ test('una regla derogada dice qué la reemplaza, y la cita tiene que llevar a al
   write('vieja.md', rule('BR-DEMO-001', 'derogada', '> **Reemplazada por:** BR-DEMO-001'))
   assert.match(B.lineage(root).errors.join('\n'), /está en el mismo archivo y quedó derogada/)
 
+  // Un reemplazo que también está derogado deja el hilo en algo que no rige: avisa, porque esa derogada
+  // puede nombrar a su vez la que sí rige.
+  write('nueva.md', rule('BR-DEMO-002', 'derogada', '> **Razón de baja:** se fusionó.'))
+  write('vieja.md', rule('BR-DEMO-001', 'derogada', '> **Reemplazada por:** BR-DEMO-002'))
+  assert.match(B.lineage(root).warnings.join('\n'), /la reemplaza BR-DEMO-002, que también está derogada/)
+  write('nueva.md', rule('BR-DEMO-002', 'vigente'))
+
   // Lo vigente no tiene nada que declarar: el aviso es de las derogadas y de nadie más.
   write('vieja.md', rule('BR-DEMO-001', 'vigente'))
   assert.deepEqual(B.lineage(root), { errors: [], warnings: [] })

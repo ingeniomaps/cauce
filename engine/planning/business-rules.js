@@ -67,13 +67,18 @@ function lineage(root) {
   const errors = []
   const warnings = []
   const known = new Set()
+  const gone = new Set()
   const derogated = []
   for (const file of markdownFiles(root)) {
     const relative = path.relative(path.dirname(root), file)
     const source = fs.readFileSync(file, 'utf8')
-    for (const match of source.matchAll(ID_PATTERN)) known.add(match[1])
+    const ids = [...source.matchAll(ID_PATTERN)].map((match) => match[1])
+    for (const id of ids) known.add(id)
     const metadata = source.match(METADATA)
-    if (metadata && metadata[2].trim().toLowerCase() === 'derogada') derogated.push({ relative, source })
+    if (metadata && metadata[2].trim().toLowerCase() === 'derogada') {
+      derogated.push({ relative, source })
+      for (const id of ids) gone.add(id)
+    }
   }
   for (const { relative, source } of derogated) {
     const replacement = source.match(REPLACED_BY)
@@ -84,6 +89,10 @@ function lineage(root) {
       // La que la reemplaza está en el mismo archivo, así que quedó derogada con ella: el hilo no lleva a nada.
       errors.push(`${relative}: dice que la reemplaza ${replacement[1]}, que está en el mismo archivo y quedó `
         + 'derogada con ella')
+    } else if (replacement && gone.has(replacement[1])) {
+      // Avisa y no rompe: la derogada intermedia puede nombrar a su vez la que rige, y el hilo se sigue.
+      warnings.push(`${relative}: la reemplaza ${replacement[1]}, que también está derogada; apuntá a la regla `
+        + 'que rige')
     } else if (!replacement && !DROPPED.test(source)) {
       warnings.push(`${relative}: está derogada y no dice qué rige en su lugar; agregá «**Reemplazada por:** `
         + 'BR-…» o, si no la reemplaza ninguna, «**Razón de baja:** …»')
