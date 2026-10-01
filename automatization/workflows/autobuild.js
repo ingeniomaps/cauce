@@ -733,6 +733,10 @@ while (rounds++ < MAX_TASKS) {
   }
   const express = planning.lane === 'express' && !critical
   const direct = planning.lane === 'directo' || (planning.lane === 'express' && Boolean(critical))
+  // El carril que corrió, que es el que va al WIP y a `done/`: decir `express` de una tarea que pasó por
+  // Review deja un registro que contradice lo que pasó. Va el valor a secas —`check` sólo acepta los del
+  // vocabulario— y el porqué viaja en el hecho de revisión, que nombra la superficie.
+  const lane = critical ? 'directo' : planning.lane || 'sin clasificar'
   const lite = planning.lane === 'lite'
   // Lo mecánico no se planifica ni se pregunta si está listo: el clasificador ya leyó la aceptación y
   // dijo que nombra un valor literal. Volver a preguntarlo son dos llamadas para llegar al mismo lado.
@@ -937,7 +941,7 @@ while (rounds++ < MAX_TASKS) {
       `Escribí el WIP y nada más: no toques código, no corras pruebas, no cierres la tarea y no escribas ` +
       `en DONE. Los pasos van sin tildar porque todavía no ocurrieron. task=${task.id}, ` +
       `hito=${JSON.stringify(task.hito)}, phase=Build, service=${task.service}, ` +
-      `acceptance=${JSON.stringify(task.acceptance)}, lane=${planning.lane || 'sin clasificar'}, ` +
+      `acceptance=${JSON.stringify(task.acceptance)}, lane=${lane}, ` +
       `pasos sin tildar=${JSON.stringify(plan.steps)}, ` +
       // La estrategia de prueba es `required` en el plan y hasta acá se descartaba, así que un paso que
       // decía «correr la mutación declarada en testStrategy» apuntaba a un lugar que no existía: quien
@@ -1095,8 +1099,8 @@ while (rounds++ < MAX_TASKS) {
         + 'Traé también lo que tu propia corrección deje desactualizado —un conteo, un comentario que '
         + 'describa la forma vieja, una fila que la enumere— y nada más que eso.',
         { label: 'review-fix' })
-      review = await run(`Volvé a revisar el diff corregido de ${task.id} contra su aceptación —${task.acceptance}—.`
-        + `${MANIFEST}${VERDICT}${RULED}${SURFACED()}`,
+      review = await run(`Volvé a revisar el diff corregido de ${task.id} contra su aceptación `
+        + `—${task.acceptance}—.${MANIFEST}${VERDICT}${RULED}${SURFACED()}`,
         { schema: REVIEWED, label: 'review' })
       if (!review) return stop('agent-unavailable', 'la re-revisión no devolvió resultado')
       grounded(review)
@@ -1290,7 +1294,7 @@ while (rounds++ < MAX_TASKS) {
     `sacala junto con sus notas indentadas de ${BACKLOG}; cerrá su épica sólo si no queda ` +
     `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE; y soltá la reserva corriendo ` +
     `"node tools/ops.js release ${P} ${task.id}". En decisions no nombres una fase ni un cargo ` +
-    `que no figure en estos hechos. Hechos: lane=${planning.lane || 'sin clasificar'}; ` +
+    `que no figure en estos hechos. Hechos: lane=${lane}; ` +
     `review=${reviewFact}; fases=${ran.join(' → ')}; build=${build.summary}; ` +
     `verify=${JSON.stringify(verified.commands)}; cubiertos=${JSON.stringify(covered)}; ` +
     (noSurface.length ? `sin-superficie=${JSON.stringify(noSurface.map(({ criterion, reason }) => ({

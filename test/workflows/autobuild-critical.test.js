@@ -76,3 +76,13 @@ test('lo que Review dice de las superficies llega a done/, también cuando no to
   const pendiente = await runFlow(withSurfaces({ critical: '' }, { surfacesPending: true }))
   assert.match(doneFacts(pendiente), /review=[^;]*filas sin declarar/)
 })
+
+// La corrida real del 2026-10-01 lo mostró: la tarea subió y pasó por Review, y `done/` decía `express`.
+test('el carril que llega al WIP y a done/ es el que corrió', async () => {
+  const subida = await runFlow(withSurfaces({ critical: SURFACE }), { lane: 'express', vouched: true })
+  assert.match(doneFacts(subida), /Hechos: lane=directo;/)
+  assert.match((subida.prompts.find((one) => one.key === KEY.wip) || {}).prompt || '', /lane=directo,/)
+
+  const intacta = await runFlow(withSurfaces({ critical: '' }), { lane: 'express', vouched: true })
+  assert.match(doneFacts(intacta), /Hechos: lane=express;/)
+})
