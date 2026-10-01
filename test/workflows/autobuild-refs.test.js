@@ -123,3 +123,10 @@ test('las dos pasadas de Review reciben la aceptación que rige', async () => {
   ranToEnd(refined.result)
   assert.ok(prompt(refined, KEY.review).includes('el alta rechaza un email duplicado'), 'no recibió la refinada')
 })
+
+// Caso 211. El prompt de Done traía el hecho de revisión y el agente lo resumía al escribirlo: lo que mide
+// esta prueba es el pedido de copia textual; que se cumpla lo midió la corrida real que el caso cita.
+test('Done pide lane y review textuales', async () => {
+  const run = await flow([])
+  assert.match(prompt(run, 'Done|done'), /lane y review van textuales, copiados de estos hechos sin resumir/)
+})

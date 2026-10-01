@@ -1287,13 +1287,18 @@ while (rounds++ < MAX_TASKS) {
   if (!commit.committed) return stop('commit-failed', commit.reason)
 
   phase('Done')
+  // `lane` y `review` se piden textuales: en una corrida real el agente resumió el hecho de revisión y
+  // perdió las reglas, la decisión y la superficie crítica, mientras el prompt —lo que mide el arnés— sí
+  // las traía (caso 211).
   await write(
     `Cerrá ${task.id} de forma atómica: escribí ${doneFile(task.id)} con su evidencia —acept, ` +
     `fecha: ${planning.today}, done, qa, tests, commit, lane y review, en el formato de entrada que trae ` +
     `este preámbulo—; ` +
     `sacala junto con sus notas indentadas de ${BACKLOG}; cerrá su épica sólo si no queda ` +
     `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE; y soltá la reserva corriendo ` +
-    `"node tools/ops.js release ${P} ${task.id}". En decisions no nombres una fase ni un cargo ` +
+    `"node tools/ops.js release ${P} ${task.id}". lane y review van textuales, copiados de estos hechos sin ` +
+    'resumir ni recortar: son lo que después se audita, y un resumen elige qué perder. ' +
+    `En decisions no nombres una fase ni un cargo ` +
     `que no figure en estos hechos. Hechos: lane=${lane}; ` +
     `review=${reviewFact}; fases=${ran.join(' → ')}; build=${build.summary}; ` +
     `verify=${JSON.stringify(verified.commands)}; cubiertos=${JSON.stringify(covered)}; ` +
