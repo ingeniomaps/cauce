@@ -78,6 +78,14 @@ diseño — eso vive en el commit y en el código.
 
 ### Cambiado
 
+- **`verify` tiene tope, corre de a uno y no escribe en tu árbol.** Cada gate se corta a los 10 minutos
+  —con todo lo que lanzó, sin dejar procesos huérfanos— y el bloqueo dice que fue el tope; lo cambiás con
+  `runner.gateTimeoutMinutes` en `ops.config.json`. Dos commits a la vez ya no corren dos suites en paralelo:
+  el segundo espera. Y cuando el commit coincide con tu árbol, `verify` no corre `build` ni un lint con
+  `--fix`, que escribirían en él; sobre la copia del índice siguen corriendo. Si querés `build` también en el
+  árbol, nombralo en el `verify` de la raíz (`"verify": "npm test && npm run build"`), y si tu `lint` lleva
+  `--fix`, `check` te avisa que agregues uno que sólo revise. Si habías puesto `OPS_SKIP_VERIFY=1` por lo que
+  costaba, podés sacarlo.
 - **R27 nombra la salida cuando cerrar por defecto rompe el uso diario:** abrir por defecto, con una prueba
   que recorre lo que existe y falla hasta que cada elemento nuevo esté clasificado.
 
