@@ -1,14 +1,15 @@
 ---
 caso: 213
 titulo: una regla de negocio no distingue si rige de si alguien la confirmó
-estado: abierto
+estado: resuelto
+resuelto-en: 0.101.0
 prioridad: media
 version-detectada: 0.99.2
 ---
 
 # 213 — `Estado` mezcla dos preguntas: si la regla rige y si alguien con autoridad confirmó que es correcta
 
-**🔴 abierto** · detectado en 0.99.2 · prioridad **media**.
+**🟢 resuelto en 0.101.0** · detectado en 0.99.2 · prioridad **media**.
 
 **Prioridad media**: no rompe nada, pero un cargo que lee el código y escribe la regla la puede dejar
 `vigente` describiendo un defecto como comportamiento correcto, y nada distingue esa regla de una que
@@ -68,3 +69,21 @@ Revisión de los repositorios de Dropi del 2026-10-01: su catálogo separa vigen
 ## Relacionados
 
 - 208 — el otro cambio a la cabecera de una regla de negocio.
+
+## Cierre
+
+Recorrido contra el caso entero:
+
+- **Fix 1, `Verificación` en la cabecera** → se hizo.
+- **Fix 2, `ratificada` exige autoridad propia** → se hizo: una confirmación que no dice «autoridad propia» es
+  error.
+- **Fix 3, `discrepancia` exige la pregunta abierta** → se hizo.
+- **Fix 4, las reglas existentes no se cortan** → se hizo: sin el campo, aviso.
+- **Tradeoff, un aviso por regla existente** → aceptado. Las reglas del sistema del molde (`BR-OPS-001` a
+  `005`) se declararon `ratificada` por sus mantenedores, así que ninguna instancia recibe avisos por ellas.
+- **Tradeoff, más ceremonia** → aceptado.
+
+**Probado corriendo.** `check` del molde pasa limpio con las reglas del sistema ratificadas. Arnés: dos
+casos en `test/planning/contracts.test.js`, uno sobre el módulo y otro por `check` en una instancia creada con
+`init`. Mutaciones vistas en rojo: sin aviso, vocabulario abierto, ratificar sin autoridad, discrepancia sin
+pregunta y `check` sin cablear.
