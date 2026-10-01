@@ -18,6 +18,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Dos épicas con el mismo número se arreglan con un comando.** Dos líneas de trabajo que crean una épica a
+  la vez pueden tomar el mismo número; `check` ya lo marcaba, y ahora nombra las dos y dice cómo salir:
+  `node tools/ops.js renumber-epic planning <epic-NNN-slug> <NNN>` mueve la que todavía no llegó a la rama
+  principal, con su frontmatter, el `(epic: NNN)` de sus tareas y las rutas que la citan. Las tareas de la
+  otra épica no se tocan, y no reutiliza el número de una épica cerrada.
 - **Las rutas escribibles de tu máquina ya no tienen que ir al archivo compartido.** `writableOutsideRoots`
   se suma también desde `ops.config.local.json`, en la raíz de la instancia: ahí va la memoria de tu runner o
   una carpeta de otro proyecto tuyo, sin que viaje a todos los que clonan. De ese archivo sólo se lee esa

@@ -26,6 +26,7 @@ const FLAGS = {
   lessons: ['--json'],
   inbox: ['--json'],
   'split-backlog': [],
+  'renumber-epic': [],
   line: ['--json'],
   claim: ['--json'],
   runners: ['--json'],
