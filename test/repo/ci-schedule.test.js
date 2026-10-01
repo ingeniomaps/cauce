@@ -166,7 +166,8 @@ test('no se pide una firma por una propuesta que no decide nada', () => {
   assert.match(compone, /decided=false' >> "\$GITHUB_OUTPUT"/, 'el veredicto sale del paso que compone')
   assert.match(compone, /decided=true' >> "\$GITHUB_OUTPUT"/)
   assert.match(source, /id: proposal/, 'y el paso se nombra para que el siguiente lo lea')
-  assert.match(source, /DECIDED: \$\{\{ steps\.proposal\.outputs\.decided \}\}/)
+  // Cuando el recorrido no corrió, el veredicto que manda sigue siendo el de este paso.
+  assert.match(source, /DECIDED: \$\{\{ .*\|\| steps\.proposal\.outputs\.decided \}\}/)
 
   const abre = cuerpo('Open proposal pull request')
   const push = abre.indexOf('git push origin')
