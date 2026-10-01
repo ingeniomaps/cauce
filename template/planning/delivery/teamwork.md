@@ -9,7 +9,7 @@ choques entre dos personas —o entre dos agentes— salen de tratarlas igual.
 
 | Anillo | Qué vive ahí | Escritores | Frecuencia |
 |---|---|---|---|
-| **Compartido** | `roadmap/`, `BACKLOG.md`, `INBOX.md`, `HUMAN_ACTIONS.md`, `done/`, reglas y ADR | cualquiera, en actos humanos | baja |
+| **Compartido** | `roadmap/`, `BACKLOG.md`, `INBOX.md` e `inbox/`, `HUMAN_ACTIONS.md`, `done/`, reglas y ADR | cualquiera, en actos humanos | baja |
 | **Coordinación** | `claims/`, un archivo por tarea tomada | uno por tarea | dos veces por tarea |
 | **Local** | `wip/<runner>.md`, `.verify-log`, `.push-log`, el árbol de trabajo | vos | continua |
 

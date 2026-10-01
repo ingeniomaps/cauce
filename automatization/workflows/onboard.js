@@ -189,7 +189,7 @@ const drafted = await agent(
   `del runner, que hoy declara runner.allowPush=false.\n` +
   `Devolvé en files cada archivo que tocaste, en assumptions cada supuesto que dejaste marcado y en ` +
   `openQuestions las preguntas que quedaron abiertas, de la más a la menos importante. No las escribas en ` +
-  `${INBOX}: eso lo hace el paso siguiente.`,
+  `${P}/INBOX.md ni en ${INBOX}: eso lo hace el paso siguiente.`,
   { schema: WRITTEN, label: 'contexto' },
 )
 if (!drafted) return stop('draft-unavailable', 'los borradores no devolvieron resultado')

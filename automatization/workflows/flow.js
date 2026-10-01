@@ -429,7 +429,7 @@ if (contract.outcome === 'report') {
     `queda abierto. Separá causa de síntoma y no atribuyas responsabilidad a personas. Cada seguimiento ` +
     `va en lo que queda abierto del informe y además en followUps, del más al menos importante, con la ` +
     `sección que le toca por su sujeto: un cambio del producto va a Propuestas, lo aprendido sobre cómo ` +
-    `trabajamos va a Lecciones. No escribas en ${INBOX}: eso lo hace el paso siguiente. ` +
+    `trabajamos va a Lecciones. No escribas en ${P}/INBOX.md ni en ${INBOX}: eso lo hace el paso siguiente. ` +
     `Toda acción que requiera una persona, en ${HUMAN}.`,
     { schema: { type: 'object', required: ['file', 'followUps'], properties: {
       file: { type: 'string' }, summary: { type: 'string' },
