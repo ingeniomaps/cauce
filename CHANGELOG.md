@@ -14,6 +14,34 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.100.0] - 2026-10-01
+
+### Agregado
+
+- **Una tarea que toca lo que no se puede romper no va por `express`.** `autobuild` lee la tabla «Qué no
+  se puede romper» de `organization/company.md` y, si una tarea `express` toca una de esas superficies,
+  la sube a `directo`, que pasa por Review. Lo que no puede determinar también lo sube. La entrada de
+  `done/` dice qué superficie tocó la entrega, o que no tocó ninguna, y avisa si la tabla tiene filas sin
+  declarar. Si la tuya sigue en `Por definir`, llenarla es lo que activa esto.
+- **Cada hallazgo del Review dice de dónde sale y si se comprobó.** Nombra la regla que lo sostiene o se
+  declara criterio, y dice si el revisor lo verificó. Un hallazgo bloqueante que no se comprobó ya no
+  manda a corregir: se registra en el INBOX marcado `[sin verificar]`. Uno que cita una regla que no rige
+  en tu proyecto se conserva, marcado como criterio.
+- **Lo que el Review mandó a corregir queda en `done/`**, con la regla de cada hallazgo, en vez de
+  perderse al corregirlo.
+- **Una regla de negocio `derogada` dice qué la reemplaza.** La plantilla trae dónde escribirlo
+  —`**Reemplazada por:** BR-…` o `**Razón de baja:** …`— y `check` avisa si falta. Citar un reemplazo que
+  no existe, o uno del mismo archivo, es error.
+
+### Corregido
+
+- **Review recibe la aceptación contra la que revisa.** Se le pedía revisar «por aceptación» sin dársela,
+  y la buscaba en el BACKLOG, donde no está lo que Ready refinó en la misma corrida.
+- **La entrada de `done/` trae el `review` y el `lane` completos.** El agente que cierra la tarea resumía el
+  hecho de revisión y se perdían las reglas contra las que se revisó, las decisiones registradas y, desde
+  esta versión, la superficie crítica y lo corregido. Ahora los copia textuales. Las entradas que ya
+  escribiste no cambian.
+
 ## [0.99.2] - 2026-09-28
 
 ### Corregido
