@@ -274,6 +274,8 @@ const TEMPLATE_OWN = {
   // 0.100.0. Explica la cola partida por hito (caso 212); la instancia que actualiza es la que más la necesita.
   'planning/backlog/README.md': 'upgrade',
   'planning/INBOX.md': 'init',
+  // 0.100.0. Explica el INBOX por entrada (caso 216); los recorridos de la instancia que actualiza ya escriben ahí.
+  'planning/inbox/README.md': 'upgrade',
   // 0.100.0. El cierre de `autobuild` lo escribe y `check` lo valida, así que la instancia que actualiza lo
   // necesita igual que la nueva; el recorrido lo crea si falta, pero sin la explicación de sus estados.
   'planning/LESSONS.md': 'upgrade',

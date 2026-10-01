@@ -1,6 +1,8 @@
 # Inbox sin promover
 
-El runner puede agregar; solo una persona promueve y elimina.
+El runner puede agregar; solo una persona promueve y elimina. Los recorridos no escriben acá sino en
+`inbox/<sección>/`, una entrada por archivo —`inbox/README.md` dice por qué—, y las dos cosas se leen
+juntas.
 
 Cada ítem empieza con su nombre en negrita, porque ese nombre es con el que se lo cita después desde
 `HUMAN_ACTIONS.md`, desde una épica o desde una propuesta mensual. Una viñeta sin nombre no se cuenta, y

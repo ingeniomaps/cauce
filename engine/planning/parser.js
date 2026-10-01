@@ -430,18 +430,38 @@ function inboxHeads(dir) {
   return inboxSections(dir).heads
 }
 
+function entryNames(text) {
+  return [...text.matchAll(/^[-*]\s+(?:\[[ xX]\]\s+)?\*\*([^*\n]*)/gm)].map((hit) => hit[1].trim())
+}
+
+function inboxFiles(dir, section) {
+  try {
+    return fs.readdirSync(path.join(dir, 'inbox', section)).filter((file) => file.endsWith('.md')).sort()
+      .map((file) => path.join(dir, 'inbox', section, file))
+  } catch { return [] }
+}
+
 function inboxSections(dir) {
   const heads = { deuda: [], ideas: [], propuestas: [], lecciones: [] }
   let skipped = 0
   for (const part of read(path.join(dir, 'INBOX.md')).split(/^##\s+/m)) {
     const title = part.split('\n')[0]
     const bullets = (part.match(/^[-*]\s+(?:\[[ xX]\]\s+)?/gm) || []).length
-    const names = [...part.matchAll(/^[-*]\s+(?:\[[ xX]\]\s+)?\*\*([^*\n]*)/gm)].map((hit) => hit[1].trim())
+    const names = entryNames(part)
     if (/Deuda|Ideas|Visi[oó]n|Propuestas|Lecciones/i.test(title)) skipped += bullets - names.length
     if (/Deuda/i.test(title)) heads.deuda = names
     if (/Ideas|Visi[oó]n/i.test(title)) heads.ideas = names
     if (/Propuestas/i.test(title)) heads.propuestas = names
     if (/Lecciones/i.test(title)) heads.lecciones = names
+  }
+  // Las entradas nuevas viven una por archivo en `inbox/<sección>/` (caso 216): dos líneas de trabajo que
+  // anotan en la misma sección de `INBOX.md` escriben la misma zona y chocan; cada una en su archivo, no.
+  for (const section of Object.keys(heads)) {
+    for (const file of inboxFiles(dir, section)) {
+      const names = entryNames(read(file))
+      if (!names.length) skipped += 1
+      heads[section].push(...names)
+    }
   }
   return { heads, skipped }
 }
@@ -452,5 +472,5 @@ module.exports = {
   read, section, withoutComments, frontmatter, readEpics, readDone, readWip, readWips, wipName, noSplitReason,
   checkpointHolds,
   acceptanceConditions, tableRows, taskFromLine,
-  readInbox, inboxHeads, readHumanActions,
+  readInbox, inboxHeads, inboxFiles, entryNames, readHumanActions,
 }
