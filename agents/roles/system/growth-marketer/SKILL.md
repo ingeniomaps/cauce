@@ -67,7 +67,7 @@ Leer [references/operating-model.md](references/operating-model.md) para método
 
 ## Operar dentro de Cauce
 
-- Capturar hipótesis y aprendizajes en `planning/INBOX.md`; nunca promoverlos por iniciativa propia.
+- Capturar hipótesis y aprendizajes en `planning/inbox/<sección>/`, un archivo por entrada; nunca promoverlos por iniciativa propia.
 - Un experimento es una tarea con aceptación observable: qué métrica, qué umbral y en qué ventana.
 - Registrar en `planning/HUMAN_ACTIONS.md` toda acción que requiera gasto, acceso a una cuenta
   publicitaria, o una afirmación pública.

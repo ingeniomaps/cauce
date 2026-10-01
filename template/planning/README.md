@@ -20,6 +20,7 @@ Se decide antes de ejecutar y no cambia dentro de una tarea.
 | Pieza | Responsabilidad |
 |---|---|
 | `INBOX.md` | Ideas y deuda sin autorización de ejecución. |
+| `inbox/` | Las mismas entradas, una por archivo: lo que escriben los recorridos. |
 | `LESSONS.md` | Reglas que la revisión mandó a corregir en varias tareas, y qué se decidió con cada una. |
 | `RECURRING.md` | Trabajo que vuelve cada tanto; declarado, nunca encolado solo. |
 | `roadmap/` | Especificaciones de épicas y criterios del QUÉ. |

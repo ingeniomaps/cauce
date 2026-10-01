@@ -79,7 +79,7 @@ Validar siempre con `node tools/ops.js flow check <slug>` antes de usarlo.
 - **`epic`** — propone trabajo. Escribe una épica candidata en `planning/roadmap/` con criterios
   observables, y para. Es lo que corresponde cuando la pregunta es *qué construimos*.
 - **`report`** — registra lo aprendido. Escribe un informe en `planning/reports/<fecha>-<slug>.md`,
-  deja los seguimientos en la sección Lecciones de `planning/INBOX.md` **sin promover** y las acciones
+  deja los seguimientos en `planning/inbox/<sección>/`, uno por archivo y **sin promover**, y las acciones
   que requieren una persona en `planning/HUMAN_ACTIONS.md`. Es lo que corresponde a una revisión.
 
 Ninguno de los dos promueve al BACKLOG. La diferencia no es cuánta autoridad tienen —ninguno tiene—,

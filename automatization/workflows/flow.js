@@ -25,7 +25,7 @@ const WORKDIR = String((typeof args === 'string' ? '' : (args || {}).root) || RO
 const P = `${WORKDIR}/planning`
 const ROADMAP = `${P}/roadmap`
 const HUMAN = `${P}/HUMAN_ACTIONS.md`
-const INBOX = `${P}/INBOX.md`
+const INBOX = `${P}/inbox/`
 const REPORTS = `${P}/reports`
 
 // Tres formas de invocarlo, porque escribir JSON en un slash command no es razonable:
@@ -429,7 +429,7 @@ if (contract.outcome === 'report') {
     `queda abierto. Separá causa de síntoma y no atribuyas responsabilidad a personas. Cada seguimiento ` +
     `va en lo que queda abierto del informe y además en followUps, del más al menos importante, con la ` +
     `sección que le toca por su sujeto: un cambio del producto va a Propuestas, lo aprendido sobre cómo ` +
-    `trabajamos va a Lecciones. No escribas en ${INBOX}: eso lo hace el paso siguiente. ` +
+    `trabajamos va a Lecciones. No escribas en ${P}/INBOX.md ni en ${INBOX}: eso lo hace el paso siguiente. ` +
     `Toda acción que requiera una persona, en ${HUMAN}.`,
     { schema: { type: 'object', required: ['file', 'followUps'], properties: {
       file: { type: 'string' }, summary: { type: 'string' },
@@ -448,8 +448,9 @@ if (contract.outcome === 'report') {
     .map((one) => ({ section: one.section, entry: withOrigin(one.entry, reportOrigin) }))
   if (listed.length) {
     await agent(
-      `${RULES}\n\nRegistrá en ${INBOX} estos seguimientos del informe ${report.file}, cada uno en su ` +
-      `sección y sin promover ninguno. ${inboxAsk(['Propuestas', 'Lecciones'], contract.inbox, reportOrigin)} ` +
+      `${RULES}\n\nRegistrá estos seguimientos del informe ${report.file}, cada uno en la carpeta de su ` +
+      `sección —${inboxWhere(P, 'Propuestas')} o ${inboxWhere(P, 'Lecciones')}— y sin promover ninguno. ` +
+      `${INBOX_FILES} ${inboxAsk(['Propuestas', 'Lecciones'], contract.inbox, reportOrigin)} ` +
       `Seguimientos: ${JSON.stringify(listed)}`,
       { label: 'report-inbox' },
     )
@@ -481,8 +482,8 @@ if (!epic) return stop('draft-unavailable', 'la propuesta de épica no devolvió
 // Cada salida va donde el contrato del equipo dice que va, y ninguna escribe una épica que nadie pidió.
 if (epic.outcome === 'no-hacer') {
   await agent(
-    `${RULES}\n\nRegistrá la conclusión en la sección Lecciones de ${INBOX}: por qué esta intención no ` +
-    `es viable hoy y qué la haría viable. ${inboxAsk(['Lecciones'], contract.inbox, ORIGIN)} ` +
+    `${RULES}\n\nRegistrá la conclusión en ${inboxWhere(P, 'Lecciones')}: por qué esta intención no ` +
+    `es viable hoy y qué la haría viable. ${INBOX_FILES} ${inboxAsk(['Lecciones'], contract.inbox, ORIGIN)} ` +
     `Motivo: ${withOrigin(epic.reason, ORIGIN)}`,
     { label: 'inbox-lesson' },
   )
@@ -493,8 +494,8 @@ if (epic.outcome === 'no-hacer') {
 if (epic.outcome === 'investigar') {
   await agent(
     `${RULES}\n\nRegistrá en ${HUMAN} qué hay que averiguar antes de poder decidir esta intención y quién ` +
-    `puede hacerlo, sin inventar responsables ni fechas, y dejá la conclusión en la sección Ideas de ` +
-    `${INBOX} sin promoverla. ${inboxAsk(['Ideas'], contract.inbox, ORIGIN)} ` +
+    `puede hacerlo, sin inventar responsables ni fechas, y dejá la conclusión en ` +
+    `${inboxWhere(P, 'Ideas')} sin promoverla. ${INBOX_FILES} ${inboxAsk(['Ideas'], contract.inbox, ORIGIN)} ` +
     `Qué falta averiguar: ${withOrigin(epic.reason, ORIGIN)}`,
     { label: 'investigar' },
   )

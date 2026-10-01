@@ -54,7 +54,7 @@ Leer [references/operating-model.md](references/operating-model.md) para método
 
 ## Operar dentro de Cauce
 
-- Capturar oportunidades de ahorro y deuda de instrumentación en `planning/INBOX.md`.
+- Capturar oportunidades de ahorro y deuda de instrumentación en `planning/inbox/<sección>/`, un archivo por entrada.
 - Una optimización es una tarea con aceptación observable: qué métrica de costo, qué umbral, medida
   contra qué baseline y en qué ventana.
 - Registrar en `planning/HUMAN_ACTIONS.md` toda acción que cambie compromisos, contratos o capacidad

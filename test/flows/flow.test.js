@@ -376,6 +376,8 @@ test('los seguimientos de un informe entran al INBOX con tope, forma y nombres',
   assert.doesNotMatch(inbox, /seguir-d|seguir-e/, 'el cuarto y el quinto no llegan al INBOX')
   assert.match(inbox, /- \*\*slug-del-item\*\* — /, 'nombra la forma de entrada del molde')
   assert.match(inbox, /en Lecciones ya están ya-aprendido/, 'y los nombres que ya hay')
+  assert.match(inbox, /inbox\/propuestas\/ o [^ ]*inbox\/lecciones\/.*su propio archivo/, 'una por archivo (caso 216)')
+  assert.doesNotMatch(inbox, /planning\/INBOX\.md/, 'y ya no en INBOX.md')
   assert.equal(result.followUps, 3)
   assert.equal(result.unlisted, 2, 'lo que no entró se cuenta')
 })

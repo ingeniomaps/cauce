@@ -108,11 +108,14 @@ test('onboard lleva al INBOX tres preguntas abiertas y cuenta las demás', async
   )
   const draft = prompts.find((one) => one.key === 'contexto').prompt
   assert.doesNotMatch(draft, /en la sección Ideas/, 'quien redacta ya no escribe en el INBOX')
+  assert.match(draft, /No las escribas en [^ ]*\/INBOX\.md ni en [^ ]*\/inbox\//, 'en ninguno de los dos lados')
   const epic = prompts.find((one) => one.key === 'epica-001').prompt
   assert.match(epic, /"p1 \(onboard · 2026-09-12\)","p2 \(onboard · 2026-09-12\)","p3 /)
   assert.doesNotMatch(epic, /"p4|"p5"/, 'la cuarta y la quinta no llegan al INBOX')
   assert.match(epic, /- \*\*slug-del-item\*\* — /, 'nombra la forma de entrada del molde')
   assert.match(epic, /en Ideas ya están ya-preguntada/, 'y los nombres que ya hay')
+  assert.match(epic, /planning\/inbox\/ideas\/, sin promover.*su propio archivo/, 'una por archivo (caso 216)')
+  assert.doesNotMatch(epic, /sección Ideas/, 'y ya no en la sección de INBOX.md')
   assert.deepEqual(result.unlistedQuestions, ['p4', 'p5'])
   assert.ok(said.some((text) => /2 pregunta\(s\) abierta\(s\) más no entraron/.test(text)), 'y se dicen')
 })

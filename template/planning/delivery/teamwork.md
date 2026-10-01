@@ -9,7 +9,7 @@ choques entre dos personas —o entre dos agentes— salen de tratarlas igual.
 
 | Anillo | Qué vive ahí | Escritores | Frecuencia |
 |---|---|---|---|
-| **Compartido** | `roadmap/`, `BACKLOG.md`, `INBOX.md`, `HUMAN_ACTIONS.md`, `done/`, reglas y ADR | cualquiera, en actos humanos | baja |
+| **Compartido** | `roadmap/`, `BACKLOG.md`, `INBOX.md` e `inbox/`, `HUMAN_ACTIONS.md`, `done/`, reglas y ADR | cualquiera, en actos humanos | baja |
 | **Coordinación** | `claims/`, un archivo por tarea tomada | uno por tarea | dos veces por tarea |
 | **Local** | `wip/<runner>.md`, `.verify-log`, `.push-log`, el árbol de trabajo | vos | continua |
 
@@ -161,7 +161,7 @@ que esperaban a esa persona.
 | Una decisión que cambia cómo se construye | `adr/` | se consulta dentro de un año |
 | Una norma que hay que cumplir siempre | `business-rules/` o `rules/` | la lee un agente en cada tarea |
 | Algo que sólo puede hacer una persona | `HUMAN_ACTIONS.md` | frena su tarea hasta que se resuelva |
-| Una idea, una deuda, una lección | `INBOX.md` | espera promoción humana |
+| Una idea, una deuda, una lección | `inbox/<sección>/`, una por archivo | espera promoción humana |
 | Lo que una tarea entregó, con su evidencia | `done/<slug>.md` | es lo que se audita |
 | Qué tarea estoy haciendo | `claims/` | para que nadie la tome dos veces |
 | «Salgo a almorzar», «está lento el CI» | el canal del equipo | no es durable y no se audita |
