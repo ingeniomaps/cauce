@@ -25,6 +25,7 @@ const FLAGS = {
   recurring: ['--json', '--promote'],
   lessons: ['--json'],
   'split-backlog': [],
+  line: ['--json'],
   claim: ['--json'],
   runners: ['--json'],
   worktree: ['--json'],

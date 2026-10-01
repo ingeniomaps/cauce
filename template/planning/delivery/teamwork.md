@@ -100,6 +100,20 @@ momento y sin git de por medio.
 `ops worktree` lo avisa cuando prepara un árbol sobre una instancia embebida. No lo frena: un árbol por
 rama con un solo agente es un uso legítimo, y lo que se rompe es la coordinación entre varios.
 
+**Una línea de trabajo, su propia carpeta de sesión.** Cuando cada línea lleva su propia rama de la
+instancia —una por persona o por frente—, no alcanza con un worktree del repo `ops/`: la configuración del
+runner vive en la carpeta que contiene a la instancia, que todos los worktrees comparten, así que todas las
+sesiones correrían los guards de un solo árbol. Una línea se arma con:
+
+```bash
+node tools/ops.js line . admin
+```
+
+Crea `<carpeta>-admin/` al lado, con un worktree de la instancia en la rama `line/admin`, su motor, los
+repositorios del producto enlazados y los mismos runners instalados ahí. La sesión de esa línea se abre en
+esa carpeta, y sus guards son los de su árbol. `automation install` se niega a mover los guards de la carpeta
+compartida a otro árbol, y dice que para eso está `ops line`.
+
 **Un id por agente.** Sin eso los dos resuelven la misma identidad de git y el segundo toma por propia la
 tarea del primero. Al abrir una sesión, `ops runners planning` dice qué runners tienen trabajo abierto;
 el agente pregunta cuál se retoma o si arranca uno nuevo, y **exporta el id él mismo**. A una persona no

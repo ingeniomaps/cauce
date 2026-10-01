@@ -301,6 +301,24 @@ function uninstall(root, name, output = console) {
   return { removed: removed, kept: kept }
 }
 
+// A qué árbol apuntan los guards de Cauce de una configuración: lo que precede a `automatization/hooks/` en
+// cada comando. Devuelve los dos lados si la que ya está apunta a **otro árbol que existe**; una ruta que no
+// lleva a nada es cableado viejo que la instalación vino a reemplazar, y frenarlo sería impedir la migración.
+function foreignHooks(current, incoming, install) {
+  const prefixes = (config) => (JSON.stringify(config).match(/"command":"[^"]*"/g) || [])
+    .map((entry) => JSON.parse(`{${entry}}`).command)
+    .filter((command) => command.includes('automatization/hooks/'))
+    .map((command) => command.slice(0, command.indexOf('automatization/hooks/')))
+  const hooksOf = (prefix) => {
+    const dir = path.join(install, prefix.replace(/^\$[A-Z_]+\/?/, ''), 'automatization', 'hooks')
+    try { return fs.realpathSync(dir) } catch { return '' }
+  }
+  const [ours] = prefixes(incoming)
+  if (ours === undefined) return null
+  const theirs = prefixes(current).find((one) => one !== ours && hooksOf(one) && hooksOf(one) !== hooksOf(ours))
+  return theirs === undefined ? null : { ours, theirs }
+}
+
 // `AGENTS.md` es el único nombre que el runner y la instancia comparten: en modo embebido el archivo de
 // instrucciones de Codex es el mismo que el de la empresa. Conservarlo entero —lo correcto para un
 // archivo del proyecto— dejaba a ese runner sin una sola línea de Cauce, así que su contenido se
@@ -322,6 +340,15 @@ function install(root, name, output = console, options = {}) {
     try { current = JSON.parse(fs.readFileSync(paths.configTarget, 'utf8')) } catch (error) {
       throw new Error(`${runner.config.target} contiene JSON inválido (${error.message})`)
     }
+  }
+  // No mueve en silencio los guards de una carpeta de sesión compartida a otro árbol; por qué, en el
+  // encabezado de `engine/cli/lines.js` (caso 218).
+  const foreign = foreignHooks(current, incoming, paths.install)
+  if (foreign && !options.force) {
+    throw new Error(`${runner.config.target} tiene los guards de Cauce apuntando a ${foreign.theirs}; instalar `
+      + `desde acá los movería a ${foreign.ours} para todas las sesiones que se abren en ${paths.install}.\n`
+      + 'Si este árbol es una línea de trabajo, armala con "ops line <ops-root> <nombre>", que le da su '
+      + 'propia carpeta de sesión. Si de verdad querés moverlos, repetí con --force.')
   }
   const items = [...(runner.instructions || []), ...(runner.artifacts || [])]
   const resolvedItems = items.map((item) => ({ item, ...resolveItem(paths, root, name, item) }))
