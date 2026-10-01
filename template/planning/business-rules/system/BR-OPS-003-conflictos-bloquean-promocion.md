@@ -1,6 +1,8 @@
 # Los conflictos bloquean la promoción
 
 > **Dominio:** integrations | **Estado:** vigente | **Actualizado:** 2026-08-14
+> **Verificación:** ratificada
+> **Confirmada por:** mantenedores de Cauce, dueños del motor, 2026-10-01, autoridad propia
 
 Una diferencia entre la base, el remoto y la curación local debe resolverse antes de convertirla en intención.
 [fuente: ../../adr/system/OPS-003-integraciones-seguras-por-staging.md]

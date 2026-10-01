@@ -1,6 +1,8 @@
 # Las propuestas no se autopromueven
 
 > **Dominio:** governance | **Estado:** vigente | **Actualizado:** 2026-08-14
+> **Verificación:** ratificada
+> **Confirmada por:** mantenedores de Cauce, dueños del motor, 2026-10-01, autoridad propia
 
 Proponer genera una opción revisable; no concede autoridad para alterar prioridades o comprometer alcance.
 [fuente: ../../adr/system/OPS-004-promocion-humana-y-evidencia-verificable.md]

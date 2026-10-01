@@ -1,6 +1,8 @@
 # Una sola tarea activa
 
 > **Dominio:** planning | **Estado:** vigente | **Actualizado:** 2026-09-07
+> **Verificación:** ratificada
+> **Confirmada por:** mantenedores de Cauce, dueños del motor, 2026-10-01, autoridad propia
 
 WIP protege la exclusión mutua dentro de un runner y permite recuperar una ejecución interrumpida.
 Que dos runners no tomen la misma tarea es otra cosa, y la sostiene `BR-OPS-005-una-tarea-un-runner.md`.

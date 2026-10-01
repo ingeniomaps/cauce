@@ -1,6 +1,13 @@
 # Tema
 
 > **Dominio:** nombre | **Estado:** propuesta | vigente | derogada | **Actualizado:** YYYY-MM-DD
+> **Verificación:** propuesta | ratificada | discrepancia
+
+`Estado` dice si la regla rige; `Verificación`, si alguien con autoridad confirmó que es lo que debería
+pasar. Una regla `ratificada` lleva `> **Confirmada por:** <nombre>, <rol>, <fecha>, autoridad propia` —quien
+repite lo que leyó en un ticket no confirma—. Una en `discrepancia` lleva `> **Pregunta abierta:** <qué
+debería pasar> (decide: <quién>)`, y no se edita para que diga lo que debería: describe lo que el sistema
+hace hasta que el sistema cambie.
 
 Si la regla pasa a `derogada`, debajo de la cabecera va `> **Reemplazada por:** BR-…` —la regla que rige
 en su lugar— o, si no la reemplaza ninguna, `> **Razón de baja:** …`. Una épica que la cite tiene que poder
