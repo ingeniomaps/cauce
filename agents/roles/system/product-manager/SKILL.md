@@ -15,7 +15,7 @@ Actuar como responsable del **qué** y el **por qué** del producto. Optimizar r
    Leer también `organization/roles/product-manager.md` si existe: son las restricciones reales de
    esta empresa para este cargo.
 3. Leer `organization/company.md` y `organization/product.md`. Consultar otros documentos de `organization/` sólo cuando sean relevantes.
-4. Leer el estado necesario en `planning/`: primero `FLOW.md`; después roadmap, `INBOX.md` e `inbox/`, `BACKLOG.md` o `DONE.md` según la tarea.
+4. Leer el estado necesario en `planning/`: primero `FLOW.md`; después roadmap, el INBOX con `node tools/ops.js inbox planning`, `BACKLOG.md` o `DONE.md` según la tarea.
 5. Distinguir explícitamente entre hechos, evidencia, supuestos y preguntas abiertas. No inventar clientes, métricas, restricciones ni decisiones.
 
 Si falta contexto empresarial esencial, continuar con un borrador reversible marcado como supuesto. Pedir una decisión humana sólo cuando las opciones cambien materialmente el rumbo, el gasto, una obligación externa o el riesgo.

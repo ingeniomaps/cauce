@@ -106,3 +106,29 @@ test('dos líneas que anotan en la misma sección se traen sin conflicto', () =>
   assert.deepEqual(P.inboxHeads(path.join(split.repo, 'planning')).propuestas,
     ['cache-de-precios', 'reintentos-pagos'])
 })
+
+// `ops inbox` es lo que se lee para promover: cada entrada entera, con su sección y el archivo que hay que
+// borrar después, salga de `INBOX.md` o de una carpeta.
+test('ops inbox imprime cada entrada con su sección y su archivo, y lo mismo en --json', () => {
+  const dir = planning('cauce-inbox-cli-')
+  assert.match(run(['inbox', dir]).stdout, /^= el INBOX está vacío/)
+  const inbox = path.join(dir, 'INBOX.md')
+  fs.writeFileSync(inbox, fs.readFileSync(inbox, 'utf8')
+    .replace('## Lecciones\n', '## Lecciones\n\n- **vieja** — una lección\n  que sigue en otra línea.\n'
+      + '- sin nombre\n'))
+  write(dir, 'inbox/propuestas/nueva.md', entry('nueva'))
+
+  const shown = run(['inbox', dir])
+  assert.equal(shown.status, 0, shown.stderr)
+  assert.ok(shown.stdout.includes('Propuestas (1)\n  - **nueva** — Algo que decidir. '
+    + '(autobuild · Review · 2026-10-01)\n    inbox/propuestas/nueva.md\n'), shown.stdout)
+  assert.ok(shown.stdout.includes('Lecciones (1)\n  - **vieja** — una lección que sigue en otra línea.\n'
+    + '    INBOX.md\n'), 'la entrada envuelta llega entera')
+  assert.match(shown.stdout, /1 sin contar: falta el nombre en \*\*negrita\*\*/)
+
+  const json = JSON.parse(run(['inbox', dir, '--json']).stdout)
+  assert.deepEqual(json.propuestas, [{ name: 'nueva', file: 'inbox/propuestas/nueva.md',
+    text: '**nueva** — Algo que decidir. (autobuild · Review · 2026-10-01)' }])
+  assert.equal(json.lecciones[0].file, 'INBOX.md')
+  assert.equal(json.skipped, 1)
+})

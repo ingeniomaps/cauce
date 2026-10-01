@@ -344,6 +344,20 @@ function lessons(dir, cli) {
   }
 }
 
+// El INBOX entero, para quien promueve: desde el caso 216 vive en `INBOX.md` y en una carpeta por sección,
+// y leerlo a mano pierde la sección y el archivo que hay que borrar después.
+function inbox(dir, cli) {
+  const { entries, skipped } = P.inboxSections(planningRoot(dir))
+  if (cli.has('--json')) return console.log(JSON.stringify({ ...entries, skipped }))
+  const all = Object.values(entries).flat()
+  if (!all.length && !skipped) return console.log('= el INBOX está vacío')
+  for (const [section, found] of Object.entries(entries)) {
+    console.log(`${section[0].toUpperCase()}${section.slice(1)} (${found.length})`)
+    for (const one of found) console.log(`  - ${one.text}\n    ${one.file}`)
+  }
+  if (skipped) console.log(`\n${skipped} sin contar: falta el nombre en **negrita**`)
+}
+
 // Pasa cada hito de `BACKLOG.md` a su archivo en `backlog/` (caso 212). Es la migración de una instancia
 // que ya existe, y la corre quien la opera: `upgrade` no reescribe la cola de nadie. No pisa nada —si un
 // archivo de hito ya existe, no escribe ninguno— y `check` corre después igual que siempre.
@@ -370,4 +384,4 @@ function splitBacklog(dir) {
   console.log(`${files.length} hito(s) pasaron a backlog/. Corré "ops check" y commiteá el cambio.`)
 }
 
-module.exports = { evidence, tree, context, recurring, lessons, splitBacklog }
+module.exports = { evidence, tree, context, recurring, lessons, inbox, splitBacklog }
