@@ -27,11 +27,20 @@ diseño — eso vive en el commit y en el código.
   declara criterio, y dice si el revisor lo verificó. Un hallazgo bloqueante que no se comprobó ya no
   manda a corregir: se registra en el INBOX marcado `[sin verificar]`. Uno que cita una regla que no rige
   en tu proyecto se conserva, marcado como criterio.
+- **Sobre una superficie crítica, una sospecha sin comprobar frena la entrega.** Fuera de esas superficies
+  va al INBOX como el resto; sobre ellas no se corrige —sería cambiar código por una hipótesis— ni se
+  entrega: la corrida para con `review-unverified` y deja una fila en `HUMAN_ACTIONS.md` para que alguien
+  lo compruebe.
 - **Lo que el Review mandó a corregir queda en `done/`**, con la regla de cada hallazgo, en vez de
   perderse al corregirlo.
 - **Una regla de negocio `derogada` dice qué la reemplaza.** La plantilla trae dónde escribirlo
   —`**Reemplazada por:** BR-…` o `**Razón de baja:** …`— y `check` avisa si falta. Citar un reemplazo que
   no existe, o uno del mismo archivo, es error.
+
+### Cambiado
+
+- **R27 nombra la salida cuando cerrar por defecto rompe el uso diario:** abrir por defecto, con una prueba
+  que recorre lo que existe y falla hasta que cada elemento nuevo esté clasificado.
 
 ### Corregido
 
