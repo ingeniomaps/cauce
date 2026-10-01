@@ -93,6 +93,13 @@ Lo que el caso no preveía:
   archivo que hay que borrar cuando la entrada vive en una carpeta.
 - **Los avisos del INBOX se cortaban si `INBOX.md` estaba vacío o no existía.** Con las carpetas eso dejaba
   sin revisar entradas que sí había. Ahora sólo el aviso de tamaño depende de `INBOX.md`.
+- **La revisión del diff entero encontró tres cosas que se habían escapado**, y se corrigieron con su
+  prueba. El comando `flow` de Gemini (`runners/gemini/commands/cauce/flow.toml`) seguía mandando a
+  `INBOX.md`. La prohibición «No escribas en» de `report-write` y del borrador de `onboard` quedó nombrando
+  sólo la carpeta, así que dejaba escribir en `INBOX.md` y duplicar lo que escribe el paso siguiente; ahora
+  nombra los dos lados. Y el aviso de nombre exigía quitar las tildes, algo que el prompt no pide; ahora
+  acepta el nombre con tilde o sin ella. La misma revisión confirmó que no hay otro lector que lea sólo
+  `INBOX.md` y que ningún guard limita qué se escribe bajo `planning/`.
 
 Prueba real:
 
