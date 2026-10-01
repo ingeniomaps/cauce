@@ -51,6 +51,9 @@ permissions:
 # Este workflow ya no viaja a las instancias —`upgrade` lo retira—, así que sólo hay un CLI posible.
 env:
   OPS: engine/cli/ops.js
+  # Lo instalan dos jobs, `research` y `propose`. Con la versión copiada en cada uno, el próximo bump deja
+  # a uno atrás y nada lo avisa.
+  CLAUDE_CODE_VERSION: 2.1.233
 
 # Dos corridas a la vez empujan la misma rama y la segunda falla al publicar. No se cancela la que
 # está en curso: cortarla a mitad deja una parte de los cargos con PR y el resto sin nada.
@@ -217,7 +220,7 @@ jobs:
       # El prompt no lo escribe este archivo: lo declara el propio cargo en su
       # `learning/AUTOMATION.md`. Así un cargo nuevo trae su investigación sin tocar el cron.
       - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code@2.1.233
+        run: npm install -g "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION"
 
       # La suscripción primero y la API key como respaldo, cada una exportada sola.
       #
@@ -865,7 +868,13 @@ jobs:
       #
       # Va antes de `Detect changes` a propósito: lo que el recorrido escriba tiene que entrar al mismo
       # `git status` que arma el PR, o la propuesta completada se quedaría en el runner.
+      # Este job no hereda nada de `research`, y el día del ensamblaje ese job ni corre. Sin este paso, en
+      # 2026-10 `claude` no existía en los 53 cargos (caso 219).
+      - name: Install Claude Code
+        if: steps.proposal.outputs.decided != 'true'
+        run: npm install -g "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION"
       - name: Write the concrete change
+        id: write
         if: steps.proposal.outputs.decided != 'true'
         env:
           AGENT: ${{ matrix.agent }}
@@ -905,17 +914,19 @@ jobs:
             if proponer env -u ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN="$OAUTH" claude; then exit 0; fi
             echo "La corrida con la suscripción falló." >&2
             if [ -z "$APIKEY" ]; then
-              echo "::notice title=Propuesta sin completar::$AGENT queda en «por definir»: la corrida falló y no hay API key de respaldo."
+              echo "failed=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             echo "Reintento con ANTHROPIC_API_KEY, que se factura por token." >&2
           else
             echo "Credencial: API key (ANTHROPIC_API_KEY). Se factura por token."
           fi
-          # El fallo del respaldo tampoco frena: la rama se empuja igual con sus sellos, que es lo que
-          # evita que el mismo material entre de nuevo el mes siguiente.
+          # Una corrida que falla no frena acá: la rama se empuja igual con sus sellos, que es lo que evita
+          # que el mismo material entre de nuevo el mes siguiente. Lo que sí hace es quedar dicha, y el
+          # último paso del job la vuelve rojo: como simple aviso, un ensamblaje que falló entero se veía igual
+          # que un mes sin nada que proponer (caso 219).
           if ! proponer env -u CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_API_KEY="$APIKEY" claude; then
-            echo "::notice title=Propuesta sin completar::$AGENT queda en «por definir»: la corrida de /agent-propose falló. La rama se empuja igual con los sellos."
+            echo "failed=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Detect changes
@@ -990,6 +1001,14 @@ jobs:
           gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
             --title "$AGENT learning proposal — $name" \
             --body "Propuesta automática construida desde los informes de investigación. No modifica SKILL.md y requiere evaluación y aprobación humana."
+      # Después del push a propósito: el rojo no tiene que costar los sellos.
+      - name: Fail when the proposal run failed
+        if: steps.write.outputs.failed == 'true'
+        env:
+          AGENT: ${{ matrix.agent }}
+        run: |
+          echo "::error title=Propuesta sin completar::$AGENT queda en «por definir»: la corrida de /agent-propose falló, y el paso «Write the concrete change» dice por qué. La rama se empujó con los sellos; corré /agent-propose sobre ella."
+          exit 1
 
   # Lo que `propose` para los cargos, y como aquél sin hablar con ningún modelo. Todavía no es su
   # espejo exacto: `propose` revalida con `evaluate` la propuesta que acaba de escribir y acá ese paso
