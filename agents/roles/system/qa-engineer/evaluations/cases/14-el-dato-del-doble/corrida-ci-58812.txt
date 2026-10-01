@@ -1,0 +1,13 @@
+$ npx jest src/billing --coverage
+ PASS  src/billing/commission.service.spec.ts
+  CommissionService
+    ✓ liquida la comisión de un pedido en otra moneda (4 ms)
+
+------------------------|---------|----------|---------|---------|-------------------
+File                    | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+------------------------|---------|----------|---------|---------|-------------------
+ commission.service.ts  |      80 |       50 |     100 |      80 | 14
+------------------------|---------|----------|---------|---------|-------------------
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
