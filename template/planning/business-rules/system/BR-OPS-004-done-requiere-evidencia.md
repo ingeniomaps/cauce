@@ -1,6 +1,8 @@
 # DONE requiere evidencia verificable
 
 > **Dominio:** delivery | **Estado:** vigente | **Actualizado:** 2026-08-14
+> **Verificación:** ratificada
+> **Confirmada por:** mantenedores de Cauce, dueños del motor, 2026-10-01, autoridad propia
 
 Cerrar una tarea es una afirmación sobre comportamiento observado, no una impresión del ejecutor.
 [fuente: ../../adr/system/OPS-004-promocion-humana-y-evidencia-verificable.md]

@@ -23,6 +23,7 @@ const FLAGS = {
   contract: ['--json'],
   bench: ['--force'],
   recurring: ['--json', '--promote'],
+  lessons: ['--json'],
   claim: ['--json'],
   runners: ['--json'],
   worktree: ['--json'],

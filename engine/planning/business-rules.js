@@ -101,4 +101,41 @@ function lineage(root) {
   return { errors, warnings }
 }
 
-module.exports = { validate, lineage }
+// Si alguien con autoridad confirmó que la regla es lo que debería pasar, aparte de si rige (caso 213). Son
+// dos preguntas: una regla puede regir hoy sin que nadie de negocio la haya confirmado, y una discrepancia
+// no se resuelve editándola —sigue describiendo lo que el sistema hace hasta que el sistema cambie—.
+//
+// Que falte avisa, por lo mismo que en `lineage`: las reglas de antes no lo traían. Lo escrito mal es
+// error, y ratificar exige autoridad propia: quien repite lo que leyó en un ticket no confirma nada.
+const VERIFICATIONS = ['propuesta', 'ratificada', 'discrepancia']
+const VERIFIED = /^> \*\*Verificación:\*\*\s*(\S[^\n|]*?)\s*$/m
+const CONFIRMED = /\*\*Confirmada por:\*\*[^\n]*autoridad propia/i
+const QUESTION = /\*\*Pregunta abierta:\*\*\s*\S/
+
+function verification(root) {
+  const errors = []
+  const warnings = []
+  for (const file of markdownFiles(root)) {
+    const relative = path.relative(path.dirname(root), file)
+    const source = fs.readFileSync(file, 'utf8')
+    const declared = source.match(VERIFIED)
+    if (!declared) {
+      warnings.push(`${relative}: no declara su verificación; agregá «> **Verificación:** propuesta», o `
+        + 'ratificada o discrepancia si corresponde')
+      continue
+    }
+    const value = declared[1].toLowerCase()
+    if (!VERIFICATIONS.includes(value)) {
+      errors.push(`${relative}: Verificación «${declared[1]}» no es ${VERIFICATIONS.join(', ')}`)
+    } else if (value === 'ratificada' && !CONFIRMED.test(source)) {
+      errors.push(`${relative}: está ratificada y no dice quién la confirmó con autoridad propia; agregá `
+        + '«> **Confirmada por:** <nombre>, <rol>, <fecha>, autoridad propia»')
+    } else if (value === 'discrepancia' && !QUESTION.test(source)) {
+      errors.push(`${relative}: está en discrepancia y no dice qué se discute; agregá «> **Pregunta abierta:** `
+        + '<qué debería pasar> (decide: <quién>)»')
+    }
+  }
+  return { errors, warnings }
+}
+
+module.exports = { validate, lineage, verification }

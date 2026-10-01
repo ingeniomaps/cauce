@@ -354,6 +354,11 @@
     "branches": 80,
     "functions": 100
   },
+  "engine/planning/lessons.js": {
+    "lines": 100,
+    "branches": 93,
+    "functions": 100
+  },
   "engine/planning/parser.js": {
     "lines": 100,
     "branches": 93,

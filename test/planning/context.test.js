@@ -328,7 +328,7 @@ test('la aceptación con un identificador adentro llega entera', () => {
 // dominio sobre un directorio que no existe —cuatro de ellos con exit 0— hasta que costó una corrida
 // (caso 075). La lista se escribe entera para que agregar un comando y olvidarse se vea acá.
 const RECIBEN_PLANNING = [
-  ['context'], ['tree'], ['check'], ['evidence'], ['recurring'], ['runners'], ['adopt'],
+  ['context'], ['tree'], ['check'], ['evidence'], ['recurring'], ['lessons'], ['runners'], ['adopt'],
   ['claim', 'una-tarea'], ['release', 'una-tarea'], ['worktree', 'una-tarea'], ['archive', 'human-actions'],
 ]
 

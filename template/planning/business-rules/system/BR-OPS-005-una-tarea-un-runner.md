@@ -1,6 +1,8 @@
 # Una tarea, un runner
 
 > **Dominio:** planning | **Estado:** vigente | **Actualizado:** 2026-09-07
+> **Verificación:** ratificada
+> **Confirmada por:** mantenedores de Cauce, dueños del motor, 2026-10-01, autoridad propia
 
 El reclamo protege la exclusión mutua entre runners y hace visible quién sostiene cada tarea.
 [fuente: ../../adr/system/OPS-001-planificacion-como-fuente-de-verdad.md]

@@ -13,6 +13,7 @@ const RC = require('../planning/recurring')
 const CL = require('../planning/claims')
 const ST = require('../planning/state')
 const SF = require('../planning/surfaces')
+const LS = require('../planning/lessons')
 const O = require('../core/ownership')
 const EV = require('../core/evidence')
 const { fail, planningRoot, TODAY, USAGE } = require('./io')
@@ -323,4 +324,21 @@ function recurring(dir, cli) {
   }
 }
 
-module.exports = { evidence, tree, context, recurring }
+// Qué regla se mandó a corregir en más de una tarea y todavía no tiene lección (caso 214). Lo usa el cierre
+// de `autobuild` para anotarla en el INBOX; una persona lo corre para ver lo mismo sin esperar una corrida.
+function lessons(dir, cli) {
+  const root = planningRoot(dir)
+  const found = LS.candidates(root)
+  if (cli.has('--json')) return console.log(JSON.stringify(found))
+  if (!found.proposals.length) console.log(`= ninguna regla se corrigió en ${LS.THRESHOLD} tareas o más sin lección`)
+  for (const one of found.proposals) {
+    console.log(`${one.name}  ${one.ref} — ${one.tasks.length} tareas: ${one.tasks.join(', ')}`
+      + (one.reopened ? ' (rechazada antes; hay tareas nuevas)' : ''))
+  }
+  if (found.criteria.length) {
+    console.log(`\n${found.criteria.length} corrección(es) de criterio, sin regla: ver si alguna se repite`)
+    for (const one of found.criteria) console.log(`  ${one.task}: ${one.detail}`)
+  }
+}
+
+module.exports = { evidence, tree, context, recurring, lessons }

@@ -241,3 +241,47 @@ test('check avisa la derogada sin reemplazo y frena la cita rota', () => {
   assert.equal(rota.status, 1)
   assert.match(`${rota.stdout}${rota.stderr}`, /la reemplaza BR-DEMO-777, que no existe/)
 })
+
+// Caso 213. Si rige y si alguien la confirmó son dos preguntas. Que falte la segunda avisa —las reglas de
+// antes no la traían—; lo escrito mal es error, y ratificar exige autoridad propia.
+test('una regla dice si alguien con autoridad la confirmó, aparte de si rige', () => {
+  const root = tempRoot('ops-business-rules-verification-')
+  const rule = (extra = '') => '# Regla\n\n> **Dominio:** demo | **Estado:** vigente | **Actualizado:** 2026-10-01\n'
+    + `${extra}\n## Reglas\n\n| BR-DEMO-001 | Regla | Resultado |\n`
+    + '\n## Por qué existe cada regla\n\n- Razón.\n\n## Historial\n\n- Creación.\n'
+  const file = path.join(root, 'regla.md')
+  const check = (extra) => { fs.writeFileSync(file, rule(extra)); return B.verification(root) }
+
+  assert.match(check().warnings.join('\n'), /regla\.md: no declara su verificación/)
+  assert.deepEqual(check('> **Verificación:** propuesta'), { errors: [], warnings: [] })
+  assert.match(check('> **Verificación:** casi').errors.join('\n'), /Verificación «casi» no es propuesta/)
+
+  assert.match(check('> **Verificación:** ratificada').errors.join('\n'), /no dice quién la confirmó/)
+  // Quien repite lo que leyó no ratifica: el testimonio no es el trámite.
+  assert.match(check('> **Verificación:** ratificada\n> **Confirmada por:** Ana, soporte, 2026-10-01, lo leyó en un '
+    + 'ticket').errors.join('\n'), /no dice quién la confirmó con autoridad propia/)
+  assert.deepEqual(check('> **Verificación:** ratificada\n> **Confirmada por:** Ana, producto, 2026-10-01, '
+    + 'autoridad propia'), { errors: [], warnings: [] })
+
+  assert.match(check('> **Verificación:** discrepancia').errors.join('\n'), /no dice qué se discute/)
+  assert.deepEqual(check('> **Verificación:** discrepancia\n> **Pregunta abierta:** ¿el cupón cubre el envío? '
+    + '(decide: producto)'), { errors: [], warnings: [] })
+})
+
+test('check avisa la regla sin verificación y rechaza una ratificada sin autoridad', () => {
+  const target = path.join(tempRoot('ops-business-rules-verification-check-'), 'demo')
+  assert.equal(run(['init', target, '--name', 'Verificacion']).status, 0)
+  const file = path.join(target, 'planning', 'business-rules', 'regla.md')
+  const rule = (extra = '') => '# Regla\n\n> **Dominio:** demo | **Estado:** vigente | **Actualizado:** 2026-10-01\n'
+    + `${extra}\n## Reglas\n\n| BR-DEMO-001 | Regla | Resultado |\n`
+    + '\n## Por qué existe cada regla\n\n- Razón.\n\n## Historial\n\n- Creación.\n'
+  fs.writeFileSync(file, rule())
+  const aviso = run(['check', path.join(target, 'planning')])
+  assert.equal(aviso.status, 0, aviso.stderr)
+  assert.match(`${aviso.stdout}${aviso.stderr}`, /regla\.md: no declara su verificación/)
+
+  fs.writeFileSync(file, rule('> **Verificación:** ratificada'))
+  const rota = run(['check', path.join(target, 'planning')])
+  assert.equal(rota.status, 1)
+  assert.match(`${rota.stdout}${rota.stderr}`, /no dice quién la confirmó/)
+})
