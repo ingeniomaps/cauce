@@ -14,6 +14,20 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.101.0] - 2026-10-01
+
+### Agregado
+
+- **Lo que la revisión corrige una y otra vez vuelve como lección.** Cuando la misma regla se manda a
+  corregir en dos tareas o más, el cierre de `autobuild` la anota en la sección Lecciones del INBOX, sin
+  promover, y deja su fila en `planning/LESSONS.md`. Ahí decidís: `aplicada` si la reforzaste, `rechazada`
+  si no hacía falta —sólo vuelve con una tarea nueva—. `node tools/ops.js lessons planning` muestra lo mismo
+  sin esperar una corrida. `upgrade` agrega el archivo.
+- **Una regla de negocio dice si alguien la confirmó, aparte de si rige.** La cabecera suma
+  `**Verificación:** propuesta | ratificada | discrepancia`. Ratificar exige quién la confirmó con autoridad
+  propia; una discrepancia lleva la pregunta abierta y quién decide, y la regla no se edita para que diga lo
+  que debería. Las reglas que ya tenés sólo avisan hasta que les declares la verificación.
+
 ## [0.100.0] - 2026-10-01
 
 ### Agregado
