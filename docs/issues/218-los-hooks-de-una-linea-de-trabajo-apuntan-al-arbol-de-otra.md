@@ -93,6 +93,12 @@ Recorrido contra el caso entero:
 - **Lo que no cambia, y por qué:** el motor de la línea es el mismo paquete instalado que el del árbol principal,
   porque su versión la fija la instalación y no la rama.
 
+- **Lo que encontró la revisión del conjunto, antes del PR:** la configuración del usuario se leía con una regex
+  sobre el texto, y un hook propio con comillas escapadas hacía fallar toda instalación; en Codex, que escribe la
+  ruta absoluta del árbol, el freno no frenaba nada; una instancia pedida por un enlace dejaba la línea en la
+  carpeta compartida; y una línea borrada a mano se daba por reusada y quedaba a medias. Los cuatro se
+  arreglaron, cada uno con su prueba y su mutación vista en rojo.
+
 **Probado corriendo.**
 - **Real**, en un banco fuera del árbol: `ops line . b` dejó `l218-b/` con el worktree en `line/b`; su
   `.claude/settings.json` apunta a `$CLAUDE_PROJECT_DIR/ops/…`, que desde esa sesión es su árbol; la
