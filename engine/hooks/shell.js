@@ -465,7 +465,7 @@ function run(program, args, cwd, extra = {}, { timeoutMs } = {}) {
   const timedOut = Boolean(result.error && result.error.code === 'ETIMEDOUT')
   // Al cortar, `spawnSync` mata al proceso que lanzó y no a sus hijos: `npm run test` muere y el jest que
   // arrancó sigue comiendo memoria, huérfano. Lanzado como líder de su grupo (`detached`), se mata el grupo
-  // entero —medido: sin esto el `sleep` de un script quedaba vivo después del corte (caso 219)—.
+  // entero —medido: sin esto el `sleep` de un script quedaba vivo después del corte (caso 240)—.
   if (timedOut) { try { process.kill(-result.pid, 'SIGKILL') } catch { /* ya no está, o no hay grupos */ } }
   return {
     ok: result.status === 0,

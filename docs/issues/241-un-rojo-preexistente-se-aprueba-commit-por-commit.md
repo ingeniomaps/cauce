@@ -1,16 +1,16 @@
 ---
-caso: 220
+caso: 241
 titulo: un rojo preexistente se aprueba commit por commit
 estado: abierto
 prioridad: media
 version-detectada: 0.99.2
 ---
 
-# 220 — Un repositorio con un gate en rojo heredado pide una aprobación en cada commit
+# 241 — Un repositorio con un gate en rojo heredado pide una aprobación en cada commit
 
 **🔴 abierto** · detectado en 0.99.2 · prioridad **media**.
 
-**Prioridad media**: no rompe nada, pero en un repositorio con lint heredado en rojo cada commit se frena y pide aprobación, y eso empuja a apagar el guard entero (219).
+**Prioridad media**: no rompe nada, pero en un repositorio con lint heredado en rojo cada commit se frena y pide aprobación, y eso empuja a apagar el guard entero (240).
 
 ## Resumen
 
@@ -43,4 +43,4 @@ Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01,
 
 ## Relacionados
 
-- 219 — lo que hizo que las dos apagaran `verify`.
+- 240 — lo que hizo que las dos apagaran `verify`.

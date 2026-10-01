@@ -37,7 +37,7 @@ const CT = require('./contract')
 const { fail, planningRoot, TODAY, REFUSED } = require('./io')
 
 // Un lint con `--fix` no lo corre `verify` cuando el commit coincide con el árbol, porque escribiría en él
-// (caso 219). Un hook no tiene cómo avisar sin frenar, así que lo dice `check`: si no, el gate se saltea en
+// (caso 240). Un hook no tiene cómo avisar sin frenar, así que lo dice `check`: si no, el gate se saltea en
 // silencio y el commit pasa sin lint.
 function lintThatWrites(opsDir, workspace) {
   let lint

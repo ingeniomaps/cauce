@@ -296,7 +296,7 @@ function howItReads(failures) {
     + 'una suite, así que mirá si llegaron a ejecutarse antes de aprobar esto como un rojo conocido.'
 }
 
-// Cuánto puede durar un gate: `runner.gateTimeoutMinutes`, o diez minutos (caso 219). Sin tope, un gate que
+// Cuánto puede durar un gate: `runner.gateTimeoutMinutes`, o diez minutos (caso 240). Sin tope, un gate que
 // cuelga dejaba la sesión colgada sin decir por qué.
 const GATE_MINUTES = 10
 function gateTimeout(input) {
@@ -305,7 +305,7 @@ function gateTimeout(input) {
   return (declared > 0 ? declared : GATE_MINUTES) * 60_000
 }
 
-// Lo que escribe no corre en el árbol vivo (R26, caso 219): ahí el árbol **es** el trabajo de quien
+// Lo que escribe no corre en el árbol vivo (R26, caso 240): ahí el árbol **es** el trabajo de quien
 // commitea, y un `build` que limpia su salida o un lint con `--fix` lo tocan. Sobre la copia del índice
 // corren igual, porque se descarta. `build` vuelve al árbol si la raíz lo pide en su `verify`; correrlo
 // siempre en una copia no es la salida, porque ahí `node_modules` viaja por enlace y eso rompe Turbopack

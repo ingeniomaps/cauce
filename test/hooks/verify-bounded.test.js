@@ -1,6 +1,6 @@
 'use strict'
 
-// El costo y el alcance de `verify` (caso 219, R26): un gate tiene tope y se corta con todo lo que lanzó,
+// El costo y el alcance de `verify` (caso 240, R26): un gate tiene tope y se corta con todo lo que lanzó,
 // corre uno por vez en la máquina, y lo que escribe no corre sobre el árbol de quien commitea.
 
 const { tempRoot } = require('../support/environment')

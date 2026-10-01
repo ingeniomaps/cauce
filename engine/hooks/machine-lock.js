@@ -1,6 +1,6 @@
 'use strict'
 
-// Un gate por vez en la máquina (caso 219, R26). Dos sesiones que commitean a la vez lanzaban dos suites
+// Un gate por vez en la máquina (caso 240, R26). Dos sesiones que commitean a la vez lanzaban dos suites
 // completas en paralelo, y ninguna sabía de la otra: en una instancia real eso terminó con `systemd-oomd`
 // matando la sesión. El candado es un archivo con el pid de quien lo tiene; si ese proceso ya no existe, el
 // candado quedó de una corrida que murió y se toma.

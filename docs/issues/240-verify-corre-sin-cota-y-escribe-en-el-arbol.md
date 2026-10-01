@@ -1,5 +1,5 @@
 ---
-caso: 219
+caso: 240
 titulo: verify corre sin timeout ni candado y escribe en el árbol que juzga
 estado: resuelto
 resuelto-en: 0.100.0
@@ -7,7 +7,7 @@ prioridad: alta
 version-detectada: 0.99.2
 ---
 
-# 219 — `verify` incumple R26: no acota su costo y escribe en el árbol del commit, y por eso las dos instancias lo apagaron
+# 240 — `verify` incumple R26: no acota su costo y escribe en el árbol del commit, y por eso las dos instancias lo apagaron
 
 **🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **alta**.
 
@@ -56,7 +56,7 @@ Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01,
 
 ## Relacionados
 
-- 220 — el rojo preexistente, la otra mitad de lo que las instancias reemplazaron.
+- 241 — el rojo preexistente, la otra mitad de lo que las instancias reemplazaron.
 - 232 — la cota de workers fuera del commit.
 - R26 (`template/planning/rules/system/runs.md`).
 
@@ -100,6 +100,11 @@ Lo que el caso no preveía:
   dos `tar` y el `tar xf` del otro lado extrajo sólo el primero, así que la copia salió sin
   `test/tools/coverage.sh`. Medido: dos llamadas de `xargs` sobre el árbol actual. Se pasó a
   `tar --null -T -`, que lee la lista por stdin.
+
+- **Se abrió como 219 y se renumeró a 240**, junto con el 220 a 241. Otra sesión abrió el mismo día su 219 y
+  su 220, y los mergeó antes; según `docs/issues/README.md`, se mueve el que todavía no se publicó. Los
+  mensajes de los commits de esta rama dicen `Refs: docs/issues/219`: quedaron así porque la rama ya estaba
+  empujada, y reescribirla es lo que R8 prohíbe.
 
 Prueba real:
 

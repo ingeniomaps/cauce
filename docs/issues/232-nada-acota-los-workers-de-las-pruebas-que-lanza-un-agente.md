@@ -30,7 +30,7 @@ No hay nada en `engine/hooks/` sobre workers ni `availableParallelism`.
 
 ## Fix propuesto
 
-Un guard en `pre-shell` que pida la cota en los runners conocidos, con escape aprobable y no por variable de entorno, y el mismo candado que use `verify` (219).
+Un guard en `pre-shell` que pida la cota en los runners conocidos, con escape aprobable y no por variable de entorno, y el mismo candado que use `verify` (240).
 
 ## Tradeoffs
 
@@ -42,5 +42,5 @@ Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01,
 
 ## Relacionados
 
-- 219 — la misma cota dentro del commit.
+- 240 — la misma cota dentro del commit.
 - R26.
