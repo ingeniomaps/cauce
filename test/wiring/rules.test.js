@@ -212,7 +212,8 @@ test('install declara lo que el bloque de reglas va a pesar en cada agente', () 
   // modelo. Un número inventado en la salida es peor que uno exacto, porque se cita para decidir.
   // Cinco desde que `runs.md` salió de `process.md` (caso 160). Los KB del total se mueven cuando el
   // toolkit enseña algo nuevo —39,1 con cuatro archivos, 45,9 con R24..R28, 50,7 con lo agregado a R3,
-  // R8..R10 y R17, y 49,1 al retirar lo que una medición mostró que R6 ya lograba— y la ventana se
+  // R8..R10 y R17, 49,1 al retirar lo que una medición mostró que R6 ya lograba, y 50,3 con el comparador
+  // que R27 nombra para cuando cerrar por defecto rompe el uso diario— y la ventana se
   // deja angosta a propósito: que esta prueba falle en cada edición de una
   // regla **es** la función, y es lo único que obliga a medir lo que cada agente paga antes de moverla.
   //
@@ -220,7 +221,7 @@ test('install declara lo que el bloque de reglas va a pesar en cada agente', () 
   // creada no puede cruzar el umbral por más que nuestro piso crezca. Antes era una consecuencia
   // aritmética que había que recalcular; ahora es una invariante y por eso se asercia.
   assert.match(salida.stdout,
-    /claude: el bloque de reglas carga 5 archivo\(s\), 49\.\d KB en cada agente \(0\.0 KB propias\)/,
+    /claude: el bloque de reglas carga 5 archivo\(s\), 50\.\d KB en cada agente \(0\.0 KB propias\)/,
     'declara cuántas, cuánto pesan y cuánto de eso puso el proyecto')
 })
 
