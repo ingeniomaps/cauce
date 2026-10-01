@@ -55,6 +55,12 @@ test('una superficie con una celda sin declarar rige igual y deja el hueco a la 
   assert.equal(result.pending, true)
 })
 
+test('el encabezado se reconoce por el separador, no por el nombre de la columna', () => {
+  const root = instance(company(['| Alta de pedido | El checkout | Todos | api/orders |'])
+    .replace('| Superficie |', '| Superficie crítica |'))
+  assert.deepEqual(criticalSurfaces(root).declared.map((one) => one.surface), ['Alta de pedido'])
+})
+
 test('sin archivo, sin sección o sin filas, no hay nada declarado y eso es un hueco', () => {
   assert.deepEqual(criticalSurfaces(instance()), { declared: [], pending: true })
   assert.deepEqual(criticalSurfaces(instance('# Empresa\n\n## Fuentes de verdad\n')), { declared: [], pending: true })

@@ -30,12 +30,15 @@ function criticalSurfaces(instanceRoot) {
   const declared = []
   let pending = false
   let rows = 0
+  let header = true
   for (const line of lines.slice(start + 1)) {
     if (/^##\s/.test(line)) break
     if (!line.trim().startsWith('|')) continue
     const [surface = '', stops = '', reaches = '', lives = ''] = cells(line)
-    // El encabezado y el separador de la tabla no son filas.
-    if (surface === 'Superficie' || /^:?-{3,}/.test(surface)) continue
+    // El encabezado es lo que va antes del separador, se llame como se llame la columna: una empresa
+    // puede renombrarla, y contarla como superficie mandaría a revisión cada tarea `express`.
+    if (/^:?-{3,}/.test(surface)) { header = false; continue }
+    if (header) continue
     rows += 1
     if (!surface || UNDECLARED.test(surface)) { pending = true; continue }
     // Una superficie con nombre y sin saber dónde vive sigue rigiendo, y el hueco se reporta igual.
