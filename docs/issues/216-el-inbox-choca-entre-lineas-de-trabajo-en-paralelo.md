@@ -74,9 +74,11 @@ fix proponía.
   se nombra cada entrada. Los prompts no dicen más «la sección X de `INBOX.md`».
 - **Tradeoff: leer el INBOX deja de ser abrir un archivo** — se decidió aceptarlo. `tree` cuenta los dos
   lados juntos, y `planning/inbox/README.md` explica que promover o descartar es borrar el archivo. Ese
-  README llega también a las instancias que actualizan (`upgrade` en `TEMPLATE_OWN`). No hay un comando que
-  imprima el INBOX entero: no se construyó porque nadie lo pidió todavía, y `cat planning/inbox/*/*.md` lo
-  resuelve.
+  README llega también a las instancias que actualizan (`upgrade` en `TEMPLATE_OWN`). Para leerlo
+  entero se agregó `ops inbox <planning>` —lo decidió Manuel después del PR #635, todavía en 0.100.0—:
+  imprime cada sección con sus entradas enteras y el archivo de cada una, que es lo que hay que borrar al
+  promover, y lo mismo en `--json`. Sale del mismo lector que `tree` y `check`, así que no puede contar
+  distinto. `product-manager`, que cura el INBOX, lo lee con ese comando.
 
 Lo que el caso no preveía:
 
