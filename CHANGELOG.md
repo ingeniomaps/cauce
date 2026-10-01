@@ -18,6 +18,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Las rutas escribibles de tu máquina ya no tienen que ir al archivo compartido.** `writableOutsideRoots`
+  se suma también desde `ops.config.local.json`, en la raíz de la instancia: ahí va la memoria de tu runner o
+  una carpeta de otro proyecto tuyo, sin que viaje a todos los que clonan. De ese archivo sólo se lee esa
+  lista —el push se sigue decidiendo en `ops.config.json`—, y `check` muestra cada ruta exenta con el archivo
+  que la declaró. Una instancia nueva ya lo trae en `.gitignore`; si la tuya es anterior, agregá la línea
+  `ops.config.local.json` a tu `.gitignore` antes de crearlo.
 - **`ops line` arma una línea de trabajo con su propia carpeta de sesión.** Si trabajás con varias líneas en
   paralelo sobre la instancia, `node tools/ops.js line . admin` crea `<carpeta>-admin/` con un worktree en la
   rama `line/admin`, el motor, los repositorios del producto y tus runners instalados ahí; la sesión de esa
