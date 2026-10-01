@@ -18,6 +18,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **`ops line` arma una línea de trabajo con su propia carpeta de sesión.** Si trabajás con varias líneas en
+  paralelo sobre la instancia, `node tools/ops.js line . admin` crea `<carpeta>-admin/` con un worktree en la
+  rama `line/admin`, el motor, los repositorios del producto y tus runners instalados ahí; la sesión de esa
+  línea se abre en esa carpeta y corre los guards de su árbol. Antes todas las sesiones corrían los guards de
+  un solo árbol, y `automation install` desde un worktree los movía para todas: ahora se niega y te manda a
+  `ops line` (con `--force` se mueven igual).
 - **La cola se puede partir en un archivo por hito.** Cada hito puede vivir en `planning/backlog/<slug>.md`, con
   `order: N` en el frontmatter, en vez de en `BACKLOG.md`. Si trabajás con varias líneas en paralelo —una rama
   por persona o por frente—, cada una escribe el archivo de su hito y traer la otra ya no choca. `BACKLOG.md`
