@@ -840,6 +840,8 @@ jobs:
           } | tee "$result"
           if grep -q 'sin cambio decidido' "$result"; then
             echo 'decided=false' >> "$GITHUB_OUTPUT"
+            # Qué documento quedó sin decidir, para volver a preguntárselo después de `/agent-propose`.
+            echo "file=$(sed -n 's/^[+=] //p' "$result" | head -1)" >> "$GITHUB_OUTPUT"
           else
             echo 'decided=true' >> "$GITHUB_OUTPUT"
           fi
@@ -885,6 +887,7 @@ jobs:
             echo "::notice title=Sin credencial para proponer::$AGENT compuso su propuesta y queda en «por definir»: no hay CLAUDE_CODE_OAUTH_TOKEN ni ANTHROPIC_API_KEY. Cargá uno de los dos, o corré /agent-propose a mano sobre la rama."
             exit 0
           fi
+          echo "attempted=true" >> "$GITHUB_OUTPUT"
           # Un workflow no se ejecuta desde el fuente: trae `{{INCLUDE:}}` y el registro de la sesión sale
           # de `.claude/workflows/`. Es el mismo render que usa `make eval-workflows`, y falla si queda un
           # include sin expandir en vez de escribir un archivo que reventaría en el primer agente.
@@ -897,7 +900,8 @@ jobs:
             if (out.includes("{{INCLUDE:")) throw new Error("agent-propose: quedaron includes sin expandir")
             fs.writeFileSync(path.join(root, ".claude/workflows/agent-propose.js"), out)
           '
-          # Lo que el recorrido necesita y nada más: leer el cargo y escribir su propuesta. **Sin `Bash`**,
+          # Lo que el recorrido necesita y nada más: correrse —`Workflow`, sin el que en `-p` el recorrido
+          # espera una aprobación que nadie da—, leer el cargo y escribir su propuesta. **Sin `Bash`**,
           # ni siquiera acotado — el de investigación concede cuatro formas nombradas y la puerta las
           # cuenta sobre el archivo entero, así que una quinta acá se leería como un permiso más de aquél.
           # `agent-propose` pide dos comandos del CLI en su fase de contexto; sin ellos el primer agente
@@ -906,7 +910,7 @@ jobs:
           # muestre que hace falta, no de paso.
           proponer() {
             "$@" --permission-mode acceptEdits \
-              --allowedTools 'Read' 'Glob' 'Grep' 'Edit' 'Write' \
+              --allowedTools 'Workflow' 'Read' 'Glob' 'Grep' 'Edit' 'Write' \
               -p "/agent-propose $AGENT"
           }
           if [ -n "$OAUTH" ]; then
@@ -914,7 +918,6 @@ jobs:
             if proponer env -u ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN="$OAUTH" claude; then exit 0; fi
             echo "La corrida con la suscripción falló." >&2
             if [ -z "$APIKEY" ]; then
-              echo "failed=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             echo "Reintento con ANTHROPIC_API_KEY, que se factura por token." >&2
@@ -922,12 +925,29 @@ jobs:
             echo "Credencial: API key (ANTHROPIC_API_KEY). Se factura por token."
           fi
           # Una corrida que falla no frena acá: la rama se empuja igual con sus sellos, que es lo que evita
-          # que el mismo material entre de nuevo el mes siguiente. Lo que sí hace es quedar dicha, y el
-          # último paso del job la vuelve rojo: como simple aviso, un ensamblaje que falló entero se veía igual
-          # que un mes sin nada que proponer (caso 219).
+          # que el mismo material entre de nuevo el mes siguiente. Si falló lo dice el paso siguiente.
           if ! proponer env -u CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_API_KEY="$APIKEY" claude; then
-            echo "failed=true" >> "$GITHUB_OUTPUT"
+            echo "La corrida con la API key falló." >&2
           fi
+
+      # Si el recorrido hizo su trabajo lo dice el documento, no el código de salida: con el recorrido sin
+      # permiso, `claude` contestaba pidiendo aprobación y salía en cero (caso 219). Y el veredicto de
+      # `proposal` es de antes de correrlo, así que leerlo después dejaba sin PR a una propuesta completa.
+      - name: Check the proposal again
+        id: decision
+        if: steps.write.outputs.attempted == 'true'
+        env:
+          FILE: ${{ steps.proposal.outputs.file }}
+        run: |
+          # `blankProposal` da por decidido un archivo que no puede leer; acá eso sería un verde falso. Y no
+          # sale en uno: cortar acá saltearía el push de los sellos, así que el rojo lo pone el último paso.
+          if [ ! -f "$FILE" ]; then
+            echo "No está la propuesta que se compuso: '$FILE'." >&2
+            echo "decided=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          decided="$(node -e 'process.stdout.write(String(!require("./engine/agents/learning-files").blankProposal(process.argv[1])))' "$FILE")"
+          echo "decided=$decided" >> "$GITHUB_OUTPUT"
 
       - name: Detect changes
         id: changes
@@ -954,7 +974,7 @@ jobs:
         env:
           AGENT: ${{ matrix.agent }}
           GH_TOKEN: ${{ github.token }}
-          DECIDED: ${{ steps.proposal.outputs.decided }}
+          DECIDED: ${{ steps.decision.outputs.decided || steps.proposal.outputs.decided }}
         run: |
           period="$(date -u +%Y-%m)"
           # Consolidar **sella** lo que consume, así que el diff trae la propuesta y además los informes
@@ -1003,11 +1023,11 @@ jobs:
             --body "Propuesta automática construida desde los informes de investigación. No modifica SKILL.md y requiere evaluación y aprobación humana."
       # Después del push a propósito: el rojo no tiene que costar los sellos.
       - name: Fail when the proposal run failed
-        if: steps.write.outputs.failed == 'true'
+        if: steps.decision.outputs.decided == 'false'
         env:
           AGENT: ${{ matrix.agent }}
         run: |
-          echo "::error title=Propuesta sin completar::$AGENT queda en «por definir»: la corrida de /agent-propose falló, y el paso «Write the concrete change» dice por qué. La rama se empujó con los sellos; corré /agent-propose sobre ella."
+          echo "::error title=Propuesta sin completar::$AGENT queda en «por definir»: /agent-propose corrió y la propuesta sigue sin decidir; el paso «Write the concrete change» dice por qué. La rama se empujó con los sellos; corré /agent-propose sobre ella."
           exit 1
 
   # Lo que `propose` para los cargos, y como aquél sin hablar con ningún modelo. Todavía no es su
