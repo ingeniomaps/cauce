@@ -214,9 +214,10 @@ el rojo previo.
 - **Tradeoff «una caída transitoria pone la corrida en rojo»** — **se aceptó**, como decía el caso.
 - **Lo que el caso no preveía.** La primera prueba real encontró los dos defectos que están en «Lo que
   encontró la primera prueba real», y los dos se arreglaron acá. Encontró además un dato que el caso no
-  pedía: `/agent-propose` tardó **9 min 23 s** de un `timeout-minutes: 15`. Con un solo cargo no hay
-  distribución. La corrida de los 52 restantes lo mide, y si alguno se corta por tiempo sale como caso
-  propio.
+  pedía: `/agent-propose` tardó **9 min 23 s** de un `timeout-minutes: 15`. Se midió en la corrida de los 53
+  cargos (`36927416208`): 15 se cortaron. El límite no fue el del job sino uno de `claude` en `-p`, que corta a
+  los 600 s lo que corre en segundo plano y sale en cero. **Sale como caso propio, el 230.** Que esos 15
+  salieran en rojo y no en verde es este arreglo funcionando.
 - **Recuperar el mes** — no le toca a este caso. Son 52 cargos con su rama de 2026-10 empujada y la propuesta
   en «por definir». Relanzarlos choca con el caso 220, y se decide aparte.
 
