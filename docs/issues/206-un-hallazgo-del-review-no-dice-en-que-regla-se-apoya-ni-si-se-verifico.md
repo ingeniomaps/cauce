@@ -82,6 +82,13 @@ una hipótesis no sostiene una negativa.
 
 Sólo el Review lo lleva; Critique conserva `DECISION` tal cual.
 
+**Decidido al implementarlo**, distinto de lo que decía arriba en un punto: un `ref` que cita una regla
+que no rige **no frena la corrida**. El hallazgo pasa a `criterio (citó <ref>, que no rige)` y conserva su
+peso. Frenar perdía la corrida entera por una cita mal hecha sobre un hallazgo que podía ser cierto; es
+lo que R14 pide para lo que cita algo ausente: sigue viaje marcado, no se borra ni se corrige en
+silencio. Y la lista `rules` se queda, no se deriva de los `ref`: dice también contra qué se revisó sin
+encontrar nada, que ningún hallazgo puede decir.
+
 ## Tradeoffs
 
 - La parte b puede dejar pasar un defecto real que el revisor no se tomó el trabajo de comprobar. La
