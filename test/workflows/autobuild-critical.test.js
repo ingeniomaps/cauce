@@ -86,3 +86,11 @@ test('el carril que llega al WIP y a done/ es el que corrió', async () => {
   const intacta = await runFlow(withSurfaces({ critical: '' }), { lane: 'express', vouched: true })
   assert.match(doneFacts(intacta), /Hechos: lane=express;/)
 })
+
+// Lo que el prompt promete sobre una superficie crítica tiene que coincidir con lo que el código hace: un
+// hallazgo sin comprobar no manda a corregir, también ahí, así que se pide comprobar antes de afirmar.
+test('sobre una superficie crítica el revisor recibe que tiene que comprobar', async () => {
+  const flow = await runFlow(withSurfaces({ critical: '' }), { lane: 'full' })
+  const review = (flow.prompts.find((one) => one.key === KEY.review) || {}).prompt || ''
+  assert.match(review, /se comprueba antes de afirmarlo; sin comprobar no manda a corregir/)
+})

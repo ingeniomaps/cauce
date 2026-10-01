@@ -130,3 +130,23 @@ test('Done pide lane y review textuales', async () => {
   const run = await flow([])
   assert.match(prompt(run, 'Done|done'), /lane y review van textuales, copiados de estos hechos sin resumir/)
 })
+
+// Revisión de la tanda: una sospecha de la primera pasada se perdía si la re-revisión no la repetía.
+test('la sospecha de la primera pasada llega al INBOX aunque la re-revisión no la repita', async () => {
+  const run = await flow([
+    finding({ ref: RULE, verified: true }),
+    finding({ detail: 'puede haber una carrera en el alta', ref: 'criterio', verified: false }),
+  ])
+  ranToEnd(run.result)
+  assert.match(prompt(run, 'Review|review-noted'), /\[sin verificar\] puede haber una carrera en el alta/)
+})
+
+// La ruta como la escribe el revisor —con `./` delante— y `criterio` con mayúscula no son citas sin base.
+test('una regla que rige citada con otra forma de la ruta no se marca como que no rige', async () => {
+  const run = await flow([
+    finding({ ref: `./${RULE}`, verified: true }),
+    finding({ detail: 'falta el índice', ref: 'Criterio', verified: true }),
+  ])
+  const fix = prompt(run, 'Review|review-fix')
+  assert.doesNotMatch(fix, /que no rige/, fix.slice(-400))
+})

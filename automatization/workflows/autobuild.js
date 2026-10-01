@@ -369,8 +369,9 @@ const RULED = ' En rules nombrá, por su ruta, cada una de las reglas que rigen 
 // También acompaña a todo prompt con schema REVIEWED, y es función porque las superficies se leen después.
 const SURFACED = () => ((planning && (planning.surfaces || []).length)
   ? ` En critical poné la superficie de esta lista que el diff toca, tal cual, o vacío si no toca ninguna: `
-    + `${JSON.stringify(planning.surfaces)}. Son las que la empresa declaró que no se pueden romper; un hallazgo `
-    + 'de corrección o de seguridad sobre una de ellas bloquea.'
+    + `${JSON.stringify(planning.surfaces)}. Son las que la empresa declaró que no se pueden romper: un hallazgo `
+    + 'de corrección o de seguridad sobre una de ellas bloquea, y por eso se comprueba antes de afirmarlo; '
+    + 'sin comprobar no manda a corregir.'
   : ' En critical poné la cadena vacía: la empresa no declaró superficies críticas.')
 // Lo que hay que corregir antes de entregar. El resto de los hallazgos no desaparece: se registra.
 // Una decisión no cuenta como bloqueante aunque venga marcada: su destino es la fila, no la corrección.
@@ -385,10 +386,16 @@ const blockers = (verdict) => verdict.concerns
 const cite = (one) => (one.ref ? `${one.detail} [${one.ref}]` : one.detail)
 // Un `ref` que nombra una regla que no rige es una cita sin base. No se borra ni se corrige en silencio
 // —R14: sigue viaje marcada—; pasa a criterio diciendo qué citó, y el hallazgo conserva su peso.
+// La ruta se compara sin el `./` inicial y por sufijo, porque el revisor la escribe como la ve —con la raíz
+// delante o sin ella— y marcar «no rige» una regla que sí rige sería afirmar algo falso en `done/`.
+const governs = (ref) => {
+  const file = ref.split('#')[0].replace(/^\.\//, '')
+  return governing.some((rule) => file === rule || file.endsWith(`/${rule}`))
+}
 const grounded = (verdict) => {
   for (const one of verdict.concerns) {
     const ref = String(one.ref || '').trim()
-    if (ref && ref !== 'criterio' && !governing.includes(ref.split('#')[0])) {
+    if (ref && !/^criterio\b/i.test(ref) && !governs(ref)) {
       one.ref = `criterio (citó ${ref}, que no rige)`
     }
   }
@@ -1079,6 +1086,9 @@ while (rounds++ < MAX_TASKS) {
     // reasigna `review`: sin esto lo corregido no llegaba a `done/` y la misma falla corregida en diez
     // tareas no dejaba rastro en ninguna (caso 207).
     const fixed = blockers(review)
+    // Lo que esta pasada sospechó sin comprobar va al INBOX y no a corregir. Se guarda por lo mismo que
+    // `fixed`: si la re-revisión no lo repite, sin esto no llegaba a ningún lado.
+    const suspected = review.concerns.filter((one) => one.blocking && !one.decision && one.verified === false)
     let decidedNote = ''
     if (review.verdict === 'bloqueado') {
       return stop('review-blocked', named(review).join('; ') || 'sin condiciones nombradas')
@@ -1166,8 +1176,9 @@ while (rounds++ < MAX_TASKS) {
     // aparecer dos veces, le come una ranura del tope a una propuesta que sí lo era.
     // Un bloqueante sin comprobar cae acá y no en la corrección, marcado: quien lo lea sabe que es una
     // sospecha y no un defecto establecido.
-    const noted = review.concerns.filter((one) => !one.decision && (!one.blocking || one.verified === false))
-      .map((one) => withOrigin(`${one.blocking ? '[sin verificar] ' : ''}${cite(one)}`, origin))
+    const noted = [...new Set([...review.concerns, ...suspected]
+      .filter((one) => !one.decision && (!one.blocking || one.verified === false))
+      .map((one) => withOrigin(`${one.blocking ? '[sin verificar] ' : ''}${cite(one)}`, origin)))]
     const kept = noted.slice(0, INBOX_CAP)
     // Lo que pasa del tope no se escribe y tampoco desaparece: queda contado en el hecho de revisión, que
     // viaja a `done/`. Una revisión que anota treinta y seis cosas no está priorizando, y el INBOX no las
