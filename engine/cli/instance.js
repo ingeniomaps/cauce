@@ -100,10 +100,10 @@ function scaffold(root, { name, mode, force = false, quiet = false }) {
     '{{MODE}}': mode,
     '{{WORKSPACE_PATH}}': mode === 'embedded' ? '.' : '..',
     ...RC.sinceValues(TODAY()),
-  }, force, providerNames(), quiet)
-  // No se copia `.github/`: `ci.yml` valida el toolkit con `npm run ci` —que una instancia no tiene— y
-  // el ciclo de aprendizaje dejó de distribuirse en 0.4.0. Copiar salteando lo que no aplica dejaba
-  // `.github/workflows/` vacío en cada instancia.
+  }, force, [...providerNames(), ...(mode === 'embedded' ? ['.github'] : [])], quiet)
+  // El `.github/` del toolkit no se copia: su `ci.yml` valida el toolkit con `npm run ci`, que una instancia no
+  // tiene. La instancia recibe el suyo desde el molde (caso 231), salvo en embedded, donde el repositorio es el
+  // del producto y su CI ya existe.
   Object.assign(preserved, copyRuntime(
     path.join(PROJECT_ROOT, 'automatization', 'hooks'),
     path.join(root, 'automatization', 'hooks'),

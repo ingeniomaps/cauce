@@ -9,7 +9,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
-const { installOwnWorkflows } = require('../../engine/automation/own-workflows')
+const { installOwnWorkflows, ownWorkflowErrors } = require('../../engine/automation/own-workflows')
 
 const AUTOMATION = path.resolve(__dirname, '..', '..', 'automatization')
 const RUNNER = { artifacts: [{ source: 'x', target: '.claude/workflows/autobuild.js' }] }
@@ -54,4 +54,21 @@ test('lo generado cuya fuente se borró se retira, y lo que no generó se queda'
   assert.equal(fs.existsSync(target('propio.js')), false)
   assert.ok(fs.existsSync(target('ajeno.js')), 'no se borra lo que no lleva la marca')
   assert.ok(lines.some((one) => /retirado propio\.js, que ya no está en workflows\//.test(one)))
+})
+
+// Lo que `check` compila (caso 231): un error de sintaxis se ve antes de instalar, y lo válido —el `await` de
+// primer nivel, el `return` del final, un `{{INCLUDE:…}}`— no se confunde con un error.
+test('check nombra el workflow propio que no compila, y deja pasar el que el runtime acepta', () => {
+  const { root } = setup({
+    'bien.js': "export const meta = { name: 'bien' }\n{{INCLUDE:shared/workflow-root.js}}\n"
+      + "const r = await agent('hola')\nreturn r\n",
+    'roto.js': "export const meta = { name: 'roto' }\nconst r = await agent('hola'\n",
+  })
+  const errors = ownWorkflowErrors(root, AUTOMATION)
+  assert.equal(errors.length, 1, errors.join('\n'))
+  assert.match(errors[0], /^workflows\/roto\.js: /)
+})
+
+test('sin workflows propios no hay nada que compilar', () => {
+  assert.deepEqual(ownWorkflowErrors(tempRoot('cauce-sin-propios-'), AUTOMATION), [])
 })

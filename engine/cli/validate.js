@@ -35,6 +35,7 @@ const MG = require('../core/migrations')
 const CP = require('../config/paths')
 const AG = require('../agents/catalog')
 const RL = require('../automation/rules')
+const OW = require('../automation/own-workflows')
 const CT = require('./contract')
 const { fail, planningRoot, TODAY, REFUSED } = require('./io')
 
@@ -83,12 +84,19 @@ function check(dir, cli) {
         warnings.push(...C.configWarnings(config))
         warnings.push(...MG.coverageWarnings(R.reposFor(path.dirname(configPath), '.'), config))
         if (Array.isArray(config.workspaceRoots)) {
+          // Un CI clona la instancia sola, sin los repositorios de al lado (caso 231). La bandera la pide quien
+          // corre, y no se deduce del ambiente: lo que se saltea se nombra en cada corrida.
+          const skipped = []
           for (const workspace of config.workspaceRoots) {
             if (workspace && workspace.name && workspace.path
               && !fs.existsSync(path.resolve(path.dirname(configPath), workspace.path))) {
-              errors.push(`ops.config.json: no existe la raíz ${workspace.name} (${workspace.path})`)
+              if (cli.has('--skip-roots')) skipped.push(workspace.name)
+              else errors.push(`ops.config.json: no existe la raíz ${workspace.name} (${workspace.path})`)
             }
             if (workspace && workspace.path) warnings.push(...lintThatWrites(path.dirname(configPath), workspace))
+          }
+          if (skipped.length) {
+            warnings.push(`--skip-roots: ${skipped.length} raíz(ces) ausente(s) sin comprobar (${skipped.join(', ')})`)
           }
           // Un rojo declarado es una exención y se ve en cada corrida; uno mal escrito no declara nada (caso 241).
           const red = KR.readKnownRed(root, config.workspaceRoots.map((one) => Object(one).name))
@@ -195,6 +203,7 @@ function check(dir, cli) {
   errors.push(...integration.errors)
   warnings.push(...integration.warnings)
 
+  errors.push(...OW.ownWorkflowErrors(path.resolve(root, '..')))
   warnings.push(...SR.competingSections(root))
   warnings.push(...SR.looseRuleHeadings(root))
   // Sobrescribir una entrada de system/ es legítimo y esperado; lo que no puede pasar es que

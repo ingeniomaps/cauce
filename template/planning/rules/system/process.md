@@ -82,6 +82,13 @@ Las dos barras juntas, y en los dos sentidos: una tarea de tres horas con quince
 el tope de esfuerzo y no se construye nunca; una tarea de una condición y tres días lo pasa por el otro
 lado. Medir una sola deja pasar la mitad de los casos.
 
+**Una decisión no es una unidad de trabajo.** Lo que no tiene nada que construir —decidir, elegir, esperar
+una respuesta— no entra a la cola: va a `HUMAN_ACTIONS.md` con la pregunta exacta, o dentro de la tarea que
+la necesita, como precondición. Escrita como tarea pasa las dos barras sin esfuerzo —una condición, casi
+nada que hacer— y gasta una vuelta entera para terminar reportando que había que preguntar. Es raro y sale
+caro: de 432 tareas cerradas en cuatro instancias fue una sola, que se cerró a mano porque la puerta no
+encontró nada que verificar; en otra costó 327k tokens antes de plegarse como precondición.
+
 
 ## R25 — El identificador de una unidad de trabajo no cambia mientras está viva
 

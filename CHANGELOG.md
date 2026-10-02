@@ -24,6 +24,16 @@ diseño — eso vive en el commit y en el código.
   comentario. Con `"language": "es"` o `"en"` frena un comentario en el otro idioma, y con `"inlineMax": 2`
   uno de más de dos líneas dentro de una unidad; esos dos se aprueban como cualquier gate. Sin la clave no
   corre: cuesta una vuelta por commit, y esa cuenta la hace cada proyecto.
+- **Una instancia nueva trae su CI.** `init` deja `.github/workflows/ci.yml`, que en cada PR corre `check`, la
+  sintaxis de los hooks y las pruebas de tus guards propios de `automatization/tests/`. Es tuyo desde ese
+  momento: `upgrade` no lo toca, así que sumale lo que tu instancia necesite. En modo embedded no se crea,
+  porque el repositorio ya tiene el suyo. Una instancia que ya existe puede copiarlo de
+  `node_modules/@ingeniomaps/cauce/template/.github/workflows/ci.yml`.
+- **`check --skip-roots`, para correr sin los repositorios de producto.** Un CI clona la instancia sola, y una
+  raíz de `ops.config.json` que no está era un error. Con la bandera se saltea y se avisa cuál quedó sin
+  comprobar.
+- **`check` compila tus workflows de `workflows/`.** Uno con un error de sintaxis se instalaba igual y fallaba
+  recién al invocarlo; ahora `check` lo frena y nombra el archivo.
 - **`check` avisa una regla propia que no está leyendo.** Una regla escrita como `## Regla 8` o `## Rule 10 -`
   no tiene la forma que `check` lee, así que no cuenta como definida ni choca con la del sistema que contradice.
   Ahora se avisa, con la forma correcta: `## P8 — título`.
@@ -135,6 +145,9 @@ diseño — eso vive en el commit y en el código.
 
 ### Cambiado
 
+- **R17 dice que una decisión no entra a la cola como tarea.** Lo que no tiene nada que construir va a
+  `HUMAN_ACTIONS.md` con la pregunta exacta, o como precondición de la tarea que la necesita. Escrita como
+  tarea, gasta una vuelta entera para terminar diciendo que había que preguntar.
 - **En Claude Code, lo que un guard frena se aprueba en su diálogo de confirmación.** Antes el agente te
   pedía un sí por chat, y cualquier mensaje tuyo que no negara ni preguntara lo aprobaba, aunque hablara de
   otra cosa. Ahora Claude Code abre su diálogo para esa acción, con el motivo del guard: la aprobás o la

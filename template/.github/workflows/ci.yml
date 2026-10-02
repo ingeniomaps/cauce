@@ -1,0 +1,45 @@
+# Lo que un PR a esta instancia tiene que mantener cierto: el planning válido, los hooks que corren en cada
+# sesión sin errores de sintaxis y los guards propios con sus pruebas en verde. Sin esto, un PR que rompe el
+# formato de una tarea o un guard se mergea sin que nada lo frene.
+#
+# Lo siembra `init` y desde ahí es tuyo: `upgrade` no lo toca, así que agregale lo que tu instancia necesite
+# —un escáner de secretos, las pruebas de tus integraciones—.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # El CI clona esta instancia sola, sin los repositorios de producto que declara `ops.config.json`.
+      # `--skip-roots` saltea esas raíces y dice cuáles; también compila los workflows de `workflows/`.
+      - name: Planning
+        run: node tools/ops.js check planning --skip-roots
+
+      # Los hooks corren en cada sesión: un error de sintaxis se ve acá y no en la sesión de otro.
+      - name: Sintaxis de los hooks
+        run: for f in automatization/hooks/*.sh; do bash -n "$f" || exit 1; done
+
+      # Donde `organization/workspace.md` dice que viven las pruebas de los guards propios.
+      - name: Pruebas de los guards propios
+        run: |
+          if compgen -G 'automatization/tests/*.test.js' > /dev/null; then
+            node --test 'automatization/tests/*.test.js'
+          fi
