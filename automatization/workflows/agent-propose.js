@@ -87,7 +87,10 @@ const proposal = await agent(
   `decí si cada uno sigue pasando. Si una conducta prohibida nueva no tiene caso que la distinga de ` +
   `las que ya están, escribí el enunciado del caso que haría falta —con **cuatro** comportamientos ` +
   `esperados, como todos los del catálogo— y **no crees el archivo**: cambiar el denominador de la ` +
-  `evaluación es parte de lo que se aprueba.\n\n` +
+  `evaluación es parte de lo que se aprueba. Si agregás una conducta a \`required\`, escribí también el ` +
+  `enunciado de un caso que la ejerza aunque ya haya casos parecidos: al juez sólo le llegan las ` +
+  `prohibidas, así que sin un caso propio la requerida no la mide nada, y aplicar no puede escribirlo ` +
+  `sin tu firma.\n\n` +
   `**Y contestá el campo \`cambia\` en el frontmatter**: agregá la línea \`cambia: si\` si «Cambio ` +
   `propuesto» toca algún archivo del cargo, o \`cambia: no\` si concluiste que ninguno cambia. Es lo único ` +
   `del frontmatter que escribís, y decide si la propuesta pide una firma: con \`cambia: no\` se archiva ` +
