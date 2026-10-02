@@ -788,7 +788,9 @@ jobs:
         || (github.event_name == 'workflow_dispatch' && inputs.phase != 'research'))
     needs: discover
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # El techo de `/agent-propose` más lo que tardan los pasos de alrededor. Si GitHub corta el job antes,
+    # se pierde el push de los sellos.
+    timeout-minutes: 40
     permissions:
       contents: write
       pull-requests: write
@@ -882,6 +884,11 @@ jobs:
           AGENT: ${{ matrix.agent }}
           OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           APIKEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # En `-p`, `claude` espera 600 s lo que corre en segundo plano y después lo corta, saliendo en cero.
+          # `/agent-propose` corre ahí, y en el ensamblaje de 2026-10 eso dejó 15 de 53 cargos sin decidir
+          # (caso 230). Se sube a 25 minutos y no a infinito: un recorrido colgado tiene que terminar antes
+          # que el job, para que los sellos se empujen igual.
+          CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: '1500000'
         run: |
           if [ -z "$OAUTH" ] && [ -z "$APIKEY" ]; then
             echo "::notice title=Sin credencial para proponer::$AGENT compuso su propuesta y queda en «por definir»: no hay CLAUDE_CODE_OAUTH_TOKEN ni ANTHROPIC_API_KEY. Cargá uno de los dos, o corré /agent-propose a mano sobre la rama."
