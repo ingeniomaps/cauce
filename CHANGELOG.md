@@ -18,6 +18,9 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **`check` avisa una regla propia que no está leyendo.** Una regla escrita como `## Regla 8` o `## Rule 10 -`
+  no tiene la forma que `check` lee, así que no cuenta como definida ni choca con la del sistema que contradice.
+  Ahora se avisa, con la forma correcta: `## P8 — título`.
 - **El molde trae dónde escribir lo que cada instancia terminaba inventando.**
   - `organization/workspace.md` suma una tabla de credenciales (servicio, variable, para qué, quién la carga y
     dónde) y una de guards propios (qué frena y qué prueba lo sostiene).
