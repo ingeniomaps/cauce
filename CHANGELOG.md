@@ -110,6 +110,12 @@ diseño — eso vive en el commit y en el código.
   esta versión, la superficie crítica y lo corregido. Ahora los copia textuales. Las entradas que ya
   escribiste no cambian.
 
+### Cargos
+
+- **`qa-engineer`**: Los dos candidatos salen de H11 del informe del 2026-09-21, nombrados por el propio juez
+  de la evaluación al leer `evaluations/results/2026-09-16.md` (casos 09 y 13). Los dos entran sólo en
+  `evaluations/expected-behaviors.yaml` —H11 ya los… (propuesta `2026-10.md`).
+
 ## [0.99.2] - 2026-09-28
 
 ### Corregido
