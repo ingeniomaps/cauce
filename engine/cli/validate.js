@@ -30,6 +30,7 @@ const OB = require('../core/onboarding')
 const C = require('../config/validate')
 const DC = require('../planning/done-commits')
 const VF = require('../hooks/verify')
+const KR = require('../core/known-red')
 const MG = require('../core/migrations')
 const CP = require('../config/paths')
 const AG = require('../agents/catalog')
@@ -88,6 +89,13 @@ function check(dir, cli) {
               errors.push(`ops.config.json: no existe la raíz ${workspace.name} (${workspace.path})`)
             }
             if (workspace && workspace.path) warnings.push(...lintThatWrites(path.dirname(configPath), workspace))
+          }
+          // Un rojo declarado es una exención y se ve en cada corrida; uno mal escrito no declara nada (caso 241).
+          const red = KR.readKnownRed(root, config.workspaceRoots.map((one) => Object(one).name))
+          errors.push(...red.errors)
+          for (const one of red.entries) {
+            warnings.push(`planning/${KR.FILE}: ${one.root} ${one.gate} está en rojo declarado y no frena el `
+              + `commit (${one.reason})`)
           }
         }
         // Es la única parte de la configuración que le levanta el límite a un guard, y quien la escribió

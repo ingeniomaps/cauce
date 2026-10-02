@@ -199,6 +199,11 @@
     "branches": 100,
     "functions": 100
   },
+  "engine/core/known-red.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/core/manifest.js": {
     "lines": 100,
     "branches": 83,

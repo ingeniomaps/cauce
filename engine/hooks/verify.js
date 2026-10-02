@@ -13,6 +13,7 @@ const path = require('node:path')
 const { commandOf, cwdOf, block, isCommit, stagedForCommit, opsRoot, configOf } = require('./input')
 const AP = require('./approval')
 const EV = require('../core/evidence')
+const KR = require('../core/known-red')
 const SC = require('../core/scope')
 const { run } = require('./shell')
 const { holdMachine } = require('./machine-lock')
@@ -325,10 +326,13 @@ function rootOf(input, dir) {
 function verifyGates(root, dir, unapproved, env, input, timeoutMs) {
   const ops = opsRoot(input)
   const failures = []
+  // El rojo que la instancia declaró se anota igual y no frena (caso 241); qué se declara, en `core/known-red.js`.
+  const known = ops ? KR.readKnownRed(path.join(ops, 'planning')).entries : []
+  const repo = (rootOf(input, dir) || {}).name
   const gate = (label, program, args) => {
     const result = run(program, args, root, env, { timeoutMs })
     EV.record(ops, label, result.status, result.ms)
-    if (!result.ok) failures.push(failure(label, result, timeoutMs))
+    if (!result.ok && !KR.isKnownRed(known, repo, label)) failures.push(failure(label, result, timeoutMs))
   }
   if (fs.existsSync(path.join(root, 'package.json'))) {
     const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
