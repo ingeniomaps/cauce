@@ -43,16 +43,16 @@ La curación desaparece y el resumen lo cuenta como «refrescado», sin nada que
 
 ## Fix propuesto
 
-Lo que roax-ops hizo en `2bf6c9e` (`integrations/jira/config.js`, `.gitignore:68-71`): el staging fuera de git y la identidad en un `config.local.json` por persona. En Cauce: gitignorear `integrations/*/staging/` en el molde, y no regenerar un `context` con cambios locales —preservarlo y avisarlo— por si el staging se comparte igual.
+Lo que acme-ops hizo en `2bf6c9e` (`integrations/jira/config.js`, `.gitignore:68-71`): el staging fuera de git y la identidad en un `config.local.json` por persona. En Cauce: gitignorear `integrations/*/staging/` en el molde, y no regenerar un `context` con cambios locales —preservarlo y avisarlo— por si el staging se comparte igual.
 
 ## Tradeoffs
 
-- Sacar el staging de git cambia lo que ve un compañero: cada uno sincroniza el suyo, que es lo que roax eligió.
+- Sacar el staging de git cambia lo que ve un compañero: cada uno sincroniza el suyo, que es lo que acme eligió.
 - Una instancia ya instalada no recibe el `.gitignore` nuevo (`upgrade` no lo toca): el CHANGELOG tiene que decirle qué agregar.
 
 ## Contexto de descubrimiento
 
-Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. Lo encontró la lectura de la integración de Jira de roax contra la de Cauce.
+Relevamiento de acme-ops y globex-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. Lo encontró la lectura de la integración de Jira de acme contra la de Cauce.
 
 ## Relacionados
 
@@ -73,7 +73,7 @@ Resuelto en 0.100.0, con lo que el caso proponía más una salvaguarda que el fi
   sigue pasando a contexto como antes.
 - **El README del molde** decía «su draft se regenera siempre»; ahora dice la excepción y que el staging es de
   cada máquina.
-- **Tradeoff: sacar el staging de git cambia lo que ve un compañero** — aceptado, igual que en roax: cada uno
+- **Tradeoff: sacar el staging de git cambia lo que ve un compañero** — aceptado, igual que en acme: cada uno
   sincroniza el suyo. La salvaguarda de `sync` cubre a quien lo siga compartiendo.
 - **Tradeoff: una instancia instalada no recibe el `.gitignore` nuevo** — dicho en el CHANGELOG.
 

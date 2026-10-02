@@ -141,7 +141,7 @@ ninguno, que es exactamente el caso que Ready leyó como aprobación autoservida
 
 **Opción 2, «un aviso de aceptación sospechosa» — medida el 2026-09-12, y descartada por lo que la medición
 mostró.** El caso ponía la condición: pasarla por las tareas de `done/` de una instancia real antes de fijar
-el umbral. Se hizo, en sólo lectura, contra las **83 aceptaciones** de `venotal-ops`, y el resultado no es
+el umbral. Se hizo, en sólo lectura, contra las **83 aceptaciones** de `hooli-ops`, y el resultado no es
 un umbral mal elegido sino que **la heurística no mide lo que dice medir**.
 
 - **«Una condición que nombra un único valor literal»** marca **12 de 83**, y las 12 son falsos positivos.
@@ -192,7 +192,7 @@ no se midió: no se corrió ningún recorrido después del arreglo. Queda como e
 
 ### Qué se corrió
 
-**La medición de la opción 2**, el 2026-09-12, en sólo lectura sobre `planning/done/` de `venotal-ops`:
+**La medición de la opción 2**, el 2026-09-12, en sólo lectura sobre `planning/done/` de `hooli-ops`:
 
 - **83 aceptaciones**, todas con línea `acept:`, de 83 entradas cerradas. Es trabajo real de una empresa,
   no un banco: aparecen condiciones numeradas, gates nombrados y rutas de archivo.

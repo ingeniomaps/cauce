@@ -51,7 +51,7 @@ CONFLICTO (contenido): Conflicto de fusión en planning/BACKLOG.md
 Fusión automática falló; arregle los conflictos y luego realice un commit con el resultado.
 ```
 
-En una instancia real (`roax-ops`, Cauce 0.99.2), el repo existe desde el 2026-09-28. Al 2026-10-01 tiene 73
+En una instancia real (`acme-ops`, Cauce 0.99.2), el repo existe desde el 2026-09-28. Al 2026-10-01 tiene 73
 merges, 6 PR de dos líneas de trabajo (`work/manuel-admin`, `work/manuel-auth`) y 40 de sistema. Reproduciendo
 cada merge con `git merge-tree --write-tree`, **4 dieron conflicto, todos al traer `main` a una rama de línea**:
 
@@ -85,7 +85,7 @@ El motor da por hecho un archivo por instancia:
 - `engine/planning/parser.js:456` — `inboxSections` lee un solo `INBOX.md`.
 
 El índice de épicas con fila manual no es del motor: lo exige el `check.js` de la instancia
-(`roax-ops/planning/check.js:245`, «falta la fila de la épica … agregala a mano»). Se nombra acá porque choca por el
+(`acme-ops/planning/check.js:245`, «falta la fila de la épica … agregala a mano»). Se nombra acá porque choca por el
 mismo mecanismo, y porque una instancia lo copia del molde.
 
 ## Fix propuesto
@@ -96,14 +96,14 @@ unidad que una sola línea escribe**.
 1. **Cola partida por línea.** `planning/backlog/<línea>.md`, uno por línea de trabajo, además de `BACKLOG.md` o en
    su lugar. `readBacklog` y `validateBacklogStructure` leen el directorio y concatenan, y el orden entre líneas sale
    de un campo explícito (prioridad del hito) en vez de la posición en el archivo. Si la instancia declara dueños
-   (`owner: <persona>/<línea>`, como `roax-ops`), la línea sale de ahí.
+   (`owner: <persona>/<línea>`, como `acme-ops`), la línea sale de ahí.
 2. **INBOX por entrada.** `planning/inbox/<servicio>/<slug>.md`, y el `INBOX.md` pasa a vista derivada. Agregar y
    quitar una entrada deja de tocar un archivo que todos editan.
 3. **Índices derivados, nunca a mano.** El índice de épicas se genera con `check --fix` desde el frontmatter, con el
    título incluido, y lleva `merge=union` en el `.gitattributes` del molde. Una fila que sólo se agrega puede
    unirse sin riesgo; la vista se regenera igual.
 4. **Números sin carrera.** Las épicas toman «el próximo NNN» (`automatization/workflows/flow.js:505`) leyendo un árbol
-   que la otra línea todavía no trajo: en `roax-ops` dos sesiones tomaron la 055 el mismo día. Es el mismo problema
+   que la otra línea todavía no trajo: en `acme-ops` dos sesiones tomaron la 055 el mismo día. Es el mismo problema
    que `docs/issues/README.md` nombra para los casos (el 164). Opciones: un prefijo por línea, o asignar el número
    al mergear a `main`.
 
@@ -138,7 +138,7 @@ misma. `BACKLOG.md` sigue leyéndose primero, así que ninguna instancia tiene q
 
 ## Contexto de descubrimiento
 
-`roax-ops`, Cauce 0.99.2, 2026-10-01. Dos sesiones en paralelo, una por línea (`manuel/admin` y `manuel/auth`), cada
+`acme-ops`, Cauce 0.99.2, 2026-10-01. Dos sesiones en paralelo, una por línea (`manuel/admin` y `manuel/auth`), cada
 una con su rama `work/<persona>-<línea>` y PR a `main`. Al traer `main` a `work/manuel-admin` para ponerla al día,
 chocaron `BACKLOG.md` y `roadmap/README.md`; ya había pasado dos veces en la rama de auth. La persona que opera la
 instancia preguntó qué archivos chocaban más, y la medición de arriba salió de reproducir los 73 merges.

@@ -91,7 +91,7 @@ pasaría a ser una decisión y no un efecto lateral.
 
 ## Contexto de descubrimiento
 
-Actualizando `venotal-ops` de 0.54.0 a 0.55.0 el 2026-09-03, siguiendo el README al pie de la letra. Se
+Actualizando `hooli-ops` de 0.54.0 a 0.55.0 el 2026-09-03, siguiendo el README al pie de la letra. Se
 notó al comparar el `package.json` antes y después. Se corrigió a mano volviendo a `0.55.0` exacto.
 
 ## Resolución
@@ -115,7 +115,7 @@ Verificado el 2026-09-03:
 - Una instancia sin `package.json` no recibe uno.
 - Los cinco casos anteriores siguen arreglados: barrido de regresión completo contra 0.56.0.
 
-En `venotal-ops`, `package.json`, el lockfile y `ops.config.json` dicen los tres `0.56.0`.
+En `hooli-ops`, `package.json`, el lockfile y `ops.config.json` dicen los tres `0.56.0`.
 
 ## Relacionados
 

@@ -125,7 +125,7 @@ desperdicia la razón—.
 
 ## Contexto de descubrimiento
 
-Revisando en `gouduet` si las tareas de su cola respetaban la barra, después de que su dueño preguntara en
+Revisando en `initech` si las tareas de su cola respetaban la barra, después de que su dueño preguntara en
 qué se diferencian los criterios de una épica, de un hito y de una tarea (2026-09-06). `check` estaba
 verde. Contando a mano, **seis de sus cuarenta y ocho tareas** cruzaban el umbral, con diez, nueve, ocho y
 siete condiciones — incluida la primera de la cola, que el loop iba a tomar. Ninguna era visible.

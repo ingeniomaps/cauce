@@ -100,7 +100,7 @@ indistinguible de aprobarse solo.
 `guard-chat`, que ya corre sobre el mensaje. Con la marca de dónde salió:
 
 ```
-…/venotal/platform/.env.bak   # vía chat, 2026-09-12, sesión 5c17daac
+…/hooli/platform/.env.bak   # vía chat, 2026-09-12, sesión 5c17daac
 ```
 
 Así la garantía se mantiene —el agente no firma nada— y la fricción desaparece: la persona dice «usá ese

@@ -23,13 +23,13 @@ son de una persona: la memoria de su runner, la carpeta de casos de otro proyect
 
 ## Reproducción
 
-En una instancia real (`roax-ops`, Cauce 0.99.2), `ops.config.json` tiene:
+En una instancia real (`acme-ops`, Cauce 0.99.2), `ops.config.json` tiene:
 
 ```json
 "writableOutsideRoots": [
-  "~/.claude/projects/-home-manuel-Code-cubiko-servers/memory",
+  "~/.claude/projects/-home-manuel-Code-acme-servers/memory",
   "~/Code/personal/cauce/docs/issues",
-  "~/Code/personal/raioz/docs/issues"
+  "~/Code/personal/tyrell/docs/issues"
 ]
 ```
 
@@ -72,7 +72,7 @@ de la instancia, y que `ops init` lo agregue al `.gitignore`:
 
 ## Contexto de descubrimiento
 
-Revisión de rutas absolutas y nombres propios en `roax-ops`, el 2026-10-01. Todo lo demás se pudo sacar del código
+Revisión de rutas absolutas y nombres propios en `acme-ops`, el 2026-10-01. Todo lo demás se pudo sacar del código
 de la instancia; esto no, porque la clave sólo se lee del archivo compartido.
 
 ## Relacionados

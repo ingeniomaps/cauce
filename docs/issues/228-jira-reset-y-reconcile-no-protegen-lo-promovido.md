@@ -15,7 +15,7 @@ version-detectada: 0.99.2
 
 ## Resumen
 
-`reset` no restringe por estado y `reconcile` no se niega sobre un ítem promovido. roax-ops limita `reset` a `pending`/`context` y hace que `reconcile` se niegue sobre `promoted`.
+`reset` no restringe por estado y `reconcile` no se niega sobre un ítem promovido. acme-ops limita `reset` a `pending`/`context` y hace que `reconcile` se niegue sobre `promoted`.
 
 ## Reproducción
 
@@ -39,7 +39,7 @@ Dos comprobaciones en `state.js`, con el motivo en el mensaje.
 
 ## Contexto de descubrimiento
 
-Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. `roax-ops/integrations/jira/sync-state.js:259-309`.
+Relevamiento de acme-ops y globex-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. `acme-ops/integrations/jira/sync-state.js:259-309`.
 
 ## Relacionados
 
@@ -56,7 +56,7 @@ Resuelto en 0.100.0.
   promovido, `reset` y `reconcile` se niegan antes de escribir nada, nombran la clave, dicen qué perderían y
   mandan a revisar la épica en `planning/roadmap/`. También en lote, sin claves. `rebase` sigue pasando:
   sólo recalcula el hash y no toca ni el estado ni la base.
-- **Se hizo distinto de roax en un punto:** roax limita `reset` a `pending` y `context`. Acá se niega sólo
+- **Se hizo distinto de acme en un punto:** acme limita `reset` a `pending` y `context`. Acá se niega sólo
   sobre `promoted`. Resetear un `ready` o un `rejected` es justamente para lo que existe el comando, y no
   deshace ninguna decisión ya escrita en el roadmap.
 - **Tradeoff: ninguno conocido** — se mantiene. La salida para un ítem promovido que cambió es la épica, que

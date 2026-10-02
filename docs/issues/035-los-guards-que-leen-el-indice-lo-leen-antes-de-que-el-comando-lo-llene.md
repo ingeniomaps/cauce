@@ -116,7 +116,7 @@ rodear nada.
 
 ## Contexto de descubrimiento
 
-En `gouduet`, el 2026-09-06, validando el arreglo de [034](034-el-override-de-gobernanza-no-tiene-camino-documentado.md).
+En `initech`, el 2026-09-06, validando el arreglo de [034](034-el-override-de-gobernanza-no-tiene-camino-documentado.md).
 La línea base de la prueba —dejar un archivo de gobernanza en el índice y confirmar que el commit se
 frena— se escribió con el `add` y el `commit` en el mismo comando, y salió exit 0. Al principio pareció
 una regresión de 0.64.0; al separar los pasos, el guard bloqueó como debía. Lo que había fallado no era

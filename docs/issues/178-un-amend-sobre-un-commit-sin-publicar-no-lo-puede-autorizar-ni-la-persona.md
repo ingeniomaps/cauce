@@ -96,12 +96,12 @@ mejor esquivándola se termina esquivando siempre.
 
 ## Contexto de descubrimiento
 
-Instancia de venotal, 2026-09-17, sobre 0.96.0. Al cerrar una tarea, al mensaje del commit de cierre se
+Instancia de hooli, 2026-09-17, sobre 0.96.0. Al cerrar una tarea, al mensaje del commit de cierre se
 le coló un carácter suelto en medio de una frase (`what the probe观察 observed`). La persona pidió el
 amend con todas las letras y el guard lo frenó; el commit estaba sin empujar y la rama era local.
 
 **Consultado para escribir esto**: `engine/hooks/shell.js` (líneas 60-95 y 128-140) del paquete
-`@ingeniomaps/cauce@0.96.0` instalado en `venotal-ops/node_modules`;
+`@ingeniomaps/cauce@0.96.0` instalado en `hooli-ops/node_modules`;
 `planning/rules/system/commits.md` (R8) de la instancia; la lista de variables de override de
 `AGENTS.md`; y el bloqueo real, citado arriba.
 

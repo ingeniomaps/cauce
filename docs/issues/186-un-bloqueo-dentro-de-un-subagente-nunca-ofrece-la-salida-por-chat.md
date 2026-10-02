@@ -50,7 +50,7 @@ mirando y la salida por chat no se ofrece.
 
 > **Contraste del 2026-09-23 (paso 1 del recorrido).** Las citas se abrieron en `main` (`83fc8698`), no en el
 > `node_modules`: `git diff v0.98.0 HEAD -- engine/hooks/chat.js engine/hooks/approval.js` sale vacío, y
-> `diff -q` contra `gouduet-ops/node_modules/@ingeniomaps/cauce` (`package.json` en 0.98.0) da idénticos los
+> `diff -q` contra `initech-ops/node_modules/@ingeniomaps/cauce` (`package.json` en 0.98.0) da idénticos los
 > dos archivos. Coinciden `approval.js:96` (`HOW`), `chat.js:212` (`said`), `chat.js:228` (`present`) y
 > `chat.js:338-339` (`hold`). Se corrigieron dos: la redacción imperativa está en la **114** —la 113 es
 > `const paste = pasteable.length`— y `HOW()` termina en la **132**, no en la 120. La cita de `AGENTS.md` no
@@ -141,7 +141,7 @@ también fue de la principal. D es otra puerta que da lo mismo por otro motivo �
 
 ## Síntoma
 
-Tarea `catalog-item-table` de la instancia `gouduet-ops`, 2026-09-23, tres corridas del recorrido
+Tarea `catalog-item-table` de la instancia `initech-ops`, 2026-09-23, tres corridas del recorrido
 `autobuild`:
 
 - `wf_df659094-4cf` — el subagente de Build es frenado al escribir la migración. El bloqueo no ofrece chat.
@@ -150,7 +150,7 @@ Tarea `catalog-item-table` de la instancia `gouduet-ops`, 2026-09-23, tres corri
 - `wf_7a7d672c-c18` — el dueño contesta «autorizo y sigue» en el chat. El reintento vuelve a correr en un
   subagente y **vuelve a frenar con el mensaje literal idéntico**. La aprobación dicha en voz alta no llega
   a ningún lado, y nada en la corrida le dice al dueño por qué.
-- Tercera corrida — el dueño pega a mano la línea en `gouduet-ops/planning/.ops-approval`. El subagente
+- Tercera corrida — el dueño pega a mano la línea en `initech-ops/planning/.ops-approval`. El subagente
   escribe la migración **en el primer intento** y cierra los nueve pasos.
 
 [verificado: las tres corridas son de esta máquina; lo que cambió entre la segunda y la tercera fue el
@@ -251,7 +251,7 @@ poner el reintento en un subagente. Para ese camino, el punto 2 no alcanza sin d
 **Hay una segunda puerta que el caso no nombra: `flowCommand`** (`chat.js:38-43`, usado en `:197-198`). Un
 mensaje que empieza con `/autobuild` deja `askable: false` y el bloqueo sale imperativo aunque la llamada no
 traiga `agent_id` (D, igual con y sin el fix). En esta instancia no fue la causa: los lanzamientos de
-`autobuild` de la sesión de `gouduet` que se revisaron —del 18 y del 23 hasta las 14:17— vienen de mensajes en
+`autobuild` de la sesión de `initech` que se revisaron —del 18 y del 23 hasta las 14:17— vienen de mensajes en
 lenguaje natural («lanza el primer autobuild», «Relanza») y el agente llama a `Workflow`, así que el registro
 queda `askable: true` [verificado: transcripción de esa sesión, mensajes de usuario y llamadas a
 `Workflow`; los mensajes posteriores a las 16:47, donde caen las corridas `wf_df659094` y `wf_7a7d672c`, no
@@ -293,7 +293,7 @@ esquema avanzando a una aprobación manual por archivo.
 
 ## Contexto de descubrimiento
 
-Instancia `gouduet-ops` (Cauce 0.98.0), épica 012, hito `catalog-item`, tarea `catalog-item-table`. Salió de
+Instancia `initech-ops` (Cauce 0.98.0), épica 012, hito `catalog-item`, tarea `catalog-item-table`. Salió de
 mirar por qué la segunda corrida volvió a frenar después de que el dueño autorizara en el chat: la
 explicación estaba escrita en la fila de `HUMAN_ACTIONS.md` que dejó la primera, y se comprobó leyendo
 `chat.js` y `approval.js` en el `node_modules` de la instancia.
@@ -367,7 +367,7 @@ puede reintentar después del mensaje en que ella contestó.
 
 ### Prueba real en un banco instalado (2026-09-23)
 
-Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. **Sesión real de Claude Code 2.1.281** (`claude -p`, `--resume`): un subagente lee `api/.env` y el guard lo frena con «Sos un subagente…»; la persona contesta «dale» y el reintento del subagente lee el archivo. Con 0.98.0 el mismo recorrido da «Aprobalo pegando…» y el «dale» vuelve a frenar con el mismo mensaje, que es el incidente. **Premisa comprobada** con la entrada cruda capturada: el `PreToolUse` del subagente trae el mismo `session_id` y el mismo `prompt_id` que el padre, más su `agent_id` y `agent_type`.
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de initech —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de initech-ops, cambiando sólo el enlace del banco. **Sesión real de Claude Code 2.1.281** (`claude -p`, `--resume`): un subagente lee `api/.env` y el guard lo frena con «Sos un subagente…»; la persona contesta «dale» y el reintento del subagente lee el archivo. Con 0.98.0 el mismo recorrido da «Aprobalo pegando…» y el «dale» vuelve a frenar con el mismo mensaje, que es el incidente. **Premisa comprobada** con la entrada cruda capturada: el `PreToolUse` del subagente trae el mismo `session_id` y el mismo `prompt_id` que el padre, más su `agent_id` y `agent_type`.
 
 ### Revisión del conjunto antes del PR (2026-09-24)
 

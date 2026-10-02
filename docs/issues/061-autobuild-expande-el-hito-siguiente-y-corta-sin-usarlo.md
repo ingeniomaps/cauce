@@ -130,8 +130,8 @@ parte de esas expansiones son de trabajo que la corrida descarta.
 
   | instancia | tareas terminadas | período | ritmo |
   | --- | ---: | --- | ---: |
-  | `venotal-ops` | 87 | 2026-07-09 → 2026-09-15 | **9,0 / semana** |
-  | `roax-ops` | 138 | 2026-08-08 → 2026-09-11 | **28,4 / semana** |
+  | `hooli-ops` | 87 | 2026-07-09 → 2026-09-15 | **9,0 / semana** |
+  | `acme-ops` | 138 | 2026-08-08 → 2026-09-11 | **28,4 / semana** |
 
   **Es un proxy y no la cifra que el tradeoff pedía**, y conviene decirlo: cuenta tareas cerradas, no
   corridas que cerraron su hito, y una corrida puede cerrar varias tareas o ninguna. Lo que muestra es que

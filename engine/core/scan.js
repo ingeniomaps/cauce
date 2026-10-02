@@ -214,8 +214,8 @@ function candidates(workspace, skip = '') {
 // `.`: tres servicios con el mismo nombre y nada que los distinga. El prefijo los vuelve nombrables, que
 // es la única forma de que una credencial pueda atribuirse a un servicio en vez de quedar suelta.
 //
-// El prefijo es el `name` declarado y no la carpeta, que es lo que dejaba a `gouduet/keycloak` y
-// `hypixo/keycloak` llamándose las dos `keycloak` (caso 113). Que no se repita lo exige el validador.
+// El prefijo es el `name` declarado y no la carpeta, que es lo que dejaba a `initech/keycloak` y
+// `umbrella/keycloak` llamándose las dos `keycloak` (caso 113). Que no se repita lo exige el validador.
 function inventory(root) {
   const roots = declaredRoots(root)
   if (roots.length === 1) return candidates(roots[0].dir, root)

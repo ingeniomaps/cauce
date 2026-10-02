@@ -75,7 +75,7 @@ El `env -u CLAUDE_PROJECT_DIR` no es decorativo: `opsRoot` prefiere esa variable
 
 ## Síntoma
 
-**Corrida original** —`wf_df659094-4cf`, 2026-09-23, tarea `catalog-item-table` de la instancia `gouduet-ops`,
+**Corrida original** —`wf_df659094-4cf`, 2026-09-23, tarea `catalog-item-table` de la instancia `initech-ops`,
 tal como la reportó la corrida—:
 
 ```
@@ -207,7 +207,7 @@ hacer bien, y acostumbrarse a aprobar bloqueos en serie es exactamente lo que de
 
 ## Contexto de descubrimiento
 
-Instancia `gouduet-ops` (Cauce 0.98.0), hito `catalog-item`, primera tarea que toca el esquema. Se descubrió al
+Instancia `initech-ops` (Cauce 0.98.0), hito `catalog-item`, primera tarea que toca el esquema. Se descubrió al
 frenarse dos corridas seguidas en el mismo punto: `wf_df659094-4cf` y `wf_7a7d672c-c18`, la segunda tras
 comprobar que la concesión por chat no alcanza a un subagente.
 
@@ -281,4 +281,4 @@ enumeró:
 
 ### Prueba real en un banco instalado (2026-09-23)
 
-Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. Una migración goose del incidente, escrita por `guard-files` como un `Write` de Claude Code: `exit=0` con la rama y `exit=2` con 0.98.0; `goose validate` (v3.28.0) la acepta. Un `DROP` en el `Up`: `exit=2` nombrando el bloque. Con **Codex real** (0.152.1, gpt-5.5) escribiendo una migración con `Down` honesto por `apply_patch`: escrita con la rama, «contiene SQL destructivo» con 0.98.0 (ver 199).
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de initech —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de initech-ops, cambiando sólo el enlace del banco. Una migración goose del incidente, escrita por `guard-files` como un `Write` de Claude Code: `exit=0` con la rama y `exit=2` con 0.98.0; `goose validate` (v3.28.0) la acepta. Un `DROP` en el `Up`: `exit=2` nombrando el bloque. Con **Codex real** (0.152.1, gpt-5.5) escribiendo una migración con `Down` honesto por `apply_patch`: escrita con la rama, «contiene SQL destructivo» con 0.98.0 (ver 199).

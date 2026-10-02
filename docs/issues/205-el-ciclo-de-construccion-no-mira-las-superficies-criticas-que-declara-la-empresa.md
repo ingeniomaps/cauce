@@ -94,8 +94,8 @@ archivo. **Decidido: `ops context`**, con el parser en `engine/planning/surfaces
 
 ## Contexto de descubrimiento
 
-Revisión de los repositorios de Dropi del 2026-10-01: su motor de review escala a bloqueante lo que toca
-un flujo crítico declarado (`dropi-code-review/skills/_shared/review-engine.md:548-550`). Al buscar el
+Revisión de los repositorios de Wonka del 2026-10-01: su motor de review escala a bloqueante lo que toca
+un flujo crítico declarado (`wonka-code-review/skills/_shared/review-engine.md:548-550`). Al buscar el
 equivalente en cauce apareció que la tabla existe y el ciclo de construcción no la usa.
 
 ## Relacionados

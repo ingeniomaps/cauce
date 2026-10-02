@@ -107,7 +107,7 @@ sostiene es que una persona relea `HUMAN_ACTIONS.md`.
 
 ## Contexto de descubrimiento
 
-Instancia `gouduet-ops` (Cauce 0.97.0), corrida `wf_0a0b0da7-30f` del 2026-09-22, primera tarea del hito
+Instancia `initech-ops` (Cauce 0.97.0), corrida `wf_0a0b0da7-30f` del 2026-09-22, primera tarea del hito
 `catalog-item`. La corrida paró con `plan-rejected`, y al revisar qué había quedado en disco apareció la
 fila resuelta. Las dos correcciones técnicas que la crítica encontró eran correctas y se verificaron a mano;
 lo que no existía era la decisión del dueño que la fila afirmaba.

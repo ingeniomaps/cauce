@@ -71,7 +71,7 @@ motor. Hay más de una forma; se decide antes de construir.
 
 ## Contexto de descubrimiento
 
-`roax-ops`, Cauce 0.99.2, 2026-10-01, nombrado como problema vecino en el caso 212 y partido de él al mejorarlo.
+`acme-ops`, Cauce 0.99.2, 2026-10-01, nombrado como problema vecino en el caso 212 y partido de él al mejorarlo.
 
 ## Relacionados
 

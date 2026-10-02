@@ -98,7 +98,7 @@ está parado, que en modo sidecar es lo normal.
 
 ## Contexto de descubrimiento
 
-En `gouduet`, el 2026-09-06, mientras se armaba la reproducción de
+En `initech`, el 2026-09-06, mientras se armaba la reproducción de
 [035](035-los-guards-que-leen-el-indice-lo-leen-antes-de-que-el-comando-lo-llene.md). Hacía falta
 comprobar que `git add -A` sí estuviera prohibido para poder apoyar en eso el argumento sobre
 `git commit -a`; se escribió con `git -C <ruta>` porque la sesión trabajaba desde el directorio de

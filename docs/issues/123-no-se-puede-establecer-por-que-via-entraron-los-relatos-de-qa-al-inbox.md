@@ -96,11 +96,11 @@ lo que nada indicaba que faltaba.
 
 ## Cierre
 
-**⚪ descartado** · medido el 2026-09-12 sobre `gouduet-ops` · no hay defecto del motor
+**⚪ descartado** · medido el 2026-09-12 sobre `initech-ops` · no hay defecto del motor
 
 ### Contra lo que el caso enumeró
 
-**«Correr los dos `git log` en la instancia»** — hecho, sobre la instancia `gouduet-ops`. Los comandos y lo
+**«Correr los dos `git log` en la instancia»** — hecho, sobre la instancia `initech-ops`. Los comandos y lo
 que devolvieron están abajo, en «Qué se corrió».
 
 **«Si los bloques aparecieron en commits que también tocan `planning/done/` → los escribió un recorrido»** —
@@ -147,7 +147,7 @@ lo que es.
 
 ### Qué se corrió
 
-Todo en la instancia `gouduet-ops`, sólo lectura:
+Todo en la instancia `initech-ops`, sólo lectura:
 
 - `git log --format='%h|%ad|%an|%s' --date=short -- planning/INBOX.md` → **19 commits**, del 2026-09-03 al
   2026-09-06.

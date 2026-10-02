@@ -16,12 +16,12 @@ listado con token, y el idioma y el largo como chequeos duros opcionales.
 
 ## Resumen
 
-roax-ops mecanizó la pasada: un guard lee los comentarios **agregados** en el commit, bloquea lo medible (bloques largos, idioma, separadores, emojis) y para el resto exige un token derivado de esos comentarios exactos, de modo que la pasada no se puede declarar sin haberla hecho sobre ese diff.
+acme-ops mecanizó la pasada: un guard lee los comentarios **agregados** en el commit, bloquea lo medible (bloques largos, idioma, separadores, emojis) y para el resto exige un token derivado de esos comentarios exactos, de modo que la pasada no se puede declarar sin haberla hecho sobre ese diff.
 
 ## Reproducción
 
 El hueco está escrito en `AGENTS.md`. Lo que había que medir era si mecanizarlo sirve, y se midió sobre el
-guard de roax: ver el Cierre.
+guard de acme: ver el Cierre.
 
 ## Síntoma
 
@@ -41,7 +41,7 @@ Un guard opcional que liste los comentarios agregados y exija el token atado al 
 
 ## Contexto de descubrimiento
 
-Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. `roax-ops/automatization/bin/roax-comment-check.js` (310 líneas, con pruebas), commit `a2d8912`.
+Relevamiento de acme-ops y globex-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. `acme-ops/automatization/bin/acme-comment-check.js` (310 líneas, con pruebas), commit `a2d8912`.
 
 ## Relacionados
 
@@ -53,10 +53,10 @@ Resuelto el 2026-10-02 con las tres decisiones de Manuel: se trae el listado con
 apagado hasta que `ops.config.json` declare `comments`, y sin encenderlo en este repositorio.
 
 **La medición que decidió el alcance.** Leí en sólo lectura las 15 sesiones de Claude Code que corrieron el guard
-de roax desde su commit `a2d8912` (2026-09-29). Un script pareó cada bloqueo con el commit que finalmente entró:
+de acme desde su commit `a2d8912` (2026-09-29). Un script pareó cada bloqueo con el commit que finalmente entró:
 
 - 113 commits entraron con el token. En 12 (11 %) el listado cambió algún comentario antes de entrar. Hubo
-  referencias a tickets que se sacaron (`RXDEV-31`), historia que se quitó («before it is split»), 28 líneas que
+  referencias a tickets que se sacaron (`ACME-31`), historia que se quitó («before it is split»), 28 líneas que
   repetían el código y se borraron, y comentarios que narraban la implementación y se reescribieron.
 - Hubo 9 bloqueos duros: el idioma y bloques inline de 3 a 12 líneas. Emojis, separadores y el aviso de
   proporción de comentarios no se dispararon nunca, y por eso quedaron afuera.
@@ -102,8 +102,8 @@ de roax desde su commit `a2d8912` (2026-09-29). Un script pareó cada bloqueo co
 
 **Lo que el caso no preveía.**
 
-- La regla de roax manda la historia del cambio fuera del comentario. R11 no: deja «el caso que la forzó»
-  dentro de la unidad. El listado usa las preguntas de R11 y no las de roax.
+- La regla de acme manda la historia del cambio fuera del comentario. R11 no: deja «el caso que la forzó»
+  dentro de la unidad. El listado usa las preguntas de R11 y no las de acme.
 - Los docstrings de Python y los comentarios de lenguajes fuera de la lista no se ven, y el encabezado lo dice.
 - `AGENTS.md` sigue diciendo que en este repositorio la pasada no la cubre la puerta, y es cierto: encenderlo
   acá quedó para otra decisión.

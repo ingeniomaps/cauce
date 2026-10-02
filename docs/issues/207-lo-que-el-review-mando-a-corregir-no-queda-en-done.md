@@ -70,8 +70,8 @@ que el campo nuevo no rompe la lectura y que las entradas viejas siguen válidas
 
 ## Contexto de descubrimiento
 
-Revisión de los repositorios de Dropi del 2026-10-01: `pr-lessons` aprende de los hallazgos que el
-equipo aceptó y cuenta sus repeticiones entre PRs (`dropi-tools-skills`, rama
+Revisión de los repositorios de Wonka del 2026-10-01: `pr-lessons` aprende de los hallazgos que el
+equipo aceptó y cuenta sus repeticiones entre PRs (`wonka-tools-skills`, rama
 `feature/TECH-1663-pr-lessons-skill-learn-from-merged-reviews`, `skills/pr-lessons/references/curation.md:6-17`
 y `:78-90`). Buscando de dónde sacaría cauce ese dato apareció que no lo guarda.
 

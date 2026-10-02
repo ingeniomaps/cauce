@@ -2,7 +2,7 @@
 
 // Los workflows propios de una instancia (caso 223). Una empresa escribe los suyos al lado de los de Cauce, y
 // sin esto no tenía cómo resolver los marcadores que los de Cauce sí reciben —`{{OPS_ROOT}}`, `{{OPS_DIR}}`,
-// `{{INCLUDE:…}}`—: roax los reemplazaba con `sed` después de cada instalación.
+// `{{INCLUDE:…}}`—: una instancia los reemplazaba con `sed` después de cada instalación.
 //
 // La fuente vive en `workflows/` de la instancia y no en `automatization/workflows/`, que es una ruta que Cauce
 // retiró: `upgrade` la trata como un resto y `check` la avisa para siempre. `install` la renderiza al mismo

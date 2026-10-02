@@ -15,7 +15,7 @@ version-detectada: 0.99.2
 
 ## Resumen
 
-La integración toma el servicio de `components`. roax-ops lo toma de una etiqueta `service:<dir>` (con componente y etiqueta a la vez como error) y el carril de una etiqueta `lane:` validada contra los carriles del motor.
+La integración toma el servicio de `components`. acme-ops lo toma de una etiqueta `service:<dir>` (con componente y etiqueta a la vez como error) y el carril de una etiqueta `lane:` validada contra los carriles del motor.
 
 ## Reproducción
 
@@ -39,7 +39,7 @@ En un proyecto team-managed cada historia promovida llega sin servicio y `check`
 
 ## Contexto de descubrimiento
 
-Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. `roax-ops/integrations/jira/services.js` y `promotion.js`.
+Relevamiento de acme-ops y globex-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. `acme-ops/integrations/jira/services.js` y `promotion.js`.
 
 ## Relacionados
 

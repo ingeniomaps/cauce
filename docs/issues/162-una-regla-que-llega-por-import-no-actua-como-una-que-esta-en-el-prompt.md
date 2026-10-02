@@ -73,7 +73,7 @@ medición que no medía lo que decía.
 
 ## Contexto de descubrimiento
 
-2026-09-16, midiendo si las reglas traídas de `roax-ops` cambian conducta. El hallazgo no vino de un
+2026-09-16, midiendo si las reglas traídas de `acme-ops` cambian conducta. El hallazgo no vino de un
 resultado raro sino de una frase: un brazo de control citó «la regla global», que no estaba en su prompt.
 Preguntarle directamente qué tenía cargado fue lo que destapó todo.
 

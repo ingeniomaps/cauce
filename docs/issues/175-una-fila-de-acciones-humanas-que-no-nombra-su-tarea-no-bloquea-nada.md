@@ -41,7 +41,7 @@ Con `| T-1 | pendiente | … |`, la misma cola ofrece la tarea siguiente.
 
 ## Síntoma
 
-Medido en la instancia de venotal el 2026-09-16, con 0.96.0. El recorrido paró en Ready con
+Medido en la instancia de hooli el 2026-09-16, con 0.96.0. El recorrido paró en Ready con
 `not-ready` y su fase de registro escribió cinco filas, una por decisión. Todas con la forma
 `**integraciones-status-y-conteo: para qué es el «conteo …»**`.
 
@@ -107,13 +107,13 @@ cero tareas.
 
 ## Contexto de descubrimiento
 
-Corrida `wf_e07f1482-56c`, venotal (sidecar), 2026-09-16, Cauce 0.96.0. Ready paró bien y la parada fue
+Corrida `wf_e07f1482-56c`, hooli (sidecar), 2026-09-16, Cauce 0.96.0. Ready paró bien y la parada fue
 útil: tres decisiones del operador y cuatro condiciones de aceptación que darían verde estando mal. El
 defecto apareció al comprobar, después de la parada, si la cola había dejado de ofrecer la tarea — y no.
 
 **Consultado para escribir esto**: `engine/planning/parser.js` (líneas 342-356) y
 `engine/planning/state.js` (líneas 24-30 y 52-75) del paquete `@ingeniomaps/cauce@0.96.0` instalado en
-`venotal-ops/node_modules`; `planning/PROTOCOL.md` de la instancia, sección Contratos, fila «Acción
+`hooli-ops/node_modules`; `planning/PROTOCOL.md` de la instancia, sección Contratos, fila «Acción
 humana»; y la salida de `ops context planning` y `ops check planning` antes y después de corregir las
 cinco celdas.
 

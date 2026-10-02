@@ -11,11 +11,11 @@ version-detectada: 0.99.2
 
 **🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **media**.
 
-**Prioridad media**: una defensa propia desaparece en silencio. La reproducción está pendiente: lo que sigue sale de los commits de roax-ops y hay que comprobarlo contra el `install` de `main`.
+**Prioridad media**: una defensa propia desaparece en silencio. La reproducción está pendiente: lo que sigue sale de los commits de acme-ops y hay que comprobarlo contra el `install` de `main`.
 
 ## Resumen
 
-roax-ops agrega guards y workflows propios junto a los de Cauce. Dos commits dicen que el camino de instalación no los conoce: en `0ca7f7d`, reinstalar se llevó de la configuración activa el guard de ADF del PR #41; en `8f0705b`, sus workflows necesitan un marcador propio (`{{SERVERS_ROOT}}`) que reemplazan con `sed`, porque `{{OPS_ROOT}}` sólo se resuelve en los workflows de Cauce.
+acme-ops agrega guards y workflows propios junto a los de Cauce. Dos commits dicen que el camino de instalación no los conoce: en `0ca7f7d`, reinstalar se llevó de la configuración activa el guard de ADF del PR #41; en `8f0705b`, sus workflows necesitan un marcador propio (`{{SERVERS_ROOT}}`) que reemplazan con `sed`, porque `{{OPS_ROOT}}` sólo se resuelve en los workflows de Cauce.
 
 ## Reproducción
 
@@ -23,7 +23,7 @@ Pendiente de correr al tomar el caso, en un banco instalado: agregar un hook pro
 
 ## Síntoma
 
-En roax el guard de ADF dejó de correr sin que nada lo dijera.
+En acme el guard de ADF dejó de correr sin que nada lo dijera.
 
 ## Causa raíz
 
@@ -39,12 +39,12 @@ Un contrato para lo propio: una carpeta o un prefijo que `install` preserva y re
 
 ## Contexto de descubrimiento
 
-Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala.
+Relevamiento de acme-ops y globex-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala.
 
 ## Relacionados
 
 - 218 — `install` y los hooks ajenos.
-- 229 — un guard propio de roax que se perdió así.
+- 229 — un guard propio de acme que se perdió así.
 
 ## Cierre
 
@@ -52,7 +52,7 @@ Resuelto en 0.100.0. La reproducción partió el caso en dos mitades con destino
 
 - **Reproducir antes de decidir** — se hizo, en un banco instalado con el motor de `main`:
   - Un hook propio agregado a `.claude/settings.json`, con su script, **sobrevivió** a `automation install`.
-    Esa mitad ya la había cerrado el caso 218 (`foreignHooks`). Lo que roax vivió en `0ca7f7d` venía de su
+    Esa mitad ya la había cerrado el caso 218 (`foreignHooks`). Lo que acme vivió en `0ca7f7d` venía de su
     `make links`, que copiaba la configuración activa sobre la del repo, no de `install`.
   - Un workflow propio en `.claude/workflows/` también sobrevivió, pero con `{{OPS_ROOT}}` sin resolver,
     mientras los de Cauce sí lo tenían. Ésa era la mitad abierta.

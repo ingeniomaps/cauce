@@ -206,7 +206,7 @@ que nadie vuelve a mirar.
 
 ## Contexto de descubrimiento
 
-Instancia `gouduet-ops` (Cauce 0.98.0), corrida `wf_d9cca829-812`, tarea `catalog-item-legacy-model-decision`,
+Instancia `initech-ops` (Cauce 0.98.0), corrida `wf_d9cca829-812`, tarea `catalog-item-legacy-model-decision`,
 primera del hito `catalog-item`. La tarea existe porque una crítica anterior partió una unidad más grande y
 separó «decidir el destino del modelo viejo» de «crear la tabla»: la partición fue correcta y produjo,
 justamente, una tarea que el recorrido no puede cerrar. Se cerró a mano, con `tests: n/a` y su razón.
@@ -332,7 +332,7 @@ pone en rojo (mutación corrida en una copia del árbol).
 
 ### Prueba real en un banco instalado (2026-09-23)
 
-Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. **`/autobuild` real** sobre una tarea de sólo decisión (ADR con veredicto por tabla, sin código): Verify devolvió las cinco condiciones como `no-surface` con su razón, QA hizo la revisión documental, Done escribió `tests: A → n/a — …` por criterio, el commit tocó sólo el `.md` y `check` con la puerta nueva pasó. El control con 0.98.0 **no reprodujo** el defecto: su Verify devolvió `uncovered: []` después de armarse un script de comprobación propio, y la tarea cerró. Que Verify marque `missing-test` sobre una tarea así depende del modelo —en gouduet lo hizo, acá no—, y una corrida por motor no estima con qué frecuencia. `check` sobre entradas reales: `n/a` sobre un commit con código y fecha 2026-09-24 es error; con fecha anterior, o sobre un commit de sólo ADR, pasa; 0.98.0 no veía ninguno.
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de initech —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de initech-ops, cambiando sólo el enlace del banco. **`/autobuild` real** sobre una tarea de sólo decisión (ADR con veredicto por tabla, sin código): Verify devolvió las cinco condiciones como `no-surface` con su razón, QA hizo la revisión documental, Done escribió `tests: A → n/a — …` por criterio, el commit tocó sólo el `.md` y `check` con la puerta nueva pasó. El control con 0.98.0 **no reprodujo** el defecto: su Verify devolvió `uncovered: []` después de armarse un script de comprobación propio, y la tarea cerró. Que Verify marque `missing-test` sobre una tarea así depende del modelo —en initech lo hizo, acá no—, y una corrida por motor no estima con qué frecuencia. `check` sobre entradas reales: `n/a` sobre un commit con código y fecha 2026-09-24 es error; con fecha anterior, o sobre un commit de sólo ADR, pasa; 0.98.0 no veía ninguno.
 
 ### Revisión del conjunto antes del PR (2026-09-24)
 

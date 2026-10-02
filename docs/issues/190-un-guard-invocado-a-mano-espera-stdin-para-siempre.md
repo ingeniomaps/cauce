@@ -89,7 +89,7 @@ Después de cada tanda, `pgrep -af '^node .*run\.js'` no devolvió nada.
 
 ## Síntoma
 
-**De la corrida original (monorepo ROAX, 2026-09-23); no comprobable desde acá.** Dos invocaciones en
+**De la corrida original (monorepo ACME, 2026-09-23); no comprobable desde acá.** Dos invocaciones en
 segundo plano, encontradas seis y siete horas después:
 
 ```
@@ -210,7 +210,7 @@ Es, además, la forma de R26 vista desde el otro lado: una puerta que no acota s
 
 ## Contexto de descubrimiento
 
-**De la corrida original; no comprobable desde acá.** Sesión de trabajo en el monorepo ROAX, 2026-09-23.
+**De la corrida original; no comprobable desde acá.** Sesión de trabajo en el monorepo ACME, 2026-09-23.
 Dos comandos lanzados en segundo plano para resolver una fila de `HUMAN_ACTIONS` y corregir un rótulo de
 registro terminaban con `bash automatization/hooks/guard-planning-drift.sh` como verificación final. La
 salida que entregaron —el trabajo hecho y un `ops check` en verde— venía de los pasos anteriores del
@@ -305,7 +305,7 @@ propio, el 198,** y no entra acá.
 
 ### Prueba real en un banco instalado (2026-09-23)
 
-Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. El shim `guard-shell.sh` instalado, con stdin de un pipe que nadie cierra: `exit=2` a los 2 s con la rama; con 0.98.0, colgado hasta el `timeout` (124). En todas las sesiones reales de Claude Code y Codex de esta tanda los hooks leyeron su entrada con el lector nuevo, sin cuelgues ni falsos «no llegó nada».
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de initech —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de initech-ops, cambiando sólo el enlace del banco. El shim `guard-shell.sh` instalado, con stdin de un pipe que nadie cierra: `exit=2` a los 2 s con la rama; con 0.98.0, colgado hasta el `timeout` (124). En todas las sesiones reales de Claude Code y Codex de esta tanda los hooks leyeron su entrada con el lector nuevo, sin cuelgues ni falsos «no llegó nada».
 
 ### Revisión del conjunto antes del PR (2026-09-24)
 

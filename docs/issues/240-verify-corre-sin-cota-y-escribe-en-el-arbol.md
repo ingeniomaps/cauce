@@ -26,7 +26,7 @@ Corrido el 2026-10-01 contra `main` (0.100.0 sin publicar), en un repositorio em
 
 ## Síntoma
 
-Un gate que cuelga deja la sesión colgada sin decir por qué, y dos sesiones que commitean a la vez corren dos suites completas en paralelo. roax-ops dejó escrito en el encabezado de `automatization/hooks/guard-roax-verify.sh` dos caídas de la máquina —14,1 GB y `systemd-oomd` el 2026-08-31; el gate tumbó la máquina el 2026-09-10— y un `nest build` con `deleteOutDir` que borró el `dist/` de la app viva.
+Un gate que cuelga deja la sesión colgada sin decir por qué, y dos sesiones que commitean a la vez corren dos suites completas en paralelo. acme-ops dejó escrito en el encabezado de `automatization/hooks/guard-acme-verify.sh` dos caídas de la máquina —14,1 GB y `systemd-oomd` el 2026-08-31; el gate tumbó la máquina el 2026-09-10— y un `nest build` con `deleteOutDir` que borró el `dist/` de la app viva.
 
 ## Causa raíz
 
@@ -52,7 +52,7 @@ Lo que las dos instancias construyeron por separado, y en lo que coinciden:
 
 ## Contexto de descubrimiento
 
-Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. Las dos tienen `OPS_SKIP_VERIFY=1` en el entorno (`roax-ops/automatization/settings.json:4`, `conorbi/.claude/settings.json:3`) y un reemplazo propio: `guard-roax-verify.sh` (247 líneas) y `guard-conorbi-verify.sh`.
+Relevamiento de acme-ops y globex-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. Las dos tienen `OPS_SKIP_VERIFY=1` en el entorno (`acme-ops/automatization/settings.json:4`, `globex/.claude/settings.json:3`) y un reemplazo propio: `guard-acme-verify.sh` (247 líneas) y `guard-globex-verify.sh`.
 
 ## Relacionados
 

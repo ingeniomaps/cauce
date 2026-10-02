@@ -112,7 +112,7 @@ protección que el proyecto cree tener no se ejecutó. Se llega por accidente es
 
 ## Contexto de descubrimiento
 
-Investigando [030](030-la-exencion-del-mensaje-de-commit-no-ve-un-prefijo-de-entorno.md) en `gouduet`,
+Investigando [030](030-la-exencion-del-mensaje-de-commit-no-ve-un-prefijo-de-entorno.md) en `initech`,
 el 2026-09-06. Para montar la prueba de aquel caso hacía falta un commit bloqueado como línea base; el
 primer intento se escribió con `git -C $O` y pasó. Ese «pasa» era el segundo defecto, no un error de la
 prueba.

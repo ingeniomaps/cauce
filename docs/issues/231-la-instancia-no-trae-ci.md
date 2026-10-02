@@ -16,15 +16,15 @@ la instancia, y `check` gana `--skip-roots` y la compilación de los workflows p
 
 ## Resumen
 
-`init` no copia `.github/` a propósito, porque el `ci.yml` del toolkit corre `npm run ci`, que una instancia no tiene. roax-ops y conorbi-ops escribieron su propio `ci.yml`: `ops check`, las pruebas de sus guards propios, `bash -n` de los hooks y, en roax, compilar los workflows propios y escanear secretos.
+`init` no copia `.github/` a propósito, porque el `ci.yml` del toolkit corre `npm run ci`, que una instancia no tiene. acme-ops y globex-ops escribieron su propio `ci.yml`: `ops check`, las pruebas de sus guards propios, `bash -n` de los hooks y, en acme, compilar los workflows propios y escanear secretos.
 
 ## Reproducción
 
 Verificado leyendo: `engine/cli/instance.js:104-106` dice por qué no se copia.
 
-Y corriendo, el 2026-10-02: con un `git clone` de roax-ops y otro de conorbi-ops solos, como los clona un CI, `node
-engine/cli/ops.js check <clon>/planning` da en roax `✗ ops.config.json: no existe la raíz dropi (../../dropi)` y
-sale 1; en conorbi pasa, porque su única raíz es `..` y eso existe en cualquier clon. Por eso roax se escribió
+Y corriendo, el 2026-10-02: con un `git clone` de acme-ops y otro de globex-ops solos, como los clona un CI, `node
+engine/cli/ops.js check <clon>/planning` da en acme `✗ ops.config.json: no existe la raíz wonka (../../wonka)` y
+sale 1; en globex pasa, porque su única raíz es `..` y eso existe en cualquier clon. Por eso acme se escribió
 un `check.js` propio con `--sin-workspace`.
 
 ## Síntoma
@@ -45,7 +45,7 @@ Un `ci.yml` de molde propio de la instancia —distinto del del toolkit— con `
 
 ## Contexto de descubrimiento
 
-Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala.
+Relevamiento de acme-ops y globex-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala.
 
 ## Relacionados
 
@@ -64,9 +64,9 @@ instancia, y las raíces ausentes se saltean con una bandera explícita, no dete
   0.100.0 publicada. Los tres pasos salen 0. Después se rompió una cosa por paso —`if then` en un hook, un
   paréntesis sin cerrar en el workflow, una prueba que tira— y los tres salen 1. El de los hooks salía 0 en la
   primera versión: un `for` devuelve el estado de la última vuelta. Por eso el paso lleva `|| exit 1`.
-- **`--skip-roots` sobre los clones reales.** En el clon de roax, `check --skip-roots` pasa: `⚠ --skip-roots: 1
-  raíz(ces) ausente(s) sin comprobar (dropi)` y `✓ planning válido: 57 épica(s)`. Sin la bandera sigue saliendo
-  el error de arriba. En conorbi, con y sin la bandera, `✓ planning válido`.
+- **`--skip-roots` sobre los clones reales.** En el clon de acme, `check --skip-roots` pasa: `⚠ --skip-roots: 1
+  raíz(ces) ausente(s) sin comprobar (wonka)` y `✓ planning válido: 57 épica(s)`. Sin la bandera sigue saliendo
+  el error de arriba. En globex, con y sin la bandera, `✓ planning válido`.
 - **Mutaciones, en una copia.** Cada una puso en rojo la prueba que la cuida:
   - sin la compilación, `check nombra el workflow propio que no compila`;
   - con la bandera ignorada, `una raíz ausente es error, y con --skip-roots es un aviso`;
@@ -97,5 +97,5 @@ instancia, y las raíces ausentes se saltean con una bandera explícita, no dete
 
 **Lo que el caso no preveía.** Las pruebas de los guards propios entraron al `ci.yml` aunque el caso no las
 pedía: las dos instancias relevadas las corren, y `organization/workspace.md` ya dice que viven en
-`automatization/tests/`. El escáner de secretos de roax no entra: es una acción de terceros, y elegirla es de
+`automatization/tests/`. El escáner de secretos de acme no entra: es una acción de terceros, y elegirla es de
 cada empresa.

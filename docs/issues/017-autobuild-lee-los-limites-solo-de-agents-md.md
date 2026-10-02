@@ -52,10 +52,10 @@ const limits = bounds.length ? ` Límites del proyecto: ${bounds.join('; ')}.` :
 
 Se llama «Límites del proyecto» y no incluye ninguno de los que el proyecto declaró.
 
-En una instancia real —`venotal-ops`— esa sección contiene, entre otras: no escribir en la tienda
+En una instancia real —`hooli-ops`— esa sección contiene, entre otras: no escribir en la tienda
 Shopify productiva aunque la tarea esté promovida; el tema tiene dos escritores y hay que hacer `pull`
 antes de editar; las llamadas a Gemini, SerpAPI y ElevenLabs cuestan por llamada y van al volumen
-mínimo; Dropi es de sólo lectura. Ninguna llega al subagente que construye.
+mínimo; Wonka es de sólo lectura. Ninguna llega al subagente que construye.
 
 Algunas las ataja igual un guard —el push, la escritura a `.env`—, pero varias no tienen guard: son
 exactamente las que dependen de que el ejecutor las conozca.

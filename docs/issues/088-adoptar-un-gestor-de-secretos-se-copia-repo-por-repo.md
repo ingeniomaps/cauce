@@ -107,7 +107,7 @@ el ADR— con cuatro niveles, que son los que separan los escenarios del operado
   "schemaVersion": 1,
   "adapter": "infisical",                        // nombre del adaptador de la empresa (ver 091)
   "accounts":   { "principal": { "url": "https://app.infisical.com" } },
-  "projects":   { "venotal": { "account": "principal", "id": "<project-id>",
+  "projects":   { "hooli": { "account": "principal", "id": "<project-id>",
                                "environments": ["dev", "prod"] } },
   "identities": {                                // una por nivel de acceso, nunca por repositorio
     "local-dev": { "account": "principal", "source": "file",
@@ -116,7 +116,7 @@ el ADR— con cuatro niveles, que son los que separan los escenarios del operado
                    "writes": ["dev", "prod"] }
   },
   "services": {
-    "dashboard": { "root": "dashboard", "project": "venotal", "folder": "/dashboard",
+    "dashboard": { "root": "dashboard", "project": "hooli", "folder": "/dashboard",
                    "identity": "local-dev", "schema": ".env.schema", "branches": { "main": "prod" },
                    "delivery": "copy" }          // ver «Decisión abierta» abajo
   }

@@ -81,9 +81,9 @@ quedó derogado con ella —este borde apareció al probarlo en el banco—.
 
 ## Contexto de descubrimiento
 
-Revisión de los repositorios de Dropi del 2026-10-01: su catálogo de reglas de negocio lleva el vínculo
+Revisión de los repositorios de Wonka del 2026-10-01: su catálogo de reglas de negocio lleva el vínculo
 en las dos direcciones (`reemplaza_a` / `reemplazada_por`) y nunca reutiliza un identificador
-(`dropi-business-rules/plantillas/regla.yaml:65-72`, `FORMATO.md:139`).
+(`wonka-business-rules/plantillas/regla.yaml:65-72`, `FORMATO.md:139`).
 
 ## Relacionados
 

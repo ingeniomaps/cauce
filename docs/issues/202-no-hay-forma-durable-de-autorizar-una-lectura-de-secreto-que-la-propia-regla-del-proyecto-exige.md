@@ -30,7 +30,7 @@ fuera del árbol (`secrets-shell` por `run-hook.sh`, sin transcript):
 ```
 
 Y sobre la instancia real, Cauce 0.99.0, grupo `pre-shell` entero con el comando literal de P6 y un
-`session_id` nuevo: **exit=0**. Pasa porque `gouduet-ops/planning/.ops-approval` ya existe —lo escribió
+`session_id` nuevo: **exit=0**. Pasa porque `initech-ops/planning/.ops-approval` ya existe —lo escribió
 Manuel a las 12:08 con la ruta y el comentario «Autorización permanente»—, así que el «no existe» de la
 causa raíz era cierto al escribirse y hoy no. El archivo está sin trackear (`?? planning/.ops-approval`).
 
@@ -110,18 +110,18 @@ escribir fuera de las raíces y no tiene contraparte.
 
 ## Reproducción
 
-En `gouduet` (sidecar, Cauce 0.99.0), 2026-09-25:
+En `initech` (sidecar, Cauce 0.99.0), 2026-09-25:
 
-1. `gouduet-ops/planning/rules/github-identity.md` (regla propia P6) declara que `gh` **nunca** va sin
-   `GH_TOKEN`, y escribe el comando exacto: leer `GITHUB_PAT_GOUDUET_ORG` de
-   `~/Code/gouduet/.env` y pasarlo en la misma línea.
+1. `initech-ops/planning/rules/github-identity.md` (regla propia P6) declara que `gh` **nunca** va sin
+   `GH_TOKEN`, y escribe el comando exacto: leer `GITHUB_PAT_INITECH_ORG` de
+   `~/Code/initech/.env` y pasarlo en la misma línea.
 2. El usuario pide abrir un PR.
 3. El agente corre ese comando, tal como la regla lo escribe.
 
 ## Síntoma
 
 ```
-BLOQUEADO: el comando lee ~/Code/gouduet/.env, que es una credencial: leerla la deja en el
+BLOQUEADO: el comando lee ~/Code/initech/.env, que es una credencial: leerla la deja en el
 contexto de la sesión. Si hace falta un valor, pedíselo a una persona.
 ```
 
@@ -153,12 +153,12 @@ sola:
 
 ```diff
   "writableOutsideRoots": [
-    "~/.claude/projects/-home-manuel-Code-gouduet/memory"
+    "~/.claude/projects/-home-manuel-Code-initech/memory"
   ],
 + "readableSecrets": [
 +   {
-+     "path": "~/Code/gouduet/.env",
-+     "razon": "P6: gh autentica con GITHUB_PAT_GOUDUET_ORG; sin el token resuelve a otra cuenta"
++     "path": "~/Code/initech/.env",
++     "razon": "P6: gh autentica con GITHUB_PAT_INITECH_ORG; sin el token resuelve a otra cuenta"
 +   }
 + ],
 ```
@@ -178,12 +178,12 @@ otro archivo de credenciales del mismo workspace.
 
 ## Contexto de descubrimiento
 
-Sesión de `gouduet` del 2026-09-25, cerrando `settlement-negative-payout-measure` y abriendo el PR #25
-de `gouduet-org/api`. El bloqueo cayó en el último paso, después de que la rama ya estuviera empujada.
+Sesión de `initech` del 2026-09-25, cerrando `settlement-negative-payout-measure` y abriendo el PR #25
+de `initech-org/api`. El bloqueo cayó en el último paso, después de que la rama ya estuviera empujada.
 
 ## Relacionados
 
-- P6 de gouduet (`gouduet-ops/planning/rules/github-identity.md`), que es la regla cuyo cumplimiento el
+- P6 de initech (`initech-ops/planning/rules/github-identity.md`), que es la regla cuyo cumplimiento el
   guard interrumpe.
 - R27 del sistema: cerrado por defecto y cada excepción declarada sola. El guard cumple la primera mitad.
 - Casos 185 y 188, sobre el mecanismo de confirmación por chat: aquéllos eran sobre si la confirmación se
@@ -217,7 +217,7 @@ lo que el caso enumeró:
 - **Defecto 3, confirmar no alcanzaba → se hizo.** El bloqueo `SELF` ahora anota el archivo y las líneas
   (`unnamed`, `engine/hooks/self-approval.js`), así que el «sí» siguiente aprueba lo que mostró. `ASKS` no se
   tocó: sumar verbos era la camisa de fuerza.
-- **P6 de gouduet → ya destrabado**: la línea que Manuel escribió a mano hace pasar el grupo `pre-shell`
+- **P6 de initech → ya destrabado**: la línea que Manuel escribió a mano hace pasar el grupo `pre-shell`
   con el comando literal de P6 (exit=0, en la validación).
 
 Lo que el enunciado no preveía: `template/AGENTS.md` decía a cada empresa que el agente nunca puede escribir

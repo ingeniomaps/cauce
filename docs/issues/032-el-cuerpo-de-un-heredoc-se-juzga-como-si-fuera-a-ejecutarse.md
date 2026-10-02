@@ -97,7 +97,7 @@ el rodeo que un guard no debería estar enseñando.
 
 ## Contexto de descubrimiento
 
-Al escribir el caso 030 en `gouduet`, el 2026-09-06. El heredoc que creaba el archivo fue bloqueado por
+Al escribir el caso 030 en `initech`, el 2026-09-06. El heredoc que creaba el archivo fue bloqueado por
 mencionar la operación que el caso analiza. El archivo terminó escribiéndose con otra herramienta.
 
 ## Relacionados

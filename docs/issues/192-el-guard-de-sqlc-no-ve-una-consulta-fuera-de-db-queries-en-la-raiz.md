@@ -203,4 +203,4 @@ especificación, está en el cierre del 187 y es el caso 197.
 
 ### Prueba real en un banco instalado (2026-09-23)
 
-Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. Monorepo real con `sqlc` en `api/`: la consulta de `api/db/queries` sin su generado da `exit=2` con la rama y `exit=0` con 0.98.0 —el defecto—; con el generado stageado, `exit=0`.
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de initech —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de initech-ops, cambiando sólo el enlace del banco. Monorepo real con `sqlc` en `api/`: la consulta de `api/db/queries` sin su generado da `exit=2` con la rama y `exit=0` con 0.98.0 —el defecto—; con el generado stageado, `exit=0`.

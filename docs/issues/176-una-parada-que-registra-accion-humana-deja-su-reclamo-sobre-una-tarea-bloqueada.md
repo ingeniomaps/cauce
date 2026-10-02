@@ -107,7 +107,7 @@ entera por vez, en la fase más temprana, sin ninguna señal previa de que va a 
 
 ## Contexto de descubrimiento
 
-Una sola tarea de venotal —`integraciones-status-y-conteo`, después partida— consumió seis corridas y
+Una sola tarea de hooli —`integraciones-status-y-conteo`, después partida— consumió seis corridas y
 unos 4,2 M de tokens sin commitear una línea. Dos de esas seis fueron exactamente este defecto:
 
 | Corrida | Parada | Tokens | Qué la trabó |
@@ -121,7 +121,7 @@ encontraron nada.
 
 **Consultado para escribir esto**: `engine/planning/state.js` (líneas 24-30 y 52-75),
 `engine/cli/claims.js` (líneas 38-45) y `automatization/workflows/autobuild.js` (las llamadas a `release`
-y las salidas por `stop`) del paquete `@ingeniomaps/cauce@0.96.0` instalado en `venotal-ops/node_modules`;
+y las salidas por `stop`) del paquete `@ingeniomaps/cauce@0.96.0` instalado en `hooli-ops/node_modules`;
 la salida de `ops context planning --json` con la tarea bloqueada y reclamada; y los resultados de las
 seis corridas.
 

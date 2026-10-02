@@ -41,7 +41,7 @@ test('en modo agente no se piden credenciales; por REST, sí', () => {
   assert.deepEqual(errors(AGENT), [])
   assert.ok(errors({ ...AGENT, transport: 'rest' }).includes('jira: falta auth.tokenEnv'))
   assert.ok(errors({ ...AGENT, transport: 'mcp' }).includes('jira: transport debe ser rest|agent'))
-  assert.ok(errors({ ...AGENT, mcpServer: 'atlassian roax' }).some((one) => /mcpServer es el nombre/.test(one)))
+  assert.ok(errors({ ...AGENT, mcpServer: 'atlassian acme' }).some((one) => /mcpServer es el nombre/.test(one)))
   assert.ok(errors({ ...AGENT, transport: undefined }).includes('jira: falta auth.tokenEnv'), 'sin transport es REST')
   assert.ok(errors({ ...AGENT, cloudId: ' ' }).includes('jira: cloudId no puede ir vacío'))
 })

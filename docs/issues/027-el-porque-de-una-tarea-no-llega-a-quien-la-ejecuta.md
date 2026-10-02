@@ -115,7 +115,7 @@ cincuenta tareas lo que ya está escrito una vez en la épica, y envejece en cin
 
 ## Contexto de descubrimiento
 
-El dueño de `gouduet` pidió revisar que sus épicas, hitos y tareas fueran entendibles «para poder
+El dueño de `initech` pidió revisar que sus épicas, hitos y tareas fueran entendibles «para poder
 ejercer» (2026-09-06). La estructura estaba sana: los trece hitos con su nota de por qué existen, treinta
 y nueve de cincuenta y una tareas apuntando a su épica o a un criterio, las diecisiete épicas con
 objetivo, criterios e historias. El hueco no estaba en lo escrito sino en lo que llega: siguiendo qué

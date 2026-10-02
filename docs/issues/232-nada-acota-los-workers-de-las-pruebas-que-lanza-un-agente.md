@@ -11,11 +11,11 @@ version-detectada: 0.99.2
 
 **🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **media**.
 
-**Prioridad media**: en roax-ops dos Review lanzaron `npx jest` a la vez y saturaron la máquina el 2026-08-31.
+**Prioridad media**: en acme-ops dos Review lanzaron `npx jest` a la vez y saturaron la máquina el 2026-08-31.
 
 ## Resumen
 
-Fuera del commit, nada acota cuántos procesos lanza un runner de pruebas. roax-ops agregó un guard que frena jest/vitest/nx sin cota de workers, mirando la posición de comando, y un helper con candado de máquina para las corridas pesadas.
+Fuera del commit, nada acota cuántos procesos lanza un runner de pruebas. acme-ops agregó un guard que frena jest/vitest/nx sin cota de workers, mirando la posición de comando, y un helper con candado de máquina para las corridas pesadas.
 
 ## Reproducción
 
@@ -39,7 +39,7 @@ Un guard en `pre-shell` que pida la cota en los runners conocidos, con escape ap
 
 ## Contexto de descubrimiento
 
-Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. `roax-ops/automatization/hooks/guard-load.sh` (225 líneas, con pruebas).
+Relevamiento de acme-ops y globex-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. `acme-ops/automatization/hooks/guard-load.sh` (225 líneas, con pruebas).
 
 ## Relacionados
 

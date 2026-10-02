@@ -15,11 +15,11 @@ version-detectada: 0.99.2
 
 ## Resumen
 
-conorbi-ops agregó a `organization/workspace.md` una tabla «Credenciales» (servicio, variable, para qué) y una «Guards propios» (guard, qué frena, pruebas). El molde menciona las credenciales en prosa y no tiene dónde listar guards propios.
+globex-ops agregó a `organization/workspace.md` una tabla «Credenciales» (servicio, variable, para qué) y una «Guards propios» (guard, qué frena, pruebas). El molde menciona las credenciales en prosa y no tiene dónde listar guards propios.
 
 ## Reproducción
 
-Verificado leyendo `template/organization/workspace.md` contra el de conorbi.
+Verificado leyendo `template/organization/workspace.md` contra el de globex.
 
 ## Síntoma
 
@@ -39,7 +39,7 @@ Las dos tablas vacías en el molde.
 
 ## Contexto de descubrimiento
 
-Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala.
+Relevamiento de acme-ops y globex-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala.
 
 ## Relacionados
 

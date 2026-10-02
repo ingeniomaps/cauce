@@ -60,7 +60,7 @@ test('con varias raíces cada servicio se puede nombrar', () => {
 // con el mismo nombre salían los dos `keycloak` y no había con qué decir de cuál era cada credencial.
 test('dos raíces que terminan en la misma carpeta se distinguen por el name declarado', () => {
   const base = tempRoot('cauce-113-')
-  for (const org of ['gouduet', 'hypixo']) {
+  for (const org of ['initech', 'umbrella']) {
     fs.mkdirSync(path.join(base, org, 'keycloak'), { recursive: true })
     fs.writeFileSync(path.join(base, org, 'keycloak', 'package.json'), '{"name":"keycloak"}')
     fs.writeFileSync(path.join(base, org, 'keycloak', '.env.example'), 'KC_DB_PASSWORD=\n')
@@ -70,28 +70,28 @@ test('dos raíces que terminan en la misma carpeta se distinguen por el name dec
   const file = path.join(target, 'ops.config.json')
   const config = JSON.parse(fs.readFileSync(file, 'utf8'))
   config.workspaceRoots = [
-    { name: 'gouduet', path: '../gouduet/keycloak' },
-    { name: 'hypixo', path: '../hypixo/keycloak' },
+    { name: 'initech', path: '../initech/keycloak' },
+    { name: 'umbrella', path: '../umbrella/keycloak' },
   ]
   fs.writeFileSync(file, JSON.stringify(config, null, 2))
 
   const guide = JSON.parse(run(['onboard', target, '--json']).stdout)
-  assert.deepEqual(guide.servicios.map((service) => service.path), ['gouduet', 'hypixo'])
+  assert.deepEqual(guide.servicios.map((service) => service.path), ['initech', 'umbrella'])
   // `roots` es la otra mitad del cambio: sigue siendo la lista de rutas, que es lo que mira quien acota
   // una escritura y lo que ya emitía este JSON.
   assert.ok(guide.roots.every((one) => typeof one === 'string'), 'roots son rutas, no objetos')
-  assert.deepEqual(guide.roots.map((one) => path.basename(path.dirname(one))), ['gouduet', 'hypixo'])
+  assert.deepEqual(guide.roots.map((one) => path.basename(path.dirname(one))), ['initech', 'umbrella'])
 
   const human = run(['scan'], target)
-  assert.match(human.stdout, /gouduet \[raíz\]/)
-  assert.match(human.stdout, /hypixo \[raíz\]/)
+  assert.match(human.stdout, /initech \[raíz\]/)
+  assert.match(human.stdout, /umbrella \[raíz\]/)
   assert.doesNotMatch(human.stdout, /^keycloak /m, 'la carpeta ya no nombra a ninguno de los dos')
 
   // Y una raíz sin `name` sigue nombrándose como antes del cambio, por su carpeta.
-  config.workspaceRoots[1] = { path: '../hypixo/keycloak' }
+  config.workspaceRoots[1] = { path: '../umbrella/keycloak' }
   fs.writeFileSync(file, JSON.stringify(config, null, 2))
   const nameless = JSON.parse(run(['onboard', target, '--json']).stdout)
-  assert.deepEqual(nameless.servicios.map((service) => service.path), ['gouduet', 'keycloak'])
+  assert.deepEqual(nameless.servicios.map((service) => service.path), ['initech', 'keycloak'])
 })
 
 // Un corte que no se anuncia hace pasar lo listado por todo lo que hay.

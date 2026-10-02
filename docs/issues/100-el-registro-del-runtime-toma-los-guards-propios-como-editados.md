@@ -147,7 +147,7 @@ vuelta en `:403`.
 
 Instancia real (sidecar, 0.80.0), 2026-09-11. Al analizar los 14 archivos que `upgrade --check` daba por
 congelados para decidir cuáles adoptar, dos resultaron ser guards propios (`guard-load.sh`,
-`guard-roax-verify.sh`) que el paquete no trae; se habían editado el 2026-09-10 después de un `upgrade` que
+`guard-acme-verify.sh`) que el paquete no trae; se habían editado el 2026-09-10 después de un `upgrade` que
 ya los había registrado.
 
 Al correr el caso sobre 0.81.0 aparecieron el código 1 de `--check`, el aviso de `check` y el «descartado»

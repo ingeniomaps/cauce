@@ -97,11 +97,11 @@ entrada en la salida en vez de borrarla, que además es lo que corresponde: no e
 
 ## Contexto de descubrimiento
 
-Migrando `venotal-ops` a Cauce 0.54.0 el 2026-09-02. El proyecto tenía un guard propio que Cauce no
+Migrando `hooli-ops` a Cauce 0.54.0 el 2026-09-02. El proyecto tenía un guard propio que Cauce no
 cubre —drift entre `prisma/schema.prisma` y `prisma/migrations/`: el build queda verde y la base de
 producción se queda atrás— y era la única protección local que el toolkit no reemplazaba.
 
-Se sorteó sacándolo de `automatization/hooks/`: vive en `automatization/venotal/guard-prisma-drift.sh`,
+Se sorteó sacándolo de `automatization/hooks/`: vive en `automatization/hooli/guard-prisma-drift.sh`,
 con un README al lado explicando por qué no está donde la documentación dice. Funciona, pero es
 justamente el lugar que `AGENTS.md` desaconseja.
 
@@ -116,7 +116,7 @@ Verificado el 2026-09-03: `guard-mio.sh` sobrevive a `automation install`, y un 
 registrado suelto se sigue retirando con el mensaje correcto (`reemplazado guard-destructive.sh por
 guard-shell.sh`, ya no «entrada obsoleta»).
 
-En `venotal-ops`, `guard-prisma-drift.sh` volvió de `automatization/venotal/` a
+En `hooli-ops`, `guard-prisma-drift.sh` volvió de `automatization/hooli/` a
 `automatization/hooks/`, y sobrevive a la reinstalación de los dos runners.
 
 ## Relacionados

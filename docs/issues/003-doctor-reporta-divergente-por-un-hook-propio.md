@@ -105,7 +105,7 @@ Lo que sí se sigue detectando es lo que importa: que falte una entrada esperada
 
 ## Contexto de descubrimiento
 
-Migrando `venotal-ops` a Cauce 0.54.0 el 2026-09-02, al registrar el guard propio del proyecto. La
+Migrando `hooli-ops` a Cauce 0.54.0 el 2026-09-02, al registrar el guard propio del proyecto. La
 primera forma de hacerlo —sumarlo al grupo `Bash` existente— dejó a `doctor` en rojo sin explicar por
 qué. La segunda —un grupo nuevo con el mismo matcher— pasó. Las dos configuraciones son equivalentes
 para el runner.

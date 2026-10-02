@@ -49,7 +49,7 @@ $ node -e "console.log(require('.../engine/core/ownership').effectiveRules(root)
 
 ## Síntoma
 
-Una instancia real —`roax-ops`, Cauce 0.81.0 → 0.92.0— escribió su propio `process.md` para reemplazar
+Una instancia real —`acme-ops`, Cauce 0.81.0 → 0.92.0— escribió su propio `process.md` para reemplazar
 cuatro reglas, y con eso perdió nueve. Lo que hizo al descubrirlo es lo que queda cuando el aviso nombra
 un problema sin remedio: una tabla en prosa dentro de su propio archivo, declarando que cuatro de ellas
 «se adoptan por referencia» y «rigen igual, aunque el motor las dé por apagadas», con esta razón —que es
@@ -111,7 +111,7 @@ sistema sin regir, creyendo que regían porque lo había escrito.
 
 ## Contexto de descubrimiento
 
-2026-09-16, revisando las reglas propias de `roax-ops` para ver cuáles merecían subir al toolkit. El
+2026-09-16, revisando las reglas propias de `acme-ops` para ver cuáles merecían subir al toolkit. El
 hallazgo no fue ninguna de sus reglas: fue la tabla con la que cerraban su `process.md`.
 
 Dos afirmaciones de esa instancia sobre nuestro motor se comprobaron y **no** eran ciertas, y quedan

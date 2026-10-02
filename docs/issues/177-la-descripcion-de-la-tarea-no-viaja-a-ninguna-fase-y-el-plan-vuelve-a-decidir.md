@@ -104,7 +104,7 @@ mal, porque nadie hizo nada mal.
 
 ## Contexto de descubrimiento
 
-Instancia de venotal (sidecar), 2026-09-17, sobre 0.96.0. Una tarea —`integraciones-status-y-conteo`,
+Instancia de hooli (sidecar), 2026-09-17, sobre 0.96.0. Una tarea —`integraciones-status-y-conteo`,
 después partida en tres— consumió **siete corridas y ~5 M de tokens sin commitear una línea**. Cuatro
 paradas fueron útiles y encontraron defectos reales; dos fueron el caso 176; y las dos de la tabla de
 arriba son éste. La tarea terminó construida a mano por una persona y sus subagentes, con la revisión
@@ -112,7 +112,7 @@ del cast sobre el diff real: el código salió en un commit, y las decisiones qu
 estaban escritas desde tres corridas antes.
 
 **Consultado para escribir esto**: `engine/planning/parser.js` (líneas 188-219) del paquete
-`@ingeniomaps/cauce@0.96.0` instalado en `venotal-ops/node_modules`; la salida de
+`@ingeniomaps/cauce@0.96.0` instalado en `hooli-ops/node_modules`; la salida de
 `ops context planning --json`; `automatization/workflows/autobuild.js` en su copia instalada (líneas
 454-459 y las seis que usan `task.acceptance`: 621, 702, 777, 803, 827, 872); y los veredictos de las dos
 corridas nombradas.

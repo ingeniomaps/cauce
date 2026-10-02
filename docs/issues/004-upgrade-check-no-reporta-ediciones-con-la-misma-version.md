@@ -97,7 +97,7 @@ puede romper un script que hoy trate ese 0 como «no hay nada que hacer». Va en
 
 ## Contexto de descubrimiento
 
-Migrando `venotal-ops` a Cauce 0.54.0 el 2026-09-02, verificando qué iba a pasar en la próxima
+Migrando `hooli-ops` a Cauce 0.54.0 el 2026-09-02, verificando qué iba a pasar en la próxima
 actualización con un `AGENTS.md` lleno de contenido del proyecto. `--check` dijo que todo estaba al
 día; el `upgrade` de verdad se detuvo nombrando el archivo.
 

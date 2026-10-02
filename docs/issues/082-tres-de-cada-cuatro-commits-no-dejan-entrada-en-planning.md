@@ -15,12 +15,12 @@ dice `check`; qué se hace con él es de quien lo lea
 ## Resumen
 
 Cruzando los `commit:` de `planning/done/` contra la historia de cada repositorio de trabajo de una
-instancia real (`venotal`, cauce 0.76.0):
+instancia real (`hooli`, cauce 0.76.0):
 
 | repositorio | commits | registrados en DONE |
 |---|---|---|
 | `dashboard` | 248 | **75** |
-| `venotal-storefront` | 43 | **0** |
+| `hooli-storefront` | 43 | **0** |
 | `creative-studio` | 21 | **0** |
 | **total** | **312** | **75 (24 %)** |
 

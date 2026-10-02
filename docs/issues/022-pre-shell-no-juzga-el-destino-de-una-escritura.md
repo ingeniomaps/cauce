@@ -115,7 +115,7 @@ parseo a un camino caliente.
 
 ## Contexto de descubrimiento
 
-Salió del [020](020-workspace-boundary-frena-la-memoria-del-runner.md), migrando `gouduet` a Cauce
+Salió del [020](020-workspace-boundary-frena-la-memoria-del-runner.md), migrando `initech` a Cauce
 (2026-09-03): el guard frenó una escritura legítima por `Write` y la misma escritura salió después por
 `Bash` sin que nada la mirara. Estaba escrito adentro de aquel caso como un párrafo del fix; se separó
 acá porque es otro archivo, otro guard y otra prueba, y el `README` de esta carpeta pide uno por

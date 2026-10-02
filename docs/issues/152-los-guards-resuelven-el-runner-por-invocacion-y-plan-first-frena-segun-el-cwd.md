@@ -27,7 +27,7 @@ Medido en una instancia sidecar real, con el WIP escrito por un recorrido y la t
 
 | Quién pregunta | Qué contesta |
 |---|---|
-| `ops context planning --json` | `wipFile: wip/home-…-venotal-ops.md`, WIP **activo**, `phase Build`, `claimed: true` |
+| `ops context planning --json` | `wipFile: wip/home-…-hooli-ops.md`, WIP **activo**, `phase Build`, `claimed: true` |
 | `guard-files.sh` (plan-first), con el `cwd` en el repo de producto | **BLOQUEADO: … cambia el producto sin plan. WIP está en IDLE** |
 
 El plan existía —17.405 bytes, nueve pasos tildados, `phase: Build`— y el guard lo leyó como inexistente.

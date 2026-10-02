@@ -173,7 +173,7 @@ campo baja a cada consumidor en su próximo `upgrade` y ninguno lo declara todav
   ese número decide si esto vale un campo nuevo. No llegó a decidirlo —lo justificó el bloqueo del 153,
   que no tiene salida del lado del proyecto— pero ahora existe.
 
-  `venotal-ops` guardó **7 intentos de commit** en su rastro de gates y **2 (29 %)** corrieron sobre la
+  `hooli-ops` guardó **7 intentos de commit** en su rastro de gates y **2 (29 %)** corrieron sobre la
   copia y murieron ahí: los tres gates en ~1,2 s en un intento, y `build` en 2,19 s con `test` y `lint`
   verdes en el otro, contra una media de **14,2 s** para un `build` que sí corre. El delta ajeno no es un
   borde raro: casi un tercio de los commits de esa instancia chocaron con él mientras la tarea estuvo

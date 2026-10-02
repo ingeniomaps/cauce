@@ -88,7 +88,7 @@ Queda una asimetría deliberada: `init ops` desde el padre da `sidecar` por el n
 
 ## Contexto de descubrimiento
 
-Preparando la migración de `venotal-ops` a Cauce 0.54.0 el 2026-09-02. El primer ensayo se corrió con
+Preparando la migración de `hooli-ops` a Cauce 0.54.0 el 2026-09-02. El primer ensayo se corrió con
 `init . --force` y produjo una instancia `embedded` con `workspaceRoots: ["."]`, que para un repo
 sidecar que coordina tres repos hermanos es el modo equivocado. Hubo que descartar el ensayo y
 repetirlo sin el punto.
