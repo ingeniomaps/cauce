@@ -74,6 +74,9 @@ Diseñar para que la experiencia sea perceptible, operable, comprensible y robus
 - ¿Los supuestos y restricciones están claramente separados?
 - ¿La validación propuesta responde la incertidumbre principal?
 - ¿El artefacto deja libertad técnica a ingeniería y visual a UI Design?
+- ¿Un prototipo generado con IA se mantiene por debajo de la fidelidad final hasta resolver la pregunta
+  de diseño que lo motivó? Un acabado casi terminado desvía la revisión con stakeholders hacia detalles
+  superficiales en vez del problema sustantivo (H7, informe 2026-09-24).
 
 ## Fundamento externo
 
@@ -83,5 +86,10 @@ Modelo sintetizado con fuentes revisadas en agosto de 2026:
 - [WCAG 2.2](https://www.w3.org/TR/WCAG22/): criterios comprobables para contenido perceptible, operable, comprensible y robusto.
 - [Nielsen Norman Group: heurísticas de usabilidad](https://media.nngroup.com/media/articles/attachments/Heuristic_Summary1_A4_compressed.pdf): principios para inspeccionar feedback, control, consistencia, prevención y recuperación.
 - [GOV.UK Design System Patterns](https://design-system.service.gov.uk/patterns/): patrones documentados para tareas concretas, adaptables al contexto.
+
+Antes de citar un patrón de GOV.UK Design System como guía estable, comprobar su estado de madurez
+—`trial` o `stable`— en la página del propio componente
+(`design-system.service.gov.uk/community/component-lifecycle-statuses/`): un patrón en `trial` puede
+sufrir cambios sustanciales o discontinuarse (H4, informe 2026-09-24).
 
 Aplicar las normas, políticas y necesidades reales de cada empresa; ninguna lista sustituye validación con usuarios.
