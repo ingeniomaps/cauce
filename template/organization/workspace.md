@@ -24,6 +24,23 @@ Las credenciales que cada integración necesita se nombran acá o en `planning/H
 quién las carga y dónde: `check` avisa cuando el proyecto declara una variable que no aparece en
 ninguno de los dos, porque una credencial sin dueño no rompe nada hasta el día del despliegue.
 
+### Credenciales
+
+Una fila por variable. El valor no va nunca acá: va dónde se carga y quién lo hace.
+
+| Servicio | Variable | Para qué | Quién la carga y dónde |
+|---|---|---|---|
+<!-- | api | `PAYMENTS_TOKEN` | cobrar con el proveedor de pagos | quien opera la instancia, en `.env` | -->
+
+## Guards propios
+
+Los guards que este proyecto agregó al lado de los de Cauce, en `automatization/hooks/`. Una fila por guard:
+qué frena y qué prueba lo sostiene, para que quien lo encuentre bloqueando sepa de dónde salió.
+
+| Guard | Qué frena | Prueba |
+|---|---|---|
+<!-- | `guard-acme-migraciones.sh` | una migración sin su reversa | `automatization/tests/migraciones.test.js` | -->
+
 ## Excepciones de autonomía
 
 Los límites que rigen sin escribir nada están en `AGENTS.md`, y son los mismos para todo proyecto. Acá
