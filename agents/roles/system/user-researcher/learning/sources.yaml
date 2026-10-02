@@ -21,7 +21,7 @@ sources:
     tier: regulation
     topics: [ethics, harm, consent]
   - name: Interaction Design Foundation
-    url: https://www.interaction-design.org/literature/topics/user-research
+    url: https://ixdf.org/literature/topics/user-research
     tier: profession
     authority: secondary
     topics: [methods, bias, synthesis]

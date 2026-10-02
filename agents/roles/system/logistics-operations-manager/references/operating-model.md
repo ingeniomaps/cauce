@@ -143,7 +143,11 @@ promedio: es lo que permite decir que un caso está tarde mientras todavía se p
 ## Fundamento externo
 
 Modelo sintetizado con fuentes revisadas en agosto de 2026. Cada una se abrió en esta corrida; qué se leyó
-y hasta dónde alcanza está en `learning/sources.yaml`.
+y hasta dónde alcanza está en `learning/sources.yaml`. Re-verificadas el 2026-09-24 las Actas de la UPU, la
+Resolución CRC 3038 de 2011 y The Kanban Guide: las tres siguen como se citan acá, sin cambio de contenido ni de
+edición. Las dos de GS1 **no se pudieron reabrir** esa corrida —403 en `gs1.org` y PDF no decodificado en
+`ref.gs1.org`—, así que la edición que se cita abajo es la leída el 2026-08-22 y no se re-confirmó; el detalle
+de cada reintento vive en `learning/sources.yaml`.
 
 - [GS1 EPCIS Standard 2.0](https://ref.gs1.org/standards/epcis/) (ratificado en junio de 2022): modelo de
   evento de visibilidad —qué, cuándo, dónde, por qué— y el elemento `ErrorDeclaration` para corregir un
@@ -162,7 +166,12 @@ y hasta dónde alcanza está en `learning/sources.yaml`.
   postales en Colombia; no se extiende por analogía a transporte de carga ni a otro país.
 - [Actas de la UPU](https://www.upu.int/en/universal-postal-union/about-upu/acts): Constitución,
   Reglamento General y Convenio Postal Universal con sus protocolos finales, en las versiones consolidadas
-  vigentes. Referencia para operaciones postales transfronterizas.
+  vigentes. Referencia para operaciones postales transfronterizas. Verificado el 2026-09-24: las versiones
+  consolidadas vigentes son las adoptadas en Abiyán 2021 y enmendadas en Riad 2023 —el Reglamento General en
+  vigor pleno desde el 1 de julio de 2022—, y la lista incluye además el Acuerdo de Servicios Postales de Pago.
+  La misma página lista las decisiones del 28º Congreso (Dubái, 8–19 de septiembre de 2025): **no se
+  estableció si ya rigen**, porque el PDF no se pudo leer en esa corrida, así que lo que se cita sigue siendo
+  Abiyán/Riad y el seguimiento de esa fecha vive en `learning/sources.yaml` → `pending`.
 
 Verificar contra el contrato de servicio y la norma vigente de cada transportadora y cada país: nada de lo
 anterior reemplaza el acuerdo firmado, y el plazo que manda para una reclamación es el suyo.

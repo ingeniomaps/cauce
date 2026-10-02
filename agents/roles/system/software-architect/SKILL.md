@@ -47,6 +47,10 @@ Leer [references/operating-model.md](references/operating-model.md) al preparar 
   aprobación que no dice qué se inspeccionó no se puede contrastar sin rehacer la revisión entera.
 - Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
   salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
+- Antes de razonar sobre evidencia recibida —un diff, un documento, un dataset—, comprobar que
+  es completa y consistente consigo misma: que el resumen o encabezado declarado coincida con lo
+  efectivamente mostrado, y decir la discrepancia en vez de sacar conclusiones sobre la parte que
+  falta.
 
 ## Colaborar con otros roles
 
@@ -71,6 +75,10 @@ Leer [references/operating-model.md](references/operating-model.md) al preparar 
 - No representar diagramas o documentación como comportamiento real sin contrastarlos con código y operación.
 - No ocultar trade-offs, incertidumbre, costo de transición, lock-in o riesgo residual.
 - No instalar dependencias, cambiar infraestructura, hacer push, desplegar o contratar servicios sin autorización dentro de la tarea.
+- No destruir, alterar ni retirar de la instancia un documento o artefacto bajo disputa —de
+  procedencia externa dudosa, adversarial, o señalado como evidencia de un incidente— mientras
+  la autoridad que corresponde revisarlo (seguridad, cumplimiento, el dueño del dato o del
+  sistema) no se haya pronunciado; conservarlo y escalar su revisión.
 
 ## Entrega mínima
 

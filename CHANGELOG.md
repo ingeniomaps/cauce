@@ -18,6 +18,30 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Editar por MCP la descripción de una tarjeta de Jira en markdown se frena.** El markdown reemplaza la
+  descripción entera y pierde menciones, tablas y casillas. En Claude Code, el guard `jira-adf` frena
+  `editJiraIssue` de cualquier servidor MCP cuando cambia la descripción sin ADF, y se aprueba como el resto
+  si de verdad querés reemplazarla por texto. Llega con `automation install`.
+- **Tus workflows propios reciben los mismos marcadores que los de Cauce.** Escribilos en `workflows/` de la
+  instancia y `automation install` los deja al lado de los de Cauce con `{{OPS_ROOT}}`, `{{OPS_DIR}}` y los
+  `{{INCLUDE:…}}` resueltos, sin `sed` después. Uno que se llame como un workflow de Cauce no se instala, y
+  si borrás la fuente, la copia instalada se retira.
+- **Jira se puede leer con un agente, sin un token en disco.** Con `"transport": "agent"` en
+  `integrations/jira/config.json`, la integración no pide credenciales: el agente lee con el MCP de Atlassian
+  y la cuenta de quien está en la sesión, y entrega lo leído con `integration sync . jira --payload <archivo>`.
+  El procedimiento está en `integrations/jira/README.md`. El payload declara si trajo todo; con
+  `complete: false` no se borra nada de lo que no vino.
+- **Mergear, aprobar un PR y desplegar ahora se frenan como un push.** `gh pr merge`, `review`, `close`,
+  `reopen` y `comment`, `gh workflow run`, `gh run rerun`, `gh release create|delete|upload|edit`, y los deploys
+  con `terraform`/`tofu apply|destroy`, `kubectl` con verbos que modifican, `helm install|upgrade|uninstall|
+  rollback`, `pulumi up|destroy` o `cdk deploy|destroy`. `gh pr create` sin `--repo` también se frena, porque
+  en un fork abre el PR en el original. Se aprueban igual que el push. Si tu proyecto despliega con un comando
+  propio —un script como `./scripts/deploy.sh`—, declaralo en `deployCommands` de `ops.config.json` y se frena igual.
+- **Jira toma el servicio de una etiqueta.** Los proyectos team-managed no tienen componentes: con
+  `"serviceFrom": "label"` el sync lee el servicio de una etiqueta `service:<ruta>` (el prefijo se cambia con
+  `serviceLabelPrefix`), y con `"both"` de cualquiera de los dos. Si una incidencia nombra más de un servicio,
+  el draft lo marca y no elige. Un `serviceFrom` mal escrito ahora es error: antes dejaba todo el staging sin
+  servicio sin decir por qué.
 - **Dos épicas con el mismo número se arreglan con un comando.** Dos líneas de trabajo que crean una épica a
   la vez pueden tomar el mismo número; `check` ya lo marcaba, y ahora nombra las dos y dice cómo salir:
   `node tools/ops.js renumber-epic planning <epic-NNN-slug> <NNN>` mueve la que todavía no llegó a la rama
@@ -98,6 +122,9 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`integration reset` y `reconcile` ya no deshacen una promoción.** Sobre un ítem promovido, `reset` lo
+  devolvía a `pending` y perdía el registro de la promoción, y `reconcile` borraba la señal de que Jira cambió
+  después de promoverlo. Ahora se niegan y te mandan a revisar la épica en `planning/roadmap/`.
 - **El sync de Jira de una persona ya no pisa lo que curó otra.** Con `candidateAssigneeEnv`, un ítem que
   alguien curó como candidato pasaba a contexto cuando sincronizaba otra persona, y su borrador se regeneraba
   sin decirlo. Ahora sigue candidato con su curación, y el resumen del sync lo cuenta aparte. El staging pasa a
@@ -112,6 +139,41 @@ diseño — eso vive en el commit y en el código.
 
 ### Cargos
 
+- **`qa-engineer`**: Los dos candidatos salen de H11 del informe del 2026-09-21, nombrados por el propio juez
+  de la evaluación al leer `evaluations/results/2026-09-16.md` (casos 09 y 13). Los dos entran sólo en
+  `evaluations/expected-behaviors.yaml` —H11 ya los… (propuesta `2026-10.md`).
+- **`content-specialist`**: ### 1. `learning/sources.yaml` — entrada «Federal Plain Language Guidelines»
+  (líneas 20–23) (propuesta `2026-10.md`).
+- **`frontend-engineer`**: Dos cambios, cada uno sale de un hallazgo distinto de los citados en «Hallazgos».
+  Los dos agregan sobre el texto existente; ninguno reemplaza una frase ya escrita (propuesta `2026-10.md`).
+- **`implementation-manager`**: ### 1. `references/operating-model.md` — cerrar H1 (mecánico, sin riesgo)
+  (propuesta `2026-10.md`).
+- **`legal-counsel`**: Las fechas y ediciones citadas abajo están verificadas en
+  `agents/roles/system/legal-counsel/learning/reports/2026-09-24.md`, sección «Evidencia» (H1–H7); esta
+  propuesta no reabrió las fuentes primarias, trabaja sobre esa verificación ya… (propuesta `2026-10.md`).
+- **`logistics-operations-manager`**: Dos bloques, y se pueden firmar por separado porque salen de dos
+  hallazgos distintos y tienen costos distintos (propuesta `2026-10.md`).
+- **`machine-learning-engineer`**: Un solo hilo cruza las cinco corridas sin cerrarse: el resumen automático
+  de la página HTML de una release de GitHub erró el año de la fecha en tres observaciones independientes
+  —`qa-engineer` (2026-08-29), este cargo sobre PyTorch 2.13.0… (propuesta `2026-10.md`).
+- **`people-operations-manager`**: No se modifica `SKILL.md`: el aprendizaje de este cargo no lo toca nunca
+  (`learning/AUTOMATION.md`, `SKILL.md` → "Aprender sin reescribirse"). Los dos archivos que sí se tocan son
+  los que nombra el hallazgo de 2026-09-24, y en los dos se… (propuesta `2026-10.md`).
+- **`product-marketing-manager`**: De los siete hallazgos, el del informe 2026-09-24 trae una recomendación
+  explícita (H1+H2+H3); los otros seis son huecos de contrato que la corrida de evaluación del 2026-09-02
+  encontró en casos que igual pasaron. Esta sección convierte los… (propuesta `2026-10.md`).
+- **`security-engineer`**: Dos informes seguidos (2026-09-21 H7, 2026-09-24 H7/H8) recomendaron la misma
+  acción —correr, en un entorno desechable y no contra este árbol, el caso que ejerce un guard ya cerrado del
+  propio repositorio— y ninguno la ejecutó; la… (propuesta `2026-10.md`).
+- **`user-researcher`**: El cambio toca **tres archivos** y es aditivo en los tres: no se reescribe ninguna
+  línea existente de `references/operating-model.md` ni de `evaluations/expected-behaviors.yaml`, y `SKILL.md`
+  no se toca (ya lo pedía el informe). El núcleo… (propuesta `2026-10.md`).
+- **`software-architect`**: Seis hallazgos de contrato salieron de corridas de evaluación (no de
+  investigación: H1, 2026-09-24, confirma que no hay fuente nueva que agregar a `sources.yaml` este período).
+  De los seis, tres se cierran agregando una conducta prohibida… (propuesta `2026-10.md`).
+- **`ux-designer`**: Siete puntos, A–B del informe 2026-09-24 y C–G de las cinco brechas que encontraron las
+  corridas de casos. Todos son aditivos: ninguno borra ni reescribe una oración existente, salvo C y G, que
+  intercalan una cláusula dentro de una oración… (propuesta `2026-10.md`).
 - **`project-manager`**: **Archivo:** `agents/roles/system/project-manager/learning/sources.yaml` **Sección:**
   la lista `sources:` (hoy líneas 11–26). Agregar una quinta entrada al final de la lista, después de la de
   `Government Functional Standard GovS 002` (línea… (propuesta `2026-10.md`).

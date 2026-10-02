@@ -124,6 +124,8 @@ consumidor un límite que el motor no sostiene.
 
 ## Relacionados
 
+- [225](225-merge-aprobar-y-deploy-no-tienen-guard.md) — reabrió la tercera pieza: desde 0.100.0 el motor
+  gobierna también PR, merge, workflows, releases y los deploys que tienen forma en un comando.
 - [024](024-los-cuatro-limites-son-seis-y-uno-es-configurable.md) — la mitad de documentación. Acá el
   motor, allá lo que el documento promete mientras tanto.
 - [022](022-pre-shell-no-juzga-el-destino-de-una-escritura.md) — el otro caso donde `pre-shell` no mira

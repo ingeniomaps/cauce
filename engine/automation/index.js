@@ -4,6 +4,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const F = require('../core/files')
+const { installOwnWorkflows } = require('./own-workflows')
 const catalog = require('../agents/catalog')
 const O = require('../core/ownership')
 const M = require('../core/manifest')
@@ -453,11 +454,10 @@ function install(root, name, output = console, options = {}) {
   // invoca; éstos se invocan **por nombre**, y el nombre lo resuelve la sesión contra la carpeta en la que
   // se abrió. Nombrados en relativo se leen como si estuvieran acá, así que quien abre la sesión en el repo
   // ops no encuentra ninguno mientras esta misma salida dice que están todos instalados.
-  if (paths.install !== root) {
-    for (const dir of landed) {
-      output.log(`  ${name}: ${dir} — los encuentra por nombre una sesión abierta en ${paths.install}`)
-    }
+  for (const dir of paths.install !== root ? landed : []) {
+    output.log(`  ${name}: ${dir} — los encuentra por nombre una sesión abierta en ${paths.install}`)
   }
+  installOwnWorkflows(root, name, runner, paths, output)
   installRoleSkills(root, runner, output)
   // Cómo se lo llama acá. El nombre del recorrido es el mismo en todos los runners —`onboard`, `flow`,
   // `autobuild`—; el prefijo lo pone cada uno según su espacio de nombres, y esa diferencia es la que

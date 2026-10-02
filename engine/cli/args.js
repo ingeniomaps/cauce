@@ -6,7 +6,7 @@
 
 // Banderas que consumen el argumento siguiente: su valor no es un posicional.
 const VALUED_FLAGS = new Set([
-  '--name', '--mode', '--fixture', '--period', '--record', '--runner', '--integration',
+  '--name', '--mode', '--fixture', '--payload', '--period', '--record', '--runner', '--integration',
   '--task', '--promote', '--hito', '--reason',
 ])
 
@@ -38,7 +38,7 @@ const FLAGS = {
   archive: [],
   adopt: [],
   agents: ['--json', '--own', '--system'],
-  integration: ['--fixture'],
+  integration: ['--fixture', '--payload'],
   secrets: [],
   automation: ['--force'],
   learn: ['--flow', '--proposal', '--applied', '--unchanged', '--archived', '--period', '--reason'],

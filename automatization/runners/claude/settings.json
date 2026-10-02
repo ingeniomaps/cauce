@@ -18,6 +18,12 @@
         "hooks": [
           { "type": "command", "command": "$CLAUDE_PROJECT_DIR/{{OPS_DIR}}automatization/hooks/guard-secrets-read.sh" }
         ]
+      },
+      {
+        "matcher": "mcp__.*__editJiraIssue",
+        "hooks": [
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/{{OPS_DIR}}automatization/hooks/guard-jira-adf.sh" }
+        ]
       }
     ],
     "UserPromptSubmit": [

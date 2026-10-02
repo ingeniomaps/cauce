@@ -59,6 +59,11 @@
     "branches": 54,
     "functions": 94
   },
+  "engine/automation/own-workflows.js": {
+    "lines": 100,
+    "branches": 93,
+    "functions": 100
+  },
   "engine/automation/registration.js": {
     "lines": 97,
     "branches": 71,
@@ -254,6 +259,11 @@
     "branches": 100,
     "functions": 100
   },
+  "engine/hooks/delivery.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/hooks/files.js": {
     "lines": 100,
     "branches": 97,
@@ -262,6 +272,11 @@
   "engine/hooks/input.js": {
     "lines": 100,
     "branches": 84,
+    "functions": 100
+  },
+  "engine/hooks/jira.js": {
+    "lines": 100,
+    "branches": 80,
     "functions": 100
   },
   "engine/hooks/machine-lock.js": {

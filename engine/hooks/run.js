@@ -18,6 +18,7 @@ const chat = require('./chat')
 const CF = require('./confirm')
 const { secretsShell } = require('./secrets-shell')
 const { opsConfig, opsConfigShell } = require('./ops-config')
+const { jiraAdf } = require('./jira')
 
 function planningDrift(input) {
   const root = opsRoot(input)
@@ -57,6 +58,7 @@ const guards = {
   'test-evidence': files.testEvidence,
   'plan-first': files.planFirst,
   'secrets-read': files.secretsRead,
+  'jira-adf': jiraAdf,
   chat: chat.record,
   'planning-drift': planningDrift,
 }
@@ -68,6 +70,7 @@ const hookGroups = {
   'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
     'integration-snapshot', 'test-evidence', 'plan-first', 'ops-config'],
   'pre-read': ['secrets-read'],
+  'pre-mcp': ['jira-adf'],
   prompt: ['chat'],
   stop: ['planning-drift'],
 }
@@ -113,6 +116,11 @@ const hookMetadata = [
     name: 'secrets-read',
     event: 'PreToolUse · read',
     purpose: 'Bloquea leer con la herramienta del runner una credencial conocida o declarada.',
+  },
+  {
+    name: 'jira-adf',
+    event: 'PreToolUse · mcp',
+    purpose: 'Frena editar por MCP la descripción de una tarjeta de Jira en markdown, que aplana el ADF.',
   },
   {
     name: 'secrets-shell',

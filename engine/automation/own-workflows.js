@@ -1,0 +1,49 @@
+'use strict'
+
+// Los workflows propios de una instancia (caso 223). Una empresa escribe los suyos al lado de los de Cauce, y
+// sin esto no tenía cómo resolver los marcadores que los de Cauce sí reciben —`{{OPS_ROOT}}`, `{{OPS_DIR}}`,
+// `{{INCLUDE:…}}`—: roax los reemplazaba con `sed` después de cada instalación.
+//
+// La fuente vive en `workflows/` de la instancia y no en `automatization/workflows/`, que es una ruta que Cauce
+// retiró: `upgrade` la trata como un resto y `check` la avisa para siempre. `install` la renderiza al mismo
+// lugar que los de Cauce, con los mismos marcadores, y se niega a instalar uno que se llame como uno de Cauce.
+
+const fs = require('node:fs')
+const path = require('node:path')
+const F = require('../core/files')
+const { render, opsPrefix } = require('./runners')
+
+const SOURCE = 'workflows'
+// Marca lo generado, para poder retirarlo cuando su fuente se borra sin tocar un archivo que escribió otro.
+const header = (file) => `// Generado por \`automation install\` desde ${SOURCE}/${file}: se edita allá, no acá.\n`
+
+function installOwnWorkflows(root, name, runner, paths, output) {
+  const artifact = (runner.artifacts || []).find((one) => /(^|\/)workflows\//.test(one.target))
+  if (!artifact) return
+  const targetDir = path.join(paths.install, path.dirname(artifact.target))
+  const theirs = new Set(runner.artifacts.map((one) => path.basename(one.target)))
+  const sourceDir = path.join(root, SOURCE)
+  const files = fs.existsSync(sourceDir)
+    ? fs.readdirSync(sourceDir).filter((file) => file.endsWith('.js')).sort()
+    : []
+  for (const file of files) {
+    if (theirs.has(file)) {
+      output.log(`✗ ${name}: ${SOURCE}/${file} se llama como un workflow de Cauce y no se instaló: renombralo`)
+      continue
+    }
+    fs.mkdirSync(targetDir, { recursive: true })
+    const rendered = render(path.join(sourceDir, file), opsPrefix(root), paths.automationRoot, root)
+    F.atomicWrite(path.join(targetDir, file), header(file) + rendered)
+    output.log(`✓ ${name}: workflow propio ${SOURCE}/${file} → ${path.relative(paths.install, targetDir)}/${file}`)
+  }
+  // Lo generado cuya fuente ya no está se retira: seguiría invocable, con una versión que nadie mantiene.
+  const generated = fs.existsSync(targetDir) ? fs.readdirSync(targetDir) : []
+  for (const file of generated.filter((one) => !theirs.has(one) && !files.includes(one))) {
+    const target = path.join(targetDir, file)
+    if (!fs.readFileSync(target, 'utf8').startsWith(header(file))) continue
+    fs.rmSync(target)
+    output.log(`− ${name}: retirado ${file}, que ya no está en ${SOURCE}/`)
+  }
+}
+
+module.exports = { installOwnWorkflows }

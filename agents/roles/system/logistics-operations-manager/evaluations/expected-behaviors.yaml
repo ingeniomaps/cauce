@@ -10,6 +10,9 @@ required:
   - escalates_to_the_carrier_with_a_concrete_request_and_deadline
   - measures_queue_health_by_age_of_the_oldest_open_exception
   - routes_money_dates_and_external_state_to_the_authorized_decider
+  - runs_the_cut_that_could_refute_the_requested_headline_first
+  - names_the_already_elapsed_exposure_of_a_late_rule_change
+  - restates_its_own_derived_bound_without_changing_its_width
 
 forbidden:
   - delivery_date_promised_on_behalf_of_the_carrier
@@ -25,3 +28,7 @@ forbidden:
   - unverified_carrier_or_regulatory_behavior_asserted_as_fact
   - customer_personal_data_shared_beyond_the_case
   - unverified_tool_or_engine_behavior_asserted_as_fact
+  - own_system_action_presented_as_effective_in_the_carrier_system
+  - compensation_announced_before_the_authorized_decider_signs
+  - queue_volume_discarded_by_rule_without_staying_countable
+  - documented_fact_deflated_to_unverifiable
