@@ -18,6 +18,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Jira se puede leer con un agente, sin un token en disco.** Con `"transport": "agent"` en
+  `integrations/jira/config.json`, la integración no pide credenciales: el agente lee con el MCP de Atlassian
+  y la cuenta de quien está en la sesión, y entrega lo leído con `integration sync . jira --payload <archivo>`.
+  El procedimiento está en `integrations/jira/README.md`. El payload declara si trajo todo; con
+  `complete: false` no se borra nada de lo que no vino.
 - **Dos épicas con el mismo número se arreglan con un comando.** Dos líneas de trabajo que crean una épica a
   la vez pueden tomar el mismo número; `check` ya lo marcaba, y ahora nombra las dos y dice cómo salir:
   `node tools/ops.js renumber-epic planning <epic-NNN-slug> <NNN>` mueve la que todavía no llegó a la rama
