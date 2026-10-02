@@ -37,3 +37,18 @@ sources:
     url: https://aws.amazon.com/ec2/capacityblocks/pricing/
     tier: platform
     topics: [gpu, reserved-capacity, compute-rates, bill-explanation]
+  # Tarifa oficial de la API de Gemini de primera parte. Entra para explicar una factura —separar un
+  # aumento de tarifa de un aumento de volumen antes de proponer un cambio, igual que la entrada de
+  # AWS de arriba—, no para estimar un ahorro: la calculadora de ahorro del mismo proveedor sigue
+  # siendo material comercial. Cubre `ai.google.dev` (Gemini API); no necesariamente los mismos SKU ni
+  # las mismas condiciones que Google Cloud factura bajo "Agent Platform Pricing" en
+  # `cloud.google.com/vertex-ai/generative-ai/pricing` — esa página sigue truncada por la herramienta
+  # de lectura antes de su tabla de precios en las seis corridas del ciclo (2026-08-31 a 2026-09-24), así
+  # que no se pudo corroborar si los SKU o las condiciones coinciden; si algún día se logra leerla
+  # completa, esa comprobación se hace antes de tratar ambas superficies como intercambiables, no
+  # después. Consultada por última vez el 2026-09-24: la fecha de corte para Gemini 3.7/3.8 Flash es
+  # 2027-01-01, repetida sin cambio desde el informe del 2026-09-07.
+  - name: Google Gemini API pricing
+    url: https://ai.google.dev/gemini-api/docs/pricing
+    tier: platform
+    topics: [tokens, rate-change, bill-explanation]
