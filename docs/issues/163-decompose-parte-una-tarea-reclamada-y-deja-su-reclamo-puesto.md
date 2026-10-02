@@ -110,7 +110,7 @@ puede ser otro.
 
 ## Contexto de descubrimiento
 
-Corrida `wf_a7231736-1f8` en la instancia de venotal (sidecar), el 2026-09-15 con Cauce 0.90.0: 21
+Corrida `wf_a7231736-1f8` en la instancia de hooli (sidecar), el 2026-09-15 con Cauce 0.90.0: 21
 agentes, 2.123.013 tokens, 31 minutos. La primera tarea —`secrets-declaration`— se construyó, se revisó,
 se verificó y se cerró bien. Con la segunda, `integraciones-por-tabla`, Decompose devolvió 8 horas contra
 un `maxTaskHours` de 4, la partió en tres y ahí paró.
@@ -121,7 +121,7 @@ de `needsSplit` sigue sin soltar nada.
 
 **Consultado para escribir esto**: `automatization/workflows/autobuild.js` (líneas 498-504 y 645-670) y
 `engine/cli/claims.js` (líneas 38-45) del paquete `@ingeniomaps/cauce@0.94.0` instalado en
-`venotal-ops/node_modules`; `engine/planning/claims.js` (líneas 43-58); el `journal.jsonl` de la corrida;
+`hooli-ops/node_modules`; `engine/planning/claims.js` (líneas 43-58); el `journal.jsonl` de la corrida;
 y la salida de `ops check planning` antes y después del `release`.
 
 ## Relacionados

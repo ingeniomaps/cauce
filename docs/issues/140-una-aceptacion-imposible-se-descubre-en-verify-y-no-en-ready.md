@@ -161,14 +161,14 @@ Se tomó la **opción 1**, con una forma que el caso no había previsto y que me
   que Verify contrasta, cuyo `uncovered` enumera criterios— porque las 62 aceptaciones reales traen
   varias: 11 de 12 en una instancia y 50 de 50 en la otra. Marcar el párrafo entero señala a las
   condiciones que están bien por estar al lado de la que no.
-- **`P19`, que la aceptación de venotal cita al excluir, no existe** en el protocolo del molde ni resuelve
+- **`P19`, que la aceptación de hooli cita al excluir, no existe** en el protocolo del molde ni resuelve
   en su instancia. Otra razón para no apoyar el criterio en lo que la prosa cite.
 
 ### Qué se corrió
 
 - **Contra 62 tareas reales**, que es lo que decidió el diseño: con el patrón sobre la aceptación entera,
   **1 aviso y era falso positivo**. Con el criterio final —condición por condición, con marca de escape—
-  sigue dando 1 sobre esa misma condición, y **poniéndole la marca baja a 0**. `gouduet-ops` da **0 sobre
+  sigue dando 1 sobre esa misma condición, y **poniéndole la marca baja a 0**. `initech-ops` da **0 sobre
   50 tareas** en las dos versiones.
 - **Rojo previo, en copia por `tar` con verde de control**: 8/8 intactas. Quitar el reconocimiento de la
   marca mata la prueba; volver a juzgar la aceptación entera también. Las dos aserciones cuidan cosas

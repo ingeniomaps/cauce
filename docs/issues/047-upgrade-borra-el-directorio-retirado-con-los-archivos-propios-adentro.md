@@ -171,7 +171,7 @@ tomado minutos antes, por precaución y no porque nada lo advirtiera.
 
 ## Contexto de descubrimiento
 
-Actualizando `roax-ops` de 0.66.0 a 0.67.0 el 2026-09-07, justo después de que 0.67.0 arreglara el
+Actualizando `acme-ops` de 0.66.0 a 0.67.0 el 2026-09-07, justo después de que 0.67.0 arreglara el
 [044](044-upgrade-no-tiene-resolucion-por-archivo.md) y volviera a `upgrade` seguro de correr. La
 corrida informó los diecinueve archivos conservados —el arreglo funcionando— y en el mismo bloque borró
 `automatization/workflows/`. Se detectó diffeando contra un snapshot previo, no leyendo la salida: la

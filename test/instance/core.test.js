@@ -80,8 +80,8 @@ test('una puerta declarada vacía se rechaza diciendo qué falta', () => {
 test('dos raíces con el mismo name no son un error de configuración', () => {
   const config = opsConfig()
   config.workspaceRoots = [
-    { name: 'keycloak', path: '../gouduet/keycloak' },
-    { name: 'keycloak', path: '../hypixo/keycloak' },
+    { name: 'keycloak', path: '../initech/keycloak' },
+    { name: 'keycloak', path: '../umbrella/keycloak' },
   ]
   assert.deepEqual(validateOpsConfig(config), [], 'el validador no opina del nombre repetido')
 })

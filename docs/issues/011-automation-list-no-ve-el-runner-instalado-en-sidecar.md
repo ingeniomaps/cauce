@@ -49,7 +49,7 @@ node tools/ops.js automation list .      # ● claude [instalado]
 ● claude [instalado] · nativeHooks, nativeWorkflows, projectInstructions, nativeSkills
 ```
 
-En una instancia real —`venotal-ops`, con Claude y Gemini instalados hace días y los dos reportados
+En una instancia real —`hooli-ops`, con Claude y Gemini instalados hace días y los dos reportados
 operativos por `doctor`— los cuatro adaptadores salen `○`. El glifo deja de informar: no distingue
 ningún caso del otro.
 

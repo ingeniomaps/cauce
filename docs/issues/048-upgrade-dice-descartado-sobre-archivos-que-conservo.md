@@ -136,7 +136,7 @@ búsqueda la línea que importa pasa desapercibida. Fue exactamente lo que ocurr
 
 ## Contexto de descubrimiento
 
-Actualizando `roax-ops` de 0.66.0 a 0.67.0 el 2026-09-07. La salida decía `= conservado` para los
+Actualizando `acme-ops` de 0.66.0 a 0.67.0 el 2026-09-07. La salida decía `= conservado` para los
 diecinueve en su primera mitad y `− descartado tu cambio en` para los mismos diecinueve en la segunda, lo
 que obligó a comprobarlos con `cmp` uno por uno —estaban todos intactos—. En esa pasada apareció el
 `− retirado automatization/workflows`, que sí se había ejecutado y se llevó un `autobuild.js` de 99 KB.

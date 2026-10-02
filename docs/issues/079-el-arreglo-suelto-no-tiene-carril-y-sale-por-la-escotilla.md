@@ -149,7 +149,7 @@ se midieron en instancias reales y que desmienten su propia hipótesis.
 ### La escotilla no se usa. Nunca.
 
 El caso decía que la salida de excepción se estaba volviendo el camino habitual. Medido sobre dos
-instancias reales —`venotal-ops`, en 0.76.0 y con `guard-files` cableado, y `gouduet-ops` en 0.66.0—:
+instancias reales —`hooli-ops`, en 0.76.0 y con `guard-files` cableado, y `initech-ops` en 0.66.0—:
 
 ```
 commits que tocaron planning/.ops-approval:  0   ·  0
@@ -178,7 +178,7 @@ repositorio de trabajo:
 | repositorio | commits | registrados en DONE |
 |---|---|---|
 | `dashboard` | 248 | **75** |
-| `venotal-storefront` | 43 | **0** |
+| `hooli-storefront` | 43 | **0** |
 | `creative-studio` | 21 | **0** |
 | **total** | **312** | **75 (24 %)** |
 

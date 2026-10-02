@@ -119,7 +119,7 @@ relativa, que no es una forma rebuscada sino la más común de trabajar en otro 
 
 ## Contexto de descubrimiento
 
-En `gouduet`, el 2026-09-07, en la pasada de verificación posterior a 0.65.0: se montaba un repositorio
+En `initech`, el 2026-09-07, en la pasada de verificación posterior a 0.65.0: se montaba un repositorio
 desechable para probar las reglas destructivas sin riesgo, y el guard bloqueó la creación de un archivo
 en el temporal de la sesión nombrando una ruta que no era la del comando. Al mirar por qué apareció la
 resolución contra el cwd equivocado, y de ahí la otra dirección.

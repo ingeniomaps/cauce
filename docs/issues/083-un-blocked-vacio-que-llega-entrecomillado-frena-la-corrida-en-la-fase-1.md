@@ -25,7 +25,7 @@ Dos comillas literales. En JavaScript eso es **truthy**, así que cualquier comp
 
 ```
 {"stopped":true,"reason":"awaiting-human-review",
- "detail":"venotal-ops/planning/AWAITING_REVIEW.md tiene un checkpoint humano sin resolver"}
+ "detail":"hooli-ops/planning/AWAITING_REVIEW.md tiene un checkpoint humano sin resolver"}
 ```
 
 **Ese archivo no existe.** El gate es real —lo pide el protocolo— pero no se disparó por su causa: se

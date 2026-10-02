@@ -93,12 +93,12 @@ nadie.
 
 ## Contexto de descubrimiento
 
-Auditando la instalación de `venotal-ops` el 2026-09-03, después de adoptar Cauce. El repo traía de
+Auditando la instalación de `hooli-ops` el 2026-09-03, después de adoptar Cauce. El repo traía de
 antes un `rules/process.md` y un `rules/code-shape.md`, y al caer al lado de los homónimos de `system/`
 quedaron como overrides por nombre sin que nadie lo decidiera. Consecuencias reales:
 
 - Se retiraron R11, R16, R17, R18, R20, R21 y R22.
-- Los números propios significaban **otra cosa** que los del toolkit: la «Regla 5» de Venotal eran las
+- Los números propios significaban **otra cosa** que los del toolkit: la «Regla 5» de Hooli eran las
   líneas de 120 caracteres, y la R5 de Cauce es la solución mínima completa. Un agente que citara R5
   decía una cosa distinta según qué archivo hubiera leído.
 - `check` seguía exigiendo R17 —y de hecho hubo que escribir dos `(sin partir: …)` para satisfacerla—

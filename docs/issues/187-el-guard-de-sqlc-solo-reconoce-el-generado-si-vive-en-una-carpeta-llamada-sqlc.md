@@ -86,13 +86,13 @@ mk sqlcdir  db/queries/x.sql internal/sqlc/x.sql.go internal/sqlc/models.go inte
 
 ## Síntoma
 
-Corrida del 2026-09-23, tarea `catalog-item-table` de la instancia `gouduet-ops`, repo
-`gouduet/api`. Índice con las nueve rutas de la tarea, entre ellas los tres archivos que produjo
+Corrida del 2026-09-23, tarea `catalog-item-table` de la instancia `initech-ops`, repo
+`initech/api`. Índice con las nueve rutas de la tarea, entre ellas los tres archivos que produjo
 `sqlc generate`. Mensaje literal del guard:
 
 ```
 BLOQUEADO: Cambió una consulta SQL fuente sin artefactos regenerados. Ejecuta el generador.
-Aprobalo pegando tal cual en gouduet-ops/planning/.ops-approval estas líneas:
+Aprobalo pegando tal cual en initech-ops/planning/.ops-approval estas líneas:
   db/migrations/20260923120000_catalog_items.sql
   db/queries/catalog_items.sql
   docs/adr/003-retiro-del-catalogo-muerto.md
@@ -206,7 +206,7 @@ bajo `api/db/queries/` pasa sin ningún generado— se encontró revisando este 
   `out` son relativas al archivo de config; en un monorepo (`api/sqlc.yaml`) hay que buscarlo donde
   esté y prefijar su directorio. sqlc busca `sqlc.yaml`, `sqlc.yml` o `sqlc.json` y se niega si hay
   json y yaml a la vez (`internal/cmd/generate.go:72-94` del mismo commit). Las citas `sqlc.yaml:4` y
-  `sqlc.yaml:9` de «Causa raíz» son del repo `gouduet/api` y **no se pudieron contrastar desde acá**.
+  `sqlc.yaml:9` de «Causa raíz» son del repo `initech/api` y **no se pudieron contrastar desde acá**.
 - **Ninguno de los dos cierra el 192**, porque ambos tocan `hasSqlGenerated` y el falso
   negativo está en `changedSqlSource`. Si se lee la config (punto 1), el mismo lector da `queries:` y
   arregla las dos mitades; si se elige el punto 2, la fuente sigue anclada a la raíz.
@@ -245,7 +245,7 @@ puede resolver correctamente detiene la corrida entera.
 
 ## Contexto de descubrimiento
 
-Instancia `gouduet-ops` (Cauce 0.98.0), repo `gouduet/api`, hito `catalog-item`, fase Commit de
+Instancia `initech-ops` (Cauce 0.98.0), repo `initech/api`, hito `catalog-item`, fase Commit de
 `catalog-item-table` — la misma tarea que encontró el 185 en su fase Build. Es el segundo guard que
 frena la misma tarea por asumir un layout que el proyecto no tiene obligación de seguir.
 
@@ -337,4 +337,4 @@ caso 197.
 
 ### Prueba real en un banco instalado (2026-09-23)
 
-Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. Proyecto con `out: internal/platform/pgdb`, `sqlc generate` real (v1.31.1) y commit por `guard-shell`: `exit=0` con la rama; con 0.98.0, «Cambió una consulta SQL fuente sin artefactos regenerados. Ejecuta el generador.», el mensaje literal del incidente. Consulta cambiada sin regenerar (`sqlc diff` exit 1): `exit=2` diciendo qué buscó; regenerada y stageada: `exit=0`.
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de initech —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de initech-ops, cambiando sólo el enlace del banco. Proyecto con `out: internal/platform/pgdb`, `sqlc generate` real (v1.31.1) y commit por `guard-shell`: `exit=0` con la rama; con 0.98.0, «Cambió una consulta SQL fuente sin artefactos regenerados. Ejecuta el generador.», el mensaje literal del incidente. Consulta cambiada sin regenerar (`sqlc diff` exit 1): `exit=2` diciendo qué buscó; regenerada y stageada: `exit=0`.

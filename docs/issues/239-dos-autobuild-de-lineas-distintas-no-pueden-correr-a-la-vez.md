@@ -43,12 +43,12 @@ mitad: dos agentes no se pisan el código. Falta lo mismo para el planning.
 
 En la instancia del caso (Cauce 0.99.2), verificado el 2026-10-01 leyendo el código y el estado de los árboles:
 
-1. Árbol principal de la instancia, `roax-ops/`, en la rama `work/manuel-auth`, con trabajo de esa línea sin
-   commitear. Sus workflows instalados en `.claude/workflows/` traen `ROOT = '<carpeta de la empresa>/roax-ops'`
+1. Árbol principal de la instancia, `acme-ops/`, en la rama `work/manuel-auth`, con trabajo de esa línea sin
+   commitear. Sus workflows instalados en `.claude/workflows/` traen `ROOT = '<carpeta de la empresa>/acme-ops'`
    (`autobuild.js:43`).
-2. La segunda línea trabaja en un worktree, `.wt-roax-ops-manuel-admin/`, en `work/manuel-admin`. Ahí promueve su hito
+2. La segunda línea trabaja en un worktree, `.wt-acme-ops-manuel-admin/`, en `work/manuel-admin`. Ahí promueve su hito
    (`## Hito admin-pregunta-a-auth-por-la-sesion`, tareas con `(owner: manuel/admin)`).
-3. Lanzar `/autobuild` desde la sesión de la segunda línea: lee `roax-ops/planning/BACKLOG.md` del árbol principal, que
+3. Lanzar `/autobuild` desde la sesión de la segunda línea: lee `acme-ops/planning/BACKLOG.md` del árbol principal, que
    no tiene ese hito. La cola que ve es la de la otra línea.
 4. Llevar el hito a `main` y que la primera línea traiga `main`: ahora las dos colas están en el mismo archivo. Con su
    propio hito terminado, el autobuild de la primera línea ofrece la tarea de la segunda —`currentTask` no mira el
@@ -107,7 +107,7 @@ Tres piezas, de la más chica a la más grande. Cada una sirve sola.
 
 ## Contexto de descubrimiento
 
-Instancia `roax-ops` (Cauce 0.99.2), 2026-10-01. Dos sesiones en paralelo de la misma persona: la línea `manuel/auth`
+Instancia `acme-ops` (Cauce 0.99.2), 2026-10-01. Dos sesiones en paralelo de la misma persona: la línea `manuel/auth`
 corría su autobuild sobre el árbol principal mientras la línea `manuel/admin` quería lanzar el suyo para la épica 059,
 que toca sólo el repo `admin`. Al revisar si se podía, se encontró que el autobuild de admin no veía su cola (piezas 1
 y 2) y que, una vez en `main`, el loop de auth la habría tomado (pieza 3 del resumen). Quien trabaja las dos líneas lo
@@ -135,7 +135,7 @@ valían o nunca valieron:
   `CAUCE_OPS_ROOT` no se puede leer ahí. Pero `ops line` (caso 218, mergeado el mismo día en que se escribió
   éste) instala los runners en la carpeta de cada línea. Medido en un banco: el autobuild del principal trae
   `ROOT = '…/emp239/ops'` y el de la línea `ROOT = '…/emp239-admin/ops'`.
-- **`owner:` no existe en el formato de tareas de Cauce.** Era una convención de roax, y `engine/planning/backlog.js`
+- **`owner:` no existe en el formato de tareas de Cauce.** Era una convención de acme, y `engine/planning/backlog.js`
   no lo lee. El lugar donde declararlo ya existía desde el caso 212: el frontmatter del archivo de cada hito.
 - **La pieza 3 era peor de lo que decía el caso.** El caso suponía que los reclamos impedían que dos runners
   construyeran la misma tarea. Entre worktrees no lo impedían: en el banco, el principal y la línea reclamaron

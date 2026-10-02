@@ -153,18 +153,18 @@ Recorrido de lo que el caso enumeró:
 - **Tradeoff de C** («deja escrito un límite que nadie ve, y para siempre si nadie lo mide») — el límite
   ahora lo dice el aviso, y quedó medido; es el ítem siguiente.
 - **La medición que decide** — hecha en solo lectura sobre los trece `.env.schema` de los repositorios
-  reales de la empresa donde se vio: `conorbi/*` (diez), `gouduet/keycloak`, `hypixo/keycloak` y
-  `venotal/platform`. El lector que la hizo vive en el scratch de la sesión, no en Cauce. Resultados:
+  reales de la empresa donde se vio: `globex/*` (diez), `initech/keycloak`, `umbrella/keycloak` y
+  `hooli/platform`. El lector que la hizo vive en el scratch de la sesión, no en Cauce. Resultados:
   - Hay **377** variables, **72** declaradas `sensitive: true`. El filtro por nombre del 102 reconoce
     **56**; con `sensitivePath` sin extender reconocía **40**. Las **16** que no reconoce son
     `ACCESS_SERVER`, `AUTOMATION_PAT`, `DB_AUDIT_SSL_CA`, `DB_MAIN_SSL_CA`, `GITHUB_PAT_ORIGIN`,
     `GITHUB_PAT_TEMPLATE`, `LOGIN_CLIENT_PAT`, `MAILPIT_UI_AUTH`, `MASTERKEY`, `OTEL_EXPORTER_OTLP_HEADERS`,
-    `PLAUSIBLE_SECRET_KEY_BASE`, `RECONCILE_INFISICAL_CLIENT_ID`, `REDIS_URL`, `ROAX_CLIENT_ID`,
+    `PLAUSIBLE_SECRET_KEY_BASE`, `RECONCILE_INFISICAL_CLIENT_ID`, `REDIS_URL`, `ACME_CLIENT_ID`,
     `ZITADEL_AUDIENCE` y `ZITADEL_CLIENT_ID`.
   - Hay **0** variables declaradas `sensitive: false`: esos schemas marcan sólo lo sensible. De las **305**
     sin marca, el filtro avisa **5** filas de tres nombres —`NEXT_PUBLIC_SENTRY_DSN`, `RECAPTCHA_SITE_KEY`
     y `SENTRY_DSN`—, las tres `type: requires_admin`, que igual necesitan alguien que las cargue.
-  - `venotal/platform/.env.schema` es el tercer dialecto que nombra el 088 (`CLAVE=requerida|opcional`), y
+  - `hooli/platform/.env.schema` es el tercer dialecto que nombra el 088 (`CLAVE=requerida|opcional`), y
     el lector del subconjunto YAML le lee **0** variables. Un formato fijado por Cauce (A) no lo cubre.
 
   Qué dice el número. La mitad del reporte original que era ruido —configuración listada como credencial—
@@ -229,7 +229,7 @@ variables: 377 en 13 schemas
 sensitive true: 72 | hoy marca 56 | extendido marca 57
 sensitive false: 0 | hoy marca 0 | extendido marca 0
 sensitive ausente: 305 | hoy marca 5 | extendido marca 5
-true que hoy NO marca: ACCESS_SERVER AUTOMATION_PAT DB_AUDIT_SSL_CA DB_MAIN_SSL_CA GITHUB_PAT_ORIGIN GITHUB_PAT_TEMPLATE LOGIN_CLIENT_PAT MAILPIT_UI_AUTH MASTERKEY OTEL_EXPORTER_OTLP_HEADERS PLAUSIBLE_SECRET_KEY_BASE RECONCILE_INFISICAL_CLIENT_ID REDIS_URL ROAX_CLIENT_ID ZITADEL_AUDIENCE ZITADEL_CLIENT_ID
+true que hoy NO marca: ACCESS_SERVER AUTOMATION_PAT DB_AUDIT_SSL_CA DB_MAIN_SSL_CA GITHUB_PAT_ORIGIN GITHUB_PAT_TEMPLATE LOGIN_CLIENT_PAT MAILPIT_UI_AUTH MASTERKEY OTEL_EXPORTER_OTLP_HEADERS PLAUSIBLE_SECRET_KEY_BASE RECONCILE_INFISICAL_CLIENT_ID REDIS_URL ACME_CLIENT_ID ZITADEL_AUDIENCE ZITADEL_CLIENT_ID
 no-true que hoy marca: NEXT_PUBLIC_SENTRY_DSN[ausente] RECAPTCHA_SITE_KEY[ausente] SENTRY_DSN[ausente]
 ```
 

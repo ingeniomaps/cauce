@@ -129,7 +129,7 @@ anotar de la sesión.
   el 2026-09-15, y lo que se aprende es que el registro existía en otro lado.** El caso decía que rodear
   un guard no deja rastro; **aprobarlo sí**, y una instancia real lo guarda.
 
-  `venotal-ops` tiene **5 rutas** en su `planning/.ops-approval` y **1 concesión** registrada en el chat.
+  `hooli-ops` tiene **5 rutas** en su `planning/.ops-approval` y **1 concesión** registrada en el chat.
   Cuatro de las cinco son archivos `.env` —`.env`, `.env.bak`, `.env.infisical`— y la quinta un
   `package.json`. O sea que lo que el guard frenó y una persona destrabó no fue un falso positivo de
   parseo como el de este caso: fue el guard de secretos haciendo exactamente su trabajo, y alguien

@@ -7,7 +7,7 @@ prioridad: baja
 version-detectada: 0.81.0
 ---
 
-# 113 — `inventory` nombra cada raíz por su carpeta, y `gouduet/keycloak` y `hypixo/keycloak` salen los dos `keycloak`
+# 113 — `inventory` nombra cada raíz por su carpeta, y `initech/keycloak` y `umbrella/keycloak` salen los dos `keycloak`
 
 **🟢 resuelto en 0.82.0** · detectado en 0.81.0 · prioridad **baja**. No se pierde ningún aviso, pero nombra un servicio
 que no se puede ubicar: para saber de qué repositorio es la credencial hay que abrirlos todos.
@@ -27,14 +27,14 @@ el aviso no corre.
 
 ```bash
 BANCO=$(mktemp -d); OPS=$PWD/engine/cli/ops.js; A=$BANCO/acme-ops
-for r in gouduet hypixo; do
+for r in initech umbrella; do
   mkdir -p $BANCO/$r/keycloak
   printf '{"name":"keycloak","scripts":{"start":"node server.js"}}\n' > $BANCO/$r/keycloak/package.json
   printf 'KC_DB_PASSWORD=\n' > $BANCO/$r/keycloak/.env.example
 done
 node $OPS init $A --mode sidecar --runner ninguno --no-install >/dev/null
 node -e "const f='$A/ops.config.json',c=JSON.parse(require('fs').readFileSync(f)); c.workspaceRoots=[
-  {name:'gouduet',path:'../gouduet/keycloak'},{name:'hypixo',path:'../hypixo/keycloak'}]
+  {name:'initech',path:'../initech/keycloak'},{name:'umbrella',path:'../umbrella/keycloak'}]
 require('fs').writeFileSync(f,JSON.stringify(c,null,2))"
 cp $A/planning/roadmap/epic-000-template.md $A/planning/roadmap/epic-001-primera.md
 sed -i 's/^status: template/status: open/; s/^epic: .*/epic: 001/' $A/planning/roadmap/epic-001-primera.md
@@ -55,8 +55,8 @@ keycloak [raíz] — sin comandos declarados
     espera KC_DB_PASSWORD (.env.example)
 ```
 
-Con las raíces declaradas un nivel más arriba (`../gouduet` y `../hypixo`) el mismo banco da
-`KC_DB_PASSWORD (gouduet/keycloak), KC_DB_PASSWORD (hypixo/keycloak)`. El choque aparece sólo cuando la
+Con las raíces declaradas un nivel más arriba (`../initech` y `../umbrella`) el mismo banco da
+`KC_DB_PASSWORD (initech/keycloak), KC_DB_PASSWORD (umbrella/keycloak)`. El choque aparece sólo cuando la
 **última carpeta** de dos raíces coincide.
 
 ## Causa raíz
@@ -90,7 +90,7 @@ y en `validateWorkspaces`, un error si dos entradas repiten `name`.
 ## Tradeoffs
 
 - **Cambia el nombre que se ve cuando la carpeta y el `name` difieren.** Hoy, en la forma más común
-  (`{name: 'gouduet', path: '../gouduet'}`), coinciden y no cambia nada. Donde difieren, el nombre pasa a ser
+  (`{name: 'initech', path: '../initech'}`), coinciden y no cambia nada. Donde difieren, el nombre pasa a ser
   el que la persona escribió, que es el que eligió para hablar de esa raíz.
 - **`workspaceRoots` tiene más consumidores que el inventario**, y `onboard --json` lo emite tal cual
   (`roots`). Cambiar lo que devuelve cambia ese JSON. Una función aparte para los nombres lo evita.
@@ -133,8 +133,8 @@ Recorrido de lo que el caso enumeró:
   hizo primero como el caso lo proponía, en `validateWorkspaces`, y el 2026-09-11 el dueño del repositorio
   lo cambió antes de publicar: el choque salió de `validateOpsConfig` —que devuelve errores y lo leen
   también los guards— y pasó a ser una advertencia de `check`
-  (`engine/cli/planning.js`): `ops.config.json: keycloak nombra dos raíces (../gouduet/keycloak y
-  ../hypixo/keycloak): sus servicios salen con el mismo nombre. Renombrá una`.
+  (`engine/cli/planning.js`): `ops.config.json: keycloak nombra dos raíces (../initech/keycloak y
+  ../umbrella/keycloak): sus servicios salen con el mismo nombre. Renombrá una`.
 
   La razón es la del tradeoff siguiente, mirada desde quien actualiza: nadie eligió su `name` pensando que
   fuera único, así que fallar convierte la primera señal de 0.82.0 en una puerta en rojo, y lo que está en
@@ -178,11 +178,11 @@ keycloak [raíz] — sin comandos declarados
 Después, sobre el arreglo:
 
 ```
-⚠ credenciales por nombre sin dueño (2, en gouduet, hypixo): KC_DB_PASSWORD (gouduet), KC_DB_PASSWORD (hypixo) — …
-Mientras tanto, esto es lo que hay: gouduet, hypixo
-gouduet [raíz] — sin comandos declarados
+⚠ credenciales por nombre sin dueño (2, en initech, umbrella): KC_DB_PASSWORD (initech), KC_DB_PASSWORD (umbrella) — …
+Mientras tanto, esto es lo que hay: initech, umbrella
+initech [raíz] — sin comandos declarados
     espera KC_DB_PASSWORD (.env.example)
-hypixo [raíz] — sin comandos declarados
+umbrella [raíz] — sin comandos declarados
     espera KC_DB_PASSWORD (.env.example)
 ```
 
@@ -191,7 +191,7 @@ faltaba comprobar: no que aparezca el nombre nuevo, sino que el viejo se haya id
 
 - **Rojo previo.** Las tres pruebas nuevas sobre `git archive 41673984`: 3 rojas de 31. «dos raíces que
   terminan en la misma carpeta se distinguen por el name declarado» falla con `actual: [ 'keycloak',
-  'keycloak' ]` contra `expected: [ 'gouduet', 'hypixo' ]`; «el aviso distingue dos raíces que terminan en
+  'keycloak' ]` contra `expected: [ 'initech', 'umbrella' ]`; «el aviso distingue dos raíces que terminan en
   la misma carpeta», con la línea de `check` diciendo `KC_DB_PASSWORD (keycloak), KC_DB_PASSWORD
   (keycloak)`; y «dos raíces con el mismo name se rechazan, y el error nombra a las dos», con `actual: 0`
   errores contra `expected: 1`. Sobre el arreglo, 31 de 31 en verde.
@@ -219,8 +219,8 @@ faltaba comprobar: no que aparezca el nombre nuevo, sino que el viejo se haya id
   | M6 | `configWarnings` devuelve `[]` (el aviso desaparece) | «dos raíces con el mismo nombre avisan y no rompen check» |
   | M7 | el aviso vuelve a `errors` en `engine/cli/planning.js:109` | la misma, por la otra mitad |
 
-  M6 cae con `The input did not match /keycloak nombra dos raíces \(\.\.\/gouduet\/keycloak y
-  \.\.\/hypixo\/keycloak\)/`; M7, con `AssertionError: el nombre repetido avisa, no falla`. La segunda es
+  M6 cae con `The input did not match /keycloak nombra dos raíces \(\.\.\/initech\/keycloak y
+  \.\.\/umbrella\/keycloak\)/`; M7, con `AssertionError: el nombre repetido avisa, no falla`. La segunda es
   exactamente lo que el comentario de esa prueba predecía que nadie cuidaba —«devolverlo a `errors` no
   rompería ninguna otra prueba»—: rompe ésta, que es para lo que está. Las dos, `fail 1` de 18 en
   `test/planning/planning.test.js`.

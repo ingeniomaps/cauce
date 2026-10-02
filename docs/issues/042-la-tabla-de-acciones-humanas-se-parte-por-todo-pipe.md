@@ -139,7 +139,7 @@ escriba bien, escapándolo, es exactamente quien lo dispara.
 
 ## Contexto de descubrimiento
 
-Migrando `roax-ops` —un sistema de planning hecho a mano, anterior a Cauce— a una instancia de 0.66.0,
+Migrando `acme-ops` —un sistema de planning hecho a mano, anterior a Cauce— a una instancia de 0.66.0,
 el 2026-09-07. Su `HUMAN_ACTIONS.md` tiene 86 filas de datos con prosa larga, y para normalizar los
 estados al vocabulario cerrado hubo que escribir el `split` con mirar-atrás: partir por todo `|` rompía
 las filas. Al comparar las dos formas de partir contra el archivo real dieron el mismo resultado en las

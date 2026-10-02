@@ -101,8 +101,8 @@ encontrar nada, que ningún hallazgo puede decir.
 
 ## Contexto de descubrimiento
 
-Revisión de los repositorios de Dropi del 2026-10-01: su contrato de hallazgo exige `ref` y separa
-`guideline` de `criterio` (`dropi-code-review/skills/_shared/finding-contract.md:48`, `:108-117`), y un
+Revisión de los repositorios de Wonka del 2026-10-01: su contrato de hallazgo exige `ref` y separa
+`guideline` de `criterio` (`wonka-code-review/skills/_shared/finding-contract.md:48`, `:108-117`), y un
 hallazgo de confianza media no puede ser bloqueante (`:156`).
 
 ## Relacionados

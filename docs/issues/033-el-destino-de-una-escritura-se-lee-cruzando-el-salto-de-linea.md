@@ -19,7 +19,7 @@ borde: sigue leyendo argumentos de la línea siguiente y se queda con el primer 
 destino de la escritura anterior.
 
 El bloqueo entonces nombra una ruta que no aparece en el comando. En el caso que lo reveló acusaba una
-escritura en `…/gouduet/python3`, que es el intérprete de la línea de abajo, no un archivo.
+escritura en `…/initech/python3`, que es el intérprete de la línea de abajo, no un archivo.
 
 Falla hacia el lado seguro —bloquea de más— pero el mensaje señala algo que no existe, así que quien lo
 lee busca un error que no cometió.
@@ -126,9 +126,9 @@ escribir un script de varias líneas, así que se cruza seguido.
 
 ## Contexto de descubrimiento
 
-En `gouduet`, el 2026-09-06, montando una prueba para verificar los umbrales de R17: el comando copiaba
+En `initech`, el 2026-09-06, montando una prueba para verificar los umbrales de R17: el comando copiaba
 un directorio y en la línea siguiente abría un `python3 - <<'PY'`. El bloqueo habló de una escritura en
-`…/gouduet/python3`, que no era ni el origen ni el destino de nada.
+`…/initech/python3`, que no era ni el origen ni el destino de nada.
 
 ## Relacionados
 

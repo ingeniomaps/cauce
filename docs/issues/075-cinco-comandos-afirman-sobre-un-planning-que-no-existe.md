@@ -21,7 +21,7 @@ todo». 0.71.0 lo arregló: hoy nombra la ruta resuelta y sale con 2.
 
 | comando | qué contesta | ¿honesto? |
 |---|---|---|
-| `context` | `no existe el planning en …/venotal-ops/venotal-ops/planning (ruta resuelta)` | sí |
+| `context` | `no existe el planning en …/hooli-ops/hooli-ops/planning (ruta resuelta)` | sí |
 | `tree` | idem | sí |
 | `check` | `⚠ no existe ../ops.config.json` | confuso, pero no afirma de más |
 | `claim` | `<slug> no está en BACKLOG: sólo se toma trabajo ya promovido.` | **no** |

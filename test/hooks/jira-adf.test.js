@@ -20,7 +20,7 @@ test('editar una descripción en markdown frena, en cualquier servidor', () => {
   for (const [input, tool] of [
     [{ fields: { description: 'texto nuevo' } }],
     [{ fields: { description: 'texto nuevo' }, contentFormat: 'markdown' }],
-    [{ fields: { description: 'texto nuevo' } }, 'mcp__atlassian-roax__editJiraIssue'],
+    [{ fields: { description: 'texto nuevo' } }, 'mcp__atlassian-acme__editJiraIssue'],
   ]) blocked('jira-adf', edit(root, input, tool), /aplana lo que el ADF tenía/)
 })
 
@@ -52,7 +52,7 @@ test('Claude Code registra el guard sobre la herramienta del MCP, sin nombrar el
   const entry = settings.hooks.PreToolUse.find((one) => /editJiraIssue/.test(one.matcher))
   assert.ok(entry, 'hay una entrada para editJiraIssue')
   assert.equal(entry.matcher, 'mcp__.*__editJiraIssue')
-  for (const tool of ['mcp__atlassian__editJiraIssue', 'mcp__atlassian-roax__editJiraIssue']) {
+  for (const tool of ['mcp__atlassian__editJiraIssue', 'mcp__atlassian-acme__editJiraIssue']) {
     assert.match(tool, new RegExp(`^(?:${entry.matcher})$`))
   }
   const shim = path.join(REPO, 'automatization', 'hooks', 'guard-jira-adf.sh')

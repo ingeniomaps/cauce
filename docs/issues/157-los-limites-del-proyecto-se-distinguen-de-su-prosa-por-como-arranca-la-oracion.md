@@ -140,9 +140,9 @@ silencio porque `check` lo nombra.
 
   | instancia | párrafos propios | llegaban | lo que se perdía |
   | --- | ---: | ---: | --- |
-  | `venotal-ops` | 3 | **0** | que un runner no escriba en la tienda Shopify productiva |
-  | `gouduet-ops` | 2 | **0** | que sí puede publicar, y qué push dispara un deploy |
-  | `roax-ops` | 14 | **0** | que las reglas de la organización se leen siempre y ganan siempre |
+  | `hooli-ops` | 3 | **0** | que un runner no escriba en la tienda Shopify productiva |
+  | `initech-ops` | 2 | **0** | que sí puede publicar, y qué push dispara un deploy |
+  | `acme-ops` | 14 | **0** | que las reglas de la organización se leen siempre y ganan siempre |
 
   No eran matices: son las restricciones más fuertes que cada proyecto escribió, y la deducción por
   gramática no recogía **ninguna**. El aviso nuevo las nombra las 19.

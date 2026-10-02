@@ -280,7 +280,7 @@ sigue siendo el segundo filtro, detrás del tope en código. Lo que es salida de
   evidencia. Lo puede cerrar quien tenga la instancia, corriendo ese `git log`.
 
 > **Establecido el 2026-09-13, y el disparador no se cumple.** Se corrió ese `git log` sobre
-> `venotal-ops`, una instancia real en 0.86.0: su `INBOX.md` tiene 36 commits y 51 entradas, y los **tres**
+> `hooli-ops`, una instancia real en 0.86.0: su `INBOX.md` tiene 36 commits y 51 entradas, y los **tres**
 > que lo tocaron desde 0.83.0 —`b6c9df4`, `43fe622`, `6af55a7`— los escribió una persona, no un recorrido.
 > Ninguna entrada declara vía, y ésa es la explicación: la procedencia que 0.83.0 agregó la escribe el
 > recorrido al volcar, y acá no hubo volcados de recorrido que la llevaran.

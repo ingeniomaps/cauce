@@ -131,7 +131,7 @@ amplia de todas. Un guard sin puerta se termina rodeando, y el rodeo que este en
 
 ## Contexto de descubrimiento
 
-En `gouduet`, el 2026-09-06, validando que 0.63.0 cerrara los cuatro casos anteriores. El arreglo de
+En `initech`, el 2026-09-06, validando que 0.63.0 cerrara los cuatro casos anteriores. El arreglo de
 030 funciona —el guard corre y bloquea—, y al leer el mensaje nuevo apareció la pregunta de dónde se
 pone entonces la variable. La respuesta no está escrita en ninguna parte.
 

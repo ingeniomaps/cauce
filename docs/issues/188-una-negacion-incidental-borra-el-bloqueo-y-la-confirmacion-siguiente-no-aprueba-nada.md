@@ -267,7 +267,7 @@ resultado que los casos 116 y 184 vinieron a evitar.
 
 ## Contexto de descubrimiento
 
-Instancia `gouduet-ops`, Cauce 0.98.0, tarea `catalog-item-table`. El commit estaba construido, revisado y con
+Instancia `initech-ops`, Cauce 0.98.0, tarea `catalog-item-table`. El commit estaba construido, revisado y con
 `make test` y `make lint` en verde, frenado por el falso positivo del caso 187. La persona aprobó tres veces;
 las dos primeras no sirvieron por esto. Se diagnosticó leyendo `/tmp/cauce-chat/<session>.json`, no por el
 mensaje del guard, que en los tres intentos fue idéntico.
@@ -345,7 +345,7 @@ sobre un push descartado. Dice lo mismo que los demás, con su prueba en `push.t
 
 ### Prueba real en un banco instalado (2026-09-23)
 
-Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de gouduet —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de gouduet-ops, cambiando sólo el enlace del banco. **Sesión real de Claude Code, sin llamadas manuales al guard**: «…; fijate si no falta ninguna…» lleva al agente a leer `api/.env`, el guard lo frena y queda pendiente; con «confirmo» el agente reintenta y lee. Con 0.98.0 el agente reporta que su «confirmo» no alcanzó y que el guard lo frenó de nuevo.
+Banco: `ops bench sidecar` copiado fuera del árbol de Cauce con el layout de initech —instancia y producto en repositorios hermanos—, `automation install` del runner y los guards invocados por los shims instalados, como los invoca el runner. Control: el mismo input con el motor 0.98.0 de initech-ops, cambiando sólo el enlace del banco. **Sesión real de Claude Code, sin llamadas manuales al guard**: «…; fijate si no falta ninguna…» lleva al agente a leer `api/.env`, el guard lo frena y queda pendiente; con «confirmo» el agente reintenta y lee. Con 0.98.0 el agente reporta que su «confirmo» no alcanzó y que el guard lo frenó de nuevo.
 
 ### Revisión del conjunto antes del PR (2026-09-24)
 

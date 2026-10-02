@@ -11,11 +11,11 @@ version-detectada: 0.99.2
 
 **🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **alta**.
 
-**Prioridad alta**, y antes de construir hay que decidir: reabre lo que el caso 025 cerró. Las dos instancias construyeron este guard por su cuenta, y conorbi tuvo dos merges reales sin autorizar (PR #9 y #14).
+**Prioridad alta**, y antes de construir hay que decidir: reabre lo que el caso 025 cerró. Las dos instancias construyeron este guard por su cuenta, y globex tuvo dos merges reales sin autorizar (PR #9 y #14).
 
 ## Resumen
 
-R10 nombra seis actos de publicación —push, PR, merge, tags, deploy y rollback— y el motor comprueba sólo el push, porque «los otros cinco no tienen una forma reconocible en un comando». Para `gh pr merge`, `gh api …/pulls/N/merge`, aprobar o cerrar un PR, `gh pr create` sin `--repo` y `gh workflow run`, eso no es así. roax-ops (`automatization/bin/roax-delivery-guard.js`, 169 líneas con pruebas) y conorbi-ops (`automatization/bin/conorbi-delivery-guard.js`, con pruebas) los frenan y se destraban por chat o por `.ops-approval`; conorbi agrega deploys declarados por proyecto (terraform/tofu, kubectl, targets de un Makefile) con una lista de lectura cerrada por defecto.
+R10 nombra seis actos de publicación —push, PR, merge, tags, deploy y rollback— y el motor comprueba sólo el push, porque «los otros cinco no tienen una forma reconocible en un comando». Para `gh pr merge`, `gh api …/pulls/N/merge`, aprobar o cerrar un PR, `gh pr create` sin `--repo` y `gh workflow run`, eso no es así. acme-ops (`automatization/bin/acme-delivery-guard.js`, 169 líneas con pruebas) y globex-ops (`automatization/bin/globex-delivery-guard.js`, con pruebas) los frenan y se destraban por chat o por `.ops-approval`; globex agrega deploys declarados por proyecto (terraform/tofu, kubectl, targets de un Makefile) con una lista de lectura cerrada por defecto.
 
 ## Reproducción
 
@@ -40,7 +40,7 @@ Un guard de entrega con las formas genéricas (`gh` sobre PRs y workflows) en el
 
 ## Contexto de descubrimiento
 
-Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala.
+Relevamiento de acme-ops y globex-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala.
 
 ## Relacionados
 

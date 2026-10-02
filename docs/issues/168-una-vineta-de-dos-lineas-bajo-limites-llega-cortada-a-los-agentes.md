@@ -122,18 +122,18 @@ agregó para cerrarlo.
 
 ## Contexto de descubrimiento
 
-Instancia de venotal (sidecar), 2026-09-16, sobre 0.94.0 recién instalado. `check` avisaba de tres
+Instancia de hooli (sidecar), 2026-09-16, sobre 0.94.0 recién instalado. `check` avisaba de tres
 párrafos de «Excepciones de autonomía» que no llegaban a los agentes; al adoptar `### Límites` el aviso
 no bajó, y de ahí salió esto. La instancia lo resolvió reescribiendo cada límite en una sola línea,
 aceptando pasarse de su propio tope de 120 caracteres y dejando escrito por qué: con eso el aviso llegó
 a cero y `ops contract` pasó de 3 límites a 9.
 
 **Consultado para escribir esto**: `engine/cli/contract.js` (líneas 45-116 y 138-165) del paquete
-`@ingeniomaps/cauce@0.94.0` instalado en `venotal-ops/node_modules`; `ops contract --json` sobre un banco
+`@ingeniomaps/cauce@0.94.0` instalado en `hooli-ops/node_modules`; `ops contract --json` sobre un banco
 desechable con los cuatro archivos que exige, borrado en el mismo paso; y la salida de `ops check
 planning` antes y después de adoptar el bloque.
 
-**Segunda instancia, roax (sidecar), el mismo día sobre 0.94.0.** `ops contract --json` devolvía 26 límites
+**Segunda instancia, acme (sidecar), el mismo día sobre 0.94.0.** `ops contract --json` devolvía 26 límites
 y **11 terminaban a mitad de frase**; el bloque tenía 30 viñetas con 40 líneas de continuación. En varios lo
 que se pierde es lo que decide, no un detalle:
 
@@ -148,7 +148,7 @@ tercera, contra qué gana. El aviso de `check` mostraba un solo párrafo perdido
 revisar o hacer QA: el contrato del l…»—, que es la continuación de la primera viñeta: las continuaciones de
 viñetas seguidas quedan pegadas en `outside` y `paragraphs()` las junta en uno. **Por eso el aviso subestima
 el daño: 11 límites cortados se reportan como 1 párrafo.** Si se sube la prioridad, éste es el dato.
-Consultado: `ops contract . --json` y `ops check planning` sobre `roax-ops` con `@ingeniomaps/cauce@0.94.0`.
+Consultado: `ops contract . --json` y `ops check planning` sobre `acme-ops` con `@ingeniomaps/cauce@0.94.0`.
 
 ## Relacionados
 
@@ -201,7 +201,7 @@ Y lo que el caso no preveía, que salió de escribir la prueba:
 
 ### Lo que no se midió
 
-La segunda instancia que el caso trae —roax, con 26 límites y 11 cortados— no se volvió a medir: esa
+La segunda instancia que el caso trae —acme, con 26 límites y 11 cortados— no se volvió a medir: esa
 instancia no está acá. Lo que se comprobó es el mecanismo que produce esos 11, sobre el banco mínimo. Su
 observación de que **el aviso subestima el daño** —11 límites cortados reportados como 1 párrafo, porque
 las continuaciones de viñetas seguidas quedan pegadas y `paragraphs()` las junta— queda sin comprobar acá

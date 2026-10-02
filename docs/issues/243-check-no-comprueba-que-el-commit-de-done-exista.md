@@ -11,11 +11,11 @@ version-detectada: 0.99.2
 
 **🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **media**.
 
-**Prioridad media**: en roax-ops un runner cerró una tarea con un hash fabricado, y la evidencia es lo que se audita.
+**Prioridad media**: en acme-ops un runner cerró una tarea con un hash fabricado, y la evidencia es lo que se audita.
 
 ## Resumen
 
-La traza `commit:` de `done/` se valida por forma (`<sha> <asunto>`). roax-ops agregó a su `check` una pasada con `git cat-file -e` en el repositorio del servicio.
+La traza `commit:` de `done/` se valida por forma (`<sha> <asunto>`). acme-ops agregó a su `check` una pasada con `git cat-file -e` en el repositorio del servicio.
 
 ## Reproducción
 
@@ -39,7 +39,7 @@ Resolver el repositorio por el `service:` de la entrada contra `workspaceRoots` 
 
 ## Contexto de descubrimiento
 
-Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. `roax-ops/planning/check.js` §14.
+Relevamiento de acme-ops y globex-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. `acme-ops/planning/check.js` §14.
 
 ## Relacionados
 
@@ -63,15 +63,15 @@ Resuelto en 0.100.0.
 - **Avisar en vez de fallar si el repositorio no está** — se hizo, y en dos niveles. El sha que su repositorio
   no tiene se avisa por entrada. Lo que no se puede mirar —repositorio no clonado, o traza sin repositorio y
   ninguna raíz que lo sea— va en una sola línea con los nombres.
-- **Tradeoff: cuesta un `git` por entrada** — se hizo distinto: cuesta uno por repositorio. Medido sobre roax:
+- **Tradeoff: cuesta un `git` por entrada** — se hizo distinto: cuesta uno por repositorio. Medido sobre acme:
   262 ms el `check` de `main` y 278 ms con esto.
 
 Lo que el caso no preveía, y lo encontró la corrida contra una instancia real:
 
-- **Una raíz puede ser una carpeta con varios repositorios.** En roax, `..` es `servers/`, que no es un
+- **Una raíz puede ser una carpeta con varios repositorios.** En acme, `..` es `servers/`, que no es un
   repositorio. La primera versión buscaba sólo en las raíces y no comprobó ninguno de los 253 shas.
 - **Sin separar lo no comprobable, el aviso era ruido.** La segunda versión daba 64 avisos: 55 de dos
-  repositorios que no están clonados en esta máquina (`roax-ads-back`, `roax-ads-front`) y 9 trazas sin
+  repositorios que no están clonados en esta máquina (`acme-ads-back`, `acme-ads-front`) y 9 trazas sin
   repositorio nombrado. Ninguno era un hash fabricado comprobado, así que pasaron a una sola línea.
 - **`contracts.js` pasaba las 500 líneas** con la función adentro, y se movió a su módulo.
 
@@ -79,8 +79,8 @@ Prueba real:
 
 - **La reproducción con el motor de esta rama:** `check` sigue `ok=true` y avisa `done/tarea-inventado.md
   tarea-inventado: el commit deadbee no está en su repositorio…`; de la real no dice nada.
-- **Contra `roax-ops`, sólo lectura:** de 253 shas, 150 se comprobaron y existen todos, y 103 salieron en la
-  línea «no se comprobaron porque su repositorio no está en esta máquina (roax-ads-back, roax-ads-front, sin
+- **Contra `acme-ops`, sólo lectura:** de 253 shas, 150 se comprobaron y existen todos, y 103 salieron en la
+  línea «no se comprobaron porque su repositorio no está en esta máquina (acme-ads-back, acme-ads-front, sin
   repositorio nombrado)».
 - **Cinco mutaciones en una copia, cada una en rojo por `test/planning/done-commits.test.js`:**
   - Un blob cuenta como commit.

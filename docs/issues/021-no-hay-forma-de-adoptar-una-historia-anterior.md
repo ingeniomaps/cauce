@@ -147,7 +147,7 @@ entrada por entrada.
 
 ## Contexto de descubrimiento
 
-Migrando `gouduet` de su sistema propio a Cauce (2026-09-03). Ese sistema **tenía** el mecanismo:
+Migrando `initech` de su sistema propio a Cauce (2026-09-03). Ese sistema **tenía** el mecanismo:
 `planning/.check-baseline` con 89 slugs y `planning/.trace-baseline` con 3, cada uno con su cabecera
 explicando desde cuándo no se agregan más. Las 94 entradas del proyecto estaban cubiertas por esos dos
 archivos: 92 exentas y 2 escritas ya bajo el contrato completo, que es exactamente lo que un baseline

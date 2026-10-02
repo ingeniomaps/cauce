@@ -11,7 +11,7 @@ version-detectada: 0.99.2
 
 **🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **alta**.
 
-**Prioridad alta**: una defensa que se abre sola. En conorbi-ops así se mergeó un PR sin que nadie lo pidiera (commit 62bf914, PR #14).
+**Prioridad alta**: una defensa que se abre sola. En globex-ops así se mergeó un PR sin que nadie lo pidiera (commit 62bf914, PR #14).
 
 ## Resumen
 
@@ -30,7 +30,7 @@ El segundo mensaje fue «agregá una regla nueva a planning/rules/process.md sob
 
 ## Síntoma
 
-Un push, un merge o cualquier ítem retenido se ejecuta con un mensaje que no lo autorizaba. conorbi lo vivió con un merge, y lo dejó escrito en el commit 62bf914: «Cauce toma cualquier respuesta que no niegue ni pregunte como el «sí» de un bloqueo pendiente. Así se mergeó el PR #14 mientras Manuel agregaba una regla». Su guard de entrega ahora exige que el mensaje pida mergear.
+Un push, un merge o cualquier ítem retenido se ejecuta con un mensaje que no lo autorizaba. globex lo vivió con un merge, y lo dejó escrito en el commit 62bf914: «Cauce toma cualquier respuesta que no niegue ni pregunte como el «sí» de un bloqueo pendiente. Así se mergeó el PR #14 mientras Manuel agregaba una regla». Su guard de entrega ahora exige que el mensaje pida mergear.
 
 ## Causa raíz
 
@@ -50,7 +50,7 @@ Que una respuesta apruebe un pendiente sólo si lo nombra o si es una confirmaci
 
 ## Contexto de descubrimiento
 
-Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. Contrastado contra `engine/hooks/chat.js` de `main`.
+Relevamiento de acme-ops y globex-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. Contrastado contra `engine/hooks/chat.js` de `main`.
 
 ## Relacionados
 

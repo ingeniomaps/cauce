@@ -125,7 +125,7 @@ en el repositorio. Y la expansión de `~` la vuelve más ancha de lo que parece:
 
 ## Contexto de descubrimiento
 
-Migrando `gouduet` a Cauce (2026-09-03). Al terminar, el runner fue a registrar en su memoria dónde
+Migrando `initech` a Cauce (2026-09-03). Al terminar, el runner fue a registrar en su memoria dónde
 había quedado el planning —dato que evita que la próxima sesión busque `planning/` en la raíz, donde ya
 no está— y el guard lo frenó. Se reportó al dueño en vez de rodearlo; con su autorización explícita se
 escribió después por `Bash`, que es exactamente el agujero que describe el 022.

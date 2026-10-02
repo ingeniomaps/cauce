@@ -7,15 +7,15 @@ prioridad: media
 version-detectada: 0.99.2
 ---
 
-# 226 — La integración de Jira sólo lee por REST con un token, y roax mantiene un puente propio para no dejar el token en disco
+# 226 — La integración de Jira sólo lee por REST con un token, y acme mantiene un puente propio para no dejar el token en disco
 
 **🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **media**.
 
-**Prioridad media**: roax-ops mantiene unas 1.475 líneas que duplican el motor de Cauce (su ADR-003) sólo para leer por MCP.
+**Prioridad media**: acme-ops mantiene unas 1.475 líneas que duplican el motor de Cauce (su ADR-003) sólo para leer por MCP.
 
 ## Resumen
 
-La integración exige `auth.tokenEnv` siempre y lee con `fetch`. roax decidió no dejar un token de Jira de larga vida en disco y lee por el servidor MCP de Atlassian desde un workflow: el agente consulta, arma un payload y lo entrega a un script que lo aplica sólo si trae `complete: true`. Eso duplica `state.js`, el `sync` de `registry.js`, `writeback.js` y el guard del snapshot.
+La integración exige `auth.tokenEnv` siempre y lee con `fetch`. acme decidió no dejar un token de Jira de larga vida en disco y lee por el servidor MCP de Atlassian desde un workflow: el agente consulta, arma un payload y lo entrega a un script que lo aplica sólo si trae `complete: true`. Eso duplica `state.js`, el `sync` de `registry.js`, `writeback.js` y el guard del snapshot.
 
 ## Reproducción
 
@@ -41,7 +41,7 @@ Una instancia que no quiere el token en disco no puede usar la integración de C
 
 ## Contexto de descubrimiento
 
-Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. `roax-ops/integrations/jira/workflows/jira-sync.js`, `sync-state.js` y `planning/adr/003-puente-jira-por-mcp-y-no-por-token.md`.
+Relevamiento de acme-ops y globex-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. `acme-ops/integrations/jira/workflows/jira-sync.js`, `sync-state.js` y `planning/adr/003-puente-jira-por-mcp-y-no-por-token.md`.
 
 ## Relacionados
 
@@ -53,7 +53,7 @@ Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01,
 Resuelto en 0.100.0. La reproducción que el caso dejaba pendiente cambió el tamaño del arreglo.
 
 - **¿La salida del MCP entra tal cual por `--fixture`?** — se averiguó, y la pregunta era otra. El puente de
-  roax pide la descripción ya en markdown (`responseContentFormat: "markdown"`) y arma un payload con la forma
+  acme pide la descripción ya en markdown (`responseContentFormat: "markdown"`) y arma un payload con la forma
   de la API, no con la respuesta cruda. `normalizeIssue` ya aceptaba una descripción en texto, así que ese
   payload entraba sin cambios. Los parámetros del MCP se leyeron de su esquema, sin llamarlo: `cloudId`,
   `jql`, `fields`, `maxResults` (50–100), `nextPageToken` y `responseContentFormat`. `parent` no está entre los
@@ -63,7 +63,7 @@ Resuelto en 0.100.0. La reproducción que el caso dejaba pendiente cambió el ta
   limpiando siempre: ese adaptador trae todo o falla.
 - **`transport: "rest"|"agent"` que no exija `auth` en modo agente** — se hizo. Sin `transport` es REST, como
   hasta hoy. En modo agente, sincronizar sin payload explica cómo se hace en vez de intentar REST. Se suman
-  `mcpServer` y un `cloudId` opcional, porque el sitio de roax sólo tiene UUID. El MCP acepta UUID o URL; sin
+  `mcpServer` y un `cloudId` opcional, porque el sitio de acme sólo tiene UUID. El MCP acepta UUID o URL; sin
   `cloudId` se usa el `baseUrl`.
 - **El workflow que manda al agente a leer por MCP** — se hizo distinto: es un procedimiento de cuatro pasos
   en `template/integrations/jira/README.md`, no un workflow. El paso que necesita juicio —leer y transcribir—
@@ -85,7 +85,7 @@ Prueba real:
 - **La reproducción**, con el motor de `main`: la configuración en modo agente fallaba con «falta
   auth.tokenEnv», y un payload que trajo sólo DEMO-1 con `complete: false` borró DEMO-2 del staging.
 - **Una sesión real** (`claude -p`, USD 0,69), autorizada por Manuel, sobre un banco con Cauce instalado desde
-  esta rama, que leyó el Jira de roax por `atlassian-roax`, en sólo lectura. Se le pidió seguir el
+  esta rama, que leyó el Jira de acme por `atlassian-acme`, en sólo lectura. Se le pidió seguir el
   procedimiento del README trayendo sólo la primera página.
   - Pidió los nueve campos en markdown, recibió 50 ítems con `hasNextPage: true` y declaró `complete: false`.
   - Escribió el payload en un temporal propio y lo borró después.

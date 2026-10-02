@@ -69,8 +69,8 @@ Descartado el 2026-10-01 por decisión de Manuel, sobre la medición que el prop
 Se dejan escritos la hipótesis y lo que la habría desmentido: se esperaba que las correcciones de criterio se
 repitieran, y menos de 3 grupos en todas las tareas habría bastado para no construir.
 
-**La medición.** Un agente recorrió en sólo lectura los `done/` de tres instancias reales: roax-ops (201
-entradas), gouduet (108) y venotal (89). Leyó entero cada `review:` y, en los demás campos, el contexto de
+**La medición.** Un agente recorrió en sólo lectura los `done/` de tres instancias reales: acme-ops (201
+entradas), initech (108) y hooli (89). Leyó entero cada `review:` y, en los demás campos, el contexto de
 cada mención de una revisión. No contó lo que frenó una puerta automática ni lo que fue al INBOX sin
 corregirse. Contrasté a mano cinco de sus citas contra los archivos, y las cinco están:
 
@@ -80,7 +80,7 @@ corregirse. Contrasté a mano cinco de sus citas contra los archivos, y las cinc
 - «diez parámetros» en `credencial-en-el-fan-out-del-home-a-payments.md`;
 - «se adjudicaba un cierre» en `catalog-item-api-handlers.md`.
 
-**Lo que devolvió.** Hay 70 correcciones de criterio, sin contar las de un revisor de venotal anterior a Cauce.
+**Lo que devolvió.** Hay 70 correcciones de criterio, sin contar las de un revisor de hooli anterior a Cauce.
 22 forman 9 grupos que se repiten en dos tareas o más, y 48 quedan sueltas. El umbral se cruzó, pero los grupos
 no son lo que el fix suponía:
 
@@ -88,10 +88,10 @@ no son lo que el fix suponía:
   no puede ponerse roja, en dos instancias, y una mutación sin declarar), R15 (una aserción enumerada que no
   llegó), R14/R15 (afirmar una cobertura que no se tiene) y R24 (un plan o un artefacto que afirma algo falso
   del proyecto). Proponer una regla por repetición habría llenado el INBOX de reglas que ya existen.
-- **3 grupos, con 7 correcciones, no caen en ninguna regla de Cauce.** Dos son de roax: el acceso a datos de
+- **3 grupos, con 7 correcciones, no caen en ninguna regla de Cauce.** Dos son de acme: el acceso a datos de
   otra marca por id sin comprobar que le pertenece (3 tareas) y un webhook no idempotente ante un evento
   terminal repetido (2). Son reglas de negocio de esa empresa, y su lugar es su `business-rules/`, no una
-  regla del sistema. El tercero es de gouduet: un riesgo que se atribuía un cierre ajeno. Sale de dos tareas
+  regla del sistema. El tercero es de initech: un riesgo que se atribuía un cierre ajeno. Sale de dos tareas
   seguidas del mismo hito, así que probablemente sea una sesión repitiéndose.
 - **Los datos son anteriores al caso 206.** Desde 0.100.0 el Review nombra la regla de cada hallazgo o lo
   declara criterio. Lo que acá figura como criterio por falta de cita va a entrar por la vía de las reglas, que
@@ -117,4 +117,4 @@ mostró que sin ese cruce falla.
 - Clasifica por la prosa: «criterio» quiere decir que no cita una regla, no que la regla no exista.
 - Varias revisiones dicen «con condiciones» sin decir qué se corrigió, y no se contaron.
 - Las revisiones humanas de los PR no quedan en `done/`.
-- Los dos grupos de roax no se llevaron a su INBOX: quedan citados acá, y llevarlos lo decide Manuel.
+- Los dos grupos de acme no se llevaron a su INBOX: quedan citados acá, y llevarlos lo decide Manuel.

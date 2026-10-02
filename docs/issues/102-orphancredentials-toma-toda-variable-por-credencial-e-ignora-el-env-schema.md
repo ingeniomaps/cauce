@@ -179,8 +179,8 @@ Recorrido de lo que el caso enumeró:
     regla de antes reconoce 40 de las 72 y la nueva, 56. Con `key` suelta serían 57; sumando `_pat`, 58.
   - En las claves de configuración que la misma regla juzga hubo 161 claves: las del molde
     (`template/integrations/config.json` y `jira/config.json`), la `secrets.json` del piloto del 088 y el
-    `integrations/jira/config.json` de dos instancias reales, aparatejo-ops y roax-ops. La regla nueva
-    rechaza **0**. Con `key` suelta rechazaría una, `projectKey` de roax-ops, que es la clave del proyecto
+    `integrations/jira/config.json` de dos instancias reales, stark-ops y acme-ops. La regla nueva
+    rechaza **0**. Con `key` suelta rechazaría una, `projectKey` de acme-ops, que es la clave del proyecto
     de Jira y no un secreto. Por eso cuenta sólo la palabra entera.
   - `_pat` no entra. Suma 2 de 72, el caso no la enumeraba, y cada palabra que se agrega cambia lo que
     rechazan los tres consumidores. Queda acá, con su número, para quien quiera sumarla.
@@ -230,8 +230,8 @@ Lo que el caso encontró y su enunciado no preveía:
   la regla sin extender la pone en rojo, por `SENTRY_DSN`.
 - **Sobre los repositorios reales, el aviso bajó de 306 variables a 21 credenciales**; la salida está
   abajo. Esa corrida mostró además otro defecto: dos servicios salen con el mismo nombre —`keycloak (21 de
-  61)` y `keycloak (16 de 56)`—, porque el nombre es la ruta relativa a su raíz y tanto `gouduet/keycloak`
-  como `hypixo/keycloak` quedan en `keycloak`. Viene de antes (el aviso viejo usaba la misma ruta) y no es
+  61)` y `keycloak (16 de 56)`—, porque el nombre es la ruta relativa a su raíz y tanto `initech/keycloak`
+  como `umbrella/keycloak` quedan en `keycloak`. Viene de antes (el aviso viejo usaba la misma ruta) y no es
   de este caso. **Salió como caso propio, el 113**, con una reproducción que lo muestra desde un checkout:
   el choque sale sólo cuando la última carpeta de dos raíces coincide.
 
@@ -262,7 +262,7 @@ desechable con sus mismas raíces (las dieciséis existen en disco) y una épica
 --- HEAD 437170a8
 ⚠ el proyecto declara NODE_ENV (account), BFF_URL (account), POST_LOGIN_URL (account), ALLOWED_REDIRECT_ORIGINS (account) y 302 más y no aparecen en el mapa ni en HUMAN_ACTIONS: nadie las carga
 --- con el arreglo
-⚠ credenciales por nombre sin dueño (21, en api, connector, identity, observability, topology/edge, keycloak, accounts, portal-app): DB_MAIN_PASSWORD (api), DB_AUDIT_PASSWORD (api), ANTHROPIC_API_KEY (connector), CONORBI_CONNECTOR_KEY (connector) y 17 más — no aparecen en el mapa ni en HUMAN_ACTIONS: nadie las carga. El dueño se escribe en organization/workspace.md o en una fila de planning/HUMAN_ACTIONS.md; el criterio es el nombre, así que una credencial con nombre de configuración no aparece acá
+⚠ credenciales por nombre sin dueño (21, en api, connector, identity, observability, topology/edge, keycloak, accounts, portal-app): DB_MAIN_PASSWORD (api), DB_AUDIT_PASSWORD (api), ANTHROPIC_API_KEY (connector), GLOBEX_CONNECTOR_KEY (connector) y 17 más — no aparecen en el mapa ni en HUMAN_ACTIONS: nadie las carga. El dueño se escribe en organization/workspace.md o en una fila de planning/HUMAN_ACTIONS.md; el criterio es el nombre, así que una credencial con nombre de configuración no aparece acá
 ⚠ sin revisar por credenciales sin dueño, pasado el tope de variables por servicio: keycloak (21 de 61), keycloak (16 de 56) — lo que quedó afuera puede incluir una credencial que nadie carga
 ```
 

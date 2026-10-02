@@ -23,7 +23,7 @@ Pendiente de correr al tomar el caso: un repositorio con `"lint": "exit 1"` y do
 
 ## Síntoma
 
-En roax-ops el archivo tiene 3 entradas vivas (lint de ESLint 9) y reemplazó un worktree de baseline que duplicaba la carga. En conorbi está vacío: el mecanismo existe y todavía no se usó.
+En acme-ops el archivo tiene 3 entradas vivas (lint de ESLint 9) y reemplazó un worktree de baseline que duplicaba la carga. En globex está vacío: el mecanismo existe y todavía no se usó.
 
 ## Causa raíz
 
@@ -40,7 +40,7 @@ Un archivo declarado (o un campo de `ops.config.json`) con `<raíz> <gate> — <
 
 ## Contexto de descubrimiento
 
-Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala.
+Relevamiento de acme-ops y globex-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala.
 
 ## Relacionados
 

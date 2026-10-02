@@ -139,7 +139,7 @@ Sube a alta el día que alguien, para destrabarlo, corra `--force` sin leer la l
 
 ## Contexto de descubrimiento
 
-Migrando `roax-ops` a Cauce 0.66.0 el 2026-09-07. Es un sistema de planning hecho a mano y anterior a
+Migrando `acme-ops` a Cauce 0.66.0 el 2026-09-07. Es un sistema de planning hecho a mano y anterior a
 Cauce, con su propio `PROTOCOL.md` de 13 fases, su `METHODOLOGY.md` y 8 guards. Tras `init --force` la
 instancia quedó funcionando y con `check` en verde, pero `upgrade` nació trabado y la decisión que quedó
 sobre la mesa fue exactamente ésta: no actualizar nunca, o reescribir el proceso del equipo. Se eligió lo

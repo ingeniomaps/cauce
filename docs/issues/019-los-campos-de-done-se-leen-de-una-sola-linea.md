@@ -144,7 +144,7 @@ arriba.
 
 ## Contexto de descubrimiento
 
-Migrando `gouduet` de su sistema propio a Cauce (2026-09-03 a 09-05). Se tropezó **cuatro veces**
+Migrando `initech` de su sistema propio a Cauce (2026-09-03 a 09-05). Se tropezó **cuatro veces**
 escribiendo entradas de DONE legítimas, en tareas distintas y con días de diferencia; las cuatro veces
 el diagnóstico fue el mismo y las cuatro costó volver a encontrarlo, porque el mensaje manda a revisar
 si la cita está y la cita estaba.

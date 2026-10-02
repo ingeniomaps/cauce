@@ -137,7 +137,7 @@ prefijo que el procedimiento oficial manda escribir.
 
 ## Contexto de descubrimiento
 
-Al commitear en `gouduet` la actualización a 0.62.0, el 2026-09-06. El mensaje explicaba, entre los
+Al commitear en `initech` la actualización a 0.62.0, el 2026-09-06. El mensaje explicaba, entre los
 ocho defectos cerrados, que un mensaje que nombra una operación vigilada ya no dispara su guard — y el
 commit fue bloqueado por nombrarla. El commit tocaba `planning/rules/system/`, así que llevaba
 `OPS_GOVERNANCE_OVERRIDE=1` delante.

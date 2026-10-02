@@ -4,7 +4,7 @@ Un cargo del catálogo sabe de su profesión, no de esta empresa. Acá va lo que
 trabajar en **este** contexto: `organization/roles/<slug>.md`.
 
 ```markdown
-# QA Engineer en Aparatejo
+# QA Engineer en Stark
 
 No hay ambiente de staging: la verificación corre contra el entorno local y contra producción con
 datos de prueba. No hay equipo de soporte, así que un defecto que llegue a producción lo paga el

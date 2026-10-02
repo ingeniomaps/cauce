@@ -18,7 +18,7 @@ nombre y no aparecen en `organization/workspace.md` ni en `planning/HUMAN_ACTION
 `.env.example` de cada servicio **corta en cuarenta variables**, y lo que queda afuera no se mira.
 
 El 102 aceptó ese riesgo y lo dejó escrito como tradeoff sin medir —«lo que quedó afuera puede incluir una
-credencial que nadie carga»—. **Está medido y ocurre.** En `gouduet-ops`, una instancia real de 0.66.0
+credencial que nadie carga»—. **Está medido y ocurre.** En `initech-ops`, una instancia real de 0.66.0
 sobre este disco, el servicio `keycloak` declara 61 variables:
 
 - de las **40 revisadas**, dos son credenciales: `KEYCLOAK_ADMIN_PASSWORD` y `KEYCLOAK_CLIENT_SECRET`, las
@@ -122,10 +122,10 @@ credenciales sean de producción.
 
 Salió midiendo contra instancias reales el hueco que el 102 había declarado sin medir. Ese caso dice
 —porque en su momento era cierto— que los adaptadores propios de una empresa «no están en esta máquina»;
-sí están: `venotal-ops` y `gouduet-ops`. Correr el aviso contra las dos convirtió una predicción en dos
+sí están: `hooli-ops` y `initech-ops`. Correr el aviso contra las dos convirtió una predicción en dos
 nombres.
 
-Vale decir que `venotal-ops` no lo dispara: sus servicios no pasan el tope. Hizo falta la segunda
+Vale decir que `hooli-ops` no lo dispara: sus servicios no pasan el tope. Hizo falta la segunda
 instancia, y eso es parte del hallazgo: con un solo ejemplar el aviso se ve correcto.
 
 ## Relacionados
@@ -147,8 +147,8 @@ aplica en `cli/wiring.js`, junto al otro recorte que ese mismo comando ya tenía
 ### Contra lo que el caso enumeró
 
 - **Resumen: «hay dos credenciales sin dueño y el aviso no puede verlas»** — arreglado y comprobado contra
-  la misma instancia: `gouduet-ops` ahora acusa `DB_PASSWORD (keycloak), INFISICAL_ADMIN_TOKEN (keycloak)`
-  por nombre. `venotal-ops` sigue sin avisos, así que el cambio no fabricó falsos positivos.
+  la misma instancia: `initech-ops` ahora acusa `DB_PASSWORD (keycloak), INFISICAL_ADMIN_TOKEN (keycloak)`
+  por nombre. `hooli-ops` sigue sin avisos, así que el cambio no fabricó falsos positivos.
 - **Opción 1, analizar todo y mostrar recortado** — es la construida.
 - **Opción 2, filtrar por `SENSITIVE` antes de recortar** — se decidió que no, y por medición: el costo que
   la 1 supuestamente tenía no existe. De seis `.env.example` en las dos instancias reales, **uno solo**
@@ -189,8 +189,8 @@ aplica en `cli/wiring.js`, junto al otro recorte que ese mismo comando ya tenía
   verde, incluida la que fija que el aviso de recorte sigue. El desglose descarta que el roto fuera el
   arnés.
 - **Verde**: 7 de 7, `npm run ci` en 0 y la suite en **809 pruebas, 809 en verde**.
-- **Contra lo real, que es lo que originó el caso**: `gouduet-ops` acusa las dos credenciales por nombre;
-  `venotal-ops` sigue en cero. Y `scan` sobre un servicio de 61 variables imprime 40 y dice «y 21 más»,
+- **Contra lo real, que es lo que originó el caso**: `initech-ops` acusa las dos credenciales por nombre;
+  `hooli-ops` sigue en cero. Y `scan` sobre un servicio de 61 variables imprime 40 y dice «y 21 más»,
   mientras `--json` sigue trayendo las 61.
 - **Tres mutaciones en copia por `tar`, con verde de control antes y después.** Volver a recortar el
   análisis mata dos casos; devolver el conteo duplicado mata al del recorte; quitar el aviso de recorte

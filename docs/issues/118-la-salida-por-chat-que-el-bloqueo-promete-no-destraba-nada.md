@@ -19,8 +19,8 @@ una ruta que el shell no expandió
 
 ```
 Decile a la persona qué se frenó y por qué, y esperá: si contesta «dale», reintentá el mismo cambio y pasa.
-Si prefiere aprobarlo a mano, que pegue ella tal cual en venotal-ops/planning/.ops-approval estas líneas:
-  …/venotal/venotal-ops/.env.infisical
+Si prefiere aprobarlo a mano, que pegue ella tal cual en hooli-ops/planning/.ops-approval estas líneas:
+  …/hooli/hooli-ops/.env.infisical
 Valen para ese conjunto y dejan de valer en cuanto cambie. La variable OPS_SECRETS_READ_OVERRIDE=1 …
 ```
 
@@ -34,14 +34,14 @@ edite un archivo oculto a mano** — incluso cuando esa persona ya dijo tres vec
 ## Reproducción
 
 Instancia sidecar real, 0.81.0, runner Claude Code. El operador quiere que el agente cargue valores en
-Infisical usando la identidad declarada en `venotal-ops/.env.infisical`.
+Infisical usando la identidad declarada en `hooli-ops/.env.infisical`.
 
 | # | Qué dijo la persona en el chat | Qué hizo el agente | Resultado |
 |---|---|---|---|
-| 1 | «autorizo la lectura del .env.infisical para que llenes todos los campos…» | el comando, con la ruta en una variable de shell | **frenado**, y el mensaje citó la ruta **sin expandir**: `venotal-ops/$O/.env.infisical` |
+| 1 | «autorizo la lectura del .env.infisical para que llenes todos los campos…» | el comando, con la ruta en una variable de shell | **frenado**, y el mensaje citó la ruta **sin expandir**: `hooli-ops/$O/.env.infisical` |
 | 2 | (la misma autorización seguía en pie) | el mismo comando con la ruta absoluta literal | **frenado** |
 | 3 | «dale» | el mismo comando, sin cambios | **frenado** |
-| 4 | «te doy aprobacion para revisar y usar …/venotal/venotal-ops/.env.infisical» | el mismo comando | **frenado** |
+| 4 | «te doy aprobacion para revisar y usar …/hooli/hooli-ops/.env.infisical» | el mismo comando | **frenado** |
 
 Recién la quinta vuelta pasó, y porque el operador pegó la línea a mano en `.ops-approval`.
 
@@ -67,7 +67,7 @@ nada y el bloqueo habría seguido, sin que nada explicara por qué.
 
 No es wiring: el hook está registrado y el shim es correcto.
 
-- `…/venotal/.claude/settings.json:51-56` registra `UserPromptSubmit` →
+- `…/hooli/.claude/settings.json:51-56` registra `UserPromptSubmit` →
   `automatization/hooks/guard-chat.sh`.
 - `guard-chat.sh` delega en `run-hook.sh chat`, descarta su salida y **sale siempre con 0**, que es lo
   documentado: sobre el mensaje de una persona un 2 no tendría a qué frenar.
@@ -150,7 +150,7 @@ sesión real —la 1 y la 2, que se apoyaban en ese mismo texto— se seguirían
 1. **«Que la autorización por chat no dependa del directorio»** — ya no aplica: su premisa quedó refutada,
    ver «Causa raíz».
 2. **«Que el mensaje imprima la ruta resuelta»** — **sigue vivo**, tal cual: el bloqueo de la vuelta 1 citó
-   `…/venotal-ops/$O/.env.infisical`, con la variable sin expandir, y nada de 0.82.0 ni de 0.83.0 tocó eso.
+   `…/hooli-ops/$O/.env.infisical`, con la variable sin expandir, y nada de 0.82.0 ni de 0.83.0 tocó eso.
 3. **«Que el bloqueo diga cuándo la salida por chat no está disponible»** — cubierto.
 4. **«Una salida que el agente pueda tomar»** — es el **117**, que sigue abierto y también parcialmente
    cubierto.

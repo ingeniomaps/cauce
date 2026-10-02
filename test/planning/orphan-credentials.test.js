@@ -116,7 +116,7 @@ test('la clave cuenta como secreto sólo como palabra propia', () => {
 test('el aviso distingue dos raíces que terminan en la misma carpeta', () => {
   const { ops } = instance('cauce-113-', 'sidecar', 'PORT=3000\n')
   const base = path.dirname(ops)
-  for (const org of ['gouduet', 'hypixo']) {
+  for (const org of ['initech', 'umbrella']) {
     const dir = path.join(base, org, 'keycloak')
     fs.mkdirSync(dir, { recursive: true })
     fs.writeFileSync(path.join(dir, 'package.json'), '{"name":"keycloak"}')
@@ -125,12 +125,12 @@ test('el aviso distingue dos raíces que terminan en la misma carpeta', () => {
   const file = path.join(ops, 'ops.config.json')
   const config = JSON.parse(fs.readFileSync(file, 'utf8'))
   config.workspaceRoots = [
-    { name: 'gouduet', path: '../gouduet/keycloak' },
-    { name: 'hypixo', path: '../hypixo/keycloak' },
+    { name: 'initech', path: '../initech/keycloak' },
+    { name: 'umbrella', path: '../umbrella/keycloak' },
   ]
   fs.writeFileSync(file, JSON.stringify(config, null, 2))
   const line = orphanLine(ops)
-  assert.match(line, /en gouduet, hypixo\): KC_DB_PASSWORD \(gouduet\), KC_DB_PASSWORD \(hypixo\)/)
+  assert.match(line, /en initech, umbrella\): KC_DB_PASSWORD \(initech\), KC_DB_PASSWORD \(umbrella\)/)
   assert.doesNotMatch(line, /\(keycloak\)/, 'la carpeta ya no nombra a ninguna de las dos')
 })
 

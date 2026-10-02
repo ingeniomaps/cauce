@@ -116,7 +116,7 @@ archivos conservados y el mapa queda vacío.
 
 ## Contexto de descubrimiento
 
-Migrando `venotal-ops` —un repo de planning propio de meses, con contratos parecidos a los de Cauce—
+Migrando `hooli-ops` —un repo de planning propio de meses, con contratos parecidos a los de Cauce—
 a Cauce 0.54.0 el 2026-09-02. Apareció en un ensayo sobre una copia del repo: el `upgrade` se llevó un
 `AGENTS.md` de 219 líneas con el mapa de servicios, las integraciones productivas y los límites de
 autonomía, mientras informaba que no había tocado nada propio.

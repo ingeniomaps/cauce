@@ -87,7 +87,7 @@ La alternativa del bloque delimitado no agrega archivo y reusa un mecanismo prob
 
 ## Contexto de descubrimiento
 
-Adoptando Cauce en `venotal-ops` (0.54.0, 2026-09-02) y actualizando después a 0.55.0 y 0.56.0. El
+Adoptando Cauce en `hooli-ops` (0.54.0, 2026-09-02) y actualizando después a 0.55.0 y 0.56.0. El
 `AGENTS.md` de ese repo lleva el mapa de cuatro repos con sus gates, las integraciones productivas con
 su regla de escritura, y las 53 credenciales con quién carga cada una — todo lo que el paso 2 del
 README pide. En las tres actualizaciones hubo que respaldarlo, correr `upgrade --force` y restaurarlo.

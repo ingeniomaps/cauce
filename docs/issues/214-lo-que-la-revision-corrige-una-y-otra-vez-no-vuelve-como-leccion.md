@@ -55,9 +55,9 @@ siguiente.
 
 ## Contexto de descubrimiento
 
-Revisión de los repositorios de Dropi del 2026-10-01: `pr-lessons` aprende de los hallazgos aceptados,
+Revisión de los repositorios de Wonka del 2026-10-01: `pr-lessons` aprende de los hallazgos aceptados,
 cuenta repeticiones entre PRs con umbral y no vuelve a proponer lo rechazado sin evidencia nueva
-(`dropi-tools-skills`, rama `feature/TECH-1663-…`, `skills/pr-lessons/references/curation.md:78-90` y `:145`).
+(`wonka-tools-skills`, rama `feature/TECH-1663-…`, `skills/pr-lessons/references/curation.md:78-90` y `:145`).
 
 ## Relacionados
 

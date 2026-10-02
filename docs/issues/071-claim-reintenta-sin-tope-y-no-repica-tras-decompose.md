@@ -42,7 +42,7 @@ Una tarea en la cola que Decompose vaya a partir —más de `maxTaskHours` o con
 un `claim` que falle la primera vez. En la corrida medida el fallo era éste, con exit code 2:
 
 ```
-$ node tools/ops.js claim venotal-ops/planning dashboard-image-hardening
+$ node tools/ops.js claim hooli-ops/planning dashboard-image-hardening
 dashboard-image-hardening no está en BACKLOG: sólo se toma trabajo ya promovido.
 ```
 

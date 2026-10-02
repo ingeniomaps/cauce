@@ -15,7 +15,7 @@ version-detectada: 0.99.2
 
 ## Resumen
 
-conorbi-ops trajo de su esquema anterior dos formas que se repiten: `conventions/`, con un canónico y una tabla de divergencias por repositorio que marca si cada una es intencional o deriva, y `runbooks/`, con pasos que citan su fuente, un checklist y los huecos conocidos.
+globex-ops trajo de su esquema anterior dos formas que se repiten: `conventions/`, con un canónico y una tabla de divergencias por repositorio que marca si cada una es intencional o deriva, y `runbooks/`, con pasos que citan su fuente, un checklist y los huecos conocidos.
 
 ## Reproducción
 
@@ -39,7 +39,7 @@ Sumar `conventions/` y `runbooks/` a «Recomendados, sin molde», con una línea
 
 ## Contexto de descubrimiento
 
-Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. `conorbi-ops/organization/docs/conventions/` y `runbooks/`.
+Relevamiento de acme-ops y globex-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. `globex-ops/organization/docs/conventions/` y `runbooks/`.
 
 ## Relacionados
 

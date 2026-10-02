@@ -1771,7 +1771,7 @@ diseño — eso vive en el commit y en el código.
 
 - **Dos repositorios que terminan en una carpeta con el mismo nombre ya no salen con el mismo nombre.** Con
   varias raíces declaradas, el inventario nombraba cada servicio por la **carpeta** de su raíz, así que
-  `../gouduet/keycloak` y `../hypixo/keycloak` salían los dos `keycloak` en `check`, en `onboard` y en
+  `../initech/keycloak` y `../umbrella/keycloak` salían los dos `keycloak` en `check`, en `onboard` y en
   `scan`, y no había con qué saber de qué repositorio era cada credencial. Ahora los nombra el `name` que
   cada raíz declara en `ops.config.json`, y `check` avisa cuando dos raíces se llaman igual, diciendo
   cuáles son las dos.

@@ -24,7 +24,7 @@ de otro proyecto, de otra versión o esté rota. Nada compara las dos.
 
 En esta máquina, 2026-09-23/24, con `agy` 1.1.16:
 
-1. El registro global de `cauce` era el de `aparatejo` (Cauce 0.22.0, importado el 2026-08-15), con el wiring
+1. El registro global de `cauce` era el de `stark` (Cauce 0.22.0, importado el 2026-08-15), con el wiring
    viejo: `node .agents/plugins/cauce/hook.js pre-shell`, relativo al workspace.
 2. En un banco con Cauce instalado (`automation install . antigravity`), `automation doctor . antigravity` dijo
    `✓ antigravity: adaptador operativo (0 advertencia(s))`.

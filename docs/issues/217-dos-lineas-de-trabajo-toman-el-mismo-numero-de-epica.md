@@ -18,7 +18,7 @@ sufre más de una vez por mes.
 ## Resumen
 
 `flow` escribe la épica «tomando el próximo NNN libre» de su árbol. Dos líneas en paralelo que crean una épica el
-mismo día toman el mismo número, porque ninguna ve la de la otra hasta traerla. En `roax-ops` dos sesiones tomaron
+mismo día toman el mismo número, porque ninguna ve la de la otra hasta traerla. En `acme-ops` dos sesiones tomaron
 la 055 el mismo día (caso 212).
 
 ## Reproducción
@@ -66,7 +66,7 @@ mantiene el número y el choque se arregla con un comando.
   decía cómo salir. La cita `automatization/workflows/flow.js:505` coincidía.
 - **«Dos salidas, a decidir»** — se decidió que ninguna de las dos.
   - El prefijo por línea rompía el contrato `epic-NNN`, que leen 11 expresiones en 4 archivos del motor y
-    las citas que ya escribió cada empresa. Además no cubría el caso real: en `roax-ops` fueron dos sesiones,
+    las citas que ya escribió cada empresa. Además no cubría el caso real: en `acme-ops` fueron dos sesiones,
     no dos líneas de `ops line`.
   - Asignar el número al mergear pedía citar por slug hasta llegar a `main` y un paso automático que
     escribiera en la rama viva. Era demasiado para un caso de prioridad baja que nunca pasó en silencio.

@@ -114,7 +114,7 @@ prometiendo lo que nadie comprueba.
 
 ## Contexto de descubrimiento
 
-`gouduet` habilitó `allowPush: true` para que su loop pueda dejar el PR abierto al cerrar un hito —el
+`initech` habilitó `allowPush: true` para que su loop pueda dejar el PR abierto al cerrar un hito —el
 corte que ese proyecto eligió no es publicar sí o no, sino qué dispara un deploy: un push a rama no
 despliega, uno a `main` sí—. Al auditar si esa configuración era legítima frente a las reglas
 (2026-09-06), el párrafo no permitió responderlo: la llave existe y el motor la lee, pero el documento

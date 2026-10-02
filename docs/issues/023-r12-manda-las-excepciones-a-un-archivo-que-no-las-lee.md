@@ -85,7 +85,7 @@ ellos a escribir en un archivo que se reemplaza entero— pero no es una decisi�
 
 ## Contexto de descubrimiento
 
-Auditando qué reglas del sistema delegan algo al proyecto, para ver si `gouduet` las había respondido
+Auditando qué reglas del sistema delegan algo al proyecto, para ver si `initech` las había respondido
 todas (2026-09-06). Sólo dos delegan: R7 —los números de tamaño, que el proyecto ya había fijado— y R10
 —la autorización de publicación—. Al leer R12 completa para confirmar que las integraciones estaban bien
 declaradas, apareció la contradicción. En ese proyecto las excepciones estaban en `workspace.md`, o sea

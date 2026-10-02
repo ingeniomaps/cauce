@@ -123,7 +123,7 @@ desde ahí no protege de nada.
 
 ## Contexto de descubrimiento
 
-Sesión del 2026-09-22 en la instancia `roax-ops` (Cauce 0.96.0), construyendo el hito de tests y CI de
+Sesión del 2026-09-22 en la instancia `acme-ops` (Cauce 0.96.0), construyendo el hito de tests y CI de
 `backend-auth`. El commit llevaba cuatro specs nuevos y un `package.json` con dos cambios: quitar
 `--passWithNoTests` del script `test:cov` y agregar `coverageThreshold` con los valores medidos. Ninguna
 dependencia se movió y el lockfile no tenía por qué cambiar.
@@ -171,7 +171,7 @@ proponía para la primera habría abierto un hueco.** Recorriendo lo que enumer�
   frenar.
 - **Tradeoff «un script y una dependencia juntos se frenan» → confirmado**, con su prueba.
 
-Lo que el caso no preveía: **por qué el «dale» no destrabó en roax sigue sin saberse.** En este
+Lo que el caso no preveía: **por qué el «dale» no destrabó en acme sigue sin saberse.** En este
 repositorio funciona desde antes de 0.93.0 (`chat-effects.test.js`). Las causas posibles, ninguna
 comprobable desde acá: el commit lo corrió un subagente o un recorrido, donde `CHAT.said` no concede
 nada a propósito, o la instancia no tenía instalado el hook que registra el mensaje. Con este arreglo,
@@ -204,7 +204,7 @@ El hook real, `automatization/hooks/guard-dependencies.sh`, con el JSON de PreTo
 invoca el runner, sobre un repo de un banco `suelto` con `package.json` y `package-lock.json` commiteados:
 
 ```
-== script nuevo (el caso de roax):  exit=0
+== script nuevo (el caso de acme):  exit=0
 == jest coverageThreshold:          exit=0
 == version:        exit=2 BLOQUEADO: .: cambió package.json sin actualizar su lockfile.
 == dependencia:    exit=2 BLOQUEADO: …

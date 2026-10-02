@@ -309,7 +309,7 @@ negativo y va a creer que el alcance no funciona.
 
 ### Medido en producción el 2026-09-15, sobre la instancia donde nació
 
-`venotal-ops` —sidecar, la tarea `env-schema-yaml`, la misma que el contexto de descubrimiento nombra—
+`hooli-ops` —sidecar, la tarea `env-schema-yaml`, la misma que el contexto de descubrimiento nombra—
 guardó su rastro de gates, y ahí está el incidente entero. De **7 intentos de commit** registrados,
 **2 (29 %)** llevan la firma de este caso:
 

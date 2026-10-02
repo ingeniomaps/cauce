@@ -105,7 +105,7 @@ se borró, o porque se creó antes de que existiera— lo recupera en la próxim
 
 ## Contexto de descubrimiento
 
-Actualizando `venotal-ops` de 0.56.0 a 0.57.0 el 2026-09-03, siguiendo la migración que el propio
+Actualizando `hooli-ops` de 0.56.0 a 0.57.0 el 2026-09-03, siguiendo la migración que el propio
 `upgrade` indica: mover el mapa real de `AGENTS.md` a `organization/workspace.md`. El destino no
 existía. Se creó a mano copiando el molde del paquete.
 

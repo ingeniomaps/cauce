@@ -12,7 +12,7 @@ version-detectada: 0.99.2
 **🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **media**.
 
 **Prioridad media**: no pierde nada —git frena—, pero los recorridos anotan en el INBOX en cada corrida (Review,
-Build, el cierre con las lecciones), así que dos líneas en paralelo chocan seguido; en `roax-ops` pasó 1 de 4
+Build, el cierre con las lecciones), así que dos líneas en paralelo chocan seguido; en `acme-ops` pasó 1 de 4
 veces. Sale del caso 212, que resolvió la cola y dejó éste aparte porque el INBOX tiene otra vida: entradas
 sueltas, sin orden.
 

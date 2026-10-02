@@ -48,7 +48,7 @@ $ node tools/ops.js flow check product-development
 
 `ops --help` ya no lista ningún `team`: sólo `flow list`, `flow check <flow>` y `flow show <flow>`.
 
-Comprobado también en una instancia real —`venotal-ops`, actualizada a 0.58.0 el 2026-09-03—:
+Comprobado también en una instancia real —`hooli-ops`, actualizada a 0.58.0 el 2026-09-03—:
 `Makefile:66` y `Makefile:69` siguen diciendo `ops.js team`.
 
 ## Causa raíz

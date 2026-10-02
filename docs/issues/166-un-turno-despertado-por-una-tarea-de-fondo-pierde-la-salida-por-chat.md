@@ -127,7 +127,7 @@ como si la carpeta hubiera quedado autorizada.
 
 ## Contexto de descubrimiento
 
-2026-09-16, trabajo de diseño en `cubiko/servers/design/roax-dropi/` con Claude Code. Lo señaló la
+2026-09-16, trabajo de diseño en `acme/servers/design/acme-wonka/` con Claude Code. Lo señaló la
 persona, no el agente: después del tercer «pegá esto en `.ops-approval`» preguntó si no sería mejor que
 se le ofreciera aprobar por chat. El agente estaba repitiendo lo que el bloqueo le decía; el bloqueo
 estaba eligiendo la redacción equivocada.

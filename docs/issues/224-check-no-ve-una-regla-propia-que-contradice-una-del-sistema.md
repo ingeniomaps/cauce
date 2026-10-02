@@ -15,7 +15,7 @@ version-detectada: 0.99.2
 
 ## Resumen
 
-`check` reconoce las reglas por el encabezado `## <letra><número> —`. conorbi-ops escribió las suyas como `## Regla 8` y `## Regla 9`: no entran en la comparación de ids, y su «Regla 8» pide Conventional Commits en español, al revés que R8 del sistema.
+`check` reconoce las reglas por el encabezado `## <letra><número> —`. globex-ops escribió las suyas como `## Regla 8` y `## Regla 9`: no entran en la comparación de ids, y su «Regla 8» pide Conventional Commits en español, al revés que R8 del sistema.
 
 ## Reproducción
 
@@ -39,7 +39,7 @@ Que `check` avise un encabezado `##` de `rules/` que parece una regla y no tiene
 
 ## Contexto de descubrimiento
 
-Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. En `conorbi-ops/planning/rules/commits-and-release.md` y `ports.md`.
+Relevamiento de acme-ops y globex-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. En `globex-ops/planning/rules/commits-and-release.md` y `ports.md`.
 
 ## Relacionados
 

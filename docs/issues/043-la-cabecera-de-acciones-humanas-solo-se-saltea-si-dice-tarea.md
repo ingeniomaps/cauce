@@ -98,7 +98,7 @@ primer contacto con la herramienta, cuando nadie tiene todavía el modelo mental
 
 ## Contexto de descubrimiento
 
-Migrando `roax-ops` a Cauce 0.66.0 el 2026-09-07. Su tabla usaba `| Tarea Requerida |` y el archivo
+Migrando `acme-ops` a Cauce 0.66.0 el 2026-09-07. Su tabla usaba `| Tarea Requerida |` y el archivo
 tiene tres tablas, así que fueron tres errores de este tipo mezclados con 87 reales de vocabulario. Se
 resolvió renombrando las tres cabeceras a `Tarea`.
 

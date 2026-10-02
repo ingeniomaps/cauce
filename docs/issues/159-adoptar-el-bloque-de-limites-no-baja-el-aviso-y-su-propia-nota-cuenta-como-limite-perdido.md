@@ -112,13 +112,13 @@ aviso. Lo que rompe es la señal, que es el activo del 157.
 
 ## Contexto de descubrimiento
 
-2026-09-15, upgrade de la instancia ROAX (`roax-ops`) de Cauce **0.81.0 a 0.92.0**, hecho justamente para
+2026-09-15, upgrade de la instancia ACME (`acme-ops`) de Cauce **0.81.0 a 0.92.0**, hecho justamente para
 resolver la fricción de los casos 116/126/127 — que funcionó: la autorización del chat ahora se hereda.
 
 Al cerrar los avisos que quedaron después del upgrade se intentó adoptar `### Límites` tal como el 157 lo
 recomienda, y ahí apareció esto. El archivo real es
-`roax-ops/organization/workspace.md` (283 líneas), con 14 párrafos de prosa que explican precedencia de
-reglas, `runner.allowPush` y los tres archivos de `dropi/core_front` que nunca se commitean.
+`acme-ops/organization/workspace.md` (283 líneas), con 14 párrafos de prosa que explican precedencia de
+reglas, `runner.allowPush` y los tres archivos de `wonka/core_front` que nunca se commitean.
 
 De paso, dos cosas del mismo upgrade que **no** son caso porque ya están escritas o funcionaron bien:
 
@@ -180,7 +180,7 @@ y una de ellas habría roto el arreglo.
 
 - **La línea de `make links` y METHODOLOGY que el caso dejó en «Contexto de descubrimiento» — se
   comprobó contra el 044 y no es caso nuevo.** `make links` no existe en Cauce: es un target del propio
-  `roax-ops` (su `Makefile:60`) y lo que corre es `node tools/ops.js automation install`. Y nada en el
+  `acme-ops` (su `Makefile:60`) y lo que corre es `node tools/ops.js automation install`. Y nada en el
   motor valida guards contra METHODOLOGY —`grep METHODOLOGY engine/` devuelve tres usos, ninguno es esa
   validación—, así que esa comprobación es del proyecto. Del lado de Cauce lo que hay es lo que el 044
   resolvió y documentó: un archivo sin contraparte propia queda congelado con la versión del proyecto,

@@ -62,8 +62,8 @@ Decidido con Manuel el 2026-10-01 (idea E del plan de adopción).
 
 ## Contexto de descubrimiento
 
-Revisión de los repositorios de Dropi del 2026-10-01: su catálogo separa vigencia de verificación
-(`dropi-business-rules/FORMATO.md:413-425`), ratifica sólo con autoridad propia
+Revisión de los repositorios de Wonka del 2026-10-01: su catálogo separa vigencia de verificación
+(`wonka-business-rules/FORMATO.md:413-425`), ratifica sólo con autoridad propia
 (`plantillas/regla.yaml:45-58`) y trata la discrepancia como hallazgo y no como edición (`FORMATO.md:457-468`).
 
 ## Relacionados
