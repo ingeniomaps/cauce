@@ -25,3 +25,21 @@ sources:
     url: https://www.edpb.europa.eu/our-work-tools/general-guidance/guidelines-recommendations-best-practices_en
     tier: regulation
     topics: [eu-guidance, interpretation]
+  # Versión 1.0 adoptada el 2026-07-07 (comunicado EDPB del 2026-07-08), en consulta pública hasta el
+  # 2026-10-30. Test de tres criterios para "dato anónimo" — no aislamiento, no vinculación, no inferencia
+  # — que incorpora la jurisprudencia del TJUE en C-413/23 P. No citar como estándar definitivo mientras
+  # siga en consulta; releer la página oficial antes de tratarla como vigente (informe 2026-09-24, H5).
+  - name: EDPB Guidelines 02/2026 on anonymisation
+    url: https://www.edpb.europa.eu/public-consultations/guidelines-022026-on-anonymisation_en
+    tier: regulation
+    status: draft-in-consultation-until-2026-10-30
+    topics: [data-minimization, anonymisation, eu-guidance]
+  # Versión 1.0 adoptada el 2026-07-07 (mismo comunicado), en consulta pública hasta el 2026-10-30.
+  # Sostiene que el consentimiento no es base viable a escala para datos scrapeados y que el interés
+  # legítimo exige un test de tres partes. No citar como definitivo mientras siga en consulta (informe
+  # 2026-09-24, H6).
+  - name: EDPB Guidelines 03/2026 on web scraping for generative AI
+    url: https://www.edpb.europa.eu/system/files/2026-07/edpb_guidelines_2020603_webscraping_v1_en_0.pdf
+    tier: regulation
+    status: draft-in-consultation-until-2026-10-30
+    topics: [ai-processing, web-scraping, eu-guidance]

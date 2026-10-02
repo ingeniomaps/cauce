@@ -47,6 +47,17 @@ Ningún modelo de atribución es verdad. Se elige uno, se declara, y se lo trata
   de elegir el número conveniente.
 - Para decisiones grandes, contrastar con una prueba de incrementalidad —geo, holdout— antes que
   discutir modelos.
+- **Verificado (2026-09-24):** hoy no hay una API de atribución de plataforma con preservación de
+  privacidad en producción. Google retiró Attribution Reporting API, Topics API y Protected Audience
+  API en octubre de 2025 citando baja adopción
+  (https://privacysandbox.google.com/blog/update-on-plans-for-privacy-sandbox-technologies, 17 oct.
+  2025), y en abril de 2025 confirmó que Chrome no va a forzar la desaparición de las cookies de
+  terceros ni a imponerles un aviso independiente
+  (https://privacysandbox.google.com/blog/privacy-sandbox-next-steps, 22 abr. 2025), sin fecha de
+  retiro. Un modelo de atribución que asuma la desaparición inminente de las cookies de terceros, o la
+  existencia de un reemplazo de Google con preservación de privacidad ya en producción, parte de un
+  supuesto sin base actual. Esto no cambia lo de arriba: reconciliar contra datos propios y priorizar la
+  prueba de incrementalidad sigue siendo el camino, con o sin cookies de terceros.
 
 ## Contenido y promesa
 

@@ -14,4 +14,5 @@ sources:
   - {name: W3C RDF Data Cube Vocabulary, url: "https://www.w3.org/TR/vocab-data-cube/", tier: standard, topics: [measures, dimensions, metadata]}
   - {name: W3C PROV-O, url: "https://www.w3.org/TR/prov-o/", tier: standard, topics: [provenance, lineage]}
   - {name: dbt Core upgrade notes, url: "https://docs.getdbt.com/docs/dbt-versions/core-upgrade", tier: platform, topics: [materializaciones, incremental, cambios incompatibles]}
+  - {name: dbt v2 — Upgrading to v2 (GA desde 2026-09-16), url: "https://docs.getdbt.com/docs/dbt-versions/dbt-upgrade/upgrading-to-v2", tier: platform, topics: [materializaciones, incremental, cambios incompatibles, migracion-v1-v2]}
   - {name: BigQuery release notes, url: "https://cloud.google.com/bigquery/docs/release-notes", tier: platform, topics: [motor, sql, cuotas]}

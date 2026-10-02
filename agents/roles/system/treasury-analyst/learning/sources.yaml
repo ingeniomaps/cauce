@@ -10,12 +10,17 @@ rules:
 # umbrales y firmantes reales viven en organization/roles/treasury-analyst.md dentro de cada
 # instalación, y el contrato con cada proveedor manda sobre cualquier fuente de esta lista.
 sources:
-  # Abierta el 2026-08-22: lista CTP y FPAC, y enumera los dominios de la CTP —"Banking,
-  # International Treasury, Risk Management, Treasury Management, Treasury Technology"—.
-  # La URL histórica afponline.org/certification/ctp responde 301 hacia este dominio, y
-  # financialprofessionals.org/certification/ctp devuelve 500: por eso se registra el índice.
+  # Abierta el 2026-08-22, URL reemplazada el 2026-10 (H4, H5 del informe 2026-09-24): la URL original
+  # pasó a describir sólo recertificación ("Maintaining Your Credential", verificado por fetch directo
+  # el 2026-09-24) y dejó de enumerar los dominios del examen. Esta URL expone las especificaciones
+  # vigentes del CTP (archivo "CTP-26_Test_Specifications", verificado por fetch directo el 2026-09-24)
+  # con sus cinco dominios sobre 170 preguntas: (1) liquidez corporativa, 55-60; (2) estructura de
+  # capital y costo del capital de largo plazo, 33-37; (3) relaciones internas y externas, 12-17;
+  # (4) exposición a riesgo financiero, regulatorio y operacional, 23-27; (5) impacto de la tecnología
+  # en tesorería, 23-27. La sub-ruta financialprofessionals.org/certification/ctp sigue devolviendo 500
+  # (verificado 2026-09-24); por eso se cita la URL alternativa y no la del dominio principal.
   - name: AFP Certified Treasury Professional
-    url: https://www.financialprofessionals.org/certification
+    url: https://ctpcert.financialprofessionals.org/overview/ctp-test-specifications
     tier: profession
     topics: [treasury-management, liquidity, banking, international-treasury, treasury-technology]
   # Abierta el 2026-08-22. Define efectivo y equivalentes de efectivo y la clasificación en
@@ -56,10 +61,34 @@ sources:
     url: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32015L2366
     tier: regulation
     topics: [safeguarding, client-funds, payment-institutions]
+  # Agregada el 2026-10 (H2 del informe 2026-09-24): el Consejo de la UE publicó el 2026-04-23 los
+  # textos de compromiso final de PSD3 y el Reglamento de Servicios de Pago (PSR), que fusionan PSD2 y
+  # la segunda Directiva de Dinero Electrónico y reemplazarán a PSD2. Registro: Documentado por
+  # corroboración, no por lectura directa — consilium.europa.eu devolvió 403 el 2026-09-24; el hallazgo
+  # se corrobora con seis publicaciones legales independientes (A&L Goodbody, Lexology ×2, Morrison
+  # Foerster, PwC Legal, Arthur Cox, regulationtomorrow.com) que coinciden en fecha y contenido. A
+  # 2026-09-24 todavía no hay adopción formal ni publicación en el Diario Oficial; una vez publicado el
+  # período transitorio es de 18 meses. Mientras no se adopte, PSD2 sigue siendo la norma vigente para
+  # custodia de fondos de terceros y esta fuente no la reemplaza — hacerlo no es automático: revisitar
+  # tras la adopción formal, y ese día esta fuente pasa a reemplazar, no a complementar, a la de PSD2.
+  - name: PSD3 / Reglamento de Servicios de Pago (PSR) — aún no adoptada
+    url: https://www.consilium.europa.eu/en/press/press-releases/2026/04/23/
+    tier: regulation
+    status: not-yet-adopted
+    topics: [safeguarding, client-funds, payment-institutions]
   # Abierta el 2026-08-22. PSA I-060923-PSA del 2023-06-09: "Use secondary channels or two-factor
   # authentication to verify requests for changes in account information."
   - name: FBI IC3 Business Email Compromise PSA I-060923-PSA
     url: https://www.ic3.gov/PSA/2023/PSA230609
+    tier: standard
+    topics: [payment-fraud, beneficiary-verification, out-of-band-verification]
+  # Agregada el 2026-10 (H3 del informe 2026-09-24), opcional: aviso complementario del IC3, fechado
+  # 2024-09-11, verificado por fetch directo el 2026-09-24. El propio texto se presenta como "an update
+  # and companion piece to Business Email Compromise PSA [I-060923-PSA]" —la entrada de arriba— y
+  # mantiene la misma recomendación de verificar por canal secundario o doble factor. No reemplaza a la
+  # PSA de 2023: la corrobora con una fecha más reciente.
+  - name: FBI IC3 Business Email Compromise PSA240911 (companion, 2024-09-11)
+    url: https://www.ic3.gov/PSA/2024/PSA240911
     tier: standard
     topics: [payment-fraud, beneficiary-verification, out-of-band-verification]
 
@@ -69,8 +98,14 @@ sources:
 pending:
   - name: ISO 20022 mensajería de pagos
     url: https://www.iso20022.org/
-    why: agotó el tiempo de espera dos veces, igual que swift.com/standards/iso-20022; sin la ficha
-      del Registration Authority el contrato no cita nombres de mensaje (pain, pacs, camt)
+    why: devuelve HTTP 403 (verificado 2026-09-24; antes agotaba el tiempo de espera), igual que
+      swift.com/standards/iso-20022; sin la ficha del Registration Authority el contrato no cita
+      nombres de mensaje (pain, pacs, camt). Swift pospuso de SR2026 a SR2027 (o una entrega
+      posterior) todo el paquete de pagos transfronterizos —MT Category 1, CBPR+, SCORE+, SwiftGo—
+      por adopción insuficiente de direcciones estructuradas (anuncio del 2026-08-27; Documentado por
+      corroboración de cinco publicaciones de industria independientes, swift.com devolvió 403 el
+      2026-09-24). El vencimiento ya no es 2026-11-14; queda por confirmar antes de fin de 2026 para
+      el alcance de SR2027.
     since: 2026-08-22
   - name: GAFI FATF Recomendación 16 transferencias electrónicas
     url: https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Fatf-recommendations.html

@@ -16,7 +16,7 @@ sources:
   - name: ICC Advertising and Marketing Communications Code
     url: https://iccwbo.org/business-solutions/the-icc-advertising-and-marketing-communications-code/
     tier: standard
-    topics: [claims, honesty, substantiation, disclosure]
+    topics: [claims, honesty, substantiation, disclosure, ai]
   - name: EDPB Guidelines on targeting and consent
     url: https://www.edpb.europa.eu/our-work-tools/general-guidance/guidelines-recommendations-best-practices_en
     tier: regulation
@@ -25,3 +25,7 @@ sources:
     url: https://www.ftc.gov/business-guidance/advertising-marketing
     tier: regulation
     topics: [claims, endorsements, substantiation, disclosure]
+  - name: FTC Trade Regulation Rule on the Use of Consumer Reviews and Testimonials (16 C.F.R. Part 465)
+    url: https://www.ftc.gov/legal-library/browse/federal-register-notices/16-cfr-part-465-trade-regulation-rule-use-consumer-reviews-testimonials-final-rule
+    tier: regulation
+    topics: [reviews, incentives, disclosure]

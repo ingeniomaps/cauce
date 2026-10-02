@@ -288,6 +288,35 @@ mergear: `gh pr view <n> --json mergeStateStatus` —`CLEAN` es la afirmación d
 `gh api repos/.../commits/<sha>/check-runs`. El #65 llegó a tener cinco corridas, cuatro rojas, y estaba
 listo para mergear.
 
+#### Relanzar el ensamblaje del mes
+
+Volver a correr `phase=propose` en el mismo mes **choca con las ramas que dejó la corrida anterior**. El job
+crea `automation/<cargo>-<período>` desde `main` y la empuja sin forzar, así que si ya existe el push se
+rechaza como `non-fast-forward` y el cargo sale en rojo (caso 220). Antes de relanzar, se borran las ramas
+de los cargos que se van a repetir. Esas ramas no tienen nada que no salga de `main`: la propuesta compuesta y
+los sellos se rehacen solos, porque en `main` los informes siguen sin sellar.
+
+Se borra **sólo** lo que cumple las tres condiciones. Las que no las cumplen se miran a mano:
+
+1. **Un solo commit sobre `main`, de `github-actions[bot]`.** Un commit de una persona es trabajo que no se
+   rehace solo.
+2. **Sólo archivos de su cargo**: la propuesta del período, los sellos de `learning/reports/` y el
+   `status: consolidated` de `evaluations/results/`.
+3. **Ningún PR, ni abierto ni cerrado.** Si ya tiene PR, ese cargo no se relanza: se resuelve en el PR.
+
+       rama=automation/<cargo>-<AAAA-MM>
+       git fetch origin "$rama"
+       git log --format='%an %s' origin/main..FETCH_HEAD          # uno solo, del bot
+       git diff --name-only origin/main...FETCH_HEAD               # sólo su cargo
+       gh pr list --head "$rama" --state all                       # vacío
+       gh api --method DELETE "repos/ingeniomaps/cauce/git/refs/heads/$rama"
+
+Después se lanza el workflow. Para un cargo es `-f agent=<cargo> -f phase=propose`. Para varios se lanza
+**de a uno, esperando a que termine el anterior**: el workflow tiene un solo lugar en la cola, y lanzarlos
+juntos cancela los que esperan. Sin `agent`, la corrida recompone a todos los cargos con informes sin sellar
+en `main`, incluidos los que ya tienen PR abierto, y esos chocan con su rama. Entre el 2026-10-01 y el 02 se relanzó así el
+ensamblaje entero —53 ramas borradas y relanzadas— y no hubo choques.
+
 ## El recorrido de un caso de `docs/issues/`
 
 Un caso pasa por cuatro pasos, en este orden, y ninguno se saltea porque el anterior parezca haber

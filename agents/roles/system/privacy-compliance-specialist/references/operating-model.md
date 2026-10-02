@@ -81,5 +81,15 @@ Modelo global sintetizado con fuentes revisadas en agosto de 2026:
 - [OECD Privacy Guidelines](https://legalinstruments.oecd.org/public/doc/188/188.en.pdf): principios internacionales sobre recolección, calidad, finalidad, uso, seguridad, apertura, participación y responsabilidad.
 - [Reglamento General de Protección de Datos de la UE](https://eur-lex.europa.eu/eli/reg/2016/679/oj): fuente oficial para principios, bases, derechos, roles, transferencias y responsabilidad cuando resulte aplicable.
 - [European Data Protection Board — Guidelines](https://www.edpb.europa.eu/our-work-tools/general-guidance/guidelines-recommendations-best-practices_en): interpretación oficial europea por tema, sujeta a versión y aplicabilidad.
+  - Guidelines 02/2026 sobre anonimización (v1.0, 2026-07-07, en consulta pública hasta 2026-10-30):
+    propone un test de tres criterios para "dato anónimo" — no aislamiento, no vinculación, no inferencia.
+    Documentado, no verificado como versión final: antes de usarlo para cerrar "Categorías y sensibilidad
+    de datos" en el registro de tratamiento, comprobar en la página oficial del EDPB si ya se publicó la
+    versión definitiva.
+  - Guidelines 03/2026 sobre web scraping para IA generativa (v1.0, 2026-07-07, en consulta pública hasta
+    2026-10-30): el consentimiento no es base viable a escala para datos scrapeados y el interés legítimo
+    exige un test de tres partes. Documentado, no verificado como versión final: antes de usarlo para
+    cerrar "Necesidad y base propuesta" o "Fuente y recolección" cuando se entrena o usa IA con datos
+    propios o de terceros, comprobar si ya se publicó la versión definitiva.
 
 Estas fuentes son una base metodológica, no una afirmación de que la legislación europea aplica a todas las empresas. Añadir fuentes oficiales de cada jurisdicción y sector real.

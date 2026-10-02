@@ -15,3 +15,21 @@ sources:
   - {name: ISO IEC 23894:2023 AI risk management, url: "https://webstore.iec.ch/en/publication/82914", tier: standard, topics: [ai-risk, integration, lifecycle]}
   - {name: MLflow documentation, url: "https://mlflow.org/docs/latest/index.html", tier: platform, topics: [registro, alias, serving]}
   - {name: MLflow releases, url: "https://github.com/mlflow/mlflow/releases", tier: project, topics: [versiones, cambios incompatibles]}
+  # Nota de uso (2026-09-24, H1, verificado): para saber si existe una versión nueva, consultar primero
+  # esta misma página (o `api.github.com/repos/mlflow/mlflow/releases`) — `mlflow.org/releases` y el
+  # `CHANGELOG.md` de `master` tardaron al menos siete días en reflejar el release 3.16.1, que GitHub ya
+  # marcaba «Latest» desde el 2026-09-17. Confirmada la versión nueva ahí, recién después leer
+  # `mlflow.org/releases` o el `CHANGELOG.md` para el detalle.
+  - {name: MLflow Security Advisories, url: "https://github.com/mlflow/mlflow/security/advisories", tier: project, topics: [seguridad, cadena-de-suministro]}
+  - {name: GitHub Advisory Database (mlflow), url: "https://github.com/advisories?query=mlflow", tier: project, topics: [seguridad, cadena-de-suministro]}
+  # Nota de uso (2026-09-21 H2 y 2026-09-24 H3, verificado): no tratar «Patched versions»/«First Patched
+  # Version» de una advisory de las dos entradas anteriores como el techo de lo que esa vulnerabilidad
+  # necesita. Revisar también los PR que la propia advisory referencia y el cuerpo del release
+  # correspondiente: CVE-2026-64849 referenciaba un PR de endurecimiento (#25568) sin release etiquetado
+  # todavía, y CVE-2026-2635 (CVSS 9.8) sigue mostrando `3.8.0rc0` en GitHub Advisory y en `osv.dev` meses
+  # después de que 3.16.1 lo endureciera. Esto es la práctica verificada por este cargo en dos CVE
+  # independientes, no una garantía sobre cómo MLflow va a publicar en el futuro.
+  # Nota de uso (2026-09-14 H4, verificado): para ese cruce, leer el `CHANGELOG.md` desde `master` o desde
+  # la página de releases, nunca desde un tag pineado — el tag `v3.16.0` apuntaba a un commit anterior al
+  # que agregó la propia entrada de 3.16.0 al `CHANGELOG.md`.
+  - {name: CISA Known Exploited Vulnerabilities, url: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json", tier: advisory, topics: [known-exploitation, prioritization]}

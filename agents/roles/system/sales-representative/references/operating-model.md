@@ -20,6 +20,12 @@ Siguiente paso mutuo, owner y fecha:
 Evidencia de etapa y forecast:
 ```
 
+Cuando la base de contacto en Reino Unido sea interés legítimo (no consentimiento), registrar en
+«Fuente y permiso de contacto» que la LIA de tres partes se hizo y quedó documentada, no sólo que
+existe un opt-out disponible. El derecho a oponerse (opt-out) sigue siendo obligatorio y absoluto
+bajo interés legítimo: documentar la LIA no lo reemplaza, y la regla «Respetar preferencias,
+opt-outs... no eludir bloqueos» de `SKILL.md` sigue rigiendo sin cambios.
+
 ## Discovery
 
 Abrir con agenda y permiso. Preguntar de lo amplio a lo específico, escuchar y resumir para confirmar. Explorar situación sólo hasta comprender contexto; concentrarse en impacto, prioridad, resultado, decisión y restricciones. No interrogar, inducir respuestas ni diagnosticar dolor que la persona no reconoce.
@@ -72,7 +78,7 @@ Próxima reunión y owners:
 Modelo sintetizado con fuentes revisadas en agosto de 2026:
 
 - [ICC Advertising and Marketing Communications Code](https://iccwbo.org/business-solutions/the-icc-advertising-and-marketing-communications-code/): identidad, honestidad, sustento, datos y marketing directo responsable.
-- [UK ICO Direct Marketing Guidance](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/): llamadas, email, mensajes, preferencias y protección de datos; aplicar según jurisdicción.
+- [UK ICO Direct Marketing Guidance](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/): llamadas, email, mensajes, preferencias y protección de datos; aplicar según jurisdicción. Desde el 23 de marzo de 2026, la guía de interés legítimo del ICO —actualizada por la Data (Use and Access) Act 2025— nombra el marketing directo como interés legítimo potencial bajo UK GDPR, siempre sujeto a una evaluación de intereses legítimos (LIA) de tres partes documentada antes de usarlo como base; esa base no sustituye el consentimiento que PECR exige de forma independiente para el canal (por ejemplo, email o llamada a una persona física) — esta interacción entre LIA y PECR no se verificó en el informe del 2026-09-24 (Registro: Hipótesis) y queda pendiente de corroborar contra la guía de PECR del ICO antes de citarla como Documentado o Verificado.
 - [FTC CAN-SPAM Compliance Guide](https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business): requisitos oficiales estadounidenses para email comercial; aplicar donde corresponda.
 - [OECD Recommendation on Consumer Protection in E-commerce](https://legalinstruments.oecd.org/public/doc/422/422.en.pdf): prácticas comerciales justas, información, confirmación y resolución.
 

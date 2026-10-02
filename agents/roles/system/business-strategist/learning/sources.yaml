@@ -16,6 +16,7 @@ sources:
   - name: UK Government Green Book
     url: https://www.gov.uk/government/publications/the-green-book-appraisal-and-evaluation-in-central-government
     tier: regulation
+    edition: "2026-02-05"
     topics: [options, appraisal, costs, benefits, risk]
   - name: ISO 56002
     url: https://committee.iso.org/standard/68221.html

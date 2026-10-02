@@ -22,6 +22,6 @@ sources:
     tier: standard
     topics: [risk-management, governance, decisions]
   - name: IAASB Standards and resources
-    url: https://www.iaasb.org/publications-resources
+    url: https://www.iaasb.org/standards-pronouncements
     tier: standard
     topics: [audit, evidence, estimates, professional-skepticism]

@@ -26,7 +26,7 @@ No forzar cuatro secciones vacías; crear sólo el contenido que la audiencia ne
 
 ## API y código
 
-Usar la especificación y tests compatibles con la implementación. Documentar versión/base URL, autenticación sin credenciales reales, operación, parámetros, schemas, ejemplos, códigos/errores, paginación, rate limits, idempotencia, webhooks y deprecación. Ejecutar ejemplos en un entorno seguro o declarar explícitamente que no fueron ejecutados.
+Usar la especificación y tests compatibles con la implementación. Documentar versión/base URL, autenticación sin credenciales reales, operación, parámetros, schemas, ejemplos, códigos/errores, paginación, rate limits, idempotencia, webhooks, respuestas en streaming (SSE, JSON Lines) cuando la operación las expone, y deprecación. Ejecutar ejemplos en un entorno seguro o declarar explícitamente que no fueron ejecutados.
 
 ## Runbook
 

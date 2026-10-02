@@ -43,6 +43,14 @@ sources:
     topics: [presentation, disclosure, chart-of-accounts-grouping]
     # Emitido en abril de 2024, vigente para periodos que empiezan desde el 2027-01-01, reemplaza a
     # IAS 1. Hay dos textos vigentes según el periodo que se registre: anotar cuál se aplicó.
+    # Seguimiento abierto desde 2026-09-24, sin corroborar en la corrida de 2026-10 por falta de
+    # acceso de red en esa sesión: ocho decisiones tentativas de agenda de la IFRIC sobre IFRS 18 e
+    # IFRS 10 (IFRIC Update de junio de 2026) tocan presentation/disclosure/chart-of-accounts-grouping
+    # y cerraron su plazo de comentarios el 2026-09-09; pudieron finalizarse en la reunión del
+    # 15-16/09/2026. Antes de la próxima corrida, revisar el índice de IFRIC Updates
+    # (https://www.ifrs.org/news-and-events/updates/ifric/) buscando el boletín de septiembre de 2026:
+    # si confirma el texto tentativo sin cambios, borrar esta nota sin otra acción; si el texto final
+    # se aparta de lo tentativo, abrir una propuesta nueva citando la decisión de agenda finalizada.
   - name: IFRS Practice Statement 2 (Making Materiality Judgements)
     url: https://www.ifrs.org/issued-standards/list-of-standards/materiality-practice-statement/
     tier: standard

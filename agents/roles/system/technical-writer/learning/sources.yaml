@@ -24,4 +24,4 @@ sources:
   - name: OpenAPI Specification
     url: https://spec.openapis.org/oas/latest.html
     tier: standard
-    topics: [api, http, schema, reference, versioning]
+    topics: [api, http, schema, reference, versioning, streaming]

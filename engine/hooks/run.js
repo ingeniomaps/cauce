@@ -19,6 +19,7 @@ const CF = require('./confirm')
 const { secretsShell } = require('./secrets-shell')
 const { opsConfig, opsConfigShell } = require('./ops-config')
 const { jiraAdf } = require('./jira')
+const { testWorkers } = require('./workers')
 
 function planningDrift(input) {
   const root = opsRoot(input)
@@ -59,6 +60,7 @@ const guards = {
   'plan-first': files.planFirst,
   'secrets-read': files.secretsRead,
   'jira-adf': jiraAdf,
+  'test-workers': testWorkers,
   chat: chat.record,
   'planning-drift': planningDrift,
 }
@@ -66,7 +68,7 @@ const guards = {
 // Grupos por evento: un runner corre el grupo entero en un solo proceso en lugar de un guard por hook.
 const hookGroups = {
   'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'verify', 'shell-boundary',
-    'secrets-shell', 'ops-config-shell'],
+    'secrets-shell', 'ops-config-shell', 'test-workers'],
   'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
     'integration-snapshot', 'test-evidence', 'plan-first', 'ops-config'],
   'pre-read': ['secrets-read'],
@@ -116,6 +118,11 @@ const hookMetadata = [
     name: 'secrets-read',
     event: 'PreToolUse · read',
     purpose: 'Bloquea leer con la herramienta del runner una credencial conocida o declarada.',
+  },
+  {
+    name: 'test-workers',
+    event: 'PreToolUse · shell',
+    purpose: 'Frena jest o vitest llamados sin cota de workers, que lanzan tantos procesos como núcleos.',
   },
   {
     name: 'jira-adf',

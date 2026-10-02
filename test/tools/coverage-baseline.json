@@ -334,6 +334,11 @@
     "branches": 91,
     "functions": 100
   },
+  "engine/hooks/workers.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/integrations/proposals.js": {
     "lines": 100,
     "branches": 89,
