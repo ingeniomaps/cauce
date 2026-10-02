@@ -756,9 +756,10 @@ jobs:
           gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
             --title "$AGENT weekly research — $stamp" \
             --body "Investigación de la profesión. No modifica SKILL.md ni propone cambios: alimenta la propuesta mensual."
-          # Un informe que no pide tocar ningún archivo del cargo no tiene nada que una persona pueda
-          # decidir, y cuesta la misma revisión que uno que sí. Se le arma auto-merge: GitHub lo mergea
-          # cuando pasen los checks que el ruleset exige, sin que nadie mire.
+          # Todo informe se mergea solo. Un informe no cambia ningún contrato: lo que una persona decide es
+          # la propuesta que lo consolida el 1, y ahí firma. Pedir además revisión del informe era mirar dos
+          # veces lo mismo, y el que no se mergeaba antes del 1 se perdía para la propuesta (caso 246).
+          # `propone` sigue contestándose: ahora dice si el informe alimenta la propuesta, no quién lo mira.
           #
           # Sigue siendo un PR por cargo y no uno agrupado, que era la otra forma. Agrupar ahorra
           # corridas y reintroduce lo que la matriz de este job ya evita: uno que falla se lleva a los
@@ -767,17 +768,15 @@ jobs:
           #
           # No garantiza que se mergee sin intervención: las corridas de un PR que abre el bot nacen
           # en `action_required` y esperan autorización, así que el auto-merge queda armado y espera a
-          # que alguien la dé. Aun así ahorra la mitad del trabajo —una autorización en vez de una
-          # autorización y un merge— y se dispara solo el día que esas corridas arranquen solas.
+          # que alguien la dé. Esa autorización es mecánica —que el diff sea sólo el informe— y no una
+          # lectura; `AGENTS.md` dice cómo se da.
           # La rama la borra `.github/scripts/prune-merged-branches.sh`, a mano, no esta línea.
           # `--delete-branch` borra «after merge» y acá el merge cae horas más tarde, sin `gh` presente,
           # así que ese momento no llega; el auto-merge que queda registrado ni siquiera tiene un campo
           # donde el pedido pudiera viajar. Se dejó de pasar la bandera para no volver a leerla como una
           # garantía (caso 147).
-          if grep -qx 'propone: no' "$report"; then
-            gh pr merge "$branch" --auto --merge
-            echo "::notice::$AGENT no propone cambios: auto-merge armado."
-          fi
+          gh pr merge "$branch" --auto --merge
+          echo "::notice::$AGENT: informe con auto-merge armado ($(grep -m1 '^propone:' "$report"))."
 
   # Este job no habla con ningún modelo: consolida informes ya commiteados con el CLI y abre el PR.
   # Por eso puede escribir sin la separación que exige `research`.

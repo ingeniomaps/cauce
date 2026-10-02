@@ -76,9 +76,9 @@ ${decided(discardedProposals(path.join(learning, 'proposals')))}
 
   · Contestá «propone» en el frontmatter, con «si» o con «no». Es «si» cuando el informe pide tocar
     algún archivo del cargo —SKILL.md, sources.yaml, references/, un caso— y «no» cuando lo hallado
-    no cambia ningún contrato, aunque «Recomendación» explique largamente por qué. Un «no» se
-    mergea sin revisión humana: no hay nada que decidir. Ante la duda va «si», que sólo cuesta una
-    mirada.
+    no cambia ningún contrato, aunque «Recomendación» explique largamente por qué. Decide si el
+    informe alimenta la propuesta del mes: un «no» no la abre. Ante la duda va «si», que sólo cuesta
+    que la propuesta lo considere.
 
 Este comentario vive fuera de toda sección a propósito — dentro de «Recomendación» viajaría a cada
 propuesta consolidada. -->

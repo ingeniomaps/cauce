@@ -234,22 +234,19 @@ test('el frontmatter que vuelve se comprueba, no se supone', { skip: process.pla
   }
 })
 
-// El ahorro que ese campo compra, y por qué es un PR por cargo y no uno agrupado.
-test('un informe que no propone nada se mergea sin revisión humana', () => {
+// Caso 246.
+test('todo informe se mergea solo: la decisión humana es la firma de la propuesta', () => {
   const paso = workflowStep(workflow('agent-learning'), 'Open research pull request')
 
-  assert.match(paso, /grep -qx 'propone: no'/, 'el auto-merge se decide por el campo, no por el texto')
-  assert.match(paso, /gh pr merge .*--auto/, 'y se arma con auto-merge, no con un merge directo')
+  assert.match(paso, /gh pr merge .*--auto/, 'se arma con auto-merge, no con un merge directo')
+  assert.equal(/grep -qx 'propone: no'/.test(paso), false, 'el auto-merge no depende del campo')
+  const merge = paso.match(/^( *)gh pr merge .*$/m)
+  assert.equal(merge[1], '', 'ni de ninguna otra condición: va al nivel del paso, no dentro de un if')
   // Acá no se pide el borrado de la rama, y es a propósito: `--delete-branch` borra «after merge», y
   // con `--auto` el comando sale al armar —el merge cae horas después, sin `gh`—, así que la bandera
-  // prometía algo que no pasaba. La versión anterior de esta prueba la exigía escrita y quedaba en
-  // verde mientras nueve ramas sobrevivían: comprobaba el texto del workflow, no la rama (caso 147).
-  const merge = paso.match(/^\s*gh pr merge .*$/m)[0]
-  assert.equal(/--delete-branch/.test(merge), false,
+  // prometía algo que no pasaba (caso 147).
+  assert.equal(/--delete-branch/.test(merge[0]), false,
     'no se pide el borrado por una vía que no llega a ejecutarlo')
-  // Lo que no debe pasar: que un informe que sí propone algo se mergee sin que nadie lo mire.
-  const rama = paso.slice(paso.indexOf("grep -qx 'propone: no'"))
-  assert.equal(/propone: si/.test(rama), false, 'el «si» no dispara ningún merge')
 })
 
 // Una fuente que no se pudo abrir y una que no cambió producen el mismo informe —«sin novedades»— y no
