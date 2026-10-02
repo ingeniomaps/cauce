@@ -11,11 +11,20 @@ rules:
 # dentro de cada instalación. Ninguna fuente de acá fija un plazo de retención.
 sources:
   # Ficha del IEC Webstore abierta el 2026-08-22: edición 1.0 del 2017-03-31, **retirada** el
-  # 2026-08-20 y reemplazada por ISO/IEC 38505-1:2026, cuya ficha no se pudo abrir. `iso.org`
-  # devuelve 403, así que lo legible es la ficha del IEC. El texto de la norma no se leyó: lo
-  # verificado es su identidad y su estado, no su contenido. Citarla exige nombrar la edición.
+  # 2026-08-20. `iso.org` devuelve 403, así que lo legible es la ficha del IEC. El texto de la norma
+  # no se leyó: lo verificado es su identidad y su estado, no su contenido. Citarla exige nombrar la
+  # edición. La sucesora, ISO/IEC 38505-1:2026, tiene ficha propia desde el 2026-09-14 (ver entrada
+  # siguiente); hasta esa fecha esta nota decía que no se podía abrir.
   - name: ISO IEC 38505-1
     url: https://webstore.iec.ch/en/publication/60383
+    tier: standard
+    topics: [data-governance, accountability, value-risk-constraint, lifecycle]
+  # Ficha del IEC Webstore abierta el 2026-09-14 (informe de esa fecha, H2; reconfirmada 2026-09-21 y
+  # 2026-09-24): edición 2.0, publicada 2026-08-20 —mismo día de la retirada de la edición 2017, arriba—,
+  # comité ISO/IEC JTC 1/SC 40, sin marca de retiro. El texto de la norma no se leyó: lo verificado es la
+  # ficha, no el contenido.
+  - name: ISO IEC 38505-1:2026
+    url: https://webstore.iec.ch/en/publication/116038
     tier: standard
     topics: [data-governance, accountability, value-risk-constraint, lifecycle]
   # Ficha abierta el 2026-08-22: edición 4.0 del 2023-01-16, JTC 1/SC 32. Texto no leído.
@@ -26,6 +35,12 @@ sources:
   # Página oficial de DAMA International abierta el 2026-08-22: presenta la 2.ª edición y anuncia un
   # proyecto DMBOK 3.0 iniciado en 2025. El cuerpo del libro no se leyó; la página misma aclara que
   # el marco es un subconjunto curado y no un inventario exhaustivo.
+  # Verificado el 2026-09-24: la misma página trae además «In 2024 DAMA launched the DAMA DMBOK® 2.0
+  # Revision», con foco ampliado en ética de datos, gobierno de datos, integración/interoperabilidad y
+  # tecnologías emergentes («What's New in the 2nd Edition»). Hipótesis, no corroborada: si ese texto es
+  # un cambio reciente de la página o ya estaba sin haberse transcrito en los cuatro informes anteriores
+  # no se pudo establecer (la herramienta de fetch no expone fecha de modificación). No se toca `tier` ni
+  # `topics` hasta que se corrobore.
   - name: DAMA-DMBOK
     url: https://www.dama.org/cpages/body-of-knowledge
     tier: profession
@@ -61,21 +76,29 @@ sources:
     url: https://openlineage.io/docs/spec/object-model
     tier: project
     topics: [lineage, events, dataset-identity, facets]
+  # Ficha del IEC Webstore abierta el 2026-08-31, reconfirmada el 2026-09-14, 2026-09-21 y 2026-09-24:
+  # edición 1.0, publicada 2018-05-16, comité ISO/IEC JTC 1/SC 40. Sin marca de retiro. El texto de la
+  # norma no se leyó.
+  - name: ISO IEC TR 38505-2:2018
+    url: https://webstore.iec.ch/en/publication/63224
+    tier: standard
+    topics: [data-governance, accountability, lifecycle]
+  # Ficha abierta en committee.iso.org el 2026-09-14 (iso.org/standard/63086.html sigue en 403) y
+  # reconfirmada el 2026-09-21 y 2026-09-24: edición 1, publicada 2016-11, comité ISO/TC 184/SC 4,
+  # revisada y confirmada en 2022 («remains current»). El texto de la norma no se leyó.
+  - name: ISO 8000-61:2016
+    url: https://committee.iso.org/standard/63086.html
+    tier: standard
+    topics: [data-quality, process-reference-model, maturity]
+  # Ficha abierta en committee.iso.org el 2026-09-14 (iso.org/standard/62542.html sigue en 403) y
+  # reconfirmada el 2026-09-21 y 2026-09-24: edición 2, publicada 2016-04, comité ISO/TC 46/SC 11,
+  # revisada y confirmada en 2021. El texto de la norma no se leyó: por sí sola no fija un plazo de
+  # retención para ninguna jurisdicción, que sigue siendo lo que dice la nota de arriba de este archivo.
+  - name: ISO 15489-1:2016
+    url: https://committee.iso.org/standard/62542.html
+    tier: standard
+    topics: [retention, disposition, records-management]
 
 # Pendientes por falta de URL verificada, no por falta de relevancia: `require_primary_source: true`
 # exige fuente primaria comprobada, no número de norma.
-pending:
-  - name: ISO IEC 38505-1:2026 gobierno del dato
-    url: https://www.iso.org/standard/87195.html
-    why: es la edición vigente y su ficha no se pudo abrir; iso.org devuelve 403 desde este entorno
-    since: 2026-09-07
-  - name: ISO IEC 38505-2 implicaciones en la gestión
-    why: no se encontró ninguna ficha legible que permita verificar edición ni vigencia
-    since: 2026-09-07
-  - name: ISO 8000-61 gestión de calidad de datos
-    url: https://committee.iso.org/standard/63086.html
-    why: es de un comité ISO sin ficha en el IEC Webstore; queda por comprobar si este host la sirve
-    since: 2026-09-07
-  - name: ISO 15489-1 gestión de documentos
-    why: retención, disposición y bloqueo por litigio; sin ficha en el IEC Webstore y iso.org bloquea
-    since: 2026-09-07
+pending: []
