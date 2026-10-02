@@ -13,7 +13,11 @@ rules:
 # comprobado es que la URL responde y que el título de la página es el que se cita; el texto completo
 # se leyó sólo en las marcadas con «leída».
 sources:
-  # Leída. Es la raíz de la guía; las tres siguientes son sus páginas.
+  # Leída. Es la raíz de la guía; las tres siguientes son sus páginas. El repositorio
+  # (github.com/google/eng-practices) está archivado por su dueño desde 2025-11-21 y es de sólo
+  # lectura —últimos commits sobre `review/`: 2024-05-10—, así que mientras siga archivado es un
+  # snapshot congelado: no hace falta reabrir estas cuatro páginas buscando cambios salvo que
+  # Google la desarchive o publique un reemplazo (documentado en el informe del 2026-09-24, H1).
   - name: Google Code Review Developer Guide
     url: https://google.github.io/eng-practices/review/
     tier: profession
@@ -53,7 +57,11 @@ sources:
     url: https://dora.dev/capabilities/streamlining-change-approval/
     tier: profession
     topics: [peer-review, segregation-of-duties, change-approval, cab]
-  - name: MADR — Markdown Any Decision Records
+  # Nombre vigente desde 4.0.0 (2024-09-17): la página oficial revirtió el acrónimo al de origen
+  # —«Markdown Architectural Decision Records»— después de haber usado «Markdown Any Decision
+  # Records» entre 2022-05-17 (3.0.0-beta) y 2024-09-02 (documentado por la sección «News» de
+  # adr.github.io/madr/, verificada en el informe del 2026-09-24, H2).
+  - name: MADR — Markdown Architectural Decision Records
     url: https://adr.github.io/madr/
     tier: profession
     topics: [decision-records, options, consequences]
@@ -65,13 +73,22 @@ sources:
     url: https://standards.ieee.org/ieee/42010/6846/
     tier: standard
     topics: [architecture-description, architecture-decisions, scope-boundary]
+  # Inactive-Reserved desde 2019-11-07: la ficha con JavaScript (/ieee/1028/4266/, la que esta lista
+  # tenía como pendiente) devuelve 404 desde al menos 2026-09-24; la ficha alternativa sin
+  # JavaScript de la misma norma sí carga completa y declara ese estado. No es norma vigente: se
+  # cita sólo como referencia histórica de la taxonomía de revisiones (management review,
+  # technical review, inspection, walkthrough, audit), nunca para remitir un requisito de proceso
+  # activo (documentado en el informe del 2026-09-24, H3).
+  - name: IEEE 1028-2008 — Software Reviews and Audits (inactiva desde 2019-11-07)
+    url: https://standards.ieee.org/standard/1028-2008.html
+    tier: standard
+    topics: [review-taxonomy, inspection, walkthrough, audit, historical-reference]
 
 pending:
-  - name: IEEE 1028 Software Reviews and Audits
-    url: https://standards.ieee.org/ieee/1028/4266/
-    why: responde 200 pero la ficha se arma con JavaScript y sirve el título genérico del sitio, así
-      que no se pudo confirmar ni el número ni la edición vigente
-    since: 2026-08-22
   - name: ISO IEC IEEE 24765 vocabulario de ingeniería de software
-    why: fijaría los términos «revisión técnica» y «auditoría»; falta una URL primaria que responda
+    why: fijaría los términos «revisión técnica» y «auditoría»; las dos URL primarias de iso.org
+      (/standard/71952.html, edición 2017; /standard/92875.html, committee draft de una revisión
+      en curso) siguen en 403 en la tercera corrida consecutiva (2026-08-16, 2026-08-22,
+      2026-09-24). La edición 2017 consta como documentada —no verificada en fuente primaria— por
+      ANSI webstore e IEEE Xplore.
     since: 2026-08-22

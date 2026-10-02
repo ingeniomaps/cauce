@@ -181,7 +181,7 @@ Modelo sintetizado con fuentes primarias abiertas y comprobadas en agosto de 202
 - [DORA — Streamlining change approval](https://dora.dev/capabilities/streamlining-change-approval/):
   la aprobación por pares dentro del proceso de desarrollo, y la segregación de funciones —quien
   aprueba no es quien escribe— como el control que sostiene la firma.
-- [MADR — Markdown Any Decision Records](https://adr.github.io/madr/): forma mínima para dejar una
+- [MADR — Markdown Architectural Decision Records](https://adr.github.io/madr/): forma mínima para dejar una
   decisión escrita, con contexto, opciones y consecuencias.
 - [IEEE/ISO/IEC 42010-2022](https://standards.ieee.org/ieee/42010/6846/): descripción de arquitectura
   y decisiones de arquitectura; delimita lo que este cargo consume como restricción y no redefine.
