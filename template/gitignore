@@ -27,6 +27,10 @@ planning/.grant-log
 planning/wip/*.md
 !planning/wip/README.md
 
+# El staging de una integración es de quien sincroniza: con `candidateAssigneeEnv`, lo que una persona curó
+# es contexto para otra, y compartido se pisaban (caso 222).
+integrations/*/staging/
+
 # Las rutas escribibles que son de una sola máquina: la memoria del runner de una persona, un proyecto suyo.
 # En `ops.config.json` viajarían a todo el que clona; acá se suman sólo donde existen.
 ops.config.local.json

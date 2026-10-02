@@ -233,7 +233,7 @@ async function sync(root, name, options = {}) {
   fs.mkdirSync(staging, { recursive: true })
   const existing = new Map(stagingItems(root, name).map((item) => [item.key, item]))
   const seen = new Set()
-  const result = { created: 0, refreshed: 0, preserved: 0, removed: 0, missing: 0 }
+  const result = { created: 0, refreshed: 0, preserved: 0, foreign: 0, removed: 0, missing: 0 }
   for (const item of items) {
     const itemKey = safeSegment(item.key, `${name}: item.key`)
     if (seen.has(itemKey)) throw new Error(`${name}: item duplicado ${itemKey}`)
@@ -249,7 +249,14 @@ async function sync(root, name, options = {}) {
     const draftFile = path.join(desiredDir, 'draft.md')
     const previous = fs.existsSync(snapshotFile) ? readJson(snapshotFile) : null
     const previousDraft = fs.existsSync(draftFile) ? fs.readFileSync(draftFile, 'utf8') : ''
-    const role = S.roleOf(item, config)
+    // Un candidato que alguien ya curó no pasa a contexto porque sincronice otra persona: el contexto se
+    // regenera, y con el staging compartido eso pisaba la curación ajena sin decirlo (caso 222). Se queda
+    // candidato con su draft, y el resumen lo cuenta aparte.
+    const curated = previous && previous.sync.role === 'candidate'
+      && sha256(previousDraft) !== previous.sync.draftBaseHash
+    const computed = S.roleOf(item, config)
+    const role = computed === 'context' && curated ? 'candidate' : computed
+    if (role !== computed) result.foreign++
     const state = role === 'context' ? 'context' : 'pending'
     let draft
     let base

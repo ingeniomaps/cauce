@@ -1,12 +1,12 @@
 ---
-caso: 230
+caso: 243
 titulo: check no comprueba que el commit de done exista
 estado: abierto
 prioridad: media
 version-detectada: 0.99.2
 ---
 
-# 230 — `check` valida la forma del `commit:` de una entrada de `done/`, no que el sha exista
+# 243 — `check` valida la forma del `commit:` de una entrada de `done/`, no que el sha exista
 
 **🔴 abierto** · detectado en 0.99.2 · prioridad **media**.
 
@@ -41,5 +41,7 @@ Resolver el repositorio por el `service:` de la entrada contra `workspaceRoots` 
 Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01, buscando qué construyeron por fuera de lo que Cauce instala. `roax-ops/planning/check.js` §14.
 
 ## Relacionados
+
+- Se abrió como 230 y se renumeró a 243: otra sesión publicó antes su propio 230.
 
 - R9 — el artefacto manda.

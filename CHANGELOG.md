@@ -98,6 +98,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **El sync de Jira de una persona ya no pisa lo que curó otra.** Con `candidateAssigneeEnv`, un ítem que
+  alguien curó como candidato pasaba a contexto cuando sincronizaba otra persona, y su borrador se regeneraba
+  sin decirlo. Ahora sigue candidato con su curación, y el resumen del sync lo cuenta aparte. El staging pasa a
+  ser de cada máquina: una instancia nueva lo trae en `.gitignore`, y si la tuya es anterior, agregá la línea
+  `integrations/*/staging/`.
 - **Review recibe la aceptación contra la que revisa.** Se le pedía revisar «por aceptación» sin dársela,
   y la buscaba en el BACKLOG, donde no está lo que Ready refinó en la misma corrida.
 - **La entrada de `done/` trae el `review` y el `lane` completos.** El agente que cierra la tarea resumía el
