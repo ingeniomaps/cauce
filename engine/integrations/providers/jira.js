@@ -3,6 +3,7 @@
 // Adaptador Jira: lectura y normalización, sin escritura remota.
 
 const JIRA_KEY = /^[A-Z][A-Z0-9_]*-\d+$/
+const { SERVICE_FROM } = require('../state')
 
 function validateConfig(config, errors) {
   if (typeof config.enabled !== 'boolean') errors.push('jira: enabled debe ser boolean')
@@ -16,6 +17,14 @@ function validateConfig(config, errors) {
   if (!config.auth || !config.auth.tokenEnv) errors.push('jira: falta auth.tokenEnv')
   if (config.auth && config.auth.type === 'basic' && !config.auth.emailEnv) {
     errors.push('jira: basic exige auth.emailEnv')
+  }
+  // Un valor mal escrito no daba error: dejaba a todos los ítems sin servicio y el borrador culpaba a Jira.
+  if (config.serviceFrom !== undefined && !SERVICE_FROM.includes(config.serviceFrom)) {
+    errors.push(`jira: serviceFrom debe ser ${SERVICE_FROM.join('|')}`)
+  }
+  if (config.serviceLabelPrefix !== undefined
+    && (typeof config.serviceLabelPrefix !== 'string' || !config.serviceLabelPrefix.trim())) {
+    errors.push('jira: serviceLabelPrefix debe ser el prefijo de la etiqueta, como "service:"')
   }
   if (config.writeBack !== false) {
     errors.push('jira: writeBack debe permanecer false; no existe un ejecutor remoto aprobado')
