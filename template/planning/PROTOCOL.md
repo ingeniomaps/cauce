@@ -79,7 +79,7 @@ invariantes.
    sostiene o se declara criterio, y dice si se comprobó: lo que no se comprobó se registra y no manda a
    corregir.
 10. Verify: ejecutar los gates declarados por el servicio y registrar exit codes.
-11. QA: probar la aceptación por el camino que usa un consumidor real.
+11. QA: probar la aceptación por el camino que usa un consumidor real, como dice `QA.md`.
 12. Commit: stage explícito y commits verificables, uno por naturaleza del diff.
 13. Done: sacar la tarea de la cola, escribir su evidencia en `done/<slug>.md`, limpiar WIP, soltar
     el reclamo y cerrar la épica si no le queda ninguna historia abierta.
