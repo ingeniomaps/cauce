@@ -18,6 +18,10 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Editar por MCP la descripción de una tarjeta de Jira en markdown se frena.** El markdown reemplaza la
+  descripción entera y pierde menciones, tablas y casillas. En Claude Code, el guard `jira-adf` frena
+  `editJiraIssue` de cualquier servidor MCP cuando cambia la descripción sin ADF, y se aprueba como el resto
+  si de verdad querés reemplazarla por texto. Llega con `automation install`.
 - **Jira se puede leer con un agente, sin un token en disco.** Con `"transport": "agent"` en
   `integrations/jira/config.json`, la integración no pide credenciales: el agente lee con el MCP de Atlassian
   y la cuenta de quien está en la sesión, y entrega lo leído con `integration sync . jira --payload <archivo>`.

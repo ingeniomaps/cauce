@@ -120,8 +120,12 @@ runner, mientras la lógica se prueba y mantiene una sola vez en `engine/hooks/r
 | `pre-shell` | destructive, git-add, dependencies, governance, verify, shell-boundary, secrets-shell, ops-config-shell | `guard-shell.sh` |
 | `pre-files` | secrets, generated, workspace-boundary, engine, migrations, integration-snapshot, test-evidence, plan-first, ops-config | `guard-files.sh` |
 | `pre-read` | secrets-read | `guard-secrets-read.sh` |
+| `pre-mcp` | jira-adf | `guard-jira-adf.sh` |
 | `prompt` | chat | `guard-chat.sh` |
 | `stop` | planning-drift | `guard-planning-drift.sh` |
+
+`pre-mcp` corre sólo en Claude Code, sobre las herramientas de un servidor MCP que nombra su matcher
+(`mcp__.*__editJiraIssue`): Codex y Gemini no instalan ese hook.
 
 `prompt` corre sobre el mensaje de la persona —`UserPromptSubmit` en Claude y Codex, `BeforeAgent` en
 Gemini— y no sobre una herramienta, y su shim sale siempre con 0.
