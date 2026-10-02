@@ -25,3 +25,15 @@ sources:
     url: https://webstore.iec.ch/en/publication/11246
     tier: standard
     topics: [data-quality, requirements, measures, evaluation]
+  - name: ASA Statement on the Role of Statistics in Data Science and Artificial Intelligence
+    url: https://www.amstat.org/docs/default-source/amstat-documents/the-role-of-statistics-in-data-science-and-artificial-intelligence.pdf
+    tier: profession
+    topics: [ai, ml, data-science, causality, uncertainty]
+  - name: ASA Statement on Ethical AI — Principles for Statistical Practitioners
+    url: https://www.amstat.org/docs/default-source/amstat-documents/asa-statement-on-ethical-ai-principles-for-statistical-practitioners.pdf
+    tier: profession
+    topics: [ethics, ai, accountability, transparency, fairness]
+  - name: ISO/IEC 5259-1:2024 data quality for analytics and machine learning (overview)
+    url: https://committee.iso.org/standard/81088.html
+    tier: standard
+    topics: [data-quality, ai, ml, analytics]
