@@ -212,12 +212,13 @@ propuesta, que es lo único del ciclo que cambia un cargo. Lo que queda acá es 
    El filtro va por `conclusion` y no por `status`: una corrida que espera figura `status=completed` con
    `conclusion=action_required`, así que buscarla por estado devuelve cero sobre corridas que sí están ahí.
 
-   **Cuando el auto-merge los cierra, borrar sus ramas**, una vez y a mano:
+   **Las ramas que deja el auto-merge las borra `prune-branches.yml`**, el 26 y el 3 de cada mes: cuando
+   el merge lo hace el bot, GitHub no las borra solo (caso 183). Si hace falta antes, se corre a mano con
+   `gh workflow run prune-branches.yml` o con el script directo:
 
        GH_TOKEN="$GITHUB_PAT_CAUCE" bash .github/scripts/prune-merged-branches.sh
 
-   Por qué a mano y no en un workflow lo dice el encabezado del script. Lo que se quede sin borrar porque
-   todavía no se mergeó lo levanta la pasada de la tanda siguiente.
+   Lo que todavía no se mergeó no se toca y lo levanta la pasada siguiente.
 
 Hay que hacerlo antes del 1 de cada mes. La consolidación lee los informes de `main`, así que un PR sin
 mergear no entra a la propuesta mensual y su hallazgo se pierde.

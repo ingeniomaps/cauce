@@ -32,8 +32,8 @@ concurrency:
 # Fijado a propósito y no al flotante `ubuntu-latest`, para que un cambio de imagen sea un commit y no una
 # sorpresa en una corrida. Pasó de 24.04 a 26.04 cuando la imagen salió estable (actions/runner-images#14747),
 # después de comprobar que trae lo que estos workflows usan: Node 24, npm, git, jq, gh y Python. El mismo valor
-# se repite, sin este comentario, en agent-learning.yml, open-pr.yml, release-pr.yml, release.yml y
-# sign-proposal.yml.
+# se repite, sin este comentario, en agent-learning.yml, open-pr.yml, prune-branches.yml, release-pr.yml,
+# release.yml y sign-proposal.yml.
 jobs:
   ci:
     runs-on: ubuntu-26.04

@@ -128,10 +128,12 @@ test('un solo workflow cubre a todos los agentes', () => {
   // workflow por cargo, y con un patrón —«ninguno se llama como un cargo»— eso pasaría inadvertido el
   // día que alguien los llame de otra forma. El costo es que agregar uno obliga a nombrarlo acá, que es
   // exactamente lo que se quiere: `sign-proposal.yml` entra porque firmar es un acto de una persona
-  // sobre un PR, no un paso del ciclo de ningún cargo.
+  // sobre un PR, no un paso del ciclo de ningún cargo, y `prune-branches.yml` porque barre las ramas de
+  // todos los cargos a la vez.
   assert.deepEqual(
     files,
-    ['agent-learning.yml', 'ci.yml', 'open-pr.yml', 'release-pr.yml', 'release.yml', 'sign-proposal.yml'],
+    ['agent-learning.yml', 'ci.yml', 'open-pr.yml', 'prune-branches.yml', 'release-pr.yml', 'release.yml',
+      'sign-proposal.yml'],
     'no vuelve a haber un workflow por agente',
   )
 })
@@ -474,4 +476,15 @@ test('proponer sin credencial avisa y deja el ciclo como estaba', () => {
   // un modelo, y lo que faltaba era conectarlo, no decidir de dónde sale la credencial.
   assert.ok(cuerpo.indexOf('CLAUDE_CODE_OAUTH_TOKEN="$OAUTH"') < cuerpo.indexOf('ANTHROPIC_API_KEY="$APIKEY"'),
     'la suscripción primero y la API key de respaldo')
+})
+
+// Caso 247.
+test('las ramas que deja el auto-merge del bot se barren dos veces al mes, no una vez por PR', () => {
+  const source = workflow('prune-branches')
+  const crons = [...source.matchAll(/^\s*- cron: '([^']+)'/gm)].map((hit) => hit[1].split(' ')[2])
+  assert.deepEqual(crons.sort(), ['26', '3'], 'después de la investigación del 24 y del ensamblaje del 1')
+  assert.match(source, /^ {2}workflow_dispatch:$/m, 'y se puede correr a mano')
+  assert.equal(/pull_request|^ {2}push:/m.test(source), false, 'no corre por cada PR')
+  assert.match(source, /bash \.github\/scripts\/prune-merged-branches\.sh/, 'usa el script que decide qué se borra')
+  assert.match(source, /^ {6}contents: write$/m, 'escribe sólo el job que borra')
 })
