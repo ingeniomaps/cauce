@@ -4,3 +4,4 @@ Una fila por propuesta cerrada: cuándo, cuál, qué se decidió —aplicarla o 
 
 | Fecha | Propuesta | Decisión | Aprobó | Cambio aplicado |
 |---|---|---|---|---|
+| 2026-10-02 | `learning/proposals/2026-10.md` | Aprobada | @ingeniomaps (Manuel Pinzon) | `references/operating-model.md`, `learning/sources.yaml` |

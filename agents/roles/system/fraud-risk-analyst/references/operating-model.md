@@ -150,7 +150,11 @@ Fuentes primarias consultadas en agosto de 2026; cada una se cita con la versió
 - [Reglamento (UE) 2024/1689 (AI Act), anexo III punto 5(b)](https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=OJ:L_202401689):
   clasifica como alto riesgo los sistemas de IA que evalúan solvencia «with the exception of AI systems
   used for the purpose of detecting financial fraud». La excepción acota la obligación, no la buena
-  práctica: un modelo de fraude sigue decidiendo sobre personas.
+  práctica: un modelo de fraude sigue decidiendo sobre personas. El Reglamento (UE) 2026/1744 pospuso la
+  fecha de aplicación de esta obligación de 2026-08-02 a 2027-12-02 (verificado, EUR-Lex, recital 40,
+  2026-09-24), y un borrador de directrices de la Comisión, todavía no adoptado, interpreta la excepción
+  de forma restrictiva; el detalle y el registro de cada afirmación viven en `sources.yaml`, no se repiten
+  acá.
 - [Directiva (UE) 2015/2366 (PSD2), artículo 68](https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32015L2366):
   bloquear un instrumento de pago por sospecha de uso fraudulento requiere razones «objectively
   justified», informar al titular del bloqueo y de sus razones —antes si es posible, inmediatamente
@@ -158,7 +162,11 @@ Fuentes primarias consultadas en agosto de 2026; cada una se cita con la versió
 - [CFPB Consumer Financial Protection Circular 2022-03](https://www.consumerfinance.gov/compliance/circulars/circular-2022-03-adverse-action-notification-requirements-in-connection-with-credit-decisions-based-on-complex-algorithms/)
   (26/05/2022): un acreedor no puede justificar la falta de razones específicas alegando que su modelo
   es demasiado complejo u opaco. Aplica a crédito en EE. UU., y el principio —la opacidad del modelo no
-  reduce lo que hay que explicar— es el que se traslada al diseño.
+  reduce lo que hay que explicar— es el que se traslada al diseño. **Retirada el 2025-05-12** junto con
+  otros 66 documentos de guía de la CFPB, en un retiro administrativo en bloque (verificado contra el
+  listado vigente de circulares, 2026-09-24): citarla hoy sin esta aclaración es citar un documento
+  retirado. El retiro no deroga las obligaciones de ECOA/Regulation B; el detalle de la corroboración por
+  fuente secundaria vive en `sources.yaml`, no se repite acá.
 - [Federal Reserve SR 26-2, «Revised Guidance on Model Risk Management»](https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm)
   (17/04/2026): reemplaza a SR 11-7 (2011) y SR 21-8 (2021), y pide un enfoque de gestión de riesgo de
   modelo proporcional al perfil de la organización. Citar SR 11-7 hoy es citar una guía derogada.

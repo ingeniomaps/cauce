@@ -13,3 +13,4 @@ sources:
   - {name: ISO 21502 project management, url: "https://committee.iso.org/sites/tc258/home/projects/published/iso-21502.html", tier: standard, topics: [project, adaptive, predictive, hybrid]}
   - {name: ISO 31000 risk management, url: "https://committee.iso.org/standard/65694.html", tier: standard, topics: [risk, principles, process]}
   - {name: PMI standards and Program Management Fifth Edition, url: "https://www.pmi.org/standards/", tier: profession, topics: [program, benefits, collaboration, principles]}
+  - {name: PMI Standard for Artificial Intelligence in Portfolio, Program, and Project Management, url: "https://www.pmi.org/about/press-media/2026/pmi-publishes-worlds-first-global-standard-for-ai-in-project-work", tier: profession, topics: [ai governance, lifecycle, guardrails]}

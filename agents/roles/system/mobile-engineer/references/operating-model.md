@@ -66,5 +66,6 @@ Modelo sintetizado con fuentes revisadas en agosto de 2026:
 - [Apple Human Interface Guidelines — Accessibility](https://developer.apple.com/design/human-interface-guidelines/accessibility): diseño accesible y adaptación a preferencias del sistema.
 - [OWASP MASVS](https://mas.owasp.org/MASVS/): controles verificables para almacenamiento, criptografía, autenticación, red, plataforma, código, resiliencia y privacidad.
 - [W3C Mobile Accessibility](https://www.w3.org/WAI/standards-guidelines/mobile/): aplicación de WCAG y otras guías de accesibilidad al contexto móvil.
+- [CISA Known Exploited Vulnerabilities Catalog](https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json): confirmación de explotación activa para priorizar parches de plataforma y dispositivo; su ausencia no descarta un CVE, sólo no confirma explotación activa todavía.
 
 Verificar siempre documentación oficial del framework, SDK y versiones reales de cada empresa.

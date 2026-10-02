@@ -174,6 +174,97 @@ diseño — eso vive en el commit y en el código.
 - **`ux-designer`**: Siete puntos, A–B del informe 2026-09-24 y C–G de las cinco brechas que encontraron las
   corridas de casos. Todos son aditivos: ninguno borra ni reescribe una oración existente, salvo C y G, que
   intercalan una cláusula dentro de una oración… (propuesta `2026-10.md`).
+- **`project-manager`**: **Archivo:** `agents/roles/system/project-manager/learning/sources.yaml` **Sección:**
+  la lista `sources:` (hoy líneas 11–26). Agregar una quinta entrada al final de la lista, después de la de
+  `Government Functional Standard GovS 002` (línea… (propuesta `2026-10.md`).
+- **`accounting-specialist`**: Fuente: hallazgo H1 del informe `learning/reports/2026-09-24.md`. Ese informe
+  señaló esta corrida (2026-10) como la indicada para retomar la pregunta que dejó abierta: si la IFRIC
+  finalizó, en su reunión del 15–16/09/2026, las ocho… (propuesta `2026-10.md`).
+- **`ai-governance-lead`**: No se toca `SKILL.md`, `evaluations/expected-behaviors.yaml` ni ningún caso: los
+  dos cambios son de catálogo de fuentes y de referencia, no de contrato del cargo (propuesta `2026-10.md`).
+- **`ai-product-manager`**: **Único archivo a tocar:
+  `agents/roles/system/ai-product-manager/references/operating-model.md`.** (propuesta `2026-10.md`).
+- **`analytics-engineer`**: No se modifica `SKILL.md` ni `evaluations/expected-behaviors.yaml`: ningún informe
+  consolidado (2026-09-07, 2026-09-14, 2026-09-21, 2026-09-24) propone una conducta nueva a exigir o prohibir
+  — las cinco secciones de «Hallazgos» lo dicen… (propuesta `2026-10.md`).
+- **`business-strategist`**: Dos archivos, los dos derivados de H1. H2, H3 y H4 piden explícitamente "sin
+  acción" (ver arriba), así que no se toca `SKILL.md`, ni las entradas de ISO 56002, OECD Strategic Foresight
+  o Strategyzer en `sources.yaml`, ni ningún caso de… (propuesta `2026-10.md`).
+- **`cloud-architect`**: Ningún hallazgo individual pide tocar `SKILL.md`, `operating-model.md` ni
+  `sources.yaml`: las cuatro corridas lo dijeron cada una por su cuenta. Pero una misma recomendación de
+  método se repitió, de forma independiente, en las cuatro —… (propuesta `2026-10.md`).
+- **`customer-support-specialist`**: Tres ediciones, las tres por agregado sobre el texto existente (ningún
+  párrafo actual se reescribe). `SKILL.md` no se toca: ninguno de los tres hallazgos aplicables (H1, H2, H3)
+  pide un cambio de conducta nueva, sólo de las fuentes que la… (propuesta `2026-10.md`).
+- **`database-administrator`**: Agregar una entrada a
+  `agents/roles/system/database-administrator/learning/sources.yaml`, al final de la lista `sources:` (después
+  de la entrada «PostgreSQL release notes», línea 17), sin tocar ninguna de las seis entradas existentes
+  (propuesta `2026-10.md`).
+- **`data-engineer`**: No modifica `SKILL.md` ni `evaluations/expected-behaviors.yaml`. Agrega tres fuentes
+  nuevas a `learning/sources.yaml` y sus tres líneas correspondientes a «Fundamento externo» de
+  `references/operating-model.md`, consolidando H1/2026-08-31… (propuesta `2026-10.md`).
+- **`data-governance-steward`**: No toca `SKILL.md`, `expected-behaviors.yaml` ni ningún caso: lo que sigue es
+  `learning/sources.yaml` y `references/operating-model.md`, ambos archivos de registro del propio cargo
+  (propuesta `2026-10.md`).
+- **`data-scientist`**: **1. `agents/roles/system/data-scientist/learning/sources.yaml`** — agregar tres
+  entradas al final de la lista `sources:` (después de la entrada `ISO IEC 25012:2008 data quality model`,
+  líneas 24-27), sin tocar `rules:` ni las cuatro… (propuesta `2026-10.md`).
+- **`developer-relations-engineer`**: Un solo archivo, una sola línea:
+  `agents/roles/system/developer-relations-engineer/references/operating-model.md`, sección «## Fundamento
+  externo», primera viñeta (línea 38) (propuesta `2026-10.md`).
+- **`financial-controller`**: No se modifica `SKILL.md`. Los dos archivos que cambian son
+  `learning/sources.yaml` y `references/operating-model.md` (propuesta `2026-10.md`).
+- **`finops-engineer`**: **Único archivo: `learning/sources.yaml`.** Agregar una entrada nueva al final de la
+  lista `sources:`, después de la de "AWS EC2 Capacity Blocks for ML pricing" (la última hoy). No se
+  reescribe, reordena ni re-wrappea ninguna entrada… (propuesta `2026-10.md`).
+- **`fraud-risk-analyst`**: Las seis piezas del informe tocan sólo `learning/sources.yaml` y
+  `references/operating-model.md` —citas y plazos del fundamento externo—, nunca `SKILL.md`: ningún hallazgo
+  cambia una regla del modelo, un límite o un criterio de entrega… (propuesta `2026-10.md`).
+- **`growth-marketer`**: Dos archivos, los dos aditivos — ninguno reformula una instrucción existente;
+  `SKILL.md` no se toca. Las dos vienen literales de la «Recomendación» de `learning/reports/2026-09-24.md`
+  (H1, H3, H4); nada sale de los hallazgos de evaluación… (propuesta `2026-10.md`).
+- **`integrations-engineer`**: **Archivo: `agents/roles/system/integrations-engineer/learning/sources.yaml`.**
+  (propuesta `2026-10.md`).
+- **`kyc-aml-specialist`**: Un solo archivo: `agents/roles/system/kyc-aml-specialist/learning/sources.yaml`.
+  No se modifica `SKILL.md` ni `evaluations/expected-behaviors.yaml` — los tres informes consolidados
+  (2026-09-14, 2026-09-21, 2026-09-24) lo dicen… (propuesta `2026-10.md`).
+- **`mlops-engineer`**: Único archivo tocado: `agents/roles/system/mlops-engineer/learning/sources.yaml`. No
+  se modifica `SKILL.md`, `references/operating-model.md` ni `evaluations/`: las cinco corridas citadas en
+  «Hallazgos» piden soporte de fuente, no una regla… (propuesta `2026-10.md`).
+- **`mobile-engineer`**: Ninguno de los candidatos de «Hallazgos» pide una regla nueva — los dos informes lo
+  dicen explícitamente (09-07 candidato 1, 09-24 candidato 1: «sigue sin ser urgente convertirlo en una regla
+  nueva»). `SKILL.md` queda intacto. Lo que sigue… (propuesta `2026-10.md`).
+- **`partnerships-manager`**: **1. `agents/roles/system/partnerships-manager/references/operating-model.md`,
+  sección «Fundamento externo», línea de ISO 44001.** (propuesta `2026-10.md`).
+- **`privacy-compliance-specialist`**: Agrega sobre dos archivos existentes, sin reescribir ninguna sección
+  vigente. No toca `SKILL.md`, `expected-behaviors.yaml` ni los casos: ese cambio, si hace falta, se decide
+  aparte en «Evaluación» (propuesta `2026-10.md`).
+- **`procurement-manager`**: No modifica `SKILL.md`, `evaluations/expected-behaviors.yaml` ni ningún caso. Los
+  dos cambios son aditivos: agregan texto sin tocar un carácter del que ya existe (propuesta `2026-10.md`).
+- **`product-manager`**: No se modifica `SKILL.md`. Los dos cambios son aditivos sobre un archivo de
+  referencia y un comentario de datos; el núcleo del contrato (los seis flujos, los Límites, la Entrega
+  mínima) no se toca (propuesta `2026-10.md`).
+- **`release-manager`**: Dos cambios aditivos en `references/operating-model.md` —uno en § Readiness (H1) y
+  otro en § Rollout progresivo (H2, sólo la regla que ya tiene su segunda fuente)— y una fuente nueva en
+  `learning/sources.yaml`. Ninguna línea vigente se… (propuesta `2026-10.md`).
+- **`sales-representative`**: Un solo archivo, `references/operating-model.md`, dos inserciones. Ninguna
+  reemplaza texto existente — las dos agregan una frase o un párrafo nuevo. No se modifica `SKILL.md` ni
+  `evaluations/` (H1 ya razona por qué no hace falta) (propuesta `2026-10.md`).
+- **`solutions-engineer`**: **Archivo:**
+  `agents/roles/system/solutions-engineer/references/operating-model.md`. **Sección:** `## Control de calidad`
+  (hoy ocho preguntas, líneas 45-53 del archivo vigente). **Operación:** agregar una pregunta nueva entre la
+  de POC y la… (propuesta `2026-10.md`).
+- **`tech-lead`**: Los cuatro hallazgos del informe del 2026-09-24 son correcciones de datos sobre fuentes ya
+  citadas; ninguno toca `SKILL.md` ni `evaluations/expected-behaviors.yaml`, y este cambio tampoco lo hace
+  (propuesta `2026-10.md`).
+- **`technical-program-manager`**: Dos cambios, los dos aditivos sobre archivos de referencia/catálogo.
+  Ninguno toca `SKILL.md`, `evaluations/expected-behaviors.yaml` ni los casos existentes (propuesta
+  `2026-10.md`).
+- **`technical-writer`**: Agregado a dos archivos existentes; no se crea ninguno y no se toca `SKILL.md`
+  (propuesta `2026-10.md`).
+- **`treasury-analyst`**: Único archivo tocado: `agents/roles/system/treasury-analyst/learning/sources.yaml`.
+  `SKILL.md`, `expected-behaviors.yaml` y los casos no se tocan. Cuatro cambios, todos aditivos salvo el
+  primero (reemplazo de URL de una fuente que cambió de… (propuesta `2026-10.md`).
 
 ## [0.99.2] - 2026-09-28
 

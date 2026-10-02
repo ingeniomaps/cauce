@@ -28,6 +28,14 @@ del artefacto. Sin fijar niveles acá: cuál se alcanza y contra qué marco se m
 la misma razón por la que este contrato no fija motores de base de datos — una tabla de niveles envejece
 peor que el criterio de declararlos.
 
+La atestación de procedencia del artefacto certifica de dónde salió el build —builder, workflow, digest—,
+no que el proceso que lo construyó estuviera aislado del entorno que lo rodeaba: nada en builder+digest
+distingue un build cuyo proceso no pudo tocar las credenciales de firma de uno que sí pudo. El nivel SLSA de
+Build Track alcanzado —o la constancia de que no se declaró ninguno— es lo que marca esa distinción, sin que
+este contrato fije cuál hace falta: igual que con la procedencia del origen, lo que se exige es declarar el
+nivel, no alcanzar uno en particular. Dar la fila de procedencia por cerrada con builder y digest, sin esa
+declaración, deja la misma brecha abierta aunque la atestación esté firmada y el digest coincida.
+
 ## Rollout progresivo
 
 ```markdown
@@ -41,6 +49,13 @@ Resultado y evidencia:
 ```
 
 Comparar canary con baseline relevante y contemplar volumen suficiente, latencia de efectos y segmentos críticos. Detener ante telemetría insuficiente.
+El baseline relevante es uno concurrente —una cohorte de control que corre la versión anterior al mismo
+tiempo que el canary—, no una comparación antes/después: el tiempo transcurrido es una de las mayores
+fuentes de cambio en las métricas observadas, y compararlas contra un período anterior confunde ese cambio
+con el del candidato. Cuando no hay cohorte de control posible —la plataforma no permite exponer un
+porcentaje, o la urgencia no da margen para correrla, como en un hotfix— un baseline de la ventana
+inmediatamente anterior sigue siendo mejor que ninguno, pero se declara como aproximación, no como
+equivalente al concurrente.
 
 ## Rollback y migraciones
 

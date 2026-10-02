@@ -15,3 +15,4 @@ sources:
   - {name: NIST NICE Framework SP 800-181 Rev 1, url: "https://csrc.nist.gov/pubs/sp/800/181/r1/final", tier: standard, topics: [database-administration, tasks, knowledge, skills]}
   - {name: PostgreSQL security advisories, url: "https://www.postgresql.org/support/security/", tier: advisory, topics: [cve, parches, versiones afectadas]}
   - {name: PostgreSQL release notes, url: "https://www.postgresql.org/docs/release/", tier: platform, topics: [versiones, cambios de comportamiento, migración]}
+  - {name: PgBouncer security releases, url: "https://www.pgbouncer.org/", tier: advisory, topics: [connection-pooling, cve, parches]}

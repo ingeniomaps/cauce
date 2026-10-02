@@ -35,7 +35,7 @@ Verificar producto/capability, integración, datos, seguridad, privacidad, perfo
 
 - [ISO 21503:2022](https://committee.iso.org/standard/82868.html): guía vigente y transversal para conceptos, roles, responsabilidades y prácticas de gestión de programas.
 - [ISO 21502:2020](https://committee.iso.org/sites/tc258/home/projects/published/iso-21502.html): guía adaptable a enfoques predictivos, iterativos, incrementales, adaptativos o híbridos para componentes/proyectos.
-- [ISO 31000:2018](https://committee.iso.org/standard/65694.html): principios y proceso de gestión de riesgo; confirmada en 2023 aunque ISO indica futura revisión.
+- [ISO 31000:2018](https://committee.iso.org/standard/65694.html): principios y proceso de gestión de riesgo; confirmada en 2023. Tiene un sucesor en desarrollo —ISO/CD 31000, Edición 3, etapa de cierre del período de comentarios, proyecto aprobado 2024-10-11, sin fecha de publicación objetivo (documentado por dos búsquedas independientes sobre `iso.org/standard/88574.html`; la lectura directa devolvió 403)—. La edición 2018 sigue siendo la única vigente mientras el sucesor no se publique.
 - **PMI Standard for Program Management — Fifth Edition** (sin enlace: `pmi.org` bloquea): estándar 2024 basado en principios, beneficios y colaboración entre componentes.
 
 Estas fuentes orientan el sistema de coordinación; la gobernanza, autoridad, delivery approach y contexto de cada empresa prevalecen.

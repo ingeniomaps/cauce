@@ -124,6 +124,60 @@ sources:
     url: https://www.uiaf.gov.co/index.php/Noticiasycomunicados-19ago
     tier: standard
     topics: [politically-exposed-persons, reporting-deadlines]
+  # Promulgado por el Congreso de Guatemala; vigente desde el 17-sep-2026, sustituye a los Decretos
+  # 67-2001 y 58-2005. Registro: documentado por convergencia de fuentes secundarias independientes
+  # —Pirani Risk, Central Law, LexLatin, BLP Legal, AMCHAM Guatemala, Vesco Consultores, la cuenta
+  # oficial @CongresoGuate y tres notas de prensa leídas directamente (Infobae 20-sep-2026, La Hora,
+  # Prensa Libre)— más el contenido indexado del propio PDF alojado en minfin.gob.gt, cuyo nombre de
+  # archivo dice «Decreto-16-2026-1.pdf» pero cuyo texto indexado arranca «decreto número 15-2026».
+  # No verificado: ninguna fuente primaria (congreso.gob.gt, dca.gob.gt, el PDF de minfin.gob.gt) se
+  # pudo abrir en cinco corridas consecutivas (2026-08-31 a 2026-09-24) — 403 o `socket hang up` en
+  # cada intento—. La URL exacta del PDF tampoco quedó registrada completa en ningún informe (el
+  # slug se vio truncado en la corrida del 2026-09-07, y el nombre de archivo discrepa del número de
+  # decreto que el propio contenido indexado declara), así que el campo `url` abajo apunta al host
+  # en vez de inventar una ruta: corroborar la ruta exacta antes de depender de este campo. No
+  # debería sostener una obligación concreta en el informe de una instancia guatemalteca hasta que
+  # alguien lea el texto oficial completo.
+  #
+  # Dos datos adicionales, documentados y no verificados: (a) el 20-sep-2026 tres abogados
+  # presentaron ante la Corte de Constitucionalidad una demanda de inconstitucionalidad contra los
+  # arts. 3 y 42 (secreto profesional), sin resolución conocida a la fecha de este cambio — este
+  # cargo no califica si prospera, sólo registra que existe; (b) el plazo del reglamento operativo
+  # queda en conflicto entre dos fuentes secundarias sin reconciliar: Prensa Libre (informe del
+  # 2026-09-21) describe dos hitos —propuesta de IVE/SIB al Ejecutivo hasta el 30-sep-2026,
+  # aprobación del Ejecutivo hasta el 17-mar-2027—, mientras que La Hora (informe del 2026-09-24),
+  # citando el art. 127, describe un único plazo de seis meses (hasta el 17-mar-2027) para que
+  # IVE/SIB *presenten* el reglamento. Ninguna de las dos se contrastó contra el texto del decreto;
+  # no corresponde a este cargo resolver cuál es la correcta sin leerlo directamente.
+  - name: Decreto 15-2026 de Guatemala
+    url: https://minfin.gob.gt/
+    tier: standard
+    topics: [account-opening, cdd, beneficial-ownership, reporting-obligations]
+  # Modifica el art. 17 e incorpora los arts. 17-A, 17-B y 17-C al Acuerdo 012-2015, sobre las
+  # formas válidas de notificación (personal, correo electrónico, edicto) dentro del procedimiento
+  # administrativo sancionador. Registro: documentado por fuente secundaria, consistente en las tres
+  # corridas que lo revisaron (2026-09-14 a 2026-09-24); el PDF primario descarga pero esta
+  # herramienta no le extrae texto, así que el contenido no está verificado contra el documento
+  # mismo. No confundir con el Acuerdo 7-2026 (comisiones bancarias al consumidor, 10-sep-2026): es
+  # otro documento y no es materia KYC/AML.
+  - name: Superintendencia de Bancos de Panamá — Acuerdo 4-2026
+    url: https://www.superbancos.gob.pa/documentos/leyes_y_regulaciones/acuerdos/2026/Acuerdo_04-2026.pdf
+    tier: standard
+    topics: [enforcement, administrative-sanctions, notifications]
+  # Feed RSS público de la base de sanciones financieras de la Unión Europea. Se viene consultando
+  # en cada corrida semanal desde el informe del 2026-09-07, con el mismo tratamiento que OFAC SDN y
+  # la lista consolidada de la ONU, sin haber quedado declarada acá hasta ahora. Registro: verificado
+  # para el mecanismo de acceso (el feed carga y trae metadatos de archivo: PDF, CSV v1.0, CSV v1.1,
+  # XML/XSD v1.0 y v1.1); el 22-sep-2026 los cinco archivos se regeneraron por primera vez desde que
+  # se sigue esta fuente (antes fechados 5-ago-2026). No verificado el contenido de ese cambio: el
+  # feed no trae qué personas o entidades entraron o salieron, y comparar las versiones del CSV/XML
+  # contra la anterior queda fuera del alcance de una corrida de seguimiento. Esta fuente no sustituye
+  # la lectura de la base completa ni acredita por sí sola cobertura de contenido sobre ninguna
+  # cartera.
+  - name: EU Financial Sanctions Database — feed RSS
+    url: https://webgate.ec.europa.eu/fsd/fsf/public/rss
+    tier: advisory
+    topics: [sanctions-screening, eu-jurisdiction]
 
 # Autoridades por país. Sólo entran las que se pudieron abrir: una autoridad citada de memoria es
 # exactamente el error que este cargo tiene prohibido.
@@ -180,4 +234,12 @@ authorities:
 # que el sitio abre, no una norma sustantiva. Guatemala sigue sin resolver DNS en `ive.gob.gt` y
 # `www.ive.gob.gt`, comprobado ese mismo día, y es la única que queda. Lo comprobado es acceso: la
 # reserva sobre norma, umbral y plazo sigue en pie para todo lo que no se haya leído en el sitio.
+#
+# Actualización 2026-09-14 a 2026-09-24 (tres informes semanales): el dominio real de la IVE no es
+# `ive.gob.gt` (nunca resuelve DNS, confirmado otra vez) sino `www.sib.gob.gt` (sí resuelve DNS;
+# `sib.gob.gt` sin «www.» tampoco resuelve — `ENOTFOUND`). La ruta específica de la IVE
+# (`www.sib.gob.gt/web/sib/intendencia-verificacion-especial-IVE-`, con `/ive/` como alternativa
+# indexada) devuelve HTTP 403 en las tres corridas que la probaron; su existencia y estructura se
+# confirmaron por indexación de buscador, no por acceso directo. GT sigue en missing_authorities:
+# lo que cambió es el dominio a intentar en la próxima corrida, no el acceso logrado.
 missing_authorities: [GT]

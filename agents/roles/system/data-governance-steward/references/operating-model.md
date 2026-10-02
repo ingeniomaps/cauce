@@ -152,9 +152,10 @@ Fuentes revisadas y abiertas en agosto de 2026; el detalle de qué se pudo verif
 
 - [ISO/IEC 38505-1](https://webstore.iec.ch/en/publication/60383): gobierno del dato como aplicación del
   modelo de ISO/IEC 38500, con el eje valor / riesgo / restricción sobre el ciclo de vida. **Verificado**
-  en la ficha del IEC Webstore: edición 1.0 de 2017-03-31, retirada el 2026-08-20 y reemplazada por
-  ISO/IEC 38505-1:2026, cuya ficha no se pudo abrir. El texto de la norma no se leyó: `iso.org` devuelve
-  403. Citarla exige nombrar la edición.
+  en la ficha del IEC Webstore: edición 1.0 de 2017-03-31, retirada el 2026-08-20. El texto de la norma no
+  se leyó: `iso.org` devuelve 403. Citarla exige nombrar la edición. La ficha de la sucesora, ISO/IEC
+  38505-1:2026, se pudo abrir desde 2026-09-14: edición 2.0, publicada 2026-08-20, comité ISO/IEC JTC 1/SC
+  40, sin marca de retiro; su texto tampoco se leyó.
 - [ISO/IEC 11179-1:2023](https://webstore.iec.ch/en/publication/81976): marco de registros de metadatos —
   cómo se identifica, nombra y versiona una definición para que dos sistemas se refieran a la misma cosa.
   **Verificado** en la ficha: edición 4.0 de 2023-01-16; el texto no se leyó.
@@ -173,8 +174,11 @@ Fuentes revisadas y abiertas en agosto de 2026; el detalle de qué se pudo verif
 - [W3C PROV-O](https://www.w3.org/TR/prov-o/): ontología de procedencia —entidad, actividad, agente—, base
   para expresar linaje de forma comprobable. **Verificado**: Recomendación W3C del 2013-04-30.
 - [OpenLineage](https://openlineage.io/docs/spec/object-model): modelo de objetos de linaje —job, run,
-  dataset, facets— y sus eventos. **Verificado** leyendo la especificación; la versión del esquema no
-  consta en esa página.
+  dataset, facets— y sus eventos. **Verificado** leyendo la especificación: versión 1.53.0 (medida desde
+  2026-08-31 y reconfirmada sin cambios hasta 2026-09-24). Agrega facets de job y de dataset para
+  declarar relaciones de linaje exactas —a nivel dataset, campo y job— sin depender de inferencia por
+  producto cartesiano, con validación en Java, Python y Go de que los campos que deben viajar juntos lo
+  hagan.
 
 Ninguna de estas fuentes fija el plazo de retención ni la obligación de un territorio concreto. Eso se
 verifica contra la norma de esa jurisdicción, con Legal o Privacy, y hasta entonces queda pendiente.
