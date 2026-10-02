@@ -131,3 +131,73 @@ test('el recorrido tiene un techo de espera mayor que el default, y el job lo cu
   const timeout = Number(propose.match(/^ {4}timeout-minutes: (\d+)$/m)[1])
   assert.ok(timeout * 60000 >= ceiling + 10 * 60000, 'el job deja diez minutos después del techo')
 })
+
+function runArchive(t, frontmatter, body = '') {
+  const dir = tempRoot('cauce-archive-')
+  const proposal = path.join(dir, 'proposal.md')
+  const decided = DECIDED.split('\n').slice(2).join('\n')
+  fs.writeFileSync(proposal, `---\nagent: probe\n${frontmatter}status: proposed\n---\n\n${decided}${body}`)
+  // El doble reemplaza al CLI: lo que se mide es si el paso lo llama y con qué, no el archivado en sí, que
+  // ya tiene sus pruebas en el motor.
+  const ops = path.join(dir, 'ops.js')
+  fs.writeFileSync(ops, `require('node:fs').writeFileSync(${JSON.stringify(path.join(dir, 'calls'))}, `
+    + `JSON.stringify({ argv: process.argv.slice(2), owner: process.env.CAUCE_OWNER || '' }))\n`)
+  const output = path.join(dir, 'output')
+  fs.writeFileSync(output, '')
+  const step = workflowStep(workflow('agent-learning'), '- name: Archive when nothing changes')
+  assert.ok(step, 'el paso existe')
+  const result = spawnSync('bash', ['-e', '-c', step], {
+    cwd: dir, encoding: 'utf8',
+    env: {
+      PATH: `${path.dirname(process.execPath)}:/usr/bin:/bin`,
+      AGENT: 'probe', FILE: proposal, OPS: ops, GITHUB_OUTPUT: output,
+      CAUCE_OWNER: 'agent-propose (github-actions[bot])',
+    },
+  })
+  t.diagnostic(result.stdout + result.stderr)
+  const calls = path.join(dir, 'calls')
+  return {
+    status: result.status,
+    outputs: fs.readFileSync(output, 'utf8'),
+    call: fs.existsSync(calls) ? JSON.parse(fs.readFileSync(calls, 'utf8')) : null,
+  }
+}
+
+test('una propuesta que dice «cambia: no» se archiva con su motivo, y ninguna otra', (t) => {
+  const sinCambio = runArchive(t, 'cambia: no\n')
+  assert.equal(sinCambio.status, 0)
+  assert.ok(sinCambio.call, 'llama al CLI')
+  assert.deepEqual(sinCambio.call.argv.slice(0, 3), ['learn', 'probe', '--archived'])
+  const reason = sinCambio.call.argv[sinCambio.call.argv.indexOf('--reason') + 1]
+  assert.ok(reason && reason.trim(), 'con motivo: es lo que lee el informe siguiente')
+  assert.match(sinCambio.call.owner, /\S/, 'y con alguien a quien atribuirlo')
+  assert.match(sinCambio.outputs, /^archived=true$/m)
+
+  for (const [name, front] of [['cambia: si', 'cambia: si\n'], ['sin el campo', ''], ['otro valor', 'cambia: nop\n']]) {
+    const firma = runArchive(t, front)
+    assert.equal(firma.status, 0)
+    assert.equal(firma.call, null, `${name}: no se archiva`)
+    assert.equal(/archived=true/.test(firma.outputs), false, `${name}: sigue pidiendo firma`)
+  }
+
+  // Sólo el frontmatter: la misma línea en el cuerpo es prosa, no una decisión.
+  const enElCuerpo = runArchive(t, '', 'cambia: no\n')
+  assert.equal(enElCuerpo.call, null)
+})
+
+test('la archivada abre su PR con auto-merge, y el recorrido sabe contestar el campo', () => {
+  const source = workflow('agent-learning')
+  const propose = job(source, 'propose')
+  const archive = propose.indexOf('- name: Archive when nothing changes')
+  assert.ok(archive > propose.indexOf('- name: Check the proposal again'), 'después de saber si decidió')
+  assert.ok(archive < propose.indexOf('- name: Detect changes'), 'y antes de armar el PR, para que el archivado viaje')
+  assert.match(propose.slice(archive), /^\s*if: steps\.decision\.outputs\.decided == 'true'$/m)
+
+  const open = workflowStep(source, '- name: Open proposal pull request')
+  assert.match(open, /if \[ "\$ARCHIVED" = 'true' \]; then[\s\S]*gh pr merge "\$branch" --auto --merge/,
+    'la archivada se mergea sola cuando su CI pase')
+
+  const recorrido = fs.readFileSync(path.join(REPO, 'automatization', 'workflows', 'agent-propose.js'), 'utf8')
+  assert.match(recorrido, /cambia: si/)
+  assert.match(recorrido, /cambia: no/)
+})

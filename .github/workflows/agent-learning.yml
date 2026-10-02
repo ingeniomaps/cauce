@@ -956,6 +956,23 @@ jobs:
           decided="$(node -e 'process.stdout.write(String(!require("./engine/agents/learning-files").blankProposal(process.argv[1])))' "$FILE")"
           echo "decided=$decided" >> "$GITHUB_OUTPUT"
 
+      # Una propuesta que concluye que el contrato no cambia no tiene nada que firmar, y dejarla `pending`
+      # en `main` bloquea la siguiente del cargo. Se archiva y su PR se mergea solo (caso 242). Lo decide
+      # sólo un `cambia: no` explícito en el frontmatter: sin el campo, sigue pidiendo firma.
+      - name: Archive when nothing changes
+        id: archive
+        if: steps.decision.outputs.decided == 'true'
+        env:
+          AGENT: ${{ matrix.agent }}
+          FILE: ${{ steps.proposal.outputs.file }}
+          CAUCE_OWNER: agent-propose (github-actions[bot])
+        run: |
+          if awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f' "$FILE" | grep -qx 'cambia: no'; then
+            node "$OPS" learn "$AGENT" --archived \
+              --reason "agent-propose concluyó que el contrato no cambia; el porqué está en «Cambio propuesto»."
+            echo "archived=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Detect changes
         id: changes
         run: |
@@ -982,6 +999,7 @@ jobs:
           AGENT: ${{ matrix.agent }}
           GH_TOKEN: ${{ github.token }}
           DECIDED: ${{ steps.decision.outputs.decided || steps.proposal.outputs.decided }}
+          ARCHIVED: ${{ steps.archive.outputs.archived }}
         run: |
           period="$(date -u +%Y-%m)"
           # Consolidar **sella** lo que consume, así que el diff trae la propuesta y además los informes
@@ -1023,6 +1041,16 @@ jobs:
           # haría entrar el mismo material el mes siguiente.
           if [ "$DECIDED" != 'true' ]; then
             echo "::notice title=Sin cambio decidido::$AGENT compuso $name y el cambio quedó sin escribir: /agent-propose no corrió o no lo completó, y el paso de arriba dice cuál de las dos. La rama $branch queda empujada con los sellos; corré /agent-propose sobre ella y abrí el PR cuando el documento decida algo."
+            exit 0
+          fi
+          if [ "$ARCHIVED" = 'true' ]; then
+            gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
+              --title "$AGENT learning proposal — $name (sin cambio, archivada)" \
+              --body "agent-propose concluyó que el contrato no cambia y la propuesta quedó archivada con su motivo. No hay nada que firmar: se mergea sola cuando pase su CI."
+            # Igual que el informe con `propone: no`: el auto-merge queda armado y espera a que el CI del
+            # PR del bot se autorice.
+            gh pr merge "$branch" --auto --merge
+            echo "::notice::$AGENT no cambia su contrato: propuesta archivada y auto-merge armado."
             exit 0
           fi
           gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
