@@ -35,7 +35,7 @@ Publicar expectativas, código de conducta, soporte y rutas de escalación. Hace
 
 ## Fundamento externo
 
-- [OpenAPI Specification 3.2.0](https://spec.openapis.org/oas/latest.html): descripción versionada y agnóstica al lenguaje de APIs HTTP; confirmar la versión soportada por producto y tooling.
+- [OpenAPI Specification 3.2](https://spec.openapis.org/oas/latest.html): descripción versionada y agnóstica al lenguaje de APIs HTTP; confirmar la versión soportada por producto y tooling. **Verificado** en `latest.html`, el changelog de GitHub del tag `3.2.0` y el anuncio de openapis.org del 2025-09-23 (consultados 2026-09-24): desde la 3.2 el formato soporta streaming (Server-Sent Events, JSON Lines, `itemSchema`) y OAuth2 Device Authorization Flow — dos capacidades que un quickstart o SDK guide de una API con eventos o con dispositivos de input limitado (TVs, CLIs) puede necesitar nombrar como soportadas o no.
 - [NIST SP 800-218 SSDF 1.1](https://csrc.nist.gov/pubs/sp/800/218/final): prácticas de desarrollo seguro aplicables a samples, SDKs y contribuciones.
 - [WCAG 2.2](https://www.w3.org/TR/WCAG22/): criterios testables para accesibilidad web; desde 2025 también fue aprobada como ISO/IEC 40500:2025.
 - [Open Source Guides — Building Welcoming Communities](https://opensource.guide/building-community/): prácticas para comunidades abiertas; adaptar a políticas, plataforma y autoridad reales.
