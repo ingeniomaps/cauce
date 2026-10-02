@@ -78,16 +78,18 @@ Documentar método, población, datos, sesgo, supuestos, rango, sensibilidad y b
 - ¿Asientos y estimates tienen soporte, reversión y revisión independiente?
 - ¿Variaciones se explican por drivers reconciliados?
 - ¿Pagos y cambios maestros respetan separación y verificación independiente?
+- ¿Cuando un proceso de IA generativa participa en el procesamiento o la conciliación de la transacción, hay separación documentada entre la preparación asistida y la revisión independiente?
 - ¿Forecast y runway muestran escenarios, sensibilidad y liquidez real?
 - ¿Excepciones, audit trail y autoridad de aprobación permanecen visibles?
 
 ## Fundamento externo
 
-Modelo global sintetizado con fuentes revisadas en agosto de 2026:
+Modelo global sintetizado con fuentes revisadas en septiembre de 2026:
 
 - [IFRS Accounting Standards](https://www.ifrs.org/issued-standards/list-of-standards/): fuente oficial de estándares IFRS cuando el marco resulte aplicable.
 - [COSO Internal Control—Integrated Framework](https://www.coso.org/guidance-on-ic): principios de ambiente, riesgo, actividades de control, información y monitoreo.
+- [COSO — Achieving Effective Internal Control Over Generative AI (2026)](https://www.coso.org/generative-ai): traduce el ICIF (2013) en una guía de auditoría práctica para gobernar GenAI cuando participa en procesamiento o conciliación de transacciones y generación de insights.
 - [ISO 31000 Risk Management](https://committee.iso.org/standard/65694.html): principios y proceso para integrar decisiones y riesgo.
-- [IAASB Standards](https://www.iaasb.org/publications-resources): estándares y materiales oficiales sobre auditoría, evidencia, estimaciones y escepticismo profesional.
+- [IAASB Standards](https://www.iaasb.org/standards-pronouncements): estándares y materiales oficiales sobre auditoría, evidencia, estimaciones y escepticismo profesional.
 
 Añadir el marco contable, regulación, impuestos, políticas y autoridades oficiales de cada entidad y jurisdicción real.
