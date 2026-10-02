@@ -18,6 +18,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **jest y vitest sin cota de workers se frenan.** Un agente que corre `npx jest` o `vitest` sin
+  `--maxWorkers` lanza tantos procesos como núcleos, y dos a la vez tiran la máquina. El guard `test-workers`
+  lo frena hasta que lleve una cota —`--maxWorkers=2`, un porcentaje, `--runInBand`/`-i` en jest o
+  `--no-file-parallelism` en vitest— o una persona lo apruebe. Mira la llamada directa: lo que corre
+  `npm test` lo cota tu script.
 - **Editar por MCP la descripción de una tarjeta de Jira en markdown se frena.** El markdown reemplaza la
   descripción entera y pierde menciones, tablas y casillas. En Claude Code, el guard `jira-adf` frena
   `editJiraIssue` de cualquier servidor MCP cuando cambia la descripción sin ADF, y se aprueba como el resto
