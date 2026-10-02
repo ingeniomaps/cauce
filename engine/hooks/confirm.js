@@ -1,0 +1,38 @@
+'use strict'
+
+// Quién confirma lo que un guard frena (caso 221). Con Claude Code, el propio runner abre un diálogo de
+// confirmación si el hook se lo pide (`permissionDecision: "ask"`), y la persona aprueba o rechaza esa
+// acción puntual, con un clic. Por chat, en cambio, el guard tenía que adivinar si el mensaje siguiente era
+// un sí; desde el caso 184 cualquiera que no negara ni preguntara lo era, y un pedido sobre otra cosa
+// aprobó un merge que nadie había pedido. El diálogo no pide palabras ni las interpreta.
+//
+// Medido el 2026-10-01 con Claude Code: el diálogo aparece también en `bypassPermissions` y para la llamada
+// de un subagente; rechazado, la herramienta no corre; en `claude -p` cuenta como rechazo y el agente recibe
+// el motivo como error. Codex y Gemini no tienen diálogo y siguen con la confirmación por chat.
+
+const ASK = Symbol('cauce.ask')
+
+// Claude Code es el que manda `prompt_id` en cada llamada; Codex manda `turn_id` y Gemini ninguno
+// (`chat.js`, `idOf`). Sólo un `PreToolUse` puede pedir el diálogo.
+function native(input) {
+  return Boolean(input && input.hook_event_name === 'PreToolUse' && input.prompt_id)
+}
+
+// Marca la llamada para que `run.js` responda con el diálogo en vez de bloquear. Va en la entrada y no en
+// el error porque quien arma el mensaje (`AP.HOW`) no es quien lanza el bloqueo, que es cada guard.
+function askPerson(input) {
+  input[ASK] = true
+}
+
+function takeAsk(input) {
+  const asked = Boolean(input && input[ASK])
+  if (input) input[ASK] = false
+  return asked
+}
+
+// Lo lee la persona en el diálogo, o el agente como error cuando no hay diálogo (`claude -p`): por eso no le
+// da órdenes a ninguno de los dos, dice qué pasa en cada caso.
+const LEAD = 'Claude Code se lo pregunta a la persona en su diálogo de confirmación: si lo aprueba, pasa; si lo '
+  + 'rechaza, o no hay nadie que conteste, no reintentes. '
+
+module.exports = { native, askPerson, takeAsk, LEAD }

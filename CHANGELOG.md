@@ -78,6 +78,13 @@ diseño — eso vive en el commit y en el código.
 
 ### Cambiado
 
+- **En Claude Code, lo que un guard frena se aprueba en su diálogo de confirmación.** Antes el agente te
+  pedía un sí por chat, y cualquier mensaje tuyo que no negara ni preguntara lo aprobaba, aunque hablara de
+  otra cosa. Ahora Claude Code abre su diálogo para esa acción, con el motivo del guard: la aprobás o la
+  rechazás ahí, sin palabras que elegir. Vale para el push, las credenciales, los gates en rojo, la
+  gobernanza y lo que el agente quiera escribirse en `.ops-approval`, también cuando lo pide un subagente.
+  Lo que pedís nombrándolo en el chat sigue pasando sin preguntar. En Codex y Gemini, que no tienen ese
+  diálogo, la confirmación sigue siendo por chat.
 - **`verify` tiene tope, corre de a uno y no escribe en tu árbol.** Cada gate se corta a los 10 minutos
   —con todo lo que lanzó, sin dejar procesos huérfanos— y el bloqueo dice que fue el tope; lo cambiás con
   `runner.gateTimeoutMinutes` en `ops.config.json`. Dos commits a la vez ya no corren dos suites en paralelo:

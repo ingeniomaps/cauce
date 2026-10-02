@@ -249,6 +249,11 @@
     "branches": 88,
     "functions": 100
   },
+  "engine/hooks/confirm.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/hooks/files.js": {
     "lines": 100,
     "branches": 97,

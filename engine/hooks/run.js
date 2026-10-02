@@ -15,6 +15,7 @@ const { verify } = require('./verify')
 const files = require('./files')
 const { migrations } = require('./migrations')
 const chat = require('./chat')
+const CF = require('./confirm')
 const { secretsShell } = require('./secrets-shell')
 const { opsConfig, opsConfigShell } = require('./ops-config')
 
@@ -192,15 +193,45 @@ function resolve(names) {
   return resolved
 }
 
-// Corre en ese orden y el primero que bloquea corta: `execute` lanza y acá nadie lo atrapa.
+// Corre en ese orden y el primero que bloquea corta. Lo que se le pregunta a la persona no corta: si
+// cortara, aprobar el diálogo dejaría correr la herramienta sin que los guards siguientes la miraran. Se
+// junta, los demás corren, y si alguno bloquea de verdad gana el bloqueo; si no, va un solo diálogo con
+// todos los motivos (caso 221).
 function executeAll(names, input) {
-  for (const name of resolve(names)) execute(name, input)
+  const asked = []
+  for (const name of resolve(names)) {
+    // Una marca que quedó de un guard que no llegó a bloquear no puede convertir en pregunta el bloqueo de
+    // otro.
+    CF.takeAsk(input)
+    try {
+      execute(name, input)
+    } catch (error) {
+      if (!error.blocked || !CF.takeAsk(input)) throw error
+      asked.push(error.message)
+    }
+  }
+  if (asked.length) {
+    const error = new Error(asked.join('\n\n'))
+    error.ask = true
+    throw error
+  }
+}
+
+// Lo que Claude Code lee para abrir su diálogo; el motivo es lo que la persona ve, o lo que el agente
+// recibe como error si no hay diálogo.
+function askOutput(message) {
+  return JSON.stringify({ hookSpecificOutput: {
+    hookEventName: 'PreToolUse', permissionDecision: 'ask', permissionDecisionReason: message } })
 }
 
 // Asíncrono sólo por la lectura de stdin, que necesita un plazo (`input.js`); los guards siguen siendo
 // sincrónicos y `executeAll` también, así que quien los llama directo no cambia.
 if (require.main === module) {
   readInput().then((input) => executeAll(process.argv.slice(2), input)).catch((error) => {
+    if (error.ask) {
+      process.stdout.write(askOutput(error.message))
+      return
+    }
     console.error(`BLOQUEADO: ${error.message}`)
     process.exit(error.blocked ? 2 : 1)
   })

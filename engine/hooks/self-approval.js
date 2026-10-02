@@ -19,6 +19,7 @@ const path = require('node:path')
 const { contentOf, opsRoot } = require('./input')
 const AP = require('./approval')
 const CHAT = require('./chat')
+const CF = require('./confirm')
 
 const CHAT_RECORD = (file) => `${file} es el registro de lo que la persona dijo en el chat: lo escribe el `
   + 'runner, nunca una herramienta.'
@@ -39,6 +40,14 @@ const UNNAMED = (file, lines) => `${file} es la aprobación de una persona, y es
   + 'Esta escritura agrega:\n' + lines.map((line) => `  ${line}\n`).join('')
   + 'Decile qué querés dejar aprobado y por qué, y pedile que lo confirme con sus palabras: si lo que contesta '
   + 'es un sí, reintentá la misma escritura y pasa. Si no, que lo edite ella.'
+
+// Con diálogo, lo que la persona aprueba es esta escritura con estas líneas, y el diálogo se las muestra en
+// el motivo: es la misma regla de arriba —no firmar lo que nadie leyó— sin pedirle que conteste por chat.
+function ASKED(input, file, lines) {
+  CF.askPerson(input)
+  return `el agente quiere agregar a ${file}, la aprobación de una persona, estas líneas:\n`
+    + lines.map((line) => `  ${line}\n`).join('') + CF.LEAD
+}
 
 // **Por shell se frena toda escritura.** Es la misma decisión que toma `ops-config`, y por qué un comando
 // no se puede comparar está escrito allá. Lo que la trae hasta acá es que el contenido es lo único que
@@ -77,6 +86,7 @@ function added(input, root) {
 // con las líneas que trae, que es lo que la confirmación va a aprobar y lo que el mensaje le muestra.
 function unnamed(input, root, file) {
   const lines = added(input, root)
+  if (lines.length && CF.native(input)) return ASKED(input, file, lines)
   const held = lines.length ? CHAT.hold(input, [file, ...lines]) : false
   if (!held || held.dropped.length) return SELF(file)
   return UNNAMED(file, lines)
@@ -104,6 +114,7 @@ function unasked(input, root, file) {
   const cleared = new Set([...pushes, ...paths].map((one) => one.item))
   const missing = lines.filter((line) => !cleared.has(line))
   if (!missing.length) return ''
+  if (CF.native(input)) return ASKED(input, file, missing)
   // El archivo se anota junto con las líneas: sin él, el «dale» aprobaría las líneas y el guard volvería a
   // frenar por el archivo, que en ese mensaje ya nadie nombra.
   CHAT.hold(input, [file, ...missing])
