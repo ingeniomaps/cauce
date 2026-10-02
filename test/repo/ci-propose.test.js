@@ -119,3 +119,15 @@ test('el PR y el rojo leen el veredicto de después del recorrido', () => {
   assert.match(body, /::error /, 'como error, no como aviso')
   assert.match(body, /^\s*exit 1$/m)
 })
+
+test('el recorrido tiene un techo de espera mayor que el default, y el job lo cubre', () => {
+  const propose = job(workflow('agent-learning'), 'propose')
+  const step = propose.slice(propose.indexOf('- name: Write the concrete change'))
+  const found = step.match(/^\s*CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: '(\d+)'$/m)
+  assert.ok(found, 'el paso que propone declara el techo')
+  const ceiling = Number(found[1])
+  assert.ok(ceiling > 600000, 'más que los 600 s que cortaron a 15 cargos')
+
+  const timeout = Number(propose.match(/^ {4}timeout-minutes: (\d+)$/m)[1])
+  assert.ok(timeout * 60000 >= ceiling + 10 * 60000, 'el job deja diez minutos después del techo')
+})
