@@ -129,6 +129,9 @@ diseño — eso vive en el commit y en el código.
 
 ### Cambiado
 
+- **R17 dice que una decisión no entra a la cola como tarea.** Lo que no tiene nada que construir va a
+  `HUMAN_ACTIONS.md` con la pregunta exacta, o como precondición de la tarea que la necesita. Escrita como
+  tarea, gasta una vuelta entera para terminar diciendo que había que preguntar.
 - **En Claude Code, lo que un guard frena se aprueba en su diálogo de confirmación.** Antes el agente te
   pedía un sí por chat, y cualquier mensaje tuyo que no negara ni preguntara lo aprobaba, aunque hablara de
   otra cosa. Ahora Claude Code abre su diálogo para esa acción, con el motivo del guard: la aprobás o la
