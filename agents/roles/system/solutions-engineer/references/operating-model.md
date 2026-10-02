@@ -48,6 +48,8 @@ Teardown, borrado y handoff:
 - ¿Arquitectura cubre datos, identidad, fallos, operación y costo?
 - ¿Demo distingue comportamiento real, mock y simulación?
 - ¿POC tiene hipótesis, criterios medibles, baseline y teardown?
+- ¿La integración contempla los patrones que el contrato ya declara —streaming, métodos HTTP no
+  estándar, flujo OAuth2 de dispositivo— y no sólo request/response clásico?
 - ¿RFP evita certificaciones o garantías no demostradas?
 - ¿Promesas y excepciones tienen owner y autoridad?
 - ¿Handoff conserva decisiones, evidencia y riesgos abiertos?
