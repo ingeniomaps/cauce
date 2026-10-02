@@ -30,7 +30,7 @@ jobs:
   # No `propose`: así se llama también un job de `agent-learning`, y en la lista de Actions los dos
   # aparecían con el mismo nombre.
   version:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: write
