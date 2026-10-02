@@ -10,6 +10,11 @@ rules:
 # acuerdos con cada transportadora y los plazos contratados viven en
 # organization/roles/logistics-operations-manager.md dentro de cada instalación.
 sources:
+  # Reintento del 2026-09-24, para las dos entradas de GS1 que siguen: gs1.org/standards/epcis devolvió
+  # 403 y ref.gs1.org/standards/epcis/ redirigió al PDF sin que el extractor de esa corrida lo
+  # decodificara. La edición que estas dos entradas citan —Release 2.0, ratificada en junio de 2022— es
+  # la leída el 2026-08-22 y no se re-confirmó. Una búsqueda mencionó una «EPCIS 2.1» en preparación sin
+  # citar fuente primaria: queda como hipótesis, no sostiene nada y no cambia ninguna de las dos.
   # Verificado el 2026-08-22: la URL entrega el PDF de la norma; su portada dice «EPCIS Standard,
   # Release 2.0, Ratified, Jun 2022». Define el evento de visibilidad y el elemento `ErrorDeclaration`,
   # que es cómo se corrige un evento ya emitido sin borrarlo.
@@ -61,16 +66,40 @@ pending:
   - name: ISO 10002 gestión de quejas
     url: https://committee.iso.org/standard/71580.html
     why: iso.org devuelve 403 y no se encontró ficha en el IEC Webstore; queda por comprobar si este
-      host la sirve, que es donde otras normas ISO sí se leen
+      host la sirve, que es donde otras normas ISO sí se leen. Reintentado el 2026-09-24, pero sobre
+      www.iso.org/standard/71580.html y no sobre el host declarado acá: mismo 403. O sea que la
+      pregunta que esta entrada hace —si committee.iso.org la sirve— sigue sin contestarse, y la
+      próxima corrida tiene que abrir el host de la URL declarada y no el genérico.
     since: 2026-08-22
   - name: Ley Federal de Protección al Consumidor (México)
     url: https://www.diputados.gob.mx/LeyesBiblio/pdf/LFPC.pdf
-    why: diputados.gob.mx rechazó la conexión
+    why: la conexión ya no es el bloqueo. El 2026-09-24 esta URL y el espejo de Profeco
+      (profeco.gob.mx/juridico/pdf/l_lfpc_ultimo_camdip.pdf) conectaron y entregaron el PDF; lo que
+      falla es que el extractor de esa corrida no decodificó el flujo comprimido a texto. Es un bloqueo
+      de herramienta y no de acceso: lo destraba un extractor que lea PDF comprimido, no reintentar la
+      descarga. Reintentado el 2026-09-24.
     since: 2026-08-22
   - name: ASCM SCOR DS procesos Deliver y Return
-    why: la página del modelo devolvió contenido vacío y el modelo es de acceso pago, así que puede
-      no llegar a ser una fuente registrable nunca
+    url: https://www.ascm.org/globalassets/documents--files/corporate-transformation/scor-ds-digital-guide_final.pdf
+    why: la página ya no devuelve vacío. El 2026-09-24 esta URL —la guía digital del modelo— conectó y
+      entregó el PDF; lo que falla ahora es la decodificación del flujo comprimido, igual que con la
+      LFPC. Sigue en pie la otra mitad del motivo original: el modelo completo es de acceso pago, así
+      que esta guía puede ser todo lo que llegue a haber y la entrada puede no cerrarse nunca.
+      Reintentado el 2026-09-24.
     since: 2026-08-22
   - name: 49 CFR Part 370 reclamaciones ante transportistas (EE. UU.)
-    why: eCFR redirige a un portal de desbloqueo y no entrega el texto
+    url: https://www.ecfr.gov/current/title-49/subtitle-B/chapter-III/subchapter-B/part-370
+    why: eCFR redirige a un portal de desbloqueo y no entrega el texto. Reintentado el 2026-09-24 sobre
+      esta URL y sobre una búsqueda del Federal Register: las dos redirigen a unblock.federalregister.gov,
+      que no entrega el texto. Sin cambio respecto del 2026-08-22.
     since: 2026-08-22
+  - name: Decisiones del 28º Congreso de la UPU (Dubái, 2025)
+    url: https://www.upu.int/UPU/media/upu/files/aboutUpu/acts/07-actsAndOtherDecisions2025DubaiCongress/2025DubaiCongressDecisionsEn.pdf
+    why: las Actas vigentes siguen siendo las de Abiyán 2021 enmendadas en Riad 2023 —verificado el
+      2026-09-24 sobre la página de Actos ya declarada arriba— y esta entrada no las discute. Lo
+      pendiente es el PDF de decisiones del 28º Congreso, que sesionó del 8 al 19 de septiembre de
+      2025: la descarga llegó (5,2 MB) y el extractor de esa corrida no decodificó el flujo comprimido,
+      así que no se estableció si trae fecha de entrada en vigor. La próxima corrida mensual contesta
+      una sola pregunta: ¿esas decisiones ya rigen? Si rigen y tocan reclamaciones o indemnización
+      transfronteriza, sube a hallazgo con cambio de catálogo; si no, se anota el reintento acá.
+    since: 2026-09-24
