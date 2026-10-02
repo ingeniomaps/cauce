@@ -23,7 +23,8 @@ diseño — eso vive en el commit y en el código.
   en la rama `line/<nombre>`— sólo ve esos hitos, y el principal sólo los que no son de ninguna. Así el autobuild
   de una línea no construye la tarea de la otra aunque las dos colas terminen en el mismo archivo. `ops context`
   lo muestra en la línea `LINE`. Además `context` y `claim` leen los reclamos de los otros worktrees de la
-  instancia: antes dos líneas podían reclamar la misma tarea sin enterarse.
+  instancia: antes dos líneas podían reclamar la misma tarea sin enterarse. Y `autobuild` clasifica sólo el hito
+  de la tarea que va a construir: clasificar la cola entera escribía en los hitos de la otra línea.
 - **La pasada de comentarios de R11 puede tener puerta.** Declarando `"comments": {}` en `ops.config.json`, el
   guard `comments` frena una vez cada commit que agrega comentarios y los lista con las tres preguntas de R11.
   El commit entra repitiéndolo con `CAUCE_COMMENTS_REVIEWED=<token>`, y el token cambia si cambia cualquier

@@ -33,8 +33,9 @@ const CONFIG = `${ROOT}/ops.config.json`
 const P = `${ROOT}/planning`
 const ORG = `${ROOT}/organization`
 const BACKLOG = `${P}/BACKLOG.md`
-// La cola entera: el archivo de siempre más uno por hito (caso 212). Lo que se clasifica o se protege es
-// todo; lo que se parte o se cierra es el archivo de la tarea, que `context` dice cuál es.
+// La cola entera: el archivo de siempre más uno por hito (caso 212). Lo que se protege es todo; lo que se
+// clasifica, se parte o se cierra es el archivo de la tarea, que `context` dice cuál es. Clasificar toda la cola
+// escribía en los hitos de otra línea de trabajo (caso 239).
 const QUEUE = `${BACKLOG} y los archivos de ${P}/backlog/`
 const queueFile = () => `${P}/${(planning && planning.file) || 'BACKLOG.md'}`
 // Una tarea cerrada escribe su propio archivo, así que dos corridas en paralelo no comparten ninguno.
@@ -704,7 +705,7 @@ while (rounds++ < MAX_TASKS) {
       `${CLASSIFY_RULES}${(planning.surfaces || []).length ? ` Una tarea que toca alguna de estas superficies, que la `
         + `empresa declaró que no se pueden romper, nunca va por express: ${JSON.stringify(planning.surfaces)}.` : ''}`
         + `\n\nRun "node tools/ops.js agents list ${ROOT} --json" and choose only from the slugs ` +
-      `it lists.\nClasificá en ${QUEUE} todas las tareas en cola que no declaren lane o no declaren cast, ` +
+      `it lists.\nClasificá en ${queueFile()} todas las tareas en cola que no declaren lane o no declaren cast, ` +
       `empezando por ${task.id} en ${task.service} —aceptación: ${task.acceptance}—. El lane va entre ` +
       `corchetes después del slug y el reparto al final de la línea, con la forma ` +
       `"(cast: quien-entrega → quien-revisa, otro)". No toques nada más de la línea, ni el orden del hito, ` +

@@ -1,7 +1,7 @@
 'use strict'
 
-// La cola partida por hito (caso 212), del lado de quien escribe en ella: cerrar y partir una tarea se hace en
-// el archivo donde vive, que `context` dice cuál es; clasificar y proteger la cola mira todos.
+// La cola partida por hito (caso 212), del lado de quien escribe en ella: clasificar, cerrar y partir una tarea
+// se hace en el archivo donde vive, que `context` dice cuál es; proteger la cola mira todos.
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -22,9 +22,12 @@ test('sin archivo declarado, la tarea vive en BACKLOG.md como siempre', async ()
   assert.match(doneOf(run), /sacala junto con sus notas indentadas de \.\/planning\/BACKLOG\.md/)
 })
 
-test('clasificar y proteger la cola miran BACKLOG.md y backlog/', async () => {
+// Clasificar toda la cola escribía en los hitos de otra línea (caso 239): lo que se mide es que el prompt nombre
+// el archivo de la tarea y ya no la cola entera, y que proteger la siga mirando entera.
+test('clasificar mira el archivo del hito, y proteger la cola mira BACKLOG.md y backlog/', async () => {
   const run = await runFlow(inFile('backlog/h1.md'), { lane: 'full', vouched: true })
   const prompt = (key) => (run.prompts.find((one) => one.key === key) || {}).prompt || ''
-  assert.match(prompt(KEY.classify), /Clasificá en \.\/planning\/BACKLOG\.md y los archivos de \.\/planning\/backlog\//)
+  assert.match(prompt(KEY.classify), /Clasificá en \.\/planning\/backlog\/h1\.md todas las tareas/)
+  assert.doesNotMatch(prompt(KEY.classify), /los archivos de \.\/planning\/backlog\//)
   assert.match(prompt(KEY.build), /ni \.\/planning\/BACKLOG\.md y los archivos de \.\/planning\/backlog\//)
 })
