@@ -21,6 +21,17 @@ sources:
   # Anexo III punto 5(b) leído literal el 2026-08-22: los sistemas que evalúan solvencia son de
   # alto riesgo «with the exception of AI systems used for the purpose of detecting financial
   # fraud». La excepción acota la obligación legal; no dice que el modelo no decida sobre personas.
+  #
+  # Actualización 2026-09-24: el Reglamento (UE) 2026/1744 (Digital Omnibus on AI), recital 40,
+  # pospuso la fecha de aplicación de las obligaciones de alto riesgo del anexo III de 2026-08-02 a
+  # 2027-12-02 — verificado, EUR-Lex, leído literal. Un borrador de directrices de la Comisión,
+  # todavía no adoptado (página oficial, última actualización 2026-07-23, etiqueta «Draft»),
+  # interpreta la excepción de forma restrictiva: sólo alcanza a un sistema cuyo uso previsto
+  # **principal** sea detectar fraude —si la detección es un componente de un sistema mayor de
+  # evaluación de solvencia, ese sistema mayor sigue siendo de alto riesgo salvo que la parte de
+  # fraude sea standalone—, y no hay excepción equivalente para seguros de vida y salud. Esto va
+  # documentado por fuente secundaria (Global Policy Watch, junio 2026), contenido del borrador no
+  # confirmado contra el PDF de la Comisión, y no vinculante mientras siga en borrador.
   - name: AI Act (Reglamento UE 2024/1689), anexo III 5(b)
     url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=OJ:L_202401689
     tier: regulation
@@ -35,6 +46,16 @@ sources:
   # Circular 2022-03 del 2022-05-26. Alcance: crédito bajo ECOA y Regulation B en EE. UU., no
   # fraude. Se registra por el principio que sí se traslada —la opacidad del modelo no reduce lo
   # que hay que explicar—, y ese alcance se dice cada vez que se la cita.
+  #
+  # Retirada el 2025-05-12, junto con otros 66 documentos de guía de la CFPB, en un retiro
+  # administrativo en bloque (verificado: ausencia en el listado vigente de
+  # consumerfinance.gov/compliance/circulars/, 2026-09-24; documentado por fuente secundaria
+  # —Venable LLP, "CFPB Withdraws Guidance Documents"— el detalle del retiro en bloque, ya que el
+  # aviso del Federal Register no se dejó leer como texto). El retiro no deroga las obligaciones de
+  # ECOA/Regulation B de dar razones específicas de una decisión adversa; el principio que este
+  # cargo traslada sigue en pie. Citarla hoy sin esta nota es citar un documento retirado como si
+  # fuera guía vigente de la CFPB — el mismo patrón que ya corrige la nota de SR 11-7 en la entrada
+  # de SR 26-2, de abajo.
   - name: CFPB Consumer Financial Protection Circular 2022-03
     url: https://www.consumerfinance.gov/compliance/circulars/circular-2022-03-adverse-action-notification-requirements-in-connection-with-credit-decisions-based-on-complex-algorithms/
     tier: regulation
@@ -43,6 +64,13 @@ sources:
   # media profesión sigue citando SR 11-7, que está derogada. Verificado en la página del Fed el
   # 2026-08-22; el PDF de la guía completa no se leyó, así que lo que consta es el alcance y la
   # sustitución, no su detalle sobre validación.
+  # Nota 2026-09-24 (documentado por fuente secundaria, no verificado contra el PDF oficial
+  # `SR2602a1.pdf`, que no se dejó leer como texto en esta corrida): Sullivan & Cromwell, memo del
+  # 17/04/2026, cita literal que la guía "excludes generative and agentic AI models from its scope,
+  # on the basis that these technologies are 'novel and rapidly evolving'", dejándolas bajo las
+  # prácticas generales de gestión de riesgo de la organización y no bajo este marco de gobierno de
+  # modelos. Es además del punto ya registrado sobre la exclusión de motores de reglas de la
+  # definición de "modelo".
   - name: Federal Reserve SR 26-2 — Revised Guidance on Model Risk Management
     url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm
     tier: regulation
@@ -50,6 +78,9 @@ sources:
   # Del mismo día que SR 26-2 y su contraparte OCC. Define «modelo» como método cuantitativo
   # complejo y **excluye** los procesos determinísticos basados en reglas: un motor de reglas de
   # fraude no es un modelo bajo esa definición, y eso cambia qué gobierno le aplica.
+  # Misma nota que en la entrada de SR 26-2, de arriba (2026-09-24, documentado por fuente
+  # secundaria, no verificado contra el original): la guía excluye también a la IA generativa y
+  # agéntica de su alcance.
   - name: OCC Bulletin 2026-13 — Model Risk Management, Revised Guidance
     url: https://www.occ.gov/news-issuances/bulletins/2026/bulletin-2026-13.html
     tier: regulation
@@ -72,6 +103,27 @@ sources:
     url: https://www.acfe.com/fraud-resources/report-to-the-nations
     tier: profession
     topics: [occupational-fraud, detection-methods, collusion, red-flags]
+  # Segunda edición, 2026-03-16. Dos afirmaciones verificadas contra el comunicado oficial,
+  # 2026-09-24: sistemas de "IA agéntica" pueden planear y ejecutar campañas de fraude completas
+  # —de la investigación del blanco a la extorsión— sin intervención humana en el medio, y el
+  # fraude potenciado por IA es "4.5 times more profitable than traditional methods" para quien lo
+  # comete. La cifra de USD 442.000 millones en pérdidas de 2025 que citan notas de prensa no se
+  # pudo confirmar en el comunicado oficial y no se registra acá. Cambia el actor y el método que
+  # la sección "Nombrar el esquema concreto" del flujo de riesgo da por sentados cuando asume un
+  # actor humano operando manualmente en cada paso.
+  - name: INTERPOL — Global Financial Fraud Threat Assessment, 2.ª edición
+    url: https://www.interpol.int/en/News-and-Events/News/2026/INTERPOL-report-warns-of-increasingly-sophisticated-global-financial-fraud-threat
+    tier: profession
+    topics: [agentic-fraud, fraud-schemes, actor-and-method, threat-assessment]
+  # Consulta abierta el 2026-06-10, cerrada el 2026-07-22, leída directo el 2026-09-24: doce
+  # prácticas en tres categorías (gobierno de IA a nivel organización; gestión de riesgo de IA en
+  # desarrollo y despliegue; riesgo de ciberseguridad/TI/terceros asociado a IA). No vinculante —la
+  # propia página lo dice—. Informe final anunciado para octubre de 2026 como entregable del G20:
+  # revisar en el próximo ciclo de aprendizaje, no antes.
+  - name: FSB — consulta "Sound Practices for the Responsible Adoption of Artificial Intelligence (AI)"
+    url: https://www.fsb.org/2026/06/fsb-consults-on-sound-practices-for-the-responsible-adoption-of-artificial-intelligence-ai/
+    tier: standard
+    topics: [ai-governance, model-risk, third-party-risk, consultation]
 
 # Lo que se buscó y **no** quedó registrado, con el motivo. Sin esta lista, la próxima corrida
 # repite la búsqueda y concluye que no existe:
@@ -80,6 +132,10 @@ sources:
 #   página del normativo se sirve por JavaScript y no devuelve texto legible, así que no se pudo
 #   leer ni el título ni su articulado. Es directamente aplicable a la operación brasileña y
 #   queda pendiente de verificar contra el diario oficial.
+#   Actualización 2026-09-24: el alcance (instituciones financieras y de pago) y la vigencia
+#   (01/11/2023) ya están corroborados por fuentes secundarias (TaxesBrasil, Mattos Filho, Grant
+#   Thornton) — documentado, no verificado contra fuente primaria—. Lo que sigue faltando es el
+#   articulado; la página oficial sigue sin devolver texto legible al fetch automatizado.
 # - Reg E (12 CFR 1005.11) y Reg B (12 CFR 1002.9) en eCFR: el sitio responde con una página de
 #   verificación de acceso a toda petición automatizada. Sin texto leído, no se registran.
 # - ISO 31000:2018 (gestión del riesgo): iso.org devuelve 403. Sin ficha legible, no se registra.
@@ -89,3 +145,8 @@ sources:
 #   ffiec.gov devuelve 403.
 # - Normas locales de Colombia, Brasil y México: no se buscaron fuentes primarias en esta corrida.
 #   Son las que mandan donde corre el producto y ninguna de las de arriba las reemplaza.
+# - EBA/GL/2020/01, guías de reporte de fraude bajo PSD2 (ya citada arriba, en `sources:`):
+#   verificado el 2026-09-24 contra `eba.europa.eu/node/11328`, leído directo — el historial de
+#   versiones muestra sólo la publicación de 2018 y la enmienda del 22/01/2020, sin ninguna
+#   entrada de 2026. Se registra porque un resultado de búsqueda sugería una actualización de
+#   marzo de 2026; sin este registro la próxima corrida repetiría la misma búsqueda.
