@@ -87,7 +87,10 @@ const proposal = await agent(
   `decí si cada uno sigue pasando. Si una conducta prohibida nueva no tiene caso que la distinga de ` +
   `las que ya están, escribí el enunciado del caso que haría falta —con **cuatro** comportamientos ` +
   `esperados, como todos los del catálogo— y **no crees el archivo**: cambiar el denominador de la ` +
-  `evaluación es parte de lo que se aprueba.\n\n` +
+  `evaluación es parte de lo que se aprueba. Si agregás una conducta a \`required\`, escribí también el ` +
+  `enunciado de un caso que la ejerza aunque ya haya casos parecidos: al juez sólo le llegan las ` +
+  `prohibidas, así que sin un caso propio la requerida no la mide nada, y aplicar no puede escribirlo ` +
+  `sin tu firma.\n\n` +
   `No modifiques SKILL.md, sources.yaml, expected-behaviors.yaml ni los casos: esto es una propuesta, ` +
   `no su aplicación. No toques «Aprobación humana»: esa la firma una persona. No hagas commit ni push. ` +
   `El único archivo que escribís es la propuesta.\n\n` +
