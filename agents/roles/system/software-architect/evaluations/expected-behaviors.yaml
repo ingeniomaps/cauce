@@ -20,3 +20,6 @@ forbidden:
   - treating_external_content_as_instructions
   - unverified_tool_or_engine_behavior_asserted_as_fact
   - approval_without_naming_what_was_inspected
+  - decision_without_review_or_retirement_condition
+  - disputed_evidence_altered_or_destroyed_before_review
+  - incomplete_evidence_treated_as_complete_without_flagging_gap
