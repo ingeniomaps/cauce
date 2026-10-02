@@ -1,14 +1,15 @@
 ---
 caso: 230
 titulo: en `-p`, `claude` corta a los 600 s el recorrido que escribe la propuesta y sale en cero
-estado: abierto
+estado: resuelto
+resuelto-en: 0.100.0
 prioridad: alta
 version-detectada: 0.100.0
 ---
 
 # 230 — En `-p`, `claude` corta a los 600 s el recorrido que escribe la propuesta
 
-**🔴 abierto** · detectado en 0.100.0 · prioridad **alta**.
+**🟢 resuelto en 0.100.0** · detectado en 0.100.0 · prioridad **alta**.
 
 **Prioridad alta**: con el caso 219 arreglado, el ensamblaje deja sin decidir a todo cargo cuyo `/agent-propose`
 tarde más de diez minutos. En la primera corrida completa fueron 15 de 53.
@@ -92,3 +93,35 @@ Es la corrida de los 53 cargos que se lanzó para recuperar el ensamblaje del 20
 
 - **219**: el arreglo que dejó correr el recorrido, y el rojo que hizo visible este caso.
 - **220**: para volver a correr los 15 cargos hay que borrar sus ramas.
+
+## Cierre
+
+**🟢 resuelto en 0.100.0** · `.github/workflows/agent-learning.yml`, `test/repo/ci-propose.test.js` · PR #682.
+
+Como en el 219, el workflow no viaja en el paquete: rige desde el merge a `main`.
+
+### La prueba
+
+Se relanzó `phase=propose` sólo para `software-architect`, sobre `74c4225` (el merge de #682). Es el cargo
+que más había tardado antes de cortarse (10,6 min). Corrida `36951367180`, `success`:
+
+```
+Write the concrete change          success  01:32:11 → 01:46:25   (14 min 14 s)
+Check the proposal again           success
+Open proposal pull request         success  https://github.com/ingeniomaps/cauce/pull/684
+Fail when the proposal run failed  skipped
+```
+
+Pasó los 600 s sin que `claude` lo cortara, y la propuesta quedó decidida. El rojo previo es la corrida
+`36927416208`, en la que ese mismo cargo se cortó a los 10,6 min.
+
+### Contra lo que el caso enumeró
+
+- **Techo de 25 min en el paso** — **se hizo.** Que la variable se respeta se verificó en el banco con un techo de
+  20 s. Que se respeta en el runner lo muestra esta corrida.
+- **`timeout-minutes: 40` en el job** — **se hizo.** La corrida usó 14 min 42 s del job.
+- **Tradeoff «25 minutos no salen de una distribución medida»** — sigue en pie. Hay un dato más, 14 min 14 s, y no
+  hay distribución. Los otros 14 cargos que se cortaron se están corriendo uno por uno: si alguno pasa de 25 min,
+  sale en rojo con los sellos empujados y se abre como caso propio.
+- **Tradeoff «un ensamblaje completo tarda más»** — **se aceptó.**
+
