@@ -18,6 +18,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Un rojo que ya estaba se declara una vez, y no se aprueba en cada commit.** Si un repositorio arrastra un
+  lint en rojo o una suite rota en otro módulo, escribilo en `planning/gate-known-red` como
+  `<raíz>: <gate> — <motivo>` —por ejemplo `api: lint — once errores de ESLint 9 heredados`—. `verify` deja
+  pasar el commit aunque ese gate falle, un gate en rojo que no declaraste sigue frenando, y `check` te
+  recuerda cada declaración mientras exista. Una línea mal escrita es error.
 - **Editar por MCP la descripción de una tarjeta de Jira en markdown se frena.** El markdown reemplaza la
   descripción entera y pierde menciones, tablas y casillas. En Claude Code, el guard `jira-adf` frena
   `editJiraIssue` de cualquier servidor MCP cuando cambia la descripción sin ADF, y se aprueba como el resto
