@@ -12,6 +12,10 @@ sources:
     url: https://www.svpg.com/articles/
     tier: profession
     topics: [discovery, strategy, product-model]
+  # Pendiente desde 2026-09 (learning/reports/2026-09-07.md a 2026-09-24.md, hallazgo H2 repetido
+  # cinco veces): la URL ya no aloja el contenido de role/prioritization/roadmaps que estos topics
+  # le atribuyen. No se retira ni se reemplaza hasta corroborar una alternativa — ver
+  # references/operating-model.md, "Fundamento externo".
   - name: Atlassian Product Management
     url: https://www.atlassian.com/agile/product-management
     tier: profession
