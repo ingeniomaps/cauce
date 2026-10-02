@@ -1,14 +1,15 @@
 ---
 caso: 220
 titulo: relanzar el ensamblaje en el mismo mes choca con las ramas que empujó la corrida anterior
-estado: abierto
+estado: resuelto
+resuelto-en: 0.100.0
 prioridad: media
 version-detectada: 0.99.2
 ---
 
 # 220 — Relanzar el ensamblaje en el mismo mes choca con las ramas de la corrida anterior
 
-**🔴 abierto** · detectado en 0.99.2 · prioridad **media**.
+**🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **media**.
 
 **Prioridad media**: con el ensamblaje sano no aparece. Aparece exactamente cuando hace falta repetirlo, que
 es el día que algo salió mal. Este mes pasa con los 53 cargos (caso 219).
@@ -84,3 +85,40 @@ y las dos cosas se regeneran desde `main`.
 ## Relacionados
 
 - **219**: el fallo que obliga a relanzar.
+
+## Cierre
+
+**🟢 resuelto en 0.100.0** · `AGENTS.md`, sección «Relanzar el ensamblaje del mes».
+
+Manuel eligió la **opción 3** el 2026-10-02: el relanzamiento queda como paso manual documentado. El workflow
+no se tocó.
+
+### La prueba
+
+Las cuatro corridas que relanzaron el ensamblaje de 2026-10 lo hicieron con ese procedimiento: antes de cada una
+se verificó que las ramas cumplieran las tres condiciones, y después se borraron.
+
+- `36923010691` y `36925119157` (`backend-engineer`, la misma rama borrada antes de cada una): los dos
+  pushes entraron, y el segundo abrió el #642.
+- `36927416208` (todos, 52 ramas borradas): 37 PR abiertos y 15 ramas empujadas en rojo por el caso 230. Ningún
+  push rechazado.
+- `36951367180` (`software-architect`) y la cadena de 13 corridas de a un cargo (15 ramas borradas): todas
+  empujaron, y se abrieron del #686 al #700.
+
+En total hubo 69 borrados seguidos de relanzamiento, sin un solo `non-fast-forward`. El rojo previo es el banco de
+la reproducción, que rechazó el push con la rama todavía puesta.
+
+Al aplicar el procedimiento apareció un detalle que el caso no preveía: 35 de las 52 ramas tenían además
+`status: consolidated` en `evaluations/results/`, que también es un sello. Se agregó a la segunda condición.
+
+### Contra lo que el caso enumeró
+
+- **Opción 1, `--force-with-lease`** — **se decidió que no.** Es la única que puede pisar trabajo, por ejemplo
+  un `/agent-propose` corrido a mano sobre la rama, que es justo lo que se hizo con `logistics-operations-manager`
+  ese mismo día.
+- **Opción 2, saltear el cargo** — **se decidió que no.** Dejaría a relanzar sin servir para recuperar un mes.
+- **Opción 3, operativo y escrito** — **se hizo.**
+- **Tradeoff «depende de que alguien se acuerde»** — **se paga.** Lo mitiga que el procedimiento está en la
+  sección del ciclo que se lee al tocarlo, y que olvidarlo no rompe nada en silencio: el cargo sale en rojo con
+  el `non-fast-forward` a la vista.
+
