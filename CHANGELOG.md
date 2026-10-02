@@ -18,6 +18,9 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **`check` avisa una regla propia que no está leyendo.** Una regla escrita como `## Regla 8` o `## Rule 10 -`
+  no tiene la forma que `check` lee, así que no cuenta como definida ni choca con la del sistema que contradice.
+  Ahora se avisa, con la forma correcta: `## P8 — título`.
 - **Un rojo que ya estaba se declara una vez, y no se aprueba en cada commit.** Si un repositorio arrastra un
   lint en rojo o una suite rota en otro módulo, escribilo en `planning/gate-known-red` como
   `<raíz>: <gate> — <motivo>` —por ejemplo `api: lint — once errores de ESLint 9 heredados`—. `verify` deja
