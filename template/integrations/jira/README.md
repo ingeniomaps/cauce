@@ -9,7 +9,11 @@
 
 La búsqueda JQL tiene timeout, límite de páginas y detección de ciclos. Basic auth usa email y API token;
 Bearer también está soportado. `candidateAssigneeEnv` es opcional: si se configura, solo las incidencias cuyo
-`accountId` coincida son candidatas; las demás son contexto y su draft se regenera siempre.
+`accountId` coincida son candidatas; las demás son contexto y su draft se regenera siempre, salvo que alguien
+ya lo haya curado como candidato: ese draft no se pisa y sigue candidato.
+
+El staging es de cada máquina y no va a git: compartido, cada persona sincroniza con su identidad y los
+candidatos de una son contexto para la otra.
 
 ## Staging y promoción
 
