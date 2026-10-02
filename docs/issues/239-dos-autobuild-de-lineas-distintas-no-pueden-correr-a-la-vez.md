@@ -44,7 +44,7 @@ mitad: dos agentes no se pisan el código. Falta lo mismo para el planning.
 En la instancia del caso (Cauce 0.99.2), verificado el 2026-10-01 leyendo el código y el estado de los árboles:
 
 1. Árbol principal de la instancia, `roax-ops/`, en la rama `work/manuel-auth`, con trabajo de esa línea sin
-   commitear. Sus workflows instalados en `.claude/workflows/` traen `ROOT = '/home/…/servers/roax-ops'`
+   commitear. Sus workflows instalados en `.claude/workflows/` traen `ROOT = '<carpeta de la empresa>/roax-ops'`
    (`autobuild.js:43`).
 2. La segunda línea trabaja en un worktree, `.wt-roax-ops-manuel-admin/`, en `work/manuel-admin`. Ahí promueve su hito
    (`## Hito admin-pregunta-a-auth-por-la-sesion`, tareas con `(owner: manuel/admin)`).
