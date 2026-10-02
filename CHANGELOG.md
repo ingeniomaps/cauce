@@ -18,6 +18,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Jira toma el servicio de una etiqueta.** Los proyectos team-managed no tienen componentes: con
+  `"serviceFrom": "label"` el sync lee el servicio de una etiqueta `service:<ruta>` (el prefijo se cambia con
+  `serviceLabelPrefix`), y con `"both"` de cualquiera de los dos. Si una incidencia nombra más de un servicio,
+  el draft lo marca y no elige. Un `serviceFrom` mal escrito ahora es error: antes dejaba todo el staging sin
+  servicio sin decir por qué.
 - **Dos épicas con el mismo número se arreglan con un comando.** Dos líneas de trabajo que crean una épica a
   la vez pueden tomar el mismo número; `check` ya lo marcaba, y ahora nombra las dos y dice cómo salir:
   `node tools/ops.js renumber-epic planning <epic-NNN-slug> <NNN>` mueve la que todavía no llegó a la rama
