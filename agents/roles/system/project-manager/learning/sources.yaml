@@ -24,3 +24,10 @@ sources:
     url: https://www.gov.uk/government/publications/project-delivery-functional-standard
     tier: regulation
     topics: [governance, assurance, planning, control, benefits, change]
+  # Alcance: gobierno del Reino Unido. No aplicar sus categorías de autoridad (GMPP/DMP/OMP) a una
+  # organización fuera de ese alcance sin comprobarlo antes (R14 — no se infiere una regla de una
+  # jurisdicción desde otra).
+  - name: GPD-PN 01/26 — Appointing senior responsible owners in government
+    url: https://projectdelivery.gov.uk/library-products/gpd-pn-01-26-appointing-senior-responsible-owners-in-government-html/
+    tier: regulation
+    topics: [governance, sponsor-authority]
