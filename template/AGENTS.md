@@ -108,9 +108,11 @@ te frena es el peor para elegir bien.
 **Si lo pediste vos en el chat, no hace falta nada.** Los guards contienen al agente cuando decide solo o
 cuando trabaja dentro de un recorrido; lo que vos pedís directo no se frena. Nombrá lo que querés que
 toque —«borrá la prueba de altas», «reescribí la migración 004»— y pasa sin preguntarte de nuevo. Si tu
-pedido no lo nombraba y algo se frena, el agente te dice qué y por qué: confirmalo con tus palabras —un
-«dale» alcanza, pero no hace falta esa palabra— y pasa exactamente eso. Si contestás negando, frenando o
-preguntando, no pasa. **Con los gates de un commit se pregunta cada vez**, como con publicar: gobernanza, los gates del
+pedido no lo nombraba y algo se frena, **en Claude Code se abre su diálogo de confirmación** para esa acción,
+con el motivo del guard: lo aprobás o lo rechazás ahí, sin palabras que elegir, y un mensaje tuyo sobre otra
+cosa no aprueba nada. En Codex y Gemini, que no tienen ese diálogo, el agente te dice qué se frenó y por qué:
+confirmalo con tus palabras —un «dale» alcanza, pero no hace falta esa palabra— y pasa exactamente eso. Si
+contestás negando, frenando o preguntando, no pasa. **Con los gates de un commit se pregunta cada vez**, como con publicar: gobernanza, los gates del
 stack y los lockfiles no heredan lo que autorizaste en un mensaje anterior, porque cada commit es otra
 operación. Y `plan-first` no te pide un plan cuando el cambio lo pediste vos: el plan es para el trabajo que va
 por tareas. Funciona en Claude Code, Codex y Gemini, que le avisan a Cauce cuando mandás un mensaje; en
@@ -125,7 +127,8 @@ para todos los guards, porque lo que escribís son rutas y quién las mira lo de
 juzgando esa ruta. Lo escribís vos, o el agente con tu confirmación: si intenta escribírselo solo, un
 guard lo frena y te muestra qué iba a agregar.
 
-**Una lectura que necesitás siempre se aprueba una vez.** El «dale» dura la sesión. Cuando el agente se
+**Una lectura que necesitás siempre se aprueba una vez.** El «dale» dura la sesión, y el diálogo de Claude
+Code se vuelve a abrir en cada lectura. Cuando el agente se
 frena leyendo una credencial —el token con el que una regla tuya manda autenticar—, te pregunta además si
 querés dejarla aprobada para siempre; si esa es tu intención, escribe la ruta en ese archivo, con quién lo
 aprobó y para qué, y ninguna sesión vuelve a preguntarlo. `check` la sigue nombrando mientras exista, como
