@@ -18,6 +18,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Mergear, aprobar un PR y desplegar ahora se frenan como un push.** `gh pr merge`, `review`, `close`,
+  `reopen` y `comment`, `gh workflow run`, `gh run rerun`, `gh release create|delete|upload|edit`, y los deploys
+  con `terraform`/`tofu apply|destroy`, `kubectl` con verbos que modifican, `helm install|upgrade|uninstall|
+  rollback`, `pulumi up|destroy` o `cdk deploy|destroy`. `gh pr create` sin `--repo` también se frena, porque
+  en un fork abre el PR en el original. Se aprueban igual que el push. Si tu proyecto despliega con un comando
+  propio —un script como `./scripts/deploy.sh`—, declaralo en `deployCommands` de `ops.config.json` y se frena igual.
 - **Dos épicas con el mismo número se arreglan con un comando.** Dos líneas de trabajo que crean una épica a
   la vez pueden tomar el mismo número; `check` ya lo marcaba, y ahora nombra las dos y dice cómo salir:
   `node tools/ops.js renumber-epic planning <epic-NNN-slug> <NNN>` mueve la que todavía no llegó a la rama
