@@ -25,3 +25,10 @@ sources:
     url: https://csrc.nist.gov/pubs/sp/800/161/r1/upd1/final
     tier: standard
     topics: [technology, supply-chain, cybersecurity, supplier-risk]
+  # Página oficial de OECD devolvió HTTP 403 en la investigación de origen (2026-09-24); el contenido se
+  # corrobora por una fuente secundaria, no por la fuente primaria. Confirmar contra oecd.org cuando se
+  # pueda abrir directamente.
+  - name: OECD due diligence guidance for responsible AI
+    url: https://www.oecd.org/en/publications/2026/02/oecd-due-diligence-guidance-for-responsible-ai_7831bb49.html
+    tier: standard
+    topics: [technology, ai, due-diligence, supply-chain]
