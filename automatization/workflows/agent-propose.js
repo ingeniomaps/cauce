@@ -75,7 +75,7 @@ const proposal = await agent(
   `Leé los informes citados en su sección «Hallazgos», el SKILL.md del cargo, ` +
   `${context.dir}/learning/sources.yaml, ${context.dir}/evaluations/expected-behaviors.yaml y sus ` +
   `casos en ${context.dir}/evaluations/cases/. Después completá **sólo** estas tres secciones de la ` +
-  `propuesta, sin tocar ninguna otra ni el frontmatter:\n\n` +
+  `propuesta, sin tocar ninguna otra ni el resto del frontmatter:\n\n` +
   `**Cambio propuesto**: el texto exacto a agregar o reemplazar, archivo por archivo, citando la ` +
   `sección o la línea que se toca. Que se pueda aplicar leyéndolo, sin volver al informe. Preferí ` +
   `agregar sobre reescribir: el núcleo del contrato no está en discusión. Si una fuente no se pudo ` +
@@ -91,6 +91,10 @@ const proposal = await agent(
   `enunciado de un caso que la ejerza aunque ya haya casos parecidos: al juez sólo le llegan las ` +
   `prohibidas, así que sin un caso propio la requerida no la mide nada, y aplicar no puede escribirlo ` +
   `sin tu firma.\n\n` +
+  `**Y contestá el campo \`cambia\` en el frontmatter**: agregá la línea \`cambia: si\` si «Cambio ` +
+  `propuesto» toca algún archivo del cargo, o \`cambia: no\` si concluiste que ninguno cambia. Es lo único ` +
+  `del frontmatter que escribís, y decide si la propuesta pide una firma: con \`cambia: no\` se archiva ` +
+  `sola. En ese caso «Cambio propuesto» dice igual por qué, hallazgo por hallazgo.\n\n` +
   `No modifiques SKILL.md, sources.yaml, expected-behaviors.yaml ni los casos: esto es una propuesta, ` +
   `no su aplicación. No toques «Aprobación humana»: esa la firma una persona. No hagas commit ni push. ` +
   `El único archivo que escribís es la propuesta.\n\n` +
