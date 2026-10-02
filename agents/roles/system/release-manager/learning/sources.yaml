@@ -25,3 +25,7 @@ sources:
     url: https://slsa.dev/spec/v1.2/
     tier: standard
     topics: [software-supply-chain, provenance, source, build, attestations]
+  - name: Google SRE Workbook — Canarying Releases
+    url: https://sre.google/workbook/canarying-releases/
+    tier: profession
+    topics: [canary, rollout, baseline]
