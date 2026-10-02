@@ -22,6 +22,10 @@ diseño — eso vive en el commit y en el código.
   descripción entera y pierde menciones, tablas y casillas. En Claude Code, el guard `jira-adf` frena
   `editJiraIssue` de cualquier servidor MCP cuando cambia la descripción sin ADF, y se aprueba como el resto
   si de verdad querés reemplazarla por texto. Llega con `automation install`.
+- **Tus workflows propios reciben los mismos marcadores que los de Cauce.** Escribilos en `workflows/` de la
+  instancia y `automation install` los deja al lado de los de Cauce con `{{OPS_ROOT}}`, `{{OPS_DIR}}` y los
+  `{{INCLUDE:…}}` resueltos, sin `sed` después. Uno que se llame como un workflow de Cauce no se instala, y
+  si borrás la fuente, la copia instalada se retira.
 - **Jira se puede leer con un agente, sin un token en disco.** Con `"transport": "agent"` en
   `integrations/jira/config.json`, la integración no pide credenciales: el agente lee con el MCP de Atlassian
   y la cuenta de quien está en la sesión, y entrega lo leído con `integration sync . jira --payload <archivo>`.

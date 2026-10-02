@@ -13,6 +13,11 @@ desactivar un guard, quitá su entrada de ahí. `automation list-hooks` enumera 
 Los adaptadores de runner y los workflows no se copian acá: son definiciones que el motor consume y
 viajan con Cauce, igual que el catálogo de cargos y los recorridos. `automation install` los lee desde ahí.
 
+Un workflow tuyo va en `workflows/` de la instancia, no acá. `automation install` lo instala al lado de los
+de Cauce y le resuelve los mismos marcadores —`{{OPS_ROOT}}`, `{{OPS_DIR}}`, `{{INCLUDE:…}}`—; uno que se
+llame como uno de Cauce no se instala. La copia instalada se regenera en cada instalación, así que se edita
+la fuente, y si borrás la fuente se retira.
+
 No copies reglas del protocolo aquí: enlázalas y mecaniza únicamente lo comprobable.
 
 ```bash
