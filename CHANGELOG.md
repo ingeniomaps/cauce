@@ -18,6 +18,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Jira se puede leer con un agente, sin un token en disco.** Con `"transport": "agent"` en
+  `integrations/jira/config.json`, la integración no pide credenciales: el agente lee con el MCP de Atlassian
+  y la cuenta de quien está en la sesión, y entrega lo leído con `integration sync . jira --payload <archivo>`.
+  El procedimiento está en `integrations/jira/README.md`. El payload declara si trajo todo; con
+  `complete: false` no se borra nada de lo que no vino.
 - **Mergear, aprobar un PR y desplegar ahora se frenan como un push.** `gh pr merge`, `review`, `close`,
   `reopen` y `comment`, `gh workflow run`, `gh run rerun`, `gh release create|delete|upload|edit`, y los deploys
   con `terraform`/`tofu apply|destroy`, `kubectl` con verbos que modifican, `helm install|upgrade|uninstall|

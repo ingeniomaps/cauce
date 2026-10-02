@@ -93,7 +93,7 @@ const INTEGRATION = {
   sync: {
     missing: 'sync exige <provider>',
     run: async (root, provider, key, cli) => {
-      const result = await I.sync(root, provider, { fixture: cli.value('--fixture') })
+      const result = await I.sync(root, provider, { fixture: cli.value('--fixture'), payload: cli.value('--payload') })
       console.log(
         `✓ ${provider}: ${result.total} items · ${result.created} nuevos · ` +
           `${result.refreshed} refrescados · ${result.preserved} curados preservados`,
@@ -102,6 +102,7 @@ const INTEGRATION = {
       // desaparece se borra o queda marcado según tenga curación. Se nombra sólo cuando pasó, porque
       // en la corrida normal los dos son cero y anunciarlo cada vez es ruido.
       if (result.removed) console.log(`  − ${result.removed} sin curar se fueron del remoto y se borraron`)
+      if (result.partial) console.log('  ↳ el payload no trajo todo (complete: false): no se borró nada de lo ausente')
       if (result.foreign) {
         console.log(`  ↳ ${result.foreign} de otra persona ya curados: siguen como candidatos y no se pisaron`)
       }

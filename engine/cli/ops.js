@@ -173,7 +173,7 @@ function usage() {
   ops integration enable <ops-root> <provider>
   ops integration disable <ops-root> <provider>
   ops integration check <ops-root> [provider]
-  ops integration sync <ops-root> <provider> [--fixture <json>]
+  ops integration sync <ops-root> <provider> [--payload <json>] [--fixture <json>]
   ops integration promote <ops-root> <provider> <remote-key>
   ops integration reset <ops-root> <provider> <remote-key>
   ops integration rebase <ops-root> <provider> <remote-key>
