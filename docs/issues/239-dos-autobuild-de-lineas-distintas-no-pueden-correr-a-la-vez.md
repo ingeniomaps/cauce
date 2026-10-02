@@ -189,3 +189,26 @@ ofrecía `auth-token`, la tarea de la otra línea.
   `delivery/teamwork.md` ya describe para cualquier reclamo.
 - Un árbol en una rama que no es `line/…` cuenta como principal. Dos de ésos ven la misma cola, y entre ellos
   protege la lectura de reclamos de la pieza 3: lo cubre una prueba con un worktree en `feat/otra`.
+
+**Después del cierre (2026-10-02): la corrida entera que había quedado sin correr.** Se lanzaron dos `/autobuild`
+reales a la vez, uno en el árbol principal y otro en la línea `admin`, sobre un banco con el motor de `main`
+(`1bfb5c87`) congelado en un tarball y un proyecto Node con `npm test` en cada repositorio. Antes de lanzar quedó
+escrito qué la refutaba: que una construyera la tarea de la otra, que el planning de una se escribiera en lo de la
+otra, o que una no viera su cola.
+
+- Cada una construyó sólo la suya: `auth` 7733fbd (`issueToken`) y `admin` ad09d49 (`describeSession`), cada una
+  con su `done/` en su árbol. Las dos vieron su cola y soltaron su reclamo.
+- **Las dos escribieron en el hito de la otra.** La línea `admin` le puso `[full]` y su `cast` a `auth-token` en
+  `backlog/auth-sesion.md`, y el principal le puso `[lite]` a `admin-consulta`. La fase Classify pedía clasificar
+  «todas las tareas en cola» de `BACKLOG.md` y de todos los archivos de `backlog/`: era la decisión del caso 212,
+  correcta con una sola cola. Al mergear, cada línea le habría pisado a la otra su clasificación.
+- **Arreglo:** Classify trabaja sobre el archivo del hito de la tarea (`queueFile()`), que es lo que su propio
+  comentario prometía («clasifica el hito entero»). Proteger la cola sigue mirándola entera. La prueba de
+  `test/workflows/autobuild-queue.test.js` asertaba lo viejo y ahora asierta lo nuevo y la ausencia de lo viejo. Se
+  vio en rojo devolviendo `${QUEUE}`, y la aserción de ausencia también sola, con una mutación que conservaba la
+  frase nueva y volvía a nombrar la cola entera.
+- **Dos cosas del banco que no son de este caso.** La corrida del principal la cortó `claude -p` a los 600 s
+  («Background tasks still running after 600s»), después de commitear y escribir su `done/` y antes del checkpoint:
+  es el tope del modo headless (`CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS`). Y el árbol de la línea muestra
+  `node_modules` sin trackear, porque `ops line` lo crea como enlace y el `node_modules/` del `.gitignore` sólo
+  cubre directorios.
