@@ -144,6 +144,21 @@ function competingSections(dir) {
   return warnings
 }
 
+// Un encabezado que numera una regla y no tiene la forma `## <letra><número> —` no existe para `check`: ni
+// cuenta como definida ni choca con otra, así que una propia escrita `## Regla 8` contradecía a R8 en silencio
+// (caso 224). Detectar la contradicción misma pide juicio; esto dice que la regla no se está leyendo.
+const RULE_LIKE = /^##\s+((?:Regla|Rule)\s*[-.]?\s*\d+\b.*|[A-Z][-.]\s*\d+\b.*|[A-Z]\d+\b(?!\s+[—-]).*)$/gm
+function looseRuleHeadings(dir) {
+  const rules = path.join(dir, 'rules')
+  let files = []
+  try { files = fs.readdirSync(rules).filter((file) => file.endsWith('.md') && file !== 'README.md').sort() } catch {
+    return []
+  }
+  return files.flatMap((file) => [...P.read(path.join(rules, file)).matchAll(RULE_LIKE)]
+    .map((hit) => `rules/${file}: «## ${hit[1].trim()}» parece una regla y check no la lee; se escribe `
+      + `«## P${hit[1].match(/\d+/)[0]} — título» (o con el número del sistema en el archivo que lo reemplaza)`))
+}
+
 function retiredByOverride(dir, name) {
   const rules = path.join(dir, 'rules')
   const system = path.join(rules, 'system', name)
@@ -238,6 +253,7 @@ function validateAdr(dir) {
 }
 
 module.exports = {
+  looseRuleHeadings,
   validateRoadmapStructure,
   validateBacklogStructure,
   competingSections,
