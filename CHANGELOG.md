@@ -18,6 +18,10 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Editar por MCP la descripción de una tarjeta de Jira en markdown se frena.** El markdown reemplaza la
+  descripción entera y pierde menciones, tablas y casillas. En Claude Code, el guard `jira-adf` frena
+  `editJiraIssue` de cualquier servidor MCP cuando cambia la descripción sin ADF, y se aprueba como el resto
+  si de verdad querés reemplazarla por texto. Llega con `automation install`.
 - **Dos épicas con el mismo número se arreglan con un comando.** Dos líneas de trabajo que crean una épica a
   la vez pueden tomar el mismo número; `check` ya lo marcaba, y ahora nombra las dos y dice cómo salir:
   `node tools/ops.js renumber-epic planning <epic-NNN-slug> <NNN>` mueve la que todavía no llegó a la rama
