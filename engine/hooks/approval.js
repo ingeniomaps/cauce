@@ -28,6 +28,7 @@ const path = require('node:path')
 const fs = require('node:fs')
 const { opsRoot, cwdOf } = require('./input')
 const CHAT = require('./chat')
+const CF = require('./confirm')
 
 const APPROVAL = '.ops-approval'
 
@@ -105,7 +106,12 @@ function REFUSED(items, input = {}) {
 // que tiene a mano no sirve para pegar —por qué, en `secrets-shell.js` (caso 118)—. Lo frenado se anota
 // igual, así que el «dale» sigue cubriendo todo.
 function HOW(variable, lines, input, pasteable = lines, { durable = false } = {}) {
-  const held = CHAT.hold(input, lines)
+  // Con diálogo no se anota nada para el chat: lo que se aprobaría con el mensaje siguiente lo aprueba el
+  // diálogo, y un pendiente que sobreviviera lo podría aprobar un mensaje sobre otra cosa (caso 221).
+  // Sin nada que aprobar no hay diálogo: `plan-first` con un plan a la vista pide escribir el plan, no un sí.
+  const native = lines.length > 0 && CF.native(input)
+  if (native) CF.askPerson(input)
+  const held = native ? false : CHAT.hold(input, lines)
   const dropped = held ? held.dropped : []
   const chat = held && dropped.length < lines.length
   const stuck = lines.filter((one) => !pasteable.includes(one))
@@ -127,7 +133,7 @@ function HOW(variable, lines, input, pasteable = lines, { durable = false } = {}
       + 'alcanza, pero no hace falta esa palabra. Si lo que contesta es un sí, reintentá el mismo cambio y '
       + 'pasa; si duda, pregunta o dice que no, no reintentes. Juzgarlo te toca a vos: el guard sólo frena la '
       + 'respuesta que niega, frena o pregunta. '
-  const ask = chat
+  const ask = native ? CF.LEAD : chat
     ? lead + 'Esa confirmación cubre lo que se frenó y nada más —algo nuevo vuelve a frenar— y sigue valiendo '
       + 'en los mensajes siguientes hasta que ella lo niegue. '
     : ''
@@ -138,7 +144,8 @@ function HOW(variable, lines, input, pasteable = lines, { durable = false } = {}
   // (caso 194). A quien corre el guard le toca otra cosa, y se le dice cuál. Vale también cuando hay persona
   // pero no se le ofrece contestar, porque su último mensaje negaba todo lo frenado.
   const paste = pasteable.length
-    ? (chat ? 'Si prefiere aprobarlo a mano, que pegue ella' : 'Esto lo aprueba una persona: que pegue ella')
+    ? (chat || native ? 'Si prefiere aprobarlo a mano, que pegue ella'
+      : 'Esto lo aprueba una persona: que pegue ella')
       + ' tal cual en'
       + ` ${where(input)} estas líneas:\n`
       + pasteable.map((line) => `  ${line}\n`).join('')

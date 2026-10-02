@@ -23,6 +23,7 @@ const { spawnSync } = require('node:child_process')
 const { block, cwdOf, gitDirectory, opsRoot, configOf } = require('./input')
 const AP = require('./approval')
 const CHAT = require('./chat')
+const CF = require('./confirm')
 const TRAIL = require('./trail')
 
 // Lo que va entre `git push` y el fin del comando. El salto de línea corta igual que `;`, por lo que
@@ -113,10 +114,12 @@ function liveMessage(live, input) {
 
 function workMessage(items, input) {
   const lines = items.filter((item) => item.startsWith('push '))
-  const held = CHAT.hold(input, items)
+  const native = CF.native(input)
+  if (native) CF.askPerson(input)
+  const held = native ? false : CHAT.hold(input, items)
   const dropped = held ? held.dropped : []
   const chat = held && dropped.length < items.length
-  const how = (dropped.length ? AP.REFUSED(dropped, input) : '') + (chat
+  const how = (dropped.length ? AP.REFUSED(dropped, input) : '') + (native ? CF.LEAD : chat
     ? 'Decile a la persona qué se frenó y pedile que lo confirme con sus palabras: si lo que contesta es un '
       + 'sí, reintentá el mismo push y pasa; si duda, pregunta o dice que no, no reintentes. '
       + 'También pasa si lo pide nombrando el remoto y la rama, como «subí feat/x a origin».'
