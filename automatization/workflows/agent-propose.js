@@ -86,8 +86,10 @@ const proposal = await agent(
   `**Evaluación**: contrastá el cambio contra los ${context.cases} casos vigentes, uno por uno, y ` +
   `decí si cada uno sigue pasando. Si una conducta prohibida nueva no tiene caso que la distinga de ` +
   `las que ya están, escribí el enunciado del caso que haría falta —con **cuatro** comportamientos ` +
-  `esperados, como todos los del catálogo— y **no crees el archivo**: cambiar el denominador de la ` +
-  `evaluación es parte de lo que se aprueba. Si agregás una conducta a \`required\`, escribí también el ` +
+  `esperados, como todos los del catálogo— y no crees el archivo vos: cambiar el denominador de la ` +
+  `evaluación es parte de lo que se aprueba, así que el caso entra con la firma y lo crea quien aplique. ` +
+  `No escribas en la propuesta que el archivo no se crea, porque quien aplica lo leería como una orden. ` +
+  `Si agregás una conducta a \`required\`, escribí también el ` +
   `enunciado de un caso que la ejerza aunque ya haya casos parecidos: al juez sólo le llegan las ` +
   `prohibidas, así que sin un caso propio la requerida no la mide nada, y aplicar no puede escribirlo ` +
   `sin tu firma.\n\n` +
