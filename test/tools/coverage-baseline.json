@@ -264,6 +264,11 @@
     "branches": 84,
     "functions": 100
   },
+  "engine/hooks/jira.js": {
+    "lines": 100,
+    "branches": 80,
+    "functions": 100
+  },
   "engine/hooks/machine-lock.js": {
     "lines": 100,
     "branches": 83,
