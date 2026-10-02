@@ -106,17 +106,33 @@ function derive(snapshot, draft) {
   }
 }
 
+// El servicio de un ítem, de donde la configuración diga (caso 227). Los proyectos team-managed de Jira no
+// tienen componentes, y ahí el servicio se escribe como etiqueta: `service:<ruta>`. Con `both`, componente
+// y etiqueta cuentan juntos, y si nombran servicios distintos no se elige ninguno: el borrador lo dice.
+const SERVICE_FROM = ['component', 'label', 'both']
+function serviceOf(item, config) {
+  const from = config.serviceFrom || 'component'
+  const prefix = config.serviceLabelPrefix || 'service:'
+  const named = [
+    ...(from === 'label' ? [] : item.components || []),
+    ...(from === 'component' ? [] : (item.labels || []).filter((one) => String(one).startsWith(prefix))
+      .map((one) => String(one).slice(prefix.length)).filter(Boolean)),
+  ]
+  const distinct = [...new Set(named)]
+  if (distinct.length === 1) return { service: distinct[0] }
+  return { service: '', problem: distinct.length
+    ? `Nombra más de un servicio (${distinct.join(', ')}): debe quedar uno solo.`
+    : 'Debe definirse un servicio único para la promoción.' }
+}
+
 function renderDraft(item, config, state = 'pending') {
-  // `|| []` porque el item lo arma el adaptador y el README declara el contrato por sus tres funciones,
-  // sin decir qué campos trae un item. Uno propio —que es lo que ese README invita a escribir— puede no
-  // traer `components`, y con `serviceFrom: "component"`, que es lo que trae el molde, eso era un
-  // TypeError sin nada que lo atribuya. Sin campo la respuesta es la que el borrador ya sabe dar.
-  const components = item.components || []
-  const service = config.serviceFrom === 'component' && components.length === 1 ? components[0] : ''
+  // `serviceOf` tolera un item sin `components` ni `labels`: lo arma el adaptador, y uno propio —el README
+  // invita a escribirlo— puede no traerlos. Sin campo la respuesta es la que el borrador ya sabe dar.
+  const { service, problem } = serviceOf(item, config)
   const acceptance = item.acceptance || 'Por definir.'
   const issues = []
   if (!item.acceptance) issues.push('La incidencia no contiene aceptación concreta.')
-  if (!service) issues.push('Debe definirse un servicio único para la promoción.')
+  if (problem) issues.push(problem)
   if (!issues.length) issues.push('Ninguno detectado automáticamente.')
   return `---
 provider: jira
@@ -177,9 +193,28 @@ function readStaging(root, provider = '') {
   return items.sort((left, right) => left.key.localeCompare(right.key))
 }
 
+// Lo promovido ya es una decisión humana escrita en el roadmap (caso 228). `reset` lo devolvía a `pending` y
+// perdía el registro de la promoción; `reconcile` movía la base al remoto y borraba la señal de que Jira
+// cambió después de promover, que es lo que alguien tiene que mirar. Se niega antes de escribir nada.
+// `rebase` sólo recalcula el hash y no toca ninguna de las dos cosas.
+const KEEPS_PROMOTION = {
+  reset: 'lo devolvería a pending y perdería el registro de la promoción',
+  reconcile: 'borraría la señal de que Jira cambió después de promoverlo',
+}
+
 function reconcile(root, provider, operation, keys = []) {
   const selected = new Set(keys)
   const results = []
+  if (KEEPS_PROMOTION[operation]) {
+    const promoted = readStaging(root, provider)
+      .filter((staged) => !selected.size || selected.has(staged.key))
+      .filter((staged) => frontmatter(fs.readFileSync(path.join(staged.dir, 'draft.md'), 'utf8')).state === 'promoted')
+      .map((staged) => staged.key)
+    if (promoted.length) {
+      throw new Error(`${promoted.join(', ')} ya se promovió: ${operation} ${KEEPS_PROMOTION[operation]}. Si Jira `
+        + 'cambió, revisá la épica en planning/roadmap/ y reflejalo ahí.')
+    }
+  }
   for (const staged of readStaging(root, provider)) {
     if (selected.size && !selected.has(staged.key)) continue
     const snapshotFile = path.join(staged.dir, 'remote.json')
@@ -222,7 +257,7 @@ module.exports = {
   readStaging,
   reconcile,
   remoteView,
-  renderDraft,
+  renderDraft, SERVICE_FROM,
   replaceField,
   roleOf,
   sections,

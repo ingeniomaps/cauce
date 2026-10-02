@@ -337,10 +337,15 @@ test('Jira sincroniza ADF, preserva curación y promueve sin escribir remoto', (
   assert.equal(plan.status, 0, plan.stderr)
   assert.equal(JSON.parse(plan.stdout).writeBack, false, 'no hay ejecutor remoto aprobado')
 
-  for (const operation of ['reconcile', 'rebase', 'reset']) {
+  // DEMO-42 está promovido: `rebase` pasa, y `reconcile` y `reset` se niegan (caso 228). Los tres siguen
+  // llegando al despachador, que es lo que esto cuida.
+  const rebased = run(['integration', 'rebase', target, 'jira', 'DEMO-42'])
+  assert.equal(rebased.status, 0, rebased.stderr)
+  assert.match(rebased.stdout, /rebase aplicado a DEMO-42/)
+  for (const operation of ['reconcile', 'reset']) {
     const result = run(['integration', operation, target, 'jira', 'DEMO-42'])
-    assert.equal(result.status, 0, result.stderr)
-    assert.match(result.stdout, new RegExp(`${operation} aplicado a DEMO-42`))
+    assert.notEqual(result.status, 0, operation)
+    assert.match(`${result.stdout}${result.stderr}`, /DEMO-42 ya se promovió/)
   }
   assert.notEqual(run(['integration', 'reset', target, 'jira', 'NO-EXISTE']).status, 0)
 
@@ -349,13 +354,16 @@ test('Jira sincroniza ADF, preserva curación y promueve sin escribir remoto', (
   // potenciales de trabajo, y la única señal era mirar el directorio.
   const blank = path.join(base, 'vacio.json')
   fs.writeFileSync(blank, '{"issues":[]}')
-  // El `reset` de arriba dejó el draft igual al snapshot, o sea sin curar. Se le vuelve a poner algo
-  // propio para probar la rama que conserva.
+  // Se le pone algo propio para probar la rama que conserva.
   fs.writeFileSync(draftFile, `${fs.readFileSync(draftFile, 'utf8')}\n- Nota local.\n`)
   const curated = run(['integration', 'sync', target, 'jira', '--fixture', blank])
   assert.equal(curated.status, 0, curated.stderr)
   assert.match(curated.stdout, /1 con curación ya no están en el remoto/)
 
+  // La rama que borra pide un draft sin promover y sin curar: se lo devuelve a pending a mano, como arriba con
+  // la promoción interrumpida, y `reset` lo deja igual al snapshot.
+  fs.writeFileSync(draftFile, fs.readFileSync(draftFile, 'utf8').replace('state: promoted', 'state: pending')
+    .replace(/^promotedAt:.*$/m, 'promotedAt: ""'))
   assert.equal(run(['integration', 'reset', target, 'jira', 'DEMO-42']).status, 0)
   const deleted = run(['integration', 'sync', target, 'jira', '--fixture', blank])
   assert.equal(deleted.status, 0, deleted.stderr)

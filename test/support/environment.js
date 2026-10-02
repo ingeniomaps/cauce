@@ -30,6 +30,9 @@ const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), `cauce-test-${process.pid}-`)
 
 process.on('exit', () => fs.rmSync(ROOT, { recursive: true, force: true }))
 
+// El candado de verify, de esta corrida y no de la máquina: por qué, en `engine/hooks/machine-lock.js`.
+process.env.CAUCE_VERIFY_LOCK = path.join(ROOT, 'verify.lock')
+
 // El nombre del banco es el que pidió la prueba más un contador, y **no** el sufijo aleatorio que
 // agrega mkdtemp. La aleatoriedad no le servía a nadie —`ROOT` ya es único por proceso y el contador
 // alcanza para no chocar dentro de él— y sí decidía si una prueba pasaba: la suite aísla lo que cada
