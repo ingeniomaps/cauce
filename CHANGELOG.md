@@ -18,6 +18,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **`check` comprueba que el commit de cada tarea cerrada exista.** El `commit:` de una entrada de `done/` se
+  validaba por su forma, y un hash inventado pasaba. Ahora `check` busca cada sha en su repositorio —el que
+  nombra la traza, `(api@main)`, dentro de tus raíces— y avisa el que no está. Lo que no puede mirar porque el
+  repositorio no está clonado en esa máquina lo dice en una sola línea. Es aviso y no error: un commit de una
+  rama que no trajiste también falta.
 - **Un rojo que ya estaba se declara una vez, y no se aprueba en cada commit.** Si un repositorio arrastra un
   lint en rojo o una suite rota en otro módulo, escribilo en `planning/gate-known-red` como
   `<raíz>: <gate> — <motivo>` —por ejemplo `api: lint — once errores de ESLint 9 heredados`—. `verify` deja

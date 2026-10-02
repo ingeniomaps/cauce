@@ -28,6 +28,7 @@ const O = require('../core/ownership')
 const TR = require('../core/trails')
 const OB = require('../core/onboarding')
 const C = require('../config/validate')
+const DC = require('../planning/done-commits')
 const VF = require('../hooks/verify')
 const KR = require('../core/known-red')
 const MG = require('../core/migrations')
@@ -143,6 +144,8 @@ function check(dir, cli) {
   warnings.push(...PC.unverifiableAcceptance(milestones))
   warnings.push(...R.coverageWarnings(path.resolve(root, '..'), done))
   errors.push(...PC.surfaceWithoutTests(done.entries, R.commitFiles(path.resolve(root, '..')), new Set(adopted)))
+  const ops = path.resolve(root, '..')
+  warnings.push(...DC.unknownCommitWarnings(done.entries, (items) => R.commitStatus(ops, items)))
   // Sin `RECURRING.md` no dice una palabra: una instancia que actualiza y no declara trabajo recurrente
   // no tiene por qué enterarse de que el contrato existe. Vencida avisa y no frena — lo que frena vive
   // en `HUMAN_ACTIONS.md`, y un aviso que salta siempre se termina apagando.
