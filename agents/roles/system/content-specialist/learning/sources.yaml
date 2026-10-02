@@ -18,7 +18,16 @@ sources:
     tier: standard
     topics: [seo, people-first, quality, transparency]
   - name: Federal Plain Language Guidelines
-    url: https://www.plainlanguage.gov/guidelines/
+    # plainlanguage.gov (dominio entero) redirige 301 a este destino desde antes de 2026-09-24
+    # (H1, verificado). El destino organiza el contenido en cuatro guías —Principles of plain
+    # language, Writing for understanding, Design for understanding, Test for understanding—
+    # que mapean razonablemente sobre los cuatro topics de abajo (plain-language, words,
+    # structure respectivamente), excepto «audience»: que «Principles» cubra identificar
+    # audiencia no se confirmó leyendo esa guía línea por línea esta corrida, así que ese topic
+    # queda [Hipótesis] hasta que una investigación futura lo abra directamente. «Test for
+    # understanding» no tiene topic propio todavía; no se agrega uno por decisión unilateral de
+    # esta propuesta — queda para que la próxima investigación lo evalúe con la guía abierta.
+    url: https://digital.gov/guides/plain-language
     tier: regulation
     topics: [plain-language, audience, structure, words]
   - name: FTC Native Advertising Guide

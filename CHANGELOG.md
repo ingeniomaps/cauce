@@ -137,6 +137,44 @@ diseño — eso vive en el commit y en el código.
   esta versión, la superficie crítica y lo corregido. Ahora los copia textuales. Las entradas que ya
   escribiste no cambian.
 
+### Cargos
+
+- **`qa-engineer`**: Los dos candidatos salen de H11 del informe del 2026-09-21, nombrados por el propio juez
+  de la evaluación al leer `evaluations/results/2026-09-16.md` (casos 09 y 13). Los dos entran sólo en
+  `evaluations/expected-behaviors.yaml` —H11 ya los… (propuesta `2026-10.md`).
+- **`content-specialist`**: ### 1. `learning/sources.yaml` — entrada «Federal Plain Language Guidelines»
+  (líneas 20–23) (propuesta `2026-10.md`).
+- **`frontend-engineer`**: Dos cambios, cada uno sale de un hallazgo distinto de los citados en «Hallazgos».
+  Los dos agregan sobre el texto existente; ninguno reemplaza una frase ya escrita (propuesta `2026-10.md`).
+- **`implementation-manager`**: ### 1. `references/operating-model.md` — cerrar H1 (mecánico, sin riesgo)
+  (propuesta `2026-10.md`).
+- **`legal-counsel`**: Las fechas y ediciones citadas abajo están verificadas en
+  `agents/roles/system/legal-counsel/learning/reports/2026-09-24.md`, sección «Evidencia» (H1–H7); esta
+  propuesta no reabrió las fuentes primarias, trabaja sobre esa verificación ya… (propuesta `2026-10.md`).
+- **`logistics-operations-manager`**: Dos bloques, y se pueden firmar por separado porque salen de dos
+  hallazgos distintos y tienen costos distintos (propuesta `2026-10.md`).
+- **`machine-learning-engineer`**: Un solo hilo cruza las cinco corridas sin cerrarse: el resumen automático
+  de la página HTML de una release de GitHub erró el año de la fecha en tres observaciones independientes
+  —`qa-engineer` (2026-08-29), este cargo sobre PyTorch 2.13.0… (propuesta `2026-10.md`).
+- **`people-operations-manager`**: No se modifica `SKILL.md`: el aprendizaje de este cargo no lo toca nunca
+  (`learning/AUTOMATION.md`, `SKILL.md` → "Aprender sin reescribirse"). Los dos archivos que sí se tocan son
+  los que nombra el hallazgo de 2026-09-24, y en los dos se… (propuesta `2026-10.md`).
+- **`product-marketing-manager`**: De los siete hallazgos, el del informe 2026-09-24 trae una recomendación
+  explícita (H1+H2+H3); los otros seis son huecos de contrato que la corrida de evaluación del 2026-09-02
+  encontró en casos que igual pasaron. Esta sección convierte los… (propuesta `2026-10.md`).
+- **`security-engineer`**: Dos informes seguidos (2026-09-21 H7, 2026-09-24 H7/H8) recomendaron la misma
+  acción —correr, en un entorno desechable y no contra este árbol, el caso que ejerce un guard ya cerrado del
+  propio repositorio— y ninguno la ejecutó; la… (propuesta `2026-10.md`).
+- **`user-researcher`**: El cambio toca **tres archivos** y es aditivo en los tres: no se reescribe ninguna
+  línea existente de `references/operating-model.md` ni de `evaluations/expected-behaviors.yaml`, y `SKILL.md`
+  no se toca (ya lo pedía el informe). El núcleo… (propuesta `2026-10.md`).
+- **`software-architect`**: Seis hallazgos de contrato salieron de corridas de evaluación (no de
+  investigación: H1, 2026-09-24, confirma que no hay fuente nueva que agregar a `sources.yaml` este período).
+  De los seis, tres se cierran agregando una conducta prohibida… (propuesta `2026-10.md`).
+- **`ux-designer`**: Siete puntos, A–B del informe 2026-09-24 y C–G de las cinco brechas que encontraron las
+  corridas de casos. Todos son aditivos: ninguno borra ni reescribe una oración existente, salvo C y G, que
+  intercalan una cláusula dentro de una oración… (propuesta `2026-10.md`).
+
 ## [0.99.2] - 2026-09-28
 
 ### Corregido

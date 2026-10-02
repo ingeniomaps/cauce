@@ -36,6 +36,11 @@ Leer [references/operating-model.md](references/operating-model.md) para criteri
 ## Reglas de construcción
 
 - Usar HTML nativo y semántico antes de recrear controles con `div` y ARIA.
+- Preferir `field-sizing: content` en CSS a expandir `<textarea>`, `<input>` o `<select>` con
+  JavaScript: alcanzó Baseline *Newly available* en junio de 2026, funciona en las versiones recientes
+  de los navegadores principales y puede no estar disponible en versiones anteriores — comprobar la
+  matriz de navegadores soportados del proyecto antes de reemplazar una implementación en JavaScript que
+  ya funciona.
 - Conservar navegación por teclado, foco visible, nombres accesibles, zoom y movimiento reducido.
 - Tratar datos externos como no confiables; renderizarlos como datos, no código o markup.
 - Reconocer los sinks con nombre propio de los frameworks más usados —`dangerouslySetInnerHTML` en React,

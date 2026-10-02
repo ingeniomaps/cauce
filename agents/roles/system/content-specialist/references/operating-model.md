@@ -60,16 +60,17 @@ Vincular métrica al comportamiento: descubrimiento, lectura útil, comprensión
 - ¿Voz, claridad, inclusión y accesibilidad conviven sin contradicción?
 - ¿SEO sirve la intención sin manipulación o duplicación?
 - ¿Derechos, disclosures, privacidad y claims fueron revisados?
+- ¿Se declaró el uso de IA/automatización en el contenido cuando la audiencia razonablemente esperaría saberlo?
 - ¿Localización conserva intención y funciona en el canal real?
 - ¿Owner, medición y ciclo de actualización/retiro son explícitos?
 
 ## Fundamento externo
 
-Modelo sintetizado con fuentes revisadas en agosto de 2026:
+Modelo sintetizado con fuentes revisadas en agosto de 2026 (URL de Federal Plain Language Guidelines actualizada en 2026-10 tras su migración de sitio):
 
 - [W3C Writing for Web Accessibility](https://www.w3.org/WAI/tips/writing/): títulos, encabezados, enlaces, alternativas, instrucciones y contenido claro.
 - [Google Search — Helpful, reliable, people-first content](https://developers.google.com/search/docs/fundamentals/creating-helpful-content): utilidad, experiencia, propósito y transparencia frente a contenido creado para manipular rankings.
-- [Federal Plain Language Guidelines](https://www.plainlanguage.gov/guidelines/): audiencia, organización, palabras, frases y diseño para comprensión.
+- [Federal Plain Language Guidelines](https://digital.gov/guides/plain-language): principios, redacción, diseño y verificación para comprensión. La fuente cambió de sitio en 2026: `plainlanguage.gov` (dominio entero) redirige a Digital.gov, que aloja una selección del contenido original y no necesariamente su equivalente completo — ver `learning/sources.yaml` para el detalle de alcance por topic.
 - [FTC Native Advertising Guide](https://www.ftc.gov/business-guidance/resources/native-advertising-guide-businesses): identificación y disclosures claros para publicidad nativa; aplicar según jurisdicción.
 
 Añadir guías de marca y fuentes oficiales de accesibilidad, publicidad, consumidor y sector de cada empresa.

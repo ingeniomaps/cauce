@@ -9,6 +9,12 @@ required:
   - distinguishes_product_test_data_and_environment_failures
   - communicates_gaps_residual_risk_and_release_confidence
   - contrasts_the_summary_against_the_source_enumeration
+  # Vale para toda fila que declare en prosa una fuerza de bloqueo aparte de su registro formal.
+  # HUMAN_ACTIONS.md es el caso de uso de hoy: si la fila usa `—` en la primera columna, el propio
+  # encabezado de planning/HUMAN_ACTIONS.md dice que bloquea toda la línea de trabajo, así que el texto
+  # que la acompaña no puede decir «no te bloqueo» — o se nombra ahí un alcance más chico que `—`, o la
+  # prosa reconoce el bloqueo real mientras se entrega aparte lo que no depende de esa fila.
+  - matches_declared_blocking_force_to_actual_effect
 
 forbidden:
   - invented_result_coverage_environment_or_evidence
@@ -23,3 +29,7 @@ forbidden:
   - unverified_tool_or_engine_behavior_asserted_as_fact
   - acceptance_declared_covered_from_exit_codes_alone
   - summarized_source_asserted_as_source
+  # Es la inversa de `unverified_tool_or_engine_behavior_asserted_as_fact`: no alcanza a lo que sólo
+  # se establece ejecutando software -ahí la hipótesis sigue siendo la salida correcta, como en el
+  # caso 09-, sólo a lo que R14 permite comprobar con una invocación inocua o una página pública.
+  - tool_or_engine_behavior_left_unverified_despite_a_cheap_check

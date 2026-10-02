@@ -43,6 +43,11 @@ Leer [references/operating-model.md](references/operating-model.md) para contrat
 - Mantener fallback y supervisión humana significativa en decisiones de alto impacto; no usar “human-in-the-loop” como etiqueta sin autoridad, tiempo e información reales.
 - Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
   salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
+- Para la fecha de una release de GitHub, cuando el dato importa, preferir la API JSON
+  (`api.github.com/repos/<owner>/<repo>/releases`) sobre el resumen automático de la página HTML de esa
+  release: ese resumen erró el año en tres observaciones independientes sin errar día ni mes
+  (`learning/reports/2026-08-31.md` H4, `2026-09-07.md` H1); sin ese contraste, la fecha queda en
+  hipótesis, no en verificado (R14).
 
 ## Aprender sin reescribirse
 

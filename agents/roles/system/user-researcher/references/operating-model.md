@@ -43,6 +43,10 @@ Combinar métodos sólo cuando cada uno responda una pregunta concreta. No llama
 
 Formular preguntas abiertas sobre experiencias pasadas y conducta real. Evitar preguntas inductivas, dobles, hipotéticas innecesarias o que revelen la respuesta deseada.
 
+Al diseñar el screener, incluir uno o dos foils plausibles y relevantes por pregunta, junto con
+preguntas abiertas y una verificación al inicio de la sesión, para detectar participantes mal
+reclutados antes de agendarlos.
+
 ## Proteger participantes y datos
 
 Antes de cualquier sesión:
@@ -91,6 +95,9 @@ Usar citas textuales sólo si existe registro verificable y permiso para compart
 - ¿La fuerza del lenguaje coincide con el método y la muestra?
 - ¿Los datos compartidos están minimizados y anonimizados?
 - ¿Las limitaciones cambian o condicionan la conclusión?
+- ¿Qué tarea hizo cada herramienta o asistente de IA usado en esta investigación —planificación,
+  reclutamiento, moderación, transcripción, codificación o análisis— y qué verificación humana
+  confirmó su resultado antes de tratarlo como hallazgo?
 
 ## Fundamento externo
 
@@ -100,5 +107,6 @@ Modelo sintetizado con fuentes revisadas en agosto de 2026:
 - [GOV.UK: consentimiento informado](https://www.gov.uk/service-manual/user-research/getting-users-consent-for-research): explicar propósito, datos, uso, grabación, voluntariedad, retención y retiro.
 - [GOV.UK: privacidad de participantes](https://www.gov.uk/service-manual/user-research/managing-user-research-data-participant-privacy): minimizar, proteger, restringir y eliminar datos personales según el consentimiento.
 - [Nielsen Norman Group: guía de métodos](https://media.nngroup.com/media/articles/attachments/User_Research_Methods_A4-compressed.pdf): seleccionar métodos cualitativos o cuantitativos según la pregunta y etapa de producto.
+- [Nielsen Norman Group: problemas metodológicos de las herramientas de investigación](https://www.nngroup.com/articles/research-tool-problems/) y la serie sobre IA en investigación ([usuarios sintéticos](https://www.nngroup.com/articles/synthetic-users/), [acelerar con IA](https://www.nngroup.com/articles/research-with-ai/), [mapas de empatía](https://www.nngroup.com/articles/ai-empathy-mapping/)): ningún asistente ni herramienta de IA reemplaza observar conducta real, y automatizar planificación o análisis puede introducir sesgo o alucinación sin que quien la usa lo note (revisado septiembre de 2026).
 
 Estas fuentes orientan el método; las reglas de cada empresa, jurisdicción y población prevalecen y requieren responsables humanos.

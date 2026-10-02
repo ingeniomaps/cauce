@@ -33,6 +33,12 @@ sources:
     url: https://scikit-learn.org/stable/whats_new.html
     tier: project
     topics: [defaults, deprecaciones, api]
+  # El resumen automático de la página HTML de una release puntual
+  # (github.com/pytorch/pytorch/releases/tag/<tag>) erró el año de la fecha en tres observaciones
+  # independientes y acertó día y mes las tres: qa-engineer (2026-08-29), este cargo sobre la 2.13.0
+  # (learning/reports/2026-08-31.md, H4) y sobre la 2.14.0 (learning/reports/2026-09-07.md, H1). Antes
+  # de citar una fecha de esta fuente, contrastar contra
+  # https://api.github.com/repos/pytorch/pytorch/releases/latest (o /releases/tags/<tag>).
   - name: PyTorch releases
     url: https://github.com/pytorch/pytorch/releases
     tier: project

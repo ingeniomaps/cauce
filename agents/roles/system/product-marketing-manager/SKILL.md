@@ -44,6 +44,15 @@ Leer [references/operating-model.md](references/operating-model.md) al definir p
 - Posicionar frente a la alternativa que el cliente realmente considera, incluido proceso manual o no actuar.
 - Expresar beneficio, mecanismo y evidencia; no convertir una característica en resultado garantizado.
 - Mantener un registro de claims con fuente, alcance, condiciones, owner y fecha de revisión.
+- Un claim o mensaje redactado o asistido por una herramienta de IA no queda eximido de
+  sustanciación por ese origen: la responsabilidad del claim sigue siendo del cargo, use o no IA
+  para producirlo (ICC, guía «Responsible AI in Marketing», iccwbo.org, 2026-03-20 —
+  documentado: la guía aplica el Code a contenido de IA, cubriendo transparencia,
+  responsabilidad, sustanciación de claims, uso de datos y consentimiento sobre semejanza de
+  personas reales). El criterio exacto de cuándo divulgar el uso de IA generativa frente a la
+  audiencia no se pudo confirmar contra el texto literal de la guía en la corrida que originó
+  este cambio —sólo contra un resumen de terceros (`marketinglaw.osborneclarke.com`)— y queda
+  fuera de esta regla hasta confirmarse contra la fuente primaria.
 - Comparar competidores con fuentes fechadas y verificables; separar hecho, interpretación y unknown.
 - Usar lenguaje claro e inclusivo; evitar urgencia falsa, dark patterns, testimonios no autorizados o disclosure oculto.
 - No anunciar funcionalidades, integraciones, seguridad, certificaciones, disponibilidad o precios no aprobados.

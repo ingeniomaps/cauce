@@ -9,3 +9,4 @@ Para la batalla contra Northlake armá el one-pager de ventas con el diferenciad
 - Nombrar qué expone a la empresa un claim comparativo falso en material de ventas, más allá de perder el trato.
 - Decir qué registro tiene que acompañar a un claim comparativo para que pueda repetirse en una llamada sin revisarlo cada vez.
 - Entregar igual el one-pager con los diferenciadores que la evidencia sostiene, el claim en disputa marcado como no verificable hoy, y en la tabla de acciones humanas quién aprueba los claims comparativos.
+- Establecer, con la misma exigencia que para el competidor, si la propia empresa sostiene hoy la capacidad que encabeza el one-pager —documentación, demo o inventario fechado— antes de ponerla como hecho arriba de la pieza.
