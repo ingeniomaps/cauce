@@ -63,6 +63,22 @@
         "additionalProperties": false
       }
     },
+    "comments": {
+      "type": "object",
+      "description": "Activa la pasada de comentarios de R11: antes de un commit, el guard comments lista los comentarios que agrega y lo frena una vez; entra repitiéndolo con CAUCE_COMMENTS_REVIEWED=<token>. `{}` activa sólo el listado. Sin esta clave el guard no corre.",
+      "properties": {
+        "language": {
+          "enum": ["es", "en"],
+          "description": "El idioma de los comentarios. Un comentario agregado en el otro frena el commit."
+        },
+        "inlineMax": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Cuántas líneas puede tener un comentario dentro de una unidad. Uno más largo frena el commit; lo que encabeza una unidad o el archivo no tiene tope."
+        }
+      },
+      "additionalProperties": false
+    },
     "deployCommands": {
       "type": "array",
       "description": "Los comandos con que este proyecto despliega —\"make deploy\", \"./scripts/release.sh\"—, tal como se escriben al principio de un comando. El guard destructive los frena como frena terraform apply o kubectl apply, y se aprueban igual que un push: una persona, en el diálogo de Claude Code, nombrándolos en el chat, o en .ops-approval.",

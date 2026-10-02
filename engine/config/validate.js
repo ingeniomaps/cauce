@@ -17,6 +17,25 @@ const RETIRED = {
   planningDir: 'el motor siempre busca planning/ en la raíz del repositorio. Borrá la línea',
 }
 
+// La pasada de comentarios (caso 233). Un idioma fuera de la lista no chequearía nada, y quien lo declaró
+// creería que sí.
+function validateComments(comments, errors) {
+  if (comments === undefined) return
+  if (!comments || typeof comments !== 'object' || Array.isArray(comments)) {
+    errors.push('ops.config.json: comments debe ser un objeto; `{}` activa sólo el listado')
+    return
+  }
+  for (const key of Object.keys(comments)) {
+    if (!['language', 'inlineMax'].includes(key)) errors.push(`ops.config.json: comments.${key} no existe`)
+  }
+  if (comments.language !== undefined && !['es', 'en'].includes(comments.language)) {
+    errors.push('ops.config.json: comments.language debe ser "es" o "en"')
+  }
+  if (comments.inlineMax !== undefined && !(Number.isInteger(comments.inlineMax) && comments.inlineMax > 0)) {
+    errors.push('ops.config.json: comments.inlineMax debe ser un entero mayor que cero')
+  }
+}
+
 function validateOpsConfig(config) {
   const errors = []
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
@@ -25,7 +44,7 @@ function validateOpsConfig(config) {
   // `cauceVersion` la escribe el toolkit, no la persona: registra de qué versión salió la instancia.
   const allowed = new Set([
     '$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoots', 'writableOutsideRoots', 'runner',
-    'migrations', 'inbox', 'deployCommands',
+    'migrations', 'inbox', 'deployCommands', 'comments',
   ])
   for (const key of Object.keys(config)) {
     if (RETIRED[key]) errors.push(`ops.config.json: ${key} ya no se usa: ${RETIRED[key]}`)
@@ -47,6 +66,7 @@ function validateOpsConfig(config) {
   validateRunner(config.runner, errors)
   validateMigrations(config.migrations, errors)
   validateInbox(config.inbox, errors)
+  validateComments(config.comments, errors)
   return errors
 }
 

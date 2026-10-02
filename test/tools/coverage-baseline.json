@@ -448,5 +448,10 @@
     "lines": 93,
     "branches": 80,
     "functions": 100
+  },
+  "engine/hooks/comments.js": {
+    "lines": 99,
+    "branches": 96,
+    "functions": 100
   }
 }

@@ -18,6 +18,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **La pasada de comentarios de R11 puede tener puerta.** Declarando `"comments": {}` en `ops.config.json`, el
+  guard `comments` frena una vez cada commit que agrega comentarios y los lista con las tres preguntas de R11.
+  El commit entra repitiéndolo con `CAUCE_COMMENTS_REVIEWED=<token>`, y el token cambia si cambia cualquier
+  comentario. Con `"language": "es"` o `"en"` frena un comentario en el otro idioma, y con `"inlineMax": 2`
+  uno de más de dos líneas dentro de una unidad; esos dos se aprueban como cualquier gate. Sin la clave no
+  corre: cuesta una vuelta por commit, y esa cuenta la hace cada proyecto.
 - **Una instancia nueva trae su CI.** `init` deja `.github/workflows/ci.yml`, que en cada PR corre `check`, la
   sintaxis de los hooks y las pruebas de tus guards propios de `automatization/tests/`. Es tuyo desde ese
   momento: `upgrade` no lo toca, así que sumale lo que tu instancia necesite. En modo embedded no se crea,
