@@ -18,6 +18,16 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Una instancia nueva trae su CI.** `init` deja `.github/workflows/ci.yml`, que en cada PR corre `check`, la
+  sintaxis de los hooks y las pruebas de tus guards propios de `automatization/tests/`. Es tuyo desde ese
+  momento: `upgrade` no lo toca, así que sumale lo que tu instancia necesite. En modo embedded no se crea,
+  porque el repositorio ya tiene el suyo. Una instancia que ya existe puede copiarlo de
+  `node_modules/@ingeniomaps/cauce/template/.github/workflows/ci.yml`.
+- **`check --skip-roots`, para correr sin los repositorios de producto.** Un CI clona la instancia sola, y una
+  raíz de `ops.config.json` que no está era un error. Con la bandera se saltea y se avisa cuál quedó sin
+  comprobar.
+- **`check` compila tus workflows de `workflows/`.** Uno con un error de sintaxis se instalaba igual y fallaba
+  recién al invocarlo; ahora `check` lo frena y nombra el archivo.
 - **`check` avisa una regla propia que no está leyendo.** Una regla escrita como `## Regla 8` o `## Rule 10 -`
   no tiene la forma que `check` lee, así que no cuenta como definida ni choca con la del sistema que contradice.
   Ahora se avisa, con la forma correcta: `## P8 — título`.

@@ -9,9 +9,10 @@
 // lugar que los de Cauce, con los mismos marcadores, y se niega a instalar uno que se llame como uno de Cauce.
 
 const fs = require('node:fs')
+const vm = require('node:vm')
 const path = require('node:path')
 const F = require('../core/files')
-const { render, opsPrefix } = require('./runners')
+const { render, opsPrefix, packagedAutomation } = require('./runners')
 
 const SOURCE = 'workflows'
 // Marca lo generado, para poder retirarlo cuando su fuente se borra sin tocar un archivo que escribió otro.
@@ -46,4 +47,23 @@ function installOwnWorkflows(root, name, runner, paths, output) {
   }
 }
 
-module.exports = { installOwnWorkflows }
+// Un workflow con un error de sintaxis se instala igual y recién falla al invocarlo, en la sesión de quien lo
+// necesitaba (caso 231). Se compila ya renderizado, porque la fuente con un `{{INCLUDE:…}}` sin resolver no es
+// JavaScript, y como lo corre el runtime: el cuerpo de una función async, sin el `export` de `meta`. Sólo se
+// compila; nada se ejecuta.
+function ownWorkflowErrors(root, automationRoot = packagedAutomation(root)) {
+  const sourceDir = path.join(root, SOURCE)
+  if (!fs.existsSync(sourceDir)) return []
+  const errors = []
+  for (const file of fs.readdirSync(sourceDir).filter((one) => one.endsWith('.js')).sort()) {
+    try {
+      const rendered = render(path.join(sourceDir, file), opsPrefix(root), automationRoot, root)
+      new vm.Script(`(async () => {\n${rendered.replace(/^export\s+/gm, '')}\n})`, { filename: file })
+    } catch (error) {
+      errors.push(`${SOURCE}/${file}: ${error.message}`)
+    }
+  }
+  return errors
+}
+
+module.exports = { installOwnWorkflows, ownWorkflowErrors }

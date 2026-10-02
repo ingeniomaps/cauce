@@ -17,7 +17,7 @@ const FLAGS = {
   init: ['--name', '--mode', '--force', '--runner', '--integration', '--install', '--no-install'],
   scan: ['--json'],
   onboard: ['--json'],
-  check: ['--json'],
+  check: ['--json', '--skip-roots'],
   tree: ['--json', '--no-color'],
   context: ['--json', '--hito'],
   contract: ['--json'],
