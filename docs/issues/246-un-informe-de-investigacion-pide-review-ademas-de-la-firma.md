@@ -1,14 +1,15 @@
 ---
 caso: 246
 titulo: un informe de investigación pide review además de la firma de la propuesta que lo consolida
-estado: abierto
+estado: resuelto
+resuelto-en: 0.100.0
 prioridad: media
 version-detectada: 0.100.0
 ---
 
 # 246 — Un informe de investigación pide review además de la firma de la propuesta
 
-**🔴 abierto** · detectado en 0.100.0 · prioridad **media**.
+**🟢 resuelto en 0.100.0** · detectado en 0.100.0 · prioridad **media**.
 
 **Prioridad media**: no rompe nada, pero cada mes pone a una persona a revisar decenas de PR que no deciden nada,
 y el que no se revisa a tiempo pierde su hallazgo.
@@ -75,3 +76,43 @@ la firma.
 
 - **242**: el mismo principio para la propuesta, que se archiva sola cuando no cambia nada.
 - **146**: por qué el CI de un PR del bot espera autorización.
+
+## Cierre
+
+**🟢 resuelto en 0.100.0** · `.github/workflows/agent-learning.yml`, `engine/agents/learning.js`, `AGENTS.md`,
+`test/repo/ci-research-report.test.js` · PR #777.
+
+### La prueba
+
+Se cerraron sin mergear dos PR de investigación con `propone: si` de la tanda del 2026-10-02 —#773 de
+`ux-designer`, que trae texto de práctica, y #767 de `tech-lead`, que sólo actualiza un comentario—, se borraron
+sus ramas y se relanzó la investigación de esos dos cargos sobre `8d0427a` (el merge de #777):
+
+```
+##[notice]ux-designer: informe con auto-merge armado (propone: si).
+##[notice]tech-lead: informe con auto-merge armado (propone: si).
+```
+
+Los dos PR nuevos, #780 y #782, salieron con auto-merge armado. Autorizado su CI, se mergearon solos:
+
+```
+780  MERGED  app/github-actions  2026-10-02T20:51:20Z
+782  MERGED  app/github-actions  2026-10-02T20:51:47Z
+```
+
+El rojo previo son #773 y #767: los mismos dos cargos con el workflow anterior, que dejó sus PR sin auto-merge
+esperando review. La prueba nueva se vio en rojo restaurando la condición `propone: no`.
+
+### Contra lo que el caso enumeró
+
+- **`research-pr` arma auto-merge para todo informe** — **se hizo**, y es lo que muestra la prueba.
+- **`propone` decide sólo si el informe alimenta la propuesta** — **se hizo** en el molde. El campo se sigue
+  validando antes del PR.
+- **`AGENTS.md`: la autorización del CI queda como control mecánico** — **se hizo.**
+- **Tradeoff «un informe malo llega a `main` sin que nadie lo lea»** — **se acepta**, como decía el caso: lo que
+  cambia un cargo pasa por la firma de la propuesta.
+- **Lo que el caso no preveía.** Dos cosas. Un comentario del job `propose` («Igual que el informe con `propone:
+  no`») quedó describiendo la regla vieja, y se corrigió acá. Y como ahora todos los informes los mergea el bot,
+  todas sus ramas quedan sin borrar: el barrido a mano que preveía `AGENTS.md` se saltó y dejó 29. **Sale como
+  caso propio, el 247** (PR #781).
+

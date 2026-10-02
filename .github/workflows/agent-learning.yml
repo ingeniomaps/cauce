@@ -1046,7 +1046,7 @@ jobs:
             gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
               --title "$AGENT learning proposal — $name (sin cambio, archivada)" \
               --body "agent-propose concluyó que el contrato no cambia y la propuesta quedó archivada con su motivo. No hay nada que firmar: se mergea sola cuando pase su CI."
-            # Igual que el informe con `propone: no`: el auto-merge queda armado y espera a que el CI del
+            # Igual que un informe de investigación: el auto-merge queda armado y espera a que el CI del
             # PR del bot se autorice.
             gh pr merge "$branch" --auto --merge
             echo "::notice::$AGENT no cambia su contrato: propuesta archivada y auto-merge armado."
