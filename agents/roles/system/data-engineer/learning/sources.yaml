@@ -17,6 +17,10 @@ sources:
     url: https://committee.iso.org/standard/63086.html
     tier: standard
     topics: [data-quality, process, capability, maturity]
+  - name: ISO/IEC 5259-1:2024 data quality for analytics and ML
+    url: https://webstore.iec.ch/en/publication/96735
+    tier: standard
+    topics: [data-quality, ai, ml, analytics]
   - name: W3C PROV-O provenance ontology
     url: https://www.w3.org/TR/prov-o/
     tier: standard
@@ -25,6 +29,14 @@ sources:
     url: https://csrc.nist.gov/pubs/cswp/10/nist-privacy-framework-version-10/final
     tier: standard
     topics: [privacy, data-processing, risk, governance]
+  - name: Open Data Contract Standard (ODCS) v3.2.0
+    url: https://api.github.com/repos/bitol-io/open-data-contract-standard/releases
+    tier: project
+    topics: [data-contract, schema, ownership, sla]
+  - name: OpenLineage specification (SchemaVer 2-0-2)
+    url: https://raw.githubusercontent.com/OpenLineage/OpenLineage/main/spec/OpenLineage.json
+    tier: project
+    topics: [lineage, provenance, schema]
   - name: Apache Spark releases
     url: https://spark.apache.org/releases/
     tier: project

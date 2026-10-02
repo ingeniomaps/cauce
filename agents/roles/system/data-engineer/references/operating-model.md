@@ -23,9 +23,12 @@ Contener propagación y preservar evidencia; identificar primera partición/vers
 
 ## Fundamento externo
 
+- [Open Data Contract Standard (ODCS) v3.2.0](https://api.github.com/repos/bitol-io/open-data-contract-standard/releases): especificación YAML abierta con fundamentals, schema, reglas de calidad, servers, ownership, tags, SLA y soporte — mismas dimensiones que `SKILL.md` ya exige en «Entrega mínima» para dataset/evento, en vocabulario propio; no reemplaza esa enumeración ni obliga a adoptar el formato YAML.
 - [ISO/IEC 25012:2008](https://webstore.iec.ch/en/publication/11246): modelo general con quince características para requisitos y evaluación de calidad de datos; confirmado vigente en 2025.
 - [ISO 8000-61:2016](https://committee.iso.org/standard/63086.html): procesos de gestión de calidad de datos y evaluación de capacidad; confirmado vigente en 2022.
+- [ISO/IEC 5259-1:2024](https://webstore.iec.ch/en/publication/96735): calidad de datos para analítica y aprendizaje automático, equivalente de 25012 cuando el consumidor es un sistema de IA/ML — un caso que `SKILL.md` nombra explícitamente entre los que sirve este cargo; no sustituye las nueve dimensiones que define «Calidad y reconciliación».
 - [W3C PROV-O](https://www.w3.org/TR/prov-o/): modelo interoperable de entidades, actividades, agentes y relaciones de provenance; adaptar a la implementación real de lineage.
+- [OpenLineage](https://raw.githubusercontent.com/OpenLineage/OpenLineage/main/spec/OpenLineage.json): especificación concreta de eventos run/job/dataset (versionada con SchemaVer, hoy `2-0-2`) que una implementación real de lineage puede emitir para materializar el modelo abstracto de PROV-O; no obligatoria como formato.
 - [NIST Privacy Framework 1.0](https://csrc.nist.gov/pubs/cswp/10/nist-privacy-framework-version-10/final): gestión voluntaria de riesgo de privacidad en el ecosistema de procesamiento; comprobar futuras versiones y ley aplicable.
 
 Estas fuentes orientan método y vocabulario; los contratos, políticas, sistemas y jurisdicción de cada empresa determinan requisitos reales.
