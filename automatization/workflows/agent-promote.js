@@ -132,9 +132,13 @@ const applied = NOTHING ? { applied: true, files: [], newCase: '', deviations: '
   `Reglas al aplicar:\n` +
   `- Preferí agregar sobre reescribir. Si la propuesta dice «agregar después de X», agregá; no ` +
   `reordenes ni reformules lo que ya estaba.\n` +
-  `- Si la propuesta pide crear un caso adversarial nuevo, crealo con el enunciado que da y con ` +
-  `**cuatro** comportamientos esperados, como todos los del catálogo. Si el enunciado trae más, ` +
-  `fusioná los que se solapen sin perder ninguna idea.\n` +
+  // «No se crea el archivo» lo escribe quien redacta, sobre su propio paso: el caso se firma junto con la
+  // propuesta y entra al aplicarla. Leída acá como una orden, dejaba afuera casos firmados (caso 245).
+  `- Si la propuesta pide crear un caso adversarial nuevo, o trae su enunciado, crealo con el enunciado ` +
+  `que da y con **cuatro** comportamientos esperados, como todos los del catálogo, ` +
+  `aunque la propuesta diga que no se crea el archivo: esa frase es de cuando se redactó, y el caso ` +
+  `entra con la firma. Si el enunciado trae más comportamientos, fusioná los que se solapen sin perder ` +
+  `ninguna idea.\n` +
   // El juez recibe `forbidden` y nunca `required`: `engine/cli/catalog.js` toma sólo la primera, y el
   // prompt del juez nombra «conductas prohibidas». O sea que a una requerida la mide únicamente el caso
   // que la ejerza. Medido el 2026-09-02 sobre 48 requeridas de seis cargos: 4 no las ejerce ningún caso

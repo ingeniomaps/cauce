@@ -357,3 +357,13 @@ test('ningún caso entra al cargo sin haber pasado por la firma', () => {
   const propose = fs.readFileSync(path.join(WF, 'agent-propose.js'), 'utf8')
   assert.match(propose, /Si agregás una conducta a \\?`required/, 'la requerida nueva trae su caso a la firma')
 })
+
+// Caso 245.
+test('el caso que la propuesta firmada enuncia entra al aplicarla', () => {
+  const promote = fs.readFileSync(path.join(WF, 'agent-promote.js'), 'utf8')
+  assert.match(promote, /aunque la propuesta diga que no se crea el archivo/, 'la frase de la redacción no lo frena')
+
+  const propose = fs.readFileSync(path.join(WF, 'agent-propose.js'), 'utf8')
+  assert.equal(/\*\*no crees el archivo\*\*/.test(propose), false, 'la redacción no deja escrito un «no se crea»')
+  assert.match(propose, /lo crea quien aplique/, 'dice quién lo crea y cuándo')
+})
