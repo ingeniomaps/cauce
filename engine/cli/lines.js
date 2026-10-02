@@ -18,8 +18,8 @@ const { spawnSync } = require('node:child_process')
 const A = require('../automation')
 const { installRoot } = require('../automation/runners')
 const { fail, opsRoot, REFUSED, USAGE } = require('./io')
+const { BRANCH, NAME } = require('../planning/lines')
 
-const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
 const inside = (base, target) => !path.relative(base, target).startsWith('..')
 
@@ -32,7 +32,7 @@ function layout(root, top, name) {
   const tree = inside(install, top)
     ? path.join(home, path.relative(install, top))
     : path.join(path.dirname(top), `${path.basename(top)}-${name}`)
-  return { install, home, tree, ops: path.join(tree, path.relative(top, root)), branch: `line/${name}` }
+  return { install, home, tree, ops: path.join(tree, path.relative(top, root)), branch: `${BRANCH}${name}` }
 }
 
 function linkIfMissing(link, target) {

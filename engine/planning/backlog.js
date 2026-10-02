@@ -50,8 +50,13 @@ function milestonesIn(text, file) {
   return milestones
 }
 
+// Un hito de `backlog/` puede declarar de qué línea es (caso 239); los de `BACKLOG.md` no son de ninguna.
 function readBacklog(dir) {
-  return backlogFiles(dir).flatMap((file) => milestonesIn(P.withoutComments(P.read(path.join(dir, file))), file))
+  return backlogFiles(dir).flatMap((file) => {
+    const text = P.read(path.join(dir, file))
+    const line = file === 'BACKLOG.md' ? '' : P.frontmatter(text)('line')
+    return milestonesIn(P.withoutComments(text), file).map((milestone) => ({ ...milestone, line }))
+  })
 }
 
 // Lo que no es un hito se queda donde estaba al partir: el encabezado del archivo y cualquier sección `##`

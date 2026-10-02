@@ -16,6 +16,7 @@ const SF = require('../planning/surfaces')
 const LS = require('../planning/lessons')
 const BK = require('../planning/backlog')
 const RN = require('../planning/renumber')
+const LN = require('../planning/lines')
 const O = require('../core/ownership')
 const EV = require('../core/evidence')
 const { fail, planningRoot, REFUSED, TODAY, USAGE } = require('./io')
@@ -146,14 +147,22 @@ function context(dir, cli) {
   // otro hito mientras sostenías una tarea ofrecía una segunda que `claim` después se niega a dar: el
   // comando que dice qué hacer y el que lo autoriza contestaban distinto, y sólo se veía al reclamar.
   const own = state.claims.find((one) => one.runner === from && !state.done.set.has(one.slug))
+  // La línea acota antes que el hito (caso 239), y con la misma excepción: lo que ya tenés no se esconde.
+  const line = LN.currentLine(root)
+  const lined = LN.scope(state.milestones, line, new Set([own && own.slug, mio && mio.task].filter(Boolean)))
+  state.claims = [...state.claims, ...LN.claimsElsewhere(root)]
   let hitoOmitido = ''
   if (hito) {
-    const existe = state.milestones.some((one) => one.slug === hito)
+    const existe = state.milestones.find((one) => one.slug === hito)
     // Un hito mal escrito devolvería «sin tarea disponible», que es indistinguible de un hito terminado.
     if (!existe) {
       const hay = state.milestones.map((one) => one.slug).join(', ') || '(ninguno)'
       return fail(`el hito ${hito} no existe. Hay: ${hay}`, USAGE)
     }
+    if (lined.hidden.includes(existe)) return fail(`el hito ${hito} ${LN.whereToTake(existe)}`, REFUSED)
+  }
+  state.milestones = lined.milestones
+  if (hito) {
     if (own) hitoOmitido = `${hito} no se aplica: ya tenés ${own.slug} tomada`
     else state.milestones = state.milestones.filter((one) => one.slug === hito)
   }
@@ -196,6 +205,10 @@ function context(dir, cli) {
     // lo impide, porque su salida dejaría de ser reproducible— y necesita la fecha para cerrar una tarea.
     // Sale de acá y no del modelo: es un dato mecánico, y pedírselo a un agente es invitarlo a inventarlo.
     today: TODAY(),
+    // De qué línea es este árbol y qué hitos no se le ofrecen por ser de otra: sin decirlo, una cola acotada
+    // se lee igual que una cola terminada.
+    line,
+    otherLines: lined.hidden.map((one) => one.slug),
     claimed,
     taken,
     waiting,
@@ -257,8 +270,14 @@ function context(dir, cli) {
       console.log(`DUE    ${one.id}: ${when}`)
     }
   }
+  const lineas = () => {
+    if (!report.line && !report.otherLines.length) return
+    console.log(`LINE   ${report.line || '(ninguna)'}${report.otherLines.length
+      ? ` — de otras líneas, no se ofrecen: ${report.otherLines.join(', ')}` : ''}`)
+  }
   if (!report.task) {
     console.log('TASK   (sin tarea disponible)')
+    lineas()
     const { nextEpic: next } = report
     if (next) console.log(`EPIC   ${next.num}: ${next.title} — sin promover`)
     // Mismo motivo que `blocked` arriba, con otra causa: acá la cola no la traba una persona, la tiene
@@ -288,6 +307,7 @@ function context(dir, cli) {
   const wip = report.wip ? `${report.wip.phase} · ${report.wip.complete}✓/${report.wip.pending}○` : 'idle'
   console.log(`WIP    ${wip}`)
   if (hitoOmitido) console.log(`HITO   ${hitoOmitido}`)
+  lineas()
   console.log(report.claimed
     ? `CLAIM  tuya desde el reclamo (${report.owner})`
     : `CLAIM  libre — tomala con \`ops claim <planning> ${report.task.slug}\``)
