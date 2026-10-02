@@ -119,12 +119,13 @@ test('init produce una instancia autocontenida y no sobrescribe', () => {
   // Los equipos, como los cargos, son definiciones que consume el motor: viajan con el paquete.
   assert.equal(fs.existsSync(path.join(target, 'flows', 'system')), false)
   assert.ok(require('../../engine/flows/registry').list(target).length >= 2, 'y aun así se resuelven')
-  // Ningún workflow del toolkit se distribuye. El CI valida el toolkit, y el ciclo de aprendizaje
-  // investiga la profesión: repetirlo en cada empresa produciría la misma investigación N veces.
+  // Ningún workflow del toolkit se distribuye. Su CI valida el toolkit con `npm run ci`, y el ciclo de
+  // aprendizaje investiga la profesión: repetirlo en cada empresa produciría la misma investigación N veces.
+  // El `ci.yml` que sí llega es el del molde, propio de la instancia (caso 231).
   const workflows = path.join(target, '.github', 'workflows')
-  for (const own of ['ci.yml', 'agent-learning.yml']) {
-    assert.equal(fs.existsSync(path.join(workflows, own)), false, `${own} no se distribuye`)
-  }
+  assert.equal(fs.existsSync(path.join(workflows, 'agent-learning.yml')), false, 'agent-learning.yml no se distribuye')
+  assert.doesNotMatch(fs.readFileSync(path.join(workflows, 'ci.yml'), 'utf8'), /npm run ci/,
+    'el ci.yml del toolkit no se distribuye')
 
   const env = { ...process.env }
   delete env.NODE_TEST_CONTEXT

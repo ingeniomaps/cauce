@@ -251,6 +251,8 @@ function effectiveRules(root) {
 // decidir acá. Una entrada pasa de `upgrade` a `init` cuando ninguna versión soportada puede no
 // tenerlo; que se quede de más no rompe nada, porque el archivo ya está y se conserva.
 const TEMPLATE_OWN = {
+  // 0.100.0. Lo siembra `init` y es de la instancia, que le suma sus pasos (caso 231).
+  '.github/workflows/ci.yml': 'init',
   // 0.70.0. Le dice a git que los dos archivos que sólo crecen se concatenan en vez de
   // conflictuar, así que hace falta en la instancia que ya existe y no sólo en la nueva.
   '.gitattributes': 'upgrade',
