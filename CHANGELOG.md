@@ -18,6 +18,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **`check` comprueba que el commit de cada tarea cerrada exista.** El `commit:` de una entrada de `done/` se
+  validaba por su forma, y un hash inventado pasaba. Ahora `check` busca cada sha en su repositorio —el que
+  nombra la traza, `(api@main)`, dentro de tus raíces— y avisa el que no está. Lo que no puede mirar porque el
+  repositorio no está clonado en esa máquina lo dice en una sola línea. Es aviso y no error: un commit de una
+  rama que no trajiste también falta.
 - **jest y vitest sin cota de workers se frenan.** Un agente que corre `npx jest` o `vitest` sin
   `--maxWorkers` lanza tantos procesos como núcleos, y dos a la vez tiran la máquina. El guard `test-workers`
   lo frena hasta que lleve una cota —`--maxWorkers=2`, un porcentaje, `--runInBand`/`-i` en jest o
