@@ -191,17 +191,18 @@ La cita de `release-pr.yml` sigue en pie aunque ésta haya envejecido: ahí la a
 Los PR de una tanda se destraban a pedido —«revisá los PR»— y **no hay herramienta que lo haga sola**: el
 caso 146 midió que ninguna es posible sin guardar un PAT, que es la credencial que esta compuerta existe
 para no necesitar. Lo que sí hay es un criterio, y está escrito acá para que el pedido no dependa de que
-alguien se acuerde:
+alguien se acuerde.
 
-1. **Leer `propone` de cada informe.** Es el campo del frontmatter, y el corte lo da él, no una lectura
-   del texto: `no` es «no hay nada que decidir», `si` pide una mirada.
-2. **Comprobar que el diff sea sólo el informe** —un `.md` bajo `learning/reports/`—. Es lo que vuelve
+Desde el caso 246 todo informe trae el auto-merge armado, diga lo que diga `propone`. Ese campo decide si
+el informe alimenta la propuesta del mes, no si alguien lo revisa. La mirada humana está en la firma de la
+propuesta, que es lo único del ciclo que cambia un cargo. Lo que queda acá es mecánico:
+
+1. **Comprobar que el diff sea sólo el informe** —un `.md` bajo `learning/reports/`—. Es lo que vuelve
    inocuo autorizar: `ci.yml` corre con `contents: read` y sin un solo secreto, así que sobre un PR que no
    trae código no hay nada que la compuerta esté cuidando. El propio ciclo ya lo garantiza en origen
    —aborta con «Se esperaba exactamente el informe de $AGENT y nada más»—, y comprobarlo igual es lo que
    mantiene el criterio en pie el día que un PR entre por otra vía.
-3. **Autorizar la corrida** de los que cumplen las dos. Los `propone: no` los cierra el auto-merge solo,
-   sin review:
+2. **Autorizar la corrida** de los que cumplen. El auto-merge los cierra solos, sin review:
 
        rama=$(gh pr view <n> --json headRefName --jq '.headRefName')
        rid=$(gh api "repos/ingeniomaps/cauce/actions/runs?branch=$rama" \
@@ -217,9 +218,9 @@ alguien se acuerde:
 
    Por qué a mano y no en un workflow lo dice el encabezado del script. Lo que se quede sin borrar porque
    todavía no se mergeó lo levanta la pasada de la tanda siguiente.
-4. **Dejar abiertos los `propone: si`.** Esos son la mirada que el campo compra, y se mergean igual antes
-   del 1 de cada mes: la consolidación lee los informes de `main`, así que un PR sin mergear no entra a la
-   propuesta mensual y su hallazgo se pierde.
+
+Hay que hacerlo antes del 1 de cada mes. La consolidación lee los informes de `main`, así que un PR sin
+mergear no entra a la propuesta mensual y su hallazgo se pierde.
 
 Lo que **no** se hace es autorizar en tanda por estar pendiente. Aprobar por «está esperando» y no por
 «es inocuo» apaga la compuerta el día que algo abra un PR por otra vía —un flow, una propuesta, un cargo
