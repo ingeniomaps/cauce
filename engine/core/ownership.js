@@ -276,6 +276,8 @@ const TEMPLATE_OWN = {
   'planning/INBOX.md': 'init',
   // 0.100.0. Explica el INBOX por entrada (caso 216); los recorridos de la instancia que actualiza ya escriben ahí.
   'planning/inbox/README.md': 'upgrade',
+  // 0.100.0. Cómo se prueba en la fase QA (caso 237); la instancia que actualiza corre la misma fase.
+  'planning/QA.md': 'upgrade',
   // 0.100.0. El cierre de `autobuild` lo escribe y `check` lo valida, así que la instancia que actualiza lo
   // necesita igual que la nueva; el recorrido lo crea si falta, pero sin la explicación de sus estados.
   'planning/LESSONS.md': 'upgrade',

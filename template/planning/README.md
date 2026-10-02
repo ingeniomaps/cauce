@@ -12,6 +12,7 @@ Se lee y se escribe en cada tarea.
 | `claims/` | Qué tarea tomó cada quien; un archivo por tarea. |
 | `HUMAN_ACTIONS.md` | Acciones externas que requieren una persona. |
 | `AWAITING_REVIEW.md` | Gate efímero; mientras existe no inicia trabajo. |
+| `QA.md` | Cómo se prueba una entrega en la fase QA, paso por paso. |
 | `gate-known-red` | Opcional. Los gates que ya estaban en rojo, `<raíz>: <gate> — <motivo>`: `verify` no frena el commit por ellos y `check` los lista mientras sigan ahí. |
 
 ## Intención y horizonte

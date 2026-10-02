@@ -1,14 +1,15 @@
 ---
 caso: 238
 titulo: organization no recomienda conventions ni runbooks
-estado: abierto
+estado: resuelto
+resuelto-en: 0.100.0
 prioridad: baja
 version-detectada: 0.99.2
 ---
 
 # 238 — El molde de `organization/` recomienda dos documentos, y la instancia multi-repo necesitó más
 
-**🔴 abierto** · detectado en 0.99.2 · prioridad **baja**.
+**🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **baja**.
 
 **Prioridad baja**: es forma.
 
@@ -43,3 +44,16 @@ Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01,
 ## Relacionados
 
 - `template/planning/delivery/multi-repo.md`.
+
+## Cierre
+
+Resuelto en 0.100.0.
+
+- **Sumar `conventions/` y `runbooks/` a «Recomendados, sin molde»** — se hizo, en
+  `template/organization/README.md`, con una línea de qué lleva cada uno. `conventions/` lleva el canónico y la
+  tabla de qué repositorio se aparta y si es intencional, que es lo que lo vuelve útil con varios
+  repositorios. `runbooks/` lleva pasos con su fuente, un checklist y los huecos conocidos.
+- **Sin moldes nuevos** — se respetó: es una recomendación, como `architecture.md` y `risks.md`.
+
+Prueba real: no hay comportamiento que correr, porque es una línea de documentación. Se corrió `npm run ci`
+con el README cambiado y salió en verde.

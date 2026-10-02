@@ -18,6 +18,15 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **El molde trae dónde escribir lo que cada instancia terminaba inventando.**
+  - `organization/workspace.md` suma una tabla de credenciales (servicio, variable, para qué, quién la carga y
+    dónde) y una de guards propios (qué frena y qué prueba lo sostiene).
+  - `planning/QA.md` dice, paso por paso, cómo se prueba una entrega en la fase QA: comprobar que el cambio
+    está desplegado, no gastar datos de producción, devolver lo que se tocó y separar lo que ya fallaba.
+    `upgrade` lo crea si no lo tenés y no pisa el tuyo.
+  - `organization/README.md` recomienda `conventions/` y `runbooks/`.
+
+  Las tablas de `workspace.md` sólo llegan a una instancia nueva; si querés las tuyas, copialas del molde.
 - **`check` comprueba que el commit de cada tarea cerrada exista.** El `commit:` de una entrada de `done/` se
   validaba por su forma, y un hash inventado pasaba. Ahora `check` busca cada sha en su repositorio —el que
   nombra la traza, `(api@main)`, dentro de tus raíces— y avisa el que no está. Lo que no puede mirar porque el

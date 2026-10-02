@@ -14,6 +14,11 @@ Recomendados, sin molde: escribilos con la forma que le sirva a este proyecto.
 
 - `architecture.md`: mapa de sistemas y enlaces a las fuentes técnicas.
 - `risks.md`: riesgos operativos, regulatorios, financieros y de seguridad.
+- `conventions/`: la convención canónica de algo —estructura de carpetas, nombres, cómo se loguea— y una
+  tabla de qué repositorio se aparta de ella y si es intencional o deriva. Sirve sobre todo con varios
+  repositorios, donde la diferencia entre uno y otro no se ve sin ponerla en una tabla.
+- `runbooks/`: un procedimiento operativo por archivo, con los pasos, la fuente de cada uno, un checklist y
+  los huecos conocidos.
 
 La lista no es cerrada. Todo hecho de negocio o producto que cambie lentamente vive acá —una guía de
 marca, un manual de operación, un pipeline de contenido— aunque no tenga una línea propia arriba.
