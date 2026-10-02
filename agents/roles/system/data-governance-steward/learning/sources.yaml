@@ -86,7 +86,7 @@ sources:
   # Ficha abierta en committee.iso.org el 2026-09-14 (iso.org/standard/63086.html sigue en 403) y
   # reconfirmada el 2026-09-21 y 2026-09-24: edición 1, publicada 2016-11, comité ISO/TC 184/SC 4,
   # revisada y confirmada en 2022 («remains current»). El texto de la norma no se leyó.
-  - name: ISO 8000-61:2016
+  - name: ISO 8000-61 data quality management process reference model
     url: https://committee.iso.org/standard/63086.html
     tier: standard
     topics: [data-quality, process-reference-model, maturity]
