@@ -23,6 +23,11 @@ diseño — eso vive en el commit y en el código.
   y la cuenta de quien está en la sesión, y entrega lo leído con `integration sync . jira --payload <archivo>`.
   El procedimiento está en `integrations/jira/README.md`. El payload declara si trajo todo; con
   `complete: false` no se borra nada de lo que no vino.
+- **Jira toma el servicio de una etiqueta.** Los proyectos team-managed no tienen componentes: con
+  `"serviceFrom": "label"` el sync lee el servicio de una etiqueta `service:<ruta>` (el prefijo se cambia con
+  `serviceLabelPrefix`), y con `"both"` de cualquiera de los dos. Si una incidencia nombra más de un servicio,
+  el draft lo marca y no elige. Un `serviceFrom` mal escrito ahora es error: antes dejaba todo el staging sin
+  servicio sin decir por qué.
 - **Dos épicas con el mismo número se arreglan con un comando.** Dos líneas de trabajo que crean una épica a
   la vez pueden tomar el mismo número; `check` ya lo marcaba, y ahora nombra las dos y dice cómo salir:
   `node tools/ops.js renumber-epic planning <epic-NNN-slug> <NNN>` mueve la que todavía no llegó a la rama
@@ -103,6 +108,9 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`integration reset` y `reconcile` ya no deshacen una promoción.** Sobre un ítem promovido, `reset` lo
+  devolvía a `pending` y perdía el registro de la promoción, y `reconcile` borraba la señal de que Jira cambió
+  después de promoverlo. Ahora se niegan y te mandan a revisar la épica en `planning/roadmap/`.
 - **El sync de Jira de una persona ya no pisa lo que curó otra.** Con `candidateAssigneeEnv`, un ítem que
   alguien curó como candidato pasaba a contexto cuando sincronizaba otra persona, y su borrador se regeneraba
   sin decirlo. Ahora sigue candidato con su curación, y el resumen del sync lo cuenta aparte. El staging pasa a

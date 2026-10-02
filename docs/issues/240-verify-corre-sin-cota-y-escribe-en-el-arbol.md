@@ -128,3 +128,10 @@ Prueba real:
   - No tomar el candado abandonado.
   - Soltar el ajeno.
   - No esperar.
+
+**Después del cierre (2026-10-02).** El candado era de la máquina también para la suite de pruebas. En la
+corrida del caso 227, dos pruebas de `verify` esperaron casi diez minutos detrás del commit real de otra
+sesión, y la del tope se rindió. La ruta ahora se resuelve al usarse (`CAUCE_VERIFY_LOCK`, o el temporal del
+sistema), y `test/support/environment.js` la mueve al temporal de cada corrida. Moverlo no lo apaga: dentro de
+quien lo comparte sigue corriendo uno por vez. Lo prueban dos casos de `test/hooks/verify-bounded.test.js`, y
+la mutación que ignora la variable se pone roja.

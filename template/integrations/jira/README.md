@@ -65,7 +65,10 @@ KEY/
 Edita únicamente el draft:
 
 - `state: ready` cuando esté curado.
-- `service`: ruta responsable.
+- `service`: ruta responsable. El sync la propone cuando la incidencia nombra un solo servicio. De dónde lo
+  lee lo dice `serviceFrom`: `component` —por defecto—, `label` para los proyectos team-managed, que no
+  tienen componentes y lo llevan en una etiqueta `service:<ruta>` (el prefijo se cambia con
+  `serviceLabelPrefix`), o `both`. Si nombra más de uno, el draft lo marca y no elige.
 - `promotionKind: epic|story`.
 - Para story: `promotionEpic: NNN` y `promotionCriteria: C1`.
 

@@ -304,7 +304,7 @@ async function sync(root, name, options = {}) {
         baseAt,
         draftBaseHash: sha256(canonical),
         draftChanged: sha256(draft) !== sha256(canonical),
-        config: { serviceFrom: config.serviceFrom },
+        config: { serviceFrom: config.serviceFrom, serviceLabelPrefix: config.serviceLabelPrefix },
       },
     }
     fs.mkdirSync(desiredDir, { recursive: true })
