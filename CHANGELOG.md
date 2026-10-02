@@ -18,6 +18,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **Un rojo que ya estaba se declara una vez, y no se aprueba en cada commit.** Si un repositorio arrastra un
+  lint en rojo o una suite rota en otro módulo, escribilo en `planning/gate-known-red` como
+  `<raíz>: <gate> — <motivo>` —por ejemplo `api: lint — once errores de ESLint 9 heredados`—. `verify` deja
+  pasar el commit aunque ese gate falle, un gate en rojo que no declaraste sigue frenando, y `check` te
+  recuerda cada declaración mientras exista. Una línea mal escrita es error.
 - **jest y vitest sin cota de workers se frenan.** Un agente que corre `npx jest` o `vitest` sin
   `--maxWorkers` lanza tantos procesos como núcleos, y dos a la vez tiran la máquina. El guard `test-workers`
   lo frena hasta que lleve una cota —`--maxWorkers=2`, un porcentaje, `--runInBand`/`-i` en jest o

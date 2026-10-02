@@ -1,14 +1,15 @@
 ---
 caso: 241
 titulo: un rojo preexistente se aprueba commit por commit
-estado: abierto
+estado: resuelto
+resuelto-en: 0.100.0
 prioridad: media
 version-detectada: 0.99.2
 ---
 
 # 241 — Un repositorio con un gate en rojo heredado pide una aprobación en cada commit
 
-**🔴 abierto** · detectado en 0.99.2 · prioridad **media**.
+**🟢 resuelto en 0.100.0** · detectado en 0.99.2 · prioridad **media**.
 
 **Prioridad media**: no rompe nada, pero en un repositorio con lint heredado en rojo cada commit se frena y pide aprobación, y eso empuja a apagar el guard entero (240).
 
@@ -44,3 +45,41 @@ Relevamiento de roax-ops y conorbi-ops (las dos en Cauce 0.99.2), el 2026-10-01,
 ## Relacionados
 
 - 240 — lo que hizo que las dos apagaran `verify`.
+
+## Cierre
+
+Resuelto en 0.100.0. Manuel eligió el 2026-10-02 la forma: por gate entero, con motivo y aviso.
+
+- **Reproducción, antes de tocar nada:** un repositorio con `"lint": "… exit 1"` y dos commits seguidos. Con
+  el motor de `main`, los dos se frenaron: `Verify falló en r241: lint (exit 1 …)`.
+- **Un archivo con `<raíz> <gate> — <motivo>`, leído por `verify`** — se hizo, en `planning/gate-known-red`
+  (`engine/core/known-red.js`), con la raíz separada por dos puntos: `app: lint — <motivo>`. Los gates se
+  nombran como los anota `verify`: `test`, `lint`, `typecheck`, `build`, `go test`, `go build`, `make ci` y
+  `make test`. Un gate declarado que falla se anota igual en el rastro y no frena; uno que no está declarado,
+  o declarado para otra raíz, sigue frenando.
+- **Que se avise mientras exista** — se hizo en `check`, que lista cada declaración con su motivo. Un hook no
+  tiene cómo avisar sin frenar, y `check` es lo que se corre en cada tarea.
+- **Qué se compara: el gate entero o la línea de error** — se decidió el gate entero. Comparar la línea se
+  rompe en cuanto la herramienta cambia el orden o el texto de su salida. El costo, aceptado: un rojo nuevo
+  dentro de un gate ya declarado no frena.
+- **Tradeoff: choca con que una aprobación valga por operación** (`approval.js`) — decidido por Manuel. La
+  declaración no es una aprobación: no vive en `.ops-approval`, se escribe con su motivo y `check` la muestra
+  siempre.
+
+Lo que el caso no preveía:
+
+- **Una declaración mal escrita no puede pasar en silencio.** Sin la forma, con un gate que no existe o con una
+  raíz que no está en `workspaceRoots`, la línea no declararía nada y el commit seguiría frenando sin que se
+  entienda por qué. `check` lo da como error, nombrando la línea.
+
+Prueba real:
+
+- **La misma reproducción con el motor de esta rama**, con `app: lint — once errores de ESLint 9 heredados`
+  declarado: los dos commits salieron `verify exit=0`.
+- **Seis mutaciones en una copia, cada una en rojo por `test/hooks/known-red.test.js`:**
+  - Ignorar lo declarado.
+  - Valer para cualquier raíz.
+  - Dejar pasar un gate desconocido.
+  - Dejar pasar una raíz desconocida.
+  - `check` sin los errores.
+  - `check` sin la lista.
