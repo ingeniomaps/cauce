@@ -25,3 +25,7 @@ sources:
     url: https://www.w3.org/WAI/tips/writing/
     tier: standard
     topics: [clear-instructions, headings, links, accessibility]
+  - name: European Accessibility Act (Directive (EU) 2019/882)
+    url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=LEGISSUM:4403933
+    tier: standard
+    topics: [accessibility, help-desk, contact-centre, eu-regulation]
