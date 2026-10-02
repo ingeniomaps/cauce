@@ -20,6 +20,7 @@ const { secretsShell } = require('./secrets-shell')
 const { opsConfig, opsConfigShell } = require('./ops-config')
 const { jiraAdf } = require('./jira')
 const { testWorkers } = require('./workers')
+const { comments } = require('./comments')
 
 function planningDrift(input) {
   const root = opsRoot(input)
@@ -61,13 +62,14 @@ const guards = {
   'secrets-read': files.secretsRead,
   'jira-adf': jiraAdf,
   'test-workers': testWorkers,
+  comments,
   chat: chat.record,
   'planning-drift': planningDrift,
 }
 
 // Grupos por evento: un runner corre el grupo entero en un solo proceso en lugar de un guard por hook.
 const hookGroups = {
-  'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'verify', 'shell-boundary',
+  'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'comments', 'verify', 'shell-boundary',
     'secrets-shell', 'ops-config-shell', 'test-workers'],
   'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
     'integration-snapshot', 'test-evidence', 'plan-first', 'ops-config'],
@@ -118,6 +120,12 @@ const hookMetadata = [
     name: 'secrets-read',
     event: 'PreToolUse · read',
     purpose: 'Bloquea leer con la herramienta del runner una credencial conocida o declarada.',
+  },
+  {
+    name: 'comments',
+    event: 'PreToolUse · shell',
+    purpose: 'Si ops.config.json declara comments, frena una vez cada commit que agrega comentarios y los lista '
+      + 'para la pasada de R11; con language o inlineMax, frena también lo que los rompe.',
   },
   {
     name: 'test-workers',

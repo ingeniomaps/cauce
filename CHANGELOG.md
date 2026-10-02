@@ -18,6 +18,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Agregado
 
+- **La pasada de comentarios de R11 puede tener puerta.** Declarando `"comments": {}` en `ops.config.json`, el
+  guard `comments` frena una vez cada commit que agrega comentarios y los lista con las tres preguntas de R11.
+  El commit entra repitiéndolo con `CAUCE_COMMENTS_REVIEWED=<token>`, y el token cambia si cambia cualquier
+  comentario. Con `"language": "es"` o `"en"` frena un comentario en el otro idioma, y con `"inlineMax": 2`
+  uno de más de dos líneas dentro de una unidad; esos dos se aprueban como cualquier gate. Sin la clave no
+  corre: cuesta una vuelta por commit, y esa cuenta la hace cada proyecto.
 - **`check` avisa una regla propia que no está leyendo.** Una regla escrita como `## Regla 8` o `## Rule 10 -`
   no tiene la forma que `check` lee, así que no cuenta como definida ni choca con la del sistema que contradice.
   Ahora se avisa, con la forma correcta: `## P8 — título`.
