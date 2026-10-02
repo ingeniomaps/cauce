@@ -469,6 +469,7 @@ function validateState({
 // deja los suyos al proyecto, pero con su razón: dependen del lenguaje y de la superficie. Cinco
 // condiciones que un plan tiene que satisfacer a la vez no dependen de ninguna de las dos.
 module.exports = {
+  commitParts,
   validateState,
   doneEntryErrors,
   doneCeremonyWarnings,

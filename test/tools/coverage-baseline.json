@@ -394,6 +394,11 @@
     "branches": 95,
     "functions": 100
   },
+  "engine/planning/done-commits.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/planning/inbox.js": {
     "lines": 100,
     "branches": 80,

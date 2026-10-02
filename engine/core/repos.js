@@ -18,7 +18,7 @@ const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
 // Devuelve una lista y no el primero porque con varias raíces la respuesta puede ser ambigua: un
 // `service: .` existe en todas, y un `src` puede existir en dos. Elegir el primero da una respuesta
 // plausible y equivocada —un árbol de trabajo en el repositorio que no era— sin que nada lo diga.
-function reposFor(opsRoot, service) {
+function rootDirs(opsRoot) {
   let config = {}
   try {
     config = JSON.parse(fs.readFileSync(path.join(opsRoot, 'ops.config.json'), 'utf8'))
@@ -26,6 +26,10 @@ function reposFor(opsRoot, service) {
   return (Array.isArray(config.workspaceRoots) ? config.workspaceRoots : [])
     .filter((one) => one && one.path)
     .map((one) => path.resolve(opsRoot, one.path))
+}
+
+function reposFor(opsRoot, service) {
+  return rootDirs(opsRoot)
     .filter((root) => fs.existsSync(path.join(root, service || '.')))
     .map((root) => {
       const top = git(root, 'rev-parse', '--show-toplevel')
@@ -171,4 +175,39 @@ function commitFiles(opsRoot) {
   }
 }
 
-module.exports = { reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions, commitFiles }
+// Si cada commit citado existe (caso 243): un runner cerró una tarea con un hash fabricado, y el formato lo dejaba
+// pasar. Cada ítem trae el sha y, si la traza lo nombra, su repositorio —`(backend-auth@rama)`—, que se busca
+// dentro de las raíces: una raíz puede ser una carpeta con varios repositorios, y ahí la raíz no es ninguno.
+// Sin nombre, se busca en las raíces que son repositorios. Devuelve, en orden, `found`, `missing` o
+// `unchecked` —el repositorio no está en esta máquina, o no hay dónde buscar—: no poder mirar no es lo mismo
+// que no encontrar.
+//
+// Una llamada por repositorio, con todos sus shas por stdin: `check` corre seguido. `cat-file --batch-check`
+// acepta shas abreviados y dice el tipo, así que un blob tampoco cuenta como commit (comprobado con git 2.43.0).
+function commitStatus(opsRoot, items) {
+  const roots = rootDirs(opsRoot)
+  const named = new Map()
+  const repoOfName = (name) => {
+    if (!named.has(name)) {
+      named.set(name, roots.map((root) => path.join(root, name))
+        .find((dir) => fs.existsSync(dir) && git(dir, 'rev-parse', '--show-toplevel').stdout.trim() === dir) || '')
+    }
+    return named.get(name)
+  }
+  const plain = reposFor(opsRoot, '.')
+  const where = items.map((item) => (item.repo ? [repoOfName(item.repo)].filter(Boolean) : plain))
+  const known = new Map()
+  for (const repo of [...new Set(where.flat())]) {
+    const asked = [...new Set(items.filter((_, index) => where[index].includes(repo)).map((item) => item.sha))]
+    const shown = spawnSync('git', ['-C', repo, 'cat-file', '--batch-check=%(objecttype)'],
+      { input: `${asked.join('\n')}\n`, encoding: 'utf8' })
+    const types = shown.status === 0 ? shown.stdout.split('\n') : []
+    asked.forEach((sha, index) => { if ((types[index] || '').trim() === 'commit') known.set(`${repo}\0${sha}`, true) })
+  }
+  return items.map((item, index) => {
+    if (!where[index].length) return 'unchecked'
+    return where[index].some((repo) => known.has(`${repo}\0${item.sha}`)) ? 'found' : 'missing'
+  })
+}
+
+module.exports = { reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions, commitFiles, commitStatus }
