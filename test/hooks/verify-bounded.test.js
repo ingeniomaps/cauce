@@ -11,7 +11,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawn, spawnSync } = require('node:child_process')
 const { execute } = require('../../engine/hooks/run')
-const { holdMachine } = require('../../engine/hooks/machine-lock')
+const { holdMachine, lockFile } = require('../../engine/hooks/machine-lock')
 const C = require('../../engine/config/validate')
 
 // Un repositorio embedded con todo staged y nada suelto, que es lo que hace correr los gates en el árbol;
@@ -114,4 +114,29 @@ test('runner.gateTimeoutMinutes se valida, y check avisa un lint con --fix', () 
   assert.equal(warned(), false, 'un lint que sólo revisa no avisa')
   fs.writeFileSync(path.join(product, 'package.json'), JSON.stringify({ scripts: { lint: 'eslint . --fix' } }))
   assert.equal(warned(), true)
+})
+
+test('sin CAUCE_VERIFY_LOCK el candado es el de la máquina', () => {
+  const previous = process.env.CAUCE_VERIFY_LOCK
+  try {
+    delete process.env.CAUCE_VERIFY_LOCK
+    assert.equal(lockFile(), path.join(require('node:os').tmpdir(), 'cauce-verify.lock'))
+  } finally { process.env.CAUCE_VERIFY_LOCK = previous }
+})
+
+test('verify usa el candado que fija CAUCE_VERIFY_LOCK, no el de la máquina', () => {
+  const lock = path.join(tempRoot('cauce-verify-candado-propio-'), 'verify.lock')
+  const holder = spawn('sleep', ['30'])
+  const previous = process.env.CAUCE_VERIFY_LOCK
+  try {
+    fs.writeFileSync(lock, String(holder.pid))
+    process.env.CAUCE_VERIFY_LOCK = lock
+    const dir = repo('cauce-verify-candado-env-', { test: 'node -e 0' }, {}, { gateTimeoutMinutes: 0.005 })
+    const message = messageOf('verify', commit(dir))
+    assert.ok(message.includes(`otro verify corre en esta máquina (pid ${holder.pid})`), message)
+    assert.ok(message.includes(lock), 'nombra el archivo que espera')
+  } finally {
+    holder.kill()
+    process.env.CAUCE_VERIFY_LOCK = previous
+  }
 })

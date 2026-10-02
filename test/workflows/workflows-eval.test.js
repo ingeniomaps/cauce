@@ -347,3 +347,13 @@ for (const name of ['agent-eval', 'flow-eval']) {
     assert.match(src, /ran && CATALOG > ran/, 'sólo cuando de verdad falta algo')
   })
 }
+
+// Caso 244.
+test('ningún caso entra al cargo sin haber pasado por la firma', () => {
+  const promote = fs.readFileSync(path.join(WF, 'agent-promote.js'), 'utf8')
+  assert.equal(/escribilo igual/.test(promote), false, 'aplicar no escribe casos que la propuesta no trae')
+  assert.match(promote, /requerida sin caso/, 'lo deja dicho como desviación, para la propuesta siguiente')
+
+  const propose = fs.readFileSync(path.join(WF, 'agent-propose.js'), 'utf8')
+  assert.match(propose, /Si agregás una conducta a \\?`required/, 'la requerida nueva trae su caso a la firma')
+})

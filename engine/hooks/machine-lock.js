@@ -13,7 +13,11 @@ const os = require('node:os')
 const path = require('node:path')
 const { block } = require('./input')
 
-const LOCK = path.join(os.tmpdir(), 'cauce-verify.lock')
+// Se resuelve al usarse y no al cargar: la suite de pruebas lo mueve a su propio temporal. Con el de la
+// máquina, sus pruebas de verify esperaban detrás del commit real de otra sesión —medido: dos esperaron
+// casi diez minutos y la del tope se rindió—. Moverlo no lo apaga: dentro de quien lo comparte sigue
+// corriendo uno por vez.
+const lockFile = () => process.env.CAUCE_VERIFY_LOCK || path.join(os.tmpdir(), 'cauce-verify.lock')
 const POLL_MS = 250
 
 // Suelta sólo el propio: si el archivo ya es de otro —el nuestro se dio por muerto y alguien lo tomó—,
@@ -28,7 +32,7 @@ function alive(pid) {
 
 // Devuelve cómo soltarlo. Espera lo que puede durar la corrida de quien lo tiene: más que eso, ya debería
 // haberla cortado su propio tope, y lo que queda es decirlo en vez de colgar la sesión.
-function holdMachine(waitMs, file = LOCK) {
+function holdMachine(waitMs, file = lockFile()) {
   const started = Date.now()
   for (;;) {
     try {
@@ -54,4 +58,4 @@ function holdMachine(waitMs, file = LOCK) {
   }
 }
 
-module.exports = { holdMachine }
+module.exports = { holdMachine, lockFile }
