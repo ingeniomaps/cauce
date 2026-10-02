@@ -59,6 +59,11 @@
     "branches": 54,
     "functions": 94
   },
+  "engine/automation/own-workflows.js": {
+    "lines": 100,
+    "branches": 93,
+    "functions": 100
+  },
   "engine/automation/registration.js": {
     "lines": 97,
     "branches": 71,
