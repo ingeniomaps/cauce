@@ -172,6 +172,12 @@ diseño — eso vive en el commit y en el código.
   costaba, podés sacarlo.
 - **R27 nombra la salida cuando cerrar por defecto rompe el uso diario:** abrir por defecto, con una prueba
   que recorre lo que existe y falla hasta que cada elemento nuevo esté clasificado.
+- **Aplicar una propuesta crea los casos que la propuesta firmada enuncia, y sólo esos.** `/agent-promote`
+  crea el caso que viene enunciado en la propuesta aunque esta diga que el archivo no se crea: esa frase es
+  de cuando se redactó, y el caso entra con tu firma. Lo que ya no hace es escribir por su cuenta un caso
+  para una conducta `required` que llegó sin el suyo: la deja anotada como desviación, para pedirla en la
+  propuesta siguiente. Y `/agent-propose`, cuando agrega una `required`, enuncia el caso que la ejerce, para
+  que llegue a tu firma. Un caso cambia lo que se mide de un cargo, así que lo decide quien firma.
 
 ### Corregido
 
