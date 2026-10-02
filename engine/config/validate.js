@@ -195,7 +195,7 @@ function validateRunner(runner, errors) {
     return
   }
   const booleans = ['humanCheckpointBetweenMilestones', 'commitPerTask', 'allowPush']
-  const allowed = new Set(['maxTaskHours', 'pushToLiveBranches', ...booleans])
+  const allowed = new Set(['maxTaskHours', 'pushToLiveBranches', 'gateTimeoutMinutes', ...booleans])
   for (const key of Object.keys(runner)) {
     if (!allowed.has(key)) errors.push(`ops.config.json: runner.${key} no está permitido`)
   }
@@ -206,6 +206,10 @@ function validateRunner(runner, errors) {
     || live.some((branch) => typeof branch !== 'string' || !/^[^\s*?[]+$/.test(branch)))) {
     errors.push('ops.config.json: runner.pushToLiveBranches debe ser una lista de nombres de rama exactos, '
       + 'sin espacios ni patrones')
+  }
+  if (runner.gateTimeoutMinutes !== undefined
+    && (typeof runner.gateTimeoutMinutes !== 'number' || runner.gateTimeoutMinutes <= 0)) {
+    errors.push('ops.config.json: runner.gateTimeoutMinutes debe ser mayor que cero')
   }
   if (typeof runner.maxTaskHours !== 'number' || runner.maxTaskHours <= 0) {
     errors.push('ops.config.json: runner.maxTaskHours debe ser mayor que cero')

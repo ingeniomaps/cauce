@@ -28,12 +28,26 @@ const O = require('../core/ownership')
 const TR = require('../core/trails')
 const OB = require('../core/onboarding')
 const C = require('../config/validate')
+const VF = require('../hooks/verify')
 const MG = require('../core/migrations')
 const CP = require('../config/paths')
 const AG = require('../agents/catalog')
 const RL = require('../automation/rules')
 const CT = require('./contract')
 const { fail, planningRoot, TODAY, REFUSED } = require('./io')
+
+// Un lint con `--fix` no lo corre `verify` cuando el commit coincide con el árbol, porque escribiría en él
+// (caso 240). Un hook no tiene cómo avisar sin frenar, así que lo dice `check`: si no, el gate se saltea en
+// silencio y el commit pasa sin lint.
+function lintThatWrites(opsDir, workspace) {
+  let lint
+  // Sin `package.json`, ilegible o sin `scripts`: no hay lint que mirar, y las tres caen acá.
+  const file = path.resolve(opsDir, workspace.path, 'package.json')
+  try { lint = JSON.parse(fs.readFileSync(file, 'utf8')).scripts.lint } catch { return [] }
+  if (!VF.writesInTree('lint', lint || '', workspace)) return []
+  return [`ops.config.json: la raíz ${workspace.name} corre lint con --fix, y verify no lo corre sobre el árbol `
+    + 'porque escribiría en él: agregá un script de lint que sólo revise']
+}
 
 function check(dir, cli) {
   const root = planningRoot(dir)
@@ -72,6 +86,7 @@ function check(dir, cli) {
               && !fs.existsSync(path.resolve(path.dirname(configPath), workspace.path))) {
               errors.push(`ops.config.json: no existe la raíz ${workspace.name} (${workspace.path})`)
             }
+            if (workspace && workspace.path) warnings.push(...lintThatWrites(path.dirname(configPath), workspace))
           }
         }
         // Es la única parte de la configuración que le levanta el límite a un guard, y quien la escribió
