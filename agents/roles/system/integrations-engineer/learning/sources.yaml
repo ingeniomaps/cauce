@@ -11,7 +11,9 @@ rules:
 # va en organization/roles/integrations-engineer.md, y la versión de API que usa hoy, en el contrato
 # de la integración.
 #
-# Cada entrada se verificó abriendo su URL el 2026-08-22. Lo que no se pudo abrir está al final,
+# Cada entrada se verificó abriendo su URL el 2026-08-22, salvo que la entrada declare su propia fecha
+# de reverificación (ver OpenAPI Specification, reverificada el 2026-09-24). Lo que no se pudo abrir
+# está al final,
 # nombrado, en vez de citado como si se hubiera leído.
 sources:
   # Define «idempotente» y qué métodos lo son. Es la referencia que separa el reintento seguro del que
@@ -43,9 +45,11 @@ sources:
     tier: standard
     topics: [api-risk-model, unsafe-consumption, inventory-management, ssrf]
 
-  # La versión vigente al 2026-08-22 es la 3.2.0, publicada el 2025-09-19, y define `webhooks` como
+  # La versión vigente al 2026-09-24 es la 3.2.1, publicada el 2026-09-10 — parche editorial sobre
+  # la 3.2.0 del 2025-09-19 que corrige la tabla de ejemplos de `style` en parámetros y combinaciones
+  # prohibidas de `in`/`style`/`explode`, sin tocar `webhooks` — y sigue definiendo `webhooks` como
   # campo de primer nivel del documento: el contrato de lo que se le expone a un partner puede
-  # declarar también lo que se le envía.
+  # declarar también lo que se le envía (H1, H2 del informe 2026-09-24).
   - name: OpenAPI Specification
     url: https://spec.openapis.org/oas/latest.html
     tier: standard
