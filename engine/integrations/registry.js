@@ -226,8 +226,14 @@ async function sync(root, name, options = {}) {
   // al proyecto, y el suyo que hay a dónde apuntar.
   if (!entry.enabled || !config.enabled) throw new Error(`${name} está deshabilitado`)
   const provider = adapter(root, name, entry)
-  const items = options.fixture
-    ? provider.normalizeFixture(readJson(path.resolve(options.fixture)), config)
+  // Lo que lee un agente llega como payload y dice si trajo todo: un agente puede cortar a mitad de las
+  // páginas, y lo que no trajo no es lo que el remoto ya no tiene (caso 226).
+  const payload = options.payload ? readJson(path.resolve(options.payload)) : null
+  if (payload && typeof payload.complete !== 'boolean') {
+    throw new Error(`${name}: el payload tiene que declarar complete: true o false`)
+  }
+  const items = options.fixture || payload
+    ? provider.normalizeFixture(payload || readJson(path.resolve(options.fixture)), config)
     : await provider.fetchItems(config)
   const staging = path.join(root, 'integrations', name, 'staging')
   fs.mkdirSync(staging, { recursive: true })
@@ -305,12 +311,11 @@ async function sync(root, name, options = {}) {
     F.atomicWrite(draftFile, draft)
     F.atomicWriteJson(snapshotFile, snapshot)
   }
-  // Siempre se limpia: ningún adaptador puede devolver una lectura parcial. El de Jira lanza al
-  // exceder páginas, al repetir un token y ante cualquier HTTP que no sea 200, así que o trajo todo o
-  // no trajo nada. Había una bandera `complete` para saltearlo, sin forma de activarla desde el CLI y
-  // sin nadie que leyera el campo que escribía. Vuelve el día que un adaptador sepa decir «traje una
-  // parte», que es cuando protegería algo.
-  cleanupMissing(root, name, seen, result)
+  // Por REST se limpia siempre: el adaptador lanza al exceder páginas, al repetir un token y ante cualquier
+  // HTTP que no sea 200, así que o trajo todo o no trajo nada. Un payload sí puede traer una parte, y lo
+  // declara: sin `complete: true` no se borra nada de lo que no vino.
+  if (!payload || payload.complete) cleanupMissing(root, name, seen, result)
+  else result.partial = true
   F.atomicWriteJson(path.join(staging, 'sync-state.json'), {
     schemaVersion: 2,
     provider: name,

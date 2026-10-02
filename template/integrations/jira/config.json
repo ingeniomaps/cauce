@@ -1,5 +1,6 @@
 {
   "enabled": false,
+  "transport": "rest",
   "baseUrl": "https://your-domain.atlassian.net",
   "jql": "project = KEY AND resolution = Unresolved ORDER BY priority DESC, created ASC",
   "pageSize": 100,

@@ -22,6 +22,17 @@ diseño — eso vive en el commit y en el código.
   descripción entera y pierde menciones, tablas y casillas. En Claude Code, el guard `jira-adf` frena
   `editJiraIssue` de cualquier servidor MCP cuando cambia la descripción sin ADF, y se aprueba como el resto
   si de verdad querés reemplazarla por texto. Llega con `automation install`.
+- **Jira se puede leer con un agente, sin un token en disco.** Con `"transport": "agent"` en
+  `integrations/jira/config.json`, la integración no pide credenciales: el agente lee con el MCP de Atlassian
+  y la cuenta de quien está en la sesión, y entrega lo leído con `integration sync . jira --payload <archivo>`.
+  El procedimiento está en `integrations/jira/README.md`. El payload declara si trajo todo; con
+  `complete: false` no se borra nada de lo que no vino.
+- **Mergear, aprobar un PR y desplegar ahora se frenan como un push.** `gh pr merge`, `review`, `close`,
+  `reopen` y `comment`, `gh workflow run`, `gh run rerun`, `gh release create|delete|upload|edit`, y los deploys
+  con `terraform`/`tofu apply|destroy`, `kubectl` con verbos que modifican, `helm install|upgrade|uninstall|
+  rollback`, `pulumi up|destroy` o `cdk deploy|destroy`. `gh pr create` sin `--repo` también se frena, porque
+  en un fork abre el PR en el original. Se aprueban igual que el push. Si tu proyecto despliega con un comando
+  propio —un script como `./scripts/deploy.sh`—, declaralo en `deployCommands` de `ops.config.json` y se frena igual.
 - **Jira toma el servicio de una etiqueta.** Los proyectos team-managed no tienen componentes: con
   `"serviceFrom": "label"` el sync lee el servicio de una etiqueta `service:<ruta>` (el prefijo se cambia con
   `serviceLabelPrefix`), y con `"both"` de cualquiera de los dos. Si una incidencia nombra más de un servicio,

@@ -11,13 +11,15 @@ function validateConfig(config, errors) {
     errors.push('jira: baseUrl debe ser HTTPS sin path final')
   }
   if (config.enabled && !String(config.jql || '').trim()) errors.push('jira: falta jql')
-  if (!['basic', 'bearer'].includes(config.auth && config.auth.type)) {
-    errors.push('jira: auth.type debe ser basic|bearer')
+  // Por agente lee un MCP con la cuenta de quien está en la sesión, y no hay token que guardar: eso es lo que
+  // una instancia elige cuando no quiere uno de larga vida en disco (caso 226).
+  const transport = config.transport === undefined ? 'rest' : config.transport
+  if (!['rest', 'agent'].includes(transport)) errors.push('jira: transport debe ser rest|agent')
+  if (transport === 'rest') validateAuth(config, errors)
+  if (config.mcpServer !== undefined && !/^[A-Za-z0-9_-]+$/.test(String(config.mcpServer))) {
+    errors.push('jira: mcpServer es el nombre del servidor MCP, tal como aparece en mcp__<nombre>__…')
   }
-  if (!config.auth || !config.auth.tokenEnv) errors.push('jira: falta auth.tokenEnv')
-  if (config.auth && config.auth.type === 'basic' && !config.auth.emailEnv) {
-    errors.push('jira: basic exige auth.emailEnv')
-  }
+  if (config.cloudId !== undefined && !String(config.cloudId).trim()) errors.push('jira: cloudId no puede ir vacío')
   // Un valor mal escrito no daba error: dejaba a todos los ítems sin servicio y el borrador culpaba a Jira.
   if (config.serviceFrom !== undefined && !SERVICE_FROM.includes(config.serviceFrom)) {
     errors.push(`jira: serviceFrom debe ser ${SERVICE_FROM.join('|')}`)
@@ -40,6 +42,16 @@ function validateConfig(config, errors) {
   if (config.candidateAssigneeEnv
     && !/^[A-Z][A-Z0-9_]*$/.test(config.candidateAssigneeEnv)) {
     errors.push('jira: candidateAssigneeEnv debe nombrar una variable de entorno')
+  }
+}
+
+function validateAuth(config, errors) {
+  if (!['basic', 'bearer'].includes(config.auth && config.auth.type)) {
+    errors.push('jira: auth.type debe ser basic|bearer')
+  }
+  if (!config.auth || !config.auth.tokenEnv) errors.push('jira: falta auth.tokenEnv')
+  if (config.auth && config.auth.type === 'basic' && !config.auth.emailEnv) {
+    errors.push('jira: basic exige auth.emailEnv')
   }
 }
 
@@ -124,6 +136,10 @@ function normalizeFixture(payload, config) {
 }
 
 async function fetchItems(config, options = {}) {
+  if (config.transport === 'agent') {
+    throw new Error('jira lee por agente (transport: agent): el sync lo hace el procedimiento de '
+      + 'integrations/jira/README.md, que entrega lo leído con --payload')
+  }
   const fetchImpl = options.fetchImpl || globalThis.fetch
   const timeoutMs = options.timeoutMs || config.timeoutMs || 30_000
   const maxPages = options.maxPages || config.maxPages || 100
