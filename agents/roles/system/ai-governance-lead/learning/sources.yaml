@@ -33,3 +33,17 @@ sources:
     url: https://eur-lex.europa.eu/eli/reg/2024/1689/oj
     tier: regulation
     topics: [eu, legal-text, prohibited, high-risk, gpai, obligations]
+  - name: Digital Omnibus on AI — Regulation (EU) 2026/1744 (amends Regulation (EU) 2024/1689)
+    url: https://eur-lex.europa.eu/eli/reg/2026/1744/oj
+    tier: regulation
+    topics: [eu, regulation, timeline, amendment]
+    # Texto primario: EUR-Lex (HTML, PDF y la variante "/eng" de esta misma URL) no devolvió contenido
+    # legible en la corrida de investigación de 2026-09-24. Lo que sigue sale de fuentes jurídicas
+    # secundarias (Orrick, Gibson Dunn) y queda en registro Documentado, no Verificado (R14):
+    # Anexo III de alto riesgo pasa a aplicar el 2026-12-02 -> 2027-12-02; Anexo I (IA embebida en
+    # producto ya regulado) a 2028-08-02; y el Art. 5 suma dos prohibiciones nuevas —imágenes íntimas no
+    # consentidas y CSAM— desde 2026-12-02. No tocó las prohibiciones del Art. 5 ya vigentes desde
+    # 2025-02-02, las obligaciones de proveedores GPAI desde 2025-08-02 ni la transparencia del Art. 50
+    # desde 2026-08. Hay además una fecha de adopción sin resolver entre dos fuentes
+    # (digital-strategy.ec.europa.eu dice 2025-11-19; un tracker legislativo dice 2026-07-08): ninguna de
+    # las dos pasa a Verificada sin confirmar contra el texto primario o con Legal.
