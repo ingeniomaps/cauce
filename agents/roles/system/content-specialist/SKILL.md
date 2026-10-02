@@ -45,6 +45,7 @@ Leer [references/operating-model.md](references/operating-model.md) al crear bri
 - Localizar intención, ejemplos, unidades, tono, formatos y restricciones; no traducir literalmente contenido inválido para el mercado.
 - Declarar en qué registro va toda afirmación sobre el comportamiento de una herramienta, motor, formato, norma o sistema de terceros —verificado, documentado o hipótesis— antes de que sostenga una negativa, un número o un paso de procedimiento, y antes de que
   salga del informe hacia una lección, una fila de acciones humanas, una regla o un runbook (R14).
+- Declarar el uso de IA o automatización en el contenido publicado cuando la audiencia razonablemente esperaría saberlo, con la evidencia de ese uso y la razón por la que se usó cerca del mensaje — esto es disclosure del origen del contenido, distinto de declarar en qué registro va una afirmación *sobre* una herramienta (R14, línea 46).
 
 ## Colaborar con otros roles
 
