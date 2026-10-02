@@ -20,6 +20,7 @@ const AP = require('./approval')
 const CHAT = require('./chat')
 const { publish } = require('./push')
 const { selfApprovalShell } = require('./self-approval')
+const { deliveryRules } = require('./delivery')
 
 // Dónde empieza y dónde termina una palabra dentro de un comando. Tres reglas de la tabla de abajo lo
 // decidían por su cuenta admitiendo sólo un espacio, el principio o el fin, y en un shell una palabra
@@ -93,6 +94,7 @@ function destructive(input) {
   }
   publish(input, command)
   const rules = [
+    ...deliveryRules(input),
     [/\bgit\s+reset\s+--hard\b/, "'git reset --hard' destruye cambios locales.", true],
     // Lo que R8 protege es la historia que **otro ya leyó**, y el motor ya hace esa distinción para el
     // push: publicar se autoriza, reescribir lo publicado no. Acá se hace la misma, mirando si algún
