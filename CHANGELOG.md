@@ -98,6 +98,9 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`integration reset` y `reconcile` ya no deshacen una promoción.** Sobre un ítem promovido, `reset` lo
+  devolvía a `pending` y perdía el registro de la promoción, y `reconcile` borraba la señal de que Jira cambió
+  después de promoverlo. Ahora se niegan y te mandan a revisar la épica en `planning/roadmap/`.
 - **El sync de Jira de una persona ya no pisa lo que curó otra.** Con `candidateAssigneeEnv`, un ítem que
   alguien curó como candidato pasaba a contexto cuando sincronizaba otra persona, y su borrador se regeneraba
   sin decirlo. Ahora sigue candidato con su curación, y el resumen del sync lo cuenta aparte. El staging pasa a
