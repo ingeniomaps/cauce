@@ -93,16 +93,21 @@ dice qué había que hacer, no qué se apoyaba en lo que había.
 
 Push, PR, merge, tags, deploy y rollback requieren la autorización configurada para el proyecto.
 
-De esos seis, el motor comprueba uno: el push, contra `runner.allowPush` —que no llega a la rama viva
+El motor comprueba el push contra `runner.allowPush` —que no llega a la rama viva
 sin `runner.pushToLiveBranches`, ni a un subagente— o contra la orden que la persona da en el chat
 nombrando el remoto y la rama. Reescribir historia publicada
 no entra en esa autorización y se frena siempre — también cuando la reescritura es un `--amend`, que el
-guard distingue mirando si algún remoto alcanza al commit. Los otros cinco no tienen una
-forma reconocible en un comando —un deploy es `kubectl`, `terraform`, un script o un botón— y los
-sostiene esta regla y el review, no un guard.
+guard distingue mirando si algún remoto alcanza al commit.
+
+Los otros cinco los comprueba donde tienen una forma reconocible en un comando, y en ningún otro lado. Se
+frenan hasta que una persona los apruebe: actuar sobre un PR con `gh` —mergear, aprobar, cerrar, comentar—,
+abrirlo sin nombrar el destino, disparar un workflow o una release, y desplegar con `terraform`, `tofu`,
+`kubectl`, `helm`, `pulumi` o `cdk`, más los comandos que el proyecto declare en `deployCommands`. Un deploy
+por un script que nadie declaró, o por un botón, no tiene forma: ése lo sostienen esta regla y el review,
+no un guard.
 
 Decirlo es parte de la regla y no una nota al pie. Una norma que se presenta como comprobada donde no
-lo está enseña a no creerle al resto: quien descubre que puede mergear sin que nada lo frene concluye
+lo está enseña a no creerle al resto: quien descubre que puede desplegar sin que nada lo frene concluye
 que la línea de arriba es decorativa, y esa conclusión se lleva puesto también lo que sí se comprueba.
 Que el límite lo sostenga una persona no lo hace más blando; lo hace visible.
 
