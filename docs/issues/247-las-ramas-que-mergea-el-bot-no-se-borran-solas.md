@@ -1,14 +1,15 @@
 ---
 caso: 247
 titulo: las ramas que mergea el auto-merge del bot no se borran solas, y el barrido dependía de acordarse
-estado: abierto
+estado: resuelto
+resuelto-en: 0.100.0
 prioridad: baja
 version-detectada: 0.100.0
 ---
 
 # 247 — Las ramas que mergea el bot no se borran solas, y el barrido dependía de acordarse
 
-**🔴 abierto** · detectado en 0.100.0 · prioridad **baja**.
+**🟢 resuelto en 0.100.0** · detectado en 0.100.0 · prioridad **baja**.
 
 **Prioridad baja**: una rama mergeada que queda no rompe nada, pero se acumulan de a decenas por mes y tapan las
 que sí están vivas.
@@ -65,3 +66,33 @@ Manuel vio las 29 ramas abiertas mientras corría la prueba del caso 246 y pregu
 - **183**: por qué el auto-merge del bot no borra la rama.
 - **246**: por qué ahora todos los informes se mergean así.
 - **147**: por qué `--delete-branch` no sirve con `--auto`.
+
+## Cierre
+
+**🟢 resuelto en 0.100.0** · `.github/workflows/prune-branches.yml`, `.github/scripts/prune-merged-branches.sh`,
+`AGENTS.md`, `test/repo/ci-schedule.test.js` · PR #781.
+
+El workflow no viaja en el paquete: rige desde el merge a `main`.
+
+### La prueba
+
+Después del merge quedaban dos ramas que había mergeado el bot, las de la prueba del caso 246 (#780 y #782).
+Se lanzó `prune-branches.yml` a mano (corrida `37064293485`, `success`):
+
+```
+Image: ubuntu-26.04
+automation/tech-lead-research-2026-10-02 borrada: mergeada y sin cambios desde entonces.
+automation/ux-designer-research-2026-10-02 borrada: mergeada y sin cambios desde entonces.
+```
+
+Quedaron 0 ramas `automation/*`. Borró con el `GITHUB_TOKEN` del workflow (`contents: write`), sin el PAT.
+El rojo previo son las 29 ramas del caso, que quedaron porque el barrido dependía de correrse a mano.
+
+### Contra lo que el caso enumeró
+
+- **Workflow programado el 26 y el 3, más `workflow_dispatch`** — **se hizo.** El dispatch es lo que corrió la
+  prueba. Los crones se ven recién el 26 de octubre.
+- **Mismo script, que sólo borra lo mergeado y sin cambios** — **se hizo**, sin tocar su lógica.
+- **Encabezado del script y `AGENTS.md`** — **se hizo.**
+- **Tradeoff «una rama mergeada después del barrido queda hasta el siguiente»** — **se acepta.**
+
