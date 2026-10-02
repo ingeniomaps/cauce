@@ -63,7 +63,7 @@ concurrency:
 
 jobs:
   discover:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     outputs:
       agents: ${{ steps.list.outputs.agents }}
@@ -191,7 +191,7 @@ jobs:
       needs.discover.outputs.agents != '[]' && needs.discover.outputs.model == 'true'
       && (github.event_name != 'workflow_dispatch' || inputs.phase != 'propose')
     needs: discover
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
       contents: read
@@ -677,7 +677,7 @@ jobs:
     # se llevaba los PR de los otros y sus informes expiraban en el artifact. Cada pata tolera no
     # encontrar el suyo, así que alcanza con que la investigación no se haya salteado.
     if: ${{ !cancelled() && needs.research.result != 'skipped' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: write
@@ -787,7 +787,7 @@ jobs:
       && (github.event.schedule == '17 7 1 * *'
         || (github.event_name == 'workflow_dispatch' && inputs.phase != 'research'))
     needs: discover
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # El techo de `/agent-propose` más lo que tardan los pasos de alrededor. Si GitHub corta el job antes,
     # se pierde el push de los sellos.
     timeout-minutes: 40
@@ -1074,7 +1074,7 @@ jobs:
       && (github.event.schedule == '17 7 1 * *'
         || (github.event_name == 'workflow_dispatch' && inputs.phase != 'research'))
     needs: discover
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:
       contents: write

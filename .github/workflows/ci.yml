@@ -29,14 +29,14 @@ concurrency:
   # caso que queda, un `workflow_dispatch` sobre el commit de una release mientras su corrida va.
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
-# Fijado a propósito y no al flotante `ubuntu-latest`: GitHub empieza a migrar esa etiqueta a Ubuntu 26 el
-# 2026-10-19, según el aviso que dejó en cada job de la corrida 36876344492 (actions/runner-images#14748).
-# Se prueba `ubuntu-26.04` aparte y se migra con un commit propio cuando esté verificado; lo decidió la
-# propuesta 2026-10 de devops-engineer. El mismo valor se repite, sin este comentario, en
-# agent-learning.yml, open-pr.yml, release-pr.yml, release.yml y sign-proposal.yml.
+# Fijado a propósito y no al flotante `ubuntu-latest`, para que un cambio de imagen sea un commit y no una
+# sorpresa en una corrida. Pasó de 24.04 a 26.04 cuando la imagen salió estable (actions/runner-images#14747),
+# después de comprobar que trae lo que estos workflows usan: Node 24, npm, git, jq, gh y Python. El mismo valor
+# se repite, sin este comentario, en agent-learning.yml, open-pr.yml, release-pr.yml, release.yml y
+# sign-proposal.yml.
 jobs:
   ci:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     strategy:
       fail-fast: false
@@ -65,7 +65,7 @@ jobs:
   # firma sale bien. Bloquear prohibiría ese caso por el que hoy es el único.
   proposal-pr:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
