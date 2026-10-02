@@ -77,7 +77,7 @@ El workflow no viaja en el paquete: rige desde el merge a `main`.
 ### La prueba
 
 Después del merge quedaban dos ramas que había mergeado el bot, las de la prueba del caso 246 (#780 y #782).
-Se lanzó `prune-branches.yml` a mano (corrida `37064293485`, `success`):
+Se corrió `prune-branches.yml` a mano, una corrida real en GitHub (`37064293485`, `success`):
 
 ```
 Image: ubuntu-26.04
