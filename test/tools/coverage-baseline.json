@@ -453,5 +453,10 @@
     "lines": 99,
     "branches": 96,
     "functions": 100
+  },
+  "engine/planning/lines.js": {
+    "lines": 100,
+    "branches": 95,
+    "functions": 100
   }
 }

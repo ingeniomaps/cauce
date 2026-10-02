@@ -114,6 +114,13 @@ repositorios del producto enlazados y los mismos runners instalados ahí. La ses
 esa carpeta, y sus guards son los de su árbol. `automation install` se niega a mover los guards de la carpeta
 compartida a otro árbol, y dice que para eso está `ops line`.
 
+Qué trabajo es de cada línea se declara en el hito: `line: admin` en el frontmatter de su `backlog/<hito>.md`.
+El árbol de la línea `admin` sólo ve esos hitos, y el principal sólo los que no son de ninguna, así que el
+autobuild de una no toma la tarea de la otra aunque las dos colas terminen en el mismo archivo después de
+mergear. La línea sale de la rama, no de un argumento: no hay nada que recordar al lanzar. `ops context` la
+muestra en la línea `LINE`, con los hitos que no te ofrece. Y los reclamos se ven entre los árboles: `context`
+y `claim` leen también los de los otros worktrees de la instancia, porque cada línea los commitea en su rama.
+
 **Un id por agente.** Sin eso los dos resuelven la misma identidad de git y el segundo toma por propia la
 tarea del primero. Al abrir una sesión, `ops runners planning` dice qué runners tienen trabajo abierto;
 el agente pregunta cuál se retoma o si arranca uno nuevo, y **exporta el id él mismo**. A una persona no

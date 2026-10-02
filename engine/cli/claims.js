@@ -9,6 +9,7 @@ const path = require('node:path')
 const CL = require('../planning/claims')
 const R = require('../core/repos')
 const ST = require('../planning/state')
+const LN = require('../planning/lines')
 const { fail, planningRoot, TODAY, USAGE, REFUSED } = require('./io')
 
 function claim(dir, slug, cli) {
@@ -17,6 +18,16 @@ function claim(dir, slug, cli) {
   const state = ST.snapshot(root)
   const task = state.milestones.flatMap((milestone) => milestone.tasks).find((one) => one.slug === slug)
   if (!task) return fail(`${slug} no está en BACKLOG: sólo se toma trabajo ya promovido.`, USAGE)
+  // Lo mismo que contesta `context` (caso 239): si uno la ofreciera y el otro no, sólo se vería al reclamar.
+  const milestone = state.milestones.find((one) => one.tasks.includes(task))
+  if (LN.scope([milestone], LN.currentLine(root)).hidden.length) {
+    return fail(`${slug} ${LN.whereToTake(milestone)}.`, REFUSED)
+  }
+  const across = LN.claimsElsewhere(root).find((one) => one.slug === slug)
+  if (across) {
+    return fail(`${slug} la tomó ${across.owner} el ${across.started} desde otro árbol de la instancia `
+      + `(${across.tree}). Si se abandonó, se suelta allá.`, REFUSED)
+  }
 
   // No se reserva lo que todavía no se puede empezar: una tarea tomada con su dependencia en vuelo
   // bloquea la cola sin que nadie pueda avanzarla, y el runner que la tomó se queda sin poder tomar otra.
