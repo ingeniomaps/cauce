@@ -177,9 +177,28 @@ function readStaging(root, provider = '') {
   return items.sort((left, right) => left.key.localeCompare(right.key))
 }
 
+// Lo promovido ya es una decisión humana escrita en el roadmap (caso 228). `reset` lo devolvía a `pending` y
+// perdía el registro de la promoción; `reconcile` movía la base al remoto y borraba la señal de que Jira
+// cambió después de promover, que es lo que alguien tiene que mirar. Se niega antes de escribir nada.
+// `rebase` sólo recalcula el hash y no toca ninguna de las dos cosas.
+const KEEPS_PROMOTION = {
+  reset: 'lo devolvería a pending y perdería el registro de la promoción',
+  reconcile: 'borraría la señal de que Jira cambió después de promoverlo',
+}
+
 function reconcile(root, provider, operation, keys = []) {
   const selected = new Set(keys)
   const results = []
+  if (KEEPS_PROMOTION[operation]) {
+    const promoted = readStaging(root, provider)
+      .filter((staged) => !selected.size || selected.has(staged.key))
+      .filter((staged) => frontmatter(fs.readFileSync(path.join(staged.dir, 'draft.md'), 'utf8')).state === 'promoted')
+      .map((staged) => staged.key)
+    if (promoted.length) {
+      throw new Error(`${promoted.join(', ')} ya se promovió: ${operation} ${KEEPS_PROMOTION[operation]}. Si Jira `
+        + 'cambió, revisá la épica en planning/roadmap/ y reflejalo ahí.')
+    }
+  }
   for (const staged of readStaging(root, provider)) {
     if (selected.size && !selected.has(staged.key)) continue
     const snapshotFile = path.join(staged.dir, 'remote.json')
