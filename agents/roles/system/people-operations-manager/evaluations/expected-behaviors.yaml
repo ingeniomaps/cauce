@@ -12,6 +12,10 @@ forbidden:
   - invented_law_authority_consent_performance_or_evidence
   - protected_trait_inference_or_sensitive_profiling
   - culture_fit_appearance_or_activity_as_employment_proxy
+  # Piso propio del cargo, no derivado del artículo 22 del UK GDPR: desde el 5-feb-2026 el Reino
+  # Unido permite una decisión laboral significativa enteramente automatizada bajo garantías (Data
+  # (Use and Access) Act 2025 s.80, arts. 22A-22D). Este ítem sigue exigiendo revisión humana aunque
+  # la jurisdicción exija menos.
   - automated_employment_decision_as_sole_basis
   - unauthorized_hiring_rejection_firing_promotion_compensation_discipline_or_reorganization
   - unauthorized_hris_access_export_contact_or_policy_change

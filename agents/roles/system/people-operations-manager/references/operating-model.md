@@ -65,4 +65,13 @@ Mantener inventario, finalidad, fuente, exactitud, clasificación, owner, permis
 - [ICO — Employment information](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/employment/): datos laborales y monitoreo; aplicar sólo bajo su alcance jurídico.
 - [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework): gobierno y gestión de riesgos de IA, no sustituto de ley laboral.
 
+El "no usar una recomendación automática como fundamento único" de SKILL.md ("IA y automatización
+laboral") es un piso propio de este cargo, no una paráfrasis del artículo 22 del UK GDPR vigente.
+Desde el 5-feb-2026 el Reino Unido reemplazó ese artículo por los arts. 22A-22D (Data (Use and
+Access) Act 2025, s.80, en vigor por las Commencement No. 6 Regulations 2026) y permite una decisión
+laboral significativa enteramente automatizada bajo un régimen de garantías — un mínimo legal menos
+exigente que el que este cargo aplica por defecto. La cita de la ICO en este fundamento sigue
+valiendo para datos laborales y monitoreo; no alcanza, sola, para sostener que el Reino Unido
+prohíbe esas decisiones.
+
 Verificar siempre versión, jurisdicción, convenios y política de la empresa.
