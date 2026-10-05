@@ -73,7 +73,8 @@ function line(dir, name, cli) {
     || linkIfMissing(path.join(path.dirname(where.ops), 'node_modules'), path.join(path.dirname(root), 'node_modules'))
   let config = {}
   try { config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')) } catch { config = {} }
-  const linked = (config.workspaceRoots || []).map((one) => one.path || '').filter(Boolean)
+  const roots = (config.workspaceRoots || []).map((one) => one.path || '').filter(Boolean)
+  const linked = roots
     .filter((relative) => linkIfMissing(path.resolve(where.ops, relative), path.resolve(root, relative)))
 
   // Los mismos runners que tiene la instancia, instalados desde la línea: su configuración queda en la carpeta
@@ -85,6 +86,31 @@ function line(dir, name, cli) {
   })
   const quiet = { log: () => {}, error: () => {} }
   for (const runner of runners) A.install(where.ops, runner, quiet)
+
+  // Una raíz que es la carpeta que contiene a la instancia —`..`, con un repositorio por servicio adentro— no
+  // se puede enlazar entera: su lugar en la línea es la propia carpeta de la línea, que ya existe. Se enlazan
+  // sus hijos, y con ellos viaja también lo que la sesión lee de esa carpeta y no es una raíz. La instancia
+  // no se enlaza porque ya está: es el worktree. Y queda afuera la configuración de todo runner, también la
+  // del que la instancia no tiene instalado: enlazada, instalarlo después desde la línea escribiría en la
+  // carpeta original y movería los guards de la otra sesión (caso 218). Va después de instalar para no
+  // pisar lo que la instalación escribe (caso 263).
+  const configOf = (runner) => {
+    try {
+      const target = A.runnerPaths(root, runner, A.runnerManifest(root, runner)).configTarget
+      return path.relative(installRoot(root), target).split(path.sep)[0]
+    } catch { return '' }
+  }
+  for (const relative of roots) {
+    const target = path.resolve(where.ops, relative)
+    const original = path.resolve(root, relative)
+    if (target === original || !inside(target, where.tree) || !fs.existsSync(original)) continue
+    const skip = new Set(A.RUNNER_NAMES.map(configOf))
+    for (const name of fs.readdirSync(original).sort()) {
+      if (!skip.has(name) && linkIfMissing(path.join(target, name), path.join(original, name))) {
+        linked.push(path.join(relative, name))
+      }
+    }
+  }
 
   const report = {
     home: installRoot(where.ops), tree: where.tree, branch: where.branch, reused, engine, linked, runners,

@@ -254,3 +254,27 @@ test('un servicio que se llama como su raíz resuelve a esa raíz', () => {
   assert.equal(JSON.parse(hecho.stdout).repo, repo, 'y el árbol se monta en ese repositorio')
   assert.equal(fs.existsSync(path.join(base, 'producto-alta')), true)
 })
+
+// Caso 263. La tercera forma: la raíz declarada es una carpeta que no es un repositorio, con un
+// repositorio por servicio adentro. El repositorio es el del servicio, no el de la raíz.
+test('con una raíz que es una carpeta de repositorios, el servicio resuelve a su propio repositorio', () => {
+  const { base, repo, planning } = montar('cauce-wt-contenedor-')
+  const ops = path.join(planning, '..')
+  const config = path.join(ops, 'ops.config.json')
+  const leido = JSON.parse(fs.readFileSync(config, 'utf8'))
+  fs.writeFileSync(config, JSON.stringify({ ...leido, workspaceRoots: [{ name: 'main', path: '..' }] }, null, 2))
+  assert.notEqual(git(base, 'rev-parse', '--show-toplevel').status, 0, 'la carpeta que los contiene no es un repo')
+  assert.deepEqual(R.reposFor(ops, 'producto'), [repo])
+  assert.deepEqual(R.reposFor(ops, 'producto/api'), [repo], 'y una carpeta dentro de él, al mismo')
+  assert.deepEqual(R.reposFor(ops, 'no-existe'), [])
+
+  fs.writeFileSync(path.join(planning, 'BACKLOG.md'), `# Backlog promovido
+
+## Hito uno — Primero
+
+- [ ] **alta** [lite] — Alta. _Aceptación: x._ (service: producto)
+`)
+  const hecho = como('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
+  assert.equal(hecho.status, 0, hecho.stderr)
+  assert.equal(JSON.parse(hecho.stdout).repo, repo)
+})

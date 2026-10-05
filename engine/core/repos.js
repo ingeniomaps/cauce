@@ -38,9 +38,13 @@ const holds = (root, service) => fs.existsSync(path.join(root.dir, service || '.
 function reposFor(opsRoot, service) {
   return declaredRoots(opsRoot)
     .filter((root) => holds(root, service))
-    .map((root) => root.dir)
+    // El repositorio se pregunta desde donde vive el servicio y no desde la raíz: una raíz puede ser una
+    // carpeta con un repositorio por servicio adentro, y ahí la raíz no es ninguno. Preguntando en la raíz,
+    // esa forma contestaba que el repositorio no existía teniéndolo adentro (caso 263).
     .map((root) => {
-      const top = git(root, 'rev-parse', '--show-toplevel')
+      const inner = path.join(root.dir, service || '.')
+      const from = fs.existsSync(inner) && fs.statSync(inner).isDirectory() ? inner : root.dir
+      const top = git(from, 'rev-parse', '--show-toplevel')
       return top.status === 0 ? top.stdout.trim() : ''
     })
     .filter(Boolean)

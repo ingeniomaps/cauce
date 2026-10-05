@@ -63,6 +63,10 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`ops line` lleva el producto cuando la raíz es la carpeta de sesión.** Con `workspaceRoots: [".."]` y un
+  repositorio por servicio adentro, la carpeta de la línea quedaba sólo con el worktree de la instancia. Ahora
+  se enlazan los hijos de esa carpeta, salvo la configuración de los runners. Y con esa misma forma de raíz,
+  `ops worktree` ya encuentra el repositorio del servicio, también en la carpeta original (caso 263).
 - **En el modo `auto` de Claude Code los guards dejaban pasar lo que frenaban.** Un guard que pide confirmación
   abre el diálogo de Claude Code, y en `auto` ese diálogo no lo contesta una persona: la acción corría igual,
   sin ningún mensaje. Pasaba con un commit en rojo, con gobernanza, con el push a una rama de trabajo y con la

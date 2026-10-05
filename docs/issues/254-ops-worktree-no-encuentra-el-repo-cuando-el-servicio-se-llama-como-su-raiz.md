@@ -47,7 +47,9 @@ exit=2
 otra vez.
 
 Las dos formas están en uso. globex declara una sola raíz, `..`, y `service: account` resuelve
-`../account`: ahí anda. initech declara `platform → ../platform` y sus tareas dicen `service: platform`:
+`../account`. **Acá decía «ahí anda», y era falso**: estaba afirmado por lectura y no corrido. Esa raíz es
+una carpeta de repositorios y no un repositorio, y `reposFor` preguntaba por git en la raíz; el caso 263 lo
+midió y lo arregló. initech declara `platform → ../platform` y sus tareas dicen `service: platform`:
 por lectura da `../platform/platform`, que no existe. **En initech no se corrió**, es una instancia real.
 
 `repoOf` usa la misma función, así que `check` cae ahí en su degradación —mirar sólo la fecha— sin avisar
