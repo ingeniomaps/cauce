@@ -1459,7 +1459,12 @@ while (rounds++ < MAX_TASKS) {
     (contract.gates && contract.gates.length
       ? `El proyecto las declara y no hay que descubrirlas —${contract.gates.join(' · ')}—: corré la de ` +
         `la raíz que contiene ese servicio, tal cual y desde esa raíz. Si falla por algo que la tarea no ` +
-        `tocó, decilo en vez de arreglarlo. `
+        `tocó, decilo en vez de arreglarlo. ` +
+        // La puerta nombra al servicio por su ruta en la raíz, y en una línea esa ruta es el checkout que
+        // comparten todas: corrida tal cual da verde sobre un código que no tiene la tarea (caso 276).
+        (tree ? `Esa puerta nombra al servicio por su ruta en la raíz, que acá es el checkout compartido y ` +
+          `no tiene este trabajo: corré el mismo comando con esa ruta cambiada por ${tree.work}, y reportá ` +
+          `el comando como lo corriste. Un verde sobre el checkout compartido no cuenta. ` : '')
       : `El proyecto no declara con qué se verifica, así que descubrilo: primero las instrucciones del ` +
         `repositorio, después el test, lint, typecheck y build que apliquen. `) +
     `Leé los exit codes de verdad. ` +

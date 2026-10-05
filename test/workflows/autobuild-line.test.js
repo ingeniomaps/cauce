@@ -11,6 +11,7 @@ const TREE = { ok: true, path: '/linea/api-T-1', work: '/linea/api-T-1/src', bra
 const WORKTREE = 'Worktree|worktree:T-1'
 const inLine = (changes = {}, context = {}) => ({
   [KEY.context]: { ...baseScript()[KEY.context], line: 'admin', ...context },
+  [KEY.contract]: { ...baseScript()[KEY.contract], gates: ['.. → npm --prefix api test'] },
   [WORKTREE]: TREE,
   [KEY.commit]: { committed: true, hash: 'abc123', branch: 'feat/T-1', live: false },
   ...changes,
@@ -18,12 +19,13 @@ const inLine = (changes = {}, context = {}) => ({
 const promptOf = (prompts, key) => prompts.filter((one) => one.key === key).map((one) => one.prompt).join('\n')
 
 test('fuera de una línea no se arma ningún árbol: se trabaja en la carpeta que está', async () => {
-  const { result, asked, prompts } = await runFlow()
+  const { result, asked, prompts } = await runFlow({ [KEY.contract]: inLine()[KEY.contract] })
   ranToEnd(result)
   assert.ok(!reached(asked, 'Worktree'), `no hay con quién pisarse: ${asked}`)
   for (const key of [KEY.build, KEY.review, KEY.verify, KEY.qa, KEY.commit]) {
     assert.doesNotMatch(promptOf(prompts, key), /árbol de trabajo/, key)
   }
+  assert.doesNotMatch(promptOf(prompts, KEY.verify), /ruta cambiada/, 'la puerta corre tal cual')
   assert.match(promptOf(prompts, KEY.commit), /git switch -c <tipo>\/T-1/, 'la rama se corta en el lugar')
 })
 
@@ -38,6 +40,8 @@ test('en una línea la tarea se construye en un árbol propio, y todas las fases
     assert.match(prompt, /no en el checkout compartido/, key)
   }
   assert.ok(promptOf(prompts, KEY.plan).includes(`dentro de ${TREE.work}`), 'el plan mira el árbol de la tarea')
+  assert.ok(promptOf(prompts, KEY.verify).includes(`esa ruta cambiada por ${TREE.work}`),
+    'la puerta declarada apunta al checkout compartido, que no tiene la tarea (caso 276)')
 
   // Commit: en el árbol, sin cortar otra rama; la renombra a la forma de siempre y saca el árbol.
   const commit = promptOf(prompts, KEY.commit)

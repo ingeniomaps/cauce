@@ -67,7 +67,8 @@ diseño — eso vive en el commit y en el código.
   las demás. Ahora, en una línea, el recorrido arma el árbol con `ops worktree`, trabaja ahí, renombra la rama
   a `<tipo>/<slug>` al commitear y saca el árbol; el checkout compartido no se toca. Fuera de una línea no
   cambia nada: se sigue trabajando en la carpeta que está. `ops worktree` deja el árbol al lado del repositorio
-  tal como lo ve la sesión, y su `--json` trae `work`, la ruta donde trabajar (caso 274).
+  tal como lo ve la sesión, y su `--json` trae `work`, la ruta donde trabajar (caso 274). Y la puerta que
+  declara la raíz se corre contra ese árbol y no contra el checkout compartido, que no tiene la tarea (caso 276).
 - **Review ya no manda al INBOX lo que revisó y dio bien.** Cada hallazgo que no bloquea dice si propone algo.
   Lo que propone va a `inbox/propuestas/` como antes; la constancia queda en `review:` de la entrada de `done/`
   (caso 262).
