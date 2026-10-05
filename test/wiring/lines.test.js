@@ -49,6 +49,11 @@ test('una línea tiene su carpeta de sesión, con su worktree, su motor y sus gu
   assert.equal(blocked.status, 2, blocked.stderr)
   assert.match(blocked.stderr, /catastrófico/)
 
+  // Caso 275: la línea nace limpia. Ni el manifiesto, que viaja por git, ni el enlace al motor aparecen como
+  // cambios que nadie hizo.
+  const dirty = spawnSync('git', ['-C', report.tree, 'status', '--porcelain'], { encoding: 'utf8' }).stdout
+  assert.equal(dirty, '', `el árbol de la línea recién armada no tiene nada que commitear: ${dirty}`)
+
   const again = run(['line', target, 'b', '--json'])
   assert.equal(JSON.parse(again.stdout).reused, true, 'la segunda vez la reusa')
   const text = run(['line', target, 'b'])
@@ -176,4 +181,18 @@ test('una raíz que es la carpeta de sesión lleva sus hijos a la carpeta de la 
   const again = JSON.parse(run(['line', target, 'b', '--json']).stdout)
   assert.equal(again.reused, true)
   assert.deepEqual(again.linked, [], 'lo que ya está enlazado no se vuelve a enlazar')
+})
+
+// Una instancia creada antes del caso 275 ignora `node_modules/`, con barra, que no cubre un enlace. La
+// línea lo anota por su cuenta en el `exclude` del repositorio, así que su `.gitignore` no hace falta tocarlo.
+test('el enlace al motor no ensucia la línea de una instancia con el .gitignore de antes', () => {
+  const { target, git } = instance('cauce-line-ignore-')
+  const ignore = path.join(target, '.gitignore')
+  fs.writeFileSync(ignore, fs.readFileSync(ignore, 'utf8').replace(/^node_modules$/m, 'node_modules/'))
+  assert.match(fs.readFileSync(ignore, 'utf8'), /^node_modules\/$/m)
+  git('add', '.gitignore'); git('commit', '-qm', 'el gitignore de antes')
+  const report = JSON.parse(run(['line', target, 'b', '--json']).stdout)
+  assert.ok(fs.lstatSync(path.join(report.tree, 'node_modules')).isSymbolicLink(), 'el motor es un enlace')
+  const dirty = spawnSync('git', ['-C', report.tree, 'status', '--porcelain'], { encoding: 'utf8' }).stdout
+  assert.equal(dirty, '', dirty)
 })

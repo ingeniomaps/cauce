@@ -68,6 +68,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Instalar un runner ya no ensucia el manifiesto.** `.cauce/manifest.json` guardaba el hash de cada recorrido
+  con la ruta de la instancia adentro, así que cambiaba con sólo instalar el runner en un clon en otra carpeta
+  o en una línea. Ahora el hash no depende de la ruta. Un manifiesto escrito por una versión anterior se sigue
+  reconociendo: no vas a ver tus recorridos como editados. Y una línea recién armada nace con el árbol limpio:
+  el enlace a `node_modules` queda ignorado (caso 275).
 - **`check` encuentra el repositorio de un commit desde la carpeta de una línea.** Ahí el producto es un enlace
   al original, y el commit de una entrada de `done/` quedaba «sin comprobar» con el repositorio a la vista
   (caso 273).

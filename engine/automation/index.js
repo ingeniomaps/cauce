@@ -202,7 +202,7 @@ function deliveryState(recorded, name, resolved, prefix = '') {
   const expectedItem = render(resolved.source, prefix, resolved.automationRoot, resolved.opsRoot)
   if (current === M.digestText(expectedItem)) return 'al día'
   const delivered = recorded[deliveryKey(name, resolved.item.target)]
-  return delivered && delivered === current ? 'desactualizado' : 'ajeno'
+  return [M.digestRelocatable(resolved, OPS_ROOT), current].includes(delivered || 0) ? 'desactualizado' : 'ajeno'
 }
 
 // Borra el archivo y, de paso, los directorios que quedaron vacíos por haberlo sacado. Nunca sube más
@@ -421,7 +421,7 @@ function install(root, name, output = console, options = {}) {
         mergeInstruction(resolved.target, name, content)
         output.log(`✓ ${name}: sus instrucciones quedaron dentro de ${resolved.item.target}`)
       }
-      deliveredPaths[deliveryKey(name, resolved.item.target)] = M.digest(resolved.target)
+      deliveredPaths[deliveryKey(name, resolved.item.target)] = M.digestRelocatable(resolved, OPS_ROOT)
       // Y en la otra sección, porque este archivo está en las dos: `AGENTS.md` es del sistema y es
       // donde este runner deja su bloque. Anotarlo sólo acá dejaba a `localChanges` comparando contra
       // el digest previo al bloque, así que el `upgrade` siguiente se detenía echándole a la empresa
@@ -447,7 +447,7 @@ function install(root, name, output = console, options = {}) {
     // Sólo se anota lo que Cauce puso: un archivo conservado con cambios de la empresa no es una
     // entrega, y registrarlo lo volvería indistinguible de uno intacto en la próxima instalación.
     if (!(status === 'ajeno' && ownFile)) {
-      deliveredPaths[deliveryKey(name, resolved.item.target)] = M.digest(resolved.target)
+      deliveredPaths[deliveryKey(name, resolved.item.target)] = M.digestRelocatable(resolved, OPS_ROOT)
     }
   }
   // Dónde quedaron, con la raíz puesta. Arriba ya se dice de la configuración, que es un archivo que nadie

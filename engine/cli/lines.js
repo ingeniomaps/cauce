@@ -42,6 +42,18 @@ function linkIfMissing(link, target) {
   return true
 }
 
+function ignoreLink(tree, link) {
+  if (!inside(tree, link)) return
+  const common = git(tree, 'rev-parse', '--git-common-dir')
+  if (common.status !== 0) return
+  const file = path.join(path.resolve(tree, common.stdout.trim()), 'info', 'exclude')
+  const entry = `/${path.relative(tree, link).split(path.sep).join('/')}`
+  const current = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''
+  if (current.split('\n').includes(entry)) return
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, `${current}${current && !current.endsWith('\n') ? '\n' : ''}${entry}\n`)
+}
+
 function line(dir, name, cli) {
   // Real, porque git devuelve rutas reales: mezcladas con una que pasa por un enlace, la línea caía en la
   // carpeta compartida en vez de al lado.
@@ -71,6 +83,11 @@ function line(dir, name, cli) {
   // El motor, donde `packagePath` lo busca: bajo la raíz ops o un nivel arriba.
   const engine = linkIfMissing(path.join(where.ops, 'node_modules'), path.join(root, 'node_modules'))
     || linkIfMissing(path.join(path.dirname(where.ops), 'node_modules'), path.join(path.dirname(root), 'node_modules'))
+  // El enlace al motor no es del proyecto, y el `.gitignore` de la instancia no siempre lo cubre: un patrón
+  // con barra final ignora un directorio y un enlace no lo es para git, así que la línea nacía con
+  // `node_modules` sin trackear. Se anota en el `exclude` del repositorio, que comparten sus árboles y no
+  // viaja (caso 275).
+  ignoreLink(where.tree, path.join(where.ops, 'node_modules'))
   let config = {}
   try { config = JSON.parse(fs.readFileSync(path.join(root, 'ops.config.json'), 'utf8')) } catch { config = {} }
   const roots = (config.workspaceRoots || []).map((one) => one.path || '').filter(Boolean)
