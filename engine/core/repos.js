@@ -18,19 +18,28 @@ const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
 // Devuelve una lista y no el primero porque con varias raíces la respuesta puede ser ambigua: un
 // `service: .` existe en todas, y un `src` puede existir en dos. Elegir el primero da una respuesta
 // plausible y equivocada —un árbol de trabajo en el repositorio que no era— sin que nada lo diga.
-function rootDirs(opsRoot) {
+function declaredRoots(opsRoot) {
   let config = {}
   try {
     config = JSON.parse(fs.readFileSync(path.join(opsRoot, 'ops.config.json'), 'utf8'))
   } catch { return [] }
   return (Array.isArray(config.workspaceRoots) ? config.workspaceRoots : [])
     .filter((one) => one && one.path)
-    .map((one) => path.resolve(opsRoot, one.path))
+    .map((one) => ({ name: one.name, dir: path.resolve(opsRoot, one.path) }))
 }
+const rootDirs = (opsRoot) => declaredRoots(opsRoot).map((root) => root.dir)
+
+// Un servicio se nombra de dos formas y las dos están en uso: como ruta dentro de una raíz que contiene
+// varios repositorios —raíz `..`, `service: api`—, o con el nombre de una raíz que ya es el repositorio
+// —raíz `api → ../api`, `service: api`—. Mirando sólo la primera, la segunda buscaba `../api/api` y decía
+// que el repositorio no existía (caso 254).
+const holds = (root, service) => fs.existsSync(path.join(root.dir, service || '.'))
+  || service === root.name || service === path.basename(root.dir)
 
 function reposFor(opsRoot, service) {
-  return rootDirs(opsRoot)
-    .filter((root) => fs.existsSync(path.join(root, service || '.')))
+  return declaredRoots(opsRoot)
+    .filter((root) => holds(root, service))
+    .map((root) => root.dir)
     .map((root) => {
       const top = git(root, 'rev-parse', '--show-toplevel')
       return top.status === 0 ? top.stdout.trim() : ''

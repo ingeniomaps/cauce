@@ -222,3 +222,35 @@ test('un servicio que existe en dos repositorios se nombra en vez de elegirse', 
   assert.equal(R.repoOf(path.join(planning, '..'), 'api'), '')
   assert.deepEqual(R.reposFor(path.join(planning, '..'), 'api').sort(), [otro, repo].sort())
 })
+
+// Caso 254. La raíz declarada ya es el repositorio y la tarea lo nombra por su nombre: es como una
+// instancia con un repo por raíz escribe sus tareas, y buscando sólo `<raíz>/<service>` no se encontraba.
+test('un servicio que se llama como su raíz resuelve a esa raíz', () => {
+  const { base, repo, planning } = montar('cauce-wt-raiz-')
+  const ops = path.join(planning, '..')
+  const config = path.join(ops, 'ops.config.json')
+  const leido = JSON.parse(fs.readFileSync(config, 'utf8'))
+  const declare = (workspaceRoots) => fs.writeFileSync(config, JSON.stringify({ ...leido, workspaceRoots }, null, 2))
+  const queue = (service) => fs.writeFileSync(path.join(planning, 'BACKLOG.md'), `# Backlog promovido
+
+## Hito uno — Primero
+
+- [ ] **alta** [lite] — Alta. _Aceptación: x._ (service: ${service})
+`)
+
+  // Por el nombre declarado, aunque la carpeta se llame distinto.
+  declare([{ name: 'platform', path: '../producto' }])
+  assert.deepEqual(R.reposFor(ops, 'platform'), [repo])
+  // Y por el último tramo de la ruta, aunque el nombre declarado sea otro.
+  declare([{ name: 'main', path: '../producto' }])
+  assert.deepEqual(R.reposFor(ops, 'producto'), [repo])
+  // La forma de antes sigue resolviendo, y un nombre que no es ni ruta ni raíz sigue sin encontrarse.
+  assert.deepEqual(R.reposFor(ops, 'api'), [repo])
+  assert.deepEqual(R.reposFor(ops, 'no-existe'), [])
+
+  queue('producto')
+  const hecho = como('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
+  assert.equal(hecho.status, 0, hecho.stderr)
+  assert.equal(JSON.parse(hecho.stdout).repo, repo, 'y el árbol se monta en ese repositorio')
+  assert.equal(fs.existsSync(path.join(base, 'producto-alta')), true)
+})
