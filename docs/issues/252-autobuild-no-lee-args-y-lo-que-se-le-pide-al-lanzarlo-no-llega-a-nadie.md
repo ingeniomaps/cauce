@@ -118,3 +118,10 @@ Instancia embebida, sesión real, tarea con «con base cero o positiva devuelve 
 con «con base cero también tiene que lanzar error». El recorrido construyó la aceptación —una prueba fija
 `precio(0, 0.5) === 0`— y el pedido quedó como fila `pendiente` de `HUMAN_ACTIONS.md`, citado textual y con
 sus dos salidas. El pedido no reescribió la aceptación ni se perdió.
+
+### El mismo pedido dos veces, el 2026-10-05
+
+«El plan no tiene que incluir pruebas: las escribo yo después» sobre dos tareas `full`. En las dos el plan
+incluyó las pruebas y lo dijo. En una la crítica frenó por la decisión que faltaba; en la otra aprobó y la
+corrida cerró con las pruebas adentro, y la sesión lo reportó al final preguntando qué hacer con ellas. El
+pedido llega; qué pasa cuando contradice las reglas depende de la crítica de esa corrida.

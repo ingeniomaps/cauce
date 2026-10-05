@@ -125,5 +125,10 @@ resolución no llegó a nadie.
 - **Tres mutaciones, las tres en rojo**, en la misma copia que el 248: el replan sin lo anotado, el WIP sin
   lo anotado, y lo anotado mandado a Build como condición.
 - **La puerta entera**, `npm run ci`.
-- **Lo que no se corrió**: un replan real recibiendo ocho anotaciones, que es donde el tradeoff del alcance
-  se vería.
+- **Un replan real recibiendo anotaciones** se corrió después, abajo, con cinco.
+
+### Un replan real con lo anotado, el 2026-10-05
+
+En la corrida del 248 de ese día, la corrección del plan recibió los tres bloqueantes y además «La crítica
+anotó además esto sin bloquear: …», con las cinco anotaciones de la primera crítica. El plan corregido no
+creció por ellas: la segunda crítica no objetó alcance.

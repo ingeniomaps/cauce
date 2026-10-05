@@ -100,3 +100,10 @@ previa y las dos de la tarea, y lo reportó como «receta de `make ci` con la ru
 Es una corrida, y la sustitución la hizo quien verificaba leyendo la receta. Lo que sigue sin medir es una
 puerta que no nombra ruta en ningún nivel —un script que recorre todo lo que haya en la raíz—: ahí no hay
 qué cambiar.
+
+### La puerta que no nombra ruta en ningún nivel, el 2026-10-05
+
+`verify: sh ci.sh`, con un script que recorre toda carpeta de la raíz que tenga `test/`. Se esperaba que
+midiera sólo el checkout compartido. No: el árbol de la tarea queda dentro de la raíz de la línea, así que
+el script lo recorrió también. Verify lo corrió tal cual y reportó las dos partes por separado: el árbol
+con 10 pruebas en verde, y `app/` con 1, «que no tiene este trabajo y no cuenta como evidencia».

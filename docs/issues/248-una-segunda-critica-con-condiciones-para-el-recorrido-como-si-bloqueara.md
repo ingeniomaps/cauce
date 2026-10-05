@@ -225,3 +225,16 @@ En un banco sidecar instalado fuera del árbol, sesión de Claude Code con `/aut
 ver los cuatro en rojo— y **no hubo replan ni segunda crítica**. El diario va `plan → critique → wip`. El
 WIP quedó con «Condiciones con las que la crítica aprobó el plan» y, aparte, «Anotado por la crítica sin
 bloquear», y la entrega salió con un `test()` por caso. No se dio el otro camino, el de la segunda crítica.
+
+### El camino de la segunda crítica, el 2026-10-05
+
+Dos corridas reales no lo provocaron: pedirle al lanzar un primer plan incompleto no sirvió, porque el
+planificador se negó —«contradice la aceptación»— y entregó el plan entero. Se provocó estropeando el plan
+dentro del recorrido instalado en el banco, después de la fase Plan real: un solo paso y «no se escribe
+ninguna prueba». De ahí en adelante todo fue real.
+
+La primera crítica devolvió `con-condiciones` con tres bloqueantes `replan: true` y cinco anotaciones. La
+corrección los recibió. La segunda crítica devolvió `con-condiciones` con dos bloqueantes `replan: false`
+—dónde correr las mutaciones, y dos resultados sin caso— y **el recorrido no paró**: los dos viajaron al
+WIP como condiciones y la corrida cerró la tarea. El commit trae el caso que la segunda condición pedía,
+`informe([])`. Antes del arreglo esa segunda crítica terminaba en `plan-rejected`.
