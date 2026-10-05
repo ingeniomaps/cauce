@@ -194,3 +194,21 @@ test('guard-engine indica un camino de actualización que funciona', () => {
   assert.match(message, /ops\.js upgrade/, 'y el segundo paso, o la instancia queda a medias')
   assert.ok(!message.includes('npm update'), 'npm update no mueve un pin exacto')
 })
+
+// Caso 269. El plan del modo plan de Claude Code vive en `~/.claude/plans/`, fuera de toda raíz, y es del
+// runner: frenarlo dejaba al modo plan sin poder escribir lo único que escribe. Sólo esa carpeta y un
+// `.md`: el resto de `~/.claude` —configuración, memoria— sigue adentro del límite.
+test('el archivo de plan del runner no es una escritura fuera de las raíces', () => {
+  const root = tempRoot('ops-hook-boundary-plan-')
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ workspaceRoots: [{ name: 'main', path: '.' }] }))
+  const home = (...parts) => path.join(os.homedir(), '.claude', ...parts)
+  const write = (file) => ({ cwd: root, tool_input: { file_path: file } })
+
+  assert.doesNotThrow(() => execute('workspace-boundary', write(home('plans', 'un-plan-cualquiera.md'))))
+  for (const other of [home('settings.json'), home('plans', 'script.sh'), home('plans-de-otro', 'x.md'),
+    home('projects', 'demo', 'memory', 'nota.md')]) {
+    blocked('workspace-boundary', write(other), /fuera de las raíces/)
+  }
+})

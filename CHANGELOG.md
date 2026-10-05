@@ -81,6 +81,8 @@ diseño — eso vive en el commit y en el código.
   lo contesta —`default`, `acceptEdits` y `bypassPermissions`—, y en cualquier otro modo el guard bloquea y
   pide la confirmación por chat. `auto` queda de ese lado sin que esté establecido si hace falta: en una
   sesión el diálogo apareció y en otra no consta quién aprobó (casos 257 y 268).
+- **El modo plan de Claude Code puede escribir su plan.** El límite de escritura frenaba el archivo que el
+  runner guarda en `~/.claude/plans/`, por estar fuera de las raíces declaradas (caso 269).
 - **`plan-first` ya no frena el Build de una sesión sidecar recién instalada.** `autobuild` escribe su plan con
   el id de la instancia, y el guard, parado en la carpeta de la sesión o en el repo del producto, deducía otro y
   bloqueaba la primera edición con «hay plan escrito, pero bajo otro id». Sin `CAUCE_RUNNER` declarado, ahora

@@ -5,6 +5,7 @@
 // lo escribió este cambio— y son el grupo `pre-files` del registro, junto con `migrations.js`.
 
 const fs = require('node:fs')
+const os = require('node:os')
 const { spawnSync } = require('node:child_process')
 const path = require('node:path')
 const {
@@ -259,10 +260,18 @@ function planFirst(input) {
   }
 }
 
+// Lo que el runner escribe para sí y no es del proyecto. Claude Code guarda el plan de su modo plan en
+// `~/.claude/plans/`: sin esto el límite de escritura frenaba ese archivo, y en modo plan es lo único que el
+// runner escribe (caso 269). Angosto a propósito: esa carpeta y un `.md`, no `~/.claude` entero, que guarda
+// también la configuración y la memoria.
+const RUNNER_PLANS = path.join(os.homedir(), '.claude', 'plans') + path.sep
+const runnerOwn = (file) => file.startsWith(RUNNER_PLANS) && file.endsWith('.md')
+
 function workspaceBoundary(input) {
   const allowed = writableRoots(input)
   for (const raw of filesOf(input)) {
     const file = path.resolve(cwdOf(input), raw)
+    if (runnerOwn(file)) continue
     // Lo mismo que en `shell-boundary`: la aprobación de la persona se juzga aunque no haya raíces.
     const own = selfApproval(input, file)
     if (own) block(own)
