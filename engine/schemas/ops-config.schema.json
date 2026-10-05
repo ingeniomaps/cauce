@@ -117,6 +117,10 @@
         "allowPush": {
           "type": "boolean"
         },
+        "commitToLiveBranch": {
+          "type": "boolean",
+          "description": "Si el recorrido puede commitear en una rama viva —main, master o la rama por defecto del remoto—. Apagado o ausente, corta una rama para la tarea y commitea ahí."
+        },
         "gateTimeoutMinutes": {
           "type": "number",
           "exclusiveMinimum": 0,

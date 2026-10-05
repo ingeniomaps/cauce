@@ -25,6 +25,12 @@ diseño — eso vive en el commit y en el código.
   crítica paraba el recorrido y dejaba la tarea fuera de la cola, aunque fueran dos nombres por cambiar
   (caso 248).
 
+- **`autobuild` ya no commitea en `main`: corta una rama por tarea.** Si el repo del servicio está en una rama
+  viva —`main`, `master` o la rama por defecto del remoto—, el paso de Commit corta `<tipo>/<slug>` y commitea
+  ahí, sin preguntar. Si el repo ya está en otra rama, commitea en ésa. La entrada de `done/` dice en qué rama
+  quedó. **Qué hacer:** nada, salvo que tu proyecto commitee en `main` a propósito; en ese caso declaralo con
+  `"commitToLiveBranch": true` en `runner` de `ops.config.json` (caso 251).
+
 ### Corregido
 
 - **Lo que la crítica anota sin bloquear ya no se pierde.** Va a la corrección del plan, con la indicación de

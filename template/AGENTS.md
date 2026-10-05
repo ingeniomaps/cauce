@@ -275,6 +275,10 @@ que la persona pide en el chat nombrando el remoto y la rama, o el que ella conf
 Reescribir historia publicada no entra en el trato: un `push --force` se frena con la llave prendida o
 apagada.
 
+Commitear en la rama viva es aparte y también se pide: `autobuild` corta una rama por tarea,
+`<tipo>/<slug>`, y commitea ahí sin consultar. Sólo commitea en la viva si el proyecto declara
+`runner.commitToLiveBranch: true`.
+
 Eso rige sin que nadie escriba nada. Lo que este proyecto amplíe o restrinja va en
 `organization/workspace.md`, con su razón; ninguna de esas prohibiciones se amplía ahí, y la
 publicación tampoco se decide ahí: la deciden `allowPush` y `pushToLiveBranches`.

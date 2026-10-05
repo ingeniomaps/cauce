@@ -294,9 +294,24 @@ const COMMIT = {
   type: 'object', additionalProperties: false, required: ['committed'],
   properties: {
     committed: { type: 'boolean' }, hash: { type: 'string' }, subject: { type: 'string' },
-    branch: { type: 'string' }, leftovers: { type: 'array', items: { type: 'string' } }, reason: { type: 'string' },
+    // `live` lo contesta quien commiteó porque es el único que ve el remoto: la rama por defecto no es
+    // siempre `main`, y el recorrido no corre git.
+    branch: { type: 'string' }, live: { type: 'boolean' },
+    leftovers: { type: 'array', items: { type: 'string' } }, reason: { type: 'string' },
   },
 }
+// Acompaña al prompt de Commit. El repo de un servicio queda en su rama viva después de cada merge, que es
+// justo donde arranca la corrida siguiente: sin esto el commit caía ahí, sin PR ni CI (caso 251). Cortar la
+// rama no pide permiso a nadie —es lo que la persona iba a hacer a mano—; commitear en la viva sí, y ese
+// pedido es `runner.commitToLiveBranch`. Se corta acá y no antes de Build porque `git switch -c` se lleva
+// el árbol sin commitear, así que alcanza con un solo lugar.
+const BRANCHED = (slug) => (contract.commitToLiveBranch
+  ? ' Commiteá en la rama en la que esté el repositorio.'
+  : ' Antes de stagear mirá en qué rama está el repositorio. Si es una rama viva —main, master o la rama por '
+    + 'defecto del remoto— no commitees ahí ni lo consultes: cortá una con `git switch -c <tipo>/' + slug
+    + '`, donde tipo es el del Conventional Commit, que se lleva los cambios sin commitear; si esa rama ya '
+    + 'existe, pasate a ella. Si el repositorio ya está en una rama que no es viva, commiteá en ésa.')
+  + ' Reportá en branch la rama donde quedó el commit y en live si es una rama viva.'
 // Dueño por defecto de cada fase. Es determinista: no hace falta preguntarle a un modelo quién
 // revisa la arquitectura o quién decide si la evidencia de calidad alcanza.
 const OWNERS = {
@@ -359,6 +374,7 @@ const CONTRACT = {
     // y no del runner: un monorepo tiene una por servicio, y uno solo tiene una sola.
     gates: { type: 'array', items: { type: 'string' } },
     maxTaskHours: { type: 'number' }, commitPerTask: { type: 'boolean' },
+    commitToLiveBranch: { type: 'boolean' },
     humanCheckpoint: { type: 'boolean' }, contracts: { type: 'string' },
     boundaries: { type: 'array', items: { type: 'string' } },
   },
@@ -492,6 +508,7 @@ const contract = await agent(
   `Reportá los ` +
   `valores de configuración textualmente: project, workspaceRoots como entradas "nombre → ruta", ` +
   `runner.maxTaskHours, runner.commitPerTask y runner.humanCheckpointBetweenMilestones como humanCheckpoint. ` +
+  `commitToLiveBranch es true sólo si runner.commitToLiveBranch está escrito en true; si falta, false. ` +
   `En gates poné una entrada "ruta → comando" por cada workspaceRoot que declare \`verify\`, y ninguna por ` +
   `las que no lo declaren: la lista vacía significa que el proyecto no dice con qué se verifica. ` +
   `Copiá la sección "## Contratos" de PROTOCOL.md dentro de contracts tal cual, sin reformular, resumir ni ` +
@@ -1379,11 +1396,17 @@ while (rounds++ < MAX_TASKS) {
     `${asRole(OWNERS.commit)}Encontrá el repositorio git dueño de ${task.service}, inspeccioná status y diff, ` +
     `stageá por nombre los archivos de la tarea, creá un solo Conventional Commit con el footer ` +
     `"Task: ${task.id}" y después verificá log y status. Nunca amend ni push; reportá lo que quedó suelto ` +
-    `y no era de la tarea.`,
+    `y no era de la tarea.${BRANCHED(task.id)}`,
     { schema: COMMIT, label: 'commit' },
   ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
   if (!commit) return stop('agent-unavailable', 'Commit no devolvió resultado')
   if (!commit.committed) return stop('commit-failed', commit.reason)
+  // El commit ya existe, así que esto no lo evita: lo que evita es que la entrada de DONE lo dé por bueno
+  // y la corrida siguiente arranque sobre una rama viva adelantada del remoto.
+  if (commit.live && !contract.commitToLiveBranch) {
+    return stop('commit-failed', `el commit ${commit.hash || ''} de ${task.id} quedó en la rama viva `
+      + `${commit.branch || ''}: movelo a una rama propia antes de reanudar`)
+  }
 
   phase('Done')
   // `lane` y `review` se piden textuales: en una corrida real el agente resumió el hecho de revisión y
@@ -1405,7 +1428,8 @@ while (rounds++ < MAX_TASKS) {
     (noSurface.length ? `sin-superficie=${JSON.stringify(noSurface.map(({ criterion, reason }) => ({
       criterion, reason: reason || 'no se ejecuta' })))}; ` : '') +
     (outOfVerify.length ? `fuera-de-verify=${JSON.stringify(outOfVerify)}; ` : '') +
-    `qa=${qa.evidence}; commit=${commit.hash || commit.reason}. En tests rastreá cada criterio con la ` +
+    `qa=${qa.evidence}; commit=${commit.hash || commit.reason}` +
+    `${commit.branch ? ` (rama ${commit.branch})` : ''}. En tests rastreá cada criterio con la ` +
     `prueba que cubiertos le asigna` +
     (noSurface.length ? ', y los de sin-superficie con tests: n/a — <razón>' : '') +
     (outOfVerify.length ? '; cada condición de fuera-de-verify queda cumplida en tests, qa o commit' : '') + '.',

@@ -28,6 +28,17 @@ const contractOf = (root, extra = []) => {
   return { result, value: result.status === 0 ? JSON.parse(result.stdout) : null }
 }
 
+test('contract lee runner.commitToLiveBranch cuando el proyecto lo declara', () => {
+  const root = instance('cauce-contract-live-')
+  const file = path.join(root, 'ops.config.json')
+  const config = JSON.parse(fs.readFileSync(file, 'utf8'))
+  config.runner.commitToLiveBranch = true
+  fs.writeFileSync(file, JSON.stringify(config, null, 2))
+  assert.equal(contractOf(root).value.commitToLiveBranch, true)
+  // Y lo dice a quien lo lee sin `--json`, que es donde una persona comprueba qué quedó declarado.
+  assert.match(run(['contract', root]).stdout, /commit por tarea, también en la rama viva/)
+})
+
 test('contract deriva del disco los diez campos que el recorrido pedía a un modelo', () => {
   const root = instance('cauce-contract-')
   const { result, value } = contractOf(root)
@@ -43,6 +54,7 @@ test('contract deriva del disco los diez campos que el recorrido pedía a un mod
   assert.equal(typeof value.maxTaskHours, 'number')
   assert.equal(typeof value.commitPerTask, 'boolean')
   assert.equal(typeof value.humanCheckpoint, 'boolean')
+  assert.equal(value.commitToLiveBranch, false, 'el molde no pide commitear en la rama viva')
   // Sin `verify` declarado no hay gate que nombrar, y la lista vacía significa eso y no «no lo miré».
   assert.deepEqual(value.gates, [], 'el molde no declara verify en ninguna raíz')
   assert.ok(value.contracts.includes('Contratos'), 'la sección de PROTOCOL.md viaja entera')
