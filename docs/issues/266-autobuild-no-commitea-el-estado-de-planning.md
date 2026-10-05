@@ -92,3 +92,14 @@ Las corridas reales de la tanda 248-263.
     dos cierres y `main` no se movió.
 - **La puerta entera**, `npm run ci`.
 - **Lo que no se corrió**: el paso dentro de un `autobuild` entero, y una instancia embebida.
+
+### Corridas enteras del 2026-10-05, en sesiones interactivas
+
+Dos corridas reales de `autobuild` manejadas por una terminal virtual, en modo `auto`, con el motor de
+este cambio: un banco sidecar con la raíz declarada como carpeta de repositorios y dos tareas del mismo
+servicio, cortado a propósito en Build y retomado; y un banco con una instancia embebida.
+
+Sidecar: la instancia quedó en `work/planning` con dos commits, `close alta-exige-email` y `close
+baja-marca-inactivo`, y `main` intacto. Embebida: el commit de planning cayó en la rama de la tarea, con
+sólo archivos de planning. Las dos dejaron dos cosas que salieron como casos: `check` contaba ese commit
+como trabajo sin anotar (270) y el checkpoint del hito quedaba sin commitear (271).

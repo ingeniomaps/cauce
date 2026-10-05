@@ -156,3 +156,9 @@ después: en `plan` un pedido de confirmación sobre una lectura se resolvió si
 `acceptEdits` entró a la lista, medido. `auto` sigue afuera sin una razón establecida: es el lado que
 frena, y lo que lo cierra es explicar por qué las dos sesiones dieron distinto.
 
+### Corridas enteras en `auto`, el 2026-10-05
+
+Las dos corridas reales de `autobuild` de esta tanda fueron en `auto`. En la embebida el gate del banco
+estaba roto de entrada: el guard frenó el commit y la corrida paró con `commit-failed`, sin crear nada.
+Arreglado el script, la misma corrida retomó y commiteó. En cuarenta agentes de la corrida sidecar hubo
+dos bloqueos, los dos «stagea y commitea a la vez».

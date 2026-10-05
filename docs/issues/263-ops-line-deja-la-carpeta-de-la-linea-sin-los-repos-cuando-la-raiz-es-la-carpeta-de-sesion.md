@@ -146,3 +146,20 @@ y no `line/<nombre>`, y las herramientas propias de la instancia leen sólo `BAC
   runner sin instalar y se vio en rojo.
 - **La puerta entera**, `npm run ci`.
 - **Lo que no se corrió**: la instancia real que lo reportó, y una sesión abierta en la carpeta de la línea.
+
+### Corridas enteras del 2026-10-05, en sesiones interactivas
+
+Dos corridas reales de `autobuild` manejadas por una terminal virtual, en modo `auto`, con el motor de
+este cambio: un banco sidecar con la raíz declarada como carpeta de repositorios y dos tareas del mismo
+servicio, cortado a propósito en Build y retomado; y un banco con una instancia embebida.
+
+El banco sidecar tenía esa forma: `workspaceRoots: ['..']`, con la instancia y el producto como
+repositorios dentro de una carpeta que no lo es. La corrida entera resolvió el servicio, commiteó en su
+repositorio y `check` terminó válido y sin avisos.
+
+Y una tercera corrida, dentro de una línea: con ese mismo banco, `ops line . admin` dejó la carpeta de la
+línea con `acme-ops` como worktree en `line/admin`, `app` enlazado y su propia configuración. El árbol
+principal no ofrecía la tarea del hito `line: admin`; la línea sí. Una sesión abierta ahí corrió
+`/autobuild` entero: commit del producto en `feat/baja-marca-inactivo`, y en la instancia dos commits en
+`line/admin`, el cierre de la tarea y el checkpoint del hito. Dejó tres hallazgos, que salieron como casos:
+273, 274 y 275.

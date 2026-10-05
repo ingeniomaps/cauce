@@ -72,3 +72,9 @@ Las corridas reales en bancos, después del 266.
   `chore(planning): await review of altas` en `work/planning`, que toca sólo `planning/AWAITING_REVIEW.md`,
   y el árbol limpio.
 - **La puerta entera**, `npm run ci`.
+
+### En una corrida entera, el 2026-10-05
+
+En la corrida real dentro de una línea de trabajo, con este arreglo ya en el motor: la instancia terminó
+con `chore(planning): await review of bajas` commiteado en `line/admin`, detrás de `chore(planning): close
+baja-marca-inactivo`.

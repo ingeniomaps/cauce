@@ -77,3 +77,13 @@ sobre el diff las condiciones que encuentre ahí.
   incumplida […] El diff lo introduce como `tieneEmail` (src/alta.js:4)».
 - **La puerta entera**, `npm run ci`.
 - **Lo que no se corrió**: una corrida entera retomada con una condición pendiente.
+
+### Corridas enteras del 2026-10-05, en sesiones interactivas
+
+Dos corridas reales de `autobuild` manejadas por una terminal virtual, en modo `auto`, con el motor de
+este cambio: un banco sidecar con la raíz declarada como carpeta de repositorios y dos tareas del mismo
+servicio, cortado a propósito en Build y retomado; y un banco con una instancia embebida.
+
+En la corrida sidecar, cortada con Build a medias: al retomar, el prompt de Review traía «Esta corrida
+retomó desde el WIP. Abrí …/planning/wip/…», y Review contestó «Condición de la crítica CUMPLIDA.
+app/test/alta.test.js:21 asercia `{ name: 'Error', message: 'email is required' }`».

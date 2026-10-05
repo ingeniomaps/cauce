@@ -219,3 +219,14 @@ raíz declarada: es la otra mitad del 254, arreglada en `commitStatus` con su pr
 En la segunda corrida real, ya con el sufijo del contrato, la entrada de `done/` quedó
 `commit: 459ee5f… feat(alta)!: require email on signup (app@feat/alta-exige-email)` y `check` encontró el
 repositorio: su único aviso fue por el commit semilla del banco, que tenía fecha del día.
+
+### Corridas enteras del 2026-10-05, en sesiones interactivas
+
+Dos corridas reales de `autobuild` manejadas por una terminal virtual, en modo `auto`, con el motor de
+este cambio: un banco sidecar con la raíz declarada como carpeta de repositorios y dos tareas del mismo
+servicio, cortado a propósito en Build y retomado; y un banco con una instancia embebida.
+
+Sidecar: los dos commits del producto quedaron en `feat/alta-exige-email`, el segundo apilado sobre el
+primero, y `main` no se movió. Embebida: `feat/precio-rechaza-negativos`, cortada de `main`. Las entradas
+de `done/` nombran repositorio y rama en el formato del contrato, y `check` no avisó de ningún commit sin
+comprobar.

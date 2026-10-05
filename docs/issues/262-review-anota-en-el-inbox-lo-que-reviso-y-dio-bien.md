@@ -83,3 +83,13 @@ sigue yendo al INBOX; la constancia queda en el hecho de revisión de `done/`, c
   algo —una aserción que no puede fallar, una prueba que falta— `true`.
 - **La puerta entera**, `npm run ci`.
 - **Lo que no se corrió**: un Review real dentro de una corrida entera con el campo nuevo.
+
+### Corridas enteras del 2026-10-05, en sesiones interactivas
+
+Dos corridas reales de `autobuild` manejadas por una terminal virtual, en modo `auto`, con el motor de
+este cambio: un banco sidecar con la raíz declarada como carpeta de repositorios y dos tareas del mismo
+servicio, cortado a propósito en Build y retomado; y un banco con una instancia embebida.
+
+En la corrida sidecar, Review devolvió nueve hallazgos sin bloquear: cinco con `proposes: false` —entre
+ellos «Condición de la crítica CUMPLIDA»— y cuatro con `true`. Al INBOX llegaron tres propuestas, que es
+el tope, y ninguna constancia.
