@@ -14,6 +14,23 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.101.0] - 2026-10-05
+
+### Cambiado
+
+- **Una condición que se cumple al escribir ya no rechaza el plan.** La crítica del plan dice ahora, por cada
+  hallazgo bloqueante, si corregirlo cambia el plan o si alcanza con que quien construye lo cumpla. Sólo lo
+  primero pide corregir el plan y puede terminar en `plan-rejected`. Lo segundo viaja como condición al WIP,
+  a Build y a Review, que comprueba sobre el diff que se cumplió. Antes cualquier bloqueante de la segunda
+  crítica paraba el recorrido y dejaba la tarea fuera de la cola, aunque fueran dos nombres por cambiar
+  (caso 248).
+
+### Corregido
+
+- **Lo que la crítica anota sin bloquear ya no se pierde.** Va a la corrección del plan, con la indicación de
+  no ampliarlo por eso, y queda en las decisiones del WIP. Antes no salía de la crítica, así que una decisión
+  que la crítica ya había tomado no le llegaba a nadie (caso 249).
+
 ## [0.100.0] - 2026-10-01
 
 ### Agregado

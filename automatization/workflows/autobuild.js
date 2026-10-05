@@ -172,6 +172,20 @@ const DECISION = {
     consulted: { type: 'array', items: { type: 'string' } },
   },
 }
+// La crítica del plan tiene un destino que Review no tiene: la fase que sigue todavía puede cumplir lo que
+// falta. Por eso su bloqueante dice además cuál de los dos es —`replan: true` si corregirlo cambia el plan y
+// hay que volver a criticarlo, `false` si es una condición que cumple quien construye—. Sin el campo los dos
+// eran `blocking: true`, y una condición de dos renombres paraba el recorrido como un plan sin salida
+// (caso 248). Extiende el concern por la misma razón que `REVIEWED`.
+const CRITIQUED = { ...DECISION,
+  properties: { ...DECISION.properties,
+    concerns: { ...DECISION.properties.concerns,
+      items: { ...DECISION.properties.concerns.items,
+        required: [...DECISION.properties.concerns.items.required, 'replan'],
+        properties: { ...DECISION.properties.concerns.items.properties, replan: { type: 'boolean' } },
+      } },
+  },
+}
 // Qué superficie crítica toca una tarea `express`. Una sola cadena: la entrada de la lista tal cual, o vacía.
 const CRITICAL = {
   type: 'object', additionalProperties: false, required: ['critical'],
@@ -364,6 +378,11 @@ const VERDICT = ' Cerrá con verdict=aprobado si no queda nada por corregir ante
   'si algo no se resuelve acá —el diseño no lo cubre, falta una decisión ajena, o la corrección excede el ' +
   'alcance—. Marcá blocking=true sólo en el hallazgo que impide entregar: el resto queda registrado y no ' +
   'manda a tocar código.'
+// Acompaña a todo prompt con schema CRITIQUED.
+const REPLANNED = ' En cada hallazgo con blocking=true, replan es true si corregirlo cambia el plan —su diseño, '
+  + 'su alcance, sus pasos o cómo se prueba— y hay que volver a criticarlo; y false si el plan queda igual y '
+  + 'alcanza con que quien construye lo cumpla al escribir —un nombre, un formato, una regla que aplicar—: ésa '
+  + 'viaja como condición y la revisión comprueba que se cumplió. Ante la duda, true. En los demás, false.'
 // Acompaña a todo prompt con schema REVIEWED.
 const RULED = ' En rules nombrá, por su ruta, cada una de las reglas que rigen contra la que revisaste'
   + ' el diff. Y marcá decision=true en el hallazgo que no te toca resolver a vos —una definición de'
@@ -389,6 +408,14 @@ const SURFACED = () => ((planning && (planning.surfaces || []).length)
 // declara el campo, y para él todo bloqueante sigue bloqueando; el esquema de Review lo exige.
 const blockers = (verdict) => verdict.concerns
   .filter((one) => one.blocking && !one.decision && one.verified !== false).map(cite)
+// Lo que la crítica del plan deja para después de aprobarlo, en sus dos clases. Se compara contra `false`
+// igual que `verified` arriba: un bloqueante que no dice cuál es pide replan, que es el lado que frena.
+const replans = (verdict) => verdict.concerns
+  .filter((one) => one.blocking && one.replan !== false).map((one) => one.detail)
+const carried = (verdict) => ({
+  conditions: verdict.concerns.filter((one) => one.blocking && one.replan === false).map((one) => one.detail),
+  noted: verdict.concerns.filter((one) => !one.blocking).map((one) => one.detail),
+})
 // El hallazgo con la regla que lo sostiene al lado: es lo que llega a quien corrige y a `done/`.
 const cite = (one) => (one.ref ? `${one.detail} [${one.ref}]` : one.detail)
 // Un `ref` que nombra una regla que no rige es una cita sin base. No se borra ni se corrige en silencio
@@ -642,6 +669,9 @@ while (rounds++ < MAX_TASKS) {
   // no tiene plan en memoria—. Sin esto la estrategia no era que se descartara: es que no estaba en
   // alcance, que es la forma que ninguna prueba de la fase ve.
   let testStrategy = ''
+  // Lo que la crítica aprobó con condiciones y lo que anotó sin bloquear: salen de Critique y los leen WIP,
+  // Build y Review. Hasta 0.100.0 no pasaban de la crítica (caso 249).
+  let approved = { conditions: [], noted: [] }
   const task = {
     id: planning.slug, hito: planning.hito, service: planning.service,
     acceptance: planning.acceptance, epic: planning.epic, epicContext: planning.epicContext || '',
@@ -934,8 +964,8 @@ while (rounds++ < MAX_TASKS) {
       phase('Critique')
       let critique = await read(
         `Atacá este plan por correctitud, alcance, seguridad, pruebas y conflictos con el código ` +
-        `existente.${DECIDED()}${MANIFEST}${VERDICT} Plan: ${JSON.stringify(plan)}`,
-        { schema: DECISION, label: 'critique' },
+        `existente.${DECIDED()}${MANIFEST}${VERDICT}${REPLANNED} Plan: ${JSON.stringify(plan)}`,
+        { schema: CRITIQUED, label: 'critique' },
       )
       if (!critique) return stop('agent-unavailable', 'Critique no devolvió resultado')
       // Un plan bloqueado no se corrige: lo que lo bloquea está fuera de lo que una segunda pasada puede
@@ -943,21 +973,39 @@ while (rounds++ < MAX_TASKS) {
       if (critique.verdict === 'bloqueado') {
         return planRejected('plan-blocked', task, blockers(critique))
       }
-      if (blockers(critique).length) {
+      // Sólo lo que cambia el plan compra la corrección: una condición para quien construye no necesita
+      // otro plan ni otra crítica, y pedirlos costaba dos llamadas para volver al mismo plan.
+      let kept = []
+      if (replans(critique).length) {
+        const first = carried(critique)
+        kept = first.conditions
+        // La corrección recibe también lo que no la pidió. La primera crítica de una corrida real resolvió
+        // una decisión que el plan había dejado abierta, sin bloquear; el replan no se enteró, repitió lo
+        // mismo y la segunda crítica frenó por eso (caso 249). El límite va escrito porque lo anotado suele
+        // traer más cosas que lo bloqueante, y sin él la corrección se vuelve una ampliación (R3).
         plan = await read(
-          `Corregí el plan una vez por: ${blockers(critique).join('; ')}. Plan: ${JSON.stringify(plan)}`,
+          `Corregí el plan una vez por: ${replans(critique).join('; ')}.`
+          + (first.noted.length
+            ? ` La crítica anotó además esto sin bloquear: ${first.noted.join('; ')}. Aplicá lo que ahí ya `
+              + 'venga decidido y no amplíes el plan por el resto.' : '')
+          + ` Plan: ${JSON.stringify(plan)}`,
           { schema: PLAN, label: 'replan' },
         )
         critique = await read(
-          `Volvé a criticar el plan corregido contra ${task.acceptance}.${DECIDED()}${MANIFEST}${VERDICT} ` +
-          `Plan: ${JSON.stringify(plan)}`,
-          { schema: DECISION, label: 'critique' },
+          `Volvé a criticar el plan corregido contra ${task.acceptance}.${DECIDED()}${MANIFEST}${VERDICT}` +
+          `${REPLANNED} Plan: ${JSON.stringify(plan)}`,
+          { schema: CRITIQUED, label: 'critique' },
         )
         if (!plan || !critique) return stop('agent-unavailable', 'la revisión del plan no devolvió resultado')
-        if (critique.verdict === 'bloqueado' || blockers(critique).length) {
-          return planRejected('plan-rejected', task, blockers(critique))
+        if (critique.verdict === 'bloqueado' || replans(critique).length) {
+          return planRejected('plan-rejected', task, replans(critique))
         }
       }
+      // Lo anotado sale de la última crítica y no de las dos: lo de la primera ya viajó a la corrección, y
+      // es sobre un plan que dejó de existir. Las condiciones de la primera sí se conservan: no cambian el
+      // plan, así que la corrección no las recibe y la segunda crítica no tiene por qué repetirlas.
+      approved = carried(critique)
+      approved.conditions = [...kept, ...approved.conditions]
       // Acá el plan ya está aprobado por los dos caminos posibles, así que el contraste va una sola vez.
       if (!critique.consulted.length) return stop('critique-unbacked', 'aprobó el plan sin declarar qué inspeccionó')
     }
@@ -984,6 +1032,11 @@ while (rounds++ < MAX_TASKS) {
       // Es la tercera vez que algo decidido no llega a quien decide después: el contexto de la épica
       // (027), la descripción de la tarea (177) y esto. Las tres se arreglan igual — que viaje.
       `testStrategy=${JSON.stringify(testStrategy)}. ` +
+      // Van al WIP porque es lo que lee una corrida que se reanuda: ahí `approved` vuelve vacío.
+      (approved.conditions.length ? `Anotá en las decisiones del WIP, como condiciones con las que la crítica ` +
+        `aprobó el plan y que quien construye tiene que cumplir: ${JSON.stringify(approved.conditions)}. ` : '') +
+      (approved.noted.length ? `Y aparte, como anotado por la crítica sin bloquear, que no manda a tocar ` +
+        `código: ${JSON.stringify(approved.noted)}. ` : '') +
       `Registrá el reparto de cargos ${JSON.stringify(cast)} en las decisiones del WIP, para que después se ` +
       `pueda auditar quién revisó qué. Seguí el contrato de WIP exactamente y reportá con qué status quedó.`,
       { label: 'wip', schema: {
@@ -1028,7 +1081,9 @@ while (rounds++ < MAX_TASKS) {
     `registra para que lo decida quien corresponde y el recorrido sigue. Si de verdad no podés entregar sin ` +
     `esa decisión, eso no va en discovered: es completed=false con su blocker. ` +
     `Aceptación: ${task.acceptance}.${DECIDED()}`
-    + (testStrategy ? ` Estrategia de prueba que el plan fijó: ${testStrategy}` : ''),
+    + (testStrategy ? ` Estrategia de prueba que el plan fijó: ${testStrategy}` : '')
+    + (approved.conditions.length ? ` La crítica aprobó el plan con estas condiciones, que cumplís al `
+      + `escribir: ${approved.conditions.join('; ')}.` : ''),
     { schema: BUILD, label: 'build' },
   )
   if (!build) return stop('agent-unavailable', 'Build no devolvió resultado')
@@ -1099,7 +1154,10 @@ while (rounds++ < MAX_TASKS) {
       // pudo haber refinado en esta corrida (caso 210).
       `${asRole(cast.review)}Revisá el diff real de ${task.id} contra su aceptación —${task.acceptance}— y por ` +
       `regresiones, seguridad, arquitectura, código ` +
-      `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.${MANIFEST}` +
+      `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.` +
+      (approved.conditions.length ? ` La crítica aprobó el plan con estas condiciones; comprobá sobre el ` +
+        `diff que cada una se cumplió, y la que no, es un hallazgo: ${approved.conditions.join('; ')}.` : '') +
+      `${MANIFEST}` +
       `${VERDICT}${RULED}${SURFACED()}`,
       { schema: REVIEWED, label: 'review' },
     )
