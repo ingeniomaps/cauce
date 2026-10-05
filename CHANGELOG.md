@@ -60,6 +60,10 @@ diseño — eso vive en el commit y en el código.
   `default` y `bypassPermissions`, y en cualquier otro modo el guard bloquea y pide la confirmación por chat.
   **Qué hacer:** si trabajás en `auto`, revisá los commits de esas sesiones: pudieron entrar con un gate en
   rojo (caso 257).
+- **`plan-first` ya no frena el Build de una sesión sidecar recién instalada.** `autobuild` escribe su plan con
+  el id de la instancia, y el guard, parado en la carpeta de la sesión o en el repo del producto, deducía otro y
+  bloqueaba la primera edición con «hay plan escrito, pero bajo otro id». Sin `CAUCE_RUNNER` declarado, ahora
+  vale el plan de la instancia; con la variable, el id sigue siendo el que declara (caso 260).
 - **`ops worktree` encuentra el repositorio cuando el servicio se llama como su raíz.** Con una raíz por
   repositorio —`platform → ../platform`— y tareas `(service: platform)`, decía que el repositorio no existía.
   Ahora un servicio resuelve también por el nombre de la raíz o por el último tramo de su ruta (caso 254).
