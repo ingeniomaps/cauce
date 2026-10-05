@@ -31,6 +31,12 @@ diseño — eso vive en el commit y en el código.
   quedó. **Qué hacer:** nada, salvo que tu proyecto commitee en `main` a propósito; en ese caso declaralo con
   `"commitToLiveBranch": true` en `runner` de `ops.config.json` (caso 251).
 
+- **Build ya no le pregunta a una persona por todo lo que nota.** Lo que nota y no arregla tiene ahora tres
+  destinos: una fila en `HUMAN_ACTIONS.md` sólo si es una decisión que cambia el rumbo, el gasto, una obligación
+  externa o el riesgo; `inbox/deuda/` si es trabajo identificado que no es de la tarea; y `decisions:` de la
+  entrada de `done/` si no hay nada que decidir ni que hacer. Cada destino recibe hasta tres por tarea y el resto
+  queda contado en el cierre. Antes todo iba a una fila pendiente (caso 250).
+
 ### Corregido
 
 - **Lo que la crítica anota sin bloquear ya no se pierde.** Va a la corrección del plan, con la indicación de

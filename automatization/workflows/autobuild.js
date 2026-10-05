@@ -284,7 +284,7 @@ const BUILD = {
     discovered: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['kind', 'detail'],
       properties: {
-        kind: { type: 'string', enum: ['edge', 'open'] },
+        kind: { type: 'string', enum: ['edge', 'open', 'note', 'debt'] },
         detail: { type: 'string' }, test: { type: 'string' },
       },
     } },
@@ -1094,9 +1094,16 @@ while (rounds++ < MAX_TASKS) {
     `rojo y ese verde, y nada más: los gates completos, el QA, el commit y el cierre son fases posteriores, ` +
     `así que no toques ${P}/done/ ni ${QUEUE} ni el status del WIP. Lo que el plan no previó va en discovered y ` +
     `no en el código a secas: kind=edge si esta tarea lo puede fijar —y entonces entra con su prueba, que ` +
-    `nombrás en test y anotás en redFirst—, kind=open si lo notaste y no impide entregar la aceptación: se ` +
-    `registra para que lo decida quien corresponde y el recorrido sigue. Si de verdad no podés entregar sin ` +
-    `esa decisión, eso no va en discovered: es completed=false con su blocker. ` +
+    `nombrás en test y anotás en redFirst—. Lo que notaste y no impide entregar la aceptación es una de ` +
+    `tres cosas, y el recorrido sigue con las tres. kind=open sólo si es una decisión que le toca a una ` +
+    `persona: elegir entre opciones que cambian el rumbo del producto, el gasto, una obligación externa o ` +
+    `el riesgo; ésa va a una fila que alguien tiene que contestar, así que no la uses para lo demás. ` +
+    `kind=debt si es trabajo identificado que no es de esta tarea —un archivo sobre el umbral, un ` +
+    `dependiente fuera del servicio, una mutación que declarás y no corriste—: queda anotado como deuda. ` +
+    `kind=note si no hay nada que decidir ni que hacer —una elección de redacción, un supuesto que ya ` +
+    `tomaste, algo que se acepta como está—: queda escrito en el cierre de la tarea. Si dudás entre open y ` +
+    `otra, es open: una pregunta de más cuesta menos que una decisión que nadie vio. Si de verdad no podés ` +
+    `entregar sin esa decisión, eso no va en discovered: es completed=false con su blocker. ` +
     `Aceptación: ${task.acceptance}.${DECIDED()}`
     + (testStrategy ? ` Estrategia de prueba que el plan fijó: ${testStrategy}` : '')
     + (approved.conditions.length ? ` La crítica aprobó el plan con estas condiciones, que cumplís al `
@@ -1119,7 +1126,27 @@ while (rounds++ < MAX_TASKS) {
   // sino «hay un borde que alguien tiene que decidir», y una aceptación escrita en prosa siempre tiene uno.
   // Frenar por eso frenaba siempre, que es el freno que R6 desaconseja. Lo que de verdad bloquea ya
   // tiene camino —`completed: false` con su blocker—; esto se registra y sigue.
-  const openDecisions = build.discovered.filter((entry) => entry.kind === 'open')
+  //
+  // Y lo que se registra tiene tres destinos, los mismos que ya tenía Review. Con uno solo, todo lo que
+  // Build notaba y no arreglaba era por definición una pregunta a una persona: en una instancia fueron 18
+  // filas en dos días para 6 tareas, y 2 pedían el criterio de alguien (caso 250). El tope es el de
+  // Review y por lo mismo; lo que no entra queda contado en el hecho que viaja a `done/`.
+  const found = (kind) => [...new Set(build.discovered.filter((entry) => entry.kind === kind)
+    .map((entry) => entry.detail))]
+  const kept = (kind) => found(kind).slice(0, INBOX_CAP)
+  const spilled = ['open', 'debt', 'note'].map((kind) => [kind, found(kind).length - kept(kind).length])
+    .filter(([, extra]) => extra > 0).map(([kind, extra]) => `${extra} ${kind} sin volcar`)
+  const buildNotes = kept('note')
+  const buildFact = build.summary + (spilled.length ? ` · ${spilled.join(' · ')}` : '')
+  if (kept('debt').length) {
+    const origin = inboxOrigin('autobuild', task.id, planning.today)
+    await write(`Registrá en ${inboxWhere(P, 'Deuda')} el trabajo que el build de ${task.id} identificó y ` +
+      `no es de esta tarea, sin promover ninguno. ${INBOX_FILES} ` +
+      `${inboxAsk(['Deuda'], planning.inbox, origin)} ` +
+      `Lo anotado: ${JSON.stringify(kept('debt').map((detail) => withOrigin(detail, origin)))}`,
+    { label: 'build-debt' })
+  }
+  const openDecisions = kept('open').map((detail) => ({ detail }))
   if (openDecisions.length) {
     // Y la fila no puede nombrar a la tarea que la produjo. El motor bloquea por esa primera celda
     // exacta, así que escribirla ahí registra «esto no impide entregar» y produce el bloqueo igual —lo
@@ -1421,9 +1448,11 @@ while (rounds++ < MAX_TASKS) {
     `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE; y soltá la reserva corriendo ` +
     `"node tools/ops.js release ${P} ${task.id}". lane y review van textuales, copiados de estos hechos sin ` +
     'resumir ni recortar: son lo que después se audita, y un resumen elige qué perder. ' +
+    (buildNotes.length ? 'Cada entrada de notas-de-build va en decisions, con [supuesto: …]. ' : '') +
     `En decisions no nombres una fase ni un cargo ` +
     `que no figure en estos hechos. Hechos: lane=${lane}; ` +
-    `review=${reviewFact}; fases=${ran.join(' → ')}; build=${build.summary}; ` +
+    `review=${reviewFact}; fases=${ran.join(' → ')}; build=${buildFact}; ` +
+    (buildNotes.length ? `notas-de-build=${JSON.stringify(buildNotes)}; ` : '') +
     `verify=${JSON.stringify(verified.commands)}; cubiertos=${JSON.stringify(covered)}; ` +
     (noSurface.length ? `sin-superficie=${JSON.stringify(noSurface.map(({ criterion, reason }) => ({
       criterion, reason: reason || 'no se ejecuta' })))}; ` : '') +
