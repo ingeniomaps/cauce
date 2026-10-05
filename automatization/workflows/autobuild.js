@@ -322,6 +322,16 @@ const BRANCHED = (slug) => (contract.commitToLiveBranch
     + '`, donde tipo es el del Conventional Commit, que se lleva los cambios sin commitear; si esa rama ya '
     + 'existe, pasate a ella. Si el repositorio ya está en una rama que no es viva, commiteá en ésa.')
   + ' Reportá en branch la rama donde quedó el commit y en live si es una rama viva.'
+// Acompaña al commit del estado de planning. La rama no es por tarea, como la del producto: es una sola que
+// se acumula con un PR abierto, así que antes de cortar una se busca la que ya exista.
+const PLANNING_BRANCH = () => (contract.commitToLiveBranch
+  ? ' Commiteá en la rama en la que esté ese repositorio.'
+  : ' Antes de stagear mirá en qué rama está. Si es una rama viva —main, master o la rama por defecto del '
+    + 'remoto— no commitees ahí ni lo consultes: pasate a la rama de trabajo de planning que ya exista —la '
+    + 'que ya lleva commits de estado de planning sin mergear— y si no hay ninguna cortá `work/planning`. '
+    + 'Es una sola rama que se acumula, nunca una por tarea. Si ya está en una rama que no es viva, '
+    + 'commiteá en ésa.')
+  + ' Reportá en branch la rama donde quedó el commit y en live si es una rama viva.'
 // Dueño por defecto de cada fase. Es determinista: no hace falta preguntarle a un modelo quién
 // revisa la arquitectura o quién decide si la evidencia de calidad alcanza.
 const OWNERS = {
@@ -1522,6 +1532,27 @@ while (rounds++ < MAX_TASKS) {
     (outOfVerify.length ? '; cada condición de fuera-de-verify queda cumplida en tests, qa o commit' : '') + '.',
     { label: 'done' },
   )
+  // El cierre deja la cola, `done/`, las acciones humanas y el INBOX escritos, y nadie los commiteaba: cada
+  // corrida terminaba con la instancia sucia y preguntándole a la persona dónde iba eso (caso 266). Va con
+  // el mismo interruptor que el commit del producto y con la regla de ramas de planning: una sola rama de
+  // trabajo que se acumula, nunca una por tarea.
+  //
+  // No frena: la tarea ya se entregó, y lo que quedó sin commitear se dice. Frenar acá dejaría una entrega
+  // completa reportada como parada.
+  if (contract.commitPerTask) {
+    const stated = await run(
+      `Commiteá el estado de planning que el cierre de ${task.id} dejó sin commitear en el repositorio que ` +
+      `contiene a ${P}: stageá por nombre sólo lo que cambió bajo ${P} —la cola, done/, las acciones humanas, ` +
+      `el INBOX—, nunca archivos del producto, y creá un solo commit "chore(planning): close ${task.id}". ` +
+      `Nunca amend ni push.${PLANNING_BRANCH()}`,
+      { schema: COMMIT, label: 'planning-commit' },
+    )
+    if (!stated || !stated.committed) {
+      log(`el estado de planning de ${task.id} quedó sin commitear: ${(stated && stated.reason) || 'sin respuesta'}`)
+    } else if (stated.live && !contract.commitToLiveBranch) {
+      log(`el estado de planning de ${task.id} quedó commiteado en la rama viva ${stated.branch || ''}: movelo`)
+    }
+  }
   completed.push(task.id)
   planning = await readContext()
   if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)

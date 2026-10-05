@@ -39,6 +39,7 @@ const KEY = {
   planRow: 'Critique|human-row',
   readyRow: 'Ready|human-row',
   verifyRow: 'Verify|human-row',
+  planningCommit: 'Done|planning-commit',
 }
 
 // Respuestas del camino que llega hasta el final. Cada escenario cambia una sola y asercia el efecto:
@@ -87,6 +88,7 @@ function baseScript() {
     [KEY.planRow]: { readOk: true, pending: true },
     [KEY.readyRow]: { readOk: true, pending: true },
     [KEY.verifyRow]: { readOk: true, pending: true },
+    [KEY.planningCommit]: { committed: true, hash: 'def456', branch: 'work/planning', live: false },
   }
 }
 

@@ -57,6 +57,11 @@ diseño — eso vive en el commit y en el código.
   resuelve en vez de bloquearse por «destino que no se puede resolver», que frenaba el trabajo en una copia
   desechable (caso 261).
 
+- **`autobuild` commitea el estado de planning al cerrar cada tarea.** La cola, `done/`, las acciones humanas y
+  el INBOX quedaban escritos y sin commitear. Ahora se commitean después del cierre, en la rama en la que esté
+  la instancia; si ésa es una rama viva, en la rama de trabajo de planning que ya exista, o en `work/planning`
+  si no hay ninguna. **Qué hacer:** nada si ya usás `commitPerTask`; con `commitPerTask` apagado no cambia
+  (caso 266).
 - **Review ya no manda al INBOX lo que revisó y dio bien.** Cada hallazgo que no bloquea dice si propone algo.
   Lo que propone va a `inbox/propuestas/` como antes; la constancia queda en `review:` de la entrada de `done/`
   (caso 262).
