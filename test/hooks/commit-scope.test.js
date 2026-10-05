@@ -52,3 +52,24 @@ test('un commit en un repositorio que no es de la sesión no se juzga, y el prop
     else process.env.CLAUDE_PROJECT_DIR = previous
   }
 })
+
+// La regla de stagear por nombre es de los repositorios de la sesión. En uno ajeno —un banco, un
+// repositorio desechable— `git add -A` no pisa el trabajo de nadie que esta sesión tenga que cuidar.
+test('stagear todo en un repositorio ajeno a la sesión no se frena, y en el propio sí', () => {
+  const session = tempRoot('cauce-own-add-sesion-')
+  const foreign = tempRoot('cauce-own-add-ajeno-')
+  const previous = process.env.CLAUDE_PROJECT_DIR
+  process.env.CLAUDE_PROJECT_DIR = session
+  try {
+    const at = (command) => ({ cwd: session, tool_input: { command } })
+    assert.doesNotThrow(() => execute('git-add', at(`git -C ${foreign} add -A`)))
+    assert.doesNotThrow(() => execute('git-add', at(`cd ${foreign} && git add .`)))
+    blocked('git-add', at('git add -A'), /Stagea rutas explícitas/)
+    blocked('git-add', at(`git -C ${session} add .`), /Stagea rutas explícitas/)
+    // Una ruta que no se resuelve cuelga de la sesión, así que frena.
+    blocked('git-add', at('cd $DONDE && git add -A'), /Stagea rutas explícitas/)
+  } finally {
+    if (previous === undefined) delete process.env.CLAUDE_PROJECT_DIR
+    else process.env.CLAUDE_PROJECT_DIR = previous
+  }
+})

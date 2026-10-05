@@ -47,8 +47,8 @@ diseño — eso vive en el commit y en el código.
 - **QA corre las mutaciones que el build declaró y no corrió.** Hasta tres por tarea, en una copia desechable.
   Lo que dio cada una queda en `qa:` de la entrada de `done/`: roja, sobrevivió o sin correr. Ninguna frena la
   entrega (caso 256).
-- **Los guards de commit ya no opinan sobre repositorios ajenos.** `verify`, gobernanza, dependencias y la
-  pasada de comentarios actúan sólo sobre la carpeta de la sesión, la raíz ops y las raíces declaradas en
+- **Los guards de commit ya no opinan sobre repositorios ajenos.** `verify`, gobernanza, dependencias, la
+  pasada de comentarios y la regla de `git add -A` actúan sólo sobre la carpeta de la sesión, la raíz ops y las raíces declaradas en
   `workspaceRoots`. Un commit en otro repositorio pasa sin frenarse y sin que se le corra su suite (caso 258).
 
 ### Corregido

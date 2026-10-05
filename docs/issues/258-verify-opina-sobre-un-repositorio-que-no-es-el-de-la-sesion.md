@@ -85,12 +85,23 @@ una raíz de código declarada. Un commit en cualquier otro pasa sin juzgarse.
 - **Síntoma 2, la ruta en una variable — queda frenando.** Una ruta que no se resuelve cuelga de la
   carpeta de la sesión, así que cuenta como propia: «un guard que no puede verificar no autoriza».
 
+### Lo que el caso no preveía
+
+- **`git-add` tenía el mismo defecto.** Al armar un banco fuera del árbol, `git add -A` en ese repositorio
+  se frenó con «Stagea rutas explícitas». La regla de stagear por nombre es de los repositorios de la
+  sesión, y ahora usa el mismo alcance. Dos pruebas de sintaxis apuntaban git a `/tmp` como ejemplo de
+  opción global; pasaron a apuntar adentro, porque con `/tmp` ya no medían la regla sino el alcance.
+- **Queda otro sobrebloqueo de otra clase**, que salió como caso 259: un guard que lee como comando un
+  texto que está dentro del argumento de otra herramienta.
+
 ### Qué se corrió
 
 - **La reproducción, después, desde la sesión**: en un repositorio desechable con el gate en rojo,
   `git add a.js && git commit` en un solo comando creó el commit. Antes daba los dos bloqueos del Síntoma.
 - **El propio sigue frenando**: la misma prueba bloquea el commit de la sesión con «Verify falló» y con
   «stagea y commitea a la vez», y bloquea el del ajeno en cuanto se lo declara como raíz.
+- **`git-add`, antes y después**: la prueba nueva —stagear todo en un repositorio ajeno pasa, en el propio
+  frena, y una ruta sin resolver frena— se vio en rojo sin el cambio.
 - **Cinco mutaciones en rojo**, en una copia: todo repositorio contando como propio, ninguno contando, la
   raíz declarada sin contar, la pasada de comentarios juzgando al ajeno, y contener a la sesión sin
   contar.
