@@ -1,14 +1,15 @@
 ---
 caso: 253
 titulo: con la rama viva cerrada nada dice a qué rama va el estado de planning
-estado: abierto
+estado: resuelto
+resuelto-en: 0.101.0
 prioridad: media
 version-detectada: 0.100.0
 ---
 
 # 253 — Cauce deja cerrar `main` al push, pero no dice dónde se commitea entonces `planning/`
 
-**🔴 abierto** · detectado en 0.100.0 · prioridad **media**.
+**🟢 resuelto en 0.101.0** · detectado en 0.100.0 · prioridad **media**.
 
 **Prioridad media**: no rompe nada ni pierde trabajo, pero cada instancia inventa la respuesta por su
 cuenta, y la que no la escribió termina con una rama y un PR por cada cambio de estado de la cola.
@@ -131,3 +132,42 @@ escrita en la instancia como agregado a P36 (`initech-ops/planning/rules/commits
 - 248 — la corrida de la que salió este cierre a mano.
 - 218 — las líneas de trabajo. `ops line` es la respuesta que ya existe para una parte de este caso.
 - 255 — nada frena un commit en la rama viva fuera del recorrido.
+
+## Cierre
+
+**Resuelto en 0.101.0, con la pieza más chica: la regla escrita.** `PROTOCOL.md` → Done y `AGENTS.md`
+dicen ahora dónde va el estado de planning cuando la rama viva no admite push: a una sola rama de trabajo
+que se acumula, con un PR abierto, en la misma carpeta de la instancia.
+
+### El recorrido de lo que este caso enumeró
+
+- **Fix 1, una clave `planning.workBranch` — se decidió que no.** La regla no necesita saber el nombre de
+  la rama: dice «la que ya exista». Una clave más es configuración que cada instancia tiene que mantener.
+- **Fix 2, que `claim`, `release` y Done commiteen ahí y `context` avise — no se hizo.** Ninguno de los
+  tres commitea hoy: escriben archivos y el commit lo hace quien cierra. Queda abierto si hace falta el
+  aviso de `context`: lo activa la primera instancia que, con la regla ya escrita, vuelva a cortar una
+  rama por cambio.
+- **Fix 3, un guard sobre el commit que toca `planning/` — se decidió que no.** Es un freno más, y el
+  criterio del dueño del 2026-10-05 es dejar sólo los importantes. Va junto con el 255.
+- **«Una línea en `PROTOCOL.md` → Done» — se hizo.**
+- **Las dos formas de la validación — se tomó la segunda**, por la aclaración del dueño: rama en la misma
+  carpeta, y `ops line` sólo para dos sesiones a la vez.
+- **Tradeoff «una rama larga diverge de `main`: merge y no rebase» — no se escribió.** Reescribir historia
+  publicada ya lo frena R8; qué hacer para ponerla al día queda a criterio de quien la lleva.
+- **Tradeoff «lo que vive en la rama de trabajo no lo ve otra persona hasta el merge» — sigue en pie.** Es
+  el costo de cerrar `main`, y con dos sesiones la respuesta es `ops line`, que sí comparte reclamos.
+- **Tradeoff «con `main` abierto no debería exigirse» — se cumple**: la regla rige sólo si la rama viva no
+  admite push.
+- **Síntoma, «dos lecturas distintas de `check` según la rama» — se va con una sola rama.** No se midió.
+
+### Qué se corrió
+
+- **Una sonda con un agente real y un repo de verdad.** Un repositorio de planning desechable parado en
+  `main`, con una rama `work/estado` que ya traía un cierre anterior y con el cierre de una tarea sin
+  commitear; el agente recibió el texto literal de la regla nueva y que `main` no admite push. Lo que la
+  desmentía era que cortara una rama nueva. Comprobado en el disco: commiteó en `work/estado`, que quedó
+  con sus dos cierres, `main` no se movió y no hay ninguna rama más.
+- **La puerta entera**, `npm run ci`.
+- **Lo que no se corrió**: el caso sin ninguna rama de trabajo previa, y una corrida de `autobuild` cuya
+  fase Done reciba la regla por su prompt —esa fase no commitea planning—.
+

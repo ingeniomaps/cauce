@@ -40,6 +40,9 @@ diseño — eso vive en el commit y en el código.
 - **Lo que le pedís a `autobuild` al lanzarlo ahora llega.** El texto que se pasa como argumento —o su campo
   `note`— viaja a Plan, Build y Commit como pedido para toda la corrida. No reemplaza la aceptación ni las
   reglas: si las contradice, mandan ellas. Antes se descartaba sin avisar (caso 252).
+- **El estado de planning va a una sola rama de trabajo.** `PROTOCOL.md` y `AGENTS.md` dicen ahora dónde se
+  commitea cuando la rama viva no admite push: en una rama de trabajo que se acumula, con un solo PR, y no en
+  una rama nueva por cada tarea cerrada (caso 253).
 
 ### Corregido
 

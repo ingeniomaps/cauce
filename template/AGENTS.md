@@ -279,6 +279,11 @@ Commitear en la rama viva es aparte y también se pide: `autobuild` corta una ra
 `<tipo>/<slug>`, y commitea ahí sin consultar. Sólo commitea en la viva si el proyecto declara
 `runner.commitToLiveBranch: true`.
 
+El estado de planning —la cola, los reclamos, `done/`, el INBOX, las acciones humanas— sigue la misma idea
+con una diferencia: no va a una rama por tarea sino a **una sola rama de trabajo** que se acumula, con un
+PR abierto. Se trabaja en la carpeta de la instancia; un segundo árbol (`ops line`) es para cuando dos
+sesiones trabajan a la vez.
+
 Eso rige sin que nadie escriba nada. Lo que este proyecto amplíe o restrinja va en
 `organization/workspace.md`, con su razón; ninguna de esas prohibiciones se amplía ahí, y la
 publicación tampoco se decide ahí: la deciden `allowPush` y `pushToLiveBranches`.
