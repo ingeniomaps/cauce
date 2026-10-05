@@ -238,7 +238,7 @@ function dependencies(input) {
     block('Publicar paquetes o instalar dependencias globales requiere una acción humana explícita.')
   }
   if (!isCommit(command)) return
-  const { dir, staged } = stagedForCommit(command, cwdOf(input))
+  const { dir, staged } = stagedForCommit(command, cwdOf(input), input)
   const manifests = new Set(['package.json', 'pyproject.toml', 'requirements.txt', 'go.mod', 'Cargo.toml'])
   const locks = new Set([
     'package-lock.json',
@@ -447,7 +447,7 @@ function governance(input) {
       String.raw`|agents\/[a-z0-9-]+\/(?:system\/)?[a-z0-9-]+\/(?:SKILL\.md|references\/` +
       String.raw`|evaluations\/(?:cases\/|expected-behaviors\.yaml)|learning\/proposals\/))`,
   )
-  const governed = stagedForCommit(command, cwdOf(input))
+  const governed = stagedForCommit(command, cwdOf(input), input)
     .staged.filter((file) => governedPattern.test(file))
   if (!governed.length) return
   // La aprobación vale para lo que nombra y para nada más: lo que quede sin cubrir es lo que se

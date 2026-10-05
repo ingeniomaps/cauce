@@ -259,13 +259,39 @@ function stagedFiles(dir) {
 // Devuelve también el directorio porque dos de los tres guards siguen leyendo del repositorio después
 // —el lockfile que está al lado del manifiesto, el `package.json` que dice qué gate correr—, y
 // resolverlo dos veces sería preguntar dos veces lo mismo.
-function stagedForCommit(command, cwd) {
+//
+// Y con `input`, sólo sobre un repositorio de la sesión: el commit en uno ajeno vuelve `foreign` y sin
+// nada staged, y cada guard lo deja pasar. Por qué, en `owns`.
+function stagedForCommit(command, cwd, input) {
+  const dir = gitDirectory(command, cwd)
+  if (input && !owns(input, dir)) return { dir, staged: [], foreign: true }
   if (/\bgit\s+add\b/.test(withoutGitGlobals(unquoted(command)))) {
     block('El comando stagea y commitea a la vez, así que este guard lee el índice de antes de stagear '
       + 'y no puede ver qué se commitea. Stageá las rutas en un comando y commiteá en otro.')
   }
-  const dir = gitDirectory(command, cwd)
   return { dir, staged: stagedFiles(dir) }
+}
+
+// Si un repositorio es de la sesión: la carpeta en la que se abrió, la raíz ops o una de las raíces de
+// código que la instancia declaró. Una puerta opina sobre el repositorio que la declara y no sobre sus
+// vecinos (R26): los guards de commit miraban el comando y no a dónde apuntaba, así que un `git -C` hacia
+// un repositorio desechable se frenaba por su forma y, con código staged, corría la suite del otro —54 s
+// medidos sobre un clon que la sesión no tenía abierto (caso 258)—.
+//
+// Cuenta estar adentro o contenerla, porque el commit puede lanzarse desde una subcarpeta del repositorio
+// o desde el repositorio que contiene a la instancia. Una ruta que no se resuelve —`-C $VAR`— queda
+// colgando de la carpeta de la sesión, así que cae del lado que frena.
+function owns(input, dir) {
+  const within = (base, target) => {
+    const relative = path.relative(base, target)
+    return !relative.startsWith('..') && !path.isAbsolute(relative)
+  }
+  const session = path.resolve(sessionStart(input))
+  const ops = opsRoot(input)
+  const declared = ops
+    ? (configOf(ops).workspaceRoots || []).filter((one) => one && one.path).map((one) => path.resolve(ops, one.path))
+    : []
+  return [session, ...(ops ? [ops] : []), ...declared].some((root) => within(root, dir) || within(dir, root))
 }
 
 function findOpsRoot(start) {
@@ -314,13 +340,16 @@ const DECLARE_IT = 'Si el proyecto necesita escribir ahí, declaralo en writable
 
 // La raíz donde vive `planning/`, que es donde se busca la aprobación. La resuelven igual los guards de
 // archivos, los de shell y la aprobación misma, así que se resuelve en un solo lugar.
+// Desde dónde se busca: la carpeta en la que el runner abrió la sesión, o el directorio de la llamada.
+const sessionStart = (input) => process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input)
+
 function opsRoot(input) {
-  return findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
+  return findOpsRoot(sessionStart(input))
 }
 
 module.exports = {
   readInput, FIRST_BYTE_MS, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
-  gitDirectory, isCommit, withoutGitGlobals, stagedFiles, stagedForCommit,
+  gitDirectory, isCommit, withoutGitGlobals, stagedFiles, stagedForCommit, owns,
   findOpsRoot, opsRoot,
   writableRoots, outsideRoots, DECLARE_IT, unquoted,
 }

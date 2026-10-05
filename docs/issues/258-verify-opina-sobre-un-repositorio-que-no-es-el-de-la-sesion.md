@@ -1,14 +1,15 @@
 ---
 caso: 258
 titulo: verify opina sobre un repositorio que no es el de la sesión
-estado: abierto
+estado: resuelto
+resuelto-en: 0.101.0
 prioridad: media
 version-detectada: 0.100.0
 ---
 
 # 258 — El guard `verify` juzga cualquier `git commit` que vea la sesión, también el de un repositorio ajeno a ella
 
-**🔴 abierto** · detectado en 0.100.0 · prioridad **media**.
+**🟢 resuelto en 0.101.0** · detectado en 0.100.0 · prioridad **media**.
 
 **Prioridad media**: no pierde trabajo, pero frena y corre gates sobre repositorios que no declararon esta puerta, que es lo que
 R26 pide que una puerta no haga.
@@ -67,3 +68,30 @@ preparación chocó con el guard de este repositorio.
 
 - 257 — verify deja pasar dentro de la sesión un commit que a mano bloquea.
 - 240 — verify corre sin cota y escribe en el árbol.
+
+## Cierre
+
+**Resuelto en 0.101.0.** Los guards de commit —`verify`, gobernanza, dependencias y la pasada de
+comentarios— actúan sólo sobre un repositorio de la sesión: la carpeta en la que se abrió, la raíz ops o
+una raíz de código declarada. Un commit en cualquier otro pasa sin juzgarse.
+
+### El recorrido de lo que este caso enumeró
+
+- **Fix — se hizo, y más ancho que lo propuesto**: en `stagedForCommit`, que comparten los cuatro guards,
+  y no sólo en `verify`. Con dos copias uno habría frenado donde el otro deja pasar.
+- **Tradeoff «un repositorio sin declarar deja de verificarse» — sigue en pie.** Es el precio de no opinar
+  sobre vecinos; la salida es declararlo en `workspaceRoots`.
+- **Tradeoff del mensaje «stagea y commitea a la vez» — se hizo**: fuera de alcance ya no aparece.
+- **Síntoma 2, la ruta en una variable — queda frenando.** Una ruta que no se resuelve cuelga de la
+  carpeta de la sesión, así que cuenta como propia: «un guard que no puede verificar no autoriza».
+
+### Qué se corrió
+
+- **La reproducción, después, desde la sesión**: en un repositorio desechable con el gate en rojo,
+  `git add a.js && git commit` en un solo comando creó el commit. Antes daba los dos bloqueos del Síntoma.
+- **El propio sigue frenando**: la misma prueba bloquea el commit de la sesión con «Verify falló» y con
+  «stagea y commitea a la vez», y bloquea el del ajeno en cuanto se lo declara como raíz.
+- **Cinco mutaciones en rojo**, en una copia: todo repositorio contando como propio, ninguno contando, la
+  raíz declarada sin contar, la pasada de comentarios juzgando al ajeno, y contener a la sesión sin
+  contar.
+- **La puerta entera**, `npm run ci`.
