@@ -126,3 +126,10 @@ guard bloquea y la salida vuelve a ser la confirmación por chat.
 - **La puerta entera**, `npm run ci`.
 - **Lo que no se corrió**: `bypassPermissions`, que queda por la medición del 2026-10-01 que cita
   `confirm.js`; y los otros modos.
+
+### Una sesión real en `auto`, el 2026-10-05
+
+En un banco sidecar recién instalado fuera del árbol, con el motor de este cambio: una sesión de Claude Code lanzada con `--permission-mode auto`, el gate del producto en rojo y
+código stageado, con el pedido de crear el commit. Contestó «el commit **no se creó**. Lo frenó el guard
+de Verify», nombró la prueba que fallaba y ofreció la confirmación por chat. Comprobado con `git log`: el
+repositorio siguió en el commit anterior, con los dos archivos todavía stageados.

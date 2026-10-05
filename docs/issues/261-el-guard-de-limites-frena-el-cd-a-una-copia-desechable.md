@@ -100,3 +100,18 @@ variable ya resuelta o con `mktemp` sin directorio propio, y una sola vez por no
 - **La puerta entera**, `npm run ci`.
 - **Lo que no se corrió todavía**: el guard de límites instalado, en una sesión real. Este repositorio no
   lo tiene activo; se prueba en el banco.
+
+### El guard instalado, el 2026-10-05
+
+En un banco sidecar recién instalado fuera del árbol, con el motor de este cambio, con el guard de shell invocado por su shim como lo hace el runner:
+
+```
+copia desechable con mktemp y cd a la variable:            pasa
+cd a una carpeta de la instancia guardada en una variable: pasa
+cd a una variable que nadie asignó:                        BLOQUEADO … no se puede resolver
+variable que resuelve fuera de las raíces:                 BLOQUEADO … fuera de las raíces declaradas
+```
+
+Y en la corrida entera de `autobuild` que siguió no hubo ningún bloqueo por `cd`; en la anterior habían
+sido tres. Con el mismo shim, un `grep` con la frase prohibida como texto pasa y `bash -c` con esa frase
+frena (caso 259).

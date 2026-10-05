@@ -116,3 +116,10 @@ instancia.
 - **La puerta entera**, `npm run ci`.
 - **Costo de encontrarlo**: USD 5,66 la corrida que paró y USD 7,84 la que terminó.
 
+### Desde una instalación limpia, el 2026-10-05
+
+La corrida que cerró este caso era la misma sesión retomada. Se repitió entera en un banco sidecar recién instalado fuera del árbol, con el motor de este cambio y sin
+`CAUCE_RUNNER`: `plan → critique → wip → build → … → commit → done`, diecinueve agentes, sin ningún bloqueo
+de `plan-first`. En toda la corrida hubo **un** bloqueo, «stagea y commitea a la vez», que es la regla
+funcionando. La sesión sin interfaz se cortó a los diez minutos, durante el cierre de la tarea; ese paso
+se repitió solo, con su prompt literal.

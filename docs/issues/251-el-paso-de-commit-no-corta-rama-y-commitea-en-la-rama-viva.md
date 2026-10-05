@@ -215,3 +215,7 @@ En un banco sidecar instalado fuera del árbol, sesión de Claude Code con `/aut
 nombró la rama, pero en prosa —«(rama … del repo app)»— y no en el formato del contrato; el recorrido
 ahora pasa `(servicio@rama)` para copiar tal cual. Y `check` no encontraba un repositorio nombrado como su
 raíz declarada: es la otra mitad del 254, arreglada en `commitStatus` con su prueba.
+
+En la segunda corrida real, ya con el sufijo del contrato, la entrada de `done/` quedó
+`commit: 459ee5f… feat(alta)!: require email on signup (app@feat/alta-exige-email)` y `check` encontró el
+repositorio: su único aviso fue por el commit semilla del banco, que tenía fecha del día.

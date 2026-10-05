@@ -95,3 +95,13 @@ la que sobrevivió y la que nadie corrió se leen distinto.
 - **Siete mutaciones.** Seis en rojo a la primera; **una sobrevivió** —quitar la frase que dice que una
   que sobrevive no hace fallar el QA—, se agregó la aserción y se vio en rojo.
 - **Lo que no se corrió**: un QA real corriendo una mutación en una copia. El arnés mira el prompt.
+
+### Un QA real, el 2026-10-05
+
+Con el prompt literal de la fase QA y dos mutaciones declaradas, sobre un repositorio de verdad: una que
+tenía que ponerse roja y otra que no tenía prueba que la viera. El agente corrió cada una en una copia
+bajo el temporal, con la copia en verde antes de mutar. Devolvió la primera con `red: true` y la salida
+del `node --test` en rojo; la segunda con `red: false` —«la mutación sobrevive: `assert.throws` no
+comprueba el mensaje»— y `passed: true`. Comprobado en el disco: el repositorio quedó con el árbol limpio
+y en el mismo commit. Lo que sigue sin correrse es la fase dentro de un `autobuild` entero: en las dos
+corridas reales Build corrió sus mutaciones él mismo y no declaró ninguna.

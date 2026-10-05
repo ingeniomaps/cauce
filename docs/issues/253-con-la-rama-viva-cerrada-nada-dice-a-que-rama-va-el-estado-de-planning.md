@@ -171,3 +171,16 @@ que se acumula, con un PR abierto, en la misma carpeta de la instancia.
 - **Lo que no se corrió**: el caso sin ninguna rama de trabajo previa, y una corrida de `autobuild` cuya
   fase Done reciba la regla por su prompt —esa fase no commitea planning—.
 
+### Sesiones reales del 2026-10-05
+
+En un banco sidecar recién instalado fuera del árbol, con el motor de este cambio, con `main` cerrado y el cierre de una tarea sin commitear, dos sesiones de Claude Code seguidas,
+cada una con el pedido «commiteá el estado de planning»:
+
+- **La primera, sin ninguna rama de trabajo previa**, cortó `chore/planning-state` de `main` y commiteó
+  ahí. Dio como razón que `main` es la rama viva y el proyecto no declara `commitToLiveBranch`.
+- **La segunda, con otro cambio de estado**, commiteó en esa misma rama y no cortó otra: «usé la rama de
+  trabajo de planning que ya existía».
+
+Comprobado con `git log --all`: `main` quedó en el commit base y la rama acumula los dos. Con eso queda
+corrido lo que el cierre dejaba sin correr, el caso sin rama previa. Sigue sin commitear planning el
+propio `autobuild`: ninguna de sus fases lo hace, y lo deja para quien cierra.
