@@ -1595,10 +1595,16 @@ while (rounds++ < MAX_TASKS) {
   }
 
   phase('Done')
+  // El árbol de la tarea ya no existe y su rama se renombró al commitear, pero la revisión y la verificación
+  // los citan como los vieron. A `done/` va lo que quedó: el servicio como lo nombra la tarea y la rama del
+  // commit. Si no, la entrada nombra una rama que el repositorio no tiene y una ruta de esta máquina
+  // (caso 277).
+  const settled = (text) => (tree ? [[tree.work, declared], [tree.path, declared], [tree.branch, commit.branch]]
+    .reduce((out, [from, to]) => (from && to ? out.split(from).join(to) : out), text) : text)
   // `lane` y `review` se piden textuales: en una corrida real el agente resumió el hecho de revisión y
   // perdió las reglas, la decisión y la superficie crítica, mientras el prompt —lo que mide el arnés— sí
   // las traía (caso 211).
-  await write(
+  await write(settled(
     `Cerrá ${task.id} de forma atómica: escribí ${doneFile(task.id)} con su evidencia —acept, ` +
     `fecha: ${planning.today}, done, qa, tests, commit, lane y review, en el formato de entrada que trae ` +
     `este preámbulo—; ` +
@@ -1624,7 +1630,7 @@ while (rounds++ < MAX_TASKS) {
     `En tests rastreá cada criterio con la ` +
     `prueba que cubiertos le asigna` +
     (noSurface.length ? ', y los de sin-superficie con tests: n/a — <razón>' : '') +
-    (outOfVerify.length ? '; cada condición de fuera-de-verify queda cumplida en tests, qa o commit' : '') + '.',
+    (outOfVerify.length ? '; cada condición de fuera-de-verify queda cumplida en tests, qa o commit' : '') + '.'),
     { label: 'done' },
   )
   // El cierre deja la cola, `done/`, las acciones humanas y el INBOX escritos, y nadie los commiteaba: cada

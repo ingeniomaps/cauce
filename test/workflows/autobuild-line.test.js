@@ -77,3 +77,22 @@ test('al retomar en una línea se vuelve al mismo árbol', async () => {
   assert.ok(!reached(asked, 'Plan'), 'y no vuelve a planificar')
   assert.ok(promptOf(prompts, KEY.build).includes(TREE.work))
 })
+
+test('a done/ no viaja ni la rama provisional ni la ruta de un árbol que ya no existe', async () => {
+  const seen = `git diff en ${TREE.work} (rama ${TREE.branch})`
+  const { result, prompts } = await runFlow(inLine({
+    [KEY.review]: { verdict: 'aprobado', concerns: [], consulted: [seen] },
+    [KEY.verify]: { passed: true, details: 'verde', uncovered: [],
+      commands: [{ cmd: `npm --prefix ${TREE.path} test`, exitCode: 0 }] },
+    [KEY.qa]: { passed: true, evidence: `require del módulo en ${TREE.work}` },
+  }))
+  ranToEnd(result)
+  const done = promptOf(prompts, 'Done|done')
+  assert.ok(!done.includes(TREE.path) && !done.includes(TREE.branch), done)
+  assert.match(done, /git diff en \.\/api \(rama feat\/T-1\)/, 'la revisión queda sobre lo que hay')
+  assert.match(done, /npm --prefix \.\/api test/)
+
+  // Fuera de una línea no hay nada que traducir: lo que la revisión cita llega como lo citó.
+  const plain = await runFlow({ [KEY.review]: { verdict: 'aprobado', concerns: [], consulted: [seen] } })
+  assert.ok(promptOf(plain.prompts, 'Done|done').includes(seen))
+})

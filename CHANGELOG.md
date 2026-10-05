@@ -82,6 +82,8 @@ diseño — eso vive en el commit y en el código.
 - **Un plan frenado por una decisión que falta ya no se registra como «nadie pudo escribir un plan».** Esa
   fila mandaba a partir la tarea cuando lo que faltaba era contestar una pregunta, y podía quedar duplicada.
   Ahora dice qué frenó la crítica y pide resolverlo, en una sola fila (caso 278).
+- **En una línea, la entrada de `done/` nombra la rama del commit y el servicio.** Citaba la rama provisional
+  de la tarea, que ya no existe al cerrar, y la ruta del árbol en la máquina (caso 277).
 - **Instalar un runner ya no ensucia el manifiesto.** `.cauce/manifest.json` guardaba el hash de cada recorrido
   con la ruta de la instancia adentro, así que cambiaba con sólo instalar el runner en un clon en otra carpeta
   o en una línea. Ahora el hash no depende de la ruta. Un manifiesto escrito por una versión anterior se sigue
