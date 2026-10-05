@@ -278,3 +278,26 @@ test('con una raíz que es una carpeta de repositorios, el servicio resuelve a s
   assert.equal(hecho.status, 0, hecho.stderr)
   assert.equal(JSON.parse(hecho.stdout).repo, repo)
 })
+
+// Caso 274: las dos formas de llegar al repositorio, derecho y por el enlace de una línea. El porqué de
+// dónde queda el árbol está junto a `target`, en el comando.
+test('el árbol de una tarea queda al lado de lo que la sesión ve, y dice dónde trabajar adentro', () => {
+  const { repo, planning } = montar('cauce-wt-work-')
+  const plain = JSON.parse(como('/w/uno', () => run(['worktree', planning, 'alta', '--json'])).stdout)
+  assert.equal(plain.path, `${repo}-alta`)
+  assert.equal(plain.work, path.join(`${repo}-alta`, 'api'), 'el servicio vive en api/, adentro del repo')
+  assert.ok(fs.existsSync(path.join(plain.work, 'main.go')))
+
+  const linked = montar('cauce-wt-linea-')
+  const home = path.join(linked.base, 'linea')
+  fs.mkdirSync(home)
+  fs.cpSync(path.join(linked.planning, '..'), path.join(home, 'producto-ops'), { recursive: true })
+  fs.symlinkSync(linked.repo, path.join(home, 'producto'), 'dir')
+  const ops = path.join(home, 'producto-ops')
+  const tree = JSON.parse(como('/w/dos', () => run(['worktree', path.join(ops, 'planning'), 'alta', '--json'])).stdout)
+  assert.equal(tree.path, path.join(home, 'producto-alta'), 'al lado del enlace, adentro de la carpeta de la línea')
+  assert.equal(tree.work, path.join(home, 'producto-alta', 'api'))
+  assert.equal(fs.realpathSync(tree.repo), fs.realpathSync(linked.repo), 'y es un árbol del repositorio original')
+  assert.equal(fs.existsSync(`${linked.repo}-alta`), false, 'no al lado del original, que comparten las demás líneas')
+  assert.equal(git(linked.repo, 'rev-parse', '--abbrev-ref', 'HEAD').stdout.trim(), 'main', 'que no cambió de rama')
+})

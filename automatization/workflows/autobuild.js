@@ -103,6 +103,9 @@ const CONTEXT = {
     // Dónde va el plan de este runner. El nombre sale de su id y el recorrido no lo deriva: lo
     // pregunta, igual que la fecha.
     wipFile: { type: 'string' },
+    // La línea de trabajo de esta sesión, o vacío en el árbol principal. De ahí sale si la tarea se
+    // construye en un árbol propio (caso 274).
+    line: { type: 'string' },
     // Con los nombres que ya hay en el INBOX, Review no vuelve a anotar uno.
     inbox: { ...INBOX_HEADS },
     // Las reglas que rigen el proyecto, con los overrides ya resueltos por el motor (caso 105).
@@ -127,6 +130,14 @@ const CONTEXT = {
 const CLAIM = {
   type: 'object', additionalProperties: false, required: ['claimed'],
   properties: { claimed: { type: 'boolean' }, details: { type: 'string' } },
+}
+// El árbol de trabajo de una tarea, como lo devuelve `ops worktree --json`.
+const WORKTREE = {
+  type: 'object', additionalProperties: false, required: ['ok'],
+  properties: {
+    ok: { type: 'boolean' }, path: { type: 'string' }, work: { type: 'string' }, branch: { type: 'string' },
+    repo: { type: 'string' }, details: { type: 'string' },
+  },
 }
 const READY = {
   type: 'object', additionalProperties: false, required: ['ready', 'needsHuman'],
@@ -315,7 +326,16 @@ const COMMIT = {
 // rama no pide permiso a nadie —es lo que la persona iba a hacer a mano—; commitear en la viva sí, y ese
 // pedido es `runner.commitToLiveBranch`. Se corta acá y no antes de Build porque `git switch -c` se lleva
 // el árbol sin commitear, así que alcanza con un solo lugar.
-const BRANCHED = (slug) => (contract.commitToLiveBranch
+//
+// En un árbol de tarea la rama ya está cortada: es `task/<slug>`, que es el nombre con que `check` sigue si
+// un reclamo se mueve. Al commitear se renombra a la forma de siempre, y el árbol se saca: la rama queda,
+// que es lo que se lleva a un PR, y la carpeta de la línea no acumula un árbol por tarea cerrada.
+const BRANCHED = (slug, tree) => (tree
+  ? ` El repositorio es el árbol de trabajo ${tree.path}, en la rama ${tree.branch}: commiteá ahí, y no en el `
+    + `checkout compartido. Antes de commitear renombrá esa rama con \`git branch -m <tipo>/${slug}\`, donde `
+    + 'tipo es el del Conventional Commit. Cuando el commit esté verificado y el árbol limpio, sacalo con '
+    + `\`git -C ${tree.repo} worktree remove ${tree.path}\`: la rama queda.`
+  : contract.commitToLiveBranch
   ? ' Commiteá en la rama en la que esté el repositorio.'
   : ' Antes de stagear mirá en qué rama está el repositorio. Si es una rama viva —main, master o la rama por '
     + 'defecto del remoto— no commitees ahí ni lo consultes: cortá una con `git switch -c <tipo>/' + slug
@@ -623,8 +643,9 @@ const registerHuman = async (prompt, label, slug = '') => {
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
 const readContext = () => read(
   `Corré "node tools/ops.js context ${P} --json" desde ${ROOT} y reportá sólo lo que imprimió. Derivá hasTask ` +
-  `de si task es null, wipActive de si wip es null, claimed del campo claimed, today y wipFile de sus ` +
-  `campos, rules del campo rules tal cual, wip con sus campos complete y pending tal cual si viene —y ` +
+  `de si task es null, wipActive de si wip es null, claimed del campo claimed, today, wipFile y line de sus ` +
+  `campos —line vacío si viene null—, rules del campo rules tal cual, wip con sus campos complete y ` +
+  `pending tal cual si viene —y ` +
   `omitilo entero si wip es null, sin inventar ceros—, y lane ` +
   `de task.tier; copiá slug, ` +
   `hito, service, acceptance, ` +
@@ -921,6 +942,33 @@ while (rounds++ < MAX_TASKS) {
     return stop(reason, `${detail}${note}`)
   }
 
+  // En una línea de trabajo la tarea se construye en un árbol propio. Las líneas comparten por enlace el
+  // mismo checkout del producto, así que cortar la rama ahí lo dejaba parado en la tarea de una para todas
+  // las demás (caso 274). Fuera de una línea no hay con quién pisarse y se trabaja en la carpeta que está:
+  // un árbol aparte es para cuando dos sesiones se tocan.
+  //
+  // `declared` es el servicio como lo nombra planning, que es lo que viaja al WIP y a `done/`; `task.service`
+  // pasa a ser dónde se trabaja. El comando reusa el árbol si ya existe, así que retomar cae en el mismo.
+  const declared = task.service
+  let tree = null
+  if (planning.line) {
+    phase('Worktree')
+    tree = await write(
+      `Corré "node tools/ops.js worktree ${P} ${task.id} --json" desde ${ROOT} y reportá sólo lo que imprimió: ` +
+      `ok=true con exit 0, y path, work, branch y repo de sus campos. Si falla, ok=false y el mensaje en ` +
+      `details. No crees ni toques ningún archivo vos: el árbol lo arma el comando.`,
+      { schema: WORKTREE, label: `worktree:${task.id}` },
+    )
+    if (!tree || !tree.ok || !tree.work) {
+      return stop('worktree-failed', `${task.id}: ${(tree && tree.details) || 'el comando no devolvió el árbol'}`)
+    }
+    task.service = tree.work
+  }
+  // Acompaña a toda fase que mira o toca el trabajo: sin esto buscan el diff en el checkout compartido, que
+  // en una línea no tiene nada.
+  const WHERE = tree ? ` El trabajo de ${task.id} está en ${tree.work}, un árbol de trabajo de ${tree.repo} en ` +
+    `la rama ${tree.branch}: el diff, las pruebas y el commit son ahí y no en el checkout compartido, que no ` +
+    'se toca.' : ''
   const resumedFromWip = Boolean(planning.wipActive)
   if (!planning.wipActive) {
     if (!mechanical || !vouched) {
@@ -1074,7 +1122,7 @@ while (rounds++ < MAX_TASKS) {
     const persisted = await write(
       `Escribí el WIP y nada más: no toques código, no corras pruebas, no cierres la tarea y no escribas ` +
       `en DONE. Los pasos van sin tildar porque todavía no ocurrieron. task=${task.id}, ` +
-      `hito=${JSON.stringify(task.hito)}, phase=Build, service=${task.service}, ` +
+      `hito=${JSON.stringify(task.hito)}, phase=Build, service=${declared}, ` +
       `acceptance=${JSON.stringify(task.acceptance)}, lane=${lane}, ` +
       `pasos sin tildar=${JSON.stringify(plan.steps)}, ` +
       // La estrategia de prueba es `required` en el plan y hasta acá se descartaba, así que un paso que
@@ -1145,7 +1193,7 @@ while (rounds++ < MAX_TASKS) {
     + (testStrategy ? ` Estrategia de prueba que el plan fijó: ${testStrategy}` : '')
     + (approved.conditions.length ? ` La crítica aprobó el plan con estas condiciones, que cumplís al `
       + `escribir: ${approved.conditions.join('; ')}.` : '')
-    + OPERATOR,
+    + OPERATOR + WHERE,
     { schema: BUILD, label: 'build' },
   )
   if (!build) return stop('agent-unavailable', 'Build no devolvió resultado')
@@ -1243,7 +1291,7 @@ while (rounds++ < MAX_TASKS) {
       // pudo haber refinado en esta corrida (caso 210).
       `${asRole(cast.review)}Revisá el diff real de ${task.id} contra su aceptación —${task.acceptance}— y por ` +
       `regresiones, seguridad, arquitectura, código ` +
-      `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.` +
+      `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.${WHERE}` +
       (approved.conditions.length ? ` La crítica aprobó el plan con estas condiciones; comprobá sobre el ` +
         `diff que cada una se cumplió, y la que no, es un hallazgo: ${approved.conditions.join('; ')}.`
         // Una corrida que retoma no pasó por la crítica, así que no las trae en memoria: están en el WIP,
@@ -1287,10 +1335,10 @@ while (rounds++ < MAX_TASKS) {
       // amplía el alcance: es terminar la corrección.
       await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${blockers(review).join('; ')}. `
         + 'Traé también lo que tu propia corrección deje desactualizado —un conteo, un comentario que '
-        + 'describa la forma vieja, una fila que la enumere— y nada más que eso.',
+        + `describa la forma vieja, una fila que la enumere— y nada más que eso.${WHERE}`,
         { label: 'review-fix' })
       review = await run(`Volvé a revisar el diff corregido de ${task.id} contra su aceptación `
-        + `—${task.acceptance}—.${MANIFEST}${VERDICT}${RULED}${SURFACED()}`,
+        + `—${task.acceptance}—.${WHERE}${MANIFEST}${VERDICT}${RULED}${SURFACED()}`,
         { schema: REVIEWED, label: 'review' })
       if (!review) return stop('agent-unavailable', 'la re-revisión no devolvió resultado')
       grounded(review)
@@ -1404,7 +1452,7 @@ while (rounds++ < MAX_TASKS) {
     `decisión escrita, y con reason diciendo cuál—. no-surface vale sólo si la tarea no tocó ningún archivo ` +
     `que no termine en ${NON_EXECUTABLE.join(', ')}; con cualquier otro en el diff es missing-test. En ` +
     `covered va cada criterio que un test sí codifica, con el nombre de ese test. ` +
-    `Un test que pasa sin aserciarla no la cubre. Después corré los gates reales de ${task.service}. ` +
+    `Un test que pasa sin aserciarla no la cubre. Después corré los gates reales de ${task.service}.${WHERE} ` +
     // Descubrir la puerta es trabajo de modelo repetido en cada tarea sobre una respuesta que no cambia,
     // y encima adivinable: el proyecto la declara en `verify` y ahí deja de adivinarse. Cuando no la
     // declara se vuelve a descubrir, que es lo que pasaba siempre.
@@ -1470,7 +1518,7 @@ while (rounds++ < MAX_TASKS) {
         ? 'Hacé la comprobación de aceptación real más barata'
         : 'Ejercitá el comportamiento real que ve quien lo usa'} para ` +
       `${task.id}. Las pruebas unitarias solas no son QA. Levantá el mínimo runtime necesario y bajalo ` +
-      `después. Aceptación: ${checkable}.`
+      `después. Aceptación: ${checkable}.${WHERE}`
       + (unrun.length ? ' El build declaró estas mutaciones y no las corrió. Corré cada una en una copia '
         + 'desechable del repositorio, nunca en el árbol de trabajo, y reportala en mutations con red=true si '
         + `la prueba que nombra se puso roja y la salida que lo muestra en output: ${JSON.stringify(unrun)}. `
@@ -1496,7 +1544,7 @@ while (rounds++ < MAX_TASKS) {
     `${asRole(OWNERS.commit)}Encontrá el repositorio git dueño de ${task.service}, inspeccioná status y diff, ` +
     `stageá por nombre los archivos de la tarea, creá un solo Conventional Commit con el footer ` +
     `"Task: ${task.id}" y después verificá log y status. Nunca amend ni push; reportá lo que quedó suelto ` +
-    `y no era de la tarea.${BRANCHED(task.id)}${OPERATOR}`,
+    `y no era de la tarea.${BRANCHED(task.id, tree)}${OPERATOR}`,
     { schema: COMMIT, label: 'commit' },
   ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
   if (!commit) return stop('agent-unavailable', 'Commit no devolvió resultado')
@@ -1534,7 +1582,7 @@ while (rounds++ < MAX_TASKS) {
     `commit=${commit.hash || commit.reason}` +
     // El sufijo es el del contrato de DONE, `(repo@rama)`: `check` saca de ahí en qué repositorio buscar el
     // commit, y escrito en prosa lo leía como si no nombrara ninguno.
-    `${commit.branch ? ` (${task.service}@${commit.branch}), con ese sufijo copiado tal cual` : ''}. ` +
+    `${commit.branch ? ` (${declared}@${commit.branch}), con ese sufijo copiado tal cual` : ''}. ` +
     `En tests rastreá cada criterio con la ` +
     `prueba que cubiertos le asigna` +
     (noSurface.length ? ', y los de sin-superficie con tests: n/a — <razón>' : '') +

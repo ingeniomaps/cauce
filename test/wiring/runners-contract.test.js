@@ -245,5 +245,8 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   //
   // 56 desde el 2026-10-01: el cierre dicta `tools/ops.js lessons` para traer las lecciones (caso 214),
   // en la misma vuelta y desde la misma raíz que el `tools/ops.js check` que ya dictaba.
-  assert.equal(hits, 56, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 57 desde el 2026-10-05: en una línea de trabajo el recorrido dicta `tools/ops.js worktree` para armar
+  // el árbol de la tarea (caso 274). Misma forma literal y misma raíz que el `claim` de la fase anterior.
+  assert.equal(hits, 57, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })

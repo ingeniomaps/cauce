@@ -62,6 +62,12 @@ diseño — eso vive en el commit y en el código.
   la instancia; si ésa es una rama viva, en la rama de trabajo de planning que ya exista, o en `work/planning`
   si no hay ninguna. El checkpoint del hito se commitea igual. **Qué hacer:** nada si ya usás `commitPerTask`;
   con `commitPerTask` apagado no cambia (casos 266 y 271).
+- **En una línea de trabajo, `autobuild` construye cada tarea en su propio árbol.** Las líneas comparten por
+  enlace el mismo checkout del producto, y cortar la rama ahí lo dejaba parado en la tarea de una para todas
+  las demás. Ahora, en una línea, el recorrido arma el árbol con `ops worktree`, trabaja ahí, renombra la rama
+  a `<tipo>/<slug>` al commitear y saca el árbol; el checkout compartido no se toca. Fuera de una línea no
+  cambia nada: se sigue trabajando en la carpeta que está. `ops worktree` deja el árbol al lado del repositorio
+  tal como lo ve la sesión, y su `--json` trae `work`, la ruta donde trabajar (caso 274).
 - **Review ya no manda al INBOX lo que revisó y dio bien.** Cada hallazgo que no bloquea dice si propone algo.
   Lo que propone va a `inbox/propuestas/` como antes; la constancia queda en `review:` de la entrada de `done/`
   (caso 262).

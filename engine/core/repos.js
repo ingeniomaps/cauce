@@ -35,6 +35,16 @@ function declaredRoots(opsRoot) {
 const holds = (root, service) => fs.existsSync(path.join(root.dir, service || '.'))
   || service === root.name || service === path.basename(root.dir)
 
+// Dónde vive el servicio tal como lo declara la instancia, sin resolver enlaces: la carpeta dentro de la raíz
+// si existe, o la raíz misma cuando el servicio se llama como ella. Lo necesita quien arma un árbol de
+// trabajo, que tiene que quedar al lado de lo que la sesión ve y no al lado de a dónde apunta un enlace.
+function serviceDirs(opsRoot, service) {
+  return declaredRoots(opsRoot).filter((root) => holds(root, service)).map((root) => {
+    const inner = path.join(root.dir, service || '.')
+    return fs.existsSync(inner) && fs.statSync(inner).isDirectory() ? inner : root.dir
+  })
+}
+
 function reposFor(opsRoot, service) {
   return declaredRoots(opsRoot)
     .filter((root) => holds(root, service))
@@ -234,4 +244,5 @@ function commitStatus(opsRoot, items) {
   })
 }
 
-module.exports = { reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions, commitFiles, commitStatus }
+module.exports = {
+  serviceDirs, reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions, commitFiles, commitStatus }
