@@ -1,14 +1,15 @@
 ---
 caso: 274
 titulo: en una línea el recorrido cambia de rama el producto que comparte
-estado: abierto
+estado: resuelto
+resuelto-en: 0.101.0
 prioridad: media
 version-detectada: 0.100.0
 ---
 
 # 274 — Dos líneas de trabajo comparten por enlace el mismo checkout del producto, y el commit de una lo deja parado en su rama
 
-**🔴 abierto** · detectado en 0.100.0 · prioridad **media**.
+**🟢 resuelto en 0.101.0** · detectado en 0.100.0 · prioridad **media**.
 
 **Prioridad media**: con una sola línea activa no pasa nada. Con dos a la vez, que es para lo que existe una línea, una
 construye sobre la rama que la otra acaba de cortar.
@@ -69,3 +70,38 @@ La primera corrida real dentro de una línea.
 - 251 — el paso de Commit no corta rama.
 - 218 — una línea de trabajo, su propia carpeta de sesión.
 - 263 — `ops line` deja la carpeta de la línea sin los repos.
+
+## Cierre
+
+**Resuelto en 0.101.0.** El dueño eligió la opción 1.
+
+### El recorrido de lo que este caso enumeró
+
+- **1, un árbol por tarea dentro de una línea — se hizo.** Fuera de una línea no se arma ninguno: se trabaja
+  en la carpeta que está.
+- **2, un árbol del producto por línea — se decidió que no.** Multiplicaba dependencias instaladas para
+  resolver lo que la 1 resuelve sin copiar nada.
+- **3, dejarlo y decirlo — se decidió que no.** Dos líneas a la vez es para lo que las líneas existen.
+- **Tradeoff de la 1, la ruta deja de ser la declarada — se atendió.** A `planning` sigue viajando el
+  servicio como lo nombra la tarea; la ruta del árbol sólo la reciben las fases que trabajan.
+
+### Lo que el caso no preveía
+
+- `ops worktree` dejaba el árbol al lado del destino del enlace: fuera de las raíces de la línea y dentro de
+  la carpeta que comparten las demás. Ahora queda al lado del repositorio como lo ve la sesión.
+- La puerta declarada de la raíz nombra al servicio por su ruta, que en una línea es el checkout compartido.
+  Lo encontró la corrida real y salió como caso propio: 276.
+
+### Qué se corrió
+
+- **Dos sesiones reales a la vez**, una por línea, sobre el mismo repositorio de producto, cada una con
+  `/autobuild` y su propia tarea. Al cerrar: el checkout compartido seguía en `main` y limpio, con las
+  ramas `feat/baja-marca-inactivo` y `feat/alta-exige-email` salidas las dos de `main`; `git worktree list`
+  devolvía sólo el principal; cada instancia tenía sus dos commits de planning en `line/admin` y `line/auth`,
+  y `ops check planning` daba exit 0 en las dos.
+- **Una segunda tarea en la misma línea**, después de resolver su checkpoint: tercera rama desde `main`, árbol
+  retirado.
+- **Fuera de una línea**, una corrida real en una instancia embebida parada en `main`: `git worktree list`
+  con una sola entrada y la rama `fix/…` cortada en el lugar.
+- **Las pruebas nuevas vistas en rojo** al quitar el árbol y al dejar de pasarle la ruta a las fases.
+- **La puerta entera**, `npm run ci`.

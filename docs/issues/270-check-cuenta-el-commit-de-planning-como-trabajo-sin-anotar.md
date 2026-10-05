@@ -78,3 +78,9 @@ dentro del repositorio.
   planning, uno que toca planning y código. Cuentan el primero y el tercero.
 - **Una mutación en rojo**, en una copia: sin la exclusión.
 - **La puerta entera**, `npm run ci`.
+
+### Una corrida entera con el motor arreglado, el 2026-10-05
+
+Instancia embebida parada en `main`, sesión real con `/autobuild`. Quedaron tres commits en la rama de la
+tarea —el del producto, `chore(planning): close …` y `chore(planning): await review of …`—, `main` sin
+tocar, y `ops check planning --json` con `"warnings":[]`.

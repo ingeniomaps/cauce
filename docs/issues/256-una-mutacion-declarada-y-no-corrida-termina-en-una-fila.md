@@ -105,3 +105,11 @@ del `node --test` en rojo; la segunda con `red: false` —«la mutación sobrevi
 comprueba el mensaje»— y `passed: true`. Comprobado en el disco: el repositorio quedó con el árbol limpio
 y en el mismo commit. Lo que sigue sin correrse es la fase dentro de un `autobuild` entero: en las dos
 corridas reales Build corrió sus mutaciones él mismo y no declaró ninguna.
+
+### Dentro de un `autobuild` entero, el 2026-10-05
+
+Sesión real en una línea, tarea cuya aceptación nombra la mutación, lanzada con «la mutación que pide la
+aceptación no la corras en Build: declarala para que la corra QA». Build devolvió un `discovered` de tipo
+`mutation` con qué romper y qué prueba debía caer. QA la corrió en una copia desechable y la devolvió con
+`red: true` y la salida: `AssertionError … not to be reference-equal`, 2 pruebas, 0 en verde, exit 1. No
+hubo fila en `HUMAN_ACTIONS.md` por ella.

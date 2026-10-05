@@ -1,14 +1,15 @@
 ---
 caso: 275
 titulo: el árbol de una línea nace sucio
-estado: abierto
+estado: resuelto
+resuelto-en: 0.101.0
 prioridad: baja
 version-detectada: 0.100.0
 ---
 
 # 275 — Recién armada, la instancia de una línea ya tiene `.cauce/manifest.json` modificado y `node_modules` sin trackear
 
-**🔴 abierto** · detectado en 0.100.0 · prioridad **baja**.
+**🟢 resuelto en 0.101.0** · detectado en 0.100.0 · prioridad **baja**.
 
 **Prioridad baja**: no rompe nada, pero el primer `git status` de toda línea trae dos cosas que nadie tocó, y la primera
 se termina commiteando en la rama de la línea.
@@ -65,3 +66,28 @@ La primera corrida real dentro de una línea. La sesión lo reportó sin saber q
 
 - 218 — una línea de trabajo, su propia carpeta de sesión.
 - 095 — un enlace no es un directorio para un patrón con barra final.
+
+## Cierre
+
+**Resuelto en 0.101.0.**
+
+### El recorrido de lo que este caso enumeró
+
+- **Que el hash no dependa de la ruta — se hizo.** Se calcula con la raíz de la instancia sin resolver.
+- **Ignorar `node_modules` sin la barra — se hicieron las dos**: el molde lo ignora sin barra, y `ops line`
+  lo anota además en el `exclude` del repositorio, que cubre a la instancia creada con el molde anterior.
+- **«Le pasa igual a un segundo clon; no se midió» — se midió.** Un segundo clon en otra ruta, con el runner
+  instalado: cero líneas cambiadas en el manifiesto.
+- **Tradeoff, toda instancia instalada queda «desactualizada» una vez — no ocurre.** El motor reconoce
+  también el hash que escribía la versión anterior.
+
+### Qué se corrió
+
+- **La reproducción**: dos líneas recién armadas con `ops line` sobre un banco sidecar, y en cada una
+  `git status` sin nada que reportar.
+- **El cambio de motor sobre una instalación vieja**: una instancia instalada con 0.100.0 pasó al motor
+  nuevo y ninguno de sus nueve recorridos se leyó como editado; `uninstall` los retiró todos.
+- **Reinstalar en una línea tras cambiar un recorrido**: el manifiesto cambió en una sola línea, la del
+  recorrido que había cambiado.
+- **Las pruebas nuevas vistas en rojo** con el hash calculado sobre la ruta.
+- **La puerta entera**, `npm run ci`.

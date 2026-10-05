@@ -111,3 +111,10 @@ quien lanzó la corrida.
 En un banco sidecar instalado fuera del árbol, sesión de Claude Code con `/autobuild`, tarea `full`, lanzada con «Los mensajes de error del producto van en inglés.»: el código entregado lanza
 `Error('email is required')` en un repositorio cuyo resto está en español. La crítica, que no recibía el
 pedido, lo marcó como supuesto sin contrastar; ahora lo recibe como dato, en las dos críticas.
+
+### Un pedido que contradice la aceptación, el 2026-10-05
+
+Instancia embebida, sesión real, tarea con «con base cero o positiva devuelve lo mismo que hoy» y lanzada
+con «con base cero también tiene que lanzar error». El recorrido construyó la aceptación —una prueba fija
+`precio(0, 0.5) === 0`— y el pedido quedó como fila `pendiente` de `HUMAN_ACTIONS.md`, citado textual y con
+sus dos salidas. El pedido no reescribió la aceptación ni se perdió.

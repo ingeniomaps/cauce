@@ -117,5 +117,12 @@ un `.env` sin que la persona lo nombrara. El guard devolvió `permissionDecision
   no apareció en pantalla, y el agente le dijo a la persona que el guard había frenado la lectura.
 - **La prueba de `native-confirmation`**, que ahora fija `acceptEdits` adentro y `plan` afuera.
 - **La puerta entera**, `npm run ci`.
-- **Lo que no se corrió**: `dontAsk`, y otras versiones del runner.
+- **Lo que no se corrió**: otras versiones del runner. `dontAsk` se midió después, abajo.
 
+### `dontAsk`, medido el 2026-10-05
+
+Dos sesiones reales abiertas con `--permission-mode dontAsk` en un banco instalado, con un `.env` de
+mentira. El hook recibió `permission_mode: "dontAsk"`. Con un pedido que no nombraba el archivo, la lectura
+se frenó con el texto del guard, sin diálogo, y la sesión preguntó en el chat. Con un pedido que decía
+«abrí el archivo .env», pasó: es la orden de la persona en el chat, no el modo. `dontAsk` queda fuera de
+los modos con diálogo, que es donde estaba.
