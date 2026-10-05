@@ -48,6 +48,18 @@ test('se avisa por entrada el sha que su repositorio no tiene, y sólo ése', ()
   assert.match(warnings[0], /el commit deadbee no está en su repositorio/)
 })
 
+// Caso 254, del lado de `check`: con una raíz por repositorio, `(api@main)` nombra a la raíz y no a una
+// carpeta adentro. Buscando sólo adentro, el commit quedaba «sin comprobar» teniendo el repositorio al lado.
+test('un repositorio nombrado como su raíz declarada se encuentra', () => {
+  const { target, sha } = instance('cauce-commits-raiz-')
+  const file = path.join(target, 'ops.config.json')
+  const config = JSON.parse(fs.readFileSync(file, 'utf8'))
+  config.workspaceRoots = [{ name: 'api', path: '../api' }]
+  fs.writeFileSync(file, JSON.stringify(config, null, 2))
+  const status = R.commitStatus(target, [{ sha, repo: 'api' }, { sha: 'deadbee', repo: 'api' }])
+  assert.deepEqual(status, ['found', 'missing'])
+})
+
 test('lo que no se puede mirar va en una sola línea, con los repositorios que faltan', () => {
   const { target, sha } = instance('cauce-commits-ausente-')
   const warnings = DC.unknownCommitWarnings([

@@ -27,7 +27,6 @@ function declaredRoots(opsRoot) {
     .filter((one) => one && one.path)
     .map((one) => ({ name: one.name, dir: path.resolve(opsRoot, one.path) }))
 }
-const rootDirs = (opsRoot) => declaredRoots(opsRoot).map((root) => root.dir)
 
 // Un servicio se nombra de dos formas y las dos están en uso: como ruta dentro de una raíz que contiene
 // varios repositorios —raíz `..`, `service: api`—, o con el nombre de una raíz que ya es el repositorio
@@ -194,11 +193,14 @@ function commitFiles(opsRoot) {
 // Una llamada por repositorio, con todos sus shas por stdin: `check` corre seguido. `cat-file --batch-check`
 // acepta shas abreviados y dice el tipo, así que un blob tampoco cuenta como commit (comprobado con git 2.43.0).
 function commitStatus(opsRoot, items) {
-  const roots = rootDirs(opsRoot)
+  const roots = declaredRoots(opsRoot)
   const named = new Map()
+  // El nombre es una carpeta dentro de una raíz o el de una raíz que ya es el repositorio: las dos formas
+  // de `holds`, y por lo mismo (caso 254).
   const repoOfName = (name) => {
     if (!named.has(name)) {
-      named.set(name, roots.map((root) => path.join(root, name))
+      named.set(name, roots
+        .map((root) => (name === root.name || name === path.basename(root.dir) ? root.dir : path.join(root.dir, name)))
         .find((dir) => fs.existsSync(dir) && git(dir, 'rev-parse', '--show-toplevel').stdout.trim() === dir) || '')
     }
     return named.get(name)

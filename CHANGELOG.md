@@ -66,7 +66,8 @@ diseño — eso vive en el commit y en el código.
   vale el plan de la instancia; con la variable, el id sigue siendo el que declara (caso 260).
 - **`ops worktree` encuentra el repositorio cuando el servicio se llama como su raíz.** Con una raíz por
   repositorio —`platform → ../platform`— y tareas `(service: platform)`, decía que el repositorio no existía.
-  Ahora un servicio resuelve también por el nombre de la raíz o por el último tramo de su ruta (caso 254).
+  Ahora un servicio resuelve también por el nombre de la raíz o por el último tramo de su ruta, y `check`
+  encuentra igual el repositorio que nombra un `commit:` de `done/` (caso 254).
 - **Lo que la crítica anota sin bloquear ya no se pierde.** Va a la corrección del plan, con la indicación de
   no ampliarlo por eso, y queda en las decisiones del WIP. Antes no salía de la crítica, así que una decisión
   que la crítica ya había tomado no le llegaba a nadie (caso 249).
