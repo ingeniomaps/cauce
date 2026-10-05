@@ -207,3 +207,11 @@ la corrida con `commit-failed` antes de escribir `done/`.
   `engine/cli/contract.js`; faltaba la prueba de la salida sin `--json`.
 - **Lo que no se corrió**: un `autobuild` de punta a punta, y un repo cuya rama por defecto del remoto no
   sea `main` ni `master` —la sonda no tenía remoto—.
+
+### Corrida real del 2026-10-05
+
+En un banco sidecar instalado fuera del árbol, sesión de Claude Code con `/autobuild`, tarea `full`, con el repositorio del producto parado en `main`: el commit `0323cbf` quedó en
+`feat/alta-exige-email` y `main` siguió en `d552312`, comprobado con `git log --all`. La entrada de `done/`
+nombró la rama, pero en prosa —«(rama … del repo app)»— y no en el formato del contrato; el recorrido
+ahora pasa `(servicio@rama)` para copiar tal cual. Y `check` no encontraba un repositorio nombrado como su
+raíz declarada: es la otra mitad del 254, arreglada en `commitStatus` con su prueba.

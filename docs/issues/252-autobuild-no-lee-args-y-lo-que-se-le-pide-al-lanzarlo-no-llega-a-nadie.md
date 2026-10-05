@@ -106,3 +106,8 @@ quien lanzó la corrida.
   aceptación.
 - **Lo que no se corrió**: una corrida real lanzada con un pedido.
 
+### Corrida real del 2026-10-05
+
+En un banco sidecar instalado fuera del árbol, sesión de Claude Code con `/autobuild`, tarea `full`, lanzada con «Los mensajes de error del producto van en inglés.»: el código entregado lanza
+`Error('email is required')` en un repositorio cuyo resto está en español. La crítica, que no recibía el
+pedido, lo marcó como supuesto sin contrastar; ahora lo recibe como dato, en las dos críticas.

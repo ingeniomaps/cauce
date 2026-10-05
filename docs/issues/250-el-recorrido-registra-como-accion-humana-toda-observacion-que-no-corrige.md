@@ -246,3 +246,10 @@ entra queda contado en el hecho de build que llega a `done/`.
 - **La puerta entera**, `npm run ci`.
 - **Lo que no se corrió**: un `autobuild` de punta a punta, y que un agente real escriba bien el archivo
   en `inbox/deuda/` —el arnés mira el prompt, no el disco—.
+
+### Corrida real del 2026-10-05
+
+En un banco sidecar instalado fuera del árbol, sesión de Claude Code con `/autobuild`, tarea `full`: Build dejó dos filas `pendiente`, las dos decisiones de producto —qué cuenta como email
+válido, y qué se hace con un conteo del informe que el cambio deja a medias—; una entrada en
+`inbox/deuda/` con su remitente —un módulo sin pruebas—; y tres notas en `decisions:` de la entrada de
+`done/`, cada una con su `[supuesto: …]`. Comprobado en el disco. Antes, las seis habrían sido filas.

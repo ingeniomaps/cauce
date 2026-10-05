@@ -218,3 +218,10 @@ al WIP, a Build y a Review, que recibe la orden de comprobar sobre el diff que s
   uno y sin inspeccionar código, así que no dice cuánto pasa en una crítica real; dice por dónde miraría.
 - **La puerta entera**, `npm run ci`.
 - **Lo que no se corrió**: un `autobuild` real de punta a punta con el campo nuevo.
+
+### Corrida real del 2026-10-05
+
+En un banco sidecar instalado fuera del árbol, sesión de Claude Code con `/autobuild`, tarea `full`: la crítica aprobó el plan con una condición para quien construye —un `test` por caso, para
+ver los cuatro en rojo— y **no hubo replan ni segunda crítica**. El diario va `plan → critique → wip`. El
+WIP quedó con «Condiciones con las que la crítica aprobó el plan» y, aparte, «Anotado por la crítica sin
+bloquear», y la entrega salió con un `test()` por caso. No se dio el otro camino, el de la segunda crítica.
