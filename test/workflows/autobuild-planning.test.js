@@ -79,3 +79,32 @@ test('una corrida que retoma le dice a Review dónde están las condiciones de l
   assert.ok(direct.includes(NAMES) && !/retomó desde el WIP/.test(direct),
     'con las condiciones en memoria van escritas')
 })
+
+// Caso 271. El checkpoint del hito se escribe después del último commit de planning, así que quedaba
+// suelto en la instancia. Se commitea con la misma regla, y sólo si el proyecto commitea por tarea.
+test('el checkpoint del hito también se commitea, con la regla de rama de planning', async () => {
+  const gate = (prompts) => promptOf(prompts, 'Closing|human-checkpoint') || prompts
+    .filter((one) => one.key.endsWith('|human-checkpoint')).map((one) => one.prompt).join('\n')
+  const on = await runFlow(contract({ humanCheckpoint: true }))
+  assert.match(gate(on.prompts), /chore\(planning\): await review of H1/)
+  assert.match(gate(on.prompts), /y sólo ése/)
+  assert.match(gate(on.prompts), /la rama de trabajo de planning que ya exista/)
+
+  const off = await runFlow(contract({ humanCheckpoint: true, commitPerTask: false }))
+  assert.ok(gate(off.prompts).includes('AWAITING_REVIEW'), 'el checkpoint se escribe igual')
+  assert.doesNotMatch(gate(off.prompts), /await review of/, 'pero no se commitea')
+})
+
+// Caso 272. Lo que Review anota se recorta porque sigue entero en `done/`. La deuda de Build no queda en
+// ningún otro lado: recortada, la entrada del INBOX terminaba en «…» y nadie tenía el resto.
+test('la deuda que anota Build llega entera al INBOX', async () => {
+  const long = `el módulo de informes no tiene pruebas ${'y sigue sin tenerlas '.repeat(20)}hasta el final`
+  assert.ok(long.length > 300)
+  const { prompts } = await runFlow({ [KEY.build]: { ...baseScript()[KEY.build],
+    discovered: [{ kind: 'debt', detail: `${long}\nuna segunda línea que no viaja` }] } })
+  const debt = prompts.filter((one) => one.key.endsWith('|build-debt')).map((one) => one.prompt).join('\n')
+  assert.ok(debt.includes(`${long} (autobuild · T-1 · 2026-09-08)`), 'entera y con su remitente')
+  assert.doesNotMatch(debt, /…/, 'sin recortar')
+  assert.doesNotMatch(debt, /segunda línea/, 'y en una sola línea')
+})
+

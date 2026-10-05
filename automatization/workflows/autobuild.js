@@ -1185,7 +1185,10 @@ while (rounds++ < MAX_TASKS) {
     await write(`Registrá en ${inboxWhere(P, 'Deuda')} el trabajo que el build de ${task.id} identificó y ` +
       `no es de esta tarea, sin promover ninguno. ${INBOX_FILES} ` +
       `${inboxAsk(['Deuda'], planning.inbox, origin)} ` +
-      `Lo anotado: ${JSON.stringify(kept('debt').map((detail) => withOrigin(detail, origin)))}`,
+      // Entero y no recortado, a diferencia de lo que anota Review: aquello sigue completo en `done/`, y
+      // esto no queda en ningún otro lado. Recortado, la entrada terminaba en «…» y la revisión siguiente
+      // proponía completarla (caso 272).
+      `Lo anotado: ${JSON.stringify(kept('debt').map((detail) => `${detail.split('\n')[0].trim()} ${origin}`))}`,
     { label: 'build-debt' })
   }
   const openDecisions = kept('open').map((detail) => ({ detail }))
@@ -1617,7 +1620,11 @@ if (completed.length && contract.humanCheckpoint) await write(
   `Creá ${GATE} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones humanas ` +
   `pendientes y las instrucciones exactas para continuar. Arrancá el archivo con un frontmatter ` +
   `"status: pendiente", y decí que se destraba cambiándolo a "resuelta" —no borrando el archivo, que es ` +
-  `lo que deja leer después qué se revisó—. Nunca hagas push ni deploy.`,
+  `lo que deja leer después qué se revisó—. Nunca hagas push ni deploy.` +
+  // El checkpoint también es estado de planning, y se escribe después del último commit de planning: sin
+  // esto cada hito terminaba con ese archivo suelto en la instancia (caso 271).
+  (contract.commitPerTask ? ` Después commiteá ese archivo, y sólo ése, con el mensaje "chore(planning): await ` +
+    `review of ${currentMilestone}".${PLANNING_BRANCH()}` : ''),
   { label: 'human-checkpoint' },
 )
 return finish({ done: completed, count: completed.length, hito: currentMilestone, phases: ran })

@@ -60,8 +60,8 @@ diseño — eso vive en el commit y en el código.
 - **`autobuild` commitea el estado de planning al cerrar cada tarea.** La cola, `done/`, las acciones humanas y
   el INBOX quedaban escritos y sin commitear. Ahora se commitean después del cierre, en la rama en la que esté
   la instancia; si ésa es una rama viva, en la rama de trabajo de planning que ya exista, o en `work/planning`
-  si no hay ninguna. **Qué hacer:** nada si ya usás `commitPerTask`; con `commitPerTask` apagado no cambia
-  (caso 266).
+  si no hay ninguna. El checkpoint del hito se commitea igual. **Qué hacer:** nada si ya usás `commitPerTask`;
+  con `commitPerTask` apagado no cambia (casos 266 y 271).
 - **Review ya no manda al INBOX lo que revisó y dio bien.** Cada hallazgo que no bloquea dice si propone algo.
   Lo que propone va a `inbox/propuestas/` como antes; la constancia queda en `review:` de la entrada de `done/`
   (caso 262).
@@ -71,6 +71,8 @@ diseño — eso vive en el commit y en el código.
 - **`check` ya no avisa por el commit de planning.** En una instancia embebida, el commit que sólo toca
   `planning/` contaba como trabajo que ninguna entrada de `done/` nombra (OPS-001). Ya no cuenta; el que toca
   además código, sí (caso 270).
+- **La deuda que anota Build llega entera al INBOX.** Se recortaba a 240 caracteres y terminaba en «…», sin que
+  el resto quedara en ningún lado (caso 272).
 - **Al retomar una corrida, Review vuelve a comprobar las condiciones de la crítica.** Las condiciones con las
   que la crítica aprobó el plan viajaban en memoria, así que una corrida retomada desde el WIP llegaba a Review
   sin ellas. Ahora Review recibe el archivo del WIP donde quedaron (caso 267).
