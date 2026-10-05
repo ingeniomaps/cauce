@@ -263,6 +263,12 @@ const QA = {
   properties: {
     passed: { type: 'boolean' }, evidence: { type: 'string' }, behavioral: { type: 'boolean' },
     bugs: { type: 'array', items: { type: 'string' } },
+    // Lo que dio cada mutación que Build declaró sin correr. `red` es lo único que se decide con esto: una
+    // que no se puso roja dice que la prueba no cuida lo que nombra (R9).
+    mutations: { type: 'array', items: { type: 'object', additionalProperties: false,
+      required: ['detail', 'red'],
+      properties: { detail: { type: 'string' }, red: { type: 'boolean' }, output: { type: 'string' } },
+    } },
   },
 }
 // RED/GREEN sin registro es una intención: después nadie distingue el test que se vio fallar del que se
@@ -284,7 +290,7 @@ const BUILD = {
     discovered: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['kind', 'detail'],
       properties: {
-        kind: { type: 'string', enum: ['edge', 'open', 'note', 'debt'] },
+        kind: { type: 'string', enum: ['edge', 'open', 'note', 'debt', 'mutation'] },
         detail: { type: 'string' }, test: { type: 'string' },
       },
     } },
@@ -1107,7 +1113,8 @@ while (rounds++ < MAX_TASKS) {
     `persona: elegir entre opciones que cambian el rumbo del producto, el gasto, una obligación externa o ` +
     `el riesgo; ésa va a una fila que alguien tiene que contestar, así que no la uses para lo demás. ` +
     `kind=debt si es trabajo identificado que no es de esta tarea —un archivo sobre el umbral, un ` +
-    `dependiente fuera del servicio, una mutación que declarás y no corriste—: queda anotado como deuda. ` +
+    `dependiente fuera del servicio—: queda anotado como deuda. kind=mutation si es una mutación que ` +
+    `declarás y no corriste: decí qué se rompe y qué prueba tiene que ponerse roja, y la corre QA. ` +
     `kind=note si no hay nada que decidir ni que hacer —una elección de redacción, un supuesto que ya ` +
     `tomaste, algo que se acepta como está—: queda escrito en el cierre de la tarea. Si dudás entre open y ` +
     `otra, es open: una pregunta de más cuesta menos que una decisión que nadie vio. Si de verdad no podés ` +
@@ -1143,9 +1150,13 @@ while (rounds++ < MAX_TASKS) {
   const found = (kind) => [...new Set(build.discovered.filter((entry) => entry.kind === kind)
     .map((entry) => entry.detail))]
   const kept = (kind) => found(kind).slice(0, INBOX_CAP)
-  const spilled = ['open', 'debt', 'note'].map((kind) => [kind, found(kind).length - kept(kind).length])
+  const spilled = ['open', 'debt', 'note', 'mutation'].map((kind) => [kind, found(kind).length - kept(kind).length])
     .filter(([, extra]) => extra > 0).map(([kind, extra]) => `${extra} ${kind} sin volcar`)
   const buildNotes = kept('note')
+  // Una mutación declarada y no corrida no es una pregunta ni deuda: es trabajo que un agente puede hacer
+  // en una copia, y la fase que ya trabaja así es QA. Como fila se cerraba pidiendo que alguien la corriera
+  // (caso 256).
+  const unrun = kept('mutation')
   const buildFact = build.summary + (spilled.length ? ` · ${spilled.join(' · ')}` : '')
   if (kept('debt').length) {
     const origin = inboxOrigin('autobuild', task.id, planning.today)
@@ -1420,12 +1431,26 @@ while (rounds++ < MAX_TASKS) {
         ? 'Hacé la comprobación de aceptación real más barata'
         : 'Ejercitá el comportamiento real que ve quien lo usa'} para ` +
       `${task.id}. Las pruebas unitarias solas no son QA. Levantá el mínimo runtime necesario y bajalo ` +
-      `después. Aceptación: ${checkable}.`,
+      `después. Aceptación: ${checkable}.`
+      + (unrun.length ? ' El build declaró estas mutaciones y no las corrió. Corré cada una en una copia '
+        + 'desechable del repositorio, nunca en el árbol de trabajo, y reportala en mutations con red=true si '
+        + `la prueba que nombra se puso roja y la salida que lo muestra en output: ${JSON.stringify(unrun)}. `
+        + 'Una que no se ponga roja no hace fallar el QA: se reporta con red=false.' : ''),
       { schema: QA, label: 'qa' },
     )
     if (!qa) return stop('agent-unavailable', 'QA no devolvió resultado')
     if (!qa.passed) return stop('qa-failed', qa.evidence)
   }
+
+  // Lo que pasó con cada mutación declarada, dicho siempre: la que se puso roja, la que sobrevivió y la que
+  // nadie corrió —porque el carril no pasa por QA, o porque QA no la reportó— se leen distinto en `done/`.
+  const ranMutations = (qa.mutations || []).slice(0, unrun.length)
+  const mutationFact = unrun.length ? [
+    ...ranMutations.map((one) => `${one.detail}: ${one.red ? 'roja' : 'SOBREVIVIÓ, la prueba no la ve'}`
+      + (one.output ? ` (${one.output})` : '')),
+    ...(unrun.length > ranMutations.length
+      ? [`${unrun.length - ranMutations.length} declarada(s) sin correr`] : []),
+  ].join(' | ') : ''
 
   phase('Commit')
   const commit = contract.commitPerTask ? await run(
@@ -1466,7 +1491,8 @@ while (rounds++ < MAX_TASKS) {
     (noSurface.length ? `sin-superficie=${JSON.stringify(noSurface.map(({ criterion, reason }) => ({
       criterion, reason: reason || 'no se ejecuta' })))}; ` : '') +
     (outOfVerify.length ? `fuera-de-verify=${JSON.stringify(outOfVerify)}; ` : '') +
-    `qa=${qa.evidence}; commit=${commit.hash || commit.reason}` +
+    `qa=${qa.evidence}${mutationFact ? ` · mutaciones: ${mutationFact}` : ''}; ` +
+    `commit=${commit.hash || commit.reason}` +
     `${commit.branch ? ` (rama ${commit.branch})` : ''}. En tests rastreá cada criterio con la ` +
     `prueba que cubiertos le asigna` +
     (noSurface.length ? ', y los de sin-superficie con tests: n/a — <razón>' : '') +

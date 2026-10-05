@@ -1,14 +1,15 @@
 ---
 caso: 256
 titulo: una mutación declarada y no corrida termina en una fila
-estado: abierto
+estado: resuelto
+resuelto-en: 0.101.0
 prioridad: media
 version-detectada: 0.100.0
 ---
 
 # 256 — La mutación que Build o Review declaran sin haberla corrido va a `HUMAN_ACTIONS.md` en vez de correrse
 
-**🔴 abierto** · detectado en 0.100.0 · prioridad **media**.
+**🟢 resuelto en 0.101.0** · detectado en 0.100.0 · prioridad **media**.
 
 **Prioridad media**: fueron 3 de las 20 filas de globex. Con el 250 arreglado dejan de pedirle algo a una persona, pero la
 mutación sigue sin correrse.
@@ -58,3 +59,39 @@ Al ordenar los casos el 2026-10-05, separado del 250.
 ## Relacionados
 
 - 250 — el recorrido registra como acción humana toda observación que no corrige.
+
+## Cierre
+
+**Resuelto en 0.101.0**, con el tope que el dueño aceptó el 2026-10-05: tres por tarea.
+
+`discovered[].kind` suma `mutation`. QA recibe hasta tres, las corre en una copia desechable y reporta
+cada una en `mutations` con `red`. Lo que dio va a `qa:` de la entrada de `done/`: la que se puso roja,
+la que sobrevivió y la que nadie corrió se leen distinto.
+
+### El recorrido de lo que este caso enumeró
+
+- **Fix, que entre a QA como caso y el resultado vaya a `qa:` — se hizo.**
+- **«Un tope de mutaciones por corrida, y a dónde va lo que pasa del tope» — se hizo**: tres, y el resto
+  queda contado en el hecho de build, como las otras clases.
+- **Tradeoff «QA cuesta más por tarea» — se paga, sin medir.** Lo activa la primera corrida real con
+  mutaciones declaradas; ahí se lee cuánto tardó QA.
+- **Tradeoff «una mutación mal descrita no se puede correr» — se hizo**: la que QA no reporta queda como
+  «declarada sin correr», y ninguna de las tres salidas frena la entrega.
+- **Síntoma, «el revisor ya la había corrido y la fila quedó abierta» — no se contrastó**, y deja de
+  importar: ya no hay fila.
+
+### Lo que el caso no preveía
+
+- **Una mutación que sobrevive no frena.** Dice que la prueba no cuida lo que nombra, y queda escrito en
+  mayúsculas en `qa:`; pararla ahí sería un freno nuevo sobre trabajo que ya pasó Verify y QA.
+- **Sin QA no se corre.** En el carril mecánico y en una tarea sin superficie ejecutable quedan como
+  «declaradas sin correr».
+
+### Qué se corrió
+
+- **Antes y después en el arnés**: la mutación iba a `build-debt`; ahora está en el prompt de QA, no abre
+  fila ni entrada de INBOX, y el prompt de Done trae `mutaciones: … roja (1 failing)`, o «SOBREVIVIÓ», o
+  «1 declarada(s) sin correr».
+- **Siete mutaciones.** Seis en rojo a la primera; **una sobrevivió** —quitar la frase que dice que una
+  que sobrevive no hace fallar el QA—, se agregó la aserción y se vio en rojo.
+- **Lo que no se corrió**: un QA real corriendo una mutación en una copia. El arnés mira el prompt.

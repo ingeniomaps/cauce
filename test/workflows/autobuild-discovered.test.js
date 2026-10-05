@@ -19,7 +19,7 @@ const promptOf = (prompts, label) => prompts.filter((one) => one.key.endsWith(`|
 test('de lo que Build nota, sólo la decisión abre una fila de acción humana', async () => {
   const { result, prompts } = await runFlow(building([
     { kind: 'open', detail: DECISION }, { kind: 'debt', detail: DEBT },
-    { kind: 'debt', detail: MUTATION }, { kind: 'note', detail: NOTE },
+    { kind: 'mutation', detail: MUTATION }, { kind: 'note', detail: NOTE },
   ]))
   ranToEnd(result)
   // El criterio viaja a quien clasifica, y la duda cae del lado que pregunta: sin eso una sonda real
@@ -33,7 +33,8 @@ test('de lo que Build nota, sólo la decisión abre una fila de acción humana',
 
   const debt = promptOf(prompts, 'build-debt')
   assert.match(debt, /planning\/inbox\/deuda\//, 'la deuda va a su carpeta del INBOX')
-  assert.ok(debt.includes(DEBT) && debt.includes(MUTATION), 'con todo lo identificado')
+  assert.ok(debt.includes(DEBT), 'con lo identificado')
+  assert.ok(!debt.includes(MUTATION), 'y sin la mutación, que es trabajo de QA')
   assert.ok(debt.includes(`${DEBT} (autobuild · T-1 · 2026-09-08)`), 'y cada entrada dice de qué tarea salió')
   assert.ok(!debt.includes(DECISION) && !debt.includes(NOTE), 'sin lo que tiene otro destino')
 
@@ -61,4 +62,33 @@ test('lo que pasa del tope no se escribe y queda contado en el cierre', async ()
     assert.ok(prompt.includes(`${kind} número 3`) && !prompt.includes(`${kind} número 4`), `${kind} corta en tres`)
   }
   assert.match(promptOf(prompts, 'done'), /build=[^;]*2 open sin volcar · 2 debt sin volcar · 2 note sin volcar/)
+})
+
+// Caso 256. La mutación que Build declara y no corre la corre QA, en una copia, y lo que dio queda en el
+// cierre. Ninguna de las tres salidas frena: una que sobrevive es un hallazgo que se lee, no una parada.
+test('una mutación declarada y no corrida la corre QA, y el cierre dice qué dio', async () => {
+  const asked = building([{ kind: 'mutation', detail: MUTATION }])
+  const qa = (mutations) => ({ ...asked, [KEY.qa]: { ...baseScript()[KEY.qa], ...(mutations && { mutations }) } })
+  const done = (prompts) => promptOf(prompts, 'done')
+
+  const red = await runFlow(qa([{ detail: MUTATION, red: true, output: '1 failing' }]))
+  ranToEnd(red.result)
+  const prompt = promptOf(red.prompts, 'qa')
+  assert.ok(prompt.includes(MUTATION), 'QA la recibe')
+  assert.match(prompt, /copia desechable del repositorio, nunca en el árbol de trabajo/)
+  assert.match(prompt, /no hace fallar el QA/, 'una que sobrevive se reporta, no frena')
+  assert.ok(!red.asked.some((key) => /\|(open-decisions|build-debt)$/.test(key)), 'y no va a una fila ni al INBOX')
+  assert.match(done(red.prompts), /qa=[^;]*mutaciones: [^;]*genReqId[^;]*: roja \(1 failing\)/)
+
+  const survived = await runFlow(qa([{ detail: MUTATION, red: false }]))
+  ranToEnd(survived.result)
+  assert.match(done(survived.prompts), /SOBREVIVIÓ, la prueba no la ve/)
+
+  const silent = await runFlow(qa(null))
+  ranToEnd(silent.result)
+  assert.match(done(silent.prompts), /1 declarada\(s\) sin correr/, 'la que nadie corrió no se da por corrida')
+
+  const none = await runFlow()
+  assert.doesNotMatch(done(none.prompts), /mutaciones:/, 'sin mutaciones declaradas no se agrega nada')
+  assert.doesNotMatch(promptOf(none.prompts, 'qa'), /mutaciones/)
 })

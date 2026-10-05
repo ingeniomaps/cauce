@@ -87,7 +87,7 @@ test('la aceptación viaja a Verify, que declara qué criterio no cubre', () => 
 // al recorrido declarada: sin el enum, las dos cosas llegan como el mismo valor y no hay qué encaminar.
 // Que después se encamine bien lo ejecuta `autobuild.test.js`.
 test('lo descubierto declara de qué tipo es y con qué se cierra', () => {
-  assert.match(workflow, /kind: \{ type: 'string', enum: \['edge', 'open', 'note', 'debt'\] \}/,
+  assert.match(workflow, /kind: \{ type: 'string', enum: \['edge', 'open', 'note', 'debt', 'mutation'\] \}/,
     'Build declara qué encontró')
   assert.match(workflow, /enum: \['missing-test', 'ambiguous', 'no-surface'\]/,
     'el criterio sin cubrir declara su causa')
