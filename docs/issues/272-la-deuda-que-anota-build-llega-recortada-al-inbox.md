@@ -75,4 +75,10 @@ Las corridas reales en bancos.
   entera, en una línea y con su remitente.
 - **Una mutación en rojo**, en una copia: el recorte de vuelta.
 - **La puerta entera**, `npm run ci`.
-- **Lo que no se corrió**: una corrida real con una deuda larga.
+- **Una corrida real con una deuda larga** se corrió después, abajo.
+
+### Una deuda larga en una corrida real, el 2026-10-05
+
+Sesión real en una línea, lanzada pidiéndole a Build que anotara una deuda con todo su detalle. El archivo
+de `inbox/deuda/` quedó en una sola línea de 1526 bytes, sin «…», con qué se decide, con qué se cierra y la
+procedencia al final: `(autobuild · informe-cuenta-con-email · 2026-10-05)`.

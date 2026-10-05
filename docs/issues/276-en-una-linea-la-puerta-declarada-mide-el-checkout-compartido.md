@@ -74,8 +74,8 @@ La primera corrida real con dos líneas a la vez, la que cerró el 274.
 ### El recorrido de lo que este caso enumeró
 
 - **Fix — se hizo.** Fuera de una línea la puerta corre tal cual, como antes.
-- **Tradeoff, la puerta que no nombra al servicio — queda dicho y sin medir.** Lo cierra una corrida en una
-  línea cuya raíz declare una puerta así; no se abrió caso porque no hay todavía un síntoma que registrar.
+- **Tradeoff, la puerta que no nombra al servicio — se midió, abajo.** Con la ruta dentro de una receta de
+  `make`, Verify la encontró y la cambió.
 
 ### Qué se corrió
 
@@ -86,3 +86,17 @@ La primera corrida real con dos líneas a la vez, la que cerró el 274.
 - **La prueba nueva vista en rojo** sin la instrucción, y la que comprueba que fuera de una línea no aparece,
   en rojo al darla siempre.
 - **La puerta entera**, `npm run ci`.
+
+### La puerta que no nombra al servicio, medida el 2026-10-05
+
+Se esperaba que fallara: con `verify: make ci` y un Makefile en la raíz cuya receta es `npm --prefix app
+test`, el comando declarado no trae ruta que cambiar, y corrido tal cual da verde sobre el checkout
+compartido —1 prueba—. Lo desmentía que Verify corriera las pruebas del árbol.
+
+Lo desmintió. En una sesión real en la misma línea, Verify abrió el Makefile, tomó la receta y la corrió
+apuntada al árbol: `npm --prefix app-informe-cuenta-con-email test` desde la raíz, exit 0, 3 pruebas, la
+previa y las dos de la tarea, y lo reportó como «receta de `make ci` con la ruta cambiada por el árbol».
+
+Es una corrida, y la sustitución la hizo quien verificaba leyendo la receta. Lo que sigue sin medir es una
+puerta que no nombra ruta en ningún nivel —un script que recorre todo lo que haya en la raíz—: ahí no hay
+qué cambiar.
