@@ -115,6 +115,8 @@ const NO_TASK = {
 // cualquiera de las veinticuatro llamadas se ve en la primera que la ejerza.
 async function runFlow(changes = {}, options = {}) {
   const script = { ...baseScript(), ...changes }
+  // Se lee acá porque más abajo `options` pasa a ser el de cada llamada a un agente.
+  const runArgs = options.args === undefined ? {} : options.args
   if (options.lane) {
     script[KEY.context] = { ...script[KEY.context], lane: options.lane }
   }
@@ -184,7 +186,7 @@ async function runFlow(changes = {}, options = {}) {
   const result = await compileWorkflow('autobuild')(
     agent, (title) => { phase = title; phases.push(title) }, (text) => said.push(text),
     async (thunks) => Promise.all(thunks.map((t) => t())), async () => [], async () => ({}),
-    {}, { total: null, spent: () => 0, remaining: () => Infinity },
+    runArgs, { total: null, spent: () => 0, remaining: () => Infinity },
   )
   return { result, phases, asked, written, wrote, said, prompts }
 }

@@ -1,14 +1,15 @@
 ---
 caso: 252
 titulo: autobuild no lee args y lo que se le pide al lanzarlo no llega a nadie
-estado: abierto
+estado: resuelto
+resuelto-en: 0.101.0
 prioridad: media
 version-detectada: 0.100.0
 ---
 
 # 252 — `autobuild` descarta sus `args`: una instrucción dada al lanzar la corrida no llega a ninguna fase, y nada lo avisa
 
-**🔴 abierto** · detectado en 0.100.0 · prioridad **media**.
+**🟢 resuelto en 0.101.0** · detectado en 0.100.0 · prioridad **media**.
 
 **Prioridad media**: no rompe una entrega, pero quien lanza la corrida cree haberle dado una instrucción y
 la corrida entera se hace sin ella. En globex costó dos commits en `main` que se habían pedido en rama.
@@ -73,3 +74,35 @@ ni a Commit»—; al buscar por dónde se perdían, no había ningún lugar dond
 
 - 251 — el paso de Commit no corta rama y commitea en la rama viva.
 - 177 — la descripción de la tarea no viaja a ninguna fase y el plan vuelve a decidir.
+
+## Cierre
+
+**Resuelto en 0.101.0, por la segunda forma: que viaje.** La recomendación de la revisión era la primera
+—parar y avisar—, y se eligió la otra por el criterio del dueño del 2026-10-05 de quitar frenos y dejar
+sólo los importantes: una parada por haber pedido algo es un freno, y lo que una persona pide al lanzar
+la corrida se cumple. **Es una lectura de quien lo construyó**, no una decisión que el dueño haya tomado
+sobre este caso.
+
+`autobuild` lee `args` —el texto, o su campo `note`— y lo pasa a Plan, Build y Commit como pedido de
+quien lanzó la corrida.
+
+### El recorrido de lo que este caso enumeró
+
+- **Fix 1, que avise — se decidió que no**, por lo de arriba.
+- **Fix 2, que viaje — se hizo.**
+- **Tradeoff «una instrucción puede contradecir la aceptación o una regla, y hay que decir cuál gana» — se
+  hizo**: el prompt dice que mandan la aceptación y las reglas, y que la contradicción se dice.
+- **Tradeoff «le da a una frase suelta el mismo peso que a la aceptación» — acotado, no eliminado.** No
+  llega a Review, que sigue juzgando contra la aceptación y las reglas. Que un agente real respete el
+  orden cuando chocan no está medido.
+- **Resumen, «no falla, no avisa y ningún prompt lo recibe» — se fue**: tres lo reciben.
+
+### Qué se corrió
+
+- **Antes y después**: `grep -c '\bargs\b' automatization/workflows/autobuild.js` daba 0; ahora el arnés
+  pasa `args` y los prompts de Plan, Build y Commit traen el pedido, como texto y como `{ note }`.
+- **Seis mutaciones, las seis en rojo**, en una copia: `args` sin leerse —que es lo quitado—, sólo el texto
+  suelto, cada una de las tres fases sin recibirlo, y el pedido sin la línea que lo pone por debajo de la
+  aceptación.
+- **Lo que no se corrió**: una corrida real lanzada con un pedido.
+

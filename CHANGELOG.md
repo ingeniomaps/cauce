@@ -37,6 +37,10 @@ diseño — eso vive en el commit y en el código.
   entrada de `done/` si no hay nada que decidir ni que hacer. Cada destino recibe hasta tres por tarea y el resto
   queda contado en el cierre. Antes todo iba a una fila pendiente (caso 250).
 
+- **Lo que le pedís a `autobuild` al lanzarlo ahora llega.** El texto que se pasa como argumento —o su campo
+  `note`— viaja a Plan, Build y Commit como pedido para toda la corrida. No reemplaza la aceptación ni las
+  reglas: si las contradice, mandan ellas. Antes se descartaba sin avisar (caso 252).
+
 ### Corregido
 
 - **`ops worktree` encuentra el repositorio cuando el servicio se llama como su raíz.** Con una raíz por

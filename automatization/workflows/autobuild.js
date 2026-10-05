@@ -384,6 +384,14 @@ const CONTRACT = {
 const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos externos en ${HUMAN}. Nunca ` +
   `ejecutes INBOX por tu cuenta. Nunca hagas push, deploy, amend, force ni git add -A. No edites la gobernanza ` +
   `del proceso, y no toques la contabilidad de planning salvo que este recorrido te lo pida explícitamente.`
+// Lo que quien lanza la corrida le pide a la corrida: el texto de `args`, o su campo `note`. Hasta 0.100.0
+// este recorrido no leía `args`, así que una instrucción dada ahí no llegaba a ninguna fase y nada lo decía
+// (caso 252). Va a las tres fases que deciden cómo se hace el trabajo, y por debajo de la aceptación y de
+// las reglas: es un pedido de quien opera, que no pasó por ninguna de sus compuertas.
+const ASKED = String((typeof args === 'string' ? args : (args || {}).note) || '').trim()
+const OPERATOR = ASKED ? ` Quien lanzó esta corrida pidió, para todas sus tareas: «${ASKED}». Cumplilo en lo `
+  + 'que le toque a esta fase. No reemplaza la aceptación ni las reglas: si las contradice mandan ellas, y lo '
+  + 'decís.' : ''
 // Acompaña a todo prompt con schema DECISION: el schema obliga a llenar `consulted`, y esto obliga a
 // llenarlo con lo que se abrió en vez de con lo que se pensaba mirar.
 const MANIFEST = ' Enumerá en consulted cada archivo, diff o comando que hayas abierto de verdad, con su ruta.'
@@ -973,7 +981,7 @@ while (rounds++ < MAX_TASKS) {
       `El plan cubre ` +
       `sólo el cambio dentro de ${task.service}: correr los gates del repositorio, hacer QA, commitear y ` +
       `cerrar la tarea son fases posteriores de este recorrido, cada una con su dueño, así que no van como ` +
-      `pasos.`,
+      `pasos.${OPERATOR}`,
       { schema: PLAN, label: 'plan' },
     )
     if (!plan) return stop('agent-unavailable', 'Plan no devolvió resultado')
@@ -1107,7 +1115,8 @@ while (rounds++ < MAX_TASKS) {
     `Aceptación: ${task.acceptance}.${DECIDED()}`
     + (testStrategy ? ` Estrategia de prueba que el plan fijó: ${testStrategy}` : '')
     + (approved.conditions.length ? ` La crítica aprobó el plan con estas condiciones, que cumplís al `
-      + `escribir: ${approved.conditions.join('; ')}.` : ''),
+      + `escribir: ${approved.conditions.join('; ')}.` : '')
+    + OPERATOR,
     { schema: BUILD, label: 'build' },
   )
   if (!build) return stop('agent-unavailable', 'Build no devolvió resultado')
@@ -1423,7 +1432,7 @@ while (rounds++ < MAX_TASKS) {
     `${asRole(OWNERS.commit)}Encontrá el repositorio git dueño de ${task.service}, inspeccioná status y diff, ` +
     `stageá por nombre los archivos de la tarea, creá un solo Conventional Commit con el footer ` +
     `"Task: ${task.id}" y después verificá log y status. Nunca amend ni push; reportá lo que quedó suelto ` +
-    `y no era de la tarea.${BRANCHED(task.id)}`,
+    `y no era de la tarea.${BRANCHED(task.id)}${OPERATOR}`,
     { schema: COMMIT, label: 'commit' },
   ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
   if (!commit) return stop('agent-unavailable', 'Commit no devolvió resultado')

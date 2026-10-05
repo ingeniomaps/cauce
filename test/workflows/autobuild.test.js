@@ -432,3 +432,21 @@ test('la estrategia de prueba del plan llega al WIP y a Build', async () => {
     assert.ok(fase.prompt.includes(estrategia), `${key} recibe la estrategia que el plan escribió`)
   }
 })
+
+// Caso 252. Lo que se le pide a la corrida al lanzarla llega a las fases que deciden cómo se trabaja, y a
+// ninguna otra: Review juzga contra la aceptación y las reglas, no contra un pedido que no pasó por ellas.
+test('lo que se pide al lanzar la corrida llega a Plan, Build y Commit', async () => {
+  const NOTE = 'los mensajes de error van en inglés'
+  const said = (prompts, key) => prompts.find((one) => one.key === key).prompt
+  for (const args of [NOTE, { note: NOTE }]) {
+    const { result, prompts } = await runFlow({}, { args })
+    ranToEnd(result)
+    for (const key of [KEY.plan, KEY.build, KEY.commit]) {
+      assert.ok(said(prompts, key).includes(`«${NOTE}»`), `${key} no recibió el pedido`)
+      assert.match(said(prompts, key), /mandan ellas/, 'y sabe que no pisa la aceptación ni las reglas')
+    }
+    assert.ok(!said(prompts, KEY.review).includes(NOTE), 'Review no lo recibe')
+  }
+  const plain = await runFlow()
+  assert.ok(!said(plain.prompts, KEY.plan).includes('Quien lanzó esta corrida'), 'sin pedido no se agrega nada')
+})
