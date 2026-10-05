@@ -68,6 +68,9 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`check` ya no avisa por el commit de planning.** En una instancia embebida, el commit que sólo toca
+  `planning/` contaba como trabajo que ninguna entrada de `done/` nombra (OPS-001). Ya no cuenta; el que toca
+  además código, sí (caso 270).
 - **Al retomar una corrida, Review vuelve a comprobar las condiciones de la crítica.** Las condiciones con las
   que la crítica aprobó el plan viajaban en memoria, así que una corrida retomada desde el WIP llegaba a Review
   sin ellas. Ahora Review recibe el archivo del WIP donde quedaron (caso 267).

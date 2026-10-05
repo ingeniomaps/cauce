@@ -93,12 +93,16 @@ function lastCommit(repo, branch) {
 // vuelve a cero cada vez que el flujo se cierra, y lo que queda visible es la deriva de ahora.
 //
 // Los merges quedan afuera: no son trabajo, son la forma de integrarlo.
-function unrecordedCommits(repo, since, recorded) {
+function unrecordedCommits(repo, since, recorded, skip = '') {
   if (!repo || !since) return []
   // La fecha se compara acá y no con `--since`, y eso lo encontró una prueba: `--since` **poda la
   // caminata**, así que un commit con fecha vieja en la punta esconde todo lo que tiene detrás. Con un
   // historial reescrito o un `commit --date` la cuenta daba cero sobre un repositorio lleno.
-  const log = git(repo, 'log', '--no-merges', '--date=short', '--format=%h %ad %s')
+  // Un commit que sólo toca el planning no es trabajo que el planning tenga que nombrar: es el planning. En
+  // una instancia embebida vive en el mismo repositorio, y desde que el recorrido commitea su estado al
+  // cerrar cada tarea, ese commit aparecía acá como trabajo sin registrar (caso 270).
+  const paths = skip ? ['--', '.', `:(exclude)${skip}`] : []
+  const log = git(repo, 'log', '--no-merges', '--date=short', '--format=%h %ad %s', ...paths)
   if (log.status !== 0) return []
   const known = new Set([...recorded].map((sha) => String(sha).slice(0, 7)))
   // El hash y la fecha se leen partiendo por espacios y no por columna: `%h` mide 7 por default y git lo
@@ -133,7 +137,8 @@ function coverageWarnings(opsRoot, done) {
   }
   const warnings = []
   for (const repo of reposFor(opsRoot, '.')) {
-    const unrecorded = unrecordedCommits(repo, since, recorded)
+    const planning = path.relative(repo, path.join(opsRoot, 'planning'))
+    const unrecorded = unrecordedCommits(repo, since, recorded, planning.startsWith('..') ? '' : planning)
     if (!unrecorded.length) continue
     warnings.push(`${path.basename(repo)}: ${unrecorded.length} commit(s) desde ${since} que ninguna `
       + 'entrada de DONE nombra, así que ese trabajo no está en planning/ (OPS-001)')
