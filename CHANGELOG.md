@@ -57,6 +57,10 @@ diseño — eso vive en el commit y en el código.
   resuelve en vez de bloquearse por «destino que no se puede resolver», que frenaba el trabajo en una copia
   desechable (caso 261).
 
+- **Review ya no manda al INBOX lo que revisó y dio bien.** Cada hallazgo que no bloquea dice si propone algo.
+  Lo que propone va a `inbox/propuestas/` como antes; la constancia queda en `review:` de la entrada de `done/`
+  (caso 262).
+
 ### Corregido
 
 - **En el modo `auto` de Claude Code los guards dejaban pasar lo que frenaban.** Un guard que pide confirmación

@@ -219,9 +219,13 @@ const REVIEWED = { ...DECISION, required: [...DECISION.required, 'rules', 'criti
         // `ref` y `verified` son del Review y no de Critique, que critica un plan sin diff que comprobar
         // (caso 206): de dónde sale cada hallazgo —una regla que rige o `criterio`—, y si el revisor
         // comprobó lo que afirma o lo supone.
-        required: [...DECISION.properties.concerns.items.required, 'ref', 'verified'],
+        //
+        // `proposes` separa, entre lo que no bloquea, lo que propone algo de la constancia de haber mirado
+        // y encontrado bien. Sin el campo las dos iban al INBOX como propuestas: en una corrida real, dos de
+        // las tres entradas eran «la revisión no encontró nada que corregir» (caso 262).
+        required: [...DECISION.properties.concerns.items.required, 'ref', 'verified', 'proposes'],
         properties: { ...DECISION.properties.concerns.items.properties, decision: { type: 'boolean' },
-          ref: { type: 'string' }, verified: { type: 'boolean' } },
+          ref: { type: 'string' }, verified: { type: 'boolean' }, proposes: { type: 'boolean' } },
       } },
   } }
 // Un exit code dice que el test corrió, no que pruebe lo que la tarea prometió: un test que asercia de
@@ -425,7 +429,9 @@ const RULED = ' En rules nombrá, por su ruta, cada una de las reglas que rigen 
   + ' número —<ruta>#<número>— y una de las que rigen, o la palabra criterio si es juicio tuyo sin regla'
   + ' escrita; nunca presentes un criterio como regla. Y verified es true sólo si comprobaste lo que el hallazgo'
   + ' afirma —leíste el código que lo muestra, corriste el comando—; si lo suponés, false: un hallazgo sin'
-  + ' comprobar no manda a corregir, se registra.'
+  + ' comprobar no manda a corregir, se registra. Y en cada hallazgo con blocking=false, proposes es true si'
+  + ' propone algo que alguien podría hacer —una mejora, una prueba que falta, una deuda— y false si sólo deja'
+  + ' constancia de algo que miraste y está bien: ésa queda en el cierre de la tarea y no va al INBOX.'
 // También acompaña a todo prompt con schema REVIEWED, y es función porque las superficies se leen después.
 const SURFACED = () => ((planning && (planning.surfaces || []).length)
   ? ` En critical poné la superficie de esta lista que el diff toca, tal cual, o vacío si no toca ninguna: `
@@ -1333,8 +1339,17 @@ while (rounds++ < MAX_TASKS) {
     // aparecer dos veces, le come una ranura del tope a una propuesta que sí lo era.
     // Un bloqueante sin comprobar cae acá y no en la corrección, marcado: quien lo lea sabe que es una
     // sospecha y no un defecto establecido.
+    // La constancia —lo que se miró y dio bien— no propone nada: va al hecho de revisión y no al INBOX, donde
+    // le comía una ranura del tope a lo que sí era una propuesta. Se compara contra `false` para que un
+    // hallazgo que no lo declare siga yendo al INBOX, que es donde alguien lo lee.
+    const isRecord = (one) => !one.blocking && !one.decision && one.proposes === false
+    const records = [...new Set(review.concerns.filter(isRecord).map(cite))]
+    if (records.length) {
+      reviewFact += ` · constató: ${records.slice(0, INBOX_CAP).join(' | ')}`
+        + (records.length > INBOX_CAP ? ` · y ${records.length - INBOX_CAP} más` : '')
+    }
     const noted = [...new Set([...review.concerns, ...suspected]
-      .filter((one) => !one.decision && (!one.blocking || one.verified === false))
+      .filter((one) => !one.decision && !isRecord(one) && (!one.blocking || one.verified === false))
       .map((one) => withOrigin(`${one.blocking ? '[sin verificar] ' : ''}${cite(one)}`, origin)))]
     const kept = noted.slice(0, INBOX_CAP)
     // Lo que pasa del tope no se escribe y tampoco desaparece: queda contado en el hecho de revisión, que

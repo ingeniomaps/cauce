@@ -92,3 +92,31 @@ test('una mutación declarada y no corrida la corre QA, y el cierre dice qué di
   assert.doesNotMatch(done(none.prompts), /mutaciones:/, 'sin mutaciones declaradas no se agrega nada')
   assert.doesNotMatch(promptOf(none.prompts, 'qa'), /mutaciones/)
 })
+
+// Caso 262. Lo que Review miró y dio bien no es una propuesta: queda en el cierre y no en el INBOX. Lo que
+// no declara cuál de las dos es sigue yendo al INBOX, que es donde alguien lo lee.
+test('una constancia de Review queda en el cierre, y sólo lo que propone va al INBOX', async () => {
+  const concern = (detail, proposes) => ({ detail, blocking: false, ref: 'criterio', verified: true,
+    ...(proposes === undefined ? {} : { proposes }) })
+  const { result, prompts, asked } = await runFlow({ [KEY.review]: { ...baseScript()[KEY.review], concerns: [
+    concern('la cobertura de la aceptación no tiene nada que corregir', false),
+    concern('falta una prueba para el informe', true),
+    concern('un hallazgo que no dice cuál de las dos es'),
+    // Un bloqueante sin comprobar no es constancia aunque lo declare: sigue yendo al INBOX, marcado.
+    { ...concern('puede haber una carrera en el alta', false), blocking: true, verified: false },
+  ] } })
+  ranToEnd(result)
+  const inbox = promptOf(prompts, 'review-noted')
+  assert.ok(inbox.includes('falta una prueba para el informe'), 'lo que propone llega al INBOX')
+  assert.ok(inbox.includes('no dice cuál de las dos es'), 'y lo que no lo declara también')
+  assert.ok(!inbox.includes('nada que corregir'), 'la constancia no')
+  assert.match(inbox, /\[sin verificar\] puede haber una carrera en el alta/)
+  assert.match(promptOf(prompts, 'done'), /review=[^;]*constató: la cobertura de la aceptación no tiene nada/)
+
+  // Sólo constancias: no hay nada que escribir en el INBOX, y no se lanza a nadie a escribirlo.
+  const only = await runFlow({ [KEY.review]: { ...baseScript()[KEY.review],
+    concerns: [concern('todo lo que miré da bien', false)] } })
+  ranToEnd(only.result)
+  assert.ok(!only.asked.some((key) => key.endsWith('|review-noted')), `${only.asked}`)
+  assert.ok(asked.some((key) => key.endsWith('|review-noted')))
+})

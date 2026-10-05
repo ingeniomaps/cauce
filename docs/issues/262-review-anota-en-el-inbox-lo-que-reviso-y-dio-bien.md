@@ -1,14 +1,15 @@
 ---
 caso: 262
 titulo: Review anota en el INBOX lo que revisó y dio bien
-estado: abierto
+estado: resuelto
+resuelto-en: 0.101.0
 prioridad: baja
 version-detectada: 0.100.0
 ---
 
 # 262 — Lo que Review deja «anotado sin frenar» incluye confirmaciones, y van al INBOX como propuestas
 
-**🔴 abierto** · detectado en 0.100.0 · prioridad **baja**.
+**🟢 resuelto en 0.101.0** · detectado en 0.100.0 · prioridad **baja**.
 
 **Prioridad baja**: no frena nada. Ensucia el INBOX, que es lo que una persona cura, y le come ranuras del tope a lo que sí
 es una propuesta.
@@ -57,3 +58,28 @@ La corrida real que probó los casos 248 a 260.
 
 - 250 — el recorrido registra como acción humana toda observación que no corrige.
 - 101 — el tope del INBOX.
+
+## Cierre
+
+**Resuelto en 0.101.0.** Cada hallazgo no bloqueante de Review declara `proposes`. Lo que propone algo
+sigue yendo al INBOX; la constancia queda en el hecho de revisión de `done/`, como «constató: …».
+
+### El recorrido de lo que este caso enumeró
+
+- **Fix — se hizo**, con el campo en el esquema y el criterio en el prompt.
+- **Tradeoff «un campo más en el esquema de Review» — se paga.**
+- **Tradeoff «una propuesta real rotulada constancia se pierde del INBOX» — acotado**: lo que no declara
+  el campo sigue yendo al INBOX, y un bloqueante sin comprobar no puede ser constancia aunque lo diga.
+- **Síntoma, «6 anotado(s) sin volcar» — baja**, porque las constancias ya no gastan ranuras del tope.
+
+### Qué se corrió
+
+- **Antes y después en el arnés**: las dos constancias iban al prompt de `review-noted`; ahora van al de
+  Done, y con sólo constancias no se lanza a nadie a escribir en el INBOX.
+- **Cuatro mutaciones.** Tres en rojo a la primera; **una sobrevivió** —un bloqueante tomado por
+  constancia—, se agregó el caso y se vio en rojo.
+- **Una sonda con un agente real**, con el texto literal del prompt y cinco hallazgos de la corrida que
+  originó el caso, sin clasificar. Las tres constancias salieron `proposes: false` y las dos que piden
+  algo —una aserción que no puede fallar, una prueba que falta— `true`.
+- **La puerta entera**, `npm run ci`.
+- **Lo que no se corrió**: un Review real dentro de una corrida entera con el campo nuevo.
