@@ -84,16 +84,16 @@ Rige para `git-add` y para las reglas de `destructive`, que compartían la lectu
   lectura nueva. **La de credenciales no**: ahí lo entrecomillado es una ruta —`rg KEY -g '.env*'`—, y
   vaciarlo dejaba pasar justo lo que ese guard frena. Lo mostró su propia prueba, en rojo.
 - **Tradeoff «lo que quede afuera pasa» — se dio vuelta**: lo que queda afuera frena.
-- **Tradeoff del heredoc — no se tocó.** Un heredoc sigue leyéndose entero. Es la misma clase y queda
-  abierta: lo activa el primer bloqueo sobre un heredoc que escribe un archivo.
+- **Tradeoff del heredoc — no aplica, y acá decía lo contrario.** El cuerpo de un heredoc ya se quitaba
+  antes de que ningún guard lo mirara; se midió al abrir el caso 264, que se descartó por eso.
 
 ### Lo que el caso no preveía
 
 - **Aun para un lector, el texto vuelve a ser orden en dos casos**, y los dos frenan: si lleva una
   sustitución adentro —`echo "$(…)"`— y si el comando se lo pasa a un shell por una tubería.
 - **El defecto mordió dos veces más mientras se arreglaba**, sobre los scripts de prueba del propio
-  arreglo, escritos con `node -e` y con un heredoc de Python. Esos no cambian: `node` y `python` ejecutan
-  lo que reciben.
+  arreglo, escritos con `node -e` y los comandos como texto entre comillas. Eso no cambia: `node` ejecuta
+  lo que recibe.
 
 ### Qué se corrió
 
