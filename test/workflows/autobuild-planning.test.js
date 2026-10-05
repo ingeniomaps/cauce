@@ -108,3 +108,50 @@ test('la deuda que anota Build llega entera al INBOX', async () => {
   assert.doesNotMatch(debt, /segunda línea/, 'y en una sola línea')
 })
 
+const BLOCKED = { [KEY.critique]: { verdict: 'bloqueado', consulted: ['api/alta.go'],
+  concerns: [{ detail: 'falta decidir quién escribe las pruebas', blocking: true, replan: true }] } }
+
+test('una parada que registra su fila commitea el estado de planning que dejó (caso 279)', async () => {
+  const { result, asked, prompts } = await runFlow(BLOCKED)
+  assert.equal(result.reason, 'plan-blocked')
+  const key = 'Critique|planning-block'
+  // Después de soltar el reclamo: en una corrida real el commit iba antes, llevaba el reclamo adentro y
+  // soltarlo dejaba el árbol sucio otra vez.
+  assert.ok(asked.indexOf(key) > asked.indexOf('Critique|release:T-1'), `después de soltar: ${asked}`)
+  const prompt = promptOf(prompts, key)
+  assert.match(prompt, /chore\(planning\): block T-1/)
+  assert.match(prompt, /nunca archivos del producto/)
+  assert.match(prompt, /work\/planning/, 'con la misma regla de ramas que el cierre')
+
+  const off = await runFlow({ ...contract({ commitPerTask: false }), ...BLOCKED })
+  assert.equal(off.result.reason, 'plan-blocked')
+  assert.equal(off.asked.includes(key), false, 'mismo interruptor que el commit del cierre')
+
+  // Las paradas que conservan el reclamo también dejan su fila commiteada.
+  const ambiguous = await runFlow({ [KEY.verify]: { passed: true, details: 'verde',
+    commands: [{ cmd: 'go test ./...', exitCode: 0 }],
+    uncovered: [{ criterion: 'el alta es rápida', cause: 'ambiguous' }] } })
+  assert.equal(ambiguous.result.reason, 'acceptance-ambiguous')
+  assert.ok(ambiguous.asked.includes('Verify|planning-block'), ambiguous.asked)
+
+  // Si no se pudo, la parada sigue siendo la que era y lo que quedó sin commitear se dice.
+  const failed = await runFlow({ ...BLOCKED, [key]: { committed: false, reason: 'índice ocupado' } })
+  assert.equal(failed.result.reason, 'plan-blocked')
+  assert.ok(failed.said.some((line) => /parada de T-1 quedó sin commitear: índice ocupado/.test(line)), failed.said)
+})
+
+test('un plan frenado en la primera crítica no se registra como dos planes rechazados (caso 278)', async () => {
+  const first = await runFlow(BLOCKED)
+  const row = first.written.find((text) => text.includes('HUMAN_ACTIONS'))
+  assert.doesNotMatch(row, /nadie pudo escribir un plan/, 'hubo un plan y una crítica')
+  assert.match(row, /si es una decisión, tomarla/)
+  assert.match(row, /Es una sola fila/, 'la crítica pudo haberla anotado ya')
+
+  const second = await runFlow({
+    [KEY.critique]: { verdict: 'con-condiciones', consulted: ['api/alta.go'],
+      concerns: [{ detail: 'sigue mezclando dos resultados', blocking: true, replan: true }] },
+    [KEY.replan]: { approach: 'otro intento', steps: ['1'], files: ['api/alta.go'], testStrategy: 'unit' },
+  })
+  assert.equal(second.result.reason, 'plan-rejected')
+  assert.match(second.written.find((text) => text.includes('HUMAN_ACTIONS')), /nadie pudo escribir un plan/)
+})

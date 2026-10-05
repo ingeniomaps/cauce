@@ -179,6 +179,11 @@ async function runFlow(changes = {}, options = {}) {
       reads += 1
       return typeof answer === 'function' ? answer() : answer
     }
+    // El commit de planning de una parada ocurre en la fase que frenó, así que su clave cambia con ella: se
+    // contesta por etiqueta, y un guion lo pisa con su clave cuando quiere otra respuesta.
+    if (options.label === 'planning-block' && !(key in script)) {
+      return silent.includes(options.label) ? null : { committed: true, hash: 'b10c', branch: 'work/planning' }
+    }
     if (!(key in script)) throw new Error(`el guion no cubre ${key}`)
     // Una respuesta puede ser una función cuando el escenario necesita contestar distinto en cada vuelta.
     const answer = script[key]

@@ -639,6 +639,25 @@ const registerHuman = async (prompt, label, slug = '') => {
     : ` — la fila de ${slug} en ${HUMAN} no quedó pendiente: la resuelve una persona, revisala a mano`
 }
 
+// Una parada también escribe en planning —la fila, y antes el cargo que Classify anotó en la cola—, y sólo
+// el cierre de una tarea lo commiteaba: la corrida que frenaba dejaba la instancia sucia (caso 279). Mismo
+// interruptor y misma regla de ramas que el commit del cierre, y tampoco frena: la parada ya está dicha.
+// Va después de soltar el reclamo cuando la parada lo suelta: commiteado antes, soltarlo volvía a ensuciar.
+const commitBlocked = async (slug) => {
+  if (!contract.commitPerTask) return
+  const stated = await run(
+    `Commiteá el estado de planning que la parada de ${slug} dejó sin commitear en el repositorio que `
+    + `contiene a ${P}: stageá por nombre sólo lo que cambió bajo ${P} —también lo que se borró—, nunca `
+    + `archivos del producto, y creá un solo commit "chore(planning): block ${slug}". Nunca amend ni `
+    + `push.${PLANNING_BRANCH()}`,
+    { schema: COMMIT, label: 'planning-block' },
+  )
+  if (!stated || !stated.committed) {
+    log(`el estado de planning de la parada de ${slug} quedó sin commitear: `
+      + `${(stated && stated.reason) || 'sin respuesta'}`)
+  }
+}
+
 // Gate, mutex de WIP y selección de tarea salen de un comando determinista: AWAITING_REVIEW, BACKLOG,
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
 const readContext = () => read(
@@ -929,16 +948,28 @@ while (rounds++ < MAX_TASKS) {
       + `${verdict.critical} y la revisión señaló sin poder comprobarlo: ${detail}. La acción humana es `
       + 'comprobarlo antes de reanudar: si es un defecto, se corrige antes de entregar; si no lo es, se deja '
       + 'escrito por qué.', 'critical-human', task.id)
+    await commitBlocked(task.id)
     return stop('review-unverified', `${verdict.critical}: ${detail}${note}`)
   }
 
+  // Las dos paradas no dicen lo mismo. Tras la corrección hubo dos planes y dos rechazos, que es la tercera
+  // barra de R17. Un `bloqueado` en la primera crítica es un plan y un motivo que corregirlo no toca, y casi
+  // siempre es una decisión que falta: ahí «nadie pudo escribir un plan» es falso y mandar a partir la unidad
+  // pide lo que no era. La crítica no tiene otra salida para una decisión, y en una corrida real además la
+  // había anotado ella, así que quedaron dos filas por un solo bloqueo (caso 278).
   const planRejected = async (reason, unit, found) => {
     const detail = found.join('; ') || 'sin condiciones nombradas'
-    const note = await registerHuman(
-      `Registrá ${unit.id} en ${HUMAN}: nadie pudo escribir un plan que sobreviva a la crítica. `
+    const note = await registerHuman(reason === 'plan-blocked'
+      ? `Registrá ${unit.id} en ${HUMAN}: la crítica frenó el plan por algo que corregirlo no resuelve. `
+        + `Motivo: ${detail}. La acción humana es resolver ese motivo: si es una decisión, tomarla; si es que `
+        + 'la unidad son dos resultados con vidas distintas, partirla o dejarla entera con la razón escrita. '
+        + `Es una sola fila: si ${unit.id} ya tiene una pendiente por este mismo motivo, completala en vez de `
+        + 'agregar otra.'
+      : `Registrá ${unit.id} en ${HUMAN}: nadie pudo escribir un plan que sobreviva a la crítica. `
       + `Motivo: ${detail}. La acción humana es revisar si la unidad son dos resultados con vidas `
       + `distintas y partirla, o dejarla entera con la razón escrita.`, 'plan-human', unit.id)
     await releaseBlocked()
+    await commitBlocked(unit.id)
     return stop(reason, `${detail}${note}`)
   }
 
@@ -986,6 +1017,7 @@ while (rounds++ < MAX_TASKS) {
           `Registrá ${task.id} en ${HUMAN} con el motivo y una acción humana exacta: ${ready.reason}.`,
           'ready-human', task.id)
         await releaseBlocked()
+        await commitBlocked(task.id)
         return stop('not-ready', `${ready.reason}${note}`)
       }
       if (ready.refinedAcceptance) task.acceptance = ready.refinedAcceptance
@@ -1481,6 +1513,7 @@ while (rounds++ < MAX_TASKS) {
     const note = await registerHuman(
       `Registrá ${task.id} en ${HUMAN}: el criterio "${ambiguous.criterion}" no dice qué habría ` +
       `que aserciar, y hace falta la decisión que lo fija.`, 'verify-human', task.id)
+    await commitBlocked(task.id)
     return stop('acceptance-ambiguous', `${ambiguous.criterion}${note}`)
   }
   // Lo que no tiene superficie no frena ni rebota: viaja a Done, que lo escribe como `tests: n/a`. Se filtra

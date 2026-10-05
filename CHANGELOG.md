@@ -75,6 +75,13 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Una corrida de `autobuild` que frena ya no deja la instancia sucia.** La fila de `HUMAN_ACTIONS.md` y lo
+  que la corrida había anotado en la cola quedaban sin commitear. Ahora la parada los commitea como
+  `chore(planning): block <tarea>`, con el mismo interruptor `commitPerTask` y la misma regla de ramas que el
+  cierre (caso 279).
+- **Un plan frenado por una decisión que falta ya no se registra como «nadie pudo escribir un plan».** Esa
+  fila mandaba a partir la tarea cuando lo que faltaba era contestar una pregunta, y podía quedar duplicada.
+  Ahora dice qué frenó la crítica y pide resolverlo, en una sola fila (caso 278).
 - **Instalar un runner ya no ensucia el manifiesto.** `.cauce/manifest.json` guardaba el hash de cada recorrido
   con la ruta de la instancia adentro, así que cambiaba con sólo instalar el runner en un clon en otra carpeta
   o en una línea. Ahora el hash no depende de la ruta. Un manifiesto escrito por una versión anterior se sigue
