@@ -68,6 +68,9 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Al retomar una corrida, Review vuelve a comprobar las condiciones de la crítica.** Las condiciones con las
+  que la crítica aprobó el plan viajaban en memoria, así que una corrida retomada desde el WIP llegaba a Review
+  sin ellas. Ahora Review recibe el archivo del WIP donde quedaron (caso 267).
 - **`ops line` lleva el producto cuando la raíz es la carpeta de sesión.** Con `workspaceRoots: [".."]` y un
   repositorio por servicio adentro, la carpeta de la línea quedaba sólo con el worktree de la instancia. Ahora
   se enlazan los hijos de esa carpeta, salvo la configuración de los runners. Y con esa misma forma de raíz,

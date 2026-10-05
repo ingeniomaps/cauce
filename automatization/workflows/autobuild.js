@@ -921,6 +921,7 @@ while (rounds++ < MAX_TASKS) {
     return stop(reason, `${detail}${note}`)
   }
 
+  const resumedFromWip = Boolean(planning.wipActive)
   if (!planning.wipActive) {
     if (!mechanical || !vouched) {
       phase('Ready')
@@ -1241,7 +1242,12 @@ while (rounds++ < MAX_TASKS) {
       `regresiones, seguridad, arquitectura, código ` +
       `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.` +
       (approved.conditions.length ? ` La crítica aprobó el plan con estas condiciones; comprobá sobre el ` +
-        `diff que cada una se cumplió, y la que no, es un hallazgo: ${approved.conditions.join('; ')}.` : '') +
+        `diff que cada una se cumplió, y la que no, es un hallazgo: ${approved.conditions.join('; ')}.`
+        // Una corrida que retoma no pasó por la crítica, así que no las trae en memoria: están en el WIP,
+        // que Build lee y Review no. Sin esto quien tenía que comprobarlas no se enteraba (caso 267).
+        : resumedFromWip ? ` Esta corrida retomó desde el WIP. Abrí ${P}/${planning.wipFile}: si registra ` +
+          'condiciones con las que la crítica aprobó el plan, comprobá sobre el diff que cada una se ' +
+          'cumplió, y la que no, es un hallazgo.' : '') +
       `${MANIFEST}` +
       `${VERDICT}${RULED}${SURFACED()}`,
       { schema: REVIEWED, label: 'review' },

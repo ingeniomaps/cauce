@@ -54,3 +54,28 @@ test('un commit de planning que no sale se dice y no frena la entrega', async ()
     [KEY.planningCommit]: { committed: true, hash: 'def456', branch: 'main', live: true } })
   assert.ok(!asked.said.some((line) => /rama viva/.test(line)), 'ni cuando el proyecto pidió commitear ahí')
 })
+
+// Caso 267. Al retomar no se pasa por la crítica, así que sus condiciones no están en memoria: Review
+// recibe dónde leerlas. En una corrida que sí criticó el plan, las recibe escritas y no hace falta.
+test('una corrida que retoma le dice a Review dónde están las condiciones de la crítica', async () => {
+  const context = baseScript()[KEY.context]
+  const resumed = await runFlow({}, { contexts: [
+    { ...context, wipActive: true, wip: { phase: 'Build', complete: 1, pending: 2 } },
+    { ...context, hasTask: false, wipActive: false, queued: 0 },
+  ] })
+  ranToEnd(resumed.result)
+  const review = promptOf(resumed.prompts, KEY.review)
+  assert.match(review, /retomó desde el WIP/)
+  assert.ok(review.includes(`planning/${context.wipFile}`), 'nombra el archivo del WIP')
+  assert.match(review, /comprobá sobre el diff que cada una se cumplió/)
+
+  const fresh = await runFlow()
+  assert.doesNotMatch(promptOf(fresh.prompts, KEY.review), /retomó desde el WIP/, 'sin retomar no se agrega nada')
+
+  const NAMES = 'los identificadores nuevos van en inglés'
+  const criticized = await runFlow({ [KEY.critique]: { verdict: 'con-condiciones', consulted: ['api/alta.go'],
+    concerns: [{ detail: NAMES, blocking: true, replan: false }] } })
+  const direct = promptOf(criticized.prompts, KEY.review)
+  assert.ok(direct.includes(NAMES) && !/retomó desde el WIP/.test(direct),
+    'con las condiciones en memoria van escritas')
+})
