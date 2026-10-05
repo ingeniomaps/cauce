@@ -1,14 +1,15 @@
 ---
 caso: 259
 titulo: un guard lee como comando el texto que va dentro de otro comando
-estado: abierto
+estado: resuelto
+resuelto-en: 0.101.0
 prioridad: media
 version-detectada: 0.100.0
 ---
 
 # 259 — Un guard de shell frena un comando por una frase que sólo aparece como texto en el argumento de otra herramienta
 
-**🔴 abierto** · detectado en 0.100.0 · prioridad **media**.
+**🟢 resuelto en 0.101.0** · detectado en 0.100.0 · prioridad **media**.
 
 **Prioridad media**: no deja pasar nada, frena de más. Cuesta una vuelta cada vez, y enseña a desconfiar
 de un bloqueo que casi siempre tiene razón.
@@ -65,3 +66,39 @@ Al arreglar el 258. El bloqueo cayó sobre la edición de la prueba del propio g
 
 - 258 — verify opina sobre un repositorio que no es el de la sesión.
 - 036 — `git -C ruta add -A` esquivaba la prohibición. Es el otro lado de la misma lectura: ahí leía de menos.
+
+## Cierre
+
+**Resuelto en 0.101.0, al revés de como proponía el fix.** El caso pedía una lista de ejecutores; se hizo
+una lista de los que **sólo leen** su argumento —`sed`, `grep`, `egrep`, `fgrep`, `rg`, `echo`, `printf`,
+`jq`—. Con la de ejecutores, uno que nadie anotó pasaba; con ésta, un programa que nadie anotó se sigue
+leyendo como orden, que es el lado que frena.
+
+Rige para `git-add` y para las reglas de `destructive`, que compartían la lectura.
+
+### El recorrido de lo que este caso enumeró
+
+- **Fix — se hizo distinto**, por lo de arriba.
+- **«No se revisó cuántas de las otras reglas comparten la forma» — se revisó.** Tres lugares armaban la
+  misma expresión: `destructive`, `git-add` y la lectura de credenciales. Los dos primeros pasaron a la
+  lectura nueva. **La de credenciales no**: ahí lo entrecomillado es una ruta —`rg KEY -g '.env*'`—, y
+  vaciarlo dejaba pasar justo lo que ese guard frena. Lo mostró su propia prueba, en rojo.
+- **Tradeoff «lo que quede afuera pasa» — se dio vuelta**: lo que queda afuera frena.
+- **Tradeoff del heredoc — no se tocó.** Un heredoc sigue leyéndose entero. Es la misma clase y queda
+  abierta: lo activa el primer bloqueo sobre un heredoc que escribe un archivo.
+
+### Lo que el caso no preveía
+
+- **Aun para un lector, el texto vuelve a ser orden en dos casos**, y los dos frenan: si lleva una
+  sustitución adentro —`echo "$(…)"`— y si el comando se lo pasa a un shell por una tubería.
+- **El defecto mordió dos veces más mientras se arreglaba**, sobre los scripts de prueba del propio
+  arreglo, escritos con `node -e` y con un heredoc de Python. Esos no cambian: `node` y `python` ejecutan
+  lo que reciben.
+
+### Qué se corrió
+
+- **La reproducción, después, desde la sesión**: el `sed` y un `grep` con la frase prohibida en el patrón
+  corrieron. Antes daban el bloqueo del Síntoma.
+- **Cuatro mutaciones en rojo**, en una copia: todo lo entrecomillado tomado por dato —que es dejar pasar
+  `bash -c`—, nada tomado por dato, la tubería a un shell sin contar y la sustitución sin contar.
+- **La puerta entera**, `npm run ci`.

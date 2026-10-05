@@ -7,6 +7,7 @@
 // Antigravity, que tenía su copia y la tenía rota así (caso 198).
 
 const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { writableOutsideRoots } = require('../config/paths')
@@ -164,6 +165,64 @@ function configOf(root) {
 // la llama.
 const unquoted = (command) => String(command).replace(/'[^']*'|"[^"]*"/g, '\u0000')
 
+// El comando tal como se va a ejecutar: sin lo entrecomillado que es dato y no orden. En un commit lo es
+// todo —el mensaje—; fuera de un commit lo entrecomillado puede ejecutarse (`bash -c "…"`, `eval '…'`), y
+// por eso no se vaciaba nunca. Pero tampoco es orden el patrón de un `sed` ni el texto de un `grep`, y
+// leerlos como tal frenaba un `sed` por la frase que reemplazaba (caso 259).
+//
+// La lista es de los que **sólo leen** su argumento, y no de los que ejecutan: un ejecutor que nadie
+// anotó sigue leyéndose como orden, que es el lado que frena (R27). Y aun para éstos el texto vuelve a ser
+// orden si lleva una sustitución adentro o si el comando se lo pasa a un shell por una tubería.
+const DATA_ONLY = new Set(['sed', 'grep', 'egrep', 'fgrep', 'rg', 'echo', 'printf', 'jq'])
+const FEEDS_SHELL = /\|\s*(?:sudo\s+)?(?:(?:ba|z|da)?sh|eval|xargs|source|\.)(?=\s|$)/
+function asRun(command) {
+  const raw = String(command)
+  if (isCommit(raw)) return unquoted(raw)
+  if (FEEDS_SHELL.test(unquoted(raw))) return raw
+  return raw.replace(/'[^']*'|"[^"]*"/g, (quoted, offset) => {
+    if (quoted[0] === '"' && /\$\(|`/.test(quoted)) return quoted
+    const simple = unquoted(raw.slice(0, offset)).split(/[;&|\n(]/).pop()
+    const first = simple.trim().split(/\s+/).find((word) => !/^[A-Za-z_]\w*=/.test(word))
+    return DATA_ONLY.has(first) ? '\u0000' : quoted
+  })
+}
+
+// Las variables que el propio comando asigna, puestas donde un `cd` o un `git -C` las usa. `T=$(mktemp -d)
+// && cd $T` es como se arma una copia desechable, y sin expandirla el destino quedaba «sin resolver»: el
+// guard de límites frenaba la mutación en una copia, que es la práctica que R23 pide (caso 261).
+//
+// Angosto a propósito, porque expandir es interpretar shell y cada forma nueva es una forma de errar hacia
+// el lado que deja pasar: sólo una asignación que ocupa su tramo entero, con un literal, con otra variable
+// ya resuelta o con `mktemp` sin directorio propio; y una sola vez por nombre —reasignada, no se sabe cuál
+// vale—. Lo demás queda como estaba, sin resolver.
+const MKTEMP = /^\$\(mktemp(?:\s+-d)?(?:\s+(\S+))?\)$/
+function expandAssigned(command) {
+  const raw = String(command)
+  const known = new Map()
+  const twice = new Set()
+  const value = (text) => text.replace(/\$\{?([A-Za-z_]\w*)\}?/g,
+    (whole, name) => (known.has(name) ? known.get(name) : whole))
+  for (const segment of raw.split(/[;&\n]+/)) {
+    const assigned = segment.match(/^\s*([A-Za-z_]\w*)=(.*?)\s*$/)
+    if (!assigned) continue
+    const [, name, right] = assigned
+    if (known.has(name) || twice.has(name)) { known.delete(name); twice.add(name); continue }
+    const bare = right.replace(/^"(.*)"$/, '$1')
+    const made = bare.match(MKTEMP)
+    if (made) {
+      if (!made[1] || made[1].startsWith(`${os.tmpdir()}/`)) known.set(name, path.join(os.tmpdir(), 'mktemp'))
+      else twice.add(name)
+      continue
+    }
+    const resolved = value(bare)
+    if (/^[^\s$`'"]+$/.test(resolved)) known.set(name, resolved)
+    else twice.add(name)
+  }
+  if (!known.size) return raw
+  return raw.replace(/(\bcd\s+|\s-C\s+)(["']?)(\$\{?[A-Za-z_]\w*\}?[^\s"';&|]*)\2/g,
+    (whole, verb, quote, target) => (quote === "'" ? whole : `${verb}${value(target)}`))
+}
+
 // Lo que `git` admite entre el verbo y el subcomando. La lista sale de su propia línea de uso
 // —`git --help`, 2.43.0—, y las que llevan el valor en un token aparte se consumen de a dos:
 // comprobado ahí mismo que `--git-dir`, `--work-tree` y `--namespace` aceptan la forma separada y no
@@ -196,11 +255,12 @@ const withoutGitGlobals = (command) => String(command).replace(GIT_GLOBALS, 'git
 // El precio es una ruta entrecomillada en el propio `-C` de un commit —`git -C "mi carpeta" commit`—,
 // que se pierde y cae al cwd. Es más raro que un mensaje que cita un comando, y el cwd de un commit
 // suele ser el repositorio correcto; el caso contrario deja al guard leyendo un índice ajeno.
-function gitDirectory(command, cwd) {
+function gitDirectory(given, cwd) {
+  const command = expandAssigned(given)
   const text = isCommit(command) ? unquoted(command) : command
   const run = text.match(new RegExp(String.raw`(?:^|\s)git(?:\s+${GIT_GLOBAL})+`))
   const flag = run && run[0].match(/-C\s+(['"]?)([^\s'";&|]+)\1/)
-  const cd = text.match(/(?:^|[;&|]\s*)cd\s+(['"]?)([^\s'";&|]+)\1/)
+  const cd = text.match(/(?:^|[;&|\n]\s*)cd\s+(['"]?)([^\s'";&|]+)\1/)
   return path.resolve(cwd, flag ? flag[2] : cd ? cd[2] : '.')
 }
 
@@ -349,7 +409,7 @@ function opsRoot(input) {
 
 module.exports = {
   readInput, FIRST_BYTE_MS, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
-  gitDirectory, isCommit, withoutGitGlobals, stagedFiles, stagedForCommit, owns,
+  gitDirectory, isCommit, withoutGitGlobals, stagedFiles, stagedForCommit, owns, asRun, expandAssigned,
   findOpsRoot, opsRoot,
   writableRoots, outsideRoots, DECLARE_IT, unquoted,
 }

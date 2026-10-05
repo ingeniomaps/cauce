@@ -13,8 +13,8 @@ const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const {
-  commandOf, cwdOf, block, isCommit, stagedForCommit, writableRoots,
-  outsideRoots, DECLARE_IT, unquoted, opsRoot, withoutGitGlobals, gitDirectory, owns,
+  commandOf, cwdOf, block, isCommit, stagedForCommit, writableRoots, outsideRoots, DECLARE_IT, unquoted, opsRoot,
+  withoutGitGlobals, gitDirectory, owns, asRun, expandAssigned,
 } = require('./input')
 const AP = require('./approval')
 const CHAT = require('./chat')
@@ -74,7 +74,7 @@ function destructive(input) {
   // Las opciones globales de `git` se sacan acá y no en cada regla: toda regla de abajo que mire un
   // subcomando lo escribe pegado a `git`, y con una en el medio dejaba de matchear. Por qué, en
   // `withoutGitGlobals`.
-  const command = withoutGitGlobals(isCommit(raw) ? unquoted(raw) : raw)
+  const command = withoutGitGlobals(asRun(raw))
   // Ninguna de estas dos ramas tiene override, y la pregunta merece respuesta escrita porque cuatro
   // guards del motor sí lo tienen. R8 no admite excepción configurable para `force` ni para `amend`, y
   // el precedente es `git-add`, que hace cumplir la misma regla sin escapatoria. Lo que corresponde
@@ -178,7 +178,7 @@ function gitAdd(input) {
   // El mensaje de un commit es dato, igual que en `destructive` y por lo mismo: el commit que explica
   // esta prohibición la nombra, y sin esto no se podía escribir. Fuera de un commit lo entrecomillado
   // sí se ejecuta, así que ahí no se vacía.
-  const command = withoutGitGlobals(isCommit(raw) ? unquoted(raw) : raw)
+  const command = withoutGitGlobals(asRun(raw))
   // Stagear por nombre es una regla de los repositorios de la sesión; por qué no alcanza a otro, en `owns`.
   if (!owns(input, gitDirectory(raw, cwdOf(input)))) return
   // Dónde termina la palabra lo decide PALABRA y no un espacio: `bash -c "git add -A"` y
@@ -390,7 +390,7 @@ function writesWithBase(command, cwd) {
   // El `|` que sigue a un `>` no parte nada: es el override de `noclobber`, no una tubería. Partir ahí
   // separaba la redirección de su destino —`echo x >| ruta` quedaba como `echo x >` y ` ruta`— y el
   // destino no lo veía nadie, que es por donde se colaba escribir la propia `.ops-approval` (caso 164).
-  for (const segment of unquoted(command).split(/[;&\n]+|(?<!>)\|+/)) {
+  for (const segment of unquoted(expandAssigned(command)).split(/[;&\n]+|(?<!>)\|+/)) {
     const cd = segment.match(/^\s*cd(?:\s+(\S+))?\s*$/)
     if (cd) { base = base === null ? null : cdTarget(cd[1], base); continue }
     for (const raw of writeTargets(segment)) found.push({ raw, base })

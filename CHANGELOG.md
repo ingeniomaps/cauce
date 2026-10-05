@@ -51,6 +51,12 @@ diseño — eso vive en el commit y en el código.
   pasada de comentarios y la regla de `git add -A` actúan sólo sobre la carpeta de la sesión, la raíz ops y las raíces declaradas en
   `workspaceRoots`. Un commit en otro repositorio pasa sin frenarse y sin que se le corra su suite (caso 258).
 
+- **Los guards de shell leen mejor qué es orden y a dónde apunta.** El texto que `sed`, `grep`, `rg`, `echo`,
+  `printf` o `jq` sólo leen ya no se toma por comando: un `sed` cuyo patrón nombraba `git commit -a` se frenaba
+  (caso 259). Y un `cd` o un `git -C` a una variable que el mismo comando asigna —`T=$(mktemp -d) && cd $T`— se
+  resuelve en vez de bloquearse por «destino que no se puede resolver», que frenaba el trabajo en una copia
+  desechable (caso 261).
+
 ### Corregido
 
 - **En el modo `auto` de Claude Code los guards dejaban pasar lo que frenaban.** Un guard que pide confirmación
