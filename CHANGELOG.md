@@ -75,13 +75,12 @@ diseño — eso vive en el commit y en el código.
   repositorio por servicio adentro, la carpeta de la línea quedaba sólo con el worktree de la instancia. Ahora
   se enlazan los hijos de esa carpeta, salvo la configuración de los runners. Y con esa misma forma de raíz,
   `ops worktree` ya encuentra el repositorio del servicio, también en la carpeta original (caso 263).
-- **En el modo `auto` de Claude Code los guards dejaban pasar lo que frenaban.** Un guard que pide confirmación
-  abre el diálogo de Claude Code, y en `auto` ese diálogo no lo contesta una persona: la acción corría igual,
-  sin ningún mensaje. Pasaba con un commit en rojo, con gobernanza, con el push a una rama de trabajo y con la
-  lectura de credenciales; el push a la rama viva nunca estuvo afectado. Ahora el diálogo se usa sólo en
-  `default` y `bypassPermissions`, y en cualquier otro modo el guard bloquea y pide la confirmación por chat.
-  **Qué hacer:** si trabajás en `auto`, revisá los commits de esas sesiones: pudieron entrar con un gate en
-  rojo (caso 257).
+- **En el modo `plan` de Claude Code los guards dejaban pasar lo que frenaban.** Un guard que pide confirmación
+  abre el diálogo de Claude Code, y en `plan` ese diálogo no aparece: la acción corre igual, sin ningún
+  mensaje. Medido con la lectura de un `.env`. Ahora el diálogo se usa sólo donde está medido que una persona
+  lo contesta —`default`, `acceptEdits` y `bypassPermissions`—, y en cualquier otro modo el guard bloquea y
+  pide la confirmación por chat. `auto` queda de ese lado sin que esté establecido si hace falta: en una
+  sesión el diálogo apareció y en otra no consta quién aprobó (casos 257 y 268).
 - **`plan-first` ya no frena el Build de una sesión sidecar recién instalada.** `autobuild` escribe su plan con
   el id de la instancia, y el guard, parado en la carpeta de la sesión o en el repo del producto, deducía otro y
   bloqueaba la primera edición con «hay plan escrito, pero bajo otro id». Sin `CAUCE_RUNNER` declarado, ahora

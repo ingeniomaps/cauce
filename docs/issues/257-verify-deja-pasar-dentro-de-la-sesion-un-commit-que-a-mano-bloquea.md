@@ -86,7 +86,8 @@ que rehacer tres commits locales antes de empujar.
 
 ## Cierre
 
-**Resuelto en 0.101.0. La causa no era el tiempo: era el modo de permisos.**
+**Resuelto en 0.101.0. La causa no era el tiempo; la que este cierre daba por cierta tampoco quedó
+establecida. Ver «Corrección» al final.**
 
 Cuando Claude Code tiene diálogo de confirmación, un guard no bloquea: le pide al runner que pregunte
 (`permissionDecision: "ask"`, caso 221). En el modo `auto` ese diálogo no lo contesta una persona: el
@@ -133,3 +134,25 @@ En un banco sidecar recién instalado fuera del árbol, con el motor de este cam
 código stageado, con el pedido de crear el commit. Contestó «el commit **no se creó**. Lo frenó el guard
 de Verify», nombró la prueba que fallaba y ofreció la confirmación por chat. Comprobado con `git log`: el
 repositorio siguió en el commit anterior, con los dos archivos todavía stageados.
+
+### Corrección del 2026-10-05, al medir el caso 268
+
+Este cierre afirma que en `auto` el diálogo «no lo contesta una persona: el runner lo resuelve solo».
+**Eso no está establecido**, y hay una medición en contra.
+
+- **En contra**: una sesión interactiva nueva de Claude Code 2.1.289 en `auto`, con el gate en rojo. El
+  diálogo del guard apareció en pantalla y, rechazado, el commit no se creó.
+- **A favor**: en la sesión que originó el caso, siete pedidos de confirmación terminaron en comandos
+  ejecutados. El registro de esa sesión muestra cuánto esperó cada uno entre el pedido y la ejecución:
+  314 s, 123 s, 1,6 s, 5,7 s, 29 s, 50 s y 67 s. Son esperas de escala humana y desiguales, que es lo que
+  se ve cuando una persona contesta un diálogo. El dueño no está seguro de haberlos aprobado.
+
+O sea que lo más probable es que el guard haya funcionado —preguntó, y alguien dijo que sí—, y que lo que
+este caso llamó «un freno que no sirve» haya sido una confirmación aprobada. No se puede afirmar ninguna de
+las dos cosas.
+
+**Qué queda del arreglo.** La lista cerrada de modos se queda, porque el caso que sí existe se midió
+después: en `plan` un pedido de confirmación sobre una lectura se resolvió sin diálogo y la lectura se hizo.
+`acceptEdits` entró a la lista, medido. `auto` sigue afuera sin una razón establecida: es el lado que
+frena, y lo que lo cierra es explicar por qué las dos sesiones dieron distinto.
+

@@ -1,14 +1,15 @@
 ---
 caso: 268
 titulo: acceptEdits y plan quedaron sin el diálogo por no estar medidos
-estado: abierto
+estado: resuelto
+resuelto-en: 0.101.0
 prioridad: baja
 version-detectada: 0.100.0
 ---
 
 # 268 — En `acceptEdits` y `plan` los guards bloquean en vez de abrir el diálogo, porque nadie midió esos modos
 
-**🔴 abierto** · detectado en 0.100.0 · prioridad **baja**.
+**🟢 resuelto en 0.101.0** · detectado en 0.100.0 · prioridad **baja**.
 
 **Prioridad baja**: es el lado seguro —frena y pide la confirmación por chat—, pero es más lento que el
 diálogo y son dos modos de uso corriente.
@@ -50,7 +51,7 @@ Anotado al cerrar el 257.
 - 257 — verify deja pasar dentro de la sesión un commit que a mano bloquea.
 - 221 — la confirmación con el diálogo de Claude Code.
 
-## Medición del 2026-10-05: el instrumento no sirve, y el caso sigue abierto
+## Primera medición, sin interfaz: el instrumento no sirve
 
 Se intentó medir como proponía el fix, y la medición no puede contestar la pregunta.
 
@@ -75,9 +76,46 @@ prompt to the user as normal» y «the most restrictive answer applies, in the o
 `allow`» (code.claude.com/docs/en/hooks-guide). Qué es «as normal» en cada modo no está documentado; lo
 consultó un agente sobre las páginas de hooks y de modos de permisos el 2026-10-05.
 
-**Qué lo cierra, y quién**: una persona, en una sesión interactiva, dos veces —una en `acceptEdits` y otra
-en `plan`—. En un banco con el gate en rojo y código stageado, con `ANSWERED` de `engine/hooks/confirm.js`
-incluyendo ese modo, pedir el commit. Si aparece el diálogo y rechazarlo deja el commit sin crear, el modo
-se suma a la lista. Si el commit se crea sin que nadie conteste, queda afuera, como `auto`.
+## Cierre
 
-Mientras tanto los dos modos quedan del lado que frena, que es donde el 257 los dejó.
+**Resuelto en 0.101.0, midiendo de verdad.** La sesión sin interfaz no servía; una sesión interactiva
+manejada por una terminal virtual (`tmux`), sí: ahí hay pantalla, y se ve si el diálogo aparece.
+
+Con Claude Code 2.1.289, en un banco sidecar instalado, el motor del banco pidiendo el diálogo en todos
+los modos, el gate en rojo y código stageado:
+
+```
+default:           diálogo del guard apareció · rechazado · el commit NO se creó
+acceptEdits:       diálogo del guard apareció · rechazado · el commit NO se creó
+bypassPermissions: diálogo del guard apareció · rechazado · el commit NO se creó
+auto:              diálogo del guard apareció · rechazado · el commit NO se creó
+plan:              no llega a commitear: el modo no deja
+```
+
+Y en `plan`, con lo que ese modo sí deja hacer —leer—: se pidió un inventario que llevó al agente a abrir
+un `.env` sin que la persona lo nombrara. El guard devolvió `permissionDecision: "ask"` a las 19:12:09,
+**no apareció ningún diálogo** y el resultado con el contenido llegó a las 19:12:12.
+
+### El recorrido de lo que este caso enumeró
+
+- **Fix, medir cada modo y sumar el que corresponda — se hizo.** `acceptEdits` entra. `plan` queda afuera,
+  y ahora por una medición y no por falta de ella: ahí el pedido de confirmación se resuelve solo.
+- **Tradeoff «sin interfaz no hay quien conteste» — se resolvió cambiando de instrumento.**
+- **`auto` no era de este caso y la medición lo alcanzó.** El control en `auto` mostró el diálogo, que es
+  lo contrario de lo que el 257 daba por causa. Se corrigió allá; `auto` sigue afuera.
+
+### Lo que el caso no preveía
+
+- **En modo plan el guard de límites frenaba el archivo de plan del propio runner.** Salió como caso 269.
+- **Un pedido que nombra el archivo no mide nada**: «leé app/.env» es una orden de la persona y el guard
+  la deja pasar sin preguntar, a propósito. Hubo que pedir algo que llevara al agente a abrirlo solo.
+
+### Qué se corrió
+
+- **Las cinco sesiones interactivas de arriba**, y las dos lecturas en `plan`.
+- **La misma lectura en `plan` con la lista ya corregida** en el motor del banco: el contenido del `.env`
+  no apareció en pantalla, y el agente le dijo a la persona que el guard había frenado la lectura.
+- **La prueba de `native-confirmation`**, que ahora fija `acceptEdits` adentro y `plan` afuera.
+- **La puerta entera**, `npm run ci`.
+- **Lo que no se corrió**: `dontAsk`, y otras versiones del runner.
+

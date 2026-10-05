@@ -40,7 +40,7 @@ test('en Claude Code un push frenado pide el diálogo, y un mensaje sobre otra c
 // medido— el guard bloquea y la salida vuelve a ser el chat.
 test('donde nadie contesta el diálogo, el guard bloquea en vez de pedirlo', () => {
   const root = pushRoot('cauce-native-auto-')
-  for (const mode of ['auto', 'dontAsk', 'un-modo-que-todavia-no-existe', undefined]) {
+  for (const mode of ['auto', 'plan', 'dontAsk', 'un-modo-que-todavia-no-existe', undefined]) {
     const chat = chatSession()
     try {
       const call = chat.says('implementá la tarea de alta de clientes')
@@ -50,7 +50,7 @@ test('donde nadie contesta el diálogo, el guard bloquea en vez de pedirlo', () 
         (error) => error.blocked && !error.ask && /publica cambios/.test(error.message), `${mode} tiene que bloquear`)
     } finally { chat.close() }
   }
-  for (const mode of ['default', 'bypassPermissions']) {
+  for (const mode of ['default', 'acceptEdits', 'bypassPermissions']) {
     assert.equal(CF.native({ hook_event_name: 'PreToolUse', prompt_id: 'm1', permission_mode: mode }), true, mode)
   }
 })
