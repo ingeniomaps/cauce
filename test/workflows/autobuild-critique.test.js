@@ -93,3 +93,14 @@ test('lo que la crítica que aprueba anotó sin bloquear queda en el WIP, y no m
   assert.ok(!promptOf(prompts, KEY.build).includes(noted), 'a Build le llega por el WIP, no como condición')
   assert.ok(!promptOf(prompts, KEY.review).includes(noted), 'y Review no lo recibe como algo que comprobar')
 })
+
+// El pedido de quien lanzó la corrida llega a las dos críticas, no sólo a la primera: la segunda juzga un
+// plan que sigue apoyándose en él.
+test('las dos críticas reciben lo que se pidió al lanzar la corrida', async () => {
+  const { prompts } = await runFlow(
+    twoCritiques({ verdict: 'aprobado', consulted: ['api/alta.go'], concerns: [] }),
+    { args: 'los mensajes de error van en inglés' })
+  const critiques = prompts.filter((one) => one.key === KEY.critique)
+  assert.equal(critiques.length, 2)
+  for (const one of critiques) assert.match(one.prompt, /Para que lo contrastes: [^.]*«los mensajes de error/)
+})

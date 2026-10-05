@@ -398,6 +398,10 @@ const ASKED = String((typeof args === 'string' ? args : (args || {}).note) || ''
 const OPERATOR = ASKED ? ` Quien lanzó esta corrida pidió, para todas sus tareas: «${ASKED}». Cumplilo en lo `
   + 'que le toque a esta fase. No reemplaza la aceptación ni las reglas: si las contradice mandan ellas, y lo '
   + 'decís.' : ''
+// A quien critica el plan le llega como dato y no como pedido: en una corrida real la crítica encontró en el
+// plan una decisión atribuida a «quien lanzó la corrida», no tuvo contra qué contrastarla y la dejó
+// marcada como supuesto.
+const OPERATOR_SAID = ASKED ? ` Para que lo contrastes: quien lanzó esta corrida pidió «${ASKED}».` : ''
 // Acompaña a todo prompt con schema DECISION: el schema obliga a llenar `consulted`, y esto obliga a
 // llenarlo con lo que se abrió en vez de con lo que se pensaba mirar.
 const MANIFEST = ' Enumerá en consulted cada archivo, diff o comando que hayas abierto de verdad, con su ruta.'
@@ -995,7 +999,7 @@ while (rounds++ < MAX_TASKS) {
       phase('Critique')
       let critique = await read(
         `Atacá este plan por correctitud, alcance, seguridad, pruebas y conflictos con el código ` +
-        `existente.${DECIDED()}${MANIFEST}${VERDICT}${REPLANNED} Plan: ${JSON.stringify(plan)}`,
+        `existente.${DECIDED()}${OPERATOR_SAID}${MANIFEST}${VERDICT}${REPLANNED} Plan: ${JSON.stringify(plan)}`,
         { schema: CRITIQUED, label: 'critique' },
       )
       if (!critique) return stop('agent-unavailable', 'Critique no devolvió resultado')
@@ -1023,7 +1027,8 @@ while (rounds++ < MAX_TASKS) {
           { schema: PLAN, label: 'replan' },
         )
         critique = await read(
-          `Volvé a criticar el plan corregido contra ${task.acceptance}.${DECIDED()}${MANIFEST}${VERDICT}` +
+          `Volvé a criticar el plan corregido contra ${task.acceptance}.${DECIDED()}${OPERATOR_SAID}${MANIFEST}` +
+          `${VERDICT}` +
           `${REPLANNED} Plan: ${JSON.stringify(plan)}`,
           { schema: CRITIQUED, label: 'critique' },
         )
@@ -1493,7 +1498,10 @@ while (rounds++ < MAX_TASKS) {
     (outOfVerify.length ? `fuera-de-verify=${JSON.stringify(outOfVerify)}; ` : '') +
     `qa=${qa.evidence}${mutationFact ? ` · mutaciones: ${mutationFact}` : ''}; ` +
     `commit=${commit.hash || commit.reason}` +
-    `${commit.branch ? ` (rama ${commit.branch})` : ''}. En tests rastreá cada criterio con la ` +
+    // El sufijo es el del contrato de DONE, `(repo@rama)`: `check` saca de ahí en qué repositorio buscar el
+    // commit, y escrito en prosa lo leía como si no nombrara ninguno.
+    `${commit.branch ? ` (${task.service}@${commit.branch}), con ese sufijo copiado tal cual` : ''}. ` +
+    `En tests rastreá cada criterio con la ` +
     `prueba que cubiertos le asigna` +
     (noSurface.length ? ', y los de sin-superficie con tests: n/a — <razón>' : '') +
     (outOfVerify.length ? '; cada condición de fuera-de-verify queda cumplida en tests, qa o commit' : '') + '.',

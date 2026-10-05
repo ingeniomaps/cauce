@@ -446,6 +446,9 @@ test('lo que se pide al lanzar la corrida llega a Plan, Build y Commit', async (
       assert.match(said(prompts, key), /mandan ellas/, 'y sabe que no pisa la aceptación ni las reglas')
     }
     assert.ok(!said(prompts, KEY.review).includes(NOTE), 'Review no lo recibe')
+    // La crítica lo recibe como dato: tiene que poder contrastar lo que el plan le atribuye a ese pedido.
+    assert.match(said(prompts, KEY.critique), new RegExp(`Para que lo contrastes: [^.]*«${NOTE}»`))
+    assert.ok(!said(prompts, KEY.critique).includes('Cumplilo'), 'sin volverse una orden para quien critica')
   }
   const plain = await runFlow()
   assert.ok(!said(plain.prompts, KEY.plan).includes('Quien lanzó esta corrida'), 'sin pedido no se agrega nada')

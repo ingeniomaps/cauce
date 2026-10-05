@@ -174,7 +174,7 @@ test('Commit corta una rama para la tarea en vez de commitear en la rama viva', 
   assert.match(commitPrompt(prompts), /git switch -c <tipo>\/T-1/, 'la rama lleva el slug de la tarea')
   assert.match(commitPrompt(prompts), /no commitees ahí ni lo consultes/, 'y cortarla no espera a nadie')
   const done = prompts.find((one) => one.key === 'Done|done').prompt
-  assert.match(done, /commit=abc123 \(rama fix\/T-1\)/, 'la entrada de DONE dice en qué rama quedó')
+  assert.match(done, /commit=abc123 \(\.\/api@fix\/T-1\)/, 'la entrada de DONE dice en qué repositorio y rama quedó')
 })
 
 test('un commit que quedó en la rama viva no cierra la tarea', async () => {
