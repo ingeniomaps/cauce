@@ -46,6 +46,13 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **En el modo `auto` de Claude Code los guards dejaban pasar lo que frenaban.** Un guard que pide confirmación
+  abre el diálogo de Claude Code, y en `auto` ese diálogo no lo contesta una persona: la acción corría igual,
+  sin ningún mensaje. Pasaba con un commit en rojo, con gobernanza, con el push a una rama de trabajo y con la
+  lectura de credenciales; el push a la rama viva nunca estuvo afectado. Ahora el diálogo se usa sólo en
+  `default` y `bypassPermissions`, y en cualquier otro modo el guard bloquea y pide la confirmación por chat.
+  **Qué hacer:** si trabajás en `auto`, revisá los commits de esas sesiones: pudieron entrar con un gate en
+  rojo (caso 257).
 - **`ops worktree` encuentra el repositorio cuando el servicio se llama como su raíz.** Con una raíz por
   repositorio —`platform → ../platform`— y tareas `(service: platform)`, decía que el repositorio no existía.
   Ahora un servicio resuelve también por el nombre de la raíz o por el último tramo de su ruta (caso 254).

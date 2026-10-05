@@ -1,14 +1,15 @@
 ---
 caso: 257
 titulo: verify deja pasar dentro de la sesión un commit que a mano bloquea
-estado: abierto
+estado: resuelto
+resuelto-en: 0.101.0
 prioridad: alta
 version-detectada: 0.100.0
 ---
 
 # 257 — El guard `verify` no frenó en la sesión un commit con la suite en rojo; el mismo hook, corrido a mano sobre el mismo árbol, bloquea
 
-**🔴 abierto** · detectado en 0.100.0 · prioridad **alta**.
+**🟢 resuelto en 0.101.0** · detectado en 0.100.0 · prioridad **alta**.
 
 **Prioridad alta**: es la puerta que sostiene «no se commitea en rojo», y dejó pasar tres commits con una prueba roja sin
 decir nada. Lo que la hace alta es que no avisa: el commit sale igual que uno verificado.
@@ -50,7 +51,7 @@ En la sesión: el commit se crea y no aparece ningún mensaje del guard.
 
 ## Causa raíz
 
-**No se encontró.** Lo descartado y lo que queda:
+**Encontrada después; está en el Cierre.** Lo que sigue es lo que se sabía al registrar el caso:
 
 - `OPS_SKIP_VERIFY` no estaba exportada en la sesión (comprobado con `echo`).
 - El guard sí corre en la sesión: en la misma sesión bloqueó otros comandos con sus mensajes propios.
@@ -82,3 +83,46 @@ que rehacer tres commits locales antes de empujar.
 
 - 240 — verify corre sin cota y escribe en el árbol.
 - 258 — verify opina sobre un repositorio que no es el de la sesión.
+
+## Cierre
+
+**Resuelto en 0.101.0. La causa no era el tiempo: era el modo de permisos.**
+
+Cuando Claude Code tiene diálogo de confirmación, un guard no bloquea: le pide al runner que pregunte
+(`permissionDecision: "ask"`, caso 221). En el modo `auto` ese diálogo no lo contesta una persona: el
+runner lo resuelve solo y la herramienta corre. Así cada bloqueo que pasaba por el diálogo se volvía un
+permiso, sin mensaje. Alcanzaba a todos los guards que piden confirmación —`verify`, la aprobación de
+gobernanza, el push a una rama de trabajo, la lectura de credenciales—, no sólo a éste. El push a la rama
+viva no: ése es un bloqueo que nunca se vuelve pregunta.
+
+`engine/hooks/confirm.js` usa ahora el diálogo sólo en los modos donde está medido que contesta una
+persona —`default` y `bypassPermissions`—. En cualquier otro, incluido uno que todavía no exista, el
+guard bloquea y la salida vuelve a ser la confirmación por chat.
+
+### El recorrido de lo que este caso enumeró
+
+- **«Primero establecer la causa» con un gate de 5 s y otro de 90 s — se hizo, y desmintió la hipótesis.**
+  El de 5 s también pasó: no es el tiempo. La segunda hipótesis, el candado de máquina, tampoco.
+- **«Declarar el `timeout` del hook» y «bloquear al acercarse al límite» — se decidió que no**: no era eso.
+- **Tradeoffs del timeout — no aplican.**
+- **El tradeoff que sí hay**: en `auto`, `acceptEdits` y `plan` el guard ya no abre diálogo; bloquea y pide
+  la confirmación por chat. `acceptEdits` y `plan` quedan afuera por no estar medidos, no porque fallen:
+  los suma quien los mida.
+
+### Qué se corrió
+
+- **La medición que encontró la causa.** Con una traza temporal en el guard —quitada después—, un commit
+  con el gate en rojo desde la sesión dejó: `gates failures=1 unapproved=["a.js"] mode=auto native=true`.
+  El guard vio el rojo, vio que nadie lo había aprobado, pidió el diálogo, y el commit se creó.
+- **El mismo commit después del arreglo, desde la misma sesión en `auto`**:
+
+  ```
+  BLOQUEADO: Verify falló en sonda257b: test (exit 1, 0.1 s): ROJO
+  No se commitea en rojo.
+  ```
+
+- **Tres mutaciones en rojo**, en una copia: el diálogo volviendo a pedirse en cualquier modo —lo quitado—,
+  `auto` contando como contestado, y `default` dejando de usarlo.
+- **La puerta entera**, `npm run ci`.
+- **Lo que no se corrió**: `bypassPermissions`, que queda por la medición del 2026-10-01 que cita
+  `confirm.js`; y los otros modos.

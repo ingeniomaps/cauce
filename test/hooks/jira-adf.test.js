@@ -40,7 +40,8 @@ test('se aprueba como el resto: diálogo en Claude Code o la línea en .ops-appr
   const call = edit(root, { fields: { description: 'texto nuevo' } })
   const chat = chatSession()
   try {
-    assert.throws(() => executeAll(['pre-mcp'], { hook_event_name: 'PreToolUse', ...chat.says('seguí')(call) }),
+    assert.throws(() => executeAll(['pre-mcp'], { hook_event_name: 'PreToolUse', permission_mode: 'default',
+      ...chat.says('seguí')(call) }),
       (error) => error.ask && /DEMO-1/.test(error.message))
   } finally { chat.close() }
   pasteApproval(root, messageOf('jira-adf', call))

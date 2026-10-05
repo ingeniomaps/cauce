@@ -14,8 +14,17 @@ const ASK = Symbol('cauce.ask')
 
 // Claude Code es el que manda `prompt_id` en cada llamada; Codex manda `turn_id` y Gemini ninguno
 // (`chat.js`, `idOf`). Sólo un `PreToolUse` puede pedir el diálogo.
+//
+// Y sólo en un modo de permisos donde está medido que el diálogo lo contesta una persona. En `auto` no lo
+// contesta nadie: Claude Code lo resuelve solo y la herramienta corre, así que pedirlo ahí convertía cada
+// bloqueo en un permiso —medido el 2026-10-05 con un gate en rojo: `permission_mode=auto`, el guard pidió
+// el diálogo y el commit se creó sin que nadie viera nada (caso 257)—. La lista es de los que sí, y no de
+// los que no, para que un modo nuevo nazca bloqueando: ahí el guard vuelve a la confirmación por chat, que
+// es más lenta y no deja pasar.
+const ANSWERED = new Set(['default', 'bypassPermissions'])
 function native(input) {
-  return Boolean(input && input.hook_event_name === 'PreToolUse' && input.prompt_id)
+  return Boolean(input && input.hook_event_name === 'PreToolUse' && input.prompt_id
+    && ANSWERED.has(input.permission_mode))
 }
 
 // Marca la llamada para que `run.js` responda con el diálogo en vez de bloquear. Va en la entrada y no en
