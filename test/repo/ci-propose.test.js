@@ -134,7 +134,7 @@ test('el recorrido tiene un techo de espera mayor que el default, y el job lo cu
 
 function runArchive(t, frontmatter, body = '') {
   const dir = tempRoot('cauce-archive-')
-  const proposal = path.join(dir, 'proposal.md')
+  const proposal = path.join(dir, '2026-10-r2.md')
   const decided = DECIDED.split('\n').slice(2).join('\n')
   fs.writeFileSync(proposal, `---\nagent: probe\n${frontmatter}status: proposed\n---\n\n${decided}${body}`)
   // El doble reemplaza al CLI: lo que se mide es si el paso lo llama y con qué, no el archivado en sí, que
@@ -168,6 +168,9 @@ test('una propuesta que dice «cambia: no» se archiva con su motivo, y ninguna 
   assert.equal(sinCambio.status, 0)
   assert.ok(sinCambio.call, 'llama al CLI')
   assert.deepEqual(sinCambio.call.argv.slice(0, 3), ['learn', 'probe', '--archived'])
+  // Archiva la que leyó, nombrada por su archivo: sin período el CLI toma la última del cargo, que puede
+  // ser otra (caso 265).
+  assert.equal(sinCambio.call.argv[sinCambio.call.argv.indexOf('--period') + 1], '2026-10-r2')
   const reason = sinCambio.call.argv[sinCambio.call.argv.indexOf('--reason') + 1]
   assert.ok(reason && reason.trim(), 'con motivo: es lo que lee el informe siguiente')
   assert.match(sinCambio.call.owner, /\S/, 'y con alguien a quien atribuirlo')
