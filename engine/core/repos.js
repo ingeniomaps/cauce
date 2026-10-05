@@ -210,7 +210,11 @@ function commitStatus(opsRoot, items) {
     if (!named.has(name)) {
       named.set(name, roots
         .map((root) => (name === root.name || name === path.basename(root.dir) ? root.dir : path.join(root.dir, name)))
-        .find((dir) => fs.existsSync(dir) && git(dir, 'rev-parse', '--show-toplevel').stdout.trim() === dir) || '')
+        // Contra la ruta real: en la carpeta de una línea el repositorio es un enlace al original, y git
+        // contesta con la ruta de verdad. Comparando contra el enlace, el commit quedaba «sin comprobar» con
+        // el repositorio a la vista (caso 273).
+        .find((dir) => fs.existsSync(dir)
+          && git(dir, 'rev-parse', '--show-toplevel').stdout.trim() === fs.realpathSync(dir)) || '')
     }
     return named.get(name)
   }

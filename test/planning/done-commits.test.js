@@ -82,3 +82,14 @@ test('check lo muestra como aviso y sigue en verde', () => {
   assert.ok(result.warnings.some((one) => /inventado: el commit deadbee no está en su repositorio/.test(one)),
     JSON.stringify(result.warnings))
 })
+
+// Caso 273. En la carpeta de una línea de trabajo el repositorio del producto es un enlace al original.
+test('un repositorio que se alcanza por un enlace se encuentra igual', () => {
+  const { target, sha } = instance('cauce-commits-enlace-')
+  const base = path.dirname(target)
+  fs.renameSync(path.join(base, 'api'), path.join(base, 'api-original'))
+  fs.symlinkSync(path.join(base, 'api-original'), path.join(base, 'api'), 'dir')
+  assert.deepEqual(R.commitStatus(target, [{ sha, repo: 'api' }, { sha: 'deadbee', repo: 'api' }]),
+    ['found', 'missing'])
+})
+

@@ -68,6 +68,9 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`check` encuentra el repositorio de un commit desde la carpeta de una línea.** Ahí el producto es un enlace
+  al original, y el commit de una entrada de `done/` quedaba «sin comprobar» con el repositorio a la vista
+  (caso 273).
 - **`check` ya no avisa por el commit de planning.** En una instancia embebida, el commit que sólo toca
   `planning/` contaba como trabajo que ninguna entrada de `done/` nombra (OPS-001). Ya no cuenta; el que toca
   además código, sí (caso 270).
