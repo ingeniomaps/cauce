@@ -73,6 +73,10 @@
     {
       "source": "../../workflows/agent-promote.js",
       "target": ".claude/workflows/agent-promote.js"
+    },
+    {
+      "source": "agents/cauce-clerk.md",
+      "target": ".claude/agents/cauce-clerk.md"
     }
   ],
   "capabilities": {

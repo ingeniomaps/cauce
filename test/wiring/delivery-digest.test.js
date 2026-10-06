@@ -58,3 +58,21 @@ test('un registro escrito por el motor anterior sigue reconociendo lo entregado'
   assert.equal(stale('viejo'), false, 'lo anotado con la ruta, también')
   assert.equal(stale('ajeno'), true, 'lo que no coincide con nada es de la empresa y se conserva')
 })
+
+// Caso 295. El agente de oficina llega con la instalación, como los recorridos que lo nombran: un recorrido
+// que pide un tipo de agente que la sesión no tiene no puede lanzar ese paso. Y sus dos propiedades son lo
+// que lo vuelve liviano y lo que lo mantiene contenido: sin las instrucciones del proyecto, y sólo con Bash.
+test('instalar Claude entrega el agente de oficina que el recorrido nombra, y desinstalar lo retira', () => {
+  const { base, target } = instance('cauce-entrega-oficina-')
+  const file = path.join(base, '.claude', 'agents', 'cauce-clerk.md')
+  const text = fs.readFileSync(file, 'utf8')
+  const front = text.split('---')[1]
+  assert.match(front, /^name: cauce-clerk$/m)
+  assert.match(front, /^omitClaudeMd: true$/m)
+  assert.match(front, /^tools: Bash$/m, 'sin herramientas de archivo: lo que escribe lo escribe el comando')
+  const workflow = fs.readFileSync(path.join(base, '.claude', 'workflows', 'autobuild.js'), 'utf8')
+  assert.match(workflow, /agentType: 'cauce-clerk'/, 'el nombre que pide el recorrido es el que se instala')
+
+  assert.equal(run(['automation', 'uninstall', target, 'claude']).status, 0)
+  assert.equal(fs.existsSync(file), false)
+})

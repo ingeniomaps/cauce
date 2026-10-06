@@ -26,6 +26,12 @@ diseño — eso vive en el commit y en el código.
 
 ### Cambiado
 
+- **Los pasos de oficina de `autobuild` gastan veinte veces menos.** Leer la cola, reclamar, soltar o armar el
+  árbol de una tarea es correr un comando y devolver su salida, y cada uno cargaba las instrucciones enteras
+  del proyecto: unos 73.000 tokens para trabajar unos segundos. Ahora los corre un agente liviano,
+  `cauce-clerk`, que arranca en unos 3.500. En una corrida real, nueve de veinticuatro agentes eran pasos así.
+  **Qué hacer:** nada; el agente llega con el runner de Claude al actualizar, en `.claude/agents/`. Los guards
+  lo contienen igual que a cualquier otro (caso 295).
 - **Borrar una prueba por shell se frena, igual que con la herramienta de edición.** Un `rm` o un `git rm`
   sobre una prueba pasaba sin que ningún guard opinara, mientras el mismo borrado con la herramienta de
   archivos pedía a una persona. Ahora se frena igual, también con comodín y para la carpeta entera. Sólo una

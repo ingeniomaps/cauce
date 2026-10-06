@@ -111,3 +111,37 @@ Una instancia real desglosó el gasto de una corrida y encontró que el 90 % era
 
 - R16 — el costo es el contexto, no las palabras.
 - 293 — parar después de N tareas, que ahorra los agentes del final.
+
+## Avance
+
+El caso sigue abierto: de los tres caminos del fix propuesto se hizo el primero, y los otros dos esperan una
+decisión.
+
+### Hecho en 0.103.3: el agente de oficina
+
+`autobuild` corre con `cauce-clerk` los pasos que sólo ejecutan un comando del CLI y devuelven su salida:
+leer la cola, comprobar que una fila quedó pendiente, reclamar, soltar y armar el árbol de una tarea. El
+agente llega con la instalación del runner de Claude, en `.claude/agents/`.
+
+Quedaron afuera a propósito: leer el contrato, que resume cuatro documentos; todo lo que escribe archivos de
+planning; y los commits, que necesitan las reglas del proyecto.
+
+**Corrida real**, la misma tarea `lite` con `--max 1` en un banco sidecar: cerró igual que antes —el producto
+en su rama, planning commiteado en `work/planning`—, con dieciocho agentes. Los cuatro pasos de oficina de esa
+corrida escribieron 19.513 tokens en caché entre todos; cada uno de los otros catorce, entre 79.814 y
+226.241. Con el agente de siempre esos cuatro habrían estado en el rango de los demás.
+
+### Lo que esa corrida mostró y no se tocó
+
+- **Leer el contrato es el paso más caro, 226.241 tokens.** Lee `AGENTS.md`, `PROTOCOL.md`, `workspace.md` y
+  la configuración con sus herramientas, y los dos primeros ya los trae cargados por las instrucciones del
+  proyecto: los paga dos veces.
+- Los catorce agentes que trabajan siguen arrancando en unos 75.000 tokens. Eso es el camino 2.
+
+### Qué se corrió
+
+- **La medición por tipo de agente**, arriba.
+- **La corrida real**, con el recuento por agente sacado de sus transcriptos.
+- **Tres mutaciones en rojo**, en una copia: la oficina de vuelta al agente de siempre, lo que trabaja mandado
+  también por la oficina, y el agente cargando otra vez las instrucciones.
+- **La puerta entera**, `npm run ci`.

@@ -621,6 +621,15 @@ const LEDGER = () => `${SCOPE()}\n\nContratos de planning, textuales de ${P}/PRO
 const read = (prompt, options = {}) => agent(`${BASE}\n\n${prompt}`, options)
 const run = (prompt, options = {}) => agent(`${SCOPE()}\n\n${prompt}`, options)
 const write = (prompt, options = {}) => agent(`${LEDGER()}\n\n${prompt}`, options)
+// El paso de oficina: correr un comando del CLI y devolver lo que imprimió. No decide nada, así que no
+// necesita lo que carga un agente que sí trabaja. Medido sobre una instancia, la primera llamada de un agente
+// del recorrido trae 73.159 tokens de entrada, y 40.782 son lo que la instancia importa; `cauce-clerk` —un
+// agente propio con sólo Bash y sin las instrucciones del proyecto— arranca en unos 3.450 (caso 295). En una
+// corrida real, nueve de veinticuatro agentes eran pasos así.
+//
+// Los guards corren igual: son de la sesión y no del tipo de agente, y se comprobó con éste. Lo que no va por
+// acá es lo que escribe archivos de planning o commitea, que necesita las reglas del proyecto.
+const clerk = (prompt, options = {}) => agent(prompt, { ...options, agentType: 'cauce-clerk' })
 
 // Las paradas que dejan una fila en HUMAN_ACTIONS delegan esa escritura a un agente, y esa fila es el
 // único rastro de la parada: sin ella el recorrido informa un estado que el disco no tiene. Por eso se
@@ -638,7 +647,7 @@ const registerHuman = async (prompt, label, slug = '') => {
     return ` — la fila en ${HUMAN} no se pudo registrar: escribila a mano`
   }
   if (!slug) return ''
-  const row = await read(
+  const row = await clerk(
     `Corré "node tools/ops.js context ${P} --json" desde ${ROOT}. Poné pending en true sólo si humanActions `
     + `trae una fila cuya task sea ${slug}, y readOk en true sólo si el comando salió con código 0 y devolvió `
     + 'JSON. El comando es la fuente de verdad: no abras archivos de planning.',
@@ -682,7 +691,7 @@ const halt = async (reason, detail = '') => {
 
 // Gate, mutex de WIP y selección de tarea salen de un comando determinista: AWAITING_REVIEW, BACKLOG,
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
-const readContext = () => read(
+const readContext = () => clerk(
   `Corré "node tools/ops.js context ${P} --json" desde ${ROOT} y reportá sólo lo que imprimió. Derivá hasTask ` +
   `de si task es null, wipActive de si wip es null, claimed del campo claimed, today, wipFile y line de sus ` +
   `campos —line vacío si viene null—, rules del campo rules tal cual, wip con sus campos complete y ` +
@@ -801,7 +810,7 @@ while (rounds++ < MAX_TASKS) {
   // por eso perder la carrera no es un error: se relee y se sigue con la que quedó libre.
   if (!planning.claimed && !planning.wipActive) {
     phase('Claim')
-    const claim = await write(
+    const claim = await clerk(
       `Corré "node tools/ops.js claim ${P} ${task.id}" desde ${ROOT}. No escribas ningún archivo vos: lo ` +
       `escribe el comando. claimed=true sólo con exit 0; si falla porque la tomó otro, claimed=false y ` +
       `copiá el mensaje en details. Si quien lanzó la corrida pidió que no se tome esta tarea —que parara ` +
@@ -964,7 +973,7 @@ while (rounds++ < MAX_TASKS) {
   //
   // Cuesta un agente, porque el recorrido no tiene con qué correr un comando. Un agente contra una
   // corrida entera.
-  const releaseBlocked = async () => write(
+  const releaseBlocked = async () => clerk(
     `Corré "node tools/ops.js release ${P} ${task.id}" desde ${ROOT}: quedó bloqueada por la fila que `
     + 'acabás de registrar y todavía no hay nada construido, así que su reserva no reserva trabajo. No '
     + 'escribas ningún archivo vos: lo escribe el comando.',
@@ -1018,7 +1027,7 @@ while (rounds++ < MAX_TASKS) {
   let tree = null
   if (planning.line) {
     phase('Worktree')
-    tree = await write(
+    tree = await clerk(
       `Corré "node tools/ops.js worktree ${P} ${task.id} --json" desde ${ROOT} y reportá sólo lo que imprimió: ` +
       `ok=true con exit 0, y path, work, branch y repo de sus campos. Si falla, ok=false y el mensaje en ` +
       `details. No crees ni toques ningún archivo vos: el árbol lo arma el comando.`,
@@ -1097,7 +1106,7 @@ while (rounds++ < MAX_TASKS) {
         //
         // Va **después** de la guarda de arriba y no antes de leer el contexto: si el reemplazo no
         // ocurrió, la tarea sigue viva y su reclamo tiene que seguir puesto (caso 163).
-        await write(
+        await clerk(
           `Corré "node tools/ops.js release ${P} ${task.id}" desde ${ROOT}: quedó partida y su reserva `
           + 'ya no aplica. No escribas ningún archivo vos: lo escribe el comando.',
           { label: `release:${task.id}` },

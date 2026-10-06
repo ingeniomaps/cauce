@@ -267,3 +267,27 @@ test('una corrida acotada a N tareas, o cuyo reclamo se declina a pedido, termin
   assert.ok(!declined.phases.slice(declined.phases.lastIndexOf('Claim')).includes('Build'), 'no la construye')
   assert.match(declined.prompts.find((one) => one.key === 'Claim|claim:T-2').prompt, /declined=true/)
 })
+
+// Caso 295. Los pasos que sólo corren un comando del CLI van con el agente de oficina, que no carga las
+// instrucciones del proyecto: 3.450 tokens de entrada contra 73.159. Las dos mitades van juntas, porque
+// mandar todo por ahí daría el mismo verde: lo que planifica, construye, revisa o commitea necesita las
+// reglas, y sigue con el agente de siempre.
+test('los pasos de oficina van con el agente liviano, y los que trabajan no', async () => {
+  const blocked = { verdict: 'bloqueado', consulted: ['api/alta.go'],
+    concerns: [{ detail: 'falta una decisión', blocking: true, replan: true }] }
+  const line = { ...baseScript()[KEY.context], line: 'admin' }
+  const runs = [await runFlow(), await runFlow({ [KEY.critique]: blocked }),
+    await runFlow({ [KEY.context]: line, 'Worktree|worktree:T-1': { ok: true, path: '/l/api-T-1',
+      work: '/l/api-T-1', branch: 'task/T-1', repo: '/o/api' },
+    [KEY.commit]: { committed: true, hash: 'abc123', branch: 'feat/T-1', live: false } })]
+  const seen = new Map()
+  for (const { prompts } of runs) for (const one of prompts) seen.set(one.key.split('|')[1], one.agentType)
+
+  const clerical = ['planning-context', 'claim:T-1', 'human-row', 'release:T-1', 'worktree:T-1']
+  for (const label of clerical) assert.equal(seen.get(label), 'cauce-clerk', label)
+  const working = [...seen].filter(([label]) => !clerical.includes(label))
+  assert.ok(working.length > 10, `se vieron ${working.length} pasos que trabajan`)
+  for (const [label, type] of working) assert.equal(type, '', `${label} carga las reglas del proyecto`)
+  for (const label of ['contract-digest', 'plan', 'build', 'review', 'verify', 'commit', 'done', 'planning-commit',
+    'plan-human', 'planning-block']) assert.ok(seen.has(label), `la prueba no llegó a ver ${label}`)
+})
