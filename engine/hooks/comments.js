@@ -186,7 +186,8 @@ function comments(input) {
   const root = opsRoot(input)
   const spec = root && configOf(root).comments
   if (!spec) return
-  const { dir, staged } = stagedForCommit(command, cwdOf(input))
+  const { dir, staged, foreign } = stagedForCommit(command, cwdOf(input), input)
+  if (foreign) return
   const merging = spawnSync('git', ['-C', dir, 'rev-parse', '-q', '--verify', 'MERGE_HEAD']).status === 0
   const files = git(dir, ['diff', '--cached', '--name-only', '-z', '--diff-filter=ACMR'])
     .split('\0').filter((file) => file && styleOf(file))

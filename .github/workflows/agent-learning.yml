@@ -967,7 +967,9 @@ jobs:
           CAUCE_OWNER: agent-propose (github-actions[bot])
         run: |
           if awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f' "$FILE" | grep -qx 'cambia: no'; then
-            node "$OPS" learn "$AGENT" --archived \
+            # El período sale del archivo que se acaba de leer. Sin él, el comando toma la última propuesta
+            # del cargo: coincide casi siempre, y cuando no, archiva una que nadie miró (caso 265).
+            node "$OPS" learn "$AGENT" --archived --period "$(basename "$FILE" .md)" \
               --reason "agent-propose concluyó que el contrato no cambia; el porqué está en «Cambio propuesto»."
             echo "archived=true" >> "$GITHUB_OUTPUT"
           fi

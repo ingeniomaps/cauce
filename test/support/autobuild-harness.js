@@ -39,6 +39,7 @@ const KEY = {
   planRow: 'Critique|human-row',
   readyRow: 'Ready|human-row',
   verifyRow: 'Verify|human-row',
+  planningCommit: 'Done|planning-commit',
 }
 
 // Respuestas del camino que llega hasta el final. Cada escenario cambia una sola y asercia el efecto:
@@ -87,6 +88,7 @@ function baseScript() {
     [KEY.planRow]: { readOk: true, pending: true },
     [KEY.readyRow]: { readOk: true, pending: true },
     [KEY.verifyRow]: { readOk: true, pending: true },
+    [KEY.planningCommit]: { committed: true, hash: 'def456', branch: 'work/planning', live: false },
   }
 }
 
@@ -115,6 +117,8 @@ const NO_TASK = {
 // cualquiera de las veinticuatro llamadas se ve en la primera que la ejerza.
 async function runFlow(changes = {}, options = {}) {
   const script = { ...baseScript(), ...changes }
+  // Se lee acá porque más abajo `options` pasa a ser el de cada llamada a un agente.
+  const runArgs = options.args === undefined ? {} : options.args
   if (options.lane) {
     script[KEY.context] = { ...script[KEY.context], lane: options.lane }
   }
@@ -175,6 +179,11 @@ async function runFlow(changes = {}, options = {}) {
       reads += 1
       return typeof answer === 'function' ? answer() : answer
     }
+    // El commit de planning de una parada ocurre en la fase que frenó, así que su clave cambia con ella: se
+    // contesta por etiqueta, y un guion lo pisa con su clave cuando quiere otra respuesta.
+    if (options.label === 'planning-block' && !(key in script)) {
+      return silent.includes(options.label) ? null : { committed: true, hash: 'b10c', branch: 'work/planning' }
+    }
     if (!(key in script)) throw new Error(`el guion no cubre ${key}`)
     // Una respuesta puede ser una función cuando el escenario necesita contestar distinto en cada vuelta.
     const answer = script[key]
@@ -184,7 +193,7 @@ async function runFlow(changes = {}, options = {}) {
   const result = await compileWorkflow('autobuild')(
     agent, (title) => { phase = title; phases.push(title) }, (text) => said.push(text),
     async (thunks) => Promise.all(thunks.map((t) => t())), async () => [], async () => ({}),
-    {}, { total: null, spent: () => 0, remaining: () => Infinity },
+    runArgs, { total: null, spent: () => 0, remaining: () => Infinity },
   )
   return { result, phases, asked, written, wrote, said, prompts }
 }

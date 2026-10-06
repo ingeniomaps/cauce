@@ -60,7 +60,8 @@ test('se aprueba como el resto: diálogo en Claude Code, orden por chat o la lí
   const merge = 'gh pr merge 12 --squash --repo acme/app'
   const chat = chatSession()
   try {
-    const elsewhere = { hook_event_name: 'PreToolUse', ...chat.says('seguí con lo tuyo')(run(root, merge)) }
+    const elsewhere = { hook_event_name: 'PreToolUse', permission_mode: 'default',
+      ...chat.says('seguí con lo tuyo')(run(root, merge)) }
     assert.throws(() => executeAll(['pre-shell'], elsewhere),
       (error) => error.ask && /pull request/.test(error.message))
     const ordered = chat.says(`corré ${merge}`)

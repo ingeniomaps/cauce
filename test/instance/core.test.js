@@ -25,6 +25,17 @@ test('valida el contrato completo de ops.config.json', () => {
   assert.ok(errors.some((error) => error.includes('allowPush debe ser boolean')))
 })
 
+// Opcional y booleano (caso 251): ausente es apagado, y una instancia instalada antes no lo trae.
+test('runner.commitToLiveBranch es opcional y sólo admite un booleano', () => {
+  const errorsOf = (value) => {
+    const config = opsConfig()
+    if (value !== undefined) config.runner.commitToLiveBranch = value
+    return validateOpsConfig(config).filter((error) => error.includes('commitToLiveBranch'))
+  }
+  for (const good of [undefined, true, false]) assert.deepEqual(errorsOf(good), [])
+  assert.deepEqual(errorsOf('si'), ['ops.config.json: runner.commitToLiveBranch debe ser boolean'])
+})
+
 // El permiso por rama viva (caso 108) compara nombres tal cual, así que un patrón no publicaría en ninguna
 // rama y parecería que en todas: se rechaza acá, donde se ve, y no se descubre al primer push frenado.
 test('runner.pushToLiveBranches acepta nombres exactos y rechaza patrones', () => {

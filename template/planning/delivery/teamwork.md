@@ -114,6 +114,11 @@ repositorios del producto enlazados y los mismos runners instalados ahí. La ses
 esa carpeta, y sus guards son los de su árbol. `automation install` se niega a mover los guards de la carpeta
 compartida a otro árbol, y dice que para eso está `ops line`.
 
+Si una raíz declarada es la carpeta que contiene a la instancia —`..`, con un repositorio por servicio
+adentro—, lo que se enlaza son sus hijos: los repositorios y también los archivos sueltos de esa carpeta.
+Lo que **no** viaja es lo que no es de Cauce y va por carpeta de sesión: la memoria que el runner guarda
+para esa carpeta arranca vacía en la de la línea, y la configuración del runner es la que la línea instala.
+
 Qué trabajo es de cada línea se declara en el hito: `line: admin` en el frontmatter de su `backlog/<hito>.md`.
 El árbol de la línea `admin` sólo ve esos hitos, y el principal sólo los que no son de ninguna, así que el
 autobuild de una no toma la tarea de la otra aunque las dos colas terminen en el mismo archivo después de

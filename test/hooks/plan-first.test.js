@@ -116,6 +116,27 @@ test('el plan de un runner no le sirve a otro para saltear plan-first', () => {
   } finally { process.env.CAUCE_RUNNER = previous }
 })
 
+// Caso 260. Sin `CAUCE_RUNNER`, el recorrido escribe su WIP con el id de la instancia y el guard corre
+// donde esté parada la sesión, que en sidecar es otra carpeta: deducía otro id y frenaba el Build con el
+// plan a la vista. Van las dos mitades: el plan de la instancia alcanza, y con un id declarado no.
+test('sin id declarado, el plan escrito con el id de la instancia alcanza', () => {
+  const { wipName } = require('../../engine/planning/parser')
+  const root = planFirstRoot('ops-hook-plan-instancia-', WIP_IDLE)
+  fs.writeFileSync(path.join(root, 'planning', 'wip', `${wipName(root)}.md`),
+    '---\ntask: alta-de-cliente\nphase: Build\n---\n\n## Plan aprobado\n1. [ ] Montar el alta\n')
+  const writing = { cwd: root, tool_input: { file_path: 'src/altas.js' } }
+  const previous = process.env.CAUCE_RUNNER
+  delete process.env.CAUCE_RUNNER
+  try {
+    assert.doesNotThrow(() => execute('plan-first', writing), 'la sesión es la de la instancia')
+    process.env.CAUCE_RUNNER = '/w/otro-agente'
+    blocked('plan-first', writing, /bajo otro id/)
+  } finally {
+    if (previous === undefined) delete process.env.CAUCE_RUNNER
+    else process.env.CAUCE_RUNNER = previous
+  }
+})
+
 // Lo que ésta fija y las otras de `plan-first` no: que el bloqueo distinga sus dos causas. En las dos
 // frenar es correcto —que el plan ajeno no autorice lo fija la prueba de arriba—, así que lo único que
 // queda observable es a dónde manda el mensaje, y por eso acá se afirma sobre su texto y no sobre si

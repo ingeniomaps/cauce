@@ -103,6 +103,9 @@ const CONTEXT = {
     // Dónde va el plan de este runner. El nombre sale de su id y el recorrido no lo deriva: lo
     // pregunta, igual que la fecha.
     wipFile: { type: 'string' },
+    // La línea de trabajo de esta sesión, o vacío en el árbol principal. De ahí sale si la tarea se
+    // construye en un árbol propio (caso 274).
+    line: { type: 'string' },
     // Con los nombres que ya hay en el INBOX, Review no vuelve a anotar uno.
     inbox: { ...INBOX_HEADS },
     // Las reglas que rigen el proyecto, con los overrides ya resueltos por el motor (caso 105).
@@ -127,6 +130,14 @@ const CONTEXT = {
 const CLAIM = {
   type: 'object', additionalProperties: false, required: ['claimed'],
   properties: { claimed: { type: 'boolean' }, details: { type: 'string' } },
+}
+// El árbol de trabajo de una tarea, como lo devuelve `ops worktree --json`.
+const WORKTREE = {
+  type: 'object', additionalProperties: false, required: ['ok'],
+  properties: {
+    ok: { type: 'boolean' }, path: { type: 'string' }, work: { type: 'string' }, branch: { type: 'string' },
+    repo: { type: 'string' }, details: { type: 'string' },
+  },
 }
 const READY = {
   type: 'object', additionalProperties: false, required: ['ready', 'needsHuman'],
@@ -172,6 +183,20 @@ const DECISION = {
     consulted: { type: 'array', items: { type: 'string' } },
   },
 }
+// La crítica del plan tiene un destino que Review no tiene: la fase que sigue todavía puede cumplir lo que
+// falta. Por eso su bloqueante dice además cuál de los dos es —`replan: true` si corregirlo cambia el plan y
+// hay que volver a criticarlo, `false` si es una condición que cumple quien construye—. Sin el campo los dos
+// eran `blocking: true`, y una condición de dos renombres paraba el recorrido como un plan sin salida
+// (caso 248). Extiende el concern por la misma razón que `REVIEWED`.
+const CRITIQUED = { ...DECISION,
+  properties: { ...DECISION.properties,
+    concerns: { ...DECISION.properties.concerns,
+      items: { ...DECISION.properties.concerns.items,
+        required: [...DECISION.properties.concerns.items.required, 'replan'],
+        properties: { ...DECISION.properties.concerns.items.properties, replan: { type: 'boolean' } },
+      } },
+  },
+}
 // Qué superficie crítica toca una tarea `express`. Una sola cadena: la entrada de la lista tal cual, o vacía.
 const CRITICAL = {
   type: 'object', additionalProperties: false, required: ['critical'],
@@ -205,9 +230,13 @@ const REVIEWED = { ...DECISION, required: [...DECISION.required, 'rules', 'criti
         // `ref` y `verified` son del Review y no de Critique, que critica un plan sin diff que comprobar
         // (caso 206): de dónde sale cada hallazgo —una regla que rige o `criterio`—, y si el revisor
         // comprobó lo que afirma o lo supone.
-        required: [...DECISION.properties.concerns.items.required, 'ref', 'verified'],
+        //
+        // `proposes` separa, entre lo que no bloquea, lo que propone algo de la constancia de haber mirado
+        // y encontrado bien. Sin el campo las dos iban al INBOX como propuestas: en una corrida real, dos de
+        // las tres entradas eran «la revisión no encontró nada que corregir» (caso 262).
+        required: [...DECISION.properties.concerns.items.required, 'ref', 'verified', 'proposes'],
         properties: { ...DECISION.properties.concerns.items.properties, decision: { type: 'boolean' },
-          ref: { type: 'string' }, verified: { type: 'boolean' } },
+          ref: { type: 'string' }, verified: { type: 'boolean' }, proposes: { type: 'boolean' } },
       } },
   } }
 // Un exit code dice que el test corrió, no que pruebe lo que la tarea prometió: un test que asercia de
@@ -249,6 +278,12 @@ const QA = {
   properties: {
     passed: { type: 'boolean' }, evidence: { type: 'string' }, behavioral: { type: 'boolean' },
     bugs: { type: 'array', items: { type: 'string' } },
+    // Lo que dio cada mutación que Build declaró sin correr. `red` es lo único que se decide con esto: una
+    // que no se puso roja dice que la prueba no cuida lo que nombra (R9).
+    mutations: { type: 'array', items: { type: 'object', additionalProperties: false,
+      required: ['detail', 'red'],
+      properties: { detail: { type: 'string' }, red: { type: 'boolean' }, output: { type: 'string' } },
+    } },
   },
 }
 // RED/GREEN sin registro es una intención: después nadie distingue el test que se vio fallar del que se
@@ -270,7 +305,7 @@ const BUILD = {
     discovered: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['kind', 'detail'],
       properties: {
-        kind: { type: 'string', enum: ['edge', 'open'] },
+        kind: { type: 'string', enum: ['edge', 'open', 'note', 'debt', 'mutation'] },
         detail: { type: 'string' }, test: { type: 'string' },
       },
     } },
@@ -280,9 +315,43 @@ const COMMIT = {
   type: 'object', additionalProperties: false, required: ['committed'],
   properties: {
     committed: { type: 'boolean' }, hash: { type: 'string' }, subject: { type: 'string' },
-    branch: { type: 'string' }, leftovers: { type: 'array', items: { type: 'string' } }, reason: { type: 'string' },
+    // `live` lo contesta quien commiteó porque es el único que ve el remoto: la rama por defecto no es
+    // siempre `main`, y el recorrido no corre git.
+    branch: { type: 'string' }, live: { type: 'boolean' },
+    leftovers: { type: 'array', items: { type: 'string' } }, reason: { type: 'string' },
   },
 }
+// Acompaña al prompt de Commit. El repo de un servicio queda en su rama viva después de cada merge, que es
+// justo donde arranca la corrida siguiente: sin esto el commit caía ahí, sin PR ni CI (caso 251). Cortar la
+// rama no pide permiso a nadie —es lo que la persona iba a hacer a mano—; commitear en la viva sí, y ese
+// pedido es `runner.commitToLiveBranch`. Se corta acá y no antes de Build porque `git switch -c` se lleva
+// el árbol sin commitear, así que alcanza con un solo lugar.
+//
+// En un árbol de tarea la rama ya está cortada: es `task/<slug>`, que es el nombre con que `check` sigue si
+// un reclamo se mueve. Al commitear se renombra a la forma de siempre, y el árbol se saca: la rama queda,
+// que es lo que se lleva a un PR, y la carpeta de la línea no acumula un árbol por tarea cerrada.
+const BRANCHED = (slug, tree) => (tree
+  ? ` El repositorio es el árbol de trabajo ${tree.path}, en la rama ${tree.branch}: commiteá ahí, y no en el `
+    + `checkout compartido. Antes de commitear renombrá esa rama con \`git branch -m <tipo>/${slug}\`, donde `
+    + 'tipo es el del Conventional Commit. Cuando el commit esté verificado y el árbol limpio, sacalo con '
+    + `\`git -C ${tree.repo} worktree remove ${tree.path}\`: la rama queda.`
+  : contract.commitToLiveBranch
+  ? ' Commiteá en la rama en la que esté el repositorio.'
+  : ' Antes de stagear mirá en qué rama está el repositorio. Si es una rama viva —main, master o la rama por '
+    + 'defecto del remoto— no commitees ahí ni lo consultes: cortá una con `git switch -c <tipo>/' + slug
+    + '`, donde tipo es el del Conventional Commit, que se lleva los cambios sin commitear; si esa rama ya '
+    + 'existe, pasate a ella. Si el repositorio ya está en una rama que no es viva, commiteá en ésa.')
+  + ' Reportá en branch la rama donde quedó el commit y en live si es una rama viva.'
+// Acompaña al commit del estado de planning. La rama no es por tarea, como la del producto: es una sola que
+// se acumula con un PR abierto, así que antes de cortar una se busca la que ya exista.
+const PLANNING_BRANCH = () => (contract.commitToLiveBranch
+  ? ' Commiteá en la rama en la que esté ese repositorio.'
+  : ' Antes de stagear mirá en qué rama está. Si es una rama viva —main, master o la rama por defecto del '
+    + 'remoto— no commitees ahí ni lo consultes: pasate a la rama de trabajo de planning que ya exista —la '
+    + 'que ya lleva commits de estado de planning sin mergear— y si no hay ninguna cortá `work/planning`. '
+    + 'Es una sola rama que se acumula, nunca una por tarea. Si ya está en una rama que no es viva, '
+    + 'commiteá en ésa.')
+  + ' Reportá en branch la rama donde quedó el commit y en live si es una rama viva.'
 // Dueño por defecto de cada fase. Es determinista: no hace falta preguntarle a un modelo quién
 // revisa la arquitectura o quién decide si la evidencia de calidad alcanza.
 const OWNERS = {
@@ -345,6 +414,7 @@ const CONTRACT = {
     // y no del runner: un monorepo tiene una por servicio, y uno solo tiene una sola.
     gates: { type: 'array', items: { type: 'string' } },
     maxTaskHours: { type: 'number' }, commitPerTask: { type: 'boolean' },
+    commitToLiveBranch: { type: 'boolean' },
     humanCheckpoint: { type: 'boolean' }, contracts: { type: 'string' },
     boundaries: { type: 'array', items: { type: 'string' } },
   },
@@ -354,6 +424,18 @@ const CONTRACT = {
 const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos externos en ${HUMAN}. Nunca ` +
   `ejecutes INBOX por tu cuenta. Nunca hagas push, deploy, amend, force ni git add -A. No edites la gobernanza ` +
   `del proceso, y no toques la contabilidad de planning salvo que este recorrido te lo pida explícitamente.`
+// Lo que quien lanza la corrida le pide a la corrida: el texto de `args`, o su campo `note`. Hasta 0.100.0
+// este recorrido no leía `args`, así que una instrucción dada ahí no llegaba a ninguna fase y nada lo decía
+// (caso 252). Va a las tres fases que deciden cómo se hace el trabajo, y por debajo de la aceptación y de
+// las reglas: es un pedido de quien opera, que no pasó por ninguna de sus compuertas.
+const ASKED = String((typeof args === 'string' ? args : (args || {}).note) || '').trim()
+const OPERATOR = ASKED ? ` Quien lanzó esta corrida pidió, para todas sus tareas: «${ASKED}». Cumplilo en lo `
+  + 'que le toque a esta fase. No reemplaza la aceptación ni las reglas: si las contradice mandan ellas, y lo '
+  + 'decís.' : ''
+// A quien critica el plan le llega como dato y no como pedido: en una corrida real la crítica encontró en el
+// plan una decisión atribuida a «quien lanzó la corrida», no tuvo contra qué contrastarla y la dejó
+// marcada como supuesto.
+const OPERATOR_SAID = ASKED ? ` Para que lo contrastes: quien lanzó esta corrida pidió «${ASKED}».` : ''
 // Acompaña a todo prompt con schema DECISION: el schema obliga a llenar `consulted`, y esto obliga a
 // llenarlo con lo que se abrió en vez de con lo que se pensaba mirar.
 const MANIFEST = ' Enumerá en consulted cada archivo, diff o comando que hayas abierto de verdad, con su ruta.'
@@ -364,6 +446,11 @@ const VERDICT = ' Cerrá con verdict=aprobado si no queda nada por corregir ante
   'si algo no se resuelve acá —el diseño no lo cubre, falta una decisión ajena, o la corrección excede el ' +
   'alcance—. Marcá blocking=true sólo en el hallazgo que impide entregar: el resto queda registrado y no ' +
   'manda a tocar código.'
+// Acompaña a todo prompt con schema CRITIQUED.
+const REPLANNED = ' En cada hallazgo con blocking=true, replan es true si corregirlo cambia el plan —su diseño, '
+  + 'su alcance, sus pasos o cómo se prueba— y hay que volver a criticarlo; y false si el plan queda igual y '
+  + 'alcanza con que quien construye lo cumpla al escribir —un nombre, un formato, una regla que aplicar—: ésa '
+  + 'viaja como condición y la revisión comprueba que se cumplió. Ante la duda, true. En los demás, false.'
 // Acompaña a todo prompt con schema REVIEWED.
 const RULED = ' En rules nombrá, por su ruta, cada una de las reglas que rigen contra la que revisaste'
   + ' el diff. Y marcá decision=true en el hallazgo que no te toca resolver a vos —una definición de'
@@ -372,7 +459,9 @@ const RULED = ' En rules nombrá, por su ruta, cada una de las reglas que rigen 
   + ' número —<ruta>#<número>— y una de las que rigen, o la palabra criterio si es juicio tuyo sin regla'
   + ' escrita; nunca presentes un criterio como regla. Y verified es true sólo si comprobaste lo que el hallazgo'
   + ' afirma —leíste el código que lo muestra, corriste el comando—; si lo suponés, false: un hallazgo sin'
-  + ' comprobar no manda a corregir, se registra.'
+  + ' comprobar no manda a corregir, se registra. Y en cada hallazgo con blocking=false, proposes es true si'
+  + ' propone algo que alguien podría hacer —una mejora, una prueba que falta, una deuda— y false si sólo deja'
+  + ' constancia de algo que miraste y está bien: ésa queda en el cierre de la tarea y no va al INBOX.'
 // También acompaña a todo prompt con schema REVIEWED, y es función porque las superficies se leen después.
 const SURFACED = () => ((planning && (planning.surfaces || []).length)
   ? ` En critical poné la superficie de esta lista que el diff toca, tal cual, o vacío si no toca ninguna: `
@@ -389,6 +478,14 @@ const SURFACED = () => ((planning && (planning.surfaces || []).length)
 // declara el campo, y para él todo bloqueante sigue bloqueando; el esquema de Review lo exige.
 const blockers = (verdict) => verdict.concerns
   .filter((one) => one.blocking && !one.decision && one.verified !== false).map(cite)
+// Lo que la crítica del plan deja para después de aprobarlo, en sus dos clases. Se compara contra `false`
+// igual que `verified` arriba: un bloqueante que no dice cuál es pide replan, que es el lado que frena.
+const replans = (verdict) => verdict.concerns
+  .filter((one) => one.blocking && one.replan !== false).map((one) => one.detail)
+const carried = (verdict) => ({
+  conditions: verdict.concerns.filter((one) => one.blocking && one.replan === false).map((one) => one.detail),
+  noted: verdict.concerns.filter((one) => !one.blocking).map((one) => one.detail),
+})
 // El hallazgo con la regla que lo sostiene al lado: es lo que llega a quien corrige y a `done/`.
 const cite = (one) => (one.ref ? `${one.detail} [${one.ref}]` : one.detail)
 // Un `ref` que nombra una regla que no rige es una cita sin base. No se borra ni se corrige en silencio
@@ -465,6 +562,7 @@ const contract = await agent(
   `Reportá los ` +
   `valores de configuración textualmente: project, workspaceRoots como entradas "nombre → ruta", ` +
   `runner.maxTaskHours, runner.commitPerTask y runner.humanCheckpointBetweenMilestones como humanCheckpoint. ` +
+  `commitToLiveBranch es true sólo si runner.commitToLiveBranch está escrito en true; si falta, false. ` +
   `En gates poné una entrada "ruta → comando" por cada workspaceRoot que declare \`verify\`, y ninguna por ` +
   `las que no lo declaren: la lista vacía significa que el proyecto no dice con qué se verifica. ` +
   `Copiá la sección "## Contratos" de PROTOCOL.md dentro de contracts tal cual, sin reformular, resumir ni ` +
@@ -541,12 +639,32 @@ const registerHuman = async (prompt, label, slug = '') => {
     : ` — la fila de ${slug} en ${HUMAN} no quedó pendiente: la resuelve una persona, revisala a mano`
 }
 
+// Una parada también escribe en planning —la fila, y antes el cargo que Classify anotó en la cola—, y sólo
+// el cierre de una tarea lo commiteaba: la corrida que frenaba dejaba la instancia sucia (caso 279). Mismo
+// interruptor y misma regla de ramas que el commit del cierre, y tampoco frena: la parada ya está dicha.
+// Va después de soltar el reclamo cuando la parada lo suelta: commiteado antes, soltarlo volvía a ensuciar.
+const commitBlocked = async (slug) => {
+  if (!contract.commitPerTask) return
+  const stated = await run(
+    `Commiteá el estado de planning que la parada de ${slug} dejó sin commitear en el repositorio que `
+    + `contiene a ${P}: stageá por nombre sólo lo que cambió bajo ${P} —también lo que se borró—, nunca `
+    + `archivos del producto, y creá un solo commit "chore(planning): block ${slug}". Nunca amend ni `
+    + `push.${PLANNING_BRANCH()}`,
+    { schema: COMMIT, label: 'planning-block' },
+  )
+  if (!stated || !stated.committed) {
+    log(`el estado de planning de la parada de ${slug} quedó sin commitear: `
+      + `${(stated && stated.reason) || 'sin respuesta'}`)
+  }
+}
+
 // Gate, mutex de WIP y selección de tarea salen de un comando determinista: AWAITING_REVIEW, BACKLOG,
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
 const readContext = () => read(
   `Corré "node tools/ops.js context ${P} --json" desde ${ROOT} y reportá sólo lo que imprimió. Derivá hasTask ` +
-  `de si task es null, wipActive de si wip es null, claimed del campo claimed, today y wipFile de sus ` +
-  `campos, rules del campo rules tal cual, wip con sus campos complete y pending tal cual si viene —y ` +
+  `de si task es null, wipActive de si wip es null, claimed del campo claimed, today, wipFile y line de sus ` +
+  `campos —line vacío si viene null—, rules del campo rules tal cual, wip con sus campos complete y ` +
+  `pending tal cual si viene —y ` +
   `omitilo entero si wip es null, sin inventar ceros—, y lane ` +
   `de task.tier; copiá slug, ` +
   `hito, service, acceptance, ` +
@@ -642,6 +760,9 @@ while (rounds++ < MAX_TASKS) {
   // no tiene plan en memoria—. Sin esto la estrategia no era que se descartara: es que no estaba en
   // alcance, que es la forma que ninguna prueba de la fase ve.
   let testStrategy = ''
+  // Lo que la crítica aprobó con condiciones y lo que anotó sin bloquear: salen de Critique y los leen WIP,
+  // Build y Review. Hasta 0.100.0 no pasaban de la crítica (caso 249).
+  let approved = { conditions: [], noted: [] }
   const task = {
     id: planning.slug, hito: planning.hito, service: planning.service,
     acceptance: planning.acceptance, epic: planning.epic, epicContext: planning.epicContext || '',
@@ -827,19 +948,59 @@ while (rounds++ < MAX_TASKS) {
       + `${verdict.critical} y la revisión señaló sin poder comprobarlo: ${detail}. La acción humana es `
       + 'comprobarlo antes de reanudar: si es un defecto, se corrige antes de entregar; si no lo es, se deja '
       + 'escrito por qué.', 'critical-human', task.id)
+    await commitBlocked(task.id)
     return stop('review-unverified', `${verdict.critical}: ${detail}${note}`)
   }
 
+  // Las dos paradas no dicen lo mismo. Tras la corrección hubo dos planes y dos rechazos, que es la tercera
+  // barra de R17. Un `bloqueado` en la primera crítica es un plan y un motivo que corregirlo no toca, y casi
+  // siempre es una decisión que falta: ahí «nadie pudo escribir un plan» es falso y mandar a partir la unidad
+  // pide lo que no era. La crítica no tiene otra salida para una decisión, y en una corrida real además la
+  // había anotado ella, así que quedaron dos filas por un solo bloqueo (caso 278).
   const planRejected = async (reason, unit, found) => {
     const detail = found.join('; ') || 'sin condiciones nombradas'
-    const note = await registerHuman(
-      `Registrá ${unit.id} en ${HUMAN}: nadie pudo escribir un plan que sobreviva a la crítica. `
+    const note = await registerHuman(reason === 'plan-blocked'
+      ? `Registrá ${unit.id} en ${HUMAN}: la crítica frenó el plan por algo que corregirlo no resuelve. `
+        + `Motivo: ${detail}. La acción humana es resolver ese motivo: si es una decisión, tomarla; si es que `
+        + 'la unidad son dos resultados con vidas distintas, partirla o dejarla entera con la razón escrita. '
+        + `Es una sola fila: si ${unit.id} ya tiene una pendiente por este mismo motivo, completala en vez de `
+        + 'agregar otra.'
+      : `Registrá ${unit.id} en ${HUMAN}: nadie pudo escribir un plan que sobreviva a la crítica. `
       + `Motivo: ${detail}. La acción humana es revisar si la unidad son dos resultados con vidas `
       + `distintas y partirla, o dejarla entera con la razón escrita.`, 'plan-human', unit.id)
     await releaseBlocked()
+    await commitBlocked(unit.id)
     return stop(reason, `${detail}${note}`)
   }
 
+  // En una línea de trabajo la tarea se construye en un árbol propio. Las líneas comparten por enlace el
+  // mismo checkout del producto, así que cortar la rama ahí lo dejaba parado en la tarea de una para todas
+  // las demás (caso 274). Fuera de una línea no hay con quién pisarse y se trabaja en la carpeta que está:
+  // un árbol aparte es para cuando dos sesiones se tocan.
+  //
+  // `declared` es el servicio como lo nombra planning, que es lo que viaja al WIP y a `done/`; `task.service`
+  // pasa a ser dónde se trabaja. El comando reusa el árbol si ya existe, así que retomar cae en el mismo.
+  const declared = task.service
+  let tree = null
+  if (planning.line) {
+    phase('Worktree')
+    tree = await write(
+      `Corré "node tools/ops.js worktree ${P} ${task.id} --json" desde ${ROOT} y reportá sólo lo que imprimió: ` +
+      `ok=true con exit 0, y path, work, branch y repo de sus campos. Si falla, ok=false y el mensaje en ` +
+      `details. No crees ni toques ningún archivo vos: el árbol lo arma el comando.`,
+      { schema: WORKTREE, label: `worktree:${task.id}` },
+    )
+    if (!tree || !tree.ok || !tree.work) {
+      return stop('worktree-failed', `${task.id}: ${(tree && tree.details) || 'el comando no devolvió el árbol'}`)
+    }
+    task.service = tree.work
+  }
+  // Acompaña a toda fase que mira o toca el trabajo: sin esto buscan el diff en el checkout compartido, que
+  // en una línea no tiene nada.
+  const WHERE = tree ? ` El trabajo de ${task.id} está en ${tree.work}, un árbol de trabajo de ${tree.repo} en ` +
+    `la rama ${tree.branch}: el diff, las pruebas y el commit son ahí y no en el checkout compartido, que no ` +
+    'se toca.' : ''
+  const resumedFromWip = Boolean(planning.wipActive)
   if (!planning.wipActive) {
     if (!mechanical || !vouched) {
       phase('Ready')
@@ -856,6 +1017,7 @@ while (rounds++ < MAX_TASKS) {
           `Registrá ${task.id} en ${HUMAN} con el motivo y una acción humana exacta: ${ready.reason}.`,
           'ready-human', task.id)
         await releaseBlocked()
+        await commitBlocked(task.id)
         return stop('not-ready', `${ready.reason}${note}`)
       }
       if (ready.refinedAcceptance) task.acceptance = ready.refinedAcceptance
@@ -926,7 +1088,7 @@ while (rounds++ < MAX_TASKS) {
       `El plan cubre ` +
       `sólo el cambio dentro de ${task.service}: correr los gates del repositorio, hacer QA, commitear y ` +
       `cerrar la tarea son fases posteriores de este recorrido, cada una con su dueño, así que no van como ` +
-      `pasos.`,
+      `pasos.${OPERATOR}`,
       { schema: PLAN, label: 'plan' },
     )
     if (!plan) return stop('agent-unavailable', 'Plan no devolvió resultado')
@@ -934,8 +1096,8 @@ while (rounds++ < MAX_TASKS) {
       phase('Critique')
       let critique = await read(
         `Atacá este plan por correctitud, alcance, seguridad, pruebas y conflictos con el código ` +
-        `existente.${DECIDED()}${MANIFEST}${VERDICT} Plan: ${JSON.stringify(plan)}`,
-        { schema: DECISION, label: 'critique' },
+        `existente.${DECIDED()}${OPERATOR_SAID}${MANIFEST}${VERDICT}${REPLANNED} Plan: ${JSON.stringify(plan)}`,
+        { schema: CRITIQUED, label: 'critique' },
       )
       if (!critique) return stop('agent-unavailable', 'Critique no devolvió resultado')
       // Un plan bloqueado no se corrige: lo que lo bloquea está fuera de lo que una segunda pasada puede
@@ -943,21 +1105,40 @@ while (rounds++ < MAX_TASKS) {
       if (critique.verdict === 'bloqueado') {
         return planRejected('plan-blocked', task, blockers(critique))
       }
-      if (blockers(critique).length) {
+      // Sólo lo que cambia el plan compra la corrección: una condición para quien construye no necesita
+      // otro plan ni otra crítica, y pedirlos costaba dos llamadas para volver al mismo plan.
+      let kept = []
+      if (replans(critique).length) {
+        const first = carried(critique)
+        kept = first.conditions
+        // La corrección recibe también lo que no la pidió. La primera crítica de una corrida real resolvió
+        // una decisión que el plan había dejado abierta, sin bloquear; el replan no se enteró, repitió lo
+        // mismo y la segunda crítica frenó por eso (caso 249). El límite va escrito porque lo anotado suele
+        // traer más cosas que lo bloqueante, y sin él la corrección se vuelve una ampliación (R3).
         plan = await read(
-          `Corregí el plan una vez por: ${blockers(critique).join('; ')}. Plan: ${JSON.stringify(plan)}`,
+          `Corregí el plan una vez por: ${replans(critique).join('; ')}.`
+          + (first.noted.length
+            ? ` La crítica anotó además esto sin bloquear: ${first.noted.join('; ')}. Aplicá lo que ahí ya `
+              + 'venga decidido y no amplíes el plan por el resto.' : '')
+          + ` Plan: ${JSON.stringify(plan)}`,
           { schema: PLAN, label: 'replan' },
         )
         critique = await read(
-          `Volvé a criticar el plan corregido contra ${task.acceptance}.${DECIDED()}${MANIFEST}${VERDICT} ` +
-          `Plan: ${JSON.stringify(plan)}`,
-          { schema: DECISION, label: 'critique' },
+          `Volvé a criticar el plan corregido contra ${task.acceptance}.${DECIDED()}${OPERATOR_SAID}${MANIFEST}` +
+          `${VERDICT}` +
+          `${REPLANNED} Plan: ${JSON.stringify(plan)}`,
+          { schema: CRITIQUED, label: 'critique' },
         )
         if (!plan || !critique) return stop('agent-unavailable', 'la revisión del plan no devolvió resultado')
-        if (critique.verdict === 'bloqueado' || blockers(critique).length) {
-          return planRejected('plan-rejected', task, blockers(critique))
+        if (critique.verdict === 'bloqueado' || replans(critique).length) {
+          return planRejected('plan-rejected', task, replans(critique))
         }
       }
+      // Lo anotado sale de la última crítica y no de las dos: lo de la primera ya viajó a la corrección, y
+      // es sobre un plan que dejó de existir. Las condiciones de la primera sí se conservan: no cambian el
+      // plan, así que la corrección no las recibe y la segunda crítica no tiene por qué repetirlas.
+      approved = carried(critique)
+      approved.conditions = [...kept, ...approved.conditions]
       // Acá el plan ya está aprobado por los dos caminos posibles, así que el contraste va una sola vez.
       if (!critique.consulted.length) return stop('critique-unbacked', 'aprobó el plan sin declarar qué inspeccionó')
     }
@@ -973,7 +1154,7 @@ while (rounds++ < MAX_TASKS) {
     const persisted = await write(
       `Escribí el WIP y nada más: no toques código, no corras pruebas, no cierres la tarea y no escribas ` +
       `en DONE. Los pasos van sin tildar porque todavía no ocurrieron. task=${task.id}, ` +
-      `hito=${JSON.stringify(task.hito)}, phase=Build, service=${task.service}, ` +
+      `hito=${JSON.stringify(task.hito)}, phase=Build, service=${declared}, ` +
       `acceptance=${JSON.stringify(task.acceptance)}, lane=${lane}, ` +
       `pasos sin tildar=${JSON.stringify(plan.steps)}, ` +
       // La estrategia de prueba es `required` en el plan y hasta acá se descartaba, así que un paso que
@@ -984,6 +1165,11 @@ while (rounds++ < MAX_TASKS) {
       // Es la tercera vez que algo decidido no llega a quien decide después: el contexto de la épica
       // (027), la descripción de la tarea (177) y esto. Las tres se arreglan igual — que viaje.
       `testStrategy=${JSON.stringify(testStrategy)}. ` +
+      // Van al WIP porque es lo que lee una corrida que se reanuda: ahí `approved` vuelve vacío.
+      (approved.conditions.length ? `Anotá en las decisiones del WIP, como condiciones con las que la crítica ` +
+        `aprobó el plan y que quien construye tiene que cumplir: ${JSON.stringify(approved.conditions)}. ` : '') +
+      (approved.noted.length ? `Y aparte, como anotado por la crítica sin bloquear, que no manda a tocar ` +
+        `código: ${JSON.stringify(approved.noted)}. ` : '') +
       `Registrá el reparto de cargos ${JSON.stringify(cast)} en las decisiones del WIP, para que después se ` +
       `pueda auditar quién revisó qué. Seguí el contrato de WIP exactamente y reportá con qué status quedó.`,
       { label: 'wip', schema: {
@@ -1024,11 +1210,22 @@ while (rounds++ < MAX_TASKS) {
     `rojo y ese verde, y nada más: los gates completos, el QA, el commit y el cierre son fases posteriores, ` +
     `así que no toques ${P}/done/ ni ${QUEUE} ni el status del WIP. Lo que el plan no previó va en discovered y ` +
     `no en el código a secas: kind=edge si esta tarea lo puede fijar —y entonces entra con su prueba, que ` +
-    `nombrás en test y anotás en redFirst—, kind=open si lo notaste y no impide entregar la aceptación: se ` +
-    `registra para que lo decida quien corresponde y el recorrido sigue. Si de verdad no podés entregar sin ` +
-    `esa decisión, eso no va en discovered: es completed=false con su blocker. ` +
+    `nombrás en test y anotás en redFirst—. Lo que notaste y no impide entregar la aceptación es una de ` +
+    `tres cosas, y el recorrido sigue con las tres. kind=open sólo si es una decisión que le toca a una ` +
+    `persona: elegir entre opciones que cambian el rumbo del producto, el gasto, una obligación externa o ` +
+    `el riesgo; ésa va a una fila que alguien tiene que contestar, así que no la uses para lo demás. ` +
+    `kind=debt si es trabajo identificado que no es de esta tarea —un archivo sobre el umbral, un ` +
+    `dependiente fuera del servicio—: queda anotado como deuda. kind=mutation si es una mutación que ` +
+    `declarás y no corriste: decí qué se rompe y qué prueba tiene que ponerse roja, y la corre QA. ` +
+    `kind=note si no hay nada que decidir ni que hacer —una elección de redacción, un supuesto que ya ` +
+    `tomaste, algo que se acepta como está—: queda escrito en el cierre de la tarea. Si dudás entre open y ` +
+    `otra, es open: una pregunta de más cuesta menos que una decisión que nadie vio. Si de verdad no podés ` +
+    `entregar sin esa decisión, eso no va en discovered: es completed=false con su blocker. ` +
     `Aceptación: ${task.acceptance}.${DECIDED()}`
-    + (testStrategy ? ` Estrategia de prueba que el plan fijó: ${testStrategy}` : ''),
+    + (testStrategy ? ` Estrategia de prueba que el plan fijó: ${testStrategy}` : '')
+    + (approved.conditions.length ? ` La crítica aprobó el plan con estas condiciones, que cumplís al `
+      + `escribir: ${approved.conditions.join('; ')}.` : '')
+    + OPERATOR + WHERE,
     { schema: BUILD, label: 'build' },
   )
   if (!build) return stop('agent-unavailable', 'Build no devolvió resultado')
@@ -1047,7 +1244,34 @@ while (rounds++ < MAX_TASKS) {
   // sino «hay un borde que alguien tiene que decidir», y una aceptación escrita en prosa siempre tiene uno.
   // Frenar por eso frenaba siempre, que es el freno que R6 desaconseja. Lo que de verdad bloquea ya
   // tiene camino —`completed: false` con su blocker—; esto se registra y sigue.
-  const openDecisions = build.discovered.filter((entry) => entry.kind === 'open')
+  //
+  // Y lo que se registra tiene tres destinos, los mismos que ya tenía Review. Con uno solo, todo lo que
+  // Build notaba y no arreglaba era por definición una pregunta a una persona: en una instancia fueron 18
+  // filas en dos días para 6 tareas, y 2 pedían el criterio de alguien (caso 250). El tope es el de
+  // Review y por lo mismo; lo que no entra queda contado en el hecho que viaja a `done/`.
+  const found = (kind) => [...new Set(build.discovered.filter((entry) => entry.kind === kind)
+    .map((entry) => entry.detail))]
+  const kept = (kind) => found(kind).slice(0, INBOX_CAP)
+  const spilled = ['open', 'debt', 'note', 'mutation'].map((kind) => [kind, found(kind).length - kept(kind).length])
+    .filter(([, extra]) => extra > 0).map(([kind, extra]) => `${extra} ${kind} sin volcar`)
+  const buildNotes = kept('note')
+  // Una mutación declarada y no corrida no es una pregunta ni deuda: es trabajo que un agente puede hacer
+  // en una copia, y la fase que ya trabaja así es QA. Como fila se cerraba pidiendo que alguien la corriera
+  // (caso 256).
+  const unrun = kept('mutation')
+  const buildFact = build.summary + (spilled.length ? ` · ${spilled.join(' · ')}` : '')
+  if (kept('debt').length) {
+    const origin = inboxOrigin('autobuild', task.id, planning.today)
+    await write(`Registrá en ${inboxWhere(P, 'Deuda')} el trabajo que el build de ${task.id} identificó y ` +
+      `no es de esta tarea, sin promover ninguno. ${INBOX_FILES} ` +
+      `${inboxAsk(['Deuda'], planning.inbox, origin)} ` +
+      // Entero y no recortado, a diferencia de lo que anota Review: aquello sigue completo en `done/`, y
+      // esto no queda en ningún otro lado. Recortado, la entrada terminaba en «…» y la revisión siguiente
+      // proponía completarla (caso 272).
+      `Lo anotado: ${JSON.stringify(kept('debt').map((detail) => `${detail.split('\n')[0].trim()} ${origin}`))}`,
+    { label: 'build-debt' })
+  }
+  const openDecisions = kept('open').map((detail) => ({ detail }))
   if (openDecisions.length) {
     // Y la fila no puede nombrar a la tarea que la produjo. El motor bloquea por esa primera celda
     // exacta, así que escribirla ahí registra «esto no impide entregar» y produce el bloqueo igual —lo
@@ -1099,7 +1323,15 @@ while (rounds++ < MAX_TASKS) {
       // pudo haber refinado en esta corrida (caso 210).
       `${asRole(cast.review)}Revisá el diff real de ${task.id} contra su aceptación —${task.acceptance}— y por ` +
       `regresiones, seguridad, arquitectura, código ` +
-      `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.${MANIFEST}` +
+      `generado, migraciones y alcance accidental. Cada cargo revisa su dominio, no el ajeno.${WHERE}` +
+      (approved.conditions.length ? ` La crítica aprobó el plan con estas condiciones; comprobá sobre el ` +
+        `diff que cada una se cumplió, y la que no, es un hallazgo: ${approved.conditions.join('; ')}.`
+        // Una corrida que retoma no pasó por la crítica, así que no las trae en memoria: están en el WIP,
+        // que Build lee y Review no. Sin esto quien tenía que comprobarlas no se enteraba (caso 267).
+        : resumedFromWip ? ` Esta corrida retomó desde el WIP. Abrí ${P}/${planning.wipFile}: si registra ` +
+          'condiciones con las que la crítica aprobó el plan, comprobá sobre el diff que cada una se ' +
+          'cumplió, y la que no, es un hallazgo.' : '') +
+      `${MANIFEST}` +
       `${VERDICT}${RULED}${SURFACED()}`,
       { schema: REVIEWED, label: 'review' },
     )
@@ -1135,10 +1367,10 @@ while (rounds++ < MAX_TASKS) {
       // amplía el alcance: es terminar la corrección.
       await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${blockers(review).join('; ')}. `
         + 'Traé también lo que tu propia corrección deje desactualizado —un conteo, un comentario que '
-        + 'describa la forma vieja, una fila que la enumere— y nada más que eso.',
+        + `describa la forma vieja, una fila que la enumere— y nada más que eso.${WHERE}`,
         { label: 'review-fix' })
       review = await run(`Volvé a revisar el diff corregido de ${task.id} contra su aceptación `
-        + `—${task.acceptance}—.${MANIFEST}${VERDICT}${RULED}${SURFACED()}`,
+        + `—${task.acceptance}—.${WHERE}${MANIFEST}${VERDICT}${RULED}${SURFACED()}`,
         { schema: REVIEWED, label: 'review' })
       if (!review) return stop('agent-unavailable', 'la re-revisión no devolvió resultado')
       grounded(review)
@@ -1206,8 +1438,17 @@ while (rounds++ < MAX_TASKS) {
     // aparecer dos veces, le come una ranura del tope a una propuesta que sí lo era.
     // Un bloqueante sin comprobar cae acá y no en la corrección, marcado: quien lo lea sabe que es una
     // sospecha y no un defecto establecido.
+    // La constancia —lo que se miró y dio bien— no propone nada: va al hecho de revisión y no al INBOX, donde
+    // le comía una ranura del tope a lo que sí era una propuesta. Se compara contra `false` para que un
+    // hallazgo que no lo declare siga yendo al INBOX, que es donde alguien lo lee.
+    const isRecord = (one) => !one.blocking && !one.decision && one.proposes === false
+    const records = [...new Set(review.concerns.filter(isRecord).map(cite))]
+    if (records.length) {
+      reviewFact += ` · constató: ${records.slice(0, INBOX_CAP).join(' | ')}`
+        + (records.length > INBOX_CAP ? ` · y ${records.length - INBOX_CAP} más` : '')
+    }
     const noted = [...new Set([...review.concerns, ...suspected]
-      .filter((one) => !one.decision && (!one.blocking || one.verified === false))
+      .filter((one) => !one.decision && !isRecord(one) && (!one.blocking || one.verified === false))
       .map((one) => withOrigin(`${one.blocking ? '[sin verificar] ' : ''}${cite(one)}`, origin)))]
     const kept = noted.slice(0, INBOX_CAP)
     // Lo que pasa del tope no se escribe y tampoco desaparece: queda contado en el hecho de revisión, que
@@ -1243,14 +1484,19 @@ while (rounds++ < MAX_TASKS) {
     `decisión escrita, y con reason diciendo cuál—. no-surface vale sólo si la tarea no tocó ningún archivo ` +
     `que no termine en ${NON_EXECUTABLE.join(', ')}; con cualquier otro en el diff es missing-test. En ` +
     `covered va cada criterio que un test sí codifica, con el nombre de ese test. ` +
-    `Un test que pasa sin aserciarla no la cubre. Después corré los gates reales de ${task.service}. ` +
+    `Un test que pasa sin aserciarla no la cubre. Después corré los gates reales de ${task.service}.${WHERE} ` +
     // Descubrir la puerta es trabajo de modelo repetido en cada tarea sobre una respuesta que no cambia,
     // y encima adivinable: el proyecto la declara en `verify` y ahí deja de adivinarse. Cuando no la
     // declara se vuelve a descubrir, que es lo que pasaba siempre.
     (contract.gates && contract.gates.length
       ? `El proyecto las declara y no hay que descubrirlas —${contract.gates.join(' · ')}—: corré la de ` +
         `la raíz que contiene ese servicio, tal cual y desde esa raíz. Si falla por algo que la tarea no ` +
-        `tocó, decilo en vez de arreglarlo. `
+        `tocó, decilo en vez de arreglarlo. ` +
+        // La puerta nombra al servicio por su ruta en la raíz, y en una línea esa ruta es el checkout que
+        // comparten todas: corrida tal cual da verde sobre un código que no tiene la tarea (caso 276).
+        (tree ? `Esa puerta nombra al servicio por su ruta en la raíz, que acá es el checkout compartido y ` +
+          `no tiene este trabajo: corré el mismo comando con esa ruta cambiada por ${tree.work}, y reportá ` +
+          `el comando como lo corriste. Un verde sobre el checkout compartido no cuenta. ` : '')
       : `El proyecto no declara con qué se verifica, así que descubrilo: primero las instrucciones del ` +
         `repositorio, después el test, lint, typecheck y build que apliquen. `) +
     `Leé los exit codes de verdad. ` +
@@ -1267,6 +1513,7 @@ while (rounds++ < MAX_TASKS) {
     const note = await registerHuman(
       `Registrá ${task.id} en ${HUMAN}: el criterio "${ambiguous.criterion}" no dice qué habría ` +
       `que aserciar, y hace falta la decisión que lo fija.`, 'verify-human', task.id)
+    await commitBlocked(task.id)
     return stop('acceptance-ambiguous', `${ambiguous.criterion}${note}`)
   }
   // Lo que no tiene superficie no frena ni rebota: viaja a Done, que lo escribe como `tests: n/a`. Se filtra
@@ -1309,29 +1556,55 @@ while (rounds++ < MAX_TASKS) {
         ? 'Hacé la comprobación de aceptación real más barata'
         : 'Ejercitá el comportamiento real que ve quien lo usa'} para ` +
       `${task.id}. Las pruebas unitarias solas no son QA. Levantá el mínimo runtime necesario y bajalo ` +
-      `después. Aceptación: ${checkable}.`,
+      `después. Aceptación: ${checkable}.${WHERE}`
+      + (unrun.length ? ' El build declaró estas mutaciones y no las corrió. Corré cada una en una copia '
+        + 'desechable del repositorio, nunca en el árbol de trabajo, y reportala en mutations con red=true si '
+        + `la prueba que nombra se puso roja y la salida que lo muestra en output: ${JSON.stringify(unrun)}. `
+        + 'Una que no se ponga roja no hace fallar el QA: se reporta con red=false.' : ''),
       { schema: QA, label: 'qa' },
     )
     if (!qa) return stop('agent-unavailable', 'QA no devolvió resultado')
     if (!qa.passed) return stop('qa-failed', qa.evidence)
   }
 
+  // Lo que pasó con cada mutación declarada, dicho siempre: la que se puso roja, la que sobrevivió y la que
+  // nadie corrió —porque el carril no pasa por QA, o porque QA no la reportó— se leen distinto en `done/`.
+  const ranMutations = (qa.mutations || []).slice(0, unrun.length)
+  const mutationFact = unrun.length ? [
+    ...ranMutations.map((one) => `${one.detail}: ${one.red ? 'roja' : 'SOBREVIVIÓ, la prueba no la ve'}`
+      + (one.output ? ` (${one.output})` : '')),
+    ...(unrun.length > ranMutations.length
+      ? [`${unrun.length - ranMutations.length} declarada(s) sin correr`] : []),
+  ].join(' | ') : ''
+
   phase('Commit')
   const commit = contract.commitPerTask ? await run(
     `${asRole(OWNERS.commit)}Encontrá el repositorio git dueño de ${task.service}, inspeccioná status y diff, ` +
     `stageá por nombre los archivos de la tarea, creá un solo Conventional Commit con el footer ` +
     `"Task: ${task.id}" y después verificá log y status. Nunca amend ni push; reportá lo que quedó suelto ` +
-    `y no era de la tarea.`,
+    `y no era de la tarea.${BRANCHED(task.id, tree)}${OPERATOR}`,
     { schema: COMMIT, label: 'commit' },
   ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
   if (!commit) return stop('agent-unavailable', 'Commit no devolvió resultado')
   if (!commit.committed) return stop('commit-failed', commit.reason)
+  // El commit ya existe, así que esto no lo evita: lo que evita es que la entrada de DONE lo dé por bueno
+  // y la corrida siguiente arranque sobre una rama viva adelantada del remoto.
+  if (commit.live && !contract.commitToLiveBranch) {
+    return stop('commit-failed', `el commit ${commit.hash || ''} de ${task.id} quedó en la rama viva `
+      + `${commit.branch || ''}: movelo a una rama propia antes de reanudar`)
+  }
 
   phase('Done')
+  // El árbol de la tarea ya no existe y su rama se renombró al commitear, pero la revisión y la verificación
+  // los citan como los vieron. A `done/` va lo que quedó: el servicio como lo nombra la tarea y la rama del
+  // commit. Si no, la entrada nombra una rama que el repositorio no tiene y una ruta de esta máquina
+  // (caso 277).
+  const settled = (text) => (tree ? [[tree.work, declared], [tree.path, declared], [tree.branch, commit.branch]]
+    .reduce((out, [from, to]) => (from && to ? out.split(from).join(to) : out), text) : text)
   // `lane` y `review` se piden textuales: en una corrida real el agente resumió el hecho de revisión y
   // perdió las reglas, la decisión y la superficie crítica, mientras el prompt —lo que mide el arnés— sí
   // las traía (caso 211).
-  await write(
+  await write(settled(
     `Cerrá ${task.id} de forma atómica: escribí ${doneFile(task.id)} con su evidencia —acept, ` +
     `fecha: ${planning.today}, done, qa, tests, commit, lane y review, en el formato de entrada que trae ` +
     `este preámbulo—; ` +
@@ -1340,19 +1613,47 @@ while (rounds++ < MAX_TASKS) {
     `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE; y soltá la reserva corriendo ` +
     `"node tools/ops.js release ${P} ${task.id}". lane y review van textuales, copiados de estos hechos sin ` +
     'resumir ni recortar: son lo que después se audita, y un resumen elige qué perder. ' +
+    (buildNotes.length ? 'Cada entrada de notas-de-build va en decisions, con [supuesto: …]. ' : '') +
     `En decisions no nombres una fase ni un cargo ` +
     `que no figure en estos hechos. Hechos: lane=${lane}; ` +
-    `review=${reviewFact}; fases=${ran.join(' → ')}; build=${build.summary}; ` +
+    `review=${reviewFact}; fases=${ran.join(' → ')}; build=${buildFact}; ` +
+    (buildNotes.length ? `notas-de-build=${JSON.stringify(buildNotes)}; ` : '') +
     `verify=${JSON.stringify(verified.commands)}; cubiertos=${JSON.stringify(covered)}; ` +
     (noSurface.length ? `sin-superficie=${JSON.stringify(noSurface.map(({ criterion, reason }) => ({
       criterion, reason: reason || 'no se ejecuta' })))}; ` : '') +
     (outOfVerify.length ? `fuera-de-verify=${JSON.stringify(outOfVerify)}; ` : '') +
-    `qa=${qa.evidence}; commit=${commit.hash || commit.reason}. En tests rastreá cada criterio con la ` +
+    `qa=${qa.evidence}${mutationFact ? ` · mutaciones: ${mutationFact}` : ''}; ` +
+    `commit=${commit.hash || commit.reason}` +
+    // El sufijo es el del contrato de DONE, `(repo@rama)`: `check` saca de ahí en qué repositorio buscar el
+    // commit, y escrito en prosa lo leía como si no nombrara ninguno.
+    `${commit.branch ? ` (${declared}@${commit.branch}), con ese sufijo copiado tal cual` : ''}. ` +
+    `En tests rastreá cada criterio con la ` +
     `prueba que cubiertos le asigna` +
     (noSurface.length ? ', y los de sin-superficie con tests: n/a — <razón>' : '') +
-    (outOfVerify.length ? '; cada condición de fuera-de-verify queda cumplida en tests, qa o commit' : '') + '.',
+    (outOfVerify.length ? '; cada condición de fuera-de-verify queda cumplida en tests, qa o commit' : '') + '.'),
     { label: 'done' },
   )
+  // El cierre deja la cola, `done/`, las acciones humanas y el INBOX escritos, y nadie los commiteaba: cada
+  // corrida terminaba con la instancia sucia y preguntándole a la persona dónde iba eso (caso 266). Va con
+  // el mismo interruptor que el commit del producto y con la regla de ramas de planning: una sola rama de
+  // trabajo que se acumula, nunca una por tarea.
+  //
+  // No frena: la tarea ya se entregó, y lo que quedó sin commitear se dice. Frenar acá dejaría una entrega
+  // completa reportada como parada.
+  if (contract.commitPerTask) {
+    const stated = await run(
+      `Commiteá el estado de planning que el cierre de ${task.id} dejó sin commitear en el repositorio que ` +
+      `contiene a ${P}: stageá por nombre sólo lo que cambió bajo ${P} —la cola, done/, las acciones humanas, ` +
+      `el INBOX—, nunca archivos del producto, y creá un solo commit "chore(planning): close ${task.id}". ` +
+      `Nunca amend ni push.${PLANNING_BRANCH()}`,
+      { schema: COMMIT, label: 'planning-commit' },
+    )
+    if (!stated || !stated.committed) {
+      log(`el estado de planning de ${task.id} quedó sin commitear: ${(stated && stated.reason) || 'sin respuesta'}`)
+    } else if (stated.live && !contract.commitToLiveBranch) {
+      log(`el estado de planning de ${task.id} quedó commiteado en la rama viva ${stated.branch || ''}: movelo`)
+    }
+  }
   completed.push(task.id)
   planning = await readContext()
   if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
@@ -1411,7 +1712,11 @@ if (completed.length && contract.humanCheckpoint) await write(
   `Creá ${GATE} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones humanas ` +
   `pendientes y las instrucciones exactas para continuar. Arrancá el archivo con un frontmatter ` +
   `"status: pendiente", y decí que se destraba cambiándolo a "resuelta" —no borrando el archivo, que es ` +
-  `lo que deja leer después qué se revisó—. Nunca hagas push ni deploy.`,
+  `lo que deja leer después qué se revisó—. Nunca hagas push ni deploy.` +
+  // El checkpoint también es estado de planning, y se escribe después del último commit de planning: sin
+  // esto cada hito terminaba con ese archivo suelto en la instancia (caso 271).
+  (contract.commitPerTask ? ` Después commiteá ese archivo, y sólo ése, con el mensaje "chore(planning): await ` +
+    `review of ${currentMilestone}".${PLANNING_BRANCH()}` : ''),
   { label: 'human-checkpoint' },
 )
 return finish({ done: completed, count: completed.length, hito: currentMilestone, phases: ran })

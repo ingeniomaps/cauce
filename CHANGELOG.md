@@ -14,6 +14,116 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.101.0] - 2026-10-05
+
+### Cambiado
+
+- **Una condición que se cumple al escribir ya no rechaza el plan.** La crítica del plan dice ahora, por cada
+  hallazgo bloqueante, si corregirlo cambia el plan o si alcanza con que quien construye lo cumpla. Sólo lo
+  primero pide corregir el plan y puede terminar en `plan-rejected`. Lo segundo viaja como condición al WIP,
+  a Build y a Review, que comprueba sobre el diff que se cumplió. Antes cualquier bloqueante de la segunda
+  crítica paraba el recorrido y dejaba la tarea fuera de la cola, aunque fueran dos nombres por cambiar
+  (caso 248).
+
+- **`autobuild` ya no commitea en `main`: corta una rama por tarea.** Si el repo del servicio está en una rama
+  viva —`main`, `master` o la rama por defecto del remoto—, el paso de Commit corta `<tipo>/<slug>` y commitea
+  ahí, sin preguntar. Si el repo ya está en otra rama, commitea en ésa. La entrada de `done/` dice en qué rama
+  quedó. **Qué hacer:** nada, salvo que tu proyecto commitee en `main` a propósito; en ese caso declaralo con
+  `"commitToLiveBranch": true` en `runner` de `ops.config.json` (caso 251).
+
+- **Build ya no le pregunta a una persona por todo lo que nota.** Lo que nota y no arregla tiene ahora tres
+  destinos: una fila en `HUMAN_ACTIONS.md` sólo si es una decisión que cambia el rumbo, el gasto, una obligación
+  externa o el riesgo; `inbox/deuda/` si es trabajo identificado que no es de la tarea; y `decisions:` de la
+  entrada de `done/` si no hay nada que decidir ni que hacer. Cada destino recibe hasta tres por tarea y el resto
+  queda contado en el cierre. Antes todo iba a una fila pendiente (caso 250).
+
+- **Lo que le pedís a `autobuild` al lanzarlo ahora llega.** El texto que se pasa como argumento —o su campo
+  `note`— viaja a Plan, Build y Commit como pedido para toda la corrida. No reemplaza la aceptación ni las
+  reglas: si las contradice, mandan ellas. Antes se descartaba sin avisar (caso 252).
+- **El estado de planning va a una sola rama de trabajo.** `PROTOCOL.md` y `AGENTS.md` dicen ahora dónde se
+  commitea cuando la rama viva no admite push: en una rama de trabajo que se acumula, con un solo PR, y no en
+  una rama nueva por cada tarea cerrada (caso 253).
+
+- **QA corre las mutaciones que el build declaró y no corrió.** Hasta tres por tarea, en una copia desechable.
+  Lo que dio cada una queda en `qa:` de la entrada de `done/`: roja, sobrevivió o sin correr. Ninguna frena la
+  entrega (caso 256).
+- **Los guards de commit ya no opinan sobre repositorios ajenos.** `verify`, gobernanza, dependencias, la
+  pasada de comentarios y la regla de `git add -A` actúan sólo sobre la carpeta de la sesión, la raíz ops y las raíces declaradas en
+  `workspaceRoots`. Un commit en otro repositorio pasa sin frenarse y sin que se le corra su suite (caso 258).
+
+- **Los guards de shell leen mejor qué es orden y a dónde apunta.** El texto que `sed`, `grep`, `rg`, `echo`,
+  `printf` o `jq` sólo leen ya no se toma por comando: un `sed` cuyo patrón nombraba `git commit -a` se frenaba
+  (caso 259). Y un `cd` o un `git -C` a una variable que el mismo comando asigna —`T=$(mktemp -d) && cd $T`— se
+  resuelve en vez de bloquearse por «destino que no se puede resolver», que frenaba el trabajo en una copia
+  desechable (caso 261).
+
+- **`autobuild` commitea el estado de planning al cerrar cada tarea.** La cola, `done/`, las acciones humanas y
+  el INBOX quedaban escritos y sin commitear. Ahora se commitean después del cierre, en la rama en la que esté
+  la instancia; si ésa es una rama viva, en la rama de trabajo de planning que ya exista, o en `work/planning`
+  si no hay ninguna. El checkpoint del hito se commitea igual. **Qué hacer:** nada si ya usás `commitPerTask`;
+  con `commitPerTask` apagado no cambia (casos 266 y 271).
+- **En una línea de trabajo, `autobuild` construye cada tarea en su propio árbol.** Las líneas comparten por
+  enlace el mismo checkout del producto, y cortar la rama ahí lo dejaba parado en la tarea de una para todas
+  las demás. Ahora, en una línea, el recorrido arma el árbol con `ops worktree`, trabaja ahí, renombra la rama
+  a `<tipo>/<slug>` al commitear y saca el árbol; el checkout compartido no se toca. Fuera de una línea no
+  cambia nada: se sigue trabajando en la carpeta que está. `ops worktree` deja el árbol al lado del repositorio
+  tal como lo ve la sesión, y su `--json` trae `work`, la ruta donde trabajar (caso 274). Y la puerta que
+  declara la raíz se corre contra ese árbol y no contra el checkout compartido, que no tiene la tarea (caso 276).
+- **Review ya no manda al INBOX lo que revisó y dio bien.** Cada hallazgo que no bloquea dice si propone algo.
+  Lo que propone va a `inbox/propuestas/` como antes; la constancia queda en `review:` de la entrada de `done/`
+  (caso 262).
+
+### Corregido
+
+- **Una corrida de `autobuild` que frena ya no deja la instancia sucia.** La fila de `HUMAN_ACTIONS.md` y lo
+  que la corrida había anotado en la cola quedaban sin commitear. Ahora la parada los commitea como
+  `chore(planning): block <tarea>`, con el mismo interruptor `commitPerTask` y la misma regla de ramas que el
+  cierre (caso 279).
+- **Un plan frenado por una decisión que falta ya no se registra como «nadie pudo escribir un plan».** Esa
+  fila mandaba a partir la tarea cuando lo que faltaba era contestar una pregunta, y podía quedar duplicada.
+  Ahora dice qué frenó la crítica y pide resolverlo, en una sola fila (caso 278).
+- **En una línea, la entrada de `done/` nombra la rama del commit y el servicio.** Citaba la rama provisional
+  de la tarea, que ya no existe al cerrar, y la ruta del árbol en la máquina (caso 277).
+- **Instalar un runner ya no ensucia el manifiesto.** `.cauce/manifest.json` guardaba el hash de cada recorrido
+  con la ruta de la instancia adentro, así que cambiaba con sólo instalar el runner en un clon en otra carpeta
+  o en una línea. Ahora el hash no depende de la ruta. Un manifiesto escrito por una versión anterior se sigue
+  reconociendo: no vas a ver tus recorridos como editados. Y una línea recién armada nace con el árbol limpio:
+  el enlace a `node_modules` queda ignorado (caso 275).
+- **`check` encuentra el repositorio de un commit desde la carpeta de una línea.** Ahí el producto es un enlace
+  al original, y el commit de una entrada de `done/` quedaba «sin comprobar» con el repositorio a la vista
+  (caso 273).
+- **`check` ya no avisa por el commit de planning.** En una instancia embebida, el commit que sólo toca
+  `planning/` contaba como trabajo que ninguna entrada de `done/` nombra (OPS-001). Ya no cuenta; el que toca
+  además código, sí (caso 270).
+- **La deuda que anota Build llega entera al INBOX.** Se recortaba a 240 caracteres y terminaba en «…», sin que
+  el resto quedara en ningún lado (caso 272).
+- **Al retomar una corrida, Review vuelve a comprobar las condiciones de la crítica.** Las condiciones con las
+  que la crítica aprobó el plan viajaban en memoria, así que una corrida retomada desde el WIP llegaba a Review
+  sin ellas. Ahora Review recibe el archivo del WIP donde quedaron (caso 267).
+- **`ops line` lleva el producto cuando la raíz es la carpeta de sesión.** Con `workspaceRoots: [".."]` y un
+  repositorio por servicio adentro, la carpeta de la línea quedaba sólo con el worktree de la instancia. Ahora
+  se enlazan los hijos de esa carpeta, salvo la configuración de los runners. Y con esa misma forma de raíz,
+  `ops worktree` ya encuentra el repositorio del servicio, también en la carpeta original (caso 263).
+- **En el modo `plan` de Claude Code los guards dejaban pasar lo que frenaban.** Un guard que pide confirmación
+  abre el diálogo de Claude Code, y en `plan` ese diálogo no aparece: la acción corre igual, sin ningún
+  mensaje. Medido con la lectura de un `.env`. Ahora el diálogo se usa sólo donde está medido que una persona
+  lo contesta —`default`, `acceptEdits` y `bypassPermissions`—, y en cualquier otro modo el guard bloquea y
+  pide la confirmación por chat. `auto` queda de ese lado sin que esté establecido si hace falta: en una
+  sesión el diálogo apareció y en otra no consta quién aprobó (casos 257 y 268).
+- **El modo plan de Claude Code puede escribir su plan.** El límite de escritura frenaba el archivo que el
+  runner guarda en `~/.claude/plans/`, por estar fuera de las raíces declaradas (caso 269).
+- **`plan-first` ya no frena el Build de una sesión sidecar recién instalada.** `autobuild` escribe su plan con
+  el id de la instancia, y el guard, parado en la carpeta de la sesión o en el repo del producto, deducía otro y
+  bloqueaba la primera edición con «hay plan escrito, pero bajo otro id». Sin `CAUCE_RUNNER` declarado, ahora
+  vale el plan de la instancia; con la variable, el id sigue siendo el que declara (caso 260).
+- **`ops worktree` encuentra el repositorio cuando el servicio se llama como su raíz.** Con una raíz por
+  repositorio —`platform → ../platform`— y tareas `(service: platform)`, decía que el repositorio no existía.
+  Ahora un servicio resuelve también por el nombre de la raíz o por el último tramo de su ruta, y `check`
+  encuentra igual el repositorio que nombra un `commit:` de `done/` (caso 254).
+- **Lo que la crítica anota sin bloquear ya no se pierde.** Va a la corrección del plan, con la indicación de
+  no ampliarlo por eso, y queda en las decisiones del WIP. Antes no salía de la crítica, así que una decisión
+  que la crítica ya había tomado no le llegaba a nadie (caso 249).
+
 ## [0.100.0] - 2026-10-01
 
 ### Agregado

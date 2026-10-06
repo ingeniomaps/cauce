@@ -48,6 +48,18 @@ test('se avisa por entrada el sha que su repositorio no tiene, y sólo ése', ()
   assert.match(warnings[0], /el commit deadbee no está en su repositorio/)
 })
 
+// Caso 254, del lado de `check`: con una raíz por repositorio, `(api@main)` nombra a la raíz y no a una
+// carpeta adentro. Buscando sólo adentro, el commit quedaba «sin comprobar» teniendo el repositorio al lado.
+test('un repositorio nombrado como su raíz declarada se encuentra', () => {
+  const { target, sha } = instance('cauce-commits-raiz-')
+  const file = path.join(target, 'ops.config.json')
+  const config = JSON.parse(fs.readFileSync(file, 'utf8'))
+  config.workspaceRoots = [{ name: 'api', path: '../api' }]
+  fs.writeFileSync(file, JSON.stringify(config, null, 2))
+  const status = R.commitStatus(target, [{ sha, repo: 'api' }, { sha: 'deadbee', repo: 'api' }])
+  assert.deepEqual(status, ['found', 'missing'])
+})
+
 test('lo que no se puede mirar va en una sola línea, con los repositorios que faltan', () => {
   const { target, sha } = instance('cauce-commits-ausente-')
   const warnings = DC.unknownCommitWarnings([
@@ -70,3 +82,14 @@ test('check lo muestra como aviso y sigue en verde', () => {
   assert.ok(result.warnings.some((one) => /inventado: el commit deadbee no está en su repositorio/.test(one)),
     JSON.stringify(result.warnings))
 })
+
+// Caso 273. En la carpeta de una línea de trabajo el repositorio del producto es un enlace al original.
+test('un repositorio que se alcanza por un enlace se encuentra igual', () => {
+  const { target, sha } = instance('cauce-commits-enlace-')
+  const base = path.dirname(target)
+  fs.renameSync(path.join(base, 'api'), path.join(base, 'api-original'))
+  fs.symlinkSync(path.join(base, 'api-original'), path.join(base, 'api'), 'dir')
+  assert.deepEqual(R.commitStatus(target, [{ sha, repo: 'api' }, { sha: 'deadbee', repo: 'api' }]),
+    ['found', 'missing'])
+})
+

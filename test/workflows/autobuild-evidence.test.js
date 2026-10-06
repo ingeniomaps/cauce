@@ -7,7 +7,7 @@
 require('../support/environment')
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { KEY, ranToEnd, runFlow, reached, writesTo } = require('../support/autobuild-harness')
+const { KEY, baseScript, ranToEnd, runFlow, reached, writesTo } = require('../support/autobuild-harness')
 
 test('una aprobación que no declara qué inspeccionó frena en su etapa', async () => {
   const critique = await runFlow({
@@ -157,4 +157,35 @@ test('un commit que no se hizo no se da por hecho', async () => {
   })
   assert.equal(result.reason, 'commit-failed')
   assert.match(result.detail, /sin stagear/)
+})
+
+// Caso 251. El repo de un servicio queda en su rama viva después de cada merge, y el commit caía ahí. Las
+// dos mitades van juntas: que se pida cortar la rama, y que un commit que igual quedó en la viva no se dé
+// por bueno — el prompt solo no prueba qué hizo quien lo recibió.
+const commitPrompt = (prompts) => prompts.find((one) => one.key === KEY.commit).prompt
+const live = { committed: true, hash: 'abc123', branch: 'main', live: true }
+const allowed = { [KEY.contract]: { ...baseScript()[KEY.contract], commitToLiveBranch: true } }
+
+test('Commit corta una rama para la tarea en vez de commitear en la rama viva', async () => {
+  const { result, prompts } = await runFlow({
+    [KEY.commit]: { committed: true, hash: 'abc123', branch: 'fix/T-1', live: false },
+  })
+  ranToEnd(result)
+  assert.match(commitPrompt(prompts), /git switch -c <tipo>\/T-1/, 'la rama lleva el slug de la tarea')
+  assert.match(commitPrompt(prompts), /no commitees ahí ni lo consultes/, 'y cortarla no espera a nadie')
+  const done = prompts.find((one) => one.key === 'Done|done').prompt
+  assert.match(done, /commit=abc123 \(\.\/api@fix\/T-1\)/, 'la entrada de DONE dice en qué repositorio y rama quedó')
+})
+
+test('un commit que quedó en la rama viva no cierra la tarea', async () => {
+  const { result, asked } = await runFlow({ [KEY.commit]: live })
+  assert.equal(result.reason, 'commit-failed')
+  assert.match(result.detail, /abc123.*rama viva main/)
+  assert.ok(!reached(asked, 'Done'), 'no se escribe DONE sobre un commit mal ubicado')
+})
+
+test('con runner.commitToLiveBranch el commit va a la rama viva, que es lo que el proyecto pidió', async () => {
+  const { result, prompts } = await runFlow({ ...allowed, [KEY.commit]: live })
+  ranToEnd(result)
+  assert.doesNotMatch(commitPrompt(prompts), /git switch -c/, 'y no se le pide cortar nada')
 })

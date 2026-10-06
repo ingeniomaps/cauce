@@ -64,3 +64,37 @@ test('un commit que una entrada de DONE nombra no entra en el aviso', () => {
   const done = { entries: [{ fecha: '2000-01-01', commit: sha }], set: new Set() }
   assert.deepEqual(R.coverageWarnings(ops, done), [])
 })
+
+// Caso 270. En una instancia embebida el planning vive en el repositorio del producto, y el recorrido
+// commitea su estado al cerrar cada tarea: ese commit no es trabajo que el planning tenga que nombrar. El
+// que toca además código sí lo es, que es lo que impide cumplir esto dejando de contar todo.
+test('un commit que sólo toca el planning no cuenta como trabajo sin anotar', () => {
+  const repo = tempRoot('ops-cobertura-embebida-')
+  const git = (...args) => {
+    const r = spawnSync('git', ['-C', repo, ...args], { encoding: 'utf8' })
+    assert.equal(r.status, 0, r.stderr)
+  }
+  git('init', '-q')
+  git('config', 'user.email', 'x@y.z')
+  git('config', 'user.name', 'x')
+  fs.mkdirSync(path.join(repo, 'planning', 'done'), { recursive: true })
+  fs.writeFileSync(path.join(repo, 'ops.config.json'),
+    JSON.stringify({ mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }] }))
+  fs.writeFileSync(path.join(repo, 'planning', 'done', 'una.md'), 'slug: una\n')
+  git('add', 'ops.config.json', 'planning/done/una.md')
+  git('commit', '-q', '-m', 'chore(planning): close una')
+  const done = { entries: [{ fecha: '2000-01-01', commit: '' }], set: new Set() }
+  assert.deepEqual(R.coverageWarnings(repo, done).filter((one) => /1 commit/.test(one)).length, 1,
+    'el primero toca también ops.config.json, que no es planning')
+
+  fs.writeFileSync(path.join(repo, 'planning', 'done', 'otra.md'), 'slug: otra\n')
+  git('add', 'planning/done/otra.md')
+  git('commit', '-q', '-m', 'chore(planning): close otra')
+  assert.match(R.coverageWarnings(repo, done)[0], /1 commit\(s\)/, 'el que sólo toca planning no suma')
+
+  fs.writeFileSync(path.join(repo, 'a.js'), 'module.exports = 1\n')
+  fs.writeFileSync(path.join(repo, 'planning', 'done', 'otra.md'), 'slug: otra\nnota: x\n')
+  git('add', 'a.js', 'planning/done/otra.md')
+  git('commit', '-q', '-m', 'feat: algo con planning al lado')
+  assert.match(R.coverageWarnings(repo, done)[0], /2 commit\(s\)/, 'el que toca código además sí')
+})

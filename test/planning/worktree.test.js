@@ -222,3 +222,82 @@ test('un servicio que existe en dos repositorios se nombra en vez de elegirse', 
   assert.equal(R.repoOf(path.join(planning, '..'), 'api'), '')
   assert.deepEqual(R.reposFor(path.join(planning, '..'), 'api').sort(), [otro, repo].sort())
 })
+
+// Caso 254. La raíz declarada ya es el repositorio y la tarea lo nombra por su nombre: es como una
+// instancia con un repo por raíz escribe sus tareas, y buscando sólo `<raíz>/<service>` no se encontraba.
+test('un servicio que se llama como su raíz resuelve a esa raíz', () => {
+  const { base, repo, planning } = montar('cauce-wt-raiz-')
+  const ops = path.join(planning, '..')
+  const config = path.join(ops, 'ops.config.json')
+  const leido = JSON.parse(fs.readFileSync(config, 'utf8'))
+  const declare = (workspaceRoots) => fs.writeFileSync(config, JSON.stringify({ ...leido, workspaceRoots }, null, 2))
+  const queue = (service) => fs.writeFileSync(path.join(planning, 'BACKLOG.md'), `# Backlog promovido
+
+## Hito uno — Primero
+
+- [ ] **alta** [lite] — Alta. _Aceptación: x._ (service: ${service})
+`)
+
+  // Por el nombre declarado, aunque la carpeta se llame distinto.
+  declare([{ name: 'platform', path: '../producto' }])
+  assert.deepEqual(R.reposFor(ops, 'platform'), [repo])
+  // Y por el último tramo de la ruta, aunque el nombre declarado sea otro.
+  declare([{ name: 'main', path: '../producto' }])
+  assert.deepEqual(R.reposFor(ops, 'producto'), [repo])
+  // La forma de antes sigue resolviendo, y un nombre que no es ni ruta ni raíz sigue sin encontrarse.
+  assert.deepEqual(R.reposFor(ops, 'api'), [repo])
+  assert.deepEqual(R.reposFor(ops, 'no-existe'), [])
+
+  queue('producto')
+  const hecho = como('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
+  assert.equal(hecho.status, 0, hecho.stderr)
+  assert.equal(JSON.parse(hecho.stdout).repo, repo, 'y el árbol se monta en ese repositorio')
+  assert.equal(fs.existsSync(path.join(base, 'producto-alta')), true)
+})
+
+// Caso 263. La tercera forma: la raíz declarada es una carpeta que no es un repositorio, con un
+// repositorio por servicio adentro. El repositorio es el del servicio, no el de la raíz.
+test('con una raíz que es una carpeta de repositorios, el servicio resuelve a su propio repositorio', () => {
+  const { base, repo, planning } = montar('cauce-wt-contenedor-')
+  const ops = path.join(planning, '..')
+  const config = path.join(ops, 'ops.config.json')
+  const leido = JSON.parse(fs.readFileSync(config, 'utf8'))
+  fs.writeFileSync(config, JSON.stringify({ ...leido, workspaceRoots: [{ name: 'main', path: '..' }] }, null, 2))
+  assert.notEqual(git(base, 'rev-parse', '--show-toplevel').status, 0, 'la carpeta que los contiene no es un repo')
+  assert.deepEqual(R.reposFor(ops, 'producto'), [repo])
+  assert.deepEqual(R.reposFor(ops, 'producto/api'), [repo], 'y una carpeta dentro de él, al mismo')
+  assert.deepEqual(R.reposFor(ops, 'no-existe'), [])
+
+  fs.writeFileSync(path.join(planning, 'BACKLOG.md'), `# Backlog promovido
+
+## Hito uno — Primero
+
+- [ ] **alta** [lite] — Alta. _Aceptación: x._ (service: producto)
+`)
+  const hecho = como('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
+  assert.equal(hecho.status, 0, hecho.stderr)
+  assert.equal(JSON.parse(hecho.stdout).repo, repo)
+})
+
+// Caso 274: las dos formas de llegar al repositorio, derecho y por el enlace de una línea. El porqué de
+// dónde queda el árbol está junto a `target`, en el comando.
+test('el árbol de una tarea queda al lado de lo que la sesión ve, y dice dónde trabajar adentro', () => {
+  const { repo, planning } = montar('cauce-wt-work-')
+  const plain = JSON.parse(como('/w/uno', () => run(['worktree', planning, 'alta', '--json'])).stdout)
+  assert.equal(plain.path, `${repo}-alta`)
+  assert.equal(plain.work, path.join(`${repo}-alta`, 'api'), 'el servicio vive en api/, adentro del repo')
+  assert.ok(fs.existsSync(path.join(plain.work, 'main.go')))
+
+  const linked = montar('cauce-wt-linea-')
+  const home = path.join(linked.base, 'linea')
+  fs.mkdirSync(home)
+  fs.cpSync(path.join(linked.planning, '..'), path.join(home, 'producto-ops'), { recursive: true })
+  fs.symlinkSync(linked.repo, path.join(home, 'producto'), 'dir')
+  const ops = path.join(home, 'producto-ops')
+  const tree = JSON.parse(como('/w/dos', () => run(['worktree', path.join(ops, 'planning'), 'alta', '--json'])).stdout)
+  assert.equal(tree.path, path.join(home, 'producto-alta'), 'al lado del enlace, adentro de la carpeta de la línea')
+  assert.equal(tree.work, path.join(home, 'producto-alta', 'api'))
+  assert.equal(fs.realpathSync(tree.repo), fs.realpathSync(linked.repo), 'y es un árbol del repositorio original')
+  assert.equal(fs.existsSync(`${linked.repo}-alta`), false, 'no al lado del original, que comparten las demás líneas')
+  assert.equal(git(linked.repo, 'rev-parse', '--abbrev-ref', 'HEAD').stdout.trim(), 'main', 'que no cambió de rama')
+})

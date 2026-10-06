@@ -18,21 +18,43 @@ const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
 // Devuelve una lista y no el primero porque con varias raíces la respuesta puede ser ambigua: un
 // `service: .` existe en todas, y un `src` puede existir en dos. Elegir el primero da una respuesta
 // plausible y equivocada —un árbol de trabajo en el repositorio que no era— sin que nada lo diga.
-function rootDirs(opsRoot) {
+function declaredRoots(opsRoot) {
   let config = {}
   try {
     config = JSON.parse(fs.readFileSync(path.join(opsRoot, 'ops.config.json'), 'utf8'))
   } catch { return [] }
   return (Array.isArray(config.workspaceRoots) ? config.workspaceRoots : [])
     .filter((one) => one && one.path)
-    .map((one) => path.resolve(opsRoot, one.path))
+    .map((one) => ({ name: one.name, dir: path.resolve(opsRoot, one.path) }))
+}
+
+// Un servicio se nombra de dos formas y las dos están en uso: como ruta dentro de una raíz que contiene
+// varios repositorios —raíz `..`, `service: api`—, o con el nombre de una raíz que ya es el repositorio
+// —raíz `api → ../api`, `service: api`—. Mirando sólo la primera, la segunda buscaba `../api/api` y decía
+// que el repositorio no existía (caso 254).
+const holds = (root, service) => fs.existsSync(path.join(root.dir, service || '.'))
+  || service === root.name || service === path.basename(root.dir)
+
+// Dónde vive el servicio tal como lo declara la instancia, sin resolver enlaces: la carpeta dentro de la raíz
+// si existe, o la raíz misma cuando el servicio se llama como ella. Lo necesita quien arma un árbol de
+// trabajo, que tiene que quedar al lado de lo que la sesión ve y no al lado de a dónde apunta un enlace.
+function serviceDirs(opsRoot, service) {
+  return declaredRoots(opsRoot).filter((root) => holds(root, service)).map((root) => {
+    const inner = path.join(root.dir, service || '.')
+    return fs.existsSync(inner) && fs.statSync(inner).isDirectory() ? inner : root.dir
+  })
 }
 
 function reposFor(opsRoot, service) {
-  return rootDirs(opsRoot)
-    .filter((root) => fs.existsSync(path.join(root, service || '.')))
+  return declaredRoots(opsRoot)
+    .filter((root) => holds(root, service))
+    // El repositorio se pregunta desde donde vive el servicio y no desde la raíz: una raíz puede ser una
+    // carpeta con un repositorio por servicio adentro, y ahí la raíz no es ninguno. Preguntando en la raíz,
+    // esa forma contestaba que el repositorio no existía teniéndolo adentro (caso 263).
     .map((root) => {
-      const top = git(root, 'rev-parse', '--show-toplevel')
+      const inner = path.join(root.dir, service || '.')
+      const from = fs.existsSync(inner) && fs.statSync(inner).isDirectory() ? inner : root.dir
+      const top = git(from, 'rev-parse', '--show-toplevel')
       return top.status === 0 ? top.stdout.trim() : ''
     })
     .filter(Boolean)
@@ -81,12 +103,16 @@ function lastCommit(repo, branch) {
 // vuelve a cero cada vez que el flujo se cierra, y lo que queda visible es la deriva de ahora.
 //
 // Los merges quedan afuera: no son trabajo, son la forma de integrarlo.
-function unrecordedCommits(repo, since, recorded) {
+function unrecordedCommits(repo, since, recorded, skip = '') {
   if (!repo || !since) return []
   // La fecha se compara acá y no con `--since`, y eso lo encontró una prueba: `--since` **poda la
   // caminata**, así que un commit con fecha vieja en la punta esconde todo lo que tiene detrás. Con un
   // historial reescrito o un `commit --date` la cuenta daba cero sobre un repositorio lleno.
-  const log = git(repo, 'log', '--no-merges', '--date=short', '--format=%h %ad %s')
+  // Un commit que sólo toca el planning no es trabajo que el planning tenga que nombrar: es el planning. En
+  // una instancia embebida vive en el mismo repositorio, y desde que el recorrido commitea su estado al
+  // cerrar cada tarea, ese commit aparecía acá como trabajo sin registrar (caso 270).
+  const paths = skip ? ['--', '.', `:(exclude)${skip}`] : []
+  const log = git(repo, 'log', '--no-merges', '--date=short', '--format=%h %ad %s', ...paths)
   if (log.status !== 0) return []
   const known = new Set([...recorded].map((sha) => String(sha).slice(0, 7)))
   // El hash y la fecha se leen partiendo por espacios y no por columna: `%h` mide 7 por default y git lo
@@ -121,7 +147,8 @@ function coverageWarnings(opsRoot, done) {
   }
   const warnings = []
   for (const repo of reposFor(opsRoot, '.')) {
-    const unrecorded = unrecordedCommits(repo, since, recorded)
+    const planning = path.relative(repo, path.join(opsRoot, 'planning'))
+    const unrecorded = unrecordedCommits(repo, since, recorded, planning.startsWith('..') ? '' : planning)
     if (!unrecorded.length) continue
     warnings.push(`${path.basename(repo)}: ${unrecorded.length} commit(s) desde ${since} que ninguna `
       + 'entrada de DONE nombra, así que ese trabajo no está en planning/ (OPS-001)')
@@ -185,12 +212,19 @@ function commitFiles(opsRoot) {
 // Una llamada por repositorio, con todos sus shas por stdin: `check` corre seguido. `cat-file --batch-check`
 // acepta shas abreviados y dice el tipo, así que un blob tampoco cuenta como commit (comprobado con git 2.43.0).
 function commitStatus(opsRoot, items) {
-  const roots = rootDirs(opsRoot)
+  const roots = declaredRoots(opsRoot)
   const named = new Map()
+  // El nombre es una carpeta dentro de una raíz o el de una raíz que ya es el repositorio: las dos formas
+  // de `holds`, y por lo mismo (caso 254).
   const repoOfName = (name) => {
     if (!named.has(name)) {
-      named.set(name, roots.map((root) => path.join(root, name))
-        .find((dir) => fs.existsSync(dir) && git(dir, 'rev-parse', '--show-toplevel').stdout.trim() === dir) || '')
+      named.set(name, roots
+        .map((root) => (name === root.name || name === path.basename(root.dir) ? root.dir : path.join(root.dir, name)))
+        // Contra la ruta real: en la carpeta de una línea el repositorio es un enlace al original, y git
+        // contesta con la ruta de verdad. Comparando contra el enlace, el commit quedaba «sin comprobar» con
+        // el repositorio a la vista (caso 273).
+        .find((dir) => fs.existsSync(dir)
+          && git(dir, 'rev-parse', '--show-toplevel').stdout.trim() === fs.realpathSync(dir)) || '')
     }
     return named.get(name)
   }
@@ -210,4 +244,5 @@ function commitStatus(opsRoot, items) {
   })
 }
 
-module.exports = { reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions, commitFiles, commitStatus }
+module.exports = {
+  serviceDirs, reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions, commitFiles, commitStatus }

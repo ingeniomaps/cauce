@@ -14,7 +14,7 @@ const { execute, executeAll } = require('../../engine/hooks/run')
 const CF = require('../../engine/hooks/confirm')
 
 const RUN = path.resolve(__dirname, '..', '..', 'engine', 'hooks', 'run.js')
-const claude = (call) => (extra) => call({ hook_event_name: 'PreToolUse', ...extra })
+const claude = (call) => (extra) => call({ hook_event_name: 'PreToolUse', permission_mode: 'default', ...extra })
 const push = (root) => ({ cwd: root, tool_input: { command: 'git push origin feat/x' } })
 const asks = (fn) => {
   try { fn() } catch (error) {
@@ -33,6 +33,26 @@ test('en Claude Code un push frenado pide el diálogo, y un mensaje sobre otra c
     const unrelated = claude(chat.says('agregá una regla nueva a planning/rules/process.md'))
     asks(() => executeAll(['destructive'], unrelated(push(root))))
   } finally { chat.close() }
+})
+
+// Caso 257. En `auto` el diálogo no lo contesta una persona: Claude Code lo resuelve solo y la herramienta
+// corre. Pedirlo ahí dejaba pasar lo que el guard frenaba, así que en ese modo —y en cualquiera que no esté
+// medido— el guard bloquea y la salida vuelve a ser el chat.
+test('donde nadie contesta el diálogo, el guard bloquea en vez de pedirlo', () => {
+  const root = pushRoot('cauce-native-auto-')
+  for (const mode of ['auto', 'plan', 'dontAsk', 'un-modo-que-todavia-no-existe', undefined]) {
+    const chat = chatSession()
+    try {
+      const call = chat.says('implementá la tarea de alta de clientes')
+      const input = { hook_event_name: 'PreToolUse', permission_mode: mode, ...call(push(root)) }
+      assert.equal(CF.native(input), false, `${mode} no usa el diálogo`)
+      assert.throws(() => executeAll(['destructive'], input),
+        (error) => error.blocked && !error.ask && /publica cambios/.test(error.message), `${mode} tiene que bloquear`)
+    } finally { chat.close() }
+  }
+  for (const mode of ['default', 'acceptEdits', 'bypassPermissions']) {
+    assert.equal(CF.native({ hook_event_name: 'PreToolUse', prompt_id: 'm1', permission_mode: mode }), true, mode)
+  }
 })
 
 test('Codex no tiene diálogo y sigue con la confirmación por chat', () => {
@@ -62,7 +82,8 @@ test('dentro de un grupo, un bloqueo de verdad le gana a una pregunta', () => {
 
 test('una lectura de credencial también pide el diálogo, y la salida es la que Claude Code lee', () => {
   const reader = planFirstRoot('cauce-native-lectura-', WIP_CON_PLAN)
-  const input = { hook_event_name: 'PreToolUse', prompt_id: 'm1', session_id: 'cauce-native-proceso',
+  const input = { hook_event_name: 'PreToolUse', permission_mode: 'default', prompt_id: 'm1',
+    session_id: 'cauce-native-proceso',
     cwd: reader, tool_name: 'Read', tool_input: { file_path: path.join(reader, '.env') } }
   asks(() => executeAll(['pre-read'], input))
   const ran = spawnSync('node', [RUN, 'pre-read'], { input: JSON.stringify(input), encoding: 'utf8',
@@ -76,7 +97,8 @@ test('una lectura de credencial también pide el diálogo, y la salida es la que
 
 test('sin nada que aprobar no hay diálogo: plan-first con un plan a la vista pide el plan, no un sí', () => {
   const AP = require('../../engine/hooks/approval')
-  const input = { hook_event_name: 'PreToolUse', prompt_id: 'm1', cwd: pushRoot('cauce-native-vacio-') }
+  const input = { hook_event_name: 'PreToolUse', permission_mode: 'default', prompt_id: 'm1',
+    cwd: pushRoot('cauce-native-vacio-') }
   AP.HOW(null, [], input, [])
   assert.equal(CF.takeAsk(input), false)
   AP.HOW(null, ['src/app.js'], input)

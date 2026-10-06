@@ -59,7 +59,20 @@ function worktree(dir, slug, cli) {
 
   const branch = CL.branchOf(slug)
   const already = existing(repo, branch)
-  const target = already || path.join(path.dirname(repo), `${path.basename(repo)}-${slug}`)
+  // El árbol queda al lado del repositorio **tal como lo ve la sesión**. En la carpeta de una línea el
+  // producto es un enlace al original: al lado del original, el árbol caía fuera de las raíces de la línea
+  // —sus guards de límites frenaban cada escritura— y dentro de la carpeta que comparten las demás
+  // (caso 274). `seen` es dónde vive el servicio según la instancia; `anchor`, el tramo de esa ruta que es
+  // el repositorio.
+  const seen = R.serviceDirs(path.join(root, '..'), task.service)
+    .find((dir) => fs.realpathSync(dir).startsWith(repo)) || repo
+  let anchor = seen
+  while (fs.realpathSync(anchor) !== repo && path.dirname(anchor) !== anchor) anchor = path.dirname(anchor)
+  if (fs.realpathSync(anchor) !== repo) anchor = repo
+  const target = already || path.join(path.dirname(anchor), `${path.basename(anchor)}-${slug}`)
+  // Dónde trabajar adentro del árbol: el mismo tramo que separa al servicio de la raíz de su repositorio.
+  const work = path.join(target, path.relative(anchor, anchor === repo && seen !== repo
+    ? fs.realpathSync(seen) : seen))
   if (!already) {
     if (fs.existsSync(target)) return fail(`${target} ya existe y no es un árbol de esta rama.`, REFUSED)
     const hasBranch = git(repo, 'rev-parse', '--verify', '--quiet', `refs/heads/${branch}`).status === 0
@@ -69,7 +82,9 @@ function worktree(dir, slug, cli) {
   }
 
   if (cli.has('--json')) {
-    return console.log(JSON.stringify({ path: target, branch, repo, runner: target, reused: Boolean(already) }))
+    return console.log(JSON.stringify({
+      path: target, work, branch, repo, runner: target, reused: Boolean(already),
+    }))
   }
   console.log(`${already ? '=' : '✓'} ${target}  (${branch})`)
   // En `embedded` la instancia vive dentro del repo, así que cada árbol se lleva su propia copia de

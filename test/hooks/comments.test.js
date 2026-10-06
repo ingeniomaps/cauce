@@ -56,6 +56,18 @@ test('frena una vez, lista lo agregado, y entra con el token de esa lista y no c
   assert.notEqual(tokenIn(messageOf('comments', commit(root))), tok, 'otro comentario, otro token')
 })
 
+// Caso 258: la instancia declaró la pasada para sus repositorios, no para el que un comando visita.
+test('un commit en un repositorio ajeno a la sesión no pasa por la pasada', () => {
+  const root = repo({})
+  const foreign = tempRoot('cauce-comments-ajeno-')
+  initRepo(foreign)
+  stage(foreign, 'app.js', '// Un comentario nuevo en un repositorio que no es de esta sesión.\nmodule.exports = 1\n')
+  const elsewhere = { cwd: root, tool_input: { command: `git -C ${foreign} commit -m cambio` } }
+  assert.doesNotThrow(() => execute('comments', elsewhere))
+  stage(root, 'app.js', '// Encabezado que ya estaba.\n// Uno nuevo.\nfunction uno() {\n  return 1\n}\n')
+  blocked('comments', commit(root), /recorrelos/)
+})
+
 test('un commit que no agrega comentarios pasa', () => {
   const root = repo({ language: 'en', inlineMax: 1 })
   stage(root, 'app.js', '// Encabezado que ya estaba.\nfunction uno() {\n  return 2\n}\n')

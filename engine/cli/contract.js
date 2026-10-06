@@ -229,6 +229,7 @@ function contract(dir, cli) {
     gates: roots.filter((one) => one && one.path && one.verify).map((one) => `${one.path} → ${one.verify}`),
     maxTaskHours: Number(runner.maxTaskHours || 0),
     commitPerTask: Boolean(runner.commitPerTask),
+    commitToLiveBranch: Boolean(runner.commitToLiveBranch),
     humanCheckpoint: Boolean(runner.humanCheckpointBetweenMilestones),
     // Textual y sin reformular: es el formato contra el que se escribe roadmap, BACKLOG, WIP y DONE, y un
     // resumen de un formato no sirve para cumplirlo.
@@ -241,7 +242,8 @@ function contract(dir, cli) {
   console.log(`${report.project}  (${report.workspaceRoots.join('; ') || 'sin raíces declaradas'})`)
   console.log(`gates      ${report.gates.join('; ') || 'ninguno declarado'}`)
   console.log(`runner     ${report.maxTaskHours} h por tarea · `
-    + `commit ${report.commitPerTask ? 'por tarea' : 'libre'} · `
+    + `commit ${report.commitPerTask ? 'por tarea' : 'libre'}`
+    + `${report.commitToLiveBranch ? ', también en la rama viva' : ', en rama propia'} · `
     + `checkpoint ${report.humanCheckpoint ? 'entre hitos' : 'no'}`)
   console.log(`límites    ${report.boundaries.length} · contratos ${report.contracts.length} caracteres`)
 }

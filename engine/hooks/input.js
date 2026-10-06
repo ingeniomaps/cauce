@@ -7,6 +7,7 @@
 // Antigravity, que tenía su copia y la tenía rota así (caso 198).
 
 const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { writableOutsideRoots } = require('../config/paths')
@@ -164,6 +165,64 @@ function configOf(root) {
 // la llama.
 const unquoted = (command) => String(command).replace(/'[^']*'|"[^"]*"/g, '\u0000')
 
+// El comando tal como se va a ejecutar: sin lo entrecomillado que es dato y no orden. En un commit lo es
+// todo —el mensaje—; fuera de un commit lo entrecomillado puede ejecutarse (`bash -c "…"`, `eval '…'`), y
+// por eso no se vaciaba nunca. Pero tampoco es orden el patrón de un `sed` ni el texto de un `grep`, y
+// leerlos como tal frenaba un `sed` por la frase que reemplazaba (caso 259).
+//
+// La lista es de los que **sólo leen** su argumento, y no de los que ejecutan: un ejecutor que nadie
+// anotó sigue leyéndose como orden, que es el lado que frena (R27). Y aun para éstos el texto vuelve a ser
+// orden si lleva una sustitución adentro o si el comando se lo pasa a un shell por una tubería.
+const DATA_ONLY = new Set(['sed', 'grep', 'egrep', 'fgrep', 'rg', 'echo', 'printf', 'jq'])
+const FEEDS_SHELL = /\|\s*(?:sudo\s+)?(?:(?:ba|z|da)?sh|eval|xargs|source|\.)(?=\s|$)/
+function asRun(command) {
+  const raw = String(command)
+  if (isCommit(raw)) return unquoted(raw)
+  if (FEEDS_SHELL.test(unquoted(raw))) return raw
+  return raw.replace(/'[^']*'|"[^"]*"/g, (quoted, offset) => {
+    if (quoted[0] === '"' && /\$\(|`/.test(quoted)) return quoted
+    const simple = unquoted(raw.slice(0, offset)).split(/[;&|\n(]/).pop()
+    const first = simple.trim().split(/\s+/).find((word) => !/^[A-Za-z_]\w*=/.test(word))
+    return DATA_ONLY.has(first) ? '\u0000' : quoted
+  })
+}
+
+// Las variables que el propio comando asigna, puestas donde un `cd` o un `git -C` las usa. `T=$(mktemp -d)
+// && cd $T` es como se arma una copia desechable, y sin expandirla el destino quedaba «sin resolver»: el
+// guard de límites frenaba la mutación en una copia, que es la práctica que R23 pide (caso 261).
+//
+// Angosto a propósito, porque expandir es interpretar shell y cada forma nueva es una forma de errar hacia
+// el lado que deja pasar: sólo una asignación que ocupa su tramo entero, con un literal, con otra variable
+// ya resuelta o con `mktemp` sin directorio propio; y una sola vez por nombre —reasignada, no se sabe cuál
+// vale—. Lo demás queda como estaba, sin resolver.
+const MKTEMP = /^\$\(mktemp(?:\s+-d)?(?:\s+(\S+))?\)$/
+function expandAssigned(command) {
+  const raw = String(command)
+  const known = new Map()
+  const twice = new Set()
+  const value = (text) => text.replace(/\$\{?([A-Za-z_]\w*)\}?/g,
+    (whole, name) => (known.has(name) ? known.get(name) : whole))
+  for (const segment of raw.split(/[;&\n]+/)) {
+    const assigned = segment.match(/^\s*([A-Za-z_]\w*)=(.*?)\s*$/)
+    if (!assigned) continue
+    const [, name, right] = assigned
+    if (known.has(name) || twice.has(name)) { known.delete(name); twice.add(name); continue }
+    const bare = right.replace(/^"(.*)"$/, '$1')
+    const made = bare.match(MKTEMP)
+    if (made) {
+      if (!made[1] || made[1].startsWith(`${os.tmpdir()}/`)) known.set(name, path.join(os.tmpdir(), 'mktemp'))
+      else twice.add(name)
+      continue
+    }
+    const resolved = value(bare)
+    if (/^[^\s$`'"]+$/.test(resolved)) known.set(name, resolved)
+    else twice.add(name)
+  }
+  if (!known.size) return raw
+  return raw.replace(/(\bcd\s+|\s-C\s+)(["']?)(\$\{?[A-Za-z_]\w*\}?[^\s"';&|]*)\2/g,
+    (whole, verb, quote, target) => (quote === "'" ? whole : `${verb}${value(target)}`))
+}
+
 // Lo que `git` admite entre el verbo y el subcomando. La lista sale de su propia línea de uso
 // —`git --help`, 2.43.0—, y las que llevan el valor en un token aparte se consumen de a dos:
 // comprobado ahí mismo que `--git-dir`, `--work-tree` y `--namespace` aceptan la forma separada y no
@@ -196,11 +255,12 @@ const withoutGitGlobals = (command) => String(command).replace(GIT_GLOBALS, 'git
 // El precio es una ruta entrecomillada en el propio `-C` de un commit —`git -C "mi carpeta" commit`—,
 // que se pierde y cae al cwd. Es más raro que un mensaje que cita un comando, y el cwd de un commit
 // suele ser el repositorio correcto; el caso contrario deja al guard leyendo un índice ajeno.
-function gitDirectory(command, cwd) {
+function gitDirectory(given, cwd) {
+  const command = expandAssigned(given)
   const text = isCommit(command) ? unquoted(command) : command
   const run = text.match(new RegExp(String.raw`(?:^|\s)git(?:\s+${GIT_GLOBAL})+`))
   const flag = run && run[0].match(/-C\s+(['"]?)([^\s'";&|]+)\1/)
-  const cd = text.match(/(?:^|[;&|]\s*)cd\s+(['"]?)([^\s'";&|]+)\1/)
+  const cd = text.match(/(?:^|[;&|\n]\s*)cd\s+(['"]?)([^\s'";&|]+)\1/)
   return path.resolve(cwd, flag ? flag[2] : cd ? cd[2] : '.')
 }
 
@@ -259,13 +319,39 @@ function stagedFiles(dir) {
 // Devuelve también el directorio porque dos de los tres guards siguen leyendo del repositorio después
 // —el lockfile que está al lado del manifiesto, el `package.json` que dice qué gate correr—, y
 // resolverlo dos veces sería preguntar dos veces lo mismo.
-function stagedForCommit(command, cwd) {
+//
+// Y con `input`, sólo sobre un repositorio de la sesión: el commit en uno ajeno vuelve `foreign` y sin
+// nada staged, y cada guard lo deja pasar. Por qué, en `owns`.
+function stagedForCommit(command, cwd, input) {
+  const dir = gitDirectory(command, cwd)
+  if (input && !owns(input, dir)) return { dir, staged: [], foreign: true }
   if (/\bgit\s+add\b/.test(withoutGitGlobals(unquoted(command)))) {
     block('El comando stagea y commitea a la vez, así que este guard lee el índice de antes de stagear '
       + 'y no puede ver qué se commitea. Stageá las rutas en un comando y commiteá en otro.')
   }
-  const dir = gitDirectory(command, cwd)
   return { dir, staged: stagedFiles(dir) }
+}
+
+// Si un repositorio es de la sesión: la carpeta en la que se abrió, la raíz ops o una de las raíces de
+// código que la instancia declaró. Una puerta opina sobre el repositorio que la declara y no sobre sus
+// vecinos (R26): los guards de commit miraban el comando y no a dónde apuntaba, así que un `git -C` hacia
+// un repositorio desechable se frenaba por su forma y, con código staged, corría la suite del otro —54 s
+// medidos sobre un clon que la sesión no tenía abierto (caso 258)—.
+//
+// Cuenta estar adentro o contenerla, porque el commit puede lanzarse desde una subcarpeta del repositorio
+// o desde el repositorio que contiene a la instancia. Una ruta que no se resuelve —`-C $VAR`— queda
+// colgando de la carpeta de la sesión, así que cae del lado que frena.
+function owns(input, dir) {
+  const within = (base, target) => {
+    const relative = path.relative(base, target)
+    return !relative.startsWith('..') && !path.isAbsolute(relative)
+  }
+  const session = path.resolve(sessionStart(input))
+  const ops = opsRoot(input)
+  const declared = ops
+    ? (configOf(ops).workspaceRoots || []).filter((one) => one && one.path).map((one) => path.resolve(ops, one.path))
+    : []
+  return [session, ...(ops ? [ops] : []), ...declared].some((root) => within(root, dir) || within(dir, root))
 }
 
 function findOpsRoot(start) {
@@ -314,13 +400,16 @@ const DECLARE_IT = 'Si el proyecto necesita escribir ahí, declaralo en writable
 
 // La raíz donde vive `planning/`, que es donde se busca la aprobación. La resuelven igual los guards de
 // archivos, los de shell y la aprobación misma, así que se resuelve en un solo lugar.
+// Desde dónde se busca: la carpeta en la que el runner abrió la sesión, o el directorio de la llamada.
+const sessionStart = (input) => process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input)
+
 function opsRoot(input) {
-  return findOpsRoot(process.env.OPS_ROOT || process.env.CLAUDE_PROJECT_DIR || cwdOf(input))
+  return findOpsRoot(sessionStart(input))
 }
 
 module.exports = {
   readInput, FIRST_BYTE_MS, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
-  gitDirectory, isCommit, withoutGitGlobals, stagedFiles, stagedForCommit,
+  gitDirectory, isCommit, withoutGitGlobals, stagedFiles, stagedForCommit, owns, asRun, expandAssigned,
   findOpsRoot, opsRoot,
   writableRoots, outsideRoots, DECLARE_IT, unquoted,
 }

@@ -23,6 +23,20 @@ function digest(file) {
   try { return digestText(fs.readFileSync(file)) } catch { return '' }
 }
 
+// El hash de un archivo entregado, sin la ruta de la instancia. Lo que lleva la raíz absoluta escrita —los
+// recorridos de un runner— tenía un hash distinto en cada carpeta, así que el manifiesto, que viaja por git,
+// cambiaba con sólo instalar el runner en un clon en otra ruta o en la carpeta de una línea (caso 275). Se
+// vuelve a poner el marcador donde estaba la raíz, y se anota eso.
+//
+// Quien compara contra lo anotado acepta además el hash del archivo tal cual, que es lo que trae un
+// manifiesto escrito por un motor anterior: sin eso, todo lo entregado se leería como editado por la empresa
+// en el primer `install` después de actualizar, y lo editado no se pisa.
+function digestRelocatable({ target, opsRoot }, marker) {
+  let text
+  try { text = fs.readFileSync(target, 'utf8') } catch { return '' }
+  return digestText(opsRoot ? text.split(opsRoot).join(marker) : text)
+}
+
 const EMPTY = () => ({ files: {}, runners: {}, forks: {} })
 
 // Dos secciones porque son dos entregas distintas: `files` es lo que se materializó dentro de la
@@ -132,6 +146,7 @@ function edited(root, relative, files) {
 }
 
 module.exports = {
+  digestRelocatable,
   digest, digestText, edited, editedPaths, prune, read, readForks, readRunners,
   record, recordPaths, write,
 }

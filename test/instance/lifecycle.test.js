@@ -52,7 +52,7 @@ test('el paquete publicado sostiene el ciclo completo de una empresa', { timeout
   // npm no mete un `.gitignore` en el tarball: sin restituirlo, cada instancia commitearía el
   // paquete entero dentro del repo de la empresa. Sólo se ve corriendo contra el tarball.
   const ignore = fs.readFileSync(path.join(consumer, '.gitignore'), 'utf8')
-  assert.match(ignore, /node_modules\//, 'la dependencia no entra a la historia de la empresa')
+  assert.match(ignore, /^node_modules$/m, 'la dependencia no entra a la historia de la empresa')
   assert.match(ignore, /\.env/, 'ni sus credenciales')
   assert.match(ignore, /planning\/\.push-log/, 'ni el rastro local de lo que se autorizó publicar')
   assert.match(ignore, /planning\/\.grant-log/, 'ni el de lo que se concedió en el chat')

@@ -206,7 +206,7 @@ function verify(input) {
   if (process.env.OPS_SKIP_VERIFY === '1') return
   const command = commandOf(input)
   if (!isCommit(command)) return
-  const { dir, staged } = stagedForCommit(command, cwdOf(input))
+  const { dir, staged } = stagedForCommit(command, cwdOf(input), input)
   const changedOpenApi = changedOpenApiSpec(dir, staged)
   const changedSqlSource = staged.some((file) => SQL_SOURCE.test(file)) && usesSqlc(dir)
   const hasApiGenerated = staged.some((file) => /(?:^|\/)[^/]*(?:generated|\.gen)\.(?:go|ts|js|py)$/i.test(file))

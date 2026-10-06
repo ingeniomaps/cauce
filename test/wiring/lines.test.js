@@ -49,6 +49,11 @@ test('una línea tiene su carpeta de sesión, con su worktree, su motor y sus gu
   assert.equal(blocked.status, 2, blocked.stderr)
   assert.match(blocked.stderr, /catastrófico/)
 
+  // Caso 275: la línea nace limpia. Ni el manifiesto, que viaja por git, ni el enlace al motor aparecen como
+  // cambios que nadie hizo.
+  const dirty = spawnSync('git', ['-C', report.tree, 'status', '--porcelain'], { encoding: 'utf8' }).stdout
+  assert.equal(dirty, '', `el árbol de la línea recién armada no tiene nada que commitear: ${dirty}`)
+
   const again = run(['line', target, 'b', '--json'])
   assert.equal(JSON.parse(again.stdout).reused, true, 'la segunda vez la reusa')
   const text = run(['line', target, 'b'])
@@ -139,4 +144,55 @@ test('una línea pedida por un enlace, o borrada a mano, se arma igual en su lug
   assert.equal(rebuilt.status, 0, rebuilt.stderr)
   assert.equal(JSON.parse(rebuilt.stdout).reused, false, 'una línea borrada se dio por reusada')
   assert.ok(fs.existsSync(path.join(report.home, 'ops', 'automatization', 'hooks')), 'quedó a medias')
+})
+
+// Caso 263. La raíz declarada es la carpeta que contiene a la instancia, con un repositorio por servicio
+// adentro. Su lugar en la línea es la propia carpeta de la línea, así que enlazarla entera no enlazaba nada:
+// la línea quedaba con el worktree de la instancia y sin producto.
+test('una raíz que es la carpeta de sesión lleva sus hijos a la carpeta de la línea', () => {
+  const { base, target, git } = instance('cauce-line-container-')
+  fs.mkdirSync(path.join(base, 'api', 'src'), { recursive: true })
+  fs.writeFileSync(path.join(base, 'NOTAS.md'), 'de la carpeta, no de una rama\n')
+  // La configuración de un runner que la instancia no tiene instalado: está en la carpeta y no viaja.
+  fs.mkdirSync(path.join(base, '.gemini'))
+  fs.writeFileSync(path.join(base, '.gemini', 'nota.txt'), 'x\n')
+  const configFile = path.join(target, 'ops.config.json')
+  const config = JSON.parse(fs.readFileSync(configFile, 'utf8'))
+  config.workspaceRoots = [{ name: 'main', path: '..' }]
+  fs.writeFileSync(configFile, `${JSON.stringify(config, null, 2)}\n`)
+  git('add', 'ops.config.json'); git('commit', '-qm', 'la raíz es la carpeta de sesión')
+
+  const report = JSON.parse(run(['line', target, 'b', '--json']).stdout)
+  const real = (...parts) => fs.realpathSync(path.join(...parts))
+  assert.equal(real(report.home, 'api'), real(base, 'api'), 'el repositorio del servicio viaja')
+  assert.equal(real(report.home, 'NOTAS.md'), real(base, 'NOTAS.md'), 'y lo que la sesión lee de esa carpeta')
+  assert.ok(report.linked.includes(path.join('..', 'api')), JSON.stringify(report.linked))
+
+  // La instancia y la configuración del runner no se enlazan: la línea tiene las suyas, y es por eso que su
+  // sesión corre los guards de su árbol y no los del original.
+  for (const own of ['ops', '.claude']) {
+    assert.equal(fs.lstatSync(path.join(report.home, own)).isSymbolicLink(), false, `${own} es de la línea`)
+  }
+  assert.equal(shellHook(report.home), '$CLAUDE_PROJECT_DIR/ops/automatization/hooks/guard-shell.sh')
+  assert.notEqual(real(report.home, '.claude'), real(base, '.claude'))
+  assert.equal(fs.existsSync(path.join(report.home, '.gemini')), false, 'ni la de un runner sin instalar')
+
+  // Y armarla de nuevo no duplica ni rompe nada.
+  const again = JSON.parse(run(['line', target, 'b', '--json']).stdout)
+  assert.equal(again.reused, true)
+  assert.deepEqual(again.linked, [], 'lo que ya está enlazado no se vuelve a enlazar')
+})
+
+// Una instancia creada antes del caso 275 ignora `node_modules/`, con barra, que no cubre un enlace. La
+// línea lo anota por su cuenta en el `exclude` del repositorio, así que su `.gitignore` no hace falta tocarlo.
+test('el enlace al motor no ensucia la línea de una instancia con el .gitignore de antes', () => {
+  const { target, git } = instance('cauce-line-ignore-')
+  const ignore = path.join(target, '.gitignore')
+  fs.writeFileSync(ignore, fs.readFileSync(ignore, 'utf8').replace(/^node_modules$/m, 'node_modules/'))
+  assert.match(fs.readFileSync(ignore, 'utf8'), /^node_modules\/$/m)
+  git('add', '.gitignore'); git('commit', '-qm', 'el gitignore de antes')
+  const report = JSON.parse(run(['line', target, 'b', '--json']).stdout)
+  assert.ok(fs.lstatSync(path.join(report.tree, 'node_modules')).isSymbolicLink(), 'el motor es un enlace')
+  const dirty = spawnSync('git', ['-C', report.tree, 'status', '--porcelain'], { encoding: 'utf8' }).stdout
+  assert.equal(dirty, '', dirty)
 })

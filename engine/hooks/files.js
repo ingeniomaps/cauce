@@ -5,6 +5,8 @@
 // lo escribió este cambio— y son el grupo `pre-files` del registro, junto con `migrations.js`.
 
 const fs = require('node:fs')
+const os = require('node:os')
+const { spawnSync } = require('node:child_process')
 const path = require('node:path')
 const {
   patchOf, filesOf, contentOf, cwdOf, block, configOf, opsRoot,
@@ -193,6 +195,21 @@ function isProduct(root, file) {
 // El conteo sale del mismo parser que `check` y `context`, así que lo que el guard llama plan es lo que
 // el resto del motor llama plan. Un WIP con frontmatter y sin pasos es el estado intermedio que esto
 // vigila: la tarea ya está nombrada y el plan todavía no existe.
+// El plan escrito con el id de la instancia, para quien no declaró el suyo. Un recorrido corre `ops` desde
+// la instancia, así que su WIP queda bajo el id de ese repositorio; el guard corre donde esté parada la
+// sesión —la carpeta que contiene a la instancia, o el repositorio del producto— y deducía otro. En
+// sidecar eso frenaba la primera edición de Build en toda sesión que no hubiera montado un árbol por
+// tarea: una corrida real paró ahí con el plan aprobado y escrito, después de once agentes (caso 260).
+//
+// No afloja lo que fija «el plan de un runner no le sirve a otro»: con `CAUCE_RUNNER` el id es explícito y
+// se respeta tal cual, y eso es lo que tiene cada agente que trabaja en su árbol. Sin la variable, `ops` ya
+// le da a toda la sesión el id de la instancia; acá el guard deja de contestar distinto que él.
+function instancePlan(root, planning) {
+  if (process.env.CAUCE_RUNNER) return null
+  const top = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: root, encoding: 'utf8' })
+  return readWip(planning, top.status === 0 ? top.stdout.trim() : root)
+}
+
 function planFirst(input) {
   if (process.env.OPS_PLAN_FIRST_OVERRIDE === '1') return
   // El plan lo exige el flujo, que es donde piensa el agente. Cuando la persona pide un cambio directo en
@@ -204,6 +221,8 @@ function planFirst(input) {
   const planning = path.join(root, 'planning')
   const wip = readWip(planning, runner())
   if (wip && wip.complete + wip.pending > 0) return
+  const own = instancePlan(root, planning)
+  if (own && own.complete + own.pending > 0) return
   // Una instancia recién creada no tiene de dónde sacar una tarea: `onboard` deja el roadmap vacío y
   // dice que alguien lo llene. Exigir el plan ahí es un candado delante de la puerta, y la salida que
   // enseña es apagar el guard en el entorno, que lo deja sin morder para siempre. Se pregunta recién
@@ -241,10 +260,18 @@ function planFirst(input) {
   }
 }
 
+// Lo que el runner escribe para sí y no es del proyecto. Claude Code guarda el plan de su modo plan en
+// `~/.claude/plans/`: sin esto el límite de escritura frenaba ese archivo, y en modo plan es lo único que el
+// runner escribe (caso 269). Angosto a propósito: esa carpeta y un `.md`, no `~/.claude` entero, que guarda
+// también la configuración y la memoria.
+const RUNNER_PLANS = path.join(os.homedir(), '.claude', 'plans') + path.sep
+const runnerOwn = (file) => file.startsWith(RUNNER_PLANS) && file.endsWith('.md')
+
 function workspaceBoundary(input) {
   const allowed = writableRoots(input)
   for (const raw of filesOf(input)) {
     const file = path.resolve(cwdOf(input), raw)
+    if (runnerOwn(file)) continue
     // Lo mismo que en `shell-boundary`: la aprobación de la persona se juzga aunque no haya raíces.
     const own = selfApproval(input, file)
     if (own) block(own)

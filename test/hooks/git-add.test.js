@@ -99,12 +99,12 @@ test('una opción global de git no desactiva la regla que mira el subcomando', (
   // caso ejercita se puede borrar sin que nada se ponga rojo —comprobado sacando `--bare` y
   // `--no-replace-objects`, que pasaba en verde—, y entonces no está cubierta, está escrita.
   const GLOBALS = [
-    '-C /tmp', '-c core.pager=cat', '-p', '-P', '--paginate', '--no-pager',
+    '-C .', '-c core.pager=cat', '-p', '-P', '--paginate', '--no-pager',
     '--git-dir /tmp/.git', '--git-dir=/tmp/.git', '--work-tree /tmp', '--work-tree=/tmp',
     '--namespace ns', '--namespace=ns', '--config-env=k=V', '--exec-path=/usr/lib/git-core',
     '--no-replace-objects', '--bare', '--no-optional-locks',
     '--literal-pathspecs', '--glob-pathspecs', '--noglob-pathspecs', '--icase-pathspecs',
-    '-c a=b -C /tmp',
+    '-c a=b -C .',
   ]
   const forms = (command) => [command, ...GLOBALS.map((one) => command.replace('git ', `git ${one} `))]
   const rules = [
@@ -150,7 +150,7 @@ test('sacar las opciones globales no inventa un bloqueo', () => {
 // viola ninguna, sólo rompe el momento en que se pregunta, y lo frena quien lee el índice.
 test('git-add frena `commit -a`, que es stagear todo con otra ortografía', () => {
   for (const command of ['git commit -a -m sonda', 'git commit -am sonda', 'git commit --all -m sonda',
-    'git -C /tmp commit -am sonda', 'git commit -v -a -m sonda']) {
+    'git -C . commit -am sonda', 'git commit -v -a -m sonda']) {
     blocked('git-add', { tool_input: { command } }, /stagea al commitear/)
   }
   // `--amend` no es `-a`: lo frena `destructive` por otra razón, y confundirlos daría el mensaje
