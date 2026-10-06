@@ -29,6 +29,10 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Buscar en el código el nombre de un archivo de entorno ya no se frena como leer una credencial.** `grep -rn
+  "process\.env\." src` o `grep "\.env\.schema"` se bloqueaban como si abrieran un `.env`: el guard leía el
+  patrón de la búsqueda como un archivo. Era el freno más frecuente dentro de un recorrido. Leer la
+  credencial se sigue frenando (caso 287).
 - **Un agente puede escribir en el scratchpad de su sesión.** Las sondas y los scripts de paso que Claude Code
   guarda ahí se frenaban por quedar fuera de las raíces declaradas. **Qué hacer:** si habías declarado esa
   carpeta a mano en `ops.config.local.json`, ya no hace falta (caso 288).
