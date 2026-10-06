@@ -14,6 +14,36 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.103.1] - 2026-10-06
+
+### Cambiado
+
+- **El diálogo de confirmación es sólo para lo que te toca decidir, y sólo en tu conversación.** Desde 0.103.0
+  un guard abría el diálogo de Claude Code para todo lo que frenaba, también dentro de un recorrido: un
+  `autobuild` quedó 10 y 24 minutos esperando que alguien aprobara dos `grep`. Ahora lo que el agente puede
+  corregir solo —el mensaje del guard dice cómo— se bloquea sin preguntar, y la llamada de un subagente o de
+  un recorrido recibe el bloqueo en vez del diálogo. El diálogo queda para un merge, un deploy, una
+  credencial o un borrado que salgan de tu conversación. **Qué cambia para vos:** menos diálogos, y ninguno
+  que te espere dentro de un recorrido; lo corregible lo seguís pudiendo dejar pasar confirmándolo con tus
+  palabras o con la línea en `.ops-approval` (casos 285 y 282).
+
+### Corregido
+
+- **Una orden que se cumple después ya no se pierde por el aviso de una tarea de fondo.** «Cuando el CI quede
+  verde mergeá el #7» se frenaba al llegar el aviso de que el CI había terminado, porque ese aviso entra como
+  un mensaje que no escribiste vos. Ahora lo que pediste nombrándolo sigue valiendo hasta tu próximo mensaje.
+  El aviso no agrega nada: lo que dice no ordena, y «dale con todos», sin PRs nombrados, no lo cruza
+  (caso 281).
+- **Buscar en el código el nombre de un archivo de entorno ya no se frena como leer una credencial.** `grep -rn
+  "process\.env\." src` o `grep "\.env\.schema"` se bloqueaban como si abrieran un `.env`: el guard leía el
+  patrón de la búsqueda como un archivo. Era el freno más frecuente dentro de un recorrido. Leer la
+  credencial se sigue frenando (caso 287).
+- **Un agente puede escribir en el scratchpad de su sesión.** Las sondas y los scripts de paso que Claude Code
+  guarda ahí se frenaban por quedar fuera de las raíces declaradas. **Qué hacer:** si habías declarado esa
+  carpeta a mano en `ops.config.local.json`, ya no hace falta (caso 288).
+- **Leer la configuración de las pruebas ya no se toma por correrlas.** `grep -n 'jest' package.json`, o un
+  patrón entre comillas seguido de `jest.config.*`, frenaban como un `jest` sin cota de workers (caso 286).
+
 ## [0.103.0] - 2026-10-05
 
 ### Cambiado

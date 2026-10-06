@@ -130,3 +130,38 @@ test('el agente que quiere escribirse la aprobación también pasa por el diálo
     assert.match(unasked, /src\/app\.js/)
   } finally { chat.close() }
 })
+
+// Caso 285. Qué hace un guard al frenar no lo decide sólo el modo: lo deciden quién puede resolverlo y si hay
+// alguien del otro lado. En una corrida real, dos lecturas esperaron 590 y 1446 segundos un clic dentro de un
+// recorrido, por una regla cuyo mensaje ya decía el arreglo.
+test('el diálogo es para lo que pide autoridad y en la conversación directa; el resto se bloquea', () => {
+  const root = pushRoot('cauce-native-quien-')
+  const chat = chatSession()
+  const outcome = (group, input) => {
+    try { executeAll(group, input); return 'pasa' } catch (error) {
+      return error.ask ? 'diálogo' : error.blocked ? error.message : assert.fail(error.stack)
+    }
+  }
+  try {
+    for (const mode of ['default', 'acceptEdits', 'bypassPermissions', 'auto']) {
+      const direct = (command) => ({ hook_event_name: 'PreToolUse', permission_mode: mode,
+        ...chat.says('seguí con la tarea')({ cwd: root, tool_input: { command } }) })
+      // De autoridad, con una persona del otro lado: un clic.
+      assert.equal(outcome(['destructive'], direct('git push origin feat/x')), 'diálogo', mode)
+      // Corregible: el mensaje dice cómo, así que no hay nada que preguntar ni donde hay diálogo.
+      const fixable = outcome(['test-workers'], direct('npx jest'))
+      assert.match(fixable, /--maxWorkers=2/, mode)
+      assert.match(fixable, /Esto lo corregís vos.*no hace falta preguntarle a nadie/, mode)
+      assert.doesNotMatch(fixable, /Claude Code se lo pregunta/, mode)
+
+      // Un subagente o el agente de un recorrido: nadie mira un diálogo ahí. Los dos tipos que manda Claude.
+      for (const type of ['general-purpose', 'workflow-subagent']) {
+        const delegated = { ...direct('git push origin feat/x'), agent_id: 'a1', agent_type: type }
+        assert.equal(CF.native(delegated), false, `${mode} ${type}`)
+        assert.notEqual(outcome(['destructive'], delegated), 'diálogo', `${mode} ${type}`)
+        const fixed = outcome(['test-workers'], { ...direct('npx jest'), agent_id: 'a1', agent_type: type })
+        assert.match(fixed, /Esto lo corregís vos.*devolvele el bloqueo a quien te lanzó/s, `${mode} ${type}`)
+      }
+    }
+  } finally { chat.close() }
+})

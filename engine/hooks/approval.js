@@ -105,11 +105,16 @@ function REFUSED(items, input = {}) {
 // `pasteable` es lo que se puede aprobar por archivo, y por defecto es todo: un guard lo angosta cuando lo
 // que tiene a mano no sirve para pegar —por qué, en `secrets-shell.js` (caso 118)—. Lo frenado se anota
 // igual, así que el «dale» sigue cubriendo todo.
-function HOW(variable, lines, input, pasteable = lines, { durable = false } = {}) {
+function HOW(variable, lines, input, pasteable = lines, { durable = false, fixable = false } = {}) {
   // Con diálogo no se anota nada para el chat: lo que se aprobaría con el mensaje siguiente lo aprueba el
   // diálogo, y un pendiente que sobreviviera lo podría aprobar un mensaje sobre otra cosa (caso 221).
   // Sin nada que aprobar no hay diálogo: `plan-first` con un plan a la vista pide escribir el plan, no un sí.
-  const native = lines.length > 0 && CF.native(input)
+  //
+  // Y tampoco lo hay para lo que el agente puede corregir solo (`fixable`): el mensaje del guard ya dice la
+  // otra forma de hacerlo, así que no hay nada que una persona tenga que decidir. Preguntárselo costaba una
+  // espera por algo que se arreglaba en segundos (caso 285). La salida por confirmación y por archivo se
+  // conserva, para el caso en que la otra forma no exista y la persona quiera dejarlo pasar igual.
+  const native = !fixable && lines.length > 0 && CF.native(input)
   if (native) CF.askPerson(input)
   const held = native ? false : CHAT.hold(input, lines)
   const dropped = held ? held.dropped : []
@@ -125,7 +130,12 @@ function HOW(variable, lines, input, pasteable = lines, { durable = false } = {}
   // Un subagente no puede esperar la respuesta —su turno termina antes—, así que lo que le toca es
   // devolver el bloqueo: preguntar lo hace quien lo lanzó, y el reintento pasa aunque vuelva a ser delegado
   // (caso 186).
-  const lead = input.agent_id
+  const fix = 'Esto lo corregís vos, con lo que dice arriba: no hace falta preguntarle a nadie. '
+  const lead = fixable
+    ? fix + (input.agent_id
+      ? 'Si no hay forma de hacerlo así, devolvele el bloqueo a quien te lanzó. '
+      : 'Si la persona quiere dejarlo pasar igual, alcanza con que lo confirme con sus palabras. ')
+    : input.agent_id
     ? 'Sos un subagente y no podés esperar la respuesta: devolvele a quien te lanzó qué se frenó y por qué, '
       + 'para que se lo pregunte a la persona. Si ella lo confirma, el mismo cambio pasa aunque lo reintente '
       + 'un subagente. '
@@ -136,7 +146,7 @@ function HOW(variable, lines, input, pasteable = lines, { durable = false } = {}
   const ask = native ? CF.LEAD : chat
     ? lead + 'Esa confirmación cubre lo que se frenó y nada más —algo nuevo vuelve a frenar— y sigue valiendo '
       + 'en los mensajes siguientes hasta que ella lo niegue. '
-    : ''
+    : (fixable ? fix : '')
   const refused = dropped.length ? REFUSED(dropped, input) : ''
   const keep = chat && durable ? KEEP(input, pasteable.filter((one) => !dropped.includes(one))) : ''
   // Sin chat la salida es la misma, y también se dice como cosa de ella: el imperativo que el párrafo de

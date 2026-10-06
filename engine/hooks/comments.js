@@ -199,7 +199,8 @@ function comments(input) {
     const unapproved = AP.pendingNow(root, staged, input)
     if (unapproved.length) {
       block(`Los comentarios que agrega este commit rompen lo que declara ops.config.json → comments:\n`
-        + `${hard.map((one) => `  - ${one}`).join('\n')}\n${AP.HOW(null, unapproved, input)}`)
+        + `${hard.map((one) => `  - ${one}`).join('\n')}\n`
+        + AP.HOW(null, unapproved, input, unapproved, { fixable: true }))
     }
   }
   if (!listing.length) return

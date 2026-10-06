@@ -1,14 +1,15 @@
 ---
 caso: 282
 titulo: el modo auto quedó del lado que frena con dos mediciones que se contradicen
-estado: abierto
+estado: resuelto
+resuelto-en: 0.103.1
 prioridad: media
 version-detectada: 0.101.0
 ---
 
 # 282 — En `auto` el guard no pide el diálogo de Claude Code, y no está establecido si hace falta
 
-**🔴 abierto** · detectado en 0.101.0 · prioridad **media**.
+**🟢 resuelto en 0.103.1** · detectado en 0.101.0 · prioridad **media**.
 
 ## Resumen
 
@@ -58,3 +59,23 @@ que ya no pasa por acá; sigue costando un mensaje en todo lo demás que un guar
 
 - **257 y 268** — las dos mediciones.
 - **280** — el caso del que salió.
+
+## Cierre
+
+**Resuelto en 0.103.1**, entre dos versiones.
+
+### El recorrido de lo que este caso enumeró
+
+- **Fix — se hizo en 0.103.0.** La medición dio que en `auto` el diálogo lo contesta una persona —está en el
+  caso 257—, y `auto` entró a los modos con diálogo.
+- **Tradeoff, reabrir el 257 — no ocurrió, y apareció otro.** Los siete pedidos que corrieron sin aprobador
+  siguen sin explicación y ninguna medición los reprodujo. Lo que sí pasó es que el diálogo se abrió también
+  dentro de un recorrido, donde nadie lo mira. Eso es el caso 285, y lo que lo cierra es su división: el
+  diálogo sólo para lo que pide autoridad y sólo en la conversación directa.
+
+### Qué se corrió
+
+- **Tres sesiones en `auto` sin nadie al teclado** (caso 257): el diálogo apareció y esperó.
+- **Una sesión real en `auto` con la división del 285**: ningún diálogo para lo corregible ni para un
+  subagente.
+- **La puerta entera**, `npm run ci`.

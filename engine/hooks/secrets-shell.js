@@ -43,14 +43,56 @@ const unbraced = (command) => String(command).replace(/\$\{(\w+)\}/g, '$$$1')
 // no nombra ningún archivo, así que no se puede aprobar por archivo.
 const UNRESOLVED = /[$`]/
 
+// Los lectores cuyo primer argumento no es un archivo sino lo que buscan o lo que ejecutan: el patrón de un
+// `grep`, el script de un `sed`, el programa de un `awk`, el filtro de un `jq`. Ese argumento nombra texto, y
+// leerlo como ruta frenaba buscar `\.env\.schema` o `process\.env\.` en el código —la barra corta la palabra
+// y queda `.env`—: 26 de los 44 frenos de una instancia real, ninguno sobre un archivo de credenciales
+// (caso 287).
+//
+// `pattern` son las banderas que traen el patrón en su valor: con una de ellas ya no hay patrón posicional.
+// `data` son las que traen otro dato que tampoco es un archivo, y cuántas palabras ocupa. `file` las que sí
+// nombran uno. El valor de cualquier otra bandera se sigue mirando: si se confunde, es hacia el lado que frena.
+const SEARCH = { pattern: ['-e', '--regexp'], data: {}, file: ['-f', '--file'] }
+const PATTERN_FIRST = {
+  grep: SEARCH, egrep: SEARCH, fgrep: SEARCH, rg: SEARCH,
+  sed: { pattern: ['-e', '--expression'], data: {}, file: ['-f', '--file'] },
+  awk: { pattern: [], data: { '-F': 1, '-v': 1 }, file: ['-f', '--file'] },
+  jq: { pattern: [], data: { '--arg': 2, '--argjson': 2 }, file: ['-f', '--from-file'] },
+}
+
+// El tramo sin su patrón. Las palabras se parten respetando comillas, que es donde un patrón lleva espacios.
+function withoutPattern(segment, verb) {
+  const rule = PATTERN_FIRST[path.basename(verb)]
+  if (!rule) return segment
+  const words = segment.match(/"[^"]*"|'[^']*'|\S+/g) || []
+  const kept = []
+  let positional = true
+  for (let at = words.indexOf(verb) + 1; at < words.length; at += 1) {
+    const word = words[at]
+    const [flag, attached] = word.split(/=(.*)/s)
+    const separate = attached === undefined ? 1 : 0
+    if (rule.pattern.includes(flag)) {
+      positional = false
+      at += separate
+    } else if (rule.data[flag]) at += attached === undefined ? rule.data[flag] : rule.data[flag] - 1
+    else if (rule.file.includes(flag)) {
+      positional = false
+      kept.push(word)
+    } else if (word.startsWith('-') || !positional) kept.push(word)
+    else positional = false
+  }
+  return kept.join(' ')
+}
+
 // Las palabras de cada tramo que lee: el que empieza con un lector, o el que redirige un archivo a la
 // entrada. Lo entrecomillado se mira, porque el código de un `node -e` nombra el archivo ahí adentro.
 function readTokens(command) {
   const found = []
   for (const segment of unbraced(command).split(/[;&|\n]+|\$\(|`/)) {
     const words = segment.trim().replace(/^[({]+\s*/, '').split(/\s+/).filter(Boolean)
-    const reads = READERS.has(path.basename(verbOf(words))) || /<(?![<(])/.test(segment)
-    if (reads) found.push(...(segment.match(/[^\s'"`\\;|&<>(){}=,]+/g) || []))
+    const verb = verbOf(words)
+    const reads = READERS.has(path.basename(verb)) || /<(?![<(])/.test(segment)
+    if (reads) found.push(...(withoutPattern(segment, verb).match(/[^\s'"`\\;|&<>(){}=,]+/g) || []))
   }
   return [...new Set(found)]
 }

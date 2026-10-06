@@ -35,14 +35,17 @@ test('lo que no aplana nada pasa', () => {
   ]) assert.doesNotThrow(() => execute('jira-adf', edit(root, input, tool)), JSON.stringify(input))
 })
 
-test('se aprueba como el resto: diálogo en Claude Code o la línea en .ops-approval', () => {
+// Es de las que el agente corrige solo —el mensaje dice cómo mandarlo—, así que no abre el diálogo ni donde
+// lo hay (caso 285). La línea en `.ops-approval` sigue valiendo.
+test('no le pregunta a nadie lo que se corrige mandándolo en ADF, y la línea en .ops-approval lo pasa', () => {
   const root = pushRoot('cauce-jira-adf-salida-')
   const call = edit(root, { fields: { description: 'texto nuevo' } })
   const chat = chatSession()
   try {
     assert.throws(() => executeAll(['pre-mcp'], { hook_event_name: 'PreToolUse', permission_mode: 'default',
       ...chat.says('seguí')(call) }),
-      (error) => error.ask && /DEMO-1/.test(error.message))
+      (error) => error.blocked && !error.ask && /DEMO-1/.test(error.message)
+        && /Esto lo corregís vos/.test(error.message))
   } finally { chat.close() }
   pasteApproval(root, messageOf('jira-adf', call))
   assert.doesNotThrow(() => execute('jira-adf', call))

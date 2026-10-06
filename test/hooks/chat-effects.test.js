@@ -206,6 +206,28 @@ test('el hook de mensaje nunca frena ni imprime, reciba lo que reciba', () => {
   fs.rmSync(path.join(DIR, `${session}.json`), { force: true })
 })
 
+// Caso 287. Lo que un `grep` busca y lo que un `sed`, un `awk` o un `jq` ejecutan no es un archivo. Leído como
+// ruta, buscar en el código el nombre de un archivo de entorno frenaba como si se lo abriera. Las dos mitades
+// van juntas: el patrón pasa, y el archivo que viene después se sigue frenando.
+test('secrets-shell no toma por un archivo el patrón de una búsqueda', () => {
+  const root = planFirstRoot('ops-hook-patron-', WIP_CON_PLAN)
+  const runs = (command) => ({ cwd: root, tool_input: { command } })
+  for (const command of [
+    // Los tres que frenaron recorridos reales.
+    String.raw`grep -rn "\.env\.schema" src`, String.raw`grep -rn "process\.env\." src | head`,
+    'grep -rln "credentials.json" src',
+    String.raw`sed -n '/\.env/p' README.md`, String.raw`rg -e '\.env' -e 'id_rsa' src`,
+    "awk -F= '/.env/ {print $1}' notas.txt", "jq '.env' package.json", 'grep --regexp=.env src/a.js',
+    "jq --arg file .env '.x' package.json",
+  ]) assert.doesNotThrow(() => execute('secrets-shell', runs(command)), command)
+  for (const command of [
+    'grep KEY .env', 'grep -e KEY .env', 'grep -rn "x" src .env', "sed -n '1,5p' .env", "sed -e 1p .env",
+    "awk -F= '{print $1}' .env", 'grep -f .env notas.txt', "jq -r .token credentials.json", 'rg KEY .env',
+    // Con una bandera cuyo valor no se conoce, lo que sigue se mira entero: se confunde hacia el lado que frena.
+    'grep --max-count 3 KEY .env',
+  ]) blocked('secrets-shell', runs(command), /lee .*credencial/)
+})
+
 // Leer una credencial por shell, en cualquier runner (caso 104): lo que la muestra se frena, lo que sólo la
 // nombra pasa, y lo que la persona pidió en el chat también.
 test('secrets-shell frena leer una credencial por shell y deja pasar lo demás', () => {

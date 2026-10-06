@@ -85,7 +85,7 @@ function migrations(input) {
     const shipped = alreadyShipped(file)
     if (shipped) {
       block(`${raw} ${shipped}. Crea una nueva en vez de reescribirla.\n`
-        + AP.HOW('OPS_MIGRATIONS_OVERRIDE', [normalized], input))
+        + AP.HOW('OPS_MIGRATIONS_OVERRIDE', [normalized], input, [normalized], { fixable: true }))
     }
   }
 }

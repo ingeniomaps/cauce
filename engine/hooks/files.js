@@ -90,7 +90,7 @@ function integrationSnapshot(input) {
     if (!/(?:^|\/)integrations\/[^/]+\/staging\/(?:.+\/remote\.json|sync-state\.json)$/.test(file)) continue
     if (approved(input, raw)) continue
     block(`${file} pertenece al sincronizador. Cura draft.md; no edites snapshots a mano.\n`
-      + AP.HOW(null, [raw], input))
+      + AP.HOW(null, [raw], input, [raw], { fixable: true }))
   }
 }
 
@@ -101,7 +101,7 @@ function generated(input) {
     if (!/(?:^|[._-])generated\.[^.]+$/i.test(base) && !/(?:^|[._-])gen\.(?:go|ts|js|py)$/i.test(base)) continue
     if (approved(input, raw)) continue
     block(`${file} parece código generado. Modifica su fuente y ejecuta el generador; no lo edites a mano.\n`
-      + AP.HOW(null, [raw], input))
+      + AP.HOW(null, [raw], input, [raw], { fixable: true }))
   }
 }
 
@@ -255,7 +255,7 @@ function planFirst(input) {
     // la acción correcta es angosta y concreta —el mismo criterio con que `HOW` decide no nombrarla—.
     const how = foreign.length
       ? AP.HOW(null, [], input, [])
-      : AP.HOW('OPS_PLAN_FIRST_OVERRIDE', [raw], input)
+      : AP.HOW('OPS_PLAN_FIRST_OVERRIDE', [raw], input, [raw], { fixable: true })
     block(`${raw} cambia el producto sin plan. ${why}${how}`)
   }
 }

@@ -212,3 +212,30 @@ test('el archivo de plan del runner no es una escritura fuera de las raíces', (
     blocked('workspace-boundary', write(other), /fuera de las raíces/)
   }
 })
+
+// Caso 288. El scratchpad que el runner le da a la sesión es un lugar de paso, y un agente escribe ahí sus
+// sondas y sus scripts. Los dos guards de límites tienen que contestar lo mismo, y sólo vale lo que cuelga
+// del temporal: la ruta llega en la entrada, y no cualquier cosa escrita ahí se vuelve escribible.
+test('el scratchpad de la sesión se puede escribir, y sólo si cuelga del temporal', () => {
+  const root = tempRoot('ops-hook-scratch-')
+  fs.mkdirSync(path.join(root, 'planning'))
+  fs.writeFileSync(path.join(root, 'ops.config.json'), JSON.stringify({ workspaceRoots: [] }))
+  const scratch = path.join(os.tmpdir(), 'runner-x', 'sesion-1', 'scratchpad')
+  const write = (file, dir) => ({ cwd: root, scratchpad_dir: dir, tool_input: { file_path: file } })
+  const shell = (file, dir) => ({ cwd: root, scratchpad_dir: dir, tool_input: { command: `echo x > ${file}` } })
+  const inside = path.join(scratch, 'sonda.mjs')
+  assert.doesNotThrow(() => execute('workspace-boundary', write(inside, scratch)))
+  assert.doesNotThrow(() => execute('shell-boundary', shell(inside, scratch)))
+
+  // Sin el dato, o con otro scratchpad, la misma ruta sigue fuera.
+  blocked('workspace-boundary', write(inside), /fuera de las raíces/)
+  blocked('workspace-boundary', write(inside, path.join(os.tmpdir(), 'runner-x', 'otra', 'scratchpad')),
+    /fuera de las raíces/)
+  blocked('workspace-boundary', write(path.join(os.tmpdir(), 'runner-x', 'vecino.txt'), scratch), /fuera de las/)
+
+  // Un «scratchpad» que no es desechable no abre nada: ni el home, ni la raíz, ni el temporal entero.
+  const home = path.join(os.homedir(), 'trabajo')
+  blocked('workspace-boundary', write(path.join(home, 'a.txt'), home), /fuera de las raíces/)
+  blocked('workspace-boundary', write('/etc/a.txt', '/'), /fuera de las raíces/)
+  blocked('workspace-boundary', write(path.join(os.tmpdir(), 'suelto.txt'), os.tmpdir()), /fuera de las raíces/)
+})
