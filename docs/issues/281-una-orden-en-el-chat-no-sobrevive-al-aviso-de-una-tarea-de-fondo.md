@@ -2,14 +2,14 @@
 caso: 281
 titulo: una orden en el chat no sobrevive al aviso de una tarea de fondo
 estado: resuelto
-resuelto-en: 0.104.0
+resuelto-en: 0.103.1
 prioridad: media
 version-detectada: 0.101.0
 ---
 
 # 281 — Una orden de mergear o de publicar deja de valer cuando llega el aviso de una tarea de fondo
 
-**🟢 resuelto en 0.104.0** · detectado en 0.101.0 · prioridad **media**.
+**🟢 resuelto en 0.103.1** · detectado en 0.101.0 · prioridad **media**.
 
 ## Resumen
 
@@ -91,7 +91,7 @@ igual con el push, que no se tocó.
 
 ## Cierre
 
-**Resuelto en 0.104.0.**
+**Resuelto en 0.103.1.**
 
 ### El recorrido de lo que este caso enumeró
 

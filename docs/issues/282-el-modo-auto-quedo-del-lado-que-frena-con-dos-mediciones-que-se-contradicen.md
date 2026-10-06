@@ -2,14 +2,14 @@
 caso: 282
 titulo: el modo auto quedó del lado que frena con dos mediciones que se contradicen
 estado: resuelto
-resuelto-en: 0.104.0
+resuelto-en: 0.103.1
 prioridad: media
 version-detectada: 0.101.0
 ---
 
 # 282 — En `auto` el guard no pide el diálogo de Claude Code, y no está establecido si hace falta
 
-**🟢 resuelto en 0.104.0** · detectado en 0.101.0 · prioridad **media**.
+**🟢 resuelto en 0.103.1** · detectado en 0.101.0 · prioridad **media**.
 
 ## Resumen
 
@@ -62,7 +62,7 @@ que ya no pasa por acá; sigue costando un mensaje en todo lo demás que un guar
 
 ## Cierre
 
-**Resuelto en 0.104.0**, entre dos versiones.
+**Resuelto en 0.103.1**, entre dos versiones.
 
 ### El recorrido de lo que este caso enumeró
 

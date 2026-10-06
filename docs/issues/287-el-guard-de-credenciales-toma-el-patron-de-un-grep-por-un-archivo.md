@@ -2,14 +2,14 @@
 caso: 287
 titulo: el guard de credenciales toma el patrón de un grep por un archivo
 estado: resuelto
-resuelto-en: 0.104.0
+resuelto-en: 0.103.1
 prioridad: alta
 version-detectada: 0.103.0
 ---
 
 # 287 — Buscar `\.env\.schema` o `process\.env\.` en el código se frena como si se leyera un `.env`
 
-**🟢 resuelto en 0.104.0** · detectado en 0.103.0 · prioridad **alta**.
+**🟢 resuelto en 0.103.1** · detectado en 0.103.0 · prioridad **alta**.
 
 **Prioridad alta**: es el freno más frecuente dentro de un recorrido en una instancia real, y ninguna de las veces había una credencial en juego. Buscar dónde se usa una variable de entorno es lo primero que hace un agente antes de tocarla.
 
@@ -77,7 +77,7 @@ Al preguntarle a una instancia real qué había frenado sus recorridos, para com
 
 ## Cierre
 
-**Resuelto en 0.104.0.**
+**Resuelto en 0.103.1.**
 
 ### El recorrido de lo que este caso enumeró
 

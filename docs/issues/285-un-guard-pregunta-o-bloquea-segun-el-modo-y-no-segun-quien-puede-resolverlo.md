@@ -2,14 +2,14 @@
 caso: 285
 titulo: un guard pregunta o bloquea según el modo y no según quién puede resolverlo
 estado: resuelto
-resuelto-en: 0.104.0
+resuelto-en: 0.103.1
 prioridad: alta
 version-detectada: 0.103.0
 ---
 
 # 285 — Qué hace un guard al frenar lo decide el modo de permisos, y debería decidirlo qué frena y dónde corre
 
-**🟢 resuelto en 0.104.0** · detectado en 0.103.0 · prioridad **alta**.
+**🟢 resuelto en 0.103.1** · detectado en 0.103.0 · prioridad **alta**.
 
 **Prioridad alta**: en tres versiones seguidas el mismo proyecto vivió los dos extremos. Con bloqueo
 (0.101.0–0.102.0) el dueño no pudo mergear lo que había pedido con todas las letras; con diálogo (0.103.0)
@@ -125,7 +125,7 @@ de oscilar. Es el camino principal: toda sesión mezcla conversación directa y 
 
 ## Cierre
 
-**Resuelto en 0.104.0.**
+**Resuelto en 0.103.1.**
 
 ### El recorrido de lo que este caso enumeró
 

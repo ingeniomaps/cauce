@@ -2,14 +2,14 @@
 caso: 288
 titulo: escribir en el scratchpad de la sesión se frena por estar fuera de las raíces
 estado: resuelto
-resuelto-en: 0.104.0
+resuelto-en: 0.103.1
 prioridad: media
 version-detectada: 0.103.0
 ---
 
 # 288 — Un agente no puede escribir una sonda en el scratchpad que el runner le dio para eso
 
-**🟢 resuelto en 0.104.0** · detectado en 0.103.0 · prioridad **media**.
+**🟢 resuelto en 0.103.1** · detectado en 0.103.0 · prioridad **media**.
 
 **Prioridad media**: no rompe nada: el agente escribe el mismo archivo en otro lado, dentro del producto, que es peor lugar para un archivo de paso.
 
@@ -60,7 +60,7 @@ El mismo relevamiento del 287.
 
 ## Cierre
 
-**Resuelto en 0.104.0.**
+**Resuelto en 0.103.1.**
 
 ### El recorrido de lo que este caso enumeró
 

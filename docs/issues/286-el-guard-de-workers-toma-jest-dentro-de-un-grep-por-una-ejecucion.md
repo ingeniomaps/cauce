@@ -2,14 +2,14 @@
 caso: 286
 titulo: el guard de workers toma jest dentro de un grep por una ejecución
 estado: resuelto
-resuelto-en: 0.104.0
+resuelto-en: 0.103.1
 prioridad: media
 version-detectada: 0.103.0
 ---
 
 # 286 — `grep -n 'jest' package.json` dispara el guard de workers como si corriera jest sin cota
 
-**🟢 resuelto en 0.104.0** · detectado en 0.103.0 · prioridad **media**.
+**🟢 resuelto en 0.103.1** · detectado en 0.103.0 · prioridad **media**.
 
 **Prioridad media**: no rompe nada, pero desde que el modo `auto` volvió al diálogo (0.103.0) cada falso
 positivo detiene un recorrido hasta que una persona lo aprueba. Sube a alta mientras el 285 siga abierto.
@@ -100,7 +100,7 @@ del contenedor corre con tope de memoria y de CPU.
 
 ## Cierre
 
-**Resuelto en 0.104.0.**
+**Resuelto en 0.103.1.**
 
 ### El recorrido de lo que este caso enumeró
 
