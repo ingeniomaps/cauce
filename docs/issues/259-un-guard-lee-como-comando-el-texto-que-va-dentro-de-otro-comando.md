@@ -102,3 +102,9 @@ Rige para `git-add` y para las reglas de `destructive`, que compartían la lectu
 - **Cuatro mutaciones en rojo**, en una copia: todo lo entrecomillado tomado por dato —que es dejar pasar
   `bash -c`—, nada tomado por dato, la tubería a un shell sin contar y la sustitución sin contar.
 - **La puerta entera**, `npm run ci`.
+
+### En los otros runners, el 2026-10-05
+
+En las mismas sesiones de Codex, Gemini y Antigravity: `echo "rm -rf / es sólo texto"` y un `grep` con `git
+push --force` entre comillas corrieron, `D=<ruta>; cd "$D" && git status --short` corrió, y `git add -A` se
+frenó.

@@ -14,6 +14,33 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.103.0] - 2026-10-05
+
+### Cambiado
+
+- **Un commit en la rama viva se frena, con cualquier runner.** Hasta ahora sólo el recorrido de Claude cortaba
+  una rama antes de commitear; con Codex y Gemini `autobuild` commiteaba en `main`. Ahora un guard frena todo
+  commit que caiga en `main`, `master` o la rama por defecto del remoto y le dice al agente que corte una rama
+  y reintente, sin preguntarle a nadie. Pasa si lo pedís en el chat nombrando la rama —«commiteá en main»—, y
+  «commiteá» a secas termina en una rama. **Qué hacer:** si en tu proyecto se commitea en la rama viva,
+  declaralo con `runner.commitToLiveBranch: true` en `ops.config.json`. El primer commit de un repositorio
+  nuevo, un repositorio que la instancia no declara y CI no se frenan (caso 284).
+- **En modo `auto` de Claude Code, lo que un guard frena lo confirma el diálogo.** Desde 0.101.0 en `auto` el
+  guard bloqueaba en seco y había que confirmarlo por chat. Medido sin nadie al teclado, el diálogo espera a
+  una persona igual que en los otros modos, así que vuelve a usarse (caso 257).
+- **Pedir un merge ya no depende de qué palabras uses.** 0.102.0 reconocía la orden por una lista de verbos,
+  y «hacé el merge del #12», «integralo» o «dale con todos» se frenaban igual. Ahora el guard no busca
+  ninguna frase: si tu mensaje nombra PRs pasan ésos y ningún otro, y si no nombra ninguno pasan los merges
+  de ese turno. Sigue sin pasar lo que negás o exceptuás —«no el #3», «todos menos el #3»—, y nada si el
+  mensaje pregunta, arranca frenando o trae una negación que no dice sobre qué PR. **Qué cambia para vos:**
+  en una conversación directa el guard ya no frena un merge por no haberlo pedido con cierta palabra; lo que
+  contiene es al agente dentro de un recorrido o un subagente, que siguen frenados.
+
+### Corregido
+
+- **`check` ya no se cuelga dentro del sandbox de Codex.** En cuanto `done/` citaba un commit, `ops check` no
+  terminaba nunca y la tarea se cerraba sin poder validarla. Pasaba desde 0.100.0 (caso 283).
+
 ## [0.102.0] - 2026-10-05
 
 ### Cambiado

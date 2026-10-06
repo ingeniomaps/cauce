@@ -209,8 +209,29 @@ function commitFiles(opsRoot) {
 // `unchecked` —el repositorio no está en esta máquina, o no hay dónde buscar—: no poder mirar no es lo mismo
 // que no encontrar.
 //
-// Una llamada por repositorio, con todos sus shas por stdin: `check` corre seguido. `cat-file --batch-check`
-// acepta shas abreviados y dice el tipo, así que un blob tampoco cuenta como commit (comprobado con git 2.43.0).
+// Una llamada por repositorio con todos sus shas, porque `check` corre seguido: `rev-list` con cada uno pelado
+// a commit sale con 0 sólo si todos lo son, que es el caso de siempre. Si alguno no lo es, recién ahí se
+// pregunta de a uno. Un sha abreviado sirve, y un blob no cuenta como commit.
+//
+// Los shas van como argumentos y no por stdin. Dentro del sandbox de Codex un hijo de Node que recibe `input`
+// no termina nunca —ni `cat`—, así que `check` se colgaba sin salida al cerrar cada tarea (caso 283).
+const isCommit = (repo, sha) => {
+  const shown = spawnSync('git', ['-C', repo, 'cat-file', '-t', sha], { encoding: 'utf8' })
+  return shown.status === 0 && shown.stdout.trim() === 'commit'
+}
+// Bien por debajo del largo máximo de una línea de comandos, con shas completos.
+const SHAS_PER_CALL = 400
+function commitsAmong(repo, shas) {
+  const found = new Set()
+  for (let start = 0; start < shas.length; start += SHAS_PER_CALL) {
+    const batch = shas.slice(start, start + SHAS_PER_CALL)
+    const all = spawnSync('git', ['-C', repo, 'rev-list', '--no-walk', '--quiet',
+      ...batch.map((sha) => `${sha}^{commit}`)], { encoding: 'utf8' })
+    for (const sha of batch) if (all.status === 0 || isCommit(repo, sha)) found.add(sha)
+  }
+  return found
+}
+
 function commitStatus(opsRoot, items) {
   const roots = declaredRoots(opsRoot)
   const named = new Map()
@@ -233,10 +254,7 @@ function commitStatus(opsRoot, items) {
   const known = new Map()
   for (const repo of [...new Set(where.flat())]) {
     const asked = [...new Set(items.filter((_, index) => where[index].includes(repo)).map((item) => item.sha))]
-    const shown = spawnSync('git', ['-C', repo, 'cat-file', '--batch-check=%(objecttype)'],
-      { input: `${asked.join('\n')}\n`, encoding: 'utf8' })
-    const types = shown.status === 0 ? shown.stdout.split('\n') : []
-    asked.forEach((sha, index) => { if ((types[index] || '').trim() === 'commit') known.set(`${repo}\0${sha}`, true) })
+    for (const sha of commitsAmong(repo, asked)) known.set(`${repo}\0${sha}`, true)
   }
   return items.map((item, index) => {
     if (!where[index].length) return 'unchecked'

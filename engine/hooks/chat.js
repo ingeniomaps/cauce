@@ -174,34 +174,33 @@ const HALT = /^\s*(?:par[aá]|deten\p{L}*|esper[aá]|cancel\p{L}*|stop|wait|hold
 const refuses = (text) => NEGATION.test(text) || HALT.test(text) || /[?¿]/.test(text)
 
 // Un merge tampoco se nombra como un archivo: su ítem es `gh pr merge <PR> --repo <repo>` (`delivery.js`), y
-// nadie lo escribe así al pedirlo (caso 280). Lo ordena una frase con un verbo de mergear que no vaya negada,
-// en un mensaje que no pregunta ni arranca frenando. Si el mensaje nombra PRs —`#12`, «PR 12»—, pasan ésos
-// y ningún otro; si no nombra ninguno —«mergealos todos»—, pasan los merges de ese turno.
+// nadie lo escribe así al pedirlo (caso 280). Si la persona lo pidió lo juzga el agente, que es quien lee
+// intención; acá no hay lista de verbos que lo ordenen. La primera versión la tenía y frenaba «hacé el merge
+// del #12», «integralo» y «dale con todos»: nueve de doce formas de pedir lo mismo.
 //
-// Un número suelto no cuenta como PR: «corré los e2e y mergeá» nombraría el 2. Y «el merge» es un
-// sustantivo, no un pedido: «revisá el merge de ayer» no ordena nada.
-const MERGES = new Set(('mergea mergear mergeen mergeemos mergees merge fusiona fusionar fusionen '
-  + 'fusiones').split(' '))
-const ARTICLES = new Set('el un del al the a este ese cada'.split(' '))
-const mergeVerb = (clause) => {
-  const words = clause.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .match(/[a-z]+/g) || []
-  return words.some((word, at) => (MERGES.has(word) || MERGES.has(word.replace(ENCLITIC, '')))
-    && !(word === 'merge' && ARTICLES.has(words[at - 1])))
-}
+// El guard decide sólo la dirección segura, como con la confirmación. No pasa si el mensaje pregunta,
+// arranca frenando o trae una negación que no dice sobre qué PR; ni el PR que niega o exceptúa —«no el #3»,
+// «todos menos el #3»—. Y si el mensaje nombra PRs —`#12`, «PR 12»—, pasan ésos y ningún otro. Un número
+// suelto no cuenta: «corré los e2e» nombraría el 2.
+const EXCEPT = /(?<![\p{L}])(?:menos|excepto|salvo|except)(?![\p{L}])/iu
 const pullsIn = (clause) => [...clause.matchAll(/#(\d+)|(?<![\p{L}\p{N}])prs?\s+(\d+)/giu)]
   .map((one) => one[1] || one[2])
 function ordersMerge(text, item) {
   const found = /^gh pr merge(?: (?!--)(\S+))?/.exec(item)
   if (!found || /[?¿]/.test(text) || HALT.test(text)) return false
-  const clauses = String(text).split(CLAUSE)
-  const denied = clauses.filter((clause) => NEGATION.test(clause))
-  const asked = clauses.filter((clause) => !NEGATION.test(clause))
-  if (!asked.some(mergeVerb)) return false
-  // «No mergees nada todavía» prohíbe sin nombrar; «pero no el #3» prohíbe ése.
-  if (denied.some((clause) => mergeVerb(clause) && !pullsIn(clause).length)) return false
-  if (denied.flatMap(pullsIn).includes(found[1])) return false
-  const named = asked.flatMap(pullsIn)
+  const named = []
+  const denied = []
+  for (const clause of String(text).split(CLAUSE)) {
+    if (NEGATION.test(clause)) {
+      if (!pullsIn(clause).length) return false
+      denied.push(...pullsIn(clause))
+      continue
+    }
+    const cut = clause.search(EXCEPT)
+    named.push(...pullsIn(cut < 0 ? clause : clause.slice(0, cut)))
+    if (cut >= 0) denied.push(...pullsIn(clause.slice(cut)))
+  }
+  if (denied.includes(found[1])) return false
   return !named.length || named.includes(found[1])
 }
 

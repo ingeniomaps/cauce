@@ -21,6 +21,7 @@ const { opsConfig, opsConfigShell } = require('./ops-config')
 const { jiraAdf } = require('./jira')
 const { testWorkers } = require('./workers')
 const { comments } = require('./comments')
+const { liveCommit } = require('./live-commit')
 
 function planningDrift(input) {
   const root = opsRoot(input)
@@ -46,6 +47,7 @@ const guards = {
   'git-add': shell.gitAdd,
   dependencies: shell.dependencies,
   governance: shell.governance,
+  'live-commit': liveCommit,
   verify,
   'shell-boundary': shell.shellBoundary,
   'secrets-shell': secretsShell,
@@ -69,8 +71,8 @@ const guards = {
 
 // Grupos por evento: un runner corre el grupo entero en un solo proceso en lugar de un guard por hook.
 const hookGroups = {
-  'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'comments', 'verify', 'shell-boundary',
-    'secrets-shell', 'ops-config-shell', 'test-workers'],
+  'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'live-commit', 'comments', 'verify',
+    'shell-boundary', 'secrets-shell', 'ops-config-shell', 'test-workers'],
   'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
     'integration-snapshot', 'test-evidence', 'plan-first', 'ops-config'],
   'pre-read': ['secrets-read'],
@@ -99,6 +101,11 @@ const hookMetadata = [
     name: 'governance',
     event: 'PreToolUse · shell',
     purpose: 'Impide commitear cambios de gobernanza sin aprobación.',
+  },
+  {
+    name: 'live-commit',
+    event: 'PreToolUse · shell',
+    purpose: 'Frena el commit en la rama viva y manda a cortar una rama; pasa si se pidió o se declaró.',
   },
   {
     name: 'verify',

@@ -106,3 +106,9 @@ una raíz de código declarada. Un commit en cualquier otro pasa sin juzgarse.
   raíz declarada sin contar, la pasada de comentarios juzgando al ajeno, y contener a la sesión sin
   contar.
 - **La puerta entera**, `npm run ci`.
+
+### En los otros runners, el 2026-10-05
+
+Sesión real con Codex, con Gemini y con Antigravity, sobre una instancia sidecar y con el registro crudo del
+hook en los dos primeros: el commit en un repositorio que la instancia no declara corrió, y el del producto
+con la suite en rojo se frenó.
