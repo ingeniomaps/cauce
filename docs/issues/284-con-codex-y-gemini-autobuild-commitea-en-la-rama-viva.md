@@ -108,3 +108,11 @@ demás nunca se había corrido una tarea entera.
 - **Trece mutaciones en rojo**, en una copia, cuatro de ellas sobre la lectura del chat. La de «juzga al repositorio ajeno» sobrevivió la primera vez:
   el ajeno de la prueba no tenía commits y pasaba por esa otra excepción. Con un commit hecho, quedó en rojo.
 - **La puerta entera**, `npm run ci`.
+
+### La orden por chat, en una sesión real, el 2026-10-06
+
+Tres pedidos directos en una sesión de Claude Code, con el producto parado en `main`. «Commitealo», a secas:
+el commit quedó en una rama nueva. «Dejalo commiteado en main»: el commit entró en `main`, que es el guard
+dejando pasar lo que la persona nombró. «Commitealo; a main no»: otra rama. En el primero y el tercero el
+agente cortó la rama por su cuenta, leyendo las instrucciones de la instancia, y el guard no llegó a frenar;
+el freno se había visto actuar con Codex, Gemini y Antigravity.

@@ -75,4 +75,10 @@ La misma corrida del 289.
 - **Tres mutaciones en rojo**, en una copia: lo declarado fuera frenando otra vez, todo contando como
   declarado fuera, y el criterio ambiguo declarado fuera frenando.
 - **La puerta entera**, `npm run ci`.
-- **Lo que no se corrió**: una corrida real con una aceptación así.
+- **Una corrida real con una aceptación así** se corrió después, abajo.
+
+### En una corrida real, el 2026-10-06
+
+En la instancia que lo reportó, ya con 0.103.2: una tarea `full` cuya aceptación marcaba fuera de verify la
+condición del e2e que sólo corre en el CI. Verify pasó y la corrida cerró la tarea; con 0.103.1 esa misma
+condición había frenado dos veces.
