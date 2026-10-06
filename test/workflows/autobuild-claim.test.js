@@ -284,20 +284,35 @@ test('los pasos de oficina van con el agente liviano, y los que trabajan no', as
   const blocked = { verdict: 'bloqueado', consulted: ['api/alta.go'],
     concerns: [{ detail: 'falta una decisión', blocking: true, replan: true }] }
   const line = { ...baseScript()[KEY.context], line: 'admin' }
-  const runs = [await runFlow(), await runFlow({ [KEY.critique]: blocked }),
+  const gate = { [KEY.contract]: { ...baseScript()[KEY.contract], humanCheckpoint: true } }
+  const runs = [await runFlow(gate), await runFlow({ [KEY.critique]: blocked }),
     await runFlow({ [KEY.context]: line, 'Worktree|worktree:T-1': { ok: true, path: '/l/api-T-1',
       work: '/l/api-T-1', branch: 'task/T-1', repo: '/o/api' },
     [KEY.commit]: { committed: true, hash: 'abc123', branch: 'feat/T-1', live: false } })]
   const seen = new Map()
-  for (const { prompts } of runs) for (const one of prompts) seen.set(one.key.split('|')[1], one.agentType)
+  const texts = new Map()
+  for (const { prompts } of runs) {
+    for (const one of prompts) {
+      seen.set(one.key.split('|')[1], one.agentType)
+      texts.set(one.key.split('|')[1], one.prompt)
+    }
+  }
 
-  const clerical = ['contract-digest', 'planning-context', 'claim:T-1', 'human-row', 'release:T-1', 'worktree:T-1']
+  const clerical = ['contract-digest', 'planning-context', 'claim:T-1', 'human-row', 'release:T-1', 'worktree:T-1',
+    'planning-commit', 'planning-block']
   for (const label of clerical) assert.equal(seen.get(label), 'cauce-clerk', label)
-  const working = [...seen].filter(([label]) => !clerical.includes(label))
+  // Los que vuelcan en planning lo ya decidido van con el de escritura, que lleva el preámbulo de formatos.
+  const scribes = ['wip', 'done', 'human-checkpoint']
+  for (const label of scribes) {
+    assert.equal(seen.get(label), 'cauce-scribe', label)
+    assert.match(texts.get(label), /Contratos de planning, textuales de/, `${label} recibe los formatos`)
+  }
+  assert.match(texts.get('wip'), /Escribí el WIP en \S+\/wip\/w-uno\.md y nada más/, 'el WIP se nombra por su ruta')
+  const working = [...seen].filter(([label]) => !clerical.includes(label) && !scribes.includes(label))
   assert.ok(working.length > 10, `se vieron ${working.length} pasos que trabajan`)
   for (const [label, type] of working) assert.equal(type, '', `${label} carga las reglas del proyecto`)
-  for (const label of ['qa', 'plan', 'build', 'review', 'verify', 'commit', 'done', 'planning-commit',
-    'plan-human', 'planning-block']) assert.ok(seen.has(label), `la prueba no llegó a ver ${label}`)
+  for (const label of ['ready', 'qa', 'plan', 'critique', 'build', 'review', 'verify', 'commit', 'plan-human',
+    'closing']) assert.ok(working.some(([one]) => one === label), `la prueba no llegó a ver ${label}`)
 })
 
 // Caso 299. En cada corrida real medida, el agente que commitea stageó y commiteó en una línea, lo frenó el
@@ -314,8 +329,10 @@ test('todo paso que commitea avisa que stagear y commitear van en comandos separ
   for (const label of commits) {
     assert.ok(seen.has(label), `la prueba no llegó a ver ${label}`)
     assert.match(seen.get(label), /Stageá en un comando y commiteá en otro aparte/, label)
+    // Tres de los cuatro van con un agente que no carga R8, así que la firma se prohíbe acá (caso 295).
+    assert.match(seen.get(label), /sin `Co-Authored-By`, sin «Generated with»/, label)
   }
   for (const [label, prompt] of seen) {
-    if (!commits.includes(label)) assert.doesNotMatch(prompt, /commiteá en otro aparte/, label)
+    if (!commits.includes(label)) assert.doesNotMatch(prompt, /commiteá en otro aparte|Co-Authored-By/, label)
   }
 })

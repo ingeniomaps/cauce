@@ -23,4 +23,9 @@ cargos llega como skills en `.claude/skills/`.
 
 En `.claude/agents/` deja `cauce-clerk`, el agente con que `autobuild` corre sus pasos de oficina: sólo tiene
 Bash y no carga las instrucciones del proyecto (`omitClaudeMd`), porque lo único que hace es ejecutar un
-comando del CLI y devolver su salida. No es un cargo ni está para pedirle trabajo.
+comando del CLI y devolver su salida, o commitear los archivos de planning que el recorrido le nombra. No es
+un cargo ni está para pedirle trabajo.
+
+Y `cauce-scribe`, el que escribe en planning lo que el recorrido ya decidió: el WIP con el plan aprobado, la
+entrada de `done/` con su evidencia y la compuerta del hito. Tampoco carga las instrucciones del proyecto: el
+formato de cada archivo le llega en el pedido. Tiene herramientas de archivo y Bash, y no toca el producto.

@@ -29,6 +29,13 @@ diseño — eso vive en el commit y en el código.
 
 ### Cambiado
 
+- **`autobuild` gasta menos en escribir planning.** El WIP, la entrada de `done/`, la compuerta del hito y
+  los commits de planning los hacía un agente que cargaba las instrucciones enteras del proyecto para
+  transcribir lo que el recorrido ya había decidido. Ahora los hacen agentes livianos: `cauce-clerk` commitea
+  y uno nuevo, `cauce-scribe`, escribe. Medido en corridas reales, el WIP pasó de unos 87.000 tokens a unos
+  16.000, `done` de unos 85.000 a 42.000 y el commit de planning de 66.000 a 4.000. Los pasos que juzgan
+  —planificar, construir, revisar, verificar— no cambian. **Qué hacer:** nada; `cauce-scribe` llega con el
+  runner de Claude al actualizar (caso 295).
 - **Los commits de `autobuild` ya no arrancan frenados.** El agente que commiteaba solía stagear y commitear
   en una línea, el guard lo frenaba y lo repetía en dos. Ahora el recorrido se lo avisa de antemano. El guard
   no cambia (caso 299).
