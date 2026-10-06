@@ -14,6 +14,18 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.103.0] - 2026-10-05
+
+### Cambiado
+
+- **Pedir un merge ya no depende de qué palabras uses.** 0.102.0 reconocía la orden por una lista de verbos,
+  y «hacé el merge del #12», «integralo» o «dale con todos» se frenaban igual. Ahora el guard no busca
+  ninguna frase: si tu mensaje nombra PRs pasan ésos y ningún otro, y si no nombra ninguno pasan los merges
+  de ese turno. Sigue sin pasar lo que negás o exceptuás —«no el #3», «todos menos el #3»—, y nada si el
+  mensaje pregunta, arranca frenando o trae una negación que no dice sobre qué PR. **Qué cambia para vos:**
+  en una conversación directa el guard ya no frena un merge por no haberlo pedido con cierta palabra; lo que
+  contiene es al agente dentro de un recorrido o un subagente, que siguen frenados.
+
 ## [0.102.0] - 2026-10-05
 
 ### Cambiado
