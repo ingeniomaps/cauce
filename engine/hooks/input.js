@@ -196,7 +196,8 @@ function asRun(command) {
 // ya resuelta o con `mktemp` sin directorio propio; y una sola vez por nombre —reasignada, no se sabe cuál
 // vale—. Lo demás queda como estaba, sin resolver.
 const MKTEMP = /^\$\(mktemp(?:\s+-d)?(?:\s+(\S+))?\)$/
-function expandAssigned(command) {
+// Con qué reemplazar las variables que el comando asigna, o nada si no asigna ninguna que se pueda resolver.
+function assignedValues(command) {
   const raw = String(command)
   const known = new Map()
   const twice = new Set()
@@ -218,7 +219,13 @@ function expandAssigned(command) {
     if (/^[^\s$`'"]+$/.test(resolved)) known.set(name, resolved)
     else twice.add(name)
   }
-  if (!known.size) return raw
+  return known.size ? value : null
+}
+
+function expandAssigned(command) {
+  const raw = String(command)
+  const value = assignedValues(raw)
+  if (!value) return raw
   return raw.replace(/(\bcd\s+|\s-C\s+)(["']?)(\$\{?[A-Za-z_]\w*\}?[^\s"';&|]*)\2/g,
     (whole, verb, quote, target) => (quote === "'" ? whole : `${verb}${value(target)}`))
 }
@@ -424,6 +431,7 @@ function opsRoot(input) {
 module.exports = {
   readInput, FIRST_BYTE_MS, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
   gitDirectory, isCommit, withoutGitGlobals, stagedFiles, stagedForCommit, owns, asRun, expandAssigned,
+  assignedValues,
   findOpsRoot, opsRoot,
   writableRoots, outsideRoots, DECLARE_IT, unquoted,
 }

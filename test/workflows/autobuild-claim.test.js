@@ -223,3 +223,71 @@ test('las paradas que bloquean antes de construir sueltan el reclamo, y las de d
   assert.equal(trasConstruir.result.reason, 'verify-failed')
   assert.ok(!suelta(trasConstruir.written), 'lo construido no se abandona soltando su reserva')
 })
+
+// Caso 293. «Sólo esta tarea» se le pidió a una corrida real y el recorrido siguió con la siguiente: el agente
+// que iba a reclamarla se negó, y la corrida terminó en `claim-stuck`, una falla, habiendo cerrado bien lo
+// pedido. Hay dos formas de no seguir y ninguna es una parada: el tope que el recorrido cuenta solo, y la
+// negativa de quien reclama, que es quien puede leer el pedido.
+test('una corrida acotada a N tareas, o cuyo reclamo se declina a pedido, termina como una que cerró', async () => {
+  const first = baseScript()[KEY.context]
+  const second = { ...first, slug: 'T-2' }
+  const two = { contexts: [first, second, { ...first, hasTask: false, queued: 0 }] }
+  const T2 = { 'Claim|claim:T-2': { claimed: true } }
+
+  const all = await runFlow(T2, two)
+  assert.deepEqual(all.result.done, ['T-1', 'T-2'], 'sin tope cierra las dos')
+
+  for (const args of ['--max 1', 'sin push ni PR --max=1', { max: 1, note: 'sin push ni PR' }]) {
+    const capped = await runFlow(T2, { ...two, args })
+    assert.equal(capped.result.stopped, undefined, JSON.stringify(capped.result))
+    assert.deepEqual(capped.result.done, ['T-1'], JSON.stringify(args))
+    assert.ok(!capped.asked.includes('Claim|claim:T-2'), 'ni llega a reclamar la segunda')
+    assert.ok(capped.said.some((line) => /cerró las 1 tarea\(s\) que se le pidieron: sigue T-2/.test(line)))
+    assert.ok(capped.asked.some((one) => one.startsWith('Closing|')), 'y cierra como siempre')
+  }
+  // Lo que no hace al cerrar: la compuerta del hito. Quedan tareas suyas en la cola, y escribirla frenaba
+  // la corrida siguiente diciendo que el hito había terminado.
+  const gated = (changes, options) => runFlow({ ...changes,
+    [KEY.contract]: { ...baseScript()[KEY.contract], humanCheckpoint: true } }, options)
+  const wroteGate = (out) => out.asked.some((one) => one.endsWith('|human-checkpoint'))
+  assert.equal(wroteGate(await gated(T2, two)), true, 'con el hito terminado sí')
+  assert.equal(wroteGate(await gated(T2, { ...two, args: '--max 1' })), false, 'cortada por el tope no')
+  assert.equal(wroteGate(await gated({ 'Claim|claim:T-2': { claimed: false, declined: true } }, two)), false,
+    'ni cortada porque el reclamo se declinó')
+  // El tope no viaja a las fases como parte del pedido.
+  const noted = await runFlow({}, { args: 'sin push ni PR --max 3' })
+  const plan = noted.prompts.find((one) => one.key === KEY.plan).prompt
+  assert.match(plan, /pidió, para todas sus tareas: «sin push ni PR»/)
+
+  const declined = await runFlow({ 'Claim|claim:T-2': { claimed: false, declined: true,
+    details: '«Sólo la tarea T-1; al cerrarla, parar»' } }, two)
+  assert.equal(declined.result.stopped, undefined, 'no es claim-stuck')
+  assert.deepEqual(declined.result.done, ['T-1'])
+  assert.ok(declined.said.some((line) => /T-2 no se tomó, a pedido de quien lanzó la corrida: «Sólo la/.test(line)))
+  assert.ok(!declined.phases.slice(declined.phases.lastIndexOf('Claim')).includes('Build'), 'no la construye')
+  assert.match(declined.prompts.find((one) => one.key === 'Claim|claim:T-2').prompt, /declined=true/)
+})
+
+// Caso 295. Los pasos que sólo corren un comando del CLI van con el agente de oficina, que no carga las
+// instrucciones del proyecto: 3.450 tokens de entrada contra 73.159. Las dos mitades van juntas, porque
+// mandar todo por ahí daría el mismo verde: lo que planifica, construye, revisa o commitea necesita las
+// reglas, y sigue con el agente de siempre.
+test('los pasos de oficina van con el agente liviano, y los que trabajan no', async () => {
+  const blocked = { verdict: 'bloqueado', consulted: ['api/alta.go'],
+    concerns: [{ detail: 'falta una decisión', blocking: true, replan: true }] }
+  const line = { ...baseScript()[KEY.context], line: 'admin' }
+  const runs = [await runFlow(), await runFlow({ [KEY.critique]: blocked }),
+    await runFlow({ [KEY.context]: line, 'Worktree|worktree:T-1': { ok: true, path: '/l/api-T-1',
+      work: '/l/api-T-1', branch: 'task/T-1', repo: '/o/api' },
+    [KEY.commit]: { committed: true, hash: 'abc123', branch: 'feat/T-1', live: false } })]
+  const seen = new Map()
+  for (const { prompts } of runs) for (const one of prompts) seen.set(one.key.split('|')[1], one.agentType)
+
+  const clerical = ['contract-digest', 'planning-context', 'claim:T-1', 'human-row', 'release:T-1', 'worktree:T-1']
+  for (const label of clerical) assert.equal(seen.get(label), 'cauce-clerk', label)
+  const working = [...seen].filter(([label]) => !clerical.includes(label))
+  assert.ok(working.length > 10, `se vieron ${working.length} pasos que trabajan`)
+  for (const [label, type] of working) assert.equal(type, '', `${label} carga las reglas del proyecto`)
+  for (const label of ['qa', 'plan', 'build', 'review', 'verify', 'commit', 'done', 'planning-commit',
+    'plan-human', 'planning-block']) assert.ok(seen.has(label), `la prueba no llegó a ver ${label}`)
+})

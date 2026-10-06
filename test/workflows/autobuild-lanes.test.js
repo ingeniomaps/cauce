@@ -190,13 +190,13 @@ test('el proyecto que declara su puerta no la hace descubrir de nuevo', async ()
 
   // Las dos mitades que el harness no puede ver, porque finge la respuesta del contrato en vez de
   // validarla: el esquema tiene `additionalProperties: false`, así que sin el campo una respuesta real
-  // que lo traiga se rechaza entera, y sin la cláusula del prompt nadie lo llena. Van sobre el fuente
+  // que lo traiga se rechaza entera, y sin el comando que lo deriva nadie lo llena. Van sobre el fuente
   // porque no hay dónde más mirarlas.
   const src = require('../../engine/automation').render(
     path.join(__dirname, '..', '..', 'automatization', 'workflows', 'autobuild.js'), '',
     path.join(__dirname, '..', '..', 'automatization'))
   assert.match(src, /gates: \{ type: 'array', items: \{ type: 'string' \} \}/, 'el contrato acepta el campo')
-  assert.match(src, /por cada workspaceRoot que declare/, 'y se le pide llenarlo desde el config')
+  assert.match(src, /tools\/ops\.js contract \$\{ROOT\} --json/, 'y lo llena el comando, desde el config')
 })
 
 test('el proyecto que no la declara sigue descubriéndola', async () => {

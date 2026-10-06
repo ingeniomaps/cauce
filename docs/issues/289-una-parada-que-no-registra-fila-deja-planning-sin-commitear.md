@@ -76,5 +76,10 @@ La primera corrida de una instancia real con 0.103.1.
 - **Cuatro mutaciones en rojo**, en una copia: la parada sin commitear, la tarea que nunca queda tomada, la
   tarea cerrada que sigue tomada, y el commit sin tarea.
 - **La puerta entera**, `npm run ci`.
-- **Lo que no se corrió**: una corrida real que frene por una de esas paradas. La reproducción es de la
-  instancia que lo reportó; acá se midió el arnés.
+- **Una corrida real que frenó por una de esas paradas** se corrió después, abajo.
+
+### Una corrida real que frenó por otra parada, el 2026-10-06
+
+Banco sidecar, sesión real con `/autobuild` sobre una tarea que terminó en `verify-hollow`. Al parar, la
+instancia quedó con el commit `chore(planning): block retirar-prueba-legada` en `work/planning` y
+`git status` sin nada. Con 0.103.1 esa misma parada dejaba la instancia sucia.

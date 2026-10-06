@@ -165,7 +165,7 @@ async function runFlow(changes = {}, options = {}) {
     // R9 nombra en su último párrafo. Caso 087.
     await new Promise((resolve) => { setImmediate(resolve) })
     asked.push(key)
-    prompts.push({ key, prompt })
+    prompts.push({ key, prompt, agentType: options.agentType || '' })
     // `silent` simula el agente que se lanza y no contesta. Sin él no hay forma de medir qué hace el
     // recorrido cuando la escritura que deja el rastro de una parada no ocurre, que es la mitad del
     // caso 087 que no se ve mirando la corrida feliz.

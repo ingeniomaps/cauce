@@ -20,3 +20,7 @@ cargos llega como skills en `.claude/skills/`.
 
 `manifest.json` declara destinos y capacidades. Comprueba todo con
 `node tools/ops.js automation doctor . claude`.
+
+En `.claude/agents/` deja `cauce-clerk`, el agente con que `autobuild` corre sus pasos de oficina: sólo tiene
+Bash y no carga las instrucciones del proyecto (`omitClaudeMd`), porque lo único que hace es ejecutar un
+comando del CLI y devolver su salida. No es un cargo ni está para pedirle trabajo.

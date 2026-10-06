@@ -22,6 +22,7 @@ const { jiraAdf } = require('./jira')
 const { testWorkers } = require('./workers')
 const { comments } = require('./comments')
 const { liveCommit } = require('./live-commit')
+const { testEvidenceShell } = require('./test-evidence-shell')
 
 function planningDrift(input) {
   const root = opsRoot(input)
@@ -60,6 +61,7 @@ const guards = {
   migrations,
   'integration-snapshot': files.integrationSnapshot,
   'test-evidence': files.testEvidence,
+  'test-evidence-shell': testEvidenceShell,
   'plan-first': files.planFirst,
   'secrets-read': files.secretsRead,
   'jira-adf': jiraAdf,
@@ -72,7 +74,7 @@ const guards = {
 // Grupos por evento: un runner corre el grupo entero en un solo proceso en lugar de un guard por hook.
 const hookGroups = {
   'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'live-commit', 'comments', 'verify',
-    'shell-boundary', 'secrets-shell', 'ops-config-shell', 'test-workers'],
+    'shell-boundary', 'secrets-shell', 'test-evidence-shell', 'ops-config-shell', 'test-workers'],
   'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
     'integration-snapshot', 'test-evidence', 'plan-first', 'ops-config'],
   'pre-read': ['secrets-read'],
@@ -191,6 +193,11 @@ const hookMetadata = [
     name: 'test-evidence',
     event: 'PreToolUse · files',
     purpose: 'Impide apagar o borrar la prueba que juzga el cambio.',
+  },
+  {
+    name: 'test-evidence-shell',
+    event: 'PreToolUse · shell',
+    purpose: 'Impide borrar por shell una prueba del proyecto; una copia desechable no la mira.',
   },
   {
     name: 'plan-first',

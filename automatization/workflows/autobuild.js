@@ -127,9 +127,12 @@ const CONTEXT = {
     },
   },
 }
+// `declined` es la tercera salida: no la tomó otro ni falló el comando, sino que quien lanzó la corrida pidió
+// no seguir. Sin ella esa negativa sólo cabía en `claimed: false`, y la corrida terminaba en `claim-stuck`
+// —una falla— después de haber cerrado bien lo que se le pidió (caso 293).
 const CLAIM = {
   type: 'object', additionalProperties: false, required: ['claimed'],
-  properties: { claimed: { type: 'boolean' }, details: { type: 'string' } },
+  properties: { claimed: { type: 'boolean' }, declined: { type: 'boolean' }, details: { type: 'string' } },
 }
 // El árbol de trabajo de una tarea, como lo devuelve `ops worktree --json`.
 const WORKTREE = {
@@ -428,7 +431,14 @@ const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos 
 // este recorrido no leía `args`, así que una instrucción dada ahí no llegaba a ninguna fase y nada lo decía
 // (caso 252). Va a las tres fases que deciden cómo se hace el trabajo, y por debajo de la aceptación y de
 // las reglas: es un pedido de quien opera, que no pasó por ninguna de sus compuertas.
-const ASKED = String((typeof args === 'string' ? args : (args || {}).note) || '').trim()
+//
+// Y cuántas tareas, que es lo único de un pedido que el recorrido puede cumplir sin interpretarlo: `--max N`
+// en el texto, o `max` si `args` es un objeto. «Sólo esta tarea» dicho con palabras lo entiende un agente y
+// no este script, que seguía con la siguiente (caso 293).
+const RAW = String((typeof args === 'string' ? args : (args || {}).note) || '')
+const MAX_FLAG = /(?:^|\s)--max(?:=|\s+)(\d+)(?=\s|$)/
+const LIMIT = Number((typeof args === 'object' && args && args.max) || (RAW.match(MAX_FLAG) || [])[1]) || 0
+const ASKED = RAW.replace(MAX_FLAG, ' ').trim()
 const OPERATOR = ASKED ? ` Quien lanzó esta corrida pidió, para todas sus tareas: «${ASKED}». Cumplilo en lo `
   + 'que le toque a esta fase. No reemplaza la aceptación ni las reglas: si las contradice mandan ellas, y lo '
   + 'decís.' : ''
@@ -547,28 +557,30 @@ const ran = []
 const announce = phase
 phase = (name) => { ran.push(name); announce(name) }
 
+// El paso de oficina: correr un comando del CLI y devolver lo que imprimió. No decide nada, así que no
+// necesita lo que carga un agente que sí trabaja. Medido sobre una instancia, la primera llamada de un agente
+// del recorrido trae 73.159 tokens de entrada, y 40.782 son lo que la instancia importa; `cauce-clerk` —un
+// agente propio con sólo Bash y sin las instrucciones del proyecto— arranca en unos 3.450 (caso 295). En una
+// corrida real, nueve de veinticuatro agentes eran pasos así.
+//
+// Los guards corren igual: son de la sesión y no del tipo de agente, y se comprobó con éste. Lo que no va por
+// acá es lo que escribe archivos de planning o commitea, que necesita las reglas del proyecto.
+const clerk = (prompt, options = {}) => agent(prompt, { ...options, agentType: 'cauce-clerk' })
 phase('Triage')
 // El contrato se lee una sola vez por corrida y viaja como texto: ningún subagente relee AGENTS.md,
 // workspace.md, ops.config.json ni PROTOCOL.md. `ops check` y el guard planning-drift siguen validando
 // el resultado.
 //
-// `organization/workspace.md` está en esa lista desde que 0.57.0 sacó del `AGENTS.md` lo que sólo sabe
-// el proyecto: los límites que éste amplía o restringe viven ahí, y sin leerlo lo que viaja a cada
-// subagente como «Límites del proyecto» eran sólo los genéricos del toolkit.
-const contract = await agent(
-  `${BASE}\n\nLeé ${ROOT}/AGENTS.md, ${ORG}/workspace.md, ${CONFIG} y ${P}/PROTOCOL.md una sola vez y no ` +
-  `leas nada más. Poné rootOk en true sólo si los cuatro existieron y los pudiste leer; si alguno no ` +
-  `estaba, rootOk en false y el resto en sus valores vacíos, sin deducirlos de otra fuente. ` +
-  `Reportá los ` +
-  `valores de configuración textualmente: project, workspaceRoots como entradas "nombre → ruta", ` +
-  `runner.maxTaskHours, runner.commitPerTask y runner.humanCheckpointBetweenMilestones como humanCheckpoint. ` +
-  `commitToLiveBranch es true sólo si runner.commitToLiveBranch está escrito en true; si falta, false. ` +
-  `En gates poné una entrada "ruta → comando" por cada workspaceRoot que declare \`verify\`, y ninguna por ` +
-  `las que no lo declaren: la lista vacía significa que el proyecto no dice con qué se verifica. ` +
-  `Copiá la sección "## Contratos" de PROTOCOL.md dentro de contracts tal cual, sin reformular, resumir ni ` +
-  `reordenar. En boundaries listá los límites que AGENTS.md enuncia y las "Excepciones de autonomía" que ` +
-  `declare ${ORG}/workspace.md, que son las de este proyecto: si ese archivo no existe o su sección sigue ` +
-  `como la trae el molde, no inventes ninguna.`,
+// Lo deriva `ops contract`, parseando esos cuatro archivos, y el paso sólo lo trae. Hasta 0.103.2 lo hacía un
+// agente que los leía y los transcribía: el comando existía desde 0.91.0 y el cableado esperaba saber cuánto
+// transcribía de verdad ese agente (caso 154). Medido sobre una instancia: los ocho campos de configuración
+// salieron iguales, `contracts` igual salvo el `##` del título, y en `boundaries` el agente sumaba nueve
+// frases del resto de `AGENTS.md` a los tres párrafos que enuncian los límites —2.079 bytes contra 732—. O sea
+// que lo que viajaba a cada subagente era lo que alguien había elegido copiar. Y cuesta la décima parte.
+const contract = await clerk(
+  `Corré "node tools/ops.js contract ${ROOT} --json" desde ${ROOT} y copiá cada campo de su salida tal cual, ` +
+  `sin resumir, reformular ni reordenar. Si el comando sale con un código distinto de 0, poné rootOk en ` +
+  `false y el resto en sus valores vacíos, sin deducirlos de otra fuente ni abrir ningún archivo.`,
   { schema: CONTRACT, label: 'contract-digest' },
 )
 if (!contract) return stop('contract-unavailable', `no se pudo leer ${CONFIG} ni ${P}/PROTOCOL.md`)
@@ -628,7 +640,7 @@ const registerHuman = async (prompt, label, slug = '') => {
     return ` — la fila en ${HUMAN} no se pudo registrar: escribila a mano`
   }
   if (!slug) return ''
-  const row = await read(
+  const row = await clerk(
     `Corré "node tools/ops.js context ${P} --json" desde ${ROOT}. Poné pending en true sólo si humanActions `
     + `trae una fila cuya task sea ${slug}, y readOk en true sólo si el comando salió con código 0 y devolvió `
     + 'JSON. El comando es la fuente de verdad: no abras archivos de planning.',
@@ -663,6 +675,8 @@ const commitBlocked = async (slug) => {
 // reclamo y una propuesta (caso 289). Desde que la tarea se toma hay estado escrito, pare por lo que pare.
 // `holding` es esa tarea; vuelve a vacío cuando el cierre la commitea.
 let holding = ''
+// La corrida terminó porque se le pidió, con el hito todavía abierto: no hay checkpoint de hito que escribir.
+let cut = false
 const halt = async (reason, detail = '') => {
   if (holding) await commitBlocked(holding)
   return stop(reason, detail)
@@ -670,7 +684,7 @@ const halt = async (reason, detail = '') => {
 
 // Gate, mutex de WIP y selección de tarea salen de un comando determinista: AWAITING_REVIEW, BACKLOG,
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
-const readContext = () => read(
+const readContext = () => clerk(
   `Corré "node tools/ops.js context ${P} --json" desde ${ROOT} y reportá sólo lo que imprimió. Derivá hasTask ` +
   `de si task es null, wipActive de si wip es null, claimed del campo claimed, today, wipFile y line de sus ` +
   `campos —line vacío si viene null—, rules del campo rules tal cual, wip con sus campos complete y ` +
@@ -760,6 +774,11 @@ while (rounds++ < MAX_TASKS) {
       + '"ops release" o se retoma desde el runner que lo tiene; lo que espera una dependencia, no.')
   }
   if (!planning.hasTask || (currentMilestone && planning.hito !== currentMilestone)) break
+  if (LIMIT && completed.length >= LIMIT) {
+    log(`La corrida cerró las ${LIMIT} tarea(s) que se le pidieron: sigue ${nextUp(planning)}, sin tomarla`)
+    cut = true
+    break
+  }
   // Las decisiones que la línea ya tomó, dichas como lo que son. Sin ese rótulo se leen como contexto
   // opinable y el que planifica las re-decide igual, que es el defecto entero: la crítica abre el
   // BACKLOG por su cuenta y bloquea el plan citando la línea palabra por palabra (caso 177).
@@ -784,12 +803,20 @@ while (rounds++ < MAX_TASKS) {
   // por eso perder la carrera no es un error: se relee y se sigue con la que quedó libre.
   if (!planning.claimed && !planning.wipActive) {
     phase('Claim')
-    const claim = await write(
+    const claim = await clerk(
       `Corré "node tools/ops.js claim ${P} ${task.id}" desde ${ROOT}. No escribas ningún archivo vos: lo ` +
       `escribe el comando. claimed=true sólo con exit 0; si falla porque la tomó otro, claimed=false y ` +
-      `copiá el mensaje en details.`,
+      `copiá el mensaje en details. Si quien lanzó la corrida pidió que no se tome esta tarea —que parara ` +
+      `antes, o que fuera sólo otra—, no corras el comando: claimed=false, declined=true y en details la ` +
+      `frase que lo pide.`,
       { schema: CLAIM, label: `claim:${task.id}` },
     )
+    // No es una falla ni una carrera perdida: la corrida termina como cuando se queda sin tareas.
+    if (claim && claim.declined) {
+      log(`${task.id} no se tomó, a pedido de quien lanzó la corrida: ${claim.details || '(sin detalle)'}`)
+      cut = true
+      break
+    }
     if (!claim || !claim.claimed) {
       planning = await readContext()
       if (!planning) return halt('context-unavailable', `no se pudo releer el estado de ${P}`)
@@ -939,7 +966,7 @@ while (rounds++ < MAX_TASKS) {
   //
   // Cuesta un agente, porque el recorrido no tiene con qué correr un comando. Un agente contra una
   // corrida entera.
-  const releaseBlocked = async () => write(
+  const releaseBlocked = async () => clerk(
     `Corré "node tools/ops.js release ${P} ${task.id}" desde ${ROOT}: quedó bloqueada por la fila que `
     + 'acabás de registrar y todavía no hay nada construido, así que su reserva no reserva trabajo. No '
     + 'escribas ningún archivo vos: lo escribe el comando.',
@@ -993,7 +1020,7 @@ while (rounds++ < MAX_TASKS) {
   let tree = null
   if (planning.line) {
     phase('Worktree')
-    tree = await write(
+    tree = await clerk(
       `Corré "node tools/ops.js worktree ${P} ${task.id} --json" desde ${ROOT} y reportá sólo lo que imprimió: ` +
       `ok=true con exit 0, y path, work, branch y repo de sus campos. Si falla, ok=false y el mensaje en ` +
       `details. No crees ni toques ningún archivo vos: el árbol lo arma el comando.`,
@@ -1072,7 +1099,7 @@ while (rounds++ < MAX_TASKS) {
         //
         // Va **después** de la guarda de arriba y no antes de leer el contexto: si el reemplazo no
         // ocurrió, la tarea sigue viva y su reclamo tiene que seguir puesto (caso 163).
-        await write(
+        await clerk(
           `Corré "node tools/ops.js release ${P} ${task.id}" desde ${ROOT}: quedó partida y su reserva `
           + 'ya no aplica. No escribas ningún archivo vos: lo escribe el comando.',
           { label: `release:${task.id}` },
@@ -1730,7 +1757,11 @@ if (learned.length) {
 // El archivo nace con su estado escrito porque la compuerta lo lee de ahí —R28, y el porqué vive junto a
 // esa lectura—. Sin decirlo acá la fase escribe prosa sin `status`, y la instancia queda con una compuerta
 // que sólo se destraba borrando: la forma que la regla prohíbe, escrita por el propio recorrido.
-if (completed.length && contract.humanCheckpoint) await write(
+//
+// Sólo cuando el hito terminó. Cortada a pedido, la corrida deja tareas del mismo hito en la cola: escribir
+// la compuerta ahí decía «hito terminado» sobre uno que no lo estaba, y frenaba la corrida siguiente hasta
+// que alguien la destrabara a mano —visto en la primera corrida real con `--max 1` (caso 293)—.
+if (completed.length && contract.humanCheckpoint && !cut) await write(
   `Creá ${GATE} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones humanas ` +
   `pendientes y las instrucciones exactas para continuar. Arrancá el archivo con un frontmatter ` +
   `"status: pendiente", y decí que se destraba cambiándolo a "resuelta" —no borrando el archivo, que es ` +
