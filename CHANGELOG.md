@@ -21,6 +21,9 @@ diseño — eso vive en el commit y en el código.
 - **Toda corrida de `autobuild` que frena commitea el estado de planning.** Desde 0.101.0 lo hacía sólo en las
   paradas que registran una fila; una que frenaba por otra razón —Verify, QA, Commit— dejaba sin commitear la
   fila, el reclamo y lo anotado (caso 289).
+- **Una condición marcada `(fuera de verify: …)` ya no frena el recorrido.** Si Verify la devolvía igual como
+  sin cubrir, la corrida paraba con `verify-hollow` por una condición que la aceptación había apartado
+  (caso 290).
 
 ## [0.103.1] - 2026-10-06
 

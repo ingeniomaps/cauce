@@ -1484,6 +1484,18 @@ while (rounds++ < MAX_TASKS) {
     ? conditions.filter((one) => !OUT_OF_VERIFY.test(one)).join('; ')
       || 'ninguna: todas se declararon fuera de verify'
     : task.acceptance
+  // Lo declarado fuera de verify tampoco frena cuando Verify lo trae igual. No se le manda, pero la tarea
+  // entera está en el WIP y en la cola, así que la lee de ahí y la devuelve sin cubrir: en una corrida real
+  // `verify-hollow` paró por «el job e2e del CI queda en verde», que la aceptación marcaba fuera (caso 290).
+  // Verify la reescribe a su modo —le pone número, le saca la marca—, así que se compara por palabras.
+  const wordsIn = (text) => new Set(String(text).replace(OUT_OF_VERIFY, ' ').toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 3))
+  const declaredOut = (criterion) => outOfVerify.some((condition) => {
+    const said = wordsIn(criterion)
+    const declared = wordsIn(condition)
+    const shared = [...said].filter((word) => declared.has(word)).length
+    return shared > 0 && shared >= 0.6 * Math.min(said.size, declared.size)
+  })
   const VERIFY_ASK = `${asRole(cast.verify)}Abrí el fuente de los tests que la tarea agregó o cambió y ` +
     `contrastá cada criterio ` +
     `de aceptación contra sus aserciones: en uncovered va el criterio que ningún test codifica, con su causa ` +
@@ -1516,7 +1528,8 @@ while (rounds++ < MAX_TASKS) {
   // Un criterio que nadie sabe cómo aserciar no es trabajo que falta sino una definición que falta, y
   // definirla acá sería inventarla. Escribir la prueba que falta, en cambio, es trabajo del recorrido:
   // hacer parar a una persona por eso le cobra una interrupción por algo que se resolvía solo.
-  const ambiguous = verified.uncovered.find((entry) => entry.cause === 'ambiguous')
+  const ambiguous = verified.uncovered
+    .find((entry) => entry.cause === 'ambiguous' && !declaredOut(entry.criterion))
   if (ambiguous) {
     const note = await registerHuman(
       `Registrá ${task.id} en ${HUMAN}: el criterio "${ambiguous.criterion}" no dice qué habría ` +
@@ -1526,7 +1539,8 @@ while (rounds++ < MAX_TASKS) {
   // Lo que no tiene superficie no frena ni rebota: viaja a Done, que lo escribe como `tests: n/a`. Se filtra
   // por exclusión y no por `missing-test` para que una causa que no se conozca siga frenando (R27). Que
   // el modelo no lo use para cerrar sin pruebas lo sostiene `check`, que mira qué tocó el commit.
-  const lacking = () => verified.uncovered.filter((entry) => entry.cause !== 'no-surface')
+  const lacking = () => verified.uncovered
+    .filter((entry) => entry.cause !== 'no-surface' && !declaredOut(entry.criterion))
   if (lacking().length) {
     await run(`${asRole(cast.build)}Escribí sólo las pruebas que faltan en ${task.id}, con el mismo rojo ` +
       `previo, y no toques el código de producción: ${lacking().map((e) => e.criterion).join('; ')}`,
