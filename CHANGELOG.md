@@ -29,6 +29,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Una orden que se cumple después ya no se pierde por el aviso de una tarea de fondo.** «Cuando el CI quede
+  verde mergeá el #7» se frenaba al llegar el aviso de que el CI había terminado, porque ese aviso entra como
+  un mensaje que no escribiste vos. Ahora lo que pediste nombrándolo sigue valiendo hasta tu próximo mensaje.
+  El aviso no agrega nada: lo que dice no ordena, y «dale con todos», sin PRs nombrados, no lo cruza
+  (caso 281).
 - **Buscar en el código el nombre de un archivo de entorno ya no se frena como leer una credencial.** `grep -rn
   "process\.env\." src` o `grep "\.env\.schema"` se bloqueaban como si abrieran un `.env`: el guard leía el
   patrón de la búsqueda como un archivo. Era el freno más frecuente dentro de un recorrido. Leer la

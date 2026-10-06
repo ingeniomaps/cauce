@@ -185,7 +185,10 @@ const refuses = (text) => NEGATION.test(text) || HALT.test(text) || /[?¿]/.test
 const EXCEPT = /(?<![\p{L}])(?:menos|excepto|salvo|except)(?![\p{L}])/iu
 const pullsIn = (clause) => [...clause.matchAll(/#(\d+)|(?<![\p{L}\p{N}])prs?\s+(\d+)/giu)]
   .map((one) => one[1] || one[2])
-function ordersMerge(text, item) {
+//
+// Después de un aviso del runner pasa sólo lo nombrado. «Los merges de este turno» es una lectura del turno en
+// que la persona habló, y lo que el agente hace tras el aviso puede venir de lo que el aviso decía (caso 281).
+function ordersMerge(text, item, { relayed = false } = {}) {
   const found = /^gh pr merge(?: (?!--)(\S+))?/.exec(item)
   if (!found || /[?¿]/.test(text) || HALT.test(text)) return false
   const named = []
@@ -201,7 +204,7 @@ function ordersMerge(text, item) {
     if (cut >= 0) denied.push(...pullsIn(clause.slice(cut)))
   }
   if (denied.includes(found[1])) return false
-  return !named.length || named.includes(found[1])
+  return named.length ? named.includes(found[1]) : !relayed
 }
 
 // El hook de mensaje. Nunca frena: un mensaje de la persona no se bloquea, y sin registro los guards
@@ -260,13 +263,23 @@ function record(input) {
 // El mensaje de la persona que originó esta llamada, o nada. Nada cuando no hay persona, cuando lo que
 // pidió es un recorrido de Cauce, cuando la llamada la hace un subagente —trabajo que el agente delegó,
 // y Claude lo marca con `agent_id`— o cuando el registro es de otro mensaje.
+//
+// Un aviso del runner en el medio no corta el turno de la persona. «Cuando el CI quede verde mergeá el #7» se
+// cumple después, y el aviso de que el CI terminó entra por el mismo hook como un mensaje que no escribió
+// ella: desde ahí la orden no contaba, y el merge que había pedido se frenaba (caso 281). Lo que se lee es lo
+// último que **ella** dijo —`spoken`—, nunca el texto del aviso, que es contenido que llega de afuera y no
+// ordena nada (R19). Por eso quien lee una orden pregunta por `wordsOf` y no por `text`.
 function said(input) {
   if (process.env.CI || input.agent_id || !input.session_id) return null
   const saved = load(input.session_id)
-  if (!saved || !saved.human || saved.flow) return null
+  if (!saved || saved.flow) return null
   const current = idOf(input)
-  return current && saved.id && current !== saved.id ? null : saved
+  if (current && saved.id && current !== saved.id) return null
+  if (saved.human) return saved
+  const spoken = String(saved.spoken || '')
+  return spoken && !flowCommand(spoken) ? saved : null
 }
+const wordsOf = (saved) => (saved.human ? saved.text : String(saved.spoken || ''))
 
 // Hay una persona en esta sesión a quien preguntarle, que no es lo mismo que «este mensaje lo escribió
 // ella». `said` contesta la segunda porque de ella depende **conceder**; ésta contesta la primera, que es
@@ -314,7 +327,7 @@ function scopeAlive(saved, item) {
 }
 
 function why(saved, item, asked, inherit) {
-  if (asked(saved.text, item)) return 'orden'
+  if (asked(wordsOf(saved), item, { relayed: !saved.human })) return 'orden'
   if (saved.approved.includes(item)) return 'dale'
   if (!inherit) return ''
   if (!(saved.granted || []).includes(item)) return ''
@@ -390,7 +403,7 @@ function unauthorized(input, items, asked = named) {
   // orden vieja no se reinterpreta contra un texto que no la nombraba.
   grant(input, saved, passed.map((one) => ({
     ...one,
-    scope: one.via === 'orden' ? mentions(saved.text, one.item).scope : (saved.scopes || {})[one.item] || '',
+    scope: one.via === 'orden' ? mentions(wordsOf(saved), one.item).scope : (saved.scopes || {})[one.item] || '',
   })))
   const cleared = new Set(passed.map((one) => one.item))
   return items.filter((item) => !cleared.has(item))

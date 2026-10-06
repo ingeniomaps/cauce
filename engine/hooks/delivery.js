@@ -56,7 +56,7 @@ function mergeItems(command) {
   if (!acts.length || acts.some((act) => act[1] !== 'merge')) return null
   return [...new Set(acts.map((act) => mergeItem(act[2])))]
 }
-const MERGE = { items: mergeItems, asked: (text, item) => CHAT.ordersMerge(text, item) }
+const MERGE = { items: mergeItems, asked: (text, item, how) => CHAT.ordersMerge(text, item, how) }
 
 const RULES = [
   [new RegExp(AT + String.raw`gh\s+pr\s+(?:merge|review|close|reopen|comment)\b`), `'gh pr' ${PR}`, MERGE],
