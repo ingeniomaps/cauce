@@ -27,6 +27,12 @@ diseño — eso vive en el commit y en el código.
   archivo` se bloqueaba por «destino que no se puede resolver» aunque la ruta estuviera escrita entera. Ahora
   se resuelve y se juzga igual que sin comillas: adentro de tus raíces pasa y afuera se frena (caso 298).
 
+### Cambiado
+
+- **Los commits de `autobuild` ya no arrancan frenados.** El agente que commiteaba solía stagear y commitear
+  en una línea, el guard lo frenaba y lo repetía en dos. Ahora el recorrido se lo avisa de antemano. El guard
+  no cambia (caso 299).
+
 ## [0.103.3] - 2026-10-06
 
 ### Agregado

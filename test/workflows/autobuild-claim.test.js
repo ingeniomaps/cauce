@@ -299,3 +299,23 @@ test('los pasos de oficina van con el agente liviano, y los que trabajan no', as
   for (const label of ['qa', 'plan', 'build', 'review', 'verify', 'commit', 'done', 'planning-commit',
     'plan-human', 'planning-block']) assert.ok(seen.has(label), `la prueba no llegó a ver ${label}`)
 })
+
+// Caso 299. En cada corrida real medida, el agente que commitea stageó y commiteó en una línea, lo frenó el
+// guard y repitió. Los cuatro pasos que commitean lo dicen de antemano, y los que no commitean no lo llevan.
+test('todo paso que commitea avisa que stagear y commitear van en comandos separados', async () => {
+  const blocked = { verdict: 'bloqueado', consulted: ['api/alta.go'],
+    concerns: [{ detail: 'falta una decisión', blocking: true, replan: true }] }
+  const gate = { [KEY.contract]: { ...baseScript()[KEY.contract], humanCheckpoint: true } }
+  const runs = [await runFlow(gate), await runFlow({ [KEY.critique]: blocked })]
+  const seen = new Map()
+  for (const { prompts } of runs) for (const one of prompts) seen.set(one.key.split('|')[1], one.prompt)
+
+  const commits = ['commit', 'planning-commit', 'planning-block', 'human-checkpoint']
+  for (const label of commits) {
+    assert.ok(seen.has(label), `la prueba no llegó a ver ${label}`)
+    assert.match(seen.get(label), /Stageá en un comando y commiteá en otro aparte/, label)
+  }
+  for (const [label, prompt] of seen) {
+    if (!commits.includes(label)) assert.doesNotMatch(prompt, /commiteá en otro aparte/, label)
+  }
+})

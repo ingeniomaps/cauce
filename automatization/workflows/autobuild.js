@@ -324,6 +324,11 @@ const COMMIT = {
     leftovers: { type: 'array', items: { type: 'string' } }, reason: { type: 'string' },
   },
 }
+// Acompaña a todo prompt que commitea. El guard que revisa un commit lee el índice antes de que el comando
+// corra, así que `git add … && git commit` en una sola línea se frena siempre. Sin decirlo, el agente lo
+// intentaba así, se frenaba y lo repetía en dos: pasó en cuatro de cinco corridas reales (caso 299).
+const TWO_COMMANDS = ' Stageá en un comando y commiteá en otro aparte: juntos en la misma línea se frenan, '
+  + 'porque el guard que revisa el commit lee el índice antes de que el comando corra.'
 // Acompaña al prompt de Commit. El repo de un servicio queda en su rama viva después de cada merge, que es
 // justo donde arranca la corrida siguiente: sin esto el commit caía ahí, sin PR ni CI (caso 251). Cortar la
 // rama no pide permiso a nadie —es lo que la persona iba a hacer a mano—; commitear en la viva sí, y ese
@@ -667,7 +672,7 @@ const commitBlocked = async (slug) => {
     `Commiteá el estado de planning que la parada de ${slug} dejó sin commitear en el repositorio que `
     + `contiene a ${P}: stageá por nombre sólo lo que cambió bajo ${P} —también lo que se borró—, nunca `
     + `archivos del producto, y creá un solo commit "chore(planning): block ${slug}". Nunca amend ni `
-    + `push.${PLANNING_BRANCH()}`,
+    + `push.${TWO_COMMANDS}${PLANNING_BRANCH()}`,
     { schema: COMMIT, label: 'planning-block' },
   )
   if (!stated || !stated.committed) {
@@ -1634,7 +1639,7 @@ while (rounds++ < MAX_TASKS) {
     `${asRole(OWNERS.commit)}Encontrá el repositorio git dueño de ${task.service}, inspeccioná status y diff, ` +
     `stageá por nombre los archivos de la tarea, creá un solo Conventional Commit con el footer ` +
     `"Task: ${task.id}" y después verificá log y status. Nunca amend ni push; reportá lo que quedó suelto ` +
-    `y no era de la tarea.${BRANCHED(task.id, tree)}${OPERATOR}`,
+    `y no era de la tarea.${TWO_COMMANDS}${BRANCHED(task.id, tree)}${OPERATOR}`,
     { schema: COMMIT, label: 'commit' },
   ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
   if (!commit) return halt('agent-unavailable', 'Commit no devolvió resultado')
@@ -1697,7 +1702,7 @@ while (rounds++ < MAX_TASKS) {
       `Commiteá el estado de planning que el cierre de ${task.id} dejó sin commitear en el repositorio que ` +
       `contiene a ${P}: stageá por nombre sólo lo que cambió bajo ${P} —la cola, done/, las acciones humanas, ` +
       `el INBOX—, nunca archivos del producto, y creá un solo commit "chore(planning): close ${task.id}". ` +
-      `Nunca amend ni push.${PLANNING_BRANCH()}`,
+      `Nunca amend ni push.${TWO_COMMANDS}${PLANNING_BRANCH()}`,
       { schema: COMMIT, label: 'planning-commit' },
     )
     if (!stated || !stated.committed) {
@@ -1773,7 +1778,7 @@ if (completed.length && contract.humanCheckpoint && !cut) await write(
   // El checkpoint también es estado de planning, y se escribe después del último commit de planning: sin
   // esto cada hito terminaba con ese archivo suelto en la instancia (caso 271).
   (contract.commitPerTask ? ` Después commiteá ese archivo, y sólo ése, con el mensaje "chore(planning): await ` +
-    `review of ${currentMilestone}".${PLANNING_BRANCH()}` : ''),
+    `review of ${currentMilestone}".${TWO_COMMANDS}${PLANNING_BRANCH()}` : ''),
   { label: 'human-checkpoint' },
 )
 return finish({ done: completed, count: completed.length, hito: currentMilestone, phases: ran })
