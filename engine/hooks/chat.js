@@ -173,6 +173,38 @@ function ordersPush(text, item) {
 const HALT = /^\s*(?:par[aá]|deten\p{L}*|esper[aá]|cancel\p{L}*|stop|wait|hold on)(?![\p{L}])/iu
 const refuses = (text) => NEGATION.test(text) || HALT.test(text) || /[?¿]/.test(text)
 
+// Un merge tampoco se nombra como un archivo: su ítem es `gh pr merge <PR> --repo <repo>` (`delivery.js`), y
+// nadie lo escribe así al pedirlo (caso 280). Lo ordena una frase con un verbo de mergear que no vaya negada,
+// en un mensaje que no pregunta ni arranca frenando. Si el mensaje nombra PRs —`#12`, «PR 12»—, pasan ésos
+// y ningún otro; si no nombra ninguno —«mergealos todos»—, pasan los merges de ese turno.
+//
+// Un número suelto no cuenta como PR: «corré los e2e y mergeá» nombraría el 2. Y «el merge» es un
+// sustantivo, no un pedido: «revisá el merge de ayer» no ordena nada.
+const MERGES = new Set(('mergea mergear mergeen mergeemos mergees merge fusiona fusionar fusionen '
+  + 'fusiones').split(' '))
+const ARTICLES = new Set('el un del al the a este ese cada'.split(' '))
+const mergeVerb = (clause) => {
+  const words = clause.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .match(/[a-z]+/g) || []
+  return words.some((word, at) => (MERGES.has(word) || MERGES.has(word.replace(ENCLITIC, '')))
+    && !(word === 'merge' && ARTICLES.has(words[at - 1])))
+}
+const pullsIn = (clause) => [...clause.matchAll(/#(\d+)|(?<![\p{L}\p{N}])prs?\s+(\d+)/giu)]
+  .map((one) => one[1] || one[2])
+function ordersMerge(text, item) {
+  const found = /^gh pr merge(?: (?!--)(\S+))?/.exec(item)
+  if (!found || /[?¿]/.test(text) || HALT.test(text)) return false
+  const clauses = String(text).split(CLAUSE)
+  const denied = clauses.filter((clause) => NEGATION.test(clause))
+  const asked = clauses.filter((clause) => !NEGATION.test(clause))
+  if (!asked.some(mergeVerb)) return false
+  // «No mergees nada todavía» prohíbe sin nombrar; «pero no el #3» prohíbe ése.
+  if (denied.some((clause) => mergeVerb(clause) && !pullsIn(clause).length)) return false
+  if (denied.flatMap(pullsIn).includes(found[1])) return false
+  const named = asked.flatMap(pullsIn)
+  return !named.length || named.includes(found[1])
+}
+
 // El hook de mensaje. Nunca frena: un mensaje de la persona no se bloquea, y sin registro los guards
 // deciden como antes. Un texto que empieza con una etiqueta no lo escribió una persona —Claude avisa así
 // que terminó un subagente, con `<task-notification>`—, y en CI no hay persona.
@@ -342,7 +374,7 @@ function confirmed(input, items) {
 }
 
 // Lo que la persona no autorizó de lo que un guard está por frenar; lo que sí, queda concedido.
-function unauthorized(input, items) {
+function unauthorized(input, items, asked = named) {
   const saved = said(input)
   if (!saved) {
     const passed = confirmed(input, items)
@@ -354,7 +386,7 @@ function unauthorized(input, items) {
     const cleared = new Set(passed.map((one) => one.item))
     return items.filter((item) => !cleared.has(item))
   }
-  const passed = items.map((item) => ({ item, via: why(saved, item, named, true) })).filter((one) => one.via)
+  const passed = items.map((item) => ({ item, via: why(saved, item, asked, true) })).filter((one) => one.via)
   // El alcance sale del mensaje cuando es éste el que lo concede, y del registro cuando se hereda: una
   // orden vieja no se reinterpreta contra un texto que no la nombraba.
   grant(input, saved, passed.map((one) => ({
@@ -424,4 +456,5 @@ function grantedIn(root) {
   return [...found].sort()
 }
 
-module.exports = { DIR, record, said, authorized, unauthorized, unauthorizedNow, hold, ordersPush, grantedIn }
+module.exports = { DIR, record, said, authorized, unauthorized, unauthorizedNow, hold, ordersPush, ordersMerge,
+  grantedIn }

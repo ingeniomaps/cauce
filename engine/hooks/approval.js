@@ -52,8 +52,8 @@ const left = (root, files) => {
   return files.filter((file) => !approved.has(file))
 }
 
-function pending(root, files, input) {
-  return CHAT.unauthorized(input, left(root, files))
+function pending(root, files, input, asked) {
+  return CHAT.unauthorized(input, left(root, files), asked)
 }
 
 // Lo mismo para los gates de commit —`governance`, `verify` y `dependencies`—, que preguntan cada vez: no
