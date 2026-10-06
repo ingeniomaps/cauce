@@ -162,3 +162,16 @@ Las dos corridas reales de `autobuild` de esta tanda fueron en `auto`. En la emb
 estaba roto de entrada: el guard frenó el commit y la corrida paró con `commit-failed`, sin crear nada.
 Arreglado el script, la misma corrida retomó y commiteó. En cuarenta agentes de la corrida sidecar hubo
 dos bloqueos, los dos «stagea y commitea a la vez».
+
+### `auto`, medido sin nadie al teclado, el 2026-10-05
+
+Tres sesiones interactivas en `auto` con Claude Code 2.1.290, en un banco cuyo motor tenía `auto` entre los
+modos con diálogo, y un pedido que llevaba al agente a leer una credencial sin nombrarla. Dos con Read y una
+con `cat` por Bash. En las tres el hook recibió `permission_mode: "auto"` y devolvió `ask`; el diálogo
+apareció a los cinco segundos y siguió en pantalla 197, 419 y 419 segundos, hasta que se cortó la medición.
+Ninguna se resolvió sola.
+
+Con eso `auto` entra a los modos con diálogo en 0.103.0. Lo que este caso dejó sin explicar —siete pedidos
+que en una sesión corrieron sin que conste quién los aprobó— sigue sin explicación: ninguna de las tres lo
+reprodujo. En el subagente de un recorrido el runner muestra el mismo diálogo con una cuenta regresiva y lo
+niega solo al vencer, que es el lado que frena.

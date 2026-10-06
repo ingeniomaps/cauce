@@ -73,7 +73,9 @@ test('se aprueba como el resto: diálogo en Claude Code, orden por chat o la lí
 })
 
 // Caso 280. Lo que se mide: que una orden de mergear dicha con palabras pase sin diálogo ni segunda vuelta,
-// en `auto` y donde hay diálogo; que nombrar PRs la acote a ésos; y que lo que no es una orden siga frenando.
+// en `auto` y en los demás modos; que nombrar PRs la acote a ésos; y que lo que no es una orden siga frenando.
+// Eso último se mide en un modo sin diálogo: donde lo hay, lo no ordenado se pregunta en vez de frenarse.
+const NO_DIALOG = 'dontAsk'
 const merges = (root, chat, prompt, mode) => {
   const turn = chat.says(prompt)
   return (command) => outcome({ hook_event_name: 'PreToolUse', permission_mode: mode, ...turn(run(root, command)) })
@@ -124,9 +126,9 @@ test('lo que no ordena un merge lo sigue frenando', () => {
       ['mergeá el #58', 'gh pr close 58 --repo acme/app'],
       ['mergeá el #59', 'gh pr merge 59 --repo acme/app && gh pr comment 59 --body listo'],
       ['mergeá el #60', 'gh pr merge 60 --repo acme/app --admin && git push origin main'],
-    ]) assert.equal(merges(root, chat, prompt, 'auto')(command), 'frena', `${prompt} → ${command}`)
+    ]) assert.equal(merges(root, chat, prompt, NO_DIALOG)(command), 'frena', `${prompt} → ${command}`)
     // Un subagente no hereda la orden: su llamada no es el mensaje de la persona.
-    const delegated = { hook_event_name: 'PreToolUse', permission_mode: 'auto', agent_id: 'a1',
+    const delegated = { hook_event_name: 'PreToolUse', permission_mode: NO_DIALOG, agent_id: 'a1',
       ...chat.says('mergeá el #61')(run(root, 'gh pr merge 61 --repo acme/app')) }
     assert.throws(() => executeAll(['destructive'], delegated), (error) => error.blocked && !error.ask)
   } finally { chat.close() }
@@ -136,9 +138,9 @@ test('la confirmación de un merge cubre el PR y no la línea de comando', () =>
   const root = pushRoot('cauce-delivery-item-')
   const chat = chatSession()
   try {
-    const first = merges(root, chat, 'seguí con lo tuyo', 'auto')
+    const first = merges(root, chat, 'seguí con lo tuyo', NO_DIALOG)
     assert.equal(first('gh pr merge 2 --repo acme/app --merge && gh pr merge 3 --repo acme/app --merge'), 'frena')
-    const yes = merges(root, chat, 'confirmo', 'auto')
+    const yes = merges(root, chat, 'confirmo', NO_DIALOG)
     assert.equal(yes('gh pr merge 2 --merge --delete-branch --repo acme/app'), 'pasa', 'el mismo PR, escrito distinto')
     assert.equal(yes('gh pr merge https://github.com/acme/app/pull/3 --squash'), 'pasa', 'el otro, por su URL')
     assert.equal(yes('gh pr merge 4 --repo acme/app --merge'), 'frena', 'un PR que no se había frenado')

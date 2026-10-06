@@ -25,6 +25,9 @@ diseño — eso vive en el commit y en el código.
   «commiteá» a secas termina en una rama. **Qué hacer:** si en tu proyecto se commitea en la rama viva,
   declaralo con `runner.commitToLiveBranch: true` en `ops.config.json`. El primer commit de un repositorio
   nuevo, un repositorio que la instancia no declara y CI no se frenan (caso 284).
+- **En modo `auto` de Claude Code, lo que un guard frena lo confirma el diálogo.** Desde 0.101.0 en `auto` el
+  guard bloqueaba en seco y había que confirmarlo por chat. Medido sin nadie al teclado, el diálogo espera a
+  una persona igual que en los otros modos, así que vuelve a usarse (caso 257).
 
 ### Corregido
 

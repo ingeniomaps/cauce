@@ -24,10 +24,11 @@ const ASK = Symbol('cauce.ask')
 // corre. En `plan` no: el guard pidió confirmar la lectura de un `.env`, no apareció ningún diálogo y la
 // lectura se hizo. Por eso `plan` queda afuera (casos 257 y 268).
 //
-// `auto` queda afuera sin que esté establecido por qué hace falta. En una sesión nueva el diálogo apareció;
-// en otra, siete pedidos corrieron sin que conste quién los aprobó. Mientras las dos mediciones no se
-// expliquen, es el lado que frena.
-const ANSWERED = new Set(['default', 'acceptEdits', 'bypassPermissions'])
+// `auto` entró después, con su propia medición. El 2026-10-05, con Claude Code 2.1.290 y nadie al teclado,
+// tres sesiones en `auto` —dos con Read, una con Bash—: el diálogo apareció a los cinco segundos y esperó más
+// de siete minutos sin resolverse. Ahí también lo contesta una persona. Los siete pedidos que en otra sesión
+// corrieron sin que conste quién los aprobó siguen sin explicación; ninguna de estas tres lo reprodujo.
+const ANSWERED = new Set(['default', 'acceptEdits', 'bypassPermissions', 'auto'])
 function native(input) {
   return Boolean(input && input.hook_event_name === 'PreToolUse' && input.prompt_id
     && ANSWERED.has(input.permission_mode))
