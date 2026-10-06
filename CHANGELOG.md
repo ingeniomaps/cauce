@@ -14,6 +14,16 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.103.3] - 2026-10-06
+
+### Agregado
+
+- **`/autobuild --max N` cierra N tareas y termina.** Pedirle a una corrida «sólo esta tarea» con palabras la
+  cerraba bien y después salía con `claim-stuck`, como si hubiera fallado: el recorrido seguía con la tarea
+  siguiente y el agente que iba a tomarla se negaba. Ahora el tope se puede escribir —`/autobuild --max 1
+  sin push ni PR`—, y si igual lo pedís con palabras, el agente que se niega a tomar la siguiente termina la
+  corrida en vez de romperla (caso 293).
+
 ## [0.103.2] - 2026-10-06
 
 ### Agregado

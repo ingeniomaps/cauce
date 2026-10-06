@@ -17,7 +17,8 @@ misma pregunta más caro. El arranque busca entender qué es el proyecto y dejar
 intención es viable y propone una épica, y `/autobuild` ejecuta trabajo ya promovido; `/integration-sync` e
 `/integration-promote` gestionan staging local sin escritura remota. Ninguno promueve al BACKLOG.
 
-Lo que la persona quiere de una corrida va en el mensaje que la lanza: `/autobuild <pedido>`. Claude Code puede
+Lo que la persona quiere de una corrida va en el mensaje que la lanza: `/autobuild <pedido>`. Con `--max N` la
+corrida cierra N tareas y termina sin tomar otra. Claude Code puede
 relevarle a cada agente del recorrido el último mensaje del chat, textual y por encima del texto del recorrido.
 Si lanzás uno por tu cuenta después de un mensaje que hablaba de otra cosa, ése es el que reciben todos como
 pedido: pasale igual el pedido como argumento, y al reportar decile a la persona con qué mensaje salió.

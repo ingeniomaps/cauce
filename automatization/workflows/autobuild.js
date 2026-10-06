@@ -127,9 +127,12 @@ const CONTEXT = {
     },
   },
 }
+// `declined` es la tercera salida: no la tomó otro ni falló el comando, sino que quien lanzó la corrida pidió
+// no seguir. Sin ella esa negativa sólo cabía en `claimed: false`, y la corrida terminaba en `claim-stuck`
+// —una falla— después de haber cerrado bien lo que se le pidió (caso 293).
 const CLAIM = {
   type: 'object', additionalProperties: false, required: ['claimed'],
-  properties: { claimed: { type: 'boolean' }, details: { type: 'string' } },
+  properties: { claimed: { type: 'boolean' }, declined: { type: 'boolean' }, details: { type: 'string' } },
 }
 // El árbol de trabajo de una tarea, como lo devuelve `ops worktree --json`.
 const WORKTREE = {
@@ -428,7 +431,14 @@ const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos 
 // este recorrido no leía `args`, así que una instrucción dada ahí no llegaba a ninguna fase y nada lo decía
 // (caso 252). Va a las tres fases que deciden cómo se hace el trabajo, y por debajo de la aceptación y de
 // las reglas: es un pedido de quien opera, que no pasó por ninguna de sus compuertas.
-const ASKED = String((typeof args === 'string' ? args : (args || {}).note) || '').trim()
+//
+// Y cuántas tareas, que es lo único de un pedido que el recorrido puede cumplir sin interpretarlo: `--max N`
+// en el texto, o `max` si `args` es un objeto. «Sólo esta tarea» dicho con palabras lo entiende un agente y
+// no este script, que seguía con la siguiente (caso 293).
+const RAW = String((typeof args === 'string' ? args : (args || {}).note) || '')
+const MAX_FLAG = /(?:^|\s)--max(?:=|\s+)(\d+)(?=\s|$)/
+const LIMIT = Number((typeof args === 'object' && args && args.max) || (RAW.match(MAX_FLAG) || [])[1]) || 0
+const ASKED = RAW.replace(MAX_FLAG, ' ').trim()
 const OPERATOR = ASKED ? ` Quien lanzó esta corrida pidió, para todas sus tareas: «${ASKED}». Cumplilo en lo `
   + 'que le toque a esta fase. No reemplaza la aceptación ni las reglas: si las contradice mandan ellas, y lo '
   + 'decís.' : ''
@@ -760,6 +770,10 @@ while (rounds++ < MAX_TASKS) {
       + '"ops release" o se retoma desde el runner que lo tiene; lo que espera una dependencia, no.')
   }
   if (!planning.hasTask || (currentMilestone && planning.hito !== currentMilestone)) break
+  if (LIMIT && completed.length >= LIMIT) {
+    log(`La corrida cerró las ${LIMIT} tarea(s) que se le pidieron: sigue ${nextUp(planning)}, sin tomarla`)
+    break
+  }
   // Las decisiones que la línea ya tomó, dichas como lo que son. Sin ese rótulo se leen como contexto
   // opinable y el que planifica las re-decide igual, que es el defecto entero: la crítica abre el
   // BACKLOG por su cuenta y bloquea el plan citando la línea palabra por palabra (caso 177).
@@ -787,9 +801,16 @@ while (rounds++ < MAX_TASKS) {
     const claim = await write(
       `Corré "node tools/ops.js claim ${P} ${task.id}" desde ${ROOT}. No escribas ningún archivo vos: lo ` +
       `escribe el comando. claimed=true sólo con exit 0; si falla porque la tomó otro, claimed=false y ` +
-      `copiá el mensaje en details.`,
+      `copiá el mensaje en details. Si quien lanzó la corrida pidió que no se tome esta tarea —que parara ` +
+      `antes, o que fuera sólo otra—, no corras el comando: claimed=false, declined=true y en details la ` +
+      `frase que lo pide.`,
       { schema: CLAIM, label: `claim:${task.id}` },
     )
+    // No es una falla ni una carrera perdida: la corrida termina como cuando se queda sin tareas.
+    if (claim && claim.declined) {
+      log(`${task.id} no se tomó, a pedido de quien lanzó la corrida: ${claim.details || '(sin detalle)'}`)
+      break
+    }
     if (!claim || !claim.claimed) {
       planning = await readContext()
       if (!planning) return halt('context-unavailable', `no se pudo releer el estado de ${P}`)

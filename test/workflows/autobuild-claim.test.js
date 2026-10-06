@@ -223,3 +223,38 @@ test('las paradas que bloquean antes de construir sueltan el reclamo, y las de d
   assert.equal(trasConstruir.result.reason, 'verify-failed')
   assert.ok(!suelta(trasConstruir.written), 'lo construido no se abandona soltando su reserva')
 })
+
+// Caso 293. «Sólo esta tarea» se le pidió a una corrida real y el recorrido siguió con la siguiente: el agente
+// que iba a reclamarla se negó, y la corrida terminó en `claim-stuck`, una falla, habiendo cerrado bien lo
+// pedido. Hay dos formas de no seguir y ninguna es una parada: el tope que el recorrido cuenta solo, y la
+// negativa de quien reclama, que es quien puede leer el pedido.
+test('una corrida acotada a N tareas, o cuyo reclamo se declina a pedido, termina como una que cerró', async () => {
+  const first = baseScript()[KEY.context]
+  const second = { ...first, slug: 'T-2' }
+  const two = { contexts: [first, second, { ...first, hasTask: false, queued: 0 }] }
+  const T2 = { 'Claim|claim:T-2': { claimed: true } }
+
+  const all = await runFlow(T2, two)
+  assert.deepEqual(all.result.done, ['T-1', 'T-2'], 'sin tope cierra las dos')
+
+  for (const args of ['--max 1', 'sin push ni PR --max=1', { max: 1, note: 'sin push ni PR' }]) {
+    const capped = await runFlow(T2, { ...two, args })
+    assert.equal(capped.result.stopped, undefined, JSON.stringify(capped.result))
+    assert.deepEqual(capped.result.done, ['T-1'], JSON.stringify(args))
+    assert.ok(!capped.asked.includes('Claim|claim:T-2'), 'ni llega a reclamar la segunda')
+    assert.ok(capped.said.some((line) => /cerró las 1 tarea\(s\) que se le pidieron: sigue T-2/.test(line)))
+    assert.ok(capped.asked.some((one) => one.startsWith('Closing|')), 'y cierra como siempre')
+  }
+  // El tope no viaja a las fases como parte del pedido.
+  const noted = await runFlow({}, { args: 'sin push ni PR --max 3' })
+  const plan = noted.prompts.find((one) => one.key === KEY.plan).prompt
+  assert.match(plan, /pidió, para todas sus tareas: «sin push ni PR»/)
+
+  const declined = await runFlow({ 'Claim|claim:T-2': { claimed: false, declined: true,
+    details: '«Sólo la tarea T-1; al cerrarla, parar»' } }, two)
+  assert.equal(declined.result.stopped, undefined, 'no es claim-stuck')
+  assert.deepEqual(declined.result.done, ['T-1'])
+  assert.ok(declined.said.some((line) => /T-2 no se tomó, a pedido de quien lanzó la corrida: «Sólo la/.test(line)))
+  assert.ok(!declined.phases.slice(declined.phases.lastIndexOf('Claim')).includes('Build'), 'no la construye')
+  assert.match(declined.prompts.find((one) => one.key === 'Claim|claim:T-2').prompt, /declined=true/)
+})
