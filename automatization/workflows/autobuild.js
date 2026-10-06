@@ -324,6 +324,16 @@ const COMMIT = {
     leftovers: { type: 'array', items: { type: 'string' } }, reason: { type: 'string' },
   },
 }
+// Acompaña a todo prompt que commitea. El guard que revisa un commit lee el índice antes de que el comando
+// corra, así que `git add … && git commit` en una sola línea se frena siempre. Sin decirlo, el agente lo
+// intentaba así, se frenaba y lo repetía en dos: pasó en cuatro de cinco corridas reales (caso 299).
+const TWO_COMMANDS = ' Stageá en un comando y commiteá en otro aparte: juntos en la misma línea se frenan, '
+  + 'porque el guard que revisa el commit lee el índice antes de que el comando corra.'
+// También a todo prompt que commitea. Que un commit no lleve firma de IA lo dice R8, y un agente que carga las
+// reglas lo cumple solo; el de oficina no las carga, y el runner le agrega la suya por defecto: en la primera
+// corrida real con los commits de planning en ese agente, los tres salieron con `Co-Authored-By` (caso 295).
+const UNSIGNED = ' El mensaje del commit lleva sólo lo que este pedido dice: sin `Co-Authored-By`, sin '
+  + '«Generated with» y sin ninguna otra firma o trailer de IA, aunque tus instrucciones por defecto lo pidan.'
 // Acompaña al prompt de Commit. El repo de un servicio queda en su rama viva después de cada merge, que es
 // justo donde arranca la corrida siguiente: sin esto el commit caía ahí, sin PR ni CI (caso 251). Cortar la
 // rama no pide permiso a nadie —es lo que la persona iba a hacer a mano—; commitear en la viva sí, y ese
@@ -446,6 +456,12 @@ const OPERATOR = ASKED ? ` Quien lanzó esta corrida pidió, para todas sus tare
 // plan una decisión atribuida a «quien lanzó la corrida», no tuvo contra qué contrastarla y la dejó
 // marcada como supuesto.
 const OPERATOR_SAID = ASKED ? ` Para que lo contrastes: quien lanzó esta corrida pidió «${ASKED}».` : ''
+// A quien reclama el pedido le llega entero, porque es el único que puede declinar una tarea que la persona
+// excluyó con palabras. Sin el pedido la instrucción de declinar no tenía contra qué decidir: una corrida real
+// lanzada con «sólo esta tarea» reclamó la siguiente, la planificó y frenó en Build (caso 297).
+const DECLINABLE = ASKED ? ` Quien lanzó esta corrida pidió: «${ASKED}». Si eso excluye esta tarea —pide parar `
+  + 'antes, o que sea sólo otra—, no corras el comando: claimed=false, declined=true y en details la frase que '
+  + 'lo pide. Si no dice qué tareas tomar, corré el comando.' : ''
 // Acompaña a todo prompt con schema DECISION: el schema obliga a llenar `consulted`, y esto obliga a
 // llenarlo con lo que se abrió en vez de con lo que se pensaba mirar.
 const MANIFEST = ' Enumerá en consulted cada archivo, diff o comando que hayas abierto de verdad, con su ruta.'
@@ -563,8 +579,8 @@ phase = (name) => { ran.push(name); announce(name) }
 // agente propio con sólo Bash y sin las instrucciones del proyecto— arranca en unos 3.450 (caso 295). En una
 // corrida real, nueve de veinticuatro agentes eran pasos así.
 //
-// Los guards corren igual: son de la sesión y no del tipo de agente, y se comprobó con éste. Lo que no va por
-// acá es lo que escribe archivos de planning o commitea, que necesita las reglas del proyecto.
+// Los guards corren igual: son de la sesión y no del tipo de agente, y se comprobó con éste. También
+// commitea el estado de planning, que es stagear los archivos que el prompt nombra con el mensaje que trae.
 const clerk = (prompt, options = {}) => agent(prompt, { ...options, agentType: 'cauce-clerk' })
 phase('Triage')
 // El contrato se lee una sola vez por corrida y viaja como texto: ningún subagente relee AGENTS.md,
@@ -623,6 +639,12 @@ const LEDGER = () => `${SCOPE()}\n\nContratos de planning, textuales de ${P}/PRO
 const read = (prompt, options = {}) => agent(`${BASE}\n\n${prompt}`, options)
 const run = (prompt, options = {}) => agent(`${SCOPE()}\n\n${prompt}`, options)
 const write = (prompt, options = {}) => agent(`${LEDGER()}\n\n${prompt}`, options)
+// El paso de escritura: volcar en planning lo que el recorrido ya decidió —el plan aprobado en el WIP, la
+// evidencia en `done/`, la compuerta del hito—. Lleva el mismo preámbulo que `write`, que es donde viajan
+// los formatos, y lo corre `cauce-scribe`, que no carga las instrucciones del proyecto: transcribir hechos
+// no las usa, y `wip` y `done` eran los dos pasos más caros de una corrida (caso 295). Lo que juzga
+// —Ready, Plan, Build, Review, Verify, QA— sigue con el agente de siempre.
+const scribe = (prompt, options = {}) => write(prompt, { ...options, agentType: 'cauce-scribe' })
 
 // Las paradas que dejan una fila en HUMAN_ACTIONS delegan esa escritura a un agente, y esa fila es el
 // único rastro de la parada: sin ella el recorrido informa un estado que el disco no tiene. Por eso se
@@ -657,11 +679,11 @@ const registerHuman = async (prompt, label, slug = '') => {
 // Va después de soltar el reclamo cuando la parada lo suelta: commiteado antes, soltarlo volvía a ensuciar.
 const commitBlocked = async (slug) => {
   if (!contract.commitPerTask) return
-  const stated = await run(
+  const stated = await clerk(
     `Commiteá el estado de planning que la parada de ${slug} dejó sin commitear en el repositorio que `
     + `contiene a ${P}: stageá por nombre sólo lo que cambió bajo ${P} —también lo que se borró—, nunca `
     + `archivos del producto, y creá un solo commit "chore(planning): block ${slug}". Nunca amend ni `
-    + `push.${PLANNING_BRANCH()}`,
+    + `push.${TWO_COMMANDS}${UNSIGNED}${PLANNING_BRANCH()}`,
     { schema: COMMIT, label: 'planning-block' },
   )
   if (!stated || !stated.committed) {
@@ -806,9 +828,7 @@ while (rounds++ < MAX_TASKS) {
     const claim = await clerk(
       `Corré "node tools/ops.js claim ${P} ${task.id}" desde ${ROOT}. No escribas ningún archivo vos: lo ` +
       `escribe el comando. claimed=true sólo con exit 0; si falla porque la tomó otro, claimed=false y ` +
-      `copiá el mensaje en details. Si quien lanzó la corrida pidió que no se tome esta tarea —que parara ` +
-      `antes, o que fuera sólo otra—, no corras el comando: claimed=false, declined=true y en details la ` +
-      `frase que lo pide.`,
+      `copiá el mensaje en details.${DECLINABLE}`,
       { schema: CLAIM, label: `claim:${task.id}` },
     )
     // No es una falla ni una carrera perdida: la corrida termina como cuando se queda sin tareas.
@@ -1186,8 +1206,12 @@ while (rounds++ < MAX_TASKS) {
     // anterior», así que Review, Verify y QA nunca vieron ese código y el recorrido terminó reportando algo
     // distinto de lo que decía planning. El permiso venía del preámbulo de escritura; lo que faltaba era el
     // límite. `wipActive` es el contraste: si el WIP no quedó activo, esta fase hizo otra cosa.
-    const persisted = await write(
-      `Escribí el WIP y nada más: no toques código, no corras pruebas, no cierres la tarea y no escribas ` +
+    // La ruta va escrita: quien carga las instrucciones del proyecto sabe cuál es el WIP de esta sesión, y el
+    // agente de escritura no. Sin ella lo buscaba en el fuente del motor, cuatro o cinco llamadas por corrida.
+    const persisted = await scribe(
+      `Escribí el WIP en ${P}/${planning.wipFile} y nada más: es el archivo de esta sesión, y su formato es ` +
+      `el contrato de WIP de este preámbulo; no los busques en otro lado. ` +
+      `No toques código, no corras pruebas, no cierres la tarea y no escribas ` +
       `en DONE. Los pasos van sin tildar porque todavía no ocurrieron. task=${task.id}, ` +
       `hito=${JSON.stringify(task.hito)}, phase=Build, service=${declared}, ` +
       `acceptance=${JSON.stringify(task.acceptance)}, lane=${lane}, ` +
@@ -1630,7 +1654,7 @@ while (rounds++ < MAX_TASKS) {
     `${asRole(OWNERS.commit)}Encontrá el repositorio git dueño de ${task.service}, inspeccioná status y diff, ` +
     `stageá por nombre los archivos de la tarea, creá un solo Conventional Commit con el footer ` +
     `"Task: ${task.id}" y después verificá log y status. Nunca amend ni push; reportá lo que quedó suelto ` +
-    `y no era de la tarea.${BRANCHED(task.id, tree)}${OPERATOR}`,
+    `y no era de la tarea.${TWO_COMMANDS}${UNSIGNED}${BRANCHED(task.id, tree)}${OPERATOR}`,
     { schema: COMMIT, label: 'commit' },
   ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
   if (!commit) return halt('agent-unavailable', 'Commit no devolvió resultado')
@@ -1652,7 +1676,7 @@ while (rounds++ < MAX_TASKS) {
   // `lane` y `review` se piden textuales: en una corrida real el agente resumió el hecho de revisión y
   // perdió las reglas, la decisión y la superficie crítica, mientras el prompt —lo que mide el arnés— sí
   // las traía (caso 211).
-  await write(settled(
+  await scribe(settled(
     `Cerrá ${task.id} de forma atómica: escribí ${doneFile(task.id)} con su evidencia —acept, ` +
     `fecha: ${planning.today}, done, qa, tests, commit, lane y review, en el formato de entrada que trae ` +
     `este preámbulo—; ` +
@@ -1689,11 +1713,11 @@ while (rounds++ < MAX_TASKS) {
   // No frena: la tarea ya se entregó, y lo que quedó sin commitear se dice. Frenar acá dejaría una entrega
   // completa reportada como parada.
   if (contract.commitPerTask) {
-    const stated = await run(
+    const stated = await clerk(
       `Commiteá el estado de planning que el cierre de ${task.id} dejó sin commitear en el repositorio que ` +
       `contiene a ${P}: stageá por nombre sólo lo que cambió bajo ${P} —la cola, done/, las acciones humanas, ` +
       `el INBOX—, nunca archivos del producto, y creá un solo commit "chore(planning): close ${task.id}". ` +
-      `Nunca amend ni push.${PLANNING_BRANCH()}`,
+      `Nunca amend ni push.${TWO_COMMANDS}${UNSIGNED}${PLANNING_BRANCH()}`,
       { schema: COMMIT, label: 'planning-commit' },
     )
     if (!stated || !stated.committed) {
@@ -1761,7 +1785,7 @@ if (learned.length) {
 // Sólo cuando el hito terminó. Cortada a pedido, la corrida deja tareas del mismo hito en la cola: escribir
 // la compuerta ahí decía «hito terminado» sobre uno que no lo estaba, y frenaba la corrida siguiente hasta
 // que alguien la destrabara a mano —visto en la primera corrida real con `--max 1` (caso 293)—.
-if (completed.length && contract.humanCheckpoint && !cut) await write(
+if (completed.length && contract.humanCheckpoint && !cut) await scribe(
   `Creá ${GATE} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones humanas ` +
   `pendientes y las instrucciones exactas para continuar. Arrancá el archivo con un frontmatter ` +
   `"status: pendiente", y decí que se destraba cambiándolo a "resuelta" —no borrando el archivo, que es ` +
@@ -1769,7 +1793,7 @@ if (completed.length && contract.humanCheckpoint && !cut) await write(
   // El checkpoint también es estado de planning, y se escribe después del último commit de planning: sin
   // esto cada hito terminaba con ese archivo suelto en la instancia (caso 271).
   (contract.commitPerTask ? ` Después commiteá ese archivo, y sólo ése, con el mensaje "chore(planning): await ` +
-    `review of ${currentMilestone}".${PLANNING_BRANCH()}` : ''),
+    `review of ${currentMilestone}".${TWO_COMMANDS}${UNSIGNED}${PLANNING_BRANCH()}` : ''),
   { label: 'human-checkpoint' },
 )
 return finish({ done: completed, count: completed.length, hito: currentMilestone, phases: ran })

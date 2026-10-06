@@ -315,6 +315,17 @@ test('shell-boundary resuelve las rutas contra el cd del propio comando', () => 
   assert.doesNotThrow(() => execute('shell-boundary',
     desde(root, `cd $TRABAJO && echo x > ${path.join(root, 'nota.md')}`)))
 
+  // Un destino entre comillas y sin nada que expandir se sabe, y se juzga en los dos sentidos (caso 298).
+  for (const quote of ['"', "'"]) {
+    const to = (dir) => `cd ${quote}${dir}${quote} || exit 9\nsed -i 's/a/b/' nota.md`
+    assert.doesNotThrow(() => execute('shell-boundary', desde(afuera, to(root))), quote)
+    blocked('shell-boundary', desde(root, to(afuera)), /fuera de las raíces/)
+  }
+  // Lo que sin comillas se leería distinto sigue sin saberse: una variable, un espacio, un `;`, una `~`.
+  for (const dir of ['$TRABAJO/copia', `${afuera} y más`, `${afuera};x`, '~/copia']) {
+    blocked('shell-boundary', desde(root, `cd "${dir}" && echo x > nota.md`), /no se puede resolver/)
+  }
+
   // `cd` a secas va a HOME, y eso también cambia contra qué se resuelve lo que sigue.
   blocked('shell-boundary', desde(root, 'cd && echo x > nota.md'), /fuera de las raíces/)
 

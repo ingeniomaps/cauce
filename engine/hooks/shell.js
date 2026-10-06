@@ -377,6 +377,12 @@ function cdTarget(argument, base) {
   return path.resolve(base, argument)
 }
 
+// El destino de un `cd` entre comillas se lee antes de vaciarlas. Vaciado quedaba como destino desconocido
+// y frenaba toda escritura relativa que viniera después, aunque la ruta estuviera escrita entera:
+// `cd "/ruta/copia" && sed -i … src/x.js` (caso 298). Queda afuera lo que sin comillas se leería distinto:
+// un espacio o un `;` partirían el tramo, y `~` entre comillas es un nombre y no la casa de nadie.
+const QUOTED_CD = /((?:^|[;&|\n(])\s*cd\s+)(["'])([^"'\s;|&<>()~]+)\2/g
+
 // Las escrituras de un comando, cada una con el directorio contra el que hay que resolverla. El `cd`
 // del propio comando cambia eso para todo lo que viene después y es lo primero que el shell ejecuta;
 // sin mirarlo, el guard juzgaba una ruta que nadie iba a escribir, y fallaba en los dos sentidos.
@@ -392,7 +398,7 @@ function writesWithBase(command, cwd) {
   // El `|` que sigue a un `>` no parte nada: es el override de `noclobber`, no una tubería. Partir ahí
   // separaba la redirección de su destino —`echo x >| ruta` quedaba como `echo x >` y ` ruta`— y el
   // destino no lo veía nadie, que es por donde se colaba escribir la propia `.ops-approval` (caso 164).
-  for (const segment of unquoted(expandAssigned(command)).split(/[;&\n]+|(?<!>)\|+/)) {
+  for (const segment of unquoted(expandAssigned(command).replace(QUOTED_CD, '$1$3')).split(/[;&\n]+|(?<!>)\|+/)) {
     const cd = segment.match(/^\s*cd(?:\s+(\S+))?\s*$/)
     if (cd) { base = base === null ? null : cdTarget(cd[1], base); continue }
     for (const raw of writeTargets(segment)) found.push({ raw, base })

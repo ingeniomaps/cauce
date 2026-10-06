@@ -77,6 +77,10 @@
     {
       "source": "agents/cauce-clerk.md",
       "target": ".claude/agents/cauce-clerk.md"
+    },
+    {
+      "source": "agents/cauce-scribe.md",
+      "target": ".claude/agents/cauce-scribe.md"
     }
   ],
   "capabilities": {

@@ -14,6 +14,32 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.103.4] - 2026-10-06
+
+### Corregido
+
+- **Pedirle a `autobuild` «sólo esta tarea» con palabras vuelve a terminar ahí.** En 0.103.3 el agente que
+  reclama la tarea siguiente no recibía el pedido, así que la tomaba: la corrida la planificaba, frenaba en
+  Build y dejaba un reclamo y una fila pendiente sobre una tarea que habías excluido. Ahora el reclamo recibe
+  el pedido y, si la excluye, la corrida termina como cuando se queda sin tareas. `--max N` sigue siendo la
+  forma que no depende de que un agente lo interprete (caso 297).
+- **Un `cd` con el destino entre comillas ya no frena la escritura que le sigue.** `cd "/ruta" && sed -i …
+  archivo` se bloqueaba por «destino que no se puede resolver» aunque la ruta estuviera escrita entera. Ahora
+  se resuelve y se juzga igual que sin comillas: adentro de tus raíces pasa y afuera se frena (caso 298).
+
+### Cambiado
+
+- **`autobuild` gasta menos en escribir planning.** El WIP, la entrada de `done/`, la compuerta del hito y
+  los commits de planning los hacía un agente que cargaba las instrucciones enteras del proyecto para
+  transcribir lo que el recorrido ya había decidido. Ahora los hacen agentes livianos: `cauce-clerk` commitea
+  y uno nuevo, `cauce-scribe`, escribe. Medido en corridas reales, el WIP pasó de unos 87.000 tokens a unos
+  16.000, `done` de unos 85.000 a 42.000 y el commit de planning de 66.000 a 4.000. Los pasos que juzgan
+  —planificar, construir, revisar, verificar— no cambian. **Qué hacer:** nada; `cauce-scribe` llega con el
+  runner de Claude al actualizar (caso 295).
+- **Los commits de `autobuild` ya no arrancan frenados.** El agente que commiteaba solía stagear y commitear
+  en una línea, el guard lo frenaba y lo repetía en dos. Ahora el recorrido se lo avisa de antemano. El guard
+  no cambia (caso 299).
+
 ## [0.103.3] - 2026-10-06
 
 ### Agregado

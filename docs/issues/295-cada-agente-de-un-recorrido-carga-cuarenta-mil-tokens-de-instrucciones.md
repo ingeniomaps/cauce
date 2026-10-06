@@ -1,14 +1,15 @@
 ---
 caso: 295
 titulo: cada agente de un recorrido carga cuarenta mil tokens de instrucciones
-estado: abierto
+estado: resuelto
+resuelto-en: 0.103.4
 prioridad: media
 version-detectada: 0.103.2
 ---
 
 # 295 — El piso de contexto de un agente de recorrido en una instancia es de 73.000 tokens, y 41.000 son de Cauce
 
-**🔴 abierto** · detectado en 0.103.2 · prioridad **media**.
+**🟢 resuelto en 0.103.4** · detectado en 0.103.2 · prioridad **media**.
 
 **Prioridad media**: no rompe nada y se paga en cada corrida. Una tarea `full` con 24 agentes gastó 2,8
 millones de tokens para un cambio de 189 líneas; el trabajo escrito fueron 28.000.
@@ -169,3 +170,86 @@ largo de sus llamadas. Eso es el camino 2.
 - **Tres mutaciones en rojo**, en una copia: la oficina de vuelta al agente de siempre, lo que trabaja mandado
   también por la oficina, y el agente cargando otra vez las instrucciones.
 - **La puerta entera**, `npm run ci`.
+
+## Cierre
+
+**Resuelto en 0.103.4.** Lo de 0.103.3 está en «Avance», arriba; acá va lo que faltaba y cómo quedó cada camino.
+
+### El recorrido de lo que este caso enumeró
+
+- **1, el agente de oficina — se hizo, y ahora incluye los commits de planning.** `planning-commit` y
+  `planning-block` van con `cauce-clerk`. Era lo que el caso dejaba «sin medir».
+- **2, achicar lo que se importa siempre — se hizo distinto.** No se tocó qué importa una instancia. Lo que
+  se sacó es la carga de los pasos que no la usan: un segundo agente, `cauce-scribe`, escribe el WIP, la
+  entrada de `done/` y la compuerta del hito. No carga las instrucciones del proyecto, tiene herramientas de
+  archivo y recibe los formatos de planning en el mismo preámbulo de siempre.
+- **2, para los pasos que juzgan — se decidió que no.** `ready`, `plan`, `critique`, `build`, `review`,
+  `verify`, `qa` y el commit del producto siguen cargando todo. Ahí las reglas hacen su trabajo, y no hay con
+  qué medir qué se pierde al recortarlas: haría falta una batería por fase. Un recorrido más barato que deja
+  pasar un defecto sale más caro que los 75.000 tokens.
+- **3, juntar pasos de oficina — se decidió que no.** Cada uno cuesta ya entre 3.000 y 6.000 tokens, y
+  juntarlos mezcla dos responsabilidades en una llamada para ahorrar eso.
+- **Tradeoffs.** El primero no se paga: ninguna sesión perdió una regla. El tercero se achicó: la llamada que
+  commitea una parada bajó de unos 62.000 tokens a unos 6.000.
+- **`closing` — queda como estaba.** Corre `check` y trae las lecciones, pero si `check` sale en rojo repara
+  estado derivado, y eso es juzgar.
+
+### Lo que este caso encontró y no preveía
+
+**Un agente que no carga las reglas firma los commits.** En la primera corrida real con los commits de
+planning en el agente de oficina, los tres salieron con `Co-Authored-By`. R8 lo prohíbe, quien carga las
+reglas lo cumple solo y ningún guard lo mira. Ahora lo prohíbe cada prompt que commitea. Que un guard lo
+compruebe es otra decisión y no se tomó acá.
+
+### Qué se corrió
+
+- **Dos corridas reales con el motor de esta rama**, en bancos sidecar: una tarea `lite` que cierra el hito,
+  y una que frena en Build porque borra una prueba. Tokens escritos a caché por paso, contando cada mensaje
+  una vez, contra las corridas de hoy anteriores a este cambio. Los pasos nuevos se midieron en cuatro
+  corridas: estas dos y las dos de antes del aviso de la firma, que ya llevaban los mismos agentes:
+
+  | Paso | 0.103.3 | 0.103.4 | Agente |
+  |---|---|---|---|
+  | `wip` | 86.675 a 101.604 | 29.643 a 65.374 | `cauce-scribe` |
+  | `done` | 84.726 a 110.385 | 42.031 y 44.138 | `cauce-scribe` |
+  | `human-checkpoint` | 76.876 | 17.688 y 19.944 | `cauce-scribe` |
+  | `planning-commit` | 66.017 a 69.452 | 3.875 y 3.936 | `cauce-clerk` |
+  | `planning-block` | 62.346 | 6.315 y 6.348 | `cauce-clerk` |
+
+  El `wip` de 65.374 es uno de cuatro; los otros tres quedaron entre 29.643 y 31.260. Por qué, abajo.
+
+  La primera llamada del agente de escritura trae entre 8.572 y 13.348 tokens: es el preámbulo con los
+  formatos. El total de una corrida no se compara acá, porque varía más por lo que hacen los agentes que
+  juzgan que por este cambio.
+- **Lo que dejaron en disco.** `ops check` válido en los dos bancos. La entrada de `done/` con sus campos y
+  el sufijo `(app@feat/resta-dos-numeros)`, el WIP en `IDLE`, la compuerta con `status: pendiente`. Los
+  commits con el mensaje exacto, sólo archivos de planning, en `work/planning` y sin firma.
+- **Los guards los contienen igual.** En la corrida que frena, el único freno fue el del borrado de la
+  prueba, y la parada quedó commiteada por el agente de oficina.
+- **La firma, en rojo y en verde.** Corrida real antes del aviso: tres commits con `Co-Authored-By`. Las dos
+  corridas de después: ninguno.
+- **Ocho mutaciones en rojo, en una copia**: cada uno de los cinco pasos devuelto al agente de siempre, el de
+  escritura sin los formatos, cargando las instrucciones, y sin herramientas de archivo.
+- **La puerta entera**, `npm run ci`.
+
+### Segunda tanda, antes de empujar
+
+- **Una tarea `full` seguida de una `lite`, en la misma corrida.** Cerró las dos y escribió la compuerta: 35
+  agentes, `ops check` válido, dos entradas en `done/` y tres commits de planning sin firma. En la `full`,
+  `done` escribió 42.395 tokens y `wip` 30.527; en la `lite` que le siguió, 30.310 y 25.297. La segunda tarea
+  arrancó sobre la cola y el WIP que dejó la primera.
+- **Aprobar un borrado y retomar.** La primera corrida frenó en Build con el WIP escrito por el agente de
+  escritura. Aprobado el borrado, la segunda retomó desde ese WIP —sus fases fueron Triage, Pick, Build,
+  Review, Verify, QA, Commit, Done—, borró la prueba y cerró la tarea.
+- **Actualizar una instancia.** Banco con 0.103.3 de npm, y encima un paquete armado con `npm pack` desde
+  esta rama. Después de `upgrade` y antes de reinstalar el runner, quedan el recorrido viejo y sólo
+  `cauce-clerk`: el recorrido instalado no nombra un agente que falte. `automation doctor` lo dice
+  —«falta .claude/agents/cauce-scribe.md»— y `upgrade` pide reinstalar. Con `make install-claude` quedan los
+  dos agentes y el recorrido nuevo, y `doctor` sale sin advertencias. El paquete de prueba llevaba la versión
+  0.103.3, porque la sube el PR de release: lo que se probó es el mecanismo, no el salto de número.
+- **Por qué un `wip` escribió 65.374.** Se leyó su transcripto. El prompt decía «escribí el WIP» sin decir en
+  qué archivo, y el agente de escritura lo buscaba en el fuente del motor: en esa corrida abrió `parser.js`
+  entero. En las demás lo buscó con menos suerte o más, siempre con cuatro o cinco llamadas de más. Ahora el
+  prompt nombra el archivo. Corrida real después del cambio: cuatro llamadas —listar la carpeta, leer su
+  README, escribir, responder— y 15.616 tokens.
+- **Lo que no se corrió**: una instancia real, donde la entrada de `done/` lleva más hechos que en un banco.
