@@ -38,3 +38,19 @@ test('se aprueba como el resto, con la línea exacta en .ops-approval', () => {
   pasteApproval(root, message)
   assert.doesNotThrow(() => execute('test-workers', call))
 })
+
+// Caso 286. La comilla contaba como posición de comando, así que el patrón de un `grep` y lo que seguía a la
+// comilla de cierre de cualquier argumento se leían como una corrida. Los dos primeros son los que frenaron
+// un recorrido real. Van con su contraparte: lo entrecomillado detrás del `-c` de un shell sí se ejecuta.
+test('leer la configuración de las pruebas no es correrlas', () => {
+  const root = pushRoot('cauce-workers-lectura-')
+  for (const command of [
+    "grep -n 'jest' -A25 package.json", "grep -rn -E 'swc' jest.config.* package.json",
+    "cat 'notas de hoy' jest.config.js", 'echo "npx jest"', "rg 'vitest' -l", 'ls "mis pruebas" vitest.config.ts',
+    // Con un separador adentro del patrón: lo que un `grep` sólo lee no se parte en comandos.
+    "grep -n 'lint; npx jest' Makefile",
+  ]) assert.doesNotThrow(() => execute('test-workers', run(root, command)), command)
+  for (const command of ["sh -c 'npx jest'", 'bash -lc "cd api && vitest run"', 'grep -q x y; npx jest']) {
+    blocked('test-workers', run(root, command), /sin cota de workers/)
+  }
+})

@@ -14,6 +14,13 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.104.0] - 2026-10-06
+
+### Corregido
+
+- **Leer la configuración de las pruebas ya no se toma por correrlas.** `grep -n 'jest' package.json`, o un
+  patrón entre comillas seguido de `jest.config.*`, frenaban como un `jest` sin cota de workers (caso 286).
+
 ## [0.103.0] - 2026-10-05
 
 ### Cambiado

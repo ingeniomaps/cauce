@@ -13,13 +13,16 @@
 //
 // Sólo se ve la llamada directa. `npm test` corre lo que diga el script, y eso lo cota el script.
 
-const { block, commandOf, opsRoot } = require('./input')
+const { block, commandOf, opsRoot, asRun } = require('./input')
 const AP = require('./approval')
 
-// En posición de comando —al principio o después de `;`, `&`, `|`, `(` o una comilla—, con variables de
-// entorno delante: `jest` dentro de un `grep` o de un mensaje no es correrlo. Lo que va entre comillas no se
-// vacía, porque `bash -c "npx jest"` sí lo corre.
-const AT = String.raw`(?:^|[;&|(\n'"])\s*(?:\w+=\S*\s+)*`
+// En posición de comando —al principio o después de `;`, `&`, `|` o `(`—, con variables de entorno delante:
+// `jest` dentro de un `grep` o de un mensaje no es correrlo. Una comilla abre comando sólo detrás del `-c` de
+// un shell, que es donde lo entrecomillado se ejecuta. Contarla siempre tomaba por una corrida el patrón
+// `'jest'` de un `grep`, y también lo que seguía a la comilla de cierre de cualquier argumento: `'swc'
+// jest.config.*` (caso 286).
+const SHELL_C = String.raw`\b(?:ba|z|da|k)?sh\s+(?:-\w+\s+)*-\w*c\s+['"]`
+const AT = String.raw`(?:^|[;&|(\n]|${SHELL_C})\s*(?:\w+=\S*\s+)*`
 const SAME = String.raw`[^;&|\n]*`
 const LAUNCHER = String.raw`(?:(?:npx|bunx|pnpm(?:\s+exec)?|yarn)\s+)?`
 const RUNNER = new RegExp(AT + LAUNCHER + String.raw`(?:\S*\/)?(jest|vitest)\b(${SAME})`, 'g')
@@ -31,7 +34,8 @@ const NO_RUN = /(?:^|\s)(?:--version|--help|-h|--listTests|--showConfig)\b/
 
 function testWorkers(input) {
   const command = commandOf(input)
-  for (const match of command.matchAll(RUNNER)) {
+  // Con la lectura de los demás guards de shell: lo que un programa sólo lee no es un comando.
+  for (const match of asRun(command).matchAll(RUNNER)) {
     const [, tool, args] = match
     if (CAPPED[tool].test(args) || NO_RUN.test(args)) continue
     const item = command.trim()
