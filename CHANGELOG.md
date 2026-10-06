@@ -14,6 +14,13 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.103.0] - 2026-10-05
+
+### Corregido
+
+- **`check` ya no se cuelga dentro del sandbox de Codex.** En cuanto `done/` citaba un commit, `ops check` no
+  terminaba nunca y la tarea se cerraba sin poder validarla. Pasaba desde 0.100.0 (caso 283).
+
 ## [0.102.0] - 2026-10-05
 
 ### Cambiado

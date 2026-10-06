@@ -93,3 +93,25 @@ test('un repositorio que se alcanza por un enlace se encuentra igual', () => {
     ['found', 'missing'])
 })
 
+// Caso 283; el porqué está en `commitsAmong`. El sandbox no se puede montar acá, así que se mide la causa.
+test('los shas se le pasan a git como argumentos, nunca por stdin', () => {
+  const { target, sha, blob } = instance('cauce-commits-stdin-')
+  const cp = require('node:child_process')
+  const real = cp.spawnSync
+  const fed = []
+  const file = require.resolve('../../engine/core/repos')
+  cp.spawnSync = (command, args, options = {}) => {
+    if (options.input !== undefined) fed.push([command, ...args].join(' '))
+    return real(command, args, options)
+  }
+  delete require.cache[file]
+  try {
+    const status = require(file).commitStatus(target, [
+      { sha, repo: 'api' }, { sha: 'deadbee', repo: 'api' }, { sha: blob, repo: 'api' }])
+    assert.deepEqual(status, ['found', 'missing', 'missing'], 'con uno falso se pregunta de a uno')
+    assert.deepEqual(fed, [])
+  } finally {
+    cp.spawnSync = real
+    delete require.cache[file]
+  }
+})
