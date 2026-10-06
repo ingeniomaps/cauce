@@ -382,7 +382,21 @@ function writableRoots(input) {
     root,
     ...(config.workspaceRoots || []).map((entry) => path.resolve(root, entry.path)),
     ...writableOutsideRoots(root, config).map((entry) => entry.path),
+    ...sessionScratch(input),
   ]
+}
+
+// El scratchpad que el runner le da a la sesión para sus archivos de paso. Claude Code lo manda en cada
+// llamada como `scratchpad_dir`. Sin esto, cada sonda, cada script de una mutación y cada parche que un
+// agente escribía ahí se frenaba por estar fuera de las raíces: 14 de los 44 frenos de una instancia real, y
+// todos terminaban igual, con el agente escribiendo el mismo archivo en otro lado (caso 288).
+//
+// Vale sólo si cuelga del temporal del sistema: el dato llega en la entrada, y una ruta que no sea desechable
+// no se vuelve escribible por venir ahí.
+function sessionScratch(input) {
+  const given = input && typeof input.scratchpad_dir === 'string' ? path.resolve(input.scratchpad_dir) : ''
+  const disposable = [os.tmpdir(), '/tmp'].some((base) => given.startsWith(`${path.resolve(base)}${path.sep}`))
+  return given && disposable ? [given] : []
 }
 
 // La pregunta exacta y nada más. Las excepciones viven en quien las necesita: un `>` a `/dev/null` es

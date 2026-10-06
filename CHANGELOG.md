@@ -29,6 +29,9 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Un agente puede escribir en el scratchpad de su sesión.** Las sondas y los scripts de paso que Claude Code
+  guarda ahí se frenaban por quedar fuera de las raíces declaradas. **Qué hacer:** si habías declarado esa
+  carpeta a mano en `ops.config.local.json`, ya no hace falta (caso 288).
 - **Leer la configuración de las pruebas ya no se toma por correrlas.** `grep -n 'jest' package.json`, o un
   patrón entre comillas seguido de `jest.config.*`, frenaban como un `jest` sin cota de workers (caso 286).
 
