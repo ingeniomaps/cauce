@@ -18,7 +18,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
-const { commandOf, cwdOf, block, opsRoot, configOf, expandAssigned, outsideRoots } = require('./input')
+const { commandOf, cwdOf, block, opsRoot, configOf, assignedValues, outsideRoots } = require('./input')
 const { isTestFile } = require('./files')
 const AP = require('./approval')
 
@@ -41,11 +41,17 @@ function expand(file) {
 // `unlink` o del `rm` de git, saltando lo que va delante sin ser el verbo. La carpeta se sigue tramo a tramo
 // —un `cd` la mueve para los que vienen, y el `-C` de git vale sólo para el suyo—: resuelta una vez para el
 // comando entero, un `rm` detrás de un `git -C app commit` se buscaba dentro de `app/app`.
+//
+// Las variables que el propio comando asigna se resuelven antes: `F="$W/app/test/x.test.js"; rm -- "$F"` es
+// como lo escribe un agente, y así borró una prueba en la primera corrida real con este guard puesto. Lo que
+// va entre comillas simples no se expande, igual que en el shell.
 function removed(command, cwd) {
   const found = []
+  const value = assignedValues(command) || ((text) => text)
   let dir = cwd
   for (const segment of command.split(/[;&|\n]+/)) {
-    const words = (segment.match(/"[^"]*"|'[^']*'|\S+/g) || []).map((word) => word.replace(/^(["'])(.*)\1$/, '$2'))
+    const words = (segment.match(/"[^"]*"|'[^']*'|\S+/g) || [])
+      .map((word) => (word.startsWith("'") ? word.slice(1, -1) : value(word.replace(/^"(.*)"$/, '$1'))))
     while (words.length && (/^[A-Za-z_]\w*=/.test(words[0]) || PREFIXES.has(words[0]))) words.shift()
     const verb = path.basename(words[0] || '')
     if (verb === 'cd' && words[1] && !UNRESOLVED.test(words[1])) dir = path.resolve(dir, words[1])
@@ -78,7 +84,7 @@ function testEvidenceShell(input) {
   // clonado bajo una carpeta `tests/`, todo archivo suyo habría contado como prueba.
   const within = (file) => path.relative(project.filter((base) => !outsideRoots(file, [base]))
     .sort((one, other) => other.length - one.length)[0], file)
-  const targets = removed(expandAssigned(raw), cwdOf(input))
+  const targets = removed(raw, cwdOf(input))
     .filter((file) => !outsideRoots(file, project))
     .filter((file) => isTestFile(within(file)) || TEST_DIR.test(path.basename(file)))
     .filter(committed)

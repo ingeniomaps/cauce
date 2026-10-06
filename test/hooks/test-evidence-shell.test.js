@@ -43,6 +43,9 @@ test('borrar por shell una prueba commiteada se frena, como sea que se la borre'
     // Con comodín: una sola palabra que borra todas.
     'rm app/test/*.test.js', 'rm app/test/leg?do.test.js', 'git -C app rm test/*.js',
     'rm -rf app/test', 'git -C app rm -r test', `D=${app}; cd "$D" && rm test/legado.test.js`,
+    // El comando real que la borró con la primera versión del guard: la ruta en una variable asignada ahí.
+    `W=${root}; cd $W; F="$W/app/test/legado.test.js"; echo "borrando"; rm -- "$F"; echo "rm exit $?"`,
+    `T=app/test; rm $T/legado.test.js`, 'F=app/test/legado.test.js && git rm -q "${F}"',
   ]) blocked('test-evidence-shell', run(command), BORRA)
   blocked('test-evidence-shell', run('rm test/legado.test.js', app), BORRA)
   assert.throws(() => executeAll(['pre-shell'], run('rm app/test/legado.test.js')), BORRA)
@@ -67,6 +70,8 @@ test('lo que no es borrar una prueba del proyecto pasa', () => {
     'rm app/test/nueva.test.js', 'git -C app rm --cached test/nueva.test.js',
     // Lo que el guard no puede resolver no lo adivina.
     'rm "$ALGO/test/legado.test.js"', 'rm app/test/$(echo legado).test.js',
+    // Entre comillas simples el shell tampoco la expande: ese archivo no existe.
+    "F=app/test/legado.test.js; rm '$F'",
     // Un comodín que no alcanza a ninguna prueba commiteada.
     'rm app/test/*.tmp', 'rm app/test/nuev*.js', 'rm app/no-existe/*.test.js',
   ]) assert.doesNotThrow(() => execute('test-evidence-shell', run(command)), command)

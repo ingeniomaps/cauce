@@ -164,4 +164,12 @@ de oscilar. Es el camino principal: toda sesión mezcla conversación directa y 
   del agente de un recorrido.
 - **Seis mutaciones en rojo**, en una copia, entre este caso y el 286.
 - **La puerta entera**, `npm run ci`.
-- **Lo que no se corrió**: un `autobuild` entero sobre la instancia que lo reportó.
+- **Lo que no se corrió**: un `autobuild` entero sobre la instancia que lo reportó. Una regla de autoridad
+  frenando adentro de un recorrido se corrió después, abajo.
+
+### Una regla de autoridad dentro de un recorrido, el 2026-10-06
+
+Lo que este caso no había visto: qué hace el recorrido cuando lo frena una regla que sólo una persona
+resuelve y no hay otra forma de hacer el trabajo. En una corrida real, Build quiso borrar una prueba
+commiteada (caso 294), recibió el bloqueo en 0,1 segundos y lo devolvió; el recorrido paró con
+`build-blocked`, con su fila y el estado de planning commiteado. No hubo diálogo ni espera.
