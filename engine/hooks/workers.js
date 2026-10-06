@@ -13,7 +13,8 @@
 //
 // Sólo se ve la llamada directa. `npm test` corre lo que diga el script, y eso lo cota el script.
 
-const { block, commandOf, opsRoot, asRun } = require('./input')
+const path = require('node:path')
+const { block, commandOf, opsRoot, asRun, configOf } = require('./input')
 const AP = require('./approval')
 
 // En posición de comando —al principio o después de `;`, `&`, `|` o `(`—, con variables de entorno delante:
@@ -32,16 +33,53 @@ const CAPPED = {
 }
 const NO_RUN = /(?:^|\s)(?:--version|--help|-h|--listTests|--showConfig)\b/
 
+// El comando de más afuera que contiene esa posición: desde el último `;`, `&`, `|` o salto de línea que no
+// esté entre comillas. Es el que dice con qué se lanzó lo que va adentro de un `sh -c '…'`.
+function outerCommand(text, index) {
+  let start = 0
+  let quote = ''
+  for (let at = 0; at < index; at += 1) {
+    const char = text[at]
+    if (quote) quote = char === quote ? '' : quote
+    else if (char === "'" || char === '"') quote = char
+    else if (';&|\n'.includes(char)) start = at + 1
+  }
+  return text.slice(start, index)
+}
+
+// Lo que el proyecto declaró que ya corre con tope de recursos —un script que lanza dentro de un contenedor
+// con memoria y CPU acotadas—. Ahí el runner no puede tirar la máquina, que es lo único que este guard
+// cuida, y frenarlo costaba un reintento por cada corrida de pruebas (caso 291). Se compara como
+// `deployCommands`, por cómo empieza el comando, y el programa por su nombre: el mismo script se llama con
+// ruta relativa, absoluta o desde otra carpeta.
+function bounded(outer, declared) {
+  const words = outer.trim().split(/\s+/).filter((word) => !/^[A-Za-z_]\w*=/.test(word))
+  return declared.some((entry) => {
+    const [program, ...rest] = entry.trim().split(/\s+/)
+    return path.basename(words[0] || '') === path.basename(program)
+      && rest.every((word, at) => words[at + 1] === word)
+  })
+}
+
 function testWorkers(input) {
   const command = commandOf(input)
+  const root = opsRoot(input)
+  const declared = (root && configOf(root).boundedCommands) || []
   // Con la lectura de los demás guards de shell: lo que un programa sólo lee no es un comando.
-  for (const match of asRun(command).matchAll(RUNNER)) {
+  const read = asRun(command)
+  for (const match of read.matchAll(RUNNER)) {
     const [, tool, args] = match
     if (CAPPED[tool].test(args) || NO_RUN.test(args)) continue
+    // Desde dónde está el runner y no desde donde empieza la coincidencia, que arranca en el separador: con
+    // `acotado …; npx jest` el comando de afuera de ese `jest` es el segundo.
+    const at = match.index + match[0].length - args.length - tool.length
+    if (declared.length && bounded(outerCommand(read, at), declared)) continue
     const item = command.trim()
-    if (!AP.pending(opsRoot(input), [item], input).length) return
+    if (!AP.pending(root, [item], input).length) return
     block(`'${tool}' sin cota de workers lanza tantos procesos como núcleos, y dos a la vez tiran la máquina. `
-      + `Agregale ${tool === 'jest' ? '--maxWorkers=2 (o --runInBand)' : '--maxWorkers=2 (o --no-file-parallelism)'}.`
+      + `Agregale ${tool === 'jest' ? '--maxWorkers=2 (o --runInBand)' : '--maxWorkers=2 (o --no-file-parallelism)'}. `
+      + 'Si este comando ya corre con tope de recursos, una persona lo declara en boundedCommands de '
+      + 'ops.config.json y el guard deja de opinar sobre él.'
       + `\n${AP.HOW(null, [item], input, [item], { fixable: true })}`)
   }
 }

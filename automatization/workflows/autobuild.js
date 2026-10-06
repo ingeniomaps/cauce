@@ -658,6 +658,16 @@ const commitBlocked = async (slug) => {
   }
 }
 
+// Toda parada con una tarea tomada commitea, no una lista de paradas. El 279 enumeró las cinco que registran
+// una fila, y la primera corrida real que frenó por otra —`verify-hollow`— dejó sin commitear la fila, el
+// reclamo y una propuesta (caso 289). Desde que la tarea se toma hay estado escrito, pare por lo que pare.
+// `holding` es esa tarea; vuelve a vacío cuando el cierre la commitea.
+let holding = ''
+const halt = async (reason, detail = '') => {
+  if (holding) await commitBlocked(holding)
+  return stop(reason, detail)
+}
+
 // Gate, mutex de WIP y selección de tarea salen de un comando determinista: AWAITING_REVIEW, BACKLOG,
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
 const readContext = () => read(
@@ -679,10 +689,10 @@ const readContext = () => read(
 )
 
 let planning = await readContext()
-if (!planning) return stop('context-unavailable', `no se pudo leer el estado de ${P}`)
+if (!planning) return halt('context-unavailable', `no se pudo leer el estado de ${P}`)
 // Que el agente conteste no significa que haya leído: el schema se completa igual con ceros. Parar acá
 // cuesta una corrida; seguir sobre una lectura fallida escribe en el BACKLOG, y eso no se revierte solo.
-if (!planning.readOk) return stop('context-unavailable', `${P} no se pudo leer; revisá la ruta y el cwd`)
+if (!planning.readOk) return halt('context-unavailable', `${P} no se pudo leer; revisá la ruta y el cwd`)
 // La fecha de la primera lectura, para lo que se escribe después de la última: la relectura que cierra la
 // cola puede volver sin `today`, y una fila fechada `undefined` no se puede leer (caso 214).
 const startedOn = planning.today
@@ -700,13 +710,13 @@ while (blocker.length > 1 && QUOTES.includes(blocker[0]) && blocker[blocker.leng
   blocker = blocker.slice(1, -1).trim()
 }
 if (blocker === 'awaiting-review') {
-  return stop('awaiting-human-review', `${GATE} tiene un checkpoint humano sin resolver`)
+  return halt('awaiting-human-review', `${GATE} tiene un checkpoint humano sin resolver`)
 }
 if (blocker === 'blocked-on-human') {
-  return stop('blocked-on-human', `toda la cola espera una acción humana. Está en ${HUMAN}`
+  return halt('blocked-on-human', `toda la cola espera una acción humana. Está en ${HUMAN}`
     + `${(planning.blockedTasks || []).length ? `, sobre ${planning.blockedTasks.join(', ')}` : ''}`)
 }
-if (blocker) return stop('context-unavailable', `${P} contestó blocked=${JSON.stringify(planning.blocked)}, `
+if (blocker) return halt('context-unavailable', `${P} contestó blocked=${JSON.stringify(planning.blocked)}, `
   + 'que no es del vocabulario. No se sabe si hay bloqueo, así que no se sigue como si no lo hubiera.')
 governing = planning.rules || []
 
@@ -745,7 +755,7 @@ while (rounds++ < MAX_TASKS) {
   // propósito —quien paró va a volver, y `claim` le es idempotente—, así que cuando la persona contesta es
   // un runner distinto el que pregunta y el que se va sin nada.
   if (!planning.hasTask && planning.queued > 0) {
-    return stop('queue-unavailable', `la cola tiene ${planning.queued} tarea(s) y ninguna disponible para `
+    return halt('queue-unavailable', `la cola tiene ${planning.queued} tarea(s) y ninguna disponible para `
       + 'este runner. Mirá la línea TAKEN de "ops context": lo reclamado por otro se suelta con '
       + '"ops release" o se retoma desde el runner que lo tiene; lo que espera una dependencia, no.')
   }
@@ -782,7 +792,7 @@ while (rounds++ < MAX_TASKS) {
     )
     if (!claim || !claim.claimed) {
       planning = await readContext()
-      if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
+      if (!planning) return halt('context-unavailable', `no se pudo releer el estado de ${P}`)
       // Perder la carrera es legítimo y se ve en que la cola pasa a ofrecer **otra** tarea: quien la
       // tomó ya la reclamó, así que `context` la saltea. Que vuelva a ofrecer la misma significa lo
       // contrario — que nadie la tiene y el reclamo falló por su cuenta—, y eso no mejora repitiendo.
@@ -797,7 +807,7 @@ while (rounds++ < MAX_TASKS) {
       // BACKLOG, los dos comandos discrepan sobre la misma cola; si dice otra cosa, el comando se compuso
       // distinto del que se pidió.
       if (planning.hasTask && planning.slug === task.id && !planning.claimed) {
-        return stop('claim-stuck', `${task.id} sigue siendo la próxima tarea y no se pudo reclamar. `
+        return halt('claim-stuck', `${task.id} sigue siendo la próxima tarea y no se pudo reclamar. `
           + `context la ofrece y claim la rechaza, así que repetir no cambia nada. `
           + `El reclamo contestó: ${(claim && claim.details) || '(sin detalle)'}`)
       }
@@ -809,6 +819,7 @@ while (rounds++ < MAX_TASKS) {
     }
   }
   currentMilestone = task.hito
+  holding = task.id
 
   // Ver la tarea y, si no está clasificada, clasificarla antes de ejecutarla. Se hace una vez por
   // tarea y se escribe en su línea, así que la decisión sobrevive a la corrida y la puede corregir
@@ -837,7 +848,7 @@ while (rounds++ < MAX_TASKS) {
       log(`Clasificadas: ${classification.classified
         .map((one) => `${one.slug} [${one.lane}] ${one.build}`).join(' · ')}`)
       planning = await readContext()
-      if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
+      if (!planning) return halt('context-unavailable', `no se pudo releer el estado de ${P}`)
       continue
     }
     // Sin clasificación no se frena la tarea: `full` es el carril que no saltea nada, así que lo que
@@ -948,8 +959,7 @@ while (rounds++ < MAX_TASKS) {
       + `${verdict.critical} y la revisión señaló sin poder comprobarlo: ${detail}. La acción humana es `
       + 'comprobarlo antes de reanudar: si es un defecto, se corrige antes de entregar; si no lo es, se deja '
       + 'escrito por qué.', 'critical-human', task.id)
-    await commitBlocked(task.id)
-    return stop('review-unverified', `${verdict.critical}: ${detail}${note}`)
+    return halt('review-unverified', `${verdict.critical}: ${detail}${note}`)
   }
 
   // Las dos paradas no dicen lo mismo. Tras la corrección hubo dos planes y dos rechazos, que es la tercera
@@ -969,8 +979,7 @@ while (rounds++ < MAX_TASKS) {
       + `Motivo: ${detail}. La acción humana es revisar si la unidad son dos resultados con vidas `
       + `distintas y partirla, o dejarla entera con la razón escrita.`, 'plan-human', unit.id)
     await releaseBlocked()
-    await commitBlocked(unit.id)
-    return stop(reason, `${detail}${note}`)
+    return halt(reason, `${detail}${note}`)
   }
 
   // En una línea de trabajo la tarea se construye en un árbol propio. Las líneas comparten por enlace el
@@ -991,7 +1000,7 @@ while (rounds++ < MAX_TASKS) {
       { schema: WORKTREE, label: `worktree:${task.id}` },
     )
     if (!tree || !tree.ok || !tree.work) {
-      return stop('worktree-failed', `${task.id}: ${(tree && tree.details) || 'el comando no devolvió el árbol'}`)
+      return halt('worktree-failed', `${task.id}: ${(tree && tree.details) || 'el comando no devolvió el árbol'}`)
     }
     task.service = tree.work
   }
@@ -1011,14 +1020,13 @@ while (rounds++ < MAX_TASKS) {
         `alcance.`,
         { schema: READY, label: 'ready' },
       )
-      if (!ready) return stop('agent-unavailable', 'Ready no devolvió resultado')
+      if (!ready) return halt('agent-unavailable', 'Ready no devolvió resultado')
       if (!ready.ready) {
         const note = await registerHuman(
           `Registrá ${task.id} en ${HUMAN} con el motivo y una acción humana exacta: ${ready.reason}.`,
           'ready-human', task.id)
         await releaseBlocked()
-        await commitBlocked(task.id)
-        return stop('not-ready', `${ready.reason}${note}`)
+            return halt('not-ready', `${ready.reason}${note}`)
       }
       if (ready.refinedAcceptance) task.acceptance = ready.refinedAcceptance
     }
@@ -1029,7 +1037,7 @@ while (rounds++ < MAX_TASKS) {
         `Inspeccioná ${task.service} y estimá ${task.id}. Partila sólo si supera ${contract.maxTaskHours} horas.`,
         { schema: ESTIMATE, label: 'estimate' },
       )
-      if (!estimate) return stop('agent-unavailable', 'Decompose no devolvió resultado')
+      if (!estimate) return halt('agent-unavailable', 'Decompose no devolvió resultado')
       if (estimate.needsSplit) {
         // Una tarea que viene de una épica es además una historia suya, y la lista de historias no se
         // actualizaba sola: quedaba nombrando un slug que ya no existe en ninguna parte. Medido sobre un
@@ -1049,12 +1057,12 @@ while (rounds++ < MAX_TASKS) {
         await write(`Reemplazá sólo ${task.id} en ${queueFile()} por subtareas ordenadas y verificables de forma ` +
           `independiente: ${JSON.stringify(estimate.subtasks)}.${historias}`, { label: 'split' })
         planning = await readContext()
-        if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
+        if (!planning) return halt('context-unavailable', `no se pudo releer el estado de ${P}`)
         // Misma forma que en Claim: si la cola sigue ofreciendo lo mismo, el estado no cambió y repetir
         // no lo va a cambiar. Acá lo que no cambió es una escritura que se le pidió a un agente, y darla
         // por hecha manda al bucle a partir la misma tarea otra vez.
         if (planning.hasTask && planning.slug === task.id) {
-          return stop('split-not-applied', `se pidió reemplazar ${task.id} en ${queueFile()} por sus `
+          return halt('split-not-applied', `se pidió reemplazar ${task.id} en ${queueFile()} por sus `
             + 'subtareas y la cola sigue ofreciéndola: la escritura no ocurrió como se pidió.')
         }
         // La tarea partida ya no existe, así que su reclamo no reserva nada: lo único que hace es dejar
@@ -1091,7 +1099,7 @@ while (rounds++ < MAX_TASKS) {
       `pasos.${OPERATOR}`,
       { schema: PLAN, label: 'plan' },
     )
-    if (!plan) return stop('agent-unavailable', 'Plan no devolvió resultado')
+    if (!plan) return halt('agent-unavailable', 'Plan no devolvió resultado')
     if (!lite) {
       phase('Critique')
       let critique = await read(
@@ -1099,7 +1107,7 @@ while (rounds++ < MAX_TASKS) {
         `existente.${DECIDED()}${OPERATOR_SAID}${MANIFEST}${VERDICT}${REPLANNED} Plan: ${JSON.stringify(plan)}`,
         { schema: CRITIQUED, label: 'critique' },
       )
-      if (!critique) return stop('agent-unavailable', 'Critique no devolvió resultado')
+      if (!critique) return halt('agent-unavailable', 'Critique no devolvió resultado')
       // Un plan bloqueado no se corrige: lo que lo bloquea está fuera de lo que una segunda pasada puede
       // tocar, así que insistir gasta dos llamadas para llegar al mismo lugar.
       if (critique.verdict === 'bloqueado') {
@@ -1129,7 +1137,7 @@ while (rounds++ < MAX_TASKS) {
           `${REPLANNED} Plan: ${JSON.stringify(plan)}`,
           { schema: CRITIQUED, label: 'critique' },
         )
-        if (!plan || !critique) return stop('agent-unavailable', 'la revisión del plan no devolvió resultado')
+        if (!plan || !critique) return halt('agent-unavailable', 'la revisión del plan no devolvió resultado')
         if (critique.verdict === 'bloqueado' || replans(critique).length) {
           return planRejected('plan-rejected', task, replans(critique))
         }
@@ -1140,7 +1148,7 @@ while (rounds++ < MAX_TASKS) {
       approved = carried(critique)
       approved.conditions = [...kept, ...approved.conditions]
       // Acá el plan ya está aprobado por los dos caminos posibles, así que el contraste va una sola vez.
-      if (!critique.consulted.length) return stop('critique-unbacked', 'aprobó el plan sin declarar qué inspeccionó')
+      if (!critique.consulted.length) return halt('critique-unbacked', 'aprobó el plan sin declarar qué inspeccionó')
     }
     }
     testStrategy = plan.testStrategy || ''
@@ -1177,9 +1185,9 @@ while (rounds++ < MAX_TASKS) {
         properties: { wipActive: { type: 'boolean' }, note: { type: 'string' } },
       } },
     )
-    if (!persisted) return stop('agent-unavailable', 'la persistencia del WIP no devolvió resultado')
+    if (!persisted) return halt('agent-unavailable', 'la persistencia del WIP no devolvió resultado')
     if (!persisted.wipActive) {
-      return stop('wip-not-persisted', `${task.id} entra a Build sin WIP activo: ${persisted.note || ''}`)
+      return halt('wip-not-persisted', `${task.id} entra a Build sin WIP activo: ${persisted.note || ''}`)
     }
   }
 
@@ -1228,17 +1236,17 @@ while (rounds++ < MAX_TASKS) {
     + OPERATOR + WHERE,
     { schema: BUILD, label: 'build' },
   )
-  if (!build) return stop('agent-unavailable', 'Build no devolvió resultado')
-  if (!build.completed) return stop('build-blocked', (build.blockers || []).join('; ') || build.summary)
+  if (!build) return halt('agent-unavailable', 'Build no devolvió resultado')
+  if (!build.completed) return halt('build-blocked', (build.blockers || []).join('; ') || build.summary)
   // Construir no es cerrar. Pasó en una corrida real: el plan traía «VERIFY», «QA» y «Cierre — commit» como
   // pasos, quien construyó los ejecutó, y la tarea salió del BACKLOG y entró a DONE sin que Review, Verify
   // ni QA la miraran. El plan ya no los pide; esto detecta que igual hayan ocurrido.
   if (build.closedTask) {
-    return stop('build-closed-task', `${task.id} se cerró en Build, sin pasar por Review, Verify ni QA`)
+    return halt('build-closed-task', `${task.id} se cerró en Build, sin pasar por Review, Verify ni QA`)
   }
   // Nombrar el test sin traer su fallo es volver a afirmar que hubo rojo, que es lo que el campo evita.
   const unproven = build.redFirst.find((entry) => !entry.failure.trim())
-  if (unproven) return stop('build-unproven', `${unproven.test} se declara en rojo sin el fallo que lo muestra`)
+  if (unproven) return halt('build-unproven', `${unproven.test} se declara en rojo sin el fallo que lo muestra`)
   // Lo que queda abierto no lo cierra quien lo encuentra, pero tampoco frena lo que sí se pudo entregar.
   // Tres corridas reales terminaron acá y las tres traían `completed: true`: el hueco nunca fue «no puedo»
   // sino «hay un borde que alguien tiene que decidir», y una aceptación escrita en prosa siempre tiene uno.
@@ -1308,7 +1316,7 @@ while (rounds++ < MAX_TASKS) {
   // detalle contaba que la prueba sí estaba —la frase del agente y la de la puerta hablaban de cosas
   // distintas y se leían como una—.
   if (loose) {
-    return stop('edge-unproven', `${loose.detail} — su campo "test" (${loose.test || 'vacío'}) no nombra `
+    return halt('edge-unproven', `${loose.detail} — su campo "test" (${loose.test || 'vacío'}) no nombra `
       + `ninguno de los rojos declarados: ${build.redFirst.map((red) => red.test).join(' | ') || '(ninguno)'}`)
   }
 
@@ -1335,7 +1343,7 @@ while (rounds++ < MAX_TASKS) {
       `${VERDICT}${RULED}${SURFACED()}`,
       { schema: REVIEWED, label: 'review' },
     )
-    if (!review) return stop('agent-unavailable', 'Review no devolvió resultado')
+    if (!review) return halt('agent-unavailable', 'Review no devolvió resultado')
     grounded(review)
     // Se junta apenas cada pasada contesta, y no al final: las paradas de abajo salen antes de llegar al
     // registro, y sin esto lo que el revisor señaló se iba con la corrida.
@@ -1349,7 +1357,7 @@ while (rounds++ < MAX_TASKS) {
     const suspected = review.concerns.filter((one) => one.blocking && !one.decision && one.verified === false)
     let decidedNote = ''
     if (review.verdict === 'bloqueado') {
-      return stop('review-blocked', named(review).join('; ') || 'sin condiciones nombradas')
+      return halt('review-blocked', named(review).join('; ') || 'sin condiciones nombradas')
     }
     const unproven = await uncheckedOnCritical(review)
     if (unproven) return unproven
@@ -1372,22 +1380,22 @@ while (rounds++ < MAX_TASKS) {
       review = await run(`Volvé a revisar el diff corregido de ${task.id} contra su aceptación `
         + `—${task.acceptance}—.${WHERE}${MANIFEST}${VERDICT}${RULED}${SURFACED()}`,
         { schema: REVIEWED, label: 'review' })
-      if (!review) return stop('agent-unavailable', 'la re-revisión no devolvió resultado')
+      if (!review) return halt('agent-unavailable', 'la re-revisión no devolvió resultado')
       grounded(review)
       const unprovenAgain = await uncheckedOnCritical(review)
       if (unprovenAgain) return unprovenAgain
       reviewDecisions.push(...review.concerns.filter((one) => one.decision))
       if (review.verdict === 'bloqueado' || blockers(review).length) {
-        return stop('review-failed', named(review).join('; ') || 'sin condiciones nombradas')
+        return halt('review-failed', named(review).join('; ') || 'sin condiciones nombradas')
       }
     }
     // Con reglas que rigen, aprobar sin nombrar contra cuáles es la misma falla que la de abajo en otro eje.
     if (governing.length && !(review.rules || []).length) {
-      return stop('review-unbacked', 'aprobó el diff sin nombrar contra qué reglas revisó')
+      return halt('review-unbacked', 'aprobó el diff sin nombrar contra qué reglas revisó')
     }
     if (governing.length) log(`Review contra: ${review.rules.join(', ')}`)
     // Aprobar sin declarar qué se abrió no se arregla mandando a tocar código: falló quien revisó.
-    if (!review.consulted.length) return stop('review-unbacked', 'aprobó el diff sin declarar qué inspeccionó')
+    if (!review.consulted.length) return halt('review-unbacked', 'aprobó el diff sin declarar qué inspeccionó')
     // Contra qué reglas se revisó va también a la entrada de DONE, y no sólo al journal: el journal muere
     // con la corrida y la entrada queda, así que sin esto no había cómo reconstruir contra cuáles se
     // revisó cuando alguien audita la entrega meses después (caso 122).
@@ -1476,6 +1484,18 @@ while (rounds++ < MAX_TASKS) {
     ? conditions.filter((one) => !OUT_OF_VERIFY.test(one)).join('; ')
       || 'ninguna: todas se declararon fuera de verify'
     : task.acceptance
+  // Lo declarado fuera de verify tampoco frena cuando Verify lo trae igual. No se le manda, pero la tarea
+  // entera está en el WIP y en la cola, así que la lee de ahí y la devuelve sin cubrir: en una corrida real
+  // `verify-hollow` paró por «el job e2e del CI queda en verde», que la aceptación marcaba fuera (caso 290).
+  // Verify la reescribe a su modo —le pone número, le saca la marca—, así que se compara por palabras.
+  const wordsIn = (text) => new Set(String(text).replace(OUT_OF_VERIFY, ' ').toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 3))
+  const declaredOut = (criterion) => outOfVerify.some((condition) => {
+    const said = wordsIn(criterion)
+    const declared = wordsIn(condition)
+    const shared = [...said].filter((word) => declared.has(word)).length
+    return shared > 0 && shared >= 0.6 * Math.min(said.size, declared.size)
+  })
   const VERIFY_ASK = `${asRole(cast.verify)}Abrí el fuente de los tests que la tarea agregó o cambió y ` +
     `contrastá cada criterio ` +
     `de aceptación contra sus aserciones: en uncovered va el criterio que ningún test codifica, con su causa ` +
@@ -1504,38 +1524,39 @@ while (rounds++ < MAX_TASKS) {
     `comando que haya corrido las pruebas, sea cual sea su nombre. ` +
     `Aceptación: ${checkable}.`
   let verified = await run(VERIFY_ASK, { schema: VERIFY, label: 'verify' })
-  if (!verified) return stop('agent-unavailable', 'Verify no devolvió resultado')
+  if (!verified) return halt('agent-unavailable', 'Verify no devolvió resultado')
   // Un criterio que nadie sabe cómo aserciar no es trabajo que falta sino una definición que falta, y
   // definirla acá sería inventarla. Escribir la prueba que falta, en cambio, es trabajo del recorrido:
   // hacer parar a una persona por eso le cobra una interrupción por algo que se resolvía solo.
-  const ambiguous = verified.uncovered.find((entry) => entry.cause === 'ambiguous')
+  const ambiguous = verified.uncovered
+    .find((entry) => entry.cause === 'ambiguous' && !declaredOut(entry.criterion))
   if (ambiguous) {
     const note = await registerHuman(
       `Registrá ${task.id} en ${HUMAN}: el criterio "${ambiguous.criterion}" no dice qué habría ` +
       `que aserciar, y hace falta la decisión que lo fija.`, 'verify-human', task.id)
-    await commitBlocked(task.id)
-    return stop('acceptance-ambiguous', `${ambiguous.criterion}${note}`)
+    return halt('acceptance-ambiguous', `${ambiguous.criterion}${note}`)
   }
   // Lo que no tiene superficie no frena ni rebota: viaja a Done, que lo escribe como `tests: n/a`. Se filtra
   // por exclusión y no por `missing-test` para que una causa que no se conozca siga frenando (R27). Que
   // el modelo no lo use para cerrar sin pruebas lo sostiene `check`, que mira qué tocó el commit.
-  const lacking = () => verified.uncovered.filter((entry) => entry.cause !== 'no-surface')
+  const lacking = () => verified.uncovered
+    .filter((entry) => entry.cause !== 'no-surface' && !declaredOut(entry.criterion))
   if (lacking().length) {
     await run(`${asRole(cast.build)}Escribí sólo las pruebas que faltan en ${task.id}, con el mismo rojo ` +
       `previo, y no toques el código de producción: ${lacking().map((e) => e.criterion).join('; ')}`,
       { label: 'missing-tests' })
     verified = await run(VERIFY_ASK, { schema: VERIFY, label: 'verify' })
-    if (!verified) return stop('agent-unavailable', 'la segunda pasada de Verify no devolvió resultado')
+    if (!verified) return halt('agent-unavailable', 'la segunda pasada de Verify no devolvió resultado')
   }
-  if (!verified.passed || !verified.commands.length) return stop('verify-failed', verified.details)
+  if (!verified.passed || !verified.commands.length) return halt('verify-failed', verified.details)
   // Verde por ausencia: los gates pasaron y ninguno corrió las pruebas que esta tarea escribió. El exit
   // code de lint o de build no dice nada del comportamiento, y la corrida cerraba igual.
   const ranTests = verified.commands.some((entry) => entry.ranTests || RUNS_TESTS.test(entry.cmd))
   if (build.redFirst.length && !ranTests) {
-    return stop('verify-untested', `${task.id} escribió pruebas y ningún gate corrió una`)
+    return halt('verify-untested', `${task.id} escribió pruebas y ningún gate corrió una`)
   }
   if (lacking().length) {
-    return stop('verify-hollow', `sin test que lo codifique: ${lacking().map((e) => e.criterion).join('; ')}`)
+    return halt('verify-hollow', `sin test que lo codifique: ${lacking().map((e) => e.criterion).join('; ')}`)
   }
   const noSurface = verified.uncovered.filter((entry) => entry.cause === 'no-surface')
   const covered = verified.covered || []
@@ -1563,8 +1584,8 @@ while (rounds++ < MAX_TASKS) {
         + 'Una que no se ponga roja no hace fallar el QA: se reporta con red=false.' : ''),
       { schema: QA, label: 'qa' },
     )
-    if (!qa) return stop('agent-unavailable', 'QA no devolvió resultado')
-    if (!qa.passed) return stop('qa-failed', qa.evidence)
+    if (!qa) return halt('agent-unavailable', 'QA no devolvió resultado')
+    if (!qa.passed) return halt('qa-failed', qa.evidence)
   }
 
   // Lo que pasó con cada mutación declarada, dicho siempre: la que se puso roja, la que sobrevivió y la que
@@ -1585,12 +1606,12 @@ while (rounds++ < MAX_TASKS) {
     `y no era de la tarea.${BRANCHED(task.id, tree)}${OPERATOR}`,
     { schema: COMMIT, label: 'commit' },
   ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
-  if (!commit) return stop('agent-unavailable', 'Commit no devolvió resultado')
-  if (!commit.committed) return stop('commit-failed', commit.reason)
+  if (!commit) return halt('agent-unavailable', 'Commit no devolvió resultado')
+  if (!commit.committed) return halt('commit-failed', commit.reason)
   // El commit ya existe, así que esto no lo evita: lo que evita es que la entrada de DONE lo dé por bueno
   // y la corrida siguiente arranque sobre una rama viva adelantada del remoto.
   if (commit.live && !contract.commitToLiveBranch) {
-    return stop('commit-failed', `el commit ${commit.hash || ''} de ${task.id} quedó en la rama viva `
+    return halt('commit-failed', `el commit ${commit.hash || ''} de ${task.id} quedó en la rama viva `
       + `${commit.branch || ''}: movelo a una rama propia antes de reanudar`)
   }
 
@@ -1654,13 +1675,14 @@ while (rounds++ < MAX_TASKS) {
       log(`el estado de planning de ${task.id} quedó commiteado en la rama viva ${stated.branch || ''}: movelo`)
     }
   }
+  holding = ''
   completed.push(task.id)
   planning = await readContext()
-  if (!planning) return stop('context-unavailable', `no se pudo releer el estado de ${P}`)
+  if (!planning) return halt('context-unavailable', `no se pudo releer el estado de ${P}`)
 }
 
 if (rounds > MAX_TASKS) {
-  return stop('milestone-too-long', `la corrida agotó el tope de ${MAX_TASKS} tareas sin cerrar el hito`)
+  return halt('milestone-too-long', `la corrida agotó el tope de ${MAX_TASKS} tareas sin cerrar el hito`)
 }
 
 phase('Closing')
@@ -1683,8 +1705,8 @@ const closing = await write(
     },
   },
 )
-if (!closing) return stop('agent-unavailable', 'Closing no devolvió resultado')
-if (!closing.passed) return stop('planning-check-failed', closing.details)
+if (!closing) return halt('agent-unavailable', 'Closing no devolvió resultado')
+if (!closing.passed) return halt('planning-check-failed', closing.details)
 // Una regla que la revisión mandó a corregir en varias tareas vuelve como lección, sin promover: es lo
 // que el registro de lo corregido (caso 207) existe para alimentar (caso 214). El tope es el del INBOX.
 const learned = (closing.lessons || []).slice(0, INBOX_CAP)

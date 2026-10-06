@@ -90,6 +90,27 @@ test('una condición marcada fuera de verify no llega a Verify ni a QA, y viaja 
   assert.ok(promptOf(out, 'Done|done').includes(`fuera-de-verify=${JSON.stringify([marked])}`))
 })
 
+// Caso 290. Que no se le mande no impide que Verify la traiga: la tarea entera está en el WIP. Reescrita a su
+// modo —numerada, sin la marca—, se la reconoce igual y no frena; la que de verdad falta sigue frenando.
+test('una condición fuera de verify que Verify devuelve sin cubrir no frena el recorrido', async () => {
+  const marked = 'el job e2e del CI de la rama queda en verde (fuera de verify: se observa con la rama empujada)'
+  const ctx = withAcceptance(`el alta rechaza un duplicado; ${marked}`)
+  const echoed = { criterion: '2. El job e2e del CI de la rama queda en verde', cause: 'missing-test' }
+  const out = await runFlow({ [KEY.context]: ctx, [KEY.verify]: verdict([echoed]) }, { contexts: [ctx] })
+  ranToEnd(out.result)
+  assert.ok(!out.asked.includes('Verify|missing-tests'), 'ni manda a escribir una prueba que no puede existir')
+
+  const unsure = await runFlow({ [KEY.context]: ctx,
+    [KEY.verify]: verdict([{ ...echoed, cause: 'ambiguous' }]) }, { contexts: [ctx] })
+  ranToEnd(unsure.result)
+
+  const real = { criterion: 'el alta rechaza un duplicado', cause: 'missing-test' }
+  const hollow = await runFlow({ [KEY.context]: ctx, [KEY.verify]: verdict([echoed, real]) }, { contexts: [ctx] })
+  assert.equal(hollow.result.reason, 'verify-hollow')
+  assert.match(hollow.result.detail, /el alta rechaza un duplicado/)
+  assert.doesNotMatch(hollow.result.detail, /e2e/, 'la parada nombra sólo lo que de verdad falta')
+})
+
 // Done escribía `tests: CN → prueba` sin que nadie le pasara qué prueba cubría qué: el mapeo lo tenía
 // Verify, que lo contrastó leyendo el fuente, y no viajaba (hallazgo del 189).
 test('Done recibe el mapeo criterio → prueba que Verify contrastó', async () => {

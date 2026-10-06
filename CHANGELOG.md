@@ -14,6 +14,32 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.103.2] - 2026-10-06
+
+### Agregado
+
+- **`boundedCommands`: los comandos de tu proyecto que ya corren con tope de recursos.** El guard de workers
+  frenaba un `jest` o un `vitest` sin cota aunque corriera dentro de un contenedor con memoria y CPU
+  acotadas, y costaba un reintento cada vez. **Qué hacer:** si corrés las pruebas con un script así, declaralo
+  en `ops.config.json` —`"boundedCommands": ["scripts/run-in-container.sh"]`— y el guard deja de opinar sobre
+  lo que ese comando lanza. Sin declararlo no cambia nada (caso 291).
+
+### Cambiado
+
+- **El pedido de una corrida va en el mensaje que la lanza.** Claude Code puede relevarle a cada agente de un
+  recorrido tu último mensaje del chat, por encima del texto del recorrido: si la sesión lanza un `autobuild`
+  por su cuenta después de un mensaje sobre otra cosa, ése es el que reciben. Las instrucciones de la
+  instancia ahora lo dicen. **Qué hacer:** lanzá con `/autobuild <lo que querés>` (caso 292).
+
+### Corregido
+
+- **Toda corrida de `autobuild` que frena commitea el estado de planning.** Desde 0.101.0 lo hacía sólo en las
+  paradas que registran una fila; una que frenaba por otra razón —Verify, QA, Commit— dejaba sin commitear la
+  fila, el reclamo y lo anotado (caso 289).
+- **Una condición marcada `(fuera de verify: …)` ya no frena el recorrido.** Si Verify la devolvía igual como
+  sin cubrir, la corrida paraba con `verify-hollow` por una condición que la aceptación había apartado
+  (caso 290).
+
 ## [0.103.1] - 2026-10-06
 
 ### Cambiado

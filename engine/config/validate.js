@@ -44,7 +44,7 @@ function validateOpsConfig(config) {
   // `cauceVersion` la escribe el toolkit, no la persona: registra de qué versión salió la instancia.
   const allowed = new Set([
     '$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoots', 'writableOutsideRoots', 'runner',
-    'migrations', 'inbox', 'deployCommands', 'comments',
+    'migrations', 'inbox', 'deployCommands', 'boundedCommands', 'comments',
   ])
   for (const key of Object.keys(config)) {
     if (RETIRED[key]) errors.push(`ops.config.json: ${key} ya no se usa: ${RETIRED[key]}`)
@@ -62,6 +62,12 @@ function validateOpsConfig(config) {
   if (deploy !== undefined && (!Array.isArray(deploy)
     || deploy.some((one) => typeof one !== 'string' || !one.trim()))) {
     errors.push('ops.config.json: deployCommands debe ser una lista de comandos, tal como se escriben')
+  }
+  // Lo mismo, y con más razón: una entrada vacía coincidiría con cualquier comando y apagaría el guard entero.
+  const bounded = config.boundedCommands
+  if (bounded !== undefined && (!Array.isArray(bounded)
+    || bounded.some((one) => typeof one !== 'string' || !one.trim()))) {
+    errors.push('ops.config.json: boundedCommands debe ser una lista de comandos, tal como se escriben')
   }
   validateRunner(config.runner, errors)
   validateMigrations(config.migrations, errors)
