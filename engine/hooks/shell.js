@@ -165,11 +165,13 @@ function destructive(input) {
   // no aparece entero dentro de «corré git clean -fd», así que aprobar el fragmento no destrabaría lo que
   // la persona escribió. Entero es además lo que ella pegaría en el archivo, y lo más angosto: cualquier
   // otra bandera es otro comando y vuelve a preguntarse.
-  for (const [pattern, message, open] of rules) {
+  for (const [pattern, message, open, by] of rules) {
     if (!pattern.test(command)) continue
-    const item = String(raw).trim()
-    if (open && !AP.pending(opsRoot(input), [item], input).length) continue
-    block(open ? `${message}\n${AP.HOW(null, [item], input)}` : message)
+    const parts = by && by.items(command)
+    const items = parts || [String(raw).trim()]
+    const held = open ? AP.pending(opsRoot(input), items, input, parts ? by.asked : undefined) : items
+    if (!held.length) continue
+    block(open ? `${message}\n${AP.HOW(null, held, input)}` : message)
   }
 }
 

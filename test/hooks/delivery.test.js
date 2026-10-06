@@ -11,6 +11,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { execute, executeAll } = require('../../engine/hooks/run')
 const C = require('../../engine/config/validate')
+const { deliveryRules } = require('../../engine/hooks/delivery')
 
 const run = (root, command, extra = {}) => ({ cwd: root, tool_input: { command }, ...extra })
 
@@ -69,4 +70,88 @@ test('se aprueba como el resto: diálogo en Claude Code, orden por chat o la lí
   } finally { chat.close() }
   pasteApproval(root, messageOf('destructive', run(root, merge)))
   assert.doesNotThrow(() => execute('destructive', run(root, merge)))
+})
+
+// Caso 280. Lo que se mide: que una orden de mergear dicha con palabras pase sin diálogo ni segunda vuelta,
+// en `auto` y donde hay diálogo; que nombrar PRs la acote a ésos; y que lo que no es una orden siga frenando.
+const merges = (root, chat, prompt, mode) => {
+  const turn = chat.says(prompt)
+  return (command) => outcome({ hook_event_name: 'PreToolUse', permission_mode: mode, ...turn(run(root, command)) })
+}
+const outcome = (input) => {
+  try { executeAll(['destructive'], input); return 'pasa' } catch (error) {
+    if (error.ask) return 'diálogo'
+    if (error.blocked) return 'frena'
+    throw error
+  }
+}
+
+test('una orden de mergear pasa sin confirmar de nuevo, y nombrar PRs la acota a ésos', () => {
+  const root = pushRoot('cauce-delivery-orden-')
+  // Una sesión por modo: lo que un modo deja frenado lo aprobaría el mensaje del siguiente, que no niega.
+  for (const mode of ['auto', 'default', 'acceptEdits', 'bypassPermissions']) {
+    const chat = chatSession()
+    try {
+      const named = merges(root, chat, 'mergeá account #39, api #49 y acme-ops #33, #34 y #35', mode)
+      assert.equal(named('gh pr merge 39 --repo acme/account --squash'), 'pasa', mode)
+      assert.equal(named('export GH_TOKEN="$(cat t)"; gh pr merge 35 --repo acme/acme-ops --squash'), 'pasa', mode)
+      assert.notEqual(named('gh pr merge 40 --repo acme/account --squash'), 'pasa', `${mode}: el 40 no se nombró`)
+      assert.notEqual(named('gh pr merge --repo acme/account --squash'), 'pasa', `${mode}: sin número`)
+    } finally { chat.close() }
+  }
+  const chat = chatSession()
+  try {
+    const all = merges(root, chat, 'mergealos todos', 'auto')
+    assert.equal(all('gh pr merge 2 --repo acme/platform --merge && gh pr merge 3 --repo acme/ops --merge'), 'pasa')
+    assert.equal(merges(root, chat, 'PR 7 listo, mergealo', 'auto')('gh pr merge 7 -R acme/app'), 'pasa')
+    assert.equal(merges(root, chat, 'mergeá todos menos uno, pero no el #51', 'auto')('gh pr merge 50'), 'pasa')
+  } finally { chat.close() }
+})
+
+test('lo que no ordena un merge lo sigue frenando', () => {
+  const root = pushRoot('cauce-delivery-no-orden-')
+  const chat = chatSession()
+  try {
+    for (const [prompt, command] of [
+      ['mergeá todos, pero no el #51', 'gh pr merge 51 --repo acme/app'],
+      ['no mergees nada todavía, revisá el #52', 'gh pr merge 52 --repo acme/app'],
+      ['mergeá cuando esté verde, ahora no mergees', 'gh pr merge 52 --repo acme/app'],
+      ['¿mergeamos el #53?', 'gh pr merge 53 --repo acme/app'],
+      ['pará, mergeá el #54 después', 'gh pr merge 54 --repo acme/app'],
+      ['revisá el merge de ayer', 'gh pr merge 55 --repo acme/app'],
+      ['corré los e2e y mergeá el #56', 'gh pr merge 2 --repo acme/app'],
+      ['implementá la tarea de altas', 'gh pr merge 57 --repo acme/app'],
+      ['mergeá el #58', 'gh pr close 58 --repo acme/app'],
+      ['mergeá el #59', 'gh pr merge 59 --repo acme/app && gh pr comment 59 --body listo'],
+      ['mergeá el #60', 'gh pr merge 60 --repo acme/app --admin && git push origin main'],
+    ]) assert.equal(merges(root, chat, prompt, 'auto')(command), 'frena', `${prompt} → ${command}`)
+    // Un subagente no hereda la orden: su llamada no es el mensaje de la persona.
+    const delegated = { hook_event_name: 'PreToolUse', permission_mode: 'auto', agent_id: 'a1',
+      ...chat.says('mergeá el #61')(run(root, 'gh pr merge 61 --repo acme/app')) }
+    assert.throws(() => executeAll(['destructive'], delegated), (error) => error.blocked && !error.ask)
+  } finally { chat.close() }
+})
+
+test('la confirmación de un merge cubre el PR y no la línea de comando', () => {
+  const root = pushRoot('cauce-delivery-item-')
+  const chat = chatSession()
+  try {
+    const first = merges(root, chat, 'seguí con lo tuyo', 'auto')
+    assert.equal(first('gh pr merge 2 --repo acme/app --merge && gh pr merge 3 --repo acme/app --merge'), 'frena')
+    const yes = merges(root, chat, 'confirmo', 'auto')
+    assert.equal(yes('gh pr merge 2 --merge --delete-branch --repo acme/app'), 'pasa', 'el mismo PR, escrito distinto')
+    assert.equal(yes('gh pr merge https://github.com/acme/app/pull/3 --squash'), 'pasa', 'el otro, por su URL')
+    assert.equal(yes('gh pr merge 4 --repo acme/app --merge'), 'frena', 'un PR que no se había frenado')
+    assert.equal(yes('gh pr merge 2 --repo acme/other --merge'), 'frena', 'el mismo número en otro repositorio')
+    assert.equal(yes('gh pr merge 2 --repo acme/app --merge --admin'), 'frena', '--admin es otro acto')
+  } finally { chat.close() }
+  const [, , , by] = deliveryRules({})[0]
+  assert.deepEqual(by.items('gh pr merge 9 -R acme/app --body "listo, va --repo x" -t titulo'),
+    ['gh pr merge 9 --repo acme/app'])
+  assert.deepEqual(by.items("gh pr merge 9 --repo=acme/app -b 'va' ; gh pr merge 9 -R acme/app"),
+    ['gh pr merge 9 --repo acme/app'])
+  assert.deepEqual(by.items('gh pr merge && gh pr merge 9 --repo'), ['gh pr merge', 'gh pr merge 9'])
+  assert.equal(by.items('gh pr merge 9 && gh pr close 8'), null)
+  const message = messageOf('destructive', run(root, 'gh pr merge 2 --squash --repo acme/app'))
+  assert.match(message, /\n {2}gh pr merge 2 --repo acme\/app\n/, 'lo que se pega es el PR, no la línea')
 })

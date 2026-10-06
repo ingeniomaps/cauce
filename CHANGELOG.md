@@ -14,6 +14,21 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.102.0] - 2026-10-05
+
+### Cambiado
+
+- **Un merge que pediste en el chat ya no pide confirmación.** «Mergeá el #12 y el #14» pasa esos dos
+  `gh pr merge` y ningún otro; «mergealos todos», sin números, pasa los de ese turno. Vale en todos los modos
+  de Claude Code, también donde antes se abría el diálogo. No pasa si el mensaje pregunta, niega o arranca
+  frenando, ni desde un subagente. Antes ninguna orden alcanzaba: había que pegar el comando entero, y desde
+  0.101.0 en modo `auto` cada merge pedía su propio mensaje (caso 280).
+
+- **La confirmación de un merge vale para el PR, no para la línea de comando.** Lo que se aprueba —por chat o
+  en `.ops-approval`— es `gh pr merge <PR> --repo <repo>`: el mismo PR con otras banderas ya no vuelve a
+  frenar. `--admin` se aprueba aparte. **Qué hacer:** una línea de `gh pr merge` pegada antes en
+  `.ops-approval` con sus banderas deja de valer; el bloqueo dice la nueva.
+
 ## [0.101.0] - 2026-10-05
 
 ### Cambiado
