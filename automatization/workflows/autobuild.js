@@ -557,28 +557,30 @@ const ran = []
 const announce = phase
 phase = (name) => { ran.push(name); announce(name) }
 
+// El paso de oficina: correr un comando del CLI y devolver lo que imprimió. No decide nada, así que no
+// necesita lo que carga un agente que sí trabaja. Medido sobre una instancia, la primera llamada de un agente
+// del recorrido trae 73.159 tokens de entrada, y 40.782 son lo que la instancia importa; `cauce-clerk` —un
+// agente propio con sólo Bash y sin las instrucciones del proyecto— arranca en unos 3.450 (caso 295). En una
+// corrida real, nueve de veinticuatro agentes eran pasos así.
+//
+// Los guards corren igual: son de la sesión y no del tipo de agente, y se comprobó con éste. Lo que no va por
+// acá es lo que escribe archivos de planning o commitea, que necesita las reglas del proyecto.
+const clerk = (prompt, options = {}) => agent(prompt, { ...options, agentType: 'cauce-clerk' })
 phase('Triage')
 // El contrato se lee una sola vez por corrida y viaja como texto: ningún subagente relee AGENTS.md,
 // workspace.md, ops.config.json ni PROTOCOL.md. `ops check` y el guard planning-drift siguen validando
 // el resultado.
 //
-// `organization/workspace.md` está en esa lista desde que 0.57.0 sacó del `AGENTS.md` lo que sólo sabe
-// el proyecto: los límites que éste amplía o restringe viven ahí, y sin leerlo lo que viaja a cada
-// subagente como «Límites del proyecto» eran sólo los genéricos del toolkit.
-const contract = await agent(
-  `${BASE}\n\nLeé ${ROOT}/AGENTS.md, ${ORG}/workspace.md, ${CONFIG} y ${P}/PROTOCOL.md una sola vez y no ` +
-  `leas nada más. Poné rootOk en true sólo si los cuatro existieron y los pudiste leer; si alguno no ` +
-  `estaba, rootOk en false y el resto en sus valores vacíos, sin deducirlos de otra fuente. ` +
-  `Reportá los ` +
-  `valores de configuración textualmente: project, workspaceRoots como entradas "nombre → ruta", ` +
-  `runner.maxTaskHours, runner.commitPerTask y runner.humanCheckpointBetweenMilestones como humanCheckpoint. ` +
-  `commitToLiveBranch es true sólo si runner.commitToLiveBranch está escrito en true; si falta, false. ` +
-  `En gates poné una entrada "ruta → comando" por cada workspaceRoot que declare \`verify\`, y ninguna por ` +
-  `las que no lo declaren: la lista vacía significa que el proyecto no dice con qué se verifica. ` +
-  `Copiá la sección "## Contratos" de PROTOCOL.md dentro de contracts tal cual, sin reformular, resumir ni ` +
-  `reordenar. En boundaries listá los límites que AGENTS.md enuncia y las "Excepciones de autonomía" que ` +
-  `declare ${ORG}/workspace.md, que son las de este proyecto: si ese archivo no existe o su sección sigue ` +
-  `como la trae el molde, no inventes ninguna.`,
+// Lo deriva `ops contract`, parseando esos cuatro archivos, y el paso sólo lo trae. Hasta 0.103.2 lo hacía un
+// agente que los leía y los transcribía: el comando existía desde 0.91.0 y el cableado esperaba saber cuánto
+// transcribía de verdad ese agente (caso 154). Medido sobre una instancia: los ocho campos de configuración
+// salieron iguales, `contracts` igual salvo el `##` del título, y en `boundaries` el agente sumaba nueve
+// frases del resto de `AGENTS.md` a los tres párrafos que enuncian los límites —2.079 bytes contra 732—. O sea
+// que lo que viajaba a cada subagente era lo que alguien había elegido copiar. Y cuesta la décima parte.
+const contract = await clerk(
+  `Corré "node tools/ops.js contract ${ROOT} --json" desde ${ROOT} y copiá cada campo de su salida tal cual, ` +
+  `sin resumir, reformular ni reordenar. Si el comando sale con un código distinto de 0, poné rootOk en ` +
+  `false y el resto en sus valores vacíos, sin deducirlos de otra fuente ni abrir ningún archivo.`,
   { schema: CONTRACT, label: 'contract-digest' },
 )
 if (!contract) return stop('contract-unavailable', `no se pudo leer ${CONFIG} ni ${P}/PROTOCOL.md`)
@@ -621,15 +623,6 @@ const LEDGER = () => `${SCOPE()}\n\nContratos de planning, textuales de ${P}/PRO
 const read = (prompt, options = {}) => agent(`${BASE}\n\n${prompt}`, options)
 const run = (prompt, options = {}) => agent(`${SCOPE()}\n\n${prompt}`, options)
 const write = (prompt, options = {}) => agent(`${LEDGER()}\n\n${prompt}`, options)
-// El paso de oficina: correr un comando del CLI y devolver lo que imprimió. No decide nada, así que no
-// necesita lo que carga un agente que sí trabaja. Medido sobre una instancia, la primera llamada de un agente
-// del recorrido trae 73.159 tokens de entrada, y 40.782 son lo que la instancia importa; `cauce-clerk` —un
-// agente propio con sólo Bash y sin las instrucciones del proyecto— arranca en unos 3.450 (caso 295). En una
-// corrida real, nueve de veinticuatro agentes eran pasos así.
-//
-// Los guards corren igual: son de la sesión y no del tipo de agente, y se comprobó con éste. Lo que no va por
-// acá es lo que escribe archivos de planning o commitea, que necesita las reglas del proyecto.
-const clerk = (prompt, options = {}) => agent(prompt, { ...options, agentType: 'cauce-clerk' })
 
 // Las paradas que dejan una fila en HUMAN_ACTIONS delegan esa escritura a un agente, y esa fila es el
 // único rastro de la parada: sin ella el recorrido informa un estado que el disco no tiene. Por eso se

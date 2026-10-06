@@ -30,8 +30,10 @@ diseño — eso vive en el commit y en el código.
   árbol de una tarea es correr un comando y devolver su salida, y cada uno cargaba las instrucciones enteras
   del proyecto: unos 73.000 tokens para trabajar unos segundos. Ahora los corre un agente liviano,
   `cauce-clerk`, que arranca en unos 3.500. En una corrida real, nueve de veinticuatro agentes eran pasos así.
-  **Qué hacer:** nada; el agente llega con el runner de Claude al actualizar, en `.claude/agents/`. Los guards
-  lo contienen igual que a cualquier otro (caso 295).
+  El contrato del proyecto entra en lo mismo: lo deriva `ops contract`, que existía desde 0.91.0, en vez de un
+  agente que leía cuatro documentos y los transcribía. Medido en una tarea chica, la corrida entera gasta
+  cerca de una cuarta parte menos. **Qué hacer:** nada; el agente llega con el runner de Claude al actualizar,
+  en `.claude/agents/`. Los guards lo contienen igual que a cualquier otro (casos 295 y 154).
 - **Borrar una prueba por shell se frena, igual que con la herramienta de edición.** Un `rm` o un `git rm`
   sobre una prueba pasaba sin que ningún guard opinara, mientras el mismo borrado con la herramienta de
   archivos pedía a una persona. Ahora se frena igual, también con comodín y para la carpeta entera. Sólo una

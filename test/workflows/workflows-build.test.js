@@ -54,8 +54,10 @@ test('autobuild deriva gate, mutex y selección de tarea del CLI, no de un model
 // una sola vez y que el preámbulo lo diga. Si alguien reescribe esas frases, tiene que volver a acá y
 // confirmar que la garantía sigue en pie, en vez de que se pierda con un cambio de estilo.
 test('autobuild lee el contrato una sola vez y no obliga a releerlo', () => {
-  const reads = workflow.match(/Leé \$\{ROOT\}\/AGENTS\.md/g) || []
-  assert.equal(reads.length, 1, 'AGENTS.md se lee una vez por corrida, en el digest')
+  // El contrato lo deriva `ops contract` y el paso lo trae: ningún agente abre `AGENTS.md` para transcribirlo.
+  const derived = workflow.match(/tools\/ops\.js contract \$\{ROOT\} --json/g) || []
+  assert.equal(derived.length, 1, 'el contrato se deriva una vez por corrida, con el comando')
+  assert.doesNotMatch(workflow, /Leé \$\{ROOT\}\/AGENTS\.md/, 'y ya no se lee para transcribirlo')
   assert.match(workflow, /no vuelvas a leer/, 'el preámbulo prohíbe releer el contrato')
   for (const value of ['maxTaskHours', 'commitPerTask', 'humanCheckpoint']) {
     assert.match(workflow, new RegExp(`contract\\.${value}`), `${value} viaja en el digest, no se relee`)

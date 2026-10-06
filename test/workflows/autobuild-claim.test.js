@@ -283,11 +283,11 @@ test('los pasos de oficina van con el agente liviano, y los que trabajan no', as
   const seen = new Map()
   for (const { prompts } of runs) for (const one of prompts) seen.set(one.key.split('|')[1], one.agentType)
 
-  const clerical = ['planning-context', 'claim:T-1', 'human-row', 'release:T-1', 'worktree:T-1']
+  const clerical = ['contract-digest', 'planning-context', 'claim:T-1', 'human-row', 'release:T-1', 'worktree:T-1']
   for (const label of clerical) assert.equal(seen.get(label), 'cauce-clerk', label)
   const working = [...seen].filter(([label]) => !clerical.includes(label))
   assert.ok(working.length > 10, `se vieron ${working.length} pasos que trabajan`)
   for (const [label, type] of working) assert.equal(type, '', `${label} carga las reglas del proyecto`)
-  for (const label of ['contract-digest', 'plan', 'build', 'review', 'verify', 'commit', 'done', 'planning-commit',
+  for (const label of ['qa', 'plan', 'build', 'review', 'verify', 'commit', 'done', 'planning-commit',
     'plan-human', 'planning-block']) assert.ok(seen.has(label), `la prueba no llegó a ver ${label}`)
 })

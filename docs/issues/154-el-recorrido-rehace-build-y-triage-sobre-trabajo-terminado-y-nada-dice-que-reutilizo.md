@@ -198,3 +198,14 @@ tacha**: su bloqueo no es trabajo, es un número que no sale de este repositorio
 - **Medición del efecto**: con `complete: 9, pending: 0` no se pide `Build|build` y las fases quedan
   `Triage → Pick → Build (reanudado) → Review → …`; con `complete: 3, pending: 6` se pide como siempre; sin
   `wip` declarado, también.
+
+### El cableado que este cierre dejó pendiente, el 2026-10-06
+
+El punto 2 quedó «construido a medias y sin cablear» a la espera de saber cuánto transcribe de verdad el
+agente de `contract-digest`. Se midió en una sesión real, con el agente y el comando sobre la misma instancia:
+los ocho campos de configuración salieron iguales; `contracts`, igual salvo el `##` del título; y `boundaries`
+del agente pesó 2.079 bytes contra los 732 del comando, porque sumaba nueve frases tomadas del resto de
+`AGENTS.md`. La preocupación de este cierre —que derivarlo multiplicara el contexto— se dio al revés.
+
+Con eso `autobuild` deriva el contrato con `ops contract --json` desde 0.103.3. Lo corre el agente de oficina
+del caso 295, y el paso pasó de escribir 78.254 tokens en caché a 5.258.

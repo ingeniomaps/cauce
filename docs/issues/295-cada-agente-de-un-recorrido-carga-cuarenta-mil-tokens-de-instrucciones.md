@@ -123,25 +123,49 @@ decisión.
 leer la cola, comprobar que una fila quedó pendiente, reclamar, soltar y armar el árbol de una tarea. El
 agente llega con la instalación del runner de Claude, en `.claude/agents/`.
 
-Quedaron afuera a propósito: leer el contrato, que resume cuatro documentos; todo lo que escribe archivos de
-planning; y los commits, que necesitan las reglas del proyecto.
+Quedaron afuera a propósito todo lo que escribe archivos de planning y los commits, que necesitan las reglas
+del proyecto.
 
-**Corrida real**, la misma tarea `lite` con `--max 1` en un banco sidecar: cerró igual que antes —el producto
-en su rama, planning commiteado en `work/planning`—, con dieciocho agentes. Los cuatro pasos de oficina de esa
-corrida escribieron 19.513 tokens en caché entre todos; cada uno de los otros catorce, entre 79.814 y
-226.241. Con el agente de siempre esos cuatro habrían estado en el rango de los demás.
+**Corrida real**, una tarea `lite` con `--max 1` en un banco sidecar: cerró como antes —el producto en su
+rama, planning commiteado en `work/planning`—, con diecisiete agentes en ocho minutos. Contando una vez cada
+mensaje de sus transcriptos:
 
-### Lo que esa corrida mostró y no se tocó
+| Agentes | Escriben en caché |
+|---|---|
+| Los 5 pasos de oficina | 24.455 entre los cinco, unos 4.900 cada uno |
+| Los 12 que trabajan | de 65.589 a 106.495 cada uno |
+| La corrida entera | 1.053.293 |
 
-- **Leer el contrato es el paso más caro, 226.241 tokens.** Lee `AGENTS.md`, `PROTOCOL.md`, `workspace.md` y
-  la configuración con sus herramientas, y los dos primeros ya los trae cargados por las instrucciones del
-  proyecto: los paga dos veces.
-- Los catorce agentes que trabajan siguen arrancando en unos 75.000 tokens. Eso es el camino 2.
+Con el agente de siempre esos cinco habrían escrito lo que los demás, unos 80.000 cada uno: la corrida habría
+rondado 1.430.000. El ahorro es cerca de una cuarta parte.
+
+### El contrato, con el comando que ya existía
+
+Leer el contrato quedó adentro de la oficina. `ops contract --json` existe desde 0.91.0 para esto, y el
+cableado esperaba una medición que el caso 154 dejó escrita y nadie había hecho. Hecha, con el paso del
+agente y el comando sobre la misma instancia: los ocho campos de configuración iguales, `contracts` igual
+salvo el `##` del título, y `boundaries` más corto —732 bytes contra 2.079—, porque el agente le sumaba
+frases del resto de `AGENTS.md`. El paso pasó de escribir 78.254 tokens en caché a 5.258.
+
+### Una corrección a este mismo caso
+
+Una versión anterior de esta sección decía que leer el contrato costaba 226.241 tokens y que los agentes que
+trabajan escribían hasta ese número. Estaba mal: el recuento sumaba una vez por cada bloque de un mensaje, y
+un mensaje con varias llamadas a herramientas contaba varias veces. Los números de arriba cuentan cada
+mensaje una vez. Los de la primera llamada de cada agente, que son los de la tabla por tipo, no cambian:
+se leen de un solo mensaje.
+
+### Lo que sigue sin tocar
+
+Los doce agentes que trabajan arrancan en unos 75.000 tokens y leen de caché entre 157.000 y 961.000 a lo
+largo de sus llamadas. Eso es el camino 2.
 
 ### Qué se corrió
 
 - **La medición por tipo de agente**, arriba.
-- **La corrida real**, con el recuento por agente sacado de sus transcriptos.
+- **Dos corridas reales**, con el recuento por agente sacado de sus transcriptos; la segunda, con el contrato
+  ya cableado, es la de la tabla.
+- **El contrato por agente y por comando**, en una misma sesión, comparados campo por campo.
 - **Tres mutaciones en rojo**, en una copia: la oficina de vuelta al agente de siempre, lo que trabaja mandado
   también por la oficina, y el agente cargando otra vez las instrucciones.
 - **La puerta entera**, `npm run ci`.
