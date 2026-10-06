@@ -23,6 +23,9 @@ diseño — eso vive en el commit y en el código.
   Build y dejaba un reclamo y una fila pendiente sobre una tarea que habías excluido. Ahora el reclamo recibe
   el pedido y, si la excluye, la corrida termina como cuando se queda sin tareas. `--max N` sigue siendo la
   forma que no depende de que un agente lo interprete (caso 297).
+- **Un `cd` con el destino entre comillas ya no frena la escritura que le sigue.** `cd "/ruta" && sed -i …
+  archivo` se bloqueaba por «destino que no se puede resolver» aunque la ruta estuviera escrita entera. Ahora
+  se resuelve y se juzga igual que sin comillas: adentro de tus raíces pasa y afuera se frena (caso 298).
 
 ## [0.103.3] - 2026-10-06
 
