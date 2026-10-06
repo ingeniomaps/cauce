@@ -16,6 +16,14 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.103.2] - 2026-10-06
 
+### Agregado
+
+- **`boundedCommands`: los comandos de tu proyecto que ya corren con tope de recursos.** El guard de workers
+  frenaba un `jest` o un `vitest` sin cota aunque corriera dentro de un contenedor con memoria y CPU
+  acotadas, y costaba un reintento cada vez. **Qué hacer:** si corrés las pruebas con un script así, declaralo
+  en `ops.config.json` —`"boundedCommands": ["scripts/run-in-container.sh"]`— y el guard deja de opinar sobre
+  lo que ese comando lanza. Sin declararlo no cambia nada (caso 291).
+
 ### Corregido
 
 - **Toda corrida de `autobuild` que frena commitea el estado de planning.** Desde 0.101.0 lo hacía sólo en las

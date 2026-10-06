@@ -5,6 +5,8 @@
 // no se frene, y que se apruebe como el resto.
 
 const { blocked, messageOf, pushRoot, pasteApproval } = require('../support/hooks-harness')
+const fs = require('node:fs')
+const path = require('node:path')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const { execute } = require('../../engine/hooks/run')
@@ -53,4 +55,40 @@ test('leer la configuración de las pruebas no es correrlas', () => {
   for (const command of ["sh -c 'npx jest'", 'bash -lc "cd api && vitest run"', 'grep -q x y; npx jest']) {
     blocked('test-workers', run(root, command), /sin cota de workers/)
   }
+})
+
+// Caso 291. Un runner lanzado con el envoltorio del proyecto corre dentro de un contenedor con memoria y CPU
+// acotadas: no puede tirar la máquina, que es lo único que este guard cuida. Lo declara el proyecto, y vale
+// para lo que ese comando lanza y para nada más del mismo renglón.
+test('un runner lanzado con un comando que el proyecto declaró acotado no se frena', () => {
+  const root = pushRoot('cauce-workers-acotado-')
+  const declare = (boundedCommands) => fs.writeFileSync(path.join(root, 'ops.config.json'),
+    JSON.stringify({ mode: 'embedded', runner: { allowPush: false }, boundedCommands }))
+  const inside = "acme-run.sh -C api sh -c 'pnpm exec jest src/decisions; echo listo'"
+  blocked('test-workers', run(root, inside), /boundedCommands de ops\.config\.json/)
+
+  declare(['acme-run.sh'])
+  for (const command of [inside, `scripts/${inside}`, `/opt/acme/bin/${inside}`, `CI=1 ./${inside}`,
+    'acme-run.sh -C web sh -c "npx vitest run"',
+    // El segundo comando real: el runner va después de un separador, pero adentro de las comillas.
+    "acme-run.sh -C api sh -c 'pnpm exec tsc --noEmit; pnpm lint; pnpm exec jest src/decisions'",
+  ]) assert.doesNotThrow(() => execute('test-workers', run(root, command)), command)
+  for (const command of [
+    'npx jest', 'jest src/', "otro-run.sh -C api sh -c 'npx jest'",
+    // Lo acotado es ese comando: lo que va después del separador corre afuera.
+    "acme-run.sh -C api sh -c 'pnpm lint'; npx jest", 'acme-run.sh -C api true && npx vitest run',
+    'echo acme-run.sh; npx jest',
+  ]) blocked('test-workers', run(root, command), /sin cota de workers/)
+
+  // Con más de una palabra, tienen que coincidir todas: `docker compose exec` no es `docker compose run`.
+  declare(['docker compose exec'])
+  assert.doesNotThrow(() => execute('test-workers', run(root, "docker compose exec api sh -c 'npx jest'")))
+  blocked('test-workers', run(root, "docker compose run api sh -c 'npx jest'"), /sin cota de workers/)
+  blocked('test-workers', run(root, "docker run api sh -c 'npx jest'"), /sin cota de workers/)
+
+  const C = require('../../engine/config/validate')
+  assert.ok(C.validateOpsConfig({ project: 'x', mode: 'embedded', boundedCommands: ['acme-run.sh', ''] })
+    .includes('ops.config.json: boundedCommands debe ser una lista de comandos, tal como se escriben'))
+  assert.ok(!C.validateOpsConfig({ project: 'x', mode: 'embedded', boundedCommands: ['acme-run.sh'] })
+    .some((one) => /boundedCommands/.test(one)))
 })
