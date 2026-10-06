@@ -108,8 +108,9 @@ te frena es el peor para elegir bien.
 **Si lo pediste vos en el chat, no hace falta nada.** Los guards contienen al agente cuando decide solo o
 cuando trabaja dentro de un recorrido; lo que vos pedís directo no se frena. Nombrá lo que querés que
 toque —«borrá la prueba de altas», «reescribí la migración 004»— y pasa sin preguntarte de nuevo. Un merge
-se pide igual, con tus palabras: «mergeá el #12 y el #14» pasa esos dos y ningún otro, y «mergealos todos»
-pasa los merges de ese turno. Si tu
+se pide con tus palabras, las que sean: no hay una frase que haya que usar. Si nombrás PRs —«el #12 y el #14»—
+pasan ésos y ningún otro; si no nombrás ninguno —«dale con todos»— pasan los de ese turno. No pasa lo que
+negás o exceptuás, ni nada si tu mensaje pregunta o frena. Si tu
 pedido no lo nombraba y algo se frena, **en Claude Code se abre su diálogo de confirmación** para esa acción,
 con el motivo del guard: lo aprobás o lo rechazás ahí, sin palabras que elegir, y un mensaje tuyo sobre otra
 cosa no aprueba nada. En Codex y Gemini, que no tienen ese diálogo, y en el modo `auto` de Claude Code, donde

@@ -414,6 +414,19 @@ tocan juntos: desincronizados, el que miente es el que se lee sin abrir el archi
   firma una persona— y una propiedad que cruza archivos, que se renombra en todos o rompe uno. El
   segundo es el caro: cambiarlo dejó molde y regex consistentes entre sí e incompatibles con todo lo
   escrito antes, y `npm run ci` siguió en verde.
+- **Un guard no decide con una lista de palabras permitidas.** Lo que la persona quiso lo lee el agente, que
+  es quien entiende intención; un guard es un script y sólo ve palabras. Por eso un guard nunca exige que
+  el mensaje traiga cierto verbo o cierta frase para dejar pasar: decide sólo la dirección segura —lo que
+  niega, lo que frena, lo que pregunta— y lo que se puede comprobar sin interpretar, como el número de un PR,
+  un remoto, una rama o una ruta. Una lista de formas de pedir siempre queda corta, y cada forma que falta
+  es una persona repitiendo lo que ya dijo.
+
+  Pasó dos veces. La confirmación exigía empezar con una de once formas y frenaba «confirmo» (caso 184); y
+  la orden de mergear de 0.102.0 traía diez verbos y frenaba nueve de doce maneras de pedir el mismo merge.
+  La segunda se escribió después de que el dueño lo hubiera pedido, así que esta línea existe para que no
+  haya una tercera. Las listas que quedan en `engine/hooks/chat.js` —`ASKS` y `PUSHES`— son anteriores y
+  son deuda: no se copian ni se amplían como salida.
+
 - Las pruebas corren con `node --test`. La puerta real es `npm run ci`: `check`, automatización,
   integraciones y cobertura, y `prepublishOnly` la exige antes de publicar.
 - **La pasada de comentarios que pide R11 no la cubre la puerta.** «Ninguna razón está escrita en dos
