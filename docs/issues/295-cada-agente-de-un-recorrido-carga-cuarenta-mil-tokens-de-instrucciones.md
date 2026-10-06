@@ -58,14 +58,41 @@ reclamar, anotar, commitear planning— y pagaron el piso entero para trabajar e
 - `automatization/workflows/autobuild.js` usa un agente para cada paso de oficina —`readContext`, el reclamo,
   soltar, los commits de planning—, porque el recorrido no tiene otra forma de ejecutar un comando.
 
-No está establecido si el runner permite lanzar un agente de recorrido con menos contexto.
+Qué permite el runner para cargar menos se midió después, y está en «Lo que ofrece el runner».
+
+## Lo que ofrece el runner
+
+De la referencia de workflows de Claude Code y de su documentación de subagentes, comprobado en cada punto
+con una sesión real (2.1.291) sobre una instancia de Cauce:
+
+- **Un recorrido no corre comandos sin un agente.** [Documentado: «No direct filesystem or shell access from
+  the workflow itself».] No se puede sacar el agente de un paso de oficina; se puede elegir cuál.
+- **`agent()` acepta `agentType`**, con los tipos integrados y los que el proyecto define en `.claude/agents/`.
+- **Un agente propio puede declarar `omitClaudeMd: true`** y dejar de recibir las instrucciones del proyecto.
+  [Verificado: con eso y `tools: Bash`, la primera llamada baja a unos 3.450 tokens.]
+
+El mismo paso —correr un comando del CLI y devolver su salida con un esquema—, por tipo de agente:
+
+| Tipo de agente | Tokens en la primera llamada | Corre comandos que escriben |
+|---|---|---|
+| El de hoy, por defecto | 73.159 | sí |
+| Propio, `tools: Bash` | 42.254 | sí: reclamó una tarea y commiteó |
+| Integrado `Explore` | 22.958 | no: se negó a reclamar y a commitear |
+| Propio, `tools: Bash` y `omitClaudeMd: true` | 3.444 | sí: corrió el reclamo |
+
+En los cuatro el guard de credenciales frenó un `cat .env`: cambiar el tipo de agente no apaga los guards.
+
+Lo que no se midió: si un agente sin las instrucciones del proyecto commitea respetando sus reglas —rutas por
+nombre, sin firmas de IA— cuando sólo las recibe en el pedido. Y `Explore` con un modelo más chico cargó
+menos, 13.457, pero usó diez llamadas donde los otros usaron cuatro.
 
 ## Fix propuesto
 
 Pide una decisión del dueño, y antes una medición más:
 
-1. **Averiguar qué ofrece el runner** para que un agente de recorrido no cargue las instrucciones del
-   proyecto, o para correr un comando sin agente. De eso depende todo lo demás.
+1. **Un agente propio para los pasos de oficina**, sin las instrucciones del proyecto y con sólo Bash: leer
+   la cola, el contrato, comprobar una fila, reclamar, soltar, armar el árbol. Cada uno pasa de 73.000 tokens
+   a unos 3.500. Los commits de planning son candidatos, con lo que queda sin medir arriba.
 2. **Achicar lo que se importa siempre**: dejar en el `CLAUDE.md` lo que toda sesión necesita y mover el resto
    a algo que se cargue cuando hace falta, como los cargos.
 3. **Juntar pasos de oficina** en menos agentes: el que lee la cola puede reclamar en la misma vuelta.
