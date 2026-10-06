@@ -72,7 +72,8 @@ La misma corrida que el 278.
   comprobar sobre una superficie crítica y el criterio ambiguo de Verify. La fila que Review registra por una
   decisión no para la corrida, y la commitea el cierre.
 - **Tradeoff, un agente más — se paga.**
-- **Tradeoff, la embebida en `main` — no se midió.** Las corridas fueron en una línea, cuya rama no es viva.
+- **Tradeoff, la embebida en `main` — se midió, y ocurre como se esperaba.** La parada pasa el repositorio a
+  `work/planning`; `main` no recibe el commit.
 
 ### Qué se corrió
 
@@ -80,6 +81,9 @@ La misma corrida que el 278.
   existía y `git status` mostraba el reclamo borrado. Ése es el defecto del orden.
 - **Una corrida real que frenó en la crítica**, con el orden corregido: el commit lleva la fila y la línea
   de la cola, sin el reclamo, y `git status --short` no devuelve nada. `ops check planning` en verde.
+- **Una corrida real en una instancia embebida parada en `main`**, frenada en la crítica: el commit
+  `chore(planning): block …` quedó en `work/planning` con la fila y la línea de la cola, `main` siguió en su
+  commit y `git status` no devolvió nada.
 - **Cuatro mutaciones en rojo**, en una copia: sin el commit, sin el interruptor, el commit antes de soltar,
   y la parada de Verify sin commitear.
 - **La puerta entera**, `npm run ci`.
