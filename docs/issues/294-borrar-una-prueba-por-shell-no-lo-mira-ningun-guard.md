@@ -1,14 +1,15 @@
 ---
 caso: 294
 titulo: borrar una prueba por shell no lo mira ningún guard
-estado: abierto
+estado: resuelto
+resuelto-en: 0.103.3
 prioridad: media
 version-detectada: 0.103.2
 ---
 
 # 294 — `rm` o `git rm` sobre una prueba pasa, y el mismo borrado con la herramienta de edición se frena
 
-**🔴 abierto** · detectado en 0.103.2 · prioridad **media**.
+**🟢 resuelto en 0.103.3** · detectado en 0.103.2 · prioridad **media**.
 
 **Prioridad media**: es un freno que existe y se esquiva sin querer. Borrar o apagar una prueba es lo que
 vuelve verde una suite sin arreglar nada, y por eso pide a una persona; por shell no lo pide nadie.
@@ -70,3 +71,43 @@ frena. La tarea pedía borrar una prueba y no hubo freno que observar.
 
 - 285 — qué hace un guard al frenar: de autoridad, y dentro de un recorrido bloquea.
 - 104 — leer una credencial por shell, el mismo hueco en otro guard, que ya se cerró.
+
+## Cierre
+
+**Resuelto en 0.103.3.** El dueño eligió la opción 1.
+
+### El recorrido de lo que este caso enumeró
+
+- **1, que el shell mire lo mismo — se hizo distinto en un punto.** `rm`, `unlink` y `git rm` sobre una
+  prueba se frenan con la salida de `test-evidence`. `mv` quedó afuera: mover una prueba no la saca de la
+  suite, y renombrarla es trabajo corriente.
+- **2, dejarlo y decirlo — se decidió que no.**
+- **Tradeoff, frena también el borrado legítimo — se paga**, acotado a lo que importa: sólo una prueba ya
+  commiteada, y sólo dentro de la instancia y sus raíces. La que el agente escribió en la misma tarea y
+  quiere rehacer pasa, y una copia desechable también.
+- **Tradeoff, cubre la forma habitual — se paga.** Una ruta con una variable sin resolver o un script que
+  borra, pasan.
+
+### Lo que el caso no preveía
+
+- **El comodín.** `rm test/*.test.js` nombra una sola palabra y borra todas. La primera versión lo dejaba
+  pasar, y lo encontró una mutación que sobrevivía. Ahora el comodín del último tramo se resuelve mirando la
+  carpeta.
+- **La carpeta entera**: `rm -rf test` se frena igual que un archivo.
+- **Un borrado detrás de un commit en el mismo renglón.** La primera versión no miraba un comando que
+  commiteaba, para no leer su mensaje como orden, y con eso dejaba pasar el `rm` que viniera después. El
+  mensaje va entre comillas y nunca fue un problema; se quitó esa salida.
+- **Dónde está la prueba.** Si es una prueba se decide por su ruta dentro del proyecto. Con el proyecto
+  clonado bajo una carpeta llamada `tests`, la ruta entera habría vuelto prueba a todos sus archivos.
+
+### Qué se corrió
+
+- **La reproducción, antes y después**, contra el guard: los tres comandos salían con 0 y ahora se frenan.
+- **Lo que tiene que pasar**, veinte formas: borrar un fuente, leer la prueba, `git mv`, el mensaje de un
+  commit que nombra el borrado, una copia en el temporal, la prueba sin commitear, un comodín que no alcanza a
+  ninguna prueba, y lo que no se puede resolver.
+- **Doce mutaciones en rojo**, en una copia. Dos sobrevivieron la primera vez y cambiaron el código: la del
+  commit y la del comodín, de arriba.
+- **La puerta entera**, `npm run ci`.
+- **Lo que no se corrió**: una sesión real. La corrida que encontró el hueco fue con el motor anterior; con
+  éste no se relanzó.

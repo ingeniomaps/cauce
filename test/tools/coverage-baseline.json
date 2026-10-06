@@ -463,5 +463,10 @@
     "lines": 100,
     "branches": 93,
     "functions": 100
+  },
+  "engine/hooks/test-evidence-shell.js": {
+    "lines": 100,
+    "branches": 97,
+    "functions": 100
   }
 }

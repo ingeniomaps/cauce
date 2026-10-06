@@ -308,7 +308,7 @@ function engineWrites(input) {
 }
 
 module.exports = {
-  credential, patternNames,
+  credential, patternNames, isTestFile,
   secrets, secretsRead, integrationSnapshot, generated, testEvidence, planFirst, workspaceBoundary,
   engineWrites,
 }

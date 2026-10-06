@@ -24,6 +24,15 @@ diseño — eso vive en el commit y en el código.
   sin push ni PR`—, y si igual lo pedís con palabras, el agente que se niega a tomar la siguiente termina la
   corrida en vez de romperla (caso 293).
 
+### Cambiado
+
+- **Borrar una prueba por shell se frena, igual que con la herramienta de edición.** Un `rm` o un `git rm`
+  sobre una prueba pasaba sin que ningún guard opinara, mientras el mismo borrado con la herramienta de
+  archivos pedía a una persona. Ahora se frena igual, también con comodín y para la carpeta entera. Sólo una
+  prueba ya commiteada, dentro de tu proyecto: la que el agente escribió en la misma tarea, o una copia
+  desechable, no. **Qué cambia para vos:** una tarea que pide retirar una prueba va a parar hasta que lo
+  apruebes —nombrándola en el chat, o con la línea en `.ops-approval`— (caso 294).
+
 ## [0.103.2] - 2026-10-06
 
 ### Agregado
