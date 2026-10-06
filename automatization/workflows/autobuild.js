@@ -446,6 +446,12 @@ const OPERATOR = ASKED ? ` Quien lanzó esta corrida pidió, para todas sus tare
 // plan una decisión atribuida a «quien lanzó la corrida», no tuvo contra qué contrastarla y la dejó
 // marcada como supuesto.
 const OPERATOR_SAID = ASKED ? ` Para que lo contrastes: quien lanzó esta corrida pidió «${ASKED}».` : ''
+// A quien reclama el pedido le llega entero, porque es el único que puede declinar una tarea que la persona
+// excluyó con palabras. Sin el pedido la instrucción de declinar no tenía contra qué decidir: una corrida real
+// lanzada con «sólo esta tarea» reclamó la siguiente, la planificó y frenó en Build (caso 297).
+const DECLINABLE = ASKED ? ` Quien lanzó esta corrida pidió: «${ASKED}». Si eso excluye esta tarea —pide parar `
+  + 'antes, o que sea sólo otra—, no corras el comando: claimed=false, declined=true y en details la frase que '
+  + 'lo pide. Si no dice qué tareas tomar, corré el comando.' : ''
 // Acompaña a todo prompt con schema DECISION: el schema obliga a llenar `consulted`, y esto obliga a
 // llenarlo con lo que se abrió en vez de con lo que se pensaba mirar.
 const MANIFEST = ' Enumerá en consulted cada archivo, diff o comando que hayas abierto de verdad, con su ruta.'
@@ -806,9 +812,7 @@ while (rounds++ < MAX_TASKS) {
     const claim = await clerk(
       `Corré "node tools/ops.js claim ${P} ${task.id}" desde ${ROOT}. No escribas ningún archivo vos: lo ` +
       `escribe el comando. claimed=true sólo con exit 0; si falla porque la tomó otro, claimed=false y ` +
-      `copiá el mensaje en details. Si quien lanzó la corrida pidió que no se tome esta tarea —que parara ` +
-      `antes, o que fuera sólo otra—, no corras el comando: claimed=false, declined=true y en details la ` +
-      `frase que lo pide.`,
+      `copiá el mensaje en details.${DECLINABLE}`,
       { schema: CLAIM, label: `claim:${task.id}` },
     )
     // No es una falla ni una carrera perdida: la corrida termina como cuando se queda sin tareas.

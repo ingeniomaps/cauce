@@ -265,7 +265,15 @@ test('una corrida acotada a N tareas, o cuyo reclamo se declina a pedido, termin
   assert.deepEqual(declined.result.done, ['T-1'])
   assert.ok(declined.said.some((line) => /T-2 no se tomó, a pedido de quien lanzó la corrida: «Sólo la/.test(line)))
   assert.ok(!declined.phases.slice(declined.phases.lastIndexOf('Claim')).includes('Build'), 'no la construye')
-  assert.match(declined.prompts.find((one) => one.key === 'Claim|claim:T-2').prompt, /declined=true/)
+  assert.doesNotMatch(declined.prompts.find((one) => one.key === 'Claim|claim:T-2').prompt, /declined=true/,
+    'sin pedido no hay contra qué declinar')
+  // Quien reclama decide con el pedido a la vista: sin él, la corrida real reclamó la tarea excluida (caso 297).
+  const asked = await runFlow(T2, { ...two, args: 'Sólo la tarea T-1; al cerrarla, parar. --max 5' })
+  for (const id of ['T-1', 'T-2']) {
+    const prompt = asked.prompts.find((one) => one.key === `Claim|claim:${id}`).prompt
+    assert.match(prompt, /pidió: «Sólo la tarea T-1; al cerrarla, parar\.»\. Si eso excluye esta tarea/, id)
+    assert.match(prompt, /declined=true/)
+  }
 })
 
 // Caso 295. Los pasos que sólo corren un comando del CLI van con el agente de oficina, que no carga las

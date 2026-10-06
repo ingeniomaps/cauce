@@ -14,6 +14,16 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.103.4] - 2026-10-06
+
+### Corregido
+
+- **Pedirle a `autobuild` «sólo esta tarea» con palabras vuelve a terminar ahí.** En 0.103.3 el agente que
+  reclama la tarea siguiente no recibía el pedido, así que la tomaba: la corrida la planificaba, frenaba en
+  Build y dejaba un reclamo y una fila pendiente sobre una tarea que habías excluido. Ahora el reclamo recibe
+  el pedido y, si la excluye, la corrida termina como cuando se queda sin tareas. `--max N` sigue siendo la
+  forma que no depende de que un agente lo interprete (caso 297).
+
 ## [0.103.3] - 2026-10-06
 
 ### Agregado
