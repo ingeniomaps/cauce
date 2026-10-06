@@ -218,13 +218,13 @@ function verify(input) {
   const approved = !unapproved.length
   if (changedOpenApi && !hasApiGenerated && !approved) {
     block('Cambió una fuente OpenAPI/Swagger sin incluir código regenerado. Ejecuta el generador y '
-      + `stagea su salida.\n${AP.HOW('OPS_SKIP_VERIFY', unapproved, input)}`)
+      + `stagea su salida.\n${AP.HOW('OPS_SKIP_VERIFY', unapproved, input, unapproved, { fixable: true })}`)
   }
   if (changedSqlSource && !hasSqlGenerated && !approved) {
     block('Cambió una consulta SQL fuente sin artefactos regenerados: busqué en el índice un `*.sql.go`, '
       + 'o algo bajo una carpeta `sqlc/` o `generated/`, y no hay ninguno. Si corriste `sqlc generate`, '
       + 'stageá lo que escribió; si su `output_files_suffix` le cambia el nombre, esto no lo reconoce.\n'
-      + AP.HOW('OPS_SKIP_VERIFY', unapproved, input))
+      + AP.HOW('OPS_SKIP_VERIFY', unapproved, input, unapproved, { fixable: true }))
   }
   if (!staged.some((file) => /\.(?:ts|tsx|js|jsx|mjs|cjs|go|py|html|css|scss|prisma)$/.test(file))) return
   const { root, temp, env } = commitTree(dir, input)
@@ -364,7 +364,7 @@ function verifyGates(root, dir, unapproved, env, input, timeoutMs) {
   const where = root === dir ? '' : '\nCorrió sobre el índice, que es lo que el commit graba: si en tu '
     + 'directorio pasa, es que en disco tenés algo que no está staged.'
   block(`Verify falló en ${path.basename(dir)}: ${howItReads(failures)}\nNo se commitea en rojo.${where}\n`
-    + AP.HOW('OPS_SKIP_VERIFY', unapproved, input))
+    + AP.HOW('OPS_SKIP_VERIFY', unapproved, input, unapproved, { fixable: true }))
 }
 
 module.exports = { verify, writesInTree }

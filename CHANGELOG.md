@@ -16,6 +16,17 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.104.0] - 2026-10-06
 
+### Cambiado
+
+- **El diálogo de confirmación es sólo para lo que te toca decidir, y sólo en tu conversación.** Desde 0.103.0
+  un guard abría el diálogo de Claude Code para todo lo que frenaba, también dentro de un recorrido: un
+  `autobuild` quedó 10 y 24 minutos esperando que alguien aprobara dos `grep`. Ahora lo que el agente puede
+  corregir solo —el mensaje del guard dice cómo— se bloquea sin preguntar, y la llamada de un subagente o de
+  un recorrido recibe el bloqueo en vez del diálogo. El diálogo queda para un merge, un deploy, una
+  credencial o un borrado que salgan de tu conversación. **Qué cambia para vos:** menos diálogos, y ninguno
+  que te espere dentro de un recorrido; lo corregible lo seguís pudiendo dejar pasar confirmándolo con tus
+  palabras o con la línea en `.ops-approval` (casos 285 y 282).
+
 ### Corregido
 
 - **Leer la configuración de las pruebas ya no se toma por correrlas.** `grep -n 'jest' package.json`, o un

@@ -42,7 +42,7 @@ function testWorkers(input) {
     if (!AP.pending(opsRoot(input), [item], input).length) return
     block(`'${tool}' sin cota de workers lanza tantos procesos como núcleos, y dos a la vez tiran la máquina. `
       + `Agregale ${tool === 'jest' ? '--maxWorkers=2 (o --runInBand)' : '--maxWorkers=2 (o --no-file-parallelism)'}.`
-      + `\n${AP.HOW(null, [item], input)}`)
+      + `\n${AP.HOW(null, [item], input, [item], { fixable: true })}`)
   }
 }
 

@@ -24,7 +24,7 @@ function jiraAdf(input) {
   if (!AP.pending(opsRoot(input), [item], input).length) return
   block(`editar la descripción de ${call.issueIdOrKey} en markdown la reemplaza entera y aplana lo que el ADF `
     + 'tenía —menciones, tablas, casillas—. Leela con getJiraIssue y responseContentFormat "adf", cambiá ese '
-    + `documento y mandalo con contentFormat "adf".\n${AP.HOW(null, [item], input)}`)
+    + `documento y mandalo con contentFormat "adf".\n${AP.HOW(null, [item], input, [item], { fixable: true })}`)
 }
 
 module.exports = { jiraAdf }

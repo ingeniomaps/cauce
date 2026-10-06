@@ -7,8 +7,9 @@
 // aprobó un merge que nadie había pedido. El diálogo no pide palabras ni las interpreta.
 //
 // Medido el 2026-10-01 con Claude Code: el diálogo aparece también en `bypassPermissions` y para la llamada
-// de un subagente; rechazado, la herramienta no corre; en `claude -p` cuenta como rechazo y el agente recibe
-// el motivo como error. Codex y Gemini no tienen diálogo y siguen con la confirmación por chat.
+// de un subagente —donde desde el caso 285 ya no se pide—; rechazado, la herramienta no corre; en `claude -p`
+// cuenta como rechazo y el agente recibe el motivo como error. Codex y Gemini no tienen diálogo y siguen con
+// la confirmación por chat.
 
 const ASK = Symbol('cauce.ask')
 
@@ -29,8 +30,16 @@ const ASK = Symbol('cauce.ask')
 // de siete minutos sin resolverse. Ahí también lo contesta una persona. Los siete pedidos que en otra sesión
 // corrieron sin que conste quién los aprobó siguen sin explicación; ninguna de estas tres lo reprodujo.
 const ANSWERED = new Set(['default', 'acceptEdits', 'bypassPermissions', 'auto'])
+// Y sólo en la conversación directa. El diálogo también se abre para la llamada de un subagente o de un
+// recorrido, pero ahí nadie lo está mirando: en una corrida real dos lecturas quedaron 590 y 1446 segundos
+// esperando un clic, mientras seis bloqueos de la misma corrida los resolvió el agente solo, sin espera
+// (caso 285). Esas llamadas reciben el bloqueo, y devolvérselo a quien las lanzó es lo que ya saben hacer.
+//
+// Medido el 2026-10-06 con Claude Code 2.1.290: la llamada de la sesión principal no trae `agent_id`; la de un
+// subagente lo trae con `agent_type: "general-purpose"`, y la del agente de un recorrido con
+// `agent_type: "workflow-subagent"`.
 function native(input) {
-  return Boolean(input && input.hook_event_name === 'PreToolUse' && input.prompt_id
+  return Boolean(input && input.hook_event_name === 'PreToolUse' && input.prompt_id && !input.agent_id
     && ANSWERED.has(input.permission_mode))
 }
 

@@ -113,8 +113,11 @@ pasan ésos y ningún otro; si no nombrás ninguno —«dale con todos»— pasa
 negás o exceptuás, ni nada si tu mensaje pregunta o frena. Si tu
 pedido no lo nombraba y algo se frena, **en Claude Code se abre su diálogo de confirmación** para esa acción,
 con el motivo del guard: lo aprobás o lo rechazás ahí, sin palabras que elegir, y un mensaje tuyo sobre otra
-cosa no aprueba nada. En Codex y Gemini, que no tienen ese diálogo, y en el modo `auto` de Claude Code, donde
-no está medido que lo conteste una persona, el agente te dice qué se frenó y por qué:
+cosa no aprueba nada. El diálogo es sólo para lo que te toca decidir a vos —un merge, un deploy, leer una
+credencial, un borrado— y sólo cuando la llamada sale de tu conversación. Lo que el agente puede corregir
+solo —el guard le dice cómo— se bloquea sin preguntarte, y un subagente o un recorrido reciben el bloqueo en
+vez de dejarte un diálogo que nadie está mirando. En Codex y Gemini, que no tienen ese diálogo, y en los modos
+`plan` y `dontAsk` de Claude Code, el agente te dice qué se frenó y por qué:
 confirmalo con tus palabras —un «dale» alcanza, pero no hace falta esa palabra— y pasa exactamente eso. Si
 contestás negando, frenando o preguntando, no pasa. **Con los gates de un commit se pregunta cada vez**, como con publicar: gobernanza, los gates del
 stack y los lockfiles no heredan lo que autorizaste en un mensaje anterior, porque cada commit es otra
