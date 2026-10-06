@@ -155,3 +155,36 @@ test('un plan frenado en la primera crítica no se registra como dos planes rech
   assert.equal(second.result.reason, 'plan-rejected')
   assert.match(second.written.find((text) => text.includes('HUMAN_ACTIONS')), /nadie pudo escribir un plan/)
 })
+
+// Caso 289. El 279 commiteaba en las paradas que registran una fila, que era una lista. Una corrida real
+// frenó por otra y dejó sin commitear la fila, el reclamo y una propuesta. Desde que la tarea se toma, toda
+// parada commitea; antes de tomarla no hay nada escrito y no se gasta la llamada.
+test('toda parada con una tarea tomada commitea el estado de planning, no una lista de ellas', async () => {
+  const hollow = { passed: true, details: 'verde', commands: [{ cmd: 'go test ./...', exitCode: 0 }],
+    uncovered: [{ criterion: 'el alta rechaza un duplicado', cause: 'missing-test' }] }
+  const stops = [
+    ['verify-hollow', { [KEY.verify]: hollow }, 'Verify|planning-block'],
+    ['qa-failed', { [KEY.qa]: { passed: false, evidence: 'no rechaza el duplicado' } }, 'QA|planning-block'],
+    ['commit-failed', { [KEY.commit]: { committed: false, reason: 'gate en rojo' } }, 'Commit|planning-block'],
+  ]
+  for (const [reason, change, key] of stops) {
+    const { result, asked, prompts } = await runFlow(change)
+    assert.equal(result.reason, reason)
+    assert.ok(asked.includes(key), `${reason}: ${asked}`)
+    assert.match(promptOf(prompts, key), /chore\(planning\): block T-1/, reason)
+    assert.equal(asked.filter((one) => one.endsWith('|planning-block')).length, 1, `${reason}: una sola vez`)
+  }
+  const off = await runFlow({ ...contract({ commitPerTask: false }), [KEY.verify]: hollow })
+  assert.equal(off.result.reason, 'verify-hollow')
+  assert.ok(!off.asked.some((one) => one.endsWith('|planning-block')))
+
+  // Sin tarea tomada: la cola vacía, o una parada de antes del reclamo.
+  const idle = await runFlow({}, { contexts: [{ ...baseScript()[KEY.context], hasTask: false, queued: 0 }] })
+  assert.ok(!idle.asked.some((one) => one.endsWith('|planning-block')), idle.asked)
+
+  // Y la tarea que cierra no deja nada tomado: una parada posterior no vuelve a commitear por ella.
+  const done = await runFlow({}, { contexts: [baseScript()[KEY.context], null] })
+  assert.equal(done.result.reason, 'context-unavailable')
+  assert.ok(done.asked.includes(KEY.planningCommit), 'la tarea cerró y commiteó su cierre')
+  assert.ok(!done.asked.some((one) => one.endsWith('|planning-block')), done.asked)
+})
