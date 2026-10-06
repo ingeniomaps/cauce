@@ -86,6 +86,13 @@ demás nunca se había corrido una tarea entera.
   `/autobuild` entero en `auto`: ningún subagente recibió el bloqueo y no apareció ningún diálogo.
 - **Tradeoffs — se pagan los tres**, y el primero va en el CHANGELOG con qué hacer.
 
+### Lo que el caso no preveía
+
+- La primera versión reconocía la orden por un verbo de commitear. La regla del repositorio que prohíbe
+  decidir con una lista de palabras permitidas llegó el mismo día, así que se quitó antes de publicar: alcanza
+  con que el mensaje nombre la rama, y sólo frena la frase que la niega o el mensaje que pregunta. «Dejalo en
+  main» pasa; «a main no» y «¿lo commiteo en main?», no.
+
 ### Qué se corrió
 
 - **Codex, `$autobuild` entero sobre el motor arreglado**: el guard frenó el commit del producto una vez y la
@@ -98,6 +105,6 @@ demás nunca se había corrido una tarea entera.
   un paso por invocación y no llegó al commit.
 - **Claude Code, `/autobuild` entero en `auto`**: producto en `feat/resta-dos-numeros`, planning en
   `work/planning`, `main` intacto en los dos, `ops check planning` en verde.
-- **Nueve mutaciones en rojo**, en una copia. La de «juzga al repositorio ajeno» sobrevivió la primera vez:
+- **Trece mutaciones en rojo**, en una copia, cuatro de ellas sobre la lectura del chat. La de «juzga al repositorio ajeno» sobrevivió la primera vez:
   el ajeno de la prueba no tenía commits y pasaba por esa otra excepción. Con un commit hecho, quedó en rojo.
 - **La puerta entera**, `npm run ci`.

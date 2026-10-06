@@ -113,12 +113,11 @@ test('la persona lo habilita nombrando la rama, y «commiteá» a secas no alcan
     } finally { chat.close() }
   })
 
-  assert.equal(ordersCommit('hacé el commit directo a main, por favor', 'commit main'), true)
-  assert.equal(ordersCommit('commit this to main', 'commit main'), true)
-  assert.equal(ordersCommit('revisá qué hay en main', 'commit main'), false, 'nombrarla no es pedirlo')
-  assert.equal(ordersCommit('commiteá. Después miramos main', 'commit main'), false, 'en otra frase')
-  assert.equal(ordersCommit('nunca commitees en main', 'commit main'), false)
-  assert.equal(ordersCommit('commiteá en mainline', 'commit main'), false, 'la rama entera, no un prefijo')
+  // Sin lista de formas de pedir: alcanza con que la rama esté nombrada, y sólo frena lo que niega o pregunta.
+  for (const said of ['hacé el commit directo a main, por favor', 'commit this to main', 'dejalo en main',
+    'mandalo a main nomás', '¡eso va a main!']) assert.equal(ordersCommit(said, 'commit main'), true, said)
+  for (const said of ['commiteá lo que hay', 'nunca commitees en main', 'a main no', '¿lo commiteo en main?',
+    'commiteá en mainline', 'tampoco en main']) assert.equal(ordersCommit(said, 'commit main'), false, said)
 
   assert.equal(branchAfter('git commit -m x', 'main'), 'main')
   assert.equal(branchAfter('git checkout -b fix/y origin/main && git commit -m x', 'main'), 'fix/y')

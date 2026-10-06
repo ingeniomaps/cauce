@@ -9,8 +9,8 @@
 //
 // - En un repositorio de la sesión, un commit sobre `main`, `master` o la rama por defecto de un remoto se
 //   frena. El mensaje dice qué hacer sin preguntarle a nadie: cortar una rama y reintentar.
-// - Pasa si el proyecto lo declaró con `runner.commitToLiveBranch`, o si la persona lo pidió en el chat
-//   nombrando la rama. «Commiteá» a secas no alcanza: es justo el pedido que tiene que terminar en una rama.
+// - Pasa si el proyecto lo declaró con `runner.commitToLiveBranch`, o si la persona nombró la rama en el
+//   chat. «Commiteá» a secas no alcanza: es justo el pedido que tiene que terminar en una rama.
 // - No opina sobre un repositorio ajeno; por qué, en `owns`.
 // - Tampoco sobre uno sin commits, donde la rama viva todavía no existe y el primero la crea, ni con el
 //   HEAD suelto.
@@ -38,16 +38,17 @@ function branchAfter(command, current) {
   return target || current
 }
 
-// Una orden de commitear en la rama viva: el nombre de la rama como palabra entera, en una frase que pida
-// commitear y sin una negación antes. Se lee aparte de `mentions`, por lo mismo que `ordersPush`.
-const COMMITS = /\bcomm?it\p{L}*/iu
-const NEGATED = /(?:^|\s)(?:no|nunca|sin|ni|don'?t|not|never)\s/iu
+// Lo que habilita la rama viva desde el chat es que la persona la nombre: eso se comprueba sin interpretar.
+// Si además lo pidió con tal o cual palabra no se mira —qué quiso lo lee el agente, y una lista de formas de
+// pedir siempre queda corta—. El guard decide sólo el lado seguro: no pasa si la frase que la nombra la
+// niega, ni si el mensaje pregunta.
+const NEGATED = /(?:^|\s)(?:no|nunca|sin|ni|tampoco|don'?t|not|never)\s/iu
 function ordersCommit(text, item) {
   const branch = item.split(' ')[1].toLowerCase()
+  if (/[?¿]/.test(text)) return false
   return String(text).split(/[.;\n]+/).some((clause) => {
-    const words = clause.toLowerCase().split(/[\s"'`(),:«»]+/)
-    const at = words.indexOf(branch)
-    return at >= 0 && COMMITS.test(clause) && !NEGATED.test(` ${words.slice(0, at + 1).join(' ')} `)
+    const words = clause.toLowerCase().split(/[\s"'`(),:«»!¡?¿]+/)
+    return words.includes(branch) && !NEGATED.test(` ${words.join(' ')} `)
   })
 }
 
