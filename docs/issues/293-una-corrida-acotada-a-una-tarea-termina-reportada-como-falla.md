@@ -87,4 +87,16 @@ La primera corrida real con 0.103.2.
   ven las fases no trae la bandera.
 - **Seis mutaciones en rojo**, en una copia.
 - **La puerta entera**, `npm run ci`.
-- **Lo que no se corrió**: una corrida real con `--max 1`, ni una donde un agente decline de verdad.
+- **Lo que no se corrió**: una corrida real donde un agente decline el reclamo. La de `--max 1` se corrió
+  después, abajo.
+
+### Corrida real con `--max 1`, el 2026-10-06
+
+Banco sidecar con dos tareas en cola, sesión real lanzada con `/autobuild --max 1 sin push ni PR`. Cerró la
+primera, anotó «la corrida cerró las 1 tarea(s) que se le pidieron: sigue retirar-prueba-legada, sin
+tomarla», no reclamó la segunda y terminó por la fase de cierre, sin `stopped`. Dieciocho agentes.
+
+Esa corrida encontró un defecto de este mismo arreglo: al terminar por el tope escribía igual la compuerta
+del hito, `AWAITING_REVIEW.md`, con «hito terminado» y una tarea suya todavía en cola, y la corrida
+siguiente quedaba frenada hasta destrabarla a mano. Ahora la compuerta se escribe sólo cuando el hito
+terminó; cortada por el tope o por un reclamo declinado, no. Tiene su prueba y su mutación en rojo.

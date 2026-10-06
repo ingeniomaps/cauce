@@ -673,6 +673,8 @@ const commitBlocked = async (slug) => {
 // reclamo y una propuesta (caso 289). Desde que la tarea se toma hay estado escrito, pare por lo que pare.
 // `holding` es esa tarea; vuelve a vacío cuando el cierre la commitea.
 let holding = ''
+// La corrida terminó porque se le pidió, con el hito todavía abierto: no hay checkpoint de hito que escribir.
+let cut = false
 const halt = async (reason, detail = '') => {
   if (holding) await commitBlocked(holding)
   return stop(reason, detail)
@@ -772,6 +774,7 @@ while (rounds++ < MAX_TASKS) {
   if (!planning.hasTask || (currentMilestone && planning.hito !== currentMilestone)) break
   if (LIMIT && completed.length >= LIMIT) {
     log(`La corrida cerró las ${LIMIT} tarea(s) que se le pidieron: sigue ${nextUp(planning)}, sin tomarla`)
+    cut = true
     break
   }
   // Las decisiones que la línea ya tomó, dichas como lo que son. Sin ese rótulo se leen como contexto
@@ -809,6 +812,7 @@ while (rounds++ < MAX_TASKS) {
     // No es una falla ni una carrera perdida: la corrida termina como cuando se queda sin tareas.
     if (claim && claim.declined) {
       log(`${task.id} no se tomó, a pedido de quien lanzó la corrida: ${claim.details || '(sin detalle)'}`)
+      cut = true
       break
     }
     if (!claim || !claim.claimed) {
@@ -1751,7 +1755,11 @@ if (learned.length) {
 // El archivo nace con su estado escrito porque la compuerta lo lee de ahí —R28, y el porqué vive junto a
 // esa lectura—. Sin decirlo acá la fase escribe prosa sin `status`, y la instancia queda con una compuerta
 // que sólo se destraba borrando: la forma que la regla prohíbe, escrita por el propio recorrido.
-if (completed.length && contract.humanCheckpoint) await write(
+//
+// Sólo cuando el hito terminó. Cortada a pedido, la corrida deja tareas del mismo hito en la cola: escribir
+// la compuerta ahí decía «hito terminado» sobre uno que no lo estaba, y frenaba la corrida siguiente hasta
+// que alguien la destrabara a mano —visto en la primera corrida real con `--max 1` (caso 293)—.
+if (completed.length && contract.humanCheckpoint && !cut) await write(
   `Creá ${GATE} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones humanas ` +
   `pendientes y las instrucciones exactas para continuar. Arrancá el archivo con un frontmatter ` +
   `"status: pendiente", y decí que se destraba cambiándolo a "resuelta" —no borrando el archivo, que es ` +

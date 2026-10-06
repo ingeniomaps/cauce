@@ -245,6 +245,15 @@ test('una corrida acotada a N tareas, o cuyo reclamo se declina a pedido, termin
     assert.ok(capped.said.some((line) => /cerró las 1 tarea\(s\) que se le pidieron: sigue T-2/.test(line)))
     assert.ok(capped.asked.some((one) => one.startsWith('Closing|')), 'y cierra como siempre')
   }
+  // Lo que no hace al cerrar: la compuerta del hito. Quedan tareas suyas en la cola, y escribirla frenaba
+  // la corrida siguiente diciendo que el hito había terminado.
+  const gated = (changes, options) => runFlow({ ...changes,
+    [KEY.contract]: { ...baseScript()[KEY.contract], humanCheckpoint: true } }, options)
+  const wroteGate = (out) => out.asked.some((one) => one.endsWith('|human-checkpoint'))
+  assert.equal(wroteGate(await gated(T2, two)), true, 'con el hito terminado sí')
+  assert.equal(wroteGate(await gated(T2, { ...two, args: '--max 1' })), false, 'cortada por el tope no')
+  assert.equal(wroteGate(await gated({ 'Claim|claim:T-2': { claimed: false, declined: true } }, two)), false,
+    'ni cortada porque el reclamo se declinó')
   // El tope no viaja a las fases como parte del pedido.
   const noted = await runFlow({}, { args: 'sin push ni PR --max 3' })
   const plan = noted.prompts.find((one) => one.key === KEY.plan).prompt
