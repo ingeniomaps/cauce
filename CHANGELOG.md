@@ -24,6 +24,13 @@ diseño — eso vive en el commit y en el código.
   en `ops.config.json` —`"boundedCommands": ["scripts/run-in-container.sh"]`— y el guard deja de opinar sobre
   lo que ese comando lanza. Sin declararlo no cambia nada (caso 291).
 
+### Cambiado
+
+- **El pedido de una corrida va en el mensaje que la lanza.** Claude Code puede relevarle a cada agente de un
+  recorrido tu último mensaje del chat, por encima del texto del recorrido: si la sesión lanza un `autobuild`
+  por su cuenta después de un mensaje sobre otra cosa, ése es el que reciben. Las instrucciones de la
+  instancia ahora lo dicen. **Qué hacer:** lanzá con `/autobuild <lo que querés>` (caso 292).
+
 ### Corregido
 
 - **Toda corrida de `autobuild` que frena commitea el estado de planning.** Desde 0.101.0 lo hacía sólo en las
