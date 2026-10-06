@@ -280,7 +280,9 @@ apagada.
 
 Commitear en la rama viva es aparte y también se pide: `autobuild` corta una rama por tarea,
 `<tipo>/<slug>`, y commitea ahí sin consultar. Sólo commitea en la viva si el proyecto declara
-`runner.commitToLiveBranch: true`.
+`runner.commitToLiveBranch: true`. Y no depende de quién lo recuerde: un guard frena cualquier commit que
+caiga en la rama viva y dice que se corte una rama, sin preguntarle a nadie. Pasa si lo pedís en el chat
+nombrando la rama —«commiteá en main»—; «commiteá» a secas termina en una rama.
 
 El estado de planning —la cola, los reclamos, `done/`, el INBOX, las acciones humanas— sigue la misma idea
 con una diferencia: no va a una rama por tarea sino a **una sola rama de trabajo** que se acumula, con un

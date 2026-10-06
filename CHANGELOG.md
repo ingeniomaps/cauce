@@ -16,6 +16,16 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.103.0] - 2026-10-05
 
+### Cambiado
+
+- **Un commit en la rama viva se frena, con cualquier runner.** Hasta ahora sólo el recorrido de Claude cortaba
+  una rama antes de commitear; con Codex y Gemini `autobuild` commiteaba en `main`. Ahora un guard frena todo
+  commit que caiga en `main`, `master` o la rama por defecto del remoto y le dice al agente que corte una rama
+  y reintente, sin preguntarle a nadie. Pasa si lo pedís en el chat nombrando la rama —«commiteá en main»—, y
+  «commiteá» a secas termina en una rama. **Qué hacer:** si en tu proyecto se commitea en la rama viva,
+  declaralo con `runner.commitToLiveBranch: true` en `ops.config.json`. El primer commit de un repositorio
+  nuevo, un repositorio que la instancia no declara y CI no se frenan (caso 284).
+
 ### Corregido
 
 - **`check` ya no se cuelga dentro del sandbox de Codex.** En cuanto `done/` citaba un commit, `ops check` no

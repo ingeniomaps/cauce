@@ -184,4 +184,4 @@ function publish(input, command) {
   ])
 }
 
-module.exports = { publish }
+module.exports = { publish, liveBranches }

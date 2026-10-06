@@ -458,5 +458,10 @@
     "lines": 100,
     "branches": 95,
     "functions": 100
+  },
+  "engine/hooks/live-commit.js": {
+    "lines": 100,
+    "branches": 93,
+    "functions": 100
   }
 }
