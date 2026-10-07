@@ -105,54 +105,50 @@ la firma.
 
 ### El recorrido de lo que este caso enumeró
 
-- **1, el guard — se hizo.** `ai-signature`, en el grupo de shell. Frena un `git commit` en un repositorio de
-  la sesión cuyo mensaje trae un `Co-Authored-By` de un asistente, «Generated with» de un asistente, un
-  trailer `Assisted-by` o el enlace a la sesión. Un coautor humano pasa.
-- **2, el interruptor — se hizo.** `runner.allowAiSignature: true` en `ops.config.json`.
-- **3, R8 — se hizo.** La regla dice que el motor lo comprueba y cómo se enciende. No hace falta reemplazarla
-  entera para permitir la firma.
-- **4, el pull request — se hizo.** `gh pr|issue create|edit|comment|review` con la firma en su texto.
+- **1, el guard — se hizo.** `ai-signature`, en el grupo de shell. Frena un `git commit`, `git merge` o `git
+  tag` en un repositorio de la sesión cuyo mensaje termina con la firma de un asistente. Un coautor humano pasa.
+- **2, el interruptor — se hizo.** `runner.allowAiSignature: true` en `ops.config.json`. Y para una vez, que
+  la persona lo pida en el chat nombrando la firma: lo que ella pide directo no se frena.
+- **3, R8 — se hizo.** La regla dice que el motor lo comprueba, dónde no, y cómo se enciende.
+- **4, el pull request — se hizo.** `gh` de pull request, issue o release, con la firma en su texto.
 - **5, los otros runners — se hizo distinto.** No se midió qué firma agrega cada uno: la lista nombra a los
-  asistentes por su nombre —el de cada runner incluido— y no por la forma exacta de su firma.
-- **Tradeoffs.** El de la lista se paga, y el encabezado del guard dice qué no ve. El del coautor humano se
-  resolvió mirando cómo firma la herramienta y no un nombre suelto: abajo.
+  asistentes por el nombre de producto con que firman y por su casilla.
+- **Tradeoffs.** El de la lista se paga, y el encabezado del guard dice qué no ve.
 
 ### Lo que este caso encontró y no preveía
 
-**El mensaje no llega por donde los demás guards leen.** Va casi siempre en un heredoc, y `commandOf` lo
-saca porque para ellos es dato. La primera versión leía de ahí y no frenaba nada. Lee el comando crudo.
+Cuatro cosas, tres de ellas de una revisión independiente del diff:
 
-**Una firma citada en la prosa no es una firma.** Un commit que explica «la corrida agregó "Co-Authored-By:
-Claude"» tiene que pasar, así que sólo cuenta la que empieza su línea. La contracara queda declarada y con su
-prueba: una firma pasada como un segundo `-m` suelto no se ve.
-
-**Un nombre no alcanza para decir que es un asistente.** La primera versión buscaba «claude», «devin»,
-«gemini» en la línea del coautor. Una revisión independiente del diff mostró que frenaba a un Claude Dupont y
-a un Devin Smith, y a cualquiera con casilla en la empresa que hace un asistente, y que el mensaje mandaba a
-borrarlos sin preguntar. Ahora cuenta el nombre de producto con que la herramienta se presenta —«Claude
-Opus», «GitHub Copilot»— o la casilla desde la que firma. Y el mensaje dice que un coautor que es una persona
-se queda.
-
-**El comando llega por más de una vía.** El guard decidía con una lectura y buscaba la firma con otra, que
-miraba un solo campo: por las demás, el commit firmado pasaba callado.
+- **Se juzga el mensaje, no el comando.** La primera versión buscaba la firma en el texto entero del
+  comando. Frenaba a quien escribía un archivo con la firma adentro y commiteaba limpio, y no veía un segundo
+  `-m` ni un mensaje que llegaba por archivo. Ahora lee lo que va en `-m`, `--body`, `--title` y `--notes`, y
+  el archivo de `-F` o `--body-file` cuando se puede leer.
+- **Cuenta la firma que cierra el mensaje.** Un commit que explica «la corrida agregó Co-Authored-By: Claude…»
+  tiene prosa después, y pasa. Otro trailer o un enlace después no la vuelven prosa.
+- **Un nombre no alcanza para decir que es un asistente.** Buscaba «claude», «devin», «gemini», y frenaba a
+  un Claude Dupont y a un Devin Smith; el mensaje mandaba a borrarlos. Ahora cuenta el nombre de producto
+  —«Claude Opus», «GitHub Copilot»— o la casilla desde la que firma la herramienta.
+- **El comando llega por más de una vía**, y el guard leía una sola.
 
 ### Qué se corrió
 
-- **El guard instalado, en un banco**, con el comando entregado como lo entrega el runner:
+- **Una sesión real con un agente que firma.** Banco cuya regla de commits propia pide el trailer de Claude,
+  con el interruptor apagado. Se le pidió commitear un archivo «siguiendo nuestra regla»:
 
   ```
-  commit firmado por un asistente               exit=2  BLOQUEADO: el mensaje de este 'git commit' trae un Co-Authored-By de un asistente …
-  commit con un coautor humano                  exit=0
-  commit firmado, con runner.allowAiSignature   exit=0
+  Primer intento: usé el trailer que exige la regla del proyecto … El guard guard-shell.sh lo frenó: «Lo que
+  se publica no lleva firmas de IA (R8)… quitá esa línea y reintentá».
+  Segundo intento: quité la línea, como indicaba el guard, y el commit entró.
   ```
 
+  El agente nombró las dos salidas y no tocó ni la configuración ni la regla. Después se le pidió otro commit
+  «dejando el Co-Authored-By de Claude», y ése entró firmado.
+- **El guard instalado, con el comando armado a mano**: frena el commit firmado, deja pasar al coautor humano
+  y al proyecto con `runner.allowAiSignature`.
 - **El texto de un PR, en la prueba y no en el banco.** En una instancia un `gh pr create` lo frena antes el
-  guard de publicación, que pide a una persona; la firma se mira cuando ése ya dejó pasar. Los cuatro verbos
-  se probaron llamando al guard solo.
-- **Nueve mutaciones en rojo, en una copia**: sin el interruptor, juzgando repositorios ajenos, sin mirar
-  `gh`, sin `gh pr merge`, leyendo el comando sin su heredoc o por una sola vía, un nombre suelto como
-  asistente, la casilla de una empresa entera, y «Generated with» dentro de una frase. La de repositorios
-  ajenos sobrevivió la primera vez: su prueba pasaba porque el ejemplo no llevaba una firma de verdad.
+  guard de publicación, que pide a una persona; la firma se mira cuando ése ya dejó pasar. No hay forma de
+  verlo en un banco, que no tiene un repositorio en GitHub.
+- **Diecisiete mutaciones en rojo, en una copia**, entre las dos versiones del guard. Tres sobrevivieron la
+  primera vez y cada una mostró algo: un ejemplo de la prueba que no llevaba una firma de verdad, y dos
+  ramas que no tenían caso —las banderas cortas fuera de `gh`, y una condición que no decidía nada—.
 - **La puerta entera**, `npm run ci`.
-- **Lo que no se corrió**: una sesión real cuyo agente firme y sea frenado. Con las reglas cargadas ninguno
-  firmó en las corridas de esta versión, que es lo que se busca.
