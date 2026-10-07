@@ -241,6 +241,7 @@ function validateRunner(runner, errors) {
   }
   const booleans = ['humanCheckpointBetweenMilestones', 'commitPerTask', 'allowPush']
   const allowed = new Set(['maxTaskHours', 'pushToLiveBranches', 'gateTimeoutMinutes', 'commitToLiveBranch',
+    'allowAiSignature',
     ...booleans])
   for (const key of Object.keys(runner)) {
     if (!allowed.has(key)) errors.push(`ops.config.json: runner.${key} no está permitido`)
@@ -268,6 +269,9 @@ function validateRunner(runner, errors) {
   // Opcional a propósito: ausente vale apagado, y exigirlo rompería el `check` de toda instancia ya instalada.
   if (runner.commitToLiveBranch !== undefined && typeof runner.commitToLiveBranch !== 'boolean') {
     errors.push('ops.config.json: runner.commitToLiveBranch debe ser boolean')
+  }
+  if (runner.allowAiSignature !== undefined && typeof runner.allowAiSignature !== 'boolean') {
+    errors.push('ops.config.json: runner.allowAiSignature debe ser boolean')
   }
 }
 

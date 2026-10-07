@@ -134,6 +134,10 @@
           "type": "boolean",
           "description": "Si el recorrido puede commitear en una rama viva —main, master o la rama por defecto del remoto—. Apagado o ausente, corta una rama para la tarea y commitea ahí."
         },
+        "allowAiSignature": {
+          "type": "boolean",
+          "description": "Si lo que el proyecto publica puede llevar una firma de IA —un Co-Authored-By de un asistente, «Generated with…»—. Apagado o ausente, el guard frena el commit o el texto de PR que la traiga, que es lo que pide R8. Lo enciende una persona cuando la empresa quiere dejar constancia de lo que hizo un agente."
+        },
         "gateTimeoutMinutes": {
           "type": "number",
           "exclusiveMinimum": 0,

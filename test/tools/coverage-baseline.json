@@ -459,6 +459,11 @@
     "branches": 95,
     "functions": 100
   },
+  "engine/hooks/ai-signature.js": {
+    "lines": 100,
+    "branches": 90,
+    "functions": 100
+  },
   "engine/hooks/live-commit.js": {
     "lines": 100,
     "branches": 93,
