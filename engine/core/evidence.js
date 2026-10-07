@@ -70,41 +70,88 @@ function searchable(artifact) {
   return /^[^\s]{4,}$/.test(artifact) && /[A-Za-z]/.test(artifact)
 }
 
-function sourceFiles(dir, found = [], depth = 0) {
+// `skip` son carpetas que no se recorren: el `planning/` de la instancia. Con la raíz por defecto queda adentro
+// del recorrido, y ahí la entrada que se contrasta se encontraba a sí misma: nombraba una prueba inventada
+// y el nombre aparecía, en ella (caso 316).
+function sourceFiles(dir, skip, found = [], depth = 0) {
   if (depth > 8 || found.length > 5000) return found
   let entries = []
   try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch { return found }
   for (const entry of entries) {
     if (entry.name === 'node_modules' || entry.name === '.git' || entry.name.startsWith('.')) continue
     const full = path.join(dir, entry.name)
-    if (entry.isDirectory()) sourceFiles(full, found, depth + 1)
-    else found.push(full)
+    if (!entry.isDirectory()) found.push(full)
+    else if (!skip.includes(full)) sourceFiles(full, skip, found, depth + 1)
   }
   return found
 }
 
-// Si el nombre aparece en el árbol: como parte de una ruta de archivo o dentro del fuente de alguno.
-// Se mira el contenido y no sólo los nombres porque lo que un rastro nombra suele ser la prueba
-// —`TestAddSuma`— y no el archivo que la contiene.
-function findsArtifact(roots, artifact) {
-  for (const root of roots) {
-    for (const file of sourceFiles(root)) {
-      if (file.replace(/\\/g, '/').includes(artifact)) return true
-      let text = ''
-      try { text = fs.readFileSync(file, 'utf8') } catch { continue }
-      if (text.includes(artifact)) return true
-    }
-  }
-  return false
+// Una traza con archivo y nombre de caso no es una frase: trae dos cosas que sí se pueden buscar. Es la
+// forma que escriben las corridas —`app/test/suma.test.js — 'suma dos números'`—, y tomarla por frase dejaba
+// sin contraste a todas (caso 316).
+//
+// El archivo es la palabra con forma de ruta. Sin barra sólo cuenta si un archivo se llama así: `node.js`
+// en una frase no es un archivo. El caso es lo que va entre comillas, o los tramos separados por `›`. Lo
+// demás que traiga la traza —el comando que la corre, una nota— no se toma por nombre de caso: buscarlo
+// daría `parcial` sobre una traza que dice la verdad.
+const PATHLIKE = /^[\w@.~-]*(?:\/[\w@.~-]+)+\.[A-Za-z]\w*$/
+const FILELIKE = /^[\w@~-]+(?:\.[\w-]+)*\.[A-Za-z]\w*$/
+const NESTED = /\s*›\s*|\s+>\s+/
+const bare = (word) => word.replace(/\\/g, '/').replace(/^[`'"([*]+|[`'")\]*,.;:]+$/g, '')
+  .replace(/(?:(?::\d+)+|#L\d+)$/, '').replace(/^\.\//, '')
+const clean = (name) => name.replace(/^[\s—–:()>-]+|[\s—–:()-]+$/g, '').replace(/^(?:describe|it|test)\s+/, '')
+function parts(artifact, tree) {
+  const exists = (name) => tree.some((file) => file.endsWith(`/${name}`))
+  const words = artifact.split(/\s+/)
+  const isFile = (word) => PATHLIKE.test(bare(word)) || (FILELIKE.test(bare(word)) && exists(bare(word)))
+  const files = words.filter(isFile).map(bare)
+  const quoted = [...artifact.matchAll(/'([^']+)'|"([^"]+)"|`([^`]+)`/g)]
+    .map((match) => match[1] || match[2] || match[3]).filter((one) => !isFile(one) && one.length > 2)
+  const rest = words.filter((word) => !isFile(word)).join(' ')
+  if (quoted.length || !NESTED.test(rest)) return { files, names: quoted }
+  return { files, names: rest.split(NESTED).map(clean).filter((one) => one.length > 2) }
 }
 
-// El veredicto por rastro: `encontrado`, `ausente` o `inbuscable`. Sin raíces declaradas no se afirma
-// nada — no hay dónde mirar, y decir «ausente» ahí sería inventar el hallazgo.
-function contrast(tests, roots) {
+// El veredicto de una traza con partes. El archivo se busca por dónde termina su ruta, y el caso sólo adentro
+// de los archivos que la traza nombra: que el archivo exista y el caso no es `parcial`, nunca `encontrado`
+// —el archivo de pruebas suele existir desde antes, y darlo por bueno diría que la prueba nueva está—. Y
+// `parcial` no es `ausente`: un nombre armado en el código con una variable no se encuentra como texto.
+//
+// Hasta dónde llega: el nombre se busca como texto, así que lo da por bueno si es parte de otro más largo
+// o si está en un comentario, y los tramos anidados no se comprueban en orden.
+function contrastParts({ files, names }, tree, read) {
+  const within = files.map((file) => tree.filter((one) => one.endsWith(`/${file}`)))
+  if (within.some((matching) => !matching.length)) return { verdict: 'ausente' }
+  const where = files.length ? within.flat() : tree
+  const missing = names.filter((name) => !where.some((file) => read(file).includes(name)))
+  if (!missing.length) return { verdict: 'encontrado' }
+  return files.length ? { verdict: 'parcial', missing } : { verdict: 'ausente' }
+}
+
+// El veredicto por rastro: `encontrado`, `parcial`, `ausente` o `inbuscable`. Sin raíces declaradas no se
+// afirma nada — no hay dónde mirar, y decir «ausente» ahí sería inventar el hallazgo.
+//
+// Una sola palabra se busca como siempre: en la ruta de algún archivo o dentro del fuente de alguno, porque
+// lo que un rastro así nombra suele ser la prueba —`TestAddSuma`— y no el archivo que la contiene.
+function contrast(tests, roots, skip = []) {
+  const tree = roots.flatMap((root) => sourceFiles(root, skip)).map((file) => `/${file.replace(/\\/g, '/')}`)
+  const texts = new Map()
+  const read = (file) => {
+    if (texts.has(file)) return texts.get(file)
+    let text = ''
+    try { text = fs.readFileSync(file.slice(1), 'utf8') } catch { /* ilegible: no dice nada */ }
+    texts.set(file, text)
+    return text
+  }
   return traces(tests).map((trace) => {
-    if (!searchable(trace.artifact)) return { ...trace, verdict: 'inbuscable' }
     if (!roots.length) return { ...trace, verdict: 'inbuscable' }
-    return { ...trace, verdict: findsArtifact(roots, trace.artifact) ? 'encontrado' : 'ausente' }
+    if (searchable(trace.artifact)) {
+      const found = tree.some((file) => file.includes(trace.artifact) || read(file).includes(trace.artifact))
+      return { ...trace, verdict: found ? 'encontrado' : 'ausente' }
+    }
+    const found = parts(trace.artifact, tree)
+    if (!found.files.length && !found.names.length) return { ...trace, verdict: 'inbuscable' }
+    return { ...trace, ...found, ...contrastParts(found, tree, read) }
   })
 }
 

@@ -54,6 +54,11 @@ diseño — eso vive en el commit y en el código.
   `boundedCommands`, y el guard de workers lo frenaba igual. Hacen falta los dos topes, con un número mayor
   que cero y antes de la imagen. Y se cierra una forma que pasaba con un comando declarado: el runner puesto
   en una sustitución, como en `scripts/run.sh true $(npx jest)`, lo ejecuta la máquina y ahora frena (caso 313).
+- **`ops evidence` contrasta las trazas que escribe una corrida.** Sólo buscaba las de una palabra, y una
+  traza con el archivo y el nombre del caso salía «inbuscable»: no se contrastaba ninguna entrada de
+  `autobuild`. Ahora busca el archivo y, dentro de él, el caso que venga entre comillas o con `›`. Hay un
+  veredicto nuevo, `parcial`, para el archivo que existe sin ese caso. Y deja de buscar en `planning/`, donde
+  una prueba inventada se encontraba en la propia entrada que la nombraba (caso 316).
 - **Quien cierra una tarea no toca la entrada de otra.** Si `check` marca una entrada que no escribió, la deja
   para el cierre de la corrida (caso 310).
 

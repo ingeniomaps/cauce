@@ -1,14 +1,15 @@
 ---
 caso: 316
 titulo: evidence no contrasta ninguna traza de las que escribe autobuild
-estado: abierto
+estado: resuelto
+resuelto-en: 0.103.6
 prioridad: media
 version-detectada: 0.103.5
 ---
 
 # 316 — `ops evidence` marca «inbuscable» toda traza de `tests`, también la que nombra el archivo
 
-**🔴 abierto** · detectado en 0.103.5 · prioridad **media**.
+**🟢 resuelto en 0.103.6** · detectado en 0.103.5 · prioridad **media**.
 
 **Prioridad media**: la herramienta que existe para contrastar la evidencia no contrasta nada de lo que el recorrido escribe.
 
@@ -70,3 +71,71 @@ las pruebas, y hoy devuelve «no pude mirar» para toda entrada de `autobuild`.
 ## Relacionados
 
 - 072 — el punto y coma que partía la traza.
+
+## Cierre
+
+**Resuelto en 0.103.6**, distinto de lo propuesto en dos puntos.
+
+### El recorrido de lo que este caso enumeró
+
+- **Sacar de la traza la ruta y lo entrecomillado, y buscar cada una — se hizo.** El archivo se busca por
+  dónde termina su ruta; el caso, sólo dentro de los archivos que la traza nombra. Valen varios archivos, la
+  ruta con línea (`:12:3`, `#L12`), con `./`, con barras de Windows o entre backticks, y los nombres
+  anidados con `›` o con ` > `.
+- **«`encontrado` si aparece el archivo; decir además si el nombre del caso aparece» — se hizo distinto.** El
+  archivo que existe sin el caso nombrado sale con un veredicto propio, `parcial`, y la nota dice qué nombre
+  faltó. Es el riesgo que este caso anotaba: como nota al lado de un `encontrado` no se lee.
+- **Lo que no tiene ni ruta ni comillas sigue `inbuscable` — se cumplió.**
+- **Rutas relativas al servicio y a la raíz — se probaron**: las dos se encuentran. Una ruta escrita desde
+  una carpeta que no está en el árbol sale `ausente`.
+- **Lo que ya daba `encontrado` lo sigue dando — se cumplió** para la palabra sola, con una excepción buscada:
+  la que sólo aparecía en `planning/`, abajo.
+- **Las entradas reales de una instancia — no se hizo.** Se probaron las tres formas que las dos sesiones
+  reportaron, no sus entradas.
+
+### Lo que este caso encontró y no preveía
+
+- **La entrada se encontraba a sí misma.** Con la raíz por defecto, el recorrido incluye `planning/done/`, así
+  que el nombre de una prueba inventada aparecía: en la propia entrada. Ya pasaba con la palabra sola
+  —`TestInventadoXyz` daba `encontrado`—, y buscar lo entrecomillado lo extendía a todo. Ahora el `planning/`
+  de la instancia no se recorre. Lo encontró la revisión; mi prueba usaba una raíz que lo dejaba afuera.
+- **El resto de la traza no es el nombre del caso.** La primera versión tomaba por caso todo lo que quedaba al
+  sacar el archivo, y `node --test src/test/suma.test.js` salía `parcial` porque «node --test» no está en el
+  archivo. El molde admite «nombre de prueba o comando». Ahora el caso es lo entrecomillado o lo que va con
+  `›`; si la traza no lo marca así se comprueba el archivo y la salida lo dice.
+
+### Lo que queda como está, y dicho
+
+- **El nombre se busca como texto.** Da por bueno el que es parte de otro más largo o está sólo en un
+  comentario, y los tramos anidados no se comprueban en orden.
+- **Dos archivos con la misma cola de ruta** cuentan los dos: `a/b.js` encuentra el caso si está en cualquiera.
+- **Sin archivo reconocido, lo entrecomillado se busca en todo el árbol**, también en un README.
+- **Salen `ausente` o `parcial` trazas que dicen la verdad** cuando la ruta es absoluta, trae `..` o difiere
+  en mayúsculas, cuando el nombre viene entre comillas tipográficas o lleva un apóstrofo entre comillas
+  simples, y cuando el código arma el nombre con una variable.
+- **El tope de 5000 archivos** del recorrido es anterior y se hereda.
+
+### Qué se corrió
+
+- **El comando real, sobre una instancia con una prueba y diecisiete formas de trazarla**, antes y después:
+
+  | | Antes | Después |
+  |---|---|---|
+  | `encontrado` | 3 | 10 |
+  | `parcial` | — | 1 |
+  | `ausente` | 1 | 4 |
+  | `inbuscable` | 13 | 2 |
+
+  Las tres formas de las corridas reales dan `encontrado`. El archivo con un caso que no existe da
+  `parcial — el archivo existe; no aparece en él: un caso que no existe`. Siguen `inbuscable` la frase suelta
+  y `npm test`.
+- **Una instancia con la raíz por defecto**: lo entrecomillado que no existe y `TestInventadoXyz` dan
+  `ausente`; con el motor anterior la palabra daba `encontrado`.
+- **39 mutaciones en rojo, en una copia.** En la última vuelta sobrevivieron nueve, casi todas por lo mismo:
+  las pruebas traían el caso bien escrito, y así una ruta sin reconocer caía a buscar el nombre en todo el
+  árbol y daba `encontrado` igual. Cada forma de ruta tiene ahora su gemela con el caso mal. Una resultó
+  inobservable y se sacó del código. La revisión había encontrado quince sobre la primera versión.
+- **Una revisión independiente**, con unas ochenta formas, un árbol de 6000 archivos (tiempos iguales a los de
+  antes) y entradas raras sin ninguna excepción. Nada más en el repositorio lee estos veredictos.
+- **La puerta entera**, `npm run ci`.
+- **Lo que no se corrió**: una instancia real.
