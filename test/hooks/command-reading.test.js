@@ -57,18 +57,42 @@ test('un cd a una variable que el propio comando asigna se resuelve, y el resto 
     `T=$(mktemp -d ${os.tmpdir()}/qa-XXXXXX); cd "$T"; echo x > consumer.js`,
     `d=${root}/src\nmkdir -p "$d" && cd "$d" || exit 1\nprintf 'x' > nota.md`,
     `R=${root}; S=$R/src; cd \${S} && echo x > a.js`,
+    // Una copia hecha donde el comando dice, que es como se arma una mutación (caso 311).
+    `S=${root}/src; C=$(mktemp -d -p $S mut.XXXX) && cd $C && sed -i "s/a/b/" a.js`,
+    `C=$(mktemp -d --tmpdir=${root} mut.XXXX) && cd $C && echo x > a.js`,
+    `C=$(mktemp -d ${root}/src/mut.XXXX); cd $C; echo x > a.js`,
+    `S=${root}/src; C=$(mktemp -d -q -p "$S" mut.XXXX) && cd $C && echo x > a.js`,
   ]
   for (const command of fine) assert.doesNotThrow(() => run('shell-boundary', command, root), command)
 
   // Resuelta, se juzga por dónde cae: afuera frena como cualquier ruta de afuera.
   blocked('shell-boundary', { cwd: root, tool_input: { command: `d=${outside}; cd $d && echo x > a.js` } },
     /fuera de las raíces/)
+  // Y `mktemp` con directorio se juzga por ese directorio: afuera frena diciendo dónde, no por no saber.
+  for (const made of [`mktemp -d -p ${outside}`, `mktemp -d ${outside}/qa-XXXXXX`, `mktemp -d --tmpdir=${outside}`]) {
+    blocked('shell-boundary', { cwd: root, tool_input: { command: `T=$(${made}) && cd $T && echo x > a.js` } },
+      /fuera de las raíces/)
+  }
   const unresolved = [
     'cd $NADIE && echo x > a.js',
     'T=/a; T=/b; cd $T && echo x > a.js',
     'T=$(algo-que-no-es-mktemp) && cd $T && echo x > a.js',
-    'T=$(mktemp -d -p /otro) && cd $T && echo x > a.js',
-    'T=$(mktemp -d /otro/qa-XXXXXX) && cd $T && echo x > a.js',
+    'T=$(mktemp -d -p $NADIE) && cd $T && echo x > a.js',
+    'T=$(mktemp -d -p relativo) && cd $T && echo x > a.js',
+    // `mktemp` tiene más de una forma de decir dónde crea, y cuando dos se contradicen gana una que acá no se
+    // sabe. Cada una de éstas resolvía a la raíz mientras `mktemp` creaba afuera: quedan sin resolver.
+    `T=$(mktemp -d -p ${root} -p ${outside}) && cd $T && echo x > a.js`,
+    `T=$(mktemp -d -p ${root} --tmpdir=${outside}) && cd $T && echo x > a.js`,
+    `T=$(mktemp -d --tmpdir=${root} -p${outside}) && cd $T && echo x > a.js`,
+    `T=$(mktemp -d -p${outside}) && cd $T && echo x > a.js`,
+    `T=$(mktemp -d -p ${root} ../fuera/x.XXXX) && cd $T && echo x > a.js`,
+    `T=$(mktemp -d -p ${root} | sed s,src,fuera,) && cd $T && echo x > a.js`,
+    `T=$(mktemp -d -p ${root} -t x.XXXX) && cd $T && echo x > a.js`,
+    `T=$(mktemp -d ${root}/../fuera/x.XXXX) && cd $T && echo x > a.js`,
+    `T=$(mktemp -d ${root}/x.XXXX otra) && cd $T && echo x > a.js`,
+    `T=$(mktemp -d -u -p ${root}) && cd $T && echo x > a.js`,
+    // Con la salida redirigida la variable queda vacía: la ruta del `>` no es dónde crea.
+    `T=$(mktemp -d >${root}/log) && cd $T && echo x > a.js`,
     `T=${root}/src; cd '$T' && echo x > a.js`,
   ]
   for (const command of unresolved) {

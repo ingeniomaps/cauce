@@ -199,9 +199,40 @@ function asRun(command) {
 //
 // Angosto a propósito, porque expandir es interpretar shell y cada forma nueva es una forma de errar hacia
 // el lado que deja pasar: sólo una asignación que ocupa su tramo entero, con un literal, con otra variable
-// ya resuelta o con `mktemp` sin directorio propio; y una sola vez por nombre —reasignada, no se sabe cuál
-// vale—. Lo demás queda como estaba, sin resolver.
-const MKTEMP = /^\$\(mktemp(?:\s+-d)?(?:\s+(\S+))?\)$/
+// ya resuelta o con `mktemp`; y una sola vez por nombre —reasignada, no se sabe cuál vale—. Lo demás queda
+// como estaba, sin resolver.
+const MKTEMP = /^\$\(mktemp((?:\s+[^\s$`]+)*)\)$/
+
+// Dónde crea `mktemp` lo suyo: el directorio de `-p` o `--tmpdir=`, el de la plantilla si trae ruta, y el
+// temporal del sistema si no dice. El nombre que elige no se sabe y no hace falta: lo que se juzga es dónde
+// cae, y cae adentro de ése. Sin esto sólo se reconocía el temporal del sistema, y una copia hecha con
+// `mktemp -d -p <scratchpad de la sesión>` —lo que pide R23 para una mutación— dejaba el `cd` sin resolver y
+// frenaba toda escritura que viniera después (caso 311).
+//
+// Se acepta una lista cerrada de formas y lo demás queda sin resolver, que es el lado que frena. `mktemp`
+// tiene más de una manera de decir dónde, y cuando dos se contradicen gana una que acá no se sabe: con dos
+// `-p` usa el último, con `-t` manda `TMPDIR`, y una plantilla con `..` se sale del directorio que la precede.
+// Resolver mal acá es peor que no resolver: el guard juzgaría una carpeta permitida mientras se escribe en
+// otra. Vacío significa «no se sabe».
+function mktempParent(args) {
+  const words = args.trim().split(/\s+/).filter(Boolean)
+    .map((word) => word.replace(/^(["'])(.*)\1$/, '$2'))
+  const dirs = []
+  const templates = []
+  for (let at = 0; at < words.length; at += 1) {
+    const word = words[at]
+    if (word === '-d' || word === '-q') continue
+    if (word === '-p') { dirs.push(words[at += 1] || ''); continue }
+    if (word.startsWith('--tmpdir=')) { dirs.push(word.slice('--tmpdir='.length)); continue }
+    if (word.startsWith('-')) return ''
+    templates.push(word)
+  }
+  if (dirs.length > 1 || templates.length > 1 || /["']/.test(words.join(''))) return ''
+  const [template = ''] = templates
+  if (dirs.length) return template.includes('/') || !path.isAbsolute(dirs[0]) ? '' : dirs[0]
+  if (!template.includes('/')) return os.tmpdir()
+  return path.isAbsolute(template) && !template.split('/').includes('..') ? path.dirname(template) : ''
+}
 // Con qué reemplazar las variables que el comando asigna, o nada si no asigna ninguna que se pueda resolver.
 function assignedValues(command) {
   const raw = String(command)
@@ -215,9 +246,11 @@ function assignedValues(command) {
     const [, name, right] = assigned
     if (known.has(name) || twice.has(name)) { known.delete(name); twice.add(name); continue }
     const bare = right.replace(/^"(.*)"$/, '$1')
-    const made = bare.match(MKTEMP)
+    // Las variables ya conocidas se resuelven antes: el directorio de `-p` suele venir en una.
+    const made = value(bare).match(MKTEMP)
     if (made) {
-      if (!made[1] || made[1].startsWith(`${os.tmpdir()}/`)) known.set(name, path.join(os.tmpdir(), 'mktemp'))
+      const parent = mktempParent(made[1])
+      if (parent) known.set(name, path.join(parent, 'mktemp'))
       else twice.add(name)
       continue
     }
