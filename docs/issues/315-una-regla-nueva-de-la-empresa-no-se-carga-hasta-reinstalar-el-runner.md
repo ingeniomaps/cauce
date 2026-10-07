@@ -1,14 +1,15 @@
 ---
 caso: 315
 titulo: una regla nueva de la empresa no se carga hasta reinstalar el runner
-estado: abierto
+estado: resuelto
+resuelto-en: 0.103.6
 prioridad: alta
 version-detectada: 0.103.5
 ---
 
 # 315 — La empresa escribe su regla y, en el chat, sigue rigiendo la del sistema hasta reinstalar
 
-**🔴 abierto** · detectado en 0.103.5 · prioridad **alta**.
+**🟢 resuelto en 0.103.6** · detectado en 0.103.5 · prioridad **alta**.
 
 **Prioridad alta**: es la otra mitad de «lo de la empresa gana»: una regla que no se cargó no se cumple, y sólo lo dice una advertencia.
 
@@ -89,10 +90,66 @@ alguien reinstala, y lo único que lo dice es una línea amarilla.
 4. El gancho de cada mensaje se vuelve lento: corre en todos los mensajes de todas las sesiones.
 5. El aviso llega también a los subagentes de `autobuild`, que ya reciben la lista por otro lado.
 
-## Recomendación
+## Cierre
 
-**La opción 1**, medida igual que se midió el defecto: la misma sesión de chat, con la regla sin reinstalar,
-antes y después. Espera la decisión del dueño sobre cuál de las tres.
+**Resuelto en 0.103.6**, con la opción 1, que eligió el dueño.
+
+### El recorrido de lo que este caso enumeró
+
+- **La parada de `autobuild` — se decidió que no.** La medición mostró que ahí la regla ya rige.
+- **Opción 1, nombrarle a la sesión las reglas que no cargó — se hizo.** Un gancho nuevo sobre cada mensaje
+  de la persona, `rules-notice`. Con una regla vigente sin cargar le dice a la sesión cuál es, que rige igual
+  y que la lea; cuál quedó cargada y ya no rige; y que reinstalar lo hace la persona. Sin desfase no imprime
+  nada.
+- **Opciones 2 y 3 — no se hicieron.** No frena nada ni cambia `check`.
+- **Sólo para Claude.** Codex y Gemini enganchan el mismo evento, pero qué hace cada uno con lo que el gancho
+  imprime no se comprobó. Queda sin hacer para ellos, y dicho.
+
+### Qué pasó con cada cosa que podía salir mal
+
+1. **La sesión recibe el aviso y no lee la regla — no ocurrió.** En la corrida real la leyó y la siguió.
+   Sigue siendo un aviso y no una carga: lo dice el encabezado del gancho.
+2. **Aparece sin desfase — ocurría, y lo encontró la revisión.** Recién instalado y después de reinstalar
+   no imprimía nada, pero había dos estados en que avisaba en cada mensaje sin que reinstalar lo apagara. Con
+   un archivo de instrucciones propio, sin el bloque, listaba todas las reglas vigentes: reinstalar conserva
+   ese archivo. Y una regla que la empresa importó a mano fuera del bloque salía como no cargada, aunque lo
+   está. Ninguno de los dos avisa ya. El primero lo sigue diciendo `check`, con lo que hay que hacer.
+3. **Molesta o tapa el pedido — acotado.** Son unos 780 caracteres, y sólo mientras dure el desfase.
+4. **Vuelve lento cada mensaje — no.** 52 milisegundos, medido con el gancho instalado.
+5. **Llega a los subagentes de `autobuild` — no se comprobó.** El evento es el del mensaje de la persona, y
+  un subagente no lo dispara: **documentado**, no verificado en una corrida.
+
+### Qué se corrió
+
+- **La misma sesión de chat, antes y después**, con la regla propia escrita y el runner sin reinstalar, y el
+  mismo pedido: crear un archivo y commitearlo en una rama nueva.
+
+  | | Rama | Commit |
+  |---|---|---|
+  | Antes | `docs/notas` | `docs: add notes file`, sin cuerpo ni pie |
+  | Después | `acme/docs/notas` | Asunto en español, con cuerpo y `Equipo: ACME` |
+
+  Se repitió después de corregir lo que encontró la revisión, y dio lo mismo. La sesión dijo que el gancho
+  le había avisado qué regla regía, y no reinstaló: la instancia quedó sin un archivo tocado.
+- **El gancho instalado, como lo corre el runner**: sin desfase no imprime; con desfase imprime el aviso y sale
+  con 0; llamado por un runner que la instancia no instaló, calla.
+- **Doce mutaciones en rojo, en una copia**, sobre el código ya corregido. Entre ellas: avisar un archivo
+  propio sin bloque, ignorar el import hecho a mano, quitar el `exit 0` del shim, dejar pasar su `stderr` y
+  suponer un runner cuando el shim no lo dice.
+- **Una revisión independiente del diff**, antes de commitear. Además de los dos estados del punto 2 encontró
+  que nada probaba que el shim saliera con 0 con el motor fallando, que el aviso no decía quién reinstala
+  —una sesión diligente podía correrlo— y que el changelog prometía que la sesión lee las reglas. Los tres
+  se corrigieron. También revisó sin hallazgos cómo llega el gancho a una instancia ya instalada: `upgrade`
+  trae el shim y pide reinstalar, e `install` sin `upgrade` se niega sin tocar la configuración.
+- **La puerta entera**, `npm run ci`.
+- **Lo que no se corrió**: Codex y Gemini, y una instancia real.
+
+### Lo que queda como está, y dicho
+
+- **Una regla nombrada en prosa cuenta como cargada.** El gancho mira si el archivo de instrucciones menciona
+  la ruta, no si la importa. Es el mismo criterio con que el bloque nombra las reglas por superficie.
+- **El aviso no le pide a la sesión que le cuente a la persona.** Llegaría en cada mensaje y la sesión no
+  sabe si ya lo dijo. Que hay que reinstalar lo sigue diciendo `check`.
 
 ## Relacionados
 

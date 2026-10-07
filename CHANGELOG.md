@@ -28,6 +28,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **Una regla que escribís después de instalar el runner rige también en el chat.** Dentro de `autobuild` ya
+  regía; en una sesión de chat seguía valiendo la regla anterior hasta que alguien reinstalaba, y sólo lo
+  decía una advertencia. Ahora, mientras dure el desfase, la sesión de Claude recibe en cada mensaje cuáles
+  reglas rigen y no tiene cargadas, con el pedido de leerlas. Reinstalar sigue siendo la forma de que carguen solas:
+  `make install-claude` y una sesión nueva. **Qué hacer:** reinstalá el runner para que llegue el gancho (caso 315).
 - **Un cierre que no se puede reparar deja una fila para una persona.** Si `check` quedaba en rojo por algo
   que no es estado derivado, la corrida paraba sin escribir nada: cerrada la sesión, el planning seguía en
   rojo sin decir por qué. Ahora queda una fila pendiente en `HUMAN_ACTIONS.md`, commiteada (caso 310).

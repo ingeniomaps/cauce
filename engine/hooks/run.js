@@ -15,6 +15,7 @@ const { verify } = require('./verify')
 const files = require('./files')
 const { migrations } = require('./migrations')
 const chat = require('./chat')
+const { rulesNotice } = require('./rules-notice')
 const CF = require('./confirm')
 const { secretsShell } = require('./secrets-shell')
 const { opsConfig, opsConfigShell } = require('./ops-config')
@@ -70,6 +71,7 @@ const guards = {
   'test-workers': testWorkers,
   comments,
   chat: chat.record,
+  'rules-notice': rulesNotice,
   'planning-drift': planningDrift,
 }
 
@@ -83,6 +85,8 @@ const hookGroups = {
   'pre-read': ['secrets-read'],
   'pre-mcp': ['jira-adf'],
   prompt: ['chat'],
+  // Aparte de `prompt`: lo que `chat` imprime se descarta, y lo de éste es justo lo que tiene que llegar.
+  'prompt-notice': ['rules-notice'],
   stop: ['planning-drift'],
 }
 
@@ -217,6 +221,11 @@ const hookMetadata = [
     event: 'UserPromptSubmit / BeforeAgent',
     purpose: 'Registra el mensaje de la persona: lo que nombró o aprobó en el chat pasa sin archivo. Nunca '
       + 'bloquea.',
+  },
+  {
+    name: 'rules-notice',
+    event: 'UserPromptSubmit',
+    purpose: 'Le nombra a la sesión las reglas vigentes que el runner instalado no carga. Nunca bloquea.',
   },
   {
     name: 'planning-drift',

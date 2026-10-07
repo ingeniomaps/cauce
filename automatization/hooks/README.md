@@ -122,6 +122,7 @@ runner, mientras la lógica se prueba y mantiene una sola vez en `engine/hooks/r
 | `pre-read` | secrets-read | `guard-secrets-read.sh` |
 | `pre-mcp` | jira-adf | `guard-jira-adf.sh` |
 | `prompt` | chat | `guard-chat.sh` |
+| `prompt-notice` | rules-notice | `guard-rules-notice.sh` |
 | `stop` | planning-drift | `guard-planning-drift.sh` |
 
 `pre-mcp` corre sólo en Claude Code, sobre las herramientas de un servidor MCP que nombra su matcher
