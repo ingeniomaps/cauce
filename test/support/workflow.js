@@ -12,9 +12,10 @@ const automation = require('../../engine/automation')
 
 const AUTOMATION = path.resolve(__dirname, '..', '..', 'automatization')
 
-function compileWorkflow(name) {
+// `root` es la raíz que `automation install` escribe en la copia instalada. Vacía, el recorrido usa `.`.
+function compileWorkflow(name, root = '') {
   const file = path.join(AUTOMATION, 'workflows', `${name}.js`)
-  const source = automation.render(file, '', AUTOMATION).replace(/^export const meta =/m, 'const meta =')
+  const source = automation.render(file, '', AUTOMATION, root).replace(/^export const meta =/m, 'const meta =')
   return new Function('agent', 'phase', 'log', 'parallel', 'pipeline', 'workflow', 'args', 'budget',
     `return (async () => {\n${source}\n})()`)
 }

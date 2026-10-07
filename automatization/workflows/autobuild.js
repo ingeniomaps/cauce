@@ -646,6 +646,26 @@ const SCOPE = () => `${BASE}\n\nProyecto ${contract.project}. workspaceRoots es 
   (governing.length ? ` Las reglas que rigen este proyecto son éstas, relativas a ${ROOT}: ${governing.join(', ')}. ` +
     'Leé las que toquen tu fase antes de planificar, construir o revisar; donde una propia contradice a una del ' +
     'sistema, rige la propia.' : '')
+// Lo que una revisión declara haber abierto viene con la ruta de esta máquina, y `review` va textual a
+// `done/`: no se le puede pedir a quien escribe que las acomode. Se les cambia el prefijo acá, a cada ruta
+// que cuelga de una raíz del proyecto; lo demás —el motor, un temporal— queda como vino (caso 321).
+//
+// Angosto a propósito, porque el campo es lo que después se audita. Sólo sobre lo que se declaró abierto,
+// nunca sobre lo que el revisor escribió en prosa: ahí una ruta puede ser justamente de lo que habla. Sólo
+// una ruta entera —que empiece una palabra y termine en una barra o en el fin de un nombre—, para que otra
+// carpeta que empieza igual, o una ruta que la contiene, no se toque. Y sólo con la raíz absoluta que escribe
+// `automation install`: con una relativa no hay prefijo de máquina que sacar.
+const resolved = (given) => (given.startsWith('/') ? given : `${ROOT}/${given}`).split('/')
+  .reduce((out, part) => (part === '..' ? out.slice(0, -1) : part && part !== '.' ? [...out, part] : out), [])
+  .join('/')
+// De la más larga a la más corta, para que una raíz que contiene a otra no se lleve sus rutas. A igual largo
+// va primero la que se declaró primero: planning, los servicios, y la instancia al final.
+const homes = () => [[P, 'planning'], ...contract.workspaceRoots.filter((one) => one.includes(' → '))
+  .map((one) => [`/${resolved(one.slice(one.lastIndexOf(' → ') + 3))}`, one.slice(0, one.lastIndexOf(' → '))]),
+[ROOT, '']].filter(([from]) => from.length > 1).sort((a, b) => b[0].length - a[0].length)
+const local = (text) => (ROOT.startsWith('/') ? homes().reduce((out, [from, to]) => out.replace(
+  new RegExp(`(^|[\\s'"=(])${from.replace(/[.*+?^$()|[\]{}\\]/g, '\\$&')}(?:/|(?=$|[\\s'"):,;]))`, 'g'),
+  (whole, lead) => `${lead}${whole.endsWith('/') ? to && `${to}/` : to || '.'}`), text) : text)
 // Formatos de planning: sólo para subagentes que escriben roadmap, BACKLOG, WIP, DONE o gates.
 const LEDGER = () => `${SCOPE()}\n\nContratos de planning, textuales de ${P}/PROTOCOL.md:\n${contract.contracts}`
 
@@ -1530,7 +1550,12 @@ while (rounds++ < MAX_TASKS) {
         + `alcanza. No inventes responsables ni fechas: ${JSON.stringify(filed)}`, 'review-human')
       decidedNote = `${note}`
     }
-    reviewFact = `${review.verdict} por ${cast.review}, sobre ${review.consulted.join(', ')}`
+    // El árbol de la tarea primero, que puede colgar de la raíz: si no, la entrada nombraría uno que al
+    // cerrar ya no existe (caso 277).
+    const seated = (one) => [tree && tree.work, tree && tree.path]
+      .reduce((out, from) => (from ? out.split(from).join(declared) : out), one)
+    reviewFact = `${review.verdict} por ${cast.review}, sobre `
+      + review.consulted.map((one) => local(seated(one))).join(', ')
       + (filed.length ? ` · ${filed.length} decisión(es) registrada(s)${decidedNote}` : '')
       + (decided.length > filed.length ? ` · ${decided.length - filed.length} decisión(es) sin volcar` : '')
       + ((review.rules || []).length ? ` · reglas: ${review.rules.join(', ')}` : '')

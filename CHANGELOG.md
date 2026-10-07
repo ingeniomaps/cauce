@@ -59,6 +59,10 @@ diseño — eso vive en el commit y en el código.
   `autobuild`. Ahora busca el archivo y, dentro de él, el caso que venga entre comillas o con `›`. Hay un
   veredicto nuevo, `parcial`, para el archivo que existe sin ese caso. Y deja de buscar en `planning/`, donde
   una prueba inventada se encontraba en la propia entrada que la nombraba (caso 316).
+- **La entrada de `done/` ya no trae la ruta de tu máquina en lo que la revisión abrió.** El campo `review` va
+  textual, y lo que el revisor declara haber abierto venía con rutas absolutas: el nombre de usuario y las
+  carpetas de quien corrió. Ahora cada ruta que cuelga de una raíz del proyecto llega relativa a ella. Lo
+  que el revisor escribió en prosa no se toca. **Qué hacer:** reinstalá el runner (caso 321).
 - **Quien cierra una tarea no toca la entrada de otra.** Si `check` marca una entrada que no escribió, la deja
   para el cierre de la corrida (caso 310).
 

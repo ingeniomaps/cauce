@@ -190,7 +190,7 @@ async function runFlow(changes = {}, options = {}) {
     return typeof answer === 'function' ? answer() : answer
   }
 
-  const result = await compileWorkflow('autobuild')(
+  const result = await compileWorkflow('autobuild', options.root)(
     agent, (title) => { phase = title; phases.push(title) }, (text) => said.push(text),
     async (thunks) => Promise.all(thunks.map((t) => t())), async () => [], async () => ({}),
     runArgs, { total: null, spent: () => 0, remaining: () => Infinity },
