@@ -28,5 +28,6 @@ para pedirles trabajo.
 no carga las instrucciones del proyecto (`omitClaudeMd`), porque en eso no hay nada que una regla cambie.
 
 `cauce-scribe` escribe en planning lo que el recorrido ya decidió —el WIP, la entrada de `done/`, la compuerta
-del hito— y commitea ese estado. Tiene pocas herramientas y **sí carga las instrucciones y las reglas del
+del hito— y commitea ese estado. Tiene pocas herramientas —archivos, shell y los skills del proyecto— y
+**sí carga las instrucciones y las reglas del
 proyecto**: lo que redacta sigue lo que la empresa escribió, y eso gana sobre lo que el recorrido dicte.

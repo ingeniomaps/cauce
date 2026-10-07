@@ -79,7 +79,8 @@ test('instalar Claude entrega el agente de oficina que el recorrido nombra, y de
   const scribeFront = fs.readFileSync(scribe, 'utf8').split('---')[1]
   assert.match(scribeFront, /^name: cauce-scribe$/m)
   assert.doesNotMatch(scribeFront, /omitClaudeMd/)
-  assert.match(scribeFront, /^tools: Bash, Read, Edit, Write$/m)
+  // Con `Skill`: una empresa puede mandar commitear con un skill propio, y quien no lo tiene no puede cumplirla.
+  assert.match(scribeFront, /^tools: Bash, Read, Edit, Write, Skill$/m)
   assert.match(workflow, /agentType: 'cauce-scribe'/)
 
   assert.equal(run(['automation', 'uninstall', target, 'claude']).status, 0)

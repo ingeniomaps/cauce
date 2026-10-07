@@ -1728,7 +1728,9 @@ while (rounds++ < MAX_TASKS) {
     `este preámbulo—; ` +
     `sacala junto con sus notas indentadas de ${queueFile()} —si es un archivo de ${P}/backlog/ y su hito queda ` +
     'sin tareas, borrá ese archivo—; cerrá su épica sólo si no queda ' +
-    `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE; y soltá la reserva corriendo ` +
+    `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE —una línea «status: IDLE» en su ` +
+    // Dicho con su forma: sin eso quien cierra la buscaba en el fuente del motor, una llamada por tarea.
+    `frontmatter es lo que lee el motor—; y soltá la reserva corriendo ` +
     `"node tools/ops.js release ${P} ${task.id}". lane y review van textuales, copiados de estos hechos sin ` +
     'resumir ni recortar: son lo que después se audita, y un resumen elige qué perder. ' +
     // `done` y `qa` no van textuales, y hay que decirlo: lo que llega se escribió con la tarea abierta. Sin
