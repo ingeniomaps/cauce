@@ -16,6 +16,8 @@ const fs = require('node:fs')
 const path = require('node:path')
 const P = require('../planning/parser')
 const { fail, opsRoot, USAGE } = require('./io')
+const A = require('../automation')
+const M = require('../core/manifest')
 
 // Los cuatro que componen el contrato, con la ruta relativa a la raíz de la instancia. El orden es el que
 // usa el mensaje de error: se nombra el primero que falte y no los cuatro, porque arreglar uno suele
@@ -231,6 +233,11 @@ function contract(dir, cli) {
     commitPerTask: Boolean(runner.commitPerTask),
     commitToLiveBranch: Boolean(runner.commitToLiveBranch),
     humanCheckpoint: Boolean(runner.humanCheckpointBetweenMilestones),
+    // Lo instalado que quedó atrás del motor. Después de `upgrade` y antes de reinstalar el runner, el
+    // recorrido y sus agentes son los de la versión anterior: la corrida anda, y anda con lo viejo (caso 308).
+    // El registro anota «runner/archivo», así que el runner es lo que va antes de la primera barra.
+    staleAdapter: [...new Set(Object.keys(M.readRunners(root)).map((key) => key.split('/')[0]))]
+      .flatMap((name) => { try { return A.staleArtifacts(root, name) } catch { return [] } }),
     // Textual y sin reformular: es el formato contra el que se escribe roadmap, BACKLOG, WIP y DONE, y un
     // resumen de un formato no sirve para cumplirlo.
     contracts: sections[path.join('planning', 'PROTOCOL.md')].trim(),

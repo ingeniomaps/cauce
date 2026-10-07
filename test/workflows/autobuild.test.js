@@ -92,6 +92,20 @@ test('sin WIP activo no se entra a construir', async () => {
   assert.ok(!reached(asked, 'Build'), 'y no se construye sin el WIP puesto')
 })
 
+// Caso 308. Con el adaptador de Claude atrás del motor, la corrida no arranca: lo que correría es el
+// recorrido de la versión anterior. Lo de otro runner no es asunto de éste.
+test('un adaptador que quedó atrás del motor para la corrida antes de tomar nada', async () => {
+  const stale = (files) => runFlow({ [KEY.contract]: { ...baseScript()[KEY.contract], staleAdapter: files } })
+  const stopped = await stale(['.claude/workflows/autobuild.js', '.claude/agents/cauce-scribe.md'])
+  assert.equal(stopped.result.reason, 'adapter-stale')
+  assert.match(stopped.result.detail, /\.claude\/workflows\/autobuild\.js, \.claude\/agents\/cauce-scribe\.md/)
+  assert.match(stopped.result.detail, /automation install \. claude/)
+  assert.ok(!reached(stopped.asked, 'Pick'), 'no llega a leer la cola')
+  for (const files of [[], ['.codex/prompts/autobuild.md']]) {
+    assert.notEqual((await stale(files)).result.reason, 'adapter-stale', JSON.stringify(files))
+  }
+})
+
 // Caso 305. Un WIP activo cuyos pasos el motor no cuenta es un plan vacío para todo lo que viene después.
 // El recorrido compara lo que el motor cuenta contra lo que el plan aprobó, y no entra a construir si difieren.
 test('un WIP cuyos pasos el motor no cuenta no entra a construir', async () => {

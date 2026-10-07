@@ -254,5 +254,8 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   //
   // 59 desde el 2026-10-07: quien escribe el WIP corre `tools/ops.js context` para contar los pasos que el
   // motor lee (caso 305). El mismo comando y la misma raíz que la lectura de Triage.
-  assert.equal(hits, 59, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 60 desde el 2026-10-07: la parada por un adaptador que quedó atrás le dicta a la persona el comando que
+  // lo reinstala, `tools/ops.js automation install` (caso 308). Es texto de un mensaje, desde la misma raíz.
+  assert.equal(hits, 60, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })

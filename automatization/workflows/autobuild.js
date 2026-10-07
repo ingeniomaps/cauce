@@ -434,6 +434,8 @@ const CONTRACT = {
     commitToLiveBranch: { type: 'boolean' },
     humanCheckpoint: { type: 'boolean' }, contracts: { type: 'string' },
     boundaries: { type: 'array', items: { type: 'string' } },
+    // Qué archivos de un runner quedaron atrás del motor instalado; por qué importa, donde se lee.
+    staleAdapter: { type: 'array', items: { type: 'string' } },
   },
 }
 
@@ -618,6 +620,17 @@ if (!contract) return stop('contract-unavailable', `no se pudo leer ${CONFIG} ni
 if (!contract.rootOk) {
   return stop('root-unreadable', `${ROOT} no se pudo leer entero. Es la raíz absoluta que escribió `
     + `"automation install": comprobá que exista y, si moviste el proyecto de carpeta, reinstalá el adaptador.`)
+}
+
+// Después de `upgrade` hay que reinstalar el runner, y nada lo obligaba: `doctor` lo avisa como advertencia y
+// la corrida anda igual, con el recorrido y los agentes de la versión anterior. Quien actualizó cree tener el
+// arreglo y no lo tiene. Este script es justamente una de esas copias, así que el aviso llega con la versión
+// siguiente a la que lo trae: una copia más vieja que ésta no sabe preguntar (caso 308).
+const stale = (contract.staleAdapter || []).filter((file) => file.includes('.claude/'))
+if (stale.length) {
+  return stop('adapter-stale', `El motor se actualizó y el adaptador de Claude quedó en la versión anterior: `
+    + `${stale.join(', ')}. Reinstalalo con "node tools/ops.js automation install . claude" desde ${ROOT} —o `
+    + '"make install-claude"—, abrí una sesión nueva y volvé a lanzar.')
 }
 
 const bounds = contract.boundaries || []
