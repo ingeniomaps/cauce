@@ -75,5 +75,8 @@ La misma corrida del 304.
   con `wip-malformed` y no llega a Build.
 - **Dos mutaciones en rojo, en una copia**: sin comparar los pasos, y sin pedir la forma numerada.
 - **La puerta entera**, `npm run ci`.
-- **Lo que no se corrió**: un WIP mal escrito en una corrida real. No volvió a salir; la parada se probó en
-  el arnés.
+- **Lo que no se corrió**: un WIP mal escrito en una corrida real. No se puede provocar: en once WIP
+  escritos por ese agente en las corridas de esta versión no volvió a salir. La parada se probó en el arnés.
+
+La comparación volvió caro un defecto vecino, que salió como caso propio: el motor contaba pasos en todo el
+archivo y no sólo en el plan (caso 309).

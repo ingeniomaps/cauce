@@ -51,7 +51,7 @@ los hooks y no aparece.
 ## Tradeoffs
 
 - Los commits de planning vuelven a costar: de unos 4.000 a 6.000 tokens con el agente de oficina a unos
-  45.000 con uno que carga las instrucciones. El de siempre costaba 62.000 a 69.000.
+  61.000 a 65.000 con uno que carga las instrucciones y los skills. El de siempre costaba 62.000 a 69.000.
 - Sin una frase en el prompt que prohíba la firma de IA, la sostiene sólo la regla. Es lo que corresponde si
   una empresa la reemplaza, y deja el caso 300 como estaba.
 
@@ -105,8 +105,11 @@ todo. Cargarlas es lo único que lo cumple sin una lista.
 
   Los tres siguen la regla entera, sufijo incluido. Ninguno lleva firma de IA, ya sin la frase que la
   prohibía. `ops check` válido en los dos.
-- **Lo que cuesta ahora**, tokens escritos a caché: `planning-commit` 45.123 y `planning-block` 45.844, contra
-  3.875 a 6.529 en 0.103.4 y 62.346 a 69.452 en 0.103.3.
+- **Lo que cuesta ahora**, tokens escritos a caché: `planning-commit` 60.814 a 64.633, contra 3.875 a 6.529
+  en 0.103.4 y 62.346 a 69.452 en 0.103.3. Sin los skills eran 45.123: sumarlos cuesta unos 15.000 por paso.
+- **Una regla que manda usar un skill, cumplida.** En la máquina de las pruebas una regla del usuario pide
+  commitear con un skill propio. El agente de escritura lo invocó antes de cada commit; sin esa herramienta
+  commiteaba igual y la regla quedaba sin cumplir, sin decirlo.
 - **Mutaciones en rojo, en una copia**: cada uno de los dos commits devuelto al agente de oficina, y el
   agente de escritura con `omitClaudeMd` otra vez.
 - **La puerta entera**, `npm run ci`.

@@ -78,5 +78,11 @@ La corrida del 304.
   Cada entrada de `done/` nombra su rama. `ops check` válido.
 - **Dos mutaciones en rojo, en una copia**: sin nombrarle al commit las ramas ya usadas, y sin registrarlas.
 - **La puerta entera**, `npm run ci`.
-- **Lo que no se corrió**: el caso entre dos corridas, con el repositorio parado en la rama de una tarea ya
-  cerrada. Lleva la instrucción y su prueba en el arnés; la corrida real fue dentro de una sola.
+- **Entre dos corridas**, que es como pasó en la instancia: una corrida con `--max 1` cerró la primera tarea
+  y dejó el repositorio en su rama; una sesión nueva lanzó la segunda, que cortó la suya desde ahí.
+
+  ```
+  * 2694e0c (HEAD -> feat/producto-dos-numeros) feat: add product of two numbers
+  * b527d79 (feat/resta-dos-numeros) feat: add subtraction of two numbers
+  * 1c3930a (main) feat: suma
+  ```

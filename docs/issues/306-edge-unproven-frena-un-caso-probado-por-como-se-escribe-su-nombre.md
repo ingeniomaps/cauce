@@ -92,5 +92,7 @@ prueba.
   los casos entre comillas. Una cuarta sobrevivió —exigir más de un tramo— y esa condición se sacó: no
   decidía nada que la contención no decidiera ya.
 - **La puerta entera**, `npm run ci`.
-- **Lo que no se corrió**: una corrida real que declare un borde. En los bancos las tareas son chicas y Build
-  no declaró ninguno.
+- **Lo que no se pudo reproducir**: una corrida real que declare un borde. Se intentó dos veces, con dos
+  tareas elegidas para tentarlo —promediar una lista, dividir dos números—. Las dos cerraron, y en las dos
+  Build anotó lo que encontró como nota y no como borde: en una tarea chica no arregla un caso que la
+  aceptación no pide. Queda para una instancia real, que es donde apareció.

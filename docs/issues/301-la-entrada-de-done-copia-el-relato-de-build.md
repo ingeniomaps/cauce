@@ -67,7 +67,8 @@ de lo que ese agente hacía solo— y R9 pide probarla al revés.
 ## Tradeoffs
 
 - Cargar las instrucciones cuesta: el agente de escritura pasa de arrancar en unos 10.000 a 14.000 tokens a
-  unos 42.000 a 49.000. Sigue por debajo de los 73.000 a 96.000 del agente de siempre.
+  unos 54.000 a 65.000, con los skills del proyecto incluidos. Sigue por debajo de los 73.000 a 96.000 del
+  agente de siempre, por poco.
 - Decir en el prompt cómo va `done` es dictar una redacción. Si una regla del proyecto pide otra, gana la regla:
   el agente la tiene cargada y su propio contrato lo dice.
 
@@ -124,11 +125,13 @@ redacta sin las reglas del proyecto cumple sólo las que alguien se acordó de c
 
   | Paso | 0.103.3 | 0.103.4 | 0.103.5 |
   |---|---|---|---|
-  | `wip` | 86.675 a 101.604 | 14.740 a 15.616 | 45.488 y 47.724 |
-  | `done` | 84.726 a 110.385 | 28.442 a 44.138 | 64.664 |
-  | compuerta del hito | 76.876 | 17.006 a 26.189 | 55.249 |
+  | `wip` | 86.675 a 101.604 | 14.740 a 15.616 | 60.872 a 68.057 |
+  | `done` | 84.726 a 110.385 | 28.442 a 44.138 | 74.953 a 88.010 |
+  | compuerta del hito | 76.876 | 17.006 a 26.189 | 65.267 |
 
-  La mitad de lo que 0.103.4 ahorraba en estos pasos se devuelve.
+  Casi todo lo que 0.103.4 ahorraba en estos pasos se devuelve: cargar las instrucciones cuesta unos 30.000
+  tokens por paso, y los skills del proyecto otros 15.000. Queda entre un 10 % y un 25 % por debajo del
+  agente de siempre, según el paso.
 - **Tres mutaciones en rojo, en una copia**: el prompt sin decir cómo van `done` y `qa`, sin pedir rutas
   relativas, y sin validarse. Y una más sobre el agente: con `omitClaudeMd` de vuelta, falla la prueba de
   instalación.
