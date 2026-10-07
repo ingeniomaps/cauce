@@ -14,6 +14,30 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.103.6] - 2026-10-07
+
+### Cambiado
+
+- **El cierre de una corrida lee lo que `check` devuelve, y te muestra sus avisos.** Hasta ahora lo contestaba
+  un agente completo, que corría el comando y contaba qué había visto. Ahora lo corre el agente liviano y el
+  recorrido decide con el resultado del comando. El agente que carga tus reglas entra sólo si `check` sale en
+  rojo y repara el estado derivado; si quedó en verde lo vuelve a decir el comando, y lo reparado queda
+  commiteado cuando tu proyecto commitea por tarea. Lo que `check` avisa sin fallar —una aprobación que
+  quedó sin borrar, por ejemplo— llega al registro de la corrida, que antes lo tiraba. **Qué hacer:**
+  reinstalá el runner (`make install-claude`); si no, `autobuild` te lo va a pedir al arrancar (caso 310).
+
+### Corregido
+
+- **Un cierre que no se puede reparar deja una fila para una persona.** Si `check` quedaba en rojo por algo
+  que no es estado derivado, la corrida paraba sin escribir nada: cerrada la sesión, el planning seguía en
+  rojo sin decir por qué. Ahora queda una fila pendiente en `HUMAN_ACTIONS.md`, commiteada (caso 310).
+- **Una copia hecha con `mktemp -d -p <carpeta>` ya no frena lo que le sigue.** El guard de límites sólo
+  reconocía el `mktemp` del temporal del sistema; con una carpeta propia dejaba el `cd` sin resolver y
+  bloqueaba las escrituras siguientes. Ahora lo juzga por dónde cae esa carpeta, en las formas en que eso se
+  sabe sin adivinar: un solo `-p` o `--tmpdir=`. Las demás siguen frenando (caso 311).
+- **Quien cierra una tarea no toca la entrada de otra.** Si `check` marca una entrada que no escribió, la deja
+  para el cierre de la corrida (caso 310).
+
 ## [0.103.5] - 2026-10-07
 
 ### Agregado
