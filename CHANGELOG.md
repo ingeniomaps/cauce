@@ -49,6 +49,11 @@ diseño — eso vive en el commit y en el código.
   asignado en el mismo comando, o con una plantilla sin ruta, el guard de límites juzgaba el temporal del
   sistema y la escritura caía en otra carpeta. Ahora el `cd` queda sin resolver y frena. `T=$(mktemp -d) &&
   cd $T` y `mktemp -d -p <carpeta>` siguen como estaban (caso 318).
+- **Las pruebas lanzadas en un contenedor con tope de memoria y de CPU ya no se frenan.** Un `docker run` o
+  `podman run` con `--memory` (o `-m`) y `--cpus` entre sus opciones está tan acotado como un comando de
+  `boundedCommands`, y el guard de workers lo frenaba igual. Hacen falta los dos topes, con un número mayor
+  que cero y antes de la imagen. Y se cierra una forma que pasaba con un comando declarado: el runner puesto
+  en una sustitución, como en `scripts/run.sh true $(npx jest)`, lo ejecuta la máquina y ahora frena (caso 313).
 - **Quien cierra una tarea no toca la entrada de otra.** Si `check` marca una entrada que no escribió, la deja
   para el cierre de la corrida (caso 310).
 

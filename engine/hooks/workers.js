@@ -14,7 +14,7 @@
 // Sólo se ve la llamada directa. `npm test` corre lo que diga el script, y eso lo cota el script.
 
 const path = require('node:path')
-const { block, commandOf, opsRoot, asRun, configOf } = require('./input')
+const { block, commandOf, opsRoot, asRun, configOf, unquoted } = require('./input')
 const AP = require('./approval')
 
 // En posición de comando —al principio o después de `;`, `&`, `|` o `(`—, con variables de entorno delante:
@@ -35,14 +35,38 @@ const NO_RUN = /(?:^|\s)(?:--version|--help|-h|--listTests|--showConfig)\b/
 
 // El comando de más afuera que contiene esa posición: desde el último `;`, `&`, `|` o salto de línea que no
 // esté entre comillas. Es el que dice con qué se lanzó lo que va adentro de un `sh -c '…'`.
+//
+// De cómo se leen las comillas depende quién es «el de afuera», así que se leen como el shell en lo que acá
+// importa: una barra escapa lo que sigue —también el salto que continúa un renglón—, `$'…'` admite escape, y
+// un comentario no abre cadenas. Y lo que va adentro de una sustitución —`$(…)`, `<(…)`, backticks— lo
+// ejecuta esta máquina antes de lanzar nada: adentro vuelve a empezar la lectura, con sus comillas y sus
+// paréntesis, y su comando de afuera es la sustitución y no quien la recibe. Sin eso, un runner puesto ahí
+// heredaba la cota de un comando que nunca lo contuvo (caso 313). Lo que no lee: el `)` de un `case`.
 function outerCommand(text, index) {
-  let start = 0
-  let quote = ''
+  let [start, quote, depth, escaped] = [0, '', 0, -2]
+  const outside = []
+  const leave = () => { ({ start, quote, depth } = outside.pop()) }
   for (let at = 0; at < index; at += 1) {
     const char = text[at]
-    if (quote) quote = char === quote ? '' : quote
-    else if (char === "'" || char === '"') quote = char
-    else if (';&|\n'.includes(char)) start = at + 1
+    if (quote === "'") { if (char === "'") quote = ''; continue }
+    if (char === '\\') { escaped = at += 1; continue }
+    if (quote === "$'") { if (char === "'") quote = ''; continue }
+    const before = escaped === at - 1 ? '\\' : text.charAt(at - 1)
+    const tick = char === '`'
+    if (tick && outside.at(-1)?.tick) leave()
+    else if (tick || (char === '(' && (before === '$' || (!quote && /[<>]/.test(before))))) {
+      outside.push({ start, quote, depth, tick })
+      ;[start, quote, depth] = [at + 1, '', 0]
+    } else if (quote) quote = char === quote ? '' : quote
+    else if (char === '(') depth += 1
+    else if (char === ')' && depth) depth -= 1
+    else if (char === ')' && outside.length) leave()
+    else if (char === "'" || char === '"') quote = before === '$' && char === "'" ? "$'" : char
+    else if (char === '#' && /^$|[\s;&|]/.test(before)) {
+      const end = text.indexOf('\n', at)
+      if (end === -1 || end >= index) return ''
+      at = end - 1
+    } else if (';&|\n'.includes(char)) start = at + 1
   }
   return text.slice(start, index)
 }
@@ -61,6 +85,37 @@ function bounded(outer, declared) {
   })
 }
 
+// Un contenedor lanzado a mano con tope de memoria y de CPU está igual de acotado que un comando declarado,
+// y frenarlo empujaba a correr la prueba de otra forma que la del CI (caso 313). Hacen falta los dos topes,
+// cada vez que aparezcan con un número mayor que cero, y como opciones del propio `run`: las que van antes de
+// la imagen. Las de después son argumentos del programa de adentro, y ese contenedor no tiene tope.
+//
+// Para saber dónde termina lo de `run` hay que saber qué opción lleva valor. Se listan las que **no** llevan,
+// todas las de `docker run --help` 27.2.1 y `podman run --help` 4.9.3, y cualquier otra se lleva la palabra
+// que sigue. La lista tiene que estar completa: una que falte se llevaría la imagen, y lo que el programa de
+// adentro reciba con forma de opción se leería como de `run`. Una versión que agregue otra pide agregarla acá.
+// Cuánto es mucho no se juzga: quien lo escribe ya lo decidió, como con `boundedCommands`.
+const LONE = new Set(['--detach', '--disable-content-trust', '--env-host', '--help', '--http-proxy', '--init',
+  '--interactive', '--no-healthcheck', '--no-hosts', '--oom-kill-disable', '--passwd', '--privileged',
+  '--publish-all', '--quiet', '--read-only', '--read-only-tmpfs', '--replace', '--rm', '--rmi', '--rootfs',
+  '--sig-proxy', '--tls-verify', '--tty', '--unsetenv-all'])
+const LIMITS = { '--memory': /^\d*\.?\d+(?:[bkmg]b?)?$/i, '--cpus': /^\d*\.?\d+$/ }
+function cappedContainer(outer) {
+  const words = unquoted(outer.replace(/\\\n/g, ' ')).trim().split(/\s+/)
+    .filter((word) => !/^[A-Za-z_]\w*=/.test(word))
+  if (words[0] === 'sudo') words.shift()
+  if (!['docker', 'podman'].includes(path.basename(words[0] || '')) || words[1] !== 'run') return false
+  const given = { '--memory': [], '--cpus': [] }
+  for (let at = 2; at < words.length && words[at].startsWith('-'); at += 1) {
+    if (LONE.has(words[at]) || /^-[ditPq]+$/.test(words[at])) continue
+    const [name, joined] = words[at].split(/=(.*)/)
+    const value = joined === undefined ? words[at += 1] : joined
+    const limit = name === '-m' ? '--memory' : name
+    if (given[limit]) given[limit].push(LIMITS[limit].test(value) && Number.parseFloat(value) > 0)
+  }
+  return Object.values(given).every((seen) => seen.length && seen.every(Boolean))
+}
+
 function testWorkers(input) {
   const command = commandOf(input)
   const root = opsRoot(input)
@@ -73,7 +128,8 @@ function testWorkers(input) {
     // Desde dónde está el runner y no desde donde empieza la coincidencia, que arranca en el separador: con
     // `acotado …; npx jest` el comando de afuera de ese `jest` es el segundo.
     const at = match.index + match[0].length - args.length - tool.length
-    if (declared.length && bounded(outerCommand(read, at), declared)) continue
+    const outer = outerCommand(read, at)
+    if ((declared.length && bounded(outer, declared)) || cappedContainer(outer)) continue
     const item = command.trim()
     if (!AP.pending(root, [item], input).length) return
     block(`'${tool}' sin cota de workers lanza tantos procesos como núcleos, y dos a la vez tiran la máquina. `
