@@ -1,14 +1,14 @@
 ---
 caso: 314
 titulo: el recorrido dicta convenciones que una regla de la empresa puede querer distintas
-estado: abierto
+estado: descartado
 prioridad: alta
 version-detectada: 0.103.5
 ---
 
 # 314 — El mensaje del commit, su pie y el nombre de la rama los fija el prompt, no la regla de la empresa
 
-**🔴 abierto** · detectado en 0.103.5 · prioridad **alta**.
+**⚪ descartado** · detectado en 0.103.5 · prioridad **alta**.
 
 **Prioridad alta**: es el principio que el dueño fijó —lo de la empresa gana siempre— y hoy se cumple a medias.
 
@@ -74,9 +74,62 @@ la instancia adivinó la mitad.
 - Una empresa con regla propia —cuerpo obligatorio, otro prefijo de rama—: se cumple entera.
 - Las dos, comparando salidas lado a lado. Es un cambio de quién decide, o sea una quita.
 
-## Recomendación
+## Plan, escrito antes de tocar código
 
-**Hacerlo**, y antes que los demás: es lo que el dueño pidió con todas las letras.
+1. **Línea de base, con el motor de hoy.** Dos corridas reales de la misma tarea: una con las reglas del
+   sistema y otra con una regla de commits propia que pida más que el idioma —un cuerpo, un pie y otro prefijo
+   de rama—. Se guardan los commits y las ramas de las dos.
+2. **El cambio.** Cada texto dictado pasa a decir que es la forma por defecto, y que una regla del proyecto
+   sobre lo mismo vale entera. Lo que el recorrido necesita para funcionar queda como exigencia y se nombra.
+3. **Pruebas del arnés**, con sus mutaciones en una copia.
+4. **Las mismas dos corridas, con el motor nuevo**, y comparación lado a lado con la línea de base.
+5. **Revisión independiente del diff**, antes de cerrar.
+
+## Qué podría salir mal
+
+1. **Una empresa sin reglas propias nota un cambio**: otro mensaje, otra rama.
+2. **Un agente toma «por defecto» como «opcional»** y se aparta sin que ninguna regla se lo pida.
+3. **Una regla de la empresa rompe algo que el recorrido necesita**: el commit sin el identificador de la
+   tarea, o el estado de planning commiteado en la rama viva.
+4. **La entrada de `done/` deja de encontrar el commit o la rama**, porque esperaba la forma de antes.
+5. **La rama de planning cambia de nombre** con un PR ya abierto, y el estado se parte en dos ramas.
+6. **El aviso de no apilar tareas en una rama (caso 307)** deja de funcionar con un prefijo propio.
+
+## Cierre
+
+**Descartado: el defecto no se reproduce.** La línea de base, tomada antes de tocar código, mostró que con
+el motor de 0.103.5 la regla de la empresa ya gana entera.
+
+### Qué se corrió
+
+Tres corridas reales de `autobuild` sobre la misma tarea, con el motor sin modificar. La regla propia pedía
+asunto en español, un cuerpo, el pie `Equipo: ACME` y ramas con prefijo `acme/`:
+
+| | Commit del producto | Commits de planning | Ramas |
+|---|---|---|---|
+| Reglas del sistema | `feat: add subtraction of two numbers`, con `Task:` | `chore(planning): close …`, de una línea | `feat/resta-dos-numeros`, `work/planning` |
+| Regla propia, runner reinstalado | En español, con cuerpo, `Task:` y `Equipo: ACME` | En español, con cuerpo y `Equipo: ACME` | `acme/feat/resta-dos-numeros`, `acme/planning` |
+| Regla propia, **sin** reinstalar | Igual que el anterior | Asunto en español, cuerpo y `Equipo: ACME` | Las mismas, con prefijo |
+
+Los textos que el recorrido dicta —el mensaje exacto, el pie, el nombre de la rama— cedieron ante la regla
+en las tres cosas que la regla pedía, y el recorrido conservó lo que necesita: el identificador de la tarea.
+La entrada de `done/` nombró la rama con prefijo y `check` pasó.
+
+### El recorrido de lo que este caso enumeró
+
+- **Convertir los textos en valores por defecto — se decidió que no.** No hay nada que arreglar, y tocar esos
+  prompts era la regresión que el propio caso señalaba: que una empresa sin reglas propias note un cambio.
+- **Las seis cosas que podían salir mal** quedan sin ocurrir porque no se cambió nada.
+
+### Lo que este caso encontró y no preveía
+
+**La premisa venía de un reporte mal leído.** La sesión de la instancia dijo que a los commits de planning
+«les falta el cuerpo que el skill de commits pide». Ese skill no lo exige: admite un commit sin cuerpo. La
+regla se estaba cumpliendo, y el caso se escribió sobre esa frase sin contrastarla.
+
+**El hueco real estaba en otro lado**, y lo mostró la misma medición: dentro de `autobuild` la regla de la
+empresa rige esté o no reinstalado el runner, porque a cada agente se le nombran las reglas vigentes. En una
+sesión de chat, no. Sigue en el caso 315.
 
 ## Relacionados
 

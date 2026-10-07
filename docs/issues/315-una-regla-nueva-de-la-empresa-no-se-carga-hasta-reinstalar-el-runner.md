@@ -6,7 +6,7 @@ prioridad: alta
 version-detectada: 0.103.5
 ---
 
-# 315 — La empresa escribe su regla de commits y las sesiones siguen cargando la del sistema
+# 315 — La empresa escribe su regla y, en el chat, sigue rigiendo la del sistema hasta reinstalar
 
 **🔴 abierto** · detectado en 0.103.5 · prioridad **alta**.
 
@@ -31,49 +31,68 @@ Banco con una regla de commits propia recién escrita, sin reinstalar:
 
 `check` pasa y `/autobuild` corre.
 
-## Qué lo atenúa hoy
+## Lo medido, antes de tocar código
 
-Dentro de `autobuild`, cada agente recibe en su preámbulo la lista de reglas vigentes, que el motor calcula al
-momento, con «leé las que toquen tu fase; donde una propia contradice a una del sistema, rige la propia». O
-sea que el agente tiene cargada la regla vieja y además le nombran la nueva. Una sesión de chat, fuera de
-`autobuild`, no recibe ese preámbulo.
+La misma regla propia —asunto en español, cuerpo, pie `Equipo: ACME`, ramas con prefijo `acme/`— en los
+cuatro estados posibles, con el motor de 0.103.5:
+
+| | Runner reinstalado | Regla escrita, **sin** reinstalar |
+|---|---|---|
+| Dentro de `autobuild` | La regla rige entera | La regla rige entera |
+| En una sesión de chat | La regla rige entera | **Rige la del sistema**: `docs: add notes file`, sin cuerpo ni pie, rama `docs/notas` |
+
+En el chat sin reinstalar, la sesión dijo qué había seguido: la regla global del usuario y «R8 de
+`planning/rules/system/commits.md`». La de la empresa no la tenía cargada. Con el runner reinstalado, la misma
+sesión siguió la de la empresa también por encima de la regla global del usuario.
+
+Dentro de `autobuild` no hay defecto: cada agente recibe en su preámbulo la lista de reglas vigentes, que el
+motor calcula al momento.
 
 ## Causa raíz
 
-`engine/automation/rules.js`, `drift`: detecta el desfase y lo reporta como advertencia. El caso 308 hizo que
-`autobuild` se niegue a correr con el recorrido o los agentes viejos, pero mira esos archivos y no el bloque
-de reglas.
+Las reglas llegan a una sesión por el bloque que `automation install` escribe en `CLAUDE.md`. Entre que la
+empresa escribe una regla y alguien reinstala, ese bloque nombra la regla anterior. `check` lo detecta
+(`engine/automation/rules.js`, `staleLines`) y lo reporta como advertencia.
 
 ## Fix propuesto
 
-- Que la parada del 308 cuente también el bloque de reglas: con una regla vigente sin cargar, `autobuild`
-  para al arrancar y dice el comando.
-- Para la sesión de chat no hay parada posible desde el recorrido. Queda el guard de planning al cerrar el
-  turno, que ya corre `check`: que ese aviso suba de advertencia a algo que no se pueda saltear.
+**La parada de `autobuild` que este caso proponía no hace falta**: la medición mostró que ahí la regla ya
+rige. Lo que hay que arreglar es el chat. Tres formas, de menor a mayor fricción:
+
+1. **Nombrarle a la sesión las reglas que no cargó, en cada mensaje.** El runner ya engancha el evento de
+   cada mensaje del usuario. Cuando hay una regla vigente sin cargar, ese gancho le dice a la sesión cuáles
+   son y que las lea antes de actuar. Es lo mismo que hace `autobuild` con su preámbulo. No frena a nadie.
+2. **Que el guard de planning frene el cierre del turno** cuando hay una regla sin cargar, con el comando
+   para reinstalar. Es de sesión y no toca el CI. Frena después de que el trabajo ya se hizo con la regla
+   vieja.
+3. **Subir la advertencia de `check` a error.** Lo ve también el CI de cada instancia.
 
 ## Por qué hacerlo
 
-Una empresa que escribe una regla espera que rija desde que la escribe. Hoy rige a medias dentro de
-`autobuild` y nada en el chat, y lo único que lo dice es una línea amarilla entre otras.
+Una empresa que escribe una regla espera que rija desde que la escribe. Medido: en el chat no rige hasta que
+alguien reinstala, y lo único que lo dice es una línea amarilla.
 
 ## Riesgos y regresiones
 
-- **Frena después de cada edición de reglas** hasta reinstalar. Es un comando, pero es un freno nuevo en el
-  camino de todos los días de quien está ajustando sus reglas.
-- **Reinstalar exige abrir una sesión nueva** para que el bloque se relea. La parada tiene que decirlo, o la
-  persona reinstala, relanza y vuelve a frenar.
-- **Regresión**: el toolkit mismo (`mode: toolkit`) no instala nada y no puede frenarse por esto.
+- **Opción 1**: depende de que la sesión lea lo que se le nombra. Dentro de `autobuild` ese mismo mecanismo
+  funcionó en la medición. Suma una línea por mensaje sólo mientras dure el desfase; sin desfase, nada.
+- **Opción 2**: un freno nuevo al cerrar cada turno hasta reinstalar y abrir otra sesión, y llega tarde.
+- **Opción 3**: pone en rojo el CI de toda instancia que tenga un desfase hoy. Es la regresión más probable
+  de las tres, y no se puede medir desde acá cuántas lo tienen.
+- **En las tres**: el propio toolkit no instala nada y no puede quedar afectado.
 
-## Qué habría que probar
+## Qué podría salir mal, con la opción 1
 
-- Banco con regla propia sin reinstalar: para con el comando. Reinstalado y en sesión nueva: corre.
-- Banco sin reglas propias: no cambia nada.
-- El repositorio de Cauce: no se frena.
+1. La sesión recibe el aviso y no lee la regla.
+2. El aviso aparece en una instancia sin desfase.
+3. El aviso se repite en cada mensaje y molesta, o le gana en volumen al pedido de la persona.
+4. El gancho de cada mensaje se vuelve lento: corre en todos los mensajes de todas las sesiones.
+5. El aviso llega también a los subagentes de `autobuild`, que ya reciben la lista por otro lado.
 
 ## Recomendación
 
-**Hacerlo para `autobuild`**, que es angosto y sigue al 308. Lo del chat, **decidirlo aparte**: subir una
-advertencia de `check` a error le cambia el día a todas las instancias.
+**La opción 1**, medida igual que se midió el defecto: la misma sesión de chat, con la regla sin reinstalar,
+antes y después. Espera la decisión del dueño sobre cuál de las tres.
 
 ## Relacionados
 
