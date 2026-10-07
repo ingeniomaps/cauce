@@ -63,6 +63,11 @@ diseño — eso vive en el commit y en el código.
   textual, y lo que el revisor declara haber abierto venía con rutas absolutas: el nombre de usuario y las
   carpetas de quien corrió. Ahora cada ruta que cuelga de una raíz del proyecto llega relativa a ella. Lo
   que el revisor escribió en prosa no se toca. **Qué hacer:** reinstalá el runner (caso 321).
+- **Cuando el planning queda en rojo al cerrar un turno, el freno dice qué se puede tocar.** El guard mostraba
+  la salida de `check` y nada más, y la sesión la leía como algo a dejar en verde: en la entrada de otra
+  tarea borró la condición que la traza cubría, porque era lo que rompía el formato. Ahora dice que se repara
+  una entrada de `done/` sólo en lo que se deduce de otra cosa, sin borrar nada, y que lo que una tarea cerrada
+  afirma no se cambia para pasar (caso 322).
 - **Quien cierra una tarea no toca la entrada de otra.** Si `check` marca una entrada que no escribió, la deja
   para el cierre de la corrida (caso 310).
 

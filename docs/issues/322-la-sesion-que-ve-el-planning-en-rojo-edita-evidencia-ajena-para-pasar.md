@@ -1,14 +1,15 @@
 ---
 caso: 322
 titulo: la sesión que ve el planning en rojo edita evidencia ajena para pasar
-estado: abierto
+estado: resuelto
+resuelto-en: 0.103.6
 prioridad: media
 version-detectada: 0.103.5
 ---
 
 # 322 — Al frenarla el guard de planning, la sesión «arregló» la entrada de otra tarea y le sacó contenido
 
-**🔴 abierto** · detectado en 0.103.5 · prioridad **media**.
+**🟢 resuelto en 0.103.6** · detectado en 0.103.5 · prioridad **media**.
 
 **Prioridad media**: no es el recorrido, es la sesión; pero el mensaje que la empuja a hacerlo es nuestro.
 
@@ -64,3 +65,52 @@ Es la única palanca que Cauce tiene sobre la sesión principal: el texto con qu
 ## Relacionados
 
 - 310.
+
+## Cierre
+
+**Resuelto en 0.103.6.**
+
+### El recorrido de lo que este caso enumeró
+
+- **Que el mensaje diga qué es reparable y que la evidencia no se edita para pasar — se hizo.** Con el mismo
+  criterio con que el recorrido repara al cerrar: sólo lo que se deduce de otra cosa. Y una frase que aquel
+  no trae y acá hizo falta: lo que no entra en el formato se mueve dentro de la entrada, no se borra.
+- **Que nombre la salida para lo que no es reparable — se hizo**: decírselo a la persona, o anotarlo en
+  `HUMAN_ACTIONS.md`, nombrado con su ruta entera porque en sidecar la sesión no está parada en la instancia.
+- **«Un mensaje no obliga» — se midió**, abajo: esta vez cambió la conducta.
+- **«Un mensaje más largo en cada freno» — se acotó.** Sale sólo cuando el rojo es de una entrada de `done/`.
+  La primera versión lo agregaba a todo rojo de `check`, y la revisión mostró que en una configuración rota o
+  un archivo que falta hablaba de una entrada que no había.
+- **Sesión real con una entrada ajena en rojo, antes y después — se hizo.**
+- **Con un error que no es reparable: que no invente — se hizo.**
+
+### Lo que este caso encontró y no preveía
+
+**La prueba que ya existía no probaba lo que decía.** Armaba una épica ilegible y esperaba el freno, pero la
+instancia no tenía el motor instalado: frenaba por «no se encontró el motor». Ahora instala el motor y fija
+los tres casos: motor ausente, épica rota y entrada de `done/` rota.
+
+### Lo que queda como está, y dicho
+
+- **El texto no dice el formato de la fila** de `HUMAN_ACTIONS.md`. En la sesión medida la fila salió bien
+  formada: `check` siguió en rojo sólo por el error original.
+- **Con la persona en el chat, la sesión anotó la fila igual**, además de decírselo. El texto dice «si no
+  está»; no molesta y no lo perseguí.
+- **Una épica ilegible por permisos** sale de `check` como error de formato. Es anterior y no lleva el consejo.
+
+### Qué se corrió
+
+- **La misma sesión de chat, en un banco con el planning en rojo por la entrada de otra tarea**, y la misma
+  pregunta sobre otra cosa. Una sesión por celda; la de después se repitió con el texto final y dio igual.
+
+  | Error | Antes | Después |
+  |---|---|---|
+  | La traza `A (devuelve 1) → …` | Borró «(devuelve 1)» | La movió al final de la línea, sin borrar nada |
+  | Falta `commit:` | No inventó; preguntó | No inventó; lo dijo y dejó la fila para una persona |
+
+- **El guard, como lo corre el runner**: sin motor, con una épica rota y con una entrada rota. Sólo la
+  tercera lleva el consejo.
+- **Cinco mutaciones en rojo, en una copia**: sin el consejo, siempre, nunca, con cualquier rojo, y la ruta
+  relativa.
+- **Una revisión independiente del diff**, y **la puerta entera**, `npm run ci`.
+- **Lo que no se corrió**: la sesión que espera a un recorrido, que es donde se vio primero; y Codex o Gemini.

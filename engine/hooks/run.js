@@ -42,7 +42,24 @@ function planningDrift(input) {
   }
   if (fs.existsSync(marker)) return
   fs.writeFileSync(marker, '')
-  block(`Planning o integraciones quedaron desalineados:\n${result.output}`)
+  block(`Planning o integraciones quedaron desalineados:\n${result.output}${repairable(result.output, root)}`)
+}
+// Con qué criterio se repara una entrada de `done/`, dicho a la sesión: es el único texto con que este guard
+// le habla. Sin él leía la salida de `check` como algo a dejar en verde, y lo dejaba: en la entrada de otra
+// tarea sacó la condición que la traza cubría, porque era lo que rompía el formato (caso 322). Es el criterio
+// con que el recorrido repara al cerrar —sólo lo que se deduce de otra cosa—, más lo que una sesión necesita
+// y un agente del recorrido no: a quién decírselo.
+//
+// Sale sólo cuando el rojo es de una entrada de `done/`. En una configuración rota o un archivo que falta no
+// hay entrada ni evidencia de la que hablar.
+function repairable(output, root) {
+  if (!/^\s*✗ done\//m.test(output)) return ''
+  return '\nUna entrada de done/ se repara sólo en lo que se deduce de otra cosa —un formato, un campo que sale '
+    + 'de otro, una referencia que quedó vieja—, y sin perder nada de lo que dice: lo que no entra en el formato '
+    + 'se mueve dentro de la entrada, no se borra. Lo que una tarea cerrada afirma —su aceptación, su evidencia, '
+    + 'sus decisiones— no se cambia ni se completa para que esto pase. Si el error pide eso, dejalo como está y '
+    + `decíselo a la persona; si no está, anotalo en ${path.join(root, 'planning', 'HUMAN_ACTIONS.md')} como una `
+    + 'fila más.'
 }
 
 const guards = {
