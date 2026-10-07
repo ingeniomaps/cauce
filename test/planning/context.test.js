@@ -85,6 +85,19 @@ service: app
   assert.equal(active.task.slug, 'segunda', 'el WIP activo manda sobre el orden del backlog')
   assert.deepEqual(active.wip, { phase: 'Build', complete: 1, pending: 1 })
 
+  // Qué cuenta como paso lo dice `planOf`. Acá van las tres posiciones: la otra sección después del plan,
+  // antes, y ningún encabezado.
+  const counted = (body) => {
+    writeWip(planning, `---\ntask: segunda\nhito: "demo — Demo"\nepic: 001\nphase: Build\nservice: app\n---\n\n${body}`)
+    return JSON.parse(run(['context', planning, '--json']).stdout).wip
+  }
+  const plan = '## Plan aprobado\n1. [x] Escribir prueba\n2. [ ] Implementar\n'
+  const decisions = '\n## Decisiones tomadas\n1. [ ] Condición de la crítica\n2. [x] Otra, ya cumplida\n'
+  assert.deepEqual(counted(plan + decisions), { phase: 'Build', complete: 1, pending: 1 })
+  assert.deepEqual(counted(decisions.trimStart() + '\n' + plan), { phase: 'Build', complete: 1, pending: 1 })
+  assert.deepEqual(counted('1. [x] Escribir prueba\n2. [ ] Implementar\n3. [ ] Verificar\n'),
+    { phase: 'Build', complete: 1, pending: 2 })
+
   fs.writeFileSync(path.join(planning, 'HUMAN_ACTIONS.md'), `# Acciones humanas
 
 | Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |
