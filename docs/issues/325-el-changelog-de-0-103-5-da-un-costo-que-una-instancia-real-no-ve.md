@@ -1,14 +1,15 @@
 ---
 caso: 325
 titulo: el changelog de 0.103.5 da un costo que una instancia real no ve
-estado: abierto
+estado: resuelto
+resuelto-en: 0.103.6
 prioridad: baja
 version-detectada: 0.103.5
 ---
 
 # 325 — Dice que el agente de escritura arranca en «unos 60.000» tokens; en una instancia son 76.000 a 86.000
 
-**🔴 abierto** · detectado en 0.103.5 · prioridad **baja**.
+**🟢 resuelto en 0.103.6** · detectado en 0.103.5 · prioridad **baja**.
 
 **Prioridad baja**: es un número publicado que no coincide con lo que una empresa mide.
 
@@ -57,3 +58,30 @@ con más reglas propias lo deja sin ahorro.
 ## Relacionados
 
 - 301 y 302.
+
+## Cierre
+
+**Resuelto en 0.103.6.**
+
+### El recorrido de lo que este caso enumeró
+
+- **Corregir la entrada: decir el rango de un banco y el de una instancia — se hizo, en dos lugares.** La
+  entrada de 0.103.5 dice ahora los dos rangos, porque `upgrade` la imprime a quien salta desde una versión
+  anterior. Y una línea en 0.103.6 dice que se corrigió, para quien ya la leyó.
+- **Decidir si el agente de escritura sigue — se decidió que sí, por ahora.** Ahorra entre un 10 % y un 18 % en
+  la instancia medida, tiene menos herramientas que el completo y ya está probado en real. Sacarlo es volver
+  a cambiar quién escribe, que es la clase de cambio que originó el caso 301. Se reabre si una instancia con
+  más reglas propias lo deja sin ahorro.
+
+### Lo que queda como está, y dicho
+
+- **La nota de la versión 0.103.5 ya publicada** fuera del repositorio no cambia con esto.
+- **El rango del agente completo que se cita es el de la instancia**; el de un banco, 72.000 a 77.000, no va.
+
+### Qué se corrió
+
+- **Los números contra la tabla de este caso**, que es donde quedó la medición: 54.000 a 65.000, 76.000 a
+  86.000 y 92.000 a 97.000. La revisión rehízo la cuenta del ahorro: 11,3 % a 17,4 %.
+- **Las pruebas del repositorio sobre el changelog**, dentro de `npm run ci`: ninguna fija el texto anterior
+  ni prohíbe corregir una entrada publicada.
+- **Lo que no se corrió**: ninguna medición nueva. El caso corrige cómo se dijo un número ya medido.

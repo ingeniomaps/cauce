@@ -68,6 +68,9 @@ diseño — eso vive en el commit y en el código.
   tarea borró la condición que la traza cubría, porque era lo que rompía el formato. Ahora dice que se repara
   una entrada de `done/` sólo en lo que se deduce de otra cosa, sin borrar nada, y que lo que una tarea cerrada
   afirma no se cambia para pasar (caso 322).
+- **El costo de los pasos de escritura que decía 0.103.5 valía sólo para una instancia sin reglas propias.**
+  Decía «unos 60.000 tokens»; en una instancia con sus instrucciones y sus reglas son entre 76.000 y 86.000,
+  un 10 % a 18 % menos que el agente completo. La entrada de 0.103.5 quedó corregida (caso 325).
 - **Quien cierra una tarea no toca la entrada de otra.** Si `check` marca una entrada que no escribió, la deja
   para el cierre de la corrida (caso 310).
 
@@ -97,12 +100,13 @@ diseño — eso vive en el commit y en el código.
 - **Lo que `autobuild` escribe en planning vuelve a seguir las reglas de tu empresa.** En 0.103.4 el WIP, la
   entrada de `done/`, la compuerta del hito y los commits de planning los hacía un agente que no cargaba tus
   instrucciones ni tus reglas. Dos cosas se notaron: los commits de planning salían en inglés aunque tu regla
-  pidiera otro idioma u otro formato, y la entrada de `done/` copiaba el relato de Build —«sin commit ni
-  push» al lado del commit, con la ruta de tu máquina—. Ahora ese agente carga todo lo que escribiste, y lo
-  tuyo gana sobre lo que el recorrido dicta. Cuesta más que en 0.103.4 y menos que antes: cada uno de esos
-  pasos arranca en unos 60.000 tokens, porque ese agente también puede usar los skills del proyecto. **Qué
-  hacer:** reinstalá el runner (`make install-claude`) para que llegue el agente nuevo. Las entradas y los commits que escribió 0.103.4 no se corrigen solos (casos 301 y
-  302).
+  pidiera otro idioma u otro formato, y la entrada de `done/` copiaba el relato de Build —«sin commit ni push»
+  al lado del commit, con la ruta de tu máquina—. Ahora ese agente carga todo lo que escribiste, y lo tuyo gana
+  sobre lo que el recorrido dicta. Cuesta más que en 0.103.4 y menos que antes: cada uno de esos pasos arranca
+  entre 54.000 y 65.000 tokens en una instancia sin reglas propias y entre 76.000 y 86.000 en una con las suyas
+  —el agente completo, entre 92.000 y 97.000—, porque ese agente también puede usar los skills del proyecto.
+  **Qué hacer:** reinstalá el runner (`make install-claude`) para que llegue el agente nuevo. Las entradas y los
+  commits que escribió 0.103.4 no se corrigen solos (casos 301 y 302).
 - **La entrada de `done/` se valida antes de commitearse.** Si su formato no pasa `ops check`, quien la
   escribe la corrige en ese momento y no después, con la entrada ya commiteada (caso 301).
 - **«Sólo la próxima tarea» ahora para después de una.** El agente que reclama recibía el pedido pero no
