@@ -372,9 +372,17 @@ function parseWip(text, runner) {
     // corrida que se reanuda llega al cierre con el carril ya perdido: `currentTask` arma la tarea desde
     // el WIP y le pone `tier` vacío. Medido — la tarea reanudada devolvía `""` (caso 074).
     lane: field('lane'),
-    complete: (text.match(/^\d+\.\s+\[[xX]\]/gm) || []).length,
-    pending: (text.match(/^\d+\.\s+\[\s\]/gm) || []).length,
+    complete: (planOf(text).match(/^\d+\.\s+\[[xX]\]/gm) || []).length,
+    pending: (planOf(text).match(/^\d+\.\s+\[\s\]/gm) || []).length,
   }
+}
+
+// Los pasos son los de «Plan aprobado». Una lista numerada con casilla en otra sección —las condiciones con
+// que la crítica aprobó— no es un paso, y contada como uno el plan tenía más de los que alguien aprobó (caso
+// 309). Un WIP sin ese encabezado se cuenta entero, como siempre.
+function planOf(text) {
+  const found = text.match(/^##\s+Plan aprobado[ \t]*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m)
+  return found ? found[1] : text
 }
 
 // El de un runner: el único que le corresponde continuar. El `runner` que devuelve es el nombre

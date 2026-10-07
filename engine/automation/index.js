@@ -75,6 +75,16 @@ function probeBridge(paths, runner) {
   return problems
 }
 
+// Lo instalado que quedó atrás del motor: el estado que `doctor` avisa, para quien no puede seguir con una
+// copia vieja, que es el recorrido (caso 308).
+function staleArtifacts(root, name) {
+  const runner = runnerManifest(root, name)
+  const paths = runnerPaths(root, name, runner)
+  const state = (item) => deliveryState(M.readRunners(root), name,
+    { item, ...resolveItem(paths, root, name, item) }, opsPrefix(root))
+  return (runner.artifacts || []).filter((item) => state(item) === 'desactualizado').map((item) => item.target)
+}
+
 // `afterInstall` es la llamada con la que cierra `install`: ahí una copia registrada vieja es el paso que sigue
 // —registrar lo que se acaba de instalar—, no una instalación rota, así que se avisa en vez de fallar.
 function doctor(root, name, output = console, { afterInstall = false } = {}) {
@@ -205,18 +215,6 @@ function deliveryState(recorded, name, resolved, prefix = '') {
   return [M.digestRelocatable(resolved, OPS_ROOT), current].includes(delivered || 0) ? 'desactualizado' : 'ajeno'
 }
 
-// Borra el archivo y, de paso, los directorios que quedaron vacíos por haberlo sacado. Nunca sube más
-// allá del límite: `.claude/` puede tener cosas del usuario aunque `.claude/workflows/` quede vacío.
-function removeFile(file, boundary) {
-  fs.rmSync(file, { force: true })
-  let dir = path.dirname(file)
-  while (dir.startsWith(boundary) && dir !== boundary) {
-    try { if (fs.readdirSync(dir).length) return } catch { return }
-    fs.rmdirSync(dir)
-    dir = path.dirname(dir)
-  }
-}
-
 // Saca el wiring de un runner dejando intacto lo que no escribimos nosotros.
 //
 // Existe porque desinstalar a mano es borrar `ops/` y descubrir después que cada llamada de herramienta
@@ -267,7 +265,7 @@ function uninstall(root, name, output = console) {
     }
     const status = deliveryState(recorded, name, resolved, prefix)
     if (status === 'ajeno') { kept.push(item.target); continue }
-    removeFile(resolved.target, paths.install)
+    F.removeFile(resolved.target, paths.install)
     delete deliveredPaths[key]
     removed += 1
   }
@@ -283,7 +281,7 @@ function uninstall(root, name, output = console) {
         kept.push(path.relative(paths.install, file))
         continue
       }
-      removeFile(file, paths.install)
+      F.removeFile(file, paths.install)
       removed += 1
     }
   }
@@ -291,7 +289,7 @@ function uninstall(root, name, output = console) {
   if (hasConfig) {
     const clean = unmergeConfig(unmergeConfig(config, runnerConfig(paths, root)), runner.config.retired || {})
     if (clean && Object.keys(clean).length) F.atomicWriteJson(paths.configTarget, clean)
-    else { removeFile(paths.configTarget, paths.install); removed += 1 }
+    else { F.removeFile(paths.configTarget, paths.install); removed += 1 }
     output.log(`✓ ${name}: ${runner.config.target} sin las entradas de Cauce`)
   }
 
@@ -486,6 +484,7 @@ module.exports = {
   RUNNER_NAMES,
   check,
   doctor,
+  staleArtifacts,
   install,
   uninstall,
   legacyGuardWiring,

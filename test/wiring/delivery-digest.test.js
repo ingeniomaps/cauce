@@ -73,15 +73,38 @@ test('instalar Claude entrega el agente de oficina que el recorrido nombra, y de
   const workflow = fs.readFileSync(path.join(base, '.claude', 'workflows', 'autobuild.js'), 'utf8')
   assert.match(workflow, /agentType: 'cauce-clerk'/, 'el nombre que pide el recorrido es el que se instala')
 
-  // El de escritura llega igual, con herramientas de archivo y también sin las instrucciones del proyecto.
+  // El de escritura llega igual, con herramientas de archivo. Carga las instrucciones del proyecto, al revés
+  // que el de oficina: redacta, y lo que redacta sigue las reglas de la empresa (casos 301 y 302).
   const scribe = path.join(base, '.claude', 'agents', 'cauce-scribe.md')
   const scribeFront = fs.readFileSync(scribe, 'utf8').split('---')[1]
   assert.match(scribeFront, /^name: cauce-scribe$/m)
-  assert.match(scribeFront, /^omitClaudeMd: true$/m)
-  assert.match(scribeFront, /^tools: Bash, Read, Edit, Write$/m)
+  assert.doesNotMatch(scribeFront, /omitClaudeMd/)
+  // Con `Skill`: una empresa puede mandar commitear con un skill propio, y quien no lo tiene no puede cumplirla.
+  assert.match(scribeFront, /^tools: Bash, Read, Edit, Write, Skill$/m)
   assert.match(workflow, /agentType: 'cauce-scribe'/)
 
   assert.equal(run(['automation', 'uninstall', target, 'claude']).status, 0)
   assert.equal(fs.existsSync(file), false)
   assert.equal(fs.existsSync(scribe), false)
+})
+
+// Caso 308. Después de `upgrade` y antes de reinstalar el runner, lo instalado es de la versión anterior. El
+// contrato lo dice con el nombre del archivo, que es lo que el recorrido necesita para negarse a seguir.
+test('el contrato nombra lo instalado que quedó atrás del motor, y nada cuando está al día', () => {
+  const { base, target } = instance('cauce-entrega-atras-')
+  const contract = () => JSON.parse(run(['contract', target, '--json']).stdout)
+  assert.deepEqual(contract().staleAdapter, [], 'recién instalado no hay nada atrás')
+
+  // Una copia vieja es la que coincide con lo que se anotó al entregarla y ya no con lo que Cauce trae.
+  const file = path.join(base, '.claude', 'workflows', 'autobuild.js')
+  fs.appendFileSync(file, '\n// de la versión anterior\n')
+  const manifest = path.join(target, '.cauce', 'manifest.json')
+  const data = JSON.parse(fs.readFileSync(manifest, 'utf8'))
+  data.runners[WORKFLOW] = M.digest(file)
+  fs.writeFileSync(manifest, JSON.stringify(data, null, 2))
+  assert.deepEqual(contract().staleAdapter, ['.claude/workflows/autobuild.js'])
+
+  // Y una que la empresa editó no es vieja: es suya, y `doctor` lo dice de otra forma.
+  fs.appendFileSync(file, '\n// editado a mano\n')
+  assert.deepEqual(contract().staleAdapter, [])
 })

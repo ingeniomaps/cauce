@@ -248,5 +248,14 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   //
   // 57 desde el 2026-10-05: en una línea de trabajo el recorrido dicta `tools/ops.js worktree` para armar
   // el árbol de la tarea (caso 274). Misma forma literal y misma raíz que el `claim` de la fase anterior.
-  assert.equal(hits, 57, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 58 desde el 2026-10-06: quien escribe la entrada de `done/` corre `tools/ops.js check` antes de terminar
+  // (caso 301). Es el mismo comando, dictado desde la misma raíz, que `closing` ya corría más abajo.
+  //
+  // 59 desde el 2026-10-07: quien escribe el WIP corre `tools/ops.js context` para contar los pasos que el
+  // motor lee (caso 305). El mismo comando y la misma raíz que la lectura de Triage.
+  //
+  // 60 desde el 2026-10-07: la parada por un adaptador que quedó atrás le dicta a la persona el comando que
+  // lo reinstala, `tools/ops.js automation install` (caso 308). Es texto de un mensaje, desde la misma raíz.
+  assert.equal(hits, 60, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })

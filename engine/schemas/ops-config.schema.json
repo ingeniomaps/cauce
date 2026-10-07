@@ -87,6 +87,11 @@
         "minLength": 1
       }
     },
+    "timeZone": {
+      "type": "string",
+      "minLength": 1,
+      "description": "El huso con que el proyecto fecha lo que escribe —la entrada de done/, un reclamo, un vencimiento—, en forma IANA: \"America/Bogota\". Sin declararlo se fecha en UTC, y lo que se cierra a la noche al oeste de Greenwich queda con la fecha del día siguiente. Es del proyecto y no de la máquina, para que todo el equipo y el CI fechen igual."
+    },
     "boundedCommands": {
       "type": "array",
       "description": "Los comandos con que este proyecto corre algo dentro de un entorno con tope de recursos —\"scripts/run-in-container.sh\", \"docker compose exec\"—, tal como se escriben al principio de un comando. El guard de workers no opina sobre un jest o un vitest lanzado con uno de ellos: ahí el runner no puede saturar la máquina, que es lo único que ese guard cuida. El programa se compara por su nombre, así que vale llamarlo con cualquier ruta.",
@@ -128,6 +133,10 @@
         "commitToLiveBranch": {
           "type": "boolean",
           "description": "Si el recorrido puede commitear en una rama viva —main, master o la rama por defecto del remoto—. Apagado o ausente, corta una rama para la tarea y commitea ahí."
+        },
+        "allowAiSignature": {
+          "type": "boolean",
+          "description": "Si lo que el proyecto publica puede llevar una firma de IA —un Co-Authored-By de un asistente, «Generated with…»—. Apagado o ausente, el guard frena el commit o el texto de PR que la traiga, que es lo que pide R8. Lo enciende una persona cuando la empresa quiere dejar constancia de lo que hizo un agente."
         },
         "gateTimeoutMinutes": {
           "type": "number",

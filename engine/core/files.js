@@ -46,7 +46,20 @@ function atomicWriteJson(file, value) {
   atomicWrite(file, `${JSON.stringify(value, null, 2)}\n`)
 }
 
+// Borra el archivo y, de paso, los directorios que quedaron vacíos por haberlo sacado. Nunca sube más
+// allá del límite: `.claude/` puede tener cosas del usuario aunque `.claude/workflows/` quede vacío.
+function removeFile(file, boundary) {
+  fs.rmSync(file, { force: true })
+  let dir = path.dirname(file)
+  while (dir.startsWith(boundary) && dir !== boundary) {
+    try { if (fs.readdirSync(dir).length) return } catch { return }
+    fs.rmdirSync(dir)
+    dir = path.dirname(dir)
+  }
+}
+
 module.exports = {
+  removeFile,
   assertNoSymlinkPath,
   assertWithin,
   atomicWrite,

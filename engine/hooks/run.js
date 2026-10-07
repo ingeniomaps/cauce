@@ -22,6 +22,7 @@ const { jiraAdf } = require('./jira')
 const { testWorkers } = require('./workers')
 const { comments } = require('./comments')
 const { liveCommit } = require('./live-commit')
+const { aiSignature } = require('./ai-signature')
 const { testEvidenceShell } = require('./test-evidence-shell')
 
 function planningDrift(input) {
@@ -49,6 +50,7 @@ const guards = {
   dependencies: shell.dependencies,
   governance: shell.governance,
   'live-commit': liveCommit,
+  'ai-signature': aiSignature,
   verify,
   'shell-boundary': shell.shellBoundary,
   'secrets-shell': secretsShell,
@@ -73,7 +75,8 @@ const guards = {
 
 // Grupos por evento: un runner corre el grupo entero en un solo proceso en lugar de un guard por hook.
 const hookGroups = {
-  'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'live-commit', 'comments', 'verify',
+  'pre-shell': ['destructive', 'git-add', 'dependencies', 'governance', 'live-commit', 'ai-signature', 'comments',
+    'verify',
     'shell-boundary', 'secrets-shell', 'test-evidence-shell', 'ops-config-shell', 'test-workers'],
   'pre-files': ['secrets', 'generated', 'workspace-boundary', 'engine', 'migrations',
     'integration-snapshot', 'test-evidence', 'plan-first', 'ops-config'],
@@ -108,6 +111,11 @@ const hookMetadata = [
     name: 'live-commit',
     event: 'PreToolUse · shell',
     purpose: 'Frena el commit en la rama viva y manda a cortar una rama; pasa si se pidió o se declaró.',
+  },
+  {
+    name: 'ai-signature',
+    event: 'PreToolUse · shell',
+    purpose: 'Frena un commit o un texto de PR que lleva una firma de IA; pasa si el proyecto lo declaró.',
   },
   {
     name: 'verify',

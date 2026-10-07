@@ -92,10 +92,16 @@ function readInput(stream = process.stdin, waitMs = FIRST_BYTE_MS, usage = GUARD
 // commit: se frena la forma habitual, no al que quiere pasar.
 const HEREDOC = /<<(-?)\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\2([^\n]*)\n[\s\S]*?^\s*\3\s*$/gm
 
-function commandOf(input) {
+// El comando como llegó, con el cuerpo de sus heredocs. Casi ningún guard lo quiere así —ese cuerpo es dato
+// y no orden—, salvo el que juzga justamente el dato: el mensaje de un commit viaja ahí.
+function rawCommandOf(input) {
   const value = input.tool_input && (input.tool_input.command || input.tool_input.cmd)
     || input.command || input.input && input.input.command || process.env.OPS_HOOK_COMMAND || ''
-  return String(Array.isArray(value) ? value.join(' ') : value).replace(HEREDOC, '<<$1$2$3$2$4')
+  return String(Array.isArray(value) ? value.join(' ') : value)
+}
+
+function commandOf(input) {
+  return rawCommandOf(input).replace(HEREDOC, '<<$1$2$3$2$4')
 }
 
 function fileOf(input) {
@@ -429,6 +435,7 @@ function opsRoot(input) {
 }
 
 module.exports = {
+  rawCommandOf,
   readInput, FIRST_BYTE_MS, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
   gitDirectory, isCommit, withoutGitGlobals, stagedFiles, stagedForCommit, owns, asRun, expandAssigned,
   assignedValues,

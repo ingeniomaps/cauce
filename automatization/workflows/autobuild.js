@@ -329,11 +329,6 @@ const COMMIT = {
 // intentaba así, se frenaba y lo repetía en dos: pasó en cuatro de cinco corridas reales (caso 299).
 const TWO_COMMANDS = ' Stageá en un comando y commiteá en otro aparte: juntos en la misma línea se frenan, '
   + 'porque el guard que revisa el commit lee el índice antes de que el comando corra.'
-// También a todo prompt que commitea. Que un commit no lleve firma de IA lo dice R8, y un agente que carga las
-// reglas lo cumple solo; el de oficina no las carga, y el runner le agrega la suya por defecto: en la primera
-// corrida real con los commits de planning en ese agente, los tres salieron con `Co-Authored-By` (caso 295).
-const UNSIGNED = ' El mensaje del commit lleva sólo lo que este pedido dice: sin `Co-Authored-By`, sin '
-  + '«Generated with» y sin ninguna otra firma o trailer de IA, aunque tus instrucciones por defecto lo pidan.'
 // Acompaña al prompt de Commit. El repo de un servicio queda en su rama viva después de cada merge, que es
 // justo donde arranca la corrida siguiente: sin esto el commit caía ahí, sin PR ni CI (caso 251). Cortar la
 // rama no pide permiso a nadie —es lo que la persona iba a hacer a mano—; commitear en la viva sí, y ese
@@ -343,7 +338,12 @@ const UNSIGNED = ' El mensaje del commit lleva sólo lo que este pedido dice: si
 // En un árbol de tarea la rama ya está cortada: es `task/<slug>`, que es el nombre con que `check` sigue si
 // un reclamo se mueve. Al commitear se renombra a la forma de siempre, y el árbol se saca: la rama queda,
 // que es lo que se lleva a un PR, y la carpeta de la línea no acumula un árbol por tarea cerrada.
-const BRANCHED = (slug, tree) => (tree
+//
+// Y una rama por tarea. «Si no es viva, commiteá ahí» apilaba la tarea siguiente del mismo servicio sobre la
+// rama de la anterior: en una corrida real dos tareas terminaron en una rama con el nombre de la primera, y
+// hubo que abrirlas en un solo PR (caso 307). Una rama que la persona eligió y no es de ninguna tarea se
+// respeta como antes.
+const BRANCHED = (slug, tree, earlier = []) => (tree
   ? ` El repositorio es el árbol de trabajo ${tree.path}, en la rama ${tree.branch}: commiteá ahí, y no en el `
     + `checkout compartido. Antes de commitear renombrá esa rama con \`git branch -m <tipo>/${slug}\`, donde `
     + 'tipo es el del Conventional Commit. Cuando el commit esté verificado y el árbol limpio, sacalo con '
@@ -353,7 +353,11 @@ const BRANCHED = (slug, tree) => (tree
   : ' Antes de stagear mirá en qué rama está el repositorio. Si es una rama viva —main, master o la rama por '
     + 'defecto del remoto— no commitees ahí ni lo consultes: cortá una con `git switch -c <tipo>/' + slug
     + '`, donde tipo es el del Conventional Commit, que se lleva los cambios sin commitear; si esa rama ya '
-    + 'existe, pasate a ella. Si el repositorio ya está en una rama que no es viva, commiteá en ésa.')
+    + 'existe, pasate a ella. Si el repositorio ya está en una rama que no es viva, commiteá en ésa, salvo que '
+    + `sea la rama de otra tarea: ${earlier.length ? `las que esta corrida ya usó —${earlier.join(', ')}—, o ` : ''}`
+    + `una cuyo nombre termine en el identificador de una tarea con entrada en ${P}/done/. Ahí cortá igual `
+    + '`git switch -c <tipo>/' + slug + '`, desde donde está: cada tarea queda en su rama, y la de la otra no '
+    + 'se toca.')
   + ' Reportá en branch la rama donde quedó el commit y en live si es una rama viva.'
 // Acompaña al commit del estado de planning. La rama no es por tarea, como la del producto: es una sola que
 // se acumula con un PR abierto, así que antes de cortar una se busca la que ya exista.
@@ -430,6 +434,8 @@ const CONTRACT = {
     commitToLiveBranch: { type: 'boolean' },
     humanCheckpoint: { type: 'boolean' }, contracts: { type: 'string' },
     boundaries: { type: 'array', items: { type: 'string' } },
+    // Qué archivos de un runner quedaron atrás del motor instalado; por qué importa, donde se lee.
+    staleAdapter: { type: 'array', items: { type: 'string' } },
   },
 }
 
@@ -459,9 +465,15 @@ const OPERATOR_SAID = ASKED ? ` Para que lo contrastes: quien lanzó esta corrid
 // A quien reclama el pedido le llega entero, porque es el único que puede declinar una tarea que la persona
 // excluyó con palabras. Sin el pedido la instrucción de declinar no tenía contra qué decidir: una corrida real
 // lanzada con «sólo esta tarea» reclamó la siguiente, la planificó y frenó en Build (caso 297).
-const DECLINABLE = ASKED ? ` Quien lanzó esta corrida pidió: «${ASKED}». Si eso excluye esta tarea —pide parar `
-  + 'antes, o que sea sólo otra—, no corras el comando: claimed=false, declined=true y en details la frase que '
-  + 'lo pide. Si no dice qué tareas tomar, corré el comando.' : ''
+//
+// Y con cuántas tareas lleva cerradas la corrida, que sólo lo sabe este script. «Sólo la próxima tarea de la
+// cola» describe siempre a la que toca reclamar: sin ese dato una corrida real cerró dos tareas y frenó en
+// una tercera, 45 agentes para un pedido de una (caso 304).
+const DECLINABLE = (closed) => (ASKED ? ` Quien lanzó esta corrida pidió: «${ASKED}». Esta corrida ya cerró `
+  + `${closed.length} tarea(s)${closed.length ? ` —${closed.join(', ')}—` : ''}, y ésta sería la número `
+  + `${closed.length + 1}. Si el pedido excluye esta tarea —pide parar antes, una cantidad que ya se cumplió, o `
+  + 'que sea sólo otra—, no corras el comando: claimed=false, declined=true y en details la frase que lo pide. '
+  + 'Si no dice qué tareas tomar ni cuántas, corré el comando.' : '')
 // Acompaña a todo prompt con schema DECISION: el schema obliga a llenar `consulted`, y esto obliga a
 // llenarlo con lo que se abrió en vez de con lo que se pensaba mirar.
 const MANIFEST = ' Enumerá en consulted cada archivo, diff o comando que hayas abierto de verdad, con su ruta.'
@@ -579,8 +591,11 @@ phase = (name) => { ran.push(name); announce(name) }
 // agente propio con sólo Bash y sin las instrucciones del proyecto— arranca en unos 3.450 (caso 295). En una
 // corrida real, nueve de veinticuatro agentes eran pasos así.
 //
-// Los guards corren igual: son de la sesión y no del tipo de agente, y se comprobó con éste. También
-// commitea el estado de planning, que es stagear los archivos que el prompt nombra con el mensaje que trae.
+// Los guards corren igual: son de la sesión y no del tipo de agente, y se comprobó con éste.
+//
+// Por acá va sólo lo que no deja nada a criterio: un comando y su salida. Lo que redacta —una entrada, un
+// commit— no, porque ahí rige lo que la empresa haya escrito, y este agente no lo carga. En 0.103.4 commiteó
+// el estado de planning y el asunto salió en inglés donde la regla de la empresa pedía otro idioma (caso 302).
 const clerk = (prompt, options = {}) => agent(prompt, { ...options, agentType: 'cauce-clerk' })
 phase('Triage')
 // El contrato se lee una sola vez por corrida y viaja como texto: ningún subagente relee AGENTS.md,
@@ -605,6 +620,17 @@ if (!contract) return stop('contract-unavailable', `no se pudo leer ${CONFIG} ni
 if (!contract.rootOk) {
   return stop('root-unreadable', `${ROOT} no se pudo leer entero. Es la raíz absoluta que escribió `
     + `"automation install": comprobá que exista y, si moviste el proyecto de carpeta, reinstalá el adaptador.`)
+}
+
+// Después de `upgrade` hay que reinstalar el runner, y nada lo obligaba: `doctor` lo avisa como advertencia y
+// la corrida anda igual, con el recorrido y los agentes de la versión anterior. Quien actualizó cree tener el
+// arreglo y no lo tiene. Este script es justamente una de esas copias, así que el aviso llega con la versión
+// siguiente a la que lo trae: una copia más vieja que ésta no sabe preguntar (caso 308).
+const stale = (contract.staleAdapter || []).filter((file) => file.includes('.claude/'))
+if (stale.length) {
+  return stop('adapter-stale', `El motor se actualizó y el adaptador de Claude quedó en la versión anterior: `
+    + `${stale.join(', ')}. Reinstalalo con "node tools/ops.js automation install . claude" desde ${ROOT} —o `
+    + '"make install-claude"—, abrí una sesión nueva y volvé a lanzar.')
 }
 
 const bounds = contract.boundaries || []
@@ -640,11 +666,13 @@ const read = (prompt, options = {}) => agent(`${BASE}\n\n${prompt}`, options)
 const run = (prompt, options = {}) => agent(`${SCOPE()}\n\n${prompt}`, options)
 const write = (prompt, options = {}) => agent(`${LEDGER()}\n\n${prompt}`, options)
 // El paso de escritura: volcar en planning lo que el recorrido ya decidió —el plan aprobado en el WIP, la
-// evidencia en `done/`, la compuerta del hito—. Lleva el mismo preámbulo que `write`, que es donde viajan
-// los formatos, y lo corre `cauce-scribe`, que no carga las instrucciones del proyecto: transcribir hechos
-// no las usa, y `wip` y `done` eran los dos pasos más caros de una corrida (caso 295). Lo que juzga
-// —Ready, Plan, Build, Review, Verify, QA— sigue con el agente de siempre.
+// evidencia en `done/`, la compuerta del hito— y commitear ese estado. Lo corre `cauce-scribe`, un agente
+// propio con pocas herramientas que **sí carga las instrucciones y las reglas del proyecto**: lo que redacta
+// lo redacta como la empresa lo pide, y eso gana sobre lo que este recorrido dicte. En 0.103.4 no las cargaba,
+// y lo que el agente de siempre hacía por tenerlas a la vista se fue sin que nadie lo notara (casos 301 y 302).
+// Lo que juzga —Ready, Plan, Build, Review, Verify, QA— sigue con el agente de siempre.
 const scribe = (prompt, options = {}) => write(prompt, { ...options, agentType: 'cauce-scribe' })
+const scribeCommit = (prompt, options = {}) => run(prompt, { ...options, agentType: 'cauce-scribe' })
 
 // Las paradas que dejan una fila en HUMAN_ACTIONS delegan esa escritura a un agente, y esa fila es el
 // único rastro de la parada: sin ella el recorrido informa un estado que el disco no tiene. Por eso se
@@ -679,11 +707,11 @@ const registerHuman = async (prompt, label, slug = '') => {
 // Va después de soltar el reclamo cuando la parada lo suelta: commiteado antes, soltarlo volvía a ensuciar.
 const commitBlocked = async (slug) => {
   if (!contract.commitPerTask) return
-  const stated = await clerk(
+  const stated = await scribeCommit(
     `Commiteá el estado de planning que la parada de ${slug} dejó sin commitear en el repositorio que `
     + `contiene a ${P}: stageá por nombre sólo lo que cambió bajo ${P} —también lo que se borró—, nunca `
     + `archivos del producto, y creá un solo commit "chore(planning): block ${slug}". Nunca amend ni `
-    + `push.${TWO_COMMANDS}${UNSIGNED}${PLANNING_BRANCH()}`,
+    + `push.${TWO_COMMANDS}${PLANNING_BRANCH()}`,
     { schema: COMMIT, label: 'planning-block' },
   )
   if (!stated || !stated.committed) {
@@ -758,6 +786,8 @@ governing = planning.rules || []
 
 let currentMilestone = planning.wipActive ? planning.hito : ''
 const completed = []
+// Las ramas donde esta corrida ya commiteó una tarea: la siguiente no se apila ahí (caso 307).
+const usedBranches = []
 // Tope de tareas por corrida. No protege de un hito grande —cincuenta tareas en un hito es un problema
 // de planificación, no de ejecución— sino de un ciclo: una tarea que vuelve a quedar elegible corre
 // para siempre. Se corta con motivo porque agotarlo en silencio se lee igual que haber terminado.
@@ -828,7 +858,7 @@ while (rounds++ < MAX_TASKS) {
     const claim = await clerk(
       `Corré "node tools/ops.js claim ${P} ${task.id}" desde ${ROOT}. No escribas ningún archivo vos: lo ` +
       `escribe el comando. claimed=true sólo con exit 0; si falla porque la tomó otro, claimed=false y ` +
-      `copiá el mensaje en details.${DECLINABLE}`,
+      `copiá el mensaje en details.${DECLINABLE(completed)}`,
       { schema: CLAIM, label: `claim:${task.id}` },
     )
     // No es una falla ni una carrera perdida: la corrida termina como cuando se queda sin tareas.
@@ -1206,13 +1236,14 @@ while (rounds++ < MAX_TASKS) {
     // anterior», así que Review, Verify y QA nunca vieron ese código y el recorrido terminó reportando algo
     // distinto de lo que decía planning. El permiso venía del preámbulo de escritura; lo que faltaba era el
     // límite. `wipActive` es el contraste: si el WIP no quedó activo, esta fase hizo otra cosa.
-    // La ruta va escrita: quien carga las instrucciones del proyecto sabe cuál es el WIP de esta sesión, y el
-    // agente de escritura no. Sin ella lo buscaba en el fuente del motor, cuatro o cinco llamadas por corrida.
+    // La ruta va escrita. El archivo del WIP sale del id de la sesión, y sin nombrarlo quien lo escribe lo
+    // buscaba en el fuente del motor: cuatro o cinco llamadas por corrida, medidas.
     const persisted = await scribe(
       `Escribí el WIP en ${P}/${planning.wipFile} y nada más: es el archivo de esta sesión, y su formato es ` +
       `el contrato de WIP de este preámbulo; no los busques en otro lado. ` +
       `No toques código, no corras pruebas, no cierres la tarea y no escribas ` +
-      `en DONE. Los pasos van sin tildar porque todavía no ocurrieron. task=${task.id}, ` +
+      `en DONE. Los pasos van numerados y sin tildar, uno por línea —«1. [ ] paso»—, porque todavía no ` +
+      `ocurrieron y porque así los cuenta el motor; nada más en el archivo lleva esa forma. task=${task.id}, ` +
       `hito=${JSON.stringify(task.hito)}, phase=Build, service=${declared}, ` +
       `acceptance=${JSON.stringify(task.acceptance)}, lane=${lane}, ` +
       `pasos sin tildar=${JSON.stringify(plan.steps)}, ` +
@@ -1230,15 +1261,25 @@ while (rounds++ < MAX_TASKS) {
       (approved.noted.length ? `Y aparte, como anotado por la crítica sin bloquear, que no manda a tocar ` +
         `código: ${JSON.stringify(approved.noted)}. ` : '') +
       `Registrá el reparto de cargos ${JSON.stringify(cast)} en las decisiones del WIP, para que después se ` +
-      `pueda auditar quién revisó qué. Seguí el contrato de WIP exactamente y reportá con qué status quedó.`,
+      `pueda auditar quién revisó qué. Seguí el contrato de WIP exactamente. Al terminar corré ` +
+      `"node tools/ops.js context ${P} --json" desde ${ROOT} y reportá con qué status quedó y, en steps, ` +
+      `cuántos pasos pendientes cuenta ese comando en su campo wip. Tienen que ser ${plan.steps.length}: si ` +
+      `cuenta otra cantidad, el formato de los pasos está mal; corregilo sin cambiar su texto y volvé a correrlo.`,
       { label: 'wip', schema: {
-        type: 'object', additionalProperties: false, required: ['wipActive'],
-        properties: { wipActive: { type: 'boolean' }, note: { type: 'string' } },
+        type: 'object', additionalProperties: false, required: ['wipActive', 'steps'],
+        properties: { wipActive: { type: 'boolean' }, steps: { type: 'integer' }, note: { type: 'string' } },
       } },
     )
     if (!persisted) return halt('agent-unavailable', 'la persistencia del WIP no devolvió resultado')
     if (!persisted.wipActive) {
       return halt('wip-not-persisted', `${task.id} entra a Build sin WIP activo: ${persisted.note || ''}`)
+    }
+    // Un WIP activo no alcanza: el motor cuenta los pasos por su forma, y uno escrito como lista sin
+    // numerar se lee como un plan vacío. Pasó en una corrida real y lo descubrió un guard al cerrar el turno,
+    // con la tarea ya construida sobre un plan que el motor no veía (caso 305).
+    if (persisted.steps !== plan.steps.length) {
+      return halt('wip-malformed', `${task.id}: el plan tiene ${plan.steps.length} paso(s) y el motor cuenta `
+        + `${persisted.steps} en el WIP: ${persisted.note || 'sin nota'}`)
     }
   }
 
@@ -1357,9 +1398,27 @@ while (rounds++ < MAX_TASKS) {
   // está la línea de un lado, por qué se vio en rojo del otro—. Ahí ninguno contiene al otro y la puerta
   // frenaba una entrega correcta, que es lo que R26 dice que termina apagándola. Se compara sin esa
   // anotación final; una que esté en el medio se conserva, porque ahí sí es parte del nombre.
+  //
+  // Tampoco alcanzó, dos veces más y en corridas reales: los dos nombran el mismo caso con otra ruta hasta
+  // él. Uno pone el `describe` en el medio —«archivo › Servicio.metodo › caso» contra «archivo › caso»— y el
+  // otro junta dos casos del mismo archivo en un rojo —«archivo — 'caso A' y 'caso B'»— (caso 306).
+  //
+  // Se compara por tramos enteros: todo tramo con que el borde nombra su prueba tiene que estar, igual,
+  // entre los del rojo. Buscar el nombre del caso como texto dentro del rojo era la salida fácil y daba verde
+  // de más: «rechaza el token» está dentro de «no rechaza el token de servicio», y el mismo archivo en otra
+  // carpeta pasaba por tener el mismo nombre. Un falso verde acá es un borde que entra sin prueba.
   const core = (name) => String(name || '').replace(/\s*\([^)]*\)\s*$/, '').trim()
+  const bare = (part) => part.replace(/^['"`«]+|['"`»]+$/g, '').trim()
+  const parts = (name) => core(name).split(/\s+(?:›|>|—)\s+|::/).map(bare).filter(Boolean)
+  // En un rojo que junta varios casos, cada uno va entre comillas: también cuentan como tramos.
+  const quoted = (name) => [...core(name).matchAll(/'([^']+)'|"([^"]+)"|`([^`]+)`|«([^»]+)»/g)]
+    .map((found) => (found[1] || found[2] || found[3] || found[4]).trim())
+  const sameCase = (red, item) => {
+    const named = new Set([...parts(red.test), ...quoted(red.test)])
+    return parts(item.test).every((part) => named.has(part))
+  }
   const namesTest = (red, item) => Boolean(core(item.test))
-    && (core(red.test).includes(core(item.test)) || core(item.test).includes(core(red.test)))
+    && (core(red.test).includes(core(item.test)) || core(item.test).includes(core(red.test)) || sameCase(red, item))
   const loose = build.discovered.find((entry) => entry.kind === 'edge'
     && !build.redFirst.some((red) => namesTest(red, entry)))
   // El motivo dice qué comprobó la puerta y no una conclusión sobre el trabajo: pegarle al detalle del
@@ -1654,7 +1713,7 @@ while (rounds++ < MAX_TASKS) {
     `${asRole(OWNERS.commit)}Encontrá el repositorio git dueño de ${task.service}, inspeccioná status y diff, ` +
     `stageá por nombre los archivos de la tarea, creá un solo Conventional Commit con el footer ` +
     `"Task: ${task.id}" y después verificá log y status. Nunca amend ni push; reportá lo que quedó suelto ` +
-    `y no era de la tarea.${TWO_COMMANDS}${UNSIGNED}${BRANCHED(task.id, tree)}${OPERATOR}`,
+    `y no era de la tarea.${TWO_COMMANDS}${BRANCHED(task.id, tree, usedBranches)}${OPERATOR}`,
     { schema: COMMIT, label: 'commit' },
   ) : { committed: true, reason: 'runner.commitPerTask está apagado' }
   if (!commit) return halt('agent-unavailable', 'Commit no devolvió resultado')
@@ -1682,9 +1741,21 @@ while (rounds++ < MAX_TASKS) {
     `este preámbulo—; ` +
     `sacala junto con sus notas indentadas de ${queueFile()} —si es un archivo de ${P}/backlog/ y su hito queda ` +
     'sin tareas, borrá ese archivo—; cerrá su épica sólo si no queda ' +
-    `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE; y soltá la reserva corriendo ` +
+    `ninguna tarea etiquetada; dejá ${P}/${planning.wipFile} en status IDLE —una línea «status: IDLE» en su ` +
+    // Dicho con su forma: sin eso quien cierra la buscaba en el fuente del motor, una llamada por tarea.
+    `frontmatter es lo que lee el motor—; y soltá la reserva corriendo ` +
     `"node tools/ops.js release ${P} ${task.id}". lane y review van textuales, copiados de estos hechos sin ` +
     'resumir ni recortar: son lo que después se audita, y un resumen elige qué perder. ' +
+    // `done` y `qa` no van textuales, y hay que decirlo: lo que llega se escribió con la tarea abierta. Sin
+    // decirlo dependía de que quien escribe lo acomodara por su cuenta, y cuando en 0.103.4 cambió quién
+    // escribe, la entrada pasó a decir «sin commit ni push» al lado de su commit, con la ruta de la máquina
+    // (caso 301).
+    'done y qa no van textuales: se escribieron con la tarea abierta y la entrada se lee con la tarea cerrada. ' +
+    'En done decí qué quedó entregado —qué archivos cambiaron y qué hace cada cambio, y los comandos de verify ' +
+    'con su salida—, sin lo que build contaba de su momento: que no había commit, en qué fase estaba, qué pasos ' +
+    'del WIP tildó o qué no tocó. En qa, el veredicto y lo observado, sin presentar al cargo ni citar su ' +
+    `contrato. En done, qa, tests y decisions las rutas van relativas, empezando en ${declared}/, nunca la ruta ` +
+    'absoluta de esta máquina. No agregues nada que no esté en estos hechos. ' +
     (buildNotes.length ? 'Cada entrada de notas-de-build va en decisions, con [supuesto: …]. ' : '') +
     `En decisions no nombres una fase ni un cargo ` +
     `que no figure en estos hechos. Hechos: lane=${lane}; ` +
@@ -1702,7 +1773,12 @@ while (rounds++ < MAX_TASKS) {
     `En tests rastreá cada criterio con la ` +
     `prueba que cubiertos le asigna` +
     (noSurface.length ? ', y los de sin-superficie con tests: n/a — <razón>' : '') +
-    (outOfVerify.length ? '; cada condición de fuera-de-verify queda cumplida en tests, qa o commit' : '') + '.'),
+    (outOfVerify.length ? '; cada condición de fuera-de-verify queda cumplida en tests, qa o commit' : '') + '. ' +
+    // La entrada se valida antes de commitearla. Sin esto el formato lo descubría `closing`, con la entrada
+    // ya commiteada: una traza escrita «A (condición) → prueba» dejó `check` en rojo y un arreglo suelto.
+    'Cada traza de tests empieza con «A →» o «C<n> →» y sigue con la prueba; la condición, si la nombrás, va ' +
+    `después. Al terminar corré "node tools/ops.js check ${P}" desde ${ROOT}: si marca esta entrada, corregí ` +
+    'el formato del campo que nombra, sin cambiar los hechos, y volvé a correrlo.'),
     { label: 'done' },
   )
   // El cierre deja la cola, `done/`, las acciones humanas y el INBOX escritos, y nadie los commiteaba: cada
@@ -1713,11 +1789,11 @@ while (rounds++ < MAX_TASKS) {
   // No frena: la tarea ya se entregó, y lo que quedó sin commitear se dice. Frenar acá dejaría una entrega
   // completa reportada como parada.
   if (contract.commitPerTask) {
-    const stated = await clerk(
+    const stated = await scribeCommit(
       `Commiteá el estado de planning que el cierre de ${task.id} dejó sin commitear en el repositorio que ` +
       `contiene a ${P}: stageá por nombre sólo lo que cambió bajo ${P} —la cola, done/, las acciones humanas, ` +
       `el INBOX—, nunca archivos del producto, y creá un solo commit "chore(planning): close ${task.id}". ` +
-      `Nunca amend ni push.${TWO_COMMANDS}${UNSIGNED}${PLANNING_BRANCH()}`,
+      `Nunca amend ni push.${TWO_COMMANDS}${PLANNING_BRANCH()}`,
       { schema: COMMIT, label: 'planning-commit' },
     )
     if (!stated || !stated.committed) {
@@ -1727,6 +1803,7 @@ while (rounds++ < MAX_TASKS) {
     }
   }
   holding = ''
+  if (commit && commit.branch && !usedBranches.includes(commit.branch)) usedBranches.push(commit.branch)
   completed.push(task.id)
   planning = await readContext()
   if (!planning) return halt('context-unavailable', `no se pudo releer el estado de ${P}`)
@@ -1793,7 +1870,7 @@ if (completed.length && contract.humanCheckpoint && !cut) await scribe(
   // El checkpoint también es estado de planning, y se escribe después del último commit de planning: sin
   // esto cada hito terminaba con ese archivo suelto en la instancia (caso 271).
   (contract.commitPerTask ? ` Después commiteá ese archivo, y sólo ése, con el mensaje "chore(planning): await ` +
-    `review of ${currentMilestone}".${TWO_COMMANDS}${UNSIGNED}${PLANNING_BRANCH()}` : ''),
+    `review of ${currentMilestone}".${TWO_COMMANDS}${PLANNING_BRANCH()}` : ''),
   { label: 'human-checkpoint' },
 )
 return finish({ done: completed, count: completed.length, hito: currentMilestone, phases: ran })

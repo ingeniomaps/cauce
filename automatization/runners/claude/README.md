@@ -21,11 +21,13 @@ cargos llega como skills en `.claude/skills/`.
 `manifest.json` declara destinos y capacidades. Comprueba todo con
 `node tools/ops.js automation doctor . claude`.
 
-En `.claude/agents/` deja `cauce-clerk`, el agente con que `autobuild` corre sus pasos de oficina: sólo tiene
-Bash y no carga las instrucciones del proyecto (`omitClaudeMd`), porque lo único que hace es ejecutar un
-comando del CLI y devolver su salida, o commitear los archivos de planning que el recorrido le nombra. No es
-un cargo ni está para pedirle trabajo.
+En `.claude/agents/` deja dos agentes que `autobuild` usa para lo que no es juzgar. No son cargos ni están
+para pedirles trabajo.
 
-Y `cauce-scribe`, el que escribe en planning lo que el recorrido ya decidió: el WIP con el plan aprobado, la
-entrada de `done/` con su evidencia y la compuerta del hito. Tampoco carga las instrucciones del proyecto: el
-formato de cada archivo le llega en el pedido. Tiene herramientas de archivo y Bash, y no toca el producto.
+`cauce-clerk` corre un comando del CLI y devuelve su salida: leer la cola, reclamar, soltar. Sólo tiene Bash y
+no carga las instrucciones del proyecto (`omitClaudeMd`), porque en eso no hay nada que una regla cambie.
+
+`cauce-scribe` escribe en planning lo que el recorrido ya decidió —el WIP, la entrada de `done/`, la compuerta
+del hito— y commitea ese estado. Tiene pocas herramientas —archivos, shell y los skills del proyecto— y
+**sí carga las instrucciones y las reglas del
+proyecto**: lo que redacta sigue lo que la empresa escribió, y eso gana sobre lo que el recorrido dicte.

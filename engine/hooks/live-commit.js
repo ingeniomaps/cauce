@@ -72,4 +72,4 @@ function liveCommit(input) {
     + `${branch}»—, o siempre con runner.commitToLiveBranch: true en ops.config.json, que lo decide una persona.`)
 }
 
-module.exports = { liveCommit, ordersCommit, branchAfter }
+module.exports = { liveCommit, ordersCommit, branchAfter, NEGATED }

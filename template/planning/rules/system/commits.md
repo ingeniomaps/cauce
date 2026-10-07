@@ -24,6 +24,12 @@ el título y el cuerpo del pull request, y los comentarios que se dejen ahí. Y 
 alguien tipea — lo agrega la herramienta, sola, al final del texto que uno escribió—, así que cumplirla
 es revisar la salida antes de publicarla y no acordarse de no escribirla.
 
+El motor la comprueba donde tiene forma, y sólo ahí: un `git commit`, o un `gh` que publica texto en un
+pull request o un issue, cuyo texto trae la firma de un asistente como línea propia se frena. Un mensaje que
+llega por archivo, o una herramienta que firme de otro modo, no lo ve nadie más que quien revisa. Y es de las
+que el proyecto puede decidir distinto: una empresa que quiere dejar constancia de lo que hizo un agente lo
+declara con `runner.allowAiSignature`, y ahí la firma pasa.
+
 ## R9 — El artefacto manda
 
 Tests verdes no reemplazan build, paquete, imagen o migración cuando son parte del artefacto entregable.

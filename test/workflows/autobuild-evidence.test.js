@@ -21,6 +21,37 @@ test('una aprobación que no declara qué inspeccionó frena en su etapa', async
   assert.equal(review.result.reason, 'review-unbacked')
 })
 
+// Caso 306. Las dos formas que frenaron corridas reales con el caso probado: el `describe` en el medio de un
+// lado y no del otro, y dos casos del mismo archivo juntos en un rojo. Y las que tienen que seguir frenando,
+// que son el lado caro: un borde que entra sin prueba porque su nombre se parece al de un rojo.
+test('un caso descubierto se reconoce por sus tramos, llegue como llegue la ruta', async () => {
+  const withEdge = (test, reds) => runFlow({ [KEY.build]: { completed: true, summary: 'x',
+    redFirst: reds.map((one) => ({ test: one, failure: 'want 403' })),
+    discovered: [{ kind: 'edge', detail: 'borde', test }] } })
+  const nested = await withEdge('src/a.service.spec.ts › segregación: sin decisión legible no aprueba → 403',
+    ['src/a.service.spec.ts › AService.resolve › segregación: sin decisión legible no aprueba → 403'])
+  ranToEnd(nested.result)
+  const joined = await withEdge('src/b.controller.spec.ts › el 404 también sale con no-store',
+    ["src/b.controller.spec.ts — 'consulta con el token del header' y 'el 404 también sale con no-store'"])
+  ranToEnd(joined.result)
+
+  const stops = [
+    ['otro caso', 'src/a.spec.ts › otro caso que nadie vio en rojo', 'src/a.spec.ts › AService › un caso'],
+    ['otro archivo', 'src/a.service.spec.ts › sale con no-store', "src/b.controller.spec.ts — 'sale con no-store'"],
+    ['mismo nombre de archivo en otra carpeta', 'src/users/service.spec.ts › rechaza sin permiso',
+      'src/orders/service.spec.ts › rechaza sin permiso'],
+    ['un archivo cuyo nombre termina igual', 'src/a.service.spec.ts › sale con no-store',
+      'src/data.service.spec.ts › sale con no-store'],
+    ['un caso contenido en otro', 'a.spec.ts › rechaza el token', 'a.spec.ts › Auth › no rechaza el token de servicio'],
+    ['el mismo caso en otro describe', 'a.spec.ts › Alta › rechaza duplicado', 'a.spec.ts › Baja › rechaza duplicado'],
+    ['un rojo que no nombra el archivo', 'src/a.spec.ts › caso con nombre largo', 'OtroModulo › caso con nombre largo'],
+    ['un nombre de dos letras', 'src/a.spec.ts › ok', 'src/a.spec.ts › AService › no deja el token en el log'],
+  ]
+  for (const [why, test, red] of stops) {
+    assert.equal((await withEdge(test, [red])).result.reason, 'edge-unproven', why)
+  }
+})
+
 test('un rojo declarado sin el fallo que lo muestra no cuenta como rojo', async () => {
   const { result } = await runFlow({
     [KEY.build]: {

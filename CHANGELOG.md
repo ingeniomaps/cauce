@@ -14,6 +14,57 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.103.5] - 2026-10-07
+
+### Agregado
+
+- **Un guard frena las firmas de IA en lo que se publica.** `ai-signature` frena un commit, un merge o un tag,
+  o un `gh` de pull request, issue o release, cuyo mensaje termina con la firma de un asistente:
+  `Co-Authored-By: Claude Opus…`, «Generated with…». Hasta ahora lo prohibía R8 y sólo lo cumplía quien la
+  había leído. Un coautor humano pasa, se llame como se llame, y una firma citada en la prosa también. **Qué
+  hacer:** nada si no querés firmas. Si tu empresa quiere dejar constancia de lo que hace un agente, declaralo
+  con `runner.allowAiSignature: true` en `ops.config.json`; para una vez, pedilo en el chat nombrando la firma
+  (caso 300).
+- **`autobuild` no corre con un adaptador que quedó atrás del motor.** Después de `upgrade` hay que reinstalar
+  el runner, y hasta hacerlo el recorrido y sus agentes son los de la versión anterior: la corrida andaba, con
+  lo viejo, y `doctor` sólo lo avisaba. Ahora para en el arranque con `adapter-stale` y el comando que lo
+  arregla. Vale desde la próxima actualización: la copia que tenés instalada hoy todavía no sabe preguntarlo,
+  así que **esta vez reinstalá a mano** con `make install-claude` (caso 308).
+- **El proyecto puede declarar su huso horario.** `timeZone` en `ops.config.json`, en forma IANA
+  —`"America/Bogota"`—, decide qué día es «hoy» para la entrada de `done/`, un reclamo o un vencimiento. Sin
+  declararlo sigue siendo UTC, y lo que se cierra a la noche al oeste de Greenwich queda fechado al día
+  siguiente (caso 303).
+
+### Corregido
+
+- **Lo que `autobuild` escribe en planning vuelve a seguir las reglas de tu empresa.** En 0.103.4 el WIP, la
+  entrada de `done/`, la compuerta del hito y los commits de planning los hacía un agente que no cargaba tus
+  instrucciones ni tus reglas. Dos cosas se notaron: los commits de planning salían en inglés aunque tu regla
+  pidiera otro idioma u otro formato, y la entrada de `done/` copiaba el relato de Build —«sin commit ni
+  push» al lado del commit, con la ruta de tu máquina—. Ahora ese agente carga todo lo que escribiste, y lo
+  tuyo gana sobre lo que el recorrido dicta. Cuesta más que en 0.103.4 y menos que antes: cada uno de esos
+  pasos arranca en unos 60.000 tokens, porque ese agente también puede usar los skills del proyecto. **Qué
+  hacer:** reinstalá el runner (`make install-claude`) para que llegue el agente nuevo. Las entradas y los commits que escribió 0.103.4 no se corrigen solos (casos 301 y
+  302).
+- **La entrada de `done/` se valida antes de commitearse.** Si su formato no pasa `ops check`, quien la
+  escribe la corrige en ese momento y no después, con la entrada ya commiteada (caso 301).
+- **«Sólo la próxima tarea» ahora para después de una.** El agente que reclama recibía el pedido pero no
+  cuántas tareas había cerrado la corrida, y «la próxima» era siempre la que le tocaba: una corrida real cerró
+  dos y frenó en la tercera. Ahora lo sabe. `--max N` sigue siendo la forma que no depende de una lectura
+  (caso 304).
+- **Un WIP con los pasos mal escritos se detecta antes de construir.** El motor cuenta los pasos por su forma,
+  y uno escrito como lista sin numerar era un plan vacío que nadie notaba hasta el cierre del turno. Ahora el
+  recorrido compara lo que el motor cuenta contra el plan y para con `wip-malformed` si no coinciden (caso
+  305).
+- **Un caso borde con su prueba en rojo ya no frena por cómo se escribió el nombre.** `edge-unproven` saltaba
+  cuando el borde y el rojo nombraban la misma prueba con otra ruta —con el `describe` en el medio, o dos
+  casos juntos en un rojo—. Ahora se comparan el nombre del caso y el archivo (caso 306).
+- **Los pasos de un WIP se cuentan en el plan y no en todo el archivo.** Una lista numerada con casilla en
+  «Decisiones tomadas» sumaba como pasos del plan (caso 309).
+- **Cada tarea queda en su rama.** La tarea siguiente del mismo servicio se commiteaba sobre la rama de la
+  anterior, y las dos terminaban en un solo PR. Ahora corta la suya desde ahí. Una rama que elegiste vos y no
+  es de ninguna tarea se respeta como antes (caso 307).
+
 ## [0.103.4] - 2026-10-06
 
 ### Corregido
