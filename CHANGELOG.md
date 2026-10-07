@@ -40,6 +40,15 @@ diseño — eso vive en el commit y en el código.
   reconocía el `mktemp` del temporal del sistema; con una carpeta propia dejaba el `cd` sin resolver y
   bloqueaba las escrituras siguientes. Ahora lo juzga por dónde cae esa carpeta, en las formas en que eso se
   sabe sin adivinar: un solo `-p` o `--tmpdir=`. Las demás siguen frenando (caso 311).
+- **Un `grep` con una comilla escapada ya no se frena por lo que busca.** `grep -n "\"test\|jest" package.json`
+  se frenaba como si ejecutara `jest`: los guards cortaban la cadena en la comilla escapada y leían el resto
+  como orden. Ahora leen las comillas como el shell. Hacia el otro lado se cierran dos formas que pasaban sin
+  que nadie las viera: lo que queda entre dos comillas escapadas sueltas, y el renglón que sigue a un
+  comentario con una comilla suelta (caso 312).
+- **Un `mktemp` que no crea donde el guard creía ya no deja pasar lo que le sigue.** Sin `-d`, con `TMPDIR`
+  asignado en el mismo comando, o con una plantilla sin ruta, el guard de límites juzgaba el temporal del
+  sistema y la escritura caía en otra carpeta. Ahora el `cd` queda sin resolver y frena. `T=$(mktemp -d) &&
+  cd $T` y `mktemp -d -p <carpeta>` siguen como estaban (caso 318).
 - **Quien cierra una tarea no toca la entrada de otra.** Si `check` marca una entrada que no escribió, la deja
   para el cierre de la corrida (caso 310).
 

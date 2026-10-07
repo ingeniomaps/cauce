@@ -51,8 +51,11 @@ test('leer la configuración de las pruebas no es correrlas', () => {
     "cat 'notas de hoy' jest.config.js", 'echo "npx jest"', "rg 'vitest' -l", 'ls "mis pruebas" vitest.config.ts',
     // Con un separador adentro del patrón: lo que un `grep` sólo lee no se parte en comandos.
     "grep -n 'lint; npx jest' Makefile",
+    // Con una comilla escapada adentro, que es como frenó en una instancia (caso 312).
+    'grep -n "\\"test\\|jest" package.json',
   ]) assert.doesNotThrow(() => execute('test-workers', run(root, command)), command)
-  for (const command of ["sh -c 'npx jest'", 'bash -lc "cd api && vitest run"', 'grep -q x y; npx jest']) {
+  for (const command of ["sh -c 'npx jest'", 'bash -lc "cd api && vitest run"', 'grep -q x y; npx jest',
+    'grep "a\\"b" x; npx jest']) {
     blocked('test-workers', run(root, command), /sin cota de workers/)
   }
 })

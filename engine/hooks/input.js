@@ -169,7 +169,21 @@ function configOf(root) {
 // Vacía lo que va entre comillas, dejando una marca que ningún patrón confunde con una ruta ni con un
 // comando. Vive acá porque la usan tres lugares por razones distintas, y cada uno explica la suya donde
 // la llama.
-const unquoted = (command) => String(command).replace(/'[^']*'|"[^"]*"/g, '\u0000')
+//
+// Dónde empieza y dónde termina una cadena lo dice el shell, y tiene dos formas de barra invertida que acá
+// hay que leer igual que él. Dentro de comillas dobles, `\"` no cierra: sin eso `"\"test\|jest"` terminaba
+// en la segunda comilla y dejaba `jest` a la vista de un `grep` que sólo lo busca (caso 312). Fuera de
+// comillas, `\"` no abre: es una comilla literal. Las dos van juntas porque arreglar sólo la primera es
+// peor que no arreglar ninguna — en `echo \"a\" ; rm -rf x ; echo "b"` la cadena pasaría a empezar en una
+// comilla que no abre nada y se llevaría puesto el `rm`. Las simples `'…'` no cambian: no admiten escape.
+//
+// Un comentario tampoco abre cadenas, y queda a la vista entero: una comilla suelta en uno escondía el
+// renglón siguiente. Se deja en vez de sacarlo porque `#` también aparece en `${x/ #/y}`, y ahí sacarlo
+// escondería lo que sigue. Lo que esta lectura todavía no conoce está en el caso 328.
+const QUOTED = /\\.|'[^']*'|"(?:[^"\\]|\\[\s\S])*"|(?<![^\s;&|()<>])#[^\n]*/g
+const eachQuoted = (text, replace) => text.replace(QUOTED,
+  (found, offset) => (found[0] === '\\' || found[0] === '#' ? found : replace(found, offset)))
+const unquoted = (command) => eachQuoted(String(command), () => '\u0000')
 
 // El comando tal como se va a ejecutar: sin lo entrecomillado que es dato y no orden. En un commit lo es
 // todo —el mensaje—; fuera de un commit lo entrecomillado puede ejecutarse (`bash -c "…"`, `eval '…'`), y
@@ -185,7 +199,7 @@ function asRun(command) {
   const raw = String(command)
   if (isCommit(raw)) return unquoted(raw)
   if (FEEDS_SHELL.test(unquoted(raw))) return raw
-  return raw.replace(/'[^']*'|"[^"]*"/g, (quoted, offset) => {
+  return eachQuoted(raw, (quoted, offset) => {
     if (quoted[0] === '"' && /\$\(|`/.test(quoted)) return quoted
     const simple = unquoted(raw.slice(0, offset)).split(/[;&|\n(]/).pop()
     const first = simple.trim().split(/\s+/).find((word) => !/^[A-Za-z_]\w*=/.test(word))
@@ -204,7 +218,7 @@ function asRun(command) {
 const MKTEMP = /^\$\(mktemp((?:\s+[^\s$`]+)*)\)$/
 
 // Dónde crea `mktemp` lo suyo: el directorio de `-p` o `--tmpdir=`, el de la plantilla si trae ruta, y el
-// temporal del sistema si no dice. El nombre que elige no se sabe y no hace falta: lo que se juzga es dónde
+// temporal del sistema si no dice nada. El nombre que elige no se sabe y no hace falta: lo que se juzga es dónde
 // cae, y cae adentro de ése. Sin esto sólo se reconocía el temporal del sistema, y una copia hecha con
 // `mktemp -d -p <scratchpad de la sesión>` —lo que pide R23 para una mutación— dejaba el `cd` sin resolver y
 // frenaba toda escritura que viniera después (caso 311).
@@ -214,11 +228,17 @@ const MKTEMP = /^\$\(mktemp((?:\s+[^\s$`]+)*)\)$/
 // `-p` usa el último, con `-t` manda `TMPDIR`, y una plantilla con `..` se sale del directorio que la precede.
 // Resolver mal acá es peor que no resolver: el guard juzgaría una carpeta permitida mientras se escribe en
 // otra. Vacío significa «no se sabe».
-function mktempParent(args) {
+//
+// Y tres formas más quedan sin resolver, porque resueltas juzgaban una carpeta donde no se iba a escribir
+// (caso 318). Sin `-d` lo que `mktemp` crea es un archivo: el `cd` falla y lo que sigue cae donde se estaba.
+// Con `TMPDIR` asignado en el comando, el temporal ya no es el que ve este proceso. Y una plantilla sin ruta
+// crea en la carpeta donde se está, que acá no se sabe cuál es.
+function mktempParent(args, movedTemp) {
   const words = args.trim().split(/\s+/).filter(Boolean)
     .map((word) => word.replace(/^(["'])(.*)\1$/, '$2'))
   const dirs = []
   const templates = []
+  if (!words.includes('-d')) return ''
   for (let at = 0; at < words.length; at += 1) {
     const word = words[at]
     if (word === '-d' || word === '-q') continue
@@ -230,7 +250,8 @@ function mktempParent(args) {
   if (dirs.length > 1 || templates.length > 1 || /["']/.test(words.join(''))) return ''
   const [template = ''] = templates
   if (dirs.length) return template.includes('/') || !path.isAbsolute(dirs[0]) ? '' : dirs[0]
-  if (!template.includes('/')) return os.tmpdir()
+  if (!template) return movedTemp ? '' : os.tmpdir()
+  if (!template.includes('/')) return ''
   return path.isAbsolute(template) && !template.split('/').includes('..') ? path.dirname(template) : ''
 }
 // Con qué reemplazar las variables que el comando asigna, o nada si no asigna ninguna que se pueda resolver.
@@ -249,7 +270,7 @@ function assignedValues(command) {
     // Las variables ya conocidas se resuelven antes: el directorio de `-p` suele venir en una.
     const made = value(bare).match(MKTEMP)
     if (made) {
-      const parent = mktempParent(made[1])
+      const parent = mktempParent(made[1], /\bTMPDIR=/.test(raw))
       if (parent) known.set(name, path.join(parent, 'mktemp'))
       else twice.add(name)
       continue
