@@ -36,6 +36,13 @@ function validateComments(comments, errors) {
   }
 }
 
+// Si `Intl` conoce el huso. Lo usa la validación, y también quien fecha: un nombre que `Intl` rechaza no
+// puede decidir un día.
+function validZone(name) {
+  if (typeof name !== 'string' || !name.trim()) return false
+  try { new Intl.DateTimeFormat('en-CA', { timeZone: name }); return true } catch { return false }
+}
+
 function validateOpsConfig(config) {
   const errors = []
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
@@ -44,7 +51,7 @@ function validateOpsConfig(config) {
   // `cauceVersion` la escribe el toolkit, no la persona: registra de qué versión salió la instancia.
   const allowed = new Set([
     '$schema', 'cauceVersion', 'project', 'mode', 'workspaceRoots', 'writableOutsideRoots', 'runner',
-    'migrations', 'inbox', 'deployCommands', 'boundedCommands', 'comments',
+    'migrations', 'inbox', 'deployCommands', 'boundedCommands', 'comments', 'timeZone',
   ])
   for (const key of Object.keys(config)) {
     if (RETIRED[key]) errors.push(`ops.config.json: ${key} ya no se usa: ${RETIRED[key]}`)
@@ -68,6 +75,11 @@ function validateOpsConfig(config) {
   if (bounded !== undefined && (!Array.isArray(bounded)
     || bounded.some((one) => typeof one !== 'string' || !one.trim()))) {
     errors.push('ops.config.json: boundedCommands debe ser una lista de comandos, tal como se escriben')
+  }
+  // Un huso mal escrito no puede caer a UTC en silencio: la fecha saldría un día corrida justo en la
+  // instancia que lo declaró para que no pasara (caso 303).
+  if (config.timeZone !== undefined && !validZone(config.timeZone)) {
+    errors.push('ops.config.json: timeZone debe ser un huso IANA, como "America/Bogota" o "Europe/Madrid"')
   }
   validateRunner(config.runner, errors)
   validateMigrations(config.migrations, errors)
@@ -282,4 +294,4 @@ function localConfigWarnings(dir) {
   ]
 }
 
-module.exports = { configWarnings, validateOpsConfig, localConfigWarnings }
+module.exports = { configWarnings, validateOpsConfig, localConfigWarnings, validZone }

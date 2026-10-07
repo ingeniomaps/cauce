@@ -2,6 +2,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { validZone } = require('../config/validate')
 
 // Los dos códigos con que termina el CLI, y el corte entre ellos. Están nombrados porque el número suelto
 // no dice de qué lado cae: un «2» y un argumento ausente se leen igual de arbitrarios, así que cada sitio
@@ -36,7 +37,47 @@ function fail(message, code = REFUSED) {
 // el módulo que calcula vencimientos la recibe en vez de preguntarla. Vive acá desde que la puerta de
 // planning se separó de los comandos que la leen — quedaba en el archivo que se partió, y dejar una copia
 // a cada lado habría roto en silencio lo único que esta función promete.
-const TODAY = () => new Date().toISOString().slice(0, 10)
+//
+// El día es el del huso que el proyecto declara en `timeZone`, y UTC si no declara ninguno. Con UTC a secas,
+// lo que se cerraba a la noche al oeste de Greenwich quedaba fechado al día siguiente (caso 303). Es del
+// proyecto y no de la máquina para que dos personas del mismo equipo, y el CI, fechen igual.
+//
+// La raíz la anota el CLI antes de despachar, y el archivo se lee recién cuando alguien pregunta la fecha:
+// la mayoría de los comandos no la usa. Un huso que `Intl` no conoce cae a UTC; `check` lo rechaza antes.
+let asked = ''
+let zone
+const useRoot = (dir) => { asked = dir || ''; zone = undefined }
+function declaredZone() {
+  // El primer argumento de un comando no siempre es una raíz —`evaluate <cargo>`, `agents fork`—: si desde
+  // ahí no se encuentra el archivo, se busca desde la raíz que exportó el shim, y recién después desde acá.
+  for (const from of [asked, process.env.OPS_ROOT, '.']) {
+    // Un argumento que no es una carpeta no es de dónde subir: resolvería contra el cwd y encontraría la
+    // configuración de quien esté parado ahí.
+    if (!from || !fs.existsSync(path.resolve(from))) continue
+    let dir = path.resolve(from)
+    // La raíz de un comando puede ser la carpeta de planning o una de más adentro: se sube hasta encontrarlo.
+    for (let hops = 0; hops < 4; hops += 1) {
+      const file = path.join(dir, 'ops.config.json')
+      if (fs.existsSync(file)) {
+        // Uno que está y no se puede leer no manda a buscar el de la carpeta de arriba, que es de otro.
+        try {
+          const declared = JSON.parse(fs.readFileSync(file, 'utf8')).timeZone
+          return validZone(declared) ? declared : ''
+        } catch { return '' }
+      }
+      if (path.dirname(dir) === dir) break
+      dir = path.dirname(dir)
+    }
+  }
+  return ''
+}
+function TODAY(now = new Date()) {
+  if (zone === undefined) zone = declaredZone()
+  if (!zone) return now.toISOString().slice(0, 10)
+  // `en-CA` escribe la fecha como año-mes-día, que es la forma en que el resto del motor la compara.
+  return new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' })
+    .format(now)
+}
 
 // La raíz ops de un comando que no la recibe. El shim `tools/ops.js` la exporta porque sabe dónde
 // vive: sin eso, invocarlo desde otra carpeta —lo normal en sidecar— la resolvía contra el cwd.
@@ -72,4 +113,4 @@ function planningRoot(dir) {
   return root
 }
 
-module.exports = { fail, opsRoot, planningRoot, TODAY, USAGE, REFUSED }
+module.exports = { fail, opsRoot, planningRoot, TODAY, useRoot, USAGE, REFUSED }

@@ -6,7 +6,7 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const A = require('../automation')
 const { FLAGS, parse } = require('./args')
-const { fail, USAGE, REFUSED } = require('./io')
+const { fail, useRoot, USAGE, REFUSED } = require('./io')
 const IN = require('./instance')
 const PL = require('./planning')
 const LN = require('./lines')
@@ -222,6 +222,8 @@ async function run(cli) {
     fail(`${command}: bandera desconocida ${unknown.join(', ')}. ${accepts}`, USAGE)
   }
   const arg = cli.positional
+  // De acá sale el huso con que se fecha: el porqué, junto a `TODAY`.
+  useRoot(arg[1])
   if (command === 'init') await init(arg[1], cli)
   else if (command === 'scan') W.scan(arg[1], cli)
   else if (command === 'onboard') W.onboard(arg[1], cli)
