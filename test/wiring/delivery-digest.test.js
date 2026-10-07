@@ -73,11 +73,12 @@ test('instalar Claude entrega el agente de oficina que el recorrido nombra, y de
   const workflow = fs.readFileSync(path.join(base, '.claude', 'workflows', 'autobuild.js'), 'utf8')
   assert.match(workflow, /agentType: 'cauce-clerk'/, 'el nombre que pide el recorrido es el que se instala')
 
-  // El de escritura llega igual, con herramientas de archivo y también sin las instrucciones del proyecto.
+  // El de escritura llega igual, con herramientas de archivo. Carga las instrucciones del proyecto, al revés
+  // que el de oficina: redacta, y lo que redacta sigue las reglas de la empresa (casos 301 y 302).
   const scribe = path.join(base, '.claude', 'agents', 'cauce-scribe.md')
   const scribeFront = fs.readFileSync(scribe, 'utf8').split('---')[1]
   assert.match(scribeFront, /^name: cauce-scribe$/m)
-  assert.match(scribeFront, /^omitClaudeMd: true$/m)
+  assert.doesNotMatch(scribeFront, /omitClaudeMd/)
   assert.match(scribeFront, /^tools: Bash, Read, Edit, Write$/m)
   assert.match(workflow, /agentType: 'cauce-scribe'/)
 

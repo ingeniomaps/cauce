@@ -269,9 +269,15 @@ test('una corrida acotada a N tareas, o cuyo reclamo se declina a pedido, termin
     'sin pedido no hay contra qué declinar')
   // Quien reclama decide con el pedido a la vista: sin él, la corrida real reclamó la tarea excluida (caso 297).
   const asked = await runFlow(T2, { ...two, args: 'Sólo la tarea T-1; al cerrarla, parar. --max 5' })
+  // Y con cuántas lleva cerradas la corrida, que es lo único contra lo que «sólo la próxima» se puede leer:
+  // sin ese dato una corrida real cerró dos y frenó en la tercera (caso 304).
+  const counted = { 'T-1': /ya cerró 0 tarea\(s\), y ésta sería la número 1\./,
+    'T-2': /ya cerró 1 tarea\(s\) —T-1—, y ésta sería la número 2\./ }
   for (const id of ['T-1', 'T-2']) {
     const prompt = asked.prompts.find((one) => one.key === `Claim|claim:${id}`).prompt
-    assert.match(prompt, /pidió: «Sólo la tarea T-1; al cerrarla, parar\.»\. Si eso excluye esta tarea/, id)
+    assert.match(prompt, /pidió: «Sólo la tarea T-1; al cerrarla, parar\.»\. Esta corrida ya cerró/, id)
+    assert.match(prompt, counted[id], id)
+    assert.match(prompt, /una cantidad que ya se cumplió/)
     assert.match(prompt, /declined=true/)
   }
 })
@@ -298,13 +304,13 @@ test('los pasos de oficina van con el agente liviano, y los que trabajan no', as
     }
   }
 
-  const clerical = ['contract-digest', 'planning-context', 'claim:T-1', 'human-row', 'release:T-1', 'worktree:T-1',
-    'planning-commit', 'planning-block']
+  const clerical = ['contract-digest', 'planning-context', 'claim:T-1', 'human-row', 'release:T-1', 'worktree:T-1']
   for (const label of clerical) assert.equal(seen.get(label), 'cauce-clerk', label)
-  // Los que vuelcan en planning lo ya decidido van con el de escritura, que lleva el preámbulo de formatos.
-  const scribes = ['wip', 'done', 'human-checkpoint']
-  for (const label of scribes) {
-    assert.equal(seen.get(label), 'cauce-scribe', label)
+  // Lo que redacta —una entrada o un commit de planning— va con el de escritura, que carga las reglas del
+  // proyecto. Con el de oficina el commit ignoraba la convención de la empresa (caso 302).
+  const scribes = ['wip', 'done', 'human-checkpoint', 'planning-commit', 'planning-block']
+  for (const label of scribes) assert.equal(seen.get(label), 'cauce-scribe', label)
+  for (const label of ['wip', 'done', 'human-checkpoint']) {
     assert.match(texts.get(label), /Contratos de planning, textuales de/, `${label} recibe los formatos`)
   }
   assert.match(texts.get('wip'), /Escribí el WIP en \S+\/wip\/w-uno\.md y nada más/, 'el WIP se nombra por su ruta')
@@ -313,6 +319,21 @@ test('los pasos de oficina van con el agente liviano, y los que trabajan no', as
   for (const [label, type] of working) assert.equal(type, '', `${label} carga las reglas del proyecto`)
   for (const label of ['ready', 'qa', 'plan', 'critique', 'build', 'review', 'verify', 'commit', 'plan-human',
     'closing']) assert.ok(working.some(([one]) => one === label), `la prueba no llegó a ver ${label}`)
+})
+
+// Caso 307. La tarea siguiente del mismo servicio no se apila en la rama donde esta corrida commiteó la
+// anterior: la primera no tiene nada que evitar, la segunda nombra la rama de la primera.
+test('cada tarea queda en su rama, también cuando el repositorio quedó en la de la anterior', async () => {
+  const first = baseScript()[KEY.context]
+  const two = { contexts: [first, { ...first, slug: 'T-2' }, { ...first, hasTask: false, queued: 0 }] }
+  const commit = { committed: true, hash: 'abc123', branch: 'feat/T-1', live: false }
+  const { prompts, result } = await runFlow({ 'Claim|claim:T-2': { claimed: true }, [KEY.commit]: commit }, two)
+  assert.deepEqual(result.done, ['T-1', 'T-2'])
+  const [one, other] = prompts.filter((item) => item.key === KEY.commit).map((item) => item.prompt)
+  assert.match(one, /salvo que sea la rama de otra tarea: una cuyo nombre termine en el identificador/)
+  assert.doesNotMatch(one, /las que esta corrida ya usó/)
+  assert.match(other, /salvo que sea la rama de otra tarea: las que esta corrida ya usó —feat\/T-1—, o una cuyo/)
+  assert.match(other, /Ahí cortá igual `git switch -c <tipo>\/T-2`, desde donde está/)
 })
 
 // Caso 299. En cada corrida real medida, el agente que commitea stageó y commiteó en una línea, lo frenó el
@@ -329,10 +350,20 @@ test('todo paso que commitea avisa que stagear y commitear van en comandos separ
   for (const label of commits) {
     assert.ok(seen.has(label), `la prueba no llegó a ver ${label}`)
     assert.match(seen.get(label), /Stageá en un comando y commiteá en otro aparte/, label)
-    // Tres de los cuatro van con un agente que no carga R8, así que la firma se prohíbe acá (caso 295).
-    assert.match(seen.get(label), /sin `Co-Authored-By`, sin «Generated with»/, label)
   }
   for (const [label, prompt] of seen) {
-    if (!commits.includes(label)) assert.doesNotMatch(prompt, /commiteá en otro aparte|Co-Authored-By/, label)
+    if (!commits.includes(label)) assert.doesNotMatch(prompt, /commiteá en otro aparte/, label)
   }
+  // Ningún prompt dicta idioma ni firma: eso lo fijan las reglas del proyecto, que quien commitea carga. Un
+  // pedido que lo dictara le ganaría a la empresa justo donde ella escribió otra cosa (caso 302).
+  for (const label of commits) assert.doesNotMatch(seen.get(label), /Co-Authored-By|idioma|git log -8/, label)
+  // Caso 301. `done` y `qa` se escribieron con la tarea abierta: el cierre los acomoda, y lo dice el prompt
+  // en vez de depender de que quien escribe la entrada lo haga por su cuenta.
+  const done = seen.get('done')
+  assert.match(done, /lane y review van textuales/)
+  assert.match(done, /done y qa no van textuales/)
+  assert.match(done, /sin lo que build contaba de su momento: que no había commit/)
+  assert.match(done, /las rutas van relativas, empezando en \S*api\/, nunca la ruta absoluta de esta máquina/)
+  assert.match(done, /Cada traza de tests empieza con «A →» o «C<n> →»/)
+  assert.match(done, /Al terminar corré "node tools\/ops\.js check \S+" desde \S+: si marca esta entrada, corregí/)
 })

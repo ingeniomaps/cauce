@@ -70,7 +70,7 @@ function baseScript() {
       approach: 'validar en el repositorio', steps: ['1'], files: ['api/alta.go'], testStrategy: 'unit',
     },
     [KEY.critique]: { verdict: 'aprobado', concerns: [], consulted: ['api/alta.go'] },
-    [KEY.wip]: { wipActive: true },
+    [KEY.wip]: { wipActive: true, steps: 1 },
     [KEY.build]: {
       completed: true, summary: 'alta con rechazo de duplicado',
       redFirst: [{ test: 'TestAltaDuplicada', failure: 'want error, got nil' }],
