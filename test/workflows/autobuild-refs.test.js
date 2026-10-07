@@ -155,7 +155,7 @@ test('una regla que rige citada con otra forma de la ruta no se marca como que n
 // promover; sin nada que anotar no escribe, y con más del tope anota sólo el tope.
 const lesson = (n) => ({ name: `reforzar-commits-r${n}`, ref: `planning/rules/system/commits.md#R${n}`,
   tasks: ['alta', 'baja'], reopened: false })
-const closingWith = (lessons) => ({ [KEY.closing]: { passed: true, details: 'check verde', lessons } })
+const closingWith = (lessons) => ({ [KEY.closing]: { ok: true, errors: [], warnings: [], lessons } })
 
 test('el cierre anota como lección la regla corregida en varias tareas, con su fila en LESSONS.md', async () => {
   const run = await runFlow(closingWith([lesson(8)]))

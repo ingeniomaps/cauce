@@ -84,7 +84,7 @@ function baseScript() {
     [KEY.qa]: { passed: true, evidence: 'alta rechaza el duplicado contra la API real' },
     [KEY.commit]: { committed: true, hash: 'abc123' },
     [KEY.pick]: { expanded: false },
-    [KEY.closing]: { passed: true, details: 'check verde' },
+    [KEY.closing]: { ok: true, errors: [], warnings: [], lessons: [] },
     [KEY.planRow]: { readOk: true, pending: true },
     [KEY.readyRow]: { readOk: true, pending: true },
     [KEY.verifyRow]: { readOk: true, pending: true },

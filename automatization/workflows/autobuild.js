@@ -705,12 +705,12 @@ const registerHuman = async (prompt, label, slug = '') => {
 // el cierre de una tarea lo commiteaba: la corrida que frenaba dejaba la instancia sucia (caso 279). Mismo
 // interruptor y misma regla de ramas que el commit del cierre, y tampoco frena: la parada ya está dicha.
 // Va después de soltar el reclamo cuando la parada lo suelta: commiteado antes, soltarlo volvía a ensuciar.
-const commitBlocked = async (slug) => {
+const commitBlocked = async (slug, subject = `block ${slug}`) => {
   if (!contract.commitPerTask) return
   const stated = await scribeCommit(
     `Commiteá el estado de planning que la parada de ${slug} dejó sin commitear en el repositorio que `
     + `contiene a ${P}: stageá por nombre sólo lo que cambió bajo ${P} —también lo que se borró—, nunca `
-    + `archivos del producto, y creá un solo commit "chore(planning): block ${slug}". Nunca amend ni `
+    + `archivos del producto, y creá un solo commit "chore(planning): ${subject}". Nunca amend ni `
     + `push.${TWO_COMMANDS}${PLANNING_BRANCH()}`,
     { schema: COMMIT, label: 'planning-block' },
   )
@@ -1778,7 +1778,10 @@ while (rounds++ < MAX_TASKS) {
     // ya commiteada: una traza escrita «A (condición) → prueba» dejó `check` en rojo y un arreglo suelto.
     'Cada traza de tests empieza con «A →» o «C<n> →» y sigue con la prueba; la condición, si la nombrás, va ' +
     `después. Al terminar corré "node tools/ops.js check ${P}" desde ${ROOT}: si marca esta entrada, corregí ` +
-    'el formato del campo que nombra, sin cambiar los hechos, y volvé a correrlo.'),
+    'el formato del campo que nombra, sin cambiar los hechos, y volvé a correrlo. Si marca la entrada de otra ' +
+    // En una corrida real quien cerraba una tarea «arregló» la entrada de otra y le sacó una condición de la
+    // traza: evidencia ajena editada de paso, y commiteada con el cierre de la propia (caso 310).
+    'tarea, no la toques: es evidencia que no escribiste, y la mira el cierre de la corrida.'),
     { label: 'done' },
   )
   // El cierre deja la cola, `done/`, las acciones humanas y el INBOX escritos, y nadie los commiteaba: cada
@@ -1814,27 +1817,105 @@ if (rounds > MAX_TASKS) {
 }
 
 phase('Closing')
-// El mismo agente que corre `check` trae las lecciones, y no uno aparte: es un comando más en la misma
-// vuelta, y una llamada por corrida para una lista que casi siempre viene vacía no se paga (R16).
-const closing = await write(
-  `Corré "node tools/ops.js check ${P}" desde ${ROOT}. Si sale en rojo, reparás sólo estado derivado ` +
-  `determinista; nunca reescribas aceptación ni decisiones para forzar el verde. Después corré ` +
-  `"node tools/ops.js lessons ${P} --json" y copiá su campo proposals tal cual en lessons, vacío si no hay.`, {
-    label: 'closing',
-    schema: {
-      type: 'object', required: ['passed', 'details', 'lessons'],
-      properties: {
-        passed: { type: 'boolean' }, details: { type: 'string' },
-        lessons: { type: 'array', items: { type: 'object', additionalProperties: true,
-          required: ['name', 'ref', 'tasks'],
-          properties: { name: { type: 'string' }, ref: { type: 'string' },
-            tasks: { type: 'array', items: { type: 'string' } }, reopened: { type: 'boolean' } } } },
-      },
-    },
+// Si el planning quedó válido lo dice `check`, y se lee de su salida: `ok`, los errores y los avisos. Hasta
+// 0.103.5 lo contestaba un agente completo que corría el comando y contaba qué había visto: en treinta y un
+// cierres reales treinta fueron eso y nada más, y el recorrido creía lo que el agente decía en vez de lo que
+// el comando devolvió. Los avisos que no hacen fallar a `check` se perdían: el agente los comentaba y este
+// script tiraba ese texto cuando el cierre pasaba (caso 310).
+//
+// El mismo paso trae las lecciones, y no uno aparte: es un comando más en la misma vuelta, y una llamada
+// por corrida para una lista que casi siempre viene vacía no se paga (R16).
+const CHECK_FIELDS = {
+  ok: { type: 'boolean' },
+  errors: { type: 'array', items: { type: 'string' } }, warnings: { type: 'array', items: { type: 'string' } },
+}
+const CHECKED = {
+  type: 'object', additionalProperties: false, required: ['ok', 'errors', 'warnings', 'lessons'],
+  properties: {
+    ...CHECK_FIELDS,
+    lessons: { type: 'array', items: { type: 'object', additionalProperties: true,
+      required: ['name', 'ref', 'tasks'],
+      properties: { name: { type: 'string' }, ref: { type: 'string' },
+        tasks: { type: 'array', items: { type: 'string' } }, reopened: { type: 'boolean' } } } },
   },
+}
+const checkedBy = `Corré "node tools/ops.js check ${P} --json" desde ${ROOT} y copiá de su salida ok, errors y `
+  + 'warnings tal cual, sin resumir ni reordenar. Que salga con un código distinto de 0 no es una falla tuya: es '
+  + 'lo que hay que devolver.'
+const readCheck = () => clerk(
+  `${checkedBy} No arregles nada. Después corré "node tools/ops.js lessons ${P} --json" y copiá su campo ` +
+  'proposals tal cual en lessons, vacío si no hay.',
+  { label: 'closing', schema: CHECKED },
 )
+let closing = await readCheck()
 if (!closing) return halt('agent-unavailable', 'Closing no devolvió resultado')
-if (!closing.passed) return halt('planning-check-failed', closing.details)
+const failures = (verdict) => (verdict.errors || []).join(' | ') || 'check salió en rojo sin decir por qué'
+// Reparar sí es juzgar —qué es estado derivado y qué no se toca—, y eso lo hace quien carga las reglas. Entra
+// sólo cuando hay algo que reparar, que en esos treinta y un cierres fue una vez.
+if (!closing.ok) {
+  const broken = failures(closing)
+  const repaired = await write(
+    `"node tools/ops.js check ${P}" salió en rojo al cerrar la corrida, con estos errores: ${broken}. Reparás ` +
+    'sólo estado derivado determinista —un formato, un campo que se deduce de otro, una referencia que quedó ' +
+    'vieja—; nunca reescribas aceptación, evidencia ni decisiones para forzar el verde, y si un error pide eso ' +
+    'lo dejás como está. En fixed, cada archivo que tocaste; vacío si ninguno.',
+    { label: 'closing-repair', schema: {
+      type: 'object', additionalProperties: false, required: ['fixed'],
+      properties: { fixed: { type: 'array', items: { type: 'string' } }, note: { type: 'string' } },
+    } },
+  )
+  if (!repaired) return halt('agent-unavailable', 'la reparación del cierre no devolvió resultado')
+  // Si quedó en verde lo vuelve a decir el comando, no quien reparó: es la misma lectura de arriba, y de
+  // paso trae las lecciones como quedaron después de la reparación.
+  closing = await readCheck()
+  if (!closing) return halt('agent-unavailable', 'Closing no devolvió resultado después de reparar')
+  // Lo que no se pudo reparar necesita a una persona, y sin una fila la parada no dejaba rastro en disco: la
+  // corrida terminaba, la sesión se cerraba y el planning seguía en rojo sin que nada dijera por qué.
+  if (!closing.ok) {
+    const left = failures(closing)
+    // La primera columna es fija: con el nombre del hito, `check` la rechaza cuando ese nombre contiene el
+    // de una tarea en cola, y esta fila no frena ninguna.
+    const noted = await registerHuman(
+      `Registrá en ${HUMAN} una fila: al cerrar la corrida` +
+      `${currentMilestone ? ` del hito ${currentMilestone}` : ''}, ` +
+      `"node tools/ops.js check ${P}" quedó en rojo y repararlo pedía algo que no es estado derivado. Los ` +
+      `errores, textuales: ${left}. La primera columna es autobuild, nunca una tarea: esto no frena ninguna en ` +
+      'particular. Decí qué lo cierra —quien pueda aportar lo que falta, o decidir qué se hace con la entrada— ' +
+      'sin inventar responsables ni fechas.',
+      'closing-human',
+    )
+    // Un solo commit para la parada: lo hace éste, que barre todo lo que cambió, y `halt` no lo repite.
+    await commitBlocked('autobuild', 'record a closing check left red')
+    holding = ''
+    return halt('planning-check-failed', left + noted)
+  }
+  const touched = repaired.fixed || []
+  // La reparación se commitea. El cierre corre después del commit de planning de cada tarea, así que lo que
+  // se arreglaba acá quedaba suelto en la instancia: pasó, y lo commiteó a mano quien lo encontró.
+  if (touched.length && contract.commitPerTask) {
+    const kept = await scribeCommit(
+      `Commiteá lo que la reparación del cierre dejó sin commitear en el repositorio que contiene a ${P}: ` +
+      `stageá por nombre lo que cambió bajo ${P} —la reparación dice haber tocado ${touched.join(', ')}—, ` +
+      'nunca archivos del producto, y creá un solo commit "chore(planning): repair closing state". Nunca amend ' +
+      `ni push.${TWO_COMMANDS}${PLANNING_BRANCH()}`,
+      { schema: COMMIT, label: 'closing-commit' },
+    )
+    if (!kept || !kept.committed) {
+      log(`la reparación del cierre quedó sin commitear: ${(kept && kept.reason) || 'sin respuesta'}`)
+    } else if (kept.live && !contract.commitToLiveBranch) {
+      log(`la reparación del cierre quedó commiteada en la rama viva ${kept.branch || ''}: movela`)
+    }
+  } else if (touched.length) {
+    log(`la reparación del cierre tocó ${touched.join(', ')} y quedó sin commitear: `
+      + 'el proyecto no commitea por tarea')
+  }
+  log(`check salió en rojo al cerrar y se reparó: ${broken}`)
+}
+const warned = closing.warnings || []
+// Lo que `check` avisa sin fallar llega a quien lanzó la corrida, textual. El tope es el del INBOX: una
+// instancia con muchos avisos fijos no tapa el resto del registro, y lo que no entra queda contado.
+warned.slice(0, INBOX_CAP).forEach((warning) => log(`check avisa: ${warning}`))
+if (warned.length > INBOX_CAP) log(`check avisa ${warned.length - INBOX_CAP} cosa(s) más`)
 // Una regla que la revisión mandó a corregir en varias tareas vuelve como lección, sin promover: es lo
 // que el registro de lo corregido (caso 207) existe para alimentar (caso 214). El tope es el del INBOX.
 const learned = (closing.lessons || []).slice(0, INBOX_CAP)

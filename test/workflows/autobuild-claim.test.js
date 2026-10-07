@@ -304,7 +304,8 @@ test('los pasos de oficina van con el agente liviano, y los que trabajan no', as
     }
   }
 
-  const clerical = ['contract-digest', 'planning-context', 'claim:T-1', 'human-row', 'release:T-1', 'worktree:T-1']
+  const clerical = ['contract-digest', 'planning-context', 'claim:T-1', 'human-row', 'release:T-1', 'worktree:T-1',
+    'closing']
   for (const label of clerical) assert.equal(seen.get(label), 'cauce-clerk', label)
   // Lo que redacta —una entrada o un commit de planning— va con el de escritura, que carga las reglas del
   // proyecto. Con el de oficina el commit ignoraba la convención de la empresa (caso 302).
@@ -315,10 +316,10 @@ test('los pasos de oficina van con el agente liviano, y los que trabajan no', as
   }
   assert.match(texts.get('wip'), /Escribí el WIP en \S+\/wip\/w-uno\.md y nada más/, 'el WIP se nombra por su ruta')
   const working = [...seen].filter(([label]) => !clerical.includes(label) && !scribes.includes(label))
-  assert.ok(working.length > 10, `se vieron ${working.length} pasos que trabajan`)
+  assert.ok(working.length >= 10, `se vieron ${working.length} pasos que trabajan`)
   for (const [label, type] of working) assert.equal(type, '', `${label} carga las reglas del proyecto`)
-  for (const label of ['ready', 'qa', 'plan', 'critique', 'build', 'review', 'verify', 'commit', 'plan-human',
-    'closing']) assert.ok(working.some(([one]) => one === label), `la prueba no llegó a ver ${label}`)
+  for (const label of ['ready', 'qa', 'plan', 'critique', 'build', 'review', 'verify', 'commit',
+    'plan-human']) assert.ok(working.some(([one]) => one === label), `la prueba no llegó a ver ${label}`)
 })
 
 // Caso 307. La tarea siguiente del mismo servicio no se apila en la rama donde esta corrida commiteó la
@@ -367,4 +368,5 @@ test('todo paso que commitea avisa que stagear y commitear van en comandos separ
   assert.match(done, /Cada traza de tests empieza con «A →» o «C<n> →»/)
   assert.match(done, /en status IDLE —una línea «status: IDLE» en su frontmatter es lo que lee el motor—/)
   assert.match(done, /Al terminar corré "node tools\/ops\.js check \S+" desde \S+: si marca esta entrada, corregí/)
+  assert.match(done, /Si marca la entrada de otra tarea, no la toques: es evidencia que no escribiste/)
 })

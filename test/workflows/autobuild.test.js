@@ -147,14 +147,6 @@ test('una tarea cerrada en Build no sigue como si nada', async () => {
   assert.ok(!reached(asked, 'Review'), 'y no se revisa lo que ya se cerró')
 })
 
-test('el check de cierre en rojo frena la corrida', async () => {
-  const { result } = await runFlow({
-    [KEY.closing]: { passed: false, details: 'el BACKLOG quedó con la tarea que se cerró' },
-  })
-  assert.equal(result.reason, 'planning-check-failed')
-  assert.match(result.detail, /BACKLOG/)
-})
-
 // Cerrada una tarea, el recorrido relee el estado para decidir si sigue. Sin ese estado no hay con qué
 // decidir, y elegir la próxima igual sería elegirla a ciegas.
 test('si el estado no se puede releer la corrida corta en vez de seguir a ciegas', async () => {
