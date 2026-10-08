@@ -41,6 +41,11 @@ diseño — eso vive en el commit y en el código.
   cambia: la raíz declarada como enlace, un enlace interno, y lo que una línea de `ops line` enlaza desde su
   instancia. **Qué hacer:** si escribís a propósito por un enlace hacia afuera —un paquete enlazado con `npm
   link`, una carpeta compartida—, declarala en `writableOutsideRoots` (caso 317).
+- **Un `mktemp -d` que puede fallar ya no se da por resuelto si lo que sigue no depende de él.** Con
+  `T=$(mktemp -d -p <carpeta>); cd $T; …`, si `mktemp` falla el `cd` va a tu carpeta personal y lo que sigue
+  se escribe ahí. Ahora el guard de límites lo frena cuando la carpeta no existe, no se puede escribir o la
+  plantilla no trae tres `X`. **Qué hacer:** nada si uniste los pasos con `&&`, si la carpeta ya está o si la
+  creás antes con `mkdir -p`. Si la crea otra cosa —`install -d`, `cp -r`—, uní los pasos con `&&` (caso 327).
 - **R9 pide comparar antes y después cuando cambia quién hace algo, o cómo.** Mover un paso de lugar o
   reemplazar una implementación es una quita aunque el resultado «sea el mismo», y esa igualdad se sostiene
   con la salida de antes y la de después sobre el mismo caso, como condición de la aceptación. Es un párrafo

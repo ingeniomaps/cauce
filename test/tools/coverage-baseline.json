@@ -474,6 +474,11 @@
     "branches": 91,
     "functions": 100
   },
+  "engine/hooks/mktemp.js": {
+    "lines": 100,
+    "branches": 97,
+    "functions": 100
+  },
   "engine/hooks/live-commit.js": {
     "lines": 100,
     "branches": 93,
