@@ -1,12 +1,13 @@
 'use strict'
 
 // Los guards que juzgan el **texto** de un comando antes de que se ejecute: qué destruye, qué publica,
-// qué toca una dependencia y qué gobierna. Es el grupo `pre-shell` que el registro declara, y de lo que
-// parten los cinco es `commandOf`. Dos miran además el índice —`dependencies` y `governance`, los dos
-// acotados a un commit—; los otros tres deciden sólo con lo que el comando dice.
+// qué toca una dependencia y qué escribe fuera de las raíces. Es el grupo `pre-shell` que el registro
+// declara, y de lo que parten los cuatro es `commandOf`. Uno mira además el índice —`dependencies`,
+// acotado a un commit—; los otros tres deciden sólo con lo que el comando dice.
 //
 // Correr los gates de un commit era lo otro que hacía este archivo y hoy vive en `verify.js`, que de acá
-// no usa más que `run`. Cambia por otra causa: una herramienta nueva, no una evasión nueva.
+// no usa más que `run`; lo que un commit no toca sin una persona vive en `governance.js`, por lo mismo.
+// Cambian por otra causa: una herramienta nueva, no una evasión nueva.
 
 const fs = require('node:fs')
 const os = require('node:os')
@@ -16,10 +17,10 @@ const {
   commandOf, cwdOf, block, isCommit, stagedForCommit, writableRoots, outsideRoots, DECLARE_IT, unquoted, opsRoot,
   withoutGitGlobals, gitDirectory, owns, asRun, expandAssigned,
 } = require('./input')
+const { removesTheTree } = require('./removal')
 const { landing } = require('../core/files')
 const { beyond, reached, real } = require('./boundary')
 const AP = require('./approval')
-const CHAT = require('./chat')
 const { publish } = require('./push')
 const { selfApprovalShell } = require('./self-approval')
 const { deliveryRules } = require('./delivery')
@@ -175,6 +176,8 @@ function destructive(input) {
     if (!held.length) continue
     block(open ? `${message}\n${AP.HOW(null, held, input)}` : message)
   }
+  const tree = removesTheTree(input, command)
+  if (tree) block(tree)
 }
 
 function gitAdd(input) {
@@ -435,45 +438,6 @@ function shellBoundary(input) {
   }
 }
 
-function governance(input) {
-  if (process.env.OPS_GOVERNANCE_OVERRIDE === '1') return
-  const command = commandOf(input)
-  if (!isCommit(command)) return
-  // Con una persona conduciendo el turno, este guard no pregunta nada. Frena por **política** —qué archivos
-  // toca un commit— y no por un defecto de hecho, y esa pregunta a quien está dando instrucciones no le
-  // corresponde: lo que el guard contiene es al agente decidiendo solo (caso 126). `said` ya distingue las
-  // dos cosas —devuelve nada para un subagente, para un recorrido de Cauce y en CI—, así que la exención no
-  // alcanza a nada de eso. Es la misma forma que usa `plan-first` en `files.js`.
-  //
-  // Sus dos vecinos de gate no llevan esta exención y la diferencia no es quién pidió el commit: `verify` y
-  // `dependencies` frenan por algo que está mal —una verificación que falla, un manifiesto sin su lockfile—
-  // y callarlos porque hay alguien hablando sería tapar un rojo.
-  if (CHAT.said(input)) return
-  // El contrato de un cargo y lo que lo mide son gobernanza, igual que un ADR o una regla. La firma de
-  // «Aprobación humana» sólo estaba protegida por una frase en un prompt; `SKILL.md` y `references/`
-  // son lo que la propuesta cambia, y editarlos directo saltea el ciclo entero; y `evaluations/` es el
-  // denominador con que se juzga, así que moverlo ablanda toda medición pasada sin tocar una regla.
-  //
-  // Quedan afuera las dos clases de evidencia, que registran lo que pasó un día en vez de decidir algo:
-  // `learning/reports/` y `evaluations/results/` —esta última se escribe en cada corrida, así que
-  // gobernarla pediría un override por evaluación—. Por eso `evaluations/` se nombra por partes.
-  const governedPattern = new RegExp(
-    String.raw`^(?:(?:template\/)?planning\/(?:rules\/|adr\/|PROTOCOL\.md|` +
-      String.raw`METHODOLOGY\.md|FLOW\.md)|automatization\/|engine\/` +
-      String.raw`|agents\/[a-z0-9-]+\/(?:system\/)?[a-z0-9-]+\/(?:SKILL\.md|references\/` +
-      String.raw`|evaluations\/(?:cases\/|expected-behaviors\.yaml)|learning\/proposals\/))`,
-  )
-  const governed = stagedForCommit(command, cwdOf(input), input)
-    .staged.filter((file) => governedPattern.test(file))
-  if (!governed.length) return
-  // La aprobación vale para lo que nombra y para nada más: lo que quede sin cubrir es lo que se
-  // reporta. Así una aprobación vieja no autoriza el archivo que se sumó después, que es la diferencia
-  // entre una llave por operación y una puerta que quedó abierta.
-  const pending = AP.pendingNow(opsRoot(input), governed, input)
-  if (!pending.length) return
-  block(`El commit toca gobernanza protegida.\n${AP.HOW('OPS_GOVERNANCE_OVERRIDE', pending, input)}`)
-}
-
 function run(program, args, cwd, extra = {}, { timeoutMs } = {}) {
   const env = { ...process.env, ...extra }
   delete env.NODE_TEST_CONTEXT
@@ -495,4 +459,6 @@ function run(program, args, cwd, extra = {}, { timeoutMs } = {}) {
 }
 
 
-module.exports = { destructive, gitAdd, dependencies, governance, shellBoundary, run, writesWithBase }
+module.exports = {
+  destructive, gitAdd, dependencies, shellBoundary, run, writesWithBase, cdTarget, positional, QUOTED_CD,
+}

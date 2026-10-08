@@ -404,3 +404,30 @@ test('la línea de una tarea entrega su descripción, sin la aceptación ni los 
   const bare = P.taskFromLine('- [ ] **sola** — Sin nada más. (epic: 002) (service: api)')
   assert.equal(bare.description, 'Sin nada más.', 'una línea sin aceptación igual tiene descripción')
 })
+
+// Tres cosas que el protocolo dice que `check` valida y la campaña del 2026-10-08 vio pasar en verde (caso
+// 335): el mismo slug dos veces en la cola, una tarea que cita un criterio que su épica no tiene, y una
+// tarea cuyo servicio no existe. Las dos primeras se juzgan acá, sobre el estado leído; la tercera queda
+// para cuando `check`, `worktree` e integraciones resuelvan `service` de una sola forma.
+test('check rechaza el slug repetido en la cola y el criterio que la épica no tiene', () => {
+  const epic = {
+    file: 'epic-001-x.md', num: '001', title: 'X', status: 'open', hasContext: true,
+    criteria: [{ id: 'C1', text: 'Cuando algo, alguien obtiene algo.' }],
+    stories: [{ slug: 'h-uno', criteria: ['C1'], service: 'api' }, { slug: 'h-dos', criteria: ['C1'], service: 'api' }],
+  }
+  const task = (slug, criteria = ['C1']) => ({
+    slug, tier: 'lite', cast: { build: '', review: [] }, epic: '001', service: 'api', acceptance: '', criteria,
+  })
+  const errors = (milestones) => PC.validateState({
+    epics: [epic], milestones, done: { entries: [], set: new Set(), duplicates: [] },
+  })
+
+  assert.deepEqual(errors([{ slug: 'h', title: 'H', tasks: [task('h-uno'), task('h-dos')] }]), [])
+  assert.match(errors([{ slug: 'h', title: 'H', tasks: [task('h-uno'), task('h-uno')] }]).join('|'),
+    /BACKLOG h-uno: repetida en la cola/, 'dentro del mismo hito')
+  assert.match(errors([
+    { slug: 'h', title: 'H', tasks: [task('h-uno')] }, { slug: 'k', title: 'K', tasks: [task('h-uno')] },
+  ]).join('|'), /BACKLOG h-uno: repetida en la cola \(h, k\)/, 'y entre dos hitos, nombrándolos')
+  assert.match(errors([{ slug: 'h', title: 'H', tasks: [task('h-uno', ['C9'])] }]).join('|'),
+    /BACKLOG h-uno: cita C9, que no existe en epic-001/)
+})

@@ -10,7 +10,8 @@
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { commandOf, cwdOf, block, isCommit, stagedForCommit, opsRoot, configOf } = require('./input')
+const { commandOf, cwdOf, block, isCommit, stagedForCommit, opsRoot, configOf, within, realPath, toplevel,
+} = require('./input')
 const AP = require('./approval')
 const EV = require('../core/evidence')
 const KR = require('../core/known-red')
@@ -227,17 +228,44 @@ function verify(input) {
       + AP.HOW('OPS_SKIP_VERIFY', unapproved, input, unapproved, { fixable: true }))
   }
   if (!staged.some((file) => /\.(?:ts|tsx|js|jsx|mjs|cjs|go|py|html|css|scss|prisma)$/.test(file))) return
-  const { root, temp, env } = commitTree(dir, input)
+  // Desde el toplevel y no desde el cwd del comando: `checkout-index` escribe sólo lo que cuelga de donde se
+  // lo invoca, y desde adentro de una raíz el espejo de las otras no existía (revisión del 333).
+  const repo = toplevel(dir)
+  const { root, temp, env } = commitTree(repo, input)
   const timeoutMs = gateTimeout(input)
   // Quien lo tiene puede correr hasta cuatro gates, cada uno con su tope: esperar uno solo se rendía con
   // una corrida sana a la mitad.
   const release = holdMachine(timeoutMs * 4)
   try {
-    verifyGates(root, dir, unapproved, env, input, timeoutMs)
+    for (const place of gatePlaces(input, repo, staged, root, temp)) {
+      verifyGates(place.run, place.dir, unapproved, env, input, timeoutMs)
+    }
   } finally {
     release()
     if (temp) fs.rmSync(temp, { recursive: true, force: true })
   }
+}
+
+// Dónde corren los gates: en cada raíz declarada que el commit toca, y si ninguna lo toca, en el
+// repositorio entero, que es lo único que se miraba antes. Con el manifiesto de cada servicio en su carpeta
+// —el monorepo del README, y lo que `onboard` configura solo— el commit salía en verde con la suite roja
+// sin decirlo (caso 333). `dir` puede ser una subcarpeta —el cwd del comando—, así que las rutas del
+// índice, que git nombra desde el toplevel, se resuelven contra el toplevel y no contra `dir`.
+//
+// Devuelve dónde ejecutar y a qué raíz pertenece: sobre el árbol son el mismo directorio, y sobre la
+// copia del índice el primero es el espejo de la raíz dentro del temporal. La puerta del repositorio entero
+// sigue corriendo para lo staged que no cuelga de ninguna raíz tocada: es lo que corría antes, y tocar una
+// raíz no puede quitarla (revisión del 333). `repo` llega real; las raíces se comparan reales también.
+function gatePlaces(input, repo, staged, root, temp) {
+  const ops = opsRoot(input)
+  const touched = (ops ? configOf(ops).workspaceRoots || [] : [])
+    .filter((one) => one && one.path)
+    .map((one) => realPath(path.resolve(ops, one.path)))
+    .filter((one) => within(repo, one) && staged.some((file) => within(one, path.resolve(repo, file))))
+  const places = touched.map((one) => ({ run: temp ? path.join(temp, path.relative(repo, one)) : one, dir: one }))
+  const outside = staged.some((file) => !touched.some((one) => within(one, path.resolve(repo, file))))
+  if (outside && !touched.includes(repo)) places.push({ run: root, dir: repo })
+  return places
 }
 
 // Corre lo que el stack declare y bloquea si algo sale en rojo. `root` es dónde corre —el índice

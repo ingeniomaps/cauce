@@ -225,7 +225,10 @@ function surfaceWithoutTests(entries, filesOf, adopted = new Set()) {
   const errors = []
   for (const entry of entries) {
     const traces = splitTraces(entry.tests)
-    if (adopted.has(entry.slug) || !traces.length || !traces.every((one) => NOT_APPLICABLE.test(one))) continue
+    // `CN → n/a — razón` y `A → n/a — razón` son las formas que PROTOCOL documenta, y la regla sólo veía el
+    // `n/a` pelado: el prefijo se quita antes de juzgar (caso 335).
+    const bare = (one) => one.replace(/^(?:A|C\d+)\s*(?:→|->)\s*/i, '')
+    if (adopted.has(entry.slug) || !traces.length || !traces.every((one) => NOT_APPLICABLE.test(bare(one)))) continue
     if (!(String(entry.fecha || '') >= SURFACE_SINCE)) continue
     for (const sha of commitParts(entry.commit).map((part) => (part.match(/^([0-9a-f]{7,40})\s/) || [])[1])) {
       if (!sha) continue
@@ -324,6 +327,14 @@ function validateState({
   const storySlugs = new Set()
   const backlogSlugs = new Set(milestones.flatMap((milestone) => milestone.tasks).map((task) => task.slug))
   for (const duplicate of done.duplicates) errors.push(`DONE duplicado: ${duplicate}`)
+  // El slug es lo único que ata la cola con lo reclamado y lo hecho (R25): repetido, nada lo cruza (caso 335).
+  const queued = new Map()
+  for (const milestone of milestones) {
+    for (const task of milestone.tasks) queued.set(task.slug, [...(queued.get(task.slug) || []), milestone.slug])
+  }
+  for (const [slug, at] of queued) {
+    if (at.length > 1) errors.push(`BACKLOG ${slug}: repetida en la cola (${at.join(', ')})`)
+  }
   for (const epic of epics) {
     const at = `roadmap/${epic.file}`
     errors.push(...validateEpic(epic, done.set))
@@ -397,6 +408,11 @@ function validateState({
       })
       if (task.epic && !storyExists) {
         errors.push(`BACKLOG ${task.slug}: no existe en epic-${task.epic}`)
+      }
+      // Sin ese criterio la tarea llega a `context` sin aceptación: lo que ya se exigía a las historias (caso 335).
+      const known = (epics.find((epic) => epic.num === task.epic) || { criteria: [] }).criteria.map((one) => one.id)
+      for (const id of task.criteria.filter((one) => task.epic && storyExists && !known.includes(one))) {
+        errors.push(`BACKLOG ${task.slug}: cita ${id}, que no existe en epic-${task.epic}`)
       }
       if (done.set.has(task.slug)) errors.push(`${task.slug}: está en BACKLOG y DONE`)
     }

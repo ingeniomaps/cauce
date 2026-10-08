@@ -374,16 +374,32 @@ function stagedForCommit(command, cwd, input) {
 // o desde el repositorio que contiene a la instancia. Una ruta que no se resuelve —`-C $VAR`— queda
 // colgando de la carpeta de la sesión, así que cae del lado que frena.
 function owns(input, dir) {
-  const within = (base, target) => {
-    const relative = path.relative(base, target)
-    return !relative.startsWith('..') && !path.isAbsolute(relative)
-  }
   const session = path.resolve(sessionStart(input))
   const ops = opsRoot(input)
   const declared = ops
     ? (configOf(ops).workspaceRoots || []).filter((one) => one && one.path).map((one) => path.resolve(ops, one.path))
     : []
   return [session, ...(ops ? [ops] : []), ...declared].some((root) => within(root, dir) || within(dir, root))
+}
+
+// Si `target` es `base` o cuelga de ella, con las dos rutas reales: `run-hook.sh` exporta la raíz ops con el
+// `pwd` lógico, que conserva un enlace simbólico, y git contesta el toplevel real. Comparadas tal cual daban
+// `../../…` y dos guards dejaban de frenar en silencio (revisión del 334 y el 333). Lo que no existe se
+// resuelve sin más, para poder preguntar por un destino que todavía no está.
+function realPath(target) {
+  try { return fs.realpathSync(target) } catch { return path.resolve(target) }
+}
+
+function within(base, target) {
+  const relative = path.relative(realPath(base), realPath(target))
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
+}
+
+// La raíz del repositorio git que contiene `dir`, real; sin git, `dir`. El índice nombra sus rutas desde acá
+// y `checkout-index` escribe sólo lo que cuelga del cwd, así que lo que mira el índice parte de acá.
+function toplevel(dir) {
+  const result = spawnSync('git', ['-C', dir, 'rev-parse', '--show-toplevel'], { encoding: 'utf8' })
+  return result.status === 0 ? realPath(result.stdout.trim()) : path.resolve(dir)
 }
 
 function findOpsRoot(start) {
@@ -458,6 +474,6 @@ module.exports = {
   readInput, FIRST_BYTE_MS, commandOf, patchOf, filesOf, contentOf, cwdOf, block, configOf,
   gitDirectory, isCommit, withoutGitGlobals, stagedFiles, stagedForCommit, owns, asRun, expandAssigned,
   assignedValues,
-  findOpsRoot, opsRoot,
+  findOpsRoot, opsRoot, within, realPath, toplevel,
   writableRoots, outsideRoots, DECLARE_IT, unquoted,
 }

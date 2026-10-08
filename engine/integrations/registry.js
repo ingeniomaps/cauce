@@ -185,6 +185,13 @@ function validate(root, onlyProvider = '') {
       if (fields.state === 'promoted' && signals.diverged) {
         warnings.push(`${at}: el remoto cambió después de la promoción`)
       }
+      // La misma señal un paso antes: un draft con curación cuyo remoto cambió sigue en `pending` hasta que
+      // alguien lo reconcilie, y sin esto nadie se enteraba por `check` (caso 339).
+      if (snapshot.sync.role === 'candidate' && fields.state !== 'promoted' && snapshot.sync.draftChanged
+        && signals.incoming.length) {
+        warnings.push(`${at}: el remoto cambió después de curarlo; si estaba ready, bajó a pending. `
+          + `Reconciliá con \`integration reconcile\` o \`rebase\` y volvé a marcarlo`)
+      }
       if (fields.state === 'ready') {
         const sections = draftSections(draft)
         if (!fields.service) errors.push(`${at}: ready exige service`)
@@ -239,7 +246,7 @@ async function sync(root, name, options = {}) {
   fs.mkdirSync(staging, { recursive: true })
   const existing = new Map(stagingItems(root, name).map((item) => [item.key, item]))
   const seen = new Set()
-  const result = { created: 0, refreshed: 0, preserved: 0, foreign: 0, removed: 0, missing: 0 }
+  const result = { created: 0, refreshed: 0, preserved: 0, demoted: 0, foreign: 0, removed: 0, missing: 0 }
   for (const item of items) {
     const itemKey = safeSegment(item.key, `${name}: item.key`)
     if (seen.has(itemKey)) throw new Error(`${name}: item duplicado ${itemKey}`)
@@ -268,7 +275,7 @@ async function sync(root, name, options = {}) {
     let base
     let baseAt
     if (!previous) {
-      draft = renderDraft(item, config, state)
+      draft = renderDraft(item, config, state, name)
       base = S.remoteView(item)
       baseAt = new Date().toISOString()
       result.created++
@@ -277,21 +284,24 @@ async function sync(root, name, options = {}) {
       const locallyChanged = sha256(previousDraft) !== previous.sync.draftBaseHash
       const regenerate = role === 'context' || !locallyChanged
       if (regenerate) {
-        draft = renderDraft(item, config, state)
+        draft = renderDraft(item, config, state, name)
         base = S.remoteView(item)
         baseAt = new Date().toISOString()
         result.refreshed++
       } else {
         draft = previousDraft
+        // Bajar un `ready` curado porque el remoto cambió es correcto; hacerlo contándolo como «preservado»
+        // dejaba a quien curó sin saber que perdió el ready, y a `check` en verde (caso 339). Se cuenta aparte.
         if (signals.incoming.length && frontmatter(draft).state === 'ready') {
           draft = replaceField(draft, 'state', 'pending')
+          result.demoted++
         }
         base = previous.sync.base || S.remoteView(previous.item)
         baseAt = previous.sync.baseAt || previous.sync.pulledAt
         result.preserved++
       }
     }
-    const canonical = renderDraft(item, config, state)
+    const canonical = renderDraft(item, config, state, name)
     const snapshot = {
       schemaVersion: 2,
       provider: name,
@@ -353,6 +363,10 @@ function promote(root, name, key) {
   if (validation.errors.length) {
     throw new Error(`La integración no está lista:\n- ${validation.errors.join('\n- ')}`)
   }
+  // Los mismos dos interruptores que exige `sync`: promover con el proveedor apagado escribía el roadmap
+  // desde un staging que nadie iba a volver a sincronizar (caso 339).
+  const { entry: registered, config: provider } = providerConfig(root, name)
+  if (!registered.enabled || !provider.enabled) throw new Error(`${name} está deshabilitado`)
   const matches = stagingItems(root, name).filter((item) => item.key === key)
   if (matches.length !== 1) throw new Error(`${key}: no se resolvió un item único en staging`)
   const dir = matches[0].dir

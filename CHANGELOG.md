@@ -14,6 +14,52 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.105.0] - 2026-10-08
+
+### Cambiado
+
+- **La re-revisión de `autobuild` puede comprar una corrección más.** Review admitía una sola vuelta: si la
+  re-revisión traía cualquier bloqueante, la corrida paraba con `review-failed`, también cuando el hallazgo
+  era nuevo, estaba comprobado y el revisor había escrito la corrección entera —una frase de un comentario—.
+  Ahora un bloqueante así declara `fixable: true` y, con veredicto `con-condiciones`, compra una corrección y
+  una revisión más, con tope de dos correcciones por tarea; `bloqueado` y lo que no declara `fixable` paran
+  como antes. Las dos correcciones llegan a `done/`. Rige al reinstalar el runner, porque el workflow vive
+  ahí (caso 343).
+
+### Corregido
+
+- **`verify` corre los gates de cada raíz declarada que el commit toca.** Buscaba el manifiesto sólo en la raíz
+  git del commit, así que en un monorepo con `apps/api/package.json` y `apps/web/package.json` —el ejemplo del
+  README, y lo que `/onboard` configura solo— no corría nada y el commit salía en verde con la suite roja. Ahora
+  cada `workspaceRoots[]` que contiene algo staged corre sus gates, en el árbol o en la copia del índice, y el
+  bloqueo nombra la raíz; sin raíces declaradas se mira el repositorio entero, como antes (caso 333).
+- **`governance` vuelve a frenar con `ops/` dentro del repositorio.** El índice de git nombra las rutas desde la
+  raíz del repo —`ops/planning/rules/…`— y el guard las comparaba contra `^planning/…`, así que en el layout
+  por defecto de `init` un commit que tocaba una regla del sistema, una ADR o el `SKILL.md` de un cargo pasaba
+  sin preguntar. Ahora se juzgan relativas a la raíz ops, se lance el commit desde donde se lance; lo que se
+  aprueba y se nombra sigue siendo la ruta del índice (caso 334).
+- **El staging de integraciones deja de mentir y de callar en tres bordes.** El borrador de un adaptador propio
+  lleva el nombre de su proveedor en `provider:` en vez de `jira` fijo; `integration promote` se niega con el
+  proveedor deshabilitado, igual que `sync`; y cuando el remoto cambia un draft curado que estaba `ready`, el
+  sync lo cuenta aparte —«bajaron de ready a pending»— y `check` lo avisa hasta que se reconcilie (caso 339).
+- **`check` rechaza tres cosas que el protocolo ya decía que rechazaba.** El mismo slug dos veces en la cola, en un
+  hito o entre dos; una tarea que cita un criterio que su épica no tiene, y que hasta ahora llegaba a `context`
+  sin aceptación; y el `tests:` todo n/a escrito como `CN → n/a — razón` o `A → n/a — razón`, las formas
+  documentadas, con un commit que toca código. Esta última puede poner en rojo una entrada cerrada desde el
+  2026-09-24 con esa forma: la salida es la misma que para el `n/a` pelado, rastrear la prueba o adoptar la
+  entrada con `ops adopt` (caso 335).
+- **`destructive` juzga un `rm -r` por su destino resuelto.** `rm -rf .`, `cd $X && rm -rf .` con la variable sin
+  resolver, y un `rm -r` que nombra la raíz ops, una raíz declarada o un ancestro de cualquiera de ellas frenan
+  sin salida, como ya frenaban `/`, `~` y `..` escritos. Un `cd $(mktemp -d)` seguido de `rm -rf .` sigue
+  pasando: cae en un temporal (caso 337).
+- **`secrets-shell` ve dos formas que la documentación nombra como cubiertas.** `rg -g '.env*' KEY`, con el comodín
+  antes del patrón, frena como ya frenaba con el patrón primero; y una identidad declarada en
+  `organization/secrets.json` con `~`, como la escribe el molde, frena también cuando se la nombra con `~` o
+  con `$HOME` expandido (caso 342).
+- **`ops claim` ya no reserva una tarea con una fila pendiente en `HUMAN_ACTIONS.md`.** `context` la salteaba y
+  la ofrecía como la siguiente, pero `claim` no miraba la tabla: el runner se quedaba con una tarea que nadie
+  podía avanzar y sin poder tomar otra. Ahora se niega nombrando la fila, y pasa cuando está resuelta (caso 336).
+
 ## [0.104.1] - 2026-10-08
 
 ### Cambiado

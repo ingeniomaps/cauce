@@ -239,6 +239,8 @@ test('secrets-shell frena leer una credencial por shell y deja pasar lo demás',
     `python3 -c "print(open('.env').read())"`,
     // Las dos formas con que un agente lo leyó en una sesión real, cuando el guard no las veía.
     'nl -ba .env', "rg -n KEY -g '.env*'", "grep -rn KEY --include='*.env' .",
+    // Y con el comodín antes del patrón, que el README nombra y el guard leía como si fuera el patrón (caso 342).
+    "rg -g '.env*' KEY", "rg --glob '.env*' KEY .", "grep --include='*.env' -rn KEY .",
     // El verbo se busca detrás de prefijos con sus banderas, con ruta, dentro de un subshell y entre tramos vacíos.
     'xargs -0 cat .env', '/bin/cat .env', '(cat .env)', 'true; ; cat .env']) {
     blocked('secrets-shell', runs(command), /lee .*credencial/)

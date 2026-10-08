@@ -342,3 +342,22 @@ test('la cabecera se reconoce por su forma y no por lo que dice su primera celda
 `)
   assert.deepEqual(sinGuiones.map((fila) => fila.task), ['sembrar-el-flag'])
 })
+
+// La regla del `tests:` todo n/a con un commit que toca código sólo reconocía la forma `n/a — razón` pelada,
+// y las dos que PROTOCOL documenta —`CN → n/a — razón` y `A → n/a — razón`— la esquivaban (caso 335).
+test('tests: todo n/a cuenta como n/a en las tres formas documentadas', () => {
+  const entry = (tests) => ({
+    slug: 'alta', source: 'done/alta.md', fecha: '2026-10-08', tests,
+    commit: '91f4ae2 chore(api): drop console.log (acme@main)',
+  })
+  const filesOf = () => ['apps/api/index.js']
+  for (const tests of ['n/a — sin superficie', 'C1 → n/a — sin superficie', 'A → n/a — sin superficie',
+    'C1 → n/a — x; C2 → n/a — y']) {
+    assert.match(PC.surfaceWithoutTests([entry(tests)], filesOf).join('|'), /alta: tests: n\/a dice que no hay/,
+      `«${tests}» tiene que contar como n/a`)
+  }
+  assert.deepEqual(PC.surfaceWithoutTests([entry('C1 → n/a — x; C2 → test/alta.test.js › «alta»')], filesOf),
+    [], 'con una traza real no es todo n/a')
+  assert.deepEqual(PC.surfaceWithoutTests([entry('C1 → n/a — x')], () => ['README.md']), [],
+    'y un commit de documentación no tiene superficie')
+})
