@@ -116,3 +116,14 @@ Cómo se supo que funciona:
   `BLOQUEADO: El commit toca gobernanza protegida.` con exit 2 en los dos casos. Antes del arreglo los dos
   daban exit 0.
 
+### Segunda pasada, tras la revisión del conjunto
+
+La revisión independiente del diff entero encontró que el arreglo seguía inerte con la instancia alcanzada por
+un enlace simbólico: `run-hook.sh` exporta la raíz ops con el `pwd` lógico, que conserva el enlace, y git
+contesta el toplevel real; relativizar una contra el otro daba `../../…` y el patrón no matcheaba. Se
+reprodujo con un enlace al banco y el commit pasó. Ahora los dos lados se comparan reales con `realPath` y
+`toplevel` de `input.js`, que son los mismos que usa `verify` —la revisión también encontró tres copias del
+mismo «está adentro de» y quedó una, `within`—. Prueba nueva con el repositorio enlazado, en rojo antes y en
+verde después; mutación —comparar la raíz ops sin resolver— en rojo; corrida real por el enlace al banco:
+«BLOQUEADO: El commit toca gobernanza protegida.», exit 2.
+

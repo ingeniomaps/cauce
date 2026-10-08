@@ -182,3 +182,45 @@ test('verify corre los gates de cada raíz declarada que el commit toca, no sól
   fs.writeFileSync(path.join(dir, 'suelto.txt'), 'dispara la copia\n')
   assert.throws(() => execute('verify', commit(dir)), (error) => /Verify falló en api: test/.test(error.message))
 })
+
+// Dos huecos que la revisión del conjunto encontró en el 333. Tocar una raíz declarada dejaba de correr la
+// puerta del repositorio para lo staged fuera de toda raíz, que antes sí corría; y la copia del índice se
+// materializaba desde el cwd del comando —`git -C apps/api checkout-index` escribe sólo `apps/api/`—, así que
+// desde adentro de una raíz el espejo de la otra no existía y su gate se salteaba en silencio.
+test('verify conserva la puerta del repo para lo que queda fuera de toda raíz, y copia el índice entero', () => {
+  const dir = tempRoot('cauce-verify-fuera-')
+  initRepo(dir)
+  fs.mkdirSync(path.join(dir, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'planning', '.keep'), '')
+  fs.writeFileSync(path.join(dir, '.gitignore'), 'planning/.verify-log\n')
+  fs.writeFileSync(path.join(dir, 'ops.config.json'), JSON.stringify({
+    project: 'x', mode: 'embedded', runner: { allowPush: false },
+    workspaceRoots: [{ name: 'api', path: 'apps/api' }, { name: 'web', path: 'apps/web' }],
+  }))
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "process.exit(1)"' } }))
+  for (const [service, test] of [['api', 'node -e 0'], ['web', 'node -e "process.exit(1)"']]) {
+    fs.mkdirSync(path.join(dir, 'apps', service), { recursive: true })
+    fs.writeFileSync(path.join(dir, 'apps', service, 'package.json'), JSON.stringify({ scripts: { test } }))
+    fs.writeFileSync(path.join(dir, 'apps', service, 'app.js'), 'module.exports = 1\n')
+  }
+  fs.mkdirSync(path.join(dir, 'packages', 'shared'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'packages', 'shared', 'index.js'), 'module.exports = 1\n')
+  git(['add', '-A'], dir)
+  git(['commit', '-qm', 'base'], dir)
+
+  // Con api verde y algo fuera de toda raíz, la puerta del repo, que está roja, sigue corriendo.
+  fs.writeFileSync(path.join(dir, 'apps', 'api', 'app.js'), 'module.exports = 2\n')
+  fs.writeFileSync(path.join(dir, 'packages', 'shared', 'index.js'), 'module.exports = 2\n')
+  git(['add', 'apps/api/app.js', 'packages/shared/index.js'], dir)
+  assert.throws(() => execute('verify', commit(dir)),
+    (error) => /Verify falló en cauce-verify-fuera.*: test/.test(error.message))
+
+  // Desde adentro de api, con web staged y algo suelto que fuerza la copia: el espejo de web existe y frena.
+  git(['reset', '-q'], dir)
+  git(['checkout', '-q', '--', '.'], dir)
+  fs.writeFileSync(path.join(dir, 'apps', 'web', 'app.js'), 'module.exports = 2\n')
+  git(['add', 'apps/web/app.js'], dir)
+  fs.writeFileSync(path.join(dir, 'suelto.txt'), 'dispara la copia\n')
+  const inside = { cwd: path.join(dir, 'apps', 'api'), tool_input: { command: 'git commit -m x' } }
+  assert.throws(() => execute('verify', inside), (error) => /Verify falló en web: test/.test(error.message))
+})

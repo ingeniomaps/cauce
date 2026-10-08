@@ -6,10 +6,9 @@
 // comando, y tiene su propia salida —la aprobación por archivo— que los guards de forma no tienen.
 
 const path = require('node:path')
-const { commandOf, cwdOf, block, isCommit, stagedForCommit, opsRoot } = require('./input')
+const { commandOf, cwdOf, block, isCommit, stagedForCommit, opsRoot, realPath, toplevel } = require('./input')
 const AP = require('./approval')
 const CHAT = require('./chat')
-const { run } = require('./shell')
 
 function governance(input) {
   if (process.env.OPS_GOVERNANCE_OVERRIDE === '1') return
@@ -45,9 +44,8 @@ function governance(input) {
   // la ruta relativa a la raíz ops cuando la hay; la que se aprueba y se nombra sigue siendo la del índice.
   const { dir, staged } = stagedForCommit(command, cwdOf(input), input)
   const ops = opsRoot(input)
-  const top = run('git', ['-C', dir, 'rev-parse', '--show-toplevel'], dir)
-  const repo = top.ok ? top.output.trim() : dir
-  const fromOps = (file) => (ops ? path.relative(ops, path.resolve(repo, file)) : file)
+  const repo = toplevel(dir)
+  const fromOps = (file) => (ops ? path.relative(realPath(ops), path.resolve(repo, file)) : file)
   const governed = staged.filter((file) => governedPattern.test(fromOps(file)))
   if (!governed.length) return
   // La aprobación vale para lo que nombra y para nada más: lo que quede sin cubrir es lo que se

@@ -160,3 +160,15 @@ Cómo se supo que funciona:
   en api: test (exit 1, 0.1 s)» con exit 2; un commit que sólo toca `apps/web` pasa con exit 0 y el registro
   anota el `test` de `web`. Antes del arreglo los tres daban exit 0.
 
+### Segunda pasada, tras la revisión del conjunto
+
+Dos huecos del arreglo, reproducidos antes de tocarlos. Tocar una raíz declarada dejaba de correr la puerta
+del repositorio para lo staged fuera de toda raíz, que antes sí corría: ahora el repositorio entero sigue
+siendo un lugar más cuando algo staged no cuelga de ninguna raíz tocada. Y la copia del índice se
+materializaba desde el cwd del comando —medido: `git -C apps/api checkout-index -a --prefix=out/` escribe sólo
+`apps/api/`—, así que desde adentro de una raíz el espejo de la otra no existía y su gate se salteaba en
+silencio; era un defecto anterior que el arreglo ensanchaba. `verify` resuelve ahora el toplevel real una vez y
+desde ahí lee el estado, copia el índice y ubica las raíces. Prueba nueva con los dos escenarios, en rojo
+antes; mutaciones —quitar la puerta del repo, copiar desde el cwd— cada una en rojo; corrida real desde
+`apps/api` con `apps/web` roja y un archivo suelto: «BLOQUEADO: Verify falló en web: test», exit 2.
+
