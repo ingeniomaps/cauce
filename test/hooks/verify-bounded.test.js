@@ -140,3 +140,45 @@ test('verify usa el candado que fija CAUCE_VERIFY_LOCK, no el de la máquina', (
     process.env.CAUCE_VERIFY_LOCK = previous
   }
 })
+
+// Un monorepo con el manifiesto de cada servicio en su carpeta —el ejemplo del README, y lo que `/onboard`
+// configura solo— no tenía gate: `verify` buscaba `package.json` únicamente en la raíz git del commit y
+// el commit salía en verde con la suite roja, sin decirlo (caso 333). Ahora corre los gates de cada raíz
+// declarada que el commit toca, desde la raíz del repo o desde adentro de la raíz, y sólo ésas.
+test('verify corre los gates de cada raíz declarada que el commit toca, no sólo los de la raíz git', () => {
+  const dir = tempRoot('cauce-verify-monorepo-')
+  initRepo(dir)
+  fs.mkdirSync(path.join(dir, 'planning'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'planning', '.keep'), '')
+  fs.writeFileSync(path.join(dir, '.gitignore'), 'planning/.verify-log\n')
+  fs.writeFileSync(path.join(dir, 'ops.config.json'), JSON.stringify({
+    project: 'x', mode: 'embedded', runner: { allowPush: false },
+    workspaceRoots: [{ name: 'api', path: 'apps/api' }, { name: 'web', path: 'apps/web' }],
+  }))
+  for (const [service, test] of [['api', 'node -e "process.exit(1)"'], ['web', 'node -e 0']]) {
+    fs.mkdirSync(path.join(dir, 'apps', service), { recursive: true })
+    fs.writeFileSync(path.join(dir, 'apps', service, 'package.json'), JSON.stringify({ scripts: { test } }))
+    fs.writeFileSync(path.join(dir, 'apps', service, 'app.js'), 'module.exports = 1\n')
+  }
+  git(['add', '-A'], dir)
+  git(['commit', '-qm', 'base'], dir)
+
+  // Sólo web: su suite pasa y la de api, que está roja, no se toca.
+  fs.writeFileSync(path.join(dir, 'apps', 'web', 'app.js'), 'module.exports = 2\n')
+  git(['add', 'apps/web/app.js'], dir)
+  assert.doesNotThrow(() => execute('verify', commit(dir)))
+  assert.deepEqual(gates(dir), ['test'])
+
+  // La raíz api, desde la raíz del repo y desde adentro: el gate corre y nombra la raíz, no el repo.
+  fs.writeFileSync(path.join(dir, 'apps', 'api', 'app.js'), 'module.exports = 2\n')
+  git(['add', 'apps/api/app.js'], dir)
+  for (const cwd of [dir, path.join(dir, 'apps', 'api')]) {
+    assert.throws(() => execute('verify', { cwd, tool_input: { command: 'git commit -m x' } }),
+      (error) => /Verify falló en api: test/.test(error.message))
+  }
+
+  // Y sobre la copia del índice, que es a donde va un árbol con algo suelto: la raíz se busca en su espejo
+  // dentro del temporal, no en el árbol vivo.
+  fs.writeFileSync(path.join(dir, 'suelto.txt'), 'dispara la copia\n')
+  assert.throws(() => execute('verify', commit(dir)), (error) => /Verify falló en api: test/.test(error.message))
+})

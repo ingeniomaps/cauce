@@ -233,11 +233,37 @@ function verify(input) {
   // una corrida sana a la mitad.
   const release = holdMachine(timeoutMs * 4)
   try {
-    verifyGates(root, dir, unapproved, env, input, timeoutMs)
+    for (const place of gatePlaces(input, dir, staged, root, temp)) {
+      verifyGates(place.run, place.dir, unapproved, env, input, timeoutMs)
+    }
   } finally {
     release()
     if (temp) fs.rmSync(temp, { recursive: true, force: true })
   }
+}
+
+// Dónde corren los gates: en cada raíz declarada que el commit toca, y si ninguna lo toca, en el
+// repositorio entero, que es lo único que se miraba antes. Con el manifiesto de cada servicio en su carpeta
+// —el monorepo del README, y lo que `onboard` configura solo— el commit salía en verde con la suite roja
+// sin decirlo (caso 333). `dir` puede ser una subcarpeta —el cwd del comando—, así que las rutas del
+// índice, que git nombra desde el toplevel, se resuelven contra el toplevel y no contra `dir`.
+//
+// Devuelve dónde ejecutar y a qué raíz pertenece: sobre el árbol son el mismo directorio, y sobre la
+// copia del índice el primero es el espejo de la raíz dentro del temporal.
+function gatePlaces(input, dir, staged, root, temp) {
+  const ops = opsRoot(input)
+  const top = run('git', ['-C', dir, 'rev-parse', '--show-toplevel'], dir)
+  const repo = top.ok ? top.output.trim() : dir
+  const within = (base, target) => {
+    const relative = path.relative(base, target)
+    return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
+  }
+  const touched = (ops ? configOf(ops).workspaceRoots || [] : [])
+    .filter((one) => one && one.path)
+    .map((one) => path.resolve(ops, one.path))
+    .filter((one) => within(repo, one) && staged.some((file) => within(one, path.resolve(repo, file))))
+  if (!touched.length) return [{ run: root, dir }]
+  return touched.map((one) => ({ run: temp ? path.join(temp, path.relative(repo, one)) : one, dir: one }))
 }
 
 // Corre lo que el stack declare y bloquea si algo sale en rojo. `root` es dónde corre —el índice

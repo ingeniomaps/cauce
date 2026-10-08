@@ -18,6 +18,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`verify` corre los gates de cada raíz declarada que el commit toca.** Buscaba el manifiesto sólo en la raíz
+  git del commit, así que en un monorepo con `apps/api/package.json` y `apps/web/package.json` —el ejemplo del
+  README, y lo que `/onboard` configura solo— no corría nada y el commit salía en verde con la suite roja. Ahora
+  cada `workspaceRoots[]` que contiene algo staged corre sus gates, en el árbol o en la copia del índice, y el
+  bloqueo nombra la raíz; sin raíces declaradas se mira el repositorio entero, como antes (caso 333).
 - **`governance` vuelve a frenar con `ops/` dentro del repositorio.** El índice de git nombra las rutas desde la
   raíz del repo —`ops/planning/rules/…`— y el guard las comparaba contra `^planning/…`, así que en el layout
   por defecto de `init` un commit que tocaba una regla del sistema, una ADR o el `SKILL.md` de un cargo pasaba
