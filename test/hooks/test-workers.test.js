@@ -72,6 +72,8 @@ test('un runner dentro de un contenedor con tope de memoria y de CPU no se frena
     'docker run --memory 4g --cpus 4 node:24 bash -lc "cd api && npx jest"',
     `/usr/bin/docker run -e "A=b c" --memory 4g --cpus 4 ${inside}`,
     `cd api && DOCKER_HOST=x docker run --memory 4g --cpus 4 ${inside}`,
+    // Una variable para el contenedor, antes de los topes: es el valor de su opción, no una palabra de más.
+    `A=1 B=2 docker run --rm -e NODE_ENV=test --label a=b --memory 2g --cpus 2 ${inside}`,
     // Como se escribe uno largo: en varios renglones, con sudo, con una sustitución ya cerrada entre las opciones.
     `sudo docker run --rm -it \\\n  --memory 4G \\\n  --cpus .5 \\\n  -v "$(pwd)":/app ${inside}`,
     // Y lo que el script trae entre comillas simples lo ejecuta el contenedor, sustituciones incluidas.
@@ -143,6 +145,7 @@ test('un runner dentro de un contenedor con tope de memoria y de CPU no se frena
     // Después de la imagen las banderas son del programa de adentro, y el valor de otra opción no es una bandera.
     "docker run --rm node:24 env --memory 4g --cpus 4 sh -c 'npx jest'",
     `docker run --label --cpus 4 -m 4g ${inside}`,
+    "docker run --rm -e A=b node:24 --memory 1g --cpus 1 sh -c 'npx jest'",
     // Repetido, tiene que acotar cada vez; y el número tiene que ser un número.
     `docker run --memory 4g --memory 0 --cpus 4 ${inside}`,
     `docker run --memory 4g --cpus 4 --cpus=0 ${inside}`,

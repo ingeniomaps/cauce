@@ -102,7 +102,9 @@ const LONE = new Set(['--detach', '--disable-content-trust', '--env-host', '--he
 const LIMITS = { '--memory': /^\d*\.?\d+(?:[bkmg]b?)?$/i, '--cpus': /^\d*\.?\d+$/ }
 function cappedContainer(outer) {
   const words = unquoted(outer.replace(/\\\n/g, ' ')).trim().split(/\s+/)
-    .filter((word) => !/^[A-Za-z_]\w*=/.test(word))
+  // Sólo las variables de adelante: más allá, `NOMBRE=valor` es el valor de un `-e`, y sacarlo corría de
+  // lugar todo lo que sigue.
+  while (/^[A-Za-z_]\w*=/.test(words[0])) words.shift()
   if (words[0] === 'sudo') words.shift()
   if (!['docker', 'podman'].includes(path.basename(words[0] || '')) || words[1] !== 'run') return false
   const given = { '--memory': [], '--cpus': [] }

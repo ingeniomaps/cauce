@@ -109,6 +109,12 @@ detrás de un comentario con apóstrofo, y el que se lanza dentro de `$(…)` o 
 **Lo que esta lectura no ve salió como caso 329**: el runner pasado al contenedor sin `sh -c`, que hoy pasa
 sin ningún tope, y las formas que siguen frenando de más.
 
+**Y una más, que encontró la revisión del conjunto antes de publicar.** Para saltear las variables de
+adelante (`DOCKER_HOST=x docker run …`) se sacaba toda palabra con forma `NOMBRE=valor`, también el valor de
+un `-e NODE_ENV=test`. La opción quedaba sin valor y se llevaba la palabra siguiente: con `-e` antes de los
+topes seguía frenando, que es la forma corriente, y con los topes después de la imagen dejaba pasar. Ahora se
+saltean sólo las de adelante. Las pruebas traían el `-e` siempre después de los topes.
+
 ### Lo que queda como está, y dicho
 
 - **`podman` sin el controlador de CPU delegado.** Que un podman sin privilegios aplique `--cpus` en toda
