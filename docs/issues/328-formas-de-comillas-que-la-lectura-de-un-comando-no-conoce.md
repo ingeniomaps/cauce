@@ -1,14 +1,14 @@
 ---
 caso: 328
 titulo: formas de comillas que la lectura de un comando no conoce
-estado: abierto
+estado: descartado
 prioridad: media
 version-detectada: 0.103.5
 ---
 
 # 328 — `echo $'a\'' ; rm -rf / ; echo 'b'` pasa el guard: cuatro formas que la lectura no conoce
 
-**🔴 abierto** · detectado en 0.103.5 · prioridad **media**.
+**⚪ descartado** · detectado en 0.103.5 · prioridad **media**.
 
 **Prioridad media**: las cuatro dejan pasar algo que el shell ejecuta. Son rebuscadas y no se vieron en
 ninguna corrida; un agente no las escribe por accidente.
@@ -66,6 +66,20 @@ Son el resto de la misma clase que el 312 cerró, y van hacia el lado que deja p
 ## Recomendación
 
 **Hacerlo, en una tanda propia**, con el contraste contra bash como condición de entrada.
+
+## Cierre
+
+**Descartado.** Lo decidió el dueño el 2026-10-07, con la recomendación de no hacerlo.
+
+- **Se decidió que no**, porque son formas que un agente no escribe por accidente, y estos guards contienen
+  accidentes, no adversarios. Y porque cada forma nueva que se le enseñó a esta lectura en 0.103.6 trajo una
+  regresión hacia el lado que deja pasar, que hubo que encontrar con una revisión aparte (casos 312 y 313).
+  Queda como límite declarado: el comentario de `QUOTED`, en `engine/hooks/input.js`, nombra este caso.
+- **Cuándo reabrirlo**: si una de las cuatro formas aparece en una corrida real, o si la lectura se
+  reemplaza por un lector con estado; ahí el contraste contra bash es la condición de entrada.
+- **Qué se corrió**: las tres primeras formas contra bash, con un comando inocuo en lugar del `rm`: lo
+  ejecuta. Y el barrido de la revisión del 312, 194.712 comandos con `$`, backticks y paréntesis: quedan 9
+  escondidos, todos de la tercera forma. La cuarta no se corrió contra bash.
 
 ## Relacionados
 
