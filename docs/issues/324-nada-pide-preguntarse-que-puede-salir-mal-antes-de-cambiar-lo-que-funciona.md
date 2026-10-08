@@ -1,14 +1,15 @@
 ---
 caso: 324
 titulo: nada pide preguntarse qué puede salir mal antes de cambiar lo que funciona
-estado: abierto
+estado: resuelto
+resuelto-en: 0.104.0
 prioridad: alta
 version-detectada: 0.103.5
 ---
 
 # 324 — Las reglas que recibe una empresa no tienen una sobre regresiones
 
-**🔴 abierto** · detectado en 0.103.5 · prioridad **alta**.
+**🟢 resuelto en 0.104.0** · detectado en 0.103.5 · prioridad **alta**.
 
 **Prioridad alta**: es la falta que produjo la 0.103.4, y la tienen todas las instancias.
 
@@ -62,27 +63,6 @@ Es la disciplina que evitó tres regresiones esta semana, y hoy vive sólo en un
 - Casos de evaluación de la forma incidental: una tarea que reemplaza algo que funciona, sin nombrar la regla.
 - El peso de las reglas, que tiene su propia puerta.
 
-## Estado al 2026-10-08
-
-**Sigue abierto: el párrafo está escrito y falta ver si mueve la medición.**
-
-- **Se midió antes de escribir nada**, con dos casos incidentales que no nombran la conducta (`09-export-rewrite`
-  y `09-invoice-moves-to-a-worker`), una corrida cada uno y una segunda del que falló.
-  - `backend-engineer`: **pasa**. Fijó el formato actual antes de tocar el código y comparó la salida vieja con
-    la nueva sin que nadie se lo pidiera.
-  - `software-architect`: **no pasa, las dos veces, por el mismo comportamiento**. Nombró lo que la mudanza
-    pierde y no aprobó el plan; lo que no hizo fue volver la comparación de antes y después una condición de
-    aceptación. La primera corrida quedó marcada: otra sesión editó el motor mientras corría. La segunda corrió
-    con el repositorio quieto y dio lo mismo.
-- **No se sumó una regla nueva.** De las tres exigencias del «Fix propuesto», la medición sostiene una: la
-  segunda. Entró como un párrafo en R9, donde ya vive la quita. La primera y la tercera —escribir qué puede
-  salir mal, y que esa lista decida si se hace— quedan sin escribir: en esta misma tanda la lista de riesgos fue
-  lo que menos acertó, y lo que encontró los defectos fue comparar contra la línea de base.
-- **Que la crítica del recorrido pregunte «qué deja de pasar» — no se hizo.** Depende de que el párrafo sirva.
-- **El peso**: el bloque de reglas pasa de 51 a 52,3 KB por agente.
-- **Lo que falta para cerrar**: repetir `09-invoice-moves-to-a-worker` con el párrafo puesto. Si pasa, se
-  cierra con esa corrida. Si falla igual, el párrafo no mueve lo que el caso mide y se retira.
-
 ## Recomendación
 
 **Hacerlo**, redactada y vista por el dueño antes de sumarla, y medida con evaluaciones antes de publicarla.
@@ -91,3 +71,51 @@ Es la disciplina que evitó tres regresiones esta semana, y hoy vive sólo en un
 
 - R9, R3 y R15.
 - 301 — la regresión que la motiva.
+
+## Cierre
+
+**Resuelto en 0.104.0**, con mucho menos de lo propuesto: un párrafo en R9 y ninguna regla nueva.
+
+### El recorrido de lo que este caso enumeró
+
+- **1. «Antes de tocar algo que funciona se escribe qué podría salir mal» — se decidió que no.** En la tanda
+  de 0.103.6 la lista de riesgos fue lo que menos acertó: cuatro casos decían «riesgo bajo» y la revisión
+  independiente encontró en cada uno un defecto que impedía entregar. Lo que los encontró fue comparar contra
+  la línea de base y que otro mirara el diff. Una regla que pide la lista pide la parte que no funcionó.
+- **2. «Cambiar quién o cómo se hace algo es una quita» — se hizo**, como un párrafo en R9, donde ya vive la
+  quita. Dice que la igualdad se sostiene con la salida de antes y la de después sobre el mismo caso, y que
+  esa comparación va en la aceptación como condición.
+- **3. «Esa lista decide si se hace» — se decidió que no**, por lo mismo que el 1.
+- **Que la crítica del recorrido pregunte «qué deja de pasar» — no se hizo.** El párrafo ya llega a quien
+  critica el plan, por las reglas que carga; cambiar el prompt de una fase es otra quita y no hizo falta.
+- **«Baja a todas las empresas» — se pagó**: está en el changelog de 0.104.0.
+- **«Más ceremonia en cada tarea» — se acotó**: el párrafo habla sólo de mover o reemplazar algo que ya anda.
+- **«Una regla más que cargar» — se midió**: el bloque pasa de 51 a 52,3 KB por agente.
+- **«Que se cumpla como trámite» — se midió con evaluaciones**, abajo.
+- **Casos de evaluación de la forma incidental — se hicieron**: `09-export-rewrite` y
+  `09-invoice-moves-to-a-worker`. Ninguno nombra la conducta.
+- **El peso de las reglas — se midió**: su prueba se puso roja al agregar el párrafo y se actualizó con la razón.
+
+### Lo que este caso encontró y no preveía
+
+**No hacía falta para todos.** El cargo que construye ya lo hacía solo: antes de reescribir fijó el formato
+actual y comparó la salida vieja con la nueva. El que no lo hacía era el que aprueba un plan: veía lo que la
+mudanza perdía, y aun así dejaba «es el mismo» como supuesto en vez de pedir la prueba.
+
+### Qué se corrió
+
+Cuatro corridas de `agent-eval`, cada una filtrada a un caso, en sesiones nuevas:
+
+| Cargo y caso | Con R9 como estaba | Con el párrafo |
+|---|---|---|
+| `backend-engineer` · `09-export-rewrite` | pasa | — |
+| `software-architect` · `09-invoice-moves-to-a-worker` | no pasa, dos veces, por el mismo comportamiento | pasa |
+
+- **Las dos que fallaron** no volvieron la comparación una condición de aceptación. La primera quedó marcada:
+  otra sesión editó el motor mientras corría. La segunda corrió con el repositorio quieto y dio lo mismo.
+- **La que pasó** cita la regla —«mover un paso de lugar es una quita (R9)»— y pone en la aceptación que, sobre
+  un mismo pedido, la ruta de antes y la nueva produzcan el mismo PDF, lado a lado.
+- **Lo que esto no prueba**: es una sola corrida con el párrafo. Dos rojos seguidos y un verde que cita la
+  regla es una señal fuerte y no una medida de cuánto varía; se va a ver en el ensamblaje mensual, que corre
+  los casos de cada cargo.
+- **La puerta entera**, `npm run ci`.
