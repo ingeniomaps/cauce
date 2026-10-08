@@ -4,7 +4,8 @@
 // escrita. Lo comparten los dos guards de límites —el que lee comandos y el de la herramienta de archivos—,
 // que tienen que contestar lo mismo sobre la misma ruta.
 //
-// Qué garantiza. Una ruta escrita afuera frena como siempre: esto suma un freno y no saca ninguno de ésos.
+// Qué garantiza. Una ruta escrita afuera frena como siempre, con una salvedad en el guard de comandos: el
+// temporal del sistema se exime por dónde cae la escritura, así que un enlace de afuera que lleva ahí pasa.
 // Una ruta escrita adentro que por un enlace simbólico cae afuera, también frena (caso 317). Y lo que se
 // alcanza por un enlace y sigue siendo del proyecto no frena: la raíz declarada como enlace, un enlace entre
 // carpetas de una raíz, y las carpetas que una línea de trabajo enlaza desde la instancia de la que salió.

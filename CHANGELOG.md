@@ -34,7 +34,7 @@ diseño — eso vive en el commit y en el código.
 - **`ops evidence` ya no marca `parcial` una traza por lo que cita después del nombre.** En las entradas
   escritas antes, decide la prueba que la traza nombra —el último tramo detrás de `›`, o lo primero entre
   comillas— y lo demás que cite se dice al lado si no aparece. Es menos estricto que 0.103.6 con una prueba
-  inventada: de cuarenta formas probadas marca veinticuatro y avisa en doce (caso 330).
+  inventada: de cuarenta formas probadas marca veinticuatro, avisa en doce y deja pasar cuatro (caso 330).
 - **Un enlace simbólico ya no deja escribir fuera de las raíces.** Los dos guards de límites comparaban la
   ruta como está escrita, y un enlace que vive adentro de una raíz y apunta afuera la dejaba cruzar. Ahora
   miran dónde cae de verdad la escritura. Lo que se alcanza por un enlace y sigue siendo del proyecto no
@@ -45,11 +45,12 @@ diseño — eso vive en el commit y en el código.
   `T=$(mktemp -d -p <carpeta>); cd $T; …`, si `mktemp` falla el `cd` va a tu carpeta personal y lo que sigue
   se escribe ahí. Ahora el guard de límites lo frena cuando la carpeta no existe, no se puede escribir o la
   plantilla no trae tres `X`. **Qué hacer:** nada si uniste los pasos con `&&`, si la carpeta ya está o si la
-  creás antes con `mkdir -p`. Si la crea otra cosa —`install -d`, `cp -r`—, uní los pasos con `&&` (caso 327).
+  creás antes con `mkdir -p` y su ruta completa. Si la crea otra cosa —`install -d`, `cp -r`—, uní los pasos
+  con `&&` (caso 327).
 - **R9 pide comparar antes y después cuando cambia quién hace algo, o cómo.** Mover un paso de lugar o
   reemplazar una implementación es una quita aunque el resultado «sea el mismo», y esa igualdad se sostiene
   con la salida de antes y la de después sobre el mismo caso, como condición de la aceptación. Es un párrafo
-  más en una regla que ya tenías: el bloque que carga cada agente pasa de 51 a 52,3 KB (caso 324).
+  más en una regla que ya tenías: el bloque que carga cada agente pasa de 51,7 a 52,3 KB (caso 324).
 
 ## [0.103.6] - 2026-10-07
 
