@@ -38,6 +38,10 @@ diseño — eso vive en el commit y en el código.
   documentadas, con un commit que toca código. Esta última puede poner en rojo una entrada cerrada desde el
   2026-09-24 con esa forma: la salida es la misma que para el `n/a` pelado, rastrear la prueba o adoptar la
   entrada con `ops adopt` (caso 335).
+- **`destructive` juzga un `rm -r` por su destino resuelto.** `rm -rf .`, `cd $X && rm -rf .` con la variable sin
+  resolver, y un `rm -r` que nombra la raíz ops, una raíz declarada o un ancestro de cualquiera de ellas frenan
+  sin salida, como ya frenaban `/`, `~` y `..` escritos. Un `cd $(mktemp -d)` seguido de `rm -rf .` sigue
+  pasando: cae en un temporal (caso 337).
 - **`ops claim` ya no reserva una tarea con una fila pendiente en `HUMAN_ACTIONS.md`.** `context` la salteaba y
   la ofrecía como la siguiente, pero `claim` no miraba la tabla: el runner se quedaba con una tarea que nadie
   podía avanzar y sin poder tomar otra. Ahora se niega nombrando la fila, y pasa cuando está resuelta (caso 336).

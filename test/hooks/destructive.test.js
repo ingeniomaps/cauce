@@ -361,3 +361,36 @@ test('el amend se frena sobre historia publicada y no sobre la que nadie vio', (
   blocked('destructive', { cwd: tempRoot('ops-amend-sin-git-'), tool_input: { command: 'git commit --amend' } },
     /publicad/)
 })
+
+// `rm -r` sobre el directorio actual, y sobre un destino que no se puede resolver, son las dos formas que
+// R23 nombra como el desastre canónico —`cd $X && rm -rf .` con `X` vacío borra donde estabas— y las dos
+// pasaban: la regla miraba `/`, `~`, `$HOME` y `..` escritos, no el destino resuelto (caso 337). La raíz
+// ops y las raíces declaradas también cuentan, nombradas enteras o por un ancestro.
+test('rm -r sobre el directorio actual, la instancia o un cd que no se resuelve se frena por el destino', () => {
+  const root = tempRoot('ops-hook-rm-cwd-')
+  fs.mkdirSync(path.join(root, 'ops', 'planning'), { recursive: true })
+  fs.mkdirSync(path.join(root, 'apps', 'api'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'ops', 'ops.config.json'),
+    JSON.stringify({ mode: 'sidecar', workspaceRoots: [{ name: 'api', path: '../apps/api' }], runner: {} }))
+  const before = process.env.OPS_ROOT
+  process.env.OPS_ROOT = path.join(root, 'ops')
+  try {
+    for (const command of [
+      'rm -rf .', 'rm -rf ./', 'rm -rf -- .', 'rm -rf "."', 'cd $X && rm -rf .', 'cd "$DIR" && rm -rf ./',
+      'cd apps && rm -rf ..', `rm -rf ${root}`, `rm -rf ${path.join(root, 'ops')}`,
+      `rm -rf ${path.join(root, 'apps', 'api')}`,
+      `rm -rf ${path.dirname(root)}`, 'rm -rf apps/api', 'rm -rf ops/',
+    ]) {
+      blocked('destructive', { cwd: root, tool_input: { command } }, /destino resuelto|catastrófico/)
+    }
+    for (const command of [
+      'rm -rf dist', 'rm -rf ./node_modules', 'rm -rf apps/api/dist', 'cd apps/api && rm -rf build',
+      'cd $(mktemp -d) && rm -rf .', 'rm -rf /tmp/banco-123', 'rm dist/x.js', 'rm -r -- apps/web',
+    ]) {
+      assert.doesNotThrow(() => execute('destructive', { cwd: root, tool_input: { command } }), command)
+    }
+  } finally {
+    if (before === undefined) delete process.env.OPS_ROOT
+    else process.env.OPS_ROOT = before
+  }
+})

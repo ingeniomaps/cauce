@@ -17,6 +17,7 @@ const {
   commandOf, cwdOf, block, isCommit, stagedForCommit, writableRoots, outsideRoots, DECLARE_IT, unquoted, opsRoot,
   withoutGitGlobals, gitDirectory, owns, asRun, expandAssigned,
 } = require('./input')
+const { removesTheTree } = require('./removal')
 const { landing } = require('../core/files')
 const { beyond, reached, real } = require('./boundary')
 const AP = require('./approval')
@@ -175,6 +176,8 @@ function destructive(input) {
     if (!held.length) continue
     block(open ? `${message}\n${AP.HOW(null, held, input)}` : message)
   }
+  const tree = removesTheTree(input, command)
+  if (tree) block(tree)
 }
 
 function gitAdd(input) {
@@ -456,4 +459,6 @@ function run(program, args, cwd, extra = {}, { timeoutMs } = {}) {
 }
 
 
-module.exports = { destructive, gitAdd, dependencies, shellBoundary, run, writesWithBase }
+module.exports = {
+  destructive, gitAdd, dependencies, shellBoundary, run, writesWithBase, cdTarget, positional, QUOTED_CD,
+}
