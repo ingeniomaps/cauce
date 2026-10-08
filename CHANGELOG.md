@@ -14,6 +14,16 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.104.1] - 2026-10-08
+
+### Cambiado
+
+- **`ops evidence` ya no presenta las corridas de `verify` como los gates de la tarea.** El registro guarda las
+  últimas veinte de la instancia, de cualquier repositorio, y se listaban bajo cada tarea como «los que
+  corrieron al commitear». Ahora se encabezan como lo que son, y si todas son anteriores al cierre de la
+  tarea, lo dice. Importa sobre todo si reemplazaste `verify` por tu propia puerta: sus corridas no figuran
+  ahí. `--json` no cambia (caso 332).
+
 ## [0.104.0] - 2026-10-07
 
 ### Cambiado
