@@ -63,7 +63,12 @@ function mktempParent(args, movedTemp) {
 function madeUnder(args, { raw, chained, before }) {
   const parent = mktempParent(args, /\bTMPDIR=/.test(raw))
   if (!parent || chained || usable(parent)) return parent
-  const same = (word) => path.resolve(word.replace(/^(["'])(.*)\1$/, '$2')) === path.resolve(parent)
+  // Sirve también `mkdir -p X/sub`, que crea `X` de paso. Una ruta relativa no: acá no se sabe contra qué.
+  const target = path.resolve(parent)
+  const same = (word) => {
+    const made = word.replace(/^(["'])(.*)\1$/, '$2')
+    return path.isAbsolute(made) && `${path.resolve(made)}${path.sep}`.startsWith(`${target}${path.sep}`)
+  }
   const creates = (words) => words[0] === 'mkdir' && words.includes('-p') && words.slice(1).some(same)
   return before.some((segment) => creates(segment.trim().split(/\s+/))) ? parent : ''
 }

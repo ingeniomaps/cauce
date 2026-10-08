@@ -100,6 +100,7 @@ en una copia: las nueve en rojo.
 - **Un comando que rompe su propia carpeta antes de usarla**: `rm -rf X; T=$(mktemp -d -p X); cd $T; …` y lo
   mismo con `mv` siguen pasando. El guard mira el disco antes de que el comando corra.
 - **Un `mkdir -p` que falla** —por permisos— deja el mismo hueco.
+- **Un `mkdir -p` con ruta relativa no cuenta**: el guard no sabe contra qué carpeta se resuelve, y frena.
 - **Frena dos formas que antes pasaban**: la carpeta creada por otra cosa que `mkdir -p` —`install -d`,
   `cp -r`, `git worktree add`— seguida de `;` o de un salto de renglón. Con `&&` pasan.
 

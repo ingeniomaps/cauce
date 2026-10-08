@@ -115,6 +115,7 @@ test('un cd a una variable que el propio comando asigna se resuelve, y el resto 
     `T=$(mktemp -d -p ${root}/nueva) && cd $T && echo x > a.js`,
     `git worktree add ${root}/nueva && T=$(mktemp -d -p ${root}/nueva) && cd $T && echo x > a.js`,
     `mkdir -p ${root}/nueva\nT=$(mktemp -d -p ${root}/nueva)\ncd $T\necho x > a.js`,
+    `mkdir -p ${root}/nueva/sub; T=$(mktemp -d -p ${root}/nueva); cd $T; echo x > a.js`,
     `S=${root}/nueva; mkdir -p "$S"; C=$(mktemp -d -p "$S" m.XXXX); cd $C; echo x > a.js`,
     // Un archivo temporal no es una carpeta, y escribirle a la variable no se juzga: no se sabe dónde cae.
     'T=$(mktemp); echo x > $T',
@@ -167,6 +168,8 @@ test('un cd a una variable que el propio comando asigna se resuelve, y el resto 
     // Nombrar `mkdir` no alcanza: tiene que crear esa carpeta, y con `-p`.
     `echo mkdir; T=$(mktemp -d -p ${root}/no-existe); cd $T; echo x > a.js`,
     `mkdir -p ${root}/otra; T=$(mktemp -d -p ${root}/no-existe); cd $T; echo x > a.js`,
+    `mkdir -p ${root}/no-existe-tampoco; T=$(mktemp -d -p ${root}/no-existe); cd $T; echo x > a.js`,
+    `mkdir -p no-existe; T=$(mktemp -d -p ${path.resolve('no-existe')}); cd $T; echo x > a.js`,
     `mkdir ${root}/no/existe; T=$(mktemp -d -p ${root}/no/existe); cd $T; echo x > a.js`,
     // Una plantilla sin tres `X` la rechaza `mktemp`, esté o no la carpeta.
     `T=$(mktemp -d ${root}/src/mut); cd $T; echo x > a.js`,
