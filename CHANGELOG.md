@@ -14,6 +14,16 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.105.0] - 2026-10-08
+
+### Corregido
+
+- **`governance` vuelve a frenar con `ops/` dentro del repositorio.** El índice de git nombra las rutas desde la
+  raíz del repo —`ops/planning/rules/…`— y el guard las comparaba contra `^planning/…`, así que en el layout
+  por defecto de `init` un commit que tocaba una regla del sistema, una ADR o el `SKILL.md` de un cargo pasaba
+  sin preguntar. Ahora se juzgan relativas a la raíz ops, se lance el commit desde donde se lance; lo que se
+  aprueba y se nombra sigue siendo la ruta del índice (caso 334).
+
 ## [0.104.1] - 2026-10-08
 
 ### Cambiado

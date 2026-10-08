@@ -462,3 +462,32 @@ test('publicar un paquete no se aprueba por ruta, porque no hay ruta', () => {
   fs.writeFileSync(path.join(root, 'planning', '.ops-approval'), 'package.json\n')
   blocked('dependencies', { cwd: root, tool_input: { command: 'npm publish' } }, /acción humana/)
 })
+
+// El layout por defecto de `init` —`ops/` dentro del repositorio— dejaba a `governance` sin nada que
+// frenar: el índice de git nombra `ops/planning/rules/…` y el patrón anclaba en `^planning/`. Los tres
+// layouts tienen que dar lo mismo, así que se mide el que fallaba junto al embebido, que ya pasaba, y con
+// el commit lanzado desde la raíz del repo y desde `ops/` (caso 334).
+test('governance juzga las rutas relativas a la raíz ops, también con ops/ dentro del repositorio', () => {
+  const root = tempRoot('ops-hook-gov-sidecar-')
+  initRepo(root)
+  const ops = path.join(root, 'ops')
+  fs.mkdirSync(path.join(ops, 'planning', 'rules', 'system'), { recursive: true })
+  fs.writeFileSync(path.join(ops, 'ops.config.json'),
+    JSON.stringify({ mode: 'sidecar', workspaceRoots: [{ name: 'main', path: '..' }], runner: {} }))
+  fs.writeFileSync(path.join(ops, 'planning', 'rules', 'system', 'process.md'), '# regla\n')
+  git(['add', 'ops/planning/rules/system/process.md', 'ops/ops.config.json'], root)
+  const before = process.env.OPS_ROOT
+  process.env.OPS_ROOT = ops
+  try {
+    blocked('governance', { cwd: root, tool_input: { command: 'git commit -m x' } }, /gobernanza protegida/)
+    blocked('governance', { cwd: ops, tool_input: { command: 'git commit -m x' } }, /gobernanza protegida/)
+    // Lo que está fuera de la instancia no es gobernanza de nadie, aunque el repositorio sea el mismo.
+    git(['reset', '-q'], root)
+    fs.writeFileSync(path.join(root, 'planning.md'), 'no es planning\n')
+    git(['add', 'planning.md'], root)
+    assert.doesNotThrow(() => execute('governance', { cwd: root, tool_input: { command: 'git commit -m x' } }))
+  } finally {
+    if (before === undefined) delete process.env.OPS_ROOT
+    else process.env.OPS_ROOT = before
+  }
+})
