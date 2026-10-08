@@ -263,10 +263,14 @@ const VERIFY = {
       },
     } },
     // El mapeo que Verify arma al contrastar y del que sale `tests: CN → prueba`. Sin viajar, Done lo
-    // componía de memoria (hallazgo del 189).
+    // componía de memoria (hallazgo del 189). Viaja por partes y no como una frase: quien verifica sabe qué
+    // archivo y qué prueba son, y escrito en prosa ese dato se pierde —después nadie puede distinguir el
+    // nombre de la prueba de la aclaración que le sigue— (caso 331).
     covered: { type: 'array', items: { type: 'object', additionalProperties: false,
-      required: ['criterion', 'test'],
-      properties: { criterion: { type: 'string' }, test: { type: 'string' } },
+      required: ['criterion', 'file', 'name'],
+      properties: {
+        criterion: { type: 'string' }, file: { type: 'string' }, name: { type: 'string' }, note: { type: 'string' },
+      },
     } },
     commands: { type: 'array', items: { type: 'object', required: ['cmd', 'exitCode'], properties: {
       cmd: { type: 'string' }, exitCode: { type: 'integer' }, note: { type: 'string' },
@@ -1638,7 +1642,11 @@ while (rounds++ < MAX_TASKS) {
     `que aserciar, no-surface si se cumple en un artefacto que no se ejecuta, como un documento o una ` +
     `decisión escrita, y con reason diciendo cuál—. no-surface vale sólo si la tarea no tocó ningún archivo ` +
     `que no termine en ${NON_EXECUTABLE.join(', ')}; con cualquier otro en el diff es missing-test. En ` +
-    `covered va cada criterio que un test sí codifica, con el nombre de ese test. ` +
+    `covered va cada criterio que un test sí codifica, por partes: en file, la ruta del archivo de pruebas ` +
+    `desde la raíz de ${task.service}; en name, el nombre de la prueba tal como está escrito en ese archivo ` +
+    `—el texto de su it, test o función, sin los describe que la contienen ni lo que el runner le agrega al ` +
+    `mostrarla—; y en note, sólo si hace falta, una aclaración corta. Una entrada por prueba: si dos pruebas ` +
+    `cubren un criterio, van dos. Si lo que lo cubre no es un archivo de pruebas, file va vacío y name dice qué. ` +
     `Un test que pasa sin aserciarla no la cubre. Después corré los gates reales de ${task.service}.${WHERE} ` +
     // Descubrir la puerta es trabajo de modelo repetido en cada tarea sobre una respuesta que no cambia,
     // y encima adivinable: el proyecto la declara en `verify` y ahí deja de adivinarse. Cuando no la
@@ -1694,9 +1702,25 @@ while (rounds++ < MAX_TASKS) {
     return halt('verify-hollow', `sin test que lo codifique: ${lacking().map((e) => e.criterion).join('; ')}`)
   }
   const noSurface = verified.uncovered.filter((entry) => entry.cause === 'no-surface')
-  const covered = verified.covered || []
-  // Toda la tarea sin superficie: no hay comportamiento que ejercitar, y saltear QA en silencio dejaría sin
-  // mirar lo único que se puede mirar, que el documento esté y diga lo que la aceptación enumera.
+  // La traza la arma el recorrido, siempre igual: `archivo › «nombre» — aclaración`. Así `ops evidence` lee el
+  // archivo y el nombre sin adivinar dónde termina uno y empieza la prosa. Lo que partiría esa forma no viaja
+  // adentro: el `;` separa trazas en `tests:`, `»` cierra el nombre, y `›` separa el archivo.
+  const plain = (text) => String(text || '').replace(/\s+/g, ' ').replace(/;/g, ',').trim()
+  // La ruta como está en disco desde su raíz: sin el prefijo de la máquina ni el del árbol de la tarea, y sin
+  // cambiarlo por el nombre del servicio, que puede no ser el de su carpeta. `ops evidence` busca por cómo
+  // termina la ruta.
+  const roots = [tree && tree.work, tree && tree.path, ...(ROOT.startsWith('/') ? homes() : []).map(([from]) => from)]
+  const fromRoot = (file) => roots.filter(Boolean)
+    .reduce((out, from) => (out.startsWith(`${from}/`) ? out.slice(from.length + 1) : out), file)
+  const covered = (verified.covered || []).map(({ criterion, file, name, note }) => {
+    const where = fromRoot(plain(String(file || '').replace(/[›«»]/g, ''))).replace(/^\.\//, '')
+    const what = plain(name).replace(/»/g, '"')
+    // Una ruta con espacios no cabe en la forma, y sin nombre no hay prueba que buscar: van en la aclaración.
+    const loose = where && (/\s/.test(where) || !what)
+    const said = [loose ? `archivo: ${where}` : '', plain(note), `criterio: ${plain(criterion)}`]
+      .filter(Boolean).join(' · ')
+    return { criterion, trace: `${where && !loose ? `${where} › ` : ''}${what ? `«${what}» — ` : ''}${said}` }
+  })
   const onlyDocument = noSurface.length > 0 && !covered.length
 
   // QA ejercita comportamiento, y lo mecánico no lo cambia: el valor literal que la aceptación nombra
@@ -1795,8 +1819,9 @@ while (rounds++ < MAX_TASKS) {
     // El sufijo es el del contrato de DONE, `(repo@rama)`: `check` saca de ahí en qué repositorio buscar el
     // commit, y escrito en prosa lo leía como si no nombrara ninguno.
     `${commit.branch ? ` (${declared}@${commit.branch}), con ese sufijo copiado tal cual` : ''}. ` +
-    `En tests rastreá cada criterio con la ` +
-    `prueba que cubiertos le asigna` +
+    `En tests rastreá cada criterio con lo que cubiertos le asigna: la etiqueta del criterio, « → » y su ` +
+    `trace copiada tal cual, sin agregarle ni sacarle nada —ya trae el archivo, el nombre de la prueba y la ` +
+    `aclaración—` +
     (noSurface.length ? ', y los de sin-superficie con tests: n/a — <razón>' : '') +
     (outOfVerify.length ? '; cada condición de fuera-de-verify queda cumplida en tests, qa o commit' : '') + '. ' +
     // La entrada se valida antes de commitearla. Sin esto el formato lo descubría `closing`, con la entrada

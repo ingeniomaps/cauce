@@ -9,7 +9,7 @@ tarea entregó y con qué se comprueba.
   fecha: 2026-09-08
   done: cambios y comandos de verificación con exit codes
   qa: comportamiento observado por el camino real
-  tests: C1 → nombre de prueba o comando; C2 → nombre de prueba o comando
+  tests: C1 → api/alta_test.go › «TestAltaDuplicada» — rechaza el segundo; C2 → nombre de prueba o comando
   decisions: decisión no obvia [fuente: ruta/archivo] o [supuesto: motivo verificable]
   commit: abc1234 feat(scope): subject (repo@branch)
   lane: full
@@ -17,6 +17,11 @@ tarea entregó y con qué se comprueba.
 ```
 
 El contrato completo de esos campos está en `../PROTOCOL.md`; acá va por qué el archivo es uno por tarea.
+
+En `tests:`, una prueba se nombra por su archivo y su nombre, como en `C1`: el archivo, ` › `, el nombre
+entre `«»` tal como está escrito en el archivo, y después de ` — ` lo que haga falta aclarar. Con esa forma
+`ops evidence` la va a buscar sin adivinar dónde termina el nombre. Lo que no es una prueba en un archivo
+—un comando, una comprobación a mano— va en prosa, como en `C2`.
 
 ## Por qué uno por tarea
 

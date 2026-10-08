@@ -268,6 +268,46 @@ test('decide la prueba que la traza nombra, y lo demás que cite se dice al lado
   }
 })
 
+// Caso 331. La traza que arma el recorrido tiene una forma fija y se lee tal cual: el archivo, el nombre
+// entre «», y de la aclaración nada. Es lo que saca de este contraste la parte que adivinaba.
+test('la traza que arma el recorrido se lee por su forma, sin mirar la aclaración', () => {
+  const EV = require('../../engine/core/evidence')
+  const root = tempRoot('cauce-evidence-armada-')
+  fs.mkdirSync(path.join(root, 'app', 'test'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'app', 'test', 'resta.test.js'),
+    "test('la resta: el primero menos el segundo', () => {})\ntest('crea', () => {})\n"
+    + "test('uno; dos  «tres» cuatro', () => {})\ntest('alfa «beta» gama', () => {})\n")
+  const one = (artifact) => EV.contrast(`A → ${artifact}`, [root])[0]
+  const F = 'test/resta.test.js'
+  const NAME = 'la resta: el primero menos el segundo'
+
+  for (const [artifact, verdict, names, rest] of [
+    [`${F} › «${NAME}» — criterio: resta(a, b) devuelve a - b`, 'encontrado', [NAME], []],
+    [`app/${F} › «${NAME}»`, 'encontrado', [NAME], []],
+    [`./${F}:2 › «crea» — escrita a mano, con su línea`, 'encontrado', ['crea'], []],
+    // La aclaración no se mira: lo que cite, exista o no, no cambia nada ni se informa.
+    [`${F} › «crea» — falla con 'un caso inventado' y \`expect(x)\` · criterio: «otro» › 'más'`,
+      'encontrado', ['crea'], []],
+    // El nombre va entero, con lo que traiga adentro.
+    [`${F} › «la resta: el primero» — criterio: x`, 'encontrado', ['la resta: el primero'], []],
+    [`${F} › «la resta — el primero (menos) 'el' segundo» — criterio: x`, 'parcial',
+      ["la resta — el primero (menos) 'el' segundo"], ["la resta — el primero (menos) 'el' segundo"]],
+    // El nombre viaja sin `;`, sin dobles espacios y sin `»`: se compara con el archivo leído igual.
+    [`${F} › «uno, dos «tres" cuatro» — criterio: x`, 'encontrado', ['uno, dos «tres" cuatro'], []],
+    // Una traza escrita a mano, sin la forma, se compara con el archivo tal cual está.
+    [`${F} — 'alfa «beta» gama'`, 'encontrado', ['alfa «beta» gama'], []],
+    // La prueba renombrada o inventada, y el archivo que no está.
+    [`${F} › «la resta de dos numeros» — criterio: x`,
+      'parcial', ['la resta de dos numeros'], ['la resta de dos numeros']],
+    [`test/otra.test.js › «${NAME}» — criterio: x`, 'ausente', [NAME], undefined],
+    // Sin archivo, lo nombrado no es una prueba que se pueda ir a buscar.
+    ['«lectura de docs/alta.md» — no hay prueba que lo ejecute · criterio: la guía lo nombra', 'inbuscable'],
+  ]) {
+    const got = one(artifact)
+    assert.deepEqual([got.verdict, got.names, got.missing || got.absent], [verdict, names, rest], artifact)
+  }
+})
+
 // La raíz por defecto de una instancia contiene su propio `planning/`. Sin sacarlo del recorrido, la entrada
 // se encontraba a sí misma: una prueba inventada salía `encontrado` porque su nombre estaba, en la entrada.
 test('evidence no encuentra en planning lo que la propia entrada escribió', () => {

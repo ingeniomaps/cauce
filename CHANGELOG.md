@@ -25,6 +25,16 @@ diseño — eso vive en el commit y en el código.
   ya no lo esconden. **Qué hacer:** si lanzás pruebas así, agregá `--memory` y `--cpus` antes de la imagen, o
   `--maxWorkers` al runner. `docker compose run` y `docker exec` no cambian (caso 329).
 - **Un comando de `boundedCommands` se reconoce con `sudo`, `time` o `timeout <plazo>` delante** (caso 329).
+- **Cada prueba que `autobuild` anota en `tests:` lleva su archivo y su nombre en una forma fija.** Antes la
+  redactaba un agente, y `ops evidence` no podía saber dónde terminaba el nombre y empezaba la aclaración: en
+  una instancia real marcó `parcial` seis de diez trazas que decían la verdad. Ahora quien verifica da el
+  archivo, el nombre de la prueba y la aclaración por separado, y el recorrido arma `archivo › «nombre» —
+  aclaración`. `ops evidence` lee esa forma tal cual, y te muestra qué buscó. **Qué hacer:** reinstalá el
+  runner. Las entradas ya escritas no cambian, y `check` las sigue aceptando (caso 331).
+- **`ops evidence` ya no marca `parcial` una traza por lo que cita después del nombre.** En las entradas
+  escritas antes, decide la prueba que la traza nombra —el último tramo detrás de `›`, o lo primero entre
+  comillas— y lo demás que cite se dice al lado si no aparece. Es menos estricto que 0.103.6 con una prueba
+  inventada: de cuarenta formas probadas marca veinticuatro y avisa en doce (caso 330).
 - **R9 pide comparar antes y después cuando cambia quién hace algo, o cómo.** Mover un paso de lugar o
   reemplazar una implementación es una quita aunque el resultado «sea el mismo», y esa igualdad se sostiene
   con la salida de antes y la de después sobre el mismo caso, como condición de la aceptación. Es un párrafo

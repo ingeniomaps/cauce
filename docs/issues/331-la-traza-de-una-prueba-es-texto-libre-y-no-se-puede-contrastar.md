@@ -1,14 +1,15 @@
 ---
 caso: 331
 titulo: la traza de una prueba es texto libre y no se puede contrastar
-estado: abierto
+estado: resuelto
+resuelto-en: 0.104.0
 prioridad: alta
 version-detectada: 0.103.6
 ---
 
 # 331 — `tests: CN → …` lo redacta un agente, y ningún lector acierta qué parte es el nombre de la prueba
 
-**🔴 abierto** · detectado en 0.103.6 · prioridad **alta**.
+**🟢 resuelto en 0.104.0** · detectado en 0.103.6 · prioridad **alta**.
 
 **Prioridad alta**: es lo que impide cerrar el 330, y sin esto `ops evidence` no puede ser confiable por más
 que se lo siga ajustando.
@@ -89,3 +90,69 @@ publica el arreglo intermedio del 330.
 - 330 y 316 — el lector de prosa y sus tres versiones.
 - 321 — el mismo movimiento, para las rutas de `review`.
 - 301 — cambiar quién escribe es una quita.
+
+## Cierre
+
+**Resuelto en 0.104.0.**
+
+### El recorrido de lo que este caso enumeró
+
+- **1. Verify devuelve cada cobertura por partes — se hizo**: `criterion`, `file`, `name` y `note`.
+- **2. El recorrido arma la traza — se hizo**: `archivo › «nombre» — aclaración · criterio: …`. El nombre va
+  entre `«»` para que pueda traer adentro lo que sea.
+- **3. `ops evidence` lee esa forma exacta — se hizo.** De la aclaración no mira nada. Lo que no tiene la forma
+  sigue por la lectura del caso 330.
+- **4. El contrato de `done/` nombra la forma — se hizo**, en `PROTOCOL.md` y en el README de `done/`.
+- **«Las entradas ya escritas: `check` no puede empezar a rechazarlas» — se cumplió**: `check` sigue pidiendo
+  sólo `A/CN →`.
+- **«Cambia qué devuelve Verify» — se comparó**, abajo.
+- **«Una prueba sin archivo» — se hizo**: `file` vacío, y la traza no inventa uno. `ops evidence` la da por
+  `inbuscable`.
+- **«Varias pruebas para un criterio, y una para varios» — se hizo**: una entrada por prueba. En la corrida
+  real una misma prueba cubrió cuatro criterios y salieron cuatro trazas.
+- **«El nombre que el runner arma» — se pidió y no se probó.** El prompt pide el nombre como está en el
+  archivo, sin lo que el runner le agrega. Con una subprueba de Go o un `it.each` quien verifica puede dar el
+  nombre armado, y ahí sale `parcial`.
+- **«Lo que hay del 330 quedaría reemplazado en la parte que adivina» — así quedó.**
+
+### Lo que este caso encontró y no preveía
+
+La revisión independiente mostró tres formas en que la traza armada se leía mal, las tres corregidas:
+
+- **La ruta cambiada por el nombre del servicio.** Un servicio que se llama `backend` y vive en `api/` daba
+  `ausente` sobre una prueba real. La ruta va ahora como está en disco desde su raíz.
+- **Una ruta con espacios** no entraba en la forma y se leía partida. Va en la aclaración, y la traza queda
+  sin archivo antes que con uno mal leído.
+- **Un `file` que trajera `›` o `«»`** hacía leer otro nombre.
+
+Y el nombre viaja sin lo que partiría la traza —un `;`, un salto, un `»`—, así que `ops evidence` lo compara
+con el archivo leído de la misma manera. Si no, una prueba con un `;` en el nombre daba `parcial` para siempre.
+
+### Lo que queda como está, y dicho
+
+- **La salida sin prueba sigue abierta**: con `file` vacío y `uncovered` vacío el recorrido llega a Done sin
+  que nada lo frene, igual que antes con el texto libre.
+- **Dos servicios con la misma ruta relativa** se confunden: la traza no dice de cuál es.
+
+### Qué se corrió
+
+- **Lo que Verify devolvía antes**, de las corridas reales de esta rama: 156 coberturas, 145 distintas, todas
+  texto libre; ninguna con una forma fija.
+- **Una corrida real de `autobuild`** con el recorrido nuevo, sobre la misma tarea: 16 agentes, cerró la
+  tarea y `check` quedó en verde. Verify llenó las partes como se le pide —la ruta desde la raíz del servicio,
+  el nombre como está en el archivo, la aclaración aparte— y Done copió cada traza sin tocarla:
+
+  ```
+  A → test/resta.test.js › «la resta de dos numeros» — assert.equal(resta(5, 3), 2) … · criterio: `resta(a, b)` devuelve `a - b` …
+  ```
+
+  `ops evidence` sobre esa entrada: las cuatro `encontrado`. Con una renombrada a mano en la copia:
+  `[parcial] — el archivo existe; no aparece en él: la resta de tres numeros`, y las otras tres `encontrado`.
+- **La corrida usó la primera versión del armado**, anterior a las tres correcciones de arriba. Lo que
+  cambiaron es qué ruta se escribe cuando viene absoluta, con espacios o con separadores; en esa corrida la
+  ruta vino relativa y limpia, así que la traza es la misma. Las tres están en la prueba del arnés.
+- **25 mutaciones en rojo, en una copia.** Una sobrevivió y tiene ahora su aserción.
+- **Una revisión independiente**, que además armó una entrada con siete trazas de nombres difíciles
+  (`C2 → algo`, `n/a — nada`, una flecha adentro): pasa `check` y `evidence` las parte bien.
+- **La puerta entera**, `npm run ci`.
+- **Lo que no se corrió**: una instancia real, ni una tarea con pruebas de Go o de `it.each`.

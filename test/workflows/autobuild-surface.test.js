@@ -112,10 +112,50 @@ test('una condición fuera de verify que Verify devuelve sin cubrir no frena el 
 })
 
 // Done escribía `tests: CN → prueba` sin que nadie le pasara qué prueba cubría qué: el mapeo lo tenía
-// Verify, que lo contrastó leyendo el fuente, y no viajaba (hallazgo del 189).
-test('Done recibe el mapeo criterio → prueba que Verify contrastó', async () => {
-  const covered = [{ criterion: 'el alta rechaza un duplicado', test: 'TestAltaDuplicada' }]
-  const out = await runFlow({ [KEY.verify]: verdict([], { covered }) })
+// Verify, que lo contrastó leyendo el fuente, y no viajaba (hallazgo del 189). Y viajando como una frase no
+// se podía contrastar: nadie distingue el nombre de la prueba de la aclaración que le sigue (caso 331). Verify
+// lo da por partes y la traza la arma el recorrido, siempre con la misma forma.
+test('Done recibe cada traza ya armada con el archivo, el nombre de la prueba y la aclaración', async () => {
+  const root = '/srv/acme/ops'
+  const rows = [
+    [{ criterion: 'el alta rechaza un duplicado', file: 'test/alta_test.go', name: 'TestAltaDuplicada' },
+      'test/alta_test.go › «TestAltaDuplicada» — criterio: el alta rechaza un duplicado'],
+    // Lo que partiría la línea de `tests:` o cerraría el nombre antes de tiempo no viaja adentro.
+    [{ criterion: 'responde 409; sin tocar la fila', file: './test/alta.spec.ts',
+      name: 'rechaza  «dos» y «tres»;\nsiempre', note: 'asercia status y body; la fila no cambia' },
+    'test/alta.spec.ts › «rechaza «dos" y «tres", siempre» — asercia status y body, la fila no cambia · '
+      + 'criterio: responde 409, sin tocar la fila'],
+    // Una ruta con el prefijo de la máquina llega como está en disco desde su raíz, que es por donde se la
+    // busca: el servicio se llama `backend` y su carpeta `api`.
+    [{ criterion: 'el esquema queda migrado', file: `${root}/api/db/schema_test.go`, name: 'TestSchema' },
+      'db/schema_test.go › «TestSchema» — criterio: el esquema queda migrado'],
+    // El archivo no puede traer lo que separa las partes.
+    [{ criterion: 'c', file: 'test/x.test.js › «crea» — y', name: 'inventada' },
+      '«inventada» — archivo: test/x.test.js crea — y · criterio: c'],
+    // Una ruta con espacios no cabe en la forma, y sin nombre no hay prueba que buscar: van en la aclaración.
+    [{ criterion: 'c', file: 'mi carpeta/y.test.js', name: 'crea' },
+      '«crea» — archivo: mi carpeta/y.test.js · criterio: c'],
+    [{ criterion: 'c', file: 'test/y.test.js', name: ' ' }, 'archivo: test/y.test.js · criterio: c'],
+    // Sin archivo de pruebas, la traza no inventa uno.
+    [{ criterion: 'la guía lo nombra', file: '', name: 'lectura de docs/alta.md',
+      note: 'no hay prueba que lo ejecute' },
+      '«lectura de docs/alta.md» — no hay prueba que lo ejecute · criterio: la guía lo nombra'],
+  ]
+  const covered = rows.map(([one]) => one)
+  const out = await runFlow({
+    [KEY.contract]: { ...baseScript()[KEY.contract], workspaceRoots: ['backend → ./api'] },
+    [KEY.verify]: verdict([], { covered }),
+  }, { root })
   ranToEnd(out.result)
-  assert.ok(promptOf(out, 'Done|done').includes(`cubiertos=${JSON.stringify(covered)}`))
+  const done = promptOf(out, 'Done|done')
+  const traces = JSON.parse(done.match(/cubiertos=(\[.*?\]); (?:sin-superficie|fuera-de-verify|qa)=/)[1])
+  assert.deepEqual(traces, rows.map(([one, trace]) => ({ criterion: one.criterion, trace })))
+  assert.match(done, /su trace copiada tal cual, sin agregarle ni sacarle nada/)
+  // Y a quien verifica se le pide el dato por partes, con el nombre como está en el archivo.
+  const ask = promptOf(out, KEY.verify)
+  assert.match(ask, /en file, la ruta del archivo de pruebas desde la raíz de/)
+  assert.match(ask, /en name, el nombre de la prueba tal como está escrito en ese archivo —el texto de su it, test o/)
+  assert.match(ask, /sin los describe que la contienen ni lo que el runner le agrega al mostrarla/)
+  assert.match(ask, /Una entrada por prueba: si dos pruebas cubren un criterio, van dos/)
+  assert.match(ask, /Si lo que lo cubre no es un archivo de pruebas, file va vacío/)
 })

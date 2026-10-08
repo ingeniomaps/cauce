@@ -145,7 +145,21 @@ function segmentsOf(text, separator) {
   pieces[pieces.length - 1] += text.slice(at)
   return pieces
 }
+// La traza que arma `autobuild` tiene una forma fija —`archivo › «nombre» — aclaración`— y se lee tal cual:
+// el archivo, el nombre, y de la aclaración nada. No hay qué adivinar, así que tampoco hay qué informar
+// aparte. Sin archivo, lo nombrado no es una prueba que se pueda ir a buscar (caso 331). Lo que no tiene
+// esa forma —las entradas escritas antes, o a mano— sigue por la lectura de abajo.
+//
+// El nombre viaja sin lo que partiría la traza —un `;`, un salto, un `»`—, así que se compara con el archivo
+// leído de la misma manera: si no, una prueba con un `;` en el nombre daría `parcial` para siempre.
+const BUILT = /^(?:(\S+) › )?«([^»]+)»(?: — [^]*)?$/
+const carried = (text) => text.replace(/\s+/g, ' ').replace(/;/g, ',').replace(/»/g, '"')
 function parts(given, tree) {
+  const built = given.match(BUILT)
+  if (built) {
+    const files = built[1] ? [bare(built[1])] : []
+    return { files, names: built[1] ? [built[2]] : [], cited: [], code: [], built: true }
+  }
   // Una traza no mide más que unos renglones; el resto no agrega nada que buscar.
   const artifact = given.slice(0, 4000).replace(/^\s*[*•-]\s+/, '')
   const exists = (name) => tree.some((file) => file.endsWith(`/${name}`))
@@ -194,11 +208,12 @@ function parts(given, tree) {
 // Hasta dónde llega: el nombre se busca como texto, así que lo da por bueno si es parte de otro más largo
 // o si está en un comentario; y de un tramo sin comillas se busca hasta donde empieza la aclaración, que
 // puede ser menos que el nombre.
-function contrastParts({ files, names, cited, code, prose }, tree, read) {
+function contrastParts({ files, names, cited, code, prose, built }, tree, read) {
   const within = files.map((file) => tree.filter((one) => one.endsWith(`/${file}`)))
   if (within.some((matching) => !matching.length)) return { verdict: 'ausente' }
   const where = files.length ? within.flat() : tree
-  const lacks = (name) => !where.some((file) => read(file).includes(name))
+  const text = (file) => (built ? carried(read(file)) : read(file))
+  const lacks = (name) => !where.some((file) => text(file).includes(name))
   const all = [...names, ...cited, ...code]
   if (!files.length) return { verdict: all.some(lacks) ? 'ausente' : 'encontrado' }
   const missing = names.filter(lacks)
