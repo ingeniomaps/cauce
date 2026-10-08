@@ -8,6 +8,7 @@
 // Como todo lo que lee el texto de un comando, frena la forma habitual y no un script decidido: un nombre
 // armado en una variable o un `grep -r` sobre la carpeta sin nombrar el archivo pasan.
 
+const os = require('node:os')
 const path = require('node:path')
 const { commandOf, cwdOf, block, isCommit, unquoted, opsRoot } = require('./input')
 const { credential, patternNames } = require('./files')
@@ -52,7 +53,9 @@ const UNRESOLVED = /[$`]/
 // `pattern` son las banderas que traen el patrón en su valor: con una de ellas ya no hay patrón posicional.
 // `data` son las que traen otro dato que tampoco es un archivo, y cuántas palabras ocupa. `file` las que sí
 // nombran uno. El valor de cualquier otra bandera se sigue mirando: si se confunde, es hacia el lado que frena.
-const SEARCH = { pattern: ['-e', '--regexp'], data: {}, file: ['-f', '--file'] }
+// `-g`/`--glob` de `rg` nombran un archivo por comodín, y sin estar acá su valor se leía como el patrón
+// posicional y se descartaba: `rg -g '.env*' KEY` pasaba y `rg -n KEY -g '.env*'` no (caso 342).
+const SEARCH = { pattern: ['-e', '--regexp'], data: {}, file: ['-f', '--file', '-g', '--glob', '--include'] }
 const PATTERN_FIRST = {
   grep: SEARCH, egrep: SEARCH, fgrep: SEARCH, rg: SEARCH,
   sed: { pattern: ['-e', '--expression'], data: {}, file: ['-f', '--file'] },
@@ -104,7 +107,7 @@ function secretsShell(input) {
   const command = isCommit(raw) ? unquoted(raw) : raw
   const cwd = cwdOf(input)
   const files = readTokens(command).filter((token) => patternNames(token).some((name) => credential(input, name)))
-    .map((token) => path.resolve(cwd, token))
+    .map((token) => path.resolve(cwd, token.replace(/^~(?=$|\/)/, os.homedir())))
   const left = AP.pending(opsRoot(input), [...new Set(files)], input)
   if (!left.length) return
   block(`el comando lee ${left.join(', ')}, que es una credencial: leerla la deja en el contexto de la sesión. `

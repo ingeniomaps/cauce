@@ -42,6 +42,10 @@ diseño — eso vive en el commit y en el código.
   resolver, y un `rm -r` que nombra la raíz ops, una raíz declarada o un ancestro de cualquiera de ellas frenan
   sin salida, como ya frenaban `/`, `~` y `..` escritos. Un `cd $(mktemp -d)` seguido de `rm -rf .` sigue
   pasando: cae en un temporal (caso 337).
+- **`secrets-shell` ve dos formas que la documentación nombra como cubiertas.** `rg -g '.env*' KEY`, con el comodín
+  antes del patrón, frena como ya frenaba con el patrón primero; y una identidad declarada en
+  `organization/secrets.json` con `~`, como la escribe el molde, frena también cuando se la nombra con `~` o
+  con `$HOME` expandido (caso 342).
 - **`ops claim` ya no reserva una tarea con una fila pendiente en `HUMAN_ACTIONS.md`.** `context` la salteaba y
   la ofrecía como la siguiente, pero `claim` no miraba la tabla: el runner se quedaba con una tarea que nadie
   podía avanzar y sin poder tomar otra. Ahora se niega nombrando la fila, y pasa cuando está resuelta (caso 336).

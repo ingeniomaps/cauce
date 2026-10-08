@@ -38,6 +38,18 @@ test('secrets y secrets-read frenan una credencial conocida o declarada, al escr
   // Sin declaración, un nombre que no parece credencial vuelve a ser un archivo cualquiera.
   fs.rmSync(path.join(root, 'organization', 'secrets.json'))
   assert.doesNotThrow(() => execute('secrets', at(identity)))
+
+  // Declarada con `~`, que es como el molde enseña a escribirla, se la nombra con `~` o entera y es la misma
+  // identidad; el guard comparaba sin expandir la virgulilla y la forma con `~` pasaba (caso 342). No se
+  // escribe nada bajo el home: el guard sólo compara rutas.
+  const home = `~/.config/cauce-prueba-${process.pid}/local-dev.env`
+  fs.writeFileSync(path.join(root, 'organization', 'secrets.json'), JSON.stringify({ schemaVersion: 1,
+    identities: { 'local-dev': { account: 'principal', source: 'file', file: home } } }))
+  const runs = (command) => ({ cwd: root, tool_input: { command } })
+  for (const command of [`cat ${home}`, `cat ${home.replace('~', require('node:os').homedir())}`]) {
+    blocked('secrets-shell', runs(command), /lee .*cauce-prueba.*credencial/)
+  }
+  assert.doesNotThrow(() => execute('secrets-shell', runs(`cat ~/.config/cauce-prueba-${process.pid}/otro.env`)))
 })
 
 test('guards de archivos protegen secretos y snapshots, pero permiten plantillas y drafts', () => {

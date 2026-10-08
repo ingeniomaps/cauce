@@ -51,7 +51,9 @@ function credential(input, raw) {
   // `local-dev.env` (caso 092). Se lee sólo si la declaración existe, para no cargarla en cada hook.
   const root = opsRoot(input)
   if (!root || !fs.existsSync(path.join(root, 'organization', 'secrets.json'))) return ''
-  return require('../secrets').identityFiles(root).includes(path.resolve(cwdOf(input), raw))
+  // Con `~` expandida: así la declara el molde y así la nombra quien la lee (caso 342).
+  const named = raw.replace(/^~(?=$|\/)/, os.homedir())
+  return require('../secrets').identityFiles(root).includes(path.resolve(cwdOf(input), named))
     ? 'es una identidad declarada en organization/secrets.json: la carga una persona.'
     : ''
 }
