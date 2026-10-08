@@ -13,7 +13,12 @@ const path = require('node:path')
 const { cwdOf, opsRoot, configOf, expandAssigned } = require('./input')
 const { MKTEMP } = require('./mktemp')
 
-// Un `cd $(mktemp -d)` cae en un temporal que no contiene nada de lo que se cuida.
+// Un `cd $(mktemp -d)` cae en un temporal que no contiene nada de lo que se cuida; un `cd` a una ruta absoluta
+// vuelve a dar base aunque la anterior no se haya resuelto. El verbo se busca detrás de lo que un shell admite
+// delante —asignaciones, `sudo`, `time`, un paréntesis—, igual que `test-evidence-shell`: `sudo rm -rf .` es
+// el mismo borrado (revisión del 337). Un glob se juzga por su carpeta: `rm -rf *` vacía el cwd como `rm -rf .`.
+const PREFIXES = new Set(['sudo', 'env', 'command', 'exec', 'time', 'nohup', 'nice', 'xargs'])
+const home = (raw) => raw.replace(/^~(?=$|\/)/, os.homedir())
 function removedDirectories(command, cwd) {
   const { cdTarget, positional, QUOTED_CD } = require('./shell')
   const found = []
@@ -21,12 +26,19 @@ function removedDirectories(command, cwd) {
   for (const segment of expandAssigned(command).replace(QUOTED_CD, '$1$3').split(/[;&\n]+|(?<!>)\|+/)) {
     const cd = segment.match(/^\s*cd(?:\s+(\$\([^)]*\)|\S+))?\s*$/)
     if (cd) {
-      base = MKTEMP.test(cd[1] || '') ? path.join(os.tmpdir(), 'mktemp') : base === null ? null : cdTarget(cd[1], base)
+      const to = cd[1] || ''
+      if (MKTEMP.test(to)) base = path.join(os.tmpdir(), 'mktemp')
+      else if (path.isAbsolute(home(to))) base = home(to)
+      else base = base === null ? null : cdTarget(to, base)
       continue
     }
-    const rm = segment.match(/^\s*rm\s+((?:-\S+\s+)*)(?:--\s+)?(.*)$/)
-    if (!rm || !/-\S*r/i.test(rm[1])) continue
-    for (const raw of positional(rm[2].replace(/(["'])([^"'\n]*)\1/g, '$2'))) found.push({ raw, base })
+    const words = segment.trim().replace(/^[({]+\s*|\s*[)}]+$/g, '').replace(/(["'])([^"'\n]*)\1/g, '$2')
+      .split(/\s+/)
+    while (words.length && (/^[A-Za-z_]\w*=/.test(words[0]) || PREFIXES.has(words[0]))) words.shift()
+    if (path.basename(words[0] || '') !== 'rm') continue
+    const flags = words.slice(1).filter((word) => word.startsWith('-') && word !== '--')
+    if (!flags.some((flag) => /^-[^-]*r/i.test(flag) || flag === '--recursive')) continue
+    for (const raw of positional(words.slice(1).join(' '))) found.push({ raw: raw.replace(/\/?\*$/, '') || '.', base })
   }
   return found
 }
@@ -40,11 +52,17 @@ function removesTheTree(input, command) {
   const kept = [cwd, ...(ops ? [ops] : []), ...roots.map((one) => path.resolve(ops, one.path))]
   for (const { raw, base } of removedDirectories(command, cwd)) {
     if (/[$`\u0000]/.test(raw)) continue
-    if (base === null && !path.isAbsolute(raw)) {
+    const named = home(raw)
+    // Sin base no se juzga una subcarpeta nombrada —`cd "$DIR" && rm -rf node_modules` es limpieza corriente—,
+    // sólo el árbol mismo: `.`, `..` y lo que cuelga de ellos. Con `X` vacío, `cd $X` es `cd`, que deja en la
+    // carpeta personal, y `rm -rf .` la borra.
+    if (base === null && !path.isAbsolute(named)) {
+      if (!/^\.\.?(?:\/|$)/.test(path.normalize(named) === '.' ? './' : named)) continue
       return `el comando hace \`cd\` a un destino que no se puede resolver acá y después borra ${raw}: con la `
-        + 'variable vacía el destino resuelto es el directorio actual (R23). Escribí la ruta absoluta.'
+        + 'variable vacía el `cd` deja en la carpeta personal y el borrado se la lleva (R23). Escribí la ruta '
+        + 'absoluta.'
     }
-    const target = path.resolve(base || '/', raw.replace(/^~(?=$|\/)/, os.homedir()))
+    const target = path.resolve(base || '/', named)
     const hit = kept.find((one) => one === target || one.startsWith(target + path.sep))
     if (!hit) continue
     const what = hit === cwd ? 'el directorio actual' : hit === ops ? 'la raíz ops' : `la raíz ${hit}`

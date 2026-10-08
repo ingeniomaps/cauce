@@ -381,7 +381,8 @@ test('rm -r sobre el directorio actual, la instancia o un cd que no se resuelve 
       `rm -rf ${path.join(root, 'apps', 'api')}`,
       `rm -rf ${path.dirname(root)}`, 'rm -rf apps/api', 'rm -rf ops/',
     ]) {
-      blocked('destructive', { cwd: root, tool_input: { command } }, /destino resuelto|catastrófico/)
+      blocked('destructive', { cwd: root, tool_input: { command } },
+        /destino resuelto|carpeta personal|catastrófico/)
     }
     for (const command of [
       'rm -rf dist', 'rm -rf ./node_modules', 'rm -rf apps/api/dist', 'cd apps/api && rm -rf build',
@@ -392,5 +393,21 @@ test('rm -r sobre el directorio actual, la instancia o un cd que no se resuelve 
   } finally {
     if (before === undefined) delete process.env.OPS_ROOT
     else process.env.OPS_ROOT = before
+  }
+})
+
+// Lo que la revisión del conjunto encontró en el 337: un prefijo o un subshell saltaban la regla del destino
+// resuelto —`sudo rm -rf .`—, un glob vaciaba el cwd sin nombrarlo —`rm -rf *`—, y un `cd` a una variable
+// frenaba cualquier borrado relativo después, aunque fuera una subcarpeta inocua.
+test('la regla del destino resuelto ve prefijos y globs, y el cd sin resolver frena sólo al borrar el árbol', () => {
+  const root = tempRoot('ops-hook-rm-formas-')
+  for (const command of ['sudo rm -rf .', '(rm -rf .)', 'time rm -rf .', 'X=1 rm -rf .', 'rm -rf ./*', 'rm -rf *',
+    'rm --recursive -f .',
+    'cd $X && rm -rf .', 'cd $X && rm -rf ./*', 'cd "$DIR" && rm -rf ..']) {
+    blocked('destructive', { cwd: root, tool_input: { command } }, /destino resuelto|carpeta personal|catastrófico/)
+  }
+  for (const command of ['cd "$DIR" && rm -rf node_modules', 'cd $X && cd /tmp/zz && rm -rf build', 'cd ~ && rm -rf x',
+    'cd $X && rm -rf ~/scratch/x', 'rm -rf dist/*', 'sudo rm -rf ./dist']) {
+    assert.doesNotThrow(() => execute('destructive', { cwd: root, tool_input: { command } }), command)
   }
 })

@@ -141,3 +141,17 @@ Cómo se supo que funciona:
   `rm -rf apps/api/dist`, `rm -rf /tmp/banco-123` y `cd $(mktemp -d) && rm -rf .` pasan. Antes del arreglo
   los tres primeros daban exit 0.
 
+### Segunda pasada, tras la revisión del conjunto
+
+Tres huecos y un exceso, reproducidos antes de tocarlos. La regla anclaba `rm` al principio del tramo, así
+que `sudo rm -rf .`, `(rm -rf .)` y `time rm -rf .` pasaban: el verbo se busca ahora detrás de asignaciones,
+prefijos y un paréntesis, como hace `test-evidence-shell`. `rm -rf *` y `rm -rf ./*` resolvían a `<cwd>/*`,
+que no es nada: un glob se juzga por su carpeta. Y el `cd` sin resolver frenaba cualquier borrado relativo
+después, también `cd "$DIR" && rm -rf node_modules`, que es limpieza corriente: sólo frena cuando lo que se
+borra es el árbol mismo —`.`, `..` y lo que cuelga de ellos—; un `cd` absoluto después del que no se resolvió
+vuelve a dar base, y `~` se expande antes de decidir si una ruta es absoluta. El mensaje decía que con la
+variable vacía el destino era el directorio actual, y es la carpeta personal: `cd $X` con `X` vacío es `cd`.
+Prueba nueva con nueve formas que frenan y cinco que pasan, en rojo antes; mutaciones —sin prefijos, sin
+glob— cada una en rojo; corrida real: `sudo rm -rf .`, `(rm -rf .)` y `rm -rf *` frenan, y `cd "$DIR" && rm
+-rf node_modules` pasa.
+
