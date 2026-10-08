@@ -14,6 +14,18 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.104.0] - 2026-10-07
+
+### Cambiado
+
+- **Las pruebas pasadas directo a un contenedor se frenan igual que las que van detrás de `sh -c`.** Desde
+  0.103.6, `docker run img sh -c 'npx jest'` pide los dos topes del contenedor o la cota del runner, y
+  `docker run img npx jest` pasaba sin nada: la forma más corta esquivaba el freno. Ahora el guard de workers
+  lee también el comando que el contenedor recibe, y `sudo`, `time` o `timeout <plazo>` delante de un runner
+  ya no lo esconden. **Qué hacer:** si lanzás pruebas así, agregá `--memory` y `--cpus` antes de la imagen, o
+  `--maxWorkers` al runner. `docker compose run` y `docker exec` no cambian (caso 329).
+- **Un comando de `boundedCommands` se reconoce con `sudo`, `time` o `timeout <plazo>` delante** (caso 329).
+
 ## [0.103.6] - 2026-10-07
 
 ### Cambiado
