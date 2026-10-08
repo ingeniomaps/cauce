@@ -238,8 +238,11 @@ const REVIEWED = { ...DECISION, required: [...DECISION.required, 'rules', 'criti
         // y encontrado bien. Sin el campo las dos iban al INBOX como propuestas: en una corrida real, dos de
         // las tres entradas eran «la revisión no encontró nada que corregir» (caso 262).
         required: [...DECISION.properties.concerns.items.required, 'ref', 'verified', 'proposes'],
+        // `fixable` es de la re-revisión: un bloqueante nuevo cuya corrección el revisor escribió entera compra
+        // una corrección más en vez de parar (caso 343). Opcional y cerrado por defecto: sin el campo, para.
         properties: { ...DECISION.properties.concerns.items.properties, decision: { type: 'boolean' },
-          ref: { type: 'string' }, verified: { type: 'boolean' }, proposes: { type: 'boolean' } },
+          ref: { type: 'string' }, verified: { type: 'boolean' }, proposes: { type: 'boolean' },
+          fixable: { type: 'boolean' } },
       } },
   } }
 // Un exit code dice que el test corrió, no que pruebe lo que la tarea prometió: un test que asercia de
@@ -504,6 +507,9 @@ const RULED = ' En rules nombrá, por su ruta, cada una de las reglas que rigen 
   + ' comprobar no manda a corregir, se registra. Y en cada hallazgo con blocking=false, proposes es true si'
   + ' propone algo que alguien podría hacer —una mejora, una prueba que falta, una deuda— y false si sólo deja'
   + ' constancia de algo que miraste y está bien: ésa queda en el cierre de la tarea y no va al INBOX.'
+  + ' Y marcá fixable=true sólo en el bloqueante comprobado cuya corrección escribiste entera en el'
+  + ' hallazgo —qué cambiar y por qué—, de modo que quien corrige no tenga nada que decidir: en la'
+  + ' re-revisión eso compra una corrección más en vez de parar. Ante la duda, no lo marques.'
 // También acompaña a todo prompt con schema REVIEWED, y es función porque las superficies se leen después.
 const SURFACED = () => ((planning && (planning.surfaces || []).length)
   ? ` En critical poné la superficie de esta lista que el diff toca, tal cual, o vacío si no toca ninguna: `
@@ -1485,7 +1491,8 @@ while (rounds++ < MAX_TASKS) {
     // Lo que esta pasada manda a corregir, con su regla al lado. Se guarda antes de la re-revisión, que
     // reasigna `review`: sin esto lo corregido no llegaba a `done/` y la misma falla corregida en diez
     // tareas no dejaba rastro en ninguna (caso 207).
-    const fixed = blockers(review)
+    // Se acumula por vuelta: desde el 343 puede haber dos, y `done/` registra las dos.
+    const fixed = [...blockers(review)]
     // Lo que esta pasada sospechó sin comprobar va al INBOX y no a corregir. Se guarda por lo mismo que
     // `fixed`: si la re-revisión no lo repite, sin esto no llegaba a ningún lado.
     const suspected = review.concerns.filter((one) => one.blocking && !one.decision && one.verified === false)
@@ -1507,20 +1514,34 @@ while (rounds++ < MAX_TASKS) {
       // acciones humanas seguía diciendo el número viejo y dos comentarios seguían contando los casos
       // anteriores —corrida `wf_99130468-2c4`, 2026-09-17, sobre un banco desechable—. Traerlos no
       // amplía el alcance: es terminar la corrección.
-      await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${blockers(review).join('; ')}. `
-        + 'Traé también lo que tu propia corrección deje desactualizado —un conteo, un comentario que '
-        + `describa la forma vieja, una fila que la enumere— y nada más que eso.${WHERE}`,
-        { label: 'review-fix' })
-      review = await run(`Volvé a revisar el diff corregido de ${task.id} contra su aceptación `
-        + `—${task.acceptance}—.${WHERE}${MANIFEST}${VERDICT}${RULED}${SURFACED()}`,
-        { schema: REVIEWED, label: 'review' })
-      if (!review) return halt('agent-unavailable', 'la re-revisión no devolvió resultado')
-      grounded(review)
-      const unprovenAgain = await uncheckedOnCritical(review)
-      if (unprovenAgain) return unprovenAgain
-      reviewDecisions.push(...review.concerns.filter((one) => one.decision))
-      if (review.verdict === 'bloqueado' || blockers(review).length) {
-        return halt('review-failed', named(review).join('; ') || 'sin condiciones nombradas')
+      //
+      // Y la vuelta ya no es una sola: una re-revisión `con-condiciones` cuyos bloqueantes son nuevos,
+      // comprobados y traen su corrección entera —`fixable`— compra una corrección más, con tope de dos por
+      // tarea. Medido sobre los diarios de esta máquina: 24 de 40 correcciones terminaban en `review-failed`
+      // con un bloqueante que la primera pasada no había visto, y en la corrida que originó el 343 lo que
+      // faltaba era una frase de un comentario. Lo que no declara `fixable`, y `bloqueado`, paran como antes.
+      const ROUNDS = 2
+      for (let round = 1; blockers(review).length; round += 1) {
+        await write(`Corregí sólo estos hallazgos con evidencia y actualizá el WIP: ${blockers(review).join('; ')}. `
+          + 'Traé también lo que tu propia corrección deje desactualizado —un conteo, un comentario que '
+          + `describa la forma vieja, una fila que la enumere— y nada más que eso.${WHERE}`,
+          { label: 'review-fix' })
+        review = await run(`Volvé a revisar el diff corregido de ${task.id} contra su aceptación `
+          + `—${task.acceptance}—.${WHERE}${MANIFEST}${VERDICT}${RULED}${SURFACED()}`,
+          { schema: REVIEWED, label: 'review' })
+        if (!review) return halt('agent-unavailable', 'la re-revisión no devolvió resultado')
+        grounded(review)
+        const unprovenAgain = await uncheckedOnCritical(review)
+        if (unprovenAgain) return unprovenAgain
+        reviewDecisions.push(...review.concerns.filter((one) => one.decision))
+        const again = review.concerns.filter((one) => one.blocking && !one.decision && one.verified !== false)
+        const buys = round < ROUNDS && review.verdict === 'con-condiciones'
+          && again.every((one) => one.fixable === true)
+        if (review.verdict === 'bloqueado' || (again.length && !buys)) {
+          return halt('review-failed', named(review).join('; ') || 'sin condiciones nombradas')
+        }
+        if (!again.length) break
+        fixed.push(...blockers(review))
       }
     }
     // Con reglas que rigen, aprobar sin nombrar contra cuáles es la misma falla que la de abajo en otro eje.

@@ -16,6 +16,16 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.105.0] - 2026-10-08
 
+### Cambiado
+
+- **La re-revisión de `autobuild` puede comprar una corrección más.** Review admitía una sola vuelta: si la
+  re-revisión traía cualquier bloqueante, la corrida paraba con `review-failed`, también cuando el hallazgo
+  era nuevo, estaba comprobado y el revisor había escrito la corrección entera —una frase de un comentario—.
+  Ahora un bloqueante así declara `fixable: true` y, con veredicto `con-condiciones`, compra una corrección y
+  una revisión más, con tope de dos correcciones por tarea; `bloqueado` y lo que no declara `fixable` paran
+  como antes. Las dos correcciones llegan a `done/`. Rige al reinstalar el runner, porque el workflow vive
+  ahí (caso 343).
+
 ### Corregido
 
 - **`verify` corre los gates de cada raíz declarada que el commit toca.** Buscaba el manifiesto sólo en la raíz
