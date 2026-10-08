@@ -1,0 +1,5 @@
+[
+  { "id": "P-1001", "customer": "Almacén Sur", "total": 1234.5, "createdAt": "2026-03-07T14:22:10Z" },
+  { "id": "P-1002", "customer": "Ferretería \"El Tornillo\"; sucursal 2", "total": 89, "createdAt": "2026-03-08T09:01:44Z" },
+  { "id": "P-1003", "customer": "Kiosco 24", "total": 0.1, "createdAt": "2026-12-31T23:59:59Z" }
+]
