@@ -23,6 +23,9 @@ diseño — eso vive en el commit y en el código.
   por defecto de `init` un commit que tocaba una regla del sistema, una ADR o el `SKILL.md` de un cargo pasaba
   sin preguntar. Ahora se juzgan relativas a la raíz ops, se lance el commit desde donde se lance; lo que se
   aprueba y se nombra sigue siendo la ruta del índice (caso 334).
+- **`ops claim` ya no reserva una tarea con una fila pendiente en `HUMAN_ACTIONS.md`.** `context` la salteaba y
+  la ofrecía como la siguiente, pero `claim` no miraba la tabla: el runner se quedaba con una tarea que nadie
+  podía avanzar y sin poder tomar otra. Ahora se niega nombrando la fila, y pasa cuando está resuelta (caso 336).
 
 ## [0.104.1] - 2026-10-08
 

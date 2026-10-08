@@ -372,3 +372,29 @@ test('runners dice quién tiene trabajo abierto, y calla cuando no hay', () => {
     + '  tests: A → make test\n  commit: abc1234 feat: d\n')
   assert.deepEqual(JSON.parse(run(['runners', dir, '--json']).stdout).map((one) => one.task), ['boton'])
 })
+
+// `context` saltea la tarea con una fila pendiente en HUMAN_ACTIONS y la ofrece como la siguiente; `claim`
+// no miraba la tabla y la reservaba igual, con lo que el runner quedaba con una tarea que nadie podía
+// avanzar y sin poder tomar otra (caso 336). Es el mismo desacuerdo entre los dos comandos que el 239
+// cerró para las líneas: lo que uno no ofrece, el otro no reserva.
+test('claim no reserva una tarea con acción humana pendiente, y sí cuando la fila se resolvió', () => {
+  const dir = planning('cauce-humana-')
+  const tabla = (estado) => fs.writeFileSync(path.join(dir, 'HUMAN_ACTIONS.md'), `# Acciones humanas
+
+| Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |
+|---|---|---|---|
+| dashboard | ${estado} | Ready | Elegir el proveedor de email y dejar la credencial en el entorno. |
+`)
+  tabla('pendiente')
+  const contexto = como('ana@acme.com', () => run(['context', dir]), '/w/ana')
+  assert.match(contexto.stdout, /^SKIP {3}dashboard/m, 'context la saltea')
+
+  const tomar = como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana')
+  assert.equal(tomar.status, 1, tomar.stdout)
+  assert.match(tomar.stderr, /dashboard espera una acción humana/)
+  assert.match(tomar.stderr, /Elegir el proveedor de email/, 'y dice cuál')
+  assert.equal(fs.existsSync(path.join(dir, 'claims', 'dashboard.md')), false, 'no quedó reservada')
+
+  tabla('resuelta 2026-10-08')
+  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana').status, 0)
+})

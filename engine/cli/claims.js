@@ -33,6 +33,12 @@ function claim(dir, slug, cli) {
   // bloquea la cola sin que nadie pueda avanzarla, y el runner que la tomó se queda sin poder tomar otra.
   const blocker = task.depends.find((dep) => !state.done.set.has(dep))
   if (blocker) return fail(`${slug} depende de ${blocker}, que todavía no está en DONE.`, REFUSED)
+  // Y lo mismo con una fila pendiente en HUMAN_ACTIONS, que es lo que `context` ya saltea (caso 336).
+  const waiting = ST.pendingHumanActions(root).find((row) => row.task === slug)
+  if (waiting) {
+    return fail(`${slug} espera una acción humana: ${waiting.action} Se toma cuando la fila esté resuelta.`,
+      REFUSED)
+  }
 
   const me = CL.owner(root)
   const from = CL.runner()
