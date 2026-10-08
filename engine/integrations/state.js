@@ -125,7 +125,10 @@ function serviceOf(item, config) {
     : 'Debe definirse un servicio único para la promoción.' }
 }
 
-function renderDraft(item, config, state = 'pending') {
+// `provider` es el nombre con que el registro conoce al adaptador: el borrador decía `jira` fuera quien
+// fuera, y un adaptador propio quedaba con un `remote.json` que decía `demo` al lado de un `draft.md` que
+// decía `jira` (caso 339).
+function renderDraft(item, config, state = 'pending', provider = 'jira') {
   // `serviceOf` tolera un item sin `components` ni `labels`: lo arma el adaptador, y uno propio —el README
   // invita a escribirlo— puede no traerlos. Sin campo la respuesta es la que el borrador ya sabe dar.
   const { service, problem } = serviceOf(item, config)
@@ -135,7 +138,7 @@ function renderDraft(item, config, state = 'pending') {
   if (problem) issues.push(problem)
   if (!issues.length) issues.push('Ninguno detectado automáticamente.')
   return `---
-provider: jira
+provider: ${provider}
 remote: ${item.key}
 type: ${item.type}
 state: ${state}
@@ -223,7 +226,7 @@ function reconcile(root, provider, operation, keys = []) {
     let draft = fs.readFileSync(draftFile, 'utf8')
     if (operation === 'reset') {
       const state = snapshot.sync.role === 'context' ? 'context' : 'pending'
-      draft = renderDraft(snapshot.item, snapshot.sync.config || {}, state)
+      draft = renderDraft(snapshot.item, snapshot.sync.config || {}, state, snapshot.provider || provider)
       snapshot.sync.base = remoteView(snapshot.item)
       snapshot.sync.baseAt = new Date().toISOString()
     } else if (operation === 'reconcile') {
@@ -234,7 +237,7 @@ function reconcile(root, provider, operation, keys = []) {
     }
     const canonicalState = snapshot.sync.role === 'context' ? 'context' : 'pending'
     snapshot.sync.draftBaseHash = sha256(
-      renderDraft(snapshot.item, snapshot.sync.config || {}, canonicalState),
+      renderDraft(snapshot.item, snapshot.sync.config || {}, canonicalState, snapshot.provider || provider),
     )
     snapshot.sync.draftChanged = sha256(draft) !== snapshot.sync.draftBaseHash
     F.atomicWrite(draftFile, draft)

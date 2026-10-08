@@ -28,6 +28,10 @@ diseño — eso vive en el commit y en el código.
   por defecto de `init` un commit que tocaba una regla del sistema, una ADR o el `SKILL.md` de un cargo pasaba
   sin preguntar. Ahora se juzgan relativas a la raíz ops, se lance el commit desde donde se lance; lo que se
   aprueba y se nombra sigue siendo la ruta del índice (caso 334).
+- **El staging de integraciones deja de mentir y de callar en tres bordes.** El borrador de un adaptador propio
+  lleva el nombre de su proveedor en `provider:` en vez de `jira` fijo; `integration promote` se niega con el
+  proveedor deshabilitado, igual que `sync`; y cuando el remoto cambia un draft curado que estaba `ready`, el
+  sync lo cuenta aparte —«bajaron de ready a pending»— y `check` lo avisa hasta que se reconcilie (caso 339).
 - **`ops claim` ya no reserva una tarea con una fila pendiente en `HUMAN_ACTIONS.md`.** `context` la salteaba y
   la ofrecía como la siguiente, pero `claim` no miraba la tabla: el runner se quedaba con una tarea que nadie
   podía avanzar y sin poder tomar otra. Ahora se niega nombrando la fila, y pasa cuando está resuelta (caso 336).

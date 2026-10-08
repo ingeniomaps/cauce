@@ -102,6 +102,10 @@ const INTEGRATION = {
       // desaparece se borra o queda marcado según tenga curación. Se nombra sólo cuando pasó, porque
       // en la corrida normal los dos son cero y anunciarlo cada vez es ruido.
       if (result.removed) console.log(`  − ${result.removed} sin curar se fueron del remoto y se borraron`)
+      if (result.demoted) {
+        console.log(`  ↓ ${result.demoted} curados bajaron de ready a pending porque el remoto cambió: `
+          + 'reconciliá y volvé a marcarlos')
+      }
       if (result.partial) console.log('  ↳ el payload no trajo todo (complete: false): no se borró nada de lo ausente')
       if (result.foreign) {
         console.log(`  ↳ ${result.foreign} de otra persona ya curados: siguen como candidatos y no se pisaron`)
