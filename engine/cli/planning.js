@@ -70,10 +70,18 @@ function evidence(dir, cli) {
     console.log(`  ${trace.criterion} → ${trace.artifact}  [${trace.verdict}]${nota ? ` — ${nota}` : ''}`)
   }
   if (!runs.length) console.log('GATES  (sin corridas registradas; `verify` todavía no corrió acá)')
+  else console.log(`GATES  ${runs.length === 1 ? 'la última corrida' : `las últimas ${runs.length} corridas`} `
+    + 'de `verify` en esta instancia:')
   for (const run of runs) console.log(`GATES  ${run.at}  ${run.gate} (exit ${run.status})`)
+  const last = EV.lastBefore(runs, entry.fecha)
+  if (last) {
+    console.log(`GATES  todas son anteriores al cierre de esta tarea: la más reciente es del ${last} y la `
+      + `tarea se cerró el ${entry.fecha}. Si la puerta de su commit no fue \`verify\`, acá no figura.`)
+  }
   // Un contraste que no dice qué no puede ver se lee como si lo hubiera visto todo.
-  console.log('Este contraste dice si el artefacto existe y qué gates corrieron al commitear. No dice '
-    + 'que la prueba nombrada haya corrido: eso depende del runner, y varios no la nombran al pasar.')
+  console.log('Este contraste dice si el artefacto existe y qué corrió `verify` en esta instancia: el registro '
+    + 'no dice de qué tarea ni de qué repositorio fue cada corrida. No dice que la prueba nombrada haya '
+    + 'corrido: eso depende del runner, y varios no la nombran al pasar.')
 }
 
 // Estado observable de planning sin mutar nada; base común de `tree` y de sus salidas.

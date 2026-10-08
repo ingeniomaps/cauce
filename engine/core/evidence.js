@@ -53,6 +53,21 @@ function runs(root) {
   } catch { return [] }
 }
 
+// El día de la corrida más reciente cuando todas son anteriores al cierre de una tarea, o vacío. El registro
+// no sabe de tareas —guarda las últimas corridas de la instancia—, así que esto es lo único que se puede
+// decir sin inventar (caso 332). Con dos días de margen, porque la fecha de cierre es local y sin hora y cada
+// corrida es un instante en UTC: con uno, un gate de ayer a la madrugada en una zona al este de UTC salía
+// como anterior.
+const MARGIN_MS = 2 * 86_400_000
+function lastBefore(all, closedOn) {
+  const closed = Date.parse(`${closedOn}T00:00:00Z`)
+  const times = all.map((one) => (typeof one.at === 'string' ? Date.parse(one.at) : NaN)).filter(Number.isFinite)
+  // Sin fecha no hay contra qué comparar: `closed` no es un número y ninguna corrida le queda antes.
+  if (!times.length) return ''
+  const last = times.reduce((a, b) => Math.max(a, b))
+  return last < closed - MARGIN_MS ? new Date(last).toISOString().slice(0, 10) : ''
+}
+
 // Los rastros de una línea `tests:`, ya partidos en criterio y artefacto. `n/a — razón` no rastrea
 // ninguno a propósito y sale de acá vacío, igual que en `contracts`.
 function traces(tests) {
@@ -252,4 +267,4 @@ function contrast(tests, roots, skip = []) {
   })
 }
 
-module.exports = { MAX_RUNS, record, runs, traces, contrast }
+module.exports = { MAX_RUNS, record, runs, lastBefore, traces, contrast }

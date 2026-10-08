@@ -333,3 +333,44 @@ test('evidence no encuentra en planning lo que la propia entrada escribió', () 
   assert.match(text.stdout,
     /\[encontrado\] — en el archivo: la suma de dos numeros; cita y no aparece: expect\(suma\(2, 3\)\)\.toBe\(5\)\n/)
 })
+
+// Caso 332. El registro guarda las últimas corridas de la máquina, no las de la tarea: lo que se imprime lo
+// dice, y avisa cuando ninguna puede ser de ella.
+test('evidence dice que los gates son los de la instancia, y avisa si son anteriores a la tarea', () => {
+  const ops = instancia('cauce-evidence-viejos-')
+  const log = path.join(ops, 'planning', '.verify-log')
+  const withRun = (at) => {
+    fs.writeFileSync(log, `${JSON.stringify({ at: '2026-08-30T09:00:00Z', gate: 'lint', status: 1 })}\n`
+      + `${JSON.stringify({ at, gate: 'test', status: 0 })}\n`)
+    return run(['evidence', path.join(ops, 'planning')]).stdout
+  }
+  const STALE = /todas son anteriores al cierre de esta tarea/
+
+  // La tarea se cerró el 2026-09-08.
+  const old = withRun('2026-09-01T10:00:00Z')
+  assert.match(old, /GATES {2}las últimas 2 corridas de `verify` en esta instancia/)
+  assert.match(old, /GATES {2}2026-09-01T10:00:00Z {2}test \(exit 0\)/)
+  assert.match(old, STALE)
+  assert.match(old, /la más reciente es del 2026-09-01/)
+  assert.match(withRun('2026-09-05T23:59:00Z'), STALE)
+  fs.writeFileSync(log, `${JSON.stringify({ at: '2026-09-08T10:00:00Z', gate: 'test', status: 0 })}\n`)
+  assert.match(run(['evidence', path.join(ops, 'planning')]).stdout, /GATES {2}la última corrida de `verify`/)
+
+  // Con dos días de margen: `fecha:` es local y el registro es UTC, y ayer a las 00:30 en UTC+14 es anteayer.
+  for (const at of ['2026-09-06T00:00:00Z', '2026-09-07T10:00:00Z', '2026-09-08T12:00:00Z', '2026-09-20T12:00:00Z']) {
+    assert.equal(STALE.test(withRun(at)), false, at)
+  }
+
+  // Y ya no se afirma que sean los del commit de la tarea.
+  assert.equal(old.includes('qué gates corrieron al commitear'), false)
+  assert.match(old, /no dice de qué tarea ni de qué repositorio/)
+
+  // Una corrida sin instante legible no cuenta como la más reciente.
+  fs.writeFileSync(log, `${JSON.stringify({ at: '2026-09-01T10:00:00Z', gate: 'test', status: 0 })}\n`
+    + `${JSON.stringify({ at: 2030, gate: 'lint', status: 0 })}\n${JSON.stringify({ gate: 'build', status: 0 })}\n`)
+  assert.match(run(['evidence', path.join(ops, 'planning')]).stdout, /la más reciente es del 2026-09-01/)
+
+  // Una entrada sin fecha no tiene contra qué comparar.
+  fs.writeFileSync(path.join(ops, 'planning', 'done', 'alta-de-cliente.md'), ENTRADA.replace(/^ {2}fecha:.*\n/m, ''))
+  assert.equal(STALE.test(withRun('2026-09-01T10:00:00Z')), false)
+})
