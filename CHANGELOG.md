@@ -35,6 +35,12 @@ diseño — eso vive en el commit y en el código.
   escritas antes, decide la prueba que la traza nombra —el último tramo detrás de `›`, o lo primero entre
   comillas— y lo demás que cite se dice al lado si no aparece. Es menos estricto que 0.103.6 con una prueba
   inventada: de cuarenta formas probadas marca veinticuatro y avisa en doce (caso 330).
+- **Un enlace simbólico ya no deja escribir fuera de las raíces.** Los dos guards de límites comparaban la
+  ruta como está escrita, y un enlace que vive adentro de una raíz y apunta afuera la dejaba cruzar. Ahora
+  miran dónde cae de verdad la escritura. Lo que se alcanza por un enlace y sigue siendo del proyecto no
+  cambia: la raíz declarada como enlace, un enlace interno, y lo que una línea de `ops line` enlaza desde su
+  instancia. **Qué hacer:** si escribís a propósito por un enlace hacia afuera —un paquete enlazado con `npm
+  link`, una carpeta compartida—, declarala en `writableOutsideRoots` (caso 317).
 - **R9 pide comparar antes y después cuando cambia quién hace algo, o cómo.** Mover un paso de lugar o
   reemplazar una implementación es una quita aunque el resultado «sea el mismo», y esa igualdad se sostiene
   con la salida de antes y la de después sobre el mismo caso, como condición de la aceptación. Es un párrafo

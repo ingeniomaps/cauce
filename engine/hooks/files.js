@@ -12,6 +12,8 @@ const {
   patchOf, filesOf, contentOf, cwdOf, block, configOf, opsRoot,
   writableRoots, outsideRoots, DECLARE_IT,
 } = require('./input')
+const { landing } = require('../core/files')
+const { beyond, reached } = require('./boundary')
 const AP = require('./approval')
 const CHAT = require('./chat')
 const { selfApproval } = require('./self-approval')
@@ -273,11 +275,10 @@ function workspaceBoundary(input) {
     const file = path.resolve(cwdOf(input), raw)
     if (runnerOwn(file)) continue
     // Lo mismo que en `shell-boundary`: la aprobación de la persona se juzga aunque no haya raíces.
-    const own = selfApproval(input, file)
+    const own = selfApproval(input, file) || selfApproval(input, landing(cwdOf(input), raw))
     if (own) block(own)
-    if (allowed && outsideRoots(file, allowed)) {
-      block(`${file} está fuera de las raíces declaradas en ops.config.json. ${DECLARE_IT}`)
-    }
+    const out = allowed && beyond(input, cwdOf(input), raw, allowed)
+    if (out) block(`${reached(out)} está fuera de las raíces declaradas en ops.config.json. ${DECLARE_IT}`)
   }
 }
 
