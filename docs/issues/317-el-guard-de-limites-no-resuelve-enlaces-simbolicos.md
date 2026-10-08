@@ -50,10 +50,19 @@ enlace. La forma habitual de cruzarlo no es maliciosa: es un monorepo con una ca
   monorepo, y en macOS el temporal, que es un enlace. Todo eso hoy pasa y podría empezar a frenar.
 - **El motor enlazado en un banco** del propio toolkit.
 - **La ruta que todavía no existe**: hay que resolver hasta el último tramo que sí está.
+- **Las líneas de trabajo.** `ops line` es el único lugar del motor que deja enlaces en una instancia: dentro
+  de la carpeta de la línea enlaza `node_modules`, las raíces de los servicios y las carpetas hermanas
+  (`engine/cli/lines.js`). Quien trabaja en una línea llega a un servicio por un enlace. Si el guard resuelve
+  la ruta real y las raíces no, la misma escritura se juzga distinto según se entre por la línea o por la
+  carpeta original. Es el riesgo principal de frenar de más y hay que probarlo con una línea armada.
+- **Una instancia sin líneas no tiene enlaces propios.** **Verificado** el 2026-10-07 con una instalación
+  nueva de 0.103.6 desde npm: fuera de `node_modules`, cero; `.claude/`, `CLAUDE.md` y `AGENTS.md` son
+  copias. Los que haya los puso el proyecto, así que cuánto pesa este caso depende de cada instancia.
 
 ## Qué habría que probar
 
 - Los tres casos de arriba, y cada enlace legítimo de la lista, con el guard instalado.
+- Una línea armada con `ops line`: escribir en un servicio entrando por la línea y por la carpeta original.
 - Una instancia real antes de publicar: es donde hay enlaces que un banco no tiene.
 
 ## Recomendación
