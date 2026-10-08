@@ -25,6 +25,7 @@ const { comments } = require('./comments')
 const { liveCommit } = require('./live-commit')
 const { aiSignature } = require('./ai-signature')
 const { testEvidenceShell } = require('./test-evidence-shell')
+const { governance } = require('./governance')
 
 function planningDrift(input) {
   const root = opsRoot(input)
@@ -66,7 +67,7 @@ const guards = {
   destructive: shell.destructive,
   'git-add': shell.gitAdd,
   dependencies: shell.dependencies,
-  governance: shell.governance,
+  governance,
   'live-commit': liveCommit,
   'ai-signature': aiSignature,
   verify,

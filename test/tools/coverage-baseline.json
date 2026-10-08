@@ -488,5 +488,10 @@
     "lines": 100,
     "branches": 97,
     "functions": 100
+  },
+  "engine/hooks/governance.js": {
+    "lines": 100,
+    "branches": 95,
+    "functions": 100
   }
 }
