@@ -42,9 +42,9 @@ diseño — eso vive en el commit y en el código.
   sabe sin adivinar: un solo `-p` o `--tmpdir=`. Las demás siguen frenando (caso 311).
 - **Un `grep` con una comilla escapada ya no se frena por lo que busca.** `grep -n "\"test\|jest" package.json`
   se frenaba como si ejecutara `jest`: los guards cortaban la cadena en la comilla escapada y leían el resto
-  como orden. Ahora leen las comillas como el shell. Hacia el otro lado se cierran dos formas que pasaban sin
-  que nadie las viera: lo que queda entre dos comillas escapadas sueltas, y el renglón que sigue a un
-  comentario con una comilla suelta (caso 312).
+  como orden. Ahora leen la comilla escapada y el comentario como el shell. Hacia el otro lado se cierran dos
+  formas que pasaban sin que nadie las viera: lo que queda entre dos comillas escapadas sueltas, y el renglón
+  que sigue a un comentario con una comilla suelta (caso 312).
 - **Un `mktemp` que no crea donde el guard creía ya no deja pasar lo que le sigue.** Sin `-d`, con `TMPDIR`
   asignado en el mismo comando, o con una plantilla sin ruta, el guard de límites juzgaba el temporal del
   sistema y la escritura caía en otra carpeta. Ahora el `cd` queda sin resolver y frena. `T=$(mktemp -d) &&
@@ -61,8 +61,8 @@ diseño — eso vive en el commit y en el código.
   una prueba inventada se encontraba en la propia entrada que la nombraba (caso 316).
 - **La entrada de `done/` ya no trae la ruta de tu máquina en lo que la revisión abrió.** El campo `review` va
   textual, y lo que el revisor declara haber abierto venía con rutas absolutas: el nombre de usuario y las
-  carpetas de quien corrió. Ahora cada ruta que cuelga de una raíz del proyecto llega relativa a ella. Lo
-  que el revisor escribió en prosa no se toca. **Qué hacer:** reinstalá el runner (caso 321).
+  carpetas de quien corrió. Ahora cada ruta que cuelga de una raíz del proyecto llega con el nombre de esa raíz
+  delante. Lo que el revisor escribió en prosa no se toca. **Qué hacer:** reinstalá el runner (caso 321).
 - **Cuando el planning queda en rojo al cerrar un turno, el freno dice qué se puede tocar.** El guard mostraba
   la salida de `check` y nada más, y la sesión la leía como algo a dejar en verde: en la entrada de otra
   tarea borró la condición que la traza cubría, porque era lo que rompía el formato. Ahora dice que se repara
