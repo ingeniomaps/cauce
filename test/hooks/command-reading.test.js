@@ -94,6 +94,8 @@ test('un cd a una variable que el propio comando asigna se resuelve, y el resto 
   const root = tempRoot('cauce-cd-var-')
   fs.mkdirSync(path.join(root, 'planning'))
   fs.mkdirSync(path.join(root, 'src'))
+  fs.mkdirSync(path.join(root, 'cerrada'), { mode: 0o555 })
+  fs.writeFileSync(path.join(root, 'correr.sh'), '', { mode: 0o755 })
   fs.writeFileSync(path.join(root, 'ops.config.json'),
     JSON.stringify({ workspaceRoots: [{ name: 'main', path: '.' }] }))
   const outside = path.join(os.homedir(), 'fuera-de-las-raices')
@@ -108,6 +110,13 @@ test('un cd a una variable que el propio comando asigna se resuelve, y el resto 
     `C=$(mktemp -d --tmpdir=${root} mut.XXXX) && cd $C && echo x > a.js`,
     `C=$(mktemp -d ${root}/src/mut.XXXX); cd $C; echo x > a.js`,
     `S=${root}/src; C=$(mktemp -d -q -p "$S" mut.XXXX) && cd $C && echo x > a.js`,
+    // La carpeta todavía no existe. Con `&&` da igual: si `mktemp` falla, la cadena se corta. Y sin `&&`
+    // alcanza con que un paso anterior la cree con `mkdir -p`, nombrándola (caso 327).
+    `T=$(mktemp -d -p ${root}/nueva) && cd $T && echo x > a.js`,
+    `git worktree add ${root}/nueva && T=$(mktemp -d -p ${root}/nueva) && cd $T && echo x > a.js`,
+    `mkdir -p ${root}/nueva\nT=$(mktemp -d -p ${root}/nueva)\ncd $T\necho x > a.js`,
+    `mkdir -p ${root}/nueva/sub; T=$(mktemp -d -p ${root}/nueva); cd $T; echo x > a.js`,
+    `S=${root}/nueva; mkdir -p "$S"; C=$(mktemp -d -p "$S" m.XXXX); cd $C; echo x > a.js`,
     // Un archivo temporal no es una carpeta, y escribirle a la variable no se juzga: no se sabe dónde cae.
     'T=$(mktemp); echo x > $T',
     // Con directorio propio, `TMPDIR` no decide nada; y leerlo no lo mueve.
@@ -119,10 +128,13 @@ test('un cd a una variable que el propio comando asigna se resuelve, y el resto 
   // Resuelta, se juzga por dónde cae: afuera frena como cualquier ruta de afuera.
   blocked('shell-boundary', { cwd: root, tool_input: { command: `d=${outside}; cd $d && echo x > a.js` } },
     /fuera de las raíces/)
-  // Y `mktemp` con directorio se juzga por ese directorio: afuera frena diciendo dónde, no por no saber.
+  // Y `mktemp` con directorio se juzga por ese directorio: afuera frena diciendo dónde, no por no saber. La
+  // carpeta de afuera no existe, así que sin `&&` ya no se sabe dónde cae lo que sigue (caso 327).
   for (const made of [`mktemp -d -p ${outside}`, `mktemp -d ${outside}/qa-XXXXXX`, `mktemp -d --tmpdir=${outside}`]) {
     blocked('shell-boundary', { cwd: root, tool_input: { command: `T=$(${made}) && cd $T && echo x > a.js` } },
       /fuera de las raíces/)
+    blocked('shell-boundary', { cwd: root, tool_input: { command: `T=$(${made}); cd $T; echo x > a.js` } },
+      /no se puede resolver/)
   }
   const unresolved = [
     'cd $NADIE && echo x > a.js',
@@ -145,6 +157,23 @@ test('un cd a una variable que el propio comando asigna se resuelve, y el resto 
     // Con la salida redirigida la variable queda vacía: la ruta del `>` no es dónde crea.
     `T=$(mktemp -d >${root}/log) && cd $T && echo x > a.js`,
     `T=${root}/src; cd '$T' && echo x > a.js`,
+    // Si `mktemp` falla, la variable queda vacía y el `cd` va a la carpeta personal. Sin `&&` que corte la
+    // cadena, la carpeta pedida tiene que estar, ser una carpeta y poder escribirse (caso 327).
+    `T=$(mktemp -d -p ${root}/no-existe); cd $T; echo x > a.js`,
+    `T=$(mktemp -d -p ${root}/no-existe)\ncd $T\necho x > a.js`,
+    `T=$(mktemp -d ${root}/no-existe/x.XXXX); cd $T; echo x > a.js`,
+    `T=$(mktemp -d --tmpdir=${root}/no-existe); cd $T; echo x > a.js`,
+    `T=$(mktemp -d -p ${root}/correr.sh); cd $T; echo x > a.js`,
+    ...(process.getuid() ? [`T=$(mktemp -d -p ${root}/cerrada); cd $T; echo x > a.js`] : []),
+    // Nombrar `mkdir` no alcanza: tiene que crear esa carpeta, y con `-p`.
+    `echo mkdir; T=$(mktemp -d -p ${root}/no-existe); cd $T; echo x > a.js`,
+    `mkdir -p ${root}/otra; T=$(mktemp -d -p ${root}/no-existe); cd $T; echo x > a.js`,
+    `mkdir -p ${root}/no-existe-tampoco; T=$(mktemp -d -p ${root}/no-existe); cd $T; echo x > a.js`,
+    `mkdir -p no-existe; T=$(mktemp -d -p ${path.resolve('no-existe')}); cd $T; echo x > a.js`,
+    `mkdir ${root}/no/existe; T=$(mktemp -d -p ${root}/no/existe); cd $T; echo x > a.js`,
+    // Una plantilla sin tres `X` la rechaza `mktemp`, esté o no la carpeta.
+    `T=$(mktemp -d ${root}/src/mut); cd $T; echo x > a.js`,
+    `T=$(mktemp -d -p ${root}/src mut.XX) && cd $T && echo x > a.js`,
     // Sin `-d` crea un archivo: el `cd` falla y la escritura cae donde se estaba (caso 318).
     `T=$(mktemp -p ${root}); cd $T; echo x > a.js`,
     'T=$(mktemp); cd $T; echo x > a.js',

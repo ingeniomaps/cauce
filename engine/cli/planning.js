@@ -31,6 +31,14 @@ const { fail, planningRoot, REFUSED, TODAY, USAGE } = require('./io')
 // puerta y por eso no vive en `check`: `check` juzga todo DONE, y el registro de gates es rodante —una
 // entrada de hace tres meses no tiene con qué cruzarse—. Acá se pregunta por una entrada, que es como
 // se cierra una tarea: se escribe la evidencia y se la mira contra el árbol y contra lo que corrió.
+// Qué se buscó en el archivo y qué de lo citado no apareció: sin eso un `encontrado` esconde que la traza
+// nombraba dos cosas y estaba una, o que sólo se comprobó el archivo.
+function found(trace) {
+  const seen = [...trace.names, ...trace.cited, ...trace.code].filter((one) => !trace.absent.includes(one))
+  return (seen.length ? `en el archivo: ${seen.join(', ')}` : 'se comprobó sólo el archivo')
+    + (trace.absent.length ? `; cita y no aparece: ${trace.absent.join(', ')}` : '')
+}
+
 function evidence(dir, cli) {
   const root = planningRoot(dir)
   const opsDir = path.join(root, '..')
@@ -58,8 +66,7 @@ function evidence(dir, cli) {
     const nota = trace.verdict === 'inbuscable'
       ? (roots.length ? 'describe la prueba en vez de nombrarla' : 'el proyecto no declara raíces de código')
       : trace.verdict === 'parcial' ? `el archivo existe; no aparece en él: ${trace.missing.join(', ')}`
-        : trace.verdict === 'encontrado' && trace.files?.length && !trace.names.length
-          ? 'se comprobó el archivo; el caso no viene entre comillas ni con ›' : ''
+        : trace.verdict === 'encontrado' && trace.files?.length ? found(trace) : ''
     console.log(`  ${trace.criterion} → ${trace.artifact}  [${trace.verdict}]${nota ? ` — ${nota}` : ''}`)
   }
   if (!runs.length) console.log('GATES  (sin corridas registradas; `verify` todavía no corrió acá)')

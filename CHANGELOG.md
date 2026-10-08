@@ -14,6 +14,44 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.104.0] - 2026-10-07
+
+### Cambiado
+
+- **Las pruebas pasadas directo a un contenedor se frenan igual que las que van detrás de `sh -c`.** Desde
+  0.103.6, `docker run img sh -c 'npx jest'` pide los dos topes del contenedor o la cota del runner, y
+  `docker run img npx jest` pasaba sin nada: la forma más corta esquivaba el freno. Ahora el guard de workers
+  lee también el comando que el contenedor recibe, y `sudo`, `time` o `timeout <plazo>` delante de un runner
+  ya no lo esconden. **Qué hacer:** si lanzás pruebas así, agregá `--memory` y `--cpus` antes de la imagen, o
+  `--maxWorkers` al runner. `docker compose run` y `docker exec` no cambian (caso 329).
+- **Un comando de `boundedCommands` se reconoce con `sudo`, `time` o `timeout <plazo>` delante** (caso 329).
+- **Cada prueba que `autobuild` anota en `tests:` lleva su archivo y su nombre en una forma fija.** Antes la
+  redactaba un agente, y `ops evidence` no podía saber dónde terminaba el nombre y empezaba la aclaración: en
+  una instancia real marcó `parcial` seis de diez trazas que decían la verdad. Ahora quien verifica da el
+  archivo, el nombre de la prueba y la aclaración por separado, y el recorrido arma `archivo › «nombre» —
+  aclaración`. `ops evidence` lee esa forma tal cual, y te muestra qué buscó. **Qué hacer:** reinstalá el
+  runner. Las entradas ya escritas no cambian, y `check` las sigue aceptando (caso 331).
+- **`ops evidence` ya no marca `parcial` una traza por lo que cita después del nombre.** En las entradas
+  escritas antes, decide la prueba que la traza nombra —el último tramo detrás de `›`, o lo primero entre
+  comillas— y lo demás que cite se dice al lado si no aparece. Es menos estricto que 0.103.6 con una prueba
+  inventada: de cuarenta formas probadas marca veinticuatro, avisa en doce y deja pasar cuatro (caso 330).
+- **Un enlace simbólico ya no deja escribir fuera de las raíces.** Los dos guards de límites comparaban la
+  ruta como está escrita, y un enlace que vive adentro de una raíz y apunta afuera la dejaba cruzar. Ahora
+  miran dónde cae de verdad la escritura. Lo que se alcanza por un enlace y sigue siendo del proyecto no
+  cambia: la raíz declarada como enlace, un enlace interno, y lo que una línea de `ops line` enlaza desde su
+  instancia. **Qué hacer:** si escribís a propósito por un enlace hacia afuera —un paquete enlazado con `npm
+  link`, una carpeta compartida—, declarala en `writableOutsideRoots` (caso 317).
+- **Un `mktemp -d` que puede fallar ya no se da por resuelto si lo que sigue no depende de él.** Con
+  `T=$(mktemp -d -p <carpeta>); cd $T; …`, si `mktemp` falla el `cd` va a tu carpeta personal y lo que sigue
+  se escribe ahí. Ahora el guard de límites lo frena cuando la carpeta no existe, no se puede escribir o la
+  plantilla no trae tres `X`. **Qué hacer:** nada si uniste los pasos con `&&`, si la carpeta ya está o si la
+  creás antes con `mkdir -p` y su ruta completa. Si la crea otra cosa —`install -d`, `cp -r`—, uní los pasos
+  con `&&` (caso 327).
+- **R9 pide comparar antes y después cuando cambia quién hace algo, o cómo.** Mover un paso de lugar o
+  reemplazar una implementación es una quita aunque el resultado «sea el mismo», y esa igualdad se sostiene
+  con la salida de antes y la de después sobre el mismo caso, como condición de la aceptación. Es un párrafo
+  más en una regla que ya tenías: el bloque que carga cada agente pasa de 51,7 a 52,3 KB (caso 324).
+
 ## [0.103.6] - 2026-10-07
 
 ### Cambiado

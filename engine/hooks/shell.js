@@ -16,6 +16,8 @@ const {
   commandOf, cwdOf, block, isCommit, stagedForCommit, writableRoots, outsideRoots, DECLARE_IT, unquoted, opsRoot,
   withoutGitGlobals, gitDirectory, owns, asRun, expandAssigned,
 } = require('./input')
+const { landing } = require('../core/files')
+const { beyond, reached, real } = require('./boundary')
 const AP = require('./approval')
 const CHAT = require('./chat')
 const { publish } = require('./push')
@@ -366,7 +368,10 @@ function writeTargets(command) {
 // Los destinos que no son de nadie y aparecen en cualquier comando legítimo: los descriptores del
 // sistema y el temporal, que es donde el propio runner deja lo que no va al repositorio. Sin esta lista
 // el guard frena `> /dev/null 2>&1`, y lo primero que hace quien lo sufre es apagarlo entero.
-const NEUTRAL = [/^\/dev\/(?:null|stdout|stderr|tty|fd\/)/, new RegExp(`^${os.tmpdir()}(?:/|$)`)]
+// El temporal se juzga por dónde cae la escritura y no por cómo está escrita: un enlace que vive ahí y apunta
+// afuera no es el temporal.
+const DEVICES = /^\/dev\/(?:null|stdout|stderr|tty|fd\/)/
+const TEMP = new RegExp(`^${real(os.tmpdir())}(?:/|$)`)
 
 // A dónde deja parado un `cd`. `null` significa que no se sabe, que no es lo mismo que la raíz: un
 // destino con variable o un `cd -` dependen de un estado que este proceso no tiene.
@@ -420,12 +425,13 @@ function shellBoundary(input) {
     const file = path.resolve(base || '/', raw)
     // El canal por el que la persona aprueba no es un destino más: se juzga aunque no haya raíces
     // declaradas y aunque caiga en el temporal, que el resto de este guard deja pasar (caso 098).
-    const own = selfApprovalShell(input, file)
+    const lands = landing(base || '/', raw)
+    const own = selfApprovalShell(input, file) || selfApprovalShell(input, lands)
     if (own) block(own)
-    if (!allowed || NEUTRAL.some((pattern) => pattern.test(file))) continue
-    if (outsideRoots(file, allowed)) {
-      block(`el comando escribe en ${file}, fuera de las raíces declaradas en ops.config.json. ${DECLARE_IT}`)
-    }
+    if (!allowed || DEVICES.test(file) || TEMP.test(lands)) continue
+    const out = beyond(input, base || '/', raw, allowed)
+    const where = out && `${reached(out)}, fuera de las raíces declaradas en ops.config.json`
+    if (out) block(`el comando escribe en ${where}. ${DECLARE_IT}`)
   }
 }
 

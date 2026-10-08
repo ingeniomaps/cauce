@@ -156,6 +156,8 @@ test('una traza con archivo y nombre de caso se contrasta por sus partes', () =>
     ["'la suma de dos numeros'", 'encontrado'],
     ["no-existe.test.js — 'la suma de dos numeros'", 'encontrado'],
     ["'un caso que no existe'", 'ausente'],
+    ['`la suma de dos numeros`', 'encontrado'],
+    ['`un caso que no existe`', 'ausente'],
     ["'la suma de dos numeros' y 'un caso que no existe'", 'ausente'],
     ['la suma de dos numeros', 'inbuscable'],
     ['corre en node.js sin errores', 'inbuscable'],
@@ -168,10 +170,142 @@ test('una traza con archivo y nombre de caso se contrasta por sus partes', () =>
   assert.equal(one('TestQueNoExiste').verdict, 'ausente')
   assert.equal(EV.contrast("A → app/test/suma.test.js — 'la suma de dos numeros'", [])[0].verdict, 'inbuscable')
   // Las partes viajan, para que quien lee sepa qué se buscó y qué faltó.
-  const partial = one("app/test/suma.test.js › suma › 'no existe' y 'tampoco'")
+  const partial = one("app/test/suma.test.js — 'la suma de dos numeros', 'no existe' y 'tampoco'")
   assert.deepEqual([partial.files, partial.names, partial.missing],
-    [['app/test/suma.test.js'], ['no existe', 'tampoco'], ['no existe', 'tampoco']])
+    [['app/test/suma.test.js'], ['la suma de dos numeros', 'no existe', 'tampoco'], ['no existe', 'tampoco']])
   assert.deepEqual(one('app/test/suma.test.js › suma › falta uno').missing, ['falta uno'])
+})
+
+// Caso 330. Una corrida real nombra la prueba y sigue en prosa, con código entre backticks y salidas entre
+// comillas. Decide la prueba —el último tramo, o lo primero entre comillas—, y lo demás que la traza cite se
+// dice al lado si no aparece. Las formas son las de dos entradas de una instancia, con los nombres cambiados,
+// más las que dos revisiones encontraron mal leídas. Cada fila: la traza, el veredicto, la prueba que se
+// buscó, y lo que faltó (en `parcial`) o lo citado que no apareció (en `encontrado`).
+test('decide la prueba que la traza nombra, y lo demás que cite se dice al lado', () => {
+  const EV = require('../../engine/core/evidence')
+  const root = tempRoot('cauce-evidence-prosa-')
+  const write = (file, text) => {
+    fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true })
+    fs.writeFileSync(path.join(root, file), text)
+  }
+  write('api/src/pedidos/pedidos.service.spec.ts', "describe('PedidosService.list', () => {\n"
+    + "  it('summary y args salen del pedido', () => {})\n  it('toolName es el name de su pedido', () => {})\n"
+    + "  it('crea', () => {})\n  it('renderiza `toolName` bien', () => {})\n})\n")
+  write('api/test/core.describe.ts', "it('el listado trae la acción y no cruza cuentas', async () => {})\n")
+  write('api/test/api.e2e-spec.ts', "import './core.describe'\n")
+  const one = (artifact) => EV.contrast(`A → ${artifact}`, [root])[0]
+  const F = 'src/pedidos/pedidos.service.spec.ts'
+  const LIST = 'PedidosService.list'
+  const SUMMARY = 'summary y args salen del pedido'
+  const LISTING = 'el listado trae la acción y no cruza cuentas'
+
+  for (const [artifact, verdict, names, rest = []] of [
+    // La prueba existe: lo que sigue es aclaración, y lo que cite sin estar se dice al lado.
+    [`${F} › ${LIST} › '${SUMMARY}`, 'encontrado', [SUMMARY]],
+    [`${F} › ${LIST} › 'toolName es el name de su pedido' (d1→t1, en orden) — criterio: (2) \`toolName\``,
+      'encontrado',
+      ['toolName es el name de su pedido']],
+    [`test/core.describe.ts › «${LISTING}», pendiente de CI y no verde: sólo en CI`, 'encontrado', [LISTING]],
+    [`api/test/core.describe.ts › “${LISTING}”: \`expect(a).toEqual({ b: 1 })\``, 'encontrado', [LISTING],
+      ['expect(a).toEqual({ b: 1 })']],
+    [`${F} › ${LIST}, mutación corrida en copia: C1 falla con \`Expected: "80" / Received: null\``,
+      'encontrado', [LIST],
+      ['Expected: "80" / Received: null']],
+    [`${F} › describe ${LIST} — nota (detalle)`, 'encontrado', [LIST]],
+    [`${F} › ${LIST} (los dos casos)`, 'encontrado', [LIST]],
+    [`${F} › **${LIST}** › \`${SUMMARY}\``, 'encontrado', [SUMMARY]],
+    [`${F} › ${LIST} › 'renderiza \`toolName\` bien'`, 'encontrado', ['renderiza `toolName` bien']],
+    // Un nombre entre comillas va entero, también con un paréntesis o una raya adentro.
+    [`${F} › ${LIST} › 'crea (paginada) — bien'`, 'parcial', ['crea (paginada) — bien'], ['crea (paginada) — bien']],
+    [`${F} › ${LIST} › 'crea' — pasa (antes: «TypeError: x is not a function»)`, 'encontrado', ['crea'],
+      ['TypeError: x is not a function']],
+    [`${F} › ${LIST} › 'crea' — falla con "Cannot read properties"`,
+      'encontrado', ['crea'], ['Cannot read properties']],
+    [`${F} — '${SUMMARY}' más 'un caso inventado'`, 'encontrado', [SUMMARY], ['un caso inventado']],
+    [`${F} › OtroDescribe › 'crea'`, 'encontrado', ['crea'], ['OtroDescribe']],
+    [`${F} › ${LIST}: nota sin comillas`, 'encontrado', [LIST]],
+    [`${F} — \`crea\` y \`inventado\``, 'encontrado', [], ['inventado']],
+    // Lo que acompaña al archivo, o va delante del nombre en su tramo, no es la prueba.
+    [`npx jest ${F} › ${LIST} › 'crea'`, 'encontrado', ['crea']],
+    [`${F} (nuevo) › ${LIST} › 'crea'`, 'encontrado', ['crea']],
+    [`${F} › ${LIST} › caso 'crea'`, 'encontrado', ['crea']],
+    [`${F} › ${LIST} › nuevo: 'crea'`, 'encontrado', ['crea']],
+    [`${F} › describe("${LIST}") › it("crea")`, 'encontrado', ['crea']],
+    [`${F} › ${LIST} > 'crea'`, 'encontrado', ['crea']],
+    // Un separador adentro de las comillas es parte del nombre.
+    [`${F} > ${LIST} > "toolName es el name de su pedido"`, 'encontrado', ['toolName es el name de su pedido']],
+    [`${F} > ${LIST} > "un caso > 0 inventado"`, 'parcial', ['un caso > 0 inventado'], ['un caso > 0 inventado']],
+    // `>` en una aclaración es «mayor que», no un tramo.
+    [`${F} '${SUMMARY}' — con x > 3 falla`, 'encontrado', [SUMMARY]],
+    // La que empieza en prosa nombra un archivo: lo que cita se dice, y no decide.
+    ['mutación observada en la copia: api/test/core.describe.ts:728 «expected 200 "OK", got 404 "Not Found"», exit 1',
+      'encontrado', [], ['expected 200 "OK", got 404 "Not Found"']],
+    ['api/test/api.e2e-spec.ts importa (línea 1) e invoca api/test/core.describe.ts, donde viven los casos',
+      'encontrado', []],
+    // Y la prueba que no existe no pasa por buena, la escriba como la escriba.
+    ['test/core.describe.ts › «un caso que no existe»: `expect(x).toBe(1)`', 'parcial', ['un caso que no existe'],
+      ['un caso que no existe']],
+    [`${F} › ${LIST} › 'un caso inventado' (nota)`, 'parcial', ['un caso inventado'], ['un caso inventado']],
+    [`${F} › ${LIST}: 'un caso inventado'`, 'parcial', ['un caso inventado'], ['un caso inventado']],
+    [`${F} › OtroService.list, nota`, 'parcial', ['OtroService.list'], ['OtroService.list']],
+    [`${F} › describe: ServicioInventado`, 'parcial', ['ServicioInventado'], ['ServicioInventado']],
+    [`${F} › C1: caso inventado`, 'parcial', ['C1: caso inventado'], ['C1: caso inventado']],
+    [`${F} › ${LIST} › 'xy'`, 'parcial', ['xy'], ['xy']],
+    ['test/core.describe.ts — «un caso que no existe», pendiente', 'parcial', ['un caso que no existe'],
+      ['un caso que no existe']],
+    ['«un caso que no existe» en test/core.describe.ts',
+      'parcial', ['un caso que no existe'], ['un caso que no existe']],
+    [`${F} -t "un caso inventado"`, 'parcial', ['un caso inventado'], ['un caso inventado']],
+    [`${F} › caso “un caso inventado”`, 'parcial', ['un caso inventado'], ['un caso inventado']],
+    [`${F} — caso 'un caso inventado'`, 'parcial', ['un caso inventado'], ['un caso inventado']],
+    [`* ${F} — 'un caso inventado'`, 'parcial', ['un caso inventado'], ['un caso inventado']],
+    [`${F} — suite > un caso inventado`, 'parcial', ['un caso inventado'], ['un caso inventado']],
+    // Sólo código, y nada de él en el archivo: era lo único que la traza daba para buscar.
+    [`${F} — \`un caso inventado\``, 'parcial', [], ['un caso inventado']],
+  ]) {
+    const got = one(artifact)
+    assert.deepEqual([got.verdict, got.names, got.missing || got.absent], [verdict, names, rest], artifact)
+  }
+})
+
+// Caso 331. La traza que arma el recorrido tiene una forma fija y se lee tal cual: el archivo, el nombre
+// entre «», y de la aclaración nada. Es lo que saca de este contraste la parte que adivinaba.
+test('la traza que arma el recorrido se lee por su forma, sin mirar la aclaración', () => {
+  const EV = require('../../engine/core/evidence')
+  const root = tempRoot('cauce-evidence-armada-')
+  fs.mkdirSync(path.join(root, 'app', 'test'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'app', 'test', 'resta.test.js'),
+    "test('la resta: el primero menos el segundo', () => {})\ntest('crea', () => {})\n"
+    + "test('uno; dos  «tres» cuatro', () => {})\ntest('alfa «beta» gama', () => {})\n")
+  const one = (artifact) => EV.contrast(`A → ${artifact}`, [root])[0]
+  const F = 'test/resta.test.js'
+  const NAME = 'la resta: el primero menos el segundo'
+
+  for (const [artifact, verdict, names, rest] of [
+    [`${F} › «${NAME}» — criterio: resta(a, b) devuelve a - b`, 'encontrado', [NAME], []],
+    [`app/${F} › «${NAME}»`, 'encontrado', [NAME], []],
+    [`./${F}:2 › «crea» — escrita a mano, con su línea`, 'encontrado', ['crea'], []],
+    // La aclaración no se mira: lo que cite, exista o no, no cambia nada ni se informa.
+    [`${F} › «crea» — falla con 'un caso inventado' y \`expect(x)\` · criterio: «otro» › 'más'`,
+      'encontrado', ['crea'], []],
+    // El nombre va entero, con lo que traiga adentro.
+    [`${F} › «la resta: el primero» — criterio: x`, 'encontrado', ['la resta: el primero'], []],
+    [`${F} › «la resta — el primero (menos) 'el' segundo» — criterio: x`, 'parcial',
+      ["la resta — el primero (menos) 'el' segundo"], ["la resta — el primero (menos) 'el' segundo"]],
+    // El nombre viaja sin `;`, sin dobles espacios y sin `»`: se compara con el archivo leído igual.
+    [`${F} › «uno, dos «tres" cuatro» — criterio: x`, 'encontrado', ['uno, dos «tres" cuatro'], []],
+    // Una traza escrita a mano, sin la forma, se compara con el archivo tal cual está.
+    [`${F} — 'alfa «beta» gama'`, 'encontrado', ['alfa «beta» gama'], []],
+    // La prueba renombrada o inventada, y el archivo que no está.
+    [`${F} › «la resta de dos numeros» — criterio: x`,
+      'parcial', ['la resta de dos numeros'], ['la resta de dos numeros']],
+    [`test/otra.test.js › «${NAME}» — criterio: x`, 'ausente', [NAME], undefined],
+    // Sin archivo, lo nombrado no es una prueba que se pueda ir a buscar.
+    ['«lectura de docs/alta.md» — no hay prueba que lo ejecute · criterio: la guía lo nombra', 'inbuscable'],
+  ]) {
+    const got = one(artifact)
+    assert.deepEqual([got.verdict, got.names, got.missing || got.absent], [verdict, names, rest], artifact)
+  }
 })
 
 // La raíz por defecto de una instancia contiene su propio `planning/`. Sin sacarlo del recorrido, la entrada
@@ -188,11 +322,14 @@ test('evidence no encuentra en planning lo que la propia entrada escribió', () 
     + "  tests: C1 → 'un caso que no existe en ningun lado'; C2 → TestInventadoXyz; "
     + "C3 → src/test/suma.test.js — 'la suma de dos numeros';"
     + "C4 → src/test/suma.test.js — 'la suma de dos numeros', 'otro' y 'más'; "
-    + 'C5 → node --test src/test/suma.test.js\n')
+    + 'C5 → node --test src/test/suma.test.js; '
+    + "C6 → src/test/suma.test.js › 'la suma de dos numeros': `expect(suma(2, 3)).toBe(5)`\n")
   const text = run(['evidence', path.join(root, 'planning')])
   assert.match(text.stdout, /'un caso que no existe en ningun lado' {2}\[ausente\]\n/)
   assert.match(text.stdout, /TestInventadoXyz {2}\[ausente\]\n/)
-  assert.match(text.stdout, /'la suma de dos numeros' {2}\[encontrado\]\n/)
+  assert.match(text.stdout, /'la suma de dos numeros' {2}\[encontrado\] — en el archivo: la suma de dos numeros\n/)
   assert.match(text.stdout, /'otro' y 'más' {2}\[parcial\] — el archivo existe; no aparece en él: otro, más\n/)
-  assert.match(text.stdout, /suma\.test\.js {2}\[encontrado\] — se comprobó el archivo; el caso no viene entre/)
+  assert.match(text.stdout, /suma\.test\.js {2}\[encontrado\] — se comprobó sólo el archivo\n/)
+  assert.match(text.stdout,
+    /\[encontrado\] — en el archivo: la suma de dos numeros; cita y no aparece: expect\(suma\(2, 3\)\)\.toBe\(5\)\n/)
 })

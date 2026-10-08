@@ -170,6 +170,54 @@ test('un runner dentro de un contenedor con tope de memoria y de CPU no se frena
   ]) blocked('test-workers', run(root, command), /sin cota de workers/)
 })
 
+// Caso 329. El runner que un contenedor recibe como su comando, sin `sh -c`, no estaba en posición de comando:
+// la forma más corta pasaba sin ningún tope y la otra frenaba. Se le pide lo mismo que a la otra.
+test('un runner pasado directo a un contenedor se juzga como el que va detrás de sh -c', () => {
+  const root = pushRoot('cauce-workers-directo-')
+  for (const command of [
+    'docker run --rm node:24 npx jest',
+    'docker run --rm -v "$PWD":/app -w /app node:24 jest --config e2e.json',
+    'docker run --rm node:24 pnpm exec vitest run', 'podman run --rm node:24 yarn jest',
+    'docker run --rm node:24 pnpm vitest', 'docker run --rm node:24 bunx jest',
+    'docker run --rm node:24 ./node_modules/.bin/jest', 'sudo docker run --rm node:24 npx jest',
+    'cd api && time docker run --rm node:24 npx jest', 'CI=1 /usr/bin/docker run --rm node:24 npx jest',
+    'docker run --rm \\\n  -v "$(pwd)":/app \\\n  node:24 npx jest', 'echo listo; docker run node:24 npx jest',
+    // Un separador adentro de una opción entrecomillada no corta el comando del contenedor.
+    'docker run --rm -e "A=b; c" node:24 npx jest',
+    // Con un solo tope, o con los topes después de la imagen, el contenedor no está acotado.
+    'docker run --rm --memory 4g node:24 npx jest', 'docker run --rm node:24 npx jest --memory 4g --cpus 2',
+    // Y `sudo` o `time` delante de un runner suelto no lo esconden.
+    'time npx jest', 'sudo npx vitest run', 'sudo time npx jest', 'timeout 300 npx jest',
+    'time CI=1 docker run --rm node:24 npx jest', 'timeout 10m sudo docker run --rm node:24 npx jest',
+    // Una sustitución en una opción es una sola palabra, y el paréntesis de un subshell no es del runner.
+    'docker run --rm -u $(id -u) -v $(pwd):/app -w /app node:24 npx jest',
+    '(docker run --rm node:24 npx jest)', 'out=$(docker run --rm node:24 npx jest)',
+    'out=$(podman run --rm node:24 yarn jest)', 'docker run --rm -u $(id -u $(whoami)) node:24 npx jest',
+    // El programa de `--entrypoint` es el comando del contenedor.
+    'docker run --rm --entrypoint jest node:24', 'docker run --entrypoint=vitest --rm node:24 run',
+  ]) blocked('test-workers', run(root, command), /sin cota de workers[^]*--memory y --cpus antes de la imagen/)
+  for (const command of [
+    'docker run --rm --memory 4g --cpus 2 node:24 npx jest', 'sudo podman run -m 1g --cpus 1 node:24 yarn jest',
+    'docker run --rm node:24 npx jest --maxWorkers=2', 'docker run --rm node:24 npx vitest run --no-file-parallelism',
+    'docker run --rm node:24 npx jest --version',
+    // `jest` en otro lugar que el comando del contenedor no es correrlo.
+    'docker run --rm jest', 'docker run --rm acme/jest-runner:1 npm test', 'docker run --rm node:24 echo jest',
+    'docker run --rm node:24 npm test', 'docker run --rm --name jest -e TOOL=jest node:24 node server.js',
+    'docker build -t jest .', 'docker run --rm node:24 npx tsc jest', 'docker run --rm node:24 pnpm exec tsc',
+    'docker run --rm -e "A=b npx jest" node:24 node server.js', 'docker images | grep jest',
+    // Lo que no es un `docker run`, aunque empiece igual o esté citado, no se juzga ni rompe el guard.
+    'docker run-tests img npx jest', 'docker run>log', '(docker run)', 'echo docker run img npx jest',
+    '# antes: sh -c "docker run node npm test"\ndocker run --rm node:24 npm test',
+    'ls # bash -c "docker run img npx jest"',
+    // Con `--entrypoint`, lo que sigue a la imagen son argumentos de ese programa.
+    'docker run --rm --entrypoint which node:24 jest', 'docker run --entrypoint=ls --rm node:24 vitest',
+    // Una sustitución anidada, o un paréntesis escapado, no cortan el comando antes de su cota.
+    'docker run --rm node:24 npx jest --findRelatedTests $(git diff --name-only $(git merge-base HEAD main)) -w 2',
+    'docker run --rm node:24 npx jest -t foo\\(bar\\) --runInBand',
+    'timeout 300 docker run --rm --memory 4g --cpus 2 node:24 npx jest',
+  ]) assert.doesNotThrow(() => execute('test-workers', run(root, command)), command)
+})
+
 // Caso 291. Un runner lanzado con el envoltorio del proyecto corre dentro de un contenedor con memoria y CPU
 // acotadas: no puede tirar la máquina, que es lo único que este guard cuida. Lo declara el proyecto, y vale
 // para lo que ese comando lanza y para nada más del mismo renglón.
@@ -185,15 +233,24 @@ test('un runner lanzado con un comando que el proyecto declaró acotado no se fr
     'acme-run.sh -C web sh -c "npx vitest run"',
     // El segundo comando real: el runner va después de un separador, pero adentro de las comillas.
     "acme-run.sh -C api sh -c 'pnpm exec tsc --noEmit; pnpm lint; pnpm exec jest src/decisions'",
+    // Con `sudo` o `time` delante sigue siendo ese comando (caso 329).
+    `sudo ${inside}`, `time CI=1 scripts/${inside}`, `sudo time ${inside}`, `timeout 600 ${inside}`,
   ]) assert.doesNotThrow(() => execute('test-workers', run(root, command)), command)
   for (const command of [
     'npx jest', 'jest src/', "otro-run.sh -C api sh -c 'npx jest'",
     // Lo acotado es ese comando: lo que va después del separador corre afuera.
     "acme-run.sh -C api sh -c 'pnpm lint'; npx jest", 'acme-run.sh -C api true && npx vitest run',
     'echo acme-run.sh; npx jest',
+    "sudo otro-run.sh -C api sh -c 'npx jest'", "sudo sh -c 'npx jest'",
     // Tampoco adentro de una sustitución entre comillas (caso 313).
     'out="$(acme-run.sh -C api true; npx jest)"', 'echo "res: $(acme-run.sh -C api true | npx jest)"',
   ]) blocked('test-workers', run(root, command), /sin cota de workers/)
+
+  // Quien declaró el comando con su envoltorio declaró ese comando entero, y sigue valiendo.
+  declare(['sudo acme-run.sh', 'time'])
+  assert.doesNotThrow(() => execute('test-workers', run(root, `sudo ${inside}`)))
+  assert.doesNotThrow(() => execute('test-workers', run(root, "time sh -c 'npx jest'")))
+  blocked('test-workers', run(root, "sudo otro.sh sh -c 'npx jest'"), /sin cota de workers/)
 
   // Con más de una palabra, tienen que coincidir todas: `docker compose exec` no es `docker compose run`.
   declare(['docker compose exec'])
