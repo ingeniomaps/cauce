@@ -91,41 +91,122 @@ function sourceFiles(dir, skip, found = [], depth = 0) {
 // sin contraste a todas (caso 316).
 //
 // El archivo es la palabra con forma de ruta. Sin barra sólo cuenta si un archivo se llama así: `node.js`
-// en una frase no es un archivo. El caso es lo que va entre comillas, o los tramos separados por `›`. Lo
-// demás que traiga la traza —el comando que la corre, una nota— no se toma por nombre de caso: buscarlo
-// daría `parcial` sobre una traza que dice la verdad.
+// en una frase no es un archivo.
+//
+// Una traza real nombra el caso y sigue en prosa: una aclaración, código entre backticks, una salida entre
+// comillas. Eso se escribe igual que un caso inventado, así que por la forma no se puede saber qué es qué.
+// Tomar todo por nombre daba `parcial` a seis de diez trazas reales que decían la verdad; exigir cada cosa
+// citada, también, y tomar sólo lo que estaba «en su lugar» daba `encontrado` a casos que no existían
+// (caso 330). Lo que quedó es una sola pregunta que sí tiene respuesta: **si la prueba que la traza nombra
+// está en el archivo**. La prueba es la hoja —el último tramo detrás de `›`, o lo primero entre comillas—, y
+// decide el veredicto. Todo lo demás que la traza cite se busca igual y se dice al lado si no aparece, sin
+// cambiarlo: quien lee ve qué se buscó.
 const PATHLIKE = /^[\w@.~-]*(?:\/[\w@.~-]+)+\.[A-Za-z]\w*$/
 const FILELIKE = /^[\w@~-]+(?:\.[\w-]+)*\.[A-Za-z]\w*$/
-const NESTED = /\s*›\s*|\s+>\s+/
+const QUOTE = `'([^']+)'|"([^"]+)"|«([^»]+)»|“([^”]+)”`
+const LEADING = /^\s*(?:'([^']+)|"([^"]+)|«([^»]+)|“([^”]+)|`([^`]+))/
+const NEXT = new RegExp(String.raw`^\s*(?:(?:[—–:,(-]|y|e|and)\s+)*(?:${QUOTE})`)
 const bare = (word) => word.replace(/\\/g, '/').replace(/^[`'"([*]+|[`'")\]*,.;:]+$/g, '')
   .replace(/(?:(?::\d+)+|#L\d+)$/, '').replace(/^\.\//, '')
-const clean = (name) => name.replace(/^[\s—–:()>-]+|[\s—–:()-]+$/g, '').replace(/^(?:describe|it|test)\s+/, '')
-function parts(artifact, tree) {
+const clean = (name) => name.replace(/^[\s*—–:()>-]+|[\s*—–:()-]+$/g, '')
+  .replace(/^(?:describe|it|test)(?:\s+|\s*:\s*)/, '')
+const picked = (match) => match.slice(1).find(Boolean)
+// El nombre que trae un tramo: lo entrecomillado, si viene antes de la aclaración y no adentro de un bloque
+// de código; si no, el tramo hasta donde la aclaración empieza. Si eso lo deja en nada, el tramo entero.
+function quotedIn(text) {
+  const quoted = text.match(new RegExp(QUOTE))
+  const code = text.indexOf('`')
+  return quoted && (code === -1 || quoted.index < code) ? picked(quoted) : ''
+}
+function nameIn(segment) {
+  // Hasta la aclaración, salvo que la comilla que abre el nombre venga antes: ahí el nombre puede traerla adentro.
+  const starts = segment.search(/['"«“]/)
+  const breaks = segment.search(/ — | \(/)
+  const head = breaks === -1 || (starts !== -1 && starts < breaks) ? segment : segment.slice(0, breaks)
+  if (quotedIn(head)) return quotedIn(head)
+  const leading = head.match(LEADING)
+  if (leading) return picked(leading)
+  const whole = clean(head)
+  const cut = whole.split(/:|,/)[0].trim()
+  return cut.length > 2 ? cut : whole
+}
+// Los tramos de una traza, partidos por su separador sólo donde no cae adentro de unas comillas: el nombre
+// de una prueba puede traer un `>`.
+function segmentsOf(text, separator) {
+  const pieces = ['']
+  const tokens = new RegExp(String.raw`${QUOTE}|\x60[^\x60]*\x60|${separator.source}`, 'g')
+  let at = 0
+  for (const found of text.matchAll(tokens)) {
+    const isSeparator = new RegExp(`^(?:${separator.source})$`).test(found[0])
+    pieces[pieces.length - 1] += text.slice(at, found.index) + (isSeparator ? '' : found[0])
+    if (isSeparator) pieces.push('')
+    at = found.index + found[0].length
+  }
+  pieces[pieces.length - 1] += text.slice(at)
+  return pieces
+}
+function parts(given, tree) {
+  // Una traza no mide más que unos renglones; el resto no agrega nada que buscar.
+  const artifact = given.slice(0, 4000).replace(/^\s*[*•-]\s+/, '')
   const exists = (name) => tree.some((file) => file.endsWith(`/${name}`))
   const words = artifact.split(/\s+/)
-  const isFile = (word) => PATHLIKE.test(bare(word)) || (FILELIKE.test(bare(word)) && exists(bare(word)))
+  const shaped = (word) => FILELIKE.test(bare(word))
+  const isFile = (word) => PATHLIKE.test(bare(word)) || (shaped(word) && exists(bare(word)))
   const files = words.filter(isFile).map(bare)
-  const quoted = [...artifact.matchAll(/'([^']+)'|"([^"]+)"|`([^`]+)`/g)]
-    .map((match) => match[1] || match[2] || match[3]).filter((one) => !isFile(one) && one.length > 2)
   const rest = words.filter((word) => !isFile(word)).join(' ')
-  if (quoted.length || !NESTED.test(rest)) return { files, names: quoted }
-  return { files, names: rest.split(NESTED).map(clean).filter((one) => one.length > 2) }
+  // La que empieza en prosa —«mutación observada en la copia: archivo…»— nombra un archivo y cita una salida.
+  const prose = !isFile(words[0]) && !shaped(words[0]) && !LEADING.test(artifact)
+  // `>` separa tramos sólo donde no hay `›` ni una comilla antes: en una aclaración es «mayor que».
+  const arrow = rest.includes('›') ? /\s*›\s*/ : /^[^'"«“`]*? > /.test(rest) ? /\s+>\s+/ : null
+  const names = []
+  const context = []
+  if (arrow) {
+    // Lo que va antes del primer separador es donde estaba el archivo, con lo que lo acompañe.
+    const segments = segmentsOf(rest, arrow).slice(1).map(nameIn)
+    names.push(...segments.slice(-1))
+    context.push(...segments.slice(0, -1))
+  } else {
+    for (let left = rest, next = left.match(NEXT); next; next = left.match(NEXT)) {
+      names.push(picked(next))
+      left = left.slice(next[0].length)
+    }
+    if (!names.length && !prose) names.push(quotedIn(rest))
+  }
+  // Con archivo, un nombre entre comillas vale por corto que sea; sin archivo, uno tan corto está en todos lados.
+  const kept = names.filter((one) => one.length > (files.length ? 0 : 2))
+  // Lo demás que la traza cita, ya sin la prueba ni los tramos que la contienen.
+  const shown = context.filter((one) => one.length > 2)
+  const remaining = [...kept, ...shown].reduce((text, name) => text.split(name).join(' '), artifact)
+  const other = (found) => [...found].map(picked).filter((one) => one.length > 2 && !isFile(one))
+  const code = other(remaining.matchAll(/`([^`]+)`/g))
+  const cited = [...shown, ...other(remaining.replace(/`[^`]*`/g, ' ').matchAll(new RegExp(QUOTE, 'g')))]
+  return { files, names: kept, cited, code, prose }
 }
 
-// El veredicto de una traza con partes. El archivo se busca por dónde termina su ruta, y el caso sólo adentro
-// de los archivos que la traza nombra: que el archivo exista y el caso no es `parcial`, nunca `encontrado`
+// El veredicto de una traza con partes. El archivo se busca por dónde termina su ruta, y la prueba sólo adentro
+// de los archivos que la traza nombra: que el archivo exista y la prueba no es `parcial`, nunca `encontrado`
 // —el archivo de pruebas suele existir desde antes, y darlo por bueno diría que la prueba nueva está—. Y
 // `parcial` no es `ausente`: un nombre armado en el código con una variable no se encuentra como texto.
 //
+// `absent` es lo demás que la traza cita y no apareció. No cambia el veredicto, salvo cuando la traza no
+// nombra una prueba y de lo que cita no está nada: ahí lo citado era lo único que había para buscar.
+//
 // Hasta dónde llega: el nombre se busca como texto, así que lo da por bueno si es parte de otro más largo
-// o si está en un comentario, y los tramos anidados no se comprueban en orden.
-function contrastParts({ files, names }, tree, read) {
+// o si está en un comentario; y de un tramo sin comillas se busca hasta donde empieza la aclaración, que
+// puede ser menos que el nombre.
+function contrastParts({ files, names, cited, code, prose }, tree, read) {
   const within = files.map((file) => tree.filter((one) => one.endsWith(`/${file}`)))
   if (within.some((matching) => !matching.length)) return { verdict: 'ausente' }
   const where = files.length ? within.flat() : tree
-  const missing = names.filter((name) => !where.some((file) => read(file).includes(name)))
-  if (!missing.length) return { verdict: 'encontrado' }
-  return files.length ? { verdict: 'parcial', missing } : { verdict: 'ausente' }
+  const lacks = (name) => !where.some((file) => read(file).includes(name))
+  const all = [...names, ...cited, ...code]
+  if (!files.length) return { verdict: all.some(lacks) ? 'ausente' : 'encontrado' }
+  const missing = names.filter(lacks)
+  if (missing.length) return { verdict: 'parcial', missing }
+  const absent = [...cited, ...code].filter(lacks)
+  const nothing = !names.length && !prose && absent.length && absent.length === all.length
+  if (nothing) return { verdict: 'parcial', missing: absent }
+  return { verdict: 'encontrado', absent }
 }
 
 // El veredicto por rastro: `encontrado`, `parcial`, `ausente` o `inbuscable`. Sin raíces declaradas no se
@@ -150,7 +231,8 @@ function contrast(tests, roots, skip = []) {
       return { ...trace, verdict: found ? 'encontrado' : 'ausente' }
     }
     const found = parts(trace.artifact, tree)
-    if (!found.files.length && !found.names.length) return { ...trace, verdict: 'inbuscable' }
+    const empty = ![found.files, found.names, found.cited, found.code].some((one) => one.length)
+    if (empty) return { ...trace, verdict: 'inbuscable' }
     return { ...trace, ...found, ...contrastParts(found, tree, read) }
   })
 }
