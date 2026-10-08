@@ -84,7 +84,7 @@ function baseScript() {
     [KEY.qa]: { passed: true, evidence: 'alta rechaza el duplicado contra la API real' },
     [KEY.commit]: { committed: true, hash: 'abc123' },
     [KEY.pick]: { expanded: false },
-    [KEY.closing]: { passed: true, details: 'check verde' },
+    [KEY.closing]: { ok: true, errors: [], warnings: [], lessons: [] },
     [KEY.planRow]: { readOk: true, pending: true },
     [KEY.readyRow]: { readOk: true, pending: true },
     [KEY.verifyRow]: { readOk: true, pending: true },
@@ -190,7 +190,7 @@ async function runFlow(changes = {}, options = {}) {
     return typeof answer === 'function' ? answer() : answer
   }
 
-  const result = await compileWorkflow('autobuild')(
+  const result = await compileWorkflow('autobuild', options.root)(
     agent, (title) => { phase = title; phases.push(title) }, (text) => said.push(text),
     async (thunks) => Promise.all(thunks.map((t) => t())), async () => [], async () => ({}),
     runArgs, { total: null, spent: () => 0, remaining: () => Infinity },

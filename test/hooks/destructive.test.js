@@ -2,7 +2,7 @@
 
 // Qué frena el guard que cuida lo que se pierde y lo que se publica, y qué deja pasar.
 
-const { tempRoot } = require('../support/environment')
+const { tempRoot, linkEngine } = require('../support/environment')
 const { blocked, git, initRepo, repoPublicado, chatSession } = require('../support/hooks-harness')
 
 const test = require('node:test')
@@ -112,16 +112,39 @@ test('guard planning-drift bloquea el cierre con el planning roto', () => {
   const cli = path.resolve(__dirname, '..', '..', 'engine', 'cli', 'ops.js')
   assert.equal(spawnSync(process.execPath, [cli, 'init', root, '--name', 'D', '--mode', 'sidecar',
     '--no-install'], { encoding: 'utf8' }).status, 0)
-  // Una épica que el parser no lee: el planning deja de estar sano y el cierre tiene que decirlo.
-  fs.writeFileSync(path.join(root, 'planning', 'roadmap', 'epic-001.md'), '---\nepic: 001\n---\n')
   process.env.OPS_ROOT = root
+  const stopped = (session) => {
+    try { fs.unlinkSync(path.join(os.tmpdir(), `cauce-drift-${session}`)) } catch { /* ya limpio */ }
+    try { execute('planning-drift', { cwd: root, session_id: session }) } catch (error) { return error.message }
+    return ''
+  }
   try {
-    blocked('planning-drift', { cwd: root, session_id: 'prueba-drift' }, /quedaron desalineados/)
+    // Sin el motor instalado lo que falla no es planning: se dice, y sin consejos para repararlo.
+    const unbuilt = stopped('prueba-motor')
+    assert.match(unbuilt, /quedaron desalineados:\nNo se encontró el motor de Cauce/)
+    assert.doesNotMatch(unbuilt, /se repara sólo/)
+    linkEngine(root)
+    // Una épica que el parser no lee: el planning deja de estar sano y el cierre tiene que decirlo. Tampoco
+    // lleva el consejo: no es una entrada de `done/`.
+    fs.writeFileSync(path.join(root, 'planning', 'roadmap', 'epic-001.md'), '---\nepic: 001\n---\n')
+    const epic = stopped('prueba-epica')
+    assert.match(epic, /quedaron desalineados:\n[^]*epic-001[^]*error\(es\)/)
+    assert.doesNotMatch(epic, /se repara sólo/)
+    // Con una entrada de `done/` en rojo, después de la salida de `check` va qué se puede tocar y qué no, y
+    // dónde anotarlo, con la ruta entera: en sidecar la sesión no está parada en la instancia (caso 322).
+    fs.writeFileSync(path.join(root, 'planning', 'done', 'vieja.md'), '- [x] **vieja** — Vieja\n  acept: x\n')
+    const said = stopped('prueba-drift')
+    assert.match(said, /✗ done\/vieja\.md[^]*error\(es\)[^]*\nUna entrada de done\/ se repara sólo en lo que se/)
+    assert.match(said, /lo que no entra en el formato se mueve dentro de la entrada, no se borra/)
+    assert.match(said, /no se cambia ni se completa para que esto pase\. Si el error pide eso, dejalo como está/)
+    assert.ok(said.endsWith(`anotalo en ${path.join(root, 'planning', 'HUMAN_ACTIONS.md')} como una fila más.`))
     // La segunda vez no repite: el marcador de sesión existe y deja cerrar.
     assert.doesNotThrow(() => execute('planning-drift', { cwd: root, session_id: 'prueba-drift' }))
   } finally {
     delete process.env.OPS_ROOT
-    try { fs.unlinkSync(path.join(os.tmpdir(), 'cauce-drift-prueba-drift')) } catch { /* ya limpio */ }
+    for (const session of ['prueba-drift', 'prueba-motor', 'prueba-epica']) {
+      try { fs.unlinkSync(path.join(os.tmpdir(), `cauce-drift-${session}`)) } catch { /* ya limpio */ }
+    }
   }
 })
 

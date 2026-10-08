@@ -190,8 +190,9 @@ function drift(root, name) {
     const have = listed(text)
     const missing = expected.filter((file) => !have.includes(file))
     const extra = have.filter((file) => !expected.includes(file))
-    if (!blockOf(text) && !have.length) found.push({ target: item.target, bare: true, missing, extra })
-    else if (missing.length || extra.length) found.push({ target: item.target, bare: false, missing, extra })
+    const one = { target: item.target, file: target, missing, extra }
+    if (!blockOf(text) && !have.length) found.push({ ...one, bare: true })
+    else if (missing.length || extra.length) found.push({ ...one, bare: false })
   }
   return found
 }

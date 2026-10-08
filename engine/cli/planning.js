@@ -47,7 +47,7 @@ function evidence(dir, cli) {
     .filter((workspace) => workspace && workspace.path)
     .map((workspace) => path.resolve(opsDir, workspace.path))
     .filter((one) => fs.existsSync(one))
-  const traces = EV.contrast(entry.tests, roots)
+  const traces = EV.contrast(entry.tests, roots, [path.resolve(root)])
   const runs = EV.runs(opsDir)
   const report = { task: entry.slug, epic: entry.epic, traces, runs }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
@@ -57,7 +57,9 @@ function evidence(dir, cli) {
   for (const trace of traces) {
     const nota = trace.verdict === 'inbuscable'
       ? (roots.length ? 'describe la prueba en vez de nombrarla' : 'el proyecto no declara raíces de código')
-      : ''
+      : trace.verdict === 'parcial' ? `el archivo existe; no aparece en él: ${trace.missing.join(', ')}`
+        : trace.verdict === 'encontrado' && trace.files?.length && !trace.names.length
+          ? 'se comprobó el archivo; el caso no viene entre comillas ni con ›' : ''
     console.log(`  ${trace.criterion} → ${trace.artifact}  [${trace.verdict}]${nota ? ` — ${nota}` : ''}`)
   }
   if (!runs.length) console.log('GATES  (sin corridas registradas; `verify` todavía no corrió acá)')

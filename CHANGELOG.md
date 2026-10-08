@@ -14,6 +14,66 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.103.6] - 2026-10-07
+
+### Cambiado
+
+- **El cierre de una corrida lee lo que `check` devuelve, y te muestra sus avisos.** Hasta ahora lo contestaba
+  un agente completo, que corría el comando y contaba qué había visto. Ahora lo corre el agente liviano y el
+  recorrido decide con el resultado del comando. El agente que carga tus reglas entra sólo si `check` sale en
+  rojo y repara el estado derivado; si quedó en verde lo vuelve a decir el comando, y lo reparado queda
+  commiteado cuando tu proyecto commitea por tarea. Lo que `check` avisa sin fallar —una aprobación que
+  quedó sin borrar, por ejemplo— llega al registro de la corrida, que antes lo tiraba. **Qué hacer:**
+  reinstalá el runner (`make install-claude`); si no, `autobuild` te lo va a pedir al arrancar (caso 310).
+
+### Corregido
+
+- **Una regla que escribís después de instalar el runner rige también en el chat.** Dentro de `autobuild` ya
+  regía; en una sesión de chat seguía valiendo la regla anterior hasta que alguien reinstalaba, y sólo lo
+  decía una advertencia. Ahora, mientras dure el desfase, la sesión de Claude recibe en cada mensaje cuáles
+  reglas rigen y no tiene cargadas, con el pedido de leerlas. Reinstalar sigue siendo la forma de que carguen solas:
+  `make install-claude` y una sesión nueva. **Qué hacer:** reinstalá el runner para que llegue el gancho (caso 315).
+- **Un cierre que no se puede reparar deja una fila para una persona.** Si `check` quedaba en rojo por algo
+  que no es estado derivado, la corrida paraba sin escribir nada: cerrada la sesión, el planning seguía en
+  rojo sin decir por qué. Ahora queda una fila pendiente en `HUMAN_ACTIONS.md`, commiteada (caso 310).
+- **Una copia hecha con `mktemp -d -p <carpeta>` ya no frena lo que le sigue.** El guard de límites sólo
+  reconocía el `mktemp` del temporal del sistema; con una carpeta propia dejaba el `cd` sin resolver y
+  bloqueaba las escrituras siguientes. Ahora lo juzga por dónde cae esa carpeta, en las formas en que eso se
+  sabe sin adivinar: un solo `-p` o `--tmpdir=`. Las demás siguen frenando (caso 311).
+- **Un `grep` con una comilla escapada ya no se frena por lo que busca.** `grep -n "\"test\|jest" package.json`
+  se frenaba como si ejecutara `jest`: los guards cortaban la cadena en la comilla escapada y leían el resto
+  como orden. Ahora leen la comilla escapada y el comentario como el shell. Hacia el otro lado se cierran dos
+  formas que pasaban sin que nadie las viera: lo que queda entre dos comillas escapadas sueltas, y el renglón
+  que sigue a un comentario con una comilla suelta (caso 312).
+- **Un `mktemp` que no crea donde el guard creía ya no deja pasar lo que le sigue.** Sin `-d`, con `TMPDIR`
+  asignado en el mismo comando, o con una plantilla sin ruta, el guard de límites juzgaba el temporal del
+  sistema y la escritura caía en otra carpeta. Ahora el `cd` queda sin resolver y frena. `T=$(mktemp -d) &&
+  cd $T` y `mktemp -d -p <carpeta>` siguen como estaban (caso 318).
+- **Las pruebas lanzadas en un contenedor con tope de memoria y de CPU ya no se frenan.** Un `docker run` o
+  `podman run` con `--memory` (o `-m`) y `--cpus` entre sus opciones está tan acotado como un comando de
+  `boundedCommands`, y el guard de workers lo frenaba igual. Hacen falta los dos topes, con un número mayor
+  que cero y antes de la imagen. Y se cierra una forma que pasaba con un comando declarado: el runner puesto
+  en una sustitución, como en `scripts/run.sh true $(npx jest)`, lo ejecuta la máquina y ahora frena (caso 313).
+- **`ops evidence` contrasta las trazas que escribe una corrida.** Sólo buscaba las de una palabra, y una
+  traza con el archivo y el nombre del caso salía «inbuscable»: no se contrastaba ninguna entrada de
+  `autobuild`. Ahora busca el archivo y, dentro de él, el caso que venga entre comillas o con `›`. Hay un
+  veredicto nuevo, `parcial`, para el archivo que existe sin ese caso. Y deja de buscar en `planning/`, donde
+  una prueba inventada se encontraba en la propia entrada que la nombraba (caso 316).
+- **La entrada de `done/` ya no trae la ruta de tu máquina en lo que la revisión abrió.** El campo `review` va
+  textual, y lo que el revisor declara haber abierto venía con rutas absolutas: el nombre de usuario y las
+  carpetas de quien corrió. Ahora cada ruta que cuelga de una raíz del proyecto llega con el nombre de esa raíz
+  delante. Lo que el revisor escribió en prosa no se toca. **Qué hacer:** reinstalá el runner (caso 321).
+- **Cuando el planning queda en rojo al cerrar un turno, el freno dice qué se puede tocar.** El guard mostraba
+  la salida de `check` y nada más, y la sesión la leía como algo a dejar en verde: en la entrada de otra
+  tarea borró la condición que la traza cubría, porque era lo que rompía el formato. Ahora dice que se repara
+  una entrada de `done/` sólo en lo que se deduce de otra cosa, sin borrar nada, y que lo que una tarea cerrada
+  afirma no se cambia para pasar (caso 322).
+- **El costo de los pasos de escritura que decía 0.103.5 valía sólo para una instancia sin reglas propias.**
+  Decía «unos 60.000 tokens»; en una instancia con sus instrucciones y sus reglas son entre 76.000 y 86.000,
+  un 10 % a 18 % menos que el agente completo. La entrada de 0.103.5 quedó corregida (caso 325).
+- **Quien cierra una tarea no toca la entrada de otra.** Si `check` marca una entrada que no escribió, la deja
+  para el cierre de la corrida (caso 310).
+
 ## [0.103.5] - 2026-10-07
 
 ### Agregado
@@ -40,12 +100,13 @@ diseño — eso vive en el commit y en el código.
 - **Lo que `autobuild` escribe en planning vuelve a seguir las reglas de tu empresa.** En 0.103.4 el WIP, la
   entrada de `done/`, la compuerta del hito y los commits de planning los hacía un agente que no cargaba tus
   instrucciones ni tus reglas. Dos cosas se notaron: los commits de planning salían en inglés aunque tu regla
-  pidiera otro idioma u otro formato, y la entrada de `done/` copiaba el relato de Build —«sin commit ni
-  push» al lado del commit, con la ruta de tu máquina—. Ahora ese agente carga todo lo que escribiste, y lo
-  tuyo gana sobre lo que el recorrido dicta. Cuesta más que en 0.103.4 y menos que antes: cada uno de esos
-  pasos arranca en unos 60.000 tokens, porque ese agente también puede usar los skills del proyecto. **Qué
-  hacer:** reinstalá el runner (`make install-claude`) para que llegue el agente nuevo. Las entradas y los commits que escribió 0.103.4 no se corrigen solos (casos 301 y
-  302).
+  pidiera otro idioma u otro formato, y la entrada de `done/` copiaba el relato de Build —«sin commit ni push»
+  al lado del commit, con la ruta de tu máquina—. Ahora ese agente carga todo lo que escribiste, y lo tuyo gana
+  sobre lo que el recorrido dicta. Cuesta más que en 0.103.4 y menos que antes: cada uno de esos pasos arranca
+  entre 54.000 y 65.000 tokens en una instancia sin reglas propias y entre 76.000 y 86.000 en una con las suyas
+  —el agente completo, entre 92.000 y 97.000—, porque ese agente también puede usar los skills del proyecto.
+  **Qué hacer:** reinstalá el runner (`make install-claude`) para que llegue el agente nuevo. Las entradas y los
+  commits que escribió 0.103.4 no se corrigen solos (casos 301 y 302).
 - **La entrada de `done/` se valida antes de commitearse.** Si su formato no pasa `ops check`, quien la
   escribe la corrige en ese momento y no después, con la entrada ya commiteada (caso 301).
 - **«Sólo la próxima tarea» ahora para después de una.** El agente que reclama recibía el pedido pero no

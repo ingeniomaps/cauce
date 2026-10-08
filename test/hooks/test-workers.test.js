@@ -51,10 +51,123 @@ test('leer la configuración de las pruebas no es correrlas', () => {
     "cat 'notas de hoy' jest.config.js", 'echo "npx jest"', "rg 'vitest' -l", 'ls "mis pruebas" vitest.config.ts',
     // Con un separador adentro del patrón: lo que un `grep` sólo lee no se parte en comandos.
     "grep -n 'lint; npx jest' Makefile",
+    // Con una comilla escapada adentro, que es como frenó en una instancia (caso 312).
+    'grep -n "\\"test\\|jest" package.json',
   ]) assert.doesNotThrow(() => execute('test-workers', run(root, command)), command)
-  for (const command of ["sh -c 'npx jest'", 'bash -lc "cd api && vitest run"', 'grep -q x y; npx jest']) {
+  for (const command of ["sh -c 'npx jest'", 'bash -lc "cd api && vitest run"', 'grep -q x y; npx jest',
+    'grep "a\\"b" x; npx jest']) {
     blocked('test-workers', run(root, command), /sin cota de workers/)
   }
+})
+
+// Caso 313. Un contenedor con tope de memoria y de CPU no puede tirar la máquina. Hacen falta los dos, con un
+// número que acote, y entre las opciones del propio `run`.
+test('un runner dentro de un contenedor con tope de memoria y de CPU no se frena', () => {
+  const root = pushRoot('cauce-workers-contenedor-')
+  const inside = "node:24 sh -c 'pnpm exec jest --config e2e.json'"
+  for (const command of [
+    `docker run --rm --memory 4g --memory-swap 4g --cpus 4 --pids-limit 4096 ${inside}`,
+    "docker run --rm --memory=4g --cpus=2.5 node:24 sh -c 'npx jest'",
+    "podman run -m 512m --cpus 2 node:24 sh -c 'npx vitest run'",
+    'docker run --memory 4g --cpus 4 node:24 bash -lc "cd api && npx jest"',
+    `/usr/bin/docker run -e "A=b c" --memory 4g --cpus 4 ${inside}`,
+    `cd api && DOCKER_HOST=x docker run --memory 4g --cpus 4 ${inside}`,
+    // Una variable para el contenedor, antes de los topes: es el valor de su opción, no una palabra de más.
+    `A=1 B=2 docker run --rm -e NODE_ENV=test --label a=b --memory 2g --cpus 2 ${inside}`,
+    // Como se escribe uno largo: en varios renglones, con sudo, con una sustitución ya cerrada entre las opciones.
+    `sudo docker run --rm -it \\\n  --memory 4G \\\n  --cpus .5 \\\n  -v "$(pwd)":/app ${inside}`,
+    // Y lo que el script trae entre comillas simples lo ejecuta el contenedor, sustituciones incluidas.
+    "docker run --memory 4g --cpus 4 node:24 sh -c 'echo $(npx jest)'",
+    // Un comentario al principio no cambia quién lanza lo del renglón siguiente.
+    `# don't forget the cap\ndocker run --memory 4g --cpus 4 ${inside}`,
+    // Un `#` pegado a una palabra no es comentario, y una sustitución escapada la resuelve el contenedor.
+    `docker run --memory 4g --cpus 4 -e TAG=a#b ${inside}`,
+    'docker run --memory 4g --cpus 4 node:24 sh -c "echo \\$(npx jest)"',
+    // Una sustitución que ya cerró no cambia quién lanza: ni detrás de un separador, ni con los suyos adentro.
+    `cd api && docker run --memory 4g --cpus 4 -v "$(pwd)":/app ${inside}`,
+    `docker run --memory 4g --cpus 4 -v "$(cd ..; pwd)":/app -e N=$((1+2)) -e M="$( (cd x) )" ${inside}`,
+    `docker run --memory 4g --cpus 4 -e A=\`id -u; true\` -e B=$'it\\'s' -e C="<(" ${inside}`,
+    'docker run --memory 4g --cpus 4 node:24 sh -c "echo $(true); npx jest"',
+    `true;# don't wait\ndocker run --memory 4g --cpus 4 ${inside}`,
+    // Y adentro de una, el comando de afuera es el suyo.
+    `out="$(docker run --memory 4g --cpus 4 ${inside})"`,
+    `diff <(docker run --memory 4g --cpus 4 ${inside}) esperado`,
+  ]) assert.doesNotThrow(() => execute('test-workers', run(root, command)), command)
+  // Cada opción que va sola, de la ayuda de las dos herramientas: ninguna se lleva la palabra que sigue.
+  for (const lone of ['--detach', '--disable-content-trust', '--env-host', '--help', '--http-proxy', '--init',
+    '--interactive', '--no-healthcheck', '--no-hosts', '--oom-kill-disable', '--passwd', '--privileged',
+    '--publish-all', '--quiet', '--read-only', '--read-only-tmpfs', '--replace', '--rm', '--rmi', '--rootfs',
+    '--sig-proxy', '--tls-verify', '--tty', '--unsetenv-all', '-d', '-i', '-t', '-P', '-q', '-dit']) {
+    const command = `podman run --memory 4g ${lone} --cpus 4 ${inside}`
+    assert.doesNotThrow(() => execute('test-workers', run(root, command)), command)
+    // Y por eso lo que venga después de la imagen ya no es de `run`.
+    blocked('test-workers', run(root, `docker run ${lone} img --memory 4g --cpus 4 sh -c 'npx jest'`),
+      /sin cota de workers/)
+  }
+  for (const command of [
+    `docker run --rm ${inside}`,
+    `docker run --rm --memory 4g ${inside}`,
+    `docker run --rm --cpus 4 ${inside}`,
+    // Otra bandera que empieza igual no es el tope, y un tope en cero o sin número tampoco.
+    `docker run --rm --memory-swap 4g --cpus 4 ${inside}`,
+    `docker run --rm --memory 4g --cpu-shares 512 ${inside}`,
+    `docker run --rm --memory 0 --cpus 4 ${inside}`,
+    `docker run --rm --memory 4g --cpus 0.0 ${inside}`,
+    `docker run --rm --memory $MEM --cpus 4 ${inside}`,
+    // Adentro del script, o en otro comando del renglón, las banderas no acotan a nadie.
+    "docker run --rm node:24 sh -c 'echo --memory 4g --cpus 4 ; pnpm exec jest'",
+    'docker run --memory 4g --cpus 4 node:24 true; npx jest',
+    `echo docker run --memory 4g --cpus 4; sh -c 'npx jest'`,
+    // Y sólo `run` de docker o de podman: `exec` no acota, y de otro programa no se sabe qué hace con ellas.
+    `docker exec --memory 4g --cpus 4 api sh -c 'npx jest'`,
+    `docker compose run --memory 4g --cpus 4 api sh -c 'npx jest'`,
+    `nerdctl run --memory 4g --cpus 4 ${inside}`,
+    // Una opción corta que lleva valor se lo lleva, aunque el valor tenga forma de tope.
+    `docker run -v --memory 4g --cpus 4 ${inside}`,
+    `docker run --memory 4abc --cpus 4 ${inside}`,
+    `docker run --memory 4,5 --cpus 4 ${inside}`,
+    // Adentro de una sustitución la lectura vuelve a empezar: sus separadores cortan aunque afuera haya comillas.
+    'out="$(docker run --memory 4g --cpus 4 node:24 true; npx jest)"',
+    'echo "$(docker run --memory 4g --cpus 4 node:24 true && npx jest)"',
+    `docker run --memory 4g --cpus 4 node:24 sh -c "echo $(echo ')'; npx jest)"`,
+    'docker run --memory 4g --cpus 4 node:24 echo "$(echo "a)"; npx jest)"',
+    'docker run --memory 4g --cpus 4 node:24 sh -c "echo $(echo $((1+2)); npx jest)"',
+    'docker run --memory 4g --cpus 4 node:24 echo "$( (cd x); npx jest)"',
+    'docker run --memory 4g --cpus 4 node:24 tee >(npx jest)',
+    "docker run --memory 4g --cpus 4 node:24 echo `sh -c 'npx jest'`",
+    'docker run --memory 4g --cpus 4 node:24 echo "`true; npx jest`"',
+    "docker run --memory 4g --cpus 4 -e A=\\\\$(sh -c 'npx jest') node:24 true",
+    // Lo que no es una sustitución no se lleva el separador que sigue.
+    `docker run --memory 4g --cpus 4 node:24 echo "<(" ; x=")" sh -c 'npx jest'`,
+    "docker run --memory 4g --cpus 4 node:24 echo $'a\\'b'; npx jest",
+    "docker run --memory 4g --cpus 4 node:24 true;# don't wait\nnpx jest",
+    'docker run node:24 bash -c "echo --memory 4g --cpus 4 ; npx jest"',
+    // Después de la imagen las banderas son del programa de adentro, y el valor de otra opción no es una bandera.
+    "docker run --rm node:24 env --memory 4g --cpus 4 sh -c 'npx jest'",
+    `docker run --label --cpus 4 -m 4g ${inside}`,
+    "docker run --rm -e A=b node:24 --memory 1g --cpus 1 sh -c 'npx jest'",
+    // Repetido, tiene que acotar cada vez; y el número tiene que ser un número.
+    `docker run --memory 4g --memory 0 --cpus 4 ${inside}`,
+    `docker run --memory 4g --cpus 4 --cpus=0 ${inside}`,
+    `docker run --memory 4g --cpus 4,5 ${inside}`,
+    `docker run --memory 4g --cpus 4abc ${inside}`,
+    `docker run --MEMORY 4g --cpus 4 ${inside}`,
+    `docker run -M 4g --cpus 4 ${inside}`,
+    // Lo que va en una sustitución lo ejecuta esta máquina, no el contenedor.
+    'docker run --memory 4g --cpus 4 node:24 true $(npx jest)',
+    'docker run --memory 4g --cpus 4 node:24 sh -c "echo $(npx jest)"',
+    'docker run --memory 4g --cpus 4 -v $(npx jest):/x node:24 true',
+    'docker run --memory 4g --cpus 4 node:24 cat <(npx jest)',
+    // Una comilla que el shell no abre no esconde el separador que sigue.
+    "docker run --memory 4g --cpus 4 node:24 echo it\\'s done; npx jest",
+    "docker run --memory 4g --cpus 4 node:24 true # don't wait\nnpx jest",
+    "docker run --memory 4g --cpus 4 node:24 true # don't wait\nsh -c 'npx jest'",
+    // Lo que sigue a un `#` en el mismo renglón es comentario, haya o no otro renglón después.
+    "docker run --memory 4g --cpus 4 node:24 true # nota; sh -c 'npx jest'",
+    "docker run --memory 4g --cpus 4 node:24 true # nota; sh -c 'npx jest'\necho listo",
+    // El segundo runner del renglón se juzga aunque el primero esté acotado.
+    `docker run --memory 4g --cpus 4 ${inside}; npx jest`,
+  ]) blocked('test-workers', run(root, command), /sin cota de workers/)
 })
 
 // Caso 291. Un runner lanzado con el envoltorio del proyecto corre dentro de un contenedor con memoria y CPU
@@ -78,6 +191,8 @@ test('un runner lanzado con un comando que el proyecto declaró acotado no se fr
     // Lo acotado es ese comando: lo que va después del separador corre afuera.
     "acme-run.sh -C api sh -c 'pnpm lint'; npx jest", 'acme-run.sh -C api true && npx vitest run',
     'echo acme-run.sh; npx jest',
+    // Tampoco adentro de una sustitución entre comillas (caso 313).
+    'out="$(acme-run.sh -C api true; npx jest)"', 'echo "res: $(acme-run.sh -C api true | npx jest)"',
   ]) blocked('test-workers', run(root, command), /sin cota de workers/)
 
   // Con más de una palabra, tienen que coincidir todas: `docker compose exec` no es `docker compose run`.
