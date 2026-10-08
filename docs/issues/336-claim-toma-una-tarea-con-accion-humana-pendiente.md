@@ -116,3 +116,13 @@ Cómo se supo que funciona:
   Decidir el esquema de ids. Se toma cuando la fila esté resuelta.», sale 1 y `claims/` no cambia. Antes
   del arreglo la misma instancia la tomaba con exit 0.
 
+### Segunda pasada, tras la revisión del conjunto
+
+`context` honra el WIP propio aunque la tarea tenga una acción humana abierta —el plan en vuelo manda—, así
+que negarse en `claim` desde ese mismo runner era el desacuerdo entre los dos comandos visto desde el otro
+lado: `context` ofrecía retomarla y `claim` decía que no. Ahora la negativa se saltea cuando el runner tiene
+un WIP activo para esa tarea; otro runner sigue sin poder tomarla. Prueba nueva en rojo antes; mutación
+—negarse también con WIP propio— en rojo; corrida real sobre el banco con el motor del fuente: con la fila
+pendiente y el WIP de `delta`, `context` ofrece `crear-pedido`, `claim` desde `delta` la toma con exit 0 y
+desde `epsilon` responde «espera una acción humana» con exit 1.
+

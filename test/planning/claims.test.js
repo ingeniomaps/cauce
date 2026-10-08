@@ -398,3 +398,37 @@ test('claim no reserva una tarea con acción humana pendiente, y sí cuando la f
   tabla('resuelta 2026-10-08')
   assert.equal(como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana').status, 0)
 })
+
+// `context` honra el WIP propio aunque la tarea tenga una acción humana abierta —el plan en vuelo manda—, así
+// que `claim` tiene que dejar retomarla desde ese mismo runner: negarse ahí era el desacuerdo entre los dos
+// comandos que el 336 vino a cerrar, visto desde el otro lado (revisión del conjunto).
+test('claim deja retomar la tarea del WIP propio aunque tenga una acción humana pendiente', () => {
+  const dir = planning('cauce-humana-wip-')
+  fs.writeFileSync(path.join(dir, 'HUMAN_ACTIONS.md', ), `# Acciones humanas
+
+| Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |
+|---|---|---|---|
+| dashboard | pendiente | Ready | Elegir el proveedor. |
+`)
+  const P = require('../../engine/planning/parser')
+  fs.mkdirSync(path.join(dir, 'wip'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'wip', `${P.wipName('/w/ana')}.md`), `---
+task: dashboard
+hito: "Hito uno — Primer resultado"
+epic: ""
+phase: Build
+started: 2026-10-08
+service: web
+acceptance: "filtra por fecha"
+lane: lite
+---
+
+## Plan aprobado
+1. [ ] Paso
+`)
+  const contexto = como('ana@acme.com', () => run(['context', dir]), '/w/ana')
+  assert.match(contexto.stdout, /^TASK {3}dashboard/m, 'context la ofrece: el WIP manda')
+  assert.equal(como('ana@acme.com', () => run(['claim', dir, 'dashboard']), '/w/ana').status, 0,
+    'y claim la deja retomar')
+  assert.equal(como('luis@acme.com', () => run(['claim', dir, 'dashboard']), '/w/luis').status, 1, 'otro runner no')
+})

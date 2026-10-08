@@ -10,6 +10,7 @@ const CL = require('../planning/claims')
 const R = require('../core/repos')
 const ST = require('../planning/state')
 const LN = require('../planning/lines')
+const P = require('../planning/parser')
 const { fail, planningRoot, TODAY, USAGE, REFUSED } = require('./io')
 
 function claim(dir, slug, cli) {
@@ -33,9 +34,11 @@ function claim(dir, slug, cli) {
   // bloquea la cola sin que nadie pueda avanzarla, y el runner que la tomó se queda sin poder tomar otra.
   const blocker = task.depends.find((dep) => !state.done.set.has(dep))
   if (blocker) return fail(`${slug} depende de ${blocker}, que todavía no está en DONE.`, REFUSED)
-  // Y lo mismo con una fila pendiente en HUMAN_ACTIONS, que es lo que `context` ya saltea (caso 336).
+  // Y lo mismo con una fila pendiente en HUMAN_ACTIONS, que es lo que `context` ya saltea (caso 336). Salvo el
+  // WIP propio: ahí `context` la sigue ofreciendo —el plan en vuelo manda— y retomarla tiene que poder.
   const waiting = ST.pendingHumanActions(root).find((row) => row.task === slug)
-  if (waiting) {
+  const resuming = state.wips.some((wip) => wip.task === slug && wip.runner === P.wipName(CL.runner()))
+  if (waiting && !resuming) {
     return fail(`${slug} espera una acción humana: ${waiting.action} Se toma cuando la fila esté resuelta.`,
       REFUSED)
   }
