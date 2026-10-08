@@ -62,6 +62,27 @@ Es la disciplina que evitó tres regresiones esta semana, y hoy vive sólo en un
 - Casos de evaluación de la forma incidental: una tarea que reemplaza algo que funciona, sin nombrar la regla.
 - El peso de las reglas, que tiene su propia puerta.
 
+## Estado al 2026-10-08
+
+**Sigue abierto: el párrafo está escrito y falta ver si mueve la medición.**
+
+- **Se midió antes de escribir nada**, con dos casos incidentales que no nombran la conducta (`09-export-rewrite`
+  y `09-invoice-moves-to-a-worker`), una corrida cada uno y una segunda del que falló.
+  - `backend-engineer`: **pasa**. Fijó el formato actual antes de tocar el código y comparó la salida vieja con
+    la nueva sin que nadie se lo pidiera.
+  - `software-architect`: **no pasa, las dos veces, por el mismo comportamiento**. Nombró lo que la mudanza
+    pierde y no aprobó el plan; lo que no hizo fue volver la comparación de antes y después una condición de
+    aceptación. La primera corrida quedó marcada: otra sesión editó el motor mientras corría. La segunda corrió
+    con el repositorio quieto y dio lo mismo.
+- **No se sumó una regla nueva.** De las tres exigencias del «Fix propuesto», la medición sostiene una: la
+  segunda. Entró como un párrafo en R9, donde ya vive la quita. La primera y la tercera —escribir qué puede
+  salir mal, y que esa lista decida si se hace— quedan sin escribir: en esta misma tanda la lista de riesgos fue
+  lo que menos acertó, y lo que encontró los defectos fue comparar contra la línea de base.
+- **Que la crítica del recorrido pregunte «qué deja de pasar» — no se hizo.** Depende de que el párrafo sirva.
+- **El peso**: el bloque de reglas pasa de 51 a 52,3 KB por agente.
+- **Lo que falta para cerrar**: repetir `09-invoice-moves-to-a-worker` con el párrafo puesto. Si pasa, se
+  cierra con esa corrida. Si falla igual, el párrafo no mueve lo que el caso mide y se retira.
+
 ## Recomendación
 
 **Hacerlo**, redactada y vista por el dueño antes de sumarla, y medida con evaluaciones antes de publicarla.

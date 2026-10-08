@@ -68,6 +68,13 @@ frase que la justifica — «lo agrego **para que** deje de …». Ahí el sujet
 lo que desaparece, y lo que desaparece es lo que hay que probar. Silenciar un aviso, saltear una rama,
 desarmar una confirmación: los tres se escriben sumando y los tres son quitas.
 
+**Y cambiar quién hace algo, o cómo, es una quita aunque lo que sale «sea lo mismo».** Mover un paso de
+lugar, reemplazar una implementación, cambiar de herramienta: lo viejo hacía cosas que nadie anotó, y «no
+cambia nada» es una afirmación sobre el resultado que nadie comprobó. Se sostiene de una sola forma:
+la salida de antes y la de después, sobre el mismo caso, lado a lado. Y esa comparación va en la
+aceptación, como condición —no como una actividad del plan, que se hace o no se hace sin que nada dependa
+de ella—. Que lo nuevo exista y la puerta pase no dice que diga lo mismo.
+
 **Y antes de probar cómo se quita hay que poder quitarlo.** Lo que está en uso no se corta: se depreca,
 y la marca dice las dos cosas que la vuelven una salida y no una etiqueta — qué lo reemplaza, y qué
 condición permite borrarlo. Sin la primera, quien lo usa no sabe a dónde ir; sin la segunda, el

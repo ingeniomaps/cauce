@@ -25,6 +25,10 @@ diseño — eso vive en el commit y en el código.
   ya no lo esconden. **Qué hacer:** si lanzás pruebas así, agregá `--memory` y `--cpus` antes de la imagen, o
   `--maxWorkers` al runner. `docker compose run` y `docker exec` no cambian (caso 329).
 - **Un comando de `boundedCommands` se reconoce con `sudo`, `time` o `timeout <plazo>` delante** (caso 329).
+- **R9 pide comparar antes y después cuando cambia quién hace algo, o cómo.** Mover un paso de lugar o
+  reemplazar una implementación es una quita aunque el resultado «sea el mismo», y esa igualdad se sostiene
+  con la salida de antes y la de después sobre el mismo caso, como condición de la aceptación. Es un párrafo
+  más en una regla que ya tenías: el bloque que carga cada agente pasa de 51 a 52,3 KB (caso 324).
 
 ## [0.103.6] - 2026-10-07
 
