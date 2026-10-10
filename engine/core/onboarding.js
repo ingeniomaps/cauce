@@ -115,8 +115,15 @@ function orphanCredentials(root) {
   // El mapa del proyecto vive en `organization/workspace.md` desde que `AGENTS.md` pasó a ser del
   // toolkit entero; el viejo se sigue mirando porque una instancia anterior lo tiene ahí y una
   // credencial ya declarada no debería volver a reportarse como huérfana por haber mudado el archivo.
+  // Las acciones humanas viven en la tabla o en un archivo por cada una (caso 351), y una credencial con su
+  // acción registrada tiene dueño esté donde esté.
+  let actions = []
+  try {
+    actions = fs.readdirSync(path.join(root, 'planning', 'human')).filter((name) => name.endsWith('.md'))
+      .map((name) => path.join('planning', 'human', name))
+  } catch { actions = [] }
   const contracts = [path.join('organization', 'workspace.md'), 'AGENTS.md',
-    path.join('planning', 'HUMAN_ACTIONS.md')]
+    path.join('planning', 'HUMAN_ACTIONS.md'), ...actions]
     .map((file) => { try { return fs.readFileSync(path.join(root, file), 'utf8') } catch { return '' } })
     .join('\n')
   // Acá había una salida temprana por `contracts` vacío que no corría nunca —pegar tres cadenas con
@@ -142,8 +149,8 @@ function orphanCredentials(root) {
       : listed.join(', ')
     const services = [...new Set(orphans.map((one) => one.service))].join(', ')
     warnings.push(`credenciales por nombre sin dueño (${orphans.length}, en ${services}): ${summary} — no `
-      + 'aparecen en el mapa ni en HUMAN_ACTIONS: nadie las carga. El dueño se escribe en '
-      + 'organization/workspace.md o en una fila de planning/HUMAN_ACTIONS.md; el criterio es el nombre, así '
+      + 'aparecen en el mapa ni en las acciones humanas: nadie las carga. El dueño se escribe en '
+      + 'organization/workspace.md o en una acción de planning/human/; el criterio es el nombre, así '
       + 'que una credencial con nombre de configuración no aparece acá')
   }
   // El tope recorta lo que se **lista**, no lo que se mira: las credenciales de arriba salen del ejemplo

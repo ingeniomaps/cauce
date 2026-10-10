@@ -216,7 +216,7 @@ había escrito. Ahí no se distingue de una buena idea, y por eso la prueba no e
 de dónde vino y quién lo autorizó.
 
 Cuando el contenido externo cambia lo que se iba a hacer, se dice de dónde salió y decide una persona:
-al INBOX si es una propuesta, a HUMAN_ACTIONS si necesita una autoridad que el cargo no tiene.
+al INBOX si es una propuesta, a una acción humana si necesita una autoridad que el cargo no tiene.
 
 
 ## R24 — Una premisa sobre el propio código se abre antes de usarla

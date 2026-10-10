@@ -17,7 +17,8 @@ const acceptanceConditions = (acceptance) => String(acceptance || '').split(';')
 // reconociera enseñaría a escribir esa frase exacta para silenciar el aviso.
 const OUT_OF_VERIFY = /\(fuera de verify:\s*[^)]+\)/i
 
-// Lo que no se ejecuta, y por eso lo único que un criterio `no-surface` puede haber producido (caso 189).
+// Lo que no se ejecuta por su extensión: lo único que puede traer el commit de una tarea cerrada con un
+// `tests:` todo `n/a` (caso 189).
 // Es la lista a favor y no la de lo ejecutable a propósito (R27): un `.sql` de migración, un workflow en
 // YAML, un `Dockerfile`, un `Makefile` o un `.json` de configuración se ejecutan sin parecer código, y una
 // lista de lo ejecutable dejaría afuera lo que venga después. Ampliarla es un cambio con su razón al lado.

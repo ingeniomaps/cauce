@@ -14,6 +14,115 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.106.0] - 2026-10-10
+
+### Cambiado
+
+- **Verify decide la causa de cada criterio por separado.** Una condición que se cumple en un documento o en
+  un comentario salía `missing-test` apenas la tarea tocaba código: el recorrido pedía una prueba para prosa,
+  y o la conseguía o paraba con `verify-hollow`. Ahora sale `no-surface` aunque el diff traiga código, queda
+  en `done/` como `CN → n/a — razón`, y los criterios de conducta siguen obligados a su prueba. Si tu
+  proyecto quiere una prueba que asercie el texto de un documento, la condición tiene que pedirla: ya no
+  llega sola. Rige al reinstalar el runner (caso 345).
+- **Un criterio que aparece recién en la segunda pasada de Verify compra una vuelta más.** La segunda pasada
+  podía traer sin cubrir un criterio que la primera había dado por cubierto, y la corrida paraba con
+  `verify-hollow` sin que nadie hubiera intentado escribir esa prueba. Ahora se piden sólo esas pruebas y
+  Verify corre una tercera vez; lo que ya se había pedido y sigue faltando frena como antes. Rige al
+  reinstalar el runner (caso 346).
+- **Un caso descubierto cita a su rojo por un id.** `edge-unproven` comparaba dos nombres escritos por
+  separado y frenó tres veces una entrega probada por cómo estaban escritos. Build le pone un id corto a
+  cada rojo y el borde lo cita; quien no lo cite sigue pasando por el nombre, con las reglas de siempre.
+  Rige al reinstalar el runner (caso 350).
+- **El checkpoint entre hitos es un archivo por hito y frena sólo a su línea de trabajo.** Era un único
+  `AWAITING_REVIEW.md`: con dos líneas, la que traía la rama de la otra quedaba frenada por un hito ajeno, y
+  cuando las dos habían cerrado un hito git juntaba las dos ediciones sin avisar y dejaba `resuelta` sobre un
+  checkpoint que nadie había revisado. Ahora `autobuild` escribe `planning/checkpoints/<hito>.md` con su
+  `line:`, `ops context` nombra el que te frena y `ops tree` lista los pendientes de todas las líneas. No hay
+  que migrar nada: un `AWAITING_REVIEW.md` que ya tengas sigue frenando a todos hasta que diga `resuelta`, y
+  es la forma de parar la instancia entera a propósito. El motor rige con `upgrade`; que el recorrido escriba
+  el archivo nuevo, al reinstalar el runner (caso 347).
+- **`check` avisa si `HUMAN_ACTIONS.md` va a chocar entre líneas.** El molde entrega `merge=union` para esa
+  tabla, pero una instancia que vive en un repositorio con su propio `.gitattributes` no lo recibe. Con
+  líneas en uso y filas en la tabla, `check` lo dice y trae la línea exacta que hay que agregar (caso 347).
+- **Las acciones humanas van una por archivo, en `planning/human/`.** `HUMAN_ACTIONS.md` es una tabla que
+  todas las líneas de trabajo escribían, y git la fusiona por unión: cuando una línea resolvía una fila
+  mientras la otra registraba la suya, quedaban las dos versiones de la fila, y la `pendiente` volvía a
+  bloquear su tarea sin conflicto ni aviso. Ahora `autobuild`, `flow` y `onboard` escriben cada acción en su
+  archivo —`task`, `status` y `origin` en el frontmatter, la acción como cuerpo—, y se resuelve cambiando su
+  `status`. `ops human planning` imprime la tabla entera, y `ops archive planning human-actions` mueve las
+  resueltas a `human/done/`. No hay que migrar nada: tu `HUMAN_ACTIONS.md` se sigue leyendo y sus filas
+  bloquean igual. Si en esa tabla te aparece una fila resuelta y también pendiente, `check` lo rechaza y dice
+  cuál borrar. El motor rige con `upgrade`; que los recorridos escriban en la carpeta nueva, al reinstalar el
+  runner (caso 351).
+
+- **Las reglas y la documentación del molde nombran `planning/human/` como el lugar de una acción humana.**
+  R17 y R19 decían `HUMAN_ACTIONS.md`, y lo mismo once textos del molde: el protocolo, el diagrama del
+  recorrido, las plantillas de recorrido y de ADR, la guía de equipo. Es el nombre del lugar, no una conducta
+  nueva: los recorridos y los cargos ya escribían en la carpeta. Lo mismo en los contratos de
+  `growth-marketer`, `finops-engineer` y `ux-designer` y en los recorridos `feasibility-review` e
+  `incident-review`. Tu tabla se sigue leyendo (caso 359).
+
+### Corregido
+
+- **En una instancia embebida, el runner se instala bien en una línea de trabajo y en un clon en otra ruta.**
+  Los recorridos llevan escrita la ruta de la instancia. Con `.claude/` en git, una línea o el clon de un
+  compañero nacían con los de la carpeta original: la instalación tomaba esa diferencia por una edición a
+  mano y se negaba, y los recorridos seguían apuntando a la otra carpeta. Ahora reconoce que sólo cambió la
+  ruta y los reescribe. Y si el runner no se puede instalar en una línea, `ops line` lo dice y sale con
+  error, en vez de contestar que quedó. Si armaste una línea embebida con una versión anterior, repetí
+  `ops line` sobre ella (caso 363).
+- **En una instancia embebida, `check` y `ops evidence` encuentran el commit de una tarea cuyo servicio es
+  una carpeta.** La entrada lo cita con el nombre del servicio, que ahí no es un repositorio: `check` avisaba
+  que su repositorio no estaba en la máquina y `evidence` daba las pruebas por ausentes. También encuentra la
+  prueba cuando la traza la nombra subiendo desde la carpeta del servicio, `../test/…` (caso 362).
+- **En una línea de trabajo, el árbol de la tarea se puede escribir aunque quede al lado de su raíz.** Con una
+  raíz declarada por repositorio —`../api` en vez de `..`—, el árbol que `ops worktree` arma para cada tarea
+  caía fuera de las raíces y el guard rechazaba la primera escritura: Build frenaba siempre, pidiendo una
+  exención que valía para esa tarea sola. Ahora el árbol de una tarea reclamada es escribible en el lugar
+  donde `ops worktree` lo arma, con el mismo alcance que el checkout principal, y se cierra solo cuando la
+  tarea se suelta. `ops worktree` se niega a entregar un árbol de esa rama que esté en otro lado. Si agregaste
+  rutas de árboles de tarea a `writableOutsideRoots` para salir del paso, ya no hacen falta (caso 360).
+- **`ops evidence` ya no aborta por memoria cuando el producto trae binarios.** Leía como texto cada archivo
+  de las raíces: con modelos, imágenes o bibliotecas compiladas, buscar una prueba que no estaba agotaba la
+  memoria y el proceso moría sin decir de qué. Ahora no lee lo binario ni lo que pasa de 5 MB, y dice cuántos
+  archivos dejó sin leer (caso 361).
+- **`check` y `ops evidence` buscan también en el repositorio de la propia instancia.** En una instancia
+  sidecar, el commit de una tarea de planning o de documentos vive ahí y no en una raíz de código: `check`
+  avisaba que «no está en su repositorio» o que no se había comprobado, sin forma de apagarlo, y `evidence`
+  daba por ausente la prueba. Ahora se encuentran, citados sin repositorio o con el nombre de la carpeta de
+  la instancia; y el repositorio de una cita se lee aunque el texto siga después del paréntesis. No hay que
+  hacer nada (caso 356).
+- **`ops line` avisa si el producto quedó vacío en la línea.** Con el repositorio del producto adentro de la
+  instancia y registrado como enlace de git, la línea se armaba con esa carpeta vacía y contestaba `✓`. Ahora
+  imprime, después del `✓`, el mismo aviso que `check`, con qué hacer. No se niega (caso 358).
+- **`ops evidence` encuentra la prueba de una tarea cerrada en una línea de trabajo.** Buscaba sólo en lo que
+  estaba en disco. En una línea el producto es un enlace que no recorría, y la tarea se commitea en una rama
+  cuyo árbol se retira, así que todas las trazas salían `[ausente]`, igual que una prueba inventada. Ahora
+  recorre el producto enlazado y, lo que el disco no tiene, lo busca en el commit que la entrada nombra; la
+  salida dice cuándo la respuesta salió de un commit y no de un archivo en disco (caso 353).
+- **`automation doctor` ya no deja un proceso colgado por cada copia registrada que no contesta.** Al agotar
+  el tope terminaba al intérprete que la lanzó y no a la copia, que quedaba corriendo para siempre. Si
+  corriste `doctor` o `install` sobre un runner con una copia registrada que se cuelga, puede haber procesos
+  `node hook.js` viejos: `pgrep -af "node hook.js"` los lista, y los que cuelgan de `systemd` o de `init` se
+  pueden terminar (caso 355).
+- **`ops evidence` deja de avisar «cita y no aparece» de una frase que está.** Pasaba cuando la frase citada
+  traía una palabra entre comillas invertidas, o cuando el archivo tenía un `;` que la traza escribió como
+  coma. No cambia ningún veredicto (caso 354).
+- **`check` avisa de un repositorio anidado que una línea de trabajo va a encontrar vacío.** Si una raíz de
+  `workspaceRoots` vive dentro de la instancia y el repositorio de la instancia la registró como enlace de
+  git —lo que deja un `git add` que la incluye—, una línea nace con esa carpeta vacía y todo sigue en verde.
+  `check` lo dice y trae el comando que lo corrige. Un submódulo declarado en `.gitmodules` no se avisa, y
+  una instancia con sus servicios al lado no se ve afectada (caso 352).
+- **La fila que deja una parada bloquea la tarea, o la parada dice que no.** La fila podía salir con la
+  tarea, la épica y la decisión juntas en la primera columna: no bloqueaba nada, `check` la rechazaba, y la
+  relectura contestaba que estaba pendiente. Ahora el pedido dice que ahí va el slug solo, la comparación la
+  hace el recorrido y no un modelo, y una celda mal formada se manda a corregir una vez antes de avisar.
+  Rige al reinstalar el runner (caso 349).
+- **`init --force` y `contract` dicen cómo recuperar el contrato.** Adoptar un repositorio que ya traía su
+  `AGENTS.md` lo conserva, y `contract` mandaba a un `upgrade` que lo conservaba otra vez. Los dos nombran
+  ahora `ops upgrade --force`, avisan que descarta también las demás ediciones conservadas, y dicen que lo
+  propio de `AGENTS.md` va antes a `organization/workspace.md` (caso 344).
+
 ## [0.105.0] - 2026-10-08
 
 ### Cambiado

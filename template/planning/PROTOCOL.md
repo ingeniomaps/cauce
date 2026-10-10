@@ -59,7 +59,8 @@ invariantes.
 
 ## Gates de arranque
 
-1. Si existe `AWAITING_REVIEW.md`, parar y mostrar la acción que contiene.
+1. Si un checkpoint te frena —el de tu línea en `checkpoints/`, o `AWAITING_REVIEW.md`, que frena a todas—,
+   parar y mostrar la acción que contiene. `ops context` dice cuál es.
 2. Si tu WIP está activo, la tarea es ésa: es el mutex del runner, y sólo se lee el propio.
 3. Si WIP está activo tras una interrupción confirmada, verificar los pasos `[x]` en disco y continuar
    desde el primer `[ ]`; no replanear.
@@ -130,7 +131,7 @@ saltar. Una tarea mal marcada `express` es justamente la que se salta la fase do
    tarea la lleva un runner —el reclamo, que es compartido: `business-rules/system/BR-OPS-005`—.
 3. INBOX nunca se ejecuta automáticamente — `business-rules/system/BR-OPS-002`.
 4. No declarar éxito sin comandos, resultados y exit codes reales — `business-rules/system/BR-OPS-004`.
-5. No inventar credenciales ni decisiones; registrar HUMAN_ACTIONS.
+5. No inventar credenciales ni decisiones; registrar una acción humana en `human/`.
 6. No ampliar alcance; lo adyacente vuelve al INBOX.
 7. No reescribir este proceso dentro de una tarea de producto.
 8. No push, amend, force, deploy o escritura externa sin autorización explícita.
@@ -145,7 +146,7 @@ Toda parada se nombra con una de éstas, en cualquier runner:
 `verify-regression` · `verify-inconsistent` · `qa-failed` · `commit-failed` · `budget-low`
 
 Y deja el estado consistente: la tarea sin marcar, el WIP activo si es resumible, y —si necesita a una
-persona— la fila en `HUMAN_ACTIONS.md` o el `AWAITING_REVIEW.md` ya escritos.
+persona— la acción en `human/` o el checkpoint del hito ya escritos.
 
 `ops context` emite las dos que puede determinar solo, `awaiting-review` y `blocked-on-human`; las
 demás las nombra la fase que para, que es la única que sabe por qué.

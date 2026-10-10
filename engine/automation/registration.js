@@ -38,9 +38,16 @@ const LAUNCH_LIMIT_MS = 10000
 function launch(dir, event, command) {
   const payload = event === 'pre-shell' ? { toolCall: { args: { CommandLine: 'ls' } } } : {}
   const input = JSON.stringify(payload)
+  // Como líder de su grupo, y al cortar se termina el grupo: acá el comando es texto para `sh`, y el tope
+  // sólo alcanzaba al `sh`. Por qué hace falta está junto al otro lanzamiento con tope, `run` en
+  // `hooks/shell.js`; éste se había quedado sin eso y dejaba un `node hook.js` vivo por cada copia que no
+  // contesta (caso 355).
   const result = spawnSync('sh', ['-c', command],
-    { cwd: dir, input, encoding: 'utf8', timeout: LAUNCH_LIMIT_MS, killSignal: 'SIGKILL' })
-  if (result.error && result.error.code === 'ETIMEDOUT') return `no respondió en ${LAUNCH_LIMIT_MS / 1000} s`
+    { cwd: dir, input, encoding: 'utf8', timeout: LAUNCH_LIMIT_MS, killSignal: 'SIGKILL', detached: true })
+  if (result.error && result.error.code === 'ETIMEDOUT') {
+    try { process.kill(-result.pid, 'SIGKILL') } catch { /* el grupo ya no existe: no quedaba nadie */ }
+    return `no respondió en ${LAUNCH_LIMIT_MS / 1000} s`
+  }
   let response = {}
   try { response = JSON.parse((result.stdout || '').trim()) } catch { response = {} }
   const healthy = event === 'stop' ? 'stop' : 'allow'

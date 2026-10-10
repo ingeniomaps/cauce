@@ -65,4 +65,4 @@ etapas en lugar de cinco.
 
 Ningún recorrido promueve trabajo al BACKLOG. Escribe la épica candidata en `planning/roadmap/` y para;
 la promoción es la firma humana que autoriza ejecución. Un gate que no se cumple se convierte en una
-acción concreta en `planning/HUMAN_ACTIONS.md`, no en un gate más blando.
+acción humana concreta en `planning/human/`, no en un gate más blando.

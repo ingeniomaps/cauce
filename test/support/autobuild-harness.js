@@ -85,9 +85,9 @@ function baseScript() {
     [KEY.commit]: { committed: true, hash: 'abc123' },
     [KEY.pick]: { expanded: false },
     [KEY.closing]: { ok: true, errors: [], warnings: [], lessons: [] },
-    [KEY.planRow]: { readOk: true, pending: true },
-    [KEY.readyRow]: { readOk: true, pending: true },
-    [KEY.verifyRow]: { readOk: true, pending: true },
+    [KEY.planRow]: { readOk: true, tasks: ['T-1'] },
+    [KEY.readyRow]: { readOk: true, tasks: ['T-1'] },
+    [KEY.verifyRow]: { readOk: true, tasks: ['T-1'] },
     [KEY.planningCommit]: { committed: true, hash: 'def456', branch: 'work/planning', live: false },
   }
 }
@@ -183,6 +183,10 @@ async function runFlow(changes = {}, options = {}) {
     // contesta por etiqueta, y un guion lo pisa con su clave cuando quiere otra respuesta.
     if (options.label === 'planning-block' && !(key in script)) {
       return silent.includes(options.label) ? null : { committed: true, hash: 'b10c', branch: 'work/planning' }
+    }
+    // La relectura del checkpoint recién escrito, que en el camino feliz dice que frena.
+    if (options.label === 'checkpoint-held' && !(key in script)) {
+      return { readOk: true, blocked: 'awaiting-review', checkpoints: ['checkpoints/H1.md'] }
     }
     if (!(key in script)) throw new Error(`el guion no cubre ${key}`)
     // Una respuesta puede ser una función cuando el escenario necesita contestar distinto en cada vuelta.

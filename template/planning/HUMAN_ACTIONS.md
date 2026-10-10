@@ -1,8 +1,12 @@
 # Acciones humanas
 
+> Las filas nuevas van en `human/`, un archivo por fila: esta tabla la escribían todas las líneas de trabajo
+> a la vez, y al juntarlas una fila resuelta volvía a quedar pendiente. Lo que ya está acá se sigue leyendo y
+> se resuelve acá. `human/README.md` dice la forma, y `node tools/ops.js human planning` muestra todo junto.
+
 Lo que sólo puede hacer una persona: credenciales, cuentas, DNS, permisos, decisiones de negocio,
-gasto real y escritura en producción. El runner agrega la fila y para esa línea de trabajo; nunca
-inventa el dato ni rodea el bloqueo.
+gasto real y escritura en producción. El runner registra la acción en `human/` y para esa línea de trabajo;
+nunca inventa el dato ni rodea el bloqueo. Lo que sigue describe las filas de esta tabla, que valen igual.
 
 Mientras una fila esté `pendiente`, la tarea que nombra su primera columna no se toma. El `Estado` es
 vocabulario cerrado —`pendiente` o `resuelta`, y detrás puede ir la fecha—; cualquier otra palabra

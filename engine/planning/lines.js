@@ -59,4 +59,18 @@ function claimsElsewhere(root) {
   return trees.flatMap((tree) => C.read(path.join(tree, relative)).map((one) => ({ ...one, tree })))
 }
 
-module.exports = { BRANCH, NAME, currentLine, scope, whereToTake, lineErrors, claimsElsewhere }
+// La tabla de acciones humanas es de todas las líneas: sin `merge=union`, dos que le agreguen una fila chocan
+// al juntarse. El molde entrega la regla, pero un `.gitattributes` propio en la raíz del repositorio —una
+// instancia embebida— la deja afuera sin que nada lo diga. Sólo se avisa donde hay líneas —sin ellas no hay
+// dos ramas escribiendo la tabla— y donde la tabla tiene filas: los recorridos ya no la escriben (caso 351),
+// así que vacía no la toca nadie y el aviso pedía editar un archivo por otro que no se usa.
+function mergeWarnings(root, milestones, tableRows) {
+  if (!tableRows || (!currentLine(root) && !milestones.some((one) => one.line))) return []
+  const attribute = git(root, 'check-attr', 'merge', '--', 'HUMAN_ACTIONS.md')
+  if (attribute.status !== 0 || /: merge: union\s*$/.test(attribute.stdout)) return []
+  const prefix = git(root, 'rev-parse', '--show-prefix').stdout.trim()
+  return [`HUMAN_ACTIONS.md no fusiona por unión, así que dos líneas que registren una fila van a chocar al `
+    + `juntarse. Agregá al .gitattributes de la raíz del repositorio: ${prefix}HUMAN_ACTIONS.md merge=union`]
+}
+
+module.exports = { BRANCH, NAME, currentLine, scope, whereToTake, lineErrors, claimsElsewhere, mergeWarnings }

@@ -171,7 +171,7 @@ test('el recorrido de equipo tiene las tres salidas que el contrato enumera', ()
   assert.match(contract, /hacer, no hacer o investigar/, 'el contrato del equipo enumera tres salidas')
   assert.match(flowWorkflow, /enum: \['hacer', 'investigar', 'no-hacer'\]/, 'y el recorrido las tiene')
   // Cada una con su destino, que el mismo contrato nombra.
-  assert.match(flowWorkflow, /outcome === 'investigar'[\s\S]{0,400}label: 'investigar'/, 'investigar')
+  assert.match(flowWorkflow, /outcome === 'investigar'[\s\S]{0,500}label: 'investigar'/, 'investigar')
   assert.match(flowWorkflow, /outcome === 'no-hacer'[\s\S]{0,400}label: 'inbox-lesson'/, 'no hacer')
   assert.match(flowWorkflow, /label: 'epic-write'/, 'hacer')
 })

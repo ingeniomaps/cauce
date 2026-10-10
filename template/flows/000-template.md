@@ -80,7 +80,7 @@ Validar siempre con `node tools/ops.js flow check <slug>` antes de usarlo.
   observables, y para. Es lo que corresponde cuando la pregunta es *qué construimos*.
 - **`report`** — registra lo aprendido. Escribe un informe en `planning/reports/<fecha>-<slug>.md`,
   deja los seguimientos en `planning/inbox/<sección>/`, uno por archivo y **sin promover**, y las acciones
-  que requieren una persona en `planning/HUMAN_ACTIONS.md`. Es lo que corresponde a una revisión.
+  que requieren una persona en `planning/human/`, un archivo por acción. Es lo que corresponde a una revisión.
 
 Ninguno de los dos promueve al BACKLOG. La diferencia no es cuánta autoridad tienen —ninguno tiene—,
 sino qué artefacto dejan para que una persona decida.

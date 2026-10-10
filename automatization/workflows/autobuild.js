@@ -28,6 +28,7 @@ export const meta = {
 
 {{INCLUDE:shared/workflow-root.js}}
 {{INCLUDE:shared/inbox.js}}
+{{INCLUDE:shared/human.js}}
 {{INCLUDE:shared/acceptance.js}}
 const CONFIG = `${ROOT}/ops.config.json`
 const P = `${ROOT}/planning`
@@ -40,8 +41,12 @@ const QUEUE = `${BACKLOG} y los archivos de ${P}/backlog/`
 const queueFile = () => `${P}/${(planning && planning.file) || 'BACKLOG.md'}`
 // Una tarea cerrada escribe su propio archivo, así que dos corridas en paralelo no comparten ninguno.
 const doneFile = (slug) => `${P}/done/${slug}.md`
-const HUMAN = `${P}/HUMAN_ACTIONS.md`
+const HUMAN = humanWhere(P)
+const HUMAN_FORM = humanForm(P)
+// El checkpoint de un hito vive en su propio archivo; `GATE` es el de las instancias anteriores, que el motor
+// sigue leyendo y que frena a todas las líneas. Por qué uno por hito está en `engine/planning/checkpoints.js`.
 const GATE = `${P}/AWAITING_REVIEW.md`
+const CHECKPOINTS = `${P}/checkpoints`
 
 // Estado de planning tal como lo emite `ops context --json`; ningún modelo parsea BACKLOG ni WIP.
 // De a pares, y sin regex: una comilla dentro de un literal de regex desincroniza a las dos puertas que
@@ -49,11 +54,19 @@ const GATE = `${P}/AWAITING_REVIEW.md`
 // suelta no es un envoltorio. Por eso también la escapada en vez de alternar el estilo de comillas.
 const QUOTES = ['\'', '"']
 
-// Si la fila que registró una parada quedó pendiente. `context` sólo lista las pendientes, así que
-// preguntar por la presencia de la tarea alcanza, y no hace falta que un modelo lea el estado.
+// Las acciones humanas pendientes, por su `task`. `context` sólo lista las pendientes, así
+// que alcanza con saber cuáles hay. El agente las transcribe y la igualdad con el slug la hace el recorrido:
+// pedirle «decí si hay una fila de esta tarea» dio que sí ante una celda que sólo la mencionaba (caso 349).
 const HUMAN_ROW = {
-  type: 'object', additionalProperties: false, required: ['readOk', 'pending'],
-  properties: { readOk: { type: 'boolean' }, pending: { type: 'boolean' } },
+  type: 'object', additionalProperties: false, required: ['readOk', 'tasks'],
+  properties: { readOk: { type: 'boolean' }, tasks: { type: 'array', items: { type: 'string' } } },
+}
+
+// Si el checkpoint recién escrito frena a esta línea, leído de `context` y no del archivo.
+const CHECKPOINT_HELD = {
+  type: 'object', additionalProperties: false, required: ['readOk', 'blocked', 'checkpoints'],
+  properties: { readOk: { type: 'boolean' }, blocked: { type: 'string' },
+    checkpoints: { type: 'array', items: { type: 'string' } } },
 }
 
 const CONTEXT = {
@@ -65,11 +78,13 @@ const CONTEXT = {
     // lee igual que una cola terminada, y Pick la toma como permiso para promover.
     readOk: { type: 'boolean' },
     // Vocabulario cerrado, igual que `lane` acá abajo, y por la misma razón: el motor emite tres valores
-    // y nada más —`ops context` los decide con un `existsSync` y un conteo—, así que dejarlo como texto
+    // y nada más —`ops context` los decide leyendo los checkpoints y con un conteo—, así que dejarlo como texto
     // libre le pedía a quien lo transcribe que acertara una convención invisible. Un modelo que rellena
     // «el valor vacío» puede escribir la cadena vacía o **escribir las comillas**, y las dos satisfacían
     // el esquema: medido en una instancia real, 3 de 24 lecturas llegaron como `"\"\""` (caso 083).
     blocked: { type: 'string', enum: ['', 'awaiting-review', 'blocked-on-human'] },
+    // Cuál checkpoint frena, relativo al planning, cuando `blocked` es `awaiting-review`.
+    checkpoint: { type: 'string' },
     hasTask: { type: 'boolean' }, wipActive: { type: 'boolean' },
     queued: { type: 'integer' }, slug: { type: 'string' }, hito: { type: 'string' },
     service: { type: 'string' }, acceptance: { type: 'string' }, epic: { type: 'string' },
@@ -306,7 +321,7 @@ const BUILD = {
     completed: { type: 'boolean' }, summary: { type: 'string' }, closedTask: { type: 'boolean' },
     redFirst: { type: 'array', items: { type: 'object', additionalProperties: false,
       required: ['test', 'failure'],
-      properties: { test: { type: 'string' }, failure: { type: 'string' } },
+      properties: { id: { type: 'string' }, test: { type: 'string' }, failure: { type: 'string' } },
     } },
     blockers: { type: 'array', items: { type: 'string' } },
     // Estricto en el cómo, flexible en el qué: un `kind` por cada uno de los dos destinos que R6 le da a
@@ -316,7 +331,7 @@ const BUILD = {
       required: ['kind', 'detail'],
       properties: {
         kind: { type: 'string', enum: ['edge', 'open', 'note', 'debt', 'mutation'] },
-        detail: { type: 'string' }, test: { type: 'string' },
+        detail: { type: 'string' }, test: { type: 'string' }, red: { type: 'string' },
       },
     } },
   },
@@ -447,7 +462,8 @@ const CONTRACT = {
 }
 
 // Preámbulo invariante: no depende del proyecto y nunca obliga a leer un archivo.
-const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos externos en ${HUMAN}. Nunca ` +
+const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos externos en ${HUMAN}, un ` +
+  `archivo por bloqueo. Nunca ` +
   `ejecutes INBOX por tu cuenta. Nunca hagas push, deploy, amend, force ni git add -A. No edites la gobernanza ` +
   `del proceso, y no toques la contabilidad de planning salvo que este recorrido te lo pida explícitamente.`
 // Lo que quien lanza la corrida le pide a la corrida: el texto de `args`, o su campo `note`. Hasta 0.100.0
@@ -715,20 +731,50 @@ const scribeCommit = (prompt, options = {}) => run(prompt, { ...options, agentTy
 // pendiente, y cuando la fila es de la propia tarea se relee en `context`, que sólo lista las pendientes.
 const HUMAN_ROW_STATE = 'La fila nace con estado `pendiente`, sin excepción: registrás el bloqueo, no lo '
   + 'resolvés —lo resuelve una persona—. No escribas una decisión ni se la atribuyas a nadie.'
+// `task` es la clave con la que el motor bloquea, y quien escribe la fila imita las que ya hay: en una
+// instancia con filas viejas de título largo, copia esa forma y la tarea se vuelve a ofrecer.
+const HUMAN_ROW_KEY = (slug) => `En task va ${slug} solo, sin formato ni nada más: es la clave con la que el `
+  + `motor bloquea la tarea. El archivo se llama ${slug}.md, o ${slug}-2.md si ése ya existe. El motivo, la `
+  + 'épica y la decisión van en el cuerpo.'
 const registerHuman = async (prompt, label, slug = '') => {
-  if (!(await write(`${HUMAN_ROW_STATE}\n\n${prompt}`, { label }))) {
+  const form = `${HUMAN_ROW_STATE} ${HUMAN_FORM}${slug ? ` ${HUMAN_ROW_KEY(slug)}` : ''}`
+  if (!(await write(`${form}\n\n${prompt}`, { label }))) {
     return ` — la fila en ${HUMAN} no se pudo registrar: escribila a mano`
   }
   if (!slug) return ''
-  const row = await clerk(
-    `Corré "node tools/ops.js context ${P} --json" desde ${ROOT}. Poné pending en true sólo si humanActions `
-    + `trae una fila cuya task sea ${slug}, y readOk en true sólo si el comando salió con código 0 y devolvió `
-    + 'JSON. El comando es la fuente de verdad: no abras archivos de planning.',
-    { schema: HUMAN_ROW, label: 'human-row' },
-  )
-  if (!row || !row.readOk) return ` — no se pudo comprobar la fila de ${slug} en ${HUMAN}: revisala a mano`
-  return row.pending ? ''
-    : ` — la fila de ${slug} en ${HUMAN} no quedó pendiente: la resuelve una persona, revisala a mano`
+  const pending = async () => {
+    const row = await clerk(
+      `Corré "node tools/ops.js context ${P} --json" desde ${ROOT}. Copiá en tasks el campo task de cada `
+      + 'fila de humanActions, entero y tal cual, sin recortarlo ni corregirlo; si no hay ninguna, tasks va '
+      + 'vacío. Poné readOk en true sólo si el comando salió con código 0 y devolvió JSON. El comando es la '
+      + 'fuente de verdad: no abras archivos de planning.',
+      { schema: HUMAN_ROW, label: 'human-row' },
+    )
+    return row && row.readOk ? row.tasks || [] : null
+  }
+  let tasks = await pending()
+  if (!tasks) return ` — no se pudo comprobar la fila de ${slug} en ${HUMAN}: revisala a mano`
+  if (tasks.includes(slug)) return ''
+  // La celda que empieza por el slug sin ser el slug solo: envuelto en formato, o seguido del motivo. Sólo
+  // ésa se manda a corregir, porque corregir es reescribir una fila: la que nombra al slug más adelante, o
+  // la de `T-1.1` cuando la tarea es `T-1`, es de otro, y pisarla sería peor que no corregir ninguna.
+  const mentions = (cell) => {
+    const bare = cell.replace(/^[`*«\s]+/, '')
+    return bare.startsWith(slug) && /^(?:[`*»]|\s|:\s|$)/.test(bare.slice(slug.length))
+  }
+  const near = tasks.find(mentions)
+  if (!near) {
+    return ` — la fila de ${slug} en ${HUMAN} no quedó pendiente: la resuelve una persona, revisala a mano`
+  }
+  await write(`${HUMAN_ROW_STATE}\n\nLa fila de ${slug} en ${HUMAN} quedó con este task y así no bloquea `
+    + `nada, porque el motor bloquea por el task exacto: ${near}. Dejá ${slug} solo en ese campo y pasá el `
+    + 'resto al cuerpo. No toques ninguna otra fila ni ningún otro campo.',
+  { label: `${label}-key` })
+  tasks = await pending()
+  if (!tasks) return ` — no se pudo comprobar la fila de ${slug} en ${HUMAN} después de corregirla: revisala a mano`
+  if (tasks.includes(slug)) return ''
+  return ` — la fila de ${slug} en ${HUMAN} no bloquea la tarea: su task quedó como «${near}» y `
+    + `tiene que ser ${slug} solo. Corregila a mano`
 }
 
 // Una parada también escribe en planning —la fila, y antes el cargo que Classify anotó en la cola—, y sólo
@@ -766,8 +812,8 @@ const halt = async (reason, detail = '') => {
 // WIP y HUMAN_ACTIONS nunca entran al contexto de un modelo, y su tamaño deja de costar tokens.
 const readContext = () => clerk(
   `Corré "node tools/ops.js context ${P} --json" desde ${ROOT} y reportá sólo lo que imprimió. Derivá hasTask ` +
-  `de si task es null, wipActive de si wip es null, claimed del campo claimed, today, wipFile y line de sus ` +
-  `campos —line vacío si viene null—, rules del campo rules tal cual, wip con sus campos complete y ` +
+  `de si task es null, wipActive de si wip es null, claimed del campo claimed, today, wipFile, checkpoint y ` +
+  `line de sus campos —line vacío si viene null—, rules del campo rules tal cual, wip con sus campos complete y ` +
   `pending tal cual si viene —y ` +
   `omitilo entero si wip es null, sin inventar ceros—, y lane ` +
   `de task.tier; copiá slug, ` +
@@ -783,6 +829,16 @@ const readContext = () => clerk(
 )
 
 let planning = await readContext()
+// La línea es la de la carpeta donde corre y no cambia en la corrida: se toma acá porque la última lectura,
+// con el hito ya terminado, es justo la que el cierre usa para escribir el checkpoint.
+// Llega transcripta por un agente, y un valor vacío a veces llega con sus comillas escritas (caso 083): lo que
+// no es un nombre de línea no se le dicta a quien escribe el checkpoint.
+const unquoted = (value) => {
+  let out = String(value || '').trim()
+  while (out.length > 1 && QUOTES.includes(out[0]) && out[out.length - 1] === out[0]) out = out.slice(1, -1).trim()
+  return out
+}
+const runLine = /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(unquoted((planning || {}).line)) ? unquoted(planning.line) : ''
 if (!planning) return halt('context-unavailable', `no se pudo leer el estado de ${P}`)
 // Que el agente conteste no significa que haya leído: el schema se completa igual con ceros. Parar acá
 // cuesta una corrida; seguir sobre una lectura fallida escribe en el BACKLOG, y eso no se revierte solo.
@@ -804,10 +860,11 @@ while (blocker.length > 1 && QUOTES.includes(blocker[0]) && blocker[blocker.leng
   blocker = blocker.slice(1, -1).trim()
 }
 if (blocker === 'awaiting-review') {
-  return halt('awaiting-human-review', `${GATE} tiene un checkpoint humano sin resolver`)
+  const held = String(planning.checkpoint || '').trim()
+  return halt('awaiting-human-review', `${held ? `${P}/${held}` : GATE} tiene un checkpoint humano sin resolver`)
 }
 if (blocker === 'blocked-on-human') {
-  return halt('blocked-on-human', `toda la cola espera una acción humana. Está en ${HUMAN}`
+  return halt('blocked-on-human', `toda la cola espera una acción humana. "node tools/ops.js human ${P}" las lista`
     + `${(planning.blockedTasks || []).length ? `, sobre ${planning.blockedTasks.join(', ')}` : ''}`)
 }
 if (blocker) return halt('context-unavailable', `${P} contestó blocked=${JSON.stringify(planning.blocked)}, `
@@ -1334,13 +1391,15 @@ while (rounds++ < MAX_TASKS) {
   const build = resumed ? reusedBuild(planning.wip) : await run(
     `${asRole(cast.build)}Implementá sólo ${task.id} dentro de ${task.service}. Retomá en el primer paso ` +
     `pendiente del WIP; comprobá en el disco los pasos ya hechos y tildá cada uno que salga bien. Para cada ` +
-    `comportamiento escribí primero la prueba, corréla y anotá en redFirst el test y el fallo literal que ` +
-    `dio; recién después implementá. Un test que pasa antes de que exista el código no asercia lo que dice ` +
-    `aserciar: endurecelo y volvé a correr hasta verlo fallar. Corré las pruebas que necesites para ver ese ` +
+    `comportamiento escribí primero la prueba, corréla y anotá en redFirst el test, el fallo literal que dio ` +
+    `y un id corto —r1, r2…—; recién después implementá. Un test que pasa antes de que exista el código no ` +
+    `asercia lo que dice aserciar: endurecelo y volvé a correr hasta verlo fallar. Corré las pruebas que ` +
+    `necesites para ver ese ` +
     `rojo y ese verde, y nada más: los gates completos, el QA, el commit y el cierre son fases posteriores, ` +
     `así que no toques ${P}/done/ ni ${QUEUE} ni el status del WIP. Lo que el plan no previó va en discovered y ` +
     `no en el código a secas: kind=edge si esta tarea lo puede fijar —y entonces entra con su prueba, que ` +
-    `nombrás en test y anotás en redFirst—. Lo que notaste y no impide entregar la aceptación es una de ` +
+    `anotás en redFirst y nombrás en test, y citás en red el id de ese rojo—. Lo que notaste y no impide ` +
+    `entregar la aceptación es una de ` +
     `tres cosas, y el recorrido sigue con las tres. kind=open sólo si es una decisión que le toca a una ` +
     `persona: elegir entre opciones que cambian el rumbo del producto, el gasto, una obligación externa o ` +
     `el riesgo; ésa va a una fila que alguien tiene que contestar, así que no la uses para lo demás. ` +
@@ -1409,9 +1468,9 @@ while (rounds++ < MAX_TASKS) {
     // porque el WIP activo manda sobre la acción humana; aparece cuando el WIP cierra, y entonces la
     // tarea queda frenada por una pregunta que ya se había resuelto seguir sin contestar. En la corrida
     // que lo mostró la atrapó Review, tres fases después de escribirla.
-    await write(`Registrá en ${HUMAN} una fila por cada decisión que ${task.id} dejó abierta, con qué la ` +
-      `cierra y quién puede tomarla. La primera columna nunca es ${task.id}: el motor bloquea por esa ` +
-      `celda exacta y estas decisiones no impiden entregarla. Va la épica, el hito o el recorrido al que ` +
+    await write(`${HUMAN_FORM}\n\nRegistrá en ${HUMAN} una fila por cada decisión que ${task.id} dejó ` +
+      `abierta, con qué la cierra y quién puede tomarla. El task nunca es ${task.id}: el motor bloquea por ese ` +
+      `campo exacto y estas decisiones no impiden entregarla. Va la épica, el hito o el recorrido al que ` +
       `alcanza la decisión. No inventes responsables ni fechas: ` +
       `${JSON.stringify(openDecisions.map((entry) => entry.detail))}`, { label: 'open-decisions' })
   }
@@ -1449,15 +1508,24 @@ while (rounds++ < MAX_TASKS) {
   }
   const namesTest = (red, item) => Boolean(core(item.test))
     && (core(red.test).includes(core(item.test)) || core(item.test).includes(core(red.test)) || sameCase(red, item))
+  // Y tampoco la tercera vez (caso 350): el borde nombró además el archivo de salida de su prueba y el rojo
+  // traía el paréntesis en el medio. Dos textos libres siempre tienen una forma más de no coincidir, así
+  // que el borde cita a su rojo por el id que Build le puso. El nombre queda como respaldo para quien no
+  // lo cite, con las mismas reglas de arriba: no se aflojaron para dejar pasar esa forma. Y citar no
+  // exime de nombrar la prueba del borde: sin ella no hay nada que el rojo citado esté fijando.
+  const cites = (red, item) => Boolean(String(red.id || '').trim()) && Boolean(core(item.test))
+    && String(red.id).trim() === String(item.red || '').trim()
   const loose = build.discovered.find((entry) => entry.kind === 'edge'
-    && !build.redFirst.some((red) => namesTest(red, entry)))
+    && !build.redFirst.some((red) => cites(red, entry) || namesTest(red, entry)))
   // El motivo dice qué comprobó la puerta y no una conclusión sobre el trabajo: pegarle al detalle del
   // build un «entró sin la prueba que lo fija» producía una parada que se contradecía sola cuando el
   // detalle contaba que la prueba sí estaba —la frase del agente y la de la puerta hablaban de cosas
   // distintas y se leían como una—.
   if (loose) {
-    return halt('edge-unproven', `${loose.detail} — su campo "test" (${loose.test || 'vacío'}) no nombra `
-      + `ninguno de los rojos declarados: ${build.redFirst.map((red) => red.test).join(' | ') || '(ninguno)'}`)
+    const reds = build.redFirst.map((red) => `${String(red.id || '').trim() ? `${red.id}: ` : ''}${red.test}`)
+    return halt('edge-unproven', `${loose.detail} — su campo "red" (${loose.red || 'vacío'}) no es el id de `
+      + `ningún rojo declarado y su campo "test" (${loose.test || 'vacío'}) no nombra ninguno: `
+      + `${reds.join(' | ') || '(ninguno)'}`)
   }
 
   // Qué revisión hubo, para que el cierre no pueda inventar una. Nace diciendo que no hubo porque
@@ -1570,7 +1638,7 @@ while (rounds++ < MAX_TASKS) {
       // La nota que devuelve viaja al hecho: sin ella la entrega afirma una fila que el disco no tiene,
       // que es el caso 087 entrando por otra puerta.
       const note = await registerHuman(`Registrá en ${HUMAN} una fila por cada decisión que la revisión de `
-        + `${task.id} dejó abierta, con qué la cierra y quién puede tomarla. La primera columna nunca es `
+        + `${task.id} dejó abierta, con qué la cierra y quién puede tomarla. El task nunca es `
         + `${task.id} —el porqué es el mismo que en Build—: va la épica, el hito o el recorrido al que `
         + `alcanza. No inventes responsables ni fechas: ${JSON.stringify(filed)}`, 'review-human')
       decidedNote = `${note}`
@@ -1650,19 +1718,27 @@ while (rounds++ < MAX_TASKS) {
   // Verify la reescribe a su modo —le pone número, le saca la marca—, así que se compara por palabras.
   const wordsIn = (text) => new Set(String(text).replace(OUT_OF_VERIFY, ' ').toLowerCase()
     .split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 3))
-  const declaredOut = (criterion) => outOfVerify.some((condition) => {
-    const said = wordsIn(criterion)
-    const declared = wordsIn(condition)
+  const sameWords = (one, other) => {
+    const said = wordsIn(one)
+    const declared = wordsIn(other)
     const shared = [...said].filter((word) => declared.has(word)).length
     return shared > 0 && shared >= 0.6 * Math.min(said.size, declared.size)
-  })
+  }
+  const declaredOut = (criterion) => outOfVerify.some((condition) => sameWords(criterion, condition))
+  // La causa se pide por criterio. Atada al diff —`no-surface` sólo si la tarea no tocaba nada ejecutable—,
+  // la condición que se cumple en un documento salía `missing-test` apenas viajaba con código: el rebote
+  // pedía una prueba para prosa, y o la conseguía o la corrida paraba en `verify-hollow` (caso 345). Lo que
+  // sigue sosteniendo que no se use para cerrar código sin pruebas es `check`, que juzga el `n/a` entero
+  // contra lo que tocó el commit; en la tarea mixta, cada `n/a` queda en `done/` con su razón al lado.
   const VERIFY_ASK = `${asRole(cast.verify)}Abrí el fuente de los tests que la tarea agregó o cambió y ` +
     `contrastá cada criterio ` +
     `de aceptación contra sus aserciones: en uncovered va el criterio que ningún test codifica, con su causa ` +
     `—missing-test si el test falta o no asercia la propiedad, ambiguous si el criterio no dice qué habría ` +
-    `que aserciar, no-surface si se cumple en un artefacto que no se ejecuta, como un documento o una ` +
-    `decisión escrita, y con reason diciendo cuál—. no-surface vale sólo si la tarea no tocó ningún archivo ` +
-    `que no termine en ${NON_EXECUTABLE.join(', ')}; con cualquier otro en el diff es missing-test. En ` +
+    `que aserciar, no-surface si ese criterio se cumple en un artefacto que no se ejecuta (un archivo que ` +
+    `termina en ${NON_EXECUTABLE.join(', ')}, un comentario o una decisión escrita), y con reason diciendo ` +
+    `cuál y dónde quedó—. La causa es de cada criterio y no de la tarea: que el diff toque código no vuelve ` +
+    `missing-test al que se cumple en un documento, y el criterio que describe una conducta del código es ` +
+    `missing-test aunque el resto de la tarea sea documentación. En ` +
     `covered va cada criterio que un test sí codifica, por partes: en file, la ruta del archivo de pruebas ` +
     `desde la raíz de ${task.service}; en name, el nombre de la prueba tal como está escrito en ese archivo ` +
     `—el texto de su it, test o función, sin los describe que la contienen ni lo que el runner le agrega al ` +
@@ -1692,25 +1768,55 @@ while (rounds++ < MAX_TASKS) {
   // Un criterio que nadie sabe cómo aserciar no es trabajo que falta sino una definición que falta, y
   // definirla acá sería inventarla. Escribir la prueba que falta, en cambio, es trabajo del recorrido:
   // hacer parar a una persona por eso le cobra una interrupción por algo que se resolvía solo.
-  const ambiguous = verified.uncovered
-    .find((entry) => entry.cause === 'ambiguous' && !declaredOut(entry.criterion))
-  if (ambiguous) {
+  const haltIfAmbiguous = async () => {
+    const ambiguous = verified.uncovered
+      .find((entry) => entry.cause === 'ambiguous' && !declaredOut(entry.criterion))
+    if (!ambiguous) return null
     const note = await registerHuman(
       `Registrá ${task.id} en ${HUMAN}: el criterio "${ambiguous.criterion}" no dice qué habría ` +
       `que aserciar, y hace falta la decisión que lo fija.`, 'verify-human', task.id)
-    return halt('acceptance-ambiguous', `${ambiguous.criterion}${note}`)
+    // Con los gates además en rojo, eso viaja en la misma parada: quien define el criterio y relanza no
+    // tiene por qué enterarse recién ahí.
+    const red = verified.passed ? '' : ` · además los gates no pasaron: ${verified.details}`
+    return halt('acceptance-ambiguous', `${ambiguous.criterion}${note}${red}`)
   }
+  const vague = await haltIfAmbiguous()
+  if (vague) return vague
   // Lo que no tiene superficie no frena ni rebota: viaja a Done, que lo escribe como `tests: n/a`. Se filtra
-  // por exclusión y no por `missing-test` para que una causa que no se conozca siga frenando (R27). Que
-  // el modelo no lo use para cerrar sin pruebas lo sostiene `check`, que mira qué tocó el commit.
+  // por exclusión y no por `missing-test` para que una causa que no se conozca siga frenando (R27).
+  //
+  // Salvo cuando es todo lo que hay y la tarea escribió pruebas: ahí `no-surface` en cada criterio contradice
+  // al propio Build, y `check` lo rechazaría recién en Done, con el trabajo entero hecho. Frena acá.
+  const allNoSurface = () => build.redFirst.length > 0 && !(verified.covered || []).length
+    && verified.uncovered.every((entry) => entry.cause === 'no-surface')
   const lacking = () => verified.uncovered
-    .filter((entry) => entry.cause !== 'no-surface' && !declaredOut(entry.criterion))
-  if (lacking().length) {
+    .filter((entry) => (entry.cause !== 'no-surface' || allNoSurface()) && !declaredOut(entry.criterion))
+  // Cada pasada es un veredicto independiente sobre la misma aceptación, y la que sigue a las pruebas
+  // faltantes puede traer sin cubrir un criterio que la anterior dio por cubierto. Frenar ahí paraba la
+  // corrida por algo que nunca se le pidió a nadie: en los diarios de corridas, 12 de 39 segundas pasadas
+  // (caso 346). Lo que aparece recién ahí compra una vuelta más, y una sola. Lo que ya se pidió y sigue
+  // faltando no la compra —también cuando viene junto a uno nuevo—: esa prueba ya se intentó escribir. Y
+  // tampoco la compra lo que no es una prueba que falte: un criterio ambiguo pide una definición, no un test,
+  // y sale del bucle para parar como el de la primera pasada: antes de mirar si los gates pasaron, igual
+  // que ahí. Con los gates en rojo además, lo que falta sigue siendo la definición.
+  const VERIFY_ROUNDS = 2
+  const asked = []
+  const askedAlready = () => lacking().some((entry) => asked.some((one) => sameWords(one, entry.criterion)))
+  const writable = (round) => round === 1 || lacking().every((entry) => entry.cause === 'missing-test')
+  for (let round = 1; round <= VERIFY_ROUNDS && lacking().length && !askedAlready() && writable(round); round += 1) {
+    const missing = lacking().map((entry) => entry.criterion)
     await run(`${asRole(cast.build)}Escribí sólo las pruebas que faltan en ${task.id}, con el mismo rojo ` +
-      `previo, y no toques el código de producción: ${lacking().map((e) => e.criterion).join('; ')}`,
+      `previo, y no toques el código de producción: ${missing.join('; ')}`,
       { label: 'missing-tests' })
+    asked.push(...missing)
     verified = await run(VERIFY_ASK, { schema: VERIFY, label: 'verify' })
-    if (!verified) return halt('agent-unavailable', 'la segunda pasada de Verify no devolvió resultado')
+    if (!verified) {
+      return halt('agent-unavailable', 'la pasada de Verify que sigue a las pruebas faltantes no devolvió resultado')
+    }
+  }
+  if (asked.length) {
+    const vagueLater = await haltIfAmbiguous()
+    if (vagueLater) return vagueLater
   }
   if (!verified.passed || !verified.commands.length) return halt('verify-failed', verified.details)
   // Verde por ausencia: los gates pasaron y ninguno corrió las pruebas que esta tarea escribió. El exit
@@ -1944,13 +2050,13 @@ if (!closing.ok) {
   // corrida terminaba, la sesión se cerraba y el planning seguía en rojo sin que nada dijera por qué.
   if (!closing.ok) {
     const left = failures(closing)
-    // La primera columna es fija: con el nombre del hito, `check` la rechaza cuando ese nombre contiene el
+    // El task es fijo: con el nombre del hito, `check` la rechaza cuando ese nombre contiene el
     // de una tarea en cola, y esta fila no frena ninguna.
     const noted = await registerHuman(
       `Registrá en ${HUMAN} una fila: al cerrar la corrida` +
       `${currentMilestone ? ` del hito ${currentMilestone}` : ''}, ` +
       `"node tools/ops.js check ${P}" quedó en rojo y repararlo pedía algo que no es estado derivado. Los ` +
-      `errores, textuales: ${left}. La primera columna es autobuild, nunca una tarea: esto no frena ninguna en ` +
+      `errores, textuales: ${left}. El task es autobuild, nunca una tarea: esto no frena ninguna en ` +
       'particular. Decí qué lo cierra —quien pueda aportar lo que falta, o decidir qué se hace con la entrada— ' +
       'sin inventar responsables ni fechas.',
       'closing-human',
@@ -2014,15 +2120,54 @@ if (learned.length) {
 // Sólo cuando el hito terminó. Cortada a pedido, la corrida deja tareas del mismo hito en la cola: escribir
 // la compuerta ahí decía «hito terminado» sobre uno que no lo estaba, y frenaba la corrida siguiente hasta
 // que alguien la destrabara a mano —visto en la primera corrida real con `--max 1` (caso 293)—.
-if (completed.length && contract.humanCheckpoint && !cut) await scribe(
-  `Creá ${GATE} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones humanas ` +
-  `pendientes y las instrucciones exactas para continuar. Arrancá el archivo con un frontmatter ` +
-  `"status: pendiente", y decí que se destraba cambiándolo a "resuelta" —no borrando el archivo, que es ` +
-  `lo que deja leer después qué se revisó—. Nunca hagas push ni deploy.` +
+// El frontmatter se dicta campo por campo porque es lo que el motor lee: el nombre del archivo y `hito:` dicen
+// cuál es, y `line:` a quién frena. Sin `line:` frenaría a todas las líneas, que es el defecto del caso 347.
+//
+// Y después se relee. El archivo lo escribe un agente, y un `line:` mal escrito deja el checkpoint pendiente
+// sin frenar a su propia línea: con el archivo único eso no podía pasar, porque frenaba sin depender de
+// ningún valor. Lo que se comprueba es que `context` frene, no que el archivo esté — y que frene por éste:
+// con otro checkpoint pendiente la línea está frenada igual, y resuelto aquél arrancaría sin esta revisión.
+let checkpointNote = ''
+if (completed.length && contract.humanCheckpoint && !cut) {
+  const file = `${CHECKPOINTS}/${currentMilestone}.md`
+  const front = `"status: pendiente", "hito: ${currentMilestone}" y `
+    + (runLine ? `"line: ${runLine}"` : '"line:" a secas, sin valor')
   // El checkpoint también es estado de planning, y se escribe después del último commit de planning: sin
   // esto cada hito terminaba con ese archivo suelto en la instancia (caso 271).
-  (contract.commitPerTask ? ` Después commiteá ese archivo, y sólo ése, con el mensaje "chore(planning): await ` +
-    `review of ${currentMilestone}".${TWO_COMMANDS}${PLANNING_BRANCH()}` : ''),
-  { label: 'human-checkpoint' },
-)
-return finish({ done: completed, count: completed.length, hito: currentMilestone, phases: ran })
+  const committing = (message) => (contract.commitPerTask
+    ? ` Después commiteá ese archivo, y sólo ése, con el mensaje "${message}".${TWO_COMMANDS}${PLANNING_BRANCH()}`
+    : '')
+  await scribe(
+    `Creá ${file} con el hito terminado, las tareas ${completed.join(', ')}, la evidencia, las acciones ` +
+    `humanas pendientes y las instrucciones exactas para continuar. Arrancá el archivo con un frontmatter de ` +
+    `tres campos, uno por renglón y en este orden: ${front}. Decí que se destraba cambiando status a ` +
+    `"resuelta" —no borrando el archivo, que es lo que deja leer después qué se revisó—. Nunca hagas push ni ` +
+    `deploy.${committing(`chore(planning): await review of ${currentMilestone}`)}`,
+    { label: 'human-checkpoint' },
+  )
+  const holds = async () => {
+    const read = await clerk(
+      `Corré "node tools/ops.js context ${P} --json" desde ${ROOT}. Copiá blocked y checkpoints de sus campos, ` +
+      'tal cual. Poné readOk en true sólo si el comando salió con código 0 y devolvió JSON. El comando es la ' +
+      'fuente de verdad: no abras archivos de planning.',
+      { schema: CHECKPOINT_HELD, label: 'checkpoint-held' },
+    )
+    if (!read || !read.readOk) return null
+    return unquoted(read.blocked) === 'awaiting-review'
+      && (read.checkpoints || []).some((one) => unquoted(one) === `checkpoints/${currentMilestone}.md`)
+  }
+  let held = await holds()
+  if (held === false) {
+    await scribe(
+      `${file} quedó escrito y no frena a esta línea, así que la corrida siguiente arrancaría sin la revisión. ` +
+      `Corregí sólo su frontmatter: tres campos, uno por renglón y en este orden, ${front}; sin comillas ni ` +
+      `nada más en esos renglones.${committing(`chore(planning): fix the checkpoint of ${currentMilestone}`)}`,
+      { label: 'human-checkpoint-fix' },
+    )
+    held = await holds()
+  }
+  if (held === null) checkpointNote = `no se pudo comprobar que ${file} frene a esta línea: revisalo a mano`
+  else if (!held) checkpointNote = `${file} no quedó frenando a esta línea: revisá su frontmatter a mano`
+}
+return finish({ done: completed, count: completed.length, hito: currentMilestone, phases: ran,
+  ...(checkpointNote ? { checkpoint: checkpointNote } : {}) })

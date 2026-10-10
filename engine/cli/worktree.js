@@ -15,6 +15,7 @@ const ST = require('../planning/state')
 const CL = require('../planning/claims')
 const R = require('../core/repos')
 const O = require('../core/ownership')
+const { treeOf } = require('../core/task-trees')
 const { fail, planningRoot, USAGE, REFUSED } = require('./io')
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
@@ -58,18 +59,37 @@ function worktree(dir, slug, cli) {
   }
 
   const branch = CL.branchOf(slug)
-  const already = existing(repo, branch)
+  // Un árbol borrado a mano sigue listado: sin retirarlo, se lo daba por existente. Se retira ése y no se
+  // poda todo, que le quitaría el registro a cualquier otro árbol que hoy no esté —un volumen desmontado—.
+  const listed = existing(repo, branch)
+  if (listed && !fs.existsSync(listed)) git(repo, 'worktree', 'remove', '--force', listed)
+  const already = listed && fs.existsSync(listed) ? listed : ''
   // El árbol queda al lado del repositorio **tal como lo ve la sesión**. En la carpeta de una línea el
   // producto es un enlace al original: al lado del original, el árbol caía fuera de las raíces de la línea
   // —sus guards de límites frenaban cada escritura— y dentro de la carpeta que comparten las demás
   // (caso 274). `seen` es dónde vive el servicio según la instancia; `anchor`, el tramo de esa ruta que es
   // el repositorio.
-  const seen = R.serviceDirs(path.join(root, '..'), task.service)
-    .find((dir) => fs.realpathSync(dir).startsWith(repo)) || repo
+  const seen = R.serviceDirs(path.join(root, '..'), task.service).filter((dir) => fs.existsSync(dir))
+    .find((dir) => !path.relative(repo, fs.realpathSync(dir)).startsWith('..')) || repo
   let anchor = seen
   while (fs.realpathSync(anchor) !== repo && path.dirname(anchor) !== anchor) anchor = path.dirname(anchor)
   if (fs.realpathSync(anchor) !== repo) anchor = repo
-  const target = already || path.join(path.dirname(anchor), `${path.basename(anchor)}-${slug}`)
+  const expected = treeOf(anchor, slug)
+  const target = already || expected
+  // El árbol de esa rama puede existir en otro lado: armado a mano, o movido. Ahí los guards no lo abren
+  // —abren el lugar donde este comando lo arma, y lo que el proyecto declaró—, así que entregarlo sería dar
+  // por bueno un árbol donde cada escritura se frena. El checkout principal con la rama puesta sí vale.
+  // Un enlace puesto en ese lugar tampoco: los guards abren la carpeta, no adonde lleve.
+  const declared = [path.join(root, '..'), ...R.declaredRoots(path.join(root, '..')).map((one) => one.dir)]
+    .filter((base) => fs.existsSync(base)).map((base) => fs.realpathSync(base))
+  const within = (dir) => dir === repo || declared.some((base) => !path.relative(base, dir).startsWith('..'))
+  const inPlace = fs.existsSync(expected) && !fs.lstatSync(expected).isSymbolicLink()
+    && fs.realpathSync(expected) === (already && fs.realpathSync(already))
+  if (already && !inPlace && !within(fs.realpathSync(already))) {
+    return fail(`la rama ${branch} ya tiene un árbol en ${already}, que no es donde se arma el de esta tarea `
+      + `(${expected}) ni está dentro de lo que el proyecto declaró: los guards no dejarían escribir ahí. `
+      + `Movelo a ese lugar con git worktree move, o retiralo con git worktree remove.`, REFUSED)
+  }
   // Dónde trabajar adentro del árbol: el mismo tramo que separa al servicio de la raíz de su repositorio.
   const work = path.join(target, path.relative(anchor, anchor === repo && seen !== repo
     ? fs.realpathSync(seen) : seen))
@@ -80,13 +100,14 @@ function worktree(dir, slug, cli) {
     const added = git(repo, ...args)
     if (added.status !== 0) return fail(`git worktree add falló: ${(added.stderr || '').trim()}`, REFUSED)
   }
-
   if (cli.has('--json')) {
     return console.log(JSON.stringify({
       path: target, work, branch, repo, runner: target, reused: Boolean(already),
     }))
   }
   console.log(`${already ? '=' : '✓'} ${target}  (${branch})`)
+  // Los guards abren el árbol de una tarea reclamada. Sin reclamo queda cerrado si cae fuera de las raíces.
+  if (!taken) console.log(`  ⚠ ${slug} no está reclamada: los guards abren el árbol cuando lo esté (ops claim).`)
   // En `embedded` la instancia vive dentro del repo, así que cada árbol se lleva su propia copia de
   // `planning/` — o ninguna, si todavía no se commiteó—. Para un agente solo eso funciona; para varios
   // deja de haber coordinación, porque los reclamos de uno no los ve el otro hasta mergear. Se avisa y no

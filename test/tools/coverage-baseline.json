@@ -389,6 +389,11 @@
     "branches": 73,
     "functions": 100
   },
+  "engine/planning/checkpoints.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
   "engine/planning/claims.js": {
     "lines": 100,
     "branches": 88,
@@ -400,6 +405,11 @@
     "functions": 100
   },
   "engine/planning/done-commits.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
+  "engine/planning/human-actions.js": {
     "lines": 100,
     "branches": 100,
     "functions": 100
@@ -495,6 +505,16 @@
     "functions": 100
   },
   "engine/hooks/removal.js": {
+    "lines": 100,
+    "branches": 100,
+    "functions": 100
+  },
+  "engine/core/task-trees.js": {
+    "lines": 100,
+    "branches": 94,
+    "functions": 100
+  },
+  "engine/core/readable.js": {
     "lines": 100,
     "branches": 100,
     "functions": 100

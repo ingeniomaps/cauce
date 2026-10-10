@@ -77,6 +77,17 @@ test('prepara un árbol por tarea sin clonar, y entrega el id del runner', () =>
 
   assert.match(hecho.stdout, new RegExp(`export CAUCE_RUNNER=${arbol}`))
 
+  // Sin reclamo lo dice: los guards abren el árbol de una tarea reclamada (caso 360).
+  assert.match(hecho.stdout, /alta no está reclamada/)
+  const { execute } = require('../../engine/hooks/run')
+  const ops = path.dirname(planning)
+  const escribe = () => execute('workspace-boundary',
+    { cwd: ops, tool_input: { file_path: path.join(arbol, 'api', 'nuevo.go') } })
+  assert.throws(escribe, /fuera de las raíces/, 'la raíz acá es el repositorio, y el árbol queda al lado')
+  assert.equal(como('/w/otro', () => run(['claim', planning, 'alta'])).status, 0)
+  assert.doesNotThrow(escribe, 'reclamada, el árbol que este comando armó es escribible')
+  assert.doesNotMatch(como('/w/otro', () => run(['worktree', planning, 'alta'])).stdout, /no está reclamada/)
+
   // Repetir no rompe ni crea un segundo árbol: devuelve el que ya existe para esa rama.
   const otra = como('/w/otro', () => run(['worktree', planning, 'alta']))
   assert.equal(otra.status, 0, otra.stderr)
@@ -300,4 +311,96 @@ test('el árbol de una tarea queda al lado de lo que la sesión ve, y dice dónd
   assert.equal(fs.realpathSync(tree.repo), fs.realpathSync(linked.repo), 'y es un árbol del repositorio original')
   assert.equal(fs.existsSync(`${linked.repo}-alta`), false, 'no al lado del original, que comparten las demás líneas')
   assert.equal(git(linked.repo, 'rev-parse', '--abbrev-ref', 'HEAD').stdout.trim(), 'main', 'que no cambió de rama')
+})
+
+// Armado a mano o movido. El porqué de negarse está en `worktree`; acá se mide la negativa y la salida.
+test('si la rama ya tiene un árbol en otro lado, se niega en vez de entregarlo', () => {
+  const { base, repo, planning } = montar('cauce-wt-en-otro-lado-')
+  const elsewhere = path.join(base, 'en-cualquier-lado')
+  assert.equal(git(repo, 'worktree', 'add', '-q', '-b', 'task/alta', elsewhere).status, 0)
+  const negado = como('/w/uno', () => run(['worktree', planning, 'alta']))
+  assert.notEqual(negado.status, 0)
+  assert.match(negado.stderr, /ya tiene un árbol en .*en-cualquier-lado.*no es donde se arma/s)
+  assert.match(negado.stderr, /git worktree move/, 'y dice cómo seguir')
+
+  // Movido a su lugar, se retoma.
+  assert.equal(git(repo, 'worktree', 'move', elsewhere, `${repo}-alta`).status, 0)
+  const hecho = como('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
+  assert.equal(JSON.parse(hecho.stdout).reused, true)
+})
+
+// Con la rama de la tarea puesta en el checkout principal, «el árbol» es el repositorio mismo: está dentro
+// de lo declarado, y se entrega.
+test('la rama de la tarea puesta en el checkout principal se entrega', () => {
+  const { repo, planning } = montar('cauce-wt-principal-')
+  git(repo, 'checkout', '-q', '-b', 'task/alta')
+  const json = JSON.parse(como('/w/uno', () => run(['worktree', planning, 'alta', '--json'])).stdout)
+  assert.equal(fs.realpathSync(json.path), fs.realpathSync(repo))
+  assert.equal(json.reused, true)
+})
+
+// Borrado a mano, git lo sigue listando hasta que se poda. No es un árbol que retomar: se arma de nuevo.
+test('un árbol borrado a mano se vuelve a armar en vez de romper', () => {
+  const { repo, planning } = montar('cauce-wt-borrado-')
+  assert.equal(como('/w/uno', () => run(['worktree', planning, 'alta'])).status, 0)
+  const arbol = `${repo}-alta`
+  for (const name of fs.readdirSync(path.join(arbol, 'api'))) fs.unlinkSync(path.join(arbol, 'api', name))
+  fs.rmdirSync(path.join(arbol, 'api'))
+  fs.unlinkSync(path.join(arbol, '.git'))
+  fs.rmdirSync(arbol)
+  // Otro árbol del mismo repositorio que hoy no está —un volumen desmontado— no pierde su registro por esto.
+  const ausente = path.join(path.dirname(repo), 'en-otro-volumen')
+  assert.equal(git(repo, 'worktree', 'add', '-q', '-b', 'otra', ausente).status, 0)
+  fs.renameSync(ausente, `${ausente}-desmontado`)
+  const otra = como('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
+  assert.equal(otra.status, 0, otra.stderr)
+  assert.equal(JSON.parse(otra.stdout).reused, false)
+  assert.ok(fs.existsSync(path.join(arbol, 'api', 'main.go')))
+  assert.match(git(repo, 'worktree', 'list', '--porcelain').stdout, /en-otro-volumen\n/, 'el otro sigue registrado')
+})
+
+// Con la raíz en una carpeta del repositorio, el checkout principal con la rama puesta contiene a la raíz:
+// es escribible ahí adentro, y se entrega. Y una raíz que no está en esta máquina no rompe el comando.
+test('el checkout principal vale aunque la raíz sea una carpeta suya, y una raíz ausente no rompe', () => {
+  const { repo, planning } = montar('cauce-wt-raiz-carpeta-')
+  const file = path.join(path.dirname(planning), 'ops.config.json')
+  const config = JSON.parse(fs.readFileSync(file, 'utf8'))
+  // La segunda se llama como el servicio de otra tarea y no está: tampoco rompe al buscar dónde vive.
+  config.workspaceRoots = [{ name: 'api', path: '../producto/api' }, { name: '.', path: '../no-clonado' }]
+  fs.writeFileSync(file, JSON.stringify(config, null, 2))
+  fs.writeFileSync(path.join(planning, 'BACKLOG.md'), `# Backlog promovido
+
+## Hito uno — Primero
+
+- [ ] **alta** [lite] — Alta. _Aceptación: rechaza duplicado._ (service: .)
+`)
+  git(repo, 'checkout', '-q', '-b', 'task/alta')
+  const hecho = como('/w/uno', () => run(['worktree', planning, 'alta', '--json']))
+  assert.equal(hecho.status, 0, hecho.stderr)
+  assert.equal(fs.realpathSync(JSON.parse(hecho.stdout).path), fs.realpathSync(repo))
+})
+
+// Un enlace puesto donde va el árbol, hacia uno armado en otro lado: los guards no lo abren, así que no
+// se entrega.
+test('un enlace donde va el árbol no lo vuelve el árbol de la tarea', () => {
+  const { base, repo, planning } = montar('cauce-wt-enlace-')
+  const far = path.join(base, 'lejos')
+  assert.equal(git(repo, 'worktree', 'add', '-q', '-b', 'task/alta', far).status, 0)
+  fs.symlinkSync(far, `${repo}-alta`, 'dir')
+  const negado = como('/w/uno', () => run(['worktree', planning, 'alta']))
+  assert.notEqual(negado.status, 0)
+  assert.match(negado.stderr, /ya tiene un árbol en .*lejos/s)
+})
+
+// Una raíz vecina cuyo nombre empieza igual que el repositorio no es el repositorio: comparar por el
+// comienzo del texto la tomaba por él, y `work` mandaba a trabajar a esa otra carpeta.
+test('una raíz vecina con el nombre parecido no se toma por el repositorio del servicio', () => {
+  const { base, repo, planning } = montar('cauce-wt-vecina-')
+  fs.mkdirSync(path.join(base, 'producto-docs', 'api'), { recursive: true })
+  const file = path.join(path.dirname(planning), 'ops.config.json')
+  const config = JSON.parse(fs.readFileSync(file, 'utf8'))
+  config.workspaceRoots = [{ name: 'docs', path: '../producto-docs' }, { name: 'main', path: '../producto' }]
+  fs.writeFileSync(file, JSON.stringify(config, null, 2))
+  const hecho = JSON.parse(como('/w/uno', () => run(['worktree', planning, 'alta', '--json'])).stdout)
+  assert.equal(hecho.work, path.join(`${repo}-alta`, 'api'))
 })

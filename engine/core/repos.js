@@ -8,6 +8,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { textOf, TOO_LARGE } = require('./readable')
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
 
@@ -61,6 +62,39 @@ function reposFor(opsRoot, service) {
     // Dos raíces del mismo repositorio son un solo repositorio: lo ambiguo es a cuál pertenece el
     // servicio, no cuántas rutas lo contienen.
     .filter((repo, index, all) => all.indexOf(repo) === index)
+}
+
+// El repositorio anidado que el de la instancia registra como enlace de git —lo que deja un `git add` que lo
+// incluye— y que toca a una raíz declarada: es la raíz, está debajo de ella, o la contiene. En el árbol
+// principal no se nota. Una línea de trabajo es un worktree, y un worktree no puebla ese enlace: la carpeta
+// nace vacía, `ops line` no la enlaza porque ya existe, y quien pregunta de qué repositorio es recibe el de la
+// instancia. Todo en verde (caso 352).
+//
+// Un submódulo declarado en `.gitmodules` queda afuera: ése sí se puebla, con `git submodule update`. Y las
+// rutas se comparan resueltas, porque git contesta la real y la instancia puede nombrarse por un enlace.
+function nestedRootWarnings(opsRoot) {
+  const top = git(opsRoot, 'rev-parse', '--show-toplevel')
+  if (top.status !== 0) return []
+  const repo = fs.realpathSync(top.stdout.trim())
+  const inside = (dir) => path.relative(repo, fs.existsSync(dir) ? fs.realpathSync(dir) : dir).split(path.sep).join('/')
+  const declared = declaredRoots(opsRoot).map((root) => inside(root.dir))
+  // La raíz que es el repositorio entero, o que lo contiene, tiene debajo a todos sus enlaces: es la de una
+  // instancia embebida que declara `.` o `..`, y filtrada junto con las de afuera no avisaba nunca.
+  const whole = declared.some((one) => one.split('/').every((part) => part === '' || part === '..'))
+  const roots = declared.filter((one) => one && !one.startsWith('..'))
+  if (!whole && !roots.length) return []
+  // Con `-z` los nombres llegan enteros: un espacio en la ruta o en el nombre del submódulo no los parte.
+  const clean = (one) => one.replace(/^\.\//, '').replace(/\/+$/, '')
+  const modules = new Set((git(repo, 'config', '-z', '-f', '.gitmodules', '--get-regexp', '\\.path$').stdout || '')
+    .split('\0').map((entry) => clean(entry.slice(entry.indexOf('\n') + 1))).filter(Boolean))
+  const links = (git(repo, 'ls-files', '-s', '-z').stdout || '').split('\0')
+    .filter((entry) => entry.startsWith('160000 ')).map((entry) => entry.slice(entry.indexOf('\t') + 1))
+  const touches = (link) => whole || roots.some((root) => root === link || root.startsWith(`${link}/`)
+    || link.startsWith(`${root}/`))
+  return links.filter((link) => !modules.has(link) && touches(link))
+    .map((link) => `workspaceRoots: ${link} es un repositorio que el de la instancia registra como enlace de `
+      + 'git, así que en una línea de trabajo esa carpeta queda vacía. Desde la raíz del repositorio, sacalo del '
+      + `índice —git rm --cached "${link}"— e ignoralo, o movelo afuera`)
 }
 
 // El repositorio del servicio cuando no hay duda. Sin ninguno o con varios devuelve vacío, y quien
@@ -225,18 +259,57 @@ function commitsAmong(repo, shas) {
   const found = new Set()
   for (let start = 0; start < shas.length; start += SHAS_PER_CALL) {
     const batch = shas.slice(start, start + SHAS_PER_CALL)
-    const all = spawnSync('git', ['-C', repo, 'rev-list', '--no-walk', '--quiet',
+    // `--ignore-missing` saltea el que no existe en vez de fallar la tanda entera, y lo que no es un commit
+    // no sale. Sin eso, un solo sha ausente mandaba a preguntar de a uno: con una carpeta de repositorios
+    // por raíz casi todos faltan en casi todos, y eran un proceso por sha y por repositorio.
+    const all = spawnSync('git', ['-C', repo, 'rev-list', '--no-walk', '--ignore-missing',
       ...batch.map((sha) => `${sha}^{commit}`)], { encoding: 'utf8' })
-    for (const sha of batch) if (all.status === 0 || isCommit(repo, sha)) found.add(sha)
+    const listed = (all.stdout || '').split('\n').filter(Boolean)
+    for (const sha of batch) {
+      if (all.status === 0 ? listed.some((full) => full.startsWith(sha)) : isCommit(repo, sha)) found.add(sha)
+    }
   }
   return found
 }
 
-function commitStatus(opsRoot, items) {
+// En qué repositorios buscar cada commit citado: el que la traza nombra, o las raíces que ya son uno.
+// El repositorio de la propia instancia y los nombres por los que se lo cita. En sidecar vive al lado de las
+// raíces de código y no es una de ellas, así que el commit de una tarea de planning o de documentos —que es
+// ahí donde se commitea— no se encontraba en ningún lado, y el aviso no tenía cómo apagarse (caso 356). No
+// entra en `declaredRoots` a propósito: de ahí cuelgan la puerta y el límite de escritura. El segundo nombre
+// es el del árbol principal, porque en una línea de trabajo la carpeta se llama distinto.
+function instanceRepo(opsRoot) {
+  const top = git(opsRoot, 'rev-parse', '--show-toplevel')
+  if (top.status !== 0) return null
+  const common = git(opsRoot, 'rev-parse', '--path-format=absolute', '--git-common-dir').stdout.trim()
+  const dir = top.stdout.trim()
+  return { dir, names: [path.basename(dir), path.basename(path.dirname(common))] }
+}
+
+// Cuántos repositorios se miran dentro de una raíz contenedora: una carpeta con más no es de servicios.
+const HELD = 60
+
+function commitPlaces(opsRoot, items) {
   const roots = declaredRoots(opsRoot)
+  const own = instanceRepo(opsRoot)
   const named = new Map()
   // El nombre es una carpeta dentro de una raíz o el de una raíz que ya es el repositorio: las dos formas
   // de `holds`, y por lo mismo (caso 254).
+  //
+  // Y si no es ninguna de las dos, se prueba como servicio: en una instancia embebida un servicio es una
+  // carpeta del repositorio, y el recorrido cita el commit con ese nombre —`(src@rama)`—. Sin esto el commit
+  // quedaba «sin comprobar» en cada tarea cerrada, con el repositorio a la vista (caso 362).
+  // Sólo si la carpeta trae archivos de ese repositorio. Una que existe y no trae ninguno —vacía, o un
+  // enlace de git a otro repositorio que no está poblado— es el lugar de otro: buscar ahí su commit lo
+  // daría por inexistente, cuando lo que pasa es que no hay dónde mirar.
+  const serviceRepo = (name) => {
+    const repo = repoOf(opsRoot, name)
+    const dir = repo && serviceDirs(opsRoot, name).find((one) => fs.existsSync(one))
+    if (!dir) return ''
+    const inside = path.relative(repo, fs.realpathSync(dir))
+    const tracked = (git(repo, 'ls-files', '-s', '--', inside || '.').stdout || '').split('\n')[0]
+    return tracked && !tracked.startsWith('160000 ') ? repo : ''
+  }
   const repoOfName = (name) => {
     if (!named.has(name)) {
       named.set(name, roots
@@ -245,12 +318,33 @@ function commitStatus(opsRoot, items) {
         // contesta con la ruta de verdad. Comparando contra el enlace, el commit quedaba «sin comprobar» con
         // el repositorio a la vista (caso 273).
         .find((dir) => fs.existsSync(dir)
-          && git(dir, 'rev-parse', '--show-toplevel').stdout.trim() === fs.realpathSync(dir)) || '')
+          && git(dir, 'rev-parse', '--show-toplevel').stdout.trim() === fs.realpathSync(dir))
+        || (own && own.names.includes(name) ? own.dir : '') || serviceRepo(name))
     }
     return named.get(name)
   }
-  const plain = reposFor(opsRoot, '.')
-  const where = items.map((item) => (item.repo ? [repoOfName(item.repo)].filter(Boolean) : plain))
+  // Una raíz que es la carpeta que contiene a los repositorios no es ninguno, y antes una cita sin nombre no
+  // tenía ahí dónde buscarse. Se miran los que cuelgan directo de ella, que es la forma que esa disposición
+  // tiene. Los de más adentro no, y por eso con una carpeta de por medio no encontrar el commit no dice que
+  // no exista: queda «sin comprobar», no «inexistente».
+  const loose = roots.filter((root) => fs.existsSync(root.dir)
+    && git(root.dir, 'rev-parse', '--show-toplevel').status !== 0)
+  const held = loose.flatMap((root) => {
+    try {
+      return fs.readdirSync(root.dir, { withFileTypes: true })
+        .filter((one) => one.isDirectory() || one.isSymbolicLink())
+        .map((one) => path.join(root.dir, one.name)).filter((dir) => fs.existsSync(path.join(dir, '.git')))
+        .slice(0, HELD)
+    } catch { return [] }
+  })
+  const plain = [...new Set([...reposFor(opsRoot, '.'), ...held, ...(own ? [own.dir] : [])])]
+  const places = items.map((item) => (item.repo ? [repoOfName(item.repo)].filter(Boolean) : plain))
+  places.partial = loose.length > 0
+  return places
+}
+
+function commitStatus(opsRoot, items) {
+  const where = commitPlaces(opsRoot, items)
   const known = new Map()
   for (const repo of [...new Set(where.flat())]) {
     const asked = [...new Set(items.filter((_, index) => where[index].includes(repo)).map((item) => item.sha))]
@@ -258,9 +352,63 @@ function commitStatus(opsRoot, items) {
   }
   return items.map((item, index) => {
     if (!where[index].length) return 'unchecked'
-    return where[index].some((repo) => known.has(`${repo}\0${item.sha}`)) ? 'found' : 'missing'
+    if (where[index].some((repo) => known.has(`${repo}\0${item.sha}`))) return 'found'
+    return !item.repo && where.partial ? 'unchecked' : 'missing'
+  })
+}
+
+// El árbol de cada commit citado que algún repositorio conoce, para quien necesita leer lo que el disco no
+// tiene (caso 353). `tree` son las rutas como se verían en disco, `read` trae el contenido de ese commit, y
+// `scan` son los archivos que el commit tocó: ahí se busca lo que una traza no ubica en ningún archivo. Buscar
+// en el árbol entero era un `git show` por archivo del repositorio, y encontraba la palabra en cualquier lado.
+//
+// Del árbol queda afuera lo mismo que del disco: `skip` —el `planning/` de la instancia, que viaja en el
+// commit cuando vive en el repositorio del producto, y ahí la entrada se encontraba a sí misma (caso 316)—,
+// `node_modules` y lo que empieza con punto. `skip` se compara contra la ruta real del repositorio, que puede
+// haberse nombrado por un enlace.
+//
+// De un merge, lo tocado es lo que trajo respecto de su primer padre: `diff-tree` a secas no lista nada. Y
+// `scan` tiene tope, porque es un `git show` por archivo: un commit que toca más que eso no es el de una tarea.
+const BIG = { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 }
+const SCANNED = 500
+const hidden = (file) => file.split('/').some((part) => part === 'node_modules' || part.startsWith('.'))
+function commitSources(opsRoot, items, skip = [], stats = {}) {
+  const where = commitPlaces(opsRoot, items)
+  stats.skipped = stats.skipped || { binary: 0, large: 0 }
+  return items.flatMap((item, index) => {
+    const repo = where[index].find((one) => isCommit(one, `${item.sha}^{commit}`))
+    if (!repo) return []
+    const slashed = (dir) => `${dir.split(path.sep).join('/')}/`
+    const prefix = slashed(repo)
+    const truly = slashed(fs.realpathSync(repo))
+    const kept = (file) => !hidden(file) && !skip.some((dir) => `${truly}${file}`.startsWith(slashed(dir)))
+    const list = (...args) => (spawnSync('git', ['-C', repo, ...args], BIG).stdout || '').split('\0')
+      .filter(Boolean).filter(kept).map((one) => prefix + one)
+    const merge = (git(repo, 'rev-list', '--parents', '-n', '1', item.sha).stdout || '').trim().split(/\s+/).length > 2
+    const touched = merge ? list('diff', '--name-only', '-z', `${item.sha}^1`, item.sha)
+      : list('diff-tree', '--no-commit-id', '--name-only', '-r', '--root', '-z', item.sha)
+    // Un solo pedido por archivo, con el tope de lo que se lee puesto en lo que se acepta recibir: lo que lo
+    // pasa se corta ahí y cuenta como enorme. Preguntar antes el tamaño eran dos procesos por archivo, y
+    // pedirlos todos con el listado —`ls-tree -l`— hace resolver cada blob del commit: 0,30 s contra 0,01 s
+    // en un repositorio de 3.126 archivos, por cada commit citado.
+    const texts = new Map()
+    const read = (file) => {
+      if (!texts.has(file)) {
+        const shown = spawnSync('git', ['-C', repo, 'show', `${item.sha}:${file.slice(prefix.length)}`],
+          { maxBuffer: TOO_LARGE })
+        const cut = shown.error && shown.error.code === 'ENOBUFS'
+        if (cut) stats.skipped.large += 1
+        texts.set(file, !cut && shown.status === 0 ? textOf(shown.stdout, stats.skipped) : '')
+      }
+      return texts.get(file)
+    }
+    return [{ sha: item.sha, read, tree: list('ls-tree', '-r', '--name-only', '-z', item.sha),
+      scan: touched.slice(0, SCANNED) }]
   })
 }
 
 module.exports = {
-  serviceDirs, reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions, commitFiles, commitStatus }
+  declaredRoots,
+  serviceDirs, reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions, commitFiles, commitStatus,
+  nestedRootWarnings, commitSources,
+}

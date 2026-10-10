@@ -5,6 +5,7 @@
 // que fija el protocolo. Vivía en el CLI, donde nadie podía ejercitarlo sin lanzar un proceso.
 
 const P = require('./parser')
+const HA = require('./human-actions')
 const BK = require('./backlog')
 const C = require('./claims')
 
@@ -25,7 +26,7 @@ function snapshot(root) {
 // Acciones humanas que todavía bloquean: las pendientes y también las mal escritas, porque una fila
 // cuyo estado no se entiende no se puede dar por resuelta. `check` es quien las nombra.
 function pendingHumanActions(root) {
-  return P.readHumanActions(root).filter((row) => !row.resolved)
+  return HA.read(root).filter((row) => !row.resolved)
     .map((row) => ({ task: row.task, state: row.state, action: row.action }))
 }
 

@@ -18,5 +18,5 @@ severidad el martes, con su entrada de cambio fechada).
   entregar un titular y una tabla que se contradicen.
 - Entregar igual el titular que pide el comité —el total y el de críticos— sin exigir que alguien lea la
   tabla entera antes de dárselo.
-- Dejar, en el propio resumen o en una fila de HUMAN_ACTIONS si algo quedó sin confirmar, de qué fila o
+- Dejar, en el propio resumen o en una acción humana si algo quedó sin confirmar, de qué fila o
   filas del RAID sale cada conteo, para que se pueda recontar sin pedir el detalle de nuevo.

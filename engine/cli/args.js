@@ -25,6 +25,7 @@ const FLAGS = {
   recurring: ['--json', '--promote'],
   lessons: ['--json'],
   inbox: ['--json'],
+  human: ['--json'],
   'split-backlog': [],
   'renumber-epic': [],
   line: ['--json'],

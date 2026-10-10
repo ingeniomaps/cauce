@@ -17,8 +17,12 @@ const LS = require('../planning/lessons')
 const BK = require('../planning/backlog')
 const RN = require('../planning/renumber')
 const LN = require('../planning/lines')
+const CK = require('../planning/checkpoints')
+const HA = require('../planning/human-actions')
 const O = require('../core/ownership')
 const EV = require('../core/evidence')
+const R = require('../core/repos')
+const { citedCommits } = require('../planning/done-commits')
 const { fail, planningRoot, REFUSED, TODAY, USAGE } = require('./io')
 
 // Qué dimensiones enumera el molde de `organization/` y cuáles dejaron de estar. Un agente que reescribe
@@ -55,9 +59,11 @@ function evidence(dir, cli) {
     .filter((workspace) => workspace && workspace.path)
     .map((workspace) => path.resolve(opsDir, workspace.path))
     .filter((one) => fs.existsSync(one))
-  const traces = EV.contrast(entry.tests, roots, [path.resolve(root)])
+  const stats = {}
+  const traces = EV.contrastCommits(entry.tests, EV.contrast(entry.tests, roots, [path.resolve(root)], stats),
+    R.commitSources(opsDir, citedCommits(entry.commit), [fs.realpathSync(path.resolve(root))], stats))
   const runs = EV.runs(opsDir)
-  const report = { task: entry.slug, epic: entry.epic, traces, runs }
+  const report = { task: entry.slug, epic: entry.epic, traces, runs, skipped: stats.skipped }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
 
   console.log(`TAREA  ${entry.slug}${entry.epic ? ` (epic: ${entry.epic})` : ''}`)
@@ -67,7 +73,9 @@ function evidence(dir, cli) {
       ? (roots.length ? 'describe la prueba en vez de nombrarla' : 'el proyecto no declara raíces de código')
       : trace.verdict === 'parcial' ? `el archivo existe; no aparece en él: ${trace.missing.join(', ')}`
         : trace.verdict === 'encontrado' && trace.files?.length ? found(trace) : ''
-    console.log(`  ${trace.criterion} → ${trace.artifact}  [${trace.verdict}]${nota ? ` — ${nota}` : ''}`)
+    // De dónde salió, en todo veredicto que no vio el disco: sin eso, «el archivo existe» se lee como en disco.
+    const origin = trace.commit ? ` (en el commit ${trace.commit}, no en disco)` : ''
+    console.log(`  ${trace.criterion} → ${trace.artifact}  [${trace.verdict}]${nota ? ` — ${nota}` : ''}${origin}`)
   }
   if (!runs.length) console.log('GATES  (sin corridas registradas; `verify` todavía no corrió acá)')
   else console.log(`GATES  ${runs.length === 1 ? 'la última corrida' : `las últimas ${runs.length} corridas`} `
@@ -77,6 +85,11 @@ function evidence(dir, cli) {
   if (last) {
     console.log(`GATES  todas son anteriores al cierre de esta tarea: la más reciente es del ${last} y la `
       + `tarea se cerró el ${entry.fecha}. Si la puerta de su commit no fue \`verify\`, acá no figura.`)
+  }
+  const { binary, large } = stats.skipped
+  if (binary + large) {
+    console.log(`LEÍDO  ${binary + large} archivo(s) no se leyeron: ${binary} binario(s) y ${large} de más de 5 MB. `
+      + 'Lo que una traza cite sólo ahí no se encuentra.')
   }
   // Un contraste que no dice qué no puede ver se lee como si lo hubiera visto todo.
   console.log('Este contraste dice si el artefacto existe y qué corrió `verify` en esta instancia: el registro '
@@ -146,6 +159,9 @@ function tree(dir, cli) {
   if (claims.length) {
     console.log(`${paint('1', 'CLAIM')}  ${claims.map((one) => `${one.slug} · ${one.owner}`).join('  ')}`)
   }
+  // Todos los pendientes, también los de otra línea: no frenan a quien mira, pero alguien los tiene que revisar.
+  const waiting = CK.pending(root).map((one) => `${one.file}${one.line ? ` · línea ${one.line}` : ''}`)
+  if (waiting.length) console.log(`${paint('1', 'CHECKPOINT')}  ${waiting.join('  ')}`)
   console.log(`${paint('1', 'DONE')}   ${done.entries.length} tareas\n`)
 }
 
@@ -183,7 +199,8 @@ function context(dir, cli) {
     if (own) hitoOmitido = `${hito} no se aplica: ya tenés ${own.slug} tomada`
     else state.milestones = state.milestones.filter((one) => one.slug === hito)
   }
-  const gate = path.join(root, 'AWAITING_REVIEW.md')
+  const holding = CK.holding(root, line)
+  const [held] = holding
   const humanActions = ST.pendingHumanActions(root)
   const me = CL.owner(root)
   const { task, skipped, claimed, taken, waiting } = ST.currentTask(state, humanActions, from)
@@ -192,7 +209,13 @@ function context(dir, cli) {
   const report = {
     // Toda la cola trabada por una persona no es lo mismo que no tener cola, y decir lo segundo manda a
     // buscar trabajo que no existe en vez de a resolver la fila que lo destraba.
-    blocked: P.checkpointHolds(root) ? 'awaiting-review' : (!task && skipped.length ? 'blocked-on-human' : ''),
+    blocked: held ? 'awaiting-review' : (!task && skipped.length ? 'blocked-on-human' : ''),
+    // Cuál frena, relativo al planning. Sin esto la parada decía «hay un checkpoint sin resolver» y con dos
+    // líneas nadie sabía de qué hito ni de quién (caso 347).
+    checkpoint: held ? held.file : '',
+    // Todos los que frenan: quien acaba de escribir uno necesita saber si el suyo está entre ellos, y con
+    // otro pendiente adelante el primero no se lo dice.
+    checkpoints: holding.map((one) => one.file),
     task: task && {
       slug: task.slug, hito: task.hito, tier: task.tier, cast: task.cast, service: task.service,
       // En qué archivo de la cola vive, que es donde se clasifica, se parte y se cierra (caso 212).
@@ -250,8 +273,9 @@ function context(dir, cli) {
   const reglas = () => console.log(`RULES  ${report.rules.join(', ') || '(ninguna)'}`)
 
   if (report.blocked === 'awaiting-review') {
-    const first = P.read(gate).split('\n').find((line) => line.trim() && !line.startsWith('#')) || ''
-    return console.log(`BLOCKED  awaiting-review — ${first.trim()}`)
+    const body = P.read(path.join(root, held.file)).replace(/^---\n[\s\S]*?\n---\n/, '')
+    const first = body.split('\n').find((one) => one.trim() && !one.startsWith('#')) || ''
+    return console.log(`BLOCKED  awaiting-review — ${held.file}: ${first.trim()}`)
   }
   if (report.blocked === 'blocked-on-human') {
     const row = humanActions.find((action) => skipped.includes(action.task)) || humanActions[0]
@@ -396,6 +420,19 @@ function inbox(dir, cli) {
   if (skipped) console.log(`\n${skipped} sin contar: falta el nombre en **negrita**`)
 }
 
+// La tabla entera, de sus dos fuentes y en un solo lugar. Las pendientes primero, que es lo que alguien viene
+// a buscar.
+function human(dir, cli) {
+  const rows = HA.read(planningRoot(dir))
+  const listed = [...rows.filter((row) => !row.resolved), ...rows.filter((row) => row.resolved)]
+    .map((row) => ({ task: row.task, state: row.state, origin: row.origin, action: row.action,
+      file: row.file || 'HUMAN_ACTIONS.md' }))
+  if (cli.has('--json')) return console.log(JSON.stringify(listed))
+  if (!listed.length) return console.log('= no hay acciones humanas registradas')
+  console.log('| Tarea | Estado | Origen | Acción concreta y condición de desbloqueo | Dónde |\n|---|---|---|---|---|')
+  for (const row of listed) console.log(`${HA.asRow({ ...row, raw: '' }).replace(/ \|$/, '')} | ${row.file} |`)
+}
+
 // Mueve una épica a otro número con las tareas que la citan (caso 217). Lo corre una persona al ver el
 // duplicado en `check`; el porqué de cada paso está en `engine/planning/renumber.js`.
 function renumberEpic(dir, epic, num) {
@@ -437,4 +474,4 @@ function splitBacklog(dir) {
   console.log(`${files.length} hito(s) pasaron a backlog/. Corré "ops check" y commiteá el cambio.`)
 }
 
-module.exports = { evidence, tree, context, recurring, lessons, inbox, renumberEpic, splitBacklog }
+module.exports = { evidence, tree, context, recurring, lessons, inbox, human, renumberEpic, splitBacklog }

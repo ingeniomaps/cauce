@@ -20,7 +20,7 @@ El mapa no debe duplicar documentación técnica: enlaza a la fuente de verdad d
 R12 fija el trato con todo sistema externo: real y de producción mientras no se lo nombre como sandbox.
 Las excepciones de este proyecto —y sólo ellas— van acá, nombrando el entorno concreto.
 
-Las credenciales que cada integración necesita se nombran acá o en `planning/HUMAN_ACTIONS.md`, con
+Las credenciales que cada integración necesita se nombran acá o en una acción humana de `planning/human/`, con
 quién las carga y dónde: `check` avisa cuando el proyecto declara una variable que no aparece en
 ninguno de los dos, porque una credencial sin dueño no rompe nada hasta el día del despliegue.
 

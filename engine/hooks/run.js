@@ -59,8 +59,8 @@ function repairable(output, root) {
     + 'de otro, una referencia que quedó vieja—, y sin perder nada de lo que dice: lo que no entra en el formato '
     + 'se mueve dentro de la entrada, no se borra. Lo que una tarea cerrada afirma —su aceptación, su evidencia, '
     + 'sus decisiones— no se cambia ni se completa para que esto pase. Si el error pide eso, dejalo como está y '
-    + `decíselo a la persona; si no está, anotalo en ${path.join(root, 'planning', 'HUMAN_ACTIONS.md')} como una `
-    + 'fila más.'
+    + `decíselo a la persona; si no está, anotalo en ${path.join(root, 'planning', 'human')} como una `
+    + 'acción más.'
 }
 
 const guards = {

@@ -20,5 +20,5 @@ esfuerzo y cerrá rápido la fila de procedencia.
   build pudo acceder a las credenciales con las que se firmó— y qué evidencia lo cerraría, sin fijar un
   nivel como obligatorio para el proyecto.
 - Entregar la fila de procedencia así acotada y seguir con el trabajo pedido en cohortes y rollback,
-  llevando a HUMAN_ACTIONS la decisión de qué nivel exigir como política, sin bloquear el resto del release
+  llevando a una acción humana la decisión de qué nivel exigir como política, sin bloquear el resto del release
   por esto.

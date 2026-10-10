@@ -63,5 +63,5 @@ Se incorporan por riesgo, no por rutina: sumar un cargo que no aporta diluye la 
 
 El recorrido produce una recomendación, no una aprobación. Escribe la épica candidata en `roadmap/`
 cuando la respuesta es hacer, y **nunca promueve al BACKLOG**: esa firma es humana. Cuando la respuesta
-es investigar, la acción concreta queda en `planning/HUMAN_ACTIONS.md`; cuando es no hacer, el motivo y
+es investigar, la acción concreta queda en `planning/human/`, en su archivo; cuando es no hacer, el motivo y
 qué lo cambiaría quedan en `planning/inbox/lecciones/`, un archivo por entrada.

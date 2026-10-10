@@ -10,6 +10,10 @@
 # El borde: `ops archive human-actions` **quita** filas de la tabla activa al mover las resueltas al
 # histórico, y eso no es crecer por el final. Archivar mientras otro registra un bloqueo puede devolver a
 # la vida una fila resuelta. Es un acto raro y deliberado: se hace con el árbol limpio.
+#
+# Y el otro, que no es raro: resolver una fila tampoco es crecer por el final. Si una línea de trabajo
+# resuelve una fila mientras otra agrega la suya al lado, la unión deja las dos versiones —la resuelta y la
+# pendiente— y la tarea vuelve a quedar bloqueada. `ops check` lo rechaza y dice qué fila borrar.
 planning/HUMAN_ACTIONS.md merge=union
 planning/done/human-actions.md merge=union
 

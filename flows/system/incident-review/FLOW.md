@@ -18,7 +18,7 @@ Usa el recorrido incident-review para analizar este incidente:
 
 Produce un **informe**, no una épica: `planning/reports/<fecha>-<slug>.md`. Los seguimientos quedan en
 `planning/inbox/<sección>/`, un archivo por entrada y **sin promover**, y las acciones que requieren una persona
-—comunicar a clientes, notificar a un regulador, cambiar un contrato— en `planning/HUMAN_ACTIONS.md`.
+—comunicar a clientes, notificar a un regulador, cambiar un contrato— en `planning/human/`, una por archivo.
 
 Convertir un seguimiento en trabajo sigue siendo una decisión humana, igual que en cualquier otro
 recorrido.

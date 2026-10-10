@@ -23,5 +23,5 @@ relevarle a cada agente del recorrido el último mensaje del chat, textual y por
 Si lanzás uno por tu cuenta después de un mensaje que hablaba de otra cosa, ése es el que reciben todos como
 pedido: pasale igual el pedido como argumento, y al reportar decile a la persona con qué mensaje salió.
 
-Antes de iniciar, respeta `{{OPS_DIR}}planning/AWAITING_REVIEW.md` y el mutex de `{{OPS_DIR}}planning/wip/<runner>.md`. Si el protocolo y
+Antes de iniciar, respeta el checkpoint pendiente que `ops context` nombre —el de tu línea en `{{OPS_DIR}}planning/checkpoints/` o `{{OPS_DIR}}planning/AWAITING_REVIEW.md`, que frena a todas— y el mutex de `{{OPS_DIR}}planning/wip/<runner>.md`. Si el protocolo y
 un workflow difieren, manda el protocolo y la diferencia se registra en `{{OPS_DIR}}planning/inbox/lecciones/`.

@@ -9,7 +9,7 @@ contrato del cargo que la posee. Respetá el dueño de decisión de cada dominio
 resuelve en su lugar.
 
 Marcá el exit gate de una etapa como cumplido sólo si se cumple de verdad. Cuando falte evidencia,
-autoridad o una decisión externa, registrá la acción concreta en `{{OPS_DIR}}planning/HUMAN_ACTIONS.md` y detente:
+autoridad o una decisión externa, registrá la acción concreta en `{{OPS_DIR}}planning/human/`, un archivo por acción, y detente:
 una opinión del modelo no es investigación de usuarios ni valida un problema.
 
 Si la intención resulta viable, escribí la épica en `{{OPS_DIR}}planning/roadmap/` con criterios observables y

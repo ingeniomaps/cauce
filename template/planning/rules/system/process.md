@@ -83,7 +83,7 @@ el tope de esfuerzo y no se construye nunca; una tarea de una condición y tres 
 lado. Medir una sola deja pasar la mitad de los casos.
 
 **Una decisión no es una unidad de trabajo.** Lo que no tiene nada que construir —decidir, elegir, esperar
-una respuesta— no entra a la cola: va a `HUMAN_ACTIONS.md` con la pregunta exacta, o dentro de la tarea que
+una respuesta— no entra a la cola: queda como acción humana, con la pregunta exacta, o dentro de la tarea que
 la necesita, como precondición. Escrita como tarea pasa las dos barras sin esfuerzo —una condición, casi
 nada que hacer— y gasta una vuelta entera para terminar reportando que había que preguntar. Es raro y sale
 caro: de 432 tareas cerradas en cuatro instancias fue una sola, que se cerró a mano porque la puerta no

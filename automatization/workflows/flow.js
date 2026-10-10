@@ -17,6 +17,7 @@ export const meta = {
 
 {{INCLUDE:shared/workflow-root.js}}
 {{INCLUDE:shared/inbox.js}}
+{{INCLUDE:shared/human.js}}
 
 // Dónde trabaja el recorrido. Normalmente es la raíz donde se lo invocó; `args.root` existe para
 // correrlo sobre otra instancia —el banco desechable con el que `flow-eval` lo mide—, porque un
@@ -24,7 +25,7 @@ export const meta = {
 const WORKDIR = String((typeof args === 'string' ? '' : (args || {}).root) || ROOT).replace(/\/+$/, '')
 const P = `${WORKDIR}/planning`
 const ROADMAP = `${P}/roadmap`
-const HUMAN = `${P}/HUMAN_ACTIONS.md`
+const HUMAN = humanWhere(P)
 const INBOX = `${P}/inbox/`
 const REPORTS = `${P}/reports`
 
@@ -340,7 +341,8 @@ if (blocked.length) {
       .join('\n')}`
     : 'Ninguna etapa anterior cerró: el bloqueo es de la primera.'
   await agent(
-    `${RULES}\n\nRegistrá en ${HUMAN} una fila por cada bloqueo, con la tarea, el estado pendiente, el ` +
+    `${RULES}\n\n${humanForm(P)}\n\n` +
+    `Registrá en ${HUMAN} una fila por cada bloqueo, con la tarea, el estado pendiente, el ` +
     `origen (etapa ${blocked[0].stage}) y la acción humana exacta que lo desbloquea. No inventes ` +
     `responsables ni fechas. Bloqueos: ${JSON.stringify(blocked)}\n\n${established}\n\nIncluí en la fila un ` +
     `resumen de lo establecido, con la etapa y el cargo que lo decidió: es el trabajo que ya se pagó.`,
@@ -407,7 +409,8 @@ const CONDITIONS = pending.length
   : ''
 if (pending.length) {
   await agent(
-    `${RULES}\n\nRegistrá en ${HUMAN} una fila por cada condición que las etapas dejaron abierta, con la ` +
+    `${RULES}\n\n${humanForm(P)}\n\n` +
+    `Registrá en ${HUMAN} una fila por cada condición que las etapas dejaron abierta, con la ` +
     `etapa que la levantó y qué decisión la cierra. No inventes responsables ni fechas, y no las des por ` +
     `resueltas: ${JSON.stringify(pending)}`,
     { label: 'condiciones' },
@@ -430,7 +433,7 @@ if (contract.outcome === 'report') {
     `va en lo que queda abierto del informe y además en followUps, del más al menos importante, con la ` +
     `sección que le toca por su sujeto: un cambio del producto va a Propuestas, lo aprendido sobre cómo ` +
     `trabajamos va a Lecciones. No escribas en ${P}/INBOX.md ni en ${INBOX}: eso lo hace el paso siguiente. ` +
-    `Toda acción que requiera una persona, en ${HUMAN}.`,
+    `Toda acción que requiera una persona, en ${HUMAN}. ${humanForm(P)}`,
     { schema: { type: 'object', required: ['file', 'followUps'], properties: {
       file: { type: 'string' }, summary: { type: 'string' },
       followUps: { type: 'array', items: { type: 'object', additionalProperties: false,
@@ -493,7 +496,8 @@ if (epic.outcome === 'no-hacer') {
 // presupuestar sobre lo que nadie sabe todavía. Lo que no puede es salir disfrazado de épica.
 if (epic.outcome === 'investigar') {
   await agent(
-    `${RULES}\n\nRegistrá en ${HUMAN} qué hay que averiguar antes de poder decidir esta intención y quién ` +
+    `${RULES}\n\n${humanForm(P)}\n\n` +
+    `Registrá en ${HUMAN} qué hay que averiguar antes de poder decidir esta intención y quién ` +
     `puede hacerlo, sin inventar responsables ni fechas, y dejá la conclusión en ` +
     `${inboxWhere(P, 'Ideas')} sin promoverla. ${INBOX_FILES} ${inboxAsk(['Ideas'], contract.inbox, ORIGIN)} ` +
     `Qué falta averiguar: ${withOrigin(epic.reason, ORIGIN)}`,

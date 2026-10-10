@@ -13,8 +13,8 @@ Explicar el problema, las fuerzas que compiten y el costo de no decidir. Una per
 sin depender de conversaciones privadas. Separar la decisión si necesita abarcar problemas independientes.
 
 Respaldar cada afirmación no obvia con `[fuente: ruta#sección|ADR-NNN|URL]`. Lo que todavía no esté probado se
-declara como `[supuesto: explicación]`; si requiere una respuesta humana, también se registra en
-`../HUMAN_ACTIONS.md`.
+declara como `[supuesto: explicación]`; si requiere una respuesta humana, también se registra como
+acción humana en `../human/`.
 
 ## Decisión
 

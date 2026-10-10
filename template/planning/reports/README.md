@@ -13,5 +13,5 @@ eso no hay molde acá: uno solo contradiría a dos de los tres recorridos que es
 
 Los seguimientos van al INBOX sin promover, cada uno a la sección que le corresponde por su sujeto: lo
 que propone un cambio del producto, con su evidencia, a Propuestas; lo que se aprendió sobre cómo
-trabajamos, a Lecciones. Las acciones que requieren una persona van a `../HUMAN_ACTIONS.md`. Convertir
+trabajamos, a Lecciones. Las acciones que requieren una persona van a `../human/`, una por archivo. Convertir
 un seguimiento en trabajo es una decisión humana.

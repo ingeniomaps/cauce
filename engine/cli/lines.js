@@ -19,6 +19,7 @@ const A = require('../automation')
 const { installRoot } = require('../automation/runners')
 const { fail, opsRoot, REFUSED, USAGE } = require('./io')
 const { BRANCH, NAME } = require('../planning/lines')
+const R = require('../core/repos')
 
 const git = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' })
 const inside = (base, target) => !path.relative(base, target).startsWith('..')
@@ -66,8 +67,9 @@ function line(dir, name, cli) {
   if (repo.status !== 0) return fail(`${root} no está en un repositorio git: una línea es un worktree de él.`, REFUSED)
   const where = layout(root, repo.stdout.trim(), name)
 
-  // Una línea borrada a mano sigue listada como prunable: sin podar, se daba por reusada y quedaba a medias.
-  if (!fs.existsSync(where.tree)) git(root, 'worktree', 'prune')
+  // Una línea borrada a mano sigue listada: sin retirarla, se daba por reusada y quedaba a medias. Se retira
+  // ésa y no se poda todo, que le quitaría el registro a cualquier otro árbol que hoy no esté.
+  if (!fs.existsSync(where.tree)) git(root, 'worktree', 'remove', '--force', where.tree)
   const listed = git(root, 'worktree', 'list', '--porcelain').stdout || ''
   const reused = listed.split('\n').some((entry) => entry.trim() === `worktree ${where.tree}`)
   if (!reused) {
@@ -102,7 +104,19 @@ function line(dir, name, cli) {
     }
   })
   const quiet = { log: () => {}, error: () => {} }
-  for (const runner of runners) A.install(where.ops, runner, quiet)
+  // Si el runner no se puede instalar, la línea no está armada: quedó el árbol, con los recorridos y los
+  // guards de otra carpeta o sin ninguno. Se dice, en vez de contestar que quedó (caso 363).
+  //
+  // `ownFolder`: la configuración que una línea embebida trae por git puede llevar los guards apuntando a la
+  // carpeta original —la de Codex lleva la ruta escrita—. La instalación se niega a mover guards de una
+  // carpeta de sesión que otro árbol comparte; la de una línea es sólo suya, y moverlos acá es el punto.
+  for (const runner of runners) {
+    try { A.install(where.ops, runner, quiet, { ownFolder: true }) } catch (error) {
+      return fail(`${error.message}\n\nEl árbol se creó en ${where.tree}, pero la línea ${name} quedó sin su `
+        + `runner (${runner}): sus recorridos y sus guards no apuntan a ella. Resolvé lo de arriba en la `
+        + 'instancia y repetí este comando.', REFUSED)
+    }
+  }
 
   // Una raíz que es la carpeta que contiene a la instancia —`..`, con un repositorio por servicio adentro— no
   // se puede enlazar entera: su lugar en la línea es la propia carpeta de la línea, que ya existe. Se enlazan
@@ -129,14 +143,20 @@ function line(dir, name, cli) {
     }
   }
 
+  // La raíz que el repositorio registra como enlace de git nace vacía en la línea, y `check` lo dice; acá se
+  // repite porque éste es el momento en que todavía se puede corregir antes de abrir la sesión (caso 358).
+  // Avisa y no se niega: no se conoce una instancia con esa disposición, y a quien la tenga le frenaría lo
+  // que hoy le anda a medias.
+  const warnings = R.nestedRootWarnings(root)
   const report = {
-    home: installRoot(where.ops), tree: where.tree, branch: where.branch, reused, engine, linked, runners,
+    home: installRoot(where.ops), tree: where.tree, branch: where.branch, reused, engine, linked, runners, warnings,
   }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
   console.log(`${reused ? '=' : '✓'} ${where.tree}  (${where.branch})`)
   if (linked.length) console.log(`  enlazados al original: ${linked.join(', ')}`)
   console.log(`  runners: ${runners.join(', ') || '(ninguno instalado en la instancia)'}`)
   console.log(`Abrí la sesión de esta línea en ${report.home}: ahí está su configuración, apuntando a su árbol.`)
+  for (const warning of warnings) console.log(`⚠ ${warning}`)
 }
 
 module.exports = { line, layout }

@@ -21,7 +21,7 @@ Actuar como responsable de la estructura y comportamiento de la experiencia. Red
 Si falta evidencia, diseñar una hipótesis explícita y reversible, señalar qué debe validarse y evitar presentar el diseño como solución confirmada. La misma distinción vale para el sujeto del diseño: si el pedido no nombra el flujo, su disparador o su
 usuario, no inventarlos como si fueran parte del enunciado —eso es el requisito inventado, no la
 evidencia inventada que ya prohíbe este párrafo—; se proponen marcados como supuesto, con la pregunta
-que los confirma escalada a `HUMAN_ACTIONS`.
+que los confirma escalada como acción humana.
 
 ## Elegir el flujo
 
@@ -77,7 +77,7 @@ Cubrir cuando apliquen:
 - No declarar conformidad WCAG únicamente por una revisión automática o de diseño.
 - No editar producción, publicar prototipos, comprar herramientas ni comprometer alcance o fechas sin autorización.
 - No fijar en `organization/` una restricción estable sin citar la fuente de cada cláusula normativa, y
-  sin escalar a `HUMAN_ACTIONS` cualquier elección dentro de ella que sea una decisión —nivel objetivo,
+  sin escalar como acción humana cualquier elección dentro de ella que sea una decisión —nivel objetivo,
   alcance, plazo— en vez de un hecho de la norma.
 
 ## Entrega mínima

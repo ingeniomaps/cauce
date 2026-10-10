@@ -153,3 +153,16 @@ test('el recorte de la lista se sigue diciendo', () => {
   assert.match(all, /pasado el tope de variables por servicio: api \(1 de 41\)/)
   assert.doesNotMatch(all, /sin revisar|quedó afuera puede incluir/, 'ya no promete ceguera')
 })
+
+// Caso 351. Una credencial tiene dueño cuando su acción humana está registrada, y las acciones nuevas van una
+// por archivo: mirando sólo la tabla, el aviso quedaba encendido justo para lo que sí estaba registrado.
+test('una credencial nombrada en una acción de human/ ya tiene dueño', () => {
+  const { ops } = instance('cauce-351-credencial-', 'sidecar', 'DB_PASSWORD=\n')
+  assert.match(orphanLine(ops), /DB_PASSWORD \(api\)/)
+  assert.match(orphanLine(ops), /o en una acción de planning\/human\//, 'y el aviso manda a donde se registra hoy')
+  const dir = path.join(ops, 'planning', 'human')
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, 'db-password.md'), '---\ntask: —\nstatus: pendiente\norigin: onboard\n---\n\n'
+    + 'Cargar DB_PASSWORD en el entorno de api.\n')
+  assert.equal(orphanLine(ops), '')
+})

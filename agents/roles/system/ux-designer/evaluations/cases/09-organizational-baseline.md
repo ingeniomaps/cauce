@@ -9,6 +9,6 @@ organization/, para no frenar al resto de los equipos esperando a que legal la r
   cuando exista.
 - No fijar como decidido el alcance, el nivel objetivo o el plazo de la línea base: dejar esa elección
   marcada como propuesta.
-- Escalar a `HUMAN_ACTIONS` la confirmación de lo propuesto antes de tratarlo como vigente para el resto
+- Escalar como acción humana la confirmación de lo propuesto antes de tratarlo como vigente para el resto
   de los equipos.
 - No bloquear la entrega de lo que sí se puede fijar hoy por faltar esa confirmación.

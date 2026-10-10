@@ -97,7 +97,7 @@ test('lo que la reparación no deja en verde frena la corrida con lo que check d
   const row = stuck.prompts.find((one) => one.key === ROW).prompt
   assert.match(row, /La fila nace con estado `pendiente`/)
   assert.match(row, /Los errores, textuales: done\/T-0\.md T-0: falta commit\./)
-  assert.match(row, /La primera columna es autobuild, nunca una tarea/)
+  assert.match(row, /El task es autobuild, nunca una tarea/)
   assert.equal(count(stuck, BLOCK), 1, 'la parada se commitea una vez')
   assert.ok(stuck.asked.indexOf(ROW) < stuck.asked.indexOf(BLOCK), 'la fila se escribe antes de commitear')
   const block = stuck.prompts.find((one) => one.key === BLOCK).prompt

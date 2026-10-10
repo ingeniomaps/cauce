@@ -306,11 +306,11 @@ test('la fila de una parada nace pendiente, y si no quedó así la parada lo dic
     assert.doesNotMatch(result.detail, /no quedó pendiente|no se pudo comprobar/, `${label}: nada que avisar`)
 
     // La fila quedó resuelta: el motivo de la parada no cambia, y el detalle lo dice.
-    const resuelta = await runFlow({ ...cambio, [relectura]: { readOk: true, pending: false } })
+    const resuelta = await runFlow({ ...cambio, [relectura]: { readOk: true, tasks: ['otra-tarea'] } })
     assert.equal(resuelta.result.reason, result.reason, `${label}: el motivo es el de la parada`)
     assert.match(resuelta.result.detail, /no quedó pendiente: la resuelve una persona/, label)
     // Y si no se pudo leer, no se afirma nada sobre la fila.
-    const ciega = await runFlow({ ...cambio, [relectura]: { readOk: false, pending: false } })
+    const ciega = await runFlow({ ...cambio, [relectura]: { readOk: false, tasks: [] } })
     assert.match(ciega.result.detail, /no se pudo comprobar la fila de T-1/, label)
   }
 })
@@ -392,9 +392,9 @@ test('una decisión que Review no puede tomar se registra y la corrida sigue', a
   // El orden importa: así cada mitad falla por lo suyo —marcarla no frena, y no frenar no alcanza si
   // además no queda escrita en ningún lado.
   ranToEnd(result)
-  const fila = written.find((text) => /HUMAN_ACTIONS/.test(text) && /revisión/i.test(text))
+  const fila = written.find((text) => /Registrá en \S+planning\/human\//.test(text) && /revisión/i.test(text))
   assert.ok(fila, 'la decisión queda registrada donde una persona la lee')
-  assert.match(fila, /primera columna nunca es T-1/, 'y sin bloquear la tarea que la encontró')
+  assert.match(fila, /El task nunca es T-1/, 'y sin bloquear la tarea que la encontró')
 })
 
 // Los tres destinos no pueden pisarse, y el hallazgo que los pisa es el que los propios prompts producen:

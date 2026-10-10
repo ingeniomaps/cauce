@@ -37,6 +37,38 @@ function digestRelocatable({ target, opsRoot }, marker) {
   return digestText(opsRoot ? text.split(opsRoot).join(marker) : text)
 }
 
+// Los hashes con los que un archivo entregado puede estar anotado: con la raíz de esta carpeta vuelta
+// marcador, y con la raíz que el archivo **lleva escrita**, que puede ser otra. Pasa cuando el archivo viaja
+// por git: la línea de una instancia embebida y el clon en otra ruta nacen con lo que se instaló en la
+// carpeta original. Sin lo segundo, esa única diferencia se leía como una edición a mano: la instalación se
+// negaba, y los recorridos seguían apuntando a la otra carpeta (caso 363).
+//
+// La raíz escrita se lee del propio archivo, en el lugar donde la plantilla tiene su primer marcador: lo
+// que hay entre el texto que lo precede y el que lo sigue. Lo que la sigue puede aparecer también adentro
+// de la raíz —`/a` está en `/srv/alicia`—, así que se prueba cada lugar donde podría terminar. No hace
+// falta acertar: sólo cuenta la que, vuelta marcador, da el hash anotado.
+//
+// Hasta dónde llega: usa el texto de la plantilla de hoy para ubicarse. Un archivo instalado por un motor
+// anterior cuya plantilla tenía otra cosa justo antes del marcador no se reconoce, y sigue pidiendo `--force`.
+const REACH = 512
+function relocatedDigests({ target, opsRoot }, template, marker) {
+  const here = digestRelocatable({ target, opsRoot }, marker)
+  const at = template.indexOf(marker)
+  let text = ''
+  try { text = fs.readFileSync(target, 'utf8') } catch { return [here] }
+  const before = at < 0 ? -1 : text.indexOf(template.slice(Math.max(0, at - 24), at))
+  const after = at < 0 ? '' : template.slice(at + marker.length, at + marker.length + 2)
+  if (before < 0 || !after) return [here]
+  const start = before + Math.min(24, at)
+  const found = [here]
+  for (let end = text.indexOf(after, start + 1); end > start && end - start <= REACH;) {
+    const written = text.slice(start, end)
+    if (written !== opsRoot) found.push(digestText(text.split(written).join(marker)))
+    end = text.indexOf(after, end + 1)
+  }
+  return found
+}
+
 const EMPTY = () => ({ files: {}, runners: {}, forks: {} })
 
 // Dos secciones porque son dos entregas distintas: `files` es lo que se materializó dentro de la
@@ -147,6 +179,7 @@ function edited(root, relative, files) {
 
 module.exports = {
   digestRelocatable,
+  relocatedDigests,
   digest, digestText, edited, editedPaths, prune, read, readForks, readRunners,
   record, recordPaths, write,
 }

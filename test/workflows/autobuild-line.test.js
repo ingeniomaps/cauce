@@ -96,3 +96,64 @@ test('a done/ no viaja ni la rama provisional ni la ruta de un árbol que ya no 
   const plain = await runFlow({ [KEY.review]: { verdict: 'aprobado', concerns: [], consulted: [seen] } })
   assert.ok(promptOf(plain.prompts, 'Done|done').includes(seen))
 })
+
+// Caso 347. El checkpoint del hito dice qué línea lo escribió, y eso es lo que hace que frene sólo a ésa.
+test('en una línea el checkpoint del hito lleva el nombre de la línea', async () => {
+  const withGate = { ...inLine()[KEY.contract], humanCheckpoint: true }
+  const { result, written } = await runFlow(inLine({ [KEY.contract]: withGate }))
+  ranToEnd(result)
+  const gate = written.find((text) => text.includes('planning/checkpoints/H1.md')) || ''
+  assert.match(gate, /"hito: H1" y "line: admin"/)
+  assert.doesNotMatch(gate, /"line:" a secas/)
+})
+
+// El archivo lo escribe un agente, y un `line:` mal escrito deja el checkpoint pendiente sin frenar a su
+// línea. Por eso se relee `context` después de escribirlo: lo que cuenta es que frene, no que exista.
+test('el checkpoint recién escrito se relee, y si no frena se corrige una vez y se dice', async () => {
+  const withGate = { ...inLine()[KEY.contract], humanCheckpoint: true }
+  const held = (...answers) => {
+    let turn = 0
+    return () => answers[Math.min(turn++, answers.length - 1)]
+  }
+  const run = (answers) => runFlow(inLine({ [KEY.contract]: withGate, 'Closing|checkpoint-held': held(...answers) }))
+  const open = { readOk: true, blocked: '', checkpoints: [] }
+  const closed = { readOk: true, blocked: 'awaiting-review', checkpoints: ['checkpoints/H1.md'] }
+  const fixes = (out) => out.prompts.filter((one) => one.key === 'Closing|human-checkpoint-fix')
+
+  const fine = await run([closed])
+  assert.equal(fixes(fine).length, 0)
+  assert.equal(fine.result.checkpoint, undefined, 'frenando, no hay nada que avisar')
+
+  const repaired = await run([open, closed])
+  assert.equal(fixes(repaired).length, 1)
+  assert.match(fixes(repaired)[0].prompt, /status: pendiente.*hito: H1.*line: admin/s)
+  assert.equal(repaired.result.checkpoint, undefined)
+  assert.deepEqual(repaired.result.done, ['T-1'], 'la tarea se entregó igual')
+
+  const stuck = await run([open])
+  assert.equal(fixes(stuck).length, 1, 'una sola corrección')
+  assert.match(stuck.result.checkpoint, /checkpoints\/H1\.md no quedó frenando a esta línea/)
+  // Frenada por otro —el archivo de siempre, el de otro hito— no es frenada por éste: resuelto aquél, la
+  // corrida siguiente arrancaría sin esta revisión.
+  const other = { readOk: true, blocked: 'awaiting-review', checkpoints: ['AWAITING_REVIEW.md', 'checkpoints/H0.md'] }
+  const elsewhere = await run([other])
+  assert.equal(fixes(elsewhere).length, 1)
+  assert.match(elsewhere.result.checkpoint, /checkpoints\/H1\.md no quedó frenando a esta línea/)
+  const both = await run([{ ...other, checkpoints: [...other.checkpoints, '"checkpoints/H1.md"'] }])
+  assert.equal(fixes(both).length, 0, 'con el propio entre los que frenan, está bien')
+  const blind = await run([{ readOk: false, blocked: '', checkpoints: [] }])
+  assert.match(blind.result.checkpoint, /no se pudo comprobar/)
+  assert.equal(fixes(blind).length, 0, 'sin lectura no se reescribe nada')
+})
+
+// La línea llega transcripta por un agente, y un valor vacío a veces llega con sus comillas escritas.
+test('una línea que llega entre comillas o no es un nombre no se escribe en el checkpoint', async () => {
+  const withGate = { ...inLine()[KEY.contract], humanCheckpoint: true }
+  const gateOf = async (line) => {
+    const out = await runFlow(inLine({ [KEY.contract]: withGate }, { line }))
+    return out.written.find((text) => text.includes('planning/checkpoints/H1.md')) || ''
+  }
+  assert.match(await gateOf('"admin"'), /"line: admin"/)
+  assert.match(await gateOf("'admin'"), /"line: admin"/)
+})
+

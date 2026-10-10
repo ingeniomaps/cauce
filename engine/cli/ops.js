@@ -118,6 +118,10 @@ async function init(target, cli) {
   const relative = path.relative(process.cwd(), root)
   const enter = relative && relative !== '.' ? `cd ${relative} && ` : ''
   console.log(`\n✓ ${name}: sistema ops creado en ${root} (modo ${mode})`)
+  for (const { file, name: section } of CT.missingSections(root)) {
+    console.log(`! ${file} se conservó y no trae la sección ${section}: hasta que la tenga, \`ops contract\` falla `
+      + `y los agentes no reciben contrato. ${CT.restoreAdvice(file)}`)
+  }
   let result
   try {
     result = await BOOT.run(root, options, {
@@ -157,6 +161,7 @@ function usage() {
   ops recurring <planning-dir> [--promote <qué>] [--json]
   ops lessons <planning-dir> [--json]
   ops inbox <planning-dir> [--json]
+  ops human <planning-dir> [--json]
   ops split-backlog <planning-dir>
   ops renumber-epic <planning-dir> <epic-NNN-slug> <NNN>
   ops line <ops-root> <nombre> [--json]
@@ -235,6 +240,7 @@ async function run(cli) {
   else if (command === 'recurring') PL.recurring(arg[1], cli)
   else if (command === 'lessons') PL.lessons(arg[1], cli)
   else if (command === 'inbox') PL.inbox(arg[1], cli)
+  else if (command === 'human') PL.human(arg[1], cli)
   else if (command === 'split-backlog') PL.splitBacklog(arg[1])
   else if (command === 'renumber-epic') PL.renumberEpic(arg[1], arg[2], arg[3])
   else if (command === 'line') LN.line(arg[1], arg[2], cli)
