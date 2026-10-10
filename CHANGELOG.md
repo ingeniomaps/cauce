@@ -16,6 +16,18 @@ diseño — eso vive en el commit y en el código.
 
 ## [0.107.0] - 2026-10-10
 
+### Cambiado
+
+- **Lo que cae fuera de las raíces se puede dejar pasar por una vez, confirmando el bloqueo.** Los dos guards
+  de límites sólo ofrecían declarar la ruta en `writableOutsideRoots`, también para lo que una persona pide
+  una sola vez —liberar disco, limpiar una caché—. Ahora el bloqueo deja la ruta esperando y pasa con la
+  confirmación de la persona, o con la línea que muestra pegada en `planning/.ops-approval`; en Claude Code,
+  con el diálogo del runner. Es más angosto que en los otros guards, a propósito: la línea lleva el verbo y la
+  ruta resuelta —`borra /ruta`, `escribe /ruta`—, vale para ese turno y no para la sesión, y pedirlo en el
+  chat nombrando la ruta no alcanza, hay que contestar el bloqueo. Lo que `destructive` frena sigue sin
+  salida. Y si un comando cae afuera en varias rutas, el bloqueo las muestra todas y una sola respuesta las
+  cubre (caso 370).
+
 ### Corregido
 
 - **El guard de pruebas reconoce más nombres de prueba fuera de una carpeta de pruebas.** Un `a.test.mjs`, un

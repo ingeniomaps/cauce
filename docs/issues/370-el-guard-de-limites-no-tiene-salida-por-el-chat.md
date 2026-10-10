@@ -1,14 +1,15 @@
 ---
 caso: 370
 titulo: el guard de límites no tiene salida por el chat
-estado: abierto
+estado: resuelto
+resuelto-en: 0.107.0
 prioridad: media
 version-detectada: 0.106.1
 ---
 
 # 370 — Lo que una persona pide en el chat sobre una ruta de fuera de las raíces se frena igual: los dos guards de límites sólo ofrecen declarar la ruta, y desde 0.106.1 eso alcanza también a los borrados
 
-**🔴 abierto** · detectado en 0.106.1 · prioridad **media**. **Decidido el 2026-10-10**: la confirmación
+**🟢 resuelto en 0.107.0** · detectado en 0.106.1 · prioridad **media**. **Decidido el 2026-10-10**: la confirmación
 angosta —qué es, en la segunda revisión, abajo—, junto con el
 [373](./373-el-agente-se-declara-solo-las-rutas-que-el-limite-le-frena.md).
 
@@ -214,6 +215,50 @@ vía ancha sigue al lado.
 - **La comparación de siempre**: el guard nuevo contra el de `main` sobre los comandos de las sesiones
   reales. Lo que frena no puede cambiar; lo único que cambia es qué dice el bloqueo y qué pasa después de
   una confirmación.
+
+## Cierre
+
+La salida vive en `engine/hooks/boundary.js`, `refusal`, y la usan los dos guards. Recorrido de lo que el caso
+enumeraba, ítem por ítem:
+
+- **Fix 1, aceptar la aprobación**: hecho, angosto. El ítem es `<verbo> <ruta resuelta>`; pasa por la
+  confirmación del bloqueo, por el diálogo nativo de Claude Code o por la línea en `planning/.ops-approval`;
+  no pasa por una orden del chat; no se hereda. `pendingNow` y `unauthorizedNow` reciben ahora qué cuenta
+  como orden, y acá es nada.
+- **Fix 2, dejarlo estricto y decirlo**: descartado por la segunda revisión, con medición.
+- **Alcance**: vale para borrar y para escribir, con su verbo cada uno; la carpeta personal entera y lo que
+  `destructive` cuida siguen sin salida, porque ese guard corre aparte y no mira esta aprobación.
+- **Riesgo 1, abrir de más**: la aprobación es por verbo, ruta y turno; la prueba asercia que otra ruta, otro
+  verbo sobre la misma ruta y el mensaje siguiente vuelven a frenar.
+- **Riesgo 2, que el agente se arme la aprobación**: `self-approval` se juzga antes y aparte; la prueba
+  confirma `escribe <la aprobación>` y la escritura sigue frenada. La otra vía por la que el agente se la
+  arma solo —declarar la ruta— es el 373.
+- **Riesgo 3, decidir con una lista de formas de pedir**: no se usa ninguna; la orden del chat quedó fuera
+  por eso mismo.
+- **Lo que había que cuidar al construirlo** (segunda revisión): los seis puntos tienen su aserción en
+  `test/hooks/boundary-approval.test.js` —destructivo, canal de aprobación, varias rutas juntas, ítem donde
+  cae, subagente, archivo sin chat—, y la comparación contra `main` está abajo.
+
+**Prueba corrida.** `test/hooks/boundary-approval.test.js`, siete pruebas: las siete en rojo antes del cambio
+—la primera con «The input did not match … /pedile que lo confirme con sus palabras/»— y en verde después,
+con las 285 de `test/hooks/` y la puerta entera.
+
+**Comparación contra `main`**, en sólo lectura, sobre las llamadas reales de las transcripciones de esta
+máquina: 46.573 llamadas a Bash, Write y Edit, 44.096 con instancia resoluble. Frena `main` 209, frena el
+árbol de trabajo 209, iguales 44.096, **distintas 0**. Lo que frena no cambió; sólo lo que dice el bloqueo.
+
+**Mutaciones**, en una copia fuera del árbol, cuatro:
+
+- la orden del chat admitida (`asked` por defecto) → rojo, «una orden del chat no abre nada»;
+- heredar lo concedido (`AP.pending` en vez de `pendingNow`) → rojo, «por un turno»;
+- el ítem sin verbo → rojo en cuatro pruebas, la primera porque `echo x > cache` pasaba tras confirmar el
+  borrado;
+- el ítem con la ruta escrita y no donde cae → rojo, «el ítem es donde cae».
+
+**Lo que queda abierto y es del canal**, no de este guard: en Codex y Gemini un mensaje que no niega ni
+pregunta aprueba lo pendiente aunque el agente no lo haya mostrado (caso 184). En Claude Code no aplica,
+porque confirma el diálogo del runner con el motivo a la vista. La primera prueba del caso lo tuvo que rodear
+—cada orden en una sesión propia— porque «mirá …» confirmaba lo que «borrá …» había dejado esperando.
 
 ## Contexto de descubrimiento
 
