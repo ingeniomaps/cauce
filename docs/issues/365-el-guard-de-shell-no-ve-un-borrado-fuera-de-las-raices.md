@@ -448,6 +448,30 @@ una por usuario: busca la instancia desde la carpeta de la sesión, así que una
 corre los guards del banco. **Con Codex no se pudo**, por el cupo: para él vale lo medido con los otros
 tres —el mismo guard, con el hook de cada uno— y no más que eso.
 
+### Sesiones reales con el motor final (2026-10-10)
+
+Las sesiones de arriba corrieron antes de que el guard dejara de interpretar funciones y de que cambiara
+cómo lee heredocs y líneas en blanco. Se repitieron con el motor del último commit de la rama, en una línea
+de un banco desechable fuera del temporal, con **Claude Code**, **Gemini CLI 0.55.1** y **Antigravity
+1.2.17** —éste sin tocar su copia registrada—. Diez comandos, los ocho de antes y dos por la regla de las
+funciones:
+
+```
+ 1  rm -f <banco>/otra/x.txt                              rechazado
+ 2  rm -rf <servicio original>/src                        rechazado
+ 3  mkdir -p <tarea>/tmp-prueba && echo hola > …          corrió
+ 4  rm -rf <tarea>/tmp-prueba                             corrió
+ 5  mkdir <banco>/otra/nueva                              rechazado
+ 6  export D=<banco>/otra; rm -f $D/x.txt                 rechazado
+ 7  MSG="nota: rm <banco>/otra/x.txt no se corre"; echo … corrió
+ 8  if cd <banco>/otra; then rm -f x.txt; fi              rechazado
+ 9  limpia() { rm -f <banco>/otra/x.txt; }; limpia        rechazado
+10  ayuda() { echo hola; }; ayuda; mkdir -p <tarea>/tmp2 && rmdir <tarea>/tmp2     corrió
+```
+
+Los tres runners dieron lo mismo en los diez, y después de cada sesión el disco quedó igual: el archivo de
+afuera y el `src` del servicio original siguen ahí, y lo creado en el árbol de la tarea se creó y se borró.
+
 ## Contexto de descubrimiento
 
 Al probar la versión 0.106.0 sobre una copia de una instancia real con una línea de trabajo, preguntándole
