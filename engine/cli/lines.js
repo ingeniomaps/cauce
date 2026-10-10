@@ -67,8 +67,9 @@ function line(dir, name, cli) {
   if (repo.status !== 0) return fail(`${root} no está en un repositorio git: una línea es un worktree de él.`, REFUSED)
   const where = layout(root, repo.stdout.trim(), name)
 
-  // Una línea borrada a mano sigue listada como prunable: sin podar, se daba por reusada y quedaba a medias.
-  if (!fs.existsSync(where.tree)) git(root, 'worktree', 'prune')
+  // Una línea borrada a mano sigue listada: sin retirarla, se daba por reusada y quedaba a medias. Se retira
+  // ésa y no se poda todo, que le quitaría el registro a cualquier otro árbol que hoy no esté.
+  if (!fs.existsSync(where.tree)) git(root, 'worktree', 'remove', '--force', where.tree)
   const listed = git(root, 'worktree', 'list', '--porcelain').stdout || ''
   const reused = listed.split('\n').some((entry) => entry.trim() === `worktree ${where.tree}`)
   if (!reused) {

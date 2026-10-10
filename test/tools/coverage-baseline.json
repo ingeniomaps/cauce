@@ -508,5 +508,10 @@
     "lines": 100,
     "branches": 100,
     "functions": 100
+  },
+  "engine/core/task-trees.js": {
+    "lines": 100,
+    "branches": 94,
+    "functions": 100
   }
 }

@@ -384,6 +384,7 @@ function commitSources(opsRoot, items, skip = []) {
 }
 
 module.exports = {
+  declaredRoots,
   serviceDirs, reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions, commitFiles, commitStatus,
   nestedRootWarnings, commitSources,
 }

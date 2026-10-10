@@ -12,6 +12,7 @@ const path = require('node:path')
 const { MKTEMP, madeUnder } = require('./mktemp')
 const { spawnSync } = require('node:child_process')
 const { writableOutsideRoots } = require('../config/paths')
+const { withTaskTrees } = require('../core/task-trees')
 
 // Cuánto se espera el primer byte de stdin. El runner escribe su JSON al lanzar el hook, así que en el
 // camino real ya está en el búfer cuando Node termina de arrancar: el plazo sólo cubre una máquina
@@ -415,10 +416,11 @@ function findOpsRoot(start) {
   }
 }
 
-// Lo que un proyecto declaró que puede escribirse: su raíz de ops, las raíces de código y las rutas que
-// exentó sin que sean código. Lo preguntan los dos guards de límites —el que mira un `Write` y el que
-// mira el destino de un comando— y tienen que responder lo mismo: con dos copias, una herramienta
-// escribiría donde la otra bloquea, que es exactamente el agujero que el segundo vino a cerrar.
+// Lo que un proyecto declaró que puede escribirse: su raíz de ops, las raíces de código con los árboles de
+// tarea de sus repositorios, y las rutas que exentó sin que sean código. Lo preguntan los dos guards de
+// límites —el que mira un `Write` y el que mira el destino de un comando— y tienen que responder lo mismo:
+// con dos copias, una herramienta escribiría donde la otra bloquea, que es exactamente el agujero que el
+// segundo vino a cerrar.
 //
 // Sin raíz legible no hay lista, y quien pregunta se abstiene: el guard que no sabe dónde está no
 // inventa un límite.
@@ -426,9 +428,9 @@ function writableRoots(input) {
   const root = opsRoot(input)
   if (!root) return null
   const config = configOf(root)
+  const declared = (config.workspaceRoots || []).map((entry) => path.resolve(root, entry.path))
   return [
-    root,
-    ...(config.workspaceRoots || []).map((entry) => path.resolve(root, entry.path)),
+    ...withTaskTrees(root, declared),
     ...writableOutsideRoots(root, config).map((entry) => entry.path),
     ...sessionScratch(input),
   ]

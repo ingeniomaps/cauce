@@ -64,6 +64,13 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **En una línea de trabajo, el árbol de la tarea se puede escribir aunque quede al lado de su raíz.** Con una
+  raíz declarada por repositorio —`../api` en vez de `..`—, el árbol que `ops worktree` arma para cada tarea
+  caía fuera de las raíces y el guard rechazaba la primera escritura: Build frenaba siempre, pidiendo una
+  exención que valía para esa tarea sola. Ahora el árbol de una tarea reclamada es escribible en el lugar
+  donde `ops worktree` lo arma, con el mismo alcance que el checkout principal, y se cierra solo cuando la
+  tarea se suelta. `ops worktree` se niega a entregar un árbol de esa rama que esté en otro lado. Si agregaste
+  rutas de árboles de tarea a `writableOutsideRoots` para salir del paso, ya no hacen falta (caso 360).
 - **`check` y `ops evidence` buscan también en el repositorio de la propia instancia.** En una instancia
   sidecar, el commit de una tarea de planning o de documentos vive ahí y no en una raíz de código: `check`
   avisaba que «no está en su repositorio» o que no se había comprobado, sin forma de apagarlo, y `evidence`

@@ -21,6 +21,7 @@ const { spawnSync } = require('node:child_process')
 const { commandOf, cwdOf, block, opsRoot, configOf, assignedValues, outsideRoots } = require('./input')
 const { isTestFile } = require('./files')
 const AP = require('./approval')
+const { withTaskTrees } = require('../core/task-trees')
 
 const PREFIXES = new Set(['sudo', 'env', 'command', 'exec', 'time', 'nohup', 'nice', 'xargs'])
 const TEST_DIR = /^(?:tests?|specs?|__tests__)$/i
@@ -78,13 +79,19 @@ function testEvidenceShell(input) {
   const raw = commandOf(input)
   const root = opsRoot(input)
   if (!root) return
+  // Antes que nada, si el comando borra algo: casi ninguno lo hace, y lo demás lee disco.
+  const erased = removed(raw, cwdOf(input))
+  if (!erased.length) return
   // Las raíces del proyecto y nada más: `writableRoots` suma lo desechable, que es justo lo que queda afuera.
-  const project = [root, ...(configOf(root).workspaceRoots || []).map((entry) => path.resolve(root, entry.path))]
+  // Con los árboles de tarea de sus repositorios, que es donde la tarea se construye: sin ellos, borrar una
+  // prueba ahí pasaba callado mientras la misma en la raíz se frenaba (caso 360).
+  const project = withTaskTrees(root, (configOf(root).workspaceRoots || [])
+    .map((entry) => path.resolve(root, entry.path)))
   // Si es una prueba se decide por su ruta dentro del proyecto, no por la ruta entera: con el proyecto
   // clonado bajo una carpeta `tests/`, todo archivo suyo habría contado como prueba.
   const within = (file) => path.relative(project.filter((base) => !outsideRoots(file, [base]))
     .sort((one, other) => other.length - one.length)[0], file)
-  const targets = removed(raw, cwdOf(input))
+  const targets = erased
     .filter((file) => !outsideRoots(file, project))
     .filter((file) => isTestFile(within(file)) || TEST_DIR.test(path.basename(file)))
     .filter(committed)

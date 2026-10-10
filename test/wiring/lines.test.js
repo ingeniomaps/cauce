@@ -139,11 +139,18 @@ test('una línea pedida por un enlace, o borrada a mano, se arma igual en su lug
   const report = JSON.parse(run(['line', path.join(alias, path.basename(target)), 'b', '--json']).stdout)
   assert.equal(report.home, `${fs.realpathSync(base)}-b`, 'por el enlace la línea cayó en otro lugar')
 
+  // Otro árbol de la instancia que hoy no está —un volumen desmontado— no pierde su registro por esto.
+  const away = path.join(fs.realpathSync(base), 'en-otro-volumen')
+  const git = (...args) => spawnSync('git', ['-C', target, ...args], { encoding: 'utf8' })
+  assert.equal(git('worktree', 'add', '-q', '-b', 'otra', away).status, 0)
+  fs.renameSync(away, `${away}-desmontado`)
+
   discard(report.home)
   const rebuilt = run(['line', target, 'b', '--json'])
   assert.equal(rebuilt.status, 0, rebuilt.stderr)
   assert.equal(JSON.parse(rebuilt.stdout).reused, false, 'una línea borrada se dio por reusada')
   assert.ok(fs.existsSync(path.join(report.home, 'ops', 'automatization', 'hooks')), 'quedó a medias')
+  assert.match(git('worktree', 'list', '--porcelain').stdout, /en-otro-volumen\n/, 'el otro sigue registrado')
 })
 
 // Caso 263. La raíz declarada es la carpeta que contiene a la instancia, con un repositorio por servicio
