@@ -1,14 +1,15 @@
 ---
 caso: 372
 titulo: la suite deja dos bancos en el repositorio después de cada corrida
-estado: abierto
+estado: resuelto
+resuelto-en: 0.107.0
 prioridad: baja
 version-detectada: 0.106.1
 ---
 
 # 372 — Después de cada `npm run ci` quedan `.cauce-eval/_medicion` y `.cauce-eval/product-manager` en el repositorio: las pruebas de los bancos los arman sobre el árbol de verdad y no los retiran
 
-**🔴 abierto** · detectado en 0.106.1 · prioridad **baja**.
+**🟢 resuelto en 0.107.0** · detectado en 0.106.1 · prioridad **baja**.
 
 **Prioridad baja**: están ignorados por git y no molestan a nadie. Vale anotarlo por dos cosas: quien limpia
 el repositorio los ve reaparecer sin saber de dónde salen, y son pruebas que escriben en el árbol de trabajo.
@@ -70,6 +71,47 @@ El repositorio queda como estaba después de correr la puerta, y deja de aparece
   fijo, y `bench-measurement.test.js` los tres escenarios de `_medicion` más las líneas que arma sobre ellos.
   Retirar esos nombres no toca `software-architect` ni ningún otro banco.
 - El primer camino del fix alcanza. El segundo —correr sobre una copia— no hace falta para esto.
+
+## Cierre
+
+Cada suite anota lo que pide y lo retira al cierre, con `discard`, que sólo borra bajo `.cauce-eval/` de
+este repositorio. Recorrido de lo que el caso enumeraba:
+
+- **Fix 1, que cada suite retire sus bancos**: hecho. En `bench.test.js` el nombre se anota al pedirlo
+  —envolviendo `run`— y no en una lista, para que un caso que alguien agregue después nazca cubierto;
+  `bench-measurement.test.js` ya tenía una sola entrada, `armar`, y anota ahí. La carpeta del cargo o de
+  la medición se retira sólo si quedó vacía: un banco real de `product-manager` se queda.
+- **Fix 2, correr sobre una copia**: se decidió que no. El banco es del toolkit a propósito y moverlo
+  dejaría de probar eso; con el primero alcanza.
+- **Riesgo 1, borrar un banco que no es de la suite**: se retira por nombre pedido, y `discard` se niega
+  fuera de `.cauce-eval/`. Durante todo el cierre `software-architect` siguió en su lugar.
+- **Riesgo 2, dejar de probar que el banco se arma dentro del toolkit**: no aplica, no se movió nada.
+
+**Prueba corrida.** Antes del arreglo, las dos suites —26 pruebas en verde— dejaban:
+
+```
+_medicion  product-manager  software-architect
+```
+
+Después, la misma corrida y `npm run ci` entero —1411 pruebas— dejan `software-architect` solo.
+
+**Mutación**, en una copia fuera del árbol: quitada la línea que retira en cada suite, el paso de cierre se
+pone rojo en las dos — `06-instancia quedó en el repositorio` y `suelto quedó en el repositorio`—, 26
+en verde y 2 en rojo.
+
+Lo que no preveía el enunciado: un `--bench` sin nombre, que tres pruebas usan para medir que el comando lo
+exige, no es un banco y no se anota; y la primera versión del cierre lo intentaba retirar y fallaba con un
+`path` indefinido.
+
+## Revisión del conjunto
+
+La revisión independiente encontró que el cierre anotaba cualquier nombre que siguiera a `--bench`, también
+`../../etc`, y que un caso futuro con `../otro-cargo` habría dejado al cierre borrando un banco hermano real,
+que es justo lo que el riesgo 1 decía no tocar. Se anota sólo lo que resuelve bajo la carpeta del cargo, y el
+cierre lo asercia; la mutación que anota todo se vio en rojo. La segunda pasada notó que anotar el nombre y
+no la ruta dejaba pasar un `--bench` absoluto —el cierre lo volvía a unir con la carpeta y no lo encontraba—;
+se anota la ruta resuelta. Y la tercera, que la aserción corría antes de retirar: si fallaba, dejaba los
+bancos puestos; ahora se retira primero y se asercia después.
 
 ## Contexto de descubrimiento
 
