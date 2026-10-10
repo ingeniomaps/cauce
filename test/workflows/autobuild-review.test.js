@@ -392,9 +392,9 @@ test('una decisión que Review no puede tomar se registra y la corrida sigue', a
   // El orden importa: así cada mitad falla por lo suyo —marcarla no frena, y no frenar no alcanza si
   // además no queda escrita en ningún lado.
   ranToEnd(result)
-  const fila = written.find((text) => /HUMAN_ACTIONS/.test(text) && /revisión/i.test(text))
+  const fila = written.find((text) => /Registrá en \S+planning\/human\//.test(text) && /revisión/i.test(text))
   assert.ok(fila, 'la decisión queda registrada donde una persona la lee')
-  assert.match(fila, /primera columna nunca es T-1/, 'y sin bloquear la tarea que la encontró')
+  assert.match(fila, /El task nunca es T-1/, 'y sin bloquear la tarea que la encontró')
 })
 
 // Los tres destinos no pueden pisarse, y el hallazgo que los pisa es el que los propios prompts producen:

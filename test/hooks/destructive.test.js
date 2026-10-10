@@ -137,7 +137,7 @@ test('guard planning-drift bloquea el cierre con el planning roto', () => {
     assert.match(said, /✗ done\/vieja\.md[^]*error\(es\)[^]*\nUna entrada de done\/ se repara sólo en lo que se/)
     assert.match(said, /lo que no entra en el formato se mueve dentro de la entrada, no se borra/)
     assert.match(said, /no se cambia ni se completa para que esto pase\. Si el error pide eso, dejalo como está/)
-    assert.ok(said.endsWith(`anotalo en ${path.join(root, 'planning', 'HUMAN_ACTIONS.md')} como una fila más.`))
+    assert.ok(said.endsWith(`anotalo en ${path.join(root, 'planning', 'human')} como una acción más.`))
     // La segunda vez no repite: el marcador de sesión existe y deja cerrar.
     assert.doesNotThrow(() => execute('planning-drift', { cwd: root, session_id: 'prueba-drift' }))
   } finally {

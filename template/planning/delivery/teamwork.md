@@ -132,10 +132,11 @@ en `admin` sigue mientras `auth` espera que la revisen, también después de tra
 propósito está `AWAITING_REVIEW.md`, que frena a todas. `checkpoints/README.md` tiene el detalle.
 
 Al juntar dos líneas, casi nada de lo que cada una escribió choca: la cola, el INBOX, la evidencia, los
-reclamos y los checkpoints son un archivo por unidad. Quedan dos archivos que las dos escriben.
-`HUMAN_ACTIONS.md` lo resuelve git —ver «Lo que git tiene que saber», más abajo—. `LESSONS.md` no: si las dos
-líneas anotaron una lección, su tabla choca al juntarse, y se resuelve a mano quedándose con las filas de las
-dos. Ahí el conflicto es correcto, porque una corrida puede actualizar una fila que ya estaba.
+reclamos, los checkpoints y las acciones humanas son un archivo por unidad. Quedan dos archivos que las dos
+pueden escribir. `LESSONS.md`: si las dos líneas anotaron una lección, su tabla choca al juntarse, y se
+resuelve a mano quedándose con las filas de las dos. Ahí el conflicto es correcto, porque una corrida puede
+actualizar una fila que ya estaba. Y `HUMAN_ACTIONS.md`, la tabla anterior de acciones humanas, si alguien le
+sigue agregando filas a mano: los recorridos ya no la escriben —ver «Lo que git tiene que saber», más abajo—.
 
 **Un id por agente.** Sin eso los dos resuelven la misma identidad de git y el segundo toma por propia la
 tarea del primero. Al abrir una sesión, `ops runners planning` dice qué runners tienen trabajo abierto;
@@ -194,6 +195,9 @@ decisiones del repositorio las pierde.
 
 ## Lo que git tiene que saber
 
+Las acciones humanas nuevas van en `human/`, un archivo por cada una, y ahí no hay nada que git tenga que
+saber. Lo que sigue vale para `HUMAN_ACTIONS.md`, la tabla que una instancia anterior ya tiene con filas.
+
 `.gitattributes` declara que `HUMAN_ACTIONS.md` y su histórico se concatenan en vez de conflictuar cuando
 dos personas registran un bloqueo el mismo día. Llega con la instancia y sus bordes están escritos ahí
 adentro. La evidencia de una tarea no lo necesita: vive en su propio archivo y nadie escribe el de nadie.
@@ -206,3 +210,9 @@ de la raíz del repositorio —el aviso la trae con la ruta que corresponde—:
     planning/HUMAN_ACTIONS.md merge=union
 
 Para comprobarlo: `git check-attr merge planning/HUMAN_ACTIONS.md` tiene que contestar `merge: union`.
+
+La unión tiene un costo que conviene conocer. Concatena, no decide: si una línea resuelve una fila mientras
+otra registra la suya, al juntarse quedan las dos versiones de la fila resuelta, y la que dice `pendiente`
+vuelve a bloquear su tarea. No hay conflicto que lo avise. `ops check` lo rechaza —«volvió a pendiente al
+juntar dos ramas»— y la salida es borrar la versión que no corresponde. Es la razón por la que las filas
+nuevas ya no se escriben en esa tabla.

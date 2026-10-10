@@ -37,6 +37,7 @@ const AG = require('../agents/catalog')
 const RL = require('../automation/rules')
 const LN = require('../planning/lines')
 const CK = require('../planning/checkpoints')
+const HA = require('../planning/human-actions')
 const OW = require('../automation/own-workflows')
 const CT = require('./contract')
 const { fail, planningRoot, TODAY, REFUSED } = require('./io')
@@ -146,9 +147,12 @@ function check(dir, cli) {
   errors.push(...SZ.oversizedUnits({ epics, milestones }))
   errors.push(...LN.lineErrors(milestones))
   errors.push(...CK.errors(root))
-  warnings.push(...LN.mergeWarnings(root, milestones))
+  const humanActions = HA.read(root)
+  errors.push(...HA.errors(root, humanActions))
+  warnings.push(...LN.mergeWarnings(root, milestones, humanActions.filter((row) => !row.file).length))
   errors.push(...PC.validateState({
-    epics, milestones, done, wips, roles, humanActions: P.readHumanActions(root), adopted: new Set(adopted),
+    epics, milestones, done, wips, roles, adopted: new Set(adopted),
+    humanActions: humanActions.filter((row) => !row.file || row.valid),
   }))
   warnings.push(...AD.report({ done, epics, adopted }))
   warnings.push(...PC.doneCeremonyWarnings(done, new Set(adopted)))
@@ -181,7 +185,9 @@ function check(dir, cli) {
   warnings.push(...RC.warnings(RC.status({ ...recurring, done, today: TODAY() })))
   warnings.push(...IB.warnings(root, done, config))
   warnings.push(...AD.sealWarnings(root))
-  warnings.push(...R.unrecordedHumanActions(path.resolve(root, '..'), P.readHumanActions(root), P.withoutComments))
+  const tableRows = humanActions.filter((row) => !row.file)
+  warnings.push(...R.unrecordedHumanActions(path.resolve(root, '..'), tableRows, P.withoutComments))
+  warnings.push(...HA.unrecorded(root, humanActions))
   warnings.push(...AP.warnings(path.resolve(root, '..')))
   warnings.push(...TR.warnings(path.resolve(root, '..')))
   warnings.push(...CT.warnings(path.resolve(root, '..')))

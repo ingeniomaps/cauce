@@ -13,7 +13,7 @@
 // minutos ya no es un arranque.
 //
 // Escribe borradores y no decide por nadie: lo deducido queda marcado como supuesto, las credenciales y
-// los sistemas externos van a HUMAN_ACTIONS —R12 se los prohíbe a un runner— y la épica queda sin
+// los sistemas externos van a las acciones humanas —R12 se los prohíbe a un runner— y la épica queda sin
 // promover, que sigue siendo la firma humana.
 export const meta = {
   name: 'onboard',
@@ -27,9 +27,10 @@ export const meta = {
 }
 
 {{INCLUDE:shared/workflow-root.js}}
+{{INCLUDE:shared/human.js}}
 const P = `${ROOT}/planning`
 const ORG = `${ROOT}/organization`
-const HUMAN = `${P}/HUMAN_ACTIONS.md`
+const HUMAN = humanWhere(P)
 const INBOX = `${P}/inbox/`
 const ROADMAP = `${P}/roadmap`
 
@@ -182,7 +183,8 @@ const drafted = await agent(
   `${services.length ? '' : 'Sin servicios, el mapa queda declarado como pendiente, diciendo qué lo ' +
     'completa.\n'}` +
   `4. ${HUMAN}: una fila por cada cosa que necesita a una persona, con la tarea, el estado pendiente, el ` +
-  `origen "onboard" y la acción concreta que la desbloquea. Como mínimo, una por cada credencial que el ` +
+  `origen "onboard" y la acción concreta que la desbloquea. ${humanForm(P)} ` +
+  `Como mínimo, una por cada credencial que el ` +
   `inventario nombra, diciendo la variable y el servicio que la espera. El nombre ya está declarado, así ` +
   `que no pidas declararlo de nuevo: lo que falta es dónde se carga el valor y quién lo hace, y ningún ` +
   `valor se propone acá. Además, una por cada sistema externo o MCP a conectar, y una por la autoridad ` +
@@ -225,7 +227,7 @@ const epic = await agent(
   `${services.length
     ? 'Verificar los comandos es una historia: nadie los corrió todavía.'
     : 'La primera historia es traer los repos y declararlos en workspaceRoots.'} ` +
-  `En "## Riesgos y decisiones humanas" citá las filas que quedaron en HUMAN_ACTIONS. No toques ` +
+  `En "## Riesgos y decisiones humanas" citá las acciones humanas que quedaron en ${HUMAN}. No toques ` +
   `BACKLOG.md.\n\n` +
   `El contrato de una épica está en ${P}/PROTOCOL.md; si necesitás verlo, leé esa sección y no el archivo ` +
   `entero, y escribí la épica de una sola vez.\n\n` +

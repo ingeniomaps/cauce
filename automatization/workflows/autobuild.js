@@ -28,6 +28,7 @@ export const meta = {
 
 {{INCLUDE:shared/workflow-root.js}}
 {{INCLUDE:shared/inbox.js}}
+{{INCLUDE:shared/human.js}}
 {{INCLUDE:shared/acceptance.js}}
 const CONFIG = `${ROOT}/ops.config.json`
 const P = `${ROOT}/planning`
@@ -40,7 +41,8 @@ const QUEUE = `${BACKLOG} y los archivos de ${P}/backlog/`
 const queueFile = () => `${P}/${(planning && planning.file) || 'BACKLOG.md'}`
 // Una tarea cerrada escribe su propio archivo, así que dos corridas en paralelo no comparten ninguno.
 const doneFile = (slug) => `${P}/done/${slug}.md`
-const HUMAN = `${P}/HUMAN_ACTIONS.md`
+const HUMAN = humanWhere(P)
+const HUMAN_FORM = humanForm(P)
 // El checkpoint de un hito vive en su propio archivo; `GATE` es el de las instancias anteriores, que el motor
 // sigue leyendo y que frena a todas las líneas. Por qué uno por hito está en `engine/planning/checkpoints.js`.
 const GATE = `${P}/AWAITING_REVIEW.md`
@@ -52,7 +54,7 @@ const CHECKPOINTS = `${P}/checkpoints`
 // suelta no es un envoltorio. Por eso también la escapada en vez de alternar el estilo de comillas.
 const QUOTES = ['\'', '"']
 
-// Las filas pendientes de HUMAN_ACTIONS, por su primera columna. `context` sólo lista las pendientes, así
+// Las acciones humanas pendientes, por su `task`. `context` sólo lista las pendientes, así
 // que alcanza con saber cuáles hay. El agente las transcribe y la igualdad con el slug la hace el recorrido:
 // pedirle «decí si hay una fila de esta tarea» dio que sí ante una celda que sólo la mencionaba (caso 349).
 const HUMAN_ROW = {
@@ -460,7 +462,8 @@ const CONTRACT = {
 }
 
 // Preámbulo invariante: no depende del proyecto y nunca obliga a leer un archivo.
-const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos externos en ${HUMAN}. Nunca ` +
+const BASE = `Nunca inventes credenciales ni decisiones; registrá los bloqueos externos en ${HUMAN}, un ` +
+  `archivo por bloqueo. Nunca ` +
   `ejecutes INBOX por tu cuenta. Nunca hagas push, deploy, amend, force ni git add -A. No edites la gobernanza ` +
   `del proceso, y no toques la contabilidad de planning salvo que este recorrido te lo pida explícitamente.`
 // Lo que quien lanza la corrida le pide a la corrida: el texto de `args`, o su campo `note`. Hasta 0.100.0
@@ -728,12 +731,14 @@ const scribeCommit = (prompt, options = {}) => run(prompt, { ...options, agentTy
 // pendiente, y cuando la fila es de la propia tarea se relee en `context`, que sólo lista las pendientes.
 const HUMAN_ROW_STATE = 'La fila nace con estado `pendiente`, sin excepción: registrás el bloqueo, no lo '
   + 'resolvés —lo resuelve una persona—. No escribas una decisión ni se la atribuyas a nadie.'
-// La primera columna es la clave con la que el motor bloquea, y quien escribe la fila imita las que ya hay:
-// en una instancia con filas viejas de título largo, copia esa forma y la tarea se vuelve a ofrecer.
-const HUMAN_ROW_KEY = (slug) => `En la primera columna va ${slug} solo, sin formato ni nada más: es la clave `
-  + 'con la que el motor bloquea la tarea. El motivo, la épica y la decisión van en la acción.'
+// `task` es la clave con la que el motor bloquea, y quien escribe la fila imita las que ya hay: en una
+// instancia con filas viejas de título largo, copia esa forma y la tarea se vuelve a ofrecer.
+const HUMAN_ROW_KEY = (slug) => `En task va ${slug} solo, sin formato ni nada más: es la clave con la que el `
+  + `motor bloquea la tarea. El archivo se llama ${slug}.md, o ${slug}-2.md si ése ya existe. El motivo, la `
+  + 'épica y la decisión van en el cuerpo.'
 const registerHuman = async (prompt, label, slug = '') => {
-  if (!(await write(`${HUMAN_ROW_STATE}${slug ? ` ${HUMAN_ROW_KEY(slug)}` : ''}\n\n${prompt}`, { label }))) {
+  const form = `${HUMAN_ROW_STATE} ${HUMAN_FORM}${slug ? ` ${HUMAN_ROW_KEY(slug)}` : ''}`
+  if (!(await write(`${form}\n\n${prompt}`, { label }))) {
     return ` — la fila en ${HUMAN} no se pudo registrar: escribila a mano`
   }
   if (!slug) return ''
@@ -761,14 +766,14 @@ const registerHuman = async (prompt, label, slug = '') => {
   if (!near) {
     return ` — la fila de ${slug} en ${HUMAN} no quedó pendiente: la resuelve una persona, revisala a mano`
   }
-  await write(`${HUMAN_ROW_STATE}\n\nLa fila de ${slug} en ${HUMAN} quedó con esta primera columna y así no `
-    + `bloquea nada, porque el motor bloquea por la primera columna exacta: ${near}. Dejá ${slug} solo en esa `
-    + 'columna y pasá el resto a la acción. No toques ninguna otra fila ni ningún otro campo.',
+  await write(`${HUMAN_ROW_STATE}\n\nLa fila de ${slug} en ${HUMAN} quedó con este task y así no bloquea `
+    + `nada, porque el motor bloquea por el task exacto: ${near}. Dejá ${slug} solo en ese campo y pasá el `
+    + 'resto al cuerpo. No toques ninguna otra fila ni ningún otro campo.',
   { label: `${label}-key` })
   tasks = await pending()
   if (!tasks) return ` — no se pudo comprobar la fila de ${slug} en ${HUMAN} después de corregirla: revisala a mano`
   if (tasks.includes(slug)) return ''
-  return ` — la fila de ${slug} en ${HUMAN} no bloquea la tarea: su primera columna quedó como «${near}» y `
+  return ` — la fila de ${slug} en ${HUMAN} no bloquea la tarea: su task quedó como «${near}» y `
     + `tiene que ser ${slug} solo. Corregila a mano`
 }
 
@@ -859,7 +864,7 @@ if (blocker === 'awaiting-review') {
   return halt('awaiting-human-review', `${held ? `${P}/${held}` : GATE} tiene un checkpoint humano sin resolver`)
 }
 if (blocker === 'blocked-on-human') {
-  return halt('blocked-on-human', `toda la cola espera una acción humana. Está en ${HUMAN}`
+  return halt('blocked-on-human', `toda la cola espera una acción humana. "node tools/ops.js human ${P}" las lista`
     + `${(planning.blockedTasks || []).length ? `, sobre ${planning.blockedTasks.join(', ')}` : ''}`)
 }
 if (blocker) return halt('context-unavailable', `${P} contestó blocked=${JSON.stringify(planning.blocked)}, `
@@ -1463,9 +1468,9 @@ while (rounds++ < MAX_TASKS) {
     // porque el WIP activo manda sobre la acción humana; aparece cuando el WIP cierra, y entonces la
     // tarea queda frenada por una pregunta que ya se había resuelto seguir sin contestar. En la corrida
     // que lo mostró la atrapó Review, tres fases después de escribirla.
-    await write(`Registrá en ${HUMAN} una fila por cada decisión que ${task.id} dejó abierta, con qué la ` +
-      `cierra y quién puede tomarla. La primera columna nunca es ${task.id}: el motor bloquea por esa ` +
-      `celda exacta y estas decisiones no impiden entregarla. Va la épica, el hito o el recorrido al que ` +
+    await write(`${HUMAN_FORM}\n\nRegistrá en ${HUMAN} una fila por cada decisión que ${task.id} dejó ` +
+      `abierta, con qué la cierra y quién puede tomarla. El task nunca es ${task.id}: el motor bloquea por ese ` +
+      `campo exacto y estas decisiones no impiden entregarla. Va la épica, el hito o el recorrido al que ` +
       `alcanza la decisión. No inventes responsables ni fechas: ` +
       `${JSON.stringify(openDecisions.map((entry) => entry.detail))}`, { label: 'open-decisions' })
   }
@@ -1633,7 +1638,7 @@ while (rounds++ < MAX_TASKS) {
       // La nota que devuelve viaja al hecho: sin ella la entrega afirma una fila que el disco no tiene,
       // que es el caso 087 entrando por otra puerta.
       const note = await registerHuman(`Registrá en ${HUMAN} una fila por cada decisión que la revisión de `
-        + `${task.id} dejó abierta, con qué la cierra y quién puede tomarla. La primera columna nunca es `
+        + `${task.id} dejó abierta, con qué la cierra y quién puede tomarla. El task nunca es `
         + `${task.id} —el porqué es el mismo que en Build—: va la épica, el hito o el recorrido al que `
         + `alcanza. No inventes responsables ni fechas: ${JSON.stringify(filed)}`, 'review-human')
       decidedNote = `${note}`
@@ -2033,13 +2038,13 @@ if (!closing.ok) {
   // corrida terminaba, la sesión se cerraba y el planning seguía en rojo sin que nada dijera por qué.
   if (!closing.ok) {
     const left = failures(closing)
-    // La primera columna es fija: con el nombre del hito, `check` la rechaza cuando ese nombre contiene el
+    // El task es fijo: con el nombre del hito, `check` la rechaza cuando ese nombre contiene el
     // de una tarea en cola, y esta fila no frena ninguna.
     const noted = await registerHuman(
       `Registrá en ${HUMAN} una fila: al cerrar la corrida` +
       `${currentMilestone ? ` del hito ${currentMilestone}` : ''}, ` +
       `"node tools/ops.js check ${P}" quedó en rojo y repararlo pedía algo que no es estado derivado. Los ` +
-      `errores, textuales: ${left}. La primera columna es autobuild, nunca una tarea: esto no frena ninguna en ` +
+      `errores, textuales: ${left}. El task es autobuild, nunca una tarea: esto no frena ninguna en ` +
       'particular. Decí qué lo cierra —quien pueda aportar lo que falta, o decidir qué se hace con la entrada— ' +
       'sin inventar responsables ni fechas.',
       'closing-human',

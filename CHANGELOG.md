@@ -44,6 +44,16 @@ diseño — eso vive en el commit y en el código.
 - **`check` avisa si `HUMAN_ACTIONS.md` va a chocar entre líneas.** El molde entrega `merge=union` para esa
   tabla, pero una instancia que vive en un repositorio con su propio `.gitattributes` no lo recibe. Con
   líneas en uso y filas en la tabla, `check` lo dice y trae la línea exacta que hay que agregar (caso 347).
+- **Las acciones humanas van una por archivo, en `planning/human/`.** `HUMAN_ACTIONS.md` es una tabla que
+  todas las líneas de trabajo escribían, y git la fusiona por unión: cuando una línea resolvía una fila
+  mientras la otra registraba la suya, quedaban las dos versiones de la fila, y la `pendiente` volvía a
+  bloquear su tarea sin conflicto ni aviso. Ahora `autobuild`, `flow` y `onboard` escriben cada acción en su
+  archivo —`task`, `status` y `origin` en el frontmatter, la acción como cuerpo—, y se resuelve cambiando su
+  `status`. `ops human planning` imprime la tabla entera, y `ops archive planning human-actions` mueve las
+  resueltas a `human/done/`. No hay que migrar nada: tu `HUMAN_ACTIONS.md` se sigue leyendo y sus filas
+  bloquean igual. Si en esa tabla te aparece una fila resuelta y también pendiente, `check` lo rechaza y dice
+  cuál borrar. El motor rige con `upgrade`; que los recorridos escriban en la carpeta nueva, al reinstalar el
+  runner (caso 351).
 
 
 ### Corregido

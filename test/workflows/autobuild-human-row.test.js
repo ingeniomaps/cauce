@@ -1,7 +1,7 @@
 'use strict'
 
-// La fila que una parada deja en HUMAN_ACTIONS bloquea por su primera columna exacta (caso 349). `LONG` es la
-// forma que salió en una corrida real: la tarea, la épica y la decisión juntas en esa columna.
+// La fila que una parada registra bloquea por su `task` exacto (caso 349), y va en su propio archivo (caso
+// 351). `LONG` es la forma que salió en una corrida real: la tarea, la épica y la decisión juntas en la clave.
 
 require('../support/environment')
 const test = require('node:test')
@@ -21,11 +21,18 @@ const reads = (...answers) => {
   }
 }
 
-test('el pedido de la fila dice qué va en la primera columna, y la relectura sólo transcribe', async () => {
+test('el pedido de la fila dice dónde va y cuál es su clave, y la relectura sólo transcribe', async () => {
   const out = await runFlow(NOT_READY)
   assert.equal(out.result.reason, 'not-ready')
   const [ask] = promptsOf(out, 'Ready|ready-human')
-  assert.match(ask, /En la primera columna va T-1 solo/)
+  assert.match(ask, /En task va T-1 solo, sin formato ni nada más/)
+  assert.match(ask, /El archivo se llama T-1\.md, o T-1-2\.md si ése ya existe/, 'un bloqueo anterior no se pisa')
+  assert.match(ask, /"status: pendiente"/, 'el estado va escrito, no sólo el nombre del campo')
+  assert.match(ask, /Registrá T-1 en \S+planning\/human\/ con el motivo/)
+  assert.match(ask, /Cada fila va en su propio archivo en \S+planning\/human\/, terminado en \.md, con un frontmatter/)
+  // Lo que se quita: escribir en la tabla que todas las líneas comparten.
+  assert.match(ask, /No edites HUMAN_ACTIONS\.md/)
+  assert.doesNotMatch(ask, /en \S+HUMAN_ACTIONS\.md/)
   assert.match(ask, /es la clave con la que el motor bloquea/)
   const [read] = promptsOf(out, KEY.readyRow)
   assert.match(read, /Copiá en tasks el campo task de cada fila de humanActions, entero y tal cual/)
@@ -41,7 +48,7 @@ test('una fila que nombra la tarea sin ser su slug se manda a corregir una vez y
   const [fix] = promptsOf(out, 'Ready|ready-human-key')
   assert.ok(fix, 'pidió la corrección')
   assert.ok(fix.includes(LONG), 'nombra la celda tal como quedó')
-  assert.match(fix, /Dejá T-1 solo en esa columna/)
+  assert.match(fix, /Dejá T-1 solo en ese campo/)
   assert.match(fix, /nace con estado `pendiente`/, 'y la corrección tampoco resuelve la fila')
   assert.equal(promptsOf(out, KEY.readyRow).length, 2)
   assert.doesNotMatch(out.result.detail, /no bloquea|no quedó pendiente/, 'corregida, no hay nada que avisar')
@@ -50,7 +57,7 @@ test('una fila que nombra la tarea sin ser su slug se manda a corregir una vez y
 test('si después de corregir sigue sin bloquear, la parada lo dice con la celda que quedó', async () => {
   const out = await runFlow({ ...NOT_READY, [KEY.readyRow]: reads([LONG]) })
   assert.equal(out.result.reason, 'not-ready', 'el motivo sigue siendo el de la parada')
-  assert.match(out.result.detail, /la fila de T-1 en .*HUMAN_ACTIONS\.md no bloquea la tarea/)
+  assert.match(out.result.detail, /la fila de T-1 en \S+planning\/human\/ no bloquea la tarea/)
   assert.ok(out.result.detail.includes(LONG))
   assert.equal(promptsOf(out, 'Ready|ready-human-key').length, 1, 'una sola corrección')
   assert.equal(promptsOf(out, KEY.readyRow).length, 2)

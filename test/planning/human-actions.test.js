@@ -92,3 +92,50 @@ test('una fila resuelta con un comentario adentro se reconoce en el commit', () 
     .warnings.filter((one) => /HUMAN_ACTIONS/.test(one))
   assert.deepEqual(avisos, [], 'el parser lee la fila sin el comentario, y el commit se compara igual')
 })
+
+// Caso 351. `merge=union` evita el conflicto cuando dos líneas agregan una fila, y cuando una la resuelve
+// mientras la otra agrega la suya al lado deja las dos versiones: la resuelta y la pendiente. El motor lee
+// la pendiente y la tarea vuelve a quedar bloqueada sin que nadie lo haya decidido.
+test('check rechaza la fila que una fusión por unión devolvió a pendiente', () => {
+  const target = path.join(tempRoot('cauce-human-union-'), 'demo-ops')
+  assert.equal(run(['init', target, '--name', 'Demo', '--mode', 'sidecar', '--no-install']).status, 0)
+  const planning = path.join(target, 'planning')
+  const file = path.join(planning, 'HUMAN_ACTIONS.md')
+  const git = (...args) => {
+    const out = spawnSync('git', ['-c', 'user.name=Prueba', '-c', 'user.email=prueba@ejemplo.invalid', ...args],
+      { cwd: target, encoding: 'utf8' })
+    assert.equal(out.status, 0, `git ${args.join(' ')}: ${out.stderr}`)
+  }
+  const edit = (change, message) => {
+    fs.writeFileSync(file, change(fs.readFileSync(file, 'utf8')))
+    git('add', 'planning/HUMAN_ACTIONS.md')
+    git('commit', '-qm', message)
+  }
+  const add = (slug) => (text) => text.replace(/^\|---\|---\|---\|---\|$/m,
+    (rule) => `${rule}\n| ${slug} | pendiente | Ready | decidir ${slug} |`)
+  const revived = () => JSON.parse(run(['check', planning, '--json']).stdout).errors
+    .filter((one) => /volvió a pendiente/.test(one))
+
+  git('init', '-q', '-b', 'main')
+  git('add', '.')
+  git('commit', '-qm', 'base')
+  edit(add('t-auth'), 'block t-auth')
+  git('checkout', '-q', '-b', 'line/admin')
+  edit(add('t-admin'), 'block t-admin')
+  git('checkout', '-q', 'main')
+  edit((text) => text.replace('| t-auth | pendiente |', '| t-auth | resuelta 2026-10-09 |'), 'resolve t-auth')
+  assert.deepEqual(revived(), [], 'resuelta y sin juntar, no hay nada que decir')
+
+  git('merge', '-q', 'line/admin', '-m', 'junta')
+  const rows = fs.readFileSync(file, 'utf8').split('\n').filter((line) => line.startsWith('| t-auth'))
+  assert.equal(rows.length, 2, 'la precondición: la unión dejó las dos versiones de la fila')
+  const [error, ...rest] = revived()
+  assert.deepEqual(rest, [])
+  assert.match(error, /HUMAN_ACTIONS: t-auth volvió a pendiente/)
+  assert.match(error, /borrá la fila pendiente/, 'y dice qué hacer')
+
+  // La misma tarea bloqueada otra vez por otro motivo es legítima: no es la misma fila.
+  edit((text) => text.replace('| t-auth | pendiente | Ready | decidir t-auth |',
+    '| t-auth | pendiente | QA | falta la cuenta de pruebas |'), 'otro bloqueo')
+  assert.deepEqual(revived(), [])
+})

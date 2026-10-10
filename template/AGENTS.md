@@ -262,7 +262,7 @@ refactors locales necesarios para su aceptación.
 
 Debe detenerse cuando falte una decisión de producto, credencial, cuenta o acción externa; cuando una
 verificación siga roja tras un intento razonable; o al cruzar un hito si el protocolo exige checkpoint.
-Registra la acción exacta en `planning/HUMAN_ACTIONS.md` y, si bloquea todo, crea
+Registra la acción exacta en `planning/human/`, un archivo por acción, y, si bloquea todo, crea
 `planning/AWAITING_REVIEW.md`.
 
 Nunca amplía el alcance, promueve sus propias ideas, reescribe el proceso durante una tarea, usa

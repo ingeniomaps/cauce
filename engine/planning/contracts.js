@@ -454,7 +454,7 @@ function validateState({
     const near = [...backlogSlugs].find((slug) => new RegExp(`\\b${slug}\\b`).test(row.task))
     if (near) {
       errors.push(`HUMAN_ACTIONS: la fila "${row.task}" nombra a ${near} y no bloquea nada, porque el `
-        + `motor bloquea por la primera columna exacta. Dejá "${near}" sola ahí y contá el resto en la `
+        + `motor bloquea por esa clave exacta. Dejá "${near}" sola ahí y contá el resto en la `
         + 'acción, o nombrá la épica o el recorrido si lo que se frena no es esa tarea')
     }
   }

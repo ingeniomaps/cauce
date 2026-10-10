@@ -310,7 +310,7 @@ test('los runners sin workflow llevan la lista de lo que se comprueba al final',
     if (!arranque || arranque.source.endsWith('.js')) continue
     const dir = path.join(automation, 'runners', name)
     const text = A.render(path.resolve(dir, arranque.source), '', automation)
-    for (const marca of [/Por definir/, /\(supuesto\)/, /epic-NNN-<slug>\.md/, /HUMAN_ACTIONS\.md/,
+    for (const marca of [/Por definir/, /\(supuesto\)/, /epic-NNN-<slug>\.md/, /planning\/human\//,
       /formulario/, /molde/]) {
       assert.match(text, marca, `${name}: ${marca} falta en ${arranque.source}`)
     }

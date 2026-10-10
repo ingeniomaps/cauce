@@ -8,6 +8,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const P = require('../planning/parser')
+const HA = require('../planning/human-actions')
 const PC = require('../planning/contracts')
 const AD = require('../planning/adoption')
 const F = require('../core/files')
@@ -53,20 +54,37 @@ function adopt(dir) {
   return console.log('  revisá la lista: lo que sí cumple el contrato no tiene por qué estar ahí')
 }
 
+// Las filas resueltas de la tabla pasan al histórico, como siempre. Una acción escrita en su archivo se mueve
+// entera a `human/done/`: aplanarla a un renglón perdía el cuerpo de varias líneas, los campos de más y el
+// nombre del archivo, y después lo borraba (caso 351). Lo que `check` todavía rechaza no se archiva: irse al
+// histórico le sacaría el error de encima sin haberlo corregido.
 function archiveHumanActions(root) {
   const source = path.join(root, 'HUMAN_ACTIONS.md')
-  const rows = P.readHumanActions(root).filter((row) => row.resolved)
-  if (!rows.length) return console.log('= no hay filas resueltas')
-  const target = path.join(root, 'done', 'human-actions.md')
-  const header = '| Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |\n|---|---|---|---|'
-  const previous = P.read(target).trimEnd()
-  const head = previous || `---\nstatus: archived\n---\n\n# Acciones humanas resueltas\n\n${header}`
-  fs.mkdirSync(path.dirname(target), { recursive: true })
-  F.atomicWrite(target, `${head}\n${rows.map((row) => row.raw).join('\n')}\n`)
-  const drop = new Set(rows.map((row) => row.raw))
-  const kept = P.read(source).split('\n').filter((line) => !drop.has(line))
-  F.atomicWrite(source, `${kept.join('\n').trimEnd()}\n`)
-  return console.log(`✓ ${rows.length} fila(s) archivadas`)
+  const resolved = HA.read(root).filter((row) => row.resolved)
+  const rows = resolved.filter((row) => !row.file)
+  const files = resolved.filter((row) => row.file && row.task && !row.repeated.length)
+  if (!rows.length && !files.length) return console.log('= no hay filas resueltas')
+  if (rows.length) {
+    const target = path.join(root, 'done', 'human-actions.md')
+    const header = '| Tarea | Estado | Origen | Acción concreta y condición de desbloqueo |\n|---|---|---|---|'
+    const previous = P.read(target).trimEnd()
+    const head = previous || `---\nstatus: archived\n---\n\n# Acciones humanas resueltas\n\n${header}`
+    fs.mkdirSync(path.dirname(target), { recursive: true })
+    F.atomicWrite(target, `${head}\n${rows.map((row) => row.raw).join('\n')}\n`)
+    const drop = new Set(rows.map((row) => row.raw))
+    const kept = P.read(source).split('\n').filter((line) => !drop.has(line))
+    F.atomicWrite(source, `${kept.join('\n').trimEnd()}\n`)
+  }
+  const archive = path.join(root, HA.DIR, HA.ARCHIVE)
+  if (files.length) fs.mkdirSync(archive, { recursive: true })
+  for (const row of files) {
+    const name = path.basename(row.file, '.md')
+    // Una tarea puede haberse bloqueado dos veces con el mismo nombre de archivo: el segundo no pisa al primero.
+    let target = path.join(archive, `${name}.md`)
+    for (let n = 2; fs.existsSync(target); n += 1) target = path.join(archive, `${name}-${n}.md`)
+    fs.renameSync(path.join(root, row.file), target)
+  }
+  return console.log(`✓ ${rows.length + files.length} fila(s) archivadas`)
 }
 // Archivar una épica se retiró en 0.71.0. Existía para descongestionar un `DONE.md` que se hinchaba con
 // una entrada por tarea; con un archivo por tarea no hay nada que descongestionar, y mover esos archivos

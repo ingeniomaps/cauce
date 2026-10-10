@@ -190,9 +190,16 @@ test('con líneas en uso, check avisa si la tabla de acciones humanas no fusiona
   const { root, planning, git, check } = instance('cauce-checkpoint-union-')
   const about = () => check().warnings.filter((one) => /merge=union/.test(one))
   git('checkout', '-q', '-b', 'line/auth')
+  const table = path.join(planning, 'HUMAN_ACTIONS.md')
+  const empty = fs.readFileSync(table, 'utf8')
+  const row = '| t-uno | pendiente | QA | falta la cuenta |\n'
+  fs.writeFileSync(table, empty + row)
   assert.deepEqual(about(), [], 'el molde ya trae la regla')
 
   fs.writeFileSync(path.join(root, '.gitattributes'), '# el del producto\n*.png binary\n')
+  fs.writeFileSync(table, empty)
+  assert.deepEqual(about(), [], 'con la tabla vacía no la escribe nadie: las acciones van una por archivo')
+  fs.writeFileSync(table, empty + row)
   const [warning, ...rest] = about()
   assert.deepEqual(rest, [])
   assert.match(warning, /planning\/HUMAN_ACTIONS\.md merge=union/, 'trae la línea que hay que agregar')

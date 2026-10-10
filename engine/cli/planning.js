@@ -18,6 +18,7 @@ const BK = require('../planning/backlog')
 const RN = require('../planning/renumber')
 const LN = require('../planning/lines')
 const CK = require('../planning/checkpoints')
+const HA = require('../planning/human-actions')
 const O = require('../core/ownership')
 const EV = require('../core/evidence')
 const { fail, planningRoot, REFUSED, TODAY, USAGE } = require('./io')
@@ -408,6 +409,19 @@ function inbox(dir, cli) {
   if (skipped) console.log(`\n${skipped} sin contar: falta el nombre en **negrita**`)
 }
 
+// La tabla entera, de sus dos fuentes y en un solo lugar. Las pendientes primero, que es lo que alguien viene
+// a buscar.
+function human(dir, cli) {
+  const rows = HA.read(planningRoot(dir))
+  const listed = [...rows.filter((row) => !row.resolved), ...rows.filter((row) => row.resolved)]
+    .map((row) => ({ task: row.task, state: row.state, origin: row.origin, action: row.action,
+      file: row.file || 'HUMAN_ACTIONS.md' }))
+  if (cli.has('--json')) return console.log(JSON.stringify(listed))
+  if (!listed.length) return console.log('= no hay acciones humanas registradas')
+  console.log('| Tarea | Estado | Origen | Acción concreta y condición de desbloqueo | Dónde |\n|---|---|---|---|---|')
+  for (const row of listed) console.log(`${HA.asRow({ ...row, raw: '' }).replace(/ \|$/, '')} | ${row.file} |`)
+}
+
 // Mueve una épica a otro número con las tareas que la citan (caso 217). Lo corre una persona al ver el
 // duplicado en `check`; el porqué de cada paso está en `engine/planning/renumber.js`.
 function renumberEpic(dir, epic, num) {
@@ -449,4 +463,4 @@ function splitBacklog(dir) {
   console.log(`${files.length} hito(s) pasaron a backlog/. Corré "ops check" y commiteá el cambio.`)
 }
 
-module.exports = { evidence, tree, context, recurring, lessons, inbox, renumberEpic, splitBacklog }
+module.exports = { evidence, tree, context, recurring, lessons, inbox, human, renumberEpic, splitBacklog }

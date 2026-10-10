@@ -146,7 +146,7 @@ Toda parada se nombra con una de éstas, en cualquier runner:
 `verify-regression` · `verify-inconsistent` · `qa-failed` · `commit-failed` · `budget-low`
 
 Y deja el estado consistente: la tarea sin marcar, el WIP activo si es resumible, y —si necesita a una
-persona— la fila en `HUMAN_ACTIONS.md` o el checkpoint del hito ya escritos.
+persona— la acción en `human/` o el checkpoint del hito ya escritos.
 
 `ops context` emite las dos que puede determinar solo, `awaiting-review` y `blocked-on-human`; las
 demás las nombra la fase que para, que es la única que sabe por qué.

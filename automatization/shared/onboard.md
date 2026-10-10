@@ -25,8 +25,8 @@ Con eso escribí `{{OPS_DIR}}organization/company.md` y `product.md`, la secció
 fuera de lugar. Lo deducido va marcado `(supuesto)` y lo que nada sostiene queda «Por definir»: no
 inventes clientes, ingresos ni objetivos.
 
-Credenciales, MCP y el permiso de push no te corresponden. Cada uno va como fila en
-`{{OPS_DIR}}planning/HUMAN_ACTIONS.md` con la acción concreta que lo desbloquea y sin proponer ningún
+Credenciales, MCP y el permiso de push no te corresponden. Cada uno va como un archivo en
+`{{OPS_DIR}}planning/human/` con la acción concreta que lo desbloquea y sin proponer ningún
 valor; las preguntas abiertas, a `{{OPS_DIR}}planning/inbox/ideas/`, una por archivo.
 
 El arranque tiene tres objetivos y ninguno más: entender qué es el proyecto, dejar la instancia correcta
@@ -50,7 +50,7 @@ falló los cinco puntos sin darse cuenta, y todos del mismo lado —lo que no pr
 3. **Las secciones de `{{OPS_DIR}}organization/` son las del molde.** Escribí adentro de ellas; agregá las tuyas
    abajo si hacen falta. Reemplazar la estructura pierde dimensiones que nadie va a reclamar después,
    porque el archivo se lee completo.
-4. **`HUMAN_ACTIONS.md` tiene filas.** Una por credencial nombrada en el inventario, una por sistema
+4. **`{{OPS_DIR}}planning/human/` tiene acciones.** Una por credencial nombrada en el inventario, una por sistema
    externo o MCP, una por la autoridad de push. Si quedó vacío, no es que no hubiera nada: es que lo que
    no te corresponde se perdió en vez de quedar escrito para alguien.
 5. **`ops` no es un servicio del producto.** No va en el mapa real: es la instancia desde la que trabajás.

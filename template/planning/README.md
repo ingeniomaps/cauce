@@ -10,7 +10,8 @@ Se lee y se escribe en cada tarea.
 | `backlog/` | Un archivo por hito, con su `order`; para que dos líneas de trabajo no escriban el mismo archivo. |
 | `wip/` | El plan en vuelo de cada runner; recuperación y mutex por runner. No viaja por git. |
 | `claims/` | Qué tarea tomó cada quien; un archivo por tarea. |
-| `HUMAN_ACTIONS.md` | Acciones externas que requieren una persona. |
+| `human/` | Acciones externas que requieren una persona, un archivo por cada una; `ops human` las lista todas. |
+| `HUMAN_ACTIONS.md` | La tabla anterior de acciones humanas; se sigue leyendo, y lo nuevo va en `human/`. |
 | `checkpoints/` | Un archivo por hito terminado que espera revisión; frena a la línea que lo escribió hasta que diga `resuelta`. |
 | `AWAITING_REVIEW.md` | Freno de toda la instancia, escrito a mano; mientras no diga `resuelta` ninguna línea inicia trabajo. |
 | `QA.md` | Cómo se prueba una entrega en la fase QA, paso por paso. |

@@ -230,7 +230,7 @@ test('blocked se lee por su valor, y lo que no es del vocabulario no se adivina'
 
   const humanas = await conBlocked('blocked-on-human')
   assert.equal(humanas.reason, 'blocked-on-human', 'tiene motivo propio: no es el checkpoint de hito')
-  assert.match(humanas.detail, /HUMAN_ACTIONS\.md/, 'y manda al archivo que sí tiene la causa')
+  assert.match(humanas.detail, /tools\/ops\.js human \S+planning/, 'y dice con qué se ve la causa')
   assert.match(humanas.detail, /T-9/, 'nombrando qué está trabado')
   assert.doesNotMatch(humanas.detail, /AWAITING_REVIEW/, 'nunca al gate, que acá no existe')
 
@@ -417,7 +417,7 @@ test('la fila de una decisión abierta no puede nombrar a la tarea que la dejó'
   const { prompts } = await runFlow({ [KEY.build]: conDecision })
   const fila = prompts.find((one) => /una fila por cada decisión/.test(one.prompt))
   assert.ok(fila, 'la fase corrió')
-  assert.match(fila.prompt, /primera columna nunca es T-1/,
+  assert.match(fila.prompt, /El task nunca es T-1/,
     'el prompt tiene que prohibirlo: sin eso la fila bloquea lo que dice no bloquear')
 })
 

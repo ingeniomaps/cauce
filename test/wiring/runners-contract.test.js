@@ -263,5 +263,8 @@ test('lo que el guard de rutas se saltea en los recorridos sigue siendo inofensi
   //
   // 63 desde el 2026-10-09: otra consigna de `context`, la que comprueba que el checkpoint del hito frene
   // (caso 347). Clasificada como la del 180.
-  assert.equal(hits, 63, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
+  //
+  // 64 desde el 2026-10-09: la parada por una cola que espera a una persona le dicta `tools/ops.js human`,
+  // el comando que lista esas acciones (caso 351). Texto de un mensaje, como el del 308.
+  assert.equal(hits, 64, 'cambió lo que el guard se saltea: clasificá las coincidencias nuevas')
 })

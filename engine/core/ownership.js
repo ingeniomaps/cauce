@@ -25,6 +25,7 @@ const SYSTEM_FILES = [
   'planning/rules/README.md',
   'planning/claims/README.md',
   'planning/checkpoints/README.md',
+  'planning/human/README.md',
   'planning/done/README.md',
   'planning/wip/README.md',
   'planning/roadmap/README.md',
