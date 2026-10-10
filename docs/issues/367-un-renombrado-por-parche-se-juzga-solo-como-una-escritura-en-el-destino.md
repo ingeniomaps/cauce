@@ -260,6 +260,11 @@ Con eso las dos reglas quedaron como dice «Cómo quedó, al final»: sin nada p
 sobre esa versión; una sobrevivió y se llevó su caso de prueba, y otra era una condición que, razonada, no
 cambia ningún resultado y se quitó.
 
+La revisión siguiente no encontró nada nuevo en estas dos reglas. Dejó una cosa, arreglada: un renombrado
+en dos saltos dentro del mismo parche —`a` a `b`, y `b` a la migración— buscaba en disco el nombre del
+medio, que todavía no existe, y no leía nada. Se sigue la cadena hasta el archivo que sí está. Si la
+herramienta que aplica el parche acepta secciones en cadena no se comprobó.
+
 Lo que deja como lección, porque es de método y no de este código: una mutación que sobrevive dice que
 falta una prueba o que la rama no se puede observar, y antes de quitar el código hay que demostrar lo
 segundo. Acá no se demostró, se supuso, y las dos piezas quitadas hacían falta. Esta vez las tres

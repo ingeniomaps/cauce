@@ -90,7 +90,12 @@ function migrations(input) {
     // revisiones seguidas encontraron otra regla que faltaba. El costo de no hacerlo se elige: si el archivo
     // trae algo destructivo frena, también cuando el parche se lo quita o cuando estaba en su reversión, y
     // la salida es la aprobación de abajo. Por eso el mensaje dice de dónde viene, y no que el parche lo trae.
-    const from = section && section.movedFrom
+    // Un renombrado en varios saltos dentro del mismo parche viene del primero de la cadena, que es el que
+    // está en disco.
+    let from = section && section.movedFrom
+    for (let hops = 0; hops < 8 && from && sections.get(from) && sections.get(from).movedFrom; hops += 1) {
+      from = sections.get(from).movedFrom
+    }
     const carried = from ? M.destructive(onDisk(path.resolve(cwdOf(input), from)) || '') : null
     if (carried) {
       block(`${raw} llega desde ${from}, que trae ${carried.kind}: \`${carried.what}\`. Se juzga el archivo como `

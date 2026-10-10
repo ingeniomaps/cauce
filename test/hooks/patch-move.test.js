@@ -87,6 +87,10 @@ test('lo que un archivo ya traía se juzga cuando el renombrado lo vuelve una mi
     '*** Move to: service/migrations/004_drop.sql')), /DROP TABLE/)
   fs.writeFileSync(path.join(root, 'service', 'scratch', 'crlf.sql'), 'CREATE TABLE t (id int);\r\nDROP TABLE t;\r\n')
   blocked('migrations', move('crlf.sql', '005_c.sql', '+-- nota'), /DROP TABLE/)
+  // Un renombrado en dos saltos dentro del mismo parche viene del mismo archivo.
+  blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/drop.sql',
+    '*** Move to: service/scratch/tmp.sql', '*** Update File: service/scratch/tmp.sql',
+    '*** Move to: service/migrations/400.sql')), /400\.sql llega desde service\/scratch\/drop\.sql/)
   // Lo que el parche agrega al renombrarlo cuenta, aunque lo que traía estuviera limpio.
   write('ok.sql', 'CREATE TABLE t (id int);', '')
   blocked('migrations', move('ok.sql', '006_ok.sql', '+DROP TABLE t;'), /DROP TABLE/)

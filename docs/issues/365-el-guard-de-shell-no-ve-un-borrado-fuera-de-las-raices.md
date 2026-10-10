@@ -368,6 +368,16 @@ sesiones reales: 543 de los 6.122 que traen un verbo de éstos definen una funci
 guard siguen siendo los mismos 43, ninguno perdido — eran todos sobre rutas enteras. Las cadenas largas de
 funciones y llaves se leen en un tiempo que crece con su tamaño, y tienen su prueba con tope.
 
+La revisión de esa regla fue la primera que no encontró nada introducido por el commit que revisaba, y
+confirmó que hace lo que dice: tras una función, una ruta entera se juzga; `$(cmd) {`, un heredoc ya
+vaciado, un comentario y un texto entre comillas no se toman por función; y ni la cadena de treinta ni
+tres mil funciones con grupos anidados pasan de unas decenas de milisegundos. Dejó tres cosas, que venían
+de antes y se arreglaron: una función con la llave en la línea de abajo, con `::` o un punto en el nombre,
+o con el cuerpo entre paréntesis no se reconocía como tal —y entonces su `cd` se seguía, o su primer
+verbo se perdía—; y una expresión que limpiaba cada tramo volvía atrás en cada corrida de espacios, dos
+segundos con cuarenta mil. Qué es definir una función se lee ahora ancho, porque equivocarse hacia ese lado
+sólo deja de juzgar lo relativo.
+
 ### Sesiones reales (2026-10-10)
 
 Hasta acá se le había preguntado al guard instalado. Faltaba una sesión de verdad, con comandos que corren.

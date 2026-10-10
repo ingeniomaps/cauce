@@ -130,7 +130,15 @@ const asRead = (command) => String(command).replace(HEREDOC_BODY, '<<$3$4').repl
 // y una ruta entera se juzga igual. Es todo. Se intentó leerlas —seguir el `cd` del cuerpo, repetirlo en cada
 // llamada, contar las llaves de sus grupos, calcular cuáles mueven— y cinco revisiones seguidas encontraron
 // otra forma de leerlas mal: una colgaba el guard, y las demás frenaban comandos legítimos (caso 365).
-const DEFINES = /^\s*(?:function\s+[\w-]+\s*(?:\(\))?|[\w-]+\s*\(\))\s*\{/
+//
+// Qué es definir una se lee ancho, porque equivocarse hacia este lado sólo deja de juzgar lo relativo: el nombre
+// que sea —`ns::f`, `build.clean`—, con la llave en la línea de abajo o con el cuerpo entre paréntesis.
+const DEFINES = /^\s*(?:function\s+[^\s(){}$=]+(?:\s*\(\s*\))?|[^\s(){}$=]+\s*\(\s*\))\s*[{(]?/
+
+// El tramo sin lo que lo envuelve: el paréntesis o la llave que lo abre y los paréntesis que lo cierran. En dos
+// pasos y no con una sola expresión: la que había volvía atrás en cada corrida de espacios, y con cuarenta mil
+// tardaba dos segundos. La llave que cierra un grupo no hace falta sacarla: va en su propio tramo.
+const unwrapped = (text) => text.trim().replace(/^[({]+\s*/, '').replace(/\)+$/, '').trimEnd()
 function steps(command, cwd) {
   const { cdTarget, QUOTED_CD } = require('./shell')
   const found = []
@@ -154,8 +162,7 @@ function steps(command, cwd) {
       else if (path.isAbsolute(home(to))) base = home(to)
       else base = base === null ? null : cdTarget(to, base)
     } else {
-      // La llave que cierra un grupo va suelta; pegada a una ruta es de un `{a,b}`.
-      const words = shellWords(withoutSubstitutions(piece).trim().replace(/^[({]+\s*|\s*\)+$|\s+\}+$/g, ''))
+      const words = shellWords(unwrapped(withoutSubstitutions(piece)))
       let prefixed = false
       while (words.length && (/^[A-Za-z_]\w*=/.test(words[0]) || LEADING.has(words[0])
         || (prefixed && words[0].startsWith('-')))) prefixed = LEADING.has(words.shift()) || prefixed

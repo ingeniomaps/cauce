@@ -58,6 +58,12 @@ test('borrar fuera de las raíces frena como escribir ahí, con el verbo que sea
   for (const command of commands) refuses(command, command.includes('no-es-de-nadie') ? /el comando borra/ : REMOVES)
 })
 
+test('el paréntesis que cierra un subshell no queda pegado a la ruta que se nombra', () => {
+  const { refuses } = project('ops-hook-borra-parentesis-')
+  refuses(`(rm -rf ${OUT}/sub)`, /fuera-de-las-raices\/sub, fuera de las raíces/)
+  refuses(`(cd ${OUT} && rm -rf sub)`, /fuera-de-las-raices\/sub, fuera de las raíces/)
+})
+
 test('lo que se borra adentro, en el temporal o sin poder saber dónde sigue pasando', () => {
   const { root, passes } = project('ops-hook-borra-adentro-')
   const commands = [
@@ -141,11 +147,19 @@ test('con una función definida en el comando, lo relativo no se juzga y una rut
     `rm() {\n  echo no\n}\nrm -rf ${OUT}/x`, `ir() {\n  cd /srv/x\n}\nir\nrm -rf ${OUT}/sub`,
     `limpia() {\n  rm -rf ${OUT}/sub\n}`, `function f { echo a; }; rm -rf ${OUT}/sub`,
     `f() { echo a; } >&2\nrm -rf ${OUT}/sub`, `limpia() { rm -rf ${OUT}/x; }`,
+    // Escrita como se la escriba: con otro nombre, con espacios, con el cuerpo entre paréntesis.
+    `ns::limpia() { rm -rf ${OUT}/x; }; ns::limpia`, `limpia() ( rm -rf ${OUT}/x ); limpia`,
+    `f ( ) { rm -rf ${OUT}/x; }`, `function ns::f { rm -rf ${OUT}/x; }`,
+    // Un arreglo vacío no es una función: después de él se sigue sabiendo dónde se está.
+    `archivos=(); cd ${OUT} && rm -rf sub`,
     // Antes de la definición todavía se sabe dónde se está.
     `cd ${OUT} && rm -rf sub\nf() {\n  echo a\n}`,
   ]) refuses(command, REMOVES)
   for (const command of [
     'f() {\n  cd /\n}\nrm -rf z', `entra() { cd ${OUT}; }; rm -rf service/src`,
+    // Con la llave en la línea de abajo, o con un nombre que lleva `::` o un punto, también es una función.
+    'sale()\n{\n  cd /var/log/app\n}\nrm -rf service/build', 'ns::sale() {\n  cd /var/log/app\n}\nrm -rf service/build',
+    'build.clean() {\n  cd /var/log/app\n}\nrm -rf service/build',
     `prep() {\n  { echo a; date; } >> log\n  cd ${OUT}\n}\nmkdir -p service/build`,
     `main() {\n  {\n    make\n  } > >(tee -a build.log) 2>&1\n  cd ${OUT}\n}\nmkdir -p service/build`,
     `f() {\n  for x in a b; do { echo $x; }; done\n  cd ${OUT}\n}\nrm -rf service/build`,
@@ -167,6 +181,9 @@ test('un comando largo con funciones y llaves se lee en un tiempo que crece con 
   const helpers = many((at) => `g${at}() {\n  g${at + 1}\n}`, 8000)
   passes([...helpers, 'g8000() {\n  cd /srv/x\n}', 'g0', 'rm -rf sub'].join('\n'))
   passes([...many(() => '{', 20000), ':', ...many(() => '}', 20000), 'rm -rf service/src'].join('\n'))
+  // Una corrida larga de espacios o de saltos de línea tampoco.
+  passes(`echo${' '.repeat(40000)}x; rm -rf service/src`)
+  passes(`echo "${'\n'.repeat(20000)}"; rm -rf service/src`)
   assert.ok(Date.now() - started < 3000, `tardó ${Date.now() - started} ms`)
 })
 
