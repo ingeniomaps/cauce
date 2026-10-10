@@ -163,6 +163,42 @@ avisar de lo que falta, avisarlo sin mirar el manifiesto, y dictar la carpeta si
 del acento también falló: `git check-ignore -z` contesta «-z solo tiene sentido con --stdin», y lo dijo la
 prueba.
 
+### Lo que encontró la segunda revisión (2026-10-10)
+
+Acotada a lo que la primera había arreglado. Seis hallazgos, reproducidos, y los seis se atendieron:
+
+- **Con la instancia en una subcarpeta del repositorio no decía lo que ya estaba en git.** `git ls-files`
+  contesta relativo a la carpeta desde la que se pregunta y se leía como relativo a la raíz. Ahora se pide
+  con `--full-name`, y el aviso dice desde dónde se leen las rutas cuando la instancia no es la raíz.
+- **El clon no se enteraba si la configuración del runner tampoco viajaba.** El aviso de lo que falta
+  exigía que `settings.json` estuviera. Alcanza con que el manifiesto diga que Cauce entregó el runner.
+- **El aviso le atribuía recorridos a Antigravity**, que lo que pierde es el puente por el que corren sus
+  guards. Ahora dice que sin esos archivos el runner no funciona entero, sin nombrar cuáles.
+- **Un archivo borrado a mano se diagnosticaba como clon.** El aviso es el mismo y la salida también; el
+  texto dejó de afirmar la causa: «un clon nace sin ellos», no «éste es un clon».
+- **Un propio cuya fuente se borró dejaba de contar**, con la ruta todavía escrita adentro. Se juzga por lo
+  que quedó escrito y no por su fuente, y vale también la ruta como se la nombró al instalar por un enlace.
+- **Se rendían las plantillas de todo runner en cada `check`.** Ahora sólo las de un archivo que está o que
+  se entregó. `check` sobre una instancia embebida con dos runners: 0,13 s.
+
+Rojo previo de las cuatro que cambian una respuesta. Trece mutaciones en rojo: las siete de antes y, de
+ésta, pedir sin `--full-name`, exigir la configuración, no decir desde dónde, decirlo siempre, juzgar al
+propio por su fuente y aceptar sólo la ruta resuelta. Dos sobrevivieron la primera vez —decirlo siempre y
+aceptar sólo la ruta resuelta— y cada una se llevó su caso de prueba.
+
+### Con Antigravity, en una instancia embebida (2026-10-10)
+
+Lo que el 363 y este caso habían corrido sólo con Claude. Instancia embebida con `antigravity` y `gemini`,
+commiteada con un `git add` de todo:
+
+```
+original   git status vacío · el puente no está en git · check sin avisos
+línea      git status vacío · el puente apunta a la línea, el del original a la original · check sin avisos
+clon       ⚠ a antigravity le faltan 1 archivo(s) que se generan en cada carpeta y no viajan por git
+           (en .agents/plugins/cauce/) … Rehacelos con node tools/ops.js automation install . antigravity
+           después de instalar: sin avisos, git status vacío
+```
+
 ## Contexto de descubrimiento
 
 Quedó a la vista al cerrar el caso 363: con la instalación ya andando en la línea, los archivos seguían

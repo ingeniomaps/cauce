@@ -31,8 +31,20 @@ const carriesRoot = (root, source, automationRoot) => {
   try { return render(source, opsPrefix(root), automationRoot, OPS_ROOT).includes(OPS_ROOT) } catch { return false }
 }
 
+// Un propio se juzga por lo que quedó escrito: su fuente pudo borrarse y el generado sigue ahí, con la ruta.
+const wroteRoot = (written, file) => {
+  try {
+    const text = fs.readFileSync(file, 'utf8')
+    return written.some((one) => text.includes(one))
+  } catch { return false }
+}
+
 // Por runner instalado: lo que lleva la ruta y está, lo que la lleva y falta, y todo lo generado.
-function survey(root) {
+//
+// Instalado es que su configuración esté o que el manifiesto diga que Cauce lo entregó: en un clon la
+// configuración puede no haber viajado tampoco. Y una plantilla se rinde sólo si su archivo está o se
+// entregó, porque esto corre en cada `check` y rendir las de un runner que nadie usa es trabajo de más.
+function survey(root, written) {
   const delivered = Object.keys(M.readRunners(root))
   const found = []
   for (const name of RUNNER_NAMES) {
@@ -42,18 +54,19 @@ function survey(root) {
       runner = runnerManifest(root, name)
       paths = runnerPaths(root, name, runner)
     } catch { continue }
-    if (!fs.existsSync(paths.configTarget)) continue
+    if (!fs.existsSync(paths.configTarget) && !delivered.some((key) => key.startsWith(`${name}/`))) continue
     const one = { name, present: [], absent: [], generated: [] }
     for (const item of runner.artifacts || []) {
       const resolved = resolveItem(paths, root, name, item)
-      if (!carriesRoot(root, resolved.source, resolved.automationRoot)) continue
-      if (fs.existsSync(resolved.target)) one.present.push(resolved.target)
+      const exists = fs.existsSync(resolved.target)
       // Que la configuración esté no alcanza: puede ser de la persona, con un runner que Cauce no instaló.
-      else if (delivered.includes(`${name}/${item.target}`)) one.absent.push(resolved.target)
+      if (!exists && !delivered.includes(`${name}/${item.target}`)) continue
+      if (!carriesRoot(root, resolved.source, resolved.automationRoot)) continue
+      one[exists ? 'present' : 'absent'].push(resolved.target)
     }
     for (const own of ownGenerated(root, runner, paths)) {
       one.generated.push(own.target)
-      if (carriesRoot(root, own.source, paths.automationRoot)) one.present.push(own.target)
+      if (wroteRoot(written, own.target)) one.present.push(own.target)
     }
     one.generated.push(...one.present)
     found.push(one)
@@ -82,8 +95,8 @@ function absentWarnings(root, runners) {
   return runners.filter((one) => one.absent.length).map((one) => {
     const dirs = [...new Set(one.absent.map((file) => `${path.relative(root, path.dirname(file))}/`))]
     return `a ${one.name} le faltan ${one.absent.length} archivo(s) que se generan en cada carpeta y no viajan `
-      + `por git (en ${dirs.join(', ')}): sin ellos sus recorridos no existen en la sesión. Rehacelos con `
-      + `node tools/ops.js automation install . ${one.name}`
+      + `por git (en ${dirs.join(', ')}): un clon nace sin ellos, y sin ellos el runner no funciona entero acá. `
+      + `Rehacelos con node tools/ops.js automation install . ${one.name}`
   })
 }
 
@@ -101,7 +114,8 @@ function trackedWarnings(root, runners) {
   // coincidir con la nuestra. `check-ignore` sólo lo admite leyendo las rutas por la entrada.
   const listed = (out, base) => new Set((out.stdout || '').split('\0').filter(Boolean)
     .map((one) => path.resolve(base, one)))
-  const tracked = listed(git(['ls-files', '-z', '--', ...here]), top)
+  // `--full-name`: sin él las rutas salen relativas a la instancia, que puede no ser la raíz del repositorio.
+  const tracked = listed(git(['ls-files', '-z', '--full-name', '--', ...here]), top)
   // `check-ignore` no da por ignorado lo que git ya tiene en el índice, que es lo que hace falta: agregar
   // la línea al `.gitignore` no saca de git lo que ya está adentro.
   const ignored = listed(git(['check-ignore', '-z', '--stdin'], here.join('\0')), root)
@@ -113,9 +127,11 @@ function trackedWarnings(root, runners) {
     ? ` ${inGit.length} ya están en git: sacalos con git rm -r --cached `
       + `${patterns(inGit, top, generated).join(' ')} —quedan en disco—.`
     : ''
+  // Las líneas valen para el `.gitignore` de la raíz del repositorio, y el comando se corre desde ahí.
+  const from = top === root ? '' : ` Las rutas son desde la raíz del repositorio, ${top}.`
   return [`${loose.length} archivo(s) del runner llevan escrita la ruta de esta carpeta y git no los ignora `
     + `(${lines.join(', ')}): en git, cada clon y cada línea de trabajo los ve modificados. Son generados, los `
-    + `rehace automation install; agregá esa(s) línea(s) a tu .gitignore.${untrack}`]
+    + `rehace automation install; agregá esa(s) línea(s) a tu .gitignore.${untrack}${from}`]
 }
 
 // La raíz se resuelve antes de preguntar: git contesta con rutas reales, y por un enlace a la instancia
@@ -123,7 +139,8 @@ function trackedWarnings(root, runners) {
 function warnings(given) {
   let root
   try { root = fs.realpathSync(given) } catch { return [] }
-  const runners = survey(root)
+  // La raíz pudo escribirse como se la nombró al instalar, y no como la resuelve el sistema.
+  const runners = survey(root, [root, path.resolve(given)])
   return [...absentWarnings(root, runners), ...trackedWarnings(root, runners)]
 }
 
