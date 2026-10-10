@@ -64,6 +64,10 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **En una instancia embebida, `check` y `ops evidence` encuentran el commit de una tarea cuyo servicio es
+  una carpeta.** La entrada lo cita con el nombre del servicio, que ahí no es un repositorio: `check` avisaba
+  que su repositorio no estaba en la máquina y `evidence` daba las pruebas por ausentes. También encuentra la
+  prueba cuando la traza la nombra subiendo desde la carpeta del servicio, `../test/…` (caso 362).
 - **En una línea de trabajo, el árbol de la tarea se puede escribir aunque quede al lado de su raíz.** Con una
   raíz declarada por repositorio —`../api` en vez de `..`—, el árbol que `ops worktree` arma para cada tarea
   caía fuera de las raíces y el guard rechazaba la primera escritura: Build frenaba siempre, pidiendo una

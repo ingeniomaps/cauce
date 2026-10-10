@@ -255,3 +255,42 @@ test('comprobar varios shas con ausentes en el medio cuesta un proceso, no uno p
     delete require.cache[file]
   }
 })
+
+// Caso 362. En una instancia embebida el servicio suele ser una carpeta del repositorio, y la entrada cita
+// su commit con ese nombre: `(src@rama)`. La carpeta no es un repositorio, pero es de uno.
+test('un commit citado por el nombre de un servicio que es una carpeta se busca en su repositorio', () => {
+  const base = tempRoot('cauce-commits-servicio-')
+  const repo = path.join(base, 'prod')
+  fs.mkdirSync(path.join(repo, 'src'), { recursive: true })
+  fs.mkdirSync(path.join(repo, 'planning'))
+  fs.writeFileSync(path.join(repo, 'src', 'a.js'), 'x\n')
+  fs.writeFileSync(path.join(repo, 'ops.config.json'),
+    JSON.stringify({ mode: 'embedded', workspaceRoots: [{ name: 'main', path: '.' }] }))
+  git(repo, 'init', '-q', '-b', 'main')
+  git(repo, 'add', 'src/a.js', 'ops.config.json')
+  git(repo, 'commit', '-qm', 'base')
+  const sha = git(repo, 'rev-parse', '--short', 'HEAD').stdout.trim()
+  assert.deepEqual(R.commitStatus(repo, [{ sha, repo: 'src' }, { sha: 'deadbee', repo: 'src' }]),
+    ['found', 'missing'])
+  // Lo que no es ni un repositorio ni un servicio de acá sigue sin poder comprobarse.
+  assert.deepEqual(R.commitStatus(repo, [{ sha, repo: 'otro-servicio' }]), ['unchecked'])
+  // Tampoco una carpeta que existe y no trae nada de este repositorio: es el lugar de otro que no está
+  // —sin clonar, o un repositorio anidado que una línea dejó vacío—, y no encontrar ahí su commit no dice
+  // que no exista.
+  fs.mkdirSync(path.join(repo, 'api'))
+  assert.deepEqual(R.commitStatus(repo, [{ sha: 'abc1234', repo: 'api' }]), ['unchecked'])
+  const nested = path.join(repo, 'web')
+  fs.mkdirSync(nested)
+  git(nested, 'init', '-q', '-b', 'main')
+  fs.writeFileSync(path.join(nested, 'w.txt'), 'x\n')
+  git(nested, 'add', 'w.txt')
+  git(nested, 'commit', '-qm', 'web')
+  git(repo, 'add', 'web')
+  git(repo, 'commit', '-qm', 'web como enlace')
+  fs.renameSync(path.join(nested, '.git'), path.join(base, 'web.git'))
+  assert.deepEqual(R.commitStatus(repo, [{ sha: 'abc1234', repo: 'web' }]), ['unchecked'], 'un enlace de git vacío')
+  // Y `evidence` lee del commit lo que ya no está en disco.
+  const sources = R.commitSources(repo, [{ sha, repo: 'src' }], [])
+  assert.equal(sources.length, 1)
+  assert.match(sources[0].read(sources[0].scan.find((file) => file.endsWith('src/a.js'))), /^x/)
+})

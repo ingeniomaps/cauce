@@ -295,6 +295,21 @@ function commitPlaces(opsRoot, items) {
   const named = new Map()
   // El nombre es una carpeta dentro de una raíz o el de una raíz que ya es el repositorio: las dos formas
   // de `holds`, y por lo mismo (caso 254).
+  //
+  // Y si no es ninguna de las dos, se prueba como servicio: en una instancia embebida un servicio es una
+  // carpeta del repositorio, y el recorrido cita el commit con ese nombre —`(src@rama)`—. Sin esto el commit
+  // quedaba «sin comprobar» en cada tarea cerrada, con el repositorio a la vista (caso 362).
+  // Sólo si la carpeta trae archivos de ese repositorio. Una que existe y no trae ninguno —vacía, o un
+  // enlace de git a otro repositorio que no está poblado— es el lugar de otro: buscar ahí su commit lo
+  // daría por inexistente, cuando lo que pasa es que no hay dónde mirar.
+  const serviceRepo = (name) => {
+    const repo = repoOf(opsRoot, name)
+    const dir = repo && serviceDirs(opsRoot, name).find((one) => fs.existsSync(one))
+    if (!dir) return ''
+    const inside = path.relative(repo, fs.realpathSync(dir))
+    const tracked = (git(repo, 'ls-files', '-s', '--', inside || '.').stdout || '').split('\n')[0]
+    return tracked && !tracked.startsWith('160000 ') ? repo : ''
+  }
   const repoOfName = (name) => {
     if (!named.has(name)) {
       named.set(name, roots
@@ -304,7 +319,7 @@ function commitPlaces(opsRoot, items) {
         // el repositorio a la vista (caso 273).
         .find((dir) => fs.existsSync(dir)
           && git(dir, 'rev-parse', '--show-toplevel').stdout.trim() === fs.realpathSync(dir))
-        || (own && own.names.includes(name) ? own.dir : ''))
+        || (own && own.names.includes(name) ? own.dir : '') || serviceRepo(name))
     }
     return named.get(name)
   }

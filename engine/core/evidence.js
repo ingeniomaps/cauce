@@ -242,8 +242,12 @@ function parts(given, tree) {
 // Hasta dónde llega: el nombre se busca como texto, así que lo da por bueno si es parte de otro más largo
 // o si está en un comentario; y de un tramo sin comillas se busca hasta donde empieza la aclaración, que
 // puede ser menos que el nombre.
+//
+// El archivo se busca sin lo que tenga de subir o de «acá» adelante: el recorrido pide la ruta desde la
+// carpeta del servicio, y cuando la prueba vive fuera de ella llega como `../test/…` (caso 362).
 function contrastParts({ files, names, cited, code, prose, built }, tree, read, scan, flat) {
-  const within = files.map((file) => tree.filter((one) => one.endsWith(`/${file}`)))
+  const within = files.map((file) => file.replace(/^(?:\.{1,2}\/)+/, ''))
+    .map((file) => tree.filter((one) => one.endsWith(`/${file}`)))
   if (within.some((matching) => !matching.length)) return { verdict: 'ausente' }
   const where = files.length ? within.flat() : scan
   const text = (file) => (built ? flat(file) : read(file))

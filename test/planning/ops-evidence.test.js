@@ -416,3 +416,17 @@ test('una frase citada se busca entera, con su código adentro y como la traza l
   assert.deepEqual(output.cited, [])
   assert.deepEqual(output.code, ['Expected: "ochenta" / Received: null'])
 })
+
+// Caso 362. El recorrido pide la ruta de la prueba desde la carpeta del servicio. Cuando la prueba vive
+// fuera de ella —`src` es el servicio y las pruebas están en `test/`—, la ruta sale con `..` adelante.
+test('una traza que nombra su archivo subiendo desde el servicio se encuentra igual', () => {
+  const EV = require('../../engine/core/evidence')
+  const root = tempRoot('cauce-evidence-subiendo-')
+  fs.mkdirSync(path.join(root, 'app', 'test'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'app', 'test', 'suma.test.js'), "test('suma dos numeros', () => {})\n")
+  const one = (artifact) => EV.contrast(`A → ${artifact}`, [root])[0].verdict
+  assert.equal(one('../test/suma.test.js › «suma dos numeros» — criterio: suma'), 'encontrado')
+  assert.equal(one('./test/suma.test.js › «suma dos numeros» — criterio: suma'), 'encontrado')
+  assert.equal(one('../test/suma.test.js › «resta dos numeros» — criterio: resta'), 'parcial')
+  assert.equal(one('../test/otra.test.js › «suma dos numeros» — criterio: suma'), 'ausente')
+})
