@@ -4,7 +4,8 @@
 // vocabulario propio —se crea, se recrea entera, se versiona, se niega a pisar trabajo sin recoger— y
 // estaba dentro de la suite del CLI, que prueba otra cosa.
 
-const { MIN_ROLES, tempRoot, run, linkEngine, discard, undeletable } = require('../support/environment')
+const { MIN_ROLES, tempRoot, linkEngine, discard, undeletable } = require('../support/environment')
+const environment = require('../support/environment')
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -12,6 +13,34 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const CAT = require('../../engine/cli/catalog')
+
+// Los bancos que esta suite arma se arman sobre este repositorio —el banco es del toolkit a propósito— y
+// quedaban ahí después de cada corrida (caso 372). Se anota cada caso que se pide, y al cierre se retira
+// eso y nada más: `.cauce-eval/` guarda también bancos de evaluaciones reales, con informes que pueden no
+// estar consolidados, y un nombre que no se pidió acá no se toca. Anotarlo al pedirlo, en vez de listarlo,
+// es lo que deja cubierto el caso que alguien agregue después.
+const TOOLKIT = path.resolve(__dirname, '..', '..')
+const BENCHES = path.join(TOOLKIT, '.cauce-eval', 'product-manager')
+const asked = new Set()
+function run(args, cwd) {
+  // Un `--bench` sin nombre es una prueba de que el comando lo exige, no un banco; y uno que no cuelga de
+  // la carpeta del cargo —`../otro`— tampoco: anotarlo dejaría el cierre borrando un banco hermano real.
+  const at = args[0] === 'evaluate' ? args.indexOf('--bench') : -1
+  const name = at >= 0 ? args[at + 1] : undefined
+  const dir = typeof name === 'string' ? path.resolve(BENCHES, name) : ''
+  if (dir.startsWith(BENCHES + path.sep)) asked.add(dir)
+  return environment.run(args, cwd)
+}
+
+test.after(() => {
+  // Un banco que el comando rechazó no llegó a existir, y uno que una prueba ya retiró tampoco. Se retira
+  // antes de aserciar nada: una aserción que corte primero dejaría los bancos en el repositorio.
+  for (const dir of asked) if (fs.existsSync(dir)) discard(dir)
+  if (fs.existsSync(BENCHES) && !fs.readdirSync(BENCHES).length) fs.rmdirSync(BENCHES)
+  assert.ok([...asked].every((dir) => dir.startsWith(BENCHES + path.sep)),
+    'sólo lo que cuelga de la carpeta del cargo')
+  for (const dir of asked) assert.equal(fs.existsSync(dir), false, `${dir} quedó en el repositorio`)
+})
 
 // La ruta del banco, resuelta contra la raíz que se le pasó. Nunca desde una salida vacía: con `stdout`
 // en blanco `path.resolve(toolkit, '')` **es** la raíz del toolkit, y lo que siga la trata como si fuera
