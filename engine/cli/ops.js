@@ -118,6 +118,10 @@ async function init(target, cli) {
   const relative = path.relative(process.cwd(), root)
   const enter = relative && relative !== '.' ? `cd ${relative} && ` : ''
   console.log(`\n✓ ${name}: sistema ops creado en ${root} (modo ${mode})`)
+  for (const { file, name: section } of CT.missingSections(root)) {
+    console.log(`! ${file} se conservó y no trae la sección ${section}: hasta que la tenga, \`ops contract\` falla `
+      + `y los agentes no reciben contrato. ${CT.restoreAdvice(file)}`)
+  }
   let result
   try {
     result = await BOOT.run(root, options, {

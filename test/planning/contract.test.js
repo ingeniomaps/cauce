@@ -126,6 +126,40 @@ test('contract falla nombrando la sección que falta, y sólo en lo que el motor
   assert.match(result.stderr, /AGENTS\.md/, 'y en qué archivo')
 })
 
+// Caso 344. Un repositorio que ya traía su `AGENTS.md` —el que lee Codex— entra con `init --force`, que lo
+// conserva. Eran tres comandos y ninguno decía la salida hasta el tercero: `init` terminaba en «creado»,
+// `contract` mandaba a un `upgrade` que tampoco lo reponía, y recién ése nombraba `--force`.
+test('adoptar un repositorio con AGENTS.md propio dice desde init cómo recuperar el contrato', () => {
+  const root = path.join(tempRoot('cauce-contract-adoptado-'), 'producto')
+  fs.mkdirSync(root, { recursive: true })
+  fs.writeFileSync(path.join(root, 'AGENTS.md'), '# mío\n')
+
+  const created = run(['init', root, '--name', 'Demo', '--mode', 'embedded', '--force', '--no-install'])
+  assert.equal(created.status, 0, created.stderr)
+  assert.match(created.stdout, /AGENTS\.md se conservó y no trae la sección ## Autonomía/)
+  assert.match(created.stdout, /ops upgrade --force/, 'init nombra la salida')
+  assert.match(created.stdout, /organization\/workspace\.md/, 'y dónde va lo propio antes de pisarlo')
+  assert.equal(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), '# mío\n', 'avisar no es pisar')
+
+  const broken = run(['contract', root])
+  assert.equal(broken.status, 2)
+  assert.match(broken.stderr, /ops upgrade --force/)
+  assert.match(broken.stderr, /organization\/workspace\.md/)
+  // Lo que se quita: mandar a un `upgrade` a secas, que conserva el archivo y deja todo como estaba.
+  assert.doesNotMatch(broken.stderr, /corrélo para restaurarlo/)
+
+  // Y la salida que nombran funciona: después de ella el contrato sale.
+  assert.equal(run(['upgrade', root, '--force']).status, 0)
+  assert.equal(contractOf(root).result.status, 0)
+})
+
+test('un init sobre un directorio vacío no avisa nada de secciones', () => {
+  const root = path.join(tempRoot('cauce-contract-limpio-'), 'demo-ops')
+  const created = run(['init', root, '--name', 'Demo', '--mode', 'sidecar', '--no-install'])
+  assert.equal(created.status, 0, created.stderr)
+  assert.doesNotMatch(created.stdout, /se conservó y no trae la sección/)
+})
+
 test('contract tolera que el proyecto no declare excepciones, que es un estado legítimo', () => {
   const root = instance('cauce-contract-sin-excepciones-')
   const workspace = path.join(root, 'organization', 'workspace.md')

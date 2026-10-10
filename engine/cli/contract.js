@@ -39,6 +39,18 @@ const readIfAny = (file) => {
   try { return fs.readFileSync(file, 'utf8') } catch { return '' }
 }
 
+// Las secciones requeridas que esta raíz no trae, y cómo se recuperan. Lo preguntan `contract`, para fallar,
+// e `init --force`, para avisar antes: adoptar un repositorio que ya tenía su `AGENTS.md` lo conserva, y
+// mandarlo a `upgrade` a secas lo conservaba otra vez (caso 344). La salida se dice entera porque `--force`
+// no distingue: toma la versión del molde de todo lo que `upgrade` lista como conservado.
+const missingSections = (root) => REQUIRED_SECTIONS
+  .filter(({ file, heading }) => !P.section(readIfAny(path.join(root, file)), heading).trim())
+const restoreAdvice = (file) => 'Ese archivo lo mantiene Cauce entero, y `ops upgrade` conserva el tuyo si lo '
+  + 'editaste o ya estaba: lo repone `ops upgrade --force`, que también descarta las demás ediciones que '
+  + '`upgrade` liste como conservadas.'
+  + (file === 'AGENTS.md' ? ' Lo propio de ese archivo va antes a `organization/workspace.md`, que es del '
+    + 'proyecto y no se reemplaza.' : '')
+
 // Con qué arranca un párrafo que **enuncia** un límite, frente a uno que lo explica. Es vocabulario
 // cerrado, igual que `lane` o `blocked`, y por la misma razón: lo que sigue es una lista de la que un
 // agente tiene que poder obedecer cada entrada, y una heurística abierta admite cualquier cosa.
@@ -209,10 +221,10 @@ function contract(dir, cli) {
   for (const { file, heading, name } of REQUIRED_SECTIONS) {
     const found = P.section(readIfAny(path.join(root, file)), heading)
     // Nombrar la sección y el archivo es lo que separa este error de «algo salió mal»: quien lo lee tiene
-    // que poder abrir el archivo y ver qué encabezado falta, y el arreglo es restaurarlo con `upgrade`.
+    // que poder abrir el archivo y ver qué encabezado falta.
     if (!found.trim()) {
       return fail(`${file} no tiene la sección ${name}, y de ahí sale el contrato que reciben los agentes. `
-        + 'Ese archivo lo reemplaza `ops upgrade` entero: corrélo para restaurarlo.', USAGE)
+        + restoreAdvice(file), USAGE)
     }
     sections[file] = found
   }
@@ -255,4 +267,4 @@ function contract(dir, cli) {
   console.log(`límites    ${report.boundaries.length} · contratos ${report.contracts.length} caracteres`)
 }
 
-module.exports = { contract, warnings }
+module.exports = { contract, warnings, missingSections, restoreAdvice }

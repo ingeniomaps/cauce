@@ -42,6 +42,10 @@ diseño — eso vive en el commit y en el código.
   relectura contestaba que estaba pendiente. Ahora el pedido dice que ahí va el slug solo, la comparación la
   hace el recorrido y no un modelo, y una celda mal formada se manda a corregir una vez antes de avisar.
   Rige al reinstalar el runner (caso 349).
+- **`init --force` y `contract` dicen cómo recuperar el contrato.** Adoptar un repositorio que ya traía su
+  `AGENTS.md` lo conserva, y `contract` mandaba a un `upgrade` que lo conservaba otra vez. Los dos nombran
+  ahora `ops upgrade --force`, avisan que descarta también las demás ediciones conservadas, y dicen que lo
+  propio de `AGENTS.md` va antes a `organization/workspace.md` (caso 344).
 
 ## [0.105.0] - 2026-10-08
 
