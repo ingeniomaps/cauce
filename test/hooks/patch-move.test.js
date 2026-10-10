@@ -146,6 +146,28 @@ test('lo que va a quedar en un archivo renombrado se arma aplicando el parche do
   blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/dos.sql',
     '*** Move to: service/migrations/051.sql', '@@', '-CREATE TABLE u (id int);', '+CREATE TABLE u (id bigint);',
     '@@', '-DROP TABLE t;', '+SELECT 1;')), /DROP TABLE/)
+  // `*** End of File` manda el hunk al final: lo que quita es lo último que coincide, no lo primero.
+  blocked('migrations', move('twice.sql', '060.sql', '-DROP TABLE t;', '+SELECT 1;', '*** End of File'), /DROP TABLE/)
+  // Dos anclas seguidas se siguen las dos, en orden.
+  blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/ancla.sql',
+    '*** Move to: service/migrations/062.sql', '@@ -- +goose Down', '@@ -- bloque', '-DROP TABLE t;', '+SELECT 1;')),
+  /DROP TABLE/)
+  // El salto del final no cuenta como línea: lo último del archivo es su última línea con texto.
+  write('final.sql', '-- +goose Up', 'SELECT 1;', 'DROP TABLE t;', '')
+  assert.doesNotThrow(() => execute('migrations', move('final.sql', '064.sql', '-DROP TABLE t;', '+SELECT 2;',
+    '*** End of File')))
+  // Y «al final» no vuelve atrás de donde terminó el hunk anterior: ahí el parche no se aplica, y el archivo
+  // queda como está.
+  blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/final.sql',
+    '*** Move to: service/migrations/066.sql', '@@', '-SELECT 1;', '+SELECT 2;', '@@', ' SELECT 2;',
+    '-DROP TABLE t;', '+SELECT 3;', '*** End of File')), /DROP TABLE/)
+  // Un hunk que sólo agrega va al final y no mueve desde dónde se busca el siguiente.
+  write('antes.sql', 'DROP TABLE x;', 'CREATE TABLE t (id int);', '')
+  assert.doesNotThrow(() => execute('migrations', asCodex(root, patchOf('*** Update File: service/scratch/antes.sql',
+    '*** Move to: service/migrations/065.sql', '@@', '+-- nota', '@@', '-DROP TABLE x;', '+SELECT 1;'))))
+  // Una línea que difiere sólo en los espacios del final es la misma línea.
+  write('espacios.sql', 'DROP TABLE x;  ', 'CREATE TABLE t (id int);', '')
+  assert.doesNotThrow(() => execute('migrations', move('espacios.sql', '063.sql', '-DROP TABLE x;', '+SELECT 1;')))
   // Si el parche no se puede ubicar en el archivo, se juzga el archivo como está: no se supone que quitó nada.
   write('lejos.sql', 'DROP TABLE x;', '')
   blocked('migrations', move('lejos.sql', '030.sql', ' esto no está', '-ni esto', '+SELECT 1;'), /DROP TABLE/)
@@ -173,5 +195,13 @@ test('una prueba que cambia de extensión o de herramienta sigue siendo una prue
   // Pero un nombre que ningún runner levanta es apagarla, tenga el `.test.` que tenga.
   for (const [from, to] of [['service/src/a.test.js', 'service/src/a.test.bak'],
     ['service/src/a.test.js', 'service/src/a.test.txt'], ['service/src/a.spec.ts', 'service/src/a.spec.disabled'],
-    ['service/pkg/a_test.go', 'service/pkg/a.test.off']]) blocked('test-evidence', move(from, to), /borra una prueba/)
+    ['service/pkg/a_test.go', 'service/pkg/a.test.off'],
+    // También dentro de una carpeta de pruebas, que es donde más viven: la carpeta no la vuelve una que corra.
+    ['service/tests/a.test.js', 'service/tests/a.test.bak'],
+    ['service/tests/a.test.js', 'service/tests/a.test.js.disabled'],
+    ['service/src/__tests__/a.js', 'service/src/__tests__/a.js.off']]) {
+    blocked('test-evidence', move(from, to), /borra una prueba/)
+  }
+  // Y una prueba de un lenguaje que este guard no lista sigue siéndolo si conserva su extensión.
+  assert.doesNotThrow(() => execute('test-evidence', move('service/tests/FooTest.java', 'service/tests/BarTest.java')))
 })

@@ -52,10 +52,19 @@ test('borrar fuera de las raíces frena como escribir ahí, con el verbo que sea
     `(cd ${OUT} && n=$(ls | wc -l); rm -rf old)`, `cd ${OUT} 2>/dev/null && rm -rf old`,
     `if ! rm -rf ${OUT}/x; then echo no; fi`, `while rm ${OUT}/x; do :; done`,
     `export D=${OUT}; rm -rf $D/sub`, `pushd ${OUT} && rm -rf sub`, `if cd ${OUT}; then rm -rf sub; fi`,
-    // Una función que hace `cd` afuera y después se llama deja parado ahí; y el cierre de otra con redirección
-    // no se queda abierto para deshacer un `cd` de verdad.
-    `go() {\n  cd ${OUT}\n}\ngo\nrm -rf sub`,
-    `a() {\n  cd ${OUT}\n}\nb() {\n  a\n}\nb\nrm -rf sub`, `f() { echo a; } >&2\ncd ${OUT}\n{ echo x\n}\nrm -rf sub`,
+    // El cierre de una función con una redirección no se queda abierto para deshacer un `cd` de verdad.
+    `f() { echo a; } >&2\ncd ${OUT}\n{ echo x\n}\nrm -rf sub`,
+    // Una función que envuelve al verbo no lo esconde, y llamar a una que no hace `cd` no pierde dónde se está.
+    `rm() {\n  echo no\n}\nrm -rf ${OUT}/x`, `rm() {\n  cd /srv/x\n}\nrm -rf ${OUT}/x`,
+    'log() {\n  echo x\n}\nlog\nrm -rf ../../../../../../../../no-es-de-nadie',
+    // Un binario que se llama como una función no es la función, y el cuerpo de una se lee donde está escrito.
+    'go() {\n  cd /srv/x\n}\n./bin/go build\nrm -rf ../../../../../../../../no-es-de-nadie',
+    'limpia() {\n  rm -rf ../../../../../../../../no-es-de-nadie\n}',
+    // Ni el `cd` que una función hace dentro de un subshell, que no sale de él.
+    'ver() {\n  (cd "$D" && ls)\n}\nver\nrm -rf ../../../../../../../../no-es-de-nadie',
+    // Después de llamar a una que sí hace `cd` no se sabe dónde se está, pero una ruta entera se juzga igual.
+    `ir() {\n  cd /srv/x\n}\nir\nrm -rf ${OUT}/sub`,
+    `main() {\n  prep\n}\nprep() {\n  cd /srv/x\n}\nmain\nrm -rf ${OUT}/sub`,
     `rm -rf "${OUT}/con espacio/sub"`, `cd "${OUT}/con espacio" && rm -rf old`, `cd -P ${OUT} && rm -rf old`,
     `cd "$X"; if cd ${OUT}; then rm -rf sub; fi`, 'if cd ../../../../../../../..; then rm -rf no-es-de-nadie; fi',
   ]
@@ -100,6 +109,15 @@ test('lo que se borra adentro, en el temporal o sin poder saber dónde sigue pas
     'rm -rf "service/a /b"', 'touch "service/a /b"', 'mkdir -p "service/mis docs/ /abs"',
     // El `cd` del cuerpo de una función que nadie llama no mueve nada.
     'f() {\n  cd /\n}\nrm -rf z', 'a() {\n  cd /\n}\nb() {\n  a\n}\nrm -rf z',
+    // Y si se la llama, no se sigue: el guard no interpreta funciones. Queda sin saber dónde está, que es no
+    // juzgar lo relativo; también cuando la llama otra, definida antes o después.
+    `ir() {\n  cd ${OUT}\n}\nir\nrm -rf sub`, `a() {\n  cd ${OUT}\n}\nb() {\n  a\n}\nb\nrm -rf sub`,
+    `main() {\n  prep\n}\nprep() {\n  cd ${OUT}\n}\nmain\nrm -rf sub`,
+    'ir() {\n  cd /srv/x\n}\nir\nrm -rf ../../../../../../../../no-se-sabe',
+    'a() {\n  cd /srv/x\n}\nb() {\n  a\n}\nb\nrm -rf ../../../../../../../../no-se-sabe',
+    // El `cd` de un subshell dentro de una función no mueve a quien la llama, y un binario no es la función.
+    `ver() {\n  (cd ${OUT} && git status)\n}\nver\nmkdir -p service/build`,
+    `go() {\n  cd ${OUT}\n}\n./bin/go build\nrm -rf service/src`,
     // Nombrarlo no es borrarlo.
     `echo "rm -rf ${OUT}"`, `find ${OUT} -name x`, `git log --grep 'rm -rf ${OUT}'`,
   ]
@@ -139,6 +157,17 @@ test('lo que destructive frena y deja pasar no cambió con este caso', () => {
     /no se puede resolver/)
 })
 
+test('una cadena larga de funciones que se llaman no cuelga el guard', () => {
+  const { passes } = project('ops-hook-borra-cadena-')
+  // Treinta funciones, cada una llamando dos veces a la anterior: repetir sus `cd` al llamarlas duplicaba el
+  // trabajo por nivel, y el guard no terminaba.
+  const chain = ['f0() {\n  cd /srv/x\n}']
+  for (let at = 1; at < 30; at += 1) chain.push(`f${at}() {\n  cd /srv/x\n  f${at - 1}\n  f${at - 1}\n}`)
+  const started = Date.now()
+  passes([...chain, 'f29', 'rm -rf sub'].join('\n'))
+  assert.ok(Date.now() - started < 2000, `tardó ${Date.now() - started} ms`)
+})
+
 test('lo declarado como escribible fuera de las raíces también se puede borrar', () => {
   const { passes, refuses } = project('ops-hook-borra-declarado-', { writableOutsideRoots: [`${OUT}/cache`] })
   passes(`rm -rf ${OUT}/cache/viejo`)
@@ -157,6 +186,8 @@ test('crear un archivo vacío o una carpeta afuera es escribir afuera', () => {
   refuses(`touch ${OUT}/t.txt`, WRITES)
   refuses(`mkdir -p ${OUT}/a/b`, WRITES)
   refuses(`mkdir service/ok ${OUT}/d`, WRITES)
+  // Una función que envuelve al verbo no lo esconde.
+  refuses(`mkdir() {\n  command mkdir -p "$@"\n}\nmkdir ${OUT}/x`, WRITES)
   passes('touch service/src/t.txt')
   passes('mkdir -p service/a/b')
   // El verbo es el que el comando corre, no una palabra en cualquier lado.

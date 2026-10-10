@@ -193,6 +193,24 @@ veredicto que antes de este caso —el lector de secciones cambió para todos, y
 mirar—; y con finales de línea de Windows, los cuatro veredictos que cambian pasan a ser los del mismo
 parche con finales de Unix.
 
+Y una tercera revisión encontró tres cosas más de este caso, las tres sobre dónde cae un hunk, y ahí dejó
+de adivinarse. `movedText` ubica ahora cada hunk como lo ubica quien aplica el parche. **Documentado**:
+leído el 2026-10-10 en la rama principal de `openai/codex`, `compute_replacements` en
+`codex-rs/apply-patch/src/file_update.rs` y `seek_sequence.rs`; no se comprobó que la versión instalada,
+0.152.1, coincida. De ahí salen las cuatro reglas: cada ancla se busca desde donde se está y deja en la línea
+siguiente; lo que el hunk quita y su contexto se buscan desde ahí, y con `*** End of File` desde el final
+sin volver atrás del hunk anterior; un hunk que sólo agrega va al final del archivo; y una línea coincide
+igual, o sin sus espacios del final, o sin los de los dos lados. Lo que cambió con eso:
+
+- **`*** End of File` se ignoraba**: el hunk caía en la primera coincidencia y no en la última.
+- **Dos anclas seguidas**: la primera se perdía.
+- **Un hunk que sólo agrega** se dejaba sin ubicar; va al final, que es donde va.
+- **Una prueba renombrada a `.bak` dentro de una carpeta de pruebas** seguía pasando, porque la carpeta
+  alcanzaba para darla por prueba. Tiene que conservar su extensión o pasar a otra de las que corren.
+
+Veinte mutaciones en rojo sobre esta versión. Tres sobrevivieron la primera vez y las tres se llevaron su
+caso de prueba.
+
 Lo que deja como lección, porque es de método y no de este código: una mutación que sobrevive dice que
 falta una prueba o que la rama no se puede observar, y antes de quitar el código hay que demostrar lo
 segundo. Acá no se demostró, se supuso, y las dos piezas quitadas hacían falta. Esta vez las tres

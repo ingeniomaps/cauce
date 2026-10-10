@@ -122,60 +122,96 @@ const HEREDOC_BODY = /<<(-?)\s*\\?(['"]?)(\w[\w.-]*)\2([^\n]*)\n[\s\S]*?^\s*\3\s
 const EXPORTED = /(^|[;&\n]\s*)(?:export|readonly)\s+(?=[A-Za-z_]\w*=)/g
 const asRead = (command) => String(command).replace(HEREDOC_BODY, '<<$3$4').replace(EXPORTED, '$1')
 
+// Un tramo leído: si define una función, si cierra su cuerpo, si es un `cd` y a dónde, o qué corre.
+const HEADER = /^\s*(?:function\s+([\w-]+)\s*(?:\(\))?|([\w-]+)\s*\(\))\s*\{/
+function read({ text, opens, closes }) {
+  // Sin el comentario ni las redirecciones: `rm -f x 2> /dev/null` no borra ni `2>` ni `/dev/null`, y un
+  // `cd /otra 2>/dev/null` es un `cd`.
+  const clean = text.replace(/(?:^|\s)#[^\n]*/g, ' ').replace(REDIRECT, ' ')
+  const header = clean.match(HEADER)
+  const piece = header ? clean.slice(header[0].length) : clean
+  const one = { opens, closes, defines: header ? header[1] || header[2] : '' }
+  // La llave que cierra el cuerpo de una función, con lo que traiga detrás: una redirección no la abre.
+  if (/^\s*\}\s*$/.test(piece)) return { ...one, kind: 'close' }
+  const cd = piece.match(/^\s*cd(?:\s+(\$\([^)]*\)|\S+))?\s*$/)
+  if (cd) return { ...one, kind: 'cd', to: cd[1] }
+  // La llave que cierra un grupo va suelta; pegada a una ruta es de un `{a,b}`.
+  const words = shellWords(withoutSubstitutions(piece).trim().replace(/^[({]+\s*|\s*\)+$|\s+\}+$/g, ''))
+  let prefixed = false
+  while (words.length && (/^[A-Za-z_]\w*=/.test(words[0]) || LEADING.has(words[0])
+    || (prefixed && words[0].startsWith('-')))) prefixed = LEADING.has(words.shift()) || prefixed
+  const verb = path.basename(words[0] || '')
+  const rest = words.slice(1).filter(Boolean)
+  // Un `cd` que no ocupa su tramo limpio: detrás de un `if`, con una bandera, con `pushd`. Se sigue si
+  // nombra una sola ruta, y si no queda sin saber dónde está, que es no juzgar.
+  if (verb === 'cd' || verb === 'pushd' || verb === 'popd') {
+    const to = rest.filter((word) => !word.startsWith('-'))
+    return { ...one, kind: 'cd', to: to.length === 1 ? to[0] : null }
+  }
+  return { ...one, kind: 'run', name: words[0] || '', verb, rest }
+}
+
+// Las funciones que el comando define y que, llamadas, pueden dejar parado en otro lado: las que hacen `cd`
+// en su cuerpo —fuera de un subshell, que lo devuelve— y las que llaman a una de ésas, definida antes o
+// después. El nombre se compara entero: `./bin/ir` no es la función `ir`.
+function movers(parsed) {
+  const direct = new Set()
+  const calls = new Map()
+  const bodies = []
+  let depth = 0
+  for (const one of parsed) {
+    if (one.defines) bodies.push({ name: one.defines, depth })
+    depth += one.opens
+    const body = bodies[bodies.length - 1]
+    if (one.kind === 'close') bodies.pop()
+    else if (body && one.kind === 'cd' && depth === body.depth) direct.add(body.name)
+    else if (body && one.kind === 'run') calls.set(body.name, [...(calls.get(body.name) || []), one.name])
+    depth = Math.max(0, depth - one.closes)
+  }
+  for (let grew = true; grew;) {
+    grew = false
+    for (const [name, called] of calls) {
+      if (direct.has(name) || !called.some((other) => direct.has(other))) continue
+      direct.add(name)
+      grew = true
+    }
+  }
+  return direct
+}
+
 // Cada tramo que corre algo, con su verbo, sus palabras y la carpeta donde queda parado. Un subshell devuelve
 // la carpeta al cerrarse: sin eso, `(cd /otra && ls); rm -rf build` juzgaba `build` dentro de `/otra`.
+//
+// Las funciones no se interpretan. Su cuerpo se lee una vez, donde está escrito y como si corriera ahí, que es
+// la mejor suposición que hay; al cerrarse devuelve la carpeta, porque definirla no mueve a nadie. Y después
+// de llamar a una que hace `cd` no se sabe dónde se está: lo relativo no se juzga y una ruta entera sí. Se
+// intentó repetir los `cd` del cuerpo en cada llamada: una cadena de funciones que se llaman duplicaba el
+// trabajo por nivel y el guard no terminaba (revisión del 365).
 function steps(command, cwd) {
   const { cdTarget, QUOTED_CD } = require('./shell')
+  const parsed = pieces(expandAssigned(asRead(command)).replace(QUOTED_CD, '$1$3')).map(read)
+  const moving = movers(parsed)
   const found = []
   const outer = []
-  let base = cwd
-  const joined = expandAssigned(asRead(command)).replace(QUOTED_CD, '$1$3')
-  // El cuerpo de una función no corre al definirla: su `cd` no deja parado a lo que viene después. Corre
-  // cuando se la llama, así que los `cd` de su cuerpo se guardan con su nombre y se repiten ahí.
   const bodies = []
-  const functions = new Map()
-  const moved = (to) => {
-    for (const body of bodies) body.moves.push(to)
-    if (to === undefined) return os.homedir()
-    if (to === null) return null
-    if (MKTEMP.test(to)) return path.join(os.tmpdir(), 'mktemp')
-    if (path.isAbsolute(home(to))) return home(to)
-    return base === null ? null : cdTarget(to, base)
-  }
-  for (const { text, opens, closes } of pieces(joined)) {
-    const defines = text.match(/^\s*(?:function\s+([\w-]+)\s*(?:\(\))?|([\w-]+)\s*\(\))\s*\{/)
-    if (defines) bodies.push({ name: defines[1] || defines[2], base, moves: [] })
-    for (let level = 0; level < opens; level += 1) outer.push(base)
-    // Sin el comentario ni las redirecciones: `rm -f x 2> /dev/null` no borra ni `2>` ni `/dev/null`, y un
-    // `cd /otra 2>/dev/null` es un `cd`.
-    const piece = text.replace(/(?:^|\s)#[^\n]*/g, ' ').replace(REDIRECT, ' ')
-    const cd = piece.match(/^\s*cd(?:\s+(\$\([^)]*\)|\S+))?\s*$/)
-    // La llave que cierra el cuerpo de una función, con lo que traiga detrás: una redirección no la abre.
-    if (/^\s*\}\s*$/.test(piece) && bodies.length) {
-      const body = bodies.pop()
-      functions.set(body.name, body.moves)
-      base = body.base
-    } else if (cd) {
+  let base = cwd
+  for (const one of parsed) {
+    if (one.defines) bodies.push(base)
+    for (let level = 0; level < one.opens; level += 1) outer.push(base)
+    if (one.kind === 'close') {
+      if (bodies.length) base = bodies.pop()
+    } else if (one.kind === 'cd') {
       // Sin destino, `cd` deja en la carpeta personal.
-      base = moved(cd[1])
+      if (one.to === null) base = null
+      else if (one.to === undefined) base = os.homedir()
+      else if (MKTEMP.test(one.to)) base = path.join(os.tmpdir(), 'mktemp')
+      else if (path.isAbsolute(home(one.to))) base = home(one.to)
+      else base = base === null ? null : cdTarget(one.to, base)
     } else {
-      // La llave que cierra un grupo va suelta; pegada a una ruta es de un `{a,b}`.
-      const words = shellWords(withoutSubstitutions(piece).trim().replace(/^[({]+\s*|\s*\)+$|\s+\}+$/g, ''))
-      let prefixed = false
-      while (words.length && (/^[A-Za-z_]\w*=/.test(words[0]) || LEADING.has(words[0])
-        || (prefixed && words[0].startsWith('-')))) prefixed = LEADING.has(words.shift()) || prefixed
-      const verb = path.basename(words[0] || '')
-      const rest = words.slice(1).filter(Boolean)
-      // Un `cd` que no ocupa su tramo limpio: detrás de un `if`, con una bandera, con `pushd`. Se sigue si
-      // nombra una sola ruta, y si no queda sin saber dónde está, que es no juzgar.
-      if (verb === 'cd' || verb === 'pushd' || verb === 'popd') {
-        const to = rest.filter((word) => !word.startsWith('-'))
-        base = moved(to.length === 1 ? to[0] : null)
-      } else if (functions.has(verb)) {
-        for (const to of functions.get(verb)) base = moved(to)
-      } else found.push({ verb, rest, base })
+      found.push({ verb: one.verb, rest: one.rest, base })
+      if (moving.has(one.name)) base = null
     }
-    for (let level = 0; level < closes && outer.length; level += 1) base = outer.pop()
+    for (let level = 0; level < one.closes && outer.length; level += 1) base = outer.pop()
   }
   return found
 }

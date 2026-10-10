@@ -177,12 +177,19 @@ function patchSections(patch) {
   for (const line of String(patch).split(/\r?\n/)) {
     const header = line.match(/^\*\*\* (Add|Update|Delete) File:\s*(.+)$/)
     if (header) {
-      current = { kind: header[1].toLowerCase(), lines: [], hunks: [{ anchor: '', lines: [] }], path: header[2].trim() }
+      const hunks = [{ anchors: [], lines: [] }]
+      current = { kind: header[1].toLowerCase(), lines: [], hunks, path: header[2].trim() }
       sections.set(header[2].trim(), current)
     } else if (current && /^\*\*\* Move to:/.test(line)) {
       moved.push([line.replace(/^\*\*\* Move to:\s*/, '').trim(), current])
     } else if (/^\*\*\* End Patch\s*$/.test(line)) current = null
-    else if (current && line.startsWith('@@')) current.hunks.push({ anchor: line.slice(2).trim(), lines: [] })
+    else if (current && line.startsWith('@@')) {
+      // Varios `@@` seguidos son anclas del mismo hunk, de afuera hacia adentro: no abren uno vacío cada uno.
+      const last = current.hunks[current.hunks.length - 1]
+      const hunk = last.lines.length ? { anchors: [], lines: [] } : last
+      if (hunk !== last) current.hunks.push(hunk)
+      if (line.slice(2).trim()) hunk.anchors.push(line.slice(2).trim())
+    } else if (current && /^\*\*\* End of File\s*$/.test(line)) current.hunks[current.hunks.length - 1].eof = true
     else if (current && !line.startsWith('*** ')) {
       const one = { op: line[0] || ' ', text: line.slice(1) }
       current.lines.push(one)
@@ -204,34 +211,47 @@ function patchSections(patch) {
 // Lo que va a quedar en un archivo renombrado: lo que traía en disco con cada hunk aplicado donde cae. Dónde
 // cae importa: una migración se parte por sus marcadores, y lo agregado al bloque que aplica no es lo mismo
 // que lo agregado a la reversión; lo quitado es la línea que el hunk señala y no la primera que se le parece.
-// La primera versión restaba y sumaba líneas sueltas, y erraba en los dos sentidos (revisión del 367).
 //
-// Tres cosas dicen dónde cae un hunk, y las tres se siguen: el ancla que va después de `@@`, que es la línea
-// desde la que se busca; el orden, porque cada hunk se busca desde donde terminó el anterior; y su contexto.
-// Sin ellas, con una línea repetida se aplicaba sobre la primera aparición.
+// Se ubica como lo ubica quien aplica el parche, que es lo único que hace que el texto juzgado sea el que va
+// a quedar. Documentado, leído el 2026-10-10 en la rama principal de `openai/codex` —`compute_replacements` en
+// `codex-rs/apply-patch/src/file_update.rs` y `seek_sequence.rs`—, sin comprobar que la versión instalada
+// coincida: cada ancla que va después de `@@` se busca desde donde se está y deja parado en la línea
+// siguiente; lo que el hunk quita y su contexto se buscan desde ahí como una sola corrida, y con `*** End of
+// File` desde el final; un hunk sin nada que buscar se agrega al final del archivo; y cada hunk empieza donde
+// terminó el anterior. Una línea coincide igual, o sin sus espacios del final, o sin los de los dos lados.
 //
-// `null` si algún hunk no se puede ubicar, y eso incluye al que sólo agrega sin decir dónde: quien llama no
-// puede suponer entonces que el parche quitó ni tapó nada. Ponerlo arriba dejaba que un marcador de reversión
-// agregado así convirtiera en reversión todo lo que el archivo traía.
+// `null` si algún hunk no se puede ubicar: ahí el parche no se aplica, y quien llama no puede suponer que
+// quitó ni tapó nada.
+const LENIENCE = [(text) => text, (text) => text.trimEnd(), (text) => text.trim()]
+function seek(lines, pattern, start, eof) {
+  const first = eof && lines.length >= pattern.length ? Math.max(lines.length - pattern.length, start) : start
+  for (const same of LENIENCE) {
+    for (let at = first; at + pattern.length <= lines.length; at += 1) {
+      if (pattern.every((text, offset) => same(lines[at + offset]) === same(text))) return at
+    }
+  }
+  return -1
+}
+
 function movedText(disk, section) {
   const lines = String(disk).split(/\r?\n/)
+  // El salto del final no es una línea más: sin sacarlo, «al final» caía después de una línea vacía.
+  const ending = lines[lines.length - 1] === '' ? [lines.pop()] : []
   let from = 0
   for (const hunk of (section.hunks || []).filter((one) => one.lines.length)) {
-    const old = hunk.lines.filter((line) => line.op !== '+').map((line) => line.text)
-    const next = hunk.lines.filter((line) => line.op !== '-').map((line) => line.text)
-    if (hunk.anchor) {
-      const anchored = lines.findIndex((text, at) => at >= from && text.trim() === hunk.anchor)
+    for (const anchor of hunk.anchors) {
+      const anchored = seek(lines, [anchor], from, false)
       if (anchored < 0) return null
       from = anchored + 1
-    } else if (!old.length) return null
-    const fits = (at) => old.every((text, offset) => lines[at + offset] === text)
-    let at = -1
-    for (let start = from; at < 0 && start + old.length <= lines.length; start += 1) if (fits(start)) at = start
+    }
+    const old = hunk.lines.filter((line) => line.op !== '+').map((line) => line.text)
+    const next = hunk.lines.filter((line) => line.op !== '-').map((line) => line.text)
+    const at = old.length ? seek(lines, old, from, hunk.eof === true) : lines.length
     if (at < 0) return null
     lines.splice(at, old.length, ...next)
-    from = at + next.length
+    if (old.length) from = at + next.length
   }
-  return lines.join('\n')
+  return [...lines, ...ending].join('\n')
 }
 
 // Los renombrados de un parche: de qué ruta a cuál.

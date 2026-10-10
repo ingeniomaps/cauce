@@ -343,10 +343,33 @@ frenos nuevos, ninguno perdido; y `destructive`, ninguno nuevo y ninguno perdido
 
 La tercera de esas correcciones trajo su propia regresión, que encontró la revisión siguiente: al cerrar el
 cuerpo de una función la carpeta volvía siempre a la de antes, también cuando la función **se llamaba**
-después, y `ir() { cd afuera; }; ir; rm -rf sub` dejaba de frenar. Ahora los `cd` del cuerpo se guardan con
-el nombre de la función y se repiten donde se la llama, también si la llama otra función. Y el cierre de un
-cuerpo con una redirección detrás —`} >&2`— no se reconocía, quedaba abierto, y la próxima llave suelta
-deshacía un `cd` de verdad.
+después. Se arregló guardando los `cd` del cuerpo y repitiéndolos donde se la llamaba, y **eso se deshizo**
+en la revisión siguiente. Y el cierre de un cuerpo con una redirección detrás —`} >&2`— no se reconocía,
+quedaba abierto, y la próxima llave suelta deshacía un `cd` de verdad; eso sí quedó.
+
+### El guard no interpreta funciones (2026-10-10)
+
+La revisión de ese arreglo encontró que repetir los `cd` de una función en cada llamada **colgaba el
+guard**: treinta funciones, cada una llamando dos veces a la anterior —1,7 KB de texto válido—, duplicaban
+la lista por nivel; no terminó en dos minutos y medio y llegó a 3,1 GB de memoria. Encontró además que una
+función con el nombre del verbo lo escondía —`rm() { … }; rm -rf afuera` dejaba de juzgarse—, que el `cd`
+de un subshell dentro del cuerpo se repetía como si saliera de él, que un binario `./bin/ir` se tomaba por
+la función `ir`, y que una función que llama a otra definida más abajo quedaba sin sus `cd`.
+
+Cinco defectos en una pieza que era, en chico, un intérprete de shell. Se sacó. Lo que quedó es poco y está
+acotado:
+
+- El cuerpo de una función se lee una vez, donde está escrito, y al cerrarse devuelve la carpeta: definirla
+  no mueve a nadie.
+- Qué funciones pueden mover —las que hacen `cd` fuera de un subshell, y las que llaman a una de ésas,
+  definida antes o después— se calcula una vez, sin repetir nada.
+- Después de llamar a una de ésas **no se sabe dónde se está**: lo relativo no se juzga y una ruta entera
+  sí. Es lo mismo que ya pasaba con un `cd` a una variable sin resolver.
+- Lo que se llama se juzga siempre por lo que nombra, sea o no una función.
+
+Lo que se pierde, y se dice: `ir() { cd afuera; }; ir; rm -rf sub` no frena. El borrado relativo detrás de
+un `cd` hecho por una función queda entre lo que este guard no ve, junto con el `bash -c` y el script
+propio. La cadena de treinta funciones se lee en milisegundos y tiene su prueba, con tope de tiempo.
 
 ### Sesiones reales (2026-10-10)
 

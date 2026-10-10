@@ -154,7 +154,10 @@ function testEvidence(input) {
   }
   // Renombrarla a un nombre que ya no es de prueba la saca de la suite igual que borrarla (caso 367).
   for (const { from, to } of patchMoves(patchOf(input))) {
-    const stays = isTestFile(to) || STILL_A_TEST.test(path.basename(to))
+    // La carpeta sola no alcanza: `tests/a.test.bak` está en una carpeta de pruebas y no corre. Tiene que
+    // conservar su extensión o pasar a otra de las que corren.
+    const runs = path.extname(to) === path.extname(from) || STILL_A_TEST.test(path.basename(to))
+    const stays = runs && (isTestFile(to) || STILL_A_TEST.test(path.basename(to)))
     if (!isTestFile(from) || stays || approved(input, from)) continue
     block(`${from} borra una prueba: renombrada a ${to} deja de serlo.\n${why}${how(from)}`)
   }
