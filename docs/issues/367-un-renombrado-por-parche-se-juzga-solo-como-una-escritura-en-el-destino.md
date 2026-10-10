@@ -98,22 +98,28 @@ juzga su ruta, no su contenido.
 
 ### Cómo quedó, al final
 
-Este cierre cuenta cinco vueltas, y las del medio describen algo que ya no está. Lo que hay hoy:
+Este cierre cuenta seis vueltas, y las del medio describen cosas que ya no están. Lo que hay hoy son dos
+reglas, las dos de una línea:
 
-- **Migraciones.** De un archivo que un parche renombra hacia una ruta de migración se juzgan dos cosas por
-  separado: **lo que el archivo trae en disco**, entero y como una migración —con sus marcadores, así que un
-  `DROP` en su reversión no cuenta—, y **lo que el parche le agrega**, como en cualquier parche. Si una de
-  las dos es destructiva, frena.
+- **Migraciones.** Un archivo que un parche renombra hacia una ruta de migración se juzga, además de por lo
+  que el parche le agrega, **por lo que trae en disco, entero**. Entero incluye su reversión: el mismo parche
+  puede sacarle o correrle el marcador, y lo que era reversión pasa a aplicarse. El mensaje dice de dónde
+  viene: «… llega desde <origen>, que trae …».
+- **Pruebas.** Renombrar una prueba cuenta como borrarla cuando el nombre nuevo **no es una prueba para este
+  guard**, y sólo entonces. Qué es una prueba lo decide la misma función que ya decidía para el borrado.
+
+Lo que no se hace, y por qué:
+
 - **No se calcula cómo va a quedar el archivo después del parche.** Se intentó, imitando a quien lo aplica, y
-  cuatro revisiones seguidas encontraron otra regla que faltaba: dónde cae cada hunk, sus anclas, el fin de
-  archivo, cuán laxa es la coincidencia, qué parches rechaza. Cada diferencia con la herramienta real era un
-  veredicto sobre un texto que no iba a existir, y la última se colgaba con un parche grande. Se sacó entera.
-- **El costo, que se elige**: si el archivo trae algo destructivo y el mismo parche se lo quita, frena igual.
-  La salida es la aprobación que ese guard ya ofrece. Es lo que «Qué podría salir mal 1» temía, y se acepta:
-  es raro, tiene salida, y la alternativa era adivinar.
-- **Pruebas.** Una prueba que lo es por su nombre tiene que seguir siéndolo por su nombre, con una extensión
-  que corra. Una que lo es sólo por la carpeta en la que vive sigue siéndolo mientras se quede en una, salvo
-  que el nombre nuevo sea el viejo con algo pegado atrás.
+  cuatro revisiones seguidas encontraron otra regla que faltaba —dónde cae cada hunk, sus anclas, el fin de
+  archivo, cuán laxa es la coincidencia, qué parches rechaza—; la última versión explotaba con un parche
+  grande. **El costo se elige**: un archivo que trae algo destructivo frena también cuando el parche se lo
+  quita, y cuando estaba en su reversión. La salida es la aprobación que ese guard ya ofrece.
+- **No se afina qué es una prueba sólo para el renombrado.** Se intentó —otras extensiones, nombres que no
+  corren, lo que lo es sólo por su carpeta— y cada regla frenó algo legítimo o dejó pasar otra cosa: pasar
+  `__tests__/Button.js` a `.tsx`, mover `a.test.js` a `__tests__/a.js`, darle extensión a un `README`. Lo
+  que esa función no conoce —`.mjs`, `.cy.ts`, un `.bak` dentro de una carpeta de pruebas— no lo conoce
+  tampoco para el borrado, y se arregla ahí, para los dos.
 
 ### El recorrido de lo que este caso enumeró
 
@@ -241,6 +247,18 @@ sangrado y miles de anclas tardaba dos segundos; y el comentario atribuía a la 
 
 Ninguno se arregló en su lugar. Se sacó lo que los producía, que es lo que dice «Cómo quedó, al final».
 Dieciséis mutaciones en rojo sobre esa versión; la única que sobrevivió se llevó su caso de prueba.
+
+### La quinta revisión (2026-10-10)
+
+Ocho hallazgos más, cinco de este caso, y otra vez en los dos sentidos: mover una prueba a `__tests__/` con
+un nombre liso se frenaba; un `.bak` de una prueba que lo era por su carpeta pasaba; darle extensión a un
+`README` de una carpeta de pruebas se frenaba; un parche que le sacaba el marcador de reversión al archivo
+renombrado pasaba, y el `DROP` quedaba aplicándose; y el mensaje decía que el destino «contiene» algo que
+el parche le quitaba.
+
+Con eso las dos reglas quedaron como dice «Cómo quedó, al final»: sin nada propio. Diez mutaciones en rojo
+sobre esa versión; una sobrevivió y se llevó su caso de prueba, y otra era una condición que, razonada, no
+cambia ningún resultado y se quitó.
 
 Lo que deja como lección, porque es de método y no de este código: una mutación que sobrevive dice que
 falta una prueba o que la rama no se puede observar, y antes de quitar el código hay que demostrar lo

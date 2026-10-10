@@ -122,111 +122,55 @@ const HEREDOC_BODY = /<<(-?)\s*\\?(['"]?)(\w[\w.-]*)\2([^\n]*)\n[\s\S]*?^\s*\3\s
 const EXPORTED = /(^|[;&\n]\s*)(?:export|readonly)\s+(?=[A-Za-z_]\w*=)/g
 const asRead = (command) => String(command).replace(HEREDOC_BODY, '<<$3$4').replace(EXPORTED, '$1')
 
-// Un tramo leído: si define una función, si cierra su cuerpo, si es un `cd` y a dónde, o qué corre.
-const HEADER = /^\s*(?:function\s+([\w-]+)\s*(?:\(\))?|([\w-]+)\s*\(\))\s*\{/
-function read({ text, opens, closes }) {
-  // Sin el comentario ni las redirecciones: `rm -f x 2> /dev/null` no borra ni `2>` ni `/dev/null`, y un
-  // `cd /otra 2>/dev/null` es un `cd`.
-  const clean = text.replace(/(?:^|\s)#[^\n]*/g, ' ').replace(REDIRECT, ' ')
-  const header = clean.match(HEADER)
-  const piece = header ? clean.slice(header[0].length) : clean
-  // Los paréntesis de `nombre()` no son un subshell: contados, el `cd` de una función escrita en una línea
-  // se deshacía al terminar el tramo de la cabecera.
-  const own = header && /\(\)/.test(header[0]) ? 1 : 0
-  const one = { opens: opens - own, closes: closes - own, defines: header ? header[1] || header[2] : '' }
-  // La llave que cierra, con lo que traiga detrás: una redirección no la abre. Y la que abre un grupo, para
-  // saber de quién es la que cierra: sin contarla, un `{ …; }` dentro de una función le cerraba el cuerpo.
-  if (/^\s*\}\s*$/.test(piece)) return { ...one, kind: 'close' }
-  one.group = /^\s*\{(?:\s|$)/.test(piece)
-  const cd = piece.match(/^\s*cd(?:\s+(\$\([^)]*\)|\S+))?\s*$/)
-  if (cd) return { ...one, kind: 'cd', to: cd[1] }
-  // La llave que cierra un grupo va suelta; pegada a una ruta es de un `{a,b}`.
-  const words = shellWords(withoutSubstitutions(piece).trim().replace(/^[({]+\s*|\s*\)+$|\s+\}+$/g, ''))
-  let prefixed = false
-  while (words.length && (/^[A-Za-z_]\w*=/.test(words[0]) || LEADING.has(words[0])
-    || (prefixed && words[0].startsWith('-')))) prefixed = LEADING.has(words.shift()) || prefixed
-  const verb = path.basename(words[0] || '')
-  const rest = words.slice(1).filter(Boolean)
-  // Un `cd` que no ocupa su tramo limpio: detrás de un `if`, con una bandera, con `pushd`. Se sigue si
-  // nombra una sola ruta, y si no queda sin saber dónde está, que es no juzgar.
-  if (verb === 'cd' || verb === 'pushd' || verb === 'popd') {
-    const to = rest.filter((word) => !word.startsWith('-'))
-    return { ...one, kind: 'cd', to: to.length === 1 ? to[0] : null }
-  }
-  return { ...one, kind: 'run', name: words[0] || '', verb, rest }
-}
-
-// Las llaves abiertas mientras se lee: el cuerpo de una función o un grupo. Cada `}` cierra la última.
-const opened = (stack, one, entry) => {
-  if (one.defines) stack.push(entry)
-  if (one.group) stack.push(null)
-}
-
-// Las funciones que el comando define y que, llamadas, pueden dejar parado en otro lado: las que hacen `cd`
-// en su cuerpo —fuera de un subshell, que lo devuelve— y las que llaman a una de ésas, definida antes o
-// después. El nombre se compara entero: `./bin/ir` no es la función `ir`. Se recorre una vez y se propaga
-// por quién llama a quién: el trabajo crece con el texto y no con su cuadrado.
-function movers(parsed) {
-  const moving = new Set()
-  const callers = new Map()
-  const braces = []
-  let depth = 0
-  for (const one of parsed) {
-    opened(braces, one, { name: one.defines, depth })
-    depth += one.opens
-    const body = braces.findLast((entry) => entry)
-    if (one.kind === 'close') braces.pop()
-    else if (body && one.kind === 'cd' && depth === body.depth) moving.add(body.name)
-    else if (body && one.kind === 'run') {
-      if (!callers.has(one.name)) callers.set(one.name, [])
-      callers.get(one.name).push(body.name)
-    }
-    depth = Math.max(0, depth - one.closes)
-  }
-  for (const pending = [...moving]; pending.length;) {
-    for (const caller of callers.get(pending.pop()) || []) {
-      if (moving.has(caller)) continue
-      moving.add(caller)
-      pending.push(caller)
-    }
-  }
-  return moving
-}
-
 // Cada tramo que corre algo, con su verbo, sus palabras y la carpeta donde queda parado. Un subshell devuelve
 // la carpeta al cerrarse: sin eso, `(cd /otra && ls); rm -rf build` juzgaba `build` dentro de `/otra`.
 //
-// Las funciones no se interpretan. Su cuerpo se lee una vez, donde está escrito y como si corriera ahí, que es
-// la mejor suposición que hay; al cerrarse devuelve la carpeta, porque definirla no mueve a nadie. Y después
-// de llamar a una que hace `cd` no se sabe dónde se está: lo relativo no se juzga y una ruta entera sí. Se
-// intentó repetir los `cd` del cuerpo en cada llamada: una cadena de funciones que se llaman duplicaba el
-// trabajo por nivel y el guard no terminaba (revisión del 365).
+// Las funciones de shell no se interpretan. Desde que el comando define una, no se sabe dónde se está —su
+// cuerpo corre cuando se la llama, desde donde se la llame, y puede hacer `cd`—: lo relativo deja de juzgarse
+// y una ruta entera se juzga igual. Es todo. Se intentó leerlas —seguir el `cd` del cuerpo, repetirlo en cada
+// llamada, contar las llaves de sus grupos, calcular cuáles mueven— y cinco revisiones seguidas encontraron
+// otra forma de leerlas mal: una colgaba el guard, y las demás frenaban comandos legítimos (caso 365).
+const DEFINES = /^\s*(?:function\s+[\w-]+\s*(?:\(\))?|[\w-]+\s*\(\))\s*\{/
 function steps(command, cwd) {
   const { cdTarget, QUOTED_CD } = require('./shell')
-  const parsed = pieces(expandAssigned(asRead(command)).replace(QUOTED_CD, '$1$3')).map(read)
-  const moving = movers(parsed)
   const found = []
   const outer = []
-  const braces = []
   let base = cwd
-  for (const one of parsed) {
-    opened(braces, one, { base })
-    for (let level = 0; level < one.opens; level += 1) outer.push(base)
-    if (one.kind === 'close') {
-      const closed = braces.pop()
-      if (closed) base = closed.base
-    } else if (one.kind === 'cd') {
+  let lost = false
+  for (const { text, opens, closes } of pieces(expandAssigned(asRead(command)).replace(QUOTED_CD, '$1$3'))) {
+    // Sin el comentario ni las redirecciones: `rm -f x 2> /dev/null` no borra ni `2>` ni `/dev/null`, y un
+    // `cd /otra 2>/dev/null` es un `cd`.
+    const clean = text.replace(/(?:^|\s)#[^\n]*/g, ' ').replace(REDIRECT, ' ')
+    const header = clean.match(DEFINES)
+    if (header) lost = true
+    const piece = header ? clean.slice(header[0].length) : clean
+    for (let level = 0; level < opens; level += 1) outer.push(base)
+    const cd = piece.match(/^\s*cd(?:\s+(\$\([^)]*\)|\S+))?\s*$/)
+    if (cd) {
+      const to = cd[1]
       // Sin destino, `cd` deja en la carpeta personal.
-      if (one.to === null) base = null
-      else if (one.to === undefined) base = os.homedir()
-      else if (MKTEMP.test(one.to)) base = path.join(os.tmpdir(), 'mktemp')
-      else if (path.isAbsolute(home(one.to))) base = home(one.to)
-      else base = base === null ? null : cdTarget(one.to, base)
+      if (to === undefined) base = os.homedir()
+      else if (MKTEMP.test(to)) base = path.join(os.tmpdir(), 'mktemp')
+      else if (path.isAbsolute(home(to))) base = home(to)
+      else base = base === null ? null : cdTarget(to, base)
     } else {
-      found.push({ verb: one.verb, rest: one.rest, base })
-      if (moving.has(one.name)) base = null
+      // La llave que cierra un grupo va suelta; pegada a una ruta es de un `{a,b}`.
+      const words = shellWords(withoutSubstitutions(piece).trim().replace(/^[({]+\s*|\s*\)+$|\s+\}+$/g, ''))
+      let prefixed = false
+      while (words.length && (/^[A-Za-z_]\w*=/.test(words[0]) || LEADING.has(words[0])
+        || (prefixed && words[0].startsWith('-')))) prefixed = LEADING.has(words.shift()) || prefixed
+      const verb = path.basename(words[0] || '')
+      const rest = words.slice(1).filter(Boolean)
+      // Un `cd` que no ocupa su tramo limpio: detrás de un `if`, con una bandera, con `pushd`. Se sigue si
+      // nombra una sola ruta, y si no queda sin saber dónde está, que es no juzgar.
+      if (verb === 'cd' || verb === 'pushd' || verb === 'popd') {
+        const to = rest.filter((word) => !word.startsWith('-'))
+        const named = to.length === 1 ? home(to[0]) : null
+        if (named && path.isAbsolute(named)) base = named
+        else base = named && base !== null ? cdTarget(named, base) : null
+      } else found.push({ verb, rest, base: lost ? null : base })
     }
-    for (let level = 0; level < one.closes && outer.length; level += 1) base = outer.pop()
+    for (let level = 0; level < closes && outer.length; level += 1) base = outer.pop()
   }
   return found
 }

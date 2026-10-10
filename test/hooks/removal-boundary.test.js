@@ -52,23 +52,6 @@ test('borrar fuera de las raíces frena como escribir ahí, con el verbo que sea
     `(cd ${OUT} && n=$(ls | wc -l); rm -rf old)`, `cd ${OUT} 2>/dev/null && rm -rf old`,
     `if ! rm -rf ${OUT}/x; then echo no; fi`, `while rm ${OUT}/x; do :; done`,
     `export D=${OUT}; rm -rf $D/sub`, `pushd ${OUT} && rm -rf sub`, `if cd ${OUT}; then rm -rf sub; fi`,
-    // El cierre de una función con una redirección no se queda abierto para deshacer un `cd` de verdad.
-    `f() { echo a; } >&2\ncd ${OUT}\n{ echo x\n}\nrm -rf sub`,
-    // Una función que envuelve al verbo no lo esconde, y llamar a una que no hace `cd` no pierde dónde se está.
-    // Una función escrita en una línea se lee igual que en varias: su `cd` vale para lo que sigue adentro.
-    `limpia() { cd ${OUT}; rm -rf sub; }`,
-    `rm() {\n  echo no\n}\nrm -rf ${OUT}/x`, `rm() {\n  cd /srv/x\n}\nrm -rf ${OUT}/x`,
-    'log() {\n  echo x\n}\nlog\nrm -rf ../../../../../../../../no-es-de-nadie',
-    // Un binario que se llama como una función no es la función, y el cuerpo de una se lee donde está escrito.
-    'go() {\n  cd /srv/x\n}\n./bin/go build\nrm -rf ../../../../../../../../no-es-de-nadie',
-    'limpia() {\n  rm -rf ../../../../../../../../no-es-de-nadie\n}',
-    // Un grupo entre llaves dentro del cuerpo no cierra la función: lo que sigue sigue siendo de ella.
-    'f() {\n  { echo a; }\n  cd "$DIR"\n}\nrm -rf ../../../../../../../../no-es-de-nadie',
-    // Ni el `cd` que una función hace dentro de un subshell, que no sale de él.
-    'ver() {\n  (cd "$D" && ls)\n}\nver\nrm -rf ../../../../../../../../no-es-de-nadie',
-    // Después de llamar a una que sí hace `cd` no se sabe dónde se está, pero una ruta entera se juzga igual.
-    `ir() {\n  cd /srv/x\n}\nir\nrm -rf ${OUT}/sub`,
-    `main() {\n  prep\n}\nprep() {\n  cd /srv/x\n}\nmain\nrm -rf ${OUT}/sub`,
     `rm -rf "${OUT}/con espacio/sub"`, `cd "${OUT}/con espacio" && rm -rf old`, `cd -P ${OUT} && rm -rf old`,
     `cd "$X"; if cd ${OUT}; then rm -rf sub; fi`, 'if cd ../../../../../../../..; then rm -rf no-es-de-nadie; fi',
   ]
@@ -111,22 +94,6 @@ test('lo que se borra adentro, en el temporal o sin poder saber dónde sigue pas
     `F=${OUT}/plantilla.conf; rm -f \${F##*/}`,
     // Una ruta entre comillas con espacios es una sola, tenga lo que tenga después del espacio.
     'rm -rf "service/a /b"', 'touch "service/a /b"', 'mkdir -p "service/mis docs/ /abs"',
-    // El `cd` del cuerpo de una función que nadie llama no mueve nada.
-    'f() {\n  cd /\n}\nrm -rf z', 'a() {\n  cd /\n}\nb() {\n  a\n}\nrm -rf z',
-    // Tampoco en una línea, ni con un grupo entre llaves antes del `cd`.
-    `entra() { cd ${OUT}; }; rm -rf service/src`,
-    `prep() {\n  { echo a; date; } >> log\n  cd ${OUT}\n}\nmkdir -p service/build`,
-    `entra() { cd ${OUT}; }; entra; rm -rf sub`,
-    'f() {\n  { cd /srv/x; }\n}\nf\nrm -rf ../../../../../../../../no-se-sabe',
-    // Y si se la llama, no se sigue: el guard no interpreta funciones. Queda sin saber dónde está, que es no
-    // juzgar lo relativo; también cuando la llama otra, definida antes o después.
-    `ir() {\n  cd ${OUT}\n}\nir\nrm -rf sub`, `a() {\n  cd ${OUT}\n}\nb() {\n  a\n}\nb\nrm -rf sub`,
-    `main() {\n  prep\n}\nprep() {\n  cd ${OUT}\n}\nmain\nrm -rf sub`,
-    'ir() {\n  cd /srv/x\n}\nir\nrm -rf ../../../../../../../../no-se-sabe',
-    'a() {\n  cd /srv/x\n}\nb() {\n  a\n}\nb\nrm -rf ../../../../../../../../no-se-sabe',
-    // El `cd` de un subshell dentro de una función no mueve a quien la llama, y un binario no es la función.
-    `ver() {\n  (cd ${OUT} && git status)\n}\nver\nmkdir -p service/build`,
-    `go() {\n  cd ${OUT}\n}\n./bin/go build\nrm -rf service/src`,
     // Nombrarlo no es borrarlo.
     `echo "rm -rf ${OUT}"`, `find ${OUT} -name x`, `git log --grep 'rm -rf ${OUT}'`,
   ]
@@ -166,22 +133,41 @@ test('lo que destructive frena y deja pasar no cambió con este caso', () => {
     /no se puede resolver/)
 })
 
-test('una cadena larga de funciones que se llaman no cuelga el guard', () => {
-  const { passes } = project('ops-hook-borra-cadena-')
-  // Treinta funciones, cada una llamando dos veces a la anterior: repetir sus `cd` al llamarlas duplicaba el
-  // trabajo por nivel, y el guard no terminaba.
+// La regla y su porqué están junto a `steps`, en `engine/hooks/shell-changes.js`. Acá van las formas que cada
+// intento anterior de leer una función frenó sin motivo, que tienen que pasar, y el costo de no leerlas.
+test('con una función definida en el comando, lo relativo no se juzga y una ruta entera sí', () => {
+  const { passes, refuses } = project('ops-hook-borra-funcion-')
+  for (const command of [
+    `rm() {\n  echo no\n}\nrm -rf ${OUT}/x`, `ir() {\n  cd /srv/x\n}\nir\nrm -rf ${OUT}/sub`,
+    `limpia() {\n  rm -rf ${OUT}/sub\n}`, `function f { echo a; }; rm -rf ${OUT}/sub`,
+    `f() { echo a; } >&2\nrm -rf ${OUT}/sub`, `limpia() { rm -rf ${OUT}/x; }`,
+    // Antes de la definición todavía se sabe dónde se está.
+    `cd ${OUT} && rm -rf sub\nf() {\n  echo a\n}`,
+  ]) refuses(command, REMOVES)
+  for (const command of [
+    'f() {\n  cd /\n}\nrm -rf z', `entra() { cd ${OUT}; }; rm -rf service/src`,
+    `prep() {\n  { echo a; date; } >> log\n  cd ${OUT}\n}\nmkdir -p service/build`,
+    `main() {\n  {\n    make\n  } > >(tee -a build.log) 2>&1\n  cd ${OUT}\n}\nmkdir -p service/build`,
+    `f() {\n  for x in a b; do { echo $x; }; done\n  cd ${OUT}\n}\nrm -rf service/build`,
+    `ver() {\n  (cd ${OUT} && git status)\n}\nver\nmkdir -p service/build`,
+    // El costo: un borrado relativo de verdad, detrás de una función, tampoco se ve.
+    `ir() {\n  cd ${OUT}\n}\nir\nrm -rf sub`, `f() { echo a; }\ncd ${OUT}\nrm -rf sub`,
+    'log() {\n  echo x\n}\nlog\nrm -rf ../../../../../../../../no-es-de-nadie',
+  ]) passes(command)
+})
+
+test('un comando largo con funciones y llaves se lee en un tiempo que crece con su tamaño', () => {
+  const { passes } = project('ops-hook-borra-largo-')
   const chain = ['f0() {\n  cd /srv/x\n}']
   for (let at = 1; at < 30; at += 1) chain.push(`f${at}() {\n  cd /srv/x\n  f${at - 1}\n  f${at - 1}\n}`)
+  const many = (line, count) => Array.from({ length: count }, (_, at) => line(at))
   const started = Date.now()
   passes([...chain, 'f29', 'rm -rf sub'].join('\n'))
-  assert.ok(Date.now() - started < 2000, `tardó ${Date.now() - started} ms`)
-  // Y el trabajo crece con el texto, no con su cuadrado: un cuerpo de veinte mil líneas, y ocho mil funciones
-  // donde cada una llama a la que se define después.
-  const long = Date.now()
-  passes(['x() {', ...Array.from({ length: 20000 }, (_, at) => `  echo ${at}`), '}', 'rm -rf service/src'].join('\n'))
-  passes([...Array.from({ length: 8000 }, (_, at) => `g${at}() {\n  g${at + 1}\n}`), 'g8000() {\n  cd /srv/x\n}',
-    'g0', 'rm -rf sub'].join('\n'))
-  assert.ok(Date.now() - long < 2000, `tardó ${Date.now() - long} ms`)
+  passes(['x() {', ...many((at) => `  echo ${at}`, 20000), '}', 'rm -rf service/src'].join('\n'))
+  const helpers = many((at) => `g${at}() {\n  g${at + 1}\n}`, 8000)
+  passes([...helpers, 'g8000() {\n  cd /srv/x\n}', 'g0', 'rm -rf sub'].join('\n'))
+  passes([...many(() => '{', 20000), ':', ...many(() => '}', 20000), 'rm -rf service/src'].join('\n'))
+  assert.ok(Date.now() - started < 3000, `tardó ${Date.now() - started} ms`)
 })
 
 test('lo declarado como escribible fuera de las raíces también se puede borrar', () => {

@@ -349,33 +349,24 @@ quedaba abierto, y la próxima llave suelta deshacía un `cd` de verdad; eso sí
 
 ### El guard no interpreta funciones (2026-10-10)
 
-La revisión de ese arreglo encontró que repetir los `cd` de una función en cada llamada **colgaba el
-guard**: treinta funciones, cada una llamando dos veces a la anterior —1,7 KB de texto válido—, duplicaban
-la lista por nivel; no terminó en dos minutos y medio y llegó a 3,1 GB de memoria. Encontró además que una
-función con el nombre del verbo lo escondía —`rm() { … }; rm -rf afuera` dejaba de juzgarse—, que el `cd`
-de un subshell dentro del cuerpo se repetía como si saliera de él, que un binario `./bin/ir` se tomaba por
-la función `ir`, y que una función que llama a otra definida más abajo quedaba sin sus `cd`.
+Seguir el `cd` de una función de shell tomó cinco vueltas de revisión, y en todas hubo algo. La primera
+versión repetía los `cd` del cuerpo en cada llamada y **colgaba el guard**: treinta funciones, cada una
+llamando dos veces a la anterior —1,7 KB de texto válido—, no terminaron en dos minutos y medio y llegaron
+a 3,1 GB de memoria. Las siguientes escondían un verbo envuelto en una función de su nombre, tomaban un
+binario por una función, contaban los paréntesis de `nombre()` como un subshell, cerraban el cuerpo con la
+llave de un grupo de adentro, y crecían con el cuadrado del texto. Cada arreglo era una pieza más de un
+intérprete de shell.
 
-Cinco defectos en una pieza que era, en chico, un intérprete de shell. Se sacó. Lo que quedó es poco y está
-acotado:
+Se sacó todo. Lo que quedó es una regla, sin leer cuerpos ni contar llaves:
 
-- El cuerpo de una función se lee una vez, donde está escrito, y al cerrarse devuelve la carpeta: definirla
-  no mueve a nadie.
-- Qué funciones pueden mover —las que hacen `cd` fuera de un subshell, y las que llaman a una de ésas,
-  definida antes o después— se calcula una vez, sin repetir nada.
-- Después de llamar a una de ésas **no se sabe dónde se está**: lo relativo no se juzga y una ruta entera
-  sí. Es lo mismo que ya pasaba con un `cd` a una variable sin resolver.
-- Lo que se llama se juzga siempre por lo que nombra, sea o no una función.
+**Desde que el comando define una función, no se sabe dónde se está.** Lo relativo deja de juzgarse; una
+ruta entera se juzga igual, esté en el cuerpo, después de una llamada o en cualquier lado.
 
-La revisión de esa versión encontró tres cosas más, y se arreglaron sin agregar lectura: los paréntesis de
-`nombre()` se contaban como un subshell, y en una función de una línea su `cd` se deshacía al terminar la
-cabecera; la llave que cierra un grupo `{ …; }` dentro del cuerpo se tomaba por la que cierra la función; y
-calcular qué funciones mueven crecía con el cuadrado del texto —tres segundos para un cuerpo de 25.000
-líneas—. Ahora cada llave que cierra es de la última que abrió, y el cálculo se hace en una pasada.
-
-Lo que se pierde, y se dice: `ir() { cd afuera; }; ir; rm -rf sub` no frena. El borrado relativo detrás de
-un `cd` hecho por una función queda entre lo que este guard no ve, junto con el `bash -c` y el script
-propio. La cadena de treinta funciones se lee en milisegundos y tiene su prueba, con tope de tiempo.
+Lo que se pierde, y se dice: `ir() { cd afuera; }; ir; rm -rf sub` no frena, y tampoco un `cd afuera; rm
+-rf sub` escrito después de definir cualquier función. Cuánto cuesta eso se midió sobre los comandos de las
+sesiones reales: 543 de los 6.122 que traen un verbo de éstos definen una función, y los frenos nuevos del
+guard siguen siendo los mismos 43, ninguno perdido — eran todos sobre rutas enteras. Las cadenas largas de
+funciones y llaves se leen en un tiempo que crece con su tamaño, y tienen su prueba con tope.
 
 ### Sesiones reales (2026-10-10)
 

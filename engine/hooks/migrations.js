@@ -73,26 +73,28 @@ function migrations(input) {
     // mientras no diga sobre qué está decidiendo. Y cuando la migración se partió, dice que la reversión
     // no se juzgó, para que quien lo lea no busque la sentencia en el bloque equivocado.
     const section = sections.get(raw)
-    const scopes = [section ? M.judgedPatch(normalized, section)
-      : M.judged(normalized, contentOf(input), editOf(input, file))]
-    // Un archivo que pasa a ser una migración por un renombrado llega con contenido que el parche no trae: se
-    // juzga además ese contenido, como está en disco (caso 367). Sin archivo de origen que leer —lo crea el
-    // mismo parche, o no está— queda sólo lo de arriba.
-    //
-    // No se calcula cómo va a quedar después del parche. Se intentó, imitando a quien lo aplica —dónde cae
-    // cada hunk, sus anclas, el fin de archivo, cuán laxa es la coincidencia—, y cuatro revisiones seguidas
-    // encontraron otra regla que faltaba; cada diferencia con la herramienta real era un veredicto sobre un
-    // texto que no iba a existir. El costo de no hacerlo es uno y se elige: si el archivo trae algo
-    // destructivo y el mismo parche se lo quita, frena igual, y la salida es la aprobación de abajo.
-    const moved = section && section.movedFrom !== undefined
-    const before = moved ? onDisk(path.resolve(cwdOf(input), section.movedFrom)) : null
-    if (before !== null) scopes.push(M.judged(normalized, before))
-    const scope = scopes.find((one) => M.destructive(one.text)) || scopes[0]
+    const scope = section
+      ? M.judgedPatch(normalized, section)
+      : M.judged(normalized, contentOf(input), editOf(input, file))
     const found = M.destructive(scope.text)
     if (found) {
       const where = scope.label ? ` en el bloque que aplica (la reversión, \`${scope.label}\`, no se juzga)` : ''
       block(`${raw} contiene ${found.kind}${where}: \`${found.what}\`.\n`
         + AP.HOW('OPS_MIGRATIONS_OVERRIDE', [normalized], input))
+    }
+    // Un archivo que pasa a ser una migración por un renombrado llega con contenido que el parche no trae: se
+    // juzga además ese contenido, entero y como está en disco (caso 367). Entero incluye su reversión: el
+    // mismo parche puede sacarle o correrle el marcador, y lo que era reversión pasa a aplicarse.
+    //
+    // No se calcula cómo va a quedar después del parche. Se intentó, imitando a quien lo aplica, y cuatro
+    // revisiones seguidas encontraron otra regla que faltaba. El costo de no hacerlo se elige: si el archivo
+    // trae algo destructivo frena, también cuando el parche se lo quita o cuando estaba en su reversión, y
+    // la salida es la aprobación de abajo. Por eso el mensaje dice de dónde viene, y no que el parche lo trae.
+    const from = section && section.movedFrom
+    const carried = from ? M.destructive(onDisk(path.resolve(cwdOf(input), from)) || '') : null
+    if (carried) {
+      block(`${raw} llega desde ${from}, que trae ${carried.kind}: \`${carried.what}\`. Se juzga el archivo como `
+        + 'está, sin calcular qué le cambia el parche.\n' + AP.HOW('OPS_MIGRATIONS_OVERRIDE', [normalized], input))
     }
     // El mensaje nombra el hecho que sostiene el bloqueo y no su interpretación: «historial» era una
     // lectura que `existsSync` no podía dar, y se la daba igual sobre stubs de la misma sesión. Y lleva

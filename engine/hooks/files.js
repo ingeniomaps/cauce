@@ -134,12 +134,6 @@ function isTestFile(raw) {
     || /^test_.+\.py$/i.test(base)
 }
 
-// Un nombre que sigue siendo de prueba aunque `isTestFile` no lo cuente entre los que cuida: otra extensión
-// —`.mjs`, `.cjs`, `.mts`— u otra herramienta —`.cy.ts`, `.e2e.ts`—. Renombrar hacia uno de éstos no saca la
-// prueba de ningún lado, y frenarlo era frenar una migración de módulos corriente. La extensión tiene que ser
-// una que corra: `a.test.bak` o `a.spec.disabled` es justo la forma de apagar una prueba.
-const STILL_A_TEST = /\.(?:test|spec|cy|e2e)\.[cm]?[jt]sx?$/i
-
 function testEvidence(input) {
   if (process.env.OPS_TEST_EVIDENCE_OVERRIDE === '1') return
   const why = 'Una prueba apagada no falla y una suite sin ella sale verde igual: el verde deja de ' +
@@ -152,16 +146,12 @@ function testEvidence(input) {
     const removed = match[1].trim()
     if (isTestFile(removed) && !approved(input, removed)) block(`${removed} borra una prueba.\n${why}${how(removed)}`)
   }
-  // Renombrarla a un nombre que ya no es de prueba la saca de la suite igual que borrarla (caso 367).
+  // Renombrarla a un nombre que ya no es de prueba la saca de la suite igual que borrarla (caso 367). Qué es
+  // una prueba lo decide `isTestFile`, como para el borrado, y nada más: afinar la regla sólo para el renombrado
+  // —otras extensiones, nombres que no corren, lo que lo es sólo por su carpeta— frenó cosas legítimas o dejó
+  // pasar otras en cada intento. Lo que `isTestFile` no conoce se arregla ahí, para los dos.
   for (const { from, to } of patchMoves(patchOf(input))) {
-    // Lo que es una prueba por su nombre tiene que seguir siéndolo por su nombre: `tests/a.test.bak` está en
-    // una carpeta de pruebas y no corre. Lo que lo es sólo por la carpeta en la que vive sigue siéndolo
-    // mientras se quede en una —pasar `__tests__/Button.js` a `.tsx` no saca nada de la suite—, salvo que el
-    // nombre nuevo sea el viejo con algo pegado atrás, que es la forma de apagarla: `a.js.off`.
-    const named = (file) => isTestFile(path.basename(file)) || STILL_A_TEST.test(path.basename(file))
-    const stays = named(from) ? named(to)
-      : isTestFile(to) && !path.basename(to).startsWith(`${path.basename(from)}.`)
-    if (!isTestFile(from) || stays || approved(input, from)) continue
+    if (!isTestFile(from) || isTestFile(to) || approved(input, from)) continue
     block(`${from} borra una prueba: renombrada a ${to} deja de serlo.\n${why}${how(from)}`)
   }
   const content = contentOf(input)

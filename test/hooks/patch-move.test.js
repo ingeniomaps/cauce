@@ -69,8 +69,8 @@ test('una migración renombrada se sigue juzgando por su sección, no por el sob
 const patchOf = (...lines) => ['*** Begin Patch', ...lines, '*** End Patch'].join('\n')
 const asCodex = (root, patch) => ({ cwd: root, tool_name: 'apply_patch', tool_input: { command: patch } })
 
-// No se calcula cómo va a quedar el archivo después del parche. Se intentó, imitando a quien lo aplica, y cada
-// revisión encontró otra regla que faltaba. Se juzga lo que el archivo trae y, aparte, lo que el parche agrega.
+// Lo que el archivo trae y lo que el parche agrega se juzgan por separado; por qué no se calcula cómo va a quedar
+// está junto al guard, en `engine/hooks/migrations.js`.
 test('lo que un archivo ya traía se juzga cuando el renombrado lo vuelve una migración', () => {
   const root = project('ops-hook-patch-move-contenido-')
   fs.mkdirSync(path.join(root, 'service', 'scratch'))
@@ -79,8 +79,9 @@ test('lo que un archivo ya traía se juzga cuando el renombrado lo vuelve una mi
   const move = (from, to, ...hunk) => asCodex(root,
     patchOf(`*** Update File: service/scratch/${from}`, `*** Move to: service/migrations/${to}`, '@@', ...hunk))
   write('drop.sql', 'DROP TABLE users;', '')
+  // Y el mensaje dice de dónde viene lo que frena: no es algo que el parche escriba.
   blocked('migrations', move('drop.sql', '003_drop.sql', ' DROP TABLE users;', '+-- listo'),
-    /003_drop\.sql.*DROP TABLE/s)
+    /003_drop\.sql llega desde service\/scratch\/drop\.sql.*DROP TABLE/s)
   // También sin tocarle una línea, y con finales de línea de Windows.
   blocked('migrations', asCodex(root, patchOf('*** Update File: service/scratch/drop.sql',
     '*** Move to: service/migrations/004_drop.sql')), /DROP TABLE/)
@@ -90,9 +91,12 @@ test('lo que un archivo ya traía se juzga cuando el renombrado lo vuelve una mi
   write('ok.sql', 'CREATE TABLE t (id int);', '')
   blocked('migrations', move('ok.sql', '006_ok.sql', '+DROP TABLE t;'), /DROP TABLE/)
   assert.doesNotThrow(() => execute('migrations', move('ok.sql', '007_ok.sql', '+CREATE INDEX i ON t (id);')))
-  // Lo que traía se juzga como una migración: un DROP en su reversión no es del bloque que aplica.
+  // Lo que traía se juzga entero, también su reversión: el mismo parche puede sacarle el marcador, y entonces
+  // lo que era reversión pasa a aplicarse.
   write('marcada.sql', '-- +goose Up', 'CREATE TABLE t (id int);', '-- +goose Down', 'DROP TABLE t;', '')
-  assert.doesNotThrow(() => execute('migrations', move('marcada.sql', '008_m.sql', '+-- nota')))
+  blocked('migrations', move('marcada.sql', '008_m.sql', '+-- nota'), /DROP TABLE/)
+  blocked('migrations', move('marcada.sql', '011_m.sql', ' CREATE TABLE t (id int);', '--- +goose Down',
+    ' DROP TABLE t;'), /DROP TABLE/)
   // El costo, que se elige: si el archivo trae un DROP y el mismo parche se lo quita, frena igual. No se
   // adivina qué línea quita el parche; la salida es la aprobación que este guard ya ofrece.
   blocked('migrations', move('drop.sql', '009_ok.sql', '-DROP TABLE users;', '+CREATE TABLE users (id int);'),
@@ -126,31 +130,19 @@ test('un sobre con finales de línea de Windows se lee igual', () => {
     '*** Move to: service/migrations/005_d.sql', '@@', ' DROP TABLE users;', '+-- listo'), /DROP TABLE/)
 })
 
-test('una prueba que cambia de extensión o de herramienta sigue siendo una prueba', () => {
-  const root = project('ops-hook-patch-move-sigue-')
+// La regla es una sola y no tiene nada propio; el porqué está junto a ella, en `testEvidence`. Acá se fijan
+// los dos lados: lo que tiene que seguir pasando, que son los renombrados de todos los días, y lo que frena.
+test('un renombrado es un borrado cuando el nombre nuevo no es una prueba para este guard, y sólo entonces', () => {
+  const root = project('ops-hook-patch-move-regla-')
   const move = (from, to) => asCodex(root, patchOf(`*** Update File: ${from}`, `*** Move to: ${to}`, '@@', '-x', '+y'))
-  for (const [from, to] of [['service/src/a.test.js', 'service/src/a.test.mjs'],
-    ['service/src/a.test.js', 'service/src/a.test.cjs'], ['service/src/a.spec.ts', 'service/src/a.spec.mts'],
-    ['service/src/a.spec.ts', 'service/cypress/e2e/a.cy.ts']]) {
-    assert.doesNotThrow(() => execute('test-evidence', move(from, to)), `${from} → ${to}`)
-  }
-  // Pero un nombre que ningún runner levanta es apagarla, tenga el `.test.` que tenga.
-  for (const [from, to] of [['service/src/a.test.js', 'service/src/a.test.bak'],
-    ['service/src/a.test.js', 'service/src/a.test.txt'], ['service/src/a.spec.ts', 'service/src/a.spec.disabled'],
-    ['service/pkg/a_test.go', 'service/pkg/a.test.off'],
-    // También dentro de una carpeta de pruebas, que es donde más viven: la carpeta no la vuelve una que corra.
-    ['service/tests/a.test.js', 'service/tests/a.test.bak'],
-    ['service/tests/a.test.js', 'service/tests/a.test.js.disabled'],
-    ['service/src/__tests__/a.js', 'service/src/__tests__/a.js.off']]) {
-    blocked('test-evidence', move(from, to), /borra una prueba/)
-  }
-  // Lo que es una prueba por la carpeta en la que vive sigue siéndolo mientras se quede en una: pasar de JS a
-  // TS, o renombrar un ayudante o un dato, no saca nada de la suite.
-  for (const [from, to] of [['service/tests/FooTest.java', 'service/tests/BarTest.java'],
+  for (const [from, to] of [['service/src/a.test.js', 'service/src/__tests__/a.js'],
+    ['service/src/a.test.js', 'service/test/a.js'], ['service/src/a.spec.ts', 'service/src/b.spec.tsx'],
     ['service/src/__tests__/Button.js', 'service/src/__tests__/Button.tsx'],
-    ['service/tests/helpers.js', 'service/tests/helpers.ts'], ['service/tests/login.js', 'service/tests/login.ts'],
-    ['service/tests/fixtures/data.json', 'service/tests/fixtures/data.yaml'],
-    ['service/tests/README.txt', 'service/tests/README.md']]) {
+    ['service/tests/helpers.js', 'service/tests/helpers.ts'], ['service/test/README', 'service/test/README.md'],
+    ['service/tests/FooTest.java', 'service/tests/BarTest.java']]) {
     assert.doesNotThrow(() => execute('test-evidence', move(from, to)), `${from} → ${to}`)
   }
+  for (const [from, to] of [['service/src/a.test.js', 'service/src/a.test.bak'],
+    ['service/src/a.spec.ts', 'service/src/a.spec.disabled'], ['service/pkg/a_test.go', 'service/pkg/a.test.off'],
+    ['service/tests/login.py', 'service/attic/login.txt']]) blocked('test-evidence', move(from, to), /borra una prueba/)
 })
