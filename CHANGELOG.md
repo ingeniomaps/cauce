@@ -22,17 +22,19 @@ diseño — eso vive en el commit y en el código.
   tocar una ruta de afuera con un `echo >` y dejaba borrarla con un `rm -rf`. Ahora `rm`, `unlink`,
   `rmdir` y `find … -delete` se juzgan como una escritura, y `touch` y `mkdir` también. Vale lo mismo que
   para escribir: el temporal del sistema y lo que declares en `writableOutsideRoots` siguen pasando, y lo
-  que no se puede resolver —una variable, un `cd` a un destino desconocido— no se juzga. **Si tus sesiones
-  borran algo fuera del proyecto**, por ejemplo una caché en tu carpeta personal, declarala ahí (caso 365).
+  que no se puede resolver —una variable, un `cd` a un destino desconocido— no se juzga. Tampoco lo relativo
+  después de que el comando define una función de shell: desde ahí no se sabe dónde está parado, y sólo se
+  juzgan las rutas enteras. **Si tus sesiones borran algo fuera del proyecto**, por ejemplo una caché en tu
+  carpeta personal, declarala ahí (caso 365).
 - **Un parche de Codex que renombra un archivo se juzga también por su destino.** Con `*** Move to:` un
   archivo de adentro se mudaba fuera de las raíces, o a un nombre como `.env`, sin que ningún guard de
   archivos mirara a dónde iba (caso 366). Y por lo que trae: un archivo con SQL destructivo renombrado a una
-  carpeta de migraciones se frena como si se lo escribiera ahí, y renombrar una prueba a un nombre que ya no
-  es de prueba se frena como borrarla (caso 367).
+  carpeta de migraciones se frena como si se lo escribiera ahí —también si el mismo parche se lo quita, o si
+  estaba en su reversión: se juzga el archivo como está, y la salida es aprobarlo—, y renombrar una prueba a
+  un nombre que ya no es de prueba se frena como borrarla (caso 367).
 - **`cd ~ && rm -rf .` se frena también con el proyecto fuera de tu carpeta personal.** El guard destructivo
   la cuidaba sólo por contener al proyecto; en un servidor o un contenedor, donde no lo contiene, ese
   borrado pasaba (caso 368).
-
 - **Lo que el runner instala con la ruta de tu carpeta escrita ya no entra a git.** Los recorridos de Claude y
   el puente de Antigravity llevan la ruta de la instancia. En una instancia embebida vivían en el
   repositorio, y cada clon y cada línea de trabajo los veía modificados para siempre. Una instancia nueva los
