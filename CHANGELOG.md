@@ -23,7 +23,8 @@ diseño — eso vive en el commit y en el código.
   repositorio, y cada clon y cada línea de trabajo los veía modificados para siempre. Una instancia nueva los
   ignora. **Si la tuya es anterior**, `check` te dice qué líneas agregar a tu `.gitignore` y, si ya los
   commiteaste, con qué comando sacarlos de git sin borrarlos. Después de eso, cada persona corre
-  `automation install` en su clon, que es lo que ya hacía falta (caso 364).
+  `automation install` en su clon, que es lo que ya hacía falta. Y `check` se lo dice al que clonó:
+  avisa qué runner quedó sin sus recorridos y con qué comando se rehacen (caso 364).
 
 ## [0.106.0] - 2026-10-10
 

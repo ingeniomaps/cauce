@@ -90,8 +90,9 @@ molde ignora lo que lleva la ruta, y sólo eso.
 - **Fix 1, que el molde ignore esos archivos — se hizo.** `gitignore` trae `.claude/workflows/` y el puente
   de Antigravity. Lo demás del runner —`settings.json`, agentes, punteros a cargos— sigue viajando.
 - **Fix 2, que el archivo no lleve la ruta — se decidió que no**, por lo que el caso 139 midió.
-- **Qué podría salir mal 1, un clon nuevo sin recorridos hasta instalar — se acepta.** Es lo que ya pasa en
-  sidecar, y es un fallo que se ve: el recorrido no existe, en vez de existir apuntando a otra carpeta.
+- **Qué podría salir mal 1, un clon nuevo sin recorridos hasta instalar — se acepta, y `check` lo dice.** Es
+  lo que ya pasa en sidecar. La primera versión lo daba por «un fallo que se ve» y no se veía en `check`: está
+  en la revisión, más abajo.
 - **2, quien ya los tiene commiteados — cubierto con un aviso.** El `.gitignore` es de la empresa y `upgrade`
   no lo toca, así que la instancia que nació antes no recibe la línea. `check` le dice cuáles agregar y, si
   ya están en git, con qué comando sacarlos sin borrarlos del disco.
@@ -129,6 +130,38 @@ molde ignora lo que lleva la ruta, y sólo eso.
 - Rojo previo: la prueba nueva de `test/wiring/lines.test.js`.
 - Cinco mutaciones en rojo: sin la línea en el molde, sin el aviso, sin decir cómo sacarlos de git, avisando
   también de lo que git ignora, y avisando de todo archivo del runner lleve ruta o no.
+
+### Lo que encontró la revisión (2026-10-10)
+
+Una revisión independiente del diff, antes del PR. Cuatro hallazgos, reproducidos en un banco, y los cuatro
+se arreglaron:
+
+- **Con un acento en la ruta de la carpeta el aviso no se apagaba nunca.** A git se le preguntaba qué
+  ignora sin `-z`, y sin eso escribe entre comillas y con escapes toda ruta que no sea ASCII:
+  `"…/jos\303\251/.claude/workflows/autobuild.js"`. No coincidía con la nuestra, así que la línea ya puesta
+  en el `.gitignore` no contaba. Ahora las rutas van y vuelven separadas por un byte nulo.
+- **Por un enlace a la instancia dictaba una línea que no sirve**, `../via-link/.claude/workflows/`, y no
+  decía que los archivos ya estaban en git. Git contesta con rutas reales y las nuestras eran las escritas.
+  La raíz se resuelve antes de preguntar.
+- **Un recorrido propio que lleva la ruta quedaba fuera.** Los de `workflows/` de la empresa se generan en
+  la misma carpeta y pueden traer la raíz. No se contaban, y además impedían dictar la carpeta: salían
+  nueve líneas sueltas, y siguiéndolas al pie el propio quedaba en git. Ahora entra el que lleva la ruta, y
+  la carpeta se dicta entera cuando todo lo que tiene es generado. Un archivo escrito a mano ahí sí lo
+  impide, porque ignorar la carpeta lo sacaría de git a él.
+- **El clon no se enteraba de que le faltaban los recorridos.** `check` salía en verde y sin avisos, y sólo
+  `automation doctor` lo mostraba. Ahora `check` avisa: «a claude le faltan 9 archivo(s) que se generan en
+  cada carpeta y no viajan por git … Rehacelos con node tools/ops.js automation install . claude». Qué
+  runner se instaló lo dice el manifiesto de Cauce, que sí viaja. Por eso una `.claude/settings.json` de
+  la persona, con un runner que Cauce no instaló, no hace avisar.
+
+De la otra mitad que se le pidió —lo que el 362 y el 363 corrigieron después de su propia revisión— no
+encontró nada fuera de los límites ya escritos. Esa parte la leyó, no la corrió.
+
+Rojo previo de las cuatro, cada una por lo suyo, en `test/wiring/machine-bound.test.js`. Siete mutaciones
+en rojo: preguntar sin `-z`, no resolver la raíz, no contar los propios, no tomarlos por generados, no
+avisar de lo que falta, avisarlo sin mirar el manifiesto, y dictar la carpeta siempre. La primera corrección
+del acento también falló: `git check-ignore -z` contesta «-z solo tiene sentido con --stdin», y lo dijo la
+prueba.
 
 ## Contexto de descubrimiento
 
