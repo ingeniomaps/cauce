@@ -199,6 +199,14 @@ clon       ⚠ a antigravity le faltan 1 archivo(s) que se generan en cada carpe
            después de instalar: sin avisos, git status vacío
 ```
 
+### Sobre las instancias reales de la máquina (2026-10-10)
+
+`check` con el motor instalado en cada una y con el de la rama, dentro de una jaula de sólo lectura, sobre
+cinco instancias reales en versiones de 0.99.0 a 0.106.0. Ninguna recibe un aviso de este caso: son sidecar
+y la configuración del runner vive fuera de su repositorio, que es justo donde el aviso no tiene nada que
+decir. En la que ya está en 0.106.0 la salida es idéntica, 72 avisos contra 72; en las más viejas lo que
+cambia son avisos de versiones anteriores a ésta.
+
 ## Contexto de descubrimiento
 
 Quedó a la vista al cerrar el caso 363: con la instalación ya andando en la línea, los archivos seguían

@@ -228,6 +228,33 @@ Acotada a lo que la primera había hecho reescribir. Ocho hallazgos, y se atendi
   mutaciones y la comparación sobre los comandos reales.
 - La medición de arriba.
 
+### Tres comprobaciones después de cerrar (2026-10-10)
+
+Corridas dentro de una jaula de sólo lectura —todo el disco montado sin escritura, salvo una carpeta de
+resultados—, para que ni un error de la propia medición pudiera tocar nada.
+
+- **La comparación, sin tope y sobre el corpus más duro.** A las cuatro instancias se sumaron las sesiones
+  de este repositorio, que son las que más arman copias, bancos y scripts de mutación por shell, juzgadas
+  contra una instancia que declara este repositorio como su única raíz:
+
+  ```
+  comandos    con un verbo de éstos    frenos nuevos    perdidos
+    62.212                    5.959               43           0
+  ```
+
+  Los 43 se agruparon por destino y se leyó el comando de cada grupo, veinticinco destinos en total; tres
+  que no eran evidentes se leyeron enteros. Todos escriben o borran de verdad fuera de las raíces —bancos en
+  `/var/tmp`, la carpeta personal, otro árbol de trabajo—, con las variables que el comando asigna bien
+  resueltas. Lo que la medición buscaba era un comando mal leído, como el `/2>` de la primera vuelta, y no
+  apareció ninguno. En `destructive`: 76 que ya frenaba y sigue frenando, ninguno nuevo, ninguno menos.
+- **Una cosa que esa lectura deja a la vista.** Dos de los 43 son un `rm -rf` de una caché en la carpeta
+  personal, de una limpieza de disco. Ahora se frena, y la única salida que el guard ofrece es declarar la
+  ruta: no tiene la aprobación por el chat que sí tienen otros. Es el mismo trato que ya tenía escribir
+  ahí; si estorba, la salida es darle esa aprobación a los dos, no aflojar uno.
+- **Borrar por la herramienta de archivos no tiene este hueco.** `*** Delete File:` de un parche ya se
+  juzgaba. Probando el formato entero apareció otro, que salió como caso propio: el
+  [366](./366-un-parche-que-renombra-un-archivo-lo-saca-de-las-raices-sin-que-lo-vea-ningun-guard.md).
+
 ## Contexto de descubrimiento
 
 Al probar la versión 0.106.0 sobre una copia de una instancia real con una línea de trabajo, preguntándole
