@@ -330,6 +330,27 @@ instalados juntos, Gemini imprime una línea «Skill conflict detected» por car
 antes de la primera herramienta. Para Codex queda lo que ya había: el guard invocado por su shim con la
 forma de pedido de Codex, que es lo que cubren las pruebas.
 
+### Sobre la forma de una instancia real (2026-10-10)
+
+Una copia de una instancia real que trabaja por líneas, en `/var/tmp`, sin remotos y con el motor de la
+rama: sidecar, con una raíz que es la carpeta que contiene una veintena de servicios —se copiaron tres, cada
+uno con su repositorio— y otra raíz fuera. La original no se tocó: mismo commit, mismos árboles y nada sin
+commitear antes y después.
+
+- `upgrade` y `check`: en verde, con los avisos que la instancia ya tenía. Los 214 commits de servicios que
+  no se copiaron salen «no se comprobaron porque su repositorio no está en esta máquina», que es lo que el
+  359 hizo decir en vez de darlos por ausentes.
+- `ops line`: arma la carpeta de la línea con los tres servicios enlazados al original y el runner
+  instalado apuntando a ella. `claim` y `worktree` dejan el árbol de la tarea adentro de esa carpeta,
+  `<servicio>-<tarea>`, registrado como árbol del servicio.
+- `evidence` sobre 258 entradas cerradas: 0,17 s y 86 MB.
+- Una sesión real de Claude Code en la línea: escribir en el árbol de la tarea pasó, y escribir en el
+  servicio original por su ruta entera se frenó, «está fuera de las raíces declaradas».
+
+De ahí salió un defecto que no es de este caso ni de esta versión, el
+[365](./365-el-guard-de-shell-no-ve-un-borrado-fuera-de-las-raices.md): el mismo guard deja pasar un `rm -rf`
+sobre esa ruta.
+
 ## Contexto de descubrimiento
 
 Corrida real de `/autobuild` para comprobar de punta a punta el checkpoint de un hito en una línea, sobre el
