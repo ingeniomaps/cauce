@@ -200,3 +200,42 @@ test('la ruta sale sola por stdout, aunque el escenario tenga algo más que deci
   // Y el dato auxiliar no se pierde: sigue estando, en el canal que no contamina la ruta.
   assert.match(armar('tarea').stderr, /export CAUCE_RUNNER=/)
 })
+
+// Caso 357. Una línea de trabajo se arma al lado de la instancia, que en el banco es al lado de lo que se
+// borra: sobrevivía a rehacerlo, sin repositorio y con el estado de la corrida anterior.
+test('rehacer el banco se lleva las líneas de trabajo armadas sobre él', () => {
+  const dir = benchDir(armar('sidecar'), TOOLKIT)
+  const bench = path.dirname(dir)
+  const home = `${bench}-medida`
+  const tree = path.join(home, 'ops')
+  assert.equal(run(['line', dir, 'medida']).status, 0)
+  assert.equal(fs.existsSync(path.join(tree, 'planning')), true, 'la precondición: la línea quedó armada')
+  // Una carpeta vecina que no es una línea del banco no se toca, se llame como se llame.
+  const neighbour = `${bench}-ajena`
+  fs.mkdirSync(neighbour, { recursive: true })
+  fs.writeFileSync(path.join(neighbour, 'nota.md'), 'no es del banco\n')
+
+  // Lo que la línea dejó sin commitear es trabajo sin recoger, igual que lo del banco.
+  fs.writeFileSync(path.join(tree, 'planning', 'MEDICION.md'), 'lo que devolvió la corrida\n')
+  const refused = run(['bench', 'sidecar'], TOOLKIT)
+  assert.notEqual(refused.status, 0)
+  assert.match(refused.stderr, /sidecar-medida.*sin recoger/s, 'nombra la línea')
+  assert.equal(fs.existsSync(path.join(tree, 'planning', 'MEDICION.md')), true, 'y no la borró antes de negarse')
+
+  assert.equal(armar('sidecar').status, 0)
+  assert.equal(fs.existsSync(home), false, 'con --force, la línea se va con el banco')
+  assert.equal(fs.existsSync(path.join(neighbour, 'nota.md')), true, 'y la vecina que no es una línea, no')
+  const again = run(['line', dir, 'medida'])
+  assert.equal(again.status, 0, `la línea se puede volver a armar sobre el banco nuevo: ${again.stderr}`)
+
+  // La que quedó huérfana —su repositorio ya no la conoce— no dice si tiene trabajo: se trata como si lo
+  // tuviera, y se va igual con --force.
+  fs.renameSync(path.join(dir, '.git', 'worktrees'), path.join(dir, '.git', 'worktrees-perdidos'))
+  const orphan = run(['bench', 'sidecar'], TOOLKIT)
+  assert.notEqual(orphan.status, 0)
+  assert.match(orphan.stderr, /sidecar-medida.*sin recoger/s)
+  assert.equal(armar('sidecar').status, 0)
+  assert.equal(fs.existsSync(home), false)
+  fs.unlinkSync(path.join(neighbour, 'nota.md'))
+  fs.rmdirSync(neighbour)
+})

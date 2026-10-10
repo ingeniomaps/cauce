@@ -103,6 +103,35 @@ const AUTHOR = 'banco de cauce'
 // respuesta afirmaba algo inexistente. Con el banco versionado, «acá se trabajó» es una pregunta que git
 // contesta exacto.
 //
+// Las líneas de trabajo armadas sobre un banco. `ops line` las deja al lado de la instancia, que acá es al
+// lado de lo que se borra: sobrevivían a rehacerlo, ya sin repositorio y con el estado de la corrida
+// anterior, que `check` seguía dando por válido (caso 357). Se reconocen por lo que son y no por el nombre
+// —el `.git` del árbol apunta adentro del banco—, y eso vale también para la que quedó huérfana, que git ya
+// no lista. Una carpeta vecina que se llame parecido y no sea una línea no entra.
+//
+// Git escribe ahí la ruta real, así que se compara contra la real del banco: alcanzado por un enlace —la
+// copia sobre la que corre `verify` enlaza `.cauce-eval`—, ninguna línea coincidía.
+function benchLines(wipe) {
+  const parent = path.dirname(wipe)
+  let real = wipe
+  try { real = path.join(fs.realpathSync(parent), path.basename(wipe)) } catch { /* sin carpeta no hay líneas */ }
+  const pointsIn = (tree) => {
+    try {
+      const gitdir = fs.readFileSync(path.join(tree, '.git'), 'utf8').replace(/^gitdir:\s*/, '').trim()
+      return path.resolve(tree, gitdir).startsWith(real + path.sep)
+    } catch { return false }
+  }
+  const dirsIn = (dir) => {
+    try {
+      return fs.readdirSync(dir, { withFileTypes: true }).filter((one) => one.isDirectory())
+        .map((one) => path.join(dir, one.name))
+    } catch { return [] }
+  }
+  return dirsIn(parent).filter((home) => path.basename(home).startsWith(`${path.basename(wipe)}-`))
+    .map((home) => ({ home, trees: [home, ...dirsIn(home)].filter(pointsIn) }))
+    .filter((line) => line.trees.length)
+}
+
 // `wipe` es lo que se borra y `repos` los repositorios que cuelgan de ahí: en casi todos los bancos, la
 // instancia misma. En el que trae un producto al lado se rehace la carpeta que contiene a los dos, así que el
 // trabajo sin recoger puede estar en cualquiera de ellos o suelto en esa carpeta —el árbol de una tarea, una
@@ -110,6 +139,10 @@ const AUTHOR = 'banco de cauce'
 function makeBench(root, dir, force, name, { repos = [dir], wipe = dir } = {}) {
   const dirtyRepo = (repo) => fs.existsSync(path.join(repo, '.git'))
     && (spawnSync('git', ['-C', repo, 'status', '--porcelain'], { encoding: 'utf8' }).stdout || '').trim()
+  const lines = benchLines(wipe)
+  // La línea cuyo árbol git ya no puede leer no dice si tiene trabajo: cuenta como que lo tiene (R27).
+  const unreadable = (tree) => spawnSync('git', ['-C', tree, 'status', '--porcelain']).status !== 0
+  const dirtyLine = lines.find((line) => line.trees.some((tree) => unreadable(tree) || dirtyRepo(tree)))
   let stray = []
   // Si la carpeta entera es un repositorio —el banco de antes de este cambio—, su `status` ya cubre todo.
   if (wipe !== dir && !fs.existsSync(path.join(wipe, '.git'))) {
@@ -117,6 +150,7 @@ function makeBench(root, dir, force, name, { repos = [dir], wipe = dir } = {}) {
     try { stray = fs.readdirSync(wipe).filter((name) => !known.includes(name)) } catch { stray = [] }
   }
   const left = [wipe, ...repos].find(dirtyRepo) || (stray.length && path.join(wipe, stray[0]))
+    || (dirtyLine && dirtyLine.home)
   if (left && !force) {
     fail(`${left} tiene trabajo sin recoger. Guardá lo que esa corrida dejó antes de rehacerlo, `
       + 'o usá --force si ya lo tenés.', USAGE)
@@ -128,8 +162,10 @@ function makeBench(root, dir, force, name, { repos = [dir], wipe = dir } = {}) {
   //
   // **Y de acá para abajo el directorio no existe.** Eso es lo que sostiene que el andamiaje y el enlace
   // se escriban sin defensas: hasta el 073, los dos llevaban una por si algo sobrevivía al borrado.
-  const problema = clearBench(wipe, path.join(root, '.cauce-eval'))
-  if (problema) fail(problema, USAGE)
+  for (const target of [...lines.map((line) => line.home), wipe]) {
+    const problema = clearBench(target, path.join(root, '.cauce-eval'))
+    if (problema) fail(problema, USAGE)
+  }
   // Sin `force`, y eso es lo que hay que poder decir: sólo servía si algún archivo sobrevivía al borrado,
   // y la comprobación de arriba garantiza que no queda ninguno. Lo llevaba porque el mismo test falló tres
   // veces en un día con «El destino contiene …/AGENTS.md», y eso era el escritor de fondo que apagó el 073.
