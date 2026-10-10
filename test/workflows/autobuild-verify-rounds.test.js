@@ -67,11 +67,23 @@ test('si la pasada de la vuelta extra no contesta o sale en rojo, la parada es l
 })
 
 // Un criterio que no dice qué aserciar no es una prueba que falta: pedirle a Build que la escriba es
-// inventar la definición. Si aparece recién en la segunda pasada, frena como antes.
-test('un criterio ambiguo que aparece en la segunda pasada no compra la vuelta', async () => {
+// inventar la definición. Si aparece recién en la segunda pasada, para como el de la primera: pidiendo la
+// definición, no un test.
+test('un criterio ambiguo que aparece en la segunda pasada no compra la vuelta, y pide su definición', async () => {
   const vague = { ...lacks(), uncovered: [{ criterion: 'la pantalla se siente rápida', cause: 'ambiguous' }] }
   const out = await passes(lacks(DOC), vague, lacks())
-  assert.equal(out.result.reason, 'verify-hollow')
+  assert.equal(out.result.reason, 'acceptance-ambiguous')
+  assert.match(out.result.detail, /la pantalla se siente rápida/)
   assert.equal(out.turns, 2)
   assert.equal(out.bounces.length, 1)
+  const asks = out.prompts.filter((one) => one.key.endsWith('|verify-human')).map((one) => one.prompt).join('\n')
+  assert.match(asks, /no dice qué habría que aserciar/, 'la acción humana pide la decisión')
+  // Con la pasada además en rojo para igual, como en la primera pasada: las dos contestan lo mismo.
+  const red = await passes(lacks(DOC), { ...vague, passed: false, details: 'lint en rojo' })
+  assert.equal(red.result.reason, 'acceptance-ambiguous')
+  assert.match(red.result.detail, /la pantalla se siente rápida.*además los gates no pasaron: lint en rojo/s,
+    'y dice que los gates también estaban en rojo, con su detalle')
+  assert.doesNotMatch(out.result.detail, /gates no pasaron/, 'con los gates en verde no lo dice')
+  const first = await passes({ ...vague, passed: false, details: 'lint en rojo' })
+  assert.equal(first.result.reason, 'acceptance-ambiguous', 'la precondición: la primera pasada ya lo hacía así')
 })

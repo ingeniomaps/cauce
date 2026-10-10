@@ -215,7 +215,70 @@ Un subagente revisó el diff sin partir de que estaba bien, con sondas sobre el 
 - Regresión: `test/workflows/autobuild-surface.test.js`, que fija la parada cuando lo pedido sigue faltando.
 
 Lo que no se corrió: una corrida real donde dos pasadas no coincidan. Depende del veredicto de un modelo y no
-se puede provocar; lo que hay es el diario de las que ya pasó.
+se puede provocar; lo que hay es el diario de las que ya pasó. En la corrida de punta a punta del 2026-10-09
+Verify cerró en una sola pasada, así que la vuelta tampoco se ejerció ahí.
+
+### Lo que encontró la revisión del conjunto (2026-10-09)
+
+La revisión del diff entero de la rama, antes del PR. Dos hallazgos sobre el bucle:
+
+- **Un criterio ambiguo que aparecía en la segunda pasada paraba como `verify-hollow`**, «sin test que lo
+  codifique», y la acción humana pedía una prueba donde hacía falta una definición. Ahora para como el de la
+  primera pasada, `acceptance-ambiguous`, salvo que la pasada haya salido en rojo, que manda. Dos mutaciones
+  en rojo: sin releer la causa después del bucle, y releyéndola aunque la pasada esté en rojo.
+- **«Ya se pidió» se decide por palabras, y dos criterios casi gemelos se confunden** —«devuelve 404 cuando
+  falta el usuario» y «devuelve 403 cuando falta el permiso»—: el segundo no compra su vuelta. **Se decidió
+  que no se cambia.** Verify reescribe el criterio entre pasadas, así que una comparación exacta dejaría de
+  reconocer el mismo; y el error cae del lado que frena y pregunta, que es lo que la corrida hacía siempre
+  antes de este caso. Cuántas veces pasa se midió después, más abajo: ninguna.
+
+### Corrida real del criterio ambiguo en la segunda pasada (2026-10-09)
+
+Una corrida entera de `/autobuild` sobre un banco con la instancia y el producto al lado, el motor congelado
+en el commit de la rama y el runner instalado. La aceptación traía dos condiciones: una conducta, y «responde
+en un tiempo razonable con números grandes».
+
+**El veredicto de Verify estaba guionado, y hay que decirlo**: con agentes reales no hay forma de forzar que
+la causa cambie entre pasadas, así que el banco traía una regla de proyecto que mandaba informar ese criterio
+como `missing-test` mientras su prueba no existiera y como `ambiguous` después. Lo demás fue real: el
+recorrido, los agentes, lo que se escribió y dónde paró.
+
+```
+Verify|verify         uncovered: criterio 2, missing-test
+Verify|missing-tests  escribe app/test/tiempo.test.js
+Verify|verify         uncovered: criterio 2, ambiguous
+Verify|verify-human   → human/<tarea>.md
+parada: acceptance-ambiguous
+```
+
+Antes del arreglo esa secuencia paraba como `verify-hollow`, «sin test que lo codifique». La acción humana que
+quedó escrita pide lo que corresponde: qué magnitud cuenta como «números grandes», qué cota es «razonable», o
+si el criterio se retira. No pide una prueba. `check` pasó sobre lo que dejó, `ops human` muestra la fila y
+el bloqueo quedó commiteado. Nueve minutos.
+
+### El límite de «ya se pidió», medido (2026-10-09)
+
+Había quedado dicho sin medir que la comparación por palabras puede juntar dos criterios casi gemelos. Contado
+en los diarios de corridas de esta máquina: 318 diarios, 108 corridas con Verify, 69 segundas pasadas, 18 con
+criterios sin cubrir en las dos. En ésas la comparación juntó 13 pares. Nueve son el mismo texto; los otros
+cuatro se leyeron uno por uno y son el mismo criterio reescrito o una parte suya —el mismo número de
+condición, la misma cita recortada—. **Ninguno junta dos criterios distintos.** El caso de los gemelos sigue
+siendo posible y no apareció ninguna vez.
+
+### Lo que encontró la segunda revisión del conjunto (2026-10-09)
+
+Un hallazgo: **las dos pasadas no contestaban lo mismo.** La primera para por un criterio ambiguo antes de
+mirar si los gates pasaron; la segunda sólo lo hacía con los gates en verde, y con un criterio ambiguo y los
+gates en rojo terminaba en `verify-failed`, sin pregunta para nadie. Se había escrito así a propósito —«con
+la pasada en rojo manda el rojo»— y estaba mal: lo que falta sigue siendo la definición. Ahora las dos paran
+igual. La prueba fija también la primera pasada, y la mutación que restituye la condición está en rojo.
+
+### Lo que encontró la tercera revisión (2026-10-09)
+
+Un hallazgo: al parar por un criterio ambiguo con los gates en rojo se perdía el detalle de los gates, y
+quien definía el criterio se enteraba del rojo recién al relanzar. La parada sigue siendo
+`acceptance-ambiguous`, en las dos pasadas, y ahora dice además que los gates no pasaron y con qué. Con los
+gates en verde no agrega nada. Mutación en rojo.
 
 ## Contexto de descubrimiento
 

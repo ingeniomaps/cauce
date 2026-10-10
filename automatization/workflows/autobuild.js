@@ -1768,14 +1768,20 @@ while (rounds++ < MAX_TASKS) {
   // Un criterio que nadie sabe cómo aserciar no es trabajo que falta sino una definición que falta, y
   // definirla acá sería inventarla. Escribir la prueba que falta, en cambio, es trabajo del recorrido:
   // hacer parar a una persona por eso le cobra una interrupción por algo que se resolvía solo.
-  const ambiguous = verified.uncovered
-    .find((entry) => entry.cause === 'ambiguous' && !declaredOut(entry.criterion))
-  if (ambiguous) {
+  const haltIfAmbiguous = async () => {
+    const ambiguous = verified.uncovered
+      .find((entry) => entry.cause === 'ambiguous' && !declaredOut(entry.criterion))
+    if (!ambiguous) return null
     const note = await registerHuman(
       `Registrá ${task.id} en ${HUMAN}: el criterio "${ambiguous.criterion}" no dice qué habría ` +
       `que aserciar, y hace falta la decisión que lo fija.`, 'verify-human', task.id)
-    return halt('acceptance-ambiguous', `${ambiguous.criterion}${note}`)
+    // Con los gates además en rojo, eso viaja en la misma parada: quien define el criterio y relanza no
+    // tiene por qué enterarse recién ahí.
+    const red = verified.passed ? '' : ` · además los gates no pasaron: ${verified.details}`
+    return halt('acceptance-ambiguous', `${ambiguous.criterion}${note}${red}`)
   }
+  const vague = await haltIfAmbiguous()
+  if (vague) return vague
   // Lo que no tiene superficie no frena ni rebota: viaja a Done, que lo escribe como `tests: n/a`. Se filtra
   // por exclusión y no por `missing-test` para que una causa que no se conozca siga frenando (R27).
   //
@@ -1790,7 +1796,9 @@ while (rounds++ < MAX_TASKS) {
   // corrida por algo que nunca se le pidió a nadie: en los diarios de corridas, 12 de 39 segundas pasadas
   // (caso 346). Lo que aparece recién ahí compra una vuelta más, y una sola. Lo que ya se pidió y sigue
   // faltando no la compra —también cuando viene junto a uno nuevo—: esa prueba ya se intentó escribir. Y
-  // tampoco la compra lo que no es una prueba que falte: un criterio ambiguo pide una definición, no un test.
+  // tampoco la compra lo que no es una prueba que falte: un criterio ambiguo pide una definición, no un test,
+  // y sale del bucle para parar como el de la primera pasada: antes de mirar si los gates pasaron, igual
+  // que ahí. Con los gates en rojo además, lo que falta sigue siendo la definición.
   const VERIFY_ROUNDS = 2
   const asked = []
   const askedAlready = () => lacking().some((entry) => asked.some((one) => sameWords(one, entry.criterion)))
@@ -1805,6 +1813,10 @@ while (rounds++ < MAX_TASKS) {
     if (!verified) {
       return halt('agent-unavailable', 'la pasada de Verify que sigue a las pruebas faltantes no devolvió resultado')
     }
+  }
+  if (asked.length) {
+    const vagueLater = await haltIfAmbiguous()
+    if (vagueLater) return vagueLater
   }
   if (!verified.passed || !verified.commands.length) return halt('verify-failed', verified.details)
   // Verde por ausencia: los gates pasaron y ninguno corrió las pruebas que esta tarea escribió. El exit
