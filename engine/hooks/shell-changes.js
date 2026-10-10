@@ -118,12 +118,32 @@ const REDIRECT = /(?:^|\s)\d*&?[<>]{1,2}&?\d*\s*\S*/g
 // El cuerpo de un heredoc es dato también cuando su delimitador no son sólo letras —`END-1`, `E.O.F`, `1`,
 // `\EOF`—: la lectura común deja ese cuerpo, y acá una línea suya con `rm` o `mkdir` se leía como comando.
 // Y `export D=…` asigna igual que `D=…`. `local` no: fuera de una función falla y deja la variable vacía.
-const HEREDOC_BODY = /<<(-?)\s*\\?(['"]?)(\w[\w.-]*)\2([^\n]*)\n[\s\S]*?^\s*\3\s*$/gm
+const OPENS = /<<-?\s*\\?(['"]?)(\w[\w.-]*)\1/
 const EXPORTED = /(^|[;&\n])[ \t]*(?:export|readonly)\s+(?=[A-Za-z_]\w*=)/g
+
+// El comando sin el cuerpo de sus heredocs, línea por línea y no con una expresión: la lectura común ya vació
+// los de delimitador corriente, y una expresión que busca el terminador de cada uno recorría el resto del
+// texto por cada `<<EOF` que ya no lo tiene —mil doscientos milisegundos con seis mil—. El cuerpo se quita
+// sólo si su terminador está más abajo; si no, la línea queda como está. El terminador se deja: es una palabra
+// suelta que nadie lee.
+function withoutBodies(text) {
+  const lines = text.split('\n')
+  const last = new Map(lines.map((line, at) => [line.trim(), at]))
+  const kept = []
+  for (let at = 0; at < lines.length; at += 1) {
+    kept.push(lines[at])
+    const opens = lines[at].match(OPENS)
+    if (!opens || !(last.get(opens[2]) > at)) continue
+    while (lines[at + 1].trim() !== opens[2]) at += 1
+  }
+  return kept.join('\n')
+}
+
 // Las líneas en blanco se juntan antes que nada. No le dicen nada a un shell, y lo que lee el comando de acá
 // en más —varias expresiones de las que comparten todos los guards— vuelve atrás en cada corrida de saltos:
-// con cuarenta mil tardaba cuatro segundos.
-const asRead = (command) => String(command).replace(/\n(?:[ \t]*\n)+/g, '\n').replace(HEREDOC_BODY, '<<$3$4')
+// con cuarenta mil tardaba cuatro segundos. Menos la que sigue a una barra: ahí la barra une con esa línea
+// vacía, y juntarla la pegaba con el comando de abajo.
+const asRead = (command) => withoutBodies(String(command).replace(/(?<!\\)\r?\n(?:[ \t\r]*\n)+/g, '\n'))
   .replace(EXPORTED, '$1')
 
 // Cada tramo que corre algo, con su verbo, sus palabras y la carpeta donde queda parado. Un subshell devuelve

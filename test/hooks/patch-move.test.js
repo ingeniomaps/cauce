@@ -160,3 +160,12 @@ test('un renombrado es un borrado cuando el nombre nuevo no es una prueba para e
     ['service/src/a.spec.ts', 'service/src/a.spec.disabled'], ['service/pkg/a_test.go', 'service/pkg/a.test.off'],
     ['service/tests/login.py', 'service/attic/login.txt']]) blocked('test-evidence', move(from, to), /borra una prueba/)
 })
+
+test('un parche con cientos de renombrados se juzga en un tiempo que crece con su tamaño', () => {
+  const root = project('ops-hook-patch-move-muchos-')
+  const sections = Array.from({ length: 800 }, (_, at) => [`*** Update File: service/old/${at}.sql`,
+    `*** Move to: service/migrations/${at}.sql`]).flat()
+  const started = Date.now()
+  assert.doesNotThrow(() => execute('migrations', asCodex(root, patchOf(...sections))))
+  assert.ok(Date.now() - started < 1000, `tardó ${Date.now() - started} ms`)
+})

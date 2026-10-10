@@ -64,6 +64,14 @@ function migrations(input) {
   const isMigration = M.pattern(root ? configOf(root) : {})
   // Un parche trae varios archivos en un sobre: cada uno se juzga por su sección, no por el sobre entero.
   const sections = M.patchSections(patchOf(input))
+  // Cuál de los archivos que el parche renombra trae algo destructivo, si alguno. Se busca una vez y recién
+  // cuando hace falta: buscado por cada destino, un parche con cientos de renombrados tardaba segundos.
+  const carries = (one) => M.destructive(onDisk(path.resolve(cwdOf(input), one)) || '')
+  let sought
+  const carrier = () => {
+    if (!sought) sought = { from: [...sections.values()].map((one) => one.movedFrom).filter(Boolean).find(carries) }
+    return sought.from
+  }
   for (const raw of filesOf(input)) {
     const normalized = raw.replace(/\\/g, '/')
     if (!isMigration.test(normalized)) continue
@@ -94,9 +102,7 @@ function migrations(input) {
     // origen con otro renombrado o armar un ciclo, y una cadena seguida se deja llevar a un archivo limpio. Se
     // mira todo archivo que el parche renombra: si alguno trae algo destructivo y el destino es una migración,
     // frena, y el mensaje dice cuál.
-    const arrives = section && section.movedFrom !== undefined
-    const carries = (one) => M.destructive(onDisk(path.resolve(cwdOf(input), one)) || '')
-    const from = arrives ? M.patchMoves(patchOf(input)).map((one) => one.from).find(carries) : undefined
+    const from = section && section.movedFrom !== undefined ? carrier() : undefined
     const carried = from ? carries(from) : null
     if (carried) {
       block(`${raw} entra como migración por un renombrado, y el parche renombra ${from}, que trae `

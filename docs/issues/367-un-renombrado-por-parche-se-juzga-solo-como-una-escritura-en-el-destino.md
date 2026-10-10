@@ -267,7 +267,8 @@ estuvo mal**: la revisión de después mostró que una cadena se puede armar par
 —ocupando el nombre de origen con otro renombrado, o con un ciclo— y lea un archivo limpio. Ya no se sigue
 ninguna cadena: si el destino es una migración, se mira todo archivo que el parche renombra. El costo es de
 la misma clase que el de arriba: un parche que además renombra otro archivo con algo destructivo frena. Si
-la herramienta que aplica el parche acepta secciones en cadena no se comprobó.
+la herramienta que aplica el parche acepta secciones en cadena no se comprobó. Y cuál de esos archivos trae
+algo se busca una vez por parche: buscado por cada destino, uno con mil renombrados tardaba ocho segundos.
 
 Lo que deja como lección, porque es de método y no de este código: una mutación que sobrevive dice que
 falta una prueba o que la rama no se puede observar, y antes de quitar el código hay que demostrar lo

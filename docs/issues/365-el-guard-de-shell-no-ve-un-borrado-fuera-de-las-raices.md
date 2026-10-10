@@ -386,6 +386,13 @@ juntan antes de leer nada. La lectura nueva se mide sola, sin compartir tope con
 mil saltos, espacios o paréntesis, menos de medio segundo cada uno. Lo que el guard ya tardaba antes de
 este caso con esas entradas sigue igual, y no es de acá.
 
+Juntar las líneas en blanco trajo su propia regresión, que encontró la revisión siguiente: una barra al
+final de una línea, seguida de una en blanco, une con esa línea vacía y no con el comando de abajo. Juntada,
+el `rm` de abajo se leía como un argumento más del `echo` de arriba y dejaba de frenar; y al revés, lo de
+abajo se leía como un destino más de un `rm` de varias líneas. La línea que sigue a una barra ya no se
+junta. La misma revisión midió que quitar el cuerpo de los heredocs con una expresión recorría el resto del
+texto por cada uno que ya venía vacío —mil doscientos milisegundos con seis mil—; se hace línea por línea.
+
 ### Sesiones reales (2026-10-10)
 
 Hasta acá se le había preguntado al guard instalado. Faltaba una sesión de verdad, con comandos que corren.

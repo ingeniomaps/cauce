@@ -51,6 +51,11 @@ test('borrar fuera de las raíces frena como escribir ahí, con el verbo que sea
     'cd && rm -rf fuera-de-las-raices', `rm -rf {${OUT}/a,${OUT}/b}`, `find -L ${OUT} -name x -delete`,
     `(cd ${OUT} && n=$(ls | wc -l); rm -rf old)`, `cd ${OUT} 2>/dev/null && rm -rf old`,
     `if ! rm -rf ${OUT}/x; then echo no; fi`, `while rm ${OUT}/x; do :; done`,
+    // Una barra al final seguida de una línea en blanco une con esa línea vacía, no con el comando de abajo.
+    `echo hola \\\n\nrm -rf ${OUT}/a`, `echo hola \\\n  \t\nrm -rf ${OUT}/a`, `cd ${OUT} \\\n\nrm -rf sub`,
+    `echo hola \\\r\n\r\nrm -rf ${OUT}/a`,
+    // Un heredoc que no cierra no tiene cuerpo que sacar: lo que sigue son comandos.
+    `cat <<'E-1'\nrm -rf ${OUT}/x`,
     `export D=${OUT}; rm -rf $D/sub`, `pushd ${OUT} && rm -rf sub`, `if cd ${OUT}; then rm -rf sub; fi`,
     `rm -rf "${OUT}/con espacio/sub"`, `cd "${OUT}/con espacio" && rm -rf old`, `cd -P ${OUT} && rm -rf old`,
     `cd "$X"; if cd ${OUT}; then rm -rf sub; fi`, 'if cd ../../../../../../../..; then rm -rf no-es-de-nadie; fi',
@@ -100,6 +105,8 @@ test('lo que se borra adentro, en el temporal o sin poder saber dónde sigue pas
     `F=${OUT}/plantilla.conf; rm -f \${F##*/}`,
     // Una ruta entre comillas con espacios es una sola, tenga lo que tenga después del espacio.
     'rm -rf "service/a /b"', 'touch "service/a /b"', 'mkdir -p "service/mis docs/ /abs"',
+    // Y lo que viene después de esa línea en blanco no es un destino más del borrado de arriba.
+    `rm -rf \\\n  service/a \\\n\n  ${OUT}/b`,
     // Nombrarlo no es borrarlo.
     `echo "rm -rf ${OUT}"`, `find ${OUT} -name x`, `git log --grep 'rm -rf ${OUT}'`,
   ]
@@ -192,7 +199,10 @@ test('un comando largo con funciones y llaves se lee en un tiempo que crece con 
   for (const [name, text] of [['saltos de línea', `echo a${'\n'.repeat(80000)}rm -rf service/src`],
     ['espacios', `echo${' '.repeat(80000)}x; rm -rf service/src`],
     ['paréntesis', `echo "${')'.repeat(80000)}" x; rm -rf service/src`],
-    ['paréntesis sueltos', `echo ${')'.repeat(80000)} x; rm -rf service/src`]]) {
+    ['paréntesis sueltos', `echo ${')'.repeat(80000)} x; rm -rf service/src`],
+    ['saltos de Windows', `echo a${'\r\n'.repeat(80000)}rm -rf service/src`],
+    // Heredocs que ya llegan sin cuerpo, que es como los deja la lectura común: no hay terminador que buscar.
+    ['heredocs', `${'cat <<EOF\n'.repeat(20000)}rm -rf service/src`]]) {
     const from = Date.now()
     steps(text, '/srv/proyecto')
     assert.ok(Date.now() - from < 500, `${name}: ${Date.now() - from} ms`)
