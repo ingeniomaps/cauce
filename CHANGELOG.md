@@ -58,6 +58,11 @@ diseño — eso vive en el commit y en el código.
 
 ### Corregido
 
+- **`ops evidence` encuentra la prueba de una tarea cerrada en una línea de trabajo.** Buscaba sólo en lo que
+  estaba en disco. En una línea el producto es un enlace que no recorría, y la tarea se commitea en una rama
+  cuyo árbol se retira, así que todas las trazas salían `[ausente]`, igual que una prueba inventada. Ahora
+  recorre el producto enlazado y, lo que el disco no tiene, lo busca en el commit que la entrada nombra; la
+  salida dice cuándo la respuesta salió de un commit y no de un archivo en disco (caso 353).
 - **`check` avisa de un repositorio anidado que una línea de trabajo va a encontrar vacío.** Si una raíz de
   `workspaceRoots` vive dentro de la instancia y el repositorio de la instancia la registró como enlace de
   git —lo que deja un `git add` que la incluye—, una línea nace con esa carpeta vacía y todo sigue en verde.

@@ -85,18 +85,32 @@ function searchable(artifact) {
   return /^[^\s]{4,}$/.test(artifact) && /[A-Za-z]/.test(artifact)
 }
 
-// `skip` son carpetas que no se recorren: el `planning/` de la instancia. Con la raíz por defecto queda adentro
-// del recorrido, y ahí la entrada que se contrasta se encontraba a sí misma: nombraba una prueba inventada
-// y el nombre aparecía, en ella (caso 316).
+// `skip` son carpetas que no se recorren, con todo lo que tienen adentro: el `planning/` de la instancia. Con
+// la raíz por defecto queda adentro del recorrido, y ahí la entrada que se contrasta se encontraba a sí misma:
+// nombraba una prueba inventada y el nombre aparecía, en ella (caso 316). Se compara la ruta real, porque por
+// otro nombre —un enlace— se volvía a entrar.
+//
+// Un enlace se sigue en un solo caso: cuelga directo de la raíz y lleva a un repositorio. Es lo que arma
+// `ops line`, donde el producto entero es un enlace al original, y sin seguirlo el contraste no veía nada de
+// él (caso 353). Ningún otro: un enlace a una carpeta cualquiera lleva a `/`, a un árbol enorme o a una parte
+// del `planning/`, y las tres cosas pasaron al probarlo. Cada enlace seguido lleva su propio tope, para que
+// uno grande no deje sin lugar a los demás.
+const real = (dir) => { try { return fs.realpathSync(dir) } catch { return '' } }
+const under = (dir, skip) => skip.some((one) => dir === one || dir.startsWith(one + path.sep))
 function sourceFiles(dir, skip, found = [], depth = 0) {
-  if (depth > 8 || found.length > 5000) return found
+  const here = real(dir)
+  if (depth > 8 || found.length > 5000 || !here || under(here, skip)) return found
   let entries = []
   try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch { return found }
   for (const entry of entries) {
     if (entry.name === 'node_modules' || entry.name === '.git' || entry.name.startsWith('.')) continue
     const full = path.join(dir, entry.name)
-    if (!entry.isDirectory()) found.push(full)
-    else if (!skip.includes(full)) sourceFiles(full, skip, found, depth + 1)
+    if (entry.isSymbolicLink() && depth === 0 && fs.existsSync(path.join(full, '.git'))) {
+      found.push(...sourceFiles(full, skip, [], depth + 1))
+    // Un enlace a un archivo se lee como archivo, salvo que lleve a lo que no se recorre.
+    } else if (entry.isSymbolicLink() && under(real(full), skip)) continue
+    else if (!entry.isDirectory()) found.push(full)
+    else sourceFiles(full, skip, found, depth + 1)
   }
   return found
 }
@@ -223,10 +237,10 @@ function parts(given, tree) {
 // Hasta dónde llega: el nombre se busca como texto, así que lo da por bueno si es parte de otro más largo
 // o si está en un comentario; y de un tramo sin comillas se busca hasta donde empieza la aclaración, que
 // puede ser menos que el nombre.
-function contrastParts({ files, names, cited, code, prose, built }, tree, read) {
+function contrastParts({ files, names, cited, code, prose, built }, tree, read, scan = tree) {
   const within = files.map((file) => tree.filter((one) => one.endsWith(`/${file}`)))
   if (within.some((matching) => !matching.length)) return { verdict: 'ausente' }
-  const where = files.length ? within.flat() : tree
+  const where = files.length ? within.flat() : scan
   const text = (file) => (built ? carried(read(file)) : read(file))
   const lacks = (name) => !where.some((file) => text(file).includes(name))
   const all = [...names, ...cited, ...code]
@@ -239,13 +253,32 @@ function contrastParts({ files, names, cited, code, prose, built }, tree, read) 
   return { verdict: 'encontrado', absent }
 }
 
-// El veredicto por rastro: `encontrado`, `parcial`, `ausente` o `inbuscable`. Sin raíces declaradas no se
-// afirma nada — no hay dónde mirar, y decir «ausente» ahí sería inventar el hallazgo.
+// El veredicto por rastro: `encontrado`, `parcial`, `ausente` o `inbuscable`. Sin dónde mirar no se afirma
+// nada — decir «ausente» ahí sería inventar el hallazgo.
 //
 // Una sola palabra se busca como siempre: en la ruta de algún archivo o dentro del fuente de alguno, porque
 // lo que un rastro así nombra suele ser la prueba —`TestAddSuma`— y no el archivo que la contiene.
+//
+// `tree` y `read` son de dónde se mira: el disco, o el árbol de un commit. `scan` es en qué archivos se busca
+// cuando la traza no nombra ninguno; en disco son todos.
+function contrastWith(tests, { tree, read, scan = tree }, searchablePlace = true) {
+  return traces(tests).map((trace) => {
+    if (!searchablePlace) return { ...trace, verdict: 'inbuscable' }
+    if (searchable(trace.artifact)) {
+      const found = tree.some((file) => file.includes(trace.artifact))
+        || scan.some((file) => read(file).includes(trace.artifact))
+      return { ...trace, verdict: found ? 'encontrado' : 'ausente' }
+    }
+    const found = parts(trace.artifact, tree)
+    const empty = ![found.files, found.names, found.cited, found.code].some((one) => one.length)
+    if (empty) return { ...trace, verdict: 'inbuscable' }
+    return { ...trace, ...found, ...contrastParts(found, tree, read, scan) }
+  })
+}
+
 function contrast(tests, roots, skip = []) {
-  const tree = roots.flatMap((root) => sourceFiles(root, skip)).map((file) => `/${file.replace(/\\/g, '/')}`)
+  const skipped = skip.map(real).filter(Boolean)
+  const tree = roots.flatMap((root) => sourceFiles(root, skipped)).map((file) => `/${file.replace(/\\/g, '/')}`)
   const texts = new Map()
   const read = (file) => {
     if (texts.has(file)) return texts.get(file)
@@ -254,17 +287,30 @@ function contrast(tests, roots, skip = []) {
     texts.set(file, text)
     return text
   }
-  return traces(tests).map((trace) => {
-    if (!roots.length) return { ...trace, verdict: 'inbuscable' }
-    if (searchable(trace.artifact)) {
-      const found = tree.some((file) => file.includes(trace.artifact) || read(file).includes(trace.artifact))
-      return { ...trace, verdict: found ? 'encontrado' : 'ausente' }
-    }
-    const found = parts(trace.artifact, tree)
-    const empty = ![found.files, found.names, found.cited, found.code].some((one) => one.length)
-    if (empty) return { ...trace, verdict: 'inbuscable' }
-    return { ...trace, ...found, ...contrastParts(found, tree, read) }
-  })
+  return contrastWith(tests, { tree, read }, roots.length > 0)
 }
 
-module.exports = { MAX_RUNS, record, runs, lastBefore, traces, contrast }
+// Lo que el disco no alcanzó, buscado en los commits que la entrada nombra. En una línea de trabajo la tarea
+// se commitea en su rama y su árbol se retira, así que la prueba recién escrita no está en ningún archivo en
+// disco: sin esto toda traza salía `ausente`, que es lo mismo que contesta una prueba inventada (caso 353).
+//
+// Sólo mejora una respuesta, nunca la empeora, y deja dicho de qué commit salió: haberla visto en un commit
+// no afirma lo mismo que verla en disco — la rama puede no estar puesta en ningún lado, o haberse movido.
+// Mejorar es subir el veredicto, o con el archivo ya encontrado, que aparezca más de lo que la traza cita:
+// el archivo podía existir desde antes y lo que la tarea le agregó, no.
+// `inbuscable` cuenta como `ausente`: el disco pudo no tener el archivo que la traza nombra y el commit sí.
+const RANK = { inbuscable: 0, ausente: 0, parcial: 1, encontrado: 2 }
+const lacking = (trace) => (trace.absent || []).length
+const improvable = (trace) => trace.verdict in RANK && (RANK[trace.verdict] < RANK.encontrado || lacking(trace))
+const better = (again, trace) => RANK[again.verdict] > RANK[trace.verdict]
+  || (again.verdict === 'encontrado' && trace.verdict === 'encontrado' && lacking(again) < lacking(trace))
+function contrastCommits(tests, onDisk, sources) {
+  return sources.reduce((current, source) => {
+    if (!current.some(improvable)) return current
+    const again = contrastWith(tests, source)
+    return current.map((trace, index) => (better(again[index], trace)
+      ? { ...again[index], commit: source.sha } : trace))
+  }, onDisk)
+}
+
+module.exports = { MAX_RUNS, record, runs, lastBefore, traces, contrast, contrastCommits }

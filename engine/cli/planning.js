@@ -21,6 +21,8 @@ const CK = require('../planning/checkpoints')
 const HA = require('../planning/human-actions')
 const O = require('../core/ownership')
 const EV = require('../core/evidence')
+const R = require('../core/repos')
+const { citedCommits } = require('../planning/done-commits')
 const { fail, planningRoot, REFUSED, TODAY, USAGE } = require('./io')
 
 // Qué dimensiones enumera el molde de `organization/` y cuáles dejaron de estar. Un agente que reescribe
@@ -57,7 +59,8 @@ function evidence(dir, cli) {
     .filter((workspace) => workspace && workspace.path)
     .map((workspace) => path.resolve(opsDir, workspace.path))
     .filter((one) => fs.existsSync(one))
-  const traces = EV.contrast(entry.tests, roots, [path.resolve(root)])
+  const traces = EV.contrastCommits(entry.tests, EV.contrast(entry.tests, roots, [path.resolve(root)]),
+    R.commitSources(opsDir, citedCommits(entry.commit), [fs.realpathSync(path.resolve(root))]))
   const runs = EV.runs(opsDir)
   const report = { task: entry.slug, epic: entry.epic, traces, runs }
   if (cli.has('--json')) return console.log(JSON.stringify(report))
@@ -69,7 +72,9 @@ function evidence(dir, cli) {
       ? (roots.length ? 'describe la prueba en vez de nombrarla' : 'el proyecto no declara raíces de código')
       : trace.verdict === 'parcial' ? `el archivo existe; no aparece en él: ${trace.missing.join(', ')}`
         : trace.verdict === 'encontrado' && trace.files?.length ? found(trace) : ''
-    console.log(`  ${trace.criterion} → ${trace.artifact}  [${trace.verdict}]${nota ? ` — ${nota}` : ''}`)
+    // De dónde salió, en todo veredicto que no vio el disco: sin eso, «el archivo existe» se lee como en disco.
+    const origin = trace.commit ? ` (en el commit ${trace.commit}, no en disco)` : ''
+    console.log(`  ${trace.criterion} → ${trace.artifact}  [${trace.verdict}]${nota ? ` — ${nota}` : ''}${origin}`)
   }
   if (!runs.length) console.log('GATES  (sin corridas registradas; `verify` todavía no corrió acá)')
   else console.log(`GATES  ${runs.length === 1 ? 'la última corrida' : `las últimas ${runs.length} corridas`} `

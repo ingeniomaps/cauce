@@ -265,7 +265,8 @@ function commitsAmong(repo, shas) {
   return found
 }
 
-function commitStatus(opsRoot, items) {
+// En qué repositorios buscar cada commit citado: el que la traza nombra, o las raíces que ya son uno.
+function commitPlaces(opsRoot, items) {
   const roots = declaredRoots(opsRoot)
   const named = new Map()
   // El nombre es una carpeta dentro de una raíz o el de una raíz que ya es el repositorio: las dos formas
@@ -283,7 +284,11 @@ function commitStatus(opsRoot, items) {
     return named.get(name)
   }
   const plain = reposFor(opsRoot, '.')
-  const where = items.map((item) => (item.repo ? [repoOfName(item.repo)].filter(Boolean) : plain))
+  return items.map((item) => (item.repo ? [repoOfName(item.repo)].filter(Boolean) : plain))
+}
+
+function commitStatus(opsRoot, items) {
+  const where = commitPlaces(opsRoot, items)
   const known = new Map()
   for (const repo of [...new Set(where.flat())]) {
     const asked = [...new Set(items.filter((_, index) => where[index].includes(repo)).map((item) => item.sha))]
@@ -295,7 +300,49 @@ function commitStatus(opsRoot, items) {
   })
 }
 
+// El árbol de cada commit citado que algún repositorio conoce, para quien necesita leer lo que el disco no
+// tiene (caso 353). `tree` son las rutas como se verían en disco, `read` trae el contenido de ese commit, y
+// `scan` son los archivos que el commit tocó: ahí se busca lo que una traza no ubica en ningún archivo. Buscar
+// en el árbol entero era un `git show` por archivo del repositorio, y encontraba la palabra en cualquier lado.
+//
+// Del árbol queda afuera lo mismo que del disco: `skip` —el `planning/` de la instancia, que viaja en el
+// commit cuando vive en el repositorio del producto, y ahí la entrada se encontraba a sí misma (caso 316)—,
+// `node_modules` y lo que empieza con punto. `skip` se compara contra la ruta real del repositorio, que puede
+// haberse nombrado por un enlace.
+//
+// De un merge, lo tocado es lo que trajo respecto de su primer padre: `diff-tree` a secas no lista nada. Y
+// `scan` tiene tope, porque es un `git show` por archivo: un commit que toca más que eso no es el de una tarea.
+const BIG = { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 }
+const SCANNED = 500
+const hidden = (file) => file.split('/').some((part) => part === 'node_modules' || part.startsWith('.'))
+function commitSources(opsRoot, items, skip = []) {
+  const where = commitPlaces(opsRoot, items)
+  return items.flatMap((item, index) => {
+    const repo = where[index].find((one) => isCommit(one, `${item.sha}^{commit}`))
+    if (!repo) return []
+    const slashed = (dir) => `${dir.split(path.sep).join('/')}/`
+    const prefix = slashed(repo)
+    const truly = slashed(fs.realpathSync(repo))
+    const kept = (file) => !hidden(file) && !skip.some((dir) => `${truly}${file}`.startsWith(slashed(dir)))
+    const list = (...args) => (spawnSync('git', ['-C', repo, ...args], BIG).stdout || '').split('\0')
+      .filter(Boolean).filter(kept).map((one) => prefix + one)
+    const merge = (git(repo, 'rev-list', '--parents', '-n', '1', item.sha).stdout || '').trim().split(/\s+/).length > 2
+    const touched = merge ? list('diff', '--name-only', '-z', `${item.sha}^1`, item.sha)
+      : list('diff-tree', '--no-commit-id', '--name-only', '-r', '--root', '-z', item.sha)
+    const texts = new Map()
+    const read = (file) => {
+      if (!texts.has(file)) {
+        const shown = spawnSync('git', ['-C', repo, 'show', `${item.sha}:${file.slice(prefix.length)}`], BIG)
+        texts.set(file, shown.status === 0 ? shown.stdout : '')
+      }
+      return texts.get(file)
+    }
+    return [{ sha: item.sha, read, tree: list('ls-tree', '-r', '--name-only', '-z', item.sha),
+      scan: touched.slice(0, SCANNED) }]
+  })
+}
+
 module.exports = {
   serviceDirs, reposFor, repoOf, lastCommit, coverageWarnings, unrecordedHumanActions, commitFiles, commitStatus,
-  nestedRootWarnings,
+  nestedRootWarnings, commitSources,
 }
