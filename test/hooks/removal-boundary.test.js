@@ -90,6 +90,12 @@ test('lo que se borra adentro, en el temporal o sin poder saber dónde sigue pas
     // Y el cuerpo de un heredoc también, se llame como se llame su delimitador.
     'cat > service/x.sh <<\\EOF\nrm -rf /var/www/old\nEOF', "cat > service/x.sh <<'END-1'\nmkdir /opt/x\nEND-1",
     'cat > service/f.sh <<1\nmkdir /srv/x\n1',
+    // Una expansión de parámetro no es una ruta: `${F##*/}` es el nombre del archivo, no su carpeta de afuera.
+    `F=${OUT}/plantilla.conf; rm -f \${F##*/}`,
+    // Una ruta entre comillas con espacios es una sola, tenga lo que tenga después del espacio.
+    'rm -rf "service/a /b"', 'touch "service/a /b"', 'mkdir -p "service/mis docs/ /abs"',
+    // El `cd` del cuerpo de una función que nadie llama no mueve nada.
+    'f() {\n  cd /\n}\nrm -rf z',
     // Nombrarlo no es borrarlo.
     `echo "rm -rf ${OUT}"`, `find ${OUT} -name x`, `git log --grep 'rm -rf ${OUT}'`,
   ]

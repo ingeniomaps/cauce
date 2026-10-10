@@ -450,7 +450,8 @@ function shellBoundary(input) {
     ...creations(ran).map((one) => ({ ...one, verb: 'escribe en', lands: landing })),
   ]
   for (const { raw, base, verb, lands } of changes) {
-    const named = home(assigned(raw))
+    // `${F##*/}` no es la variable: es un pedazo de su valor. Reemplazarla ahí juzgaba la ruta entera.
+    const named = /\$\{\w+[^\w}]/.test(raw) ? raw : home(assigned(raw))
     if (/[$`\u0000]/.test(named) || (base === null && !path.isAbsolute(named))) continue
     const at = lands(base || '/', named)
     if (TEMP.test(at)) continue

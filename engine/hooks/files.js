@@ -134,6 +134,11 @@ function isTestFile(raw) {
     || /^test_.+\.py$/i.test(base)
 }
 
+// Un nombre que sigue siendo de prueba aunque `isTestFile` no lo cuente entre los que cuida: otra extensión
+// —`.mjs`, `.cjs`, `.mts`— u otra herramienta —`.cy.ts`, `.e2e.ts`—. Renombrar hacia uno de éstos no saca la
+// prueba de ningún lado, y frenarlo era frenar una migración de módulos corriente.
+const STILL_A_TEST = /\.(?:test|spec|cy|e2e)\.[a-z]+$/i
+
 function testEvidence(input) {
   if (process.env.OPS_TEST_EVIDENCE_OVERRIDE === '1') return
   const why = 'Una prueba apagada no falla y una suite sin ella sale verde igual: el verde deja de ' +
@@ -148,7 +153,8 @@ function testEvidence(input) {
   }
   // Renombrarla a un nombre que ya no es de prueba la saca de la suite igual que borrarla (caso 367).
   for (const { from, to } of patchMoves(patchOf(input))) {
-    if (!isTestFile(from) || isTestFile(to) || approved(input, from)) continue
+    const stays = isTestFile(to) || STILL_A_TEST.test(path.basename(to))
+    if (!isTestFile(from) || stays || approved(input, from)) continue
     block(`${from} borra una prueba: renombrada a ${to} deja de serlo.\n${why}${how(from)}`)
   }
   const content = contentOf(input)

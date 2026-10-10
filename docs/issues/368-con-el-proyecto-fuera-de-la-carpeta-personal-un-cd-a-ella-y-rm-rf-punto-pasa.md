@@ -90,6 +90,15 @@ justo las que menos se miran: servidores y contenedores.
   también lo de adentro.
 - La comparación de arriba, dentro de una jaula de sólo lectura. Ningún comando se ejecutó.
 
+### Lo que encontró la revisión independiente (2026-10-10)
+
+Una cosa, que no se arregló y se deja dicha. El resolvedor de este guard parte las palabras de un comando
+sin mirar las comillas —es anterior a este caso, y así ve lo que cuida—, y con la carpeta personal en la
+lista esa lectura la alcanza: parado en ella, `rm -rf "a . b"` o `rm -rf foo/..` frenan como si se la
+llevaran entera. Son las mismas formas que ya frenaban sobre el directorio actual, nadie las escribe, y la
+salida es nombrar la carpeta sin esos tramos. Cambiar cómo ese resolvedor lee es justo lo que este guard no
+aguantó tres veces en esta versión.
+
 ## Contexto de descubrimiento
 
 Lo encontró una revisión del caso 365, comparando el guard destructivo contra su versión anterior con la

@@ -130,7 +130,11 @@ function steps(command, cwd) {
   const outer = []
   let base = cwd
   const joined = expandAssigned(asRead(command)).replace(QUOTED_CD, '$1$3')
+  // El cuerpo de una función no corre al definirla: su `cd` no deja parado a lo que viene después.
+  const bodies = []
   for (const { text, opens, closes } of pieces(joined)) {
+    if (/^\s*(?:function\s+[\w-]+\s*(?:\(\))?|[\w-]+\s*\(\))\s*\{/.test(text)) bodies.push(base)
+    else if (/^\s*\}\s*$/.test(text) && bodies.length) base = bodies.pop()
     for (let level = 0; level < opens; level += 1) outer.push(base)
     // Sin el comentario ni las redirecciones: `rm -f x 2> /dev/null` no borra ni `2>` ni `/dev/null`, y un
     // `cd /otra 2>/dev/null` es un `cd`.
@@ -166,18 +170,20 @@ function steps(command, cwd) {
 }
 
 // `{a,b}` son dos rutas, y `carpeta/*` es lo de adentro de la carpeta: la barra se queda, que es lo que hace
-// que un enlace se siga.
+// que un enlace se siga. `${F##*/}` también lleva llaves y no es una lista: sin coma, o con `$` delante, no se toca.
 const expanded = (raw) => {
-  const braces = raw.match(/^([^{}]*)\{([^{}]+)\}([^{}]*)$/)
-  const all = braces ? braces[2].split(',').map((one) => braces[1] + one + braces[3]) : [raw]
+  const braces = raw.match(/^([^{}]*[^{}$])?\{([^{}]*,[^{}]*)\}([^{}]*)$/)
+  const all = braces ? braces[2].split(',').map((one) => (braces[1] || '') + one + braces[3]) : [raw]
   return all.map((one) => one.replace(/\*$/, '') || '.')
 }
 
 // De `find` salen las rutas donde busca, que van entre sus opciones globales y la primera expresión, y sólo
 // si trae `-delete`.
 const REMOVERS = new Set(['rm', 'unlink', 'rmdir'])
+// Las palabras llegan armadas por `shellWords` y se usan así: unirlas con un espacio para volver a partirlas
+// desarmaba la ruta entre comillas que traía uno.
+const targets = (words) => words.filter((word) => word && !word.startsWith('-'))
 function removals(ran) {
-  const { positional } = require('./shell')
   const found = []
   for (const { verb, rest, base } of ran) {
     if (verb === 'find' && rest.includes('-delete')) {
@@ -185,7 +191,7 @@ function removals(ran) {
       const expression = paths.findIndex((word) => /^[-(!]/.test(word))
       for (const raw of expression ? paths.slice(0, expression) : ['.']) found.push({ raw, base })
     }
-    if (REMOVERS.has(verb)) for (const raw of positional(rest.join(' ')).flatMap(expanded)) found.push({ raw, base })
+    if (REMOVERS.has(verb)) for (const raw of targets(rest).flatMap(expanded)) found.push({ raw, base })
   }
   return found
 }
@@ -193,12 +199,11 @@ function removals(ran) {
 // Un archivo vacío o una carpeta. Van por acá y no por la lista de verbos que escriben, que los busca como
 // palabra en cualquier lado: `docker exec app mkdir -p /app/data` y `grep -rn mkdir /usr/share/doc` no crean
 // nada en esta máquina. De `touch` se saca el archivo del que copia la fecha, que sólo se lee, y la fecha.
-const TOUCH_VALUE = /(?:^|\s)(?:-[a-z]*[rdt]|--reference|--date)\s+\S+/g
+const TOUCH_VALUE = /^(?:-[a-z]*[rdt]|--reference|--date)$/
 function creations(ran) {
-  const { positional } = require('./shell')
   return ran.filter((one) => one.verb === 'touch' || one.verb === 'mkdir').flatMap(({ verb, rest, base }) => {
-    const words = rest.join(' ')
-    return positional(verb === 'touch' ? words.replace(TOUCH_VALUE, ' ') : words).map((raw) => ({ raw, base }))
+    const words = verb === 'touch' ? rest.filter((word, at) => !TOUCH_VALUE.test(rest[at - 1] || '')) : rest
+    return targets(words).map((raw) => ({ raw, base }))
   })
 }
 

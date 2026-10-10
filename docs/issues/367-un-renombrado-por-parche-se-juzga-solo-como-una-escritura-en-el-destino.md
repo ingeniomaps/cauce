@@ -101,7 +101,8 @@ juzga su ruta, no su contenido.
 - **Fix 1, juzgar lo que va a quedar en la migración — se hizo, y más ancho que lo propuesto.** El caso
   pedía hacerlo sólo cuando el origen no era una migración. La condición no se podía ver caer: renombrar una
   migración que ya existe lo frena antes la regla de no reescribirlas, por el origen. Se juzga siempre que
-  haya archivo de origen que leer: lo que traía, menos lo que el parche quita, más lo que agrega.
+  haya archivo de origen que leer: el archivo con el parche aplicado. La primera versión lo calculaba
+  restando y sumando líneas sueltas, y estaba mal: está en la revisión, más abajo.
 - **Fix 2, el origen de una prueba renombrada — se hizo.** Cuenta como borrarla sólo si el nombre nuevo deja
   de ser una prueba.
 - **Fix 3, mirar los otros guards de archivos — se miró, y no les pasa.** Con un renombrado en los dos
@@ -141,6 +142,33 @@ juzga su ruta, no su contenido.
 
 Como el 366, se midió con el sobre que manda Codex y no con una sesión suya: la cuenta de esta máquina sigue
 sin cupo.
+
+### Lo que encontró la revisión independiente (2026-10-10)
+
+Cinco cosas de este caso, todas reproducidas, y las cinco se arreglaron.
+
+- **«Lo que va a quedar» se calculaba por aproximación, y erraba en los dos sentidos.** Lo agregado se pegaba
+  al final del archivo: en una migración con marcador de reversión, un `DROP` agregado al bloque que aplica
+  quedaba leído como reversión y pasaba. Y lo quitado era la primera línea que se le parecía: sacar el
+  `DROP` de la reversión sacaba del texto juzgado el del bloque que aplica. Ahora cada hunk se aplica donde
+  cae —su contexto y lo que quita, como una sola corrida de líneas—. Si alguno no se puede ubicar, se juzga
+  el archivo como está: no se supone que el parche quitó algo. Y lo que el parche agrega se sigue juzgando
+  además por su cuenta, como antes de este caso.
+- **Un archivo de origen con finales de línea de Windows** no coincidía con lo que el parche quitaba, y se
+  frenaba un renombrado que sacaba lo destructivo.
+- **Un sobre con finales de línea de Windows no se leía**: ninguna cabecera se reconocía, y las dos defensas
+  de este caso no corrían. Era anterior —el lector de secciones nació así en el 199—; no se comprobó si Codex
+  manda sobres así.
+- **Cambiar la extensión de una prueba se frenaba como borrarla**: `a.test.js` a `a.test.mjs`, `a.spec.ts`
+  a `a.spec.mts`, o a `cypress/e2e/a.cy.ts`. El nombre nuevo seguía siendo de prueba y el guard no lo
+  contaba entre los que cuida. Para el renombrado alcanza con que lo siga pareciendo.
+- **Lo que queda, y se dice**: sacar un archivo de una carpeta `tests/` hacia otra que no lo es se frena
+  aunque sea un ayudante y no una prueba. El guard no tiene cómo distinguirlos por el nombre, y ahí la
+  salida es la aprobación que ese guard ya ofrece.
+
+Rojo previo de las cuatro, y quince mutaciones más en rojo. Cuatro sobrevivieron la primera vez: dos se
+llevaron su caso de prueba —dónde cae un marcador de reversión agregado, y que lo que otra sección agrega
+sigue contando cuando el archivo renombrado existe— y dos eran código que sobraba y se quitó.
 
 ## Contexto de descubrimiento
 

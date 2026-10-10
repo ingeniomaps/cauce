@@ -60,6 +60,9 @@ test('una migración renombrada se sigue juzgando por su sección, no por el sob
     '*** Update File: service/notes.txt', '*** Move to: service/migrations/003_x.sql', '@@', '-a', '+b',
     '*** End Patch'].join('\n')
   blocked('migrations', { cwd: root, tool_name: 'apply_patch', tool_input: { command: onto } }, /DROP TABLE/)
+  // También cuando el archivo renombrado existe y está limpio: lo que la otra sección agrega sigue contando.
+  fs.writeFileSync(path.join(root, 'service', 'notes.txt'), 'a\n')
+  blocked('migrations', { cwd: root, tool_name: 'apply_patch', tool_input: { command: onto } }, /DROP TABLE/)
 })
 
 // Caso 367. Un renombrado llega con contenido que el parche no trae y deja sin su nombre al archivo de origen.
@@ -98,4 +101,53 @@ test('renombrar una prueba a un nombre que ya no lo es cuenta como borrarla', ()
   // Mudarla y que siga siendo una prueba no pierde nada; y renombrar lo que no era una prueba, tampoco.
   assert.doesNotThrow(() => execute('test-evidence', move('service/src/a.test.js', 'service/lib/a.test.js')))
   assert.doesNotThrow(() => execute('test-evidence', move('service/src/a.js', 'service/src/b.js')))
+})
+
+// Lo que encontró la revisión del 367: «lo que va a quedar» se calculaba por aproximación.
+test('lo que va a quedar en un archivo renombrado se arma aplicando el parche donde cae', () => {
+  const root = project('ops-hook-patch-move-aplicado-')
+  fs.mkdirSync(path.join(root, 'service', 'scratch'))
+  const write = (name, ...lines) => fs.writeFileSync(path.join(root, 'service', 'scratch', name), lines.join('\n'))
+  const move = (name, to, ...hunk) => asCodex(root,
+    patchOf(`*** Update File: service/scratch/${name}`, `*** Move to: service/migrations/${to}`, '@@', ...hunk))
+  // Lo agregado cae donde el hunk dice, no al final: acá es el bloque que aplica, no la reversión.
+  write('marked.sql', '-- +goose Up', 'CREATE TABLE t (id int);', '-- +goose Down', 'DROP TABLE t;', '')
+  blocked('migrations', move('marked.sql', '003_m.sql', ' -- +goose Up', '+DROP TABLE users;',
+    ' CREATE TABLE t (id int);'), /DROP TABLE/)
+  // Y lo quitado es la línea que el hunk señala: sacar el de la reversión no saca el del bloque que aplica.
+  write('twice.sql', '-- +goose Up', 'DROP TABLE t;', '-- +goose Down', 'DROP TABLE t;', '')
+  blocked('migrations', move('twice.sql', '020.sql', ' -- +goose Down', '-DROP TABLE t;', '+SELECT 1;'), /DROP TABLE/)
+  // Un origen con finales de línea de Windows se lee igual.
+  fs.writeFileSync(path.join(root, 'service', 'scratch', 'crlf.sql'), 'DROP TABLE old;\r\nCREATE TABLE t (id int);\r\n')
+  assert.doesNotThrow(() => execute('migrations', move('crlf.sql', '004_c.sql', '-DROP TABLE old;',
+    '+CREATE TABLE n (id int);')))
+  // Un marcador de reversión agregado antes de un DROP que ya estaba lo deja en la reversión: dónde cae decide.
+  write('reversion.sql', '-- +goose Up', 'CREATE TABLE t (id int);', 'DROP TABLE t;', '')
+  blocked('migrations', move('reversion.sql', '040.sql', ' -- +goose Up', '+-- nota'), /DROP TABLE/)
+  assert.doesNotThrow(() => execute('migrations', move('reversion.sql', '041.sql', ' CREATE TABLE t (id int);',
+    '+-- +goose Down')))
+  // Si el parche no se puede ubicar en el archivo, se juzga el archivo como está: no se supone que quitó nada.
+  write('lejos.sql', 'DROP TABLE x;', '')
+  blocked('migrations', move('lejos.sql', '030.sql', ' esto no está', '-ni esto', '+SELECT 1;'), /DROP TABLE/)
+})
+
+test('un sobre con finales de línea de Windows se lee igual', () => {
+  const root = project('ops-hook-patch-move-crlf-')
+  fs.mkdirSync(path.join(root, 'service', 'scratch'))
+  fs.writeFileSync(path.join(root, 'service', 'scratch', 'drop.sql'), 'DROP TABLE users;\n')
+  const crlf = (...lines) => asCodex(root, patchOf(...lines).split('\n').join('\r\n'))
+  blocked('test-evidence', crlf('*** Update File: service/src/a.test.js', '*** Move to: service/attic/a.js.txt',
+    '@@', '-x', '+y'), /borra una prueba/)
+  blocked('migrations', crlf('*** Update File: service/scratch/drop.sql',
+    '*** Move to: service/migrations/005_d.sql', '@@', ' DROP TABLE users;', '+-- listo'), /DROP TABLE/)
+})
+
+test('una prueba que cambia de extensión o de herramienta sigue siendo una prueba', () => {
+  const root = project('ops-hook-patch-move-sigue-')
+  const move = (from, to) => asCodex(root, patchOf(`*** Update File: ${from}`, `*** Move to: ${to}`, '@@', '-x', '+y'))
+  for (const [from, to] of [['service/src/a.test.js', 'service/src/a.test.mjs'],
+    ['service/src/a.test.js', 'service/src/a.test.cjs'], ['service/src/a.spec.ts', 'service/src/a.spec.mts'],
+    ['service/src/a.spec.ts', 'service/cypress/e2e/a.cy.ts']]) {
+    assert.doesNotThrow(() => execute('test-evidence', move(from, to)), `${from} → ${to}`)
+  }
 })

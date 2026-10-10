@@ -73,14 +73,15 @@ function migrations(input) {
     // mientras no diga sobre qué está decidiendo. Y cuando la migración se partió, dice que la reversión
     // no se juzgó, para que quien lo lea no busque la sentencia en el bloque equivocado.
     const section = sections.get(raw)
+    const scopes = [section ? M.judgedPatch(normalized, section)
+      : M.judged(normalized, contentOf(input), editOf(input, file))]
     // Un archivo que pasa a ser una migración por un renombrado llega con contenido que el parche no trae: se
-    // juzga lo que va a quedar, no sólo lo agregado (caso 367). Sin archivo de origen que leer —lo crea el
-    // mismo parche, o no está— queda lo que el parche trae.
+    // juzga además lo que va a quedar (caso 367). Si el parche no se puede ubicar en el archivo, el archivo
+    // como está; y sin archivo de origen que leer —lo crea el mismo parche, o no está— sólo lo de arriba.
     const moved = section && section.movedFrom !== undefined
     const before = moved ? onDisk(path.resolve(cwdOf(input), section.movedFrom)) : null
-    const scope = before !== null ? M.judged(normalized, M.movedText(before, section))
-      : section ? M.judgedPatch(normalized, section)
-        : M.judged(normalized, contentOf(input), editOf(input, file))
+    if (before !== null) scopes.push(M.judged(normalized, M.movedText(before, section) ?? before))
+    const scope = scopes.find((one) => M.destructive(one.text)) || scopes[0]
     const found = M.destructive(scope.text)
     if (found) {
       const where = scope.label ? ` en el bloque que aplica (la reversión, \`${scope.label}\`, no se juzga)` : ''

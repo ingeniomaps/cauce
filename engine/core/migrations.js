@@ -173,16 +173,20 @@ function patchSections(patch) {
   const sections = new Map()
   const moved = []
   let current = null
-  for (const line of String(patch).split('\n')) {
+  // Los finales de línea de Windows se quitan al partir: con el `\r` pegado ninguna cabecera se reconocía.
+  for (const line of String(patch).split(/\r?\n/)) {
     const header = line.match(/^\*\*\* (Add|Update|Delete) File:\s*(.+)$/)
     if (header) {
-      current = { kind: header[1].toLowerCase(), lines: [], path: header[2].trim() }
+      current = { kind: header[1].toLowerCase(), lines: [], hunks: [[]], path: header[2].trim() }
       sections.set(header[2].trim(), current)
     } else if (current && /^\*\*\* Move to:/.test(line)) {
       moved.push([line.replace(/^\*\*\* Move to:\s*/, '').trim(), current])
     } else if (/^\*\*\* End Patch\s*$/.test(line)) current = null
-    else if (current && !line.startsWith('@@') && !line.startsWith('*** ')) {
-      current.lines.push({ op: line[0] || ' ', text: line.slice(1) })
+    else if (current && line.startsWith('@@')) current.hunks.push([])
+    else if (current && !line.startsWith('*** ')) {
+      const one = { op: line[0] || ' ', text: line.slice(1) }
+      current.lines.push(one)
+      current.hunks[current.hunks.length - 1].push(one)
     }
   }
   // El nombre nuevo de un archivo renombrado es la misma sección (caso 366): sin esto se lo juzgaba contra el
@@ -192,20 +196,29 @@ function patchSections(patch) {
   for (const [name, section] of moved) {
     const there = sections.get(name)
     const lines = there ? [...there.lines, ...section.lines] : section.lines
-    sections.set(name, { kind: there ? 'update' : section.kind, lines, movedFrom: section.path })
+    sections.set(name, { kind: there ? 'update' : section.kind, lines, hunks: section.hunks, movedFrom: section.path })
   }
   return sections
 }
 
-// Lo que va a quedar en un archivo renombrado: lo que traía en disco, menos lo que el parche le quita, más lo
-// que le agrega. Restar lo quitado es lo que deja renombrar una migración mientras se le saca lo destructivo.
+// Lo que va a quedar en un archivo renombrado: lo que traía en disco con cada hunk aplicado donde cae. Dónde
+// cae importa: una migración se parte por sus marcadores, y lo agregado al bloque que aplica no es lo mismo
+// que lo agregado a la reversión; lo quitado es la línea que el hunk señala y no la primera que se le parece.
+// La primera versión restaba y sumaba líneas sueltas, y erraba en los dos sentidos (revisión del 367).
+//
+// `null` si algún hunk no se puede ubicar: quien llama no puede suponer entonces que el parche quitó algo.
 function movedText(disk, section) {
-  const kept = String(disk).split('\n')
-  for (const { op, text } of section.lines) {
-    const at = op === '-' ? kept.indexOf(text) : -1
-    if (at >= 0) kept.splice(at, 1)
+  const lines = String(disk).split(/\r?\n/)
+  for (const hunk of (section.hunks || []).filter((one) => one.length)) {
+    const old = hunk.filter((line) => line.op !== '+').map((line) => line.text)
+    const next = hunk.filter((line) => line.op !== '-').map((line) => line.text)
+    const fits = (at) => old.every((text, offset) => lines[at + offset] === text)
+    let at = -1
+    for (let start = 0; at < 0 && start + old.length <= lines.length; start += 1) if (fits(start)) at = start
+    if (at < 0) return null
+    lines.splice(at, old.length, ...next)
   }
-  return [...kept, ...section.lines.filter((line) => line.op === '+').map((line) => line.text)].join('\n')
+  return lines.join('\n')
 }
 
 // Los renombrados de un parche: de qué ruta a cuál.

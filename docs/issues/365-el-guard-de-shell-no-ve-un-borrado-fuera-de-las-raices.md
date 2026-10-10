@@ -325,6 +325,22 @@ Las mutaciones se corrieron de nuevo sobre el archivo nuevo: cuarenta y una en r
 porque el código que tocaban sobraba —unir las líneas partidas con una barra y leer un `cd` detrás de un
 paréntesis ya lo hacían otras dos piezas—, y se quitó.
 
+### La revisión del resolvedor propio (2026-10-10)
+
+Una pasada independiente sobre `shell-changes.js` ya separado. De `destructive` no encontró nada: su
+archivo difiere del anterior sólo en la entrada del caso 368. Del guard de límites, tres frenos a comandos
+legítimos, y se arreglaron los tres:
+
+- **`${F##*/}` se tomaba por una lista entre llaves**, y con la variable asignada se juzgaba la ruta entera
+  de afuera en vez del nombre del archivo. Una expansión de parámetro no se toca ni se resuelve.
+- **Una ruta entre comillas con espacios se juzgaba por pedazos**: `touch "servicio/a /b"` frenaba por
+  `/b`. Las palabras ya venían bien armadas y se volvían a unir y a partir.
+- **El `cd` del cuerpo de una función definida en varias líneas** movía la base de lo que venía después,
+  aunque nadie la llamara.
+
+Rojo previo y una mutación por cada una. La comparación contra el motor anterior, repetida: los mismos 43
+frenos nuevos, ninguno perdido; y `destructive`, ninguno nuevo y ninguno perdido.
+
 ### Sesiones reales (2026-10-10)
 
 Hasta acá se le había preguntado al guard instalado. Faltaba una sesión de verdad, con comandos que corren.
