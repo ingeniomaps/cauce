@@ -78,6 +78,33 @@ test('con causas mezcladas, el rebote pide sólo las pruebas que faltan', async 
   assert.ok(!hollow.result.detail.includes(doc), 'la parada nombra sólo lo que de verdad falta')
 })
 
+// Caso 345. La causa se decide por criterio: con la regla atada al diff, una condición que se cumple en un
+// documento salía `missing-test` apenas la tarea tocaba código, y el recorrido pedía una prueba para prosa.
+test('a Verify se le pide la causa criterio por criterio, sin atarla a lo que tocó el diff', async () => {
+  const ctx = withAcceptance('el alta rechaza un duplicado; docs/RIESGOS.md anota el riesgo aceptado')
+  const out = await runFlow({ [KEY.context]: ctx }, { contexts: [ctx] })
+  const ask = promptOf(out, KEY.verify)
+  assert.match(ask, /La causa es de cada criterio y no de la tarea/)
+  assert.match(ask, /el criterio que describe una conducta del código es missing-test/)
+  assert.match(ask, /termina en \.md, \.txt, \.adoc/, 'la lista de no ejecutables sigue siendo una sola')
+  // Lo que se quita: la condición por diff, que es la que arrastraba al documento con el código.
+  assert.doesNotMatch(ask, /vale sólo si la tarea no tocó/)
+  assert.doesNotMatch(ask, /con cualquier otro en el diff es missing-test/)
+})
+
+// Caso 345, el borde que la causa por criterio abría: una tarea que escribió pruebas y a la que Verify le
+// declara todo sin superficie. `check` la rechazaba recién en Done, con el trabajo entero hecho; frena acá.
+test('una tarea con pruebas no cierra con todos sus criterios declarados sin superficie', async () => {
+  const crits = ['el alta rechaza un duplicado', 'el comentario del handler queda corregido']
+  const ctx = withAcceptance(crits.join('; '))
+  const all = verdict(crits.map((criterion) => ({ criterion, cause: 'no-surface', reason: 'no se ejecuta' })),
+    { covered: [] })
+  const out = await runFlow({ [KEY.context]: ctx, [KEY.verify]: all }, { contexts: [ctx] })
+  assert.equal(out.result.reason, 'verify-hollow')
+  assert.ok(out.asked.includes('Verify|missing-tests'), 'y antes pide las pruebas, como con missing-test')
+  assert.doesNotMatch(promptOf(out, 'QA|qa'), /no tiene superficie ejecutable/)
+})
+
 test('una condición marcada fuera de verify no llega a Verify ni a QA, y viaja a Done', async () => {
   const marked = 'el commit lleva el footer Task: T-1 (fuera de verify: lo registra Commit, después de Verify)'
   const ctx = withAcceptance(`el alta rechaza un duplicado; ${marked}`)

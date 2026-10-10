@@ -1656,13 +1656,20 @@ while (rounds++ < MAX_TASKS) {
     const shared = [...said].filter((word) => declared.has(word)).length
     return shared > 0 && shared >= 0.6 * Math.min(said.size, declared.size)
   })
+  // La causa se pide por criterio. Atada al diff —`no-surface` sólo si la tarea no tocaba nada ejecutable—,
+  // la condición que se cumple en un documento salía `missing-test` apenas viajaba con código: el rebote
+  // pedía una prueba para prosa, y o la conseguía o la corrida paraba en `verify-hollow` (caso 345). Lo que
+  // sigue sosteniendo que no se use para cerrar código sin pruebas es `check`, que juzga el `n/a` entero
+  // contra lo que tocó el commit; en la tarea mixta, cada `n/a` queda en `done/` con su razón al lado.
   const VERIFY_ASK = `${asRole(cast.verify)}Abrí el fuente de los tests que la tarea agregó o cambió y ` +
     `contrastá cada criterio ` +
     `de aceptación contra sus aserciones: en uncovered va el criterio que ningún test codifica, con su causa ` +
     `—missing-test si el test falta o no asercia la propiedad, ambiguous si el criterio no dice qué habría ` +
-    `que aserciar, no-surface si se cumple en un artefacto que no se ejecuta, como un documento o una ` +
-    `decisión escrita, y con reason diciendo cuál—. no-surface vale sólo si la tarea no tocó ningún archivo ` +
-    `que no termine en ${NON_EXECUTABLE.join(', ')}; con cualquier otro en el diff es missing-test. En ` +
+    `que aserciar, no-surface si ese criterio se cumple en un artefacto que no se ejecuta (un archivo que ` +
+    `termina en ${NON_EXECUTABLE.join(', ')}, un comentario o una decisión escrita), y con reason diciendo ` +
+    `cuál y dónde quedó—. La causa es de cada criterio y no de la tarea: que el diff toque código no vuelve ` +
+    `missing-test al que se cumple en un documento, y el criterio que describe una conducta del código es ` +
+    `missing-test aunque el resto de la tarea sea documentación. En ` +
     `covered va cada criterio que un test sí codifica, por partes: en file, la ruta del archivo de pruebas ` +
     `desde la raíz de ${task.service}; en name, el nombre de la prueba tal como está escrito en ese archivo ` +
     `—el texto de su it, test o función, sin los describe que la contienen ni lo que el runner le agrega al ` +
@@ -1701,10 +1708,14 @@ while (rounds++ < MAX_TASKS) {
     return halt('acceptance-ambiguous', `${ambiguous.criterion}${note}`)
   }
   // Lo que no tiene superficie no frena ni rebota: viaja a Done, que lo escribe como `tests: n/a`. Se filtra
-  // por exclusión y no por `missing-test` para que una causa que no se conozca siga frenando (R27). Que
-  // el modelo no lo use para cerrar sin pruebas lo sostiene `check`, que mira qué tocó el commit.
+  // por exclusión y no por `missing-test` para que una causa que no se conozca siga frenando (R27).
+  //
+  // Salvo cuando es todo lo que hay y la tarea escribió pruebas: ahí `no-surface` en cada criterio contradice
+  // al propio Build, y `check` lo rechazaría recién en Done, con el trabajo entero hecho. Frena acá.
+  const allNoSurface = () => build.redFirst.length > 0 && !(verified.covered || []).length
+    && verified.uncovered.every((entry) => entry.cause === 'no-surface')
   const lacking = () => verified.uncovered
-    .filter((entry) => entry.cause !== 'no-surface' && !declaredOut(entry.criterion))
+    .filter((entry) => (entry.cause !== 'no-surface' || allNoSurface()) && !declaredOut(entry.criterion))
   if (lacking().length) {
     await run(`${asRole(cast.build)}Escribí sólo las pruebas que faltan en ${task.id}, con el mismo rojo ` +
       `previo, y no toques el código de producción: ${lacking().map((e) => e.criterion).join('; ')}`,

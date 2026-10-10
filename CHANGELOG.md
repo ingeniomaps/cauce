@@ -14,6 +14,19 @@ desde este repositorio no va, porque el que lee no puede actuar sobre eso. Cuand
 unas pocas líneas casi siempre es porque cuenta cómo se descubrió el problema o por qué se eligió el
 diseño — eso vive en el commit y en el código.
 
+## [0.106.0] - 2026-10-09
+
+### Cambiado
+
+- **Verify decide la causa de cada criterio por separado.** Una condición que se cumple en un documento o en
+  un comentario salía `missing-test` apenas la tarea tocaba código: el recorrido pedía una prueba para prosa,
+  y o la conseguía o paraba con `verify-hollow`. Ahora sale `no-surface` aunque el diff traiga código, queda
+  en `done/` como `CN → n/a — razón`, y los criterios de conducta siguen obligados a su prueba. Si tu
+  proyecto quiere una prueba que asercie el texto de un documento, la condición tiene que pedirla: ya no
+  llega sola. Rige al reinstalar el runner (caso 345).
+
+
+
 ## [0.105.0] - 2026-10-08
 
 ### Cambiado

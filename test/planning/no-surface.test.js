@@ -86,6 +86,10 @@ test('la puerta mira sólo el n/a entero, y calla donde no hay commit que leer',
   // criterios que sí tienen prueba.
   entry('mixta', 'A → TestAlta; n/a — el manual no se ejecuta', `${code} feat: alta`)
   assert.deepEqual(errors(), [])
+  // La forma que deja el recorrido desde que la causa es por criterio (caso 345): cada uno con su etiqueta.
+  entry('mixta', 'C1 → api/alta_test.go › «TestAlta» — criterio: rechaza el duplicado; '
+    + 'C2 → n/a — se cumple en docs/alta.md, que no se ejecuta', `${code} feat: alta`)
+  assert.deepEqual(errors(), [])
 
   entry('mixta', 'n/a — no produce commit', 'n/a — sólo abrió una fila en HUMAN_ACTIONS')
   assert.deepEqual(errors(), [], 'sin sha no hay diff que juzgar')
