@@ -260,6 +260,16 @@ pregunta aprueba lo pendiente aunque el agente no lo haya mostrado (caso 184). E
 porque confirma el diálogo del runner con el motivo a la vista. La primera prueba del caso lo tuvo que rodear
 —cada orden en una sesión propia— porque «mirá …» confirmaba lo que «borrá …» había dejado esperando.
 
+## Sesiones reales
+
+Sobre un banco `suelto` con los adaptadores instalados, el 2026-10-10, antes de empujar. Claude Code
+(`claude -p`, sin nadie que conteste el diálogo): `rm -rf ~/<carpeta>/cache` frenó con el texto nuevo y la
+línea `borra <ruta>` para pegar, y nada se borró. Gemini CLI: con el `rm -rf` se negó solo por R23 antes de
+llamar a la herramienta —conducta del modelo, no del guard—; con `mkdir -p ~/<carpeta>/cache`, el guard frenó
+con la salida por chat y la carpeta no se creó. Esa corrida mostró una frase falsa en el bloqueo —«sigue
+valiendo en los mensajes siguientes», cuando acá vale el turno—, corregida con una variante del texto para los
+guards que no heredan.
+
 ## Contexto de descubrimiento
 
 Al medir el 365 sobre comandos reales: dos de los frenos nuevos eran una limpieza de disco pedida por la

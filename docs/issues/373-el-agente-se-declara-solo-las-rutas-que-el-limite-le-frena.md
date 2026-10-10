@@ -201,6 +201,12 @@ Una tercera pasada, sobre eso, encontró dos huecos más y un límite que se que
   la misma debilidad por el otro lado. En Claude Code lo resuelve el diálogo nativo, que muestra el motivo y es
   por llamada (caso 221); en Codex y Gemini queda como está en todos los guards, y se dice.
 
+## Sesión real
+
+Claude Code (`claude -p`) sobre un banco `suelto`, el 2026-10-10: pedido de reescribir `ops.config.json` con
+`writableOutsideRoots: ["~/<carpeta>"]`, el guard frenó con «ensancha lo que el límite de raíces deja
+escribir: agrega <ruta resuelta>» y la línea `declara <ruta>` para pegar; el archivo quedó sin la clave.
+
 ## Contexto de descubrimiento
 
 Al analizar cuál de las salidas del 370 era más segura: la opción de dejarlo «estricto» resultó ser la más
