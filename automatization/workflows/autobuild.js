@@ -1690,12 +1690,13 @@ while (rounds++ < MAX_TASKS) {
   // Verify la reescribe a su modo —le pone número, le saca la marca—, así que se compara por palabras.
   const wordsIn = (text) => new Set(String(text).replace(OUT_OF_VERIFY, ' ').toLowerCase()
     .split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 3))
-  const declaredOut = (criterion) => outOfVerify.some((condition) => {
-    const said = wordsIn(criterion)
-    const declared = wordsIn(condition)
+  const sameWords = (one, other) => {
+    const said = wordsIn(one)
+    const declared = wordsIn(other)
     const shared = [...said].filter((word) => declared.has(word)).length
     return shared > 0 && shared >= 0.6 * Math.min(said.size, declared.size)
-  })
+  }
+  const declaredOut = (criterion) => outOfVerify.some((condition) => sameWords(criterion, condition))
   // La causa se pide por criterio. Atada al diff —`no-surface` sólo si la tarea no tocaba nada ejecutable—,
   // la condición que se cumple en un documento salía `missing-test` apenas viajaba con código: el rebote
   // pedía una prueba para prosa, y o la conseguía o la corrida paraba en `verify-hollow` (caso 345). Lo que
@@ -1756,12 +1757,26 @@ while (rounds++ < MAX_TASKS) {
     && verified.uncovered.every((entry) => entry.cause === 'no-surface')
   const lacking = () => verified.uncovered
     .filter((entry) => (entry.cause !== 'no-surface' || allNoSurface()) && !declaredOut(entry.criterion))
-  if (lacking().length) {
+  // Cada pasada es un veredicto independiente sobre la misma aceptación, y la que sigue a las pruebas
+  // faltantes puede traer sin cubrir un criterio que la anterior dio por cubierto. Frenar ahí paraba la
+  // corrida por algo que nunca se le pidió a nadie: en los diarios de corridas, 12 de 39 segundas pasadas
+  // (caso 346). Lo que aparece recién ahí compra una vuelta más, y una sola. Lo que ya se pidió y sigue
+  // faltando no la compra —también cuando viene junto a uno nuevo—: esa prueba ya se intentó escribir. Y
+  // tampoco la compra lo que no es una prueba que falte: un criterio ambiguo pide una definición, no un test.
+  const VERIFY_ROUNDS = 2
+  const asked = []
+  const askedAlready = () => lacking().some((entry) => asked.some((one) => sameWords(one, entry.criterion)))
+  const writable = (round) => round === 1 || lacking().every((entry) => entry.cause === 'missing-test')
+  for (let round = 1; round <= VERIFY_ROUNDS && lacking().length && !askedAlready() && writable(round); round += 1) {
+    const missing = lacking().map((entry) => entry.criterion)
     await run(`${asRole(cast.build)}Escribí sólo las pruebas que faltan en ${task.id}, con el mismo rojo ` +
-      `previo, y no toques el código de producción: ${lacking().map((e) => e.criterion).join('; ')}`,
+      `previo, y no toques el código de producción: ${missing.join('; ')}`,
       { label: 'missing-tests' })
+    asked.push(...missing)
     verified = await run(VERIFY_ASK, { schema: VERIFY, label: 'verify' })
-    if (!verified) return halt('agent-unavailable', 'la segunda pasada de Verify no devolvió resultado')
+    if (!verified) {
+      return halt('agent-unavailable', 'la pasada de Verify que sigue a las pruebas faltantes no devolvió resultado')
+    }
   }
   if (!verified.passed || !verified.commands.length) return halt('verify-failed', verified.details)
   // Verde por ausencia: los gates pasaron y ninguno corrió las pruebas que esta tarea escribió. El exit

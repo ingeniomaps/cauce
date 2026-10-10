@@ -24,6 +24,11 @@ diseño — eso vive en el commit y en el código.
   en `done/` como `CN → n/a — razón`, y los criterios de conducta siguen obligados a su prueba. Si tu
   proyecto quiere una prueba que asercie el texto de un documento, la condición tiene que pedirla: ya no
   llega sola. Rige al reinstalar el runner (caso 345).
+- **Un criterio que aparece recién en la segunda pasada de Verify compra una vuelta más.** La segunda pasada
+  podía traer sin cubrir un criterio que la primera había dado por cubierto, y la corrida paraba con
+  `verify-hollow` sin que nadie hubiera intentado escribir esa prueba. Ahora se piden sólo esas pruebas y
+  Verify corre una tercera vez; lo que ya se había pedido y sigue faltando frena como antes. Rige al
+  reinstalar el runner (caso 346).
 - **Un caso descubierto cita a su rojo por un id.** `edge-unproven` comparaba dos nombres escritos por
   separado y frenó tres veces una entrega probada por cómo estaban escritos. Build le pone un id corto a
   cada rojo y el borde lo cita; quien no lo cite sigue pasando por el nombre, con las reglas de siempre.
