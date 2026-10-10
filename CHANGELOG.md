@@ -24,6 +24,9 @@ diseño — eso vive en el commit y en el código.
   para escribir: el temporal del sistema y lo que declares en `writableOutsideRoots` siguen pasando, y lo
   que no se puede resolver —una variable, un `cd` a un destino desconocido— no se juzga. **Si tus sesiones
   borran algo fuera del proyecto**, por ejemplo una caché en tu carpeta personal, declarala ahí (caso 365).
+- **Un parche de Codex que renombra un archivo se juzga también por su destino.** Con `*** Move to:` un
+  archivo de adentro se mudaba fuera de las raíces, o a un nombre como `.env`, sin que ningún guard de
+  archivos mirara a dónde iba (caso 366).
 
 - **Lo que el runner instala con la ruta de tu carpeta escrita ya no entra a git.** Los recorridos de Claude y
   el puente de Antigravity llevan la ruta de la instancia. En una instancia embebida vivían en el
